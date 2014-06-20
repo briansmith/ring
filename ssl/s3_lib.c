@@ -2476,6 +2476,26 @@ SSL_CIPHER ssl3_ciphers[]={
 	256,
 	},
 
+#ifndef OPENSSL_NO_PSK
+    /* ECDH PSK ciphersuites */
+	/* Cipher CAFE */
+	{
+	1,
+	TLS1_TXT_ECDHE_PSK_WITH_AES_128_GCM_SHA256,
+	TLS1_CK_ECDHE_PSK_WITH_AES_128_GCM_SHA256,
+	SSL_kEECDH,
+	SSL_aPSK,
+	SSL_AES128GCM,
+	SSL_AEAD,
+	SSL_TLSV1_2,
+	SSL_NOT_EXP|SSL_HIGH,
+	SSL_HANDSHAKE_MAC_SHA256|TLS1_PRF_SHA256|SSL_CIPHER_ALGORITHM2_AEAD|FIXED_NONCE_LEN(4)|
+		SSL_CIPHER_ALGORITHM2_VARIABLE_NONCE_INCLUDED_IN_RECORD,
+	128,
+	128,
+	},
+#endif /* OPENSSL_NO_PSK */
+
 #endif /* OPENSSL_NO_ECDH */
 
 
@@ -3792,7 +3812,7 @@ SSL_CIPHER *ssl3_choose_cipher(SSL *s, STACK_OF(SSL_CIPHER) *clnt,
 
 #ifndef OPENSSL_NO_PSK
 		/* with PSK there must be server callback set */
-		if ((alg_k & SSL_kPSK) && s->psk_server_callback == NULL)
+		if ((alg_a & SSL_aPSK) && s->psk_server_callback == NULL)
 			continue;
 #endif /* OPENSSL_NO_PSK */
 
