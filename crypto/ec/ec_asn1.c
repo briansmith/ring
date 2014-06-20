@@ -405,7 +405,7 @@ int i2d_ECPrivateKey(const EC_KEY *key, uint8_t **outp) {
   }
 
   /* TODO(fork): replace this flexibility with key sensible default? */
-  if (!(key->enc_flag & EC_PKEY_NO_PUBKEY)) {
+  if (!(key->enc_flag & EC_PKEY_NO_PUBKEY) && key->pub_key != NULL) {
     priv_key->publicKey = M_ASN1_BIT_STRING_new();
     if (priv_key->publicKey == NULL) {
       OPENSSL_PUT_ERROR(EC, i2d_ECPrivateKey, ERR_R_MALLOC_FAILURE);

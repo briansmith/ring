@@ -410,25 +410,27 @@ static int do_EC_KEY_print(BIO *bp, const EC_KEY *x, int off, int ktype) {
 
   if (ktype > 0) {
     public_key = EC_KEY_get0_public_key(x);
-    pub_key_bytes_len = EC_POINT_point2oct(
-        group, public_key, EC_KEY_get_conv_form(x), NULL, 0, ctx);
-    if (pub_key_bytes_len == 0) {
-      reason = ERR_R_MALLOC_FAILURE;
-      goto err;
+    if (public_key != NULL) {
+      pub_key_bytes_len = EC_POINT_point2oct(
+          group, public_key, EC_KEY_get_conv_form(x), NULL, 0, ctx);
+      if (pub_key_bytes_len == 0) {
+        reason = ERR_R_MALLOC_FAILURE;
+        goto err;
+      }
+      pub_key_bytes = OPENSSL_malloc(pub_key_bytes_len);
+      if (pub_key_bytes == NULL) {
+        reason = ERR_R_MALLOC_FAILURE;
+        goto err;
+      }
+      pub_key_bytes_len =
+          EC_POINT_point2oct(group, public_key, EC_KEY_get_conv_form(x),
+                             pub_key_bytes, pub_key_bytes_len, ctx);
+      if (pub_key_bytes_len == 0) {
+        reason = ERR_R_MALLOC_FAILURE;
+        goto err;
+      }
+      buf_len = pub_key_bytes_len;
     }
-    pub_key_bytes = OPENSSL_malloc(pub_key_bytes_len);
-    if (pub_key_bytes == NULL) {
-      reason = ERR_R_MALLOC_FAILURE;
-      goto err;
-    }
-    pub_key_bytes_len =
-        EC_POINT_point2oct(group, public_key, EC_KEY_get_conv_form(x),
-                           pub_key_bytes, pub_key_bytes_len, ctx);
-    if (pub_key_bytes_len == 0) {
-      reason = ERR_R_MALLOC_FAILURE;
-      goto err;
-    }
-    buf_len = pub_key_bytes_len;
   }
 
   if (ktype == 2) {
