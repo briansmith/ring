@@ -89,6 +89,11 @@ size_t BUF_MEM_grow_clean(BUF_MEM *str, size_t len);
 /* BUF_strdup returns an allocated, duplicate of |str|. */
 char *BUF_strdup(const char *str);
 
+/* BUF_strnlen returns the number of characters in |str|, excluding the NUL
+ * byte, but at most |max_len|. This function never reads more than |max_len|
+ * bytes from |str|. */
+size_t BUF_strnlen(const char *str, size_t max_len);
+
 /* BUF_strndup returns an allocated, duplicate of |str|, which is, at most,
  * |size| bytes. The result is always NUL terminated. */
 char *BUF_strndup(const char *str, size_t size);

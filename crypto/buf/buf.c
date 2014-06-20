@@ -153,6 +153,18 @@ char *BUF_strdup(const char *buf) {
   return BUF_strndup(buf, strlen(buf));
 }
 
+size_t BUF_strnlen(const char *str, size_t max_len) {
+  size_t i;
+
+  for (i = 0; i < max_len; i++) {
+    if (str[i] == 0) {
+      break;
+    }
+  }
+
+  return i;
+}
+
 char *BUF_strndup(const char *buf, size_t size) {
   char *ret;
   size_t alloc_size;
@@ -160,6 +172,8 @@ char *BUF_strndup(const char *buf, size_t size) {
   if (buf == NULL) {
     return NULL;
   }
+
+  size = BUF_strnlen(buf, size);
 
   alloc_size = size + 1;
   if (alloc_size < size) {
