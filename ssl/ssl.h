@@ -879,18 +879,55 @@ struct ssl_comp_st
 DECLARE_STACK_OF(SSL_COMP)
 DECLARE_LHASH_OF(SSL_SESSION);
 
+/* ssl_cipher_preference_list_st contains a list of SSL_CIPHERs with
+ * equal-preference groups. For TLS clients, the groups are moot because the
+ * server picks the cipher and groups cannot be expressed on the wire. However,
+ * for servers, the equal-preference groups allow the client's preferences to
+ * be partially respected. (This only has an effect with
+ * SSL_OP_CIPHER_SERVER_PREFERENCE).
+ *
+ * The equal-preference groups are expressed by grouping SSL_CIPHERs together.
+ * All elements of a group have the same priority: no ordering is expressed
+ * within a group.
+ *
+ * The values in |ciphers| are in one-to-one correspondence with
+ * |in_group_flags|. (That is, sk_SSL_CIPHER_num(ciphers) is the number of
+ * bytes in |in_group_flags|.) The bytes in |in_group_flags| are either 1, to
+ * indicate that the corresponding SSL_CIPHER is not the last element of a
+ * group, or 0 to indicate that it is.
+ *
+ * For example, if |in_group_flags| contains all zeros then that indicates a
+ * traditional, fully-ordered preference. Every SSL_CIPHER is the last element
+ * of the group (i.e. they are all in a one-element group).
+ *
+ * For a more complex example, consider:
+ *   ciphers:        A  B  C  D  E  F
+ *   in_group_flags: 1  1  0  0  1  0
+ *
+ * That would express the following, order:
+ *
+ *    A         E
+ *    B -> D -> F
+ *    C
+ */
+struct ssl_cipher_preference_list_st
+	{
+	STACK_OF(SSL_CIPHER) *ciphers;
+	unsigned char *in_group_flags;
+	};
+
 struct ssl_ctx_st
 	{
 	const SSL_METHOD *method;
 
-	STACK_OF(SSL_CIPHER) *cipher_list;
+	struct ssl_cipher_preference_list_st *cipher_list;
 	/* same as above but sorted for lookup */
 	STACK_OF(SSL_CIPHER) *cipher_list_by_id;
 	/* cipher_list_tls11 is the list of ciphers when TLS 1.1 or greater is
 	 * in use. This only applies to server connections as, for clients, the
 	 * version number is known at connect time and so the cipher list can
 	 * be set then. */
-	STACK_OF(SSL_CIPHER) *cipher_list_tls11;
+	struct ssl_cipher_preference_list_st *cipher_list_tls11;
 
 	struct x509_store_st /* X509_STORE */ *cert_store;
 	LHASH_OF(SSL_SESSION) *sessions;
@@ -1414,7 +1451,7 @@ struct ssl_st
 #endif
 
 	/* crypto */
-	STACK_OF(SSL_CIPHER) *cipher_list;
+	struct ssl_cipher_preference_list_st *cipher_list;
 	STACK_OF(SSL_CIPHER) *cipher_list_by_id;
 
 	/* These are the ones being used, the ones in SSL_SESSION are
@@ -3016,5 +3053,9 @@ void ERR_load_SSL_strings(void);
 #define SSL_R_DTLS_MESSAGE_TOO_BIG 429
 #define SSL_R_INVALID_SRP_USERNAME 430
 #define SSL_R_TOO_MANY_EMPTY_FRAGMENTS 431
+#define SSL_R_NESTED_GROUP 432
+#define SSL_R_UNEXPECTED_GROUP_CLOSE 433
+#define SSL_R_UNEXPECTED_OPERATOR_IN_GROUP 434
+#define SSL_R_MIXED_SPECIAL_OPERATOR_WITH_GROUPS 435
 
 #endif

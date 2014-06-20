@@ -1249,7 +1249,7 @@ int ssl3_get_client_hello(SSL *s)
 			ciphers=NULL;
 
 			/* check if some cipher was preferred by call back */
-			pref_cipher=pref_cipher ? pref_cipher : ssl3_choose_cipher(s, s->session->ciphers, SSL_get_ciphers(s));
+			pref_cipher=pref_cipher ? pref_cipher : ssl3_choose_cipher(s, s->session->ciphers, ssl_get_cipher_preferences(s));
 			if (pref_cipher == NULL)
 				{
 				al=SSL_AD_HANDSHAKE_FAILURE;
@@ -1260,12 +1260,12 @@ int ssl3_get_client_hello(SSL *s)
 			s->session->cipher=pref_cipher;
 
 			if (s->cipher_list)
-				sk_SSL_CIPHER_free(s->cipher_list);
+				ssl_cipher_preference_list_free(s->cipher_list);
 
 			if (s->cipher_list_by_id)
 				sk_SSL_CIPHER_free(s->cipher_list_by_id);
 
-			s->cipher_list = sk_SSL_CIPHER_dup(s->session->ciphers);
+			s->cipher_list = ssl_cipher_preference_list_from_ciphers(s->session->ciphers);
 			s->cipher_list_by_id = sk_SSL_CIPHER_dup(s->session->ciphers);
 			}
 		}
@@ -1319,7 +1319,7 @@ int ssl3_get_client_hello(SSL *s)
 			s->rwstate = SSL_NOTHING;
 			}
 		c=ssl3_choose_cipher(s,s->session->ciphers,
-				     SSL_get_ciphers(s));
+				     ssl_get_cipher_preferences(s));
 
 		if (c == NULL)
 			{

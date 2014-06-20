@@ -3737,15 +3737,40 @@ int ssl3_put_cipher_by_char(const SSL_CIPHER *c, unsigned char *p)
 	return(2);
 	}
 
+struct ssl_cipher_preference_list_st* ssl_get_cipher_preferences(SSL *s)
+	{
+	if (s->cipher_list != NULL)
+		return(s->cipher_list);
+
+	if (s->version >= TLS1_1_VERSION)
+		{
+		if (s->ctx != NULL && s->ctx->cipher_list_tls11 != NULL)
+			return s->ctx->cipher_list_tls11;
+		}
+
+	if ((s->ctx != NULL) && (s->ctx->cipher_list != NULL))
+		return(s->ctx->cipher_list);
+
+	return NULL;
+	}
+
 SSL_CIPHER *ssl3_choose_cipher(SSL *s, STACK_OF(SSL_CIPHER) *clnt,
-	     STACK_OF(SSL_CIPHER) *srvr)
+	     struct ssl_cipher_preference_list_st *server_pref)
 	{
 	SSL_CIPHER *c,*ret=NULL;
-	STACK_OF(SSL_CIPHER) *prio, *allow;
+	STACK_OF(SSL_CIPHER) *srvr = server_pref->ciphers, *prio, *allow;
 	int i,ok;
 	size_t cipher_index;
 	CERT *cert;
 	unsigned long alg_k,alg_a,mask_k,mask_a,emask_k,emask_a;
+	/* in_group_flags will either be NULL, or will point to an array of
+	 * bytes which indicate equal-preference groups in the |prio| stack.
+	 * See the comment about |in_group_flags| in the
+	 * |ssl_cipher_preference_list_st| struct. */
+	const unsigned char *in_group_flags;
+	/* group_min contains the minimal index so far found in a group, or -1
+	 * if no such value exists yet. */
+	int group_min = -1;
 
 	/* Let's see which ciphers we can support */
 	cert=s->cert;
@@ -3778,11 +3803,13 @@ SSL_CIPHER *ssl3_choose_cipher(SSL *s, STACK_OF(SSL_CIPHER) *clnt,
 	if (s->options & SSL_OP_CIPHER_SERVER_PREFERENCE || tls1_suiteb(s))
 		{
 		prio = srvr;
+		in_group_flags = server_pref->in_group_flags;
 		allow = clnt;
 		}
 	else
 		{
 		prio = clnt;
+		in_group_flags = NULL;
 		allow = srvr;
 		}
 
@@ -3792,10 +3819,12 @@ SSL_CIPHER *ssl3_choose_cipher(SSL *s, STACK_OF(SSL_CIPHER) *clnt,
 		{
 		c=sk_SSL_CIPHER_value(prio,i);
 
+		ok = 1;
+
 		/* Skip TLS v1.2 only ciphersuites if not supported */
-		if ((c->algorithm_ssl & SSL_TLSV1_2) && 
+		if ((c->algorithm_ssl & SSL_TLSV1_2) &&
 			!SSL_USE_TLS1_2_CIPHERS(s))
-			continue;
+			ok = 0;
 
 		ssl_set_cert_masks(cert,c);
 		mask_k = cert->mask_k;
@@ -3813,12 +3842,12 @@ SSL_CIPHER *ssl3_choose_cipher(SSL *s, STACK_OF(SSL_CIPHER) *clnt,
 #ifndef OPENSSL_NO_PSK
 		/* with PSK there must be server callback set */
 		if ((alg_a & SSL_aPSK) && s->psk_server_callback == NULL)
-			continue;
+			ok = 0;
 #endif /* OPENSSL_NO_PSK */
 
 		if (SSL_C_IS_EXPORT(c))
 			{
-			ok = (alg_k & emask_k) && (alg_a & emask_a);
+			ok = ok && (alg_k & emask_k) && (alg_a & emask_a);
 #ifdef CIPHER_DEBUG
 			printf("%d:[%08lX:%08lX:%08lX:%08lX]%p:%s (export)\n",ok,alg_k,alg_a,emask_k,emask_a,
 			       (void *)c,c->name);
@@ -3826,7 +3855,7 @@ SSL_CIPHER *ssl3_choose_cipher(SSL *s, STACK_OF(SSL_CIPHER) *clnt,
 			}
 		else
 			{
-			ok = (alg_k & mask_k) && (alg_a & mask_a);
+			ok = ok && (alg_k & mask_k) && (alg_a & mask_a);
 #ifdef CIPHER_DEBUG
 			printf("%d:[%08lX:%08lX:%08lX:%08lX]%p:%s\n",ok,alg_k,alg_a,mask_k,mask_a,(void *)c,
 			       c->name);
@@ -3842,17 +3871,32 @@ SSL_CIPHER *ssl3_choose_cipher(SSL *s, STACK_OF(SSL_CIPHER) *clnt,
 #endif /* OPENSSL_NO_EC */
 #endif /* OPENSSL_NO_TLSEXT */
 
-		if (!ok) continue;
-		if (sk_SSL_CIPHER_find(allow, &cipher_index, c))
+		if (ok && sk_SSL_CIPHER_find(allow, &cipher_index, c))
 			{
-#if !defined(OPENSSL_NO_EC) && !defined(OPENSSL_NO_TLSEXT)
-			if ((alg_k & SSL_kEECDH) && (alg_a & SSL_aECDSA) && s->s3->is_probably_safari)
+			if (in_group_flags != NULL && in_group_flags[i] == 1)
 				{
-				if (!ret) ret=sk_SSL_CIPHER_value(allow, cipher_index);
-				continue;
+				/* This element of |prio| is in a group. Update
+				 * the minimum index found so far and continue
+				 * looking. */
+				if (group_min == -1 || group_min > cipher_index)
+					group_min = cipher_index;
 				}
-#endif
-			ret=sk_SSL_CIPHER_value(allow, cipher_index);
+			else
+				{
+				if (group_min != -1 && group_min < cipher_index)
+					cipher_index = group_min;
+				ret=sk_SSL_CIPHER_value(allow,cipher_index);
+				break;
+				}
+			}
+
+		if (in_group_flags != NULL &&
+		    in_group_flags[i] == 0 &&
+		    group_min != -1)
+			{
+			/* We are about to leave a group, but we found a match
+			 * in it, so that's our answer. */
+			ret=sk_SSL_CIPHER_value(allow,group_min);
 			break;
 			}
 		}

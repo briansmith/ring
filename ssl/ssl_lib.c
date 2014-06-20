@@ -250,9 +250,13 @@ int SSL_CTX_set_ssl_version(SSL_CTX *ctx,const SSL_METHOD *meth)
 
 	ctx->method=meth;
 
-	sk=ssl_create_cipher_list(ctx->method,&(ctx->cipher_list),
-		&(ctx->cipher_list_by_id),
-		meth->version == SSL2_VERSION ? "SSLv2" : SSL_DEFAULT_CIPHER_LIST, ctx->cert);
+	sk=ssl_create_cipher_list(
+		ctx->method, &ctx->cipher_list, &ctx->cipher_list_by_id,
+		meth->version == SSL2_VERSION ?
+			"SSLv2" :
+			SSL_DEFAULT_CIPHER_LIST,
+		ctx->cert);
+
 	if ((sk == NULL) || (sk_SSL_CIPHER_num(sk) <= 0))
 		{
 		OPENSSL_PUT_ERROR(SSL, SSL_CTX_set_ssl_version, SSL_R_SSL_LIBRARY_HAS_NO_CIPHERS);
@@ -520,6 +524,71 @@ int SSL_set1_param(SSL *ssl, X509_VERIFY_PARAM *vpm)
 	return X509_VERIFY_PARAM_set1(ssl->param, vpm);
 	}
 
+void ssl_cipher_preference_list_free(
+	struct ssl_cipher_preference_list_st *cipher_list)
+	{
+	sk_SSL_CIPHER_free(cipher_list->ciphers);
+	OPENSSL_free(cipher_list->in_group_flags);
+	OPENSSL_free(cipher_list);
+	}
+
+struct ssl_cipher_preference_list_st*
+ssl_cipher_preference_list_dup(
+	struct ssl_cipher_preference_list_st *cipher_list)
+	{
+	struct ssl_cipher_preference_list_st* ret = NULL;
+	size_t n = sk_SSL_CIPHER_num(cipher_list->ciphers);
+
+	ret = OPENSSL_malloc(sizeof(struct ssl_cipher_preference_list_st));
+	if (!ret)
+		goto err;
+	ret->ciphers = NULL;
+	ret->in_group_flags = NULL;
+	ret->ciphers = sk_SSL_CIPHER_dup(cipher_list->ciphers);
+	if (!ret->ciphers)
+		goto err;
+	ret->in_group_flags = OPENSSL_malloc(n);
+	if (!ret->in_group_flags)
+		goto err;
+	memcpy(ret->in_group_flags, cipher_list->in_group_flags, n);
+	return ret;
+
+err:
+	if (ret->ciphers)
+		sk_SSL_CIPHER_free(ret->ciphers);
+	if (ret)
+		OPENSSL_free(ret);
+	return NULL;
+	}
+
+struct ssl_cipher_preference_list_st*
+ssl_cipher_preference_list_from_ciphers(STACK_OF(SSL_CIPHER) *ciphers)
+	{
+	struct ssl_cipher_preference_list_st* ret = NULL;
+	size_t n = sk_SSL_CIPHER_num(ciphers);
+
+	ret = OPENSSL_malloc(sizeof(struct ssl_cipher_preference_list_st));
+	if (!ret)
+		goto err;
+	ret->ciphers = NULL;
+	ret->in_group_flags = NULL;
+	ret->ciphers = sk_SSL_CIPHER_dup(ciphers);
+	if (!ret->ciphers)
+		goto err;
+	ret->in_group_flags = OPENSSL_malloc(n);
+	if (!ret->in_group_flags)
+		goto err;
+	memset(ret->in_group_flags, 0, n);
+	return ret;
+
+err:
+	if (ret->ciphers)
+		sk_SSL_CIPHER_free(ret->ciphers);
+	if (ret)
+		OPENSSL_free(ret);
+	return NULL;
+	}
+
 X509_VERIFY_PARAM *SSL_CTX_get0_param(SSL_CTX *ctx)
 	{
 	return ctx->param;
@@ -578,7 +647,8 @@ void SSL_free(SSL *s)
 	if (s->init_buf != NULL) BUF_MEM_free(s->init_buf);
 
 	/* add extra stuff */
-	if (s->cipher_list != NULL) sk_SSL_CIPHER_free(s->cipher_list);
+	if (s->cipher_list != NULL)
+		ssl_cipher_preference_list_free(s->cipher_list);
 	if (s->cipher_list_by_id != NULL) sk_SSL_CIPHER_free(s->cipher_list_by_id);
 
 	/* Make the next call work :-) */
@@ -1313,19 +1383,19 @@ STACK_OF(SSL_CIPHER) *SSL_get_ciphers(const SSL *s)
 
 	if (s->cipher_list != NULL)
 		{
-		return(s->cipher_list);
+		return(s->cipher_list->ciphers);
 		}
 
 	if (s->version >= TLS1_1_VERSION)
 		{
 		if (s->ctx != NULL && s->ctx->cipher_list_tls11 != NULL)
-			return s->ctx->cipher_list_tls11;
+			return s->ctx->cipher_list_tls11->ciphers;
 		}
 
 	if ((s->ctx != NULL) &&
 		(s->ctx->cipher_list != NULL))
 		{
-		return(s->ctx->cipher_list);
+		return(s->ctx->cipher_list->ciphers);
 		}
 
 	return(NULL);
@@ -1981,7 +2051,7 @@ SSL_CTX *SSL_CTX_new(const SSL_METHOD *meth)
 		&ret->cipher_list,&ret->cipher_list_by_id,
 		meth->version == SSL2_VERSION ? "SSLv2" : SSL_DEFAULT_CIPHER_LIST, ret->cert);
 	if (ret->cipher_list == NULL
-	    || sk_SSL_CIPHER_num(ret->cipher_list) <= 0)
+	    || sk_SSL_CIPHER_num(ret->cipher_list->ciphers) <= 0)
 		{
 		OPENSSL_PUT_ERROR(SSL, SSL_CTX_new, SSL_R_LIBRARY_HAS_NO_CIPHERS);
 		goto err2;
@@ -2145,11 +2215,11 @@ void SSL_CTX_free(SSL_CTX *a)
 	if (a->cert_store != NULL)
 		X509_STORE_free(a->cert_store);
 	if (a->cipher_list != NULL)
-		sk_SSL_CIPHER_free(a->cipher_list);
+		ssl_cipher_preference_list_free(a->cipher_list);
 	if (a->cipher_list_by_id != NULL)
 		sk_SSL_CIPHER_free(a->cipher_list_by_id);
 	if (a->cipher_list_tls11 != NULL)
-		sk_SSL_CIPHER_free(a->cipher_list_tls11);
+		ssl_cipher_preference_list_free(a->cipher_list_tls11);
 	if (a->cert != NULL)
 		ssl_cert_free(a->cert);
 	if (a->client_CA != NULL)

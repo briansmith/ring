@@ -1004,10 +1004,17 @@ STACK_OF(SSL_CIPHER) *ssl_bytes_to_cipher_list(SSL *s,unsigned char *p,int num,
 int ssl_cipher_list_to_bytes(SSL *s,STACK_OF(SSL_CIPHER) *sk,unsigned char *p,
                              int (*put_cb)(const SSL_CIPHER *, unsigned char *));
 STACK_OF(SSL_CIPHER) *ssl_create_cipher_list(const SSL_METHOD *meth,
-					     STACK_OF(SSL_CIPHER) **pref,
+					     struct ssl_cipher_preference_list_st **pref,
 					     STACK_OF(SSL_CIPHER) **sorted,
 					     const char *rule_str, CERT *c);
 void ssl_update_cache(SSL *s, int mode);
+struct ssl_cipher_preference_list_st* ssl_cipher_preference_list_dup(
+	struct ssl_cipher_preference_list_st *cipher_list);
+void ssl_cipher_preference_list_free(
+	struct ssl_cipher_preference_list_st *cipher_list);
+struct ssl_cipher_preference_list_st* ssl_cipher_preference_list_from_ciphers(
+	STACK_OF(SSL_CIPHER) *ciphers);
+struct ssl_cipher_preference_list_st* ssl_get_cipher_preferences(SSL *s);
 int ssl_cipher_get_comp(const SSL_SESSION *s, SSL_COMP **comp);
 int ssl_cipher_get_evp_aead(const SSL_SESSION *s, const EVP_AEAD **aead);
 int ssl_cipher_get_evp(const SSL_SESSION *s,const EVP_CIPHER **enc,
@@ -1106,7 +1113,7 @@ int n_ssl3_mac(SSL *ssl, unsigned char *md, int send_data);
 void ssl3_free_digest_list(SSL *s);
 unsigned long ssl3_output_cert_chain(SSL *s, CERT_PKEY *cpk);
 SSL_CIPHER *ssl3_choose_cipher(SSL *ssl,STACK_OF(SSL_CIPHER) *clnt,
-			       STACK_OF(SSL_CIPHER) *srvr);
+			       struct ssl_cipher_preference_list_st *srvr);
 int	ssl3_setup_buffers(SSL *s);
 int	ssl3_setup_read_buffer(SSL *s);
 int	ssl3_setup_write_buffer(SSL *s);
