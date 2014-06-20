@@ -190,6 +190,7 @@ const ERR_STRING_DATA SSL_error_string_data[] = {
   {ERR_PACK(ERR_LIB_SSL, SSL_F_tls1_PRF, 0), "tls1_PRF"},
   {ERR_PACK(ERR_LIB_SSL, SSL_F_tls1_cert_verify_mac, 0), "tls1_cert_verify_mac"},
   {ERR_PACK(ERR_LIB_SSL, SSL_F_tls1_change_cipher_state, 0), "tls1_change_cipher_state"},
+  {ERR_PACK(ERR_LIB_SSL, SSL_F_tls1_change_cipher_state_cipher, 0), "tls1_change_cipher_state_cipher"},
   {ERR_PACK(ERR_LIB_SSL, SSL_F_tls1_export_keying_material, 0), "tls1_export_keying_material"},
   {ERR_PACK(ERR_LIB_SSL, SSL_F_tls1_get_server_supplemental_data, 0), "tls1_get_server_supplemental_data"},
   {ERR_PACK(ERR_LIB_SSL, SSL_F_tls1_heartbeat, 0), "tls1_heartbeat"},
