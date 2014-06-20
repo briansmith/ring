@@ -12,39 +12,24 @@
  * OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
  * CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE. */
 
+#ifndef OPENSSL_HEADER_TOOL_INTERNAL_H
+#define OPENSSL_HEADER_TOOL_INTERNAL_H
+
 #include <string>
 #include <vector>
-
-#include <openssl/err.h>
-#include <openssl/ssl.h>
+#include <map>
 
 
-bool Speed(const std::vector<std::string> &args);
-bool Client(const std::vector<std::string> &args);
+struct argument {
+  const char name[15];
+  bool required;
+  const char *description;
+};
 
-static void usage(const char *name) {
-  printf("Usage: %s [speed|client]\n", name);
-}
+bool ParseKeyValueArguments(std::map<std::string, std::string> *out_args, const
+    std::vector<std::string> &args, const struct argument *templates);
 
-int main(int argc, char **argv) {
-  std::string tool;
-  if (argc >= 2) {
-    tool = argv[1];
-  }
+void PrintUsage(const struct argument *templates);
 
-  SSL_library_init();
 
-  std::vector<std::string> args;
-  for (int i = 2; i < argc; i++) {
-    args.push_back(argv[i]);
-  }
-
-  if (tool == "speed") {
-    return !Speed(args);
-  } else if (tool == "s_client" || tool == "client") {
-    return !Client(args);
-  } else {
-    usage(argv[0]);
-    return 1;
-  }
-}
+#endif /* !OPENSSL_HEADER_TOOL_INTERNAL_H */
