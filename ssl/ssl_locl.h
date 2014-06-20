@@ -492,6 +492,7 @@
 */
 
 #define PENDING_SESSION -10000
+#define CERTIFICATE_SELECTION_PENDING -10001
 
 #ifndef OPENSSL_NO_EC
 /* From ECC-TLS draft, used in encoding the curve type in 
@@ -996,7 +997,7 @@ SESS_CERT *ssl_sess_cert_new(void);
 void ssl_sess_cert_free(SESS_CERT *sc);
 int ssl_set_peer_cert_type(SESS_CERT *c, int type);
 int ssl_get_new_session(SSL *s, int session);
-int ssl_get_prev_session(SSL *s, unsigned char *session,int len, const unsigned char *limit);
+int ssl_get_prev_session(SSL *s, const struct ssl_early_callback_ctx *ctx);
 int ssl_cipher_id_cmp(const void *in_a, const void *in_b);
 int ssl_cipher_ptr_id_cmp(const SSL_CIPHER **ap, const SSL_CIPHER **bp);
 STACK_OF(SSL_CIPHER) *ssl_bytes_to_cipher_list(SSL *s,unsigned char *p,int num,
@@ -1281,6 +1282,7 @@ int ssl_check_srvr_ecc_cert_and_alg(X509 *x, SSL *s);
 
 SSL_COMP *ssl3_comp_find(STACK_OF(SSL_COMP) *sk, int n);
 
+char ssl_early_callback_init(struct ssl_early_callback_ctx *ctx);
 #ifndef OPENSSL_NO_EC
 int tls1_ec_curve_id2nid(int curve_id);
 int tls1_ec_nid2curve_id(int nid);
@@ -1323,8 +1325,8 @@ int dtls1_process_heartbeat(SSL *s);
 #else
 #define tlsext_tick_md	EVP_sha256
 #endif
-int tls1_process_ticket(SSL *s, unsigned char *session_id, int len,
-				const unsigned char *limit, SSL_SESSION **ret);
+int tls1_process_ticket(SSL *s, const struct ssl_early_callback_ctx *ctx,
+			SSL_SESSION **ret);
 
 int tls12_get_sigandhash(unsigned char *p, const EVP_PKEY *pk,
 				const EVP_MD *md);

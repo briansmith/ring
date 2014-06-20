@@ -146,7 +146,8 @@
  * OTHER ENTITY BASED ON INFRINGEMENT OF INTELLECTUAL PROPERTY RIGHTS OR
  * OTHERWISE. */
 
-#define REUSE_CIPHER_BUG
+/* Undefined in Google code. We've never enabled this workaround
+ * #define REUSE_CIPHER_BUG */
 #define NETSCAPE_HANG_BUG
 
 #include <stdio.h>
@@ -329,10 +330,14 @@ int ssl3_accept(SSL *s)
 			s->shutdown=0;
 			ret=ssl3_get_client_hello(s);
 			if (ret == PENDING_SESSION) {
-				s->state = SSL3_ST_SR_CLNT_HELLO_D;
 				s->rwstate = SSL_PENDING_SESSION;
 				goto end;
 			}
+			if (ret == CERTIFICATE_SELECTION_PENDING)
+				{
+				s->rwstate = SSL_CERTIFICATE_SELECTION_PENDING;
+				goto end;
+				}
 			if (ret <= 0) goto end;
 			s->renegotiate = 2;
 			s->state=SSL3_ST_SW_SRVR_HELLO_A;
@@ -914,9 +919,7 @@ int ssl3_get_client_hello(SSL *s)
 	unsigned char *p,*d;
 	SSL_CIPHER *c;
 	STACK_OF(SSL_CIPHER) *ciphers=NULL;
-
-	if (s->state == SSL3_ST_SR_CLNT_HELLO_C)
-		goto retry_cert;
+	struct ssl_early_callback_ctx early_ctx;
 
 	/* We do this so that we will respond with our native type.
 	 * If we are TLSv1 and we get SSLv3, we will respond with TLSv1,
@@ -924,13 +927,11 @@ int ssl3_get_client_hello(SSL *s)
 	 * If we are SSLv3, we will respond with SSLv3, even if prompted with
 	 * TLSv1.
 	 */
-	if (s->state == SSL3_ST_SR_CLNT_HELLO_A
-		)
-		{
+	switch (s->state) {
+	case SSL3_ST_SR_CLNT_HELLO_A:
 		s->state=SSL3_ST_SR_CLNT_HELLO_B;
-		}
-	if (s->state != SSL3_ST_SR_CLNT_HELLO_D)
-		{
+		/* fallthrough */
+	case SSL3_ST_SR_CLNT_HELLO_B:
 		s->first_packet=1;
 		n=s->method->ssl_get_message(s,
 			SSL3_ST_SR_CLNT_HELLO_B,
@@ -941,14 +942,67 @@ int ssl3_get_client_hello(SSL *s)
 
 		if (!ok) return((int)n);
 		s->first_packet=0;
-		}
-	else
-		{
-		/* We have previously parsed the ClientHello message, and can't
-		 * call ssl_get_message again without hashing the message into
-		 * the Finished digest again. */
+
+		/* If we require cookies and this ClientHello doesn't
+		 * contain one, just return since we do not want to
+		 * allocate any memory yet. So check cookie length...
+		 */
+		if (SSL_get_options(s) & SSL_OP_COOKIE_EXCHANGE)
+			{
+			unsigned int session_length, cookie_length;
+			p = (unsigned char *) s->init_msg;
+
+			if (n < 2 + SSL3_RANDOM_SIZE)
+				return 1;
+			session_length = *(p + 2 + SSL3_RANDOM_SIZE);
+			if (n < 2 + SSL3_RANDOM_SIZE + 1 + session_length)
+				return 1;
+			cookie_length =
+				*(p + 2 + SSL3_RANDOM_SIZE + 1 + session_length);
+			if (cookie_length == 0)
+				return 1;
+			}
+		s->state = SSL3_ST_SR_CLNT_HELLO_C;
+		/* fallthrough */
+	case SSL3_ST_SR_CLNT_HELLO_C:
+	case SSL3_ST_SR_CLNT_HELLO_D:
+		/* We have previously parsed the ClientHello message,
+		 * and can't call ssl_get_message again without hashing
+		 * the message into the Finished digest again. */
 		n = s->init_num;
-		}
+
+		memset(&early_ctx, 0, sizeof(early_ctx));
+		early_ctx.ssl = s;
+		early_ctx.client_hello = s->init_msg;
+		early_ctx.client_hello_len = n;
+		if (!ssl_early_callback_init(&early_ctx))
+			{
+			al = SSL_AD_DECODE_ERROR;
+			OPENSSL_PUT_ERROR(SSL, ssl3_get_client_hello, SSL_R_CLIENTHELLO_PARSE_FAILED);
+			goto f_err;
+			}
+
+		if (s->state == SSL3_ST_SR_CLNT_HELLO_C &&
+		    s->ctx->select_certificate_cb != NULL)
+			{
+			int ret;
+
+			s->state = SSL3_ST_SR_CLNT_HELLO_D;
+			ret = s->ctx->select_certificate_cb(&early_ctx);
+			if (ret == 0)
+				return CERTIFICATE_SELECTION_PENDING;
+			else if (ret == -1)
+				{
+				/* Connection rejected. */
+				al = SSL_AD_ACCESS_DENIED;
+				OPENSSL_PUT_ERROR(SSL, ssl3_get_client_hello, SSL_R_CONNECTION_REJECTED);
+				goto f_err;
+				}
+			}
+		s->state = SSL3_ST_SR_CLNT_HELLO_D;
+	default:
+		return -1;
+	}
 
 	d=p=(unsigned char *)s->init_msg;
 
@@ -970,21 +1024,6 @@ int ssl3_get_client_hello(SSL *s)
 			}
 		al = SSL_AD_PROTOCOL_VERSION;
 		goto f_err;
-		}
-
-	/* If we require cookies and this ClientHello doesn't
-	 * contain one, just return since we do not want to
-	 * allocate any memory yet. So check cookie length...
-	 */
-	if (SSL_get_options(s) & SSL_OP_COOKIE_EXCHANGE)
-		{
-		unsigned int session_length, cookie_length;
-		
-		session_length = *(p + SSL3_RANDOM_SIZE);
-		cookie_length = *(p + SSL3_RANDOM_SIZE + session_length + 1);
-
-		if (cookie_length == 0)
-			return 1;
 		}
 
 	/* load the client random */
@@ -1013,7 +1052,7 @@ int ssl3_get_client_hello(SSL *s)
 		}
 	else
 		{
-		i=ssl_get_prev_session(s, p, j, d + n);
+		i=ssl_get_prev_session(s, &early_ctx);
 		if (i == 1)
 			{ /* previous session */
 			s->hit=1;
@@ -1301,7 +1340,6 @@ int ssl3_get_client_hello(SSL *s)
 			}
 		ciphers=NULL;
 		/* Let cert callback update server certificates if required */
-		retry_cert:		
 		if (s->cert->cert_cb)
 			{
 			int rv = s->cert->cert_cb(s, s->cert->cert_cb_arg);

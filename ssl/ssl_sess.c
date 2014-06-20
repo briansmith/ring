@@ -427,11 +427,8 @@ int ssl_get_new_session(SSL *s, int session)
 /* ssl_get_prev attempts to find an SSL_SESSION to be used to resume this
  * connection. It is only called by servers.
  *
- *   session_id: points at the session ID in the ClientHello. This code will
- *       read past the end of this in order to parse out the session ticket
- *       extension, if any.
- *   len: the length of the session ID.
- *   limit: a pointer to the first byte after the ClientHello.
+ *   ctx: contains the early callback context, which is the result of a
+ *       shallow parse of the ClientHello.
  *
  * Returns:
  *   -1: error
@@ -443,8 +440,7 @@ int ssl_get_new_session(SSL *s, int session)
  *   - Both for new and resumed sessions, s->tlsext_ticket_expected is set to 1
  *     if the server should issue a new session ticket (to 0 otherwise).
  */
-int ssl_get_prev_session(SSL *s, unsigned char *session_id, int len,
-			const unsigned char *limit)
+int ssl_get_prev_session(SSL *s, const struct ssl_early_callback_ctx *ctx)
 	{
 	/* This is used only by servers. */
 
@@ -455,14 +451,14 @@ int ssl_get_prev_session(SSL *s, unsigned char *session_id, int len,
 	int r;
 #endif
 
-	if (len > SSL_MAX_SSL_SESSION_ID_LENGTH)
+	if (ctx->session_id_len > SSL_MAX_SSL_SESSION_ID_LENGTH)
 		goto err;
 
-	if (len == 0)
+	if (ctx->session_id_len == 0)
 		try_session_cache = 0;
 
 #ifndef OPENSSL_NO_TLSEXT
-	r = tls1_process_ticket(s, session_id, len, limit, &ret); /* sets s->tlsext_ticket_expected */
+	r = tls1_process_ticket(s, ctx, &ret); /* sets s->tlsext_ticket_expected */
 	switch (r)
 		{
 	case -1: /* Error during processing */
@@ -486,10 +482,10 @@ int ssl_get_prev_session(SSL *s, unsigned char *session_id, int len,
 		{
 		SSL_SESSION data;
 		data.ssl_version=s->version;
-		data.session_id_length=len;
-		if (len == 0)
+		data.session_id_length=ctx->session_id_len;
+		if (ctx->session_id_len == 0)
 			return 0;
-		memcpy(data.session_id,session_id,len);
+		memcpy(data.session_id,ctx->session_id,ctx->session_id_len);
 		CRYPTO_r_lock(CRYPTO_LOCK_SSL_CTX);
 		ret=lh_SSL_SESSION_retrieve(s->session_ctx->sessions,&data);
 		if (ret != NULL)
@@ -508,7 +504,7 @@ int ssl_get_prev_session(SSL *s, unsigned char *session_id, int len,
 		{
 		int copy=1;
 	
-		if ((ret=s->session_ctx->get_session_cb(s,session_id,len,&copy)))
+		if ((ret=s->session_ctx->get_session_cb(s,(unsigned char *) ctx->session_id,ctx->session_id_len,&copy)))
 			{
 			if (ret == SSL_magic_pending_session_ptr())
 				{

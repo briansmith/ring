@@ -865,6 +865,30 @@ typedef struct ssl_aead_ctx_st SSL_AEAD_CTX;
 typedef int (*GEN_SESSION_CB)(const SSL *ssl, unsigned char *id,
 				unsigned int *id_len);
 
+/* ssl_early_callback_ctx is passed to certain callbacks that are called very
+ * early on during the server handshake. At this point, much of the SSL*
+ * hasn't been filled out and only the ClientHello can be depended on. */
+struct ssl_early_callback_ctx
+	{
+	SSL *ssl;
+	const unsigned char *client_hello;       size_t client_hello_len;
+	const unsigned char *session_id;         size_t session_id_len;
+	const unsigned char *cipher_suites;      size_t cipher_suites_len;
+	const unsigned char *compression_methods;size_t compression_methods_len;
+	const unsigned char *extensions;         size_t extensions_len;
+	};
+
+/* SSL_early_callback_ctx_extension_get searches the extensions in |ctx| for
+ * an extension of the given type. If not found, it returns zero. Otherwise
+ * it sets |out_data| to point to the extension contents (not including the type
+ * and length bytes), sets |out_len| to the length of the extension contents
+ * and returns one. */
+char
+SSL_early_callback_ctx_extension_get(const struct ssl_early_callback_ctx *ctx,
+				     uint16_t extension_type,
+				     const unsigned char **out_data,
+				     size_t *out_len);
+
 typedef struct ssl_comp_st SSL_COMP;
 
 #ifndef OPENSSL_NO_SSL_INTERN
@@ -1050,6 +1074,13 @@ struct ssl_ctx_st
 	GEN_SESSION_CB generate_session_id;
 
 	X509_VERIFY_PARAM *param;
+
+	/* select_certificate_cb is called before most ClientHello processing
+	 * and before the decision whether to resume a session is made.
+	 * It may return one to continue the handshake or zero to cause the
+	 * handshake loop to return with an error and cause SSL_get_error to
+	 * return SSL_ERROR_PENDING_CERTIFICATE. */
+	int (*select_certificate_cb) (const struct ssl_early_callback_ctx *);
 
 #if 0
 	int purpose;		/* Purpose setting */
@@ -1353,6 +1384,7 @@ int SSL_CTX_set_custom_srv_ext(SSL_CTX *ctx, unsigned short ext_type,
 #define SSL_X509_LOOKUP	4
 #define SSL_CHANNEL_ID_LOOKUP	5
 #define SSL_PENDING_SESSION	7
+#define SSL_CERTIFICATE_SELECTION_PENDING	8
 
 /* These will only be used when doing non-blocking IO */
 #define SSL_want_nothing(s)	(SSL_want(s) == SSL_NOTHING)
@@ -1361,6 +1393,7 @@ int SSL_CTX_set_custom_srv_ext(SSL_CTX *ctx, unsigned short ext_type,
 #define SSL_want_x509_lookup(s)	(SSL_want(s) == SSL_X509_LOOKUP)
 #define SSL_want_channel_id_lookup(s)	(SSL_want(s) == SSL_CHANNEL_ID_LOOKUP)
 #define SSL_want_session(s)	(SSL_want(s) == SSL_PENDING_SESSION)
+#define SSL_want_certificate(s)	(SSL_want(s) == SSL_CERTIFICATE_SELECTION_PENDING)
 
 #define SSL_MAC_FLAG_READ_MAC_STREAM 1
 #define SSL_MAC_FLAG_WRITE_MAC_STREAM 2
@@ -1787,6 +1820,7 @@ DECLARE_PEM_rw(SSL_SESSION, SSL_SESSION)
 #define SSL_ERROR_WANT_ACCEPT		8
 #define SSL_ERROR_WANT_CHANNEL_ID_LOOKUP	9
 #define SSL_ERROR_PENDING_SESSION	11
+#define SSL_ERROR_PENDING_CERTIFICATE	12
 
 #define SSL_CTRL_NEED_TMP_RSA			1
 #define SSL_CTRL_SET_TMP_RSA			2
@@ -3059,5 +3093,7 @@ void ERR_load_SSL_strings(void);
 #define SSL_R_UNEXPECTED_OPERATOR_IN_GROUP 434
 #define SSL_R_MIXED_SPECIAL_OPERATOR_WITH_GROUPS 435
 #define SSL_R_INAPPROPRIATE_FALLBACK 436
+#define SSL_R_CLIENTHELLO_PARSE_FAILED 437
+#define SSL_R_CONNECTION_REJECTED 438
 
 #endif

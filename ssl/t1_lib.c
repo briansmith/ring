@@ -213,6 +213,176 @@ void tls1_clear(SSL *s)
 	s->version = s->method->version;
 	}
 
+char ssl_early_callback_init(struct ssl_early_callback_ctx *ctx)
+	{
+	size_t len = ctx->client_hello_len;
+	const unsigned char *p = ctx->client_hello;
+	uint16_t *extension_types;
+	unsigned num_extensions;
+
+	/* Skip client version. */
+	if (len < 2)
+		return 0;
+	len -= 2; p += 2;
+
+	/* Skip client nonce. */
+	if (len < 32)
+		return 0;
+	len -= 32; p += 32;
+
+	/* Get length of session id. */
+	if (len < 1)
+		return 0;
+	ctx->session_id_len = *p;
+	p++; len--;
+
+	ctx->session_id = p;
+	if (len < ctx->session_id_len)
+		return 0;
+	p += ctx->session_id_len; len -= ctx->session_id_len;
+
+	/* Skip past DTLS cookie */
+	if (ctx->ssl->version == DTLS1_VERSION || ctx->ssl->version == DTLS1_BAD_VER)
+		{
+		unsigned cookie_len;
+
+		if (len < 1)
+			return 0;
+		cookie_len = *p;
+		p++; len--;
+		if (len < cookie_len)
+			return 0;
+		p += cookie_len; len -= cookie_len;
+		}
+
+	/* Skip cipher suites. */
+	if (len < 2)
+		return 0;
+	n2s(p, ctx->cipher_suites_len);
+	len -= 2;
+
+	if ((ctx->cipher_suites_len & 1) != 0)
+		return 0;
+
+	ctx->cipher_suites = p;
+	if (len < ctx->cipher_suites_len)
+		return 0;
+	p += ctx->cipher_suites_len; len -= ctx->cipher_suites_len;
+
+	/* Skip compression methods. */
+	if (len < 1)
+		return 0;
+	ctx->compression_methods_len = *p;
+	p++; len--;
+
+	ctx->compression_methods = p;
+	if (len < ctx->compression_methods_len)
+		return 0;
+	p += ctx->compression_methods_len; len -= ctx->compression_methods_len;
+
+	/* If the ClientHello ends here then it's valid, but doesn't have any
+	 * extensions. (E.g. SSLv3.) */
+	if (len == 0)
+		{
+		ctx->extensions = NULL;
+		ctx->extensions_len = 0;
+		return 1;
+		}
+
+	if (len < 2)
+		return 0;
+	n2s(p, ctx->extensions_len);
+	len -= 2;
+
+	if (ctx->extensions_len == 0 && len == 0)
+		{
+		ctx->extensions = NULL;
+		return 1;
+		}
+
+	ctx->extensions = p;
+	if (len != ctx->extensions_len)
+		return 0;
+
+	/* Verify that the extensions have valid lengths and that there are
+	 * no duplicates. Each extension takes, at least, four bytes, so
+	 * we can allocate a buffer of extensions_len/4 elements and be sure
+	 * that we have enough space for all the extension types. */
+	extension_types =
+		OPENSSL_malloc(sizeof(uint16_t) * ctx->extensions_len/4);
+	if (extension_types == NULL)
+		return 0;
+	num_extensions = 0;
+
+	while (len != 0)
+		{
+		uint16_t extension_type, extension_len;
+		unsigned i;
+
+		if (len < 4)
+			goto err;
+		n2s(p, extension_type);
+		n2s(p, extension_len);
+		len -= 4;
+
+		if (len < extension_len)
+			goto err;
+		p += extension_len; len -= extension_len;
+
+		for (i = 0; i < num_extensions; i++)
+			{
+			if (extension_types[i] == extension_type)
+				{
+				/* Duplicate extension type. */
+				goto err;
+				}
+			}
+		extension_types[num_extensions] = extension_type;
+		num_extensions++;
+		}
+
+	OPENSSL_free(extension_types);
+	return 1;
+
+err:
+	OPENSSL_free(extension_types);
+	return 0;
+	}
+
+char
+SSL_early_callback_ctx_extension_get(const struct ssl_early_callback_ctx *ctx,
+				     uint16_t extension_type,
+				     const unsigned char **out_data,
+				     size_t *out_len)
+	{
+	size_t len = ctx->extensions_len;
+	const unsigned char *p = ctx->extensions;
+
+	while (len != 0)
+		{
+		uint16_t ext_type, ext_len;
+
+		if (len < 4)
+			return 0;
+		n2s(p, ext_type);
+		n2s(p, ext_len);
+		len -= 4;
+
+		if (len < ext_len)
+			return 0;
+		if (ext_type == extension_type)
+			{
+			*out_data = p;
+			*out_len = ext_len;
+			return 1;
+			}
+
+		p += ext_len; len -= ext_len;
+		}
+
+	return 0;
+	}
+
 #ifndef OPENSSL_NO_EC
 
 static int nid_list[] =
@@ -3423,11 +3593,8 @@ int ssl_parse_serverhello_tlsext(SSL *s, unsigned char **p, unsigned char *d, in
  * ClientHello, and other operations depend on the result, we need to handle
  * any TLS session ticket extension at the same time.
  *
- *   session_id: points at the session ID in the ClientHello. This code will
- *       read past the end of this in order to parse out the session ticket
- *       extension, if any.
- *   len: the length of the session ID.
- *   limit: a pointer to the first byte after the ClientHello.
+ *   ctx: contains the early callback context, which is the result of a
+ *       shallow parse of the ClientHello.
  *   ret: (output) on return, if a ticket was decrypted, then this is set to
  *       point to the resulting session.
  *
@@ -3452,91 +3619,58 @@ int ssl_parse_serverhello_tlsext(SSL *s, unsigned char **p, unsigned char *d, in
  *   s->ctx->tlsext_ticket_key_cb asked to renew the client's ticket.
  *   Otherwise, s->tlsext_ticket_expected is set to 0.
  */
-int tls1_process_ticket(SSL *s, unsigned char *session_id, int len,
-			const unsigned char *limit, SSL_SESSION **ret)
+int tls1_process_ticket(SSL *s, const struct ssl_early_callback_ctx *ctx,
+			SSL_SESSION **ret)
 	{
-	/* Point after session ID in client hello */
-	const unsigned char *p = session_id + len;
-	unsigned short i;
-
 	*ret = NULL;
 	s->tlsext_ticket_expected = 0;
+	const unsigned char *data;
+	size_t len;
+	int r;
 
 	/* If tickets disabled behave as if no ticket present
 	 * to permit stateful resumption.
 	 */
 	if (SSL_get_options(s) & SSL_OP_NO_TICKET)
 		return 0;
-	if ((s->version <= SSL3_VERSION) || !limit)
+	if ((s->version <= SSL3_VERSION) && !ctx->extensions)
 		return 0;
-	if (p >= limit)
-		return -1;
-	/* Skip past DTLS cookie */
-	if (SSL_IS_DTLS(s))
+	if (!SSL_early_callback_ctx_extension_get(
+		ctx, TLSEXT_TYPE_session_ticket, &data, &len))
 		{
-		i = *(p++);
-		p+= i;
-		if (p >= limit)
+		return 0;
+		}
+	if (len == 0)
+		{
+		/* The client will accept a ticket but doesn't
+		 * currently have one. */
+		s->tlsext_ticket_expected = 1;
+		return 1;
+		}
+	if (s->tls_session_secret_cb)
+		{
+		/* Indicate that the ticket couldn't be
+		 * decrypted rather than generating the session
+		 * from ticket now, trigger abbreviated
+		 * handshake based on external mechanism to
+		 * calculate the master secret later. */
+		return 2;
+		}
+	r = tls_decrypt_ticket(s, data, len, ctx->session_id,
+			       ctx->session_id_len, ret);
+	switch (r)
+		{
+		case 2: /* ticket couldn't be decrypted */
+			s->tlsext_ticket_expected = 1;
+			return 2;
+		case 3: /* ticket was decrypted */
+			return r;
+		case 4: /* ticket decrypted but need to renew */
+			s->tlsext_ticket_expected = 1;
+			return 3;
+		default: /* fatal error */
 			return -1;
 		}
-	/* Skip past cipher list */
-	n2s(p, i);
-	p+= i;
-	if (p >= limit)
-		return -1;
-	/* Skip past compression algorithm list */
-	i = *(p++);
-	p += i;
-	if (p > limit)
-		return -1;
-	/* Now at start of extensions */
-	if ((p + 2) >= limit)
-		return 0;
-	n2s(p, i);
-	while ((p + 4) <= limit)
-		{
-		unsigned short type, size;
-		n2s(p, type);
-		n2s(p, size);
-		if (p + size > limit)
-			return 0;
-		if (type == TLSEXT_TYPE_session_ticket)
-			{
-			int r;
-			if (size == 0)
-				{
-				/* The client will accept a ticket but doesn't
-				 * currently have one. */
-				s->tlsext_ticket_expected = 1;
-				return 1;
-				}
-			if (s->tls_session_secret_cb)
-				{
-				/* Indicate that the ticket couldn't be
-				 * decrypted rather than generating the session
-				 * from ticket now, trigger abbreviated
-				 * handshake based on external mechanism to
-				 * calculate the master secret later. */
-				return 2;
-				}
-			r = tls_decrypt_ticket(s, p, size, session_id, len, ret);
-			switch (r)
-				{
-				case 2: /* ticket couldn't be decrypted */
-					s->tlsext_ticket_expected = 1;
-					return 2;
-				case 3: /* ticket was decrypted */
-					return r;
-				case 4: /* ticket decrypted but need to renew */
-					s->tlsext_ticket_expected = 1;
-					return 3;
-				default: /* fatal error */
-					return -1;
-				}
-			}
-		p += size;
-		}
-	return 0;
 	}
 
 /* tls_decrypt_ticket attempts to decrypt a session ticket.
