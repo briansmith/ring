@@ -2360,6 +2360,12 @@ void SSL_set_debug(SSL *s, int debug);
 int SSL_cache_hit(SSL *s);
 int SSL_is_server(SSL *s);
 
+/* SSL_get_structure_sizes returns the sizes of the SSL, SSL_CTX and
+ * SSL_SESSION structures so that a test can ensure that outside code agrees on
+ * these values. */
+void SSL_get_structure_sizes(size_t* ssl_size, size_t* ssl_ctx_size,
+                             size_t* ssl_session_size);
+
 SSL_CONF_CTX *SSL_CONF_CTX_new(void);
 int SSL_CONF_CTX_finish(SSL_CONF_CTX *cctx);
 void SSL_CONF_CTX_free(SSL_CONF_CTX *cctx);

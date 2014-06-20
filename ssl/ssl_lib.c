@@ -3324,6 +3324,14 @@ int SSL_cutthrough_complete(const SSL *s)
 			s->state == SSL3_ST_CR_FINISHED_A));
 	}
 
+void SSL_get_structure_sizes(size_t* ssl_size, size_t* ssl_ctx_size,
+                             size_t* ssl_session_size)
+{
+	*ssl_size = sizeof(SSL);
+	*ssl_ctx_size = sizeof(SSL_CTX);
+	*ssl_session_size = sizeof(SSL_SESSION);
+}
+
 int ssl3_can_cutthrough(const SSL *s)
 	{
 	const SSL_CIPHER *c;
