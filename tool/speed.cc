@@ -22,6 +22,7 @@
 
 #include <openssl/aead.h>
 #include <openssl/bio.h>
+#include <openssl/digest.h>
 #include <openssl/obj.h>
 #include <openssl/rsa.h>
 
@@ -198,6 +199,41 @@ static bool SpeedAEAD(const EVP_AEAD *aead, const std::string &name) {
          SpeedAEADChunk(aead, name + " (8192 bytes)", 8192);
 }
 
+static bool SpeedHashChunk(const EVP_MD *md, const std::string &name,
+                           size_t chunk_len) {
+  EVP_MD_CTX *ctx = EVP_MD_CTX_create();
+  uint8_t scratch[8192];
+
+  if (chunk_len > sizeof(scratch)) {
+    return false;
+  }
+
+  TimeResults results;
+  if (!TimeFunction(&results, [ctx, md, chunk_len, &scratch]() -> bool {
+        uint8_t digest[EVP_MAX_MD_SIZE];
+        unsigned int md_len;
+
+        return EVP_DigestInit_ex(ctx, md, NULL /* ENGINE */) &&
+               EVP_DigestUpdate(ctx, scratch, chunk_len) &&
+               EVP_DigestFinal_ex(ctx, digest, &md_len);
+      })) {
+    fprintf(stderr, "EVP_DigestInit_ex failed.\n");
+    BIO_print_errors_fp(stderr);
+    return false;
+  }
+
+  results.PrintWithBytes(name, chunk_len);
+
+  EVP_MD_CTX_destroy(ctx);
+
+  return true;
+}
+static bool SpeedHash(const EVP_MD *md, const std::string &name) {
+  return SpeedHashChunk(md, name + " (16 bytes)", 16) &&
+         SpeedHashChunk(md, name + " (256 bytes)", 256) &&
+         SpeedHashChunk(md, name + " (8192 bytes)", 8192);
+}
+
 bool Speed(const std::vector<std::string> &args) {
   const uint8_t *inp;
 
@@ -231,7 +267,10 @@ bool Speed(const std::vector<std::string> &args) {
 
   if (!SpeedAEAD(EVP_aead_aes_128_gcm(), "AES-128-GCM") ||
       !SpeedAEAD(EVP_aead_aes_256_gcm(), "AES-256-GCM") ||
-      !SpeedAEAD(EVP_aead_chacha20_poly1305(), "ChaCha20-Poly1305")) {
+      !SpeedAEAD(EVP_aead_chacha20_poly1305(), "ChaCha20-Poly1305") ||
+      !SpeedHash(EVP_sha1(), "SHA-1") ||
+      !SpeedHash(EVP_sha256(), "SHA-256") ||
+      !SpeedHash(EVP_sha512(), "SHA-512")) {
     return false;
   }
 
