@@ -108,6 +108,7 @@
 
 #include <assert.h>
 #include <errno.h>
+#include <limits.h>
 #include <stdio.h>
 
 #include <openssl/buf.h>
@@ -576,6 +577,7 @@ int ssl3_write_bytes(SSL *s, int type, const void *buf_, int len)
 	int i;
 
 	s->rwstate=SSL_NOTHING;
+	assert(s->s3->wnum <= INT_MAX);
 	tot=s->s3->wnum;
 	s->s3->wnum=0;
 
@@ -599,7 +601,7 @@ int ssl3_write_bytes(SSL *s, int type, const void *buf_, int len)
 	 * buffer ... so we trap and report the error in a way the user
 	 * will notice
 	 */
-	if ( len < tot)
+	if (len < tot)
 		{
 		OPENSSL_PUT_ERROR(SSL, ssl3_write_bytes, SSL_R_BAD_LENGTH);
 		return(-1);
