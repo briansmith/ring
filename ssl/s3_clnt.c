@@ -794,7 +794,9 @@ int ssl3_client_hello(SSL *s)
 			ssl_fill_hello_random(s, 0, p,
 					      sizeof(s->s3->client_random));
 
-		/* Do the message type and length last */
+		/* Do the message type and length last.
+		 * Note: the final argument to ssl_add_clienthello_tlsext below
+		 * depends on the size of this prefix. */
 		d=p= ssl_handshake_start(s);
 
 		/* version indicates the negotiated version: for example from
@@ -899,7 +901,7 @@ int ssl3_client_hello(SSL *s)
 			OPENSSL_PUT_ERROR(SSL, ssl3_client_hello, SSL_R_CLIENTHELLO_TLSEXT);
 			goto err;
 			}
-		if ((p = ssl_add_clienthello_tlsext(s, p, buf+SSL3_RT_MAX_PLAIN_LENGTH)) == NULL)
+		if ((p = ssl_add_clienthello_tlsext(s, p, buf+SSL3_RT_MAX_PLAIN_LENGTH, p-buf)) == NULL)
 			{
 			OPENSSL_PUT_ERROR(SSL, ssl3_client_hello, ERR_R_INTERNAL_ERROR);
 			goto err;

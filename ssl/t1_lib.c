@@ -1098,10 +1098,14 @@ static int byte_compare(const void *in_a, const void *in_b)
 	return 0;
 }
 
-unsigned char *ssl_add_clienthello_tlsext(SSL *s, unsigned char *p, unsigned char *limit)
+/* header_len is the length of the ClientHello header written so far, used to
+ * compute padding. It does not include the record header. Pass 0 if no padding
+ * is to be done. */
+unsigned char *ssl_add_clienthello_tlsext(SSL *s, unsigned char *buf, unsigned char *limit, size_t header_len)
 	{
 	int extdatalen=0;
-	unsigned char *ret = p;
+	unsigned char *ret = buf;
+	unsigned char *orig = buf;
 #ifndef OPENSSL_NO_EC
 	/* See if we support any ECC ciphersuites */
 	int using_ecc = 0;
@@ -1130,7 +1134,7 @@ unsigned char *ssl_add_clienthello_tlsext(SSL *s, unsigned char *p, unsigned cha
 	/* don't add extensions for SSLv3 unless doing secure renegotiation */
 	if (s->client_version == SSL3_VERSION
 					&& !s->s3->send_connection_binding)
-		return p;
+		return orig;
 
 	ret+=2;
 
@@ -1179,7 +1183,7 @@ unsigned char *ssl_add_clienthello_tlsext(SSL *s, unsigned char *p, unsigned cha
               return NULL;
               }
 
-          if((limit - p - 4 - el) < 0) return NULL;
+          if((limit - ret - 4 - el) < 0) return NULL;
           
           s2n(TLSEXT_TYPE_renegotiate,ret);
           s2n(el,ret);
@@ -1420,7 +1424,7 @@ unsigned char *ssl_add_clienthello_tlsext(SSL *s, unsigned char *p, unsigned cha
 
                 ssl_add_clienthello_use_srtp_ext(s, 0, &el, 0);
                 
-                if((limit - p - 4 - el) < 0) return NULL;
+                if((limit - ret - 4 - el) < 0) return NULL;
 
                 s2n(TLSEXT_TYPE_use_srtp,ret);
                 s2n(el,ret);
@@ -1489,44 +1493,43 @@ unsigned char *ssl_add_clienthello_tlsext(SSL *s, unsigned char *p, unsigned cha
 
 #ifdef TLSEXT_TYPE_padding
 	/* Add padding to workaround bugs in F5 terminators.
-	 * See https://tools.ietf.org/html/draft-agl-tls-padding-02
+	 * See https://tools.ietf.org/html/draft-agl-tls-padding-03
 	 *
 	 * NB: because this code works out the length of all existing
-	 * extensions it MUST always appear last.
-	 */
-	{
-	int hlen = ret - (unsigned char *)s->init_buf->data;
-	/* The code in s23_clnt.c to build ClientHello messages includes the
-	 * 5-byte record header in the buffer, while the code in s3_clnt.c does
-	 * not. */
-	if (s->state == SSL23_ST_CW_CLNT_HELLO_A)
-		hlen -= 5;
-	if (hlen > 0xff && hlen < 0x200)
+	 * extensions it MUST always appear last. */
+	if (header_len > 0)
 		{
-		hlen = 0x200 - hlen;
-		if (hlen >= 4)
-			hlen -= 4;
-		else
-			hlen = 0;
+		header_len += ret - orig;
+		if (header_len > 0xff && header_len < 0x200)
+			{
+			size_t padding_len = 0x200 - header_len;
+			if (padding_len >= 4)
+				padding_len -= 4;
+			else
+				padding_len = 0;
+			if (limit - ret - 4 - (long)padding_len < 0)
+				return NULL;
 
-		s2n(TLSEXT_TYPE_padding, ret);
-		s2n(hlen, ret);
-		memset(ret, 0, hlen);
-		ret += hlen;
+			s2n(TLSEXT_TYPE_padding, ret);
+			s2n(padding_len, ret);
+			memset(ret, 0, padding_len);
+			ret += padding_len;
+			}
 		}
 #endif
 
-	if ((extdatalen = ret-p-2) == 0)
-		return p;
+	if ((extdatalen = ret-orig-2)== 0)
+		return orig;
 
-	s2n(extdatalen,p);
+	s2n(extdatalen, orig);
 	return ret;
 	}
 
-unsigned char *ssl_add_serverhello_tlsext(SSL *s, unsigned char *p, unsigned char *limit)
+unsigned char *ssl_add_serverhello_tlsext(SSL *s, unsigned char *buf, unsigned char *limit)
 	{
 	int extdatalen=0;
-	unsigned char *ret = p;
+	unsigned char *orig = buf;
+	unsigned char *ret = buf;
 #ifndef OPENSSL_NO_NEXTPROTONEG
 	int next_proto_neg_seen;
 #endif
@@ -1538,7 +1541,7 @@ unsigned char *ssl_add_serverhello_tlsext(SSL *s, unsigned char *p, unsigned cha
 #endif
 	/* don't add extensions for SSLv3, unless doing secure renegotiation */
 	if (s->version == SSL3_VERSION && !s->s3->send_connection_binding)
-		return p;
+		return orig;
 	
 	ret+=2;
 	if (ret>=limit) return NULL; /* this really never occurs, but ... */
@@ -1561,7 +1564,7 @@ unsigned char *ssl_add_serverhello_tlsext(SSL *s, unsigned char *p, unsigned cha
               return NULL;
               }
 
-          if((limit - p - 4 - el) < 0) return NULL;
+          if((limit - ret - 4 - el) < 0) return NULL;
           
           s2n(TLSEXT_TYPE_renegotiate,ret);
           s2n(el,ret);
@@ -1642,7 +1645,7 @@ unsigned char *ssl_add_serverhello_tlsext(SSL *s, unsigned char *p, unsigned cha
 
                 ssl_add_serverhello_use_srtp_ext(s, 0, &el, 0);
                 
-                if((limit - p - 4 - el) < 0) return NULL;
+                if((limit - ret - 4 - el) < 0) return NULL;
 
                 s2n(TLSEXT_TYPE_use_srtp,ret);
                 s2n(el,ret);
@@ -1852,10 +1855,10 @@ unsigned char *ssl_add_serverhello_tlsext(SSL *s, unsigned char *p, unsigned cha
 		s2n(0,ret);
 		}
 
-	if ((extdatalen = ret-p-2)== 0) 
-		return p;
+	if ((extdatalen = ret-orig-2) == 0)
+		return orig;
 
-	s2n(extdatalen,p);
+	s2n(extdatalen, orig);
 	return ret;
 	}
 
