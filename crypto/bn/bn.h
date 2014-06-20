@@ -367,6 +367,12 @@ int BN_div(BIGNUM *quotient, BIGNUM *rem, const BIGNUM *numerator,
  * remainder or (BN_ULONG)-1 on error. */
 BN_ULONG BN_div_word(BIGNUM *numerator, BN_ULONG divisor);
 
+/* BN_sqrt sets |*out_sqrt| (which may be the same |BIGNUM| as |in|) to the
+ * square root of |in|, using |ctx|. It returns one on success or zero on
+ * error. Negative numbers and non-square numbers will result in an error with
+ * appropriate errors on the error queue. */
+int BN_sqrt(BIGNUM *out_sqrt, const BIGNUM *in, BN_CTX *ctx);
+
 
 /* Comparison functions */
 
@@ -781,6 +787,7 @@ unsigned BN_num_bits_word(BN_ULONG l);
 #define BN_F_BN_mod_inverse_no_branch 121
 #define BN_F_BN_generate_dsa_nonce 122
 #define BN_F_BN_generate_prime_ex 123
+#define BN_F_BN_sqrt 124
 #define BN_R_NOT_A_SQUARE 100
 #define BN_R_TOO_MANY_ITERATIONS 101
 #define BN_R_INPUT_NOT_REDUCED 102
@@ -797,5 +804,6 @@ unsigned BN_num_bits_word(BN_ULONG l);
 #define BN_R_BIGNUM_TOO_LONG 113
 #define BN_R_PRIVATE_KEY_TOO_LARGE 114
 #define BN_R_BITS_TOO_SMALL 115
+#define BN_R_NEGATIVE_NUMBER 116
 
 #endif  /* OPENSSL_HEADER_BN_H */

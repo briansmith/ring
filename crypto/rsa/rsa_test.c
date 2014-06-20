@@ -276,6 +276,63 @@ err:
   return ret;
 }
 
+static int test_recover_crt_params() {
+  RSA *key1, *key2;
+  BIGNUM *e = BN_new();
+  uint8_t buf[128];
+  unsigned buf_len = sizeof(buf);
+  const uint8_t kDummyHash[16] = {0};
+  unsigned i;
+
+  BN_set_word(e, RSA_F4);
+
+  ERR_clear_error();
+
+  for (i = 0; i < 1; i++) {
+    key1 = RSA_new();
+    if (!RSA_generate_key_ex(key1, 512, e, NULL)) {
+      fprintf(stderr, "RSA_generate_key_ex failed.\n");
+      BIO_print_errors_fp(stderr);
+      return 0;
+    }
+
+    key2 = RSA_new();
+    key2->n = BN_dup(key1->n);
+    key2->e = BN_dup(key1->e);
+    key2->d = BN_dup(key1->d);
+    RSA_free(key1);
+
+    if (!RSA_recover_crt_params(key2)) {
+      fprintf(stderr, "RSA_recover_crt_params failed.\n");
+      BIO_print_errors_fp(stderr);
+      return 0;
+    }
+
+    if (RSA_size(key2) > buf_len) {
+      return 0;
+    }
+
+    if (!RSA_sign(NID_md5, kDummyHash, sizeof(kDummyHash), buf, &buf_len,
+                  key2)) {
+      fprintf(stderr, "RSA_sign failed with recovered key.\n");
+      BIO_print_errors_fp(stderr);
+      return 0;
+    }
+
+    if (!RSA_verify(NID_md5, kDummyHash, sizeof(kDummyHash), buf, buf_len,
+                    key2)) {
+      fprintf(stderr, "RSA_verify failed with recovered key.\n");
+      BIO_print_errors_fp(stderr);
+      return 0;
+    }
+
+    RSA_free(key2);
+  }
+
+  BN_free(e);
+  return 1;
+}
+
 int main(int argc, char *argv[]) {
   int err = 0;
   int v;
@@ -380,7 +437,8 @@ int main(int argc, char *argv[]) {
   }
 
   if (err != 0 ||
-      !test_only_d_given()) {
+      !test_only_d_given() ||
+      !test_recover_crt_params()) {
     err = 1;
   }
 

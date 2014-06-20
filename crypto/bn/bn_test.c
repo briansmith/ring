@@ -69,9 +69,10 @@
 
 #include <stdio.h>
 
+#include <openssl/bio.h>
 #include <openssl/bn.h>
 #include <openssl/err.h>
-#include <openssl/bio.h>
+#include <openssl/mem.h>
 
 #include "internal.h"
 
@@ -101,6 +102,7 @@ int test_mod_sqrt(BIO *bp, BN_CTX *ctx);
 static int test_exp_mod_zero();
 int test_small_prime(BIO *bp,BN_CTX *ctx);
 int test_mod_exp_mont5(BIO *bp, BN_CTX *ctx);
+int test_sqrt(BIO *bp, BN_CTX *ctx);
 #if 0
 int test_gf2m_add(BIO *bp);
 int test_gf2m_mod(BIO *bp);
@@ -266,6 +268,11 @@ int main(int argc, char *argv[]) {
 
   message(out, "Small prime generation");
   if (!test_small_prime(out, ctx))
+    goto err;
+  (void)BIO_flush(out);
+
+  message(out, "BN_sqrt");
+  if (!test_sqrt(out, ctx))
     goto err;
   (void)BIO_flush(out);
 
@@ -1288,4 +1295,47 @@ int test_small_prime(BIO *bp, BN_CTX *ctx) {
 err:
   BN_free(&r);
   return ret;
+}
+
+int test_sqrt(BIO *bp, BN_CTX *ctx) {
+  BIGNUM *n = BN_new(), *nn = BN_new(), *sqrt = BN_new();
+  unsigned i;
+
+  /* Test some random squares. */
+  for (i = 0; i < 100; i++) {
+    if (!BN_rand(n, 1024 /* bit length */, -1 /* no modification of top bits */,
+                 0 /* don't modify bottom bit */) ||
+        !BN_mul(nn, n, n, ctx) ||
+        !BN_sqrt(sqrt, nn, ctx)) {
+      BIO_print_errors_fp(stderr);
+      return 0;
+    }
+    if (BN_cmp(n, sqrt) != 0) {
+      fprintf(stderr, "Bad result from BN_sqrt.\n");
+      return 0;
+    }
+  }
+
+  /* Test some non-squares */
+  for (i = 0; i < 100; i++) {
+    if (!BN_rand(n, 1024 /* bit length */, -1 /* no modification of top bits */,
+                 0 /* don't modify bottom bit */) ||
+        !BN_mul(nn, n, n, ctx) ||
+        !BN_add(nn, nn, BN_value_one())) {
+      BIO_print_errors_fp(stderr);
+      return 0;
+    }
+
+    if (BN_sqrt(sqrt, nn, ctx)) {
+      char *nn_str = BN_bn2dec(nn);
+      fprintf(stderr, "BIO_sqrt didn't fail on a non-square: %s\n", nn_str);
+      OPENSSL_free(nn_str);
+    }
+  }
+
+  BN_free(n);
+  BN_free(sqrt);
+  BN_free(nn);
+
+  return 1;
 }

@@ -244,6 +244,13 @@ RSA *RSAPublicKey_dup(const RSA *rsa);
  * |rsa| into it. It returns the fresh |RSA| object, or NULL on error. */
 RSA *RSAPrivateKey_dup(const RSA *rsa);
 
+/* RSA_recover_crt_params uses |rsa->n|, |rsa->d| and |rsa->e| in order to
+ * calculate the two primes used and thus the precomputed, CRT values. These
+ * values are set in the |p|, |q|, |dmp1|, |dmq1| and |iqmp| members of |rsa|,
+ * which must be |NULL| on entry. It returns one on success and zero
+ * otherwise. */
+int RSA_recover_crt_params(RSA *rsa);
+
 
 /* ASN.1 functions. */
 
@@ -421,6 +428,7 @@ struct rsa_st {
 #define RSA_F_BN_BLINDING_create_param 124
 #define RSA_F_decrypt 125
 #define RSA_F_RSA_padding_check_PKCS1_type_2 126
+#define RSA_F_RSA_recover_crt_params 127
 #define RSA_R_INVALID_MESSAGE_LENGTH 100
 #define RSA_R_DATA_GREATER_THAN_MOD_LEN 101
 #define RSA_R_NO_PUBLIC_EXPONENT 102
@@ -456,5 +464,8 @@ struct rsa_st {
 #define RSA_R_BAD_SIGNATURE 132
 #define RSA_R_BN_NOT_INITIALIZED 133
 #define RSA_R_PKCS_DECODING_ERROR 134
+#define RSA_R_BAD_RSA_PARAMETERS 135
+#define RSA_R_INTERNAL_ERROR 136
+#define RSA_R_CRT_PARAMS_ALREADY_GIVEN 137
 
 #endif  /* OPENSSL_HEADER_RSA_H */
