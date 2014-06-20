@@ -2294,7 +2294,8 @@ int ssl3_send_client_key_exchange(SSL *s)
 #ifndef OPENSSL_NO_PSK
 		if (alg_a & SSL_aPSK)
 			{
-			char identity[PSK_MAX_IDENTITY_LEN];
+			char identity[PSK_MAX_IDENTITY_LEN + 1];
+			size_t identity_len;
 			unsigned char *t = NULL;
 			unsigned char pre_ms[PSK_MAX_PSK_LEN*2+4];
 			unsigned int pre_ms_len = 0;
@@ -2307,8 +2308,9 @@ int ssl3_send_client_key_exchange(SSL *s)
 				goto err;
 				}
 
+			memset(identity, 0, sizeof(identity));
 			psk_len = s->psk_client_callback(s, s->session->psk_identity_hint,
-				identity, PSK_MAX_IDENTITY_LEN, psk, sizeof(psk));
+				identity, sizeof(identity), psk, sizeof(psk));
 			if (psk_len > PSK_MAX_PSK_LEN)
 				{
 				OPENSSL_PUT_ERROR(SSL, ssl3_send_client_key_exchange, ERR_R_INTERNAL_ERROR);
@@ -2317,6 +2319,12 @@ int ssl3_send_client_key_exchange(SSL *s)
 			else if (psk_len == 0)
 				{
 				OPENSSL_PUT_ERROR(SSL, ssl3_send_client_key_exchange, SSL_R_PSK_IDENTITY_NOT_FOUND);
+				goto psk_err;
+				}
+			identity_len = OPENSSL_strnlen(identity, sizeof(identity));
+			if (identity_len > PSK_MAX_IDENTITY_LEN)
+				{
+				OPENSSL_PUT_ERROR(SSL, ssl3_send_client_key_exchange, ERR_R_INTERNAL_ERROR);
 				goto psk_err;
 				}
 
@@ -2335,10 +2343,9 @@ int ssl3_send_client_key_exchange(SSL *s)
 					s->method->ssl3_enc->generate_master_secret(s,
 						s->session->master_key,
 						pre_ms, pre_ms_len);
-				n = strlen(identity);
-				s2n(n, p);
-				memcpy(p, identity, n);
-				n += 2;
+				s2n(identity_len, p);
+				memcpy(p, identity, identity_len);
+				n = 2 + identity_len;
 				}
 
 			if (s->session->psk_identity != NULL)

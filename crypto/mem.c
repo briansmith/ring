@@ -123,6 +123,18 @@ uint32_t OPENSSL_hash32(const void *ptr, size_t len) {
 
 char *OPENSSL_strdup(const char *s) { return strdup(s); }
 
+size_t OPENSSL_strnlen(const char *s, size_t len) {
+  size_t i;
+
+  for (i = 0; i < len; i++) {
+    if (s[i] == 0) {
+      return i;
+    }
+  }
+
+  return len;
+}
+
 int BIO_snprintf(char *buf, size_t n, const char *format, ...) {
   va_list args;
   int ret;

@@ -97,6 +97,9 @@ uint32_t OPENSSL_hash32(const void *ptr, size_t len);
 /* OPENSSL_strdup has the same behaviour as strdup(3). */
 char *OPENSSL_strdup(const char *s);
 
+/* OPENSSL_strnlen has the same behaviour as strnlen(3). */
+size_t OPENSSL_strnlen(const char *s, size_t len);
+
 /* DECIMAL_SIZE returns an upper bound for the length of the decimal
  * representation of the given type. */
 #define DECIMAL_SIZE(type)	((sizeof(type)*8+2)/3+1)
