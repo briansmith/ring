@@ -570,16 +570,15 @@ $sbit=$num;
 	&jge	(&label("sub"));
 
 	&sbb	("eax",0);			# handle upmost overflow bit
-	&and	($tp,"eax");
-	&not	("eax");
-	&mov	($np,$rp);
-	&and	($np,"eax");
-	&or	($tp,$np);			# tp=carry?tp:rp
 
 &set_label("copy",16);				# copy or in-place refresh
-	&mov	("eax",&DWP(0,$tp,$num,4));
-	&mov	(&DWP(0,$rp,$num,4),"eax");	# rp[i]=tp[i]
-	&mov	(&DWP($frame,"esp",$num,4),$j);	# zap temporary vector
+	&mov	("edx",&DWP(0,$tp,$num,4));
+	&mov	($np,&DWP(0,$rp,$num,4));
+	&xor	("edx",$np);			# conditional select
+	&and	("edx","eax");
+	&xor	("edx",$np);
+	&mov	(&DWP(0,$tp,$num,4),$j)		# zap temporary vector
+	&mov	(&DWP(0,$rp,$num,4),"edx");	# rp[i]=tp[i]
 	&dec	($num);
 	&jge	(&label("copy"));
 
