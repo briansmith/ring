@@ -123,7 +123,7 @@ if (!$avx && $win64 && ($flavour =~ /masm/ || $ENV{ASM} =~ /ml64/) &&
 	$avx = ($1>=10) + ($1>=11);
 }
 
-$shaext=1;	### set to zero if compiling for 1.0.1
+$shaext=0;	### set to zero if compiling for 1.0.1
 $avx=1		if (!$shaext && $avx);
 
 open OUT,"| \"$^X\" $xlate $flavour";
@@ -2258,7 +2258,8 @@ $code.=<<___;
 	pop	%rsi
 	ret
 .size	se_handler,.-se_handler
-
+___
+$code.=<<___ if ($shaext);
 .type	shaext_handler,\@abi-omnipotent
 .align	16
 shaext_handler:
@@ -2291,7 +2292,8 @@ shaext_handler:
 
 	jmp	.Lin_prologue
 .size	shaext_handler,.-shaext_handler
-
+___
+$code.=<<___;
 .section	.pdata
 .align	4
 	.rva	.LSEH_begin_$func
@@ -2331,10 +2333,12 @@ $code.=<<___;
 	.rva	se_handler
 	.rva	.Lprologue,.Lepilogue			# HandlerData[]
 ___
-$code.=<<___ if ($SZ==4);
+$code.=<<___ if ($SZ==4 && $shaext);
 .LSEH_info_${func}_shaext:
 	.byte	9,0,0,0
 	.rva	shaext_handler
+___
+$code.=<<___ if ($SZ==4);
 .LSEH_info_${func}_ssse3:
 	.byte	9,0,0,0
 	.rva	se_handler
