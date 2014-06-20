@@ -250,6 +250,11 @@ int EVP_DecodeUpdate(EVP_ENCODE_CTX *ctx, uint8_t *out, int *out_len,
         seof = n;
       }
       eof++;
+      if (eof > 2) {
+        /* There are, at most, two equals signs at the end of base64 data. */
+        rv = -1;
+        goto end;
+      }
     }
 
     if (v == B64_CR) {
