@@ -1367,57 +1367,6 @@ unsigned char *ssl_add_clienthello_tlsext(SSL *s, unsigned char *buf, unsigned c
           ret += el;
         }
 
-
-#ifndef OPENSSL_NO_EC
-	if (using_ecc)
-		{
-		/* Add TLS extension ECPointFormats to the ClientHello message */
-		long lenmax; 
-		const unsigned char *plist;
-		size_t plistlen;
-
-		tls1_get_formatlist(s, &plist, &plistlen);
-
-		if ((lenmax = limit - ret - 5) < 0) return NULL; 
-		if (plistlen > (size_t)lenmax) return NULL;
-		if (plistlen > 255)
-			{
-			OPENSSL_PUT_ERROR(SSL, ssl_add_clienthello_tlsext, ERR_R_INTERNAL_ERROR);
-			return NULL;
-			}
-		
-		s2n(TLSEXT_TYPE_ec_point_formats,ret);
-		s2n(plistlen + 1,ret);
-		*(ret++) = (unsigned char)plistlen ;
-		memcpy(ret, plist, plistlen);
-		ret+=plistlen;
-
-		/* Add TLS extension EllipticCurves to the ClientHello message */
-		plist = s->tlsext_ellipticcurvelist;
-		tls1_get_curvelist(s, 0, &plist, &plistlen);
-
-		if ((lenmax = limit - ret - 6) < 0) return NULL; 
-		if (plistlen > (size_t)lenmax) return NULL;
-		if (plistlen > 65532)
-			{
-			OPENSSL_PUT_ERROR(SSL, ssl_add_clienthello_tlsext, ERR_R_INTERNAL_ERROR);
-			return NULL;
-			}
-		
-		s2n(TLSEXT_TYPE_elliptic_curves,ret);
-		s2n(plistlen + 2, ret);
-
-		/* NB: draft-ietf-tls-ecc-12.txt uses a one-byte prefix for
-		 * elliptic_curve_list, but the examples use two bytes.
-		 * http://www1.ietf.org/mail-archive/web/tls/current/msg00538.html
-		 * resolves this to two bytes.
-		 */
-		s2n(plistlen, ret);
-		memcpy(ret, plist, plistlen);
-		ret+=plistlen;
-		}
-#endif /* OPENSSL_NO_EC */
-
 	if (!(SSL_get_options(s) & SSL_OP_NO_TICKET))
 		{
 		int ticklen;
@@ -1661,6 +1610,56 @@ unsigned char *ssl_add_clienthello_tlsext(SSL *s, unsigned char *buf, unsigned c
 			}
 		}
 
+#ifndef OPENSSL_NO_EC
+	if (using_ecc)
+		{
+		/* Add TLS extension ECPointFormats to the ClientHello message */
+		long lenmax; 
+		const unsigned char *plist;
+		size_t plistlen;
+
+		tls1_get_formatlist(s, &plist, &plistlen);
+
+		if ((lenmax = limit - ret - 5) < 0) return NULL; 
+		if (plistlen > (size_t)lenmax) return NULL;
+		if (plistlen > 255)
+			{
+			OPENSSL_PUT_ERROR(SSL, ssl_add_clienthello_tlsext, ERR_R_INTERNAL_ERROR);
+			return NULL;
+			}
+		
+		s2n(TLSEXT_TYPE_ec_point_formats,ret);
+		s2n(plistlen + 1,ret);
+		*(ret++) = (unsigned char)plistlen ;
+		memcpy(ret, plist, plistlen);
+		ret+=plistlen;
+
+		/* Add TLS extension EllipticCurves to the ClientHello message */
+		plist = s->tlsext_ellipticcurvelist;
+		tls1_get_curvelist(s, 0, &plist, &plistlen);
+
+		if ((lenmax = limit - ret - 6) < 0) return NULL; 
+		if (plistlen > (size_t)lenmax) return NULL;
+		if (plistlen > 65532)
+			{
+			OPENSSL_PUT_ERROR(SSL, ssl_add_clienthello_tlsext, ERR_R_INTERNAL_ERROR);
+			return NULL;
+			}
+		
+		s2n(TLSEXT_TYPE_elliptic_curves,ret);
+		s2n(plistlen + 2, ret);
+
+		/* NB: draft-ietf-tls-ecc-12.txt uses a one-byte prefix for
+		 * elliptic_curve_list, but the examples use two bytes.
+		 * http://www1.ietf.org/mail-archive/web/tls/current/msg00538.html
+		 * resolves this to two bytes.
+		 */
+		s2n(plistlen, ret);
+		memcpy(ret, plist, plistlen);
+		ret+=plistlen;
+		}
+#endif /* OPENSSL_NO_EC */
+
 #ifdef TLSEXT_TYPE_padding
 	/* Add padding to workaround bugs in F5 terminators.
 	 * See https://tools.ietf.org/html/draft-agl-tls-padding-03
@@ -1673,10 +1672,14 @@ unsigned char *ssl_add_clienthello_tlsext(SSL *s, unsigned char *buf, unsigned c
 		if (header_len > 0xff && header_len < 0x200)
 			{
 			size_t padding_len = 0x200 - header_len;
-			if (padding_len >= 4)
+			/* Extensions take at least four bytes to encode. Always
+			 * include least one byte of data if including the
+			 * extension. WebSphere Application Server 7.0 is
+			 * intolerant to the last extension being zero-length. */
+			if (padding_len >= 4 + 1)
 				padding_len -= 4;
 			else
-				padding_len = 0;
+				padding_len = 1;
 			if (limit - ret - 4 - (long)padding_len < 0)
 				return NULL;
 
