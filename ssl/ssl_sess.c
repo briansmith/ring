@@ -403,6 +403,18 @@ int ssl_get_new_session(SSL *s, int session)
 				}
 			}
 #endif
+#ifndef OPENSSL_NO_PSK
+		if (s->psk_identity_hint)
+			{
+			ss->psk_identity_hint = BUF_strdup(s->psk_identity_hint);
+			if (ss->psk_identity_hint == NULL)
+				{
+				OPENSSL_PUT_ERROR(SSL, ssl_get_new_session, ERR_R_MALLOC_FAILURE);
+				SSL_SESSION_free(ss);
+				return 0;
+				}
+			}
+#endif
 		}
 	else
 		{

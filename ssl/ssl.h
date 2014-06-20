@@ -1532,6 +1532,10 @@ struct ssl_st
 	int error_code;		/* actual code */
 
 #ifndef OPENSSL_NO_PSK
+	/* PSK identity hint is stored here only to enable setting a hint on an SSL object before an
+	 * SSL_SESSION is associated with it. Once an SSL_SESSION is associated with this SSL object,
+	 * the psk_identity_hint from the session takes precedence over this one. */
+	char *psk_identity_hint;
 	unsigned int (*psk_client_callback)(SSL *ssl, const char *hint, char *identity,
 		unsigned int max_identity_len, unsigned char *psk,
 		unsigned int max_psk_len);

@@ -419,7 +419,7 @@ int dtls1_accept(SSL *s)
 			/* PSK: send ServerKeyExchange if PSK identity
 			 * hint if provided */
 #ifndef OPENSSL_NO_PSK
-			    || ((alg_k & SSL_kPSK) && s->ctx->psk_identity_hint)
+			    || ((alg_k & SSL_kPSK) && s->session->psk_identity_hint)
 #endif
 			    || (alg_k & (SSL_kEDH|SSL_kDHr|SSL_kDHd))
 			    || (alg_k & SSL_kEECDH)
