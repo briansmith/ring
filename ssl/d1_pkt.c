@@ -177,6 +177,8 @@ static int dtls1_record_needs_buffering(SSL *s, SSL3_RECORD *rr,
 static int dtls1_buffer_record(SSL *s, record_pqueue *q,
 	unsigned char *priority);
 static int dtls1_process_record(SSL *s);
+static int do_dtls1_write(SSL *s, int type, const unsigned char *buf,
+			  unsigned int len);
 
 /* copy buffered record into SSL structure */
 static int
@@ -1372,11 +1374,12 @@ int dtls1_write_bytes(SSL *s, int type, const void *buf, int len)
 
 	assert(len <= SSL3_RT_MAX_PLAIN_LENGTH);
 	s->rwstate=SSL_NOTHING;
-	i=do_dtls1_write(s, type, buf, len, 0);
+	i=do_dtls1_write(s, type, buf, len);
 	return i;
 	}
 
-int do_dtls1_write(SSL *s, int type, const unsigned char *buf, unsigned int len, int create_empty_fragment)
+static int do_dtls1_write(SSL *s, int type, const unsigned char *buf,
+			  unsigned int len)
 	{
 	unsigned char *p,*pseq;
 	int i,mac_size,clear=0;
@@ -1403,7 +1406,7 @@ int do_dtls1_write(SSL *s, int type, const unsigned char *buf, unsigned int len,
 		/* if it went, fall through and send more stuff */
 		}
 
-	if (len == 0 && !create_empty_fragment)
+	if (len == 0)
 		return 0;
 
 	wr= &(s->s3->wrec);
@@ -1424,37 +1427,6 @@ int do_dtls1_write(SSL *s, int type, const unsigned char *buf, unsigned int len,
 			goto err;
 		}
 
-	/* DTLS implements explicit IV, so no need for empty fragments */
-#if 0
-	/* 'create_empty_fragment' is true only when this function calls itself */
-	if (!clear && !create_empty_fragment && !s->s3->empty_fragment_done
-	    && SSL_version(s) != DTLS1_VERSION && SSL_version(s) != DTLS1_BAD_VER)
-		{
-		/* countermeasure against known-IV weakness in CBC ciphersuites
-		 * (see http://www.openssl.org/~bodo/tls-cbc.txt) 
-		 */
-
-		if (s->s3->need_empty_fragments && type == SSL3_RT_APPLICATION_DATA)
-			{
-			/* recursive function call with 'create_empty_fragment' set;
-			 * this prepares and buffers the data for an empty fragment
-			 * (these 'prefix_len' bytes are sent out later
-			 * together with the actual payload) */
-			prefix_len = s->method->do_ssl_write(s, type, buf, 0, 1);
-			if (prefix_len <= 0)
-				goto err;
-
-			if (s->s3->wbuf.len < (size_t)prefix_len + SSL3_RT_MAX_PACKET_SIZE)
-				{
-				/* insufficient space */
-				OPENSSL_PUT_ERROR(SSL, do_dtls1_write, ERR_R_INTERNAL_ERROR);
-				goto err;
-				}
-			}
-		
-		s->s3->empty_fragment_done = 1;
-		}
-#endif
 	p = wb->buf + prefix_len;
 
 	/* write the header */
@@ -1576,14 +1548,6 @@ int do_dtls1_write(SSL *s, int type, const unsigned char *buf, unsigned int len,
 
 	ssl3_record_sequence_update(&(s->s3->write_sequence[0]));
 
-	if (create_empty_fragment)
-		{
-		/* we are in a recursive call;
-		 * just return the length, don't write out anything here
-		 */
-		return wr->length;
-		}
-
 	/* now let's set up wb */
 	wb->left = prefix_len + wr->length;
 	wb->offset = 0;
@@ -1680,7 +1644,7 @@ int dtls1_dispatch_alert(SSL *s)
 		}
 #endif
 
-	i = do_dtls1_write(s, SSL3_RT_ALERT, &buf[0], sizeof(buf), 0);
+	i = do_dtls1_write(s, SSL3_RT_ALERT, &buf[0], sizeof(buf));
 	if (i <= 0)
 		{
 		s->s3->alert_dispatch=1;

@@ -402,27 +402,26 @@ int ssl3_setup_key_block(SSL *s)
 
 	ret = ssl3_generate_key_block(s,p,num);
 
-	if (!(s->options & SSL_OP_DONT_INSERT_EMPTY_FRAGMENTS))
+	/* enable vulnerability countermeasure for CBC ciphers with
+	 * known-IV problem (http://www.openssl.org/~bodo/tls-cbc.txt) */
+	if ((s->mode & SSL_MODE_CBC_RECORD_SPLITTING) != 0)
 		{
-		/* enable vulnerability countermeasure for CBC ciphers with
-		 * known-IV problem (http://www.openssl.org/~bodo/tls-cbc.txt)
-		 */
-		s->s3->need_empty_fragments = 1;
+		s->s3->need_record_splitting = 1;
 
 		if (s->session->cipher != NULL)
 			{
 			if (s->session->cipher->algorithm_enc == SSL_eNULL)
-				s->s3->need_empty_fragments = 0;
-			
+				s->s3->need_record_splitting = 0;
+
 #ifndef OPENSSL_NO_RC4
 			if (s->session->cipher->algorithm_enc == SSL_RC4)
-				s->s3->need_empty_fragments = 0;
+				s->s3->need_record_splitting = 0;
 #endif
 			}
 		}
 
 	return ret;
-		
+
 err:
 	OPENSSL_PUT_ERROR(SSL, ssl3_setup_key_block, ERR_R_MALLOC_FAILURE);
 	return(0);

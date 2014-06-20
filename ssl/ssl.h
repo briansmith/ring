@@ -615,11 +615,15 @@ struct ssl_session_st
 /* Hasn't done anything since OpenSSL 0.9.7h, retained for compatibility */
 #define SSL_OP_MSIE_SSLV2_RSA_PADDING			0x0
 
-/* Disable SSL 3.0/TLS 1.0 CBC vulnerability workaround that was added
- * in OpenSSL 0.9.6d.  Usually (depending on the application protocol)
- * the workaround is not needed.  Unfortunately some broken SSL/TLS
- * implementations cannot handle it at all, which is why we include
- * it in SSL_OP_ALL. */
+/* SSL_OP_DONT_INSERT_EMPTY_FRAGMENTS is vestigial. Previously it disabled the
+ * insertion of empty records in CBC mode, but the empty records were commonly
+ * misinterpreted as EOF by other TLS stacks and so this was disabled by
+ * SSL_OP_ALL.
+ *
+ * This has been replaced by 1/n-1 record splitting, which is enabled by
+ * SSL_MODE_CBC_RECORD_SPLITTING in SSL_set_mode. This involves sending a
+ * one-byte record rather than an empty record and has much better
+ * compatibility. */
 #define SSL_OP_DONT_INSERT_EMPTY_FRAGMENTS              0x00000800L /* added in 0.9.6e */
 
 /* SSL_OP_ALL: various bug workarounds that should be rather harmless.
@@ -773,6 +777,12 @@ struct ssl_session_st
  * and Finished.  This mode enables full-handshakes to 'complete' in
  * one RTT. */
 #define SSL_MODE_HANDSHAKE_CUTTHROUGH 0x00000080L
+
+/* When set, TLS 1.0 and SSLv3, multi-byte, CBC records will be split in two:
+ * the first record will contain a single byte and the second will contain the
+ * rest of the bytes. This effectively randomises the IV and prevents BEAST
+ * attacks. */
+#define SSL_MODE_CBC_RECORD_SPLITTING 0x00000100L
 
 /* Note: SSL[_CTX]_set_{options,mode} use |= op on the previous value,
  * they cannot be used to clear bits. */

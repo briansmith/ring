@@ -430,8 +430,8 @@ typedef struct ssl3_state_st
 	unsigned char client_random[SSL3_RANDOM_SIZE];
 
 	/* flags for countermeasure against known-IV weakness */
-	int need_empty_fragments;
-	int empty_fragment_done;
+	int need_record_splitting;
+	int record_split_done;
 
 	/* The value of 'extra' when the buffers were initialized */
 	int init_extra;
