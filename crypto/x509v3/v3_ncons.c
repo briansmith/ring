@@ -65,10 +65,6 @@
 #include <openssl/obj.h>
 #include <openssl/x509v3.h>
 
-#if !defined(OPENSSL_WINDOWS)
-#include <strings.h>
-#endif
-
 
 static void *v2i_NAME_CONSTRAINTS(const X509V3_EXT_METHOD *method,
 				  X509V3_CTX *ctx, STACK_OF(CONF_VALUE) *nval);
@@ -414,7 +410,7 @@ static int nc_dns(ASN1_IA5STRING *dns, ASN1_IA5STRING *base)
 			return X509_V_ERR_PERMITTED_VIOLATION;
 		}
 
-	if (strcasecmp(baseptr, dnsptr))
+	if (OPENSSL_strcasecmp(baseptr, dnsptr))
 			return X509_V_ERR_PERMITTED_VIOLATION;
 
 	return X509_V_OK;
@@ -436,7 +432,7 @@ static int nc_email(ASN1_IA5STRING *eml, ASN1_IA5STRING *base)
 		if (eml->length > base->length)
 			{
 			emlptr += eml->length - base->length;
-			if (!strcasecmp(baseptr, emlptr))
+			if (!OPENSSL_strcasecmp(baseptr, emlptr))
 				return X509_V_OK;
 			}
 		return X509_V_ERR_PERMITTED_VIOLATION;
@@ -459,7 +455,7 @@ static int nc_email(ASN1_IA5STRING *eml, ASN1_IA5STRING *base)
 		}
 	emlptr = emlat + 1;
 	/* Just have hostname left to match: case insensitive */
-	if (strcasecmp(baseptr, emlptr))
+	if (OPENSSL_strcasecmp(baseptr, emlptr))
 		return X509_V_ERR_PERMITTED_VIOLATION;
 
 	return X509_V_OK;
@@ -500,13 +496,13 @@ static int nc_uri(ASN1_IA5STRING *uri, ASN1_IA5STRING *base)
 		if (hostlen > base->length)
 			{
 			p = hostptr + hostlen - base->length;
-			if (!strncasecmp(p, baseptr, base->length))
+			if (!OPENSSL_strncasecmp(p, baseptr, base->length))
 				return X509_V_OK;
 			}
 		return X509_V_ERR_PERMITTED_VIOLATION;
 		}
 
-	if ((base->length != (int)hostlen) || strncasecmp(hostptr, baseptr, hostlen))
+	if ((base->length != (int)hostlen) || OPENSSL_strncasecmp(hostptr, baseptr, hostlen))
 		return X509_V_ERR_PERMITTED_VIOLATION;
 
 	return X509_V_OK;

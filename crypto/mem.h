@@ -100,6 +100,12 @@ char *OPENSSL_strdup(const char *s);
 /* OPENSSL_strnlen has the same behaviour as strnlen(3). */
 size_t OPENSSL_strnlen(const char *s, size_t len);
 
+/* OPENSSL_strcasecmp has the same behaviour as strcasecmp(3). */
+int OPENSSL_strcasecmp(const char *a, const char *b);
+
+/* OPENSSL_strncasecmp has the same behaviour as strncasecmp(3). */
+int OPENSSL_strncasecmp(const char *a, const char *b, size_t n);
+
 /* DECIMAL_SIZE returns an upper bound for the length of the decimal
  * representation of the given type. */
 #define DECIMAL_SIZE(type)	((sizeof(type)*8+2)/3+1)

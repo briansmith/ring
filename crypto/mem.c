@@ -135,6 +135,28 @@ size_t OPENSSL_strnlen(const char *s, size_t len) {
   return len;
 }
 
+#if defined(OPENSSL_WINDOWS)
+
+int OPENSSL_strcasecmp(const char *a, const char *b) {
+  return _stricmp(a, b, n);
+}
+
+int OPENSSL_strncasecmp(const char *a, const char *b, size_t n) {
+  return _strnicmp(a, b, n);
+}
+
+#else
+
+int OPENSSL_strcasecmp(const char *a, const char *b) {
+  return strcasecmp(a, b);
+}
+
+int OPENSSL_strncasecmp(const char *a, const char *b, size_t n) {
+  return strncasecmp(a, b, n);
+}
+
+#endif
+
 int BIO_snprintf(char *buf, size_t n, const char *format, ...) {
   va_list args;
   int ret;

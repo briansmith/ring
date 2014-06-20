@@ -60,7 +60,6 @@
 
 #include <ctype.h>
 #include <stdio.h>
-#include <strings.h>
 
 #include <openssl/bn.h>
 #include <openssl/buf.h>
@@ -718,7 +717,7 @@ static int wildcard_match(const unsigned char *prefix, size_t prefix_len,
 		}
 	/* IDNA labels cannot match partial wildcards */
 	if (!allow_idna &&
-	    subject_len >= 4 && strncasecmp((char *)subject, "xn--", 4) == 0)
+	    subject_len >= 4 && OPENSSL_strncasecmp((char *)subject, "xn--", 4) == 0)
 		return 0;
 	/* The wildcard may match a literal '*' */
 	if (wildcard_end == wildcard_start + 1 && *wildcard_start == '*')
@@ -784,7 +783,7 @@ static const unsigned char *valid_star(const unsigned char *p, size_t len,
 			 * IDNA label state
 			 */
 			if ((state & LABEL_IDNA) == 0 && len - i >= 4
-			    && strncasecmp((char *)&p[i], "xn--", 4) == 0)
+			    && OPENSSL_strncasecmp((char *)&p[i], "xn--", 4) == 0)
 				{
 				i += 3;
 				state |= LABEL_IDNA;
