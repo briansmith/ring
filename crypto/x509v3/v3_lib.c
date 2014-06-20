@@ -120,6 +120,27 @@ const X509V3_EXT_METHOD *X509V3_EXT_get(X509_EXTENSION *ext)
 	return X509V3_EXT_get_nid(nid);
 }
 
+int X509V3_EXT_free(int nid, void *ext_data)
+{
+	    const X509V3_EXT_METHOD *ext_method = X509V3_EXT_get_nid(nid);
+	    if (ext_method == NULL)
+	    {
+		    OPENSSL_PUT_ERROR(X509V3, X509V3_EXT_free, X509V3_R_CANNOT_FIND_FREE_FUNCTION);
+		    return 0;
+	    }
+
+	    if (ext_method->it != NULL)
+		    ASN1_item_free(ext_data, ASN1_ITEM_ptr(ext_method->it));
+	    else if (ext_method->ext_free != NULL)
+		    ext_method->ext_free(ext_data);
+	    else
+	    {
+		    OPENSSL_PUT_ERROR(X509V3, X509V3_EXT_free, X509V3_R_CANNOT_FIND_FREE_FUNCTION);
+		    return 0;
+	    }
+
+	    return 1;
+}
 
 int X509V3_EXT_add_list(X509V3_EXT_METHOD *extlist)
 {
