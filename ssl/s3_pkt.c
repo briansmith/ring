@@ -678,6 +678,11 @@ static int do_ssl3_write(SSL *s, int type, const unsigned char *buf,
 		/* if it went, fall through and send more stuff */
 		}
 
+	/* Dispatching the alert may have released the write buffer. */
+	if (wb->buf == NULL)
+		if (!ssl3_setup_write_buffer(s))
+			return -1;
+
 	if (len == 0)
 		return 0;
 
