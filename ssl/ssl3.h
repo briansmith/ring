@@ -127,6 +127,9 @@ extern "C" {
 
 /* Signalling cipher suite value: from draft-ietf-tls-renegotiation-03.txt */
 #define SSL3_CK_SCSV				0x030000FF
+/* Fallback signalling cipher suite value: not IANA assigned.
+ * See https://tools.ietf.org/html/draft-bmoeller-tls-downgrade-scsv-01 */
+#define SSL3_CK_FALLBACK_SCSV			0x03005600
 
 #define SSL3_CK_RSA_NULL_MD5			0x03000001
 #define SSL3_CK_RSA_NULL_SHA			0x03000002
@@ -351,6 +354,7 @@ extern "C" {
 #define SSL3_AD_CERTIFICATE_EXPIRED	45
 #define SSL3_AD_CERTIFICATE_UNKNOWN	46
 #define SSL3_AD_ILLEGAL_PARAMETER	47	/* fatal */
+#define SSL3_AD_INAPPROPRIATE_FALLBACK	86	/* fatal */
 
 #define TLS1_HB_REQUEST		1
 #define TLS1_HB_RESPONSE	2

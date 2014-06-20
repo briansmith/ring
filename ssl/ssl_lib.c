@@ -1636,6 +1636,17 @@ STACK_OF(SSL_CIPHER) *ssl_bytes_to_cipher_list(SSL *s,unsigned char *p,int num,
 			continue;
 			}
 
+		/* Check for FALLBACK_SCSV */
+		if (s->s3 && n == 2 &&
+			(p[0] == ((SSL3_CK_FALLBACK_SCSV >> 8) & 0xff)) &&
+			(p[1] == (SSL3_CK_FALLBACK_SCSV & 0xff)) &&
+			s->version < ssl_get_max_version(s))
+			{
+			OPENSSL_PUT_ERROR(SSL, ssl_bytes_to_cipher_list, SSL_R_INAPPROPRIATE_FALLBACK);
+			ssl3_send_alert(s,SSL3_AL_FATAL,SSL3_AD_INAPPROPRIATE_FALLBACK);
+			goto err;
+			}
+
 		c=ssl_get_cipher_by_char(s,p);
 		p+=n;
 		if (c != NULL)
@@ -3477,6 +3488,27 @@ int ssl3_can_cutthrough(const SSL *s)
 		}
 
 	return 1;
+	}
+
+/* ssl_get_max_version returns the maximum SSL/TLS version number supported by
+ * |s|, or zero if all versions are disabled. */
+int ssl_get_max_version(const SSL *s)
+	{
+	/* Only one version supported for DTLS. */
+	if (s->version == DTLS1_VERSION)
+		return DTLS1_VERSION;
+
+	if (!(s->options & SSL_OP_NO_TLSv1_2))
+		return TLS1_2_VERSION;
+	if (!(s->options & SSL_OP_NO_TLSv1_1))
+		return TLS1_1_VERSION;
+	if (!(s->options & SSL_OP_NO_TLSv1))
+		return TLS1_VERSION;
+	if (!(s->options & SSL_OP_NO_SSLv3))
+		return SSL3_VERSION;
+	if (!(s->options & SSL_OP_NO_SSLv2))
+		return SSL2_VERSION;
+	return 0;
 	}
 
 /* Allocates new EVP_MD_CTX and sets pointer to it into given pointer
