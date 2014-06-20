@@ -61,7 +61,10 @@
 #include <openssl/stack.h>
 
 /* OpenSSL included digest and cipher functions in this header so we include
- * them for users that still expect that. */
+ * them for users that still expect that.
+ *
+ * TODO(fork): clean up callers so that they include what they use. */
+#include <openssl/aead.h>
 #include <openssl/cipher.h>
 #include <openssl/digest.h>
 #include <openssl/mem.h>

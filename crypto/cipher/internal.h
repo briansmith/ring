@@ -106,6 +106,30 @@ struct evp_cipher_st {
 #define EVP_CIPH_MODE_MASK 0x3f
 
 
+struct evp_aead_ctx_st;
+
+/* EVP_AEAD represents a specific AEAD algorithm. */
+struct evp_aead_st {
+  uint8_t key_len;
+  uint8_t nonce_len;
+  uint8_t overhead;
+  uint8_t max_tag_len;
+
+  int (*init)(struct evp_aead_ctx_st *, const uint8_t *key,
+              size_t key_len, size_t tag_len);
+  void (*cleanup)(struct evp_aead_ctx_st *);
+
+  int (*seal)(const struct evp_aead_ctx_st *ctx, uint8_t *out,
+              size_t *out_len, size_t max_out_len, const uint8_t *nonce,
+              size_t nonce_len, const uint8_t *in, size_t in_len,
+              const uint8_t *ad, size_t ad_len);
+
+  int (*open)(const struct evp_aead_ctx_st *ctx, uint8_t *out,
+              size_t *out_len, size_t max_out_len, const uint8_t *nonce,
+              size_t nonce_len, const uint8_t *in, size_t in_len,
+              const uint8_t *ad, size_t ad_len);
+};
+
 #if defined(__cplusplus)
 } /* extern C */
 #endif

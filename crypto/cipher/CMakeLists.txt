@@ -8,6 +8,7 @@ add_library(
 	cipher.c
 	cipher_error.c
 	derive_key.c
+	aead.c
 
 	e_null.c
 	e_rc4.c
