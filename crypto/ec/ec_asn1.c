@@ -544,8 +544,10 @@ int i2o_ECPublicKey(const EC_KEY *key, uint8_t **outp) {
   if (!EC_POINT_point2oct(key->group, key->pub_key, key->conv_form, *outp,
                           buf_len, NULL)) {
     OPENSSL_PUT_ERROR(EC, i2o_ECPublicKey, ERR_R_EC_LIB);
-    OPENSSL_free(*outp);
-    *outp = NULL;
+    if (new_buffer) {
+      OPENSSL_free(*outp);
+      *outp = NULL;
+    }
     return 0;
   }
 
