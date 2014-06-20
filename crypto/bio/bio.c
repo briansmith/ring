@@ -1,0 +1,452 @@
+/* Copyright (C) 1995-1998 Eric Young (eay@cryptsoft.com)
+ * All rights reserved.
+ *
+ * This package is an SSL implementation written
+ * by Eric Young (eay@cryptsoft.com).
+ * The implementation was written so as to conform with Netscapes SSL.
+ *
+ * This library is free for commercial and non-commercial use as long as
+ * the following conditions are aheared to.  The following conditions
+ * apply to all code found in this distribution, be it the RC4, RSA,
+ * lhash, DES, etc., code; not just the SSL code.  The SSL documentation
+ * included with this distribution is covered by the same copyright terms
+ * except that the holder is Tim Hudson (tjh@cryptsoft.com).
+ *
+ * Copyright remains Eric Young's, and as such any Copyright notices in
+ * the code are not to be removed.
+ * If this package is used in a product, Eric Young should be given attribution
+ * as the author of the parts of the library used.
+ * This can be in the form of a textual message at program startup or
+ * in documentation (online or textual) provided with the package.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ * 1. Redistributions of source code must retain the copyright
+ *    notice, this list of conditions and the following disclaimer.
+ * 2. Redistributions in binary form must reproduce the above copyright
+ *    notice, this list of conditions and the following disclaimer in the
+ *    documentation and/or other materials provided with the distribution.
+ * 3. All advertising materials mentioning features or use of this software
+ *    must display the following acknowledgement:
+ *    "This product includes cryptographic software written by
+ *     Eric Young (eay@cryptsoft.com)"
+ *    The word 'cryptographic' can be left out if the rouines from the library
+ *    being used are not cryptographic related :-).
+ * 4. If you include any Windows specific code (or a derivative thereof) from
+ *    the apps directory (application code) you must include an acknowledgement:
+ *    "This product includes software written by Tim Hudson (tjh@cryptsoft.com)"
+ *
+ * THIS SOFTWARE IS PROVIDED BY ERIC YOUNG ``AS IS'' AND
+ * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ * ARE DISCLAIMED.  IN NO EVENT SHALL THE AUTHOR OR CONTRIBUTORS BE LIABLE
+ * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+ * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
+ * OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+ * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+ * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
+ * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+ * SUCH DAMAGE.
+ *
+ * The licence and distribution terms for any publically available version or
+ * derivative of this code cannot be changed.  i.e. this code cannot simply be
+ * copied and put under another distribution licence
+ * [including the GNU Public Licence.] */
+
+#include <openssl/bio.h>
+
+#include <errno.h>
+#include <stddef.h>
+#include <limits.h>
+
+#include <openssl/err.h>
+#include <openssl/mem.h>
+#include <openssl/thread.h>
+
+
+/* BIO_set initialises a BIO structure to have the given type and sets the
+ * reference count to one. It returns one on success or zero on error. */
+static int bio_set(BIO *bio, const BIO_METHOD *method) {
+  /* This function can be called with a stack allocated |BIO| so we have to
+   * assume that the contents of |BIO| are arbitary. This also means that it'll
+   * leak memory if you call |BIO_set| twice on the same BIO. */
+  memset(bio, 0, sizeof(BIO));
+
+  bio->method = method;
+  bio->shutdown = 1;
+  bio->references = 1;
+
+  if (!CRYPTO_new_ex_data(CRYPTO_EX_INDEX_BIO, bio, &bio->ex_data)) {
+    return 0;
+  }
+
+  if (method->create != NULL) {
+    if (!method->create(bio)) {
+      CRYPTO_free_ex_data(CRYPTO_EX_INDEX_BIO, bio, &bio->ex_data);
+      return 0;
+    }
+  }
+
+  return 1;
+}
+
+BIO *BIO_new(const BIO_METHOD *method) {
+  BIO *ret = OPENSSL_malloc(sizeof(BIO));
+  if (ret == NULL) {
+    OPENSSL_PUT_ERROR(BIO, BIO_new, ERR_R_MALLOC_FAILURE);
+    return NULL;
+  }
+
+  if (!bio_set(ret, method)) {
+    OPENSSL_free(ret);
+    ret = NULL;
+  }
+
+  return ret;
+}
+
+int BIO_free(BIO *bio) {
+  BIO *next_bio;
+
+  for (; bio != NULL; bio = next_bio) {
+    int refs = CRYPTO_add(&bio->references, -1, CRYPTO_LOCK_BIO);
+    if (refs > 0) {
+      return 0;
+    }
+
+    if (bio->callback != NULL) {
+      int i = (int)bio->callback(bio, BIO_CB_FREE, NULL, 0, 0, 1);
+      if (i <= 0) {
+        return i;
+      }
+    }
+
+    next_bio = BIO_pop(bio);
+
+    CRYPTO_free_ex_data(CRYPTO_EX_INDEX_BIO, bio, &bio->ex_data);
+
+    if (bio->method != NULL && bio->method->destroy != NULL) {
+      bio->method->destroy(bio);
+    }
+
+    OPENSSL_free(bio);
+  }
+  return 1;
+}
+
+void BIO_vfree(BIO *bio) {
+  BIO_free(bio);
+}
+
+void BIO_free_all(BIO *bio) {
+  BIO_free(bio);
+}
+
+static int bio_io(BIO *bio, void *buf, int len, size_t method_offset,
+                  int callback_flags, unsigned long *num) {
+  int i;
+  typedef int (*io_func_t)(BIO *, char *, int);
+  io_func_t io_func = NULL;
+
+  if (bio != NULL && bio->method != NULL) {
+    io_func =
+        *((const io_func_t *)(((const uint8_t *)bio->method) + method_offset));
+  }
+
+  if (io_func == NULL) {
+    OPENSSL_PUT_ERROR(BIO, bio_io, BIO_R_UNSUPPORTED_METHOD);
+    return -2;
+  }
+
+  if (bio->callback != NULL) {
+    i = (int) bio->callback(bio, callback_flags, buf, len, 0L, 1L);
+    if (i <= 0) {
+      return i;
+    }
+  }
+
+  if (!bio->init) {
+    OPENSSL_PUT_ERROR(BIO, bio_io, BIO_R_UNINITIALIZED);
+    return -2;
+  }
+
+  i = 0;
+  if (buf != NULL && len > 0) {
+    i = io_func(bio, buf, len);
+  }
+
+  if (i > 0) {
+    *num += i;
+  }
+
+  if (bio->callback != NULL) {
+    i = (int)(bio->callback(bio, callback_flags | BIO_CB_RETURN, buf, len, 0L,
+                            (long)i));
+  }
+
+  return i;
+}
+
+int BIO_read(BIO *bio, void *buf, int len) {
+  return bio_io(bio, buf, len, offsetof(BIO_METHOD, bread), BIO_CB_READ,
+                &bio->num_read);
+}
+
+int BIO_gets(BIO *bio, char *buf, int len) {
+  return bio_io(bio, buf, len, offsetof(BIO_METHOD, bgets), BIO_CB_GETS,
+                &bio->num_read);
+}
+
+int BIO_write(BIO *bio, const void *in, int inl) {
+  return bio_io(bio, (char *)in, inl, offsetof(BIO_METHOD, bwrite),
+                BIO_CB_WRITE, &bio->num_write);
+}
+
+int BIO_puts(BIO *bio, const char *in) {
+  return BIO_write(bio, in, strlen(in));
+}
+
+int BIO_flush(BIO *bio) {
+  return BIO_ctrl(bio, BIO_CTRL_FLUSH, 0, NULL);
+}
+
+long BIO_ctrl(BIO *bio, int cmd, long larg, void *parg) {
+  long ret;
+
+  if (bio == NULL) {
+    return 0;
+  }
+
+  if (bio->method == NULL || bio->method->ctrl == NULL) {
+    OPENSSL_PUT_ERROR(BIO, BIO_ctrl, BIO_R_UNSUPPORTED_METHOD);
+    return -2;
+  }
+
+  if (bio->callback != NULL) {
+    ret = bio->callback(bio, BIO_CB_CTRL, parg, cmd, larg, 1);
+    if (ret <= 0) {
+      return ret;
+    }
+  }
+
+  ret = bio->method->ctrl(bio, cmd, larg, parg);
+
+  if (bio->callback != NULL) {
+    ret = bio->callback(bio, BIO_CB_CTRL | BIO_CB_RETURN, parg, cmd, larg, ret);
+  }
+
+  return ret;
+}
+
+char *BIO_ptr_ctrl(BIO *b, int cmd, long larg) {
+  char *p = NULL;
+
+  if (BIO_ctrl(b, cmd, larg, (void *)&p) <= 0) {
+    return NULL;
+  }
+
+  return p;
+}
+
+long BIO_int_ctrl(BIO *b, int cmd, long larg, int iarg) {
+  int i = iarg;
+
+  return BIO_ctrl(b, cmd, larg, (void *)&i);
+}
+
+int BIO_reset(BIO *bio) {
+  return BIO_ctrl(bio, BIO_CTRL_RESET, 0, NULL);
+}
+
+void BIO_set_flags(BIO *bio, int flags) {
+  bio->flags |= flags;
+}
+
+int BIO_test_flags(const BIO *bio, int flags) {
+  return bio->flags & flags;
+}
+
+int BIO_should_read(const BIO *bio) {
+  return BIO_test_flags(bio, BIO_FLAGS_READ);
+}
+
+int BIO_should_write(const BIO *bio) {
+  return BIO_test_flags(bio, BIO_FLAGS_WRITE);
+}
+
+int BIO_should_retry(const BIO *bio) {
+  return BIO_test_flags(bio, BIO_FLAGS_SHOULD_RETRY);
+}
+
+int BIO_should_io_special(const BIO *bio) {
+  return BIO_test_flags(bio, BIO_FLAGS_IO_SPECIAL);
+}
+
+int BIO_get_retry_reason(const BIO *bio) { return bio->retry_reason; }
+
+void BIO_clear_flags(BIO *bio, int flags) {
+  bio->flags &= ~flags;
+}
+
+void BIO_set_retry_read(BIO *bio) {
+  bio->flags |= BIO_FLAGS_READ | BIO_FLAGS_SHOULD_RETRY;
+}
+
+void BIO_set_retry_write(BIO *bio) {
+  bio->flags |= BIO_FLAGS_WRITE | BIO_FLAGS_SHOULD_RETRY;
+}
+
+static const int kRetryFlags = BIO_FLAGS_RWS | BIO_FLAGS_SHOULD_RETRY;
+
+int BIO_get_retry_flags(BIO *bio) {
+  return bio->flags & kRetryFlags;
+}
+
+void BIO_clear_retry_flags(BIO *bio) {
+  bio->flags &= ~kRetryFlags;
+  bio->retry_reason = 0;
+}
+
+int BIO_method_type(const BIO *bio) { return bio->method->type; }
+
+void BIO_copy_next_retry(BIO *bio) {
+  BIO_clear_retry_flags(bio);
+  BIO_set_flags(bio, BIO_get_retry_flags(bio->next_bio));
+  bio->retry_reason = bio->next_bio->retry_reason;
+}
+
+long BIO_callback_ctrl(BIO *bio, int cmd, bio_info_cb fp) {
+  long ret;
+  bio_info_cb cb;
+
+  if (bio == NULL) {
+    return 0;
+  }
+
+  if (bio->method == NULL || bio->method->callback_ctrl == NULL) {
+    OPENSSL_PUT_ERROR(BIO, BIO_callback_ctrl, BIO_R_UNSUPPORTED_METHOD);
+    return 0;
+  }
+
+  cb = bio->callback;
+
+  if (cb != NULL) {
+    ret = cb(bio, BIO_CB_CTRL, (void *)&fp, cmd, 0, 1L);
+    if (ret <= 0) {
+      return ret;
+    }
+  }
+
+  ret = bio->method->callback_ctrl(bio, cmd, fp);
+
+  if (cb != NULL) {
+    ret = cb(bio, BIO_CB_CTRL | BIO_CB_RETURN, (void *)&fp, cmd, 0, ret);
+  }
+
+  return ret;
+}
+
+size_t BIO_pending(const BIO *bio) {
+  return BIO_ctrl((BIO *) bio, BIO_CTRL_PENDING, 0, NULL);
+}
+
+size_t BIO_wpending(const BIO *bio) {
+  return BIO_ctrl((BIO *) bio, BIO_CTRL_WPENDING, 0, NULL);
+}
+
+int BIO_set_close(BIO *bio, int close_flag) {
+  return BIO_ctrl(bio, BIO_CTRL_SET_CLOSE, close_flag, NULL);
+}
+
+BIO *BIO_push(BIO *bio, BIO *appended_bio) {
+  BIO *last_bio;
+
+  if (bio == NULL) {
+    return bio;
+  }
+
+  last_bio = bio;
+  while (last_bio->next_bio != NULL) {
+    last_bio = last_bio->next_bio;
+  }
+
+  last_bio->next_bio = appended_bio;
+  /* TODO(fork): this seems very suspect. If we got rid of BIO SSL, we could
+   * get rid of this. */
+  BIO_ctrl(bio, BIO_CTRL_PUSH, 0, bio);
+
+  return bio;
+}
+
+BIO *BIO_pop(BIO *bio) {
+  BIO *ret;
+
+  if (bio == NULL) {
+    return NULL;
+  }
+  ret = bio->next_bio;
+  BIO_ctrl(bio, BIO_CTRL_POP, 0, bio);
+  bio->next_bio = NULL;
+  return ret;
+}
+
+BIO *BIO_next(BIO *bio) {
+  if (!bio) {
+    return NULL;
+  }
+  return bio->next_bio;
+}
+
+BIO *BIO_find_type(BIO *bio, int type) {
+  int method_type, mask;
+
+  if (!bio) {
+    return NULL;
+  }
+  mask = type & 0xff;
+
+  do {
+    if (bio->method != NULL) {
+      method_type = bio->method->type;
+
+      if (!mask) {
+        if (method_type & type) {
+          return bio;
+        }
+      } else if (method_type == type) {
+        return bio;
+      }
+    }
+    bio = bio->next_bio;
+  } while (bio != NULL);
+
+  return NULL;
+}
+
+int BIO_indent(BIO *bio, unsigned indent, unsigned max_indent) {
+  if (indent > max_indent) {
+    indent = max_indent;
+  }
+
+  while (indent--) {
+    if (BIO_puts(bio, " ") != 1) {
+      return 0;
+    }
+  }
+  return 1;
+}
+
+void BIO_print_errors_fp(FILE *out) {
+  BIO *bio = BIO_new_fp(out, BIO_NOCLOSE);
+  BIO_print_errors(bio);
+  BIO_free(bio);
+}
+
+static int print_bio(const char *str, size_t len, void *bio) {
+  return BIO_write((BIO *)bio, str, len);
+}
+
+void BIO_print_errors(BIO *bio) {
+  ERR_print_errors_cb(print_bio, bio);
+}

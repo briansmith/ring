@@ -1,0 +1,4 @@
+build/
+ssl/test/runner/runner
+*.swp
+*.swo

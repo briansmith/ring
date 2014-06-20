@@ -1,0 +1,25 @@
+cmake --version  # ensure that you have >= 2.8.8
+
+mkdir build
+cd build
+cmake ..
+make
+
+If you see an error about "Cannot find source file: OBJECT" then your version of CMake is too old.
+
+Note that the default build flags in the top-leve CMakeLists.txt are for
+debugging - optimisation isn't enabled.
+
+If you'll be building a lot, then installing Ninja[1] is highly recommended.
+Wipe out the build directory and recreate it, but using:
+
+cmake -GNinja ..
+ninja
+
+If you want to cross-compile then there are example toolchain files for 32-bit
+Intel and ARM in util/. Wipe out the build directory, recreate it and run cmake
+like this:
+
+cmake -DCMAKE_TOOLCHAIN_FILE=../util/arm-toolchain.cmake -GNinja ..
+
+[1] http://martine.github.io/ninja/
