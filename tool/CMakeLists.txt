@@ -3,8 +3,9 @@ include_directories(../include)
 add_executable(
 	bssl
 
-	tool.cc
 	const.cc
+	speed.cc
+	tool.cc
 )
 
 target_link_libraries(bssl ssl crypto -lrt)
