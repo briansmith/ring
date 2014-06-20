@@ -2545,6 +2545,13 @@ int ssl3_send_client_key_exchange(SSL *s)
 			unsigned int i;
 #endif
 
+			if (s->session->sess_cert == NULL) 
+				{
+				ssl3_send_alert(s,SSL3_AL_FATAL,SSL_AD_UNEXPECTED_MESSAGE);
+				OPENSSL_PUT_ERROR(SSL, ssl3_send_client_key_exchange, SSL_R_UNEXPECTED_MESSAGE);
+				goto err;
+				}
+
 			/* Did we send out the client's
 			 * ECDH share for use in premaster
 			 * computation as part of client certificate?
