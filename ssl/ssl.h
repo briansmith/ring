@@ -696,8 +696,11 @@ struct ssl_session_st
 /* Don't attempt to automatically build certificate chain */
 #define SSL_MODE_NO_AUTO_CHAIN 0x00000008L
 /* Save RAM by releasing read and write buffers when they're empty. (SSL3 and
- * TLS only.)  "Released" buffers are put onto a free-list in the context
- * or just freed (depending on the context's setting for freelist_max_len). */
+ * TLS only.)  "Released" buffers are put onto a free-list in the context or
+ * just freed (depending on the context's setting for freelist_max_len). Also
+ * frees up RAM by releasing the list of client ciphersuites as soon as
+ * possible (SSL3 and TLS only). This stops SSL_get_shared_ciphers from
+ * working. */
 #define SSL_MODE_RELEASE_BUFFERS 0x00000010L
 
 /* Send the current time in the Random fields of the ClientHello and

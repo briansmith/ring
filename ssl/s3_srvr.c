@@ -1415,6 +1415,18 @@ int ssl3_send_server_hello(SSL *s)
 		    s->session->original_handshake_hash_len == 0)
 			s->s3->tlsext_channel_id_valid = 0;
 
+		if (s->mode & SSL_MODE_RELEASE_BUFFERS)
+			{
+			/* Free s->session->ciphers in order to release memory. This
+			 * breaks SSL_get_shared_ciphers(), but many servers will
+			 * prefer the memory savings.
+			 *
+			 * It also breaks REUSE_CIPHER_BUG, which is disabled
+			 * in our build. */
+			sk_SSL_CIPHER_free(s->session->ciphers);
+			s->session->ciphers = NULL;
+			}
+
 		buf=(unsigned char *)s->init_buf->data;
 #ifdef OPENSSL_NO_TLSEXT
 		p=s->s3->server_random;
