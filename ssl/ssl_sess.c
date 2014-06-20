@@ -143,9 +143,19 @@
 
 #include "ssl_locl.h"
 
+/* The address of this is a magic value, a pointer to which is returned by
+ * SSL_magic_pending_session_ptr(). It allows a session callback to indicate
+ * that it needs to asynchronously fetch session information. */
+static char g_pending_session_magic;
+
 static void SSL_SESSION_list_remove(SSL_CTX *ctx, SSL_SESSION *s);
 static void SSL_SESSION_list_add(SSL_CTX *ctx,SSL_SESSION *s);
 static int remove_session_lock(SSL_CTX *ctx, SSL_SESSION *c, int lck);
+
+SSL_SESSION *SSL_magic_pending_session_ptr()
+	{
+	return (SSL_SESSION*) &g_pending_session_magic;
+	}
 
 SSL_SESSION *SSL_get_session(const SSL *ssl)
 /* aka SSL_get0_session; gets 0 objects, just returns a copy of the pointer */
@@ -500,6 +510,13 @@ int ssl_get_prev_session(SSL *s, unsigned char *session_id, int len,
 	
 		if ((ret=s->session_ctx->get_session_cb(s,session_id,len,&copy)))
 			{
+			if (ret == SSL_magic_pending_session_ptr())
+				{
+				/* This is a magic value which indicates that
+				 * the callback needs to unwind the stack and
+				 * figure out the session asynchronously. */
+				return PENDING_SESSION;
+				}
 			s->session_ctx->stats.sess_cb_hit++;
 
 			/* Increment reference count now if the session callback

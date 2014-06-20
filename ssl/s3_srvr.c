@@ -321,9 +321,14 @@ int ssl3_accept(SSL *s)
 		case SSL3_ST_SR_CLNT_HELLO_A:
 		case SSL3_ST_SR_CLNT_HELLO_B:
 		case SSL3_ST_SR_CLNT_HELLO_C:
-
+		case SSL3_ST_SR_CLNT_HELLO_D:
 			s->shutdown=0;
 			ret=ssl3_get_client_hello(s);
+			if (ret == PENDING_SESSION) {
+				s->state = SSL3_ST_SR_CLNT_HELLO_D;
+				s->rwstate = SSL_PENDING_SESSION;
+				goto end;
+			}
 			if (ret <= 0) goto end;
 			s->renegotiate = 2;
 			s->state=SSL3_ST_SW_SRVR_HELLO_A;
@@ -887,16 +892,27 @@ int ssl3_get_client_hello(SSL *s)
 		{
 		s->state=SSL3_ST_SR_CLNT_HELLO_B;
 		}
-	s->first_packet=1;
-	n=s->method->ssl_get_message(s,
-		SSL3_ST_SR_CLNT_HELLO_B,
-		SSL3_ST_SR_CLNT_HELLO_C,
-		SSL3_MT_CLIENT_HELLO,
-		SSL3_RT_MAX_PLAIN_LENGTH,
-		&ok);
+	if (s->state != SSL3_ST_SR_CLNT_HELLO_D)
+		{
+		s->first_packet=1;
+		n=s->method->ssl_get_message(s,
+			SSL3_ST_SR_CLNT_HELLO_B,
+			SSL3_ST_SR_CLNT_HELLO_C,
+			SSL3_MT_CLIENT_HELLO,
+			SSL3_RT_MAX_PLAIN_LENGTH,
+			&ok);
 
-	if (!ok) return((int)n);
-	s->first_packet=0;
+		if (!ok) return((int)n);
+		s->first_packet=0;
+		}
+	else
+		{
+		/* We have previously parsed the ClientHello message, and can't
+		 * call ssl_get_message again without hashing the message into
+		 * the Finished digest again. */
+		n = s->init_num;
+		}
+
 	d=p=(unsigned char *)s->init_msg;
 
 	/* use version from inside client hello, not from record header
@@ -967,6 +983,11 @@ int ssl3_get_client_hello(SSL *s)
 			}
 		else if (i == -1)
 			goto err;
+		else if (i == PENDING_SESSION)
+			{
+			ret = PENDING_SESSION;
+			goto err;
+			}
 		else /* i == 0 */
 			{
 			if (!ssl_get_new_session(s,1))
@@ -1337,7 +1358,7 @@ f_err:
 		}
 err:
 	if (ciphers != NULL) sk_SSL_CIPHER_free(ciphers);
-	return ret < 0 ? -1 : ret;
+	return ret;
 	}
 
 int ssl3_send_server_hello(SSL *s)

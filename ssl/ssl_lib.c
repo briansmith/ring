@@ -2707,6 +2707,9 @@ int SSL_get_error(const SSL *s,int i)
 			return(SSL_ERROR_SSL);
 		}
 
+	if ((i < 0) && SSL_want_session(s))
+		return(SSL_ERROR_PENDING_SESSION);
+
 	if ((i < 0) && SSL_want_read(s))
 		{
 		bio=SSL_get_rbio(s);

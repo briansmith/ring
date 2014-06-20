@@ -474,6 +474,8 @@
 #define CERT_PRIVATE_KEY	2
 */
 
+#define PENDING_SESSION -10000
+
 #ifndef OPENSSL_NO_EC
 /* From ECC-TLS draft, used in encoding the curve type in 
  * ECParameters
