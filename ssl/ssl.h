@@ -438,7 +438,9 @@ struct ssl_cipher_st
 	unsigned long algorithm_ssl;	/* (major) protocol version */
 
 	unsigned long algo_strength;	/* strength and export flags */
-	unsigned long algorithm2;	/* Extra flags */
+	unsigned long algorithm2;	/* Extra flags. See SSL2_CF_* in ssl2.h
+					   and algorithm2 section in
+					   ssl_locl.h */
 	int strength_bits;		/* Number of bits really used */
 	int alg_bits;			/* Number of bits for algorithm */
 	};
@@ -824,6 +826,9 @@ void SSL_set_msg_callback(SSL *ssl, void (*cb)(int write_p, int version, int con
 #define SSL_CTX_set_msg_callback_arg(ctx, arg) SSL_CTX_ctrl((ctx), SSL_CTRL_SET_MSG_CALLBACK_ARG, 0, (arg))
 #define SSL_set_msg_callback_arg(ssl, arg) SSL_ctrl((ssl), SSL_CTRL_SET_MSG_CALLBACK_ARG, 0, (arg))
 
+
+struct ssl_aead_ctx_st;
+typedef struct ssl_aead_ctx_st SSL_AEAD_CTX;
 
 #if defined(OPENSSL_SYS_MSDOS) && !defined(OPENSSL_SYS_WIN32)
 #define SSL_MAX_CERT_LIST_DEFAULT 1024*30 /* 30k max cert list :-) */
@@ -1404,10 +1409,16 @@ struct ssl_st
 	/* These are the ones being used, the ones in SSL_SESSION are
 	 * the ones to be 'copied' into these ones */
 	int mac_flags; 
+	SSL_AEAD_CTX *aead_read_ctx;	/* AEAD context. If non-NULL, then
+					   |enc_read_ctx| and |read_hash| are
+					   ignored. */
 	EVP_CIPHER_CTX *enc_read_ctx;		/* cryptographic state */
 	EVP_MD_CTX *read_hash;		/* used for mac generation */
 	char *expand;
 
+	SSL_AEAD_CTX *aead_write_ctx;	/* AEAD context. If non-NULL, then
+					   |enc_write_ctx| and |write_hash| are
+					   ignored. */
 	EVP_CIPHER_CTX *enc_write_ctx;		/* cryptographic state */
 	EVP_MD_CTX *write_hash;		/* used for mac generation */
 	char *compress;	
@@ -2658,6 +2669,8 @@ void ERR_load_SSL_strings(void);
 #define SSL_F_ssl3_send_channel_id 276
 #define SSL_F_SSL_CTX_set_cipher_list_tls11 277
 #define SSL_F_tls1_change_cipher_state_cipher 278
+#define SSL_F_tls1_change_cipher_state_aead 279
+#define SSL_F_tls1_aead_ctx_init 280
 #define SSL_R_UNABLE_TO_FIND_ECDH_PARAMETERS 100
 #define SSL_R_DECRYPTION_FAILED_OR_BAD_RECORD_MAC 101
 #define SSL_R_INVALID_NULL_CMD_NAME 102

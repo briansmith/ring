@@ -350,29 +350,62 @@ void ssl_load_ciphers(void)
 	ssl_mac_secret_size[SSL_MD_SHA384_IDX]= EVP_MD_size(EVP_sha384());
 	}
 
-int ssl_cipher_get_evp(const SSL_SESSION *s, const EVP_CIPHER **enc,
-	     const EVP_MD **md, int *mac_pkey_type, int *mac_secret_size,SSL_COMP **comp)
+/* ssl_cipher_get_comp sets |comp| to the correct SSL_COMP for the given
+ * session and returns 1. On error it returns 0. */
+int ssl_cipher_get_comp(const SSL_SESSION *s, SSL_COMP **comp)
 	{
-	size_t compression_index;
+	size_t index;
+
+	SSL_COMP ctmp;
+
+	*comp=NULL;
+	ctmp.id=s->compress_meth;
+	if (ssl_comp_methods != NULL)
+		{
+		if (sk_SSL_COMP_find(ssl_comp_methods, &index, &ctmp))
+			*comp=sk_SSL_COMP_value(ssl_comp_methods,index);
+		else
+			*comp=NULL;
+		}
+
+	return 1;
+	}
+
+/* ssl_cipher_get_evp_aead sets |*aead| to point to the correct EVP_AEAD object
+ * for |s->cipher|. It returns 1 on success and 0 on error. */
+int ssl_cipher_get_evp_aead(const SSL_SESSION *s, const EVP_AEAD **aead)
+	{
+	const SSL_CIPHER *c = s->cipher;
+
+	*aead = NULL;
+
+	if (c == NULL)
+		return 0;
+	if ((c->algorithm2 & SSL_CIPHER_ALGORITHM2_AEAD) == 0)
+		return 0;
+
+#ifndef OPENSSL_NO_AES
+	/* There is only one AEAD for now. */
+	*aead = EVP_aead_aes_128_gcm();
+	return 1;
+#endif
+
+	return 0;
+	}
+
+int ssl_cipher_get_evp(const SSL_SESSION *s, const EVP_CIPHER **enc,
+	     const EVP_MD **md, int *mac_pkey_type, int *mac_secret_size)
+	{
 	int i;
 	const SSL_CIPHER *c;
 
 	c=s->cipher;
 	if (c == NULL) return(0);
-	if (comp != NULL)
-		{
-		SSL_COMP ctmp;
 
-		*comp=NULL;
-		ctmp.id=s->compress_meth;
-		if (ssl_comp_methods != NULL)
-			{
-			if (sk_SSL_COMP_find(ssl_comp_methods, &compression_index, &ctmp))
-				*comp=sk_SSL_COMP_value(ssl_comp_methods, compression_index);
-			else
-				*comp=NULL;
-			}
-		}
+	/* This function doesn't deal with EVP_AEAD. See
+	 * |ssl_cipher_get_aead_evp|. */
+	if (c->algorithm2 & SSL_CIPHER_ALGORITHM2_AEAD)
+		return(0);
 
 	if ((enc == NULL) || (md == NULL)) return(0);
 
