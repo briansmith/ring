@@ -191,7 +191,8 @@ BN_ULONG bn_add_words(BN_ULONG *rp, const BN_ULONG *ap, const BN_ULONG *bp,
   if (n <= 0)
     return 0;
 
-  asm("	subq	%0,%0		\n" /* clear carry */
+  asm volatile (
+      "	subq	%0,%0		\n" /* clear carry */
       "	jmp	1f		\n"
       ".p2align 4			\n"
       "1:	movq	(%4,%2,8),%0	\n"
@@ -202,7 +203,7 @@ BN_ULONG bn_add_words(BN_ULONG *rp, const BN_ULONG *ap, const BN_ULONG *bp,
       "	sbbq	%0,%0		\n"
       : "=&r"(ret), "+c"(n), "+r"(i)
       : "r"(rp), "r"(ap), "r"(bp)
-      : "cc");
+      : "cc", "memory");
 
   return ret & 1;
 }
@@ -216,7 +217,8 @@ BN_ULONG bn_sub_words(BN_ULONG *rp, const BN_ULONG *ap, const BN_ULONG *bp,
   if (n <= 0)
     return 0;
 
-  asm("	subq	%0,%0		\n" /* clear borrow */
+  asm volatile (
+      "	subq	%0,%0		\n" /* clear borrow */
       "	jmp	1f		\n"
       ".p2align 4			\n"
       "1:	movq	(%4,%2,8),%0	\n"
@@ -227,7 +229,7 @@ BN_ULONG bn_sub_words(BN_ULONG *rp, const BN_ULONG *ap, const BN_ULONG *bp,
       "	sbbq	%0,%0		\n"
       : "=&r"(ret), "+c"(n), "+r"(i)
       : "r"(rp), "r"(ap), "r"(bp)
-      : "cc");
+      : "cc", "memory");
 
   return ret & 1;
 }
