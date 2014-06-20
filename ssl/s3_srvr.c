@@ -2071,6 +2071,11 @@ int ssl3_get_client_key_exchange(SSL *s)
 #ifndef OPENSSL_NO_RSA
 	if (alg_k & SSL_kRSA)
 		{
+		unsigned char rand_premaster_secret[SSL_MAX_MASTER_KEY_LENGTH];
+		int decrypt_len, decrypt_good_mask;
+		unsigned char version_good;
+		size_t j;
+
 		/* FIX THIS UP EAY EAY EAY EAY */
 		if (s->s3->tmp.use_rsa_tmp)
 			{
@@ -2108,8 +2113,9 @@ int ssl3_get_client_key_exchange(SSL *s)
 				{
 				if (!(s->options & SSL_OP_TLS_D5_BUG))
 					{
+					al = SSL_AD_DECODE_ERROR;
 					OPENSSL_PUT_ERROR(SSL, ssl3_get_client_key_exchange, SSL_R_TLS_RSA_ENCRYPTED_VALUE_LENGTH_IS_WRONG);
-					goto err;
+					goto f_err;
 					}
 				else
 					p-=2;
@@ -2118,59 +2124,111 @@ int ssl3_get_client_key_exchange(SSL *s)
 				n=i;
 			}
 
-		i=RSA_private_decrypt((int)n,p,p,rsa,RSA_PKCS1_PADDING);
-
-		al = -1;
-		
-		if (i != SSL_MAX_MASTER_KEY_LENGTH)
+		/* Reject overly short RSA ciphertext because we want to be
+		 * sure that the buffer size makes it safe to iterate over the
+		 * entire size of a premaster secret
+		 * (SSL_MAX_MASTER_KEY_LENGTH). The actual expected size is
+		 * larger due to RSA padding, but the bound is sufficient to be
+		 * safe. */
+		if (n < SSL_MAX_MASTER_KEY_LENGTH)
 			{
-			al=SSL_AD_DECODE_ERROR;
-			/* OPENSSL_PUT_ERROR(SSL, ssl3_get_client_key_exchange, SSL_R_BAD_RSA_DECRYPT); */
+			al = SSL_AD_DECRYPT_ERROR;
+			OPENSSL_PUT_ERROR(SSL, ssl3_get_client_key_exchange, SSL_R_DECRYPTION_FAILED);
+			goto f_err;
 			}
 
-		if ((al == -1) && !((p[0] == (s->client_version>>8)) && (p[1] == (s->client_version & 0xff))))
-			{
-			/* The premaster secret must contain the same version number as the
-			 * ClientHello to detect version rollback attacks (strangely, the
-			 * protocol does not offer such protection for DH ciphersuites).
-			 * However, buggy clients exist that send the negotiated protocol
-			 * version instead if the server does not support the requested
-			 * protocol version.
-			 * If SSL_OP_TLS_ROLLBACK_BUG is set, tolerate such clients. */
-			if (!((s->options & SSL_OP_TLS_ROLLBACK_BUG) &&
-				(p[0] == (s->version>>8)) && (p[1] == (s->version & 0xff))))
-				{
-				al=SSL_AD_DECODE_ERROR;
-				/* OPENSSL_PUT_ERROR(SSL, ssl3_get_client_key_exchange, SSL_R_BAD_PROTOCOL_VERSION_NUMBER); */
+		/* We must not leak whether a decryption failure occurs because
+		 * of Bleichenbacher's attack on PKCS #1 v1.5 RSA padding (see
+		 * RFC 2246, section 7.4.7.1). The code follows that advice of
+		 * the TLS RFC and generates a random premaster secret for the
+		 * case that the decrypt fails. See
+		 * https://tools.ietf.org/html/rfc5246#section-7.4.7.1 */
+		if (RAND_pseudo_bytes(rand_premaster_secret,
+				      sizeof(rand_premaster_secret)) <= 0)
+			goto err;
 
-				/* The Klima-Pokorny-Rosa extension of Bleichenbacher's attack
-				 * (http://eprint.iacr.org/2003/052/) exploits the version
-				 * number check as a "bad version oracle" -- an alert would
-				 * reveal that the plaintext corresponding to some ciphertext
-				 * made up by the adversary is properly formatted except
-				 * that the version number is wrong.  To avoid such attacks,
-				 * we should treat this just like any other decryption error. */
-				}
+		decrypt_len = RSA_private_decrypt((int)n,p,p,rsa,RSA_PKCS1_PADDING);
+		ERR_clear_error();
+
+		/* decrypt_len should be SSL_MAX_MASTER_KEY_LENGTH.
+		 * decrypt_good_mask will be zero if so and non-zero otherwise. */
+		decrypt_good_mask = decrypt_len ^ SSL_MAX_MASTER_KEY_LENGTH;
+
+		/* If the version in the decrypted pre-master secret is correct
+		 * then version_good will be zero. The Klima-Pokorny-Rosa
+		 * extension of Bleichenbacher's attack
+		 * (http://eprint.iacr.org/2003/052/) exploits the version
+		 * number check as a "bad version oracle". Thus version checks
+		 * are done in constant time and are treated like any other
+		 * decryption error. */
+		version_good = p[0] ^ (s->client_version>>8);
+		version_good |= p[1] ^ (s->client_version&0xff);
+
+		/* The premaster secret must contain the same version number as
+		 * the ClientHello to detect version rollback attacks
+		 * (strangely, the protocol does not offer such protection for
+		 * DH ciphersuites). However, buggy clients exist that send the
+		 * negotiated protocol version instead if the server does not
+		 * support the requested protocol version. If
+		 * SSL_OP_TLS_ROLLBACK_BUG is set, tolerate such clients. */
+		if (s->options & SSL_OP_TLS_ROLLBACK_BUG)
+			{
+			unsigned char workaround_mask = version_good;
+			unsigned char workaround;
+
+			/* workaround_mask will be 0xff if version_good is
+			 * non-zero (i.e. the version match failed). Otherwise
+			 * it'll be 0x00. */
+			workaround_mask |= workaround_mask >> 4;
+			workaround_mask |= workaround_mask >> 2;
+			workaround_mask |= workaround_mask >> 1;
+			workaround_mask = ~((workaround_mask & 1) - 1);
+
+			workaround = p[0] ^ (s->version>>8);
+			workaround |= p[1] ^ (s->version&0xff);
+
+			/* If workaround_mask is 0xff (i.e. there was a version
+			 * mismatch) then we copy the value of workaround over
+			 * version_good. */
+			version_good = (workaround & workaround_mask) |
+				       (version_good & ~workaround_mask);
 			}
 
-		if (al != -1)
+		/* If any bits in version_good are set then they'll poision
+		 * decrypt_good_mask and cause rand_premaster_secret to be
+		 * used. */
+		decrypt_good_mask |= version_good;
+
+		/* decrypt_good_mask will be zero iff decrypt_len ==
+		 * SSL_MAX_MASTER_KEY_LENGTH and the version check passed. We
+		 * fold the bottom 32 bits of it with an OR so that the LSB
+		 * will be zero iff everything is good. This assumes that we'll
+		 * never decrypt a value > 2**31 bytes, which seems safe. */
+		decrypt_good_mask |= decrypt_good_mask >> 16;
+		decrypt_good_mask |= decrypt_good_mask >> 8;
+		decrypt_good_mask |= decrypt_good_mask >> 4;
+		decrypt_good_mask |= decrypt_good_mask >> 2;
+		decrypt_good_mask |= decrypt_good_mask >> 1;
+		/* Now select only the LSB and subtract one. If decrypt_len ==
+		 * SSL_MAX_MASTER_KEY_LENGTH and the version check passed then
+		 * decrypt_good_mask will be all ones. Otherwise it'll be all
+		 * zeros. */
+		decrypt_good_mask &= 1;
+		decrypt_good_mask--;
+
+		/* Now copy rand_premaster_secret over p using
+		 * decrypt_good_mask. */
+		for (j = 0; j < sizeof(rand_premaster_secret); j++)
 			{
-			/* Some decryption failure -- use random value instead as countermeasure
-			 * against Bleichenbacher's attack on PKCS #1 v1.5 RSA padding
-			 * (see RFC 2246, section 7.4.7.1). */
-			ERR_clear_error();
-			i = SSL_MAX_MASTER_KEY_LENGTH;
-			p[0] = s->client_version >> 8;
-			p[1] = s->client_version & 0xff;
-			if (RAND_pseudo_bytes(p+2, i-2) <= 0) /* should be RAND_bytes, but we cannot work around a failure */
-				goto err;
+			p[j] = (p[j] & decrypt_good_mask) |
+			       (rand_premaster_secret[j] & ~decrypt_good_mask);
 			}
-	
+
 		s->session->master_key_length=
 			s->method->ssl3_enc->generate_master_secret(s,
 				s->session->master_key,
-				p,i);
-		OPENSSL_cleanse(p,i);
+				p,sizeof(rand_premaster_secret));
+		OPENSSL_cleanse(p,sizeof(rand_premaster_secret));
 		}
 	else
 #endif

@@ -212,7 +212,7 @@ static int constant_time_le(int x, int y) {
 
 int RSA_padding_check_PKCS1_type_2(uint8_t *to, unsigned tlen, const uint8_t *from,
                                    unsigned flen, unsigned num) {
-  int i;
+  size_t i;
   unsigned char *em = NULL;
   int ret = -1;
   int first_byte_is_zero, second_byte_is_two, looking_for_index;
