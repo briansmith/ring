@@ -756,6 +756,14 @@ int ssl3_accept(SSL *s)
 
 			s->init_num=0;
 
+			/* If we aren't retaining peer certificates then we can
+			 * discard it now. */
+			if (s->session->peer && s->ctx->retain_only_sha256_of_client_certs)
+				{
+				X509_free(s->session->peer);
+				s->session->peer = NULL;
+				}
+
 			if (s->renegotiate == 2) /* skipped if we just sent a HelloRequest */
 				{
 				s->renegotiate=0;
@@ -2811,6 +2819,7 @@ int ssl3_get_client_certificate(SSL *s)
 	const unsigned char *p,*q;
 	unsigned char *d;
 	STACK_OF(X509) *sk=NULL;
+	SHA256_CTX sha256;
 
 	n=s->method->ssl_get_message(s,
 		SSL3_ST_SR_CERT_A,
@@ -2870,6 +2879,17 @@ int ssl3_get_client_certificate(SSL *s)
 			al=SSL_AD_DECODE_ERROR;
 			OPENSSL_PUT_ERROR(SSL, ssl3_get_client_certificate, SSL_R_CERT_LENGTH_MISMATCH);
 			goto f_err;
+			}
+
+		if (nc == 0 && s->ctx->retain_only_sha256_of_client_certs)
+			{
+			/* If this is the first certificate, and we don't want
+			 * to keep peer certificates in memory, then we hash it
+			 * right away. */
+			SHA256_Init(&sha256);
+			SHA256_Update(&sha256, p, l);
+			SHA256_Final(s->session->peer_sha256, &sha256);
+			s->session->peer_sha256_valid = 1;
 			}
 
 		q=p;

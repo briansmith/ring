@@ -121,12 +121,13 @@ typedef struct ssl_session_asn1_st
 	ASN1_OCTET_STRING psk_identity_hint;
 	ASN1_OCTET_STRING psk_identity;
 #endif /* OPENSSL_NO_PSK */
+	ASN1_OCTET_STRING peer_sha256;
 	} SSL_SESSION_ASN1;
 
 int i2d_SSL_SESSION(SSL_SESSION *in, unsigned char **pp)
 	{
 #define LSIZE2 (sizeof(long)*2)
-	int v1=0,v2=0,v3=0,v4=0,v5=0,v7=0,v8=0;
+	int v1=0,v2=0,v3=0,v4=0,v5=0,v7=0,v8=0,v13=0;
 	unsigned char buf[4],ibuf1[LSIZE2],ibuf2[LSIZE2];
 	unsigned char ibuf3[LSIZE2],ibuf4[LSIZE2],ibuf5[LSIZE2];
 #ifndef OPENSSL_NO_TLSEXT
@@ -251,6 +252,13 @@ int i2d_SSL_SESSION(SSL_SESSION *in, unsigned char **pp)
 		a.psk_identity.type=V_ASN1_OCTET_STRING;
 		a.psk_identity.data=(unsigned char *)(in->psk_identity);
 		}
+
+	if (in->peer_sha256_valid)
+		{
+		a.peer_sha256.length = sizeof(in->peer_sha256);
+		a.peer_sha256.type = V_ASN1_OCTET_STRING;
+		a.peer_sha256.data = in->peer_sha256;
+		}
 #endif /* OPENSSL_NO_PSK */
 
 	M_ASN1_I2D_len(&(a.version),		i2d_ASN1_INTEGER);
@@ -264,7 +272,7 @@ int i2d_SSL_SESSION(SSL_SESSION *in, unsigned char **pp)
 		M_ASN1_I2D_len_EXP_opt(&(a.time),i2d_ASN1_INTEGER,1,v1);
 	if (in->timeout != 0L)
 		M_ASN1_I2D_len_EXP_opt(&(a.timeout),i2d_ASN1_INTEGER,2,v2);
-	if (in->peer != NULL)
+	if (in->peer != NULL && in->peer_sha256_valid == 0)
 		M_ASN1_I2D_len_EXP_opt(in->peer,i2d_X509,3,v3);
 	M_ASN1_I2D_len_EXP_opt(&a.session_id_context,i2d_ASN1_OCTET_STRING,4,v4);
 	if (in->verify_result != X509_V_OK)
@@ -284,6 +292,8 @@ int i2d_SSL_SESSION(SSL_SESSION *in, unsigned char **pp)
 	if (in->psk_identity)
         	M_ASN1_I2D_len_EXP_opt(&(a.psk_identity), i2d_ASN1_OCTET_STRING,8,v8);
 #endif /* OPENSSL_NO_PSK */
+	if (in->peer_sha256_valid)
+		M_ASN1_I2D_len_EXP_opt(&(a.peer_sha256),i2d_ASN1_OCTET_STRING,13,v13);
 
 	M_ASN1_I2D_seq_total();
 
@@ -298,7 +308,7 @@ int i2d_SSL_SESSION(SSL_SESSION *in, unsigned char **pp)
 		M_ASN1_I2D_put_EXP_opt(&(a.time),i2d_ASN1_INTEGER,1,v1);
 	if (in->timeout != 0L)
 		M_ASN1_I2D_put_EXP_opt(&(a.timeout),i2d_ASN1_INTEGER,2,v2);
-	if (in->peer != NULL)
+	if (in->peer != NULL && in->peer_sha256_valid == 0)
 		M_ASN1_I2D_put_EXP_opt(in->peer,i2d_X509,3,v3);
 	M_ASN1_I2D_put_EXP_opt(&a.session_id_context,i2d_ASN1_OCTET_STRING,4,
 			       v4);
@@ -320,6 +330,8 @@ int i2d_SSL_SESSION(SSL_SESSION *in, unsigned char **pp)
 	if (in->tlsext_tick)
         	M_ASN1_I2D_put_EXP_opt(&(a.tlsext_tick), i2d_ASN1_OCTET_STRING,10,v10);
 #endif /* OPENSSL_NO_TLSEXT */
+	if (in->peer_sha256_valid)
+		M_ASN1_I2D_put_EXP_opt(&(a.peer_sha256),i2d_ASN1_OCTET_STRING,13,v13);
 	M_ASN1_I2D_finish();
 	}
 
@@ -540,6 +552,17 @@ SSL_SESSION *d2i_SSL_SESSION(SSL_SESSION **a, const unsigned char **pp,
 	else
 		ret->tlsext_tick=NULL;
 #endif /* OPENSSL_NO_TLSEXT */
+
+	os.length=0;
+	os.data=NULL;
+	M_ASN1_D2I_get_EXP_opt(osp,d2i_ASN1_OCTET_STRING,13);
+	if (os.data && os.length == sizeof(ret->peer_sha256))
+		{
+		memcpy(ret->peer_sha256, os.data, sizeof(ret->peer_sha256));
+		ret->peer_sha256_valid = 1;
+		OPENSSL_free(os.data);
+		os.data = NULL;
+		}
 
 	M_ASN1_D2I_Finish(a,SSL_SESSION_free,SSL_F_D2I_SSL_SESSION);
 	}

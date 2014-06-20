@@ -501,6 +501,7 @@ struct ssl_method_st
  *	Ticket [10]             EXPLICIT OCTET STRING, -- session ticket (clients only)
  *	Compression_meth [11]   EXPLICIT OCTET STRING, -- optional compression method
  *	SRP_username [ 12 ] EXPLICIT OCTET STRING -- optional SRP username
+ *	Peer SHA256 [13]        EXPLICIT OCTET STRING, -- optional SHA256 hash of Peer certifiate
  *	}
  * Look in ssl/ssl_asn1.c for more details
  * I'm using EXPLICIT tags so I can read the damn things using asn1parse :-).
@@ -576,6 +577,8 @@ struct ssl_session_st
 	size_t tlsext_ticklen;		/* Session ticket length */
 	long tlsext_tick_lifetime_hint;	/* Session lifetime hint in seconds */
 #endif
+	char peer_sha256_valid;		/* Non-zero if peer_sha256 is valid */
+	unsigned char peer_sha256[SHA256_DIGEST_LENGTH];  /* SHA256 of peer certificate */
 #ifndef OPENSSL_NO_TLSEXT
 	/* Used by client: the proof for this session.
 	 * We store it outside the sess_cert structure, since the proof
@@ -1034,6 +1037,10 @@ struct ssl_ctx_st
 	unsigned int freelist_max_len;
 	struct ssl3_buf_freelist_st *wbuf_freelist;
 	struct ssl3_buf_freelist_st *rbuf_freelist;
+	/* retain_only_sha256_of_client_certs is true if we should compute the
+	 * SHA256 hash of the peer's certifiate and then discard it to save
+	 * memory and session space. Only effective on the server side. */
+	char retain_only_sha256_of_client_certs;
 #endif
 
 #ifndef OPENSSL_NO_TLSEXT
