@@ -2186,6 +2186,14 @@ $code.=<<___ if ($win64);
 	movaps	%xmm9,0x30(%rsp)
 .Lcbc_decrypt_body:
 ___
+
+if (!$win64) {
+	$code.=<<___;
+	subq	\$24,%rsp
+___
+	$reserved=0;
+}
+
 $code.=<<___;
 	movups	($ivp),$iv
 	mov	$rnds_,$rounds
@@ -2446,6 +2454,14 @@ $code.=<<___ if ($win64);
 	movaps	0x30(%rsp),%xmm9
 	lea	0x58(%rsp),%rsp
 ___
+
+if (!$win64) {
+	$code.=<<___;
+	addq \$24,%rsp
+___
+	$reserved=-24
+}
+
 $code.=<<___;
 .Lcbc_ret:
 	ret
