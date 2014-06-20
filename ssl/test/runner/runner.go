@@ -47,6 +47,9 @@ type testCase struct {
 	config        Config
 	shouldFail    bool
 	expectedError string
+	// messageLen is the length, in bytes, of the test message that will be
+	// sent.
+	messageLen int
 }
 
 var clientTests = []testCase{
@@ -87,11 +90,16 @@ var clientTests = []testCase{
 	},
 }
 
-var testMessage = []byte("testing")
-
-func doExchange(tlsConn *Conn) error {
+func doExchange(tlsConn *Conn, messageLen int) error {
 	if err := tlsConn.Handshake(); err != nil {
 		return err
+	}
+	if messageLen == 0 {
+		messageLen = 32
+	}
+	testMessage := make([]byte, messageLen)
+	for i := range testMessage {
+		testMessage[i] = 0x42
 	}
 	tlsConn.Write(testMessage)
 
@@ -168,7 +176,7 @@ func runTest(test *testCase) error {
 	}
 
 	tlsConn := Server(conn, &config)
-	err = doExchange(tlsConn)
+	err = doExchange(tlsConn, test.messageLen)
 
 	conn.Close()
 	childErr := client.Wait()
@@ -288,6 +296,45 @@ func addBadECDSASignatureTests() {
 	}
 }
 
+func addCBCPaddingTests() {
+	clientTests = append(clientTests, testCase{
+		name: "MaxCBCPadding",
+		config: Config{
+			CipherSuites: []uint16{TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA},
+			Bugs: ProtocolBugs{
+				MaxPadding: true,
+			},
+		},
+		messageLen: 12, // 20 bytes of SHA-1 + 12 == 0 % block size
+	})
+	clientTests = append(clientTests, testCase{
+		name: "BadCBCPadding",
+		config: Config{
+			CipherSuites: []uint16{TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA},
+			Bugs: ProtocolBugs{
+				PaddingFirstByteBad: true,
+			},
+		},
+		shouldFail:    true,
+		expectedError: "DECRYPTION_FAILED_OR_BAD_RECORD_MAC",
+	})
+	// OpenSSL previously had an issue where the first byte of padding in
+	// 255 bytes of padding wasn't checked.
+	clientTests = append(clientTests, testCase{
+		name: "BadCBCPadding255",
+		config: Config{
+			CipherSuites: []uint16{TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA},
+			Bugs: ProtocolBugs{
+				MaxPadding:               true,
+				PaddingFirstByteBadIf255: true,
+			},
+		},
+		messageLen:    12, // 20 bytes of SHA-1 + 12 == 0 % block size
+		shouldFail:    true,
+		expectedError: "DECRYPTION_FAILED_OR_BAD_RECORD_MAC",
+	})
+}
+
 func worker(statusChan chan statusMsg, c chan *testCase, wg *sync.WaitGroup) {
 	defer wg.Done()
 
@@ -334,6 +381,7 @@ func main() {
 
 	addCipherSuiteTests()
 	addBadECDSASignatureTests()
+	addCBCPaddingTests()
 
 	var wg sync.WaitGroup
 

@@ -332,6 +332,15 @@ type ProtocolBugs struct {
 	// can be invalid.
 	BadECDSAR BadValue
 	BadECDSAS BadValue
+
+	// MaxPadding causes CBC records to have the maximum possible padding.
+	MaxPadding bool
+	// PaddingFirstByteBad causes the first byte of the padding to be
+	// incorrect.
+	PaddingFirstByteBad bool
+	// PaddingFirstByteBadIf255 causes the first byte of padding to be
+	// incorrect if there's a maximum amount of padding (i.e. 255 bytes).
+	PaddingFirstByteBadIf255 bool
 }
 
 func (c *Config) serverInit() {

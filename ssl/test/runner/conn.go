@@ -106,6 +106,8 @@ type halfConn struct {
 
 	// used to save allocating a new buffer for each MAC.
 	inDigestBuf, outDigestBuf []byte
+
+	config *Config
 }
 
 func (hc *halfConn) setErrorLocked(err error) error {
@@ -130,7 +132,7 @@ func (hc *halfConn) prepareCipherSpec(version uint16, cipher interface{}, mac ma
 
 // changeCipherSpec changes the encryption and MAC states
 // to the ones previously passed to prepareCipherSpec.
-func (hc *halfConn) changeCipherSpec() error {
+func (hc *halfConn) changeCipherSpec(config *Config) error {
 	if hc.nextCipher == nil {
 		return alertInternalError
 	}
@@ -138,6 +140,7 @@ func (hc *halfConn) changeCipherSpec() error {
 	hc.mac = hc.nextMac
 	hc.nextCipher = nil
 	hc.nextMac = nil
+	hc.config = config
 	for i := range hc.seq {
 		hc.seq[i] = 0
 	}
@@ -336,15 +339,26 @@ func (hc *halfConn) decrypt(b *block) (ok bool, prefixLen int, alertValue alert)
 // block of payload. finalBlock is a fresh slice which contains the contents of
 // any suffix of payload as well as the needed padding to make finalBlock a
 // full block.
-func padToBlockSize(payload []byte, blockSize int) (prefix, finalBlock []byte) {
+func padToBlockSize(payload []byte, blockSize int, config *Config) (prefix, finalBlock []byte) {
 	overrun := len(payload) % blockSize
-	paddingLen := blockSize - overrun
 	prefix = payload[:len(payload)-overrun]
-	finalBlock = make([]byte, blockSize)
-	copy(finalBlock, payload[len(payload)-overrun:])
-	for i := overrun; i < blockSize; i++ {
+
+	paddingLen := blockSize - overrun
+	finalSize := blockSize
+	if config.Bugs.MaxPadding {
+		for paddingLen+blockSize <= 256 {
+			paddingLen += blockSize
+		}
+		finalSize = 256
+	}
+	finalBlock = make([]byte, finalSize)
+	for i := range finalBlock {
 		finalBlock[i] = byte(paddingLen - 1)
 	}
+	if config.Bugs.PaddingFirstByteBad || config.Bugs.PaddingFirstByteBadIf255 && paddingLen == 256 {
+		finalBlock[overrun] ^= 0xff
+	}
+	copy(finalBlock, payload[len(payload)-overrun:])
 	return
 }
 
@@ -387,7 +401,7 @@ func (hc *halfConn) encrypt(b *block, explicitIVLen int) (bool, alert) {
 				c.SetIV(payload[:explicitIVLen])
 				payload = payload[explicitIVLen:]
 			}
-			prefix, finalBlock := padToBlockSize(payload, blockSize)
+			prefix, finalBlock := padToBlockSize(payload, blockSize, hc.config)
 			b.resize(recordHeaderLen + explicitIVLen + len(prefix) + len(finalBlock))
 			c.CryptBlocks(b.data[recordHeaderLen+explicitIVLen:], prefix)
 			c.CryptBlocks(b.data[recordHeaderLen+explicitIVLen+len(prefix):], finalBlock)
@@ -633,7 +647,7 @@ Again:
 			c.in.setErrorLocked(c.sendAlert(alertUnexpectedMessage))
 			break
 		}
-		err := c.in.changeCipherSpec()
+		err := c.in.changeCipherSpec(c.config)
 		if err != nil {
 			c.in.setErrorLocked(c.sendAlert(err.(alert)))
 		}
@@ -752,7 +766,7 @@ func (c *Conn) writeRecord(typ recordType, data []byte) (n int, err error) {
 	c.out.freeBlock(b)
 
 	if typ == recordTypeChangeCipherSpec {
-		err = c.out.changeCipherSpec()
+		err = c.out.changeCipherSpec(c.config)
 		if err != nil {
 			// Cannot call sendAlert directly,
 			// because we already hold c.out.Mutex.

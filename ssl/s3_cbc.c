@@ -203,9 +203,9 @@ int tls1_cbc_remove_padding(const SSL* s,
 	 * decrypted information. Therefore we always have to check the maximum
 	 * amount of padding possible. (Again, the length of the record is
 	 * public information so we can use it.) */
-	to_check = 255; /* maximum amount of padding. */
-	if (to_check > rec->length-1)
-		to_check = rec->length-1;
+	to_check = 256; /* maximum amount of padding, inc length byte. */
+	if (to_check > rec->length)
+		to_check = rec->length;
 
 	for (i = 0; i < to_check; i++)
 		{
