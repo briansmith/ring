@@ -692,6 +692,9 @@ int BN_mod_exp_mont(BIGNUM *rr, const BIGNUM *a, const BIGNUM *p,
     for (i = 1; i < j; i++)
       r->d[i] = (~m->d[i]) & BN_MASK2;
     r->top = j;
+    /* Upper words will be zero if the corresponding words of 'm'
+     * were 0xfff[...], so decrement r->top accordingly. */
+    bn_correct_top(r);
   } else if (!BN_to_montgomery(r, BN_value_one(), mont, ctx)) {
     goto err;
   }
