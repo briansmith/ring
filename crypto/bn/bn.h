@@ -709,9 +709,6 @@ int BN_mod_exp_mont_word(BIGNUM *r, BN_ULONG a, const BIGNUM *p,
 int BN_mod_exp2_mont(BIGNUM *r, const BIGNUM *a1, const BIGNUM *p1,
                      const BIGNUM *a2, const BIGNUM *p2, const BIGNUM *m,
                      BN_CTX *ctx, BN_MONT_CTX *m_ctx);
-int BN_mod_exp_simple(BIGNUM *r, const BIGNUM *a, const BIGNUM *p,
-                      const BIGNUM *m, BN_CTX *ctx);
-
 
 
 /* Private functions */
