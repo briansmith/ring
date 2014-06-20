@@ -1626,6 +1626,22 @@ char *SSL_CIPHER_description(const SSL_CIPHER *cipher, char *buf, int len)
 	return(buf);
 	}
 
+/* Next three functions require non-null cipher */
+int SSL_CIPHER_is_AES(const SSL_CIPHER *c)
+	{
+	return (c->algorithm_enc & SSL_AES) != 0;
+	}
+
+int SSL_CIPHER_has_MD5_HMAC(const SSL_CIPHER *c)
+	{
+	return (c->algorithm_mac & SSL_MD5) != 0;
+	}
+
+int SSL_CIPHER_is_AESGCM(const SSL_CIPHER *c)
+	{
+	return (c->algorithm_mac & (SSL_AES128GCM|SSL_AES256GCM)) != 0;
+	}
+
 char *SSL_CIPHER_get_version(const SSL_CIPHER *c)
 	{
 	int i;

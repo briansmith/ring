@@ -2235,6 +2235,10 @@ long	SSL_CTX_callback_ctrl(SSL_CTX *, int, void (*)(void));
 int	SSL_get_error(const SSL *s,int ret_code);
 const char *SSL_get_version(const SSL *s);
 
+int SSL_CIPHER_is_AES(const SSL_CIPHER *c);
+int SSL_CIPHER_has_MD5_HMAC(const SSL_CIPHER *c);
+int SSL_CIPHER_is_AESGCM(const SSL_CIPHER *c);
+
 /* This sets the 'default' SSL version that SSL_new() will create */
 int SSL_CTX_set_ssl_version(SSL_CTX *ctx, const SSL_METHOD *meth);
 
