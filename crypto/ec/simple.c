@@ -1232,6 +1232,11 @@ int ec_GFp_simple_points_make_affine(const EC_GROUP *group, size_t num,
   if (heap == NULL)
     goto err;
 
+  /* TODO(bmoeller): There is no reason to use this tree structure.
+   * We should instead proceed sequentially, exactly as in
+   * ec_GFp_nistp_points_make_affine_internal, which makes everything
+   * much simpler. */
+
   /* The array is used as a binary tree, exactly as in heapsort:
    *
    *                               heap[1]
@@ -1300,14 +1305,19 @@ int ec_GFp_simple_points_make_affine(const EC_GROUP *group, size_t num,
   for (i = 2; i < pow2 / 2 + num; i += 2) {
     /* i is even */
     if ((heap[i + 1] != NULL) && !BN_is_zero(heap[i + 1])) {
-      if (!group->meth->field_mul(group, tmp0, heap[i / 2], heap[i + 1], ctx))
-        goto err;
-      if (!group->meth->field_mul(group, tmp1, heap[i / 2], heap[i], ctx))
-        goto err;
-      if (!BN_copy(heap[i], tmp0))
-        goto err;
-      if (!BN_copy(heap[i + 1], tmp1))
-        goto err;
+      if (!BN_is_zero(heap[i])) {
+        if (!group->meth->field_mul(group, tmp0, heap[i / 2], heap[i + 1], ctx))
+          goto err;
+        if (!group->meth->field_mul(group, tmp1, heap[i / 2], heap[i], ctx))
+          goto err;
+        if (!BN_copy(heap[i], tmp0))
+          goto err;
+        if (!BN_copy(heap[i + 1], tmp1))
+          goto err;
+      } else {
+        if (!BN_copy(heap[i + 1], heap[i / 2]))
+          goto err;
+      }
     } else {
       if (!BN_copy(heap[i], heap[i / 2]))
         goto err;
