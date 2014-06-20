@@ -188,6 +188,10 @@ int BIO_should_io_special(const BIO *bio);
 /* BIO_RR_ACCEPT indicates that an accept would have blocked */
 #define BIO_RR_ACCEPT 0x03
 
+/* BIO_RR_SSL_CHANNEL_ID_LOOKUP indicates that the ChannelID code cannot find
+ * a private key for a TLS connection. */
+#define BIO_RR_SSL_CHANNEL_ID_LOOKUP 0x04
+
 /* BIO_get_retry_reason returns the special I/O operation that needs to be
  * retried. The return value is one of the |BIO_RR_*| values. */
 int BIO_get_retry_reason(const BIO *bio);

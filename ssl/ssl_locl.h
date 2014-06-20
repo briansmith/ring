@@ -365,6 +365,7 @@
  * (currently this also goes into algorithm2) */
 #define TLS1_STREAM_MAC 0x04
 
+#define TLSEXT_CHANNEL_ID_SIZE 128
 
 
 /*
@@ -1168,6 +1169,7 @@ int ssl3_check_cert_and_algorithm(SSL *s);
 int ssl3_check_finished(SSL *s);
 # ifndef OPENSSL_NO_NEXTPROTONEG
 int ssl3_send_next_proto(SSL *s);
+int ssl3_send_channel_id(SSL *s);
 # endif
 #endif
 
@@ -1186,6 +1188,7 @@ int ssl3_get_client_key_exchange(SSL *s);
 int ssl3_get_cert_verify(SSL *s);
 #ifndef OPENSSL_NO_NEXTPROTONEG
 int ssl3_get_next_proto(SSL *s);
+int ssl3_get_channel_id(SSL *s);
 #endif
 
 int ssl23_accept(SSL *s);
@@ -1220,6 +1223,7 @@ void ssl_free_wbio_buffer(SSL *s);
 int tls1_change_cipher_state(SSL *s, int which);
 int tls1_setup_key_block(SSL *s);
 int tls1_enc(SSL *s, int snd);
+int tls1_handshake_digest(SSL *s, unsigned char *out, size_t out_len);
 int tls1_final_finish_mac(SSL *s,
 	const char *str, int slen, unsigned char *p);
 int tls1_cert_verify_mac(SSL *s, int md_nid, unsigned char *p);
@@ -1288,6 +1292,9 @@ int tls12_get_sigandhash(unsigned char *p, const EVP_PKEY *pk,
 				const EVP_MD *md);
 int tls12_get_sigid(const EVP_PKEY *pk);
 const EVP_MD *tls12_get_hash(unsigned char hash_alg);
+
+int tls1_channel_id_hash(EVP_MD_CTX *ctx, SSL *s);
+int tls1_record_handshake_hashes_for_channel_id(SSL *s);
 
 int tls1_set_sigalgs_list(CERT *c, const char *str, int client);
 int tls1_set_sigalgs(CERT *c, const int *salg, size_t salglen, int client);

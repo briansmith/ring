@@ -589,6 +589,22 @@ typedef struct ssl3_state_st
 	unsigned char *alpn_selected;
 	unsigned alpn_selected_len;
 #endif	/* OPENSSL_NO_TLSEXT */
+
+	/* In a client, this means that the server supported Channel ID and that
+	 * a Channel ID was sent. In a server it means that we echoed support
+	 * for Channel IDs and that tlsext_channel_id will be valid after the
+	 * handshake. */
+	char tlsext_channel_id_valid;
+	/* tlsext_channel_id_new means that the updated Channel ID extension
+	 * was negotiated. This is a temporary hack in the code to support both
+	 * forms of Channel ID extension while we transition to the new format,
+	 * which fixed a security issue. */
+	char tlsext_channel_id_new;
+	/* For a server:
+	 *     If |tlsext_channel_id_valid| is true, then this contains the
+	 *     verified Channel ID from the client: a P256 point, (x,y), where
+	 *     each are big-endian values. */
+	unsigned char tlsext_channel_id[64];
 	} SSL3_STATE;
 
 #endif
@@ -631,6 +647,8 @@ typedef struct ssl3_state_st
 #define SSL3_ST_CW_NEXT_PROTO_A		(0x200|SSL_ST_CONNECT)
 #define SSL3_ST_CW_NEXT_PROTO_B		(0x201|SSL_ST_CONNECT)
 #endif
+#define SSL3_ST_CW_CHANNEL_ID_A		(0x220|SSL_ST_CONNECT)
+#define SSL3_ST_CW_CHANNEL_ID_B		(0x221|SSL_ST_CONNECT)
 #define SSL3_ST_CW_FINISHED_A		(0x1B0|SSL_ST_CONNECT)
 #define SSL3_ST_CW_FINISHED_B		(0x1B1|SSL_ST_CONNECT)
 /* read from server */
@@ -681,6 +699,9 @@ typedef struct ssl3_state_st
 #define SSL3_ST_SR_NEXT_PROTO_A		(0x210|SSL_ST_ACCEPT)
 #define SSL3_ST_SR_NEXT_PROTO_B		(0x211|SSL_ST_ACCEPT)
 #endif
+#define SSL3_ST_SR_POST_CLIENT_CERT	(0x1BF|SSL_ST_ACCEPT)
+#define SSL3_ST_SR_CHANNEL_ID_A		(0x230|SSL_ST_ACCEPT)
+#define SSL3_ST_SR_CHANNEL_ID_B		(0x231|SSL_ST_ACCEPT)
 #define SSL3_ST_SR_FINISHED_A		(0x1C0|SSL_ST_ACCEPT)
 #define SSL3_ST_SR_FINISHED_B		(0x1C1|SSL_ST_ACCEPT)
 /* write to client */
@@ -711,6 +732,7 @@ typedef struct ssl3_state_st
 #ifndef OPENSSL_NO_NEXTPROTONEG
 #define SSL3_MT_NEXT_PROTO			67
 #endif
+#define SSL3_MT_ENCRYPTED_EXTENSIONS		203
 #define DTLS1_MT_HELLO_VERIFY_REQUEST    3
 
 

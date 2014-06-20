@@ -1401,6 +1401,19 @@ unsigned char *ssl_add_clienthello_tlsext(SSL *s, unsigned char *p, unsigned cha
 		ret += s->alpn_client_proto_list_len;
 		}
 
+	if (s->tlsext_channel_id_enabled)
+		{
+		/* The client advertises an emtpy extension to indicate its
+		 * support for Channel ID. */
+		if (limit - ret - 4 < 0)
+			return NULL;
+		if (s->ctx->tlsext_channel_id_enabled_new)
+			s2n(TLSEXT_TYPE_channel_id_new,ret);
+		else
+			s2n(TLSEXT_TYPE_channel_id,ret);
+		s2n(0,ret);
+		}
+
         if(SSL_get_srtp_profiles(s))
                 {
                 int el;
@@ -1824,6 +1837,19 @@ unsigned char *ssl_add_serverhello_tlsext(SSL *s, unsigned char *p, unsigned cha
 		*ret++ = len;
 		memcpy(ret, selected, len);
 		ret += len;
+		}
+
+	/* If the client advertised support for Channel ID, and we have it
+	 * enabled, then we want to echo it back. */
+	if (s->s3->tlsext_channel_id_valid)
+		{
+		if (limit - ret - 4 < 0)
+			return NULL;
+		if (s->s3->tlsext_channel_id_new)
+			s2n(TLSEXT_TYPE_channel_id_new,ret);
+		else
+			s2n(TLSEXT_TYPE_channel_id,ret);
+		s2n(0,ret);
 		}
 
 	if ((extdatalen = ret-p-2)== 0) 
@@ -2488,6 +2514,18 @@ static int ssl_scan_clienthello_tlsext(SSL *s, unsigned char **p, unsigned char 
 #endif
 			}
 
+		else if (type == TLSEXT_TYPE_channel_id &&
+			 s->tlsext_channel_id_enabled)
+			s->s3->tlsext_channel_id_valid = 1;
+
+		else if (type == TLSEXT_TYPE_channel_id_new &&
+			 s->tlsext_channel_id_enabled)
+			{
+			s->s3->tlsext_channel_id_valid = 1;
+			s->s3->tlsext_channel_id_new = 1;
+			}
+
+
 		/* session ticket processed earlier */
 		else if (type == TLSEXT_TYPE_use_srtp)
                         {
@@ -2888,6 +2926,15 @@ static int ssl_scan_serverhello_tlsext(SSL *s, unsigned char **p, unsigned char 
 				}
 			memcpy(s->s3->alpn_selected, data + 3, len);
 			s->s3->alpn_selected_len = len;
+			}
+
+		else if (type == TLSEXT_TYPE_channel_id)
+			s->s3->tlsext_channel_id_valid = 1;
+
+		else if (type == TLSEXT_TYPE_channel_id_new)
+			{
+			s->s3->tlsext_channel_id_valid = 1;
+			s->s3->tlsext_channel_id_new = 1;
 			}
 
 		else if (type == TLSEXT_TYPE_renegotiate)
@@ -4123,6 +4170,76 @@ tls1_heartbeat(SSL *s)
 	return ret;
 	}
 #endif
+
+#if !defined(OPENSSL_NO_TLSEXT)
+/* tls1_channel_id_hash calculates the signed data for a Channel ID on the given
+ * SSL connection and writes it to |md|. */
+int
+tls1_channel_id_hash(EVP_MD_CTX *md, SSL *s)
+	{
+	EVP_MD_CTX ctx;
+	unsigned char temp_digest[EVP_MAX_MD_SIZE];
+	unsigned temp_digest_len;
+	int i;
+	static const char kClientIDMagic[] = "TLS Channel ID signature";
+
+	if (s->s3->handshake_buffer)
+		if (!ssl3_digest_cached_records(s))
+			return 0;
+
+	EVP_DigestUpdate(md, kClientIDMagic, sizeof(kClientIDMagic));
+
+	if (s->hit && s->s3->tlsext_channel_id_new)
+		{
+		static const char kResumptionMagic[] = "Resumption";
+		EVP_DigestUpdate(md, kResumptionMagic,
+				 sizeof(kResumptionMagic));
+		if (s->session->original_handshake_hash_len == 0)
+			return 0;
+		EVP_DigestUpdate(md, s->session->original_handshake_hash,
+				 s->session->original_handshake_hash_len);
+		}
+
+	EVP_MD_CTX_init(&ctx);
+	for (i = 0; i < SSL_MAX_DIGEST; i++)
+		{
+		if (s->s3->handshake_dgst[i] == NULL)
+			continue;
+		EVP_MD_CTX_copy_ex(&ctx, s->s3->handshake_dgst[i]);
+		EVP_DigestFinal_ex(&ctx, temp_digest, &temp_digest_len);
+		EVP_DigestUpdate(md, temp_digest, temp_digest_len);
+		}
+	EVP_MD_CTX_cleanup(&ctx);
+
+	return 1;
+	}
+#endif
+
+/* tls1_record_handshake_hashes_for_channel_id records the current handshake
+ * hashes in |s->session| so that Channel ID resumptions can sign that data. */
+int tls1_record_handshake_hashes_for_channel_id(SSL *s)
+	{
+	int digest_len;
+	/* This function should never be called for a resumed session because
+	 * the handshake hashes that we wish to record are for the original,
+	 * full handshake. */
+	if (s->hit)
+		return -1;
+	/* It only makes sense to call this function if Channel IDs have been
+	 * negotiated. */
+	if (!s->s3->tlsext_channel_id_new)
+		return -1;
+
+	digest_len = tls1_handshake_digest(
+		s, s->session->original_handshake_hash,
+		sizeof(s->session->original_handshake_hash));
+	if (digest_len < 0)
+		return -1;
+
+	s->session->original_handshake_hash_len = digest_len;
+
+	return 1;
+	}
 
 /* TODO(fork): remove */
 #if 0

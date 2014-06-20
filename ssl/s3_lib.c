@@ -2601,6 +2601,11 @@ int ssl3_new(SSL *s)
 
 	s->s3=s3;
 
+#if !defined(OPENSSL_NO_TLSEXT)
+	s->tlsext_channel_id_enabled = s->ctx->tlsext_channel_id_enabled;
+	if (s->ctx->tlsext_channel_id_private)
+		s->tlsext_channel_id_private = EVP_PKEY_dup(s->ctx->tlsext_channel_id_private);
+#endif
 	s->method->ssl_clear(s);
 	return(1);
 err:
@@ -2755,6 +2760,10 @@ void ssl3_clear(SSL *s)
 		s->next_proto_negotiated = NULL;
 		s->next_proto_negotiated_len = 0;
 		}
+#endif
+
+#if !defined(OPENSSL_NO_TLSEXT)
+	s->s3->tlsext_channel_id_valid = 0;
 #endif
 	}
 
@@ -3192,6 +3201,35 @@ long ssl3_ctrl(SSL *s, int cmd, long larg, void *parg)
 		return (int)sess->tlsext_ecpointformatlist_length;
 		}
 #endif
+
+	case SSL_CTRL_CHANNEL_ID:
+		s->tlsext_channel_id_enabled = 1;
+		ret = 1;
+		break;
+
+	case SSL_CTRL_SET_CHANNEL_ID:
+		if (s->server)
+			break;
+		s->tlsext_channel_id_enabled = 1;
+		if (EVP_PKEY_bits(parg) != 256)
+			{
+			OPENSSL_PUT_ERROR(SSL, ssl3_ctrl, SSL_R_CHANNEL_ID_NOT_P256);
+			break;
+			}
+		if (s->tlsext_channel_id_private)
+			EVP_PKEY_free(s->tlsext_channel_id_private);
+		s->tlsext_channel_id_private = EVP_PKEY_dup((EVP_PKEY*) parg);
+		ret = 1;
+		break;
+
+	case SSL_CTRL_GET_CHANNEL_ID:
+		if (!s->server)
+			break;
+		if (!s->s3->tlsext_channel_id_valid)
+			break;
+		memcpy(parg, s->s3->tlsext_channel_id, larg < 64 ? larg : 64);
+		return 64;
+
 	default:
 		break;
 		}
@@ -3499,6 +3537,25 @@ long ssl3_ctx_ctrl(SSL_CTX *ctx, int cmd, long larg, void *parg)
 
 	case SSL_CTRL_SELECT_CURRENT_CERT:
 		return ssl_cert_select_current(ctx->cert, (X509 *)parg);
+
+	case SSL_CTRL_CHANNEL_ID:
+		/* must be called on a server */
+		if (ctx->method->ssl_accept == ssl_undefined_function)
+			return 0;
+		ctx->tlsext_channel_id_enabled=1;
+		return 1;
+
+	case SSL_CTRL_SET_CHANNEL_ID:
+		ctx->tlsext_channel_id_enabled = 1;
+		if (EVP_PKEY_bits(parg) != 256)
+			{
+			OPENSSL_PUT_ERROR(SSL, ssl3_ctx_ctrl, SSL_R_CHANNEL_ID_NOT_P256);
+			break;
+			}
+		if (ctx->tlsext_channel_id_private)
+			EVP_PKEY_free(ctx->tlsext_channel_id_private);
+		ctx->tlsext_channel_id_private = EVP_PKEY_dup((EVP_PKEY*) parg);
+		break;
 
 	default:
 		return(0);

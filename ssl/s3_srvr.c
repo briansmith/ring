@@ -155,12 +155,15 @@
 #include <openssl/buf.h>
 #include <openssl/cipher.h>
 #include <openssl/dh.h>
+#include <openssl/ec.h>
+#include <openssl/ecdsa.h>
 #include <openssl/evp.h>
 #include <openssl/hmac.h>
 #include <openssl/md5.h>
 #include <openssl/mem.h>
 #include <openssl/obj.h>
 #include <openssl/rand.h>
+#include <openssl/sha.h>
 #include <openssl/x509.h>
 
 #include "ssl_locl.h"
@@ -573,15 +576,8 @@ int ssl3_accept(SSL *s)
 				 * the client uses its key from the certificate
 				 * for key exchange.
 				 */
-#if defined(OPENSSL_NO_TLSEXT) || defined(OPENSSL_NO_NEXTPROTONEG)
-				s->state=SSL3_ST_SR_FINISHED_A;
-#else
-				if (s->s3->next_proto_neg_seen)
-					s->state=SSL3_ST_SR_NEXT_PROTO_A;
-				else
-					s->state=SSL3_ST_SR_FINISHED_A;
-#endif
 				s->init_num = 0;
+				s->state=SSL3_ST_SR_POST_CLIENT_CERT;
 				}
 			else if (SSL_USE_SIGALGS(s))
 				{
@@ -641,21 +637,46 @@ int ssl3_accept(SSL *s)
 			ret=ssl3_get_cert_verify(s);
 			if (ret <= 0) goto end;
 
-#if defined(OPENSSL_NO_TLSEXT) || defined(OPENSSL_NO_NEXTPROTONEG)
-			s->state=SSL3_ST_SR_FINISHED_A;
-#else
-			if (s->s3->next_proto_neg_seen)
-				s->state=SSL3_ST_SR_NEXT_PROTO_A;
-			else
-				s->state=SSL3_ST_SR_FINISHED_A;
-#endif
+			s->state=SSL3_ST_SR_POST_CLIENT_CERT;
 			s->init_num=0;
 			break;
+
+		case SSL3_ST_SR_POST_CLIENT_CERT: {
+			char next_proto_neg = 0;
+			char channel_id = 0;
+#if !defined(OPENSSL_NO_TLSEXT)
+# if !defined(OPENSSL_NO_NEXTPROTONEG)
+			next_proto_neg = s->s3->next_proto_neg_seen;
+# endif
+			channel_id = s->s3->tlsext_channel_id_valid;
+#endif
+
+			if (next_proto_neg)
+				s->state=SSL3_ST_SR_NEXT_PROTO_A;
+			else if (channel_id)
+				s->state=SSL3_ST_SR_CHANNEL_ID_A;
+			else
+				s->state=SSL3_ST_SR_FINISHED_A;
+			break;
+		}
 
 #if !defined(OPENSSL_NO_TLSEXT) && !defined(OPENSSL_NO_NEXTPROTONEG)
 		case SSL3_ST_SR_NEXT_PROTO_A:
 		case SSL3_ST_SR_NEXT_PROTO_B:
 			ret=ssl3_get_next_proto(s);
+			if (ret <= 0) goto end;
+			s->init_num = 0;
+			if (s->s3->tlsext_channel_id_valid)
+				s->state=SSL3_ST_SR_CHANNEL_ID_A;
+			else
+				s->state=SSL3_ST_SR_FINISHED_A;
+			break;
+#endif
+
+#if !defined(OPENSSL_NO_TLSEXT)
+		case SSL3_ST_SR_CHANNEL_ID_A:
+		case SSL3_ST_SR_CHANNEL_ID_B:
+			ret=ssl3_get_channel_id(s);
 			if (ret <= 0) goto end;
 			s->init_num = 0;
 			s->state=SSL3_ST_SR_FINISHED_A;
@@ -675,6 +696,15 @@ int ssl3_accept(SSL *s)
 #endif
 			else
 				s->state=SSL3_ST_SW_CHANGE_A;
+			/* If this is a full handshake with ChannelID then
+			 * record the hashshake hashes in |s->session| in case
+			 * we need them to verify a ChannelID signature on a
+			 * resumption of this session in the future. */
+			if (!s->hit && s->s3->tlsext_channel_id_new)
+				{
+				ret = tls1_record_handshake_hashes_for_channel_id(s);
+				if (ret <= 0) goto end;
+				}
 			s->init_num=0;
 			break;
 
@@ -729,16 +759,7 @@ int ssl3_accept(SSL *s)
 			if (ret <= 0) goto end;
 			s->state=SSL3_ST_SW_FLUSH;
 			if (s->hit)
-				{
-#if defined(OPENSSL_NO_TLSEXT) || defined(OPENSSL_NO_NEXTPROTONEG)
-				s->s3->tmp.next_state=SSL3_ST_SR_FINISHED_A;
-#else
-				if (s->s3->next_proto_neg_seen)
-					s->s3->tmp.next_state=SSL3_ST_SR_NEXT_PROTO_A;
-				else
-					s->s3->tmp.next_state=SSL3_ST_SR_FINISHED_A;
-#endif
-				}
+				s->s3->tmp.next_state=SSL3_ST_SR_POST_CLIENT_CERT;
 			else
 				s->s3->tmp.next_state=SSL_ST_OK;
 			s->init_num=0;
@@ -1378,6 +1399,22 @@ int ssl3_send_server_hello(SSL *s)
 
 	if (s->state == SSL3_ST_SW_SRVR_HELLO_A)
 		{
+		/* We only accept ChannelIDs on connections with ECDHE in order
+		 * to avoid a known attack while we fix ChannelID itself. */
+		if (s->s3 &&
+		    s->s3->tlsext_channel_id_valid &&
+		    (s->s3->tmp.new_cipher->algorithm_mkey & SSL_kEECDH) == 0)
+			s->s3->tlsext_channel_id_valid = 0;
+
+		/* If this is a resumption and the original handshake didn't
+		 * support ChannelID then we didn't record the original
+		 * handshake hashes in the session and so cannot resume with
+		 * ChannelIDs. */
+		if (s->hit &&
+		    s->s3->tlsext_channel_id_new &&
+		    s->session->original_handshake_hash_len == 0)
+			s->s3->tlsext_channel_id_valid = 0;
+
 		buf=(unsigned char *)s->init_buf->data;
 #ifdef OPENSSL_NO_TLSEXT
 		p=s->s3->server_random;
@@ -3242,6 +3279,147 @@ int ssl3_get_next_proto(SSL *s)
 	return 1;
 	}
 # endif
+
+/* ssl3_get_channel_id reads and verifies a ClientID handshake message. */
+int ssl3_get_channel_id(SSL *s)
+	{
+	int ret = -1, ok;
+	long n;
+	const unsigned char *p;
+	unsigned short extension_type, extension_len;
+	EC_GROUP* p256 = NULL;
+	EC_KEY* key = NULL;
+	EC_POINT* point = NULL;
+	ECDSA_SIG sig;
+	BIGNUM x, y;
+	unsigned short expected_extension_type;
+
+	if (s->state == SSL3_ST_SR_CHANNEL_ID_A && s->init_num == 0)
+		{
+		/* The first time that we're called we take the current
+		 * handshake hash and store it. */
+		EVP_MD_CTX md_ctx;
+		unsigned int len;
+
+		EVP_MD_CTX_init(&md_ctx);
+		EVP_DigestInit_ex(&md_ctx, EVP_sha256(), NULL);
+		if (!tls1_channel_id_hash(&md_ctx, s))
+			return -1;
+		len = sizeof(s->s3->tlsext_channel_id);
+		EVP_DigestFinal(&md_ctx, s->s3->tlsext_channel_id, &len);
+		EVP_MD_CTX_cleanup(&md_ctx);
+		}
+
+	n = s->method->ssl_get_message(s,
+		SSL3_ST_SR_CHANNEL_ID_A,
+		SSL3_ST_SR_CHANNEL_ID_B,
+		SSL3_MT_ENCRYPTED_EXTENSIONS,
+		2 + 2 + TLSEXT_CHANNEL_ID_SIZE,
+		&ok);
+
+	if (!ok)
+		return((int)n);
+
+	ssl3_finish_mac(s, (unsigned char*)s->init_buf->data, s->init_num + 4);
+
+	/* s->state doesn't reflect whether ChangeCipherSpec has been received
+	 * in this handshake, but s->s3->change_cipher_spec does (will be reset
+	 * by ssl3_get_finished). */
+	if (!s->s3->change_cipher_spec)
+		{
+		OPENSSL_PUT_ERROR(SSL, ssl3_get_channel_id, SSL_R_GOT_CHANNEL_ID_BEFORE_A_CCS);
+		return -1;
+		}
+
+	if (n != 2 + 2 + TLSEXT_CHANNEL_ID_SIZE)
+		{
+		OPENSSL_PUT_ERROR(SSL, ssl3_get_channel_id, SSL_R_INVALID_MESSAGE);
+		return -1;
+		}
+
+	p = (unsigned char *)s->init_msg;
+
+	/* The payload looks like:
+	 *   uint16 extension_type
+	 *   uint16 extension_len;
+	 *   uint8 x[32];
+	 *   uint8 y[32];
+	 *   uint8 r[32];
+	 *   uint8 s[32];
+	 */
+	n2s(p, extension_type);
+	n2s(p, extension_len);
+
+	expected_extension_type = TLSEXT_TYPE_channel_id;
+	if (s->s3->tlsext_channel_id_new)
+		expected_extension_type = TLSEXT_TYPE_channel_id_new;
+
+	if (extension_type != expected_extension_type ||
+	    extension_len != TLSEXT_CHANNEL_ID_SIZE)
+		{
+		OPENSSL_PUT_ERROR(SSL, ssl3_get_channel_id, SSL_R_INVALID_MESSAGE);
+		return -1;
+		}
+
+	p256 = EC_GROUP_new_by_curve_name(NID_X9_62_prime256v1);
+	if (!p256)
+		{
+		OPENSSL_PUT_ERROR(SSL, ssl3_get_channel_id, SSL_R_NO_P256_SUPPORT);
+		return -1;
+		}
+
+	BN_init(&x);
+	BN_init(&y);
+	sig.r = BN_new();
+	sig.s = BN_new();
+
+	if (BN_bin2bn(p +  0, 32, &x) == NULL ||
+	    BN_bin2bn(p + 32, 32, &y) == NULL ||
+	    BN_bin2bn(p + 64, 32, sig.r) == NULL ||
+	    BN_bin2bn(p + 96, 32, sig.s) == NULL)
+		goto err;
+
+	point = EC_POINT_new(p256);
+	if (!point ||
+	    !EC_POINT_set_affine_coordinates_GFp(p256, point, &x, &y, NULL))
+		goto err;
+
+	key = EC_KEY_new();
+	if (!key ||
+	    !EC_KEY_set_group(key, p256) ||
+	    !EC_KEY_set_public_key(key, point))
+		goto err;
+
+	/* We stored the handshake hash in |tlsext_channel_id| the first time
+	 * that we were called. */
+	switch (ECDSA_do_verify(s->s3->tlsext_channel_id, SHA256_DIGEST_LENGTH, &sig, key)) {
+	case 1:
+		break;
+	case 0:
+		OPENSSL_PUT_ERROR(SSL, ssl3_get_channel_id, SSL_R_CHANNEL_ID_SIGNATURE_INVALID);
+		s->s3->tlsext_channel_id_valid = 0;
+		goto err;
+	default:
+		s->s3->tlsext_channel_id_valid = 0;
+		goto err;
+	}
+
+	memcpy(s->s3->tlsext_channel_id, p, 64);
+	ret = 1;
+
+err:
+	BN_free(&x);
+	BN_free(&y);
+	BN_free(sig.r);
+	BN_free(sig.s);
+	if (key)
+		EC_KEY_free(key);
+	if (point)
+		EC_POINT_free(point);
+	if (p256)
+		EC_GROUP_free(p256);
+	return ret;
+	}
 
 int tls1_send_server_supplemental_data(SSL *s)
 	{

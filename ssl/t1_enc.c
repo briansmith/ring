@@ -861,54 +861,79 @@ int tls1_cert_verify_mac(SSL *s, int md_nid, unsigned char *out)
 	return((int)ret);
 	}
 
-int tls1_final_finish_mac(SSL *s,
-	     const char *str, int slen, unsigned char *out)
+/* tls1_handshake_digest calculates the current handshake hash and writes it to
+ * |out|, which has space for |out_len| bytes. It returns the number of bytes
+ * written or -1 in the event of an error. This function works on a copy of the
+ * underlying digests so can be called multiple times and prior to the final
+ * update etc. */
+int tls1_handshake_digest(SSL *s, unsigned char *out, size_t out_len)
 	{
-	unsigned int i;
+	const EVP_MD *md;
 	EVP_MD_CTX ctx;
-	unsigned char buf[2*EVP_MAX_MD_SIZE];
-	unsigned char *q,buf2[12];
-	int idx;
+	int i, err = 0, len = 0;
 	long mask;
-	int err=0;
-	const EVP_MD *md; 
-
-	q=buf;
-
-	if (s->s3->handshake_buffer) 
-		if (!ssl3_digest_cached_records(s))
-			return 0;
 
 	EVP_MD_CTX_init(&ctx);
 
-	for (idx=0;ssl_get_handshake_digest(idx,&mask,&md);idx++)
+	for (i = 0; ssl_get_handshake_digest(i, &mask, &md); i++)
 		{
-		if (mask & ssl_get_algorithm2(s))
+		int hash_size;
+		unsigned int digest_len;
+		EVP_MD_CTX *hdgst = s->s3->handshake_dgst[i];
+
+		if ((mask & ssl_get_algorithm2(s)) == 0)
+			continue;
+
+		hash_size = EVP_MD_size(md);
+		if (!hdgst || hash_size < 0 || (size_t)hash_size > out_len)
 			{
-			int hashsize = EVP_MD_size(md);
-			EVP_MD_CTX *hdgst = s->s3->handshake_dgst[idx];
-			if (!hdgst || hashsize < 0 || hashsize > (int)(sizeof buf - (size_t)(q-buf)))
-				{
-				/* internal error: 'buf' is too small for this cipersuite! */
-				err = 1;
-				}
-			else
-				{
-				if (!EVP_MD_CTX_copy_ex(&ctx, hdgst) ||
-					!EVP_DigestFinal_ex(&ctx,q,&i) ||
-					(i != (unsigned int)hashsize))
-					err = 1;
-				q+=hashsize;
-				}
+			err = 1;
+			break;
 			}
+
+		if (!EVP_MD_CTX_copy_ex(&ctx, hdgst) ||
+		    !EVP_DigestFinal_ex(&ctx, out, &digest_len) ||
+		    digest_len != (unsigned int)hash_size) /* internal error */
+			{
+			err = 1;
+			break;
+			}
+		out += digest_len;
+		out_len -= digest_len;
+		len += digest_len;
+		}
+
+	EVP_MD_CTX_cleanup(&ctx);
+
+	if (err != 0)
+		return -1;
+	return len;
+	}
+
+int tls1_final_finish_mac(SSL *s,
+	     const char *str, int slen, unsigned char *out)
+	{
+	unsigned char buf[2*EVP_MAX_MD_SIZE];
+	unsigned char buf2[12];
+	int err=0;
+	int digests_len;
+
+	if (s->s3->handshake_buffer)
+		if (!ssl3_digest_cached_records(s))
+			return 0;
+
+	digests_len = tls1_handshake_digest(s, buf, sizeof(buf));
+	if (digests_len < 0)
+		{
+		err = 1;
+		digests_len = 0;
 		}
 		
 	if (!tls1_PRF(ssl_get_algorithm2(s),
-			str,slen, buf,(int)(q-buf), NULL,0, NULL,0, NULL,0,
+			str,slen, buf, digests_len, NULL,0, NULL,0, NULL,0,
 			s->session->master_key,s->session->master_key_length,
 			out,buf2,sizeof buf2))
 		err = 1;
-	EVP_MD_CTX_cleanup(&ctx);
 
 	if (err)
 		return 0;

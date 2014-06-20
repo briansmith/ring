@@ -616,6 +616,8 @@ void SSL_free(SSL *s)
 		OPENSSL_free(s->tlsext_ocsp_resp);
 	if (s->alpn_client_proto_list)
 		OPENSSL_free(s->alpn_client_proto_list);
+	if (s->tlsext_channel_id_private)
+		EVP_PKEY_free(s->tlsext_channel_id_private);
 #endif
 
 	if (s->client_CA != NULL)
@@ -2173,6 +2175,11 @@ void SSL_CTX_free(SSL_CTX *a)
 		OPENSSL_free(a->alpn_client_proto_list);
 #endif
 
+#ifndef OPENSSL_NO_TLSEXT
+	if (a->tlsext_channel_id_private)
+		EVP_PKEY_free(a->tlsext_channel_id_private);
+#endif
+
 	OPENSSL_free(a);
 	}
 
@@ -2760,6 +2767,10 @@ int SSL_get_error(const SSL *s,int i)
 	if ((i < 0) && SSL_want_x509_lookup(s))
 		{
 		return(SSL_ERROR_WANT_X509_LOOKUP);
+		}
+	if ((i < 0) && SSL_want_channel_id_lookup(s))
+		{
+		return(SSL_ERROR_WANT_CHANNEL_ID_LOOKUP);
 		}
 
 	if (i == 0)
