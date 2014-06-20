@@ -2974,5 +2974,6 @@ void ERR_load_SSL_strings(void);
 #define SSL_R_CERT_CB_ERROR 428
 #define SSL_R_DTLS_MESSAGE_TOO_BIG 429
 #define SSL_R_INVALID_SRP_USERNAME 430
+#define SSL_R_TOO_MANY_EMPTY_FRAGMENTS 431
 
 #endif
