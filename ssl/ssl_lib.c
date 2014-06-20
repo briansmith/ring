@@ -3166,6 +3166,11 @@ SSL_CTX *SSL_set_SSL_CTX(SSL *ssl, SSL_CTX* ctx)
 	if (ssl->ctx != NULL)
 		SSL_CTX_free(ssl->ctx); /* decrement reference count */
 	ssl->ctx = ctx;
+
+	ssl->sid_ctx_length = ctx->sid_ctx_length;
+	assert(ssl->sid_ctx_length <= sizeof(ssl->sid_ctx));
+	memcpy(ssl->sid_ctx, ctx->sid_ctx, sizeof(ssl->sid_ctx));
+
 	return(ssl->ctx);
 	}
 
