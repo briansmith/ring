@@ -780,6 +780,7 @@ unsigned BN_num_bits_word(BN_ULONG l);
 #define BN_F_BN_CTX_new 120
 #define BN_F_BN_mod_inverse_no_branch 121
 #define BN_F_BN_generate_dsa_nonce 122
+#define BN_F_BN_generate_prime_ex 123
 #define BN_R_NOT_A_SQUARE 100
 #define BN_R_TOO_MANY_ITERATIONS 101
 #define BN_R_INPUT_NOT_REDUCED 102
@@ -795,5 +796,6 @@ unsigned BN_num_bits_word(BN_ULONG l);
 #define BN_R_ARG2_LT_ARG3 112
 #define BN_R_BIGNUM_TOO_LONG 113
 #define BN_R_PRIVATE_KEY_TOO_LARGE 114
+#define BN_R_BITS_TOO_SMALL 115
 
 #endif  /* OPENSSL_HEADER_BN_H */

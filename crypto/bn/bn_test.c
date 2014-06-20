@@ -99,6 +99,7 @@ int test_mod_exp_mont_consttime(BIO *bp, BN_CTX *ctx);
 int test_exp(BIO *bp, BN_CTX *ctx);
 int test_mod_sqrt(BIO *bp, BN_CTX *ctx);
 static int test_exp_mod_zero();
+int test_small_prime(BIO *bp,BN_CTX *ctx);
 int test_mod_exp_mont5(BIO *bp, BN_CTX *ctx);
 #if 0
 int test_gf2m_add(BIO *bp);
@@ -260,6 +261,11 @@ int main(int argc, char *argv[]) {
 
   message(out, "BN_mod_sqrt");
   if (!test_mod_sqrt(out, ctx))
+    goto err;
+  (void)BIO_flush(out);
+
+  message(out, "Small prime generation");
+  if (!test_small_prime(out, ctx))
     goto err;
   (void)BIO_flush(out);
 
@@ -1259,5 +1265,27 @@ err:
     BN_free(p);
   if (r != NULL)
     BN_free(r);
+  return ret;
+}
+
+int test_small_prime(BIO *bp, BN_CTX *ctx) {
+  static const int bits = 10;
+  int ret = 0;
+  BIGNUM r;
+
+  BN_init(&r);
+  if (!BN_generate_prime_ex(&r, bits, 0, NULL, NULL, NULL)) {
+    goto err;
+  }
+  if (BN_num_bits(&r) != bits) {
+    BIO_printf(bp, "Expected %d bit prime, got %d bit number\n", bits,
+               BN_num_bits(&r));
+    goto err;
+  }
+
+  ret = 1;
+
+err:
+  BN_free(&r);
   return ret;
 }
