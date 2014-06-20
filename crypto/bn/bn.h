@@ -520,6 +520,16 @@ int BN_rand_range(BIGNUM *rnd, const BIGNUM *range);
 /* BN_pseudo_rand_range is an alias for BN_rand_range. */
 int BN_pseudo_rand_range(BIGNUM *rnd, const BIGNUM *range);
 
+/* BN_generate_dsa_nonce generates a random number 0 <= out < range. Unlike
+ * BN_rand_range, it also includes the contents of |priv| and |message| in the
+ * generation so that an RNG failure isn't fatal as long as |priv| remains
+ * secret. This is intended for use in DSA and ECDSA where an RNG weakness
+ * leads directly to private key exposure unless this function is used.
+ * It returns one on success and zero on error. */
+int BN_generate_dsa_nonce(BIGNUM *out, const BIGNUM *range, const BIGNUM *priv,
+                          const uint8_t *message, size_t message_len,
+                          BN_CTX *ctx);
+
 /* BN_GENCB holds a callback function that is used by generation functions that
  * can take a very long time to complete. Use |BN_GENCB_set| to initialise a
  * |BN_GENCB| structure.
@@ -769,6 +779,7 @@ unsigned BN_num_bits_word(BN_ULONG l);
 #define BN_F_BN_mod_lshift_quick 119
 #define BN_F_BN_CTX_new 120
 #define BN_F_BN_mod_inverse_no_branch 121
+#define BN_F_BN_generate_dsa_nonce 122
 #define BN_R_NOT_A_SQUARE 100
 #define BN_R_TOO_MANY_ITERATIONS 101
 #define BN_R_INPUT_NOT_REDUCED 102
@@ -783,5 +794,6 @@ unsigned BN_num_bits_word(BN_ULONG l);
 #define BN_R_INVALID_RANGE 111
 #define BN_R_ARG2_LT_ARG3 112
 #define BN_R_BIGNUM_TOO_LONG 113
+#define BN_R_PRIVATE_KEY_TOO_LARGE 114
 
 #endif  /* OPENSSL_HEADER_BN_H */

@@ -304,7 +304,8 @@ struct dsa_method {
 
   DSA_SIG *(*sign)(const uint8_t *digest, size_t digest_len, DSA *dsa);
 
-  int (*sign_setup)(const DSA *dsa, BN_CTX *ctx_in, BIGNUM **kinvp, BIGNUM **rp);
+  int (*sign_setup)(const DSA *dsa, BN_CTX *ctx_in, BIGNUM **kinvp, BIGNUM **rp,
+                    const uint8_t *digest, size_t digest_len);
 
   int (*verify)(int *out_valid, const uint8_t *digest, size_t digest_len,
                 DSA_SIG *sig, const DSA *dsa);

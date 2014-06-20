@@ -111,6 +111,7 @@
 #include <openssl/err.h>
 #include <openssl/mem.h>
 #include <openssl/rand.h>
+#include <openssl/sha.h>
 
 int BN_rand(BIGNUM *rnd, int bits, int top, int bottom) {
   uint8_t *buf = NULL;
@@ -234,4 +235,69 @@ int BN_rand_range(BIGNUM *r, const BIGNUM *range) {
 
 int BN_pseudo_rand_range(BIGNUM *r, const BIGNUM *range) {
   return BN_rand_range(r, range);
+}
+
+int BN_generate_dsa_nonce(BIGNUM *out, const BIGNUM *range, const BIGNUM *priv,
+                          const uint8_t *message, size_t message_len,
+                          BN_CTX *ctx) {
+  SHA512_CTX sha;
+  /* We use 512 bits of random data per iteration to
+   * ensure that we have at least |range| bits of randomness. */
+  uint8_t random_bytes[64];
+  uint8_t digest[SHA512_DIGEST_LENGTH];
+  size_t done, todo;
+  /* We generate |range|+8 bytes of random output. */
+  const unsigned num_k_bytes = BN_num_bytes(range) + 8;
+  uint8_t private_bytes[96];
+  uint8_t *k_bytes;
+  int ret = 0;
+
+  k_bytes = OPENSSL_malloc(num_k_bytes);
+  if (!k_bytes) {
+    goto err;
+  }
+
+  /* We copy |priv| into a local buffer to avoid furthur exposing its
+   * length. */
+  todo = sizeof(priv->d[0]) * priv->top;
+  if (todo > sizeof(private_bytes)) {
+    /* No reasonable DSA or ECDSA key should have a private key
+     * this large and we don't handle this case in order to avoid
+     * leaking the length of the private key. */
+    OPENSSL_PUT_ERROR(BN, BN_generate_dsa_nonce, BN_R_PRIVATE_KEY_TOO_LARGE);
+    goto err;
+  }
+  memcpy(private_bytes, priv->d, todo);
+  memset(private_bytes + todo, 0, sizeof(private_bytes) - todo);
+
+  for (done = 0; done < num_k_bytes;) {
+    if (RAND_pseudo_bytes(random_bytes, sizeof(random_bytes)) != 1) {
+      goto err;
+    }
+    SHA512_Init(&sha);
+    SHA512_Update(&sha, &done, sizeof(done));
+    SHA512_Update(&sha, private_bytes, sizeof(private_bytes));
+    SHA512_Update(&sha, message, message_len);
+    SHA512_Update(&sha, random_bytes, sizeof(random_bytes));
+    SHA512_Final(digest, &sha);
+
+    todo = num_k_bytes - done;
+    if (todo > SHA512_DIGEST_LENGTH) {
+      todo = SHA512_DIGEST_LENGTH;
+    }
+    memcpy(k_bytes + done, digest, todo);
+    done += todo;
+  }
+
+  if (!BN_bin2bn(k_bytes, num_k_bytes, out) ||
+      BN_mod(out, out, range, ctx) != 1) {
+    goto err;
+  }
+  ret = 1;
+
+err:
+  if (k_bytes) {
+    OPENSSL_free(k_bytes);
+  }
+  return ret;
 }

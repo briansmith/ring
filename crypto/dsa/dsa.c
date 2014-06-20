@@ -313,10 +313,10 @@ int DSA_size(const DSA *dsa) {
 int DSA_sign_setup(const DSA *dsa, BN_CTX *ctx, BIGNUM **out_kinv,
                    BIGNUM **out_r) {
   if (dsa->meth->sign_setup) {
-    return dsa->meth->sign_setup(dsa, ctx, out_kinv, out_r);
+    return dsa->meth->sign_setup(dsa, ctx, out_kinv, out_r, NULL, 0);
   }
 
-  return DSA_default_method.sign_setup(dsa, ctx, out_kinv, out_r);
+  return DSA_default_method.sign_setup(dsa, ctx, out_kinv, out_r, NULL, 0);
 }
 
 int DSA_get_ex_new_index(long argl, void *argp, CRYPTO_EX_new *new_func,

@@ -178,6 +178,7 @@ int i2d_ECDSA_SIG(const ECDSA_SIG *sig, uint8_t **outp);
 #define ECDSA_F_ECDSA_sign_setup 102
 #define ECDSA_F_ECDSA_do_sign_ex 103
 #define ECDSA_F_ECDSA_sign_ex 104
+#define ECDSA_F_ecdsa_sign_setup 105
 #define ECDSA_R_RANDOM_NUMBER_GENERATION_FAILED 100
 #define ECDSA_R_NEED_NEW_SETUP_VALUES 101
 #define ECDSA_R_MISSING_PARAMETERS 102

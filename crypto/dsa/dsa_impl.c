@@ -74,7 +74,7 @@
 #define DSS_prime_checks 50
 
 static int sign_setup(const DSA *dsa, BN_CTX *ctx_in, BIGNUM **kinvp,
-                      BIGNUM **rp) {
+                      BIGNUM **rp, const uint8_t *digest, size_t digest_len) {
   BN_CTX *ctx;
   BIGNUM k, kq, *K, *kinv = NULL, *r = NULL;
   int ret = 0;
@@ -102,7 +102,18 @@ static int sign_setup(const DSA *dsa, BN_CTX *ctx_in, BIGNUM **kinvp,
 
   /* Get random k */
   do {
-    if (!BN_rand_range(&k, dsa->q)) {
+    /* If possible, we'll include the private key and message digest in the k
+     * generation. The |digest| argument is only empty if |DSA_sign_setup| is
+     * being used. */
+    int ok;
+
+    if (digest_len > 0) {
+      ok = BN_generate_dsa_nonce(&k, dsa->q, dsa->priv_key, digest, digest_len,
+                                 ctx);
+    } else {
+      ok = BN_rand_range(&k, dsa->q);
+    }
+    if (!ok) {
       goto err;
     }
   } while (BN_is_zero(&k));
