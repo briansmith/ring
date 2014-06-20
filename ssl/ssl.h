@@ -1656,12 +1656,13 @@ int SSL_cutthrough_complete(const SSL *s);
 size_t SSL_get_finished(const SSL *s, void *buf, size_t count);
 size_t SSL_get_peer_finished(const SSL *s, void *buf, size_t count);
 
-/* use either SSL_VERIFY_NONE or SSL_VERIFY_PEER, the last 2 options
+/* use either SSL_VERIFY_NONE or SSL_VERIFY_PEER, the last 3 options
  * are 'ored' with SSL_VERIFY_PEER if they are desired */
 #define SSL_VERIFY_NONE			0x00
 #define SSL_VERIFY_PEER			0x01
 #define SSL_VERIFY_FAIL_IF_NO_PEER_CERT	0x02
 #define SSL_VERIFY_CLIENT_ONCE		0x04
+#define SSL_VERIFY_PEER_IF_NO_OBC	0x08
 
 #define OpenSSL_add_ssl_algorithms()	SSL_library_init()
 #define SSLeay_add_ssl_algorithms()	SSL_library_init()

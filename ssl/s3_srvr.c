@@ -470,6 +470,9 @@ int ssl3_accept(SSL *s)
 		case SSL3_ST_SW_CERT_REQ_B:
 			if (/* don't request cert unless asked for it: */
 				!(s->verify_mode & SSL_VERIFY_PEER) ||
+				/* Don't request a certificate if an obc was presented */
+				((s->verify_mode & SSL_VERIFY_PEER_IF_NO_OBC) &&
+				 s->s3->tlsext_channel_id_valid) ||
 				/* if SSL_VERIFY_CLIENT_ONCE is set,
 				 * don't request cert during re-negotiation: */
 				((s->session->peer != NULL) &&
