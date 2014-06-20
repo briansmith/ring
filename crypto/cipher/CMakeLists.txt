@@ -14,6 +14,7 @@ add_library(
 	e_rc4.c
 	e_des.c
 	e_aes.c
+	e_chacha20poly1305.c
 )
 
 add_executable(

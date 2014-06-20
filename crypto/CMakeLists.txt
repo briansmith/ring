@@ -74,6 +74,8 @@ add_subdirectory(aes)
 add_subdirectory(des)
 add_subdirectory(rc4)
 add_subdirectory(conf)
+add_subdirectory(chacha)
+add_subdirectory(poly1305)
 
 # Level 1, depends only on 0.*
 add_subdirectory(digest)
@@ -134,6 +136,8 @@ add_library(
 	$<TARGET_OBJECTS:des>
 	$<TARGET_OBJECTS:rc4>
 	$<TARGET_OBJECTS:conf>
+	$<TARGET_OBJECTS:chacha>
+	$<TARGET_OBJECTS:poly1305>
 	$<TARGET_OBJECTS:buf>
 	$<TARGET_OBJECTS:bn>
 	$<TARGET_OBJECTS:bio>

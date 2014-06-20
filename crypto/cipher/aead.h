@@ -98,6 +98,9 @@ const EVP_AEAD *EVP_aead_aes_128_gcm(void);
 /* EVP_aes_256_gcm is AES-256 in Galois Counter Mode. */
 const EVP_AEAD *EVP_aead_aes_256_gcm(void);
 
+/* EVP_aead_chacha20_poly1305 is an AEAD built from ChaCha20 and Poly1305. */
+const EVP_AEAD *EVP_aead_chacha20_poly1305();
+
 
 /* Utility functions. */
 

@@ -146,6 +146,8 @@ int main(int argc, char **argv) {
     aead = EVP_aead_aes_128_gcm();
   } else if (strcmp(argv[1], "aes-256-gcm") == 0) {
     aead = EVP_aead_aes_256_gcm();
+  } else if (strcmp(argv[1], "chacha20-poly1305") == 0) {
+    aead = EVP_aead_chacha20_poly1305();
   } else {
     fprintf(stderr, "Unknown AEAD: %s\n", argv[1]);
     return 2;

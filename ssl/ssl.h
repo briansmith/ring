@@ -281,6 +281,7 @@ extern "C" {
 #define SSL_TXT_CAMELLIA128	"CAMELLIA128"
 #define SSL_TXT_CAMELLIA256	"CAMELLIA256"
 #define SSL_TXT_CAMELLIA	"CAMELLIA"
+#define SSL_TXT_CHACHA20	"CHACHA20"
 
 #define SSL_TXT_MD5		"MD5"
 #define SSL_TXT_SHA1		"SHA1"
@@ -2258,6 +2259,7 @@ const char *SSL_get_version(const SSL *s);
 int SSL_CIPHER_is_AES(const SSL_CIPHER *c);
 int SSL_CIPHER_has_MD5_HMAC(const SSL_CIPHER *c);
 int SSL_CIPHER_is_AESGCM(const SSL_CIPHER *c);
+int SSL_CIPHER_is_CHACHA20POLY1305(const SSL_CIPHER *c);
 
 /* This sets the 'default' SSL version that SSL_new() will create */
 int SSL_CTX_set_ssl_version(SSL_CTX *ctx, const SSL_METHOD *meth);

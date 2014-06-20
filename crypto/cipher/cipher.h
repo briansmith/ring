@@ -434,6 +434,9 @@ typedef struct evp_cipher_info_st {
 #define CIPHER_F_aead_aes_gcm_seal 110
 #define CIPHER_F_aead_aes_gcm_open 111
 #define CIPHER_F_aead_aes_gcm_init 112
+#define CIPHER_F_aead_chacha20_poly1305_init 113
+#define CIPHER_F_aead_chacha20_poly1305_open 114
+#define CIPHER_F_aead_chacha20_poly1305_seal 115
 #define CIPHER_R_WRAP_MODE_NOT_ALLOWED 100
 #define CIPHER_R_AES_KEY_SETUP_FAILED 101
 #define CIPHER_R_INPUT_NOT_INITIALIZED 102
@@ -450,5 +453,6 @@ typedef struct evp_cipher_info_st {
 #define CIPHER_R_OUTPUT_ALIASES_INPUT 113
 #define CIPHER_R_UNSUPPORTED_KEY_SIZE 114
 #define CIPHER_R_TOO_LARGE 115
+#define CIPHER_R_IV_TOO_LARGE 116
 
 #endif  /* OPENSSL_HEADER_CIPHER_H */

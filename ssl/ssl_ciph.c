@@ -296,6 +296,7 @@ static const SSL_CIPHER cipher_aliases[]={
 	{0,SSL_TXT_CAMELLIA128,0,0,0,SSL_CAMELLIA128,0,0,0,0,0,0},
 	{0,SSL_TXT_CAMELLIA256,0,0,0,SSL_CAMELLIA256,0,0,0,0,0,0},
 	{0,SSL_TXT_CAMELLIA   ,0,0,0,SSL_CAMELLIA128|SSL_CAMELLIA256,0,0,0,0,0,0},
+	{0,SSL_TXT_CHACHA20   ,0,0,0,SSL_CHACHA20POLY1305,0,0,0,0,0,0},
 
 	/* MAC aliases */	
 	{0,SSL_TXT_MD5,0,     0,0,0,SSL_MD5,   0,0,0,0,0},
@@ -385,9 +386,15 @@ int ssl_cipher_get_evp_aead(const SSL_SESSION *s, const EVP_AEAD **aead)
 		return 0;
 
 #ifndef OPENSSL_NO_AES
-	/* There is only one AEAD for now. */
-	*aead = EVP_aead_aes_128_gcm();
-	return 1;
+	switch (c->algorithm_enc)
+		{
+	case SSL_AES128GCM:
+		*aead = EVP_aead_aes_128_gcm();
+		return 1;
+	case SSL_CHACHA20POLY1305:
+		*aead = EVP_aead_chacha20_poly1305();
+		return 1;
+		}
 #endif
 
 	return 0;
@@ -1621,6 +1628,9 @@ char *SSL_CIPHER_description(const SSL_CIPHER *cipher, char *buf, int len)
 	case SSL_SEED:
 		enc="SEED(128)";
 		break;
+	case SSL_CHACHA20POLY1305:
+		enc="ChaCha20-Poly1305";
+		break;
 	default:
 		enc="unknown";
 		break;
@@ -1679,6 +1689,11 @@ int SSL_CIPHER_has_MD5_HMAC(const SSL_CIPHER *c)
 int SSL_CIPHER_is_AESGCM(const SSL_CIPHER *c)
 	{
 	return (c->algorithm_mac & (SSL_AES128GCM|SSL_AES256GCM)) != 0;
+	}
+
+int SSL_CIPHER_is_CHACHA20POLY1305(const SSL_CIPHER *c)
+	{
+	return (c->algorithm_enc & SSL_CHACHA20POLY1305) != 0;
 	}
 
 char *SSL_CIPHER_get_version(const SSL_CIPHER *c)
