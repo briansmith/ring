@@ -81,6 +81,12 @@ int ASN1_item_verify(const ASN1_ITEM *it, X509_ALGOR *a,
 
 	int mdnid, pknid;
 
+	if (!pkey)
+		{
+		OPENSSL_PUT_ERROR(X509, ASN1_item_verify, ERR_R_PASSED_NULL_PARAMETER);
+		return 1;
+		}
+
 	EVP_MD_CTX_init(&ctx);
 
 	/* Convert signature OID into digest and public key OIDs */
