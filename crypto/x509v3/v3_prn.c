@@ -164,7 +164,7 @@ int X509V3_EXT_print(BIO *out, X509_EXTENSION *ext, unsigned long flag, int inde
 		return ok;
 }
 
-int X509V3_extensions_print(BIO *bp, char *title, STACK_OF(X509_EXTENSION) *exts, unsigned long flag, int indent)
+int X509V3_extensions_print(BIO *bp, const char *title, STACK_OF(X509_EXTENSION) *exts, unsigned long flag, int indent)
 {
 	size_t i;
 	int j;

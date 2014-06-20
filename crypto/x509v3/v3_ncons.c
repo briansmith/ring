@@ -76,7 +76,7 @@ static int i2r_NAME_CONSTRAINTS(const X509V3_EXT_METHOD *method,
 				void *a, BIO *bp, int ind);
 static int do_i2r_name_constraints(const X509V3_EXT_METHOD *method,
 				   STACK_OF(GENERAL_SUBTREE) *trees,
-				   BIO *bp, int ind, char *name);
+				   BIO *bp, int ind, const char *name);
 static int print_nc_ipadd(BIO *bp, ASN1_OCTET_STRING *ip);
 
 static int nc_match(GENERAL_NAME *gen, NAME_CONSTRAINTS *nc);
@@ -182,7 +182,7 @@ static int i2r_NAME_CONSTRAINTS(const X509V3_EXT_METHOD *method, void *a,
 
 static int do_i2r_name_constraints(const X509V3_EXT_METHOD *method,
 				   STACK_OF(GENERAL_SUBTREE) *trees,
-				   BIO *bp, int ind, char *name)
+				   BIO *bp, int ind, const char *name)
 	{
 	GENERAL_SUBTREE *tree;
 	size_t i;

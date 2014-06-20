@@ -83,15 +83,15 @@ static int xp_cmp(const X509_PURPOSE **a, const X509_PURPOSE **b);
 static void xptable_free(X509_PURPOSE *p);
 
 static X509_PURPOSE xstandard[] = {
-	{X509_PURPOSE_SSL_CLIENT, X509_TRUST_SSL_CLIENT, 0, check_purpose_ssl_client, "SSL client", "sslclient", NULL},
-	{X509_PURPOSE_SSL_SERVER, X509_TRUST_SSL_SERVER, 0, check_purpose_ssl_server, "SSL server", "sslserver", NULL},
-	{X509_PURPOSE_NS_SSL_SERVER, X509_TRUST_SSL_SERVER, 0, check_purpose_ns_ssl_server, "Netscape SSL server", "nssslserver", NULL},
-	{X509_PURPOSE_SMIME_SIGN, X509_TRUST_EMAIL, 0, check_purpose_smime_sign, "S/MIME signing", "smimesign", NULL},
-	{X509_PURPOSE_SMIME_ENCRYPT, X509_TRUST_EMAIL, 0, check_purpose_smime_encrypt, "S/MIME encryption", "smimeencrypt", NULL},
-	{X509_PURPOSE_CRL_SIGN, X509_TRUST_COMPAT, 0, check_purpose_crl_sign, "CRL signing", "crlsign", NULL},
-	{X509_PURPOSE_ANY, X509_TRUST_DEFAULT, 0, no_check, "Any Purpose", "any", NULL},
-	{X509_PURPOSE_OCSP_HELPER, X509_TRUST_COMPAT, 0, ocsp_helper, "OCSP helper", "ocsphelper", NULL},
-	{X509_PURPOSE_TIMESTAMP_SIGN, X509_TRUST_TSA, 0, check_purpose_timestamp_sign, "Time Stamp signing", "timestampsign", NULL},
+	{X509_PURPOSE_SSL_CLIENT, X509_TRUST_SSL_CLIENT, 0, check_purpose_ssl_client, (char *) "SSL client", (char *) "sslclient", NULL},
+	{X509_PURPOSE_SSL_SERVER, X509_TRUST_SSL_SERVER, 0, check_purpose_ssl_server, (char *) "SSL server", (char *) "sslserver", NULL},
+	{X509_PURPOSE_NS_SSL_SERVER, X509_TRUST_SSL_SERVER, 0, check_purpose_ns_ssl_server, (char *) "Netscape SSL server", (char *) "nssslserver", NULL},
+	{X509_PURPOSE_SMIME_SIGN, X509_TRUST_EMAIL, 0, check_purpose_smime_sign, (char *) "S/MIME signing", (char *) "smimesign", NULL},
+	{X509_PURPOSE_SMIME_ENCRYPT, X509_TRUST_EMAIL, 0, check_purpose_smime_encrypt, (char *) "S/MIME encryption", (char *) "smimeencrypt", NULL},
+	{X509_PURPOSE_CRL_SIGN, X509_TRUST_COMPAT, 0, check_purpose_crl_sign, (char *) "CRL signing", (char *) "crlsign", NULL},
+	{X509_PURPOSE_ANY, X509_TRUST_DEFAULT, 0, no_check, (char *) "Any Purpose", (char *) "any", NULL},
+	{X509_PURPOSE_OCSP_HELPER, X509_TRUST_COMPAT, 0, ocsp_helper, (char *) "OCSP helper", (char *) "ocsphelper", NULL},
+	{X509_PURPOSE_TIMESTAMP_SIGN, X509_TRUST_TSA, 0, check_purpose_timestamp_sign, (char *) "Time Stamp signing", (char *) "timestampsign", NULL},
 };
 
 #define X509_PURPOSE_COUNT (sizeof(xstandard)/sizeof(X509_PURPOSE))

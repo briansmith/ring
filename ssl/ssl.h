@@ -2121,7 +2121,7 @@ void	SSL_CTX_flush_sessions(SSL_CTX *ctx,long tm);
 
 const SSL_CIPHER *SSL_get_current_cipher(const SSL *s);
 int	SSL_CIPHER_get_bits(const SSL_CIPHER *c,int *alg_bits);
-char *	SSL_CIPHER_get_version(const SSL_CIPHER *c);
+const char *	SSL_CIPHER_get_version(const SSL_CIPHER *c);
 const char *	SSL_CIPHER_get_name(const SSL_CIPHER *c);
 unsigned long 	SSL_CIPHER_get_id(const SSL_CIPHER *c);
 
@@ -2375,7 +2375,7 @@ long SSL_get_default_timeout(const SSL *s);
 
 int SSL_library_init(void );
 
-char *SSL_CIPHER_description(const SSL_CIPHER *,char *buf,int size);
+const char *SSL_CIPHER_description(const SSL_CIPHER *,char *buf,int size);
 STACK_OF(X509_NAME) *SSL_dup_CA_list(STACK_OF(X509_NAME) *sk);
 
 X509 *SSL_get_certificate(const SSL *ssl);

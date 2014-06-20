@@ -443,7 +443,7 @@ static X509_VERIFY_PARAM_ID _empty_id = {NULL, 0, NULL, 0, NULL, 0};
 
 static const X509_VERIFY_PARAM default_table[] = {
 	{
-	"default",	/* X509 default parameters */
+	(char *) "default",	/* X509 default parameters */
 	0,		/* Check time */
 	0,		/* internal flags */
 	0,		/* flags */
@@ -454,7 +454,7 @@ static const X509_VERIFY_PARAM default_table[] = {
 	vpm_empty_id
 	},
 	{
-	"pkcs7",			/* S/MIME sign parameters */
+	(char *) "pkcs7",			/* S/MIME sign parameters */
 	0,				/* Check time */
 	0,				/* internal flags */
 	0,				/* flags */
@@ -465,7 +465,7 @@ static const X509_VERIFY_PARAM default_table[] = {
 	vpm_empty_id
 	},
 	{
-	"smime_sign",			/* S/MIME sign parameters */
+	(char *) "smime_sign",			/* S/MIME sign parameters */
 	0,				/* Check time */
 	0,				/* internal flags */
 	0,				/* flags */
@@ -476,7 +476,7 @@ static const X509_VERIFY_PARAM default_table[] = {
 	vpm_empty_id
 	},
 	{
-	"ssl_client",			/* SSL/TLS client parameters */
+	(char *) "ssl_client",			/* SSL/TLS client parameters */
 	0,				/* Check time */
 	0,				/* internal flags */
 	0,				/* flags */
@@ -487,7 +487,7 @@ static const X509_VERIFY_PARAM default_table[] = {
 	vpm_empty_id
 	},
 	{
-	"ssl_server",			/* SSL/TLS server parameters */
+	(char *) "ssl_server",			/* SSL/TLS server parameters */
 	0,				/* Check time */
 	0,				/* internal flags */
 	0,				/* flags */

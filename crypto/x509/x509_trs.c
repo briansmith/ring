@@ -76,14 +76,14 @@ static int (*default_trust)(int id, X509 *x, int flags) = obj_trust;
  */
 
 static X509_TRUST trstandard[] = {
-{X509_TRUST_COMPAT, 0, trust_compat, "compatible", 0, NULL},
-{X509_TRUST_SSL_CLIENT, 0, trust_1oidany, "SSL Client", NID_client_auth, NULL},
-{X509_TRUST_SSL_SERVER, 0, trust_1oidany, "SSL Server", NID_server_auth, NULL},
-{X509_TRUST_EMAIL, 0, trust_1oidany, "S/MIME email", NID_email_protect, NULL},
-{X509_TRUST_OBJECT_SIGN, 0, trust_1oidany, "Object Signer", NID_code_sign, NULL},
-{X509_TRUST_OCSP_SIGN, 0, trust_1oid, "OCSP responder", NID_OCSP_sign, NULL},
-{X509_TRUST_OCSP_REQUEST, 0, trust_1oid, "OCSP request", NID_ad_OCSP, NULL},
-{X509_TRUST_TSA, 0, trust_1oidany, "TSA server", NID_time_stamp, NULL}
+{X509_TRUST_COMPAT, 0, trust_compat, (char *) "compatible", 0, NULL},
+{X509_TRUST_SSL_CLIENT, 0, trust_1oidany, (char *) "SSL Client", NID_client_auth, NULL},
+{X509_TRUST_SSL_SERVER, 0, trust_1oidany, (char *) "SSL Server", NID_server_auth, NULL},
+{X509_TRUST_EMAIL, 0, trust_1oidany, (char *) "S/MIME email", NID_email_protect, NULL},
+{X509_TRUST_OBJECT_SIGN, 0, trust_1oidany, (char *) "Object Signer", NID_code_sign, NULL},
+{X509_TRUST_OCSP_SIGN, 0, trust_1oid, (char *) "OCSP responder", NID_OCSP_sign, NULL},
+{X509_TRUST_OCSP_REQUEST, 0, trust_1oid, (char *) "OCSP request", NID_ad_OCSP, NULL},
+{X509_TRUST_TSA, 0, trust_1oidany, (char *) "TSA server", NID_time_stamp, NULL}
 };
 
 #define X509_TRUST_COUNT	(sizeof(trstandard)/sizeof(X509_TRUST))

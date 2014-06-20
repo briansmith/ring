@@ -1584,7 +1584,7 @@ err:
 	return NULL;
 	}
 
-char *SSL_CIPHER_description(const SSL_CIPHER *cipher, char *buf, int len)
+const char *SSL_CIPHER_description(const SSL_CIPHER *cipher, char *buf, int len)
 	{
 	int is_export,pkl,kl;
 	const char *ver,*exp_str;
@@ -1795,7 +1795,7 @@ int SSL_CIPHER_is_CHACHA20POLY1305(const SSL_CIPHER *c)
 	return (c->algorithm_enc & SSL_CHACHA20POLY1305) != 0;
 	}
 
-char *SSL_CIPHER_get_version(const SSL_CIPHER *c)
+const char *SSL_CIPHER_get_version(const SSL_CIPHER *c)
 	{
 	int i;
 
