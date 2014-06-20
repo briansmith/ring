@@ -122,8 +122,9 @@ int BN_div(BIGNUM *dv, BIGNUM *rm, const BIGNUM *num, const BIGNUM *divisor,
   int no_branch = 0;
 
   /* Invalid zero-padding would have particularly bad consequences
-   * in the case of 'num'. */
-  if (num->top > 0 && num->d[num->top - 1] == 0) {
+   * so don't just rely on bn_check_top() here */
+  if ((num->top > 0 && num->d[num->top - 1] == 0) ||
+      (divisor->top > 0 && divisor->d[divisor->top - 1] == 0)) {
     OPENSSL_PUT_ERROR(BN, BN_div, BN_R_NOT_INITIALIZED);
     return 0;
   }
