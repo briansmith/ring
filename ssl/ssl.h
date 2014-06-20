@@ -867,6 +867,11 @@ struct ssl_ctx_st
 	STACK_OF(SSL_CIPHER) *cipher_list;
 	/* same as above but sorted for lookup */
 	STACK_OF(SSL_CIPHER) *cipher_list_by_id;
+	/* cipher_list_tls11 is the list of ciphers when TLS 1.1 or greater is
+	 * in use. This only applies to server connections as, for clients, the
+	 * version number is known at connect time and so the cipher list can
+	 * be set then. */
+	STACK_OF(SSL_CIPHER) *cipher_list_tls11;
 
 	struct x509_store_st /* X509_STORE */ *cert_store;
 	LHASH_OF(SSL_SESSION) *sessions;
@@ -2039,6 +2044,7 @@ void BIO_ssl_shutdown(BIO *ssl_bio);
 #endif
 
 int	SSL_CTX_set_cipher_list(SSL_CTX *,const char *str);
+int	SSL_CTX_set_cipher_list_tls11(SSL_CTX *,const char *str);
 SSL_CTX *SSL_CTX_new(const SSL_METHOD *meth);
 void	SSL_CTX_free(SSL_CTX *);
 long SSL_CTX_set_timeout(SSL_CTX *ctx,long t);
@@ -2647,6 +2653,7 @@ void ERR_load_SSL_strings(void);
 #define SSL_F_ssl_parse_serverhello_tlsext 274
 #define SSL_F_ssl3_get_channel_id 275
 #define SSL_F_ssl3_send_channel_id 276
+#define SSL_F_SSL_CTX_set_cipher_list_tls11 277
 #define SSL_R_UNABLE_TO_FIND_ECDH_PARAMETERS 100
 #define SSL_R_DECRYPTION_FAILED_OR_BAD_RECORD_MAC 101
 #define SSL_R_INVALID_NULL_CMD_NAME 102

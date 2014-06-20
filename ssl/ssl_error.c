@@ -21,6 +21,7 @@ const ERR_STRING_DATA SSL_error_string_data[] = {
   {ERR_PACK(ERR_LIB_SSL, SSL_F_SSL_CTX_check_private_key, 0), "SSL_CTX_check_private_key"},
   {ERR_PACK(ERR_LIB_SSL, SSL_F_SSL_CTX_new, 0), "SSL_CTX_new"},
   {ERR_PACK(ERR_LIB_SSL, SSL_F_SSL_CTX_set_cipher_list, 0), "SSL_CTX_set_cipher_list"},
+  {ERR_PACK(ERR_LIB_SSL, SSL_F_SSL_CTX_set_cipher_list_tls11, 0), "SSL_CTX_set_cipher_list_tls11"},
   {ERR_PACK(ERR_LIB_SSL, SSL_F_SSL_CTX_set_session_id_context, 0), "SSL_CTX_set_session_id_context"},
   {ERR_PACK(ERR_LIB_SSL, SSL_F_SSL_CTX_set_ssl_version, 0), "SSL_CTX_set_ssl_version"},
   {ERR_PACK(ERR_LIB_SSL, SSL_F_SSL_CTX_use_PrivateKey, 0), "SSL_CTX_use_PrivateKey"},

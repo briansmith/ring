@@ -1308,18 +1308,26 @@ int ssl_cipher_ptr_id_cmp(const SSL_CIPHER **ap, const SSL_CIPHER **bp)
  * preference */
 STACK_OF(SSL_CIPHER) *SSL_get_ciphers(const SSL *s)
 	{
-	if (s != NULL)
+	if (s == NULL)
+		return NULL;
+
+	if (s->cipher_list != NULL)
 		{
-		if (s->cipher_list != NULL)
-			{
-			return(s->cipher_list);
-			}
-		else if ((s->ctx != NULL) &&
-			(s->ctx->cipher_list != NULL))
-			{
-			return(s->ctx->cipher_list);
-			}
+		return(s->cipher_list);
 		}
+
+	if (s->version >= TLS1_1_VERSION)
+		{
+		if (s->ctx != NULL && s->ctx->cipher_list_tls11 != NULL)
+			return s->ctx->cipher_list_tls11;
+		}
+
+	if ((s->ctx != NULL) &&
+		(s->ctx->cipher_list != NULL))
+		{
+		return(s->ctx->cipher_list);
+		}
+
 	return(NULL);
 	}
 
@@ -1376,6 +1384,21 @@ int SSL_CTX_set_cipher_list(SSL_CTX *ctx, const char *str)
 	else if (sk_SSL_CIPHER_num(sk) == 0)
 		{
 		OPENSSL_PUT_ERROR(SSL, SSL_CTX_set_cipher_list, SSL_R_NO_CIPHER_MATCH);
+		return 0;
+		}
+	return 1;
+	}
+
+int SSL_CTX_set_cipher_list_tls11(SSL_CTX *ctx, const char *str)
+	{
+	STACK_OF(SSL_CIPHER) *sk;
+	
+	sk = ssl_create_cipher_list(ctx->method, &ctx->cipher_list_tls11, NULL, str, ctx->cert);
+	if (sk == NULL)
+		return 0;
+	else if (sk_SSL_CIPHER_num(sk) == 0)
+		{
+		OPENSSL_PUT_ERROR(SSL, SSL_CTX_set_cipher_list_tls11, SSL_R_NO_CIPHER_MATCH);
 		return 0;
 		}
 	return 1;
@@ -2125,6 +2148,8 @@ void SSL_CTX_free(SSL_CTX *a)
 		sk_SSL_CIPHER_free(a->cipher_list);
 	if (a->cipher_list_by_id != NULL)
 		sk_SSL_CIPHER_free(a->cipher_list_by_id);
+	if (a->cipher_list_tls11 != NULL)
+		sk_SSL_CIPHER_free(a->cipher_list_tls11);
 	if (a->cert != NULL)
 		ssl_cert_free(a->cert);
 	if (a->client_CA != NULL)

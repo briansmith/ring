@@ -1268,7 +1268,7 @@ STACK_OF(SSL_CIPHER) *ssl_create_cipher_list(const SSL_METHOD *ssl_method,
 	/*
 	 * Return with error if nothing to do.
 	 */
-	if (rule_str == NULL || cipher_list == NULL || cipher_list_by_id == NULL)
+	if (rule_str == NULL || cipher_list == NULL)
 		return NULL;
 #ifndef OPENSSL_NO_EC
 	if (!check_suiteb_cipher_list(ssl_method, c, &rule_str))
@@ -1430,12 +1430,18 @@ STACK_OF(SSL_CIPHER) *ssl_create_cipher_list(const SSL_METHOD *ssl_method,
 	if (*cipher_list != NULL)
 		sk_SSL_CIPHER_free(*cipher_list);
 	*cipher_list = cipherstack;
-	if (*cipher_list_by_id != NULL)
-		sk_SSL_CIPHER_free(*cipher_list_by_id);
-	*cipher_list_by_id = tmp_cipher_list;
-	(void)sk_SSL_CIPHER_set_cmp_func(*cipher_list_by_id,ssl_cipher_ptr_id_cmp);
+	if (cipher_list_by_id != NULL)
+		{
+		if (*cipher_list_by_id != NULL)
+			sk_SSL_CIPHER_free(*cipher_list_by_id);
+		*cipher_list_by_id = tmp_cipher_list;
+		(void)sk_SSL_CIPHER_set_cmp_func(*cipher_list_by_id,ssl_cipher_ptr_id_cmp);
 
-	sk_SSL_CIPHER_sort(*cipher_list_by_id);
+		sk_SSL_CIPHER_sort(*cipher_list_by_id);
+		}
+	else
+		sk_SSL_CIPHER_free(tmp_cipher_list);
+
 	return(cipherstack);
 	}
 
