@@ -391,6 +391,9 @@ int ssl_cipher_get_evp_aead(const SSL_SESSION *s, const EVP_AEAD **aead)
 	case SSL_AES128GCM:
 		*aead = EVP_aead_aes_128_gcm();
 		return 1;
+	case SSL_AES256GCM:
+		*aead = EVP_aead_aes_256_gcm();
+		return 1;
 	case SSL_CHACHA20POLY1305:
 		*aead = EVP_aead_chacha20_poly1305();
 		return 1;
