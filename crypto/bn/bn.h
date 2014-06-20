@@ -233,6 +233,12 @@ BIGNUM *BN_bin2bn(const uint8_t *in, size_t len, BIGNUM *ret);
  * number of bytes written. */
 size_t BN_bn2bin(const BIGNUM *in, uint8_t *out);
 
+/* BN_bn2bin_padded serialises the absolute value of |in| to |out| as a
+ * big-endian integer. The integer is padded with leading zeros up to size
+ * |len|. If |len| is smaller than |BN_num_bytes|, the function fails and
+ * returns 0. Otherwise, it returns 1. */
+int BN_bn2bin_padded(uint8_t *out, size_t len, const BIGNUM *in);
+
 /* BN_bn2hex returns an allocated string that contains a NUL-terminated, hex
  * representation of |bn|. If |bn| is negative, the first char in the resulting
  * string will be '-'. Returns NULL on allocation failure. */

@@ -95,36 +95,27 @@ BN_BLINDING *rsa_setup_blinding(RSA *rsa, BN_CTX *in_ctx);
 int RSA_padding_add_PKCS1_type_1(uint8_t *to, unsigned to_len,
                                  const uint8_t *from, unsigned from_len);
 int RSA_padding_check_PKCS1_type_1(uint8_t *to, unsigned to_len,
-                                   const uint8_t *from, unsigned from_len,
-                                   unsigned rsa_len);
+                                   const uint8_t *from, unsigned from_len);
 int RSA_padding_add_PKCS1_type_2(uint8_t *to, unsigned to_len,
                                  const uint8_t *from, unsigned from_len);
 int RSA_padding_check_PKCS1_type_2(uint8_t *to, unsigned to_len,
-                                   const uint8_t *from, unsigned from_len,
-                                   unsigned rsa_len);
+                                   const uint8_t *from, unsigned from_len);
 int RSA_padding_add_PKCS1_OAEP_mgf1(uint8_t *to, unsigned to_len,
                                     const uint8_t *from, unsigned from_len,
                                     const uint8_t *param, unsigned plen,
                                     const EVP_MD *md, const EVP_MD *mgf1md);
 int RSA_padding_check_PKCS1_OAEP_mgf1(uint8_t *to, unsigned to_len,
                                       const uint8_t *from, unsigned from_len,
-                                      unsigned num, const uint8_t *param,
-                                      unsigned plen, const EVP_MD *md,
-                                      const EVP_MD *mgf1md);
-int RSA_padding_add_PKCS1_OAEP(uint8_t *to, unsigned to_len,
-                               const uint8_t *from, unsigned from_len,
-                               const uint8_t *p, unsigned pl);
-int RSA_padding_check_PKCS1_OAEP(uint8_t *to, unsigned to_len,
-                                 const uint8_t *from, unsigned from_len,
-                                 unsigned rsa_len, const uint8_t *p, unsigned pl);
+                                      const uint8_t *param, unsigned plen,
+                                      const EVP_MD *md, const EVP_MD *mgf1md);
 int RSA_padding_add_SSLv23(uint8_t *to, unsigned to_len, const uint8_t *from,
                            unsigned from_len);
 int RSA_padding_check_SSLv23(uint8_t *to, unsigned to_len, const uint8_t *from,
-                             unsigned from_len, unsigned rsa_len);
+                             unsigned from_len);
 int RSA_padding_add_none(uint8_t *to, unsigned to_len, const uint8_t *from,
                          unsigned from_len);
 int RSA_padding_check_none(uint8_t *to, unsigned to_len, const uint8_t *from,
-                           unsigned from_len, unsigned rsa_len);
+                           unsigned from_len);
 
 /* RSA_verify_PKCS1_PSS_mgf1 */
 int RSA_verify_PKCS1_PSS_mgf1(RSA *rsa, const uint8_t *mHash,

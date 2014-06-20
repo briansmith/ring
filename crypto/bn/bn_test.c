@@ -103,6 +103,7 @@ static int test_exp_mod_zero();
 int test_small_prime(BIO *bp,BN_CTX *ctx);
 int test_mod_exp_mont5(BIO *bp, BN_CTX *ctx);
 int test_sqrt(BIO *bp, BN_CTX *ctx);
+int test_bn2bin_padded(BIO *bp, BN_CTX *ctx);
 #if 0
 int test_gf2m_add(BIO *bp);
 int test_gf2m_mod(BIO *bp);
@@ -273,6 +274,11 @@ int main(int argc, char *argv[]) {
 
   message(out, "BN_sqrt");
   if (!test_sqrt(out, ctx))
+    goto err;
+  (void)BIO_flush(out);
+
+  message(out, "BN_bn2bin_padded");
+  if (!test_bn2bin_padded(out, ctx))
     goto err;
   (void)BIO_flush(out);
 
@@ -1336,6 +1342,78 @@ int test_sqrt(BIO *bp, BN_CTX *ctx) {
   BN_free(n);
   BN_free(sqrt);
   BN_free(nn);
+
+  return 1;
+}
+
+int test_bn2bin_padded(BIO *bp, BN_CTX *ctx) {
+  BIGNUM *n = BN_new();
+  uint8_t zeros[256], out[256], reference[128];
+  size_t bytes;
+
+  memset(zeros, 0, sizeof(zeros));
+
+  /* Test edge case at 0. */
+  if (!BN_bn2bin_padded(NULL, 0, n)) {
+    fprintf(stderr,
+            "BN_bn2bin_padded failed to encode 0 in an empty buffer.\n");
+    return 0;
+  }
+  memset(out, -1, sizeof(out));
+  if (!BN_bn2bin_padded(out, sizeof(out), n)) {
+    fprintf(stderr,
+            "BN_bn2bin_padded failed to encode 0 in a non-empty buffer.\n");
+    return 0;
+  }
+  if (memcmp(zeros, out, sizeof(out))) {
+    fprintf(stderr, "BN_bn2bin_padded did not zero buffer.\n");
+    return 0;
+  }
+
+  /* Test a random numbers at various byte lengths. */
+  for (bytes = 128 - 7; bytes <= 128; bytes++) {
+    if (!BN_rand(n, bytes * 8, 0 /* make sure top bit is 1 */,
+                 0 /* don't modify bottom bit */)) {
+      BIO_print_errors_fp(stderr);
+      return 0;
+    }
+    if (BN_num_bytes(n) != bytes || BN_bn2bin(n, reference) != bytes) {
+      fprintf(stderr, "Bad result from BN_rand; bytes.\n");
+      return 0;
+    }
+    /* Empty buffer should fail. */
+    if (BN_bn2bin_padded(NULL, 0, n)) {
+      fprintf(stderr,
+              "BN_bn2bin_padded incorrectly succeeded on empty buffer.\n");
+      return 0;
+    }
+    /* One byte short should fail. */
+    if (BN_bn2bin_padded(out, bytes - 1, n)) {
+      fprintf(stderr, "BN_bn2bin_padded incorrectly succeeded on short.\n");
+      return 0;
+    }
+    /* Exactly right size should encode. */
+    if (!BN_bn2bin_padded(out, bytes, n) ||
+        memcmp(out, reference, bytes) != 0) {
+      fprintf(stderr, "BN_bn2bin_padded gave a bad result.\n");
+      return 0;
+    }
+    /* Pad up one byte extra. */
+    if (!BN_bn2bin_padded(out, bytes + 1, n) ||
+        memcmp(out + 1, reference, bytes) || memcmp(out, zeros, 1)) {
+      fprintf(stderr, "BN_bn2bin_padded gave a bad result.\n");
+      return 0;
+    }
+    /* Pad up to 256. */
+    if (!BN_bn2bin_padded(out, sizeof(out), n) ||
+        memcmp(out + sizeof(out) - bytes, reference, bytes) ||
+        memcmp(out, zeros, sizeof(out) - bytes)) {
+      fprintf(stderr, "BN_bn2bin_padded gave a bad result.\n");
+      return 0;
+    }
+  }
+
+  BN_free(n);
 
   return 1;
 }

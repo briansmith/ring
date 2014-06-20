@@ -86,11 +86,10 @@ static int finish(RSA *rsa) {
 static int encrypt(RSA *rsa, size_t *out_len, uint8_t *out, size_t max_out,
                    const uint8_t *in, size_t in_len, int padding) {
   const unsigned rsa_size = RSA_size(rsa);
-  unsigned i, j, k;
   BIGNUM *f, *result;
   uint8_t *buf = NULL;
   BN_CTX *ctx = NULL;
-  int ret = 0;
+  int i, ret = 0;
 
   if (rsa_size > OPENSSL_RSA_MAX_MODULUS_BITS) {
     OPENSSL_PUT_ERROR(RSA, encrypt, RSA_R_MODULUS_TOO_LARGE);
@@ -133,7 +132,9 @@ static int encrypt(RSA *rsa, size_t *out_len, uint8_t *out, size_t max_out,
       i = RSA_padding_add_PKCS1_type_2(buf, rsa_size, in, in_len);
       break;
     case RSA_PKCS1_OAEP_PADDING:
-      i = RSA_padding_add_PKCS1_OAEP(buf, rsa_size, in, in_len, NULL, 0);
+      /* Use the default parameters: SHA-1 for both hashes and no label. */
+      i = RSA_padding_add_PKCS1_OAEP_mgf1(buf, rsa_size, in, in_len,
+                                          NULL, 0, NULL, NULL);
       break;
     case RSA_SSLV23_PADDING:
       i = RSA_padding_add_SSLv23(buf, rsa_size, in, in_len);
@@ -173,10 +174,9 @@ static int encrypt(RSA *rsa, size_t *out_len, uint8_t *out, size_t max_out,
 
   /* put in leading 0 bytes if the number is less than the length of the
    * modulus */
-  j = BN_num_bytes(result);
-  i = BN_bn2bin(result, &(out[rsa_size - j]));
-  for (k = 0; k < rsa_size - i; k++) {
-    out[k] = 0;
+  if (!BN_bn2bin_padded(out, rsa_size, result)) {
+    OPENSSL_PUT_ERROR(RSA, encrypt, ERR_R_INTERNAL_ERROR);
+    goto err;
   }
 
   *out_len = rsa_size;
@@ -327,12 +327,11 @@ static int sign_raw(RSA *rsa, size_t *out_len, uint8_t *out, size_t max_out,
                     const uint8_t *in, size_t in_len, int padding) {
   const unsigned rsa_size = RSA_size(rsa);
   BIGNUM *f, *result;
-  unsigned i, j, k;
   uint8_t *buf = NULL;
   BN_CTX *ctx = NULL;
   unsigned blinding_index = 0;
   BN_BLINDING *blinding = NULL;
-  int ret = 0;
+  int i, ret = 0;
 
   if (max_out < rsa_size) {
     OPENSSL_PUT_ERROR(RSA, sign_raw, RSA_R_OUTPUT_BUFFER_TOO_SMALL);
@@ -420,12 +419,9 @@ static int sign_raw(RSA *rsa, size_t *out_len, uint8_t *out, size_t max_out,
     }
   }
 
-  /* put in leading 0 bytes if the number is less than the
-   * length of the modulus */
-  j = BN_num_bytes(result);
-  i = BN_bn2bin(result, &(out[rsa_size - j]));
-  for (k = 0; k < rsa_size - i; k++) {
-    out[k] = 0;
+  if (!BN_bn2bin_padded(out, rsa_size, result)) {
+    OPENSSL_PUT_ERROR(RSA, sign_raw, ERR_R_INTERNAL_ERROR);
+    goto err;
   }
 
   *out_len = rsa_size;
@@ -450,7 +446,6 @@ err:
 static int decrypt(RSA *rsa, size_t *out_len, uint8_t *out, size_t max_out,
                    const uint8_t *in, size_t in_len, int padding) {
   const unsigned rsa_size = RSA_size(rsa);
-  unsigned j;
   BIGNUM *f, *result;
   int r = -1;
   uint8_t *buf = NULL;
@@ -537,20 +532,25 @@ static int decrypt(RSA *rsa, size_t *out_len, uint8_t *out, size_t max_out,
     }
   }
 
-  j = BN_bn2bin(result, buf); /* j is only used with no-padding mode */
+  if (!BN_bn2bin_padded(buf, rsa_size, result)) {
+    OPENSSL_PUT_ERROR(RSA, decrypt, ERR_R_INTERNAL_ERROR);
+    goto err;
+  }
 
   switch (padding) {
     case RSA_PKCS1_PADDING:
-      r = RSA_padding_check_PKCS1_type_2(out, rsa_size, buf, j, rsa_size);
+      r = RSA_padding_check_PKCS1_type_2(out, rsa_size, buf, rsa_size);
       break;
     case RSA_PKCS1_OAEP_PADDING:
-      r = RSA_padding_check_PKCS1_OAEP(out, rsa_size, buf, j, rsa_size, NULL, 0);
+      /* Use the default parameters: SHA-1 for both hashes and no label. */
+      r = RSA_padding_check_PKCS1_OAEP_mgf1(out, rsa_size, buf, rsa_size,
+                                            NULL, 0, NULL, NULL);
       break;
     case RSA_SSLV23_PADDING:
-      r = RSA_padding_check_SSLv23(out, rsa_size, buf, j, rsa_size);
+      r = RSA_padding_check_SSLv23(out, rsa_size, buf, rsa_size);
       break;
     case RSA_NO_PADDING:
-      r = RSA_padding_check_none(out, rsa_size, buf, j, rsa_size);
+      r = RSA_padding_check_none(out, rsa_size, buf, rsa_size);
       break;
     default:
       OPENSSL_PUT_ERROR(RSA, decrypt, RSA_R_UNKNOWN_PADDING_TYPE);
@@ -585,7 +585,7 @@ static int verify_raw(RSA *rsa, size_t *out_len, uint8_t *out, size_t max_out,
   const unsigned rsa_size = RSA_size(rsa);
   BIGNUM *f, *result;
   int ret = 0;
-  int i, r = -1;
+  int r = -1;
   uint8_t *buf = NULL;
   BN_CTX *ctx = NULL;
 
@@ -654,14 +654,17 @@ static int verify_raw(RSA *rsa, size_t *out_len, uint8_t *out, size_t max_out,
     goto err;
   }
 
-  i = BN_bn2bin(result, buf);
+  if (!BN_bn2bin_padded(buf, rsa_size, result)) {
+    OPENSSL_PUT_ERROR(RSA, verify_raw, ERR_R_INTERNAL_ERROR);
+    goto err;
+  }
 
   switch (padding) {
     case RSA_PKCS1_PADDING:
-      r = RSA_padding_check_PKCS1_type_1(out, rsa_size, buf, i, rsa_size);
+      r = RSA_padding_check_PKCS1_type_1(out, rsa_size, buf, rsa_size);
       break;
     case RSA_NO_PADDING:
-      r = RSA_padding_check_none(out, rsa_size, buf, i, rsa_size);
+      r = RSA_padding_check_none(out, rsa_size, buf, rsa_size);
       break;
     default:
       OPENSSL_PUT_ERROR(RSA, verify_raw, RSA_R_UNKNOWN_PADDING_TYPE);

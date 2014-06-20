@@ -299,7 +299,6 @@ static int pkey_rsa_decrypt(EVP_PKEY_CTX *ctx, uint8_t *out,
   RSA_PKEY_CTX *rctx = ctx->data;
 
   if (rctx->pad_mode == RSA_PKCS1_OAEP_PADDING) {
-    int i;
     if (!setup_tbuf(rctx, ctx)) {
       return -1;
     }
@@ -308,13 +307,8 @@ static int pkey_rsa_decrypt(EVP_PKEY_CTX *ctx, uint8_t *out,
     if (ret <= 0) {
       return ret;
     }
-    for (i = 0; i < ret; i++) {
-      if (rctx->tbuf[i]) {
-        break;
-      }
-    }
     ret = RSA_padding_check_PKCS1_OAEP_mgf1(
-        out, ret, rctx->tbuf + i, ret - i, ret, rctx->oaep_label,
+        out, ret, rctx->tbuf, ret, rctx->oaep_label,
         rctx->oaep_labellen, rctx->md, rctx->mgf1md);
   } else {
     ret = RSA_private_decrypt(inlen, in, out, ctx->pkey->pkey.rsa,
