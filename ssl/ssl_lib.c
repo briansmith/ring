@@ -3308,6 +3308,48 @@ void SSL_set_msg_callback(SSL *ssl, void (*cb)(int write_p, int version, int con
 	SSL_callback_ctrl(ssl, SSL_CTRL_SET_MSG_CALLBACK, (void (*)(void))cb);
 	}
 
+int SSL_cutthrough_complete(const SSL *s)
+	{
+	return (!s->server &&                 /* cutthrough only applies to clients */
+		!s->hit &&                        /* full-handshake */
+		s->version >= SSL3_VERSION &&
+		s->s3->in_read_app_data == 0 &&   /* cutthrough only applies to write() */
+		(SSL_get_mode((SSL*)s) & SSL_MODE_HANDSHAKE_CUTTHROUGH) &&  /* cutthrough enabled */
+		ssl3_can_cutthrough(s) &&                                   /* cutthrough allowed */
+		s->s3->previous_server_finished_len == 0 &&                 /* not a renegotiation handshake */
+		(s->state == SSL3_ST_CR_SESSION_TICKET_A ||                 /* ready to write app-data*/
+			s->state == SSL3_ST_CR_FINISHED_A));
+	}
+
+int ssl3_can_cutthrough(const SSL *s)
+	{
+	const SSL_CIPHER *c;
+
+	/* require a strong enough cipher */
+	if (SSL_get_cipher_bits(s, NULL) < 128)
+		return 0;
+
+	/* require ALPN or NPN extension */
+	if (!s->s3->alpn_selected
+#ifndef OPENSSL_NO_NEXTPROTONEG
+		&& !s->s3->next_proto_neg_seen
+#endif
+	)
+		{
+		return 0;
+		}
+
+	/* require a forward-secret cipher */
+	c = SSL_get_current_cipher(s);
+	if (!c || (c->algorithm_mkey != SSL_kEDH &&
+			c->algorithm_mkey != SSL_kEECDH))
+		{
+		return 0;
+		}
+
+	return 1;
+	}
+
 /* Allocates new EVP_MD_CTX and sets pointer to it into given pointer
  * vairable, freeing  EVP_MD_CTX previously stored in that variable, if
  * any. If EVP_MD pointer is passed, initializes ctx with this md

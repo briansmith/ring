@@ -597,6 +597,7 @@ typedef struct ssl3_state_st
 /*client */
 /* extra state */
 #define SSL3_ST_CW_FLUSH		(0x100|SSL_ST_CONNECT)
+#define SSL3_ST_CUTTHROUGH_COMPLETE	(0x101|SSL_ST_CONNECT)
 /* write to server */
 #define SSL3_ST_CW_CLNT_HELLO_A		(0x110|SSL_ST_CONNECT)
 #define SSL3_ST_CW_CLNT_HELLO_B		(0x111|SSL_ST_CONNECT)

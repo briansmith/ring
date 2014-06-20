@@ -1294,6 +1294,8 @@ int tls1_check_chain(SSL *s, X509 *x, EVP_PKEY *pk, STACK_OF(X509) *chain,
 void tls1_set_cert_validity(SSL *s);
 
 #endif
+
+int ssl3_can_cutthrough(const SSL *s);
 EVP_MD_CTX* ssl_replace_hash(EVP_MD_CTX **hash,const EVP_MD *md) ;
 void ssl_clear_hash_ctx(EVP_MD_CTX **hash);
 int ssl_add_serverhello_renegotiate_ext(SSL *s, unsigned char *p, int *len,
