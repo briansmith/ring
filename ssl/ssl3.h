@@ -524,7 +524,7 @@ typedef struct ssl3_state_st
 		/* used for certificate requests */
 		int cert_req;
 		int ctype_num;
-		char ctype[SSL3_CT_NUMBER];
+		unsigned char ctype[SSL3_CT_NUMBER];
 		STACK_OF(X509_NAME) *ca_names;
 
 		int use_rsa_tmp;

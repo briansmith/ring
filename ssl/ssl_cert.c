@@ -1017,6 +1017,21 @@ int SSL_CTX_add_client_CA(SSL_CTX *ctx,X509 *x)
 	return(add_client_CA(&(ctx->client_CA),x));
 	}
 
+void SSL_get_client_certificate_types(const SSL *s, const unsigned char **ctype,
+	size_t *ctype_num)
+	{
+	if (s->s3 == NULL)
+		{
+		*ctype = NULL;
+		*ctype_num = 0;
+		return;
+		}
+
+	/* This always returns nothing for the server. */
+	*ctype = s->s3->tmp.ctype;
+	*ctype_num = s->s3->tmp.ctype_num;
+	}
+
 static int xname_cmp(const X509_NAME **a, const X509_NAME **b)
 	{
 	return(X509_NAME_cmp(*a,*b));
