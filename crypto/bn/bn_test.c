@@ -98,6 +98,7 @@ int test_mod_exp(BIO *bp, BN_CTX *ctx);
 int test_mod_exp_mont_consttime(BIO *bp, BN_CTX *ctx);
 int test_exp(BIO *bp, BN_CTX *ctx);
 int test_mod_sqrt(BIO *bp, BN_CTX *ctx);
+static int test_exp_mod_zero();
 int test_mod_exp_mont5(BIO *bp, BN_CTX *ctx);
 #if 0
 int test_gf2m_add(BIO *bp);
@@ -251,8 +252,10 @@ int main(int argc, char *argv[]) {
   (void)BIO_flush(out);
 
   message(out, "BN_exp");
-  if (!test_exp(out, ctx))
+  if (!test_exp(out, ctx) ||
+      !test_exp_mod_zero()) {
     goto err;
+  }
   (void)BIO_flush(out);
 
   message(out, "BN_mod_sqrt");
@@ -1115,6 +1118,42 @@ int test_exp(BIO *bp, BN_CTX *ctx) {
   BN_free(e);
   BN_free(one);
   return (1);
+}
+
+/* test_exp_mod_zero tests that x**0 mod 1 == 0. */
+static int test_exp_mod_zero() {
+  BIGNUM a, p, m;
+  BIGNUM r;
+  BN_CTX *ctx = BN_CTX_new();
+  int ret = 0;
+
+  BN_init(&m);
+  BN_one(&m);
+
+  BN_init(&a);
+  BN_one(&a);
+
+  BN_init(&p);
+  BN_zero(&p);
+
+  BN_init(&r);
+  BN_mod_exp(&r, &a, &p, &m, ctx);
+  BN_CTX_free(ctx);
+
+  if (BN_is_zero(&r)) {
+    ret = 1;
+  } else {
+    printf("1**0 mod 1 = ");
+    BN_print_fp(stdout, &r);
+    printf(", should be 0\n");
+  }
+
+  BN_free(&r);
+  BN_free(&a);
+  BN_free(&p);
+  BN_free(&m);
+
+  return ret;
 }
 
 static int genprime_cb(int p, int n, BN_GENCB *arg) {
