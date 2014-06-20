@@ -20,6 +20,7 @@
 #include <stdint.h>
 #include <time.h>
 
+#include <openssl/aead.h>
 #include <openssl/bio.h>
 #include <openssl/err.h>
 #include <openssl/obj.h>
@@ -48,6 +49,13 @@ struct TimeResults {
     printf("Did %u %s operations in %uus (%.1f ops/sec)\n", num_calls,
            description.c_str(), us,
            (static_cast<double>(num_calls) / us) * 1000000);
+  }
+
+  void PrintWithBytes(const std::string &description, size_t bytes_per_call) {
+    printf("Did %u %s operations in %uus (%.1f ops/sec): %.1f MB/s\n",
+           num_calls, description.c_str(), us,
+           (static_cast<double>(num_calls) / us) * 1000000,
+           static_cast<double>(bytes_per_call * num_calls) / us);
   }
 };
 
@@ -141,6 +149,56 @@ static bool SpeedRSA(const std::string& key_name, RSA *key) {
   return true;
 }
 
+static bool SpeedAEADChunk(const EVP_AEAD *aead, const std::string &name,
+                           size_t chunk_len) {
+  EVP_AEAD_CTX ctx;
+  const size_t key_len = EVP_AEAD_key_length(aead);
+  const size_t nonce_len = EVP_AEAD_nonce_length(aead);
+  const size_t overhead_len = EVP_AEAD_max_overhead(aead);
+
+  std::unique_ptr<uint8_t[]> key(new uint8_t[key_len]);
+  memset(key.get(), 0, key_len);
+  std::unique_ptr<uint8_t[]> nonce(new uint8_t[nonce_len]);
+  memset(nonce.get(), 0, nonce_len);
+  std::unique_ptr<uint8_t[]> in(new uint8_t[chunk_len]);
+  memset(in.get(), 0, chunk_len);
+  std::unique_ptr<uint8_t[]> out(new uint8_t[chunk_len + overhead_len]);
+  memset(out.get(), 0, chunk_len + overhead_len);
+
+  if (!EVP_AEAD_CTX_init(&ctx, aead, key.get(), key_len,
+                         EVP_AEAD_DEFAULT_TAG_LENGTH, NULL)) {
+    fprintf(stderr, "Failed to create EVP_AEAD_CTX.\n");
+    BIO_print_errors_fp(stderr);
+    return false;
+  }
+
+  TimeResults results;
+  if (!TimeFunction(&results, [chunk_len, overhead_len, nonce_len, &in, &out,
+                               &ctx, &nonce]() -> bool {
+        size_t out_len;
+
+        return EVP_AEAD_CTX_seal(&ctx, out.get(), &out_len,
+                                 chunk_len + overhead_len, nonce.get(),
+                                 nonce_len, in.get(), chunk_len, NULL, 0);
+      })) {
+    fprintf(stderr, "EVP_AEAD_CTX_seal failed.\n");
+    BIO_print_errors_fp(stderr);
+    return false;
+  }
+
+  results.PrintWithBytes(name + " seal", chunk_len);
+
+  EVP_AEAD_CTX_cleanup(&ctx);
+
+  return true;
+}
+
+static bool SpeedAEAD(const EVP_AEAD *aead, const std::string &name) {
+  return SpeedAEADChunk(aead, name + " (16 bytes)", 16) &&
+         SpeedAEADChunk(aead, name + " (1350 bytes)", 1350) &&
+         SpeedAEADChunk(aead, name + " (8192 bytes)", 8192);
+}
+
 static bool Speed(const std::vector<std::string> &args) {
   const uint8_t *inp;
 
@@ -171,6 +229,12 @@ static bool Speed(const std::vector<std::string> &args) {
   }
 
   RSA_free(key);
+
+  if (!SpeedAEAD(EVP_aead_aes_128_gcm(), "AES-128-GCM") ||
+      !SpeedAEAD(EVP_aead_aes_256_gcm(), "AES-256-GCM") ||
+      !SpeedAEAD(EVP_aead_chacha20_poly1305(), "ChaCha20-Poly1305")) {
+    return false;
+  }
 
   return 0;
 }
