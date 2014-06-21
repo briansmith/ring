@@ -3195,8 +3195,8 @@ long ssl3_ctrl(SSL *s, int cmd, long larg, void *parg)
 			return (int)s->cert->ctype_num;
 			}
 		if (pctype)
-			*pctype = (unsigned char *)s->s3->tmp.ctype;
-		return s->s3->tmp.ctype_num;
+			*pctype = s->s3->tmp.ctype;
+		return (int)s->s3->tmp.ctype_num;
 		}
 
 	case SSL_CTRL_SET_CLIENT_CERT_TYPES:

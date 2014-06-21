@@ -1020,16 +1020,9 @@ int SSL_CTX_add_client_CA(SSL_CTX *ctx,X509 *x)
 void SSL_get_client_certificate_types(const SSL *s, const unsigned char **ctype,
 	size_t *ctype_num)
 	{
-	if (s->s3 == NULL)
-		{
-		*ctype = NULL;
-		*ctype_num = 0;
-		return;
-		}
-
-	/* This always returns nothing for the server. */
-	*ctype = s->s3->tmp.ctype;
-	*ctype_num = s->s3->tmp.ctype_num;
+	/* TODO(fork): Remove this function once Chromium is updated
+	 * to use the new one. */
+	*ctype_num = SSL_get0_certificate_types((SSL*)s, ctype);
 	}
 
 static int xname_cmp(const X509_NAME **a, const X509_NAME **b)
