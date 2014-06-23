@@ -56,8 +56,7 @@ void CRYPTO_chacha_20_neon(uint8_t *out, const uint8_t *in, size_t in_len,
 
 /* chacha_core performs |num_rounds| rounds of ChaCha20 on the input words in
  * |input| and writes the 64 output bytes to |output|. */
-static void chacha_core(uint8_t output[64], const uint32_t input[16],
-                        int num_rounds) {
+static void chacha_core(uint8_t output[64], const uint32_t input[16]) {
   uint32_t x[16];
   int i;
 
@@ -122,7 +121,7 @@ void CRYPTO_chacha_20(uint8_t *out, const uint8_t *in, size_t in_len,
       todo = in_len;
     }
 
-    chacha_core(buf, input, 20);
+    chacha_core(buf, input);
     for (i = 0; i < todo; i++) {
       out[i] = in[i] ^ buf[i];
     }
