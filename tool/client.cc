@@ -252,7 +252,7 @@ bool Client(const std::vector<std::string> &args) {
 
   SSL_CTX *ctx = SSL_CTX_new(SSLv23_client_method());
 
-  int sock;
+  int sock = -1;
   if (!Connect(&sock, args_map["-connect"])) {
     return false;
   }
