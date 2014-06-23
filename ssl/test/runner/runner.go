@@ -47,9 +47,15 @@ type testCase struct {
 	config        Config
 	shouldFail    bool
 	expectedError string
+	// expectedLocalError, if not empty, contains a substring that must be
+	// found in the local error.
+	expectedLocalError string
 	// messageLen is the length, in bytes, of the test message that will be
 	// sent.
 	messageLen int
+	// flag, if not nil, contains a command line flag that will be passed
+	// to the shim program.
+	flag string
 }
 
 var clientTests = []testCase{
@@ -87,6 +93,16 @@ var clientTests = []testCase{
 		},
 		shouldFail:    true,
 		expectedError: ":WRONG_CURVE:",
+	},
+	{
+		name: "FallbackSCSV",
+		config: Config{
+			Bugs: ProtocolBugs{
+				FailIfNotFallbackSCSV: true,
+			},
+		},
+		shouldFail:         true,
+		expectedLocalError: "no fallback SCSV found",
 	},
 }
 
@@ -185,13 +201,16 @@ func runTest(test *testCase) error {
 	stderr := string(stderrBuf.Bytes())
 	failed := err != nil || childErr != nil
 	correctFailure := len(test.expectedError) == 0 || strings.Contains(stdout, test.expectedError)
+	localError := "none"
+	if err != nil {
+		localError = err.Error()
+	}
+	if len(test.expectedLocalError) != 0 {
+		correctFailure = correctFailure && strings.Contains(localError, test.expectedLocalError)
+	}
 
 	if failed != test.shouldFail || failed && !correctFailure {
-		localError := "none"
 		childError := "none"
-		if err != nil {
-			localError = err.Error()
-		}
 		if childErr != nil {
 			childError = childErr.Error()
 		}
@@ -203,7 +222,7 @@ func runTest(test *testCase) error {
 		case !failed && test.shouldFail:
 			msg = "unexpected success"
 		case failed && !correctFailure:
-			msg = "bad error (wanted '" + test.expectedError + "')"
+			msg = "bad error (wanted '" + test.expectedError + "' / '" + test.expectedLocalError + "')"
 		default:
 			panic("internal error")
 		}

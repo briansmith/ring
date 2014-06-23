@@ -341,6 +341,10 @@ type ProtocolBugs struct {
 	// PaddingFirstByteBadIf255 causes the first byte of padding to be
 	// incorrect if there's a maximum amount of padding (i.e. 255 bytes).
 	PaddingFirstByteBadIf255 bool
+
+	// FailIfNotFallbackSCSV causes a server handshake to fail if the
+	// client doesn't send the fallback SCSV value.
+	FailIfNotFallbackSCSV bool
 }
 
 func (c *Config) serverInit() {

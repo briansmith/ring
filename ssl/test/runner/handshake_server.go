@@ -184,6 +184,21 @@ Curves:
 		return true, nil
 	}
 
+	var scsvFound bool
+
+	for _, cipherSuite := range hs.clientHello.cipherSuites {
+		if cipherSuite == fallbackSCSV {
+			scsvFound = true
+			break
+		}
+	}
+
+	if !scsvFound && config.Bugs.FailIfNotFallbackSCSV {
+		return false, errors.New("tls: no fallback SCSV found when expected")
+	} else if scsvFound && !config.Bugs.FailIfNotFallbackSCSV {
+		return false, errors.New("tls: fallback SCSV found when not expected")
+	}
+
 	var preferenceList, supportedList []uint16
 	if c.config.PreferServerCipherSuites {
 		preferenceList = c.config.cipherSuites()

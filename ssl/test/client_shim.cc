@@ -53,11 +53,22 @@ err:
   return NULL;
 }
 
-int main() {
+int main(int argc, char **argv) {
+  int i;
+
   SSL *client = setup_test();
   if (client == NULL) {
     BIO_print_errors_fp(stdout);
     return 1;
+  }
+
+  for (i = 1; i < argc; i++) {
+    if (strcmp(argv[i], "-fallback-scsv") == 0) {
+      SSL_enable_fallback_scsv(client);
+    } else {
+      fprintf(stderr, "Unknown argument: %s\n", argv[i]);
+      return 1;
+    }
   }
 
   if (SSL_connect(client) != 1) {

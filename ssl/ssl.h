@@ -1663,6 +1663,10 @@ struct ssl_st
 	                 * 2 if we are a server and are inside a handshake
 	                 * (i.e. not just sending a HelloRequest) */
 
+	/* fallback_scsv is non-zero iff we are sending the TLS_FALLBACK_SCSV
+	 * cipher suite value. Only applies to a client. */
+	char fallback_scsv;
+
 #ifndef OPENSSL_NO_DANE
 	unsigned char *tlsa_record;
 	int tlsa_witness;
@@ -1965,6 +1969,8 @@ DECLARE_PEM_rw(SSL_SESSION, SSL_SESSION)
 #define SSL_CTRL_GET_CHANNEL_ID			118
 #define SSL_CTRL_SET_CHANNEL_ID			119
 
+#define SSL_CTRL_FALLBACK_SCSV			120
+
 #define DTLSv1_get_timeout(ssl, arg) \
 	SSL_ctrl(ssl,DTLS_CTRL_GET_TIMEOUT,0, (void *)arg)
 #define DTLSv1_handle_timeout(ssl) \
@@ -2134,6 +2140,9 @@ DECLARE_PEM_rw(SSL_SESSION, SSL_SESSION)
 
 #define SSL_get0_ec_point_formats(s, plst) \
 	SSL_ctrl(s,SSL_CTRL_GET_EC_POINT_FORMATS,0,(char *)plst)
+
+#define SSL_enable_fallback_scsv(s) \
+	SSL_ctrl(s, SSL_CTRL_FALLBACK_SCSV, 0, NULL)
 
 #ifndef OPENSSL_NO_BIO
 BIO_METHOD *BIO_f_ssl(void);

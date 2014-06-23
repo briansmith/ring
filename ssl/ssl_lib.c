@@ -1558,6 +1558,9 @@ int ssl_cipher_list_to_bytes(SSL *s,STACK_OF(SSL_CIPHER) *sk,unsigned char *p,
 	if (sk == NULL) return(0);
 	q=p;
 
+	if (put_cb == NULL)
+		put_cb = s->method->put_cipher_by_char;
+
 	for (i=0; i<sk_SSL_CIPHER_num(sk); i++)
 		{
 		c=sk_SSL_CIPHER_value(sk,i);
@@ -1575,23 +1578,35 @@ int ssl_cipher_list_to_bytes(SSL *s,STACK_OF(SSL_CIPHER) *sk,unsigned char *p,
 				no_scsv = 1;
 			}
 #endif
-		j = put_cb ? put_cb(c,p) : ssl_put_cipher_by_char(s,c,p);
-		p+=j;
+		j = put_cb(c, p);
+		p += j;
 		}
 	/* If p == q, no ciphers and caller indicates an error. Otherwise
 	 * add SCSV if not renegotiating.
 	 */
-	if (p != q && !no_scsv)
+	if (p != q)
 		{
-		static SSL_CIPHER scsv =
+		if (!no_scsv)
 			{
-			0, NULL, SSL3_CK_SCSV, 0, 0, 0, 0, 0, 0, 0, 0, 0
-			};
-		j = put_cb ? put_cb(&scsv,p) : ssl_put_cipher_by_char(s,&scsv,p);
-		p+=j;
+			static SSL_CIPHER scsv =
+				{
+				0, NULL, SSL3_CK_SCSV, 0, 0, 0, 0, 0, 0, 0, 0, 0
+				};
+			j = put_cb(&scsv, p);
+			p += j;
 #ifdef OPENSSL_RI_DEBUG
-		fprintf(stderr, "SCSV sent by client\n");
+			fprintf(stderr, "SCSV sent by client\n");
 #endif
+			}
+		if (s->fallback_scsv)
+			{
+			static SSL_CIPHER fallback_scsv =
+				{
+				0, NULL, SSL3_CK_FALLBACK_SCSV, 0, 0, 0, 0, 0, 0, 0, 0, 0
+				};
+			j = put_cb(&fallback_scsv, p);
+			p += j;
+			}
 		}
 
 	return(p-q);
