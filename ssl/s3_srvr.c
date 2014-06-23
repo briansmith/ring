@@ -585,9 +585,6 @@ int ssl3_accept(SSL *s)
 				 * the client sends its ECDH pub key in
 				 * a certificate, the CertificateVerify
 				 * message is not sent.
-				 * Also for GOST ciphersuites when
-				 * the client uses its key from the certificate
-				 * for key exchange.
 				 */
 				s->init_num = 0;
 				s->state=SSL3_ST_SR_POST_CLIENT_CERT;
@@ -2679,77 +2676,10 @@ int ssl3_get_client_key_exchange(SSL *s)
 		}
 #endif
 	else if (alg_k & SSL_kGOST) 
-			{
-			int ret = 0;
-			EVP_PKEY_CTX *pkey_ctx;
-			EVP_PKEY *client_pub_pkey = NULL, *pk = NULL;
-			unsigned char premaster_secret[32], *start;
-			size_t outlen=32, inlen;
-			unsigned long alg_a;
-
-			/* Get our certificate private key*/
-			alg_a = s->s3->tmp.new_cipher->algorithm_auth;
-			if (alg_a & SSL_aGOST94)
-				pk = s->cert->pkeys[SSL_PKEY_GOST94].privatekey;
-			else if (alg_a & SSL_aGOST01)
-				pk = s->cert->pkeys[SSL_PKEY_GOST01].privatekey;
-
-			pkey_ctx = EVP_PKEY_CTX_new(pk,NULL);
-			EVP_PKEY_decrypt_init(pkey_ctx);
-			/* If client certificate is present and is of the same type, maybe
-			 * use it for key exchange.  Don't mind errors from
-			 * EVP_PKEY_derive_set_peer, because it is completely valid to use
-			 * a client certificate for authorization only. */
-			client_pub_pkey = X509_get_pubkey(s->session->peer);
-			if (client_pub_pkey)
-				{
-				if (EVP_PKEY_derive_set_peer(pkey_ctx, client_pub_pkey) <= 0)
-					ERR_clear_error();
-				}
-			/* Decrypt session key */
-			if ((*p!=( V_ASN1_SEQUENCE| V_ASN1_CONSTRUCTED))) 
-				{
-				OPENSSL_PUT_ERROR(SSL, ssl3_get_client_key_exchange, SSL_R_DECRYPTION_FAILED);
-				goto gerr;
-				}
-			if (p[1] == 0x81)
-				{
-				start = p+3;
-				inlen = p[2];
-				}
-			else if (p[1] < 0x80)
-				{
-				start = p+2;
-				inlen = p[1];
-				}
-			else
-				{
-				OPENSSL_PUT_ERROR(SSL, ssl3_get_client_key_exchange, SSL_R_DECRYPTION_FAILED);
-				goto gerr;
-				}
-			if (EVP_PKEY_decrypt(pkey_ctx,premaster_secret,&outlen,start,inlen) <=0) 
-
-				{
-				OPENSSL_PUT_ERROR(SSL, ssl3_get_client_key_exchange, SSL_R_DECRYPTION_FAILED);
-				goto gerr;
-				}
-			/* Generate master secret */
-			s->session->master_key_length=
-				s->method->ssl3_enc->generate_master_secret(s,
-					s->session->master_key,premaster_secret,32);
-			/* Check if pubkey from client certificate was used */
-			if (EVP_PKEY_CTX_ctrl(pkey_ctx, -1, -1, EVP_PKEY_CTRL_PEER_KEY, 2, NULL) > 0)
-				ret = 2;
-			else
-				ret = 1;
-		gerr:
-			EVP_PKEY_free(client_pub_pkey);
-			EVP_PKEY_CTX_free(pkey_ctx);
-			if (ret)
-				return ret;
-			else
-				goto err;
-			}
+		{
+		OPENSSL_PUT_ERROR(SSL, ssl3_get_client_key_exchange, SSL_R_GOST_NOT_SUPPORTED);
+		goto err;
+		}
 	else if (!(alg_k & SSL_kPSK))
 		{
 		al=SSL_AD_HANDSHAKE_FAILURE;
@@ -2842,44 +2772,33 @@ int ssl3_get_cert_verify(SSL *s)
 
 	/* we now have a signature that we need to verify */
 	p=(unsigned char *)s->init_msg;
-	/* Check for broken implementations of GOST ciphersuites */
-	/* If key is GOST and n is exactly 64, it is bare
-	 * signature without length field */
-	if (n==64 && (pkey->type==NID_id_GostR3410_94 ||
-		pkey->type == NID_id_GostR3410_2001) )
+	if (SSL_USE_SIGALGS(s))
 		{
-		i=64;
-		} 
-	else 
-		{	
-		if (SSL_USE_SIGALGS(s))
+		int rv = tls12_check_peer_sigalg(&md, s, p, pkey);
+		if (rv == -1)
 			{
-			int rv = tls12_check_peer_sigalg(&md, s, p, pkey);
-			if (rv == -1)
-				{
-				al = SSL_AD_INTERNAL_ERROR;
-				goto f_err;
-				}
-			else if (rv == 0)
-				{
-				al = SSL_AD_DECODE_ERROR;
-				goto f_err;
-				}
+			al = SSL_AD_INTERNAL_ERROR;
+			goto f_err;
+			}
+		else if (rv == 0)
+			{
+			al = SSL_AD_DECODE_ERROR;
+			goto f_err;
+			}
 #ifdef SSL_DEBUG
 fprintf(stderr, "USING TLSv1.2 HASH %s\n", EVP_MD_name(md));
 #endif
-			p += 2;
-			n -= 2;
-			}
-		n2s(p,i);
-		n-=2;
-		if (i > n)
-			{
-			OPENSSL_PUT_ERROR(SSL, ssl3_get_cert_verify, SSL_R_LENGTH_MISMATCH);
-			al=SSL_AD_DECODE_ERROR;
-			goto f_err;
-			}
-    	}
+		p += 2;
+		n -= 2;
+		}
+	n2s(p,i);
+	n-=2;
+	if (i > n)
+		{
+		OPENSSL_PUT_ERROR(SSL, ssl3_get_cert_verify, SSL_R_LENGTH_MISMATCH);
+		al=SSL_AD_DECODE_ERROR;
+		goto f_err;
+		}
 	j=EVP_PKEY_size(pkey);
 	if ((i > j) || (n > j) || (n <= 0))
 		{
@@ -2972,27 +2891,6 @@ fprintf(stderr, "USING TLSv1.2 HASH %s\n", EVP_MD_name(md));
 		}
 	else
 #endif
-	if (pkey->type == NID_id_GostR3410_94 || pkey->type == NID_id_GostR3410_2001)
-		{   unsigned char signature[64];
-			int idx;
-			EVP_PKEY_CTX *pctx = EVP_PKEY_CTX_new(pkey,NULL);
-			EVP_PKEY_verify_init(pctx);
-			if (i!=64) {
-				fprintf(stderr,"GOST signature length is %d",i);
-			}	
-			for (idx=0;idx<64;idx++) {
-				signature[63-idx]=p[idx];
-			}	
-			j=EVP_PKEY_verify(pctx,signature,64,s->s3->tmp.cert_verify_md,32);
-			EVP_PKEY_CTX_free(pctx);
-			if (j<=0) 
-				{
-				al=SSL_AD_DECRYPT_ERROR;
-				OPENSSL_PUT_ERROR(SSL, ssl3_get_cert_verify, SSL_R_BAD_ECDSA_SIGNATURE);
-				goto f_err;
-				}	
-		}
-	else	
 		{
 		OPENSSL_PUT_ERROR(SSL, ssl3_get_cert_verify, ERR_R_INTERNAL_ERROR);
 		al=SSL_AD_UNSUPPORTED_CERTIFICATE;

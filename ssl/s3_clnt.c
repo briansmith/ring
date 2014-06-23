@@ -2898,28 +2898,6 @@ int ssl3_send_client_verify(SSL *s)
 			}
 		else
 #endif
-		if (pkey->type == NID_id_GostR3410_94 || pkey->type == NID_id_GostR3410_2001) 
-			{
-			unsigned char signbuf[64];
-			int i, j;
-			size_t sigsize=64;
-
-			s->method->ssl3_enc->cert_verify_mac(s,
-				NID_id_GostR3411_94,
-				data);
-			pctx = EVP_PKEY_CTX_new(pkey, NULL);
-			EVP_PKEY_sign_init(pctx);
-			if (EVP_PKEY_sign(pctx, signbuf, &sigsize, data, 32) <= 0) {
-				OPENSSL_PUT_ERROR(SSL, ssl3_send_client_verify, ERR_R_INTERNAL_ERROR);
-				goto err;
-			}
-			for (i=63,j=0; i>=0; j++, i--) {
-				p[2+j]=signbuf[i];
-			}
-			s2n(j,p);
-			n=j+2;
-			}
-		else
 			{
 			OPENSSL_PUT_ERROR(SSL, ssl3_send_client_verify, ERR_R_INTERNAL_ERROR);
 			goto err;
