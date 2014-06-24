@@ -113,7 +113,7 @@ static void gcm_init_4bit(u128 Htable[16], uint64_t H[2]) {
   Htable[14].hi = V.hi ^ Htable[6].hi, Htable[14].lo = V.lo ^ Htable[6].lo;
   Htable[15].hi = V.hi ^ Htable[7].hi, Htable[15].lo = V.lo ^ Htable[7].lo;
 
-#if defined(GHASH_ASM)
+#if defined(GHASH_ASM) && defined(OPENSSL_ARM)
   /* ARM assembler expects specific dword order in Htable. */
   {
     int j;
