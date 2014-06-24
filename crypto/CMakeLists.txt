@@ -62,7 +62,6 @@ add_subdirectory(stack)
 add_subdirectory(lhash)
 add_subdirectory(err)
 add_subdirectory(buf)
-add_subdirectory(comp)
 add_subdirectory(base64)
 add_subdirectory(bytestring)
 
@@ -124,7 +123,6 @@ add_library(
 	$<TARGET_OBJECTS:stack>
 	$<TARGET_OBJECTS:lhash>
 	$<TARGET_OBJECTS:err>
-	$<TARGET_OBJECTS:comp>
 	$<TARGET_OBJECTS:base64>
 	$<TARGET_OBJECTS:bytestring>
 	$<TARGET_OBJECTS:sha>

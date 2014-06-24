@@ -760,16 +760,6 @@ struct ssl_aead_ctx_st
 	char variable_nonce_included_in_record;
 	};
 
-#ifndef OPENSSL_NO_COMP
-/* Used for holding the relevant compression methods loaded into SSL_CTX */
-typedef struct ssl3_comp_st
-	{
-	int comp_id;	/* The identifier byte for this compression type */
-	char *name;	/* Text name used for the compression type */
-	COMP_METHOD *method; /* The method :-) */
-	} SSL3_COMP;
-#endif
-
 #ifndef OPENSSL_NO_BUF_FREELISTS
 typedef struct ssl3_buf_freelist_st
 	{
@@ -1016,7 +1006,6 @@ void ssl_cipher_preference_list_free(
 struct ssl_cipher_preference_list_st* ssl_cipher_preference_list_from_ciphers(
 	STACK_OF(SSL_CIPHER) *ciphers);
 struct ssl_cipher_preference_list_st* ssl_get_cipher_preferences(SSL *s);
-int ssl_cipher_get_comp(const SSL_SESSION *s, SSL_COMP **comp);
 int ssl_cipher_get_evp_aead(const SSL_SESSION *s, const EVP_AEAD **aead);
 int ssl_cipher_get_evp(const SSL_SESSION *s,const EVP_CIPHER **enc,
 		       const EVP_MD **md,int *mac_pkey_type,int *mac_secret_size);
@@ -1279,8 +1268,6 @@ int ssl_ok(SSL *s);
 #ifndef OPENSSL_NO_ECDH
 int ssl_check_srvr_ecc_cert_and_alg(X509 *x, SSL *s);
 #endif
-
-SSL_COMP *ssl3_comp_find(STACK_OF(SSL_COMP) *sk, int n);
 
 char ssl_early_callback_init(struct ssl_early_callback_ctx *ctx);
 #ifndef OPENSSL_NO_EC

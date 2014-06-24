@@ -141,7 +141,6 @@
 #include <stdio.h>
 #include <assert.h>
 
-#include <openssl/comp.h>
 #include <openssl/engine.h>
 #include <openssl/mem.h>
 #include <openssl/obj.h>
@@ -172,8 +171,6 @@ static const EVP_CIPHER *ssl_cipher_methods[SSL_ENC_NUM_IDX]={
 #define SSL_COMP_NULL_IDX	0
 #define SSL_COMP_ZLIB_IDX	1
 #define SSL_COMP_NUM_IDX	2
-
-static STACK_OF(SSL_COMP) *ssl_comp_methods=NULL;
 
 #define SSL_MD_MD5_IDX	0
 #define SSL_MD_SHA1_IDX	1
@@ -350,27 +347,6 @@ void ssl_load_ciphers(void)
 	ssl_mac_secret_size[SSL_MD_SHA256_IDX]= EVP_MD_size(EVP_sha256());
 	ssl_digest_methods[SSL_MD_SHA384_IDX]= EVP_sha384();
 	ssl_mac_secret_size[SSL_MD_SHA384_IDX]= EVP_MD_size(EVP_sha384());
-	}
-
-/* ssl_cipher_get_comp sets |comp| to the correct SSL_COMP for the given
- * session and returns 1. On error it returns 0. */
-int ssl_cipher_get_comp(const SSL_SESSION *s, SSL_COMP **comp)
-	{
-	size_t index;
-
-	SSL_COMP ctmp;
-
-	*comp=NULL;
-	ctmp.id=s->compress_meth;
-	if (ssl_comp_methods != NULL)
-		{
-		if (sk_SSL_COMP_find(ssl_comp_methods, &index, &ctmp))
-			*comp=sk_SSL_COMP_value(ssl_comp_methods,index);
-		else
-			*comp=NULL;
-		}
-
-	return 1;
 	}
 
 /* ssl_cipher_get_evp_aead sets |*aead| to point to the correct EVP_AEAD object
@@ -1833,22 +1809,6 @@ int SSL_CIPHER_get_bits(const SSL_CIPHER *c, int *alg_bits)
 unsigned long SSL_CIPHER_get_id(const SSL_CIPHER *c)
 	{
 	return c->id;
-	}
-
-SSL_COMP *ssl3_comp_find(STACK_OF(SSL_COMP) *sk, int n)
-	{
-	SSL_COMP *ctmp;
-	int i,nn;
-
-	if ((n == 0) || (sk == NULL)) return(NULL);
-	nn=sk_SSL_COMP_num(sk);
-	for (i=0; i<nn; i++)
-		{
-		ctmp=sk_SSL_COMP_value(sk,i);
-		if (ctmp->id == n)
-			return(ctmp);
-		}
-	return(NULL);
 	}
 
 void *SSL_COMP_get_compression_methods(void)

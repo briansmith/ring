@@ -114,7 +114,6 @@
 #include <stdio.h>
 #include <assert.h>
 
-#include <openssl/comp.h>
 #include <openssl/evp.h>
 #include <openssl/hmac.h>
 #include <openssl/md5.h>

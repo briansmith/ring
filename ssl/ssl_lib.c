@@ -2113,9 +2113,6 @@ SSL_CTX *SSL_CTX_new(const SSL_METHOD *meth)
 	CRYPTO_new_ex_data(CRYPTO_EX_INDEX_SSL_CTX, ret, &ret->ex_data);
 
 	ret->extra_certs=NULL;
-	/* No compression for DTLS */
-	if (meth->version != DTLS1_VERSION)
-		ret->comp_methods=SSL_COMP_get_compression_methods();
 
 	ret->max_send_fragment = SSL3_RT_MAX_PLAIN_LENGTH;
 
@@ -2196,11 +2193,6 @@ err2:
 	return(NULL);
 	}
 
-#if 0
-static void SSL_COMP_free(SSL_COMP *comp)
-    { OPENSSL_free(comp); }
-#endif
-
 #ifndef OPENSSL_NO_BUF_FREELISTS
 static void
 ssl_buf_freelist_free(SSL3_BUF_FREELIST *list)
@@ -2268,12 +2260,6 @@ void SSL_CTX_free(SSL_CTX *a)
 		sk_X509_NAME_pop_free(a->client_CA,X509_NAME_free);
 	if (a->extra_certs != NULL)
 		sk_X509_pop_free(a->extra_certs,X509_free);
-#if 0 /* This should never be done, since it removes a global database */
-	if (a->comp_methods != NULL)
-		sk_SSL_COMP_pop_free(a->comp_methods,SSL_COMP_free);
-#else
-	a->comp_methods = NULL;
-#endif
 
         if (a->srtp_profiles)
                 sk_SRTP_PROTECTION_PROFILE_free(a->srtp_profiles);

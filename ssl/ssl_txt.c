@@ -133,19 +133,8 @@ int SSL_SESSION_print(BIO *bp, const SSL_SESSION *x)
 
 	if (x->cipher == NULL)
 		{
-		SSL_COMP *comp = NULL;
-
-		ssl_cipher_get_comp(x, &comp);
-		if (comp == NULL)
-			{
-			if (BIO_printf(bp,"    Cipher    : %06lX\n",x->cipher_id&0xffffff) <= 0)
-				goto err;
-			}
-		else
-			{
-			if (BIO_printf(bp,"    Cipher    : %04lX\n",x->cipher_id&0xffff) <= 0)
-				goto err;
-			}
+		if (BIO_printf(bp,"    Cipher    : %06lX\n",x->cipher_id&0xffffff) <= 0)
+			goto err;
 		}
 	else
 		{

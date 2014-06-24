@@ -136,7 +136,6 @@
 #include <stdio.h>
 #include <assert.h>
 
-#include <openssl/comp.h>
 #include <openssl/err.h>
 #include <openssl/evp.h>
 #include <openssl/hmac.h>
@@ -645,7 +644,6 @@ int tls1_setup_key_block(SSL *s)
 	const EVP_MD *hash = NULL;
 	const EVP_AEAD *aead = NULL;
 	int num;
-	SSL_COMP *comp;
 	int mac_type= NID_undef,mac_secret_size=0;
 	int ret=0;
 	unsigned key_len, iv_len;
@@ -656,9 +654,6 @@ int tls1_setup_key_block(SSL *s)
 
 	if (s->s3->tmp.key_block_length != 0)
 		return(1);
-
-	if (!ssl_cipher_get_comp(s->session, &comp))
-		goto cipher_unavailable_err;
 
 	if (s->session->cipher &&
 	    (s->session->cipher->algorithm2 & SSL_CIPHER_ALGORITHM2_AEAD))

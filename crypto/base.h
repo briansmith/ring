@@ -124,8 +124,6 @@ typedef struct bn_mont_ctx_st BN_MONT_CTX;
 typedef struct buf_mem_st BUF_MEM;
 typedef struct cbb_st CBB;
 typedef struct cbs_st CBS;
-typedef struct comp_ctx_st COMP_CTX;
-typedef struct comp_method_st COMP_METHOD;
 typedef struct conf_st CONF;
 typedef struct dh_method DH_METHOD;
 typedef struct dh_st DH;
