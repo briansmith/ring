@@ -28,6 +28,8 @@
 
 #if defined(OPENSSL_WINDOWS)
 #include <Windows.h>
+#elif defined(OPENSSL_APPLE)
+#include <sys/time.h>
 #endif
 
 extern "C" {
@@ -61,6 +63,17 @@ struct TimeResults {
 
 #if defined(OPENSSL_WINDOWS)
 static uint64_t time_now() { return GetTickCount64() * 1000; }
+#elif defined(OPENSSL_APPLE)
+static uint64_t time_now() {
+  struct timeval tv;
+  uint64_t ret;
+
+  gettimeofday(&tv, NULL);
+  ret = tv.tv_sec;
+  ret *= 1000000;
+  ret += tv.tv_usec;
+  return ret;
+}
 #else
 static uint64_t time_now() {
   struct timespec ts;

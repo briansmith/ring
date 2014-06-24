@@ -66,7 +66,14 @@
 #include <stdio.h>
 #include <inttypes.h>
 
-uint32_t OPENSSL_ia32cap_P[4];
+/* This value must be explicitly initialised to zero in order to work around a
+ * bug in libtool or the linker on OS X.
+ *
+ * If not initialised then it becomes a "common symbol". When put into an
+ * archive, linking on OS X will fail to resolve common symbols. By
+ * initialising it to zero, it becomes a "data symbol", which isn't so
+ * affected. */
+uint32_t OPENSSL_ia32cap_P[4] = {0};
 
 /* OPENSSL_ia32_cpuid is defined in cpu-x86_64-asm.pl. */
 extern uint64_t OPENSSL_ia32_cpuid(uint32_t*);
