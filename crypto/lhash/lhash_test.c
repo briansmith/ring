@@ -12,8 +12,13 @@
  * OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
  * CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE. */
 
-#define _POSIX_SOURCE
 #define _BSD_SOURCE
+
+#if !defined(__APPLE__)
+/* _POSIX_SOURCE is needed on Linux in order to get rand_r, but on OS X causes
+ * a build failure. */
+#define _POSIX_SOURCE
+#endif
 
 #include <openssl/lhash.h>
 

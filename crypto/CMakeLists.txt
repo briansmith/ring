@@ -1,6 +1,10 @@
 include_directories(. ../include)
 
-if (UNIX)
+if(APPLE)
+	set(PERLASM_STYLE macosx)
+	set(ASM_EXT S)
+	enable_language(ASM)
+else(UNIX)
 	set(PERLASM_STYLE elf)
 	set(ASM_EXT S)
 	enable_language(ASM)

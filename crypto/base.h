@@ -75,6 +75,10 @@
 #error "Unknown target CPU"
 #endif
 
+#if defined(__APPLE__)
+#define OPENSSL_APPLE
+#endif
+
 #define OPENSSL_IS_BORINGSSL
 #define OPENSSL_VERSION_NUMBER 0x10002000
 

@@ -10,4 +10,8 @@ add_executable(
 	tool.cc
 )
 
-target_link_libraries(bssl ssl crypto -lrt)
+if (APPLE)
+	target_link_libraries(bssl ssl crypto)
+else()
+	target_link_libraries(bssl ssl crypto -lrt)
+endif()
