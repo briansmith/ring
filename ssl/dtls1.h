@@ -121,7 +121,6 @@ struct dtls1_retransmit_state
 	{
 	EVP_CIPHER_CTX *enc_write_ctx;	/* cryptographic state */
 	EVP_MD_CTX *write_hash;			/* used for mac generation */
-	char *compress;
 	SSL_SESSION *session;
 	unsigned short epoch;
 	};

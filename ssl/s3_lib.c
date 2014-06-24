@@ -2709,8 +2709,6 @@ void ssl3_free(SSL *s)
 		ssl3_release_read_buffer(s);
 	if (s->s3->wbuf.buf != NULL)
 		ssl3_release_write_buffer(s);
-	if (s->s3->rrec.comp != NULL)
-		OPENSSL_free(s->s3->rrec.comp);
 #ifndef OPENSSL_NO_DH
 	if (s->s3->tmp.dh != NULL)
 		DH_free(s->s3->tmp.dh);
@@ -2761,11 +2759,6 @@ void ssl3_clear(SSL *s)
 	if (s->s3->tmp.ca_names != NULL)
 		sk_X509_NAME_pop_free(s->s3->tmp.ca_names,X509_NAME_free);
 
-	if (s->s3->rrec.comp != NULL)
-		{
-		OPENSSL_free(s->s3->rrec.comp);
-		s->s3->rrec.comp=NULL;
-		}
 #ifndef OPENSSL_NO_DH
 	if (s->s3->tmp.dh != NULL)
 		{

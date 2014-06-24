@@ -1145,8 +1145,6 @@ long tls1_default_timeout(void);
 int dtls1_do_write(SSL *s,int type);
 int ssl3_read_n(SSL *s, int n, int max, int extend);
 int dtls1_read_bytes(SSL *s, int type, unsigned char *buf, int len, int peek);
-int ssl3_do_compress(SSL *ssl);
-int ssl3_do_uncompress(SSL *ssl);
 int ssl3_write_pending(SSL *s, int type, const unsigned char *buf,
 	unsigned int len);
 unsigned char *dtls1_set_message_header(SSL *s, 

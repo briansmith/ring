@@ -445,7 +445,6 @@ int dtls1_connect(SSL *s)
 			s->init_num=0;
 
 			s->session->cipher=s->s3->tmp.new_cipher;
-			s->session->compress_meth=0;
 			if (!s->method->ssl3_enc->setup_key_block(s))
 				{
 				ret= -1;

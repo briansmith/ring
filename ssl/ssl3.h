@@ -368,7 +368,6 @@ typedef struct ssl3_record_st
 /*r */	unsigned int off;       /* read/write offset into 'buf' */
 /*rw*/	unsigned char *data;    /* pointer to the record data */
 /*rw*/	unsigned char *input;   /* where the decode bytes are */
-/*r */	unsigned char *comp;    /* only used with decompression - malloc()ed */
 /*r */  unsigned long epoch;    /* epoch number, needed by DTLS1 */
 /*r */  unsigned char seq_num[8]; /* sequence number, needed by DTLS1 */
 	} SSL3_RECORD;
@@ -538,7 +537,6 @@ typedef struct ssl3_state_st
 		const EVP_MD *new_hash;
 		int new_mac_pkey_type;
 		int new_mac_secret_size;
-		char *new_compression;
 		int cert_request;
 		} tmp;
 

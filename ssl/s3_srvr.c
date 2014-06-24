@@ -1309,25 +1309,11 @@ int ssl3_get_client_hello(SSL *s)
 		}
 #endif
 
-	/* Worst case, we will use the NULL compression, but if we have other
-	 * options, we will now look for them.  We have i-1 compression
-	 * algorithms from the client, starting at q. */
-	s->s3->tmp.new_compression=NULL;
-	/* If compression is disabled we'd better not try to resume a session
-	 * using compression.
-	 */
-	if (s->session->compress_meth != 0)
-		{
-		OPENSSL_PUT_ERROR(SSL, ssl3_get_client_hello, SSL_R_INCONSISTENT_COMPRESSION);
-		goto f_err;
-		}
-
 	/* Given s->session->ciphers and SSL_get_ciphers, we must
 	 * pick a cipher */
 
 	if (!s->hit)
 		{
-		s->session->compress_meth=0;
 		if (s->session->ciphers != NULL)
 			sk_SSL_CIPHER_free(s->session->ciphers);
 		s->session->ciphers=ciphers;

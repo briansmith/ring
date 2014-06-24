@@ -496,23 +496,6 @@ printf("\n");
 		goto f_err;
 		}
 
-	/* r->length is now just compressed */
-	if (s->expand != NULL)
-		{
-		if (rr->length > SSL3_RT_MAX_COMPRESSED_LENGTH+extra)
-			{
-			al=SSL_AD_RECORD_OVERFLOW;
-			OPENSSL_PUT_ERROR(SSL, ssl3_get_record, SSL_R_COMPRESSED_LENGTH_TOO_LONG);
-			goto f_err;
-			}
-		if (!ssl3_do_uncompress(s))
-			{
-			al=SSL_AD_DECOMPRESSION_FAILURE;
-			OPENSSL_PUT_ERROR(SSL, ssl3_get_record, SSL_R_BAD_DECOMPRESSION);
-			goto f_err;
-			}
-		}
-
 	if (rr->length > SSL3_RT_MAX_PLAIN_LENGTH+extra)
 		{
 		al=SSL_AD_RECORD_OVERFLOW;
@@ -555,16 +538,6 @@ f_err:
 	ssl3_send_alert(s,SSL3_AL_FATAL,al);
 err:
 	return(ret);
-	}
-
-int ssl3_do_uncompress(SSL *ssl)
-	{
-	return(1);
-	}
-
-int ssl3_do_compress(SSL *ssl)
-	{
-	return(1);
 	}
 
 /* Call this to write data in records of type 'type'
@@ -811,20 +784,8 @@ static int do_ssl3_write(SSL *s, int type, const unsigned char *buf,
 	/* we now 'read' from wr->input, wr->length bytes into
 	 * wr->data */
 
-	/* first we compress */
-	if (s->compress != NULL)
-		{
-		if (!ssl3_do_compress(s))
-			{
-			OPENSSL_PUT_ERROR(SSL, do_ssl3_write, SSL_R_COMPRESSION_FAILURE);
-			goto err;
-			}
-		}
-	else
-		{
-		memcpy(wr->data,wr->input,wr->length);
-		wr->input=wr->data;
-		}
+        memcpy(wr->data,wr->input,wr->length);
+        wr->input=wr->data;
 
 	/* we should still have the output to wr->data and the input
 	 * from wr->input.  Length should be wr->length.

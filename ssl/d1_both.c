@@ -1080,7 +1080,6 @@ dtls1_buffer_message(SSL *s, int is_ccs)
 	/* save current state*/
 	frag->msg_header.saved_retransmit_state.enc_write_ctx = s->enc_write_ctx;
 	frag->msg_header.saved_retransmit_state.write_hash = s->write_hash;
-	frag->msg_header.saved_retransmit_state.compress = s->compress;
 	frag->msg_header.saved_retransmit_state.session = s->session;
 	frag->msg_header.saved_retransmit_state.epoch = s->d1->w_epoch;
 	
@@ -1157,7 +1156,6 @@ dtls1_retransmit_message(SSL *s, unsigned short seq, unsigned long frag_off,
 	/* save current state */
 	saved_state.enc_write_ctx = s->enc_write_ctx;
 	saved_state.write_hash = s->write_hash;
-	saved_state.compress = s->compress;
 	saved_state.session = s->session;
 	saved_state.epoch = s->d1->w_epoch;
 	saved_state.epoch = s->d1->w_epoch;
@@ -1167,7 +1165,6 @@ dtls1_retransmit_message(SSL *s, unsigned short seq, unsigned long frag_off,
 	/* restore state in which the message was originally sent */
 	s->enc_write_ctx = frag->msg_header.saved_retransmit_state.enc_write_ctx;
 	s->write_hash = frag->msg_header.saved_retransmit_state.write_hash;
-	s->compress = frag->msg_header.saved_retransmit_state.compress;
 	s->session = frag->msg_header.saved_retransmit_state.session;
 	s->d1->w_epoch = frag->msg_header.saved_retransmit_state.epoch;
 	
@@ -1183,7 +1180,6 @@ dtls1_retransmit_message(SSL *s, unsigned short seq, unsigned long frag_off,
 	/* restore current state */
 	s->enc_write_ctx = saved_state.enc_write_ctx;
 	s->write_hash = saved_state.write_hash;
-	s->compress = saved_state.compress;
 	s->session = saved_state.session;
 	s->d1->w_epoch = saved_state.epoch;
 	

@@ -378,7 +378,6 @@ int ssl3_setup_key_block(SSL *s)
 
 	s->s3->tmp.new_sym_enc=c;
 	s->s3->tmp.new_hash=hash;
-	s->s3->tmp.new_compression=NULL;
 
 	num=EVP_MD_size(hash);
 

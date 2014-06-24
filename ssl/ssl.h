@@ -553,8 +553,6 @@ struct ssl_session_st
 	long timeout;
 	long time;
 
-	unsigned int compress_meth;	/* Need to lookup the method */
-
 	const SSL_CIPHER *cipher;
 	unsigned long cipher_id;	/* when ASN.1 loaded, this
 					 * needs to be used to load
@@ -1495,14 +1493,12 @@ struct ssl_st
 					   ignored. */
 	EVP_CIPHER_CTX *enc_read_ctx;		/* cryptographic state */
 	EVP_MD_CTX *read_hash;		/* used for mac generation */
-	char *expand;
 
 	SSL_AEAD_CTX *aead_write_ctx;	/* AEAD context. If non-NULL, then
 					   |enc_write_ctx| and |write_hash| are
 					   ignored. */
 	EVP_CIPHER_CTX *enc_write_ctx;		/* cryptographic state */
 	EVP_MD_CTX *write_hash;		/* used for mac generation */
-	char *compress;	
 
 	/* session info */
 
