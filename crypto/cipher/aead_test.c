@@ -171,7 +171,7 @@ int main(int argc, char **argv) {
     unsigned int *buf_len = NULL;
 
     if (!fgets(line, sizeof(line), f)) {
-      break;
+      line[0] = 0;
     }
 
     line_no++;
@@ -189,19 +189,21 @@ int main(int argc, char **argv) {
         }
       }
 
-      if (!any_values_set) {
-        continue;
+      if (any_values_set) {
+        if (!run_test_case(aead, bufs, lengths, line_no)) {
+          return 4;
+        }
+
+        for (j = 0; j < NUM_TYPES; j++) {
+          lengths[j] = 0;
+        }
+
+        num_tests++;
       }
 
-      if (!run_test_case(aead, bufs, lengths, line_no)) {
-        return 4;
+      if (line[0] == 0) {
+        break;
       }
-
-      for (j = 0; j < NUM_TYPES; j++) {
-        lengths[j] = 0;
-      }
-
-      num_tests++;
       continue;
     }
 
