@@ -388,7 +388,6 @@ static int tls1_change_cipher_state_cipher(
 	const char is_export = SSL_C_IS_EXPORT(s->s3->tmp.new_cipher) != 0;
 	EVP_CIPHER_CTX *cipher_ctx;
 	EVP_MD_CTX *mac_ctx;
-	char is_aead_cipher;
 
 	unsigned char export_tmp1[EVP_MAX_KEY_LENGTH];
 	unsigned char export_tmp2[EVP_MAX_KEY_LENGTH];
@@ -502,34 +501,15 @@ static int tls1_change_cipher_state_cipher(
 			}
 		}
 
-	/* is_aead_cipher indicates whether the EVP_CIPHER implements an AEAD
-	 * interface. This is different from the newer EVP_AEAD interface. */
-	is_aead_cipher = (EVP_CIPHER_flags(cipher) & EVP_CIPH_FLAG_AEAD_CIPHER) != 0;
+	EVP_PKEY *mac_key =
+		EVP_PKEY_new_mac_key(s->s3->tmp.new_mac_pkey_type,
+				     NULL, mac_secret, mac_secret_len);
+	if (!mac_key)
+		return 0;
+	EVP_DigestSignInit(mac_ctx, NULL, s->s3->tmp.new_hash, NULL, mac_key);
+	EVP_PKEY_free(mac_key);
 
-	if (!is_aead_cipher)
-		{
-		EVP_PKEY *mac_key =
-			EVP_PKEY_new_mac_key(s->s3->tmp.new_mac_pkey_type,
-					     NULL, mac_secret, mac_secret_len);
-		if (!mac_key)
-			return 0;
-		EVP_DigestSignInit(mac_ctx, NULL, s->s3->tmp.new_hash, NULL, mac_key);
-		EVP_PKEY_free(mac_key);
-		}
-
-	if (EVP_CIPHER_mode(cipher) == EVP_CIPH_GCM_MODE)
-		{
-		EVP_CipherInit_ex(cipher_ctx, cipher, NULL /* engine */, key,
-				  NULL /* iv */, !is_read);
-		EVP_CIPHER_CTX_ctrl(cipher_ctx, EVP_CTRL_GCM_SET_IV_FIXED, iv_len, (void*) iv);
-		}
-	else
-		EVP_CipherInit_ex(cipher_ctx, cipher, NULL /* engine */, key, iv, !is_read);
-
-	/* Needed for "composite" AEADs, such as RC4-HMAC-MD5 */
-	if (is_aead_cipher && mac_secret_len > 0)
-		EVP_CIPHER_CTX_ctrl(cipher_ctx, EVP_CTRL_AEAD_SET_MAC_KEY,
-				    mac_secret_len, (void*) mac_secret);
+	EVP_CipherInit_ex(cipher_ctx, cipher, NULL /* engine */, key, iv, !is_read);
 
 	if (is_export)
 		{
@@ -959,43 +939,7 @@ int tls1_enc(SSL *s, int send)
 		l=rec->length;
 		bs=EVP_CIPHER_block_size(ds->cipher);
 
-		if (EVP_CIPHER_flags(ds->cipher)&EVP_CIPH_FLAG_AEAD_CIPHER)
-			{
-			unsigned char buf[13],*seq;
-
-			seq = send?s->s3->write_sequence:s->s3->read_sequence;
-
-			if (SSL_IS_DTLS(s))
-				{
-				unsigned char dtlsseq[9],*p=dtlsseq;
-
-				s2n(send?s->d1->w_epoch:s->d1->r_epoch,p);
-				memcpy(p,&seq[2],6);
-				memcpy(buf,dtlsseq,8);
-				}
-			else
-				{
-				memcpy(buf,seq,8);
-				for (i=7; i>=0; i--)	/* increment */
-					{
-					++seq[i];
-					if (seq[i] != 0) break; 
-					}
-				}
-
-			buf[8]=rec->type;
-			buf[9]=(unsigned char)(s->version>>8);
-			buf[10]=(unsigned char)(s->version);
-			buf[11]=rec->length>>8;
-			buf[12]=rec->length&0xff;
-			pad=EVP_CIPHER_CTX_ctrl(ds,EVP_CTRL_AEAD_TLS1_AAD,13,buf);
-			if (send)
-				{
-				l+=pad;
-				rec->length+=pad;
-				}
-			}
-		else if ((bs != 1) && send)
+		if ((bs != 1) && send)
 			{
 			i=bs-((int)l%bs);
 

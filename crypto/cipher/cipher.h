@@ -346,7 +346,6 @@ int EVP_BytesToKey(const EVP_CIPHER *type, const EVP_MD *md,
 #define EVP_CTRL_GCM_SET_TAG 0x11
 #define EVP_CTRL_GCM_SET_IV_FIXED 0x12
 #define EVP_CTRL_GCM_IV_GEN 0x13
-#define EVP_CTRL_AEAD_TLS1_AAD 0x16
 #define EVP_CTRL_AEAD_SET_MAC_KEY 0x17
 /* Set the GCM invocation field, decrypt only */
 #define EVP_CTRL_GCM_SET_IV_INV 0x18
