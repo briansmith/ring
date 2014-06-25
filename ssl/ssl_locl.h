@@ -384,6 +384,11 @@
  * 8-byte variable nonce.) */
 #define SSL_CIPHER_ALGORITHM2_VARIABLE_NONCE_INCLUDED_IN_RECORD (1<<22)
 
+/* SSL_CIPHER_ALGORITHM2_STATEFUL_AEAD is a flag in SSL_CIPHER.algorithm2 which
+ * indicates that the AEAD is stateful and so doesn't take an nonce. This is
+ * only true of legacy cipher suites. */
+#define SSL_CIPHER_ALGORITHM2_STATEFUL_AEAD (1<<28)
+
 /*
  * Export and cipher strength information. For each cipher we have to decide
  * whether it is exportable or not. This information is likely to change
@@ -1001,6 +1006,7 @@ struct ssl_cipher_preference_list_st* ssl_get_cipher_preferences(SSL *s);
 int ssl_cipher_get_evp_aead(const SSL_SESSION *s, const EVP_AEAD **aead);
 int ssl_cipher_get_evp(const SSL_SESSION *s,const EVP_CIPHER **enc,
 		       const EVP_MD **md,int *mac_pkey_type,int *mac_secret_size);
+int ssl_cipher_get_mac(const SSL_SESSION *s, const EVP_MD **md, int *mac_pkey_type, int *mac_secret_size);
 int ssl_get_handshake_digest(int i,long *mask,const EVP_MD **md);			   
 int ssl_get_handshake_digest(int i,long *mask,const EVP_MD **md);
 int ssl_cipher_get_cert_index(const SSL_CIPHER *c);

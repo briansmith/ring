@@ -285,6 +285,7 @@ static int tls1_PRF(long digest_mask,
 err:
 	return ret;
 }
+
 static int tls1_generate_key_block(SSL *s, unsigned char *km,
 	     unsigned char *tmp, int num)
 	{
@@ -331,10 +332,30 @@ static int tls1_aead_ctx_init(SSL_AEAD_CTX **aead_ctx)
 
 static int tls1_change_cipher_state_aead(SSL *s, char is_read,
 	const unsigned char *key, unsigned key_len,
-	const unsigned char *iv, unsigned iv_len)
+	const unsigned char *iv, unsigned iv_len,
+	const unsigned char *mac_secret, unsigned mac_secret_len)
 	{
 	const EVP_AEAD *aead = s->s3->tmp.new_aead;
 	SSL_AEAD_CTX *aead_ctx;
+	/* mac_key_and_key is used to merge the MAC and cipher keys for an AEAD
+	 * which simulates pre-AEAD cipher suites. It needs to be large enough
+	 * to cope with the largest pair of keys. */
+	uint8_t mac_key_and_key[32 /* HMAC(SHA256) */ + 32 /* AES-256 */];
+
+	if (mac_secret_len > 0)
+		{
+		/* This is a "stateful" AEAD (for compatibility with pre-AEAD
+		 * cipher suites). */
+		if (mac_secret_len + key_len > sizeof(mac_key_and_key))
+			{
+			OPENSSL_PUT_ERROR(SSL, tls1_change_cipher_state_aead, ERR_R_INTERNAL_ERROR);
+			return 0;
+			}
+		memcpy(mac_key_and_key, mac_secret, mac_secret_len);
+		memcpy(mac_key_and_key + mac_secret_len, key, key_len);
+		key = mac_key_and_key;
+		key_len += mac_secret_len;
+		}
 
 	if (is_read)
 		{
@@ -359,7 +380,9 @@ static int tls1_change_cipher_state_aead(SSL *s, char is_read,
 		}
 	memcpy(aead_ctx->fixed_nonce, iv, iv_len);
 	aead_ctx->fixed_nonce_len = iv_len;
-	aead_ctx->variable_nonce_len = 8;  /* always the case, currently. */
+	aead_ctx->variable_nonce_len = 8;  /* correct for all true AEADs so far. */
+	if (s->s3->tmp.new_cipher->algorithm2 & SSL_CIPHER_ALGORITHM2_STATEFUL_AEAD)
+		aead_ctx->variable_nonce_len = 0;
 	aead_ctx->variable_nonce_included_in_record =
 		(s->s3->tmp.new_cipher->algorithm2 & SSL_CIPHER_ALGORITHM2_VARIABLE_NONCE_INCLUDED_IN_RECORD) != 0;
 	if (aead_ctx->variable_nonce_len + aead_ctx->fixed_nonce_len != EVP_AEAD_nonce_length(aead))
@@ -558,6 +581,15 @@ int tls1_change_cipher_state(SSL *s, int which)
 	if (aead != NULL)
 		{
 		key_len = EVP_AEAD_key_length(aead);
+		/* For "stateful" AEADs (i.e. compatibility with pre-AEAD
+		 * cipher suites) the key length reported by
+		 * |EVP_AEAD_key_length| will include the MAC key bytes. */
+		if (key_len < mac_secret_len)
+			{
+			OPENSSL_PUT_ERROR(SSL, tls1_change_cipher_state, ERR_R_INTERNAL_ERROR);
+			return 0;
+			}
+		key_len -= mac_secret_len;
 		iv_len = SSL_CIPHER_AEAD_FIXED_NONCE_LEN(s->s3->tmp.new_cipher);
 		}
 	else
@@ -602,7 +634,8 @@ int tls1_change_cipher_state(SSL *s, int which)
 	if (aead != NULL)
 		{
 		if (!tls1_change_cipher_state_aead(s, is_read,
-						   key, key_len, iv, iv_len))
+						   key, key_len, iv, iv_len,
+						   mac_secret, mac_secret_len))
 			return 0;
 		}
 	else
@@ -636,12 +669,24 @@ int tls1_setup_key_block(SSL *s)
 		return(1);
 
 	if (s->session->cipher &&
-	    (s->session->cipher->algorithm2 & SSL_CIPHER_ALGORITHM2_AEAD))
+	    ((s->session->cipher->algorithm2 & SSL_CIPHER_ALGORITHM2_AEAD) ||
+	     (s->session->cipher->algorithm2 & SSL_CIPHER_ALGORITHM2_STATEFUL_AEAD)))
 		{
 		if (!ssl_cipher_get_evp_aead(s->session, &aead))
 			goto cipher_unavailable_err;
 		key_len = EVP_AEAD_key_length(aead);
 		iv_len = SSL_CIPHER_AEAD_FIXED_NONCE_LEN(s->session->cipher);
+		if (!ssl_cipher_get_mac(s->session, &hash, &mac_type, &mac_secret_size))
+			goto cipher_unavailable_err;
+		/* For "stateful" AEADs (i.e. compatibility with pre-AEAD
+		 * cipher suites) the key length reported by
+		 * |EVP_AEAD_key_length| will include the MAC key bytes. */
+		if (key_len < mac_secret_size)
+			{
+			OPENSSL_PUT_ERROR(SSL, tls1_change_cipher_state, ERR_R_INTERNAL_ERROR);
+			return 0;
+			}
+		key_len -= mac_secret_size;
 		}
 	else
 		{

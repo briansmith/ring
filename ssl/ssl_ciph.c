@@ -359,7 +359,8 @@ int ssl_cipher_get_evp_aead(const SSL_SESSION *s, const EVP_AEAD **aead)
 
 	if (c == NULL)
 		return 0;
-	if ((c->algorithm2 & SSL_CIPHER_ALGORITHM2_AEAD) == 0)
+	if ((c->algorithm2 & SSL_CIPHER_ALGORITHM2_AEAD) == 0 &&
+	    (c->algorithm2 & SSL_CIPHER_ALGORITHM2_STATEFUL_AEAD) == 0)
 		return 0;
 
 #ifndef OPENSSL_NO_AES
@@ -374,7 +375,13 @@ int ssl_cipher_get_evp_aead(const SSL_SESSION *s, const EVP_AEAD **aead)
 	case SSL_CHACHA20POLY1305:
 		*aead = EVP_aead_chacha20_poly1305();
 		return 1;
-		}
+	case SSL_RC4:
+		if (c->algorithm_mac == SSL_MD5)
+			*aead = EVP_aead_rc4_md5_tls();
+		else
+			return 0;
+		return 1;
+	}
 #endif
 
 	return 0;
@@ -455,44 +462,8 @@ int ssl_cipher_get_evp(const SSL_SESSION *s, const EVP_CIPHER **enc,
 		*enc=ssl_cipher_methods[i];
 		}
 
-	switch (c->algorithm_mac)
-		{
-	case SSL_MD5:
-		i=SSL_MD_MD5_IDX;
-		break;
-	case SSL_SHA1:
-		i=SSL_MD_SHA1_IDX;
-		break;
-	case SSL_SHA256:
-		i=SSL_MD_SHA256_IDX;
-		break;
-	case SSL_SHA384:
-		i=SSL_MD_SHA384_IDX;
-		break;
-	case SSL_GOST94:
-		i = SSL_MD_GOST94_IDX;
-		break;
-	case SSL_GOST89MAC:
-		i = SSL_MD_GOST89MAC_IDX;
-		break;
-	default:
-		i= -1;
-		break;
-		}
-	if ((i < 0) || (i >= SSL_MD_NUM_IDX))
-	{
-		*md=NULL; 
-		if (mac_pkey_type!=NULL) *mac_pkey_type = NID_undef;
-		if (mac_secret_size!=NULL) *mac_secret_size = 0;
-		if (c->algorithm_mac == SSL_AEAD)
-			mac_pkey_type = NULL;
-	}
-	else
-	{
-		*md=ssl_digest_methods[i];
-		if (mac_pkey_type!=NULL) *mac_pkey_type = ssl_mac_pkey_id[i];
-		if (mac_secret_size!=NULL) *mac_secret_size = ssl_mac_secret_size[i];
-	}
+	if (!ssl_cipher_get_mac(s, md, mac_pkey_type, mac_secret_size))
+		return 0;
 
 	if ((*enc != NULL) &&
 	    (*md != NULL || (EVP_CIPHER_flags(*enc)&EVP_CIPH_FLAG_AEAD_CIPHER)) &&
@@ -526,6 +497,55 @@ int ssl_cipher_get_evp(const SSL_SESSION *s, const EVP_CIPHER **enc,
 		}
 	else
 		return(0);
+	}
+
+int ssl_cipher_get_mac(const SSL_SESSION *s, const EVP_MD **md, int *mac_pkey_type, int *mac_secret_size)
+	{
+	int i;
+	const SSL_CIPHER *c;
+
+	c=s->cipher;
+	if (c == NULL) return(0);
+
+	switch (c->algorithm_mac)
+		{
+	case SSL_MD5:
+		i=SSL_MD_MD5_IDX;
+		break;
+	case SSL_SHA1:
+		i=SSL_MD_SHA1_IDX;
+		break;
+	case SSL_SHA256:
+		i=SSL_MD_SHA256_IDX;
+		break;
+	case SSL_SHA384:
+		i=SSL_MD_SHA384_IDX;
+		break;
+	case SSL_GOST94:
+		i = SSL_MD_GOST94_IDX;
+		break;
+	case SSL_GOST89MAC:
+		i = SSL_MD_GOST89MAC_IDX;
+		break;
+	default:
+		i= -1;
+		break;
+		}
+
+	if ((i < 0) || (i >= SSL_MD_NUM_IDX))
+		{
+		*md=NULL; 
+		if (mac_pkey_type!=NULL) *mac_pkey_type = NID_undef;
+		if (mac_secret_size!=NULL) *mac_secret_size = 0;
+		}
+	else
+		{
+		*md=ssl_digest_methods[i];
+		if (mac_pkey_type!=NULL) *mac_pkey_type = ssl_mac_pkey_id[i];
+		if (mac_secret_size!=NULL) *mac_secret_size = ssl_mac_secret_size[i];
+		}
+
+	return 1;
 	}
 
 int ssl_get_handshake_digest(int idx, long *mask, const EVP_MD **md) 

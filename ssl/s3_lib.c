@@ -225,7 +225,7 @@ SSL_CIPHER ssl3_ciphers[]={
 	SSL_MD5,
 	SSL_SSLV3,
 	SSL_NOT_EXP|SSL_MEDIUM,
-	SSL_HANDSHAKE_MAC_DEFAULT|TLS1_PRF,
+	SSL_HANDSHAKE_MAC_DEFAULT|TLS1_PRF|SSL_CIPHER_ALGORITHM2_STATEFUL_AEAD,
 	128,
 	128,
 	},
@@ -4201,9 +4201,10 @@ need to go to SSL_ST_ACCEPT.
  */
 long ssl_get_algorithm2(SSL *s)
 	{
+	static const unsigned long kMask = SSL_HANDSHAKE_MAC_DEFAULT|TLS1_PRF;
 	long alg2 = s->s3->tmp.new_cipher->algorithm2;
 	if (s->method->ssl3_enc->enc_flags & SSL_ENC_FLAG_SHA256_PRF
-	    && alg2 == (SSL_HANDSHAKE_MAC_DEFAULT|TLS1_PRF))
+	    && (alg2 & kMask) == kMask)
 		return SSL_HANDSHAKE_MAC_SHA256 | TLS1_PRF_SHA256;
 	return alg2;
 	}
