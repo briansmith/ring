@@ -154,6 +154,7 @@
 
 #include <openssl/bn.h>
 #include <openssl/buf.h>
+#include <openssl/bytestring.h>
 #include <openssl/cipher.h>
 #include <openssl/dh.h>
 #include <openssl/ec.h>
@@ -886,6 +887,7 @@ int ssl3_get_client_hello(SSL *s)
 	SSL_CIPHER *c;
 	STACK_OF(SSL_CIPHER) *ciphers=NULL;
 	struct ssl_early_callback_ctx early_ctx;
+	CBS cbs;
 
 	/* We do this so that we will respond with our native type.
 	 * If we are TLSv1 and we get SSLv3, we will respond with TLSv1,
@@ -1217,15 +1219,25 @@ int ssl3_get_client_hello(SSL *s)
 		goto f_err;
 		}
 
+	CBS_init(&cbs, p, d + n - p);
 #ifndef OPENSSL_NO_TLSEXT
 	/* TLS extensions*/
 	if (s->version >= SSL3_VERSION)
 		{
-		if (!ssl_parse_clienthello_tlsext(s,&p,d,n))
+		if (!ssl_parse_clienthello_tlsext(s, &cbs))
 			{
 			OPENSSL_PUT_ERROR(SSL, ssl3_get_client_hello, SSL_R_PARSE_TLSEXT);
 			goto err;
 			}
+		}
+
+        /* There should be nothing left over in the record. */
+	if (CBS_len(&cbs) != 0)
+		{
+		/* wrong packet length */
+		al=SSL_AD_DECODE_ERROR;
+		OPENSSL_PUT_ERROR(SSL, ssl3_get_client_hello, SSL_R_BAD_PACKET_LENGTH);
+		goto f_err;
 		}
 
 	/* Check if we want to use external pre-shared secret for this
@@ -1276,7 +1288,7 @@ int ssl3_get_client_hello(SSL *s)
 			s->cipher_list_by_id = sk_SSL_CIPHER_dup(s->session->ciphers);
 			}
 		}
-#endif
+#endif /* !OPENSSL_NO_TLSEXT */
 
 	/* Given s->session->ciphers and SSL_get_ciphers, we must
 	 * pick a cipher */

@@ -1271,7 +1271,7 @@ int tls1_shared_list(SSL *s,
 			int nmatch);
 unsigned char *ssl_add_clienthello_tlsext(SSL *s, unsigned char *buf, unsigned char *limit, size_t header_len);
 unsigned char *ssl_add_serverhello_tlsext(SSL *s, unsigned char *buf, unsigned char *limit); 
-int ssl_parse_clienthello_tlsext(SSL *s, unsigned char **data, unsigned char *d, int n);
+int ssl_parse_clienthello_tlsext(SSL *s, CBS *cbs);
 int ssl_check_clienthello_tlsext_late(SSL *s);
 int ssl_parse_serverhello_tlsext(SSL *s, CBS *cbs);
 int ssl_prepare_clienthello_tlsext(SSL *s);
@@ -1310,8 +1310,7 @@ int ssl_add_serverhello_renegotiate_ext(SSL *s, unsigned char *p, int *len,
 int ssl_parse_serverhello_renegotiate_ext(SSL *s, CBS *cbs, int *out_alert);
 int ssl_add_clienthello_renegotiate_ext(SSL *s, unsigned char *p, int *len,
 					int maxlen);
-int ssl_parse_clienthello_renegotiate_ext(SSL *s, unsigned char *d, int len,
-					  int *al);
+int ssl_parse_clienthello_renegotiate_ext(SSL *s, CBS *cbs, int *out_alert);
 long ssl_get_algorithm2(SSL *s);
 int tls1_process_sigalgs(SSL *s, const unsigned char *data, int dsize);
 size_t tls12_get_psigalgs(SSL *s, const unsigned char **psigs);
@@ -1320,7 +1319,7 @@ int tls12_check_peer_sigalg(const EVP_MD **pmd, SSL *s,
 void ssl_set_client_disabled(SSL *s);
 
 int ssl_add_clienthello_use_srtp_ext(SSL *s, unsigned char *p, int *len, int maxlen);
-int ssl_parse_clienthello_use_srtp_ext(SSL *s, unsigned char *d, int len,int *al);
+int ssl_parse_clienthello_use_srtp_ext(SSL *s, CBS *cbs, int *out_alert);
 int ssl_add_serverhello_use_srtp_ext(SSL *s, unsigned char *p, int *len, int maxlen);
 int ssl_parse_serverhello_use_srtp_ext(SSL *s, CBS *cbs, int *out_alert);
 

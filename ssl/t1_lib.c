@@ -1747,7 +1747,7 @@ unsigned char *ssl_add_serverhello_tlsext(SSL *s, unsigned char *buf, unsigned c
 
 #ifndef OPENSSL_NO_EC
 /* ssl_check_for_safari attempts to fingerprint Safari using OS X
- * SecureTransport using the TLS extension block in |d|, of length |n|.
+ * SecureTransport using the TLS extension block in |cbs|.
  * Safari, since 10.6, sends exactly these extensions, in this order:
  *   SNI,
  *   elliptic_curves
@@ -1758,8 +1758,8 @@ unsigned char *ssl_add_serverhello_tlsext(SSL *s, unsigned char *buf, unsigned c
  * Sadly we cannot differentiate 10.6, 10.7 and 10.8.4 (which work), from
  * 10.8..10.8.3 (which don't work).
  */
-static void ssl_check_for_safari(SSL *s, const unsigned char *data, const unsigned char *d, int n) {
-	unsigned short type, size;
+static void ssl_check_for_safari(SSL *s, const CBS *extensions)
+	{
 	static const unsigned char kSafariExtensionsBlock[] = {
 		0x00, 0x0a,  /* elliptic_curves extension */
 		0x00, 0x08,  /* 8 bytes */
@@ -1785,42 +1785,35 @@ static void ssl_check_for_safari(SSL *s, const unsigned char *data, const unsign
 		0x04, 0x03,  /* SHA-256/ECDSA */
 		0x02, 0x03,  /* SHA-1/ECDSA */
 	};
+	CBS extensions_copy = *extensions, extension;
+	uint16_t type;
 
-	if (data >= (d+n-2))
-		return;
-	data += 2;
-
-	if (data > (d+n-4))
-		return;
-	n2s(data,type);
-	n2s(data,size);
-
-	if (type != TLSEXT_TYPE_server_name)
+	/* First extension is server_name. */
+	if (!CBS_get_u16(&extensions_copy, &type) ||
+		!CBS_get_u16_length_prefixed(&extensions_copy, &extension) ||
+		type != TLSEXT_TYPE_server_name)
 		return;
 
-	if (data+size > d+n)
-		return;
-	data += size;
-
+	/* Compare the remainder of the extensions block. */
 	if (TLS1_get_client_version(s) >= TLS1_2_VERSION)
 		{
 		const size_t len1 = sizeof(kSafariExtensionsBlock);
 		const size_t len2 = sizeof(kSafariTLS12ExtensionsBlock);
 
-		if (data + len1 + len2 != d+n)
+		if (len1 + len2 != CBS_len(&extensions_copy))
 			return;
-		if (memcmp(data, kSafariExtensionsBlock, len1) != 0)
+		if (memcmp(CBS_data(&extensions_copy), kSafariExtensionsBlock, len1) != 0)
 			return;
-		if (memcmp(data + len1, kSafariTLS12ExtensionsBlock, len2) != 0)
+		if (memcmp(CBS_data(&extensions_copy) + len1, kSafariTLS12ExtensionsBlock, len2) != 0)
 			return;
 		}
 	else
 		{
 		const size_t len = sizeof(kSafariExtensionsBlock);
 
-		if (data + len != d+n)
+		if (len != CBS_len(&extensions_copy))
 			return;
-		if (memcmp(data, kSafariExtensionsBlock, len) != 0)
+		if (memcmp(CBS_data(&extensions_copy), kSafariExtensionsBlock, len) != 0)
 			return;
 		}
 
@@ -1830,81 +1823,62 @@ static void ssl_check_for_safari(SSL *s, const unsigned char *data, const unsign
 
 /* tls1_alpn_handle_client_hello is called to process the ALPN extension in a
  * ClientHello.
- *   data: the contents of the extension, not including the type and length.
- *   data_len: the number of bytes in |data|
- *   al: a pointer to the alert value to send in the event of a non-zero
+ *   cbs: the contents of the extension, not including the type and length.
+ *   out_alert: a pointer to the alert value to send in the event of a zero
  *       return.
  *
- *   returns: 0 on success. */
-static int tls1_alpn_handle_client_hello(SSL *s, const unsigned char *data,
-					 unsigned data_len, int *al)
+ *   returns: 1 on success. */
+static int tls1_alpn_handle_client_hello(SSL *s, CBS *cbs, int *out_alert)
 	{
-	unsigned i;
-	unsigned proto_len;
+	CBS protocol_name_list;
 	const unsigned char *selected;
 	unsigned char selected_len;
 	int r;
 
 	if (s->ctx->alpn_select_cb == NULL)
-		return 0;
+		return 1;
 
-	if (data_len < 2)
+	if (!CBS_get_u16_length_prefixed(cbs, &protocol_name_list) ||
+		CBS_len(cbs) != 0 ||
+		CBS_len(&protocol_name_list) < 2)
 		goto parse_error;
 
-	/* data should contain a uint16 length followed by a series of 8-bit,
-	 * length-prefixed strings. */
-	i = ((unsigned) data[0]) << 8 |
-	    ((unsigned) data[1]);
-	data_len -= 2;
-	data += 2;
-	if (data_len != i)
-		goto parse_error;
-
-	if (data_len < 2)
-		goto parse_error;
-
-	for (i = 0; i < data_len;)
+	/* Validate the protocol list. */
+	CBS protocol_name_list_copy = protocol_name_list;
+	while (CBS_len(&protocol_name_list_copy) > 0)
 		{
-		proto_len = data[i];
-		i++;
+		CBS protocol_name;
 
-		if (proto_len == 0)
+		if (!CBS_get_u8_length_prefixed(&protocol_name_list_copy, &protocol_name))
 			goto parse_error;
-
-		if (i + proto_len < i || i + proto_len > data_len)
-			goto parse_error;
-
-		i += proto_len;
 		}
 
-	r = s->ctx->alpn_select_cb(s, &selected, &selected_len, data, data_len,
-				   s->ctx->alpn_select_cb_arg);
+	r = s->ctx->alpn_select_cb(s, &selected, &selected_len,
+		CBS_data(&protocol_name_list), CBS_len(&protocol_name_list),
+		s->ctx->alpn_select_cb_arg);
 	if (r == SSL_TLSEXT_ERR_OK) {
 		if (s->s3->alpn_selected)
 			OPENSSL_free(s->s3->alpn_selected);
 		s->s3->alpn_selected = OPENSSL_malloc(selected_len);
 		if (!s->s3->alpn_selected)
 			{
-			*al = SSL_AD_INTERNAL_ERROR;
-			return -1;
+			*out_alert = SSL_AD_INTERNAL_ERROR;
+			return 0;
 			}
 		memcpy(s->s3->alpn_selected, selected, selected_len);
 		s->s3->alpn_selected_len = selected_len;
 	}
-	return 0;
+	return 1;
 
 parse_error:
-	*al = SSL_AD_DECODE_ERROR;
-	return -1;
+	*out_alert = SSL_AD_DECODE_ERROR;
+	return 0;
 	}
 
-static int ssl_scan_clienthello_tlsext(SSL *s, unsigned char **p, unsigned char *d, int n, int *al) 
+static int ssl_scan_clienthello_tlsext(SSL *s, CBS *cbs, int *out_alert)
 	{	
-	unsigned short type;
-	unsigned short size;
-	unsigned short len;
-	unsigned char *data = *p;
 	int renegotiate_seen = 0;
+	CBS extensions;
 	size_t i;
 
 	s->servername_done = 0;
@@ -1918,11 +1892,6 @@ static int ssl_scan_clienthello_tlsext(SSL *s, unsigned char **p, unsigned char 
 		OPENSSL_free(s->s3->alpn_selected);
 		s->s3->alpn_selected = NULL;
 		}
-
-#ifndef OPENSSL_NO_EC
-	if (s->options & SSL_OP_SAFARI_ECDHE_ECDSA_BUG)
-		ssl_check_for_safari(s, data, d, n);
-#endif /* !OPENSSL_NO_EC */
 
 	/* Clear any signature algorithms extension received */
 	if (s->cert->peer_sigalgs)
@@ -1943,26 +1912,42 @@ static int ssl_scan_clienthello_tlsext(SSL *s, unsigned char **p, unsigned char 
 		s->cert->pkeys[i].valid_flags = 0;
 		}
 
-	if (data >= (d+n-2))
-		goto ri_check;
-	n2s(data,len);
-
-	if (data > (d+n-len)) 
-		goto ri_check;
-
-	while (data <= (d+n-4))
+	/* There may be no extensions. */
+	if (CBS_len(cbs) == 0)
 		{
-		n2s(data,type);
-		n2s(data,size);
+		goto ri_check;
+		}
 
-		if (data+size > (d+n))
-	   		goto ri_check;
-#if 0
-		fprintf(stderr,"Received extension type %d size %d\n",type,size);
-#endif
+	if (!CBS_get_u16_length_prefixed(cbs, &extensions))
+		{
+		*out_alert = SSL_AD_DECODE_ERROR;
+		return 0;
+		}
+
+#ifndef OPENSSL_NO_EC
+	if (s->options & SSL_OP_SAFARI_ECDHE_ECDSA_BUG)
+		ssl_check_for_safari(s, &extensions);
+#endif /* !OPENSSL_NO_EC */
+
+	while (CBS_len(&extensions) != 0)
+		{
+		uint16_t type;
+		CBS extension;
+
+		/* Decode the next extension. */
+		if (!CBS_get_u16(&extensions, &type) ||
+			!CBS_get_u16_length_prefixed(&extensions, &extension))
+			{
+			*out_alert = SSL_AD_DECODE_ERROR;
+			return 0;
+			}
+
 		if (s->tlsext_debug_cb)
-			s->tlsext_debug_cb(s, 0, type, data, size,
-						s->tlsext_debug_arg);
+			{
+			s->tlsext_debug_cb(s, 0, type, (unsigned char*)CBS_data(&extension),
+				CBS_len(&extension), s->tlsext_debug_arg);
+			}
+
 /* The servername extension is treated as follows:
 
    - Only the hostname type is supported with a maximum length of 255.
@@ -1988,194 +1973,188 @@ static int ssl_scan_clienthello_tlsext(SSL *s, unsigned char **p, unsigned char 
 
 		if (type == TLSEXT_TYPE_server_name)
 			{
-			unsigned char *sdata;
-			int servname_type;
-			int dsize; 
-		
-			if (size < 2) 
+			CBS server_name_list;
+
+			if (!CBS_get_u16_length_prefixed(&extension, &server_name_list) ||
+				CBS_len(&server_name_list) < 1 ||
+				CBS_len(&extension) != 0)
 				{
-				*al = SSL_AD_DECODE_ERROR;
+				*out_alert = SSL_AD_DECODE_ERROR;
 				return 0;
 				}
-			n2s(data,dsize);  
-			size -= 2;
-			if (dsize > size  ) 
-				{
-				*al = SSL_AD_DECODE_ERROR;
-				return 0;
-				} 
 
-			sdata = data;
-			while (dsize > 3) 
+			/* Decode each ServerName in the extension. */
+			while (CBS_len(&server_name_list) > 0)
 				{
-	 			servname_type = *(sdata++); 
-				n2s(sdata,len);
-				dsize -= 3;
+				uint8_t name_type;
+				CBS host_name;
 
-				if (len > dsize) 
+				/* Decode the NameType. */
+				if (!CBS_get_u8(&server_name_list, &name_type))
 					{
-					*al = SSL_AD_DECODE_ERROR;
+					*out_alert = SSL_AD_DECODE_ERROR;
 					return 0;
 					}
-				if (s->servername_done == 0)
-				switch (servname_type)
+
+				if (s->servername_done)
+					continue;
+
+				/* Only host_name is supported. */
+				if (name_type != TLSEXT_NAMETYPE_host_name)
+					continue;
+
+				if (!s->hit)
 					{
-				case TLSEXT_NAMETYPE_host_name:
-					if (!s->hit)
+					if (s->session->tlsext_hostname)
 						{
-						if(s->session->tlsext_hostname)
-							{
-							*al = SSL_AD_DECODE_ERROR;
-							return 0;
-							}
-						if (len > TLSEXT_MAXLEN_host_name)
-							{
-							*al = TLS1_AD_UNRECOGNIZED_NAME;
-							return 0;
-							}
-						if ((s->session->tlsext_hostname = OPENSSL_malloc(len+1)) == NULL)
-							{
-							*al = TLS1_AD_INTERNAL_ERROR;
-							return 0;
-							}
-						memcpy(s->session->tlsext_hostname, sdata, len);
-						s->session->tlsext_hostname[len]='\0';
-						if (strlen(s->session->tlsext_hostname) != len) {
-							OPENSSL_free(s->session->tlsext_hostname);
-							s->session->tlsext_hostname = NULL;
-							*al = TLS1_AD_UNRECOGNIZED_NAME;
-							return 0;
+						/* The ServerNameList MUST NOT
+						   contain more than one name of
+						   the same name_type. */
+						*out_alert = SSL_AD_DECODE_ERROR;
+						return 0;
 						}
-						s->servername_done = 1; 
 
+					if (!CBS_get_u16_length_prefixed(&server_name_list, &host_name) ||
+						CBS_len(&host_name) < 1)
+						{
+						*out_alert = SSL_AD_DECODE_ERROR;
+						return 0;
 						}
-					else 
-						s->servername_done = s->session->tlsext_hostname
-							&& strlen(s->session->tlsext_hostname) == len 
-							&& strncmp(s->session->tlsext_hostname, (char *)sdata, len) == 0;
-					
-					break;
 
-				default:
-					break;
+					if (CBS_len(&host_name) > TLSEXT_MAXLEN_host_name)
+						{
+						*out_alert = SSL_AD_UNRECOGNIZED_NAME;
+						return 0;
+						}
+
+					/* host_name may not contain a NUL character. */
+					if (BUF_strnlen((const char*)CBS_data(&host_name),
+							CBS_len(&host_name)) != CBS_len(&host_name))
+						{
+						*out_alert = SSL_AD_UNRECOGNIZED_NAME;
+						return 0;
+						}
+
+					/* Copy the hostname as a string. */
+					s->session->tlsext_hostname = BUF_strndup(
+						(const char*)CBS_data(&host_name), CBS_len(&host_name));
+					if (s->session->tlsext_hostname == NULL)
+						{
+						*out_alert = SSL_AD_INTERNAL_ERROR;
+						return 0;
+						}
+					s->servername_done = 1;
 					}
-				 
-				dsize -= len;
+				else
+					{
+					s->servername_done = s->session->tlsext_hostname
+						&& strlen(s->session->tlsext_hostname) == CBS_len(&host_name)
+						&& strncmp(s->session->tlsext_hostname,
+							(char *)CBS_data(&host_name), CBS_len(&host_name)) == 0;
+					}
 				}
-			if (dsize != 0) 
-				{
-				*al = SSL_AD_DECODE_ERROR;
-				return 0;
-				}
-
 			}
 
 #ifndef OPENSSL_NO_EC
 		else if (type == TLSEXT_TYPE_ec_point_formats)
 			{
-			unsigned char *sdata = data;
-			int ecpointformatlist_length = *(sdata++);
+			CBS ec_point_format_list;
 
-			if (ecpointformatlist_length != size - 1 || 
-				ecpointformatlist_length < 1)
+			if (!CBS_get_u8_length_prefixed(&extension, &ec_point_format_list) ||
+				CBS_len(&extension) != 0)
 				{
-				*al = TLS1_AD_DECODE_ERROR;
+				*out_alert = SSL_AD_DECODE_ERROR;
 				return 0;
 				}
+
 			if (!s->hit)
 				{
-				if(s->session->tlsext_ecpointformatlist)
+				if (!CBS_stow(&ec_point_format_list,
+						&s->session->tlsext_ecpointformatlist,
+						&s->session->tlsext_ecpointformatlist_length))
 					{
-					OPENSSL_free(s->session->tlsext_ecpointformatlist);
-					s->session->tlsext_ecpointformatlist = NULL;
-					}
-				s->session->tlsext_ecpointformatlist_length = 0;
-				if ((s->session->tlsext_ecpointformatlist = OPENSSL_malloc(ecpointformatlist_length)) == NULL)
-					{
-					*al = TLS1_AD_INTERNAL_ERROR;
+					*out_alert = SSL_AD_INTERNAL_ERROR;
 					return 0;
 					}
-				s->session->tlsext_ecpointformatlist_length = ecpointformatlist_length;
-				memcpy(s->session->tlsext_ecpointformatlist, sdata, ecpointformatlist_length);
 				}
-#if 0
-			fprintf(stderr,"ssl_parse_clienthello_tlsext s->session->tlsext_ecpointformatlist (length=%i) ", s->session->tlsext_ecpointformatlist_length);
-			sdata = s->session->tlsext_ecpointformatlist;
-			for (i = 0; i < s->session->tlsext_ecpointformatlist_length; i++)
-				fprintf(stderr,"%i ",*(sdata++));
-			fprintf(stderr,"\n");
-#endif
 			}
 		else if (type == TLSEXT_TYPE_elliptic_curves)
 			{
-			unsigned char *sdata = data;
-			int ellipticcurvelist_length = (*(sdata++) << 8);
-			ellipticcurvelist_length += (*(sdata++));
+			CBS elliptic_curve_list;
 
-			if (ellipticcurvelist_length != size - 2 ||
-				ellipticcurvelist_length < 1)
+			if (!CBS_get_u16_length_prefixed(&extension, &elliptic_curve_list) ||
+				CBS_len(&extension) != 0)
 				{
-				*al = TLS1_AD_DECODE_ERROR;
+				*out_alert = SSL_AD_DECODE_ERROR;
 				return 0;
 				}
+
 			if (!s->hit)
 				{
-				if(s->session->tlsext_ellipticcurvelist)
+				if (s->session->tlsext_ellipticcurvelist)
 					{
-					*al = TLS1_AD_DECODE_ERROR;
+					*out_alert = SSL_AD_DECODE_ERROR;
 					return 0;
 					}
-				s->session->tlsext_ellipticcurvelist_length = 0;
-				if ((s->session->tlsext_ellipticcurvelist = OPENSSL_malloc(ellipticcurvelist_length)) == NULL)
+
+				if (!CBS_stow(&elliptic_curve_list,
+						&s->session->tlsext_ellipticcurvelist,
+						&s->session->tlsext_ellipticcurvelist_length))
 					{
-					*al = TLS1_AD_INTERNAL_ERROR;
+					*out_alert = SSL_AD_INTERNAL_ERROR;
 					return 0;
 					}
-				s->session->tlsext_ellipticcurvelist_length = ellipticcurvelist_length;
-				memcpy(s->session->tlsext_ellipticcurvelist, sdata, ellipticcurvelist_length);
 				}
-#if 0
-			fprintf(stderr,"ssl_parse_clienthello_tlsext s->session->tlsext_ellipticcurvelist (length=%i) ", s->session->tlsext_ellipticcurvelist_length);
-			sdata = s->session->tlsext_ellipticcurvelist;
-			for (i = 0; i < s->session->tlsext_ellipticcurvelist_length; i++)
-				fprintf(stderr,"%i ",*(sdata++));
-			fprintf(stderr,"\n");
-#endif
 			}
 #endif /* OPENSSL_NO_EC */
 		else if (type == TLSEXT_TYPE_session_ticket)
 			{
 			if (s->tls_session_ticket_ext_cb &&
-			    !s->tls_session_ticket_ext_cb(s, data, size, s->tls_session_ticket_ext_cb_arg))
+				!s->tls_session_ticket_ext_cb(s, CBS_data(&extension), CBS_len(&extension), s->tls_session_ticket_ext_cb_arg))
 				{
-				*al = TLS1_AD_INTERNAL_ERROR;
+				*out_alert = SSL_AD_INTERNAL_ERROR;
 				return 0;
 				}
 			}
 		else if (type == TLSEXT_TYPE_renegotiate)
 			{
-			if(!ssl_parse_clienthello_renegotiate_ext(s, data, size, al))
+			if (!ssl_parse_clienthello_renegotiate_ext(s, &extension, out_alert))
 				return 0;
 			renegotiate_seen = 1;
 			}
 		else if (type == TLSEXT_TYPE_signature_algorithms)
 			{
-			int dsize;
-			if (s->cert->peer_sigalgs || size < 2) 
+			CBS supported_signature_algorithms;
+
+			/* The extension should not appear twice. */
+			if (s->cert->peer_sigalgs)
 				{
-				*al = SSL_AD_DECODE_ERROR;
+				*out_alert = SSL_AD_UNSUPPORTED_EXTENSION;
 				return 0;
 				}
-			n2s(data,dsize);
-			size -= 2;
-			if (dsize != size || dsize & 1 || !dsize) 
+
+			if (!CBS_get_u16_length_prefixed(&extension, &supported_signature_algorithms) ||
+				CBS_len(&extension) != 0)
 				{
-				*al = SSL_AD_DECODE_ERROR;
+				*out_alert = SSL_AD_DECODE_ERROR;
 				return 0;
 				}
-			if (!tls1_process_sigalgs(s, data, dsize))
+
+			/* Ensure the signature algorithms are non-empty. It
+			 * contains a list of SignatureAndHashAlgorithms
+			 * which are two bytes each. */
+			if (CBS_len(&supported_signature_algorithms) == 0 ||
+				(CBS_len(&supported_signature_algorithms) % 2) != 0)
 				{
-				*al = SSL_AD_DECODE_ERROR;
+				*out_alert = SSL_AD_DECODE_ERROR;
+				return 0;
+				}
+
+			if (!tls1_process_sigalgs(s,
+					CBS_data(&supported_signature_algorithms),
+					CBS_len(&supported_signature_algorithms)))
+				{
+				*out_alert = SSL_AD_DECODE_ERROR;
 				return 0;
 				}
 			/* If sigalgs received and no shared algorithms fatal
@@ -2184,7 +2163,7 @@ static int ssl_scan_clienthello_tlsext(SSL *s, unsigned char **p, unsigned char 
 			if (s->cert->peer_sigalgs && !s->cert->shared_sigalgs)
 				{
 				OPENSSL_PUT_ERROR(SSL, ssl_add_serverhello_tlsext, SSL_R_NO_SHARED_SIGATURE_ALGORITHMS);
-				*al = SSL_AD_ILLEGAL_PARAMETER;
+				*out_alert = SSL_AD_ILLEGAL_PARAMETER;
 				return 0;
 				}
 			}
@@ -2193,114 +2172,121 @@ static int ssl_scan_clienthello_tlsext(SSL *s, unsigned char **p, unsigned char 
 #if 0
 		else if (type == TLSEXT_TYPE_status_request)
 			{
-		
-			if (size < 5) 
+			uint8_t status_type;
+			CBS responder_id_list;
+			CBS request_extensions;
+
+			/* Already seen the extension. */
+			if (s->tlsext_status_type != -1 ||
+				s->tlsext_ocsp_ids != NULL ||
+				s->tlsext_ocsp_exts != NULL)
 				{
-				*al = SSL_AD_DECODE_ERROR;
+				*out_alert = SSL_AD_UNSUPPORTED_EXTENSION;
 				return 0;
 				}
 
-			s->tlsext_status_type = *data++;
-			size--;
-			if (s->tlsext_status_type == TLSEXT_STATUSTYPE_ocsp)
+			if (!CBS_get_u8(&extension, &status_type))
 				{
-				const unsigned char *sdata;
-				int dsize;
-				/* Read in responder_id_list */
-				n2s(data,dsize);
-				size -= 2;
-				if (dsize > size  ) 
-					{
-					*al = SSL_AD_DECODE_ERROR;
-					return 0;
-					}
-				while (dsize > 0)
-					{
-					OCSP_RESPID *id;
-					int idsize;
-					if (dsize < 4)
-						{
-						*al = SSL_AD_DECODE_ERROR;
-						return 0;
-						}
-					n2s(data, idsize);
-					dsize -= 2 + idsize;
-					size -= 2 + idsize;
-					if (dsize < 0)
-						{
-						*al = SSL_AD_DECODE_ERROR;
-						return 0;
-						}
-					sdata = data;
-					data += idsize;
-					id = d2i_OCSP_RESPID(NULL,
-								&sdata, idsize);
-					if (!id)
-						{
-						*al = SSL_AD_DECODE_ERROR;
-						return 0;
-						}
-					if (data != sdata)
-						{
-						OCSP_RESPID_free(id);
-						*al = SSL_AD_DECODE_ERROR;
-						return 0;
-						}
-					if (!s->tlsext_ocsp_ids
-						&& !(s->tlsext_ocsp_ids =
-						sk_OCSP_RESPID_new_null()))
-						{
-						OCSP_RESPID_free(id);
-						*al = SSL_AD_INTERNAL_ERROR;
-						return 0;
-						}
-					if (!sk_OCSP_RESPID_push(
-							s->tlsext_ocsp_ids, id))
-						{
-						OCSP_RESPID_free(id);
-						*al = SSL_AD_INTERNAL_ERROR;
-						return 0;
-						}
-					}
+				*out_alert = SSL_AD_DECODE_ERROR;
+				return 0;
+				}
 
-				/* Read in request_extensions */
-				if (size < 2)
-					{
-					*al = SSL_AD_DECODE_ERROR;
-					return 0;
-					}
-				n2s(data,dsize);
-				size -= 2;
-				if (dsize != size)
-					{
-					*al = SSL_AD_DECODE_ERROR;
-					return 0;
-					}
-				sdata = data;
-				if (dsize > 0)
-					{
-					if (s->tlsext_ocsp_exts)
-						{
-						sk_X509_EXTENSION_pop_free(s->tlsext_ocsp_exts,
-									   X509_EXTENSION_free);
-						}
+			/* Only OCSP is supported. */
+			if (status_type != TLSEXT_STATUSTYPE_ocsp)
+				continue;
 
-					s->tlsext_ocsp_exts =
-						d2i_X509_EXTENSIONS(NULL,
-							&sdata, dsize);
-					if (!s->tlsext_ocsp_exts
-						|| (data + dsize != sdata))
-						{
-						*al = SSL_AD_DECODE_ERROR;
-						return 0;
-						}
+			s->tlsext_status_type = status_type;
+
+			/* Extension consists of a responder_id_list and
+			 * request_extensions. */
+			if (!CBS_get_u16_length_prefixed(&extension, &responder_id_list) ||
+				CBS_get_u16_length_prefixed(&extension, &request_extensions) ||
+				CBS_len(&extension) != 0)
+				{
+				*out_alert = SSL_AD_DECODE_ERROR;
+				return 0;
+				}
+
+			if (CBS_len(&responder_id_list) > 0)
+				{
+				s->tlsext_ocsp_ids = sk_OCSP_RESPID_new_null();
+				if (s->tlsext_ocsp_ids == NULL)
+					{
+					*out_alert = SSL_AD_INTERNAL_ERROR;
+					return 0;
 					}
 				}
-				/* We don't know what to do with any other type
- 			 	* so ignore it.
- 			 	*/
-				else
-					s->tlsext_status_type = -1;
+
+			/* Parse out the responder IDs. */
+			while (CBS_len(&responder_id_list) > 0)
+				{
+				CBS responder_id;
+				OCSP_RESPID *id;
+				const uint8_t *data;
+
+				/* Each ResponderID must have size at least 1. */
+				if (!CBS_get_u16_length_prefixed(&responder_id_list, &responder_id) ||
+					CBS_len(&responder_id) < 1)
+					{
+					*out_alert = SSL_AD_DECODE_ERROR;
+					return 0;
+					}
+
+				/* TODO(fork): Add CBS versions of d2i_FOO_BAR. */
+				data = CBS_data(&responder_id);
+				id = d2i_OCSP_RESPID(NULL, &data, CBS_len(&responder_id));
+				if (!id)
+					{
+					*out_alert = SSL_AD_DECODE_ERROR;
+					return 0;
+					}
+				if (!CBS_skip(&responder_id, data - CBS_data(&responder_id)))
+					{
+					/* This should never happen. */
+					*out_alert = SSL_AD_INTERNAL_ERROR;
+					OCSP_RESPID_free(id);
+					return 0;
+					}
+				if (CBS_len(&responder_id) != 0)
+					{
+					*out_alert = SSL_AD_DECODE_ERROR;
+					OCSP_RESPID_free(id);
+					return 0;
+					}
+
+				if (!sk_OCSP_RESPID_push(s->tlsext_ocsp_ids, id))
+					{
+					*out_alert = SSL_AD_INTERNAL_ERROR;
+					OCSP_RESPID_free(id);
+					return 0;
+					}
+				}
+
+			/* Parse out request_extensions. */
+			if (CBS_len(&request_extensions) > 0)
+				{
+				const uint8_t *data;
+
+				data = CBS_data(&request_extensions);
+				s->tlsext_ocsp_exts = d2i_X509_EXTENSIONS(NULL,
+					&data, CBS_len(&request_extensions));
+				if (s->tlsext_ocsp_exts == NULL)
+					{
+					*out_alert = SSL_AD_DECODE_ERROR;
+					return 0;
+					}
+				if (!CBS_skip(&request_extensions, data - CBS_data(&request_extensions)))
+					{
+					/* This should never happen. */
+					*out_alert = SSL_AD_INTERNAL_ERROR;
+					return 0;
+					}
+				if (CBS_len(&request_extensions) != 0)
+					{
+					*out_alert = SSL_AD_DECODE_ERROR;
+					return 0;
+					}
+				}
 			}
 #endif
 
@@ -2309,6 +2295,13 @@ static int ssl_scan_clienthello_tlsext(SSL *s, unsigned char **p, unsigned char 
 			 s->s3->tmp.finish_md_len == 0 &&
 			 s->s3->alpn_selected == NULL)
 			{
+			/* The extension must be empty. */
+			if (CBS_len(&extension) != 0)
+				{
+				*out_alert = SSL_AD_DECODE_ERROR;
+				return 0;
+				}
+
 			/* We shouldn't accept this extension on a
 			 * renegotiation.
 			 *
@@ -2332,7 +2325,7 @@ static int ssl_scan_clienthello_tlsext(SSL *s, unsigned char **p, unsigned char 
 			 s->ctx->alpn_select_cb &&
 			 s->s3->tmp.finish_md_len == 0)
 			{
-			if (tls1_alpn_handle_client_hello(s, data, size, al) != 0)
+			if (!tls1_alpn_handle_client_hello(s, &extension, out_alert))
 				return 0;
 #ifndef OPENSSL_NO_NEXTPROTONEG
 			/* ALPN takes precedence over NPN. */
@@ -2342,11 +2335,27 @@ static int ssl_scan_clienthello_tlsext(SSL *s, unsigned char **p, unsigned char 
 
 		else if (type == TLSEXT_TYPE_channel_id &&
 			 s->tlsext_channel_id_enabled)
+			{
+			/* The extension must be empty. */
+			if (CBS_len(&extension) != 0)
+				{
+				*out_alert = SSL_AD_DECODE_ERROR;
+				return 0;
+				}
+
 			s->s3->tlsext_channel_id_valid = 1;
+			}
 
 		else if (type == TLSEXT_TYPE_channel_id_new &&
 			 s->tlsext_channel_id_enabled)
 			{
+			/* The extension must be empty. */
+			if (CBS_len(&extension) != 0)
+				{
+				*out_alert = SSL_AD_DECODE_ERROR;
+				return 0;
+				}
+
 			s->s3->tlsext_channel_id_valid = 1;
 			s->s3->tlsext_channel_id_new = 1;
 			}
@@ -2355,15 +2364,10 @@ static int ssl_scan_clienthello_tlsext(SSL *s, unsigned char **p, unsigned char 
 		/* session ticket processed earlier */
 		else if (type == TLSEXT_TYPE_use_srtp)
                         {
-			if(ssl_parse_clienthello_use_srtp_ext(s, data, size,
-							      al))
+			if (!ssl_parse_clienthello_use_srtp_ext(s, &extension, out_alert))
 				return 0;
                         }
-
-		data+=size;
 		}
-
-	*p = data;
 
 	ri_check:
 
@@ -2372,7 +2376,7 @@ static int ssl_scan_clienthello_tlsext(SSL *s, unsigned char **p, unsigned char 
 	if (!renegotiate_seen && s->renegotiate &&
 		!(s->options & SSL_OP_ALLOW_UNSAFE_LEGACY_RENEGOTIATION))
 		{
-		*al = SSL_AD_HANDSHAKE_FAILURE;
+		*out_alert = SSL_AD_HANDSHAKE_FAILURE;
 	 	OPENSSL_PUT_ERROR(SSL, ssl_add_serverhello_tlsext, SSL_R_UNSAFE_LEGACY_RENEGOTIATION_DISABLED);
 		return 0;
 		}
@@ -2383,12 +2387,12 @@ static int ssl_scan_clienthello_tlsext(SSL *s, unsigned char **p, unsigned char 
 	return 1;
 	}
 
-int ssl_parse_clienthello_tlsext(SSL *s, unsigned char **p, unsigned char *d, int n) 
+int ssl_parse_clienthello_tlsext(SSL *s, CBS *cbs)
 	{
-	int al = -1;
-	if (ssl_scan_clienthello_tlsext(s, p, d, n, &al) <= 0) 
+	int alert = -1;
+	if (ssl_scan_clienthello_tlsext(s, cbs, &alert) <= 0)
 		{
-		ssl3_send_alert(s,SSL3_AL_FATAL,al); 
+		ssl3_send_alert(s, SSL3_AL_FATAL, alert);
 		return 0;
 		}
 
