@@ -109,6 +109,7 @@
 #include <stdio.h>
 #include <assert.h>
 
+#include <openssl/bytestring.h>
 #include <openssl/evp.h>
 #include <openssl/hmac.h>
 #include <openssl/mem.h>
@@ -1964,8 +1965,8 @@ unsigned char *ssl_add_serverhello_tlsext(SSL *s, unsigned char *buf, unsigned c
 
 	if (s->s3->alpn_selected)
 		{
-		const unsigned char *selected = s->s3->alpn_selected;
-		unsigned len = s->s3->alpn_selected_len;
+		const uint8_t *selected = s->s3->alpn_selected;
+		size_t len = s->s3->alpn_selected_len;
 
 		if ((long)(limit - ret - 4 - 2 - 1 - len) < 0)
 			return NULL;
@@ -2823,30 +2824,28 @@ int ssl_parse_clienthello_tlsext(SSL *s, unsigned char **p, unsigned char *d, in
 /* ssl_next_proto_validate validates a Next Protocol Negotiation block. No
  * elements of zero length are allowed and the set of elements must exactly fill
  * the length of the block. */
-static char ssl_next_proto_validate(unsigned char *d, unsigned len)
+static char ssl_next_proto_validate(const CBS *cbs)
 	{
-	unsigned int off = 0;
+	CBS copy = *cbs;
 
-	while (off < len)
+	while (CBS_len(&copy) != 0)
 		{
-		if (d[off] == 0)
+		CBS proto;
+		if (!CBS_get_u8_length_prefixed(&copy, &proto) ||
+			CBS_len(&proto) == 0)
+			{
 			return 0;
-		off += d[off];
-		off++;
+			}
 		}
-
-	return off == len;
+	return 1;
 	}
 #endif
 
-static int ssl_scan_serverhello_tlsext(SSL *s, unsigned char **p, unsigned char *d, int n, int *al)
+static int ssl_scan_serverhello_tlsext(SSL *s, CBS *cbs, int *out_alert)
 	{
-	unsigned short length;
-	unsigned short type;
-	unsigned short size;
-	unsigned char *data = *p;
 	int tlsext_servername = 0;
 	int renegotiate_seen = 0;
+	CBS extensions;
 
 #ifndef OPENSSL_NO_NEXTPROTONEG
 	s->s3->next_proto_neg_seen = 0;
@@ -2860,231 +2859,239 @@ static int ssl_scan_serverhello_tlsext(SSL *s, unsigned char **p, unsigned char 
 
 #ifndef OPENSSL_NO_HEARTBEATS
 	s->tlsext_heartbeat &= ~(SSL_TLSEXT_HB_ENABLED |
-	                       SSL_TLSEXT_HB_DONT_SEND_REQUESTS);
+				SSL_TLSEXT_HB_DONT_SEND_REQUESTS);
 #endif
 
-	if (data >= (d+n-2))
-		goto ri_check;
-
-	n2s(data,length);
-	if (data+length != d+n)
+	/* There may be no extensions. */
+	if (CBS_len(cbs) == 0)
 		{
-		*al = SSL_AD_DECODE_ERROR;
+		goto ri_check;
+		}
+
+	if (!CBS_get_u16_length_prefixed(cbs, &extensions))
+		{
+		*out_alert = SSL_AD_DECODE_ERROR;
 		return 0;
 		}
 
-	while(data <= (d+n-4))
+	while (CBS_len(&extensions) != 0)
 		{
-		n2s(data,type);
-		n2s(data,size);
+		uint16_t type;
+		CBS extension;
 
-		if (data+size > (d+n))
-	   		goto ri_check;
+		/* Decode the next extension. */
+		if (!CBS_get_u16(&extensions, &type) ||
+			!CBS_get_u16_length_prefixed(&extensions, &extension))
+			{
+			*out_alert = SSL_AD_DECODE_ERROR;
+			return 0;
+			}
 
 		if (s->tlsext_debug_cb)
-			s->tlsext_debug_cb(s, 1, type, data, size,
-						s->tlsext_debug_arg);
+			{
+			s->tlsext_debug_cb(s, 1, type, (unsigned char*)CBS_data(&extension),
+				CBS_len(&extension), s->tlsext_debug_arg);
+			}
 
 		if (type == TLSEXT_TYPE_server_name)
 			{
-			if (s->tlsext_hostname == NULL || size > 0)
+			/* The extension must be empty. */
+			if (CBS_len(&extension) != 0)
 				{
-				*al = TLS1_AD_UNRECOGNIZED_NAME;
+				*out_alert = SSL_AD_DECODE_ERROR;
 				return 0;
 				}
-			tlsext_servername = 1;   
+			/* We must have sent it in ClientHello. */
+			if (s->tlsext_hostname == NULL)
+				{
+				*out_alert = SSL_AD_UNSUPPORTED_EXTENSION;
+				return 0;
+				}
+			tlsext_servername = 1;
 			}
-
 #ifndef OPENSSL_NO_EC
 		else if (type == TLSEXT_TYPE_ec_point_formats)
 			{
-			unsigned char *sdata = data;
-			int ecpointformatlist_length = *(sdata++);
+			CBS ec_point_format_list;
 
-			if (ecpointformatlist_length != size - 1)
+			if (!CBS_get_u8_length_prefixed(&extension, &ec_point_format_list) ||
+				CBS_len(&extension) != 0)
 				{
-				*al = TLS1_AD_DECODE_ERROR;
+				*out_alert = SSL_AD_DECODE_ERROR;
 				return 0;
 				}
-			s->session->tlsext_ecpointformatlist_length = 0;
-			if (s->session->tlsext_ecpointformatlist != NULL) OPENSSL_free(s->session->tlsext_ecpointformatlist);
-			if ((s->session->tlsext_ecpointformatlist = OPENSSL_malloc(ecpointformatlist_length)) == NULL)
+
+			if (!CBS_stow(&ec_point_format_list,
+					&s->session->tlsext_ecpointformatlist,
+					&s->session->tlsext_ecpointformatlist_length))
 				{
-				*al = TLS1_AD_INTERNAL_ERROR;
+				*out_alert = SSL_AD_INTERNAL_ERROR;
 				return 0;
 				}
-			s->session->tlsext_ecpointformatlist_length = ecpointformatlist_length;
-			memcpy(s->session->tlsext_ecpointformatlist, sdata, ecpointformatlist_length);
-#if 0
-			fprintf(stderr,"ssl_parse_serverhello_tlsext s->session->tlsext_ecpointformatlist ");
-			sdata = s->session->tlsext_ecpointformatlist;
-			for (i = 0; i < s->session->tlsext_ecpointformatlist_length; i++)
-				fprintf(stderr,"%i ",*(sdata++));
-			fprintf(stderr,"\n");
-#endif
 			}
 #endif /* OPENSSL_NO_EC */
-
 		else if (type == TLSEXT_TYPE_session_ticket)
 			{
 			if (s->tls_session_ticket_ext_cb &&
-			    !s->tls_session_ticket_ext_cb(s, data, size, s->tls_session_ticket_ext_cb_arg))
+				!s->tls_session_ticket_ext_cb(s, CBS_data(&extension), CBS_len(&extension),
+                                        s->tls_session_ticket_ext_cb_arg))
 				{
-				*al = TLS1_AD_INTERNAL_ERROR;
+				*out_alert = SSL_AD_INTERNAL_ERROR;
 				return 0;
 				}
-			if ((SSL_get_options(s) & SSL_OP_NO_TICKET)
-				|| (size > 0))
+
+			if ((SSL_get_options(s) & SSL_OP_NO_TICKET) || CBS_len(&extension) > 0)
 				{
-				*al = TLS1_AD_UNSUPPORTED_EXTENSION;
+				*out_alert = SSL_AD_UNSUPPORTED_EXTENSION;
 				return 0;
 				}
+
 			s->tlsext_ticket_expected = 1;
 			}
 #ifdef TLSEXT_TYPE_opaque_prf_input
 		else if (type == TLSEXT_TYPE_opaque_prf_input)
 			{
-			unsigned char *sdata = data;
+			CBS opaque_prf_input_value;
 
-			if (size < 2)
+			if (!CBS_get_u16_length_prefixed(&extension, &opaque_prf_input_value) ||
+				CBS_len(&extension) != 0)
 				{
-				*al = SSL_AD_DECODE_ERROR;
+				*out_alert = SSL_AD_DECODE_ERROR;
 				return 0;
 				}
-			n2s(sdata, s->s3->server_opaque_prf_input_len);
-			if (s->s3->server_opaque_prf_input_len != size - 2)
-				{
-				*al = SSL_AD_DECODE_ERROR;
-				return 0;
-				}
-			
-			if (s->s3->server_opaque_prf_input != NULL) /* shouldn't really happen */
-				OPENSSL_free(s->s3->server_opaque_prf_input);
-			if (s->s3->server_opaque_prf_input_len == 0)
-				s->s3->server_opaque_prf_input = OPENSSL_malloc(1); /* dummy byte just to get non-NULL */
-			else
-				s->s3->server_opaque_prf_input = BUF_memdup(sdata, s->s3->server_opaque_prf_input_len);
 
-			if (s->s3->server_opaque_prf_input == NULL)
+			if (!CBS_stow(&opaque_prf_input_value,
+					&s->s3->server_opaque_prf_input,
+					&s->s3->server_opaque_prf_input_len))
 				{
-				*al = TLS1_AD_INTERNAL_ERROR;
+				*out_alert = SSL_AD_INTERNAL_ERROR;
 				return 0;
 				}
 			}
 #endif
 		else if (type == TLSEXT_TYPE_status_request)
 			{
-			/* MUST be empty and only sent if we've requested
-			 * a status request message.
-			 */ 
-			if ((s->tlsext_status_type == -1) || (size > 0))
+			/* The extension MUST be empty and may only sent if
+			 * we've requested a status request message. */
+			if (CBS_len(&extension) != 0)
 				{
-				*al = TLS1_AD_UNSUPPORTED_EXTENSION;
+				*out_alert = SSL_AD_DECODE_ERROR;
 				return 0;
 				}
-			/* Set flag to expect CertificateStatus message */
+			if (s->tlsext_status_type == -1)
+				{
+				*out_alert = SSL_AD_UNSUPPORTED_EXTENSION;
+				return 0;
+				}
+			/* Set a flag to expect a CertificateStatus message */
 			s->tlsext_status_expected = 1;
 			}
 #ifndef OPENSSL_NO_NEXTPROTONEG
-		else if (type == TLSEXT_TYPE_next_proto_neg &&
-			 s->s3->tmp.finish_md_len == 0)
+		else if (type == TLSEXT_TYPE_next_proto_neg && s->s3->tmp.finish_md_len == 0) {
+		unsigned char *selected;
+		unsigned char selected_len;
+
+		/* We must have requested it. */
+		if (s->ctx->next_proto_select_cb == NULL)
 			{
-			unsigned char *selected;
-			unsigned char selected_len;
-
-			/* We must have requested it. */
-			if (s->ctx->next_proto_select_cb == NULL)
-				{
-				*al = TLS1_AD_UNSUPPORTED_EXTENSION;
-				return 0;
-				}
-			/* The data must be valid */
-			if (!ssl_next_proto_validate(data, size))
-				{
-				*al = TLS1_AD_DECODE_ERROR;
-				return 0;
-				}
-			if (s->ctx->next_proto_select_cb(s, &selected, &selected_len, data, size, s->ctx->next_proto_select_cb_arg) != SSL_TLSEXT_ERR_OK)
-				{
-				*al = TLS1_AD_INTERNAL_ERROR;
-				return 0;
-				}
-			s->next_proto_negotiated = OPENSSL_malloc(selected_len);
-			if (!s->next_proto_negotiated)
-				{
-				*al = TLS1_AD_INTERNAL_ERROR;
-				return 0;
-				}
-			memcpy(s->next_proto_negotiated, selected, selected_len);
-			s->next_proto_negotiated_len = selected_len;
-			s->s3->next_proto_neg_seen = 1;
+			*out_alert = SSL_AD_UNSUPPORTED_EXTENSION;
+			return 0;
 			}
-#endif
 
+		/* The data must be valid. */
+		if (!ssl_next_proto_validate(&extension))
+			{
+			*out_alert = SSL_AD_DECODE_ERROR;
+			return 0;
+			}
+
+		if (s->ctx->next_proto_select_cb(s, &selected, &selected_len,
+				CBS_data(&extension), CBS_len(&extension),
+				s->ctx->next_proto_select_cb_arg) != SSL_TLSEXT_ERR_OK)
+			{
+			*out_alert = SSL_AD_INTERNAL_ERROR;
+			return 0;
+			}
+
+		s->next_proto_negotiated = BUF_memdup(selected, selected_len);
+		if (s->next_proto_negotiated == NULL)
+			{
+			*out_alert = SSL_AD_INTERNAL_ERROR;
+			return 0;
+			}
+		s->next_proto_negotiated_len = selected_len;
+		s->s3->next_proto_neg_seen = 1;
+		}
+#endif
 		else if (type == TLSEXT_TYPE_application_layer_protocol_negotiation)
 			{
-			unsigned len;
+			CBS protocol_name_list, protocol_name;
 
 			/* We must have requested it. */
 			if (s->alpn_client_proto_list == NULL)
 				{
-				*al = TLS1_AD_UNSUPPORTED_EXTENSION;
+				*out_alert = SSL_AD_UNSUPPORTED_EXTENSION;
 				return 0;
 				}
-			if (size < 4)
+
+			/* The extension data consists of a ProtocolNameList
+			 * which must have exactly one ProtocolName. Each of
+			 * these is length-prefixed. */
+			if (!CBS_get_u16_length_prefixed(&extension, &protocol_name_list) ||
+				CBS_len(&extension) != 0 ||
+				!CBS_get_u8_length_prefixed(&protocol_name_list, &protocol_name) ||
+				CBS_len(&protocol_name_list) != 0)
 				{
-				*al = TLS1_AD_DECODE_ERROR;
+				*out_alert = SSL_AD_DECODE_ERROR;
 				return 0;
 				}
-			/* The extension data consists of:
-			 *   uint16 list_length
-			 *   uint8 proto_length;
-			 *   uint8 proto[proto_length]; */
-			len = data[0];
-			len <<= 8;
-			len |= data[1];
-			if (len != (unsigned) size - 2)
+
+			if (!CBS_stow(&protocol_name,
+					&s->s3->alpn_selected,
+					&s->s3->alpn_selected_len))
 				{
-				*al = TLS1_AD_DECODE_ERROR;
+				*out_alert = SSL_AD_INTERNAL_ERROR;
 				return 0;
 				}
-			len = data[2];
-			if (len != (unsigned) size - 3)
-				{
-				*al = TLS1_AD_DECODE_ERROR;
-				return 0;
-				}
-			if (s->s3->alpn_selected)
-				OPENSSL_free(s->s3->alpn_selected);
-			s->s3->alpn_selected = OPENSSL_malloc(len);
-			if (!s->s3->alpn_selected)
-				{
-				*al = TLS1_AD_INTERNAL_ERROR;
-				return 0;
-				}
-			memcpy(s->s3->alpn_selected, data + 3, len);
-			s->s3->alpn_selected_len = len;
 			}
 
 		else if (type == TLSEXT_TYPE_channel_id)
+			{
+			if (CBS_len(&extension) != 0)
+				{
+				*out_alert = SSL_AD_DECODE_ERROR;
+				return 0;
+				}
 			s->s3->tlsext_channel_id_valid = 1;
-
+			}
 		else if (type == TLSEXT_TYPE_channel_id_new)
 			{
+			if (CBS_len(&extension) != 0)
+				{
+				*out_alert = SSL_AD_DECODE_ERROR;
+				return 0;
+				}
 			s->s3->tlsext_channel_id_valid = 1;
 			s->s3->tlsext_channel_id_new = 1;
 			}
 
 		else if (type == TLSEXT_TYPE_renegotiate)
 			{
-			if(!ssl_parse_serverhello_renegotiate_ext(s, data, size, al))
+			if (!ssl_parse_serverhello_renegotiate_ext(s, &extension, out_alert))
 				return 0;
 			renegotiate_seen = 1;
 			}
 #ifndef OPENSSL_NO_HEARTBEATS
 		else if (type == TLSEXT_TYPE_heartbeat)
 			{
-			switch(data[0])
+			uint8_t heartbeat_mode;
+			if (!CBS_get_u8(&extension, &heartbeat_mode) ||
+				CBS_len(&extension) != 0)
+				{
+				*alert = SSL_AD_DECODE_ERROR;
+				return 0;
+				}
+			switch (heartbeat_mode)
 				{
 				case 0x01:	/* Server allows us to send HB requests */
 							s->tlsext_heartbeat |= SSL_TLSEXT_HB_ENABLED;
@@ -3093,15 +3100,14 @@ static int ssl_scan_serverhello_tlsext(SSL *s, unsigned char **p, unsigned char 
 							s->tlsext_heartbeat |= SSL_TLSEXT_HB_ENABLED;
 							s->tlsext_heartbeat |= SSL_TLSEXT_HB_DONT_SEND_REQUESTS;
 							break;
-				default:	*al = SSL_AD_ILLEGAL_PARAMETER;
+				default:	*alert = SSL_AD_ILLEGAL_PARAMETER;
 							return 0;
 				}
 			}
 #endif
 		else if (type == TLSEXT_TYPE_use_srtp)
                         {
-                        if(ssl_parse_serverhello_use_srtp_ext(s, data, size,
-							      al))
+                        if (!ssl_parse_serverhello_use_srtp_ext(s, &extension, out_alert))
                                 return 0;
                         }
 
@@ -3110,34 +3116,29 @@ static int ssl_scan_serverhello_tlsext(SSL *s, unsigned char **p, unsigned char 
 			/* We only support audit proofs. It's an error to send
 			 * an authz hello extension if the client
 			 * didn't request a proof. */
-			unsigned char *sdata = data;
-			unsigned char server_authz_dataformatlist_length;
+			CBS authz_data_formats;
+			uint8_t authz_data_format;
 
 			if (!s->ctx->tlsext_authz_server_audit_proof_cb)
 				{
-				*al = TLS1_AD_UNSUPPORTED_EXTENSION;
+				*out_alert = SSL_AD_UNSUPPORTED_EXTENSION;
 				return 0;
 				}
 
-			if (!size)
+			if (!CBS_get_u8_length_prefixed(&extension, &authz_data_formats) ||
+				CBS_len(&extension) != 0)
 				{
-				*al = TLS1_AD_DECODE_ERROR;
-				return 0;
-				}
-
-			server_authz_dataformatlist_length = *(sdata++);
-			if (server_authz_dataformatlist_length != size - 1)
-				{
-				*al = TLS1_AD_DECODE_ERROR;
+				*out_alert = SSL_AD_DECODE_ERROR;
 				return 0;
 				}
 
 			/* We only support audit proofs, so a legal ServerHello
 			 * authz list contains exactly one entry. */
-			if (server_authz_dataformatlist_length != 1 ||
-				sdata[0] != TLSEXT_AUTHZDATAFORMAT_audit_proof)
+			if (!CBS_get_u8(&authz_data_formats, &authz_data_format) ||
+				CBS_len(&authz_data_formats) != 0 ||
+				authz_data_format != TLSEXT_AUTHZDATAFORMAT_audit_proof)
 				{
-				*al = TLS1_AD_UNSUPPORTED_EXTENSION;
+				*out_alert = SSL_AD_UNSUPPORTED_EXTENSION;
 				return 0;
 				}
 
@@ -3147,6 +3148,10 @@ static int ssl_scan_serverhello_tlsext(SSL *s, unsigned char **p, unsigned char 
 		/* If this extension type was not otherwise handled, but 
 		 * matches a custom_cli_ext_record, then send it to the c
 		 * callback */
+		/* TODO(fork): Can this be removed or transitioned to a
+		 * CBS-based API? It's only used in certificate_transparency to
+		 * parse the signed_certificate_timestamp extension which should
+		 * just be built-in. */
 		else if (s->ctx->custom_cli_ext_records_count)
 			{
 			size_t i;
@@ -3157,20 +3162,13 @@ static int ssl_scan_serverhello_tlsext(SSL *s, unsigned char **p, unsigned char 
 				record = &s->ctx->custom_cli_ext_records[i];
 				if (record->ext_type == type)
 					{
-					if (record->fn2 && !record->fn2(s, type, data, size, al, record->arg))
+					if (record->fn2 && !record->fn2(s, type, CBS_data(&extension), CBS_len(&extension), out_alert, record->arg))
 						return 0;
 					break;
 					}
 				}			
 			}
  
-		data += size;
-		}
-
-	if (data != d+n)
-		{
-		*al = SSL_AD_DECODE_ERROR;
-		return 0;
 		}
 
 	if (!s->hit && tlsext_servername == 1)
@@ -3182,19 +3180,17 @@ static int ssl_scan_serverhello_tlsext(SSL *s, unsigned char **p, unsigned char 
 				s->session->tlsext_hostname = BUF_strdup(s->tlsext_hostname);	
 				if (!s->session->tlsext_hostname)
 					{
-					*al = SSL_AD_UNRECOGNIZED_NAME;
+					*out_alert = SSL_AD_UNRECOGNIZED_NAME;
 					return 0;
 					}
 				}
 			else 
 				{
-				*al = SSL_AD_DECODE_ERROR;
+				*out_alert = SSL_AD_DECODE_ERROR;
 				return 0;
 				}
 			}
 		}
-
-	*p = data;
 
 	ri_check:
 
@@ -3209,7 +3205,7 @@ static int ssl_scan_serverhello_tlsext(SSL *s, unsigned char **p, unsigned char 
 		&& !(s->options & SSL_OP_LEGACY_SERVER_CONNECT)
 		&& !(s->options & SSL_OP_ALLOW_UNSAFE_LEGACY_RENEGOTIATION))
 		{
-		*al = SSL_AD_HANDSHAKE_FAILURE;
+		*out_alert = SSL_AD_HANDSHAKE_FAILURE;
 		OPENSSL_PUT_ERROR(SSL, ssl_add_serverhello_tlsext, SSL_R_UNSAFE_LEGACY_RENEGOTIATION_DISABLED);
 		return 0;
 		}
@@ -3535,24 +3531,26 @@ int ssl_check_serverhello_tlsext(SSL *s)
 		}
 	}
 
-int ssl_parse_serverhello_tlsext(SSL *s, unsigned char **p, unsigned char *d, int n) 
+int ssl_parse_serverhello_tlsext(SSL *s, CBS *cbs)
 	{
-	int al = -1;
+	int alert = -1;
 	if (s->version < SSL3_VERSION)
 		return 1;
-	if (ssl_scan_serverhello_tlsext(s, p, d, n, &al) <= 0) 
+
+	if (ssl_scan_serverhello_tlsext(s, cbs, &alert) <= 0)
 		{
-		ssl3_send_alert(s,SSL3_AL_FATAL,al); 
+		ssl3_send_alert(s, SSL3_AL_FATAL, alert);
 		return 0;
 		}
 
-	if (ssl_check_serverhello_tlsext(s) <= 0) 
+	if (ssl_check_serverhello_tlsext(s) <= 0)
 		{
 		OPENSSL_PUT_ERROR(SSL, ssl_add_serverhello_tlsext, SSL_R_SERVERHELLO_TLSEXT);
 		return 0;
 		}
+
 	return 1;
-}
+	}
 
 /* Since the server cache lookup is done early on in the processing of the
  * ClientHello, and other operations depend on the result, we need to handle

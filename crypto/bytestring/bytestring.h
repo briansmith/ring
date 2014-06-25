@@ -53,6 +53,13 @@ const uint8_t *CBS_data(const CBS *cbs);
 /* CBS_len returns the number of bytes remaining in |cbs|. */
 size_t CBS_len(const CBS *cbs);
 
+/* CBS_stow copies the current contents of |cbs| into |*out_ptr| and
+ * |*out_len|. If |*out_ptr| is not NULL, the contents are freed with
+ * OPENSSL_free. It returns one on success and zero on allocation failure. On
+ * success, |*out_ptr| should be freed with OPENSSL_free. If |cbs| is empty,
+ * |*out_ptr| will be NULL. */
+int CBS_stow(const CBS *cbs, uint8_t **out_ptr, size_t *out_len);
+
 /* CBS_get_u8 sets |*out| to the next uint8_t from |cbs| and advances |cbs|. It
  * returns one on success and zero on error. */
 int CBS_get_u8(CBS *cbs, uint8_t *out);

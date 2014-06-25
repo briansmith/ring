@@ -151,6 +151,7 @@
 #include <stdio.h>
 
 #include <openssl/buf.h>
+#include <openssl/bytestring.h>
 #include <openssl/rand.h>
 #include <openssl/obj.h>
 #include <openssl/evp.h>
@@ -929,6 +930,7 @@ int ssl3_get_server_hello(SSL *s)
 	int al=SSL_AD_INTERNAL_ERROR,ok;
 	unsigned int j;
 	long n;
+	CBS cbs;
 	/* Hello verify request and/or server hello version may not
 	 * match so set first packet if we're negotiating version.
 	 */
@@ -1134,16 +1136,19 @@ int ssl3_get_server_hello(SSL *s)
 		goto f_err;
 		}
 
+        /* TODO(fork): Port the rest of this function to CBS. */
+	CBS_init(&cbs, p, d + n - p);
 #ifndef OPENSSL_NO_TLSEXT
 	/* TLS extensions*/
-	if (!ssl_parse_serverhello_tlsext(s,&p,d,n))
+	if (!ssl_parse_serverhello_tlsext(s, &cbs))
 		{
 		OPENSSL_PUT_ERROR(SSL, ssl3_get_server_hello, SSL_R_PARSE_TLSEXT);
 		goto err; 
 		}
 #endif
 
-	if (p != (d+n))
+        /* There should be nothing left over in the record. */
+	if (CBS_len(&cbs) != 0)
 		{
 		/* wrong packet length */
 		al=SSL_AD_DECODE_ERROR;

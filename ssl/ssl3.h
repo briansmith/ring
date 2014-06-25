@@ -590,8 +590,8 @@ typedef struct ssl3_state_st
 	 * ClientHello has been processed. In a client these contain the
 	 * protocol that the server selected once the ServerHello has been
 	 * processed. */
-	unsigned char *alpn_selected;
-	unsigned alpn_selected_len;
+	uint8_t *alpn_selected;
+	size_t alpn_selected_len;
 #endif	/* OPENSSL_NO_TLSEXT */
 
 	/* In a client, this means that the server supported Channel ID and that

@@ -118,6 +118,7 @@
 
 #include <stdio.h>
 
+#include <openssl/bytestring.h>
 #include <openssl/obj.h>
 #include <openssl/err.h>
 
@@ -429,35 +430,37 @@ int ssl_add_serverhello_use_srtp_ext(SSL *s, unsigned char *p, int *len, int max
 	}
     
 
-int ssl_parse_serverhello_use_srtp_ext(SSL *s, unsigned char *d, int len,int *al)
+int ssl_parse_serverhello_use_srtp_ext(SSL *s, CBS *cbs, int *out_alert)
 	{
-	unsigned id;
+	CBS profile_ids, srtp_mki;
+	uint16_t profile_id;
 	int i;
-        int ct;
 
 	STACK_OF(SRTP_PROTECTION_PROFILE) *clnt;
 	SRTP_PROTECTION_PROFILE *prof;
 
-	if(len!=5)
+	/* The extension consists of a u16-prefixed profile ID list containing a
+	 * single uint16_t profile ID, then followed by a u8-prefixed srtp_mki
+	 * field.
+	 *
+	 * See https://tools.ietf.org/html/rfc5764#section-4.1.1
+	 */
+	if (!CBS_get_u16_length_prefixed(cbs, &profile_ids) ||
+		!CBS_get_u16(&profile_ids, &profile_id) ||
+		CBS_len(&profile_ids) != 0 ||
+		!CBS_get_u8_length_prefixed(cbs, &srtp_mki) ||
+		CBS_len(cbs) != 0)
 		{
 		OPENSSL_PUT_ERROR(SSL, ssl_parse_serverhello_use_srtp_ext, SSL_R_BAD_SRTP_PROTECTION_PROFILE_LIST);
-		*al=SSL_AD_DECODE_ERROR;
+		*out_alert = SSL_AD_DECODE_ERROR;
 		return 1;
 		}
 
-        n2s(d, ct);
-	if(ct!=2)
+	if (CBS_len(&srtp_mki) != 0)
 		{
-		OPENSSL_PUT_ERROR(SSL, ssl_parse_serverhello_use_srtp_ext, SSL_R_BAD_SRTP_PROTECTION_PROFILE_LIST);
-		*al=SSL_AD_DECODE_ERROR;
-		return 1;
-		}
-
-	n2s(d,id);
-        if (*d)  /* Must be no MKI, since we never offer one */
-		{
+		/* Must be no MKI, since we never offer one. */
 		OPENSSL_PUT_ERROR(SSL, ssl_parse_serverhello_use_srtp_ext, SSL_R_BAD_SRTP_MKI_VALUE);
-		*al=SSL_AD_ILLEGAL_PARAMETER;
+		*out_alert = SSL_AD_ILLEGAL_PARAMETER;
 		return 1;
 		}
 
@@ -467,7 +470,7 @@ int ssl_parse_serverhello_use_srtp_ext(SSL *s, unsigned char *d, int len,int *al
 	if (clnt == NULL)
 		{
 		OPENSSL_PUT_ERROR(SSL, ssl_parse_serverhello_use_srtp_ext, SSL_R_NO_SRTP_PROFILES);
-		*al=SSL_AD_DECODE_ERROR;
+		*out_alert = SSL_AD_DECODE_ERROR;
 		return 1;
 		}
     
@@ -478,16 +481,16 @@ int ssl_parse_serverhello_use_srtp_ext(SSL *s, unsigned char *d, int len,int *al
 		{
 		prof=sk_SRTP_PROTECTION_PROFILE_value(clnt,i);
 	    
-		if(prof->id == id)
+		if(prof->id == profile_id)
 			{
 			s->srtp_profile=prof;
-			*al=0;
+			*out_alert = 0;
 			return 0;
 			}
 		}
 
 	OPENSSL_PUT_ERROR(SSL, ssl_parse_serverhello_use_srtp_ext, SSL_R_BAD_SRTP_PROTECTION_PROFILE_LIST);
-	*al=SSL_AD_DECODE_ERROR;
+	*out_alert = SSL_AD_ILLEGAL_PARAMETER;
 	return 1;
 	}
 

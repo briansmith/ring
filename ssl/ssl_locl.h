@@ -1289,7 +1289,7 @@ unsigned char *ssl_add_clienthello_tlsext(SSL *s, unsigned char *buf, unsigned c
 unsigned char *ssl_add_serverhello_tlsext(SSL *s, unsigned char *buf, unsigned char *limit); 
 int ssl_parse_clienthello_tlsext(SSL *s, unsigned char **data, unsigned char *d, int n);
 int ssl_check_clienthello_tlsext_late(SSL *s);
-int ssl_parse_serverhello_tlsext(SSL *s, unsigned char **data, unsigned char *d, int n);
+int ssl_parse_serverhello_tlsext(SSL *s, CBS *cbs);
 int ssl_prepare_clienthello_tlsext(SSL *s);
 int ssl_prepare_serverhello_tlsext(SSL *s);
 
@@ -1335,8 +1335,7 @@ EVP_MD_CTX* ssl_replace_hash(EVP_MD_CTX **hash,const EVP_MD *md) ;
 void ssl_clear_hash_ctx(EVP_MD_CTX **hash);
 int ssl_add_serverhello_renegotiate_ext(SSL *s, unsigned char *p, int *len,
 					int maxlen);
-int ssl_parse_serverhello_renegotiate_ext(SSL *s, unsigned char *d, int len,
-					  int *al);
+int ssl_parse_serverhello_renegotiate_ext(SSL *s, CBS *cbs, int *out_alert);
 int ssl_add_clienthello_renegotiate_ext(SSL *s, unsigned char *p, int *len,
 					int maxlen);
 int ssl_parse_clienthello_renegotiate_ext(SSL *s, unsigned char *d, int len,
@@ -1351,7 +1350,7 @@ void ssl_set_client_disabled(SSL *s);
 int ssl_add_clienthello_use_srtp_ext(SSL *s, unsigned char *p, int *len, int maxlen);
 int ssl_parse_clienthello_use_srtp_ext(SSL *s, unsigned char *d, int len,int *al);
 int ssl_add_serverhello_use_srtp_ext(SSL *s, unsigned char *p, int *len, int maxlen);
-int ssl_parse_serverhello_use_srtp_ext(SSL *s, unsigned char *d, int len,int *al);
+int ssl_parse_serverhello_use_srtp_ext(SSL *s, CBS *cbs, int *out_alert);
 
 /* s3_cbc.c */
 void ssl3_cbc_copy_mac(unsigned char* out,
