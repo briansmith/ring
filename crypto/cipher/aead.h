@@ -102,6 +102,18 @@ const EVP_AEAD *EVP_aead_aes_256_gcm(void);
 const EVP_AEAD *EVP_aead_chacha20_poly1305();
 
 
+/* TLS specific AEAD algorithms.
+ *
+ * These AEAD primitives do not meet the definition of generic AEADs. They are
+ * all specific to TLS in some fashion and should not be used outside of that
+ * context. */
+
+/* EVP_aead_rc4_md5_tls uses RC4 and HMAC(MD5) in MAC-then-encrypt mode. Unlike
+ * a standard AEAD, this is stateful as the RC4 state is carried from operation
+ * to operation. */
+const EVP_AEAD *EVP_aead_rc4_md5_tls();
+
+
 /* Utility functions. */
 
 /* EVP_AEAD_key_length returns the length, in bytes, of the keys used by

@@ -104,6 +104,15 @@ static int run_test_case(const EVP_AEAD *aead,
     return 0;
   }
 
+  /* The "stateful" AEADs for implementing pre-AEAD cipher suites need to be
+   * reset after each operation. */
+  EVP_AEAD_CTX_cleanup(&ctx);
+  if (!EVP_AEAD_CTX_init(&ctx, aead, bufs[KEY], lengths[KEY], lengths[TAG],
+                         NULL)) {
+    fprintf(stderr, "Failed to init AEAD on line %u\n", line_no);
+    return 0;
+  }
+
   if (!EVP_AEAD_CTX_open(&ctx, out2, &plaintext_len, lengths[IN], bufs[NONCE],
                          lengths[NONCE], out, ciphertext_len, bufs[AD],
                          lengths[AD])) {
@@ -114,6 +123,15 @@ static int run_test_case(const EVP_AEAD *aead,
   if (plaintext_len != lengths[IN]) {
     fprintf(stderr, "Bad decrypt on line %u: %u\n", line_no,
             (unsigned)ciphertext_len);
+    return 0;
+  }
+
+  /* The "stateful" AEADs for implementing pre-AEAD cipher suites need to be
+   * reset after each operation. */
+  EVP_AEAD_CTX_cleanup(&ctx);
+  if (!EVP_AEAD_CTX_init(&ctx, aead, bufs[KEY], lengths[KEY], lengths[TAG],
+                         NULL)) {
+    fprintf(stderr, "Failed to init AEAD on line %u\n", line_no);
     return 0;
   }
 
@@ -148,6 +166,8 @@ int main(int argc, char **argv) {
     aead = EVP_aead_aes_256_gcm();
   } else if (strcmp(argv[1], "chacha20-poly1305") == 0) {
     aead = EVP_aead_chacha20_poly1305();
+  } else if (strcmp(argv[1], "rc4-md5") == 0) {
+    aead = EVP_aead_rc4_md5_tls();
   } else {
     fprintf(stderr, "Unknown AEAD: %s\n", argv[1]);
     return 2;

@@ -281,6 +281,7 @@ bool Speed(const std::vector<std::string> &args) {
   if (!SpeedAEAD(EVP_aead_aes_128_gcm(), "AES-128-GCM") ||
       !SpeedAEAD(EVP_aead_aes_256_gcm(), "AES-256-GCM") ||
       !SpeedAEAD(EVP_aead_chacha20_poly1305(), "ChaCha20-Poly1305") ||
+      !SpeedAEAD(EVP_aead_rc4_md5_tls(), "RC4-MD5") ||
       !SpeedHash(EVP_sha1(), "SHA-1") ||
       !SpeedHash(EVP_sha256(), "SHA-256") ||
       !SpeedHash(EVP_sha512(), "SHA-512")) {
