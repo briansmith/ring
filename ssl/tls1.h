@@ -408,17 +408,7 @@ SSL_CTX_callback_ctrl(ctx, SSL_CTRL_SET_TLSEXT_AUTHZ_SERVER_AUDIT_PROOF_CB,(void
 #define SSL_CTX_set_tlsext_authz_server_audit_proof_cb_arg(ctx, arg) \
 SSL_CTX_ctrl(ctx, SSL_CTRL_SET_TLSEXT_AUTHZ_SERVER_AUDIT_PROOF_CB_ARG, 0, arg);
 
-#ifndef OPENSSL_NO_HEARTBEATS
-#define SSL_TLSEXT_HB_ENABLED				0x01
-#define SSL_TLSEXT_HB_DONT_SEND_REQUESTS	0x02
-#define SSL_TLSEXT_HB_DONT_RECV_REQUESTS	0x04
-
-#define SSL_get_tlsext_heartbeat_pending(ssl) \
-        SSL_ctrl((ssl),SSL_CTRL_GET_TLS_EXT_HEARTBEAT_PENDING,0,NULL)
-#define SSL_set_tlsext_heartbeat_no_requests(ssl, arg) \
-        SSL_ctrl((ssl),SSL_CTRL_SET_TLS_EXT_HEARTBEAT_NO_REQUESTS,arg,NULL)
-#endif
-#endif
+#endif /* OPENSSL_NO_TLSEXT */
 
 /* PSK ciphersuites from 4279 */
 #define TLS1_CK_PSK_WITH_RC4_128_SHA                    0x0300008A

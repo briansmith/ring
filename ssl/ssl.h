@@ -817,11 +817,6 @@ struct ssl_session_st
 #define SSL_get_secure_renegotiation_support(ssl) \
 	SSL_ctrl((SSL*) (ssl), SSL_CTRL_GET_RI_SUPPORT, 0, NULL)
 
-#ifndef OPENSSL_NO_HEARTBEATS
-#define SSL_heartbeat(ssl) \
-        SSL_ctrl((ssl),SSL_CTRL_TLS_EXT_SEND_HEARTBEAT,0,NULL)
-#endif
-
 #define SSL_CTX_set_cert_flags(ctx,op) \
 	SSL_CTX_ctrl((ctx),SSL_CTRL_CERT_FLAGS,(op),NULL)
 #define SSL_set_cert_flags(s,op) \
@@ -1626,14 +1621,6 @@ struct ssl_st
 	STACK_OF(SRTP_PROTECTION_PROFILE) *srtp_profiles;  /* What we'll do */
 	SRTP_PROTECTION_PROFILE *srtp_profile;            /* What's been chosen */
 
-	unsigned int tlsext_heartbeat;  /* Is use of the Heartbeat extension negotiated?
-	                                   0: disabled
-	                                   1: enabled
-	                                   2: enabled, but not allowed to send Requests
-	                                 */
-	unsigned int tlsext_hb_pending; /* Indicates if a HeartbeatRequest is in flight */
-	unsigned int tlsext_hb_seq;     /* HeartbeatRequest sequence number */
-
 	/* Copied from the SSL_CTX. For a server, means that we'll accept
 	 * Channel IDs from clients. For a client, means that we'll advertise
 	 * support. */
@@ -1907,11 +1894,6 @@ DECLARE_PEM_rw(SSL_SESSION, SSL_SESSION)
 #define SSL_CTRL_SET_TLS_EXT_SRP_USERNAME		79
 #define SSL_CTRL_SET_TLS_EXT_SRP_STRENGTH		80
 #define SSL_CTRL_SET_TLS_EXT_SRP_PASSWORD		81
-#ifndef OPENSSL_NO_HEARTBEATS
-#define SSL_CTRL_TLS_EXT_SEND_HEARTBEAT				85
-#define SSL_CTRL_GET_TLS_EXT_HEARTBEAT_PENDING		86
-#define SSL_CTRL_SET_TLS_EXT_HEARTBEAT_NO_REQUESTS	87
-#endif
 /* Callback for verifying audit proofs (client only) */
 #define SSL_CTRL_SET_TLSEXT_AUTHZ_SERVER_AUDIT_PROOF_CB 95
 #define SSL_CTRL_SET_TLSEXT_AUTHZ_SERVER_AUDIT_PROOF_CB_ARG 96
@@ -2972,7 +2954,6 @@ void ERR_load_SSL_strings(void);
 #define SSL_R_TRIED_TO_USE_UNSUPPORTED_CIPHER 309
 #define SSL_R_RENEGOTIATION_ENCODING_ERR 310
 #define SSL_R_NO_PRIVATEKEY 311
-#define SSL_R_TLS_HEARTBEAT_PENDING 312
 #define SSL_R_READ_WRONG_PACKET_TYPE 313
 #define SSL_R_SSL3_SESSION_ID_TOO_SHORT 314
 #define SSL_R_UNABLE_TO_LOAD_SSL2_MD5_ROUTINES 315
@@ -3061,7 +3042,6 @@ void ERR_load_SSL_strings(void);
 #define SSL_R_TLS_CLIENT_CERT_REQ_WITH_ANON_CIPHER 398
 #define SSL_R_CONNECTION_ID_IS_DIFFERENT 399
 #define SSL_R_SSLV3_ALERT_NO_CERTIFICATE 400
-#define SSL_R_TLS_HEARTBEAT_PEER_DOESNT_ACCEPT 401
 #define SSL_R_MISSING_VERIFY_MESSAGE 402
 #define SSL_R_BAD_DSA_SIGNATURE 403
 #define SSL_R_UNKNOWN_SSL_VERSION 404

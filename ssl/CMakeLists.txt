@@ -44,11 +44,3 @@ add_library(
 
 	$<TARGET_OBJECTS:pqueue>
 )
-
-add_executable(
-	heartbeat_test
-
-	heartbeat_test.c
-)
-
-target_link_libraries(heartbeat_test ssl crypto)

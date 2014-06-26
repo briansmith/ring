@@ -1460,22 +1460,6 @@ unsigned char *ssl_add_clienthello_tlsext(SSL *s, unsigned char *buf, unsigned c
 		}
 #endif
 
-#ifndef OPENSSL_NO_HEARTBEATS
-	/* Add Heartbeat extension */
-	if ((limit - ret - 4 - 1) < 0)
-		return NULL;
-	s2n(TLSEXT_TYPE_heartbeat,ret);
-	s2n(1,ret);
-	/* Set mode:
-	 * 1: peer may send requests
-	 * 2: peer not allowed to send requests
-	 */
-	if (s->tlsext_heartbeat & SSL_TLSEXT_HB_DONT_RECV_REQUESTS)
-		*(ret++) = SSL_TLSEXT_HB_DONT_SEND_REQUESTS;
-	else
-		*(ret++) = SSL_TLSEXT_HB_ENABLED;
-#endif
-
 #ifndef OPENSSL_NO_NEXTPROTONEG
 	if (s->ctx->next_proto_select_cb && !s->s3->tmp.finish_md_len)
 		{
@@ -1806,26 +1790,6 @@ unsigned char *ssl_add_serverhello_tlsext(SSL *s, unsigned char *buf, unsigned c
 			}
                 ret+=el;
                 }
-
-#ifndef OPENSSL_NO_HEARTBEATS
-	/* Add Heartbeat extension if we've received one */
-	if (s->tlsext_heartbeat & SSL_TLSEXT_HB_ENABLED)
-		{
-		if ((limit - ret - 4 - 1) < 0)
-			return NULL;
-		s2n(TLSEXT_TYPE_heartbeat,ret);
-		s2n(1,ret);
-		/* Set mode:
-		 * 1: peer may send requests
-		 * 2: peer not allowed to send requests
-		 */
-		if (s->tlsext_heartbeat & SSL_TLSEXT_HB_DONT_RECV_REQUESTS)
-			*(ret++) = SSL_TLSEXT_HB_DONT_SEND_REQUESTS;
-		else
-			*(ret++) = SSL_TLSEXT_HB_ENABLED;
-
-		}
-#endif
 
 #ifndef OPENSSL_NO_NEXTPROTONEG
 	next_proto_neg_seen = s->s3->next_proto_neg_seen;
@@ -2179,11 +2143,6 @@ static int ssl_scan_clienthello_tlsext(SSL *s, unsigned char **p, unsigned char 
 		OPENSSL_free(s->s3->alpn_selected);
 		s->s3->alpn_selected = NULL;
 		}
-
-#ifndef OPENSSL_NO_HEARTBEATS
-	s->tlsext_heartbeat &= ~(SSL_TLSEXT_HB_ENABLED |
-	                       SSL_TLSEXT_HB_DONT_SEND_REQUESTS);
-#endif
 
 #ifndef OPENSSL_NO_EC
 	if (s->options & SSL_OP_SAFARI_ECDHE_ECDSA_BUG)
@@ -2600,23 +2559,6 @@ static int ssl_scan_clienthello_tlsext(SSL *s, unsigned char **p, unsigned char 
 			}
 #endif
 
-#ifndef OPENSSL_NO_HEARTBEATS
-		else if (type == TLSEXT_TYPE_heartbeat)
-			{
-			switch(data[0])
-				{
-				case 0x01:	/* Client allows us to send HB requests */
-							s->tlsext_heartbeat |= SSL_TLSEXT_HB_ENABLED;
-							break;
-				case 0x02:	/* Client doesn't accept HB requests */
-							s->tlsext_heartbeat |= SSL_TLSEXT_HB_ENABLED;
-							s->tlsext_heartbeat |= SSL_TLSEXT_HB_DONT_SEND_REQUESTS;
-							break;
-				default:	*al = SSL_AD_ILLEGAL_PARAMETER;
-							return 0;
-				}
-			}
-#endif
 #ifndef OPENSSL_NO_NEXTPROTONEG
 		else if (type == TLSEXT_TYPE_next_proto_neg &&
 			 s->s3->tmp.finish_md_len == 0 &&
@@ -2857,11 +2799,6 @@ static int ssl_scan_serverhello_tlsext(SSL *s, CBS *cbs, int *out_alert)
 		s->s3->alpn_selected = NULL;
 		}
 
-#ifndef OPENSSL_NO_HEARTBEATS
-	s->tlsext_heartbeat &= ~(SSL_TLSEXT_HB_ENABLED |
-				SSL_TLSEXT_HB_DONT_SEND_REQUESTS);
-#endif
-
 	/* There may be no extensions. */
 	if (CBS_len(cbs) == 0)
 		{
@@ -3081,30 +3018,6 @@ static int ssl_scan_serverhello_tlsext(SSL *s, CBS *cbs, int *out_alert)
 				return 0;
 			renegotiate_seen = 1;
 			}
-#ifndef OPENSSL_NO_HEARTBEATS
-		else if (type == TLSEXT_TYPE_heartbeat)
-			{
-			uint8_t heartbeat_mode;
-			if (!CBS_get_u8(&extension, &heartbeat_mode) ||
-				CBS_len(&extension) != 0)
-				{
-				*alert = SSL_AD_DECODE_ERROR;
-				return 0;
-				}
-			switch (heartbeat_mode)
-				{
-				case 0x01:	/* Server allows us to send HB requests */
-							s->tlsext_heartbeat |= SSL_TLSEXT_HB_ENABLED;
-							break;
-				case 0x02:	/* Server doesn't accept HB requests */
-							s->tlsext_heartbeat |= SSL_TLSEXT_HB_ENABLED;
-							s->tlsext_heartbeat |= SSL_TLSEXT_HB_DONT_SEND_REQUESTS;
-							break;
-				default:	*alert = SSL_AD_ILLEGAL_PARAMETER;
-							return 0;
-				}
-			}
-#endif
 		else if (type == TLSEXT_TYPE_use_srtp)
                         {
                         if (!ssl_parse_serverhello_use_srtp_ext(s, &extension, out_alert))
@@ -4132,156 +4045,6 @@ int SSL_get_shared_sigalgs(SSL *s, int idx,
 	return s->cert->shared_sigalgslen;
 	}
 	
-
-#ifndef OPENSSL_NO_HEARTBEATS
-int
-tls1_process_heartbeat(SSL *s)
-	{
-	unsigned char *p = &s->s3->rrec.data[0], *pl;
-	unsigned short hbtype;
-	unsigned int payload;
-	unsigned int padding = 16; /* Use minimum padding */
-
-	if (s->msg_callback)
-		s->msg_callback(0, s->version, TLS1_RT_HEARTBEAT,
-			&s->s3->rrec.data[0], s->s3->rrec.length,
-			s, s->msg_callback_arg);
-
-	/* Read type and payload length first */
-	if (1 + 2 + 16 > s->s3->rrec.length)
-		return 0; /* silently discard */
-	hbtype = *p++;
-	n2s(p, payload);
-	if (1 + 2 + payload + 16 > s->s3->rrec.length)
-		return 0; /* silently discard per RFC 6520 sec. 4 */
-	pl = p;
-
-	if (hbtype == TLS1_HB_REQUEST)
-		{
-		unsigned char *buffer, *bp;
-		int r;
-
-		/* Allocate memory for the response, size is 1 bytes
-		 * message type, plus 2 bytes payload length, plus
-		 * payload, plus padding
-		 */
-		buffer = OPENSSL_malloc(1 + 2 + payload + padding);
-		bp = buffer;
-		
-		/* Enter response type, length and copy payload */
-		*bp++ = TLS1_HB_RESPONSE;
-		s2n(payload, bp);
-		memcpy(bp, pl, payload);
-		bp += payload;
-		/* Random padding */
-		RAND_pseudo_bytes(bp, padding);
-
-		r = ssl3_write_bytes(s, TLS1_RT_HEARTBEAT, buffer, 3 + payload + padding);
-
-		if (r >= 0 && s->msg_callback)
-			s->msg_callback(1, s->version, TLS1_RT_HEARTBEAT,
-				buffer, 3 + payload + padding,
-				s, s->msg_callback_arg);
-
-		OPENSSL_free(buffer);
-
-		if (r < 0)
-			return r;
-		}
-	else if (hbtype == TLS1_HB_RESPONSE)
-		{
-		unsigned int seq;
-		
-		/* We only send sequence numbers (2 bytes unsigned int),
-		 * and 16 random bytes, so we just try to read the
-		 * sequence number */
-		n2s(pl, seq);
-		
-		if (payload == 18 && seq == s->tlsext_hb_seq)
-			{
-			s->tlsext_hb_seq++;
-			s->tlsext_hb_pending = 0;
-			}
-		}
-
-	return 0;
-	}
-
-int
-tls1_heartbeat(SSL *s)
-	{
-	unsigned char *buf, *p;
-	int ret;
-	unsigned int payload = 18; /* Sequence number + random bytes */
-	unsigned int padding = 16; /* Use minimum padding */
-
-	/* Only send if peer supports and accepts HB requests... */
-	if (!(s->tlsext_heartbeat & SSL_TLSEXT_HB_ENABLED) ||
-	    s->tlsext_heartbeat & SSL_TLSEXT_HB_DONT_SEND_REQUESTS)
-		{
-		OPENSSL_PUT_ERROR(SSL, ssl_add_serverhello_tlsext, SSL_R_TLS_HEARTBEAT_PEER_DOESNT_ACCEPT);
-		return -1;
-		}
-
-	/* ...and there is none in flight yet... */
-	if (s->tlsext_hb_pending)
-		{
-		OPENSSL_PUT_ERROR(SSL, ssl_add_serverhello_tlsext, SSL_R_TLS_HEARTBEAT_PENDING);
-		return -1;
-		}
-		
-	/* ...and no handshake in progress. */
-	if (SSL_in_init(s) || s->in_handshake)
-		{
-		OPENSSL_PUT_ERROR(SSL, ssl_add_serverhello_tlsext, SSL_R_UNEXPECTED_MESSAGE);
-		return -1;
-		}
-		
-	/* Check if padding is too long, payload and padding
-	 * must not exceed 2^14 - 3 = 16381 bytes in total.
-	 */
-	assert(payload + padding <= 16381);
-
-	/* Create HeartBeat message, we just use a sequence number
-	 * as payload to distuingish different messages and add
-	 * some random stuff.
-	 *  - Message Type, 1 byte
-	 *  - Payload Length, 2 bytes (unsigned int)
-	 *  - Payload, the sequence number (2 bytes uint)
-	 *  - Payload, random bytes (16 bytes uint)
-	 *  - Padding
-	 */
-	buf = OPENSSL_malloc(1 + 2 + payload + padding);
-	p = buf;
-	/* Message Type */
-	*p++ = TLS1_HB_REQUEST;
-	/* Payload length (18 bytes here) */
-	s2n(payload, p);
-	/* Sequence number */
-	s2n(s->tlsext_hb_seq, p);
-	/* 16 random bytes */
-	RAND_pseudo_bytes(p, 16);
-	p += 16;
-	/* Random padding */
-	RAND_pseudo_bytes(p, padding);
-
-	ret = ssl3_write_bytes(s, TLS1_RT_HEARTBEAT, buf, 3 + payload + padding);
-	if (ret >= 0)
-		{
-		if (s->msg_callback)
-			s->msg_callback(1, s->version, TLS1_RT_HEARTBEAT,
-				buf, 3 + payload + padding,
-				s, s->msg_callback_arg);
-
-		s->tlsext_hb_pending = 1;
-		}
-		
-	OPENSSL_free(buf);
-
-	return ret;
-	}
-#endif
-
 #if !defined(OPENSSL_NO_TLSEXT)
 /* tls1_channel_id_hash calculates the signed data for a Channel ID on the given
  * SSL connection and writes it to |md|. */
