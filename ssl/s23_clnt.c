@@ -347,8 +347,6 @@ static int ssl23_client_hello(SSL *s)
 #endif
 		if (s->ctx->tlsext_authz_server_audit_proof_cb != NULL)
 			ssl2_compat = 0;
-		if (s->ctx->custom_cli_ext_records_count != 0)
-			ssl2_compat = 0;
 		}
 #endif
 

@@ -36,8 +36,6 @@ const ERR_STRING_DATA SSL_error_string_data[] = {
   {ERR_PACK(ERR_LIB_SSL, SSL_F_SSL_CTX_use_certificate_chain_file, 0), "SSL_CTX_use_certificate_chain_file"},
   {ERR_PACK(ERR_LIB_SSL, SSL_F_SSL_CTX_use_certificate_file, 0), "SSL_CTX_use_certificate_file"},
   {ERR_PACK(ERR_LIB_SSL, SSL_F_SSL_CTX_use_psk_identity_hint, 0), "SSL_CTX_use_psk_identity_hint"},
-  {ERR_PACK(ERR_LIB_SSL, SSL_F_SSL_CTX_use_serverinfo, 0), "SSL_CTX_use_serverinfo"},
-  {ERR_PACK(ERR_LIB_SSL, SSL_F_SSL_CTX_use_serverinfo_file, 0), "SSL_CTX_use_serverinfo_file"},
   {ERR_PACK(ERR_LIB_SSL, SSL_F_SSL_SESSION_new, 0), "SSL_SESSION_new"},
   {ERR_PACK(ERR_LIB_SSL, SSL_F_SSL_SESSION_print_fp, 0), "SSL_SESSION_print_fp"},
   {ERR_PACK(ERR_LIB_SSL, SSL_F_SSL_SESSION_set1_id_context, 0), "SSL_SESSION_set1_id_context"},

@@ -1839,62 +1839,6 @@ void SSL_CTX_set_next_proto_select_cb(SSL_CTX *ctx, int (*cb) (SSL *s, unsigned 
 	}
 # endif
 
-int SSL_CTX_set_custom_cli_ext(SSL_CTX *ctx, unsigned short ext_type,
-			       custom_cli_ext_first_cb_fn fn1, 
-			       custom_cli_ext_second_cb_fn fn2, void* arg)
-	{
-	size_t i;
-	custom_cli_ext_record* record;
-
-	/* Check for duplicates */
-	for (i=0; i < ctx->custom_cli_ext_records_count; i++)
-		if (ext_type == ctx->custom_cli_ext_records[i].ext_type)
-			return 0;
-
-	ctx->custom_cli_ext_records = OPENSSL_realloc(ctx->custom_cli_ext_records,
-						      (ctx->custom_cli_ext_records_count + 1) * 
-						      sizeof(custom_cli_ext_record));
-	if (!ctx->custom_cli_ext_records) {
-		ctx->custom_cli_ext_records_count = 0;
-		return 0;
-	}
-	ctx->custom_cli_ext_records_count++;
-	record = &ctx->custom_cli_ext_records[ctx->custom_cli_ext_records_count - 1];
-	record->ext_type = ext_type;
-	record->fn1 = fn1;
-	record->fn2 = fn2;
-	record->arg = arg;
-	return 1;
-	}
-
-int SSL_CTX_set_custom_srv_ext(SSL_CTX *ctx, unsigned short ext_type,
-			       custom_srv_ext_first_cb_fn fn1, 
-			       custom_srv_ext_second_cb_fn fn2, void* arg)
-	{
-	size_t i;
-	custom_srv_ext_record* record;
-
-	/* Check for duplicates */	
-	for (i=0; i < ctx->custom_srv_ext_records_count; i++)
-		if (ext_type == ctx->custom_srv_ext_records[i].ext_type)
-			return 0;
-
-	ctx->custom_srv_ext_records = OPENSSL_realloc(ctx->custom_srv_ext_records,
-						      (ctx->custom_srv_ext_records_count + 1) * 
-						      sizeof(custom_srv_ext_record));
-	if (!ctx->custom_srv_ext_records) {
-		ctx->custom_srv_ext_records_count = 0;
-		return 0;
-	}
-	ctx->custom_srv_ext_records_count++;
-	record = &ctx->custom_srv_ext_records[ctx->custom_srv_ext_records_count - 1];
-	record->ext_type = ext_type;
-	record->fn1 = fn1;
-	record->fn2 = fn2;
-	record->arg = arg;
-	return 1;
-	}
-
 /* SSL_CTX_set_alpn_protos sets the ALPN protocol list on |ctx| to |protos|.
  * |protos| must be in wire-format (i.e. a series of non-empty, 8-bit
  * length-prefixed strings).
@@ -2138,10 +2082,6 @@ SSL_CTX *SSL_CTX_new(const SSL_METHOD *meth)
 	ret->psk_client_callback=NULL;
 	ret->psk_server_callback=NULL;
 #endif
-	ret->custom_cli_ext_records = NULL;
-	ret->custom_cli_ext_records_count = 0;
-	ret->custom_srv_ext_records = NULL;
-	ret->custom_srv_ext_records_count = 0;
 #ifndef OPENSSL_NO_BUF_FREELISTS
 	ret->freelist_max_len = SSL_MAX_BUF_FREELIST_LEN_DEFAULT;
 	ret->rbuf_freelist = OPENSSL_malloc(sizeof(SSL3_BUF_FREELIST));
@@ -2267,10 +2207,6 @@ void SSL_CTX_free(SSL_CTX *a)
 #ifndef OPENSSL_NO_PSK
 	if (a->psk_identity_hint)
 		OPENSSL_free(a->psk_identity_hint);
-#endif
-#ifndef OPENSSL_NO_TLSEXT
-	OPENSSL_free(a->custom_cli_ext_records);
-	OPENSSL_free(a->custom_srv_ext_records);
 #endif
 
 	/* TODO(fork): remove. */
@@ -2727,26 +2663,6 @@ unsigned char *ssl_get_authz_data(SSL *s, size_t *authz_length)
 	*authz_length = c->pkeys[i].authz_length;
 
 	return c->pkeys[i].authz;
-	}
-
-int ssl_get_server_cert_serverinfo(SSL *s, const unsigned char **serverinfo,
-				   size_t *serverinfo_length)
-	{
-	CERT *c = NULL;
-	int i = 0;
-	*serverinfo_length = 0;
-
-	c = s->cert;
-	i = ssl_get_server_cert_index(s);
-
-	if (i == -1)
-		return 0;
-	if (c->pkeys[i].serverinfo == NULL)
-		return 0;
-
-	*serverinfo = c->pkeys[i].serverinfo;
-	*serverinfo_length = c->pkeys[i].serverinfo_length;
-	return 1;
 	}
 #endif
 

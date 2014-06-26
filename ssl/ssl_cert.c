@@ -341,23 +341,6 @@ CERT *ssl_cert_dup(CERT *cert)
 			       cert->pkeys[i].authz,
 			       cert->pkeys[i].authz_length);
 			}
-
-		if (cert->pkeys[i].serverinfo != NULL)
-			{
-			/* Just copy everything. */
-			ret->pkeys[i].serverinfo =
-				OPENSSL_malloc(cert->pkeys[i].serverinfo_length);
-			if (ret->pkeys[i].serverinfo == NULL)
-				{
-				OPENSSL_PUT_ERROR(SSL, ssl_cert_dup, ERR_R_MALLOC_FAILURE);
-				return NULL;
-				}
-			ret->pkeys[i].serverinfo_length =
-				cert->pkeys[i].serverinfo_length;
-			memcpy(ret->pkeys[i].serverinfo,
-			       cert->pkeys[i].serverinfo,
-			       cert->pkeys[i].serverinfo_length);
-			}
 #endif
 		}
 	
@@ -478,12 +461,6 @@ void ssl_cert_clear_certs(CERT *c)
 			{
 			OPENSSL_free(cpk->authz);
 			cpk->authz = NULL;
-			}
-		if (cpk->serverinfo)
-			{
-			OPENSSL_free(cpk->serverinfo);
-			cpk->serverinfo = NULL;
-			cpk->serverinfo_length = 0;
 			}
 #endif
 		/* Clear all flags apart from explicit sign */
