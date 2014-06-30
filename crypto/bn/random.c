@@ -117,6 +117,10 @@ int BN_rand(BIGNUM *rnd, int bits, int top, int bottom) {
   uint8_t *buf = NULL;
   int ret = 0, bit, bytes, mask;
 
+  if (rnd == NULL) {
+    return 0;
+  }
+
   if (bits == 0) {
     BN_zero(rnd);
     return 1;
@@ -251,6 +255,10 @@ int BN_generate_dsa_nonce(BIGNUM *out, const BIGNUM *range, const BIGNUM *priv,
   uint8_t private_bytes[96];
   uint8_t *k_bytes = NULL;
   int ret = 0;
+
+  if (out == NULL) {
+    return 0;
+  }
 
   if (BN_is_zero(range)) {
     OPENSSL_PUT_ERROR(BN, BN_generate_dsa_nonce, BN_R_DIV_BY_ZERO);

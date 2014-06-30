@@ -712,7 +712,7 @@ int BN_mod_mul_montgomery(BIGNUM *r, const BIGNUM *a, const BIGNUM *b,
  * zero otherwise. */
 int BN_exp(BIGNUM *r, const BIGNUM *a, const BIGNUM *p, BN_CTX *ctx);
 
-/* BN_exp sets |r| equal to |a|^{|p|} mod |m|. It does so with the best
+/* BN_mod_exp sets |r| equal to |a|^{|p|} mod |m|. It does so with the best
  * algorithm for the values provided and can run in constant time if
  * |BN_FLG_CONSTTIME| is set for |p|. It returns one on success or zero
  * otherwise. */
