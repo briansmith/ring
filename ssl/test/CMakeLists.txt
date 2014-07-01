@@ -1,9 +1,9 @@
 include_directories(../../include)
 
 add_executable(
-	client_shim
+	bssl_shim
 
-	client_shim.cc
+	bssl_shim.cc
 )
 
-target_link_libraries(client_shim ssl crypto)
+target_link_libraries(bssl_shim ssl crypto)
