@@ -2722,10 +2722,6 @@ void ssl3_free(SSL *s)
 		OPENSSL_free(s->s3->alpn_selected);
 #endif
 
-#ifndef OPENSSL_NO_TLSEXT
-	if (s->s3->tlsext_authz_client_types != NULL)
-		OPENSSL_free(s->s3->tlsext_authz_client_types);
-#endif
 	OPENSSL_cleanse(s->s3,sizeof *s->s3);
 	OPENSSL_free(s->s3);
 	s->s3=NULL;
@@ -2756,11 +2752,6 @@ void ssl3_clear(SSL *s)
 		}
 #endif
 #ifndef OPENSSL_NO_TLSEXT
-	if (s->s3->tlsext_authz_client_types != NULL)
-		{
-		OPENSSL_free(s->s3->tlsext_authz_client_types);
-		s->s3->tlsext_authz_client_types = NULL;
-		}
 #ifndef OPENSSL_NO_EC
 	s->s3->is_probably_safari = 0;
 #endif /* !OPENSSL_NO_EC */
@@ -3494,10 +3485,6 @@ long ssl3_ctx_ctrl(SSL_CTX *ctx, int cmd, long larg, void *parg)
 	case SSL_CTRL_SET_CHAIN_CERT_STORE:
 		return ssl_cert_set_cert_store(ctx->cert, parg, 1, larg);
 
-	case SSL_CTRL_SET_TLSEXT_AUTHZ_SERVER_AUDIT_PROOF_CB_ARG:
-		ctx->tlsext_authz_server_audit_proof_cb_arg = parg;
-		break;
-
 #endif /* !OPENSSL_NO_TLSEXT */
 
 	/* A Thawte special :-) */
@@ -3614,11 +3601,6 @@ long ssl3_ctx_callback_ctrl(SSL_CTX *ctx, int cmd, void (*fp)(void))
 						unsigned char *,
 						EVP_CIPHER_CTX *,
 						HMAC_CTX *, int))fp;
-		break;
-
-	case SSL_CTRL_SET_TLSEXT_AUTHZ_SERVER_AUDIT_PROOF_CB:
-		ctx->tlsext_authz_server_audit_proof_cb =
-			(int (*)(SSL *, void *))fp;
 		break;
 
 #endif

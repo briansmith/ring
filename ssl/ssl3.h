@@ -541,20 +541,6 @@ typedef struct ssl3_state_st
 #endif
 
 #ifndef OPENSSL_NO_TLSEXT
-	/* tlsext_authz_client_types contains an array of supported authz
-	 * types, as advertised by the client. The array is sorted and
-	 * does not contain any duplicates. */
-	unsigned char *tlsext_authz_client_types;
-	size_t tlsext_authz_client_types_len;
-	/* tlsext_authz_promised_to_client is true iff we're a server and we
-	 * echoed the client's supplemental data extension and therefore must
-	 * send a supplemental data handshake message. */
-	char tlsext_authz_promised_to_client;
-	/* tlsext_authz_server_promised is true iff we're a client and the
-	 * server echoed our server_authz extension and therefore must send us
-	 * a supplemental data handshake message. */
-	char tlsext_authz_server_promised;
-
 #ifndef OPENSSL_NO_EC
 	/* This is set to true if we believe that this is a version of Safari
 	 * running on OS X 10.6 or newer. We wish to know this because Safari
@@ -613,8 +599,6 @@ typedef struct ssl3_state_st
 #define SSL3_ST_CR_CERT_REQ_B		(0x151|SSL_ST_CONNECT)
 #define SSL3_ST_CR_SRVR_DONE_A		(0x160|SSL_ST_CONNECT)
 #define SSL3_ST_CR_SRVR_DONE_B		(0x161|SSL_ST_CONNECT)
-#define SSL3_ST_CR_SUPPLEMENTAL_DATA_A	(0x210|SSL_ST_CONNECT)
-#define SSL3_ST_CR_SUPPLEMENTAL_DATA_B  (0x211|SSL_ST_CONNECT)
 /* write to server */
 #define SSL3_ST_CW_CERT_A		(0x170|SSL_ST_CONNECT)
 #define SSL3_ST_CW_CERT_B		(0x171|SSL_ST_CONNECT)

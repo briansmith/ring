@@ -324,24 +324,6 @@ CERT *ssl_cert_dup(CERT *cert)
 				}
 			}
 		rpk->valid_flags = 0;
-#ifndef OPENSSL_NO_TLSEXT
-     if (cert->pkeys[i].authz != NULL)
-			{
-			/* Just copy everything. */
-			ret->pkeys[i].authz_length =
-				cert->pkeys[i].authz_length;
-			ret->pkeys[i].authz =
-				OPENSSL_malloc(ret->pkeys[i].authz_length);
-			if (ret->pkeys[i].authz == NULL)
-				{
-				OPENSSL_PUT_ERROR(SSL, ssl_cert_dup, ERR_R_MALLOC_FAILURE);
-				return NULL;
-				}
-			memcpy(ret->pkeys[i].authz,
-			       cert->pkeys[i].authz,
-			       cert->pkeys[i].authz_length);
-			}
-#endif
 		}
 	
 	ret->references=1;
@@ -456,13 +438,6 @@ void ssl_cert_clear_certs(CERT *c)
 			sk_X509_pop_free(cpk->chain, X509_free);
 			cpk->chain = NULL;
 			}
-#ifndef OPENSSL_NO_TLSEXT
-		if (cpk->authz)
-			{
-			OPENSSL_free(cpk->authz);
-			cpk->authz = NULL;
-			}
-#endif
 		/* Clear all flags apart from explicit sign */
 		cpk->valid_flags &= CERT_PKEY_EXPLICIT_SIGN;
 		}

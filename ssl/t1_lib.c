@@ -1229,19 +1229,6 @@ void ssl_set_client_disabled(SSL *s)
 	c->valid = 1;
 	}
 
-/* byte_compare is a compare function for qsort(3) that compares bytes. */
-static int byte_compare(const void *in_a, const void *in_b)
-	{
-	unsigned char a = *((const unsigned char*) in_a);
-	unsigned char b = *((const unsigned char*) in_b);
-
-	if (a > b)
-		return 1;
-	else if (a < b)
-		return -1;
-	return 0;
-}
-
 /* header_len is the length of the ClientHello header written so far, used to
  * compute padding. It does not include the record header. Pass 0 if no padding
  * is to be done. */
@@ -1498,26 +1485,6 @@ unsigned char *ssl_add_clienthello_tlsext(SSL *s, unsigned char *buf, unsigned c
                 ret += el;
                 }
 
-	/* Add TLS extension Server_Authz_DataFormats to the ClientHello */
-	/* 2 bytes for extension type */
-	/* 2 bytes for extension length */
-	/* 1 byte for the list length */
-	/* 1 byte for the list (we only support audit proofs) */
-	if (s->ctx->tlsext_authz_server_audit_proof_cb != NULL)
-		{
-                const unsigned short ext_len = 2;
-                const unsigned char list_len = 1;
-
-		if (limit < ret + 6)
-			return NULL;
-
-		s2n(TLSEXT_TYPE_server_authz, ret);
-                /* Extension length: 2 bytes */
-		s2n(ext_len, ret);
-		*(ret++) = list_len;
-		*(ret++) = TLSEXT_AUTHZDATAFORMAT_audit_proof;
-		}
-
 #ifndef OPENSSL_NO_EC
 	if (using_ecc)
 		{
@@ -1742,79 +1709,6 @@ unsigned char *ssl_add_serverhello_tlsext(SSL *s, unsigned char *buf, unsigned c
 			}
 		}
 #endif
-
-	/* If the client supports authz then see whether we have any to offer
-	 * to it. */
-	if (s->s3->tlsext_authz_client_types_len)
-		{
-		size_t authz_length;
-		/* By now we already know the new cipher, so we can look ahead
-		 * to see whether the cert we are going to send
-		 * has any authz data attached to it. */
-		const unsigned char* authz = ssl_get_authz_data(s, &authz_length);
-		const unsigned char* const orig_authz = authz;
-		size_t i;
-		unsigned authz_count = 0;
-
-		/* The authz data contains a number of the following structures:
-		 * 	uint8_t authz_type
-		 * 	uint16_t length
-		 * 	uint8_t data[length]
-		 *
-		 * First we walk over it to find the number of authz elements. */
-		for (i = 0; i < authz_length; i++)
-			{
-			unsigned short length;
-			unsigned char type;
-
-			type = *(authz++);
-			if (memchr(s->s3->tlsext_authz_client_types,
-				   type,
-				   s->s3->tlsext_authz_client_types_len) != NULL)
-				authz_count++;
-
-			n2s(authz, length);
-			/* n2s increments authz by 2 */
-			i += 2;
-			authz += length;
-			i += length;
-			}
-
-		if (authz_count)
-			{
-			/* Add TLS extension server_authz to the ServerHello message
-			 * 2 bytes for extension type
-			 * 2 bytes for extension length
-			 * 1 byte for the list length
-			 * n bytes for the list */
-			const unsigned short ext_len = 1 + authz_count;
-
-			if ((long)(limit - ret - 4 - ext_len) < 0) return NULL;
-			s2n(TLSEXT_TYPE_server_authz, ret);
-			s2n(ext_len, ret);
-			*(ret++) = authz_count;
-			s->s3->tlsext_authz_promised_to_client = 1;
-			}
-
-		authz = orig_authz;
-		for (i = 0; i < authz_length; i++)
-			{
-			unsigned short length;
-			unsigned char type;
-
-			authz_count++;
-			type = *(authz++);
-			if (memchr(s->s3->tlsext_authz_client_types,
-				   type,
-				   s->s3->tlsext_authz_client_types_len) != NULL)
-				*(ret++) = type;
-			n2s(authz, length);
-			/* n2s increments authz by 2 */
-			i += 2;
-			authz += length;
-			i += length;
-			}
-		}
 
 	if (s->s3->alpn_selected)
 		{
@@ -2466,65 +2360,6 @@ static int ssl_scan_clienthello_tlsext(SSL *s, unsigned char **p, unsigned char 
 				return 0;
                         }
 
-		else if (type == TLSEXT_TYPE_server_authz)
-			{
-			unsigned char *sdata = data;
-			unsigned char server_authz_dataformatlist_length;
-
-			if (size == 0)
-				{
-				*al = TLS1_AD_DECODE_ERROR;
-				return 0;
-				}
-
-			server_authz_dataformatlist_length = *(sdata++);
-
-			if (server_authz_dataformatlist_length != size - 1)
-				{
-				*al = TLS1_AD_DECODE_ERROR;
-				return 0;
-				}
-
-			/* Successful session resumption uses the same authz
-			 * information as the original session so we ignore this
-			 * in the case of a session resumption. */
-			if (!s->hit)
-				{
-				if (s->s3->tlsext_authz_client_types != NULL)
-					OPENSSL_free(s->s3->tlsext_authz_client_types);
-				s->s3->tlsext_authz_client_types =
-					OPENSSL_malloc(server_authz_dataformatlist_length);
-				if (!s->s3->tlsext_authz_client_types)
-					{
-					*al = TLS1_AD_INTERNAL_ERROR;
-					return 0;
-					}
-
-				s->s3->tlsext_authz_client_types_len =
-					server_authz_dataformatlist_length;
-				memcpy(s->s3->tlsext_authz_client_types,
-				       sdata,
-				       server_authz_dataformatlist_length);
-
-				/* Sort the types in order to check for duplicates. */
-				qsort(s->s3->tlsext_authz_client_types,
-				      server_authz_dataformatlist_length,
-				      1 /* element size */,
-				      byte_compare);
-
-				for (i = 0; i < server_authz_dataformatlist_length; i++)
-					{
-					if (i > 0 &&
-					    s->s3->tlsext_authz_client_types[i] ==
-					      s->s3->tlsext_authz_client_types[i-1])
-						{
-						*al = TLS1_AD_DECODE_ERROR;
-						return 0;
-						}
-					}
-				}
-			}
-
 		data+=size;
 		}
 
@@ -2805,40 +2640,6 @@ static int ssl_scan_serverhello_tlsext(SSL *s, CBS *cbs, int *out_alert)
                         if (!ssl_parse_serverhello_use_srtp_ext(s, &extension, out_alert))
                                 return 0;
                         }
-
-		else if (type == TLSEXT_TYPE_server_authz)
-			{
-			/* We only support audit proofs. It's an error to send
-			 * an authz hello extension if the client
-			 * didn't request a proof. */
-			CBS authz_data_formats;
-			uint8_t authz_data_format;
-
-			if (!s->ctx->tlsext_authz_server_audit_proof_cb)
-				{
-				*out_alert = SSL_AD_UNSUPPORTED_EXTENSION;
-				return 0;
-				}
-
-			if (!CBS_get_u8_length_prefixed(&extension, &authz_data_formats) ||
-				CBS_len(&extension) != 0)
-				{
-				*out_alert = SSL_AD_DECODE_ERROR;
-				return 0;
-				}
-
-			/* We only support audit proofs, so a legal ServerHello
-			 * authz list contains exactly one entry. */
-			if (!CBS_get_u8(&authz_data_formats, &authz_data_format) ||
-				CBS_len(&authz_data_formats) != 0 ||
-				authz_data_format != TLSEXT_AUTHZDATAFORMAT_audit_proof)
-				{
-				*out_alert = SSL_AD_UNSUPPORTED_EXTENSION;
-				return 0;
-				}
-
-			s->s3->tlsext_authz_server_promised = 1;
-			}
 		}
 
 	if (!s->hit && tlsext_servername == 1)

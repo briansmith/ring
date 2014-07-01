@@ -2644,27 +2644,6 @@ EVP_PKEY *ssl_get_sign_pkey(SSL *s,const SSL_CIPHER *cipher, const EVP_MD **pmd)
 	return c->pkeys[idx].privatekey;
 	}
 
-#ifndef OPENSSL_NO_TLSEXT
-unsigned char *ssl_get_authz_data(SSL *s, size_t *authz_length)
-	{
-	CERT *c;
-	int i;
-
-	c = s->cert;
-	i = ssl_get_server_cert_index(s);
-
-	if (i == -1)
-		return NULL;
-
-	*authz_length = 0;
-	if (c->pkeys[i].authz == NULL)
-		return(NULL);
-	*authz_length = c->pkeys[i].authz_length;
-
-	return c->pkeys[i].authz;
-	}
-#endif
-
 void ssl_update_cache(SSL *s,int mode)
 	{
 	int i;

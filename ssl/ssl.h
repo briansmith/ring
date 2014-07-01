@@ -528,13 +528,6 @@ struct ssl_session_st
 #endif
 	char peer_sha256_valid;		/* Non-zero if peer_sha256 is valid */
 	unsigned char peer_sha256[SHA256_DIGEST_LENGTH];  /* SHA256 of peer certificate */
-#ifndef OPENSSL_NO_TLSEXT
-	/* Used by client: the proof for this session.
-	 * We store it outside the sess_cert structure, since the proof
-	 * is received before the certificate. */
-	unsigned char *audit_proof;
-	size_t audit_proof_length;
-#endif
 
 	/* original_handshake_hash contains the handshake hash (either
 	 * SHA-1+MD5 or SHA-2, depending on TLS version) for the original, full
@@ -1136,9 +1129,7 @@ struct ssl_ctx_st
 	size_t tlsext_ellipticcurvelist_length;
 	unsigned char *tlsext_ellipticcurvelist;
 # endif /* OPENSSL_NO_EC */
-	int (*tlsext_authz_server_audit_proof_cb)(SSL *s, void *arg);
-	void *tlsext_authz_server_audit_proof_cb_arg;
-#endif
+#endif /* OPENSSL_NO_TLSEXT */
 
 	/* If true, a client will advertise the Channel ID extension and a
 	 * server will echo it. */
@@ -1799,9 +1790,6 @@ DECLARE_PEM_rw(SSL_SESSION, SSL_SESSION)
 #define SSL_CTRL_SET_TLS_EXT_SRP_USERNAME		79
 #define SSL_CTRL_SET_TLS_EXT_SRP_STRENGTH		80
 #define SSL_CTRL_SET_TLS_EXT_SRP_PASSWORD		81
-/* Callback for verifying audit proofs (client only) */
-#define SSL_CTRL_SET_TLSEXT_AUTHZ_SERVER_AUDIT_PROOF_CB 95
-#define SSL_CTRL_SET_TLSEXT_AUTHZ_SERVER_AUDIT_PROOF_CB_ARG 96
 #endif /* OPENSSL_NO_TLSEXT */
 
 #define DTLS_CTRL_GET_TIMEOUT		73
@@ -2085,20 +2073,6 @@ int	SSL_use_PrivateKey_ASN1(int pk,SSL *ssl, const unsigned char *d, long len);
 int	SSL_use_certificate(SSL *ssl, X509 *x);
 int	SSL_use_certificate_ASN1(SSL *ssl, const unsigned char *d, int len);
 
-#ifndef OPENSSL_NO_TLSEXT
-/* Set authz data for the current active cert. */
-int	SSL_CTX_use_authz(SSL_CTX *ctx, unsigned char *authz, size_t authz_length);
-int	SSL_use_authz(SSL *ssl, unsigned char *authz, size_t authz_length);
-/* Get the authz of type 'type' associated with the current active cert. */
-const unsigned char *SSL_CTX_get_authz_data(SSL_CTX *ctx, unsigned char type,
-					    size_t *data_length);
-#ifndef OPENSSL_NO_STDIO
-int	SSL_CTX_use_authz_file(SSL_CTX *ctx, const char *file);
-int	SSL_use_authz_file(SSL *ssl, const char *file);
-#endif
-
-#endif
-
 #ifndef OPENSSL_NO_STDIO
 int	SSL_use_RSAPrivateKey_file(SSL *ssl, const char *file, int type);
 int	SSL_use_PrivateKey_file(SSL *ssl, const char *file, int type);
@@ -2141,10 +2115,6 @@ int	SSL_SESSION_print_fp(FILE *fp,const SSL_SESSION *ses);
 #endif
 #ifndef OPENSSL_NO_BIO
 int	SSL_SESSION_print(BIO *fp,const SSL_SESSION *ses);
-#endif
-#ifndef OPENSSL_NO_TLSEXT
-unsigned char *SSL_SESSION_get_tlsext_authz_server_audit_proof(SSL_SESSION *s,
-	size_t *proof_length);
 #endif
 void	SSL_SESSION_free(SSL_SESSION *ses);
 int	i2d_SSL_SESSION(SSL_SESSION *in,unsigned char **pp);
