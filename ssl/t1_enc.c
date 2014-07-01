@@ -1304,18 +1304,6 @@ int tls1_generate_master_secret(SSL *s, unsigned char *out, unsigned char *p,
 	printf ("tls1_generate_master_secret(%p,%p, %p, %d)\n", s,out, p,len);
 #endif	/* KSSL_DEBUG */
 
-#ifdef TLSEXT_TYPE_opaque_prf_input
-	if (s->s3->client_opaque_prf_input != NULL && s->s3->server_opaque_prf_input != NULL &&
-	    s->s3->client_opaque_prf_input_len > 0 &&
-	    s->s3->client_opaque_prf_input_len == s->s3->server_opaque_prf_input_len)
-		{
-		co = s->s3->client_opaque_prf_input;
-		col = s->s3->server_opaque_prf_input_len;
-		so = s->s3->server_opaque_prf_input;
-		sol = s->s3->client_opaque_prf_input_len; /* must be same as col (see draft-rescorla-tls-opaque-prf-input-00.txt, section 3.1) */
-		}
-#endif
-
 	tls1_PRF(ssl_get_algorithm2(s),
 		TLS_MD_MASTER_SECRET_CONST,TLS_MD_MASTER_SECRET_CONST_SIZE,
 		s->s3->client_random,SSL3_RANDOM_SIZE,

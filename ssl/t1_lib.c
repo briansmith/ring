@@ -1391,24 +1391,6 @@ unsigned char *ssl_add_clienthello_tlsext(SSL *s, unsigned char *buf, unsigned c
 		ret += salglen;
 		}
 
-#ifdef TLSEXT_TYPE_opaque_prf_input
-	if (s->s3->client_opaque_prf_input != NULL)
-		{
-		size_t col = s->s3->client_opaque_prf_input_len;
-		
-		if ((long)(limit - ret - 6 - col < 0))
-			return NULL;
-		if (col > 0xFFFD) /* can't happen */
-			return NULL;
-
-		s2n(TLSEXT_TYPE_opaque_prf_input, ret); 
-		s2n(col + 2, ret);
-		s2n(col, ret);
-		memcpy(ret, s->s3->client_opaque_prf_input, col);
-		ret += col;
-		}
-#endif
-
         /* TODO(fork): we probably want OCSP stapling, but it currently pulls in a lot of code. */
 #if 0
 	if (s->tlsext_status_type == TLSEXT_STATUSTYPE_ocsp)
@@ -1719,24 +1701,6 @@ unsigned char *ssl_add_serverhello_tlsext(SSL *s, unsigned char *buf, unsigned c
 		s2n(TLSEXT_TYPE_status_request,ret);
 		s2n(0,ret);
 		}
-
-#ifdef TLSEXT_TYPE_opaque_prf_input
-	if (s->s3->server_opaque_prf_input != NULL)
-		{
-		size_t sol = s->s3->server_opaque_prf_input_len;
-		
-		if ((long)(limit - ret - 6 - sol) < 0)
-			return NULL;
-		if (sol > 0xFFFD) /* can't happen */
-			return NULL;
-
-		s2n(TLSEXT_TYPE_opaque_prf_input, ret); 
-		s2n(sol + 2, ret);
-		s2n(sol, ret);
-		memcpy(ret, s->s3->server_opaque_prf_input, sol);
-		ret += sol;
-		}
-#endif
 
         if(s->srtp_profile)
                 {
@@ -2285,36 +2249,6 @@ static int ssl_scan_clienthello_tlsext(SSL *s, unsigned char **p, unsigned char 
 #endif
 			}
 #endif /* OPENSSL_NO_EC */
-#ifdef TLSEXT_TYPE_opaque_prf_input
-		else if (type == TLSEXT_TYPE_opaque_prf_input)
-			{
-			unsigned char *sdata = data;
-
-			if (size < 2)
-				{
-				*al = SSL_AD_DECODE_ERROR;
-				return 0;
-				}
-			n2s(sdata, s->s3->client_opaque_prf_input_len);
-			if (s->s3->client_opaque_prf_input_len != size - 2)
-				{
-				*al = SSL_AD_DECODE_ERROR;
-				return 0;
-				}
-
-			if (s->s3->client_opaque_prf_input != NULL) /* shouldn't really happen */
-				OPENSSL_free(s->s3->client_opaque_prf_input);
-			if (s->s3->client_opaque_prf_input_len == 0)
-				s->s3->client_opaque_prf_input = OPENSSL_malloc(1); /* dummy byte just to get non-NULL */
-			else
-				s->s3->client_opaque_prf_input = BUF_memdup(sdata, s->s3->client_opaque_prf_input_len);
-			if (s->s3->client_opaque_prf_input == NULL)
-				{
-				*al = TLS1_AD_INTERNAL_ERROR;
-				return 0;
-				}
-			}
-#endif
 		else if (type == TLSEXT_TYPE_session_ticket)
 			{
 			if (s->tls_session_ticket_ext_cb &&
@@ -2754,27 +2688,6 @@ static int ssl_scan_serverhello_tlsext(SSL *s, CBS *cbs, int *out_alert)
 
 			s->tlsext_ticket_expected = 1;
 			}
-#ifdef TLSEXT_TYPE_opaque_prf_input
-		else if (type == TLSEXT_TYPE_opaque_prf_input)
-			{
-			CBS opaque_prf_input_value;
-
-			if (!CBS_get_u16_length_prefixed(&extension, &opaque_prf_input_value) ||
-				CBS_len(&extension) != 0)
-				{
-				*out_alert = SSL_AD_DECODE_ERROR;
-				return 0;
-				}
-
-			if (!CBS_stow(&opaque_prf_input_value,
-					&s->s3->server_opaque_prf_input,
-					&s->s3->server_opaque_prf_input_len))
-				{
-				*out_alert = SSL_AD_INTERNAL_ERROR;
-				return 0;
-				}
-			}
-#endif
 		else if (type == TLSEXT_TYPE_status_request)
 			{
 			/* The extension MUST be empty and may only sent if
@@ -2973,41 +2886,6 @@ static int ssl_scan_serverhello_tlsext(SSL *s, CBS *cbs, int *out_alert)
 
 int ssl_prepare_clienthello_tlsext(SSL *s)
 	{
-
-#ifdef TLSEXT_TYPE_opaque_prf_input
- 	{
-		int r = 1;
-	
-		if (s->ctx->tlsext_opaque_prf_input_callback != 0)
-			{
-			r = s->ctx->tlsext_opaque_prf_input_callback(s, NULL, 0, s->ctx->tlsext_opaque_prf_input_callback_arg);
-			if (!r)
-				return -1;
-			}
-
-		if (s->tlsext_opaque_prf_input != NULL)
-			{
-			if (s->s3->client_opaque_prf_input != NULL) /* shouldn't really happen */
-				OPENSSL_free(s->s3->client_opaque_prf_input);
-
-			if (s->tlsext_opaque_prf_input_len == 0)
-				s->s3->client_opaque_prf_input = OPENSSL_malloc(1); /* dummy byte just to get non-NULL */
-			else
-				s->s3->client_opaque_prf_input = BUF_memdup(s->tlsext_opaque_prf_input, s->tlsext_opaque_prf_input_len);
-			if (s->s3->client_opaque_prf_input == NULL)
-				{
-				OPENSSL_PUT_ERROR(SSL, ssl_add_serverhello_tlsext, ERR_R_MALLOC_FAILURE);
-				return -1;
-				}
-			s->s3->client_opaque_prf_input_len = s->tlsext_opaque_prf_input_len;
-			}
-
-		if (r == 2)
-			/* at callback's request, insist on receiving an appropriate server opaque PRF input */
-			s->s3->server_opaque_prf_input_len = s->tlsext_opaque_prf_input_len;
-	}
-#endif
-
 	return 1;
 	}
 
@@ -3035,65 +2913,6 @@ static int ssl_check_clienthello_tlsext_early(SSL *s)
 	else if (s->initial_ctx != NULL && s->initial_ctx->tlsext_servername_callback != 0) 		
 		ret = s->initial_ctx->tlsext_servername_callback(s, &al, s->initial_ctx->tlsext_servername_arg);
 
-#ifdef TLSEXT_TYPE_opaque_prf_input
- 	{
-		/* This sort of belongs into ssl_prepare_serverhello_tlsext(),
-		 * but we might be sending an alert in response to the client hello,
-		 * so this has to happen here in
-		 * ssl_check_clienthello_tlsext_early(). */
-
-		int r = 1;
-	
-		if (s->ctx->tlsext_opaque_prf_input_callback != 0)
-			{
-			r = s->ctx->tlsext_opaque_prf_input_callback(s, NULL, 0, s->ctx->tlsext_opaque_prf_input_callback_arg);
-			if (!r)
-				{
-				ret = SSL_TLSEXT_ERR_ALERT_FATAL;
-				al = SSL_AD_INTERNAL_ERROR;
-				goto err;
-				}
-			}
-
-		if (s->s3->server_opaque_prf_input != NULL) /* shouldn't really happen */
-			OPENSSL_free(s->s3->server_opaque_prf_input);
-		s->s3->server_opaque_prf_input = NULL;
-
-		if (s->tlsext_opaque_prf_input != NULL)
-			{
-			if (s->s3->client_opaque_prf_input != NULL &&
-				s->s3->client_opaque_prf_input_len == s->tlsext_opaque_prf_input_len)
-				{
-				/* can only use this extension if we have a server opaque PRF input
-				 * of the same length as the client opaque PRF input! */
-
-				if (s->tlsext_opaque_prf_input_len == 0)
-					s->s3->server_opaque_prf_input = OPENSSL_malloc(1); /* dummy byte just to get non-NULL */
-				else
-					s->s3->server_opaque_prf_input = BUF_memdup(s->tlsext_opaque_prf_input, s->tlsext_opaque_prf_input_len);
-				if (s->s3->server_opaque_prf_input == NULL)
-					{
-					ret = SSL_TLSEXT_ERR_ALERT_FATAL;
-					al = SSL_AD_INTERNAL_ERROR;
-					goto err;
-					}
-				s->s3->server_opaque_prf_input_len = s->tlsext_opaque_prf_input_len;
-				}
-			}
-
-		if (r == 2 && s->s3->server_opaque_prf_input == NULL)
-			{
-			/* The callback wants to enforce use of the extension,
-			 * but we can't do that with the client opaque PRF input;
-			 * abort the handshake.
-			 */
-			ret = SSL_TLSEXT_ERR_ALERT_FATAL;
-			al = SSL_AD_HANDSHAKE_FAILURE;
-			}
-	}
-
- err:
-#endif
 	switch (ret)
 		{
 		case SSL_TLSEXT_ERR_ALERT_FATAL:
@@ -3218,29 +3037,6 @@ int ssl_check_serverhello_tlsext(SSL *s)
 		ret = s->ctx->tlsext_servername_callback(s, &al, s->ctx->tlsext_servername_arg);
 	else if (s->initial_ctx != NULL && s->initial_ctx->tlsext_servername_callback != 0) 		
 		ret = s->initial_ctx->tlsext_servername_callback(s, &al, s->initial_ctx->tlsext_servername_arg);
-
-#ifdef TLSEXT_TYPE_opaque_prf_input
-	if (s->s3->server_opaque_prf_input_len > 0)
-		{
-		/* This case may indicate that we, as a client, want to insist on using opaque PRF inputs.
-		 * So first verify that we really have a value from the server too. */
-
-		if (s->s3->server_opaque_prf_input == NULL)
-			{
-			ret = SSL_TLSEXT_ERR_ALERT_FATAL;
-			al = SSL_AD_HANDSHAKE_FAILURE;
-			}
-		
-		/* Anytime the server *has* sent an opaque PRF input, we need to check
-		 * that we have a client opaque PRF input of the same size. */
-		if (s->s3->client_opaque_prf_input == NULL ||
-		    s->s3->client_opaque_prf_input_len != s->s3->server_opaque_prf_input_len)
-			{
-			ret = SSL_TLSEXT_ERR_ALERT_FATAL;
-			al = SSL_AD_ILLEGAL_PARAMETER;
-			}
-		}
-#endif
 
 	/* If we've requested certificate status and we wont get one
  	 * tell the callback
