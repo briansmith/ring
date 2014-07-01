@@ -254,6 +254,14 @@ void ERR_print_errors_cb(ERR_print_errors_callback_t callback, void *ctx);
 void ERR_clear_error(void);
 
 
+/* Custom errors. */
+
+/* ERR_get_next_error_library returns a value suitable for passing as the
+ * |library| argument to |ERR_put_error|. This is intended for code that wishes
+ * to push its own, non-standard errors to the error queue. */
+int ERR_get_next_error_library();
+
+
 /* Private functions. */
 
 /* ERR_clear_system_error clears the system's error value (i.e. errno). */
@@ -467,6 +475,11 @@ struct ERR_FNS_st {
   /* get_state returns the ERR_STATE for the current thread. This function
    * never returns NULL. */
   ERR_STATE *(*get_state)(void);
+
+  /* get_next_library returns a unique value suitable for passing as the
+   * |library| to error calls. It will be distinct from all built-in library
+   * values. */
+  int (*get_next_library)(void);
 };
 
 /* OPENSSL_DECLARE_ERROR_REASON is used by util/make_errors.h (which generates

@@ -125,6 +125,9 @@ static LHASH_OF(ERR_STATE) *state_hash = NULL;
  * function / reason. */
 static LHASH_OF(ERR_STRING_DATA) *error_hash = NULL;
 
+/* global_next_library contains the next custom library value to return. */
+static int global_next_library = ERR_NUM_LIBS;
+
 /* err_string_data_hash is an lhash hash function for ERR_STRING_DATA. */
 static uint32_t err_string_data_hash(const ERR_STRING_DATA *a) {
   return OPENSSL_hash32(&a->error, sizeof(a->error));
@@ -271,10 +274,21 @@ static void err_shutdown(void) {
   CRYPTO_w_unlock(CRYPTO_LOCK_ERR);
 }
 
+static int err_get_next_library(void) {
+  int ret;
+
+  CRYPTO_w_lock(CRYPTO_LOCK_ERR);
+  ret = global_next_library++;
+  CRYPTO_w_unlock(CRYPTO_LOCK_ERR);
+
+  return ret;
+}
+
 const struct ERR_FNS_st openssl_err_default_impl = {
   err_shutdown,
   err_get_item,
   err_set_item,
   err_del_item,
   err_get_state,
+  err_get_next_library,
 };

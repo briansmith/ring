@@ -271,6 +271,11 @@ void ERR_clear_error(void) {
   state->top = state->bottom = 0;
 }
 
+int ERR_get_next_error_library() {
+  err_fns_check();
+  return ERRFN(get_next_library)();
+}
+
 void ERR_clear_system_error(void) {
   errno = 0;
 }
