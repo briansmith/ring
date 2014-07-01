@@ -313,15 +313,15 @@ int ssl_parse_clienthello_use_srtp_ext(SSL *s, unsigned char *d, int len,int *al
         int mki_len;
 	int i,j;
 	int id;
-	int ret;
+	int ret = 1;
 
          /* Length value + the MKI length */
         if(len < 3)
 		{            
 		OPENSSL_PUT_ERROR(SSL, ssl_parse_clienthello_use_srtp_ext, SSL_R_BAD_SRTP_PROTECTION_PROFILE_LIST);
 		*al=SSL_AD_DECODE_ERROR;
-		return 1;
-                }
+		goto done;
+		}
 
         /* Pull off the length of the cipher suite list */
         n2s(d, ct);
@@ -332,7 +332,7 @@ int ssl_parse_clienthello_use_srtp_ext(SSL *s, unsigned char *d, int len,int *al
 		{
 		OPENSSL_PUT_ERROR(SSL, ssl_parse_clienthello_use_srtp_ext, SSL_R_BAD_SRTP_PROTECTION_PROFILE_LIST);
 		*al=SSL_AD_DECODE_ERROR;
-		return 1;
+		goto done;
 		}
         
         /* Check that lengths are consistent */
@@ -340,7 +340,7 @@ int ssl_parse_clienthello_use_srtp_ext(SSL *s, unsigned char *d, int len,int *al
 		{
 		OPENSSL_PUT_ERROR(SSL, ssl_parse_clienthello_use_srtp_ext, SSL_R_BAD_SRTP_PROTECTION_PROFILE_LIST);
 		*al=SSL_AD_DECODE_ERROR;
-		return 1;
+		goto done;
 		}
 
         
@@ -370,7 +370,7 @@ int ssl_parse_clienthello_use_srtp_ext(SSL *s, unsigned char *d, int len,int *al
 		{
 		OPENSSL_PUT_ERROR(SSL, ssl_parse_clienthello_use_srtp_ext, SSL_R_BAD_SRTP_MKI_VALUE);
 		*al=SSL_AD_DECODE_ERROR;
-		return 1;
+		goto done;
 		}
 
 	srvr=SSL_get_srtp_profiles(s);
