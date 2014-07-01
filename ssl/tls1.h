@@ -243,7 +243,7 @@ extern "C" {
 /* ExtensionType value from RFC4507 */
 #define TLSEXT_TYPE_session_ticket		35
 
-/* Temporary extension type */
+/* ExtensionType value from RFC5746 */
 #define TLSEXT_TYPE_renegotiate                 0xff01
 
 #ifndef OPENSSL_NO_NEXTPROTONEG
