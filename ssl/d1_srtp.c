@@ -453,7 +453,7 @@ int ssl_parse_serverhello_use_srtp_ext(SSL *s, CBS *cbs, int *out_alert)
 		{
 		OPENSSL_PUT_ERROR(SSL, ssl_parse_serverhello_use_srtp_ext, SSL_R_BAD_SRTP_PROTECTION_PROFILE_LIST);
 		*out_alert = SSL_AD_DECODE_ERROR;
-		return 1;
+		return 0;
 		}
 
 	if (CBS_len(&srtp_mki) != 0)
@@ -461,7 +461,7 @@ int ssl_parse_serverhello_use_srtp_ext(SSL *s, CBS *cbs, int *out_alert)
 		/* Must be no MKI, since we never offer one. */
 		OPENSSL_PUT_ERROR(SSL, ssl_parse_serverhello_use_srtp_ext, SSL_R_BAD_SRTP_MKI_VALUE);
 		*out_alert = SSL_AD_ILLEGAL_PARAMETER;
-		return 1;
+		return 0;
 		}
 
 	clnt=SSL_get_srtp_profiles(s);
@@ -471,7 +471,7 @@ int ssl_parse_serverhello_use_srtp_ext(SSL *s, CBS *cbs, int *out_alert)
 		{
 		OPENSSL_PUT_ERROR(SSL, ssl_parse_serverhello_use_srtp_ext, SSL_R_NO_SRTP_PROFILES);
 		*out_alert = SSL_AD_DECODE_ERROR;
-		return 1;
+		return 0;
 		}
     
 	/* Check to see if the server gave us something we support
@@ -485,13 +485,13 @@ int ssl_parse_serverhello_use_srtp_ext(SSL *s, CBS *cbs, int *out_alert)
 			{
 			s->srtp_profile=prof;
 			*out_alert = 0;
-			return 0;
+			return 1;
 			}
 		}
 
 	OPENSSL_PUT_ERROR(SSL, ssl_parse_serverhello_use_srtp_ext, SSL_R_BAD_SRTP_PROTECTION_PROFILE_LIST);
 	*out_alert = SSL_AD_ILLEGAL_PARAMETER;
-	return 1;
+	return 0;
 	}
 
 
