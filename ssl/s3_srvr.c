@@ -966,7 +966,9 @@ int ssl3_get_client_hello(SSL *s)
 				}
 			}
 		s->state = SSL3_ST_SR_CLNT_HELLO_D;
+		break;
 	default:
+		OPENSSL_PUT_ERROR(SSL, ssl3_get_client_hello, SSL_R_UNKNOWN_STATE);
 		return -1;
 	}
 
