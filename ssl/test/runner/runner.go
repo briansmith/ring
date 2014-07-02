@@ -135,6 +135,14 @@ var testCases = []testCase{
 		},
 		flags: []string{"-fallback-scsv"},
 	},
+	{
+		testType: serverTest,
+		name: "ServerNameExtension",
+		config: Config{
+			ServerName: "example.com",
+		},
+		flags: []string{"-expect-server-name", "example.com"},
+	},
 }
 
 func doExchange(tlsConn *Conn, messageLen int) error {

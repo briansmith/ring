@@ -74,6 +74,7 @@ err:
 
 int main(int argc, char **argv) {
   int i, is_server, ret;
+  const char *expected_server_name = NULL;
 
   if (argc < 2) {
     fprintf(stderr, "Usage: %s (client|server) [flags...]\n", argv[0]);
@@ -120,6 +121,13 @@ int main(int argc, char **argv) {
         BIO_print_errors_fp(stdout);
         return 1;
       }
+    } else if (strcmp(argv[i], "-expect-server-name") == 0) {
+      i++;
+      if (i >= argc) {
+        fprintf(stderr, "Missing parameter\n");
+        return 1;
+      }
+      expected_server_name = argv[i];
     } else {
       fprintf(stderr, "Unknown argument: %s\n", argv[i]);
       return 1;
@@ -135,6 +143,16 @@ int main(int argc, char **argv) {
     SSL_free(ssl);
     BIO_print_errors_fp(stdout);
     return 2;
+  }
+
+  if (expected_server_name) {
+    const char *server_name =
+        SSL_get_servername(ssl, TLSEXT_NAMETYPE_host_name);
+    if (strcmp(server_name, expected_server_name) != 0) {
+      fprintf(stderr, "servername mismatch (got %s; want %s)\n",
+              server_name, expected_server_name);
+      return 2;
+    }
   }
 
   for (;;) {
