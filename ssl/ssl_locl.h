@@ -1172,13 +1172,11 @@ int ssl3_send_client_key_exchange(SSL *s);
 int ssl3_get_key_exchange(SSL *s);
 int ssl3_get_server_certificate(SSL *s);
 int ssl3_check_cert_and_algorithm(SSL *s);
-#ifndef OPENSSL_NO_TLSEXT
 int ssl3_check_finished(SSL *s);
 # ifndef OPENSSL_NO_NEXTPROTONEG
 int ssl3_send_next_proto(SSL *s);
 int ssl3_send_channel_id(SSL *s);
 # endif
-#endif
 
 int dtls1_client_hello(SSL *s);
 
@@ -1259,7 +1257,6 @@ int tls1_set_curves_list(unsigned char **pext, size_t *pextlen,
 int tls1_check_ec_tmp_key(SSL *s, unsigned long id);
 #endif /* OPENSSL_NO_EC */
 
-#ifndef OPENSSL_NO_TLSEXT
 int tls1_shared_list(SSL *s,
 			const unsigned char *l1, size_t l1len,
 			const unsigned char *l2, size_t l2len,
@@ -1294,7 +1291,6 @@ int tls1_check_chain(SSL *s, X509 *x, EVP_PKEY *pk, STACK_OF(X509) *chain,
 								int idx);
 void tls1_set_cert_validity(SSL *s);
 
-#endif
 
 int ssl3_can_cutthrough(const SSL *s);
 int ssl_get_max_version(const SSL *s);

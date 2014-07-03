@@ -286,13 +286,11 @@ int ssl3_connect(SSL *s)
 			if (s->hit)
 				{
 				s->state=SSL3_ST_CR_FINISHED_A;
-#ifndef OPENSSL_NO_TLSEXT
 				if (s->tlsext_ticket_expected)
 					{
 					/* receive renewed session ticket */
 					s->state=SSL3_ST_CR_SESSION_TICKET_A;
 					}
-#endif
 				}
 			else
 				{
@@ -303,7 +301,6 @@ int ssl3_connect(SSL *s)
 
 		case SSL3_ST_CR_CERT_A:
 		case SSL3_ST_CR_CERT_B:
-#ifndef OPENSSL_NO_TLSEXT
 			ret=ssl3_check_finished(s);
 			if (ret <= 0) goto end;
 			if (ret == 2)
@@ -316,7 +313,6 @@ int ssl3_connect(SSL *s)
 				s->init_num=0;
 				break;
 				}
-#endif
 			/* Check if it is anon DH/ECDH */
 			/* or non-RSA PSK */
 			if (!(s->s3->tmp.new_cipher->algorithm_auth & SSL_aNULL) &&
@@ -325,7 +321,6 @@ int ssl3_connect(SSL *s)
 				{
 				ret=ssl3_get_server_certificate(s);
 				if (ret <= 0) goto end;
-#ifndef OPENSSL_NO_TLSEXT
 				if (s->tlsext_status_expected)
 					s->state=SSL3_ST_CR_CERT_STATUS_A;
 				else
@@ -336,13 +331,6 @@ int ssl3_connect(SSL *s)
 				skip = 1;
 				s->state=SSL3_ST_CR_KEY_EXCH_A;
 				}
-#else
-				}
-			else
-				skip=1;
-
-			s->state=SSL3_ST_CR_KEY_EXCH_A;
-#endif
 			s->init_num=0;
 			break;
 
@@ -441,14 +429,12 @@ int ssl3_connect(SSL *s)
 			if (ret <= 0) goto end;
 
  			s->state=SSL3_ST_CW_FINISHED_A;
-#if !defined(OPENSSL_NO_TLSEXT)
 			if (s->s3->tlsext_channel_id_valid)
 				s->state=SSL3_ST_CW_CHANNEL_ID_A;
 # if !defined(OPENSSL_NO_NEXTPROTONEG)
 			if (s->s3->next_proto_neg_seen)
 				s->state=SSL3_ST_CW_NEXT_PROTO_A;
 # endif
-#endif
 			s->init_num=0;
 
 			s->session->cipher=s->s3->tmp.new_cipher;
@@ -467,7 +453,7 @@ int ssl3_connect(SSL *s)
 
 			break;
 
-#if !defined(OPENSSL_NO_TLSEXT) && !defined(OPENSSL_NO_NEXTPROTONEG)
+#if !defined(OPENSSL_NO_NEXTPROTONEG)
 		case SSL3_ST_CW_NEXT_PROTO_A:
 		case SSL3_ST_CW_NEXT_PROTO_B:
 			ret=ssl3_send_next_proto(s);
@@ -479,14 +465,12 @@ int ssl3_connect(SSL *s)
 			break;
 #endif
 
-#if !defined(OPENSSL_NO_TLSEXT)
 		case SSL3_ST_CW_CHANNEL_ID_A:
 		case SSL3_ST_CW_CHANNEL_ID_B:
 			ret=ssl3_send_channel_id(s);
 			if (ret <= 0) goto end;
 			s->state=SSL3_ST_CW_FINISHED_A;
 			break;
-#endif
 
 		case SSL3_ST_CW_FINISHED_A:
 		case SSL3_ST_CW_FINISHED_B:
@@ -542,19 +526,16 @@ int ssl3_connect(SSL *s)
 					}
 				else
 					{
-#ifndef OPENSSL_NO_TLSEXT
 					/* Allow NewSessionTicket if ticket expected */
 					if (s->tlsext_ticket_expected)
 						s->s3->tmp.next_state=SSL3_ST_CR_SESSION_TICKET_A;
 					else
-#endif
 						s->s3->tmp.next_state=SSL3_ST_CR_FINISHED_A;
 					}
 				}
 			s->init_num=0;
 			break;
 
-#ifndef OPENSSL_NO_TLSEXT
 		case SSL3_ST_CR_SESSION_TICKET_A:
 		case SSL3_ST_CR_SESSION_TICKET_B:
 			ret=ssl3_get_new_session_ticket(s);
@@ -570,7 +551,6 @@ int ssl3_connect(SSL *s)
 			s->state=SSL3_ST_CR_KEY_EXCH_A;
 			s->init_num=0;
 		break;
-#endif
 
 		case SSL3_ST_CR_FINISHED_A:
 		case SSL3_ST_CR_FINISHED_B:
@@ -599,12 +579,10 @@ int ssl3_connect(SSL *s)
 			break;
 
 		case SSL3_ST_CUTTHROUGH_COMPLETE:
-#ifndef OPENSSL_NO_TLSEXT
 			/* Allow NewSessionTicket if ticket expected */
 			if (s->tlsext_ticket_expected)
 				s->state=SSL3_ST_CR_SESSION_TICKET_A;
 			else
-#endif
 				s->state=SSL3_ST_CR_FINISHED_A;
 
 			/* SSL_write() will take care of flushing buffered data if
@@ -698,11 +676,7 @@ int ssl3_client_hello(SSL *s)
 		SSL_SESSION *sess = s->session;
 		if ((sess == NULL) ||
 			(sess->ssl_version != s->version) ||
-#ifdef OPENSSL_NO_TLSEXT
-			!sess->session_id_length ||
-#else
 			(!sess->session_id_length && !sess->tlsext_tick) ||
-#endif
 			(sess->not_resumable))
 			{
 			if (!ssl_get_new_session(s,0))
@@ -869,7 +843,6 @@ int ssl3_client_hello(SSL *s)
 		*(p++)=1;
 		*(p++)=0; /* Add the NULL method */
 
-#ifndef OPENSSL_NO_TLSEXT
 		/* TLS extensions*/
 		if (ssl_prepare_clienthello_tlsext(s) <= 0)
 			{
@@ -881,7 +854,6 @@ int ssl3_client_hello(SSL *s)
 			OPENSSL_PUT_ERROR(SSL, ssl3_client_hello, ERR_R_INTERNAL_ERROR);
 			goto err;
 			}
-#endif
 		
 		l= p-d;
 		ssl_set_handshake_header(s, SSL3_MT_CLIENT_HELLO, l);
@@ -998,7 +970,6 @@ int ssl3_get_server_hello(SSL *s)
 		goto f_err;
 		}
 
-#ifndef OPENSSL_NO_TLSEXT
 	/* check if we want to resume the session based on external pre-shared secret */
 	if (s->version >= TLS1_VERSION && s->tls_session_secret_cb)
 		{
@@ -1014,7 +985,6 @@ int ssl3_get_server_hello(SSL *s)
 	    		s->s3->flags |= SSL3_FLAGS_CCS_OK;
 			}
 		}
-#endif /* OPENSSL_NO_TLSEXT */
 
 	if (j != 0 && j == s->session->session_id_length
 	    && memcmp(p,s->session->session_id,j) == 0)
@@ -1111,14 +1081,12 @@ int ssl3_get_server_hello(SSL *s)
 
         /* TODO(fork): Port the rest of this function to CBS. */
 	CBS_init(&cbs, p, d + n - p);
-#ifndef OPENSSL_NO_TLSEXT
 	/* TLS extensions*/
 	if (!ssl_parse_serverhello_tlsext(s, &cbs))
 		{
 		OPENSSL_PUT_ERROR(SSL, ssl3_get_server_hello, SSL_R_PARSE_TLSEXT);
 		goto err; 
 		}
-#endif
 
         /* There should be nothing left over in the record. */
 	if (CBS_len(&cbs) != 0)
@@ -1991,7 +1959,6 @@ err:
 	return(ret);
 	}
 
-#ifndef OPENSSL_NO_TLSEXT
 int ssl3_get_new_session_ticket(SSL *s)
 	{
 	int ok,al,ret=0, ticklen;
@@ -2148,7 +2115,6 @@ f_err:
 	ssl3_send_alert(s,SSL3_AL_FATAL,al);
 	return(-1);
 	}
-#endif
 
 int ssl3_get_server_done(SSL *s)
 	{
@@ -3095,7 +3061,6 @@ err:
 	return(0);
 	}
 
-#if !defined(OPENSSL_NO_TLSEXT)
 # if !defined(OPENSSL_NO_NEXTPROTONEG)
 int ssl3_send_next_proto(SSL *s)
 	{
@@ -3249,14 +3214,12 @@ err:
 
 	return ret;
 	}
-#endif  /* !OPENSSL_NO_TLSEXT */
 
 /* Check to see if handshake is full or resumed. Usually this is just a
  * case of checking to see if a cache hit has occurred. In the case of
  * session tickets we have to check the next message to be sure.
  */
 
-#ifndef OPENSSL_NO_TLSEXT
 int ssl3_check_finished(SSL *s)
 	{
 	int ok;
@@ -3280,7 +3243,6 @@ int ssl3_check_finished(SSL *s)
 
 	return 1;
 	}
-#endif
 
 int ssl_do_client_cert_cb(SSL *s, X509 **px509, EVP_PKEY **ppkey)
 	{

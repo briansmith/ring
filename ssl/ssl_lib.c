@@ -333,7 +333,6 @@ SSL *SSL_new(SSL_CTX *ctx)
 
 	CRYPTO_add(&ctx->references,1,CRYPTO_LOCK_SSL_CTX);
 	s->ctx=ctx;
-#ifndef OPENSSL_NO_TLSEXT
 	s->tlsext_debug_cb = 0;
 	s->tlsext_debug_arg = NULL;
 	s->tlsext_ticket_expected = 0;
@@ -381,7 +380,6 @@ SSL *SSL_new(SSL_CTX *ctx)
 		       s->ctx->alpn_client_proto_list_len);
 		s->alpn_client_proto_list_len = s->ctx->alpn_client_proto_list_len;
 		}
-#endif
 
 	s->verify_result=X509_V_OK;
 
@@ -672,7 +670,6 @@ void SSL_free(SSL *s)
 	if (s->cert != NULL) ssl_cert_free(s->cert);
 	/* Free up if allocated */
 
-#ifndef OPENSSL_NO_TLSEXT
 	if (s->tlsext_hostname)
 		OPENSSL_free(s->tlsext_hostname);
 	if (s->initial_ctx) SSL_CTX_free(s->initial_ctx);
@@ -694,7 +691,6 @@ void SSL_free(SSL *s)
 		OPENSSL_free(s->alpn_client_proto_list);
 	if (s->tlsext_channel_id_private)
 		EVP_PKEY_free(s->tlsext_channel_id_private);
-#endif
 
 #ifndef OPENSSL_NO_PSK
 	if (s->psk_identity_hint)
@@ -708,7 +704,7 @@ void SSL_free(SSL *s)
 
 	if (s->ctx) SSL_CTX_free(s->ctx);
 
-#if !defined(OPENSSL_NO_TLSEXT) && !defined(OPENSSL_NO_NEXTPROTONEG)
+#if !defined(OPENSSL_NO_NEXTPROTONEG)
 	if (s->next_proto_negotiated)
 		OPENSSL_free(s->next_proto_negotiated);
 #endif
@@ -1699,7 +1695,6 @@ err:
 	}
 
 
-#ifndef OPENSSL_NO_TLSEXT
 /** return a servername extension value if provided in Client Hello, or NULL.
  * So far, only host_name types are defined (RFC 3546).
  */
@@ -1909,7 +1904,6 @@ void SSL_get0_alpn_selected(const SSL *ssl, const unsigned char **data,
 	else
 		*len = ssl->s3->alpn_selected_len;
 	}
-#endif /* !OPENSSL_NO_TLSEXT */
 
 int SSL_export_keying_material(SSL *s, unsigned char *out, size_t olen,
 	const char *label, size_t llen, const unsigned char *p, size_t plen,
@@ -2059,7 +2053,6 @@ SSL_CTX *SSL_CTX_new(const SSL_METHOD *meth)
 
 	ret->max_send_fragment = SSL3_RT_MAX_PLAIN_LENGTH;
 
-#ifndef OPENSSL_NO_TLSEXT
 	ret->tlsext_servername_callback = 0;
 	ret->tlsext_servername_arg = NULL;
 	/* Setup RFC4507 ticket keys */
@@ -2075,7 +2068,6 @@ SSL_CTX *SSL_CTX_new(const SSL_METHOD *meth)
 	ret->next_protos_advertised_cb = 0;
 	ret->next_proto_select_cb = 0;
 # endif
-#endif
 #ifndef OPENSSL_NO_PSK
 	ret->psk_identity_hint=NULL;
 	ret->psk_client_callback=NULL;
@@ -2222,7 +2214,6 @@ void SSL_CTX_free(SSL_CTX *a)
 	if (a->rbuf_freelist)
 		ssl_buf_freelist_free(a->rbuf_freelist);
 #endif
-#ifndef OPENSSL_NO_TLSEXT
 # ifndef OPENSSL_NO_EC
 	if (a->tlsext_ecpointformatlist)
 		OPENSSL_free(a->tlsext_ecpointformatlist);
@@ -2231,12 +2222,9 @@ void SSL_CTX_free(SSL_CTX *a)
 # endif /* OPENSSL_NO_EC */
 	if (a->alpn_client_proto_list != NULL)
 		OPENSSL_free(a->alpn_client_proto_list);
-#endif
 
-#ifndef OPENSSL_NO_TLSEXT
 	if (a->tlsext_channel_id_private)
 		EVP_PKEY_free(a->tlsext_channel_id_private);
-#endif
 
 	OPENSSL_free(a);
 	}
@@ -3062,10 +3050,8 @@ SSL_CTX *SSL_set_SSL_CTX(SSL *ssl, SSL_CTX* ctx)
 	{
 	if (ssl->ctx == ctx)
 		return ssl->ctx;
-#ifndef OPENSSL_NO_TLSEXT
 	if (ctx == NULL)
 		ctx = ssl->initial_ctx;
-#endif
 	if (ssl->cert != NULL)
 		ssl_cert_free(ssl->cert);
 	ssl->cert = ssl_cert_dup(ctx->cert);

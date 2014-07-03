@@ -513,7 +513,6 @@ struct ssl_session_st
 	/* These are used to make removal of session-ids more
 	 * efficient and to implement a maximum cache size. */
 	struct ssl_session_st *prev,*next;
-#ifndef OPENSSL_NO_TLSEXT
 	char *tlsext_hostname;
 #ifndef OPENSSL_NO_EC
 	size_t tlsext_ecpointformatlist_length;
@@ -525,7 +524,6 @@ struct ssl_session_st
 	unsigned char *tlsext_tick;	/* Session ticket */
 	size_t tlsext_ticklen;		/* Session ticket length */
 	long tlsext_tick_lifetime_hint;	/* Session lifetime hint in seconds */
-#endif
 	char peer_sha256_valid;		/* Non-zero if peer_sha256 is valid */
 	unsigned char peer_sha256[SHA256_DIGEST_LENGTH];  /* SHA256 of peer certificate */
 
@@ -1034,7 +1032,6 @@ struct ssl_ctx_st
 	ENGINE *client_cert_engine;
 #endif
 
-#ifndef OPENSSL_NO_TLSEXT
 	/* TLS extensions servername callback */
 	int (*tlsext_servername_callback)(SSL*, int *, void *);
 	void *tlsext_servername_arg;
@@ -1052,7 +1049,6 @@ struct ssl_ctx_st
 	/* Callback for status request */
 	int (*tlsext_status_cb)(SSL *ssl, void *arg);
 	void *tlsext_status_arg;
-#endif
 
 #ifndef OPENSSL_NO_PSK
 	char *psk_identity_hint;
@@ -1074,7 +1070,6 @@ struct ssl_ctx_st
 	char retain_only_sha256_of_client_certs;
 #endif
 
-#ifndef OPENSSL_NO_TLSEXT
 
 # ifndef OPENSSL_NO_NEXTPROTONEG
 	/* Next protocol negotiation information */
@@ -1128,7 +1123,6 @@ struct ssl_ctx_st
 	size_t tlsext_ellipticcurvelist_length;
 	unsigned char *tlsext_ellipticcurvelist;
 # endif /* OPENSSL_NO_EC */
-#endif /* OPENSSL_NO_TLSEXT */
 
 	/* If true, a client will advertise the Channel ID extension and a
 	 * server will echo it. */
@@ -1223,11 +1217,9 @@ void SSL_get0_next_proto_negotiated(const SSL *s,
 				    const unsigned char **data, unsigned *len);
 #endif
 
-#ifndef OPENSSL_NO_TLSEXT
 int SSL_select_next_proto(unsigned char **out, unsigned char *outlen,
 			  const unsigned char *in, unsigned int inlen,
 			  const unsigned char *client, unsigned int client_len);
-#endif
 
 #define OPENSSL_NPN_UNSUPPORTED	0
 #define OPENSSL_NPN_NEGOTIATED	1
@@ -1456,7 +1448,6 @@ struct ssl_st
 	int client_version;	/* what was passed, used for
 				 * SSLv3/TLS rollback check */
 	unsigned int max_send_fragment;
-#ifndef OPENSSL_NO_TLSEXT
 	/* TLS extension debug callback */
 	void (*tlsext_debug_cb)(SSL *s, int client_server, int type,
 					unsigned char *data, int len,
@@ -1530,9 +1521,6 @@ struct ssl_st
 	 * format. */
 	unsigned char* alpn_client_proto_list;
 	unsigned alpn_client_proto_list_len;
-#else
-#define session_ctx ctx
-#endif /* OPENSSL_NO_TLSEXT */
 
 	int renegotiate;/* 1 if we are renegotiating.
 	                 * 2 if we are a server and are inside a handshake
@@ -1761,7 +1749,6 @@ DECLARE_PEM_rw(SSL_SESSION, SSL_SESSION)
 #define SSL_CTRL_SET_MAX_SEND_FRAGMENT		52
 
 /* see tls1.h for macros based on these */
-#ifndef OPENSSL_NO_TLSEXT
 #define SSL_CTRL_SET_TLSEXT_SERVERNAME_CB	53
 #define SSL_CTRL_SET_TLSEXT_SERVERNAME_ARG	54
 #define SSL_CTRL_SET_TLSEXT_HOSTNAME		55
@@ -1789,7 +1776,6 @@ DECLARE_PEM_rw(SSL_SESSION, SSL_SESSION)
 #define SSL_CTRL_SET_TLS_EXT_SRP_USERNAME		79
 #define SSL_CTRL_SET_TLS_EXT_SRP_STRENGTH		80
 #define SSL_CTRL_SET_TLS_EXT_SRP_PASSWORD		81
-#endif /* OPENSSL_NO_TLSEXT */
 
 #define DTLS_CTRL_GET_TIMEOUT		73
 #define DTLS_CTRL_HANDLE_TIMEOUT	74

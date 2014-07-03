@@ -297,7 +297,6 @@ extern "C" {
 #define TLSEXT_curve_P_256				23
 #define TLSEXT_curve_P_384				24
 
-#ifndef OPENSSL_NO_TLSEXT
 
 #define TLSEXT_MAXLEN_host_name 255
 
@@ -379,7 +378,6 @@ SSL_CTX_ctrl(ssl,SSL_CTRL_SET_TLSEXT_STATUS_REQ_CB_ARG,0, (void *)arg)
 #define SSL_CTX_set_tlsext_ticket_key_cb(ssl, cb) \
 SSL_CTX_callback_ctrl(ssl,SSL_CTRL_SET_TLSEXT_TICKET_KEY_CB,(void (*)(void))cb)
 
-#endif /* OPENSSL_NO_TLSEXT */
 
 /* PSK ciphersuites from 4279 */
 #define TLS1_CK_PSK_WITH_RC4_128_SHA                    0x0300008A

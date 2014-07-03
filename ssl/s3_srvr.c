@@ -337,7 +337,6 @@ int ssl3_accept(SSL *s)
 		case SSL3_ST_SW_SRVR_HELLO_B:
 			ret=ssl3_send_server_hello(s);
 			if (ret <= 0) goto end;
-#ifndef OPENSSL_NO_TLSEXT
 			if (s->hit)
 				{
 				if (s->tlsext_ticket_expected)
@@ -345,10 +344,6 @@ int ssl3_accept(SSL *s)
 				else
 					s->state=SSL3_ST_SW_CHANGE_A;
 				}
-#else
-			if (s->hit)
-				s->state=SSL3_ST_SW_CHANGE_A;
-#endif
 			else
 				s->state = SSL3_ST_SW_CERT_A;
 			s->init_num = 0;
@@ -366,7 +361,6 @@ int ssl3_accept(SSL *s)
 				{
 				ret=ssl3_send_server_certificate(s);
 				if (ret <= 0) goto end;
-#ifndef OPENSSL_NO_TLSEXT
 				if (s->tlsext_status_expected)
 					s->state=SSL3_ST_SW_CERT_STATUS_A;
 				else
@@ -377,13 +371,6 @@ int ssl3_accept(SSL *s)
 				skip = 1;
 				s->state=SSL3_ST_SW_KEY_EXCH_A;
 				}
-#else
-				}
-			else
-				skip=1;
-
-			s->state=SSL3_ST_SW_KEY_EXCH_A;
-#endif
 			s->init_num=0;
 			break;
 
@@ -623,12 +610,10 @@ int ssl3_accept(SSL *s)
 		case SSL3_ST_SR_POST_CLIENT_CERT: {
 			char next_proto_neg = 0;
 			char channel_id = 0;
-#if !defined(OPENSSL_NO_TLSEXT)
 # if !defined(OPENSSL_NO_NEXTPROTONEG)
 			next_proto_neg = s->s3->next_proto_neg_seen;
 # endif
 			channel_id = s->s3->tlsext_channel_id_valid;
-#endif
 
 			s->s3->flags |= SSL3_FLAGS_CCS_OK;
 			if (next_proto_neg)
@@ -640,7 +625,7 @@ int ssl3_accept(SSL *s)
 			break;
 		}
 
-#if !defined(OPENSSL_NO_TLSEXT) && !defined(OPENSSL_NO_NEXTPROTONEG)
+#if !defined(OPENSSL_NO_NEXTPROTONEG)
 		case SSL3_ST_SR_NEXT_PROTO_A:
 		case SSL3_ST_SR_NEXT_PROTO_B:
 			ret=ssl3_get_next_proto(s);
@@ -653,7 +638,6 @@ int ssl3_accept(SSL *s)
 			break;
 #endif
 
-#if !defined(OPENSSL_NO_TLSEXT)
 		case SSL3_ST_SR_CHANNEL_ID_A:
 		case SSL3_ST_SR_CHANNEL_ID_B:
 			ret=ssl3_get_channel_id(s);
@@ -661,7 +645,6 @@ int ssl3_accept(SSL *s)
 			s->init_num = 0;
 			s->state=SSL3_ST_SR_FINISHED_A;
 			break;
-#endif
 
 		case SSL3_ST_SR_FINISHED_A:
 		case SSL3_ST_SR_FINISHED_B:
@@ -671,10 +654,8 @@ int ssl3_accept(SSL *s)
 			if (ret <= 0) goto end;
 			if (s->hit)
 				s->state=SSL_ST_OK;
-#ifndef OPENSSL_NO_TLSEXT
 			else if (s->tlsext_ticket_expected)
 				s->state=SSL3_ST_SW_SESSION_TICKET_A;
-#endif
 			else
 				s->state=SSL3_ST_SW_CHANGE_A;
 			/* If this is a full handshake with ChannelID then
@@ -689,7 +670,6 @@ int ssl3_accept(SSL *s)
 			s->init_num=0;
 			break;
 
-#ifndef OPENSSL_NO_TLSEXT
 		case SSL3_ST_SW_SESSION_TICKET_A:
 		case SSL3_ST_SW_SESSION_TICKET_B:
 			ret=ssl3_send_newsession_ticket(s);
@@ -705,7 +685,6 @@ int ssl3_accept(SSL *s)
 			s->state=SSL3_ST_SW_KEY_EXCH_A;
 			s->init_num=0;
 			break;
-#endif
 
 		case SSL3_ST_SW_CHANGE_A:
 		case SSL3_ST_SW_CHANGE_B:
@@ -1220,7 +1199,6 @@ int ssl3_get_client_hello(SSL *s)
 		}
 
 	CBS_init(&cbs, p, d + n - p);
-#ifndef OPENSSL_NO_TLSEXT
 	/* TLS extensions*/
 	if (s->version >= SSL3_VERSION)
 		{
@@ -1288,7 +1266,6 @@ int ssl3_get_client_hello(SSL *s)
 			s->cipher_list_by_id = sk_SSL_CIPHER_dup(s->session->ciphers);
 			}
 		}
-#endif /* !OPENSSL_NO_TLSEXT */
 
 	/* Given s->session->ciphers and SSL_get_ciphers, we must
 	 * pick a cipher */
@@ -1440,11 +1417,6 @@ int ssl3_send_server_hello(SSL *s)
 			}
 
 		buf=(unsigned char *)s->init_buf->data;
-#ifdef OPENSSL_NO_TLSEXT
-		p=s->s3->server_random;
-		if (ssl_fill_hello_random(s, 1, p, SSL3_RANDOM_SIZE) <= 0)
-			return -1;
-#endif
 		/* Do the message type and length last */
 		d=p= ssl_handshake_start(s);
 
@@ -1490,7 +1462,6 @@ int ssl3_send_server_hello(SSL *s)
 
 		/* put the compression method */
 			*(p++)=0;
-#ifndef OPENSSL_NO_TLSEXT
 		if (ssl_prepare_serverhello_tlsext(s) <= 0)
 			{
 			OPENSSL_PUT_ERROR(SSL, ssl3_send_server_hello, SSL_R_SERVERHELLO_TLSEXT);
@@ -1501,7 +1472,6 @@ int ssl3_send_server_hello(SSL *s)
 			OPENSSL_PUT_ERROR(SSL, ssl3_send_server_hello, ERR_R_INTERNAL_ERROR);
 			return -1;
 			}
-#endif
 		/* do the header */
 		l=(p-d);
 		ssl_set_handshake_header(s, SSL3_MT_SERVER_HELLO, l);
@@ -3058,7 +3028,6 @@ int ssl3_send_server_certificate(SSL *s)
 	return ssl_do_write(s);
 	}
 
-#ifndef OPENSSL_NO_TLSEXT
 /* send a new session ticket (not necessarily for a new session) */
 int ssl3_send_newsession_ticket(SSL *s)
 	{
@@ -3431,4 +3400,3 @@ err:
 	return ret;
 	}
 
-#endif

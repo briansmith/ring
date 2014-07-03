@@ -2681,11 +2681,9 @@ int ssl3_new(SSL *s)
 
 	s->s3=s3;
 
-#if !defined(OPENSSL_NO_TLSEXT)
 	s->tlsext_channel_id_enabled = s->ctx->tlsext_channel_id_enabled;
 	if (s->ctx->tlsext_channel_id_private)
 		s->tlsext_channel_id_private = EVP_PKEY_dup(s->ctx->tlsext_channel_id_private);
-#endif
 	s->method->ssl_clear(s);
 	return(1);
 err:
@@ -2717,10 +2715,8 @@ void ssl3_free(SSL *s)
 		BIO_free(s->s3->handshake_buffer);
 	}
 	if (s->s3->handshake_dgst) ssl3_free_digest_list(s);
-#ifndef OPENSSL_NO_TLSEXT
 	if (s->s3->alpn_selected)
 		OPENSSL_free(s->s3->alpn_selected);
-#endif
 
 	OPENSSL_cleanse(s->s3,sizeof *s->s3);
 	OPENSSL_free(s->s3);
@@ -2751,11 +2747,9 @@ void ssl3_clear(SSL *s)
 		s->s3->tmp.ecdh = NULL;
 		}
 #endif
-#ifndef OPENSSL_NO_TLSEXT
 #ifndef OPENSSL_NO_EC
 	s->s3->is_probably_safari = 0;
 #endif /* !OPENSSL_NO_EC */
-#endif /* !OPENSSL_NO_TLSEXT */
 
 	rp = s->s3->rbuf.buf;
 	wp = s->s3->wbuf.buf;
@@ -2770,13 +2764,11 @@ void ssl3_clear(SSL *s)
 		ssl3_free_digest_list(s);
 	}	
 
-#if !defined(OPENSSL_NO_TLSEXT)
 	if (s->s3->alpn_selected)
 		{
 		free(s->s3->alpn_selected);
 		s->s3->alpn_selected = NULL;
 		}
-#endif
 	memset(s->s3,0,sizeof *s->s3);
 	s->s3->rbuf.buf = rp;
 	s->s3->wbuf.buf = wp;
@@ -2793,7 +2785,7 @@ void ssl3_clear(SSL *s)
 	s->s3->in_read_app_data=0;
 	s->version=SSL3_VERSION;
 
-#if !defined(OPENSSL_NO_TLSEXT) && !defined(OPENSSL_NO_NEXTPROTONEG)
+#if !defined(OPENSSL_NO_NEXTPROTONEG)
 	if (s->next_proto_negotiated)
 		{
 		OPENSSL_free(s->next_proto_negotiated);
@@ -2802,9 +2794,7 @@ void ssl3_clear(SSL *s)
 		}
 #endif
 
-#if !defined(OPENSSL_NO_TLSEXT)
 	s->s3->tlsext_channel_id_valid = 0;
-#endif
 	}
 
 static int ssl3_set_req_cert_type(CERT *c, const unsigned char *p, size_t len);
@@ -2954,7 +2944,6 @@ long ssl3_ctrl(SSL *s, int cmd, long larg, void *parg)
 		}
 		break;
 #endif /* !OPENSSL_NO_ECDH */
-#ifndef OPENSSL_NO_TLSEXT
 	case SSL_CTRL_SET_TLSEXT_HOSTNAME:
  		if (larg == TLSEXT_NAMETYPE_host_name)
 			{
@@ -3024,7 +3013,6 @@ long ssl3_ctrl(SSL *s, int cmd, long larg, void *parg)
 		ret = 1;
 		break;
 
-#endif /* !OPENSSL_NO_TLSEXT */
 
 	case SSL_CTRL_CHAIN:
 		if (larg)
@@ -3263,12 +3251,10 @@ long ssl3_callback_ctrl(SSL *s, int cmd, void (*fp)(void))
 		}
 		break;
 #endif
-#ifndef OPENSSL_NO_TLSEXT
 	case SSL_CTRL_SET_TLSEXT_DEBUG_CB:
 		s->tlsext_debug_cb=(void (*)(SSL *,int ,int,
 					unsigned char *, int, void *))fp;
 		break;
-#endif
 	default:
 		break;
 		}
@@ -3400,7 +3386,6 @@ long ssl3_ctx_ctrl(SSL_CTX *ctx, int cmd, long larg, void *parg)
 		}
 		break;
 #endif /* !OPENSSL_NO_ECDH */
-#ifndef OPENSSL_NO_TLSEXT
 	case SSL_CTRL_SET_TLSEXT_SERVERNAME_ARG:
 		ctx->tlsext_servername_arg=parg;
 		break;
@@ -3463,7 +3448,6 @@ long ssl3_ctx_ctrl(SSL_CTX *ctx, int cmd, long larg, void *parg)
 	case SSL_CTRL_SET_CHAIN_CERT_STORE:
 		return ssl_cert_set_cert_store(ctx->cert, parg, 1, larg);
 
-#endif /* !OPENSSL_NO_TLSEXT */
 
 	/* A Thawte special :-) */
 	case SSL_CTRL_EXTRA_CHAIN_CERT:
@@ -3563,7 +3547,6 @@ long ssl3_ctx_callback_ctrl(SSL_CTX *ctx, int cmd, void (*fp)(void))
 		}
 		break;
 #endif
-#ifndef OPENSSL_NO_TLSEXT
 	case SSL_CTRL_SET_TLSEXT_SERVERNAME_CB:
 		ctx->tlsext_servername_callback=(int (*)(SSL *,int *,void *))fp;
 		break;
@@ -3579,7 +3562,6 @@ long ssl3_ctx_callback_ctrl(SSL_CTX *ctx, int cmd, void (*fp)(void))
 						HMAC_CTX *, int))fp;
 		break;
 
-#endif
 	default:
 		return(0);
 		}
@@ -3742,14 +3724,12 @@ SSL_CIPHER *ssl3_choose_cipher(SSL *s, STACK_OF(SSL_CIPHER) *clnt,
 #endif
 			}
 
-#ifndef OPENSSL_NO_TLSEXT
 #ifndef OPENSSL_NO_EC
 		/* if we are considering an ECC cipher suite that uses
 		 * an ephemeral EC key check it */
 		if (alg_k & SSL_kEECDH)
 			ok = ok && tls1_check_ec_tmp_key(s, c->id);
 #endif /* OPENSSL_NO_EC */
-#endif /* OPENSSL_NO_TLSEXT */
 
 		if (ok && sk_SSL_CIPHER_find(allow, &cipher_index, c))
 			{

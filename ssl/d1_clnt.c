@@ -298,7 +298,6 @@ int dtls1_connect(SSL *s)
 
 		case SSL3_ST_CR_CERT_A:
 		case SSL3_ST_CR_CERT_B:
-#ifndef OPENSSL_NO_TLSEXT
 			ret=ssl3_check_finished(s);
 			if (ret <= 0) goto end;
 			if (ret == 2)
@@ -311,14 +310,12 @@ int dtls1_connect(SSL *s)
 				s->init_num=0;
 				break;
 				}
-#endif
 			/* Check if it is anon DH or PSK */
 			if (!(s->s3->tmp.new_cipher->algorithm_auth & SSL_aNULL) &&
 			    !(s->s3->tmp.new_cipher->algorithm_mkey & SSL_kPSK))
 				{
 				ret=ssl3_get_server_certificate(s);
 				if (ret <= 0) goto end;
-#ifndef OPENSSL_NO_TLSEXT
 				if (s->tlsext_status_expected)
 					s->state=SSL3_ST_CR_CERT_STATUS_A;
 				else
@@ -329,13 +326,6 @@ int dtls1_connect(SSL *s)
 				skip = 1;
 				s->state=SSL3_ST_CR_KEY_EXCH_A;
 				}
-#else
-				}
-			else
-				skip=1;
-
-			s->state=SSL3_ST_CR_KEY_EXCH_A;
-#endif
 			s->init_num=0;
 			break;
 
@@ -474,19 +464,16 @@ int dtls1_connect(SSL *s)
 			else
 				{
 
-#ifndef OPENSSL_NO_TLSEXT
 				/* Allow NewSessionTicket if ticket expected */
 				if (s->tlsext_ticket_expected)
 					s->s3->tmp.next_state=SSL3_ST_CR_SESSION_TICKET_A;
 				else
-#endif
 				
 				s->s3->tmp.next_state=SSL3_ST_CR_FINISHED_A;
 				}
 			s->init_num=0;
 			break;
 
-#ifndef OPENSSL_NO_TLSEXT
 		case SSL3_ST_CR_SESSION_TICKET_A:
 		case SSL3_ST_CR_SESSION_TICKET_B:
 			ret=ssl3_get_new_session_ticket(s);
@@ -502,7 +489,6 @@ int dtls1_connect(SSL *s)
 			s->state=SSL3_ST_CR_KEY_EXCH_A;
 			s->init_num=0;
 		break;
-#endif
 
 		case SSL3_ST_CR_FINISHED_A:
 		case SSL3_ST_CR_FINISHED_B:

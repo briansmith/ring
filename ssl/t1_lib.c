@@ -117,13 +117,11 @@
 #include <openssl/rand.h>
 
 #include "ssl_locl.h"
-#ifndef OPENSSL_NO_TLSEXT
 static int tls_decrypt_ticket(SSL *s, const unsigned char *tick, int ticklen,
 				const unsigned char *sess_id, int sesslen,
 				SSL_SESSION **psess);
 static int ssl_check_clienthello_tlsext_early(SSL *s);
 int ssl_check_serverhello_tlsext(SSL *s);
-#endif
 
 SSL3_ENC_METHOD TLSv1_enc_data={
 	tls1_enc,
@@ -199,12 +197,10 @@ int tls1_new(SSL *s)
 
 void tls1_free(SSL *s)
 	{
-#ifndef OPENSSL_NO_TLSEXT
 	if (s->tlsext_session_ticket)
 		{
 		OPENSSL_free(s->tlsext_session_ticket);
 		}
-#endif /* OPENSSL_NO_TLSEXT */
 	ssl3_free(s);
 	}
 
@@ -984,7 +980,6 @@ static int tls1_check_cert_param(SSL *s, X509 *x, int set_ee_md)
 
 #endif /* OPENSSL_NO_EC */
 
-#ifndef OPENSSL_NO_TLSEXT
 
 /* List of supported signature algorithms and hashes. Should make this
  * customisable at some point, for now include everything we support.
@@ -3483,7 +3478,6 @@ int SSL_get_shared_sigalgs(SSL *s, int idx,
 	return s->cert->shared_sigalgslen;
 	}
 	
-#if !defined(OPENSSL_NO_TLSEXT)
 /* tls1_channel_id_hash calculates the signed data for a Channel ID on the given
  * SSL connection and writes it to |md|. */
 int
@@ -3525,7 +3519,6 @@ tls1_channel_id_hash(EVP_MD_CTX *md, SSL *s)
 
 	return 1;
 	}
-#endif
 
 /* tls1_record_handshake_hashes_for_channel_id records the current handshake
  * hashes in |s->session| so that Channel ID resumptions can sign that data. */
@@ -4011,4 +4004,3 @@ int SSL_check_chain(SSL *s, X509 *x, EVP_PKEY *pk, STACK_OF(X509) *chain)
 	return tls1_check_chain(s, x, pk, chain, -1);
 	}
 
-#endif
