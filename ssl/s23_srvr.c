@@ -423,14 +423,6 @@ int ssl23_get_client_hello(SSL *s)
 		goto err;
 		}
 
-#ifdef OPENSSL_FIPS
-	if (FIPS_mode() && (s->version < TLS1_VERSION))
-		{
-		OPENSSL_PUT_ERROR(SSL, ssl23_get_client_hello, SSL_R_ONLY_TLS_ALLOWED_IN_FIPS_MODE);
-		goto err;
-		}
-#endif
-
 	if (s->state == SSL23_ST_SR_CLNT_HELLO_B)
 		{
 		/* we have SSLv3/TLSv1 in an SSLv2 header
