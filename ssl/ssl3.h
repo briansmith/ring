@@ -533,13 +533,6 @@ typedef struct ssl3_state_st
 	int next_proto_neg_seen;
 #endif
 
-#ifndef OPENSSL_NO_EC
-	/* This is set to true if we believe that this is a version of Safari
-	 * running on OS X 10.6 or newer. We wish to know this because Safari
-	 * on 10.8 .. 10.8.3 has broken ECDHE-ECDSA support. */
-	char is_probably_safari;
-#endif /* !OPENSSL_NO_EC */
-
 	/* ALPN information
 	 * (we are in the process of transitioning from NPN to ALPN.) */
 
