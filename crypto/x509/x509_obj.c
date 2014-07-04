@@ -75,9 +75,6 @@ char *X509_NAME_oneline(X509_NAME *a, char *buf, int len)
 	static const char hex[17]="0123456789ABCDEF";
 	int gs_doit[4];
 	char tmp_buf[80];
-#ifdef CHARSET_EBCDIC
-	char ebcdic_buf[1024];
-#endif
 
 	if (buf == NULL)
 		{
@@ -114,19 +111,6 @@ char *X509_NAME_oneline(X509_NAME *a, char *buf, int len)
 		type=ne->value->type;
 		num=ne->value->length;
 		q=ne->value->data;
-#ifdef CHARSET_EBCDIC
-                if (type == V_ASN1_GENERALSTRING ||
-		    type == V_ASN1_VISIBLESTRING ||
-		    type == V_ASN1_PRINTABLESTRING ||
-		    type == V_ASN1_TELETEXSTRING ||
-		    type == V_ASN1_VISIBLESTRING ||
-		    type == V_ASN1_IA5STRING) {
-                        ascii2ebcdic(ebcdic_buf, q,
-				     (num > sizeof ebcdic_buf)
-				     ? sizeof ebcdic_buf : num);
-                        q=ebcdic_buf;
-		}
-#endif
 
 		if ((type == V_ASN1_GENERALSTRING) && ((num%4) == 0))
 			{
@@ -149,12 +133,7 @@ char *X509_NAME_oneline(X509_NAME *a, char *buf, int len)
 			{
 			if (!gs_doit[j&3]) continue;
 			l2++;
-#ifndef CHARSET_EBCDIC
 			if ((q[j] < ' ') || (q[j] > '~')) l2+=3;
-#else
-			if ((os_toascii[q[j]] < os_toascii[' ']) ||
-			    (os_toascii[q[j]] > os_toascii['~'])) l2+=3;
-#endif
 			}
 
 		lold=l;
@@ -174,14 +153,11 @@ char *X509_NAME_oneline(X509_NAME *a, char *buf, int len)
 		memcpy(p,s,(unsigned int)l1); p+=l1;
 		*(p++)='=';
 
-#ifndef CHARSET_EBCDIC /* q was assigned above already. */
 		q=ne->value->data;
-#endif
 
 		for (j=0; j<num; j++)
 			{
 			if (!gs_doit[j&3]) continue;
-#ifndef CHARSET_EBCDIC
 			n=q[j];
 			if ((n < ' ') || (n > '~'))
 				{
@@ -192,19 +168,6 @@ char *X509_NAME_oneline(X509_NAME *a, char *buf, int len)
 				}
 			else
 				*(p++)=n;
-#else
-			n=os_toascii[q[j]];
-			if ((n < os_toascii[' ']) ||
-			    (n > os_toascii['~']))
-				{
-				*(p++)='\\';
-				*(p++)='x';
-				*(p++)=hex[(n>>4)&0x0f];
-				*(p++)=hex[n&0x0f];
-				}
-			else
-				*(p++)=q[j];
-#endif
 			}
 		*p='\0';
 		}

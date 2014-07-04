@@ -248,8 +248,5 @@ ASN1_GENERALIZEDTIME *ASN1_GENERALIZEDTIME_adj(ASN1_GENERALIZEDTIME *s,
 		     ts->tm_mon+1,ts->tm_mday,ts->tm_hour,ts->tm_min,ts->tm_sec);
 	s->length=strlen(p);
 	s->type=V_ASN1_GENERALIZEDTIME;
-#ifdef CHARSET_EBCDIC_not
-	ebcdic2ascii(s->data, s->data, s->length);
-#endif
 	return(s);
 	}

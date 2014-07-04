@@ -337,10 +337,6 @@ int PEM_ASN1_write_bio(i2d_of_void *i2d, const char *name, BIO *bp,
 				OPENSSL_PUT_ERROR(PEM, PEM_ASN1_write_bio, PEM_R_READ_KEY);
 				goto err;
 				}
-#ifdef CHARSET_EBCDIC
-			/* Convert the pass phrase from EBCDIC */
-			ebcdic2ascii(buf, buf, klen);
-#endif
 			kstr=(unsigned char *)buf;
 			}
 		assert(iv_len <= (int)sizeof(iv));
@@ -412,10 +408,6 @@ int PEM_do_header(EVP_CIPHER_INFO *cipher, unsigned char *data, long *plen,
 		OPENSSL_PUT_ERROR(PEM, PEM_do_header, PEM_R_BAD_PASSWORD_READ);
 		return(0);
 		}
-#ifdef CHARSET_EBCDIC
-	/* Convert the pass phrase from EBCDIC */
-	ebcdic2ascii(buf, buf, klen);
-#endif
 
 	if (!EVP_BytesToKey(cipher->cipher,EVP_md5(),&(cipher->iv[0]),
 		(unsigned char *)buf,klen,1,key,NULL))
@@ -482,15 +474,9 @@ int PEM_get_EVP_CIPHER_INFO(char *header, EVP_CIPHER_INFO *cipher)
 	for (;;)
 		{
 		c= *header;
-#ifndef CHARSET_EBCDIC
 		if (!(	((c >= 'A') && (c <= 'Z')) || (c == '-') ||
 			((c >= '0') && (c <= '9'))))
 			break;
-#else
-		if (!(	isupper(c) || (c == '-') ||
-			isdigit(c)))
-			break;
-#endif
 		header++;
 		}
 	*header='\0';

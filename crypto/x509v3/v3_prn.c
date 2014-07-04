@@ -85,22 +85,7 @@ void X509V3_EXT_val_prn(BIO *out, STACK_OF(CONF_VALUE) *val, int indent, int ml)
 		nval = sk_CONF_VALUE_value(val, i);
 		if(!nval->name) BIO_puts(out, nval->value);
 		else if(!nval->value) BIO_puts(out, nval->name);
-#ifndef CHARSET_EBCDIC
 		else BIO_printf(out, "%s:%s", nval->name, nval->value);
-#else
-		else {
-			int len;
-			char *tmp;
-			len = strlen(nval->value)+1;
-			tmp = OPENSSL_malloc(len);
-			if (tmp)
-			{
-				ascii2ebcdic(tmp, nval->value, len);
-				BIO_printf(out, "%s:%s", nval->name, tmp);
-				OPENSSL_free(tmp);
-			}
-		}
-#endif
 		if(ml) BIO_puts(out, "\n");
 	}
 }
@@ -129,22 +114,7 @@ int X509V3_EXT_print(BIO *out, X509_EXTENSION *ext, unsigned long flag, int inde
 			ok = 0;
 			goto err;
 		}
-#ifndef CHARSET_EBCDIC
 		BIO_printf(out, "%*s%s", indent, "", value);
-#else
-		{
-			int len;
-			char *tmp;
-			len = strlen(value)+1;
-			tmp = OPENSSL_malloc(len);
-			if (tmp)
-			{
-				ascii2ebcdic(tmp, value, len);
-				BIO_printf(out, "%*s%s", indent, "", tmp);
-				OPENSSL_free(tmp);
-			}
-		}
-#endif
 	} else if(method->i2v) {
 		if(!(nval = method->i2v(method, ext_str, NULL))) {
 			ok = 0;

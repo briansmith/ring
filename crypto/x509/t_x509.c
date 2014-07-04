@@ -473,7 +473,6 @@ int X509_NAME_print(BIO *bp, X509_NAME *name, int obase)
 	c=s;
 	for (;;)
 		{
-#ifndef CHARSET_EBCDIC
 		if (	((*s == '/') &&
 				((s[1] >= 'A') && (s[1] <= 'Z') && (
 					(s[2] == '=') ||
@@ -481,15 +480,6 @@ int X509_NAME_print(BIO *bp, X509_NAME *name, int obase)
 					(s[3] == '='))
 				 ))) ||
 			(*s == '\0'))
-#else
-		if (	((*s == '/') &&
-				(isupper(s[1]) && (
-					(s[2] == '=') ||
-					(isupper(s[2]) &&
-					(s[3] == '='))
-				 ))) ||
-			(*s == '\0'))
-#endif
 			{
 			i=s-c;
 			if (BIO_write(bp,c,i) != i) goto err;

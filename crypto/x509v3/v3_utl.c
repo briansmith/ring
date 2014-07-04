@@ -383,9 +383,6 @@ char *hex_to_string(const unsigned char *buffer, long len)
 		*q++ = ':';
 	}
 	q[-1] = 0;
-#ifdef CHARSET_EBCDIC
-	ebcdic2ascii(tmp, tmp, q - tmp - 1);
-#endif
 
 	return tmp;
 }
@@ -405,14 +402,8 @@ unsigned char *string_to_hex(const char *str, long *len)
 	if(!(hexbuf = OPENSSL_malloc(strlen(str) >> 1))) goto err;
 	for(p = (unsigned char *)str, q = hexbuf; *p;) {
 		ch = *p++;
-#ifdef CHARSET_EBCDIC
-		ch = os_toebcdic[ch];
-#endif
 		if(ch == ':') continue;
 		cl = *p++;
-#ifdef CHARSET_EBCDIC
-		cl = os_toebcdic[cl];
-#endif
 		if(!cl) {
 			OPENSSL_PUT_ERROR(X509V3, string_to_hex, X509V3_R_ODD_NUMBER_OF_DIGITS);
 			OPENSSL_free(hexbuf);
@@ -1281,21 +1272,13 @@ int X509V3_NAME_from_section(X509_NAME *nm, STACK_OF(CONF_VALUE)*dn_sk,
 		 * multiple instances 
 		 */
 		for(p = type; *p ; p++) 
-#ifndef CHARSET_EBCDIC
 			if ((*p == ':') || (*p == ',') || (*p == '.'))
-#else
-			if ((*p == os_toascii[':']) || (*p == os_toascii[',']) || (*p == os_toascii['.']))
-#endif
 				{
 				p++;
 				if(*p) type = p;
 				break;
 				}
-#ifndef CHARSET_EBCDIC
 		if (*type == '+')
-#else
-		if (*type == os_toascii['+'])
-#endif
 			{
 			mval = -1;
 			type++;
