@@ -1529,11 +1529,6 @@ struct ssl_st
 	/* fallback_scsv is non-zero iff we are sending the TLS_FALLBACK_SCSV
 	 * cipher suite value. Only applies to a client. */
 	char fallback_scsv;
-
-#ifndef OPENSSL_NO_DANE
-	unsigned char *tlsa_record;
-	int tlsa_witness;
-#endif
 	};
 
 #endif

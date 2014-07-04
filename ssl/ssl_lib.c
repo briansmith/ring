@@ -712,11 +712,6 @@ void SSL_free(SSL *s)
         if (s->srtp_profiles)
             sk_SRTP_PROTECTION_PROFILE_free(s->srtp_profiles);
 
-#ifndef OPENSSL_NO_DANE
-	if (s->tlsa_record && s->tlsa_record!=(void *)-1)
-		OPENSSL_free(s->tlsa_record);
-#endif
-
 	OPENSSL_free(s);
 	}
 
