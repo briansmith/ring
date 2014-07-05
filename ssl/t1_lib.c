@@ -3354,6 +3354,9 @@ int tls1_process_sigalgs(SSL *s, const unsigned char *data, int dsize)
 	/* Extension ignored for inappropriate versions */
 	if (!SSL_USE_SIGALGS(s))
 		return 1;
+	/* Length must be even */
+	if (dsize % 2 != 0)
+		return 0;
 	/* Should never happen */
 	if (!c)
 		return 0;
@@ -3915,16 +3918,8 @@ int tls1_check_chain(SSL *s, X509 *x, EVP_PKEY *pk, STACK_OF(X509) *chain,
 			{
 			const unsigned char *ctypes;
 			int ctypelen;
-			if (c->ctypes)
-				{
-				ctypes = c->ctypes;
-				ctypelen = (int)c->ctype_num;
-				}
-			else
-				{
-				ctypes = (unsigned char *)s->s3->tmp.ctype;
-				ctypelen = s->s3->tmp.ctype_num;
-				}
+			ctypes = c->ctypes;
+			ctypelen = (int)c->ctype_num;
 			for (i = 0; i < ctypelen; i++)
 				{
 				if (ctypes[i] == check_type)

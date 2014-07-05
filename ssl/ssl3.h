@@ -386,11 +386,6 @@ typedef struct ssl3_buffer_st
 #define SSL3_CT_RSA_EPHEMERAL_DH		5
 #define SSL3_CT_DSS_EPHEMERAL_DH		6
 #define SSL3_CT_FORTEZZA_DMS			20
-/* SSL3_CT_NUMBER is used to size arrays and it must be large
- * enough to contain all of the cert types defined either for
- * SSLv3 and TLSv1.
- */
-#define SSL3_CT_NUMBER			9
 
 
 #define SSL3_FLAGS_NO_RENEGOTIATE_CIPHERS	0x0001
@@ -511,8 +506,6 @@ typedef struct ssl3_state_st
 
 		/* used for certificate requests */
 		int cert_req;
-		size_t ctype_num;
-		unsigned char ctype[SSL3_CT_NUMBER];
 		STACK_OF(X509_NAME) *ca_names;
 
 		int use_rsa_tmp;
