@@ -1139,14 +1139,14 @@ err:
 int ssl3_get_server_certificate(SSL *s)
 	{
 	int al,i,ok,ret= -1;
-	unsigned long n,nc,llen,l;
+	unsigned long n;
 	X509 *x=NULL;
-	const unsigned char *q,*p;
-	unsigned char *d;
 	STACK_OF(X509) *sk=NULL;
 	SESS_CERT *sc;
 	EVP_PKEY *pkey=NULL;
 	int need_cert = 1; /* VRS: 0=> will allow null cert if auth == KRB5 */
+	CBS cbs, certificate_list;
+	const uint8_t* data;
 
 	n=s->method->ssl_get_message(s,
 		SSL3_ST_CR_CERT_A,
@@ -1171,7 +1171,7 @@ int ssl3_get_server_certificate(SSL *s)
 		OPENSSL_PUT_ERROR(SSL, ssl3_get_server_certificate, SSL_R_BAD_MESSAGE_TYPE);
 		goto f_err;
 		}
-	p=d=(unsigned char *)s->init_msg;
+	CBS_init(&cbs, (uint8_t *)s->init_msg, n);
 
 	if ((sk=sk_X509_new_null()) == NULL)
 		{
@@ -1179,34 +1179,40 @@ int ssl3_get_server_certificate(SSL *s)
 		goto err;
 		}
 
-	n2l3(p,llen);
-	if (llen+3 != n)
+	if (!CBS_get_u24_length_prefixed(&cbs, &certificate_list) ||
+		CBS_len(&cbs) != 0)
 		{
-		al=SSL_AD_DECODE_ERROR;
+		al = SSL_AD_DECODE_ERROR;
 		OPENSSL_PUT_ERROR(SSL, ssl3_get_server_certificate, SSL_R_LENGTH_MISMATCH);
 		goto f_err;
 		}
-	for (nc=0; nc<llen; )
+
+	while (CBS_len(&certificate_list) > 0)
 		{
-		n2l3(p,l);
-		if ((l+nc+3) > llen)
+		CBS certificate;
+		if (!CBS_get_u24_length_prefixed(&certificate_list, &certificate))
 			{
-			al=SSL_AD_DECODE_ERROR;
+			al = SSL_AD_DECODE_ERROR;
 			OPENSSL_PUT_ERROR(SSL, ssl3_get_server_certificate, SSL_R_CERT_LENGTH_MISMATCH);
 			goto f_err;
 			}
-
-		q=p;
-		x=d2i_X509(NULL,&q,l);
+		data = CBS_data(&certificate);
+		x = d2i_X509(NULL, &data, CBS_len(&certificate));
 		if (x == NULL)
 			{
 			al=SSL_AD_BAD_CERTIFICATE;
 			OPENSSL_PUT_ERROR(SSL, ssl3_get_server_certificate, ERR_R_ASN1_LIB);
 			goto f_err;
 			}
-		if (q != (p+l))
+		if (!CBS_skip(&certificate, data - CBS_data(&certificate)))
 			{
-			al=SSL_AD_DECODE_ERROR;
+			al = SSL_AD_INTERNAL_ERROR;
+			OPENSSL_PUT_ERROR(SSL, ssl3_get_server_certificate, ERR_R_INTERNAL_ERROR);
+			goto f_err;
+			}
+		if (CBS_len(&certificate) != 0)
+			{
+			al = SSL_AD_DECODE_ERROR;
 			OPENSSL_PUT_ERROR(SSL, ssl3_get_server_certificate, SSL_R_CERT_LENGTH_MISMATCH);
 			goto f_err;
 			}
@@ -1216,8 +1222,6 @@ int ssl3_get_server_certificate(SSL *s)
 			goto err;
 			}
 		x=NULL;
-		nc+=l+3;
-		p=q;
 		}
 
 	i=ssl_verify_cert_chain(s,sk);
