@@ -620,7 +620,6 @@ struct ssl_session_st
 #define SSL_OP_PKCS1_CHECK_1				0x0
 #define SSL_OP_PKCS1_CHECK_2				0x0
 
-#define SSL_OP_NETSCAPE_CA_DN_BUG			0x20000000L
 #define SSL_OP_NETSCAPE_DEMO_CIPHER_CHANGE_BUG		0x40000000L
 
 /* Allow SSL_write(..., n) to return r with 0 < r < n (i.e. report success
