@@ -345,6 +345,10 @@ type ProtocolBugs struct {
 	// FailIfNotFallbackSCSV causes a server handshake to fail if the
 	// client doesn't send the fallback SCSV value.
 	FailIfNotFallbackSCSV bool
+
+	// DuplicateExtension causes an extra empty extension of bogus type to
+	// be emitted in either the ClientHello or the ServerHello.
+	DuplicateExtension bool
 }
 
 func (c *Config) serverInit() {

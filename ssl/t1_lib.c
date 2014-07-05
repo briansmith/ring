@@ -107,6 +107,7 @@
  * Hudson (tjh@cryptsoft.com). */
 
 #include <stdio.h>
+#include <stdlib.h>
 #include <assert.h>
 
 #include <openssl/bytestring.h>
@@ -210,12 +211,94 @@ void tls1_clear(SSL *s)
 	s->version = s->method->version;
 	}
 
+static int compare_uint16_t(const void *p1, const void *p2)
+	{
+	uint16_t u1 = *((const uint16_t*)p1);
+	uint16_t u2 = *((const uint16_t*)p2);
+	if (u1 < u2)
+		{
+		return -1;
+		}
+	else if (u1 > u2)
+		{
+		return 1;
+		}
+	else
+		{
+		return 0;
+		}
+	}
+
+/* Per http://tools.ietf.org/html/rfc5246#section-7.4.1.4, there may not be more
+ * than one extension of the same type in a ClientHello or ServerHello. This
+ * function does an initial scan over the extensions block to filter those
+ * out. */
+static int tls1_check_duplicate_extensions(const CBS *cbs)
+	{
+	CBS extensions = *cbs;
+	size_t num_extensions = 0, i = 0;
+	uint16_t *extension_types = NULL;
+	int ret = 0;
+
+	/* First pass: count the extensions. */
+	while (CBS_len(&extensions) > 0)
+		{
+		uint16_t type;
+		CBS extension;
+
+		if (!CBS_get_u16(&extensions, &type) ||
+			!CBS_get_u16_length_prefixed(&extensions, &extension))
+			{
+			goto done;
+			}
+
+		num_extensions++;
+		}
+
+	extension_types = (uint16_t*)OPENSSL_malloc(sizeof(uint16_t) * num_extensions);
+	if (extension_types == NULL)
+		{
+		OPENSSL_PUT_ERROR(SSL, tls1_check_duplicate_extensions, ERR_R_MALLOC_FAILURE);
+		goto done;
+		}
+
+	/* Second pass: gather the extension types. */
+	extensions = *cbs;
+	for (i = 0; i < num_extensions; i++)
+		{
+		CBS extension;
+
+		if (!CBS_get_u16(&extensions, &extension_types[i]) ||
+			!CBS_get_u16_length_prefixed(&extensions, &extension))
+			{
+			/* This should not happen. */
+			goto done;
+			}
+		}
+	assert(CBS_len(&extensions) == 0);
+
+	/* Sort the extensions and make sure there are no duplicates. */
+	qsort(extension_types, num_extensions, sizeof(uint16_t), compare_uint16_t);
+	for (i = 1; i < num_extensions; i++)
+		{
+		if (extension_types[i-1] == extension_types[i])
+			{
+			goto done;
+			}
+		}
+
+	ret = 1;
+done:
+	if (extension_types)
+		OPENSSL_free(extension_types);
+	return ret;
+	}
+
 char ssl_early_callback_init(struct ssl_early_callback_ctx *ctx)
 	{
 	size_t len = ctx->client_hello_len;
 	const unsigned char *p = ctx->client_hello;
-	uint16_t *extension_types;
-	unsigned num_extensions;
+	CBS extensions;
 
 	/* Skip client version. */
 	if (len < 2)
@@ -302,48 +385,15 @@ char ssl_early_callback_init(struct ssl_early_callback_ctx *ctx)
 		return 0;
 
 	/* Verify that the extensions have valid lengths and that there are
-	 * no duplicates. Each extension takes, at least, four bytes, so
-	 * we can allocate a buffer of extensions_len/4 elements and be sure
-	 * that we have enough space for all the extension types. */
-	extension_types =
-		OPENSSL_malloc(sizeof(uint16_t) * ctx->extensions_len/4);
-	if (extension_types == NULL)
+	 * no duplicates.
+	 *
+	 * TODO(fork): Port the rest of this processing to CBS.
+	 */
+	CBS_init(&extensions, ctx->extensions, ctx->extensions_len);
+	if (!tls1_check_duplicate_extensions(&extensions))
 		return 0;
-	num_extensions = 0;
 
-	while (len != 0)
-		{
-		uint16_t extension_type, extension_len;
-		unsigned i;
-
-		if (len < 4)
-			goto err;
-		n2s(p, extension_type);
-		n2s(p, extension_len);
-		len -= 4;
-
-		if (len < extension_len)
-			goto err;
-		p += extension_len; len -= extension_len;
-
-		for (i = 0; i < num_extensions; i++)
-			{
-			if (extension_types[i] == extension_type)
-				{
-				/* Duplicate extension type. */
-				goto err;
-				}
-			}
-		extension_types[num_extensions] = extension_type;
-		num_extensions++;
-		}
-
-	OPENSSL_free(extension_types);
 	return 1;
-
-err:
-	OPENSSL_free(extension_types);
-	return 0;
 	}
 
 char
@@ -1825,13 +1875,32 @@ static int ssl_scan_clienthello_tlsext(SSL *s, CBS *cbs, int *out_alert)
 		s->cert->pkeys[i].valid_flags = 0;
 		}
 
+	/* TODO(fork): we probably want OCSP stapling support, but this pulls in
+	 * a lot of code. */
+#if 0
+	/* Clear OCSP state. */
+	s->tlsext_status_type = -1;
+	if (s->tlsext_ocsp_ids)
+		{
+		sk_OCSP_RESPID_pop_free(s->tlsext_ocsp_ids, OCSP_RESPID_free);
+		s->tlsext_ocsp_ids = NULL;
+		}
+	if (s->tlsext_ocsp_exts)
+		{
+		sk_X509_EXTENSION_pop_free(s->tlsext_ocsp_exts, X509_EXTENSION_free);
+		s->tlsext_ocsp_exts = NULL;
+		}
+#endif
+
 	/* There may be no extensions. */
 	if (CBS_len(cbs) == 0)
 		{
 		goto ri_check;
 		}
 
-	if (!CBS_get_u16_length_prefixed(cbs, &extensions))
+	/* Decode the extensions block and check it is valid. */
+	if (!CBS_get_u16_length_prefixed(cbs, &extensions) ||
+		!tls1_check_duplicate_extensions(&extensions))
 		{
 		*out_alert = SSL_AD_DECODE_ERROR;
 		return 0;
@@ -1903,9 +1972,6 @@ static int ssl_scan_clienthello_tlsext(SSL *s, CBS *cbs, int *out_alert)
 					*out_alert = SSL_AD_DECODE_ERROR;
 					return 0;
 					}
-
-				if (s->servername_done)
-					continue;
 
 				/* Only host_name is supported. */
 				if (name_type != TLSEXT_NAMETYPE_host_name)
@@ -1999,12 +2065,6 @@ static int ssl_scan_clienthello_tlsext(SSL *s, CBS *cbs, int *out_alert)
 
 			if (!s->hit)
 				{
-				if (s->session->tlsext_ellipticcurvelist)
-					{
-					*out_alert = SSL_AD_DECODE_ERROR;
-					return 0;
-					}
-
 				if (!CBS_stow(&elliptic_curve_list,
 						&s->session->tlsext_ellipticcurvelist,
 						&s->session->tlsext_ellipticcurvelist_length))
@@ -2033,13 +2093,6 @@ static int ssl_scan_clienthello_tlsext(SSL *s, CBS *cbs, int *out_alert)
 		else if (type == TLSEXT_TYPE_signature_algorithms)
 			{
 			CBS supported_signature_algorithms;
-
-			/* The extension should not appear twice. */
-			if (s->cert->peer_sigalgs)
-				{
-				*out_alert = SSL_AD_UNSUPPORTED_EXTENSION;
-				return 0;
-				}
 
 			if (!CBS_get_u16_length_prefixed(&extension, &supported_signature_algorithms) ||
 				CBS_len(&extension) != 0)
@@ -2083,15 +2136,6 @@ static int ssl_scan_clienthello_tlsext(SSL *s, CBS *cbs, int *out_alert)
 			uint8_t status_type;
 			CBS responder_id_list;
 			CBS request_extensions;
-
-			/* Already seen the extension. */
-			if (s->tlsext_status_type != -1 ||
-				s->tlsext_ocsp_ids != NULL ||
-				s->tlsext_ocsp_exts != NULL)
-				{
-				*out_alert = SSL_AD_UNSUPPORTED_EXTENSION;
-				return 0;
-				}
 
 			if (!CBS_get_u8(&extension, &status_type))
 				{
@@ -2355,7 +2399,9 @@ static int ssl_scan_serverhello_tlsext(SSL *s, CBS *cbs, int *out_alert)
 		goto ri_check;
 		}
 
-	if (!CBS_get_u16_length_prefixed(cbs, &extensions))
+	/* Decode the extensions block and check it is valid. */
+	if (!CBS_get_u16_length_prefixed(cbs, &extensions) ||
+		!tls1_check_duplicate_extensions(&extensions))
 		{
 		*out_alert = SSL_AD_DECODE_ERROR;
 		return 0;

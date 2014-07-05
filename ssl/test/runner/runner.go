@@ -137,11 +137,33 @@ var testCases = []testCase{
 	},
 	{
 		testType: serverTest,
-		name: "ServerNameExtension",
+		name:     "ServerNameExtension",
 		config: Config{
 			ServerName: "example.com",
 		},
 		flags: []string{"-expect-server-name", "example.com"},
+	},
+	{
+		testType: clientTest,
+		name:     "DuplicateExtensionClient",
+		config: Config{
+			Bugs: ProtocolBugs{
+				DuplicateExtension: true,
+			},
+		},
+		shouldFail:         true,
+		expectedLocalError: "remote error: error decoding message",
+	},
+	{
+		testType: serverTest,
+		name:     "DuplicateExtensionServer",
+		config: Config{
+			Bugs: ProtocolBugs{
+				DuplicateExtension: true,
+			},
+		},
+		shouldFail:         true,
+		expectedLocalError: "remote error: error decoding message",
 	},
 }
 

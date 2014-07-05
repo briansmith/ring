@@ -22,6 +22,7 @@ type clientHelloMsg struct {
 	sessionTicket       []uint8
 	signatureAndHashes  []signatureAndHash
 	secureRenegotiation bool
+	duplicateExtension  bool
 }
 
 func (m *clientHelloMsg) equal(i interface{}) bool {
@@ -86,6 +87,9 @@ func (m *clientHelloMsg) marshal() []byte {
 		extensionsLength += 1
 		numExtensions++
 	}
+	if m.duplicateExtension {
+		numExtensions += 2
+	}
 	if numExtensions > 0 {
 		extensionsLength += 4 * numExtensions
 		length += 2 + extensionsLength
@@ -117,6 +121,12 @@ func (m *clientHelloMsg) marshal() []byte {
 		z[0] = byte(extensionsLength >> 8)
 		z[1] = byte(extensionsLength)
 		z = z[2:]
+	}
+	if m.duplicateExtension {
+		// Add a duplicate bogus extension at the beginning and end.
+		z[0] = 0xff
+		z[1] = 0xff
+		z = z[4:]
 	}
 	if m.nextProtoNeg {
 		z[0] = byte(extensionNextProtoNeg >> 8)
@@ -236,6 +246,12 @@ func (m *clientHelloMsg) marshal() []byte {
 		z[2] = 0
 		z[3] = 1
 		z = z[5:]
+	}
+	if m.duplicateExtension {
+		// Add a duplicate bogus extension at the beginning and end.
+		z[0] = 0xff
+		z[1] = 0xff
+		z = z[4:]
 	}
 
 	m.raw = x
@@ -419,6 +435,7 @@ type serverHelloMsg struct {
 	ocspStapling        bool
 	ticketSupported     bool
 	secureRenegotiation bool
+	duplicateExtension  bool
 }
 
 func (m *serverHelloMsg) equal(i interface{}) bool {
@@ -468,6 +485,9 @@ func (m *serverHelloMsg) marshal() []byte {
 		extensionsLength += 1
 		numExtensions++
 	}
+	if m.duplicateExtension {
+		numExtensions += 2
+	}
 	if numExtensions > 0 {
 		extensionsLength += 4 * numExtensions
 		length += 2 + extensionsLength
@@ -493,6 +513,12 @@ func (m *serverHelloMsg) marshal() []byte {
 		z[0] = byte(extensionsLength >> 8)
 		z[1] = byte(extensionsLength)
 		z = z[2:]
+	}
+	if m.duplicateExtension {
+		// Add a duplicate bogus extension at the beginning and end.
+		z[0] = 0xff
+		z[1] = 0xff
+		z = z[4:]
 	}
 	if m.nextProtoNeg {
 		z[0] = byte(extensionNextProtoNeg >> 8)
@@ -527,6 +553,12 @@ func (m *serverHelloMsg) marshal() []byte {
 		z[2] = 0
 		z[3] = 1
 		z = z[5:]
+	}
+	if m.duplicateExtension {
+		// Add a duplicate bogus extension at the beginning and end.
+		z[0] = 0xff
+		z[1] = 0xff
+		z = z[4:]
 	}
 
 	m.raw = x
