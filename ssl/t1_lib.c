@@ -2306,7 +2306,7 @@ int ssl_parse_clienthello_tlsext(SSL *s, CBS *cbs)
 
 	if (ssl_check_clienthello_tlsext_early(s) <= 0) 
 		{
-		OPENSSL_PUT_ERROR(SSL, ssl_add_serverhello_tlsext, SSL_R_CLIENTHELLO_TLSEXT);
+		OPENSSL_PUT_ERROR(SSL, ssl_parse_clienthello_tlsext, SSL_R_CLIENTHELLO_TLSEXT);
 		return 0;
 		}
 	return 1;
@@ -2589,7 +2589,7 @@ static int ssl_scan_serverhello_tlsext(SSL *s, CBS *cbs, int *out_alert)
 		&& !(s->options & SSL_OP_ALLOW_UNSAFE_LEGACY_RENEGOTIATION))
 		{
 		*out_alert = SSL_AD_HANDSHAKE_FAILURE;
-		OPENSSL_PUT_ERROR(SSL, ssl_add_serverhello_tlsext, SSL_R_UNSAFE_LEGACY_RENEGOTIATION_DISABLED);
+		OPENSSL_PUT_ERROR(SSL, ssl_scan_serverhello_tlsext, SSL_R_UNSAFE_LEGACY_RENEGOTIATION_DISABLED);
 		return 0;
 		}
 
@@ -2811,7 +2811,7 @@ int ssl_parse_serverhello_tlsext(SSL *s, CBS *cbs)
 
 	if (ssl_check_serverhello_tlsext(s) <= 0)
 		{
-		OPENSSL_PUT_ERROR(SSL, ssl_add_serverhello_tlsext, SSL_R_SERVERHELLO_TLSEXT);
+		OPENSSL_PUT_ERROR(SSL, ssl_parse_serverhello_tlsext, SSL_R_SERVERHELLO_TLSEXT);
 		return 0;
 		}
 
