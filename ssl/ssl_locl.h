@@ -547,10 +547,8 @@ typedef struct cert_st
 	unsigned long export_mask_a;
 	/* Client only */
 	unsigned long mask_ssl;
-#ifndef OPENSSL_NO_RSA
 	RSA *rsa_tmp;
 	RSA *(*rsa_tmp_cb)(SSL *ssl,int is_export,int keysize);
-#endif
 #ifndef OPENSSL_NO_DH
 	DH *dh_tmp;
 	DH *(*dh_tmp_cb)(SSL *ssl,int is_export,int keysize);
@@ -639,9 +637,7 @@ typedef struct sess_cert_st
 	/* Obviously we don't have the private keys of these,
 	 * so maybe we shouldn't even use the CERT_PKEY type here. */
 
-#ifndef OPENSSL_NO_RSA
 	RSA *peer_rsa_tmp; /* not used for SSL 2 */
-#endif
 #ifndef OPENSSL_NO_DH
 	DH *peer_dh_tmp; /* not used for SSL 2 */
 #endif

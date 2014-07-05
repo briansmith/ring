@@ -605,10 +605,6 @@ static void ssl_cipher_get_disabled(unsigned long *mkey, unsigned long *auth, un
 	*mac = 0;
 	*ssl = 0;
 
-#ifdef OPENSSL_NO_RSA
-	*mkey |= SSL_kRSA;
-	*auth |= SSL_aRSA;
-#endif
 #ifdef OPENSSL_NO_DSA
 	*auth |= SSL_aDSS;
 #endif

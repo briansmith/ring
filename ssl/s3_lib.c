@@ -2813,12 +2813,9 @@ long ssl3_ctrl(SSL *s, int cmd, long larg, void *parg)
 	{
 	int ret=0;
 
-#if !defined(OPENSSL_NO_DSA) || !defined(OPENSSL_NO_RSA)
 	if (
-#ifndef OPENSSL_NO_RSA
 	    cmd == SSL_CTRL_SET_TMP_RSA ||
 	    cmd == SSL_CTRL_SET_TMP_RSA_CB ||
-#endif
 #ifndef OPENSSL_NO_DSA
 	    cmd == SSL_CTRL_SET_TMP_DH ||
 	    cmd == SSL_CTRL_SET_TMP_DH_CB ||
@@ -2831,7 +2828,6 @@ long ssl3_ctrl(SSL *s, int cmd, long larg, void *parg)
 			return(0);
 			}
 		}
-#endif
 
 	switch (cmd)
 		{
@@ -2853,7 +2849,6 @@ long ssl3_ctrl(SSL *s, int cmd, long larg, void *parg)
 	case SSL_CTRL_GET_FLAGS:
 		ret=(int)(s->s3->flags);
 		break;
-#ifndef OPENSSL_NO_RSA
 	case SSL_CTRL_NEED_TMP_RSA:
 		if ((s->cert != NULL) && (s->cert->rsa_tmp == NULL) &&
 		    ((s->cert->pkeys[SSL_PKEY_RSA_ENC].privatekey == NULL) ||
@@ -2885,7 +2880,6 @@ long ssl3_ctrl(SSL *s, int cmd, long larg, void *parg)
 		return(ret);
 		}
 		break;
-#endif
 #ifndef OPENSSL_NO_DH
 	case SSL_CTRL_SET_TMP_DH:
 		{
@@ -3165,10 +3159,8 @@ long ssl3_ctrl(SSL *s, int cmd, long larg, void *parg)
 			if (!ptmp)
 				return 0;
 			if (0);
-#ifndef OPENSSL_NO_RSA
 			else if (sc->peer_rsa_tmp)
 				rv = EVP_PKEY_set1_RSA(ptmp, sc->peer_rsa_tmp);
-#endif
 #ifndef OPENSSL_NO_DH
 			else if (sc->peer_dh_tmp)
 				rv = EVP_PKEY_set1_DH(ptmp, sc->peer_dh_tmp);
@@ -3242,11 +3234,8 @@ long ssl3_callback_ctrl(SSL *s, int cmd, void (*fp)(void))
 	{
 	int ret=0;
 
-#if !defined(OPENSSL_NO_DSA) || !defined(OPENSSL_NO_RSA)
 	if (
-#ifndef OPENSSL_NO_RSA
 	    cmd == SSL_CTRL_SET_TMP_RSA_CB ||
-#endif
 #ifndef OPENSSL_NO_DSA
 	    cmd == SSL_CTRL_SET_TMP_DH_CB ||
 #endif
@@ -3258,17 +3247,14 @@ long ssl3_callback_ctrl(SSL *s, int cmd, void (*fp)(void))
 			return(0);
 			}
 		}
-#endif
 
 	switch (cmd)
 		{
-#ifndef OPENSSL_NO_RSA
 	case SSL_CTRL_SET_TMP_RSA_CB:
 		{
 		s->cert->rsa_tmp_cb = (RSA *(*)(SSL *, int, int))fp;
 		}
 		break;
-#endif
 #ifndef OPENSSL_NO_DH
 	case SSL_CTRL_SET_TMP_DH_CB:
 		{
@@ -3303,7 +3289,6 @@ long ssl3_ctx_ctrl(SSL_CTX *ctx, int cmd, long larg, void *parg)
 
 	switch (cmd)
 		{
-#ifndef OPENSSL_NO_RSA
 	case SSL_CTRL_NEED_TMP_RSA:
 		if (	(cert->rsa_tmp == NULL) &&
 			((cert->pkeys[SSL_PKEY_RSA_ENC].privatekey == NULL) ||
@@ -3347,7 +3332,6 @@ long ssl3_ctx_ctrl(SSL_CTX *ctx, int cmd, long larg, void *parg)
 		return(0);
 		}
 		break;
-#endif
 #ifndef OPENSSL_NO_DH
 	case SSL_CTRL_SET_TMP_DH:
 		{
@@ -3566,13 +3550,11 @@ long ssl3_ctx_callback_ctrl(SSL_CTX *ctx, int cmd, void (*fp)(void))
 
 	switch (cmd)
 		{
-#ifndef OPENSSL_NO_RSA
 	case SSL_CTRL_SET_TMP_RSA_CB:
 		{
 		cert->rsa_tmp_cb = (RSA *(*)(SSL *, int, int))fp;
 		}
 		break;
-#endif
 #ifndef OPENSSL_NO_DH
 	case SSL_CTRL_SET_TMP_DH_CB:
 		{
@@ -3853,13 +3835,11 @@ int ssl3_get_req_cert_type(SSL *s, unsigned char *p)
 #ifndef OPENSSL_NO_DH
 	if (alg_k & (SSL_kDHr|SSL_kEDH))
 		{
-#  ifndef OPENSSL_NO_RSA
 		/* Since this refers to a certificate signed with an RSA
 		 * algorithm, only check for rsa signing in strict mode.
 		 */
 		if (nostrict || have_rsa_sign)
 			p[ret++]=SSL3_CT_RSA_FIXED_DH;
-#  endif
 #  ifndef OPENSSL_NO_DSA
 		if (nostrict || have_dsa_sign)
 			p[ret++]=SSL3_CT_DSS_FIXED_DH;
@@ -3868,18 +3848,14 @@ int ssl3_get_req_cert_type(SSL *s, unsigned char *p)
 	if ((s->version == SSL3_VERSION) &&
 		(alg_k & (SSL_kEDH|SSL_kDHd|SSL_kDHr)))
 		{
-#  ifndef OPENSSL_NO_RSA
 		p[ret++]=SSL3_CT_RSA_EPHEMERAL_DH;
-#  endif
 #  ifndef OPENSSL_NO_DSA
 		p[ret++]=SSL3_CT_DSS_EPHEMERAL_DH;
 #  endif
 		}
 #endif /* !OPENSSL_NO_DH */
-#ifndef OPENSSL_NO_RSA
 	if (have_rsa_sign)
 		p[ret++]=SSL3_CT_RSA_SIGN;
-#endif
 #ifndef OPENSSL_NO_DSA
 	if (have_dsa_sign)
 		p[ret++]=SSL3_CT_DSS_SIGN;

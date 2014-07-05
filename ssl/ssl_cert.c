@@ -161,10 +161,8 @@ void ssl_cert_set_default_md(CERT *cert)
 #ifndef OPENSSL_NO_DSA
 	cert->pkeys[SSL_PKEY_DSA_SIGN].digest = EVP_sha1();
 #endif
-#ifndef OPENSSL_NO_RSA
 	cert->pkeys[SSL_PKEY_RSA_SIGN].digest = EVP_sha1();
 	cert->pkeys[SSL_PKEY_RSA_ENC].digest = EVP_sha1();
-#endif
 #ifndef OPENSSL_NO_ECDSA
 	cert->pkeys[SSL_PKEY_ECC].digest = EVP_sha1();
 #endif
@@ -212,14 +210,12 @@ CERT *ssl_cert_dup(CERT *cert)
 	ret->export_mask_k = cert->export_mask_k;
 	ret->export_mask_a = cert->export_mask_a;
 
-#ifndef OPENSSL_NO_RSA
 	if (cert->rsa_tmp != NULL)
 		{
 		RSA_up_ref(cert->rsa_tmp);
 		ret->rsa_tmp = cert->rsa_tmp;
 		}
 	ret->rsa_tmp_cb = cert->rsa_tmp_cb;
-#endif
 
 #ifndef OPENSSL_NO_DH
 	if (cert->dh_tmp != NULL)
@@ -395,10 +391,8 @@ CERT *ssl_cert_dup(CERT *cert)
 #if !defined(OPENSSL_NO_DH) || !defined(OPENSSL_NO_ECDH)
 err:
 #endif
-#ifndef OPENSSL_NO_RSA
 	if (ret->rsa_tmp != NULL)
 		RSA_free(ret->rsa_tmp);
-#endif
 #ifndef OPENSSL_NO_DH
 	if (ret->dh_tmp != NULL)
 		DH_free(ret->dh_tmp);
@@ -463,9 +457,7 @@ void ssl_cert_free(CERT *c)
 		}
 #endif
 
-#ifndef OPENSSL_NO_RSA
 	if (c->rsa_tmp) RSA_free(c->rsa_tmp);
-#endif
 #ifndef OPENSSL_NO_DH
 	if (c->dh_tmp) DH_free(c->dh_tmp);
 #endif
@@ -653,10 +645,8 @@ void ssl_sess_cert_free(SESS_CERT *sc)
 #endif
 		}
 
-#ifndef OPENSSL_NO_RSA
 	if (sc->peer_rsa_tmp != NULL)
 		RSA_free(sc->peer_rsa_tmp);
-#endif
 #ifndef OPENSSL_NO_DH
 	if (sc->peer_dh_tmp != NULL)
 		DH_free(sc->peer_dh_tmp);

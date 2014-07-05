@@ -990,11 +990,7 @@ static int tls1_check_cert_param(SSL *s, X509 *x, int set_ee_md)
  * customisable at some point, for now include everything we support.
  */
 
-#ifdef OPENSSL_NO_RSA
-#define tlsext_sigalg_rsa(md) /* */
-#else
 #define tlsext_sigalg_rsa(md) md, TLSEXT_signature_rsa,
-#endif
 
 #ifdef OPENSSL_NO_DSA
 #define tlsext_sigalg_dsa(md) /* */
@@ -1183,11 +1179,9 @@ void ssl_set_client_disabled(SSL *s)
 		{
 		switch(sigalgs[1])
 			{
-#ifndef OPENSSL_NO_RSA
 		case TLSEXT_signature_rsa:
 			have_rsa = 1;
 			break;
-#endif
 #ifndef OPENSSL_NO_DSA
 		case TLSEXT_signature_dsa:
 			have_dsa = 1;
@@ -3214,10 +3208,8 @@ static int tls12_get_pkey_idx(unsigned char sig_alg)
 	{
 	switch(sig_alg)
 		{
-#ifndef OPENSSL_NO_RSA
 	case TLSEXT_signature_rsa:
 		return SSL_PKEY_RSA_SIGN;
-#endif
 #ifndef OPENSSL_NO_DSA
 	case TLSEXT_signature_dsa:
 		return SSL_PKEY_DSA_SIGN;
@@ -3431,13 +3423,11 @@ int tls1_process_sigalgs(SSL *s, const unsigned char *data, int dsize)
 		if (!c->pkeys[SSL_PKEY_DSA_SIGN].digest)
 			c->pkeys[SSL_PKEY_DSA_SIGN].digest = EVP_sha1();
 #endif
-#ifndef OPENSSL_NO_RSA
 		if (!c->pkeys[SSL_PKEY_RSA_SIGN].digest)
 			{
 			c->pkeys[SSL_PKEY_RSA_SIGN].digest = EVP_sha1();
 			c->pkeys[SSL_PKEY_RSA_ENC].digest = EVP_sha1();
 			}
-#endif
 #ifndef OPENSSL_NO_ECDSA
 		if (!c->pkeys[SSL_PKEY_ECC].digest)
 			c->pkeys[SSL_PKEY_ECC].digest = EVP_sha1();
