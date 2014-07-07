@@ -181,7 +181,6 @@ CERT *ssl_cert_new(void)
 	memset(ret,0,sizeof(CERT));
 
 	ret->key= &(ret->pkeys[SSL_PKEY_RSA_ENC]);
-	ret->references=1;
 	ssl_cert_set_default_md(ret);
 	return(ret);
 	}
@@ -322,7 +321,6 @@ CERT *ssl_cert_dup(CERT *cert)
 		rpk->valid_flags = 0;
 		}
 	
-	ret->references=1;
 	/* Set digests to defaults. NB: we don't copy existing values as they
 	 * will be set during handshake.
 	 */
@@ -439,23 +437,8 @@ void ssl_cert_clear_certs(CERT *c)
 
 void ssl_cert_free(CERT *c)
 	{
-	int i;
-
 	if(c == NULL)
 	    return;
-
-	i=CRYPTO_add(&c->references,-1,CRYPTO_LOCK_SSL_CERT);
-#ifdef REF_PRINT
-	REF_PRINT("CERT",c);
-#endif
-	if (i > 0) return;
-#ifdef REF_CHECK
-	if (i < 0)
-		{
-		fprintf(stderr,"ssl_cert_free, bad reference count\n");
-		abort(); /* ok */
-		}
-#endif
 
 	if (c->rsa_tmp) RSA_free(c->rsa_tmp);
 #ifndef OPENSSL_NO_DH

@@ -1994,7 +1994,6 @@ BIO_METHOD *BIO_f_ssl(void);
 BIO *BIO_new_ssl(SSL_CTX *ctx,int client);
 BIO *BIO_new_ssl_connect(SSL_CTX *ctx);
 BIO *BIO_new_buffer_ssl_connect(SSL_CTX *ctx);
-int BIO_ssl_copy_session_id(BIO *to,BIO *from);
 void BIO_ssl_shutdown(BIO *ssl_bio);
 
 #endif
@@ -2080,7 +2079,6 @@ long	SSL_SESSION_get_time(const SSL_SESSION *s);
 long	SSL_SESSION_set_time(SSL_SESSION *s, long t);
 long	SSL_SESSION_get_timeout(const SSL_SESSION *s);
 long	SSL_SESSION_set_timeout(SSL_SESSION *s, long t);
-void	SSL_copy_session_id(SSL *to,const SSL *from);
 X509 *SSL_SESSION_get0_peer(SSL_SESSION *s);
 int SSL_SESSION_set1_id_context(SSL_SESSION *s,const unsigned char *sid_ctx,
 			       unsigned int sid_ctx_len);

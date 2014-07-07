@@ -619,8 +619,6 @@ typedef struct cert_st
 	/* Raw values of the cipher list from a client */
 	unsigned char *ciphers_raw;
 	size_t ciphers_rawlen;
-
-	int references; /* >1 only if SSL_copy_session_id is used */
 	} CERT;
 
 
