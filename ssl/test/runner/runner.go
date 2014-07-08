@@ -165,6 +165,22 @@ var testCases = []testCase{
 		shouldFail:         true,
 		expectedLocalError: "remote error: error decoding message",
 	},
+	{
+		name: "ClientCertificateTypes",
+		config: Config{
+			ClientAuth: RequestClientCert,
+			ClientCertificateTypes: []byte{
+				CertTypeDSSSign,
+				CertTypeRSASign,
+				CertTypeECDSASign,
+			},
+		},
+		flags: []string{"-expect-certificate-types", string([]byte{
+			CertTypeDSSSign,
+			CertTypeRSASign,
+			CertTypeECDSASign,
+		})},
+	},
 }
 
 func doExchange(tlsConn *Conn, messageLen int) error {

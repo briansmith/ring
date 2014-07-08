@@ -105,15 +105,15 @@ const (
 
 // Certificate types (for certificateRequestMsg)
 const (
-	certTypeRSASign    = 1 // A certificate containing an RSA key
-	certTypeDSSSign    = 2 // A certificate containing a DSA key
-	certTypeRSAFixedDH = 3 // A certificate containing a static DH key
-	certTypeDSSFixedDH = 4 // A certificate containing a static DH key
+	CertTypeRSASign    = 1 // A certificate containing an RSA key
+	CertTypeDSSSign    = 2 // A certificate containing a DSA key
+	CertTypeRSAFixedDH = 3 // A certificate containing a static DH key
+	CertTypeDSSFixedDH = 4 // A certificate containing a static DH key
 
 	// See RFC4492 sections 3 and 5.5.
-	certTypeECDSASign      = 64 // A certificate containing an ECDSA-capable public key, signed with ECDSA.
-	certTypeRSAFixedECDH   = 65 // A certificate containing an ECDH-capable public key, signed with RSA.
-	certTypeECDSAFixedECDH = 66 // A certificate containing an ECDH-capable public key, signed with ECDSA.
+	CertTypeECDSASign      = 64 // A certificate containing an ECDSA-capable public key, signed with ECDSA.
+	CertTypeRSAFixedECDH   = 65 // A certificate containing an ECDH-capable public key, signed with RSA.
+	CertTypeECDSAFixedECDH = 66 // A certificate containing an ECDH-capable public key, signed with ECDSA.
 
 	// Rest of these are reserved by the TLS spec
 )
@@ -250,6 +250,10 @@ type Config struct {
 	// that servers use if required to verify a client certificate
 	// by the policy in ClientAuth.
 	ClientCAs *x509.CertPool
+
+	// ClientCertificateTypes defines the set of allowed client certificate
+	// types. The default is CertTypeRSASign and CertTypeECDSASign.
+	ClientCertificateTypes []byte
 
 	// InsecureSkipVerify controls whether a client verifies the
 	// server's certificate chain and host name.

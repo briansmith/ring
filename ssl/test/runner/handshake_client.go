@@ -325,9 +325,9 @@ func (hs *clientHandshakeState) doFullHandshake() error {
 		var rsaAvail, ecdsaAvail bool
 		for _, certType := range certReq.certificateTypes {
 			switch certType {
-			case certTypeRSASign:
+			case CertTypeRSASign:
 				rsaAvail = true
-			case certTypeECDSASign:
+			case CertTypeECDSASign:
 				ecdsaAvail = true
 			}
 		}
