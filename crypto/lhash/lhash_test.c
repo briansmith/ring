@@ -14,12 +14,6 @@
 
 #define _BSD_SOURCE
 
-#if !defined(__APPLE__)
-/* _POSIX_SOURCE is needed on Linux in order to get rand_r, but on OS X causes
- * a build failure. */
-#define _POSIX_SOURCE
-#endif
-
 #include <openssl/lhash.h>
 
 #include <stdio.h>
@@ -105,13 +99,13 @@ static char *dummy_lh_delete(struct dummy_lhash *lh, const void *s) {
   return NULL;
 }
 
-static char *rand_string(unsigned *rand_state) {
-  unsigned len = 1 + (rand_r(rand_state) % 3);
+static char *rand_string() {
+  unsigned len = 1 + (rand() % 3);
   char *ret = malloc(len + 1);
   unsigned i;
 
   for (i = 0; i < len; i++) {
-    ret[i] = '0' + (rand_r(rand_state) & 7);
+    ret[i] = '0' + (rand() & 7);
   }
   ret[i] = 0;
 
@@ -121,7 +115,6 @@ static char *rand_string(unsigned *rand_state) {
 int main(int argc, char **argv) {
   _LHASH *lh = lh_new(NULL, NULL);
   struct dummy_lhash dummy_lh = {NULL};
-  unsigned rand_state = 0;
   unsigned i;
 
   for (i = 0; i < 100000; i++) {
@@ -133,10 +126,10 @@ int main(int argc, char **argv) {
       return 1;
     }
 
-    action = rand_r(&rand_state) % 3;
+    action = rand() % 3;
     switch (action) {
       case 0:
-        s = rand_string(&rand_state);
+        s = rand_string();
         s1 = (char *)lh_retrieve(lh, s);
         s2 = dummy_lh_retrieve(&dummy_lh, s);
         if (s1 != NULL && (s2 == NULL || strcmp(s1, s2) != 0)) {
@@ -147,7 +140,7 @@ int main(int argc, char **argv) {
         break;
 
       case 1:
-        s = rand_string(&rand_state);
+        s = rand_string();
         lh_insert(lh, (void **)&s1, s);
         dummy_lh_insert(&dummy_lh, &s2, strdup(s));
 
@@ -165,7 +158,7 @@ int main(int argc, char **argv) {
         break;
 
       case 2:
-        s = rand_string(&rand_state);
+        s = rand_string();
         s1 = lh_delete(lh, s);
         s2 = dummy_lh_delete(&dummy_lh, s);
 
