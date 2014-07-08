@@ -116,6 +116,7 @@
 
 #include <openssl/bio.h>
 #include <openssl/bn.h>
+#include <openssl/buf.h>
 #include <openssl/dh.h>
 #include <openssl/err.h>
 #include <openssl/mem.h>
@@ -356,13 +357,14 @@ CERT *ssl_cert_dup(CERT *cert)
 	/* Shared sigalgs also NULL */
 	ret->shared_sigalgs = NULL;
 	/* Copy any custom client certificate types */
-	if (cert->ctypes)
+	if (cert->client_certificate_types)
 		{
-		ret->ctypes = OPENSSL_malloc(cert->ctype_num);
-		if (!ret->ctypes)
+		ret->client_certificate_types = BUF_memdup(
+			cert->client_certificate_types,
+			cert->num_client_certificate_types);
+		if (!ret->client_certificate_types)
 			goto err;
-		memcpy(ret->ctypes, cert->ctypes, cert->ctype_num);
-		ret->ctype_num = cert->ctype_num;
+		ret->num_client_certificate_types = cert->num_client_certificate_types;
 		}
 
 	ret->cert_flags = cert->cert_flags;
@@ -457,8 +459,8 @@ void ssl_cert_free(CERT *c)
 		OPENSSL_free(c->client_sigalgs);
 	if (c->shared_sigalgs)
 		OPENSSL_free(c->shared_sigalgs);
-	if (c->ctypes)
-		OPENSSL_free(c->ctypes);
+	if (c->client_certificate_types)
+		OPENSSL_free(c->client_certificate_types);
 	if (c->verify_store)
 		X509_STORE_free(c->verify_store);
 	if (c->chain_store)

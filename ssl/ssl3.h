@@ -476,6 +476,12 @@ typedef struct ssl3_state_st
 
 	int in_read_app_data;
 
+	/* State pertaining to the pending handshake.
+	 *
+	 * TODO(davidben): State is current spread all over the place. Move
+	 * pending handshake state here so it can be managed separately from
+	 * established connection state in case of renegotiations.
+	 */
 	struct	{
 		/* actually only needs to be 16+20 */
 		unsigned char cert_verify_md[EVP_MAX_MD_SIZE*2];
@@ -504,9 +510,21 @@ typedef struct ssl3_state_st
 
 		int reuse_message;
 
-		/* used for certificate requests */
+		/* Client-only: cert_req determines if a client certificate is
+		 * to be sent. This is 0 if no client Certificate message is to
+		 * be sent, 1 if there is a client certificate, and 2 to send an
+		 * empty client Certificate message. */
 		int cert_req;
+
+		/* Client-only: ca_names contains the list of CAs received in a
+		 * CertificateRequest message. */
 		STACK_OF(X509_NAME) *ca_names;
+
+		/* Client-only: certificate_types contains the set of
+		 * certificate types received in a CertificateRequest
+		 * message. */
+		unsigned char *certificate_types;
+		size_t num_certificate_types;
 
 		int use_rsa_tmp;
 
@@ -518,6 +536,9 @@ typedef struct ssl3_state_st
 		const EVP_MD *new_hash;
 		int new_mac_pkey_type;
 		int new_mac_secret_size;
+
+		/* Server-only: cert_request is true if a client certificate was
+		 * requested. */
 		int cert_request;
 		} tmp;
 

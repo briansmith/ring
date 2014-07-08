@@ -3805,7 +3805,7 @@ int tls1_check_chain(SSL *s, X509 *x, EVP_PKEY *pk, STACK_OF(X509) *chain,
 	if (!s->server && strict_mode)
 		{
 		STACK_OF(X509_NAME) *ca_dn;
-		int check_type = 0;
+		uint8_t check_type = 0;
 		switch (pk->type)
 			{
 		case EVP_PKEY_RSA:
@@ -3829,17 +3829,10 @@ int tls1_check_chain(SSL *s, X509 *x, EVP_PKEY *pk, STACK_OF(X509) *chain,
 			}
 		if (check_type)
 			{
-			const unsigned char *ctypes;
-			int ctypelen;
-			ctypes = c->ctypes;
-			ctypelen = (int)c->ctype_num;
-			for (i = 0; i < ctypelen; i++)
+			if (s->s3->tmp.certificate_types &&
+				memchr(s->s3->tmp.certificate_types, check_type, s->s3->tmp.num_certificate_types))
 				{
-				if (ctypes[i] == check_type)
-					{
 					rv |= CERT_PKEY_CERT_TYPE;
-					break;
-					}
 				}
 			if (!(rv & CERT_PKEY_CERT_TYPE) && !check_flags)
 				goto end;

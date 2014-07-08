@@ -1871,7 +1871,9 @@ int ssl3_get_certificate_request(SSL *s)
 		OPENSSL_PUT_ERROR(SSL, ssl3_get_certificate_request, SSL_R_DECODE_ERROR);
 		goto err;
 		}
-	if (!CBS_stow(&certificate_types, &s->cert->ctypes, &s->cert->ctype_num))
+	if (!CBS_stow(&certificate_types,
+			&s->s3->tmp.certificate_types,
+			&s->s3->tmp.num_certificate_types))
 		{
 		ssl3_send_alert(s, SSL3_AL_FATAL, SSL_AD_INTERNAL_ERROR);
 		goto err;

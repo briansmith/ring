@@ -148,6 +148,7 @@
 
 #include <stdio.h>
 
+#include <openssl/buf.h>
 #include <openssl/dh.h>
 #include <openssl/md5.h>
 #include <openssl/mem.h>
@@ -2711,6 +2712,8 @@ void ssl3_free(SSL *s)
 
 	if (s->s3->tmp.ca_names != NULL)
 		sk_X509_NAME_pop_free(s->s3->tmp.ca_names,X509_NAME_free);
+	if (s->s3->tmp.certificate_types != NULL)
+		OPENSSL_free(s->s3->tmp.certificate_types);
 	if (s->s3->handshake_buffer) {
 		BIO_free(s->s3->handshake_buffer);
 	}
@@ -2732,6 +2735,9 @@ void ssl3_clear(SSL *s)
 	ssl3_cleanup_key_block(s);
 	if (s->s3->tmp.ca_names != NULL)
 		sk_X509_NAME_pop_free(s->s3->tmp.ca_names,X509_NAME_free);
+	if (s->s3->tmp.certificate_types != NULL)
+		OPENSSL_free(s->s3->tmp.certificate_types);
+	s->s3->tmp.num_certificate_types = 0;
 
 #ifndef OPENSSL_NO_DH
 	if (s->s3->tmp.dh != NULL)
@@ -3082,8 +3088,8 @@ long ssl3_ctrl(SSL *s, int cmd, long larg, void *parg)
 		if (s->server || !s->s3->tmp.cert_req)
 			return 0;
 		if (pctype)
-			*pctype = s->cert->ctypes;
-		return (int)s->cert->ctype_num;
+			*pctype = s->s3->tmp.certificate_types;
+		return (int)s->s3->tmp.num_certificate_types;
 		}
 
 	case SSL_CTRL_SET_CLIENT_CERT_TYPES:
@@ -3772,10 +3778,11 @@ int ssl3_get_req_cert_type(SSL *s, unsigned char *p)
 	unsigned long alg_k;
 
 	/* If we have custom certificate types set, use them */
-	if (s->cert->ctypes)
+	if (s->cert->client_certificate_types)
 		{
-		memcpy(p, s->cert->ctypes, s->cert->ctype_num);
-		return (int)s->cert->ctype_num;
+		memcpy(p, s->cert->client_certificate_types,
+			s->cert->num_client_certificate_types);
+		return (int)s->cert->num_client_certificate_types;
 		}
 	/* get configured sigalgs */
 	siglen = tls12_get_psigalgs(s, &sig);
@@ -3855,20 +3862,20 @@ int ssl3_get_req_cert_type(SSL *s, unsigned char *p)
 
 static int ssl3_set_req_cert_type(CERT *c, const unsigned char *p, size_t len)
 	{
-	if (c->ctypes)
+	if (c->client_certificate_types)
 		{
-		OPENSSL_free(c->ctypes);
-		c->ctypes = NULL;
+		OPENSSL_free(c->client_certificate_types);
+		c->client_certificate_types = NULL;
 		}
+	c->num_client_certificate_types = 0;
 	if (!p || !len)
 		return 1;
 	if (len > 0xff)
 		return 0;
-	c->ctypes = OPENSSL_malloc(len);
-	if (!c->ctypes)
+	c->client_certificate_types = BUF_memdup(p, len);
+	if (!c->client_certificate_types)
 		return 0;
-	memcpy(c->ctypes, p, len);
-	c->ctype_num = len;
+	c->num_client_certificate_types = len;
 	return 1;
 	}
 

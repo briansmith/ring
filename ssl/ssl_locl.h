@@ -564,11 +564,11 @@ typedef struct cert_st
 	unsigned int cert_flags;
 	CERT_PKEY pkeys[SSL_PKEY_NUM];
 
-	/* Certificate types (received or sent) in certificate request
-	 * message.
+	/* Server-only: client_certificate_types is list of certificate types to
+	 * include in the CertificateRequest message.
 	 */
-	unsigned char *ctypes;
-	size_t ctype_num;
+	unsigned char *client_certificate_types;
+	size_t num_client_certificate_types;
 
 	/* signature algorithms peer reports: e.g. supported signature
 	 * algorithms extension for server or as part of a certificate
