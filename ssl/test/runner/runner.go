@@ -181,6 +181,14 @@ var testCases = []testCase{
 			CertTypeECDSASign,
 		})},
 	},
+	{
+		name: "NoClientCertificate",
+		config: Config{
+			ClientAuth: RequireAnyClientCert,
+		},
+		shouldFail:         true,
+		expectedLocalError: "client didn't provide a certificate",
+	},
 }
 
 func doExchange(tlsConn *Conn, messageLen int) error {
@@ -488,6 +496,53 @@ func addCBCPaddingTests() {
 	})
 }
 
+func addClientAuthTests() {
+	for _, ver := range tlsVersions {
+		if ver.version == VersionSSL30 {
+			// TODO(davidben): The Go implementation does not
+			// correctly compute CertificateVerify hashes for SSLv3.
+			continue
+		}
+
+		var cipherSuites []uint16
+		if ver.version >= VersionTLS12 {
+			// Pick a SHA-256 cipher suite. The Go implementation
+			// does not correctly handle client auth with a SHA-384
+			// cipher suite.
+			cipherSuites = []uint16{TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256}
+		}
+
+		testCases = append(testCases, testCase{
+			testType: clientTest,
+			name:     ver.name + "-ClientAuth-RSA",
+			config: Config{
+				MinVersion:   ver.version,
+				MaxVersion:   ver.version,
+				CipherSuites: cipherSuites,
+				ClientAuth:   RequireAnyClientCert,
+			},
+			flags: []string{
+				"-cert-file", rsaCertificateFile,
+				"-key-file", rsaKeyFile,
+			},
+		})
+		testCases = append(testCases, testCase{
+			testType: clientTest,
+			name:     ver.name + "-ClientAuth-ECDSA",
+			config: Config{
+				MinVersion:   ver.version,
+				MaxVersion:   ver.version,
+				CipherSuites: cipherSuites,
+				ClientAuth:   RequireAnyClientCert,
+			},
+			flags: []string{
+				"-cert-file", ecdsaCertificateFile,
+				"-key-file", ecdsaKeyFile,
+			},
+		})
+	}
+}
+
 func worker(statusChan chan statusMsg, c chan *testCase, wg *sync.WaitGroup) {
 	defer wg.Done()
 
@@ -535,6 +590,7 @@ func main() {
 	addCipherSuiteTests()
 	addBadECDSASignatureTests()
 	addCBCPaddingTests()
+	addClientAuthTests()
 
 	var wg sync.WaitGroup
 
