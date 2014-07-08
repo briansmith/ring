@@ -40,6 +40,10 @@
 * (2) University of Haifa, Israel                                            *
 *****************************************************************************/
 
+#include <openssl/base.h>
+
+#if defined(OPENSSL_X86_64)
+
 #include "rsaz_exp.h"
 
 #include <openssl/mem.h>
@@ -318,3 +322,5 @@ void RSAZ_512_mod_exp(BN_ULONG result[8],
 
 	OPENSSL_cleanse(storage,sizeof(storage));
 }
+
+#endif  /* OPENSSL_X86_64 */
