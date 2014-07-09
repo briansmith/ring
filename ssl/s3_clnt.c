@@ -2674,28 +2674,32 @@ err:
 
 int ssl3_send_client_verify(SSL *s)
 	{
-	unsigned char *p;
-	unsigned char data[MD5_DIGEST_LENGTH+SHA_DIGEST_LENGTH];
+	unsigned char *buf, *p;
+	const EVP_MD *md;
+	uint8_t digest[EVP_MAX_MD_SIZE];
+	unsigned digest_length;
 	EVP_PKEY *pkey;
 	EVP_PKEY_CTX *pctx = NULL;
 	EVP_MD_CTX mctx;
-	unsigned signature_length = 0;
-	unsigned long n;
+	size_t signature_length = 0;
+	unsigned long n = 0;
 
 	EVP_MD_CTX_init(&mctx);
+	buf=(unsigned char *)s->init_buf->data;
 
 	if (s->state == SSL3_ST_CW_CERT_VRFY_A)
 		{
 		p= ssl_handshake_start(s);
 		pkey = s->cert->key->privatekey;
-		/* For TLS v1.2 send signature algorithm and signature
-		 * using agreed digest and cached handshake records.
+		/* For TLS v1.2 send signature algorithm and signature using
+		 * agreed digest and cached handshake records. Otherwise, use
+		 * SHA1 or MD5 + SHA1 depending on key type.
 		 */
 		if (SSL_USE_SIGALGS(s))
 			{
 			long hdatalen = 0;
 			char *hdata;
-			const EVP_MD *md = s->cert->key->digest;
+			md = s->cert->key->digest;
 			hdatalen = BIO_get_mem_data(s->s3->handshake_buffer,
 								&hdata);
 			if (hdatalen <= 0 || !tls12_get_sigandhash(p, pkey, md))
@@ -2704,76 +2708,77 @@ int ssl3_send_client_verify(SSL *s)
 				goto err;
 				}
 			p += 2;
-#ifdef SSL_DEBUG
-			fprintf(stderr, "Using TLS 1.2 with client alg %s\n",
-							EVP_MD_name(md));
-#endif
-			if (!EVP_SignInit_ex(&mctx, md, NULL)
-				|| !EVP_SignUpdate(&mctx, hdata, hdatalen)
-				|| !EVP_SignFinal(&mctx, p + 2,
-					&signature_length, pkey))
+			n += 2;
+			if (!EVP_DigestInit_ex(&mctx, md, NULL)
+				|| !EVP_DigestUpdate(&mctx, hdata, hdatalen)
+				|| !EVP_DigestFinal(&mctx, digest, &digest_length))
 				{
 				OPENSSL_PUT_ERROR(SSL, ssl3_send_client_verify, ERR_R_EVP_LIB);
 				goto err;
 				}
-			s2n(signature_length, p);
-			n = signature_length + 4;
-			if (!ssl3_digest_cached_records(s))
-				goto err;
 			}
-		else
-		if (pkey->type == EVP_PKEY_RSA)
+		else if (pkey->type == EVP_PKEY_RSA)
 			{
-			s->method->ssl3_enc->cert_verify_mac(s, NID_md5, data);
+			s->method->ssl3_enc->cert_verify_mac(s, NID_md5, digest);
 			s->method->ssl3_enc->cert_verify_mac(s,
-				NID_sha1, &data[MD5_DIGEST_LENGTH]);
-			if (RSA_sign(NID_md5_sha1, data,
-					MD5_DIGEST_LENGTH+SHA_DIGEST_LENGTH,
-					&p[2], &signature_length, pkey->pkey.rsa) <= 0)
-				{
-				OPENSSL_PUT_ERROR(SSL, ssl3_send_client_verify, ERR_R_RSA_LIB);
-				goto err;
-				}
-			s2n(signature_length, p);
-			n = signature_length + 2;
+				NID_sha1, &digest[MD5_DIGEST_LENGTH]);
+			digest_length = MD5_DIGEST_LENGTH + SHA_DIGEST_LENGTH;
+			/* Using a NULL signature MD makes EVP_PKEY_sign perform
+			 * a raw RSA signature, rather than wrapping in a
+			 * DigestInfo. */
+			md = NULL;
 			}
-		else
-#ifndef OPENSSL_NO_DSA
-		if (pkey->type == EVP_PKEY_DSA)
+		else if (pkey->type == EVP_PKEY_DSA || pkey->type == EVP_PKEY_EC)
 			{
-			s->method->ssl3_enc->cert_verify_mac(s, NID_sha1, data);
-			if (!DSA_sign(pkey->save_type, data,
-					SHA_DIGEST_LENGTH, &(p[2]),
-					&signature_length, pkey->pkey.dsa))
-				{
-				OPENSSL_PUT_ERROR(SSL, ssl3_send_client_verify, ERR_R_DSA_LIB);
-				goto err;
-				}
-			s2n(signature_length, p);
-			n = signature_length + 2;
+			s->method->ssl3_enc->cert_verify_mac(s, NID_sha1, digest);
+			digest_length = SHA_DIGEST_LENGTH;
+			md = EVP_sha1();
 			}
 		else
-#endif
-#ifndef OPENSSL_NO_ECDSA
-		if (pkey->type == EVP_PKEY_EC)
-			{
-			s->method->ssl3_enc->cert_verify_mac(s, NID_sha1, data);
-			if (!ECDSA_sign(pkey->save_type, data,
-					SHA_DIGEST_LENGTH, &(p[2]),
-					&signature_length, pkey->pkey.ec))
-				{
-				OPENSSL_PUT_ERROR(SSL, ssl3_send_client_verify, ERR_R_ECDSA_LIB);
-				goto err;
-				}
-			s2n(signature_length, p);
-			n = signature_length + 2;
-			}
-		else
-#endif
 			{
 			OPENSSL_PUT_ERROR(SSL, ssl3_send_client_verify, ERR_R_INTERNAL_ERROR);
 			goto err;
 			}
+
+		/* Sign the digest. */
+		pctx = EVP_PKEY_CTX_new(pkey, NULL);
+		if (pctx == NULL)
+			goto err;
+
+		/* Initialize the EVP_PKEY_CTX and determine the size of the signature. */
+		if (EVP_PKEY_sign_init(pctx) != 1 ||
+			EVP_PKEY_CTX_set_signature_md(pctx, md) != 1 ||
+			EVP_PKEY_sign(pctx, NULL, &signature_length,
+				digest, digest_length) != 1)
+			{
+			OPENSSL_PUT_ERROR(SSL, ssl3_send_client_verify, ERR_R_EVP_LIB);
+			goto err;
+			}
+
+		if (p + 2 + signature_length > buf + SSL3_RT_MAX_PLAIN_LENGTH)
+			{
+			OPENSSL_PUT_ERROR(SSL, ssl3_send_client_verify, SSL_R_DATA_LENGTH_TOO_LONG);
+			goto err;
+			}
+
+		if (EVP_PKEY_sign(pctx, &p[2], &signature_length,
+				digest, digest_length) != 1)
+			{
+			OPENSSL_PUT_ERROR(SSL, ssl3_send_client_verify, ERR_R_EVP_LIB);
+			goto err;
+			}
+
+		s2n(signature_length, p);
+		n += signature_length + 2;
+
+		/* Now that client auth is completed, we no longer need cached
+		 * handshake records and can digest them. */
+		if (SSL_USE_SIGALGS(s))
+			{
+			if (!ssl3_digest_cached_records(s))
+				goto err;
+			}
+
 		ssl_set_handshake_header(s, SSL3_MT_CERTIFICATE_VERIFY, n);
 		s->state=SSL3_ST_CW_CERT_VRFY_B;
 		}
