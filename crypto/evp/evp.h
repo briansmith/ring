@@ -422,10 +422,13 @@ int EVP_PKEY_CTX_ctrl(EVP_PKEY_CTX *ctx, int keytype, int optype, int cmd,
 int EVP_PKEY_sign_init(EVP_PKEY_CTX *ctx);
 
 /* EVP_PKEY_sign signs |data_len| bytes from |data| using |ctx|. If |sig| is
- * NULL, the size of the signature is written to |out_sig_len|. Otherwise,
- * |*sig_len| must contain the number of bytes of space available at |sig|. If
- * sufficient, the signature will be written to |sig| and |*sig_len| updated
- * with the true length.
+ * NULL, the maximum size of the signature is written to
+ * |out_sig_len|. Otherwise, |*sig_len| must contain the number of bytes of
+ * space available at |sig|. If sufficient, the signature will be written to
+ * |sig| and |*sig_len| updated with the true length.
+ *
+ * WARNING: Setting |out| to NULL only gives the maximum size of the
+ * plaintext. The actual plaintext may be smaller.
  *
  * It returns one on success or zero on error. (Note: this differs from
  * OpenSSL, which can also return negative values to indicate an error. ) */
@@ -454,8 +457,14 @@ int EVP_PKEY_verify(EVP_PKEY_CTX *ctx, const uint8_t *sig, size_t sig_len,
  * usual return value convention. */
 int EVP_PKEY_encrypt_init(EVP_PKEY_CTX *ctx);
 
-/* EVP_PKEY_encrypt encrypts |in_len| bytes from |in| and writes it to |out|.
- * TODO(fork): need more details on |out_len|.
+/* EVP_PKEY_encrypt encrypts |in_len| bytes from |in|. If |out| is NULL, the
+ * maximum size of the ciphertext is written to |out_len|. Otherwise, |*out_len|
+ * must contain the number of bytes of space available at |out|. If sufficient,
+ * the ciphertext will be written to |out| and |*out_len| updated with the true
+ * length.
+ *
+ * WARNING: Setting |out| to NULL only gives the maximum size of the
+ * ciphertext. The actual ciphertext may be smaller.
  *
  * It returns one on success or <= 0 on error. (Note: this differs from
  * OpenSSL, which can also return negative values to indicate an error. ) */
@@ -469,8 +478,14 @@ int EVP_PKEY_encrypt(EVP_PKEY_CTX *ctx, uint8_t *out, size_t *out_len,
  * usual return value convention. */
 int EVP_PKEY_decrypt_init(EVP_PKEY_CTX *ctx);
 
-/* EVP_PKEY_decrypt decrypts |in_len| bytes from |in|, writes it to |out| and
- * sets |*outlen| to the number of bytes written.
+/* EVP_PKEY_decrypt decrypts |in_len| bytes from |in|. If |out| is NULL, the
+ * maximum size of the plaintext is written to |out_len|. Otherwise, |*out_len|
+ * must contain the number of bytes of space available at |out|. If sufficient,
+ * the ciphertext will be written to |out| and |*out_len| updated with the true
+ * length.
+ *
+ * WARNING: Setting |out| to NULL only gives the maximum size of the
+ * plaintext. The actual plaintext may be smaller.
  *
  * It returns one on success or <= 0 on error. (Note: this differs from
  * OpenSSL, which can also return negative values to indicate an error. ) */
@@ -496,7 +511,10 @@ int EVP_PKEY_derive_set_peer(EVP_PKEY_CTX *ctx, EVP_PKEY *peer);
  * |ctx|. If |key| is non-NULL then, on entry, |out_key_len| must contain the
  * amount of space at |key|. If sufficient then the shared key will be written
  * to |key| and |*out_key_len| will be set to the length. If |key| is NULL then
- * |out_key_len| will be set the length.
+ * |out_key_len| will be set to the maximum length.
+ *
+ * WARNING: Setting |out| to NULL only gives the maximum size of the key. The
+ * actual key may be smaller.
  *
  * It returns one on success and <= 0 on error. WARNING: this differs from the
  * usual return convention. */
@@ -772,6 +790,8 @@ struct evp_pkey_st {
 #define EVP_F_i2d_PublicKey 149
 #define EVP_F_rsa_pub_decode 150
 #define EVP_F_EVP_PKEY_get1_DSA 151
+#define EVP_F_pkey_rsa_encrypt 152
+#define EVP_F_pkey_rsa_decrypt 153
 #define EVP_R_UNSUPPORTED_PUBLIC_KEY_TYPE 100
 #define EVP_R_UNSUPPORTED_SIGNATURE_TYPE 101
 #define EVP_R_INVALID_DIGEST_TYPE 102

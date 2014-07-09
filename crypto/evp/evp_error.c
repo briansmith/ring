@@ -61,6 +61,8 @@ const ERR_STRING_DATA EVP_error_string_data[] = {
   {ERR_PACK(ERR_LIB_EVP, EVP_F_pkey_ec_paramgen, 0), "pkey_ec_paramgen"},
   {ERR_PACK(ERR_LIB_EVP, EVP_F_pkey_ec_sign, 0), "pkey_ec_sign"},
   {ERR_PACK(ERR_LIB_EVP, EVP_F_pkey_rsa_ctrl, 0), "pkey_rsa_ctrl"},
+  {ERR_PACK(ERR_LIB_EVP, EVP_F_pkey_rsa_decrypt, 0), "pkey_rsa_decrypt"},
+  {ERR_PACK(ERR_LIB_EVP, EVP_F_pkey_rsa_encrypt, 0), "pkey_rsa_encrypt"},
   {ERR_PACK(ERR_LIB_EVP, EVP_F_pkey_rsa_sign, 0), "pkey_rsa_sign"},
   {ERR_PACK(ERR_LIB_EVP, EVP_F_rsa_algor_to_md, 0), "rsa_algor_to_md"},
   {ERR_PACK(ERR_LIB_EVP, EVP_F_rsa_item_verify, 0), "rsa_item_verify"},

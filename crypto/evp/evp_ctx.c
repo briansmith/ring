@@ -254,27 +254,6 @@ int EVP_PKEY_sign_init(EVP_PKEY_CTX *ctx) {
   return ret;
 }
 
-static int check_autoarg(const EVP_PKEY_CTX *ctx, const uint8_t *arg,
-                         size_t *arg_len) {
-  size_t size;
-
-  if (0 == (ctx->pmeth->flags & EVP_PKEY_FLAG_AUTOARGLEN)) {
-    return 1;
-  }
-
-  size = EVP_PKEY_size(ctx->pkey);
-  if (arg == NULL) {
-    *arg_len = size;
-    return 1;
-  }
-
-  if (*arg_len < size) {
-    return 0;
-  }
-
-  return 1;
-}
-
 int EVP_PKEY_sign(EVP_PKEY_CTX *ctx, uint8_t *sig, size_t *sig_len,
                   const uint8_t *data, size_t data_len) {
   if (!ctx || !ctx->pmeth || !ctx->pmeth->sign) {
@@ -284,11 +263,6 @@ int EVP_PKEY_sign(EVP_PKEY_CTX *ctx, uint8_t *sig, size_t *sig_len,
   }
   if (ctx->operation != EVP_PKEY_OP_SIGN) {
     OPENSSL_PUT_ERROR(EVP, EVP_PKEY_sign, EVP_R_OPERATON_NOT_INITIALIZED);
-    return 0;
-  }
-  if (!check_autoarg(ctx, sig, sig_len)) {
-    OPENSSL_PUT_ERROR(EVP, EVP_PKEY_sign,
-                      EVP_R_BUFFER_TOO_SMALL);
     return 0;
   }
   return ctx->pmeth->sign(ctx, sig, sig_len, data, data_len);
@@ -356,10 +330,6 @@ int EVP_PKEY_encrypt(EVP_PKEY_CTX *ctx, uint8_t *out, size_t *outlen,
     OPENSSL_PUT_ERROR(EVP, EVP_PKEY_encrypt, EVP_R_OPERATON_NOT_INITIALIZED);
     return -1;
   }
-  if (!check_autoarg(ctx, out, outlen)) {
-    OPENSSL_PUT_ERROR(EVP, EVP_PKEY_encrypt, EVP_R_BUFFER_TOO_SMALL);
-    return 0;
-  }
   return ctx->pmeth->encrypt(ctx, out, outlen, in, inlen);
 }
 
@@ -392,10 +362,6 @@ int EVP_PKEY_decrypt(EVP_PKEY_CTX *ctx, uint8_t *out, size_t *outlen,
   if (ctx->operation != EVP_PKEY_OP_DECRYPT) {
     OPENSSL_PUT_ERROR(EVP, EVP_PKEY_decrypt, EVP_R_OPERATON_NOT_INITIALIZED);
     return -1;
-  }
-  if (!check_autoarg(ctx, out, outlen)) {
-    OPENSSL_PUT_ERROR(EVP, EVP_PKEY_decrypt, EVP_R_BUFFER_TOO_SMALL);
-    return 0;
   }
   return ctx->pmeth->decrypt(ctx, out, outlen, in, inlen);
 }
@@ -492,10 +458,6 @@ int EVP_PKEY_derive(EVP_PKEY_CTX *ctx, uint8_t *key, size_t *out_key_len) {
   if (ctx->operation != EVP_PKEY_OP_DERIVE) {
     OPENSSL_PUT_ERROR(EVP, EVP_PKEY_derive, EVP_R_OPERATON_NOT_INITIALIZED);
     return -1;
-  }
-  if (!check_autoarg(ctx, key, out_key_len)) {
-    OPENSSL_PUT_ERROR(EVP, EVP_PKEY_derive, EVP_R_BUFFER_TOO_SMALL);
-    return 0;
   }
   return ctx->pmeth->derive(ctx, key, out_key_len);
 }

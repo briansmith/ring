@@ -172,6 +172,14 @@ static int pkey_rsa_sign(EVP_PKEY_CTX *ctx, uint8_t *sig, size_t *siglen,
   RSA_PKEY_CTX *rctx = ctx->data;
   RSA *rsa = ctx->pkey->pkey.rsa;
 
+  if (!sig) {
+    *siglen = RSA_size(rsa);
+    return 1;
+  } else if (*siglen < (size_t)RSA_size(rsa)) {
+    OPENSSL_PUT_ERROR(EVP, pkey_rsa_sign, EVP_R_BUFFER_TOO_SMALL);
+    return 0;
+  }
+
   if (rctx->md) {
     if (tbslen != EVP_MD_size(rctx->md)) {
       OPENSSL_PUT_ERROR(EVP, pkey_rsa_sign, EVP_R_INVALID_DIGEST_LENGTH);
@@ -266,9 +274,18 @@ static int pkey_rsa_encrypt(EVP_PKEY_CTX *ctx, uint8_t *out, size_t *outlen,
                             const uint8_t *in, size_t inlen) {
   int ret;
   RSA_PKEY_CTX *rctx = ctx->data;
+  RSA *rsa = ctx->pkey->pkey.rsa;
+
+  if (!out) {
+    *outlen = RSA_size(rsa);
+    return 1;
+  } else if (*outlen < (size_t)RSA_size(rsa)) {
+    OPENSSL_PUT_ERROR(EVP, pkey_rsa_encrypt, EVP_R_BUFFER_TOO_SMALL);
+    return 0;
+  }
 
   if (rctx->pad_mode == RSA_PKCS1_OAEP_PADDING) {
-    int klen = RSA_size(ctx->pkey->pkey.rsa);
+    int klen = RSA_size(rsa);
     if (!setup_tbuf(rctx, ctx)) {
       return -1;
     }
@@ -277,11 +294,9 @@ static int pkey_rsa_encrypt(EVP_PKEY_CTX *ctx, uint8_t *out, size_t *outlen,
                                          rctx->md, rctx->mgf1md)) {
       return -1;
     }
-    ret = RSA_public_encrypt(klen, rctx->tbuf, out, ctx->pkey->pkey.rsa,
-                             RSA_NO_PADDING);
+    ret = RSA_public_encrypt(klen, rctx->tbuf, out, rsa, RSA_NO_PADDING);
   } else {
-    ret =
-        RSA_public_encrypt(inlen, in, out, ctx->pkey->pkey.rsa, rctx->pad_mode);
+    ret = RSA_public_encrypt(inlen, in, out, rsa, rctx->pad_mode);
   }
 
   if (ret < 0) {
@@ -297,13 +312,21 @@ static int pkey_rsa_decrypt(EVP_PKEY_CTX *ctx, uint8_t *out,
                             size_t inlen) {
   int ret;
   RSA_PKEY_CTX *rctx = ctx->data;
+  RSA *rsa = ctx->pkey->pkey.rsa;
+
+  if (!out) {
+    *outlen = RSA_size(rsa);
+    return 1;
+  } else if (*outlen < (size_t)RSA_size(rsa)) {
+    OPENSSL_PUT_ERROR(EVP, pkey_rsa_decrypt, EVP_R_BUFFER_TOO_SMALL);
+    return 0;
+  }
 
   if (rctx->pad_mode == RSA_PKCS1_OAEP_PADDING) {
     if (!setup_tbuf(rctx, ctx)) {
       return -1;
     }
-    ret = RSA_private_decrypt(inlen, in, rctx->tbuf, ctx->pkey->pkey.rsa,
-                              RSA_NO_PADDING);
+    ret = RSA_private_decrypt(inlen, in, rctx->tbuf, rsa, RSA_NO_PADDING);
     if (ret <= 0) {
       return ret;
     }
@@ -311,8 +334,7 @@ static int pkey_rsa_decrypt(EVP_PKEY_CTX *ctx, uint8_t *out,
         out, ret, rctx->tbuf, ret, rctx->oaep_label,
         rctx->oaep_labellen, rctx->md, rctx->mgf1md);
   } else {
-    ret = RSA_private_decrypt(inlen, in, out, ctx->pkey->pkey.rsa,
-                              rctx->pad_mode);
+    ret = RSA_private_decrypt(inlen, in, out, rsa, rctx->pad_mode);
   }
 
   if (ret < 0) {
@@ -507,14 +529,14 @@ static int pkey_rsa_keygen(EVP_PKEY_CTX *ctx, EVP_PKEY *pkey) {
 }
 
 const EVP_PKEY_METHOD rsa_pkey_meth = {
-    EVP_PKEY_RSA,        EVP_PKEY_FLAG_AUTOARGLEN, pkey_rsa_init,
-    pkey_rsa_copy,       pkey_rsa_cleanup,         0 /* paramgen_init */,
-    0 /* paramgen */,    0 /* keygen_init */,      pkey_rsa_keygen,
-    0 /* sign_init */,   pkey_rsa_sign,            0 /* verify_init */,
-    pkey_rsa_verify,     0,                        0,
-    0,                   0,                        0 /* encrypt_init */,
-    pkey_rsa_encrypt,    0 /* decrypt_init */,     pkey_rsa_decrypt,
-    0 /* derive_init */, 0 /* derive */,           pkey_rsa_ctrl,
+    EVP_PKEY_RSA,           0 /* flags */,        pkey_rsa_init,
+    pkey_rsa_copy,          pkey_rsa_cleanup,     0 /* paramgen_init */,
+    0 /* paramgen */,       0 /* keygen_init */,  pkey_rsa_keygen,
+    0 /* sign_init */,      pkey_rsa_sign,        0 /* verify_init */,
+    pkey_rsa_verify,        0 /* signctx_init */, 0 /* signctx */,
+    0 /* verifyctx_init */, 0 /* verifyctx */,    0 /* encrypt_init */,
+    pkey_rsa_encrypt,       0 /* decrypt_init */, pkey_rsa_decrypt,
+    0 /* derive_init */,    0 /* derive */,       pkey_rsa_ctrl,
 };
 
 int EVP_PKEY_CTX_set_rsa_padding(EVP_PKEY_CTX *ctx, int padding) {

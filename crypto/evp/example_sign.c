@@ -101,7 +101,7 @@ int example_EVP_DigestSignInit() {
   RSA *rsa = NULL;
   const uint8_t *derp = kExampleRSAKeyDER;
   uint8_t *sig = NULL;
-  size_t sig_len;
+  size_t sig_len = 0;
   EVP_MD_CTX md_ctx;
 
   EVP_MD_CTX_init(&md_ctx);
@@ -110,18 +110,29 @@ int example_EVP_DigestSignInit() {
     goto out;
   }
 
-  sig_len = RSA_size(rsa);
-
   pkey = EVP_PKEY_new();
   sig = malloc(sig_len);
   if (pkey == NULL ||
-      sig == NULL ||
       !EVP_PKEY_set1_RSA(pkey, rsa) ||
       EVP_DigestSignInit(&md_ctx, NULL, EVP_sha256(), NULL, pkey) != 1 ||
-      EVP_DigestSignUpdate(&md_ctx, kMsg, sizeof(kMsg)) != 1 ||
+      EVP_DigestSignUpdate(&md_ctx, kMsg, sizeof(kMsg)) != 1) {
+    goto out;
+  }
+  /* Determine the size of the signature. */
+  if (EVP_DigestSignFinal(&md_ctx, NULL, &sig_len) != 1) {
+    goto out;
+  }
+  /* Sanity check for testing. */
+  if (sig_len != RSA_size(rsa)) {
+    fprintf(stderr, "sig_len mismatch\n");
+    goto out;
+  }
+  sig = malloc(sig_len);
+  if (sig == NULL ||
       EVP_DigestSignFinal(&md_ctx, sig, &sig_len) != 1) {
     goto out;
   }
+
   ret = 1;
 
 out:

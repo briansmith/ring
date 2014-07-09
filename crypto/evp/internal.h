@@ -175,11 +175,6 @@ struct evp_pkey_ctx_st {
   void *app_data;
 } /* EVP_PKEY_CTX */;
 
-/* EVP_PKEY_FLAG_AUTOARGLEN causes wrapper functions to automatically check the
- * argument length to various functions (signing, decrypting etc) is equal to
- * the value of |EVP_PKEY_size|. */
-#define EVP_PKEY_FLAG_AUTOARGLEN 2
-
 struct evp_pkey_method_st {
   int pkey_id;
   int flags;
