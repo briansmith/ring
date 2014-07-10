@@ -52,6 +52,7 @@ const ERR_STRING_DATA EVP_error_string_data[] = {
   {ERR_PACK(ERR_LIB_EVP, EVP_F_eckey_pub_encode, 0), "eckey_pub_encode"},
   {ERR_PACK(ERR_LIB_EVP, EVP_F_eckey_type2param, 0), "eckey_type2param"},
   {ERR_PACK(ERR_LIB_EVP, EVP_F_evp_pkey_ctx_new, 0), "evp_pkey_ctx_new"},
+  {ERR_PACK(ERR_LIB_EVP, EVP_F_hmac_signctx, 0), "hmac_signctx"},
   {ERR_PACK(ERR_LIB_EVP, EVP_F_i2d_PublicKey, 0), "i2d_PublicKey"},
   {ERR_PACK(ERR_LIB_EVP, EVP_F_old_ec_priv_decode, 0), "old_ec_priv_decode"},
   {ERR_PACK(ERR_LIB_EVP, EVP_F_old_rsa_priv_decode, 0), "old_rsa_priv_decode"},

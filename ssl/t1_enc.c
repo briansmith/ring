@@ -186,6 +186,7 @@ static int tls1_P_hash(const EVP_MD *md, const unsigned char *sec,
 		goto err;
 	if (seed5 && !EVP_DigestSignUpdate(&ctx,seed5,seed5_len))
 		goto err;
+	A1_len = EVP_MAX_MD_SIZE;
 	if (!EVP_DigestSignFinal(&ctx,A1,&A1_len))
 		goto err;
 
@@ -211,16 +212,19 @@ static int tls1_P_hash(const EVP_MD *md, const unsigned char *sec,
 
 		if (olen > chunk)
 			{
+			j = olen;
 			if (!EVP_DigestSignFinal(&ctx,out,&j))
 				goto err;
 			out+=j;
 			olen-=j;
 			/* calc the next A1 value */
+			A1_len = EVP_MAX_MD_SIZE;
 			if (!EVP_DigestSignFinal(&ctx_tmp,A1,&A1_len))
 				goto err;
 			}
 		else	/* last one */
 			{
+			A1_len = EVP_MAX_MD_SIZE;
 			if (!EVP_DigestSignFinal(&ctx,A1,&A1_len))
 				goto err;
 			memcpy(out,A1,olen);

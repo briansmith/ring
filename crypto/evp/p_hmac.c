@@ -56,6 +56,7 @@
 #include <openssl/evp.h>
 
 #include <openssl/asn1.h>
+#include <openssl/err.h>
 #include <openssl/hmac.h>
 #include <openssl/mem.h>
 #include <openssl/obj.h>
@@ -153,14 +154,14 @@ static int hmac_signctx(EVP_PKEY_CTX *ctx, unsigned char *sig, size_t *siglen,
                         EVP_MD_CTX *mctx) {
   unsigned int hlen;
   HMAC_PKEY_CTX *hctx = ctx->data;
-  int l = EVP_MD_CTX_size(mctx);
+  size_t md_size = EVP_MD_CTX_size(mctx);
 
-  if (l < 0) {
-    return 0;
-  }
-  *siglen = l;
   if (!sig) {
+    *siglen = md_size;
     return 1;
+  } else if (*siglen < md_size) {
+    OPENSSL_PUT_ERROR(EVP, hmac_signctx, EVP_R_BUFFER_TOO_SMALL);
+    return 0;
   }
 
   if (!HMAC_Final(&hctx->ctx, sig, &hlen)) {

@@ -792,6 +792,7 @@ struct evp_pkey_st {
 #define EVP_F_EVP_PKEY_get1_DSA 151
 #define EVP_F_pkey_rsa_encrypt 152
 #define EVP_F_pkey_rsa_decrypt 153
+#define EVP_F_hmac_signctx 154
 #define EVP_R_UNSUPPORTED_PUBLIC_KEY_TYPE 100
 #define EVP_R_UNSUPPORTED_SIGNATURE_TYPE 101
 #define EVP_R_INVALID_DIGEST_TYPE 102
