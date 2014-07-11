@@ -249,7 +249,11 @@ int RSA_public_decrypt(int flen, const uint8_t *from, uint8_t *to, RSA *rsa,
 }
 
 unsigned RSA_size(const RSA *rsa) {
-  return BN_num_bytes(rsa->n);
+  if (rsa->meth->size) {
+    return rsa->meth->size(rsa);
+  }
+
+  return RSA_default_method.size(rsa);
 }
 
 int RSA_get_ex_new_index(long argl, void *argp, CRYPTO_EX_new *new_func,

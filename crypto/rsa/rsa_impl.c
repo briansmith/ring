@@ -83,6 +83,10 @@ static int finish(RSA *rsa) {
   return 1;
 }
 
+static size_t size(const RSA *rsa) {
+  return BN_num_bytes(rsa->n);
+}
+
 static int encrypt(RSA *rsa, size_t *out_len, uint8_t *out, size_t max_out,
                    const uint8_t *in, size_t in_len, int padding) {
   const unsigned rsa_size = RSA_size(rsa);
@@ -991,6 +995,8 @@ const struct rsa_meth_st RSA_default_method = {
 
   NULL /* init */,
   finish,
+
+  size,
 
   NULL /* sign */,
   NULL /* verify */,
