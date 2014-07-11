@@ -135,7 +135,7 @@ int ECDSA_do_verify(const uint8_t *digest, size_t digest_len,
   const EC_POINT *pub_key;
 
   if (eckey->ecdsa_meth && eckey->ecdsa_meth->verify) {
-    OPENSSL_PUT_ERROR(ECDSA, ECDSA_sign_ex, ECDSA_R_NOT_IMPLEMENTED);
+    OPENSSL_PUT_ERROR(ECDSA, ECDSA_do_verify, ECDSA_R_NOT_IMPLEMENTED);
     return -1;
   }
 
@@ -366,7 +366,7 @@ ECDSA_SIG *ECDSA_do_sign_ex(const uint8_t *digest, size_t digest_len,
   const BIGNUM *priv_key;
 
   if (eckey->ecdsa_meth && eckey->ecdsa_meth->sign) {
-    OPENSSL_PUT_ERROR(ECDSA, ECDSA_sign_ex, ECDSA_R_NOT_IMPLEMENTED);
+    OPENSSL_PUT_ERROR(ECDSA, ECDSA_do_sign_ex, ECDSA_R_NOT_IMPLEMENTED);
     return NULL;
   }
 
