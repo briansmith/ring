@@ -25,7 +25,7 @@
 
 #include <openssl/chacha.h>
 
-#if !defined(OPENSSL_WINDOWS) && (defined(OPENSSL_X86_64) || defined(OPENSSL_X86))
+#if !defined(OPENSSL_WINDOWS) && (defined(OPENSSL_X86_64) || defined(OPENSSL_X86)) && defined(__SSE2__)
 
 #define CHACHA_RNDS 20 /* 8 (high speed), 20 (conservative), 12 (middle) */
 
@@ -326,4 +326,4 @@ void CRYPTO_chacha_20(
 		}
 	}
 
-#endif /* !OPENSSL_WINDOWS && (OPENSSL_X86_64 || OPENSSL_X86) */
+#endif /* !OPENSSL_WINDOWS && (OPENSSL_X86_64 || OPENSSL_X86) && SSE2 */

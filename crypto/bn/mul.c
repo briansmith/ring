@@ -131,7 +131,7 @@ void bn_mul_low_normal(BN_ULONG *r, BN_ULONG *a, BN_ULONG *b, int n) {
   }
 }
 
-#if !defined(OPENSSL_X86)
+#if !defined(OPENSSL_X86) || defined(OPENSSL_NO_ASM)
 /* Here follows specialised variants of bn_add_words() and bn_sub_words(). They
  * have the property performing operations on arrays of different sizes. The
  * sizes of those arrays is expressed through cl, which is the common length (

@@ -58,7 +58,6 @@
 #include <string.h>
 #include <sys/types.h>
 
-
 #if defined(__x86_64) || defined(_M_AMD64) || defined(_M_X64)
 #define OPENSSL_64_BIT
 #define OPENSSL_X86_64
@@ -74,6 +73,9 @@
 #elif defined(__mips__)
 #define OPENSSL_32_BIT
 #define OPENSSL_MIPS
+#elif defined(__pnacl__)
+#define OPENSSL_32_BIT
+#define OPENSSL_PNACL
 #else
 #error "Unknown target CPU"
 #endif

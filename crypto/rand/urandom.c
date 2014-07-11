@@ -91,7 +91,7 @@ static int urandom_get_fd_locked() {
   if (urandom_fd != -2)
     return urandom_fd;
 
-  urandom_fd = open("/dev/urandom", O_RDONLY | O_NOCTTY);
+  urandom_fd = open("/dev/urandom", O_RDONLY);
   return urandom_fd;
 }
 

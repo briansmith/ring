@@ -53,7 +53,9 @@
  * copied and put under another distribution licence
  * [including the GNU Public Licence.] */
 
+#if !defined(_BSD_SOURCE)
 #define _BSD_SOURCE /* needed for strdup, snprintf, vprintf etc */
+#endif
 
 #include <openssl/mem.h>
 

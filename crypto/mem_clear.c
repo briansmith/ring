@@ -58,7 +58,7 @@
 #include <string.h>
 
 
-#if !defined(OPENSSL_X86)
+#if !defined(OPENSSL_X86) || defined(OPENSSL_NO_ASM)
 
 /* OPENSSL_cleanse is given its own compilation unit in the hopes that the
  * compiler won't be able to optimise it away. */

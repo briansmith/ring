@@ -24,7 +24,9 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. */
 
+#if !defined(_POSIX_C_SOURCE)
 #define _POSIX_C_SOURCE 1  /* for readdir_r */
+#endif
 
 #include "directory.h"
 
@@ -33,6 +35,21 @@
 
 #include <dirent.h>
 #include <errno.h>
+
+#if defined(OPENSSL_PNACL)
+/* pnacl doesn't include readdir_r! So we do the best we can. */
+int readdir_r(DIR *dirp, struct dirent *entry, struct dirent **result) {
+  errno = 0;
+  *result = readdir(dirp);
+  if (*result != NULL) {
+    return 0;
+  }
+  if (errno) {
+    return 1;
+  }
+  return 0;
+}
+#endif
 
 struct OPENSSL_dir_context_st {
   DIR *dir;

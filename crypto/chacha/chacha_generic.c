@@ -18,7 +18,7 @@
 
 #include <openssl/cpu.h>
 
-#if defined(OPENSSL_WINDOWS) || !defined(OPENSSL_X86_64) && !defined(OPENSSL_X86)
+#if defined(OPENSSL_WINDOWS) || (!defined(OPENSSL_X86_64) && !defined(OPENSSL_X86)) || !defined(__SSE2__)
 
 /* sigma contains the ChaCha constants, which happen to be an ASCII string. */
 static const char sigma[16] = "expand 32-byte k";
@@ -137,4 +137,4 @@ void CRYPTO_chacha_20(uint8_t *out, const uint8_t *in, size_t in_len,
   }
 }
 
-#endif /* OPENSSL_WINDOWS || !OPENSSL_X86_64 && !OPENSSL_X86 && !OPENSSL_ARM */
+#endif /* OPENSSL_WINDOWS || !OPENSSL_X86_64 && !OPENSSL_X86 || !__SSE2__ */
