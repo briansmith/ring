@@ -1333,7 +1333,7 @@ int ssl3_get_key_exchange(SSL *s)
 		   omitted if no identity hint is sent. Set
 		   session->sess_cert anyway to avoid problems
 		   later.*/
-		if (s->s3->tmp.new_cipher->algorithm_mkey & SSL_aPSK)
+		if (s->s3->tmp.new_cipher->algorithm_auth & SSL_aPSK)
 			{
 			s->session->sess_cert=ssl_sess_cert_new();
 			if (s->session->psk_identity_hint)
