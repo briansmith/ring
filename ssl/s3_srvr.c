@@ -2822,11 +2822,11 @@ int ssl3_get_client_certificate(SSL *s)
 	{
 	int i,ok,al,ret= -1;
 	X509 *x=NULL;
-	unsigned long l,nc,llen,n;
-	const unsigned char *p,*q;
-	unsigned char *d;
+	unsigned long n;
 	STACK_OF(X509) *sk=NULL;
 	SHA256_CTX sha256;
+	CBS certificate_msg, certificate_list;
+	int is_first_certificate = 1;
 
 	n=s->method->ssl_get_message(s,
 		SSL3_ST_SR_CERT_A,
@@ -2863,7 +2863,8 @@ int ssl3_get_client_certificate(SSL *s)
 		OPENSSL_PUT_ERROR(SSL, ssl3_get_client_certificate, SSL_R_WRONG_MESSAGE_TYPE);
 		goto f_err;
 		}
-	p=d=(unsigned char *)s->init_msg;
+
+	CBS_init(&certificate_msg, (uint8_t *)s->init_msg, n);
 
 	if ((sk=sk_X509_new_null()) == NULL)
 		{
@@ -2871,44 +2872,53 @@ int ssl3_get_client_certificate(SSL *s)
 		goto err;
 		}
 
-	n2l3(p,llen);
-	if (llen+3 != n)
+	if (!CBS_get_u24_length_prefixed(&certificate_msg, &certificate_list) ||
+		CBS_len(&certificate_msg) != 0)
 		{
-		al=SSL_AD_DECODE_ERROR;
-		OPENSSL_PUT_ERROR(SSL, ssl3_get_client_certificate, SSL_R_LENGTH_MISMATCH);
+		al = SSL_AD_DECODE_ERROR;
+		OPENSSL_PUT_ERROR(SSL, ssl3_get_client_certificate, SSL_R_DECODE_ERROR);
 		goto f_err;
 		}
-	for (nc=0; nc<llen; )
+
+	while (CBS_len(&certificate_list) > 0)
 		{
-		n2l3(p,l);
-		if ((l+nc+3) > llen)
+		CBS certificate;
+		const uint8_t *data;
+
+		if (!CBS_get_u24_length_prefixed(&certificate_list, &certificate))
 			{
-			al=SSL_AD_DECODE_ERROR;
-			OPENSSL_PUT_ERROR(SSL, ssl3_get_client_certificate, SSL_R_CERT_LENGTH_MISMATCH);
+			al = SSL_AD_DECODE_ERROR;
+			OPENSSL_PUT_ERROR(SSL, ssl3_get_client_certificate, SSL_R_DECODE_ERROR);
 			goto f_err;
 			}
-
-		if (nc == 0 && s->ctx->retain_only_sha256_of_client_certs)
+		if (is_first_certificate && s->ctx->retain_only_sha256_of_client_certs)
 			{
 			/* If this is the first certificate, and we don't want
 			 * to keep peer certificates in memory, then we hash it
 			 * right away. */
 			SHA256_Init(&sha256);
-			SHA256_Update(&sha256, p, l);
+			SHA256_Update(&sha256, CBS_data(&certificate), CBS_len(&certificate));
 			SHA256_Final(s->session->peer_sha256, &sha256);
 			s->session->peer_sha256_valid = 1;
 			}
-
-		q=p;
-		x=d2i_X509(NULL,&p,l);
+		is_first_certificate = 0;
+		data = CBS_data(&certificate);
+		x = d2i_X509(NULL, &data, CBS_len(&certificate));
 		if (x == NULL)
 			{
+			al = SSL_AD_BAD_CERTIFICATE;
 			OPENSSL_PUT_ERROR(SSL, ssl3_get_client_certificate, ERR_R_ASN1_LIB);
-			goto err;
+			goto f_err;
 			}
-		if (p != (q+l))
+		if (!CBS_skip(&certificate, data - CBS_data(&certificate)))
 			{
-			al=SSL_AD_DECODE_ERROR;
+			al = SSL_AD_INTERNAL_ERROR;
+			OPENSSL_PUT_ERROR(SSL, ssl3_get_client_certificate, ERR_R_INTERNAL_ERROR);
+			goto f_err;
+			}
+		if (CBS_len(&certificate) != 0)
+			{
+			al = SSL_AD_DECODE_ERROR;
 			OPENSSL_PUT_ERROR(SSL, ssl3_get_client_certificate, SSL_R_CERT_LENGTH_MISMATCH);
 			goto f_err;
 			}
@@ -2917,8 +2927,7 @@ int ssl3_get_client_certificate(SSL *s)
 			OPENSSL_PUT_ERROR(SSL, ssl3_get_client_certificate, ERR_R_MALLOC_FAILURE);
 			goto err;
 			}
-		x=NULL;
-		nc+=l+3;
+		x = NULL;
 		}
 
 	if (sk_X509_num(sk) <= 0)
