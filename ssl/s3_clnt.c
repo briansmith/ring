@@ -313,11 +313,7 @@ int ssl3_connect(SSL *s)
 				s->init_num=0;
 				break;
 				}
-			/* Check if it is anon DH/ECDH */
-			/* or non-RSA PSK */
-			if (!(s->s3->tmp.new_cipher->algorithm_auth & SSL_aNULL) &&
-			    !((s->s3->tmp.new_cipher->algorithm_auth & SSL_aPSK) &&
-			      !(s->s3->tmp.new_cipher->algorithm_mkey & SSL_kRSA)))
+			if (ssl_cipher_has_server_public_key(s->s3->tmp.new_cipher))
 				{
 				ret=ssl3_get_server_certificate(s);
 				if (ret <= 0) goto end;
@@ -1118,24 +1114,12 @@ int ssl3_get_server_certificate(SSL *s)
 	n=s->method->ssl_get_message(s,
 		SSL3_ST_CR_CERT_A,
 		SSL3_ST_CR_CERT_B,
-		-1,
+		SSL3_MT_CERTIFICATE,
 		s->max_cert_list,
 		&ok);
 
 	if (!ok) return((int)n);
 
-	if (s->s3->tmp.message_type == SSL3_MT_SERVER_KEY_EXCHANGE)
-		{
-		s->s3->tmp.reuse_message=1;
-		return(1);
-		}
-
-	if (s->s3->tmp.message_type != SSL3_MT_CERTIFICATE)
-		{
-		al=SSL_AD_UNEXPECTED_MESSAGE;
-		OPENSSL_PUT_ERROR(SSL, ssl3_get_server_certificate, SSL_R_BAD_MESSAGE_TYPE);
-		goto f_err;
-		}
 	CBS_init(&cbs, (uint8_t *)s->init_msg, n);
 
 	if ((sk=sk_X509_new_null()) == NULL)
@@ -1732,9 +1716,7 @@ fprintf(stderr, "USING TLSv1.2 HASH %s\n", EVP_MD_name(md));
 		}
 	else
 		{
-		if (!(alg_a & SSL_aNULL) &&
-			/* Among PSK ciphers only RSA_PSK needs a public key */
-			!((alg_a & SSL_aPSK) && !(alg_k & SSL_kRSA)))
+		if (ssl_cipher_has_server_public_key(s->s3->tmp.new_cipher))
 			{
 			/* Might be wrong key type, check it */
 			if (ssl3_check_cert_and_algorithm(s))
@@ -2916,12 +2898,12 @@ int ssl3_check_cert_and_algorithm(SSL *s)
 	DH *dh;
 #endif
 
+	/* we don't have a certificate */
+	if (!ssl_cipher_has_server_public_key(s->s3->tmp.new_cipher))
+		return 1;
+
 	alg_k=s->s3->tmp.new_cipher->algorithm_mkey;
 	alg_a=s->s3->tmp.new_cipher->algorithm_auth;
-
-	/* we don't have a certificate */
-	if ((alg_a & SSL_aNULL) || ((alg_a & SSL_aPSK) && !(alg_k & SSL_kRSA)))
-		return(1);
 
 	sc=s->session->sess_cert;
 	if (sc == NULL)

@@ -1867,3 +1867,19 @@ const SSL_CIPHER *SSL_CIPHER_find(SSL *ssl, const unsigned char *ptr)
 	{
 	return ssl->method->get_cipher_by_char(ptr);
 	}
+
+/* ssl_cipher_has_server_public_key returns 1 if |cipher| involves a
+ * server public key in the key exchange, sent in a server Certificate
+ * message. Otherwise it returns 0. */
+int ssl_cipher_has_server_public_key(const SSL_CIPHER *cipher)
+	{
+	/* Anonymous ciphers do not include a server certificate. */
+	if (cipher->algorithm_auth & SSL_aNULL)
+		return 0;
+	/* Neither do PSK ciphers, except for RSA_PSK. */
+	if ((cipher->algorithm_auth & SSL_aPSK) &&
+		!(cipher->algorithm_mkey & SSL_kRSA))
+		return 0;
+	/* All other ciphers include it. */
+	return 1;
+	}

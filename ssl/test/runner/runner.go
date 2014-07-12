@@ -198,7 +198,7 @@ var testCases = []testCase{
 			},
 		},
 		shouldFail:    true,
-		expectedError: ":MISSING_RSA_SIGNING_CERT:",
+		expectedError: ":UNEXPECTED_MESSAGE:",
 	},
 }
 

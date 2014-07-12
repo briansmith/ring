@@ -351,12 +351,7 @@ int ssl3_accept(SSL *s)
 
 		case SSL3_ST_SW_CERT_A:
 		case SSL3_ST_SW_CERT_B:
-			/* Check if it is anon DH or anon ECDH, */
-			/* non-RSA PSK or SRP */
-			if (!(s->s3->tmp.new_cipher->algorithm_auth & SSL_aNULL)
-				/* Among PSK ciphersuites only RSA_PSK uses server certificate */
-				&& !(s->s3->tmp.new_cipher->algorithm_auth & SSL_aPSK &&
-					 !(s->s3->tmp.new_cipher->algorithm_mkey & SSL_kRSA)))
+			if (ssl_cipher_has_server_public_key(s->s3->tmp.new_cipher))
 				{
 				ret=ssl3_send_server_certificate(s);
 				if (ret <= 0) goto end;
@@ -1776,9 +1771,7 @@ int ssl3_send_server_key_exchange(SSL *s)
 			n+=2+nr[i];
 			}
 
-		if (!(alg_a & SSL_aNULL)
-			/* Among PSK ciphersuites only RSA uses a certificate */
-			&& !((alg_a & SSL_aPSK) && !(alg_k & SSL_kRSA)))
+		if (ssl_cipher_has_server_public_key(s->s3->tmp.new_cipher))
 			{
 			if ((pkey=ssl_get_sign_pkey(s,s->s3->tmp.new_cipher,&md))
 				== NULL)
