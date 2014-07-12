@@ -439,7 +439,7 @@ long dtls1_get_message(SSL *s, int st1, int stn, int mt, long max, int *ok)
 			goto f_err;
 			}
 		*ok=1;
-		s->init_msg = s->init_buf->data + DTLS1_HM_HEADER_LENGTH;
+		s->init_msg = (uint8_t*)s->init_buf->data + DTLS1_HM_HEADER_LENGTH;
 		s->init_num = (int)s->s3->tmp.message_size;
 		return s->init_num;
 		}
@@ -481,7 +481,7 @@ again:
 	if (!s->d1->listen)
 		s->d1->handshake_read_seq++;
 
-	s->init_msg = s->init_buf->data + DTLS1_HM_HEADER_LENGTH;
+	s->init_msg = (uint8_t*)s->init_buf->data + DTLS1_HM_HEADER_LENGTH;
 	return s->init_num;
 
 f_err:

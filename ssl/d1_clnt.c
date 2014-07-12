@@ -622,7 +622,7 @@ static int dtls1_get_hello_verify(SSL *s)
 		return(1);
 		}
 
-	data = (unsigned char *)s->init_msg;
+	data = s->init_msg;
 #if 0
 	if (s->method->version != DTLS_ANY_VERSION &&
 		((data[0] != (s->version>>8)) || (data[1] != (s->version&0xff))))

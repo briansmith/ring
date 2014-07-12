@@ -889,7 +889,7 @@ int ssl3_get_client_hello(SSL *s)
 		if (SSL_get_options(s) & SSL_OP_COOKIE_EXCHANGE)
 			{
 			unsigned int session_length, cookie_length;
-			p = (unsigned char *) s->init_msg;
+			p = s->init_msg;
 
 			if (n < 2 + SSL3_RANDOM_SIZE)
 				return 1;
@@ -945,7 +945,7 @@ int ssl3_get_client_hello(SSL *s)
 		return -1;
 	}
 
-	d=p=(unsigned char *)s->init_msg;
+	d = p = s->init_msg;
 
 	/* use version from inside client hello, not from record header
 	 * (may differ: see RFC 2246, Appendix E, second paragraph) */
@@ -2054,7 +2054,7 @@ int ssl3_get_client_key_exchange(SSL *s)
 		&ok);
 
 	if (!ok) return((int)n);
-	p=(unsigned char *)s->init_msg;
+	p = s->init_msg;
 
 	alg_k=s->s3->tmp.new_cipher->algorithm_mkey;
 	alg_a=s->s3->tmp.new_cipher->algorithm_auth;
@@ -2675,7 +2675,7 @@ int ssl3_get_cert_verify(SSL *s)
 		}
 
 	/* we now have a signature that we need to verify */
-	p=(unsigned char *)s->init_msg;
+	p = s->init_msg;
 	if (SSL_USE_SIGALGS(s))
 		{
 		int rv = tls12_check_peer_sigalg(&md, s, p, pkey);
@@ -2864,7 +2864,7 @@ int ssl3_get_client_certificate(SSL *s)
 		goto f_err;
 		}
 
-	CBS_init(&certificate_msg, (uint8_t *)s->init_msg, n);
+	CBS_init(&certificate_msg, s->init_msg, n);
 
 	if ((sk=sk_X509_new_null()) == NULL)
 		{
@@ -3221,7 +3221,7 @@ int ssl3_get_next_proto(SSL *s)
 		return -1;
 		}
 
-	CBS_init(&next_protocol, (uint8_t *)s->init_msg, n);
+	CBS_init(&next_protocol, s->init_msg, n);
 
 	/* The payload looks like:
 	 *   uint8 proto_len;
@@ -3294,7 +3294,7 @@ int ssl3_get_channel_id(SSL *s)
 		return -1;
 		}
 
-	CBS_init(&encrypted_extensions, (uint8_t *)s->init_msg, n);
+	CBS_init(&encrypted_extensions, s->init_msg, n);
 
 	/* EncryptedExtensions could include multiple extensions, but
 	 * the only extension that could be negotiated is ChannelID,

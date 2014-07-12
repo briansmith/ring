@@ -913,7 +913,7 @@ int ssl3_get_server_hello(SSL *s)
 		goto f_err;
 		}
 
-	d=p=(unsigned char *)s->init_msg;
+	d = p = s->init_msg;
 	if (s->method->version == DTLS_ANY_VERSION)
 		{
 		/* Work out correct protocol version to use */
@@ -1120,7 +1120,7 @@ int ssl3_get_server_certificate(SSL *s)
 
 	if (!ok) return((int)n);
 
-	CBS_init(&cbs, (uint8_t *)s->init_msg, n);
+	CBS_init(&cbs, s->init_msg, n);
 
 	if ((sk=sk_X509_new_null()) == NULL)
 		{
@@ -1316,7 +1316,7 @@ int ssl3_get_key_exchange(SSL *s)
 		return(1);
 		}
 
-	param=p=(unsigned char *)s->init_msg;
+	param = p = s->init_msg;
 	if (s->session->sess_cert != NULL)
 		{
 		if (s->session->sess_cert->peer_rsa_tmp != NULL)
@@ -1822,7 +1822,7 @@ int ssl3_get_certificate_request(SSL *s)
 			}
 		}
 
-	CBS_init(&cbs, (uint8_t *)s->init_msg, n);
+	CBS_init(&cbs, s->init_msg, n);
 
 	ca_sk = sk_X509_NAME_new(ca_dn_cmp);
 	if (ca_sk == NULL)
@@ -1964,7 +1964,7 @@ int ssl3_get_new_session_ticket(SSL *s)
 		goto f_err;
 		}
 
-	p=d=(unsigned char *)s->init_msg;
+	p = d = s->init_msg;
 	n2l(p, s->session->tlsext_tick_lifetime_hint);
 	n2s(p, ticklen);
 	/* ticket_lifetime_hint + ticket_length + ticket */
@@ -2038,7 +2038,7 @@ int ssl3_get_cert_status(SSL *s)
 		OPENSSL_PUT_ERROR(SSL, ssl3_get_cert_status, SSL_R_LENGTH_MISMATCH);
 		goto f_err;
 		}
-	p = (unsigned char *)s->init_msg;
+	p = s->init_msg;
 	if (*p++ != TLSEXT_STATUSTYPE_ocsp)
 		{
 		al = SSL_AD_DECODE_ERROR;

@@ -254,7 +254,7 @@ int ssl3_get_finished(SSL *s, int a, int b)
 		}
 	s->s3->change_cipher_spec=0;
 
-	p = (unsigned char *)s->init_msg;
+	p = s->init_msg;
 	i = s->s3->tmp.peer_finish_md_len;
 
 	if (i != n)
@@ -358,7 +358,7 @@ long ssl3_get_message(SSL *s, int st1, int stn, int mt, long max, int *ok)
 			goto f_err;
 			}
 		*ok=1;
-		s->init_msg = s->init_buf->data + 4;
+		s->init_msg = (uint8_t*)s->init_buf->data + 4;
 		s->init_num = (int)s->s3->tmp.message_size;
 		return s->init_num;
 		}
@@ -445,7 +445,7 @@ long ssl3_get_message(SSL *s, int st1, int stn, int mt, long max, int *ok)
 		s->s3->tmp.message_size=l;
 		s->state=stn;
 
-		s->init_msg = s->init_buf->data + 4;
+		s->init_msg = (uint8_t*)s->init_buf->data + 4;
 		s->init_num = 0;
 		}
 
