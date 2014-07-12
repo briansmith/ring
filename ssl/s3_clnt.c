@@ -1335,7 +1335,11 @@ int ssl3_get_key_exchange(SSL *s)
 		   later.*/
 		if (s->s3->tmp.new_cipher->algorithm_auth & SSL_aPSK)
 			{
-			s->session->sess_cert=ssl_sess_cert_new();
+			/* PSK ciphersuites that also send a
+			 * Certificate would have already initialized
+			 * |sess_cert|. */
+			if (s->session->sess_cert == NULL)
+				s->session->sess_cert = ssl_sess_cert_new();
 			if (s->session->psk_identity_hint)
 				{
 				OPENSSL_free(s->session->psk_identity_hint);
