@@ -3249,14 +3249,14 @@ int ssl3_get_channel_id(SSL *s)
 	{
 	int ret = -1, ok;
 	long n;
-	const unsigned char *p;
-	unsigned short extension_type, extension_len;
+	const uint8_t *p;
+	uint16_t extension_type, expected_extension_type;
 	EC_GROUP* p256 = NULL;
 	EC_KEY* key = NULL;
 	EC_POINT* point = NULL;
 	ECDSA_SIG sig;
 	BIGNUM x, y;
-	unsigned short expected_extension_type;
+	CBS encrypted_extensions, extension;
 
 	if (s->state == SSL3_ST_SR_CHANNEL_ID_A && s->init_num == 0)
 		{
@@ -3295,15 +3295,13 @@ int ssl3_get_channel_id(SSL *s)
 		return -1;
 		}
 
-	if (n != 2 + 2 + TLSEXT_CHANNEL_ID_SIZE)
-		{
-		OPENSSL_PUT_ERROR(SSL, ssl3_get_channel_id, SSL_R_INVALID_MESSAGE);
-		return -1;
-		}
+	CBS_init(&encrypted_extensions, (uint8_t *)s->init_msg, n);
 
-	p = (unsigned char *)s->init_msg;
-
-	/* The payload looks like:
+	/* EncryptedExtensions could include multiple extensions, but
+	 * the only extension that could be negotiated is ChannelID,
+	 * so there can only be one entry.
+	 *
+	 * The payload looks like:
 	 *   uint16 extension_type
 	 *   uint16 extension_len;
 	 *   uint8 x[32];
@@ -3311,15 +3309,15 @@ int ssl3_get_channel_id(SSL *s)
 	 *   uint8 r[32];
 	 *   uint8 s[32];
 	 */
-	n2s(p, extension_type);
-	n2s(p, extension_len);
-
 	expected_extension_type = TLSEXT_TYPE_channel_id;
 	if (s->s3->tlsext_channel_id_new)
 		expected_extension_type = TLSEXT_TYPE_channel_id_new;
 
-	if (extension_type != expected_extension_type ||
-	    extension_len != TLSEXT_CHANNEL_ID_SIZE)
+	if (!CBS_get_u16(&encrypted_extensions, &extension_type) ||
+		!CBS_get_u16_length_prefixed(&encrypted_extensions, &extension) ||
+		CBS_len(&encrypted_extensions) != 0 ||
+		extension_type != expected_extension_type ||
+		CBS_len(&extension) != TLSEXT_CHANNEL_ID_SIZE)
 		{
 		OPENSSL_PUT_ERROR(SSL, ssl3_get_channel_id, SSL_R_INVALID_MESSAGE);
 		return -1;
@@ -3337,6 +3335,7 @@ int ssl3_get_channel_id(SSL *s)
 	sig.r = BN_new();
 	sig.s = BN_new();
 
+	p = CBS_data(&extension);
 	if (BN_bin2bn(p +  0, 32, &x) == NULL ||
 	    BN_bin2bn(p + 32, 32, &y) == NULL ||
 	    BN_bin2bn(p + 64, 32, sig.r) == NULL ||
