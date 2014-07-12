@@ -332,7 +332,7 @@ func (hs *serverHandshakeState) doFullHandshake() error {
 		c.sendAlert(alertHandshakeFailure)
 		return err
 	}
-	if skx != nil {
+	if skx != nil && !config.Bugs.SkipServerKeyExchange {
 		hs.finishedHash.Write(skx.marshal())
 		c.writeRecord(recordTypeHandshake, skx.marshal())
 	}

@@ -359,6 +359,10 @@ type ProtocolBugs struct {
 	// Certificate message is sent and no signature is added to
 	// ServerKeyExchange.
 	UnauthenticatedECDH bool
+
+	// SkipServerKeyExchange causes the server to skip sending
+	// ServerKeyExchange messages.
+	SkipServerKeyExchange bool
 }
 
 func (c *Config) serverInit() {

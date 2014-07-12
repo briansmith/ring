@@ -1286,6 +1286,13 @@ int ssl3_get_key_exchange(SSL *s)
 
 	if (s->s3->tmp.message_type != SSL3_MT_SERVER_KEY_EXCHANGE)
 		{
+		if (ssl_cipher_requires_server_key_exchange(s->s3->tmp.new_cipher))
+			{
+			OPENSSL_PUT_ERROR(SSL, ssl3_get_key_exchange, SSL_R_UNEXPECTED_MESSAGE);
+			ssl3_send_alert(s, SSL3_AL_FATAL, SSL_AD_UNEXPECTED_MESSAGE);
+			return -1;
+			}
+
 #ifndef OPENSSL_NO_PSK
 		/* In plain PSK ciphersuite, ServerKeyExchange can be
 		   omitted if no identity hint is sent. Set

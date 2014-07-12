@@ -200,6 +200,17 @@ var testCases = []testCase{
 		shouldFail:    true,
 		expectedError: ":UNEXPECTED_MESSAGE:",
 	},
+	{
+		name: "SkipServerKeyExchange",
+		config: Config{
+			CipherSuites: []uint16{TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256},
+			Bugs: ProtocolBugs{
+				SkipServerKeyExchange: true,
+			},
+		},
+		shouldFail:    true,
+		expectedError: ":UNEXPECTED_MESSAGE:",
+	},
 }
 
 func doExchange(tlsConn *Conn, messageLen int) error {
