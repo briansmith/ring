@@ -64,6 +64,10 @@ int select_certificate_callback(const struct ssl_early_callback_ctx *ctx) {
   return 1;
 }
 
+int skip_verify(int preverify_ok, X509_STORE_CTX *store_ctx) {
+  return 1;
+}
+
 SSL *setup_test(int is_server) {
   if (!SSL_library_init()) {
     return NULL;
@@ -181,6 +185,9 @@ int main(int argc, char **argv) {
       }
       // Conveniently, 00 is not a certificate type.
       expected_certificate_types = argv[i];
+    } else if (strcmp(argv[i], "-require-any-client-certificate") == 0) {
+      SSL_set_verify(ssl, SSL_VERIFY_PEER|SSL_VERIFY_FAIL_IF_NO_PEER_CERT,
+                     skip_verify);
     } else {
       fprintf(stderr, "Unknown argument: %s\n", argv[i]);
       return 1;
