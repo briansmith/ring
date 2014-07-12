@@ -352,12 +352,11 @@ int ssl3_accept(SSL *s)
 		case SSL3_ST_SW_CERT_A:
 		case SSL3_ST_SW_CERT_B:
 			/* Check if it is anon DH or anon ECDH, */
-			/* non-RSA PSK or KRB5 or SRP */
+			/* non-RSA PSK or SRP */
 			if (!(s->s3->tmp.new_cipher->algorithm_auth & SSL_aNULL)
 				/* Among PSK ciphersuites only RSA_PSK uses server certificate */
 				&& !(s->s3->tmp.new_cipher->algorithm_auth & SSL_aPSK &&
-					 !(s->s3->tmp.new_cipher->algorithm_mkey & SSL_kRSA))
-				&& !(s->s3->tmp.new_cipher->algorithm_auth & SSL_aKRB5))
+					 !(s->s3->tmp.new_cipher->algorithm_mkey & SSL_kRSA)))
 				{
 				ret=ssl3_send_server_certificate(s);
 				if (ret <= 0) goto end;
@@ -449,11 +448,9 @@ int ssl3_accept(SSL *s)
 				 /* ... except when the application insists on verification
 				  * (against the specs, but s3_clnt.c accepts this for SSL 3) */
 				 !(s->verify_mode & SSL_VERIFY_FAIL_IF_NO_PEER_CERT)) ||
-				 /* never request cert in Kerberos ciphersuites */
-				(s->s3->tmp.new_cipher->algorithm_auth & SSL_aKRB5)
 				/* With normal PSK Certificates and
 				 * Certificate Requests are omitted */
-				|| (s->s3->tmp.new_cipher->algorithm_mkey & SSL_kPSK))
+				(s->s3->tmp.new_cipher->algorithm_mkey & SSL_kPSK))
 				{
 				/* no cert request */
 				skip=1;
@@ -3011,13 +3008,8 @@ int ssl3_send_server_certificate(SSL *s)
 		cpk=ssl_get_server_send_pkey(s);
 		if (cpk == NULL)
 			{
-			/* VRS: allow null cert if auth == KRB5 */
-			if ((s->s3->tmp.new_cipher->algorithm_auth != SSL_aKRB5) ||
-			    (s->s3->tmp.new_cipher->algorithm_mkey & SSL_kKRB5))
-				{
-				OPENSSL_PUT_ERROR(SSL, ssl3_send_server_certificate, ERR_R_INTERNAL_ERROR);
-				return(0);
-				}
+			OPENSSL_PUT_ERROR(SSL, ssl3_send_server_certificate, ERR_R_INTERNAL_ERROR);
+			return(0);
 			}
 
 		ssl3_output_cert_chain(s,cpk);

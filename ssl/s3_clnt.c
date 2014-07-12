@@ -1112,7 +1112,6 @@ int ssl3_get_server_certificate(SSL *s)
 	STACK_OF(X509) *sk=NULL;
 	SESS_CERT *sc;
 	EVP_PKEY *pkey=NULL;
-	int need_cert = 1; /* VRS: 0=> will allow null cert if auth == KRB5 */
 	CBS cbs, certificate_list;
 	const uint8_t* data;
 
@@ -1125,9 +1124,7 @@ int ssl3_get_server_certificate(SSL *s)
 
 	if (!ok) return((int)n);
 
-	if ((s->s3->tmp.message_type == SSL3_MT_SERVER_KEY_EXCHANGE) ||
-		((s->s3->tmp.new_cipher->algorithm_auth & SSL_aKRB5) && 
-		(s->s3->tmp.message_type == SSL3_MT_SERVER_DONE)))
+	if (s->s3->tmp.message_type == SSL3_MT_SERVER_KEY_EXCHANGE)
 		{
 		s->s3->tmp.reuse_message=1;
 		return(1);
@@ -1217,19 +1214,7 @@ int ssl3_get_server_certificate(SSL *s)
 
 	pkey=X509_get_pubkey(x);
 
-	/* VRS: allow null cert if auth == KRB5 */
-	need_cert = ((s->s3->tmp.new_cipher->algorithm_mkey & SSL_kKRB5) &&
-	            (s->s3->tmp.new_cipher->algorithm_auth & SSL_aKRB5))
-	            ? 0 : 1;
-
-#ifdef KSSL_DEBUG
-	printf("pkey,x = %p, %p\n", pkey,x);
-	printf("ssl_cert_type(x,pkey) = %d\n", ssl_cert_type(x,pkey));
-	printf("cipher, alg, nc = %s, %lx, %lx, %d\n", s->s3->tmp.new_cipher->name,
-		s->s3->tmp.new_cipher->algorithm_mkey, s->s3->tmp.new_cipher->algorithm_auth, need_cert);
-#endif    /* KSSL_DEBUG */
-
-	if (need_cert && ((pkey == NULL) || EVP_PKEY_missing_parameters(pkey)))
+	if ((pkey == NULL) || EVP_PKEY_missing_parameters(pkey))
 		{
 		x=NULL;
 		al=SSL3_AL_FATAL;
@@ -1238,7 +1223,7 @@ int ssl3_get_server_certificate(SSL *s)
 		}
 
 	i=ssl_cert_type(x,pkey);
-	if (need_cert && i < 0)
+	if (i < 0)
 		{
 		x=NULL;
 		al=SSL3_AL_FATAL;
@@ -1246,39 +1231,28 @@ int ssl3_get_server_certificate(SSL *s)
 		goto f_err;
 		}
 
-	if (need_cert)
+	int exp_idx = ssl_cipher_get_cert_index(s->s3->tmp.new_cipher);
+	if (exp_idx >= 0 && i != exp_idx)
 		{
-		int exp_idx = ssl_cipher_get_cert_index(s->s3->tmp.new_cipher);
-		if (exp_idx >= 0 && i != exp_idx)
-			{
-			x=NULL;
-			al=SSL_AD_ILLEGAL_PARAMETER;
-			OPENSSL_PUT_ERROR(SSL, ssl3_get_server_certificate, SSL_R_WRONG_CERTIFICATE_TYPE);
-			goto f_err;
-			}
-		sc->peer_cert_type=i;
-		CRYPTO_add(&x->references,1,CRYPTO_LOCK_X509);
-		/* Why would the following ever happen?
-		 * We just created sc a couple of lines ago. */
-		if (sc->peer_pkeys[i].x509 != NULL)
-			X509_free(sc->peer_pkeys[i].x509);
-		sc->peer_pkeys[i].x509=x;
-		sc->peer_key= &(sc->peer_pkeys[i]);
-
-		if (s->session->peer != NULL)
-			X509_free(s->session->peer);
-		CRYPTO_add(&x->references,1,CRYPTO_LOCK_X509);
-		s->session->peer=x;
+		x=NULL;
+		al=SSL_AD_ILLEGAL_PARAMETER;
+		OPENSSL_PUT_ERROR(SSL, ssl3_get_server_certificate, SSL_R_WRONG_CERTIFICATE_TYPE);
+		goto f_err;
 		}
-	else
-		{
-		sc->peer_cert_type=i;
-		sc->peer_key= NULL;
+	sc->peer_cert_type=i;
+	CRYPTO_add(&x->references,1,CRYPTO_LOCK_X509);
+	/* Why would the following ever happen?
+	 * We just created sc a couple of lines ago. */
+	if (sc->peer_pkeys[i].x509 != NULL)
+		X509_free(sc->peer_pkeys[i].x509);
+	sc->peer_pkeys[i].x509=x;
+	sc->peer_key= &(sc->peer_pkeys[i]);
 
-		if (s->session->peer != NULL)
-			X509_free(s->session->peer);
-		s->session->peer=NULL;
-		}
+	if (s->session->peer != NULL)
+		X509_free(s->session->peer);
+	CRYPTO_add(&x->references,1,CRYPTO_LOCK_X509);
+	s->session->peer=x;
+
 	s->session->verify_result = s->verify_result;
 
 	x=NULL;
@@ -2946,7 +2920,7 @@ int ssl3_check_cert_and_algorithm(SSL *s)
 	alg_a=s->s3->tmp.new_cipher->algorithm_auth;
 
 	/* we don't have a certificate */
-	if ((alg_a & (SSL_aNULL|SSL_aKRB5)) || ((alg_a & SSL_aPSK) && !(alg_k & SSL_kRSA)))
+	if ((alg_a & SSL_aNULL) || ((alg_a & SSL_aPSK) && !(alg_k & SSL_kRSA)))
 		return(1);
 
 	sc=s->session->sess_cert;

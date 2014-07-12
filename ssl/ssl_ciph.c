@@ -240,8 +240,6 @@ static const SSL_CIPHER cipher_aliases[]={
 	{0,SSL_TXT_kEDH,0,    SSL_kEDH,  0,0,0,0,0,0,0,0},
 	{0,SSL_TXT_DH,0,      SSL_kDHr|SSL_kDHd|SSL_kEDH,0,0,0,0,0,0,0,0},
 
-	{0,SSL_TXT_kKRB5,0,   SSL_kKRB5, 0,0,0,0,0,0,0,0},
-
 	{0,SSL_TXT_kECDHr,0,  SSL_kECDHr,0,0,0,0,0,0,0,0},
 	{0,SSL_TXT_kECDHe,0,  SSL_kECDHe,0,0,0,0,0,0,0,0},
 	{0,SSL_TXT_kECDH,0,   SSL_kECDHr|SSL_kECDHe,0,0,0,0,0,0,0,0},
@@ -256,7 +254,6 @@ static const SSL_CIPHER cipher_aliases[]={
 	{0,SSL_TXT_aRSA,0,    0,SSL_aRSA,  0,0,0,0,0,0,0},
 	{0,SSL_TXT_aDSS,0,    0,SSL_aDSS,  0,0,0,0,0,0,0},
 	{0,SSL_TXT_DSS,0,     0,SSL_aDSS,   0,0,0,0,0,0,0},
-	{0,SSL_TXT_aKRB5,0,   0,SSL_aKRB5, 0,0,0,0,0,0,0},
 	{0,SSL_TXT_aNULL,0,   0,SSL_aNULL, 0,0,0,0,0,0,0},
 	{0,SSL_TXT_aDH,0,     0,SSL_aDH,   0,0,0,0,0,0,0}, /* no such ciphersuites supported! */
 	{0,SSL_TXT_aECDH,0,   0,SSL_aECDH, 0,0,0,0,0,0,0},
@@ -271,7 +268,6 @@ static const SSL_CIPHER cipher_aliases[]={
 	{0,SSL_TXT_EDH,0,     SSL_kEDH,~SSL_aNULL,0,0,0,0,0,0,0},
 	{0,SSL_TXT_EECDH,0,   SSL_kEECDH,~SSL_aNULL,0,0,0,0,0,0,0},
 	{0,SSL_TXT_NULL,0,    0,0,SSL_eNULL, 0,0,0,0,0,0},
-	{0,SSL_TXT_KRB5,0,    SSL_kKRB5,SSL_aKRB5,0,0,0,0,0,0,0},
 	{0,SSL_TXT_RSA,0,     SSL_kRSA,SSL_aRSA,0,0,0,0,0,0,0},
 	{0,SSL_TXT_ADH,0,     SSL_kEDH,SSL_aNULL,0,0,0,0,0,0,0},
 	{0,SSL_TXT_AECDH,0,   SSL_kEECDH,SSL_aNULL,0,0,0,0,0,0,0},
@@ -1419,7 +1415,6 @@ STACK_OF(SSL_CIPHER) *ssl_create_cipher_list(const SSL_METHOD *ssl_method,
 	/* ssl_cipher_apply_rule(0, 0, SSL_aDH, 0, 0, 0, 0, CIPHER_ORD, -1, 0, &head, &tail); */
 	ssl_cipher_apply_rule(0, SSL_kRSA, 0, 0, 0, 0, 0, CIPHER_ORD, -1, 0, &head, &tail);
 	ssl_cipher_apply_rule(0, SSL_kPSK, 0,0, 0, 0, 0, CIPHER_ORD, -1, 0, &head, &tail);
-	ssl_cipher_apply_rule(0, SSL_kKRB5, 0,0, 0, 0, 0, CIPHER_ORD, -1, 0, &head, &tail);
 
 	/* RC4 is sort-of broken -- move the the end */
 	ssl_cipher_apply_rule(0, 0, 0, SSL_RC4, 0, 0, 0, CIPHER_ORD, -1, 0, &head, &tail);
@@ -1605,9 +1600,6 @@ const char *SSL_CIPHER_description(const SSL_CIPHER *cipher, char *buf, int len)
 	case SSL_kDHd:
 		kx="DH/DSS";
 		break;
-        case SSL_kKRB5:
-		kx="KRB5";
-		break;
 	case SSL_kEDH:
 		kx=is_export?(pkl == 512 ? "DH(512)" : "DH(1024)"):"DH";
 		break;
@@ -1640,9 +1632,6 @@ const char *SSL_CIPHER_description(const SSL_CIPHER *cipher, char *buf, int len)
 		break;
 	case SSL_aDH:
 		au="DH";
-		break;
-        case SSL_aKRB5:
-		au="KRB5";
 		break;
         case SSL_aECDH:
 		au="ECDH";
@@ -1858,9 +1847,6 @@ int ssl_cipher_get_cert_index(const SSL_CIPHER *c)
 		return SSL_PKEY_DSA_SIGN;
 	else if (alg_a & SSL_aRSA)
 		return SSL_PKEY_RSA_ENC;
-	else if (alg_a & SSL_aKRB5)
-		/* VRS something else here? */
-		return -1;
 	else if (alg_a & SSL_aGOST94) 
 		return SSL_PKEY_GOST94;
 	else if (alg_a & SSL_aGOST01)

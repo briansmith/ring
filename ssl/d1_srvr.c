@@ -433,11 +433,9 @@ int dtls1_accept(SSL *s)
 				 /* ... except when the application insists on verification
 				  * (against the specs, but s3_clnt.c accepts this for SSL 3) */
 				 !(s->verify_mode & SSL_VERIFY_FAIL_IF_NO_PEER_CERT)) ||
-				 /* never request cert in Kerberos ciphersuites */
-				(s->s3->tmp.new_cipher->algorithm_auth & SSL_aKRB5)
 				/* With normal PSK Certificates and
 				 * Certificate Requests are omitted */
-				|| (s->s3->tmp.new_cipher->algorithm_mkey & SSL_kPSK))
+				(s->s3->tmp.new_cipher->algorithm_mkey & SSL_kPSK))
 				{
 				/* no cert request */
 				skip=1;
