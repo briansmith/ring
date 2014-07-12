@@ -867,11 +867,12 @@ int ssl3_get_server_hello(SSL *s)
 	STACK_OF(SSL_CIPHER) *sk;
 	const SSL_CIPHER *c;
 	CERT *ct = s->cert;
-	unsigned char *p,*d;
 	int al=SSL_AD_INTERNAL_ERROR,ok;
-	unsigned int j;
 	long n;
-	CBS cbs;
+	CBS server_hello, server_random, session_id;
+	uint16_t server_version;
+	const uint8_t *cipher_ptr;
+	uint8_t compression_method;
 	/* Hello verify request and/or server hello version may not
 	 * match so set first packet if we're negotiating version.
 	 */
@@ -913,58 +914,55 @@ int ssl3_get_server_hello(SSL *s)
 		goto f_err;
 		}
 
-	d = p = s->init_msg;
+	CBS_init(&server_hello, s->init_msg, n);
+
+	if (!CBS_get_u16(&server_hello, &server_version) ||
+		!CBS_get_bytes(&server_hello, &server_random, SSL3_RANDOM_SIZE) ||
+		!CBS_get_u8_length_prefixed(&server_hello, &session_id) ||
+		CBS_len(&session_id) > SSL3_SESSION_ID_SIZE)
+		{
+		al = SSL_AD_DECODE_ERROR;
+		OPENSSL_PUT_ERROR(SSL, ssl3_get_server_hello, SSL_R_DECODE_ERROR);
+		goto f_err;
+		}
+
 	if (s->method->version == DTLS_ANY_VERSION)
 		{
 		/* Work out correct protocol version to use */
-		int hversion = (p[0] << 8)|p[1];
 		int options = s->options;
-		if (hversion == DTLS1_2_VERSION
+		if (server_version == DTLS1_2_VERSION
 			&& !(options & SSL_OP_NO_DTLSv1_2))
 			s->method = DTLSv1_2_client_method();
 		else if (tls1_suiteb(s))
 			{
 			OPENSSL_PUT_ERROR(SSL, ssl3_get_server_hello, SSL_R_ONLY_DTLS_1_2_ALLOWED_IN_SUITEB_MODE);
-			s->version = hversion;
+			s->version = server_version;
 			al = SSL_AD_PROTOCOL_VERSION;
 			goto f_err;
 			}
-		else if (hversion == DTLS1_VERSION
+		else if (server_version == DTLS1_VERSION
 			&& !(options & SSL_OP_NO_DTLSv1))
 			s->method = DTLSv1_client_method();
 		else
 			{
 			OPENSSL_PUT_ERROR(SSL, ssl3_get_server_hello, SSL_R_WRONG_SSL_VERSION);
-			s->version = hversion;
+			s->version = server_version;
 			al = SSL_AD_PROTOCOL_VERSION;
 			goto f_err;
 			}
 		s->version = s->client_version = s->method->version;
 		}
 
-	if ((p[0] != (s->version>>8)) || (p[1] != (s->version&0xff)))
+	if (server_version != s->version)
 		{
 		OPENSSL_PUT_ERROR(SSL, ssl3_get_server_hello, SSL_R_WRONG_SSL_VERSION);
-		s->version=(s->version&0xff00)|p[1];
-		al=SSL_AD_PROTOCOL_VERSION;
+		s->version = (s->version & 0xff00) | (server_version & 0xff);
+		al = SSL_AD_PROTOCOL_VERSION;
 		goto f_err;
 		}
-	p+=2;
 
-	/* load the server hello data */
-	/* load the server random */
-	memcpy(s->s3->server_random,p,SSL3_RANDOM_SIZE);
-	p+=SSL3_RANDOM_SIZE;
-
-	/* get the session-id */
-	j= *(p++);
-
-	if ((j > sizeof s->session->session_id) || (j > SSL3_SESSION_ID_SIZE))
-		{
-		al=SSL_AD_ILLEGAL_PARAMETER;
-		OPENSSL_PUT_ERROR(SSL, ssl3_get_server_hello, SSL_R_SSL3_SESSION_ID_TOO_LONG);
-		goto f_err;
-		}
+	/* Copy over the server random. */
+	memcpy(s->s3->server_random, CBS_data(&server_random), SSL3_RANDOM_SIZE);
 
 	/* check if we want to resume the session based on external pre-shared secret */
 	if (s->version >= TLS1_VERSION && s->tls_session_secret_cb)
@@ -976,26 +974,30 @@ int ssl3_get_server_hello(SSL *s)
 					     NULL, &pref_cipher,
 					     s->tls_session_secret_cb_arg))
 			{
+			/* TODO(davidben): Make ssl_get_cipher_by_char
+			 * a bounds-checked function. */
 			s->session->cipher = pref_cipher ?
-				pref_cipher : ssl_get_cipher_by_char(s, p+j);
+				pref_cipher :
+				ssl_get_cipher_by_char(s, CBS_data(&server_hello));
 	    		s->s3->flags |= SSL3_FLAGS_CCS_OK;
 			}
 		}
 
-	if (j != 0 && j == s->session->session_id_length
-	    && memcmp(p,s->session->session_id,j) == 0)
-	    {
-	    if(s->sid_ctx_length != s->session->sid_ctx_length
-	       || memcmp(s->session->sid_ctx,s->sid_ctx,s->sid_ctx_length))
+	if (CBS_len(&session_id) != 0 &&
+		CBS_len(&session_id) == s->session->session_id_length &&
+		memcmp(CBS_data(&session_id), s->session->session_id, CBS_len(&session_id)) == 0)
 		{
-		/* actually a client application bug */
-		al=SSL_AD_ILLEGAL_PARAMETER;
-		OPENSSL_PUT_ERROR(SSL, ssl3_get_server_hello, SSL_R_ATTEMPT_TO_REUSE_SESSION_IN_DIFFERENT_CONTEXT);
-		goto f_err;
+		if(s->sid_ctx_length != s->session->sid_ctx_length
+			|| memcmp(s->session->sid_ctx, s->sid_ctx, s->sid_ctx_length))
+			{
+			/* actually a client application bug */
+			al = SSL_AD_ILLEGAL_PARAMETER;
+			OPENSSL_PUT_ERROR(SSL, ssl3_get_server_hello, SSL_R_ATTEMPT_TO_REUSE_SESSION_IN_DIFFERENT_CONTEXT);
+			goto f_err;
+			}
+		s->s3->flags |= SSL3_FLAGS_CCS_OK;
+		s->hit = 1;
 		}
-	    s->s3->flags |= SSL3_FLAGS_CCS_OK;
-	    s->hit=1;
-	    }
 	else	/* a miss or crap from the other end */
 		{
 		/* If we were trying for session-id reuse, make a new
@@ -1008,15 +1010,25 @@ int ssl3_get_server_hello(SSL *s)
 				goto f_err;
 				}
 			}
-		s->session->session_id_length=j;
-		memcpy(s->session->session_id,p,j); /* j could be 0 */
+		/* Note: session_id could be empty. */
+		s->session->session_id_length = CBS_len(&session_id);
+		memcpy(s->session->session_id, CBS_data(&session_id), CBS_len(&session_id));
 		}
-	p+=j;
-	c=ssl_get_cipher_by_char(s,p);
+
+	/* TODO(davidben): Move the cipher_by_char hooks to CBS or
+	 * something else actually bounds-checked. */
+	cipher_ptr = CBS_data(&server_hello);
+	if (!CBS_skip(&server_hello, 2))
+		{
+		al = SSL_AD_DECODE_ERROR;
+		OPENSSL_PUT_ERROR(SSL, ssl3_get_server_hello, SSL_R_DECODE_ERROR);
+		goto f_err;
+		}
+	c = ssl_get_cipher_by_char(s, cipher_ptr);
 	if (c == NULL)
 		{
 		/* unknown cipher */
-		al=SSL_AD_ILLEGAL_PARAMETER;
+		al = SSL_AD_ILLEGAL_PARAMETER;
 		OPENSSL_PUT_ERROR(SSL, ssl3_get_server_hello, SSL_R_UNKNOWN_CIPHER_RETURNED);
 		goto f_err;
 		}
@@ -1031,7 +1043,6 @@ int ssl3_get_server_hello(SSL *s)
 		OPENSSL_PUT_ERROR(SSL, ssl3_get_server_hello, SSL_R_WRONG_CIPHER_RETURNED);
 		goto f_err;
 		}
-	p+=ssl_put_cipher_by_char(s,NULL,NULL);
 
 	sk=ssl_get_ciphers_by_id(s);
 	if (!sk_SSL_CIPHER_find(sk, NULL, c))
@@ -1049,16 +1060,9 @@ int ssl3_get_server_hello(SSL *s)
 		s->session->cipher_id = s->session->cipher->id;
 	if (s->hit && (s->session->cipher_id != c->id))
 		{
-/* Workaround is now obsolete */
-#if 0
-		if (!(s->options &
-			SSL_OP_NETSCAPE_REUSE_CIPHER_CHANGE_BUG))
-#endif
-			{
-			al=SSL_AD_ILLEGAL_PARAMETER;
-			OPENSSL_PUT_ERROR(SSL, ssl3_get_server_hello, SSL_R_OLD_SESSION_CIPHER_NOT_RETURNED);
-			goto f_err;
-			}
+		al = SSL_AD_ILLEGAL_PARAMETER;
+		OPENSSL_PUT_ERROR(SSL, ssl3_get_server_hello, SSL_R_OLD_SESSION_CIPHER_NOT_RETURNED);
+		goto f_err;
 		}
 	s->s3->tmp.new_cipher=c;
 	/* Don't digest cached records if no sigalgs: we may need them for
@@ -1066,26 +1070,30 @@ int ssl3_get_server_hello(SSL *s)
 	 */
 	if (!SSL_USE_SIGALGS(s) && !ssl3_digest_cached_records(s))
 		goto f_err;
-	/* lets get the compression algorithm */
-	/* COMPRESSION */
-	if (*(p++) != 0)
+
+	if (!CBS_get_u8(&server_hello, &compression_method))
 		{
-		al=SSL_AD_ILLEGAL_PARAMETER;
+		al = SSL_AD_DECODE_ERROR;
+		OPENSSL_PUT_ERROR(SSL, ssl3_get_server_hello, SSL_R_DECODE_ERROR);
+		}
+
+	/* Only the NULL compression algorithm is supported. */
+	if (compression_method != 0)
+		{
+		al = SSL_AD_ILLEGAL_PARAMETER;
 		OPENSSL_PUT_ERROR(SSL, ssl3_get_server_hello, SSL_R_UNSUPPORTED_COMPRESSION_ALGORITHM);
 		goto f_err;
 		}
 
-        /* TODO(fork): Port the rest of this function to CBS. */
-	CBS_init(&cbs, p, d + n - p);
-	/* TLS extensions*/
-	if (!ssl_parse_serverhello_tlsext(s, &cbs))
+	/* TLS extensions */
+	if (!ssl_parse_serverhello_tlsext(s, &server_hello))
 		{
 		OPENSSL_PUT_ERROR(SSL, ssl3_get_server_hello, SSL_R_PARSE_TLSEXT);
 		goto err; 
 		}
 
         /* There should be nothing left over in the record. */
-	if (CBS_len(&cbs) != 0)
+	if (CBS_len(&server_hello) != 0)
 		{
 		/* wrong packet length */
 		al=SSL_AD_DECODE_ERROR;
