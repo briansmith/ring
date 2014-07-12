@@ -353,6 +353,12 @@ type ProtocolBugs struct {
 	// DuplicateExtension causes an extra empty extension of bogus type to
 	// be emitted in either the ClientHello or the ServerHello.
 	DuplicateExtension bool
+
+	// UnauthenticatedECDH causes the server to pretend ECDHE_RSA
+	// and ECDHE_ECDSA cipher suites are actually ECDH_anon. No
+	// Certificate message is sent and no signature is added to
+	// ServerKeyExchange.
+	UnauthenticatedECDH bool
 }
 
 func (c *Config) serverInit() {

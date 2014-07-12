@@ -313,8 +313,10 @@ func (hs *serverHandshakeState) doFullHandshake() error {
 
 	certMsg := new(certificateMsg)
 	certMsg.certificates = hs.cert.Certificate
-	hs.finishedHash.Write(certMsg.marshal())
-	c.writeRecord(recordTypeHandshake, certMsg.marshal())
+	if !config.Bugs.UnauthenticatedECDH {
+		hs.finishedHash.Write(certMsg.marshal())
+		c.writeRecord(recordTypeHandshake, certMsg.marshal())
+	}
 
 	if hs.hello.ocspStapling {
 		certStatus := new(certificateStatusMsg)

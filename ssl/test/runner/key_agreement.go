@@ -294,21 +294,25 @@ NextCandidate:
 	}
 
 	skx := new(serverKeyExchangeMsg)
-	sigAndHashLen := 0
-	if ka.version >= VersionTLS12 {
-		sigAndHashLen = 2
+	if config.Bugs.UnauthenticatedECDH {
+		skx.key = serverECDHParams
+	} else {
+		sigAndHashLen := 0
+		if ka.version >= VersionTLS12 {
+			sigAndHashLen = 2
+		}
+		skx.key = make([]byte, len(serverECDHParams)+sigAndHashLen+2+len(sig))
+		copy(skx.key, serverECDHParams)
+		k := skx.key[len(serverECDHParams):]
+		if ka.version >= VersionTLS12 {
+			k[0] = tls12HashId
+			k[1] = ka.sigType
+			k = k[2:]
+		}
+		k[0] = byte(len(sig) >> 8)
+		k[1] = byte(len(sig))
+		copy(k[2:], sig)
 	}
-	skx.key = make([]byte, len(serverECDHParams)+sigAndHashLen+2+len(sig))
-	copy(skx.key, serverECDHParams)
-	k := skx.key[len(serverECDHParams):]
-	if ka.version >= VersionTLS12 {
-		k[0] = tls12HashId
-		k[1] = ka.sigType
-		k = k[2:]
-	}
-	k[0] = byte(len(sig) >> 8)
-	k[1] = byte(len(sig))
-	copy(k[2:], sig)
 
 	return skx, nil
 }

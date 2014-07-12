@@ -189,6 +189,17 @@ var testCases = []testCase{
 		shouldFail:         true,
 		expectedLocalError: "client didn't provide a certificate",
 	},
+	{
+		name: "UnauthenticatedECDH",
+		config: Config{
+			CipherSuites: []uint16{TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256},
+			Bugs: ProtocolBugs{
+				UnauthenticatedECDH: true,
+			},
+		},
+		shouldFail:    true,
+		expectedError: ":MISSING_RSA_SIGNING_CERT:",
+	},
 }
 
 func doExchange(tlsConn *Conn, messageLen int) error {
