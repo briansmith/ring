@@ -1184,7 +1184,7 @@ void SSL_CTX_set_next_proto_select_cb(SSL_CTX *s,
 						 unsigned int inlen, void *arg),
 				      void *arg);
 void SSL_get0_next_proto_negotiated(const SSL *s,
-				    const unsigned char **data, unsigned *len);
+				    const uint8_t **data, unsigned *len);
 #endif
 
 int SSL_select_next_proto(unsigned char **out, unsigned char *outlen,
@@ -1471,8 +1471,8 @@ struct ssl_st
 	 * For a server, this is the client's selected_protocol from
 	 * NextProtocol and is set when handling the NextProtocol message,
 	 * before the Finished message. */
-	unsigned char *next_proto_negotiated;
-	unsigned char next_proto_negotiated_len;
+	uint8_t *next_proto_negotiated;
+	size_t next_proto_negotiated_len;
 #endif
 
 #define session_ctx initial_ctx

@@ -3191,9 +3191,8 @@ int ssl3_send_cert_status(SSL *s)
 int ssl3_get_next_proto(SSL *s)
 	{
 	int ok;
-	int proto_len, padding_len;
 	long n;
-	const unsigned char *p;
+	CBS next_protocol, selected_protocol, padding;
 
 	/* Clients cannot send a NextProtocol message if we didn't see the
 	 * extension in their ClientHello */
@@ -3222,10 +3221,7 @@ int ssl3_get_next_proto(SSL *s)
 		return -1;
 		}
 
-	if (n < 2)
-		return 0;  /* The body must be > 1 bytes long */
-
-	p=(unsigned char *)s->init_msg;
+	CBS_init(&next_protocol, (uint8_t *)s->init_msg, n);
 
 	/* The payload looks like:
 	 *   uint8 proto_len;
@@ -3233,21 +3229,15 @@ int ssl3_get_next_proto(SSL *s)
 	 *   uint8 padding_len;
 	 *   uint8 padding[padding_len];
 	 */
-	proto_len = p[0];
-	if (proto_len + 2 > s->init_num)
-		return 0;
-	padding_len = p[proto_len + 1];
-	if (proto_len + padding_len + 2 != s->init_num)
+	if (!CBS_get_u8_length_prefixed(&next_protocol, &selected_protocol) ||
+		!CBS_get_u8_length_prefixed(&next_protocol, &padding) ||
+		CBS_len(&next_protocol) != 0)
 		return 0;
 
-	s->next_proto_negotiated = OPENSSL_malloc(proto_len);
-	if (!s->next_proto_negotiated)
-		{
-		OPENSSL_PUT_ERROR(SSL, ssl3_get_next_proto, ERR_R_MALLOC_FAILURE);
+	if (!CBS_stow(&selected_protocol,
+			&s->next_proto_negotiated,
+			&s->next_proto_negotiated_len))
 		return 0;
-		}
-	memcpy(s->next_proto_negotiated, p + 1, proto_len);
-	s->next_proto_negotiated_len = proto_len;
 
 	return 1;
 	}

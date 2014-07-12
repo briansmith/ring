@@ -1756,7 +1756,7 @@ int SSL_select_next_proto(unsigned char **out, unsigned char *outlen, const unsi
  * from this function need not be a member of the list of supported protocols
  * provided by the callback.
  */
-void SSL_get0_next_proto_negotiated(const SSL *s, const unsigned char **data, unsigned *len)
+void SSL_get0_next_proto_negotiated(const SSL *s, const uint8_t **data, unsigned *len)
 	{
 	*data = s->next_proto_negotiated;
 	if (!*data) {
