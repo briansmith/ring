@@ -211,6 +211,17 @@ var testCases = []testCase{
 		shouldFail:    true,
 		expectedError: ":UNEXPECTED_MESSAGE:",
 	},
+	{
+		testType: serverTest,
+		name:     "NPNServerTest",
+		config: Config{
+			NextProtos: []string{"bar"},
+		},
+		flags: []string{
+			"-advertise-npn", "\x03foo\x03bar\x03baz",
+			"-expect-next-proto", "bar",
+		},
+	},
 }
 
 func doExchange(tlsConn *Conn, messageLen int) error {

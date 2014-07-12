@@ -22,10 +22,10 @@
 #include <openssl/bio.h>
 #include <openssl/bytestring.h>
 
-const char *expected_server_name = NULL;
-int early_callback_called = 0;
+static const char *expected_server_name = NULL;
+static int early_callback_called = 0;
 
-int select_certificate_callback(const struct ssl_early_callback_ctx *ctx) {
+static int select_certificate_callback(const struct ssl_early_callback_ctx *ctx) {
   early_callback_called = 1;
 
   if (!expected_server_name) {
@@ -64,11 +64,27 @@ int select_certificate_callback(const struct ssl_early_callback_ctx *ctx) {
   return 1;
 }
 
-int skip_verify(int preverify_ok, X509_STORE_CTX *store_ctx) {
+static int skip_verify(int preverify_ok, X509_STORE_CTX *store_ctx) {
   return 1;
 }
 
-SSL *setup_test(int is_server) {
+static const char *advertise_npn = NULL;
+
+static int next_protos_advertised_callback(SSL *ssl,
+                                    const uint8_t **out,
+                                    unsigned int *out_len,
+                                    void *arg) {
+  if (!advertise_npn)
+    return SSL_TLSEXT_ERR_NOACK;
+
+  // TODO(davidben): Support passing byte strings with NULs to the
+  // test shim.
+  *out = (const uint8_t*)advertise_npn;
+  *out_len = strlen(advertise_npn);
+  return SSL_TLSEXT_ERR_OK;
+}
+
+static SSL *setup_test(int is_server) {
   if (!SSL_library_init()) {
     return NULL;
   }
@@ -92,6 +108,9 @@ SSL *setup_test(int is_server) {
   }
 
   ssl_ctx->select_certificate_cb = select_certificate_callback;
+
+  SSL_CTX_set_next_protos_advertised_cb(
+      ssl_ctx, next_protos_advertised_callback, NULL);
 
   ssl = SSL_new(ssl_ctx);
   if (ssl == NULL) {
@@ -124,6 +143,7 @@ err:
 int main(int argc, char **argv) {
   int i, is_server, ret;
   const char *expected_certificate_types = NULL;
+  const char *expected_next_proto = NULL;
 
   if (argc < 2) {
     fprintf(stderr, "Usage: %s (client|server) [flags...]\n", argv[0]);
@@ -188,6 +208,20 @@ int main(int argc, char **argv) {
     } else if (strcmp(argv[i], "-require-any-client-certificate") == 0) {
       SSL_set_verify(ssl, SSL_VERIFY_PEER|SSL_VERIFY_FAIL_IF_NO_PEER_CERT,
                      skip_verify);
+    } else if (strcmp(argv[i], "-advertise-npn") == 0) {
+      i++;
+      if (i >= argc) {
+        fprintf(stderr, "Missing parameter\n");
+        return 1;
+      }
+      advertise_npn = argv[i];
+    } else if (strcmp(argv[i], "-expect-next-proto") == 0) {
+      i++;
+      if (i >= argc) {
+        fprintf(stderr, "Missing parameter\n");
+        return 1;
+      }
+      expected_next_proto = argv[i];
     } else {
       fprintf(stderr, "Unknown argument: %s\n", argv[i]);
       return 1;
@@ -229,6 +263,17 @@ int main(int argc, char **argv) {
                expected_certificate_types,
                num_certificate_types) != 0) {
       fprintf(stderr, "certificate types mismatch\n");
+      return 2;
+    }
+  }
+
+  if (expected_next_proto) {
+    const uint8_t *next_proto;
+    unsigned next_proto_len;
+    SSL_get0_next_proto_negotiated(ssl, &next_proto, &next_proto_len);
+    if (next_proto_len != strlen(expected_next_proto) ||
+        memcmp(next_proto, expected_next_proto, next_proto_len) != 0) {
+      fprintf(stderr, "negotiated next proto mismatch\n");
       return 2;
     }
   }
