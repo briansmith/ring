@@ -2610,13 +2610,14 @@ err:
 int ssl3_get_cert_verify(SSL *s)
 	{
 	EVP_PKEY *pkey=NULL;
-	unsigned char *p;
 	int al,ok,ret=0;
 	long n;
-	int type=0,i,j;
+	CBS certificate_verify, signature;
+	int type = 0;
 	X509 *peer;
 	const EVP_MD *md = NULL;
 	EVP_MD_CTX mctx;
+
 	EVP_MD_CTX_init(&mctx);
 
 	n=s->method->ssl_get_message(s,
@@ -2674,11 +2675,26 @@ int ssl3_get_cert_verify(SSL *s)
 		goto f_err;
 		}
 
-	/* we now have a signature that we need to verify */
-	p = s->init_msg;
+	CBS_init(&certificate_verify, s->init_msg, n);
+
+	/* We now have a signature that we need to verify. */
+	/* TODO(davidben): This should share code with
+	 * ssl3_get_key_exchange. */
 	if (SSL_USE_SIGALGS(s))
 		{
-		int rv = tls12_check_peer_sigalg(&md, s, p, pkey);
+		int rv;
+		const uint8_t *sigalg;
+
+		/* The first two bytes are the signature and
+		 * algorithm. */
+		sigalg = CBS_data(&certificate_verify);
+		if (!CBS_skip(&certificate_verify, 2))
+			{
+			al = SSL_AD_DECODE_ERROR;
+			OPENSSL_PUT_ERROR(SSL, ssl3_get_key_exchange, SSL_R_DECODE_ERROR);
+			goto f_err;
+			}
+		rv = tls12_check_peer_sigalg(&md, s, sigalg, pkey);
 		if (rv == -1)
 			{
 			al = SSL_AD_INTERNAL_ERROR;
@@ -2689,25 +2705,13 @@ int ssl3_get_cert_verify(SSL *s)
 			al = SSL_AD_DECODE_ERROR;
 			goto f_err;
 			}
-#ifdef SSL_DEBUG
-fprintf(stderr, "USING TLSv1.2 HASH %s\n", EVP_MD_name(md));
-#endif
-		p += 2;
-		n -= 2;
 		}
-	n2s(p,i);
-	n-=2;
-	if (i > n)
+
+	if (!CBS_get_u16_length_prefixed(&certificate_verify, &signature) ||
+		CBS_len(&certificate_verify) != 0)
 		{
-		OPENSSL_PUT_ERROR(SSL, ssl3_get_cert_verify, SSL_R_LENGTH_MISMATCH);
-		al=SSL_AD_DECODE_ERROR;
-		goto f_err;
-		}
-	j=EVP_PKEY_size(pkey);
-	if ((i > j) || (n > j) || (n <= 0))
-		{
-		OPENSSL_PUT_ERROR(SSL, ssl3_get_cert_verify, SSL_R_WRONG_SIGNATURE_SIZE);
-		al=SSL_AD_DECODE_ERROR;
+		al = SSL_AD_DECODE_ERROR;
+		OPENSSL_PUT_ERROR(SSL, ssl3_get_cert_verify, SSL_R_DECODE_ERROR);
 		goto f_err;
 		}
 
@@ -2722,10 +2726,6 @@ fprintf(stderr, "USING TLSv1.2 HASH %s\n", EVP_MD_name(md));
 			al=SSL_AD_INTERNAL_ERROR;
 			goto f_err;
 			}
-#ifdef SSL_DEBUG
-		fprintf(stderr, "Using TLS 1.2 with client verify alg %s\n",
-							EVP_MD_name(md));
-#endif
 		if (!EVP_VerifyInit_ex(&mctx, md, NULL)
 			|| !EVP_VerifyUpdate(&mctx, hdata, hdatalen))
 			{
@@ -2734,7 +2734,9 @@ fprintf(stderr, "USING TLSv1.2 HASH %s\n", EVP_MD_name(md));
 			goto f_err;
 			}
 
-		if (EVP_VerifyFinal(&mctx, p , i, pkey) <= 0)
+		if (EVP_VerifyFinal(&mctx,
+				CBS_data(&signature), CBS_len(&signature),
+				pkey) <= 0)
 			{
 			al=SSL_AD_DECRYPT_ERROR;
 			OPENSSL_PUT_ERROR(SSL, ssl3_get_cert_verify, SSL_R_BAD_SIGNATURE);
@@ -2744,18 +2746,12 @@ fprintf(stderr, "USING TLSv1.2 HASH %s\n", EVP_MD_name(md));
 	else
 	if (pkey->type == EVP_PKEY_RSA)
 		{
-		i=RSA_verify(NID_md5_sha1, s->s3->tmp.cert_verify_md,
-			MD5_DIGEST_LENGTH+SHA_DIGEST_LENGTH, p, i, 
-							pkey->pkey.rsa);
-		if (i < 0)
+		if (!RSA_verify(NID_md5_sha1, s->s3->tmp.cert_verify_md,
+				MD5_DIGEST_LENGTH+SHA_DIGEST_LENGTH,
+				CBS_data(&signature), CBS_len(&signature),
+				pkey->pkey.rsa))
 			{
-			al=SSL_AD_DECRYPT_ERROR;
-			OPENSSL_PUT_ERROR(SSL, ssl3_get_cert_verify, SSL_R_BAD_RSA_DECRYPT);
-			goto f_err;
-			}
-		if (i == 0)
-			{
-			al=SSL_AD_DECRYPT_ERROR;
+			al = SSL_AD_DECRYPT_ERROR;
 			OPENSSL_PUT_ERROR(SSL, ssl3_get_cert_verify, SSL_R_BAD_RSA_SIGNATURE);
 			goto f_err;
 			}
@@ -2764,13 +2760,14 @@ fprintf(stderr, "USING TLSv1.2 HASH %s\n", EVP_MD_name(md));
 #ifndef OPENSSL_NO_DSA
 		if (pkey->type == EVP_PKEY_DSA)
 		{
-		j=DSA_verify(pkey->save_type,
-			&(s->s3->tmp.cert_verify_md[MD5_DIGEST_LENGTH]),
-			SHA_DIGEST_LENGTH,p,i,pkey->pkey.dsa);
-		if (j <= 0)
+		if (DSA_verify(pkey->save_type,
+				&(s->s3->tmp.cert_verify_md[MD5_DIGEST_LENGTH]),
+				SHA_DIGEST_LENGTH,
+				CBS_data(&signature), CBS_len(&signature),
+				pkey->pkey.dsa) <= 0)
 			{
 			/* bad signature */
-			al=SSL_AD_DECRYPT_ERROR;
+			al = SSL_AD_DECRYPT_ERROR;
 			OPENSSL_PUT_ERROR(SSL, ssl3_get_cert_verify, SSL_R_BAD_DSA_SIGNATURE);
 			goto f_err;
 			}
@@ -2780,13 +2777,14 @@ fprintf(stderr, "USING TLSv1.2 HASH %s\n", EVP_MD_name(md));
 #ifndef OPENSSL_NO_ECDSA
 		if (pkey->type == EVP_PKEY_EC)
 		{
-		j=ECDSA_verify(pkey->save_type,
-			&(s->s3->tmp.cert_verify_md[MD5_DIGEST_LENGTH]),
-			SHA_DIGEST_LENGTH,p,i,pkey->pkey.ec);
-		if (j <= 0)
+		if (!ECDSA_verify(pkey->save_type,
+				&(s->s3->tmp.cert_verify_md[MD5_DIGEST_LENGTH]),
+				SHA_DIGEST_LENGTH,
+				CBS_data(&signature), CBS_len(&signature),
+				pkey->pkey.ec))
 			{
 			/* bad signature */
-			al=SSL_AD_DECRYPT_ERROR;
+			al = SSL_AD_DECRYPT_ERROR;
 			OPENSSL_PUT_ERROR(SSL, ssl3_get_cert_verify, SSL_R_BAD_ECDSA_SIGNATURE);
 			goto f_err;
 			}
