@@ -969,7 +969,7 @@ int ssl_get_new_session(SSL *s, int session);
 int ssl_get_prev_session(SSL *s, const struct ssl_early_callback_ctx *ctx);
 int ssl_cipher_id_cmp(const void *in_a, const void *in_b);
 int ssl_cipher_ptr_id_cmp(const SSL_CIPHER **ap, const SSL_CIPHER **bp);
-STACK_OF(SSL_CIPHER) *ssl_bytes_to_cipher_list(SSL *s,unsigned char *p,int num,
+STACK_OF(SSL_CIPHER) *ssl_bytes_to_cipher_list(SSL *s, const uint8_t *p,int num,
 					       STACK_OF(SSL_CIPHER) **skp);
 int ssl_cipher_list_to_bytes(SSL *s,STACK_OF(SSL_CIPHER) *sk,unsigned char *p,
                              int (*put_cb)(const SSL_CIPHER *, unsigned char *));

@@ -984,8 +984,8 @@ int ssl3_get_server_hello(SSL *s)
 		}
 
 	if (CBS_len(&session_id) != 0 &&
-		CBS_len(&session_id) == s->session->session_id_length &&
-		memcmp(CBS_data(&session_id), s->session->session_id, CBS_len(&session_id)) == 0)
+		CBS_mem_equal(&session_id,
+			s->session->session_id, s->session->session_id_length))
 		{
 		if(s->sid_ctx_length != s->session->sid_ctx_length
 			|| memcmp(s->session->sid_ctx, s->sid_ctx, s->sid_ctx_length))

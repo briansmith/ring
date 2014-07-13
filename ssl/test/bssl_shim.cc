@@ -55,9 +55,8 @@ static int select_certificate_callback(const struct ssl_early_callback_ctx *ctx)
     return -1;
   }
 
-  if (CBS_len(&host_name) != strlen(expected_server_name) ||
-      memcmp(expected_server_name,
-             CBS_data(&host_name), CBS_len(&host_name)) != 0) {
+  if (!CBS_mem_equal(&host_name, (const uint8_t*)expected_server_name,
+                     strlen(expected_server_name))) {
     fprintf(stderr, "Server name mismatch.\n");
   }
 

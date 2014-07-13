@@ -1572,7 +1572,7 @@ int ssl_cipher_list_to_bytes(SSL *s,STACK_OF(SSL_CIPHER) *sk,unsigned char *p,
 	return(p-q);
 	}
 
-STACK_OF(SSL_CIPHER) *ssl_bytes_to_cipher_list(SSL *s,unsigned char *p,int num,
+STACK_OF(SSL_CIPHER) *ssl_bytes_to_cipher_list(SSL *s, const uint8_t *p,int num,
 					       STACK_OF(SSL_CIPHER) **skp)
 	{
 	const SSL_CIPHER *c;

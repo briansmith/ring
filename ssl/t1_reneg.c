@@ -160,14 +160,7 @@ int ssl_parse_clienthello_renegotiate_ext(SSL *s, CBS *cbs, int *out_alert)
 	    }
 
     /* Check that the extension matches */
-    if (CBS_len(&renegotiated_connection) != s->s3->previous_client_finished_len)
-	    {
-	    OPENSSL_PUT_ERROR(SSL, ssl_parse_clienthello_renegotiate_ext, SSL_R_RENEGOTIATION_MISMATCH);
-	    *out_alert = SSL_AD_HANDSHAKE_FAILURE;
-	    return 0;
-	    }
-    
-    if (memcmp(CBS_data(&renegotiated_connection),
+    if (!CBS_mem_equal(&renegotiated_connection,
 		    s->s3->previous_client_finished,
 		    s->s3->previous_client_finished_len))
 	    {

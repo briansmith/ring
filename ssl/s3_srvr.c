@@ -151,6 +151,7 @@
 #define NETSCAPE_HANG_BUG
 
 #include <stdio.h>
+#include <string.h>
 
 #include <openssl/bn.h>
 #include <openssl/buf.h>
@@ -850,15 +851,14 @@ int ssl3_check_client_hello(SSL *s)
 
 int ssl3_get_client_hello(SSL *s)
 	{
-	int i,j,ok,al=SSL_AD_INTERNAL_ERROR,ret= -1;
-	unsigned int cookie_len;
+	int i,ok,al=SSL_AD_INTERNAL_ERROR,ret= -1;
 	long n;
-	unsigned long id;
-	unsigned char *p,*d;
 	SSL_CIPHER *c;
 	STACK_OF(SSL_CIPHER) *ciphers=NULL;
 	struct ssl_early_callback_ctx early_ctx;
-	CBS cbs;
+	CBS client_hello;
+	uint16_t client_version;
+	CBS client_random, session_id, cipher_suites, compression_methods;
 
 	/* We do this so that we will respond with our native type.
 	 * If we are TLSv1 and we get SSLv3, we will respond with TLSv1,
@@ -886,18 +886,21 @@ int ssl3_get_client_hello(SSL *s)
 		 * contain one, just return since we do not want to
 		 * allocate any memory yet. So check cookie length...
 		 */
-		if (SSL_get_options(s) & SSL_OP_COOKIE_EXCHANGE)
+		if (SSL_IS_DTLS(s) && (SSL_get_options(s) & SSL_OP_COOKIE_EXCHANGE))
 			{
-			unsigned int session_length, cookie_length;
-			p = s->init_msg;
+			CBS session_id;
+			uint8_t cookie_length;
 
-			if (n < 2 + SSL3_RANDOM_SIZE)
-				return 1;
-			session_length = *(p + 2 + SSL3_RANDOM_SIZE);
-			if (n < 2 + SSL3_RANDOM_SIZE + 1 + session_length)
-				return 1;
-			cookie_length =
-				*(p + 2 + SSL3_RANDOM_SIZE + 1 + session_length);
+			CBS_init(&client_hello, s->init_msg, n);
+			if (!CBS_skip(&client_hello, 2 + SSL3_RANDOM_SIZE) ||
+				!CBS_get_u8_length_prefixed(&client_hello, &session_id) ||
+				!CBS_get_u8(&client_hello, &cookie_length))
+				{
+				al = SSL_AD_DECODE_ERROR;
+				OPENSSL_PUT_ERROR(SSL, ssl3_get_client_hello, SSL_R_DECODE_ERROR);
+				goto f_err;
+				}
+
 			if (cookie_length == 0)
 				return 1;
 			}
@@ -945,12 +948,20 @@ int ssl3_get_client_hello(SSL *s)
 		return -1;
 	}
 
-	d = p = s->init_msg;
+	CBS_init(&client_hello, s->init_msg, n);
+	if (!CBS_get_u16(&client_hello, &client_version) ||
+		!CBS_get_bytes(&client_hello, &client_random, SSL3_RANDOM_SIZE) ||
+		!CBS_get_u8_length_prefixed(&client_hello, &session_id) ||
+		CBS_len(&session_id) > SSL_MAX_SSL_SESSION_ID_LENGTH)
+		{
+		al = SSL_AD_DECODE_ERROR;
+		OPENSSL_PUT_ERROR(SSL, ssl3_get_client_hello, SSL_R_DECODE_ERROR);
+		goto f_err;
+		}
 
 	/* use version from inside client hello, not from record header
 	 * (may differ: see RFC 2246, Appendix E, second paragraph) */
-	s->client_version=(((int)p[0])<<8)|(int)p[1];
-	p+=2;
+	s->client_version = client_version;
 
 	if (SSL_IS_DTLS(s)  ?	(s->client_version > s->version &&
 				 s->method->version != DTLS_ANY_VERSION)
@@ -967,12 +978,8 @@ int ssl3_get_client_hello(SSL *s)
 		goto f_err;
 		}
 
-	/* load the client random */
-	memcpy(s->s3->client_random,p,SSL3_RANDOM_SIZE);
-	p+=SSL3_RANDOM_SIZE;
-
-	/* get the session-id */
-	j= *(p++);
+	/* Load the client random. */
+	memcpy(s->s3->client_random, CBS_data(&client_random), SSL3_RANDOM_SIZE);
 
 	s->hit=0;
 	/* Versions before 0.9.7 always allow clients to resume sessions in renegotiation.
@@ -1012,36 +1019,33 @@ int ssl3_get_client_hello(SSL *s)
 			}
 		}
 
-	p+=j;
-
 	if (SSL_IS_DTLS(s))
 		{
-		/* cookie stuff */
-		cookie_len = *(p++);
+		CBS cookie;
 
-		/* 
-		 * The ClientHello may contain a cookie even if the
-		 * HelloVerify message has not been sent--make sure that it
-		 * does not cause an overflow.
-		 */
-		if ( cookie_len > sizeof(s->d1->rcvd_cookie))
+		/* TODO(davidben): The length check here is off. Per
+		 * spec, the maximum cookie length is 32. However, the
+		 * DTLS1_COOKIE_LENGTH check is checking against 256,
+		 * not 32 (so it's actually redundant).
+		 * 07a9d1a2c2b735cbc327065000b545deb5e136cf from
+		 * OpenSSL switched this from 32 to 256. */
+		if (!CBS_get_u8_length_prefixed(&client_hello, &cookie) ||
+			CBS_len(&cookie) > DTLS1_COOKIE_LENGTH)
 			{
-			/* too much data */
 			al = SSL_AD_DECODE_ERROR;
-			OPENSSL_PUT_ERROR(SSL, ssl3_get_client_hello, SSL_R_COOKIE_MISMATCH);
+			OPENSSL_PUT_ERROR(SSL, ssl3_get_client_hello, SSL_R_DECODE_ERROR);
 			goto f_err;
 			}
 
-		/* verify the cookie if appropriate option is set. */
+		/* Verify the cookie if appropriate option is set. */
 		if ((SSL_get_options(s) & SSL_OP_COOKIE_EXCHANGE) &&
-			cookie_len > 0)
+			CBS_len(&cookie) > 0)
 			{
-			memcpy(s->d1->rcvd_cookie, p, cookie_len);
-
-			if ( s->ctx->app_verify_cookie_cb != NULL)
+			if (s->ctx->app_verify_cookie_cb != NULL)
 				{
-				if ( s->ctx->app_verify_cookie_cb(s, s->d1->rcvd_cookie,
-					cookie_len) == 0)
+				if (s->ctx->app_verify_cookie_cb(s,
+						(unsigned char*)CBS_data(&cookie),
+						CBS_len(&cookie)) == 0)
 					{
 					al=SSL_AD_HANDSHAKE_FAILURE;
 					OPENSSL_PUT_ERROR(SSL, ssl3_get_client_hello, SSL_R_COOKIE_MISMATCH);
@@ -1049,18 +1053,18 @@ int ssl3_get_client_hello(SSL *s)
 					}
 				/* else cookie verification succeeded */
 				}
-			else if ( memcmp(s->d1->rcvd_cookie, s->d1->cookie, 
-						  s->d1->cookie_len) != 0) /* default verification */
+			else if (!CBS_mem_equal(&cookie, s->d1->cookie, s->d1->cookie_len))
 				{
-					al=SSL_AD_HANDSHAKE_FAILURE;
-					OPENSSL_PUT_ERROR(SSL, ssl3_get_client_hello, SSL_R_COOKIE_MISMATCH);
-					goto f_err;
+				/* default verification */
+				al=SSL_AD_HANDSHAKE_FAILURE;
+				OPENSSL_PUT_ERROR(SSL, ssl3_get_client_hello, SSL_R_COOKIE_MISMATCH);
+				goto f_err;
 				}
-			/* Set to -2 so if successful we return 2 */
+			/* Set to -2 so if successful we return 2 and
+			 * don't send HelloVerifyRequest. */
 			ret = -2;
 			}
 
-		p += cookie_len;
 		if (s->method->version == DTLS_ANY_VERSION)
 			{
 			/* Select version to use */
@@ -1094,70 +1098,52 @@ int ssl3_get_client_hello(SSL *s)
 			}
 		}
 
-	n2s(p,i);
-	if ((i == 0) && (j != 0))
+	if (!CBS_get_u16_length_prefixed(&client_hello, &cipher_suites) ||
+		!CBS_get_u8_length_prefixed(&client_hello, &compression_methods) ||
+		CBS_len(&compression_methods) == 0)
 		{
-		/* we need a cipher if we are not resuming a session */
-		al=SSL_AD_ILLEGAL_PARAMETER;
+		al = SSL_AD_DECODE_ERROR;
+		OPENSSL_PUT_ERROR(SSL, ssl3_get_client_hello, SSL_R_DECODE_ERROR);
+		goto f_err;
+		}
+
+	/* TODO(davidben): Per spec, cipher_suites can never be empty
+	 * (specified at the ClientHello structure level). This logic
+	 * allows it to be empty if resuming a session. Can we always
+	 * require non-empty? If a client sends empty cipher_suites
+	 * because it's resuming a session, it could always fail to
+	 * resume a session, so it's unlikely to actually work. */
+	if (CBS_len(&cipher_suites) == 0 && CBS_len(&session_id) != 0)
+		{
+		/* We need a cipher if we are not resuming a session. */
+		al = SSL_AD_ILLEGAL_PARAMETER;
 		OPENSSL_PUT_ERROR(SSL, ssl3_get_client_hello, SSL_R_NO_CIPHERS_SPECIFIED);
 		goto f_err;
 		}
-	if ((p+i) >= (d+n))
-		{
-		/* not enough data */
-		al=SSL_AD_DECODE_ERROR;
-		OPENSSL_PUT_ERROR(SSL, ssl3_get_client_hello, SSL_R_LENGTH_MISMATCH);
-		goto f_err;
-		}
-	if ((i > 0) && (ssl_bytes_to_cipher_list(s,p,i,&(ciphers))
-		== NULL))
+
+	/* TODO(davidben): Port cipher-list handling to CBS. */
+	if (ssl_bytes_to_cipher_list(s, CBS_data(&cipher_suites),
+			CBS_len(&cipher_suites), &ciphers) == NULL)
 		{
 		goto err;
 		}
-	p+=i;
 
 	/* If it is a hit, check that the cipher is in the list */
-	if ((s->hit) && (i > 0))
+	if (s->hit && CBS_len(&cipher_suites) > 0)
 		{
-		j=0;
-		id=s->session->cipher->id;
+		int found_cipher = 0;
+		unsigned long id = s->session->cipher->id;
 
-#ifdef CIPHER_DEBUG
-		printf("client sent %d ciphers\n",sk_num(ciphers));
-#endif
 		for (i=0; i<sk_SSL_CIPHER_num(ciphers); i++)
 			{
 			c=sk_SSL_CIPHER_value(ciphers,i);
-#ifdef CIPHER_DEBUG
-			printf("client [%2d of %2d]:%s\n",
-				i,sk_num(ciphers),SSL_CIPHER_get_name(c));
-#endif
 			if (c->id == id)
 				{
-				j=1;
+				found_cipher = 1;
 				break;
 				}
 			}
-/* Disabled because it can be used in a ciphersuite downgrade
- * attack: CVE-2010-4180.
- */
-#if 0
-		if (j == 0 && (s->options & SSL_OP_NETSCAPE_REUSE_CIPHER_CHANGE_BUG) && (sk_SSL_CIPHER_num(ciphers) == 1))
-			{
-			/* Special case as client bug workaround: the previously used cipher may
-			 * not be in the current list, the client instead might be trying to
-			 * continue using a cipher that before wasn't chosen due to server
-			 * preferences.  We'll have to reject the connection if the cipher is not
-			 * enabled, though. */
-			c = sk_SSL_CIPHER_value(ciphers, 0);
-			if (sk_SSL_CIPHER_find(SSL_get_ciphers(s), c) >= 0)
-				{
-				s->session->cipher = c;
-				j = 1;
-				}
-			}
-#endif
-		if (j == 0)
+		if (!found_cipher)
 			{
 			/* we need to have the cipher in the cipher
 			 * list if we are asked to reuse it */
@@ -1167,34 +1153,19 @@ int ssl3_get_client_hello(SSL *s)
 			}
 		}
 
-	/* compression */
-	i= *(p++);
-	if ((p+i) > (d+n))
+	/* Only null compression is supported. */
+	if (memchr(CBS_data(&compression_methods), 0,
+			CBS_len(&compression_methods)) == NULL)
 		{
-		/* not enough data */
-		al=SSL_AD_DECODE_ERROR;
-		OPENSSL_PUT_ERROR(SSL, ssl3_get_client_hello, SSL_R_LENGTH_MISMATCH);
-		goto f_err;
-		}
-	for (j=0; j<i; j++)
-		{
-		if (p[j] == 0) break;
-		}
-
-	p+=i;
-	if (j >= i)
-		{
-		/* no compress */
-		al=SSL_AD_DECODE_ERROR;
+		al = SSL_AD_ILLEGAL_PARAMETER;
 		OPENSSL_PUT_ERROR(SSL, ssl3_get_client_hello, SSL_R_NO_COMPRESSION_SPECIFIED);
 		goto f_err;
 		}
 
-	CBS_init(&cbs, p, d + n - p);
 	/* TLS extensions*/
 	if (s->version >= SSL3_VERSION)
 		{
-		if (!ssl_parse_clienthello_tlsext(s, &cbs))
+		if (!ssl_parse_clienthello_tlsext(s, &client_hello))
 			{
 			OPENSSL_PUT_ERROR(SSL, ssl3_get_client_hello, SSL_R_PARSE_TLSEXT);
 			goto err;
@@ -1202,7 +1173,7 @@ int ssl3_get_client_hello(SSL *s)
 		}
 
         /* There should be nothing left over in the record. */
-	if (CBS_len(&cbs) != 0)
+	if (CBS_len(&client_hello) != 0)
 		{
 		/* wrong packet length */
 		al=SSL_AD_DECODE_ERROR;
