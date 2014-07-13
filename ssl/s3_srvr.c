@@ -1602,7 +1602,7 @@ int ssl3_send_server_key_exchange(SSL *s)
 			if (s->cert->ecdh_tmp_auto)
 				{
 				/* Get NID of appropriate shared curve */
-				int nid = tls1_shared_curve(s, -2);
+				int nid = tls1_get_shared_curve(s);
 				if (nid != NID_undef)
 					ecdhp = EC_KEY_new_by_curve_name(nid);
 				}

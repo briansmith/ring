@@ -488,7 +488,7 @@ struct ssl_session_st
 	size_t tlsext_ecpointformatlist_length;
 	unsigned char *tlsext_ecpointformatlist; /* peer's list */
 	size_t tlsext_ellipticcurvelist_length;
-	unsigned char *tlsext_ellipticcurvelist; /* peer's list */
+	uint16_t *tlsext_ellipticcurvelist; /* peer's list */
 #endif /* OPENSSL_NO_EC */
 	/* RFC4507 info */
 	uint8_t *tlsext_tick;	/* Session ticket */
@@ -1088,9 +1088,9 @@ struct ssl_ctx_st
 # ifndef OPENSSL_NO_EC
 	/* EC extension values inherited by SSL structure */
 	size_t tlsext_ecpointformatlist_length;
-	unsigned char *tlsext_ecpointformatlist;
+	uint8_t *tlsext_ecpointformatlist;
 	size_t tlsext_ellipticcurvelist_length;
-	unsigned char *tlsext_ellipticcurvelist;
+	uint16_t *tlsext_ellipticcurvelist;
 # endif /* OPENSSL_NO_EC */
 
 	/* If true, a client will advertise the Channel ID extension and a
@@ -1444,9 +1444,9 @@ struct ssl_st
 	int tlsext_ticket_expected;
 #ifndef OPENSSL_NO_EC
 	size_t tlsext_ecpointformatlist_length;
-	unsigned char *tlsext_ecpointformatlist; /* our list */
+	uint8_t *tlsext_ecpointformatlist; /* our list */
 	size_t tlsext_ellipticcurvelist_length;
-	unsigned char *tlsext_ellipticcurvelist; /* our list */
+	uint16_t *tlsext_ellipticcurvelist; /* our list */
 #endif /* OPENSSL_NO_EC */
 
 	/* TLS Session Ticket extension override */
@@ -1761,7 +1761,6 @@ DECLARE_PEM_rw(SSL_SESSION, SSL_SESSION)
 #define SSL_CTRL_GET_CURVES			90
 #define SSL_CTRL_SET_CURVES			91
 #define SSL_CTRL_SET_CURVES_LIST		92
-#define SSL_CTRL_GET_SHARED_CURVE		93
 #define SSL_CTRL_SET_ECDH_AUTO			94
 #define SSL_CTRL_SET_SIGALGS			97
 #define SSL_CTRL_SET_SIGALGS_LIST		98
@@ -1913,8 +1912,6 @@ DECLARE_PEM_rw(SSL_SESSION, SSL_SESSION)
 	SSL_ctrl(ctx,SSL_CTRL_SET_CURVES,clistlen,(char *)clist)
 #define SSL_set1_curves_list(ctx, s) \
 	SSL_ctrl(ctx,SSL_CTRL_SET_CURVES_LIST,0,(char *)s)
-#define SSL_get_shared_curve(s, n) \
-	SSL_ctrl(s,SSL_CTRL_GET_SHARED_CURVE,n,NULL)
 #define SSL_CTX_set_ecdh_auto(ctx, onoff) \
 	SSL_CTX_ctrl(ctx,SSL_CTRL_SET_ECDH_AUTO,onoff,NULL)
 #define SSL_set_ecdh_auto(s, onoff) \

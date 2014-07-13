@@ -1244,14 +1244,27 @@ int ssl_check_srvr_ecc_cert_and_alg(X509 *x, SSL *s);
 
 char ssl_early_callback_init(struct ssl_early_callback_ctx *ctx);
 #ifndef OPENSSL_NO_EC
-int tls1_ec_curve_id2nid(int curve_id);
-int tls1_ec_nid2curve_id(int nid);
+int tls1_ec_curve_id2nid(uint16_t curve_id);
+uint16_t tls1_ec_nid2curve_id(int nid);
+
+/* tls1_check_curve parses ECParameters out of |cbs|, modifying it. It
+ * checks the curve is one of our preferences and writes the
+ * NamedCurve value to |*out_curve_id|. It returns one on success and
+ * zero on error. */
 int tls1_check_curve(SSL *s, CBS *cbs, uint16_t *out_curve_id);
-int tls1_shared_curve(SSL *s, int nmatch);
-int tls1_set_curves(unsigned char **pext, size_t *pextlen,
-			int *curves, size_t ncurves);
-int tls1_set_curves_list(unsigned char **pext, size_t *pextlen, 
-				const char *str);
+
+/* tls1_get_shared_curve returns the NID of the first preferred shared curve
+ * between client and server preferences. If none can be found, it returns
+ * NID_undef. */
+int tls1_get_shared_curve(SSL *s);
+
+/* tls1_set_curves converts the array of |ncurves| NIDs pointed to by |curves|
+ * into a newly allocated array of TLS curve IDs. On success, the function
+ * returns one and writes the array to |*out_curve_ids| and its size to
+ * |*out_curve_ids_len|. Otherwise, it returns zero. */
+int tls1_set_curves(uint16_t **out_curve_ids, size_t *out_curve_ids_len,
+	const int *curves, size_t ncurves);
+
 int tls1_check_ec_tmp_key(SSL *s, unsigned long id);
 #endif /* OPENSSL_NO_EC */
 

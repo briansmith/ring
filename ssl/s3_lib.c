@@ -3040,25 +3040,24 @@ long ssl3_ctrl(SSL *s, int cmd, long larg, void *parg)
 #ifndef OPENSSL_NO_EC
 	case SSL_CTRL_GET_CURVES:
 		{
-		unsigned char *clist;
+		const uint16_t *clist;
 		size_t clistlen;
 		if (!s->session)
 			return 0;
 		clist = s->session->tlsext_ellipticcurvelist;
-		clistlen = s->session->tlsext_ellipticcurvelist_length / 2;
+		clistlen = s->session->tlsext_ellipticcurvelist_length;
 		if (parg)
 			{
 			size_t i;
 			int *cptr = parg;
-			unsigned int cid, nid;
+			int nid;
 			for (i = 0; i < clistlen; i++)
 				{
-				n2s(clist, cid);
-				nid = tls1_ec_curve_id2nid(cid);
-				if (nid != 0)
+				nid = tls1_ec_curve_id2nid(clist[i]);
+				if (nid != OBJ_undef)
 					cptr[i] = nid;
 				else
-					cptr[i] = TLSEXT_nid_unknown | cid;
+					cptr[i] = TLSEXT_nid_unknown | clist[i];
 				}
 			}
 		return (int)clistlen;
@@ -3068,9 +3067,6 @@ long ssl3_ctrl(SSL *s, int cmd, long larg, void *parg)
 		return tls1_set_curves(&s->tlsext_ellipticcurvelist,
 					&s->tlsext_ellipticcurvelist_length,
 								parg, larg);
-
-	case SSL_CTRL_GET_SHARED_CURVE:
-		return tls1_shared_curve(s, larg);
 
 	case SSL_CTRL_SET_ECDH_AUTO:
 		s->cert->ecdh_tmp_auto = larg;

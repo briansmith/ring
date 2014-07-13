@@ -359,7 +359,7 @@ SSL *SSL_new(SSL_CTX *ctx)
 		{
 		s->tlsext_ellipticcurvelist =
 			BUF_memdup(ctx->tlsext_ellipticcurvelist,
-					ctx->tlsext_ellipticcurvelist_length);
+				ctx->tlsext_ellipticcurvelist_length * 2);
 		if (!s->tlsext_ellipticcurvelist)
 			goto err;
 		s->tlsext_ellipticcurvelist_length = 
