@@ -2117,9 +2117,9 @@ int ssl3_get_client_key_exchange(SSL *s)
 			al = SSL_AD_UNKNOWN_PSK_IDENTITY;
 			goto psk_err;
 			}
-		if (!(alg_k & SSL_kEECDH))
+		if (alg_k & SSL_kPSK)
 			{
-			/* Create the shared secret now if we're not using ECDHE-PSK.*/
+			/* Create the shared secret now if we're using plain PSK. */
 			pre_ms_len=2+psk_len+2+psk_len;
 			t = pre_ms;
 			s2n(psk_len, t);
@@ -2584,7 +2584,7 @@ int ssl3_get_client_key_exchange(SSL *s)
 
 #ifndef OPENSSL_NO_PSK
 		/* ECDHE PSK ciphersuites from RFC 5489 */
-		if ((alg_a & SSL_aPSK) && psk_len != 0)
+		if (alg_a & SSL_aPSK)
 			{
 			unsigned char *pre_ms;
 			unsigned int pre_ms_len;
@@ -2611,8 +2611,8 @@ int ssl3_get_client_key_exchange(SSL *s)
 			OPENSSL_cleanse(pre_ms, pre_ms_len);
 			OPENSSL_free(pre_ms);
 			}
+		else
 #endif /* OPENSSL_NO_PSK */
-		if (!(alg_a & SSL_aPSK))
 			{
 			/* Compute the master secret */
 			s->session->master_key_length = s->method->ssl3_enc \
@@ -2630,7 +2630,7 @@ int ssl3_get_client_key_exchange(SSL *s)
 		OPENSSL_PUT_ERROR(SSL, ssl3_get_client_key_exchange, SSL_R_GOST_NOT_SUPPORTED);
 		goto err;
 		}
-	else if (!(alg_k & SSL_kPSK))
+	else
 		{
 		al=SSL_AD_HANDSHAKE_FAILURE;
 		OPENSSL_PUT_ERROR(SSL, ssl3_get_client_key_exchange, SSL_R_UNKNOWN_CIPHER_TYPE);
