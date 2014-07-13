@@ -1084,22 +1084,39 @@ size_t tls12_get_psigalgs(SSL *s, const unsigned char **psigs)
 		return sizeof(tls12_sigalgs);
 		}
 	}
-/* Check signature algorithm is consistent with sent supported signature
- * algorithms and if so return relevant digest.
+
+/* tls12_check_peer_sigalg parses a SignatureAndHashAlgorithm out of
+ * |cbs|. It checks it is consistent with |s|'s sent supported
+ * signature algorithms and, if so, writes the relevant digest into
+ * |*out_md| and returns 1. Otherwise it returns 0 and writes an alert
+ * into |*out_alert|.
  */
-int tls12_check_peer_sigalg(const EVP_MD **pmd, SSL *s,
-				const unsigned char *sig, EVP_PKEY *pkey)
+int tls12_check_peer_sigalg(const EVP_MD **out_md, int *out_alert,
+	SSL *s, CBS *cbs, EVP_PKEY *pkey)
 	{
 	const unsigned char *sent_sigs;
 	size_t sent_sigslen, i;
 	int sigalg = tls12_get_sigid(pkey);
+	uint8_t hash, signature;
 	/* Should never happen */
 	if (sigalg == -1)
-		return -1;
+		{
+		OPENSSL_PUT_ERROR(SSL, tls12_check_peer_sigalg, ERR_R_INTERNAL_ERROR);
+		*out_alert = SSL_AD_INTERNAL_ERROR;
+		return 0;
+		}
+	if (!CBS_get_u8(cbs, &hash) ||
+		!CBS_get_u8(cbs, &signature))
+		{
+		OPENSSL_PUT_ERROR(SSL, tls12_check_peer_sigalg, SSL_R_DECODE_ERROR);
+		*out_alert = SSL_AD_DECODE_ERROR;
+		return 0;
+		}
 	/* Check key type is consistent with signature */
-	if (sigalg != (int)sig[1])
+	if (sigalg != signature)
 		{
 		OPENSSL_PUT_ERROR(SSL, tls12_check_peer_sigalg, SSL_R_WRONG_SIGNATURE_TYPE);
+		*out_alert = SSL_AD_ILLEGAL_PARAMETER;
 		return 0;
 		}
 #ifndef OPENSSL_NO_EC
@@ -1108,65 +1125,82 @@ int tls12_check_peer_sigalg(const EVP_MD **pmd, SSL *s,
 		unsigned char curve_id[2], comp_id;
 		/* Check compression and curve matches extensions */
 		if (!tls1_set_ec_id(curve_id, &comp_id, pkey->pkey.ec))
+			{
+			*out_alert = SSL_AD_INTERNAL_ERROR;
 			return 0;
+			}
 		if (!s->server && !tls1_check_ec_key(s, curve_id, &comp_id))
 			{
 			OPENSSL_PUT_ERROR(SSL, tls12_check_peer_sigalg, SSL_R_WRONG_CURVE);
+			*out_alert = SSL_AD_ILLEGAL_PARAMETER;
 			return 0;
 			}
 		/* If Suite B only P-384+SHA384 or P-256+SHA-256 allowed */
 		if (tls1_suiteb(s))
 			{
 			if (curve_id[0])
+				{
+				*out_alert = SSL_AD_ILLEGAL_PARAMETER;
 				return 0;
+				}
 			if (curve_id[1] == TLSEXT_curve_P_256)
 				{
-				if (sig[0] != TLSEXT_hash_sha256)
+				if (hash != TLSEXT_hash_sha256)
 					{
 					OPENSSL_PUT_ERROR(SSL, tls12_check_peer_sigalg, SSL_R_ILLEGAL_SUITEB_DIGEST);
+					*out_alert = SSL_AD_ILLEGAL_PARAMETER;
 					return 0;
 					}
 				}
 			else if (curve_id[1] == TLSEXT_curve_P_384)
 				{
-				if (sig[0] != TLSEXT_hash_sha384)
+				if (hash != TLSEXT_hash_sha384)
 					{
 					OPENSSL_PUT_ERROR(SSL, tls12_check_peer_sigalg, SSL_R_ILLEGAL_SUITEB_DIGEST);
+					*out_alert = SSL_AD_ILLEGAL_PARAMETER;
 					return 0;
 					}
 				}
 			else
+				{
+				*out_alert = SSL_AD_ILLEGAL_PARAMETER;
 				return 0;
+				}
 			}
 		}
 	else if (tls1_suiteb(s))
+		{
+		*out_alert = SSL_AD_ILLEGAL_PARAMETER;
 		return 0;
+		}
 #endif
 
 	/* Check signature matches a type we sent */
 	sent_sigslen = tls12_get_psigalgs(s, &sent_sigs);
 	for (i = 0; i < sent_sigslen; i+=2, sent_sigs+=2)
 		{
-		if (sig[0] == sent_sigs[0] && sig[1] == sent_sigs[1])
+		if (hash == sent_sigs[0] && signature == sent_sigs[1])
 			break;
 		}
 	/* Allow fallback to SHA1 if not strict mode */
-	if (i == sent_sigslen && (sig[0] != TLSEXT_hash_sha1 || s->cert->cert_flags & SSL_CERT_FLAGS_CHECK_TLS_STRICT))
+	if (i == sent_sigslen && (hash != TLSEXT_hash_sha1 || s->cert->cert_flags & SSL_CERT_FLAGS_CHECK_TLS_STRICT))
 		{
 		OPENSSL_PUT_ERROR(SSL, tls12_check_peer_sigalg, SSL_R_WRONG_SIGNATURE_TYPE);
+		*out_alert = SSL_AD_ILLEGAL_PARAMETER;
 		return 0;
 		}
-	*pmd = tls12_get_hash(sig[0]);
-	if (*pmd == NULL)
+	*out_md = tls12_get_hash(hash);
+	if (*out_md == NULL)
 		{
 		OPENSSL_PUT_ERROR(SSL, tls12_check_peer_sigalg, SSL_R_UNKNOWN_DIGEST);
+		*out_alert = SSL_AD_ILLEGAL_PARAMETER;
 		return 0;
 		}
 	/* Store the digest used so applications can retrieve it if they
 	 * wish.
 	 */
 	if (s->session && s->session->sess_cert)
-		s->session->sess_cert->peer_key->digest = *pmd;
+		s->session->sess_cert->peer_key->digest = *out_md;
 	return 1;
 	}
 /* Get a mask of disabled algorithms: an algorithm is disabled

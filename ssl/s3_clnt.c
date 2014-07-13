@@ -1627,26 +1627,8 @@ int ssl3_get_key_exchange(SSL *s)
 
 		if (SSL_USE_SIGALGS(s))
 			{
-			int rv;
-			const uint8_t *sigalg;
-
-			/* The first two bytes are the signature and
-			 * algorithm. */
-			sigalg = CBS_data(&server_key_exchange);
-			if (!CBS_skip(&server_key_exchange, 2))
-				{
-				al = SSL_AD_DECODE_ERROR;
-				OPENSSL_PUT_ERROR(SSL, ssl3_get_key_exchange, SSL_R_DECODE_ERROR);
+			if (!tls12_check_peer_sigalg(&md, &al, s, &server_key_exchange, pkey))
 				goto f_err;
-				}
-			rv = tls12_check_peer_sigalg(&md, s, sigalg, pkey);
-			if (rv == -1)
-				goto err;
-			else if (rv == 0)
-				{
-				al = SSL_AD_DECODE_ERROR;
-				goto f_err;
-				}
 			}
 		else
 			md = EVP_sha1();

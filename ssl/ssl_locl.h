@@ -1304,8 +1304,8 @@ int ssl_parse_clienthello_renegotiate_ext(SSL *s, CBS *cbs, int *out_alert);
 long ssl_get_algorithm2(SSL *s);
 int tls1_process_sigalgs(SSL *s, const unsigned char *data, int dsize);
 size_t tls12_get_psigalgs(SSL *s, const unsigned char **psigs);
-int tls12_check_peer_sigalg(const EVP_MD **pmd, SSL *s,
-				const unsigned char *sig, EVP_PKEY *pkey);
+int tls12_check_peer_sigalg(const EVP_MD **out_md, int *out_alert, SSL *s,
+	CBS *cbs, EVP_PKEY *pkey);
 void ssl_set_client_disabled(SSL *s);
 
 int ssl_add_clienthello_use_srtp_ext(SSL *s, unsigned char *p, int *len, int maxlen);

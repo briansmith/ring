@@ -2680,31 +2680,11 @@ int ssl3_get_cert_verify(SSL *s)
 	/* We now have a signature that we need to verify. */
 	/* TODO(davidben): This should share code with
 	 * ssl3_get_key_exchange. */
+
 	if (SSL_USE_SIGALGS(s))
 		{
-		int rv;
-		const uint8_t *sigalg;
-
-		/* The first two bytes are the signature and
-		 * algorithm. */
-		sigalg = CBS_data(&certificate_verify);
-		if (!CBS_skip(&certificate_verify, 2))
-			{
-			al = SSL_AD_DECODE_ERROR;
-			OPENSSL_PUT_ERROR(SSL, ssl3_get_key_exchange, SSL_R_DECODE_ERROR);
+		if (!tls12_check_peer_sigalg(&md, &al, s, &certificate_verify, pkey))
 			goto f_err;
-			}
-		rv = tls12_check_peer_sigalg(&md, s, sigalg, pkey);
-		if (rv == -1)
-			{
-			al = SSL_AD_INTERNAL_ERROR;
-			goto f_err;
-			}
-		else if (rv == 0)
-			{
-			al = SSL_AD_DECODE_ERROR;
-			goto f_err;
-			}
 		}
 
 	if (!CBS_get_u16_length_prefixed(&certificate_verify, &signature) ||
