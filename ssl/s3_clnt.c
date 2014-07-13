@@ -2123,7 +2123,9 @@ int ssl3_send_client_key_exchange(SSL *s)
 
 			if (!(alg_k & SSL_kEECDH))
 				{
-				/* Create the shared secret now if we're not using ECDHE-PSK.*/
+				/* Create the shared secret now if we're not using ECDHE-PSK.
+				 * TODO(davidben): Refactor this logic similarly
+				 * to ssl3_get_client_key_exchange. */
 				pre_ms_len = 2+psk_len+2+psk_len;
 				t = pre_ms;
 				s2n(psk_len, t);
