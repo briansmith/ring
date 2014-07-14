@@ -2487,7 +2487,7 @@ void ERR_load_SSL_strings(void);
 #define SSL_F_ssl3_ctrl 215
 #define SSL_F_ssl3_setup_write_buffer 216
 #define SSL_F_ssl_parse_serverhello_use_srtp_ext 217
-#define SSL_F_ssl3_get_key_exchange 218
+#define SSL_F_ssl3_get_server_key_exchange 218
 #define SSL_F_ssl3_send_server_hello 219
 #define SSL_F_SSL_add_dir_cert_subjects_to_stack 220
 #define SSL_F_ssl_check_serverhello_tlsext 221

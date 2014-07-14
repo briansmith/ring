@@ -331,7 +331,7 @@ int dtls1_connect(SSL *s)
 
 		case SSL3_ST_CR_KEY_EXCH_A:
 		case SSL3_ST_CR_KEY_EXCH_B:
-			ret=ssl3_get_key_exchange(s);
+			ret=ssl3_get_server_key_exchange(s);
 			if (ret <= 0) goto end;
 			s->state=SSL3_ST_CR_CERT_REQ_A;
 			s->init_num=0;

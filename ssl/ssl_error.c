@@ -117,7 +117,7 @@ const ERR_STRING_DATA SSL_error_string_data[] = {
   {ERR_PACK(ERR_LIB_SSL, SSL_F_ssl3_get_client_hello, 0), "ssl3_get_client_hello"},
   {ERR_PACK(ERR_LIB_SSL, SSL_F_ssl3_get_client_key_exchange, 0), "ssl3_get_client_key_exchange"},
   {ERR_PACK(ERR_LIB_SSL, SSL_F_ssl3_get_finished, 0), "ssl3_get_finished"},
-  {ERR_PACK(ERR_LIB_SSL, SSL_F_ssl3_get_key_exchange, 0), "ssl3_get_key_exchange"},
+  {ERR_PACK(ERR_LIB_SSL, SSL_F_ssl3_get_server_key_exchange, 0), "ssl3_get_server_key_exchange"},
   {ERR_PACK(ERR_LIB_SSL, SSL_F_ssl3_get_message, 0), "ssl3_get_message"},
   {ERR_PACK(ERR_LIB_SSL, SSL_F_ssl3_get_new_session_ticket, 0), "ssl3_get_new_session_ticket"},
   {ERR_PACK(ERR_LIB_SSL, SSL_F_ssl3_get_next_proto, 0), "ssl3_get_next_proto"},

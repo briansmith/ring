@@ -2679,7 +2679,7 @@ int ssl3_get_cert_verify(SSL *s)
 
 	/* We now have a signature that we need to verify. */
 	/* TODO(davidben): This should share code with
-	 * ssl3_get_key_exchange. */
+	 * ssl3_get_server_key_exchange. */
 
 	if (SSL_USE_SIGALGS(s))
 		{
