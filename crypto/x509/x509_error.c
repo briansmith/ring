@@ -14,7 +14,7 @@
 
 #include <openssl/err.h>
 
-#include "x509.h"
+#include <openssl/x509.h>
 
 const ERR_STRING_DATA X509_error_string_data[] = {
   {ERR_PACK(ERR_LIB_X509, X509_F_ASN1_digest, 0), "ASN1_digest"},

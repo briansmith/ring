@@ -14,7 +14,7 @@
 
 #include <openssl/err.h>
 
-#include "dh.h"
+#include <openssl/dh.h>
 
 const ERR_STRING_DATA DH_error_string_data[] = {
   {ERR_PACK(ERR_LIB_DH, DH_F_DH_new_method, 0), "DH_new_method"},

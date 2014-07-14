@@ -54,7 +54,7 @@
  * copied and put under another distribution licence
  * [including the GNU Public Licence.] */
 
-#include "stack.h"
+#include <openssl/stack.h>
 
 #include <openssl/mem.h>
 

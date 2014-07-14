@@ -14,7 +14,7 @@
 
 #include <openssl/err.h>
 
-#include "ecdsa.h"
+#include <openssl/ecdsa.h>
 
 const ERR_STRING_DATA ECDSA_error_string_data[] = {
   {ERR_PACK(ERR_LIB_ECDSA, ECDSA_F_ECDSA_do_sign_ex, 0), "ECDSA_do_sign_ex"},

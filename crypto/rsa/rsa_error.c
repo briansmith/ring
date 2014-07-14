@@ -14,7 +14,7 @@
 
 #include <openssl/err.h>
 
-#include "rsa.h"
+#include <openssl/rsa.h>
 
 const ERR_STRING_DATA RSA_error_string_data[] = {
   {ERR_PACK(ERR_LIB_RSA, RSA_F_BN_BLINDING_convert_ex, 0), "BN_BLINDING_convert_ex"},

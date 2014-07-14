@@ -14,7 +14,7 @@
 
 #include <openssl/err.h>
 
-#include "asn1.h"
+#include <openssl/asn1.h>
 
 const ERR_STRING_DATA ASN1_error_string_data[] = {
   {ERR_PACK(ERR_LIB_ASN1, ASN1_F_ASN1_BIT_STRING_set_bit, 0), "ASN1_BIT_STRING_set_bit"},

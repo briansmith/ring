@@ -16,6 +16,7 @@ package main
 
 import (
 	"bufio"
+	"errors"
 	"flag"
 	"fmt"
 	"io"
@@ -36,13 +37,16 @@ func makeErrors(reset bool) error {
 	}
 
 	lib := filepath.Base(dirName)
-	headerPath := lib + ".h"
+	headerPath, err := findHeader(lib + ".h")
+	if err != nil {
+		return err
+	}
 	sourcePath := lib + "_error.c"
 
 	headerFile, err := os.Open(headerPath)
 	if err != nil {
 		if os.IsNotExist(err) {
-			return fmt.Errorf("No %s in current directory. Run in the right directory or touch the file.", headerPath)
+			return fmt.Errorf("No header %s. Run in the right directory or touch the file.", headerPath)
 		}
 
 		return err
@@ -92,7 +96,7 @@ func makeErrors(reset bool) error {
 	}
 	defer headerFile.Close()
 
-	newHeaderFile, err := os.OpenFile(headerPath + ".tmp", os.O_CREATE | os.O_WRONLY | os.O_TRUNC, 0666)
+	newHeaderFile, err := os.OpenFile(headerPath+".tmp", os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0666)
 	if err != nil {
 		return err
 	}
@@ -101,7 +105,7 @@ func makeErrors(reset bool) error {
 	if err := writeHeaderFile(newHeaderFile, headerFile, prefix, functions, reasons); err != nil {
 		return err
 	}
-	os.Rename(headerPath + ".tmp", headerPath)
+	os.Rename(headerPath+".tmp", headerPath)
 
 	sourceFile, err := os.OpenFile(sourcePath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0644)
 	if err != nil {
@@ -125,7 +129,7 @@ func makeErrors(reset bool) error {
 
 #include <openssl/err.h>
 
-#include "%s.h"
+#include <openssl/%s.h>
 
 const ERR_STRING_DATA %s_error_string_data[] = {
 `, lib, prefix)
@@ -135,6 +139,23 @@ const ERR_STRING_DATA %s_error_string_data[] = {
 	sourceFile.WriteString("  {0, NULL},\n};\n")
 
 	return nil
+}
+
+func findHeader(basename string) (path string, err error) {
+	includeDir := filepath.Join("..", "include")
+
+	fi, err := os.Stat(includeDir)
+	if err != nil && os.IsNotExist(err) {
+		includeDir = filepath.Join("..", includeDir)
+		fi, err = os.Stat(includeDir)
+	}
+	if err != nil {
+		return "", errors.New("cannot find path to include directory")
+	}
+	if !fi.IsDir() {
+		return "", errors.New("include node is not a directory")
+	}
+	return filepath.Join(includeDir, "openssl", basename), nil
 }
 
 type assignment struct {
@@ -294,7 +315,7 @@ func assignNewValues(assignments map[string]int) {
 
 func handleDeclareMacro(line, join, macroName string, m map[string]int) {
 	if i := strings.Index(line, macroName); i >= 0 {
-		contents := line[i + len(macroName):]
+		contents := line[i+len(macroName):]
 		if i := strings.Index(contents, ")"); i >= 0 {
 			contents = contents[:i]
 			args := strings.Split(contents, ",")

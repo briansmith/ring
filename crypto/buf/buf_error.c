@@ -14,7 +14,7 @@
 
 #include <openssl/err.h>
 
-#include "buf.h"
+#include <openssl/buf.h>
 
 const ERR_STRING_DATA BUF_error_string_data[] = {
   {ERR_PACK(ERR_LIB_BUF, BUF_F_BUF_MEM_new, 0), "BUF_MEM_new"},

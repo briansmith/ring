@@ -14,7 +14,7 @@
 
 #include <openssl/err.h>
 
-#include "digest.h"
+#include <openssl/digest.h>
 
 const ERR_STRING_DATA DIGEST_error_string_data[] = {
   {ERR_PACK(ERR_LIB_DIGEST, DIGEST_F_EVP_DigestInit_ex, 0), "EVP_DigestInit_ex"},

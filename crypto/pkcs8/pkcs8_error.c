@@ -14,7 +14,7 @@
 
 #include <openssl/err.h>
 
-#include "pkcs8.h"
+#include <openssl/pkcs8.h>
 
 const ERR_STRING_DATA PKCS8_error_string_data[] = {
   {ERR_PACK(ERR_LIB_PKCS8, PKCS8_F_EVP_PKCS82PKEY, 0), "EVP_PKCS82PKEY"},

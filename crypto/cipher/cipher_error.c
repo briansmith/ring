@@ -14,7 +14,7 @@
 
 #include <openssl/err.h>
 
-#include "cipher.h"
+#include <openssl/cipher.h>
 
 const ERR_STRING_DATA CIPHER_error_string_data[] = {
   {ERR_PACK(ERR_LIB_CIPHER, CIPHER_F_EVP_AEAD_CTX_init, 0), "EVP_AEAD_CTX_init"},

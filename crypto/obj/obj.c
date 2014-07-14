@@ -66,7 +66,7 @@
 #include <openssl/mem.h>
 #include <openssl/thread.h>
 
-#include "obj_dat.h"
+#include <openssl/obj_dat.h>
 
 /* These globals are protected by CRYPTO_LOCK_OBJ. */
 static LHASH_OF(ASN1_OBJECT) *global_added_by_data = NULL;

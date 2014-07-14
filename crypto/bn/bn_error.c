@@ -14,7 +14,7 @@
 
 #include <openssl/err.h>
 
-#include "bn.h"
+#include <openssl/bn.h>
 
 const ERR_STRING_DATA BN_error_string_data[] = {
   {ERR_PACK(ERR_LIB_BN, BN_F_BN_CTX_get, 0), "BN_CTX_get"},

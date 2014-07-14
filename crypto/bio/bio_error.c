@@ -14,7 +14,7 @@
 
 #include <openssl/err.h>
 
-#include "bio.h"
+#include <openssl/bio.h>
 
 const ERR_STRING_DATA BIO_error_string_data[] = {
   {ERR_PACK(ERR_LIB_BIO, BIO_F_BIO_callback_ctrl, 0), "BIO_callback_ctrl"},

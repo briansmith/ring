@@ -14,7 +14,7 @@
 
 #include <openssl/err.h>
 
-#include "ec.h"
+#include <openssl/ec.h>
 
 const ERR_STRING_DATA EC_error_string_data[] = {
   {ERR_PACK(ERR_LIB_EC, EC_F_EC_GROUP_copy, 0), "EC_GROUP_copy"},

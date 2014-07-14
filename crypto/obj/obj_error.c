@@ -14,7 +14,7 @@
 
 #include <openssl/err.h>
 
-#include "obj.h"
+#include <openssl/obj.h>
 
 const ERR_STRING_DATA OBJ_error_string_data[] = {
   {ERR_PACK(ERR_LIB_OBJ, OBJ_F_OBJ_create, 0), "OBJ_create"},

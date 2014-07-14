@@ -14,7 +14,7 @@
 
 #include <openssl/err.h>
 
-#include "dsa.h"
+#include <openssl/dsa.h>
 
 const ERR_STRING_DATA DSA_error_string_data[] = {
   {ERR_PACK(ERR_LIB_DSA, DSA_F_DSA_new_method, 0), "DSA_new_method"},

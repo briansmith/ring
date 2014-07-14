@@ -14,7 +14,7 @@
 
 #include <openssl/err.h>
 
-#include "evp.h"
+#include <openssl/evp.h>
 
 const ERR_STRING_DATA EVP_error_string_data[] = {
   {ERR_PACK(ERR_LIB_EVP, EVP_F_EVP_PKEY_CTX_ctrl, 0), "EVP_PKEY_CTX_ctrl"},

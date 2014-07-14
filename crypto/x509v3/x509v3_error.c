@@ -14,7 +14,7 @@
 
 #include <openssl/err.h>
 
-#include "x509v3.h"
+#include <openssl/x509v3.h>
 
 const ERR_STRING_DATA X509V3_error_string_data[] = {
   {ERR_PACK(ERR_LIB_X509V3, X509V3_F_SXNET_add_id_INTEGER, 0), "SXNET_add_id_INTEGER"},

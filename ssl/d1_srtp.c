@@ -123,7 +123,7 @@
 #include <openssl/err.h>
 
 #include "ssl_locl.h"
-#include "srtp.h"
+#include <openssl/srtp.h>
 
 
 static SRTP_PROTECTION_PROFILE srtp_known_profiles[]=

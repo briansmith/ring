@@ -14,7 +14,7 @@
 
 #include <openssl/err.h>
 
-#include "crypto_error.h"
+#include <openssl/crypto.h>
 
 const ERR_STRING_DATA CRYPTO_error_string_data[] = {
   {ERR_PACK(ERR_LIB_CRYPTO, CRYPTO_F_CRYPTO_set_ex_data, 0), "CRYPTO_set_ex_data"},

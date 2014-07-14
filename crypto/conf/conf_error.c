@@ -14,7 +14,7 @@
 
 #include <openssl/err.h>
 
-#include "conf.h"
+#include <openssl/conf.h>
 
 const ERR_STRING_DATA CONF_error_string_data[] = {
   {ERR_PACK(ERR_LIB_CONF, CONF_F_CONF_parse_list, 0), "CONF_parse_list"},

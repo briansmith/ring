@@ -53,7 +53,7 @@
  * copied and put under another distribution licence
  * [including the GNU Public Licence.] */
 
-#include "lhash.h"
+#include <openssl/lhash.h>
 
 #include <assert.h>
 #include <limits.h>

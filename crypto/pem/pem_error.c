@@ -14,7 +14,7 @@
 
 #include <openssl/err.h>
 
-#include "pem.h"
+#include <openssl/pem.h>
 
 const ERR_STRING_DATA PEM_error_string_data[] = {
   {ERR_PACK(ERR_LIB_PEM, PEM_F_PEM_ASN1_read, 0), "PEM_ASN1_read"},

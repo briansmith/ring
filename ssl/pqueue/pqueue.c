@@ -54,7 +54,7 @@
  * (eay@cryptsoft.com).  This product includes software written by Tim
  * Hudson (tjh@cryptsoft.com). */
 
-#include "pqueue.h"
+#include <openssl/pqueue.h>
 
 #include <openssl/mem.h>
 

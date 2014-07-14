@@ -14,7 +14,7 @@
 
 #include <openssl/err.h>
 
-#include "ssl.h"
+#include <openssl/ssl.h>
 
 const ERR_STRING_DATA SSL_error_string_data[] = {
   {ERR_PACK(ERR_LIB_SSL, SSL_F_D2I_SSL_SESSION, 0), "D2I_SSL_SESSION"},

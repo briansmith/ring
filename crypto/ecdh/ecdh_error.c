@@ -14,7 +14,7 @@
 
 #include <openssl/err.h>
 
-#include "ecdh.h"
+#include <openssl/ecdh.h>
 
 const ERR_STRING_DATA ECDH_error_string_data[] = {
   {ERR_PACK(ERR_LIB_ECDH, ECDH_F_ECDH_compute_key, 0), "ECDH_compute_key"},
