@@ -80,6 +80,7 @@
  * OTHER ENTITY BASED ON INFRINGEMENT OF INTELLECTUAL PROPERTY RIGHTS OR
  * OTHERWISE. */
 
+#include <inttypes.h>
 #include <stdio.h>
 
 #include <openssl/buf.h>
@@ -176,7 +177,7 @@ int SSL_SESSION_print(BIO *bp, const SSL_SESSION *x)
 	if (x->tlsext_tick_lifetime_hint)
 		{
 		if (BIO_printf(bp,
-			"\n    TLS session ticket lifetime hint: %ld (seconds)",
+			"\n    TLS session ticket lifetime hint: %" PRIu32 " (seconds)",
 			x->tlsext_tick_lifetime_hint) <=0)
 			goto err;
 		}

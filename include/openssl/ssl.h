@@ -491,9 +491,9 @@ struct ssl_session_st
 	unsigned char *tlsext_ellipticcurvelist; /* peer's list */
 #endif /* OPENSSL_NO_EC */
 	/* RFC4507 info */
-	unsigned char *tlsext_tick;	/* Session ticket */
+	uint8_t *tlsext_tick;	/* Session ticket */
 	size_t tlsext_ticklen;		/* Session ticket length */
-	long tlsext_tick_lifetime_hint;	/* Session lifetime hint in seconds */
+	uint32_t tlsext_tick_lifetime_hint;	/* Session lifetime hint in seconds */
 	char peer_sha256_valid;		/* Non-zero if peer_sha256 is valid */
 	unsigned char peer_sha256[SHA256_DIGEST_LENGTH];  /* SHA256 of peer certificate */
 
