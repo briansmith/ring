@@ -1438,7 +1438,7 @@ struct ssl_st
 	STACK_OF(OCSP_RESPID) *tlsext_ocsp_ids;
 	X509_EXTENSIONS *tlsext_ocsp_exts;
 	/* OCSP response received or to be sent */
-	unsigned char *tlsext_ocsp_resp;
+	uint8_t *tlsext_ocsp_resp;
 	int tlsext_ocsp_resplen;
 
 	/* RFC4507 session ticket expected to be received or sent */

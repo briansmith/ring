@@ -1981,8 +1981,10 @@ err:
 int ssl3_get_cert_status(SSL *s)
 	{
 	int ok, al;
-	unsigned long resplen,n;
-	const unsigned char *p;
+	long n;
+	CBS certificate_status, ocsp_response;
+	uint8_t status_type;
+	size_t resplen;
 
 	n=s->method->ssl_get_message(s,
 		SSL3_ST_CR_CERT_STATUS_A,
@@ -1992,31 +1994,24 @@ int ssl3_get_cert_status(SSL *s)
 		&ok);
 
 	if (!ok) return((int)n);
-	if (n < 4)
-		{
-		/* need at least status type + length */
-		al = SSL_AD_DECODE_ERROR;
-		OPENSSL_PUT_ERROR(SSL, ssl3_get_cert_status, SSL_R_LENGTH_MISMATCH);
-		goto f_err;
-		}
-	p = s->init_msg;
-	if (*p++ != TLSEXT_STATUSTYPE_ocsp)
+
+	CBS_init(&certificate_status, s->init_msg, n);
+	if (!CBS_get_u8(&certificate_status, &status_type) ||
+		status_type != TLSEXT_STATUSTYPE_ocsp ||
+		!CBS_get_u24_length_prefixed(&certificate_status, &ocsp_response) ||
+		CBS_len(&ocsp_response) == 0 ||
+		CBS_len(&certificate_status) != 0)
 		{
 		al = SSL_AD_DECODE_ERROR;
-		OPENSSL_PUT_ERROR(SSL, ssl3_get_cert_status, SSL_R_UNSUPPORTED_STATUS_TYPE);
+		OPENSSL_PUT_ERROR(SSL, ssl3_get_cert_status, SSL_R_DECODE_ERROR);
 		goto f_err;
 		}
-	n2l3(p, resplen);
-	if (resplen + 4 != n)
-		{
-		al = SSL_AD_DECODE_ERROR;
-		OPENSSL_PUT_ERROR(SSL, ssl3_get_cert_status, SSL_R_LENGTH_MISMATCH);
-		goto f_err;
-		}
-	if (s->tlsext_ocsp_resp)
-		OPENSSL_free(s->tlsext_ocsp_resp);
-	s->tlsext_ocsp_resp = BUF_memdup(p, resplen);
-	if (!s->tlsext_ocsp_resp)
+
+	/* TODO(davidben): Make tlsext_ocsp_resplen a
+	 * size_t. Currently it uses -1 to signal no response. The
+	 * spec does not allow ocsp_response to be zero-length, so
+	 * using 0 should be fine. */
+	if (!CBS_stow(&ocsp_response, &s->tlsext_ocsp_resp, &resplen))
 		{
 		al = SSL_AD_INTERNAL_ERROR;
 		OPENSSL_PUT_ERROR(SSL, ssl3_get_cert_status, ERR_R_MALLOC_FAILURE);
