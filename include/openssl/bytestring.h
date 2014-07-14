@@ -60,6 +60,19 @@ size_t CBS_len(const CBS *cbs);
  * |*out_ptr| will be NULL. */
 int CBS_stow(const CBS *cbs, uint8_t **out_ptr, size_t *out_len);
 
+/* CBS_strdup copies the current contents of |cbs| into |*out_ptr| as a
+ * NUL-terminated C string. If |*out_ptr| is not NULL, the contents are freed
+ * with OPENSSL_free. It returns one on success and zero on allocation
+ * failure. On success, |*out_ptr| should be freed with OPENSSL_free.
+ *
+ * NOTE: If |cbs| contains NUL bytes, the string will be truncated. Call
+ * |CBS_contains_zero_byte(cbs)| to check for NUL bytes. */
+int CBS_strdup(const CBS *cbs, char **out_ptr);
+
+/* CBS_contains_zero_byte returns one if the current contents of |cbs| contains
+ * a NUL byte and zero otherwise. */
+int CBS_contains_zero_byte(const CBS *cbs);
+
 /* CBS_get_u8 sets |*out| to the next uint8_t from |cbs| and advances |cbs|. It
  * returns one on success and zero on error. */
 int CBS_get_u8(CBS *cbs, uint8_t *out);

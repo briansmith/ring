@@ -17,6 +17,7 @@
 #include <openssl/bytestring.h>
 
 #include <assert.h>
+#include <string.h>
 
 
 void CBS_init(CBS *cbs, const uint8_t *data, size_t len) {
@@ -66,8 +67,16 @@ int CBS_stow(const CBS *cbs, uint8_t **out_ptr, size_t *out_len) {
   return 1;
 }
 
-void *CBS_memdup(const CBS *cbs) {
-  return BUF_memdup(cbs->data, cbs->len);
+int CBS_strdup(const CBS *cbs, char **out_ptr) {
+  if (*out_ptr != NULL) {
+    OPENSSL_free(*out_ptr);
+  }
+  *out_ptr = BUF_strndup((const char*)cbs->data, cbs->len);
+  return (*out_ptr != NULL);
+}
+
+int CBS_contains_zero_byte(const CBS *cbs) {
+  return memchr(cbs->data, 0, cbs->len) != NULL;
 }
 
 static int cbs_get_u(CBS *cbs, uint32_t *out, size_t len) {

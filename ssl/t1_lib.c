@@ -556,38 +556,52 @@ static void tls1_get_curvelist(SSL *s, int sess,
 		*pcurveslen = sizeof(eccurves_default);
 		}
 	}
-/* Check a curve is one of our preferences */
-int tls1_check_curve(SSL *s, const unsigned char *p, size_t len)
+
+/* tls1_check_curve parses ECParameters out of |cbs|, modifying it. It
+ * checks the curve is one of our preferences and writes the
+ * NamedCurve value to |*out_curve_id|. It returns one on success and
+ * zero on error. */
+int tls1_check_curve(SSL *s, CBS *cbs, uint16_t *out_curve_id)
 	{
+	uint8_t curve_type;
+	uint16_t curve_id;
 	const unsigned char *curves;
 	size_t curveslen, i;
-	unsigned int suiteb_flags = tls1_suiteb(s);
-	if (len != 3 || p[0] != NAMED_CURVE_TYPE)
+
+	/* Only support named curves. */
+	if (!CBS_get_u8(cbs, &curve_type) ||
+		curve_type != NAMED_CURVE_TYPE ||
+		!CBS_get_u16(cbs, &curve_id))
 		return 0;
+
 	/* Check curve matches Suite B preferences */
-	if (suiteb_flags)
+	if (tls1_suiteb(s))
 		{
 		unsigned long cid = s->s3->tmp.new_cipher->id;
-		if (p[1])
-			return 0;
 		if (cid == TLS1_CK_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256)
 			{
-			if (p[2] != TLSEXT_curve_P_256)
+			if (curve_id != TLSEXT_curve_P_256)
 				return 0;
 			}
 		else if (cid == TLS1_CK_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384)
 			{
-			if (p[2] != TLSEXT_curve_P_384)
+			if (curve_id != TLSEXT_curve_P_384)
 				return 0;
 			}
 		else	/* Should never happen */
 			return 0;
 		}
+	/* TODO(davidben): tls1_get_curvelist should return a list of
+	 * uint16_t rather than make the caller care about
+	 * endianness. */
 	tls1_get_curvelist(s, 0, &curves, &curveslen);
 	for (i = 0; i < curveslen; i += 2, curves += 2)
 		{
-		if (p[1] == curves[0] && p[2] == curves[1])
+		if (curve_id == (curves[0] << 8 | curves[1]))
+			{
+			*out_curve_id = curve_id;
 			return 1;
+			}
 		}
 	return 0;
 	}
@@ -1954,24 +1968,15 @@ static int ssl_scan_clienthello_tlsext(SSL *s, CBS *cbs, int *out_alert)
 						return 0;
 						}
 
-					if (CBS_len(&host_name) > TLSEXT_MAXLEN_host_name)
-						{
-						*out_alert = SSL_AD_UNRECOGNIZED_NAME;
-						return 0;
-						}
-
-					/* host_name may not contain a NUL character. */
-					if (BUF_strnlen((const char*)CBS_data(&host_name),
-							CBS_len(&host_name)) != CBS_len(&host_name))
+					if (CBS_len(&host_name) > TLSEXT_MAXLEN_host_name ||
+						CBS_contains_zero_byte(&host_name))
 						{
 						*out_alert = SSL_AD_UNRECOGNIZED_NAME;
 						return 0;
 						}
 
 					/* Copy the hostname as a string. */
-					s->session->tlsext_hostname = BUF_strndup(
-						(const char*)CBS_data(&host_name), CBS_len(&host_name));
-					if (s->session->tlsext_hostname == NULL)
+					if (!CBS_strdup(&host_name, &s->session->tlsext_hostname))
 						{
 						*out_alert = SSL_AD_INTERNAL_ERROR;
 						return 0;
