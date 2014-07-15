@@ -502,8 +502,6 @@ typedef struct cert_st
 	unsigned long mask_a;
 	/* Client only */
 	unsigned long mask_ssl;
-	RSA *rsa_tmp;
-	RSA *(*rsa_tmp_cb)(SSL *ssl,int is_export,int keysize);
 #ifndef OPENSSL_NO_DH
 	DH *dh_tmp;
 	DH *(*dh_tmp_cb)(SSL *ssl,int is_export,int keysize);

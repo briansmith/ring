@@ -163,7 +163,6 @@ int dtls1_accept(SSL *s)
 	{
 	BUF_MEM *buf;
 	void (*cb)(const SSL *ssl,int type,int val)=NULL;
-	unsigned long alg_k;
 	unsigned long alg_a;
 	int ret= -1;
 	int new_state,state,skip=0;
@@ -375,23 +374,19 @@ int dtls1_accept(SSL *s)
 
 		case SSL3_ST_SW_KEY_EXCH_A:
 		case SSL3_ST_SW_KEY_EXCH_B:
-			alg_k = s->s3->tmp.new_cipher->algorithm_mkey;
 			alg_a = s->s3->tmp.new_cipher->algorithm_auth;
 
 			/* Send a ServerKeyExchange message if:
 			 * - The key exchange is ephemeral or anonymous
 			 *   Diffie-Hellman.
 			 * - There is a PSK identity hint.
-			 * - We have a signing-only RSA key.
-			 *   TODO(davidben): Remove this?
 			 *
 			 * TODO(davidben): This logic is currently duplicated
 			 * in s3_srvr.c. Fix this. In the meantime, keep them
 			 * in sync.
 			 */
 			if (ssl_cipher_requires_server_key_exchange(s->s3->tmp.new_cipher) ||
-			    ((alg_a & SSL_aPSK) && s->session->psk_identity_hint) ||
-			    ((alg_k & SSL_kRSA) && (s->cert->pkeys[SSL_PKEY_RSA_ENC].privatekey == NULL)))
+			    ((alg_a & SSL_aPSK) && s->session->psk_identity_hint))
 				{
 				dtls1_start_timer(s);
 				ret=ssl3_send_server_key_exchange(s);

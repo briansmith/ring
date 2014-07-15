@@ -2209,7 +2209,7 @@ void SSL_set_cert_cb(SSL *s, int (*cb)(SSL *ssl, void *arg), void *arg)
 void ssl_set_cert_masks(CERT *c, const SSL_CIPHER *cipher)
 	{
 	CERT_PKEY *cpk;
-	int rsa_enc,rsa_tmp,rsa_sign,dh_tmp,dh_rsa,dh_dsa,dsa_sign;
+	int rsa_enc,rsa_sign,dh_tmp,dh_rsa,dh_dsa,dsa_sign;
 	unsigned long mask_k,mask_a;
 #ifndef OPENSSL_NO_ECDSA
 	int have_ecc_cert, ecdsa_ok;
@@ -2224,7 +2224,6 @@ void ssl_set_cert_masks(CERT *c, const SSL_CIPHER *cipher)
 #endif
 	if (c == NULL) return;
 
-	rsa_tmp=(c->rsa_tmp != NULL || c->rsa_tmp_cb != NULL);
 #ifndef OPENSSL_NO_DH
 	dh_tmp=(c->dh_tmp != NULL || c->dh_tmp_cb != NULL);
 #else
@@ -2258,7 +2257,7 @@ void ssl_set_cert_masks(CERT *c, const SSL_CIPHER *cipher)
 		rsa_enc,rsa_enc_export,rsa_sign,dsa_sign,dh_rsa,dh_dsa);
 #endif
 	
-	if (rsa_enc || (rsa_tmp && rsa_sign))
+	if (rsa_enc)
 		mask_k|=SSL_kRSA;
 
 #if 0

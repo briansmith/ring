@@ -188,7 +188,6 @@ IMPLEMENT_ssl3_meth_func(SSLv3_server_method,
 int ssl3_accept(SSL *s)
 	{
 	BUF_MEM *buf;
-	unsigned long alg_k;
 	unsigned long alg_a;
 	void (*cb)(const SSL *ssl,int type,int val)=NULL;
 	int ret= -1;
@@ -369,23 +368,19 @@ int ssl3_accept(SSL *s)
 
 		case SSL3_ST_SW_KEY_EXCH_A:
 		case SSL3_ST_SW_KEY_EXCH_B:
-			alg_k = s->s3->tmp.new_cipher->algorithm_mkey;
 			alg_a = s->s3->tmp.new_cipher->algorithm_auth;
 
 			/* Send a ServerKeyExchange message if:
 			 * - The key exchange is ephemeral or anonymous
 			 *   Diffie-Hellman.
 			 * - There is a PSK identity hint.
-			 * - We have a signing-only RSA key.
-			 *   TODO(davidben): Remove this?
 			 *
 			 * TODO(davidben): This logic is currently duplicated
 			 * in d1_srvr.c. Fix this. In the meantime, keep them
 			 * in sync.
 			 */
 			if (ssl_cipher_requires_server_key_exchange(s->s3->tmp.new_cipher) ||
-			    ((alg_a & SSL_aPSK) && s->session->psk_identity_hint) ||
-			    ((alg_k & SSL_kRSA) && (s->cert->pkeys[SSL_PKEY_RSA_ENC].privatekey == NULL)))
+			    ((alg_a & SSL_aPSK) && s->session->psk_identity_hint))
 				{
 				ret=ssl3_send_server_key_exchange(s);
 				if (ret <= 0) goto end;
@@ -1399,7 +1394,6 @@ int ssl3_send_server_key_exchange(SSL *s)
 	{
 	unsigned char *q;
 	int j,num;
-	RSA *rsa;
 	unsigned char md_buf[MD5_DIGEST_LENGTH+SHA_DIGEST_LENGTH];
 	unsigned int u;
 #ifndef OPENSSL_NO_DH
@@ -1412,8 +1406,8 @@ int ssl3_send_server_key_exchange(SSL *s)
 	int curve_id = 0;
 	BN_CTX *bn_ctx = NULL; 
 #endif
-	const char* psk_identity_hint;
-	size_t psk_identity_hint_len;
+	const char* psk_identity_hint = NULL;
+	size_t psk_identity_hint_len = 0;
 	EVP_PKEY *pkey;
 	const EVP_MD *md = NULL;
 	unsigned char *p,*d;
@@ -1448,32 +1442,8 @@ int ssl3_send_server_key_exchange(SSL *s)
 				psk_identity_hint_len = 0;
 			n+=2+psk_identity_hint_len;
 			}
-		if (alg_k & SSL_kRSA)
-			{
-			rsa=cert->rsa_tmp;
-			if ((rsa == NULL) && (s->cert->rsa_tmp_cb != NULL))
-				{
-				rsa = s->cert->rsa_tmp_cb(s, 0, 1024);
-				if(rsa == NULL)
-				{
-					al=SSL_AD_HANDSHAKE_FAILURE;
-					OPENSSL_PUT_ERROR(SSL, ssl3_send_server_key_exchange, SSL_R_ERROR_GENERATING_TMP_RSA_KEY);
-					goto f_err;
-				}
-				RSA_up_ref(rsa);
-				cert->rsa_tmp=rsa;
-				}
-			if (rsa == NULL)
-				{
-				al=SSL_AD_HANDSHAKE_FAILURE;
-				OPENSSL_PUT_ERROR(SSL, ssl3_send_server_key_exchange, SSL_R_MISSING_TMP_RSA_KEY);
-				goto f_err;
-				}
-			r[0]=rsa->n;
-			r[1]=rsa->e;
-			}
 #ifndef OPENSSL_NO_DH
-		else if (alg_k & SSL_kEDH)
+		if (alg_k & SSL_kEDH)
 			{
 			dhp=cert->dh_tmp;
 			if ((dhp == NULL) && (s->cert->dh_tmp_cb != NULL))
@@ -1523,9 +1493,10 @@ int ssl3_send_server_key_exchange(SSL *s)
 			r[1]=dh->g;
 			r[2]=dh->pub_key;
 			}
+		else
 #endif
 #ifndef OPENSSL_NO_ECDH
-		else if (alg_k & SSL_kEECDH)
+		if (alg_k & SSL_kEECDH)
 			{
 			const EC_GROUP *group;
 
@@ -1648,8 +1619,9 @@ int ssl3_send_server_key_exchange(SSL *s)
 			r[2]=NULL;
 			r[3]=NULL;
 			}
+		else
 #endif /* !OPENSSL_NO_ECDH */
-		else if (!(alg_k & SSL_kPSK))
+		if (!(alg_k & SSL_kPSK))
 			{
 			al=SSL_AD_HANDSHAKE_FAILURE;
 			OPENSSL_PUT_ERROR(SSL, ssl3_send_server_key_exchange, SSL_R_UNKNOWN_KEY_EXCHANGE_TYPE);

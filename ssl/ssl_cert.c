@@ -208,13 +208,6 @@ CERT *ssl_cert_dup(CERT *cert)
 	ret->mask_k = cert->mask_k;
 	ret->mask_a = cert->mask_a;
 
-	if (cert->rsa_tmp != NULL)
-		{
-		RSA_up_ref(cert->rsa_tmp);
-		ret->rsa_tmp = cert->rsa_tmp;
-		}
-	ret->rsa_tmp_cb = cert->rsa_tmp_cb;
-
 #ifndef OPENSSL_NO_DH
 	if (cert->dh_tmp != NULL)
 		{
@@ -389,8 +382,6 @@ CERT *ssl_cert_dup(CERT *cert)
 #if !defined(OPENSSL_NO_DH) || !defined(OPENSSL_NO_ECDH)
 err:
 #endif
-	if (ret->rsa_tmp != NULL)
-		RSA_free(ret->rsa_tmp);
 #ifndef OPENSSL_NO_DH
 	if (ret->dh_tmp != NULL)
 		DH_free(ret->dh_tmp);
@@ -440,7 +431,6 @@ void ssl_cert_free(CERT *c)
 	if(c == NULL)
 	    return;
 
-	if (c->rsa_tmp) RSA_free(c->rsa_tmp);
 #ifndef OPENSSL_NO_DH
 	if (c->dh_tmp) DH_free(c->dh_tmp);
 #endif

@@ -2478,29 +2478,12 @@ long ssl3_ctrl(SSL *s, int cmd, long larg, void *parg)
 		ret=(int)(s->s3->flags);
 		break;
 	case SSL_CTRL_NEED_TMP_RSA:
-		if ((s->cert != NULL) && (s->cert->rsa_tmp == NULL) &&
-		    ((s->cert->pkeys[SSL_PKEY_RSA_ENC].privatekey == NULL) ||
-		     (EVP_PKEY_size(s->cert->pkeys[SSL_PKEY_RSA_ENC].privatekey) > (512/8))))
-			ret = 1;
+		/* Temporary RSA keys are never used. */
+		ret = 0;
 		break;
 	case SSL_CTRL_SET_TMP_RSA:
-		{
-			RSA *rsa = (RSA *)parg;
-			if (rsa == NULL)
-				{
-				OPENSSL_PUT_ERROR(SSL, ssl3_ctrl, ERR_R_PASSED_NULL_PARAMETER);
-				return(ret);
-				}
-			if ((rsa = RSAPrivateKey_dup(rsa)) == NULL)
-				{
-				OPENSSL_PUT_ERROR(SSL, ssl3_ctrl, ERR_R_RSA_LIB);
-				return(ret);
-				}
-			if (s->cert->rsa_tmp != NULL)
-				RSA_free(s->cert->rsa_tmp);
-			s->cert->rsa_tmp = rsa;
-			ret = 1;
-		}
+		/* Temporary RSA keys are never used. */
+		OPENSSL_PUT_ERROR(SSL, ssl3_ctrl, ERR_R_SHOULD_NOT_HAVE_BEEN_CALLED);
 		break;
 	case SSL_CTRL_SET_TMP_RSA_CB:
 		{
@@ -2867,9 +2850,7 @@ long ssl3_callback_ctrl(SSL *s, int cmd, void (*fp)(void))
 	switch (cmd)
 		{
 	case SSL_CTRL_SET_TMP_RSA_CB:
-		{
-		s->cert->rsa_tmp_cb = (RSA *(*)(SSL *, int, int))fp;
-		}
+		/* Ignore the callback; temporary RSA keys are never used. */
 		break;
 #ifndef OPENSSL_NO_DH
 	case SSL_CTRL_SET_TMP_DH_CB:
@@ -2904,42 +2885,11 @@ long ssl3_ctx_ctrl(SSL_CTX *ctx, int cmd, long larg, void *parg)
 	switch (cmd)
 		{
 	case SSL_CTRL_NEED_TMP_RSA:
-		if (	(cert->rsa_tmp == NULL) &&
-			((cert->pkeys[SSL_PKEY_RSA_ENC].privatekey == NULL) ||
-			 (EVP_PKEY_size(cert->pkeys[SSL_PKEY_RSA_ENC].privatekey) > (512/8)))
-			)
-			return(1);
-		else
-			return(0);
-		/* break; */
+		/* Temporary RSA keys are never used. */
+		return 0;
 	case SSL_CTRL_SET_TMP_RSA:
-		{
-		RSA *rsa;
-		int i;
-
-		rsa=(RSA *)parg;
-		i=1;
-		if (rsa == NULL)
-			i=0;
-		else
-			{
-			if ((rsa=RSAPrivateKey_dup(rsa)) == NULL)
-				i=0;
-			}
-		if (!i)
-			{
-			OPENSSL_PUT_ERROR(SSL, ssl3_ctx_ctrl, ERR_R_RSA_LIB);
-			return(0);
-			}
-		else
-			{
-			if (cert->rsa_tmp != NULL)
-				RSA_free(cert->rsa_tmp);
-			cert->rsa_tmp=rsa;
-			return(1);
-			}
-		}
-		/* break; */
+		OPENSSL_PUT_ERROR(SSL, ssl3_ctx_ctrl, ERR_R_SHOULD_NOT_HAVE_BEEN_CALLED);
+		return 0;
 	case SSL_CTRL_SET_TMP_RSA_CB:
 		{
 		OPENSSL_PUT_ERROR(SSL, ssl3_ctx_ctrl, ERR_R_SHOULD_NOT_HAVE_BEEN_CALLED);
@@ -3163,9 +3113,7 @@ long ssl3_ctx_callback_ctrl(SSL_CTX *ctx, int cmd, void (*fp)(void))
 	switch (cmd)
 		{
 	case SSL_CTRL_SET_TMP_RSA_CB:
-		{
-		cert->rsa_tmp_cb = (RSA *(*)(SSL *, int, int))fp;
-		}
+		/* Ignore the callback; temporary RSA keys are never used. */
 		break;
 #ifndef OPENSSL_NO_DH
 	case SSL_CTRL_SET_TMP_DH_CB:
