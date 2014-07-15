@@ -69,35 +69,39 @@ DECLARE_ASN1_ENCODE_FUNCTIONS_const(ECDSA_SIG, ECDSA_SIG);
 IMPLEMENT_ASN1_FUNCTIONS_const(ECDSA_SIG);
 
 size_t ECDSA_size(const EC_KEY *key) {
-  size_t ret, i;
+  size_t ret, i, group_order_size;
   ASN1_INTEGER bs;
   BIGNUM *order = NULL;
   unsigned char buf[4];
   const EC_GROUP *group;
 
-  if (key->ecdsa_meth && key->ecdsa_meth->size) {
-    return key->ecdsa_meth->size(key);
+  if (key->ecdsa_meth && key->ecdsa_meth->group_order_size) {
+    group_order_size = key->ecdsa_meth->group_order_size(key);
+  } else {
+    size_t num_bits;
+
+    if (key == NULL) {
+      return 0;
+    }
+    group = EC_KEY_get0_group(key);
+    if (group == NULL) {
+      return 0;
+    }
+
+    order = BN_new();
+    if (order == NULL) {
+      return 0;
+    }
+    if (!EC_GROUP_get_order(group, order, NULL)) {
+      BN_clear_free(order);
+      return 0;
+    }
+
+    num_bits = BN_num_bits(order);
+    group_order_size = (num_bits + 7) / 8;
   }
 
-  if (key == NULL) {
-    return 0;
-  }
-  group = EC_KEY_get0_group(key);
-  if (group == NULL) {
-    return 0;
-  }
-
-  order = BN_new();
-  if (order == NULL) {
-    return 0;
-  }
-  if (!EC_GROUP_get_order(group, order, NULL)) {
-    BN_clear_free(order);
-    return 0;
-  }
-
-  i = BN_num_bits(order);
-  bs.length = (i + 7) / 8;
+  bs.length = group_order_size;
   bs.data = buf;
   bs.type = V_ASN1_INTEGER;
   /* If the top bit is set the ASN.1 encoding is 1 larger. */
