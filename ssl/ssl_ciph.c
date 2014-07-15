@@ -580,10 +580,6 @@ static void ssl_cipher_get_disabled(unsigned long *mkey, unsigned long *auth, un
 	*mkey |= SSL_kECDHe|SSL_kECDHr;
 	*auth |= SSL_aECDH;
 #endif
-#ifdef OPENSSL_NO_PSK
-	*mkey |= SSL_kPSK;
-	*auth |= SSL_aPSK;
-#endif
 #ifdef SSL_FORBID_ENULL
 	*enc |= SSL_eNULL;
 #endif

@@ -115,10 +115,8 @@ typedef struct ssl_session_asn1_st
 	ASN1_OCTET_STRING tlsext_hostname;
 	ASN1_INTEGER tlsext_tick_lifetime;
 	ASN1_OCTET_STRING tlsext_tick;
-#ifndef OPENSSL_NO_PSK
 	ASN1_OCTET_STRING psk_identity_hint;
 	ASN1_OCTET_STRING psk_identity;
-#endif /* OPENSSL_NO_PSK */
 	ASN1_OCTET_STRING peer_sha256;
 	ASN1_OCTET_STRING original_handshake_hash;
 	} SSL_SESSION_ASN1;
@@ -234,7 +232,6 @@ int i2d_SSL_SESSION(SSL_SESSION *in, unsigned char **pp)
 		a.tlsext_tick_lifetime.data=ibuf6;
 		ASN1_INTEGER_set(&a.tlsext_tick_lifetime,in->tlsext_tick_lifetime_hint);
 		}
-#ifndef OPENSSL_NO_PSK
 	if (in->psk_identity_hint)
 		{
 		a.psk_identity_hint.length=strlen(in->psk_identity_hint);
@@ -261,7 +258,6 @@ int i2d_SSL_SESSION(SSL_SESSION *in, unsigned char **pp)
 		a.original_handshake_hash.type = V_ASN1_OCTET_STRING;
 		a.original_handshake_hash.data = in->original_handshake_hash;
 		}
-#endif /* OPENSSL_NO_PSK */
 
 	M_ASN1_I2D_len(&(a.version),		i2d_ASN1_INTEGER);
 	M_ASN1_I2D_len(&(a.ssl_version),	i2d_ASN1_INTEGER);
@@ -286,12 +282,10 @@ int i2d_SSL_SESSION(SSL_SESSION *in, unsigned char **pp)
         	M_ASN1_I2D_len_EXP_opt(&(a.tlsext_tick), i2d_ASN1_OCTET_STRING,10,v10);
 	if (in->tlsext_hostname)
         	M_ASN1_I2D_len_EXP_opt(&(a.tlsext_hostname), i2d_ASN1_OCTET_STRING,6,v6);
-#ifndef OPENSSL_NO_PSK
 	if (in->psk_identity_hint)
         	M_ASN1_I2D_len_EXP_opt(&(a.psk_identity_hint), i2d_ASN1_OCTET_STRING,7,v7);
 	if (in->psk_identity)
         	M_ASN1_I2D_len_EXP_opt(&(a.psk_identity), i2d_ASN1_OCTET_STRING,8,v8);
-#endif /* OPENSSL_NO_PSK */
 	if (in->peer_sha256_valid)
 		M_ASN1_I2D_len_EXP_opt(&(a.peer_sha256),i2d_ASN1_OCTET_STRING,13,v13);
 	if (in->original_handshake_hash_len > 0)
@@ -318,12 +312,10 @@ int i2d_SSL_SESSION(SSL_SESSION *in, unsigned char **pp)
 		M_ASN1_I2D_put_EXP_opt(&a.verify_result,i2d_ASN1_INTEGER,5,v5);
 	if (in->tlsext_hostname)
         	M_ASN1_I2D_put_EXP_opt(&(a.tlsext_hostname), i2d_ASN1_OCTET_STRING,6,v6);
-#ifndef OPENSSL_NO_PSK
 	if (in->psk_identity_hint)
 		M_ASN1_I2D_put_EXP_opt(&(a.psk_identity_hint), i2d_ASN1_OCTET_STRING,7,v7);
 	if (in->psk_identity)
 		M_ASN1_I2D_put_EXP_opt(&(a.psk_identity), i2d_ASN1_OCTET_STRING,8,v8);
-#endif /* OPENSSL_NO_PSK */
 	if (in->tlsext_tick_lifetime_hint > 0)
       	 	M_ASN1_I2D_put_EXP_opt(&a.tlsext_tick_lifetime, i2d_ASN1_INTEGER,9,v9);
 	if (in->tlsext_tick)
@@ -502,7 +494,6 @@ SSL_SESSION *d2i_SSL_SESSION(SSL_SESSION **a, const unsigned char **pp,
 	else
 		ret->tlsext_hostname=NULL;
 
-#ifndef OPENSSL_NO_PSK
 	os.length=0;
 	os.data=NULL;
 	M_ASN1_D2I_get_EXP_opt(osp,d2i_ASN1_OCTET_STRING,7);
@@ -528,7 +519,6 @@ SSL_SESSION *d2i_SSL_SESSION(SSL_SESSION **a, const unsigned char **pp,
 		}
 	else
 		ret->psk_identity=NULL;
-#endif /* OPENSSL_NO_PSK */
 
 	ai.length=0;
 	M_ASN1_D2I_get_EXP_opt(aip,d2i_ASN1_INTEGER,9);

@@ -402,9 +402,7 @@ int ssl3_accept(SSL *s)
 			/* PSK: send ServerKeyExchange if either:
 			 *   - PSK identity hint is provided, or
 			 *   - the key exchange is kEECDH. */
-#ifndef OPENSSL_NO_PSK
 			    || ((alg_a & SSL_aPSK) && ((alg_k & SSL_kEECDH) || s->session->psk_identity_hint))
-#endif
 			    || (alg_k & SSL_kEDH)
 			    || (alg_k & SSL_kEECDH)
 			    || ((alg_k & SSL_kRSA)
@@ -1469,10 +1467,8 @@ int ssl3_send_server_key_exchange(SSL *s)
 	int curve_id = 0;
 	BN_CTX *bn_ctx = NULL; 
 #endif
-#ifndef OPENSSL_NO_PSK
 	const char* psk_identity_hint;
 	size_t psk_identity_hint_len;
-#endif
 	EVP_PKEY *pkey;
 	const EVP_MD *md = NULL;
 	unsigned char *p,*d;
@@ -1497,7 +1493,6 @@ int ssl3_send_server_key_exchange(SSL *s)
 
 		r[0]=r[1]=r[2]=r[3]=NULL;
 		n=0;
-#ifndef OPENSSL_NO_PSK
 		if (alg_a & SSL_aPSK)
 			{
 			/* size for PSK identity hint */
@@ -1508,7 +1503,6 @@ int ssl3_send_server_key_exchange(SSL *s)
 				psk_identity_hint_len = 0;
 			n+=2+psk_identity_hint_len;
 			}
-#endif /* !OPENSSL_NO_PSK */
 		if (alg_k & SSL_kRSA)
 			{
 			rsa=cert->rsa_tmp;
@@ -1769,7 +1763,6 @@ int ssl3_send_server_key_exchange(SSL *s)
 /* Note: ECDHE PSK ciphersuites use SSL_kEECDH and SSL_aPSK.
  * When one of them is used, the server key exchange record needs to have both
  * the psk_identity_hint and the ServerECDHParams. */
-#ifndef OPENSSL_NO_PSK
 		if (alg_a & SSL_aPSK)
 			{
 			/* copy PSK identity hint (if provided) */
@@ -1780,7 +1773,6 @@ int ssl3_send_server_key_exchange(SSL *s)
 				p+=psk_identity_hint_len;
 				}
 			}
-#endif /* OPENSSL_NO_PSK */
 
 #ifndef OPENSSL_NO_ECDH
 		if (alg_k & SSL_kEECDH)
@@ -2008,10 +2000,8 @@ int ssl3_get_client_key_exchange(SSL *s)
 	EVP_PKEY *clnt_pub_pkey = NULL;
 	EC_POINT *clnt_ecpoint = NULL;
 	BN_CTX *bn_ctx = NULL;
-#ifndef OPENSSL_NO_PSK
 	unsigned int psk_len = 0;
 	unsigned char psk[PSK_MAX_PSK_LEN];
-#endif /* OPENSSL_NO_PSK */
 #endif
 
 	n=s->method->ssl_get_message(s,
@@ -2027,7 +2017,6 @@ int ssl3_get_client_key_exchange(SSL *s)
 	alg_k=s->s3->tmp.new_cipher->algorithm_mkey;
 	alg_a=s->s3->tmp.new_cipher->algorithm_auth;
 
-#ifndef OPENSSL_NO_PSK
 	/* If using a PSK key exchange, prepare the pre-shared key. */
 	if (alg_a & SSL_aPSK)
 		{
@@ -2082,7 +2071,6 @@ int ssl3_get_client_key_exchange(SSL *s)
 			goto f_err;
 			}
 		}
-#endif /* OPENSSL_NO_PSK */
 
 	/* Depending on the key exchange method, compute |premaster_secret| and
 	 * |premaster_secret_len|. Also, for DH and ECDH, set
@@ -2520,7 +2508,6 @@ int ssl3_get_client_key_exchange(SSL *s)
 		premaster_secret_len = ecdh_len;
 		}
 #endif
-#ifndef OPENSSL_NO_PSK
 	else if (alg_k & SSL_kPSK)
 		{
 		/* For plain PSK, other_secret is a block of 0s with the same
@@ -2534,7 +2521,6 @@ int ssl3_get_client_key_exchange(SSL *s)
 			}
 		memset(premaster_secret, 0, premaster_secret_len);
 		}
-#endif  /* !OPENSSL_NO_PSK */
 	else
 		{
 		al=SSL_AD_HANDSHAKE_FAILURE;
@@ -2542,7 +2528,6 @@ int ssl3_get_client_key_exchange(SSL *s)
 		goto f_err;
 		}
 
-#ifndef OPENSSL_NO_PSK
 	/* For a PSK cipher suite, the actual pre-master secret is combined with
 	 * the pre-shared key. */
 	if (alg_a & SSL_aPSK)
@@ -2572,7 +2557,6 @@ int ssl3_get_client_key_exchange(SSL *s)
 		premaster_secret = new_data;
 		premaster_secret_len = new_len;
 		}
-#endif  /* !OPENSSL_NO_PSK */
 
 	/* Compute the master secret */
 	s->session->master_key_length = s->method->ssl3_enc

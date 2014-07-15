@@ -1368,7 +1368,6 @@ SSL_CIPHER ssl3_ciphers[]={
 	},
 #endif /* OPENSSL_NO_CAMELLIA */
 
-#ifndef OPENSSL_NO_PSK
 	/* Cipher 8A */
 	{
 	1,
@@ -1432,7 +1431,6 @@ SSL_CIPHER ssl3_ciphers[]={
 	256,
 	256,
 	},
-#endif  /* OPENSSL_NO_PSK */
 
 #ifndef OPENSSL_NO_SEED
 	/* SEED ciphersuites from RFC4162 */
@@ -2419,7 +2417,6 @@ SSL_CIPHER ssl3_ciphers[]={
 	256,
 	},
 
-#ifndef OPENSSL_NO_PSK
     /* ECDH PSK ciphersuites */
 	/* Cipher CAFE */
 	{
@@ -2437,7 +2434,6 @@ SSL_CIPHER ssl3_ciphers[]={
 	128,
 	128,
 	},
-#endif /* OPENSSL_NO_PSK */
 
 #endif /* OPENSSL_NO_ECDH */
 
@@ -3571,11 +3567,9 @@ SSL_CIPHER *ssl3_choose_cipher(SSL *s, STACK_OF(SSL_CIPHER) *clnt,
 		alg_k=c->algorithm_mkey;
 		alg_a=c->algorithm_auth;
 
-#ifndef OPENSSL_NO_PSK
 		/* with PSK there must be server callback set */
 		if ((alg_a & SSL_aPSK) && s->psk_server_callback == NULL)
 			ok = 0;
-#endif /* OPENSSL_NO_PSK */
 
 		if (SSL_C_IS_EXPORT(c))
 			{

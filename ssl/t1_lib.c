@@ -1117,14 +1117,12 @@ void ssl_set_client_disabled(SSL *s)
 		c->mask_a |= SSL_aECDSA;
 		c->mask_k |= SSL_kECDHe;
 		}
-#ifndef OPENSSL_NO_PSK
 	/* with PSK there must be client callback set */
 	if (!s->psk_client_callback)
 		{
 		c->mask_a |= SSL_aPSK;
 		c->mask_k |= SSL_kPSK;
 		}
-#endif /* OPENSSL_NO_PSK */
 	c->valid = 1;
 	}
 

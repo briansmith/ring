@@ -393,9 +393,7 @@ int dtls1_accept(SSL *s)
 			if (s->s3->tmp.use_rsa_tmp
 			/* PSK: send ServerKeyExchange if PSK identity
 			 * hint if provided */
-#ifndef OPENSSL_NO_PSK
 			    || ((alg_k & SSL_kPSK) && s->session->psk_identity_hint)
-#endif
 			    || (alg_k & (SSL_kEDH|SSL_kDHr|SSL_kDHd))
 			    || (alg_k & SSL_kEECDH)
 			    || ((alg_k & SSL_kRSA)

@@ -396,7 +396,6 @@ SSL *SSL_new(SSL_CTX *ctx)
 
 	CRYPTO_new_ex_data(CRYPTO_EX_INDEX_SSL, s, &s->ex_data);
 
-#ifndef OPENSSL_NO_PSK
 	s->psk_identity_hint = NULL;
 	if (ctx->psk_identity_hint)
 		{
@@ -406,7 +405,6 @@ SSL *SSL_new(SSL_CTX *ctx)
 		}
 	s->psk_client_callback=ctx->psk_client_callback;
 	s->psk_server_callback=ctx->psk_server_callback;
-#endif
 
 	return(s);
 err:
@@ -693,10 +691,8 @@ void SSL_free(SSL *s)
 	if (s->tlsext_channel_id_private)
 		EVP_PKEY_free(s->tlsext_channel_id_private);
 
-#ifndef OPENSSL_NO_PSK
 	if (s->psk_identity_hint)
 		OPENSSL_free(s->psk_identity_hint);
-#endif
 
 	if (s->client_CA != NULL)
 		sk_X509_NAME_pop_free(s->client_CA,X509_NAME_free);
@@ -2016,11 +2012,9 @@ SSL_CTX *SSL_CTX_new(const SSL_METHOD *meth)
 	ret->next_protos_advertised_cb = 0;
 	ret->next_proto_select_cb = 0;
 # endif
-#ifndef OPENSSL_NO_PSK
 	ret->psk_identity_hint=NULL;
 	ret->psk_client_callback=NULL;
 	ret->psk_server_callback=NULL;
-#endif
 #ifndef OPENSSL_NO_BUF_FREELISTS
 	ret->freelist_max_len = SSL_MAX_BUF_FREELIST_LEN_DEFAULT;
 	ret->rbuf_freelist = OPENSSL_malloc(sizeof(SSL3_BUF_FREELIST));
@@ -2143,10 +2137,8 @@ void SSL_CTX_free(SSL_CTX *a)
         if (a->srtp_profiles)
                 sk_SRTP_PROTECTION_PROFILE_free(a->srtp_profiles);
 
-#ifndef OPENSSL_NO_PSK
 	if (a->psk_identity_hint)
 		OPENSSL_free(a->psk_identity_hint);
-#endif
 
 	/* TODO(fork): remove. */
 #if 0
@@ -2396,12 +2388,10 @@ void ssl_set_cert_masks(CERT *c, const SSL_CIPHER *cipher)
 		}
 #endif
 
-#ifndef OPENSSL_NO_PSK
 	mask_k |= SSL_kPSK;
 	mask_a |= SSL_aPSK;
 	emask_k |= SSL_kPSK;
 	emask_a |= SSL_aPSK;
-#endif
 
 	c->mask_k=mask_k;
 	c->mask_a=mask_a;
@@ -3175,7 +3165,6 @@ void SSL_set_tmp_ecdh_callback(SSL *ssl,EC_KEY *(*ecdh)(SSL *ssl,int is_export,
 	}
 #endif
 
-#ifndef OPENSSL_NO_PSK
 int SSL_CTX_use_psk_identity_hint(SSL_CTX *ctx, const char *identity_hint)
 	{
 	if (identity_hint != NULL && strlen(identity_hint) > PSK_MAX_IDENTITY_LEN)
@@ -3287,7 +3276,6 @@ void SSL_CTX_set_psk_server_callback(SSL_CTX *ctx,
 	{
 	ctx->psk_server_callback = cb;
 	}
-#endif
 
 void SSL_CTX_set_msg_callback(SSL_CTX *ctx, void (*cb)(int write_p, int version, int content_type, const void *buf, size_t len, SSL *ssl, void *arg))
 	{
