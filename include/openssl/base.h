@@ -58,6 +58,8 @@
 #include <string.h>
 #include <sys/types.h>
 
+#include <openssl/opensslfeatures.h>
+
 #if defined(__x86_64) || defined(_M_AMD64) || defined(_M_X64)
 #define OPENSSL_64_BIT
 #define OPENSSL_X86_64
