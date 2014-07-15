@@ -244,6 +244,18 @@ size_t BIO_wpending(const BIO *bio);
  * otherwise. */
 int BIO_set_close(BIO *bio, int close_flag);
 
+/* BIO_set_callback sets a callback function that will be called before and
+ * after most operations. See the comment above |bio_info_cb|. */
+void BIO_set_callback(BIO *bio, bio_info_cb callback_func);
+
+/* BIO_set_callback_arg sets the opaque pointer value that can be read within a
+ * callback with |BIO_get_callback_arg|. */
+void BIO_set_callback_arg(BIO *bio, char *arg);
+
+/* BIO_get_callback_arg returns the last value of the opaque callback pointer
+ * set by |BIO_set_callback_arg|. */
+char *BIO_get_callback_arg(const BIO *bio);
+
 
 /* Managing chains of BIOs.
  *

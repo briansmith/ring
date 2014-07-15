@@ -359,6 +359,18 @@ int BIO_set_close(BIO *bio, int close_flag) {
   return BIO_ctrl(bio, BIO_CTRL_SET_CLOSE, close_flag, NULL);
 }
 
+void BIO_set_callback(BIO *bio, bio_info_cb callback_func) {
+  bio->callback = callback_func;
+}
+
+void BIO_set_callback_arg(BIO *bio, char *arg) {
+  bio->cb_arg = arg;
+}
+
+char *BIO_get_callback_arg(const BIO *bio) {
+  return bio->cb_arg;
+}
+
 BIO *BIO_push(BIO *bio, BIO *appended_bio) {
   BIO *last_bio;
 
