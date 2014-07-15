@@ -146,8 +146,6 @@
  * OTHER ENTITY BASED ON INFRINGEMENT OF INTELLECTUAL PROPERTY RIGHTS OR
  * OTHERWISE. */
 
-/* Undefined in Google code. We've never enabled this workaround
- * #define REUSE_CIPHER_BUG */
 #define NETSCAPE_HANG_BUG
 
 #include <stdio.h>
@@ -1251,31 +1249,6 @@ int ssl3_get_client_hello(SSL *s)
 	else
 		{
 		/* Session-id reuse */
-#ifdef REUSE_CIPHER_BUG
-		STACK_OF(SSL_CIPHER) *sk;
-		SSL_CIPHER *nc=NULL;
-		SSL_CIPHER *ec=NULL;
-
-		if (s->options & SSL_OP_NETSCAPE_DEMO_CIPHER_CHANGE_BUG)
-			{
-			sk=s->session->ciphers;
-			for (i=0; i<sk_SSL_CIPHER_num(sk); i++)
-				{
-				c=sk_SSL_CIPHER_value(sk,i);
-				if (c->algorithm_enc & SSL_eNULL)
-					nc=c;
-				if (SSL_C_IS_EXPORT(c))
-					ec=c;
-				}
-			if (nc != NULL)
-				s->s3->tmp.new_cipher=nc;
-			else if (ec != NULL)
-				s->s3->tmp.new_cipher=ec;
-			else
-				s->s3->tmp.new_cipher=s->session->cipher;
-			}
-		else
-#endif
 		s->s3->tmp.new_cipher=s->session->cipher;
 		}
 
@@ -1346,10 +1319,7 @@ int ssl3_send_server_hello(SSL *s)
 			{
 			/* Free s->session->ciphers in order to release memory. This
 			 * breaks SSL_get_shared_ciphers(), but many servers will
-			 * prefer the memory savings.
-			 *
-			 * It also breaks REUSE_CIPHER_BUG, which is disabled
-			 * in our build. */
+			 * prefer the memory savings. */
 			sk_SSL_CIPHER_free(s->session->ciphers);
 			s->session->ciphers = NULL;
 			}
