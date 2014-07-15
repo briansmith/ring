@@ -34,6 +34,7 @@ add_library(
 	ssl_lib.c
 	ssl_rsa.c
 	ssl_sess.c
+	ssl_stat.c
 	ssl_txt.c
 	t1_clnt.c
 	t1_enc.c
