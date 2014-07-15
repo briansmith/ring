@@ -164,6 +164,7 @@ int dtls1_accept(SSL *s)
 	BUF_MEM *buf;
 	void (*cb)(const SSL *ssl,int type,int val)=NULL;
 	unsigned long alg_k;
+	unsigned long alg_a;
 	int ret= -1;
 	int new_state,state,skip=0;
 	int listen;
@@ -375,28 +376,22 @@ int dtls1_accept(SSL *s)
 		case SSL3_ST_SW_KEY_EXCH_A:
 		case SSL3_ST_SW_KEY_EXCH_B:
 			alg_k = s->s3->tmp.new_cipher->algorithm_mkey;
+			alg_a = s->s3->tmp.new_cipher->algorithm_auth;
 
-			/* clear this, it may get reset by
-			 * send_server_key_exchange */
-			if ((s->options & SSL_OP_EPHEMERAL_RSA)
-				)
-				/* option SSL_OP_EPHEMERAL_RSA sends temporary RSA key
-				 * even when forbidden by protocol specs
-				 * (handshake may fail as clients are not required to
-				 * be able to handle this) */
-				s->s3->tmp.use_rsa_tmp=1;
-			else
-				s->s3->tmp.use_rsa_tmp=0;
-
-			/* only send if a DH key exchange or
-			 * RSA but we have a sign only certificate */
-			if (s->s3->tmp.use_rsa_tmp
-			/* PSK: send ServerKeyExchange if PSK identity
-			 * hint if provided */
-			    || ((alg_k & SSL_kPSK) && s->session->psk_identity_hint)
-			    || (alg_k & (SSL_kEDH|SSL_kDHr|SSL_kDHd))
-			    || (alg_k & SSL_kEECDH)
-			    || ((alg_k & SSL_kRSA)
+			/* Send a ServerKeyExchange message if:
+			 * - The key exchange is ephemeral or anonymous
+			 *   Diffie-Hellman.
+			 * - There is a PSK identity hint.
+			 * - We have a signing-only RSA key.
+			 *   TODO(davidben): Remove this?
+			 *
+			 * TODO(davidben): This logic is currently duplicated
+			 * in s3_srvr.c. Fix this. In the meantime, keep them
+			 * in sync.
+			 */
+			if (ssl_cipher_requires_server_key_exchange(s->s3->tmp.new_cipher) ||
+			    ((alg_a & SSL_aPSK) && s->session->psk_identity_hint) ||
+			    ((alg_k & SSL_kRSA)
 				&& (s->cert->pkeys[SSL_PKEY_RSA_ENC].privatekey == NULL
 				    || (SSL_C_IS_EXPORT(s->s3->tmp.new_cipher)
 					&& EVP_PKEY_size(s->cert->pkeys[SSL_PKEY_RSA_ENC].privatekey)*8 > SSL_C_EXPORT_PKEYLENGTH(s->s3->tmp.new_cipher)

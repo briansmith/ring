@@ -475,8 +475,6 @@ typedef struct ssl3_state_st
 		unsigned char *certificate_types;
 		size_t num_certificate_types;
 
-		int use_rsa_tmp;
-
 		int key_block_length;
 		unsigned char *key_block;
 

@@ -1842,7 +1842,7 @@ int ssl_cipher_has_server_public_key(const SSL_CIPHER *cipher)
  * TODO(davidben): Can we remove the RSA one? This is a remnant of
  * RSA_EXPORT ciphers which required this (it was used to generate an
  * ephemeral 512-bit RSA encryption key), but it's allowed for all RSA
- * ciphers. There's even a SSL_OP_EPHEMERAL_RSA to always use it. */
+ * ciphers. */
 int ssl_cipher_requires_server_key_exchange(const SSL_CIPHER *cipher)
 	{
 	/* Ephemeral Diffie-Hellman key exchanges require a

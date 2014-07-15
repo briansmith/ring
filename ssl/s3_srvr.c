@@ -374,38 +374,20 @@ int ssl3_accept(SSL *s)
 			alg_k = s->s3->tmp.new_cipher->algorithm_mkey;
 			alg_a = s->s3->tmp.new_cipher->algorithm_auth;
 
-			/* clear this, it may get reset by
-			 * send_server_key_exchange */
-			if ((s->options & SSL_OP_EPHEMERAL_RSA)
-				)
-				/* option SSL_OP_EPHEMERAL_RSA sends temporary RSA key
-				 * even when forbidden by protocol specs
-				 * (handshake may fail as clients are not required to
-				 * be able to handle this) */
-				s->s3->tmp.use_rsa_tmp=1;
-			else
-				s->s3->tmp.use_rsa_tmp=0;
-
-
-			/* only send if a DH key exchange, fortezza or
-			 * RSA but we have a sign only certificate
+			/* Send a ServerKeyExchange message if:
+			 * - The key exchange is ephemeral or anonymous
+			 *   Diffie-Hellman.
+			 * - There is a PSK identity hint.
+			 * - We have a signing-only RSA key.
+			 *   TODO(davidben): Remove this?
 			 *
-			 * PSK: may send PSK identity hints
-			 *
-			 * For ECC ciphersuites, we send a serverKeyExchange
-			 * message only if the cipher suite is either
-			 * ECDH-anon or ECDHE. In other cases, the
-			 * server certificate contains the server's
-			 * public key for key exchange.
+			 * TODO(davidben): This logic is currently duplicated
+			 * in d1_srvr.c. Fix this. In the meantime, keep them
+			 * in sync.
 			 */
-			if (s->s3->tmp.use_rsa_tmp
-			/* PSK: send ServerKeyExchange if either:
-			 *   - PSK identity hint is provided, or
-			 *   - the key exchange is kEECDH. */
-			    || ((alg_a & SSL_aPSK) && ((alg_k & SSL_kEECDH) || s->session->psk_identity_hint))
-			    || (alg_k & SSL_kEDH)
-			    || (alg_k & SSL_kEECDH)
-			    || ((alg_k & SSL_kRSA)
+			if (ssl_cipher_requires_server_key_exchange(s->s3->tmp.new_cipher) ||
+			    ((alg_a & SSL_aPSK) && s->session->psk_identity_hint) ||
+			    ((alg_k & SSL_kRSA)
 				&& (s->cert->pkeys[SSL_PKEY_RSA_ENC].privatekey == NULL
 				    || (SSL_C_IS_EXPORT(s->s3->tmp.new_cipher)
 					&& EVP_PKEY_size(s->cert->pkeys[SSL_PKEY_RSA_ENC].privatekey)*8 > SSL_C_EXPORT_PKEYLENGTH(s->s3->tmp.new_cipher)
@@ -1528,7 +1510,6 @@ int ssl3_send_server_key_exchange(SSL *s)
 				}
 			r[0]=rsa->n;
 			r[1]=rsa->e;
-			s->s3->tmp.use_rsa_tmp=1;
 			}
 #ifndef OPENSSL_NO_DH
 		else if (alg_k & SSL_kEDH)
@@ -2083,34 +2064,16 @@ int ssl3_get_client_key_exchange(SSL *s)
 		unsigned char version_good;
 		size_t j;
 
-		/* FIX THIS UP EAY EAY EAY EAY */
-		if (s->s3->tmp.use_rsa_tmp)
+		pkey=s->cert->pkeys[SSL_PKEY_RSA_ENC].privatekey;
+		if (	(pkey == NULL) ||
+			(pkey->type != EVP_PKEY_RSA) ||
+			(pkey->pkey.rsa == NULL))
 			{
-			if ((s->cert != NULL) && (s->cert->rsa_tmp != NULL))
-				rsa=s->cert->rsa_tmp;
-			/* Don't do a callback because rsa_tmp should
-			 * be sent already */
-			if (rsa == NULL)
-				{
-				al=SSL_AD_HANDSHAKE_FAILURE;
-				OPENSSL_PUT_ERROR(SSL, ssl3_get_client_key_exchange, SSL_R_MISSING_TMP_RSA_PKEY);
-				goto f_err;
-
-				}
+			al=SSL_AD_HANDSHAKE_FAILURE;
+			OPENSSL_PUT_ERROR(SSL, ssl3_get_client_key_exchange, SSL_R_MISSING_RSA_CERTIFICATE);
+			goto f_err;
 			}
-		else
-			{
-			pkey=s->cert->pkeys[SSL_PKEY_RSA_ENC].privatekey;
-			if (	(pkey == NULL) ||
-				(pkey->type != EVP_PKEY_RSA) ||
-				(pkey->pkey.rsa == NULL))
-				{
-				al=SSL_AD_HANDSHAKE_FAILURE;
-				OPENSSL_PUT_ERROR(SSL, ssl3_get_client_key_exchange, SSL_R_MISSING_RSA_CERTIFICATE);
-				goto f_err;
-				}
-			rsa=pkey->pkey.rsa;
-			}
+		rsa=pkey->pkey.rsa;
 
 		/* TLS and [incidentally] DTLS{0xFEFF}
 		 *
