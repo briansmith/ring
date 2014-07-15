@@ -408,33 +408,6 @@
 
 /* we have used 000001ff - 23 bits left to go */
 
-/*
- * Macros to check the export status and cipher strength for export ciphers.
- * Even though the macros for EXPORT and EXPORT40/56 have similar names,
- * their meaning is different:
- * *_EXPORT macros check the 'exportable' status.
- * *_EXPORT40/56 macros are used to check whether a certain cipher strength
- *          is given.
- * Since the SSL_IS_EXPORT* and SSL_EXPORT* macros depend on the correct
- * algorithm structure element to be passed (algorithms, algo_strength) and no
- * typechecking can be done as they are all of type unsigned long, their
- * direct usage is discouraged.
- * Use the SSL_C_* macros instead.
- */
-#define SSL_IS_EXPORT(a)	((a)&SSL_EXPORT)
-#define SSL_IS_EXPORT56(a)	((a)&SSL_EXP56)
-#define SSL_IS_EXPORT40(a)	((a)&SSL_EXP40)
-#define SSL_C_IS_EXPORT(c)	SSL_IS_EXPORT((c)->algo_strength)
-#define SSL_C_IS_EXPORT56(c)	SSL_IS_EXPORT56((c)->algo_strength)
-#define SSL_C_IS_EXPORT40(c)	SSL_IS_EXPORT40((c)->algo_strength)
-
-#define SSL_EXPORT_KEYLENGTH(a,s)	(SSL_IS_EXPORT40(s) ? 5 : \
-				 (a) == SSL_DES ? 8 : 7)
-#define SSL_EXPORT_PKEYLENGTH(a) (SSL_IS_EXPORT40(a) ? 512 : 1024)
-#define SSL_C_EXPORT_KEYLENGTH(c)	SSL_EXPORT_KEYLENGTH((c)->algorithm_enc, \
-				(c)->algo_strength)
-#define SSL_C_EXPORT_PKEYLENGTH(c)	SSL_EXPORT_PKEYLENGTH((c)->algo_strength)
-
 /* Check if an SSL structure is using DTLS */
 #define SSL_IS_DTLS(s)	(s->method->ssl3_enc->enc_flags & SSL_ENC_FLAG_DTLS)
 /* See if we need explicit IV */
@@ -527,8 +500,6 @@ typedef struct cert_st
 	int valid;
 	unsigned long mask_k;
 	unsigned long mask_a;
-	unsigned long export_mask_k;
-	unsigned long export_mask_a;
 	/* Client only */
 	unsigned long mask_ssl;
 	RSA *rsa_tmp;

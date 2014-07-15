@@ -200,22 +200,6 @@ SSL_CIPHER ssl3_ciphers[]={
 	0,
 	},
 
-/* Cipher 03 */
-	{
-	1,
-	SSL3_TXT_RSA_RC4_40_MD5,
-	SSL3_CK_RSA_RC4_40_MD5,
-	SSL_kRSA,
-	SSL_aRSA,
-	SSL_RC4,
-	SSL_MD5,
-	SSL_SSLV3,
-	SSL_EXPORT|SSL_EXP40,
-	SSL_HANDSHAKE_MAC_DEFAULT|TLS1_PRF,
-	40,
-	128,
-	},
-
 /* Cipher 04 */
 	{
 	1,
@@ -248,22 +232,6 @@ SSL_CIPHER ssl3_ciphers[]={
 	128,
 	},
 
-/* Cipher 06 */
-	{
-	1,
-	SSL3_TXT_RSA_RC2_40_MD5,
-	SSL3_CK_RSA_RC2_40_MD5,
-	SSL_kRSA,
-	SSL_aRSA,
-	SSL_RC2,
-	SSL_MD5,
-	SSL_SSLV3,
-	SSL_EXPORT|SSL_EXP40,
-	SSL_HANDSHAKE_MAC_DEFAULT|TLS1_PRF,
-	40,
-	128,
-	},
-
 /* Cipher 07 */
 #ifndef OPENSSL_NO_IDEA
 	{
@@ -281,22 +249,6 @@ SSL_CIPHER ssl3_ciphers[]={
 	128,
 	},
 #endif
-
-/* Cipher 08 */
-	{
-	1,
-	SSL3_TXT_RSA_DES_40_CBC_SHA,
-	SSL3_CK_RSA_DES_40_CBC_SHA,
-	SSL_kRSA,
-	SSL_aRSA,
-	SSL_DES,
-	SSL_SHA1,
-	SSL_SSLV3,
-	SSL_EXPORT|SSL_EXP40,
-	SSL_HANDSHAKE_MAC_DEFAULT|TLS1_PRF,
-	40,
-	56,
-	},
 
 /* Cipher 09 */
 	{
@@ -331,21 +283,6 @@ SSL_CIPHER ssl3_ciphers[]={
 	},
 
 /* The DH ciphers */
-/* Cipher 0B */
-	{
-	1,
-	SSL3_TXT_DH_DSS_DES_40_CBC_SHA,
-	SSL3_CK_DH_DSS_DES_40_CBC_SHA,
-	SSL_kDHd,
-	SSL_aDH,
-	SSL_DES,
-	SSL_SHA1,
-	SSL_SSLV3,
-	SSL_EXPORT|SSL_EXP40,
-	SSL_HANDSHAKE_MAC_DEFAULT|TLS1_PRF,
-	40,
-	56,
-	},
 
 /* Cipher 0C */
 	{
@@ -377,22 +314,6 @@ SSL_CIPHER ssl3_ciphers[]={
 	SSL_HANDSHAKE_MAC_DEFAULT|TLS1_PRF,
 	112,
 	168,
-	},
-
-/* Cipher 0E */
-	{
-	1,
-	SSL3_TXT_DH_RSA_DES_40_CBC_SHA,
-	SSL3_CK_DH_RSA_DES_40_CBC_SHA,
-	SSL_kDHr,
-	SSL_aDH,
-	SSL_DES,
-	SSL_SHA1,
-	SSL_SSLV3,
-	SSL_EXPORT|SSL_EXP40,
-	SSL_HANDSHAKE_MAC_DEFAULT|TLS1_PRF,
-	40,
-	56,
 	},
 
 /* Cipher 0F */
@@ -428,21 +349,6 @@ SSL_CIPHER ssl3_ciphers[]={
 	},
 
 /* The Ephemeral DH ciphers */
-/* Cipher 11 */
-	{
-	1,
-	SSL3_TXT_EDH_DSS_DES_40_CBC_SHA,
-	SSL3_CK_EDH_DSS_DES_40_CBC_SHA,
-	SSL_kEDH,
-	SSL_aDSS,
-	SSL_DES,
-	SSL_SHA1,
-	SSL_SSLV3,
-	SSL_EXPORT|SSL_EXP40,
-	SSL_HANDSHAKE_MAC_DEFAULT|TLS1_PRF,
-	40,
-	56,
-	},
 
 /* Cipher 12 */
 	{
@@ -474,22 +380,6 @@ SSL_CIPHER ssl3_ciphers[]={
 	SSL_HANDSHAKE_MAC_DEFAULT|TLS1_PRF,
 	112,
 	168,
-	},
-
-/* Cipher 14 */
-	{
-	1,
-	SSL3_TXT_EDH_RSA_DES_40_CBC_SHA,
-	SSL3_CK_EDH_RSA_DES_40_CBC_SHA,
-	SSL_kEDH,
-	SSL_aRSA,
-	SSL_DES,
-	SSL_SHA1,
-	SSL_SSLV3,
-	SSL_EXPORT|SSL_EXP40,
-	SSL_HANDSHAKE_MAC_DEFAULT|TLS1_PRF,
-	40,
-	56,
 	},
 
 /* Cipher 15 */
@@ -524,22 +414,6 @@ SSL_CIPHER ssl3_ciphers[]={
 	168,
 	},
 
-/* Cipher 17 */
-	{
-	1,
-	SSL3_TXT_ADH_RC4_40_MD5,
-	SSL3_CK_ADH_RC4_40_MD5,
-	SSL_kEDH,
-	SSL_aNULL,
-	SSL_RC4,
-	SSL_MD5,
-	SSL_SSLV3,
-	SSL_EXPORT|SSL_EXP40,
-	SSL_HANDSHAKE_MAC_DEFAULT|TLS1_PRF,
-	40,
-	128,
-	},
-
 /* Cipher 18 */
 	{
 	1,
@@ -553,22 +427,6 @@ SSL_CIPHER ssl3_ciphers[]={
 	SSL_NOT_EXP|SSL_MEDIUM,
 	SSL_HANDSHAKE_MAC_DEFAULT|TLS1_PRF,
 	128,
-	128,
-	},
-
-/* Cipher 19 */
-	{
-	1,
-	SSL3_TXT_ADH_DES_40_CBC_SHA,
-	SSL3_CK_ADH_DES_40_CBC_SHA,
-	SSL_kEDH,
-	SSL_aNULL,
-	SSL_DES,
-	SSL_SHA1,
-	SSL_SSLV3,
-	SSL_EXPORT|SSL_EXP40,
-	SSL_HANDSHAKE_MAC_DEFAULT|TLS1_PRF,
-	40,
 	128,
 	},
 
@@ -1040,105 +898,6 @@ SSL_CIPHER ssl3_ciphers[]={
 #endif /* OPENSSL_NO_CAMELLIA */
 
 #if TLS1_ALLOW_EXPERIMENTAL_CIPHERSUITES
-	/* New TLS Export CipherSuites from expired ID */
-#if 0
-	/* Cipher 60 */
-	{
-	1,
-	TLS1_TXT_RSA_EXPORT1024_WITH_RC4_56_MD5,
-	TLS1_CK_RSA_EXPORT1024_WITH_RC4_56_MD5,
-	SSL_kRSA,
-	SSL_aRSA,
-	SSL_RC4,
-	SSL_MD5,
-	SSL_TLSV1,
-	SSL_EXPORT|SSL_EXP56,
-	SSL_HANDSHAKE_MAC_DEFAULT|TLS1_PRF,
-	56,
-	128,
-	},
-
-	/* Cipher 61 */
-	{
-	1,
-	TLS1_TXT_RSA_EXPORT1024_WITH_RC2_CBC_56_MD5,
-	TLS1_CK_RSA_EXPORT1024_WITH_RC2_CBC_56_MD5,
-	SSL_kRSA,
-	SSL_aRSA,
-	SSL_RC2,
-	SSL_MD5,
-	SSL_TLSV1,
-	SSL_EXPORT|SSL_EXP56,
-	SSL_HANDSHAKE_MAC_DEFAULT|TLS1_PRF,
-	56,
-	128,
-	},
-#endif
-
-	/* Cipher 62 */
-	{
-	1,
-	TLS1_TXT_RSA_EXPORT1024_WITH_DES_CBC_SHA,
-	TLS1_CK_RSA_EXPORT1024_WITH_DES_CBC_SHA,
-	SSL_kRSA,
-	SSL_aRSA,
-	SSL_DES,
-	SSL_SHA1,
-	SSL_TLSV1,
-	SSL_EXPORT|SSL_EXP56,
-	SSL_HANDSHAKE_MAC_DEFAULT|TLS1_PRF,
-	56,
-	56,
-	},
-
-	/* Cipher 63 */
-	{
-	1,
-	TLS1_TXT_DHE_DSS_EXPORT1024_WITH_DES_CBC_SHA,
-	TLS1_CK_DHE_DSS_EXPORT1024_WITH_DES_CBC_SHA,
-	SSL_kEDH,
-	SSL_aDSS,
-	SSL_DES,
-	SSL_SHA1,
-	SSL_TLSV1,
-	SSL_EXPORT|SSL_EXP56,
-	SSL_HANDSHAKE_MAC_DEFAULT|TLS1_PRF,
-	56,
-	56,
-	},
-
-	/* Cipher 64 */
-	{
-	1,
-	TLS1_TXT_RSA_EXPORT1024_WITH_RC4_56_SHA,
-	TLS1_CK_RSA_EXPORT1024_WITH_RC4_56_SHA,
-	SSL_kRSA,
-	SSL_aRSA,
-	SSL_RC4,
-	SSL_SHA1,
-	SSL_TLSV1,
-	SSL_EXPORT|SSL_EXP56,
-	SSL_HANDSHAKE_MAC_DEFAULT|TLS1_PRF,
-	56,
-	128,
-	},
-
-	/* Cipher 65 */
-	{
-	1,
-	TLS1_TXT_DHE_DSS_EXPORT1024_WITH_RC4_56_SHA,
-	TLS1_CK_DHE_DSS_EXPORT1024_WITH_RC4_56_SHA,
-	SSL_kEDH,
-	SSL_aDSS,
-	SSL_RC4,
-	SSL_SHA1,
-	SSL_TLSV1,
-	SSL_EXPORT|SSL_EXP56,
-	SSL_HANDSHAKE_MAC_DEFAULT|TLS1_PRF,
-	56,
-	128,
-	},
-
 	/* Cipher 66 */
 	{
 	1,
@@ -3490,7 +3249,7 @@ SSL_CIPHER *ssl3_choose_cipher(SSL *s, STACK_OF(SSL_CIPHER) *clnt,
 	int i,ok;
 	size_t cipher_index;
 	CERT *cert;
-	unsigned long alg_k,alg_a,mask_k,mask_a,emask_k,emask_a;
+	unsigned long alg_k,alg_a,mask_k,mask_a;
 	/* in_group_flags will either be NULL, or will point to an array of
 	 * bytes which indicate equal-preference groups in the |prio| stack.
 	 * See the comment about |in_group_flags| in the
@@ -3557,8 +3316,6 @@ SSL_CIPHER *ssl3_choose_cipher(SSL *s, STACK_OF(SSL_CIPHER) *clnt,
 		ssl_set_cert_masks(cert,c);
 		mask_k = cert->mask_k;
 		mask_a = cert->mask_a;
-		emask_k = cert->export_mask_k;
-		emask_a = cert->export_mask_a;
 			
 #ifdef KSSL_DEBUG
 /*		printf("ssl3_choose_cipher %d alg= %lx\n", i,c->algorithms);*/
@@ -3571,22 +3328,11 @@ SSL_CIPHER *ssl3_choose_cipher(SSL *s, STACK_OF(SSL_CIPHER) *clnt,
 		if ((alg_a & SSL_aPSK) && s->psk_server_callback == NULL)
 			ok = 0;
 
-		if (SSL_C_IS_EXPORT(c))
-			{
-			ok = ok && (alg_k & emask_k) && (alg_a & emask_a);
+		ok = ok && (alg_k & mask_k) && (alg_a & mask_a);
 #ifdef CIPHER_DEBUG
-			printf("%d:[%08lX:%08lX:%08lX:%08lX]%p:%s (export)\n",ok,alg_k,alg_a,emask_k,emask_a,
-			       (void *)c,c->name);
+		printf("%d:[%08lX:%08lX:%08lX:%08lX]%p:%s\n",ok,alg_k,alg_a,mask_k,mask_a,(void *)c,
+		       c->name);
 #endif
-			}
-		else
-			{
-			ok = ok && (alg_k & mask_k) && (alg_a & mask_a);
-#ifdef CIPHER_DEBUG
-			printf("%d:[%08lX:%08lX:%08lX:%08lX]%p:%s\n",ok,alg_k,alg_a,mask_k,mask_a,(void *)c,
-			       c->name);
-#endif
-			}
 
 #ifndef OPENSSL_NO_EC
 		/* if we are considering an ECC cipher suite that uses

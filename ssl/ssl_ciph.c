@@ -1520,14 +1520,13 @@ err:
 
 const char *SSL_CIPHER_description(const SSL_CIPHER *cipher, char *buf, int len)
 	{
-	int is_export,pkl,kl;
-	const char *ver,*exp_str;
+	const char *ver;
 	const char *kx,*au,*enc,*mac;
 	unsigned long alg_mkey,alg_auth,alg_enc,alg_mac,alg_ssl,alg2;
 #ifdef KSSL_DEBUG
-	static const char *format="%-23s %s Kx=%-8s Au=%-4s Enc=%-9s Mac=%-4s%s AL=%lx/%lx/%lx/%lx/%lx\n";
+	static const char *format="%-23s %s Kx=%-8s Au=%-4s Enc=%-9s Mac=%-4s AL=%lx/%lx/%lx/%lx/%lx\n";
 #else
-	static const char *format="%-23s %s Kx=%-8s Au=%-4s Enc=%-9s Mac=%-4s%s\n";
+	static const char *format="%-23s %s Kx=%-8s Au=%-4s Enc=%-9s Mac=%-4s\n";
 #endif /* KSSL_DEBUG */
 
 	alg_mkey = cipher->algorithm_mkey;
@@ -1538,11 +1537,6 @@ const char *SSL_CIPHER_description(const SSL_CIPHER *cipher, char *buf, int len)
 
 	alg2=cipher->algorithm2;
 
-	is_export=SSL_C_IS_EXPORT(cipher);
-	pkl=SSL_C_EXPORT_PKEYLENGTH(cipher);
-	kl=SSL_C_EXPORT_KEYLENGTH(cipher);
-	exp_str=is_export?" export":"";
-	
 	if (alg_ssl & SSL_SSLV2)
 		ver="SSLv2";
 	else if (alg_ssl & SSL_SSLV3)
@@ -1555,7 +1549,7 @@ const char *SSL_CIPHER_description(const SSL_CIPHER *cipher, char *buf, int len)
 	switch (alg_mkey)
 		{
 	case SSL_kRSA:
-		kx=is_export?(pkl == 512 ? "RSA(512)" : "RSA(1024)"):"RSA";
+		kx="RSA";
 		break;
 	case SSL_kDHr:
 		kx="DH/RSA";
@@ -1564,7 +1558,7 @@ const char *SSL_CIPHER_description(const SSL_CIPHER *cipher, char *buf, int len)
 		kx="DH/DSS";
 		break;
 	case SSL_kEDH:
-		kx=is_export?(pkl == 512 ? "DH(512)" : "DH(1024)"):"DH";
+		kx="DH";
 		break;
 	case SSL_kECDHr:
 		kx="ECDH/RSA";
@@ -1616,17 +1610,16 @@ const char *SSL_CIPHER_description(const SSL_CIPHER *cipher, char *buf, int len)
 	switch (alg_enc)
 		{
 	case SSL_DES:
-		enc=(is_export && kl == 5)?"DES(40)":"DES(56)";
+		enc="DES(56)";
 		break;
 	case SSL_3DES:
 		enc="3DES(168)";
 		break;
 	case SSL_RC4:
-		enc=is_export?(kl == 5 ? "RC4(40)" : "RC4(56)")
-		  :((alg2&SSL2_CF_8_BYTE_ENC)?"RC4(64)":"RC4(128)");
+		enc=(alg2&SSL2_CF_8_BYTE_ENC)?"RC4(64)":"RC4(128)";
 		break;
 	case SSL_RC2:
-		enc=is_export?(kl == 5 ? "RC2(40)" : "RC2(56)"):"RC2(128)";
+		enc="RC2(128)";
 		break;
 	case SSL_IDEA:
 		enc="IDEA(128)";
@@ -1695,9 +1688,9 @@ const char *SSL_CIPHER_description(const SSL_CIPHER *cipher, char *buf, int len)
 		return("Buffer too small");
 
 #ifdef KSSL_DEBUG
-	BIO_snprintf(buf,len,format,cipher->name,ver,kx,au,enc,mac,exp_str,alg_mkey,alg_auth,alg_enc,alg_mac,alg_ssl);
+	BIO_snprintf(buf,len,format,cipher->name,ver,kx,au,enc,mac,alg_mkey,alg_auth,alg_enc,alg_mac,alg_ssl);
 #else
-	BIO_snprintf(buf,len,format,cipher->name,ver,kx,au,enc,mac,exp_str);
+	BIO_snprintf(buf,len,format,cipher->name,ver,kx,au,enc,mac);
 #endif /* KSSL_DEBUG */
 	return(buf);
 	}

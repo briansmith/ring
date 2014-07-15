@@ -412,14 +412,8 @@ static int tls1_change_cipher_state_cipher(
 	const unsigned char *iv, unsigned iv_len)
 	{
 	const EVP_CIPHER *cipher = s->s3->tmp.new_sym_enc;
-	const char is_export = SSL_C_IS_EXPORT(s->s3->tmp.new_cipher) != 0;
 	EVP_CIPHER_CTX *cipher_ctx;
 	EVP_MD_CTX *mac_ctx;
-
-	unsigned char export_tmp1[EVP_MAX_KEY_LENGTH];
-	unsigned char export_tmp2[EVP_MAX_KEY_LENGTH];
-	unsigned char export_iv1[EVP_MAX_IV_LENGTH * 2];
-	unsigned char export_iv2[EVP_MAX_IV_LENGTH * 2];
 
 	if (is_read)
 		{
@@ -465,59 +459,6 @@ static int tls1_change_cipher_state_cipher(
 		s->s3->write_mac_secret_size = mac_secret_len;
 		}
 
-	if (is_export)
-		{
-		/* In here I set both the read and write key/iv to the
-		 * same value since only the correct one will be used :-).
-		 */
-		const unsigned char *label;
-		unsigned label_len;
-
-		if (use_client_keys)
-			{
-			label = (const unsigned char*) TLS_MD_CLIENT_WRITE_KEY_CONST;
-			label_len = TLS_MD_CLIENT_WRITE_KEY_CONST_SIZE;
-			}
-		else
-			{
-			label = (const unsigned char*) TLS_MD_SERVER_WRITE_KEY_CONST;
-			label_len = TLS_MD_SERVER_WRITE_KEY_CONST_SIZE;
-			}
-
-		if (!tls1_PRF(ssl_get_algorithm2(s),
-				label, label_len,
-				s->s3->client_random, SSL3_RANDOM_SIZE,
-				s->s3->server_random, SSL3_RANDOM_SIZE,
-				NULL, 0, NULL, 0,
-				key /* secret */, key_len /* secret length */,
-				export_tmp1 /* output */,
-				export_tmp2 /* scratch space */,
-				EVP_CIPHER_key_length(s->s3->tmp.new_sym_enc) /* output length */))
-			return 0;
-		key = export_tmp1;
-
-		if (iv_len > 0)
-			{
-			static const unsigned char empty[] = "";
-
-			if (!tls1_PRF(ssl_get_algorithm2(s),
-					TLS_MD_IV_BLOCK_CONST, TLS_MD_IV_BLOCK_CONST_SIZE,
-					s->s3->client_random, SSL3_RANDOM_SIZE,
-					s->s3->server_random, SSL3_RANDOM_SIZE,
-					NULL, 0, NULL, 0,
-					empty /* secret */ ,0 /* secret length */,
-					export_iv1 /* output */,
-					export_iv2 /* scratch space */,
-					iv_len * 2 /* output length */))
-				return 0;
-
-			if (use_client_keys)
-				iv = export_iv1;
-			else
-				iv = &export_iv1[iv_len];
-			}
-		}
-
 	EVP_PKEY *mac_key =
 		EVP_PKEY_new_mac_key(s->s3->tmp.new_mac_pkey_type,
 				     NULL, mac_secret, mac_secret_len);
@@ -527,14 +468,6 @@ static int tls1_change_cipher_state_cipher(
 	EVP_PKEY_free(mac_key);
 
 	EVP_CipherInit_ex(cipher_ctx, cipher, NULL /* engine */, key, iv, !is_read);
-
-	if (is_export)
-		{
-		OPENSSL_cleanse(export_tmp1, sizeof(export_tmp1));
-		OPENSSL_cleanse(export_tmp2, sizeof(export_tmp1));
-		OPENSSL_cleanse(export_iv1, sizeof(export_iv1));
-		OPENSSL_cleanse(export_iv2, sizeof(export_iv2));
-		}
 
 	return 1;
 
@@ -561,7 +494,6 @@ int tls1_change_cipher_state(SSL *s, int which)
 	const EVP_AEAD *aead = s->s3->tmp.new_aead;
 	unsigned key_len, iv_len, mac_secret_len;
 	const unsigned char *key_data;
-	const char is_export = SSL_C_IS_EXPORT(s->s3->tmp.new_cipher) != 0;
 
 	/* Reset sequence number to zero. */
 	if (s->version != DTLS1_VERSION)
@@ -589,8 +521,6 @@ int tls1_change_cipher_state(SSL *s, int which)
 	else
 		{
 		key_len = EVP_CIPHER_key_length(cipher);
-		if (is_export && key_len > SSL_C_EXPORT_KEYLENGTH(s->s3->tmp.new_cipher))
-			key_len = SSL_C_EXPORT_KEYLENGTH(s->s3->tmp.new_cipher);
 
 		if (EVP_CIPHER_mode(cipher) == EVP_CIPH_GCM_MODE)
 			iv_len = EVP_GCM_TLS_FIXED_IV_LEN;

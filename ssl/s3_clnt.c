@@ -1499,14 +1499,6 @@ int ssl3_get_server_key_exchange(SSL *s)
 
 		group = EC_KEY_get0_group(ecdh);
 
-		if (SSL_C_IS_EXPORT(s->s3->tmp.new_cipher) &&
-		    (EC_GROUP_get_degree(group) > 163))
-			{
-			al=SSL_AD_EXPORT_RESTRICTION;
-			OPENSSL_PUT_ERROR(SSL, ssl3_get_server_key_exchange, SSL_R_ECGROUP_TOO_LARGE_FOR_CIPHER);
-			goto f_err;
-			}
-
 		/* Next, get the encoded ECPoint */
 		if (!CBS_get_u8_length_prefixed(&server_key_exchange, &point))
 			{
@@ -2866,35 +2858,6 @@ int ssl3_check_cert_and_algorithm(SSL *s)
 #endif
 #endif
 
-	if (SSL_C_IS_EXPORT(s->s3->tmp.new_cipher) && !has_bits(i,EVP_PKT_EXP))
-		{
-		if (alg_k & SSL_kRSA)
-			{
-			if (rsa == NULL
-			    || RSA_size(rsa)*8 > SSL_C_EXPORT_PKEYLENGTH(s->s3->tmp.new_cipher))
-				{
-				OPENSSL_PUT_ERROR(SSL, ssl3_send_client_key_exchange, SSL_R_MISSING_EXPORT_TMP_RSA_KEY);
-				goto f_err;
-				}
-			}
-		else
-#ifndef OPENSSL_NO_DH
-			if (alg_k & (SSL_kEDH|SSL_kDHr|SSL_kDHd))
-			    {
-			    if (dh == NULL
-				|| DH_size(dh)*8 > SSL_C_EXPORT_PKEYLENGTH(s->s3->tmp.new_cipher))
-				{
-				OPENSSL_PUT_ERROR(SSL, ssl3_send_client_key_exchange, SSL_R_MISSING_EXPORT_TMP_DH_KEY);
-				goto f_err;
-				}
-			}
-		else
-#endif
-			{
-			OPENSSL_PUT_ERROR(SSL, ssl3_send_client_key_exchange, SSL_R_UNKNOWN_KEY_EXCHANGE_TYPE);
-			goto f_err;
-			}
-		}
 	return(1);
 f_err:
 	ssl3_send_alert(s,SSL3_AL_FATAL,SSL_AD_HANDSHAKE_FAILURE);

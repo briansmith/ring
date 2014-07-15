@@ -2210,11 +2210,9 @@ void ssl_set_cert_masks(CERT *c, const SSL_CIPHER *cipher)
 	{
 	CERT_PKEY *cpk;
 	int rsa_enc,rsa_tmp,rsa_sign,dh_tmp,dh_rsa,dh_dsa,dsa_sign;
-	int rsa_enc_export,dh_rsa_export,dh_dsa_export;
-	int rsa_tmp_export,dh_tmp_export,kl;
-	unsigned long mask_k,mask_a,emask_k,emask_a;
+	unsigned long mask_k,mask_a;
 #ifndef OPENSSL_NO_ECDSA
-	int have_ecc_cert, ecdsa_ok, ecc_pkey_size;
+	int have_ecc_cert, ecdsa_ok;
 #endif
 #ifndef OPENSSL_NO_ECDH
 	int have_ecdh_tmp, ecdh_ok;
@@ -2226,17 +2224,11 @@ void ssl_set_cert_masks(CERT *c, const SSL_CIPHER *cipher)
 #endif
 	if (c == NULL) return;
 
-	kl=SSL_C_EXPORT_PKEYLENGTH(cipher);
-
 	rsa_tmp=(c->rsa_tmp != NULL || c->rsa_tmp_cb != NULL);
-	rsa_tmp_export=(c->rsa_tmp_cb != NULL ||
-		(rsa_tmp && RSA_size(c->rsa_tmp)*8 <= kl));
 #ifndef OPENSSL_NO_DH
 	dh_tmp=(c->dh_tmp != NULL || c->dh_tmp_cb != NULL);
-	dh_tmp_export=(c->dh_tmp_cb != NULL ||
-		(dh_tmp && DH_size(c->dh_tmp)*8 <= kl));
 #else
-	dh_tmp=dh_tmp_export=0;
+	dh_tmp=0;
 #endif
 
 #ifndef OPENSSL_NO_ECDH
@@ -2244,28 +2236,21 @@ void ssl_set_cert_masks(CERT *c, const SSL_CIPHER *cipher)
 #endif
 	cpk= &(c->pkeys[SSL_PKEY_RSA_ENC]);
 	rsa_enc= cpk->valid_flags & CERT_PKEY_VALID;
-	rsa_enc_export=(rsa_enc && EVP_PKEY_size(cpk->privatekey)*8 <= kl);
 	cpk= &(c->pkeys[SSL_PKEY_RSA_SIGN]);
 	rsa_sign= cpk->valid_flags & CERT_PKEY_SIGN;
 	cpk= &(c->pkeys[SSL_PKEY_DSA_SIGN]);
 	dsa_sign= cpk->valid_flags & CERT_PKEY_SIGN;
 	cpk= &(c->pkeys[SSL_PKEY_DH_RSA]);
 	dh_rsa=  cpk->valid_flags & CERT_PKEY_VALID;
-	dh_rsa_export=(dh_rsa && EVP_PKEY_size(cpk->privatekey)*8 <= kl);
 	cpk= &(c->pkeys[SSL_PKEY_DH_DSA]);
 /* FIX THIS EAY EAY EAY */
 	dh_dsa=  cpk->valid_flags & CERT_PKEY_VALID;
-	dh_dsa_export=(dh_dsa && EVP_PKEY_size(cpk->privatekey)*8 <= kl);
 	cpk= &(c->pkeys[SSL_PKEY_ECC]);
 #ifndef OPENSSL_NO_EC
 	have_ecc_cert= cpk->valid_flags & CERT_PKEY_VALID;
 #endif
 	mask_k=0;
 	mask_a=0;
-	emask_k=0;
-	emask_a=0;
-
-	
 
 #ifdef CIPHER_DEBUG
 	printf("rt=%d rte=%d dht=%d ecdht=%d re=%d ree=%d rs=%d ds=%d dhr=%d dhd=%d\n",
@@ -2275,48 +2260,35 @@ void ssl_set_cert_masks(CERT *c, const SSL_CIPHER *cipher)
 	
 	if (rsa_enc || (rsa_tmp && rsa_sign))
 		mask_k|=SSL_kRSA;
-	if (rsa_enc_export || (rsa_tmp_export && (rsa_sign || rsa_enc)))
-		emask_k|=SSL_kRSA;
 
 #if 0
 	/* The match needs to be both kEDH and aRSA or aDSA, so don't worry */
 	if (	(dh_tmp || dh_rsa || dh_dsa) &&
 		(rsa_enc || rsa_sign || dsa_sign))
 		mask_k|=SSL_kEDH;
-	if ((dh_tmp_export || dh_rsa_export || dh_dsa_export) &&
-		(rsa_enc || rsa_sign || dsa_sign))
-		emask_k|=SSL_kEDH;
 #endif
-
-	if (dh_tmp_export)
-		emask_k|=SSL_kEDH;
 
 	if (dh_tmp)
 		mask_k|=SSL_kEDH;
 
 	if (dh_rsa) mask_k|=SSL_kDHr;
-	if (dh_rsa_export) emask_k|=SSL_kDHr;
 
 	if (dh_dsa) mask_k|=SSL_kDHd;
-	if (dh_dsa_export) emask_k|=SSL_kDHd;
 
-	if (emask_k & (SSL_kDHr|SSL_kDHd))
+	if (mask_k & (SSL_kDHr|SSL_kDHd))
 		mask_a |= SSL_aDH;
 
 	if (rsa_enc || rsa_sign)
 		{
 		mask_a|=SSL_aRSA;
-		emask_a|=SSL_aRSA;
 		}
 
 	if (dsa_sign)
 		{
 		mask_a|=SSL_aDSS;
-		emask_a|=SSL_aDSS;
 		}
 
 	mask_a|=SSL_aNULL;
-	emask_a|=SSL_aNULL;
 
 	/* An ECC certificate may be usable for ECDH and/or
 	 * ECDSA cipher suites depending on the key usage extension.
@@ -2335,8 +2307,6 @@ void ssl_set_cert_masks(CERT *c, const SSL_CIPHER *cipher)
 		if (!(cpk->valid_flags & CERT_PKEY_SIGN))
 			ecdsa_ok = 0;
 		ecc_pkey = X509_get_pubkey(x);
-		ecc_pkey_size = (ecc_pkey != NULL) ?
-		    EVP_PKEY_bits(ecc_pkey) : 0;
 		EVP_PKEY_free(ecc_pkey);
 		if ((x->sig_alg) && (x->sig_alg->algorithm))
 			{
@@ -2351,22 +2321,12 @@ void ssl_set_cert_masks(CERT *c, const SSL_CIPHER *cipher)
 				{
 				mask_k|=SSL_kECDHr;
 				mask_a|=SSL_aECDH;
-				if (ecc_pkey_size <= 163)
-					{
-					emask_k|=SSL_kECDHr;
-					emask_a|=SSL_aECDH;
-					}
 				}
 
 			if (pk_nid == NID_X9_62_id_ecPublicKey)
 				{
 				mask_k|=SSL_kECDHe;
 				mask_a|=SSL_aECDH;
-				if (ecc_pkey_size <= 163)
-					{
-					emask_k|=SSL_kECDHe;
-					emask_a|=SSL_aECDH;
-					}
 				}
 			}
 #endif
@@ -2374,7 +2334,6 @@ void ssl_set_cert_masks(CERT *c, const SSL_CIPHER *cipher)
 		if (ecdsa_ok)
 			{
 			mask_a|=SSL_aECDSA;
-			emask_a|=SSL_aECDSA;
 			}
 #endif
 		}
@@ -2384,19 +2343,14 @@ void ssl_set_cert_masks(CERT *c, const SSL_CIPHER *cipher)
 	if (have_ecdh_tmp)
 		{
 		mask_k|=SSL_kEECDH;
-		emask_k|=SSL_kEECDH;
 		}
 #endif
 
 	mask_k |= SSL_kPSK;
 	mask_a |= SSL_aPSK;
-	emask_k |= SSL_kPSK;
-	emask_a |= SSL_aPSK;
 
 	c->mask_k=mask_k;
 	c->mask_a=mask_a;
-	c->export_mask_k=emask_k;
-	c->export_mask_a=emask_a;
 	c->valid=1;
 	}
 
@@ -2409,23 +2363,11 @@ void ssl_set_cert_masks(CERT *c, const SSL_CIPHER *cipher)
 int ssl_check_srvr_ecc_cert_and_alg(X509 *x, SSL *s)
 	{
 	unsigned long alg_k, alg_a;
-	EVP_PKEY *pkey = NULL;
-	int keysize = 0;
 	int signature_nid = 0, md_nid = 0, pk_nid = 0;
 	const SSL_CIPHER *cs = s->s3->tmp.new_cipher;
 
 	alg_k = cs->algorithm_mkey;
 	alg_a = cs->algorithm_auth;
-
-	if (SSL_C_IS_EXPORT(cs))
-		{
-		/* ECDH key length in export ciphers must be <= 163 bits */
-		pkey = X509_get_pubkey(x);
-		if (pkey == NULL) return 0;
-		keysize = EVP_PKEY_bits(pkey);
-		EVP_PKEY_free(pkey);
-		if (keysize > 163) return 0;
-		}
 
 	/* This call populates the ex_flags field correctly */
 	X509_check_purpose(x, -1, 0);

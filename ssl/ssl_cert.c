@@ -207,8 +207,6 @@ CERT *ssl_cert_dup(CERT *cert)
 	ret->valid = cert->valid;
 	ret->mask_k = cert->mask_k;
 	ret->mask_a = cert->mask_a;
-	ret->export_mask_k = cert->export_mask_k;
-	ret->export_mask_a = cert->export_mask_a;
 
 	if (cert->rsa_tmp != NULL)
 		{
