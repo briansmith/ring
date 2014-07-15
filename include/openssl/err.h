@@ -324,6 +324,9 @@ struct err_error_st {
 /* ERR_FLAG_STRING means that the |data| member is a NUL-terminated string that
  * can be printed. */
 #define ERR_FLAG_STRING 2
+/* ERR_TXT_STRING is provided for compatibility with code that assumes that
+ * it's using OpenSSL. */
+#define ERR_TXT_STRING ERR_FLAG_STRING
 
 /* ERR_FLAG_PUBLIC_MASK is applied to the flags field before it is returned
  * from functions like |ERR_get_error_line_data|. */
