@@ -214,7 +214,6 @@ extern "C" {
 #define SSL_TXT_kECDH		"kECDH"
 #define SSL_TXT_kEECDH		"kEECDH"
 #define SSL_TXT_kPSK            "kPSK"
-#define SSL_TXT_kGOST		"kGOST"
 #define SSL_TXT_kSRP		"kSRP"
 
 #define	SSL_TXT_aRSA		"aRSA"
@@ -223,9 +222,6 @@ extern "C" {
 #define	SSL_TXT_aECDH		"aECDH"
 #define SSL_TXT_aECDSA		"aECDSA"
 #define SSL_TXT_aPSK            "aPSK"
-#define SSL_TXT_aGOST94	"aGOST94"
-#define SSL_TXT_aGOST01 "aGOST01"
-#define SSL_TXT_aGOST  "aGOST"
 
 #define	SSL_TXT_DSS		"DSS"
 #define SSL_TXT_DH		"DH"
@@ -257,8 +253,6 @@ extern "C" {
 #define SSL_TXT_MD5		"MD5"
 #define SSL_TXT_SHA1		"SHA1"
 #define SSL_TXT_SHA		"SHA" /* same as "SHA1" */
-#define SSL_TXT_GOST94		"GOST94" 
-#define SSL_TXT_GOST89MAC		"GOST89MAC" 
 #define SSL_TXT_SHA256		"SHA256"
 #define SSL_TXT_SHA384		"SHA384"
 
@@ -1249,9 +1243,6 @@ const char *SSL_get_psk_identity(const SSL *s);
 #define SSL_want_session(s)	(SSL_want(s) == SSL_PENDING_SESSION)
 #define SSL_want_certificate(s)	(SSL_want(s) == SSL_CERTIFICATE_SELECTION_PENDING)
 
-#define SSL_MAC_FLAG_READ_MAC_STREAM 1
-#define SSL_MAC_FLAG_WRITE_MAC_STREAM 2
-
 #ifndef OPENSSL_NO_SSL_INTERN
 
 struct ssl_st
@@ -1342,7 +1333,6 @@ struct ssl_st
 
 	/* These are the ones being used, the ones in SSL_SESSION are
 	 * the ones to be 'copied' into these ones */
-	int mac_flags; 
 	SSL_AEAD_CTX *aead_read_ctx;	/* AEAD context. If non-NULL, then
 					   |enc_read_ctx| and |read_hash| are
 					   ignored. */

@@ -2520,11 +2520,6 @@ int ssl3_get_client_key_exchange(SSL *s)
 		premaster_secret_len = ecdh_len;
 		}
 #endif
-	else if (alg_k & SSL_kGOST) 
-		{
-		OPENSSL_PUT_ERROR(SSL, ssl3_get_client_key_exchange, SSL_R_GOST_NOT_SUPPORTED);
-		goto err;
-		}
 #ifndef OPENSSL_NO_PSK
 	else if (alg_k & SSL_kPSK)
 		{

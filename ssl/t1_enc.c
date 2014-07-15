@@ -423,11 +423,6 @@ static int tls1_change_cipher_state_cipher(
 
 	if (is_read)
 		{
-		if (s->s3->tmp.new_cipher->algorithm2 & TLS1_STREAM_MAC)
-			s->mac_flags |= SSL_MAC_FLAG_READ_MAC_STREAM;
-		else
-			s->mac_flags &= ~SSL_MAC_FLAG_READ_MAC_STREAM;
-
 		if (s->enc_read_ctx != NULL && !SSL_IS_DTLS(s))
 			EVP_CIPHER_CTX_cleanup(s->enc_read_ctx);
 		else if ((s->enc_read_ctx=EVP_CIPHER_CTX_new()) == NULL)
@@ -441,11 +436,6 @@ static int tls1_change_cipher_state_cipher(
 		}
 	else
 		{
-		if (s->s3->tmp.new_cipher->algorithm2 & TLS1_STREAM_MAC)
-			s->mac_flags |= SSL_MAC_FLAG_WRITE_MAC_STREAM;
-		else
-			s->mac_flags &= ~SSL_MAC_FLAG_WRITE_MAC_STREAM;
-
 		/* When updating the write contexts for DTLS, we do not wish to
 		 * free the old ones because DTLS stores pointers to them in
 		 * order to implement retransmission. */
@@ -1182,7 +1172,6 @@ int tls1_mac(SSL *ssl, unsigned char *md, int send)
 	int i;
 	EVP_MD_CTX hmac, *mac_ctx;
 	unsigned char header[13];
-	int stream_mac = (send?(ssl->mac_flags & SSL_MAC_FLAG_WRITE_MAC_STREAM):(ssl->mac_flags&SSL_MAC_FLAG_READ_MAC_STREAM));
 	int t;
 
 	if (send)
@@ -1202,17 +1191,9 @@ int tls1_mac(SSL *ssl, unsigned char *md, int send)
 	assert(t >= 0);
 	md_size=t;
 
-	/* I should fix this up TLS TLS TLS TLS TLS XXXXXXXX */
-	if (stream_mac) 
-		{
-			mac_ctx = hash;
-		}
-		else
-		{
-			if (!EVP_MD_CTX_copy(&hmac,hash))
-				return -1;
-			mac_ctx = &hmac;
-		}
+	if (!EVP_MD_CTX_copy(&hmac,hash))
+		return -1;
+	mac_ctx = &hmac;
 
 	if (SSL_IS_DTLS(ssl))
 		{
@@ -1261,18 +1242,7 @@ int tls1_mac(SSL *ssl, unsigned char *md, int send)
 		assert(t > 0);
 		}
 		
-	if (!stream_mac)
-		EVP_MD_CTX_cleanup(&hmac);
-#ifdef TLS_DEBUG
-printf("sec=");
-{unsigned int z; for (z=0; z<md_size; z++) printf("%02X ",mac_sec[z]); printf("\n"); }
-printf("seq=");
-{int z; for (z=0; z<8; z++) printf("%02X ",seq[z]); printf("\n"); }
-printf("buf=");
-{int z; for (z=0; z<5; z++) printf("%02X ",buf[z]); printf("\n"); }
-printf("rec=");
-{unsigned int z; for (z=0; z<rec->length; z++) printf("%02X ",buf[z]); printf("\n"); }
-#endif
+	EVP_MD_CTX_cleanup(&hmac);
 
 	if (!SSL_IS_DTLS(ssl))
 		{
@@ -1283,9 +1253,6 @@ printf("rec=");
 			}
 		}
 
-#ifdef TLS_DEBUG
-{unsigned int z; for (z=0; z<md_size; z++) printf("%02X ",md[z]); printf("\n"); }
-#endif
 	return(md_size);
 	}
 

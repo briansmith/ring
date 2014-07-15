@@ -2496,11 +2496,6 @@ int ssl3_send_client_key_exchange(SSL *s)
 			EVP_PKEY_free(srvr_pub_pkey);
 			}
 #endif /* !OPENSSL_NO_ECDH */
-		else if (alg_k & SSL_kGOST)
-			{
-			OPENSSL_PUT_ERROR(SSL, ssl3_send_client_key_exchange, SSL_R_GOST_NOT_SUPPORTED);
-			goto err;
-			}
 		else if (!(alg_k & SSL_kPSK) || ((alg_k & SSL_kPSK) && !(alg_a & SSL_aPSK)))
 			{
 			ssl3_send_alert(s, SSL3_AL_FATAL,

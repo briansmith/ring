@@ -157,16 +157,13 @@
 #define SSL_ENC_AES256_IDX	7
 #define SSL_ENC_CAMELLIA128_IDX	8
 #define SSL_ENC_CAMELLIA256_IDX	9
-#define SSL_ENC_GOST89_IDX	10
-#define SSL_ENC_SEED_IDX    	11
-#define SSL_ENC_AES128GCM_IDX	12
-#define SSL_ENC_AES256GCM_IDX	13
-#define SSL_ENC_NUM_IDX		14
+#define SSL_ENC_SEED_IDX    	10
+#define SSL_ENC_AES128GCM_IDX	11
+#define SSL_ENC_AES256GCM_IDX	12
+#define SSL_ENC_NUM_IDX		13
 
 
-static const EVP_CIPHER *ssl_cipher_methods[SSL_ENC_NUM_IDX]={
-	NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL
-	};
+static const EVP_CIPHER *ssl_cipher_methods[SSL_ENC_NUM_IDX]= { 0 };
 
 #define SSL_COMP_NULL_IDX	0
 #define SSL_COMP_ZLIB_IDX	1
@@ -174,34 +171,22 @@ static const EVP_CIPHER *ssl_cipher_methods[SSL_ENC_NUM_IDX]={
 
 #define SSL_MD_MD5_IDX	0
 #define SSL_MD_SHA1_IDX	1
-#define SSL_MD_GOST94_IDX 2
-#define SSL_MD_GOST89MAC_IDX 3
-#define SSL_MD_SHA256_IDX 4
-#define SSL_MD_SHA384_IDX 5
+#define SSL_MD_SHA256_IDX 2
+#define SSL_MD_SHA384_IDX 3
 /*Constant SSL_MAX_DIGEST equal to size of digests array should be 
  * defined in the
  * ssl_locl.h */
 #define SSL_MD_NUM_IDX	SSL_MAX_DIGEST 
-static const EVP_MD *ssl_digest_methods[SSL_MD_NUM_IDX]={
-	NULL,NULL,NULL,NULL,NULL,NULL
-	};
-/* PKEY_TYPE for GOST89MAC is known in advance, but, because
- * implementation is engine-provided, we'll fill it only if
- * corresponding EVP_PKEY_METHOD is found 
- */
+static const EVP_MD *ssl_digest_methods[SSL_MD_NUM_IDX] = { 0 };
 static int  ssl_mac_pkey_id[SSL_MD_NUM_IDX]={
-	EVP_PKEY_HMAC,EVP_PKEY_HMAC,EVP_PKEY_HMAC,NID_undef,
-	EVP_PKEY_HMAC,EVP_PKEY_HMAC
+	EVP_PKEY_HMAC, EVP_PKEY_HMAC, EVP_PKEY_HMAC, EVP_PKEY_HMAC,
 	};
 
-static int ssl_mac_secret_size[SSL_MD_NUM_IDX]={
-	0,0,0,0,0,0
-	};
+static int ssl_mac_secret_size[SSL_MD_NUM_IDX] = { 0 };
 
 static int ssl_handshake_digest_flag[SSL_MD_NUM_IDX]={
-	SSL_HANDSHAKE_MAC_MD5,SSL_HANDSHAKE_MAC_SHA,
-	SSL_HANDSHAKE_MAC_GOST94, 0, SSL_HANDSHAKE_MAC_SHA256,
-	SSL_HANDSHAKE_MAC_SHA384
+	SSL_HANDSHAKE_MAC_MD5, SSL_HANDSHAKE_MAC_SHA,
+	SSL_HANDSHAKE_MAC_SHA256, SSL_HANDSHAKE_MAC_SHA384,
 	};
 
 #define CIPHER_ADD	1
@@ -248,7 +233,6 @@ static const SSL_CIPHER cipher_aliases[]={
 
         {0,SSL_TXT_kPSK,0,    SSL_kPSK,  0,0,0,0,0,0,0,0},
 	{0,SSL_TXT_kSRP,0,    SSL_kSRP,  0,0,0,0,0,0,0,0},
-	{0,SSL_TXT_kGOST,0, SSL_kGOST,0,0,0,0,0,0,0,0},
 
 	/* server authentication aliases */
 	{0,SSL_TXT_aRSA,0,    0,SSL_aRSA,  0,0,0,0,0,0,0},
@@ -260,9 +244,6 @@ static const SSL_CIPHER cipher_aliases[]={
 	{0,SSL_TXT_aECDSA,0,  0,SSL_aECDSA,0,0,0,0,0,0,0},
 	{0,SSL_TXT_ECDSA,0,   0,SSL_aECDSA, 0,0,0,0,0,0,0},
         {0,SSL_TXT_aPSK,0,    0,SSL_aPSK,  0,0,0,0,0,0,0},
-	{0,SSL_TXT_aGOST94,0,0,SSL_aGOST94,0,0,0,0,0,0,0},
-	{0,SSL_TXT_aGOST01,0,0,SSL_aGOST01,0,0,0,0,0,0,0},
-	{0,SSL_TXT_aGOST,0,0,SSL_aGOST94|SSL_aGOST01,0,0,0,0,0,0,0},
 
 	/* aliases combining key exchange and server authentication */
 	{0,SSL_TXT_EDH,0,     SSL_kEDH,~SSL_aNULL,0,0,0,0,0,0,0},
@@ -296,8 +277,6 @@ static const SSL_CIPHER cipher_aliases[]={
 	{0,SSL_TXT_MD5,0,     0,0,0,SSL_MD5,   0,0,0,0,0},
 	{0,SSL_TXT_SHA1,0,    0,0,0,SSL_SHA1,  0,0,0,0,0},
 	{0,SSL_TXT_SHA,0,     0,0,0,SSL_SHA1,  0,0,0,0,0},
-	{0,SSL_TXT_GOST94,0,     0,0,0,SSL_GOST94,  0,0,0,0,0},
-	{0,SSL_TXT_GOST89MAC,0,     0,0,0,SSL_GOST89MAC,  0,0,0,0,0},
 	{0,SSL_TXT_SHA256,0,    0,0,0,SSL_SHA256,  0,0,0,0,0},
 	{0,SSL_TXT_SHA384,0,    0,0,0,SSL_SHA384,  0,0,0,0,0},
 
@@ -431,9 +410,6 @@ int ssl_cipher_get_evp(const SSL_SESSION *s, const EVP_CIPHER **enc,
 	case SSL_CAMELLIA256:
 		i=SSL_ENC_CAMELLIA256_IDX;
 		break;
-	case SSL_eGOST2814789CNT:
-		i=SSL_ENC_GOST89_IDX;
-		break;
 	case SSL_SEED:
 		i=SSL_ENC_SEED_IDX;
 		break;
@@ -511,12 +487,6 @@ int ssl_cipher_get_mac(const SSL_SESSION *s, const EVP_MD **md, int *mac_pkey_ty
 		break;
 	case SSL_SHA384:
 		i=SSL_MD_SHA384_IDX;
-		break;
-	case SSL_GOST94:
-		i = SSL_MD_GOST94_IDX;
-		break;
-	case SSL_GOST89MAC:
-		i = SSL_MD_GOST89MAC_IDX;
 		break;
 	default:
 		i= -1;
@@ -631,15 +601,12 @@ static void ssl_cipher_get_disabled(unsigned long *mkey, unsigned long *auth, un
 	*enc |= (ssl_cipher_methods[SSL_ENC_AES256GCM_IDX] == NULL) ? SSL_AES256GCM:0;
 	*enc |= (ssl_cipher_methods[SSL_ENC_CAMELLIA128_IDX] == NULL) ? SSL_CAMELLIA128:0;
 	*enc |= (ssl_cipher_methods[SSL_ENC_CAMELLIA256_IDX] == NULL) ? SSL_CAMELLIA256:0;
-	*enc |= (ssl_cipher_methods[SSL_ENC_GOST89_IDX] == NULL) ? SSL_eGOST2814789CNT:0;
 	*enc |= (ssl_cipher_methods[SSL_ENC_SEED_IDX] == NULL) ? SSL_SEED:0;
 
 	*mac |= (ssl_digest_methods[SSL_MD_MD5_IDX ] == NULL) ? SSL_MD5 :0;
 	*mac |= (ssl_digest_methods[SSL_MD_SHA1_IDX] == NULL) ? SSL_SHA1:0;
 	*mac |= (ssl_digest_methods[SSL_MD_SHA256_IDX] == NULL) ? SSL_SHA256:0;
 	*mac |= (ssl_digest_methods[SSL_MD_SHA384_IDX] == NULL) ? SSL_SHA384:0;
-	*mac |= (ssl_digest_methods[SSL_MD_GOST94_IDX] == NULL) ? SSL_GOST94:0;
-	*mac |= (ssl_digest_methods[SSL_MD_GOST89MAC_IDX] == NULL || ssl_mac_pkey_id[SSL_MD_GOST89MAC_IDX]==NID_undef)? SSL_GOST89MAC:0;
 
 	}
 
@@ -1847,10 +1814,6 @@ int ssl_cipher_get_cert_index(const SSL_CIPHER *c)
 		return SSL_PKEY_DSA_SIGN;
 	else if (alg_a & SSL_aRSA)
 		return SSL_PKEY_RSA_ENC;
-	else if (alg_a & SSL_aGOST94) 
-		return SSL_PKEY_GOST94;
-	else if (alg_a & SSL_aGOST01)
-		return SSL_PKEY_GOST01;
 	return -1;
 	}
 

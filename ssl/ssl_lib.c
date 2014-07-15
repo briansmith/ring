@@ -2281,17 +2281,6 @@ void ssl_set_cert_masks(CERT *c, const SSL_CIPHER *cipher)
 		rsa_enc,rsa_enc_export,rsa_sign,dsa_sign,dh_rsa,dh_dsa);
 #endif
 	
-	cpk = &(c->pkeys[SSL_PKEY_GOST01]);
-	if (cpk->x509 != NULL && cpk->privatekey !=NULL) {
-		mask_k |= SSL_kGOST;
-		mask_a |= SSL_aGOST01;
-	}
-	cpk = &(c->pkeys[SSL_PKEY_GOST94]);
-	if (cpk->x509 != NULL && cpk->privatekey !=NULL) {
-		mask_k |= SSL_kGOST;
-		mask_a |= SSL_aGOST94;
-	}
-
 	if (rsa_enc || (rsa_tmp && rsa_sign))
 		mask_k|=SSL_kRSA;
 	if (rsa_enc_export || (rsa_tmp_export && (rsa_sign || rsa_enc)))
