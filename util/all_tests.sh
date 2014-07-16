@@ -37,6 +37,7 @@ TESTS="
 ./crypto/x509v3/tab_test
 ./crypto/x509v3/v3name_test
 ./crypto/bytestring/bytestring_test
+./ssl/ssl_test
 "
 
 IFS=$'\n'

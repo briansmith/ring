@@ -28,6 +28,11 @@ import (
 	"unicode"
 )
 
+// ssl.h reserves values 1000 and above for error codes corresponding to
+// alerts. If automatically assigned reason codes exceed this value, this script
+// will error. This must be kept in sync with SSL_AD_REASON_OFFSET in ssl.h.
+const reservedReasonCode = 1000
+
 var resetFlag *bool = flag.Bool("reset", false, "If true, ignore current assignments and reassign from scratch")
 
 func makeErrors(reset bool) error {
@@ -59,7 +64,14 @@ func makeErrors(reset bool) error {
 	if reset {
 		err = nil
 		functions = make(map[string]int)
-		reasons = make(map[string]int)
+		// Retain any reason codes above reservedReasonCode.
+		newReasons := make(map[string]int)
+		for key, value := range reasons {
+			if value >= reservedReasonCode {
+				newReasons[key] = value
+			}
+		}
+		reasons = newReasons
 	}
 
 	if err != nil {
@@ -87,8 +99,8 @@ func makeErrors(reset bool) error {
 		}
 	}
 
-	assignNewValues(functions)
-	assignNewValues(reasons)
+	assignNewValues(functions, -1)
+	assignNewValues(reasons, reservedReasonCode)
 
 	headerFile, err = os.Open(headerPath)
 	if err != nil {
@@ -294,10 +306,13 @@ func outputStrings(w io.Writer, lib string, ty int, assignments map[string]int) 
 	}
 }
 
-func assignNewValues(assignments map[string]int) {
+func assignNewValues(assignments map[string]int, reserved int) {
 	max := 99
 
 	for _, value := range assignments {
+		if reserved >= 0 && value >= reserved {
+			continue
+		}
 		if value > max {
 			max = value
 		}
@@ -307,6 +322,11 @@ func assignNewValues(assignments map[string]int) {
 
 	for key, value := range assignments {
 		if value == -1 {
+			if reserved >= 0 && max >= reserved {
+				// If this happens, try passing
+				// -reset. Otherwise bump up reservedReasonCode.
+				panic("Automatically-assigned values exceeded limit!")
+			}
 			assignments[key] = max
 			max++
 		}
