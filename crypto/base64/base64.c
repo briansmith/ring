@@ -121,7 +121,7 @@ void EVP_EncodeUpdate(EVP_ENCODE_CTX *ctx, uint8_t *out, int *out_len,
 
   assert(ctx->length <= sizeof(ctx->enc_data));
 
-  if ((ctx->num + in_len) < ctx->length) {
+  if (ctx->num + in_len < ctx->length) {
     memcpy(&ctx->enc_data[ctx->num], in, in_len);
     ctx->num += in_len;
     return;
@@ -167,26 +167,28 @@ void EVP_EncodeFinal(EVP_ENCODE_CTX *ctx, uint8_t *out, int *out_len) {
 }
 
 size_t EVP_EncodeBlock(uint8_t *dst, const uint8_t *src, size_t src_len) {
-  unsigned long l;
-  size_t i, ret = 0;
+  uint32_t l;
+  size_t remaining = src_len, ret = 0;
 
-  for (i = src_len; i > 0; i -= 3) {
-    if (i >= 3) {
-      l = (((unsigned long)src[0]) << 16L) | (((unsigned long)src[1]) << 8L) | src[2];
+  while (remaining) {
+    if (remaining >= 3) {
+      l = (((uint32_t)src[0]) << 16L) | (((uint32_t)src[1]) << 8L) | src[2];
       *(dst++) = conv_bin2ascii(l >> 18L);
       *(dst++) = conv_bin2ascii(l >> 12L);
       *(dst++) = conv_bin2ascii(l >> 6L);
       *(dst++) = conv_bin2ascii(l);
+      remaining -= 3;
     } else {
-      l = ((unsigned long)src[0]) << 16L;
-      if (i == 2) {
-        l |= ((unsigned long)src[1] << 8L);
+      l = ((uint32_t)src[0]) << 16L;
+      if (remaining == 2) {
+        l |= ((uint32_t)src[1] << 8L);
       }
 
       *(dst++) = conv_bin2ascii(l >> 18L);
       *(dst++) = conv_bin2ascii(l >> 12L);
-      *(dst++) = (i == 1) ? '=' : conv_bin2ascii(l >> 6L);
+      *(dst++) = (remaining == 1) ? '=' : conv_bin2ascii(l >> 6L);
       *(dst++) = '=';
+      remaining = 0;
     }
     ret += 4;
     src += 3;
@@ -357,7 +359,7 @@ int EVP_DecodeFinal(EVP_ENCODE_CTX *ctx, uint8_t *out, int *outl) {
 
 size_t EVP_DecodeBlock(uint8_t *dst, const uint8_t *src, size_t src_len) {
   int a, b, c, d;
-  unsigned long l;
+  uint32_t l;
   size_t i, ret = 0;
 
   /* trim white space from the start of the line. */
@@ -384,8 +386,8 @@ size_t EVP_DecodeBlock(uint8_t *dst, const uint8_t *src, size_t src_len) {
     if ((a & 0x80) || (b & 0x80) || (c & 0x80) || (d & 0x80)) {
       return -1;
     }
-    l = ((((unsigned long)a) << 18L) | (((unsigned long)b) << 12L) |
-         (((unsigned long)c) << 6L) | (((unsigned long)d)));
+    l = ((((uint32_t)a) << 18L) | (((uint32_t)b) << 12L) |
+         (((uint32_t)c) << 6L) | (((uint32_t)d)));
     *(dst++) = (uint8_t)(l >> 16L) & 0xff;
     *(dst++) = (uint8_t)(l >> 8L) & 0xff;
     *(dst++) = (uint8_t)(l) & 0xff;
