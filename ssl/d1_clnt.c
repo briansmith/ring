@@ -454,12 +454,6 @@ int dtls1_connect(SSL *s)
 			if (s->hit)
 				{
 				s->s3->tmp.next_state=SSL_ST_OK;
-				if (s->s3->flags & SSL3_FLAGS_DELAY_CLIENT_FINISHED)
-					{
-					s->state=SSL_ST_OK;
-					s->s3->flags|=SSL3_FLAGS_POP_BUFFER;
-					s->s3->delay_buf_pop_ret=0;
-					}
 				}
 			else
 				{
