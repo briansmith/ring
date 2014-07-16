@@ -2150,7 +2150,7 @@ static int ssl_scan_clienthello_tlsext(SSL *s, CBS *cbs, int *out_alert)
 			/* Extension consists of a responder_id_list and
 			 * request_extensions. */
 			if (!CBS_get_u16_length_prefixed(&extension, &responder_id_list) ||
-				CBS_get_u16_length_prefixed(&extension, &request_extensions) ||
+				!CBS_get_u16_length_prefixed(&extension, &request_extensions) ||
 				CBS_len(&extension) != 0)
 				{
 				*out_alert = SSL_AD_DECODE_ERROR;
