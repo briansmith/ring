@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"crypto/x509"
 	"flag"
 	"fmt"
 	"io"
@@ -530,6 +531,15 @@ func addCBCPaddingTests() {
 }
 
 func addClientAuthTests() {
+	// Add a dummy cert pool to stress certificate authority parsing.
+	// TODO(davidben): Add tests that those values parse out correctly.
+	certPool := x509.NewCertPool()
+	cert, err := x509.ParseCertificate(rsaCertificate.Certificate[0])
+	if err != nil {
+		panic(err)
+	}
+	certPool.AddCert(cert)
+
 	for _, ver := range tlsVersions {
 		if ver.version == VersionSSL30 {
 			// TODO(davidben): The Go implementation does not
@@ -553,6 +563,7 @@ func addClientAuthTests() {
 				MaxVersion:   ver.version,
 				CipherSuites: cipherSuites,
 				ClientAuth:   RequireAnyClientCert,
+				ClientCAs:    certPool,
 			},
 			flags: []string{
 				"-cert-file", rsaCertificateFile,
@@ -567,6 +578,7 @@ func addClientAuthTests() {
 				MaxVersion:   ver.version,
 				CipherSuites: cipherSuites,
 				ClientAuth:   RequireAnyClientCert,
+				ClientCAs:    certPool,
 			},
 			flags: []string{
 				"-cert-file", ecdsaCertificateFile,
