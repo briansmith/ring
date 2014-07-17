@@ -70,7 +70,13 @@ int RSA_padding_add_PKCS1_type_1(uint8_t *to, unsigned tlen,
   unsigned j;
   uint8_t *p;
 
-  if (flen > (tlen - RSA_PKCS1_PADDING_SIZE)) {
+  if (tlen < RSA_PKCS1_PADDING_SIZE) {
+    OPENSSL_PUT_ERROR(RSA, RSA_padding_add_PKCS1_type_1,
+                      RSA_R_KEY_SIZE_TOO_SMALL);
+    return 0;
+  }
+
+  if (flen > tlen - RSA_PKCS1_PADDING_SIZE) {
     OPENSSL_PUT_ERROR(RSA, RSA_padding_add_PKCS1_type_1,
                       RSA_R_DATA_TOO_LARGE_FOR_KEY_SIZE);
     return 0;
@@ -95,9 +101,9 @@ int RSA_padding_check_PKCS1_type_1(uint8_t *to, unsigned tlen,
   unsigned i, j;
   const uint8_t *p;
 
-  if (flen == 0) {
+  if (flen < 2) {
     OPENSSL_PUT_ERROR(RSA, RSA_padding_check_PKCS1_type_1,
-                      RSA_R_EMPTY_PUBLIC_KEY);
+                      RSA_R_DATA_TOO_SMALL);
     return -1;
   }
 
@@ -111,8 +117,8 @@ int RSA_padding_check_PKCS1_type_1(uint8_t *to, unsigned tlen,
   /* scan over padding data */
   j = flen - 2; /* one for leading 00, one for type. */
   for (i = 0; i < j; i++) {
-    if (*p != 0xff) /* should decrypt to 0xff */
-    {
+    /* should decrypt to 0xff */
+    if (*p != 0xff) {
       if (*p == 0) {
         p++;
         break;
@@ -153,7 +159,13 @@ int RSA_padding_add_PKCS1_type_2(uint8_t *to, unsigned tlen,
   unsigned i, j;
   uint8_t *p;
 
-  if (flen > (tlen - 11)) {
+  if (tlen < RSA_PKCS1_PADDING_SIZE) {
+    OPENSSL_PUT_ERROR(RSA, RSA_padding_add_PKCS1_type_2,
+                      RSA_R_KEY_SIZE_TOO_SMALL);
+    return 0;
+  }
+
+  if (flen > tlen - RSA_PKCS1_PADDING_SIZE) {
     OPENSSL_PUT_ERROR(RSA, RSA_padding_add_PKCS1_type_2,
                       RSA_R_DATA_TOO_LARGE_FOR_KEY_SIZE);
     return 0;
@@ -172,12 +184,10 @@ int RSA_padding_add_PKCS1_type_2(uint8_t *to, unsigned tlen,
   }
 
   for (i = 0; i < j; i++) {
-    if (*p == 0) {
-      do {
-        if (RAND_pseudo_bytes(p, 1) <= 0) {
-          return 0;
-        }
-      } while (*p == 0);
+    while (*p == 0) {
+      if (RAND_pseudo_bytes(p, 1) <= 0) {
+        return 0;
+      }
     }
     p++;
   }
@@ -226,7 +236,7 @@ int RSA_padding_check_PKCS1_type_2(uint8_t *to, unsigned tlen,
   /* PKCS#1 v1.5 decryption. See "PKCS #1 v2.2: RSA Cryptography
    * Standard", section 7.2.2. */
 
-  if (flen < 11) {
+  if (flen < RSA_PKCS1_PADDING_SIZE) {
     goto err;
   }
 
@@ -296,7 +306,13 @@ int RSA_padding_add_SSLv23(uint8_t *to, unsigned tlen, const uint8_t *from,
   unsigned i, j;
   uint8_t *p;
 
-  if (flen > (tlen - 11)) {
+  if (tlen < RSA_PKCS1_PADDING_SIZE) {
+    OPENSSL_PUT_ERROR(RSA, RSA_padding_add_PKCS1_type_2,
+                      RSA_R_KEY_SIZE_TOO_SMALL);
+    return 0;
+  }
+
+  if (flen > tlen - RSA_PKCS1_PADDING_SIZE) {
     OPENSSL_PUT_ERROR(RSA, RSA_padding_add_SSLv23,
                       RSA_R_DATA_TOO_LARGE_FOR_KEY_SIZE);
     return 0;
@@ -315,11 +331,9 @@ int RSA_padding_add_SSLv23(uint8_t *to, unsigned tlen, const uint8_t *from,
   }
 
   for (i = 0; i < j; i++) {
-    if (*p == '\0') {
-      do {
-        if (RAND_pseudo_bytes(p, 1) <= 0)
-          return 0;
-      } while (*p == '\0');
+    while (*p == '\0') {
+      if (RAND_pseudo_bytes(p, 1) <= 0)
+        return 0;
     }
     p++;
   }
@@ -334,7 +348,8 @@ int RSA_padding_add_SSLv23(uint8_t *to, unsigned tlen, const uint8_t *from,
 
 int RSA_padding_check_SSLv23(uint8_t *to, unsigned tlen, const uint8_t *from,
                              unsigned flen) {
-  unsigned i, j, k;
+  unsigned i, j;
+  int k;
   const uint8_t *p;
 
   p = from;
@@ -356,7 +371,7 @@ int RSA_padding_check_SSLv23(uint8_t *to, unsigned tlen, const uint8_t *from,
     }
   }
 
-  if ((i == j) || (i < 8)) {
+  if (i == j || i < 8) {
     OPENSSL_PUT_ERROR(RSA, RSA_padding_check_SSLv23,
                       RSA_R_NULL_BEFORE_BLOCK_MISSING);
     return -1;
@@ -380,7 +395,7 @@ int RSA_padding_check_SSLv23(uint8_t *to, unsigned tlen, const uint8_t *from,
     OPENSSL_PUT_ERROR(RSA, RSA_padding_check_SSLv23, RSA_R_DATA_TOO_LARGE);
     return -1;
   }
-  memcpy(to, p, (unsigned int)j);
+  memcpy(to, p, j);
 
   return j;
 }
@@ -432,7 +447,7 @@ int RSA_padding_add_PKCS1_OAEP_mgf1(uint8_t *to, unsigned tlen,
                                     const uint8_t *from, unsigned flen,
                                     const uint8_t *param, unsigned plen,
                                     const EVP_MD *md, const EVP_MD *mgf1md) {
-  unsigned i, emlen = tlen - 1, mdlen;
+  unsigned i, emlen, mdlen;
   uint8_t *db, *seed;
   uint8_t *dbmask = NULL, seedmask[SHA_DIGEST_LENGTH];
   int ret = 0;
@@ -446,6 +461,13 @@ int RSA_padding_add_PKCS1_OAEP_mgf1(uint8_t *to, unsigned tlen,
 
   mdlen = EVP_MD_size(md);
 
+  if (tlen < 2 * mdlen + 2) {
+    OPENSSL_PUT_ERROR(RSA, RSA_padding_add_PKCS1_OAEP_mgf1,
+                      RSA_R_KEY_SIZE_TOO_SMALL);
+    return 0;
+  }
+
+  emlen = tlen - 1;
   if (flen > emlen - 2 * mdlen - 1) {
     OPENSSL_PUT_ERROR(RSA, RSA_padding_add_PKCS1_OAEP_mgf1,
                       RSA_R_DATA_TOO_LARGE_FOR_KEY_SIZE);
@@ -742,6 +764,12 @@ int RSA_padding_add_PKCS1_PSS_mgf1(RSA *rsa, unsigned char *EM,
     goto err;
   }
 
+  if (BN_is_zero(rsa->n)) {
+    OPENSSL_PUT_ERROR(RSA, RSA_padding_add_PKCS1_PSS_mgf1,
+                      RSA_R_EMPTY_PUBLIC_KEY);
+    goto err;
+  }
+
   MSBits = (BN_num_bits(rsa->n) - 1) & 0x7;
   emLen = RSA_size(rsa);
   if (MSBits == 0) {
@@ -749,8 +777,13 @@ int RSA_padding_add_PKCS1_PSS_mgf1(RSA *rsa, unsigned char *EM,
     emLen--;
   }
   if (sLen == -2) {
+    if (emLen < hLen + 2) {
+      OPENSSL_PUT_ERROR(RSA, RSA_padding_add_PKCS1_PSS_mgf1,
+                        RSA_R_DATA_TOO_LARGE_FOR_KEY_SIZE);
+      goto err;
+    }
     sLen = emLen - hLen - 2;
-  } else if (emLen < (hLen + sLen + 2)) {
+  } else if (emLen < hLen + sLen + 2) {
     OPENSSL_PUT_ERROR(RSA, RSA_padding_add_PKCS1_PSS_mgf1,
                       RSA_R_DATA_TOO_LARGE_FOR_KEY_SIZE);
     goto err;
