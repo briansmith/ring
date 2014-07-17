@@ -94,8 +94,9 @@ void EVP_EncodeUpdate(EVP_ENCODE_CTX *ctx, uint8_t *out, int *out_len,
  * sets |*out_len| to the number of bytes written. */
 void EVP_EncodeFinal(EVP_ENCODE_CTX *ctx, uint8_t *out, int *out_len);
 
-/* EVP_EncodeBlock encodes |src_len| bytes from |src| and writes the result to
- * |dst|. It returns the number of bytes written. */
+/* EVP_EncodeBlock encodes |src_len| bytes from |src| and writes the
+ * result to |dst| with a trailing NUL. It returns the number of bytes
+ * written, not including this trailing NUL. */
 size_t EVP_EncodeBlock(uint8_t *dst, const uint8_t *src, size_t src_len);
 
 
