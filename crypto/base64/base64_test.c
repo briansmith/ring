@@ -18,6 +18,7 @@
 #include <openssl/base64.h>
 #include <openssl/err.h>
 
+
 typedef struct {
   const char *decoded;
   const char *encoded;
@@ -33,6 +34,7 @@ static const TEST_VECTOR test_vectors[] = {
   { "fooba", "Zm9vYmE=" },
   { "foobar", "Zm9vYmFy" },
 };
+
 static const size_t kNumTests = sizeof(test_vectors) / sizeof(test_vectors[0]);
 
 static int test_encode() {
