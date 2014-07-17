@@ -75,8 +75,12 @@ typedef struct evp_encode_ctx_st EVP_ENCODE_CTX;
 
 /* Encoding */
 
-/* EVP_EncodeInit initialises |*ctx|, which is typically stack allocated, for
- * an encoding operation. */
+/* EVP_EncodeInit initialises |*ctx|, which is typically stack
+ * allocated, for an encoding operation.
+ *
+ * NOTE: The encoding operation breaks its output with newlines every
+ * 64 characters of output (48 characters of input). Use
+ * EVP_EncodeBlock to encode raw base64. */
 void EVP_EncodeInit(EVP_ENCODE_CTX *ctx);
 
 /* EVP_EncodeUpdate encodes |in_len| bytes from |in| and writes an encoded
@@ -98,7 +102,10 @@ size_t EVP_EncodeBlock(uint8_t *dst, const uint8_t *src, size_t src_len);
 /* Decoding */
 
 /* EVP_DecodeInit initialises |*ctx|, which is typically stack allocated, for
- * a decoding operation. */
+ * a decoding operation.
+ *
+ * TODO(davidben): This isn't a straight-up base64 decode either. Document
+ * and/or fix exactly what's going on here; maximum line length and such. */
 void EVP_DecodeInit(EVP_ENCODE_CTX *ctx);
 
 /* EVP_DecodeUpdate decodes |in_len| bytes from |in| and writes the decoded
@@ -117,8 +124,11 @@ int EVP_DecodeUpdate(EVP_ENCODE_CTX *ctx, uint8_t *out, int *out_len,
 int EVP_DecodeFinal(EVP_ENCODE_CTX *ctx, uint8_t *out, int *out_len);
 
 /* EVP_DecodeBlock encodes |src_len| bytes from |src| and writes the result to
- * |dst|. It returns the number of bytes written. */
-size_t EVP_DecodeBlock(uint8_t *dst, const uint8_t *src, size_t src_len);
+ * |dst|. It returns the number of bytes written or -1 on error.
+ *
+ * WARNING: EVP_DecodeBlock's return value does not take padding into
+ * account. TODO(davidben): Possible or worth it to fix or add new API? */
+ssize_t EVP_DecodeBlock(uint8_t *dst, const uint8_t *src, size_t src_len);
 
 
 struct evp_encode_ctx_st {

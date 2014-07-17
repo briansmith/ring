@@ -63,6 +63,7 @@ static const unsigned char data_bin2ascii[65] =
     "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 
 #define conv_bin2ascii(a) (data_bin2ascii[(a) & 0x3f])
+/* TODO(davidben): This doesn't error on bytes above 127. */
 #define conv_ascii2bin(a) (data_ascii2bin[(a) & 0x7f])
 
 /* 64 char lines
@@ -357,7 +358,7 @@ int EVP_DecodeFinal(EVP_ENCODE_CTX *ctx, uint8_t *out, int *outl) {
   }
 }
 
-size_t EVP_DecodeBlock(uint8_t *dst, const uint8_t *src, size_t src_len) {
+ssize_t EVP_DecodeBlock(uint8_t *dst, const uint8_t *src, size_t src_len) {
   int a, b, c, d;
   uint32_t l;
   size_t i, ret = 0;
