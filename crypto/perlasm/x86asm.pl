@@ -237,7 +237,7 @@ sub ::asm_finish
 {   &file_end();
     print "#if defined(__i386__)\n";
     print @out;
-    print "#endif";
+    print "#endif\n";
 }
 
 sub ::asm_init
