@@ -91,6 +91,7 @@ typedef struct bio_connect_st {
   unsigned short port;
 
   struct sockaddr_storage them;
+  socklen_t them_length;
 
   /* the file descriptor is kept in bio->num in order to match the socket
    * BIO. */
@@ -162,7 +163,8 @@ static int conn_state(BIO *bio, BIO_CONNECT *c) {
         }
 
         if (!bio_ip_and_port_to_socket_and_addr(
-                &bio->num, &c->them, c->param_hostname, c->param_port)) {
+                &bio->num, &c->them, &c->them_length, c->param_hostname,
+                c->param_port)) {
           OPENSSL_PUT_ERROR(BIO, conn_state, BIO_R_UNABLE_TO_CREATE_SOCKET);
           ERR_add_error_data(4, "host=", c->param_hostname, ":", c->param_port);
           goto exit_loop;
@@ -191,7 +193,7 @@ static int conn_state(BIO *bio, BIO_CONNECT *c) {
         }
 
         BIO_clear_retry_flags(bio);
-        ret = connect(bio->num, (struct sockaddr*) &c->them, sizeof(c->them));
+        ret = connect(bio->num, (struct sockaddr*) &c->them, c->them_length);
         if (ret < 0) {
           if (bio_fd_should_retry(ret)) {
             BIO_set_flags(bio, (BIO_FLAGS_IO_SPECIAL | BIO_FLAGS_SHOULD_RETRY));

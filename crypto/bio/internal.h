@@ -76,10 +76,11 @@ extern "C" {
 
 
 /* BIO_ip_and_port_to_socket_and_addr creates a socket and fills in |*out_addr|
- * with the correct values for connecting to |hostname| on |port_str|. It
- * returns one on success or zero on error. */
+ * and |*out_addr_length| with the correct values for connecting to |hostname|
+ * on |port_str|. It returns one on success or zero on error. */
 int bio_ip_and_port_to_socket_and_addr(int *out_sock,
                                        struct sockaddr_storage *out_addr,
+                                       socklen_t *out_addr_length,
                                        const char *hostname,
                                        const char *port_str);
 

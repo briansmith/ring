@@ -34,6 +34,7 @@ typedef int socklen_t;
 
 int bio_ip_and_port_to_socket_and_addr(int *out_sock,
                                        struct sockaddr_storage *out_addr,
+                                       socklen_t *out_addr_length,
                                        const char *hostname,
                                        const char *port_str) {
   struct addrinfo hint, *result, *cur;
@@ -60,6 +61,7 @@ int bio_ip_and_port_to_socket_and_addr(int *out_sock,
     }
     memset(out_addr, 0, sizeof(struct sockaddr_storage));
     memcpy(out_addr, cur->ai_addr, cur->ai_addrlen);
+    *out_addr_length = cur->ai_addrlen;
 
     *out_sock = socket(cur->ai_family, cur->ai_socktype, cur->ai_protocol);
     if (*out_sock < 0) {
