@@ -101,7 +101,6 @@ int RSA_generate_key_ex(RSA *rsa, int bits, BIGNUM *e, BN_GENCB *cb);
 
 /* Padding types for encryption. */
 #define RSA_PKCS1_PADDING 1
-#define RSA_SSLV23_PADDING 2
 #define RSA_NO_PADDING 3
 #define RSA_PKCS1_OAEP_PADDING 4
 /* RSA_PKCS1_PSS_PADDING can only be used via the EVP interface. */

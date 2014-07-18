@@ -361,7 +361,6 @@ static int check_padding_md(const EVP_MD *md, int padding) {
 static int is_known_padding(int padding_mode) {
   switch (padding_mode) {
     case RSA_PKCS1_PADDING:
-    case RSA_SSLV23_PADDING:
     case RSA_NO_PADDING:
     case RSA_PKCS1_OAEP_PADDING:
     case RSA_PKCS1_PSS_PADDING:
