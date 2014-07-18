@@ -552,15 +552,14 @@ int ssl3_digest_cached_records(SSL *s)
 	int i;
 	long mask;
 	const EVP_MD *md;
-	long hdatalen;
-	char *hdata;
+	const uint8_t *hdata;
+	size_t hdatalen;
 
 	/* Allocate handshake_dgst array */
 	ssl3_free_digest_list(s);
 	s->s3->handshake_dgst = OPENSSL_malloc(SSL_MAX_DIGEST * sizeof(EVP_MD_CTX *));
 	memset(s->s3->handshake_dgst,0,SSL_MAX_DIGEST *sizeof(EVP_MD_CTX *));
-	hdatalen = BIO_get_mem_data(s->s3->handshake_buffer,&hdata);
-	if (hdatalen <= 0)
+	if (!BIO_mem_contents(s->s3->handshake_buffer, &hdata, &hdatalen))
 		{
 		OPENSSL_PUT_ERROR(SSL, ssl3_digest_cached_records, SSL_R_BAD_HANDSHAKE_LENGTH);
 		return 0;

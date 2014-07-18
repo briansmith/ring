@@ -358,8 +358,18 @@ const BIO_METHOD *BIO_s_mem(void);
  * don't depend on this in new code. */
 BIO *BIO_new_mem_buf(void *buf, int len);
 
+/* BIO_mem_contents sets |*out_contents| to point to the current contents of
+ * |bio| and |*out_len| to contain the length of that data. It returns one on
+ * success and zero otherwise. */
+int BIO_mem_contents(const BIO *bio, const uint8_t **out_contents,
+                     size_t *out_len);
+
 /* BIO_get_mem_data sets |*contents| to point to the current contents of |bio|
- * and returns the length of the data. */
+ * and returns the length of the data.
+ *
+ * WARNING: don't use this, use |BIO_mem_contents|. A return value of zero from
+ * this function can mean either that it failed or that the memory buffer is
+ * empty. */
 long BIO_get_mem_data(BIO *bio, char **contents);
 
 /* BIO_get_mem_ptr sets |*out| to a BUF_MEM containing the current contents of

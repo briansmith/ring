@@ -2702,10 +2702,9 @@ int ssl3_get_cert_verify(SSL *s)
 
 	if (SSL_USE_SIGALGS(s))
 		{
-		long hdatalen = 0;
-		char *hdata;
-		hdatalen = BIO_get_mem_data(s->s3->handshake_buffer, &hdata);
-		if (hdatalen <= 0)
+		size_t hdatalen;
+		const uint8_t *hdata;
+		if (!BIO_mem_contents(s->s3->handshake_buffer, &hdata, &hdatalen))
 			{
 			OPENSSL_PUT_ERROR(SSL, ssl3_get_cert_verify, ERR_R_INTERNAL_ERROR);
 			al=SSL_AD_INTERNAL_ERROR;
