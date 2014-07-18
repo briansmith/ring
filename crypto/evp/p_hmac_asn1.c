@@ -91,6 +91,7 @@ const EVP_PKEY_ASN1_METHOD hmac_asn1_meth = {
     "HMAC",              "OpenSSL HMAC method", 0 /* pub_decode */,
     0 /* pub_encode */,  0 /* pub_cmp */,       0 /* pub_print */,
     0 /*priv_decode */,  0 /* priv_encode */,   0 /* priv_print */,
+    0 /* pkey_opaque */,
     hmac_size,           0 /* pkey_bits */,     0 /* param_decode */,
     0 /* param_encode*/, 0 /* param_missing*/,  0 /* param_copy*/,
     0 /* param_cmp*/,    0 /* param_print*/,    0 /* sig_print*/,

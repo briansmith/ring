@@ -149,6 +149,10 @@ static int rsa_priv_decode(EVP_PKEY *pkey, PKCS8_PRIV_KEY_INFO *p8) {
   return 1;
 }
 
+static int rsa_opaque(const EVP_PKEY *pkey) {
+  return RSA_is_opaque(pkey->pkey.rsa);
+}
+
 static int int_rsa_size(const EVP_PKEY *pkey) {
   return RSA_size(pkey->pkey.rsa);
 }
@@ -727,6 +731,8 @@ const EVP_PKEY_ASN1_METHOD rsa_asn1_meth = {
   rsa_priv_decode,
   rsa_priv_encode,
   rsa_priv_print,
+
+  rsa_opaque,
 
   int_rsa_size,
   rsa_bits,

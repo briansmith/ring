@@ -117,6 +117,13 @@ void EVP_PKEY_free(EVP_PKEY *pkey) {
   OPENSSL_free(pkey);
 }
 
+int EVP_PKEY_is_opaque(const EVP_PKEY *pkey) {
+  if (pkey->ameth && pkey->ameth->pkey_opaque) {
+    return pkey->ameth->pkey_opaque(pkey);
+  }
+  return 0;
+}
+
 int EVP_PKEY_cmp(const EVP_PKEY *a, const EVP_PKEY *b) {
   if (a->type != b->type) {
     return -1;

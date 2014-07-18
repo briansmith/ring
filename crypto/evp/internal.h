@@ -87,6 +87,10 @@ struct evp_pkey_asn1_method_st {
   int (*priv_print)(BIO *out, const EVP_PKEY *pkey, int indent,
                     ASN1_PCTX *pctx);
 
+  /* pkey_opaque returns 1 if the |pk| is opaque. Opaque keys are backed by
+   * custom implementations which do not expose key material and parameters.*/
+  int (*pkey_opaque)(const EVP_PKEY *pk);
+
   int (*pkey_size)(const EVP_PKEY *pk);
   int (*pkey_bits)(const EVP_PKEY *pk);
 

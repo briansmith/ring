@@ -235,6 +235,10 @@ int RSA_public_decrypt(int flen, const uint8_t *from, uint8_t *to, RSA *rsa,
  * of a signature of encrypted value using |rsa|. */
 unsigned RSA_size(const RSA *rsa);
 
+/* RSA_is_opaque returns one if |rsa| is opaque and doesn't expose its key
+ * material. Otherwise it return zero. */
+int RSA_is_opaque(const RSA *rsa);
+
 /* RSAPublicKey_dup allocates a fresh |RSA| and copies the private key from
  * |rsa| into it. It returns the fresh |RSA| object, or NULL on error. */
 RSA *RSAPublicKey_dup(const RSA *rsa);
@@ -291,6 +295,10 @@ int RSA_get_ex_new_index(long argl, void *argp, CRYPTO_EX_new *new_func,
 int RSA_set_ex_data(RSA *r, int idx, void *arg);
 void *RSA_get_ex_data(const RSA *r, int idx);
 
+/* RSA_FLAG_OPAQUE specifies that this RSA_METHOD does not expose its key
+ * material. This may be set if, for instance, it is wrapping some other crypto
+ * API, like a platform key store. */
+#define RSA_FLAG_OPAQUE 1
 
 /* RSA_FLAG_CACHE_PUBLIC causes a precomputed Montgomery context to be created,
  * on demand, for the public key operations. */

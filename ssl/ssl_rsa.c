@@ -213,16 +213,10 @@ static int ssl_set_pkey(CERT *c, EVP_PKEY *pkey)
 		EVP_PKEY_free(pktmp);
 		ERR_clear_error();
 
-                /* TODO(fork): remove this? */
-#if 0
-		/* Don't check the public/private key, this is mostly
-		 * for smart cards. */
-		if ((pkey->type == EVP_PKEY_RSA) &&
-			(RSA_flags(pkey->pkey.rsa) & RSA_METHOD_FLAG_NO_CHECK))
-			;
-		else
-#endif
-		if (!X509_check_private_key(c->pkeys[i].x509,pkey))
+		/* Sanity-check that the private key and the certificate match,
+		 * unless the key is opaque (in case of, say, a smartcard). */
+		if (!EVP_PKEY_is_opaque(pkey) &&
+			!X509_check_private_key(c->pkeys[i].x509,pkey))
 			{
 			X509_free(c->pkeys[i].x509);
 			c->pkeys[i].x509 = NULL;
@@ -430,17 +424,10 @@ static int ssl_set_cert(CERT *c, X509 *x)
 		EVP_PKEY_copy_parameters(pkey,c->pkeys[i].privatekey);
 		ERR_clear_error();
 
-                /* TODO(fork): remove this? */
-#if 0
-		/* Don't check the public/private key, this is mostly
-		 * for smart cards. */
-		if ((c->pkeys[i].privatekey->type == EVP_PKEY_RSA) &&
-			(RSA_flags(c->pkeys[i].privatekey->pkey.rsa) &
-			 RSA_METHOD_FLAG_NO_CHECK))
-			 ;
-		else
-#endif
-		if (!X509_check_private_key(x,c->pkeys[i].privatekey))
+		/* Sanity-check that the private key and the certificate match,
+		 * unless the key is opaque (in case of, say, a smartcard). */
+		if (!EVP_PKEY_is_opaque(c->pkeys[i].privatekey) &&
+			!X509_check_private_key(x,c->pkeys[i].privatekey))
 			{
 			/* don't fail for a cert/key mismatch, just free
 			 * current private key (when switching to a different

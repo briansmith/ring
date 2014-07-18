@@ -89,6 +89,11 @@ EVP_PKEY *EVP_PKEY_new();
  * itself. */
 void EVP_PKEY_free(EVP_PKEY *pkey);
 
+/* EVP_PKEY_is_opaque returns one if |pkey| is opaque. Opaque keys are backed by
+ * custom implementations which do not expose key material and parameters. It is
+ * an error to attempt to duplicate, export, or compare an opaque key. */
+int EVP_PKEY_is_opaque(const EVP_PKEY *pkey);
+
 /* EVP_PKEY_cmp compares |a| and |b| and returns one if they are equal, zero if
  * not and a negative number on error.
  *

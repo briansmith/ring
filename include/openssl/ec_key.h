@@ -109,6 +109,10 @@ EC_KEY *EC_KEY_dup(const EC_KEY *src);
  * success and zero otherwise. */
 int EC_KEY_up_ref(EC_KEY *key);
 
+/* EC_KEY_is_opaque returns one if |key| is opaque and doesn't expose its key
+ * material. Otherwise it return zero. */
+int EC_KEY_is_opaque(const EC_KEY *key);
+
 /* EC_KEY_get0_group returns a pointer to the |EC_GROUP| object inside |key|. */
 const EC_GROUP *EC_KEY_get0_group(const EC_KEY *key);
 
@@ -229,6 +233,11 @@ void *EC_KEY_get_ex_data(const EC_KEY *r, int idx);
 
 /* ECDSA method. */
 
+/* ECDSA_FLAG_OPAQUE specifies that this ECDSA_METHOD does not expose its key
+ * material. This may be set if, for instance, it is wrapping some other crypto
+ * API, like a platform key store. */
+#define ECDSA_FLAG_OPAQUE 1
+
 /* ecdsa_method_st is a structure of function pointers for implementing ECDSA.
  * See engine.h. */
 struct ecdsa_method_st {
@@ -251,6 +260,8 @@ struct ecdsa_method_st {
   /* verify matches the arguments and behaviour of |ECDSA_verify|. */
   int (*verify)(const uint8_t *digest, size_t digest_len, const uint8_t *sig,
                 size_t sig_len, EC_KEY *eckey);
+
+  int flags;
 };
 
 

@@ -519,6 +519,10 @@ static int eckey_priv_print(BIO *bp, const EVP_PKEY *pkey, int indent,
   return do_EC_KEY_print(bp, pkey->pkey.ec, indent, 2);
 }
 
+static int eckey_opaque(const EVP_PKEY *pkey) {
+  return EC_KEY_is_opaque(pkey->pkey.ec);
+}
+
 static int old_ec_priv_decode(EVP_PKEY *pkey, const uint8_t **pder,
                               int derlen) {
   EC_KEY *ec;
@@ -560,6 +564,8 @@ const EVP_PKEY_ASN1_METHOD ec_asn1_meth = {
   eckey_priv_decode,
   eckey_priv_encode,
   eckey_priv_print,
+
+  eckey_opaque,
 
   int_ec_size,
   ec_bits,
