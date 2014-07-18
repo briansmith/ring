@@ -329,7 +329,7 @@ int ssl_parse_clienthello_use_srtp_ext(SSL *s, CBS *cbs, int *out_alert)
 		{
 		uint16_t profile_id;
 
-		if (!CBS_get_u16(cbs, &profile_id))
+		if (!CBS_get_u16(&profile_ids, &profile_id))
 			{
 			*out_alert = SSL_AD_DECODE_ERROR;
 			goto done;
