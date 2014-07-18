@@ -431,8 +431,28 @@ func (hs *serverHandshakeState) doFullHandshake() error {
 			return unexpectedMessageError(certVerify, msg)
 		}
 
+		// Determine the signature type.
+		var signatureAndHash signatureAndHash
+		if certVerify.hasSignatureAndHash {
+			signatureAndHash = certVerify.signatureAndHash
+		} else {
+			// Before TLS 1.2 the signature algorithm was implicit
+			// from the key type, and only one hash per signature
+			// algorithm was possible. Leave the hash as zero.
+			switch pub.(type) {
+			case *ecdsa.PublicKey:
+				signatureAndHash.signature = signatureECDSA
+			case *rsa.PublicKey:
+				signatureAndHash.signature = signatureRSA
+			}
+		}
+
 		switch key := pub.(type) {
 		case *ecdsa.PublicKey:
+			if signatureAndHash.signature != signatureECDSA {
+				err = errors.New("tls: bad signature type for client's ECDSA certificate")
+				break
+			}
 			ecdsaSig := new(ecdsaSignature)
 			if _, err = asn1.Unmarshal(certVerify.signature, ecdsaSig); err != nil {
 				break
@@ -441,13 +461,26 @@ func (hs *serverHandshakeState) doFullHandshake() error {
 				err = errors.New("ECDSA signature contained zero or negative values")
 				break
 			}
-			digest, _, _ := hs.finishedHash.hashForClientCertificate(signatureECDSA)
+			var digest []byte
+			digest, _, err = hs.finishedHash.hashForClientCertificate(signatureAndHash)
+			if err != nil {
+				break
+			}
 			if !ecdsa.Verify(key, digest, ecdsaSig.R, ecdsaSig.S) {
 				err = errors.New("ECDSA verification failure")
 				break
 			}
 		case *rsa.PublicKey:
-			digest, hashFunc, _ := hs.finishedHash.hashForClientCertificate(signatureRSA)
+			if signatureAndHash.signature != signatureRSA {
+				err = errors.New("tls: bad signature type for client's RSA certificate")
+				break
+			}
+			var digest []byte
+			var hashFunc crypto.Hash
+			digest, hashFunc, err = hs.finishedHash.hashForClientCertificate(signatureAndHash)
+			if err != nil {
+				break
+			}
 			err = rsa.VerifyPKCS1v15(key, hashFunc, digest, certVerify.signature)
 		}
 		if err != nil {

@@ -11,6 +11,7 @@ import (
 	"crypto/sha1"
 	"crypto/sha256"
 	"crypto/sha512"
+	"errors"
 	"hash"
 )
 
@@ -284,20 +285,39 @@ func (h finishedHash) serverSum(masterSecret []byte) []byte {
 	return out
 }
 
+// selectClientCertSignatureAlgorithm returns a signatureAndHash to sign a
+// client's CertificateVerify with, or an error if none can be found.
+func (h finishedHash) selectClientCertSignatureAlgorithm(serverList []signatureAndHash, sigType uint8) (signatureAndHash, error) {
+	if h.version < VersionTLS12 {
+		// Nothing to negotiate before TLS 1.2.
+		return signatureAndHash{sigType, 0}, nil
+	}
+
+	for _, v := range serverList {
+		if v.signature == sigType && v.hash == hashSHA256 {
+			return v, nil
+		}
+	}
+	return signatureAndHash{}, errors.New("tls: no supported signature algorithm found for signing client certificate")
+}
+
 // hashForClientCertificate returns a digest, hash function, and TLS 1.2 hash
 // id suitable for signing by a TLS client certificate.
-func (h finishedHash) hashForClientCertificate(sigType uint8) ([]byte, crypto.Hash, uint8) {
+func (h finishedHash) hashForClientCertificate(signatureAndHash signatureAndHash) ([]byte, crypto.Hash, error) {
 	if h.version >= VersionTLS12 {
+		if signatureAndHash.hash != hashSHA256 {
+			return nil, 0, errors.New("tls: unsupported hash function for client certificate")
+		}
 		digest := h.server.Sum(nil)
-		return digest, crypto.SHA256, hashSHA256
+		return digest, crypto.SHA256, nil
 	}
-	if sigType == signatureECDSA {
+	if signatureAndHash.signature == signatureECDSA {
 		digest := h.server.Sum(nil)
-		return digest, crypto.SHA1, hashSHA1
+		return digest, crypto.SHA1, nil
 	}
 
 	digest := make([]byte, 0, 36)
 	digest = h.serverMD5.Sum(digest)
 	digest = h.server.Sum(digest)
-	return digest, crypto.MD5SHA1, 0 /* not specified in TLS 1.2. */
+	return digest, crypto.MD5SHA1, nil
 }

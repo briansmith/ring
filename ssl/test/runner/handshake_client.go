@@ -6,6 +6,7 @@ package main
 
 import (
 	"bytes"
+	"crypto"
 	"crypto/ecdsa"
 	"crypto/rsa"
 	"crypto/subtle"
@@ -14,6 +15,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"math/big"
 	"net"
 	"strconv"
 )
@@ -418,18 +420,32 @@ func (hs *clientHandshakeState) doFullHandshake() error {
 
 		switch key := c.config.Certificates[0].PrivateKey.(type) {
 		case *ecdsa.PrivateKey:
-			digest, _, hashId := hs.finishedHash.hashForClientCertificate(signatureECDSA)
-			r, s, err := ecdsa.Sign(c.config.rand(), key, digest)
+			certVerify.signatureAndHash, err = hs.finishedHash.selectClientCertSignatureAlgorithm(certReq.signatureAndHashes, signatureECDSA)
+			if err != nil {
+				break
+			}
+			var digest []byte
+			digest, _, err = hs.finishedHash.hashForClientCertificate(certVerify.signatureAndHash)
+			if err != nil {
+				break
+			}
+			var r, s *big.Int
+			r, s, err = ecdsa.Sign(c.config.rand(), key, digest)
 			if err == nil {
 				signed, err = asn1.Marshal(ecdsaSignature{r, s})
 			}
-			certVerify.signatureAndHash.signature = signatureECDSA
-			certVerify.signatureAndHash.hash = hashId
 		case *rsa.PrivateKey:
-			digest, hashFunc, hashId := hs.finishedHash.hashForClientCertificate(signatureRSA)
+			certVerify.signatureAndHash, err = hs.finishedHash.selectClientCertSignatureAlgorithm(certReq.signatureAndHashes, signatureRSA)
+			if err != nil {
+				break
+			}
+			var digest []byte
+			var hashFunc crypto.Hash
+			digest, hashFunc, err = hs.finishedHash.hashForClientCertificate(certVerify.signatureAndHash)
+			if err != nil {
+				break
+			}
 			signed, err = rsa.SignPKCS1v15(c.config.rand(), key, hashFunc, digest)
-			certVerify.signatureAndHash.signature = signatureRSA
-			certVerify.signatureAndHash.hash = hashId
 		default:
 			err = errors.New("unknown private key type")
 		}
