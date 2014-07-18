@@ -75,21 +75,6 @@
 #include "internal.h"
 
 
-/* curve_data contains data about a built-in elliptic curve. */
-struct curve_data {
-  /* comment is a human-readable string describing the curve. */
-  const char *comment;
-  /* param_len is the number of bytes needed to store a field element. */
-  uint8_t param_len;
-  /* cofactor is the cofactor of the group (i.e. the number of elements in the
-   * group divided by the size of the main subgroup. */
-  uint8_t cofactor; /* promoted to BN_ULONG */
-  /* data points to an array of 6*|param_len| bytes which hold the field
-   * elements of the following (in big-endian order): prime, a, b, generator x,
-   * generator y, order. */
-  const uint8_t data[];
-};
-
 static const struct curve_data P224 = {
     "NIST P-224",
     28,
@@ -231,13 +216,7 @@ static const struct curve_data P521 = {
      0xA5, 0xD0, 0x3B, 0xB5, 0xC9, 0xB8, 0x89, 0x9C, 0x47, 0xAE, 0xBB, 0x6F,
      0xB7, 0x1E, 0x91, 0x38, 0x64, 0x09}};
 
-struct built_in_curve {
-  int nid;
-  const struct curve_data *data;
-  const EC_METHOD *(*method)(void);
-};
-
-static const struct built_in_curve built_in_curves[] = {
+const struct built_in_curve OPENSSL_built_in_curves[] = {
   {NID_secp224r1, &P224, 0},
   {NID_X9_62_prime256v1, &P256, 0},
   {NID_secp384r1, &P384, 0},
@@ -401,8 +380,8 @@ EC_GROUP *EC_GROUP_new_by_curve_name(int nid) {
   const struct built_in_curve *curve;
   EC_GROUP *ret = NULL;
 
-  for (i = 0; built_in_curves[i].nid != NID_undef; i++) {
-    curve = &built_in_curves[i];
+  for (i = 0; OPENSSL_built_in_curves[i].nid != NID_undef; i++) {
+    curve = &OPENSSL_built_in_curves[i];
     if (curve->nid == nid) {
       ret = ec_group_new_from_data(curve);
       break;

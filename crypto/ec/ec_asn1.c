@@ -190,19 +190,39 @@ ECPKPARAMETERS *ec_asn1_group2pkparameters(const EC_GROUP *group,
 
 EC_GROUP *ec_asn1_pkparameters2group(const ECPKPARAMETERS *params) {
   EC_GROUP *ret = NULL;
-  int nid = 0;
+  int nid = NID_undef;
 
   if (params == NULL) {
     OPENSSL_PUT_ERROR(EC, ec_asn1_pkparameters2group, EC_R_MISSING_PARAMETERS);
     return NULL;
   }
 
-  if (params->type != 0) {
+  if (params->type == 0) {
+    nid = OBJ_obj2nid(params->value.named_curve);
+  } else if (params->type == 1) {
+    /* We don't support arbitary curves so we attempt to recognise it from the
+     * group order. */
+    const ECPARAMETERS *ecparams = params->value.parameters;
+    unsigned i;
+    const struct built_in_curve *curve;
+
+    for (i = 0; OPENSSL_built_in_curves[i].nid != NID_undef; i++) {
+      curve = &OPENSSL_built_in_curves[i];
+      const unsigned param_len = curve->data->param_len;
+      if (ecparams->order->length == param_len &&
+          memcmp(ecparams->order->data, &curve->data->data[param_len * 5],
+                 param_len) == 0) {
+        nid = curve->nid;
+        break;
+      }
+    }
+  }
+
+  if (nid == NID_undef) {
     OPENSSL_PUT_ERROR(EC, ec_asn1_pkparameters2group, EC_R_NON_NAMED_CURVE);
     return NULL;
   }
 
-  nid = OBJ_obj2nid(params->value.named_curve);
   ret = EC_GROUP_new_by_curve_name(nid);
   if (ret == NULL) {
     OPENSSL_PUT_ERROR(EC, ec_asn1_pkparameters2group,

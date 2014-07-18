@@ -349,6 +349,30 @@ struct ec_key_st {
   CRYPTO_EX_DATA ex_data;
 } /* EC_KEY */;
 
+/* curve_data contains data about a built-in elliptic curve. */
+struct curve_data {
+  /* comment is a human-readable string describing the curve. */
+  const char *comment;
+  /* param_len is the number of bytes needed to store a field element. */
+  uint8_t param_len;
+  /* cofactor is the cofactor of the group (i.e. the number of elements in the
+   * group divided by the size of the main subgroup. */
+  uint8_t cofactor; /* promoted to BN_ULONG */
+  /* data points to an array of 6*|param_len| bytes which hold the field
+   * elements of the following (in big-endian order): prime, a, b, generator x,
+   * generator y, order. */
+  const uint8_t data[];
+};
+
+struct built_in_curve {
+  int nid;
+  const struct curve_data *data;
+  const EC_METHOD *(*method)(void);
+};
+
+/* OPENSSL_built_in_curves is terminated with an entry where |nid| is
+ * |NID_undef|. */
+extern const struct built_in_curve OPENSSL_built_in_curves[];
 
 #if defined(__cplusplus)
 }  /* extern C */
