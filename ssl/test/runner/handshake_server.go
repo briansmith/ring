@@ -569,7 +569,9 @@ func (hs *serverHandshakeState) sendSessionTicket() error {
 func (hs *serverHandshakeState) sendFinished() error {
 	c := hs.c
 
-	c.writeRecord(recordTypeChangeCipherSpec, []byte{1})
+	if !c.config.Bugs.SkipChangeCipherSpec {
+		c.writeRecord(recordTypeChangeCipherSpec, []byte{1})
+	}
 
 	finished := new(finishedMsg)
 	finished.verifyData = hs.finishedHash.serverSum(hs.masterSecret)

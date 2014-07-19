@@ -363,6 +363,11 @@ type ProtocolBugs struct {
 	// SkipServerKeyExchange causes the server to skip sending
 	// ServerKeyExchange messages.
 	SkipServerKeyExchange bool
+
+	// SkipChangeCipherSpec causes the implementation to skip
+	// sending the ChangeCipherSpec message (and adjusting cipher
+	// state accordingly for the Finished message).
+	SkipChangeCipherSpec bool
 }
 
 func (c *Config) serverInit() {

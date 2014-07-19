@@ -223,6 +223,27 @@ var testCases = []testCase{
 			"-expect-next-proto", "bar",
 		},
 	},
+	{
+		name: "SkipChangeCipherSpec-Client",
+		config: Config{
+			Bugs: ProtocolBugs{
+				SkipChangeCipherSpec: true,
+			},
+		},
+		shouldFail:    true,
+		expectedError: ":GOT_A_FIN_BEFORE_A_CCS:",
+	},
+	{
+		testType: serverTest,
+		name:     "SkipChangeCipherSpec-Server",
+		config: Config{
+			Bugs: ProtocolBugs{
+				SkipChangeCipherSpec: true,
+			},
+		},
+		shouldFail:    true,
+		expectedError: ":GOT_A_FIN_BEFORE_A_CCS:",
+	},
 }
 
 func doExchange(tlsConn *Conn, messageLen int) error {
