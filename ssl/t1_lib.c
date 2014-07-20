@@ -1986,9 +1986,7 @@ static int ssl_scan_clienthello_tlsext(SSL *s, CBS *cbs, int *out_alert)
 				return 0;
 				}
 
-			if (!tls1_process_sigalgs(s,
-					CBS_data(&supported_signature_algorithms),
-					CBS_len(&supported_signature_algorithms)))
+			if (!tls1_process_sigalgs(s, &supported_signature_algorithms))
 				{
 				*out_alert = SSL_AD_DECODE_ERROR;
 				return 0;
@@ -3177,30 +3175,26 @@ static int tls1_set_shared_sigalgs(SSL *s)
 
 /* Set preferred digest for each key type */
 
-int tls1_process_sigalgs(SSL *s, const unsigned char *data, int dsize)
+int tls1_process_sigalgs(SSL *s, const CBS *sigalgs)
 	{
 	int idx;
 	size_t i;
 	const EVP_MD *md;
 	CERT *c = s->cert;
 	TLS_SIGALGS *sigptr;
+
 	/* Extension ignored for inappropriate versions */
 	if (!SSL_USE_SIGALGS(s))
 		return 1;
 	/* Length must be even */
-	if (dsize % 2 != 0)
+	if (CBS_len(sigalgs) % 2 != 0)
 		return 0;
 	/* Should never happen */
 	if (!c)
 		return 0;
 
-	if (c->peer_sigalgs)
-		OPENSSL_free(c->peer_sigalgs);
-	c->peer_sigalgs = OPENSSL_malloc(dsize);
-	if (!c->peer_sigalgs)
+	if (!CBS_stow(sigalgs, &c->peer_sigalgs, &c->peer_sigalgslen))
 		return 0;
-	c->peer_sigalgslen = dsize;
-	memcpy(c->peer_sigalgs, data, dsize);
 
 	tls1_set_shared_sigalgs(s);
 

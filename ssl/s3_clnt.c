@@ -1764,9 +1764,7 @@ int ssl3_get_certificate_request(SSL *s)
 			s->cert->pkeys[i].digest = NULL;
 			s->cert->pkeys[i].valid_flags = 0;
 			}
-		if (!tls1_process_sigalgs(s,
-				CBS_data(&supported_signature_algorithms),
-				CBS_len(&supported_signature_algorithms)))
+		if (!tls1_process_sigalgs(s, &supported_signature_algorithms))
 			{
 			ssl3_send_alert(s,SSL3_AL_FATAL,SSL_AD_DECODE_ERROR);
 			OPENSSL_PUT_ERROR(SSL, ssl3_get_certificate_request, SSL_R_SIGNATURE_ALGORITHMS_ERROR);
