@@ -66,22 +66,6 @@ long ssl23_default_timeout(void)
 	return(300);
 	}
 
-int ssl23_num_ciphers(void)
-	{
-	return(ssl3_num_ciphers()
-	    );
-	}
-
-const SSL_CIPHER *ssl23_get_cipher(unsigned int u)
-	{
-	unsigned int uu=ssl3_num_ciphers();
-
-	if (u < uu)
-		return(ssl3_get_cipher(u));
-	else
-		return(NULL);
-	}
-
 int ssl23_read(SSL *s, void *buf, int len)
 	{
 	int n;

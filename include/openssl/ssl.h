@@ -1317,7 +1317,6 @@ struct ssl_st
 	unsigned char *packet;
 	unsigned int packet_length;
 
-	struct ssl2_state_st *s2; /* SSLv2 variables */
 	struct ssl3_state_st *s3; /* SSLv3 variables */
 	struct dtls1_state_st *d1; /* DTLSv1 variables */
 

@@ -1945,12 +1945,6 @@ SSL_CTX *SSL_CTX_new(const SSL_METHOD *meth)
 	ret->references=1;
 	ret->quiet_shutdown=0;
 
-/*	ret->cipher=NULL;*/
-/*	ret->s2->challenge=NULL;
-	ret->master_key=NULL;
-	ret->key_arg=NULL;
-	ret->s2->conn_id=NULL; */
-
 	ret->info_callback=NULL;
 
 	ret->app_verify_callback=0;
