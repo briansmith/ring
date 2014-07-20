@@ -82,31 +82,6 @@ const SSL_CIPHER *ssl23_get_cipher(unsigned int u)
 		return(NULL);
 	}
 
-/* This function needs to check if the ciphers required are actually
- * available */
-const SSL_CIPHER *ssl23_get_cipher_by_char(const unsigned char *p)
-	{
-	const SSL_CIPHER *cp;
-
-	cp=ssl3_get_cipher_by_char(p);
-	return(cp);
-	}
-
-int ssl23_put_cipher_by_char(const SSL_CIPHER *c, unsigned char *p)
-	{
-	long l;
-
-	/* We can write SSLv2 and SSLv3 ciphers */
-	if (p != NULL)
-		{
-		l=c->id;
-		p[0]=((unsigned char)(l>>16L))&0xFF;
-		p[1]=((unsigned char)(l>> 8L))&0xFF;
-		p[2]=((unsigned char)(l     ))&0xFF;
-		}
-	return(3);
-	}
-
 int ssl23_read(SSL *s, void *buf, int len)
 	{
 	int n;

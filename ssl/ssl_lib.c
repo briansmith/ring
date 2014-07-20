@@ -141,6 +141,7 @@
 #include <stdio.h>
 #include <assert.h>
 
+#include <openssl/bytestring.h>
 #include <openssl/dh.h>
 #include <openssl/engine.h>
 #include <openssl/lhash.h>
@@ -1198,7 +1199,11 @@ long SSL_ctrl(SSL *s,int cmd,long larg,void *parg)
 			return (int)s->cert->ciphers_rawlen;
 			}
 		else
-			return ssl_put_cipher_by_char(s,NULL,NULL);
+			{
+			/* Passing a NULL |parg| returns the size of a single
+			 * cipher suite value. */
+			return 2;
+			}
 	default:
 		return(s->method->ssl_ctrl(s,cmd,larg,parg));
 		}
@@ -1504,10 +1509,9 @@ char *SSL_get_shared_ciphers(const SSL *s,char *buf,int len)
 	return(buf);
 	}
 
-int ssl_cipher_list_to_bytes(SSL *s,STACK_OF(SSL_CIPHER) *sk,unsigned char *p,
-			     int (*put_cb)(const SSL_CIPHER *, unsigned char *))
+int ssl_cipher_list_to_bytes(SSL *s,STACK_OF(SSL_CIPHER) *sk,unsigned char *p)
 	{
-	int i,j=0;
+	int i;
 	SSL_CIPHER *c;
 	CERT *ct = s->cert;
 	unsigned char *q;
@@ -1517,9 +1521,6 @@ int ssl_cipher_list_to_bytes(SSL *s,STACK_OF(SSL_CIPHER) *sk,unsigned char *p,
 
 	if (sk == NULL) return(0);
 	q=p;
-
-	if (put_cb == NULL)
-		put_cb = s->method->put_cipher_by_char;
 
 	for (i=0; i<sk_SSL_CIPHER_num(sk); i++)
 		{
@@ -1538,8 +1539,7 @@ int ssl_cipher_list_to_bytes(SSL *s,STACK_OF(SSL_CIPHER) *sk,unsigned char *p,
 				no_scsv = 1;
 			}
 #endif
-		j = put_cb(c, p);
-		p += j;
+		s2n(ssl3_get_cipher_value(c), p);
 		}
 	/* If p == q, no ciphers and caller indicates an error. Otherwise
 	 * add SCSV if not renegotiating.
@@ -1552,8 +1552,7 @@ int ssl_cipher_list_to_bytes(SSL *s,STACK_OF(SSL_CIPHER) *sk,unsigned char *p,
 				{
 				0, NULL, SSL3_CK_SCSV, 0, 0, 0, 0, 0, 0, 0, 0, 0
 				};
-			j = put_cb(&scsv, p);
-			p += j;
+			s2n(ssl3_get_cipher_value(&scsv), p);
 #ifdef OPENSSL_RI_DEBUG
 			fprintf(stderr, "SCSV sent by client\n");
 #endif
@@ -1564,25 +1563,24 @@ int ssl_cipher_list_to_bytes(SSL *s,STACK_OF(SSL_CIPHER) *sk,unsigned char *p,
 				{
 				0, NULL, SSL3_CK_FALLBACK_SCSV, 0, 0, 0, 0, 0, 0, 0, 0, 0
 				};
-			j = put_cb(&fallback_scsv, p);
-			p += j;
+			s2n(ssl3_get_cipher_value(&fallback_scsv), p);
 			}
 		}
 
 	return(p-q);
 	}
 
-STACK_OF(SSL_CIPHER) *ssl_bytes_to_cipher_list(SSL *s, const uint8_t *p,int num,
+STACK_OF(SSL_CIPHER) *ssl_bytes_to_cipher_list(SSL *s, const CBS *cbs,
 					       STACK_OF(SSL_CIPHER) **skp)
 	{
+	CBS cipher_suites = *cbs;
 	const SSL_CIPHER *c;
 	STACK_OF(SSL_CIPHER) *sk;
-	int i,n;
+
 	if (s->s3)
 		s->s3->send_connection_binding = 0;
 
-	n=ssl_put_cipher_by_char(s,NULL,NULL);
-	if ((num%n) != 0)
+	if (CBS_len(&cipher_suites) % 2 != 0)
 		{
 		OPENSSL_PUT_ERROR(SSL, ssl_bytes_to_cipher_list, SSL_R_ERROR_IN_RECEIVED_CIPHER_LIST);
 		return(NULL);
@@ -1595,22 +1593,25 @@ STACK_OF(SSL_CIPHER) *ssl_bytes_to_cipher_list(SSL *s, const uint8_t *p,int num,
 		sk_SSL_CIPHER_zero(sk);
 		}
 
-	if (s->cert->ciphers_raw)
-		OPENSSL_free(s->cert->ciphers_raw);
-	s->cert->ciphers_raw = BUF_memdup(p, num);
-	if (s->cert->ciphers_raw == NULL)
+	if (!CBS_stow(&cipher_suites,
+			&s->cert->ciphers_raw, &s->cert->ciphers_rawlen))
 		{
 		OPENSSL_PUT_ERROR(SSL, ssl_bytes_to_cipher_list, ERR_R_MALLOC_FAILURE);
 		goto err;
 		}
-	s->cert->ciphers_rawlen = (size_t)num;
 
-	for (i=0; i<num; i+=n)
+	while (CBS_len(&cipher_suites) > 0)
 		{
+		uint16_t cipher_suite;
+
+		if (!CBS_get_u16(&cipher_suites, &cipher_suite))
+			{
+			OPENSSL_PUT_ERROR(SSL, ssl_bytes_to_cipher_list, ERR_R_INTERNAL_ERROR);
+			goto err;
+			}
+
 		/* Check for SCSV */
-		if (s->s3 && (n != 3 || !p[0]) &&
-			(p[n-2] == ((SSL3_CK_SCSV >> 8) & 0xff)) &&
-			(p[n-1] == (SSL3_CK_SCSV & 0xff)))
+		if (s->s3 && cipher_suite == (SSL3_CK_SCSV & 0xffff))
 			{
 			/* SCSV fatal if renegotiating */
 			if (s->renegotiate)
@@ -1620,7 +1621,6 @@ STACK_OF(SSL_CIPHER) *ssl_bytes_to_cipher_list(SSL *s, const uint8_t *p,int num,
 				goto err;
 				}
 			s->s3->send_connection_binding = 1;
-			p += n;
 #ifdef OPENSSL_RI_DEBUG
 			fprintf(stderr, "SCSV received by server\n");
 #endif
@@ -1628,9 +1628,7 @@ STACK_OF(SSL_CIPHER) *ssl_bytes_to_cipher_list(SSL *s, const uint8_t *p,int num,
 			}
 
 		/* Check for FALLBACK_SCSV */
-		if (s->s3 && n == 2 &&
-			(p[0] == ((SSL3_CK_FALLBACK_SCSV >> 8) & 0xff)) &&
-			(p[1] == (SSL3_CK_FALLBACK_SCSV & 0xff)) &&
+		if (s->s3 && cipher_suite == (SSL3_CK_FALLBACK_SCSV & 0xffff) &&
 			s->version < ssl_get_max_version(s))
 			{
 			OPENSSL_PUT_ERROR(SSL, ssl_bytes_to_cipher_list, SSL_R_INAPPROPRIATE_FALLBACK);
@@ -1638,8 +1636,7 @@ STACK_OF(SSL_CIPHER) *ssl_bytes_to_cipher_list(SSL *s, const uint8_t *p,int num,
 			goto err;
 			}
 
-		c=ssl_get_cipher_by_char(s,p);
-		p+=n;
+		c = ssl3_get_cipher_by_value(cipher_suite);
 		if (c != NULL)
 			{
 			if (!sk_SSL_CIPHER_push(sk,c))

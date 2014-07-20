@@ -146,6 +146,7 @@
  * OTHER ENTITY BASED ON INFRINGEMENT OF INTELLECTUAL PROPERTY RIGHTS OR
  * OTHERWISE. */
 
+#include <assert.h>
 #include <stdio.h>
 
 #include <openssl/buf.h>
@@ -3566,35 +3567,26 @@ long ssl3_ctx_callback_ctrl(SSL_CTX *ctx, int cmd, void (*fp)(void))
 	return(1);
 	}
 
-/* This function needs to check if the ciphers required are actually
- * available */
-const SSL_CIPHER *ssl3_get_cipher_by_char(const unsigned char *p)
+/* ssl3_get_cipher_by_value returns the SSL_CIPHER with value |value| or NULL if
+ * none exists.
+ *
+ * This function needs to check if the ciphers required are actually
+ * available. */
+const SSL_CIPHER *ssl3_get_cipher_by_value(uint16_t value)
 	{
 	SSL_CIPHER c;
-	const SSL_CIPHER *cp;
-	unsigned long id;
 
-	id=0x03000000L|((unsigned long)p[0]<<8L)|(unsigned long)p[1];
-	c.id=id;
-	cp = bsearch(&c, ssl3_ciphers, SSL3_NUM_CIPHERS, sizeof(SSL_CIPHER), ssl_cipher_id_cmp);
-#ifdef DEBUG_PRINT_UNKNOWN_CIPHERSUITES
-if (cp == NULL) fprintf(stderr, "Unknown cipher ID %x\n", (p[0] << 8) | p[1]);
-#endif
-	return cp;
+	c.id = 0x03000000L|value;
+	return bsearch(&c, ssl3_ciphers, SSL3_NUM_CIPHERS, sizeof(SSL_CIPHER), ssl_cipher_id_cmp);
 	}
 
-int ssl3_put_cipher_by_char(const SSL_CIPHER *c, unsigned char *p)
+/* ssl3_get_cipher_by_value returns the cipher value of |c|. */
+uint16_t ssl3_get_cipher_value(const SSL_CIPHER *c)
 	{
-	long l;
-
-	if (p != NULL)
-		{
-		l=c->id;
-		if ((l & 0xff000000) != 0x03000000) return(0);
-		p[0]=((unsigned char)(l>> 8L))&0xFF;
-		p[1]=((unsigned char)(l     ))&0xFF;
-		}
-	return(2);
+	unsigned long id = c->id;
+	/* All ciphers are SSLv3 now. */
+	assert((id & 0xff000000) == 0x03000000);
+	return id & 0xffff;
 	}
 
 struct ssl_cipher_preference_list_st* ssl_get_cipher_preferences(SSL *s)

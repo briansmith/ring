@@ -1118,9 +1118,7 @@ int ssl3_get_client_hello(SSL *s)
 		goto f_err;
 		}
 
-	/* TODO(davidben): Port cipher-list handling to CBS. */
-	if (ssl_bytes_to_cipher_list(s, CBS_data(&cipher_suites),
-			CBS_len(&cipher_suites), &ciphers) == NULL)
+	if (ssl_bytes_to_cipher_list(s, &cipher_suites, &ciphers) == NULL)
 		{
 		goto err;
 		}
@@ -1343,7 +1341,7 @@ int ssl3_send_server_hello(SSL *s)
 	{
 	unsigned char *buf;
 	unsigned char *p,*d;
-	int i,sl;
+	int sl;
 	unsigned long l;
 
 	if (s->state == SSL3_ST_SW_SRVR_HELLO_A)
@@ -1417,8 +1415,7 @@ int ssl3_send_server_hello(SSL *s)
 		p+=sl;
 
 		/* put the cipher */
-		i=ssl3_put_cipher_by_char(s->s3->tmp.new_cipher,p);
-		p+=i;
+                s2n(ssl3_get_cipher_value(s->s3->tmp.new_cipher), p);
 
 		/* put the compression method */
 			*(p++)=0;

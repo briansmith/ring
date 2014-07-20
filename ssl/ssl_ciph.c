@@ -1854,20 +1854,6 @@ int ssl_cipher_get_cert_index(const SSL_CIPHER *c)
 	return -1;
 	}
 
-const SSL_CIPHER *ssl_get_cipher_by_char(SSL *ssl, const unsigned char *ptr)
-	{
-	const SSL_CIPHER *c;
-	c = ssl->method->get_cipher_by_char(ptr);
-	if (c == NULL || c->valid == 0)
-		return NULL;
-	return c;
-	}
-
-const SSL_CIPHER *SSL_CIPHER_find(SSL *ssl, const unsigned char *ptr)
-	{
-	return ssl->method->get_cipher_by_char(ptr);
-	}
-
 /* ssl_cipher_has_server_public_key returns 1 if |cipher| involves a
  * server public key in the key exchange, sent in a server Certificate
  * message. Otherwise it returns 0. */

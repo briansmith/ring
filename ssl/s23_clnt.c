@@ -383,7 +383,7 @@ static int ssl23_client_hello(SSL *s)
 		*(p++) = 0;
 
 		/* Ciphers supported (using SSL 3.0/TLS 1.0 format) */
-		i=ssl_cipher_list_to_bytes(s,SSL_get_ciphers(s),&(p[2]),ssl3_put_cipher_by_char);
+		i = ssl_cipher_list_to_bytes(s, SSL_get_ciphers(s), &p[2]);
 		if (i == 0)
 			{
 			OPENSSL_PUT_ERROR(SSL, ssl23_client_hello, SSL_R_NO_CIPHERS_AVAILABLE);

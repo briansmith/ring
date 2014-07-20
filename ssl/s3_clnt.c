@@ -780,7 +780,7 @@ int ssl3_client_hello(SSL *s)
 			}
 		
 		/* Ciphers supported */
-		i=ssl_cipher_list_to_bytes(s,SSL_get_ciphers(s),&(p[2]),0);
+		i = ssl_cipher_list_to_bytes(s, SSL_get_ciphers(s), &p[2]);
 		if (i == 0)
 			{
 			OPENSSL_PUT_ERROR(SSL, ssl3_client_hello, SSL_R_NO_CIPHERS_AVAILABLE);
@@ -833,8 +833,7 @@ int ssl3_get_server_hello(SSL *s)
 	int al=SSL_AD_INTERNAL_ERROR,ok;
 	long n;
 	CBS server_hello, server_random, session_id;
-	uint16_t server_version;
-	const uint8_t *cipher_ptr;
+	uint16_t server_version, cipher_suite;
 	uint8_t compression_method;
 	/* Hello verify request and/or server hello version may not
 	 * match so set first packet if we're negotiating version.
@@ -882,7 +881,9 @@ int ssl3_get_server_hello(SSL *s)
 	if (!CBS_get_u16(&server_hello, &server_version) ||
 		!CBS_get_bytes(&server_hello, &server_random, SSL3_RANDOM_SIZE) ||
 		!CBS_get_u8_length_prefixed(&server_hello, &session_id) ||
-		CBS_len(&session_id) > SSL3_SESSION_ID_SIZE)
+		CBS_len(&session_id) > SSL3_SESSION_ID_SIZE ||
+		!CBS_get_u16(&server_hello, &cipher_suite) ||
+		!CBS_get_u8(&server_hello, &compression_method))
 		{
 		al = SSL_AD_DECODE_ERROR;
 		OPENSSL_PUT_ERROR(SSL, ssl3_get_server_hello, SSL_R_DECODE_ERROR);
@@ -939,11 +940,9 @@ int ssl3_get_server_hello(SSL *s)
 					     NULL, &pref_cipher,
 					     s->tls_session_secret_cb_arg))
 			{
-			/* TODO(davidben): Make ssl_get_cipher_by_char
-			 * a bounds-checked function. */
 			s->session->cipher = pref_cipher ?
 				pref_cipher :
-				ssl_get_cipher_by_char(s, CBS_data(&server_hello));
+				ssl3_get_cipher_by_value(cipher_suite);
 	    		s->s3->flags |= SSL3_FLAGS_CCS_OK;
 			s->hit = 1;
 			}
@@ -982,16 +981,7 @@ int ssl3_get_server_hello(SSL *s)
 		memcpy(s->session->session_id, CBS_data(&session_id), CBS_len(&session_id));
 		}
 
-	/* TODO(davidben): Move the cipher_by_char hooks to CBS or
-	 * something else actually bounds-checked. */
-	cipher_ptr = CBS_data(&server_hello);
-	if (!CBS_skip(&server_hello, 2))
-		{
-		al = SSL_AD_DECODE_ERROR;
-		OPENSSL_PUT_ERROR(SSL, ssl3_get_server_hello, SSL_R_DECODE_ERROR);
-		goto f_err;
-		}
-	c = ssl_get_cipher_by_char(s, cipher_ptr);
+	c = ssl3_get_cipher_by_value(cipher_suite);
 	if (c == NULL)
 		{
 		/* unknown cipher */
@@ -1037,12 +1027,6 @@ int ssl3_get_server_hello(SSL *s)
 	 */
 	if (!SSL_USE_SIGALGS(s) && !ssl3_digest_cached_records(s))
 		goto f_err;
-
-	if (!CBS_get_u8(&server_hello, &compression_method))
-		{
-		al = SSL_AD_DECODE_ERROR;
-		OPENSSL_PUT_ERROR(SSL, ssl3_get_server_hello, SSL_R_DECODE_ERROR);
-		}
 
 	/* Only the NULL compression algorithm is supported. */
 	if (compression_method != 0)

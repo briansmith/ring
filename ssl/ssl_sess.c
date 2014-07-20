@@ -560,16 +560,9 @@ int ssl_get_prev_session(SSL *s, const struct ssl_early_callback_ctx *ctx)
 
 	if (ret->cipher == NULL)
 		{
-		unsigned char buf[5],*p;
-		unsigned long l;
-
-		p=buf;
-		l=ret->cipher_id;
-		l2n(l,p);
-		if ((ret->ssl_version>>8) >= SSL3_VERSION_MAJOR)
-			ret->cipher=ssl_get_cipher_by_char(s,&(buf[2]));
-		else 
-			ret->cipher=ssl_get_cipher_by_char(s,&(buf[1]));
+		/* The cipher id has a leading 0x03 to be removed (and then put
+		 * back for the binary search) as a remnant of SSLv2 support. */
+		ret->cipher = ssl3_get_cipher_by_value(ret->cipher_id & 0xffff);
 		if (ret->cipher == NULL)
 			goto err;
 		}

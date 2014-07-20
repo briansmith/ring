@@ -668,8 +668,6 @@ struct tls_sigalgs_st
 /*#define IDEA_DEBUG	*/ 
 
 #define FP_ICC  (int (*)(const void *,const void *))
-#define ssl_put_cipher_by_char(ssl,ciph,ptr) \
-		((ssl)->method->put_cipher_by_char((ciph),(ptr)))
 
 /* This is for the SSLv3/TLSv1.0 differences in crypto/hash stuff
  * It is a bit of a mess of functions, but hell, think of it as
@@ -790,8 +788,6 @@ const SSL_METHOD *func_name(void)  \
 		ssl3_dispatch_alert, \
 		ssl3_ctrl, \
 		ssl3_ctx_ctrl, \
-		ssl3_get_cipher_by_char, \
-		ssl3_put_cipher_by_char, \
 		ssl3_pending, \
 		ssl3_num_ciphers, \
 		ssl3_get_cipher, \
@@ -827,8 +823,6 @@ const SSL_METHOD *func_name(void)  \
 		ssl3_dispatch_alert, \
 		ssl3_ctrl, \
 		ssl3_ctx_ctrl, \
-		ssl3_get_cipher_by_char, \
-		ssl3_put_cipher_by_char, \
 		ssl3_pending, \
 		ssl3_num_ciphers, \
 		ssl3_get_cipher, \
@@ -864,8 +858,6 @@ const SSL_METHOD *func_name(void)  \
 	ssl3_dispatch_alert, \
 	ssl3_ctrl, \
 	ssl3_ctx_ctrl, \
-	ssl23_get_cipher_by_char, \
-	ssl23_put_cipher_by_char, \
 	ssl_undefined_const_function, \
 	ssl23_num_ciphers, \
 	ssl23_get_cipher, \
@@ -901,8 +893,6 @@ const SSL_METHOD *func_name(void)  \
 		NULL, /* NULL - dispatch_alert */ \
 		ssl2_ctrl,	/* local */ \
 		ssl2_ctx_ctrl,	/* local */ \
-		ssl2_get_cipher_by_char, \
-		ssl2_put_cipher_by_char, \
 		ssl2_pending, \
 		ssl2_num_ciphers, \
 		ssl2_get_cipher, \
@@ -939,8 +929,6 @@ const SSL_METHOD *func_name(void)  \
 		dtls1_dispatch_alert, \
 		dtls1_ctrl, \
 		ssl3_ctx_ctrl, \
-		ssl3_get_cipher_by_char, \
-		ssl3_put_cipher_by_char, \
 		ssl3_pending, \
 		ssl3_num_ciphers, \
 		dtls1_get_cipher, \
@@ -969,10 +957,9 @@ int ssl_get_new_session(SSL *s, int session);
 int ssl_get_prev_session(SSL *s, const struct ssl_early_callback_ctx *ctx);
 int ssl_cipher_id_cmp(const void *in_a, const void *in_b);
 int ssl_cipher_ptr_id_cmp(const SSL_CIPHER **ap, const SSL_CIPHER **bp);
-STACK_OF(SSL_CIPHER) *ssl_bytes_to_cipher_list(SSL *s, const uint8_t *p,int num,
+STACK_OF(SSL_CIPHER) *ssl_bytes_to_cipher_list(SSL *s, const CBS *cbs,
 					       STACK_OF(SSL_CIPHER) **skp);
-int ssl_cipher_list_to_bytes(SSL *s,STACK_OF(SSL_CIPHER) *sk,unsigned char *p,
-                             int (*put_cb)(const SSL_CIPHER *, unsigned char *));
+int ssl_cipher_list_to_bytes(SSL *s, STACK_OF(SSL_CIPHER) *sk, unsigned char *p);
 STACK_OF(SSL_CIPHER) *ssl_create_cipher_list(const SSL_METHOD *meth,
 					     struct ssl_cipher_preference_list_st **pref,
 					     STACK_OF(SSL_CIPHER) **sorted,
@@ -992,7 +979,6 @@ int ssl_cipher_get_mac(const SSL_SESSION *s, const EVP_MD **md, int *mac_pkey_ty
 int ssl_get_handshake_digest(int i,long *mask,const EVP_MD **md);			   
 int ssl_get_handshake_digest(int i,long *mask,const EVP_MD **md);
 int ssl_cipher_get_cert_index(const SSL_CIPHER *c);
-const SSL_CIPHER *ssl_get_cipher_by_char(SSL *ssl, const unsigned char *ptr);
 int ssl_cipher_has_server_public_key(const SSL_CIPHER *cipher);
 int ssl_cipher_requires_server_key_exchange(const SSL_CIPHER *cipher);
 
@@ -1048,8 +1034,8 @@ long	ssl2_ctx_callback_ctrl(SSL_CTX *s,int cmd, void (*fp)(void));
 int	ssl2_pending(const SSL *s);
 long	ssl2_default_timeout(void );
 
-const SSL_CIPHER *ssl3_get_cipher_by_char(const unsigned char *p);
-int ssl3_put_cipher_by_char(const SSL_CIPHER *c,unsigned char *p);
+const SSL_CIPHER *ssl3_get_cipher_by_value(uint16_t value);
+uint16_t ssl3_get_cipher_value(const SSL_CIPHER *c);
 void ssl3_init_finished_mac(SSL *s);
 int ssl3_send_server_certificate(SSL *s);
 int ssl3_send_newsession_ticket(SSL *s);
@@ -1115,8 +1101,6 @@ const SSL_CIPHER *ssl23_get_cipher(unsigned int u);
 int ssl23_read(SSL *s, void *buf, int len);
 int ssl23_peek(SSL *s, void *buf, int len);
 int ssl23_write(SSL *s, const void *buf, int len);
-int ssl23_put_cipher_by_char(const SSL_CIPHER *c, unsigned char *p);
-const SSL_CIPHER *ssl23_get_cipher_by_char(const unsigned char *p);
 long ssl23_default_timeout(void );
 
 long tls1_default_timeout(void);
