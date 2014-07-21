@@ -2522,6 +2522,7 @@ void ERR_load_SSL_strings(void);
 #define SSL_F_tls1_change_cipher_state_aead 279
 #define SSL_F_tls1_aead_ctx_init 280
 #define SSL_F_tls1_check_duplicate_extensions 281
+#define SSL_F_ssl3_expect_change_cipher_spec 282
 #define SSL_R_UNABLE_TO_FIND_ECDH_PARAMETERS 100
 #define SSL_R_DECRYPTION_FAILED_OR_BAD_RECORD_MAC 101
 #define SSL_R_INVALID_NULL_CMD_NAME 102
@@ -2832,6 +2833,8 @@ void ERR_load_SSL_strings(void);
 #define SSL_R_CLIENTHELLO_PARSE_FAILED 437
 #define SSL_R_CONNECTION_REJECTED 438
 #define SSL_R_DECODE_ERROR 439
+#define SSL_R_UNPROCESSED_HANDSHAKE_DATA 440
+#define SSL_R_HANDSHAKE_RECORD_BEFORE_CCS 441
 #define SSL_R_SSLV3_ALERT_UNEXPECTED_MESSAGE 1010
 #define SSL_R_SSLV3_ALERT_BAD_RECORD_MAC 1020
 #define SSL_R_TLSV1_ALERT_DECRYPTION_FAILED 1021

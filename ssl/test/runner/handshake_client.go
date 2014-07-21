@@ -584,10 +584,7 @@ func (hs *clientHandshakeState) readSessionTicket() error {
 func (hs *clientHandshakeState) sendFinished() error {
 	c := hs.c
 
-	if !c.config.Bugs.SkipChangeCipherSpec &&
-		c.config.Bugs.EarlyChangeCipherSpec == 0 {
-		c.writeRecord(recordTypeChangeCipherSpec, []byte{1})
-	}
+	var postCCSBytes []byte
 	if hs.serverHello.nextProtoNeg {
 		nextProto := new(nextProtoMsg)
 		proto, fallback := mutualProtocol(c.config.NextProtos, hs.serverHello.nextProtos)
@@ -595,8 +592,9 @@ func (hs *clientHandshakeState) sendFinished() error {
 		c.clientProtocol = proto
 		c.clientProtocolFallback = fallback
 
-		hs.finishedHash.Write(nextProto.marshal())
-		c.writeRecord(recordTypeHandshake, nextProto.marshal())
+		nextProtoBytes := nextProto.marshal()
+		hs.finishedHash.Write(nextProtoBytes)
+		postCCSBytes = append(postCCSBytes, nextProtoBytes...)
 	}
 
 	finished := new(finishedMsg)
@@ -605,8 +603,21 @@ func (hs *clientHandshakeState) sendFinished() error {
 	} else {
 		finished.verifyData = hs.finishedHash.clientSum(hs.masterSecret)
 	}
-	hs.finishedHash.Write(finished.marshal())
-	c.writeRecord(recordTypeHandshake, finished.marshal())
+	finishedBytes := finished.marshal()
+	hs.finishedHash.Write(finishedBytes)
+	postCCSBytes = append(postCCSBytes, finishedBytes...)
+
+	if c.config.Bugs.FragmentAcrossChangeCipherSpec {
+		c.writeRecord(recordTypeHandshake, postCCSBytes[:5])
+		postCCSBytes = postCCSBytes[5:]
+	}
+
+	if !c.config.Bugs.SkipChangeCipherSpec &&
+		c.config.Bugs.EarlyChangeCipherSpec == 0 {
+		c.writeRecord(recordTypeChangeCipherSpec, []byte{1})
+	}
+
+	c.writeRecord(recordTypeHandshake, postCCSBytes)
 	return nil
 }
 

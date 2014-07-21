@@ -375,6 +375,11 @@ type ProtocolBugs struct {
 	// and 1.0.1 modes, respectively.
 	EarlyChangeCipherSpec int
 
+	// FragmentAcrossChangeCipherSpec causes the implementation to fragment
+	// the Finished (or NextProto) message around the ChangeCipherSpec
+	// messages.
+	FragmentAcrossChangeCipherSpec bool
+
 	// SkipNewSessionTicket causes the server to skip sending the
 	// NewSessionTicket message despite promising to in ServerHello.
 	SkipNewSessionTicket bool

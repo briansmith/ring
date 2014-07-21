@@ -245,7 +245,9 @@ int ssl3_get_finished(SSL *s, int a, int b)
 
 	if (!ok) return((int)n);
 
-	/* If this occurs, we have missed a message */
+	/* If this occurs, we have missed a message.
+	 * TODO(davidben): Is this check now redundant with
+	 * SSL3_FLAGS_EXPECT_CCS? */
 	if (!s->s3->change_cipher_spec)
 		{
 		al=SSL_AD_UNEXPECTED_MESSAGE;

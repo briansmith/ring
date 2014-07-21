@@ -598,14 +598,21 @@ func (hs *serverHandshakeState) sendSessionTicket() error {
 func (hs *serverHandshakeState) sendFinished() error {
 	c := hs.c
 
+	finished := new(finishedMsg)
+	finished.verifyData = hs.finishedHash.serverSum(hs.masterSecret)
+	postCCSBytes := finished.marshal()
+	hs.finishedHash.Write(postCCSBytes)
+
+	if c.config.Bugs.FragmentAcrossChangeCipherSpec {
+		c.writeRecord(recordTypeHandshake, postCCSBytes[:5])
+		postCCSBytes = postCCSBytes[5:]
+	}
+
 	if !c.config.Bugs.SkipChangeCipherSpec {
 		c.writeRecord(recordTypeChangeCipherSpec, []byte{1})
 	}
 
-	finished := new(finishedMsg)
-	finished.verifyData = hs.finishedHash.serverSum(hs.masterSecret)
-	hs.finishedHash.Write(finished.marshal())
-	c.writeRecord(recordTypeHandshake, finished.marshal())
+	c.writeRecord(recordTypeHandshake, postCCSBytes)
 
 	c.cipherSuite = hs.suite.id
 

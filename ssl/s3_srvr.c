@@ -573,7 +573,11 @@ int ssl3_accept(SSL *s)
 
 			/* At this point, the next message must be entirely
 			 * behind a ChangeCipherSpec. */
-			s->s3->flags |= SSL3_FLAGS_CCS_OK;
+			if (!ssl3_expect_change_cipher_spec(s))
+				{
+				ret = -1;
+				goto end;
+				}
 			if (next_proto_neg)
 				s->state = SSL3_ST_SR_NEXT_PROTO_A;
 			else if (channel_id)
@@ -3023,7 +3027,9 @@ int ssl3_get_next_proto(SSL *s)
 
 	/* s->state doesn't reflect whether ChangeCipherSpec has been received
 	 * in this handshake, but s->s3->change_cipher_spec does (will be reset
-	 * by ssl3_get_finished). */
+	 * by ssl3_get_finished).
+	 * TODO(davidben): Is this check now redundant with
+	 * SSL3_FLAGS_EXPECT_CCS? */
 	if (!s->s3->change_cipher_spec)
 		{
 		OPENSSL_PUT_ERROR(SSL, ssl3_get_next_proto, SSL_R_GOT_NEXT_PROTO_BEFORE_A_CCS);
@@ -3096,7 +3102,9 @@ int ssl3_get_channel_id(SSL *s)
 
 	/* s->state doesn't reflect whether ChangeCipherSpec has been received
 	 * in this handshake, but s->s3->change_cipher_spec does (will be reset
-	 * by ssl3_get_finished). */
+	 * by ssl3_get_finished).
+	 * TODO(davidben): Is this check now redundant with
+	 * SSL3_FLAGS_EXPECT_CCS? */
 	if (!s->s3->change_cipher_spec)
 		{
 		OPENSSL_PUT_ERROR(SSL, ssl3_get_channel_id, SSL_R_GOT_CHANNEL_ID_BEFORE_A_CCS);

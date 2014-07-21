@@ -517,7 +517,11 @@ int ssl3_connect(SSL *s)
 		case SSL3_ST_CR_CHANGE:
 			/* At this point, the next message must be entirely
 			 * behind a ChangeCipherSpec. */
-			s->s3->flags |= SSL3_FLAGS_CCS_OK;
+			if (!ssl3_expect_change_cipher_spec(s))
+				{
+				ret = -1;
+				goto end;
+				}
 			s->state = SSL3_ST_CR_FINISHED_A;
 			break;
 

@@ -901,6 +901,22 @@ int ssl3_write_pending(SSL *s, int type, const unsigned char *buf,
 		}
 	}
 
+/* ssl3_expect_change_cipher_spec informs the record layer that a
+ * ChangeCipherSpec record is required at this point. If a Handshake record is
+ * received before ChangeCipherSpec, the connection will fail. Moreover, if
+ * there are unprocessed handshake bytes, the handshake will also fail and the
+ * function returns zero. Otherwise, the function returns one. */
+int ssl3_expect_change_cipher_spec(SSL *s)
+	{
+	if (s->s3->handshake_fragment_len > 0 || s->s3->tmp.reuse_message)
+		{
+		OPENSSL_PUT_ERROR(SSL, ssl3_expect_change_cipher_spec, SSL_R_UNPROCESSED_HANDSHAKE_DATA);
+		return 0;
+		}
+	s->s3->flags |= SSL3_FLAGS_EXPECT_CCS;
+	return 1;
+	}
+
 /* Return up to 'len' payload bytes received in 'type' records.
  * 'type' is one of the following:
  *
@@ -1007,6 +1023,15 @@ start:
 		goto f_err;
 		}
 
+	/* If we are expecting a ChangeCipherSpec, it is illegal to receive a
+	 * Handshake record. */
+	if (rr->type == SSL3_RT_HANDSHAKE && (s->s3->flags & SSL3_FLAGS_EXPECT_CCS))
+		{
+		al = SSL_AD_UNEXPECTED_MESSAGE;
+		OPENSSL_PUT_ERROR(SSL, ssl3_read_bytes, SSL_R_HANDSHAKE_RECORD_BEFORE_CCS);
+		goto f_err;
+		}
+
 	/* If the other end has shut down, throw anything we read away
 	 * (even in 'peek' mode) */
 	if (s->shutdown & SSL_RECEIVED_SHUTDOWN)
@@ -1015,7 +1040,6 @@ start:
 		s->rwstate=SSL_NOTHING;
 		return(0);
 		}
-
 
 	if (type == rr->type) /* SSL3_RT_APPLICATION_DATA or SSL3_RT_HANDSHAKE */
 		{
@@ -1274,14 +1298,14 @@ start:
 			goto f_err;
 			}
 
-		if (!(s->s3->flags & SSL3_FLAGS_CCS_OK))
+		if (!(s->s3->flags & SSL3_FLAGS_EXPECT_CCS))
 			{
 			al=SSL_AD_UNEXPECTED_MESSAGE;
 			OPENSSL_PUT_ERROR(SSL, ssl3_read_bytes, SSL_R_CCS_RECEIVED_EARLY);
 			goto f_err;
 			}
 
-		s->s3->flags &= ~SSL3_FLAGS_CCS_OK;
+		s->s3->flags &= ~SSL3_FLAGS_EXPECT_CCS;
 
 		rr->length=0;
 

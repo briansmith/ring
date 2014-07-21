@@ -234,7 +234,7 @@ var testCases = []testCase{
 			},
 		},
 		shouldFail:    true,
-		expectedError: ":GOT_A_FIN_BEFORE_A_CCS:",
+		expectedError: ":HANDSHAKE_RECORD_BEFORE_CCS:",
 	},
 	{
 		testType: serverTest,
@@ -245,7 +245,7 @@ var testCases = []testCase{
 			},
 		},
 		shouldFail:    true,
-		expectedError: ":GOT_A_FIN_BEFORE_A_CCS:",
+		expectedError: ":HANDSHAKE_RECORD_BEFORE_CCS:",
 	},
 	{
 		testType: serverTest,
@@ -260,7 +260,43 @@ var testCases = []testCase{
 			"-advertise-npn", "\x03foo\x03bar\x03baz",
 		},
 		shouldFail:    true,
-		expectedError: ":GOT_NEXT_PROTO_BEFORE_A_CCS:",
+		expectedError: ":HANDSHAKE_RECORD_BEFORE_CCS:",
+	},
+	{
+		name: "FragmentAcrossChangeCipherSpec-Client",
+		config: Config{
+			Bugs: ProtocolBugs{
+				FragmentAcrossChangeCipherSpec: true,
+			},
+		},
+		shouldFail:    true,
+		expectedError: ":HANDSHAKE_RECORD_BEFORE_CCS:",
+	},
+	{
+		testType: serverTest,
+		name:     "FragmentAcrossChangeCipherSpec-Server",
+		config: Config{
+			Bugs: ProtocolBugs{
+				FragmentAcrossChangeCipherSpec: true,
+			},
+		},
+		shouldFail:    true,
+		expectedError: ":HANDSHAKE_RECORD_BEFORE_CCS:",
+	},
+	{
+		testType: serverTest,
+		name:     "FragmentAcrossChangeCipherSpec-Server-NPN",
+		config: Config{
+			NextProtos: []string{"bar"},
+			Bugs: ProtocolBugs{
+				FragmentAcrossChangeCipherSpec: true,
+			},
+		},
+		flags: []string{
+			"-advertise-npn", "\x03foo\x03bar\x03baz",
+		},
+		shouldFail:    true,
+		expectedError: ":HANDSHAKE_RECORD_BEFORE_CCS:",
 	},
 	{
 		testType: serverTest,
