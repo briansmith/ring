@@ -244,6 +244,21 @@ var testCases = []testCase{
 		shouldFail:    true,
 		expectedError: ":GOT_A_FIN_BEFORE_A_CCS:",
 	},
+	{
+		testType: serverTest,
+		name:     "SkipChangeCipherSpec-Server-NPN",
+		config: Config{
+			NextProtos: []string{"bar"},
+			Bugs: ProtocolBugs{
+				SkipChangeCipherSpec: true,
+			},
+		},
+		flags: []string{
+			"-advertise-npn", "\x03foo\x03bar\x03baz",
+		},
+		shouldFail:    true,
+		expectedError: ":GOT_NEXT_PROTO_BEFORE_A_CCS:",
+	},
 }
 
 func doExchange(tlsConn *Conn, messageLen int) error {
