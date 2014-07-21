@@ -2385,6 +2385,8 @@ static int ssl_scan_serverhello_tlsext(SSL *s, CBS *cbs, int *out_alert)
 	s->s3->next_proto_neg_seen = 0;
 #endif
 
+        s->tlsext_ticket_expected = 0;
+
 	if (s->s3->alpn_selected)
 		{
 		OPENSSL_free(s->s3->alpn_selected);

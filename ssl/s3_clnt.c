@@ -1869,24 +1869,12 @@ int ssl3_get_new_session_ticket(SSL *s)
 	n=s->method->ssl_get_message(s,
 		SSL3_ST_CR_SESSION_TICKET_A,
 		SSL3_ST_CR_SESSION_TICKET_B,
-		-1,
+		SSL3_MT_NEWSESSION_TICKET,
 		16384,
 		&ok);
 
 	if (!ok)
 		return((int)n);
-
-	if (s->s3->tmp.message_type == SSL3_MT_FINISHED)
-		{
-		s->s3->tmp.reuse_message=1;
-		return(1);
-		}
-	if (s->s3->tmp.message_type != SSL3_MT_NEWSESSION_TICKET)
-		{
-		al=SSL_AD_UNEXPECTED_MESSAGE;
-		OPENSSL_PUT_ERROR(SSL, ssl3_get_new_session_ticket, SSL_R_BAD_MESSAGE_TYPE);
-		goto f_err;
-		}
 
 	CBS_init(&new_session_ticket, s->init_msg, n);
 
