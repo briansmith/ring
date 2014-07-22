@@ -295,18 +295,6 @@ int ssl3_connect(SSL *s)
 
 		case SSL3_ST_CR_CERT_A:
 		case SSL3_ST_CR_CERT_B:
-			ret=ssl3_check_finished(s);
-			if (ret <= 0) goto end;
-			if (ret == 2)
-				{
-				s->hit = 1;
-				if (s->tlsext_ticket_expected)
-					s->state=SSL3_ST_CR_SESSION_TICKET_A;
-				else
-					s->state=SSL3_ST_CR_FINISHED_A;
-				s->init_num=0;
-				break;
-				}
 			if (ssl_cipher_has_server_public_key(s->s3->tmp.new_cipher))
 				{
 				ret=ssl3_get_server_certificate(s);
@@ -645,10 +633,10 @@ int ssl3_client_hello(SSL *s)
 	if (s->state == SSL3_ST_CW_CLNT_HELLO_A)
 		{
 		SSL_SESSION *sess = s->session;
-		if ((sess == NULL) ||
-			(sess->ssl_version != s->version) ||
-			(!sess->session_id_length && !sess->tlsext_tick) ||
-			(sess->not_resumable))
+		if (sess == NULL ||
+			sess->ssl_version != s->version ||
+			!sess->session_id_length ||
+			sess->not_resumable)
 			{
 			if (!ssl_get_new_session(s,0))
 				goto err;
@@ -3113,35 +3101,6 @@ err:
 		ECDSA_SIG_free(sig);
 
 	return ret;
-	}
-
-/* Check to see if handshake is full or resumed. Usually this is just a
- * case of checking to see if a cache hit has occurred. In the case of
- * session tickets we have to check the next message to be sure.
- */
-
-int ssl3_check_finished(SSL *s)
-	{
-	int ok;
-	long n;
-	/* If we have no ticket it cannot be a resumed session. */
-	if (!s->session->tlsext_tick)
-		return 1;
-	/* this function is called when we really expect a Certificate
-	 * message, so permit appropriate message length */
-	n=s->method->ssl_get_message(s,
-		SSL3_ST_CR_CERT_A,
-		SSL3_ST_CR_CERT_B,
-		-1,
-		s->max_cert_list,
-		&ok);
-	if (!ok) return((int)n);
-	s->s3->tmp.reuse_message = 1;
-	if ((s->s3->tmp.message_type == SSL3_MT_FINISHED)
-		|| (s->s3->tmp.message_type == SSL3_MT_NEWSESSION_TICKET))
-		return 2;
-
-	return 1;
 	}
 
 int ssl_do_client_cert_cb(SSL *s, X509 **px509, EVP_PKEY **ppkey)
