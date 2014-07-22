@@ -165,14 +165,21 @@ NextCipherSuite:
 	hs.finishedHash.Write(hs.hello.marshal())
 	hs.finishedHash.Write(hs.serverHello.marshal())
 
+	if c.config.Bugs.EarlyChangeCipherSpec > 0 {
+		hs.establishKeys()
+		c.writeRecord(recordTypeChangeCipherSpec, []byte{1})
+	}
+
 	isResume, err := hs.processServerHello()
 	if err != nil {
 		return err
 	}
 
 	if isResume {
-		if err := hs.establishKeys(); err != nil {
-			return err
+		if c.config.Bugs.EarlyChangeCipherSpec == 0 {
+			if err := hs.establishKeys(); err != nil {
+				return err
+			}
 		}
 		if err := hs.readSessionTicket(); err != nil {
 			return err
@@ -408,7 +415,9 @@ func (hs *clientHandshakeState) doFullHandshake() error {
 		return err
 	}
 	if ckx != nil {
-		hs.finishedHash.Write(ckx.marshal())
+		if c.config.Bugs.EarlyChangeCipherSpec < 2 {
+			hs.finishedHash.Write(ckx.marshal())
+		}
 		c.writeRecord(recordTypeHandshake, ckx.marshal())
 	}
 
@@ -532,11 +541,13 @@ func (hs *clientHandshakeState) readFinished() error {
 		return unexpectedMessageError(serverFinished, msg)
 	}
 
-	verify := hs.finishedHash.serverSum(hs.masterSecret)
-	if len(verify) != len(serverFinished.verifyData) ||
-		subtle.ConstantTimeCompare(verify, serverFinished.verifyData) != 1 {
-		c.sendAlert(alertHandshakeFailure)
-		return errors.New("tls: server's Finished message was incorrect")
+	if c.config.Bugs.EarlyChangeCipherSpec == 0 {
+		verify := hs.finishedHash.serverSum(hs.masterSecret)
+		if len(verify) != len(serverFinished.verifyData) ||
+			subtle.ConstantTimeCompare(verify, serverFinished.verifyData) != 1 {
+			c.sendAlert(alertHandshakeFailure)
+			return errors.New("tls: server's Finished message was incorrect")
+		}
 	}
 	hs.finishedHash.Write(serverFinished.marshal())
 	return nil
@@ -573,7 +584,8 @@ func (hs *clientHandshakeState) readSessionTicket() error {
 func (hs *clientHandshakeState) sendFinished() error {
 	c := hs.c
 
-	if !c.config.Bugs.SkipChangeCipherSpec {
+	if !c.config.Bugs.SkipChangeCipherSpec &&
+		c.config.Bugs.EarlyChangeCipherSpec == 0 {
 		c.writeRecord(recordTypeChangeCipherSpec, []byte{1})
 	}
 	if hs.serverHello.nextProtoNeg {
@@ -588,7 +600,11 @@ func (hs *clientHandshakeState) sendFinished() error {
 	}
 
 	finished := new(finishedMsg)
-	finished.verifyData = hs.finishedHash.clientSum(hs.masterSecret)
+	if c.config.Bugs.EarlyChangeCipherSpec == 2 {
+		finished.verifyData = hs.finishedHash.clientSum(nil)
+	} else {
+		finished.verifyData = hs.finishedHash.clientSum(hs.masterSecret)
+	}
 	hs.finishedHash.Write(finished.marshal())
 	c.writeRecord(recordTypeHandshake, finished.marshal())
 	return nil

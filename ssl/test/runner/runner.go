@@ -262,6 +262,28 @@ var testCases = []testCase{
 		shouldFail:    true,
 		expectedError: ":GOT_NEXT_PROTO_BEFORE_A_CCS:",
 	},
+	{
+		testType: serverTest,
+		name:     "EarlyChangeCipherSpec-server-1",
+		config: Config{
+			Bugs: ProtocolBugs{
+				EarlyChangeCipherSpec: 1,
+			},
+		},
+		shouldFail:    true,
+		expectedError: ":CCS_RECEIVED_EARLY:",
+	},
+	{
+		testType: serverTest,
+		name:     "EarlyChangeCipherSpec-server-2",
+		config: Config{
+			Bugs: ProtocolBugs{
+				EarlyChangeCipherSpec: 2,
+			},
+		},
+		shouldFail:    true,
+		expectedError: ":CCS_RECEIVED_EARLY:",
+	},
 }
 
 func doExchange(testType testType, config *Config, conn net.Conn, messageLen int) error {

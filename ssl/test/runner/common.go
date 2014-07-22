@@ -368,6 +368,12 @@ type ProtocolBugs struct {
 	// sending the ChangeCipherSpec message (and adjusting cipher
 	// state accordingly for the Finished message).
 	SkipChangeCipherSpec bool
+
+	// EarlyChangeCipherSpec causes the client to send an early
+	// ChangeCipherSpec message before the ClientKeyExchange. A value of
+	// zero disables this behavior. One and two configure variants for 0.9.8
+	// and 1.0.1 modes, respectively.
+	EarlyChangeCipherSpec int
 }
 
 func (c *Config) serverInit() {
