@@ -939,6 +939,8 @@ int ssl3_get_server_hello(SSL *s)
 	/* Copy over the server random. */
 	memcpy(s->s3->server_random, CBS_data(&server_random), SSL3_RANDOM_SIZE);
 
+	s->hit = 0;
+
 	/* check if we want to resume the session based on external pre-shared secret */
 	if (s->version >= TLS1_VERSION && s->tls_session_secret_cb)
 		{
@@ -955,10 +957,11 @@ int ssl3_get_server_hello(SSL *s)
 				pref_cipher :
 				ssl_get_cipher_by_char(s, CBS_data(&server_hello));
 	    		s->s3->flags |= SSL3_FLAGS_CCS_OK;
+			s->hit = 1;
 			}
 		}
 
-	if (CBS_len(&session_id) != 0 &&
+	if (!s->hit && CBS_len(&session_id) != 0 &&
 		CBS_mem_equal(&session_id,
 			s->session->session_id, s->session->session_id_length))
 		{
@@ -973,11 +976,12 @@ int ssl3_get_server_hello(SSL *s)
 		s->s3->flags |= SSL3_FLAGS_CCS_OK;
 		s->hit = 1;
 		}
-	else	/* a miss or crap from the other end */
+
+	/* a miss or crap from the other end */
+	if (!s->hit)
 		{
 		/* If we were trying for session-id reuse, make a new
 		 * SSL_SESSION so we don't stuff up other people */
-		s->hit=0;
 		if (s->session->session_id_length > 0)
 			{
 			if (!ssl_get_new_session(s,0))
