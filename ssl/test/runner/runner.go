@@ -76,6 +76,9 @@ type testCase struct {
 	certFile string
 	// keyFile is the path to the private key to use for the server.
 	keyFile string
+	// resumeSession controls whether a second connection should be tested
+	// which resumes the first session.
+	resumeSession bool
 	// flags, if not empty, contains a list of command-line flags that will
 	// be passed to the shim program.
 	flags []string
@@ -261,7 +264,15 @@ var testCases = []testCase{
 	},
 }
 
-func doExchange(tlsConn *Conn, messageLen int) error {
+func doExchange(testType testType, config *Config, conn net.Conn, messageLen int) error {
+	var tlsConn *Conn
+	if testType == clientTest {
+		tlsConn = Server(conn, config)
+	} else {
+		config.InsecureSkipVerify = true
+		tlsConn = Client(conn, config)
+	}
+
 	if err := tlsConn.Handshake(); err != nil {
 		return err
 	}
@@ -308,7 +319,7 @@ func gdbOf(path string, args ...string) *exec.Cmd {
 	return exec.Command("xterm", xtermArgs...)
 }
 
-func runTest(test *testCase) error {
+func openSocketPair() (shimEnd *os.File, conn net.Conn) {
 	socks, err := syscall.Socketpair(syscall.AF_UNIX, syscall.SOCK_STREAM, 0)
 	if err != nil {
 		panic(err)
@@ -316,13 +327,22 @@ func runTest(test *testCase) error {
 
 	syscall.CloseOnExec(socks[0])
 	syscall.CloseOnExec(socks[1])
-	shimEnd := os.NewFile(uintptr(socks[0]), "shim end")
+	shimEnd = os.NewFile(uintptr(socks[0]), "shim end")
 	connFile := os.NewFile(uintptr(socks[1]), "our end")
-	conn, err := net.FileConn(connFile)
+	conn, err = net.FileConn(connFile)
+	if err != nil {
+		panic(err)
+	}
 	connFile.Close()
 	if err != nil {
 		panic(err)
 	}
+	return shimEnd, conn
+}
+
+func runTest(test *testCase) error {
+	shimEnd, conn := openSocketPair()
+	shimEndResume, connResume := openSocketPair()
 
 	const shim_path = "../../../build/ssl/test/bssl_shim"
 	flags := []string{}
@@ -330,7 +350,15 @@ func runTest(test *testCase) error {
 		flags = append(flags, "client")
 	} else {
 		flags = append(flags, "server")
+	}
 
+	if test.resumeSession {
+		flags = append(flags, "resume")
+	} else {
+		flags = append(flags, "normal")
+	}
+
+	if test.testType == serverTest {
 		flags = append(flags, "-key-file")
 		if test.keyFile == "" {
 			flags = append(flags, rsaKeyFile)
@@ -354,7 +382,7 @@ func runTest(test *testCase) error {
 		shim = exec.Command(shim_path, flags...)
 	}
 	// shim = gdbOf(shim_path, flags...)
-	shim.ExtraFiles = []*os.File{shimEnd}
+	shim.ExtraFiles = []*os.File{shimEnd, shimEndResume}
 	shim.Stdin = os.Stdin
 	var stdoutBuf, stderrBuf bytes.Buffer
 	shim.Stdout = &stdoutBuf
@@ -364,22 +392,23 @@ func runTest(test *testCase) error {
 		panic(err)
 	}
 	shimEnd.Close()
+	shimEndResume.Close()
 
 	config := test.config
-
-	var tlsConn *Conn
+	config.ClientSessionCache = NewLRUClientSessionCache(1)
 	if test.testType == clientTest {
 		if len(config.Certificates) == 0 {
 			config.Certificates = []Certificate{getRSACertificate()}
 		}
-		tlsConn = Server(conn, &config)
-	} else {
-		config.InsecureSkipVerify = true
-		tlsConn = Client(conn, &config)
 	}
-	err = doExchange(tlsConn, test.messageLen)
 
+	err := doExchange(test.testType, &config, conn, test.messageLen)
 	conn.Close()
+	if err == nil && test.resumeSession {
+		err = doExchange(test.testType, &config, connResume, test.messageLen)
+		connResume.Close()
+	}
+
 	childErr := shim.Wait()
 
 	stdout := string(stdoutBuf.Bytes())
@@ -473,6 +502,11 @@ func addCipherSuiteTests() {
 				continue
 			}
 
+			// Go's TLS implementation only implements session
+			// resumption with tickets, so SSLv3 cannot resume
+			// sessions.
+			resumeSession := ver.version != VersionSSL30
+
 			testCases = append(testCases, testCase{
 				testType: clientTest,
 				name:     ver.name + "-" + suite.name + "-client",
@@ -482,6 +516,7 @@ func addCipherSuiteTests() {
 					CipherSuites: []uint16{suite.id},
 					Certificates: []Certificate{cert},
 				},
+				resumeSession: resumeSession,
 			})
 
 			// Go's TLS implementation implements SSLv3 as a server,
@@ -499,8 +534,9 @@ func addCipherSuiteTests() {
 						CipherSuites: []uint16{suite.id},
 						Certificates: []Certificate{cert},
 					},
-					certFile: certFile,
-					keyFile:  keyFile,
+					certFile:      certFile,
+					keyFile:       keyFile,
+					resumeSession: resumeSession,
 				})
 			}
 		}

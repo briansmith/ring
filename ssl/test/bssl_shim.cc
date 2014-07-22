@@ -12,15 +12,22 @@
  * OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
  * CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE. */
 
-#include <sys/types.h>
-#include <sys/socket.h>
-#include <netinet/in.h>
 #include <arpa/inet.h>
+#include <netinet/in.h>
+#include <signal.h>
+#include <sys/socket.h>
+#include <sys/types.h>
 #include <unistd.h>
 
-#include <openssl/ssl.h>
 #include <openssl/bio.h>
 #include <openssl/bytestring.h>
+#include <openssl/ssl.h>
+
+static int usage(const char *program) {
+  fprintf(stderr, "Usage: %s (client|server) (normal|resume) [flags...]\n",
+          program);
+  return 1;
+}
 
 static const char *expected_server_name = NULL;
 static int early_callback_called = 0;
@@ -83,14 +90,12 @@ static int next_protos_advertised_callback(SSL *ssl,
   return SSL_TLSEXT_ERR_OK;
 }
 
-static SSL *setup_test(int is_server) {
+static SSL_CTX *setup_ctx(int is_server) {
   if (!SSL_library_init()) {
     return NULL;
   }
 
   SSL_CTX *ssl_ctx = NULL;
-  SSL *ssl = NULL;
-  BIO *bio = NULL;
 
   ssl_ctx = SSL_CTX_new(
       is_server ? SSLv23_server_method() : SSLv23_client_method());
@@ -106,23 +111,38 @@ static SSL *setup_test(int is_server) {
     goto err;
   }
 
+  SSL_CTX_set_session_cache_mode(ssl_ctx, SSL_SESS_CACHE_BOTH);
+
   ssl_ctx->select_certificate_cb = select_certificate_callback;
 
   SSL_CTX_set_next_protos_advertised_cb(
       ssl_ctx, next_protos_advertised_callback, NULL);
+
+  return ssl_ctx;
+
+ err:
+  if (ssl_ctx != NULL) {
+    SSL_CTX_free(ssl_ctx);
+  }
+  return NULL;
+}
+
+static SSL *setup_ssl(SSL_CTX *ssl_ctx, int fd) {
+  SSL *ssl = NULL;
+  BIO *bio = NULL;
 
   ssl = SSL_new(ssl_ctx);
   if (ssl == NULL) {
     goto err;
   }
 
-  bio = BIO_new_fd(3, 1 /* take ownership */);
+
+  bio = BIO_new_fd(fd, 1 /* take ownership */);
   if (bio == NULL) {
     goto err;
   }
 
   SSL_set_bio(ssl, bio, bio);
-  SSL_CTX_free(ssl_ctx);
 
   return ssl;
 
@@ -133,37 +153,30 @@ err:
   if (ssl != NULL) {
     SSL_free(ssl);
   }
-  if (ssl_ctx != NULL) {
-    SSL_CTX_free(ssl_ctx);
-  }
   return NULL;
 }
 
-int main(int argc, char **argv) {
-  int i, is_server, ret;
+static int do_exchange(SSL_SESSION **out_session,
+                       SSL_CTX *ssl_ctx,
+                       int argc,
+                       char **argv,
+                       int is_server,
+                       int is_resume,
+                       int fd,
+                       SSL_SESSION *session) {
   const char *expected_certificate_types = NULL;
   const char *expected_next_proto = NULL;
+  expected_server_name = NULL;
+  early_callback_called = 0;
+  advertise_npn = NULL;
 
-  if (argc < 2) {
-    fprintf(stderr, "Usage: %s (client|server) [flags...]\n", argv[0]);
-    return 1;
-  }
-  if (strcmp(argv[1], "client") == 0) {
-    is_server = 0;
-  } else if (strcmp(argv[1], "server") == 0) {
-    is_server = 1;
-  } else {
-    fprintf(stderr, "Usage: %s (client|server) [flags...]\n", argv[0]);
-    return 1;
-  }
-
-  SSL *ssl = setup_test(is_server);
+  SSL *ssl = setup_ssl(ssl_ctx, fd);
   if (ssl == NULL) {
     BIO_print_errors_fp(stdout);
     return 1;
   }
 
-  for (i = 2; i < argc; i++) {
+  for (int i = 0; i < argc; i++) {
     if (strcmp(argv[i], "-fallback-scsv") == 0) {
       if (!SSL_enable_fallback_scsv(ssl)) {
         BIO_print_errors_fp(stdout);
@@ -227,6 +240,14 @@ int main(int argc, char **argv) {
     }
   }
 
+  if (session != NULL) {
+    if (SSL_set_session(ssl, session) != 1) {
+      fprintf(stderr, "failed to set session\n");
+      return 2;
+    }
+  }
+
+  int ret;
   if (is_server) {
     ret = SSL_accept(ssl);
   } else {
@@ -235,6 +256,11 @@ int main(int argc, char **argv) {
   if (ret != 1) {
     SSL_free(ssl);
     BIO_print_errors_fp(stdout);
+    return 2;
+  }
+
+  if (is_resume && !SSL_session_reused(ssl)) {
+    fprintf(stderr, "session was not reused\n");
     return 2;
   }
 
@@ -299,6 +325,68 @@ int main(int argc, char **argv) {
     }
   }
 
+  if (out_session) {
+    *out_session = SSL_get1_session(ssl);
+  }
+
+  SSL_shutdown(ssl);
   SSL_free(ssl);
+  return 0;
+}
+
+int main(int argc, char **argv) {
+  int is_server, resume;
+
+  signal(SIGPIPE, SIG_IGN);
+
+  if (argc < 3) {
+    return usage(argv[0]);
+  }
+
+  if (strcmp(argv[1], "client") == 0) {
+    is_server = 0;
+  } else if (strcmp(argv[1], "server") == 0) {
+    is_server = 1;
+  } else {
+    return usage(argv[0]);
+  }
+
+  if (strcmp(argv[2], "normal") == 0) {
+    resume = 0;
+  } else if (strcmp(argv[2], "resume") == 0) {
+    resume = 1;
+  } else {
+    return usage(argv[0]);
+  }
+
+  SSL_CTX *ssl_ctx = setup_ctx(is_server);
+  if (ssl_ctx == NULL) {
+    BIO_print_errors_fp(stdout);
+    return 1;
+  }
+
+  SSL_SESSION *session;
+  int ret = do_exchange(&session,
+                        ssl_ctx,
+                        argc - 3, argv + 3,
+                        is_server, 0 /* is_resume */,
+                        3 /* fd */, NULL /* session */);
+  if (ret != 0) {
+    return ret;
+  }
+
+  if (resume) {
+    int ret = do_exchange(NULL,
+                          ssl_ctx, argc - 3, argv + 3,
+                          is_server, 1 /* is_resume */,
+                          4 /* fd */,
+                          is_server ? NULL : session);
+    if (ret != 0) {
+      return ret;
+    }
+  }
+
+  SSL_SESSION_free(session);
+  SSL_CTX_free(ssl_ctx);
   return 0;
 }
