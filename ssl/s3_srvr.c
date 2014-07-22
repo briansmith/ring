@@ -501,7 +501,7 @@ int ssl3_accept(SSL *s)
 				 * message is not sent.
 				 */
 				s->init_num = 0;
-				s->state=SSL3_ST_SR_POST_CLIENT_CERT;
+				s->state = SSL3_ST_SR_CHANGE;
 				}
 			else if (SSL_USE_SIGALGS(s))
 				{
@@ -559,11 +559,11 @@ int ssl3_accept(SSL *s)
 			ret=ssl3_get_cert_verify(s);
 			if (ret <= 0) goto end;
 
-			s->state=SSL3_ST_SR_POST_CLIENT_CERT;
+			s->state = SSL3_ST_SR_CHANGE;
 			s->init_num=0;
 			break;
 
-		case SSL3_ST_SR_POST_CLIENT_CERT: {
+		case SSL3_ST_SR_CHANGE: {
 			char next_proto_neg = 0;
 			char channel_id = 0;
 # if !defined(OPENSSL_NO_NEXTPROTONEG)
@@ -571,13 +571,15 @@ int ssl3_accept(SSL *s)
 # endif
 			channel_id = s->s3->tlsext_channel_id_valid;
 
+			/* At this point, the next message must be entirely
+			 * behind a ChangeCipherSpec. */
 			s->s3->flags |= SSL3_FLAGS_CCS_OK;
 			if (next_proto_neg)
-				s->state=SSL3_ST_SR_NEXT_PROTO_A;
+				s->state = SSL3_ST_SR_NEXT_PROTO_A;
 			else if (channel_id)
-				s->state=SSL3_ST_SR_CHANNEL_ID_A;
+				s->state = SSL3_ST_SR_CHANNEL_ID_A;
 			else
-				s->state=SSL3_ST_SR_FINISHED_A;
+				s->state = SSL3_ST_SR_FINISHED_A;
 			break;
 		}
 
@@ -604,7 +606,6 @@ int ssl3_accept(SSL *s)
 
 		case SSL3_ST_SR_FINISHED_A:
 		case SSL3_ST_SR_FINISHED_B:
-			s->s3->flags |= SSL3_FLAGS_CCS_OK;
 			ret=ssl3_get_finished(s,SSL3_ST_SR_FINISHED_A,
 				SSL3_ST_SR_FINISHED_B);
 			if (ret <= 0) goto end;
@@ -672,11 +673,11 @@ int ssl3_accept(SSL *s)
 				s->method->ssl3_enc->server_finished_label,
 				s->method->ssl3_enc->server_finished_label_len);
 			if (ret <= 0) goto end;
-			s->state=SSL3_ST_SW_FLUSH;
+			s->state = SSL3_ST_SW_FLUSH;
 			if (s->hit)
-				s->s3->tmp.next_state=SSL3_ST_SR_POST_CLIENT_CERT;
+				s->s3->tmp.next_state = SSL3_ST_SR_CHANGE;
 			else
-				s->s3->tmp.next_state=SSL_ST_OK;
+				s->s3->tmp.next_state = SSL_ST_OK;
 			s->init_num=0;
 			break;
 
