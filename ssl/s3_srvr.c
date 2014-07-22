@@ -590,9 +590,6 @@ int ssl3_accept(SSL *s)
 
 		case SSL3_ST_SR_CERT_VRFY_A:
 		case SSL3_ST_SR_CERT_VRFY_B:
-
-			s->s3->flags |= SSL3_FLAGS_CCS_OK;
-			/* we should decide if we expected this one */
 			ret=ssl3_get_cert_verify(s);
 			if (ret <= 0) goto end;
 
@@ -2619,66 +2616,34 @@ int ssl3_get_cert_verify(SSL *s)
 	long n;
 	CBS certificate_verify, signature;
 	int type = 0;
-	X509 *peer;
+	X509 *peer = s->session->peer;
 	const EVP_MD *md = NULL;
 	EVP_MD_CTX mctx;
 
 	EVP_MD_CTX_init(&mctx);
 
+	/* Determine if a CertificateVerify message is expected at all. It is
+	 * important that this be determined before ssl_get_message is called,
+	 * so as not to process the ChangeCipherSpec message early. */
+	if (peer != NULL)
+		{
+		pkey = X509_get_pubkey(peer);
+		type = X509_certificate_type(peer,pkey);
+		}
+	if (!(type & EVP_PKT_SIGN))
+		{
+		ret = 1;
+		goto end;
+		}
+
 	n=s->method->ssl_get_message(s,
 		SSL3_ST_SR_CERT_VRFY_A,
 		SSL3_ST_SR_CERT_VRFY_B,
-		-1,
+		SSL3_MT_CERTIFICATE_VERIFY,
 		516, /* Enough for 4096 bit RSA key with TLS v1.2 */
 		&ok);
 
 	if (!ok) return((int)n);
-
-	if (s->session->peer != NULL)
-		{
-		peer=s->session->peer;
-		pkey=X509_get_pubkey(peer);
-		type=X509_certificate_type(peer,pkey);
-		}
-	else
-		{
-		peer=NULL;
-		pkey=NULL;
-		}
-
-	if (s->s3->tmp.message_type != SSL3_MT_CERTIFICATE_VERIFY)
-		{
-		s->s3->tmp.reuse_message=1;
-		if ((peer != NULL) && (type & EVP_PKT_SIGN))
-			{
-			al=SSL_AD_UNEXPECTED_MESSAGE;
-			OPENSSL_PUT_ERROR(SSL, ssl3_get_cert_verify, SSL_R_MISSING_VERIFY_MESSAGE);
-			goto f_err;
-			}
-		ret=1;
-		goto end;
-		}
-
-	if (peer == NULL)
-		{
-		OPENSSL_PUT_ERROR(SSL, ssl3_get_cert_verify, SSL_R_NO_CLIENT_CERT_RECEIVED);
-		al=SSL_AD_UNEXPECTED_MESSAGE;
-		goto f_err;
-		}
-
-	if (!(type & EVP_PKT_SIGN))
-		{
-		OPENSSL_PUT_ERROR(SSL, ssl3_get_cert_verify, SSL_R_SIGNATURE_FOR_NON_SIGNING_CERTIFICATE);
-		al=SSL_AD_ILLEGAL_PARAMETER;
-		goto f_err;
-		}
-
-	if (s->s3->change_cipher_spec)
-		{
-		OPENSSL_PUT_ERROR(SSL, ssl3_get_cert_verify, SSL_R_CCS_RECEIVED_EARLY);
-		al=SSL_AD_UNEXPECTED_MESSAGE;
-		goto f_err;
-		}
 
 	CBS_init(&certificate_verify, s->init_msg, n);
 
