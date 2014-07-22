@@ -588,10 +588,6 @@ func (hs *serverHandshakeState) sendSessionTicket() error {
 	if err != nil {
 		return err
 	}
-	m.ticket = make([]byte, 16105+62)
-	for i := range m.ticket {
-		m.ticket[i] = 'A'
-	}
 
 	hs.finishedHash.Write(m.marshal())
 	c.writeRecord(recordTypeHandshake, m.marshal())

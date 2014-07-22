@@ -173,7 +173,7 @@ func (c *Conn) decryptTicket(encrypted []byte) (*sessionState, bool) {
 		return nil, false
 	}
 	ciphertext := encrypted[aes.BlockSize : len(encrypted)-sha256.Size]
-	plaintext := ciphertext
+	plaintext := make([]byte, len(ciphertext))
 	cipher.NewCTR(block, iv).XORKeyStream(plaintext, ciphertext)
 
 	state := new(sessionState)
