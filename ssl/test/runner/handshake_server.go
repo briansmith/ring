@@ -570,7 +570,7 @@ func (hs *serverHandshakeState) readFinished() error {
 }
 
 func (hs *serverHandshakeState) sendSessionTicket() error {
-	if !hs.hello.ticketSupported {
+	if !hs.hello.ticketSupported || hs.c.config.Bugs.SkipNewSessionTicket {
 		return nil
 	}
 

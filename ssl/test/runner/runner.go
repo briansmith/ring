@@ -284,6 +284,29 @@ var testCases = []testCase{
 		shouldFail:    true,
 		expectedError: ":CCS_RECEIVED_EARLY:",
 	},
+	{
+		name: "SessionTicketsDisabled-Client",
+		config: Config{
+			SessionTicketsDisabled: true,
+		},
+	},
+	{
+		testType: serverTest,
+		name:     "SessionTicketsDisabled-Server",
+		config: Config{
+			SessionTicketsDisabled: true,
+		},
+	},
+	{
+		name: "SkipNewSessionTicket",
+		config: Config{
+			Bugs: ProtocolBugs{
+				SkipNewSessionTicket: true,
+			},
+		},
+		shouldFail:    true,
+		expectedError: ":CCS_RECEIVED_EARLY:",
+	},
 }
 
 func doExchange(testType testType, config *Config, conn net.Conn, messageLen int) error {

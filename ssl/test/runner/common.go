@@ -374,6 +374,10 @@ type ProtocolBugs struct {
 	// zero disables this behavior. One and two configure variants for 0.9.8
 	// and 1.0.1 modes, respectively.
 	EarlyChangeCipherSpec int
+
+	// SkipNewSessionTicket causes the server to skip sending the
+	// NewSessionTicket message despite promising to in ServerHello.
+	SkipNewSessionTicket bool
 }
 
 func (c *Config) serverInit() {
