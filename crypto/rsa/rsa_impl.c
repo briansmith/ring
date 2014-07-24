@@ -372,10 +372,15 @@ static int decrypt(RSA *rsa, size_t *out_len, uint8_t *out, size_t max_out,
     return 0;
   }
 
-  buf = OPENSSL_malloc(rsa_size);
-  if (buf == NULL) {
-    OPENSSL_PUT_ERROR(RSA, ERR_R_MALLOC_FAILURE);
-    goto err;
+  if (padding == RSA_NO_PADDING) {
+    buf = out;
+  } else {
+    /* Allocate a temporary buffer to hold the padded plaintext. */
+    buf = OPENSSL_malloc(rsa_size);
+    if (buf == NULL) {
+      OPENSSL_PUT_ERROR(RSA, ERR_R_MALLOC_FAILURE);
+      goto err;
+    }
   }
 
   if (in_len != rsa_size) {
@@ -397,7 +402,7 @@ static int decrypt(RSA *rsa, size_t *out_len, uint8_t *out, size_t max_out,
                                             NULL, 0, NULL, NULL);
       break;
     case RSA_NO_PADDING:
-      r = RSA_padding_check_none(out, rsa_size, buf, rsa_size);
+      r = rsa_size;
       break;
     default:
       OPENSSL_PUT_ERROR(RSA, RSA_R_UNKNOWN_PADDING_TYPE);
@@ -412,7 +417,7 @@ static int decrypt(RSA *rsa, size_t *out_len, uint8_t *out, size_t max_out,
   }
 
 err:
-  if (buf != NULL) {
+  if (padding != RSA_NO_PADDING && buf != NULL) {
     OPENSSL_cleanse(buf, rsa_size);
     OPENSSL_free(buf);
   }
@@ -459,8 +464,17 @@ static int verify_raw(RSA *rsa, size_t *out_len, uint8_t *out, size_t max_out,
   BN_CTX_start(ctx);
   f = BN_CTX_get(ctx);
   result = BN_CTX_get(ctx);
-  buf = OPENSSL_malloc(rsa_size);
-  if (!f || !result || !buf) {
+  if (padding == RSA_NO_PADDING) {
+    buf = out;
+  } else {
+    /* Allocate a temporary buffer to hold the padded plaintext. */
+    buf = OPENSSL_malloc(rsa_size);
+    if (buf == NULL) {
+      OPENSSL_PUT_ERROR(RSA, ERR_R_MALLOC_FAILURE);
+      goto err;
+    }
+  }
+  if (!f || !result) {
     OPENSSL_PUT_ERROR(RSA, ERR_R_MALLOC_FAILURE);
     goto err;
   }
@@ -501,7 +515,7 @@ static int verify_raw(RSA *rsa, size_t *out_len, uint8_t *out, size_t max_out,
       r = RSA_padding_check_PKCS1_type_1(out, rsa_size, buf, rsa_size);
       break;
     case RSA_NO_PADDING:
-      r = RSA_padding_check_none(out, rsa_size, buf, rsa_size);
+      r = rsa_size;
       break;
     default:
       OPENSSL_PUT_ERROR(RSA, RSA_R_UNKNOWN_PADDING_TYPE);
@@ -520,7 +534,7 @@ err:
     BN_CTX_end(ctx);
     BN_CTX_free(ctx);
   }
-  if (buf != NULL) {
+  if (padding != RSA_NO_PADDING && buf != NULL) {
     OPENSSL_cleanse(buf, rsa_size);
     OPENSSL_free(buf);
   }

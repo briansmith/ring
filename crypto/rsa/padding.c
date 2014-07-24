@@ -300,17 +300,6 @@ int RSA_padding_add_none(uint8_t *to, unsigned tlen, const uint8_t *from, unsign
   return 1;
 }
 
-int RSA_padding_check_none(uint8_t *to, unsigned tlen, const uint8_t *from,
-                           unsigned flen) {
-  if (flen > tlen) {
-    OPENSSL_PUT_ERROR(RSA, RSA_R_DATA_TOO_LARGE);
-    return -1;
-  }
-
-  memcpy(to, from, flen);
-  return flen;
-}
-
 int PKCS1_MGF1(uint8_t *mask, unsigned len, const uint8_t *seed,
                unsigned seedlen, const EVP_MD *dgst) {
   unsigned outlen = 0;

@@ -107,8 +107,6 @@ int RSA_padding_check_PKCS1_OAEP_mgf1(uint8_t *to, unsigned to_len,
                                       const EVP_MD *md, const EVP_MD *mgf1md);
 int RSA_padding_add_none(uint8_t *to, unsigned to_len, const uint8_t *from,
                          unsigned from_len);
-int RSA_padding_check_none(uint8_t *to, unsigned to_len, const uint8_t *from,
-                           unsigned from_len);
 
 /* RSA_private_transform calls either the method-specific |private_transform|
  * function (if given) or the generic one. See the comment for
