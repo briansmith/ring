@@ -220,12 +220,48 @@ static int constant_time_le(int x, int y) {
   return ((x - y - 1) >> (sizeof(int) * 8 - 1)) & 1;
 }
 
+int RSA_message_index_PKCS1_type_2(const uint8_t *from, size_t from_len,
+                                   size_t *out_index) {
+  size_t i;
+  int first_byte_is_zero, second_byte_is_two, looking_for_index;
+  int valid_index, zero_index = 0;
+
+  /* PKCS#1 v1.5 decryption. See "PKCS #1 v2.2: RSA Cryptography
+   * Standard", section 7.2.2. */
+  if (from_len < RSA_PKCS1_PADDING_SIZE) {
+    return 0;
+  }
+
+  first_byte_is_zero = constant_time_byte_eq(from[0], 0);
+  second_byte_is_two = constant_time_byte_eq(from[1], 2);
+
+  looking_for_index = 1;
+  for (i = 2; i < from_len; i++) {
+    int equals0 = constant_time_byte_eq(from[i], 0);
+    zero_index =
+        constant_time_select(looking_for_index & equals0, i, zero_index);
+    looking_for_index = constant_time_select(equals0, 0, looking_for_index);
+  }
+
+  /* The input must begin with 00 02. */
+  valid_index = first_byte_is_zero;
+  valid_index &= second_byte_is_two;
+
+  /* We must have found the end of PS. */
+  valid_index &= ~looking_for_index;
+
+  /* PS must be at least 8 bytes long, and it starts two bytes into |from|. */
+  valid_index &= constant_time_le(2 + 8, zero_index);
+
+  /* Skip the zero byte. */
+  *out_index = zero_index + 1;
+
+  return valid_index;
+}
+
 int RSA_padding_check_PKCS1_type_2(uint8_t *to, unsigned tlen,
                                    const uint8_t *from, unsigned flen) {
-  size_t i;
-  int ret = -1;
-  int first_byte_is_zero, second_byte_is_two, looking_for_index;
-  int valid_index, zero_index = 0, msg_index;
+  size_t msg_index, msg_len;
 
   if (flen == 0) {
     OPENSSL_PUT_ERROR(RSA, RSA_padding_check_PKCS1_type_2,
@@ -233,44 +269,26 @@ int RSA_padding_check_PKCS1_type_2(uint8_t *to, unsigned tlen,
     return -1;
   }
 
-  /* PKCS#1 v1.5 decryption. See "PKCS #1 v2.2: RSA Cryptography
-   * Standard", section 7.2.2. */
-
-  if (flen < RSA_PKCS1_PADDING_SIZE) {
-    goto err;
-  }
-
-  first_byte_is_zero = constant_time_byte_eq(from[0], 0);
-  second_byte_is_two = constant_time_byte_eq(from[1], 2);
-
-  looking_for_index = 1;
-  for (i = 2; i < flen; i++) {
-    int equals0 = constant_time_byte_eq(from[i], 0);
-    zero_index =
-        constant_time_select(looking_for_index & equals0, i, zero_index);
-    looking_for_index = constant_time_select(equals0, 0, looking_for_index);
-  }
-
-  /* PS must be at least 8 bytes long, and it starts two bytes into |from|. */
-  valid_index = constant_time_le(2 + 8, zero_index);
-  /* Skip the zero byte. */
-  msg_index = zero_index + 1;
-  valid_index &= constant_time_le(flen - msg_index, tlen);
-
-  if (!(first_byte_is_zero & second_byte_is_two & ~looking_for_index &
-        valid_index)) {
-    goto err;
-  }
-
-  ret = flen - msg_index;
-  memcpy(to, &from[msg_index], ret);
-
-err:
-  if (ret == -1) {
+  /* NOTE: Although |RSA_message_index_PKCS1_type_2| itself is constant time,
+   * the API contracts of this function and |RSA_decrypt| with
+   * |RSA_PKCS1_PADDING| make it impossible to completely avoid Bleichenbacker's
+   * attack. */
+  if (!RSA_message_index_PKCS1_type_2(from, flen, &msg_index)) {
     OPENSSL_PUT_ERROR(RSA, RSA_padding_check_PKCS1_type_2,
                       RSA_R_PKCS_DECODING_ERROR);
+    return -1;
   }
-  return ret;
+
+  msg_len = flen - msg_index;
+  if (msg_len > tlen) {
+    /* This shouldn't happen because this function is always called with |tlen|
+     * the key size and |flen| is bounded by the key size. */
+    OPENSSL_PUT_ERROR(RSA, RSA_padding_check_PKCS1_type_2,
+                      RSA_R_PKCS_DECODING_ERROR);
+    return -1;
+  }
+  memcpy(to, &from[msg_index], msg_len);
+  return msg_len;
 }
 
 int RSA_padding_add_none(uint8_t *to, unsigned tlen, const uint8_t *from, unsigned flen) {

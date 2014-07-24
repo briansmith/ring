@@ -1897,6 +1897,7 @@ int ssl3_get_client_key_exchange(SSL *s)
 	size_t premaster_secret_len = 0;
 	int skip_certificate_verify = 0;
 	RSA *rsa=NULL;
+	uint8_t *decrypt_buf = NULL;
 	EVP_PKEY *pkey=NULL;
 #ifndef OPENSSL_NO_DH
 	BIGNUM *pub=NULL;
@@ -1986,10 +1987,10 @@ int ssl3_get_client_key_exchange(SSL *s)
 	if (alg_k & SSL_kRSA)
 		{
 		CBS encrypted_premaster_secret;
-		unsigned char rand_premaster_secret[SSL_MAX_MASTER_KEY_LENGTH];
-		int decrypt_len, decrypt_good_mask;
-		unsigned char version_good;
-		size_t j;
+		uint8_t rand_premaster_secret[SSL_MAX_MASTER_KEY_LENGTH];
+		int decrypt_good_mask;
+		uint8_t version_good;
+		size_t rsa_size, decrypt_len, premaster_index, j;
 
 		pkey=s->cert->pkeys[SSL_PKEY_RSA_ENC].privatekey;
 		if (	(pkey == NULL) ||
@@ -2028,13 +2029,13 @@ int ssl3_get_client_key_exchange(SSL *s)
 		else
 			encrypted_premaster_secret = client_key_exchange;
 
-		/* Reject overly short RSA ciphertext because we want to be
-		 * sure that the buffer size makes it safe to iterate over the
-		 * entire size of a premaster secret
-		 * (SSL_MAX_MASTER_KEY_LENGTH). The actual expected size is
-		 * larger due to RSA padding, but the bound is sufficient to be
-		 * safe. */
-		if (CBS_len(&encrypted_premaster_secret) < SSL_MAX_MASTER_KEY_LENGTH)
+		/* Reject overly short RSA keys because we want to be sure that
+		 * the buffer size makes it safe to iterate over the entire size
+		 * of a premaster secret (SSL_MAX_MASTER_KEY_LENGTH). The actual
+		 * expected size is larger due to RSA padding, but the bound is
+		 * sufficient to be safe. */
+		rsa_size = RSA_size(rsa);
+		if (rsa_size < SSL_MAX_MASTER_KEY_LENGTH)
 			{
 			al = SSL_AD_DECRYPT_ERROR;
 			OPENSSL_PUT_ERROR(SSL, ssl3_get_client_key_exchange, SSL_R_DECRYPTION_FAILED);
@@ -2052,25 +2053,55 @@ int ssl3_get_client_key_exchange(SSL *s)
 			goto err;
 
 		/* Allocate a buffer large enough for an RSA decryption. */
-		premaster_secret = OPENSSL_malloc(RSA_size(rsa));
-		if (premaster_secret == NULL)
+		decrypt_buf = OPENSSL_malloc(rsa_size);
+		if (decrypt_buf == NULL)
 			{
 			OPENSSL_PUT_ERROR(SSL, ssl3_get_client_key_exchange, ERR_R_MALLOC_FAILURE);
 			goto err;
 			}
 
-		decrypt_len = RSA_private_decrypt(
-			CBS_len(&encrypted_premaster_secret),
-			CBS_data(&encrypted_premaster_secret),
-			premaster_secret,
-			rsa,
-			RSA_PKCS1_PADDING);
+		/* Decrypt with no padding. PKCS#1 padding will be removed as
+		 * part of the timing-sensitive code below. */
+		if (!RSA_decrypt(rsa, &decrypt_len, decrypt_buf, rsa_size,
+				CBS_data(&encrypted_premaster_secret),
+				CBS_len(&encrypted_premaster_secret),
+				RSA_NO_PADDING))
+			{
+			goto err;
+			}
+		if (decrypt_len != rsa_size)
+			{
+			/* This should never happen, but do a check so we do not
+			 * read uninitialized memory. */
+			OPENSSL_PUT_ERROR(SSL, ssl3_get_client_key_exchange, ERR_R_INTERNAL_ERROR);
+			goto err;
+			}
 
-		ERR_clear_error();
+		/* Remove the PKCS#1 padding and adjust decrypt_len as
+		 * appropriate. decrypt_good_mask will be zero if the premaster
+		 * if good and non-zero otherwise. */
+		decrypt_good_mask = RSA_message_index_PKCS1_type_2(
+			decrypt_buf, decrypt_len, &premaster_index);
+		decrypt_good_mask--;
+		decrypt_len = decrypt_len - premaster_index;
 
-		/* decrypt_len should be SSL_MAX_MASTER_KEY_LENGTH.
-		 * decrypt_good_mask will be zero if so and non-zero otherwise. */
-		decrypt_good_mask = decrypt_len ^ SSL_MAX_MASTER_KEY_LENGTH;
+		/* decrypt_len should be SSL_MAX_MASTER_KEY_LENGTH. */
+		decrypt_good_mask |= decrypt_len ^ SSL_MAX_MASTER_KEY_LENGTH;
+
+		/* Copy over the unpadded premaster. Whatever the value of
+		 * |decrypt_good_mask|, copy as if the premaster were the right
+		 * length. It is important the memory access pattern be
+		 * constant. */
+		premaster_secret = BUF_memdup(
+			decrypt_buf + (rsa_size - SSL_MAX_MASTER_KEY_LENGTH),
+			SSL_MAX_MASTER_KEY_LENGTH);
+		if (premaster_secret == NULL)
+			{
+			OPENSSL_PUT_ERROR(SSL, ssl3_get_client_key_exchange, ERR_R_MALLOC_FAILURE);
+			goto err;
+			}
+		OPENSSL_free(decrypt_buf);
+		decrypt_buf = NULL;
 
 		/* If the version in the decrypted pre-master secret is correct
 		 * then version_good will be zero. The Klima-Pokorny-Rosa
@@ -2465,6 +2496,8 @@ err:
 			OPENSSL_cleanse(premaster_secret, premaster_secret_len);
 		OPENSSL_free(premaster_secret);
 		}
+	if (decrypt_buf)
+		OPENSSL_free(decrypt_buf);
 #ifndef OPENSSL_NO_ECDH
 	EVP_PKEY_free(clnt_pub_pkey);
 	EC_POINT_free(clnt_ecpoint);

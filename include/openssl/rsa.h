@@ -154,6 +154,20 @@ int RSA_public_encrypt(int flen, const uint8_t *from, uint8_t *to, RSA *rsa,
 int RSA_private_decrypt(int flen, const uint8_t *from, uint8_t *to, RSA *rsa,
                         int padding);
 
+/* RSA_message_index_PKCS1_type_2 performs the first step of a PKCS #1 padding
+ * check for decryption. If the |from_len| bytes pointed to at |from| are a
+ * valid PKCS #1 message, it returns one and sets |*out_index| to the start of
+ * the unpadded message. The unpadded message is a suffix of the input and has
+ * length |from_len - *out_index|. Otherwise, it returns zero and sets
+ * |*out_index| to some undefined value. This function runs in time independent
+ * of the input data and is intended to be used directly to avoid
+ * Bleichenbacker's attack.
+ *
+ * WARNING: This function behaves differently from the usual OpenSSL convention
+ * in that it does NOT put an error on the queue in the error case. */
+int RSA_message_index_PKCS1_type_2(const uint8_t *from, size_t from_len,
+                                   size_t *out_index);
+
 
 /* Signing / Verification */
 
