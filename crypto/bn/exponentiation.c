@@ -509,7 +509,6 @@ static int mod_exp_recp(BIGNUM *r, const BIGNUM *a, const BIGNUM *p,
      * how bit a window to do.  To do this we need to scan
      * forward until the last set bit before the end of the
      * window */
-    j = wstart;
     wvalue = 1;
     wend = 0;
     for (i = 1; i < window; i++) {

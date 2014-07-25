@@ -413,7 +413,6 @@ static void DES_encrypt1(uint32_t *data, const DES_key_schedule *ks, int enc) {
   FP(r, l);
   data[0] = l;
   data[1] = r;
-  l = r = t = u = 0;
 }
 
 static void DES_encrypt2(uint32_t *data, const DES_key_schedule *ks, int enc) {
@@ -473,7 +472,6 @@ static void DES_encrypt2(uint32_t *data, const DES_key_schedule *ks, int enc) {
   /* rotate and clear the top bits on machines with 8byte longs */
   data[0] = ROTATE(l, 3) & 0xffffffffL;
   data[1] = ROTATE(r, 3) & 0xffffffffL;
-  l = r = t = u = 0;
 }
 
 static void DES_encrypt3(uint32_t *data, const DES_key_schedule *ks1,
@@ -532,7 +530,7 @@ void DES_ecb_encrypt(const DES_cblock *in_block, DES_cblock *out_block,
   l2c(l, out);
   l = ll[1];
   l2c(l, out);
-  l = ll[0] = ll[1] = 0;
+  ll[0] = ll[1] = 0;
 }
 
 void DES_ncbc_encrypt(const uint8_t *in, uint8_t *out, size_t len,
@@ -608,7 +606,6 @@ void DES_ncbc_encrypt(const uint8_t *in, uint8_t *out, size_t len,
     l2c(xor0, iv);
     l2c(xor1, iv);
   }
-  tin0 = tin1 = tout0 = tout1 = xor0 = xor1 = 0;
   tin[0] = tin[1] = 0;
 }
 
@@ -709,6 +706,5 @@ void DES_ede3_cbc_encrypt(const uint8_t *in, uint8_t *out, size_t len,
     l2c(xor1, iv);
   }
 
-  tin0 = tin1 = tout0 = tout1 = xor0 = xor1 = 0;
   tin[0] = tin[1] = 0;
 }

@@ -232,7 +232,6 @@ static void decode_hex(BIGNUM *bn, const char *in, int i) {
   BN_ULONG l=0;
 
   j = i; /* least significant 'hex' */
-  m = 0;
   h = 0;
   while (j > 0) {
     m = ((BN_BYTES * 2) <= j) ? (BN_BYTES * 2) : j;
@@ -383,7 +382,6 @@ char *BN_bn2dec(const BIGNUM *a) {
       *p++ = '-';
     }
 
-    i = 0;
     while (!BN_is_zero(t)) {
       *lp = BN_div_word(t, BN_DEC_CONV);
       lp++;
