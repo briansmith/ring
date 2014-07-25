@@ -504,6 +504,115 @@ static void bn_free_and_null(BIGNUM **bn) {
   *bn = NULL;
 }
 
+int RSA_check_key(const RSA *key) {
+  BIGNUM n, pm1, qm1, lcm, gcd, de, dmp1, dmq1, iqmp;
+  BN_CTX *ctx;
+  int ok = 0, has_crt_values;
+
+  if (RSA_is_opaque(key)) {
+    /* Opaque keys can't be checked. */
+    return 1;
+  }
+
+  if ((key->p != NULL) != (key->q != NULL)) {
+    OPENSSL_PUT_ERROR(RSA, RSA_check_key, RSA_R_ONLY_ONE_OF_P_Q_GIVEN);
+    return 0;
+  }
+
+  if (!key->n || !key->e) {
+    OPENSSL_PUT_ERROR(RSA, RSA_check_key, RSA_R_VALUE_MISSING);
+    return 0;
+  }
+
+  if (!key->d || !key->p) {
+    /* For a public key, or without p and q, there's nothing that can be
+     * checked. */
+    return 1;
+  }
+
+  ctx = BN_CTX_new();
+  if (ctx == NULL) {
+    OPENSSL_PUT_ERROR(RSA, RSA_check_key, ERR_R_MALLOC_FAILURE);
+    return 0;
+  }
+
+  BN_init(&n);
+  BN_init(&pm1);
+  BN_init(&qm1);
+  BN_init(&lcm);
+  BN_init(&gcd);
+  BN_init(&de);
+  BN_init(&dmp1);
+  BN_init(&dmq1);
+  BN_init(&iqmp);
+
+  if (/* n = pq */
+      !BN_mul(&n, key->p, key->q, ctx) ||
+      /* lcm = lcm(p-1, q-1) */
+      !BN_sub(&pm1, key->p, BN_value_one()) ||
+      !BN_sub(&qm1, key->q, BN_value_one()) ||
+      !BN_mul(&lcm, &pm1, &qm1, ctx) ||
+      !BN_gcd(&gcd, &pm1, &qm1, ctx) ||
+      !BN_div(&lcm, NULL, &lcm, &gcd, ctx) ||
+      /* de = d*e mod lcm(p-1, q-1) */
+      !BN_mod_mul(&de, key->d, key->e, &lcm, ctx)) {
+    OPENSSL_PUT_ERROR(RSA, RSA_check_key, ERR_LIB_BN);
+    goto out;
+  }
+
+  if (BN_cmp(&n, key->n) != 0) {
+    OPENSSL_PUT_ERROR(RSA, RSA_check_key, RSA_R_N_NOT_EQUAL_P_Q);
+    goto out;
+  }
+
+  if (!BN_is_one(&de)) {
+    OPENSSL_PUT_ERROR(RSA, RSA_check_key, RSA_R_D_E_NOT_CONGRUENT_TO_1);
+    goto out;
+  }
+
+  has_crt_values = key->dmp1 != NULL;
+  if (has_crt_values != (key->dmq1 != NULL) ||
+      has_crt_values != (key->iqmp != NULL)) {
+    OPENSSL_PUT_ERROR(RSA, RSA_check_key, RSA_R_INCONSISTENT_SET_OF_CRT_VALUES);
+    goto out;
+  }
+
+  if (has_crt_values) {
+    if (/* dmp1 = d mod (p-1) */
+        !BN_mod(&dmp1, key->d, &pm1, ctx) ||
+        /* dmq1 = d mod (q-1) */
+        !BN_mod(&dmq1, key->d, &qm1, ctx) ||
+        /* iqmp = q^-1 mod p */
+        !BN_mod_inverse(&iqmp, key->q, key->p, ctx)) {
+      OPENSSL_PUT_ERROR(RSA, RSA_check_key, ERR_LIB_BN);
+      goto out;
+    }
+
+    if (BN_cmp(&dmp1, key->dmp1) != 0 ||
+        BN_cmp(&dmq1, key->dmq1) != 0 ||
+        BN_cmp(&iqmp, key->iqmp) != 0) {
+      OPENSSL_PUT_ERROR(RSA, RSA_check_key, RSA_R_CRT_VALUES_INCORRECT);
+      goto out;
+    }
+  }
+
+  ok = 1;
+
+out:
+  BN_free(&n);
+  BN_free(&pm1);
+  BN_free(&qm1);
+  BN_free(&lcm);
+  BN_free(&gcd);
+  BN_free(&de);
+  BN_free(&dmp1);
+  BN_free(&dmq1);
+  BN_free(&iqmp);
+  BN_CTX_free(ctx);
+
+  return ok;
+}
+
 int RSA_recover_crt_params(RSA *rsa) {
   BN_CTX *ctx;
   BIGNUM *totient, *rem, *multiple, *p_plus_q, *p_minus_q;

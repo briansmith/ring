@@ -261,6 +261,11 @@ RSA *RSAPublicKey_dup(const RSA *rsa);
  * |rsa| into it. It returns the fresh |RSA| object, or NULL on error. */
 RSA *RSAPrivateKey_dup(const RSA *rsa);
 
+/* RSA_check_key performs basic validatity tests on |rsa|. It returns one if
+ * they pass and zero otherwise. Opaque keys and public keys always pass. If it
+ * returns zero then a more detailed error is available on the error queue. */
+int RSA_check_key(const RSA *rsa);
+
 /* RSA_recover_crt_params uses |rsa->n|, |rsa->d| and |rsa->e| in order to
  * calculate the two primes used and thus the precomputed, CRT values. These
  * values are set in the |p|, |q|, |dmp1|, |dmq1| and |iqmp| members of |rsa|,
@@ -453,6 +458,7 @@ struct rsa_st {
 #define RSA_F_decrypt 125
 #define RSA_F_RSA_padding_check_PKCS1_type_2 126
 #define RSA_F_RSA_recover_crt_params 127
+#define RSA_F_RSA_check_key 128
 #define RSA_R_INVALID_MESSAGE_LENGTH 100
 #define RSA_R_DATA_GREATER_THAN_MOD_LEN 101
 #define RSA_R_NO_PUBLIC_EXPONENT 102
@@ -491,5 +497,11 @@ struct rsa_st {
 #define RSA_R_BAD_RSA_PARAMETERS 135
 #define RSA_R_INTERNAL_ERROR 136
 #define RSA_R_CRT_PARAMS_ALREADY_GIVEN 137
+#define RSA_R_D_E_NOT_CONGRUENT_TO_1 138
+#define RSA_R_VALUE_MISSING 139
+#define RSA_R_N_NOT_EQUAL_P_Q 140
+#define RSA_R_CRT_VALUES_INCORRECT 141
+#define RSA_R_INCONSISTENT_SET_OF_CRT_VALUES 142
+#define RSA_R_ONLY_ONE_OF_P_Q_GIVEN 143
 
 #endif  /* OPENSSL_HEADER_RSA_H */

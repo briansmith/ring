@@ -237,6 +237,36 @@ static int key3(RSA *key, unsigned char *c) {
   SetKey;
 }
 
+static int test_bad_key() {
+  RSA *key = RSA_new();
+  BIGNUM e;
+
+  BN_init(&e);
+  BN_set_word(&e, RSA_F4);
+
+  if (!RSA_generate_key_ex(key, 512, &e, NULL)) {
+    fprintf(stderr, "RSA_generate_key_ex failed.\n");
+    BIO_print_errors_fp(stderr);
+    return 0;
+  }
+
+  if (!BN_add(key->p, key->p, BN_value_one())) {
+    fprintf(stderr, "BN error.\n");
+    BIO_print_errors_fp(stderr);
+    return 0;
+  }
+
+  if (RSA_check_key(key)) {
+    fprintf(stderr, "RSA_check_key passed with invalid key!\n");
+    return 0;
+  }
+
+  ERR_clear_error();
+  BN_free(&e);
+  RSA_free(key);
+  return 1;
+}
+
 static int test_only_d_given() {
   RSA *key = RSA_new();
   uint8_t buf[64];
@@ -254,6 +284,12 @@ static int test_only_d_given() {
                  "316eaeca21a73ac365e58713195f2ae9849348525ca855386b6d028e437a9"
                  "495a01") ||
       RSA_size(key) > sizeof(buf)) {
+    goto err;
+  }
+
+  if (!RSA_check_key(key)) {
+    fprintf(stderr, "RSA_check_key failed with only d given.\n");
+    BIO_print_errors_fp(stderr);
     goto err;
   }
 
@@ -296,6 +332,12 @@ static int test_recover_crt_params() {
       return 0;
     }
 
+    if (!RSA_check_key(key1)) {
+      fprintf(stderr, "RSA_check_key failed with original key.\n");
+      BIO_print_errors_fp(stderr);
+      return 0;
+    }
+
     key2 = RSA_new();
     key2->n = BN_dup(key1->n);
     key2->e = BN_dup(key1->e);
@@ -309,6 +351,12 @@ static int test_recover_crt_params() {
     }
 
     if (RSA_size(key2) > buf_len) {
+      return 0;
+    }
+
+    if (!RSA_check_key(key2)) {
+      fprintf(stderr, "RSA_check_key failed with recovered key.\n");
+      BIO_print_errors_fp(stderr);
       return 0;
     }
 
@@ -363,6 +411,12 @@ int main(int argc, char *argv[]) {
       default:
         abort();
         return 1;
+    }
+
+    if (!RSA_check_key(key)) {
+      printf("%d: RSA_check_key failed\n", v);
+      err = 1;
+      goto oaep;
     }
 
     num = RSA_public_encrypt(plen, ptext_ex, ctext, key, RSA_PKCS1_PADDING);
@@ -438,7 +492,8 @@ int main(int argc, char *argv[]) {
 
   if (err != 0 ||
       !test_only_d_given() ||
-      !test_recover_crt_params()) {
+      !test_recover_crt_params() ||
+      !test_bad_key()) {
     err = 1;
   }
 
