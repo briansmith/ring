@@ -101,6 +101,20 @@ const EVP_AEAD *EVP_aead_aes_256_gcm(void);
 /* EVP_aead_chacha20_poly1305 is an AEAD built from ChaCha20 and Poly1305. */
 const EVP_AEAD *EVP_aead_chacha20_poly1305();
 
+/* EVP_aead_aes_128_key_wrap is AES-128 Key Wrap mode. This should never be
+ * used except to interoperate with existing systems that use this mode.
+ *
+ * If the nonce is emtpy then the default nonce will be used, otherwise it must
+ * be eight bytes long. The input must be a multiple of eight bytes long. No
+ * additional data can be given to this mode. */
+const EVP_AEAD *EVP_aead_aes_128_key_wrap();
+
+/* EVP_aead_aes_256_key_wrap is AES-256 in Key Wrap mode. This should never be
+ * used except to interoperate with existing systems that use this mode.
+ *
+ * See |EVP_aead_aes_128_key_wrap| for details. */
+const EVP_AEAD *EVP_aead_aes_256_key_wrap();
+
 
 /* TLS specific AEAD algorithms.
  *

@@ -168,6 +168,10 @@ int main(int argc, char **argv) {
     aead = EVP_aead_chacha20_poly1305();
   } else if (strcmp(argv[1], "rc4-md5") == 0) {
     aead = EVP_aead_rc4_md5_tls();
+  } else if (strcmp(argv[1], "aes-128-key-wrap") == 0) {
+    aead = EVP_aead_aes_128_key_wrap();
+  } else if (strcmp(argv[1], "aes-256-key-wrap") == 0) {
+    aead = EVP_aead_aes_256_key_wrap();
   } else {
     fprintf(stderr, "Unknown AEAD: %s\n", argv[1]);
     return 2;
