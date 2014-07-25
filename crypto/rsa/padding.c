@@ -350,7 +350,7 @@ int RSA_padding_add_PKCS1_OAEP_mgf1(uint8_t *to, unsigned tlen,
                                     const EVP_MD *md, const EVP_MD *mgf1md) {
   unsigned i, emlen, mdlen;
   uint8_t *db, *seed;
-  uint8_t *dbmask = NULL, seedmask[SHA_DIGEST_LENGTH];
+  uint8_t *dbmask = NULL, seedmask[EVP_MAX_MD_SIZE];
   int ret = 0;
 
   if (md == NULL) {
@@ -390,7 +390,7 @@ int RSA_padding_add_PKCS1_OAEP_mgf1(uint8_t *to, unsigned tlen,
   }
   memset(db + mdlen, 0, emlen - flen - 2 * mdlen - 1);
   db[emlen - flen - mdlen - 1] = 0x01;
-  memcpy(db + emlen - flen - mdlen, from, (unsigned int)flen);
+  memcpy(db + emlen - flen - mdlen, from, flen);
   if (RAND_pseudo_bytes(seed, mdlen) <= 0) {
     return 0;
   }
@@ -412,7 +412,7 @@ int RSA_padding_add_PKCS1_OAEP_mgf1(uint8_t *to, unsigned tlen,
   if (PKCS1_MGF1(seedmask, mdlen, db, emlen - mdlen, mgf1md) < 0) {
     goto out;
   }
-  for (i = 0; i < SHA_DIGEST_LENGTH; i++) {
+  for (i = 0; i < mdlen; i++) {
     seed[i] ^= seedmask[i];
   }
   ret = 1;
@@ -430,7 +430,7 @@ int RSA_padding_check_PKCS1_OAEP_mgf1(uint8_t *to, unsigned tlen,
                                       const EVP_MD *md, const EVP_MD *mgf1md) {
   unsigned i, dblen, mlen = -1, mdlen;
   const uint8_t *maskeddb, *maskedseed;
-  uint8_t *db = NULL, seed[SHA_DIGEST_LENGTH], phash[SHA_DIGEST_LENGTH];
+  uint8_t *db = NULL, seed[EVP_MAX_MD_SIZE], phash[EVP_MAX_MD_SIZE];
   int bad, looking_for_one_byte, one_index = 0;
 
   if (md == NULL) {
