@@ -2263,7 +2263,7 @@ $code.=<<___;
 	ret
 .size	se_handler,.-se_handler
 ___
-$code.=<<___ if ($shaext);
+$code.=<<___ if ($SZ == 4 && $shaext);
 .type	shaext_handler,\@abi-omnipotent
 .align	16
 shaext_handler:
