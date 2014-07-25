@@ -558,7 +558,7 @@ ssl_cipher_preference_list_dup(
 	return ret;
 
 err:
-	if (ret->ciphers)
+	if (ret && ret->ciphers)
 		sk_SSL_CIPHER_free(ret->ciphers);
 	if (ret)
 		OPENSSL_free(ret);
@@ -586,7 +586,7 @@ ssl_cipher_preference_list_from_ciphers(STACK_OF(SSL_CIPHER) *ciphers)
 	return ret;
 
 err:
-	if (ret->ciphers)
+	if (ret && ret->ciphers)
 		sk_SSL_CIPHER_free(ret->ciphers);
 	if (ret)
 		OPENSSL_free(ret);

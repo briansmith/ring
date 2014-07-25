@@ -181,34 +181,31 @@ X509_STORE *X509_STORE_new(void)
 
 	if ((ret=(X509_STORE *)OPENSSL_malloc(sizeof(X509_STORE))) == NULL)
 		return NULL;
+	memset(ret, 0, sizeof(*ret));
 	ret->objs = sk_X509_OBJECT_new(x509_object_cmp);
-	ret->cache=1;
-	ret->get_cert_methods=sk_X509_LOOKUP_new_null();
-	ret->verify=0;
-	ret->verify_cb=0;
+	ret->cache = 1;
+	ret->get_cert_methods = sk_X509_LOOKUP_new_null();
 
 	if ((ret->param = X509_VERIFY_PARAM_new()) == NULL)
-		return NULL;
-
-	ret->get_issuer = 0;
-	ret->check_issued = 0;
-	ret->check_revocation = 0;
-	ret->get_crl = 0;
-	ret->check_crl = 0;
-	ret->cert_crl = 0;
-	ret->lookup_certs = 0;
-	ret->lookup_crls = 0;
-	ret->cleanup = 0;
+		goto err;
 
 	if (!CRYPTO_new_ex_data(CRYPTO_EX_INDEX_X509_STORE, ret, &ret->ex_data))
-		{
-		sk_X509_OBJECT_free(ret->objs);
-		OPENSSL_free(ret);
-		return NULL;
-		}
+		goto err;
 
-	ret->references=1;
+	ret->references = 1;
 	return ret;
+err:
+	if (ret)
+		{
+		if (ret->param)
+			X509_VERIFY_PARAM_free(ret->param);
+		if (ret->get_cert_methods)
+			sk_X509_LOOKUP_free(ret->get_cert_methods);
+		if (ret->objs)
+			sk_X509_OBJECT_free(ret->objs);
+		OPENSSL_free(ret);
+		}
+	return NULL;
 	}
 
 static void cleanup(X509_OBJECT *a)

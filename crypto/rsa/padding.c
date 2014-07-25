@@ -474,28 +474,28 @@ int RSA_padding_check_PKCS1_OAEP_mgf1(uint8_t *to, unsigned tlen,
   if (db == NULL) {
     OPENSSL_PUT_ERROR(RSA, RSA_padding_check_PKCS1_OAEP_mgf1,
                       ERR_R_MALLOC_FAILURE);
-    return -1;
+    goto err;
   }
 
   maskedseed = from + 1;
   maskeddb = from + 1 + mdlen;
 
   if (PKCS1_MGF1(seed, mdlen, maskeddb, dblen, mgf1md)) {
-    return -1;
+    goto err;
   }
   for (i = 0; i < mdlen; i++) {
     seed[i] ^= maskedseed[i];
   }
 
   if (PKCS1_MGF1(db, dblen, seed, mdlen, mgf1md)) {
-    return -1;
+    goto err;
   }
   for (i = 0; i < dblen; i++) {
     db[i] ^= maskeddb[i];
   }
 
   if (!EVP_Digest((void *)param, plen, phash, NULL, md, NULL)) {
-    return -1;
+    goto err;
   }
 
   bad = CRYPTO_memcmp(db, phash, mdlen);
@@ -536,6 +536,7 @@ decoding_err:
    * which kind of decoding error happened */
   OPENSSL_PUT_ERROR(RSA, RSA_padding_check_PKCS1_OAEP_mgf1,
                     RSA_R_OAEP_DECODING_ERROR);
+ err:
   if (db != NULL) {
     OPENSSL_free(db);
   }
