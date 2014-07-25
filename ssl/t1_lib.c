@@ -255,6 +255,11 @@ static int tls1_check_duplicate_extensions(const CBS *cbs)
 		num_extensions++;
 		}
 
+	if (num_extensions == 0)
+		{
+		return 1;
+		}
+
 	extension_types = (uint16_t*)OPENSSL_malloc(sizeof(uint16_t) * num_extensions);
 	if (extension_types == NULL)
 		{
