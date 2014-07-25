@@ -134,8 +134,7 @@ case SSL3_ST_CW_FINISHED_A:
 case SSL3_ST_SW_FINISHED_A:	str="SSLv3 write finished A"; break;
 case SSL3_ST_CW_FINISHED_B:	
 case SSL3_ST_SW_FINISHED_B:	str="SSLv3 write finished B"; break;
-case SSL3_ST_CR_CHANGE_A:	str="SSLv3 read change cipher spec A"; break;
-case SSL3_ST_CR_CHANGE_B:	str="SSLv3 read change cipher spec B"; break;
+case SSL3_ST_CR_CHANGE:
 case SSL3_ST_SR_CHANGE:		str="SSLv3 read change cipher spec"; break;
 case SSL3_ST_CR_FINISHED_A:	
 case SSL3_ST_SR_FINISHED_A:	str="SSLv3 read finished A"; break;
@@ -253,8 +252,7 @@ case SSL3_ST_SW_FINISHED_A:
 case SSL3_ST_CW_FINISHED_A:			str="3WFINA"; break;
 case SSL3_ST_SW_FINISHED_B:
 case SSL3_ST_CW_FINISHED_B:			str="3WFINB"; break;
-case SSL3_ST_CR_CHANGE_A:			str="3RCCSA"; break;
-case SSL3_ST_CR_CHANGE_B:			str="3RCCSB"; break;
+case SSL3_ST_CR_CHANGE:
 case SSL3_ST_SR_CHANGE:				str="3RCCS_"; break;
 case SSL3_ST_SR_FINISHED_A:
 case SSL3_ST_CR_FINISHED_A:			str="3RFINA"; break;
