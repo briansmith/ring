@@ -82,6 +82,10 @@ if ($xmm && !$avx && $ARGV[0] eq "win32" &&
 	$avx = ($1>=10) + ($1>=11);
 }
 
+if ($xmm && !$avx && `$ENV{CC} -v 2>&1` =~ /(^clang version|based on LLVM) ([3-9]\.[0-9]+)/) {
+	$avx = ($2>=3.0) + ($2>3.0);
+}
+
 $shaext=$xmm;	### set to zero if compiling for 1.0.1
 
 $unroll_after = 64*4;	# If pre-evicted from L1P cache first spin of
