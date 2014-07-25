@@ -480,7 +480,7 @@ static void tls1_get_curvelist(SSL *s, int get_client_curves,
 		{
 	case SSL_CERT_FLAG_SUITEB_128_LOS:
 		*out_curve_ids = suiteb_curves;
-		*out_curve_ids_len = sizeof(suiteb_curves);
+		*out_curve_ids_len = sizeof(suiteb_curves) / sizeof(suiteb_curves[0]);
 		break;
 
 	case SSL_CERT_FLAG_SUITEB_128_LOS_ONLY:
@@ -499,7 +499,7 @@ static void tls1_get_curvelist(SSL *s, int get_client_curves,
 	if (!*out_curve_ids)
 		{
 		*out_curve_ids = eccurves_default;
-		*out_curve_ids_len = sizeof(eccurves_default);
+		*out_curve_ids_len = sizeof(eccurves_default) / sizeof(eccurves_default[0]);
 		}
 	}
 
