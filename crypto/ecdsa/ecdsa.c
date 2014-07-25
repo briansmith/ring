@@ -73,7 +73,7 @@ int ECDSA_sign(int type, const uint8_t *digest, size_t digest_len, uint8_t *sig,
 int ECDSA_verify(int type, const uint8_t *digest, size_t digest_len,
                  const uint8_t *sig, size_t sig_len, EC_KEY *eckey) {
   ECDSA_SIG *s;
-  int ret = -1;
+  int ret = 0;
 
   if (eckey->ecdsa_meth && eckey->ecdsa_meth->verify) {
     return eckey->ecdsa_meth->verify(digest, digest_len, sig, sig_len, eckey);
@@ -127,7 +127,7 @@ ECDSA_SIG *ECDSA_do_sign(const uint8_t *digest, size_t digest_len,
 
 int ECDSA_do_verify(const uint8_t *digest, size_t digest_len,
                     const ECDSA_SIG *sig, EC_KEY *eckey) {
-  int ret = -1;
+  int ret = 0;
   BN_CTX *ctx;
   BIGNUM *order, *u1, *u2, *m, *X;
   EC_POINT *point = NULL;
@@ -136,20 +136,20 @@ int ECDSA_do_verify(const uint8_t *digest, size_t digest_len,
 
   if (eckey->ecdsa_meth && eckey->ecdsa_meth->verify) {
     OPENSSL_PUT_ERROR(ECDSA, ECDSA_do_verify, ECDSA_R_NOT_IMPLEMENTED);
-    return -1;
+    return 0;
   }
 
   /* check input values */
   if (eckey == NULL || (group = EC_KEY_get0_group(eckey)) == NULL ||
       (pub_key = EC_KEY_get0_public_key(eckey)) == NULL || sig == NULL) {
     OPENSSL_PUT_ERROR(ECDSA, ECDSA_do_verify, ECDSA_R_MISSING_PARAMETERS);
-    return -1;
+    return 0;
   }
 
   ctx = BN_CTX_new();
   if (!ctx) {
     OPENSSL_PUT_ERROR(ECDSA, ECDSA_do_verify, ERR_R_MALLOC_FAILURE);
-    return -1;
+    return 0;
   }
   BN_CTX_start(ctx);
   order = BN_CTX_get(ctx);

@@ -78,12 +78,8 @@ int ECDSA_sign(int type, const uint8_t *digest, size_t digest_len, uint8_t *sig,
 
 /* ECDSA_verify verifies that |sig_len| bytes from |sig| constitute a valid
  * signature by |key| of |digest|. (The |type| argument should be zero.) It
- * returns one on success, zero if the signature is invalid and -1 on error.
- *
- * DANGER: this function differs from the usual OpenSSL return value
- * convention.
- *
- * TODO(fork): change this to return the usual 0/1. */
+ * returns one on success or zero if the signature is invalid or an error
+ * occured. */
 int ECDSA_verify(int type, const uint8_t *digest, size_t digest_len,
                  const uint8_t *sig, size_t sig_len, EC_KEY *key);
 
@@ -116,11 +112,8 @@ ECDSA_SIG *ECDSA_do_sign(const uint8_t *digest, size_t digest_len,
                          EC_KEY *key);
 
 /* ECDSA_verify verifies that |sig| constitutes a valid signature by |key| of
- * |digest|. It returns one on success, zero if the signature is invalid and -1
+ * |digest|. It returns one on success or zero if the signature is invalid or
  * on error.
- *
- * DANGER: this function differs from the usual OpenSSL return value
- * convention.
  *
  * TODO(fork): remove this function. */
 int ECDSA_do_verify(const uint8_t *digest, size_t digest_len,

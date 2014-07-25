@@ -164,7 +164,7 @@ static void pkey_ec_cleanup(EVP_PKEY_CTX *ctx) {
 
 static int pkey_ec_sign(EVP_PKEY_CTX *ctx, uint8_t *sig, size_t *siglen,
                         const uint8_t *tbs, size_t tbslen) {
-  int ret, type;
+  int type;
   unsigned int sltmp;
   EC_PKEY_CTX *dctx = ctx->data;
   EC_KEY *ec = ctx->pkey->pkey.ec;
@@ -182,10 +182,8 @@ static int pkey_ec_sign(EVP_PKEY_CTX *ctx, uint8_t *sig, size_t *siglen,
     type = EVP_MD_type(dctx->md);
   }
 
-  ret = ECDSA_sign(type, tbs, tbslen, sig, &sltmp, ec);
-
-  if (ret <= 0) {
-    return ret;
+  if (!ECDSA_sign(type, tbs, tbslen, sig, &sltmp, ec)) {
+    return 0;
   }
   *siglen = (size_t)sltmp;
   return 1;
@@ -235,7 +233,7 @@ static int pkey_ec_derive(EVP_PKEY_CTX *ctx, uint8_t *key,
 
   ret = ECDH_compute_key(key, outlen, pubkey, eckey, 0);
   if (ret < 0) {
-    return ret;
+    return 0;
   }
   *keylen = ret;
   return 1;

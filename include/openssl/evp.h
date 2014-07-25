@@ -222,8 +222,7 @@ int i2d_PublicKey(EVP_PKEY *key, uint8_t **outp);
  * operation will be written to |*pctx|; this can be used to set alternative
  * signing options.
  *
- * It returns one on success, or <= 0 on error. WARNING: this differs from the
- * usual OpenSSL return convention. */
+ * It returns one on success, or zero on error. */
 int EVP_DigestSignInit(EVP_MD_CTX *ctx, EVP_PKEY_CTX **pctx, const EVP_MD *type,
                        ENGINE *e, EVP_PKEY *pkey);
 
@@ -239,8 +238,7 @@ int EVP_DigestSignUpdate(EVP_MD_CTX *ctx, const void *data, size_t len);
  * is successful, the signature is written to |out_sig| and |*out_sig_len| is
  * set to its length.
  *
- * It returns one on success and <= 0 on error. WARNING: this differs from the
- * usual, OpenSSL return value convention. */
+ * It returns one on success, or zero on error. */
 int EVP_DigestSignFinal(EVP_MD_CTX *ctx, uint8_t *out_sig, size_t *out_sig_len);
 
 
@@ -252,8 +250,7 @@ int EVP_DigestSignFinal(EVP_MD_CTX *ctx, uint8_t *out_sig, size_t *out_sig_len);
  * operation will be written to |*pctx|; this can be used to set alternative
  * signing options.
  *
- * It returns one on success, or <= 0 on error. WARNING: this differs from the
- * usual OpenSSL return convention. */
+ * It returns one on success, or zero on error. */
 int EVP_DigestVerifyInit(EVP_MD_CTX *ctx, EVP_PKEY_CTX **pctx,
                          const EVP_MD *type, ENGINE *e, EVP_PKEY *pkey);
 
@@ -422,8 +419,7 @@ int EVP_PKEY_CTX_ctrl(EVP_PKEY_CTX *ctx, int keytype, int optype, int cmd,
 /* EVP_PKEY_sign_init initialises an |EVP_PKEY_CTX| for a signing operation. It
  * should be called before |EVP_PKEY_sign|.
  *
- * It returns one on success or <= 0 on error. WARNING: this differs from the
- * usual return value convention. */
+ * It returns one on success or zero on error. */
 int EVP_PKEY_sign_init(EVP_PKEY_CTX *ctx);
 
 /* EVP_PKEY_sign signs |data_len| bytes from |data| using |ctx|. If |sig| is
@@ -443,23 +439,20 @@ int EVP_PKEY_sign(EVP_PKEY_CTX *ctx, uint8_t *sig, size_t *sig_len,
 /* EVP_PKEY_verify_init initialises an |EVP_PKEY_CTX| for a signature
  * verification operation. It should be called before |EVP_PKEY_verify|.
  *
- * It returns one on success or <= 0 on error. WARNING: this differs from the
- * usual return value convention. */
+ * It returns one on success or zero on error. */
 int EVP_PKEY_verify_init(EVP_PKEY_CTX *ctx);
 
 /* EVP_PKEY_verify verifies that |sig_len| bytes from |sig| are a valid signature
  * for |data|.
  *
- * It returns one on success or zero on error. (Note: this differs from
- * OpenSSL, which can also return negative values to indicate an error. ) */
+ * It returns one on success or zero on error. */
 int EVP_PKEY_verify(EVP_PKEY_CTX *ctx, const uint8_t *sig, size_t sig_len,
                     const uint8_t *data, size_t data_len);
 
 /* EVP_PKEY_encrypt_init initialises an |EVP_PKEY_CTX| for an encryption
  * operation. It should be called before |EVP_PKEY_encrypt|.
  *
- * It returns one on success or <= 0 on error. WARNING: this differs from the
- * usual return value convention. */
+ * It returns one on success or zero on error. */
 int EVP_PKEY_encrypt_init(EVP_PKEY_CTX *ctx);
 
 /* EVP_PKEY_encrypt encrypts |in_len| bytes from |in|. If |out| is NULL, the
@@ -471,16 +464,14 @@ int EVP_PKEY_encrypt_init(EVP_PKEY_CTX *ctx);
  * WARNING: Setting |out| to NULL only gives the maximum size of the
  * ciphertext. The actual ciphertext may be smaller.
  *
- * It returns one on success or <= 0 on error. (Note: this differs from
- * OpenSSL, which can also return negative values to indicate an error. ) */
+ * It returns one on success or zero on error. */
 int EVP_PKEY_encrypt(EVP_PKEY_CTX *ctx, uint8_t *out, size_t *out_len,
                      const uint8_t *in, size_t in_len);
 
 /* EVP_PKEY_decrypt_init initialises an |EVP_PKEY_CTX| for a decryption
  * operation. It should be called before |EVP_PKEY_decrypt|.
  *
- * It returns one on success or <= 0 on error. WARNING: this differs from the
- * usual return value convention. */
+ * It returns one on success or zero on error. */
 int EVP_PKEY_decrypt_init(EVP_PKEY_CTX *ctx);
 
 /* EVP_PKEY_decrypt decrypts |in_len| bytes from |in|. If |out| is NULL, the
@@ -492,8 +483,7 @@ int EVP_PKEY_decrypt_init(EVP_PKEY_CTX *ctx);
  * WARNING: Setting |out| to NULL only gives the maximum size of the
  * plaintext. The actual plaintext may be smaller.
  *
- * It returns one on success or <= 0 on error. (Note: this differs from
- * OpenSSL, which can also return negative values to indicate an error. ) */
+ * It returns one on success or zero on error. */
 int EVP_PKEY_decrypt(EVP_PKEY_CTX *ctx, uint8_t *out, size_t *out_len,
                      const uint8_t *in, size_t in_len);
 
@@ -501,15 +491,13 @@ int EVP_PKEY_decrypt(EVP_PKEY_CTX *ctx, uint8_t *out, size_t *out_len,
  * operation. It should be called before |EVP_PKEY_derive_set_peer| and
  * |EVP_PKEY_derive|.
  *
- * It returns one on success or <= 0 on error. WARNING: this differs from the
- * usual return value convention. */
+ * It returns one on success or zero on error. */
 int EVP_PKEY_derive_init(EVP_PKEY_CTX *ctx);
 
 /* EVP_PKEY_derive_set_peer sets the peer's key to be used for key derivation
  * by |ctx| to |peer|. It should be called after |EVP_PKEY_derive_init|. (For
  * example, this is used to set the peer's key in (EC)DH.) It returns one on
- * success and <= 0 on error. WARNING: this differs from the usual return value
- * convention. */
+ * success and zero on error. */
 int EVP_PKEY_derive_set_peer(EVP_PKEY_CTX *ctx, EVP_PKEY *peer);
 
 /* EVP_PKEY_derive derives a shared key between the two keys configured in
@@ -521,21 +509,18 @@ int EVP_PKEY_derive_set_peer(EVP_PKEY_CTX *ctx, EVP_PKEY *peer);
  * WARNING: Setting |out| to NULL only gives the maximum size of the key. The
  * actual key may be smaller.
  *
- * It returns one on success and <= 0 on error. WARNING: this differs from the
- * usual return convention. */
+ * It returns one on success and zero on error. */
 int EVP_PKEY_derive(EVP_PKEY_CTX *ctx, uint8_t *key, size_t *out_key_len);
 
 /* EVP_PKEY_keygen_init initialises an |EVP_PKEY_CTX| for a key generation
  * operation. It should be called before |EVP_PKEY_keygen|.
  *
- * It returns one on success or <= 0 on error. WARNING: this differs from the
- * usual return value convention. */
+ * It returns one on success or zero on error. */
 int EVP_PKEY_keygen_init(EVP_PKEY_CTX *ctx);
 
 /* EVP_PKEY_keygen performs a key generation operation using the values from
  * |ctx| and sets |*ppkey| to a fresh |EVP_PKEY| containing the resulting key.
- * It returns one on success or <= 0 on error. WARNING: this differs from the
- * normal return value convention. */
+ * It returns one on success or zero on error. */
 int EVP_PKEY_keygen(EVP_PKEY_CTX *ctx, EVP_PKEY **ppkey);
 
 

@@ -93,7 +93,9 @@ int RSA_up_ref(RSA *rsa);
  * for |e|. If |cb| is not NULL then it is called during the key generation
  * process. In addition to the calls documented for |BN_generate_prime_ex|, it
  * is called with event=2 when the n'th prime is rejected as unsuitable and
- * with event=3 when a suitable value for |p| is found. */
+ * with event=3 when a suitable value for |p| is found.
+ *
+ * It returns one on success or zero on error. */
 int RSA_generate_key_ex(RSA *rsa, int bits, BIGNUM *e, BN_GENCB *cb);
 
 
