@@ -112,7 +112,6 @@ my %globals;
 	    $line = substr($line,@+[0]); $line =~ s/^\s+//;
 
 	    undef $self->{sz};
-	    undef $self->{arg_sz};
 	    if ($self->{op} =~ /^(movz)x?([bw]).*/) {	# movz is pain...
 		$self->{op} = $1;
 		$self->{sz} = $2;
@@ -120,12 +119,6 @@ my %globals;
 		$self->{sz} = "";
 	    } elsif ($self->{op} =~ /^p/ && $' !~ /^(ush|op|insrw)/) { # SSEn
 		$self->{sz} = "";
-	    } elsif ($self->{op} eq "vpbroadcastq") {
-		$self->{arg_sz} = "q";
-	    } elsif ($self->{op} eq "vpbroadcastb") {
-		$self->{arg_sz} = "b";
-	    } elsif ($self->{op} =~ /^vinserti128/) {
-		$self->{arg_sz} = "x";
 	    } elsif ($self->{op} =~ /^v/) { # VEX
 		$self->{sz} = "";
 	    } elsif ($self->{op} =~ /movq/ && $line =~ /%xmm/) {
@@ -142,10 +135,6 @@ my %globals;
 	my $sz   = shift;
 	$self->{sz} = $sz if (defined($sz) && !defined($self->{sz}));
 	$self->{sz};
-    }
-    sub arg_size {
-	my $self = shift;
-	$self->{arg_sz};
     }
     sub out {
 	my $self = shift;
@@ -281,15 +270,20 @@ my %globals;
 		sprintf "%s%s(%%%s)",	$self->{asterisk},$self->{label},$self->{base};
 	    }
 	} else {
-	    %szmap = (	b=>"BYTE$PTR", w=>"WORD$PTR", l=>"DWORD$PTR",
-	    		q=>"QWORD$PTR",o=>"OWORD$PTR",x=>"XMMWORD$PTR",
-			y=>"YMMWORD$PTR" );
+	    %szmap = (	b=>"BYTE$PTR",  w=>"WORD$PTR",
+			l=>"DWORD$PTR", d=>"DWORD$PTR",
+	    		q=>"QWORD$PTR", o=>"OWORD$PTR",
+			x=>"XMMWORD$PTR", y=>"YMMWORD$PTR", z=>"ZMMWORD$PTR" );
 
 	    $self->{label} =~ s/\./\$/g;
 	    $self->{label} =~ s/(?<![\w\$\.])0x([0-9a-f]+)/0$1h/ig;
 	    $self->{label} = "($self->{label})" if ($self->{label} =~ /[\*\+\-\/]/);
-	    $sz="q" if ($self->{asterisk} || opcode->mnemonic() =~ /^v?movq$/);
-	    $sz="l" if (opcode->mnemonic() =~ /^v?movd$/);
+
+	    ($self->{asterisk})					&& ($sz="q") ||
+	    (opcode->mnemonic() =~ /^v?mov([qd])$/)		&& ($sz=$1)  ||
+	    (opcode->mnemonic() =~ /^v?pinsr([qdwb])$/)		&& ($sz=$1)  ||
+	    (opcode->mnemonic() =~ /^vpbroadcast([qdwb])$/)	&& ($sz=$1)  ||
+	    (opcode->mnemonic() =~ /^vinsert[fi]128$/)		&& ($sz="x");
 
 	    if (defined($self->{index})) {
 		sprintf "%s[%s%s*%d%s]",$szmap{$sz},
@@ -547,7 +541,7 @@ my %globals;
 					$v="$current_segment\tENDS\n" if ($current_segment);
 					$current_segment = ".text\$";
 					$v.="$current_segment\tSEGMENT ";
-					$v.=$masm>=$masmref ? "ALIGN(64)" : "PAGE";
+					$v.=$masm>=$masmref ? "ALIGN(256)" : "PAGE";
 					$v.=" 'CODE'";
 				    }
 				    $self->{value} = $v;
@@ -789,6 +783,19 @@ my $rdrand = sub {
     }
 };
 
+my $rdseed = sub {
+    if (shift =~ /%[er](\w+)/) {
+      my @opcode=();
+      my $dst=$1;
+	if ($dst !~ /[0-9]+/) { $dst = $regrm{"%e$dst"}; }
+	rex(\@opcode,0,$1,8);
+	push @opcode,0x0f,0xc7,0xf8|($dst&7);
+	@opcode;
+    } else {
+	();
+    }
+};
+
 sub rxb {
  local *opcode=shift;
  my ($dst,$src1,$src2,$rxb)=@_;
@@ -832,6 +839,8 @@ if ($nasm) {
     print <<___;
 default	rel
 %define XMMWORD
+%define YMMWORD
+%define ZMMWORD
 ___
 } elsif ($masm) {
     print <<___;
@@ -886,7 +895,6 @@ while($line=<>) {
 	if ($#args>=0) {
 	    my $insn;
 	    my $sz=opcode->size();
-	    my $arg_sz=opcode->arg_size();
 
 	    if ($gas) {
 		$insn = $opcode->out($#args>=1?$args[$#args]->size():$sz);
@@ -899,18 +907,12 @@ while($line=<>) {
 		    # $insn.=$sz compensates for movq, pinsrw, ...
 		    if ($arg =~ /^xmm[0-9]+$/) { $insn.=$sz; $sz="x" if(!$sz); last; }
 		    if ($arg =~ /^ymm[0-9]+$/) { $insn.=$sz; $sz="y" if(!$sz); last; }
+		    if ($arg =~ /^zmm[0-9]+$/) { $insn.=$sz; $sz="z" if(!$sz); last; }
 		    if ($arg =~ /^mm[0-9]+$/)  { $insn.=$sz; $sz="q" if(!$sz); last; }
 		}
-		$sz=$arg_sz if($arg_sz);
 		@args = reverse(@args);
 		undef $sz if ($nasm && $opcode->mnemonic() eq "lea");
-
-		if ($insn eq "movq" && $#args == 1 && $args[0]->out($sz) eq "xmm0" && $args[1]->out($sz) eq "rax") {
-		    # I have no clue why MASM can't parse this instruction.
-		    printf "DB 66h, 48h, 0fh, 6eh, 0c0h";
-		} else {
-		    printf "\t%s\t%s",$insn,join(",",map($_->out($sz),@args));
-		}
+		printf "\t%s\t%s",$insn,join(",",map($_->out($sz),@args));
 	    }
 	} else {
 	    printf "\t%s",$opcode->out();
