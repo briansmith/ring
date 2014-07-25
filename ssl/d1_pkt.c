@@ -959,7 +959,7 @@ start:
 			{
 			al=SSL_AD_DECODE_ERROR;
 			OPENSSL_PUT_ERROR(SSL, dtls1_read_bytes, SSL_R_BAD_HELLO_REQUEST);
-			goto err;
+			goto f_err;
 			}
 
 		/* no need to check sequence number on HELLO REQUEST messages */
@@ -1110,9 +1110,9 @@ start:
 		if (	(rr->length != ccs_hdr_len) || 
 			(rr->off != 0) || (rr->data[0] != SSL3_MT_CCS))
 			{
-			i=SSL_AD_ILLEGAL_PARAMETER;
+			al=SSL_AD_ILLEGAL_PARAMETER;
 			OPENSSL_PUT_ERROR(SSL, dtls1_read_bytes, SSL_R_BAD_CHANGE_CIPHER_SPEC);
-			goto err;
+			goto f_err;
 			}
 
 		rr->length=0;
