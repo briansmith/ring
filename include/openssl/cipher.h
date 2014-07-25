@@ -325,6 +325,11 @@ int EVP_BytesToKey(const EVP_CIPHER *type, const EVP_MD *md,
  * one. */
 #define EVP_CIPH_FLAG_AEAD_CIPHER 0x800
 
+/* EVP_CIPH_CUSTOM_COPY indicates that the |ctrl| callback should be called
+ * with |EVP_CTRL_COPY| at the end of normal |EVP_CIPHER_CTX_copy|
+ * processing. */
+#define EVP_CIPH_CUSTOM_COPY 0x1000
+
 
 /* Private functions. */
 

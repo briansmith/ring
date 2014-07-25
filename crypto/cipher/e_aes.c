@@ -480,6 +480,27 @@ static int aes_gcm_ctrl(EVP_CIPHER_CTX *c, int type, int arg, void *ptr) {
       gctx->iv_set = 1;
       return 1;
 
+    case EVP_CTRL_COPY: {
+      EVP_CIPHER_CTX *out = ptr;
+      EVP_AES_GCM_CTX *gctx_out = out->cipher_data;
+      if (gctx->gcm.key) {
+        if (gctx->gcm.key != &gctx->ks) {
+          return 0;
+        }
+        gctx_out->gcm.key = &gctx_out->ks;
+      }
+      if (gctx->iv == c->iv) {
+        gctx_out->iv = out->iv;
+      } else {
+        gctx_out->iv = OPENSSL_malloc(gctx->ivlen);
+        if (!gctx_out->iv) {
+          return 0;
+        }
+        memcpy(gctx_out->iv, gctx->iv, gctx->ivlen);
+      }
+      return 1;
+    }
+
     default:
       return -1;
   }
@@ -775,7 +796,7 @@ static const EVP_CIPHER aesni_256_gcm = {
     NID_aes_256_gcm, 1 /* block_size */, 32 /* key_size */, 12 /* iv_len */,
     sizeof(EVP_AES_GCM_CTX),
     EVP_CIPH_GCM_MODE | EVP_CIPH_CUSTOM_IV | EVP_CIPH_FLAG_CUSTOM_CIPHER |
-        EVP_CIPH_ALWAYS_CALL_INIT | EVP_CIPH_CTRL_INIT |
+        EVP_CIPH_ALWAYS_CALL_INIT | EVP_CIPH_CTRL_INIT | EVP_CIPH_CUSTOM_COPY |
         EVP_CIPH_FLAG_AEAD_CIPHER,
     NULL /* app_data */, aesni_gcm_init_key, aes_gcm_cipher, aes_gcm_cleanup,
     aes_gcm_ctrl};

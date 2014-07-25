@@ -140,6 +140,10 @@ int EVP_CIPHER_CTX_copy(EVP_CIPHER_CTX *out, const EVP_CIPHER_CTX *in) {
     memcpy(out->cipher_data, in->cipher_data, in->cipher->ctx_size);
   }
 
+  if (in->cipher->flags & EVP_CIPH_CUSTOM_COPY) {
+    return in->cipher->ctrl((EVP_CIPHER_CTX *)in, EVP_CTRL_COPY, 0, out);
+  }
+
   return 1;
 }
 
