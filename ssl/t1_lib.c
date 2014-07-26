@@ -1238,13 +1238,12 @@ unsigned char *ssl_add_clienthello_tlsext(SSL *s, unsigned char *buf, unsigned c
 		else if (s->session && s->tlsext_session_ticket &&
 			 s->tlsext_session_ticket->data)
 			{
-			ticklen = s->tlsext_session_ticket->length;
-			s->session->tlsext_tick = OPENSSL_malloc(ticklen);
+			s->session->tlsext_tick = BUF_memdup(
+			       s->tlsext_session_ticket->data,
+			       s->tlsext_session_ticket->length);
 			if (!s->session->tlsext_tick)
 				return NULL;
-			memcpy(s->session->tlsext_tick,
-			       s->tlsext_session_ticket->data,
-			       ticklen);
+			ticklen = s->tlsext_session_ticket->length;
 			s->session->tlsext_ticklen = ticklen;
 			}
 		else
@@ -1687,13 +1686,12 @@ static int tls1_alpn_handle_client_hello(SSL *s, CBS *cbs, int *out_alert)
 	if (r == SSL_TLSEXT_ERR_OK) {
 		if (s->s3->alpn_selected)
 			OPENSSL_free(s->s3->alpn_selected);
-		s->s3->alpn_selected = OPENSSL_malloc(selected_len);
+		s->s3->alpn_selected = BUF_memdup(selected, selected_len);
 		if (!s->s3->alpn_selected)
 			{
 			*out_alert = SSL_AD_INTERNAL_ERROR;
 			return 0;
 			}
-		memcpy(s->s3->alpn_selected, selected, selected_len);
 		s->s3->alpn_selected_len = selected_len;
 	}
 	return 1;
