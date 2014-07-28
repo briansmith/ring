@@ -3237,6 +3237,7 @@ int SSL_cutthrough_complete(const SSL *s)
 		ssl3_can_cutthrough(s) &&                                   /* cutthrough allowed */
 		s->s3->previous_server_finished_len == 0 &&                 /* not a renegotiation handshake */
 		(s->state == SSL3_ST_CR_SESSION_TICKET_A ||                 /* ready to write app-data*/
+			s->state == SSL3_ST_CR_CHANGE ||
 			s->state == SSL3_ST_CR_FINISHED_A));
 	}
 

@@ -77,9 +77,9 @@ static int skip_verify(int preverify_ok, X509_STORE_CTX *store_ctx) {
 static const char *advertise_npn = NULL;
 
 static int next_protos_advertised_callback(SSL *ssl,
-                                    const uint8_t **out,
-                                    unsigned int *out_len,
-                                    void *arg) {
+                                           const uint8_t **out,
+                                           unsigned int *out_len,
+                                           void *arg) {
   if (!advertise_npn)
     return SSL_TLSEXT_ERR_NOACK;
 
@@ -87,6 +87,22 @@ static int next_protos_advertised_callback(SSL *ssl,
   // test shim.
   *out = (const uint8_t*)advertise_npn;
   *out_len = strlen(advertise_npn);
+  return SSL_TLSEXT_ERR_OK;
+}
+
+static const char *select_next_proto = NULL;
+
+static int next_proto_select_callback(SSL* ssl,
+                                      uint8_t** out,
+                                      uint8_t* outlen,
+                                      const uint8_t* in,
+                                      unsigned inlen,
+                                      void* arg) {
+  if (!select_next_proto)
+    return SSL_TLSEXT_ERR_NOACK;
+
+  *out = (uint8_t*)select_next_proto;
+  *outlen = strlen(select_next_proto);
   return SSL_TLSEXT_ERR_OK;
 }
 
@@ -117,6 +133,8 @@ static SSL_CTX *setup_ctx(int is_server) {
 
   SSL_CTX_set_next_protos_advertised_cb(
       ssl_ctx, next_protos_advertised_callback, NULL);
+  SSL_CTX_set_next_proto_select_cb(
+      ssl_ctx, next_proto_select_callback, NULL);
 
   return ssl_ctx;
 
@@ -234,6 +252,15 @@ static int do_exchange(SSL_SESSION **out_session,
         return 1;
       }
       expected_next_proto = argv[i];
+    } else if (strcmp(argv[i], "-false-start") == 0) {
+      SSL_set_mode(ssl, SSL_MODE_HANDSHAKE_CUTTHROUGH);
+    } else if (strcmp(argv[i], "-select-next-proto") == 0) {
+      i++;
+      if (i >= argc) {
+        fprintf(stderr, "Missing parameter\n");
+        return 1;
+      }
+      select_next_proto = argv[i];
     } else {
       fprintf(stderr, "Unknown argument: %s\n", argv[i]);
       return 1;

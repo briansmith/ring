@@ -554,7 +554,7 @@ int ssl3_connect(SSL *s)
 			if (s->tlsext_ticket_expected)
 				s->state=SSL3_ST_CR_SESSION_TICKET_A;
 			else
-				s->state=SSL3_ST_CR_FINISHED_A;
+				s->state=SSL3_ST_CR_CHANGE;
 
 			ssl_free_wbio_buffer(s);
 			ret = 1;
