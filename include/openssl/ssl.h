@@ -2171,10 +2171,6 @@ STACK_OF(X509_NAME) *SSL_CTX_get_client_CA_list(const SSL_CTX *s);
 int SSL_add_client_CA(SSL *ssl,X509 *x);
 int SSL_CTX_add_client_CA(SSL_CTX *ctx,X509 *x);
 
-/* Deprecated. Use SSL_get0_certificate_types instead. */
-void SSL_get_client_certificate_types(const SSL *s, const unsigned char **ctype,
-	size_t *ctype_num);
-
 void SSL_set_connect_state(SSL *s);
 void SSL_set_accept_state(SSL *s);
 
