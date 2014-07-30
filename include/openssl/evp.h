@@ -83,57 +83,58 @@ extern "C" {
 
 /* EVP_PKEY_new creates a new, empty public-key object and returns it or NULL
  * on allocation failure. */
-EVP_PKEY *EVP_PKEY_new();
+OPENSSL_EXPORT EVP_PKEY *EVP_PKEY_new();
 
 /* EVP_PKEY_free frees all data referenced by |pkey| and then frees |pkey|
  * itself. */
-void EVP_PKEY_free(EVP_PKEY *pkey);
+OPENSSL_EXPORT void EVP_PKEY_free(EVP_PKEY *pkey);
 
 /* EVP_PKEY_is_opaque returns one if |pkey| is opaque. Opaque keys are backed by
  * custom implementations which do not expose key material and parameters. It is
  * an error to attempt to duplicate, export, or compare an opaque key. */
-int EVP_PKEY_is_opaque(const EVP_PKEY *pkey);
+OPENSSL_EXPORT int EVP_PKEY_is_opaque(const EVP_PKEY *pkey);
 
 /* EVP_PKEY_cmp compares |a| and |b| and returns one if they are equal, zero if
  * not and a negative number on error.
  *
  * WARNING: this differs from the traditional return value of a "cmp"
  * function. */
-int EVP_PKEY_cmp(const EVP_PKEY *a, const EVP_PKEY *b);
+OPENSSL_EXPORT int EVP_PKEY_cmp(const EVP_PKEY *a, const EVP_PKEY *b);
 
 /* EVP_PKEY_dup adds one to the reference count of |pkey| and returns
  * |pkey|. */
-EVP_PKEY *EVP_PKEY_dup(EVP_PKEY *pkey);
+OPENSSL_EXPORT EVP_PKEY *EVP_PKEY_dup(EVP_PKEY *pkey);
 
 /* EVP_PKEY_copy_parameters sets the parameters of |to| to equal the parameters
  * of |from|. It returns one on success and zero on error. */
-int EVP_PKEY_copy_parameters(EVP_PKEY *to, const EVP_PKEY *from);
+OPENSSL_EXPORT int EVP_PKEY_copy_parameters(EVP_PKEY *to, const EVP_PKEY *from);
 
 /* EVP_PKEY_missing_parameters returns one if |pkey| is missing needed
  * parameters or zero if not, or if the algorithm doesn't take parameters. */
-int EVP_PKEY_missing_parameters(const EVP_PKEY *pkey);
+OPENSSL_EXPORT int EVP_PKEY_missing_parameters(const EVP_PKEY *pkey);
 
 /* EVP_PKEY_size returns the "size", in bytes, of |pkey|. For example, for an
  * RSA key this returns the number of bytes needed to represent the modulus. */
-int EVP_PKEY_size(const EVP_PKEY *pkey);
+OPENSSL_EXPORT int EVP_PKEY_size(const EVP_PKEY *pkey);
 
 /* EVP_PKEY_bits returns the "size", in bits, of |pkey|. For example, for an
  * RSA key, this returns the bit length of the modulus. */
-int EVP_PKEY_bits(EVP_PKEY *pkey);
+OPENSSL_EXPORT int EVP_PKEY_bits(EVP_PKEY *pkey);
 
 /* EVP_PKEY_id returns the type of |pkey|, which is one of the |EVP_PKEY_*|
  * values. */
-int EVP_PKEY_id(const EVP_PKEY *pkey);
+OPENSSL_EXPORT int EVP_PKEY_id(const EVP_PKEY *pkey);
 
 /* EVP_PKEY_type returns a canonicalised form of |NID|. For example,
  * |EVP_PKEY_RSA2| will be turned into |EVP_PKEY_RSA|. */
-int EVP_PKEY_type(int nid);
+OPENSSL_EXPORT int EVP_PKEY_type(int nid);
 
 /* EVP_PKEY_new_mac_key allocates a fresh |EVP_PKEY| of the given type (e.g.
  * |EVP_PKEY_HMAC|), sets |mac_key| as the MAC key and "generates" a new key,
  * suitable for signing. It returns the fresh |EVP_PKEY|, or NULL on error. */
-EVP_PKEY *EVP_PKEY_new_mac_key(int type, ENGINE *engine, const uint8_t *mac_key,
-                               size_t mac_key_len);
+OPENSSL_EXPORT EVP_PKEY *EVP_PKEY_new_mac_key(int type, ENGINE *engine,
+                                              const uint8_t *mac_key,
+                                              size_t mac_key_len);
 
 
 /* Getting and setting concrete public key types.
@@ -144,21 +145,21 @@ EVP_PKEY *EVP_PKEY_new_mac_key(int type, ENGINE *engine, const uint8_t *mac_key,
  * functions adopt the caller's reference. The getters return a fresh reference
  * to the underlying object. */
 
-int EVP_PKEY_set1_RSA(EVP_PKEY *pkey, RSA *key);
-int EVP_PKEY_assign_RSA(EVP_PKEY *pkey, RSA *key);
-RSA *EVP_PKEY_get1_RSA(EVP_PKEY *pkey);
+OPENSSL_EXPORT int EVP_PKEY_set1_RSA(EVP_PKEY *pkey, RSA *key);
+OPENSSL_EXPORT int EVP_PKEY_assign_RSA(EVP_PKEY *pkey, RSA *key);
+OPENSSL_EXPORT RSA *EVP_PKEY_get1_RSA(EVP_PKEY *pkey);
 
-int EVP_PKEY_set1_DSA(EVP_PKEY *pkey, struct dsa_st *key);
-int EVP_PKEY_assign_DSA(EVP_PKEY *pkey, DSA *key);
-struct dsa_st *EVP_PKEY_get1_DSA(EVP_PKEY *pkey);
+OPENSSL_EXPORT int EVP_PKEY_set1_DSA(EVP_PKEY *pkey, struct dsa_st *key);
+OPENSSL_EXPORT int EVP_PKEY_assign_DSA(EVP_PKEY *pkey, DSA *key);
+OPENSSL_EXPORT struct dsa_st *EVP_PKEY_get1_DSA(EVP_PKEY *pkey);
 
-int EVP_PKEY_set1_EC_KEY(EVP_PKEY *pkey, struct ec_key_st *key);
-int EVP_PKEY_assign_EC_KEY(EVP_PKEY *pkey, EC_KEY *key);
-struct ec_key_st *EVP_PKEY_get1_EC_KEY(EVP_PKEY *pkey);
+OPENSSL_EXPORT int EVP_PKEY_set1_EC_KEY(EVP_PKEY *pkey, struct ec_key_st *key);
+OPENSSL_EXPORT int EVP_PKEY_assign_EC_KEY(EVP_PKEY *pkey, EC_KEY *key);
+OPENSSL_EXPORT struct ec_key_st *EVP_PKEY_get1_EC_KEY(EVP_PKEY *pkey);
 
-int EVP_PKEY_set1_DH(EVP_PKEY *pkey, struct dh_st *key);
-int EVP_PKEY_assign_DH(EVP_PKEY *pkey, DH *key);
-struct dh_st *EVP_PKEY_get1_DH(EVP_PKEY *pkey);
+OPENSSL_EXPORT int EVP_PKEY_set1_DH(EVP_PKEY *pkey, struct dh_st *key);
+OPENSSL_EXPORT int EVP_PKEY_assign_DH(EVP_PKEY *pkey, DH *key);
+OPENSSL_EXPORT struct dh_st *EVP_PKEY_get1_DH(EVP_PKEY *pkey);
 
 #define EVP_PKEY_NONE NID_undef
 #define EVP_PKEY_RSA NID_rsaEncryption
@@ -172,18 +173,19 @@ struct dh_st *EVP_PKEY_get1_DH(EVP_PKEY *pkey);
 /* EVP_PKEY_assign sets the underlying key of |pkey| to |key|, which must be of
  * the given type. The |type| argument should be one of the |EVP_PKEY_*|
  * values. */
-int EVP_PKEY_assign(EVP_PKEY *pkey, int type, void *key);
+OPENSSL_EXPORT int EVP_PKEY_assign(EVP_PKEY *pkey, int type, void *key);
 
 /* EVP_PKEY_set_type sets the type of |pkey| to |type|, which should be one of
  * the |EVP_PKEY_*| values. It returns one if sucessful or zero otherwise. If
  * |pkey| is NULL, it simply reports whether the type is known. */
-int EVP_PKEY_set_type(EVP_PKEY *pkey, int type);
+OPENSSL_EXPORT int EVP_PKEY_set_type(EVP_PKEY *pkey, int type);
 
 /* EVP_PKEY_cmp_parameters compares the parameters of |a| and |b|. It returns
  * one if they match, zero if not, or a negative number of on error.
  *
  * WARNING: the return value differs from the usual return value convention. */
-int EVP_PKEY_cmp_parameters(const EVP_PKEY *a, const EVP_PKEY *b);
+OPENSSL_EXPORT int EVP_PKEY_cmp_parameters(const EVP_PKEY *a,
+                                           const EVP_PKEY *b);
 
 
 /* ASN.1 functions */
@@ -194,24 +196,25 @@ int EVP_PKEY_cmp_parameters(const EVP_PKEY *a, const EVP_PKEY *b);
  * directly into |*out|, otherwise a fresh |EVP_PKEY| is allocated. On
  * successful exit, |*inp| is advanced past the DER structure. It returns the
  * result or NULL on error. */
-EVP_PKEY *d2i_PrivateKey(int type, EVP_PKEY **out, const uint8_t **inp,
-                         long len);
+OPENSSL_EXPORT EVP_PKEY *d2i_PrivateKey(int type, EVP_PKEY **out,
+                                        const uint8_t **inp, long len);
 
 /* d2i_AutoPrivateKey acts the same as |d2i_PrivateKey|, but detects the type
  * of the private key. */
-EVP_PKEY *d2i_AutoPrivateKey(EVP_PKEY **out, const uint8_t **inp, long len);
+OPENSSL_EXPORT EVP_PKEY *d2i_AutoPrivateKey(EVP_PKEY **out, const uint8_t **inp,
+                                            long len);
 
 /* i2d_PrivateKey marshals a private key from |key| to an ASN.1, DER
  * structure. If |outp| is not NULL then the result is written to |*outp| and
  * |*outp| is advanced just past the output. It returns the number of bytes in
  * the result, whether written or not, or a negative value on error. */
-int i2d_PrivateKey(const EVP_PKEY *key, uint8_t **outp);
+OPENSSL_EXPORT int i2d_PrivateKey(const EVP_PKEY *key, uint8_t **outp);
 
 /* i2d_PublicKey marshals a public key from |key| to an ASN.1, DER
  * structure. If |outp| is not NULL then the result is written to |*outp| and
  * |*outp| is advanced just past the output. It returns the number of bytes in
  * the result, whether written or not, or a negative value on error. */
-int i2d_PublicKey(EVP_PKEY *key, uint8_t **outp);
+OPENSSL_EXPORT int i2d_PublicKey(EVP_PKEY *key, uint8_t **outp);
 
 
 /* Signing */
@@ -223,13 +226,15 @@ int i2d_PublicKey(EVP_PKEY *key, uint8_t **outp);
  * signing options.
  *
  * It returns one on success, or zero on error. */
-int EVP_DigestSignInit(EVP_MD_CTX *ctx, EVP_PKEY_CTX **pctx, const EVP_MD *type,
-                       ENGINE *e, EVP_PKEY *pkey);
+OPENSSL_EXPORT int EVP_DigestSignInit(EVP_MD_CTX *ctx, EVP_PKEY_CTX **pctx,
+                                      const EVP_MD *type, ENGINE *e,
+                                      EVP_PKEY *pkey);
 
 /* EVP_DigestSignUpdate appends |len| bytes from |data| to the data which will
  * be signed in |EVP_DigestSignFinal|. It returns one on success and zero
  * otherwise. */
-int EVP_DigestSignUpdate(EVP_MD_CTX *ctx, const void *data, size_t len);
+OPENSSL_EXPORT int EVP_DigestSignUpdate(EVP_MD_CTX *ctx, const void *data,
+                                        size_t len);
 
 /* EVP_DigestSignFinal signs the data that has been included by one or more
  * calls to |EVP_DigestSignUpdate|. If |out_sig| is NULL then |*out_sig_len| is
@@ -239,7 +244,8 @@ int EVP_DigestSignUpdate(EVP_MD_CTX *ctx, const void *data, size_t len);
  * set to its length.
  *
  * It returns one on success, or zero on error. */
-int EVP_DigestSignFinal(EVP_MD_CTX *ctx, uint8_t *out_sig, size_t *out_sig_len);
+OPENSSL_EXPORT int EVP_DigestSignFinal(EVP_MD_CTX *ctx, uint8_t *out_sig,
+                                       size_t *out_sig_len);
 
 
 /* Verifying */
@@ -251,13 +257,15 @@ int EVP_DigestSignFinal(EVP_MD_CTX *ctx, uint8_t *out_sig, size_t *out_sig_len);
  * signing options.
  *
  * It returns one on success, or zero on error. */
-int EVP_DigestVerifyInit(EVP_MD_CTX *ctx, EVP_PKEY_CTX **pctx,
-                         const EVP_MD *type, ENGINE *e, EVP_PKEY *pkey);
+OPENSSL_EXPORT int EVP_DigestVerifyInit(EVP_MD_CTX *ctx, EVP_PKEY_CTX **pctx,
+                                        const EVP_MD *type, ENGINE *e,
+                                        EVP_PKEY *pkey);
 
 /* EVP_DigestVerifyUpdate appends |len| bytes from |data| to the data which
  * will be verified by |EVP_DigestVerifyFinal|. It returns one on success and
  * zero otherwise. */
-int EVP_DigestVerifyUpdate(EVP_MD_CTX *ctx, const void *data, size_t len);
+OPENSSL_EXPORT int EVP_DigestVerifyUpdate(EVP_MD_CTX *ctx, const void *data,
+                                          size_t len);
 
 /* EVP_DigestVerifyFinal verifies that |sig_len| bytes of |sig| are a valid
  * signature for the data that has been included by one or more calls to
@@ -265,8 +273,8 @@ int EVP_DigestVerifyUpdate(EVP_MD_CTX *ctx, const void *data, size_t len);
  *
  * It returns one on success and <= 0 on error. WARNING: this differs from the
  * usual return value convention. */
-int EVP_DigestVerifyFinal(EVP_MD_CTX *ctx, const uint8_t *sig,
-                          size_t sig_len);
+OPENSSL_EXPORT int EVP_DigestVerifyFinal(EVP_MD_CTX *ctx, const uint8_t *sig,
+                                         size_t sig_len);
 
 
 /* Signing (old functions) */
@@ -277,16 +285,18 @@ int EVP_DigestVerifyFinal(EVP_MD_CTX *ctx, const uint8_t *sig,
  *
  * (In order to initialise |ctx|, either obtain it initialised with
  * |EVP_MD_CTX_create|, or use |EVP_MD_CTX_init|.) */
-int EVP_SignInit_ex(EVP_MD_CTX *ctx, const EVP_MD *type, ENGINE *impl);
+OPENSSL_EXPORT int EVP_SignInit_ex(EVP_MD_CTX *ctx, const EVP_MD *type,
+                                   ENGINE *impl);
 
 /* EVP_SignInit is a deprecated version of |EVP_SignInit_ex|.
  *
  * TODO(fork): remove. */
-int EVP_SignInit(EVP_MD_CTX *ctx, const EVP_MD *type);
+OPENSSL_EXPORT int EVP_SignInit(EVP_MD_CTX *ctx, const EVP_MD *type);
 
 /* EVP_SignUpdate appends |len| bytes from |data| to the data which will be
  * signed in |EVP_SignFinal|. */
-int EVP_SignUpdate(EVP_MD_CTX *ctx, const void *data, size_t len);
+OPENSSL_EXPORT int EVP_SignUpdate(EVP_MD_CTX *ctx, const void *data,
+                                  size_t len);
 
 /* EVP_SignFinal signs the data that has been included by one or more calls to
  * |EVP_SignUpdate|, using the key |pkey|, and writes it to |sig|. On entry,
@@ -297,8 +307,8 @@ int EVP_SignUpdate(EVP_MD_CTX *ctx, const void *data, size_t len);
  *
  * It does not modify |ctx|, thus it's possible to continue to use |ctx| in
  * order to sign a longer message. */
-int EVP_SignFinal(const EVP_MD_CTX *ctx, uint8_t *sig,
-                  unsigned int *out_sig_len, EVP_PKEY *pkey);
+OPENSSL_EXPORT int EVP_SignFinal(const EVP_MD_CTX *ctx, uint8_t *sig,
+                                 unsigned int *out_sig_len, EVP_PKEY *pkey);
 
 
 /* Verifying (old functions) */
@@ -309,16 +319,18 @@ int EVP_SignFinal(const EVP_MD_CTX *ctx, uint8_t *sig,
  *
  * (In order to initialise |ctx|, either obtain it initialised with
  * |EVP_MD_CTX_create|, or use |EVP_MD_CTX_init|.) */
-int EVP_VerifyInit_ex(EVP_MD_CTX *ctx, const EVP_MD *type, ENGINE *impl);
+OPENSSL_EXPORT int EVP_VerifyInit_ex(EVP_MD_CTX *ctx, const EVP_MD *type,
+                                     ENGINE *impl);
 
 /* EVP_VerifyInit is a deprecated version of |EVP_VerifyInit_ex|.
  *
  * TODO(fork): remove. */
-int EVP_VerifyInit(EVP_MD_CTX *ctx, const EVP_MD *type);
+OPENSSL_EXPORT int EVP_VerifyInit(EVP_MD_CTX *ctx, const EVP_MD *type);
 
 /* EVP_VerifyUpdate appends |len| bytes from |data| to the data which will be
  * signed in |EVP_VerifyFinal|. */
-int EVP_VerifyUpdate(EVP_MD_CTX *ctx, const void *data, size_t len);
+OPENSSL_EXPORT int EVP_VerifyUpdate(EVP_MD_CTX *ctx, const void *data,
+                                    size_t len);
 
 /* EVP_VerifyFinal verifies that |sig_len| bytes of |sig| are a valid
  * signature, by |pkey|, for the data that has been included by one or more
@@ -328,26 +340,26 @@ int EVP_VerifyUpdate(EVP_MD_CTX *ctx, const void *data, size_t len);
  *
  * It does not modify |ctx|, thus it's possible to continue to use |ctx| in
  * order to sign a longer message. */
-int EVP_VerifyFinal(EVP_MD_CTX *ctx, const uint8_t *sig, size_t sig_len,
-                    EVP_PKEY *pkey);
+OPENSSL_EXPORT int EVP_VerifyFinal(EVP_MD_CTX *ctx, const uint8_t *sig,
+                                   size_t sig_len, EVP_PKEY *pkey);
 
 
 /* Printing */
 
 /* EVP_PKEY_print_public prints a textual representation of the public key in
  * |pkey| to |out|. Returns one on success or zero otherwise. */
-int EVP_PKEY_print_public(BIO *out, const EVP_PKEY *pkey, int indent,
-                          ASN1_PCTX *pctx);
+OPENSSL_EXPORT int EVP_PKEY_print_public(BIO *out, const EVP_PKEY *pkey,
+                                         int indent, ASN1_PCTX *pctx);
 
 /* EVP_PKEY_print_public prints a textual representation of the private key in
  * |pkey| to |out|. Returns one on success or zero otherwise. */
-int EVP_PKEY_print_private(BIO *out, const EVP_PKEY *pkey, int indent,
-                           ASN1_PCTX *pctx);
+OPENSSL_EXPORT int EVP_PKEY_print_private(BIO *out, const EVP_PKEY *pkey,
+                                          int indent, ASN1_PCTX *pctx);
 
 /* EVP_PKEY_print_public prints a textual representation of the parameters in
  * |pkey| to |out|. Returns one on success or zero otherwise. */
-int EVP_PKEY_print_params(BIO *out, const EVP_PKEY *pkey, int indent,
-                          ASN1_PCTX *pctx);
+OPENSSL_EXPORT int EVP_PKEY_print_params(BIO *out, const EVP_PKEY *pkey,
+                                         int indent, ASN1_PCTX *pctx);
 
 
 /* Password stretching.
@@ -359,16 +371,17 @@ int EVP_PKEY_print_params(BIO *out, const EVP_PKEY *pkey, int indent,
 /* PKCS5_PBKDF2_HMAC computes |iterations| iterations of PBKDF2 of |password|
  * and |salt|, using |digest|, and outputs |key_len| bytes to |out_key|. It
  * returns one on success and zero on error. */
-int PKCS5_PBKDF2_HMAC(const char *password, int password_len,
-                      const uint8_t *salt, size_t salt_len, unsigned iterations,
-                      const EVP_MD *digest, size_t key_len, uint8_t *out_key);
+OPENSSL_EXPORT int PKCS5_PBKDF2_HMAC(const char *password, int password_len,
+                                     const uint8_t *salt, size_t salt_len,
+                                     unsigned iterations, const EVP_MD *digest,
+                                     size_t key_len, uint8_t *out_key);
 
 /* PKCS5_PBKDF2_HMAC_SHA1 is the same as PKCS5_PBKDF2_HMAC, but with |digest|
  * fixed to |EVP_sha1|. */
-int PKCS5_PBKDF2_HMAC_SHA1(const char *password, int password_len,
-                           const uint8_t *salt, size_t salt_len,
-                           unsigned iterations, size_t key_len,
-                           uint8_t *out_key);
+OPENSSL_EXPORT int PKCS5_PBKDF2_HMAC_SHA1(const char *password,
+                                          int password_len, const uint8_t *salt,
+                                          size_t salt_len, unsigned iterations,
+                                          size_t key_len, uint8_t *out_key);
 
 
 /* Public key contexts.
@@ -378,31 +391,31 @@ int PKCS5_PBKDF2_HMAC_SHA1(const char *password, int password_len,
 
 /* EVP_PKEY_CTX_new allocates a fresh |EVP_PKEY_CTX| for use with |pkey|. It
  * returns the context or NULL on error. */
-EVP_PKEY_CTX *EVP_PKEY_CTX_new(EVP_PKEY *pkey, ENGINE *e);
+OPENSSL_EXPORT EVP_PKEY_CTX *EVP_PKEY_CTX_new(EVP_PKEY *pkey, ENGINE *e);
 
 /* EVP_PKEY_CTX_new allocates a fresh |EVP_PKEY_CTX| for a key of type |id|
  * (e.g. |EVP_PKEY_HMAC|). This can be used for key generation where
  * |EVP_PKEY_CTX_new| can't be used because there isn't an |EVP_PKEY| to pass
  * it. It returns the context or NULL on error. */
-EVP_PKEY_CTX *EVP_PKEY_CTX_new_id(int id, ENGINE *e);
+OPENSSL_EXPORT EVP_PKEY_CTX *EVP_PKEY_CTX_new_id(int id, ENGINE *e);
 
 /* EVP_KEY_CTX_free frees |ctx| and the data it owns. */
-void EVP_PKEY_CTX_free(EVP_PKEY_CTX *ctx);
+OPENSSL_EXPORT void EVP_PKEY_CTX_free(EVP_PKEY_CTX *ctx);
 
 /* EVP_PKEY_CTX_dup allocates a fresh |EVP_PKEY_CTX| and sets it equal to the
  * state of |ctx|. It returns the fresh |EVP_PKEY_CTX| or NULL on error. */
-EVP_PKEY_CTX *EVP_PKEY_CTX_dup(EVP_PKEY_CTX *ctx);
+OPENSSL_EXPORT EVP_PKEY_CTX *EVP_PKEY_CTX_dup(EVP_PKEY_CTX *ctx);
 
 /* EVP_PKEY_CTX_get0_pkey returns the |EVP_PKEY| associated with |ctx|. */
-EVP_PKEY *EVP_PKEY_CTX_get0_pkey(EVP_PKEY_CTX *ctx);
+OPENSSL_EXPORT EVP_PKEY *EVP_PKEY_CTX_get0_pkey(EVP_PKEY_CTX *ctx);
 
 /* EVP_PKEY_CTX_set_app_data sets an opaque pointer on |ctx|. */
-void EVP_PKEY_CTX_set_app_data(EVP_PKEY_CTX *ctx, void *data);
+OPENSSL_EXPORT void EVP_PKEY_CTX_set_app_data(EVP_PKEY_CTX *ctx, void *data);
 
 /* EVP_PKEY_CTX_get_app_data returns the opaque pointer from |ctx| that was
  * previously set with |EVP_PKEY_CTX_set_app_data|, or NULL if none has been
  * set. */
-void *EVP_PKEY_CTX_get_app_data(EVP_PKEY_CTX *ctx);
+OPENSSL_EXPORT void *EVP_PKEY_CTX_get_app_data(EVP_PKEY_CTX *ctx);
 
 /* EVP_PKEY_CTX_ctrl performs |cmd| on |ctx|. The |keytype| and |optype|
  * arguments can be -1 to specify that any type and operation are acceptable,
@@ -413,14 +426,14 @@ void *EVP_PKEY_CTX_get_app_data(EVP_PKEY_CTX *ctx);
  *
  * It returns -2 if |cmd| is not recognised, -1 on error or a |cmd| specific
  * value otherwise. */
-int EVP_PKEY_CTX_ctrl(EVP_PKEY_CTX *ctx, int keytype, int optype, int cmd,
-                      int p1, void *p2);
+OPENSSL_EXPORT int EVP_PKEY_CTX_ctrl(EVP_PKEY_CTX *ctx, int keytype, int optype,
+                                     int cmd, int p1, void *p2);
 
 /* EVP_PKEY_sign_init initialises an |EVP_PKEY_CTX| for a signing operation. It
  * should be called before |EVP_PKEY_sign|.
  *
  * It returns one on success or zero on error. */
-int EVP_PKEY_sign_init(EVP_PKEY_CTX *ctx);
+OPENSSL_EXPORT int EVP_PKEY_sign_init(EVP_PKEY_CTX *ctx);
 
 /* EVP_PKEY_sign signs |data_len| bytes from |data| using |ctx|. If |sig| is
  * NULL, the maximum size of the signature is written to
@@ -433,27 +446,29 @@ int EVP_PKEY_sign_init(EVP_PKEY_CTX *ctx);
  *
  * It returns one on success or zero on error. (Note: this differs from
  * OpenSSL, which can also return negative values to indicate an error. ) */
-int EVP_PKEY_sign(EVP_PKEY_CTX *ctx, uint8_t *sig, size_t *sig_len,
-                  const uint8_t *data, size_t data_len);
+OPENSSL_EXPORT int EVP_PKEY_sign(EVP_PKEY_CTX *ctx, uint8_t *sig,
+                                 size_t *sig_len, const uint8_t *data,
+                                 size_t data_len);
 
 /* EVP_PKEY_verify_init initialises an |EVP_PKEY_CTX| for a signature
  * verification operation. It should be called before |EVP_PKEY_verify|.
  *
  * It returns one on success or zero on error. */
-int EVP_PKEY_verify_init(EVP_PKEY_CTX *ctx);
+OPENSSL_EXPORT int EVP_PKEY_verify_init(EVP_PKEY_CTX *ctx);
 
 /* EVP_PKEY_verify verifies that |sig_len| bytes from |sig| are a valid signature
  * for |data|.
  *
  * It returns one on success or zero on error. */
-int EVP_PKEY_verify(EVP_PKEY_CTX *ctx, const uint8_t *sig, size_t sig_len,
-                    const uint8_t *data, size_t data_len);
+OPENSSL_EXPORT int EVP_PKEY_verify(EVP_PKEY_CTX *ctx, const uint8_t *sig,
+                                   size_t sig_len, const uint8_t *data,
+                                   size_t data_len);
 
 /* EVP_PKEY_encrypt_init initialises an |EVP_PKEY_CTX| for an encryption
  * operation. It should be called before |EVP_PKEY_encrypt|.
  *
  * It returns one on success or zero on error. */
-int EVP_PKEY_encrypt_init(EVP_PKEY_CTX *ctx);
+OPENSSL_EXPORT int EVP_PKEY_encrypt_init(EVP_PKEY_CTX *ctx);
 
 /* EVP_PKEY_encrypt encrypts |in_len| bytes from |in|. If |out| is NULL, the
  * maximum size of the ciphertext is written to |out_len|. Otherwise, |*out_len|
@@ -465,14 +480,15 @@ int EVP_PKEY_encrypt_init(EVP_PKEY_CTX *ctx);
  * ciphertext. The actual ciphertext may be smaller.
  *
  * It returns one on success or zero on error. */
-int EVP_PKEY_encrypt(EVP_PKEY_CTX *ctx, uint8_t *out, size_t *out_len,
-                     const uint8_t *in, size_t in_len);
+OPENSSL_EXPORT int EVP_PKEY_encrypt(EVP_PKEY_CTX *ctx, uint8_t *out,
+                                    size_t *out_len, const uint8_t *in,
+                                    size_t in_len);
 
 /* EVP_PKEY_decrypt_init initialises an |EVP_PKEY_CTX| for a decryption
  * operation. It should be called before |EVP_PKEY_decrypt|.
  *
  * It returns one on success or zero on error. */
-int EVP_PKEY_decrypt_init(EVP_PKEY_CTX *ctx);
+OPENSSL_EXPORT int EVP_PKEY_decrypt_init(EVP_PKEY_CTX *ctx);
 
 /* EVP_PKEY_decrypt decrypts |in_len| bytes from |in|. If |out| is NULL, the
  * maximum size of the plaintext is written to |out_len|. Otherwise, |*out_len|
@@ -484,21 +500,22 @@ int EVP_PKEY_decrypt_init(EVP_PKEY_CTX *ctx);
  * plaintext. The actual plaintext may be smaller.
  *
  * It returns one on success or zero on error. */
-int EVP_PKEY_decrypt(EVP_PKEY_CTX *ctx, uint8_t *out, size_t *out_len,
-                     const uint8_t *in, size_t in_len);
+OPENSSL_EXPORT int EVP_PKEY_decrypt(EVP_PKEY_CTX *ctx, uint8_t *out,
+                                    size_t *out_len, const uint8_t *in,
+                                    size_t in_len);
 
 /* EVP_PKEY_derive_init initialises an |EVP_PKEY_CTX| for a key derivation
  * operation. It should be called before |EVP_PKEY_derive_set_peer| and
  * |EVP_PKEY_derive|.
  *
  * It returns one on success or zero on error. */
-int EVP_PKEY_derive_init(EVP_PKEY_CTX *ctx);
+OPENSSL_EXPORT int EVP_PKEY_derive_init(EVP_PKEY_CTX *ctx);
 
 /* EVP_PKEY_derive_set_peer sets the peer's key to be used for key derivation
  * by |ctx| to |peer|. It should be called after |EVP_PKEY_derive_init|. (For
  * example, this is used to set the peer's key in (EC)DH.) It returns one on
  * success and zero on error. */
-int EVP_PKEY_derive_set_peer(EVP_PKEY_CTX *ctx, EVP_PKEY *peer);
+OPENSSL_EXPORT int EVP_PKEY_derive_set_peer(EVP_PKEY_CTX *ctx, EVP_PKEY *peer);
 
 /* EVP_PKEY_derive derives a shared key between the two keys configured in
  * |ctx|. If |key| is non-NULL then, on entry, |out_key_len| must contain the
@@ -510,18 +527,19 @@ int EVP_PKEY_derive_set_peer(EVP_PKEY_CTX *ctx, EVP_PKEY *peer);
  * actual key may be smaller.
  *
  * It returns one on success and zero on error. */
-int EVP_PKEY_derive(EVP_PKEY_CTX *ctx, uint8_t *key, size_t *out_key_len);
+OPENSSL_EXPORT int EVP_PKEY_derive(EVP_PKEY_CTX *ctx, uint8_t *key,
+                                   size_t *out_key_len);
 
 /* EVP_PKEY_keygen_init initialises an |EVP_PKEY_CTX| for a key generation
  * operation. It should be called before |EVP_PKEY_keygen|.
  *
  * It returns one on success or zero on error. */
-int EVP_PKEY_keygen_init(EVP_PKEY_CTX *ctx);
+OPENSSL_EXPORT int EVP_PKEY_keygen_init(EVP_PKEY_CTX *ctx);
 
 /* EVP_PKEY_keygen performs a key generation operation using the values from
  * |ctx| and sets |*ppkey| to a fresh |EVP_PKEY| containing the resulting key.
  * It returns one on success or zero on error. */
-int EVP_PKEY_keygen(EVP_PKEY_CTX *ctx, EVP_PKEY **ppkey);
+OPENSSL_EXPORT int EVP_PKEY_keygen(EVP_PKEY_CTX *ctx, EVP_PKEY **ppkey);
 
 
 /* EVP_PKEY_CTX_ctrl operations.
@@ -534,12 +552,14 @@ int EVP_PKEY_keygen(EVP_PKEY_CTX *ctx, EVP_PKEY **ppkey);
 /* EVP_PKEY_CTX_set_signature_md sets |md| as the digest to be used in a
  * signature operation. It returns one on success or otherwise on error. See
  * the return values of |EVP_PKEY_CTX_ctrl| for details. */
-int EVP_PKEY_CTX_set_signature_md(EVP_PKEY_CTX *ctx, const EVP_MD *md);
+OPENSSL_EXPORT int EVP_PKEY_CTX_set_signature_md(EVP_PKEY_CTX *ctx,
+                                                 const EVP_MD *md);
 
 /* EVP_PKEY_CTX_get_signature_md sets |*out_md| to the digest to be used in a
  * signature operation. It returns one on success or otherwise on error. See
  * the return values of |EVP_PKEY_CTX_ctrl| for details. */
-int EVP_PKEY_CTX_get_signature_md(EVP_PKEY_CTX *ctx, const EVP_MD **out_md);
+OPENSSL_EXPORT int EVP_PKEY_CTX_get_signature_md(EVP_PKEY_CTX *ctx,
+                                                 const EVP_MD **out_md);
 
 /* EVP_PKEY_CTRL_DIGESTINIT is an internal value. It's called by
  * EVP_DigestInit_ex to signal the |EVP_PKEY| that a digest operation is
@@ -574,13 +594,14 @@ int EVP_PKEY_CTX_get_signature_md(EVP_PKEY_CTX *ctx, const EVP_MD **out_md);
  * of the |RSA_*_PADDING| values. Returns one on success or another value on
  * error. See |EVP_PKEY_CTX_ctrl| for the other return values, which are
  * non-standard. */
-int EVP_PKEY_CTX_set_rsa_padding(EVP_PKEY_CTX *ctx, int padding);
+OPENSSL_EXPORT int EVP_PKEY_CTX_set_rsa_padding(EVP_PKEY_CTX *ctx, int padding);
 
 /* EVP_PKEY_CTX_get_rsa_padding sets |*out_padding| to the current padding
  * value, which is one of the |RSA_*_PADDING| values. Returns one on success or
  * another value on error. See |EVP_PKEY_CTX_ctrl| for the other return values,
  * which are non-standard. */
-int EVP_PKEY_CTX_get_rsa_padding(EVP_PKEY_CTX *ctx, int *out_padding);
+OPENSSL_EXPORT int EVP_PKEY_CTX_get_rsa_padding(EVP_PKEY_CTX *ctx,
+                                                int *out_padding);
 
 /* EVP_PKEY_CTX_set_rsa_pss_saltlen sets the length of the salt in a PSS-padded
  * signature. A value of -1 cause the salt to be the same length as the digest
@@ -589,7 +610,8 @@ int EVP_PKEY_CTX_get_rsa_padding(EVP_PKEY_CTX *ctx, int *out_padding);
  *
  * Returns one on success or another value on error. See |EVP_PKEY_CTX_ctrl|
  * for the other return values, which are non-standard. */
-int EVP_PKEY_CTX_set_rsa_pss_saltlen(EVP_PKEY_CTX *ctx, int salt_len);
+OPENSSL_EXPORT int EVP_PKEY_CTX_set_rsa_pss_saltlen(EVP_PKEY_CTX *ctx,
+                                                    int salt_len);
 
 /* EVP_PKEY_CTX_get_rsa_pss_saltlen sets |*out_salt_len| to the salt length of
  * a PSS-padded signature. See the documentation for
@@ -598,38 +620,45 @@ int EVP_PKEY_CTX_set_rsa_pss_saltlen(EVP_PKEY_CTX *ctx, int salt_len);
  *
  * Returns one on success or another value on error. See |EVP_PKEY_CTX_ctrl|
  * for the other return values, which are non-standard. */
-int EVP_PKEY_CTX_get_rsa_pss_saltlen(EVP_PKEY_CTX *ctx, int *out_salt_len);
+OPENSSL_EXPORT int EVP_PKEY_CTX_get_rsa_pss_saltlen(EVP_PKEY_CTX *ctx,
+                                                    int *out_salt_len);
 
 /* EVP_PKEY_CTX_set_rsa_keygen_bits sets the size of the desired RSA modulus,
  * in bits, for key generation. Returns one on success or another value on
  * error. See |EVP_PKEY_CTX_ctrl| for the other return values, which are
  * non-standard. */
-int EVP_PKEY_CTX_set_rsa_keygen_bits(EVP_PKEY_CTX *ctx, int bits);
+OPENSSL_EXPORT int EVP_PKEY_CTX_set_rsa_keygen_bits(EVP_PKEY_CTX *ctx,
+                                                    int bits);
 
 /* EVP_PKEY_CTX_set_rsa_keygen_pubexp sets |e| as the public exponent for key
  * generation. Returns one on success or another value on error. See
  * |EVP_PKEY_CTX_ctrl| for the other return values, which are non-standard. */
-int EVP_PKEY_CTX_set_rsa_keygen_pubexp(EVP_PKEY_CTX *ctx, BIGNUM *e);
+OPENSSL_EXPORT int EVP_PKEY_CTX_set_rsa_keygen_pubexp(EVP_PKEY_CTX *ctx,
+                                                      BIGNUM *e);
 
 /* EVP_PKEY_CTX_set_rsa_oaep_md sets |md| as the digest used in OAEP padding.
  * Returns one on success or another value on error. See |EVP_PKEY_CTX_ctrl|
  * for the other return values, which are non-standard. */
-int EVP_PKEY_CTX_set_rsa_oaep_md(EVP_PKEY_CTX *ctx, const EVP_MD *md);
+OPENSSL_EXPORT int EVP_PKEY_CTX_set_rsa_oaep_md(EVP_PKEY_CTX *ctx,
+                                                const EVP_MD *md);
 
 /* EVP_PKEY_CTX_get_rsa_oaep_md sets |*out_md| to the digest function used in
  * OAEP padding. Returns one on success or another value on error. See
  * |EVP_PKEY_CTX_ctrl| for the other return values, which are non-standard. */
-int EVP_PKEY_CTX_get_rsa_oaep_md(EVP_PKEY_CTX *ctx, const EVP_MD **out_md);
+OPENSSL_EXPORT int EVP_PKEY_CTX_get_rsa_oaep_md(EVP_PKEY_CTX *ctx,
+                                                const EVP_MD **out_md);
 
 /* EVP_PKEY_CTX_set_rsa_mgf1_md sets |md| as the digest used in MGF1. Returns
  * one on success or another value on error. See |EVP_PKEY_CTX_ctrl| for the
  * other return values, which are non-standard. */
-int EVP_PKEY_CTX_set_rsa_mgf1_md(EVP_PKEY_CTX *ctx, const EVP_MD *md);
+OPENSSL_EXPORT int EVP_PKEY_CTX_set_rsa_mgf1_md(EVP_PKEY_CTX *ctx,
+                                                const EVP_MD *md);
 
 /* EVP_PKEY_CTX_get_rsa_mgf1_md sets |*out_md| to the digest function used in
  * MGF1. Returns one on success or another value on error. See
  * |EVP_PKEY_CTX_ctrl| for the other return values, which are non-standard. */
-int EVP_PKEY_CTX_get_rsa_mgf1_md(EVP_PKEY_CTX *ctx, const EVP_MD **out_md);
+OPENSSL_EXPORT int EVP_PKEY_CTX_get_rsa_mgf1_md(EVP_PKEY_CTX *ctx,
+                                                const EVP_MD **out_md);
 
 /* EVP_PKEY_CTX_set0_rsa_oaep_label sets |label_len| bytes from |label| as the
  * label used in OAEP. DANGER: this call takes ownership of |label| and will
@@ -637,14 +666,15 @@ int EVP_PKEY_CTX_get_rsa_mgf1_md(EVP_PKEY_CTX *ctx, const EVP_MD **out_md);
  *
  * Returns one on success or another value on error. See |EVP_PKEY_CTX_ctrl|
  * for the other return values, which are non-standard. */
-int EVP_PKEY_CTX_set0_rsa_oaep_label(EVP_PKEY_CTX *ctx, const uint8_t *label,
-                                     size_t label_len);
+OPENSSL_EXPORT int EVP_PKEY_CTX_set0_rsa_oaep_label(EVP_PKEY_CTX *ctx,
+                                                    const uint8_t *label,
+                                                    size_t label_len);
 
 /* EVP_PKEY_CTX_get0_rsa_oaep_label sets |*out_label| to point to the internal
  * buffer containing the OAEP label (which may be NULL) and returns the length
  * of the label or a negative value on error. */
-int EVP_PKEY_CTX_get0_rsa_oaep_label(EVP_PKEY_CTX *ctx,
-                                     const uint8_t **out_label);
+OPENSSL_EXPORT int EVP_PKEY_CTX_get0_rsa_oaep_label(EVP_PKEY_CTX *ctx,
+                                                    const uint8_t **out_label);
 
 
 /* EC specific */
@@ -678,20 +708,20 @@ int EVP_PKEY_CTX_get0_rsa_oaep_label(EVP_PKEY_CTX *ctx,
 /* Private functions */
 
 /* OpenSSL_add_all_algorithms does nothing. */
-void OpenSSL_add_all_algorithms();
+OPENSSL_EXPORT void OpenSSL_add_all_algorithms();
 
 /* EVP_cleanup does nothing. */
-void EVP_cleanup();
+OPENSSL_EXPORT void EVP_cleanup();
 
 /* EVP_PKEY_asn1_find returns the ASN.1 method table for the given |nid|, which
  * should be one of the |EVP_PKEY_*| values. It returns NULL if |nid| is
  * unknown. */
-const EVP_PKEY_ASN1_METHOD *EVP_PKEY_asn1_find(ENGINE **pengine, int nid);
+OPENSSL_EXPORT const EVP_PKEY_ASN1_METHOD *EVP_PKEY_asn1_find(ENGINE **pengine,
+                                                              int nid);
 
 /* TODO(fork): move to PEM? */
-const EVP_PKEY_ASN1_METHOD *EVP_PKEY_asn1_find_str(ENGINE **pengine,
-                                                   const char *name,
-                                                   size_t len);
+OPENSSL_EXPORT const EVP_PKEY_ASN1_METHOD *EVP_PKEY_asn1_find_str(
+    ENGINE **pengine, const char *name, size_t len);
 
 struct evp_pkey_st {
   int references;

@@ -83,7 +83,7 @@ extern "C" {
 
 /* CRYPTO_num_locks returns the number of static locks that the callback
  * function passed to |CRYPTO_set_locking_callback| must be able to handle. */
-int CRYPTO_num_locks(void);
+OPENSSL_EXPORT int CRYPTO_num_locks(void);
 
 /* CRYPTO_set_locking_callback sets a callback function that implements locking
  * on behalf of OpenSSL. The callback is called whenever OpenSSL needs to lock
@@ -94,8 +94,8 @@ int CRYPTO_num_locks(void);
  * CRYPTO_UNLOCK, to denote the action, and CRYPTO_READ or CRYPTO_WRITE, to
  * indicate the type of lock. The |file| and |line| arguments give the location
  * in the OpenSSL source where the locking action originated. */
-void CRYPTO_set_locking_callback(void (*func)(int mode, int lock_num,
-                                              const char *file, int line));
+OPENSSL_EXPORT void CRYPTO_set_locking_callback(
+    void (*func)(int mode, int lock_num, const char *file, int line));
 
 /* CRYPTO_set_add_lock_callback sets an optional callback which is used when
  * OpenSSL needs to add a fixed amount to an integer. For example, this is used
@@ -108,13 +108,12 @@ void CRYPTO_set_locking_callback(void (*func)(int mode, int lock_num,
  * amount to add to the integer (|amount|, which may be negative), the number
  * of the lock which would have been taken to protect the operation and the
  * position in the OpenSSL code where the operation originated. */
-void CRYPTO_set_add_lock_callback(int (*func)(int *num, int amount,
-                                              int lock_num, const char *file,
-                                              int line));
+OPENSSL_EXPORT void CRYPTO_set_add_lock_callback(int (*func)(
+    int *num, int amount, int lock_num, const char *file, int line));
 
 /* CRYPTO_get_lock_name returns the name of the lock given by |lock_num|. This
  * can be used in a locking callback for debugging purposes. */
-const char *CRYPTO_get_lock_name(int lock_num);
+OPENSSL_EXPORT const char *CRYPTO_get_lock_name(int lock_num);
 
 
 /* CRYPTO_THREADID identifies a thread in a multithreaded program. This
@@ -131,11 +130,12 @@ typedef struct crypto_threadid_st {
  * |CRYPTO_THREADID_set_numeric| or |CRYPTO_THREADID_set_pointer| should be
  * used depending on whether thread IDs are numbers or pointers on the host
  * system. */
-int CRYPTO_THREADID_set_callback(
+OPENSSL_EXPORT int CRYPTO_THREADID_set_callback(
     void (*threadid_func)(CRYPTO_THREADID *threadid));
 
-void CRYPTO_THREADID_set_numeric(CRYPTO_THREADID *id, unsigned long val);
-void CRYPTO_THREADID_set_pointer(CRYPTO_THREADID *id, void *ptr);
+OPENSSL_EXPORT void CRYPTO_THREADID_set_numeric(CRYPTO_THREADID *id,
+                                                unsigned long val);
+OPENSSL_EXPORT void CRYPTO_THREADID_set_pointer(CRYPTO_THREADID *id, void *ptr);
 
 
 /* Private functions: */
@@ -153,19 +153,20 @@ int (*CRYPTO_get_add_lock_callback(void))(int *num, int amount, int lock_num,
 /* CRYPTO_lock locks or unlocks the lock specified by |lock_num| (one of
  * |CRYPTO_LOCK_*|). Don't call this directly, rather use one of the
  * CRYPTO_[rw]_(un)lock macros. */
-void CRYPTO_lock(int mode, int lock_num, const char *file, int line);
+OPENSSL_EXPORT void CRYPTO_lock(int mode, int lock_num, const char *file,
+                                int line);
 
 /* CRYPTO_add_lock adds |amount| to |*pointer|, protected by the lock specified
  * by |lock_num|. It returns the new value of |*pointer|. Don't call this
  * function directly, rather use the |CRYPTO_add_lock| macro.
  *
  * TODO(fork): rename to CRYPTO_add_locked. */
-int CRYPTO_add_lock(int *pointer, int amount, int lock_num, const char *file,
-                    int line);
+OPENSSL_EXPORT int CRYPTO_add_lock(int *pointer, int amount, int lock_num,
+                                   const char *file, int line);
 
 
 /* CRYPTO_THREADID_current stores the current thread identifier in |id|. */
-void CRYPTO_THREADID_current(CRYPTO_THREADID *id);
+OPENSSL_EXPORT void CRYPTO_THREADID_current(CRYPTO_THREADID *id);
 
 /* CRYPTO_THREADID_cmp returns < 0, 0 or > 0 if |a| is less than, equal to or
  * greater than |b|, respectively. */

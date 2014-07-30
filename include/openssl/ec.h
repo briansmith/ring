@@ -102,105 +102,111 @@ typedef enum {
  *   NID_X9_62_prime256v1,
  *   NID_secp384r1,
  *   NID_secp521r1 */
-EC_GROUP *EC_GROUP_new_by_curve_name(int nid);
+OPENSSL_EXPORT EC_GROUP *EC_GROUP_new_by_curve_name(int nid);
 
 /* EC_GROUP_free frees |group| and the data that it points to. */
-void EC_GROUP_free(EC_GROUP *group);
+OPENSSL_EXPORT void EC_GROUP_free(EC_GROUP *group);
 
 /* EC_GROUP_copy sets |*dest| equal to |*src|. It returns one on success and
  * zero otherwise. */
-int EC_GROUP_copy(EC_GROUP *dest, const EC_GROUP *src);
+OPENSSL_EXPORT int EC_GROUP_copy(EC_GROUP *dest, const EC_GROUP *src);
 
 /* EC_GROUP_dup returns a fresh |EC_GROUP| which is equal to |a| or NULL on
  * error. */
-EC_GROUP *EC_GROUP_dup(const EC_GROUP *a);
+OPENSSL_EXPORT EC_GROUP *EC_GROUP_dup(const EC_GROUP *a);
 
 /* EC_GROUP_cmp returns one if |a| and |b| are the same group and zero
  * otherwise. */
-int EC_GROUP_cmp(const EC_GROUP *a, const EC_GROUP *b);
+OPENSSL_EXPORT int EC_GROUP_cmp(const EC_GROUP *a, const EC_GROUP *b);
 
 /* EC_GROUP_get0_generator returns a pointer to the internal |EC_POINT| object
  * in |group| that specifies the generator for the group. */
-const EC_POINT *EC_GROUP_get0_generator(const EC_GROUP *group);
+OPENSSL_EXPORT const EC_POINT *EC_GROUP_get0_generator(const EC_GROUP *group);
 
 /* EC_GROUP_get_order sets |*order| to the order of |group| using |ctx|, if
  * it's not NULL. It returns one on success and zero otherwise. */
-int EC_GROUP_get_order(const EC_GROUP *group, BIGNUM *order, BN_CTX *ctx);
+OPENSSL_EXPORT int EC_GROUP_get_order(const EC_GROUP *group, BIGNUM *order,
+                                      BN_CTX *ctx);
 
 /* EC_GROUP_get_cofactor sets |*cofactor| to the cofactor of |group| using
  * |ctx|, if it's not NULL. It returns one on success and zero otherwise. */
-int EC_GROUP_get_cofactor(const EC_GROUP *group, BIGNUM *cofactor, BN_CTX *ctx);
+OPENSSL_EXPORT int EC_GROUP_get_cofactor(const EC_GROUP *group,
+                                         BIGNUM *cofactor, BN_CTX *ctx);
 
 /* EC_GROUP_get_curve_name returns a NID that identifies |group|. */
-int EC_GROUP_get_curve_name(const EC_GROUP *group);
+OPENSSL_EXPORT int EC_GROUP_get_curve_name(const EC_GROUP *group);
 
 /* EC_GROUP_get_degree returns the number of bits needed to represent an
  * element of the field underlying |group|. */
-int EC_GROUP_get_degree(const EC_GROUP *group);
+OPENSSL_EXPORT int EC_GROUP_get_degree(const EC_GROUP *group);
 
 /* EC_GROUP_set_point_conversion_form sets the form that serialised points will
  * take as one of the |POINT_CONVERSION_*| values. */
-void EC_GROUP_set_point_conversion_form(EC_GROUP *group,
-                                        point_conversion_form_t form);
+OPENSSL_EXPORT void EC_GROUP_set_point_conversion_form(
+    EC_GROUP *group, point_conversion_form_t form);
 
 /* EC_GROUP_precompute_mult precomputes multiplies of the generator in order to
  * speed up operations that involve calculating generator multiples. It returns
  * one on sucess and zero otherwise. If |ctx| is not NULL, it may be used. */
-int EC_GROUP_precompute_mult(EC_GROUP *group, BN_CTX *ctx);
+OPENSSL_EXPORT int EC_GROUP_precompute_mult(EC_GROUP *group, BN_CTX *ctx);
 
 /* EC_GROUP_have_precompute_mult returns one if |group| contains precomputed
  * generator multiples. */
-int EC_GROUP_have_precompute_mult(const EC_GROUP *group);
+OPENSSL_EXPORT int EC_GROUP_have_precompute_mult(const EC_GROUP *group);
 
 
 /* Points on elliptic curves. */
 
 /* EC_POINT_new returns a fresh |EC_POINT| object in the given group, or NULL
  * on error. */
-EC_POINT *EC_POINT_new(const EC_GROUP *group);
+OPENSSL_EXPORT EC_POINT *EC_POINT_new(const EC_GROUP *group);
 
 /* EC_POINT_free frees |point| and the data that it points to. */
-void EC_POINT_free(EC_POINT *point);
+OPENSSL_EXPORT void EC_POINT_free(EC_POINT *point);
 
 /* EC_POINT_clear_free clears the data that |point| points to, frees it and
  * then frees |point| itself. */
-void EC_POINT_clear_free(EC_POINT *point);
+OPENSSL_EXPORT void EC_POINT_clear_free(EC_POINT *point);
 
 /* EC_POINT_copy sets |*dest| equal to |*src|. It returns one on success and
  * zero otherwise. */
-int EC_POINT_copy(EC_POINT *dest, const EC_POINT *src);
+OPENSSL_EXPORT int EC_POINT_copy(EC_POINT *dest, const EC_POINT *src);
 
 /* EC_POINT_dup returns a fresh |EC_POINT| that contains the same values as
  * |src|, or NULL on error. */
-EC_POINT *EC_POINT_dup(const EC_POINT *src, const EC_GROUP *group);
+OPENSSL_EXPORT EC_POINT *EC_POINT_dup(const EC_POINT *src,
+                                      const EC_GROUP *group);
 
 /* EC_POINT_set_to_infinity sets |point| to be the "point at infinity" for the
  * given group. */
-int EC_POINT_set_to_infinity(const EC_GROUP *group, EC_POINT *point);
+OPENSSL_EXPORT int EC_POINT_set_to_infinity(const EC_GROUP *group,
+                                            EC_POINT *point);
 
 /* EC_POINT_is_at_infinity returns one iff |point| is the point at infinity and
  * zero otherwise. */
-int EC_POINT_is_at_infinity(const EC_GROUP *group, const EC_POINT *point);
+OPENSSL_EXPORT int EC_POINT_is_at_infinity(const EC_GROUP *group,
+                                           const EC_POINT *point);
 
 /* EC_POINT_is_on_curve returns one if |point| is an element of |group| and
  * zero otheriwse. If |ctx| is non-NULL, it may be used. */
-int EC_POINT_is_on_curve(const EC_GROUP *group, const EC_POINT *point,
-                         BN_CTX *ctx);
+OPENSSL_EXPORT int EC_POINT_is_on_curve(const EC_GROUP *group,
+                                        const EC_POINT *point, BN_CTX *ctx);
 
 /* EC_POINT_cmp returns zero if |a| is equal to |b|, greater than zero is
  * non-equal and -1 on error. If |ctx| is not NULL, it may be used. */
-int EC_POINT_cmp(const EC_GROUP *group, const EC_POINT *a, const EC_POINT *b,
-                 BN_CTX *ctx);
+OPENSSL_EXPORT int EC_POINT_cmp(const EC_GROUP *group, const EC_POINT *a,
+                                const EC_POINT *b, BN_CTX *ctx);
 
 /* EC_POINT_make_affine converts |point| to affine form, internally. It returns
  * one on success and zero otherwise. If |ctx| is not NULL, it may be used. */
-int EC_POINT_make_affine(const EC_GROUP *group, EC_POINT *point, BN_CTX *ctx);
+OPENSSL_EXPORT int EC_POINT_make_affine(const EC_GROUP *group, EC_POINT *point,
+                                        BN_CTX *ctx);
 
 /* EC_POINTs_make_affine converts |num| points from |points| to affine form,
  * internally. It returns one on success and zero otherwise. If |ctx| is not
  * NULL, it may be used. */
-int EC_POINTs_make_affine(const EC_GROUP *group, size_t num, EC_POINT *points[],
-                          BN_CTX *ctx);
+OPENSSL_EXPORT int EC_POINTs_make_affine(const EC_GROUP *group, size_t num,
+                                         EC_POINT *points[], BN_CTX *ctx);
 
 
 /* Point conversion. */
@@ -208,64 +214,73 @@ int EC_POINTs_make_affine(const EC_GROUP *group, size_t num, EC_POINT *points[],
 /* EC_POINT_get_affine_coordinates_GFp sets |x| and |y| to the affine value of
  * |point| using |ctx|, if it's not NULL. It returns one on success and zero
  * otherwise. */
-int EC_POINT_get_affine_coordinates_GFp(const EC_GROUP *group,
-                                        const EC_POINT *point, BIGNUM *x,
-                                        BIGNUM *y, BN_CTX *ctx);
+OPENSSL_EXPORT int EC_POINT_get_affine_coordinates_GFp(const EC_GROUP *group,
+                                                       const EC_POINT *point,
+                                                       BIGNUM *x, BIGNUM *y,
+                                                       BN_CTX *ctx);
 
 /* EC_POINT_set_affine_coordinates sets the value of |p| to be (|x|, |y|). The
  * |ctx| argument may be used if not NULL. */
-int EC_POINT_set_affine_coordinates_GFp(const EC_GROUP *group, EC_POINT *point,
-                                        const BIGNUM *x, const BIGNUM *y,
-                                        BN_CTX *ctx);
+OPENSSL_EXPORT int EC_POINT_set_affine_coordinates_GFp(const EC_GROUP *group,
+                                                       EC_POINT *point,
+                                                       const BIGNUM *x,
+                                                       const BIGNUM *y,
+                                                       BN_CTX *ctx);
 
 /* EC_POINT_point2oct serialises |point| into the X9.62 form given by |form|
  * into, at most, |len| bytes at |buf|. It returns the number of bytes written
  * or zero on error if |buf| is non-NULL, else the number of bytes needed. The
  * |ctx| argument may be used if not NULL. */
-size_t EC_POINT_point2oct(const EC_GROUP *group, const EC_POINT *point,
-                          point_conversion_form_t form, uint8_t *buf,
-                          size_t len, BN_CTX *ctx);
+OPENSSL_EXPORT size_t EC_POINT_point2oct(const EC_GROUP *group,
+                                         const EC_POINT *point,
+                                         point_conversion_form_t form,
+                                         uint8_t *buf, size_t len, BN_CTX *ctx);
 
 /* EC_POINT_oct2point sets |point| from |len| bytes of X9.62 format
  * serialisation in |buf|. It returns one on success and zero otherwise. The
  * |ctx| argument may be used if not NULL. */
-int EC_POINT_oct2point(const EC_GROUP *group, EC_POINT *point,
-                       const uint8_t *buf, size_t len, BN_CTX *ctx);
+OPENSSL_EXPORT int EC_POINT_oct2point(const EC_GROUP *group, EC_POINT *point,
+                                      const uint8_t *buf, size_t len,
+                                      BN_CTX *ctx);
 
 /* EC_POINT_set_compressed_coordinates_GFp sets |point| to equal the point with
  * the given |x| coordinate and the y coordinate specified by |y_bit| (see
  * X9.62). It returns one on success and zero otherwise. */
-int EC_POINT_set_compressed_coordinates_GFp(const EC_GROUP *group,
-                                            EC_POINT *point, const BIGNUM *x,
-                                            int y_bit, BN_CTX *ctx);
+OPENSSL_EXPORT int EC_POINT_set_compressed_coordinates_GFp(
+    const EC_GROUP *group, EC_POINT *point, const BIGNUM *x, int y_bit,
+    BN_CTX *ctx);
 
 
 /* Group operations. */
 
 /* EC_POINT_add sets |r| equal to |a| plus |b|. It returns one on success and
  * zero otherwise. If |ctx| is not NULL, it may be used. */
-int EC_POINT_add(const EC_GROUP *group, EC_POINT *r, const EC_POINT *a,
-                 const EC_POINT *b, BN_CTX *ctx);
+OPENSSL_EXPORT int EC_POINT_add(const EC_GROUP *group, EC_POINT *r,
+                                const EC_POINT *a, const EC_POINT *b,
+                                BN_CTX *ctx);
 
 /* EC_POINT_dbl sets |r| equal to |a| plus |a|. It returns one on success and
  * zero otherwise. If |ctx| is not NULL, it may be used. */
-int EC_POINT_dbl(const EC_GROUP *group, EC_POINT *r, const EC_POINT *a,
-                 BN_CTX *ctx);
+OPENSSL_EXPORT int EC_POINT_dbl(const EC_GROUP *group, EC_POINT *r,
+                                const EC_POINT *a, BN_CTX *ctx);
 
 /* EC_POINT_dbl sets |a| equal to minus |a|. It returns one on success and zero
  * otherwise. If |ctx| is not NULL, it may be used. */
-int EC_POINT_invert(const EC_GROUP *group, EC_POINT *a, BN_CTX *ctx);
+OPENSSL_EXPORT int EC_POINT_invert(const EC_GROUP *group, EC_POINT *a,
+                                   BN_CTX *ctx);
 
 /* EC_POINT_mul sets r = generator*n + q*m. It returns one on success and zero
  * otherwise. If |ctx| is not NULL, it may be used. */
-int EC_POINT_mul(const EC_GROUP *group, EC_POINT *r, const BIGNUM *n,
-                 const EC_POINT *q, const BIGNUM *m, BN_CTX *ctx);
+OPENSSL_EXPORT int EC_POINT_mul(const EC_GROUP *group, EC_POINT *r,
+                                const BIGNUM *n, const EC_POINT *q,
+                                const BIGNUM *m, BN_CTX *ctx);
 
 /* EC_POINTs_mul sets r = generator*n + sum(p[i]*m[i]). It returns one on
  * success and zero otherwise. If |ctx| is not NULL, it may be used. */
-int EC_POINTs_mul(const EC_GROUP *group, EC_POINT *r, const BIGNUM *n,
-                  size_t num, const EC_POINT *p[], const BIGNUM *m[],
-                  BN_CTX *ctx);
+OPENSSL_EXPORT int EC_POINTs_mul(const EC_GROUP *group, EC_POINT *r,
+                                 const BIGNUM *n, size_t num,
+                                 const EC_POINT *p[], const BIGNUM *m[],
+                                 BN_CTX *ctx);
 
 
 /* Old code expects to get EC_KEY from ec.h. */

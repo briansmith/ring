@@ -87,12 +87,12 @@ extern uint32_t OPENSSL_ia32cap_P[4];
 /* CRYPTO_is_NEON_capable returns true if the current CPU has a NEON unit. Note
  * that |OPENSSL_armcap_P| also exists and contains the same information in a
  * form that's easier for assembly to use. */
-char CRYPTO_is_NEON_capable();
+OPENSSL_EXPORT char CRYPTO_is_NEON_capable();
 
 /* CRYPTO_set_NEON_capable sets the return value of |CRYPTO_is_NEON_capable|.
  * By default, unless the code was compiled with |-mfpu=neon|, NEON is assumed
  * not to be present. It is not autodetected. */
-void CRYPTO_set_NEON_capable(char neon_capable);
+OPENSSL_EXPORT void CRYPTO_set_NEON_capable(char neon_capable);
 #endif  /* OPENSSL_ARM */
 
 

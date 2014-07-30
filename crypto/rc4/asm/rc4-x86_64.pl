@@ -125,10 +125,11 @@ $code=<<___;
 .text
 .extern	OPENSSL_ia32cap_P
 
-.globl	RC4
-.type	RC4,\@function,4
+.globl	asm_RC4
+.type	asm_RC4,\@function,4
 .align	16
-RC4:	or	$len,$len
+asm_RC4:
+	or	$len,$len
 	jne	.Lentry
 	ret
 .Lentry:
@@ -423,7 +424,7 @@ $code.=<<___;
 	add	\$24,%rsp
 .Lepilogue:
 	ret
-.size	RC4,.-RC4
+.size	asm_RC4,.-asm_RC4
 ___
 }
 
@@ -431,10 +432,10 @@ $idx="%r8";
 $ido="%r9";
 
 $code.=<<___;
-.globl	RC4_set_key
-.type	RC4_set_key,\@function,3
+.globl	asm_RC4_set_key
+.type	asm_RC4_set_key,\@function,3
 .align	16
-RC4_set_key:
+asm_RC4_set_key:
 	lea	8($dat),$dat
 	lea	($inp,$len),$inp
 	neg	$len
@@ -502,7 +503,7 @@ RC4_set_key:
 	mov	%eax,-8($dat)
 	mov	%eax,-4($dat)
 	ret
-.size	RC4_set_key,.-RC4_set_key
+.size	asm_RC4_set_key,.-asm_RC4_set_key
 
 .globl	RC4_options
 .type	RC4_options,\@abi-omnipotent

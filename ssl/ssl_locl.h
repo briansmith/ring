@@ -872,7 +872,6 @@ void ssl_cert_free(CERT *c);
 SESS_CERT *ssl_sess_cert_new(void);
 void ssl_sess_cert_free(SESS_CERT *sc);
 int ssl_set_peer_cert_type(SESS_CERT *c, int type);
-int ssl_get_new_session(SSL *s, int session);
 int ssl_get_prev_session(SSL *s, const struct ssl_early_callback_ctx *ctx);
 int ssl_cipher_id_cmp(const void *in_a, const void *in_b);
 int ssl_cipher_ptr_id_cmp(const SSL_CIPHER **ap, const SSL_CIPHER **bp);
@@ -883,7 +882,6 @@ STACK_OF(SSL_CIPHER) *ssl_create_cipher_list(const SSL_METHOD *meth,
 					     struct ssl_cipher_preference_list_st **pref,
 					     STACK_OF(SSL_CIPHER) **sorted,
 					     const char *rule_str, CERT *c);
-void ssl_update_cache(SSL *s, int mode);
 struct ssl_cipher_preference_list_st* ssl_cipher_preference_list_dup(
 	struct ssl_cipher_preference_list_st *cipher_list);
 void ssl_cipher_preference_list_free(

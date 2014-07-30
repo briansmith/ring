@@ -130,12 +130,14 @@ extern "C" {
 #define SRTP_NULL_SHA1_80      0x0005
 #define SRTP_NULL_SHA1_32      0x0006
 
-int SSL_CTX_set_tlsext_use_srtp(SSL_CTX *ctx, const char *profiles);
-int SSL_set_tlsext_use_srtp(SSL *ctx, const char *profiles);
-SRTP_PROTECTION_PROFILE *SSL_get_selected_srtp_profile(SSL *s);
+OPENSSL_EXPORT int SSL_CTX_set_tlsext_use_srtp(SSL_CTX *ctx,
+                                               const char *profiles);
+OPENSSL_EXPORT int SSL_set_tlsext_use_srtp(SSL *ctx, const char *profiles);
+OPENSSL_EXPORT SRTP_PROTECTION_PROFILE *SSL_get_selected_srtp_profile(SSL *s);
 
-STACK_OF(SRTP_PROTECTION_PROFILE) *SSL_get_srtp_profiles(SSL *ssl);
-SRTP_PROTECTION_PROFILE *SSL_get_selected_srtp_profile(SSL *s);
+OPENSSL_EXPORT STACK_OF(SRTP_PROTECTION_PROFILE) *
+    SSL_get_srtp_profiles(SSL *ssl);
+OPENSSL_EXPORT SRTP_PROTECTION_PROFILE *SSL_get_selected_srtp_profile(SSL *s);
 
 #ifdef  __cplusplus
 }

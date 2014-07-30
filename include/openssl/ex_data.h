@@ -187,9 +187,10 @@ typedef int CRYPTO_EX_dup(CRYPTO_EX_DATA *to, const CRYPTO_EX_DATA *from,
  * module have a private global EX_CLASS_ITEM somewhere and any direct callers
  * of CRYPTO_{get,set}_ex_data{,_index} would have to always call the
  * wrappers. */
-int CRYPTO_get_ex_new_index(int class_value, long argl, void *argp,
-                            CRYPTO_EX_new *new_func, CRYPTO_EX_dup *dup_func,
-                            CRYPTO_EX_free *free_func);
+OPENSSL_EXPORT int CRYPTO_get_ex_new_index(int class_value, long argl,
+                                           void *argp, CRYPTO_EX_new *new_func,
+                                           CRYPTO_EX_dup *dup_func,
+                                           CRYPTO_EX_free *free_func);
 
 /* CRYPTO_set_ex_data sets an extra data pointer on a given object. This should
  * not be called directly, rather each class of object should provide a wrapper
@@ -197,7 +198,7 @@ int CRYPTO_get_ex_new_index(int class_value, long argl, void *argp,
  *
  * The |index| argument should have been returned from a previous call to
  * |CRYPTO_get_ex_new_index|. */
-int CRYPTO_set_ex_data(CRYPTO_EX_DATA *ad, int index, void *val);
+OPENSSL_EXPORT int CRYPTO_set_ex_data(CRYPTO_EX_DATA *ad, int index, void *val);
 
 /* CRYPTO_set_ex_data return an extra data pointer for a given object, or NULL
  * if no such index exists. This should not be called directly, rather each
@@ -205,7 +206,7 @@ int CRYPTO_set_ex_data(CRYPTO_EX_DATA *ad, int index, void *val);
  *
  * The |index| argument should have been returned from a previous call to
  * |CRYPTO_get_ex_new_index|. */
-void *CRYPTO_get_ex_data(const CRYPTO_EX_DATA *ad, int index);
+OPENSSL_EXPORT void *CRYPTO_get_ex_data(const CRYPTO_EX_DATA *ad, int index);
 
 /* CRYPTO_EX_INDEX_* are the built-in classes of objects.
  *
@@ -240,7 +241,7 @@ void *CRYPTO_get_ex_data(const CRYPTO_EX_DATA *ad, int index);
  * that wishes to use ex_data.
  *
  * TODO(fork): hopefully remove this. */
-int CRYPTO_ex_data_new_class(void);
+OPENSSL_EXPORT int CRYPTO_ex_data_new_class(void);
 
 
 /* Embedding, allocating and freeing |CRYPTO_EX_DATA| structures for objects
@@ -249,17 +250,19 @@ int CRYPTO_ex_data_new_class(void);
 /* CRYPTO_new_ex_data initialises a newly allocated |CRYPTO_EX_DATA| which is
  * embedded inside of |obj| which is of class |class_value|. Returns one on
  * success and zero otherwise. */
-int CRYPTO_new_ex_data(int class_value, void *obj, CRYPTO_EX_DATA *ad);
+OPENSSL_EXPORT int CRYPTO_new_ex_data(int class_value, void *obj,
+                                      CRYPTO_EX_DATA *ad);
 
 /* CRYPTO_dup_ex_data duplicates |from| into a freshly allocated
  * |CRYPTO_EX_DATA|, |to|. Both of which are inside objects of the given
  * class. It returns one on success and zero otherwise. */
-int CRYPTO_dup_ex_data(int class_value, CRYPTO_EX_DATA *to,
-                       const CRYPTO_EX_DATA *from);
+OPENSSL_EXPORT int CRYPTO_dup_ex_data(int class_value, CRYPTO_EX_DATA *to,
+                                      const CRYPTO_EX_DATA *from);
 
 /* CRYPTO_free_ex_data frees |ad|, which is embedded inside |obj|, which is an
  * object of the given class. */
-void CRYPTO_free_ex_data(int class_value, void *obj, CRYPTO_EX_DATA *ad);
+OPENSSL_EXPORT void CRYPTO_free_ex_data(int class_value, void *obj,
+                                        CRYPTO_EX_DATA *ad);
 
 
 /* Handling different ex_data implementations. */
@@ -269,19 +272,21 @@ typedef struct st_CRYPTO_EX_DATA_IMPL CRYPTO_EX_DATA_IMPL;
 
 /* CRYPTO_get_ex_data_implementation returns the current implementation of
  * ex_data. */
-const CRYPTO_EX_DATA_IMPL *CRYPTO_get_ex_data_implementation(void);
+OPENSSL_EXPORT const CRYPTO_EX_DATA_IMPL *CRYPTO_get_ex_data_implementation(
+    void);
 
 /* CRYPTO_set_ex_data_implementation sets the implementation of ex_data to use,
  * unless ex_data has already been used and the default implementation
  * installed. It returns one on success and zero otherwise. */
-int CRYPTO_set_ex_data_implementation(const CRYPTO_EX_DATA_IMPL *impl);
+OPENSSL_EXPORT int CRYPTO_set_ex_data_implementation(
+    const CRYPTO_EX_DATA_IMPL *impl);
 
 
 /* Private functions. */
 
 /* CRYPTO_cleanup_all_ex_data cleans up all ex_data state. It assumes that no
  * other threads are executing code that might call ex_data functions. */
-void CRYPTO_cleanup_all_ex_data(void);
+OPENSSL_EXPORT void CRYPTO_cleanup_all_ex_data(void);
 
 struct crypto_ex_data_st {
   STACK_OF(void) *sk;

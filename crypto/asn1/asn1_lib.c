@@ -58,6 +58,7 @@
 
 #include <limits.h>
 
+#include <openssl/asn1_mac.h>
 #include <openssl/err.h>
 #include <openssl/mem.h>
 

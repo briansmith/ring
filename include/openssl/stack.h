@@ -202,49 +202,49 @@ DEFINE_SPECIAL_STACK_OF(OPENSSL_BLOCK, uint8_t)
 
 /* sk_new creates a new, empty stack with the given comparision function, which
  * may be zero. It returns the new stack or NULL on allocation failure. */
-_STACK *sk_new(stack_cmp_func comp);
+OPENSSL_EXPORT _STACK *sk_new(stack_cmp_func comp);
 
 /* sk_new_null creates a new, empty stack. It returns the new stack or NULL on
  * allocation failure. */
-_STACK *sk_new_null(void);
+OPENSSL_EXPORT _STACK *sk_new_null(void);
 
 /* sk_num returns the number of elements in |s|. */
-size_t sk_num(const _STACK *sk);
+OPENSSL_EXPORT size_t sk_num(const _STACK *sk);
 
 /* sk_zero resets |sk| to the empty state but does nothing to free the
  * individual elements themselves. */
-void sk_zero(_STACK *sk);
+OPENSSL_EXPORT void sk_zero(_STACK *sk);
 
 /* sk_value returns the |i|th pointer in |sk|, or NULL if |i| is out of
  * range. */
-void *sk_value(const _STACK *sk, size_t i);
+OPENSSL_EXPORT void *sk_value(const _STACK *sk, size_t i);
 
 /* sk_set sets the |i|th pointer in |sk| to |p| and returns |p|. If |i| is out
  * of range, it returns NULL. */
-void *sk_set(_STACK *sk, size_t i, void *p);
+OPENSSL_EXPORT void *sk_set(_STACK *sk, size_t i, void *p);
 
 /* sk_free frees the given stack and array of pointers, but does nothing to
  * free the individual elements. Also see |sk_pop_free|. */
-void sk_free(_STACK *sk);
+OPENSSL_EXPORT void sk_free(_STACK *sk);
 
 /* sk_pop_free calls |free_func| on each element in the stack and then frees
  * the stack itself. */
-void sk_pop_free(_STACK *sk, void (*free_func)(void *));
+OPENSSL_EXPORT void sk_pop_free(_STACK *sk, void (*free_func)(void *));
 
 /* sk_insert inserts |p| into the stack at index |where|, moving existing
  * elements if needed. It returns the length of the new stack, or zero on
  * error. */
-size_t sk_insert(_STACK *sk, void *p, size_t where);
+OPENSSL_EXPORT size_t sk_insert(_STACK *sk, void *p, size_t where);
 
 /* sk_delete removes the pointer at index |where|, moving other elements down
  * if needed. It returns the removed pointer, or NULL if |where| is out of
  * range. */
-void *sk_delete(_STACK *sk, size_t where);
+OPENSSL_EXPORT void *sk_delete(_STACK *sk, size_t where);
 
 /* sk_delete_ptr removes, at most, one instance of |p| from the stack based on
  * pointer equality. If an instance of |p| is found then |p| is returned,
  * otherwise it returns NULL. */
-void *sk_delete_ptr(_STACK *sk, void *p);
+OPENSSL_EXPORT void *sk_delete_ptr(_STACK *sk, void *p);
 
 /* sk_find returns the first value in the stack equal to |p|. If a comparision
  * function has been set on the stack, then equality is defined by it and the
@@ -252,36 +252,36 @@ void *sk_delete_ptr(_STACK *sk, void *p);
  * Otherwise pointer equality is used. If a matching element is found, its
  * index is written to |*out_index| (if |out_index| is not NULL) and one is
  * returned. Otherwise zero is returned. */
-int sk_find(_STACK *sk, size_t *out_index, void *p);
+OPENSSL_EXPORT int sk_find(_STACK *sk, size_t *out_index, void *p);
 
 /* sk_shift removes and returns the first element in the stack, or returns NULL
  * if the stack is empty. */
-void *sk_shift(_STACK *sk);
+OPENSSL_EXPORT void *sk_shift(_STACK *sk);
 
 /* sk_push appends |p| to the stack and returns the length of the new stack, or
  * 0 on allocation failure. */
-size_t sk_push(_STACK *sk, void *p);
+OPENSSL_EXPORT size_t sk_push(_STACK *sk, void *p);
 
 /* sk_pop returns and removes the last element on the stack, or NULL if the
  * stack is empty. */
-void *sk_pop(_STACK *sk);
+OPENSSL_EXPORT void *sk_pop(_STACK *sk);
 
 /* sk_dup performs a shallow copy of a stack and returns the new stack, or NULL
  * on error. */
-_STACK *sk_dup(const _STACK *sk);
+OPENSSL_EXPORT _STACK *sk_dup(const _STACK *sk);
 
 /* sk_sort sorts the elements of |sk| into ascending order based on the
  * comparison function. The stack maintains a |sorted| flag and sorting an
  * already sorted stack is a no-op. */
-void sk_sort(_STACK *sk);
+OPENSSL_EXPORT void sk_sort(_STACK *sk);
 
 /* sk_is_sorted returns one if |sk| is known to be sorted and zero
  * otherwise. */
-int sk_is_sorted(const _STACK *sk);
+OPENSSL_EXPORT int sk_is_sorted(const _STACK *sk);
 
 /* sk_set_cmp_func sets the comparison function to be used by |sk| and returns
  * the previous one. */
-stack_cmp_func sk_set_cmp_func(_STACK *sk, stack_cmp_func comp);
+OPENSSL_EXPORT stack_cmp_func sk_set_cmp_func(_STACK *sk, stack_cmp_func comp);
 
 
 #if defined(__cplusplus)

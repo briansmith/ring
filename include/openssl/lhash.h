@@ -148,42 +148,43 @@ typedef struct lhash_st {
 /* lh_new returns a new, empty hash table or NULL on error. If |comp| is NULL,
  * |strcmp| will be used. If |hash| is NULL, a generic hash function will be
  * used. */
-_LHASH *lh_new(lhash_hash_func hash, lhash_cmp_func comp);
+OPENSSL_EXPORT _LHASH *lh_new(lhash_hash_func hash, lhash_cmp_func comp);
 
 /* lh_free frees the hash table itself but none of the elements. See
  * |lh_doall|. */
-void lh_free(_LHASH *lh);
+OPENSSL_EXPORT void lh_free(_LHASH *lh);
 
 /* lh_num_items returns the number of items in |lh|. */
-size_t lh_num_items(const _LHASH *lh);
+OPENSSL_EXPORT size_t lh_num_items(const _LHASH *lh);
 
 /* lh_retrieve finds an element equal to |data| in the hash table and returns
  * it. If no such element exists, it returns NULL. */
-void *lh_retrieve(const _LHASH *lh, const void *data);
+OPENSSL_EXPORT void *lh_retrieve(const _LHASH *lh, const void *data);
 
 /* lh_insert inserts |data| into the hash table. If an existing element is
  * equal to |data| (with respect to the comparison function) then |*old_data|
  * will be set to that value and it will be replaced. Otherwise, or in the
  * event of an error, |*old_data| will be set to NULL. It returns one on
  * success or zero in the case of an allocation error. */
-int lh_insert(_LHASH *lh, void **old_data, void *data);
+OPENSSL_EXPORT int lh_insert(_LHASH *lh, void **old_data, void *data);
 
 /* lh_delete removes an element equal to |data| from the hash table and returns
  * it. If no such element is found, it returns NULL. */
-void *lh_delete(_LHASH *lh, const void *data);
+OPENSSL_EXPORT void *lh_delete(_LHASH *lh, const void *data);
 
 /* lh_doall calls |func| on each element of the hash table.
  * TODO(fork): rename this */
-void lh_doall(_LHASH *lh, void (*func)(void *));
+OPENSSL_EXPORT void lh_doall(_LHASH *lh, void (*func)(void *));
 
 /* lh_doall_arg calls |func| on each element of the hash table and also passes
  * |arg| as the second argument.
  * TODO(fork): rename this */
-void lh_doall_arg(_LHASH *lh, void (*func)(void *, void *), void *arg);
+OPENSSL_EXPORT void lh_doall_arg(_LHASH *lh, void (*func)(void *, void *),
+                                 void *arg);
 
 /* lh_strhash is the default hash function which processes NUL-terminated
  * strings. */
-uint32_t lh_strhash(const char *c);
+OPENSSL_EXPORT uint32_t lh_strhash(const char *c);
 
 
 #if defined(__cplusplus)

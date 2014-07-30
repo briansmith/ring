@@ -77,17 +77,17 @@ extern "C" {
 /* Allocation and destruction. */
 
 /* DSA_new returns a new, empty DSA object or NULL on error. */
-DSA *DSA_new(void);
+OPENSSL_EXPORT DSA *DSA_new(void);
 
 /* DSA_new_method acts the same as |DH_new| but takes an explicit |ENGINE|. */
-DSA *DSA_new_method(const ENGINE *engine);
+OPENSSL_EXPORT DSA *DSA_new_method(const ENGINE *engine);
 
 /* DSA_free decrements the reference count of |dsa| and frees it if the
  * reference count drops to zero. */
-void DSA_free(DSA *dsa);
+OPENSSL_EXPORT void DSA_free(DSA *dsa);
 
 /* DSA_up_ref increments the reference count of |dsa|. */
-int DSA_up_ref(DSA *dsa);
+OPENSSL_EXPORT int DSA_up_ref(DSA *dsa);
 
 
 /* Parameter generation. */
@@ -109,13 +109,15 @@ int DSA_up_ref(DSA *dsa);
  * |event| equal to 2 and 3 at different stages of the process.
  *
  * It returns one on success and zero otherwise. */
-int DSA_generate_parameters_ex(DSA *dsa, unsigned bits, const uint8_t *seed,
-                               size_t seed_len, int *out_counter,
-                               unsigned long *out_h, BN_GENCB *cb);
+OPENSSL_EXPORT int DSA_generate_parameters_ex(DSA *dsa, unsigned bits,
+                                              const uint8_t *seed,
+                                              size_t seed_len, int *out_counter,
+                                              unsigned long *out_h,
+                                              BN_GENCB *cb);
 
 /* DSAparams_dup returns a freshly allocated |DSA| that contains a copy of the
  * parameters from |dsa|. It returns NULL on error. */
-DSA *DSAparams_dup(const DSA *dsa);
+OPENSSL_EXPORT DSA *DSAparams_dup(const DSA *dsa);
 
 
 /* Key generation. */
@@ -123,7 +125,7 @@ DSA *DSAparams_dup(const DSA *dsa);
 /* DSA_generate_key generates a public/private key pair in |dsa|, which must
  * already have parameters setup. It returns one on success and zero on
  * error. */
-int DSA_generate_key(DSA *dsa);
+OPENSSL_EXPORT int DSA_generate_key(DSA *dsa);
 
 
 /* Signatures. */
@@ -135,14 +137,15 @@ typedef struct DSA_SIG_st {
 
 /* DSA_SIG_new returns a freshly allocated, DIG_SIG structure or NULL on error.
  * Both |r| and |s| in the signature will be NULL. */
-DSA_SIG *DSA_SIG_new(void);
+OPENSSL_EXPORT DSA_SIG *DSA_SIG_new(void);
 
 /* DSA_SIG_free frees the contents of |sig| and then frees |sig| itself. */
-void DSA_SIG_free(DSA_SIG *sig);
+OPENSSL_EXPORT void DSA_SIG_free(DSA_SIG *sig);
 
 /* DSA_do_sign returns a signature of the hash in |digest| by the key in |dsa|
  * and returns an allocated, DSA_SIG structure, or NULL on error. */
-DSA_SIG *DSA_do_sign(const uint8_t *digest, size_t digest_len, DSA *dsa);
+OPENSSL_EXPORT DSA_SIG *DSA_do_sign(const uint8_t *digest, size_t digest_len,
+                                    DSA *dsa);
 
 /* DSA_do_verify verifies that |sig| is a valid signature, by the public key in
  * |dsa|, of the hash in |digest|. It returns one if so, zero if invalid and -1
@@ -154,8 +157,8 @@ DSA_SIG *DSA_do_sign(const uint8_t *digest, size_t digest_len, DSA *dsa);
  * Because of this, |DSA_check_signature| is a safer version of this.
  *
  * TODO(fork): deprecate. */
-int DSA_do_verify(const uint8_t *digest, size_t digest_len, DSA_SIG *sig,
-                  const DSA *dsa);
+OPENSSL_EXPORT int DSA_do_verify(const uint8_t *digest, size_t digest_len,
+                                 DSA_SIG *sig, const DSA *dsa);
 
 /* DSA_check_signature sets |*out_valid| to zero. Then it verifies that |sig|
  * is a valid signature, by the public key in |dsa| of the hash in |digest|
@@ -163,8 +166,9 @@ int DSA_do_verify(const uint8_t *digest, size_t digest_len, DSA_SIG *sig,
  *
  * It returns one if it was able to verify the signature as valid or invalid,
  * and zero on error. */
-int DSA_do_check_signature(int *out_valid, const uint8_t *digest,
-                           size_t digest_len, DSA_SIG *sig, const DSA *dsa);
+OPENSSL_EXPORT int DSA_do_check_signature(int *out_valid, const uint8_t *digest,
+                                          size_t digest_len, DSA_SIG *sig,
+                                          const DSA *dsa);
 
 
 /* ASN.1 signatures.
@@ -179,8 +183,9 @@ int DSA_do_check_signature(int *out_valid, const uint8_t *digest,
  * |out_sig|. It returns one on success and zero otherwise.
  *
  * (The |type| argument is ignored.) */
-int DSA_sign(int type, const uint8_t *digest, size_t digest_len,
-             uint8_t *out_sig, unsigned int *out_siglen, DSA *dsa);
+OPENSSL_EXPORT int DSA_sign(int type, const uint8_t *digest, size_t digest_len,
+                            uint8_t *out_sig, unsigned int *out_siglen,
+                            DSA *dsa);
 
 /* DSA_verify verifies that |sig| is a valid, ASN.1 signature, by the public
  * key in |dsa|, of the hash in |digest|. It returns one if so, zero if invalid
@@ -194,8 +199,9 @@ int DSA_sign(int type, const uint8_t *digest, size_t digest_len,
  * Because of this, |DSA_check_signature| is a safer version of this.
  *
  * TODO(fork): deprecate. */
-int DSA_verify(int type, const uint8_t *digest, size_t digest_len,
-               const uint8_t *sig, size_t sig_len, const DSA *dsa);
+OPENSSL_EXPORT int DSA_verify(int type, const uint8_t *digest,
+                              size_t digest_len, const uint8_t *sig,
+                              size_t sig_len, const DSA *dsa);
 
 /* DSA_check_signature sets |*out_valid| to zero. Then it verifies that |sig|
  * is a valid, ASN.1 signature, by the public key in |dsa|, of the hash in
@@ -203,13 +209,13 @@ int DSA_verify(int type, const uint8_t *digest, size_t digest_len,
  *
  * It returns one if it was able to verify the signature as valid or invalid,
  * and zero on error. */
-int DSA_check_signature(int *out_valid, const uint8_t *digest,
-                        size_t digest_len, const uint8_t *sig, size_t sig_len,
-                        const DSA *dsa);
+OPENSSL_EXPORT int DSA_check_signature(int *out_valid, const uint8_t *digest,
+                                       size_t digest_len, const uint8_t *sig,
+                                       size_t sig_len, const DSA *dsa);
 
 /* DSA_size returns the size, in bytes, of an ASN.1 encoded, DSA signature
  * generated by |dsa|. Parameters must already have been setup in |dsa|. */
-int DSA_size(const DSA *dsa);
+OPENSSL_EXPORT int DSA_size(const DSA *dsa);
 
 
 /* ASN.1 encoding. */
@@ -220,13 +226,14 @@ int DSA_size(const DSA *dsa);
  * written directly into |*out_sig|, otherwise a fresh |DSA_SIG| is allocated.
  * On successful exit, |*inp| is advanced past the DER structure. It returns
  * the result or NULL on error. */
-DSA_SIG *d2i_DSA_SIG(DSA_SIG **out_sig, const uint8_t **inp, long len);
+OPENSSL_EXPORT DSA_SIG *d2i_DSA_SIG(DSA_SIG **out_sig, const uint8_t **inp,
+                                    long len);
 
 /* i2d_DSA_SIG marshals |in| to an ASN.1, DER structure. If |outp| is not NULL
  * then the result is written to |*outp| and |*outp| is advanced just past the
  * output. It returns the number of bytes in the result, whether written or not,
  * or a negative value on error. */
-int i2d_DSA_SIG(const DSA_SIG *in, uint8_t **outp);
+OPENSSL_EXPORT int i2d_DSA_SIG(const DSA_SIG *in, uint8_t **outp);
 
 /* d2i_DSAPublicKey parses an ASN.1, DER-encoded, DSA public key from |len|
  * bytes at |*inp|. If |out| is not NULL then, on exit, a pointer to the result
@@ -234,13 +241,13 @@ int i2d_DSA_SIG(const DSA_SIG *in, uint8_t **outp);
  * written directly into |*out|, otherwise a fresh |DSA| is allocated. On
  * successful exit, |*inp| is advanced past the DER structure. It returns the
  * result or NULL on error. */
-DSA *d2i_DSAPublicKey(DSA **out, const uint8_t **inp, long len);
+OPENSSL_EXPORT DSA *d2i_DSAPublicKey(DSA **out, const uint8_t **inp, long len);
 
 /* i2d_DSAPublicKey marshals a public key from |in| to an ASN.1, DER structure.
  * If |outp| is not NULL then the result is written to |*outp| and |*outp| is
  * advanced just past the output. It returns the number of bytes in the result,
  * whether written or not, or a negative value on error. */
-int i2d_DSAPublicKey(const DSA *in, unsigned char **outp);
+OPENSSL_EXPORT int i2d_DSAPublicKey(const DSA *in, unsigned char **outp);
 
 /* d2i_DSAPrivateKey parses an ASN.1, DER-encoded, DSA private key from |len|
  * bytes at |*inp|. If |out| is not NULL then, on exit, a pointer to the result
@@ -248,13 +255,13 @@ int i2d_DSAPublicKey(const DSA *in, unsigned char **outp);
  * written directly into |*out|, otherwise a fresh |DSA| is allocated. On
  * successful exit, |*inp| is advanced past the DER structure. It returns the
  * result or NULL on error. */
-DSA *d2i_DSAPrivateKey(DSA **out, const uint8_t **inp, long len);
+OPENSSL_EXPORT DSA *d2i_DSAPrivateKey(DSA **out, const uint8_t **inp, long len);
 
 /* i2d_DSAPrivateKey marshals a private key from |in| to an ASN.1, DER structure.
  * If |outp| is not NULL then the result is written to |*outp| and |*outp| is
  * advanced just past the output. It returns the number of bytes in the result,
  * whether written or not, or a negative value on error. */
-int i2d_DSAPrivateKey(const DSA *in, unsigned char **outp);
+OPENSSL_EXPORT int i2d_DSAPrivateKey(const DSA *in, unsigned char **outp);
 
 /* d2i_DSAparams parses ASN.1, DER-encoded, DSA parameters from |len| bytes at
  * |*inp|. If |out| is not NULL then, on exit, a pointer to the result is in
@@ -262,13 +269,13 @@ int i2d_DSAPrivateKey(const DSA *in, unsigned char **outp);
  * directly into |*out|, otherwise a fresh |DSA| is allocated. On successful
  * exit, |*inp| is advanced past the DER structure. It returns the result or
  * NULL on error. */
-DSA *d2i_DSAparams(DSA **out, const uint8_t **inp, long len);
+OPENSSL_EXPORT DSA *d2i_DSAparams(DSA **out, const uint8_t **inp, long len);
 
 /* i2d_DSAparams marshals DSA parameters from |in| to an ASN.1, DER structure.
  * If |outp| is not NULL then the result is written to |*outp| and |*outp| is
  * advanced just past the output. It returns the number of bytes in the result,
  * whether written or not, or a negative value on error. */
-int i2d_DSAparams(const DSA *in, unsigned char **outp);
+OPENSSL_EXPORT int i2d_DSAparams(const DSA *in, unsigned char **outp);
 
 
 /* Precomputation. */
@@ -280,18 +287,20 @@ int i2d_DSAparams(const DSA *in, unsigned char **outp);
  * TODO(fork): decide what to do with this. Since making DSA* opaque there's no
  * way for the user to install them. Also, it forces the DSA* not to be const
  * when passing to the signing function. */
-int DSA_sign_setup(const DSA *dsa, BN_CTX *ctx, BIGNUM **out_kinv,
-                   BIGNUM **out_r);
+OPENSSL_EXPORT int DSA_sign_setup(const DSA *dsa, BN_CTX *ctx,
+                                  BIGNUM **out_kinv, BIGNUM **out_r);
 
 
 /* ex_data functions.
  *
  * These functions are wrappers. See |ex_data.h| for details. */
 
-int DSA_get_ex_new_index(long argl, void *argp, CRYPTO_EX_new *new_func,
-                         CRYPTO_EX_dup *dup_func, CRYPTO_EX_free *free_func);
-int DSA_set_ex_data(DSA *d, int idx, void *arg);
-void *DSA_get_ex_data(const DSA *d, int idx);
+OPENSSL_EXPORT int DSA_get_ex_new_index(long argl, void *argp,
+                                        CRYPTO_EX_new *new_func,
+                                        CRYPTO_EX_dup *dup_func,
+                                        CRYPTO_EX_free *free_func);
+OPENSSL_EXPORT int DSA_set_ex_data(DSA *d, int idx, void *arg);
+OPENSSL_EXPORT void *DSA_get_ex_data(const DSA *d, int idx);
 
 
 struct dsa_method {

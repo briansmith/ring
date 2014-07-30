@@ -65,12 +65,15 @@
 extern "C" {
 #endif
 
-X509_SIG *PKCS8_encrypt(int pbe_nid, const EVP_CIPHER *cipher, const char *pass,
-                        int pass_len, uint8_t *salt, size_t salt_len, int iterations,
-                        PKCS8_PRIV_KEY_INFO *p8inf);
+OPENSSL_EXPORT X509_SIG *PKCS8_encrypt(int pbe_nid, const EVP_CIPHER *cipher,
+                                       const char *pass, int pass_len,
+                                       uint8_t *salt, size_t salt_len,
+                                       int iterations,
+                                       PKCS8_PRIV_KEY_INFO *p8inf);
 
-PKCS8_PRIV_KEY_INFO *PKCS8_decrypt(X509_SIG *pkcs8, const char *pass,
-                                   int pass_len);
+OPENSSL_EXPORT PKCS8_PRIV_KEY_INFO *PKCS8_decrypt(X509_SIG *pkcs8,
+                                                  const char *pass,
+                                                  int pass_len);
 
 
 #if defined(__cplusplus)

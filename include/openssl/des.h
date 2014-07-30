@@ -88,28 +88,32 @@ typedef struct DES_ks {
 #define DES_PCBC_MODE 1
 
 /* DES_set_key performs a key schedule and initialises |schedule| with |key|. */
-void DES_set_key(const DES_cblock *key, DES_key_schedule *schedule);
+OPENSSL_EXPORT void DES_set_key(const DES_cblock *key,
+                                DES_key_schedule *schedule);
 
 /* DES_ecb_encrypt encrypts (or decrypts, if |is_encrypt| is |DES_DECRYPT|) a
  * single DES block (8 bytes) from in to out, using the key configured in
  * |schedule|. */
-void DES_ecb_encrypt(const DES_cblock *in, DES_cblock *out,
-                     const DES_key_schedule *schedule, int is_encrypt);
+OPENSSL_EXPORT void DES_ecb_encrypt(const DES_cblock *in, DES_cblock *out,
+                                    const DES_key_schedule *schedule,
+                                    int is_encrypt);
 
 /* DES_ncbc_encrypt encrypts (or decrypts, if |enc| is |DES_DECRYPT|) |len|
  * bytes from |in| to |out| with DES in CBC mode. */
-void DES_ncbc_encrypt(const uint8_t *in, uint8_t *out, size_t len,
-                      const DES_key_schedule *schedule, DES_cblock *ivec,
-                      int enc);
+OPENSSL_EXPORT void DES_ncbc_encrypt(const uint8_t *in, uint8_t *out,
+                                     size_t len,
+                                     const DES_key_schedule *schedule,
+                                     DES_cblock *ivec, int enc);
 
 /* DES_ede3_cbc_encrypt encrypts (or decrypts, if |enc| is |DES_DECRYPT|) |len|
  * bytes from |in| to |out| with 3DES in CBC mode. 3DES uses three keys, thus
  * the function takes three different |DES_key_schedule|s. */
-void DES_ede3_cbc_encrypt(const uint8_t *in, uint8_t *out, size_t len,
-                          const DES_key_schedule *ks1,
-                          const DES_key_schedule *ks2,
-                          const DES_key_schedule *ks3, DES_cblock *ivec,
-                          int enc);
+OPENSSL_EXPORT void DES_ede3_cbc_encrypt(const uint8_t *in, uint8_t *out,
+                                         size_t len,
+                                         const DES_key_schedule *ks1,
+                                         const DES_key_schedule *ks2,
+                                         const DES_key_schedule *ks3,
+                                         DES_cblock *ivec, int enc);
 
 
 #if defined(__cplusplus)

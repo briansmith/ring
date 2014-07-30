@@ -299,31 +299,31 @@ typedef struct ASN1_VALUE_st ASN1_VALUE;
 	DECLARE_ASN1_ENCODE_FUNCTIONS(type, itname, name)
 
 #define	DECLARE_ASN1_ENCODE_FUNCTIONS(type, itname, name) \
-	type *d2i_##name(type **a, const unsigned char **in, long len); \
-	int i2d_##name(type *a, unsigned char **out); \
+	OPENSSL_EXPORT type *d2i_##name(type **a, const unsigned char **in, long len); \
+	OPENSSL_EXPORT int i2d_##name(type *a, unsigned char **out); \
 	DECLARE_ASN1_ITEM(itname)
 
 #define	DECLARE_ASN1_ENCODE_FUNCTIONS_const(type, name) \
-	type *d2i_##name(type **a, const unsigned char **in, long len); \
-	int i2d_##name(const type *a, unsigned char **out); \
+	OPENSSL_EXPORT type *d2i_##name(type **a, const unsigned char **in, long len); \
+	OPENSSL_EXPORT int i2d_##name(const type *a, unsigned char **out); \
 	DECLARE_ASN1_ITEM(name)
 
 #define	DECLARE_ASN1_NDEF_FUNCTION(name) \
-	int i2d_##name##_NDEF(name *a, unsigned char **out);
+	OPENSSL_EXPORT int i2d_##name##_NDEF(name *a, unsigned char **out);
 
 #define DECLARE_ASN1_FUNCTIONS_const(name) \
 	DECLARE_ASN1_ALLOC_FUNCTIONS(name) \
 	DECLARE_ASN1_ENCODE_FUNCTIONS_const(name, name)
 
 #define DECLARE_ASN1_ALLOC_FUNCTIONS_name(type, name) \
-	type *name##_new(void); \
-	void name##_free(type *a);
+	OPENSSL_EXPORT type *name##_new(void); \
+	OPENSSL_EXPORT void name##_free(type *a);
 
 #define DECLARE_ASN1_PRINT_FUNCTION(stname) \
 	DECLARE_ASN1_PRINT_FUNCTION_fname(stname, stname)
 
 #define DECLARE_ASN1_PRINT_FUNCTION_fname(stname, fname) \
-	int fname##_print_ctx(BIO *out, stname *x, int indent, \
+	OPENSSL_EXPORT int fname##_print_ctx(BIO *out, stname *x, int indent, \
 					 const ASN1_PCTX *pctx);
 
 #define D2I_OF(type) type *(*)(type **,const unsigned char **,long)
@@ -414,7 +414,7 @@ typedef const ASN1_ITEM * ASN1_ITEM_EXP(void);
 #define ASN1_ITEM_rptr(ref) (ref##_it())
 
 #define DECLARE_ASN1_ITEM(name) \
-	const ASN1_ITEM * name##_it(void);
+	OPENSSL_EXPORT const ASN1_ITEM * name##_it(void);
 
 #endif
 
@@ -762,93 +762,83 @@ typedef struct BIT_STRING_BITNAME_st {
 
 DECLARE_ASN1_FUNCTIONS_fname(ASN1_TYPE, ASN1_ANY, ASN1_TYPE)
 
-int ASN1_TYPE_get(ASN1_TYPE *a);
-void ASN1_TYPE_set(ASN1_TYPE *a, int type, void *value);
-int ASN1_TYPE_set1(ASN1_TYPE *a, int type, const void *value);
-int            ASN1_TYPE_cmp(ASN1_TYPE *a, ASN1_TYPE *b);
+OPENSSL_EXPORT int ASN1_TYPE_get(ASN1_TYPE *a);
+OPENSSL_EXPORT void ASN1_TYPE_set(ASN1_TYPE *a, int type, void *value);
+OPENSSL_EXPORT int ASN1_TYPE_set1(ASN1_TYPE *a, int type, const void *value);
+OPENSSL_EXPORT int ASN1_TYPE_cmp(ASN1_TYPE *a, ASN1_TYPE *b);
 
-ASN1_OBJECT *	ASN1_OBJECT_new(void );
-void		ASN1_OBJECT_free(ASN1_OBJECT *a);
-int		i2d_ASN1_OBJECT(ASN1_OBJECT *a,unsigned char **pp);
-ASN1_OBJECT *	c2i_ASN1_OBJECT(ASN1_OBJECT **a,const unsigned char **pp,
-			long length);
-ASN1_OBJECT *	d2i_ASN1_OBJECT(ASN1_OBJECT **a,const unsigned char **pp,
-			long length);
+OPENSSL_EXPORT ASN1_OBJECT *	ASN1_OBJECT_new(void );
+OPENSSL_EXPORT void		ASN1_OBJECT_free(ASN1_OBJECT *a);
+OPENSSL_EXPORT int		i2d_ASN1_OBJECT(ASN1_OBJECT *a,unsigned char **pp);
+OPENSSL_EXPORT ASN1_OBJECT *	c2i_ASN1_OBJECT(ASN1_OBJECT **a,const unsigned char **pp,
+						long length);
+OPENSSL_EXPORT ASN1_OBJECT *	d2i_ASN1_OBJECT(ASN1_OBJECT **a,const unsigned char **pp,
+						long length);
 
 DECLARE_ASN1_ITEM(ASN1_OBJECT)
 
 DECLARE_ASN1_SET_OF(ASN1_OBJECT)
 
-ASN1_STRING *	ASN1_STRING_new(void);
-void		ASN1_STRING_free(ASN1_STRING *a);
-int		ASN1_STRING_copy(ASN1_STRING *dst, const ASN1_STRING *str);
-ASN1_STRING *	ASN1_STRING_dup(const ASN1_STRING *a);
-ASN1_STRING *	ASN1_STRING_type_new(int type );
-int 		ASN1_STRING_cmp(const ASN1_STRING *a, const ASN1_STRING *b);
+OPENSSL_EXPORT ASN1_STRING *	ASN1_STRING_new(void);
+OPENSSL_EXPORT void		ASN1_STRING_free(ASN1_STRING *a);
+OPENSSL_EXPORT int		ASN1_STRING_copy(ASN1_STRING *dst, const ASN1_STRING *str);
+OPENSSL_EXPORT ASN1_STRING *	ASN1_STRING_dup(const ASN1_STRING *a);
+OPENSSL_EXPORT ASN1_STRING *	ASN1_STRING_type_new(int type );
+OPENSSL_EXPORT int 		ASN1_STRING_cmp(const ASN1_STRING *a, const ASN1_STRING *b);
   /* Since this is used to store all sorts of things, via macros, for now, make
      its data void * */
-int 		ASN1_STRING_set(ASN1_STRING *str, const void *data, int len);
-void		ASN1_STRING_set0(ASN1_STRING *str, void *data, int len);
-int ASN1_STRING_length(const ASN1_STRING *x);
-void ASN1_STRING_length_set(ASN1_STRING *x, int n);
-int ASN1_STRING_type(ASN1_STRING *x);
-unsigned char * ASN1_STRING_data(ASN1_STRING *x);
+OPENSSL_EXPORT int 		ASN1_STRING_set(ASN1_STRING *str, const void *data, int len);
+OPENSSL_EXPORT void		ASN1_STRING_set0(ASN1_STRING *str, void *data, int len);
+OPENSSL_EXPORT int ASN1_STRING_length(const ASN1_STRING *x);
+OPENSSL_EXPORT void ASN1_STRING_length_set(ASN1_STRING *x, int n);
+OPENSSL_EXPORT int ASN1_STRING_type(ASN1_STRING *x);
+OPENSSL_EXPORT unsigned char * ASN1_STRING_data(ASN1_STRING *x);
 
 DECLARE_ASN1_FUNCTIONS(ASN1_BIT_STRING)
-int		i2c_ASN1_BIT_STRING(ASN1_BIT_STRING *a,unsigned char **pp);
-ASN1_BIT_STRING *c2i_ASN1_BIT_STRING(ASN1_BIT_STRING **a,const unsigned char **pp,
-			long length);
-int		ASN1_BIT_STRING_set(ASN1_BIT_STRING *a, unsigned char *d,
-			int length );
-int		ASN1_BIT_STRING_set_bit(ASN1_BIT_STRING *a, int n, int value);
-int		ASN1_BIT_STRING_get_bit(ASN1_BIT_STRING *a, int n);
-int            ASN1_BIT_STRING_check(ASN1_BIT_STRING *a,
-                                     unsigned char *flags, int flags_len);
+OPENSSL_EXPORT int		i2c_ASN1_BIT_STRING(ASN1_BIT_STRING *a,unsigned char **pp);
+OPENSSL_EXPORT ASN1_BIT_STRING *c2i_ASN1_BIT_STRING(ASN1_BIT_STRING **a,const unsigned char **pp, long length);
+OPENSSL_EXPORT int		ASN1_BIT_STRING_set(ASN1_BIT_STRING *a, unsigned char *d, int length );
+OPENSSL_EXPORT int		ASN1_BIT_STRING_set_bit(ASN1_BIT_STRING *a, int n, int value);
+OPENSSL_EXPORT int		ASN1_BIT_STRING_get_bit(ASN1_BIT_STRING *a, int n);
+OPENSSL_EXPORT int            ASN1_BIT_STRING_check(ASN1_BIT_STRING *a, unsigned char *flags, int flags_len);
 
 #ifndef OPENSSL_NO_BIO
-int ASN1_BIT_STRING_name_print(BIO *out, ASN1_BIT_STRING *bs,
-				BIT_STRING_BITNAME *tbl, int indent);
+OPENSSL_EXPORT int ASN1_BIT_STRING_name_print(BIO *out, ASN1_BIT_STRING *bs, BIT_STRING_BITNAME *tbl, int indent);
 #endif
-int ASN1_BIT_STRING_num_asc(char *name, BIT_STRING_BITNAME *tbl);
-int ASN1_BIT_STRING_set_asc(ASN1_BIT_STRING *bs, char *name, int value,
-				BIT_STRING_BITNAME *tbl);
+OPENSSL_EXPORT int ASN1_BIT_STRING_num_asc(char *name, BIT_STRING_BITNAME *tbl);
+OPENSSL_EXPORT int ASN1_BIT_STRING_set_asc(ASN1_BIT_STRING *bs, char *name, int value, BIT_STRING_BITNAME *tbl);
 
-int		i2d_ASN1_BOOLEAN(int a,unsigned char **pp);
-int 		d2i_ASN1_BOOLEAN(int *a,const unsigned char **pp,long length);
+OPENSSL_EXPORT int		i2d_ASN1_BOOLEAN(int a,unsigned char **pp);
+OPENSSL_EXPORT int 		d2i_ASN1_BOOLEAN(int *a,const unsigned char **pp,long length);
 
 DECLARE_ASN1_FUNCTIONS(ASN1_INTEGER)
-int		i2c_ASN1_INTEGER(ASN1_INTEGER *a,unsigned char **pp);
-ASN1_INTEGER *c2i_ASN1_INTEGER(ASN1_INTEGER **a,const unsigned char **pp,
-			long length);
-ASN1_INTEGER *d2i_ASN1_UINTEGER(ASN1_INTEGER **a,const unsigned char **pp,
-			long length);
-ASN1_INTEGER *	ASN1_INTEGER_dup(const ASN1_INTEGER *x);
-int ASN1_INTEGER_cmp(const ASN1_INTEGER *x, const ASN1_INTEGER *y);
+OPENSSL_EXPORT int		i2c_ASN1_INTEGER(ASN1_INTEGER *a,unsigned char **pp);
+OPENSSL_EXPORT ASN1_INTEGER *c2i_ASN1_INTEGER(ASN1_INTEGER **a,const unsigned char **pp, long length);
+OPENSSL_EXPORT ASN1_INTEGER *d2i_ASN1_UINTEGER(ASN1_INTEGER **a,const unsigned char **pp, long length);
+OPENSSL_EXPORT ASN1_INTEGER *	ASN1_INTEGER_dup(const ASN1_INTEGER *x);
+OPENSSL_EXPORT int ASN1_INTEGER_cmp(const ASN1_INTEGER *x, const ASN1_INTEGER *y);
 
 DECLARE_ASN1_FUNCTIONS(ASN1_ENUMERATED)
 
-int ASN1_UTCTIME_check(const ASN1_UTCTIME *a);
-ASN1_UTCTIME *ASN1_UTCTIME_set(ASN1_UTCTIME *s,time_t t);
-ASN1_UTCTIME *ASN1_UTCTIME_adj(ASN1_UTCTIME *s, time_t t,
-				int offset_day, long offset_sec);
-int ASN1_UTCTIME_set_string(ASN1_UTCTIME *s, const char *str);
-int ASN1_UTCTIME_cmp_time_t(const ASN1_UTCTIME *s, time_t t);
+OPENSSL_EXPORT int ASN1_UTCTIME_check(const ASN1_UTCTIME *a);
+OPENSSL_EXPORT ASN1_UTCTIME *ASN1_UTCTIME_set(ASN1_UTCTIME *s,time_t t);
+OPENSSL_EXPORT ASN1_UTCTIME *ASN1_UTCTIME_adj(ASN1_UTCTIME *s, time_t t, int offset_day, long offset_sec);
+OPENSSL_EXPORT int ASN1_UTCTIME_set_string(ASN1_UTCTIME *s, const char *str);
+OPENSSL_EXPORT int ASN1_UTCTIME_cmp_time_t(const ASN1_UTCTIME *s, time_t t);
 #if 0
 time_t ASN1_UTCTIME_get(const ASN1_UTCTIME *s);
 #endif
 
-int ASN1_GENERALIZEDTIME_check(const ASN1_GENERALIZEDTIME *a);
-ASN1_GENERALIZEDTIME *ASN1_GENERALIZEDTIME_set(ASN1_GENERALIZEDTIME *s,time_t t);
-ASN1_GENERALIZEDTIME *ASN1_GENERALIZEDTIME_adj(ASN1_GENERALIZEDTIME *s,
-	     time_t t, int offset_day, long offset_sec);
-int ASN1_GENERALIZEDTIME_set_string(ASN1_GENERALIZEDTIME *s, const char *str);
-int ASN1_TIME_diff(int *pday, int *psec,
-			const ASN1_TIME *from, const ASN1_TIME *to);
+OPENSSL_EXPORT int ASN1_GENERALIZEDTIME_check(const ASN1_GENERALIZEDTIME *a);
+OPENSSL_EXPORT ASN1_GENERALIZEDTIME *ASN1_GENERALIZEDTIME_set(ASN1_GENERALIZEDTIME *s,time_t t);
+OPENSSL_EXPORT ASN1_GENERALIZEDTIME *ASN1_GENERALIZEDTIME_adj(ASN1_GENERALIZEDTIME *s, time_t t, int offset_day, long offset_sec);
+OPENSSL_EXPORT int ASN1_GENERALIZEDTIME_set_string(ASN1_GENERALIZEDTIME *s, const char *str);
+OPENSSL_EXPORT int ASN1_TIME_diff(int *pday, int *psec, const ASN1_TIME *from, const ASN1_TIME *to);
 
 DECLARE_ASN1_FUNCTIONS(ASN1_OCTET_STRING)
-ASN1_OCTET_STRING *	ASN1_OCTET_STRING_dup(const ASN1_OCTET_STRING *a);
-int 	ASN1_OCTET_STRING_cmp(const ASN1_OCTET_STRING *a, const ASN1_OCTET_STRING *b);
-int 	ASN1_OCTET_STRING_set(ASN1_OCTET_STRING *str, const unsigned char *data, int len);
+OPENSSL_EXPORT ASN1_OCTET_STRING *	ASN1_OCTET_STRING_dup(const ASN1_OCTET_STRING *a);
+OPENSSL_EXPORT int 	ASN1_OCTET_STRING_cmp(const ASN1_OCTET_STRING *a, const ASN1_OCTET_STRING *b);
+OPENSSL_EXPORT int 	ASN1_OCTET_STRING_set(ASN1_OCTET_STRING *str, const unsigned char *data, int len);
 
 DECLARE_ASN1_FUNCTIONS(ASN1_VISIBLESTRING)
 DECLARE_ASN1_FUNCTIONS(ASN1_UNIVERSALSTRING)
@@ -856,8 +846,8 @@ DECLARE_ASN1_FUNCTIONS(ASN1_UTF8STRING)
 DECLARE_ASN1_FUNCTIONS(ASN1_NULL)
 DECLARE_ASN1_FUNCTIONS(ASN1_BMPSTRING)
 
-int UTF8_getc(const unsigned char *str, int len, unsigned long *val);
-int UTF8_putc(unsigned char *str, int len, unsigned long value);
+OPENSSL_EXPORT int UTF8_getc(const unsigned char *str, int len, unsigned long *val);
+OPENSSL_EXPORT int UTF8_putc(unsigned char *str, int len, unsigned long value);
 
 DECLARE_ASN1_FUNCTIONS_name(ASN1_STRING, ASN1_PRINTABLE)
 
@@ -873,75 +863,67 @@ DECLARE_ASN1_FUNCTIONS(ASN1_TIME)
 
 DECLARE_ASN1_ITEM(ASN1_OCTET_STRING_NDEF)
 
-ASN1_TIME *ASN1_TIME_set(ASN1_TIME *s,time_t t);
-ASN1_TIME *ASN1_TIME_adj(ASN1_TIME *s,time_t t,
-				int offset_day, long offset_sec);
-int ASN1_TIME_check(ASN1_TIME *t);
-ASN1_GENERALIZEDTIME *ASN1_TIME_to_generalizedtime(ASN1_TIME *t, ASN1_GENERALIZEDTIME **out);
-int ASN1_TIME_set_string(ASN1_TIME *s, const char *str);
+OPENSSL_EXPORT ASN1_TIME *ASN1_TIME_set(ASN1_TIME *s,time_t t);
+OPENSSL_EXPORT ASN1_TIME *ASN1_TIME_adj(ASN1_TIME *s,time_t t, int offset_day, long offset_sec);
+OPENSSL_EXPORT int ASN1_TIME_check(ASN1_TIME *t);
+OPENSSL_EXPORT ASN1_GENERALIZEDTIME *ASN1_TIME_to_generalizedtime(ASN1_TIME *t, ASN1_GENERALIZEDTIME **out);
+OPENSSL_EXPORT int ASN1_TIME_set_string(ASN1_TIME *s, const char *str);
 
-int i2d_ASN1_SET(STACK_OF(OPENSSL_BLOCK) *a, unsigned char **pp,
-		 i2d_of_void *i2d, int ex_tag, int ex_class,
-		 int is_set);
-STACK_OF(OPENSSL_BLOCK) *d2i_ASN1_SET(STACK_OF(OPENSSL_BLOCK) **a,
+OPENSSL_EXPORT int i2d_ASN1_SET(STACK_OF(OPENSSL_BLOCK) *a, unsigned char **pp, i2d_of_void *i2d, int ex_tag, int ex_class, int is_set);
+OPENSSL_EXPORT STACK_OF(OPENSSL_BLOCK) *d2i_ASN1_SET(STACK_OF(OPENSSL_BLOCK) **a,
 			      const unsigned char **pp,
 			      long length, d2i_of_void *d2i,
 			      void (*free_func)(OPENSSL_BLOCK), int ex_tag,
 			      int ex_class);
 
 #ifndef OPENSSL_NO_BIO
-int i2a_ASN1_INTEGER(BIO *bp, ASN1_INTEGER *a);
-int a2i_ASN1_INTEGER(BIO *bp,ASN1_INTEGER *bs,char *buf,int size);
-int i2a_ASN1_ENUMERATED(BIO *bp, ASN1_ENUMERATED *a);
-int a2i_ASN1_ENUMERATED(BIO *bp,ASN1_ENUMERATED *bs,char *buf,int size);
-int i2a_ASN1_OBJECT(BIO *bp,ASN1_OBJECT *a);
-int a2i_ASN1_STRING(BIO *bp,ASN1_STRING *bs,char *buf,int size);
-int i2a_ASN1_STRING(BIO *bp, ASN1_STRING *a, int type);
+OPENSSL_EXPORT int i2a_ASN1_INTEGER(BIO *bp, ASN1_INTEGER *a);
+OPENSSL_EXPORT int a2i_ASN1_INTEGER(BIO *bp,ASN1_INTEGER *bs,char *buf,int size);
+OPENSSL_EXPORT int i2a_ASN1_ENUMERATED(BIO *bp, ASN1_ENUMERATED *a);
+OPENSSL_EXPORT int a2i_ASN1_ENUMERATED(BIO *bp,ASN1_ENUMERATED *bs,char *buf,int size);
+OPENSSL_EXPORT int i2a_ASN1_OBJECT(BIO *bp,ASN1_OBJECT *a);
+OPENSSL_EXPORT int a2i_ASN1_STRING(BIO *bp,ASN1_STRING *bs,char *buf,int size);
+OPENSSL_EXPORT int i2a_ASN1_STRING(BIO *bp, ASN1_STRING *a, int type);
 #endif
-int i2t_ASN1_OBJECT(char *buf,int buf_len,ASN1_OBJECT *a);
+OPENSSL_EXPORT int i2t_ASN1_OBJECT(char *buf,int buf_len,ASN1_OBJECT *a);
 
-int a2d_ASN1_OBJECT(unsigned char *out,int olen, const char *buf, int num);
-ASN1_OBJECT *ASN1_OBJECT_create(int nid, unsigned char *data,int len,
-	const char *sn, const char *ln);
+OPENSSL_EXPORT int a2d_ASN1_OBJECT(unsigned char *out,int olen, const char *buf, int num);
+OPENSSL_EXPORT ASN1_OBJECT *ASN1_OBJECT_create(int nid, unsigned char *data,int len, const char *sn, const char *ln);
 
-int ASN1_INTEGER_set(ASN1_INTEGER *a, long v);
-long ASN1_INTEGER_get(const ASN1_INTEGER *a);
-ASN1_INTEGER *BN_to_ASN1_INTEGER(const BIGNUM *bn, ASN1_INTEGER *ai);
-BIGNUM *ASN1_INTEGER_to_BN(const ASN1_INTEGER *ai,BIGNUM *bn);
+OPENSSL_EXPORT int ASN1_INTEGER_set(ASN1_INTEGER *a, long v);
+OPENSSL_EXPORT long ASN1_INTEGER_get(const ASN1_INTEGER *a);
+OPENSSL_EXPORT ASN1_INTEGER *BN_to_ASN1_INTEGER(const BIGNUM *bn, ASN1_INTEGER *ai);
+OPENSSL_EXPORT BIGNUM *ASN1_INTEGER_to_BN(const ASN1_INTEGER *ai,BIGNUM *bn);
 
-int ASN1_ENUMERATED_set(ASN1_ENUMERATED *a, long v);
-long ASN1_ENUMERATED_get(ASN1_ENUMERATED *a);
-ASN1_ENUMERATED *BN_to_ASN1_ENUMERATED(BIGNUM *bn, ASN1_ENUMERATED *ai);
-BIGNUM *ASN1_ENUMERATED_to_BN(ASN1_ENUMERATED *ai,BIGNUM *bn);
+OPENSSL_EXPORT int ASN1_ENUMERATED_set(ASN1_ENUMERATED *a, long v);
+OPENSSL_EXPORT long ASN1_ENUMERATED_get(ASN1_ENUMERATED *a);
+OPENSSL_EXPORT ASN1_ENUMERATED *BN_to_ASN1_ENUMERATED(BIGNUM *bn, ASN1_ENUMERATED *ai);
+OPENSSL_EXPORT BIGNUM *ASN1_ENUMERATED_to_BN(ASN1_ENUMERATED *ai,BIGNUM *bn);
 
 /* General */
 /* given a string, return the correct type, max is the maximum length */
-int ASN1_PRINTABLE_type(const unsigned char *s, int max);
+OPENSSL_EXPORT int ASN1_PRINTABLE_type(const unsigned char *s, int max);
 
-int i2d_ASN1_bytes(ASN1_STRING *a, unsigned char **pp, int tag, int xclass);
-ASN1_STRING *d2i_ASN1_bytes(ASN1_STRING **a, const unsigned char **pp,
-	long length, int Ptag, int Pclass);
-unsigned long ASN1_tag2bit(int tag);
+OPENSSL_EXPORT int i2d_ASN1_bytes(ASN1_STRING *a, unsigned char **pp, int tag, int xclass);
+OPENSSL_EXPORT ASN1_STRING *d2i_ASN1_bytes(ASN1_STRING **a, const unsigned char **pp, long length, int Ptag, int Pclass);
+OPENSSL_EXPORT unsigned long ASN1_tag2bit(int tag);
 /* type is one or more of the B_ASN1_ values. */
-ASN1_STRING *d2i_ASN1_type_bytes(ASN1_STRING **a,const unsigned char **pp,
-		long length,int type);
+OPENSSL_EXPORT ASN1_STRING *d2i_ASN1_type_bytes(ASN1_STRING **a,const unsigned char **pp, long length,int type);
 
 /* PARSING */
-int asn1_Finish(ASN1_CTX *c);
-int asn1_const_Finish(ASN1_const_CTX *c);
+OPENSSL_EXPORT int asn1_Finish(ASN1_CTX *c);
+OPENSSL_EXPORT int asn1_const_Finish(ASN1_const_CTX *c);
 
 /* SPECIALS */
-int ASN1_get_object(const unsigned char **pp, long *plength, int *ptag,
-	int *pclass, long omax);
-int ASN1_check_infinite_end(unsigned char **p,long len);
-int ASN1_const_check_infinite_end(const unsigned char **p,long len);
-void ASN1_put_object(unsigned char **pp, int constructed, int length,
-	int tag, int xclass);
-int ASN1_put_eoc(unsigned char **pp);
-int ASN1_object_size(int constructed, int length, int tag);
+OPENSSL_EXPORT int ASN1_get_object(const unsigned char **pp, long *plength, int *ptag, int *pclass, long omax);
+OPENSSL_EXPORT int ASN1_check_infinite_end(unsigned char **p,long len);
+OPENSSL_EXPORT int ASN1_const_check_infinite_end(const unsigned char **p,long len);
+OPENSSL_EXPORT void ASN1_put_object(unsigned char **pp, int constructed, int length, int tag, int xclass);
+OPENSSL_EXPORT int ASN1_put_eoc(unsigned char **pp);
+OPENSSL_EXPORT int ASN1_object_size(int constructed, int length, int tag);
 
 /* Used to implement other functions */
-void *ASN1_dup(i2d_of_void *i2d, d2i_of_void *d2i, void *x);
+OPENSSL_EXPORT void *ASN1_dup(i2d_of_void *i2d, d2i_of_void *d2i, void *x);
 
 #define ASN1_dup_of(type,i2d,d2i,x) \
     ((type*)ASN1_dup(CHECKED_I2D_OF(type, i2d), \
@@ -953,7 +935,7 @@ void *ASN1_dup(i2d_of_void *i2d, d2i_of_void *d2i, void *x);
 		     CHECKED_D2I_OF(type, d2i), \
 		     CHECKED_PTR_OF(const type, x)))
 
-void *ASN1_item_dup(const ASN1_ITEM *it, void *x);
+OPENSSL_EXPORT void *ASN1_item_dup(const ASN1_ITEM *it, void *x);
 
 /* ASN1 alloc/free macros for when a type is only used internally */
 
@@ -962,7 +944,7 @@ void *ASN1_item_dup(const ASN1_ITEM *it, void *x);
 		ASN1_item_free(CHECKED_PTR_OF(type, x), ASN1_ITEM_rptr(type))
 
 #ifndef OPENSSL_NO_FP_API
-void *ASN1_d2i_fp(void *(*xnew)(void), d2i_of_void *d2i, FILE *in, void **x);
+OPENSSL_EXPORT void *ASN1_d2i_fp(void *(*xnew)(void), d2i_of_void *d2i, FILE *in, void **x);
 
 #define ASN1_d2i_fp_of(type,xnew,d2i,in,x) \
     ((type*)ASN1_d2i_fp(CHECKED_NEW_OF(type, xnew), \
@@ -970,8 +952,8 @@ void *ASN1_d2i_fp(void *(*xnew)(void), d2i_of_void *d2i, FILE *in, void **x);
 			in, \
 			CHECKED_PPTR_OF(type, x)))
 
-void *ASN1_item_d2i_fp(const ASN1_ITEM *it, FILE *in, void *x);
-int ASN1_i2d_fp(i2d_of_void *i2d,FILE *out,void *x);
+OPENSSL_EXPORT void *ASN1_item_d2i_fp(const ASN1_ITEM *it, FILE *in, void *x);
+OPENSSL_EXPORT int ASN1_i2d_fp(i2d_of_void *i2d,FILE *out,void *x);
 
 #define ASN1_i2d_fp_of(type,i2d,out,x) \
     (ASN1_i2d_fp(CHECKED_I2D_OF(type, i2d), \
@@ -983,14 +965,14 @@ int ASN1_i2d_fp(i2d_of_void *i2d,FILE *out,void *x);
 		 out, \
 		 CHECKED_PTR_OF(const type, x)))
 
-int ASN1_item_i2d_fp(const ASN1_ITEM *it, FILE *out, void *x);
-int ASN1_STRING_print_ex_fp(FILE *fp, ASN1_STRING *str, unsigned long flags);
+OPENSSL_EXPORT int ASN1_item_i2d_fp(const ASN1_ITEM *it, FILE *out, void *x);
+OPENSSL_EXPORT int ASN1_STRING_print_ex_fp(FILE *fp, ASN1_STRING *str, unsigned long flags);
 #endif
 
-int ASN1_STRING_to_UTF8(unsigned char **out, ASN1_STRING *in);
+OPENSSL_EXPORT int ASN1_STRING_to_UTF8(unsigned char **out, ASN1_STRING *in);
 
 #ifndef OPENSSL_NO_BIO
-void *ASN1_d2i_bio(void *(*xnew)(void), d2i_of_void *d2i, BIO *in, void **x);
+OPENSSL_EXPORT void *ASN1_d2i_bio(void *(*xnew)(void), d2i_of_void *d2i, BIO *in, void **x);
 
 #define ASN1_d2i_bio_of(type,xnew,d2i,in,x) \
     ((type*)ASN1_d2i_bio( CHECKED_NEW_OF(type, xnew), \
@@ -998,8 +980,8 @@ void *ASN1_d2i_bio(void *(*xnew)(void), d2i_of_void *d2i, BIO *in, void **x);
 			  in, \
 			  CHECKED_PPTR_OF(type, x)))
 
-void *ASN1_item_d2i_bio(const ASN1_ITEM *it, BIO *in, void *x);
-int ASN1_i2d_bio(i2d_of_void *i2d,BIO *out, unsigned char *x);
+OPENSSL_EXPORT void *ASN1_item_d2i_bio(const ASN1_ITEM *it, BIO *in, void *x);
+OPENSSL_EXPORT int ASN1_i2d_bio(i2d_of_void *i2d,BIO *out, unsigned char *x);
 
 #define ASN1_i2d_bio_of(type,i2d,out,x) \
     (ASN1_i2d_bio(CHECKED_I2D_OF(type, i2d), \
@@ -1011,18 +993,17 @@ int ASN1_i2d_bio(i2d_of_void *i2d,BIO *out, unsigned char *x);
 		  out, \
 		  CHECKED_PTR_OF(const type, x)))
 
-int ASN1_item_i2d_bio(const ASN1_ITEM *it, BIO *out, void *x);
-int ASN1_UTCTIME_print(BIO *fp, const ASN1_UTCTIME *a);
-int ASN1_GENERALIZEDTIME_print(BIO *fp, const ASN1_GENERALIZEDTIME *a);
-int ASN1_TIME_print(BIO *fp, const ASN1_TIME *a);
-int ASN1_STRING_print(BIO *bp, const ASN1_STRING *v);
-int ASN1_STRING_print_ex(BIO *out, ASN1_STRING *str, unsigned long flags);
-int ASN1_bn_print(BIO *bp, const char *number, const BIGNUM *num,
-				unsigned char *buf, int off);
-int ASN1_parse(BIO *bp,const unsigned char *pp,long len,int indent);
-int ASN1_parse_dump(BIO *bp,const unsigned char *pp,long len,int indent,int dump);
+OPENSSL_EXPORT int ASN1_item_i2d_bio(const ASN1_ITEM *it, BIO *out, void *x);
+OPENSSL_EXPORT int ASN1_UTCTIME_print(BIO *fp, const ASN1_UTCTIME *a);
+OPENSSL_EXPORT int ASN1_GENERALIZEDTIME_print(BIO *fp, const ASN1_GENERALIZEDTIME *a);
+OPENSSL_EXPORT int ASN1_TIME_print(BIO *fp, const ASN1_TIME *a);
+OPENSSL_EXPORT int ASN1_STRING_print(BIO *bp, const ASN1_STRING *v);
+OPENSSL_EXPORT int ASN1_STRING_print_ex(BIO *out, ASN1_STRING *str, unsigned long flags);
+OPENSSL_EXPORT int ASN1_bn_print(BIO *bp, const char *number, const BIGNUM *num, unsigned char *buf, int off);
+OPENSSL_EXPORT int ASN1_parse(BIO *bp,const unsigned char *pp,long len,int indent);
+OPENSSL_EXPORT int ASN1_parse_dump(BIO *bp,const unsigned char *pp,long len,int indent,int dump);
 #endif
-const char *ASN1_tag2str(int tag);
+OPENSSL_EXPORT const char *ASN1_tag2str(int tag);
 
 /* Used to load and write netscape format cert */
 
@@ -1030,50 +1011,43 @@ DECLARE_ASN1_FUNCTIONS(NETSCAPE_X509)
 
 int ASN1_UNIVERSALSTRING_to_string(ASN1_UNIVERSALSTRING *s);
 
-STACK_OF(OPENSSL_BLOCK) *ASN1_seq_unpack(const unsigned char *buf, int len,
-				 d2i_of_void *d2i, void (*free_func)(OPENSSL_BLOCK));
-unsigned char *ASN1_seq_pack(STACK_OF(OPENSSL_BLOCK) *safes, i2d_of_void *i2d,
-			     unsigned char **buf, int *len );
-void *ASN1_unpack_string(ASN1_STRING *oct, d2i_of_void *d2i);
-void *ASN1_item_unpack(ASN1_STRING *oct, const ASN1_ITEM *it);
-ASN1_STRING *ASN1_pack_string(void *obj, i2d_of_void *i2d,
-			      ASN1_OCTET_STRING **oct);
+OPENSSL_EXPORT STACK_OF(OPENSSL_BLOCK) *ASN1_seq_unpack(const unsigned char *buf, int len, d2i_of_void *d2i, void (*free_func)(OPENSSL_BLOCK));
+OPENSSL_EXPORT unsigned char *ASN1_seq_pack(STACK_OF(OPENSSL_BLOCK) *safes, i2d_of_void *i2d, unsigned char **buf, int *len );
+OPENSSL_EXPORT void *ASN1_unpack_string(ASN1_STRING *oct, d2i_of_void *d2i);
+OPENSSL_EXPORT void *ASN1_item_unpack(ASN1_STRING *oct, const ASN1_ITEM *it);
+OPENSSL_EXPORT ASN1_STRING *ASN1_pack_string(void *obj, i2d_of_void *i2d, ASN1_OCTET_STRING **oct);
 
 #define ASN1_pack_string_of(type,obj,i2d,oct) \
     (ASN1_pack_string(CHECKED_PTR_OF(type, obj), \
 		      CHECKED_I2D_OF(type, i2d), \
 		      oct))
 
-ASN1_STRING *ASN1_item_pack(void *obj, const ASN1_ITEM *it, ASN1_OCTET_STRING **oct);
+OPENSSL_EXPORT ASN1_STRING *ASN1_item_pack(void *obj, const ASN1_ITEM *it, ASN1_OCTET_STRING **oct);
 
-void ASN1_STRING_set_default_mask(unsigned long mask);
-int ASN1_STRING_set_default_mask_asc(const char *p);
-unsigned long ASN1_STRING_get_default_mask(void);
-int ASN1_mbstring_copy(ASN1_STRING **out, const unsigned char *in, int len,
-					int inform, unsigned long mask);
-int ASN1_mbstring_ncopy(ASN1_STRING **out, const unsigned char *in, int len,
-					int inform, unsigned long mask, 
-					long minsize, long maxsize);
+OPENSSL_EXPORT void ASN1_STRING_set_default_mask(unsigned long mask);
+OPENSSL_EXPORT int ASN1_STRING_set_default_mask_asc(const char *p);
+OPENSSL_EXPORT unsigned long ASN1_STRING_get_default_mask(void);
+OPENSSL_EXPORT int ASN1_mbstring_copy(ASN1_STRING **out, const unsigned char *in, int len, int inform, unsigned long mask);
+OPENSSL_EXPORT int ASN1_mbstring_ncopy(ASN1_STRING **out, const unsigned char *in, int len, int inform, unsigned long mask, long minsize, long maxsize);
 
-ASN1_STRING *ASN1_STRING_set_by_NID(ASN1_STRING **out, 
-		const unsigned char *in, int inlen, int inform, int nid);
-ASN1_STRING_TABLE *ASN1_STRING_TABLE_get(int nid);
-int ASN1_STRING_TABLE_add(int, long, long, unsigned long, unsigned long);
-void ASN1_STRING_TABLE_cleanup(void);
+OPENSSL_EXPORT ASN1_STRING *ASN1_STRING_set_by_NID(ASN1_STRING **out, const unsigned char *in, int inlen, int inform, int nid);
+OPENSSL_EXPORT ASN1_STRING_TABLE *ASN1_STRING_TABLE_get(int nid);
+OPENSSL_EXPORT int ASN1_STRING_TABLE_add(int, long, long, unsigned long, unsigned long);
+OPENSSL_EXPORT void ASN1_STRING_TABLE_cleanup(void);
 
 /* ASN1 template functions */
 
 /* Old API compatible functions */
-ASN1_VALUE *ASN1_item_new(const ASN1_ITEM *it);
-void ASN1_item_free(ASN1_VALUE *val, const ASN1_ITEM *it);
-ASN1_VALUE * ASN1_item_d2i(ASN1_VALUE **val, const unsigned char **in, long len, const ASN1_ITEM *it);
-int ASN1_item_i2d(ASN1_VALUE *val, unsigned char **out, const ASN1_ITEM *it);
-int ASN1_item_ndef_i2d(ASN1_VALUE *val, unsigned char **out, const ASN1_ITEM *it);
+OPENSSL_EXPORT ASN1_VALUE *ASN1_item_new(const ASN1_ITEM *it);
+OPENSSL_EXPORT void ASN1_item_free(ASN1_VALUE *val, const ASN1_ITEM *it);
+OPENSSL_EXPORT ASN1_VALUE * ASN1_item_d2i(ASN1_VALUE **val, const unsigned char **in, long len, const ASN1_ITEM *it);
+OPENSSL_EXPORT int ASN1_item_i2d(ASN1_VALUE *val, unsigned char **out, const ASN1_ITEM *it);
+OPENSSL_EXPORT int ASN1_item_ndef_i2d(ASN1_VALUE *val, unsigned char **out, const ASN1_ITEM *it);
 
-void ASN1_add_oid_module(void);
+OPENSSL_EXPORT void ASN1_add_oid_module(void);
 
-ASN1_TYPE *ASN1_generate_nconf(char *str, CONF *nconf);
-ASN1_TYPE *ASN1_generate_v3(char *str, X509V3_CTX *cnf);
+OPENSSL_EXPORT ASN1_TYPE *ASN1_generate_nconf(char *str, CONF *nconf);
+OPENSSL_EXPORT ASN1_TYPE *ASN1_generate_v3(char *str, X509V3_CTX *cnf);
 
 /* ASN1 Print flags */
 
@@ -1096,33 +1070,29 @@ ASN1_TYPE *ASN1_generate_v3(char *str, X509V3_CTX *cnf);
 /* Don't show structure name even at top level */
 #define ASN1_PCTX_FLAGS_NO_STRUCT_NAME		0x100
 
-int ASN1_item_print(BIO *out, ASN1_VALUE *ifld, int indent,
-				const ASN1_ITEM *it, const ASN1_PCTX *pctx);
-ASN1_PCTX *ASN1_PCTX_new(void);
-void ASN1_PCTX_free(ASN1_PCTX *p);
-unsigned long ASN1_PCTX_get_flags(ASN1_PCTX *p);
-void ASN1_PCTX_set_flags(ASN1_PCTX *p, unsigned long flags);
-unsigned long ASN1_PCTX_get_nm_flags(ASN1_PCTX *p);
-void ASN1_PCTX_set_nm_flags(ASN1_PCTX *p, unsigned long flags);
-unsigned long ASN1_PCTX_get_cert_flags(ASN1_PCTX *p);
-void ASN1_PCTX_set_cert_flags(ASN1_PCTX *p, unsigned long flags);
-unsigned long ASN1_PCTX_get_oid_flags(ASN1_PCTX *p);
-void ASN1_PCTX_set_oid_flags(ASN1_PCTX *p, unsigned long flags);
-unsigned long ASN1_PCTX_get_str_flags(ASN1_PCTX *p);
-void ASN1_PCTX_set_str_flags(ASN1_PCTX *p, unsigned long flags);
+OPENSSL_EXPORT int ASN1_item_print(BIO *out, ASN1_VALUE *ifld, int indent, const ASN1_ITEM *it, const ASN1_PCTX *pctx);
+OPENSSL_EXPORT ASN1_PCTX *ASN1_PCTX_new(void);
+OPENSSL_EXPORT void ASN1_PCTX_free(ASN1_PCTX *p);
+OPENSSL_EXPORT unsigned long ASN1_PCTX_get_flags(ASN1_PCTX *p);
+OPENSSL_EXPORT void ASN1_PCTX_set_flags(ASN1_PCTX *p, unsigned long flags);
+OPENSSL_EXPORT unsigned long ASN1_PCTX_get_nm_flags(ASN1_PCTX *p);
+OPENSSL_EXPORT void ASN1_PCTX_set_nm_flags(ASN1_PCTX *p, unsigned long flags);
+OPENSSL_EXPORT unsigned long ASN1_PCTX_get_cert_flags(ASN1_PCTX *p);
+OPENSSL_EXPORT void ASN1_PCTX_set_cert_flags(ASN1_PCTX *p, unsigned long flags);
+OPENSSL_EXPORT unsigned long ASN1_PCTX_get_oid_flags(ASN1_PCTX *p);
+OPENSSL_EXPORT void ASN1_PCTX_set_oid_flags(ASN1_PCTX *p, unsigned long flags);
+OPENSSL_EXPORT unsigned long ASN1_PCTX_get_str_flags(ASN1_PCTX *p);
+OPENSSL_EXPORT void ASN1_PCTX_set_str_flags(ASN1_PCTX *p, unsigned long flags);
 
-BIO_METHOD *BIO_f_asn1(void);
+OPENSSL_EXPORT BIO_METHOD *BIO_f_asn1(void);
 
-BIO *BIO_new_NDEF(BIO *out, ASN1_VALUE *val, const ASN1_ITEM *it);
+OPENSSL_EXPORT BIO *BIO_new_NDEF(BIO *out, ASN1_VALUE *val, const ASN1_ITEM *it);
 
-int i2d_ASN1_bio_stream(BIO *out, ASN1_VALUE *val, BIO *in, int flags,
-				const ASN1_ITEM *it);
-int PEM_write_bio_ASN1_stream(BIO *out, ASN1_VALUE *val, BIO *in, int flags,
-				const char *hdr,
-				const ASN1_ITEM *it);
-ASN1_VALUE *SMIME_read_ASN1(BIO *bio, BIO **bcont, const ASN1_ITEM *it);
-int SMIME_crlf_copy(BIO *in, BIO *out, int flags);
-int SMIME_text(BIO *in, BIO *out);
+OPENSSL_EXPORT int i2d_ASN1_bio_stream(BIO *out, ASN1_VALUE *val, BIO *in, int flags, const ASN1_ITEM *it);
+OPENSSL_EXPORT int PEM_write_bio_ASN1_stream(BIO *out, ASN1_VALUE *val, BIO *in, int flags, const char *hdr, const ASN1_ITEM *it);
+OPENSSL_EXPORT ASN1_VALUE *SMIME_read_ASN1(BIO *bio, BIO **bcont, const ASN1_ITEM *it);
+OPENSSL_EXPORT int SMIME_crlf_copy(BIO *in, BIO *out, int flags);
+OPENSSL_EXPORT int SMIME_text(BIO *in, BIO *out);
 
 /* BEGIN ERROR CODES */
 /* The following lines are auto generated by the script mkerr.pl. Any changes
@@ -1131,14 +1101,10 @@ int SMIME_text(BIO *in, BIO *out);
 void ERR_load_ASN1_strings(void);
 
 typedef int asn1_ps_func(BIO *b, unsigned char **pbuf, int *plen, void *parg);
-int BIO_asn1_set_prefix(BIO *b, asn1_ps_func *prefix,
-					asn1_ps_func *prefix_free);
-int BIO_asn1_get_prefix(BIO *b, asn1_ps_func **pprefix,
-					asn1_ps_func **pprefix_free);
-int BIO_asn1_set_suffix(BIO *b, asn1_ps_func *suffix,
-					asn1_ps_func *suffix_free);
-int BIO_asn1_get_suffix(BIO *b, asn1_ps_func **psuffix,
-					asn1_ps_func **psuffix_free);
+OPENSSL_EXPORT int BIO_asn1_set_prefix(BIO *b, asn1_ps_func *prefix, asn1_ps_func *prefix_free);
+OPENSSL_EXPORT int BIO_asn1_get_prefix(BIO *b, asn1_ps_func **pprefix, asn1_ps_func **pprefix_free);
+OPENSSL_EXPORT int BIO_asn1_set_suffix(BIO *b, asn1_ps_func *suffix, asn1_ps_func *suffix_free);
+OPENSSL_EXPORT int BIO_asn1_get_suffix(BIO *b, asn1_ps_func **psuffix, asn1_ps_func **psuffix_free);
 
 #ifdef  __cplusplus
 }

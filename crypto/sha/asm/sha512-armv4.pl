@@ -243,6 +243,7 @@ WORD64(0x5fcb6fab,0x3ad6faec, 0x6c44198c,0x4a475817)
 .skip	32-4
 
 .global	sha512_block_data_order
+.hidden	sha512_block_data_order
 .type	sha512_block_data_order,%function
 sha512_block_data_order:
 	sub	r3,pc,#8		@ sha512_block_data_order

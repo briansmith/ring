@@ -521,6 +521,12 @@ my %globals;
 		    }
 		} elsif ($dir =~ /\.(text|data)/) {
 		    $current_segment=".$1";
+		} elsif ($dir =~ /\.global|\.globl|\.extern/) {
+		    if ($flavour eq "macosx") {
+		        $self->{value} .= "\n.private_extern $line";
+		    } else {
+		        $self->{value} .= "\n.hidden $line";
+		    }
 		} elsif ($dir =~ /\.hidden/) {
 		    if    ($flavour eq "macosx")  { $self->{value} = ".private_extern\t$prefix$line"; }
 		    elsif ($flavour eq "mingw64") { $self->{value} = ""; }

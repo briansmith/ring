@@ -51,11 +51,12 @@ typedef struct OPENSSL_dir_context_st OPENSSL_DIR_CTX;
  * same |*ctx| will return subsequent file names until it returns NULL to
  * indicate EOF. The strings returned reference a buffer internal to the
  * |OPENSSL_DIR_CTX| and will be overridden by subsequent calls. */
-const char *OPENSSL_DIR_read(OPENSSL_DIR_CTX **ctx, const char *directory);
+OPENSSL_EXPORT const char *OPENSSL_DIR_read(OPENSSL_DIR_CTX **ctx,
+                                            const char *directory);
 
 /* OPENSSL_DIR_end closes |*ctx|. It returns one on success and zero on
  * error. */
-int OPENSSL_DIR_end(OPENSSL_DIR_CTX **ctx);
+OPENSSL_EXPORT int OPENSSL_DIR_end(OPENSSL_DIR_CTX **ctx);
 
 
 #if defined(__cplusplus)

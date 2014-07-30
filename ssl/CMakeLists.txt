@@ -4,6 +4,7 @@ add_subdirectory(pqueue)
 
 add_library(
 	ssl
+	STATIC
 
 	d1_both.c
 	d1_clnt.c

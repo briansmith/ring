@@ -51,6 +51,7 @@
 	.text
 	.align	2
 	.global	CRYPTO_chacha_20_neon
+	.hidden	CRYPTO_chacha_20_neon
 	.thumb
 	.thumb_func
 	.type	CRYPTO_chacha_20_neon, %function

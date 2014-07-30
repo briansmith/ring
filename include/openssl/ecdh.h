@@ -82,16 +82,17 @@ extern "C" {
  * return value. Otherwise, as many bytes of the shared key as will fit are
  * copied directly to, at most, |outlen| bytes at |out|. It returns the number
  * of bytes written to |out|, or -1 on error. */
-int ECDH_compute_key(void *out, size_t outlen, const EC_POINT *pub_key,
-                     EC_KEY *priv_key, void *(*KDF)(const void *in, size_t inlen,
-                                                void *out, size_t *outlen));
+OPENSSL_EXPORT int ECDH_compute_key(void *out, size_t outlen,
+                                    const EC_POINT *pub_key, EC_KEY *priv_key,
+                                    void *(*KDF)(const void *in, size_t inlen,
+                                                 void *out, size_t *outlen));
 
 /* ECDH_KDF_X9_62 writes |outlen| bytes to |out| using the KDF from X9.62
  * applied to |Z| and |sinfo| and using the hash |md|. It returns one on
  * success and zero otherwise. */
-int ECDH_KDF_X9_62(uint8_t *out, size_t outlen, const uint8_t *Z,
-                   size_t Zlen, const uint8_t *sinfo, size_t sinfolen,
-                   const EVP_MD *md);
+OPENSSL_EXPORT int ECDH_KDF_X9_62(uint8_t *out, size_t outlen, const uint8_t *Z,
+                                  size_t Zlen, const uint8_t *sinfo,
+                                  size_t sinfolen, const EVP_MD *md);
 
 
 #if defined(__cplusplus)

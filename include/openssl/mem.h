@@ -82,29 +82,29 @@ void *OPENSSL_realloc_clean(void *ptr, size_t old_size, size_t new_size);
 
 /* OPENSSL_cleanse zeros out |len| bytes of memory at |ptr|. This is similar to
  * |memset_s| from C11. */
-void OPENSSL_cleanse(void *ptr, size_t len);
+OPENSSL_EXPORT void OPENSSL_cleanse(void *ptr, size_t len);
 
 /* CRYPTO_memcmp returns zero iff the |len| bytes at |a| and |b| are equal. It
  * takes an amount of time dependent on |len|, but independent of the contents
  * of |a| and |b|. Unlike memcmp, it cannot be used to put elements into a
  * defined order as the return value when a != b is undefined, other than to be
  * non-zero. */
-int CRYPTO_memcmp(const void *a, const void *b, size_t len);
+OPENSSL_EXPORT int CRYPTO_memcmp(const void *a, const void *b, size_t len);
 
 /* OPENSSL_hash32 implements the 32 bit, FNV-1a hash. */
-uint32_t OPENSSL_hash32(const void *ptr, size_t len);
+OPENSSL_EXPORT uint32_t OPENSSL_hash32(const void *ptr, size_t len);
 
 /* OPENSSL_strdup has the same behaviour as strdup(3). */
-char *OPENSSL_strdup(const char *s);
+OPENSSL_EXPORT char *OPENSSL_strdup(const char *s);
 
 /* OPENSSL_strnlen has the same behaviour as strnlen(3). */
-size_t OPENSSL_strnlen(const char *s, size_t len);
+OPENSSL_EXPORT size_t OPENSSL_strnlen(const char *s, size_t len);
 
 /* OPENSSL_strcasecmp has the same behaviour as strcasecmp(3). */
-int OPENSSL_strcasecmp(const char *a, const char *b);
+OPENSSL_EXPORT int OPENSSL_strcasecmp(const char *a, const char *b);
 
 /* OPENSSL_strncasecmp has the same behaviour as strncasecmp(3). */
-int OPENSSL_strncasecmp(const char *a, const char *b, size_t n);
+OPENSSL_EXPORT int OPENSSL_strncasecmp(const char *a, const char *b, size_t n);
 
 /* DECIMAL_SIZE returns an upper bound for the length of the decimal
  * representation of the given type. */
@@ -120,10 +120,11 @@ int OPENSSL_strncasecmp(const char *a, const char *b, size_t n);
 #else
 #define __bio_h__attr__(x)
 #endif
-int BIO_snprintf(char *buf, size_t n, const char *format, ...)
+OPENSSL_EXPORT int BIO_snprintf(char *buf, size_t n, const char *format, ...)
     __bio_h__attr__((__format__(__printf__, 3, 4)));
 
-int BIO_vsnprintf(char *buf, size_t n, const char *format, va_list args)
+OPENSSL_EXPORT int BIO_vsnprintf(char *buf, size_t n, const char *format,
+                                 va_list args)
     __bio_h__attr__((__format__(__printf__, 3, 0)));
 #undef __bio_h__attr__
 

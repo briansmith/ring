@@ -10,6 +10,8 @@ elseif(MSVC)
 	set(CMAKE_C_FLAGS "/wd4267")
 endif()
 
+add_definitions(-DBORINGSSL_IMPLEMENTATION)
+
 if (${CMAKE_SYSTEM_PROCESSOR} STREQUAL "x86_64")
 	set(ARCH "x86_64")
 elseif (${CMAKE_SYSTEM_PROCESSOR} STREQUAL "amd64")

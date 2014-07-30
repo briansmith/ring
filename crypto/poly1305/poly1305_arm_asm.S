@@ -154,6 +154,7 @@
 # qhasm: qpushenter crypto_onetimeauth_poly1305_neon2_blocks
 .align 4
 .global openssl_poly1305_neon2_blocks
+.hidden openssl_poly1305_neon2_blocks
 .type openssl_poly1305_neon2_blocks STT_FUNC
 openssl_poly1305_neon2_blocks:
 vpush {q4,q5,q6,q7}
@@ -1612,6 +1613,7 @@ bx lr
 # qhasm: enter crypto_onetimeauth_poly1305_neon2_addmulmod
 .align 2
 .global openssl_poly1305_neon2_addmulmod
+.hidden openssl_poly1305_neon2_addmulmod
 .type openssl_poly1305_neon2_addmulmod STT_FUNC
 openssl_poly1305_neon2_addmulmod:
 sub sp,sp,#0

@@ -22,4 +22,11 @@ like this:
 
 cmake -DCMAKE_TOOLCHAIN_FILE=../util/arm-toolchain.cmake -GNinja ..
 
+If you want to build as a shared library you need to tweak the STATIC tags in
+the CMakeLists.txts and also define BORINGSSL_SHARED_LIBRARY and
+BORINGSSL_IMPLEMENTATION. On Windows, where functions need to be tagged with
+"dllimport" when coming from a shared library, you need just
+BORINGSSL_SHARED_LIBRARY defined in the code which #includes the BoringSSL
+headers.
+
 [1] http://martine.github.io/ninja/

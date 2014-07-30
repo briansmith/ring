@@ -81,23 +81,26 @@ typedef struct evp_encode_ctx_st EVP_ENCODE_CTX;
  * NOTE: The encoding operation breaks its output with newlines every
  * 64 characters of output (48 characters of input). Use
  * EVP_EncodeBlock to encode raw base64. */
-void EVP_EncodeInit(EVP_ENCODE_CTX *ctx);
+OPENSSL_EXPORT void EVP_EncodeInit(EVP_ENCODE_CTX *ctx);
 
 /* EVP_EncodeUpdate encodes |in_len| bytes from |in| and writes an encoded
  * version of them to |out| and sets |*out_len| to the number of bytes written.
  * Some state may be contained in |ctx| so |EVP_EncodeFinal| must be used to
  * flush it before using the encoded data. */
-void EVP_EncodeUpdate(EVP_ENCODE_CTX *ctx, uint8_t *out, int *out_len,
-                      const uint8_t *in, size_t in_len);
+OPENSSL_EXPORT void EVP_EncodeUpdate(EVP_ENCODE_CTX *ctx, uint8_t *out,
+                                     int *out_len, const uint8_t *in,
+                                     size_t in_len);
 
 /* EVP_EncodeFinal flushes any remaining output bytes from |ctx| to |out| and
  * sets |*out_len| to the number of bytes written. */
-void EVP_EncodeFinal(EVP_ENCODE_CTX *ctx, uint8_t *out, int *out_len);
+OPENSSL_EXPORT void EVP_EncodeFinal(EVP_ENCODE_CTX *ctx, uint8_t *out,
+                                    int *out_len);
 
 /* EVP_EncodeBlock encodes |src_len| bytes from |src| and writes the
  * result to |dst| with a trailing NUL. It returns the number of bytes
  * written, not including this trailing NUL. */
-size_t EVP_EncodeBlock(uint8_t *dst, const uint8_t *src, size_t src_len);
+OPENSSL_EXPORT size_t
+    EVP_EncodeBlock(uint8_t *dst, const uint8_t *src, size_t src_len);
 
 
 /* Decoding */
@@ -107,7 +110,7 @@ size_t EVP_EncodeBlock(uint8_t *dst, const uint8_t *src, size_t src_len);
  *
  * TODO(davidben): This isn't a straight-up base64 decode either. Document
  * and/or fix exactly what's going on here; maximum line length and such. */
-void EVP_DecodeInit(EVP_ENCODE_CTX *ctx);
+OPENSSL_EXPORT void EVP_DecodeInit(EVP_ENCODE_CTX *ctx);
 
 /* EVP_DecodeUpdate decodes |in_len| bytes from |in| and writes the decoded
  * data to |out| and sets |*out_len| to the number of bytes written. Some state
@@ -116,20 +119,23 @@ void EVP_DecodeInit(EVP_ENCODE_CTX *ctx);
  *
  * It returns -1 on error, one if a full line of input was processed and zero
  * if the line was short (i.e. it was the last line). */
-int EVP_DecodeUpdate(EVP_ENCODE_CTX *ctx, uint8_t *out, int *out_len,
-                     const uint8_t *in, size_t in_len);
+OPENSSL_EXPORT int EVP_DecodeUpdate(EVP_ENCODE_CTX *ctx, uint8_t *out,
+                                    int *out_len, const uint8_t *in,
+                                    size_t in_len);
 
 /* EVP_DecodeFinal flushes any remaining output bytes from |ctx| to |out| and
  * sets |*out_len| to the number of bytes written. It returns one on success
  * and minus one on error. */
-int EVP_DecodeFinal(EVP_ENCODE_CTX *ctx, uint8_t *out, int *out_len);
+OPENSSL_EXPORT int EVP_DecodeFinal(EVP_ENCODE_CTX *ctx, uint8_t *out,
+                                   int *out_len);
 
 /* EVP_DecodeBlock encodes |src_len| bytes from |src| and writes the result to
  * |dst|. It returns the number of bytes written or -1 on error.
  *
  * WARNING: EVP_DecodeBlock's return value does not take padding into
  * account. TODO(davidben): Possible or worth it to fix or add new API? */
-ssize_t EVP_DecodeBlock(uint8_t *dst, const uint8_t *src, size_t src_len);
+OPENSSL_EXPORT ssize_t
+    EVP_DecodeBlock(uint8_t *dst, const uint8_t *src, size_t src_len);
 
 
 struct evp_encode_ctx_st {

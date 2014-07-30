@@ -74,17 +74,17 @@ extern "C" {
 /* Allocation and destruction. */
 
 /* DH_new returns a new, empty DH object or NULL on error. */
-DH *DH_new(void);
+OPENSSL_EXPORT DH *DH_new(void);
 
 /* DH_new_method acts the same as |DH_new| but takes an explicit |ENGINE|. */
-DH *DH_new_method(const ENGINE *engine);
+OPENSSL_EXPORT DH *DH_new_method(const ENGINE *engine);
 
 /* DH_free decrements the reference count of |dh| and frees it if the reference
  * count drops to zero. */
-void DH_free(DH *dh);
+OPENSSL_EXPORT void DH_free(DH *dh);
 
 /* DH_up_ref increments the reference count of |dh|. */
-int DH_up_ref(DH *dh);
+OPENSSL_EXPORT int DH_up_ref(DH *dh);
 
 
 /* Standard parameters.
@@ -95,9 +95,9 @@ int DH_up_ref(DH *dh);
 
 /* These parameters are taken from RFC 5114. */
 
-DH *DH_get_1024_160(const ENGINE *engine);
-DH *DH_get_2048_224(const ENGINE *engine);
-DH *DH_get_2048_256(const ENGINE *engine);
+OPENSSL_EXPORT DH *DH_get_1024_160(const ENGINE *engine);
+OPENSSL_EXPORT DH *DH_get_2048_224(const ENGINE *engine);
+OPENSSL_EXPORT DH *DH_get_2048_256(const ENGINE *engine);
 
 
 /* Parameter generation. */
@@ -113,27 +113,28 @@ DH *DH_get_2048_256(const ENGINE *engine);
  * |bn.h| about this. In addition to the callback invocations from |BN|, |cb|
  * will also be called with |event| equal to three when the generation is
  * complete. */
-int DH_generate_parameters_ex(DH *dh, int prime_bits, int generator,
-                              BN_GENCB *cb);
+OPENSSL_EXPORT int DH_generate_parameters_ex(DH *dh, int prime_bits,
+                                             int generator, BN_GENCB *cb);
 
 
 /* Diffie-Hellman operations. */
 
 /* DH_generate_key generates a new, random, private key and stores it in
  * |dh|. It returns one on success and zero on error. */
-int DH_generate_key(DH *dh);
+OPENSSL_EXPORT int DH_generate_key(DH *dh);
 
 /* DH_compute_key calculates the shared key between |dh| and |peers_key| and
  * writes it as a big-endian integer into |out|, which must have |DH_size|
  * bytes of space. It returns the number of bytes written, or a negative number
  * on error. */
-ssize_t DH_compute_key(uint8_t *out, const BIGNUM *peers_key, DH *dh);
+OPENSSL_EXPORT ssize_t
+    DH_compute_key(uint8_t *out, const BIGNUM *peers_key, DH *dh);
 
 
 /* Utility functions. */
 
 /* DH_size returns the number of bytes in the DH group's prime. */
-int DH_size(const DH *dh);
+OPENSSL_EXPORT int DH_size(const DH *dh);
 
 #define DH_CHECK_P_NOT_PRIME 0x01
 #define DH_CHECK_P_NOT_SAFE_PRIME 0x02
@@ -148,7 +149,7 @@ int DH_size(const DH *dh);
  * |*out_flags| was successfully set and zero on error.
  *
  * Note: these checks may be quite computationally expensive. */
-int DH_check(const DH *dh, int *out_flags);
+OPENSSL_EXPORT int DH_check(const DH *dh, int *out_flags);
 
 #define DH_CHECK_PUBKEY_TOO_SMALL 1
 #define DH_CHECK_PUBKEY_TOO_LARGE 2
@@ -157,11 +158,12 @@ int DH_check(const DH *dh, int *out_flags);
  * DH group in |dh| and sets |DH_CHECK_PUBKEY_*| flags in |*out_flags| if it
  * finds any errors. It returns one if |*out_flags| was successfully set and
  * zero on error. */
-int DH_check_pub_key(const DH *dh, const BIGNUM *pub_key, int *out_flags);
+OPENSSL_EXPORT int DH_check_pub_key(const DH *dh, const BIGNUM *pub_key,
+                                    int *out_flags);
 
 /* DHparams_dup allocates a fresh |DH| and copies the parameters from |dh| into
  * it. It returns the new |DH| or NULL on error. */
-DH *DHparams_dup(const DH *dh);
+OPENSSL_EXPORT DH *DHparams_dup(const DH *dh);
 
 
 /* ASN.1 functions. */
@@ -172,23 +174,25 @@ DH *DHparams_dup(const DH *dh);
  * then the result is written directly into |*ret|, otherwise a fresh |DH| is
  * allocated. On successful exit, |*inp| is advanced past the DER structure. It
  * returns the result or NULL on error. */
-DH *d2i_DHparams(DH **ret, const unsigned char **inp, long len);
+OPENSSL_EXPORT DH *d2i_DHparams(DH **ret, const unsigned char **inp, long len);
 
 /* i2d_DHparams marshals |in| to an ASN.1, DER structure. If |outp| is not NULL
  * then the result is written to |*outp| and |*outp| is advanced just past the
  * output. It returns the number of bytes in the result, whether written or
  * not, or a negative value on error. */
-int i2d_DHparams(const DH *in, unsigned char **outp);
+OPENSSL_EXPORT int i2d_DHparams(const DH *in, unsigned char **outp);
 
 
 /* ex_data functions.
  *
  * These functions are wrappers. See |ex_data.h| for details. */
 
-int DH_get_ex_new_index(long argl, void *argp, CRYPTO_EX_new *new_func,
-                        CRYPTO_EX_dup *dup_func, CRYPTO_EX_free *free_func);
-int DH_set_ex_data(DH *d, int idx, void *arg);
-void *DH_get_ex_data(DH *d, int idx);
+OPENSSL_EXPORT int DH_get_ex_new_index(long argl, void *argp,
+                                       CRYPTO_EX_new *new_func,
+                                       CRYPTO_EX_dup *dup_func,
+                                       CRYPTO_EX_free *free_func);
+OPENSSL_EXPORT int DH_set_ex_data(DH *d, int idx, void *arg);
+OPENSSL_EXPORT void *DH_get_ex_data(DH *d, int idx);
 
 
 /* dh_method contains function pointers to override the implementation of DH.

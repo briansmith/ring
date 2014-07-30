@@ -84,48 +84,48 @@ extern "C" {
 /* Basic operations. */
 
 /* OBJ_dup returns a duplicate copy of |obj| or NULL on allocation failure. */
-ASN1_OBJECT *OBJ_dup(const ASN1_OBJECT *obj);
+OPENSSL_EXPORT ASN1_OBJECT *OBJ_dup(const ASN1_OBJECT *obj);
 
 /* OBJ_cmp returns a value less than, equal to or greater than zero if |a| is
  * less than, equal to or greater than |b|, respectively. */
-int OBJ_cmp(const ASN1_OBJECT *a, const ASN1_OBJECT *b);
+OPENSSL_EXPORT int OBJ_cmp(const ASN1_OBJECT *a, const ASN1_OBJECT *b);
 
 
 /* Looking up nids. */
 
 /* OBJ_obj2nid returns the nid corresponding to |obj|, or |NID_undef| if no
  * such object is known. */
-int OBJ_obj2nid(const ASN1_OBJECT *obj);
+OPENSSL_EXPORT int OBJ_obj2nid(const ASN1_OBJECT *obj);
 
 /* OBJ_cbs2nid returns the nid corresponding to the DER data in |cbs|, or
  * |NID_undef| if no such object is known. */
-int OBJ_cbs2nid(const CBS *cbs);
+OPENSSL_EXPORT int OBJ_cbs2nid(const CBS *cbs);
 
 /* OBJ_sn2nid returns the nid corresponding to |short_name|, or |NID_undef| if
  * no such short name is known. */
-int OBJ_sn2nid(const char *short_name);
+OPENSSL_EXPORT int OBJ_sn2nid(const char *short_name);
 
 /* OBJ_ln2nid returns the nid corresponding to |long_name|, or |NID_undef| if
  * no such long name is known. */
-int OBJ_ln2nid(const char *long_name);
+OPENSSL_EXPORT int OBJ_ln2nid(const char *long_name);
 
 /* OBJ_txt2nid returns the nid corresponding to |s|, which may be a short name,
  * long name, or an ASCII string containing a dotted sequence of numbers. It
  * returns the nid or NID_undef if unknown. */
-int OBJ_txt2nid(const char *s);
+OPENSSL_EXPORT int OBJ_txt2nid(const char *s);
 
 
 /* Getting information about nids. */
 
 /* OBJ_nid2obj returns the ASN1_OBJECT corresponding to |nid|, or NULL if |nid|
  * is unknown. */
-const ASN1_OBJECT *OBJ_nid2obj(int nid);
+OPENSSL_EXPORT const ASN1_OBJECT *OBJ_nid2obj(int nid);
 
 /* OBJ_nid2sn returns the short name for |nid|, or NULL if |nid| is unknown. */
-const char *OBJ_nid2sn(int nid);
+OPENSSL_EXPORT const char *OBJ_nid2sn(int nid);
 
 /* OBJ_nid2sn returns the long name for |nid|, or NULL if |nid| is unknown. */
-const char *OBJ_nid2ln(int nid);
+OPENSSL_EXPORT const char *OBJ_nid2ln(int nid);
 
 
 /* Dealing with textual representations of object identifiers. */
@@ -135,7 +135,7 @@ const char *OBJ_nid2ln(int nid);
  * and short names of a known objects to find a match. Otherwise |s| must
  * contain an ASCII string with a dotted sequence of numbers. The resulting
  * object need not be previously known. It returns NULL on error. */
-ASN1_OBJECT *OBJ_txt2obj(const char *s, int dont_search_names);
+OPENSSL_EXPORT ASN1_OBJECT *OBJ_txt2obj(const char *s, int dont_search_names);
 
 /* OBJ_obj2txt converts |obj| to a textual representation. If
  * |dont_return_name| is zero then |obj| will be matched against known objects
@@ -145,15 +145,16 @@ ASN1_OBJECT *OBJ_txt2obj(const char *s, int dont_search_names);
  * there. If |out_len| is at least one, then string written to |out| will
  * always be NUL terminated. It returns the number of characters that could
  * have been written, not including the final NUL, or -1 on error. */
-int OBJ_obj2txt(char *out, int out_len, const ASN1_OBJECT *obj,
-                int dont_return_name);
+OPENSSL_EXPORT int OBJ_obj2txt(char *out, int out_len, const ASN1_OBJECT *obj,
+                               int dont_return_name);
 
 
 /* Adding objects at runtime. */
 
 /* OBJ_create adds a known object and returns the nid of the new object, or
  * NID_undef on error. */
-int OBJ_create(const char *oid, const char *short_name, const char *long_name);
+OPENSSL_EXPORT int OBJ_create(const char *oid, const char *short_name,
+                              const char *long_name);
 
 
 /* Handling signature algorithm identifiers.
@@ -170,14 +171,16 @@ int OBJ_create(const char *oid, const char *short_name, const char *long_name);
  * and |*out_pkey_nid| and returns one. Otherwise it returns zero. Any of
  * |out_digest_nid| or |out_pkey_nid| can be NULL if the caller doesn't need
  * that output value. */
-int OBJ_find_sigid_algs(int sign_nid, int *out_digest_nid, int *out_pkey_nid);
+OPENSSL_EXPORT int OBJ_find_sigid_algs(int sign_nid, int *out_digest_nid,
+                                       int *out_pkey_nid);
 
 /* OBJ_find_sigid_by_algs finds the signature NID that corresponds to the
  * combination of |digest_nid| and |pkey_nid|. If success, it sets
  * |*out_sign_nid| and returns one. Otherwise it returns zero. The
  * |out_sign_nid| argument can be NULL if the caller only wishes to learn
  * whether the combination is valid. */
-int OBJ_find_sigid_by_algs(int *out_sign_nid, int digest_nid, int pkey_nid);
+OPENSSL_EXPORT int OBJ_find_sigid_by_algs(int *out_sign_nid, int digest_nid,
+                                          int pkey_nid);
 
 
 #if defined(__cplusplus)

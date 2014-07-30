@@ -179,6 +179,7 @@ K256:
 .align	5
 
 .global	sha256_block_data_order
+.hidden	sha256_block_data_order
 .type	sha256_block_data_order,%function
 sha256_block_data_order:
 	sub	r3,pc,#8		@ sha256_block_data_order

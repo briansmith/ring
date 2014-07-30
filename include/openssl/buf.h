@@ -72,40 +72,40 @@ struct buf_mem_st {
 };
 
 /* BUF_MEM_new creates a new BUF_MEM which has no allocated data buffer. */
-BUF_MEM *BUF_MEM_new(void);
+OPENSSL_EXPORT BUF_MEM *BUF_MEM_new(void);
 
 /* BUF_MEM_free frees |buf->data| if needed and then frees |buf| itself. */
-void BUF_MEM_free(BUF_MEM *buf);
+OPENSSL_EXPORT void BUF_MEM_free(BUF_MEM *buf);
 
 /* BUF_MEM_grow ensures that |buf| has length |len| and allocates memory if
  * needed. If the length of |buf| increased, the new bytes are filled with
  * zeros. It returns the length of |buf|, or zero if there's an error. */
-size_t BUF_MEM_grow(BUF_MEM *buf, size_t len);
+OPENSSL_EXPORT size_t BUF_MEM_grow(BUF_MEM *buf, size_t len);
 
 /* BUF_MEM_grow_clean acts the same as |BUF_MEM_grow|, but clears the previous
  * contents of memory if reallocing. */
-size_t BUF_MEM_grow_clean(BUF_MEM *str, size_t len);
+OPENSSL_EXPORT size_t BUF_MEM_grow_clean(BUF_MEM *str, size_t len);
 
 /* BUF_strdup returns an allocated, duplicate of |str|. */
-char *BUF_strdup(const char *str);
+OPENSSL_EXPORT char *BUF_strdup(const char *str);
 
 /* BUF_strnlen returns the number of characters in |str|, excluding the NUL
  * byte, but at most |max_len|. This function never reads more than |max_len|
  * bytes from |str|. */
-size_t BUF_strnlen(const char *str, size_t max_len);
+OPENSSL_EXPORT size_t BUF_strnlen(const char *str, size_t max_len);
 
 /* BUF_strndup returns an allocated, duplicate of |str|, which is, at most,
  * |size| bytes. The result is always NUL terminated. */
-char *BUF_strndup(const char *str, size_t size);
+OPENSSL_EXPORT char *BUF_strndup(const char *str, size_t size);
 
 /* BUF_memdup returns an allocated, duplicate of |size| bytes from |data|. */
-void *BUF_memdup(const void *data, size_t size);
+OPENSSL_EXPORT void *BUF_memdup(const void *data, size_t size);
 
 /* BUF_strlcpy acts like strlcpy(3). */
-size_t BUF_strlcpy(char *dst, const char *src, size_t dst_size);
+OPENSSL_EXPORT size_t BUF_strlcpy(char *dst, const char *src, size_t dst_size);
 
 /* BUF_strlcat acts like strlcat(3). */
-size_t BUF_strlcat(char *dst, const char *src, size_t size);
+OPENSSL_EXPORT size_t BUF_strlcat(char *dst, const char *src, size_t size);
 
 
 #if defined(__cplusplus)

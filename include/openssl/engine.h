@@ -37,11 +37,11 @@ extern "C" {
 
 /* ENGINE_new returns an empty ENGINE that uses the default method for all
  * algorithms. */
-ENGINE *ENGINE_new();
+OPENSSL_EXPORT ENGINE *ENGINE_new();
 
 /* ENGINE_free decrements the reference counts for all methods linked from
  * |engine| and frees |engine| itself. */
-void ENGINE_free(ENGINE *engine);
+OPENSSL_EXPORT void ENGINE_free(ENGINE *engine);
 
 
 /* Method accessors.
@@ -53,21 +53,24 @@ void ENGINE_free(ENGINE *engine);
  *
  * Set functions return one on success and zero on allocation failure. */
 
-int ENGINE_set_DH_method(ENGINE *engine, const DH_METHOD *method,
-                         size_t method_size);
-DH_METHOD *ENGINE_get_DH_method(const ENGINE *engine);
+OPENSSL_EXPORT int ENGINE_set_DH_method(ENGINE *engine, const DH_METHOD *method,
+                                        size_t method_size);
+OPENSSL_EXPORT DH_METHOD *ENGINE_get_DH_method(const ENGINE *engine);
 
-int ENGINE_set_DSA_method(ENGINE *engine, const DSA_METHOD *method,
-                          size_t method_size);
-DSA_METHOD *ENGINE_get_DSA_method(const ENGINE *engine);
+OPENSSL_EXPORT int ENGINE_set_DSA_method(ENGINE *engine,
+                                         const DSA_METHOD *method,
+                                         size_t method_size);
+OPENSSL_EXPORT DSA_METHOD *ENGINE_get_DSA_method(const ENGINE *engine);
 
-int ENGINE_set_RSA_method(ENGINE *engine, const RSA_METHOD *method,
-                          size_t method_size);
-RSA_METHOD *ENGINE_get_RSA_method(const ENGINE *engine);
+OPENSSL_EXPORT int ENGINE_set_RSA_method(ENGINE *engine,
+                                         const RSA_METHOD *method,
+                                         size_t method_size);
+OPENSSL_EXPORT RSA_METHOD *ENGINE_get_RSA_method(const ENGINE *engine);
 
-int ENGINE_set_ECDSA_method(ENGINE *engine, const ECDSA_METHOD *method,
-                            size_t method_size);
-ECDSA_METHOD *ENGINE_get_ECDSA_method(const ENGINE *engine);
+OPENSSL_EXPORT int ENGINE_set_ECDSA_method(ENGINE *engine,
+                                           const ECDSA_METHOD *method,
+                                           size_t method_size);
+OPENSSL_EXPORT ECDSA_METHOD *ENGINE_get_ECDSA_method(const ENGINE *engine);
 
 
 /* Generic method functions.
@@ -76,11 +79,11 @@ ECDSA_METHOD *ENGINE_get_ECDSA_method(const ENGINE *engine);
  * structures. */
 
 /* METHOD_ref increments the reference count of |method|. */
-void METHOD_ref(void *method);
+OPENSSL_EXPORT void METHOD_ref(void *method);
 
 /* METHOD_unref decrements the reference count of |method| and frees it if the
  * reference count drops to zero. */
-void METHOD_unref(void *method);
+OPENSSL_EXPORT void METHOD_unref(void *method);
 
 
 /* Private functions. */

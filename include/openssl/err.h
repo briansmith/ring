@@ -146,11 +146,11 @@ extern "C" {
  * values. If this is not called then the string forms of errors produced by
  * the functions below will contain numeric identifiers rather than
  * human-readable strings. */
-void ERR_load_crypto_strings();
+OPENSSL_EXPORT void ERR_load_crypto_strings();
 
 /* ERR_free_strings frees any internal error values that have been loaded. This
  * should only be called at process shutdown. */
-void ERR_free_strings();
+OPENSSL_EXPORT void ERR_free_strings();
 
 
 /* Reading and formatting errors. */
@@ -158,31 +158,32 @@ void ERR_free_strings();
 /* ERR_get_error gets the packed error code for the least recent error and
  * removes that error from the queue. If there are no errors in the queue then
  * it returns zero. */
-uint32_t ERR_get_error(void);
+OPENSSL_EXPORT uint32_t ERR_get_error(void);
 
 /* ERR_get_error_line acts like |ERR_get_error|, except that the file and line
  * number of the call that added the error are also returned. */
-uint32_t ERR_get_error_line(const char **file, int *line);
+OPENSSL_EXPORT uint32_t ERR_get_error_line(const char **file, int *line);
 
 /* ERR_get_error_line_data acts like |ERR_get_error_line|, but also returns the
  * error-specific data pointer and flags. The flags are a bitwise-OR of
  * |ERR_FLAG_*| values. */
-uint32_t ERR_get_error_line_data(const char **file, int *line,
-                                 char **data, int *flags);
+OPENSSL_EXPORT uint32_t ERR_get_error_line_data(const char **file, int *line,
+                                                char **data, int *flags);
 
 /* The "peek" functions act like the |ERR_get_error| functions, above, but they
  * do not remove the error from the queue. */
-uint32_t ERR_peek_error(void);
-uint32_t ERR_peek_error_line(const char **file, int *line);
-uint32_t ERR_peek_error_line_data(const char **file, int *line,
-                                  const char **data, int *flags);
+OPENSSL_EXPORT uint32_t ERR_peek_error(void);
+OPENSSL_EXPORT uint32_t ERR_peek_error_line(const char **file, int *line);
+OPENSSL_EXPORT uint32_t ERR_peek_error_line_data(const char **file, int *line,
+                                                 const char **data, int *flags);
 
 /* The "peek last" functions act like the "peek" functions, above, except that
  * they return the most recent error. */
-uint32_t ERR_peek_last_error(void);
-uint32_t ERR_peek_last_error_line(const char **file, int *line);
-uint32_t ERR_peek_last_error_line_data(const char **file, int *line,
-                                       const char **data, int *flags);
+OPENSSL_EXPORT uint32_t ERR_peek_last_error(void);
+OPENSSL_EXPORT uint32_t ERR_peek_last_error_line(const char **file, int *line);
+OPENSSL_EXPORT uint32_t
+    ERR_peek_last_error_line_data(const char **file, int *line,
+                                  const char **data, int *flags);
 
 /* ERR_error_string generates a human-readable string representing
  * |packed_error|, places it at |buf| (which must be at least
@@ -199,26 +200,27 @@ uint32_t ERR_peek_last_error_line_data(const char **file, int *line,
  * and reason string are ASCII text.
  *
  * TODO(fork): remove in favour of |ERR_error_string_n|. */
-char *ERR_error_string(uint32_t packed_error, char *buf);
+OPENSSL_EXPORT char *ERR_error_string(uint32_t packed_error, char *buf);
 #define ERR_ERROR_STRING_BUF_LEN 256
 
 /* ERR_error_string_n is a variant of |ERR_error_string| that writes at most
  * len characters (including the terminating NUL) and truncates the string if
  * necessary. If |len| is greater than zero then |buf| is always NUL
  * terminated. */
-void ERR_error_string_n(uint32_t packed_error, char *buf, size_t len);
+OPENSSL_EXPORT void ERR_error_string_n(uint32_t packed_error, char *buf,
+                                       size_t len);
 
 /* ERR_lib_error_string returns a string representation of the library that
  * generated |packed_error|. */
-const char *ERR_lib_error_string(uint32_t packed_error);
+OPENSSL_EXPORT const char *ERR_lib_error_string(uint32_t packed_error);
 
 /* ERR_func_error_string returns a string representation of the function that
  * generated |packed_error|. */
-const char *ERR_func_error_string(uint32_t packed_error);
+OPENSSL_EXPORT const char *ERR_func_error_string(uint32_t packed_error);
 
 /* ERR_reason_error_string returns a string representation of the reason for
  * |packed_error|. */
-const char *ERR_reason_error_string(uint32_t packed_error);
+OPENSSL_EXPORT const char *ERR_reason_error_string(uint32_t packed_error);
 
 /* ERR_print_errors_callback_t is the type of a function used by
  * |ERR_print_errors_cb|. It takes a pointer to a human readable string (and
@@ -245,13 +247,14 @@ typedef int (*ERR_print_errors_callback_t)(const char *str, size_t len,
  * The callback can return one to continue the iteration or zero to stop it.
  * The |ctx| argument is an opaque value that is passed through to the
  * callback. */
-void ERR_print_errors_cb(ERR_print_errors_callback_t callback, void *ctx);
+OPENSSL_EXPORT void ERR_print_errors_cb(ERR_print_errors_callback_t callback,
+                                        void *ctx);
 
 
 /* Clearing errors. */
 
 /* ERR_clear_error clears the error queue for the current thread. */
-void ERR_clear_error(void);
+OPENSSL_EXPORT void ERR_clear_error(void);
 
 
 /* Custom errors. */
@@ -259,13 +262,13 @@ void ERR_clear_error(void);
 /* ERR_get_next_error_library returns a value suitable for passing as the
  * |library| argument to |ERR_put_error|. This is intended for code that wishes
  * to push its own, non-standard errors to the error queue. */
-int ERR_get_next_error_library();
+OPENSSL_EXPORT int ERR_get_next_error_library();
 
 
 /* Private functions. */
 
 /* ERR_clear_system_error clears the system's error value (i.e. errno). */
-void ERR_clear_system_error(void);
+OPENSSL_EXPORT void ERR_clear_system_error(void);
 
 /* OPENSSL_PUT_ERROR is used by OpenSSL code to add an error to the error
  * queue. */
@@ -281,27 +284,27 @@ void ERR_clear_system_error(void);
 
 /* ERR_put_error adds an error to the error queue, dropping the least recent
  * error if neccessary for space reasons. */
-void ERR_put_error(int library, int func, int reason, const char *file,
-                   unsigned line);
+OPENSSL_EXPORT void ERR_put_error(int library, int func, int reason,
+                                  const char *file, unsigned line);
 
 /* ERR_add_error_data takes a variable number (|count|) of const char*
  * pointers, concatenates them and sets the result as the data on the most
  * recent error. */
-void ERR_add_error_data(unsigned count, ...);
+OPENSSL_EXPORT void ERR_add_error_data(unsigned count, ...);
 
 /* ERR_add_error_dataf takes a printf-style format and arguments, and sets the
  * result as the data on the most recent error. */
-void ERR_add_error_dataf(const char *format, ...);
+OPENSSL_EXPORT void ERR_add_error_dataf(const char *format, ...);
 
 /* ERR_set_mark "marks" the most recent error for use with |ERR_pop_to_mark|.
  * It returns one if an error was marked and zero if there are no errors. */
-int ERR_set_mark(void);
+OPENSSL_EXPORT int ERR_set_mark(void);
 
 /* ERR_pop_to_mark removes errors from the most recent to the least recent
  * until (and not including) a "marked" error. It returns zero if no marked
  * error was found (and thus all errors were removed) and one otherwise. Errors
  * are marked using |ERR_set_mark|. */
-int ERR_pop_to_mark(void);
+OPENSSL_EXPORT int ERR_pop_to_mark(void);
 
 struct err_error_st {
   /* file contains the filename where the error occured. */
@@ -465,7 +468,7 @@ typedef struct err_string_data_st {
 
 /* ERR_load_strings loads an array of ERR_STRING_DATA into the hash table. The
  * array must be terminated by an entry with a NULL string. */
-void ERR_load_strings(const ERR_STRING_DATA *str);
+OPENSSL_EXPORT void ERR_load_strings(const ERR_STRING_DATA *str);
 
 /* ERR_FNS_st is a structure of function pointers that contains the actual
  * implementation of the error queue handling functions. */
@@ -502,7 +505,7 @@ struct ERR_FNS_st {
 /* ERR_load_BIO_strings does nothing.
  *
  * TODO(fork): remove. libjingle calls this. */
-void ERR_load_BIO_strings();
+OPENSSL_EXPORT void ERR_load_BIO_strings();
 
 
 #if defined(__cplusplus)

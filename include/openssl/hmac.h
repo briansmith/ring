@@ -76,9 +76,10 @@ extern "C" {
  * and hash function, and writes the result to |out|. On entry, |out| must
  * contain |EVP_MAX_MD_SIZE| bytes of space. The actual length of the result is
  * written to |*out_len|. It returns |out| or NULL on error. */
-uint8_t *HMAC(const EVP_MD *evp_md, const void *key, size_t key_len,
-              const uint8_t *data, size_t data_len, uint8_t *out,
-              unsigned int *out_len);
+OPENSSL_EXPORT uint8_t *HMAC(const EVP_MD *evp_md, const void *key,
+                             size_t key_len, const uint8_t *data,
+                             size_t data_len, uint8_t *out,
+                             unsigned int *out_len);
 
 
 /* Incremental operation. */
@@ -87,51 +88,54 @@ uint8_t *HMAC(const EVP_MD *evp_md, const void *key, size_t key_len,
  * that HMAC_CTX objects will be allocated on the stack thus no allocation
  * function is provided. If needed, allocate |sizeof(HMAC_CTX)| and call
  * |HMAC_CTX_init| on it. */
-void HMAC_CTX_init(HMAC_CTX *ctx);
+OPENSSL_EXPORT void HMAC_CTX_init(HMAC_CTX *ctx);
 
 /* HMAC_CTX_cleanup frees data owned by |ctx|. */
-void HMAC_CTX_cleanup(HMAC_CTX *ctx);
+OPENSSL_EXPORT void HMAC_CTX_cleanup(HMAC_CTX *ctx);
 
 /* HMAC_Init_ex sets up an initialised |HMAC_CTX| to use |md| as the hash
  * function and |key| as the key. Any of |md| or |key| can be NULL, in which
  * case the previous value will be used. It returns one on success or zero
  * otherwise. */
-int HMAC_Init_ex(HMAC_CTX *ctx, const void *key, size_t key_len,
-                 const EVP_MD *md, ENGINE *impl);
+OPENSSL_EXPORT int HMAC_Init_ex(HMAC_CTX *ctx, const void *key, size_t key_len,
+                                const EVP_MD *md, ENGINE *impl);
 
 /* HMAC_Update hashes |data_len| bytes from |data| into the current HMAC
  * operation in |ctx|. It returns one on success and zero on error. */
-int HMAC_Update(HMAC_CTX *ctx, const uint8_t *data, size_t data_len);
+OPENSSL_EXPORT int HMAC_Update(HMAC_CTX *ctx, const uint8_t *data,
+                               size_t data_len);
 
 /* HMAC_Final completes the HMAC operation in |ctx| and writes the result to
  * |out| and the sets |*out_len| to the length of the result. On entry, |out|
  * must contain at least |EVP_MAX_MD_SIZE| bytes of space. It returns one on
  * success or zero on error. */
-int HMAC_Final(HMAC_CTX *ctx, uint8_t *out, unsigned int *out_len);
+OPENSSL_EXPORT int HMAC_Final(HMAC_CTX *ctx, uint8_t *out,
+                              unsigned int *out_len);
 
 
 /* Utility functions. */
 
 /* HMAC_size returns the size, in bytes, of the HMAC that will be produced by
  * |ctx|. On entry, |ctx| must have been setup with |HMAC_Init_ex|. */
-size_t HMAC_size(const HMAC_CTX *ctx);
+OPENSSL_EXPORT size_t HMAC_size(const HMAC_CTX *ctx);
 
 /* HMAC_CTX_copy sets |dest| equal to |src|. On entry, |dest| must have been
  * initialised by calling |HMAC_CTX_init|. It returns one on success and zero
  * on error. */
-int HMAC_CTX_copy(HMAC_CTX *dest, const HMAC_CTX *src);
+OPENSSL_EXPORT int HMAC_CTX_copy(HMAC_CTX *dest, const HMAC_CTX *src);
 
 /* HMAC_CTX_set_flags ORs |flags| into the flags of the underlying digests of
  * |ctx|, which must have been setup by a call to |HMAC_Init_ex|. See
  * |EVP_MD_CTX_set_flags|.
  *
  * TODO(fork): remove? */
-void HMAC_CTX_set_flags(HMAC_CTX *ctx, unsigned long flags);
+OPENSSL_EXPORT void HMAC_CTX_set_flags(HMAC_CTX *ctx, unsigned long flags);
 
 
 /* Deprecated functions. */
 
-int HMAC_Init(HMAC_CTX *ctx, const void *key, int key_len, const EVP_MD *md);
+OPENSSL_EXPORT int HMAC_Init(HMAC_CTX *ctx, const void *key, int key_len,
+                             const EVP_MD *md);
 
 
 /* Private functions */

@@ -24,26 +24,26 @@ extern "C" {
 
 /* RAND_bytes writes |len| bytes of random data to |buf|. It returns one on
  * success and zero on otherwise. */
-int RAND_bytes(uint8_t *buf, size_t len);
+OPENSSL_EXPORT int RAND_bytes(uint8_t *buf, size_t len);
 
 /* RAND_cleanup frees any resources used by the RNG. This is not safe if other
  * threads might still be calling |RAND_bytes|. */
-void RAND_cleanup();
+OPENSSL_EXPORT void RAND_cleanup();
 
 
 /* Deprecated functions */
 
 /* RAND_pseudo_bytes is a wrapper around |RAND_bytes|. */
-int RAND_pseudo_bytes(uint8_t *buf, size_t len);
+OPENSSL_EXPORT int RAND_pseudo_bytes(uint8_t *buf, size_t len);
 
 /* RAND_seed does nothing. */
-void RAND_seed(const void *buf, int num);
+OPENSSL_EXPORT void RAND_seed(const void *buf, int num);
 
 /* RAND_add does nothing. */
-void RAND_add(const void *buf, int num, double entropy);
+OPENSSL_EXPORT void RAND_add(const void *buf, int num, double entropy);
 
 /* RAND_poll returns one. */
-int RAND_poll(void);
+OPENSSL_EXPORT int RAND_poll(void);
 
 
 #if defined(__cplusplus)

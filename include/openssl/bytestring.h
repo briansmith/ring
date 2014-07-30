@@ -41,24 +41,24 @@ struct cbs_st {
 
 /* CBS_init sets |cbs| to point to |data|. It does not take ownership of
  * |data|. */
-void CBS_init(CBS *cbs, const uint8_t *data, size_t len);
+OPENSSL_EXPORT void CBS_init(CBS *cbs, const uint8_t *data, size_t len);
 
 /* CBS_skip advances |cbs| by |len| bytes. It returns one on success and zero
  * otherwise. */
-int CBS_skip(CBS *cbs, size_t len);
+OPENSSL_EXPORT int CBS_skip(CBS *cbs, size_t len);
 
 /* CBS_data returns a pointer to the contains of |cbs|. */
-const uint8_t *CBS_data(const CBS *cbs);
+OPENSSL_EXPORT const uint8_t *CBS_data(const CBS *cbs);
 
 /* CBS_len returns the number of bytes remaining in |cbs|. */
-size_t CBS_len(const CBS *cbs);
+OPENSSL_EXPORT size_t CBS_len(const CBS *cbs);
 
 /* CBS_stow copies the current contents of |cbs| into |*out_ptr| and
  * |*out_len|. If |*out_ptr| is not NULL, the contents are freed with
  * OPENSSL_free. It returns one on success and zero on allocation failure. On
  * success, |*out_ptr| should be freed with OPENSSL_free. If |cbs| is empty,
  * |*out_ptr| will be NULL. */
-int CBS_stow(const CBS *cbs, uint8_t **out_ptr, size_t *out_len);
+OPENSSL_EXPORT int CBS_stow(const CBS *cbs, uint8_t **out_ptr, size_t *out_len);
 
 /* CBS_strdup copies the current contents of |cbs| into |*out_ptr| as a
  * NUL-terminated C string. If |*out_ptr| is not NULL, the contents are freed
@@ -67,51 +67,52 @@ int CBS_stow(const CBS *cbs, uint8_t **out_ptr, size_t *out_len);
  *
  * NOTE: If |cbs| contains NUL bytes, the string will be truncated. Call
  * |CBS_contains_zero_byte(cbs)| to check for NUL bytes. */
-int CBS_strdup(const CBS *cbs, char **out_ptr);
+OPENSSL_EXPORT int CBS_strdup(const CBS *cbs, char **out_ptr);
 
 /* CBS_contains_zero_byte returns one if the current contents of |cbs| contains
  * a NUL byte and zero otherwise. */
-int CBS_contains_zero_byte(const CBS *cbs);
+OPENSSL_EXPORT int CBS_contains_zero_byte(const CBS *cbs);
 
 /* CBS_mem_equal compares the current contents of |cbs| with the |len| bytes
  * starting at |data|. If they're equal, it returns one, otherwise zero. If the
  * lengths match, it uses a constant-time comparison. */
-int CBS_mem_equal(const CBS *cbs, const uint8_t *data, size_t len);
+OPENSSL_EXPORT int CBS_mem_equal(const CBS *cbs, const uint8_t *data,
+                                 size_t len);
 
 /* CBS_get_u8 sets |*out| to the next uint8_t from |cbs| and advances |cbs|. It
  * returns one on success and zero on error. */
-int CBS_get_u8(CBS *cbs, uint8_t *out);
+OPENSSL_EXPORT int CBS_get_u8(CBS *cbs, uint8_t *out);
 
 /* CBS_get_u16 sets |*out| to the next, big-endian uint16_t from |cbs| and
  * advances |cbs|. It returns one on success and zero on error. */
-int CBS_get_u16(CBS *cbs, uint16_t *out);
+OPENSSL_EXPORT int CBS_get_u16(CBS *cbs, uint16_t *out);
 
 /* CBS_get_u24 sets |*out| to the next, big-endian 24-bit value from |cbs| and
  * advances |cbs|. It returns one on success and zero on error. */
-int CBS_get_u24(CBS *cbs, uint32_t *out);
+OPENSSL_EXPORT int CBS_get_u24(CBS *cbs, uint32_t *out);
 
 /* CBS_get_u32 sets |*out| to the next, big-endian uint32_t value from |cbs|
  * and advances |cbs|. It returns one on success and zero on error. */
-int CBS_get_u32(CBS *cbs, uint32_t *out);
+OPENSSL_EXPORT int CBS_get_u32(CBS *cbs, uint32_t *out);
 
 /* CBS_get_bytes sets |*out| to the next |len| bytes from |cbs| and advances
  * |cbs|. It returns one on success and zero on error. */
-int CBS_get_bytes(CBS *cbs, CBS *out, size_t len);
+OPENSSL_EXPORT int CBS_get_bytes(CBS *cbs, CBS *out, size_t len);
 
 /* CBS_get_u8_length_prefixed sets |*out| to the contents of an 8-bit,
  * length-prefixed value from |cbs| and advances |cbs| over it. It returns one
  * on success and zero on error. */
-int CBS_get_u8_length_prefixed(CBS *cbs, CBS *out);
+OPENSSL_EXPORT int CBS_get_u8_length_prefixed(CBS *cbs, CBS *out);
 
 /* CBS_get_u16_length_prefixed sets |*out| to the contents of a 16-bit,
  * big-endian, length-prefixed value from |cbs| and advances |cbs| over it. It
  * returns one on success and zero on error. */
-int CBS_get_u16_length_prefixed(CBS *cbs, CBS *out);
+OPENSSL_EXPORT int CBS_get_u16_length_prefixed(CBS *cbs, CBS *out);
 
 /* CBS_get_u24_length_prefixed sets |*out| to the contents of a 24-bit,
  * big-endian, length-prefixed value from |cbs| and advances |cbs| over it. It
  * returns one on success and zero on error. */
-int CBS_get_u24_length_prefixed(CBS *cbs, CBS *out);
+OPENSSL_EXPORT int CBS_get_u24_length_prefixed(CBS *cbs, CBS *out);
 
 
 /* Parsing ASN.1 */
@@ -135,7 +136,7 @@ int CBS_get_u24_length_prefixed(CBS *cbs, CBS *out);
  * on error.
  *
  * Tag numbers greater than 31 are not supported. */
-int CBS_get_asn1(CBS *cbs, CBS *out, unsigned tag_value);
+OPENSSL_EXPORT int CBS_get_asn1(CBS *cbs, CBS *out, unsigned tag_value);
 
 /* CBS_get_asn1_ber sets |*out| to the contents of BER-encoded, ASN.1 element
  * (not including tag and length bytes) and advances |cbs| over it. The ASN.1
@@ -145,11 +146,11 @@ int CBS_get_asn1(CBS *cbs, CBS *out, unsigned tag_value);
  * indefinite-length elements may be processed by this function.
  *
  * Tag numbers greater than 31 are not supported. */
-int CBS_get_asn1_ber(CBS *cbs, CBS *out, unsigned tag_value);
+OPENSSL_EXPORT int CBS_get_asn1_ber(CBS *cbs, CBS *out, unsigned tag_value);
 
 /* CBS_get_asn1_element acts like |CBS_get_asn1| but |out| will include the
  * ASN.1 header bytes too. */
-int CBS_get_asn1_element(CBS *cbs, CBS *out, unsigned tag_value);
+OPENSSL_EXPORT int CBS_get_asn1_element(CBS *cbs, CBS *out, unsigned tag_value);
 
 
 /* CRYPTO ByteBuilder.
@@ -193,17 +194,17 @@ struct cbb_st {
 /* CBB_init initialises |cbb| with |initial_capacity|. Since a |CBB| grows as
  * needed, the |initial_capacity| is just a hint. It returns one on success or
  * zero on error. */
-int CBB_init(CBB *cbb, size_t initial_capacity);
+OPENSSL_EXPORT int CBB_init(CBB *cbb, size_t initial_capacity);
 
 /* CBB_init_fixed initialises |cbb| to write to |len| bytes at |buf|. Since
  * |buf| cannot grow, trying to write more than |len| bytes will cause CBB
  * functions to fail. It returns one on success or zero on error. */
-int CBB_init_fixed(CBB *cbb, uint8_t *buf, size_t len);
+OPENSSL_EXPORT int CBB_init_fixed(CBB *cbb, uint8_t *buf, size_t len);
 
 /* CBB_cleanup frees all resources owned by |cbb| and other |CBB| objects
  * writing to the same buffer. This should be used in an error case where a
  * serialisation is abandoned. */
-void CBB_cleanup(CBB *cbb);
+OPENSSL_EXPORT void CBB_cleanup(CBB *cbb);
 
 /* CBB_finish completes any pending length prefix and sets |*out_data| to a
  * malloced buffer and |*out_len| to the length of that buffer. The caller
@@ -213,48 +214,48 @@ void CBB_cleanup(CBB *cbb);
  * It can only be called on a "top level" |CBB|, i.e. one initialised with
  * |CBB_init| or |CBB_init_fixed|. It returns one on success and zero on
  * error. */
-int CBB_finish(CBB *cbb, uint8_t **out_data, size_t *out_len);
+OPENSSL_EXPORT int CBB_finish(CBB *cbb, uint8_t **out_data, size_t *out_len);
 
 /* CBB_flush causes any pending length prefixes to be written out and any child
  * |CBB| objects of |cbb| to be invalidated. It returns one on success or zero
  * on error. */
-int CBB_flush(CBB *cbb);
+OPENSSL_EXPORT int CBB_flush(CBB *cbb);
 
 /* CBB_add_u8_length_prefixed sets |*out_contents| to a new child of |cbb|. The
  * data written to |*out_contents| will be prefixed in |cbb| with an 8-bit
  * length. It returns one on success or zero on error. */
-int CBB_add_u8_length_prefixed(CBB *cbb, CBB *out_contents);
+OPENSSL_EXPORT int CBB_add_u8_length_prefixed(CBB *cbb, CBB *out_contents);
 
 /* CBB_add_u16_length_prefixed sets |*out_contents| to a new child of |cbb|.
  * The data written to |*out_contents| will be prefixed in |cbb| with a 16-bit,
  * big-endian length. It returns one on success or zero on error. */
-int CBB_add_u16_length_prefixed(CBB *cbb, CBB *out_contents);
+OPENSSL_EXPORT int CBB_add_u16_length_prefixed(CBB *cbb, CBB *out_contents);
 
 /* CBB_add_u24_length_prefixed sets |*out_contents| to a new child of |cbb|.
  * The data written to |*out_contents| will be prefixed in |cbb| with a 24-bit,
  * big-endian length. It returns one on success or zero on error. */
-int CBB_add_u24_length_prefixed(CBB *cbb, CBB *out_contents);
+OPENSSL_EXPORT int CBB_add_u24_length_prefixed(CBB *cbb, CBB *out_contents);
 
 /* CBB_add_asn sets |*out_contents| to a |CBB| into which the contents of an
  * ASN.1 object can be written. The |tag| argument will be used as the tag for
  * the object. It returns one on success or zero on error. */
-int CBB_add_asn1(CBB *cbb, CBB *out_contents, uint8_t tag);
+OPENSSL_EXPORT int CBB_add_asn1(CBB *cbb, CBB *out_contents, uint8_t tag);
 
 /* CBB_add_bytes appends |len| bytes from |data| to |cbb|. It returns one on
  * success and zero otherwise. */
-int CBB_add_bytes(CBB *cbb, const uint8_t *data, size_t len);
+OPENSSL_EXPORT int CBB_add_bytes(CBB *cbb, const uint8_t *data, size_t len);
 
 /* CBB_add_u8 appends an 8-bit number from |value| to |cbb|. It returns one on
  * success and zero otherwise. */
-int CBB_add_u8(CBB *cbb, uint8_t value);
+OPENSSL_EXPORT int CBB_add_u8(CBB *cbb, uint8_t value);
 
 /* CBB_add_u8 appends a 16-bit, big-endian number from |value| to |cbb|. It
  * returns one on success and zero otherwise. */
-int CBB_add_u16(CBB *cbb, uint16_t value);
+OPENSSL_EXPORT int CBB_add_u16(CBB *cbb, uint16_t value);
 
 /* CBB_add_u24 appends a 24-bit, big-endian number from |value| to |cbb|. It
  * returns one on success and zero otherwise. */
-int CBB_add_u24(CBB *cbb, uint32_t value);
+OPENSSL_EXPORT int CBB_add_u24(CBB *cbb, uint32_t value);
 
 
 #if defined(__cplusplus)

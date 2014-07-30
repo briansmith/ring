@@ -521,42 +521,42 @@ DECLARE_ASN1_FUNCTIONS(AUTHORITY_KEYID)
 DECLARE_ASN1_FUNCTIONS(PKEY_USAGE_PERIOD)
 
 DECLARE_ASN1_FUNCTIONS(GENERAL_NAME)
-GENERAL_NAME *GENERAL_NAME_dup(GENERAL_NAME *a);
-int GENERAL_NAME_cmp(GENERAL_NAME *a, GENERAL_NAME *b);
+OPENSSL_EXPORT GENERAL_NAME *GENERAL_NAME_dup(GENERAL_NAME *a);
+OPENSSL_EXPORT int GENERAL_NAME_cmp(GENERAL_NAME *a, GENERAL_NAME *b);
 
 
 
-ASN1_BIT_STRING *v2i_ASN1_BIT_STRING(X509V3_EXT_METHOD *method,
+OPENSSL_EXPORT ASN1_BIT_STRING *v2i_ASN1_BIT_STRING(X509V3_EXT_METHOD *method,
 				X509V3_CTX *ctx, STACK_OF(CONF_VALUE) *nval);
-STACK_OF(CONF_VALUE) *i2v_ASN1_BIT_STRING(X509V3_EXT_METHOD *method,
+OPENSSL_EXPORT STACK_OF(CONF_VALUE) *i2v_ASN1_BIT_STRING(X509V3_EXT_METHOD *method,
 				ASN1_BIT_STRING *bits,
 				STACK_OF(CONF_VALUE) *extlist);
 
-STACK_OF(CONF_VALUE) *i2v_GENERAL_NAME(X509V3_EXT_METHOD *method, GENERAL_NAME *gen, STACK_OF(CONF_VALUE) *ret);
-int GENERAL_NAME_print(BIO *out, GENERAL_NAME *gen);
+OPENSSL_EXPORT STACK_OF(CONF_VALUE) *i2v_GENERAL_NAME(X509V3_EXT_METHOD *method, GENERAL_NAME *gen, STACK_OF(CONF_VALUE) *ret);
+OPENSSL_EXPORT int GENERAL_NAME_print(BIO *out, GENERAL_NAME *gen);
 
 DECLARE_ASN1_FUNCTIONS(GENERAL_NAMES)
 
-STACK_OF(CONF_VALUE) *i2v_GENERAL_NAMES(X509V3_EXT_METHOD *method,
+OPENSSL_EXPORT STACK_OF(CONF_VALUE) *i2v_GENERAL_NAMES(X509V3_EXT_METHOD *method,
 		GENERAL_NAMES *gen, STACK_OF(CONF_VALUE) *extlist);
-GENERAL_NAMES *v2i_GENERAL_NAMES(const X509V3_EXT_METHOD *method,
+OPENSSL_EXPORT GENERAL_NAMES *v2i_GENERAL_NAMES(const X509V3_EXT_METHOD *method,
 				 X509V3_CTX *ctx, STACK_OF(CONF_VALUE) *nval);
 
 DECLARE_ASN1_FUNCTIONS(OTHERNAME)
 DECLARE_ASN1_FUNCTIONS(EDIPARTYNAME)
-int OTHERNAME_cmp(OTHERNAME *a, OTHERNAME *b);
-void GENERAL_NAME_set0_value(GENERAL_NAME *a, int type, void *value);
-void *GENERAL_NAME_get0_value(GENERAL_NAME *a, int *ptype);
-int GENERAL_NAME_set0_othername(GENERAL_NAME *gen,
+OPENSSL_EXPORT int OTHERNAME_cmp(OTHERNAME *a, OTHERNAME *b);
+OPENSSL_EXPORT void GENERAL_NAME_set0_value(GENERAL_NAME *a, int type, void *value);
+OPENSSL_EXPORT void *GENERAL_NAME_get0_value(GENERAL_NAME *a, int *ptype);
+OPENSSL_EXPORT int GENERAL_NAME_set0_othername(GENERAL_NAME *gen,
 				ASN1_OBJECT *oid, ASN1_TYPE *value);
-int GENERAL_NAME_get0_otherName(GENERAL_NAME *gen, 
+OPENSSL_EXPORT int GENERAL_NAME_get0_otherName(GENERAL_NAME *gen, 
 				ASN1_OBJECT **poid, ASN1_TYPE **pvalue);
 
-char *i2s_ASN1_OCTET_STRING(X509V3_EXT_METHOD *method, ASN1_OCTET_STRING *ia5);
-ASN1_OCTET_STRING *s2i_ASN1_OCTET_STRING(X509V3_EXT_METHOD *method, X509V3_CTX *ctx, char *str);
+OPENSSL_EXPORT char *i2s_ASN1_OCTET_STRING(X509V3_EXT_METHOD *method, ASN1_OCTET_STRING *ia5);
+OPENSSL_EXPORT ASN1_OCTET_STRING *s2i_ASN1_OCTET_STRING(X509V3_EXT_METHOD *method, X509V3_CTX *ctx, char *str);
 
-DECLARE_ASN1_FUNCTIONS(EXTENDED_KEY_USAGE)
-int i2a_ACCESS_DESCRIPTION(BIO *bp, ACCESS_DESCRIPTION* a);
+OPENSSL_EXPORT DECLARE_ASN1_FUNCTIONS(EXTENDED_KEY_USAGE)
+OPENSSL_EXPORT int i2a_ACCESS_DESCRIPTION(BIO *bp, ACCESS_DESCRIPTION* a);
 
 DECLARE_ASN1_FUNCTIONS(CERTIFICATEPOLICIES)
 DECLARE_ASN1_FUNCTIONS(POLICYINFO)
@@ -569,9 +569,9 @@ DECLARE_ASN1_FUNCTIONS(DIST_POINT)
 DECLARE_ASN1_FUNCTIONS(DIST_POINT_NAME)
 DECLARE_ASN1_FUNCTIONS(ISSUING_DIST_POINT)
 
-int DIST_POINT_set_dpname(DIST_POINT_NAME *dpn, X509_NAME *iname);
+OPENSSL_EXPORT int DIST_POINT_set_dpname(DIST_POINT_NAME *dpn, X509_NAME *iname);
 
-int NAME_CONSTRAINTS_check(X509 *x, NAME_CONSTRAINTS *nc);
+OPENSSL_EXPORT int NAME_CONSTRAINTS_check(X509 *x, NAME_CONSTRAINTS *nc);
 
 DECLARE_ASN1_FUNCTIONS(ACCESS_DESCRIPTION)
 DECLARE_ASN1_FUNCTIONS(AUTHORITY_INFO_ACCESS)
@@ -589,111 +589,111 @@ DECLARE_ASN1_ALLOC_FUNCTIONS(NAME_CONSTRAINTS)
 DECLARE_ASN1_ALLOC_FUNCTIONS(POLICY_CONSTRAINTS)
 DECLARE_ASN1_ITEM(POLICY_CONSTRAINTS)
 
-GENERAL_NAME *a2i_GENERAL_NAME(GENERAL_NAME *out,
+OPENSSL_EXPORT GENERAL_NAME *a2i_GENERAL_NAME(GENERAL_NAME *out,
 			       const X509V3_EXT_METHOD *method, X509V3_CTX *ctx,
 			       int gen_type, char *value, int is_nc);
 
-GENERAL_NAME *v2i_GENERAL_NAME(const X509V3_EXT_METHOD *method, X509V3_CTX *ctx,
+OPENSSL_EXPORT GENERAL_NAME *v2i_GENERAL_NAME(const X509V3_EXT_METHOD *method, X509V3_CTX *ctx,
 			       CONF_VALUE *cnf);
-GENERAL_NAME *v2i_GENERAL_NAME_ex(GENERAL_NAME *out,
+OPENSSL_EXPORT GENERAL_NAME *v2i_GENERAL_NAME_ex(GENERAL_NAME *out,
 				  const X509V3_EXT_METHOD *method,
 				  X509V3_CTX *ctx, CONF_VALUE *cnf, int is_nc);
-void X509V3_conf_free(CONF_VALUE *val);
+OPENSSL_EXPORT void X509V3_conf_free(CONF_VALUE *val);
 
-X509_EXTENSION *X509V3_EXT_nconf_nid(CONF *conf, X509V3_CTX *ctx, int ext_nid, char *value);
-X509_EXTENSION *X509V3_EXT_nconf(CONF *conf, X509V3_CTX *ctx, char *name, char *value);
-int X509V3_EXT_add_nconf_sk(CONF *conf, X509V3_CTX *ctx, char *section, STACK_OF(X509_EXTENSION) **sk);
-int X509V3_EXT_add_nconf(CONF *conf, X509V3_CTX *ctx, char *section, X509 *cert);
-int X509V3_EXT_REQ_add_nconf(CONF *conf, X509V3_CTX *ctx, char *section, X509_REQ *req);
-int X509V3_EXT_CRL_add_nconf(CONF *conf, X509V3_CTX *ctx, char *section, X509_CRL *crl);
+OPENSSL_EXPORT X509_EXTENSION *X509V3_EXT_nconf_nid(CONF *conf, X509V3_CTX *ctx, int ext_nid, char *value);
+OPENSSL_EXPORT X509_EXTENSION *X509V3_EXT_nconf(CONF *conf, X509V3_CTX *ctx, char *name, char *value);
+OPENSSL_EXPORT int X509V3_EXT_add_nconf_sk(CONF *conf, X509V3_CTX *ctx, char *section, STACK_OF(X509_EXTENSION) **sk);
+OPENSSL_EXPORT int X509V3_EXT_add_nconf(CONF *conf, X509V3_CTX *ctx, char *section, X509 *cert);
+OPENSSL_EXPORT int X509V3_EXT_REQ_add_nconf(CONF *conf, X509V3_CTX *ctx, char *section, X509_REQ *req);
+OPENSSL_EXPORT int X509V3_EXT_CRL_add_nconf(CONF *conf, X509V3_CTX *ctx, char *section, X509_CRL *crl);
 
-X509_EXTENSION *X509V3_EXT_conf_nid(LHASH_OF(CONF_VALUE) *conf, X509V3_CTX *ctx,
+OPENSSL_EXPORT X509_EXTENSION *X509V3_EXT_conf_nid(LHASH_OF(CONF_VALUE) *conf, X509V3_CTX *ctx,
 				    int ext_nid, char *value);
-X509_EXTENSION *X509V3_EXT_conf(LHASH_OF(CONF_VALUE) *conf, X509V3_CTX *ctx,
+OPENSSL_EXPORT X509_EXTENSION *X509V3_EXT_conf(LHASH_OF(CONF_VALUE) *conf, X509V3_CTX *ctx,
 				char *name, char *value);
-int X509V3_EXT_add_conf(LHASH_OF(CONF_VALUE) *conf, X509V3_CTX *ctx,
+OPENSSL_EXPORT int X509V3_EXT_add_conf(LHASH_OF(CONF_VALUE) *conf, X509V3_CTX *ctx,
 			char *section, X509 *cert);
-int X509V3_EXT_REQ_add_conf(LHASH_OF(CONF_VALUE) *conf, X509V3_CTX *ctx,
+OPENSSL_EXPORT int X509V3_EXT_REQ_add_conf(LHASH_OF(CONF_VALUE) *conf, X509V3_CTX *ctx,
 			    char *section, X509_REQ *req);
-int X509V3_EXT_CRL_add_conf(LHASH_OF(CONF_VALUE) *conf, X509V3_CTX *ctx,
+OPENSSL_EXPORT int X509V3_EXT_CRL_add_conf(LHASH_OF(CONF_VALUE) *conf, X509V3_CTX *ctx,
 			    char *section, X509_CRL *crl);
 
-int X509V3_add_value_bool_nf(char *name, int asn1_bool,
+OPENSSL_EXPORT int X509V3_add_value_bool_nf(char *name, int asn1_bool,
 			     STACK_OF(CONF_VALUE) **extlist);
-int X509V3_get_value_bool(CONF_VALUE *value, int *asn1_bool);
-int X509V3_get_value_int(CONF_VALUE *value, ASN1_INTEGER **aint);
-void X509V3_set_nconf(X509V3_CTX *ctx, CONF *conf);
-void X509V3_set_conf_lhash(X509V3_CTX *ctx, LHASH_OF(CONF_VALUE) *lhash);
+OPENSSL_EXPORT int X509V3_get_value_bool(CONF_VALUE *value, int *asn1_bool);
+OPENSSL_EXPORT int X509V3_get_value_int(CONF_VALUE *value, ASN1_INTEGER **aint);
+OPENSSL_EXPORT void X509V3_set_nconf(X509V3_CTX *ctx, CONF *conf);
+OPENSSL_EXPORT void X509V3_set_conf_lhash(X509V3_CTX *ctx, LHASH_OF(CONF_VALUE) *lhash);
 
-char * X509V3_get_string(X509V3_CTX *ctx, char *name, char *section);
-STACK_OF(CONF_VALUE) * X509V3_get_section(X509V3_CTX *ctx, char *section);
-void X509V3_string_free(X509V3_CTX *ctx, char *str);
-void X509V3_section_free( X509V3_CTX *ctx, STACK_OF(CONF_VALUE) *section);
-void X509V3_set_ctx(X509V3_CTX *ctx, X509 *issuer, X509 *subject,
+OPENSSL_EXPORT char * X509V3_get_string(X509V3_CTX *ctx, char *name, char *section);
+OPENSSL_EXPORT STACK_OF(CONF_VALUE) * X509V3_get_section(X509V3_CTX *ctx, char *section);
+OPENSSL_EXPORT void X509V3_string_free(X509V3_CTX *ctx, char *str);
+OPENSSL_EXPORT void X509V3_section_free( X509V3_CTX *ctx, STACK_OF(CONF_VALUE) *section);
+OPENSSL_EXPORT void X509V3_set_ctx(X509V3_CTX *ctx, X509 *issuer, X509 *subject,
 				 X509_REQ *req, X509_CRL *crl, int flags);
 
-int X509V3_add_value(const char *name, const char *value,
+OPENSSL_EXPORT int X509V3_add_value(const char *name, const char *value,
 						STACK_OF(CONF_VALUE) **extlist);
-int X509V3_add_value_uchar(const char *name, const unsigned char *value,
+OPENSSL_EXPORT int X509V3_add_value_uchar(const char *name, const unsigned char *value,
 						STACK_OF(CONF_VALUE) **extlist);
-int X509V3_add_value_bool(const char *name, int asn1_bool,
+OPENSSL_EXPORT int X509V3_add_value_bool(const char *name, int asn1_bool,
 						STACK_OF(CONF_VALUE) **extlist);
-int X509V3_add_value_int(const char *name, ASN1_INTEGER *aint,
+OPENSSL_EXPORT int X509V3_add_value_int(const char *name, ASN1_INTEGER *aint,
 						STACK_OF(CONF_VALUE) **extlist);
-char * i2s_ASN1_INTEGER(X509V3_EXT_METHOD *meth, ASN1_INTEGER *aint);
-ASN1_INTEGER * s2i_ASN1_INTEGER(X509V3_EXT_METHOD *meth, char *value);
-char * i2s_ASN1_ENUMERATED(X509V3_EXT_METHOD *meth, ASN1_ENUMERATED *aint);
-char * i2s_ASN1_ENUMERATED_TABLE(X509V3_EXT_METHOD *meth, ASN1_ENUMERATED *aint);
-int X509V3_EXT_add(X509V3_EXT_METHOD *ext);
-int X509V3_EXT_add_list(X509V3_EXT_METHOD *extlist);
-int X509V3_EXT_add_alias(int nid_to, int nid_from);
-void X509V3_EXT_cleanup(void);
+OPENSSL_EXPORT char * i2s_ASN1_INTEGER(X509V3_EXT_METHOD *meth, ASN1_INTEGER *aint);
+OPENSSL_EXPORT ASN1_INTEGER * s2i_ASN1_INTEGER(X509V3_EXT_METHOD *meth, char *value);
+OPENSSL_EXPORT char * i2s_ASN1_ENUMERATED(X509V3_EXT_METHOD *meth, ASN1_ENUMERATED *aint);
+OPENSSL_EXPORT char * i2s_ASN1_ENUMERATED_TABLE(X509V3_EXT_METHOD *meth, ASN1_ENUMERATED *aint);
+OPENSSL_EXPORT int X509V3_EXT_add(X509V3_EXT_METHOD *ext);
+OPENSSL_EXPORT int X509V3_EXT_add_list(X509V3_EXT_METHOD *extlist);
+OPENSSL_EXPORT int X509V3_EXT_add_alias(int nid_to, int nid_from);
+OPENSSL_EXPORT void X509V3_EXT_cleanup(void);
 
-const X509V3_EXT_METHOD *X509V3_EXT_get(X509_EXTENSION *ext);
-const X509V3_EXT_METHOD *X509V3_EXT_get_nid(int nid);
-int X509V3_add_standard_extensions(void);
-STACK_OF(CONF_VALUE) *X509V3_parse_list(const char *line);
-void *X509V3_EXT_d2i(X509_EXTENSION *ext);
-void *X509V3_get_d2i(STACK_OF(X509_EXTENSION) *x, int nid, int *crit, int *idx);
+OPENSSL_EXPORT const X509V3_EXT_METHOD *X509V3_EXT_get(X509_EXTENSION *ext);
+OPENSSL_EXPORT const X509V3_EXT_METHOD *X509V3_EXT_get_nid(int nid);
+OPENSSL_EXPORT int X509V3_add_standard_extensions(void);
+OPENSSL_EXPORT STACK_OF(CONF_VALUE) *X509V3_parse_list(const char *line);
+OPENSSL_EXPORT void *X509V3_EXT_d2i(X509_EXTENSION *ext);
+OPENSSL_EXPORT void *X509V3_get_d2i(STACK_OF(X509_EXTENSION) *x, int nid, int *crit, int *idx);
 
 
-X509_EXTENSION *X509V3_EXT_i2d(int ext_nid, int crit, void *ext_struc);
-int X509V3_add1_i2d(STACK_OF(X509_EXTENSION) **x, int nid, void *value, int crit, unsigned long flags);
+OPENSSL_EXPORT X509_EXTENSION *X509V3_EXT_i2d(int ext_nid, int crit, void *ext_struc);
+OPENSSL_EXPORT int X509V3_add1_i2d(STACK_OF(X509_EXTENSION) **x, int nid, void *value, int crit, unsigned long flags);
 
 char *hex_to_string(const unsigned char *buffer, long len);
 unsigned char *string_to_hex(const char *str, long *len);
 int name_cmp(const char *name, const char *cmp);
 
-void X509V3_EXT_val_prn(BIO *out, STACK_OF(CONF_VALUE) *val, int indent,
+OPENSSL_EXPORT void X509V3_EXT_val_prn(BIO *out, STACK_OF(CONF_VALUE) *val, int indent,
 								 int ml);
-int X509V3_EXT_print(BIO *out, X509_EXTENSION *ext, unsigned long flag, int indent);
-int X509V3_EXT_print_fp(FILE *out, X509_EXTENSION *ext, int flag, int indent);
+OPENSSL_EXPORT int X509V3_EXT_print(BIO *out, X509_EXTENSION *ext, unsigned long flag, int indent);
+OPENSSL_EXPORT int X509V3_EXT_print_fp(FILE *out, X509_EXTENSION *ext, int flag, int indent);
 
-int X509V3_extensions_print(BIO *out, const char *title, STACK_OF(X509_EXTENSION) *exts, unsigned long flag, int indent);
+OPENSSL_EXPORT int X509V3_extensions_print(BIO *out, const char *title, STACK_OF(X509_EXTENSION) *exts, unsigned long flag, int indent);
 
-int X509_check_ca(X509 *x);
-int X509_check_purpose(X509 *x, int id, int ca);
-int X509_supported_extension(X509_EXTENSION *ex);
-int X509_PURPOSE_set(int *p, int purpose);
-int X509_check_issued(X509 *issuer, X509 *subject);
-int X509_check_akid(X509 *issuer, AUTHORITY_KEYID *akid);
-int X509_PURPOSE_get_count(void);
-X509_PURPOSE * X509_PURPOSE_get0(int idx);
-int X509_PURPOSE_get_by_sname(char *sname);
-int X509_PURPOSE_get_by_id(int id);
-int X509_PURPOSE_add(int id, int trust, int flags,
+OPENSSL_EXPORT int X509_check_ca(X509 *x);
+OPENSSL_EXPORT int X509_check_purpose(X509 *x, int id, int ca);
+OPENSSL_EXPORT int X509_supported_extension(X509_EXTENSION *ex);
+OPENSSL_EXPORT int X509_PURPOSE_set(int *p, int purpose);
+OPENSSL_EXPORT int X509_check_issued(X509 *issuer, X509 *subject);
+OPENSSL_EXPORT int X509_check_akid(X509 *issuer, AUTHORITY_KEYID *akid);
+OPENSSL_EXPORT int X509_PURPOSE_get_count(void);
+OPENSSL_EXPORT X509_PURPOSE * X509_PURPOSE_get0(int idx);
+OPENSSL_EXPORT int X509_PURPOSE_get_by_sname(char *sname);
+OPENSSL_EXPORT int X509_PURPOSE_get_by_id(int id);
+OPENSSL_EXPORT int X509_PURPOSE_add(int id, int trust, int flags,
 			int (*ck)(const X509_PURPOSE *, const X509 *, int),
 				char *name, char *sname, void *arg);
-char *X509_PURPOSE_get0_name(X509_PURPOSE *xp);
-char *X509_PURPOSE_get0_sname(X509_PURPOSE *xp);
-int X509_PURPOSE_get_trust(X509_PURPOSE *xp);
-void X509_PURPOSE_cleanup(void);
-int X509_PURPOSE_get_id(X509_PURPOSE *);
+OPENSSL_EXPORT char *X509_PURPOSE_get0_name(X509_PURPOSE *xp);
+OPENSSL_EXPORT char *X509_PURPOSE_get0_sname(X509_PURPOSE *xp);
+OPENSSL_EXPORT int X509_PURPOSE_get_trust(X509_PURPOSE *xp);
+OPENSSL_EXPORT void X509_PURPOSE_cleanup(void);
+OPENSSL_EXPORT int X509_PURPOSE_get_id(X509_PURPOSE *);
 
-STACK_OF(OPENSSL_STRING) *X509_get1_email(X509 *x);
-STACK_OF(OPENSSL_STRING) *X509_REQ_get1_email(X509_REQ *x);
-void X509_email_free(STACK_OF(OPENSSL_STRING) *sk);
-STACK_OF(OPENSSL_STRING) *X509_get1_ocsp(X509 *x);
+OPENSSL_EXPORT STACK_OF(OPENSSL_STRING) *X509_get1_email(X509 *x);
+OPENSSL_EXPORT STACK_OF(OPENSSL_STRING) *X509_REQ_get1_email(X509_REQ *x);
+OPENSSL_EXPORT void X509_email_free(STACK_OF(OPENSSL_STRING) *sk);
+OPENSSL_EXPORT STACK_OF(OPENSSL_STRING) *X509_get1_ocsp(X509 *x);
 /* Flags for X509_check_* functions */
 
 /* Always check subject name for host match even if subject alt names present */
@@ -713,21 +713,21 @@ STACK_OF(OPENSSL_STRING) *X509_get1_ocsp(X509 *x);
  */
 #define _X509_CHECK_FLAG_DOT_SUBDOMAINS 0x8000
 
-int X509_check_host(X509 *x, const unsigned char *chk, size_t chklen,
+OPENSSL_EXPORT int X509_check_host(X509 *x, const unsigned char *chk, size_t chklen,
 					unsigned int flags);
-int X509_check_email(X509 *x, const unsigned char *chk, size_t chklen,
+OPENSSL_EXPORT int X509_check_email(X509 *x, const unsigned char *chk, size_t chklen,
 					unsigned int flags);
-int X509_check_ip(X509 *x, const unsigned char *chk, size_t chklen,
+OPENSSL_EXPORT int X509_check_ip(X509 *x, const unsigned char *chk, size_t chklen,
 					unsigned int flags);
-int X509_check_ip_asc(X509 *x, const char *ipasc, unsigned int flags);
+OPENSSL_EXPORT int X509_check_ip_asc(X509 *x, const char *ipasc, unsigned int flags);
 
-ASN1_OCTET_STRING *a2i_IPADDRESS(const char *ipasc);
-ASN1_OCTET_STRING *a2i_IPADDRESS_NC(const char *ipasc);
-int a2i_ipadd(unsigned char *ipout, const char *ipasc);
-int X509V3_NAME_from_section(X509_NAME *nm, STACK_OF(CONF_VALUE)*dn_sk,
+OPENSSL_EXPORT ASN1_OCTET_STRING *a2i_IPADDRESS(const char *ipasc);
+OPENSSL_EXPORT ASN1_OCTET_STRING *a2i_IPADDRESS_NC(const char *ipasc);
+OPENSSL_EXPORT int a2i_ipadd(unsigned char *ipout, const char *ipasc);
+OPENSSL_EXPORT int X509V3_NAME_from_section(X509_NAME *nm, STACK_OF(CONF_VALUE)*dn_sk,
 						unsigned long chtype);
 
-void X509_POLICY_NODE_print(BIO *out, X509_POLICY_NODE *node, int indent);
+OPENSSL_EXPORT void X509_POLICY_NODE_print(BIO *out, X509_POLICY_NODE *node, int indent);
 DECLARE_STACK_OF(X509_POLICY_NODE)
 
 /* BEGIN ERROR CODES */

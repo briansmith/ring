@@ -76,20 +76,20 @@ extern "C" {
  * The following functions return |EVP_MD| objects that implement the named hash
  * function. */
 
-const EVP_MD *EVP_md5(void);
-const EVP_MD *EVP_sha1(void);
-const EVP_MD *EVP_sha224(void);
-const EVP_MD *EVP_sha256(void);
-const EVP_MD *EVP_sha384(void);
-const EVP_MD *EVP_sha512(void);
+OPENSSL_EXPORT const EVP_MD *EVP_md5(void);
+OPENSSL_EXPORT const EVP_MD *EVP_sha1(void);
+OPENSSL_EXPORT const EVP_MD *EVP_sha224(void);
+OPENSSL_EXPORT const EVP_MD *EVP_sha256(void);
+OPENSSL_EXPORT const EVP_MD *EVP_sha384(void);
+OPENSSL_EXPORT const EVP_MD *EVP_sha512(void);
 
 /* EVP_get_digestbynid returns an |EVP_MD| for the given NID, or NULL if no
  * such digest is known. */
-const EVP_MD *EVP_get_digestbynid(int nid);
+OPENSSL_EXPORT const EVP_MD *EVP_get_digestbynid(int nid);
 
 /* EVP_get_digestbyobj returns an |EVP_MD| for the given |ASN1_OBJECT|, or NULL
  * if no such digest is known. */
-const EVP_MD *EVP_get_digestbyobj(const ASN1_OBJECT *obj);
+OPENSSL_EXPORT const EVP_MD *EVP_get_digestbyobj(const ASN1_OBJECT *obj);
 
 
 /* Digest contexts.
@@ -98,22 +98,22 @@ const EVP_MD *EVP_get_digestbyobj(const ASN1_OBJECT *obj);
  * progress. */
 
 /* EVP_MD_CTX_init initialises an, already allocated, |EVP_MD_CTX|. */
-void EVP_MD_CTX_init(EVP_MD_CTX *ctx);
+OPENSSL_EXPORT void EVP_MD_CTX_init(EVP_MD_CTX *ctx);
 
 /* EVP_MD_CTX_create allocates and initialises a fresh |EVP_MD_CTX| and returns
  * it, or NULL on allocation failure. */
-EVP_MD_CTX *EVP_MD_CTX_create(void);
+OPENSSL_EXPORT EVP_MD_CTX *EVP_MD_CTX_create(void);
 
 /* EVP_MD_CTX_cleanup frees any resources owned by |ctx| and resets it to a
  * freshly initialised state. It does not free |ctx| itself. It returns one. */
-int EVP_MD_CTX_cleanup(EVP_MD_CTX *ctx);
+OPENSSL_EXPORT int EVP_MD_CTX_cleanup(EVP_MD_CTX *ctx);
 
 /* EVP_MD_CTX_destroy calls |EVP_MD_CTX_cleanup| and then frees |ctx| itself. */
-void EVP_MD_CTX_destroy(EVP_MD_CTX *ctx);
+OPENSSL_EXPORT void EVP_MD_CTX_destroy(EVP_MD_CTX *ctx);
 
 /* EVP_MD_CTX_copy_ex sets |out|, which must already be initialised, to be a
  * copy of |in|. It returns one on success and zero on error. */
-int EVP_MD_CTX_copy_ex(EVP_MD_CTX *out, const EVP_MD_CTX *in);
+OPENSSL_EXPORT int EVP_MD_CTX_copy_ex(EVP_MD_CTX *out, const EVP_MD_CTX *in);
 
 
 /* Digest operations. */
@@ -121,15 +121,17 @@ int EVP_MD_CTX_copy_ex(EVP_MD_CTX *out, const EVP_MD_CTX *in);
 /* EVP_DigestInit_ex configures |ctx|, which must already have been
  * initialised, for a fresh hashing operation using |type|. It returns one on
  * success and zero otherwise. */
-int EVP_DigestInit_ex(EVP_MD_CTX *ctx, const EVP_MD *type, ENGINE *engine);
+OPENSSL_EXPORT int EVP_DigestInit_ex(EVP_MD_CTX *ctx, const EVP_MD *type,
+                                     ENGINE *engine);
 
 /* EVP_DigestInit acts like |EVP_DigestInit_ex| except that |ctx| is
  * initialised before use. */
-int EVP_DigestInit(EVP_MD_CTX *ctx, const EVP_MD *type);
+OPENSSL_EXPORT int EVP_DigestInit(EVP_MD_CTX *ctx, const EVP_MD *type);
 
 /* EVP_DigestUpdate hashes |len| bytes from |data| into the hashing operation
  * in |ctx|. It returns one on success and zero otherwise. */
-int EVP_DigestUpdate(EVP_MD_CTX *ctx, const void *data, size_t len);
+OPENSSL_EXPORT int EVP_DigestUpdate(EVP_MD_CTX *ctx, const void *data,
+                                    size_t len);
 
 /* EVP_MAX_MD_SIZE is the largest digest size supported. Functions that output
  * a digest generally require the buffer have at least this much space. */
@@ -141,20 +143,22 @@ int EVP_DigestUpdate(EVP_MD_CTX *ctx, const void *data, size_t len);
  * on success and zero otherwise. After this call, the hash cannot be updated
  * or finished again until |EVP_DigestFinal_ex| is called to start another
  * hashing operation. */
-int EVP_DigestFinal_ex(EVP_MD_CTX *ctx, uint8_t *md_out,
-                       unsigned int *out_size);
+OPENSSL_EXPORT int EVP_DigestFinal_ex(EVP_MD_CTX *ctx, uint8_t *md_out,
+                                      unsigned int *out_size);
 
 /* EVP_DigestFinal acts like |EVP_DigestFinal_ex| except that
  * |EVP_MD_CTX_cleanup| is called on |ctx| before returning. */
-int EVP_DigestFinal(EVP_MD_CTX *ctx, uint8_t *md_out, unsigned int *out_size);
+OPENSSL_EXPORT int EVP_DigestFinal(EVP_MD_CTX *ctx, uint8_t *md_out,
+                                   unsigned int *out_size);
 
 /* EVP_Digest performs a complete hashing operation in one call. It hashes
  * |len| bytes from |data| and writes the digest to |md_out|. At most
  * |EVP_MAX_MD_SIZE| bytes are written. If |out_size| is not NULL then
  * |*out_size| is set to the number of bytes written. It returns one on success
  * and zero otherwise. */
-int EVP_Digest(const void *data, size_t len, uint8_t *md_out,
-               unsigned int *md_out_size, const EVP_MD *type, ENGINE *impl);
+OPENSSL_EXPORT int EVP_Digest(const void *data, size_t len, uint8_t *md_out,
+                              unsigned int *md_out_size, const EVP_MD *type,
+                              ENGINE *impl);
 
 
 /* Digest function accessors.
@@ -163,20 +167,20 @@ int EVP_Digest(const void *data, size_t len, uint8_t *md_out,
  * function. */
 
 /* EVP_MD_type returns a NID identifing |md|. (For example, |NID_md5|.) */
-int EVP_MD_type(const EVP_MD *md);
+OPENSSL_EXPORT int EVP_MD_type(const EVP_MD *md);
 
 /* EVP_MD_name returns the short name for |md| or NULL if no name is known. */
-const char *EVP_MD_name(const EVP_MD *md);
+OPENSSL_EXPORT const char *EVP_MD_name(const EVP_MD *md);
 
 /* EVP_MD_flags returns the flags for |md|, which is a set of |EVP_MD_FLAG_*|
  * values, ORed together. */
-uint32_t EVP_MD_flags(const EVP_MD *md);
+OPENSSL_EXPORT uint32_t EVP_MD_flags(const EVP_MD *md);
 
 /* EVP_MD_size returns the digest size of |md|, in bytes. */
-size_t EVP_MD_size(const EVP_MD *md);
+OPENSSL_EXPORT size_t EVP_MD_size(const EVP_MD *md);
 
 /* EVP_MD_block_size returns the native block-size of |md|. */
-size_t EVP_MD_block_size(const EVP_MD *md);
+OPENSSL_EXPORT size_t EVP_MD_block_size(const EVP_MD *md);
 
 /* EVP_MD_FLAG_PKEY_DIGEST indicates the the digest function is used with a
  * specific public key in order to verify signatures. (For example,
@@ -193,38 +197,39 @@ size_t EVP_MD_block_size(const EVP_MD *md);
 
 /* EVP_MD_CTX_copy sets |out|, which must /not/ be initialised, to be a copy of
  * |in|. It returns one on success and zero on error. */
-int EVP_MD_CTX_copy(EVP_MD_CTX *out, const EVP_MD_CTX *in);
+OPENSSL_EXPORT int EVP_MD_CTX_copy(EVP_MD_CTX *out, const EVP_MD_CTX *in);
 
 
 /* Digest operation accessors. */
 
 /* EVP_MD_CTX_md returns the underlying digest function, or NULL if one has not
  * been set. */
-const EVP_MD *EVP_MD_CTX_md(const EVP_MD_CTX *ctx);
+OPENSSL_EXPORT const EVP_MD *EVP_MD_CTX_md(const EVP_MD_CTX *ctx);
 
 /* EVP_MD_CTX_size returns the digest size of |ctx|. It will crash if a digest
  * hasn't been set on |ctx|. */
-unsigned EVP_MD_CTX_size(const EVP_MD_CTX *ctx);
+OPENSSL_EXPORT unsigned EVP_MD_CTX_size(const EVP_MD_CTX *ctx);
 
 /* EVP_MD_CTX_block_size returns the block size of the digest function used by
  * |ctx|. It will crash if a digest hasn't been set on |ctx|. */
-unsigned EVP_MD_CTX_block_size(const EVP_MD_CTX *ctx);
+OPENSSL_EXPORT unsigned EVP_MD_CTX_block_size(const EVP_MD_CTX *ctx);
 
 /* EVP_MD_CTX_type returns a NID describing the digest function used by |ctx|.
  * (For example, |NID_md5|.) It will crash if a digest hasn't been set on
  * |ctx|. */
-int EVP_MD_CTX_type(const EVP_MD_CTX *ctx);
+OPENSSL_EXPORT int EVP_MD_CTX_type(const EVP_MD_CTX *ctx);
 
 /* EVP_MD_CTX_set_flags ORs |flags| into the flags member of |ctx|. */
-void EVP_MD_CTX_set_flags(EVP_MD_CTX *ctx, uint32_t flags);
+OPENSSL_EXPORT void EVP_MD_CTX_set_flags(EVP_MD_CTX *ctx, uint32_t flags);
 
 /* EVP_MD_CTX_clear_flags clears any bits from the flags member of |ctx| that
  * are set in |flags|. */
-void EVP_MD_CTX_clear_flags(EVP_MD_CTX *ctx, uint32_t flags);
+OPENSSL_EXPORT void EVP_MD_CTX_clear_flags(EVP_MD_CTX *ctx, uint32_t flags);
 
 /* EVP_MD_CTX_test_flags returns the AND of |flags| and the flags member of
  * |ctx|. */
-uint32_t EVP_MD_CTX_test_flags(const EVP_MD_CTX *ctx, uint32_t flags);
+OPENSSL_EXPORT uint32_t
+    EVP_MD_CTX_test_flags(const EVP_MD_CTX *ctx, uint32_t flags);
 
 
 struct evp_md_pctx_ops;
