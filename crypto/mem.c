@@ -93,6 +93,19 @@ void *OPENSSL_realloc_clean(void *ptr, size_t old_size, size_t new_size) {
   return ret;
 }
 
+void OPENSSL_cleanse(void *ptr, size_t len) {
+  memset(ptr, 0, len);
+
+  /* As best as we can tell, this is sufficient to break any optimisations that
+     might try to eliminate "superfluous" memsets. If there's an easy way to
+     detect memset_s, it would be better to use that. */
+#if defined(OPENSSL_WINDOWS)
+  __asm;
+#else
+  __asm__ __volatile__("" : : "r"(ptr) : "memory");
+#endif
+}
+
 int CRYPTO_memcmp(const void *in_a, const void *in_b, size_t len) {
   size_t i;
   const uint8_t *a = in_a;

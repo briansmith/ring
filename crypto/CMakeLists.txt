@@ -114,7 +114,6 @@ add_library(
 
 	crypto_error.c
 	mem.c
-	mem_clear.c
 	thread.c
 	ex_data.c
 	ex_data_impl.c
