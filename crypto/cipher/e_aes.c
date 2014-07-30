@@ -1224,7 +1224,7 @@ static int aead_aes_key_wrap_open(const EVP_AEAD_CTX *ctx, uint8_t *out,
   }
 
   memcpy(A, in, 8);
-  memmove(out, in + 8, in_len);
+  memmove(out, in + 8, in_len - 8);
 
   for (j = 5; j < 6; j--) {
     for (i = n; i > 0; i--) {
