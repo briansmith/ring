@@ -557,7 +557,7 @@ static const uint32_t rcon[] = {
     /* for 128-bit blocks, Rijndael never uses more than 10 rcon values */
 };
 
-int AES_set_encrypt_key(const uint8_t *key, const unsigned bits, AES_KEY *aeskey) {
+int AES_set_encrypt_key(const uint8_t *key, unsigned bits, AES_KEY *aeskey) {
   uint32_t *rk;
   int i = 0;
   uint32_t temp;
@@ -652,8 +652,7 @@ int AES_set_encrypt_key(const uint8_t *key, const unsigned bits, AES_KEY *aeskey
   return 0;
 }
 
-int AES_set_decrypt_key(const unsigned char *key, const unsigned bits,
-                        AES_KEY *aeskey) {
+int AES_set_decrypt_key(const uint8_t *key, unsigned bits, AES_KEY *aeskey) {
   uint32_t *rk;
   int i, j, status;
   uint32_t temp;
