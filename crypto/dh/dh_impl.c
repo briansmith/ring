@@ -252,7 +252,7 @@ err:
   return ok;
 }
 
-static ssize_t compute_key(DH *dh, unsigned char *out, const BIGNUM *pub_key) {
+static int compute_key(DH *dh, unsigned char *out, const BIGNUM *pub_key) {
   BN_CTX *ctx = NULL;
   BN_MONT_CTX *mont = NULL;
   BIGNUM *shared_key;

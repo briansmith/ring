@@ -62,6 +62,7 @@
 #include <sys/timeb.h>
 #else
 #include <sys/socket.h>
+#include <sys/time.h>
 #endif
 
 #include <openssl/err.h>
@@ -70,7 +71,8 @@
 
 #include "ssl_locl.h"
 
-static void get_current_time(struct timeval *t);
+static void get_current_time(OPENSSL_timeval *t);
+static OPENSSL_timeval* dtls1_get_timeout(SSL *s, OPENSSL_timeval* timeleft);
 static void dtls1_set_handshake_header(SSL *s, int type, unsigned long len);
 static int dtls1_handshake_write(SSL *s);
 int dtls1_listen(SSL *s, struct sockaddr *client);
@@ -291,7 +293,7 @@ long dtls1_ctrl(SSL *s, int cmd, long larg, void *parg)
 	switch (cmd)
 		{
 	case DTLS_CTRL_GET_TIMEOUT:
-		if (dtls1_get_timeout(s, (struct timeval*) parg) != NULL)
+		if (dtls1_get_timeout(s, (OPENSSL_timeval*) parg) != NULL)
 			{
 			ret = 1;
 			}
@@ -339,16 +341,16 @@ void dtls1_start_timer(SSL *s)
 		}
 	
 	/* Set timeout to current time */
-	get_current_time(&(s->d1->next_timeout));
+	get_current_time(&s->d1->next_timeout);
 
 	/* Add duration to current time */
 	s->d1->next_timeout.tv_sec += s->d1->timeout_duration;
-	BIO_ctrl(SSL_get_rbio(s), BIO_CTRL_DGRAM_SET_NEXT_TIMEOUT, 0, &(s->d1->next_timeout));
+	BIO_ctrl(SSL_get_rbio(s), BIO_CTRL_DGRAM_SET_NEXT_TIMEOUT, 0, &s->d1->next_timeout);
 	}
 
-struct timeval* dtls1_get_timeout(SSL *s, struct timeval* timeleft)
+static OPENSSL_timeval* dtls1_get_timeout(SSL *s, OPENSSL_timeval* timeleft)
 	{
-	struct timeval timenow;
+	OPENSSL_timeval timenow;
 
 	/* If no timeout is set, just return NULL */
 	if (s->d1->next_timeout.tv_sec == 0 && s->d1->next_timeout.tv_usec == 0)
@@ -364,12 +366,12 @@ struct timeval* dtls1_get_timeout(SSL *s, struct timeval* timeleft)
 		(s->d1->next_timeout.tv_sec == timenow.tv_sec &&
 		 s->d1->next_timeout.tv_usec <= timenow.tv_usec))
 		{
-		memset(timeleft, 0, sizeof(struct timeval));
+		memset(timeleft, 0, sizeof(OPENSSL_timeval));
 		return timeleft;
 		}
 
 	/* Calculate time left until timer expires */
-	memcpy(timeleft, &(s->d1->next_timeout), sizeof(struct timeval));
+	memcpy(timeleft, &s->d1->next_timeout, sizeof(OPENSSL_timeval));
 	timeleft->tv_sec -= timenow.tv_sec;
 	timeleft->tv_usec -= timenow.tv_usec;
 	if (timeleft->tv_usec < 0)
@@ -384,7 +386,7 @@ struct timeval* dtls1_get_timeout(SSL *s, struct timeval* timeleft)
 	 */
 	if (timeleft->tv_sec == 0 && timeleft->tv_usec < 15000)
 		{
-		memset(timeleft, 0, sizeof(struct timeval));
+		memset(timeleft, 0, sizeof(OPENSSL_timeval));
 		}
 	
 
@@ -393,7 +395,7 @@ struct timeval* dtls1_get_timeout(SSL *s, struct timeval* timeleft)
 
 int dtls1_is_timer_expired(SSL *s)
 	{
-	struct timeval timeleft;
+	OPENSSL_timeval timeleft;
 
 	/* Get time left until timeout, return false if no timer running */
 	if (dtls1_get_timeout(s, &timeleft) == NULL)
@@ -423,9 +425,9 @@ void dtls1_stop_timer(SSL *s)
 	{
 	/* Reset everything */
 	memset(&(s->d1->timeout), 0, sizeof(struct dtls1_timeout_st));
-	memset(&(s->d1->next_timeout), 0, sizeof(struct timeval));
+	memset(&s->d1->next_timeout, 0, sizeof(OPENSSL_timeval));
 	s->d1->timeout_duration = 1;
-	BIO_ctrl(SSL_get_rbio(s), BIO_CTRL_DGRAM_SET_NEXT_TIMEOUT, 0, &(s->d1->next_timeout));
+	BIO_ctrl(SSL_get_rbio(s), BIO_CTRL_DGRAM_SET_NEXT_TIMEOUT, 0, &s->d1->next_timeout);
 	/* Clear retransmission buffer */
 	dtls1_clear_record_buffer(s);
 	}
@@ -473,13 +475,13 @@ int dtls1_handle_timeout(SSL *s)
 	return dtls1_retransmit_buffered_messages(s);
 	}
 
-static void get_current_time(struct timeval *t)
+static void get_current_time(OPENSSL_timeval *t)
 {
-#ifdef OPENSSL_SYS_WIN32
-	struct _timeb tb;
-	_ftime(&tb);
-	t->tv_sec = (long)tb.time;
-	t->tv_usec = (long)tb.millitm * 1000;
+#if defined(OPENSSL_WINDOWS)
+	struct _timeb time;
+	_ftime(&time);
+	t->tv_sec = time.time;
+	t->tv_usec = time.millitm * 1000;
 #else
 	gettimeofday(t, NULL);
 #endif

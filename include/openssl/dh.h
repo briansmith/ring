@@ -127,8 +127,8 @@ OPENSSL_EXPORT int DH_generate_key(DH *dh);
  * writes it as a big-endian integer into |out|, which must have |DH_size|
  * bytes of space. It returns the number of bytes written, or a negative number
  * on error. */
-OPENSSL_EXPORT ssize_t
-    DH_compute_key(uint8_t *out, const BIGNUM *peers_key, DH *dh);
+OPENSSL_EXPORT int DH_compute_key(uint8_t *out, const BIGNUM *peers_key,
+                                  DH *dh);
 
 
 /* Utility functions. */
@@ -217,8 +217,8 @@ struct dh_method {
   /* generate_parameters is called by |DH_generate_key|. */
   int (*generate_key)(DH *dh);
 
-  /* generate_parameters is called by |DH_compute_key|. */
-  ssize_t (*compute_key)(DH *dh, uint8_t *out, const BIGNUM *pub_key);
+  /* compute_key is called by |DH_compute_key|. */
+  int (*compute_key)(DH *dh, uint8_t *out, const BIGNUM *pub_key);
 };
 
 struct dh_st {

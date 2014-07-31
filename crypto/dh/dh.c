@@ -147,7 +147,7 @@ int DH_generate_key(DH *dh) {
   return DH_default_method.generate_key(dh);
 }
 
-ssize_t DH_compute_key(unsigned char *out, const BIGNUM *peers_key, DH *dh) {
+int DH_compute_key(unsigned char *out, const BIGNUM *peers_key, DH *dh) {
   if (dh->meth->compute_key) {
     return dh->meth->compute_key(dh, out, peers_key);
   }

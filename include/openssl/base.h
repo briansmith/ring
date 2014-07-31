@@ -89,7 +89,7 @@
 #define OPENSSL_APPLE
 #endif
 
-#if defined(WIN32)
+#if defined(WIN32) || defined(_WIN32)
 #define OPENSSL_WINDOWS
 #endif
 

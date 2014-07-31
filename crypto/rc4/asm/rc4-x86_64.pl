@@ -645,20 +645,20 @@ key_se_handler:
 
 .section	.pdata
 .align	4
-	.rva	.LSEH_begin_RC4
-	.rva	.LSEH_end_RC4
-	.rva	.LSEH_info_RC4
+	.rva	.LSEH_begin_asm_RC4
+	.rva	.LSEH_end_asm_RC4
+	.rva	.LSEH_info_asm_RC4
 
-	.rva	.LSEH_begin_RC4_set_key
-	.rva	.LSEH_end_RC4_set_key
-	.rva	.LSEH_info_RC4_set_key
+	.rva	.LSEH_begin_asm_RC4_set_key
+	.rva	.LSEH_end_asm_RC4_set_key
+	.rva	.LSEH_info_asm_RC4_set_key
 
 .section	.xdata
 .align	8
-.LSEH_info_RC4:
+.LSEH_info_asm_RC4:
 	.byte	9,0,0,0
 	.rva	stream_se_handler
-.LSEH_info_RC4_set_key:
+.LSEH_info_asm_RC4_set_key:
 	.byte	9,0,0,0
 	.rva	key_se_handler
 ___

@@ -65,7 +65,7 @@
 
 struct tm *OPENSSL_gmtime(const time_t *time, struct tm *result) {
 #if defined(OPENSSL_WINDOWS)
-  if (_gmtime_s(result, time)) {
+  if (gmtime_s(result, time)) {
     return NULL;
   }
   return result;

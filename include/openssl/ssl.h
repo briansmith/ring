@@ -723,11 +723,7 @@ OPENSSL_EXPORT void SSL_set_msg_callback(SSL *ssl, void (*cb)(int write_p, int v
 struct ssl_aead_ctx_st;
 typedef struct ssl_aead_ctx_st SSL_AEAD_CTX;
 
-#if defined(OPENSSL_SYS_MSDOS) && !defined(OPENSSL_SYS_WIN32)
-#define SSL_MAX_CERT_LIST_DEFAULT 1024*30 /* 30k max cert list :-) */
-#else
-#define SSL_MAX_CERT_LIST_DEFAULT 1024*100 /* 100k max cert list :-) */
-#endif
+#define SSL_MAX_CERT_LIST_DEFAULT 1024*100 /* 100k max cert list */
 
 #define SSL_SESSION_CACHE_MAX_SIZE_DEFAULT	(1024*20)
 

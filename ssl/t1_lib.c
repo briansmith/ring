@@ -1653,7 +1653,7 @@ unsigned char *ssl_add_serverhello_tlsext(SSL *s, unsigned char *buf, unsigned c
  *   returns: 1 on success. */
 static int tls1_alpn_handle_client_hello(SSL *s, CBS *cbs, int *out_alert)
 	{
-	CBS protocol_name_list;
+	CBS protocol_name_list, protocol_name_list_copy;
 	const unsigned char *selected;
 	unsigned char selected_len;
 	int r;
@@ -1667,7 +1667,7 @@ static int tls1_alpn_handle_client_hello(SSL *s, CBS *cbs, int *out_alert)
 		goto parse_error;
 
 	/* Validate the protocol list. */
-	CBS protocol_name_list_copy = protocol_name_list;
+	protocol_name_list_copy = protocol_name_list;
 	while (CBS_len(&protocol_name_list_copy) > 0)
 		{
 		CBS protocol_name;

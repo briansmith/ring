@@ -12,12 +12,17 @@
  * OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
  * CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE. */
 
+#include <openssl/base.h>
+
+#if !defined(OPENSSL_WINDOWS)
 #include <arpa/inet.h>
 #include <netinet/in.h>
 #include <signal.h>
 #include <sys/socket.h>
-#include <sys/types.h>
 #include <unistd.h>
+#endif
+
+#include <sys/types.h>
 
 #include <openssl/bio.h>
 #include <openssl/bytestring.h>
@@ -435,7 +440,9 @@ static int do_exchange(SSL_SESSION **out_session,
 int main(int argc, char **argv) {
   int is_server, resume;
 
+#if !defined(OPENSSL_WINDOWS)
   signal(SIGPIPE, SIG_IGN);
+#endif
 
   if (argc < 3) {
     return usage(argv[0]);

@@ -587,6 +587,7 @@ ___
 $code.=<<___;
 .align	16
 .globl	asm_AES_encrypt
+.type	asm_AES_encrypt,\@function,3
 .hidden	asm_AES_encrypt
 asm_AES_encrypt:
 	push	%rbx
@@ -1182,6 +1183,7 @@ ___
 $code.=<<___;
 .align	16
 .globl	asm_AES_decrypt
+.type	asm_AES_decrypt,\@function,3
 .hidden	asm_AES_decrypt
 asm_AES_decrypt:
 	push	%rbx
@@ -1280,6 +1282,7 @@ ___
 $code.=<<___;
 .align	16
 .globl asm_AES_set_encrypt_key
+.type  asm_AES_set_encrypt_key,\@function,3
 asm_AES_set_encrypt_key:
 	push	%rbx
 	push	%rbp
@@ -1544,6 +1547,7 @@ ___
 $code.=<<___;
 .align	16
 .globl asm_AES_set_decrypt_key
+.type  asm_AES_set_decrypt_key,\@function,3
 asm_AES_set_decrypt_key:
 	push	%rbx
 	push	%rbp
@@ -1636,8 +1640,9 @@ my $mark="80+240(%rsp)";	# copy of aes_key->rounds
 
 $code.=<<___;
 .align	16
-.extern	OPENSSL_ia32cap_P
 .globl	asm_AES_cbc_encrypt
+.type	asm_AES_cbc_encrypt,\@function,6
+.extern	OPENSSL_ia32cap_P
 .hidden	asm_AES_cbc_encrypt
 asm_AES_cbc_encrypt:
 	cmp	\$0,%rdx	# check length
@@ -2749,45 +2754,45 @@ cbc_se_handler:
 
 .section	.pdata
 .align	4
-	.rva	.LSEH_begin_AES_encrypt
-	.rva	.LSEH_end_AES_encrypt
-	.rva	.LSEH_info_AES_encrypt
+	.rva	.LSEH_begin_asm_AES_encrypt
+	.rva	.LSEH_end_asm_AES_encrypt
+	.rva	.LSEH_info_asm_AES_encrypt
 
-	.rva	.LSEH_begin_AES_decrypt
-	.rva	.LSEH_end_AES_decrypt
-	.rva	.LSEH_info_AES_decrypt
+	.rva	.LSEH_begin_asm_AES_decrypt
+	.rva	.LSEH_end_asm_AES_decrypt
+	.rva	.LSEH_info_asm_AES_decrypt
 
-	.rva	.LSEH_begin_AES_set_encrypt_key
-	.rva	.LSEH_end_AES_set_encrypt_key
-	.rva	.LSEH_info_AES_set_encrypt_key
+	.rva	.LSEH_begin_asm_AES_set_encrypt_key
+	.rva	.LSEH_end_asm_AES_set_encrypt_key
+	.rva	.LSEH_info_asm_AES_set_encrypt_key
 
-	.rva	.LSEH_begin_AES_set_decrypt_key
-	.rva	.LSEH_end_AES_set_decrypt_key
-	.rva	.LSEH_info_AES_set_decrypt_key
+	.rva	.LSEH_begin_asm_AES_set_decrypt_key
+	.rva	.LSEH_end_asm_AES_set_decrypt_key
+	.rva	.LSEH_info_asm_AES_set_decrypt_key
 
-	.rva	.LSEH_begin_AES_cbc_encrypt
-	.rva	.LSEH_end_AES_cbc_encrypt
-	.rva	.LSEH_info_AES_cbc_encrypt
+	.rva	.LSEH_begin_asm_AES_cbc_encrypt
+	.rva	.LSEH_end_asm_AES_cbc_encrypt
+	.rva	.LSEH_info_asm_AES_cbc_encrypt
 
 .section	.xdata
 .align	8
-.LSEH_info_AES_encrypt:
+.LSEH_info_asm_AES_encrypt:
 	.byte	9,0,0,0
 	.rva	block_se_handler
 	.rva	.Lenc_prologue,.Lenc_epilogue	# HandlerData[]
-.LSEH_info_AES_decrypt:
+.LSEH_info_asm_AES_decrypt:
 	.byte	9,0,0,0
 	.rva	block_se_handler
 	.rva	.Ldec_prologue,.Ldec_epilogue	# HandlerData[]
-.LSEH_info_AES_set_encrypt_key:
+.LSEH_info_asm_AES_set_encrypt_key:
 	.byte	9,0,0,0
 	.rva	key_se_handler
 	.rva	.Lenc_key_prologue,.Lenc_key_epilogue	# HandlerData[]
-.LSEH_info_AES_set_decrypt_key:
+.LSEH_info_asm_AES_set_decrypt_key:
 	.byte	9,0,0,0
 	.rva	key_se_handler
 	.rva	.Ldec_key_prologue,.Ldec_key_epilogue	# HandlerData[]
-.LSEH_info_AES_cbc_encrypt:
+.LSEH_info_asm_AES_cbc_encrypt:
 	.byte	9,0,0,0
 	.rva	cbc_se_handler
 ___

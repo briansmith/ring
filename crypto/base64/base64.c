@@ -57,6 +57,7 @@
 #include <openssl/base64.h>
 
 #include <assert.h>
+#include <limits.h>
 
 
 static const unsigned char data_bin2ascii[65] =
@@ -358,7 +359,7 @@ int EVP_DecodeFinal(EVP_ENCODE_CTX *ctx, uint8_t *out, int *outl) {
   }
 }
 
-ssize_t EVP_DecodeBlock(uint8_t *dst, const uint8_t *src, size_t src_len) {
+int EVP_DecodeBlock(uint8_t *dst, const uint8_t *src, size_t src_len) {
   int a, b, c, d;
   uint32_t l;
   size_t i, ret = 0;
@@ -393,6 +394,10 @@ ssize_t EVP_DecodeBlock(uint8_t *dst, const uint8_t *src, size_t src_len) {
     *(dst++) = (uint8_t)(l >> 8L) & 0xff;
     *(dst++) = (uint8_t)(l) & 0xff;
     ret += 3;
+  }
+
+  if (ret > INT_MAX) {
+    return -1;
   }
 
   return ret;
