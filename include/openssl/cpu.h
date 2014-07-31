@@ -91,8 +91,21 @@ OPENSSL_EXPORT char CRYPTO_is_NEON_capable();
 
 /* CRYPTO_set_NEON_capable sets the return value of |CRYPTO_is_NEON_capable|.
  * By default, unless the code was compiled with |-mfpu=neon|, NEON is assumed
- * not to be present. It is not autodetected. */
+ * not to be present. It is not autodetected. Calling this with a zero
+ * argument also causes |CRYPTO_is_NEON_functional| to return false. */
 OPENSSL_EXPORT void CRYPTO_set_NEON_capable(char neon_capable);
+
+/* CRYPTO_is_NEON_functional returns true if the current CPU has a /working/
+ * NEON unit. Some phones have a NEON unit, but the Poly1305 NEON code causes
+ * it to fail. See https://code.google.com/p/chromium/issues/detail?id=341598 */
+OPENSSL_EXPORT char CRYPTO_is_NEON_functional();
+
+/* CRYPTO_set_NEON_functional sets the "NEON functional" flag. For
+ * |CRYPTO_is_NEON_functional| to return true, both this flag and the NEON flag
+ * must be true. By default NEON is assumed to be functional if the code was
+ * compiled with |-mfpu=neon| or if |CRYPTO_set_NEON_capable| has been called
+ * with a non-zero argument. */
+OPENSSL_EXPORT void CRYPTO_set_NEON_functional(char neon_functional);
 #endif  /* OPENSSL_ARM */
 
 

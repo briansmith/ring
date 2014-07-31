@@ -88,13 +88,22 @@
 #endif
 
 #if !__ASSEMBLER__
+
 /* OPENSSL_armcap_P contains flags describing the capabilities of the CPU and
  * is easy for assembly code to acesss. For C code, see the functions in
  * |cpu.h|. */
-extern unsigned int OPENSSL_armcap_P;
+extern uint32_t OPENSSL_armcap_P;
 
-#define ARMV7_NEON      (1<<0)
-#endif
+/* ARMV7_NEON is true when a NEON unit is present in the current CPU. */
+#define ARMV7_NEON (1 << 0)
+
+/* ARMV7_NEON_FUNCTIONAL is true when the NEON unit doesn't contain subtle bugs.
+ * The Poly1305 NEON code is known to trigger bugs in the NEON units of some
+ * phones. If this bit isn't set then the Poly1305 NEON code won't be used.
+ * See https://code.google.com/p/chromium/issues/detail?id=341598. */
+#define ARMV7_NEON_FUNCTIONAL (1 << 1)
+
+#endif  /* !__ASSEMBLER__ */
 
 
 #endif  /* OPENSSL_HEADER_THREAD_H */
