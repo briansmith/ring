@@ -154,7 +154,7 @@ int PEM_write_bio_PrivateKey(BIO *bp, EVP_PKEY *x, const EVP_CIPHER *enc,
 				pem_str,bp,x,enc,kstr,klen,cb,u);
 	}
 
-static const int public_key_type_from_str(const char *name, size_t len) {
+static int public_key_type_from_str(const char *name, size_t len) {
   if (len == 3 && memcmp(name, "RSA", 3) == 0) {
     return EVP_PKEY_RSA;
   } else if (len == 2 && memcmp(name, "DH", 2) == 0) {
