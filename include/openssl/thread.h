@@ -247,21 +247,23 @@ uint32_t CRYPTO_THREADID_hash(const CRYPTO_THREADID *id);
  *
  * TODO(fork): cleanup callers and remove. */
 
-void CRYPTO_set_id_callback(unsigned long (*func)(void));
+OPENSSL_EXPORT void CRYPTO_set_id_callback(unsigned long (*func)(void));
 
 typedef struct {
   int references;
   struct CRYPTO_dynlock_value *data;
 } CRYPTO_dynlock;
 
-void CRYPTO_set_dynlock_create_callback(struct CRYPTO_dynlock_value *(
-    *dyn_create_function)(const char *file, int line));
+OPENSSL_EXPORT void CRYPTO_set_dynlock_create_callback(
+    struct CRYPTO_dynlock_value *(*dyn_create_function)(const char *file,
+                                                        int line));
 
-void CRYPTO_set_dynlock_lock_callback(void (*dyn_lock_function)(
+OPENSSL_EXPORT void CRYPTO_set_dynlock_lock_callback(void (*dyn_lock_function)(
     int mode, struct CRYPTO_dynlock_value *l, const char *file, int line));
 
-void CRYPTO_set_dynlock_destroy_callback(void (*dyn_destroy_function)(
-    struct CRYPTO_dynlock_value *l, const char *file, int line));
+OPENSSL_EXPORT void CRYPTO_set_dynlock_destroy_callback(
+    void (*dyn_destroy_function)(struct CRYPTO_dynlock_value *l,
+                                 const char *file, int line));
 
 
 #if defined(__cplusplus)
