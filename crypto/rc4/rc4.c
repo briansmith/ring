@@ -359,7 +359,7 @@ void RC4(RC4_KEY *key, size_t len, const uint8_t *in, uint8_t *out) {
 
 void asm_RC4_set_key(RC4_KEY *rc4key, unsigned len, const uint8_t *key);
 void RC4_set_key(RC4_KEY *rc4key, unsigned len, const uint8_t *key) {
-  RC4_set_key(rc4key, len, key);
+  asm_RC4_set_key(rc4key, len, key);
 }
 
 #endif  /* OPENSSL_NO_ASM || (!OPENSSL_X86_64 && !OPENSSL_X86) */
