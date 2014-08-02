@@ -9,6 +9,7 @@ import (
 	"net"
 	"os"
 	"os/exec"
+	"path"
 	"runtime"
 	"strings"
 	"sync"
@@ -480,11 +481,11 @@ func openSocketPair() (shimEnd *os.File, conn net.Conn) {
 	return shimEnd, conn
 }
 
-func runTest(test *testCase) error {
+func runTest(test *testCase, buildDir string) error {
 	shimEnd, conn := openSocketPair()
 	shimEndResume, connResume := openSocketPair()
 
-	const shim_path = "../../../build/ssl/test/bssl_shim"
+	shim_path := path.Join(buildDir, "ssl/test/bssl_shim")
 	flags := []string{}
 	if test.testType == clientTest {
 		flags = append(flags, "client")
@@ -816,12 +817,12 @@ func addClientAuthTests() {
 	}
 }
 
-func worker(statusChan chan statusMsg, c chan *testCase, wg *sync.WaitGroup) {
+func worker(statusChan chan statusMsg, c chan *testCase, buildDir string, wg *sync.WaitGroup) {
 	defer wg.Done()
 
 	for test := range c {
 		statusChan <- statusMsg{test: test, started: true}
-		err := runTest(test)
+		err := runTest(test, buildDir)
 		statusChan <- statusMsg{test: test, err: err}
 	}
 }
@@ -858,6 +859,7 @@ func statusPrinter(doneChan chan struct{}, statusChan chan statusMsg, total int)
 func main() {
 	var flagTest *string = flag.String("test", "", "The name of a test to run, or empty to run all tests")
 	var flagNumWorkers *int = flag.Int("num-workers", runtime.NumCPU(), "The number of workers to run in parallel.")
+	var flagBuildDir *string = flag.String("build-dir", "../../../build", "The build directory to run the shim from.")
 
 	flag.Parse()
 
@@ -878,7 +880,7 @@ func main() {
 
 	for i := 0; i < numWorkers; i++ {
 		wg.Add(1)
-		go worker(statusChan, testChan, &wg)
+		go worker(statusChan, testChan, *flagBuildDir, &wg)
 	}
 
 	for i := range testCases {
