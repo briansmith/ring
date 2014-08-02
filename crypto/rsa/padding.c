@@ -271,7 +271,7 @@ int RSA_padding_check_PKCS1_type_2(uint8_t *to, unsigned tlen,
 
   /* NOTE: Although |RSA_message_index_PKCS1_type_2| itself is constant time,
    * the API contracts of this function and |RSA_decrypt| with
-   * |RSA_PKCS1_PADDING| make it impossible to completely avoid Bleichenbacker's
+   * |RSA_PKCS1_PADDING| make it impossible to completely avoid Bleichenbacher's
    * attack. */
   if (!RSA_message_index_PKCS1_type_2(from, flen, &msg_index)) {
     OPENSSL_PUT_ERROR(RSA, RSA_padding_check_PKCS1_type_2,
