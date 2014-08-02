@@ -9,6 +9,7 @@ import (
 	"net"
 	"os"
 	"os/exec"
+	"runtime"
 	"strings"
 	"sync"
 	"syscall"
@@ -856,6 +857,7 @@ func statusPrinter(doneChan chan struct{}, statusChan chan statusMsg, total int)
 
 func main() {
 	var flagTest *string = flag.String("test", "", "The name of a test to run, or empty to run all tests")
+	var flagNumWorkers *int = flag.Int("num-workers", runtime.NumCPU(), "The number of workers to run in parallel.")
 
 	flag.Parse()
 
@@ -866,7 +868,7 @@ func main() {
 
 	var wg sync.WaitGroup
 
-	const numWorkers = 64
+	numWorkers := *flagNumWorkers
 
 	statusChan := make(chan statusMsg, numWorkers)
 	testChan := make(chan *testCase, numWorkers)
