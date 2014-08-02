@@ -387,6 +387,10 @@ type ProtocolBugs struct {
 	// SendV2ClientHello causes the client to send a V2ClientHello
 	// instead of a normal ClientHello.
 	SendV2ClientHello bool
+
+	// SendFallbackSCSV causes the client to include
+	// TLS_FALLBACK_SCSV in the ClientHello.
+	SendFallbackSCSV bool
 }
 
 func (c *Config) serverInit() {

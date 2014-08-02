@@ -380,6 +380,27 @@ var testCases = []testCase{
 			},
 		},
 	},
+	{
+		testType: serverTest,
+		name:     "FallbackSCSV",
+		config: Config{
+			MaxVersion: VersionTLS11,
+			Bugs: ProtocolBugs{
+				SendFallbackSCSV: true,
+			},
+		},
+		shouldFail:    true,
+		expectedError: ":INAPPROPRIATE_FALLBACK:",
+	},
+	{
+		testType: serverTest,
+		name:     "FallbackSCSV-VersionMatch",
+		config: Config{
+			Bugs: ProtocolBugs{
+				SendFallbackSCSV: true,
+			},
+		},
+	},
 }
 
 func doExchange(testType testType, config *Config, conn net.Conn, messageLen int) error {

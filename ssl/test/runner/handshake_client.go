@@ -71,6 +71,10 @@ NextCipherSuite:
 		}
 	}
 
+	if c.config.Bugs.SendFallbackSCSV {
+		hello.cipherSuites = append(hello.cipherSuites, fallbackSCSV)
+	}
+
 	_, err := io.ReadFull(c.config.rand(), hello.random)
 	if err != nil {
 		c.sendAlert(alertInternalError)
