@@ -1314,6 +1314,60 @@ func (m *newSessionTicketMsg) unmarshal(data []byte) bool {
 	return true
 }
 
+type v2ClientHelloMsg struct {
+	raw          []byte
+	vers         uint16
+	cipherSuites []uint16
+	sessionId    []byte
+	challenge    []byte
+}
+
+func (m *v2ClientHelloMsg) equal(i interface{}) bool {
+	m1, ok := i.(*v2ClientHelloMsg)
+	if !ok {
+		return false
+	}
+
+	return bytes.Equal(m.raw, m1.raw) &&
+		m.vers == m1.vers &&
+		eqUint16s(m.cipherSuites, m1.cipherSuites) &&
+		bytes.Equal(m.sessionId, m1.sessionId) &&
+		bytes.Equal(m.challenge, m1.challenge)
+}
+
+func (m *v2ClientHelloMsg) marshal() []byte {
+	if m.raw != nil {
+		return m.raw
+	}
+
+	length := 1 + 2 + 2 + 2 + 2 + len(m.cipherSuites)*3 + len(m.sessionId) + len(m.challenge)
+
+	x := make([]byte, length)
+	x[0] = 1
+	x[1] = uint8(m.vers >> 8)
+	x[2] = uint8(m.vers)
+	x[3] = uint8((len(m.cipherSuites) * 3) >> 8)
+	x[4] = uint8(len(m.cipherSuites) * 3)
+	x[5] = uint8(len(m.sessionId) >> 8)
+	x[6] = uint8(len(m.sessionId))
+	x[7] = uint8(len(m.challenge) >> 8)
+	x[8] = uint8(len(m.challenge))
+	y := x[9:]
+	for i, spec := range m.cipherSuites {
+		y[i*3] = 0
+		y[i*3+1] = uint8(spec >> 8)
+		y[i*3+2] = uint8(spec)
+	}
+	y = y[len(m.cipherSuites)*3:]
+	copy(y, m.sessionId)
+	y = y[len(m.sessionId):]
+	copy(y, m.challenge)
+
+	m.raw = x
+
+	return x
+}
+
 func eqUint16s(x, y []uint16) bool {
 	if len(x) != len(y) {
 		return false

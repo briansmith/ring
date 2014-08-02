@@ -700,6 +700,15 @@ func (c *Conn) sendAlert(err alert) error {
 	return c.sendAlertLocked(err)
 }
 
+// writeV2Record writes a record for a V2ClientHello.
+func (c *Conn) writeV2Record(data []byte) (n int, err error) {
+	record := make([]byte, 2+len(data))
+	record[0] = uint8(len(data)>>8) | 0x80
+	record[1] = uint8(len(data))
+	copy(record[2:], data)
+	return c.conn.Write(record)
+}
+
 // writeRecord writes a TLS record with the given type and payload
 // to the connection and updates the record layer state.
 // c.out.Mutex <= L.

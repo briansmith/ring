@@ -383,6 +383,10 @@ type ProtocolBugs struct {
 	// SkipNewSessionTicket causes the server to skip sending the
 	// NewSessionTicket message despite promising to in ServerHello.
 	SkipNewSessionTicket bool
+
+	// SendV2ClientHello causes the client to send a V2ClientHello
+	// instead of a normal ClientHello.
+	SendV2ClientHello bool
 }
 
 func (c *Config) serverInit() {

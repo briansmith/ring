@@ -347,7 +347,7 @@ var testCases = []testCase{
 		name: "FalseStart",
 		config: Config{
 			CipherSuites: []uint16{TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256},
-			NextProtos: []string{"foo"},
+			NextProtos:   []string{"foo"},
 		},
 		flags: []string{
 			"-false-start",
@@ -358,13 +358,26 @@ var testCases = []testCase{
 	{
 		name: "FalseStart-SessionTicketsDisabled",
 		config: Config{
-			CipherSuites: []uint16{TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256},
-			NextProtos: []string{"foo"},
+			CipherSuites:           []uint16{TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256},
+			NextProtos:             []string{"foo"},
 			SessionTicketsDisabled: true,
 		},
 		flags: []string{
 			"-false-start",
 			"-select-next-proto", "foo",
+		},
+	},
+	{
+		testType: serverTest,
+		name:     "SendV2ClientHello",
+		config: Config{
+			// Choose a cipher suite that does not involve
+			// elliptic curves, so no extensions are
+			// involved.
+			CipherSuites: []uint16{TLS_RSA_WITH_RC4_128_SHA},
+			Bugs: ProtocolBugs{
+				SendV2ClientHello: true,
+			},
 		},
 	},
 }
