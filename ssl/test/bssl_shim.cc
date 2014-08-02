@@ -112,6 +112,7 @@ static SSL_CTX *setup_ctx(int is_server) {
   }
 
   SSL_CTX *ssl_ctx = NULL;
+  DH *dh = NULL;
 
   ssl_ctx = SSL_CTX_new(
       is_server ? SSLv23_server_method() : SSLv23_client_method());
@@ -127,6 +128,11 @@ static SSL_CTX *setup_ctx(int is_server) {
     goto err;
   }
 
+  dh = DH_get_2048_256(NULL);
+  if (!SSL_CTX_set_tmp_dh(ssl_ctx, dh)) {
+    goto err;
+  }
+
   SSL_CTX_set_session_cache_mode(ssl_ctx, SSL_SESS_CACHE_BOTH);
 
   ssl_ctx->select_certificate_cb = select_certificate_callback;
@@ -136,9 +142,13 @@ static SSL_CTX *setup_ctx(int is_server) {
   SSL_CTX_set_next_proto_select_cb(
       ssl_ctx, next_proto_select_callback, NULL);
 
+  DH_free(dh);
   return ssl_ctx;
 
  err:
+  if (dh != NULL) {
+    DH_free(dh);
+  }
   if (ssl_ctx != NULL) {
     SSL_CTX_free(ssl_ctx);
   }
