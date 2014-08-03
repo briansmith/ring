@@ -591,9 +591,6 @@ int ssl_verify_alarm_type(long type)
 	return(al);
 	}
 
-#define freelist_extract(c,fr,sz) OPENSSL_malloc(sz)
-#define freelist_insert(c,fr,sz,m) OPENSSL_free(m)
-
 int ssl3_setup_read_buffer(SSL *s)
 	{
 	unsigned char *p;
@@ -618,7 +615,7 @@ int ssl3_setup_read_buffer(SSL *s)
 			s->s3->init_extra = 1;
 			len += SSL3_RT_MAX_EXTRA;
 			}
-		if ((p=freelist_extract(s->ctx, 1, len)) == NULL)
+		if ((p=OPENSSL_malloc(len)) == NULL)
 			goto err;
 		s->s3->rbuf.buf = p;
 		s->s3->rbuf.len = len;
@@ -655,7 +652,7 @@ int ssl3_setup_write_buffer(SSL *s)
 			len += headerlen + align
 				+ SSL3_RT_SEND_MAX_ENCRYPTED_OVERHEAD;
 
-		if ((p=freelist_extract(s->ctx, 0, len)) == NULL)
+		if ((p=OPENSSL_malloc(len)) == NULL)
 			goto err;
 		s->s3->wbuf.buf = p;
 		s->s3->wbuf.len = len;
@@ -682,7 +679,7 @@ int ssl3_release_write_buffer(SSL *s)
 	{
 	if (s->s3->wbuf.buf != NULL)
 		{
-		freelist_insert(s->ctx, 0, s->s3->wbuf.len, s->s3->wbuf.buf);
+		OPENSSL_free(s->s3->wbuf.buf);
 		s->s3->wbuf.buf = NULL;
 		}
 	return 1;
@@ -692,7 +689,7 @@ int ssl3_release_read_buffer(SSL *s)
 	{
 	if (s->s3->rbuf.buf != NULL)
 		{
-		freelist_insert(s->ctx, 1, s->s3->rbuf.len, s->s3->rbuf.buf);
+		OPENSSL_free(s->s3->rbuf.buf);
 		s->s3->rbuf.buf = NULL;
 		}
 	return 1;
