@@ -169,8 +169,8 @@ extern "C" {
 				: "cc");		\
 			   ret;				\
 			})
-# endif
-#endif /* PEDANTIC */
+#  endif /* OPENSSL_X86 || OPENSSL_X86_64 */
+# endif /* COMPILER */
 
 #ifndef ROTATE
 #define ROTATE(a,n)     (((a)<<(n))|(((a)&0xffffffff)>>(32-(n))))
