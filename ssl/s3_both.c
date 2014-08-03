@@ -628,7 +628,7 @@ int ssl3_setup_write_buffer(SSL *s)
 	unsigned char *p;
 	size_t len,align=0,headerlen;
 
-	if (SSL_version(s) == DTLS1_VERSION || SSL_version(s) == DTLS1_BAD_VER)
+	if (SSL_IS_DTLS(s))
 		headerlen = DTLS1_RT_HEADER_LENGTH + 1;
 	else
 		headerlen = SSL3_RT_HEADER_LENGTH;

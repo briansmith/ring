@@ -1993,12 +1993,7 @@ int ssl3_get_client_key_exchange(SSL *s)
 			}
 		rsa=pkey->pkey.rsa;
 
-		/* TLS and [incidentally] DTLS{0xFEFF}
-		 *
-		 * TODO(davidben): Should this (and
-		 * ssl3_send_client_key_exchange) include DTLS1_BAD_VER?
-		 * Alternatively, get rid of DTLS1_BAD_VER?
-		 */
+		/* TLS and [incidentally] DTLS{0xFEFF} */
 		if (s->version > SSL3_VERSION)
 			{
 			CBS copy = client_key_exchange;

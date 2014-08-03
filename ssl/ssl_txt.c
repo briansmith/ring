@@ -126,8 +126,6 @@ int SSL_SESSION_print(BIO *bp, const SSL_SESSION *x)
 		s="DTLSv1";
 	else if (x->ssl_version == DTLS1_2_VERSION)
 		s="DTLSv1.2";
-	else if (x->ssl_version == DTLS1_BAD_VER)
-		s="DTLSv1-bad";
 	else
 		s="unknown";
 	if (BIO_printf(bp,"    Protocol  : %s\n",s) <= 0) goto err;

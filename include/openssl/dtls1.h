@@ -68,7 +68,6 @@ extern "C" {
 
 
 #define DTLS1_VERSION			0xFEFF
-#define DTLS1_BAD_VER			0x0100
 #define DTLS1_2_VERSION			0xFEFD
 /* Special value for method supporting multiple versions */
 #define DTLS_ANY_VERSION		0x1FFFF
