@@ -1015,12 +1015,12 @@ struct ssl_ctx_st
 	unsigned int freelist_max_len;
 	struct ssl3_buf_freelist_st *wbuf_freelist;
 	struct ssl3_buf_freelist_st *rbuf_freelist;
+#endif
+
 	/* retain_only_sha256_of_client_certs is true if we should compute the
 	 * SHA256 hash of the peer's certifiate and then discard it to save
 	 * memory and session space. Only effective on the server side. */
 	char retain_only_sha256_of_client_certs;
-#endif
-
 
 # ifndef OPENSSL_NO_NEXTPROTONEG
 	/* Next protocol negotiation information */
