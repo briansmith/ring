@@ -890,10 +890,8 @@ static int tls1_check_cert_param(SSL *s, X509 *x, int set_ee_md)
 		tlsext_sigalg_ecdsa(md)
 
 static unsigned char tls12_sigalgs[] = {
-#ifndef OPENSSL_NO_SHA512
 	tlsext_sigalg(TLSEXT_hash_sha512)
 	tlsext_sigalg(TLSEXT_hash_sha384)
-#endif
 	tlsext_sigalg(TLSEXT_hash_sha256)
 	tlsext_sigalg(TLSEXT_hash_sha224)
 #ifndef OPENSSL_NO_SHA
@@ -3025,13 +3023,11 @@ const EVP_MD *tls12_get_hash(unsigned char hash_alg)
 
 		case TLSEXT_hash_sha256:
 		return EVP_sha256();
-#ifndef OPENSSL_NO_SHA512
 		case TLSEXT_hash_sha384:
 		return EVP_sha384();
 
 		case TLSEXT_hash_sha512:
 		return EVP_sha512();
-#endif
 		default:
 		return NULL;
 

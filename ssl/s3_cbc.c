@@ -367,7 +367,6 @@ static void tls1_sha256_final_raw(void* ctx, unsigned char *md_out)
 #undef  LARGEST_DIGEST_CTX
 #define LARGEST_DIGEST_CTX SHA256_CTX
 
-#ifndef OPENSSL_NO_SHA512
 static void tls1_sha512_final_raw(void* ctx, unsigned char *md_out)
 	{
 	SHA512_CTX *sha512 = ctx;
@@ -380,7 +379,6 @@ static void tls1_sha512_final_raw(void* ctx, unsigned char *md_out)
 	}
 #undef  LARGEST_DIGEST_CTX
 #define LARGEST_DIGEST_CTX SHA512_CTX
-#endif
 
 /* ssl3_cbc_record_digest_supported returns 1 iff |ctx| uses a hash function
  * which ssl3_cbc_digest_record supports. */
@@ -392,10 +390,8 @@ char ssl3_cbc_record_digest_supported(const EVP_MD_CTX *ctx)
 		case NID_sha1:
 		case NID_sha224:
 		case NID_sha256:
-#ifndef OPENSSL_NO_SHA512
 		case NID_sha384:
 		case NID_sha512:
-#endif
 			return 1;
 		default:
 			return 0;
@@ -486,7 +482,6 @@ void ssl3_cbc_digest_record(
 			md_transform = (void(*)(void *ctx, const unsigned char *block)) SHA256_Transform;
 			md_size = 32;
 			break;
-#ifndef OPENSSL_NO_SHA512
 		case NID_sha384:
 			SHA384_Init((SHA512_CTX*)md_state.c);
 			md_final_raw = tls1_sha512_final_raw;
@@ -503,7 +498,6 @@ void ssl3_cbc_digest_record(
 			md_block_size = 128;
 			md_length_size = 16;
 			break;
-#endif
 		default:
 			/* ssl3_cbc_record_digest_supported should have been
 			 * called first to check that the hash function is
