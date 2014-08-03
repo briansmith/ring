@@ -2011,24 +2011,6 @@ SSL_CTX *SSL_CTX_new(const SSL_METHOD *meth)
 	ret->psk_identity_hint=NULL;
 	ret->psk_client_callback=NULL;
 	ret->psk_server_callback=NULL;
-#ifndef OPENSSL_NO_BUF_FREELISTS
-	ret->freelist_max_len = SSL_MAX_BUF_FREELIST_LEN_DEFAULT;
-	ret->rbuf_freelist = OPENSSL_malloc(sizeof(SSL3_BUF_FREELIST));
-	if (!ret->rbuf_freelist)
-		goto err;
-	ret->rbuf_freelist->chunklen = 0;
-	ret->rbuf_freelist->len = 0;
-	ret->rbuf_freelist->head = NULL;
-	ret->wbuf_freelist = OPENSSL_malloc(sizeof(SSL3_BUF_FREELIST));
-	if (!ret->wbuf_freelist)
-		{
-		OPENSSL_free(ret->rbuf_freelist);
-		goto err;
-		}
-	ret->wbuf_freelist->chunklen = 0;
-	ret->wbuf_freelist->len = 0;
-	ret->wbuf_freelist->head = NULL;
-#endif
 #ifndef OPENSSL_NO_ENGINE
 	ret->client_cert_engine = NULL;
 #ifdef OPENSSL_SSL_CLIENT_ENGINE_AUTO
@@ -2062,19 +2044,6 @@ err2:
 	return(NULL);
 	}
 
-#ifndef OPENSSL_NO_BUF_FREELISTS
-static void
-ssl_buf_freelist_free(SSL3_BUF_FREELIST *list)
-	{
-	SSL3_BUF_FREELIST_ENTRY *ent, *next;
-	for (ent = list->head; ent; ent = next)
-		{
-		next = ent->next;
-		OPENSSL_free(ent);
-		}
-	OPENSSL_free(list);
-	}
-#endif
 
 void SSL_CTX_free(SSL_CTX *a)
 	{
@@ -2144,12 +2113,6 @@ void SSL_CTX_free(SSL_CTX *a)
 #endif
 #endif
 
-#ifndef OPENSSL_NO_BUF_FREELISTS
-	if (a->wbuf_freelist)
-		ssl_buf_freelist_free(a->wbuf_freelist);
-	if (a->rbuf_freelist)
-		ssl_buf_freelist_free(a->rbuf_freelist);
-#endif
 # ifndef OPENSSL_NO_EC
 	if (a->tlsext_ecpointformatlist)
 		OPENSSL_free(a->tlsext_ecpointformatlist);

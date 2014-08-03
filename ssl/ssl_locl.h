@@ -690,19 +690,6 @@ struct ssl_aead_ctx_st
 	char variable_nonce_included_in_record;
 	};
 
-#ifndef OPENSSL_NO_BUF_FREELISTS
-typedef struct ssl3_buf_freelist_st
-	{
-	size_t chunklen;
-	unsigned int len;
-	struct ssl3_buf_freelist_entry_st *head;
-	} SSL3_BUF_FREELIST;
-
-typedef struct ssl3_buf_freelist_entry_st
-	{
-	struct ssl3_buf_freelist_entry_st *next;
-	} SSL3_BUF_FREELIST_ENTRY;
-#endif
 
 extern SSL3_ENC_METHOD ssl3_undef_enc_method;
 extern SSL_CIPHER ssl3_ciphers[];

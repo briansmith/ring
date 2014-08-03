@@ -1010,12 +1010,6 @@ struct ssl_ctx_st
 	unsigned int (*psk_server_callback)(SSL *ssl, const char *identity,
 		unsigned char *psk, unsigned int max_psk_len);
 
-#ifndef OPENSSL_NO_BUF_FREELISTS
-#define SSL_MAX_BUF_FREELIST_LEN_DEFAULT 32
-	unsigned int freelist_max_len;
-	struct ssl3_buf_freelist_st *wbuf_freelist;
-	struct ssl3_buf_freelist_st *rbuf_freelist;
-#endif
 
 	/* retain_only_sha256_of_client_certs is true if we should compute the
 	 * SHA256 hash of the peer's certifiate and then discard it to save
