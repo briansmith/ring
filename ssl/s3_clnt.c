@@ -2113,10 +2113,6 @@ int ssl3_send_client_key_exchange(SSL *s)
 				p+=2;
 			n=RSA_public_encrypt(sizeof tmp_buf,
 				tmp_buf,p,rsa,RSA_PKCS1_PADDING);
-#ifdef PKCS1_CHECK
-			if (s->options & SSL_OP_PKCS1_CHECK_1) p[1]++;
-			if (s->options & SSL_OP_PKCS1_CHECK_2) tmp_buf[0]=0x70;
-#endif
 			if (n <= 0)
 				{
 				OPENSSL_PUT_ERROR(SSL, ssl3_send_client_key_exchange, SSL_R_BAD_RSA_ENCRYPT);

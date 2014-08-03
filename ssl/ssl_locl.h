@@ -158,8 +158,6 @@
 #include <openssl/ssl.h>
 #include <openssl/stack.h>
 
-#undef PKCS1_CHECK
-
 #define c2l(c,l)	(l = ((unsigned long)(*((c)++)))     , \
 			 l|=(((unsigned long)(*((c)++)))<< 8), \
 			 l|=(((unsigned long)(*((c)++)))<<16), \
