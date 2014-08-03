@@ -1151,11 +1151,7 @@ int ssl_parse_serverhello_tlsext(SSL *s, CBS *cbs);
 int ssl_prepare_clienthello_tlsext(SSL *s);
 int ssl_prepare_serverhello_tlsext(SSL *s);
 
-#ifdef OPENSSL_NO_SHA256
-#define tlsext_tick_md	EVP_sha1
-#else
 #define tlsext_tick_md	EVP_sha256
-#endif
 int tls1_process_ticket(SSL *s, const struct ssl_early_callback_ctx *ctx,
 			SSL_SESSION **ret);
 
