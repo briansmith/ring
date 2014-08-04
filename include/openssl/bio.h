@@ -305,9 +305,6 @@ OPENSSL_EXPORT void BIO_copy_next_retry(BIO *bio);
 #endif
 OPENSSL_EXPORT int BIO_printf(BIO *bio, const char *format, ...)
     __bio_h__attr__((__format__(__printf__, 2, 3)));
-
-OPENSSL_EXPORT int BIO_vprintf(BIO *bio, const char *format, va_list args)
-    __bio_h__attr__((__format__(__printf__, 2, 0)));
 #undef __bio_h__attr__
 
 

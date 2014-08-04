@@ -17,6 +17,7 @@
 #include <arpa/inet.h>
 #include <fcntl.h>
 #include <netinet/in.h>
+#include <string.h>
 #include <sys/socket.h>
 #include <unistd.h>
 
@@ -93,10 +94,64 @@ static int test_socket_connect() {
   return 1;
 }
 
+static int test_printf() {
+  /* Test a short output, a very long one, and various sizes around
+   * 256 (the size of the buffer) to ensure edge cases are correct. */
+  static const size_t kLengths[] = { 5, 250, 251, 252, 253, 254, 1023 };
+  BIO *bio;
+  char string[1024];
+  int ret;
+  const uint8_t *contents;
+  size_t len;
+
+  bio = BIO_new(BIO_s_mem());
+  if (!bio) {
+    fprintf(stderr, "BIO_new failed\n");
+    return 0;
+  }
+
+  for (size_t i = 0; i < sizeof(kLengths) / sizeof(kLengths[0]); i++) {
+    if (kLengths[i] >= sizeof(string)) {
+      fprintf(stderr, "Bad test string length\n");
+      return 0;
+    }
+    memset(string, 'a', sizeof(string));
+    string[kLengths[i]] = '\0';
+
+    ret = BIO_printf(bio, "test %s", string);
+    if (ret != 5 + kLengths[i]) {
+      fprintf(stderr, "BIO_printf failed\n");
+      return 0;
+    }
+    if (!BIO_mem_contents(bio, &contents, &len)) {
+      fprintf(stderr, "BIO_mem_contents failed\n");
+      return 0;
+    }
+    if (len != 5 + kLengths[i] ||
+        strncmp((const char *)contents, "test ", 5) != 0 ||
+        strncmp((const char *)contents + 5, string, kLengths[i]) != 0) {
+      fprintf(stderr, "Contents did not match: %.*s\n", (int)len, contents);
+      return 0;
+    }
+
+    if (!BIO_reset(bio)) {
+      fprintf(stderr, "BIO_reset failed\n");
+      return 0;
+    }
+  }
+
+  BIO_free(bio);
+  return 1;
+}
+
 int main() {
   ERR_load_crypto_strings();
 
   if (!test_socket_connect()) {
+    return 1;
+  }
+
+  if (!test_printf()) {
     return 1;
   }
 

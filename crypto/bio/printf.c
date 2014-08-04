@@ -66,38 +66,30 @@
 
 #include <openssl/mem.h>
 
-
 int BIO_printf(BIO *bio, const char *format, ...) {
   va_list args;
-  int ret;
-
-  va_start(args, format);
-
-  ret = BIO_vprintf(bio, format, args);
-
-  va_end(args);
-  return ret;
-}
-
-int BIO_vprintf(BIO *bio, const char *format, va_list args) {
   char buf[256], *out, out_malloced = 0;
   int out_len, ret;
 
-  /* Note: this is assuming that va_list is ok to copy as POD. If the system
-   * defines it with a pointer to mutable state then passing it twice to
-   * vsnprintf will not work. */
+  va_start(args, format);
   out_len = vsnprintf(buf, sizeof(buf), format, args);
+  va_end(args);
+
   if (out_len >= sizeof(buf)) {
     const int requested_len = out_len;
-    /* The output was truncated. */
-    out = OPENSSL_malloc(requested_len);
+    /* The output was truncated. Note that vsnprintf's return value
+     * does not include a trailing NUL, but the buffer must be sized
+     * for it. */
+    out = OPENSSL_malloc(requested_len + 1);
     out_malloced = 1;
     if (out == NULL) {
       /* Unclear what can be done in this situation. OpenSSL has historically
        * crashed and that seems better than producing the wrong output. */
       abort();
     }
-    out_len = vsnprintf(out, requested_len, format, args);
+    va_start(args, format);
+    out_len = vsnprintf(out, requested_len + 1, format, args);
+    va_end(args);
     assert(out_len == requested_len);
   } else {
     out = buf;
