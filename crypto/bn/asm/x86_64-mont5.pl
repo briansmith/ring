@@ -3221,20 +3221,6 @@ my $STRIDE=2**5*8;
 my $N=$STRIDE/4;
 
 $code.=<<___;
-.globl	bn_get_bits5
-.type	bn_get_bits5,\@abi-omnipotent
-.align	16
-bn_get_bits5:
-	mov	$inp,%r10
-	mov	$num,%ecx
-	shr	\$3,$num
-	movzw	(%r10,$num),%eax
-	and	\$7,%ecx
-	shrl	%cl,%eax
-	and	\$31,%eax
-	ret
-.size	bn_get_bits5,.-bn_get_bits5
-
 .globl	bn_scatter5
 .type	bn_scatter5,\@abi-omnipotent
 .align	16
