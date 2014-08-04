@@ -102,7 +102,7 @@ static int test_printf() {
   char string[1024];
   int ret;
   const uint8_t *contents;
-  size_t len;
+  size_t i, len;
 
   bio = BIO_new(BIO_s_mem());
   if (!bio) {
@@ -110,7 +110,7 @@ static int test_printf() {
     return 0;
   }
 
-  for (size_t i = 0; i < sizeof(kLengths) / sizeof(kLengths[0]); i++) {
+  for (i = 0; i < sizeof(kLengths) / sizeof(kLengths[0]); i++) {
     if (kLengths[i] >= sizeof(string)) {
       fprintf(stderr, "Bad test string length\n");
       return 0;
