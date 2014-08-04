@@ -39,7 +39,11 @@ func (c *Conn) clientHandshake() error {
 		return errors.New("tls: either ServerName or InsecureSkipVerify must be specified in the tls.Config")
 	}
 
+	c.sendHandshakeSeq = 0
+	c.recvHandshakeSeq = 0
+
 	hello := &clientHelloMsg{
+		isDTLS:              c.isDTLS,
 		vers:                c.config.maxVersion(),
 		compressionMethods:  []uint8{compressionNone},
 		random:              make([]byte, 32),
@@ -68,6 +72,10 @@ NextCipherSuite:
 			// Don't advertise TLS 1.2-only cipher suites unless
 			// we're attempting TLS 1.2.
 			if hello.vers < VersionTLS12 && suite.flags&suiteTLS12 != 0 {
+				continue
+			}
+			// Don't advertise non-DTLS cipher suites on DTLS.
+			if c.isDTLS && suite.flags&suiteNoDTLS != 0 {
 				continue
 			}
 			hello.cipherSuites = append(hello.cipherSuites, suiteId)
@@ -154,6 +162,22 @@ NextCipherSuite:
 	if err != nil {
 		return err
 	}
+
+	if c.isDTLS {
+		helloVerifyRequest, ok := msg.(*helloVerifyRequestMsg)
+		if ok {
+			hello.raw = nil
+			hello.cookie = helloVerifyRequest.cookie
+			helloBytes = hello.marshal()
+			c.writeRecord(recordTypeHandshake, helloBytes)
+
+			msg, err = c.readHandshake()
+			if err != nil {
+				return err
+			}
+		}
+	}
+
 	serverHello, ok := msg.(*serverHelloMsg)
 	if !ok {
 		c.sendAlert(alertUnexpectedMessage)
@@ -184,8 +208,8 @@ NextCipherSuite:
 		session:      session,
 	}
 
-	hs.finishedHash.Write(helloBytes)
-	hs.finishedHash.Write(hs.serverHello.marshal())
+	hs.writeHash(helloBytes, hs.c.sendHandshakeSeq-1)
+	hs.writeServerHash(hs.serverHello.marshal())
 
 	if c.config.Bugs.EarlyChangeCipherSpec > 0 {
 		hs.establishKeys()
@@ -252,7 +276,7 @@ func (hs *clientHandshakeState) doFullHandshake() error {
 		c.sendAlert(alertUnexpectedMessage)
 		return unexpectedMessageError(certMsg, msg)
 	}
-	hs.finishedHash.Write(certMsg.marshal())
+	hs.writeServerHash(certMsg.marshal())
 
 	certs := make([]*x509.Certificate, len(certMsg.certificates))
 	for i, asn1Data := range certMsg.certificates {
@@ -305,7 +329,7 @@ func (hs *clientHandshakeState) doFullHandshake() error {
 			c.sendAlert(alertUnexpectedMessage)
 			return unexpectedMessageError(cs, msg)
 		}
-		hs.finishedHash.Write(cs.marshal())
+		hs.writeServerHash(cs.marshal())
 
 		if cs.statusType == statusTypeOCSP {
 			c.ocspResponse = cs.response
@@ -321,7 +345,7 @@ func (hs *clientHandshakeState) doFullHandshake() error {
 
 	skx, ok := msg.(*serverKeyExchangeMsg)
 	if ok {
-		hs.finishedHash.Write(skx.marshal())
+		hs.writeServerHash(skx.marshal())
 		err = keyAgreement.processServerKeyExchange(c.config, hs.hello, hs.serverHello, certs[0], skx)
 		if err != nil {
 			c.sendAlert(alertUnexpectedMessage)
@@ -351,7 +375,7 @@ func (hs *clientHandshakeState) doFullHandshake() error {
 		// ClientCertificateType, unless there is some external
 		// arrangement to the contrary.
 
-		hs.finishedHash.Write(certReq.marshal())
+		hs.writeServerHash(certReq.marshal())
 
 		var rsaAvail, ecdsaAvail bool
 		for _, certType := range certReq.certificateTypes {
@@ -417,7 +441,7 @@ func (hs *clientHandshakeState) doFullHandshake() error {
 		c.sendAlert(alertUnexpectedMessage)
 		return unexpectedMessageError(shd, msg)
 	}
-	hs.finishedHash.Write(shd.marshal())
+	hs.writeServerHash(shd.marshal())
 
 	// If the server requested a certificate then we have to send a
 	// Certificate message, even if it's empty because we don't have a
@@ -427,7 +451,7 @@ func (hs *clientHandshakeState) doFullHandshake() error {
 		if chainToSend != nil {
 			certMsg.certificates = chainToSend.Certificate
 		}
-		hs.finishedHash.Write(certMsg.marshal())
+		hs.writeClientHash(certMsg.marshal())
 		c.writeRecord(recordTypeHandshake, certMsg.marshal())
 	}
 
@@ -438,7 +462,7 @@ func (hs *clientHandshakeState) doFullHandshake() error {
 	}
 	if ckx != nil {
 		if c.config.Bugs.EarlyChangeCipherSpec < 2 {
-			hs.finishedHash.Write(ckx.marshal())
+			hs.writeClientHash(ckx.marshal())
 		}
 		c.writeRecord(recordTypeHandshake, ckx.marshal())
 	}
@@ -486,7 +510,7 @@ func (hs *clientHandshakeState) doFullHandshake() error {
 		}
 		certVerify.signature = signed
 
-		hs.finishedHash.Write(certVerify.marshal())
+		hs.writeClientHash(certVerify.marshal())
 		c.writeRecord(recordTypeHandshake, certVerify.marshal())
 	}
 
@@ -571,7 +595,7 @@ func (hs *clientHandshakeState) readFinished() error {
 			return errors.New("tls: server's Finished message was incorrect")
 		}
 	}
-	hs.finishedHash.Write(serverFinished.marshal())
+	hs.writeServerHash(serverFinished.marshal())
 	return nil
 }
 
@@ -590,7 +614,7 @@ func (hs *clientHandshakeState) readSessionTicket() error {
 		c.sendAlert(alertUnexpectedMessage)
 		return unexpectedMessageError(sessionTicketMsg, msg)
 	}
-	hs.finishedHash.Write(sessionTicketMsg.marshal())
+	hs.writeServerHash(sessionTicketMsg.marshal())
 
 	hs.session = &ClientSessionState{
 		sessionTicket:      sessionTicketMsg.ticket,
@@ -607,6 +631,7 @@ func (hs *clientHandshakeState) sendFinished() error {
 	c := hs.c
 
 	var postCCSBytes []byte
+	seqno := hs.c.sendHandshakeSeq
 	if hs.serverHello.nextProtoNeg {
 		nextProto := new(nextProtoMsg)
 		proto, fallback := mutualProtocol(c.config.NextProtos, hs.serverHello.nextProtos)
@@ -615,7 +640,8 @@ func (hs *clientHandshakeState) sendFinished() error {
 		c.clientProtocolFallback = fallback
 
 		nextProtoBytes := nextProto.marshal()
-		hs.finishedHash.Write(nextProtoBytes)
+		hs.writeHash(nextProtoBytes, seqno)
+		seqno++
 		postCCSBytes = append(postCCSBytes, nextProtoBytes...)
 	}
 
@@ -626,7 +652,7 @@ func (hs *clientHandshakeState) sendFinished() error {
 		finished.verifyData = hs.finishedHash.clientSum(hs.masterSecret)
 	}
 	finishedBytes := finished.marshal()
-	hs.finishedHash.Write(finishedBytes)
+	hs.writeHash(finishedBytes, seqno)
 	postCCSBytes = append(postCCSBytes, finishedBytes...)
 
 	if c.config.Bugs.FragmentAcrossChangeCipherSpec {
@@ -641,6 +667,32 @@ func (hs *clientHandshakeState) sendFinished() error {
 
 	c.writeRecord(recordTypeHandshake, postCCSBytes)
 	return nil
+}
+
+func (hs *clientHandshakeState) writeClientHash(msg []byte) {
+	// writeClientHash is called before writeRecord.
+	hs.writeHash(msg, hs.c.sendHandshakeSeq)
+}
+
+func (hs *clientHandshakeState) writeServerHash(msg []byte) {
+	// writeServerHash is called after readHandshake.
+	hs.writeHash(msg, hs.c.recvHandshakeSeq-1)
+}
+
+func (hs *clientHandshakeState) writeHash(msg []byte, seqno uint16) {
+	if hs.c.isDTLS {
+		// This is somewhat hacky. DTLS hashes a slightly different format.
+		// First, the TLS header.
+		hs.finishedHash.Write(msg[:4])
+		// Then the sequence number and reassembled fragment offset (always 0).
+		hs.finishedHash.Write([]byte{byte(seqno >> 8), byte(seqno), 0, 0, 0})
+		// Then the reassembled fragment (always equal to the message length).
+		hs.finishedHash.Write(msg[1:4])
+		// And then the message body.
+		hs.finishedHash.Write(msg[4:])
+	} else {
+		hs.finishedHash.Write(msg)
+	}
 }
 
 // clientSessionCacheKey returns a key used to cache sessionTickets that could

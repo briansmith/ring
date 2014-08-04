@@ -74,6 +74,7 @@ func (ka rsaKeyAgreement) generateClientKeyExchange(config *Config, clientHello 
 	if config.Bugs.RsaClientKeyExchangeVersion != 0 {
 		vers = config.Bugs.RsaClientKeyExchangeVersion
 	}
+	vers = versionToWire(vers, clientHello.isDTLS)
 	preMasterSecret[0] = byte(vers >> 8)
 	preMasterSecret[1] = byte(vers)
 	_, err := io.ReadFull(config.rand(), preMasterSecret[2:])

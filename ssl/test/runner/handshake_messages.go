@@ -8,9 +8,11 @@ import "bytes"
 
 type clientHelloMsg struct {
 	raw                 []byte
+	isDTLS              bool
 	vers                uint16
 	random              []byte
 	sessionId           []byte
+	cookie              []byte
 	cipherSuites        []uint16
 	compressionMethods  []uint8
 	nextProtoNeg        bool
@@ -32,9 +34,11 @@ func (m *clientHelloMsg) equal(i interface{}) bool {
 	}
 
 	return bytes.Equal(m.raw, m1.raw) &&
+		m.isDTLS == m1.isDTLS &&
 		m.vers == m1.vers &&
 		bytes.Equal(m.random, m1.random) &&
 		bytes.Equal(m.sessionId, m1.sessionId) &&
+		bytes.Equal(m.cookie, m1.cookie) &&
 		eqUint16s(m.cipherSuites, m1.cipherSuites) &&
 		bytes.Equal(m.compressionMethods, m1.compressionMethods) &&
 		m.nextProtoNeg == m1.nextProtoNeg &&
@@ -54,6 +58,9 @@ func (m *clientHelloMsg) marshal() []byte {
 	}
 
 	length := 2 + 32 + 1 + len(m.sessionId) + 2 + len(m.cipherSuites)*2 + 1 + len(m.compressionMethods)
+	if m.isDTLS {
+		length += 1 + len(m.cookie)
+	}
 	numExtensions := 0
 	extensionsLength := 0
 	if m.nextProtoNeg {
@@ -100,12 +107,18 @@ func (m *clientHelloMsg) marshal() []byte {
 	x[1] = uint8(length >> 16)
 	x[2] = uint8(length >> 8)
 	x[3] = uint8(length)
-	x[4] = uint8(m.vers >> 8)
-	x[5] = uint8(m.vers)
+	vers := versionToWire(m.vers, m.isDTLS)
+	x[4] = uint8(vers >> 8)
+	x[5] = uint8(vers)
 	copy(x[6:38], m.random)
 	x[38] = uint8(len(m.sessionId))
 	copy(x[39:39+len(m.sessionId)], m.sessionId)
 	y := x[39+len(m.sessionId):]
+	if m.isDTLS {
+		y[0] = uint8(len(m.cookie))
+		copy(y[1:], m.cookie)
+		y = y[1+len(m.cookie):]
+	}
 	y[0] = uint8(len(m.cipherSuites) >> 7)
 	y[1] = uint8(len(m.cipherSuites) << 1)
 	for i, suite := range m.cipherSuites {
@@ -264,7 +277,7 @@ func (m *clientHelloMsg) unmarshal(data []byte) bool {
 		return false
 	}
 	m.raw = data
-	m.vers = uint16(data[4])<<8 | uint16(data[5])
+	m.vers = wireToVersion(uint16(data[4])<<8|uint16(data[5]), m.isDTLS)
 	m.random = data[6:38]
 	sessionIdLen := int(data[38])
 	if sessionIdLen > 32 || len(data) < 39+sessionIdLen {
@@ -272,6 +285,17 @@ func (m *clientHelloMsg) unmarshal(data []byte) bool {
 	}
 	m.sessionId = data[39 : 39+sessionIdLen]
 	data = data[39+sessionIdLen:]
+	if m.isDTLS {
+		if len(data) < 1 {
+			return false
+		}
+		cookieLen := int(data[0])
+		if cookieLen > 32 || len(data) < 1+cookieLen {
+			return false
+		}
+		m.cookie = data[1 : 1+cookieLen]
+		data = data[1+cookieLen:]
+	}
 	if len(data) < 2 {
 		return false
 	}
@@ -425,6 +449,7 @@ func (m *clientHelloMsg) unmarshal(data []byte) bool {
 
 type serverHelloMsg struct {
 	raw                 []byte
+	isDTLS              bool
 	vers                uint16
 	random              []byte
 	sessionId           []byte
@@ -445,6 +470,7 @@ func (m *serverHelloMsg) equal(i interface{}) bool {
 	}
 
 	return bytes.Equal(m.raw, m1.raw) &&
+		m.isDTLS == m1.isDTLS &&
 		m.vers == m1.vers &&
 		bytes.Equal(m.random, m1.random) &&
 		bytes.Equal(m.sessionId, m1.sessionId) &&
@@ -498,8 +524,9 @@ func (m *serverHelloMsg) marshal() []byte {
 	x[1] = uint8(length >> 16)
 	x[2] = uint8(length >> 8)
 	x[3] = uint8(length)
-	x[4] = uint8(m.vers >> 8)
-	x[5] = uint8(m.vers)
+	vers := versionToWire(m.vers, m.isDTLS)
+	x[4] = uint8(vers >> 8)
+	x[5] = uint8(vers)
 	copy(x[6:38], m.random)
 	x[38] = uint8(len(m.sessionId))
 	copy(x[39:39+len(m.sessionId)], m.sessionId)
@@ -571,7 +598,7 @@ func (m *serverHelloMsg) unmarshal(data []byte) bool {
 		return false
 	}
 	m.raw = data
-	m.vers = uint16(data[4])<<8 | uint16(data[5])
+	m.vers = wireToVersion(uint16(data[4])<<8|uint16(data[5]), m.isDTLS)
 	m.random = data[6:38]
 	sessionIdLen := int(data[38])
 	if sessionIdLen > 32 || len(data) < 39+sessionIdLen {
@@ -1366,6 +1393,58 @@ func (m *v2ClientHelloMsg) marshal() []byte {
 	m.raw = x
 
 	return x
+}
+
+type helloVerifyRequestMsg struct {
+	raw    []byte
+	vers   uint16
+	cookie []byte
+}
+
+func (m *helloVerifyRequestMsg) equal(i interface{}) bool {
+	m1, ok := i.(*helloVerifyRequestMsg)
+	if !ok {
+		return false
+	}
+
+	return m.vers == m1.vers &&
+		bytes.Equal(m.cookie, m1.cookie)
+}
+
+func (m *helloVerifyRequestMsg) marshal() []byte {
+	if m.raw != nil {
+		return m.raw
+	}
+
+	length := 2 + 1 + len(m.cookie)
+
+	x := make([]byte, 4+length)
+	x[0] = typeHelloVerifyRequest
+	x[1] = uint8(length >> 16)
+	x[2] = uint8(length >> 8)
+	x[3] = uint8(length)
+	vers := versionToWire(m.vers, true)
+	x[4] = uint8(vers >> 8)
+	x[5] = uint8(vers)
+	x[6] = uint8(len(m.cookie))
+	copy(x[7:7+len(m.cookie)], m.cookie)
+
+	return x
+}
+
+func (m *helloVerifyRequestMsg) unmarshal(data []byte) bool {
+	if len(data) < 4+2+1 {
+		return false
+	}
+	m.raw = data
+	m.vers = wireToVersion(uint16(data[4])<<8|uint16(data[5]), true)
+	cookieLen := int(data[6])
+	if cookieLen > 32 || len(data) != 7+cookieLen {
+		return false
+	}
+	m.cookie = data[7 : 7+cookieLen]
+
+	return true
 }
 
 func eqUint16s(x, y []uint16) bool {
