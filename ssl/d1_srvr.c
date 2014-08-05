@@ -282,6 +282,7 @@ int dtls1_accept(SSL *s)
 		case SSL3_ST_SR_CLNT_HELLO_A:
 		case SSL3_ST_SR_CLNT_HELLO_B:
 		case SSL3_ST_SR_CLNT_HELLO_C:
+		case SSL3_ST_SR_CLNT_HELLO_D:
 
 			s->shutdown=0;
 			ret=ssl3_get_client_hello(s);

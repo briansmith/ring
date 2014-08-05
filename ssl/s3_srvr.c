@@ -836,13 +836,11 @@ int ssl3_get_client_hello(SSL *s)
 	 */
 	switch (s->state) {
 	case SSL3_ST_SR_CLNT_HELLO_A:
-		s->state=SSL3_ST_SR_CLNT_HELLO_B;
-		/* fallthrough */
 	case SSL3_ST_SR_CLNT_HELLO_B:
 		s->first_packet=1;
 		n=s->method->ssl_get_message(s,
+			SSL3_ST_SR_CLNT_HELLO_A,
 			SSL3_ST_SR_CLNT_HELLO_B,
-			SSL3_ST_SR_CLNT_HELLO_C,
 			SSL3_MT_CLIENT_HELLO,
 			SSL3_RT_MAX_PLAIN_LENGTH,
 			&ok);
