@@ -183,7 +183,7 @@ static int do_exchange(SSL_SESSION **out_session,
                        int is_resume,
                        int fd,
                        SSL_SESSION *session) {
-  int async = 0;
+  bool async = false, write_different_record_sizes = false;
   const char *expected_certificate_types = NULL;
   const char *expected_next_proto = NULL;
   expected_server_name = NULL;
@@ -264,7 +264,13 @@ static int do_exchange(SSL_SESSION **out_session,
       }
       select_next_proto = argv[i];
     } else if (strcmp(argv[i], "-async") == 0) {
-      async = 1;
+      async = true;
+    } else if (strcmp(argv[i], "-write-different-record-sizes") == 0) {
+      write_different_record_sizes = true;
+    } else if (strcmp(argv[i], "-cbc-record-splitting") == 0) {
+      SSL_set_mode(ssl, SSL_MODE_CBC_RECORD_SPLITTING);
+    } else if (strcmp(argv[i], "-partial-write") == 0) {
+      SSL_set_mode(ssl, SSL_MODE_ENABLE_PARTIAL_WRITE);
     } else {
       fprintf(stderr, "Unknown argument: %s\n", argv[i]);
       return 1;
@@ -348,30 +354,63 @@ static int do_exchange(SSL_SESSION **out_session,
     }
   }
 
-  for (;;) {
-    uint8_t buf[512];
-    int n;
-    do {
-      n = SSL_read(ssl, buf, sizeof(buf));
-    } while (async && retry_async(ssl, n, bio));
-    if (n < 0) {
-      SSL_free(ssl);
-      BIO_print_errors_fp(stdout);
-      return 3;
-    } else if (n == 0) {
-      break;
-    } else {
-      for (int i = 0; i < n; i++) {
-        buf[i] ^= 0xff;
-      }
+  if (write_different_record_sizes) {
+    // This mode writes a number of different record sizes in an attempt to
+    // trip up the CBC record splitting code.
+    uint8_t buf[32769];
+    memset(buf, 0x42, sizeof(buf));
+    static const size_t kRecordSizes[] = {
+        0, 1, 255, 256, 257, 16383, 16384, 16385, 32767, 32768, 32769};
+    for (size_t i = 0; i < sizeof(kRecordSizes) / sizeof(kRecordSizes[0]);
+         i++) {
       int w;
+      const size_t len = kRecordSizes[i];
+      size_t off = 0;
+
+      if (len > sizeof(buf)) {
+        fprintf(stderr, "Bad kRecordSizes value.\n");
+        return 5;
+      }
+
       do {
-        w = SSL_write(ssl, buf, n);
-      } while (async && retry_async(ssl, w, bio));
-      if (w != n) {
+        w = SSL_write(ssl, buf + off, len - off);
+        if (w > 0) {
+          off += (size_t) w;
+        }
+      } while ((async && retry_async(ssl, w, bio)) || (w > 0 && off < len));
+
+      if (w < 0 || off != len) {
         SSL_free(ssl);
         BIO_print_errors_fp(stdout);
         return 4;
+      }
+    }
+  } else {
+    for (;;) {
+      uint8_t buf[512];
+      int n;
+      do {
+        n = SSL_read(ssl, buf, sizeof(buf));
+      } while (async && retry_async(ssl, n, bio));
+      if (n < 0) {
+        SSL_free(ssl);
+        BIO_print_errors_fp(stdout);
+        return 3;
+      } else if (n == 0) {
+        break;
+      } else {
+        for (int i = 0; i < n; i++) {
+          buf[i] ^= 0xff;
+        }
+        int w;
+        do {
+          w = SSL_write(ssl, buf, n);
+        } while (async && retry_async(ssl, w, bio));
+        if (w != n) {
+          SSL_free(ssl);
+          BIO_print_errors_fp(stdout);
+          return 4;
+        }
       }
     }
   }

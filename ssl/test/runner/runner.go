@@ -6,6 +6,7 @@ import (
 	"flag"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"net"
 	"os"
 	"os/exec"
@@ -381,6 +382,13 @@ func doExchange(testType testType, config *Config, conn net.Conn, messageLen int
 	if err := tlsConn.Handshake(); err != nil {
 		return err
 	}
+
+	if messageLen < 0 {
+		// Read until EOF.
+		_, err := io.Copy(ioutil.Discard, tlsConn)
+		return err
+	}
+
 	if messageLen == 0 {
 		messageLen = 32
 	}
@@ -714,6 +722,38 @@ func addCBCPaddingTests() {
 	})
 }
 
+func addCBCSplittingTests() {
+	testCases = append(testCases, testCase{
+		name: "CBCRecordSplitting",
+		config: Config{
+			MaxVersion:   VersionTLS10,
+			MinVersion:   VersionTLS10,
+			CipherSuites: []uint16{TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA},
+		},
+		messageLen: -1, // read until EOF
+		flags: []string{
+			"-async",
+			"-write-different-record-sizes",
+			"-cbc-record-splitting",
+		},
+	},
+	testCase{
+		name: "CBCRecordSplittingPartialWrite",
+		config: Config{
+			MaxVersion:   VersionTLS10,
+			MinVersion:   VersionTLS10,
+			CipherSuites: []uint16{TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA},
+		},
+		messageLen: -1, // read until EOF
+		flags: []string{
+			"-async",
+			"-write-different-record-sizes",
+			"-cbc-record-splitting",
+			"-partial-write",
+		},
+	})
+}
+
 func addClientAuthTests() {
 	// Add a dummy cert pool to stress certificate authority parsing.
 	// TODO(davidben): Add tests that those values parse out correctly.
@@ -966,6 +1006,7 @@ func main() {
 	addCipherSuiteTests()
 	addBadECDSASignatureTests()
 	addCBCPaddingTests()
+	addCBCSplittingTests()
 	addClientAuthTests()
 	for _, async := range []bool{false, true} {
 		for _, splitHandshake := range []bool{false, true} {
