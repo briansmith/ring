@@ -23,6 +23,8 @@
 #include <openssl/bytestring.h>
 #include <openssl/ssl.h>
 
+#include "async_bio.h"
+
 static int usage(const char *program) {
   fprintf(stderr, "Usage: %s (client|server) (normal|resume) [flags...]\n",
           program);
@@ -155,33 +157,22 @@ static SSL_CTX *setup_ctx(int is_server) {
   return NULL;
 }
 
-static SSL *setup_ssl(SSL_CTX *ssl_ctx, int fd) {
-  SSL *ssl = NULL;
-  BIO *bio = NULL;
-
-  ssl = SSL_new(ssl_ctx);
-  if (ssl == NULL) {
-    goto err;
+static int retry_async(SSL *ssl, int ret, BIO *bio) {
+  // No error; don't retry.
+  if (ret >= 0) {
+    return 0;
   }
-
-
-  bio = BIO_new_fd(fd, 1 /* take ownership */);
-  if (bio == NULL) {
-    goto err;
+  // See if we needed to read or write more. If so, allow one byte through on
+  // the appropriate end to maximally stress the state machine.
+  int err = SSL_get_error(ssl, ret);
+  if (err == SSL_ERROR_WANT_READ) {
+    async_bio_allow_read(bio, 1);
+    return 1;
+  } else if (err == SSL_ERROR_WANT_WRITE) {
+    async_bio_allow_write(bio, 1);
+    return 1;
   }
-
-  SSL_set_bio(ssl, bio, bio);
-
-  return ssl;
-
-err:
-  if (bio != NULL) {
-    BIO_free(bio);
-  }
-  if (ssl != NULL) {
-    SSL_free(ssl);
-  }
-  return NULL;
+  return 0;
 }
 
 static int do_exchange(SSL_SESSION **out_session,
@@ -192,13 +183,14 @@ static int do_exchange(SSL_SESSION **out_session,
                        int is_resume,
                        int fd,
                        SSL_SESSION *session) {
+  int async = 0;
   const char *expected_certificate_types = NULL;
   const char *expected_next_proto = NULL;
   expected_server_name = NULL;
   early_callback_called = 0;
   advertise_npn = NULL;
 
-  SSL *ssl = setup_ssl(ssl_ctx, fd);
+  SSL *ssl = SSL_new(ssl_ctx);
   if (ssl == NULL) {
     BIO_print_errors_fp(stdout);
     return 1;
@@ -271,11 +263,25 @@ static int do_exchange(SSL_SESSION **out_session,
         return 1;
       }
       select_next_proto = argv[i];
+    } else if (strcmp(argv[i], "-async") == 0) {
+      async = 1;
     } else {
       fprintf(stderr, "Unknown argument: %s\n", argv[i]);
       return 1;
     }
   }
+
+  BIO *bio = BIO_new_fd(fd, 1 /* take ownership */);
+  if (bio == NULL) {
+    BIO_print_errors_fp(stdout);
+    return 1;
+  }
+  if (async) {
+    BIO *async = async_bio_create();
+    BIO_push(async, bio);
+    bio = async;
+  }
+  SSL_set_bio(ssl, bio, bio);
 
   if (session != NULL) {
     if (SSL_set_session(ssl, session) != 1) {
@@ -285,11 +291,13 @@ static int do_exchange(SSL_SESSION **out_session,
   }
 
   int ret;
-  if (is_server) {
-    ret = SSL_accept(ssl);
-  } else {
-    ret = SSL_connect(ssl);
-  }
+  do {
+    if (is_server) {
+      ret = SSL_accept(ssl);
+    } else {
+      ret = SSL_connect(ssl);
+    }
+  } while (async && retry_async(ssl, ret, bio));
   if (ret != 1) {
     SSL_free(ssl);
     BIO_print_errors_fp(stdout);
@@ -342,7 +350,10 @@ static int do_exchange(SSL_SESSION **out_session,
 
   for (;;) {
     uint8_t buf[512];
-    int n = SSL_read(ssl, buf, sizeof(buf));
+    int n;
+    do {
+      n = SSL_read(ssl, buf, sizeof(buf));
+    } while (async && retry_async(ssl, n, bio));
     if (n < 0) {
       SSL_free(ssl);
       BIO_print_errors_fp(stdout);
@@ -353,7 +364,10 @@ static int do_exchange(SSL_SESSION **out_session,
       for (int i = 0; i < n; i++) {
         buf[i] ^= 0xff;
       }
-      int w = SSL_write(ssl, buf, n);
+      int w;
+      do {
+        w = SSL_write(ssl, buf, n);
+      } while (async && retry_async(ssl, w, bio));
       if (w != n) {
         SSL_free(ssl);
         BIO_print_errors_fp(stdout);

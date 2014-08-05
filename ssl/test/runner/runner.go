@@ -218,17 +218,6 @@ var testCases = []testCase{
 		expectedError: ":UNEXPECTED_MESSAGE:",
 	},
 	{
-		testType: serverTest,
-		name:     "NPNServerTest",
-		config: Config{
-			NextProtos: []string{"bar"},
-		},
-		flags: []string{
-			"-advertise-npn", "\x03foo\x03bar\x03baz",
-			"-expect-next-proto", "bar",
-		},
-	},
-	{
 		name: "SkipChangeCipherSpec-Client",
 		config: Config{
 			Bugs: ProtocolBugs{
@@ -323,19 +312,6 @@ var testCases = []testCase{
 		expectedError: ":CCS_RECEIVED_EARLY:",
 	},
 	{
-		name: "SessionTicketsDisabled-Client",
-		config: Config{
-			SessionTicketsDisabled: true,
-		},
-	},
-	{
-		testType: serverTest,
-		name:     "SessionTicketsDisabled-Server",
-		config: Config{
-			SessionTicketsDisabled: true,
-		},
-	},
-	{
 		name: "SkipNewSessionTicket",
 		config: Config{
 			Bugs: ProtocolBugs{
@@ -344,18 +320,6 @@ var testCases = []testCase{
 		},
 		shouldFail:    true,
 		expectedError: ":CCS_RECEIVED_EARLY:",
-	},
-	{
-		name: "FalseStart",
-		config: Config{
-			CipherSuites: []uint16{TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256},
-			NextProtos:   []string{"foo"},
-		},
-		flags: []string{
-			"-false-start",
-			"-select-next-proto", "foo",
-		},
-		resumeSession: true,
 	},
 	{
 		name: "FalseStart-SessionTicketsDisabled",
@@ -824,6 +788,135 @@ func addClientAuthTests() {
 	}
 }
 
+// Adds tests that try to cover the range of the handshake state machine, under
+// various conditions. Some of these are redundant with other tests, but they
+// only cover the synchronous case.
+func addStateMachineCoverageTests(async bool, splitHandshake bool) {
+	var suffix string
+	var flags []string
+	var maxHandshakeRecordLength int
+	if async {
+		suffix = "-Async"
+		flags = append(flags, "-async")
+	} else {
+		suffix = "-Sync"
+	}
+	if splitHandshake {
+		suffix += "-SplitHandshakeRecords"
+		maxHandshakeRecordLength = 10
+	}
+
+	// Basic handshake, with resumption. Client and server.
+	testCases = append(testCases, testCase{
+		name: "Basic-Client" + suffix,
+		config: Config{
+			Bugs: ProtocolBugs{
+				MaxHandshakeRecordLength: maxHandshakeRecordLength,
+			},
+		},
+		flags: flags,
+	})
+	testCases = append(testCases, testCase{
+		testType: serverTest,
+		name:     "Basic-Server" + suffix,
+		config: Config{
+			Bugs: ProtocolBugs{
+				MaxHandshakeRecordLength: maxHandshakeRecordLength,
+			},
+		},
+		flags: flags,
+	})
+
+	// No session ticket support; server doesn't send NewSessionTicket.
+	testCases = append(testCases, testCase{
+		name: "SessionTicketsDisabled-Client" + suffix,
+		config: Config{
+			SessionTicketsDisabled: true,
+			Bugs: ProtocolBugs{
+				MaxHandshakeRecordLength: maxHandshakeRecordLength,
+			},
+		},
+		flags: flags,
+	})
+	testCases = append(testCases, testCase{
+		testType: serverTest,
+		name:     "SessionTicketsDisabled-Server" + suffix,
+		config: Config{
+			SessionTicketsDisabled: true,
+			Bugs: ProtocolBugs{
+				MaxHandshakeRecordLength: maxHandshakeRecordLength,
+			},
+		},
+		flags: flags,
+	})
+
+	// NPN on client and server; results in post-handshake message.
+	testCases = append(testCases, testCase{
+		name: "NPN-Client" + suffix,
+		config: Config{
+			CipherSuites: []uint16{TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256},
+			NextProtos:   []string{"foo"},
+			Bugs: ProtocolBugs{
+				MaxHandshakeRecordLength: maxHandshakeRecordLength,
+			},
+		},
+		flags: append(flags, "-select-next-proto", "foo"),
+	})
+	testCases = append(testCases, testCase{
+		testType: serverTest,
+		name:     "NPN-Server" + suffix,
+		config: Config{
+			NextProtos: []string{"bar"},
+			Bugs: ProtocolBugs{
+				MaxHandshakeRecordLength: maxHandshakeRecordLength,
+			},
+		},
+		flags: append(flags,
+			"-advertise-npn", "\x03foo\x03bar\x03baz",
+			"-expect-next-proto", "bar"),
+	})
+
+	// Client does False Start and negotiates NPN.
+	testCases = append(testCases, testCase{
+		name: "FalseStart" + suffix,
+		config: Config{
+			CipherSuites: []uint16{TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256},
+			NextProtos:   []string{"foo"},
+			Bugs: ProtocolBugs{
+				MaxHandshakeRecordLength: maxHandshakeRecordLength,
+			},
+		},
+		flags: append(flags,
+			"-false-start",
+			"-select-next-proto", "foo"),
+		resumeSession: true,
+	})
+
+	// TLS client auth.
+	testCases = append(testCases, testCase{
+		testType: clientTest,
+		name:     "ClientAuth-Client" + suffix,
+		config: Config{
+			CipherSuites: []uint16{TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256},
+			ClientAuth:   RequireAnyClientCert,
+			Bugs: ProtocolBugs{
+				MaxHandshakeRecordLength: maxHandshakeRecordLength,
+			},
+		},
+		flags: append(flags,
+			"-cert-file", rsaCertificateFile,
+			"-key-file", rsaKeyFile),
+	})
+	testCases = append(testCases, testCase{
+		testType: serverTest,
+		name:     "ClientAuth-Server" + suffix,
+		config: Config{
+			Certificates: []Certificate{rsaCertificate},
+		},
+		flags: append(flags, "-require-any-client-certificate"),
+	})
+}
+
 func worker(statusChan chan statusMsg, c chan *testCase, buildDir string, wg *sync.WaitGroup) {
 	defer wg.Done()
 
@@ -874,6 +967,11 @@ func main() {
 	addBadECDSASignatureTests()
 	addCBCPaddingTests()
 	addClientAuthTests()
+	for _, async := range []bool{false, true} {
+		for _, splitHandshake := range []bool{false, true} {
+			addStateMachineCoverageTests(async, splitHandshake)
+		}
+	}
 
 	var wg sync.WaitGroup
 

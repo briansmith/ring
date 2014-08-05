@@ -719,6 +719,9 @@ func (c *Conn) writeRecord(typ recordType, data []byte) (n int, err error) {
 		if m > maxPlaintext {
 			m = maxPlaintext
 		}
+		if typ == recordTypeHandshake && c.config.Bugs.MaxHandshakeRecordLength > 0 && m > c.config.Bugs.MaxHandshakeRecordLength {
+			m = c.config.Bugs.MaxHandshakeRecordLength
+		}
 		explicitIVLen := 0
 		explicitIVIsSeq := false
 
