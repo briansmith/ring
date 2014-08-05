@@ -265,6 +265,23 @@ static ERR_STATE *err_get_state(void) {
   return state;
 }
 
+static ERR_STATE *err_release_state(const CRYPTO_THREADID *tid) {
+  ERR_STATE pattern, *state;
+
+  CRYPTO_THREADID_cpy(&pattern.tid, tid);
+
+  CRYPTO_r_lock(CRYPTO_LOCK_ERR);
+  if (state_hash == NULL) {
+    CRYPTO_r_unlock(CRYPTO_LOCK_ERR);
+    return NULL;
+  }
+
+  state = lh_ERR_STATE_delete(state_hash, &pattern);
+  CRYPTO_r_unlock(CRYPTO_LOCK_ERR);
+
+  return state;
+}
+
 static void err_shutdown(void) {
   CRYPTO_w_lock(CRYPTO_LOCK_ERR);
   if (error_hash) {
@@ -290,5 +307,6 @@ const struct ERR_FNS_st openssl_err_default_impl = {
   err_set_item,
   err_del_item,
   err_get_state,
+  err_release_state,
   err_get_next_library,
 };

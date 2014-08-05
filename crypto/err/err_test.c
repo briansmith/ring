@@ -105,11 +105,18 @@ static int test_print() {
   return 1;
 }
 
+static int test_release() {
+  ERR_put_error(1, 2, 3, "test", 4);
+  ERR_remove_thread_state(NULL);
+  return 0;
+}
+
 int main() {
   if (!test_overflow() ||
       !test_put_error() ||
       !test_clear_error() ||
-      !test_print()) {
+      !test_print() ||
+      !test_release()) {
     return 1;
   }
 

@@ -271,6 +271,29 @@ void ERR_clear_error(void) {
   state->top = state->bottom = 0;
 }
 
+void ERR_remove_thread_state(const CRYPTO_THREADID *tid) {
+  CRYPTO_THREADID current;
+  ERR_STATE *state;
+  unsigned i;
+
+  if (tid == NULL) {
+    CRYPTO_THREADID_current(&current);
+    tid = &current;
+  }
+
+  err_fns_check();
+  state = ERRFN(release_state)(tid);
+  if (state == NULL) {
+    return;
+  }
+
+  for (i = 0; i < ERR_NUM_ERRORS; i++) {
+    err_clear(&state->errors[i]);
+  }
+
+  OPENSSL_free(state);
+}
+
 int ERR_get_next_error_library() {
   err_fns_check();
   return ERRFN(get_next_library)();
