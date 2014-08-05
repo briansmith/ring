@@ -2530,7 +2530,7 @@ int ssl3_get_cert_verify(SSL *s)
 	if (!(type & EVP_PKT_SIGN))
 		{
 		ret = 1;
-		goto end;
+		goto done_with_buffer;
 		}
 
 	n=s->method->ssl_get_message(s,
@@ -2540,7 +2540,11 @@ int ssl3_get_cert_verify(SSL *s)
 		SSL3_RT_MAX_PLAIN_LENGTH,
 		&ok);
 
-	if (!ok) return((int)n);
+	if (!ok)
+		{
+		ret = (int)n;
+		goto done;
+		}
 
 	CBS_init(&certificate_verify, s->init_msg, n);
 
@@ -2650,13 +2654,15 @@ int ssl3_get_cert_verify(SSL *s)
 f_err:
 		ssl3_send_alert(s,SSL3_AL_FATAL,al);
 		}
-end:
+done_with_buffer:
+	/* There is no more need for the handshake buffer. */
 	if (s->s3->handshake_buffer)
 		{
 		BIO_free(s->s3->handshake_buffer);
 		s->s3->handshake_buffer = NULL;
 		s->s3->flags &= ~TLS1_FLAGS_KEEP_HANDSHAKE;
 		}
+done:
 	EVP_MD_CTX_cleanup(&mctx);
 	EVP_PKEY_free(pkey);
 	return(ret);
