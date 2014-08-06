@@ -136,6 +136,12 @@ ASN1_SEQUENCE_ref(X509, x509_cb, CRYPTO_LOCK_X509) = {
 IMPLEMENT_ASN1_FUNCTIONS(X509)
 IMPLEMENT_ASN1_DUP_FUNCTION(X509)
 
+X509 *X509_up_ref(X509 *x)
+	{
+	CRYPTO_add(&x->references, 1, CRYPTO_LOCK_X509);
+	return x;
+	}
+
 int X509_get_ex_new_index(long argl, void *argp, CRYPTO_EX_new *new_func,
 	     CRYPTO_EX_dup *dup_func, CRYPTO_EX_free *free_func)
         {

@@ -1180,18 +1180,16 @@ int ssl3_get_server_certificate(SSL *s)
 		goto f_err;
 		}
 	sc->peer_cert_type=i;
-	CRYPTO_add(&x->references,1,CRYPTO_LOCK_X509);
 	/* Why would the following ever happen?
 	 * We just created sc a couple of lines ago. */
 	if (sc->peer_pkeys[i].x509 != NULL)
 		X509_free(sc->peer_pkeys[i].x509);
-	sc->peer_pkeys[i].x509=x;
-	sc->peer_key= &(sc->peer_pkeys[i]);
+	sc->peer_pkeys[i].x509 = X509_up_ref(x);
+	sc->peer_key = &(sc->peer_pkeys[i]);
 
 	if (s->session->peer != NULL)
 		X509_free(s->session->peer);
-	CRYPTO_add(&x->references,1,CRYPTO_LOCK_X509);
-	s->session->peer=x;
+	s->session->peer = X509_up_ref(x);
 
 	s->session->verify_result = s->verify_result;
 

@@ -261,8 +261,7 @@ CERT *ssl_cert_dup(CERT *cert)
 		CERT_PKEY *rpk = ret->pkeys + i;
 		if (cpk->x509 != NULL)
 			{
-			rpk->x509 = cpk->x509;
-			CRYPTO_add(&rpk->x509->references, 1, CRYPTO_LOCK_X509);
+			rpk->x509 = X509_up_ref(cpk->x509);
 			}
 		
 		if (cpk->privatekey != NULL)
@@ -365,14 +364,12 @@ CERT *ssl_cert_dup(CERT *cert)
 
 	if (cert->verify_store)
 		{
-		CRYPTO_add(&cert->verify_store->references, 1, CRYPTO_LOCK_X509_STORE);
-		ret->verify_store = cert->verify_store;
+		ret->verify_store = X509_up_ref(cert->verify_store);
 		}
 
 	if (cert->chain_store)
 		{
-		CRYPTO_add(&cert->chain_store->references, 1, CRYPTO_LOCK_X509_STORE);
-		ret->chain_store = cert->chain_store;
+		ret->chain_store = X509_up_ref(cert->chain_store);
 		}
 
 	ret->ciphers_raw = NULL;
@@ -529,7 +526,7 @@ int ssl_cert_add1_chain_cert(CERT *c, X509 *x)
 	{
 	if (!ssl_cert_add0_chain_cert(c, x))
 		return 0;
-	CRYPTO_add(&x->references, 1, CRYPTO_LOCK_X509);
+	X509_up_ref(x);
 	return 1;
 	}
 
@@ -1214,7 +1211,7 @@ int ssl_cert_set_cert_store(CERT *c, X509_STORE *store, int chain, int ref)
 		X509_STORE_free(*pstore);
 	*pstore = store;
 	if (ref && store)
-		CRYPTO_add(&store->references, 1, CRYPTO_LOCK_X509_STORE);
+		X509_up_ref(store);
 	return 1;
 	}
 

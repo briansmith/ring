@@ -443,8 +443,7 @@ static int ssl_set_cert(CERT *c, X509 *x)
 
 	if (c->pkeys[i].x509 != NULL)
 		X509_free(c->pkeys[i].x509);
-	CRYPTO_add(&x->references,1,CRYPTO_LOCK_X509);
-	c->pkeys[i].x509=x;
+	c->pkeys[i].x509 = X509_up_ref(x);
 	c->key= &(c->pkeys[i]);
 
 	c->valid=0;
