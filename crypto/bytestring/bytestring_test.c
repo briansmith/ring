@@ -346,7 +346,8 @@ static int test_cbb_asn1() {
   }
   free(buf);
 
-  test_data = calloc(1, 100000);
+  test_data = malloc(100000);
+  memset(test_data, 0x42, 100000);
 
   if (!CBB_init(&cbb, 0) ||
       !CBB_add_asn1(&cbb, &contents, 0x30) ||
@@ -355,7 +356,9 @@ static int test_cbb_asn1() {
     return 0;
   }
 
-  if (buf_len != 3 + 130 || memcmp(buf, "\x30\x81\x82", 3) != 0) {
+  if (buf_len != 3 + 130 ||
+      memcmp(buf, "\x30\x81\x82", 3) != 0 ||
+      memcmp(buf + 3, test_data, 130) != 0) {
     return 0;
   }
   free(buf);
@@ -367,7 +370,9 @@ static int test_cbb_asn1() {
     return 0;
   }
 
-  if (buf_len != 4 + 1000 || memcmp(buf, "\x30\x82\x03\xe8", 4) != 0) {
+  if (buf_len != 4 + 1000 ||
+      memcmp(buf, "\x30\x82\x03\xe8", 4) != 0 ||
+      memcmp(buf + 4, test_data, 1000)) {
     return 0;
   }
   free(buf);
@@ -381,7 +386,8 @@ static int test_cbb_asn1() {
   }
 
   if (buf_len != 5 + 5 + 100000 ||
-      memcmp(buf, "\x30\x83\x01\x86\xa5\x30\x83\x01\x86\xa0", 10) != 0) {
+      memcmp(buf, "\x30\x83\x01\x86\xa5\x30\x83\x01\x86\xa0", 10) != 0 ||
+      memcmp(buf + 10, test_data, 100000)) {
     return 0;
   }
   free(buf);

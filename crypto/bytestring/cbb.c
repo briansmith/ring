@@ -14,6 +14,8 @@
 
 #include <openssl/bytestring.h>
 
+#include <assert.h>
+
 #include <openssl/mem.h>
 
 
@@ -174,6 +176,8 @@ int CBB_flush(CBB *cbb) {
     size_t len_len;
     uint8_t initial_length_byte;
 
+    assert (cbb->pending_len_len == 1);
+
     if (len > 0xfffffffe) {
       /* Too large. */
       return 0;
@@ -201,8 +205,8 @@ int CBB_flush(CBB *cbb) {
       if (!cbb_buffer_add(cbb->base, NULL, extra_bytes)) {
         return 0;
       }
-      memmove(cbb->base->buf + cbb->offset + extra_bytes,
-              cbb->base->buf + cbb->offset, len);
+      memmove(cbb->base->buf + child_start + extra_bytes,
+              cbb->base->buf + child_start, len);
     }
     cbb->base->buf[cbb->offset++] = initial_length_byte;
     cbb->pending_len_len = len_len - 1;
