@@ -226,9 +226,8 @@ static int ssl_set_pkey(CERT *c, EVP_PKEY *pkey)
 
 	if (c->pkeys[i].privatekey != NULL)
 		EVP_PKEY_free(c->pkeys[i].privatekey);
-	CRYPTO_add(&pkey->references,1,CRYPTO_LOCK_EVP_PKEY);
-	c->pkeys[i].privatekey=pkey;
-	c->key= &(c->pkeys[i]);
+	c->pkeys[i].privatekey = EVP_PKEY_dup(pkey);
+	c->key = &(c->pkeys[i]);
 
 	c->valid=0;
 	return(1);
