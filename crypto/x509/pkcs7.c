@@ -21,12 +21,12 @@
 
 
 int PKCS7_get_certificates(STACK_OF(X509) *out_certs, CBS *cbs) {
-  /* See https://tools.ietf.org/html/rfc2315#section-9.1 */
   CBS content_info, content_type, wrapped_signed_data, signed_data,
       version_bytes, certificates;
   int nid;
   const size_t initial_certs_len = sk_X509_num(out_certs);
 
+  /* See https://tools.ietf.org/html/rfc2315#section-7 */
   if (!CBS_get_asn1_ber(cbs, &content_info, CBS_ASN1_SEQUENCE) ||
       !CBS_get_asn1(&content_info, &content_type, CBS_ASN1_OBJECT)) {
     return 0;
@@ -39,6 +39,7 @@ int PKCS7_get_certificates(STACK_OF(X509) *out_certs, CBS *cbs) {
     return 0;
   }
 
+  /* See https://tools.ietf.org/html/rfc2315#section-9.1 */
   if (!CBS_get_asn1_ber(&content_info, &wrapped_signed_data,
                         CBS_ASN1_CONTEXT_SPECIFIC | CBS_ASN1_CONSTRUCTED | 0) ||
       !CBS_get_asn1_ber(&wrapped_signed_data, &signed_data,
@@ -94,4 +95,41 @@ err:
   }
 
   return 0;
+}
+
+int PKCS7_bundle_certificates(CBB *out, const STACK_OF(X509) *certs) {
+  CBB outer_seq, wrapped_seq, seq, version_bytes, digest_algos_set,
+      content_info, certificates;
+  size_t i;
+
+  /* See https://tools.ietf.org/html/rfc2315#section-7 */
+  if (!CBB_add_asn1(out, &outer_seq, CBS_ASN1_SEQUENCE) ||
+      !OBJ_nid2cbb(&outer_seq, NID_pkcs7_signed) ||
+      !CBB_add_asn1(&outer_seq, &wrapped_seq,
+                    CBS_ASN1_CONTEXT_SPECIFIC | CBS_ASN1_CONSTRUCTED | 0) ||
+      /* See https://tools.ietf.org/html/rfc2315#section-9.1 */
+      !CBB_add_asn1(&wrapped_seq, &seq, CBS_ASN1_SEQUENCE) ||
+      !CBB_add_asn1(&seq, &version_bytes, CBS_ASN1_INTEGER) ||
+      !CBB_add_u8(&version_bytes, 1) ||
+      !CBB_add_asn1(&seq, &digest_algos_set, CBS_ASN1_SET) ||
+      !CBB_add_asn1(&seq, &content_info, CBS_ASN1_SEQUENCE) ||
+      !OBJ_nid2cbb(&content_info, NID_pkcs7_data) ||
+      !CBB_add_asn1(&seq, &certificates,
+                    CBS_ASN1_CONTEXT_SPECIFIC | CBS_ASN1_CONSTRUCTED | 0)) {
+    return 0;
+  }
+
+  for (i = 0; i < sk_X509_num(certs); i++) {
+    X509 *x509 = sk_X509_value(certs, i);
+    uint8_t *buf;
+    int len = i2d_X509(x509, NULL);
+
+    if (len < 0 ||
+        !CBB_add_space(&certificates, &buf, len) ||
+        i2d_X509(x509, &buf) < 0) {
+      return 0;
+    }
+  }
+
+  return CBB_flush(out);
 }

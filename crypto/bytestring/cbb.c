@@ -296,6 +296,14 @@ int CBB_add_bytes(CBB *cbb, const uint8_t *data, size_t len) {
   return 1;
 }
 
+int CBB_add_space(CBB *cbb, uint8_t **out_data, size_t len) {
+  if (!CBB_flush(cbb) ||
+      !cbb_buffer_add(cbb->base, out_data, len)) {
+    return 0;
+  }
+  return 1;
+}
+
 int CBB_add_u8(CBB *cbb, uint8_t value) {
   if (!CBB_flush(cbb)) {
     return 0;

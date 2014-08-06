@@ -245,6 +245,12 @@ OPENSSL_EXPORT int CBB_add_asn1(CBB *cbb, CBB *out_contents, uint8_t tag);
  * success and zero otherwise. */
 OPENSSL_EXPORT int CBB_add_bytes(CBB *cbb, const uint8_t *data, size_t len);
 
+/* CBB_add_space appends |len| bytes to |cbb| and sets |*out_data| to point to
+ * the beginning of that space. The caller must then write |len| bytes of
+ * actual contents to |*out_data|. It returns one on success and zero
+ * otherwise. */
+OPENSSL_EXPORT int CBB_add_space(CBB *cbb, uint8_t **out_data, size_t len);
+
 /* CBB_add_u8 appends an 8-bit number from |value| to |cbb|. It returns one on
  * success and zero otherwise. */
 OPENSSL_EXPORT int CBB_add_u8(CBB *cbb, uint8_t value);

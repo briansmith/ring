@@ -55,3 +55,11 @@ add_library(
 	x_x509.c
 	x_x509a.c
 )
+
+add_executable(
+	pkcs7_test
+
+	pkcs7_test.c
+)
+
+target_link_libraries(pkcs7_test crypto)

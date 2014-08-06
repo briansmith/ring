@@ -1195,6 +1195,11 @@ OPENSSL_EXPORT int X509_TRUST_get_trust(X509_TRUST *xp);
  * and zero on error. */
 OPENSSL_EXPORT int PKCS7_get_certificates(STACK_OF(X509) *out_certs, CBS *cbs);
 
+/* PKCS7_bundle_certificates appends a PKCS#7, SignedData structure containing
+ * |certs| to |cbb|. It returns one on success and zero on error. */
+OPENSSL_EXPORT int PKCS7_bundle_certificates(
+    CBB *out, const STACK_OF(X509) *certs);
+
 
 /* EVP_PK values indicate the algorithm of the public key in a certificate. */
 
