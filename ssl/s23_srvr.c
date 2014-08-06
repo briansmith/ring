@@ -383,12 +383,6 @@ static int ssl23_get_client_hello(SSL *s)
 		s->state = SSL23_ST_SR_SWITCH_VERSION;
 		}
 
-	if (s->version < TLS1_2_VERSION && tls1_suiteb(s))
-		{
-		OPENSSL_PUT_ERROR(SSL, ssl23_get_client_hello, SSL_R_ONLY_TLS_1_2_ALLOWED_IN_SUITEB_MODE);
-		goto err;
-		}
-
 	return 1;
 err:
 	return -1;

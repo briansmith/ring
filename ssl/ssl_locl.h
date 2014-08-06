@@ -477,11 +477,9 @@ typedef struct cert_pkey_st
 	 */
 	int valid_flags;
 	} CERT_PKEY;
-/* Retrieve Suite B flags */
-#define tls1_suiteb(s)	(s->cert->cert_flags & SSL_CERT_FLAG_SUITEB_128_LOS)
-/* Uses to check strict mode: suite B modes are always strict */
+
 #define SSL_CERT_FLAGS_CHECK_TLS_STRICT \
-	(SSL_CERT_FLAG_SUITEB_128_LOS|SSL_CERT_FLAG_TLS_STRICT)
+	SSL_CERT_FLAG_TLS_STRICT
 
 typedef struct cert_st
 	{

@@ -411,12 +411,6 @@ static const uint16_t eccurves_default[] =
 		25, /* secp521r1 (25) */
 	};
 
-static const uint16_t suiteb_curves[] =
-	{
-		TLSEXT_curve_P_256,
-		TLSEXT_curve_P_384,
-	};
-
 int tls1_ec_curve_id2nid(uint16_t curve_id)
 	{
 	/* ECC curves from draft-ietf-tls-ecc-12.txt (Oct. 17, 2005) */
@@ -451,27 +445,9 @@ static void tls1_get_curvelist(SSL *s, int get_client_curves,
 		*out_curve_ids_len = s->session->tlsext_ellipticcurvelist_length;
 		return;
 		}
-	/* For Suite B mode only include P-256, P-384 */
-	switch (tls1_suiteb(s))
-		{
-	case SSL_CERT_FLAG_SUITEB_128_LOS:
-		*out_curve_ids = suiteb_curves;
-		*out_curve_ids_len = sizeof(suiteb_curves) / sizeof(suiteb_curves[0]);
-		break;
 
-	case SSL_CERT_FLAG_SUITEB_128_LOS_ONLY:
-		*out_curve_ids = suiteb_curves;
-		*out_curve_ids_len = 1;
-		break;
-
-	case SSL_CERT_FLAG_SUITEB_192_LOS:
-		*out_curve_ids = suiteb_curves + 1;
-		*out_curve_ids_len = 1;
-		break;
-	default:
-		*out_curve_ids = s->tlsext_ellipticcurvelist;
-		*out_curve_ids_len = s->tlsext_ellipticcurvelist_length;
-		}
+	*out_curve_ids = s->tlsext_ellipticcurvelist;
+	*out_curve_ids_len = s->tlsext_ellipticcurvelist_length;
 	if (!*out_curve_ids)
 		{
 		*out_curve_ids = eccurves_default;
@@ -492,23 +468,6 @@ int tls1_check_curve(SSL *s, CBS *cbs, uint16_t *out_curve_id)
 		!CBS_get_u16(cbs, &curve_id))
 		return 0;
 
-	/* Check curve matches Suite B preferences */
-	if (tls1_suiteb(s))
-		{
-		unsigned long cid = s->s3->tmp.new_cipher->id;
-		if (cid == TLS1_CK_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256)
-			{
-			if (curve_id != TLSEXT_curve_P_256)
-				return 0;
-			}
-		else if (cid == TLS1_CK_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384)
-			{
-			if (curve_id != TLSEXT_curve_P_384)
-				return 0;
-			}
-		else	/* Should never happen */
-			return 0;
-		}
 	tls1_get_curvelist(s, 0, &curves, &curves_len);
 	for (i = 0; i < curves_len; i++)
 		{
@@ -530,22 +489,7 @@ int tls1_get_shared_curve(SSL *s)
 	if (s->server == 0)
 		return NID_undef;
 
-	if (tls1_suiteb(s))
-		{
-		/* For Suite B ciphersuite determines curve: we
-		 * already know these are acceptable due to previous
-		 * checks.
-		 */
-		unsigned long cid = s->s3->tmp.new_cipher->id;
-		if (cid == TLS1_CK_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256)
-			return NID_X9_62_prime256v1; /* P-256 */
-		if (cid == TLS1_CK_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384)
-			return NID_secp384r1; /* P-384 */
-		/* Should never happen */
-		return NID_undef;
-		}
-
-	/* If not Suite B just return first preference shared curve */
+	/* Return first preference shared curve */
 	tls1_get_curvelist(s, !!(s->options & SSL_OP_CIPHER_SERVER_PREFERENCE),
 				&supp, &supplen);
 	tls1_get_curvelist(s, !(s->options & SSL_OP_CIPHER_SERVER_PREFERENCE),
@@ -697,11 +641,7 @@ static void tls1_get_formatlist(SSL *s, const unsigned char **pformats,
 	else
 		{
 		*pformats = ecformats_default;
-		/* For Suite B we don't support char2 fields */
-		if (tls1_suiteb(s))
-			*pformatslen = sizeof(ecformats_default) - 1;
-		else
-			*pformatslen = sizeof(ecformats_default);
+		*pformatslen = sizeof(ecformats_default);
 		}
 	}
 
@@ -730,38 +670,7 @@ static int tls1_check_cert_param(SSL *s, X509 *x, int set_ee_md)
 	/* Can't check curve_id for client certs as we don't have a
 	 * supported curves extension.
 	 */
-	rv = tls1_check_ec_key(s, s->server ? &curve_id : NULL, &comp_id);
-	if (!rv)
-		return 0;
-	/* Special case for suite B. We *MUST* sign using SHA256+P-256 or
-	 * SHA384+P-384, adjust digest if necessary.
-	 */
-	if (set_ee_md && tls1_suiteb(s))
-		{
-		int check_md;
-		size_t i;
-		CERT *c = s->cert;
-		/* Check to see we have necessary signing algorithm */
-		if (curve_id == TLSEXT_curve_P_256)
-			check_md = NID_ecdsa_with_SHA256;
-		else if (curve_id == TLSEXT_curve_P_384)
-			check_md = NID_ecdsa_with_SHA384;
-		else
-			return 0; /* Should never happen */
-		for (i = 0; i < c->shared_sigalgslen; i++)
-			if (check_md == c->shared_sigalgs[i].signandhash_nid)
-				break;
-		if (i == c->shared_sigalgslen)
-			return 0;
-		if (set_ee_md == 2)
-			{
-			if (check_md == NID_ecdsa_with_SHA256)
-				c->pkeys[SSL_PKEY_ECC].digest = EVP_sha256();
-			else
-				c->pkeys[SSL_PKEY_ECC].digest = EVP_sha384();
-			}
-		}
-	return rv;
+	return tls1_check_ec_key(s, s->server ? &curve_id : NULL, &comp_id);
 	}
 /* Check EC temporary key is compatible with client extensions */
 int tls1_check_ec_tmp_key(SSL *s, unsigned long cid)
@@ -773,38 +682,6 @@ int tls1_check_ec_tmp_key(SSL *s, unsigned long cid)
 	if (s->cert->cert_flags & SSL_CERT_FLAG_BROKEN_PROTOCOL)
 		return 1;
 #endif
-	/* If Suite B, AES128 MUST use P-256 and AES256 MUST use P-384,
-	 * no other curves permitted.
-	 */
-	if (tls1_suiteb(s))
-		{
-		/* Curve to check determined by ciphersuite */
-		if (cid == TLS1_CK_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256)
-			curve_id = TLSEXT_curve_P_256;
-		else if (cid == TLS1_CK_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384)
-			curve_id = TLSEXT_curve_P_384;
-		else
-			return 0;
-		/* Check this curve is acceptable */
-		if (!tls1_check_ec_key(s, &curve_id, NULL))
-			return 0;
-		/* If auto or setting curve from callback assume OK */
-		if (s->cert->ecdh_tmp_auto || s->cert->ecdh_tmp_cb)
-			return 1;
-		/* Otherwise check curve is acceptable */
-		else 
-			{
-			uint16_t curve_tmp;
-			if (!ec)
-				return 0;
-			if (!tls1_curve_params_from_ec_key(&curve_tmp, NULL, ec))
-				return 0;
-			if (curve_tmp == curve_id)
-				return 1;
-			return 0;
-			}
-			
-		}
 	if (s->cert->ecdh_tmp_auto)
 		{
 		/* Need a shared curve */
@@ -869,33 +746,8 @@ static unsigned char tls12_sigalgs[] = {
 	tlsext_sigalg(TLSEXT_hash_sha1)
 #endif
 };
-#ifndef OPENSSL_NO_ECDSA
-static unsigned char suiteb_sigalgs[] = {
-	tlsext_sigalg_ecdsa(TLSEXT_hash_sha256)
-	tlsext_sigalg_ecdsa(TLSEXT_hash_sha384)
-};
-#endif
 size_t tls12_get_psigalgs(SSL *s, const unsigned char **psigs)
 	{
-	/* If Suite B mode use Suite B sigalgs only, ignore any other
-	 * preferences.
-	 */
-#ifndef OPENSSL_NO_EC
-	switch (tls1_suiteb(s))
-		{
-	case SSL_CERT_FLAG_SUITEB_128_LOS:
-		*psigs = suiteb_sigalgs;
-		return sizeof(suiteb_sigalgs);
-
-	case SSL_CERT_FLAG_SUITEB_128_LOS_ONLY:
-		*psigs = suiteb_sigalgs;
-		return 2;
-
-	case SSL_CERT_FLAG_SUITEB_192_LOS:
-		*psigs = suiteb_sigalgs + 2;
-		return 2;
-		}
-#endif
 	/* If server use client authentication sigalgs if not NULL */
 	if (s->server && s->cert->client_sigalgs)
 		{
@@ -965,38 +817,6 @@ int tls12_check_peer_sigalg(const EVP_MD **out_md, int *out_alert,
 			*out_alert = SSL_AD_ILLEGAL_PARAMETER;
 			return 0;
 			}
-		/* If Suite B only P-384+SHA384 or P-256+SHA-256 allowed */
-		if (tls1_suiteb(s))
-			{
-			if (curve_id == TLSEXT_curve_P_256)
-				{
-				if (hash != TLSEXT_hash_sha256)
-					{
-					OPENSSL_PUT_ERROR(SSL, tls12_check_peer_sigalg, SSL_R_ILLEGAL_SUITEB_DIGEST);
-					*out_alert = SSL_AD_ILLEGAL_PARAMETER;
-					return 0;
-					}
-				}
-			else if (curve_id == TLSEXT_curve_P_384)
-				{
-				if (hash != TLSEXT_hash_sha384)
-					{
-					OPENSSL_PUT_ERROR(SSL, tls12_check_peer_sigalg, SSL_R_ILLEGAL_SUITEB_DIGEST);
-					*out_alert = SSL_AD_ILLEGAL_PARAMETER;
-					return 0;
-					}
-				}
-			else
-				{
-				*out_alert = SSL_AD_ILLEGAL_PARAMETER;
-				return 0;
-				}
-			}
-		}
-	else if (tls1_suiteb(s))
-		{
-		*out_alert = SSL_AD_ILLEGAL_PARAMETER;
-		return 0;
 		}
 #endif
 
@@ -3100,26 +2920,25 @@ static int tls1_set_shared_sigalgs(SSL *s)
 	size_t nmatch;
 	TLS_SIGALGS *salgs = NULL;
 	CERT *c = s->cert;
-	unsigned int is_suiteb = tls1_suiteb(s);
 	if (c->shared_sigalgs)
 		{
 		OPENSSL_free(c->shared_sigalgs);
 		c->shared_sigalgs = NULL;
 		}
 	/* If client use client signature algorithms if not NULL */
-	if (!s->server && c->client_sigalgs && !is_suiteb)
+	if (!s->server && c->client_sigalgs)
 		{
 		conf = c->client_sigalgs;
 		conflen = c->client_sigalgslen;
 		}
-	else if (c->conf_sigalgs && !is_suiteb)
+	else if (c->conf_sigalgs)
 		{
 		conf = c->conf_sigalgs;
 		conflen = c->conf_sigalgslen;
 		}
 	else
 		conflen = tls12_get_psigalgs(s, &conf);
-	if(s->options & SSL_OP_CIPHER_SERVER_PREFERENCE || is_suiteb)
+	if(s->options & SSL_OP_CIPHER_SERVER_PREFERENCE)
 		{
 		pref = conf;
 		preflen = conflen;
@@ -3516,7 +3335,6 @@ int tls1_check_chain(SSL *s, X509 *x, EVP_PKEY *pk, STACK_OF(X509) *chain,
 	int check_flags = 0, strict_mode;
 	CERT_PKEY *cpk = NULL;
 	CERT *c = s->cert;
-	unsigned int suiteb_flags = tls1_suiteb(s);
 	/* idx == -1 means checking server chains */
 	if (idx != -1)
 		{
@@ -3558,21 +3376,6 @@ int tls1_check_chain(SSL *s, X509 *x, EVP_PKEY *pk, STACK_OF(X509) *chain,
 		else
 			check_flags = CERT_PKEY_VALID_FLAGS;
 		strict_mode = 1;
-		}
-
-	if (suiteb_flags)
-		{
-		int ok;
-		if (check_flags)
-			check_flags |= CERT_PKEY_SUITEB;
-		ok = X509_chain_check_suiteb(NULL, x, chain, suiteb_flags);
-		if (ok != X509_V_OK)
-			{
-			if (check_flags)
-				rv |= CERT_PKEY_SUITEB;
-			else
-				goto end;
-			}
 		}
 
 	/* Check all signature algorithms are consistent with

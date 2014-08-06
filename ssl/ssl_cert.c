@@ -658,8 +658,6 @@ int ssl_verify_cert_chain(SSL *s,STACK_OF(X509) *sk)
 		OPENSSL_PUT_ERROR(SSL, ssl_verify_cert_chain, ERR_R_X509_LIB);
 		return(0);
 		}
-	/* Set suite B flags if needed */
-	X509_STORE_CTX_set_flags(&ctx, tls1_suiteb(s));
 #if 0
 	if (SSL_get_verify_depth(s) >= 0)
 		X509_STORE_CTX_set_depth(&ctx, SSL_get_verify_depth(s));
@@ -1149,8 +1147,6 @@ int ssl_build_cert_chain(CERT *c, X509_STORE *chain_store, int flags)
 		OPENSSL_PUT_ERROR(SSL, ssl_build_cert_chain, ERR_R_X509_LIB);
 		goto err;
 		}
-	/* Set suite B flags if needed */
-	X509_STORE_CTX_set_flags(&xs_ctx, c->cert_flags & SSL_CERT_FLAG_SUITEB_128_LOS);
 
 	i = X509_verify_cert(&xs_ctx);
 	if (i <= 0 && flags & SSL_BUILD_CHAIN_FLAG_IGNORE_ERROR)

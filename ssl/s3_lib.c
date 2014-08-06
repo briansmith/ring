@@ -3038,7 +3038,7 @@ SSL_CIPHER *ssl3_choose_cipher(SSL *s, STACK_OF(SSL_CIPHER) *clnt,
 	    }
 #endif
 
-	if (s->options & SSL_OP_CIPHER_SERVER_PREFERENCE || tls1_suiteb(s))
+	if (s->options & SSL_OP_CIPHER_SERVER_PREFERENCE)
 		{
 		prio = srvr;
 		in_group_flags = server_pref->in_group_flags;

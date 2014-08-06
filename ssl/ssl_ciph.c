@@ -1245,64 +1245,6 @@ static int ssl_cipher_process_rulestr(const char *rule_str,
 
 	return(retval);
 	}
-#ifndef OPENSSL_NO_EC
-static int check_suiteb_cipher_list(const SSL_METHOD *meth, CERT *c,
-					const char **prule_str)
-	{
-	unsigned int suiteb_flags = 0, suiteb_comb2 = 0;
-	if (!strcmp(*prule_str, "SUITEB128"))
-		suiteb_flags = SSL_CERT_FLAG_SUITEB_128_LOS;
-	else if (!strcmp(*prule_str, "SUITEB128ONLY"))
-		suiteb_flags = SSL_CERT_FLAG_SUITEB_128_LOS_ONLY;
-	else if (!strcmp(*prule_str, "SUITEB128C2"))
-		{
-		suiteb_comb2 = 1;
-		suiteb_flags = SSL_CERT_FLAG_SUITEB_128_LOS;
-		}
-	else if (!strcmp(*prule_str, "SUITEB192"))
-		suiteb_flags = SSL_CERT_FLAG_SUITEB_192_LOS;
-
-	if (suiteb_flags)
-		{
-		c->cert_flags &= ~SSL_CERT_FLAG_SUITEB_128_LOS;
-		c->cert_flags |= suiteb_flags;
-		}
-	else
-		suiteb_flags = c->cert_flags & SSL_CERT_FLAG_SUITEB_128_LOS;
-
-	if (!suiteb_flags)
-		return 1;
-	/* Check version: if TLS 1.2 ciphers allowed we can use Suite B */
-
-	if (!(meth->ssl3_enc->enc_flags & SSL_ENC_FLAG_TLS1_2_CIPHERS))
-		{
-		if (meth->ssl3_enc->enc_flags & SSL_ENC_FLAG_DTLS)
-			OPENSSL_PUT_ERROR(SSL, check_suiteb_cipher_list, SSL_R_ONLY_DTLS_1_2_ALLOWED_IN_SUITEB_MODE);
-		else
-			OPENSSL_PUT_ERROR(SSL, check_suiteb_cipher_list, SSL_R_ONLY_TLS_1_2_ALLOWED_IN_SUITEB_MODE);
-		return 0;
-		}
-
-	switch(suiteb_flags)
-		{
-	case SSL_CERT_FLAG_SUITEB_128_LOS:
-		if (suiteb_comb2)
-			*prule_str = "ECDHE-ECDSA-AES256-GCM-SHA384";
-		else
-			*prule_str = "ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384";
-		break;
-	case SSL_CERT_FLAG_SUITEB_128_LOS_ONLY:
-		*prule_str = "ECDHE-ECDSA-AES128-GCM-SHA256";
-		break;
-	case SSL_CERT_FLAG_SUITEB_192_LOS:
-		*prule_str = "ECDHE-ECDSA-AES256-GCM-SHA384";
-		break;
-		}
-	/* Set auto ECDH parameter determination */
-	c->ecdh_tmp_auto = 1;
-	return 1;
-	}
-#endif
 
 
 STACK_OF(SSL_CIPHER) *ssl_create_cipher_list(const SSL_METHOD *ssl_method,
@@ -1325,10 +1267,6 @@ STACK_OF(SSL_CIPHER) *ssl_create_cipher_list(const SSL_METHOD *ssl_method,
 	 */
 	if (rule_str == NULL || cipher_list == NULL)
 		return NULL;
-#ifndef OPENSSL_NO_EC
-	if (!check_suiteb_cipher_list(ssl_method, c, &rule_str))
-		return NULL;
-#endif
 
 	/*
 	 * To reduce the work to do we only want to process the compiled

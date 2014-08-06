@@ -656,11 +656,6 @@ int ssl3_client_hello(SSL *s)
 			/* If DTLS 1.2 disabled correct the version number */
 			if (options & SSL_OP_NO_DTLSv1_2)
 				{
-				if (tls1_suiteb(s))
-					{
-					OPENSSL_PUT_ERROR(SSL, ssl3_client_hello, SSL_R_ONLY_DTLS_1_2_ALLOWED_IN_SUITEB_MODE);
-					goto err;
-					}
 				/* Disabling all versions is silly: return an
 				 * error.
 				 */
@@ -896,13 +891,6 @@ int ssl3_get_server_hello(SSL *s)
 		if (server_version == DTLS1_2_VERSION
 			&& !(options & SSL_OP_NO_DTLSv1_2))
 			s->method = DTLSv1_2_client_method();
-		else if (tls1_suiteb(s))
-			{
-			OPENSSL_PUT_ERROR(SSL, ssl3_get_server_hello, SSL_R_ONLY_DTLS_1_2_ALLOWED_IN_SUITEB_MODE);
-			s->version = server_version;
-			al = SSL_AD_PROTOCOL_VERSION;
-			goto f_err;
-			}
 		else if (server_version == DTLS1_VERSION
 			&& !(options & SSL_OP_NO_DTLSv1))
 			s->method = DTLSv1_client_method();
@@ -2617,8 +2605,7 @@ err:
 
 /* Check a certificate can be used for client authentication. Currently
  * check cert exists, if we have a suitable digest for TLS 1.2 if
- * static DH client certificates can be used and optionally checks
- * suitability for Suite B.
+ * static DH client certificates can be used.
  */
 static int ssl3_check_client_certificate(SSL *s)
 	{
@@ -2629,7 +2616,6 @@ static int ssl3_check_client_certificate(SSL *s)
 	if (SSL_USE_SIGALGS(s) && !s->cert->key->digest)
 		return 0;
 	/* If strict mode check suitability of chain before using it.
-	 * This also adjusts suite B digest if necessary.
 	 */
 	if (s->cert->cert_flags & SSL_CERT_FLAGS_CHECK_TLS_STRICT &&
 		!tls1_check_chain(s, NULL, NULL, NULL, -2))

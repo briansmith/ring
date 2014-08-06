@@ -331,11 +331,6 @@ static int ssl23_client_hello(SSL *s)
 			version_major = TLS1_2_VERSION_MAJOR;
 			version_minor = TLS1_2_VERSION_MINOR;
 			}
-		else if (tls1_suiteb(s))
-			{
-			OPENSSL_PUT_ERROR(SSL, ssl23_client_hello, SSL_R_ONLY_TLS_1_2_ALLOWED_IN_SUITEB_MODE);
-			return -1;
-			}
 		else if (version == TLS1_1_VERSION)
 			{
 			version_major = TLS1_1_VERSION_MAJOR;

@@ -604,13 +604,6 @@ struct ssl_session_st
  */
 #define SSL_CERT_FLAG_TLS_STRICT		0x00000001L
 
-/* Suite B modes, takes same values as certificate verify flags */
-#define SSL_CERT_FLAG_SUITEB_128_LOS_ONLY	0x10000
-/* Suite B 192 bit only mode */
-#define SSL_CERT_FLAG_SUITEB_192_LOS		0x20000
-/* Suite B 128 bit mode allowing 192 bit algorithms */
-#define SSL_CERT_FLAG_SUITEB_128_LOS		0x30000
-
 /* Perform all sorts of protocol violations for testing purposes */
 #define SSL_CERT_FLAG_BROKEN_PROTOCOL		0x10000000
 

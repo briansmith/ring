@@ -1040,13 +1040,6 @@ int ssl3_get_client_hello(SSL *s)
 				s->version = DTLS1_2_VERSION;
 				s->method = DTLSv1_2_server_method();
 				}
-			else if (tls1_suiteb(s))
-				{
-				OPENSSL_PUT_ERROR(SSL, ssl3_get_client_hello, SSL_R_ONLY_DTLS_1_2_ALLOWED_IN_SUITEB_MODE);
-				s->version = s->client_version;
-				al = SSL_AD_PROTOCOL_VERSION;
-				goto f_err;
-				}
 			else if (s->client_version <= DTLS1_VERSION &&
 				!(s->options & SSL_OP_NO_DTLSv1))
 				{
