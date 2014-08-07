@@ -393,9 +393,14 @@ type ProtocolBugs struct {
 	SendFallbackSCSV bool
 
 	// MaxHandshakeRecordLength, if non-zero, is the maximum size of a
-	// handshake record. Handshake messages will be split at the record
-	// layer.
+	// handshake record. Handshake messages will be split into multiple
+	// records at the specified size, except that the client_version will
+	// never be fragmented.
 	MaxHandshakeRecordLength int
+
+	// FragmentClientVersion will allow MaxHandshakeRecordLength to apply to
+	// the first 6 bytes of the ClientHello.
+	FragmentClientVersion bool
 
 	// RsaClientKeyExchangeVersion, if non-zero, causes the client to send a
 	// ClientKeyExchange with the specified version rather than the

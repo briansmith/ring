@@ -714,6 +714,8 @@ func (c *Conn) writeV2Record(data []byte) (n int, err error) {
 // c.out.Mutex <= L.
 func (c *Conn) writeRecord(typ recordType, data []byte) (n int, err error) {
 	b := c.out.newBlock()
+	first := true
+	isClientHello := typ == recordTypeHandshake && len(data) > 0 && data[0] == typeClientHello
 	for len(data) > 0 {
 		m := len(data)
 		if m > maxPlaintext {
@@ -721,9 +723,16 @@ func (c *Conn) writeRecord(typ recordType, data []byte) (n int, err error) {
 		}
 		if typ == recordTypeHandshake && c.config.Bugs.MaxHandshakeRecordLength > 0 && m > c.config.Bugs.MaxHandshakeRecordLength {
 			m = c.config.Bugs.MaxHandshakeRecordLength
+			// By default, do not fragment the client_version or
+			// server_version, which are located in the first 6
+			// bytes.
+			if first && isClientHello && !c.config.Bugs.FragmentClientVersion && m < 6 {
+				m = 6
+			}
 		}
 		explicitIVLen := 0
 		explicitIVIsSeq := false
+		first = false
 
 		var cbc cbcMode
 		if c.out.version >= VersionTLS11 {
