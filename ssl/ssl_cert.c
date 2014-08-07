@@ -364,12 +364,14 @@ CERT *ssl_cert_dup(CERT *cert)
 
 	if (cert->verify_store)
 		{
-		ret->verify_store = X509_up_ref(cert->verify_store);
+		CRYPTO_add(&cert->verify_store->references, 1, CRYPTO_LOCK_X509_STORE);
+		ret->verify_store = cert->verify_store;
 		}
 
 	if (cert->chain_store)
 		{
-		ret->chain_store = X509_up_ref(cert->chain_store);
+		CRYPTO_add(&cert->chain_store->references, 1, CRYPTO_LOCK_X509_STORE);
+		ret->chain_store = cert->chain_store;
 		}
 
 	ret->ciphers_raw = NULL;
@@ -1211,7 +1213,7 @@ int ssl_cert_set_cert_store(CERT *c, X509_STORE *store, int chain, int ref)
 		X509_STORE_free(*pstore);
 	*pstore = store;
 	if (ref && store)
-		X509_up_ref(store);
+		CRYPTO_add(&store->references, 1, CRYPTO_LOCK_X509_STORE);
 	return 1;
 	}
 
