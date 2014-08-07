@@ -2328,12 +2328,15 @@ static int ssl_scan_serverhello_tlsext(SSL *s, CBS *cbs, int *out_alert)
 				return 0;
 				}
 
-			if (!CBS_stow(&ec_point_format_list,
-					&s->session->tlsext_ecpointformatlist,
-					&s->session->tlsext_ecpointformatlist_length))
+			if (!s->hit)
 				{
-				*out_alert = SSL_AD_INTERNAL_ERROR;
-				return 0;
+				if (!CBS_stow(&ec_point_format_list,
+						&s->session->tlsext_ecpointformatlist,
+						&s->session->tlsext_ecpointformatlist_length))
+					{
+					*out_alert = SSL_AD_INTERNAL_ERROR;
+					return 0;
+					}
 				}
 			}
 #endif /* OPENSSL_NO_EC */
