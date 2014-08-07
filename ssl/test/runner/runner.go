@@ -886,7 +886,19 @@ func addStateMachineCoverageTests(async bool, splitHandshake bool) {
 				MaxHandshakeRecordLength: maxHandshakeRecordLength,
 			},
 		},
-		flags: flags,
+		flags:         flags,
+		resumeSession: true,
+	})
+	testCases = append(testCases, testCase{
+		name: "Basic-Client-RenewTicket" + suffix,
+		config: Config{
+			Bugs: ProtocolBugs{
+				MaxHandshakeRecordLength: maxHandshakeRecordLength,
+				RenewTicketOnResume:      true,
+			},
+		},
+		flags:         flags,
+		resumeSession: true,
 	})
 	testCases = append(testCases, testCase{
 		testType: serverTest,
@@ -896,7 +908,8 @@ func addStateMachineCoverageTests(async bool, splitHandshake bool) {
 				MaxHandshakeRecordLength: maxHandshakeRecordLength,
 			},
 		},
-		flags: flags,
+		flags:         flags,
+		resumeSession: true,
 	})
 
 	// No session ticket support; server doesn't send NewSessionTicket.

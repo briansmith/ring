@@ -57,6 +57,11 @@ func (c *Conn) serverHandshake() error {
 		if err := hs.establishKeys(); err != nil {
 			return err
 		}
+		if c.config.Bugs.RenewTicketOnResume {
+			if err := hs.sendSessionTicket(); err != nil {
+				return err
+			}
+		}
 		if err := hs.sendFinished(); err != nil {
 			return err
 		}
@@ -276,6 +281,7 @@ func (hs *serverHandshakeState) doResumeHandshake() error {
 	// We echo the client's session ID in the ServerHello to let it know
 	// that we're doing a resumption.
 	hs.hello.sessionId = hs.clientHello.sessionId
+	hs.hello.ticketSupported = c.config.Bugs.RenewTicketOnResume
 
 	hs.finishedHash = newFinishedHash(c.vers, hs.suite)
 	hs.finishedHash.Write(hs.clientHello.marshal())

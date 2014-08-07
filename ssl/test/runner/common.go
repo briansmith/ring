@@ -406,6 +406,10 @@ type ProtocolBugs struct {
 	// ClientKeyExchange with the specified version rather than the
 	// client_version when performing the RSA key exchange.
 	RsaClientKeyExchangeVersion uint16
+
+	// RenewTicketOnResume causes the server to renew the session ticket and
+	// send a NewSessionTicket message during an abbreviated handshake.
+	RenewTicketOnResume bool
 }
 
 func (c *Config) serverInit() {
