@@ -124,6 +124,18 @@ var testCases = []testCase{
 		expectedError: ":WRONG_CURVE:",
 	},
 	{
+		testType: serverTest,
+		name:     "BadRSAVersion",
+		config: Config{
+			CipherSuites: []uint16{TLS_RSA_WITH_RC4_128_SHA},
+			Bugs: ProtocolBugs{
+				RsaClientKeyExchangeVersion: VersionTLS11,
+			},
+		},
+		shouldFail:    true,
+		expectedError: ":DECRYPTION_FAILED_OR_BAD_RECORD_MAC:",
+	},
+	{
 		name: "NoFallbackSCSV",
 		config: Config{
 			Bugs: ProtocolBugs{
@@ -736,8 +748,8 @@ func addCBCSplittingTests() {
 			"-write-different-record-sizes",
 			"-cbc-record-splitting",
 		},
-	},
-	testCase{
+	})
+	testCases = append(testCases, testCase{
 		name: "CBCRecordSplittingPartialWrite",
 		config: Config{
 			MaxVersion:   VersionTLS10,

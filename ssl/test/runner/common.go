@@ -396,6 +396,11 @@ type ProtocolBugs struct {
 	// handshake record. Handshake messages will be split at the record
 	// layer.
 	MaxHandshakeRecordLength int
+
+	// RsaClientKeyExchangeVersion, if non-zero, causes the client to send a
+	// ClientKeyExchange with the specified version rather than the
+	// client_version when performing the RSA key exchange.
+	RsaClientKeyExchangeVersion uint16
 }
 
 func (c *Config) serverInit() {
