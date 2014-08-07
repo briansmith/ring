@@ -14,17 +14,22 @@
 # OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 # CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE. */
 
+SRC=..
+if [ "$#" -ge 1 ]; then
+  SRC=$1
+fi
+
 TESTS="
-./crypto/cipher/aead_test aes-128-gcm ../crypto/cipher/aes_128_gcm_tests.txt
-./crypto/cipher/aead_test aes-256-gcm ../crypto/cipher/aes_256_gcm_tests.txt
-./crypto/cipher/aead_test chacha20-poly1305 ../crypto/cipher/chacha20_poly1305_tests.txt
-./crypto/cipher/aead_test rc4-md5 ../crypto/cipher/rc4_md5_tests.txt
-./crypto/cipher/aead_test aes-128-key-wrap ../crypto/cipher/aes_128_key_wrap_tests.txt
-./crypto/cipher/aead_test aes-256-key-wrap ../crypto/cipher/aes_256_key_wrap_tests.txt
+./crypto/cipher/aead_test aes-128-gcm $SRC/crypto/cipher/aes_128_gcm_tests.txt
+./crypto/cipher/aead_test aes-256-gcm $SRC/crypto/cipher/aes_256_gcm_tests.txt
+./crypto/cipher/aead_test chacha20-poly1305 $SRC/crypto/cipher/chacha20_poly1305_tests.txt
+./crypto/cipher/aead_test rc4-md5 $SRC/crypto/cipher/rc4_md5_tests.txt
+./crypto/cipher/aead_test aes-128-key-wrap $SRC/crypto/cipher/aes_128_key_wrap_tests.txt
+./crypto/cipher/aead_test aes-256-key-wrap $SRC/crypto/cipher/aes_256_key_wrap_tests.txt
 ./crypto/base64/base64_test
 ./crypto/bio/bio_test
 ./crypto/bn/bn_test
-./crypto/cipher/cipher_test ../crypto/cipher/cipher_test.txt
+./crypto/cipher/cipher_test $SRC/crypto/cipher/cipher_test.txt
 ./crypto/dh/dh_test
 ./crypto/dsa/dsa_test
 ./crypto/err/err_test
