@@ -52,6 +52,10 @@ func (c *Conn) clientHandshake() error {
 		duplicateExtension:  c.config.Bugs.DuplicateExtension,
 	}
 
+	if c.config.Bugs.SendClientVersion != 0 {
+		hello.vers = c.config.Bugs.SendClientVersion
+	}
+
 	possibleCipherSuites := c.config.cipherSuites()
 	hello.cipherSuites = make([]uint16, 0, len(possibleCipherSuites))
 

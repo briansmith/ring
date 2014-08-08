@@ -94,6 +94,7 @@ const ERR_STRING_DATA SSL_error_string_data[] = {
   {ERR_PACK(ERR_LIB_SSL, SSL_F_ssl23_connect, 0), "ssl23_connect"},
   {ERR_PACK(ERR_LIB_SSL, SSL_F_ssl23_get_client_hello, 0), "ssl23_get_client_hello"},
   {ERR_PACK(ERR_LIB_SSL, SSL_F_ssl23_get_server_hello, 0), "ssl23_get_server_hello"},
+  {ERR_PACK(ERR_LIB_SSL, SSL_F_ssl23_get_v2_client_hello, 0), "ssl23_get_v2_client_hello"},
   {ERR_PACK(ERR_LIB_SSL, SSL_F_ssl23_peek, 0), "ssl23_peek"},
   {ERR_PACK(ERR_LIB_SSL, SSL_F_ssl23_read, 0), "ssl23_read"},
   {ERR_PACK(ERR_LIB_SSL, SSL_F_ssl23_write, 0), "ssl23_write"},

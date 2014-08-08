@@ -410,6 +410,10 @@ type ProtocolBugs struct {
 	// RenewTicketOnResume causes the server to renew the session ticket and
 	// send a NewSessionTicket message during an abbreviated handshake.
 	RenewTicketOnResume bool
+
+	// SendClientVersion, if non-zero, causes the client to send a different
+	// TLS version in the ClientHello than the maximum supported version.
+	SendClientVersion uint16
 }
 
 func (c *Config) serverInit() {

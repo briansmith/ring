@@ -73,8 +73,9 @@ extern "C" {
 
 /* server */
 /* read from client */
-#define SSL23_ST_SR_CLNT_HELLO_A	(0x210|SSL_ST_ACCEPT)
-#define SSL23_ST_SR_CLNT_HELLO_B	(0x211|SSL_ST_ACCEPT)
+#define SSL23_ST_SR_CLNT_HELLO		(0x210|SSL_ST_ACCEPT)
+#define SSL23_ST_SR_V2_CLNT_HELLO	(0x220|SSL_ST_ACCEPT)
+#define SSL23_ST_SR_SWITCH_VERSION	(0x230|SSL_ST_ACCEPT)
 
 #ifdef  __cplusplus
 }

@@ -85,6 +85,9 @@ type testCase struct {
 	// resumeSession controls whether a second connection should be tested
 	// which resumes the first session.
 	resumeSession bool
+	// sendPrefix sends a prefix on the socket before actually performing a
+	// handshake.
+	sendPrefix string
 	// flags, if not empty, contains a list of command-line flags that will
 	// be passed to the shim program.
 	flags []string
@@ -382,9 +385,79 @@ var testCases = []testCase{
 		shouldFail:    true,
 		expectedError: ":RECORD_TOO_SMALL:",
 	},
+	{
+		testType: serverTest,
+		name:     "MinorVersionTolerance",
+		config: Config{
+			Bugs: ProtocolBugs{
+				SendClientVersion: 0x03ff,
+			},
+		},
+		expectedVersion: VersionTLS12,
+	},
+	{
+		testType: serverTest,
+		name:     "MajorVersionTolerance",
+		config: Config{
+			Bugs: ProtocolBugs{
+				SendClientVersion: 0x0400,
+			},
+		},
+		expectedVersion: VersionTLS12,
+	},
+	{
+		testType: serverTest,
+		name:     "VersionTooLow",
+		config: Config{
+			Bugs: ProtocolBugs{
+				SendClientVersion: 0x0200,
+			},
+		},
+		shouldFail:    true,
+		expectedError: ":UNSUPPORTED_PROTOCOL:",
+	},
+	{
+		testType:      serverTest,
+		name:          "HttpGET",
+		sendPrefix:    "GET / HTTP/1.0\n",
+		shouldFail:    true,
+		expectedError: ":HTTP_REQUEST:",
+	},
+	{
+		testType:      serverTest,
+		name:          "HttpPOST",
+		sendPrefix:    "POST / HTTP/1.0\n",
+		shouldFail:    true,
+		expectedError: ":HTTP_REQUEST:",
+	},
+	{
+		testType:      serverTest,
+		name:          "HttpHEAD",
+		sendPrefix:    "HEAD / HTTP/1.0\n",
+		shouldFail:    true,
+		expectedError: ":HTTP_REQUEST:",
+	},
+	{
+		testType:      serverTest,
+		name:          "HttpPUT",
+		sendPrefix:    "PUT / HTTP/1.0\n",
+		shouldFail:    true,
+		expectedError: ":HTTP_REQUEST:",
+	},
+	{
+		testType:      serverTest,
+		name:          "HttpCONNECT",
+		sendPrefix:    "CONNECT www.google.com:443 HTTP/1.0\n",
+		shouldFail:    true,
+		expectedError: ":HTTPS_PROXY_REQUEST:",
+	},
 }
 
 func doExchange(test *testCase, config *Config, conn net.Conn, messageLen int) error {
+	if _, err := conn.Write([]byte(test.sendPrefix)); err != nil {
+		return err
+	}
+
 	var tlsConn *Conn
 	if test.testType == clientTest {
 		tlsConn = Server(conn, config)
@@ -991,7 +1064,7 @@ func addStateMachineCoverageTests(async bool, splitHandshake bool) {
 	// Client sends a V2ClientHello.
 	testCases = append(testCases, testCase{
 		testType: serverTest,
-		name:     "SendV2ClientHello",
+		name:     "SendV2ClientHello" + suffix,
 		config: Config{
 			// Choose a cipher suite that does not involve
 			// elliptic curves, so no extensions are
