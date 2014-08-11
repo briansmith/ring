@@ -108,7 +108,7 @@ static int test_print() {
 static int test_release() {
   ERR_put_error(1, 2, 3, "test", 4);
   ERR_remove_thread_state(NULL);
-  return 0;
+  return 1;
 }
 
 int main() {
