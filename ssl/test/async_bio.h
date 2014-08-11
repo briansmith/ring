@@ -18,18 +18,23 @@
 #include <openssl/bio.h>
 
 
-// async_bio_create creates a filter BIO for testing asynchronous
-// state machines. Reads and writes will fail and return EAGAIN unless
-// explicitly allowed. Each async BIO has a read quota and a write
-// quota. Initially both are zero. As each is incremented, bytes are
-// allowed to flow through the BIO.
+// async_bio_create creates a filter BIO for testing asynchronous state
+// machines which consume a stream socket. Reads and writes will fail
+// and return EAGAIN unless explicitly allowed. Each async BIO has a
+// read quota and a write quota. Initially both are zero. As each is
+// incremented, bytes are allowed to flow through the BIO.
 BIO *async_bio_create();
 
-// async_bio_allow_read increments |bio|'s read quota by |bytes|.
-void async_bio_allow_read(BIO *bio, size_t bytes);
+// async_bio_create_datagram creates a filter BIO for testing for
+// asynchronous state machines which consume datagram sockets. The read
+// and write quota count in packets rather than bytes.
+BIO *async_bio_create_datagram();
 
-// async_bio_allow_write increments |bio|'s write quota by |bytes|.
-void async_bio_allow_write(BIO *bio, size_t bytes);
+// async_bio_allow_read increments |bio|'s read quota by |count|.
+void async_bio_allow_read(BIO *bio, size_t count);
+
+// async_bio_allow_write increments |bio|'s write quota by |count|.
+void async_bio_allow_write(BIO *bio, size_t count);
 
 
 #endif  // HEADER_ASYNC_BIO

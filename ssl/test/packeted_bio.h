@@ -12,40 +12,21 @@
  * OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
  * CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE. */
 
-#ifndef HEADER_TEST_CONFIG
-#define HEADER_TEST_CONFIG
+#ifndef HEADER_PACKETED_BIO
+#define HEADER_PACKETED_BIO
 
-#include <string>
-
-
-struct TestConfig {
-  TestConfig();
-
-  bool is_server;
-  bool is_dtls;
-  bool resume;
-  bool fallback_scsv;
-  std::string key_file;
-  std::string cert_file;
-  std::string expected_server_name;
-  std::string expected_certificate_types;
-  bool require_any_client_certificate;
-  std::string advertise_npn;
-  std::string expected_next_proto;
-  bool false_start;
-  std::string select_next_proto;
-  bool async;
-  bool write_different_record_sizes;
-  bool cbc_record_splitting;
-  bool partial_write;
-  bool no_tls12;
-  bool no_tls11;
-  bool no_tls1;
-  bool no_ssl3;
-  bool cookie_exchange;
-};
-
-bool ParseConfig(int argc, char **argv, TestConfig *out_config);
+#include <openssl/bio.h>
 
 
-#endif  // HEADER_TEST_CONFIG
+// packeted_bio_create creates a filter BIO for testing protocols which expect
+// datagram BIOs. It implements a reliable datagram socket and reads and writes
+// packets by prefixing each packet with a big-endian 32-bit length. It must be
+// layered over a reliable blocking stream BIO.
+//
+// Note: packeted_bio_create exists because a SOCK_DGRAM socketpair on OS X is
+// does not block the caller, unlike on Linux. Writes simply fail with
+// ENOBUFS. POSIX also does not guarantee that such sockets are reliable.
+BIO *packeted_bio_create();
+
+
+#endif  // HEADER_PACKETED_BIO

@@ -29,6 +29,7 @@
 #include <openssl/ssl.h>
 
 #include "async_bio.h"
+#include "packeted_bio.h"
 #include "test_config.h"
 
 static int usage(const char *program) {
@@ -124,14 +125,59 @@ static int next_proto_select_callback(SSL* ssl,
   return SSL_TLSEXT_ERR_OK;
 }
 
+static int cookie_generate_callback(SSL *ssl, uint8_t *cookie, unsigned *cookie_len) {
+  *cookie_len = 32;
+  memset(cookie, 42, *cookie_len);
+  return 1;
+}
+
+static int cookie_verify_callback(SSL *ssl, uint8_t *cookie, unsigned cookie_len) {
+  if (cookie_len != 32) {
+    fprintf(stderr, "Cookie length mismatch.\n");
+    return 0;
+  }
+  for (size_t i = 0; i < cookie_len; i++) {
+    if (cookie[i] != 42) {
+      fprintf(stderr, "Cookie mismatch.\n");
+      return 0;
+    }
+  }
+  return 1;
+}
+
 static SSL_CTX *setup_ctx(const TestConfig *config) {
   SSL_CTX *ssl_ctx = NULL;
   DH *dh = NULL;
 
-  ssl_ctx = SSL_CTX_new(
-      config->is_server ? SSLv23_server_method() : SSLv23_client_method());
+  const SSL_METHOD *method;
+  if (config->is_dtls) {
+    // TODO(davidben): Get DTLS 1.2 working and test the version negotiation
+    // codepath. This doesn't currently work because
+    // - Session resumption is broken: https://crbug.com/403378
+    // - DTLS hasn't been updated for EVP_AEAD.
+    if (config->is_server) {
+      method = DTLSv1_server_method();
+    } else {
+      method = DTLSv1_client_method();
+    }
+  } else {
+    if (config->is_server) {
+      method = SSLv23_server_method();
+    } else {
+      method = SSLv23_client_method();
+    }
+  }
+  ssl_ctx = SSL_CTX_new(method);
   if (ssl_ctx == NULL) {
     goto err;
+  }
+
+  if (config->is_dtls) {
+    // DTLS needs read-ahead to function on a datagram BIO.
+    //
+    // TODO(davidben): this should not be necessary. DTLS code should only
+    // expect a datagram BIO.
+    SSL_CTX_set_read_ahead(ssl_ctx, 1);
   }
 
   if (!SSL_CTX_set_ecdh_auto(ssl_ctx, 1)) {
@@ -155,6 +201,9 @@ static SSL_CTX *setup_ctx(const TestConfig *config) {
       ssl_ctx, next_protos_advertised_callback, NULL);
   SSL_CTX_set_next_proto_select_cb(
       ssl_ctx, next_proto_select_callback, NULL);
+
+  SSL_CTX_set_cookie_generate_cb(ssl_ctx, cookie_generate_callback);
+  SSL_CTX_set_cookie_verify_cb(ssl_ctx, cookie_verify_callback);
 
   DH_free(dh);
   return ssl_ctx;
@@ -248,14 +297,23 @@ static int do_exchange(SSL_SESSION **out_session,
   if (config->no_ssl3) {
     SSL_set_options(ssl, SSL_OP_NO_SSLv3);
   }
+  if (config->cookie_exchange) {
+    SSL_set_options(ssl, SSL_OP_COOKIE_EXCHANGE);
+  }
 
   BIO *bio = BIO_new_fd(fd, 1 /* take ownership */);
   if (bio == NULL) {
     BIO_print_errors_fp(stdout);
     return 1;
   }
+  if (config->is_dtls) {
+    BIO *packeted = packeted_bio_create();
+    BIO_push(packeted, bio);
+    bio = packeted;
+  }
   if (config->async) {
-    BIO *async = async_bio_create();
+    BIO *async =
+        config->is_dtls ? async_bio_create_datagram() : async_bio_create();
     BIO_push(async, bio);
     bio = async;
   }
@@ -329,6 +387,10 @@ static int do_exchange(SSL_SESSION **out_session,
   }
 
   if (config->write_different_record_sizes) {
+    if (config->is_dtls) {
+      fprintf(stderr, "write_different_record_sizes not supported for DTLS\n");
+      return 6;
+    }
     // This mode writes a number of different record sizes in an attempt to
     // trip up the CBC record splitting code.
     uint8_t buf[32769];

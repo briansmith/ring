@@ -22,6 +22,7 @@ namespace {
 extern const BIO_METHOD async_bio_method;
 
 struct async_bio {
+  bool datagram;
   size_t read_quota;
   size_t write_quota;
 };
@@ -39,6 +40,12 @@ static int async_write(BIO *bio, const char *in, int inl) {
     return 0;
   }
 
+  if (a->datagram) {
+    // Perform writes synchronously; the DTLS implementation drops any packets
+    // that failed to send.
+    return BIO_write(bio->next_bio, in, inl);
+  }
+
   BIO_clear_retry_flags(bio);
 
   if (a->write_quota == 0) {
@@ -47,7 +54,7 @@ static int async_write(BIO *bio, const char *in, int inl) {
     return -1;
   }
 
-  if ((size_t)inl > a->write_quota) {
+  if (!a->datagram && (size_t)inl > a->write_quota) {
     inl = a->write_quota;
   }
   int ret = BIO_write(bio->next_bio, in, inl);
@@ -73,14 +80,14 @@ static int async_read(BIO *bio, char *out, int outl) {
     return -1;
   }
 
-  if ((size_t)outl > a->read_quota) {
+  if (!a->datagram && (size_t)outl > a->read_quota) {
     outl = a->read_quota;
   }
   int ret = BIO_read(bio->next_bio, out, outl);
   if (ret <= 0) {
     BIO_copy_next_retry(bio);
   } else {
-    a->read_quota -= ret;
+    a->read_quota -= (a->datagram ? 1 : ret);
   }
   return ret;
 }
@@ -144,18 +151,27 @@ BIO *async_bio_create() {
   return BIO_new(&async_bio_method);
 }
 
-void async_bio_allow_read(BIO *bio, size_t bytes) {
-  async_bio *a = get_data(bio);
-  if (a == NULL) {
-    return;
+BIO *async_bio_create_datagram() {
+  BIO *ret = BIO_new(&async_bio_method);
+  if (!ret) {
+    return NULL;
   }
-  a->read_quota += bytes;
+  get_data(ret)->datagram = true;
+  return ret;
 }
 
-void async_bio_allow_write(BIO *bio, size_t bytes) {
+void async_bio_allow_read(BIO *bio, size_t count) {
   async_bio *a = get_data(bio);
   if (a == NULL) {
     return;
   }
-  a->write_quota += bytes;
+  a->read_quota += count;
+}
+
+void async_bio_allow_write(BIO *bio, size_t count) {
+  async_bio *a = get_data(bio);
+  if (a == NULL) {
+    return;
+  }
+  a->write_quota += count;
 }

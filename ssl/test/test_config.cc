@@ -34,6 +34,7 @@ struct StringFlag {
 
 const BoolFlag kBoolFlags[] = {
   { "-server", &TestConfig::is_server },
+  { "-dtls", &TestConfig::is_dtls },
   { "-resume", &TestConfig::resume },
   { "-fallback-scsv", &TestConfig::fallback_scsv },
   { "-require-any-client-certificate",
@@ -48,6 +49,7 @@ const BoolFlag kBoolFlags[] = {
   { "-no-tls11", &TestConfig::no_tls11 },
   { "-no-tls1", &TestConfig::no_tls1 },
   { "-no-ssl3", &TestConfig::no_ssl3 },
+  { "-cookie-exchange", &TestConfig::cookie_exchange },
 };
 
 const size_t kNumBoolFlags = sizeof(kBoolFlags) / sizeof(kBoolFlags[0]);
@@ -71,6 +73,7 @@ const size_t kNumStringFlags = sizeof(kStringFlags) / sizeof(kStringFlags[0]);
 
 TestConfig::TestConfig()
     : is_server(false),
+      is_dtls(false),
       resume(false),
       fallback_scsv(false),
       require_any_client_certificate(false),
@@ -82,7 +85,8 @@ TestConfig::TestConfig()
       no_tls12(false),
       no_tls11(false),
       no_tls1(false),
-      no_ssl3(false) {
+      no_ssl3(false),
+      cookie_exchange(false) {
 }
 
 bool ParseConfig(int argc, char **argv, TestConfig *out_config) {
