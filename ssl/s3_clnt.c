@@ -2707,7 +2707,7 @@ int ssl3_send_client_certificate(SSL *s)
 		else if (i == 1)
 			{
 			i=0;
-			OPENSSL_PUT_ERROR(SSL, ssl3_send_client_key_exchange, SSL_R_BAD_DATA_RETURNED_BY_CALLBACK);
+			OPENSSL_PUT_ERROR(SSL, ssl3_send_client_certificate, SSL_R_BAD_DATA_RETURNED_BY_CALLBACK);
 			}
 
 		if (x509 != NULL) X509_free(x509);
@@ -2765,7 +2765,7 @@ int ssl3_check_cert_and_algorithm(SSL *s)
 	sc=s->session->sess_cert;
 	if (sc == NULL)
 		{
-		OPENSSL_PUT_ERROR(SSL, ssl3_send_client_key_exchange, ERR_R_INTERNAL_ERROR);
+		OPENSSL_PUT_ERROR(SSL, ssl3_check_cert_and_algorithm, ERR_R_INTERNAL_ERROR);
 		goto err;
 		}
 
@@ -2783,7 +2783,7 @@ int ssl3_check_cert_and_algorithm(SSL *s)
 		if (ssl_check_srvr_ecc_cert_and_alg(sc->peer_pkeys[idx].x509,
 		    						s) == 0) 
 			{ /* check failed */
-			OPENSSL_PUT_ERROR(SSL, ssl3_send_client_key_exchange, SSL_R_BAD_ECC_CERT);
+			OPENSSL_PUT_ERROR(SSL, ssl3_check_cert_and_algorithm, SSL_R_BAD_ECC_CERT);
 			goto f_err;
 			}
 		else 
@@ -2793,12 +2793,12 @@ int ssl3_check_cert_and_algorithm(SSL *s)
 		}
 	else if (alg_a & SSL_aECDSA)
 		{
-		OPENSSL_PUT_ERROR(SSL, ssl3_send_client_key_exchange, SSL_R_MISSING_ECDSA_SIGNING_CERT);
+		OPENSSL_PUT_ERROR(SSL, ssl3_check_cert_and_algorithm, SSL_R_MISSING_ECDSA_SIGNING_CERT);
 		goto f_err;
 		}
 	else if (alg_k & (SSL_kECDHr|SSL_kECDHe))
 		{
-		OPENSSL_PUT_ERROR(SSL, ssl3_send_client_key_exchange, SSL_R_MISSING_ECDH_CERT);
+		OPENSSL_PUT_ERROR(SSL, ssl3_check_cert_and_algorithm, SSL_R_MISSING_ECDH_CERT);
 		goto f_err;
 		}
 #endif
@@ -2810,40 +2810,40 @@ int ssl3_check_cert_and_algorithm(SSL *s)
 	/* Check that we have a certificate if we require one */
 	if ((alg_a & SSL_aRSA) && !has_bits(i,EVP_PK_RSA|EVP_PKT_SIGN))
 		{
-		OPENSSL_PUT_ERROR(SSL, ssl3_send_client_key_exchange, SSL_R_MISSING_RSA_SIGNING_CERT);
+		OPENSSL_PUT_ERROR(SSL, ssl3_check_cert_and_algorithm, SSL_R_MISSING_RSA_SIGNING_CERT);
 		goto f_err;
 		}
 #ifndef OPENSSL_NO_DSA
 	else if ((alg_a & SSL_aDSS) && !has_bits(i,EVP_PK_DSA|EVP_PKT_SIGN))
 		{
-		OPENSSL_PUT_ERROR(SSL, ssl3_send_client_key_exchange, SSL_R_MISSING_DSA_SIGNING_CERT);
+		OPENSSL_PUT_ERROR(SSL, ssl3_check_cert_and_algorithm, SSL_R_MISSING_DSA_SIGNING_CERT);
 		goto f_err;
 		}
 #endif
 	if ((alg_k & SSL_kRSA) &&
 		!(has_bits(i,EVP_PK_RSA|EVP_PKT_ENC) || (rsa != NULL)))
 		{
-		OPENSSL_PUT_ERROR(SSL, ssl3_send_client_key_exchange, SSL_R_MISSING_RSA_ENCRYPTING_CERT);
+		OPENSSL_PUT_ERROR(SSL, ssl3_check_cert_and_algorithm, SSL_R_MISSING_RSA_ENCRYPTING_CERT);
 		goto f_err;
 		}
 #ifndef OPENSSL_NO_DH
 	if ((alg_k & SSL_kEDH) && 
 		!(has_bits(i,EVP_PK_DH|EVP_PKT_EXCH) || (dh != NULL)))
 		{
-		OPENSSL_PUT_ERROR(SSL, ssl3_send_client_key_exchange, SSL_R_MISSING_DH_KEY);
+		OPENSSL_PUT_ERROR(SSL, ssl3_check_cert_and_algorithm, SSL_R_MISSING_DH_KEY);
 		goto f_err;
 		}
 	else if ((alg_k & SSL_kDHr) && !SSL_USE_SIGALGS(s) &&
 		!has_bits(i,EVP_PK_DH|EVP_PKS_RSA))
 		{
-		OPENSSL_PUT_ERROR(SSL, ssl3_send_client_key_exchange, SSL_R_MISSING_DH_RSA_CERT);
+		OPENSSL_PUT_ERROR(SSL, ssl3_check_cert_and_algorithm, SSL_R_MISSING_DH_RSA_CERT);
 		goto f_err;
 		}
 #ifndef OPENSSL_NO_DSA
 	else if ((alg_k & SSL_kDHd) && !SSL_USE_SIGALGS(s) &&
 		!has_bits(i,EVP_PK_DH|EVP_PKS_DSA))
 		{
-		OPENSSL_PUT_ERROR(SSL, ssl3_send_client_key_exchange, SSL_R_MISSING_DH_DSA_CERT);
+		OPENSSL_PUT_ERROR(SSL, ssl3_check_cert_and_algorithm, SSL_R_MISSING_DH_DSA_CERT);
 		goto f_err;
 		}
 #endif
