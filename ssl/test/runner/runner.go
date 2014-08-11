@@ -549,20 +549,10 @@ func runTest(test *testCase, buildDir string) error {
 	shimEndResume, connResume := openSocketPair()
 
 	shim_path := path.Join(buildDir, "ssl/test/bssl_shim")
-	flags := []string{}
-	if test.testType == clientTest {
-		flags = append(flags, "client")
-	} else {
-		flags = append(flags, "server")
-	}
-
-	if test.resumeSession {
-		flags = append(flags, "resume")
-	} else {
-		flags = append(flags, "normal")
-	}
-
+	var flags []string
 	if test.testType == serverTest {
+		flags = append(flags, "-server")
+
 		flags = append(flags, "-key-file")
 		if test.keyFile == "" {
 			flags = append(flags, rsaKeyFile)
@@ -577,6 +567,11 @@ func runTest(test *testCase, buildDir string) error {
 			flags = append(flags, test.certFile)
 		}
 	}
+
+	if test.resumeSession {
+		flags = append(flags, "-resume")
+	}
+
 	flags = append(flags, test.flags...)
 
 	var shim *exec.Cmd
