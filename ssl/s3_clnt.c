@@ -1427,6 +1427,12 @@ int ssl3_get_server_key_exchange(SSL *s)
 			goto err;
 			}
 
+		if (DH_size(dh) < 512/8)
+			{
+			OPENSSL_PUT_ERROR(SSL, ssl3_get_server_key_exchange, SSL_R_BAD_DH_P_LENGTH);
+			goto err;
+			}
+
 		if (alg_a & SSL_aRSA)
 			pkey=X509_get_pubkey(s->session->sess_cert->peer_pkeys[SSL_PKEY_RSA_ENC].x509);
 #ifndef OPENSSL_NO_DSA
