@@ -256,6 +256,14 @@ OPENSSL_EXPORT void BIO_set_callback_arg(BIO *bio, char *arg);
  * set by |BIO_set_callback_arg|. */
 OPENSSL_EXPORT char *BIO_get_callback_arg(const BIO *bio);
 
+/* BIO_number_read returns the number of bytes that have been read from
+ * |bio|. */
+OPENSSL_EXPORT size_t BIO_number_read(const BIO *bio);
+
+/* BIO_number_written returns the number of bytes that have been written to
+ * |bio|. */
+OPENSSL_EXPORT size_t BIO_number_written(const BIO *bio);
+
 
 /* Managing chains of BIOs.
  *
@@ -709,9 +717,7 @@ struct bio_st {
   /* next_bio points to the next |BIO| in a chain. This |BIO| owns a reference
    * to |next_bio|. */
   struct bio_st *next_bio; /* used by filter BIOs */
-  /* TODO(fork): either bring back BIO_number_read and write or remove these. */
-  unsigned long num_read;
-  unsigned long num_write;
+  size_t num_read, num_write;
 
   CRYPTO_EX_DATA ex_data;
 };

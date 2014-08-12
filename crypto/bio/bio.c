@@ -144,7 +144,7 @@ void BIO_free_all(BIO *bio) {
 }
 
 static int bio_io(BIO *bio, void *buf, int len, size_t method_offset,
-                  int callback_flags, unsigned long *num) {
+                  int callback_flags, size_t *num) {
   int i;
   typedef int (*io_func_t)(BIO *, char *, int);
   io_func_t io_func = NULL;
@@ -369,6 +369,14 @@ void BIO_set_callback_arg(BIO *bio, char *arg) {
 
 char *BIO_get_callback_arg(const BIO *bio) {
   return bio->cb_arg;
+}
+
+OPENSSL_EXPORT size_t BIO_number_read(const BIO *bio) {
+  return bio->num_read;
+}
+
+OPENSSL_EXPORT size_t BIO_number_written(const BIO *bio) {
+  return bio->num_write;
 }
 
 BIO *BIO_push(BIO *bio, BIO *appended_bio) {
