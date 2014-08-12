@@ -1950,6 +1950,9 @@ OPENSSL_EXPORT const SSL_CIPHER *SSL_get_current_cipher(const SSL *s);
 OPENSSL_EXPORT int	SSL_CIPHER_get_bits(const SSL_CIPHER *c,int *alg_bits);
 OPENSSL_EXPORT const char *	SSL_CIPHER_get_version(const SSL_CIPHER *c);
 OPENSSL_EXPORT const char *	SSL_CIPHER_get_name(const SSL_CIPHER *c);
+/* SSL_CIPHER_get_kx_name returns a string that describes the key-exchange
+ * method used by |c|. For example, "ECDHE-ECDSA". */
+OPENSSL_EXPORT const char *	SSL_CIPHER_get_kx_name(const SSL_CIPHER *cipher);
 OPENSSL_EXPORT unsigned long 	SSL_CIPHER_get_id(const SSL_CIPHER *c);
 
 OPENSSL_EXPORT int	SSL_get_fd(const SSL *s);
