@@ -274,6 +274,12 @@ int ssl_get_new_session(SSL *s, int session)
 	SSL_SESSION *ss=NULL;
 	GEN_SESSION_CB cb = def_generate_session_id;
 
+	if (s->mode & SSL_MODE_NO_SESSION_CREATION)
+		{
+		OPENSSL_PUT_ERROR(SSL, ssl_get_new_session, SSL_R_SESSION_MAY_NOT_BE_CREATED);
+		return 0;
+		}
+
 	if ((ss=SSL_SESSION_new()) == NULL) return(0);
 
 	/* If the context has a default timeout, use it */

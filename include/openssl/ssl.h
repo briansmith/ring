@@ -671,6 +671,11 @@ struct ssl_session_st
  * attacks. */
 #define SSL_MODE_CBC_RECORD_SPLITTING 0x00000100L
 
+/* SSL_MODE_NO_SESSION_CREATION will cause any attempts to create a session to
+ * fail with SSL_R_SESSION_MAY_NOT_BE_CREATED. This can be used to enforce that
+ * session resumption is used for a given SSL*. */
+#define SSL_MODE_NO_SESSION_CREATION 0x00000200L
+
 /* Note: SSL[_CTX]_set_{options,mode} use |= op on the previous value,
  * they cannot be used to clear bits. */
 
@@ -2809,6 +2814,7 @@ OPENSSL_EXPORT void ERR_load_SSL_strings(void);
 #define SSL_R_DECODE_ERROR 439
 #define SSL_R_UNPROCESSED_HANDSHAKE_DATA 440
 #define SSL_R_HANDSHAKE_RECORD_BEFORE_CCS 441
+#define SSL_R_SESSION_MAY_NOT_BE_CREATED 442
 #define SSL_R_SSLV3_ALERT_UNEXPECTED_MESSAGE 1010
 #define SSL_R_SSLV3_ALERT_BAD_RECORD_MAC 1020
 #define SSL_R_TLSV1_ALERT_DECRYPTION_FAILED 1021
