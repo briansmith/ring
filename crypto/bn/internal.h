@@ -131,18 +131,9 @@
 extern "C" {
 #endif
 
-/* BN_wexpand ensures that |bn| has at least |words| works of space without
- * altering its value. It returns one on success or zero on allocation
- * failure. */
-BIGNUM *bn_wexpand(BIGNUM *bn, unsigned words);
-
 /* bn_expand acts the same as |BN_wexpand|, but takes a number of bits rather
  * than a number of words. */
 BIGNUM *bn_expand(BIGNUM *bn, unsigned bits);
-
-/* bn_correct_top decrements |bn->top| until |bn->d[top-1]| is non-zero or
- * until |top| is zero. */
-void bn_correct_top(BIGNUM *bn);
 
 #if defined(OPENSSL_64_BIT)
 
