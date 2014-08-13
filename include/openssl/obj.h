@@ -139,7 +139,8 @@ OPENSSL_EXPORT int OBJ_nid2cbb(CBB *out, int nid);
  * If |dont_search_names| is zero, then |s| will be matched against the long
  * and short names of a known objects to find a match. Otherwise |s| must
  * contain an ASCII string with a dotted sequence of numbers. The resulting
- * object need not be previously known. It returns NULL on error. */
+ * object need not be previously known. It returns a freshly allocated
+ * |ASN1_OBJECT| or NULL on error. */
 OPENSSL_EXPORT ASN1_OBJECT *OBJ_txt2obj(const char *s, int dont_search_names);
 
 /* OBJ_obj2txt converts |obj| to a textual representation. If
