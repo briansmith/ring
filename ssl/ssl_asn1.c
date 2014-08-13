@@ -387,8 +387,14 @@ SSL_SESSION *d2i_SSL_SESSION(SSL_SESSION **a, const unsigned char **pp,
 		goto err;
 		}
 	
-	ret->cipher=NULL;
 	ret->cipher_id=id;
+	ret->cipher = ssl3_get_cipher_by_value(ret->cipher_id & 0xffff);
+	if (ret->cipher == NULL)
+		{
+		c.error=SSL_R_UNSUPPORTED_CIPHER;
+		c.line = __LINE__;
+		goto err;
+		}
 
 	M_ASN1_D2I_get_x(ASN1_OCTET_STRING,osp,d2i_ASN1_OCTET_STRING);
 	if ((ssl_version>>8) >= SSL3_VERSION_MAJOR)

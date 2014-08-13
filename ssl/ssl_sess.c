@@ -560,15 +560,6 @@ int ssl_get_prev_session(SSL *s, const struct ssl_early_callback_ctx *ctx)
 		goto err;
 		}
 
-	if (ret->cipher == NULL)
-		{
-		/* The cipher id has a leading 0x03 to be removed (and then put
-		 * back for the binary search) as a remnant of SSLv2 support. */
-		ret->cipher = ssl3_get_cipher_by_value(ret->cipher_id & 0xffff);
-		if (ret->cipher == NULL)
-			goto err;
-		}
-
 	if (ret->timeout < (long)(time(NULL) - ret->time)) /* timeout */
 		{
 		s->session_ctx->stats.sess_timeout++;
