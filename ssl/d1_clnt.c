@@ -303,9 +303,7 @@ int dtls1_connect(SSL *s)
 
 		case SSL3_ST_CR_CERT_A:
 		case SSL3_ST_CR_CERT_B:
-			/* Check if it is anon DH or PSK */
-			if (!(s->s3->tmp.new_cipher->algorithm_auth & SSL_aNULL) &&
-			    !(s->s3->tmp.new_cipher->algorithm_mkey & SSL_kPSK))
+			if (ssl_cipher_has_server_public_key(s->s3->tmp.new_cipher))
 				{
 				ret=ssl3_get_server_certificate(s);
 				if (ret <= 0) goto end;
