@@ -320,7 +320,7 @@ char ssl_early_callback_init(struct ssl_early_callback_ctx *ctx)
 	ctx->session_id_len = CBS_len(&session_id);
 
 	/* Skip past DTLS cookie */
-	if (ctx->ssl->version == DTLS1_VERSION || ctx->ssl->version == DTLS1_BAD_VER)
+	if (SSL_IS_DTLS(ctx->ssl))
 		{
 		CBS cookie;
 
