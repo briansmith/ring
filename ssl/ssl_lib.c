@@ -2694,20 +2694,30 @@ SSL_METHOD *ssl_bad_method(int ver)
 	return(NULL);
 	}
 
-const char *SSL_get_version(const SSL *s)
+static const char *ssl_get_version(int version)
 	{
-	if (s->version == TLS1_2_VERSION)
+	if (version == TLS1_2_VERSION)
 		return("TLSv1.2");
-	else if (s->version == TLS1_1_VERSION)
+	else if (version == TLS1_1_VERSION)
 		return("TLSv1.1");
-	else if (s->version == TLS1_VERSION)
+	else if (version == TLS1_VERSION)
 		return("TLSv1");
-	else if (s->version == SSL3_VERSION)
+	else if (version == SSL3_VERSION)
 		return("SSLv3");
-	else if (s->version == SSL2_VERSION)
+	else if (version == SSL2_VERSION)
 		return("SSLv2");
 	else
 		return("unknown");
+	}
+
+const char *SSL_get_version(const SSL *s)
+	{
+	return ssl_get_version(s->version);
+	}
+
+const char *SSL_SESSION_get_version(const SSL_SESSION *sess)
+	{
+	return ssl_get_version(sess->ssl_version);
 	}
 
 void ssl_clear_cipher_ctx(SSL *s)

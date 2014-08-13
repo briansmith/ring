@@ -2092,7 +2092,12 @@ OPENSSL_EXPORT long	SSL_CTX_ctrl(SSL_CTX *ctx,int cmd, long larg, void *parg);
 OPENSSL_EXPORT long	SSL_CTX_callback_ctrl(SSL_CTX *, int, void (*)(void));
 
 OPENSSL_EXPORT int	SSL_get_error(const SSL *s,int ret_code);
+/* SSL_get_version returns a string describing the TLS version used by |s|. For
+ * example, "TLSv1.2" or "SSLv3". */
 OPENSSL_EXPORT const char *SSL_get_version(const SSL *s);
+/* SSL_SESSION_get_version returns a string describing the TLS version used by
+ * |sess|. For example, "TLSv1.2" or "SSLv3". */
+OPENSSL_EXPORT const char *SSL_SESSION_get_version(const SSL_SESSION *sess);
 
 OPENSSL_EXPORT int SSL_CIPHER_is_AES(const SSL_CIPHER *c);
 OPENSSL_EXPORT int SSL_CIPHER_has_MD5_HMAC(const SSL_CIPHER *c);
