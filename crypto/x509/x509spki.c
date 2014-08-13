@@ -102,14 +102,20 @@ char * NETSCAPE_SPKI_b64_encode(NETSCAPE_SPKI *spki)
 {
 	unsigned char *der_spki, *p;
 	char *b64_str;
+	size_t b64_len;
 	int der_len;
 	der_len = i2d_NETSCAPE_SPKI(spki, NULL);
+	if (!EVP_EncodedLength(&b64_len, der_len))
+		{
+		OPENSSL_PUT_ERROR(X509, NETSCAPE_SPKI_b64_encode, ERR_R_OVERFLOW);
+		return NULL;
+		}
 	der_spki = OPENSSL_malloc(der_len);
 	if (der_spki == NULL) {
 		OPENSSL_PUT_ERROR(X509, NETSCAPE_SPKI_b64_encode, ERR_R_MALLOC_FAILURE);
 		return NULL;
 	}
-	b64_str = OPENSSL_malloc((der_len + 2) / 3 * 4 + 1);
+	b64_str = OPENSSL_malloc(b64_len);
 	if (b64_str == NULL) {
 		OPENSSL_free(der_spki);
 		OPENSSL_PUT_ERROR(X509, NETSCAPE_SPKI_b64_encode, ERR_R_MALLOC_FAILURE);

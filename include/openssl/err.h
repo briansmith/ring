@@ -444,6 +444,7 @@ enum {
 #define ERR_R_SHOULD_NOT_HAVE_BEEN_CALLED (2 | ERR_R_FATAL)
 #define ERR_R_PASSED_NULL_PARAMETER (3 | ERR_R_FATAL)
 #define ERR_R_INTERNAL_ERROR (4 | ERR_R_FATAL)
+#define ERR_R_OVERFLOW (5 | ERR_R_FATAL)
 
 /* System error functions */
 #define SYS_F_fopen 100

@@ -102,6 +102,12 @@ OPENSSL_EXPORT void EVP_EncodeFinal(EVP_ENCODE_CTX *ctx, uint8_t *out,
 OPENSSL_EXPORT size_t
     EVP_EncodeBlock(uint8_t *dst, const uint8_t *src, size_t src_len);
 
+/* EVP_EncodedLength sets |*out_len| to the number of bytes that will be needed
+ * to call |EVP_EncodeBlock| on an input of length |len|. This includes the
+ * final NUL that |EVP_EncodeBlock| writes. It returns one on success or zero
+ * on error. */
+int EVP_EncodedLength(size_t *out_len, size_t len);
+
 
 /* Decoding */
 

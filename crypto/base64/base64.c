@@ -402,3 +402,21 @@ int EVP_DecodeBlock(uint8_t *dst, const uint8_t *src, size_t src_len) {
 
   return ret;
 }
+
+int EVP_EncodedLength(size_t *out_len, size_t len) {
+  if (len + 2 < len) {
+    return 0;
+  }
+  len += 2;
+  len /= 3;
+  if (((len << 2) >> 2) != len) {
+    return 0;
+  }
+  len <<= 2;
+  if (len + 1 < len) {
+    return 0;
+  }
+  len++;
+  *out_len = len;
+  return 1;
+}
