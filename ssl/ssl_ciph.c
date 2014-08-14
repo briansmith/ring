@@ -152,9 +152,7 @@
 #define SSL_ENC_RC4_IDX		2
 #define SSL_ENC_AES128_IDX	3
 #define SSL_ENC_AES256_IDX	4
-#define SSL_ENC_AES128GCM_IDX	5
-#define SSL_ENC_AES256GCM_IDX	6
-#define SSL_ENC_NUM_IDX		7
+#define SSL_ENC_NUM_IDX		5
 
 
 static const EVP_CIPHER *ssl_cipher_methods[SSL_ENC_NUM_IDX]= { 0 };
@@ -298,9 +296,6 @@ void ssl_load_ciphers(void)
 	ssl_cipher_methods[SSL_ENC_AES128_IDX]= EVP_aes_128_cbc();
 	ssl_cipher_methods[SSL_ENC_AES256_IDX]= EVP_aes_256_cbc();
 
-	ssl_cipher_methods[SSL_ENC_AES128GCM_IDX]= EVP_aes_128_gcm();
-	ssl_cipher_methods[SSL_ENC_AES256GCM_IDX]= EVP_aes_256_gcm();
-
 	ssl_digest_methods[SSL_MD_MD5_IDX]= EVP_md5();
 	ssl_mac_secret_size[SSL_MD_MD5_IDX]= EVP_MD_size(EVP_md5());
 	assert(ssl_mac_secret_size[SSL_MD_MD5_IDX] >= 0);
@@ -384,12 +379,6 @@ int ssl_cipher_get_evp(const SSL_SESSION *s, const EVP_CIPHER **enc,
 		break;
 	case SSL_AES256:
 		i=SSL_ENC_AES256_IDX;
-		break;
-	case SSL_AES128GCM:
-		i=SSL_ENC_AES128GCM_IDX;
-		break;
-	case SSL_AES256GCM:
-		i=SSL_ENC_AES256GCM_IDX;
 		break;
 	default:
 		i= -1;
@@ -558,8 +547,6 @@ static void ssl_cipher_get_disabled(unsigned long *mkey, unsigned long *auth, un
 	*enc |= (ssl_cipher_methods[SSL_ENC_RC4_IDX ] == NULL) ? SSL_RC4 :0;
 	*enc |= (ssl_cipher_methods[SSL_ENC_AES128_IDX] == NULL) ? SSL_AES128:0;
 	*enc |= (ssl_cipher_methods[SSL_ENC_AES256_IDX] == NULL) ? SSL_AES256:0;
-	*enc |= (ssl_cipher_methods[SSL_ENC_AES128GCM_IDX] == NULL) ? SSL_AES128GCM:0;
-	*enc |= (ssl_cipher_methods[SSL_ENC_AES256GCM_IDX] == NULL) ? SSL_AES256GCM:0;
 
 	*mac |= (ssl_digest_methods[SSL_MD_MD5_IDX ] == NULL) ? SSL_MD5 :0;
 	*mac |= (ssl_digest_methods[SSL_MD_SHA1_IDX] == NULL) ? SSL_SHA1:0;
