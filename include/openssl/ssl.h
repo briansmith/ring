@@ -380,6 +380,8 @@ struct ssl_method_st
  *	Compression_meth [11]   EXPLICIT OCTET STRING, -- optional compression method
  *	SRP_username [ 12 ] EXPLICIT OCTET STRING -- optional SRP username
  *	Peer SHA256 [13]        EXPLICIT OCTET STRING, -- optional SHA256 hash of Peer certifiate
+ *	original handshake hash [14] EXPLICIT OCTET STRING, -- optional original handshake hash
+ *	tlsext_signed_cert_timestamp_list [15] EXPLICIT OCTET STRING, -- optional signed cert timestamp list extension
  *	}
  * Look in ssl/ssl_asn1.c for more details
  * I'm using EXPLICIT tags so I can read the damn things using asn1parse :-).
@@ -449,6 +451,8 @@ struct ssl_session_st
 	uint8_t *tlsext_tick;	/* Session ticket */
 	size_t tlsext_ticklen;		/* Session ticket length */
 	uint32_t tlsext_tick_lifetime_hint;	/* Session lifetime hint in seconds */
+	size_t tlsext_signed_cert_timestamp_list_length;
+	uint8_t *tlsext_signed_cert_timestamp_list; /* Server's list. */
 	char peer_sha256_valid;		/* Non-zero if peer_sha256 is valid */
 	unsigned char peer_sha256[SHA256_DIGEST_LENGTH];  /* SHA256 of peer certificate */
 
@@ -1023,6 +1027,8 @@ struct ssl_ctx_st
 	/* The client's Channel ID private key. */
 	EVP_PKEY *tlsext_channel_id_private;
 
+	/* If true, a client will request certificate timestamps. */
+	char signed_cert_timestamps_enabled;
 	};
 
 #endif
@@ -1087,6 +1093,28 @@ OPENSSL_EXPORT void SSL_CTX_set_channel_id_cb(SSL_CTX *ctx, void (*channel_id_cb
 OPENSSL_EXPORT void (*SSL_CTX_get_channel_id_cb(SSL_CTX *ctx))(SSL *ssl, EVP_PKEY **pkey);
 OPENSSL_EXPORT void SSL_CTX_set_cookie_generate_cb(SSL_CTX *ctx, int (*app_gen_cookie_cb)(SSL *ssl, uint8_t *cookie, size_t *cookie_len));
 OPENSSL_EXPORT void SSL_CTX_set_cookie_verify_cb(SSL_CTX *ctx, int (*app_verify_cookie_cb)(SSL *ssl, const uint8_t *cookie, size_t cookie_len));
+
+
+/* SSL_enable_signed_cert_timestamps causes |ssl| (which must be the client
+ * end of a connection) to request SCTs from the server.
+ * See https://tools.ietf.org/html/rfc6962.
+ * Returns 1 on success. */
+OPENSSL_EXPORT int SSL_enable_signed_cert_timestamps(SSL *ssl);
+
+/* SSL_CTX_enable_signed_cert_timestamps enables SCT requests on all
+ * client SSL objects created from |ctx|. */
+OPENSSL_EXPORT void SSL_CTX_enable_signed_cert_timestamps(SSL_CTX *ctx);
+
+/* SSL_get0_signed_cert_timestamp_list sets |*out| and |*out_len| to point to
+ * |*out_len| bytes of SCT information from the server. This is only valid if
+ * |ssl| is a client. The SCT information is a SignedCertificateTimestampList
+ * (including the two leading length bytes).
+ * See https://tools.ietf.org/html/rfc6962#section-3.3
+ * If no SCT was received then |*out_len| will be zero on return.
+ *
+ * WARNING: the returned data is not guaranteed to be well formed. */
+OPENSSL_EXPORT void SSL_get0_signed_cert_timestamp_list(const SSL *ssl, uint8_t **out, size_t *out_len);
+
 #ifndef OPENSSL_NO_NEXTPROTONEG
 OPENSSL_EXPORT void SSL_CTX_set_next_protos_advertised_cb(SSL_CTX *s,
 					   int (*cb) (SSL *ssl,
@@ -1391,6 +1419,9 @@ struct ssl_st
 	char tlsext_channel_id_enabled;
 	/* The client's Channel ID private key. */
 	EVP_PKEY *tlsext_channel_id_private;
+
+	/* Enable signed certificate time stamps. Currently client only. */
+	char signed_cert_timestamps_enabled;
 
 	/* For a client, this contains the list of supported protocols in wire
 	 * format. */

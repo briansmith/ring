@@ -1109,6 +1109,16 @@ unsigned char *ssl_add_clienthello_tlsext(SSL *s, unsigned char *buf, unsigned c
 		}
 #endif
 
+	if (s->signed_cert_timestamps_enabled && !s->s3->tmp.finish_md_len)
+		{
+		/* The client advertises an empty extension to indicate its support for
+		 * certificate timestamps. */
+		if (limit - ret - 4 < 0)
+			return NULL;
+		s2n(TLSEXT_TYPE_certificate_timestamp,ret);
+		s2n(0,ret);
+		}
+
 	if (s->alpn_client_proto_list && !s->s3->tmp.finish_md_len)
 		{
 		if ((size_t)(limit - ret) < 6 + s->alpn_client_proto_list_len)
@@ -2234,7 +2244,26 @@ static int ssl_scan_serverhello_tlsext(SSL *s, CBS *cbs, int *out_alert)
 			s->s3->tlsext_channel_id_valid = 1;
 			s->s3->tlsext_channel_id_new = 1;
 			}
+		else if (type == TLSEXT_TYPE_certificate_timestamp)
+			{
+			if (CBS_len(&extension) == 0)
+				{
+				*out_alert = SSL_AD_DECODE_ERROR;
+				return 0;
+				}
 
+			/* Session resumption uses the original session information. */
+			if (!s->hit)
+				{
+				if (!CBS_stow(&extension,
+					&s->session->tlsext_signed_cert_timestamp_list,
+					&s->session->tlsext_signed_cert_timestamp_list_length))
+					{
+					*out_alert = SSL_AD_INTERNAL_ERROR;
+					return 0;
+					}
+				}
+			}
 		else if (type == TLSEXT_TYPE_renegotiate)
 			{
 			if (!ssl_parse_serverhello_renegotiate_ext(s, &extension, out_alert))

@@ -404,6 +404,9 @@ SSL *SSL_new(SSL_CTX *ctx)
 	s->psk_client_callback=ctx->psk_client_callback;
 	s->psk_server_callback=ctx->psk_server_callback;
 
+	if (!s->server)
+		s->signed_cert_timestamps_enabled = s->ctx->signed_cert_timestamps_enabled;
+
 	return(s);
 err:
 	if (s != NULL)
@@ -1673,6 +1676,34 @@ int SSL_get_servername_type(const SSL *s)
 	if (s->session && (!s->tlsext_hostname ? s->session->tlsext_hostname : s->tlsext_hostname))
 		return TLSEXT_NAMETYPE_host_name;
 	return -1;
+	}
+
+void SSL_CTX_enable_signed_cert_timestamps(SSL_CTX *ctx)
+	{
+	ctx->signed_cert_timestamps_enabled = 1;
+	}
+
+int SSL_enable_signed_cert_timestamps(SSL *ssl)
+	{
+	/* Currently not implemented server side */
+	if (ssl->server)
+		return 0;
+
+	ssl->signed_cert_timestamps_enabled = 1;
+	return 1;
+	}
+
+void SSL_get0_signed_cert_timestamp_list(const SSL *ssl, uint8_t **out, size_t *out_len)
+	{
+	*out_len = 0;
+	*out = NULL;
+	if (ssl->server)
+		return;
+	SSL_SESSION *session = ssl->session;
+	if (!session || !session->tlsext_signed_cert_timestamp_list)
+		return;
+	*out = session->tlsext_signed_cert_timestamp_list;
+	*out_len = session->tlsext_signed_cert_timestamp_list_length;
 	}
 
 /* SSL_select_next_proto implements the standard protocol selection. It is

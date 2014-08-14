@@ -119,12 +119,13 @@ typedef struct ssl_session_asn1_st
 	ASN1_OCTET_STRING psk_identity;
 	ASN1_OCTET_STRING peer_sha256;
 	ASN1_OCTET_STRING original_handshake_hash;
+	ASN1_OCTET_STRING tlsext_signed_cert_timestamp_list;
 	} SSL_SESSION_ASN1;
 
 int i2d_SSL_SESSION(SSL_SESSION *in, unsigned char **pp)
 	{
 #define LSIZE2 (sizeof(long)*2)
-	int v1=0,v2=0,v3=0,v4=0,v5=0,v7=0,v8=0,v13=0,v14=0;
+	int v1=0,v2=0,v3=0,v4=0,v5=0,v7=0,v8=0,v13=0,v14=0,v15=0;
 	unsigned char buf[4],ibuf1[LSIZE2],ibuf2[LSIZE2];
 	unsigned char ibuf3[LSIZE2],ibuf4[LSIZE2],ibuf5[LSIZE2];
 	int v6=0,v9=0,v10=0;
@@ -259,6 +260,15 @@ int i2d_SSL_SESSION(SSL_SESSION *in, unsigned char **pp)
 		a.original_handshake_hash.data = in->original_handshake_hash;
 		}
 
+	if (in->tlsext_signed_cert_timestamp_list_length > 0)
+		{
+		a.tlsext_signed_cert_timestamp_list.length =
+				in->tlsext_signed_cert_timestamp_list_length;
+		a.tlsext_signed_cert_timestamp_list.type = V_ASN1_OCTET_STRING;
+		a.tlsext_signed_cert_timestamp_list.data =
+				in->tlsext_signed_cert_timestamp_list;
+		}
+
 	M_ASN1_I2D_len(&(a.version),		i2d_ASN1_INTEGER);
 	M_ASN1_I2D_len(&(a.ssl_version),	i2d_ASN1_INTEGER);
 	M_ASN1_I2D_len(&(a.cipher),		i2d_ASN1_OCTET_STRING);
@@ -290,6 +300,9 @@ int i2d_SSL_SESSION(SSL_SESSION *in, unsigned char **pp)
 		M_ASN1_I2D_len_EXP_opt(&(a.peer_sha256),i2d_ASN1_OCTET_STRING,13,v13);
 	if (in->original_handshake_hash_len > 0)
 		M_ASN1_I2D_len_EXP_opt(&(a.original_handshake_hash),i2d_ASN1_OCTET_STRING,14,v14);
+	if (in->tlsext_signed_cert_timestamp_list_length > 0)
+		M_ASN1_I2D_len_EXP_opt(&(a.tlsext_signed_cert_timestamp_list),
+				i2d_ASN1_OCTET_STRING, 15, v15);
 
 	M_ASN1_I2D_seq_total();
 
@@ -324,6 +337,9 @@ int i2d_SSL_SESSION(SSL_SESSION *in, unsigned char **pp)
 		M_ASN1_I2D_put_EXP_opt(&(a.peer_sha256),i2d_ASN1_OCTET_STRING,13,v13);
 	if (in->original_handshake_hash_len > 0)
 		M_ASN1_I2D_put_EXP_opt(&(a.original_handshake_hash),i2d_ASN1_OCTET_STRING,14,v14);
+	if (in->tlsext_signed_cert_timestamp_list_length > 0)
+		M_ASN1_I2D_put_EXP_opt(&(a.tlsext_signed_cert_timestamp_list),
+				i2d_ASN1_OCTET_STRING, 15, v15);
 
 	M_ASN1_I2D_finish();
 	}
@@ -571,6 +587,19 @@ SSL_SESSION *d2i_SSL_SESSION(SSL_SESSION **a, const unsigned char **pp,
 		OPENSSL_free(os.data);
 		os.data = NULL;
 		}
+
+	os.length = 0;
+	os.data = NULL;
+	M_ASN1_D2I_get_EXP_opt(osp, d2i_ASN1_OCTET_STRING, 15);
+	if (os.data)
+		{
+		if (ret->tlsext_signed_cert_timestamp_list)
+			OPENSSL_free(ret->tlsext_signed_cert_timestamp_list);
+		ret->tlsext_signed_cert_timestamp_list = os.data;
+		ret->tlsext_signed_cert_timestamp_list_length = os.length;
+		os.data = NULL;
+		}
+
 
 	M_ASN1_D2I_Finish(a,SSL_SESSION_free,SSL_F_D2I_SSL_SESSION);
 	}
