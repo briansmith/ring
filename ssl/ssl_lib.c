@@ -1033,7 +1033,7 @@ int SSL_connect(SSL *s)
 
 long SSL_get_default_timeout(const SSL *s)
 	{
-	return(s->method->get_timeout());
+	return SSL_DEFAULT_SESSION_TIMEOUT;
 	}
 
 int SSL_read(SSL *s,void *buf,int num)
@@ -1929,7 +1929,7 @@ SSL_CTX *SSL_CTX_new(const SSL_METHOD *meth)
 	ret->session_cache_tail=NULL;
 
 	/* We take the system default */
-	ret->session_timeout=meth->get_timeout();
+	ret->session_timeout = SSL_DEFAULT_SESSION_TIMEOUT;
 
 	ret->new_session_cb=0;
 	ret->remove_session_cb=0;

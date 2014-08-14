@@ -387,7 +387,6 @@ struct ssl_method_st
 	int (*num_ciphers)(void);
 	const SSL_CIPHER *(*get_cipher)(unsigned ncipher);
 	const struct ssl_method_st *(*get_ssl_method)(int version);
-	long (*get_timeout)(void);
 	struct ssl3_enc_method *ssl3_enc; /* Extra SSLv3/TLS stuff */
 	int (*ssl_version)(void);
 	long (*ssl_callback_ctrl)(SSL *s, int cb_id, void (*fp)(void));
@@ -724,6 +723,8 @@ typedef struct ssl_aead_ctx_st SSL_AEAD_CTX;
 #define SSL_MAX_CERT_LIST_DEFAULT 1024*100 /* 100k max cert list */
 
 #define SSL_SESSION_CACHE_MAX_SIZE_DEFAULT	(1024*20)
+
+#define SSL_DEFAULT_SESSION_TIMEOUT (2 * 60 * 60)
 
 /* This callback type is used inside SSL_CTX, SSL, and in the functions that set
  * them. It is used to override the generation of SSL/TLS session IDs in a

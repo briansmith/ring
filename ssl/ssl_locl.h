@@ -729,7 +729,6 @@ const SSL_METHOD *func_name(void)  \
 		ssl3_num_ciphers, \
 		ssl3_get_cipher, \
 		s_get_meth, \
-		ssl3_default_timeout, \
 		&enc_data, \
 		ssl_undefined_void_function, \
 		ssl3_callback_ctrl, \
@@ -764,7 +763,6 @@ const SSL_METHOD *func_name(void)  \
 		ssl3_num_ciphers, \
 		ssl3_get_cipher, \
 		s_get_meth, \
-		ssl3_default_timeout, \
 		&SSLv3_enc_data, \
 		ssl_undefined_void_function, \
 		ssl3_callback_ctrl, \
@@ -799,7 +797,6 @@ const SSL_METHOD *func_name(void)  \
 	ssl3_num_ciphers, \
 	ssl3_get_cipher, \
 	s_get_meth, \
-	ssl23_default_timeout, \
 	&TLSv1_2_enc_data, \
 	ssl_undefined_void_function, \
 	ssl3_callback_ctrl, \
@@ -835,7 +832,6 @@ const SSL_METHOD *func_name(void)  \
 		ssl3_num_ciphers, \
 		dtls1_get_cipher, \
 		s_get_meth, \
-		dtls1_default_timeout, \
 		&enc_data, \
 		ssl_undefined_void_function, \
 		ssl3_callback_ctrl, \
@@ -963,7 +959,6 @@ int	ssl3_pending(const SSL *s);
 
 void ssl3_record_sequence_update(unsigned char *seq);
 int ssl3_do_change_cipher_spec(SSL *ssl);
-long ssl3_default_timeout(void );
 
 void ssl3_set_handshake_header(SSL *s, int htype, unsigned long len);
 int ssl3_handshake_write(SSL *s);
@@ -971,9 +966,7 @@ int ssl3_handshake_write(SSL *s);
 int ssl23_read(SSL *s, void *buf, int len);
 int ssl23_peek(SSL *s, void *buf, int len);
 int ssl23_write(SSL *s, const void *buf, int len);
-long ssl23_default_timeout(void );
 
-long tls1_default_timeout(void);
 int dtls1_do_write(SSL *s,int type);
 int ssl3_read_n(SSL *s, int n, int max, int extend);
 int dtls1_read_bytes(SSL *s, int type, unsigned char *buf, int len, int peek);
@@ -999,7 +992,6 @@ void dtls1_clear_record_buffer(SSL *s);
 void dtls1_get_message_header(unsigned char *data, struct hm_header_st *msg_hdr);
 void dtls1_get_ccs_header(unsigned char *data, struct ccs_header_st *ccs_hdr);
 void dtls1_reset_seq_numbers(SSL *s, int rw);
-long dtls1_default_timeout(void);
 int dtls1_check_timeout_num(SSL *s);
 int dtls1_handle_timeout(SSL *s);
 const SSL_CIPHER *dtls1_get_cipher(unsigned int u);

@@ -61,11 +61,6 @@
 
 #include "ssl_locl.h"
 
-long ssl23_default_timeout(void)
-	{
-	return(300);
-	}
-
 int ssl23_read(SSL *s, void *buf, int len)
 	{
 	int n;

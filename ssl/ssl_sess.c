@@ -209,7 +209,7 @@ SSL_SESSION *SSL_SESSION_new(void)
 
 	ss->verify_result = 1; /* avoid 0 (= X509_V_OK) just in case */
 	ss->references=1;
-	ss->timeout=60*5+4; /* 5 minute timeout by default */
+	ss->timeout = SSL_DEFAULT_SESSION_TIMEOUT;
 	ss->time=(unsigned long)time(NULL);
 	ss->prev=NULL;
 	ss->next=NULL;
@@ -282,10 +282,8 @@ int ssl_get_new_session(SSL *s, int session)
 
 	if ((ss=SSL_SESSION_new()) == NULL) return(0);
 
-	/* If the context has a default timeout, use it */
-	if (s->session_ctx->session_timeout == 0)
-		ss->timeout=SSL_get_default_timeout(s);
-	else
+	/* If the context has a default timeout, use it over the default. */
+	if (s->session_ctx->session_timeout != 0)
 		ss->timeout=s->session_ctx->session_timeout;
 
 	if (s->session != NULL)
