@@ -150,24 +150,14 @@
 #define SSL_ENC_DES_IDX		0
 #define SSL_ENC_3DES_IDX	1
 #define SSL_ENC_RC4_IDX		2
-#define SSL_ENC_RC2_IDX		3
-#define SSL_ENC_IDEA_IDX	4
-#define SSL_ENC_NULL_IDX	5
-#define SSL_ENC_AES128_IDX	6
-#define SSL_ENC_AES256_IDX	7
-#define SSL_ENC_CAMELLIA128_IDX	8
-#define SSL_ENC_CAMELLIA256_IDX	9
-#define SSL_ENC_SEED_IDX    	10
-#define SSL_ENC_AES128GCM_IDX	11
-#define SSL_ENC_AES256GCM_IDX	12
-#define SSL_ENC_NUM_IDX		13
+#define SSL_ENC_AES128_IDX	3
+#define SSL_ENC_AES256_IDX	4
+#define SSL_ENC_AES128GCM_IDX	5
+#define SSL_ENC_AES256GCM_IDX	6
+#define SSL_ENC_NUM_IDX		7
 
 
 static const EVP_CIPHER *ssl_cipher_methods[SSL_ENC_NUM_IDX]= { 0 };
-
-#define SSL_COMP_NULL_IDX	0
-#define SSL_COMP_ZLIB_IDX	1
-#define SSL_COMP_NUM_IDX	2
 
 #define SSL_MD_MD5_IDX	0
 #define SSL_MD_SHA1_IDX	1
@@ -389,29 +379,11 @@ int ssl_cipher_get_evp(const SSL_SESSION *s, const EVP_CIPHER **enc,
 	case SSL_RC4:
 		i=SSL_ENC_RC4_IDX;
 		break;
-	case SSL_RC2:
-		i=SSL_ENC_RC2_IDX;
-		break;
-	case SSL_IDEA:
-		i=SSL_ENC_IDEA_IDX;
-		break;
-	case SSL_eNULL:
-		i=SSL_ENC_NULL_IDX;
-		break;
 	case SSL_AES128:
 		i=SSL_ENC_AES128_IDX;
 		break;
 	case SSL_AES256:
 		i=SSL_ENC_AES256_IDX;
-		break;
-	case SSL_CAMELLIA128:
-		i=SSL_ENC_CAMELLIA128_IDX;
-		break;
-	case SSL_CAMELLIA256:
-		i=SSL_ENC_CAMELLIA256_IDX;
-		break;
-	case SSL_SEED:
-		i=SSL_ENC_SEED_IDX;
 		break;
 	case SSL_AES128GCM:
 		i=SSL_ENC_AES128GCM_IDX;
@@ -427,12 +399,7 @@ int ssl_cipher_get_evp(const SSL_SESSION *s, const EVP_CIPHER **enc,
 	if ((i < 0) || (i >= SSL_ENC_NUM_IDX))
 		*enc=NULL;
 	else
-		{
-		if (i == SSL_ENC_NULL_IDX)
-			*enc = EVP_enc_null();
-
 		*enc=ssl_cipher_methods[i];
-		}
 
 	if (!ssl_cipher_get_mac(s, md, mac_pkey_type, mac_secret_size))
 		return 0;
@@ -589,15 +556,10 @@ static void ssl_cipher_get_disabled(unsigned long *mkey, unsigned long *auth, un
 	*enc |= (ssl_cipher_methods[SSL_ENC_DES_IDX ] == NULL) ? SSL_DES :0;
 	*enc |= (ssl_cipher_methods[SSL_ENC_3DES_IDX] == NULL) ? SSL_3DES:0;
 	*enc |= (ssl_cipher_methods[SSL_ENC_RC4_IDX ] == NULL) ? SSL_RC4 :0;
-	*enc |= (ssl_cipher_methods[SSL_ENC_RC2_IDX ] == NULL) ? SSL_RC2 :0;
-	*enc |= (ssl_cipher_methods[SSL_ENC_IDEA_IDX] == NULL) ? SSL_IDEA:0;
 	*enc |= (ssl_cipher_methods[SSL_ENC_AES128_IDX] == NULL) ? SSL_AES128:0;
 	*enc |= (ssl_cipher_methods[SSL_ENC_AES256_IDX] == NULL) ? SSL_AES256:0;
 	*enc |= (ssl_cipher_methods[SSL_ENC_AES128GCM_IDX] == NULL) ? SSL_AES128GCM:0;
 	*enc |= (ssl_cipher_methods[SSL_ENC_AES256GCM_IDX] == NULL) ? SSL_AES256GCM:0;
-	*enc |= (ssl_cipher_methods[SSL_ENC_CAMELLIA128_IDX] == NULL) ? SSL_CAMELLIA128:0;
-	*enc |= (ssl_cipher_methods[SSL_ENC_CAMELLIA256_IDX] == NULL) ? SSL_CAMELLIA256:0;
-	*enc |= (ssl_cipher_methods[SSL_ENC_SEED_IDX] == NULL) ? SSL_SEED:0;
 
 	*mac |= (ssl_digest_methods[SSL_MD_MD5_IDX ] == NULL) ? SSL_MD5 :0;
 	*mac |= (ssl_digest_methods[SSL_MD_SHA1_IDX] == NULL) ? SSL_SHA1:0;
