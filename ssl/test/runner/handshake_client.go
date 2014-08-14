@@ -184,13 +184,11 @@ NextCipherSuite:
 		return unexpectedMessageError(serverHello, msg)
 	}
 
-	vers, ok := c.config.mutualVersion(serverHello.vers)
-	if !ok || vers < VersionTLS10 {
-		// TLS 1.0 is the minimum version supported as a client.
+	c.vers, ok = c.config.mutualVersion(serverHello.vers)
+	if !ok {
 		c.sendAlert(alertProtocolVersion)
 		return fmt.Errorf("tls: server selected unsupported protocol version %x", serverHello.vers)
 	}
-	c.vers = vers
 	c.haveVers = true
 
 	suite := mutualCipherSuite(c.config.cipherSuites(), serverHello.cipherSuite)

@@ -755,26 +755,19 @@ func addCipherSuiteTests() {
 				resumeSession: resumeSession,
 			})
 
-			// Go's TLS implementation implements SSLv3 as a server,
-			// but not as a client.
-			//
-			// TODO(davidben): Implement SSLv3 as a client too to
-			// exercise that code.
-			if ver.version != VersionSSL30 {
-				testCases = append(testCases, testCase{
-					testType: serverTest,
-					name:     ver.name + "-" + suite.name + "-server",
-					config: Config{
-						MinVersion:   ver.version,
-						MaxVersion:   ver.version,
-						CipherSuites: []uint16{suite.id},
-						Certificates: []Certificate{cert},
-					},
-					certFile:      certFile,
-					keyFile:       keyFile,
-					resumeSession: resumeSession,
-				})
-			}
+			testCases = append(testCases, testCase{
+				testType: serverTest,
+				name:     ver.name + "-" + suite.name + "-server",
+				config: Config{
+					MinVersion:   ver.version,
+					MaxVersion:   ver.version,
+					CipherSuites: []uint16{suite.id},
+					Certificates: []Certificate{cert},
+				},
+				certFile:      certFile,
+				keyFile:       keyFile,
+				resumeSession: resumeSession,
+			})
 
 			// TODO(davidben): Fix DTLS 1.2 support and test that.
 			if ver.version == VersionTLS10 && strings.Index(suite.name, "RC4") == -1 {
@@ -1212,18 +1205,15 @@ func addVersionNegotiationTests() {
 				expectedVersion: expectedVersion,
 			})
 
-			// TODO(davidben): Implement SSLv3 as a client in the runner.
-			if expectedVersion > VersionSSL30 {
-				testCases = append(testCases, testCase{
-					testType: serverTest,
-					name:     "VersionNegotiation-Server-" + suffix,
-					config: Config{
-						MaxVersion: runnerVers.version,
-					},
-					flags:           flags,
-					expectedVersion: expectedVersion,
-				})
-			}
+			testCases = append(testCases, testCase{
+				testType: serverTest,
+				name:     "VersionNegotiation-Server-" + suffix,
+				config: Config{
+					MaxVersion: runnerVers.version,
+				},
+				flags:           flags,
+				expectedVersion: expectedVersion,
+			})
 		}
 	}
 }
