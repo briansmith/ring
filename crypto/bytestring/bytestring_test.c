@@ -151,6 +151,7 @@ static int test_get_indef() {
   static const uint8_t kDataWithBadInternalLength[] = {0x30, 0x80, 0x01, 0x01};
   static const uint8_t kDataNested[] = {0x30, 0x80, 0x30, 0x80, 0x30, 0x80,
                                         0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
+  static const uint8_t kDataPrimitive[] = {0x02, 0x80, 0x00, 0x00};
 
   CBS data, contents;
   CBS_init(&data, kData1, sizeof(kData1));
@@ -185,6 +186,14 @@ static int test_get_indef() {
       CBS_len(&contents) != 8 ||
       CBS_len(&data) != 0) {
     fprintf(stderr, "Nested indefinite lengths failed.\n");
+    return 0;
+  }
+
+  CBS_init(&data, kDataPrimitive, sizeof(kDataPrimitive));
+  if (CBS_get_asn1_ber(&data, &contents, 0x02)) {
+    /* Indefinite lengths should not be supported for non-constructed
+     * elements. */
+    fprintf(stderr, "Parsed non-constructed element with indefinite length\n");
     return 0;
   }
 
