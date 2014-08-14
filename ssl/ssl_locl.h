@@ -710,9 +710,9 @@ const SSL_METHOD *func_name(void)  \
 	{ \
 	static const SSL_METHOD func_name##_data= { \
 		version, \
-		tls1_new, \
-		tls1_clear, \
-		tls1_free, \
+		ssl3_new, \
+		ssl3_clear, \
+		ssl3_free, \
 		s_accept, \
 		s_connect, \
 		ssl3_read, \
@@ -731,7 +731,7 @@ const SSL_METHOD *func_name(void)  \
 		ssl3_num_ciphers, \
 		ssl3_get_cipher, \
 		s_get_meth, \
-		tls1_default_timeout, \
+		ssl3_default_timeout, \
 		&enc_data, \
 		ssl_undefined_void_function, \
 		ssl3_callback_ctrl, \
@@ -780,9 +780,9 @@ const SSL_METHOD *func_name(void)  \
 	{ \
 	static const SSL_METHOD func_name##_data= { \
 	TLS1_2_VERSION, \
-	tls1_new, \
-	tls1_clear, \
-	tls1_free, \
+	ssl3_new, \
+	ssl3_clear, \
+	ssl3_free, \
 	s_accept, \
 	s_connect, \
 	ssl23_read, \
@@ -1053,12 +1053,6 @@ int ssl23_accept(SSL *s);
 int ssl23_connect(SSL *s);
 int ssl23_read_bytes(SSL *s, int n);
 int ssl23_write_bytes(SSL *s);
-
-int tls1_new(SSL *s);
-void tls1_free(SSL *s);
-void tls1_clear(SSL *s);
-long tls1_ctrl(SSL *s,int cmd, long larg, void *parg);
-long tls1_callback_ctrl(SSL *s,int cmd, void (*fp)(void));
 
 int dtls1_new(SSL *s);
 int	dtls1_accept(SSL *s);

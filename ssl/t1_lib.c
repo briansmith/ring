@@ -182,35 +182,6 @@ SSL3_ENC_METHOD TLSv1_2_enc_data={
 	ssl3_handshake_write
 	};
 
-long tls1_default_timeout(void)
-	{
-	/* 2 hours, the 24 hours mentioned in the TLSv1 spec
-	 * is way too long for http, the cache would over fill */
-	return(60*60*2);
-	}
-
-int tls1_new(SSL *s)
-	{
-	if (!ssl3_new(s)) return(0);
-	s->method->ssl_clear(s);
-	return(1);
-	}
-
-void tls1_free(SSL *s)
-	{
-	if (s->tlsext_session_ticket)
-		{
-		OPENSSL_free(s->tlsext_session_ticket);
-		}
-	ssl3_free(s);
-	}
-
-void tls1_clear(SSL *s)
-	{
-	ssl3_clear(s);
-	s->version = s->method->version;
-	}
-
 static int compare_uint16_t(const void *p1, const void *p2)
 	{
 	uint16_t u1 = *((const uint16_t*)p1);

@@ -2224,7 +2224,7 @@ void ssl3_clear(SSL *s)
 	s->s3->total_renegotiations=0;
 	s->s3->num_renegotiations=0;
 	s->s3->in_read_app_data=0;
-	s->version=SSL3_VERSION;
+	s->version = s->method->version;
 
 #if !defined(OPENSSL_NO_NEXTPROTONEG)
 	if (s->next_proto_negotiated)
