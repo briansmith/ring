@@ -1,11 +1,7 @@
-cmake --version  # ensure that you have >= 2.8.8
-
 mkdir build
 cd build
 cmake ..
 make
-
-If you see an error about "Cannot find source file: OBJECT" then your version of CMake is too old.
 
 Note that the default build flags in the top-leve CMakeLists.txt are for
 debugging - optimisation isn't enabled.
