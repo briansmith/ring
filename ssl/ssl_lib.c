@@ -1398,7 +1398,7 @@ STACK_OF(SSL_CIPHER) *ssl_get_ciphers_by_id(SSL *s)
 /** The old interface to get the same thing as SSL_get_ciphers() */
 const char *SSL_get_cipher_list(const SSL *s,int n)
 	{
-	SSL_CIPHER *c;
+	const SSL_CIPHER *c;
 	STACK_OF(SSL_CIPHER) *sk;
 
 	if (s == NULL) return(NULL);
@@ -1472,7 +1472,7 @@ char *SSL_get_shared_ciphers(const SSL *s,char *buf,int len)
 	{
 	char *p;
 	STACK_OF(SSL_CIPHER) *sk;
-	SSL_CIPHER *c;
+	const SSL_CIPHER *c;
 	int i;
 
 	if ((s->session == NULL) || (s->session->ciphers == NULL) ||
@@ -1510,7 +1510,7 @@ char *SSL_get_shared_ciphers(const SSL *s,char *buf,int len)
 int ssl_cipher_list_to_bytes(SSL *s,STACK_OF(SSL_CIPHER) *sk,unsigned char *p)
 	{
 	int i;
-	SSL_CIPHER *c;
+	const SSL_CIPHER *c;
 	CERT *ct = s->cert;
 	unsigned char *q;
 	int no_scsv = s->renegotiate;
@@ -1546,7 +1546,7 @@ int ssl_cipher_list_to_bytes(SSL *s,STACK_OF(SSL_CIPHER) *sk,unsigned char *p)
 		{
 		if (!no_scsv)
 			{
-			static SSL_CIPHER scsv =
+			static const SSL_CIPHER scsv =
 				{
 				0, NULL, SSL3_CK_SCSV, 0, 0, 0, 0, 0, 0, 0, 0, 0
 				};
@@ -1557,7 +1557,7 @@ int ssl_cipher_list_to_bytes(SSL *s,STACK_OF(SSL_CIPHER) *sk,unsigned char *p)
 			}
 		if (s->fallback_scsv)
 			{
-			static SSL_CIPHER fallback_scsv =
+			static const SSL_CIPHER fallback_scsv =
 				{
 				0, NULL, SSL3_CK_FALLBACK_SCSV, 0, 0, 0, 0, 0, 0, 0, 0, 0
 				};

@@ -821,7 +821,7 @@ int ssl3_get_client_hello(SSL *s)
 	{
 	int i,ok,al=SSL_AD_INTERNAL_ERROR,ret= -1;
 	long n;
-	SSL_CIPHER *c;
+	const SSL_CIPHER *c;
 	STACK_OF(SSL_CIPHER) *ciphers=NULL;
 	struct ssl_early_callback_ctx early_ctx;
 	CBS client_hello;
@@ -1152,7 +1152,7 @@ int ssl3_get_client_hello(SSL *s)
 
 	if (!s->hit && s->version >= TLS1_VERSION && s->tls_session_secret_cb)
 		{
-		SSL_CIPHER *pref_cipher=NULL;
+		const SSL_CIPHER *pref_cipher=NULL;
 
 		s->session->master_key_length=sizeof(s->session->master_key);
 		if(s->tls_session_secret_cb(s, s->session->master_key, &s->session->master_key_length,

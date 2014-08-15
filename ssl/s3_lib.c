@@ -165,7 +165,7 @@
 #define FIXED_NONCE_LEN(x) ((x/2)<<24)
 
 /* list of available SSLv3 ciphers (sorted by id) */
-SSL_CIPHER ssl3_ciphers[]={
+const SSL_CIPHER ssl3_ciphers[]={
 
 /* The RSA ciphers */
 /* Cipher 04 */
@@ -2671,10 +2671,10 @@ struct ssl_cipher_preference_list_st* ssl_get_cipher_preferences(SSL *s)
 	return NULL;
 	}
 
-SSL_CIPHER *ssl3_choose_cipher(SSL *s, STACK_OF(SSL_CIPHER) *clnt,
+const SSL_CIPHER *ssl3_choose_cipher(SSL *s, STACK_OF(SSL_CIPHER) *clnt,
 	     struct ssl_cipher_preference_list_st *server_pref)
 	{
-	SSL_CIPHER *c,*ret=NULL;
+	const SSL_CIPHER *c,*ret=NULL;
 	STACK_OF(SSL_CIPHER) *srvr = server_pref->ciphers, *prio, *allow;
 	int i,ok;
 	size_t cipher_index;

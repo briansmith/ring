@@ -920,7 +920,7 @@ int ssl3_get_server_hello(SSL *s)
 	/* check if we want to resume the session based on external pre-shared secret */
 	if (s->version >= TLS1_VERSION && s->tls_session_secret_cb)
 		{
-		SSL_CIPHER *pref_cipher=NULL;
+		const SSL_CIPHER *pref_cipher=NULL;
 		s->session->master_key_length=sizeof(s->session->master_key);
 		if (s->tls_session_secret_cb(s, s->session->master_key,
 					     &s->session->master_key_length,

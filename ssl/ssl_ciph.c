@@ -690,7 +690,7 @@ static void ssl_cipher_collect_aliases(const SSL_CIPHER **ca_list,
 			if ((algorithm_ssl & mask_ssl) == 0)
 				continue;
 		
-		*ca_curr = (SSL_CIPHER *)(cipher_aliases + i);
+		*ca_curr = cipher_aliases + i;
 		ca_curr++;
 		}
 

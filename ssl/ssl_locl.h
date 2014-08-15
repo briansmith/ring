@@ -690,7 +690,7 @@ struct ssl_aead_ctx_st
 
 
 extern SSL3_ENC_METHOD ssl3_undef_enc_method;
-extern SSL_CIPHER ssl3_ciphers[];
+extern const SSL_CIPHER ssl3_ciphers[];
 
 
 SSL_METHOD *ssl_bad_method(int ver);
@@ -934,7 +934,7 @@ int ssl3_enc(SSL *s, int send_data);
 int n_ssl3_mac(SSL *ssl, unsigned char *md, int send_data);
 void ssl3_free_digest_list(SSL *s);
 unsigned long ssl3_output_cert_chain(SSL *s, CERT_PKEY *cpk);
-SSL_CIPHER *ssl3_choose_cipher(SSL *ssl,STACK_OF(SSL_CIPHER) *clnt,
+const SSL_CIPHER *ssl3_choose_cipher(SSL *ssl,STACK_OF(SSL_CIPHER) *clnt,
 			       struct ssl_cipher_preference_list_st *srvr);
 int	ssl3_setup_buffers(SSL *s);
 int	ssl3_setup_read_buffer(SSL *s);
