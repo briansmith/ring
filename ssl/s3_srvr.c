@@ -1010,8 +1010,7 @@ int ssl3_get_client_hello(SSL *s)
 			if (s->ctx->app_verify_cookie_cb != NULL)
 				{
 				if (s->ctx->app_verify_cookie_cb(s,
-						(unsigned char*)CBS_data(&cookie),
-						CBS_len(&cookie)) == 0)
+						CBS_data(&cookie), CBS_len(&cookie)) == 0)
 					{
 					al=SSL_AD_HANDSHAKE_FAILURE;
 					OPENSSL_PUT_ERROR(SSL, ssl3_get_client_hello, SSL_R_COOKIE_MISMATCH);

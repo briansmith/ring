@@ -1066,14 +1066,13 @@ int (*SSL_CTX_get_client_cert_cb(SSL_CTX *ctx))(SSL * ssl, X509 ** x509 , EVP_PK
 	}
 
 void SSL_CTX_set_cookie_generate_cb(SSL_CTX *ctx,
-	int (*cb)(SSL *ssl, unsigned char *cookie, unsigned int *cookie_len))
+	int (*cb)(SSL *ssl, uint8_t *cookie, size_t *cookie_len))
 	{
 	ctx->app_gen_cookie_cb=cb;
 	}
 
-/* TODO(davidben): |cookie| should be a const pointer. */
 void SSL_CTX_set_cookie_verify_cb(SSL_CTX *ctx,
-	int (*cb)(SSL *ssl, unsigned char *cookie, unsigned int cookie_len))
+	int (*cb)(SSL *ssl, const uint8_t *cookie, size_t cookie_len))
 	{
 	ctx->app_verify_cookie_cb=cb;
 	}

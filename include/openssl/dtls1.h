@@ -173,8 +173,8 @@ typedef struct hm_fragment_st
 typedef struct dtls1_state_st
 	{
 	unsigned int send_cookie;
-	unsigned char cookie[DTLS1_COOKIE_LENGTH];
-	unsigned int cookie_len;
+	uint8_t cookie[DTLS1_COOKIE_LENGTH];
+	size_t cookie_len;
 
 	/* 
 	 * The current data and handshake epoch.  This is initially

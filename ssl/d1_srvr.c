@@ -719,8 +719,7 @@ int dtls1_send_hello_verify_request(SSL *s)
 		*(p++) = DTLS1_VERSION & 0xFF;
 
 		if (s->ctx->app_gen_cookie_cb == NULL ||
-		     s->ctx->app_gen_cookie_cb(s, s->d1->cookie,
-			 &(s->d1->cookie_len)) == 0)
+		     s->ctx->app_gen_cookie_cb(s, s->d1->cookie, &(s->d1->cookie_len)) == 0)
 			{
 			OPENSSL_PUT_ERROR(SSL, dtls1_send_hello_verify_request, ERR_R_INTERNAL_ERROR);
 			return 0;

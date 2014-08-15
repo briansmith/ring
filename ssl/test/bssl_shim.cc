@@ -125,13 +125,13 @@ static int next_proto_select_callback(SSL* ssl,
   return SSL_TLSEXT_ERR_OK;
 }
 
-static int cookie_generate_callback(SSL *ssl, uint8_t *cookie, unsigned *cookie_len) {
+static int cookie_generate_callback(SSL *ssl, uint8_t *cookie, size_t *cookie_len) {
   *cookie_len = 32;
   memset(cookie, 42, *cookie_len);
   return 1;
 }
 
-static int cookie_verify_callback(SSL *ssl, uint8_t *cookie, unsigned cookie_len) {
+static int cookie_verify_callback(SSL *ssl, const uint8_t *cookie, size_t cookie_len) {
   if (cookie_len != 32) {
     fprintf(stderr, "Cookie length mismatch.\n");
     return 0;

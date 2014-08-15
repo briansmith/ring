@@ -903,13 +903,11 @@ struct ssl_ctx_st
 	/* get channel id callback */
 	void (*channel_id_cb)(SSL *ssl, EVP_PKEY **pkey);
 
-    /* cookie generate callback */
-    int (*app_gen_cookie_cb)(SSL *ssl, unsigned char *cookie, 
-        unsigned int *cookie_len);
+	/* cookie generate callback */
+	int (*app_gen_cookie_cb)(SSL *ssl, uint8_t *cookie, size_t *cookie_len);
 
-    /* verify cookie callback */
-    int (*app_verify_cookie_cb)(SSL *ssl, unsigned char *cookie, 
-        unsigned int cookie_len);
+	/* verify cookie callback */
+	int (*app_verify_cookie_cb)(SSL *ssl, const uint8_t *cookie, size_t cookie_len);
 
 	CRYPTO_EX_DATA ex_data;
 
@@ -1136,8 +1134,8 @@ OPENSSL_EXPORT void (*SSL_CTX_get_channel_id_cb(SSL_CTX *ctx))(SSL *ssl, EVP_PKE
 #ifndef OPENSSL_NO_ENGINE
 OPENSSL_EXPORT int SSL_CTX_set_client_cert_engine(SSL_CTX *ctx, ENGINE *e);
 #endif
-OPENSSL_EXPORT void SSL_CTX_set_cookie_generate_cb(SSL_CTX *ctx, int (*app_gen_cookie_cb)(SSL *ssl, unsigned char *cookie, unsigned int *cookie_len));
-OPENSSL_EXPORT void SSL_CTX_set_cookie_verify_cb(SSL_CTX *ctx, int (*app_verify_cookie_cb)(SSL *ssl, unsigned char *cookie, unsigned int cookie_len));
+OPENSSL_EXPORT void SSL_CTX_set_cookie_generate_cb(SSL_CTX *ctx, int (*app_gen_cookie_cb)(SSL *ssl, uint8_t *cookie, size_t *cookie_len));
+OPENSSL_EXPORT void SSL_CTX_set_cookie_verify_cb(SSL_CTX *ctx, int (*app_verify_cookie_cb)(SSL *ssl, const uint8_t *cookie, size_t cookie_len));
 #ifndef OPENSSL_NO_NEXTPROTONEG
 OPENSSL_EXPORT void SSL_CTX_set_next_protos_advertised_cb(SSL_CTX *s,
 					   int (*cb) (SSL *ssl,
