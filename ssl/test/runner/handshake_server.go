@@ -113,15 +113,12 @@ func (hs *serverHandshakeState) readClientHello() (isResume bool, err error) {
 		c.sendAlert(alertUnexpectedMessage)
 		return false, unexpectedMessageError(hs.clientHello, msg)
 	}
-	c.vers, ok = config.mutualVersion(hs.clientHello.vers)
-	if !ok {
-		c.sendAlert(alertProtocolVersion)
-		return false, fmt.Errorf("tls: client offered an unsupported, maximum protocol version of %x", hs.clientHello.vers)
-	}
 
 	if c.isDTLS && !config.Bugs.SkipHelloVerifyRequest {
+		// Per RFC 6347, the version field in HelloVerifyRequest SHOULD
+		// be always DTLS 1.0
 		helloVerifyRequest := &helloVerifyRequestMsg{
-			vers:   c.vers,
+			vers:   VersionTLS10,
 			cookie: make([]byte, 32),
 		}
 		if _, err := io.ReadFull(c.config.rand(), helloVerifyRequest.cookie); err != nil {
@@ -158,8 +155,11 @@ func (hs *serverHandshakeState) readClientHello() (isResume bool, err error) {
 		hs.clientHello = newClientHello
 	}
 
-	// Do not set c.haveVers until after HelloVerifyRequest; the
-	// retransmitted ClientHello may not have the final version.
+	c.vers, ok = config.mutualVersion(hs.clientHello.vers)
+	if !ok {
+		c.sendAlert(alertProtocolVersion)
+		return false, fmt.Errorf("tls: client offered an unsupported, maximum protocol version of %x", hs.clientHello.vers)
+	}
 	c.haveVers = true
 
 	hs.hello = new(serverHelloMsg)

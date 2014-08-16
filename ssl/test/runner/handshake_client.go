@@ -166,6 +166,13 @@ NextCipherSuite:
 	if c.isDTLS {
 		helloVerifyRequest, ok := msg.(*helloVerifyRequestMsg)
 		if ok {
+			if helloVerifyRequest.vers != VersionTLS10 {
+				// Per RFC 6347, the version field in
+				// HelloVerifyRequest SHOULD be always DTLS
+				// 1.0. Enforce this for testing purposes.
+				return errors.New("dtls: bad HelloVerifyRequest version")
+			}
+
 			hello.raw = nil
 			hello.cookie = helloVerifyRequest.cookie
 			helloBytes = hello.marshal()

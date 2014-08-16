@@ -622,16 +622,6 @@ static int dtls1_get_hello_verify(SSL *s)
 		goto f_err;
 		}
 
-#if 0
-	if (s->method->version != DTLS_ANY_VERSION && server_version != s->version)
-		{
-		OPENSSL_PUT_ERROR(SSL, dtls1_get_hello_verify, SSL_R_WRONG_SSL_VERSION);
-		s->version=(s->version&0xff00)|data[1];
-		al = SSL_AD_PROTOCOL_VERSION;
-		goto f_err;
-		}
-#endif
-
 	if (CBS_len(&cookie) > sizeof(s->d1->cookie))
 		{
 		al=SSL_AD_ILLEGAL_PARAMETER;
