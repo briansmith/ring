@@ -232,8 +232,6 @@ int dtls1_connect(SSL *s)
 			s->state=SSL3_ST_CW_CLNT_HELLO_A;
 			s->ctx->stats.sess_connect++;
 			s->init_num=0;
-			/* mark client_random uninitialized */
-			memset(s->s3->client_random,0,sizeof(s->s3->client_random));
 			s->d1->send_cookie = 0;
 			s->hit = 0;
 			break;
@@ -256,7 +254,7 @@ int dtls1_connect(SSL *s)
 				s->s3->tmp.next_state=SSL3_ST_CR_SRVR_HELLO_A;
 				}
 			else
-				s->state=SSL3_ST_CR_SRVR_HELLO_A;
+				s->state=DTLS1_ST_CR_HELLO_VERIFY_REQUEST_A;
 
 			s->init_num=0;
 				/* turn on buffering for the next lot of output */
@@ -265,39 +263,44 @@ int dtls1_connect(SSL *s)
 
 			break;
 
-		case SSL3_ST_CR_SRVR_HELLO_A:
-		case SSL3_ST_CR_SRVR_HELLO_B:
-			ret=ssl3_get_server_hello(s);
-			if (ret <= 0) goto end;
-			else
-				{
-				if (s->hit)
-					{
-					s->state=SSL3_ST_CR_FINISHED_A;
-					if (s->tlsext_ticket_expected)
-						{
-						/* receive renewed session ticket */
-						s->state=SSL3_ST_CR_SESSION_TICKET_A;
-						}
-					}
-				else
-					s->state=DTLS1_ST_CR_HELLO_VERIFY_REQUEST_A;
-				}
-			s->init_num=0;
-			break;
-
 		case DTLS1_ST_CR_HELLO_VERIFY_REQUEST_A:
 		case DTLS1_ST_CR_HELLO_VERIFY_REQUEST_B:
 
 			ret = dtls1_get_hello_verify(s);
 			if ( ret <= 0)
 				goto end;
-			dtls1_stop_timer(s);
-			if ( s->d1->send_cookie) /* start again, with a cookie */
-				s->state=SSL3_ST_CW_CLNT_HELLO_A;
+			if ( s->d1->send_cookie)
+				{
+				/* start again, with a cookie */
+				dtls1_stop_timer(s);
+				s->state = SSL3_ST_CW_CLNT_HELLO_A;
+				}
 			else
-				s->state = SSL3_ST_CR_CERT_A;
+				{
+				s->state = SSL3_ST_CR_SRVR_HELLO_A;
+				}
 			s->init_num = 0;
+			break;
+
+		case SSL3_ST_CR_SRVR_HELLO_A:
+		case SSL3_ST_CR_SRVR_HELLO_B:
+			ret=ssl3_get_server_hello(s);
+			if (ret <= 0) goto end;
+
+			if (s->hit)
+				{
+				s->state=SSL3_ST_CR_FINISHED_A;
+				if (s->tlsext_ticket_expected)
+					{
+					/* receive renewed session ticket */
+					s->state=SSL3_ST_CR_SESSION_TICKET_A;
+					}
+				}
+			else
+				{
+				s->state=SSL3_ST_CR_CERT_A;
+				}
+			s->init_num=0;
 			break;
 
 		case SSL3_ST_CR_CERT_A:
@@ -594,7 +597,8 @@ static int dtls1_get_hello_verify(SSL *s)
 		DTLS1_ST_CR_HELLO_VERIFY_REQUEST_A,
 		DTLS1_ST_CR_HELLO_VERIFY_REQUEST_B,
 		-1,
-		s->max_cert_list,
+		/* Use the same maximum size as ssl3_get_server_hello. */
+		20000,
 		&ok);
 	s->first_packet = 0;
 
@@ -603,7 +607,7 @@ static int dtls1_get_hello_verify(SSL *s)
 	if (s->s3->tmp.message_type != DTLS1_MT_HELLO_VERIFY_REQUEST)
 		{
 		s->d1->send_cookie = 0;
-		s->s3->tmp.reuse_message=1;
+		s->s3->tmp.reuse_message = 1;
 		return(1);
 		}
 

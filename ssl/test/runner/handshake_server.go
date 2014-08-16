@@ -142,9 +142,17 @@ func (hs *serverHandshakeState) readClientHello() (isResume bool, err error) {
 		if !bytes.Equal(newClientHello.cookie, helloVerifyRequest.cookie) {
 			return false, errors.New("dtls: invalid cookie")
 		}
-		// Apart from the cookie, client hello must match.
-		hs.clientHello.cookie = newClientHello.cookie
-		if hs.clientHello.equal(newClientHello) {
+
+		// Apart from the cookie, the two ClientHellos must
+		// match. Note that clientHello.equal compares the
+		// serialization, so we make a copy.
+		oldClientHelloCopy := *hs.clientHello
+		oldClientHelloCopy.raw = nil
+		oldClientHelloCopy.cookie = nil
+		newClientHelloCopy := *newClientHello
+		newClientHelloCopy.raw = nil
+		newClientHelloCopy.cookie = nil
+		if !oldClientHelloCopy.equal(&newClientHelloCopy) {
 			return false, errors.New("dtls: retransmitted ClientHello does not match")
 		}
 		hs.clientHello = newClientHello

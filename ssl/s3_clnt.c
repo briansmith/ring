@@ -683,27 +683,14 @@ int ssl3_client_hello(SSL *s)
 
 		p=s->s3->client_random;
 
-		/* for DTLS if client_random is initialized, reuse it, we are
-		 * required to use same upon reply to HelloVerify */
-		if (SSL_IS_DTLS(s))
+		/* If resending the ClientHello in DTLS after a
+		 * HelloVerifyRequest, don't renegerate the client_random. The
+		 * random must be reused. */
+		if (!SSL_IS_DTLS(s) || !s->d1->send_cookie)
 			{
-			size_t idx;
-			i = 1;
-			for (idx=0; idx < sizeof(s->s3->client_random); idx++)
-				{
-				if (p[idx])
-					{
-					i = 0;
-					break;
-					}
-				}
-			}
-		else 
-			i = 1;
-
-		if (i)
 			ssl_fill_hello_random(s, 0, p,
 					      sizeof(s->s3->client_random));
+			}
 
 		/* Do the message type and length last.
 		 * Note: the final argument to ssl_add_clienthello_tlsext below
@@ -829,46 +816,15 @@ int ssl3_get_server_hello(SSL *s)
 	CBS server_hello, server_random, session_id;
 	uint16_t server_version, cipher_suite;
 	uint8_t compression_method;
-	/* Hello verify request and/or server hello version may not
-	 * match so set first packet if we're negotiating version.
-	 */
-	if (SSL_IS_DTLS(s))
-		s->first_packet = 1;
 
 	n=s->method->ssl_get_message(s,
 		SSL3_ST_CR_SRVR_HELLO_A,
 		SSL3_ST_CR_SRVR_HELLO_B,
-		-1,
+		SSL3_MT_SERVER_HELLO,
 		20000, /* ?? */
 		&ok);
 
 	if (!ok) return((int)n);
-
-	if (SSL_IS_DTLS(s))
-		{
-		s->first_packet = 0;
-		if ( s->s3->tmp.message_type == DTLS1_MT_HELLO_VERIFY_REQUEST)
-			{
-			if ( s->d1->send_cookie == 0)
-				{
-				s->s3->tmp.reuse_message = 1;
-				return 1;
-				}
-			else /* already sent a cookie */
-				{
-				al=SSL_AD_UNEXPECTED_MESSAGE;
-				OPENSSL_PUT_ERROR(SSL, ssl3_get_server_hello, SSL_R_BAD_MESSAGE_TYPE);
-				goto f_err;
-				}
-			}
-		}
-	
-	if ( s->s3->tmp.message_type != SSL3_MT_SERVER_HELLO)
-		{
-		al=SSL_AD_UNEXPECTED_MESSAGE;
-		OPENSSL_PUT_ERROR(SSL, ssl3_get_server_hello, SSL_R_BAD_MESSAGE_TYPE);
-		goto f_err;
-		}
 
 	CBS_init(&server_hello, s->init_msg, n);
 
