@@ -122,6 +122,12 @@ int RSA_padding_add_PKCS1_PSS_mgf1(RSA *rsa, uint8_t *EM, const uint8_t *mHash,
                                    const EVP_MD *Hash, const EVP_MD *mgf1Hash,
                                    int sLen);
 
+/* RSA_private_transform calls either the method-specific |private_transform|
+ * function (if given) or the generic one. See the comment for
+ * |private_transform| in |rsa_meth_st|. */
+int RSA_private_transform(RSA *rsa, uint8_t *out, const uint8_t *in,
+                          size_t len);
+
 typedef struct rsa_pss_params_st {
   X509_ALGOR *hashAlgorithm;
   X509_ALGOR *maskGenAlgorithm;

@@ -386,6 +386,21 @@ struct rsa_meth_st {
   int (*verify_raw)(RSA *rsa, size_t *out_len, uint8_t *out, size_t max_out,
                     const uint8_t *in, size_t in_len, int padding);
 
+  /* private_transform takes a big-endian integer from |in|, calculates the
+   * d'th power of it, modulo the RSA modulus and writes the result as a
+   * big-endian integer to |out|. Both |in| and |out| are |len| bytes long and
+   * |len| is always equal to |RSA_size(rsa)|. If the result of the transform
+   * can be represented in fewer than |len| bytes, then |out| must be zero
+   * padded on the left.
+   *
+   * It returns one on success and zero otherwise.
+   *
+   * RSA decrypt and sign operations will call this, thus an ENGINE might wish
+   * to override it in order to avoid having to implement the padding
+   * functionality demanded by those, higher level, operations. */
+  int (*private_transform)(RSA *rsa, uint8_t *out, const uint8_t *in,
+                           size_t len);
+
   int (*mod_exp)(BIGNUM *r0, const BIGNUM *I, RSA *rsa,
                  BN_CTX *ctx); /* Can be null */
   int (*bn_mod_exp)(BIGNUM *r, const BIGNUM *a, const BIGNUM *p,
@@ -470,8 +485,8 @@ struct rsa_st {
 #define RSA_F_RSA_padding_check_PKCS1_type_2 126
 #define RSA_F_RSA_recover_crt_params 127
 #define RSA_F_RSA_check_key 128
+#define RSA_F_private_transform 129
 #define RSA_R_INVALID_MESSAGE_LENGTH 100
-#define RSA_R_DATA_GREATER_THAN_MOD_LEN 101
 #define RSA_R_NO_PUBLIC_EXPONENT 102
 #define RSA_R_DATA_TOO_LARGE_FOR_KEY_SIZE 103
 #define RSA_R_BLOCK_TYPE_IS_NOT_01 104
@@ -514,5 +529,6 @@ struct rsa_st {
 #define RSA_R_CRT_VALUES_INCORRECT 141
 #define RSA_R_INCONSISTENT_SET_OF_CRT_VALUES 142
 #define RSA_R_ONLY_ONE_OF_P_Q_GIVEN 143
+#define RSA_R_DATA_LEN_NOT_EQUAL_TO_MOD_LEN 144
 
 #endif  /* OPENSSL_HEADER_RSA_H */

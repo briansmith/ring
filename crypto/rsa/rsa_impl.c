@@ -327,11 +327,7 @@ static void rsa_blinding_release(RSA *rsa, BN_BLINDING *blinding,
 static int sign_raw(RSA *rsa, size_t *out_len, uint8_t *out, size_t max_out,
                     const uint8_t *in, size_t in_len, int padding) {
   const unsigned rsa_size = RSA_size(rsa);
-  BIGNUM *f, *result;
   uint8_t *buf = NULL;
-  BN_CTX *ctx = NULL;
-  unsigned blinding_index = 0;
-  BN_BLINDING *blinding = NULL;
   int i, ret = 0;
 
   if (max_out < rsa_size) {
@@ -339,15 +335,8 @@ static int sign_raw(RSA *rsa, size_t *out_len, uint8_t *out, size_t max_out,
     return 0;
   }
 
-  ctx = BN_CTX_new();
-  if (ctx == NULL) {
-    goto err;
-  }
-  BN_CTX_start(ctx);
-  f = BN_CTX_get(ctx);
-  result = BN_CTX_get(ctx);
   buf = OPENSSL_malloc(rsa_size);
-  if (!f || !result || !buf) {
+  if (buf == NULL) {
     OPENSSL_PUT_ERROR(RSA, sign_raw, ERR_R_MALLOC_FAILURE);
     goto err;
   }
@@ -363,82 +352,23 @@ static int sign_raw(RSA *rsa, size_t *out_len, uint8_t *out, size_t max_out,
       OPENSSL_PUT_ERROR(RSA, sign_raw, RSA_R_UNKNOWN_PADDING_TYPE);
       goto err;
   }
+
   if (i <= 0) {
     goto err;
   }
 
-  if (BN_bin2bn(buf, rsa_size, f) == NULL) {
-    goto err;
-  }
-
-  if (BN_ucmp(f, rsa->n) >= 0) {
-    /* usually the padding functions would catch this */
-    OPENSSL_PUT_ERROR(RSA, sign_raw, RSA_R_DATA_TOO_LARGE_FOR_MODULUS);
-    goto err;
-  }
-
-  if (!(rsa->flags & RSA_FLAG_NO_BLINDING)) {
-    blinding = rsa_blinding_get(rsa, &blinding_index, ctx);
-    if (blinding == NULL) {
+  if (!RSA_private_transform(rsa, out, buf, rsa_size)) {
       OPENSSL_PUT_ERROR(RSA, sign_raw, ERR_R_INTERNAL_ERROR);
       goto err;
-    }
-    if (!BN_BLINDING_convert_ex(f, NULL, blinding, ctx)) {
-      goto err;
-    }
-  }
-
-  if ((rsa->flags & RSA_FLAG_EXT_PKEY) ||
-      ((rsa->p != NULL) && (rsa->q != NULL) && (rsa->dmp1 != NULL) &&
-       (rsa->dmq1 != NULL) && (rsa->iqmp != NULL))) {
-    if (!rsa->meth->mod_exp(result, f, rsa, ctx)) {
-      goto err;
-    }
-  } else {
-    BIGNUM local_d;
-    BIGNUM *d = NULL;
-
-    BN_init(&local_d);
-    d = &local_d;
-    BN_with_flags(d, rsa->d, BN_FLG_CONSTTIME);
-
-    if (rsa->flags & RSA_FLAG_CACHE_PUBLIC) {
-      if (!BN_MONT_CTX_set_locked(&rsa->_method_mod_n, CRYPTO_LOCK_RSA, rsa->n,
-                                  ctx)) {
-        goto err;
-      }
-    }
-
-    if (!rsa->meth->bn_mod_exp(result, f, d, rsa->n, ctx, rsa->_method_mod_n)) {
-      goto err;
-    }
-  }
-
-  if (blinding) {
-    if (!BN_BLINDING_invert_ex(result, NULL, blinding, ctx)) {
-      goto err;
-    }
-  }
-
-  if (!BN_bn2bin_padded(out, rsa_size, result)) {
-    OPENSSL_PUT_ERROR(RSA, sign_raw, ERR_R_INTERNAL_ERROR);
-    goto err;
   }
 
   *out_len = rsa_size;
   ret = 1;
 
 err:
-  if (ctx != NULL) {
-    BN_CTX_end(ctx);
-    BN_CTX_free(ctx);
-  }
   if (buf != NULL) {
     OPENSSL_cleanse(buf, rsa_size);
     OPENSSL_free(buf);
-  }
-  if (blinding != NULL) {
-    rsa_blinding_release(rsa, blinding, blinding_index);
   }
 
   return ret;
@@ -447,12 +377,8 @@ err:
 static int decrypt(RSA *rsa, size_t *out_len, uint8_t *out, size_t max_out,
                    const uint8_t *in, size_t in_len, int padding) {
   const unsigned rsa_size = RSA_size(rsa);
-  BIGNUM *f, *result;
   int r = -1;
   uint8_t *buf = NULL;
-  BN_CTX *ctx = NULL;
-  unsigned blinding_index;
-  BN_BLINDING *blinding = NULL;
   int ret = 0;
 
   if (max_out < rsa_size) {
@@ -460,80 +386,18 @@ static int decrypt(RSA *rsa, size_t *out_len, uint8_t *out, size_t max_out,
     return 0;
   }
 
-  ctx = BN_CTX_new();
-  if (ctx == NULL) {
-    goto err;
-  }
-  BN_CTX_start(ctx);
-  f = BN_CTX_get(ctx);
-  result = BN_CTX_get(ctx);
   buf = OPENSSL_malloc(rsa_size);
-  if (!f || !result || !buf) {
+  if (buf == NULL) {
     OPENSSL_PUT_ERROR(RSA, decrypt, ERR_R_MALLOC_FAILURE);
     goto err;
   }
 
-  /* This check was for equality but PGP does evil things
-   * and chops off the top '0' bytes.
-   * TODO(fork): investigate this. */
-  if (in_len > rsa_size) {
-    OPENSSL_PUT_ERROR(RSA, decrypt, RSA_R_DATA_GREATER_THAN_MOD_LEN);
+  if (in_len != rsa_size) {
+    OPENSSL_PUT_ERROR(RSA, decrypt, RSA_R_DATA_LEN_NOT_EQUAL_TO_MOD_LEN);
     goto err;
   }
 
-  /* make data into a big number */
-  if (BN_bin2bn(in, (int)in_len, f) == NULL) {
-    goto err;
-  }
-
-  if (BN_ucmp(f, rsa->n) >= 0) {
-    OPENSSL_PUT_ERROR(RSA, decrypt, RSA_R_DATA_TOO_LARGE_FOR_MODULUS);
-    goto err;
-  }
-
-  if (!(rsa->flags & RSA_FLAG_NO_BLINDING)) {
-    blinding = rsa_blinding_get(rsa, &blinding_index, ctx);
-    if (blinding == NULL) {
-      OPENSSL_PUT_ERROR(RSA, decrypt, ERR_R_INTERNAL_ERROR);
-      goto err;
-    }
-    if (!BN_BLINDING_convert_ex(f, NULL, blinding, ctx)) {
-      goto err;
-    }
-  }
-
-  /* do the decrypt */
-  if ((rsa->flags & RSA_FLAG_EXT_PKEY) ||
-      ((rsa->p != NULL) && (rsa->q != NULL) && (rsa->dmp1 != NULL) &&
-       (rsa->dmq1 != NULL) && (rsa->iqmp != NULL))) {
-    if (!rsa->meth->mod_exp(result, f, rsa, ctx)) {
-      goto err;
-    }
-  } else {
-    BIGNUM local_d;
-    BIGNUM *d = NULL;
-
-    d = &local_d;
-    BN_with_flags(d, rsa->d, BN_FLG_CONSTTIME);
-
-    if (rsa->flags & RSA_FLAG_CACHE_PUBLIC) {
-      if (!BN_MONT_CTX_set_locked(&rsa->_method_mod_n, CRYPTO_LOCK_RSA, rsa->n,
-                                  ctx)) {
-        goto err;
-      }
-    }
-    if (!rsa->meth->bn_mod_exp(result, f, d, rsa->n, ctx, rsa->_method_mod_n)) {
-      goto err;
-    }
-  }
-
-  if (blinding) {
-    if (!BN_BLINDING_invert_ex(result, NULL, blinding, ctx)) {
-      goto err;
-    }
-  }
-
-  if (!BN_bn2bin_padded(buf, rsa_size, result)) {
+  if (!RSA_private_transform(rsa, buf, in, rsa_size)) {
     OPENSSL_PUT_ERROR(RSA, decrypt, ERR_R_INTERNAL_ERROR);
     goto err;
   }
@@ -563,16 +427,9 @@ static int decrypt(RSA *rsa, size_t *out_len, uint8_t *out, size_t max_out,
   }
 
 err:
-  if (ctx != NULL) {
-    BN_CTX_end(ctx);
-    BN_CTX_free(ctx);
-  }
   if (buf != NULL) {
     OPENSSL_cleanse(buf, rsa_size);
     OPENSSL_free(buf);
-  }
-  if (blinding != NULL) {
-    rsa_blinding_release(rsa, blinding, blinding_index);
   }
 
   return ret;
@@ -623,11 +480,8 @@ static int verify_raw(RSA *rsa, size_t *out_len, uint8_t *out, size_t max_out,
     goto err;
   }
 
-  /* This check was for equality but PGP does evil things
-   * and chops off the top '0' bytes.
-   * TODO(fork): investigate */
-  if (in_len > rsa_size) {
-    OPENSSL_PUT_ERROR(RSA, verify_raw, RSA_R_DATA_GREATER_THAN_MOD_LEN);
+  if (in_len != rsa_size) {
+    OPENSSL_PUT_ERROR(RSA, verify_raw, RSA_R_DATA_LEN_NOT_EQUAL_TO_MOD_LEN);
     goto err;
   }
 
@@ -685,6 +539,99 @@ err:
     OPENSSL_cleanse(buf, rsa_size);
     OPENSSL_free(buf);
   }
+  return ret;
+}
+
+static int private_transform(RSA *rsa, uint8_t *out, const uint8_t *in,
+                             size_t len) {
+  BIGNUM *f, *result;
+  BN_CTX *ctx = NULL;
+  unsigned blinding_index = 0;
+  BN_BLINDING *blinding = NULL;
+  int ret = 0;
+
+  ctx = BN_CTX_new();
+  if (ctx == NULL) {
+    goto err;
+  }
+  BN_CTX_start(ctx);
+  f = BN_CTX_get(ctx);
+  result = BN_CTX_get(ctx);
+
+  if (f == NULL || result == NULL) {
+    OPENSSL_PUT_ERROR(RSA, private_transform, ERR_R_MALLOC_FAILURE);
+    goto err;
+  }
+
+  if (BN_bin2bn(in, len, f) == NULL) {
+    goto err;
+  }
+
+  if (BN_ucmp(f, rsa->n) >= 0) {
+    /* Usually the padding functions would catch this. */
+    OPENSSL_PUT_ERROR(RSA, private_transform, RSA_R_DATA_TOO_LARGE_FOR_MODULUS);
+    goto err;
+  }
+
+  if (!(rsa->flags & RSA_FLAG_NO_BLINDING)) {
+    blinding = rsa_blinding_get(rsa, &blinding_index, ctx);
+    if (blinding == NULL) {
+      OPENSSL_PUT_ERROR(RSA, private_transform, ERR_R_INTERNAL_ERROR);
+      goto err;
+    }
+    if (!BN_BLINDING_convert_ex(f, NULL, blinding, ctx)) {
+      goto err;
+    }
+  }
+
+  if ((rsa->flags & RSA_FLAG_EXT_PKEY) ||
+      ((rsa->p != NULL) && (rsa->q != NULL) && (rsa->dmp1 != NULL) &&
+       (rsa->dmq1 != NULL) && (rsa->iqmp != NULL))) {
+    if (!rsa->meth->mod_exp(result, f, rsa, ctx)) {
+      goto err;
+    }
+  } else {
+    BIGNUM local_d;
+    BIGNUM *d = NULL;
+
+    BN_init(&local_d);
+    d = &local_d;
+    BN_with_flags(d, rsa->d, BN_FLG_CONSTTIME);
+
+    if (rsa->flags & RSA_FLAG_CACHE_PUBLIC) {
+      if (!BN_MONT_CTX_set_locked(&rsa->_method_mod_n, CRYPTO_LOCK_RSA, rsa->n,
+                                  ctx)) {
+        goto err;
+      }
+    }
+
+    if (!rsa->meth->bn_mod_exp(result, f, d, rsa->n, ctx, rsa->_method_mod_n)) {
+      goto err;
+    }
+  }
+
+  if (blinding) {
+    if (!BN_BLINDING_invert_ex(result, NULL, blinding, ctx)) {
+      goto err;
+    }
+  }
+
+  if (!BN_bn2bin_padded(out, len, result)) {
+    OPENSSL_PUT_ERROR(RSA, private_transform, ERR_R_INTERNAL_ERROR);
+    goto err;
+  }
+
+  ret = 1;
+
+err:
+  if (ctx != NULL) {
+    BN_CTX_end(ctx);
+    BN_CTX_free(ctx);
+  }
+  if (blinding != NULL) {
+    rsa_blinding_release(rsa, blinding, blinding_index);
+  }
+
   return ret;
 }
 
@@ -999,6 +946,8 @@ const struct rsa_meth_st RSA_default_method = {
   sign_raw,
   decrypt,
   verify_raw,
+
+  private_transform,
 
   mod_exp /* mod_exp */,
   BN_mod_exp_mont /* bn_mod_exp */,

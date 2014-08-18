@@ -741,3 +741,12 @@ err:
   }
   return ok;
 }
+
+int RSA_private_transform(RSA *rsa, uint8_t *out, const uint8_t *in,
+                          size_t len) {
+  if (rsa->meth->private_transform) {
+    return rsa->meth->private_transform(rsa, out, in, len);
+  }
+
+  return RSA_default_method.private_transform(rsa, out, in, len);
+}
