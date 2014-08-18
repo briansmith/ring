@@ -792,7 +792,7 @@ struct bn_mont_ctx_st {
   int ri;    /* number of bits in R */
 };
 
-unsigned BN_num_bits_word(BN_ULONG l);
+OPENSSL_EXPORT unsigned BN_num_bits_word(BN_ULONG l);
 
 #define BN_FLG_MALLOCED 0x01
 #define BN_FLG_STATIC_DATA 0x02
