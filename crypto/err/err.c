@@ -114,6 +114,10 @@
 #include <stdarg.h>
 #include <stdio.h>
 
+#if defined(OPENSSL_WINDOWS)
+#include <Windows.h>
+#endif
+
 #include <openssl/lhash.h>
 #include <openssl/mem.h>
 #include <openssl/thread.h>

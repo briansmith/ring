@@ -60,6 +60,8 @@
 
 #if !defined(OPENSSL_WINDOWS)
 #include <unistd.h>
+#else
+#include <Windows.h>
 #endif
 
 #include <openssl/buf.h>

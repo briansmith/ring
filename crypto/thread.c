@@ -58,6 +58,10 @@
 
 #include <errno.h>
 
+#if defined(OPENSSL_WINDOWS)
+#include <Windows.h>
+#endif
+
 #include <openssl/mem.h>
 #include <openssl/type_check.h>
 
