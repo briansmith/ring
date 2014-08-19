@@ -165,13 +165,13 @@ static const EVP_CIPHER *ssl_cipher_methods[SSL_ENC_NUM_IDX]= { 0 };
  * ssl_locl.h */
 #define SSL_MD_NUM_IDX	SSL_MAX_DIGEST 
 static const EVP_MD *ssl_digest_methods[SSL_MD_NUM_IDX] = { 0 };
-static int  ssl_mac_pkey_id[SSL_MD_NUM_IDX]={
+static const int ssl_mac_pkey_id[SSL_MD_NUM_IDX]={
 	EVP_PKEY_HMAC, EVP_PKEY_HMAC, EVP_PKEY_HMAC, EVP_PKEY_HMAC,
 	};
 
 static int ssl_mac_secret_size[SSL_MD_NUM_IDX] = { 0 };
 
-static int ssl_handshake_digest_flag[SSL_MD_NUM_IDX]={
+static const int ssl_handshake_digest_flag[SSL_MD_NUM_IDX]={
 	SSL_HANDSHAKE_MAC_MD5, SSL_HANDSHAKE_MAC_SHA,
 	SSL_HANDSHAKE_MAC_SHA256, SSL_HANDSHAKE_MAC_SHA384,
 	};

@@ -367,7 +367,7 @@ SSL_early_callback_ctx_extension_get(const struct ssl_early_callback_ctx *ctx,
 
 #ifndef OPENSSL_NO_EC
 
-static int nid_list[] =
+static const int nid_list[] =
 	{
 		NID_sect163k1, /* sect163k1 (1) */
 		NID_sect163r1, /* sect163r1 (2) */
@@ -737,7 +737,7 @@ static int tls1_check_cert_param(SSL *s, X509 *x, int set_ee_md)
 		tlsext_sigalg_dsa(md) \
 		tlsext_sigalg_ecdsa(md)
 
-static unsigned char tls12_sigalgs[] = {
+static const uint8_t tls12_sigalgs[] = {
 	tlsext_sigalg(TLSEXT_hash_sha512)
 	tlsext_sigalg(TLSEXT_hash_sha384)
 	tlsext_sigalg(TLSEXT_hash_sha256)
@@ -2736,7 +2736,7 @@ typedef struct
 	int id;
 	} tls12_lookup;
 
-static tls12_lookup tls12_md[] = {
+static const tls12_lookup tls12_md[] = {
 	{NID_md5, TLSEXT_hash_md5},
 	{NID_sha1, TLSEXT_hash_sha1},
 	{NID_sha224, TLSEXT_hash_sha224},
@@ -2745,13 +2745,13 @@ static tls12_lookup tls12_md[] = {
 	{NID_sha512, TLSEXT_hash_sha512}
 };
 
-static tls12_lookup tls12_sig[] = {
+static const tls12_lookup tls12_sig[] = {
 	{EVP_PKEY_RSA, TLSEXT_signature_rsa},
 	{EVP_PKEY_DSA, TLSEXT_signature_dsa},
 	{EVP_PKEY_EC, TLSEXT_signature_ecdsa}
 };
 
-static int tls12_find_id(int nid, tls12_lookup *table, size_t tlen)
+static int tls12_find_id(int nid, const tls12_lookup *table, size_t tlen)
 	{
 	size_t i;
 	for (i = 0; i < tlen; i++)
@@ -2762,7 +2762,7 @@ static int tls12_find_id(int nid, tls12_lookup *table, size_t tlen)
 	return -1;
 	}
 
-static int tls12_find_nid(int id, tls12_lookup *table, size_t tlen)
+static int tls12_find_nid(int id, const tls12_lookup *table, size_t tlen)
 	{
 	size_t i;
 	for (i = 0; i < tlen; i++)
