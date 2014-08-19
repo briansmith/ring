@@ -1984,10 +1984,6 @@ SSL_CTX *SSL_CTX_new(const SSL_METHOD *meth)
 	if (!ret->param)
 		goto err;
 
-	ret->rsa_md5 = EVP_md5();
-	ret->md5 = EVP_md5();
-	ret->sha1 = EVP_sha1();
-
 	if ((ret->client_CA=sk_X509_NAME_new_null()) == NULL)
 		goto err;
 

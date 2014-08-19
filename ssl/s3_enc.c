@@ -767,7 +767,7 @@ int ssl3_generate_master_secret(SSL *s, unsigned char *out, unsigned char *p,
 	EVP_MD_CTX_init(&ctx);
 	for (i=0; i<3; i++)
 		{
-		EVP_DigestInit_ex(&ctx,s->ctx->sha1, NULL);
+		EVP_DigestInit_ex(&ctx, EVP_sha1(), NULL);
 		EVP_DigestUpdate(&ctx,salt[i],strlen((const char *)salt[i]));
 		EVP_DigestUpdate(&ctx,p,len);
 		EVP_DigestUpdate(&ctx,&(s->s3->client_random[0]),
@@ -776,7 +776,7 @@ int ssl3_generate_master_secret(SSL *s, unsigned char *out, unsigned char *p,
 			SSL3_RANDOM_SIZE);
 		EVP_DigestFinal_ex(&ctx,buf,&n);
 
-		EVP_DigestInit_ex(&ctx,s->ctx->md5, NULL);
+		EVP_DigestInit_ex(&ctx, EVP_md5(), NULL);
 		EVP_DigestUpdate(&ctx,p,len);
 		EVP_DigestUpdate(&ctx,buf,n);
 		EVP_DigestFinal_ex(&ctx,out,&n);

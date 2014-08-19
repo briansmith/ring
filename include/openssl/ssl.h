@@ -909,10 +909,6 @@ struct ssl_ctx_st
 
 	CRYPTO_EX_DATA ex_data;
 
-	const EVP_MD *rsa_md5;/* For SSLv2 - name is 'ssl2-md5' */
-	const EVP_MD *md5;	/* For SSLv3/TLSv1 'ssl3-md5' */
-	const EVP_MD *sha1;   /* For SSLv3/TLSv1 'ssl3->sha1' */
-
 	STACK_OF(X509) *extra_certs;
 
 
