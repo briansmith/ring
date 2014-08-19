@@ -75,7 +75,7 @@ extern "C" {
 /* RSA_new returns a new, empty RSA object or NULL on error. */
 OPENSSL_EXPORT RSA *RSA_new(void);
 
-/* RSA_new_method acts the same as |DH_new| but takes an explicit |ENGINE|. */
+/* RSA_new_method acts the same as |RSA_new| but takes an explicit |ENGINE|. */
 OPENSSL_EXPORT RSA *RSA_new_method(const ENGINE *engine);
 
 /* RSA_free decrements the reference count of |rsa| and frees it if the

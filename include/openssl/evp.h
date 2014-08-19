@@ -140,7 +140,7 @@ OPENSSL_EXPORT EVP_PKEY *EVP_PKEY_new_mac_key(int type, ENGINE *engine,
 /* Getting and setting concrete public key types.
  *
  * The following functions get and set the underlying public key in an
- * |EVP_PKEY| object. The |set1| functions take a additional reference to the
+ * |EVP_PKEY| object. The |set1| functions take an additional reference to the
  * underlying key and return one on success or zero on error. The |assign|
  * functions adopt the caller's reference. The getters return a fresh reference
  * to the underlying object. */
