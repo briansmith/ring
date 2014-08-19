@@ -106,7 +106,7 @@ OPENSSL_EXPORT size_t
  * to call |EVP_EncodeBlock| on an input of length |len|. This includes the
  * final NUL that |EVP_EncodeBlock| writes. It returns one on success or zero
  * on error. */
-int EVP_EncodedLength(size_t *out_len, size_t len);
+OPENSSL_EXPORT int EVP_EncodedLength(size_t *out_len, size_t len);
 
 
 /* Decoding */
