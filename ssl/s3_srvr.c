@@ -2118,12 +2118,10 @@ int ssl3_get_client_key_exchange(SSL *s)
 		premaster_secret_len = sizeof(rand_premaster_secret);
 		}
 #ifndef OPENSSL_NO_DH
-	else if (alg_k & (SSL_kEDH|SSL_kDHr|SSL_kDHd))
+	else if (alg_k & SSL_kEDH)
 		{
 		CBS dh_Yc;
-		int idx = -1;
 		int dh_len;
-		EVP_PKEY *skey = NULL;
 
 		if (!CBS_get_u16_length_prefixed(&client_key_exchange, &dh_Yc) ||
 			CBS_len(&dh_Yc) == 0 ||
@@ -2134,31 +2132,13 @@ int ssl3_get_client_key_exchange(SSL *s)
 			goto f_err;
 			}
 
-		if (alg_k & SSL_kDHr)
-			idx = SSL_PKEY_DH_RSA;
-		else if (alg_k & SSL_kDHd)
-			idx = SSL_PKEY_DH_DSA;
-		if (idx >= 0)
-			{
-			skey = s->cert->pkeys[idx].privatekey;
-			if ((skey == NULL) ||
-				(skey->type != EVP_PKEY_DH) ||
-				(skey->pkey.dh == NULL))
-				{
-				al=SSL_AD_HANDSHAKE_FAILURE;
-				OPENSSL_PUT_ERROR(SSL, ssl3_get_client_key_exchange, SSL_R_MISSING_RSA_CERTIFICATE);
-				goto f_err;
-				}
-			dh_srvr = skey->pkey.dh;
-			}
-		else if (s->s3->tmp.dh == NULL)
+		if (s->s3->tmp.dh == NULL)
 			{
 			al=SSL_AD_HANDSHAKE_FAILURE;
 			OPENSSL_PUT_ERROR(SSL, ssl3_get_client_key_exchange, SSL_R_MISSING_TMP_DH_KEY);
 			goto f_err;
 			}
-		else
-			dh_srvr=s->s3->tmp.dh;
+                dh_srvr=s->s3->tmp.dh;
 
 		pub = BN_bin2bn(CBS_data(&dh_Yc), CBS_len(&dh_Yc), NULL);
 		if (pub == NULL)
@@ -2193,7 +2173,7 @@ int ssl3_get_client_key_exchange(SSL *s)
 #endif
 
 #ifndef OPENSSL_NO_ECDH
-	else if (alg_k & (SSL_kEECDH|SSL_kECDHr|SSL_kECDHe))
+	else if (alg_k & SSL_kEECDH)
 		{
 		int field_size = 0, ecdh_len;
 		const EC_KEY   *tkey;
@@ -2208,19 +2188,9 @@ int ssl3_get_client_key_exchange(SSL *s)
 			goto err;
 			}
 
-		/* Let's get server private key and group information */
-		if (alg_k & (SSL_kECDHr|SSL_kECDHe))
-			{ 
-			/* use the certificate */
-			tkey = s->cert->pkeys[SSL_PKEY_ECC].privatekey->pkey.ec;
-			}
-		else
-			{
-			/* use the ephermeral values we saved when
-			 * generating the ServerKeyExchange msg.
-			 */
-			tkey = s->s3->tmp.ecdh;
-			}
+                /* Use the ephermeral values we saved when generating the
+                 * ServerKeyExchange msg. */
+                tkey = s->s3->tmp.ecdh;
 
 		group    = EC_KEY_get0_group(tkey);
 		priv_key = EC_KEY_get0_private_key(tkey);

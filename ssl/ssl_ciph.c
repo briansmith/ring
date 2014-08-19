@@ -203,17 +203,11 @@ static const SSL_CIPHER cipher_aliases[]={
 	 * e.g. kEDH combines DHE_DSS and DHE_RSA) */
 	{0,SSL_TXT_kRSA,0,    SSL_kRSA,  0,0,0,0,0,0,0,0},
 
-	{0,SSL_TXT_kDHr,0,    SSL_kDHr,  0,0,0,0,0,0,0,0},
-	{0,SSL_TXT_kDHd,0,    SSL_kDHd,  0,0,0,0,0,0,0,0},
-	{0,SSL_TXT_kDH,0,     SSL_kDHr|SSL_kDHd,0,0,0,0,0,0,0,0},
 	{0,SSL_TXT_kEDH,0,    SSL_kEDH,  0,0,0,0,0,0,0,0},
-	{0,SSL_TXT_DH,0,      SSL_kDHr|SSL_kDHd|SSL_kEDH,0,0,0,0,0,0,0,0},
+	{0,SSL_TXT_DH,0,      SSL_kEDH,0,0,0,0,0,0,0,0},
 
-	{0,SSL_TXT_kECDHr,0,  SSL_kECDHr,0,0,0,0,0,0,0,0},
-	{0,SSL_TXT_kECDHe,0,  SSL_kECDHe,0,0,0,0,0,0,0,0},
-	{0,SSL_TXT_kECDH,0,   SSL_kECDHr|SSL_kECDHe,0,0,0,0,0,0,0,0},
 	{0,SSL_TXT_kEECDH,0,  SSL_kEECDH,0,0,0,0,0,0,0,0},
-	{0,SSL_TXT_ECDH,0,    SSL_kECDHr|SSL_kECDHe|SSL_kEECDH,0,0,0,0,0,0,0,0},
+	{0,SSL_TXT_ECDH,0,    SSL_kEECDH,0,0,0,0,0,0,0,0},
 
         {0,SSL_TXT_kPSK,0,    SSL_kPSK,  0,0,0,0,0,0,0,0},
 
@@ -222,8 +216,6 @@ static const SSL_CIPHER cipher_aliases[]={
 	{0,SSL_TXT_aDSS,0,    0,SSL_aDSS,  0,0,0,0,0,0,0},
 	{0,SSL_TXT_DSS,0,     0,SSL_aDSS,   0,0,0,0,0,0,0},
 	{0,SSL_TXT_aNULL,0,   0,SSL_aNULL, 0,0,0,0,0,0,0},
-	{0,SSL_TXT_aDH,0,     0,SSL_aDH,   0,0,0,0,0,0,0}, /* no such ciphersuites supported! */
-	{0,SSL_TXT_aECDH,0,   0,SSL_aECDH, 0,0,0,0,0,0,0},
 	{0,SSL_TXT_aECDSA,0,  0,SSL_aECDSA,0,0,0,0,0,0,0},
 	{0,SSL_TXT_ECDSA,0,   0,SSL_aECDSA, 0,0,0,0,0,0,0},
         {0,SSL_TXT_aPSK,0,    0,SSL_aPSK,  0,0,0,0,0,0,0},
@@ -1404,20 +1396,8 @@ const char *SSL_CIPHER_description(const SSL_CIPHER *cipher, char *buf, int len)
 	case SSL_kRSA:
 		kx="RSA";
 		break;
-	case SSL_kDHr:
-		kx="DH/RSA";
-		break;
-	case SSL_kDHd:
-		kx="DH/DSS";
-		break;
 	case SSL_kEDH:
 		kx="DH";
-		break;
-	case SSL_kECDHr:
-		kx="ECDH/RSA";
-		break;
-	case SSL_kECDHe:
-		kx="ECDH/ECDSA";
 		break;
 	case SSL_kEECDH:
 		kx="ECDH";
@@ -1436,12 +1416,6 @@ const char *SSL_CIPHER_description(const SSL_CIPHER *cipher, char *buf, int len)
 		break;
 	case SSL_aDSS:
 		au="DSS";
-		break;
-	case SSL_aDH:
-		au="DH";
-		break;
-        case SSL_aECDH:
-		au="ECDH";
 		break;
 	case SSL_aNULL:
 		au="None";
@@ -1575,10 +1549,6 @@ const char *SSL_CIPHER_get_kx_name(const SSL_CIPHER *cipher) {
   switch (cipher->algorithm_mkey) {
     case SSL_kRSA:
       return SSL_TXT_RSA;
-    case SSL_kDHr:
-      return SSL_TXT_DH "_" SSL_TXT_RSA;
-    case SSL_kDHd:
-      return SSL_TXT_DH "_" SSL_TXT_DSS;
     case SSL_kEDH:
       switch (cipher->algorithm_auth) {
         case SSL_aDSS:
@@ -1590,10 +1560,6 @@ const char *SSL_CIPHER_get_kx_name(const SSL_CIPHER *cipher) {
         default:
           return "UNKNOWN";
       }
-    case SSL_kECDHr:
-      return SSL_TXT_ECDH "_" SSL_TXT_RSA;
-    case SSL_kECDHe:
-      return SSL_TXT_ECDH "_" SSL_TXT_ECDSA;
     case SSL_kEECDH:
       switch (cipher->algorithm_auth) {
         case SSL_aECDSA:
@@ -1645,32 +1611,10 @@ const char *SSL_COMP_get_name(const void *comp)
 /* For a cipher return the index corresponding to the certificate type */
 int ssl_cipher_get_cert_index(const SSL_CIPHER *c)
 	{
- 	unsigned long alg_k, alg_a;
+	unsigned long alg_a = c->algorithm_auth;
 
-	alg_k = c->algorithm_mkey;
-	alg_a = c->algorithm_auth;
-
-	if (alg_k & (SSL_kECDHr|SSL_kECDHe))
-		{
-		/* we don't need to look at SSL_kEECDH
-		 * since no certificate is needed for
-		 * anon ECDH and for authenticated
-		 * EECDH, the check for the auth
-		 * algorithm will set i correctly
-		 * NOTE: For ECDH-RSA, we need an ECC
-		 * not an RSA cert but for EECDH-RSA
-		 * we need an RSA cert. Placing the
-		 * checks for SSL_kECDH before RSA
-		 * checks ensures the correct cert is chosen.
-		 */
+	if (alg_a & SSL_aECDSA)
 		return SSL_PKEY_ECC;
-		}
-	else if (alg_a & SSL_aECDSA)
-		return SSL_PKEY_ECC;
-	else if (alg_k & SSL_kDHr)
-		return SSL_PKEY_DH_RSA;
-	else if (alg_k & SSL_kDHd)
-		return SSL_PKEY_DH_DSA;
 	else if (alg_a & SSL_aDSS)
 		return SSL_PKEY_DSA_SIGN;
 	else if (alg_a & SSL_aRSA)

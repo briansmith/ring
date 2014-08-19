@@ -1374,12 +1374,6 @@ int ssl3_get_server_key_exchange(SSL *s)
 		s->session->sess_cert->peer_dh_tmp=dh;
 		dh=NULL;
 		}
-	else if ((alg_k & SSL_kDHr) || (alg_k & SSL_kDHd))
-		{
-		al=SSL_AD_ILLEGAL_PARAMETER;
-		OPENSSL_PUT_ERROR(SSL, ssl3_get_server_key_exchange, SSL_R_TRIED_TO_USE_UNSUPPORTED_CIPHER);
-		goto f_err;
-		}
 #endif /* !OPENSSL_NO_DH */
 
 #ifndef OPENSSL_NO_ECDH
@@ -2074,7 +2068,7 @@ int ssl3_send_client_key_exchange(SSL *s)
 			OPENSSL_cleanse(tmp_buf,sizeof tmp_buf);
 			}
 #ifndef OPENSSL_NO_DH
-		else if (alg_k & (SSL_kEDH|SSL_kDHr|SSL_kDHd))
+		else if (alg_k & SSL_kEDH)
 			{
 			DH *dh_srvr,*dh_clnt;
 			SESS_CERT *scert = s->session->sess_cert;
@@ -2086,28 +2080,13 @@ int ssl3_send_client_key_exchange(SSL *s)
 				goto err;
 				}
 
-			if (scert->peer_dh_tmp != NULL)
-				dh_srvr=scert->peer_dh_tmp;
-			else
+			if (scert->peer_dh_tmp == NULL)
 				{
-				/* we get them from the cert */
-				int idx = scert->peer_cert_type;
-				EVP_PKEY *spkey = NULL;
-				dh_srvr = NULL;
-				if (idx >= 0)
-					spkey = X509_get_pubkey(
-						scert->peer_pkeys[idx].x509);
-				if (spkey)
-					{
-					dh_srvr = EVP_PKEY_get1_DH(spkey);
-					EVP_PKEY_free(spkey);
-					}
-				if (dh_srvr == NULL)
-					{
-					OPENSSL_PUT_ERROR(SSL, ssl3_send_client_key_exchange, ERR_R_INTERNAL_ERROR);
-					goto err;
-					}
+				OPENSSL_PUT_ERROR(SSL, ssl3_send_client_key_exchange, ERR_R_INTERNAL_ERROR);
+				goto err;
 				}
+			dh_srvr=scert->peer_dh_tmp;
+
 			/* generate a new random key */
 			if ((dh_clnt=DHparams_dup(dh_srvr)) == NULL)
 				{
@@ -2125,9 +2104,6 @@ int ssl3_send_client_key_exchange(SSL *s)
 			 * make sure to clear it out afterwards */
 
 			n=DH_compute_key(p,dh_srvr->pub_key,dh_clnt);
-			if (scert->peer_dh_tmp == NULL)
-				DH_free(dh_srvr);
-
 			if (n <= 0)
 				{
 				OPENSSL_PUT_ERROR(SSL, ssl3_send_client_key_exchange, ERR_R_DH_LIB);
@@ -2155,7 +2131,7 @@ int ssl3_send_client_key_exchange(SSL *s)
 #endif
 
 #ifndef OPENSSL_NO_ECDH
-		else if (alg_k & (SSL_kEECDH|SSL_kECDHr|SSL_kECDHe))
+		else if (alg_k & SSL_kEECDH)
 			{
 			const EC_GROUP *srvr_group = NULL;
 			EC_KEY *tkey;
@@ -2172,25 +2148,12 @@ int ssl3_send_client_key_exchange(SSL *s)
 				goto err;
 				}
 
-			if (s->session->sess_cert->peer_ecdh_tmp != NULL)
+			if (s->session->sess_cert->peer_ecdh_tmp == NULL)
 				{
-				tkey = s->session->sess_cert->peer_ecdh_tmp;
+				OPENSSL_PUT_ERROR(SSL, ssl3_send_client_key_exchange, ERR_R_INTERNAL_ERROR);
+				goto err;
 				}
-			else
-				{
-				/* Get the Server Public Key from Cert */
-				srvr_pub_pkey = X509_get_pubkey(s->session-> \
-				    sess_cert->peer_pkeys[SSL_PKEY_ECC].x509);
-				if ((srvr_pub_pkey == NULL) ||
-				    (srvr_pub_pkey->type != EVP_PKEY_EC) ||
-				    (srvr_pub_pkey->pkey.ec == NULL))
-					{
-					OPENSSL_PUT_ERROR(SSL, ssl3_send_client_key_exchange, ERR_R_INTERNAL_ERROR);
-					goto err;
-					}
-
-				tkey = srvr_pub_pkey->pkey.ec;
-				}
+			tkey = s->session->sess_cert->peer_ecdh_tmp;
 
 			srvr_group   = EC_KEY_get0_group(tkey);
 			srvr_ecpoint = EC_KEY_get0_public_key(tkey);
@@ -2624,11 +2587,6 @@ int ssl3_check_cert_and_algorithm(SSL *s)
 		OPENSSL_PUT_ERROR(SSL, ssl3_check_cert_and_algorithm, SSL_R_MISSING_ECDSA_SIGNING_CERT);
 		goto f_err;
 		}
-	else if (alg_k & (SSL_kECDHr|SSL_kECDHe))
-		{
-		OPENSSL_PUT_ERROR(SSL, ssl3_check_cert_and_algorithm, SSL_R_MISSING_ECDH_CERT);
-		goto f_err;
-		}
 #endif
 	pkey=X509_get_pubkey(sc->peer_pkeys[idx].x509);
 	i=X509_certificate_type(sc->peer_pkeys[idx].x509,pkey);
@@ -2661,20 +2619,6 @@ int ssl3_check_cert_and_algorithm(SSL *s)
 		OPENSSL_PUT_ERROR(SSL, ssl3_check_cert_and_algorithm, SSL_R_MISSING_DH_KEY);
 		goto f_err;
 		}
-	else if ((alg_k & SSL_kDHr) && !SSL_USE_SIGALGS(s) &&
-		!has_bits(i,EVP_PK_DH|EVP_PKS_RSA))
-		{
-		OPENSSL_PUT_ERROR(SSL, ssl3_check_cert_and_algorithm, SSL_R_MISSING_DH_RSA_CERT);
-		goto f_err;
-		}
-#ifndef OPENSSL_NO_DSA
-	else if ((alg_k & SSL_kDHd) && !SSL_USE_SIGALGS(s) &&
-		!has_bits(i,EVP_PK_DH|EVP_PKS_DSA))
-		{
-		OPENSSL_PUT_ERROR(SSL, ssl3_check_cert_and_algorithm, SSL_R_MISSING_DH_DSA_CERT);
-		goto f_err;
-		}
-#endif
 #endif
 
 	return(1);

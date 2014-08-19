@@ -2168,18 +2168,16 @@ void SSL_set_cert_cb(SSL *s, int (*cb)(SSL *ssl, void *arg), void *arg)
 void ssl_set_cert_masks(CERT *c, const SSL_CIPHER *cipher)
 	{
 	CERT_PKEY *cpk;
-	int rsa_enc,rsa_sign,dh_tmp,dh_rsa,dh_dsa,dsa_sign;
+	int rsa_enc,rsa_sign,dh_tmp,dsa_sign;
 	unsigned long mask_k,mask_a;
 #ifndef OPENSSL_NO_ECDSA
 	int have_ecc_cert, ecdsa_ok;
 #endif
 #ifndef OPENSSL_NO_ECDH
-	int have_ecdh_tmp, ecdh_ok;
+	int have_ecdh_tmp;
 #endif
 #ifndef OPENSSL_NO_EC
 	X509 *x = NULL;
-	EVP_PKEY *ecc_pkey = NULL;
-	int signature_nid = 0, pk_nid = 0, md_nid = 0;
 #endif
 	if (c == NULL) return;
 
@@ -2198,11 +2196,6 @@ void ssl_set_cert_masks(CERT *c, const SSL_CIPHER *cipher)
 	rsa_sign= cpk->valid_flags & CERT_PKEY_SIGN;
 	cpk= &(c->pkeys[SSL_PKEY_DSA_SIGN]);
 	dsa_sign= cpk->valid_flags & CERT_PKEY_SIGN;
-	cpk= &(c->pkeys[SSL_PKEY_DH_RSA]);
-	dh_rsa=  cpk->valid_flags & CERT_PKEY_VALID;
-	cpk= &(c->pkeys[SSL_PKEY_DH_DSA]);
-/* FIX THIS EAY EAY EAY */
-	dh_dsa=  cpk->valid_flags & CERT_PKEY_VALID;
 	cpk= &(c->pkeys[SSL_PKEY_ECC]);
 #ifndef OPENSSL_NO_EC
 	have_ecc_cert= cpk->valid_flags & CERT_PKEY_VALID;
@@ -2219,22 +2212,8 @@ void ssl_set_cert_masks(CERT *c, const SSL_CIPHER *cipher)
 	if (rsa_enc)
 		mask_k|=SSL_kRSA;
 
-#if 0
-	/* The match needs to be both kEDH and aRSA or aDSA, so don't worry */
-	if (	(dh_tmp || dh_rsa || dh_dsa) &&
-		(rsa_enc || rsa_sign || dsa_sign))
-		mask_k|=SSL_kEDH;
-#endif
-
 	if (dh_tmp)
 		mask_k|=SSL_kEDH;
-
-	if (dh_rsa) mask_k|=SSL_kDHr;
-
-	if (dh_dsa) mask_k|=SSL_kDHd;
-
-	if (mask_k & (SSL_kDHr|SSL_kDHd))
-		mask_a |= SSL_aDH;
 
 	if (rsa_enc || rsa_sign)
 		{
@@ -2248,9 +2227,8 @@ void ssl_set_cert_masks(CERT *c, const SSL_CIPHER *cipher)
 
 	mask_a|=SSL_aNULL;
 
-	/* An ECC certificate may be usable for ECDH and/or
-	 * ECDSA cipher suites depending on the key usage extension.
-	 */
+	/* An ECC certificate may be usable for ECDSA cipher suites depending on
+         * the key usage extension. */
 #ifndef OPENSSL_NO_EC
 	if (have_ecc_cert)
 		{
@@ -2258,36 +2236,10 @@ void ssl_set_cert_masks(CERT *c, const SSL_CIPHER *cipher)
 		x = cpk->x509;
 		/* This call populates extension flags (ex_flags) */
 		X509_check_purpose(x, -1, 0);
-		ecdh_ok = (x->ex_flags & EXFLAG_KUSAGE) ?
-		    (x->ex_kusage & X509v3_KU_KEY_AGREEMENT) : 1;
 		ecdsa_ok = (x->ex_flags & EXFLAG_KUSAGE) ?
 		    (x->ex_kusage & X509v3_KU_DIGITAL_SIGNATURE) : 1;
 		if (!(cpk->valid_flags & CERT_PKEY_SIGN))
 			ecdsa_ok = 0;
-		ecc_pkey = X509_get_pubkey(x);
-		EVP_PKEY_free(ecc_pkey);
-		if ((x->sig_alg) && (x->sig_alg->algorithm))
-			{
-			signature_nid = OBJ_obj2nid(x->sig_alg->algorithm);
-			OBJ_find_sigid_algs(signature_nid, &md_nid, &pk_nid);
-			}
-#ifndef OPENSSL_NO_ECDH
-		if (ecdh_ok)
-			{
-
-			if (pk_nid == NID_rsaEncryption || pk_nid == NID_rsa)
-				{
-				mask_k|=SSL_kECDHr;
-				mask_a|=SSL_aECDH;
-				}
-
-			if (pk_nid == NID_X9_62_id_ecPublicKey)
-				{
-				mask_k|=SSL_kECDHe;
-				mask_a|=SSL_aECDH;
-				}
-			}
-#endif
 #ifndef OPENSSL_NO_ECDSA
 		if (ecdsa_ok)
 			{
@@ -2320,11 +2272,10 @@ void ssl_set_cert_masks(CERT *c, const SSL_CIPHER *cipher)
 
 int ssl_check_srvr_ecc_cert_and_alg(X509 *x, SSL *s)
 	{
-	unsigned long alg_k, alg_a;
+	unsigned long alg_a;
 	int signature_nid = 0, md_nid = 0, pk_nid = 0;
 	const SSL_CIPHER *cs = s->s3->tmp.new_cipher;
 
-	alg_k = cs->algorithm_mkey;
 	alg_a = cs->algorithm_auth;
 
 	/* This call populates the ex_flags field correctly */
@@ -2333,34 +2284,6 @@ int ssl_check_srvr_ecc_cert_and_alg(X509 *x, SSL *s)
 		{
 		signature_nid = OBJ_obj2nid(x->sig_alg->algorithm);
 		OBJ_find_sigid_algs(signature_nid, &md_nid, &pk_nid);
-		}
-	if (alg_k & SSL_kECDHe || alg_k & SSL_kECDHr)
-		{
-		/* key usage, if present, must allow key agreement */
-		if (ku_reject(x, X509v3_KU_KEY_AGREEMENT))
-			{
-			OPENSSL_PUT_ERROR(SSL, ssl_check_srvr_ecc_cert_and_alg, SSL_R_ECC_CERT_NOT_FOR_KEY_AGREEMENT);
-			return 0;
-			}
-		if ((alg_k & SSL_kECDHe) && TLS1_get_version(s) < TLS1_2_VERSION)
-			{
-			/* signature alg must be ECDSA */
-			if (pk_nid != NID_X9_62_id_ecPublicKey)
-				{
-				OPENSSL_PUT_ERROR(SSL, ssl_check_srvr_ecc_cert_and_alg, SSL_R_ECC_CERT_SHOULD_HAVE_SHA1_SIGNATURE);
-				return 0;
-				}
-			}
-		if ((alg_k & SSL_kECDHr) && TLS1_get_version(s) < TLS1_2_VERSION)
-			{
-			/* signature alg must be RSA */
-
-			if (pk_nid != NID_rsaEncryption && pk_nid != NID_rsa)
-				{
-				OPENSSL_PUT_ERROR(SSL, ssl_check_srvr_ecc_cert_and_alg, SSL_R_ECC_CERT_SHOULD_HAVE_RSA_SIGNATURE);
-				return 0;
-				}
-			}
 		}
 	if (alg_a & SSL_aECDSA)
 		{

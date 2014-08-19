@@ -195,20 +195,12 @@ extern "C" {
 #define	SSL_TXT_aNULL		"aNULL"
 
 #define SSL_TXT_kRSA		"kRSA"
-#define SSL_TXT_kDHr		"kDHr" 
-#define SSL_TXT_kDHd		"kDHd"
-#define SSL_TXT_kDH 		"kDH"
 #define SSL_TXT_kEDH		"kEDH"
-#define SSL_TXT_kECDHr		"kECDHr"
-#define SSL_TXT_kECDHe		"kECDHe"
-#define SSL_TXT_kECDH		"kECDH"
 #define SSL_TXT_kEECDH		"kEECDH"
 #define SSL_TXT_kPSK            "kPSK"
 
 #define	SSL_TXT_aRSA		"aRSA"
 #define	SSL_TXT_aDSS		"aDSS"
-#define	SSL_TXT_aDH		"aDH"
-#define	SSL_TXT_aECDH		"aECDH"
 #define SSL_TXT_aECDSA		"aECDSA"
 #define SSL_TXT_aPSK            "aPSK"
 
