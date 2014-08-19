@@ -188,21 +188,12 @@ extern "C" {
 
 /* These are used to specify which ciphers to use and not to use */
 
-#define SSL_TXT_EXP40		"EXPORT40"
-#define SSL_TXT_EXP56		"EXPORT56"
 #define SSL_TXT_LOW		"LOW"
 #define SSL_TXT_MEDIUM		"MEDIUM"
 #define SSL_TXT_HIGH		"HIGH"
 #define SSL_TXT_FIPS		"FIPS"
 
-#define SSL_TXT_kFZA		"kFZA" /* unused! */
-#define	SSL_TXT_aFZA		"aFZA" /* unused! */
-#define SSL_TXT_eFZA		"eFZA" /* unused! */
-#define SSL_TXT_FZA		"FZA"  /* unused! */
-
 #define	SSL_TXT_aNULL		"aNULL"
-#define	SSL_TXT_eNULL		"eNULL"
-#define	SSL_TXT_NULL		"NULL"
 
 #define SSL_TXT_kRSA		"kRSA"
 #define SSL_TXT_kDHr		"kDHr" 
@@ -214,7 +205,6 @@ extern "C" {
 #define SSL_TXT_kECDH		"kECDH"
 #define SSL_TXT_kEECDH		"kEECDH"
 #define SSL_TXT_kPSK            "kPSK"
-#define SSL_TXT_kSRP		"kSRP"
 
 #define	SSL_TXT_aRSA		"aRSA"
 #define	SSL_TXT_aDSS		"aDSS"
@@ -233,21 +223,14 @@ extern "C" {
 #define SSL_TXT_AECDH		"AECDH"
 #define SSL_TXT_ECDSA		"ECDSA"
 #define SSL_TXT_PSK             "PSK"
-#define SSL_TXT_SRP		"SRP"
 
 #define SSL_TXT_DES		"DES"
 #define SSL_TXT_3DES		"3DES"
 #define SSL_TXT_RC4		"RC4"
-#define SSL_TXT_RC2		"RC2"
-#define SSL_TXT_IDEA		"IDEA"
-#define SSL_TXT_SEED		"SEED"
 #define SSL_TXT_AES128		"AES128"
 #define SSL_TXT_AES256		"AES256"
 #define SSL_TXT_AES		"AES"
 #define SSL_TXT_AES_GCM		"AESGCM"
-#define SSL_TXT_CAMELLIA128	"CAMELLIA128"
-#define SSL_TXT_CAMELLIA256	"CAMELLIA256"
-#define SSL_TXT_CAMELLIA	"CAMELLIA"
 #define SSL_TXT_CHACHA20	"CHACHA20"
 
 #define SSL_TXT_MD5		"MD5"
@@ -256,14 +239,10 @@ extern "C" {
 #define SSL_TXT_SHA256		"SHA256"
 #define SSL_TXT_SHA384		"SHA384"
 
-#define SSL_TXT_SSLV2		"SSLv2"
 #define SSL_TXT_SSLV3		"SSLv3"
 #define SSL_TXT_TLSV1		"TLSv1"
 #define SSL_TXT_TLSV1_1		"TLSv1.1"
 #define SSL_TXT_TLSV1_2		"TLSv1.2"
-
-#define SSL_TXT_EXP		"EXP"
-#define SSL_TXT_EXPORT		"EXPORT"
 
 #define SSL_TXT_ALL		"ALL"
 
@@ -281,7 +260,6 @@ extern "C" {
  * DEFAULT gets, as only selection is being done and no sorting as needed
  * for DEFAULT.
  */
-#define SSL_TXT_CMPALL		"COMPLEMENTOFALL"
 #define SSL_TXT_CMPDEF		"COMPLEMENTOFDEFAULT"
 
 /* The following cipher list is used by default.

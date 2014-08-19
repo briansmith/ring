@@ -282,7 +282,6 @@
 #define SSL_kECDHe		0x00000020L /* ECDH cert, ECDSA CA cert */
 #define SSL_kEECDH		0x00000040L /* ephemeral ECDH */
 #define SSL_kPSK		0x00000080L /* PSK */
-#define SSL_kSRP		0x00000100L /* SRP */
 
 /* Bits for algorithm_auth (server authentication) */
 #define SSL_aRSA		0x00000001L /* RSA auth */
@@ -298,20 +297,13 @@
 #define SSL_DES			0x00000001L
 #define SSL_3DES		0x00000002L
 #define SSL_RC4			0x00000004L
-#define SSL_RC2			0x00000008L
-#define SSL_IDEA		0x00000010L
-#define SSL_eNULL		0x00000020L
-#define SSL_AES128		0x00000040L
-#define SSL_AES256		0x00000080L
-#define SSL_CAMELLIA128		0x00000100L
-#define SSL_CAMELLIA256		0x00000200L
-#define SSL_SEED		0x00000400L
-#define SSL_AES128GCM		0x00000800L
-#define SSL_AES256GCM		0x00001000L
-#define SSL_CHACHA20POLY1305	0x00002000L
+#define SSL_AES128		0x00000008L
+#define SSL_AES256		0x00000010L
+#define SSL_AES128GCM		0x00000020L
+#define SSL_AES256GCM		0x00000040L
+#define SSL_CHACHA20POLY1305	0x00000080L
 
 #define SSL_AES        		(SSL_AES128|SSL_AES256|SSL_AES128GCM|SSL_AES256GCM)
-#define SSL_CAMELLIA		(SSL_CAMELLIA128|SSL_CAMELLIA256)
 
 
 /* Bits for algorithm_mac (symmetric authentication) */
@@ -324,7 +316,6 @@
 #define SSL_AEAD		0x00000010L
 
 /* Bits for algorithm_ssl (protocol version) */
-#define SSL_SSLV2		0x00000001L
 #define SSL_SSLV3		0x00000002L
 #define SSL_TLSV1		SSL_SSLV3	/* for now */
 #define SSL_TLSV1_2		0x00000004L
@@ -374,31 +365,13 @@
 #define SSL_CIPHER_ALGORITHM2_STATEFUL_AEAD (1<<28)
 
 /*
- * Export and cipher strength information. For each cipher we have to decide
- * whether it is exportable or not. This information is likely to change
- * over time, since the export control rules are no static technical issue.
- *
- * Independent of the export flag the cipher strength is sorted into classes.
- * SSL_EXP40 was denoting the 40bit US export limit of past times, which now
- * is at 56bit (SSL_EXP56). If the exportable cipher class is going to change
- * again (eg. to 64bit) the use of "SSL_EXP*" becomes blurred even more,
- * since SSL_EXP64 could be similar to SSL_LOW.
- * For this reason SSL_MICRO and SSL_MINI macros are included to widen the
- * namespace of SSL_LOW-SSL_HIGH to lower values. As development of speed
- * and ciphers goes, another extension to SSL_SUPER and/or SSL_ULTRA would
- * be possible.
+ * Cipher strength information.
  */
 #define SSL_EXP_MASK		0x00000003L
 #define SSL_STRONG_MASK		0x000001fcL
 
 #define SSL_NOT_EXP		0x00000001L
-#define SSL_EXPORT		0x00000002L
 
-#define SSL_STRONG_NONE		0x00000004L
-#define SSL_EXP40		0x00000008L
-#define SSL_MICRO		(SSL_EXP40)
-#define SSL_EXP56		0x00000010L
-#define SSL_MINI		(SSL_EXP56)
 #define SSL_LOW			0x00000020L
 #define SSL_MEDIUM		0x00000040L
 #define SSL_HIGH		0x00000080L

@@ -193,13 +193,10 @@ typedef struct cipher_order_st
 	} CIPHER_ORDER;
 
 static const SSL_CIPHER cipher_aliases[]={
-	/* "ALL" doesn't include eNULL (must be specifically enabled) */
-	{0,SSL_TXT_ALL,0,     0,0,~SSL_eNULL,0,0,0,0,0,0},
-	/* "COMPLEMENTOFALL" */
-	{0,SSL_TXT_CMPALL,0,  0,0,SSL_eNULL,0,0,0,0,0,0},
+	{0,SSL_TXT_ALL,0,     0,0,0,0,0,0,0,0,0},
 
 	/* "COMPLEMENTOFDEFAULT" (does *not* include ciphersuites not found in ALL!) */
-	{0,SSL_TXT_CMPDEF,0,  SSL_kEDH|SSL_kEECDH,SSL_aNULL,~SSL_eNULL,0,0,0,0,0,0},
+	{0,SSL_TXT_CMPDEF,0,  SSL_kEDH|SSL_kEECDH,SSL_aNULL,0,0,0,0,0,0,0},
 
 	/* key exchange aliases
 	 * (some of those using only a single bit here combine
@@ -220,7 +217,6 @@ static const SSL_CIPHER cipher_aliases[]={
 	{0,SSL_TXT_ECDH,0,    SSL_kECDHr|SSL_kECDHe|SSL_kEECDH,0,0,0,0,0,0,0,0},
 
         {0,SSL_TXT_kPSK,0,    SSL_kPSK,  0,0,0,0,0,0,0,0},
-	{0,SSL_TXT_kSRP,0,    SSL_kSRP,  0,0,0,0,0,0,0,0},
 
 	/* server authentication aliases */
 	{0,SSL_TXT_aRSA,0,    0,SSL_aRSA,  0,0,0,0,0,0,0},
@@ -236,29 +232,20 @@ static const SSL_CIPHER cipher_aliases[]={
 	/* aliases combining key exchange and server authentication */
 	{0,SSL_TXT_EDH,0,     SSL_kEDH,~SSL_aNULL,0,0,0,0,0,0,0},
 	{0,SSL_TXT_EECDH,0,   SSL_kEECDH,~SSL_aNULL,0,0,0,0,0,0,0},
-	{0,SSL_TXT_NULL,0,    0,0,SSL_eNULL, 0,0,0,0,0,0},
 	{0,SSL_TXT_RSA,0,     SSL_kRSA,SSL_aRSA,0,0,0,0,0,0,0},
 	{0,SSL_TXT_ADH,0,     SSL_kEDH,SSL_aNULL,0,0,0,0,0,0,0},
 	{0,SSL_TXT_AECDH,0,   SSL_kEECDH,SSL_aNULL,0,0,0,0,0,0,0},
         {0,SSL_TXT_PSK,0,     SSL_kPSK,SSL_aPSK,0,0,0,0,0,0,0},
-	{0,SSL_TXT_SRP,0,     SSL_kSRP,0,0,0,0,0,0,0,0},
 
 
 	/* symmetric encryption aliases */
 	{0,SSL_TXT_DES,0,     0,0,SSL_DES,   0,0,0,0,0,0},
 	{0,SSL_TXT_3DES,0,    0,0,SSL_3DES,  0,0,0,0,0,0},
 	{0,SSL_TXT_RC4,0,     0,0,SSL_RC4,   0,0,0,0,0,0},
-	{0,SSL_TXT_RC2,0,     0,0,SSL_RC2,   0,0,0,0,0,0},
-	{0,SSL_TXT_IDEA,0,    0,0,SSL_IDEA,  0,0,0,0,0,0},
-	{0,SSL_TXT_SEED,0,    0,0,SSL_SEED,  0,0,0,0,0,0},
-	{0,SSL_TXT_eNULL,0,   0,0,SSL_eNULL, 0,0,0,0,0,0},
 	{0,SSL_TXT_AES128,0,  0,0,SSL_AES128|SSL_AES128GCM,0,0,0,0,0,0},
 	{0,SSL_TXT_AES256,0,  0,0,SSL_AES256|SSL_AES256GCM,0,0,0,0,0,0},
 	{0,SSL_TXT_AES,0,     0,0,SSL_AES,0,0,0,0,0,0},
 	{0,SSL_TXT_AES_GCM,0, 0,0,SSL_AES128GCM|SSL_AES256GCM,0,0,0,0,0,0},
-	{0,SSL_TXT_CAMELLIA128,0,0,0,SSL_CAMELLIA128,0,0,0,0,0,0},
-	{0,SSL_TXT_CAMELLIA256,0,0,0,SSL_CAMELLIA256,0,0,0,0,0,0},
-	{0,SSL_TXT_CAMELLIA   ,0,0,0,SSL_CAMELLIA128|SSL_CAMELLIA256,0,0,0,0,0,0},
 	{0,SSL_TXT_CHACHA20   ,0,0,0,SSL_CHACHA20POLY1305,0,0,0,0,0,0},
 
 	/* MAC aliases */	
@@ -269,23 +256,16 @@ static const SSL_CIPHER cipher_aliases[]={
 	{0,SSL_TXT_SHA384,0,    0,0,0,SSL_SHA384,  0,0,0,0,0},
 
 	/* protocol version aliases */
-	{0,SSL_TXT_SSLV2,0,   0,0,0,0,SSL_SSLV2, 0,0,0,0},
 	{0,SSL_TXT_SSLV3,0,   0,0,0,0,SSL_SSLV3, 0,0,0,0},
 	{0,SSL_TXT_TLSV1,0,   0,0,0,0,SSL_TLSV1, 0,0,0,0},
 	{0,SSL_TXT_TLSV1_2,0, 0,0,0,0,SSL_TLSV1_2, 0,0,0,0},
 
-	/* export flag */
-	{0,SSL_TXT_EXP,0,     0,0,0,0,0,SSL_EXPORT,0,0,0},
-	{0,SSL_TXT_EXPORT,0,  0,0,0,0,0,SSL_EXPORT,0,0,0},
-
 	/* strength classes */
-	{0,SSL_TXT_EXP40,0,   0,0,0,0,0,SSL_EXP40, 0,0,0},
-	{0,SSL_TXT_EXP56,0,   0,0,0,0,0,SSL_EXP56, 0,0,0},
 	{0,SSL_TXT_LOW,0,     0,0,0,0,0,SSL_LOW,   0,0,0},
 	{0,SSL_TXT_MEDIUM,0,  0,0,0,0,0,SSL_MEDIUM,0,0,0},
 	{0,SSL_TXT_HIGH,0,    0,0,0,0,0,SSL_HIGH,  0,0,0},
 	/* FIPS 140-2 approved ciphersuite */
-	{0,SSL_TXT_FIPS,0,    0,0,~SSL_eNULL,0,0,SSL_FIPS,  0,0,0},
+	{0,SSL_TXT_FIPS,0,    0,0,0,0,0,SSL_FIPS,  0,0,0},
 	};
 
 void ssl_load_ciphers(void)
@@ -535,9 +515,6 @@ static void ssl_cipher_get_disabled(unsigned long *mkey, unsigned long *auth, un
 #ifdef OPENSSL_NO_ECDH
 	*mkey |= SSL_kECDHe|SSL_kECDHr;
 	*auth |= SSL_aECDH;
-#endif
-#ifdef SSL_FORBID_ENULL
-	*enc |= SSL_eNULL;
 #endif
 		
 
@@ -1410,7 +1387,7 @@ const char *SSL_CIPHER_description(const SSL_CIPHER *cipher, char *buf, int len)
 	{
 	const char *ver;
 	const char *kx,*au,*enc,*mac;
-	unsigned long alg_mkey,alg_auth,alg_enc,alg_mac,alg_ssl,alg2;
+	unsigned long alg_mkey,alg_auth,alg_enc,alg_mac,alg_ssl;
 #ifdef KSSL_DEBUG
 	static const char *format="%-23s %s Kx=%-8s Au=%-4s Enc=%-9s Mac=%-4s AL=%lx/%lx/%lx/%lx/%lx\n";
 #else
@@ -1423,11 +1400,7 @@ const char *SSL_CIPHER_description(const SSL_CIPHER *cipher, char *buf, int len)
 	alg_mac = cipher->algorithm_mac;
 	alg_ssl = cipher->algorithm_ssl;
 
-	alg2=cipher->algorithm2;
-
-	if (alg_ssl & SSL_SSLV2)
-		ver="SSLv2";
-	else if (alg_ssl & SSL_SSLV3)
+	if (alg_ssl & SSL_SSLV3)
 		ver="SSLv3";
 	else if (alg_ssl & SSL_TLSV1_2)
 		ver="TLSv1.2";
@@ -1459,9 +1432,6 @@ const char *SSL_CIPHER_description(const SSL_CIPHER *cipher, char *buf, int len)
 		break;
 	case SSL_kPSK:
 		kx="PSK";
-		break;
-	case SSL_kSRP:
-		kx="SRP";
 		break;
 	default:
 		kx="unknown";
@@ -1504,16 +1474,7 @@ const char *SSL_CIPHER_description(const SSL_CIPHER *cipher, char *buf, int len)
 		enc="3DES(168)";
 		break;
 	case SSL_RC4:
-		enc=(alg2&SSL2_CF_8_BYTE_ENC)?"RC4(64)":"RC4(128)";
-		break;
-	case SSL_RC2:
-		enc="RC2(128)";
-		break;
-	case SSL_IDEA:
-		enc="IDEA(128)";
-		break;
-	case SSL_eNULL:
-		enc="None";
+		enc="RC4(128)";
 		break;
 	case SSL_AES128:
 		enc="AES(128)";
@@ -1526,15 +1487,6 @@ const char *SSL_CIPHER_description(const SSL_CIPHER *cipher, char *buf, int len)
 		break;
 	case SSL_AES256GCM:
 		enc="AESGCM(256)";
-		break;
-	case SSL_CAMELLIA128:
-		enc="Camellia(128)";
-		break;
-	case SSL_CAMELLIA256:
-		enc="Camellia(256)";
-		break;
-	case SSL_SEED:
-		enc="SEED(128)";
 		break;
 	case SSL_CHACHA20POLY1305:
 		enc="ChaCha20-Poly1305";
