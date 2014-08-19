@@ -147,12 +147,11 @@
 
 #include "ssl_locl.h"
 
-#define SSL_ENC_DES_IDX		0
-#define SSL_ENC_3DES_IDX	1
-#define SSL_ENC_RC4_IDX		2
-#define SSL_ENC_AES128_IDX	3
-#define SSL_ENC_AES256_IDX	4
-#define SSL_ENC_NUM_IDX		5
+#define SSL_ENC_3DES_IDX	0
+#define SSL_ENC_RC4_IDX		1
+#define SSL_ENC_AES128_IDX	2
+#define SSL_ENC_AES256_IDX	3
+#define SSL_ENC_NUM_IDX		4
 
 
 static const EVP_CIPHER *ssl_cipher_methods[SSL_ENC_NUM_IDX]= { 0 };
@@ -239,7 +238,6 @@ static const SSL_CIPHER cipher_aliases[]={
 
 
 	/* symmetric encryption aliases */
-	{0,SSL_TXT_DES,0,     0,0,SSL_DES,   0,0,0,0,0,0},
 	{0,SSL_TXT_3DES,0,    0,0,SSL_3DES,  0,0,0,0,0,0},
 	{0,SSL_TXT_RC4,0,     0,0,SSL_RC4,   0,0,0,0,0,0},
 	{0,SSL_TXT_AES128,0,  0,0,SSL_AES128|SSL_AES128GCM,0,0,0,0,0,0},
@@ -261,7 +259,6 @@ static const SSL_CIPHER cipher_aliases[]={
 	{0,SSL_TXT_TLSV1_2,0, 0,0,0,0,SSL_TLSV1_2, 0,0,0,0},
 
 	/* strength classes */
-	{0,SSL_TXT_LOW,0,     0,0,0,0,0,SSL_LOW,   0,0,0},
 	{0,SSL_TXT_MEDIUM,0,  0,0,0,0,0,SSL_MEDIUM,0,0,0},
 	{0,SSL_TXT_HIGH,0,    0,0,0,0,0,SSL_HIGH,  0,0,0},
 	/* FIPS 140-2 approved ciphersuite */
@@ -270,7 +267,6 @@ static const SSL_CIPHER cipher_aliases[]={
 
 void ssl_load_ciphers(void)
 	{
-	ssl_cipher_methods[SSL_ENC_DES_IDX]= EVP_des_cbc();
 	ssl_cipher_methods[SSL_ENC_3DES_IDX]= EVP_des_ede3_cbc();
 	ssl_cipher_methods[SSL_ENC_RC4_IDX]= EVP_rc4();
 	ssl_cipher_methods[SSL_ENC_AES128_IDX]= EVP_aes_128_cbc();
@@ -345,9 +341,6 @@ int ssl_cipher_get_evp(const SSL_SESSION *s, const EVP_CIPHER **enc,
 
 	switch (c->algorithm_enc)
 		{
-	case SSL_DES:
-		i=SSL_ENC_DES_IDX;
-		break;
 	case SSL_3DES:
 		i=SSL_ENC_3DES_IDX;
 		break;
@@ -519,7 +512,6 @@ static void ssl_cipher_get_disabled(unsigned long *mkey, unsigned long *auth, un
 		
 
 
-	*enc |= (ssl_cipher_methods[SSL_ENC_DES_IDX ] == NULL) ? SSL_DES :0;
 	*enc |= (ssl_cipher_methods[SSL_ENC_3DES_IDX] == NULL) ? SSL_3DES:0;
 	*enc |= (ssl_cipher_methods[SSL_ENC_RC4_IDX ] == NULL) ? SSL_RC4 :0;
 	*enc |= (ssl_cipher_methods[SSL_ENC_AES128_IDX] == NULL) ? SSL_AES128:0;
@@ -1467,9 +1459,6 @@ const char *SSL_CIPHER_description(const SSL_CIPHER *cipher, char *buf, int len)
 
 	switch (alg_enc)
 		{
-	case SSL_DES:
-		enc="DES(56)";
-		break;
 	case SSL_3DES:
 		enc="3DES(168)";
 		break;

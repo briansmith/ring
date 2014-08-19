@@ -188,7 +188,6 @@ extern "C" {
 
 /* These are used to specify which ciphers to use and not to use */
 
-#define SSL_TXT_LOW		"LOW"
 #define SSL_TXT_MEDIUM		"MEDIUM"
 #define SSL_TXT_HIGH		"HIGH"
 #define SSL_TXT_FIPS		"FIPS"
@@ -224,7 +223,6 @@ extern "C" {
 #define SSL_TXT_ECDSA		"ECDSA"
 #define SSL_TXT_PSK             "PSK"
 
-#define SSL_TXT_DES		"DES"
 #define SSL_TXT_3DES		"3DES"
 #define SSL_TXT_RC4		"RC4"
 #define SSL_TXT_AES128		"AES128"
