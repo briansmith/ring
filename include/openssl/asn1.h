@@ -380,8 +380,6 @@ TYPEDEF_D2I2D_OF(void);
  *
  */
 
-#ifndef OPENSSL_EXPORT_VAR_AS_FUNCTION
-
 /* ASN1_ITEM pointer exported type */
 typedef const ASN1_ITEM ASN1_ITEM_EXP;
 
@@ -395,28 +393,6 @@ typedef const ASN1_ITEM ASN1_ITEM_EXP;
 
 #define DECLARE_ASN1_ITEM(name) \
 	extern const ASN1_ITEM name##_it;
-
-#else
-
-/* Platforms that can't easily handle shared global variables are declared
- * as functions returning ASN1_ITEM pointers.
- */
-
-/* ASN1_ITEM pointer exported type */
-typedef const ASN1_ITEM * ASN1_ITEM_EXP(void);
-
-/* Macro to obtain ASN1_ITEM pointer from exported type */
-#define ASN1_ITEM_ptr(iptr) (iptr())
-
-/* Macro to include ASN1_ITEM pointer from base type */
-#define ASN1_ITEM_ref(iptr) (iptr##_it)
-
-#define ASN1_ITEM_rptr(ref) (ref##_it())
-
-#define DECLARE_ASN1_ITEM(name) \
-	OPENSSL_EXPORT const ASN1_ITEM * name##_it(void);
-
-#endif
 
 /* Parameters used by ASN1_STRING_print_ex() */
 
