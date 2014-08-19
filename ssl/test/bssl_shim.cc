@@ -482,27 +482,30 @@ int main(int argc, char **argv) {
     return 1;
   }
 
-  SSL_SESSION *session;
+  SSL_SESSION *session = NULL;
   int ret = do_exchange(&session,
                         ssl_ctx, &config,
                         false /* is_resume */,
                         3 /* fd */, NULL /* session */);
   if (ret != 0) {
-    return ret;
+    goto out;
   }
 
   if (config.resume) {
-    int ret = do_exchange(NULL,
-                          ssl_ctx, &config,
-                          true /* is_resume */,
-                          4 /* fd */,
-                          config.is_server ? NULL : session);
+    ret = do_exchange(NULL,
+                      ssl_ctx, &config,
+                      true /* is_resume */,
+                      4 /* fd */,
+                      config.is_server ? NULL : session);
     if (ret != 0) {
-      return ret;
+      goto out;
     }
   }
 
+  ret = 0;
+
+out:
   SSL_SESSION_free(session);
   SSL_CTX_free(ssl_ctx);
-  return 0;
+  return ret;
 }
