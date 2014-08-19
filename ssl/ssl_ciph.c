@@ -1244,46 +1244,43 @@ STACK_OF(SSL_CIPHER) *ssl_create_cipher_list(const SSL_METHOD *ssl_method,
 	                           co_list, &head, &tail);
 
 
-	/* Now arrange all ciphers by preference: */
+	/* Now arrange all ciphers by preference:
+	 * TODO(davidben): Compute this order once and copy it. */
 
 	/* Everything else being equal, prefer ephemeral ECDH over other key exchange mechanisms */
 	ssl_cipher_apply_rule(0, SSL_kEECDH, 0, 0, 0, 0, 0, CIPHER_ADD, -1, 0, &head, &tail);
 	ssl_cipher_apply_rule(0, SSL_kEECDH, 0, 0, 0, 0, 0, CIPHER_DEL, -1, 0, &head, &tail);
 
-	/* AES is our preferred symmetric cipher */
-	ssl_cipher_apply_rule(0, 0, 0, SSL_AES, 0, 0, 0, CIPHER_ADD, -1, 0, &head, &tail);
+	/* Order the bulk ciphers.
+	 * 1. CHACHA20_POLY1305.
+	 * 2. AES_256_GCM and AES_128_GCM.
+	 * 3. Legacy non-AEAD ciphers. AES_256_CBC, AES-128_CBC, RC4_128_SHA,
+	 *    RC4_128_MD5, 3DES_EDE_CBC_SHA.
+	 * TODO(davidben): Prefer AES_GCM over CHACHA20 if there is hardware
+	 * support. */
+        ssl_cipher_apply_rule(0, 0, 0, SSL_CHACHA20POLY1305, 0, 0, 0, CIPHER_ADD, -1, 0, &head, &tail);
+        ssl_cipher_apply_rule(0, 0, 0, SSL_AES256GCM, 0, 0, 0, CIPHER_ADD, -1, 0, &head, &tail);
+        ssl_cipher_apply_rule(0, 0, 0, SSL_AES128GCM, 0, 0, 0, CIPHER_ADD, -1, 0, &head, &tail);
+        ssl_cipher_apply_rule(0, 0, 0, SSL_AES256, 0, 0, 0, CIPHER_ADD, -1, 0, &head, &tail);
+        ssl_cipher_apply_rule(0, 0, 0, SSL_AES128, 0, 0, 0, CIPHER_ADD, -1, 0, &head, &tail);
+        ssl_cipher_apply_rule(0, 0, 0, SSL_RC4, ~SSL_MD5, 0, 0, CIPHER_ADD, -1, 0, &head, &tail);
+        ssl_cipher_apply_rule(0, 0, 0, SSL_RC4, SSL_MD5, 0, 0, CIPHER_ADD, -1, 0, &head, &tail);
+        ssl_cipher_apply_rule(0, 0, 0, SSL_3DES, 0, 0, 0, CIPHER_ADD, -1, 0, &head, &tail);
 
 	/* Temporarily enable everything else for sorting */
 	ssl_cipher_apply_rule(0, 0, 0, 0, 0, 0, 0, CIPHER_ADD, -1, 0, &head, &tail);
 
-	/* Low priority for MD5 */
-	ssl_cipher_apply_rule(0, 0, 0, 0, SSL_MD5, 0, 0, CIPHER_ORD, -1, 0, &head, &tail);
+	/* Move ciphers without forward secrecy to the end. */
+	ssl_cipher_apply_rule(0, ~(SSL_kEDH|SSL_kEECDH), 0, 0, 0, 0, 0, CIPHER_ORD, -1, 0, &head, &tail);
 
 	/* Move anonymous ciphers to the end.  Usually, these will remain disabled.
 	 * (For applications that allow them, they aren't too bad, but we prefer
-	 * authenticated ciphers.) */
+	 * authenticated ciphers.)
+	 * TODO(davidben): Remove them altogether? */
 	ssl_cipher_apply_rule(0, 0, SSL_aNULL, 0, 0, 0, 0, CIPHER_ORD, -1, 0, &head, &tail);
-
-	/* Move ciphers without forward secrecy to the end */
-	ssl_cipher_apply_rule(0, 0, SSL_aECDH, 0, 0, 0, 0, CIPHER_ORD, -1, 0, &head, &tail);
-	/* ssl_cipher_apply_rule(0, 0, SSL_aDH, 0, 0, 0, 0, CIPHER_ORD, -1, 0, &head, &tail); */
-	ssl_cipher_apply_rule(0, SSL_kRSA, 0, 0, 0, 0, 0, CIPHER_ORD, -1, 0, &head, &tail);
-	ssl_cipher_apply_rule(0, SSL_kPSK, 0,0, 0, 0, 0, CIPHER_ORD, -1, 0, &head, &tail);
-
-	/* RC4 is sort-of broken -- move the the end */
-	ssl_cipher_apply_rule(0, 0, 0, SSL_RC4, 0, 0, 0, CIPHER_ORD, -1, 0, &head, &tail);
-
-	/* Now sort by symmetric encryption strength.  The above ordering remains
-	 * in force within each class */
-	if (!ssl_cipher_strength_sort(&head, &tail))
-		{
-		OPENSSL_free(co_list);
-		return NULL;
-		}
 
 	/* Now disable everything (maintaining the ordering!) */
 	ssl_cipher_apply_rule(0, 0, 0, 0, 0, 0, 0, CIPHER_DEL, -1, 0, &head, &tail);
-
 
 	/*
 	 * We also need cipher aliases for selecting based on the rule_str.
