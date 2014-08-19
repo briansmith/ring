@@ -492,22 +492,9 @@ int dtls1_accept(SSL *s)
 		case SSL3_ST_SR_KEY_EXCH_A:
 		case SSL3_ST_SR_KEY_EXCH_B:
 			ret=ssl3_get_client_key_exchange(s);
-			if (ret <= 0) goto end;
-
-			s->state=SSL3_ST_SR_CERT_VRFY_A;
-			s->init_num=0;
-
-			if (ret == 2)
-				{
-				/* For the ECDH ciphersuites when
-				 * the client sends its ECDH pub key in
-				 * a certificate, the CertificateVerify
-				 * message is not sent.
-				 */
-				s->state=SSL3_ST_SR_FINISHED_A;
-				s->init_num = 0;
-				}
-			else if (SSL_USE_SIGALGS(s))
+			if (ret <= 0)
+				goto end;
+			if (SSL_USE_SIGALGS(s))
 				{
 				s->state=SSL3_ST_SR_CERT_VRFY_A;
 				s->init_num=0;

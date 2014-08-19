@@ -362,27 +362,13 @@ int ssl3_connect(SSL *s)
 		case SSL3_ST_CW_KEY_EXCH_B:
 			ret=ssl3_send_client_key_exchange(s);
 			if (ret <= 0) goto end;
-			/* EAY EAY EAY need to check for DH fix cert
-			 * sent back */
 			/* For TLS, cert_req is set to 2, so a cert chain
 			 * of nothing is sent, but no verify packet is sent */
-			/* XXX: For now, we do not support client 
-			 * authentication in ECDH cipher suites with
-			 * ECDH (rather than ECDSA) certificates.
-			 * We need to skip the certificate verify 
-			 * message when client's ECDH public key is sent 
-			 * inside the client certificate.
-			 */
 			if (s->s3->tmp.cert_req == 1)
 				{
 				s->state=SSL3_ST_CW_CERT_VRFY_A;
 				}
 			else
-				{
-				s->state=SSL3_ST_CW_CHANGE_A;
-				s->s3->change_cipher_spec=0;
-				}
-			if (s->s3->flags & TLS1_FLAGS_SKIP_CERT_VERIFY)
 				{
 				s->state=SSL3_ST_CW_CHANGE_A;
 				s->s3->change_cipher_spec=0;
@@ -2122,33 +2108,17 @@ int ssl3_send_client_key_exchange(SSL *s)
 					goto err;
 					}
 				}
-			if (s->s3->flags & TLS1_FLAGS_SKIP_CERT_VERIFY)
+			/* generate a new random key */
+			if ((dh_clnt=DHparams_dup(dh_srvr)) == NULL)
 				{
-				/* Use client certificate key */
-				EVP_PKEY *clkey = s->cert->key->privatekey;
-				dh_clnt = NULL;
-				if (clkey)
-					dh_clnt = EVP_PKEY_get1_DH(clkey);
-				if (dh_clnt == NULL)
-					{
-					OPENSSL_PUT_ERROR(SSL, ssl3_send_client_key_exchange, ERR_R_INTERNAL_ERROR);
-					goto err;
-					}
+				OPENSSL_PUT_ERROR(SSL, ssl3_send_client_key_exchange, ERR_R_DH_LIB);
+				goto err;
 				}
-			else
+			if (!DH_generate_key(dh_clnt))
 				{
-				/* generate a new random key */
-				if ((dh_clnt=DHparams_dup(dh_srvr)) == NULL)
-					{
-					OPENSSL_PUT_ERROR(SSL, ssl3_send_client_key_exchange, ERR_R_DH_LIB);
-					goto err;
-					}
-				if (!DH_generate_key(dh_clnt))
-					{
-					OPENSSL_PUT_ERROR(SSL, ssl3_send_client_key_exchange, ERR_R_DH_LIB);
-					DH_free(dh_clnt);
-					goto err;
-					}
+				OPENSSL_PUT_ERROR(SSL, ssl3_send_client_key_exchange, ERR_R_DH_LIB);
+				DH_free(dh_clnt);
+				goto err;
 				}
 
 			/* use the 'p' output buffer for the DH key, but
@@ -2172,16 +2142,11 @@ int ssl3_send_client_key_exchange(SSL *s)
 			/* clean up */
 			memset(p,0,n);
 
-			if (s->s3->flags & TLS1_FLAGS_SKIP_CERT_VERIFY)
-				n = 0;
-			else
-				{
-				/* send off the data */
-				n=BN_num_bytes(dh_clnt->pub_key);
-				s2n(n,p);
-				BN_bn2bin(dh_clnt->pub_key,p);
-				n+=2;
-				}
+			/* send off the data */
+			n=BN_num_bytes(dh_clnt->pub_key);
+			s2n(n,p);
+			BN_bn2bin(dh_clnt->pub_key,p);
+			n+=2;
 
 			DH_free(dh_clnt);
 
@@ -2194,7 +2159,6 @@ int ssl3_send_client_key_exchange(SSL *s)
 			{
 			const EC_GROUP *srvr_group = NULL;
 			EC_KEY *tkey;
-			int ecdh_clnt_cert = 0;
 			int field_size = 0;
 			unsigned char *pre_ms;
 			unsigned char *t;
@@ -2206,34 +2170,6 @@ int ssl3_send_client_key_exchange(SSL *s)
 				ssl3_send_alert(s,SSL3_AL_FATAL,SSL_AD_UNEXPECTED_MESSAGE);
 				OPENSSL_PUT_ERROR(SSL, ssl3_send_client_key_exchange, SSL_R_UNEXPECTED_MESSAGE);
 				goto err;
-				}
-
-			/* Did we send out the client's
-			 * ECDH share for use in premaster
-			 * computation as part of client certificate?
-			 * If so, set ecdh_clnt_cert to 1.
-			 */
-			if ((alg_k & (SSL_kECDHr|SSL_kECDHe)) && (s->cert != NULL)) 
-				{
-				/* XXX: For now, we do not support client
-				 * authentication using ECDH certificates.
-				 * To add such support, one needs to add
-				 * code that checks for appropriate 
-				 * conditions and sets ecdh_clnt_cert to 1.
-				 * For example, the cert have an ECC
-				 * key on the same curve as the server's
-				 * and the key should be authorized for
-				 * key agreement.
-				 *
-				 * One also needs to add code in ssl3_connect
-				 * to skip sending the certificate verify
-				 * message.
-				 *
-				 * if ((s->cert->key->privatekey != NULL) &&
-				 *     (s->cert->key->privatekey->type ==
-				 *      EVP_PKEY_EC) && ...)
-				 * ecdh_clnt_cert = 1;
-				 */
 				}
 
 			if (s->session->sess_cert->peer_ecdh_tmp != NULL)
@@ -2276,34 +2212,11 @@ int ssl3_send_client_key_exchange(SSL *s)
 				OPENSSL_PUT_ERROR(SSL, ssl3_send_client_key_exchange, ERR_R_EC_LIB);
 				goto err;
 				}
-			if (ecdh_clnt_cert) 
-				{ 
-				/* Reuse key info from our certificate
-				 * We only need our private key to perform
-				 * the ECDH computation.
-				 */
-				const BIGNUM *priv_key;
-				tkey = s->cert->key->privatekey->pkey.ec;
-				priv_key = EC_KEY_get0_private_key(tkey);
-				if (priv_key == NULL)
-					{
-					OPENSSL_PUT_ERROR(SSL, ssl3_send_client_key_exchange, ERR_R_MALLOC_FAILURE);
-					goto err;
-					}
-				if (!EC_KEY_set_private_key(clnt_ecdh, priv_key))
-					{
-					OPENSSL_PUT_ERROR(SSL, ssl3_send_client_key_exchange, ERR_R_EC_LIB);
-					goto err;
-					}
-				}
-			else 
+			/* Generate a new ECDH key pair */
+			if (!(EC_KEY_generate_key(clnt_ecdh)))
 				{
-				/* Generate a new ECDH key pair */
-				if (!(EC_KEY_generate_key(clnt_ecdh)))
-					{
-					OPENSSL_PUT_ERROR(SSL, ssl3_send_client_key_exchange, ERR_R_ECDH_LIB);
-					goto err;
-					}
+				OPENSSL_PUT_ERROR(SSL, ssl3_send_client_key_exchange, ERR_R_ECDH_LIB);
+				goto err;
 				}
 
 			/* use the 'p' output buffer for the ECDH key, but
@@ -2355,58 +2268,50 @@ int ssl3_send_client_key_exchange(SSL *s)
 				}
 			memset(p, 0, n); /* clean up */
 
-			if (ecdh_clnt_cert)
-				{
-				/* Send empty client key exch message */
-				n = 0;
-				}
-			else 
-				{
-				/* First check the size of encoding and
-				 * allocate memory accordingly.
-				 */
-				encoded_pt_len = 
-				    EC_POINT_point2oct(srvr_group, 
+			/* First check the size of encoding and
+			 * allocate memory accordingly.
+			 */
+			encoded_pt_len = 
+				EC_POINT_point2oct(srvr_group, 
 					EC_KEY_get0_public_key(clnt_ecdh), 
 					POINT_CONVERSION_UNCOMPRESSED, 
 					NULL, 0, NULL);
 
-				encodedPoint = (unsigned char *) 
-				    OPENSSL_malloc(encoded_pt_len * 
+			encodedPoint = (unsigned char *) 
+				OPENSSL_malloc(encoded_pt_len * 
 					sizeof(unsigned char)); 
-				bn_ctx = BN_CTX_new();
-				if ((encodedPoint == NULL) || 
-				    (bn_ctx == NULL)) 
-					{
-					OPENSSL_PUT_ERROR(SSL, ssl3_send_client_key_exchange, ERR_R_MALLOC_FAILURE);
-					goto err;
-					}
-
-				/* Encode the public key */
-				encoded_pt_len = EC_POINT_point2oct(srvr_group,
-				    EC_KEY_get0_public_key(clnt_ecdh),
-				    POINT_CONVERSION_UNCOMPRESSED,
-				    encodedPoint, encoded_pt_len, bn_ctx);
-
-				n = 0;
-				if ((alg_a & SSL_aPSK) && psk_len != 0)
-					{
-					i = strlen(s->session->psk_identity);
-					s2n(i, p);
-					memcpy(p, s->session->psk_identity, i);
-					p += i;
-					n = i + 2;
-					}
-
-				*p = encoded_pt_len; /* length of encoded point */
-				/* Encoded point will be copied here */
-				p += 1;
-				n += 1;
-				/* copy the point */
-				memcpy((unsigned char *)p, encodedPoint, encoded_pt_len);
-				/* increment n to account for length field */
-				n += encoded_pt_len;
+			bn_ctx = BN_CTX_new();
+			if ((encodedPoint == NULL) || 
+				(bn_ctx == NULL)) 
+				{
+				OPENSSL_PUT_ERROR(SSL, ssl3_send_client_key_exchange, ERR_R_MALLOC_FAILURE);
+				goto err;
 				}
+
+			/* Encode the public key */
+			encoded_pt_len = EC_POINT_point2oct(srvr_group,
+				EC_KEY_get0_public_key(clnt_ecdh),
+				POINT_CONVERSION_UNCOMPRESSED,
+				encodedPoint, encoded_pt_len, bn_ctx);
+
+			n = 0;
+			if ((alg_a & SSL_aPSK) && psk_len != 0)
+				{
+				i = strlen(s->session->psk_identity);
+				s2n(i, p);
+				memcpy(p, s->session->psk_identity, i);
+				p += i;
+				n = i + 2;
+				}
+
+			*p = encoded_pt_len; /* length of encoded point */
+			/* Encoded point will be copied here */
+			p += 1;
+			n += 1;
+			/* copy the point */
+			memcpy((unsigned char *)p, encodedPoint, encoded_pt_len);
+			/* increment n to account for length field */
+			n += encoded_pt_len;
 
 			/* Free allocated memory */
 			BN_CTX_free(bn_ctx);
@@ -2560,12 +2465,10 @@ err:
 	}
 
 /* Check a certificate can be used for client authentication. Currently
- * check cert exists, if we have a suitable digest for TLS 1.2 if
- * static DH client certificates can be used.
+ * check the cert exists and if we have a suitable digest for TLS 1.2.
  */
 static int ssl3_check_client_certificate(SSL *s)
 	{
-	unsigned long alg_k;
 	if (!s->cert || !s->cert->key->x509 || !s->cert->key->privatekey)
 		return 0;
 	/* If no suitable signature algorithm can't use certificate */
@@ -2576,29 +2479,6 @@ static int ssl3_check_client_certificate(SSL *s)
 	if (s->cert->cert_flags & SSL_CERT_FLAGS_CHECK_TLS_STRICT &&
 		!tls1_check_chain(s, NULL, NULL, NULL, -2))
 		return 0;
-	alg_k=s->s3->tmp.new_cipher->algorithm_mkey;
-	/* See if we can use client certificate for fixed DH */
-	if (alg_k & (SSL_kDHr|SSL_kDHd))
-		{
-		SESS_CERT *scert = s->session->sess_cert;
-		int i = scert->peer_cert_type;
-		EVP_PKEY *clkey = NULL, *spkey = NULL;
-		clkey = s->cert->key->privatekey;
-		/* If client key not DH assume it can be used */
-		if (EVP_PKEY_id(clkey) != EVP_PKEY_DH)
-			return 1;
-		if (i >= 0)
-			spkey = X509_get_pubkey(scert->peer_pkeys[i].x509);
-		if (spkey)
-			{
-			/* Compare server and client parameters */
-			i = EVP_PKEY_cmp_parameters(clkey, spkey);
-			EVP_PKEY_free(spkey);
-			if (i != 1)
-				return 0;
-			}
-		s->s3->flags |= TLS1_FLAGS_SKIP_CERT_VERIFY;
-		}
 	return 1;
 	}
 

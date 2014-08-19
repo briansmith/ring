@@ -375,9 +375,6 @@ int dtls1_connect(SSL *s)
 			dtls1_start_timer(s);
 			ret=ssl3_send_client_key_exchange(s);
 			if (ret <= 0) goto end;
-
-			/* EAY EAY EAY need to check for DH fix cert
-			 * sent back */
 			/* For TLS, cert_req is set to 2, so a cert chain
 			 * of nothing is sent, but no verify packet is sent */
 			if (s->s3->tmp.cert_req == 1)

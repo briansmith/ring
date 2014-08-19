@@ -259,7 +259,6 @@ int ssl3_accept(SSL *s)
 
 			s->init_num=0;
 			s->s3->flags &= ~SSL3_FLAGS_SGC_RESTART_DONE;
-			s->s3->flags &= ~TLS1_FLAGS_SKIP_CERT_VERIFY;
 
 			if (s->state != SSL_ST_RENEGOTIATE)
 				{
@@ -493,17 +492,7 @@ int ssl3_accept(SSL *s)
 			ret=ssl3_get_client_key_exchange(s);
 			if (ret <= 0)
 				goto end;
-			if (ret == 2)
-				{
-				/* For the ECDH ciphersuites when
-				 * the client sends its ECDH pub key in
-				 * a certificate, the CertificateVerify
-				 * message is not sent.
-				 */
-				s->init_num = 0;
-				s->state = SSL3_ST_SR_CHANGE;
-				}
-			else if (SSL_USE_SIGALGS(s))
+			if (SSL_USE_SIGALGS(s))
 				{
 				s->state=SSL3_ST_SR_CERT_VRFY_A;
 				s->init_num=0;
@@ -1885,13 +1874,12 @@ int ssl3_get_client_key_exchange(SSL *s)
 	unsigned long alg_a;
 	uint8_t *premaster_secret = NULL;
 	size_t premaster_secret_len = 0;
-	int skip_certificate_verify = 0;
 	RSA *rsa=NULL;
 	uint8_t *decrypt_buf = NULL;
 	EVP_PKEY *pkey=NULL;
 #ifndef OPENSSL_NO_DH
 	BIGNUM *pub=NULL;
-	DH *dh_srvr, *dh_clnt = NULL;
+	DH *dh_srvr;
 #endif
 
 #ifndef OPENSSL_NO_ECDH
@@ -1972,8 +1960,7 @@ int ssl3_get_client_key_exchange(SSL *s)
 		}
 
 	/* Depending on the key exchange method, compute |premaster_secret| and
-	 * |premaster_secret_len|. Also, for DH and ECDH, set
-	 * |skip_certificate_verify| as appropriate. */
+	 * |premaster_secret_len|. */
 	if (alg_k & SSL_kRSA)
 		{
 		CBS encrypted_premaster_secret;
@@ -2139,6 +2126,7 @@ int ssl3_get_client_key_exchange(SSL *s)
 		EVP_PKEY *skey = NULL;
 
 		if (!CBS_get_u16_length_prefixed(&client_key_exchange, &dh_Yc) ||
+			CBS_len(&dh_Yc) == 0 ||
 			CBS_len(&client_key_exchange) != 0)
 			{
 			OPENSSL_PUT_ERROR(SSL, ssl3_get_client_key_exchange, SSL_R_DH_PUBLIC_VALUE_LENGTH_IS_WRONG);
@@ -2172,33 +2160,7 @@ int ssl3_get_client_key_exchange(SSL *s)
 		else
 			dh_srvr=s->s3->tmp.dh;
 
-		if (CBS_len(&dh_Yc) == 0)
-			{
-			/* Get pubkey from the client certificate. This is the
-			 * 'implicit' case of ClientDiffieHellman.
-			 *
-			 * TODO(davidben): Either lose this code or fix a bug
-			 * (or get the spec changed): if there is a fixed_dh
-			 * client certificate, per spec, the 'implicit' mode
-			 * MUST be used. This logic will still accept 'explicit'
-			 * mode. */
-			EVP_PKEY *clkey=X509_get_pubkey(s->session->peer);
-			if (clkey)
-				{
-				if (EVP_PKEY_cmp_parameters(clkey, skey) == 1)
-					dh_clnt = EVP_PKEY_get1_DH(clkey);
-				}
-			if (dh_clnt == NULL)
-				{
-				al=SSL_AD_HANDSHAKE_FAILURE;
-				OPENSSL_PUT_ERROR(SSL, ssl3_get_client_key_exchange, SSL_R_MISSING_TMP_DH_KEY);
-				goto f_err;
-				}
-			EVP_PKEY_free(clkey);
-			pub = dh_clnt->pub_key;
-			}
-		else
-			pub = BN_bin2bn(CBS_data(&dh_Yc), CBS_len(&dh_Yc), NULL);
+		pub = BN_bin2bn(CBS_data(&dh_Yc), CBS_len(&dh_Yc), NULL);
 		if (pub == NULL)
 			{
 			OPENSSL_PUT_ERROR(SSL, ssl3_get_client_key_exchange, SSL_R_BN_LIB);
@@ -2223,15 +2185,10 @@ int ssl3_get_client_key_exchange(SSL *s)
 
 		DH_free(s->s3->tmp.dh);
 		s->s3->tmp.dh=NULL;
-		if (dh_clnt)
-			DH_free(dh_clnt);
-		else
-			BN_clear_free(pub);
+		BN_clear_free(pub);
 		pub=NULL;
 
 		premaster_secret_len = dh_len;
-		if (dh_clnt)
-			skip_certificate_verify = 1;
 		}
 #endif
 
@@ -2242,6 +2199,7 @@ int ssl3_get_client_key_exchange(SSL *s)
 		const EC_KEY   *tkey;
 		const EC_GROUP *group;
 		const BIGNUM *priv_key;
+		CBS ecdh_Yc;
 
 		/* initialize structures for server's ECDH key pair */
 		if ((srvr_ecdh = EC_KEY_new()) == NULL) 
@@ -2281,72 +2239,28 @@ int ssl3_get_client_key_exchange(SSL *s)
 			goto err;
 			}
 
-		if (CBS_len(&client_key_exchange) == 0)
+		/* Get client's public key from encoded point
+		 * in the ClientKeyExchange message.
+		 */
+		if (!CBS_get_u8_length_prefixed(&client_key_exchange, &ecdh_Yc) ||
+			CBS_len(&client_key_exchange) != 0)
 			{
-			/* Client Publickey was in Client Certificate */
-
-			 if (alg_k & SSL_kEECDH)
-				 {
-				 al=SSL_AD_HANDSHAKE_FAILURE;
-				 OPENSSL_PUT_ERROR(SSL, ssl3_get_client_key_exchange, SSL_R_MISSING_TMP_ECDH_KEY);
-				 goto f_err;
-				 }
-			if (((clnt_pub_pkey=X509_get_pubkey(s->session->peer))
-			    == NULL) || 
-			    (clnt_pub_pkey->type != EVP_PKEY_EC))
-				{
-				/* XXX: For now, we do not support client
-				 * authentication using ECDH certificates
-				 * so this branch (n == 0L) of the code is
-				 * never executed. When that support is
-				 * added, we ought to ensure the key 
-				 * received in the certificate is 
-				 * authorized for key agreement.
-				 * ECDH_compute_key implicitly checks that
-				 * the two ECDH shares are for the same
-				 * group.
-				 */
-			   	al=SSL_AD_HANDSHAKE_FAILURE;
-			   	OPENSSL_PUT_ERROR(SSL, ssl3_get_client_key_exchange, SSL_R_UNABLE_TO_DECODE_ECDH_CERTS);
-			   	goto f_err;
-			   	}
-
-			if (EC_POINT_copy(clnt_ecpoint,
-			    EC_KEY_get0_public_key(clnt_pub_pkey->pkey.ec)) == 0)
-				{
-				OPENSSL_PUT_ERROR(SSL, ssl3_get_client_key_exchange, ERR_R_EC_LIB);
-				goto err;
-				}
-			/* Skip certificate verify processing */
-			skip_certificate_verify = 1;
+			al = SSL_AD_DECODE_ERROR;
+			OPENSSL_PUT_ERROR(SSL, ssl3_get_client_key_exchange, SSL_R_DECODE_ERROR);
+			goto f_err;
 			}
-		else
+
+		if ((bn_ctx = BN_CTX_new()) == NULL)
 			{
-			CBS ecdh_Yc;
+			OPENSSL_PUT_ERROR(SSL, ssl3_get_client_key_exchange, ERR_R_MALLOC_FAILURE);
+			goto err;
+			}
 
-			/* Get client's public key from encoded point
-			 * in the ClientKeyExchange message.
-			 */
-			if (!CBS_get_u8_length_prefixed(&client_key_exchange, &ecdh_Yc) ||
-				CBS_len(&client_key_exchange) != 0)
-				{
-				al = SSL_AD_DECODE_ERROR;
-				OPENSSL_PUT_ERROR(SSL, ssl3_get_client_key_exchange, SSL_R_DECODE_ERROR);
-				goto f_err;
-				}
-
-			if ((bn_ctx = BN_CTX_new()) == NULL)
-				{
-				OPENSSL_PUT_ERROR(SSL, ssl3_get_client_key_exchange, ERR_R_MALLOC_FAILURE);
-				goto err;
-				}
-
-			if (!EC_POINT_oct2point(group, clnt_ecpoint,
-					CBS_data(&ecdh_Yc), CBS_len(&ecdh_Yc), bn_ctx))
-				{
-				OPENSSL_PUT_ERROR(SSL, ssl3_get_client_key_exchange, ERR_R_EC_LIB);
-				goto err;
-				}
+		if (!EC_POINT_oct2point(group, clnt_ecpoint,
+				CBS_data(&ecdh_Yc), CBS_len(&ecdh_Yc), bn_ctx))
+			{
+			OPENSSL_PUT_ERROR(SSL, ssl3_get_client_key_exchange, ERR_R_EC_LIB);
+			goto err;
 			}
 
 		/* Allocate a buffer for both the secret and the PSK. */
@@ -2441,7 +2355,7 @@ int ssl3_get_client_key_exchange(SSL *s)
 
 	OPENSSL_cleanse(premaster_secret, premaster_secret_len);
 	OPENSSL_free(premaster_secret);
-	return skip_certificate_verify ? 2 : 1;
+	return 1;
 f_err:
 	ssl3_send_alert(s,SSL3_AL_FATAL,al);
 err:

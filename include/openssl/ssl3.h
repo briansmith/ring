@@ -341,7 +341,6 @@ typedef struct ssl3_buffer_st
 #define SSL3_FLAGS_NO_RENEGOTIATE_CIPHERS	0x0001
 #define SSL3_FLAGS_POP_BUFFER			0x0004
 #define TLS1_FLAGS_TLS_PADDING_BUG		0x0008
-#define TLS1_FLAGS_SKIP_CERT_VERIFY		0x0010
 #define TLS1_FLAGS_KEEP_HANDSHAKE		0x0020
 /* TODO(davidben): This flag can probably be merged into s3->change_cipher_spec
  * to something tri-state. (Normal / Expect CCS / Between CCS and Finished). */
