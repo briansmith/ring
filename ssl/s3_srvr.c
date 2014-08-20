@@ -492,10 +492,14 @@ int ssl3_accept(SSL *s)
 			ret=ssl3_get_client_key_exchange(s);
 			if (ret <= 0)
 				goto end;
+			s->state=SSL3_ST_SR_CERT_VRFY_A;
+			s->init_num=0;
+
+			/* TODO(davidben): These two blocks are different
+			 * between SSL and DTLS. Resolve the difference and code
+			 * duplication. */
 			if (SSL_USE_SIGALGS(s))
 				{
-				s->state=SSL3_ST_SR_CERT_VRFY_A;
-				s->init_num=0;
 				if (!s->session->peer)
 					break;
 				/* For sigalgs freeze the handshake buffer
@@ -514,9 +518,6 @@ int ssl3_accept(SSL *s)
 				{
 				int offset=0;
 				int dgst_num;
-
-				s->state=SSL3_ST_SR_CERT_VRFY_A;
-				s->init_num=0;
 
 				/* We need to get hashes here so if there is
 				 * a client cert, it can be verified
