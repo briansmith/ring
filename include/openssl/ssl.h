@@ -200,11 +200,9 @@ extern "C" {
 #define SSL_TXT_kPSK            "kPSK"
 
 #define	SSL_TXT_aRSA		"aRSA"
-#define	SSL_TXT_aDSS		"aDSS"
 #define SSL_TXT_aECDSA		"aECDSA"
 #define SSL_TXT_aPSK            "aPSK"
 
-#define	SSL_TXT_DSS		"DSS"
 #define SSL_TXT_DH		"DH"
 #define SSL_TXT_EDH		"EDH" /* same as "kEDH:-ADH" */
 #define SSL_TXT_ADH		"ADH"

@@ -213,8 +213,6 @@ static const SSL_CIPHER cipher_aliases[]={
 
 	/* server authentication aliases */
 	{0,SSL_TXT_aRSA,0,    0,SSL_aRSA,  0,0,0,0,0,0,0},
-	{0,SSL_TXT_aDSS,0,    0,SSL_aDSS,  0,0,0,0,0,0,0},
-	{0,SSL_TXT_DSS,0,     0,SSL_aDSS,   0,0,0,0,0,0,0},
 	{0,SSL_TXT_aNULL,0,   0,SSL_aNULL, 0,0,0,0,0,0,0},
 	{0,SSL_TXT_aECDSA,0,  0,SSL_aECDSA,0,0,0,0,0,0,0},
 	{0,SSL_TXT_ECDSA,0,   0,SSL_aECDSA, 0,0,0,0,0,0,0},
@@ -486,23 +484,6 @@ static void ssl_cipher_get_disabled(unsigned long *mkey, unsigned long *auth, un
 	*enc = 0;
 	*mac = 0;
 	*ssl = 0;
-
-#ifdef OPENSSL_NO_DSA
-	*auth |= SSL_aDSS;
-#endif
-#ifdef OPENSSL_NO_DH
-	*mkey |= SSL_kDHr|SSL_kDHd|SSL_kEDH;
-	*auth |= SSL_aDH;
-#endif
-#ifdef OPENSSL_NO_ECDSA
-	*auth |= SSL_aECDSA;
-#endif
-#ifdef OPENSSL_NO_ECDH
-	*mkey |= SSL_kECDHe|SSL_kECDHr;
-	*auth |= SSL_aECDH;
-#endif
-		
-
 
 	*enc |= (ssl_cipher_methods[SSL_ENC_3DES_IDX] == NULL) ? SSL_3DES:0;
 	*enc |= (ssl_cipher_methods[SSL_ENC_RC4_IDX ] == NULL) ? SSL_RC4 :0;
@@ -1414,9 +1395,6 @@ const char *SSL_CIPHER_description(const SSL_CIPHER *cipher, char *buf, int len)
 	case SSL_aRSA:
 		au="RSA";
 		break;
-	case SSL_aDSS:
-		au="DSS";
-		break;
 	case SSL_aNULL:
 		au="None";
 		break;
@@ -1551,8 +1529,6 @@ const char *SSL_CIPHER_get_kx_name(const SSL_CIPHER *cipher) {
       return SSL_TXT_RSA;
     case SSL_kEDH:
       switch (cipher->algorithm_auth) {
-        case SSL_aDSS:
-          return "DHE_" SSL_TXT_DSS;
         case SSL_aRSA:
           return "DHE_" SSL_TXT_RSA;
         case SSL_aNULL:
@@ -1615,8 +1591,6 @@ int ssl_cipher_get_cert_index(const SSL_CIPHER *c)
 
 	if (alg_a & SSL_aECDSA)
 		return SSL_PKEY_ECC;
-	else if (alg_a & SSL_aDSS)
-		return SSL_PKEY_DSA_SIGN;
 	else if (alg_a & SSL_aRSA)
 		return SSL_PKEY_RSA_ENC;
 	return -1;

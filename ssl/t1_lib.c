@@ -720,12 +720,6 @@ static int tls1_check_cert_param(SSL *s, X509 *x, int set_ee_md)
 
 #define tlsext_sigalg_rsa(md) md, TLSEXT_signature_rsa,
 
-#ifdef OPENSSL_NO_DSA
-#define tlsext_sigalg_dsa(md) /* */
-#else
-#define tlsext_sigalg_dsa(md) md, TLSEXT_signature_dsa,
-#endif
-
 #ifdef OPENSSL_NO_ECDSA
 #define tlsext_sigalg_ecdsa(md) /* */
 #else
@@ -734,7 +728,6 @@ static int tls1_check_cert_param(SSL *s, X509 *x, int set_ee_md)
 
 #define tlsext_sigalg(md) \
 		tlsext_sigalg_rsa(md) \
-		tlsext_sigalg_dsa(md) \
 		tlsext_sigalg_ecdsa(md)
 
 static const uint8_t tls12_sigalgs[] = {
@@ -859,7 +852,7 @@ void ssl_set_client_disabled(SSL *s)
 	CERT *c = s->cert;
 	const unsigned char *sigalgs;
 	size_t i, sigalgslen;
-	int have_rsa = 0, have_dsa = 0, have_ecdsa = 0;
+	int have_rsa = 0, have_ecdsa = 0;
 	c->mask_a = 0;
 	c->mask_k = 0;
 	/* Don't allow TLS 1.2 only ciphers if we don't suppport them */
@@ -879,11 +872,6 @@ void ssl_set_client_disabled(SSL *s)
 		case TLSEXT_signature_rsa:
 			have_rsa = 1;
 			break;
-#ifndef OPENSSL_NO_DSA
-		case TLSEXT_signature_dsa:
-			have_dsa = 1;
-			break;
-#endif
 #ifndef OPENSSL_NO_ECDSA
 		case TLSEXT_signature_ecdsa:
 			have_ecdsa = 1;
@@ -897,10 +885,6 @@ void ssl_set_client_disabled(SSL *s)
 	if (!have_rsa)
 		{
 		c->mask_a |= SSL_aRSA;
-		}
-	if (!have_dsa)
-		{
-		c->mask_a |= SSL_aDSS;
 		}
 	if (!have_ecdsa)
 		{
@@ -2747,7 +2731,6 @@ static const tls12_lookup tls12_md[] = {
 
 static const tls12_lookup tls12_sig[] = {
 	{EVP_PKEY_RSA, TLSEXT_signature_rsa},
-	{EVP_PKEY_DSA, TLSEXT_signature_dsa},
 	{EVP_PKEY_EC, TLSEXT_signature_ecdsa}
 };
 
@@ -2830,10 +2813,6 @@ static int tls12_get_pkey_idx(unsigned char sig_alg)
 		{
 	case TLSEXT_signature_rsa:
 		return SSL_PKEY_RSA_SIGN;
-#ifndef OPENSSL_NO_DSA
-	case TLSEXT_signature_dsa:
-		return SSL_PKEY_DSA_SIGN;
-#endif
 #ifndef OPENSSL_NO_ECDSA
 	case TLSEXT_signature_ecdsa:
 		return SSL_PKEY_ECC;
@@ -3394,12 +3373,6 @@ int tls1_check_chain(SSL *s, X509 *x, EVP_PKEY *pk, STACK_OF(X509) *chain,
 			case SSL_PKEY_DH_RSA:
 				rsign = TLSEXT_signature_rsa;
 				default_nid = NID_sha1WithRSAEncryption;
-				break;
-
-			case SSL_PKEY_DSA_SIGN:
-			case SSL_PKEY_DH_DSA:
-				rsign = TLSEXT_signature_dsa;
-				default_nid = NID_dsaWithSHA1;
 				break;
 
 			case SSL_PKEY_ECC:

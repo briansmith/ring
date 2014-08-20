@@ -250,21 +250,6 @@ const SSL_CIPHER ssl3_ciphers[]={
 	128,
 	128,
 	},
-/* Cipher 32 */
-	{
-	1,
-	TLS1_TXT_DHE_DSS_WITH_AES_128_SHA,
-	TLS1_CK_DHE_DSS_WITH_AES_128_SHA,
-	SSL_kEDH,
-	SSL_aDSS,
-	SSL_AES128,
-	SSL_SHA1,
-	SSL_TLSV1,
-	SSL_NOT_EXP|SSL_HIGH|SSL_FIPS,
-	SSL_HANDSHAKE_MAC_DEFAULT|TLS1_PRF,
-	128,
-	128,
-	},
 /* Cipher 33 */
 	{
 	1,
@@ -303,22 +288,6 @@ const SSL_CIPHER ssl3_ciphers[]={
 	TLS1_CK_RSA_WITH_AES_256_SHA,
 	SSL_kRSA,
 	SSL_aRSA,
-	SSL_AES256,
-	SSL_SHA1,
-	SSL_TLSV1,
-	SSL_NOT_EXP|SSL_HIGH|SSL_FIPS,
-	SSL_HANDSHAKE_MAC_DEFAULT|TLS1_PRF,
-	256,
-	256,
-	},
-
-/* Cipher 38 */
-	{
-	1,
-	TLS1_TXT_DHE_DSS_WITH_AES_256_SHA,
-	TLS1_CK_DHE_DSS_WITH_AES_256_SHA,
-	SSL_kEDH,
-	SSL_aDSS,
 	SSL_AES256,
 	SSL_SHA1,
 	SSL_TLSV1,
@@ -393,40 +362,6 @@ const SSL_CIPHER ssl3_ciphers[]={
 	256,
 	},
 
-	/* Cipher 40 */
-	{
-	1,
-	TLS1_TXT_DHE_DSS_WITH_AES_128_SHA256,
-	TLS1_CK_DHE_DSS_WITH_AES_128_SHA256,
-	SSL_kEDH,
-	SSL_aDSS,
-	SSL_AES128,
-	SSL_SHA256,
-	SSL_TLSV1_2,
-	SSL_NOT_EXP|SSL_HIGH|SSL_FIPS,
-	SSL_HANDSHAKE_MAC_DEFAULT|TLS1_PRF,
-	128,
-	128,
-	},
-
-
-#if TLS1_ALLOW_EXPERIMENTAL_CIPHERSUITES
-	/* Cipher 66 */
-	{
-	1,
-	TLS1_TXT_DHE_DSS_WITH_RC4_128_SHA,
-	TLS1_CK_DHE_DSS_WITH_RC4_128_SHA,
-	SSL_kEDH,
-	SSL_aDSS,
-	SSL_RC4,
-	SSL_SHA1,
-	SSL_TLSV1,
-	SSL_NOT_EXP|SSL_MEDIUM,
-	SSL_HANDSHAKE_MAC_DEFAULT|TLS1_PRF,
-	128,
-	128,
-	},
-#endif
 
 	/* TLS v1.2 ciphersuites */
 	/* Cipher 67 */
@@ -443,22 +378,6 @@ const SSL_CIPHER ssl3_ciphers[]={
 	SSL_HANDSHAKE_MAC_DEFAULT|TLS1_PRF,
 	128,
 	128,
-	},
-
-	/* Cipher 6A */
-	{
-	1,
-	TLS1_TXT_DHE_DSS_WITH_AES_256_SHA256,
-	TLS1_CK_DHE_DSS_WITH_AES_256_SHA256,
-	SSL_kEDH,
-	SSL_aDSS,
-	SSL_AES256,
-	SSL_SHA256,
-	SSL_TLSV1_2,
-	SSL_NOT_EXP|SSL_HIGH|SSL_FIPS,
-	SSL_HANDSHAKE_MAC_DEFAULT|TLS1_PRF,
-	256,
-	256,
 	},
 
 	/* Cipher 6B */
@@ -616,39 +535,6 @@ const SSL_CIPHER ssl3_ciphers[]={
 	TLS1_CK_DHE_RSA_WITH_AES_256_GCM_SHA384,
 	SSL_kEDH,
 	SSL_aRSA,
-	SSL_AES256GCM,
-	SSL_AEAD,
-	SSL_TLSV1_2,
-	SSL_NOT_EXP|SSL_HIGH|SSL_FIPS,
-	SSL_HANDSHAKE_MAC_SHA384|TLS1_PRF_SHA384|SSL_CIPHER_ALGORITHM2_AEAD|FIXED_NONCE_LEN(4)|
-		SSL_CIPHER_ALGORITHM2_VARIABLE_NONCE_INCLUDED_IN_RECORD,
-	256,
-	256,
-	},
-
-	/* Cipher A2 */
-	{
-	1,
-	TLS1_TXT_DHE_DSS_WITH_AES_128_GCM_SHA256,
-	TLS1_CK_DHE_DSS_WITH_AES_128_GCM_SHA256,
-	SSL_kEDH,
-	SSL_aDSS,
-	SSL_AES128GCM,
-	SSL_AEAD,
-	SSL_TLSV1_2,
-	SSL_NOT_EXP|SSL_HIGH|SSL_FIPS,
-	SSL_HANDSHAKE_MAC_SHA256|TLS1_PRF_SHA256|SSL_CIPHER_ALGORITHM2_AEAD|FIXED_NONCE_LEN(4)|SSL_CIPHER_ALGORITHM2_VARIABLE_NONCE_INCLUDED_IN_RECORD,
-	128,
-	128,
-	},
-
-	/* Cipher A3 */
-	{
-	1,
-	TLS1_TXT_DHE_DSS_WITH_AES_256_GCM_SHA384,
-	TLS1_CK_DHE_DSS_WITH_AES_256_GCM_SHA384,
-	SSL_kEDH,
-	SSL_aDSS,
 	SSL_AES256GCM,
 	SSL_AEAD,
 	SSL_TLSV1_2,
@@ -2117,7 +2003,7 @@ int ssl3_get_req_cert_type(SSL *s, unsigned char *p)
 	int ret=0;
 	const unsigned char *sig;
 	size_t i, siglen;
-	int have_rsa_sign = 0, have_dsa_sign = 0;
+	int have_rsa_sign = 0;
 #ifndef OPENSSL_NO_ECDSA
 	int have_ecdsa_sign = 0;
 #endif
@@ -2139,9 +2025,6 @@ int ssl3_get_req_cert_type(SSL *s, unsigned char *p)
 			have_rsa_sign = 1;
 			break;
 
-		case TLSEXT_signature_dsa:
-			have_dsa_sign = 1;
-			break;
 #ifndef OPENSSL_NO_ECDSA
 		case TLSEXT_signature_ecdsa:
 			have_ecdsa_sign = 1;
@@ -2152,10 +2035,6 @@ int ssl3_get_req_cert_type(SSL *s, unsigned char *p)
 
 	if (have_rsa_sign)
 		p[ret++]=SSL3_CT_RSA_SIGN;
-#ifndef OPENSSL_NO_DSA
-	if (have_dsa_sign)
-		p[ret++]=SSL3_CT_DSS_SIGN;
-#endif
 
 #ifndef OPENSSL_NO_ECDSA
 	/* ECDSA certs can be used with RSA cipher suites as well 

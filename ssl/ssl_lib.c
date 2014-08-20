@@ -2168,7 +2168,7 @@ void SSL_set_cert_cb(SSL *s, int (*cb)(SSL *ssl, void *arg), void *arg)
 void ssl_set_cert_masks(CERT *c, const SSL_CIPHER *cipher)
 	{
 	CERT_PKEY *cpk;
-	int rsa_enc,rsa_sign,dh_tmp,dsa_sign;
+	int rsa_enc,rsa_sign,dh_tmp;
 	unsigned long mask_k,mask_a;
 #ifndef OPENSSL_NO_ECDSA
 	int have_ecc_cert, ecdsa_ok;
@@ -2194,8 +2194,6 @@ void ssl_set_cert_masks(CERT *c, const SSL_CIPHER *cipher)
 	rsa_enc= cpk->valid_flags & CERT_PKEY_VALID;
 	cpk= &(c->pkeys[SSL_PKEY_RSA_SIGN]);
 	rsa_sign= cpk->valid_flags & CERT_PKEY_SIGN;
-	cpk= &(c->pkeys[SSL_PKEY_DSA_SIGN]);
-	dsa_sign= cpk->valid_flags & CERT_PKEY_SIGN;
 	cpk= &(c->pkeys[SSL_PKEY_ECC]);
 #ifndef OPENSSL_NO_EC
 	have_ecc_cert= cpk->valid_flags & CERT_PKEY_VALID;
@@ -2218,11 +2216,6 @@ void ssl_set_cert_masks(CERT *c, const SSL_CIPHER *cipher)
 	if (rsa_enc || rsa_sign)
 		{
 		mask_a|=SSL_aRSA;
-		}
-
-	if (dsa_sign)
-		{
-		mask_a|=SSL_aDSS;
 		}
 
 	mask_a|=SSL_aNULL;
@@ -2355,10 +2348,7 @@ EVP_PKEY *ssl_get_sign_pkey(SSL *s,const SSL_CIPHER *cipher, const EVP_MD **pmd)
 	else
 #endif
 
-	if ((alg_a & SSL_aDSS) &&
-		(c->pkeys[SSL_PKEY_DSA_SIGN].privatekey != NULL))
-		idx = SSL_PKEY_DSA_SIGN;
-	else if (alg_a & SSL_aRSA)
+	if (alg_a & SSL_aRSA)
 		{
 		if (c->pkeys[SSL_PKEY_RSA_SIGN].privatekey != NULL)
 			idx = SSL_PKEY_RSA_SIGN;

@@ -1365,10 +1365,6 @@ int ssl3_get_server_key_exchange(SSL *s)
 
 		if (alg_a & SSL_aRSA)
 			pkey=X509_get_pubkey(s->session->sess_cert->peer_pkeys[SSL_PKEY_RSA_ENC].x509);
-#ifndef OPENSSL_NO_DSA
-		else if (alg_a & SSL_aDSS)
-			pkey=X509_get_pubkey(s->session->sess_cert->peer_pkeys[SSL_PKEY_DSA_SIGN].x509);
-#endif
 		/* else anonymous DH, so no certificate or pkey. */
 
 		s->session->sess_cert->peer_dh_tmp=dh;
@@ -2599,13 +2595,6 @@ int ssl3_check_cert_and_algorithm(SSL *s)
 		OPENSSL_PUT_ERROR(SSL, ssl3_check_cert_and_algorithm, SSL_R_MISSING_RSA_SIGNING_CERT);
 		goto f_err;
 		}
-#ifndef OPENSSL_NO_DSA
-	else if ((alg_a & SSL_aDSS) && !has_bits(i,EVP_PK_DSA|EVP_PKT_SIGN))
-		{
-		OPENSSL_PUT_ERROR(SSL, ssl3_check_cert_and_algorithm, SSL_R_MISSING_DSA_SIGNING_CERT);
-		goto f_err;
-		}
-#endif
 	if ((alg_k & SSL_kRSA) &&
 		!(has_bits(i,EVP_PK_RSA|EVP_PKT_ENC) || (rsa != NULL)))
 		{

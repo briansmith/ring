@@ -2448,23 +2448,6 @@ int ssl3_get_cert_verify(SSL *s)
 			}
 		}
 	else
-#ifndef OPENSSL_NO_DSA
-		if (pkey->type == EVP_PKEY_DSA)
-		{
-		if (DSA_verify(pkey->save_type,
-				&(s->s3->tmp.cert_verify_md[MD5_DIGEST_LENGTH]),
-				SHA_DIGEST_LENGTH,
-				CBS_data(&signature), CBS_len(&signature),
-				pkey->pkey.dsa) <= 0)
-			{
-			/* bad signature */
-			al = SSL_AD_DECRYPT_ERROR;
-			OPENSSL_PUT_ERROR(SSL, ssl3_get_cert_verify, SSL_R_BAD_DSA_SIGNATURE);
-			goto f_err;
-			}
-		}
-	else
-#endif
 #ifndef OPENSSL_NO_ECDSA
 		if (pkey->type == EVP_PKEY_EC)
 		{
