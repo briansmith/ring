@@ -2360,7 +2360,7 @@ int ssl3_send_client_verify(SSL *s)
 			 * DigestInfo. */
 			md = NULL;
 			}
-		else if (pkey->type == EVP_PKEY_DSA || pkey->type == EVP_PKEY_EC)
+		else if (pkey->type == EVP_PKEY_EC)
 			{
 			s->method->ssl3_enc->cert_verify_mac(s, NID_sha1, digest);
 			digest_length = SHA_DIGEST_LENGTH;

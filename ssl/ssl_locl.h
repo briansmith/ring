@@ -395,11 +395,8 @@
 /* Mostly for SSLv3 */
 #define SSL_PKEY_RSA_ENC	0
 #define SSL_PKEY_RSA_SIGN	1
-#define SSL_PKEY_DSA_SIGN	2
-#define SSL_PKEY_DH_RSA		3
-#define SSL_PKEY_DH_DSA		4
-#define SSL_PKEY_ECC            5
-#define SSL_PKEY_NUM		6
+#define SSL_PKEY_ECC            2
+#define SSL_PKEY_NUM		3
 
 /* SSL_kRSA <- RSA_ENC | (RSA_TMP & RSA_SIGN) |
  * 	    <- (EXPORT & (RSA_ENC | RSA_TMP) & RSA_SIGN)

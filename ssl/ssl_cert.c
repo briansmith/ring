@@ -159,9 +159,6 @@ int SSL_get_ex_data_X509_STORE_CTX_idx(void)
 void ssl_cert_set_default_md(CERT *cert)
 	{
 	/* Set digest values to defaults */
-#ifndef OPENSSL_NO_DSA
-	cert->pkeys[SSL_PKEY_DSA_SIGN].digest = EVP_sha1();
-#endif
 	cert->pkeys[SSL_PKEY_RSA_SIGN].digest = EVP_sha1();
 	cert->pkeys[SSL_PKEY_RSA_ENC].digest = EVP_sha1();
 #ifndef OPENSSL_NO_ECDSA
@@ -281,15 +278,6 @@ CERT *ssl_cert_dup(CERT *cert)
 				/* We have an RSA key. */
 				break;
 				
-			case SSL_PKEY_DSA_SIGN:
-				/* We have a DSA key. */
-				break;
-				
-			case SSL_PKEY_DH_RSA:
-			case SSL_PKEY_DH_DSA:
-				/* We have a DH key. */
-				break;
-
 			case SSL_PKEY_ECC:
 				/* We have an ECC key */
 				break;

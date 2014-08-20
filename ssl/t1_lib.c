@@ -3016,10 +3016,6 @@ int tls1_process_sigalgs(SSL *s, const CBS *sigalgs)
 		/* Set any remaining keys to default values. NOTE: if alg is
 		 * not supported it stays as NULL.
 	 	 */
-#ifndef OPENSSL_NO_DSA
-		if (!c->pkeys[SSL_PKEY_DSA_SIGN].digest)
-			c->pkeys[SSL_PKEY_DSA_SIGN].digest = EVP_sha1();
-#endif
 		if (!c->pkeys[SSL_PKEY_RSA_SIGN].digest)
 			{
 			c->pkeys[SSL_PKEY_RSA_SIGN].digest = EVP_sha1();
@@ -3177,8 +3173,6 @@ static int sig_cb(const char *elem, int len, void *arg)
 
 	if (!strcmp(etmp, "RSA"))
 		sig_alg = EVP_PKEY_RSA;
-	else if (!strcmp(etmp, "DSA"))
-		sig_alg = EVP_PKEY_DSA;
 	else if (!strcmp(etmp, "ECDSA"))
 		sig_alg = EVP_PKEY_EC;
 	else return 0;
@@ -3370,7 +3364,6 @@ int tls1_check_chain(SSL *s, X509 *x, EVP_PKEY *pk, STACK_OF(X509) *chain,
 				{	
 			case SSL_PKEY_RSA_ENC:
 			case SSL_PKEY_RSA_SIGN:
-			case SSL_PKEY_DH_RSA:
 				rsign = TLSEXT_signature_rsa;
 				default_nid = NID_sha1WithRSAEncryption;
 				break;
@@ -3468,21 +3461,9 @@ int tls1_check_chain(SSL *s, X509 *x, EVP_PKEY *pk, STACK_OF(X509) *chain,
 		case EVP_PKEY_RSA:
 			check_type = TLS_CT_RSA_SIGN;
 			break;
-		case EVP_PKEY_DSA:
-			check_type = TLS_CT_DSS_SIGN;
-			break;
 		case EVP_PKEY_EC:
 			check_type = TLS_CT_ECDSA_SIGN;
 			break;
-		case EVP_PKEY_DH:
-		case EVP_PKEY_DHX:
-				{
-				int cert_type = X509_certificate_type(x, pk);
-				if (cert_type & EVP_PKS_RSA)
-					check_type = TLS_CT_RSA_FIXED_DH;
-				if (cert_type & EVP_PKS_DSA)
-					check_type = TLS_CT_DSS_FIXED_DH;
-				}
 			}
 		if (check_type)
 			{
@@ -3563,9 +3544,6 @@ void tls1_set_cert_validity(SSL *s)
 	{
 	tls1_check_chain(s, NULL, NULL, NULL, SSL_PKEY_RSA_ENC);
 	tls1_check_chain(s, NULL, NULL, NULL, SSL_PKEY_RSA_SIGN);
-	tls1_check_chain(s, NULL, NULL, NULL, SSL_PKEY_DSA_SIGN);
-	tls1_check_chain(s, NULL, NULL, NULL, SSL_PKEY_DH_RSA);
-	tls1_check_chain(s, NULL, NULL, NULL, SSL_PKEY_DH_DSA);
 	tls1_check_chain(s, NULL, NULL, NULL, SSL_PKEY_ECC);
 	}
 /* User level utiity function to check a chain is suitable */
