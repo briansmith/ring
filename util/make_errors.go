@@ -90,7 +90,7 @@ func makeErrors(reset bool) error {
 	}
 
 	for _, name := range filenames {
-		if !strings.HasSuffix(name, ".c") {
+		if !strings.HasSuffix(name, ".c") || name == sourcePath {
 			continue
 		}
 
