@@ -187,7 +187,6 @@ int SSL_clear(SSL *s)
 		s->session=NULL;
 		}
 
-	s->error=0;
 	s->hit=0;
 	s->shutdown=0;
 
@@ -2011,26 +2010,7 @@ SSL_CTX *SSL_CTX_new(const SSL_METHOD *meth)
 	ret->psk_identity_hint=NULL;
 	ret->psk_client_callback=NULL;
 	ret->psk_server_callback=NULL;
-#ifndef OPENSSL_NO_ENGINE
-	ret->client_cert_engine = NULL;
-#ifdef OPENSSL_SSL_CLIENT_ENGINE_AUTO
-#define eng_strx(x)	#x
-#define eng_str(x)	eng_strx(x)
-	/* Use specific client engine automatically... ignore errors */
-	{
-	ENGINE *eng;
-	eng = ENGINE_by_id(eng_str(OPENSSL_SSL_CLIENT_ENGINE_AUTO));
-	if (!eng)
-		{
-		ERR_clear_error();
-		ENGINE_load_builtin_engines();
-		eng = ENGINE_by_id(eng_str(OPENSSL_SSL_CLIENT_ENGINE_AUTO));
-		}
-	if (!eng || !SSL_CTX_set_client_cert_engine(ret, eng))
-		ERR_clear_error();
-	}
-#endif
-#endif
+
 	/* Default is to connect to non-RI servers. When RI is more widely
 	 * deployed might change this.
 	 */
@@ -2104,14 +2084,6 @@ void SSL_CTX_free(SSL_CTX *a)
 
 	if (a->psk_identity_hint)
 		OPENSSL_free(a->psk_identity_hint);
-
-	/* TODO(fork): remove. */
-#if 0
-#ifndef OPENSSL_NO_ENGINE
-	if (a->client_cert_engine)
-		ENGINE_finish(a->client_cert_engine);
-#endif
-#endif
 
 # ifndef OPENSSL_NO_EC
 	if (a->tlsext_ecpointformatlist)

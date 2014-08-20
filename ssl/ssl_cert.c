@@ -564,7 +564,6 @@ SESS_CERT *ssl_sess_cert_new(void)
 
 	memset(ret, 0 ,sizeof *ret);
 	ret->peer_key = &(ret->peer_pkeys[SSL_PKEY_RSA_ENC]);
-	ret->references = 1;
 
 	return ret;
 	}
@@ -576,21 +575,6 @@ void ssl_sess_cert_free(SESS_CERT *sc)
 	if (sc == NULL)
 		return;
 
-	i = CRYPTO_add(&sc->references, -1, CRYPTO_LOCK_SSL_SESS_CERT);
-#ifdef REF_PRINT
-	REF_PRINT("SESS_CERT", sc);
-#endif
-	if (i > 0)
-		return;
-#ifdef REF_CHECK
-	if (i < 0)
-		{
-		fprintf(stderr,"ssl_sess_cert_free, bad reference count\n");
-		abort(); /* ok */
-		}
-#endif
-
-	/* i == 0 */
 	if (sc->cert_chain != NULL)
 		sk_X509_pop_free(sc->cert_chain, X509_free);
 	for (i = 0; i < SSL_PKEY_NUM; i++)

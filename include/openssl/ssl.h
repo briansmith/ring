@@ -929,12 +929,6 @@ struct ssl_ctx_st
 	 */
 	unsigned int max_send_fragment;
 
-#ifndef OPENSSL_ENGINE
-	/* Engine to pass requests for client certs to
-	 */
-	ENGINE *client_cert_engine;
-#endif
-
 	/* TLS extensions servername callback */
 	int (*tlsext_servername_callback)(SSL*, int *, void *);
 	void *tlsext_servername_arg;
@@ -1091,9 +1085,6 @@ OPENSSL_EXPORT void SSL_CTX_set_client_cert_cb(SSL_CTX *ctx, int (*client_cert_c
 OPENSSL_EXPORT int (*SSL_CTX_get_client_cert_cb(SSL_CTX *ctx))(SSL *ssl, X509 **x509, EVP_PKEY **pkey);
 OPENSSL_EXPORT void SSL_CTX_set_channel_id_cb(SSL_CTX *ctx, void (*channel_id_cb)(SSL *ssl, EVP_PKEY **pkey));
 OPENSSL_EXPORT void (*SSL_CTX_get_channel_id_cb(SSL_CTX *ctx))(SSL *ssl, EVP_PKEY **pkey);
-#ifndef OPENSSL_NO_ENGINE
-OPENSSL_EXPORT int SSL_CTX_set_client_cert_engine(SSL_CTX *ctx, ENGINE *e);
-#endif
 OPENSSL_EXPORT void SSL_CTX_set_cookie_generate_cb(SSL_CTX *ctx, int (*app_gen_cookie_cb)(SSL *ssl, uint8_t *cookie, size_t *cookie_len));
 OPENSSL_EXPORT void SSL_CTX_set_cookie_verify_cb(SSL_CTX *ctx, int (*app_verify_cookie_cb)(SSL *ssl, const uint8_t *cookie, size_t cookie_len));
 #ifndef OPENSSL_NO_NEXTPROTONEG
@@ -1301,9 +1292,6 @@ struct ssl_st
 	int (*verify_callback)(int ok,X509_STORE_CTX *ctx); /* fail if callback returns 0 */
 
 	void (*info_callback)(const SSL *ssl,int type,int val); /* optional informational callback */
-
-	int error;		/* error bytes to be written */
-	int error_code;		/* actual code */
 
 	/* PSK identity hint is stored here only to enable setting a hint on an SSL object before an
 	 * SSL_SESSION is associated with it. Once an SSL_SESSION is associated with this SSL object,

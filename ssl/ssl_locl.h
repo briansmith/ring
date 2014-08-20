@@ -551,8 +551,6 @@ typedef struct sess_cert_st
 #ifndef OPENSSL_NO_ECDH
 	EC_KEY *peer_ecdh_tmp;
 #endif
-
-	int references; /* actually always 1 at the moment */
 	} SESS_CERT;
 /* Structure containing decoded values of signature algorithms extension */
 struct tls_sigalgs_st
@@ -833,7 +831,6 @@ int ssl_cipher_get_evp_aead(const SSL_SESSION *s, const EVP_AEAD **aead);
 int ssl_cipher_get_evp(const SSL_SESSION *s,const EVP_CIPHER **enc,
 		       const EVP_MD **md,int *mac_pkey_type,int *mac_secret_size);
 int ssl_cipher_get_mac(const SSL_SESSION *s, const EVP_MD **md, int *mac_pkey_type, int *mac_secret_size);
-int ssl_get_handshake_digest(int i,long *mask,const EVP_MD **md);			   
 int ssl_get_handshake_digest(int i,long *mask,const EVP_MD **md);
 int ssl_cipher_get_cert_index(const SSL_CIPHER *c);
 int ssl_cipher_has_server_public_key(const SSL_CIPHER *cipher);
@@ -1145,9 +1142,5 @@ void ssl3_cbc_digest_record(
 	const unsigned char *mac_secret,
 	unsigned mac_secret_length,
 	char is_sslv3);
-
-void tls_fips_digest_extra(
-	const EVP_CIPHER_CTX *cipher_ctx, EVP_MD_CTX *mac_ctx,
-	const unsigned char *data, size_t data_len, size_t orig_len);
 
 #endif
