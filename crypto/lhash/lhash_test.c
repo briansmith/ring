@@ -99,7 +99,7 @@ static char *dummy_lh_delete(struct dummy_lhash *lh, const void *s) {
   return NULL;
 }
 
-static char *rand_string() {
+static char *rand_string(void) {
   unsigned len = 1 + (rand() % 3);
   char *ret = malloc(len + 1);
   unsigned i;

@@ -99,7 +99,7 @@ OPENSSL_EXPORT const EVP_AEAD *EVP_aead_aes_128_gcm(void);
 OPENSSL_EXPORT const EVP_AEAD *EVP_aead_aes_256_gcm(void);
 
 /* EVP_aead_chacha20_poly1305 is an AEAD built from ChaCha20 and Poly1305. */
-OPENSSL_EXPORT const EVP_AEAD *EVP_aead_chacha20_poly1305();
+OPENSSL_EXPORT const EVP_AEAD *EVP_aead_chacha20_poly1305(void);
 
 /* EVP_aead_aes_128_key_wrap is AES-128 Key Wrap mode. This should never be
  * used except to interoperate with existing systems that use this mode.
@@ -107,13 +107,13 @@ OPENSSL_EXPORT const EVP_AEAD *EVP_aead_chacha20_poly1305();
  * If the nonce is emtpy then the default nonce will be used, otherwise it must
  * be eight bytes long. The input must be a multiple of eight bytes long. No
  * additional data can be given to this mode. */
-OPENSSL_EXPORT const EVP_AEAD *EVP_aead_aes_128_key_wrap();
+OPENSSL_EXPORT const EVP_AEAD *EVP_aead_aes_128_key_wrap(void);
 
 /* EVP_aead_aes_256_key_wrap is AES-256 in Key Wrap mode. This should never be
  * used except to interoperate with existing systems that use this mode.
  *
  * See |EVP_aead_aes_128_key_wrap| for details. */
-OPENSSL_EXPORT const EVP_AEAD *EVP_aead_aes_256_key_wrap();
+OPENSSL_EXPORT const EVP_AEAD *EVP_aead_aes_256_key_wrap(void);
 
 /* EVP_has_aes_hardware returns one if we enable hardware support for fast and
  * constant-time AES-GCM. */
@@ -129,7 +129,7 @@ OPENSSL_EXPORT int EVP_has_aes_hardware(void);
 /* EVP_aead_rc4_md5_tls uses RC4 and HMAC(MD5) in MAC-then-encrypt mode. Unlike
  * a standard AEAD, this is stateful as the RC4 state is carried from operation
  * to operation. */
-OPENSSL_EXPORT const EVP_AEAD *EVP_aead_rc4_md5_tls();
+OPENSSL_EXPORT const EVP_AEAD *EVP_aead_rc4_md5_tls(void);
 
 
 /* Utility functions. */

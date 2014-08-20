@@ -237,7 +237,7 @@ static int key3(RSA *key, unsigned char *c) {
   SetKey;
 }
 
-static int test_bad_key() {
+static int test_bad_key(void) {
   RSA *key = RSA_new();
   BIGNUM e;
 
@@ -267,7 +267,7 @@ static int test_bad_key() {
   return 1;
 }
 
-static int test_only_d_given() {
+static int test_only_d_given(void) {
   RSA *key = RSA_new();
   uint8_t buf[64];
   unsigned buf_len = sizeof(buf);
@@ -312,7 +312,7 @@ err:
   return ret;
 }
 
-static int test_recover_crt_params() {
+static int test_recover_crt_params(void) {
   RSA *key1, *key2;
   BIGNUM *e = BN_new();
   uint8_t buf[128];

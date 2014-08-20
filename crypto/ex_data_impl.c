@@ -171,7 +171,7 @@ static void class_free(EX_CLASS_ITEM *item) {
   sk_CRYPTO_EX_DATA_FUNCS_pop_free(item->meth, data_funcs_free);
 }
 
-static LHASH_OF(EX_CLASS_ITEM) *get_classes() {
+static LHASH_OF(EX_CLASS_ITEM) *get_classes(void) {
   LHASH_OF(EX_CLASS_ITEM) *ret;
 
   CRYPTO_r_lock(CRYPTO_LOCK_EX_DATA);

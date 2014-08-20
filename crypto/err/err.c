@@ -298,7 +298,7 @@ void ERR_remove_thread_state(const CRYPTO_THREADID *tid) {
   OPENSSL_free(state);
 }
 
-int ERR_get_next_error_library() {
+int ERR_get_next_error_library(void) {
   err_fns_check();
   return ERRFN(get_next_library)();
 }
@@ -760,11 +760,11 @@ void ERR_load_strings(const ERR_STRING_DATA *str) {
   }
 }
 
-void ERR_load_crypto_strings() { err_load_strings(); }
+void ERR_load_crypto_strings(void) { err_load_strings(); }
 
-void ERR_free_strings() {
+void ERR_free_strings(void) {
   err_fns_check();
   ERRFN(shutdown)();
 }
 
-void ERR_load_BIO_strings() {}
+void ERR_load_BIO_strings(void) {}

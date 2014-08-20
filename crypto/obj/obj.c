@@ -76,7 +76,7 @@ static LHASH_OF(ASN1_OBJECT) *global_added_by_long_name = NULL;
 
 static unsigned global_next_nid = NUM_NID;
 
-static int obj_next_nid() {
+static int obj_next_nid(void) {
   int ret;
 
   CRYPTO_w_lock(CRYPTO_LOCK_OBJ);

@@ -28,7 +28,7 @@ OPENSSL_EXPORT int RAND_bytes(uint8_t *buf, size_t len);
 
 /* RAND_cleanup frees any resources used by the RNG. This is not safe if other
  * threads might still be calling |RAND_bytes|. */
-OPENSSL_EXPORT void RAND_cleanup();
+OPENSSL_EXPORT void RAND_cleanup(void);
 
 
 /* Deprecated functions */

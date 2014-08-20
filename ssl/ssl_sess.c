@@ -152,7 +152,7 @@ static void SSL_SESSION_list_remove(SSL_CTX *ctx, SSL_SESSION *s);
 static void SSL_SESSION_list_add(SSL_CTX *ctx,SSL_SESSION *s);
 static int remove_session_lock(SSL_CTX *ctx, SSL_SESSION *c, int lck);
 
-SSL_SESSION *SSL_magic_pending_session_ptr()
+SSL_SESSION *SSL_magic_pending_session_ptr(void)
 	{
 	return (SSL_SESSION*) &g_pending_session_magic;
 	}

@@ -97,7 +97,7 @@ int bio_socket_nbio(int sock, int on) {
 #endif
 }
 
-void bio_clear_socket_error() {}
+void bio_clear_socket_error(void) {}
 
 int bio_sock_error(int sock) {
   int error;

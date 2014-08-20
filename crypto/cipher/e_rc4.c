@@ -366,4 +366,4 @@ static const EVP_AEAD aead_rc4_md5_tls = {
     aead_rc4_md5_tls_seal,  aead_rc4_md5_tls_open,
 };
 
-const EVP_AEAD *EVP_aead_rc4_md5_tls() { return &aead_rc4_md5_tls; }
+const EVP_AEAD *EVP_aead_rc4_md5_tls(void) { return &aead_rc4_md5_tls; }

@@ -25,7 +25,7 @@
 #include <openssl/err.h>
 
 
-static int test_socket_connect() {
+static int test_socket_connect(void) {
   int listening_sock = socket(AF_INET, SOCK_STREAM, 0);
   int sock;
   struct sockaddr_in sin;
@@ -94,7 +94,7 @@ static int test_socket_connect() {
   return 1;
 }
 
-static int test_printf() {
+static int test_printf(void) {
   /* Test a short output, a very long one, and various sizes around
    * 256 (the size of the buffer) to ensure edge cases are correct. */
   static const size_t kLengths[] = { 5, 250, 251, 252, 253, 254, 1023 };
@@ -144,7 +144,7 @@ static int test_printf() {
   return 1;
 }
 
-int main() {
+int main(void) {
   ERR_load_crypto_strings();
 
   if (!test_socket_connect()) {

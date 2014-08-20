@@ -91,7 +91,7 @@ struct conf_st {
 
 
 /* NCONF_new returns a fresh, empty |CONF|, or NULL on error. */
-CONF *NCONF_new();
+CONF *NCONF_new(void);
 
 /* NCONF_free frees all the data owned by |conf| and then |conf| itself. */
 void NCONF_free(CONF *conf);

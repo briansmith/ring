@@ -146,11 +146,11 @@ extern "C" {
  * values. If this is not called then the string forms of errors produced by
  * the functions below will contain numeric identifiers rather than
  * human-readable strings. */
-OPENSSL_EXPORT void ERR_load_crypto_strings();
+OPENSSL_EXPORT void ERR_load_crypto_strings(void);
 
 /* ERR_free_strings frees any internal error values that have been loaded. This
  * should only be called at process shutdown. */
-OPENSSL_EXPORT void ERR_free_strings();
+OPENSSL_EXPORT void ERR_free_strings(void);
 
 
 /* Reading and formatting errors. */
@@ -266,7 +266,7 @@ OPENSSL_EXPORT void ERR_remove_thread_state(const CRYPTO_THREADID *tid);
 /* ERR_get_next_error_library returns a value suitable for passing as the
  * |library| argument to |ERR_put_error|. This is intended for code that wishes
  * to push its own, non-standard errors to the error queue. */
-OPENSSL_EXPORT int ERR_get_next_error_library();
+OPENSSL_EXPORT int ERR_get_next_error_library(void);
 
 
 /* Private functions. */
@@ -515,7 +515,7 @@ struct ERR_FNS_st {
 /* ERR_load_BIO_strings does nothing.
  *
  * TODO(fork): remove. libjingle calls this. */
-OPENSSL_EXPORT void ERR_load_BIO_strings();
+OPENSSL_EXPORT void ERR_load_BIO_strings(void);
 
 
 #if defined(__cplusplus)

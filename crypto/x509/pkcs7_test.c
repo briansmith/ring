@@ -267,7 +267,7 @@ static const uint8_t kPKCS7DER[] = {
     0x00, 0x00, 0x00,
 };
 
-static int test_reparse() {
+static int test_reparse(void) {
   CBS pkcs7;
   CBB cbb;
   STACK_OF(X509) *certs = sk_X509_new_null();
@@ -331,7 +331,7 @@ static int test_reparse() {
   return 1;
 }
 
-int main() {
+int main(void) {
   if (!test_reparse()) {
     return 1;
   }

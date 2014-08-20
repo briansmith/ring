@@ -90,7 +90,7 @@ extern uint32_t OPENSSL_ia32cap_P[4];
 /* CRYPTO_is_NEON_capable returns true if the current CPU has a NEON unit. Note
  * that |OPENSSL_armcap_P| also exists and contains the same information in a
  * form that's easier for assembly to use. */
-OPENSSL_EXPORT char CRYPTO_is_NEON_capable();
+OPENSSL_EXPORT char CRYPTO_is_NEON_capable(void);
 
 /* CRYPTO_set_NEON_capable sets the return value of |CRYPTO_is_NEON_capable|.
  * By default, unless the code was compiled with |-mfpu=neon|, NEON is assumed
@@ -101,7 +101,7 @@ OPENSSL_EXPORT void CRYPTO_set_NEON_capable(char neon_capable);
 /* CRYPTO_is_NEON_functional returns true if the current CPU has a /working/
  * NEON unit. Some phones have a NEON unit, but the Poly1305 NEON code causes
  * it to fail. See https://code.google.com/p/chromium/issues/detail?id=341598 */
-OPENSSL_EXPORT char CRYPTO_is_NEON_functional();
+OPENSSL_EXPORT char CRYPTO_is_NEON_functional(void);
 
 /* CRYPTO_set_NEON_functional sets the "NEON functional" flag. For
  * |CRYPTO_is_NEON_functional| to return true, both this flag and the NEON flag

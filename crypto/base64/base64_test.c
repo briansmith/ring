@@ -37,7 +37,7 @@ static const TEST_VECTOR test_vectors[] = {
 
 static const size_t kNumTests = sizeof(test_vectors) / sizeof(test_vectors[0]);
 
-static int test_encode() {
+static int test_encode(void) {
   uint8_t out[9];
   size_t i;
   ssize_t len;
@@ -55,7 +55,7 @@ static int test_encode() {
   return 1;
 }
 
-static int test_decode() {
+static int test_decode(void) {
   uint8_t out[6];
   size_t i;
   ssize_t len;
@@ -90,7 +90,7 @@ static int test_decode() {
   return 1;
 }
 
-int main() {
+int main(void) {
   ERR_load_crypto_strings();
 
   if (!test_encode()) {

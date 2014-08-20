@@ -66,7 +66,7 @@
 
 #include "ext_dat.h"
 
-int main()
+int main(void)
 {
 	int i, prev = -1, bad = 0;
 	const X509V3_EXT_METHOD **tmp;

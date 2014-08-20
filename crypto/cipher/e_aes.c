@@ -92,13 +92,13 @@ typedef struct {
 #define VPAES
 extern unsigned int OPENSSL_ia32cap_P[];
 
-static char vpaes_capable() {
+static char vpaes_capable(void) {
   return (OPENSSL_ia32cap_P[1] & (1 << (41 - 32))) != 0;
 }
 
 #if defined(OPENSSL_X86_64)
 #define BSAES
-static char bsaes_capable() {
+static char bsaes_capable(void) {
   return vpaes_capable();
 }
 #endif
@@ -107,7 +107,7 @@ static char bsaes_capable() {
 #include "../arm_arch.h"
 #if __ARM_ARCH__ >= 7
 #define BSAES
-static char bsaes_capable() {
+static char bsaes_capable(void) {
   return CRYPTO_is_NEON_capable();
 }
 #endif  /* __ARM_ARCH__ >= 7 */
@@ -121,7 +121,7 @@ void bsaes_cbc_encrypt(const uint8_t *in, uint8_t *out, size_t length,
 void bsaes_ctr32_encrypt_blocks(const uint8_t *in, uint8_t *out, size_t len,
                                 const AES_KEY *key, const uint8_t ivec[16]);
 #else
-static char bsaes_capable() {
+static char bsaes_capable(void) {
   return 0;
 }
 
@@ -150,7 +150,7 @@ void vpaes_decrypt(const uint8_t *in, uint8_t *out, const AES_KEY *key);
 void vpaes_cbc_encrypt(const uint8_t *in, uint8_t *out, size_t length,
                        const AES_KEY *key, uint8_t *ivec, int enc);
 #else
-static char vpaes_capable() {
+static char vpaes_capable(void) {
   return 0;
 }
 
@@ -658,7 +658,7 @@ static const EVP_CIPHER aes_256_gcm = {
 
 /* AES-NI section. */
 
-static char aesni_capable() {
+static char aesni_capable(void) {
   return (OPENSSL_ia32cap_P[1] & (1 << (57 - 32))) != 0;
 }
 
@@ -812,7 +812,7 @@ static const EVP_CIPHER aesni_256_gcm = {
 
 #else  /* ^^^  OPENSSL_X86_64 || OPENSSL_X86 */
 
-static char aesni_capable() {
+static char aesni_capable(void) {
   return 0;
 }
 
@@ -1004,9 +1004,9 @@ static const EVP_AEAD aead_aes_256_gcm = {
     aead_aes_gcm_seal,        aead_aes_gcm_open,
 };
 
-const EVP_AEAD *EVP_aead_aes_128_gcm() { return &aead_aes_128_gcm; }
+const EVP_AEAD *EVP_aead_aes_128_gcm(void) { return &aead_aes_128_gcm; }
 
-const EVP_AEAD *EVP_aead_aes_256_gcm() { return &aead_aes_256_gcm; }
+const EVP_AEAD *EVP_aead_aes_256_gcm(void) { return &aead_aes_256_gcm; }
 
 
 /* AES Key Wrap is specified in
@@ -1268,9 +1268,9 @@ static const EVP_AEAD aead_aes_256_key_wrap = {
     aead_aes_key_wrap_seal, aead_aes_key_wrap_open,
 };
 
-const EVP_AEAD *EVP_aead_aes_128_key_wrap() { return &aead_aes_128_key_wrap; }
+const EVP_AEAD *EVP_aead_aes_128_key_wrap(void) { return &aead_aes_128_key_wrap; }
 
-const EVP_AEAD *EVP_aead_aes_256_key_wrap() { return &aead_aes_256_key_wrap; }
+const EVP_AEAD *EVP_aead_aes_256_key_wrap(void) { return &aead_aes_256_key_wrap; }
 
 int EVP_has_aes_hardware(void) {
 #if defined(OPENSSL_X86) || defined(OPENSSL_X86_64)

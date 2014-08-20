@@ -186,7 +186,7 @@ struct ec_method_st {
   int (*field_set_to_one)(const EC_GROUP *, BIGNUM *r, BN_CTX *);
 } /* EC_METHOD */;
 
-const EC_METHOD* EC_GFp_mont_method();
+const EC_METHOD* EC_GFp_mont_method(void);
 
 struct ec_pre_comp_st;
 void ec_pre_comp_free(struct ec_pre_comp_st *pre_comp);

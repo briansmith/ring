@@ -37,7 +37,7 @@ extern "C" {
 
 /* ENGINE_new returns an empty ENGINE that uses the default method for all
  * algorithms. */
-OPENSSL_EXPORT ENGINE *ENGINE_new();
+OPENSSL_EXPORT ENGINE *ENGINE_new(void);
 
 /* ENGINE_free decrements the reference counts for all methods linked from
  * |engine| and frees |engine| itself. */

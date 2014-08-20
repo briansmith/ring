@@ -84,7 +84,7 @@ typedef struct _pitem *piterator;
 
 /* pqueue_new allocates a fresh, empty priority queue object and returns it, or
  * NULL on error. */
-pqueue pqueue_new();
+pqueue pqueue_new(void);
 
 /* pqueue_free frees |pq| but not any of the items it points to. Thus |pq| must
  * be empty or a memory leak will occur. */

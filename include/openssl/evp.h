@@ -83,7 +83,7 @@ extern "C" {
 
 /* EVP_PKEY_new creates a new, empty public-key object and returns it or NULL
  * on allocation failure. */
-OPENSSL_EXPORT EVP_PKEY *EVP_PKEY_new();
+OPENSSL_EXPORT EVP_PKEY *EVP_PKEY_new(void);
 
 /* EVP_PKEY_free frees all data referenced by |pkey| and then frees |pkey|
  * itself. */
@@ -708,10 +708,10 @@ OPENSSL_EXPORT int EVP_PKEY_CTX_get0_rsa_oaep_label(EVP_PKEY_CTX *ctx,
 /* Private functions */
 
 /* OpenSSL_add_all_algorithms does nothing. */
-OPENSSL_EXPORT void OpenSSL_add_all_algorithms();
+OPENSSL_EXPORT void OpenSSL_add_all_algorithms(void);
 
 /* EVP_cleanup does nothing. */
-OPENSSL_EXPORT void EVP_cleanup();
+OPENSSL_EXPORT void EVP_cleanup(void);
 
 /* EVP_PKEY_asn1_find returns the ASN.1 method table for the given |nid|, which
  * should be one of the |EVP_PKEY_*| values. It returns NULL if |nid| is

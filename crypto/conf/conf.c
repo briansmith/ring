@@ -90,7 +90,7 @@ static int conf_value_cmp(const CONF_VALUE *a, const CONF_VALUE *b) {
   }
 }
 
-CONF *NCONF_new() {
+CONF *NCONF_new(void) {
   CONF *conf;
 
   conf = OPENSSL_malloc(sizeof(CONF));

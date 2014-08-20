@@ -413,7 +413,7 @@ out:
   return ret;
 }
 
-int main() {
+int main(void) {
   int ret = 0;
   unsigned i;
 

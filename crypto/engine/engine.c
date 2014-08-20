@@ -29,7 +29,7 @@ struct engine_st {
   ECDSA_METHOD *ecdsa_method;
 };
 
-ENGINE *ENGINE_new() {
+ENGINE *ENGINE_new(void) {
   ENGINE *engine = OPENSSL_malloc(sizeof(ENGINE));
   if (engine == NULL) {
     return NULL;

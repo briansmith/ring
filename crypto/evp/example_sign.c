@@ -95,7 +95,7 @@ static const uint8_t kSignature[] = {
 };
 
 
-int example_EVP_DigestSignInit() {
+int example_EVP_DigestSignInit(void) {
   int ret = 0;
   EVP_PKEY *pkey = NULL;
   RSA *rsa = NULL;
@@ -154,7 +154,7 @@ out:
   return ret;
 }
 
-int example_EVP_DigestVerifyInit() {
+int example_EVP_DigestVerifyInit(void) {
   int ret = 0;
   EVP_PKEY *pkey = NULL;
   RSA *rsa = NULL;
@@ -193,7 +193,7 @@ out:
   return ret;
 }
 
-int main() {
+int main(void) {
   if (!example_EVP_DigestSignInit()) {
     fprintf(stderr, "EVP_DigestSignInit failed\n");
     return 1;

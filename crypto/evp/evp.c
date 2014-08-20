@@ -74,7 +74,7 @@ extern const EVP_PKEY_ASN1_METHOD ec_asn1_meth;
 extern const EVP_PKEY_ASN1_METHOD hmac_asn1_meth;
 extern const EVP_PKEY_ASN1_METHOD rsa_asn1_meth;
 
-EVP_PKEY *EVP_PKEY_new() {
+EVP_PKEY *EVP_PKEY_new(void) {
   EVP_PKEY *ret;
 
   ret = OPENSSL_malloc(sizeof(EVP_PKEY));
@@ -427,6 +427,6 @@ int EVP_PKEY_CTX_get_signature_md(EVP_PKEY_CTX *ctx, const EVP_MD **out_md) {
                            0, (void *)out_md);
 }
 
-void OpenSSL_add_all_algorithms() {}
+void OpenSSL_add_all_algorithms(void) {}
 
-void EVP_cleanup() {}
+void EVP_cleanup(void) {}

@@ -285,7 +285,7 @@ static const struct set_name_fn name_fns[] =
 	{NULL, NULL, 0}
 	};
 
-static X509 *make_cert()
+static X509 *make_cert(void)
 	{
 	X509 *ret = NULL;
 	X509 *crt = NULL;

@@ -69,7 +69,7 @@ uint32_t OPENSSL_armcap_P = ARMV7_NEON | ARMV7_NEON_FUNCTIONAL;
 uint32_t OPENSSL_armcap_P = ARMV7_NEON_FUNCTIONAL;
 #endif
 
-char CRYPTO_is_NEON_capable() {
+char CRYPTO_is_NEON_capable(void) {
   return (OPENSSL_armcap_P & ARMV7_NEON) != 0;
 }
 
@@ -81,7 +81,7 @@ void CRYPTO_set_NEON_capable(char neon_capable) {
   }
 }
 
-char CRYPTO_is_NEON_functional() {
+char CRYPTO_is_NEON_functional(void) {
   static const uint32_t kWantFlags = ARMV7_NEON | ARMV7_NEON_FUNCTIONAL;
   return (OPENSSL_armcap_P & kWantFlags) == kWantFlags;
 }

@@ -18,7 +18,7 @@
 #include <openssl/bytestring.h>
 
 
-static int test_skip() {
+static int test_skip(void) {
   static const uint8_t kData[] = {1, 2, 3};
   CBS data;
 
@@ -31,7 +31,7 @@ static int test_skip() {
       !CBS_skip(&data, 1);
 }
 
-static int test_get_u() {
+static int test_get_u(void) {
   static const uint8_t kData[] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
   uint8_t u8;
   uint16_t u16;
@@ -50,7 +50,7 @@ static int test_get_u() {
     !CBS_get_u8(&data, &u8);
 }
 
-static int test_get_prefixed() {
+static int test_get_prefixed(void) {
   static const uint8_t kData[] = {1, 2, 0, 2, 3, 4, 0, 0, 3, 3, 2, 1};
   uint8_t u8;
   uint16_t u16;
@@ -72,7 +72,7 @@ static int test_get_prefixed() {
     u32 == 0x30201;
 }
 
-static int test_get_prefixed_bad() {
+static int test_get_prefixed_bad(void) {
   static const uint8_t kData1[] = {2, 1};
   static const uint8_t kData2[] = {0, 2, 1};
   static const uint8_t kData3[] = {0, 0, 2, 1};
@@ -96,7 +96,7 @@ static int test_get_prefixed_bad() {
   return 1;
 }
 
-static int test_get_asn1() {
+static int test_get_asn1(void) {
   static const uint8_t kData1[] = {0x30, 2, 1, 2};
   static const uint8_t kData2[] = {0x30, 3, 1, 2};
   static const uint8_t kData3[] = {0x30, 0x80};
@@ -145,7 +145,7 @@ static int test_get_asn1() {
   return 1;
 }
 
-static int test_get_indef() {
+static int test_get_indef(void) {
   static const uint8_t kData1[] = {0x30, 0x80, 0x00, 0x00};
   static const uint8_t kDataWithoutEOC[] = {0x30, 0x80, 0x01, 0x00};
   static const uint8_t kDataWithBadInternalLength[] = {0x30, 0x80, 0x01, 0x01};
@@ -200,7 +200,7 @@ static int test_get_indef() {
   return 1;
 }
 
-static int test_cbb_basic() {
+static int test_cbb_basic(void) {
   static const uint8_t kExpected[] = {1, 2, 3, 4, 5, 6, 7, 8};
   uint8_t *buf;
   size_t buf_len;
@@ -226,7 +226,7 @@ static int test_cbb_basic() {
   return ok;
 }
 
-static int test_cbb_fixed() {
+static int test_cbb_fixed(void) {
   CBB cbb;
   uint8_t buf[1];
   uint8_t *out_buf;
@@ -253,7 +253,7 @@ static int test_cbb_fixed() {
   return 1;
 }
 
-static int test_cbb_finish_child() {
+static int test_cbb_finish_child(void) {
   CBB cbb, child;
   uint8_t *out_buf;
   size_t out_size;
@@ -271,7 +271,7 @@ static int test_cbb_finish_child() {
   return 1;
 }
 
-static int test_cbb_prefixed() {
+static int test_cbb_prefixed(void) {
   static const uint8_t kExpected[] = {0, 1, 1, 0, 2, 2, 3, 0, 0, 3,
                                       4, 5, 6, 5, 4, 1, 0, 1, 2};
   uint8_t *buf;
@@ -301,7 +301,7 @@ static int test_cbb_prefixed() {
   return ok;
 }
 
-static int test_cbb_misuse() {
+static int test_cbb_misuse(void) {
   CBB cbb, child, contents;
   uint8_t *buf;
   size_t buf_len;
@@ -337,7 +337,7 @@ static int test_cbb_misuse() {
   return 1;
 }
 
-static int test_cbb_asn1() {
+static int test_cbb_asn1(void) {
   static const uint8_t kExpected[] = {0x30, 3, 1, 2, 3};
   uint8_t *buf, *test_data;
   size_t buf_len;
@@ -405,7 +405,7 @@ static int test_cbb_asn1() {
   return 1;
 }
 
-int main() {
+int main(void) {
   if (!test_skip() ||
       !test_get_u() ||
       !test_get_prefixed() ||

@@ -87,7 +87,7 @@ void pitem_free(pitem *item) {
   OPENSSL_free(item);
 }
 
-pqueue pqueue_new() {
+pqueue pqueue_new(void) {
   pqueue_s *pq = (pqueue_s *)OPENSSL_malloc(sizeof(pqueue_s));
   if (pq == NULL) {
     return NULL;

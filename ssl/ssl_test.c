@@ -16,7 +16,7 @@
 
 #include "openssl/ssl.h"
 
-int main() {
+int main(void) {
   /* Some error codes are special, but the make_errors.go script doesn't know
    * this. This test will catch the case where something regenerates the error
    * codes with the script but doesn't fix up the special ones. */

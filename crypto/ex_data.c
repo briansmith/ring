@@ -123,7 +123,7 @@ static const CRYPTO_EX_DATA_IMPL *global_impl = NULL;
 extern const CRYPTO_EX_DATA_IMPL ex_data_default_impl;
 
 /* get_impl returns the current ex_data implementatation. */
-static const CRYPTO_EX_DATA_IMPL *get_impl() {
+static const CRYPTO_EX_DATA_IMPL *get_impl(void) {
   const CRYPTO_EX_DATA_IMPL *impl;
 
   CRYPTO_r_lock(CRYPTO_LOCK_EX_DATA);

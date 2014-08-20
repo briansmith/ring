@@ -251,7 +251,8 @@ static void st_free(ASN1_STRING_TABLE *tbl)
 
 #ifdef STRING_TABLE_TEST
 
-main()
+int
+main(void)
 {
 	ASN1_STRING_TABLE *tmp;
 	int i, last_nid = -1;
@@ -278,6 +279,7 @@ main()
 			printf("Index %d, NID %d, Name=%s\n", i, tmp->nid,
 							OBJ_nid2ln(tmp->nid));
 
+	return 0;
 }
 
 #endif
