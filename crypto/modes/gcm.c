@@ -406,8 +406,7 @@ void CRYPTO_gcm128_init(GCM128_CONTEXT *ctx, void *key, block128_f block) {
   }
 
 #if defined(GHASH_ASM_X86_OR_64)
-  if (OPENSSL_ia32cap_P[0] & (1 << 24) && /* check FXSR bit */
-      OPENSSL_ia32cap_P[1] & (1 << 1)) {  /* check PCLMULQDQ bit */
+  if (crypto_gcm_clmul_enabled()) {
     if (((OPENSSL_ia32cap_P[1] >> 22) & 0x41) == 0x41) { /* AVX+MOVBE */
       gcm_init_avx(ctx->Htable, ctx->H.u);
       ctx->gmult = gcm_gmult_avx;
@@ -1189,3 +1188,14 @@ void CRYPTO_gcm128_release(GCM128_CONTEXT *ctx) {
     OPENSSL_free(ctx);
   }
 }
+
+#if defined(OPENSSL_X86) || defined(OPENSSL_X86_64)
+int crypto_gcm_clmul_enabled(void) {
+#ifdef GHASH_ASM
+  return OPENSSL_ia32cap_P[0] & (1 << 24) &&  /* check FXSR bit */
+    OPENSSL_ia32cap_P[1] & (1 << 1);  /* check PCLMULQDQ bit */
+#else
+  return 0;
+#endif
+}
+#endif

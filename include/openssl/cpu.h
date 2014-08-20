@@ -79,7 +79,10 @@ extern "C" {
  *   Index 1:
  *     ECX for CPUID where EAX = 1
  *   Index 2:
- *     EBX for CPUID where EAX = 7 */
+ *     EBX for CPUID where EAX = 7
+ *
+ * Note: the CPUID bits are pre-adjusted for the OSXSAVE bit and the YMM and XMM
+ * bits in XCR0, so it is not necessary to check those. */
 extern uint32_t OPENSSL_ia32cap_P[4];
 #endif
 

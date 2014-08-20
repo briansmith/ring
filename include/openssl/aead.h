@@ -115,6 +115,10 @@ OPENSSL_EXPORT const EVP_AEAD *EVP_aead_aes_128_key_wrap();
  * See |EVP_aead_aes_128_key_wrap| for details. */
 OPENSSL_EXPORT const EVP_AEAD *EVP_aead_aes_256_key_wrap();
 
+/* EVP_has_aes_hardware returns one if we enable hardware support for fast and
+ * constant-time AES-GCM. */
+OPENSSL_EXPORT int EVP_has_aes_hardware(void);
+
 
 /* TLS specific AEAD algorithms.
  *
