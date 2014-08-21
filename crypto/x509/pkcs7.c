@@ -19,48 +19,61 @@
 #include <openssl/obj.h>
 #include <openssl/stack.h>
 
+#include "../bytestring/internal.h"
+
 
 int PKCS7_get_certificates(STACK_OF(X509) *out_certs, CBS *cbs) {
-  CBS content_info, content_type, wrapped_signed_data, signed_data,
-      version_bytes, certificates;
-  int nid;
+  uint8_t *der_bytes = NULL;
+  size_t der_len;
+  CBS in, content_info, content_type, wrapped_signed_data, signed_data,
+      certificates;
   const size_t initial_certs_len = sk_X509_num(out_certs);
+  uint64_t version;
+  int ret = 0;
 
-  /* See https://tools.ietf.org/html/rfc2315#section-7 */
-  if (!CBS_get_asn1_ber(cbs, &content_info, CBS_ASN1_SEQUENCE) ||
-      !CBS_get_asn1(&content_info, &content_type, CBS_ASN1_OBJECT)) {
+  /* The input may be in BER format. */
+  if (!CBS_asn1_ber_to_der(cbs, &der_bytes, &der_len)) {
     return 0;
   }
+  if (der_bytes != NULL) {
+    CBS_init(&in, der_bytes, der_len);
+  } else {
+    CBS_init(&in, CBS_data(cbs), CBS_len(cbs));
+  }
 
-  nid = OBJ_cbs2nid(&content_type);
-  if (nid != NID_pkcs7_signed) {
+  /* See https://tools.ietf.org/html/rfc2315#section-7 */
+  if (!CBS_get_asn1(&in, &content_info, CBS_ASN1_SEQUENCE) ||
+      !CBS_get_asn1(&content_info, &content_type, CBS_ASN1_OBJECT)) {
+    goto err;
+  }
+
+  if (OBJ_cbs2nid(&content_type) != NID_pkcs7_signed) {
     OPENSSL_PUT_ERROR(X509, PKCS7_get_certificates,
                       X509_R_NOT_PKCS7_SIGNED_DATA);
-    return 0;
+    goto err;
   }
 
   /* See https://tools.ietf.org/html/rfc2315#section-9.1 */
-  if (!CBS_get_asn1_ber(&content_info, &wrapped_signed_data,
-                        CBS_ASN1_CONTEXT_SPECIFIC | CBS_ASN1_CONSTRUCTED | 0) ||
-      !CBS_get_asn1_ber(&wrapped_signed_data, &signed_data,
-                        CBS_ASN1_SEQUENCE) ||
-      !CBS_get_asn1_ber(&signed_data, &version_bytes, CBS_ASN1_INTEGER) ||
-      !CBS_get_asn1_ber(&signed_data, NULL /* digests */, CBS_ASN1_SET) ||
-      !CBS_get_asn1_ber(&signed_data, NULL /* content */, CBS_ASN1_SEQUENCE)) {
-    return 0;
+  if (!CBS_get_asn1(&content_info, &wrapped_signed_data,
+                    CBS_ASN1_CONTEXT_SPECIFIC | CBS_ASN1_CONSTRUCTED | 0) ||
+      !CBS_get_asn1(&wrapped_signed_data, &signed_data, CBS_ASN1_SEQUENCE) ||
+      !CBS_get_asn1_uint64(&signed_data, &version) ||
+      !CBS_get_asn1(&signed_data, NULL /* digests */, CBS_ASN1_SET) ||
+      !CBS_get_asn1(&signed_data, NULL /* content */, CBS_ASN1_SEQUENCE)) {
+    goto err;
   }
 
-  if (CBS_len(&version_bytes) < 1 || CBS_data(&version_bytes)[0] == 0) {
+  if (version < 1) {
     OPENSSL_PUT_ERROR(X509, PKCS7_get_certificates,
                       X509_R_BAD_PKCS7_VERSION);
-    return 0;
+    goto err;
   }
 
-  if (!CBS_get_asn1_ber(&signed_data, &certificates,
-                        CBS_ASN1_CONTEXT_SPECIFIC | CBS_ASN1_CONSTRUCTED | 0)) {
+  if (!CBS_get_asn1(&signed_data, &certificates,
+                    CBS_ASN1_CONTEXT_SPECIFIC | CBS_ASN1_CONSTRUCTED | 0)) {
     OPENSSL_PUT_ERROR(X509, PKCS7_get_certificates,
                       X509_R_NO_CERTIFICATES_INCLUDED);
-    return 0;
+    goto err;
   }
 
   while (CBS_len(&certificates) > 0) {
@@ -86,15 +99,21 @@ int PKCS7_get_certificates(STACK_OF(X509) *out_certs, CBS *cbs) {
     sk_X509_push(out_certs, x509);
   }
 
-  return 1;
+  ret = 1;
 
 err:
-  while (sk_X509_num(out_certs) != initial_certs_len) {
-    X509 *x509 = sk_X509_pop(out_certs);
-    X509_free(x509);
+  if (der_bytes) {
+    OPENSSL_free(der_bytes);
   }
 
-  return 0;
+  if (!ret) {
+    while (sk_X509_num(out_certs) != initial_certs_len) {
+      X509 *x509 = sk_X509_pop(out_certs);
+      X509_free(x509);
+    }
+  }
+
+  return ret;
 }
 
 int PKCS7_bundle_certificates(CBB *out, const STACK_OF(X509) *certs) {

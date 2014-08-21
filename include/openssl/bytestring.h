@@ -138,19 +138,15 @@ OPENSSL_EXPORT int CBS_get_u24_length_prefixed(CBS *cbs, CBS *out);
  * Tag numbers greater than 31 are not supported. */
 OPENSSL_EXPORT int CBS_get_asn1(CBS *cbs, CBS *out, unsigned tag_value);
 
-/* CBS_get_asn1_ber sets |*out| to the contents of BER-encoded, ASN.1 element
- * (not including tag and length bytes) and advances |cbs| over it. The ASN.1
- * element must match |tag_value|. It returns one on success and zero on error.
- *
- * The major difference between this function and |CBS_get_asn1| is that
- * indefinite-length elements may be processed by this function.
- *
- * Tag numbers greater than 31 are not supported. */
-OPENSSL_EXPORT int CBS_get_asn1_ber(CBS *cbs, CBS *out, unsigned tag_value);
-
 /* CBS_get_asn1_element acts like |CBS_get_asn1| but |out| will include the
  * ASN.1 header bytes too. */
 OPENSSL_EXPORT int CBS_get_asn1_element(CBS *cbs, CBS *out, unsigned tag_value);
+
+/* CBS_get_asn1_uint64 gets an ASN.1 INTEGER from |cbs| using |CBS_get_asn1|
+ * and sets |*out| to its value. It returns one on success and zero on error,
+ * where error includes the integer being negative, or too large to represent
+ * in 64 bits. */
+OPENSSL_EXPORT int CBS_get_asn1_uint64(CBS *cbs, uint64_t *out);
 
 
 /* CRYPTO ByteBuilder.

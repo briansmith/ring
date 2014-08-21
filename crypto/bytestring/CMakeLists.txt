@@ -5,6 +5,7 @@ add_library(
 
 	OBJECT
 
+	ber.c
 	cbs.c
 	cbb.c
 )

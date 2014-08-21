@@ -19,6 +19,8 @@
 #include <assert.h>
 #include <string.h>
 
+#include "internal.h"
+
 
 void CBS_init(CBS *cbs, const uint8_t *data, size_t len) {
   cbs->data = data;
@@ -156,50 +158,8 @@ int CBS_get_u24_length_prefixed(CBS *cbs, CBS *out) {
   return cbs_get_length_prefixed(cbs, out, 3);
 }
 
-static int cbs_get_asn1_element(CBS *cbs, CBS *out, unsigned *out_tag,
-                                size_t *out_header_len, unsigned depth,
-                                int *was_indefinite_len);
-
-/* cbs_get_asn1_indefinite_len sets |*out| to be a CBS that covers an
- * indefinite length element in |cbs| and advances |*in|. On entry, |cbs| will
- * not have had the tag and length byte removed. On exit, |*out| does not cover
- * the EOC element, but |*in| is skipped over it.
- *
- * The |depth| argument counts the number of times the code has recursed trying
- * to find an indefinite length. */
-static int cbs_get_asn1_indefinite_len(CBS *in, CBS *out, unsigned depth) {
-  static const size_t kEOCLength = 2;
-  size_t header_len;
-  unsigned tag;
-  int was_indefinite_len;
-  CBS orig = *in, child;
-
-  if (!CBS_skip(in, 2 /* tag plus 0x80 byte for indefinite len */)) {
-    return 0;
-  }
-
-  for (;;) {
-    if (!cbs_get_asn1_element(in, &child, &tag, &header_len, depth + 1,
-                              &was_indefinite_len)) {
-      return 0;
-    }
-
-    if (!was_indefinite_len && CBS_len(&child) == kEOCLength &&
-        header_len == kEOCLength && tag == 0) {
-      break;
-    }
-  }
-
-  return CBS_get_bytes(&orig, out, CBS_len(&orig) - CBS_len(in) - kEOCLength);
-}
-
-/* MAX_DEPTH the maximum number of levels of indefinite lengths that we'll
- * support. */
-#define MAX_DEPTH 64
-
-static int cbs_get_asn1_element(CBS *cbs, CBS *out, unsigned *out_tag,
-                                size_t *out_header_len, unsigned depth,
-                                int *was_indefinite_len) {
+int CBS_get_any_asn1_element(CBS *cbs, CBS *out, unsigned *out_tag,
+                             size_t *out_header_len) {
   uint8_t tag, length_byte;
   CBS header = *cbs;
   if (!CBS_get_u8(&header, &tag) ||
@@ -213,9 +173,6 @@ static int cbs_get_asn1_element(CBS *cbs, CBS *out, unsigned *out_tag,
   }
 
   *out_tag = tag;
-  if (was_indefinite_len) {
-    *was_indefinite_len = 0;
-  }
 
   size_t len;
   if ((length_byte & 0x80) == 0) {
@@ -227,14 +184,10 @@ static int cbs_get_asn1_element(CBS *cbs, CBS *out, unsigned *out_tag,
     const size_t num_bytes = length_byte & 0x7f;
     uint32_t len32;
 
-    if ((tag & CBS_ASN1_CONSTRUCTED) != 0 && depth < MAX_DEPTH &&
-        num_bytes == 0) {
+    if ((tag & CBS_ASN1_CONSTRUCTED) != 0 && num_bytes == 0) {
       /* indefinite length */
       *out_header_len = 2;
-      if (was_indefinite_len) {
-        *was_indefinite_len = 1;
-      }
-      return cbs_get_asn1_indefinite_len(cbs, out, depth);
+      return CBS_get_bytes(cbs, out, 2);
     }
 
     if (num_bytes == 0 || num_bytes > 4) {
@@ -263,7 +216,7 @@ static int cbs_get_asn1_element(CBS *cbs, CBS *out, unsigned *out_tag,
   return CBS_get_bytes(cbs, out, len);
 }
 
-static int cbs_get_asn1(CBS *cbs, CBS *out, unsigned tag_value, int ber,
+static int cbs_get_asn1(CBS *cbs, CBS *out, unsigned tag_value,
                         int skip_header) {
   size_t header_len;
   unsigned tag;
@@ -273,9 +226,13 @@ static int cbs_get_asn1(CBS *cbs, CBS *out, unsigned tag_value, int ber,
     out = &throwaway;
   }
 
-  if (!cbs_get_asn1_element(cbs, out, &tag, &header_len, ber ? 0 : MAX_DEPTH,
-                            NULL) ||
-      tag != tag_value) {
+  if (!CBS_get_any_asn1_element(cbs, out, &tag, &header_len) ||
+      tag != tag_value ||
+      (header_len > 0 &&
+       /* This ensures that the tag is either zero length or
+        * indefinite-length. */
+       CBS_len(out) == header_len &&
+       CBS_data(out)[header_len - 1] == 0x80)) {
     return 0;
   }
 
@@ -288,16 +245,39 @@ static int cbs_get_asn1(CBS *cbs, CBS *out, unsigned tag_value, int ber,
 }
 
 int CBS_get_asn1(CBS *cbs, CBS *out, unsigned tag_value) {
-  return cbs_get_asn1(cbs, out, tag_value, 0 /* DER */,
-                      1 /* skip header */);
-}
-
-int CBS_get_asn1_ber(CBS *cbs, CBS *out, unsigned tag_value) {
-  return cbs_get_asn1(cbs, out, tag_value, 1 /* BER */,
-                      1 /* skip header */);
+  return cbs_get_asn1(cbs, out, tag_value, 1 /* skip header */);
 }
 
 int CBS_get_asn1_element(CBS *cbs, CBS *out, unsigned tag_value) {
-  return cbs_get_asn1(cbs, out, tag_value, 0 /* DER */,
-                      0 /* include header */);
+  return cbs_get_asn1(cbs, out, tag_value, 0 /* include header */);
+}
+
+int CBS_get_asn1_uint64(CBS *cbs, uint64_t *out) {
+  CBS bytes;
+  const uint8_t *data;
+  size_t i, len;
+
+  if (!CBS_get_asn1(cbs, &bytes, CBS_ASN1_INTEGER)) {
+    return 0;
+  }
+
+  *out = 0;
+  data = CBS_data(&bytes);
+  len = CBS_len(&bytes);
+
+  if (len > 0 && (data[0] & 0x80) != 0) {
+    /* negative number */
+    return 0;
+  }
+
+  for (i = 0; i < len; i++) {
+    if ((*out >> 56) != 0) {
+      /* Too large to represent as a uint64_t. */
+      return 0;
+    }
+    *out <<= 8;
+    *out |= data[i];
+  }
+
+  return 1;
 }
