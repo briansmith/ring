@@ -694,6 +694,7 @@ extern const ERR_STRING_DATA EC_error_string_data[];
 extern const ERR_STRING_DATA EVP_error_string_data[];
 extern const ERR_STRING_DATA OBJ_error_string_data[];
 extern const ERR_STRING_DATA PEM_error_string_data[];
+extern const ERR_STRING_DATA PKCS8_error_string_data[];
 extern const ERR_STRING_DATA RSA_error_string_data[];
 extern const ERR_STRING_DATA X509V3_error_string_data[];
 extern const ERR_STRING_DATA X509_error_string_data[];
@@ -746,6 +747,7 @@ static void err_load_strings(void) {
   ERR_load_strings(EVP_error_string_data);
   ERR_load_strings(OBJ_error_string_data);
   ERR_load_strings(PEM_error_string_data);
+  ERR_load_strings(PKCS8_error_string_data);
   ERR_load_strings(RSA_error_string_data);
   ERR_load_strings(X509V3_error_string_data);
   ERR_load_strings(X509_error_string_data);

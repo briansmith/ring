@@ -46,6 +46,7 @@ TESTS="
 ./crypto/x509v3/v3name_test
 ./crypto/bytestring/bytestring_test
 ./crypto/x509/pkcs7_test
+./crypto/pkcs8/pkcs12_test
 ./ssl/ssl_test
 "
 

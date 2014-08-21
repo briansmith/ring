@@ -6,6 +6,7 @@ add_executable(
 	args.cc
 	client.cc
 	const.cc
+	pkcs12.cc
 	speed.cc
 	tool.cc
 )

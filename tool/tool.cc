@@ -19,11 +19,12 @@
 #include <openssl/ssl.h>
 
 
-bool Speed(const std::vector<std::string> &args);
 bool Client(const std::vector<std::string> &args);
+bool PKCS12(const std::vector<std::string> &args);
+bool Speed(const std::vector<std::string> &args);
 
 static void usage(const char *name) {
-  printf("Usage: %s [speed|client]\n", name);
+  printf("Usage: %s [speed|client|pkcs12]\n", name);
 }
 
 int main(int argc, char **argv) {
@@ -43,6 +44,8 @@ int main(int argc, char **argv) {
     return !Speed(args);
   } else if (tool == "s_client" || tool == "client") {
     return !Client(args);
+  } else if (tool == "pkcs12") {
+    return !PKCS12(args);
   } else {
     usage(argv[0]);
     return 1;

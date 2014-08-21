@@ -11,3 +11,11 @@ add_library(
 	p5_pbev2.c
 	pkcs8_error.c
 )
+
+add_executable(
+	pkcs12_test
+
+	pkcs12_test.c
+)
+
+target_link_libraries(pkcs12_test crypto)
