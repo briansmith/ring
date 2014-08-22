@@ -573,6 +573,21 @@ int EVP_CIPHER_CTX_set_padding(EVP_CIPHER_CTX *ctx, int pad) {
   return 1;
 }
 
+int EVP_CIPHER_CTX_set_key_length(EVP_CIPHER_CTX *c, unsigned key_len) {
+  if (c->key_len == key_len) {
+    return 1;
+  }
+
+  if (key_len == 0 || !(c->cipher->flags & EVP_CIPH_VARIABLE_LENGTH)) {
+    OPENSSL_PUT_ERROR(CIPHER, EVP_CIPHER_CTX_set_key_length,
+                      CIPHER_R_INVALID_KEY_LENGTH);
+    return 0;
+  }
+
+  c->key_len = key_len;
+  return 1;
+}
+
 int EVP_CIPHER_nid(const EVP_CIPHER *cipher) { return cipher->nid; }
 
 const char *EVP_CIPHER_name(const EVP_CIPHER *cipher) {
