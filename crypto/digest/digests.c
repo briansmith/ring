@@ -56,11 +56,30 @@
 
 #include <openssl/digest.h>
 
+#include <openssl/md4.h>
 #include <openssl/md5.h>
 #include <openssl/obj.h>
 #include <openssl/sha.h>
 
 #include "internal.h"
+
+
+static int md4_init(EVP_MD_CTX *ctx) { return MD4_Init(ctx->md_data); }
+
+static int md4_update(EVP_MD_CTX *ctx, const void *data, size_t count) {
+  return MD4_Update(ctx->md_data, data, count);
+}
+
+static int md4_final(EVP_MD_CTX *ctx, unsigned char *out) {
+  return MD4_Final(out, ctx->md_data);
+}
+
+static const EVP_MD md4_md = {
+    NID_md4,    MD4_DIGEST_LENGTH, 0 /* flags */,       md4_init,
+    md4_update, md4_final,         64 /* block size */, sizeof(MD4_CTX),
+};
+
+const EVP_MD *EVP_md4(void) { return &md4_md; }
 
 
 static int md5_init(EVP_MD_CTX *ctx) { return MD5_Init(ctx->md_data); }

@@ -71,6 +71,7 @@ add_subdirectory(bytestring)
 
 # Level 0.2 - depends on nothing but itself
 add_subdirectory(sha)
+add_subdirectory(md4)
 add_subdirectory(md5)
 add_subdirectory(modes)
 add_subdirectory(aes)
@@ -129,6 +130,7 @@ add_library(
 	$<TARGET_OBJECTS:base64>
 	$<TARGET_OBJECTS:bytestring>
 	$<TARGET_OBJECTS:sha>
+	$<TARGET_OBJECTS:md4>
 	$<TARGET_OBJECTS:md5>
 	$<TARGET_OBJECTS:digest>
 	$<TARGET_OBJECTS:cipher>

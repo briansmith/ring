@@ -37,7 +37,6 @@
 #define OPENSSL_NO_JPAKE
 #define OPENSSL_NO_KRB5
 #define OPENSSL_NO_MD2
-#define OPENSSL_NO_MD4
 #define OPENSSL_NO_MDC2
 #define OPENSSL_NO_OCSP
 #define OPENSSL_NO_RC2
