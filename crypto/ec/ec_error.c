@@ -18,6 +18,7 @@
 
 const ERR_STRING_DATA EC_error_string_data[] = {
   {ERR_PACK(ERR_LIB_EC, EC_F_EC_GROUP_copy, 0), "EC_GROUP_copy"},
+  {ERR_PACK(ERR_LIB_EC, EC_F_EC_GROUP_get_curve_GFp, 0), "EC_GROUP_get_curve_GFp"},
   {ERR_PACK(ERR_LIB_EC, EC_F_EC_GROUP_get_degree, 0), "EC_GROUP_get_degree"},
   {ERR_PACK(ERR_LIB_EC, EC_F_EC_GROUP_new_by_curve_name, 0), "EC_GROUP_new_by_curve_name"},
   {ERR_PACK(ERR_LIB_EC, EC_F_EC_KEY_check_key, 0), "EC_KEY_check_key"},

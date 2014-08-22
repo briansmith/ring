@@ -133,6 +133,15 @@ OPENSSL_EXPORT int EC_GROUP_get_order(const EC_GROUP *group, BIGNUM *order,
 OPENSSL_EXPORT int EC_GROUP_get_cofactor(const EC_GROUP *group,
                                          BIGNUM *cofactor, BN_CTX *ctx);
 
+/* EC_GROUP_get_curve_GFp gets various parameters about a group. It sets
+ * |*out_p| to the order of the coordinate field and |*out_a| and |*out_b| to
+ * the parameters of the curve when expressed as y² = x³ + ax + b. Any of the
+ * output parameters can be NULL. It returns one on success and zero on
+ * error. */
+OPENSSL_EXPORT int EC_GROUP_get_curve_GFp(const EC_GROUP *group, BIGNUM *out_p,
+                                          BIGNUM *out_a, BIGNUM *out_b,
+                                          BN_CTX *ctx);
+
 /* EC_GROUP_get_curve_name returns a NID that identifies |group|. */
 OPENSSL_EXPORT int EC_GROUP_get_curve_name(const EC_GROUP *group);
 
@@ -351,6 +360,7 @@ OPENSSL_EXPORT int EC_POINTs_mul(const EC_GROUP *group, EC_POINT *r,
 #define EC_F_EC_KEY_generate_key 155
 #define EC_F_ec_GFp_simple_set_compressed_coordinates 156
 #define EC_F_EC_POINT_add 157
+#define EC_F_EC_GROUP_get_curve_GFp 158
 #define EC_R_PKPARAMETERS2GROUP_FAILURE 100
 #define EC_R_NON_NAMED_CURVE 101
 #define EC_R_COORDINATES_OUT_OF_RANGE 102

@@ -519,6 +519,16 @@ int EC_GROUP_get_cofactor(const EC_GROUP *group, BIGNUM *cofactor,
   return !BN_is_zero(&group->cofactor);
 }
 
+int EC_GROUP_get_curve_GFp(const EC_GROUP *group, BIGNUM *out_p, BIGNUM *out_a,
+                           BIGNUM *out_b, BN_CTX *ctx) {
+  if (group->meth->group_get_curve == 0) {
+    OPENSSL_PUT_ERROR(EC, EC_GROUP_get_curve_GFp,
+                      ERR_R_SHOULD_NOT_HAVE_BEEN_CALLED);
+    return 0;
+  }
+  return group->meth->group_get_curve(group, out_p, out_a, out_b, ctx);
+}
+
 int EC_GROUP_get_curve_name(const EC_GROUP *group) { return group->curve_name; }
 
 int EC_GROUP_get_degree(const EC_GROUP *group) {
