@@ -160,7 +160,7 @@ var testCases = []testCase{
 		expectedLocalError: "no fallback SCSV found",
 	},
 	{
-		name: "FallbackSCSV",
+		name: "SendFallbackSCSV",
 		config: Config{
 			Bugs: ProtocolBugs{
 				FailIfNotFallbackSCSV: true,
