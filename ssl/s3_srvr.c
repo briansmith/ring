@@ -2978,17 +2978,12 @@ int ssl3_get_channel_id(SSL *s)
 
 	/* We stored the handshake hash in |tlsext_channel_id| the first time
 	 * that we were called. */
-	switch (ECDSA_do_verify(s->s3->tlsext_channel_id, SHA256_DIGEST_LENGTH, &sig, key)) {
-	case 1:
-		break;
-	case 0:
+	if (!ECDSA_do_verify(s->s3->tlsext_channel_id, SHA256_DIGEST_LENGTH, &sig, key))
+		{
 		OPENSSL_PUT_ERROR(SSL, ssl3_get_channel_id, SSL_R_CHANNEL_ID_SIGNATURE_INVALID);
 		s->s3->tlsext_channel_id_valid = 0;
 		goto err;
-	default:
-		s->s3->tlsext_channel_id_valid = 0;
-		goto err;
-	}
+		}
 
 	memcpy(s->s3->tlsext_channel_id, p, 64);
 	ret = 1;
