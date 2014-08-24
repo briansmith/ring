@@ -2306,15 +2306,10 @@ int ssl3_get_cert_verify(SSL *s)
 
 	EVP_MD_CTX_init(&mctx);
 
-	/* Determine if a CertificateVerify message is expected at all. It is
-	 * important that this be determined before ssl_get_message is called,
-	 * so as not to process the ChangeCipherSpec message early. */
-	if (peer != NULL)
-		{
-		pkey = X509_get_pubkey(peer);
-		type = X509_certificate_type(peer,pkey);
-		}
-	if (!(type & EVP_PKT_SIGN))
+	/* Only RSA and ECDSA client certificates are supported, so a
+	 * CertificateVerify is required if and only if there's a
+	 * client certificate. */
+	if (peer == NULL)
 		{
 		ret = 1;
 		goto done_with_buffer;
@@ -2331,6 +2326,16 @@ int ssl3_get_cert_verify(SSL *s)
 		{
 		ret = (int)n;
 		goto done;
+		}
+
+	pkey = X509_get_pubkey(peer);
+	type = X509_certificate_type(peer,pkey);
+	if (!(type & EVP_PKT_SIGN))
+		{
+		/* If it's not a signing certificate, it's unsupported. */
+		al = SSL_AD_UNSUPPORTED_CERTIFICATE;
+		OPENSSL_PUT_ERROR(SSL, ssl3_get_cert_verify, SSL_R_PEER_ERROR_UNSUPPORTED_CERTIFICATE_TYPE);
+		goto f_err;
 		}
 
 	CBS_init(&certificate_verify, s->init_msg, n);
