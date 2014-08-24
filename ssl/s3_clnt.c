@@ -261,7 +261,7 @@ int ssl3_connect(SSL *s)
 		case SSL3_ST_CW_CLNT_HELLO_B:
 
 			s->shutdown=0;
-			ret=ssl3_client_hello(s);
+			ret=ssl3_send_client_hello(s);
 			if (ret <= 0) goto end;
 			s->state=SSL3_ST_CR_SRVR_HELLO_A;
 			s->init_num=0;
@@ -379,7 +379,7 @@ int ssl3_connect(SSL *s)
 
 		case SSL3_ST_CW_CERT_VRFY_A:
 		case SSL3_ST_CW_CERT_VRFY_B:
-			ret=ssl3_send_client_verify(s);
+			ret=ssl3_send_cert_verify(s);
 			if (ret <= 0) goto end;
 			s->state=SSL3_ST_CW_CHANGE_A;
 			s->init_num=0;
@@ -616,7 +616,7 @@ end:
 	}
 
 
-int ssl3_client_hello(SSL *s)
+int ssl3_send_client_hello(SSL *s)
 	{
 	unsigned char *buf;
 	unsigned char *p,*d;
@@ -647,7 +647,7 @@ int ssl3_client_hello(SSL *s)
 				 */
 				if (options & SSL_OP_NO_DTLSv1)
 					{
-					OPENSSL_PUT_ERROR(SSL, ssl3_client_hello, SSL_R_WRONG_SSL_VERSION);
+					OPENSSL_PUT_ERROR(SSL, ssl3_send_client_hello, SSL_R_WRONG_SSL_VERSION);
 					goto err;
 					}
 				/* Update method so we don't use any DTLS 1.2
@@ -735,7 +735,7 @@ int ssl3_client_hello(SSL *s)
 			{
 			if (i > (int)sizeof(s->session->session_id))
 				{
-				OPENSSL_PUT_ERROR(SSL, ssl3_client_hello, ERR_R_INTERNAL_ERROR);
+				OPENSSL_PUT_ERROR(SSL, ssl3_send_client_hello, ERR_R_INTERNAL_ERROR);
 				goto err;
 				}
 			memcpy(p,s->session->session_id,i);
@@ -747,7 +747,7 @@ int ssl3_client_hello(SSL *s)
 			{
 			if ( s->d1->cookie_len > sizeof(s->d1->cookie))
 				{
-				OPENSSL_PUT_ERROR(SSL, ssl3_client_hello, ERR_R_INTERNAL_ERROR);
+				OPENSSL_PUT_ERROR(SSL, ssl3_send_client_hello, ERR_R_INTERNAL_ERROR);
 				goto err;
 				}
 			*(p++) = s->d1->cookie_len;
@@ -759,7 +759,7 @@ int ssl3_client_hello(SSL *s)
 		i = ssl_cipher_list_to_bytes(s, SSL_get_ciphers(s), &p[2]);
 		if (i == 0)
 			{
-			OPENSSL_PUT_ERROR(SSL, ssl3_client_hello, SSL_R_NO_CIPHERS_AVAILABLE);
+			OPENSSL_PUT_ERROR(SSL, ssl3_send_client_hello, SSL_R_NO_CIPHERS_AVAILABLE);
 			goto err;
 			}
 		s2n(i,p);
@@ -772,12 +772,12 @@ int ssl3_client_hello(SSL *s)
 		/* TLS extensions*/
 		if (ssl_prepare_clienthello_tlsext(s) <= 0)
 			{
-			OPENSSL_PUT_ERROR(SSL, ssl3_client_hello, SSL_R_CLIENTHELLO_TLSEXT);
+			OPENSSL_PUT_ERROR(SSL, ssl3_send_client_hello, SSL_R_CLIENTHELLO_TLSEXT);
 			goto err;
 			}
 		if ((p = ssl_add_clienthello_tlsext(s, p, buf+SSL3_RT_MAX_PLAIN_LENGTH, p-buf)) == NULL)
 			{
-			OPENSSL_PUT_ERROR(SSL, ssl3_client_hello, ERR_R_INTERNAL_ERROR);
+			OPENSSL_PUT_ERROR(SSL, ssl3_send_client_hello, ERR_R_INTERNAL_ERROR);
 			goto err;
 			}
 		
@@ -2305,7 +2305,7 @@ err:
 	return(-1);
 	}
 
-int ssl3_send_client_verify(SSL *s)
+int ssl3_send_cert_verify(SSL *s)
 	{
 	unsigned char *buf, *p;
 	const EVP_MD *md;
@@ -2336,7 +2336,7 @@ int ssl3_send_client_verify(SSL *s)
 			if (!BIO_mem_contents(s->s3->handshake_buffer, &hdata, &hdatalen) ||
 			    !tls12_get_sigandhash(p, pkey, md))
 				{
-				OPENSSL_PUT_ERROR(SSL, ssl3_send_client_verify, ERR_R_INTERNAL_ERROR);
+				OPENSSL_PUT_ERROR(SSL, ssl3_send_cert_verify, ERR_R_INTERNAL_ERROR);
 				goto err;
 				}
 			p += 2;
@@ -2345,7 +2345,7 @@ int ssl3_send_client_verify(SSL *s)
 				|| !EVP_DigestUpdate(&mctx, hdata, hdatalen)
 				|| !EVP_DigestFinal(&mctx, digest, &digest_length))
 				{
-				OPENSSL_PUT_ERROR(SSL, ssl3_send_client_verify, ERR_R_EVP_LIB);
+				OPENSSL_PUT_ERROR(SSL, ssl3_send_cert_verify, ERR_R_EVP_LIB);
 				goto err;
 				}
 			}
@@ -2368,7 +2368,7 @@ int ssl3_send_client_verify(SSL *s)
 			}
 		else
 			{
-			OPENSSL_PUT_ERROR(SSL, ssl3_send_client_verify, ERR_R_INTERNAL_ERROR);
+			OPENSSL_PUT_ERROR(SSL, ssl3_send_cert_verify, ERR_R_INTERNAL_ERROR);
 			goto err;
 			}
 
@@ -2383,20 +2383,20 @@ int ssl3_send_client_verify(SSL *s)
 			EVP_PKEY_sign(pctx, NULL, &signature_length,
 				digest, digest_length) != 1)
 			{
-			OPENSSL_PUT_ERROR(SSL, ssl3_send_client_verify, ERR_R_EVP_LIB);
+			OPENSSL_PUT_ERROR(SSL, ssl3_send_cert_verify, ERR_R_EVP_LIB);
 			goto err;
 			}
 
 		if (p + 2 + signature_length > buf + SSL3_RT_MAX_PLAIN_LENGTH)
 			{
-			OPENSSL_PUT_ERROR(SSL, ssl3_send_client_verify, SSL_R_DATA_LENGTH_TOO_LONG);
+			OPENSSL_PUT_ERROR(SSL, ssl3_send_cert_verify, SSL_R_DATA_LENGTH_TOO_LONG);
 			goto err;
 			}
 
 		if (EVP_PKEY_sign(pctx, &p[2], &signature_length,
 				digest, digest_length) != 1)
 			{
-			OPENSSL_PUT_ERROR(SSL, ssl3_send_client_verify, ERR_R_EVP_LIB);
+			OPENSSL_PUT_ERROR(SSL, ssl3_send_cert_verify, ERR_R_EVP_LIB);
 			goto err;
 			}
 

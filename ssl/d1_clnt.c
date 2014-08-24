@@ -245,7 +245,7 @@ int dtls1_connect(SSL *s)
 			ssl3_init_finished_mac(s);
 
 			dtls1_start_timer(s);
-			ret=ssl3_client_hello(s);
+			ret=ssl3_send_client_hello(s);
 			if (ret <= 0) goto end;
 
 			if ( s->d1->send_cookie)
@@ -393,7 +393,7 @@ int dtls1_connect(SSL *s)
 		case SSL3_ST_CW_CERT_VRFY_A:
 		case SSL3_ST_CW_CERT_VRFY_B:
 			dtls1_start_timer(s);
-			ret=ssl3_send_client_verify(s);
+			ret=ssl3_send_cert_verify(s);
 			if (ret <= 0) goto end;
 			s->state=SSL3_ST_CW_CHANGE_A;
 			s->init_num=0;

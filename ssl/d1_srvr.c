@@ -547,7 +547,7 @@ int dtls1_accept(SSL *s)
 
 		case SSL3_ST_SW_SESSION_TICKET_A:
 		case SSL3_ST_SW_SESSION_TICKET_B:
-			ret=ssl3_send_newsession_ticket(s);
+			ret=ssl3_send_new_session_ticket(s);
 			if (ret <= 0) goto end;
 			s->state=SSL3_ST_SW_CHANGE_A;
 			s->init_num=0;

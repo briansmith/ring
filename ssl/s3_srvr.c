@@ -614,7 +614,7 @@ int ssl3_accept(SSL *s)
 
 		case SSL3_ST_SW_SESSION_TICKET_A:
 		case SSL3_ST_SW_SESSION_TICKET_B:
-			ret=ssl3_send_newsession_ticket(s);
+			ret=ssl3_send_new_session_ticket(s);
 			if (ret <= 0) goto end;
 			s->state=SSL3_ST_SW_CHANGE_A;
 			s->init_num=0;
@@ -2648,7 +2648,7 @@ int ssl3_send_server_certificate(SSL *s)
 	}
 
 /* send a new session ticket (not necessarily for a new session) */
-int ssl3_send_newsession_ticket(SSL *s)
+int ssl3_send_new_session_ticket(SSL *s)
 	{
 	if (s->state == SSL3_ST_SW_SESSION_TICKET_A)
 		{
