@@ -48,6 +48,20 @@ static const TestConfig *GetConfigPtr(SSL *ssl) {
   return (const TestConfig *)SSL_get_ex_data(ssl, g_ex_data_index);
 }
 
+static EVP_PKEY *LoadPrivateKey(const std::string &file) {
+  BIO *bio = BIO_new(BIO_s_file());
+  if (bio == NULL) {
+    return NULL;
+  }
+  if (!BIO_read_filename(bio, file.c_str())) {
+    BIO_free(bio);
+    return NULL;
+  }
+  EVP_PKEY *pkey = PEM_read_bio_PrivateKey(bio, NULL, NULL, NULL);
+  BIO_free(bio);
+  return pkey;
+}
+
 static int early_callback_called = 0;
 
 static int select_certificate_callback(const struct ssl_early_callback_ctx *ctx) {
@@ -205,6 +219,8 @@ static SSL_CTX *setup_ctx(const TestConfig *config) {
   SSL_CTX_set_cookie_generate_cb(ssl_ctx, cookie_generate_callback);
   SSL_CTX_set_cookie_verify_cb(ssl_ctx, cookie_verify_callback);
 
+  ssl_ctx->tlsext_channel_id_enabled_new = 1;
+
   DH_free(dh);
   return ssl_ctx;
 
@@ -300,6 +316,23 @@ static int do_exchange(SSL_SESSION **out_session,
   if (config->cookie_exchange) {
     SSL_set_options(ssl, SSL_OP_COOKIE_EXCHANGE);
   }
+  if (!config->expected_channel_id.empty()) {
+    SSL_enable_tls_channel_id(ssl);
+  }
+  if (!config->send_channel_id.empty()) {
+    EVP_PKEY *pkey = LoadPrivateKey(config->send_channel_id);
+    if (pkey == NULL) {
+      BIO_print_errors_fp(stdout);
+      return 1;
+    }
+    SSL_enable_tls_channel_id(ssl);
+    if (!SSL_set1_tls_channel_id(ssl, pkey)) {
+      EVP_PKEY_free(pkey);
+      BIO_print_errors_fp(stdout);
+      return 1;
+    }
+    EVP_PKEY_free(pkey);
+  }
 
   BIO *bio = BIO_new_fd(fd, 1 /* take ownership */);
   if (bio == NULL) {
@@ -363,7 +396,7 @@ static int do_exchange(SSL_SESSION **out_session,
   if (!config->expected_certificate_types.empty()) {
     uint8_t *certificate_types;
     int num_certificate_types =
-      SSL_get0_certificate_types(ssl, &certificate_types);
+        SSL_get0_certificate_types(ssl, &certificate_types);
     if (num_certificate_types !=
         (int)config->expected_certificate_types.size() ||
         memcmp(certificate_types,
@@ -382,6 +415,20 @@ static int do_exchange(SSL_SESSION **out_session,
         memcmp(next_proto, config->expected_next_proto.data(),
                next_proto_len) != 0) {
       fprintf(stderr, "negotiated next proto mismatch\n");
+      return 2;
+    }
+  }
+
+  if (!config->expected_channel_id.empty()) {
+    uint8_t channel_id[64];
+    if (!SSL_get_tls_channel_id(ssl, channel_id, sizeof(channel_id))) {
+      fprintf(stderr, "no channel id negotiated\n");
+      return 2;
+    }
+    if (config->expected_channel_id.size() != 64 ||
+        memcmp(config->expected_channel_id.data(),
+               channel_id, 64) != 0) {
+      fprintf(stderr, "channel id mismatch\n");
       return 2;
     }
   }

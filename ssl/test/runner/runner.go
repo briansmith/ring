@@ -2,8 +2,11 @@ package main
 
 import (
 	"bytes"
+	"crypto/ecdsa"
+	"crypto/elliptic"
 	"crypto/x509"
 	"encoding/base64"
+	"encoding/pem"
 	"flag"
 	"fmt"
 	"io"
@@ -26,11 +29,14 @@ const (
 )
 
 const (
-	rsaKeyFile   = "key.pem"
-	ecdsaKeyFile = "ecdsa_key.pem"
+	rsaKeyFile       = "key.pem"
+	ecdsaKeyFile     = "ecdsa_key.pem"
+	channelIDKeyFile = "channel_id_key.pem"
 )
 
 var rsaCertificate, ecdsaCertificate Certificate
+var channelIDKey *ecdsa.PrivateKey
+var channelIDBytes []byte
 
 func initCertificates() {
 	var err error
@@ -43,6 +49,26 @@ func initCertificates() {
 	if err != nil {
 		panic(err)
 	}
+
+	channelIDPEMBlock, err := ioutil.ReadFile(channelIDKeyFile)
+	if err != nil {
+		panic(err)
+	}
+	channelIDDERBlock, _ := pem.Decode(channelIDPEMBlock)
+	if channelIDDERBlock.Type != "EC PRIVATE KEY" {
+		panic("bad key type")
+	}
+	channelIDKey, err = x509.ParseECPrivateKey(channelIDDERBlock.Bytes)
+	if err != nil {
+		panic(err)
+	}
+	if channelIDKey.Curve != elliptic.P256() {
+		panic("bad curve")
+	}
+
+	channelIDBytes = make([]byte, 64)
+	writeIntPadded(channelIDBytes[:32], channelIDKey.X)
+	writeIntPadded(channelIDBytes[32:], channelIDKey.Y)
 }
 
 var certificateOnce sync.Once
@@ -84,6 +110,9 @@ type testCase struct {
 	// expectedVersion, if non-zero, specifies the TLS version that must be
 	// negotiated.
 	expectedVersion uint16
+	// expectChannelID controls whether the connection should have
+	// negotiated a Channel ID with channelIDKey.
+	expectChannelID bool
 	// messageLen is the length, in bytes, of the test message that will be
 	// sent.
 	messageLen int
@@ -486,6 +515,18 @@ func doExchange(test *testCase, config *Config, conn net.Conn, messageLen int) e
 
 	if vers := tlsConn.ConnectionState().Version; test.expectedVersion != 0 && vers != test.expectedVersion {
 		return fmt.Errorf("got version %x, expected %x", vers, test.expectedVersion)
+	}
+
+	if test.expectChannelID {
+		channelID := tlsConn.ConnectionState().ChannelID
+		if channelID == nil {
+			return fmt.Errorf("no channel ID negotiated")
+		}
+		if channelID.Curve != channelIDKey.Curve ||
+			channelIDKey.X.Cmp(channelIDKey.X) != 0 ||
+			channelIDKey.Y.Cmp(channelIDKey.Y) != 0 {
+			return fmt.Errorf("incorrect channel ID")
+		}
 	}
 
 	if messageLen < 0 {
@@ -1141,7 +1182,7 @@ func addStateMachineCoverageTests(async, splitHandshake bool, protocol protocol)
 			),
 		})
 
-		// Client sends a V2ClientHello.
+		// Server parses a V2ClientHello.
 		testCases = append(testCases, testCase{
 			protocol: protocol,
 			testType: serverTest,
@@ -1157,6 +1198,42 @@ func addStateMachineCoverageTests(async, splitHandshake bool, protocol protocol)
 				},
 			},
 			flags: flags,
+		})
+
+		// Client sends a Channel ID.
+		testCases = append(testCases, testCase{
+			protocol: protocol,
+			name:     "ChannelID-Client" + suffix,
+			config: Config{
+				RequestChannelID: true,
+				Bugs: ProtocolBugs{
+					MaxHandshakeRecordLength: maxHandshakeRecordLength,
+				},
+			},
+			flags: append(flags,
+				"-send-channel-id", channelIDKeyFile,
+			),
+			resumeSession:   true,
+			expectChannelID: true,
+		})
+
+		// Server accepts a Channel ID.
+		testCases = append(testCases, testCase{
+			protocol: protocol,
+			testType: serverTest,
+			name:     "ChannelID-Server" + suffix,
+			config: Config{
+				ChannelID: channelIDKey,
+				Bugs: ProtocolBugs{
+					MaxHandshakeRecordLength: maxHandshakeRecordLength,
+				},
+			},
+			flags: append(flags,
+				"-expect-channel-id",
+				base64.StdEncoding.EncodeToString(channelIDBytes),
+			),
+			resumeSession:   true,
+			expectChannelID: true,
 		})
 	} else {
 		testCases = append(testCases, testCase{

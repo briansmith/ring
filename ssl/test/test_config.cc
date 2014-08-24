@@ -64,12 +64,14 @@ const StringFlag kStringFlags[] = {
   { "-advertise-npn", &TestConfig::advertise_npn },
   { "-expect-next-proto", &TestConfig::expected_next_proto },
   { "-select-next-proto", &TestConfig::select_next_proto },
+  { "-send-channel-id", &TestConfig::send_channel_id },
 };
 
 const size_t kNumStringFlags = sizeof(kStringFlags) / sizeof(kStringFlags[0]);
 
 const StringFlag kBase64Flags[] = {
   { "-expect-certificate-types", &TestConfig::expected_certificate_types },
+  { "-expect-channel-id", &TestConfig::expected_channel_id },
 };
 
 const size_t kNumBase64Flags = sizeof(kBase64Flags) / sizeof(kBase64Flags[0]);
