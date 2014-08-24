@@ -120,6 +120,8 @@ var masterSecretLabel = []byte("master secret")
 var keyExpansionLabel = []byte("key expansion")
 var clientFinishedLabel = []byte("client finished")
 var serverFinishedLabel = []byte("server finished")
+var channelIDLabel = []byte("TLS Channel ID signature\x00")
+var channelIDResumeLabel = []byte("Resumption\x00")
 
 func prfForVersion(version uint16, suite *cipherSuite) func(result, secret, label, seed []byte) {
 	switch version {
@@ -320,4 +322,18 @@ func (h finishedHash) hashForClientCertificate(signatureAndHash signatureAndHash
 	digest = h.serverMD5.Sum(digest)
 	digest = h.server.Sum(digest)
 	return digest, crypto.MD5SHA1, nil
+}
+
+// hashForChannelID returns the hash to be signed for TLS Channel
+// ID. If a resumption, resumeHash has the previous handshake
+// hash. Otherwise, it is nil.
+func (h finishedHash) hashForChannelID(resumeHash []byte) []byte {
+	hash := sha256.New()
+	hash.Write(channelIDLabel)
+	if resumeHash != nil {
+		hash.Write(channelIDResumeLabel)
+		hash.Write(resumeHash)
+	}
+	hash.Write(h.server.Sum(nil))
+	return hash.Sum(nil)
 }

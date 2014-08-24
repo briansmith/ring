@@ -25,6 +25,7 @@ type clientHelloMsg struct {
 	signatureAndHashes  []signatureAndHash
 	secureRenegotiation bool
 	duplicateExtension  bool
+	channelIDSupported  bool
 }
 
 func (m *clientHelloMsg) equal(i interface{}) bool {
@@ -49,7 +50,9 @@ func (m *clientHelloMsg) equal(i interface{}) bool {
 		m.ticketSupported == m1.ticketSupported &&
 		bytes.Equal(m.sessionTicket, m1.sessionTicket) &&
 		eqSignatureAndHashes(m.signatureAndHashes, m1.signatureAndHashes) &&
-		m.secureRenegotiation == m1.secureRenegotiation
+		m.secureRenegotiation == m1.secureRenegotiation &&
+		m.duplicateExtension == m1.duplicateExtension &&
+		m.channelIDSupported == m1.channelIDSupported
 }
 
 func (m *clientHelloMsg) marshal() []byte {
@@ -96,6 +99,9 @@ func (m *clientHelloMsg) marshal() []byte {
 	}
 	if m.duplicateExtension {
 		numExtensions += 2
+	}
+	if m.channelIDSupported {
+		numExtensions++
 	}
 	if numExtensions > 0 {
 		extensionsLength += 4 * numExtensions
@@ -259,6 +265,11 @@ func (m *clientHelloMsg) marshal() []byte {
 		z[2] = 0
 		z[3] = 1
 		z = z[5:]
+	}
+	if m.channelIDSupported {
+		z[0] = byte(extensionChannelID >> 8)
+		z[1] = byte(extensionChannelID & 0xff)
+		z = z[4:]
 	}
 	if m.duplicateExtension {
 		// Add a duplicate bogus extension at the beginning and end.
@@ -440,6 +451,11 @@ func (m *clientHelloMsg) unmarshal(data []byte) bool {
 				return false
 			}
 			m.secureRenegotiation = true
+		case extensionChannelID:
+			if length > 0 {
+				return false
+			}
+			m.channelIDSupported = true
 		}
 		data = data[length:]
 	}
@@ -461,6 +477,7 @@ type serverHelloMsg struct {
 	ticketSupported     bool
 	secureRenegotiation bool
 	duplicateExtension  bool
+	channelIDRequested  bool
 }
 
 func (m *serverHelloMsg) equal(i interface{}) bool {
@@ -480,7 +497,9 @@ func (m *serverHelloMsg) equal(i interface{}) bool {
 		eqStrings(m.nextProtos, m1.nextProtos) &&
 		m.ocspStapling == m1.ocspStapling &&
 		m.ticketSupported == m1.ticketSupported &&
-		m.secureRenegotiation == m1.secureRenegotiation
+		m.secureRenegotiation == m1.secureRenegotiation &&
+		m.duplicateExtension == m1.duplicateExtension &&
+		m.channelIDRequested == m1.channelIDRequested
 }
 
 func (m *serverHelloMsg) marshal() []byte {
@@ -513,6 +532,9 @@ func (m *serverHelloMsg) marshal() []byte {
 	}
 	if m.duplicateExtension {
 		numExtensions += 2
+	}
+	if m.channelIDRequested {
+		numExtensions++
 	}
 	if numExtensions > 0 {
 		extensionsLength += 4 * numExtensions
@@ -580,6 +602,11 @@ func (m *serverHelloMsg) marshal() []byte {
 		z[2] = 0
 		z[3] = 1
 		z = z[5:]
+	}
+	if m.channelIDRequested {
+		z[0] = byte(extensionChannelID >> 8)
+		z[1] = byte(extensionChannelID & 0xff)
+		z = z[4:]
 	}
 	if m.duplicateExtension {
 		// Add a duplicate bogus extension at the beginning and end.
@@ -671,6 +698,11 @@ func (m *serverHelloMsg) unmarshal(data []byte) bool {
 				return false
 			}
 			m.secureRenegotiation = true
+		case extensionChannelID:
+			if length > 0 {
+				return false
+			}
+			m.channelIDRequested = true
 		}
 		data = data[length:]
 	}
@@ -1407,7 +1439,8 @@ func (m *helloVerifyRequestMsg) equal(i interface{}) bool {
 		return false
 	}
 
-	return m.vers == m1.vers &&
+	return bytes.Equal(m.raw, m1.raw) &&
+		m.vers == m1.vers &&
 		bytes.Equal(m.cookie, m1.cookie)
 }
 
@@ -1443,6 +1476,58 @@ func (m *helloVerifyRequestMsg) unmarshal(data []byte) bool {
 		return false
 	}
 	m.cookie = data[7 : 7+cookieLen]
+
+	return true
+}
+
+type encryptedExtensionsMsg struct {
+	raw       []byte
+	channelID []byte
+}
+
+func (m *encryptedExtensionsMsg) equal(i interface{}) bool {
+	m1, ok := i.(*encryptedExtensionsMsg)
+	if !ok {
+		return false
+	}
+
+	return bytes.Equal(m.raw, m1.raw) &&
+		bytes.Equal(m.channelID, m1.channelID)
+}
+
+func (m *encryptedExtensionsMsg) marshal() []byte {
+	if m.raw != nil {
+		return m.raw
+	}
+
+	length := 2 + 2 + len(m.channelID)
+
+	x := make([]byte, 4+length)
+	x[0] = typeEncryptedExtensions
+	x[1] = uint8(length >> 16)
+	x[2] = uint8(length >> 8)
+	x[3] = uint8(length)
+	x[4] = uint8(extensionChannelID >> 8)
+	x[5] = uint8(extensionChannelID & 0xff)
+	x[6] = uint8(len(m.channelID) >> 8)
+	x[7] = uint8(len(m.channelID) & 0xff)
+	copy(x[8:], m.channelID)
+
+	return x
+}
+
+func (m *encryptedExtensionsMsg) unmarshal(data []byte) bool {
+	if len(data) != 4+2+2+128 {
+		return false
+	}
+	m.raw = data
+	if (uint16(data[4])<<8)|uint16(data[5]) != extensionChannelID {
+		return false
+	}
+	if int(data[6])<<8|int(data[7]) != 128 {
+		return false
+	}
+	m.channelID = data[4+2+2:]
 
 	return true
 }

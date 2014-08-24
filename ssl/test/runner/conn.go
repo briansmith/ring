@@ -9,6 +9,7 @@ package main
 import (
 	"bytes"
 	"crypto/cipher"
+	"crypto/ecdsa"
 	"crypto/subtle"
 	"crypto/x509"
 	"errors"
@@ -46,6 +47,8 @@ type Conn struct {
 
 	clientProtocol         string
 	clientProtocolFallback bool
+
+	channelID *ecdsa.PublicKey
 
 	// input/output
 	in, out  halfConn     // in.Mutex < out.Mutex
@@ -937,6 +940,8 @@ func (c *Conn) readHandshake() (interface{}, error) {
 		m = new(finishedMsg)
 	case typeHelloVerifyRequest:
 		m = new(helloVerifyRequestMsg)
+	case typeEncryptedExtensions:
+		m = new(encryptedExtensionsMsg)
 	default:
 		return nil, c.in.setErrorLocked(c.sendAlert(alertUnexpectedMessage))
 	}
@@ -1104,6 +1109,7 @@ func (c *Conn) ConnectionState() ConnectionState {
 		state.PeerCertificates = c.peerCertificates
 		state.VerifiedChains = c.verifiedChains
 		state.ServerName = c.serverName
+		state.ChannelID = c.channelID
 	}
 
 	return state

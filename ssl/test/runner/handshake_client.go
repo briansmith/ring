@@ -8,6 +8,7 @@ import (
 	"bytes"
 	"crypto"
 	"crypto/ecdsa"
+	"crypto/elliptic"
 	"crypto/rsa"
 	"crypto/subtle"
 	"crypto/x509"
@@ -54,6 +55,7 @@ func (c *Conn) clientHandshake() error {
 		nextProtoNeg:        len(c.config.NextProtos) > 0,
 		secureRenegotiation: true,
 		duplicateExtension:  c.config.Bugs.DuplicateExtension,
+		channelIDSupported:  c.config.ChannelID != nil,
 	}
 
 	if c.config.Bugs.SendClientVersion != 0 {
@@ -238,7 +240,7 @@ NextCipherSuite:
 		if err := hs.readFinished(); err != nil {
 			return err
 		}
-		if err := hs.sendFinished(); err != nil {
+		if err := hs.sendFinished(isResume); err != nil {
 			return err
 		}
 	} else {
@@ -248,7 +250,7 @@ NextCipherSuite:
 		if err := hs.establishKeys(); err != nil {
 			return err
 		}
-		if err := hs.sendFinished(); err != nil {
+		if err := hs.sendFinished(isResume); err != nil {
 			return err
 		}
 		if err := hs.readSessionTicket(); err != nil {
@@ -565,6 +567,11 @@ func (hs *clientHandshakeState) processServerHello() (bool, error) {
 		return false, errors.New("server advertised unrequested NPN extension")
 	}
 
+	if !hs.hello.channelIDSupported && hs.serverHello.channelIDRequested {
+		c.sendAlert(alertHandshakeFailure)
+		return false, errors.New("server advertised unrequested Channel ID extension")
+	}
+
 	if hs.serverResumedSession() {
 		// Restore masterSecret and peerCerts from previous state
 		hs.masterSecret = hs.session.masterSecret
@@ -619,20 +626,22 @@ func (hs *clientHandshakeState) readSessionTicket() error {
 		c.sendAlert(alertUnexpectedMessage)
 		return unexpectedMessageError(sessionTicketMsg, msg)
 	}
-	hs.writeServerHash(sessionTicketMsg.marshal())
 
 	hs.session = &ClientSessionState{
 		sessionTicket:      sessionTicketMsg.ticket,
 		vers:               c.vers,
 		cipherSuite:        hs.suite.id,
 		masterSecret:       hs.masterSecret,
+		handshakeHash:      hs.finishedHash.server.Sum(nil),
 		serverCertificates: c.peerCertificates,
 	}
+
+	hs.writeServerHash(sessionTicketMsg.marshal())
 
 	return nil
 }
 
-func (hs *clientHandshakeState) sendFinished() error {
+func (hs *clientHandshakeState) sendFinished(isResume bool) error {
 	c := hs.c
 
 	var postCCSBytes []byte
@@ -648,6 +657,34 @@ func (hs *clientHandshakeState) sendFinished() error {
 		hs.writeHash(nextProtoBytes, seqno)
 		seqno++
 		postCCSBytes = append(postCCSBytes, nextProtoBytes...)
+	}
+
+	if hs.serverHello.channelIDRequested {
+		encryptedExtensions := new(encryptedExtensionsMsg)
+		if c.config.ChannelID.Curve != elliptic.P256() {
+			return fmt.Errorf("tls: Channel ID is not on P-256.")
+		}
+		var resumeHash []byte
+		if isResume {
+			resumeHash = hs.session.handshakeHash
+		}
+		r, s, err := ecdsa.Sign(c.config.rand(), c.config.ChannelID, hs.finishedHash.hashForChannelID(resumeHash))
+		if err != nil {
+			return err
+		}
+		channelID := make([]byte, 128)
+		writeIntPadded(channelID[0:32], c.config.ChannelID.X)
+		writeIntPadded(channelID[32:64], c.config.ChannelID.Y)
+		writeIntPadded(channelID[64:96], r)
+		writeIntPadded(channelID[96:128], s)
+		encryptedExtensions.channelID = channelID
+
+		c.channelID = &c.config.ChannelID.PublicKey
+
+		encryptedExtensionsBytes := encryptedExtensions.marshal()
+		hs.writeHash(encryptedExtensionsBytes, seqno)
+		seqno++
+		postCCSBytes = append(postCCSBytes, encryptedExtensionsBytes...)
 	}
 
 	finished := new(finishedMsg)
@@ -723,4 +760,14 @@ func mutualProtocol(clientProtos, serverProtos []string) (string, bool) {
 	}
 
 	return clientProtos[0], true
+}
+
+// writeIntPadded writes x into b, padded up with leading zeros as
+// needed.
+func writeIntPadded(b []byte, x *big.Int) {
+	for i := range b {
+		b[i] = 0
+	}
+	xb := x.Bytes()
+	copy(b[len(b)-len(xb):], xb)
 }

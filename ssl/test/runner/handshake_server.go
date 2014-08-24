@@ -8,6 +8,7 @@ import (
 	"bytes"
 	"crypto"
 	"crypto/ecdsa"
+	"crypto/elliptic"
 	"crypto/rsa"
 	"crypto/subtle"
 	"crypto/x509"
@@ -15,6 +16,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"math/big"
 )
 
 // serverHandshakeState contains details of a server handshake in progress.
@@ -69,7 +71,7 @@ func (c *Conn) serverHandshake() error {
 		if err := hs.sendFinished(); err != nil {
 			return err
 		}
-		if err := hs.readFinished(); err != nil {
+		if err := hs.readFinished(isResume); err != nil {
 			return err
 		}
 		c.didResume = true
@@ -82,7 +84,7 @@ func (c *Conn) serverHandshake() error {
 		if err := hs.establishKeys(); err != nil {
 			return err
 		}
-		if err := hs.readFinished(); err != nil {
+		if err := hs.readFinished(isResume); err != nil {
 			return err
 		}
 		if err := hs.sendSessionTicket(); err != nil {
@@ -229,6 +231,10 @@ Curves:
 	hs.cert = &config.Certificates[0]
 	if len(hs.clientHello.serverName) > 0 {
 		hs.cert = config.getCertificateForName(hs.clientHello.serverName)
+	}
+
+	if hs.clientHello.channelIDSupported && config.RequestChannelID {
+		hs.hello.channelIDRequested = true
 	}
 
 	_, hs.ecdsaOk = hs.cert.PrivateKey.(*ecdsa.PrivateKey)
@@ -579,7 +585,7 @@ func (hs *serverHandshakeState) establishKeys() error {
 	return nil
 }
 
-func (hs *serverHandshakeState) readFinished() error {
+func (hs *serverHandshakeState) readFinished(isResume bool) error {
 	c := hs.c
 
 	c.readRecord(recordTypeChangeCipherSpec)
@@ -599,6 +605,36 @@ func (hs *serverHandshakeState) readFinished() error {
 		}
 		hs.writeClientHash(nextProto.marshal())
 		c.clientProtocol = nextProto.proto
+	}
+
+	if hs.hello.channelIDRequested {
+		msg, err := c.readHandshake()
+		if err != nil {
+			return err
+		}
+		encryptedExtensions, ok := msg.(*encryptedExtensionsMsg)
+		if !ok {
+			c.sendAlert(alertUnexpectedMessage)
+			return unexpectedMessageError(encryptedExtensions, msg)
+		}
+		x := new(big.Int).SetBytes(encryptedExtensions.channelID[0:32])
+		y := new(big.Int).SetBytes(encryptedExtensions.channelID[32:64])
+		r := new(big.Int).SetBytes(encryptedExtensions.channelID[64:96])
+		s := new(big.Int).SetBytes(encryptedExtensions.channelID[96:128])
+		if !elliptic.P256().IsOnCurve(x, y) {
+			return errors.New("tls: invalid channel ID public key")
+		}
+		channelID := &ecdsa.PublicKey{elliptic.P256(), x, y}
+		var resumeHash []byte
+		if isResume {
+			resumeHash = hs.sessionState.handshakeHash
+		}
+		if !ecdsa.Verify(channelID, hs.finishedHash.hashForChannelID(resumeHash), r, s) {
+			return errors.New("tls: invalid channel ID signature")
+		}
+		c.channelID = channelID
+
+		hs.writeClientHash(encryptedExtensions.marshal())
 	}
 
 	msg, err := c.readHandshake()
@@ -632,10 +668,11 @@ func (hs *serverHandshakeState) sendSessionTicket() error {
 
 	var err error
 	state := sessionState{
-		vers:         c.vers,
-		cipherSuite:  hs.suite.id,
-		masterSecret: hs.masterSecret,
-		certificates: hs.certsFromClient,
+		vers:          c.vers,
+		cipherSuite:   hs.suite.id,
+		masterSecret:  hs.masterSecret,
+		certificates:  hs.certsFromClient,
+		handshakeHash: hs.finishedHash.server.Sum(nil),
 	}
 	m.ticket, err = c.encryptTicket(&state)
 	if err != nil {

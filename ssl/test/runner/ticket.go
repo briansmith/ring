@@ -18,10 +18,11 @@ import (
 // sessionState contains the information that is serialized into a session
 // ticket in order to later resume a connection.
 type sessionState struct {
-	vers         uint16
-	cipherSuite  uint16
-	masterSecret []byte
-	certificates [][]byte
+	vers          uint16
+	cipherSuite   uint16
+	masterSecret  []byte
+	handshakeHash []byte
+	certificates  [][]byte
 }
 
 func (s *sessionState) equal(i interface{}) bool {
@@ -32,7 +33,8 @@ func (s *sessionState) equal(i interface{}) bool {
 
 	if s.vers != s1.vers ||
 		s.cipherSuite != s1.cipherSuite ||
-		!bytes.Equal(s.masterSecret, s1.masterSecret) {
+		!bytes.Equal(s.masterSecret, s1.masterSecret) ||
+		!bytes.Equal(s.handshakeHash, s1.handshakeHash) {
 		return false
 	}
 
@@ -50,7 +52,7 @@ func (s *sessionState) equal(i interface{}) bool {
 }
 
 func (s *sessionState) marshal() []byte {
-	length := 2 + 2 + 2 + len(s.masterSecret) + 2
+	length := 2 + 2 + 2 + len(s.masterSecret) + 2 + len(s.handshakeHash) + 2
 	for _, cert := range s.certificates {
 		length += 4 + len(cert)
 	}
@@ -66,6 +68,12 @@ func (s *sessionState) marshal() []byte {
 	x = x[6:]
 	copy(x, s.masterSecret)
 	x = x[len(s.masterSecret):]
+
+	x[0] = byte(len(s.handshakeHash) >> 8)
+	x[1] = byte(len(s.handshakeHash))
+	x = x[2:]
+	copy(x, s.handshakeHash)
+	x = x[len(s.handshakeHash):]
 
 	x[0] = byte(len(s.certificates) >> 8)
 	x[1] = byte(len(s.certificates))
@@ -98,6 +106,19 @@ func (s *sessionState) unmarshal(data []byte) bool {
 
 	s.masterSecret = data[:masterSecretLen]
 	data = data[masterSecretLen:]
+
+	if len(data) < 2 {
+		return false
+	}
+
+	handshakeHashLen := int(data[0])<<8 | int(data[1])
+	data = data[2:]
+	if len(data) < handshakeHashLen {
+		return false
+	}
+
+	s.handshakeHash = data[:handshakeHashLen]
+	data = data[handshakeHashLen:]
 
 	if len(data) < 2 {
 		return false
