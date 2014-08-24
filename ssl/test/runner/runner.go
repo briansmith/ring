@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"crypto/x509"
+	"encoding/base64"
 	"flag"
 	"fmt"
 	"io"
@@ -208,11 +209,14 @@ var testCases = []testCase{
 				CertTypeECDSASign,
 			},
 		},
-		flags: []string{"-expect-certificate-types", string([]byte{
-			CertTypeDSSSign,
-			CertTypeRSASign,
-			CertTypeECDSASign,
-		})},
+		flags: []string{
+			"-expect-certificate-types",
+			base64.StdEncoding.EncodeToString([]byte{
+				CertTypeDSSSign,
+				CertTypeRSASign,
+				CertTypeECDSASign,
+			}),
+		},
 	},
 	{
 		name: "NoClientCertificate",

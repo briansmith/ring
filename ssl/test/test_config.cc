@@ -16,6 +16,9 @@
 
 #include <string.h>
 
+#include <memory>
+
+#include <openssl/base64.h>
 
 namespace {
 
@@ -54,20 +57,22 @@ const BoolFlag kBoolFlags[] = {
 
 const size_t kNumBoolFlags = sizeof(kBoolFlags) / sizeof(kBoolFlags[0]);
 
-// TODO(davidben): Some of these should be in a new kBase64Flags to allow NUL
-// bytes.
 const StringFlag kStringFlags[] = {
   { "-key-file", &TestConfig::key_file },
   { "-cert-file", &TestConfig::cert_file },
   { "-expect-server-name", &TestConfig::expected_server_name },
-  // Conveniently, 00 is not a certificate type.
-  { "-expect-certificate-types", &TestConfig::expected_certificate_types },
   { "-advertise-npn", &TestConfig::advertise_npn },
   { "-expect-next-proto", &TestConfig::expected_next_proto },
   { "-select-next-proto", &TestConfig::select_next_proto },
 };
 
 const size_t kNumStringFlags = sizeof(kStringFlags) / sizeof(kStringFlags[0]);
+
+const StringFlag kBase64Flags[] = {
+  { "-expect-certificate-types", &TestConfig::expected_certificate_types },
+};
+
+const size_t kNumBase64Flags = sizeof(kBase64Flags) / sizeof(kBase64Flags[0]);
 
 }  // namespace
 
@@ -114,6 +119,32 @@ bool ParseConfig(int argc, char **argv, TestConfig *out_config) {
         return false;
       }
       out_config->*(kStringFlags[j].member) = argv[i];
+      continue;
+    }
+
+    for (j = 0; j < kNumBase64Flags; j++) {
+      if (strcmp(argv[i], kBase64Flags[j].flag) == 0) {
+        break;
+      }
+    }
+    if (j < kNumBase64Flags) {
+      i++;
+      if (i >= argc) {
+        fprintf(stderr, "Missing parameter\n");
+        return false;
+      }
+      size_t len;
+      if (!EVP_DecodedLength(&len, strlen(argv[i]))) {
+        fprintf(stderr, "Invalid base64: %s\n", argv[i]);
+      }
+      std::unique_ptr<uint8_t[]> decoded(new uint8_t[len]);
+      if (!EVP_DecodeBase64(decoded.get(), &len, len,
+                            reinterpret_cast<const uint8_t *>(argv[i]),
+                            strlen(argv[i]))) {
+        fprintf(stderr, "Invalid base64: %s\n", argv[i]);
+      }
+      out_config->*(kBase64Flags[j].member) = std::string(
+          reinterpret_cast<const char *>(decoded.get()), len);
       continue;
     }
 
