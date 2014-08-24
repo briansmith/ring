@@ -470,6 +470,12 @@ static int do_exchange(SSL_SESSION **out_session,
       }
     }
   } else {
+    if (config->shim_writes_first) {
+      int w;
+      do {
+        w = SSL_write(ssl, "hello", 5);
+      } while (config->async && retry_async(ssl, w, bio));
+    }
     for (;;) {
       uint8_t buf[512];
       int n;

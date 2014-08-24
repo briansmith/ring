@@ -53,6 +53,7 @@ const BoolFlag kBoolFlags[] = {
   { "-no-tls1", &TestConfig::no_tls1 },
   { "-no-ssl3", &TestConfig::no_ssl3 },
   { "-cookie-exchange", &TestConfig::cookie_exchange },
+  { "-shim-writes-first", &TestConfig::shim_writes_first },
 };
 
 const size_t kNumBoolFlags = sizeof(kBoolFlags) / sizeof(kBoolFlags[0]);
@@ -93,7 +94,8 @@ TestConfig::TestConfig()
       no_tls11(false),
       no_tls1(false),
       no_ssl3(false),
-      cookie_exchange(false) {
+      cookie_exchange(false),
+      shim_writes_first(false) {
 }
 
 bool ParseConfig(int argc, char **argv, TestConfig *out_config) {

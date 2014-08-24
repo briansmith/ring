@@ -87,6 +87,11 @@ func (c *Conn) serverHandshake() error {
 		if err := hs.readFinished(isResume); err != nil {
 			return err
 		}
+		if c.config.Bugs.ExpectFalseStart {
+			if err := c.readRecord(recordTypeApplicationData); err != nil {
+				return err
+			}
+		}
 		if err := hs.sendSessionTicket(); err != nil {
 			return err
 		}

@@ -660,7 +660,7 @@ func (c *Conn) readRecord(want recordType) error {
 			return c.in.setErrorLocked(errors.New("tls: handshake or ChangeCipherSpec requested after handshake complete"))
 		}
 	case recordTypeApplicationData:
-		if !c.handshakeComplete {
+		if !c.handshakeComplete && !c.config.Bugs.ExpectFalseStart {
 			c.sendAlert(alertInternalError)
 			return c.in.setErrorLocked(errors.New("tls: application data record requested before handshake complete"))
 		}

@@ -434,6 +434,12 @@ type ProtocolBugs struct {
 	// SkipHelloVerifyRequest causes a DTLS server to skip the
 	// HelloVerifyRequest message.
 	SkipHelloVerifyRequest bool
+
+	// ExpectFalseStart causes the server to, on full handshakes,
+	// expect the peer to False Start; the server Finished message
+	// isn't sent until we receive an application data record
+	// from the peer.
+	ExpectFalseStart bool
 }
 
 func (c *Config) serverInit() {
