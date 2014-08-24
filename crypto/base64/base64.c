@@ -64,8 +64,6 @@ static const unsigned char data_bin2ascii[65] =
     "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 
 #define conv_bin2ascii(a) (data_bin2ascii[(a) & 0x3f])
-/* TODO(davidben): This doesn't error on bytes above 127. */
-#define conv_ascii2bin(a) (data_ascii2bin[(a) & 0x7f])
 
 /* 64 char lines
  * pad input with 0
@@ -91,19 +89,26 @@ static const unsigned char data_bin2ascii[65] =
 #define B64_ERROR 0xFF
 #define B64_NOT_BASE64(a) (((a) | 0x13) == 0xF3)
 
-static const unsigned char data_ascii2bin[128] = {
+static const uint8_t data_ascii2bin[128] = {
     0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xE0, 0xF0, 0xFF,
     0xFF, 0xF1, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
     0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xE0, 0xFF, 0xFF, 0xFF,
     0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0x3E, 0xFF, 0xF2, 0xFF, 0x3F,
     0x34, 0x35, 0x36, 0x37, 0x38, 0x39, 0x3A, 0x3B, 0x3C, 0x3D, 0xFF, 0xFF,
-    0xFF, 0x00, 0xFF, 0xFF, 0xFF, 0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06,
+    0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06,
     0x07, 0x08, 0x09, 0x0A, 0x0B, 0x0C, 0x0D, 0x0E, 0x0F, 0x10, 0x11, 0x12,
     0x13, 0x14, 0x15, 0x16, 0x17, 0x18, 0x19, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
     0xFF, 0x1A, 0x1B, 0x1C, 0x1D, 0x1E, 0x1F, 0x20, 0x21, 0x22, 0x23, 0x24,
     0x25, 0x26, 0x27, 0x28, 0x29, 0x2A, 0x2B, 0x2C, 0x2D, 0x2E, 0x2F, 0x30,
     0x31, 0x32, 0x33, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
 };
+
+static uint8_t conv_ascii2bin(uint8_t a) {
+  if (a >= 128) {
+    return 0xFF;
+  }
+  return data_ascii2bin[a];
+}
 
 void EVP_EncodeInit(EVP_ENCODE_CTX *ctx) {
   ctx->length = 48;
@@ -198,6 +203,62 @@ size_t EVP_EncodeBlock(uint8_t *dst, const uint8_t *src, size_t src_len) {
 
   *dst = '\0';
   return ret;
+}
+
+int EVP_DecodedLength(size_t *out_len, size_t len) {
+  if (len % 4 != 0) {
+    return 0;
+  }
+  *out_len = (len / 4) * 3;
+  return 1;
+}
+
+int EVP_DecodeBase64(uint8_t *out, size_t *out_len, size_t max_out,
+                     const uint8_t *in, size_t in_len) {
+  uint8_t a, b, c, d;
+  size_t pad_len = 0, len = 0, max_len, i;
+  uint32_t l;
+
+  if (!EVP_DecodedLength(&max_len, in_len) || max_out < max_len) {
+    return 0;
+  }
+
+  for (i = 0; i < in_len; i += 4) {
+    a = conv_ascii2bin(*(in++));
+    b = conv_ascii2bin(*(in++));
+    if (i + 4 == in_len && in[1] == '=') {
+        if (in[0] == '=') {
+          pad_len = 2;
+        } else {
+          pad_len = 1;
+        }
+    }
+    if (pad_len < 2) {
+      c = conv_ascii2bin(*(in++));
+    } else {
+      c = 0;
+    }
+    if (pad_len < 1) {
+      d = conv_ascii2bin(*(in++));
+    } else {
+      d = 0;
+    }
+    if ((a & 0x80) || (b & 0x80) || (c & 0x80) || (d & 0x80)) {
+      return 0;
+    }
+    l = ((((uint32_t)a) << 18L) | (((uint32_t)b) << 12L) |
+         (((uint32_t)c) << 6L) | (((uint32_t)d)));
+    *(out++) = (uint8_t)(l >> 16L) & 0xff;
+    if (pad_len < 2) {
+      *(out++) = (uint8_t)(l >> 8L) & 0xff;
+    }
+    if (pad_len < 1) {
+      *(out++) = (uint8_t)(l) & 0xff;
+    }
+    len += 3 - pad_len;
+  }
+  *out_len = len;
+  return 1;
 }
 
 void EVP_DecodeInit(EVP_ENCODE_CTX *ctx) {
@@ -304,6 +365,7 @@ int EVP_DecodeUpdate(EVP_ENCODE_CTX *ctx, uint8_t *out, int *out_len,
         exp_nl = 1;
       }
       if (n > 0) {
+        /* TODO(davidben): Switch this to EVP_DecodeBase64. */
         v = EVP_DecodeBlock(out, d, n);
         n = 0;
         if (v < 0) {
@@ -347,6 +409,7 @@ int EVP_DecodeFinal(EVP_ENCODE_CTX *ctx, uint8_t *out, int *outl) {
 
   *outl = 0;
   if (ctx->num != 0) {
+    /* TODO(davidben): Switch this to EVP_DecodeBase64. */
     i = EVP_DecodeBlock(out, ctx->enc_data, ctx->num);
     if (i < 0) {
       return -1;
@@ -360,9 +423,7 @@ int EVP_DecodeFinal(EVP_ENCODE_CTX *ctx, uint8_t *out, int *outl) {
 }
 
 int EVP_DecodeBlock(uint8_t *dst, const uint8_t *src, size_t src_len) {
-  int a, b, c, d;
-  uint32_t l;
-  size_t i, ret = 0;
+  size_t dst_len;
 
   /* trim white space from the start of the line. */
   while (conv_ascii2bin(*src) == B64_WS && src_len > 0) {
@@ -376,31 +437,21 @@ int EVP_DecodeBlock(uint8_t *dst, const uint8_t *src, size_t src_len) {
     src_len--;
   }
 
-  if (src_len % 4 != 0) {
+  if (!EVP_DecodedLength(&dst_len, src_len) || dst_len > INT_MAX) {
+    return -1;
+  }
+  if (!EVP_DecodeBase64(dst, &dst_len, dst_len, src, src_len)) {
     return -1;
   }
 
-  for (i = 0; i < src_len; i += 4) {
-    a = conv_ascii2bin(*(src++));
-    b = conv_ascii2bin(*(src++));
-    c = conv_ascii2bin(*(src++));
-    d = conv_ascii2bin(*(src++));
-    if ((a & 0x80) || (b & 0x80) || (c & 0x80) || (d & 0x80)) {
-      return -1;
-    }
-    l = ((((uint32_t)a) << 18L) | (((uint32_t)b) << 12L) |
-         (((uint32_t)c) << 6L) | (((uint32_t)d)));
-    *(dst++) = (uint8_t)(l >> 16L) & 0xff;
-    *(dst++) = (uint8_t)(l >> 8L) & 0xff;
-    *(dst++) = (uint8_t)(l) & 0xff;
-    ret += 3;
+  /* EVP_DecodeBlock does not take padding into account, so put the
+   * NULs back in... so the caller can strip them back out. */
+  while (dst_len % 3 != 0) {
+    dst[dst_len++] = '\0';
   }
+  assert(dst_len <= INT_MAX);
 
-  if (ret > INT_MAX) {
-    return -1;
-  }
-
-  return ret;
+  return dst_len;
 }
 
 int EVP_EncodedLength(size_t *out_len, size_t len) {

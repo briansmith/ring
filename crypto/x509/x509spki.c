@@ -77,15 +77,19 @@ NETSCAPE_SPKI * NETSCAPE_SPKI_b64_decode(const char *str, int len)
 {
 	unsigned char *spki_der;
 	const unsigned char *p;
-	int spki_len;
+	size_t spki_len;
 	NETSCAPE_SPKI *spki;
-	if(len <= 0) len = strlen(str);
-	if (!(spki_der = OPENSSL_malloc(len + 1))) {
+	if (len <= 0)
+		len = strlen(str);
+	if (!EVP_DecodedLength(&spki_len, len)) {
+		OPENSSL_PUT_ERROR(X509, NETSCAPE_SPKI_b64_decode, X509_R_BASE64_DECODE_ERROR);
+		return NULL;
+	}
+	if (!(spki_der = OPENSSL_malloc(spki_len))) {
 		OPENSSL_PUT_ERROR(X509, NETSCAPE_SPKI_b64_decode, ERR_R_MALLOC_FAILURE);
 		return NULL;
 	}
-	spki_len = EVP_DecodeBlock(spki_der, (const unsigned char *)str, len);
-	if(spki_len < 0) {
+	if (!EVP_DecodeBase64(spki_der, &spki_len, spki_len, (const uint8_t *)str, len)) {
 		OPENSSL_PUT_ERROR(X509, NETSCAPE_SPKI_b64_decode, X509_R_BASE64_DECODE_ERROR);
 		OPENSSL_free(spki_der);
 		return NULL;

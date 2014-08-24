@@ -57,17 +57,17 @@ static int test_encode(void) {
 
 static int test_decode(void) {
   uint8_t out[6];
-  size_t i;
-  ssize_t len;
+  size_t i, len;
+  int ret;
 
   for (i = 0; i < kNumTests; i++) {
+    /* Test the normal API. */
     const TEST_VECTOR *t = &test_vectors[i];
     size_t expected_len = strlen(t->decoded);
-    len = EVP_DecodeBlock(out, (const uint8_t*)t->encoded, strlen(t->encoded));
-    /* TODO(davidben): EVP_DecodeBlock doesn't take padding into account. Is
-     * this behavior we can change? */
-    if (expected_len % 3 != 0) {
-      len -= 3 - (expected_len % 3);
+    if (!EVP_DecodeBase64(out, &len, sizeof(out),
+                          (const uint8_t*)t->encoded, strlen(t->encoded))) {
+      fprintf(stderr, "decode(\"%s\") failed\n", t->encoded);
+      return 0;
     }
     if (len != strlen(t->decoded) ||
         memcmp(out, t->decoded, len) != 0) {
@@ -75,14 +75,40 @@ static int test_decode(void) {
               t->encoded, (int)len, (const char*)out, t->decoded);
       return 0;
     }
+
+    /* Test that the padding behavior of the deprecated API is
+     * preserved. */
+    ret = EVP_DecodeBlock(out, (const uint8_t*)t->encoded, strlen(t->encoded));
+    if (ret < 0) {
+      fprintf(stderr, "decode(\"%s\") failed\n", t->encoded);
+      return 0;
+    }
+    if (ret % 3 != 0) {
+      fprintf(stderr, "EVP_DecodeBlock did not ignore padding\n");
+      return 0;
+    }
+    if (expected_len % 3 != 0) {
+      ret -= 3 - (expected_len % 3);
+    }
+    if (ret != strlen(t->decoded) ||
+        memcmp(out, t->decoded, ret) != 0) {
+      fprintf(stderr, "decode(\"%s\") = \"%.*s\", want \"%s\"\n",
+              t->encoded, ret, (const char*)out, t->decoded);
+      return 0;
+    }
   }
 
-  if (EVP_DecodeBlock(out, (const uint8_t*)"a!bc", 4) >= 0) {
+  if (EVP_DecodeBase64(out, &len, sizeof(out), (const uint8_t*)"a!bc", 4)) {
     fprintf(stderr, "Failed to reject invalid characters in the middle.\n");
     return 0;
   }
 
-  if (EVP_DecodeBlock(out, (const uint8_t*)"abc", 3) >= 0) {
+  if (EVP_DecodeBase64(out, &len, sizeof(out), (const uint8_t*)"a=bc", 4)) {
+    fprintf(stderr, "Failed to reject invalid characters in the middle.\n");
+    return 0;
+  }
+
+  if (EVP_DecodeBase64(out, &len, sizeof(out), (const uint8_t*)"abc", 4)) {
     fprintf(stderr, "Failed to reject invalid input length.\n");
     return 0;
   }

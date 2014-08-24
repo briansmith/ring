@@ -111,6 +111,19 @@ OPENSSL_EXPORT int EVP_EncodedLength(size_t *out_len, size_t len);
 
 /* Decoding */
 
+/* EVP_DecodedLength sets |*out_len| to the maximum number of bytes
+ * that will be needed to call |EVP_DecodeBase64| on an input of
+ * length |len|. */
+OPENSSL_EXPORT int EVP_DecodedLength(size_t *out_len, size_t len);
+
+/* EVP_DecodeBase64 decodes |in_len| bytes from base64 and writes
+ * |*out_len| bytes to |out|. |max_out| is the size of the output
+ * buffer. If it is not enough for the maximum output size, the
+ * operation fails. */
+OPENSSL_EXPORT int EVP_DecodeBase64(uint8_t *out, size_t *out_len,
+                                    size_t max_out, const uint8_t *in,
+                                    size_t in_len);
+
 /* EVP_DecodeInit initialises |*ctx|, which is typically stack allocated, for
  * a decoding operation.
  *
@@ -135,11 +148,13 @@ OPENSSL_EXPORT int EVP_DecodeUpdate(EVP_ENCODE_CTX *ctx, uint8_t *out,
 OPENSSL_EXPORT int EVP_DecodeFinal(EVP_ENCODE_CTX *ctx, uint8_t *out,
                                    int *out_len);
 
-/* EVP_DecodeBlock encodes |src_len| bytes from |src| and writes the result to
- * |dst|. It returns the number of bytes written or -1 on error.
+/* Deprecated: EVP_DecodeBlock encodes |src_len| bytes from |src| and
+ * writes the result to |dst|. It returns the number of bytes written
+ * or -1 on error.
  *
  * WARNING: EVP_DecodeBlock's return value does not take padding into
- * account. TODO(davidben): Possible or worth it to fix or add new API? */
+ * account. It also strips leading whitespace and trailing
+ * whitespace. */
 OPENSSL_EXPORT int EVP_DecodeBlock(uint8_t *dst, const uint8_t *src,
                                    size_t src_len);
 
