@@ -1131,11 +1131,14 @@ func addStateMachineCoverageTests(async, splitHandshake bool, protocol protocol)
 				CipherSuites:           []uint16{TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256},
 				NextProtos:             []string{"foo"},
 				SessionTicketsDisabled: true,
+				Bugs: ProtocolBugs{
+					MaxHandshakeRecordLength: maxHandshakeRecordLength,
+				},
 			},
-			flags: []string{
+			flags: append(flags,
 				"-false-start",
 				"-select-next-proto", "foo",
-			},
+			),
 		})
 
 		// Client sends a V2ClientHello.
