@@ -90,12 +90,12 @@ OPENSSL_EXPORT uint8_t *MD4(const uint8_t *data, size_t len, uint8_t *out);
  * transformation using the state from |md4| and 64 bytes from |block|. */
 OPENSSL_EXPORT void MD4_Transform(MD4_CTX *md4, const uint8_t *block);
 
-typedef struct md4_state_st {
+struct md4_state_st {
   uint32_t A, B, C, D;
   uint32_t Nl, Nh;
   uint32_t data[16];
   unsigned int num;
-} MD4_CTX;
+};
 
 
 #if defined(__cplusplus)
