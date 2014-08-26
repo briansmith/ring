@@ -107,8 +107,6 @@ static int cbs_convert_ber(CBS *in, CBB *out, char squash_header,
       }
 
       if (header_len > 0 && CBS_data(&contents)[header_len - 1] == 0x80) {
-        CBB out_context_specific;
-
         /* This is an indefinite length element. If it's a SEQUENCE or SET then
          * we just need to write the out the contents as normal, but with a
          * concrete length prefix.
@@ -116,24 +114,14 @@ static int cbs_convert_ber(CBS *in, CBB *out, char squash_header,
          * If it's a something else then the contents will be a series of BER
          * elements of the same type which need to be concatenated. */
         const char context_specific = (tag & 0xc0) == 0x80;
-        const char simple_type = is_primitive_type(tag);
+        char squash_child_headers = is_primitive_type(tag);
 
-        if (!squash_header) {
-          unsigned out_tag = tag;
-          if (simple_type) {
-            out_tag &= ~CBS_ASN1_CONSTRUCTED;
-          }
-          if (!CBB_add_asn1(out, &out_contents_storage, out_tag)) {
-            return 0;
-          }
-          out_contents = &out_contents_storage;
-        }
-
-        /* If context specific then we peek at the inner tag and replicate it.
-         * This is because NSS produces odd-seeming BER structures where an
-         * indefinite length explicit tag doesn't have the expected actual tag
-         * inside it. */
-        if (context_specific) {
+        /* This is a hack, but it sufficies to handle NSS's output. If we find
+         * an indefinite length, context-specific tag with a definite, primtive
+         * tag inside it, then we assume that the context-specific tag is
+         * implicit and the tags within are fragments of a primitive type that
+         * need to be concatenated. */
+        if (context_specific && (tag & CBS_ASN1_CONSTRUCTED)) {
           CBS in_copy, contents;
           unsigned tag;
           size_t header_len;
@@ -142,23 +130,24 @@ static int cbs_convert_ber(CBS *in, CBB *out, char squash_header,
           if (!CBS_get_any_asn1_element(&in_copy, &contents, &tag, &header_len)) {
             return 0;
           }
-          if (is_eoc(header_len, &contents)) {
-            /* The indefinite-length value is empty. Unread the EOC and
-             * continue. */
-            CBS_init(in, CBS_data(&in_copy), CBS_len(&in_copy));
-            continue;
+          if (CBS_len(&contents) > header_len && is_primitive_type(tag)) {
+            squash_child_headers = 1;
           }
-          if (is_primitive_type(tag)) {
-            tag &= 0x1f;
+        }
+
+        if (!squash_header) {
+          unsigned out_tag = tag;
+          if (squash_child_headers) {
+            out_tag &= ~CBS_ASN1_CONSTRUCTED;
           }
-          if (!CBB_add_asn1(out_contents, &out_context_specific, tag)) {
+          if (!CBB_add_asn1(out, &out_contents_storage, out_tag)) {
             return 0;
           }
-          out_contents = &out_context_specific;
+          out_contents = &out_contents_storage;
         }
 
         if (!cbs_convert_ber(in, out_contents,
-                             context_specific || simple_type,
+                             squash_child_headers,
                              1 /* looking for eoc */, depth + 1)) {
           return 0;
         }

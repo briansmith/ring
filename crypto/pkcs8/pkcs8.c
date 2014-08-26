@@ -707,7 +707,7 @@ static int PKCS12_handle_content_info(CBS *content_info, unsigned depth,
      * PKCS#7 encrypted data inside a PKCS#12 structure is generally an
      * encrypted certificate bag and it's generally encrypted with 40-bit
      * RC2-CBC. */
-    CBS version_bytes, eci, contents_type, ai, encrypted_contents, eci_copy;
+    CBS version_bytes, eci, contents_type, ai, encrypted_contents;
     X509_ALGOR *algor = NULL;
     const uint8_t *inp;
     uint8_t *out;
@@ -721,33 +721,12 @@ static int PKCS12_handle_content_info(CBS *content_info, unsigned depth,
         !CBS_get_asn1(&eci, &contents_type, CBS_ASN1_OBJECT) ||
         /* AlgorithmIdentifier, see
          * https://tools.ietf.org/html/rfc5280#section-4.1.1.2 */
-        !CBS_get_asn1_element(&eci, &ai, CBS_ASN1_SEQUENCE)) {
+        !CBS_get_asn1_element(&eci, &ai, CBS_ASN1_SEQUENCE) ||
+        !CBS_get_asn1(&eci, &encrypted_contents,
+                      CBS_ASN1_CONTEXT_SPECIFIC | 0)) {
       OPENSSL_PUT_ERROR(PKCS8, PKCS12_handle_content_info,
                         PKCS8_R_BAD_PKCS12_DATA);
       goto err;
-    }
-
-    /* At this point, OpenSSL has a context-specific, tag zero with the
-     * ciphertext as the contents. But NSS has a context-specific+constructed,
-     * tag zero with the ciphertext in an OCTETSTRING inside it.
-     *
-     * TODO(agl): this is because the zero tag is implicit, not explicit, and
-     * NSS is just including the OCTET STRING members as part of an
-     * indefinite-length value. Tidy up the BER->DER conversion and remove this
-     * exception. */
-    CBS_init(&eci_copy, CBS_data(&eci), CBS_len(&eci));
-    if (!CBS_get_asn1(&eci, &encrypted_contents,
-                      CBS_ASN1_CONTEXT_SPECIFIC | 0)) {
-      CBS wrapped_encrypted_contents;
-
-      /* Try the NSS way. */
-      if (!CBS_get_asn1(&eci_copy, &wrapped_encrypted_contents,
-                        CBS_ASN1_CONTEXT_SPECIFIC | CBS_ASN1_CONSTRUCTED | 0) ||
-          !CBS_get_asn1(&wrapped_encrypted_contents, &encrypted_contents,
-                        CBS_ASN1_OCTETSTRING)) {
-        OPENSSL_PUT_ERROR(PKCS8, PKCS12_handle_content_info,
-                          PKCS8_R_BAD_PKCS12_DATA);
-      }
     }
 
     if (OBJ_cbs2nid(&contents_type) != NID_pkcs7_data) {
