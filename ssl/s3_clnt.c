@@ -808,6 +808,7 @@ int ssl3_get_server_hello(SSL *s)
 		SSL3_ST_CR_SRVR_HELLO_B,
 		SSL3_MT_SERVER_HELLO,
 		20000, /* ?? */
+		SSL_GET_MESSAGE_HASH_MESSAGE,
 		&ok);
 
 	if (!ok) return((int)n);
@@ -1002,6 +1003,7 @@ int ssl3_get_server_certificate(SSL *s)
 		SSL3_ST_CR_CERT_B,
 		SSL3_MT_CERTIFICATE,
 		s->max_cert_list,
+		SSL_GET_MESSAGE_HASH_MESSAGE,
 		&ok);
 
 	if (!ok) return((int)n);
@@ -1162,6 +1164,7 @@ int ssl3_get_server_key_exchange(SSL *s)
 		SSL3_ST_CR_KEY_EXCH_B,
 		-1,
 		s->max_cert_list,
+		SSL_GET_MESSAGE_HASH_MESSAGE,
 		&ok);
 	if (!ok) return((int)n);
 
@@ -1609,6 +1612,7 @@ int ssl3_get_certificate_request(SSL *s)
 		SSL3_ST_CR_CERT_REQ_B,
 		-1,
 		s->max_cert_list,
+		SSL_GET_MESSAGE_HASH_MESSAGE,
 		&ok);
 
 	if (!ok) return((int)n);
@@ -1762,6 +1766,7 @@ int ssl3_get_new_session_ticket(SSL *s)
 		SSL3_ST_CR_SESSION_TICKET_B,
 		SSL3_MT_NEWSESSION_TICKET,
 		16384,
+		SSL_GET_MESSAGE_HASH_MESSAGE,
 		&ok);
 
 	if (!ok)
@@ -1823,6 +1828,7 @@ int ssl3_get_cert_status(SSL *s)
 		SSL3_ST_CR_CERT_STATUS_B,
 		SSL3_MT_CERTIFICATE_STATUS,
 		16384,
+		SSL_GET_MESSAGE_HASH_MESSAGE,
 		&ok);
 
 	if (!ok) return((int)n);
@@ -1883,6 +1889,7 @@ int ssl3_get_server_done(SSL *s)
 		SSL3_ST_CR_SRVR_DONE_B,
 		SSL3_MT_SERVER_DONE,
 		30, /* should be very small, like 0 :-) */
+		SSL_GET_MESSAGE_HASH_MESSAGE,
 		&ok);
 
 	if (!ok) return((int)n);

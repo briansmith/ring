@@ -420,7 +420,7 @@ int dtls1_do_write(SSL *s, int type)
  * Read an entire handshake message.  Handshake messages arrive in
  * fragments.
  */
-long dtls1_get_message(SSL *s, int st1, int stn, int mt, long max, int *ok)
+long dtls1_get_message(SSL *s, int st1, int stn, int mt, long max, int hash_message, int *ok)
 	{
 	int i, al;
 	struct hm_header_st *msg_hdr;
@@ -431,6 +431,10 @@ long dtls1_get_message(SSL *s, int st1, int stn, int mt, long max, int *ok)
 	 * by the absence of an optional handshake message */
 	if (s->s3->tmp.reuse_message)
 		{
+		/* A SSL_GET_MESSAGE_DONT_HASH_MESSAGE call cannot be combined
+		 * with reuse_message; the SSL_GET_MESSAGE_DONT_HASH_MESSAGE
+		 * would have to have been applied to the previous call. */
+		assert(hash_message != SSL_GET_MESSAGE_DONT_HASH_MESSAGE);
 		s->s3->tmp.reuse_message=0;
 		if ((mt >= 0) && (s->s3->tmp.message_type != mt))
 			{
@@ -467,7 +471,10 @@ again:
 	p       -= DTLS1_HM_HEADER_LENGTH;
 	msg_len += DTLS1_HM_HEADER_LENGTH;
 
-	ssl3_finish_mac(s, p, msg_len);
+	s->init_msg = (uint8_t*)s->init_buf->data + DTLS1_HM_HEADER_LENGTH;
+
+	if (hash_message != SSL_GET_MESSAGE_DONT_HASH_MESSAGE)
+		ssl3_hash_current_message(s);
 	if (s->msg_callback)
 		s->msg_callback(0, s->version, SSL3_RT_HANDSHAKE,
 			p, msg_len,
@@ -479,7 +486,6 @@ again:
 	if (!s->d1->listen)
 		s->d1->handshake_read_seq++;
 
-	s->init_msg = (uint8_t*)s->init_buf->data + DTLS1_HM_HEADER_LENGTH;
 	return s->init_num;
 
 f_err:

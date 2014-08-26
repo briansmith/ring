@@ -235,6 +235,7 @@ int ssl3_get_finished(SSL *s, int a, int b)
 		b,
 		SSL3_MT_FINISHED,
 		64, /* should actually be 36+4 :-) */
+		SSL_GET_MESSAGE_HASH_MESSAGE,
 		&ok);
 
 	if (!ok) return((int)n);
@@ -337,7 +338,7 @@ unsigned long ssl3_output_cert_chain(SSL *s, CERT_PKEY *cpk)
  * The first four bytes (msg_type and length) are read in state 'st1',
  * the body is read in state 'stn'.
  */
-long ssl3_get_message(SSL *s, int st1, int stn, int mt, long max, int *ok)
+long ssl3_get_message(SSL *s, int st1, int stn, int mt, long max, int hash_message, int *ok)
 	{
 	unsigned char *p;
 	unsigned long l;
@@ -346,6 +347,10 @@ long ssl3_get_message(SSL *s, int st1, int stn, int mt, long max, int *ok)
 
 	if (s->s3->tmp.reuse_message)
 		{
+		/* A SSL_GET_MESSAGE_DONT_HASH_MESSAGE call cannot be combined
+		 * with reuse_message; the SSL_GET_MESSAGE_DONT_HASH_MESSAGE
+		 * would have to have been applied to the previous call. */
+		assert(hash_message != SSL_GET_MESSAGE_DONT_HASH_MESSAGE);
 		s->s3->tmp.reuse_message=0;
 		if ((mt >= 0) && (s->s3->tmp.message_type != mt))
 			{
@@ -469,8 +474,8 @@ long ssl3_get_message(SSL *s, int st1, int stn, int mt, long max, int *ok)
 #endif
 
 	/* Feed this message into MAC computation. */
-	if (*((unsigned char*) s->init_buf->data) != SSL3_MT_ENCRYPTED_EXTENSIONS)
-		ssl3_finish_mac(s, (unsigned char *)s->init_buf->data, s->init_num + 4);
+	if (hash_message != SSL_GET_MESSAGE_DONT_HASH_MESSAGE)
+		ssl3_hash_current_message(s);
 	if (s->msg_callback)
 		s->msg_callback(0, s->version, SSL3_RT_HANDSHAKE, s->init_buf->data, (size_t)s->init_num + 4, s, s->msg_callback_arg);
 	*ok=1;
@@ -480,6 +485,13 @@ f_err:
 err:
 	*ok=0;
 	return(-1);
+	}
+
+void ssl3_hash_current_message(SSL *s)
+	{
+	/* The handshake header (different size between DTLS and TLS) is included in the hash. */
+	size_t header_len = s->init_msg - (uint8_t *)s->init_buf->data;
+	ssl3_finish_mac(s, (uint8_t *)s->init_buf->data, s->init_num + header_len);
 	}
 
 int ssl_cert_type(X509 *x, EVP_PKEY *pkey)
