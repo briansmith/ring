@@ -185,15 +185,6 @@ struct ccm128_context {
   void *key;
 };
 
-#if (defined(_WIN32) || defined(_WIN64)) && !defined(__MINGW32__)
-#define U64(C) C##UI64
-#elif defined(__arch64__)
-#define U64(C) C##UL
-#else
-#define U64(C) C##ULL
-#endif
-
-
 #if defined(OPENSSL_X86) || defined(OPENSSL_X86_64)
 /* crypto_gcm_clmul_enabled returns one if the CLMUL implementation of GCM is
  * used. */

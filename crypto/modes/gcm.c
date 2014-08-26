@@ -54,6 +54,7 @@
 #include <openssl/cpu.h>
 
 #include "internal.h"
+#include "../internal.h"
 
 
 #if !defined(OPENSSL_NO_ASM) && \
@@ -70,17 +71,17 @@
 #endif
 
 #define PACK(s) ((size_t)(s) << (sizeof(size_t) * 8 - 16))
-#define REDUCE1BIT(V)                                     \
-  do {                                                    \
-    if (sizeof(size_t) == 8) {                            \
-      uint64_t T = U64(0xe100000000000000) & (0 - (V.lo & 1)); \
-      V.lo = (V.hi << 63) | (V.lo >> 1);                  \
-      V.hi = (V.hi >> 1) ^ T;                             \
-    } else {                                              \
-      uint32_t T = 0xe1000000U & (0 - (uint32_t)(V.lo & 1));        \
-      V.lo = (V.hi << 63) | (V.lo >> 1);                  \
-      V.hi = (V.hi >> 1) ^ ((uint64_t)T << 32);                \
-    }                                                     \
+#define REDUCE1BIT(V)                                                  \
+  do {                                                                 \
+    if (sizeof(size_t) == 8) {                                         \
+      uint64_t T = OPENSSL_U64(0xe100000000000000) & (0 - (V.lo & 1)); \
+      V.lo = (V.hi << 63) | (V.lo >> 1);                               \
+      V.hi = (V.hi >> 1) ^ T;                                          \
+    } else {                                                           \
+      uint32_t T = 0xe1000000U & (0 - (uint32_t)(V.lo & 1));           \
+      V.lo = (V.hi << 63) | (V.lo >> 1);                               \
+      V.hi = (V.hi >> 1) ^ ((uint64_t)T << 32);                        \
+    }                                                                  \
   } while (0)
 
 
@@ -542,7 +543,7 @@ int CRYPTO_gcm128_aad(GCM128_CONTEXT *ctx, const uint8_t *aad, size_t len) {
   }
 
   alen += len;
-  if (alen > (U64(1) << 61) || (sizeof(len) == 8 && alen < len)) {
+  if (alen > (OPENSSL_U64(1) << 61) || (sizeof(len) == 8 && alen < len)) {
     return 0;
   }
   ctx->len.u[0] = alen;
@@ -608,7 +609,8 @@ int CRYPTO_gcm128_encrypt(GCM128_CONTEXT *ctx, const unsigned char *in,
 #endif
 
   mlen += len;
-  if (mlen > ((U64(1) << 36) - 32) || (sizeof(len) == 8 && mlen < len)) {
+  if (mlen > ((OPENSSL_U64(1) << 36) - 32) ||
+      (sizeof(len) == 8 && mlen < len)) {
     return 0;
   }
   ctx->len.u[1] = mlen;
@@ -767,7 +769,8 @@ int CRYPTO_gcm128_decrypt(GCM128_CONTEXT *ctx, const unsigned char *in,
 #endif
 
   mlen += len;
-  if (mlen > ((U64(1) << 36) - 32) || (sizeof(len) == 8 && mlen < len)) {
+  if (mlen > ((OPENSSL_U64(1) << 36) - 32) ||
+      (sizeof(len) == 8 && mlen < len)) {
     return 0;
   }
   ctx->len.u[1] = mlen;
@@ -932,7 +935,8 @@ int CRYPTO_gcm128_encrypt_ctr32(GCM128_CONTEXT *ctx, const uint8_t *in,
 #endif
 
   mlen += len;
-  if (mlen > ((U64(1) << 36) - 32) || (sizeof(len) == 8 && mlen < len)) {
+  if (mlen > ((OPENSSL_U64(1) << 36) - 32) ||
+      (sizeof(len) == 8 && mlen < len)) {
     return 0;
   }
   ctx->len.u[1] = mlen;
@@ -1041,7 +1045,8 @@ int CRYPTO_gcm128_decrypt_ctr32(GCM128_CONTEXT *ctx, const uint8_t *in,
 #endif
 
   mlen += len;
-  if (mlen > ((U64(1) << 36) - 32) || (sizeof(len) == 8 && mlen < len)) {
+  if (mlen > ((OPENSSL_U64(1) << 36) - 32) ||
+      (sizeof(len) == 8 && mlen < len)) {
     return 0;
   }
   ctx->len.u[1] = mlen;
