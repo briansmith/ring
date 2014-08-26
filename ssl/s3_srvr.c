@@ -486,54 +486,6 @@ int ssl3_accept(SSL *s)
 				goto end;
 			s->state=SSL3_ST_SR_CERT_VRFY_A;
 			s->init_num=0;
-
-			/* TODO(davidben): These two blocks are different
-			 * between SSL and DTLS. Resolve the difference and code
-			 * duplication. */
-			if (SSL_USE_SIGALGS(s))
-				{
-				if (!s->session->peer)
-					break;
-				/* For sigalgs freeze the handshake buffer
-				 * at this point and digest cached records.
-				 */
-				if (!s->s3->handshake_buffer)
-					{
-					OPENSSL_PUT_ERROR(SSL, ssl3_accept, ERR_R_INTERNAL_ERROR);
-					return -1;
-					}
-				s->s3->flags |= TLS1_FLAGS_KEEP_HANDSHAKE;
-				if (!ssl3_digest_cached_records(s))
-					return -1;
-				}
-			else
-				{
-				int offset=0;
-				int dgst_num;
-
-				/* We need to get hashes here so if there is
-				 * a client cert, it can be verified
-				 * FIXME - digest processing for CertificateVerify
-				 * should be generalized. But it is next step
-				 */
-				if (s->s3->handshake_buffer)
-					if (!ssl3_digest_cached_records(s))
-						return -1;
-				for (dgst_num=0; dgst_num<SSL_MAX_DIGEST;dgst_num++)	
-					if (s->s3->handshake_dgst[dgst_num]) 
-						{
-						int dgst_size;
-
-						s->method->ssl3_enc->cert_verify_mac(s,EVP_MD_CTX_type(s->s3->handshake_dgst[dgst_num]),&(s->s3->tmp.cert_verify_md[offset]));
-						dgst_size=EVP_MD_CTX_size(s->s3->handshake_dgst[dgst_num]);
-						if (dgst_size < 0)
-							{
-							ret = -1;
-							goto end;
-							}
-						offset+=dgst_size;
-						}		
-				}
 			break;
 
 		case SSL3_ST_SR_CERT_VRFY_A:
@@ -2298,24 +2250,24 @@ err:
 
 int ssl3_get_cert_verify(SSL *s)
 	{
-	EVP_PKEY *pkey=NULL;
 	int al,ok,ret=0;
 	long n;
 	CBS certificate_verify, signature;
-	int type = 0;
 	X509 *peer = s->session->peer;
+	EVP_PKEY *pkey = NULL;
 	const EVP_MD *md = NULL;
-	EVP_MD_CTX mctx;
-
-	EVP_MD_CTX_init(&mctx);
+	uint8_t digest[EVP_MAX_MD_SIZE];
+	size_t digest_length;
+	EVP_PKEY_CTX *pctx = NULL;
 
 	/* Only RSA and ECDSA client certificates are supported, so a
 	 * CertificateVerify is required if and only if there's a
 	 * client certificate. */
 	if (peer == NULL)
 		{
-		ret = 1;
-		goto done_with_buffer;
+		if (s->s3->handshake_buffer && !ssl3_digest_cached_records(s))
+			return -1;
+		return 1;
 		}
 
 	n=s->method->ssl_get_message(s,
@@ -2323,20 +2275,17 @@ int ssl3_get_cert_verify(SSL *s)
 		SSL3_ST_SR_CERT_VRFY_B,
 		SSL3_MT_CERTIFICATE_VERIFY,
 		SSL3_RT_MAX_PLAIN_LENGTH,
-		SSL_GET_MESSAGE_HASH_MESSAGE,
+		SSL_GET_MESSAGE_DONT_HASH_MESSAGE,
 		&ok);
 
 	if (!ok)
-		{
-		ret = (int)n;
-		goto done;
-		}
+		return (int)n;
 
+	/* Filter out unsupported certificate types. */
 	pkey = X509_get_pubkey(peer);
-	type = X509_certificate_type(peer,pkey);
-	if (!(type & EVP_PKT_SIGN))
+	if (!(X509_certificate_type(peer, pkey) & EVP_PKT_SIGN) ||
+		(pkey->type != EVP_PKEY_RSA && pkey->type != EVP_PKEY_EC))
 		{
-		/* If it's not a signing certificate, it's unsupported. */
 		al = SSL_AD_UNSUPPORTED_CERTIFICATE;
 		OPENSSL_PUT_ERROR(SSL, ssl3_get_cert_verify, SSL_R_PEER_ERROR_UNSUPPORTED_CERTIFICATE_TYPE);
 		goto f_err;
@@ -2344,16 +2293,24 @@ int ssl3_get_cert_verify(SSL *s)
 
 	CBS_init(&certificate_verify, s->init_msg, n);
 
-	/* We now have a signature that we need to verify. */
-	/* TODO(davidben): This should share code with
-	 * ssl3_get_server_key_exchange. */
-
+	/* Determine the digest type if needbe. */
 	if (SSL_USE_SIGALGS(s))
 		{
 		if (!tls12_check_peer_sigalg(&md, &al, s, &certificate_verify, pkey))
 			goto f_err;
 		}
 
+	/* Compute the digest. */
+	if (!ssl3_cert_verify_hash(s, digest, &digest_length, &md, pkey))
+		goto err;
+
+	/* The handshake buffer is no longer necessary, and we may hash the
+	 * current message.*/
+	if (s->s3->handshake_buffer && !ssl3_digest_cached_records(s))
+		goto err;
+	ssl3_hash_current_message(s);
+
+	/* Parse and verify the signature. */
 	if (!CBS_get_u16_length_prefixed(&certificate_verify, &signature) ||
 		CBS_len(&certificate_verify) != 0)
 		{
@@ -2362,87 +2319,27 @@ int ssl3_get_cert_verify(SSL *s)
 		goto f_err;
 		}
 
-	if (SSL_USE_SIGALGS(s))
+	pctx = EVP_PKEY_CTX_new(pkey, NULL);
+	if (pctx == NULL)
+		goto err;
+	if (!EVP_PKEY_verify_init(pctx) ||
+		!EVP_PKEY_CTX_set_signature_md(pctx, md) ||
+		!EVP_PKEY_verify(pctx, CBS_data(&signature), CBS_len(&signature),
+			digest, digest_length))
 		{
-		size_t hdatalen;
-		const uint8_t *hdata;
-		if (!BIO_mem_contents(s->s3->handshake_buffer, &hdata, &hdatalen))
-			{
-			OPENSSL_PUT_ERROR(SSL, ssl3_get_cert_verify, ERR_R_INTERNAL_ERROR);
-			al=SSL_AD_INTERNAL_ERROR;
-			goto f_err;
-			}
-		if (!EVP_VerifyInit_ex(&mctx, md, NULL)
-			|| !EVP_VerifyUpdate(&mctx, hdata, hdatalen))
-			{
-			OPENSSL_PUT_ERROR(SSL, ssl3_get_cert_verify, ERR_R_EVP_LIB);
-			al=SSL_AD_INTERNAL_ERROR;
-			goto f_err;
-			}
-
-		if (EVP_VerifyFinal(&mctx,
-				CBS_data(&signature), CBS_len(&signature),
-				pkey) <= 0)
-			{
-			al=SSL_AD_DECRYPT_ERROR;
-			OPENSSL_PUT_ERROR(SSL, ssl3_get_cert_verify, SSL_R_BAD_SIGNATURE);
-			goto f_err;
-			}
-		}
-	else
-	if (pkey->type == EVP_PKEY_RSA)
-		{
-		if (!RSA_verify(NID_md5_sha1, s->s3->tmp.cert_verify_md,
-				MD5_DIGEST_LENGTH+SHA_DIGEST_LENGTH,
-				CBS_data(&signature), CBS_len(&signature),
-				pkey->pkey.rsa))
-			{
-			al = SSL_AD_DECRYPT_ERROR;
-			OPENSSL_PUT_ERROR(SSL, ssl3_get_cert_verify, SSL_R_BAD_RSA_SIGNATURE);
-			goto f_err;
-			}
-		}
-	else
-#ifndef OPENSSL_NO_ECDSA
-		if (pkey->type == EVP_PKEY_EC)
-		{
-		if (!ECDSA_verify(pkey->save_type,
-				&(s->s3->tmp.cert_verify_md[MD5_DIGEST_LENGTH]),
-				SHA_DIGEST_LENGTH,
-				CBS_data(&signature), CBS_len(&signature),
-				pkey->pkey.ec))
-			{
-			/* bad signature */
-			al = SSL_AD_DECRYPT_ERROR;
-			OPENSSL_PUT_ERROR(SSL, ssl3_get_cert_verify, SSL_R_BAD_ECDSA_SIGNATURE);
-			goto f_err;
-			}
-		}
-	else
-#endif
-		{
-		OPENSSL_PUT_ERROR(SSL, ssl3_get_cert_verify, ERR_R_INTERNAL_ERROR);
-		al=SSL_AD_UNSUPPORTED_CERTIFICATE;
+		al = SSL_AD_DECRYPT_ERROR;
+		OPENSSL_PUT_ERROR(SSL, ssl3_get_cert_verify, SSL_R_BAD_SIGNATURE);
 		goto f_err;
 		}
 
-
-	ret=1;
+	ret = 1;
 	if (0)
 		{
 f_err:
 		ssl3_send_alert(s,SSL3_AL_FATAL,al);
 		}
-done_with_buffer:
-	/* There is no more need for the handshake buffer. */
-	if (s->s3->handshake_buffer)
-		{
-		BIO_free(s->s3->handshake_buffer);
-		s->s3->handshake_buffer = NULL;
-		s->s3->flags &= ~TLS1_FLAGS_KEEP_HANDSHAKE;
-		}
-done:
-	EVP_MD_CTX_cleanup(&mctx);
+err:
+	EVP_PKEY_CTX_free(pctx);
 	EVP_PKEY_free(pkey);
 	return(ret);
 	}

@@ -118,8 +118,10 @@
 #include <openssl/buf.h>
 #include <openssl/evp.h>
 #include <openssl/mem.h>
+#include <openssl/md5.h>
 #include <openssl/obj.h>
 #include <openssl/rand.h>
+#include <openssl/sha.h>
 #include <openssl/x509.h>
 
 #include "ssl_locl.h"
@@ -481,6 +483,66 @@ void ssl3_hash_current_message(SSL *s)
 	/* The handshake header (different size between DTLS and TLS) is included in the hash. */
 	size_t header_len = s->init_msg - (uint8_t *)s->init_buf->data;
 	ssl3_finish_mac(s, (uint8_t *)s->init_buf->data, s->init_num + header_len);
+	}
+
+/* ssl3_cert_verify_hash is documented as needing EVP_MAX_MD_SIZE because that
+ * is sufficient pre-TLS1.2 as well. */
+OPENSSL_COMPILE_ASSERT(EVP_MAX_MD_SIZE > MD5_DIGEST_LENGTH + SHA_DIGEST_LENGTH,
+	combined_tls_hash_fits_in_max);
+
+int ssl3_cert_verify_hash(SSL *s, uint8_t *out, size_t *out_len, const EVP_MD **out_md, EVP_PKEY *pkey)
+	{
+	/* For TLS v1.2 send signature algorithm and signature using
+	 * agreed digest and cached handshake records. Otherwise, use
+	 * SHA1 or MD5 + SHA1 depending on key type.  */
+	if (SSL_USE_SIGALGS(s))
+		{
+		const uint8_t *hdata;
+		size_t hdatalen;
+		EVP_MD_CTX mctx;
+		unsigned len;
+
+		if (!BIO_mem_contents(s->s3->handshake_buffer, &hdata, &hdatalen))
+			{
+			OPENSSL_PUT_ERROR(SSL, ssl3_cert_verify_hash, ERR_R_INTERNAL_ERROR);
+			return 0;
+			}
+		EVP_MD_CTX_init(&mctx);
+		if (!EVP_DigestInit_ex(&mctx, *out_md, NULL)
+			|| !EVP_DigestUpdate(&mctx, hdata, hdatalen)
+			|| !EVP_DigestFinal(&mctx, out, &len))
+			{
+			OPENSSL_PUT_ERROR(SSL, ssl3_cert_verify_hash, ERR_R_EVP_LIB);
+			EVP_MD_CTX_cleanup(&mctx);
+			return 0;
+			}
+		*out_len = len;
+		}
+	else if (pkey->type == EVP_PKEY_RSA)
+		{
+		if (s->method->ssl3_enc->cert_verify_mac(s, NID_md5, out) == 0 ||
+			s->method->ssl3_enc->cert_verify_mac(s,
+				NID_sha1, out + MD5_DIGEST_LENGTH) == 0)
+			return 0;
+		*out_len = MD5_DIGEST_LENGTH + SHA_DIGEST_LENGTH;
+		/* Using a NULL signature MD makes EVP_PKEY_sign perform
+		 * a raw RSA signature, rather than wrapping in a
+		 * DigestInfo. */
+		*out_md = NULL;
+		}
+	else if (pkey->type == EVP_PKEY_EC)
+		{
+		if (s->method->ssl3_enc->cert_verify_mac(s, NID_sha1, out) == 0)
+			return 0;
+		*out_len = SHA_DIGEST_LENGTH;
+		*out_md = EVP_sha1();
+		}
+	else
+		{
+		OPENSSL_PUT_ERROR(SSL, ssl3_cert_verify_hash, ERR_R_INTERNAL_ERROR);
+		return 0;
+		}
+	return 1;
 	}
 
 int ssl_cert_type(X509 *x, EVP_PKEY *pkey)

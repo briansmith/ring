@@ -485,37 +485,6 @@ int dtls1_accept(SSL *s)
 				goto end;
 			s->state=SSL3_ST_SR_CERT_VRFY_A;
 			s->init_num=0;
-
-			/* TODO(davidben): These two blocks are different
-			 * between SSL and DTLS. Resolve the difference and code
-			 * duplication. */
-			if (SSL_USE_SIGALGS(s))
-				{
-				if (!s->session->peer)
-					break;
-				/* For sigalgs freeze the handshake buffer
-				 * at this point and digest cached records.
-				 */
-				if (!s->s3->handshake_buffer)
-					{
-					OPENSSL_PUT_ERROR(SSL, dtls1_accept, ERR_R_INTERNAL_ERROR);
-					return -1;
-					}
-				s->s3->flags |= TLS1_FLAGS_KEEP_HANDSHAKE;
-				if (!ssl3_digest_cached_records(s))
-					return -1;
-				}
-			else
-				{
-				/* We need to get hashes here so if there is
-				 * a client cert, it can be verified */ 
-				s->method->ssl3_enc->cert_verify_mac(s,
-					NID_md5,
-					&(s->s3->tmp.cert_verify_md[0]));
-				s->method->ssl3_enc->cert_verify_mac(s,
-					NID_sha1,
-					&(s->s3->tmp.cert_verify_md[MD5_DIGEST_LENGTH]));
-				}
 			break;
 
 		case SSL3_ST_SR_CERT_VRFY_A:

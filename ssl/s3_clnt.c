@@ -2315,69 +2315,41 @@ err:
 int ssl3_send_cert_verify(SSL *s)
 	{
 	unsigned char *buf, *p;
-	const EVP_MD *md;
+	const EVP_MD *md = NULL;
 	uint8_t digest[EVP_MAX_MD_SIZE];
-	unsigned digest_length;
+	size_t digest_length;
 	EVP_PKEY *pkey;
 	EVP_PKEY_CTX *pctx = NULL;
-	EVP_MD_CTX mctx;
 	size_t signature_length = 0;
 	unsigned long n = 0;
 
-	EVP_MD_CTX_init(&mctx);
 	buf=(unsigned char *)s->init_buf->data;
 
 	if (s->state == SSL3_ST_CW_CERT_VRFY_A)
 		{
 		p= ssl_handshake_start(s);
 		pkey = s->cert->key->privatekey;
-		/* For TLS v1.2 send signature algorithm and signature using
-		 * agreed digest and cached handshake records. Otherwise, use
-		 * SHA1 or MD5 + SHA1 depending on key type.
-		 */
+
+		/* Write out the digest type if needbe. */
 		if (SSL_USE_SIGALGS(s))
 			{
-			const uint8_t *hdata;
-			size_t hdatalen;
 			md = s->cert->key->digest;
-			if (!BIO_mem_contents(s->s3->handshake_buffer, &hdata, &hdatalen) ||
-			    !tls12_get_sigandhash(p, pkey, md))
+			if (!tls12_get_sigandhash(p, pkey, md))
 				{
 				OPENSSL_PUT_ERROR(SSL, ssl3_send_cert_verify, ERR_R_INTERNAL_ERROR);
 				goto err;
 				}
 			p += 2;
 			n += 2;
-			if (!EVP_DigestInit_ex(&mctx, md, NULL)
-				|| !EVP_DigestUpdate(&mctx, hdata, hdatalen)
-				|| !EVP_DigestFinal(&mctx, digest, &digest_length))
-				{
-				OPENSSL_PUT_ERROR(SSL, ssl3_send_cert_verify, ERR_R_EVP_LIB);
-				goto err;
-				}
 			}
-		else if (pkey->type == EVP_PKEY_RSA)
-			{
-			s->method->ssl3_enc->cert_verify_mac(s, NID_md5, digest);
-			s->method->ssl3_enc->cert_verify_mac(s,
-				NID_sha1, &digest[MD5_DIGEST_LENGTH]);
-			digest_length = MD5_DIGEST_LENGTH + SHA_DIGEST_LENGTH;
-			/* Using a NULL signature MD makes EVP_PKEY_sign perform
-			 * a raw RSA signature, rather than wrapping in a
-			 * DigestInfo. */
-			md = NULL;
-			}
-		else if (pkey->type == EVP_PKEY_EC)
-			{
-			s->method->ssl3_enc->cert_verify_mac(s, NID_sha1, digest);
-			digest_length = SHA_DIGEST_LENGTH;
-			md = EVP_sha1();
-			}
-		else
-			{
-			OPENSSL_PUT_ERROR(SSL, ssl3_send_cert_verify, ERR_R_INTERNAL_ERROR);
+
+		/* Compute the digest. */
+		if (!ssl3_cert_verify_hash(s, digest, &digest_length, &md, pkey))
 			goto err;
-			}
+
+		/* The handshake buffer is no longer necessary. */
+		if (s->s3->handshake_buffer && !ssl3_digest_cached_records(s))
+			goto err;
 
 		/* Sign the digest. */
 		pctx = EVP_PKEY_CTX_new(pkey, NULL);
@@ -2385,10 +2357,10 @@ int ssl3_send_cert_verify(SSL *s)
 			goto err;
 
 		/* Initialize the EVP_PKEY_CTX and determine the size of the signature. */
-		if (EVP_PKEY_sign_init(pctx) != 1 ||
-			EVP_PKEY_CTX_set_signature_md(pctx, md) != 1 ||
-			EVP_PKEY_sign(pctx, NULL, &signature_length,
-				digest, digest_length) != 1)
+		if (!EVP_PKEY_sign_init(pctx) ||
+			!EVP_PKEY_CTX_set_signature_md(pctx, md) ||
+			!EVP_PKEY_sign(pctx, NULL, &signature_length,
+				digest, digest_length))
 			{
 			OPENSSL_PUT_ERROR(SSL, ssl3_send_cert_verify, ERR_R_EVP_LIB);
 			goto err;
@@ -2400,8 +2372,8 @@ int ssl3_send_cert_verify(SSL *s)
 			goto err;
 			}
 
-		if (EVP_PKEY_sign(pctx, &p[2], &signature_length,
-				digest, digest_length) != 1)
+		if (!EVP_PKEY_sign(pctx, &p[2], &signature_length,
+				digest, digest_length))
 			{
 			OPENSSL_PUT_ERROR(SSL, ssl3_send_cert_verify, ERR_R_EVP_LIB);
 			goto err;
@@ -2410,22 +2382,12 @@ int ssl3_send_cert_verify(SSL *s)
 		s2n(signature_length, p);
 		n += signature_length + 2;
 
-		/* Now that client auth is completed, we no longer need cached
-		 * handshake records and can digest them. */
-		if (SSL_USE_SIGALGS(s))
-			{
-			if (!ssl3_digest_cached_records(s))
-				goto err;
-			}
-
 		ssl_set_handshake_header(s, SSL3_MT_CERTIFICATE_VERIFY, n);
 		s->state=SSL3_ST_CW_CERT_VRFY_B;
 		}
-	EVP_MD_CTX_cleanup(&mctx);
 	EVP_PKEY_CTX_free(pctx);
 	return ssl_do_write(s);
 err:
-	EVP_MD_CTX_cleanup(&mctx);
 	EVP_PKEY_CTX_free(pctx);
 	return(-1);
 	}
