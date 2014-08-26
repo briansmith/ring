@@ -1695,11 +1695,12 @@ int SSL_enable_signed_cert_timestamps(SSL *ssl)
 
 void SSL_get0_signed_cert_timestamp_list(const SSL *ssl, uint8_t **out, size_t *out_len)
 	{
+	SSL_SESSION *session = ssl->session;
+
 	*out_len = 0;
 	*out = NULL;
 	if (ssl->server)
 		return;
-	SSL_SESSION *session = ssl->session;
 	if (!session || !session->tlsext_signed_cert_timestamp_list)
 		return;
 	*out = session->tlsext_signed_cert_timestamp_list;
