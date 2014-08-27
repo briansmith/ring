@@ -45,7 +45,7 @@ int CBS_get_any_asn1_element(CBS *cbs, CBS *out, unsigned *out_tag,
  * from NSS.
  *
  * It returns one on success and zero otherwise. */
-int CBS_asn1_ber_to_der(CBS *in, uint8_t **out, size_t *out_len);
+OPENSSL_EXPORT int CBS_asn1_ber_to_der(CBS *in, uint8_t **out, size_t *out_len);
 
 
 #if defined(__cplusplus)
