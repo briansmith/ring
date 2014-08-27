@@ -1252,44 +1252,6 @@ long ssl3_ctrl(SSL *s, int cmd, long larg, void *parg)
 		ret = 1;
 		break;
 
-	case SSL_CTRL_SET_TLSEXT_STATUS_REQ_TYPE:
-		s->tlsext_status_type=larg;
-		ret = 1;
-		break;
-
-	case SSL_CTRL_GET_TLSEXT_STATUS_REQ_EXTS:
-		*(STACK_OF(X509_EXTENSION) **)parg = s->tlsext_ocsp_exts;
-		ret = 1;
-		break;
-
-	case SSL_CTRL_SET_TLSEXT_STATUS_REQ_EXTS:
-		s->tlsext_ocsp_exts = parg;
-		ret = 1;
-		break;
-
-	case SSL_CTRL_GET_TLSEXT_STATUS_REQ_IDS:
-		*(STACK_OF(OCSP_RESPID) **)parg = s->tlsext_ocsp_ids;
-		ret = 1;
-		break;
-
-	case SSL_CTRL_SET_TLSEXT_STATUS_REQ_IDS:
-		s->tlsext_ocsp_ids = parg;
-		ret = 1;
-		break;
-
-	case SSL_CTRL_GET_TLSEXT_STATUS_REQ_OCSP_RESP:
-		*(unsigned char **)parg = s->tlsext_ocsp_resp;
-		return s->tlsext_ocsp_resplen;
-		
-	case SSL_CTRL_SET_TLSEXT_STATUS_REQ_OCSP_RESP:
-		if (s->tlsext_ocsp_resp)
-			OPENSSL_free(s->tlsext_ocsp_resp);
-		s->tlsext_ocsp_resp = parg;
-		s->tlsext_ocsp_resplen = larg;
-		ret = 1;
-		break;
-
-
 	case SSL_CTRL_CHAIN:
 		if (larg)
 			return ssl_cert_set1_chain(s->cert,

@@ -309,7 +309,7 @@ int dtls1_connect(SSL *s)
 				{
 				ret=ssl3_get_server_certificate(s);
 				if (ret <= 0) goto end;
-				if (s->tlsext_status_expected)
+				if (s->s3->tmp.certificate_status_expected)
 					s->state=SSL3_ST_CR_CERT_STATUS_A;
 				else
 					s->state=SSL3_ST_CR_KEY_EXCH_A;

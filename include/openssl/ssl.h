@@ -382,6 +382,7 @@ struct ssl_method_st
  *	Peer SHA256 [13]        EXPLICIT OCTET STRING, -- optional SHA256 hash of Peer certifiate
  *	original handshake hash [14] EXPLICIT OCTET STRING, -- optional original handshake hash
  *	tlsext_signed_cert_timestamp_list [15] EXPLICIT OCTET STRING, -- optional signed cert timestamp list extension
+ *	ocsp_response [16] EXPLICIT OCTET STRING, -- optional saved OCSP response from the server
  *	}
  * Look in ssl/ssl_asn1.c for more details
  * I'm using EXPLICIT tags so I can read the damn things using asn1parse :-).
@@ -449,8 +450,14 @@ struct ssl_session_st
 	uint8_t *tlsext_tick;	/* Session ticket */
 	size_t tlsext_ticklen;		/* Session ticket length */
 	uint32_t tlsext_tick_lifetime_hint;	/* Session lifetime hint in seconds */
+
 	size_t tlsext_signed_cert_timestamp_list_length;
 	uint8_t *tlsext_signed_cert_timestamp_list; /* Server's list. */
+
+	/* The OCSP response that came with the session. */
+	size_t ocsp_response_length;
+	uint8_t *ocsp_response;
+
 	char peer_sha256_valid;		/* Non-zero if peer_sha256 is valid */
 	unsigned char peer_sha256[SHA256_DIGEST_LENGTH];  /* SHA256 of peer certificate */
 
@@ -1023,6 +1030,9 @@ struct ssl_ctx_st
 
 	/* If true, a client will request certificate timestamps. */
 	char signed_cert_timestamps_enabled;
+
+	/* If true, a client will request a stapled OCSP response. */
+	char ocsp_stapling_enabled;
 	};
 
 #endif
@@ -1099,6 +1109,15 @@ OPENSSL_EXPORT int SSL_enable_signed_cert_timestamps(SSL *ssl);
  * client SSL objects created from |ctx|. */
 OPENSSL_EXPORT void SSL_CTX_enable_signed_cert_timestamps(SSL_CTX *ctx);
 
+/* SSL_enable_signed_cert_timestamps causes |ssl| (which must be the client end
+ * of a connection) to request a stapled OCSP response from the server. Returns
+ * 1 on success. */
+OPENSSL_EXPORT int SSL_enable_ocsp_stapling(SSL *ssl);
+
+/* SSL_CTX_enable_ocsp_stapling enables OCSP stapling on all client SSL objects
+ * created from |ctx|. */
+OPENSSL_EXPORT void SSL_CTX_enable_ocsp_stapling(SSL_CTX *ctx);
+
 /* SSL_get0_signed_cert_timestamp_list sets |*out| and |*out_len| to point to
  * |*out_len| bytes of SCT information from the server. This is only valid if
  * |ssl| is a client. The SCT information is a SignedCertificateTimestampList
@@ -1108,6 +1127,13 @@ OPENSSL_EXPORT void SSL_CTX_enable_signed_cert_timestamps(SSL_CTX *ctx);
  *
  * WARNING: the returned data is not guaranteed to be well formed. */
 OPENSSL_EXPORT void SSL_get0_signed_cert_timestamp_list(const SSL *ssl, uint8_t **out, size_t *out_len);
+
+/* SSL_get0_ocsp_response sets |*out| and |*out_len| to point to |*out_len|
+ * bytes of an OCSP response from the server. This is the DER encoding of an
+ * OCSPResponse type as defined in RFC 2560.
+ *
+ * WARNING: the returned data is not guaranteed to be well formed. */
+OPENSSL_EXPORT void SSL_get0_ocsp_response(const SSL *ssl, uint8_t **out, size_t *out_len);
 
 OPENSSL_EXPORT void SSL_CTX_set_next_protos_advertised_cb(SSL_CTX *s,
 					   int (*cb) (SSL *ssl,
@@ -1354,17 +1380,6 @@ struct ssl_st
 	                          1 : prepare 2, allow last ack just after in server callback.
 	                          2 : don't call servername callback, no ack in server hello
 	                       */
-	/* certificate status request info */
-	/* Status type or -1 if no status type */
-	int tlsext_status_type;
-	/* Expect OCSP CertificateStatus message */
-	int tlsext_status_expected;
-	/* OCSP status request only */
-	STACK_OF(OCSP_RESPID) *tlsext_ocsp_ids;
-	X509_EXTENSIONS *tlsext_ocsp_exts;
-	/* OCSP response received or to be sent */
-	uint8_t *tlsext_ocsp_resp;
-	int tlsext_ocsp_resplen;
 
 	/* RFC4507 session ticket expected to be received or sent */
 	int tlsext_ticket_expected;
@@ -1408,6 +1423,11 @@ struct ssl_st
 
 	/* Enable signed certificate time stamps. Currently client only. */
 	char signed_cert_timestamps_enabled;
+
+	/* Enable OCSP stapling. Currently client only.
+	 * TODO(davidben): Add a server-side implementation when it becomes
+	 * necesary. */
+	char ocsp_stapling_enabled;
 
 	/* For a client, this contains the list of supported protocols in wire
 	 * format. */
@@ -1648,13 +1668,6 @@ DECLARE_PEM_rw(SSL_SESSION, SSL_SESSION)
 #define SSL_CTRL_SET_TLSEXT_TICKET_KEYS		59
 #define SSL_CTRL_SET_TLSEXT_STATUS_REQ_CB	63
 #define SSL_CTRL_SET_TLSEXT_STATUS_REQ_CB_ARG	64
-#define SSL_CTRL_SET_TLSEXT_STATUS_REQ_TYPE	65
-#define SSL_CTRL_GET_TLSEXT_STATUS_REQ_EXTS	66
-#define SSL_CTRL_SET_TLSEXT_STATUS_REQ_EXTS	67
-#define SSL_CTRL_GET_TLSEXT_STATUS_REQ_IDS	68
-#define SSL_CTRL_SET_TLSEXT_STATUS_REQ_IDS	69
-#define SSL_CTRL_GET_TLSEXT_STATUS_REQ_OCSP_RESP	70
-#define SSL_CTRL_SET_TLSEXT_STATUS_REQ_OCSP_RESP	71
 
 #define SSL_CTRL_SET_TLSEXT_TICKET_KEY_CB	72
 

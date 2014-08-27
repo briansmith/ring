@@ -716,6 +716,8 @@ void SSL_SESSION_free(SSL_SESSION *ss)
 	if (ss->tlsext_ellipticcurvelist != NULL) OPENSSL_free(ss->tlsext_ellipticcurvelist);
 	if (ss->tlsext_signed_cert_timestamp_list != NULL)
 		OPENSSL_free(ss->tlsext_signed_cert_timestamp_list);
+	if (ss->ocsp_response != NULL)
+		OPENSSL_free(ss->ocsp_response);
 	if (ss->psk_identity_hint != NULL)
 		OPENSSL_free(ss->psk_identity_hint);
 	if (ss->psk_identity != NULL)

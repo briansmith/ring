@@ -352,7 +352,7 @@ int ssl3_accept(SSL *s)
 				{
 				ret=ssl3_send_server_certificate(s);
 				if (ret <= 0) goto end;
-				if (s->tlsext_status_expected)
+				if (s->s3->tmp.certificate_status_expected)
 					s->state=SSL3_ST_SW_CERT_STATUS_A;
 				else
 					s->state=SSL3_ST_SW_KEY_EXCH_A;
@@ -569,6 +569,8 @@ int ssl3_accept(SSL *s)
 			s->init_num=0;
 			break;
 
+#if 0
+		// TODO(davidben): Implement OCSP stapling on the server.
 		case SSL3_ST_SW_CERT_STATUS_A:
 		case SSL3_ST_SW_CERT_STATUS_B:
 			ret=ssl3_send_cert_status(s);
@@ -576,6 +578,7 @@ int ssl3_accept(SSL *s)
 			s->state=SSL3_ST_SW_KEY_EXCH_A;
 			s->init_num=0;
 			break;
+#endif
 
 		case SSL3_ST_SW_CHANGE_A:
 		case SSL3_ST_SW_CHANGE_B:
@@ -1136,16 +1139,6 @@ int ssl3_get_client_hello(SSL *s)
 	 * s->hit		- session reuse flag
 	 * s->tmp.new_cipher	- the new cipher to use.
 	 */
-
-	/* Handles TLS extensions that we couldn't check earlier */
-	if (s->version >= SSL3_VERSION)
-		{
-		if (ssl_check_clienthello_tlsext_late(s) <= 0)
-			{
-			OPENSSL_PUT_ERROR(SSL, ssl3_get_client_hello, SSL_R_CLIENTHELLO_TLSEXT);
-			goto err;
-			}
-		}
 
 	if (ret < 0) ret=-ret;
 	if (0)
@@ -2651,6 +2644,7 @@ int ssl3_send_new_session_ticket(SSL *s)
 	return ssl_do_write(s);
 	}
 
+#if 0
 int ssl3_send_cert_status(SSL *s)
 	{
 	if (s->state == SSL3_ST_SW_CERT_STATUS_A)
@@ -2685,6 +2679,7 @@ int ssl3_send_cert_status(SSL *s)
 	/* SSL3_ST_SW_CERT_STATUS_B */
 	return(ssl3_do_write(s,SSL3_RT_HANDSHAKE));
 	}
+#endif
 
 /* ssl3_get_next_proto reads a Next Protocol Negotiation handshake message. It
  * sets the next_proto member in s if found */

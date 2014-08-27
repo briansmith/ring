@@ -299,7 +299,7 @@ int ssl3_connect(SSL *s)
 				{
 				ret=ssl3_get_server_certificate(s);
 				if (ret <= 0) goto end;
-				if (s->tlsext_status_expected)
+				if (s->s3->tmp.certificate_status_expected)
 					s->state=SSL3_ST_CR_CERT_STATUS_A;
 				else
 					s->state=SSL3_ST_CR_KEY_EXCH_A;
@@ -1798,7 +1798,6 @@ int ssl3_get_cert_status(SSL *s)
 	long n;
 	CBS certificate_status, ocsp_response;
 	uint8_t status_type;
-	size_t resplen;
 
 	n=s->method->ssl_get_message(s,
 		SSL3_ST_CR_CERT_STATUS_A,
@@ -1822,33 +1821,12 @@ int ssl3_get_cert_status(SSL *s)
 		goto f_err;
 		}
 
-	/* TODO(davidben): Make tlsext_ocsp_resplen a
-	 * size_t. Currently it uses -1 to signal no response. The
-	 * spec does not allow ocsp_response to be zero-length, so
-	 * using 0 should be fine. */
-	if (!CBS_stow(&ocsp_response, &s->tlsext_ocsp_resp, &resplen))
+	if (!CBS_stow(&ocsp_response,
+			&s->session->ocsp_response, &s->session->ocsp_response_length))
 		{
 		al = SSL_AD_INTERNAL_ERROR;
 		OPENSSL_PUT_ERROR(SSL, ssl3_get_cert_status, ERR_R_MALLOC_FAILURE);
 		goto f_err;
-		}
-	s->tlsext_ocsp_resplen = resplen;
-	if (s->ctx->tlsext_status_cb)
-		{
-		int ret;
-		ret = s->ctx->tlsext_status_cb(s, s->ctx->tlsext_status_arg);
-		if (ret == 0)
-			{
-			al = SSL_AD_BAD_CERTIFICATE_STATUS_RESPONSE;
-			OPENSSL_PUT_ERROR(SSL, ssl3_get_cert_status, SSL_R_INVALID_STATUS_RESPONSE);
-			goto f_err;
-			}
-		if (ret < 0)
-			{
-			al = SSL_AD_INTERNAL_ERROR;
-			OPENSSL_PUT_ERROR(SSL, ssl3_get_cert_status, ERR_R_MALLOC_FAILURE);
-			goto f_err;
-			}
 		}
 	return 1;
 f_err:

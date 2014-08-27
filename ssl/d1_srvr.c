@@ -359,7 +359,7 @@ int dtls1_accept(SSL *s)
 				dtls1_start_timer(s);
 				ret=ssl3_send_server_certificate(s);
 				if (ret <= 0) goto end;
-				if (s->tlsext_status_expected)
+				if (s->s3->tmp.certificate_status_expected)
 					s->state=SSL3_ST_SW_CERT_STATUS_A;
 				else
 					s->state=SSL3_ST_SW_KEY_EXCH_A;
@@ -522,6 +522,8 @@ int dtls1_accept(SSL *s)
 			s->init_num=0;
 			break;
 
+#if 0
+		// TODO(davidben): Implement OCSP stapling on the server.
 		case SSL3_ST_SW_CERT_STATUS_A:
 		case SSL3_ST_SW_CERT_STATUS_B:
 			ret=ssl3_send_cert_status(s);
@@ -529,7 +531,7 @@ int dtls1_accept(SSL *s)
 			s->state=SSL3_ST_SW_KEY_EXCH_A;
 			s->init_num=0;
 			break;
-
+#endif
 
 		case SSL3_ST_SW_CHANGE_A:
 		case SSL3_ST_SW_CHANGE_B:

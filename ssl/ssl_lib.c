@@ -336,12 +336,6 @@ SSL *SSL_new(SSL_CTX *ctx)
 	s->tlsext_debug_cb = 0;
 	s->tlsext_debug_arg = NULL;
 	s->tlsext_ticket_expected = 0;
-	s->tlsext_status_type = -1;
-	s->tlsext_status_expected = 0;
-	s->tlsext_ocsp_ids = NULL;
-	s->tlsext_ocsp_exts = NULL;
-	s->tlsext_ocsp_resp = NULL;
-	s->tlsext_ocsp_resplen = -1;
 	CRYPTO_add(&ctx->references,1,CRYPTO_LOCK_SSL_CTX);
 	s->initial_ctx=ctx;
 	if (ctx->tlsext_ecpointformatlist)
@@ -401,7 +395,10 @@ SSL *SSL_new(SSL_CTX *ctx)
 	s->psk_server_callback=ctx->psk_server_callback;
 
 	if (!s->server)
+		{
 		s->signed_cert_timestamps_enabled = s->ctx->signed_cert_timestamps_enabled;
+		s->ocsp_stapling_enabled = s->ctx->ocsp_stapling_enabled;
+		}
 
 	return(s);
 err:
@@ -670,16 +667,6 @@ void SSL_free(SSL *s)
 	if (s->initial_ctx) SSL_CTX_free(s->initial_ctx);
 	if (s->tlsext_ecpointformatlist) OPENSSL_free(s->tlsext_ecpointformatlist);
 	if (s->tlsext_ellipticcurvelist) OPENSSL_free(s->tlsext_ellipticcurvelist);
-	if (s->tlsext_ocsp_exts)
-		sk_X509_EXTENSION_pop_free(s->tlsext_ocsp_exts,
-						X509_EXTENSION_free);
-        /* TODO(fork): OCSP support */
-#if 0
-	if (s->tlsext_ocsp_ids)
-		sk_OCSP_RESPID_pop_free(s->tlsext_ocsp_ids, OCSP_RESPID_free);
-#endif
-	if (s->tlsext_ocsp_resp)
-		OPENSSL_free(s->tlsext_ocsp_resp);
 	if (s->alpn_client_proto_list)
 		OPENSSL_free(s->alpn_client_proto_list);
 	if (s->tlsext_channel_id_private)
@@ -1677,11 +1664,25 @@ void SSL_CTX_enable_signed_cert_timestamps(SSL_CTX *ctx)
 
 int SSL_enable_signed_cert_timestamps(SSL *ssl)
 	{
-	/* Currently not implemented server side */
+	/* Currently not implemented server-side. */
 	if (ssl->server)
 		return 0;
 
 	ssl->signed_cert_timestamps_enabled = 1;
+	return 1;
+	}
+
+void SSL_CTX_enable_ocsp_stapling(SSL_CTX *ctx)
+	{
+	ctx->ocsp_stapling_enabled = 1;
+	}
+
+int SSL_enable_ocsp_stapling(SSL *ssl)
+	{
+	/* Currently not implemented server-side. */
+	if (ssl->server)
+		return 0;
+	ssl->ocsp_stapling_enabled = 1;
 	return 1;
 	}
 
@@ -1697,6 +1698,20 @@ void SSL_get0_signed_cert_timestamp_list(const SSL *ssl, uint8_t **out, size_t *
 		return;
 	*out = session->tlsext_signed_cert_timestamp_list;
 	*out_len = session->tlsext_signed_cert_timestamp_list_length;
+	}
+
+void SSL_get0_ocsp_response(const SSL *ssl, uint8_t **out, size_t *out_len)
+	{
+	SSL_SESSION *session = ssl->session;
+
+	*out_len = 0;
+	*out = NULL;
+	if (ssl->server)
+		return;
+	if (!session || !session->ocsp_response)
+		return;
+	*out = session->ocsp_response;
+	*out_len = session->ocsp_response_length;
 	}
 
 /* SSL_select_next_proto implements the standard protocol selection. It is
