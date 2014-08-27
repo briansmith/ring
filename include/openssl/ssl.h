@@ -1396,8 +1396,6 @@ struct ssl_st
 	uint8_t *next_proto_negotiated;
 	size_t next_proto_negotiated_len;
 
-#define session_ctx initial_ctx
-
 	STACK_OF(SRTP_PROTECTION_PROFILE) *srtp_profiles;  /* What we'll do */
 	SRTP_PROTECTION_PROFILE *srtp_profile;            /* What's been chosen */
 
