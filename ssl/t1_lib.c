@@ -365,7 +365,6 @@ SSL_early_callback_ctx_extension_get(const struct ssl_early_callback_ctx *ctx,
 	return 0;
 	}
 
-#ifndef OPENSSL_NO_EC
 
 static const int nid_list[] =
 	{
@@ -704,14 +703,6 @@ int tls1_check_ec_tmp_key(SSL *s, unsigned long cid)
 #endif
 	}
 
-#else
-
-static int tls1_check_cert_param(SSL *s, X509 *x, int set_ee_md)
-	{
-	return 1;
-	}
-
-#endif /* OPENSSL_NO_EC */
 
 
 /* List of supported signature algorithms and hashes. Should make this
@@ -720,11 +711,7 @@ static int tls1_check_cert_param(SSL *s, X509 *x, int set_ee_md)
 
 #define tlsext_sigalg_rsa(md) md, TLSEXT_signature_rsa,
 
-#ifdef OPENSSL_NO_ECDSA
-#define tlsext_sigalg_ecdsa(md) /* */
-#else
 #define tlsext_sigalg_ecdsa(md) md, TLSEXT_signature_ecdsa,
-#endif
 
 #define tlsext_sigalg(md) \
 		tlsext_sigalg_rsa(md) \
@@ -735,9 +722,7 @@ static const uint8_t tls12_sigalgs[] = {
 	tlsext_sigalg(TLSEXT_hash_sha384)
 	tlsext_sigalg(TLSEXT_hash_sha256)
 	tlsext_sigalg(TLSEXT_hash_sha224)
-#ifndef OPENSSL_NO_SHA
 	tlsext_sigalg(TLSEXT_hash_sha1)
-#endif
 };
 size_t tls12_get_psigalgs(SSL *s, const unsigned char **psigs)
 	{
@@ -793,7 +778,6 @@ int tls12_check_peer_sigalg(const EVP_MD **out_md, int *out_alert,
 		*out_alert = SSL_AD_ILLEGAL_PARAMETER;
 		return 0;
 		}
-#ifndef OPENSSL_NO_EC
 	if (pkey->type == EVP_PKEY_EC)
 		{
 		uint16_t curve_id;
@@ -811,7 +795,6 @@ int tls12_check_peer_sigalg(const EVP_MD **out_md, int *out_alert,
 			return 0;
 			}
 		}
-#endif
 
 	/* Check signature matches a type we sent */
 	sent_sigslen = tls12_get_psigalgs(s, &sent_sigs);
@@ -872,11 +855,9 @@ void ssl_set_client_disabled(SSL *s)
 		case TLSEXT_signature_rsa:
 			have_rsa = 1;
 			break;
-#ifndef OPENSSL_NO_ECDSA
 		case TLSEXT_signature_ecdsa:
 			have_ecdsa = 1;
 			break;
-#endif
 			}
 		}
 	/* Disable auth if we don't include any appropriate signature
@@ -907,7 +888,6 @@ unsigned char *ssl_add_clienthello_tlsext(SSL *s, unsigned char *buf, unsigned c
 	int extdatalen=0;
 	unsigned char *ret = buf;
 	unsigned char *orig = buf;
-#ifndef OPENSSL_NO_EC
 	/* See if we support any ECC ciphersuites */
 	int using_ecc = 0;
 	if (s->version >= TLS1_VERSION || SSL_IS_DTLS(s))
@@ -929,7 +909,6 @@ unsigned char *ssl_add_clienthello_tlsext(SSL *s, unsigned char *buf, unsigned c
 				}
 			}
 		}
-#endif
 
 	/* don't add extensions for SSLv3 unless doing secure renegotiation */
 	if (s->client_version == SSL3_VERSION
@@ -1097,7 +1076,6 @@ unsigned char *ssl_add_clienthello_tlsext(SSL *s, unsigned char *buf, unsigned c
 		}
 #endif
 
-#ifndef OPENSSL_NO_NEXTPROTONEG
 	if (s->ctx->next_proto_select_cb && !s->s3->tmp.finish_md_len)
 		{
 		/* The client advertises an emtpy extension to indicate its
@@ -1107,7 +1085,6 @@ unsigned char *ssl_add_clienthello_tlsext(SSL *s, unsigned char *buf, unsigned c
 		s2n(TLSEXT_TYPE_next_proto_neg,ret);
 		s2n(0,ret);
 		}
-#endif
 
 	if (s->signed_cert_timestamps_enabled && !s->s3->tmp.finish_md_len)
 		{
@@ -1163,7 +1140,6 @@ unsigned char *ssl_add_clienthello_tlsext(SSL *s, unsigned char *buf, unsigned c
                 ret += el;
                 }
 
-#ifndef OPENSSL_NO_EC
 	if (using_ecc)
 		{
 		/* Add TLS extension ECPointFormats to the ClientHello message */
@@ -1213,7 +1189,6 @@ unsigned char *ssl_add_clienthello_tlsext(SSL *s, unsigned char *buf, unsigned c
 			s2n(curves[i], ret);
 			}
 		}
-#endif /* OPENSSL_NO_EC */
 
 #ifdef TLSEXT_TYPE_padding
 	/* Add padding to workaround bugs in F5 terminators.
@@ -1258,15 +1233,11 @@ unsigned char *ssl_add_serverhello_tlsext(SSL *s, unsigned char *buf, unsigned c
 	int extdatalen=0;
 	unsigned char *orig = buf;
 	unsigned char *ret = buf;
-#ifndef OPENSSL_NO_NEXTPROTONEG
 	int next_proto_neg_seen;
-#endif
-#ifndef OPENSSL_NO_EC
 	unsigned long alg_k = s->s3->tmp.new_cipher->algorithm_mkey;
 	unsigned long alg_a = s->s3->tmp.new_cipher->algorithm_auth;
 	int using_ecc = (alg_k & SSL_kEECDH) || (alg_a & SSL_aECDSA);
 	using_ecc = using_ecc && (s->session->tlsext_ecpointformatlist != NULL);
-#endif
 	/* don't add extensions for SSLv3, unless doing secure renegotiation */
 	if (s->version == SSL3_VERSION && !s->s3->send_connection_binding)
 		return orig;
@@ -1306,7 +1277,6 @@ unsigned char *ssl_add_serverhello_tlsext(SSL *s, unsigned char *buf, unsigned c
           ret += el;
         }
 
-#ifndef OPENSSL_NO_EC
 	if (using_ecc)
 		{
 		const unsigned char *plist;
@@ -1332,7 +1302,6 @@ unsigned char *ssl_add_serverhello_tlsext(SSL *s, unsigned char *buf, unsigned c
 
 		}
 	/* Currently the server should not respond with a SupportedCurves extension */
-#endif /* OPENSSL_NO_EC */
 
 	if (s->tlsext_ticket_expected
 		&& !(SSL_get_options(s) & SSL_OP_NO_TICKET)) 
@@ -1368,7 +1337,6 @@ unsigned char *ssl_add_serverhello_tlsext(SSL *s, unsigned char *buf, unsigned c
                 ret+=el;
                 }
 
-#ifndef OPENSSL_NO_NEXTPROTONEG
 	next_proto_neg_seen = s->s3->next_proto_neg_seen;
 	s->s3->next_proto_neg_seen = 0;
 	if (next_proto_neg_seen && s->ctx->next_protos_advertised_cb)
@@ -1388,7 +1356,6 @@ unsigned char *ssl_add_serverhello_tlsext(SSL *s, unsigned char *buf, unsigned c
 			s->s3->next_proto_neg_seen = 1;
 			}
 		}
-#endif
 
 	if (s->s3->alpn_selected)
 		{
@@ -1486,9 +1453,7 @@ static int ssl_scan_clienthello_tlsext(SSL *s, CBS *cbs, int *out_alert)
 
 	s->servername_done = 0;
 	s->tlsext_status_type = -1;
-#ifndef OPENSSL_NO_NEXTPROTONEG
 	s->s3->next_proto_neg_seen = 0;
-#endif
 
 	if (s->s3->alpn_selected)
 		{
@@ -1660,7 +1625,6 @@ static int ssl_scan_clienthello_tlsext(SSL *s, CBS *cbs, int *out_alert)
 				}
 			}
 
-#ifndef OPENSSL_NO_EC
 		else if (type == TLSEXT_TYPE_ec_point_formats)
 			{
 			CBS ec_point_format_list;
@@ -1729,7 +1693,6 @@ static int ssl_scan_clienthello_tlsext(SSL *s, CBS *cbs, int *out_alert)
 				s->session->tlsext_ellipticcurvelist_length = num_curves;
 				}
 			}
-#endif /* OPENSSL_NO_EC */
 		else if (type == TLSEXT_TYPE_session_ticket)
 			{
 			if (s->tls_session_ticket_ext_cb &&
@@ -1895,7 +1858,6 @@ static int ssl_scan_clienthello_tlsext(SSL *s, CBS *cbs, int *out_alert)
 			}
 #endif
 
-#ifndef OPENSSL_NO_NEXTPROTONEG
 		else if (type == TLSEXT_TYPE_next_proto_neg &&
 			 s->s3->tmp.finish_md_len == 0 &&
 			 s->s3->alpn_selected == NULL)
@@ -1924,7 +1886,6 @@ static int ssl_scan_clienthello_tlsext(SSL *s, CBS *cbs, int *out_alert)
 			 * Finished message could have been computed.) */
 			s->s3->next_proto_neg_seen = 1;
 			}
-#endif
 
 		else if (type == TLSEXT_TYPE_application_layer_protocol_negotiation &&
 			 s->ctx->alpn_select_cb &&
@@ -1932,10 +1893,8 @@ static int ssl_scan_clienthello_tlsext(SSL *s, CBS *cbs, int *out_alert)
 			{
 			if (!tls1_alpn_handle_client_hello(s, &extension, out_alert))
 				return 0;
-#ifndef OPENSSL_NO_NEXTPROTONEG
 			/* ALPN takes precedence over NPN. */
 			s->s3->next_proto_neg_seen = 0;
-#endif
 			}
 
 		else if (type == TLSEXT_TYPE_channel_id &&
@@ -2009,7 +1968,6 @@ int ssl_parse_clienthello_tlsext(SSL *s, CBS *cbs)
 	return 1;
 	}
 
-#ifndef OPENSSL_NO_NEXTPROTONEG
 /* ssl_next_proto_validate validates a Next Protocol Negotiation block. No
  * elements of zero length are allowed and the set of elements must exactly fill
  * the length of the block. */
@@ -2028,7 +1986,6 @@ static char ssl_next_proto_validate(const CBS *cbs)
 		}
 	return 1;
 	}
-#endif
 
 static int ssl_scan_serverhello_tlsext(SSL *s, CBS *cbs, int *out_alert)
 	{
@@ -2036,9 +1993,7 @@ static int ssl_scan_serverhello_tlsext(SSL *s, CBS *cbs, int *out_alert)
 	int renegotiate_seen = 0;
 	CBS extensions;
 
-#ifndef OPENSSL_NO_NEXTPROTONEG
 	s->s3->next_proto_neg_seen = 0;
-#endif
 
         s->tlsext_ticket_expected = 0;
 
@@ -2097,7 +2052,6 @@ static int ssl_scan_serverhello_tlsext(SSL *s, CBS *cbs, int *out_alert)
 				}
 			tlsext_servername = 1;
 			}
-#ifndef OPENSSL_NO_EC
 		else if (type == TLSEXT_TYPE_ec_point_formats)
 			{
 			CBS ec_point_format_list;
@@ -2120,7 +2074,6 @@ static int ssl_scan_serverhello_tlsext(SSL *s, CBS *cbs, int *out_alert)
 					}
 				}
 			}
-#endif /* OPENSSL_NO_EC */
 		else if (type == TLSEXT_TYPE_session_ticket)
 			{
 			if (s->tls_session_ticket_ext_cb &&
@@ -2156,7 +2109,6 @@ static int ssl_scan_serverhello_tlsext(SSL *s, CBS *cbs, int *out_alert)
 			/* Set a flag to expect a CertificateStatus message */
 			s->tlsext_status_expected = 1;
 			}
-#ifndef OPENSSL_NO_NEXTPROTONEG
 		else if (type == TLSEXT_TYPE_next_proto_neg && s->s3->tmp.finish_md_len == 0) {
 		unsigned char *selected;
 		unsigned char selected_len;
@@ -2192,7 +2144,6 @@ static int ssl_scan_serverhello_tlsext(SSL *s, CBS *cbs, int *out_alert)
 		s->next_proto_negotiated_len = selected_len;
 		s->s3->next_proto_neg_seen = 1;
 		}
-#endif
 		else if (type == TLSEXT_TYPE_application_layer_protocol_negotiation)
 			{
 			CBS protocol_name_list, protocol_name;
@@ -2335,14 +2286,12 @@ static int ssl_check_clienthello_tlsext_early(SSL *s)
 	int ret=SSL_TLSEXT_ERR_NOACK;
 	int al = SSL_AD_UNRECOGNIZED_NAME;
 
-#ifndef OPENSSL_NO_EC
 	/* The handling of the ECPointFormats extension is done elsewhere, namely in 
 	 * ssl3_choose_cipher in s3_lib.c.
 	 */
 	/* The handling of the EllipticCurves extension is done elsewhere, namely in 
 	 * ssl3_choose_cipher in s3_lib.c.
 	 */
-#endif
 
 	if (s->ctx != NULL && s->ctx->tlsext_servername_callback != 0) 
 		ret = s->ctx->tlsext_servername_callback(s, &al, s->ctx->tlsext_servername_arg);
@@ -2436,7 +2385,6 @@ int ssl_check_serverhello_tlsext(SSL *s)
 	int ret=SSL_TLSEXT_ERR_NOACK;
 	int al = SSL_AD_UNRECOGNIZED_NAME;
 
-#ifndef OPENSSL_NO_EC
 	/* If we are client and using an elliptic curve cryptography cipher
 	 * suite, then if server returns an EC point formats lists extension
 	 * it must contain uncompressed.
@@ -2467,7 +2415,6 @@ int ssl_check_serverhello_tlsext(SSL *s)
 			}
 		}
 	ret = SSL_TLSEXT_ERR_OK;
-#endif /* OPENSSL_NO_EC */
 
 	if (s->ctx != NULL && s->ctx->tlsext_servername_callback != 0) 
 		ret = s->ctx->tlsext_servername_callback(s, &al, s->ctx->tlsext_servername_arg);
@@ -2812,14 +2759,10 @@ const EVP_MD *tls12_get_hash(unsigned char hash_alg)
 	{
 	switch(hash_alg)
 		{
-#ifndef OPENSSL_NO_MD5
 		case TLSEXT_hash_md5:
 		return EVP_md5();
-#endif
-#ifndef OPENSSL_NO_SHA
 		case TLSEXT_hash_sha1:
 		return EVP_sha1();
-#endif
 		case TLSEXT_hash_sha224:
 		return EVP_sha224();
 
@@ -2842,10 +2785,8 @@ static int tls12_get_pkey_idx(unsigned char sig_alg)
 		{
 	case TLSEXT_signature_rsa:
 		return SSL_PKEY_RSA_SIGN;
-#ifndef OPENSSL_NO_ECDSA
 	case TLSEXT_signature_ecdsa:
 		return SSL_PKEY_ECC;
-#endif
 		}
 	return -1;
 	}
@@ -3050,10 +2991,8 @@ int tls1_process_sigalgs(SSL *s, const CBS *sigalgs)
 			c->pkeys[SSL_PKEY_RSA_SIGN].digest = EVP_sha1();
 			c->pkeys[SSL_PKEY_RSA_ENC].digest = EVP_sha1();
 			}
-#ifndef OPENSSL_NO_ECDSA
 		if (!c->pkeys[SSL_PKEY_ECC].digest)
 			c->pkeys[SSL_PKEY_ECC].digest = EVP_sha1();
-#endif
 		}
 	return 1;
 	}

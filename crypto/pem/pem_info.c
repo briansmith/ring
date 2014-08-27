@@ -207,7 +207,6 @@ start:
 			}
 		else
 #endif
-#ifndef OPENSSL_NO_EC
  			if (strcmp(name,PEM_STRING_ECPRIVATEKEY) == 0)
  			{
  				d2i=(D2I_OF(void))d2i_ECPrivateKey;
@@ -228,7 +227,6 @@ start:
  				raw=1;
 			}
 		else
-#endif
 			{
 			d2i=NULL;
 			pp=NULL;

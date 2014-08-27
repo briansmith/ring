@@ -289,7 +289,6 @@ int ssl_cipher_get_evp_aead(const SSL_SESSION *s, const EVP_AEAD **aead)
 	    (c->algorithm2 & SSL_CIPHER_ALGORITHM2_STATEFUL_AEAD) == 0)
 		return 0;
 
-#ifndef OPENSSL_NO_AES
 	switch (c->algorithm_enc)
 		{
 	case SSL_AES128GCM:
@@ -308,7 +307,6 @@ int ssl_cipher_get_evp_aead(const SSL_SESSION *s, const EVP_AEAD **aead)
 			return 0;
 		return 1;
 	}
-#endif
 
 	return 0;
 	}

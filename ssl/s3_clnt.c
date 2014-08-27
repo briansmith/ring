@@ -395,10 +395,8 @@ int ssl3_connect(SSL *s)
  			s->state=SSL3_ST_CW_FINISHED_A;
 			if (s->s3->tlsext_channel_id_valid)
 				s->state=SSL3_ST_CW_CHANNEL_ID_A;
-# if !defined(OPENSSL_NO_NEXTPROTONEG)
 			if (s->s3->next_proto_neg_seen)
 				s->state=SSL3_ST_CW_NEXT_PROTO_A;
-# endif
 			s->init_num=0;
 
 			s->session->cipher=s->s3->tmp.new_cipher;
@@ -417,7 +415,6 @@ int ssl3_connect(SSL *s)
 
 			break;
 
-#if !defined(OPENSSL_NO_NEXTPROTONEG)
 		case SSL3_ST_CW_NEXT_PROTO_A:
 		case SSL3_ST_CW_NEXT_PROTO_B:
 			ret=ssl3_send_next_proto(s);
@@ -427,7 +424,6 @@ int ssl3_connect(SSL *s)
 			else
 				s->state=SSL3_ST_CW_FINISHED_A;
 			break;
-#endif
 
 		case SSL3_ST_CW_CHANNEL_ID_A:
 		case SSL3_ST_CW_CHANNEL_ID_B:
@@ -1147,14 +1143,10 @@ int ssl3_get_server_key_exchange(SSL *s)
 	EVP_PKEY *pkey=NULL;
 	const EVP_MD *md = NULL;
 	RSA *rsa=NULL;
-#ifndef OPENSSL_NO_DH
 	DH *dh=NULL;
-#endif
-#ifndef OPENSSL_NO_ECDH
 	EC_KEY *ecdh = NULL;
 	BN_CTX *bn_ctx = NULL;
 	EC_POINT *srvr_ecpoint = NULL;
-#endif
 	CBS server_key_exchange, server_key_exchange_orig, parameter;
 
 	/* use same message size as in ssl3_get_certificate_request()
@@ -1210,20 +1202,16 @@ int ssl3_get_server_key_exchange(SSL *s)
 			RSA_free(s->session->sess_cert->peer_rsa_tmp);
 			s->session->sess_cert->peer_rsa_tmp=NULL;
 			}
-#ifndef OPENSSL_NO_DH
 		if (s->session->sess_cert->peer_dh_tmp)
 			{
 			DH_free(s->session->sess_cert->peer_dh_tmp);
 			s->session->sess_cert->peer_dh_tmp=NULL;
 			}
-#endif
-#ifndef OPENSSL_NO_ECDH
 		if (s->session->sess_cert->peer_ecdh_tmp)
 			{
 			EC_KEY_free(s->session->sess_cert->peer_ecdh_tmp);
 			s->session->sess_cert->peer_ecdh_tmp=NULL;
 			}
-#endif
 		}
 	else
 		{
@@ -1272,8 +1260,7 @@ int ssl3_get_server_key_exchange(SSL *s)
 			}
 		}
 
-	if (0) {}
-	else if (alg_k & SSL_kRSA)
+	if (alg_k & SSL_kRSA)
 		{
 		CBS rsa_modulus, rsa_exponent;
 
@@ -1321,7 +1308,6 @@ int ssl3_get_server_key_exchange(SSL *s)
 		s->session->sess_cert->peer_rsa_tmp=rsa;
 		rsa=NULL;
 		}
-#ifndef OPENSSL_NO_DH
 	else if (alg_k & SSL_kEDH)
 		{
 		CBS dh_p, dh_g, dh_Ys;
@@ -1373,9 +1359,7 @@ int ssl3_get_server_key_exchange(SSL *s)
 		s->session->sess_cert->peer_dh_tmp=dh;
 		dh=NULL;
 		}
-#endif /* !OPENSSL_NO_DH */
 
-#ifndef OPENSSL_NO_ECDH
 	else if (alg_k & SSL_kEECDH)
 		{
 		uint16_t curve_id;
@@ -1453,10 +1437,8 @@ int ssl3_get_server_key_exchange(SSL *s)
 		if (0) ;
 		else if (alg_a & SSL_aRSA)
 			pkey=X509_get_pubkey(s->session->sess_cert->peer_pkeys[SSL_PKEY_RSA_ENC].x509);
-#ifndef OPENSSL_NO_ECDSA
 		else if (alg_a & SSL_aECDSA)
 			pkey=X509_get_pubkey(s->session->sess_cert->peer_pkeys[SSL_PKEY_ECC].x509);
-#endif
 		/* else anonymous ECDH, so no certificate or pkey. */
 		EC_KEY_set_public_key(ecdh, srvr_ecpoint);
 		s->session->sess_cert->peer_ecdh_tmp=ecdh;
@@ -1466,7 +1448,6 @@ int ssl3_get_server_key_exchange(SSL *s)
 		EC_POINT_free(srvr_ecpoint);
 		srvr_ecpoint = NULL;
 		}
-#endif /* !OPENSSL_NO_ECDH */
 
 	else if (!(alg_k & SSL_kPSK))
 		{
@@ -1576,16 +1557,12 @@ err:
 	EVP_PKEY_free(pkey);
 	if (rsa != NULL)
 		RSA_free(rsa);
-#ifndef OPENSSL_NO_DH
 	if (dh != NULL)
 		DH_free(dh);
-#endif
-#ifndef OPENSSL_NO_ECDH
 	BN_CTX_free(bn_ctx);
 	EC_POINT_free(srvr_ecpoint);
 	if (ecdh != NULL)
 		EC_KEY_free(ecdh);
-#endif
 	EVP_MD_CTX_cleanup(&md_ctx);
 	return(-1);
 	}
@@ -1913,7 +1890,6 @@ int ssl3_send_client_key_exchange(SSL *s)
 	unsigned long alg_a;
 	unsigned char *q;
 	EVP_PKEY *pkey=NULL;
-#ifndef OPENSSL_NO_ECDH
 	EC_KEY *clnt_ecdh = NULL;
 	const EC_POINT *srvr_ecpoint = NULL;
 	EVP_PKEY *srvr_pub_pkey = NULL;
@@ -1922,7 +1898,6 @@ int ssl3_send_client_key_exchange(SSL *s)
 	BN_CTX * bn_ctx = NULL;
 	unsigned int psk_len = 0;
 	unsigned char psk[PSK_MAX_PSK_LEN];
-#endif /* OPENSSL_NO_ECDH */
 
 	if (s->state == SSL3_ST_CW_KEY_EXCH_A)
 		{
@@ -2008,9 +1983,7 @@ int ssl3_send_client_key_exchange(SSL *s)
 				}
 			}
 
-		/* Fool emacs indentation */
-		if (0) {}
-		else if (alg_k & SSL_kRSA)
+		if (alg_k & SSL_kRSA)
 			{
 			RSA *rsa;
 			unsigned char tmp_buf[SSL_MAX_MASTER_KEY_LENGTH];
@@ -2070,7 +2043,6 @@ int ssl3_send_client_key_exchange(SSL *s)
 					tmp_buf,sizeof tmp_buf);
 			OPENSSL_cleanse(tmp_buf,sizeof tmp_buf);
 			}
-#ifndef OPENSSL_NO_DH
 		else if (alg_k & SSL_kEDH)
 			{
 			DH *dh_srvr,*dh_clnt;
@@ -2131,9 +2103,7 @@ int ssl3_send_client_key_exchange(SSL *s)
 
 			/* perhaps clean things up a bit EAY EAY EAY EAY*/
 			}
-#endif
 
-#ifndef OPENSSL_NO_ECDH
 		else if (alg_k & SSL_kEECDH)
 			{
 			const EC_GROUP *srvr_group = NULL;
@@ -2286,7 +2256,6 @@ int ssl3_send_client_key_exchange(SSL *s)
 				 EC_KEY_free(clnt_ecdh);
 			EVP_PKEY_free(srvr_pub_pkey);
 			}
-#endif /* !OPENSSL_NO_ECDH */
 		else if (!(alg_k & SSL_kPSK) || ((alg_k & SSL_kPSK) && !(alg_a & SSL_aPSK)))
 			{
 			ssl3_send_alert(s, SSL3_AL_FATAL,
@@ -2302,13 +2271,11 @@ int ssl3_send_client_key_exchange(SSL *s)
 	/* SSL3_ST_CW_KEY_EXCH_B */
 	return ssl_do_write(s);
 err:
-#ifndef OPENSSL_NO_ECDH
 	BN_CTX_free(bn_ctx);
 	if (encodedPoint != NULL) OPENSSL_free(encodedPoint);
 	if (clnt_ecdh != NULL) 
 		EC_KEY_free(clnt_ecdh);
 	EVP_PKEY_free(srvr_pub_pkey);
-#endif
 	return(-1);
 	}
 
@@ -2507,9 +2474,7 @@ int ssl3_check_cert_and_algorithm(SSL *s)
 	EVP_PKEY *pkey=NULL;
 	SESS_CERT *sc;
 	RSA *rsa;
-#ifndef OPENSSL_NO_DH
 	DH *dh;
-#endif
 
 	/* we don't have a certificate */
 	if (!ssl_cipher_has_server_public_key(s->s3->tmp.new_cipher))
@@ -2526,14 +2491,11 @@ int ssl3_check_cert_and_algorithm(SSL *s)
 		}
 
 	rsa=s->session->sess_cert->peer_rsa_tmp;
-#ifndef OPENSSL_NO_DH
 	dh=s->session->sess_cert->peer_dh_tmp;
-#endif
 
 	/* This is the passed certificate */
 
 	idx=sc->peer_cert_type;
-#ifndef OPENSSL_NO_ECDH
 	if (idx == SSL_PKEY_ECC)
 		{
 		if (ssl_check_srvr_ecc_cert_and_alg(sc->peer_pkeys[idx].x509,
@@ -2552,7 +2514,6 @@ int ssl3_check_cert_and_algorithm(SSL *s)
 		OPENSSL_PUT_ERROR(SSL, ssl3_check_cert_and_algorithm, SSL_R_MISSING_ECDSA_SIGNING_CERT);
 		goto f_err;
 		}
-#endif
 	pkey=X509_get_pubkey(sc->peer_pkeys[idx].x509);
 	i=X509_certificate_type(sc->peer_pkeys[idx].x509,pkey);
 	EVP_PKEY_free(pkey);
@@ -2570,14 +2531,12 @@ int ssl3_check_cert_and_algorithm(SSL *s)
 		OPENSSL_PUT_ERROR(SSL, ssl3_check_cert_and_algorithm, SSL_R_MISSING_RSA_ENCRYPTING_CERT);
 		goto f_err;
 		}
-#ifndef OPENSSL_NO_DH
 	if ((alg_k & SSL_kEDH) && 
 		!(has_bits(i,EVP_PK_DH|EVP_PKT_EXCH) || (dh != NULL)))
 		{
 		OPENSSL_PUT_ERROR(SSL, ssl3_check_cert_and_algorithm, SSL_R_MISSING_DH_KEY);
 		goto f_err;
 		}
-#endif
 
 	return(1);
 f_err:
@@ -2586,7 +2545,6 @@ err:
 	return(0);
 	}
 
-# if !defined(OPENSSL_NO_NEXTPROTONEG)
 int ssl3_send_next_proto(SSL *s)
 	{
 	unsigned int len, padding_len;
@@ -2611,7 +2569,6 @@ int ssl3_send_next_proto(SSL *s)
 	return ssl3_do_write(s, SSL3_RT_HANDSHAKE);
 }
 
-# endif  /* !OPENSSL_NO_NEXTPROTONEG */
 
 int ssl3_send_channel_id(SSL *s)
 	{

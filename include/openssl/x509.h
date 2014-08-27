@@ -259,9 +259,7 @@ struct x509_st
 	STACK_OF(DIST_POINT) *crldp;
 	STACK_OF(GENERAL_NAME) *altname;
 	NAME_CONSTRAINTS *nc;
-#ifndef OPENSSL_NO_SHA
 	unsigned char sha1_hash[SHA_DIGEST_LENGTH];
-#endif
 	X509_CERT_AUX *aux;
 	} /* X509 */;
 
@@ -433,9 +431,7 @@ struct X509_crl_st
 	/* CRL and base CRL numbers for delta processing */
 	ASN1_INTEGER *crl_number;
 	ASN1_INTEGER *base_crl_number;
-#ifndef OPENSSL_NO_SHA
 	unsigned char sha1_hash[SHA_DIGEST_LENGTH];
-#endif
 	STACK_OF(GENERAL_NAMES) *issuers;
 	const X509_CRL_METHOD *meth;
 	void *meth_data;
@@ -664,12 +660,10 @@ OPENSSL_EXPORT int i2d_DSA_PUBKEY_fp(FILE *fp, DSA *dsa);
 OPENSSL_EXPORT DSA *d2i_DSAPrivateKey_fp(FILE *fp, DSA **dsa);
 OPENSSL_EXPORT int i2d_DSAPrivateKey_fp(FILE *fp, DSA *dsa);
 #endif
-#ifndef OPENSSL_NO_EC
 OPENSSL_EXPORT EC_KEY *d2i_EC_PUBKEY_fp(FILE *fp, EC_KEY **eckey);
 OPENSSL_EXPORT int   i2d_EC_PUBKEY_fp(FILE *fp, EC_KEY *eckey);
 OPENSSL_EXPORT EC_KEY *d2i_ECPrivateKey_fp(FILE *fp, EC_KEY **eckey);
 OPENSSL_EXPORT int   i2d_ECPrivateKey_fp(FILE *fp, EC_KEY *eckey);
-#endif
 OPENSSL_EXPORT X509_SIG *d2i_PKCS8_fp(FILE *fp,X509_SIG **p8);
 OPENSSL_EXPORT int i2d_PKCS8_fp(FILE *fp,X509_SIG *p8);
 OPENSSL_EXPORT PKCS8_PRIV_KEY_INFO *d2i_PKCS8_PRIV_KEY_INFO_fp(FILE *fp,
@@ -701,12 +695,10 @@ OPENSSL_EXPORT int i2d_DSA_PUBKEY_bio(BIO *bp, DSA *dsa);
 OPENSSL_EXPORT DSA *d2i_DSAPrivateKey_bio(BIO *bp, DSA **dsa);
 OPENSSL_EXPORT int i2d_DSAPrivateKey_bio(BIO *bp, DSA *dsa);
 #endif
-#ifndef OPENSSL_NO_EC
 OPENSSL_EXPORT EC_KEY *d2i_EC_PUBKEY_bio(BIO *bp, EC_KEY **eckey);
 OPENSSL_EXPORT int   i2d_EC_PUBKEY_bio(BIO *bp, EC_KEY *eckey);
 OPENSSL_EXPORT EC_KEY *d2i_ECPrivateKey_bio(BIO *bp, EC_KEY **eckey);
 OPENSSL_EXPORT int   i2d_ECPrivateKey_bio(BIO *bp, EC_KEY *eckey);
-#endif
 OPENSSL_EXPORT X509_SIG *d2i_PKCS8_bio(BIO *bp,X509_SIG **p8);
 OPENSSL_EXPORT int i2d_PKCS8_bio(BIO *bp,X509_SIG *p8);
 OPENSSL_EXPORT PKCS8_PRIV_KEY_INFO *d2i_PKCS8_PRIV_KEY_INFO_bio(BIO *bp,
@@ -770,11 +762,9 @@ OPENSSL_EXPORT int		i2d_DSA_PUBKEY(const DSA *a,unsigned char **pp);
 OPENSSL_EXPORT DSA *		d2i_DSA_PUBKEY(DSA **a,const unsigned char **pp,
 			long length);
 #endif
-#ifndef OPENSSL_NO_EC
 OPENSSL_EXPORT int		i2d_EC_PUBKEY(const EC_KEY *a, unsigned char **pp);
 OPENSSL_EXPORT EC_KEY 		*d2i_EC_PUBKEY(EC_KEY **a, const unsigned char **pp,
 			long length);
-#endif
 
 DECLARE_ASN1_FUNCTIONS(X509_SIG)
 DECLARE_ASN1_FUNCTIONS(X509_REQ_INFO)
@@ -946,10 +936,8 @@ OPENSSL_EXPORT unsigned long	X509_issuer_name_hash(X509 *a);
 OPENSSL_EXPORT int		X509_subject_name_cmp(const X509 *a, const X509 *b);
 OPENSSL_EXPORT unsigned long	X509_subject_name_hash(X509 *x);
 
-#ifndef OPENSSL_NO_MD5
 OPENSSL_EXPORT unsigned long	X509_issuer_name_hash_old(X509 *a);
 OPENSSL_EXPORT unsigned long	X509_subject_name_hash_old(X509 *x);
-#endif
 
 OPENSSL_EXPORT int		X509_cmp(const X509 *a, const X509 *b);
 OPENSSL_EXPORT int		X509_NAME_cmp(const X509_NAME *a, const X509_NAME *b);

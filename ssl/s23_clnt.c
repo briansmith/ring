@@ -289,9 +289,7 @@ static int ssl23_client_hello(SSL *s)
 	 * answer is SSL_OP_NO_TLSv1|SSL_OP_NO_SSLv3|SSL_OP_NO_SSLv2.
 	 */
 	mask =	SSL_OP_NO_TLSv1_1|SSL_OP_NO_TLSv1
-#if !defined(OPENSSL_NO_SSL3)
 		|SSL_OP_NO_SSLv3
-#endif
 		;
 #if !defined(OPENSSL_NO_TLS1_2_CLIENT)
 	version = TLS1_2_VERSION;
@@ -305,11 +303,9 @@ static int ssl23_client_hello(SSL *s)
 	if ((options & SSL_OP_NO_TLSv1_1) && (options & mask) != mask)
 		version = TLS1_VERSION;
 	mask &= ~SSL_OP_NO_TLSv1;
-#if !defined(OPENSSL_NO_SSL3)
 	if ((options & SSL_OP_NO_TLSv1) && (options & mask) != mask)
 		version = SSL3_VERSION;
 	mask &= ~SSL_OP_NO_SSLv3;
-#endif
 
 	buf=(unsigned char *)s->init_buf->data;
 	if (s->state == SSL23_ST_CW_CLNT_HELLO_A)

@@ -561,12 +561,10 @@ int ssl_cert_type(X509 *x, EVP_PKEY *pkey)
 		{
 		ret=SSL_PKEY_RSA_ENC;
 		}
-#ifndef OPENSSL_NO_EC
 	else if (i == EVP_PKEY_EC)
 		{
 		ret = SSL_PKEY_ECC;
 		}	
-#endif
 		
 err:
 	if(!pkey) EVP_PKEY_free(pk);

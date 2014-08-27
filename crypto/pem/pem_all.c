@@ -224,7 +224,6 @@ IMPLEMENT_PEM_rw_const(DSAparams, DSA, PEM_STRING_DSAPARAMS, DSAparams)
 #endif
 
 
-#ifndef OPENSSL_NO_EC
 static EC_KEY *pkey_get_eckey(EVP_PKEY *key, EC_KEY **eckey)
 {
 	EC_KEY *dtmp;
@@ -271,15 +270,12 @@ EC_KEY *PEM_read_ECPrivateKey(FILE *fp, EC_KEY **eckey, pem_password_cb *cb,
 
 #endif
 
-#endif
 
-#ifndef OPENSSL_NO_DH
 
 IMPLEMENT_PEM_write_const(DHparams, DH, PEM_STRING_DHPARAMS, DHparams)
 
 /* TODO(fork): remove this code? */
 /* IMPLEMENT_PEM_write_const(DHxparams, DH, PEM_STRING_DHXPARAMS, DHxparams) */
 
-#endif
 
 IMPLEMENT_PEM_rw(PUBKEY, EVP_PKEY, PEM_STRING_PUBLIC, PUBKEY)

@@ -361,9 +361,7 @@ static void x509v3_cache_extensions(X509 *x)
 	size_t i;
 	int j;
 	if(x->ex_flags & EXFLAG_SET) return;
-#ifndef OPENSSL_NO_SHA
 	X509_digest(x, EVP_sha1(), x->sha1_hash, NULL);
-#endif
 	/* V1 should mean no extensions ... */
 	if(!X509_get_version(x)) x->ex_flags |= EXFLAG_V1;
 	/* Handle basic constraints */

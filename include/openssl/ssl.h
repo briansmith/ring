@@ -441,12 +441,10 @@ struct ssl_session_st
 	 * efficient and to implement a maximum cache size. */
 	struct ssl_session_st *prev,*next;
 	char *tlsext_hostname;
-#ifndef OPENSSL_NO_EC
 	size_t tlsext_ecpointformatlist_length;
 	unsigned char *tlsext_ecpointformatlist; /* peer's list */
 	size_t tlsext_ellipticcurvelist_length;
 	uint16_t *tlsext_ellipticcurvelist; /* peer's list */
-#endif /* OPENSSL_NO_EC */
 	/* RFC4507 info */
 	uint8_t *tlsext_tick;	/* Session ticket */
 	size_t tlsext_ticklen;		/* Session ticket length */
@@ -964,7 +962,6 @@ struct ssl_ctx_st
 	 * memory and session space. Only effective on the server side. */
 	char retain_only_sha256_of_client_certs;
 
-# ifndef OPENSSL_NO_NEXTPROTONEG
 	/* Next protocol negotiation information */
 	/* (for experimental NPN extension). */
 
@@ -981,7 +978,6 @@ struct ssl_ctx_st
 				    unsigned int inlen,
 				    void *arg);
 	void *next_proto_select_cb_arg;
-# endif
 
 	/* ALPN information
 	 * (we are in the process of transitioning from NPN to ALPN.) */
@@ -1009,13 +1005,11 @@ struct ssl_ctx_st
 
         /* SRTP profiles we are willing to do from RFC 5764 */
 	STACK_OF(SRTP_PROTECTION_PROFILE) *srtp_profiles;
-# ifndef OPENSSL_NO_EC
 	/* EC extension values inherited by SSL structure */
 	size_t tlsext_ecpointformatlist_length;
 	uint8_t *tlsext_ecpointformatlist;
 	size_t tlsext_ellipticcurvelist_length;
 	uint16_t *tlsext_ellipticcurvelist;
-# endif /* OPENSSL_NO_EC */
 
 	/* If true, a client will advertise the Channel ID extension and a
 	 * server will echo it. */
@@ -1115,7 +1109,6 @@ OPENSSL_EXPORT void SSL_CTX_enable_signed_cert_timestamps(SSL_CTX *ctx);
  * WARNING: the returned data is not guaranteed to be well formed. */
 OPENSSL_EXPORT void SSL_get0_signed_cert_timestamp_list(const SSL *ssl, uint8_t **out, size_t *out_len);
 
-#ifndef OPENSSL_NO_NEXTPROTONEG
 OPENSSL_EXPORT void SSL_CTX_set_next_protos_advertised_cb(SSL_CTX *s,
 					   int (*cb) (SSL *ssl,
 						      const unsigned char **out,
@@ -1129,7 +1122,6 @@ OPENSSL_EXPORT void SSL_CTX_set_next_proto_select_cb(SSL_CTX *s,
 				      void *arg);
 OPENSSL_EXPORT void SSL_get0_next_proto_negotiated(const SSL *s,
 				    const uint8_t **data, unsigned *len);
-#endif
 
 OPENSSL_EXPORT int SSL_select_next_proto(unsigned char **out, unsigned char *outlen,
 			  const unsigned char *in, unsigned int inlen,
@@ -1376,12 +1368,10 @@ struct ssl_st
 
 	/* RFC4507 session ticket expected to be received or sent */
 	int tlsext_ticket_expected;
-#ifndef OPENSSL_NO_EC
 	size_t tlsext_ecpointformatlist_length;
 	uint8_t *tlsext_ecpointformatlist; /* our list */
 	size_t tlsext_ellipticcurvelist_length;
 	uint16_t *tlsext_ellipticcurvelist; /* our list */
-#endif /* OPENSSL_NO_EC */
 
 	/* TLS Session Ticket extension override */
 	TLS_SESSION_TICKET_EXT *tlsext_session_ticket;
@@ -1396,7 +1386,6 @@ struct ssl_st
 
 	SSL_CTX * initial_ctx; /* initial ctx, used to store sessions */
 
-#ifndef OPENSSL_NO_NEXTPROTONEG
 	/* Next protocol negotiation. For the client, this is the protocol that
 	 * we sent in NextProtocol and is set when handling ServerHello
 	 * extensions.
@@ -1406,7 +1395,6 @@ struct ssl_st
 	 * before the Finished message. */
 	uint8_t *next_proto_negotiated;
 	size_t next_proto_negotiated_len;
-#endif
 
 #define session_ctx initial_ctx
 
@@ -2228,22 +2216,18 @@ OPENSSL_EXPORT void SSL_CTX_set_tmp_rsa_callback(SSL_CTX *ctx,
 OPENSSL_EXPORT void SSL_set_tmp_rsa_callback(SSL *ssl,
 				  RSA *(*cb)(SSL *ssl,int is_export,
 					     int keylength));
-#ifndef OPENSSL_NO_DH
 OPENSSL_EXPORT void SSL_CTX_set_tmp_dh_callback(SSL_CTX *ctx,
 				 DH *(*dh)(SSL *ssl,int is_export,
 					   int keylength));
 OPENSSL_EXPORT void SSL_set_tmp_dh_callback(SSL *ssl,
 				 DH *(*dh)(SSL *ssl,int is_export,
 					   int keylength));
-#endif
-#ifndef OPENSSL_NO_ECDH
 OPENSSL_EXPORT void SSL_CTX_set_tmp_ecdh_callback(SSL_CTX *ctx,
 				 EC_KEY *(*ecdh)(SSL *ssl,int is_export,
 					   int keylength));
 OPENSSL_EXPORT void SSL_set_tmp_ecdh_callback(SSL *ssl,
 				 EC_KEY *(*ecdh)(SSL *ssl,int is_export,
 					   int keylength));
-#endif
 
 OPENSSL_EXPORT const void *SSL_get_current_compression(SSL *s);
 OPENSSL_EXPORT const void *SSL_get_current_expansion(SSL *s);

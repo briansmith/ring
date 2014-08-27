@@ -415,14 +415,12 @@
 #define PENDING_SESSION -10000
 #define CERTIFICATE_SELECTION_PENDING -10001
 
-#ifndef OPENSSL_NO_EC
 /* From ECC-TLS draft, used in encoding the curve type in 
  * ECParameters
  */
 #define EXPLICIT_PRIME_CURVE_TYPE  1   
 #define EXPLICIT_CHAR2_CURVE_TYPE  2
 #define NAMED_CURVE_TYPE           3
-#endif  /* OPENSSL_NO_EC */
 
 /* Values for the |hash_message| parameter of |s->method->ssl_get_message|. */
 #define SSL_GET_MESSAGE_DONT_HASH_MESSAGE 0
@@ -463,17 +461,13 @@ typedef struct cert_st
 	unsigned long mask_a;
 	/* Client only */
 	unsigned long mask_ssl;
-#ifndef OPENSSL_NO_DH
 	DH *dh_tmp;
 	DH *(*dh_tmp_cb)(SSL *ssl,int is_export,int keysize);
-#endif
-#ifndef OPENSSL_NO_ECDH
 	EC_KEY *ecdh_tmp;
 	/* Callback for generating ephemeral ECDH keys */
 	EC_KEY *(*ecdh_tmp_cb)(SSL *ssl,int is_export,int keysize);
 	/* Select ECDH parameters automatically */
 	int ecdh_tmp_auto;
-#endif
 	/* Flags related to certificates */
 	unsigned int cert_flags;
 	CERT_PKEY pkeys[SSL_PKEY_NUM];
@@ -549,12 +543,8 @@ typedef struct sess_cert_st
 	 * so maybe we shouldn't even use the CERT_PKEY type here. */
 
 	RSA *peer_rsa_tmp; /* not used for SSL 2 */
-#ifndef OPENSSL_NO_DH
 	DH *peer_dh_tmp; /* not used for SSL 2 */
-#endif
-#ifndef OPENSSL_NO_ECDH
 	EC_KEY *peer_ecdh_tmp;
-#endif
 	} SESS_CERT;
 /* Structure containing decoded values of signature algorithms extension */
 struct tls_sigalgs_st
@@ -990,10 +980,8 @@ int ssl3_send_client_key_exchange(SSL *s);
 int ssl3_get_server_key_exchange(SSL *s);
 int ssl3_get_server_certificate(SSL *s);
 int ssl3_check_cert_and_algorithm(SSL *s);
-# ifndef OPENSSL_NO_NEXTPROTONEG
 int ssl3_send_next_proto(SSL *s);
 int ssl3_send_channel_id(SSL *s);
-# endif
 
 int dtls1_client_hello(SSL *s);
 
@@ -1007,10 +995,8 @@ int ssl3_send_server_done(SSL *s);
 int ssl3_get_client_certificate(SSL *s);
 int ssl3_get_client_key_exchange(SSL *s);
 int ssl3_get_cert_verify(SSL *s);
-#ifndef OPENSSL_NO_NEXTPROTONEG
 int ssl3_get_next_proto(SSL *s);
 int ssl3_get_channel_id(SSL *s);
-#endif
 
 int ssl23_accept(SSL *s);
 int ssl23_connect(SSL *s);
@@ -1050,12 +1036,9 @@ int tls1_alert_code(int code);
 int ssl3_alert_code(int code);
 int ssl_ok(SSL *s);
 
-#ifndef OPENSSL_NO_ECDH
 int ssl_check_srvr_ecc_cert_and_alg(X509 *x, SSL *s);
-#endif
 
 char ssl_early_callback_init(struct ssl_early_callback_ctx *ctx);
-#ifndef OPENSSL_NO_EC
 int tls1_ec_curve_id2nid(uint16_t curve_id);
 uint16_t tls1_ec_nid2curve_id(int nid);
 
@@ -1078,7 +1061,6 @@ int tls1_set_curves(uint16_t **out_curve_ids, size_t *out_curve_ids_len,
 	const int *curves, size_t ncurves);
 
 int tls1_check_ec_tmp_key(SSL *s, unsigned long id);
-#endif /* OPENSSL_NO_EC */
 
 int tls1_shared_list(SSL *s,
 			const unsigned char *l1, size_t l1len,

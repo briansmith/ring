@@ -578,7 +578,6 @@ const SSL_CIPHER ssl3_ciphers[]={
 	256,
 	},
 
-#ifndef OPENSSL_NO_ECDH
 	/* Cipher C007 */
 	{
 	1,
@@ -722,9 +721,7 @@ const SSL_CIPHER ssl3_ciphers[]={
 	256,
 	256,
 	},
-#endif	/* OPENSSL_NO_ECDH */
 
-#ifndef OPENSSL_NO_ECDH
 
 	/* HMAC based TLS v1.2 ciphersuites from RFC5289 */
 
@@ -878,7 +875,6 @@ const SSL_CIPHER ssl3_ciphers[]={
 	128,
 	},
 
-#endif /* OPENSSL_NO_ECDH */
 
 	{
 	1,
@@ -1014,14 +1010,10 @@ void ssl3_free(SSL *s)
 		ssl3_release_read_buffer(s);
 	if (s->s3->wbuf.buf != NULL)
 		ssl3_release_write_buffer(s);
-#ifndef OPENSSL_NO_DH
 	if (s->s3->tmp.dh != NULL)
 		DH_free(s->s3->tmp.dh);
-#endif
-#ifndef OPENSSL_NO_ECDH
 	if (s->s3->tmp.ecdh != NULL)
 		EC_KEY_free(s->s3->tmp.ecdh);
-#endif
 
 	if (s->s3->tmp.ca_names != NULL)
 		sk_X509_NAME_pop_free(s->s3->tmp.ca_names,X509_NAME_free);
@@ -1052,20 +1044,16 @@ void ssl3_clear(SSL *s)
 		OPENSSL_free(s->s3->tmp.certificate_types);
 	s->s3->tmp.num_certificate_types = 0;
 
-#ifndef OPENSSL_NO_DH
 	if (s->s3->tmp.dh != NULL)
 		{
 		DH_free(s->s3->tmp.dh);
 		s->s3->tmp.dh = NULL;
 		}
-#endif
-#ifndef OPENSSL_NO_ECDH
 	if (s->s3->tmp.ecdh != NULL)
 		{
 		EC_KEY_free(s->s3->tmp.ecdh);
 		s->s3->tmp.ecdh = NULL;
 		}
-#endif
 	rp = s->s3->rbuf.buf;
 	wp = s->s3->wbuf.buf;
 	rlen = s->s3->rbuf.len;
@@ -1100,14 +1088,12 @@ void ssl3_clear(SSL *s)
 	s->s3->in_read_app_data=0;
 	s->version = s->method->version;
 
-#if !defined(OPENSSL_NO_NEXTPROTONEG)
 	if (s->next_proto_negotiated)
 		{
 		OPENSSL_free(s->next_proto_negotiated);
 		s->next_proto_negotiated = NULL;
 		s->next_proto_negotiated_len = 0;
 		}
-#endif
 
 	s->s3->tlsext_channel_id_valid = 0;
 	}
@@ -1118,14 +1104,10 @@ long ssl3_ctrl(SSL *s, int cmd, long larg, void *parg)
 	{
 	int ret=0;
 
-	if (
-	    cmd == SSL_CTRL_SET_TMP_RSA ||
+	if (cmd == SSL_CTRL_SET_TMP_RSA ||
 	    cmd == SSL_CTRL_SET_TMP_RSA_CB ||
-#ifndef OPENSSL_NO_DSA
 	    cmd == SSL_CTRL_SET_TMP_DH ||
-	    cmd == SSL_CTRL_SET_TMP_DH_CB ||
-#endif
-		0)
+	    cmd == SSL_CTRL_SET_TMP_DH_CB)
 		{
 		if (!ssl_cert_inst(&s->cert))
 		    	{
@@ -1168,7 +1150,6 @@ long ssl3_ctrl(SSL *s, int cmd, long larg, void *parg)
 		return(ret);
 		}
 		break;
-#ifndef OPENSSL_NO_DH
 	case SSL_CTRL_SET_TMP_DH:
 		{
 			DH *dh = (DH *)parg;
@@ -1203,8 +1184,6 @@ long ssl3_ctrl(SSL *s, int cmd, long larg, void *parg)
 		return(ret);
 		}
 		break;
-#endif
-#ifndef OPENSSL_NO_ECDH
 	case SSL_CTRL_SET_TMP_ECDH:
 		{
 		EC_KEY *ecdh = NULL;
@@ -1241,7 +1220,6 @@ long ssl3_ctrl(SSL *s, int cmd, long larg, void *parg)
 		return(ret);
 		}
 		break;
-#endif /* !OPENSSL_NO_ECDH */
 	case SSL_CTRL_SET_TLSEXT_HOSTNAME:
  		if (larg == TLSEXT_NAMETYPE_host_name)
 			{
@@ -1333,7 +1311,6 @@ long ssl3_ctrl(SSL *s, int cmd, long larg, void *parg)
 	case SSL_CTRL_SELECT_CURRENT_CERT:
 		return ssl_cert_select_current(s->cert, (X509 *)parg);
 
-#ifndef OPENSSL_NO_EC
 	case SSL_CTRL_GET_CURVES:
 		{
 		const uint16_t *clist;
@@ -1367,7 +1344,6 @@ long ssl3_ctrl(SSL *s, int cmd, long larg, void *parg)
 	case SSL_CTRL_SET_ECDH_AUTO:
 		s->cert->ecdh_tmp_auto = larg;
 		return 1;
-#endif
 	case SSL_CTRL_SET_SIGALGS:
 		return tls1_set_sigalgs(s->cert, parg, larg, 0);
 
@@ -1426,25 +1402,17 @@ long ssl3_ctrl(SSL *s, int cmd, long larg, void *parg)
 			EVP_PKEY *ptmp;
 			int rv = 0;
 			sc = s->session->sess_cert;
-#if !defined(OPENSSL_NO_RSA) && !defined(OPENSSL_NO_DH) && !defined(OPENSSL_NO_EC)
-			if (!sc->peer_rsa_tmp && !sc->peer_dh_tmp
-							&& !sc->peer_ecdh_tmp)
+			if (!sc->peer_rsa_tmp && !sc->peer_dh_tmp && !sc->peer_ecdh_tmp)
 				return 0;
-#endif
 			ptmp = EVP_PKEY_new();
 			if (!ptmp)
 				return 0;
-			if (0);
-			else if (sc->peer_rsa_tmp)
+			if (sc->peer_rsa_tmp)
 				rv = EVP_PKEY_set1_RSA(ptmp, sc->peer_rsa_tmp);
-#ifndef OPENSSL_NO_DH
 			else if (sc->peer_dh_tmp)
 				rv = EVP_PKEY_set1_DH(ptmp, sc->peer_dh_tmp);
-#endif
-#ifndef OPENSSL_NO_ECDH
 			else if (sc->peer_ecdh_tmp)
 				rv = EVP_PKEY_set1_EC_KEY(ptmp, sc->peer_ecdh_tmp);
-#endif
 			if (rv)
 				{
 				*(EVP_PKEY **)parg = ptmp;
@@ -1453,7 +1421,6 @@ long ssl3_ctrl(SSL *s, int cmd, long larg, void *parg)
 			EVP_PKEY_free(ptmp);
 			return 0;
 			}
-#ifndef OPENSSL_NO_EC
 	case SSL_CTRL_GET_EC_POINT_FORMATS:
 		{
 		SSL_SESSION *sess = s->session;
@@ -1463,7 +1430,6 @@ long ssl3_ctrl(SSL *s, int cmd, long larg, void *parg)
 		*pformat = sess->tlsext_ecpointformatlist;
 		return (int)sess->tlsext_ecpointformatlist_length;
 		}
-#endif
 
 	case SSL_CTRL_CHANNEL_ID:
 		s->tlsext_channel_id_enabled = 1;
@@ -1510,12 +1476,7 @@ long ssl3_callback_ctrl(SSL *s, int cmd, void (*fp)(void))
 	{
 	int ret=0;
 
-	if (
-	    cmd == SSL_CTRL_SET_TMP_RSA_CB ||
-#ifndef OPENSSL_NO_DSA
-	    cmd == SSL_CTRL_SET_TMP_DH_CB ||
-#endif
-		0)
+	if (cmd == SSL_CTRL_SET_TMP_RSA_CB || cmd == SSL_CTRL_SET_TMP_DH_CB)
 		{
 		if (!ssl_cert_inst(&s->cert))
 			{
@@ -1529,20 +1490,16 @@ long ssl3_callback_ctrl(SSL *s, int cmd, void (*fp)(void))
 	case SSL_CTRL_SET_TMP_RSA_CB:
 		/* Ignore the callback; temporary RSA keys are never used. */
 		break;
-#ifndef OPENSSL_NO_DH
 	case SSL_CTRL_SET_TMP_DH_CB:
 		{
 		s->cert->dh_tmp_cb = (DH *(*)(SSL *, int, int))fp;
 		}
 		break;
-#endif
-#ifndef OPENSSL_NO_ECDH
 	case SSL_CTRL_SET_TMP_ECDH_CB:
 		{
 		s->cert->ecdh_tmp_cb = (EC_KEY *(*)(SSL *, int, int))fp;
 		}
 		break;
-#endif
 	case SSL_CTRL_SET_TLSEXT_DEBUG_CB:
 		s->tlsext_debug_cb=(void (*)(SSL *,int ,int,
 					unsigned char *, int, void *))fp;
@@ -1573,7 +1530,6 @@ long ssl3_ctx_ctrl(SSL_CTX *ctx, int cmd, long larg, void *parg)
 		return(0);
 		}
 		break;
-#ifndef OPENSSL_NO_DH
 	case SSL_CTRL_SET_TMP_DH:
 		{
 		DH *new=NULL,*dh;
@@ -1605,8 +1561,6 @@ long ssl3_ctx_ctrl(SSL_CTX *ctx, int cmd, long larg, void *parg)
 		return(0);
 		}
 		break;
-#endif
-#ifndef OPENSSL_NO_ECDH
 	case SSL_CTRL_SET_TMP_ECDH:
 		{
 		EC_KEY *ecdh = NULL;
@@ -1646,7 +1600,6 @@ long ssl3_ctx_ctrl(SSL_CTX *ctx, int cmd, long larg, void *parg)
 		return(0);
 		}
 		break;
-#endif /* !OPENSSL_NO_ECDH */
 	case SSL_CTRL_SET_TLSEXT_SERVERNAME_ARG:
 		ctx->tlsext_servername_arg=parg;
 		break;
@@ -1681,7 +1634,6 @@ long ssl3_ctx_ctrl(SSL_CTX *ctx, int cmd, long larg, void *parg)
 		return 1;
 		break;
 
-#ifndef OPENSSL_NO_EC
 	case SSL_CTRL_SET_CURVES:
 		return tls1_set_curves(&ctx->tlsext_ellipticcurvelist,
 					&ctx->tlsext_ellipticcurvelist_length,
@@ -1690,7 +1642,6 @@ long ssl3_ctx_ctrl(SSL_CTX *ctx, int cmd, long larg, void *parg)
 	case SSL_CTRL_SET_ECDH_AUTO:
 		ctx->cert->ecdh_tmp_auto = larg;
 		return 1;
-#endif
 	case SSL_CTRL_SET_SIGALGS:
 		return tls1_set_sigalgs(ctx->cert, parg, larg, 0);
 
@@ -1792,20 +1743,16 @@ long ssl3_ctx_callback_ctrl(SSL_CTX *ctx, int cmd, void (*fp)(void))
 	case SSL_CTRL_SET_TMP_RSA_CB:
 		/* Ignore the callback; temporary RSA keys are never used. */
 		break;
-#ifndef OPENSSL_NO_DH
 	case SSL_CTRL_SET_TMP_DH_CB:
 		{
 		cert->dh_tmp_cb = (DH *(*)(SSL *, int, int))fp;
 		}
 		break;
-#endif
-#ifndef OPENSSL_NO_ECDH
 	case SSL_CTRL_SET_TMP_ECDH_CB:
 		{
 		cert->ecdh_tmp_cb = (EC_KEY *(*)(SSL *, int, int))fp;
 		}
 		break;
-#endif
 	case SSL_CTRL_SET_TLSEXT_SERVERNAME_CB:
 		ctx->tlsext_servername_callback=(int (*)(SSL *,int *,void *))fp;
 		break;
@@ -1959,12 +1906,10 @@ const SSL_CIPHER *ssl3_choose_cipher(SSL *s, STACK_OF(SSL_CIPHER) *clnt,
 		       c->name);
 #endif
 
-#ifndef OPENSSL_NO_EC
 		/* if we are considering an ECC cipher suite that uses
 		 * an ephemeral EC key check it */
 		if (alg_k & SSL_kEECDH)
 			ok = ok && tls1_check_ec_tmp_key(s, c->id);
-#endif /* OPENSSL_NO_EC */
 
 		if (ok && sk_SSL_CIPHER_find(allow, &cipher_index, c))
 			{
@@ -2004,9 +1949,7 @@ int ssl3_get_req_cert_type(SSL *s, unsigned char *p)
 	const unsigned char *sig;
 	size_t i, siglen;
 	int have_rsa_sign = 0;
-#ifndef OPENSSL_NO_ECDSA
 	int have_ecdsa_sign = 0;
-#endif
 
 	/* If we have custom certificate types set, use them */
 	if (s->cert->client_certificate_types)
@@ -2025,18 +1968,15 @@ int ssl3_get_req_cert_type(SSL *s, unsigned char *p)
 			have_rsa_sign = 1;
 			break;
 
-#ifndef OPENSSL_NO_ECDSA
 		case TLSEXT_signature_ecdsa:
 			have_ecdsa_sign = 1;
 			break;
-#endif
 			}
 		}
 
 	if (have_rsa_sign)
 		p[ret++]=SSL3_CT_RSA_SIGN;
 
-#ifndef OPENSSL_NO_ECDSA
 	/* ECDSA certs can be used with RSA cipher suites as well 
 	 * so we don't need to check for SSL_kECDH or SSL_kEECDH
 	 */
@@ -2045,7 +1985,6 @@ int ssl3_get_req_cert_type(SSL *s, unsigned char *p)
 		if (have_ecdsa_sign)
 			p[ret++]=TLS_CT_ECDSA_SIGN;
 		}
-#endif	
 	return(ret);
 	}
 

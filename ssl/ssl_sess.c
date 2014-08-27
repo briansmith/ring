@@ -710,12 +710,10 @@ void SSL_SESSION_free(SSL_SESSION *ss)
 	if (ss->ciphers != NULL) sk_SSL_CIPHER_free(ss->ciphers);
 	if (ss->tlsext_hostname != NULL) OPENSSL_free(ss->tlsext_hostname);
 	if (ss->tlsext_tick != NULL) OPENSSL_free(ss->tlsext_tick);
-#ifndef OPENSSL_NO_EC
 	ss->tlsext_ecpointformatlist_length = 0;
 	if (ss->tlsext_ecpointformatlist != NULL) OPENSSL_free(ss->tlsext_ecpointformatlist);
 	ss->tlsext_ellipticcurvelist_length = 0;
 	if (ss->tlsext_ellipticcurvelist != NULL) OPENSSL_free(ss->tlsext_ellipticcurvelist);
-#endif /* OPENSSL_NO_EC */
 	if (ss->tlsext_signed_cert_timestamp_list != NULL)
 		OPENSSL_free(ss->tlsext_signed_cert_timestamp_list);
 	if (ss->psk_identity_hint != NULL)

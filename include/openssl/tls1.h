@@ -249,10 +249,8 @@ extern "C" {
 /* ExtensionType value from RFC6962 */
 #define TLSEXT_TYPE_certificate_timestamp	18
 
-#ifndef OPENSSL_NO_NEXTPROTONEG
 /* This is not an IANA defined extension number */
 #define TLSEXT_TYPE_next_proto_neg		13172
-#endif
 
 /* This is not an IANA defined extension number */
 #define TLSEXT_TYPE_channel_id			30031

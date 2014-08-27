@@ -432,13 +432,9 @@ typedef struct ssl3_state_st
 
 		/* used to hold the new cipher we are going to use */
 		const SSL_CIPHER *new_cipher;
-#ifndef OPENSSL_NO_DH
 		DH *dh;
-#endif
 
-#ifndef OPENSSL_NO_ECDH
 		EC_KEY *ecdh; /* holds short lived ECDH key */
-#endif
 
 		/* used when SSL_ST_FLUSH_DATA is entered */
 		int next_state;			
@@ -482,10 +478,8 @@ typedef struct ssl3_state_st
         unsigned char previous_server_finished_len;
         int send_connection_binding; /* TODOEKR */
 
-#ifndef OPENSSL_NO_NEXTPROTONEG
 	/* Set if we saw the Next Protocol Negotiation extension from our peer. */
 	int next_proto_neg_seen;
-#endif
 
 	/* ALPN information
 	 * (we are in the process of transitioning from NPN to ALPN.) */
@@ -548,10 +542,8 @@ typedef struct ssl3_state_st
 #define SSL3_ST_CW_CERT_VRFY_B		(0x191|SSL_ST_CONNECT)
 #define SSL3_ST_CW_CHANGE_A		(0x1A0|SSL_ST_CONNECT)
 #define SSL3_ST_CW_CHANGE_B		(0x1A1|SSL_ST_CONNECT)
-#ifndef OPENSSL_NO_NEXTPROTONEG
 #define SSL3_ST_CW_NEXT_PROTO_A		(0x200|SSL_ST_CONNECT)
 #define SSL3_ST_CW_NEXT_PROTO_B		(0x201|SSL_ST_CONNECT)
-#endif
 #define SSL3_ST_CW_CHANNEL_ID_A		(0x220|SSL_ST_CONNECT)
 #define SSL3_ST_CW_CHANNEL_ID_B		(0x221|SSL_ST_CONNECT)
 #define SSL3_ST_CW_FINISHED_A		(0x1B0|SSL_ST_CONNECT)
@@ -598,10 +590,8 @@ typedef struct ssl3_state_st
 #define SSL3_ST_SR_CERT_VRFY_A		(0x1A0|SSL_ST_ACCEPT)
 #define SSL3_ST_SR_CERT_VRFY_B		(0x1A1|SSL_ST_ACCEPT)
 #define SSL3_ST_SR_CHANGE		(0x1B0|SSL_ST_ACCEPT)
-#ifndef OPENSSL_NO_NEXTPROTONEG
 #define SSL3_ST_SR_NEXT_PROTO_A		(0x210|SSL_ST_ACCEPT)
 #define SSL3_ST_SR_NEXT_PROTO_B		(0x211|SSL_ST_ACCEPT)
-#endif
 #define SSL3_ST_SR_CHANNEL_ID_A		(0x230|SSL_ST_ACCEPT)
 #define SSL3_ST_SR_CHANNEL_ID_B		(0x231|SSL_ST_ACCEPT)
 #define SSL3_ST_SR_FINISHED_A		(0x1C0|SSL_ST_ACCEPT)
@@ -631,9 +621,7 @@ typedef struct ssl3_state_st
 #define SSL3_MT_FINISHED			20
 #define SSL3_MT_CERTIFICATE_STATUS		22
 #define SSL3_MT_SUPPLEMENTAL_DATA		23
-#ifndef OPENSSL_NO_NEXTPROTONEG
 #define SSL3_MT_NEXT_PROTO			67
-#endif
 #define SSL3_MT_ENCRYPTED_EXTENSIONS		203
 #define DTLS1_MT_HELLO_VERIFY_REQUEST    3
 

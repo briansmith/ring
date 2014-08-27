@@ -161,9 +161,7 @@ void ssl_cert_set_default_md(CERT *cert)
 	/* Set digest values to defaults */
 	cert->pkeys[SSL_PKEY_RSA_SIGN].digest = EVP_sha1();
 	cert->pkeys[SSL_PKEY_RSA_ENC].digest = EVP_sha1();
-#ifndef OPENSSL_NO_ECDSA
 	cert->pkeys[SSL_PKEY_ECC].digest = EVP_sha1();
-#endif
 	}
 
 CERT *ssl_cert_new(void)
@@ -205,7 +203,6 @@ CERT *ssl_cert_dup(CERT *cert)
 	ret->mask_k = cert->mask_k;
 	ret->mask_a = cert->mask_a;
 
-#ifndef OPENSSL_NO_DH
 	if (cert->dh_tmp != NULL)
 		{
 		ret->dh_tmp = DHparams_dup(cert->dh_tmp);
@@ -236,9 +233,7 @@ CERT *ssl_cert_dup(CERT *cert)
 			}
 		}
 	ret->dh_tmp_cb = cert->dh_tmp_cb;
-#endif
 
-#ifndef OPENSSL_NO_ECDH
 	if (cert->ecdh_tmp)
 		{
 		ret->ecdh_tmp = EC_KEY_dup(cert->ecdh_tmp);
@@ -250,7 +245,6 @@ CERT *ssl_cert_dup(CERT *cert)
 		}
 	ret->ecdh_tmp_cb = cert->ecdh_tmp_cb;
 	ret->ecdh_tmp_auto = cert->ecdh_tmp_auto;
-#endif
 
 	for (i = 0; i < SSL_PKEY_NUM; i++)
 		{
@@ -366,17 +360,11 @@ CERT *ssl_cert_dup(CERT *cert)
 
 	return(ret);
 	
-#if !defined(OPENSSL_NO_DH) || !defined(OPENSSL_NO_ECDH)
 err:
-#endif
-#ifndef OPENSSL_NO_DH
 	if (ret->dh_tmp != NULL)
 		DH_free(ret->dh_tmp);
-#endif
-#ifndef OPENSSL_NO_ECDH
 	if (ret->ecdh_tmp != NULL)
 		EC_KEY_free(ret->ecdh_tmp);
-#endif
 
 	ssl_cert_clear_certs(ret);
 
@@ -418,12 +406,8 @@ void ssl_cert_free(CERT *c)
 	if(c == NULL)
 	    return;
 
-#ifndef OPENSSL_NO_DH
 	if (c->dh_tmp) DH_free(c->dh_tmp);
-#endif
-#ifndef OPENSSL_NO_ECDH
 	if (c->ecdh_tmp) EC_KEY_free(c->ecdh_tmp);
-#endif
 
 	ssl_cert_clear_certs(c);
 	if (c->peer_sigalgs)
@@ -591,14 +575,10 @@ void ssl_sess_cert_free(SESS_CERT *sc)
 
 	if (sc->peer_rsa_tmp != NULL)
 		RSA_free(sc->peer_rsa_tmp);
-#ifndef OPENSSL_NO_DH
 	if (sc->peer_dh_tmp != NULL)
 		DH_free(sc->peer_dh_tmp);
-#endif
-#ifndef OPENSSL_NO_ECDH
 	if (sc->peer_ecdh_tmp != NULL)
 		EC_KEY_free(sc->peer_ecdh_tmp);
-#endif
 
 	OPENSSL_free(sc);
 	}

@@ -465,18 +465,14 @@ DECLARE_PEM_rw_const(DSAparams, DSA)
 
 #endif
 
-#ifndef OPENSSL_NO_EC
 DECLARE_PEM_rw_const(ECPKParameters, EC_GROUP)
 DECLARE_PEM_rw_cb(ECPrivateKey, EC_KEY)
 DECLARE_PEM_rw(EC_PUBKEY, EC_KEY)
-#endif
 
-#ifndef OPENSSL_NO_DH
 
 DECLARE_PEM_rw_const(DHparams, DH)
 DECLARE_PEM_write_const(DHxparams, DH)
 
-#endif
 
 DECLARE_PEM_rw_cb(PrivateKey, EVP_PKEY)
 
@@ -506,10 +502,8 @@ OPENSSL_EXPORT EVP_PKEY *b2i_PrivateKey_bio(BIO *in);
 OPENSSL_EXPORT EVP_PKEY *b2i_PublicKey_bio(BIO *in);
 OPENSSL_EXPORT int i2b_PrivateKey_bio(BIO *out, EVP_PKEY *pk);
 OPENSSL_EXPORT int i2b_PublicKey_bio(BIO *out, EVP_PKEY *pk);
-#ifndef OPENSSL_NO_RC4
 OPENSSL_EXPORT EVP_PKEY *b2i_PVK_bio(BIO *in, pem_password_cb *cb, void *u);
 OPENSSL_EXPORT int i2b_PVK_bio(BIO *out, EVP_PKEY *pk, int enclevel, pem_password_cb *cb, void *u);
-#endif
 
 
 void ERR_load_PEM_strings(void);

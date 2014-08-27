@@ -369,10 +369,8 @@ int ssl3_setup_key_block(SSL *s)
 
 		if (s->session->cipher != NULL)
 			{
-#ifndef OPENSSL_NO_RC4
 			if (s->session->cipher->algorithm_enc == SSL_RC4)
 				s->s3->need_record_splitting = 0;
-#endif
 			}
 		}
 

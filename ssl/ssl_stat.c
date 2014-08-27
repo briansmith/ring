@@ -101,7 +101,6 @@ case SSL_ST_OK|SSL_ST_CONNECT: str="ok/connect SSL initialization"; break;
 case SSL_ST_BEFORE|SSL_ST_ACCEPT: str="before/accept initialization"; break;
 case SSL_ST_OK|SSL_ST_ACCEPT: str="ok/accept SSL initialization"; break;
 
-#ifndef OPENSSL_NO_SSL3
 /* SSLv3 additions */
 case SSL3_ST_CW_CLNT_HELLO_A:	str="SSLv3 write client hello A"; break;
 case SSL3_ST_CW_CLNT_HELLO_B:	str="SSLv3 write client hello B"; break;
@@ -169,9 +168,7 @@ case SSL3_ST_SR_KEY_EXCH_A:	str="SSLv3 read client key exchange A"; break;
 case SSL3_ST_SR_KEY_EXCH_B:	str="SSLv3 read client key exchange B"; break;
 case SSL3_ST_SR_CERT_VRFY_A:	str="SSLv3 read certificate verify A"; break;
 case SSL3_ST_SR_CERT_VRFY_B:	str="SSLv3 read certificate verify B"; break;
-#endif
 
-#if !defined(OPENSSL_NO_SSL3)
 /* SSLv2/v3 compatibility states */
 /* client */
 case SSL23_ST_CW_CLNT_HELLO_A:	str="SSLv2/v3 write client hello A"; break;
@@ -182,7 +179,6 @@ case SSL23_ST_CR_SRVR_HELLO_B:	str="SSLv2/v3 read server hello B"; break;
 case SSL23_ST_SR_CLNT_HELLO:	str="SSLv2/v3 read client hello"; break;
 case SSL23_ST_SR_V2_CLNT_HELLO:	str="SSLv2/v3 read v2 client hello"; break;
 case SSL23_ST_SR_SWITCH_VERSION: str="SSLv2/v3 switch version"; break;
-#endif
 
 /* DTLS */
 case DTLS1_ST_CR_HELLO_VERIFY_REQUEST_A: str="DTLS1 read hello verify request A"; break;
@@ -220,7 +216,6 @@ case SSL_ST_ACCEPT:				str="AINIT "; break;
 case SSL_ST_CONNECT:				str="CINIT "; break;
 case SSL_ST_OK:			 		str="SSLOK "; break;
 
-#ifndef OPENSSL_NO_SSL3
 /* SSLv3 additions */
 case SSL3_ST_SW_FLUSH:
 case SSL3_ST_CW_FLUSH:				str="3FLUSH"; break;
@@ -283,9 +278,7 @@ case SSL3_ST_SR_KEY_EXCH_A:			str="3RCKEA"; break;
 case SSL3_ST_SR_KEY_EXCH_B:			str="3RCKEB"; break;
 case SSL3_ST_SR_CERT_VRFY_A:			str="3RCV_A"; break;
 case SSL3_ST_SR_CERT_VRFY_B:			str="3RCV_B"; break;
-#endif
 
-#if !defined(OPENSSL_NO_SSL3)
 /* SSLv2/v3 compatibility states */
 /* client */
 case SSL23_ST_CW_CLNT_HELLO_A:			str="23WCHA"; break;
@@ -296,7 +289,6 @@ case SSL23_ST_CR_SRVR_HELLO_B:			str="23RSHA"; break;
 case SSL23_ST_SR_CLNT_HELLO:			str="23RCH_"; break;
 case SSL23_ST_SR_V2_CLNT_HELLO:			str="23R2CH"; break;
 case SSL23_ST_SR_SWITCH_VERSION:		str="23RSW_"; break;
-#endif
 /* DTLS */
 case DTLS1_ST_CR_HELLO_VERIFY_REQUEST_A: str="DRCHVA"; break;
 case DTLS1_ST_CR_HELLO_VERIFY_REQUEST_B: str="DRCHVB"; break;
