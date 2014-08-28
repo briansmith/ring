@@ -138,24 +138,24 @@ const (
 // signatureAndHash mirrors the TLS 1.2, SignatureAndHashAlgorithm struct. See
 // RFC 5246, section A.4.1.
 type signatureAndHash struct {
-	hash, signature uint8
+	signature, hash uint8
 }
 
 // supportedSKXSignatureAlgorithms contains the signature and hash algorithms
 // that the code advertises as supported in a TLS 1.2 ClientHello.
 var supportedSKXSignatureAlgorithms = []signatureAndHash{
-	{hashSHA256, signatureRSA},
-	{hashSHA256, signatureECDSA},
-	{hashSHA1, signatureRSA},
-	{hashSHA1, signatureECDSA},
+	{signatureRSA, hashSHA256},
+	{signatureECDSA, hashSHA256},
+	{signatureRSA, hashSHA1},
+	{signatureECDSA, hashSHA1},
 }
 
 // supportedClientCertSignatureAlgorithms contains the signature and hash
 // algorithms that the code advertises as supported in a TLS 1.2
 // CertificateRequest.
 var supportedClientCertSignatureAlgorithms = []signatureAndHash{
-	{hashSHA256, signatureRSA},
-	{hashSHA256, signatureECDSA},
+	{signatureRSA, hashSHA256},
+	{signatureECDSA, hashSHA256},
 }
 
 // ConnectionState records basic TLS details about the connection.

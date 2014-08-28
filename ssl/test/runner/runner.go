@@ -965,29 +965,14 @@ func addClientAuthTests() {
 	certPool.AddCert(cert)
 
 	for _, ver := range tlsVersions {
-		if ver.version == VersionSSL30 {
-			// TODO(davidben): The Go implementation does not
-			// correctly compute CertificateVerify hashes for SSLv3.
-			continue
-		}
-
-		var cipherSuites []uint16
-		if ver.version >= VersionTLS12 {
-			// Pick a SHA-256 cipher suite. The Go implementation
-			// does not correctly handle client auth with a SHA-384
-			// cipher suite.
-			cipherSuites = []uint16{TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256}
-		}
-
 		testCases = append(testCases, testCase{
 			testType: clientTest,
 			name:     ver.name + "-Client-ClientAuth-RSA",
 			config: Config{
-				MinVersion:   ver.version,
-				MaxVersion:   ver.version,
-				CipherSuites: cipherSuites,
-				ClientAuth:   RequireAnyClientCert,
-				ClientCAs:    certPool,
+				MinVersion: ver.version,
+				MaxVersion: ver.version,
+				ClientAuth: RequireAnyClientCert,
+				ClientCAs:  certPool,
 			},
 			flags: []string{
 				"-cert-file", rsaCertificateFile,
@@ -995,36 +980,41 @@ func addClientAuthTests() {
 			},
 		})
 		testCases = append(testCases, testCase{
-			testType: clientTest,
-			name:     ver.name + "-Client-ClientAuth-ECDSA",
-			config: Config{
-				MinVersion:   ver.version,
-				MaxVersion:   ver.version,
-				CipherSuites: cipherSuites,
-				ClientAuth:   RequireAnyClientCert,
-				ClientCAs:    certPool,
-			},
-			flags: []string{
-				"-cert-file", ecdsaCertificateFile,
-				"-key-file", ecdsaKeyFile,
-			},
-		})
-		testCases = append(testCases, testCase{
 			testType: serverTest,
 			name:     ver.name + "-Server-ClientAuth-RSA",
 			config: Config{
+				MinVersion:   ver.version,
+				MaxVersion:   ver.version,
 				Certificates: []Certificate{rsaCertificate},
 			},
 			flags: []string{"-require-any-client-certificate"},
 		})
-		testCases = append(testCases, testCase{
-			testType: serverTest,
-			name:     ver.name + "-Server-ClientAuth-ECDSA",
-			config: Config{
-				Certificates: []Certificate{ecdsaCertificate},
-			},
-			flags: []string{"-require-any-client-certificate"},
-		})
+		if ver.version != VersionSSL30 {
+			testCases = append(testCases, testCase{
+				testType: serverTest,
+				name:     ver.name + "-Server-ClientAuth-ECDSA",
+				config: Config{
+					MinVersion:   ver.version,
+					MaxVersion:   ver.version,
+					Certificates: []Certificate{ecdsaCertificate},
+				},
+				flags: []string{"-require-any-client-certificate"},
+			})
+			testCases = append(testCases, testCase{
+				testType: clientTest,
+				name:     ver.name + "-Client-ClientAuth-ECDSA",
+				config: Config{
+					MinVersion: ver.version,
+					MaxVersion: ver.version,
+					ClientAuth: RequireAnyClientCert,
+					ClientCAs:  certPool,
+				},
+				flags: []string{
+					"-cert-file", ecdsaCertificateFile,
+					"-key-file", ecdsaKeyFile,
+				},
+			})
+		}
 	}
 }
 
@@ -1092,8 +1082,7 @@ func addStateMachineCoverageTests(async, splitHandshake bool, protocol protocol)
 		testType: clientTest,
 		name:     "ClientAuth-Client" + suffix,
 		config: Config{
-			CipherSuites: []uint16{TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA},
-			ClientAuth:   RequireAnyClientCert,
+			ClientAuth: RequireAnyClientCert,
 			Bugs: ProtocolBugs{
 				MaxHandshakeRecordLength: maxHandshakeRecordLength,
 			},

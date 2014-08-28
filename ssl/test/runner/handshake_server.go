@@ -342,6 +342,7 @@ func (hs *serverHandshakeState) doResumeHandshake() error {
 	hs.hello.ticketSupported = c.config.Bugs.RenewTicketOnResume
 
 	hs.finishedHash = newFinishedHash(c.vers, hs.suite)
+	hs.finishedHash.discardHandshakeBuffer()
 	hs.writeClientHash(hs.clientHello.marshal())
 	hs.writeServerHash(hs.hello.marshal())
 
@@ -478,6 +479,13 @@ func (hs *serverHandshakeState) doFullHandshake() error {
 	}
 	hs.writeClientHash(ckx.marshal())
 
+	preMasterSecret, err := keyAgreement.processClientKeyExchange(config, hs.cert, ckx, c.vers)
+	if err != nil {
+		c.sendAlert(alertHandshakeFailure)
+		return err
+	}
+	hs.masterSecret = masterFromPreMasterSecret(c.vers, hs.suite, preMasterSecret, hs.clientHello.random, hs.hello.random)
+
 	// If we received a client cert in response to our certificate request message,
 	// the client will send us a certificateVerifyMsg immediately after the
 	// clientKeyExchangeMsg.  This message is a digest of all preceding
@@ -526,7 +534,7 @@ func (hs *serverHandshakeState) doFullHandshake() error {
 				break
 			}
 			var digest []byte
-			digest, _, err = hs.finishedHash.hashForClientCertificate(signatureAndHash)
+			digest, _, err = hs.finishedHash.hashForClientCertificate(signatureAndHash, hs.masterSecret)
 			if err != nil {
 				break
 			}
@@ -541,7 +549,7 @@ func (hs *serverHandshakeState) doFullHandshake() error {
 			}
 			var digest []byte
 			var hashFunc crypto.Hash
-			digest, hashFunc, err = hs.finishedHash.hashForClientCertificate(signatureAndHash)
+			digest, hashFunc, err = hs.finishedHash.hashForClientCertificate(signatureAndHash, hs.masterSecret)
 			if err != nil {
 				break
 			}
@@ -555,12 +563,7 @@ func (hs *serverHandshakeState) doFullHandshake() error {
 		hs.writeClientHash(certVerify.marshal())
 	}
 
-	preMasterSecret, err := keyAgreement.processClientKeyExchange(config, hs.cert, ckx, c.vers)
-	if err != nil {
-		c.sendAlert(alertHandshakeFailure)
-		return err
-	}
-	hs.masterSecret = masterFromPreMasterSecret(c.vers, hs.suite, preMasterSecret, hs.clientHello.random, hs.hello.random)
+	hs.finishedHash.discardHandshakeBuffer()
 
 	return nil
 }

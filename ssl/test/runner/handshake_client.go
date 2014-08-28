@@ -474,6 +474,8 @@ func (hs *clientHandshakeState) doFullHandshake() error {
 		c.writeRecord(recordTypeHandshake, ckx.marshal())
 	}
 
+	hs.masterSecret = masterFromPreMasterSecret(c.vers, hs.suite, preMasterSecret, hs.hello.random, hs.serverHello.random)
+
 	if chainToSend != nil {
 		var signed []byte
 		certVerify := &certificateVerifyMsg{
@@ -487,7 +489,7 @@ func (hs *clientHandshakeState) doFullHandshake() error {
 				break
 			}
 			var digest []byte
-			digest, _, err = hs.finishedHash.hashForClientCertificate(certVerify.signatureAndHash)
+			digest, _, err = hs.finishedHash.hashForClientCertificate(certVerify.signatureAndHash, hs.masterSecret)
 			if err != nil {
 				break
 			}
@@ -503,7 +505,7 @@ func (hs *clientHandshakeState) doFullHandshake() error {
 			}
 			var digest []byte
 			var hashFunc crypto.Hash
-			digest, hashFunc, err = hs.finishedHash.hashForClientCertificate(certVerify.signatureAndHash)
+			digest, hashFunc, err = hs.finishedHash.hashForClientCertificate(certVerify.signatureAndHash, hs.masterSecret)
 			if err != nil {
 				break
 			}
@@ -521,7 +523,8 @@ func (hs *clientHandshakeState) doFullHandshake() error {
 		c.writeRecord(recordTypeHandshake, certVerify.marshal())
 	}
 
-	hs.masterSecret = masterFromPreMasterSecret(c.vers, hs.suite, preMasterSecret, hs.hello.random, hs.serverHello.random)
+	hs.finishedHash.discardHandshakeBuffer()
+
 	return nil
 }
 
@@ -576,6 +579,7 @@ func (hs *clientHandshakeState) processServerHello() (bool, error) {
 		// Restore masterSecret and peerCerts from previous state
 		hs.masterSecret = hs.session.masterSecret
 		c.peerCertificates = hs.session.serverCertificates
+		hs.finishedHash.discardHandshakeBuffer()
 		return true, nil
 	}
 	return false, nil

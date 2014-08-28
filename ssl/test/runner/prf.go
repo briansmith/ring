@@ -182,9 +182,9 @@ func newFinishedHash(version uint16, cipherSuite *cipherSuite) finishedHash {
 			newHash = sha512.New384
 		}
 
-		return finishedHash{newHash(), newHash(), nil, nil, version, prf12(newHash)}
+		return finishedHash{newHash(), newHash(), nil, nil, []byte{}, version, prf12(newHash)}
 	}
-	return finishedHash{sha1.New(), sha1.New(), md5.New(), md5.New(), version, prf10}
+	return finishedHash{sha1.New(), sha1.New(), md5.New(), md5.New(), []byte{}, version, prf10}
 }
 
 // A finishedHash calculates the hash of a set of handshake messages suitable
@@ -197,11 +197,15 @@ type finishedHash struct {
 	clientMD5 hash.Hash
 	serverMD5 hash.Hash
 
+	// In TLS 1.2 (and SSL 3 for implementation convenience), a
+	// full buffer is required.
+	buffer []byte
+
 	version uint16
 	prf     func(result, secret, label, seed []byte)
 }
 
-func (h finishedHash) Write(msg []byte) (n int, err error) {
+func (h *finishedHash) Write(msg []byte) (n int, err error) {
 	h.client.Write(msg)
 	h.server.Write(msg)
 
@@ -209,14 +213,19 @@ func (h finishedHash) Write(msg []byte) (n int, err error) {
 		h.clientMD5.Write(msg)
 		h.serverMD5.Write(msg)
 	}
+
+	if h.buffer != nil {
+		h.buffer = append(h.buffer, msg...)
+	}
+
 	return len(msg), nil
 }
 
 // finishedSum30 calculates the contents of the verify_data member of a SSLv3
 // Finished message given the MD5 and SHA1 hashes of a set of handshake
 // messages.
-func finishedSum30(md5, sha1 hash.Hash, masterSecret []byte, magic [4]byte) []byte {
-	md5.Write(magic[:])
+func finishedSum30(md5, sha1 hash.Hash, masterSecret []byte, magic []byte) []byte {
+	md5.Write(magic)
 	md5.Write(masterSecret)
 	md5.Write(ssl30Pad1[:])
 	md5Digest := md5.Sum(nil)
@@ -227,7 +236,7 @@ func finishedSum30(md5, sha1 hash.Hash, masterSecret []byte, magic [4]byte) []by
 	md5.Write(md5Digest)
 	md5Digest = md5.Sum(nil)
 
-	sha1.Write(magic[:])
+	sha1.Write(magic)
 	sha1.Write(masterSecret)
 	sha1.Write(ssl30Pad1[:40])
 	sha1Digest := sha1.Sum(nil)
@@ -251,7 +260,7 @@ var ssl3ServerFinishedMagic = [4]byte{0x53, 0x52, 0x56, 0x52}
 // Finished message.
 func (h finishedHash) clientSum(masterSecret []byte) []byte {
 	if h.version == VersionSSL30 {
-		return finishedSum30(h.clientMD5, h.client, masterSecret, ssl3ClientFinishedMagic)
+		return finishedSum30(h.clientMD5, h.client, masterSecret, ssl3ClientFinishedMagic[:])
 	}
 
 	out := make([]byte, finishedVerifyLength)
@@ -271,7 +280,7 @@ func (h finishedHash) clientSum(masterSecret []byte) []byte {
 // Finished message.
 func (h finishedHash) serverSum(masterSecret []byte) []byte {
 	if h.version == VersionSSL30 {
-		return finishedSum30(h.serverMD5, h.server, masterSecret, ssl3ServerFinishedMagic)
+		return finishedSum30(h.serverMD5, h.server, masterSecret, ssl3ServerFinishedMagic[:])
 	}
 
 	out := make([]byte, finishedVerifyLength)
@@ -292,7 +301,7 @@ func (h finishedHash) serverSum(masterSecret []byte) []byte {
 func (h finishedHash) selectClientCertSignatureAlgorithm(serverList []signatureAndHash, sigType uint8) (signatureAndHash, error) {
 	if h.version < VersionTLS12 {
 		// Nothing to negotiate before TLS 1.2.
-		return signatureAndHash{sigType, 0}, nil
+		return signatureAndHash{signature: sigType}, nil
 	}
 
 	for _, v := range serverList {
@@ -305,13 +314,24 @@ func (h finishedHash) selectClientCertSignatureAlgorithm(serverList []signatureA
 
 // hashForClientCertificate returns a digest, hash function, and TLS 1.2 hash
 // id suitable for signing by a TLS client certificate.
-func (h finishedHash) hashForClientCertificate(signatureAndHash signatureAndHash) ([]byte, crypto.Hash, error) {
+func (h finishedHash) hashForClientCertificate(signatureAndHash signatureAndHash, masterSecret []byte) ([]byte, crypto.Hash, error) {
+	if h.version == VersionSSL30 {
+		if signatureAndHash.signature != signatureRSA {
+			return nil, 0, errors.New("tls: unsupported signature type for client certificate")
+		}
+
+		md5Hash := md5.New()
+		md5Hash.Write(h.buffer)
+		sha1Hash := sha1.New()
+		sha1Hash.Write(h.buffer)
+		return finishedSum30(md5Hash, sha1Hash, masterSecret, nil), crypto.MD5SHA1, nil
+	}
 	if h.version >= VersionTLS12 {
 		if signatureAndHash.hash != hashSHA256 {
 			return nil, 0, errors.New("tls: unsupported hash function for client certificate")
 		}
-		digest := h.server.Sum(nil)
-		return digest, crypto.SHA256, nil
+		digest := sha256.Sum256(h.buffer)
+		return digest[:], crypto.SHA256, nil
 	}
 	if signatureAndHash.signature == signatureECDSA {
 		digest := h.server.Sum(nil)
@@ -336,4 +356,10 @@ func (h finishedHash) hashForChannelID(resumeHash []byte) []byte {
 	}
 	hash.Write(h.server.Sum(nil))
 	return hash.Sum(nil)
+}
+
+// discardHandshakeBuffer is called when there is no more need to
+// buffer the entirety of the handshake messages.
+func (h *finishedHash) discardHandshakeBuffer() {
+	h.buffer = nil
 }
