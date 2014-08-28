@@ -22,15 +22,6 @@ extern "C" {
 #endif
 
 
-/* CBS_get_any_asn1_element sets |*out| to contain the next ASN.1 element from
- * |*cbs| (including header bytes) and advances |*cbs|. It sets |*out_tag| to
- * the tag number and |*out_header_len| to the length of the ASN.1 header. If
- * the element has indefinite length then |*out| will only contain the header.
- *
- * Tag numbers greater than 31 are not supported. */
-int CBS_get_any_asn1_element(CBS *cbs, CBS *out, unsigned *out_tag,
-                             size_t *out_header_len);
-
 /* CBS_asn1_ber_to_der reads an ASN.1 structure from |in|. If it finds
  * indefinite-length elements then it attempts to convert the BER data to DER
  * and sets |*out| and |*out_length| to describe a malloced buffer containing

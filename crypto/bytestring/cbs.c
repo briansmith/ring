@@ -162,6 +162,12 @@ int CBS_get_any_asn1_element(CBS *cbs, CBS *out, unsigned *out_tag,
                              size_t *out_header_len) {
   uint8_t tag, length_byte;
   CBS header = *cbs;
+  CBS throwaway;
+
+  if (out == NULL) {
+    out = &throwaway;
+  }
+
   if (!CBS_get_u8(&header, &tag) ||
       !CBS_get_u8(&header, &length_byte)) {
     return 0;
@@ -172,13 +178,17 @@ int CBS_get_any_asn1_element(CBS *cbs, CBS *out, unsigned *out_tag,
     return 0;
   }
 
-  *out_tag = tag;
+  if (out_tag != NULL) {
+    *out_tag = tag;
+  }
 
   size_t len;
   if ((length_byte & 0x80) == 0) {
     /* Short form length. */
     len = ((size_t) length_byte) + 2;
-    *out_header_len = 2;
+    if (out_header_len != NULL) {
+      *out_header_len = 2;
+    }
   } else {
     /* Long form length. */
     const size_t num_bytes = length_byte & 0x7f;
@@ -210,7 +220,9 @@ int CBS_get_any_asn1_element(CBS *cbs, CBS *out, unsigned *out_tag,
       return 0;
     }
     len += 2 + num_bytes;
-    *out_header_len = 2 + num_bytes;
+    if (out_header_len != NULL) {
+      *out_header_len = 2 + num_bytes;
+    }
   }
 
   return CBS_get_bytes(cbs, out, len);
