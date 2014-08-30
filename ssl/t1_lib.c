@@ -1099,7 +1099,7 @@ unsigned char *ssl_add_clienthello_tlsext(SSL *s, unsigned char *buf, unsigned c
                 s2n(TLSEXT_TYPE_use_srtp,ret);
                 s2n(el,ret);
 
-                if(ssl_add_clienthello_use_srtp_ext(s, ret, &el, el))
+                if(!ssl_add_clienthello_use_srtp_ext(s, ret, &el, el))
 			{
 			OPENSSL_PUT_ERROR(SSL, ssl_add_clienthello_tlsext, ERR_R_INTERNAL_ERROR);
 			return NULL;
@@ -1296,7 +1296,7 @@ unsigned char *ssl_add_serverhello_tlsext(SSL *s, unsigned char *buf, unsigned c
                 s2n(TLSEXT_TYPE_use_srtp,ret);
                 s2n(el,ret);
 
-                if(ssl_add_serverhello_use_srtp_ext(s, ret, &el, el))
+                if(!ssl_add_serverhello_use_srtp_ext(s, ret, &el, el))
 			{
 			OPENSSL_PUT_ERROR(SSL, ssl_add_serverhello_tlsext, ERR_R_INTERNAL_ERROR);
 			return NULL;

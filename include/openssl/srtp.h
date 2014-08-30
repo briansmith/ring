@@ -130,9 +130,23 @@ extern "C" {
 #define SRTP_NULL_SHA1_80      0x0005
 #define SRTP_NULL_SHA1_32      0x0006
 
+/* SSL_CTX_set_tlsext_use_srtp enables SRTP for all SSL objects
+ * created from |ctx|. |profile| contains a colon-separated list of
+ * profile names. It returns zero on success and one on failure.
+ *
+ * WARNING: this function is dangerous because it breaks the usual
+ * return value convention. */
 OPENSSL_EXPORT int SSL_CTX_set_tlsext_use_srtp(SSL_CTX *ctx,
                                                const char *profiles);
+
+/* SSL_set_tlsext_use_srtp enables SRTP for |ssl| with a profile list.
+ * |profile| contains a colon-separated list of profile names. It
+ * returns zero on success and one on failure.
+ *
+ * WARNING: this function is dangerous because it breaks the usual
+ * return value convention. */
 OPENSSL_EXPORT int SSL_set_tlsext_use_srtp(SSL *ctx, const char *profiles);
+
 OPENSSL_EXPORT SRTP_PROTECTION_PROFILE *SSL_get_selected_srtp_profile(SSL *s);
 
 OPENSSL_EXPORT STACK_OF(SRTP_PROTECTION_PROFILE) *
