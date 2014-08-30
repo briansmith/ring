@@ -7,3 +7,11 @@ add_library(
 
 	pqueue.c
 )
+
+add_executable(
+	pqueue_test
+
+	pqueue_test.c
+)
+
+target_link_libraries(pqueue_test ssl)

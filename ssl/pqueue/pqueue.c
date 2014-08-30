@@ -111,7 +111,7 @@ pitem *pqueue_find(pqueue_s *pq, uint8_t *prio64be) {
   pitem *curr;
 
   for (curr = pq->items; curr; curr = curr->next) {
-    if (memcmp(curr->priority, prio64be, 8) == 0) {
+    if (memcmp(curr->priority, prio64be, sizeof(curr->priority)) == 0) {
       return curr;
     }
   }
@@ -130,9 +130,9 @@ size_t pqueue_size(pqueue_s *pq) {
   return count;
 }
 
-pitem *pqueue_iterator(pqueue_s *pq) { return pq->items; }
+piterator pqueue_iterator(pqueue_s *pq) { return pq->items; }
 
-pitem *pqueue_next(pitem **item) {
+pitem *pqueue_next(piterator *item) {
   pitem *ret;
 
   if (item == NULL || *item == NULL) {
@@ -156,9 +156,9 @@ pitem *pqueue_insert(pqueue_s *pq, pitem *item) {
   for (curr = NULL, next = pq->items; next != NULL;
        curr = next, next = next->next) {
     /* we can compare 64-bit value in big-endian encoding with memcmp. */
-    int cmp = memcmp(next->priority, item->priority, 8);
-    if (cmp > 0) /* next > item */
-    {
+    int cmp = memcmp(next->priority, item->priority, sizeof(item->priority));
+    if (cmp > 0) {
+      /* next > item */
       item->next = next;
 
       if (curr == NULL) {
@@ -168,8 +168,10 @@ pitem *pqueue_insert(pqueue_s *pq, pitem *item) {
       }
 
       return item;
-    } else if (cmp == 0) /* duplicates not allowed */
+    } else if (cmp == 0) {
+      /* duplicates not allowed */
       return NULL;
+    }
   }
 
   item->next = NULL;

@@ -20,33 +20,34 @@ if [ "$#" -ge 1 ]; then
 fi
 
 TESTS="
-./crypto/cipher/aead_test aes-128-gcm $SRC/crypto/cipher/aes_128_gcm_tests.txt
-./crypto/cipher/aead_test aes-256-gcm $SRC/crypto/cipher/aes_256_gcm_tests.txt
-./crypto/cipher/aead_test chacha20-poly1305 $SRC/crypto/cipher/chacha20_poly1305_tests.txt
-./crypto/cipher/aead_test rc4-md5 $SRC/crypto/cipher/rc4_md5_tests.txt
-./crypto/cipher/aead_test aes-128-key-wrap $SRC/crypto/cipher/aes_128_key_wrap_tests.txt
-./crypto/cipher/aead_test aes-256-key-wrap $SRC/crypto/cipher/aes_256_key_wrap_tests.txt
 ./crypto/base64/base64_test
 ./crypto/bio/bio_test
 ./crypto/bn/bn_test
+./crypto/bytestring/bytestring_test
+./crypto/cipher/aead_test aes-128-gcm $SRC/crypto/cipher/aes_128_gcm_tests.txt
+./crypto/cipher/aead_test aes-128-key-wrap $SRC/crypto/cipher/aes_128_key_wrap_tests.txt
+./crypto/cipher/aead_test aes-256-gcm $SRC/crypto/cipher/aes_256_gcm_tests.txt
+./crypto/cipher/aead_test aes-256-key-wrap $SRC/crypto/cipher/aes_256_key_wrap_tests.txt
+./crypto/cipher/aead_test chacha20-poly1305 $SRC/crypto/cipher/chacha20_poly1305_tests.txt
+./crypto/cipher/aead_test rc4-md5 $SRC/crypto/cipher/rc4_md5_tests.txt
 ./crypto/cipher/cipher_test $SRC/crypto/cipher/cipher_test.txt
 ./crypto/dh/dh_test
 ./crypto/dsa/dsa_test
-./crypto/err/err_test
 ./crypto/ec/example_mul
 ./crypto/ecdsa/ecdsa_test
+./crypto/err/err_test
 ./crypto/evp/example_sign
 ./crypto/hmac/hmac_test
 ./crypto/lhash/lhash_test
 ./crypto/md5/md5_test
 ./crypto/modes/gcm_test
+./crypto/pkcs8/pkcs12_test
 ./crypto/rsa/rsa_test
 ./crypto/sha/sha1_test
+./crypto/x509/pkcs7_test
 ./crypto/x509v3/tab_test
 ./crypto/x509v3/v3name_test
-./crypto/bytestring/bytestring_test
-./crypto/x509/pkcs7_test
-./crypto/pkcs8/pkcs12_test
+./ssl/pqueue/pqueue_test
 ./ssl/ssl_test
 "
 

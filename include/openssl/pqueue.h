@@ -111,7 +111,7 @@ pitem *pqueue_peek(pqueue pq);
 
 /* pqueue_find returns the item whose priority matches |prio64be| or NULL if no
  * such item exists. */
-pitem *pqueue_find(pqueue pq, unsigned char *prio64be);
+pitem *pqueue_find(pqueue pq, uint8_t *prio64be);
 
 
 /* Queue mutation functions */
@@ -131,7 +131,7 @@ size_t pqueue_size(pqueue pq);
 
 /* pqueue_iterator returns an iterator that can be used to iterate over the
  * contents of the queue. */
-pitem *pqueue_iterator(pqueue pq);
+piterator pqueue_iterator(pqueue pq);
 
 /* pqueue_next returns the current value of |iter| and advances it to the next
  * position. If the iterator has advanced over all the elements, it returns
