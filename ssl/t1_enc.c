@@ -596,7 +596,9 @@ int tls1_setup_key_block(SSL *s)
 			goto cipher_unavailable_err;
 		key_len = EVP_AEAD_key_length(aead);
 		iv_len = SSL_CIPHER_AEAD_FIXED_NONCE_LEN(s->session->cipher);
-		if (!ssl_cipher_get_mac(s->session, &hash, &mac_type, &mac_secret_size))
+		if ((s->session->cipher->algorithm2 &
+				SSL_CIPHER_ALGORITHM2_STATEFUL_AEAD) &&
+			!ssl_cipher_get_mac(s->session, &hash, &mac_type, &mac_secret_size))
 			goto cipher_unavailable_err;
 		/* For "stateful" AEADs (i.e. compatibility with pre-AEAD
 		 * cipher suites) the key length reported by

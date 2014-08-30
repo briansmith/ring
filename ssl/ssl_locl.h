@@ -850,7 +850,6 @@ int ssl_cert_type(X509 *x,EVP_PKEY *pkey);
 void ssl_set_cert_masks(CERT *c, const SSL_CIPHER *cipher);
 STACK_OF(SSL_CIPHER) *ssl_get_ciphers_by_id(SSL *s);
 int ssl_verify_alarm_type(long type);
-void ssl_load_ciphers(void);
 int ssl_fill_hello_random(SSL *s, int server, unsigned char *field, int len);
 
 const SSL_CIPHER *ssl3_get_cipher_by_value(uint16_t value);

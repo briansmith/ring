@@ -147,34 +147,18 @@
 
 #include "ssl_locl.h"
 
-#define SSL_ENC_3DES_IDX	0
-#define SSL_ENC_RC4_IDX		1
-#define SSL_ENC_AES128_IDX	2
-#define SSL_ENC_AES256_IDX	3
-#define SSL_ENC_NUM_IDX		4
-
-
-static const EVP_CIPHER *ssl_cipher_methods[SSL_ENC_NUM_IDX]= { 0 };
-
-#define SSL_MD_MD5_IDX	0
-#define SSL_MD_SHA1_IDX	1
-#define SSL_MD_SHA256_IDX 2
-#define SSL_MD_SHA384_IDX 3
-/*Constant SSL_MAX_DIGEST equal to size of digests array should be 
- * defined in the
- * ssl_locl.h */
-#define SSL_MD_NUM_IDX	SSL_MAX_DIGEST 
-static const EVP_MD *ssl_digest_methods[SSL_MD_NUM_IDX] = { 0 };
-static const int ssl_mac_pkey_id[SSL_MD_NUM_IDX]={
-	EVP_PKEY_HMAC, EVP_PKEY_HMAC, EVP_PKEY_HMAC, EVP_PKEY_HMAC,
+struct handshake_digest
+	{
+	long mask;
+	const EVP_MD *(*md_func)(void);
 	};
 
-static int ssl_mac_secret_size[SSL_MD_NUM_IDX] = { 0 };
-
-static const int ssl_handshake_digest_flag[SSL_MD_NUM_IDX]={
-	SSL_HANDSHAKE_MAC_MD5, SSL_HANDSHAKE_MAC_SHA,
-	SSL_HANDSHAKE_MAC_SHA256, SSL_HANDSHAKE_MAC_SHA384,
-	};
+static const struct handshake_digest ssl_handshake_digests[SSL_MAX_DIGEST] = {
+	{ SSL_HANDSHAKE_MAC_MD5, EVP_md5 },
+	{ SSL_HANDSHAKE_MAC_SHA, EVP_sha1 },
+	{ SSL_HANDSHAKE_MAC_SHA256, EVP_sha256 },
+	{ SSL_HANDSHAKE_MAC_SHA384, EVP_sha384 },
+};
 
 #define CIPHER_ADD	1
 #define CIPHER_KILL	2
@@ -255,26 +239,6 @@ static const SSL_CIPHER cipher_aliases[]={
 	{0,SSL_TXT_FIPS,0,    0,0,0,0,0,SSL_FIPS,  0,0,0},
 	};
 
-void ssl_load_ciphers(void)
-	{
-	ssl_cipher_methods[SSL_ENC_3DES_IDX]= EVP_des_ede3_cbc();
-	ssl_cipher_methods[SSL_ENC_RC4_IDX]= EVP_rc4();
-	ssl_cipher_methods[SSL_ENC_AES128_IDX]= EVP_aes_128_cbc();
-	ssl_cipher_methods[SSL_ENC_AES256_IDX]= EVP_aes_256_cbc();
-
-	ssl_digest_methods[SSL_MD_MD5_IDX]= EVP_md5();
-	ssl_mac_secret_size[SSL_MD_MD5_IDX]= EVP_MD_size(EVP_md5());
-	assert(ssl_mac_secret_size[SSL_MD_MD5_IDX] >= 0);
-	ssl_digest_methods[SSL_MD_SHA1_IDX]=EVP_sha1();
-	ssl_mac_secret_size[SSL_MD_SHA1_IDX]= EVP_MD_size(EVP_sha1());
-	assert(ssl_mac_secret_size[SSL_MD_SHA1_IDX] >= 0);
-
-	ssl_digest_methods[SSL_MD_SHA256_IDX]= EVP_sha256();
-	ssl_mac_secret_size[SSL_MD_SHA256_IDX]= EVP_MD_size(EVP_sha256());
-	ssl_digest_methods[SSL_MD_SHA384_IDX]= EVP_sha384();
-	ssl_mac_secret_size[SSL_MD_SHA384_IDX]= EVP_MD_size(EVP_sha384());
-	}
-
 /* ssl_cipher_get_evp_aead sets |*aead| to point to the correct EVP_AEAD object
  * for |s->cipher|. It returns 1 on success and 0 on error. */
 int ssl_cipher_get_evp_aead(const SSL_SESSION *s, const EVP_AEAD **aead)
@@ -314,7 +278,6 @@ int ssl_cipher_get_evp_aead(const SSL_SESSION *s, const EVP_AEAD **aead)
 int ssl_cipher_get_evp(const SSL_SESSION *s, const EVP_CIPHER **enc,
 	     const EVP_MD **md, int *mac_pkey_type, int *mac_secret_size)
 	{
-	int i;
 	const SSL_CIPHER *c;
 
 	c=s->cipher;
@@ -330,39 +293,32 @@ int ssl_cipher_get_evp(const SSL_SESSION *s, const EVP_CIPHER **enc,
 	switch (c->algorithm_enc)
 		{
 	case SSL_3DES:
-		i=SSL_ENC_3DES_IDX;
+		*enc = EVP_des_ede3_cbc();
 		break;
 	case SSL_RC4:
-		i=SSL_ENC_RC4_IDX;
+		*enc = EVP_rc4();
 		break;
 	case SSL_AES128:
-		i=SSL_ENC_AES128_IDX;
+		*enc = EVP_aes_128_cbc();
 		break;
 	case SSL_AES256:
-		i=SSL_ENC_AES256_IDX;
+		*enc = EVP_aes_256_cbc();
 		break;
 	default:
-		i= -1;
-		break;
+		return 0;
 		}
-
-	if ((i < 0) || (i >= SSL_ENC_NUM_IDX))
-		*enc=NULL;
-	else
-		*enc=ssl_cipher_methods[i];
 
 	if (!ssl_cipher_get_mac(s, md, mac_pkey_type, mac_secret_size))
 		return 0;
 
-	if ((*enc != NULL) && (*md != NULL) &&
-	    (!mac_pkey_type||*mac_pkey_type != NID_undef))
-		{
+	assert(*enc != NULL && *md != NULL);
+
+	/* TODO(fork): enable the stitched cipher modes. */
+#if 0
 		if (s->ssl_version>>8 != TLS1_VERSION_MAJOR ||
 		    s->ssl_version < TLS1_VERSION)
 			return 1;
 
-		/* TODO(fork): enable the stitched cipher modes. */
-#if 0
 		if	(c->algorithm_enc == SSL_RC4 &&
 			 c->algorithm_mac == SSL_MD5 &&
 			 (evp=EVP_get_cipherbyname("RC4-HMAC-MD5")))
@@ -376,15 +332,12 @@ int ssl_cipher_get_evp(const SSL_SESSION *s, const EVP_CIPHER **enc,
 			 (evp=EVP_get_cipherbyname("AES-256-CBC-HMAC-SHA1")))
 			*enc = evp, *md = NULL;
 #endif
-		return(1);
-		}
-	else
-		return(0);
+
+	return 1;
 	}
 
 int ssl_cipher_get_mac(const SSL_SESSION *s, const EVP_MD **md, int *mac_pkey_type, int *mac_secret_size)
 	{
-	int i;
 	const SSL_CIPHER *c;
 
 	c=s->cipher;
@@ -393,49 +346,40 @@ int ssl_cipher_get_mac(const SSL_SESSION *s, const EVP_MD **md, int *mac_pkey_ty
 	switch (c->algorithm_mac)
 		{
 	case SSL_MD5:
-		i=SSL_MD_MD5_IDX;
+		*md = EVP_md5();
 		break;
 	case SSL_SHA1:
-		i=SSL_MD_SHA1_IDX;
+		*md = EVP_sha1();
 		break;
 	case SSL_SHA256:
-		i=SSL_MD_SHA256_IDX;
+		*md = EVP_sha256();
 		break;
 	case SSL_SHA384:
-		i=SSL_MD_SHA384_IDX;
+		*md = EVP_sha384();
 		break;
 	default:
-		i= -1;
-		break;
+		return 0;
 		}
 
-	if ((i < 0) || (i >= SSL_MD_NUM_IDX))
+	if (mac_pkey_type != NULL)
 		{
-		*md=NULL; 
-		if (mac_pkey_type!=NULL) *mac_pkey_type = NID_undef;
-		if (mac_secret_size!=NULL) *mac_secret_size = 0;
+		*mac_pkey_type = EVP_PKEY_HMAC;
 		}
-	else
+	if (mac_secret_size!=NULL)
 		{
-		*md=ssl_digest_methods[i];
-		if (mac_pkey_type!=NULL) *mac_pkey_type = ssl_mac_pkey_id[i];
-		if (mac_secret_size!=NULL) *mac_secret_size = ssl_mac_secret_size[i];
+		*mac_secret_size = EVP_MD_size(*md);
 		}
-
 	return 1;
 	}
 
 int ssl_get_handshake_digest(int idx, long *mask, const EVP_MD **md) 
 {
-	if (idx <0||idx>=SSL_MD_NUM_IDX) 
+	if (idx < 0 || idx >= SSL_MAX_DIGEST)
 		{
 		return 0;
 		}
-	*mask = ssl_handshake_digest_flag[idx];
-	if (*mask)
-		*md = ssl_digest_methods[idx];
-	else
-		*md = NULL;
+	*mask = ssl_handshake_digests[idx].mask;
+	*md = ssl_handshake_digests[idx].md_func();
 	return 1;
 }
 
@@ -474,31 +418,8 @@ static void ll_append_head(CIPHER_ORDER **head, CIPHER_ORDER *curr,
 	*head=curr;
 	}
 
-static void ssl_cipher_get_disabled(unsigned long *mkey, unsigned long *auth, unsigned long *enc, unsigned long *mac, unsigned long *ssl)
-	{
-	*mkey = 0;
-	*auth = 0;
-	*enc = 0;
-	*mac = 0;
-	*ssl = 0;
-
-	*enc |= (ssl_cipher_methods[SSL_ENC_3DES_IDX] == NULL) ? SSL_3DES:0;
-	*enc |= (ssl_cipher_methods[SSL_ENC_RC4_IDX ] == NULL) ? SSL_RC4 :0;
-	*enc |= (ssl_cipher_methods[SSL_ENC_AES128_IDX] == NULL) ? SSL_AES128:0;
-	*enc |= (ssl_cipher_methods[SSL_ENC_AES256_IDX] == NULL) ? SSL_AES256:0;
-
-	*mac |= (ssl_digest_methods[SSL_MD_MD5_IDX ] == NULL) ? SSL_MD5 :0;
-	*mac |= (ssl_digest_methods[SSL_MD_SHA1_IDX] == NULL) ? SSL_SHA1:0;
-	*mac |= (ssl_digest_methods[SSL_MD_SHA256_IDX] == NULL) ? SSL_SHA256:0;
-	*mac |= (ssl_digest_methods[SSL_MD_SHA384_IDX] == NULL) ? SSL_SHA384:0;
-
-	}
-
 static void ssl_cipher_collect_ciphers(const SSL_METHOD *ssl_method,
                 int num_of_ciphers,
-                unsigned long disabled_mkey, unsigned long disabled_auth,
-                unsigned long disabled_enc, unsigned long disabled_mac,
-                unsigned long disabled_ssl,
                 CIPHER_ORDER *co_list,
                 CIPHER_ORDER **head_p, CIPHER_ORDER **tail_p)
 	{
@@ -518,12 +439,7 @@ static void ssl_cipher_collect_ciphers(const SSL_METHOD *ssl_method,
 		{
 		c = ssl_method->get_cipher(i);
 		/* drop those that use any of that is not available */
-		if ((c != NULL) && c->valid &&
-		    !(c->algorithm_mkey & disabled_mkey) &&
-		    !(c->algorithm_auth & disabled_auth) &&
-		    !(c->algorithm_enc & disabled_enc) &&
-		    !(c->algorithm_mac & disabled_mac) &&
-		    !(c->algorithm_ssl & disabled_ssl))
+		if ((c != NULL) && c->valid)
 			{
 			co_list[co_list_num].cipher = c;
 			co_list[co_list_num].next = NULL;
@@ -569,19 +485,11 @@ static void ssl_cipher_collect_ciphers(const SSL_METHOD *ssl_method,
 
 static void ssl_cipher_collect_aliases(const SSL_CIPHER **ca_list,
                         int num_of_group_aliases,
-                        unsigned long disabled_mkey, unsigned long disabled_auth,
-                        unsigned long disabled_enc, unsigned long disabled_mac,
-                        unsigned long disabled_ssl,
 			CIPHER_ORDER *head)
 	{
 	CIPHER_ORDER *ciph_curr;
 	const SSL_CIPHER **ca_curr;
 	int i;
-	unsigned long mask_mkey = ~disabled_mkey;
-	unsigned long mask_auth = ~disabled_auth;
-	unsigned long mask_enc = ~disabled_enc;
-	unsigned long mask_mac = ~disabled_mac;
-	unsigned long mask_ssl = ~disabled_ssl;
 
 	/*
 	 * First, add the real ciphers as already collected
@@ -603,32 +511,6 @@ static void ssl_cipher_collect_aliases(const SSL_CIPHER **ca_list,
 	 */
 	for (i = 0; i < num_of_group_aliases; i++)
 		{
-		unsigned long algorithm_mkey = cipher_aliases[i].algorithm_mkey;
-		unsigned long algorithm_auth = cipher_aliases[i].algorithm_auth;
-		unsigned long algorithm_enc = cipher_aliases[i].algorithm_enc;
-		unsigned long algorithm_mac = cipher_aliases[i].algorithm_mac;
-		unsigned long algorithm_ssl = cipher_aliases[i].algorithm_ssl;
-
-		if (algorithm_mkey)
-			if ((algorithm_mkey & mask_mkey) == 0)
-				continue;
-	
-		if (algorithm_auth)
-			if ((algorithm_auth & mask_auth) == 0)
-				continue;
-		
-		if (algorithm_enc)
-			if ((algorithm_enc & mask_enc) == 0)
-				continue;
-		
-		if (algorithm_mac)
-			if ((algorithm_mac & mask_mac) == 0)
-				continue;
-		
-		if (algorithm_ssl)
-			if ((algorithm_ssl & mask_ssl) == 0)
-				continue;
-		
 		*ca_curr = cipher_aliases + i;
 		ca_curr++;
 		}
@@ -1141,7 +1023,6 @@ STACK_OF(SSL_CIPHER) *ssl_create_cipher_list(const SSL_METHOD *ssl_method,
 		const char *rule_str, CERT *c)
 	{
 	int ok, num_of_ciphers, num_of_alias_max, num_of_group_aliases;
-	unsigned long disabled_mkey, disabled_auth, disabled_enc, disabled_mac, disabled_ssl;
 	STACK_OF(SSL_CIPHER) *cipherstack = NULL, *tmp_cipher_list = NULL;
 	const char *rule_p;
 	CIPHER_ORDER *co_list = NULL, *head = NULL, *tail = NULL, *curr;
@@ -1155,12 +1036,6 @@ STACK_OF(SSL_CIPHER) *ssl_create_cipher_list(const SSL_METHOD *ssl_method,
 	 */
 	if (rule_str == NULL || cipher_list == NULL)
 		return NULL;
-
-	/*
-	 * To reduce the work to do we only want to process the compiled
-	 * in algorithms, so we first get the mask of disabled ciphers.
-	 */
-	ssl_cipher_get_disabled(&disabled_mkey, &disabled_auth, &disabled_enc, &disabled_mac, &disabled_ssl);
 
 	/*
 	 * Now we have to collect the available ciphers from the compiled
@@ -1179,7 +1054,6 @@ STACK_OF(SSL_CIPHER) *ssl_create_cipher_list(const SSL_METHOD *ssl_method,
 		}
 
 	ssl_cipher_collect_ciphers(ssl_method, num_of_ciphers,
-	                           disabled_mkey, disabled_auth, disabled_enc, disabled_mac, disabled_ssl,
 	                           co_list, &head, &tail);
 
 
@@ -1242,13 +1116,10 @@ STACK_OF(SSL_CIPHER) *ssl_create_cipher_list(const SSL_METHOD *ssl_method,
 	ca_list = OPENSSL_malloc(sizeof(SSL_CIPHER *) * num_of_alias_max);
 	if (ca_list == NULL)
 		{
-		OPENSSL_free(co_list);
 		OPENSSL_PUT_ERROR(SSL, ssl_create_cipher_list, ERR_R_MALLOC_FAILURE);
-		return(NULL);	/* Failure */
+		goto err;
 		}
-	ssl_cipher_collect_aliases(ca_list, num_of_group_aliases,
-	                           disabled_mkey, disabled_auth, disabled_enc,
-				   disabled_mac, disabled_ssl, head);
+	ssl_cipher_collect_aliases(ca_list, num_of_group_aliases, head);
 
 	/*
 	 * If the rule_string begins with DEFAULT, apply the default rule
