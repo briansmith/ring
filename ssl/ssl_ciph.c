@@ -354,8 +354,7 @@ int ssl_cipher_get_evp(const SSL_SESSION *s, const EVP_CIPHER **enc,
 	if (!ssl_cipher_get_mac(s, md, mac_pkey_type, mac_secret_size))
 		return 0;
 
-	if ((*enc != NULL) &&
-	    (*md != NULL || (EVP_CIPHER_flags(*enc)&EVP_CIPH_FLAG_AEAD_CIPHER)) &&
+	if ((*enc != NULL) && (*md != NULL) &&
 	    (!mac_pkey_type||*mac_pkey_type != NID_undef))
 		{
 		if (s->ssl_version>>8 != TLS1_VERSION_MAJOR ||

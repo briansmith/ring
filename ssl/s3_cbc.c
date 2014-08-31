@@ -181,13 +181,6 @@ int tls1_cbc_remove_padding(const SSL* s,
 			}
 		}
 
-	if (EVP_CIPHER_flags(s->enc_read_ctx->cipher)&EVP_CIPH_FLAG_AEAD_CIPHER)
-		{
-		/* padding is already verified */
-		rec->length -= padding_length + 1;
-		return 1;
-		}
-
 	good = constant_time_ge(rec->length, overhead+padding_length);
 	/* The padding consists of a length byte at the end of the record and
 	 * then that many bytes of padding, all with the same value as the
