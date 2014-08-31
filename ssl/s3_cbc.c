@@ -52,7 +52,6 @@
 
 #include <assert.h>
 
-#include <openssl/md5.h>
 #include <openssl/obj.h>
 #include <openssl/sha.h>
 
@@ -327,15 +326,6 @@ void ssl3_cbc_copy_mac(unsigned char* out,
 /* These functions serialize the state of a hash and thus perform the standard
  * "final" operation without adding the padding and length that such a function
  * typically does. */
-static void tls1_md5_final_raw(void* ctx, unsigned char *md_out)
-	{
-	MD5_CTX *md5 = ctx;
-	u32toLE(md5->A, md_out);
-	u32toLE(md5->B, md_out);
-	u32toLE(md5->C, md_out);
-	u32toLE(md5->D, md_out);
-	}
-
 static void tls1_sha1_final_raw(void* ctx, unsigned char *md_out)
 	{
 	SHA_CTX *sha1 = ctx;
@@ -379,12 +369,9 @@ char ssl3_cbc_record_digest_supported(const EVP_MD_CTX *ctx)
 	{
 	switch (EVP_MD_CTX_type(ctx))
 		{
-		case NID_md5:
 		case NID_sha1:
-		case NID_sha224:
 		case NID_sha256:
 		case NID_sha384:
-		case NID_sha512:
 			return 1;
 		default:
 			return 0;
@@ -441,7 +428,6 @@ void ssl3_cbc_digest_record(
 	/* mdLengthSize is the number of bytes in the length field that terminates
 	* the hash. */
 	unsigned md_length_size = 8;
-	char length_is_big_endian = 1;
 
 	/* This is a, hopefully redundant, check that allows us to forget about
 	 * many possible overflows later in this function. */
@@ -449,25 +435,11 @@ void ssl3_cbc_digest_record(
 
 	switch (EVP_MD_CTX_type(ctx))
 		{
-		case NID_md5:
-			MD5_Init((MD5_CTX*)md_state.c);
-			md_final_raw = tls1_md5_final_raw;
-			md_transform = (void(*)(void *ctx, const unsigned char *block)) MD5_Transform;
-			md_size = 16;
-			sslv3_pad_length = 48;
-			length_is_big_endian = 0;
-			break;
 		case NID_sha1:
 			SHA1_Init((SHA_CTX*)md_state.c);
 			md_final_raw = tls1_sha1_final_raw;
 			md_transform = (void(*)(void *ctx, const unsigned char *block)) SHA1_Transform;
 			md_size = 20;
-			break;
-		case NID_sha224:
-			SHA224_Init((SHA256_CTX*)md_state.c);
-			md_final_raw = tls1_sha256_final_raw;
-			md_transform = (void(*)(void *ctx, const unsigned char *block)) SHA256_Transform;
-			md_size = 224/8;
 			break;
 		case NID_sha256:
 			SHA256_Init((SHA256_CTX*)md_state.c);
@@ -480,14 +452,6 @@ void ssl3_cbc_digest_record(
 			md_final_raw = tls1_sha512_final_raw;
 			md_transform = (void(*)(void *ctx, const unsigned char *block)) SHA512_Transform;
 			md_size = 384/8;
-			md_block_size = 128;
-			md_length_size = 16;
-			break;
-		case NID_sha512:
-			SHA512_Init((SHA512_CTX*)md_state.c);
-			md_final_raw = tls1_sha512_final_raw;
-			md_transform = (void(*)(void *ctx, const unsigned char *block)) SHA512_Transform;
-			md_size = 64;
 			md_block_size = 128;
 			md_length_size = 16;
 			break;
@@ -592,22 +556,11 @@ void ssl3_cbc_digest_record(
 		md_transform(md_state.c, hmac_pad);
 		}
 
-	if (length_is_big_endian)
-		{
-		memset(length_bytes,0,md_length_size-4);
-		length_bytes[md_length_size-4] = (unsigned char)(bits>>24);
-		length_bytes[md_length_size-3] = (unsigned char)(bits>>16);
-		length_bytes[md_length_size-2] = (unsigned char)(bits>>8);
-		length_bytes[md_length_size-1] = (unsigned char)bits;
-		}
-	else
-		{
-		memset(length_bytes,0,md_length_size);
-		length_bytes[md_length_size-5] = (unsigned char)(bits>>24);
-		length_bytes[md_length_size-6] = (unsigned char)(bits>>16);
-		length_bytes[md_length_size-7] = (unsigned char)(bits>>8);
-		length_bytes[md_length_size-8] = (unsigned char)bits;
-		}
+	memset(length_bytes,0,md_length_size-4);
+	length_bytes[md_length_size-4] = (unsigned char)(bits>>24);
+	length_bytes[md_length_size-3] = (unsigned char)(bits>>16);
+	length_bytes[md_length_size-2] = (unsigned char)(bits>>8);
+	length_bytes[md_length_size-1] = (unsigned char)bits;
 
 	if (k > 0)
 		{
@@ -615,8 +568,7 @@ void ssl3_cbc_digest_record(
 			{
 			/* The SSLv3 header is larger than a single block.
 			 * overhang is the number of bytes beyond a single
-			 * block that the header consumes: either 7 bytes
-			 * (SHA1) or 11 bytes (MD5). */
+			 * block that the header consumes: 7 bytes (SHA1). */
 			unsigned overhang = header_length-md_block_size;
 			md_transform(md_state.c, header);
 			memcpy(first_block, header + md_block_size, overhang);
