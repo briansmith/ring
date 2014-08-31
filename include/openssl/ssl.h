@@ -471,33 +471,21 @@ struct ssl_session_st
 
 #endif
 
-#define SSL_OP_MICROSOFT_SESS_ID_BUG			0x00000001L
-#define SSL_OP_NETSCAPE_CHALLENGE_BUG			0x00000002L
-/* Allow initial connection to servers that don't support RI */
+/* SSL_OP_LEGACY_SERVER_CONNECT allows initial connection to servers
+ * that don't support RI */
 #define SSL_OP_LEGACY_SERVER_CONNECT			0x00000004L
-#define SSL_OP_SSLREF2_REUSE_CERT_TYPE_BUG		0x00000010L
+
+/* SSL_OP_MICROSOFT_BIG_SSLV3_BUFFER allows for record sizes
+ * SSL3_RT_MAX_EXTRA bytes above the maximum record size. */
 #define SSL_OP_MICROSOFT_BIG_SSLV3_BUFFER		0x00000020L
-#define SSL_OP_SAFARI_ECDHE_ECDSA_BUG			0x00000040L
+
+/* SSL_OP_TLS_D5_BUG accepts an RSAClientKeyExchange in TLS encoded as
+ * SSL3, without a length prefix. */
 #define SSL_OP_TLS_D5_BUG				0x00000100L
-#define SSL_OP_TLS_BLOCK_PADDING_BUG			0x00000200L
 
-/* Hasn't done anything since OpenSSL 0.9.7h, retained for compatibility */
-#define SSL_OP_MSIE_SSLV2_RSA_PADDING			0x0
-
-/* SSL_OP_DONT_INSERT_EMPTY_FRAGMENTS is vestigial. Previously it disabled the
- * insertion of empty records in CBC mode, but the empty records were commonly
- * misinterpreted as EOF by other TLS stacks and so this was disabled by
- * SSL_OP_ALL.
- *
- * This has been replaced by 1/n-1 record splitting, which is enabled by
- * SSL_MODE_CBC_RECORD_SPLITTING in SSL_set_mode. This involves sending a
- * one-byte record rather than an empty record and has much better
- * compatibility. */
-#define SSL_OP_DONT_INSERT_EMPTY_FRAGMENTS              0x00000800L /* added in 0.9.6e */
-
-/* SSL_OP_ALL: various bug workarounds that should be rather harmless.
- *             This used to be 0x000FFFFFL before 0.9.7. */
-#define SSL_OP_ALL					0x80000BFFL
+/* SSL_OP_ALL enables the above bug workarounds that should be rather
+ * harmless. */
+#define SSL_OP_ALL					0x00000BFFL
 
 /* DTLS options */
 #define SSL_OP_NO_QUERY_MTU                 0x00001000L

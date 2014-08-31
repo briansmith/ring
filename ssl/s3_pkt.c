@@ -311,7 +311,7 @@ static int ssl3_get_record(SSL *s)
 		extra=0;
 	if (extra && !s->s3->init_extra)
 		{
-		/* An application error: SLS_OP_MICROSOFT_BIG_SSLV3_BUFFER
+		/* An application error: SSL_OP_MICROSOFT_BIG_SSLV3_BUFFER
 		 * set after ssl3_setup_buffers() was done */
 		OPENSSL_PUT_ERROR(SSL, ssl3_get_record, ERR_R_INTERNAL_ERROR);
 		return -1;

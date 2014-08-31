@@ -696,8 +696,9 @@ int ssl3_setup_write_buffer(SSL *s)
 		len = s->max_send_fragment
 			+ SSL3_RT_SEND_MAX_ENCRYPTED_OVERHEAD
 			+ headerlen + align;
-		if (!(s->options & SSL_OP_DONT_INSERT_EMPTY_FRAGMENTS))
-			len += headerlen + align
+		/* Account for 1/n-1 record splitting. */
+		if (s->mode & SSL_MODE_CBC_RECORD_SPLITTING)
+			len += headerlen + align + 1
 				+ SSL3_RT_SEND_MAX_ENCRYPTED_OVERHEAD;
 
 		if ((p=OPENSSL_malloc(len)) == NULL)

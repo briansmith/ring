@@ -903,11 +903,6 @@ int tls1_enc(SSL *s, int send)
 
 			/* we need to add 'i' padding bytes of value j */
 			j=i-1;
-			if (s->options & SSL_OP_TLS_BLOCK_PADDING_BUG)
-				{
-				if (s->s3->flags & TLS1_FLAGS_TLS_PADDING_BUG)
-					j++;
-				}
 			for (k=(int)l; k<(int)(l+i); k++)
 				rec->input[k]=j;
 			l+=i;
