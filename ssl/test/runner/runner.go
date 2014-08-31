@@ -483,6 +483,18 @@ var testCases = []testCase{
 		shouldFail:    true,
 		expectedError: ":HTTPS_PROXY_REQUEST:",
 	},
+	{
+		name: "SkipCipherVersionCheck",
+		config: Config{
+			CipherSuites: []uint16{TLS_RSA_WITH_AES_128_GCM_SHA256},
+			MaxVersion:   VersionTLS11,
+			Bugs: ProtocolBugs{
+				SkipCipherVersionCheck: true,
+			},
+		},
+		shouldFail:    true,
+		expectedError: ":WRONG_CIPHER_RETURNED:",
+	},
 }
 
 func doExchange(test *testCase, config *Config, conn net.Conn, messageLen int) error {

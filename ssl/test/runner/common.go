@@ -445,6 +445,10 @@ type ProtocolBugs struct {
 	// ClientKeyExchange message without the two-byte length
 	// prefix, as if it were SSL3.
 	SSL3RSAKeyExchange bool
+
+	// SkipCipherVersionCheck causes the server to negotiate
+	// TLS 1.2 ciphers in earlier versions of TLS.
+	SkipCipherVersionCheck bool
 }
 
 func (c *Config) serverInit() {

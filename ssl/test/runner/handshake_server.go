@@ -832,7 +832,7 @@ func (c *Conn) tryCipherSuite(id uint16, supportedCipherSuites []uint16, version
 			if (candidate.flags&suiteECDSA != 0) != ecdsaOk {
 				continue
 			}
-			if version < VersionTLS12 && candidate.flags&suiteTLS12 != 0 {
+			if !c.config.Bugs.SkipCipherVersionCheck && version < VersionTLS12 && candidate.flags&suiteTLS12 != 0 {
 				continue
 			}
 			if c.isDTLS && candidate.flags&suiteNoDTLS != 0 {
