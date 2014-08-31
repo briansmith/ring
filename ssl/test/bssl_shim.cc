@@ -316,6 +316,9 @@ static int do_exchange(SSL_SESSION **out_session,
   if (config->cookie_exchange) {
     SSL_set_options(ssl, SSL_OP_COOKIE_EXCHANGE);
   }
+  if (config->tls_d5_bug) {
+    SSL_set_options(ssl, SSL_OP_TLS_D5_BUG);
+  }
   if (!config->expected_channel_id.empty()) {
     SSL_enable_tls_channel_id(ssl);
   }

@@ -46,6 +46,7 @@ struct TestConfig {
   std::string expected_channel_id;
   std::string send_channel_id;
   bool shim_writes_first;
+  bool tls_d5_bug;
 };
 
 bool ParseConfig(int argc, char **argv, TestConfig *out_config);

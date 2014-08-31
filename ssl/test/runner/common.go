@@ -440,6 +440,11 @@ type ProtocolBugs struct {
 	// isn't sent until we receive an application data record
 	// from the peer.
 	ExpectFalseStart bool
+
+	// SSL3RSAKeyExchange causes the client to always send an RSA
+	// ClientKeyExchange message without the two-byte length
+	// prefix, as if it were SSL3.
+	SSL3RSAKeyExchange bool
 }
 
 func (c *Config) serverInit() {
