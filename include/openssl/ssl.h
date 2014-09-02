@@ -1375,12 +1375,9 @@ struct ssl_st
 					void *arg);
 	void *tlsext_debug_arg;
 	char *tlsext_hostname;
-	int servername_done;   /* no further mod of servername 
-	                          0 : call the servername extension callback.
-	                          1 : prepare 2, allow last ack just after in server callback.
-	                          2 : don't call servername callback, no ack in server hello
-	                       */
-
+	/* should_ack_sni is true if the SNI extension should be acked. This is
+	 * only used by a server. */
+	char should_ack_sni;
 	/* RFC4507 session ticket expected to be received or sent */
 	int tlsext_ticket_expected;
 	size_t tlsext_ecpointformatlist_length;

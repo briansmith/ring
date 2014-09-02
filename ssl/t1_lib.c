@@ -1212,7 +1212,7 @@ unsigned char *ssl_add_serverhello_tlsext(SSL *s, unsigned char *buf, unsigned c
 	ret+=2;
 	if (ret>=limit) return NULL; /* this really never occurs, but ... */
 
-	if (!s->hit && s->servername_done == 1 && s->session->tlsext_hostname != NULL)
+	if (!s->hit && s->should_ack_sni && s->session->tlsext_hostname != NULL)
 		{ 
 		if ((long)(limit - ret - 4) < 0) return NULL; 
 
@@ -1418,7 +1418,7 @@ static int ssl_scan_clienthello_tlsext(SSL *s, CBS *cbs, int *out_alert)
 	CBS extensions;
 	size_t i;
 
-	s->servername_done = 0;
+	s->should_ack_sni = 0;
 	s->s3->next_proto_neg_seen = 0;
 	s->s3->tmp.certificate_status_expected = 0;
 
@@ -1506,6 +1506,7 @@ static int ssl_scan_clienthello_tlsext(SSL *s, CBS *cbs, int *out_alert)
 		if (type == TLSEXT_TYPE_server_name)
 			{
 			CBS server_name_list;
+			char have_seen_host_name = 0;
 
 			if (!CBS_get_u16_length_prefixed(&extension, &server_name_list) ||
 				CBS_len(&server_name_list) < 1 ||
@@ -1532,28 +1533,38 @@ static int ssl_scan_clienthello_tlsext(SSL *s, CBS *cbs, int *out_alert)
 				if (name_type != TLSEXT_NAMETYPE_host_name)
 					continue;
 
+				if (have_seen_host_name)
+					{
+					/* The ServerNameList MUST NOT contain
+					 * more than one name of the same
+					 * name_type. */
+					*out_alert = SSL_AD_DECODE_ERROR;
+					return 0;
+					}
+
+				have_seen_host_name = 1;
+
+				if (!CBS_get_u16_length_prefixed(&server_name_list, &host_name) ||
+					CBS_len(&host_name) < 1)
+					{
+					*out_alert = SSL_AD_DECODE_ERROR;
+					return 0;
+					}
+
+				if (CBS_len(&host_name) > TLSEXT_MAXLEN_host_name ||
+					CBS_contains_zero_byte(&host_name))
+					{
+					*out_alert = SSL_AD_UNRECOGNIZED_NAME;
+					return 0;
+					}
+
 				if (!s->hit)
 					{
+					assert(s->session->tlsext_hostname == NULL);
 					if (s->session->tlsext_hostname)
 						{
-						/* The ServerNameList MUST NOT
-						   contain more than one name of
-						   the same name_type. */
+						/* This should be impossible. */
 						*out_alert = SSL_AD_DECODE_ERROR;
-						return 0;
-						}
-
-					if (!CBS_get_u16_length_prefixed(&server_name_list, &host_name) ||
-						CBS_len(&host_name) < 1)
-						{
-						*out_alert = SSL_AD_DECODE_ERROR;
-						return 0;
-						}
-
-					if (CBS_len(&host_name) > TLSEXT_MAXLEN_host_name ||
-						CBS_contains_zero_byte(&host_name))
-						{
-						*out_alert = SSL_AD_UNRECOGNIZED_NAME;
 						return 0;
 						}
 
@@ -1563,14 +1574,8 @@ static int ssl_scan_clienthello_tlsext(SSL *s, CBS *cbs, int *out_alert)
 						*out_alert = SSL_AD_INTERNAL_ERROR;
 						return 0;
 						}
-					s->servername_done = 1;
-					}
-				else
-					{
-					s->servername_done = s->session->tlsext_hostname
-						&& strlen(s->session->tlsext_hostname) == CBS_len(&host_name)
-						&& strncmp(s->session->tlsext_hostname,
-							(char *)CBS_data(&host_name), CBS_len(&host_name)) == 0;
+
+					s->should_ack_sni = 1;
 					}
 				}
 			}
@@ -2147,12 +2152,14 @@ static int ssl_check_clienthello_tlsext(SSL *s)
 
 		case SSL_TLSEXT_ERR_ALERT_WARNING:
 			ssl3_send_alert(s,SSL3_AL_WARNING,al);
-			return 1; 
-					
+			return 1;
+
 		case SSL_TLSEXT_ERR_NOACK:
-			s->servername_done=0;
-			default:
-		return 1;
+			s->should_ack_sni = 0;
+			return 1;
+
+		default:
+			return 1;
 		}
 	}
 
@@ -2200,17 +2207,15 @@ static int ssl_check_serverhello_tlsext(SSL *s)
 	switch (ret)
 		{
 		case SSL_TLSEXT_ERR_ALERT_FATAL:
-			ssl3_send_alert(s,SSL3_AL_FATAL,al); 
+			ssl3_send_alert(s,SSL3_AL_FATAL,al);
 			return -1;
 
 		case SSL_TLSEXT_ERR_ALERT_WARNING:
 			ssl3_send_alert(s,SSL3_AL_WARNING,al);
-			return 1; 
-					
-		case SSL_TLSEXT_ERR_NOACK:
-			s->servername_done=0;
-			default:
-		return 1;
+			return 1;
+
+		default:
+			return 1;
 		}
 	}
 
