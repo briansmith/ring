@@ -689,6 +689,14 @@ OPENSSL_EXPORT void SSL_set_msg_callback(SSL *ssl, void (*cb)(int write_p, int v
 #define SSL_CTX_set_msg_callback_arg(ctx, arg) SSL_CTX_ctrl((ctx), SSL_CTRL_SET_MSG_CALLBACK_ARG, 0, (arg))
 #define SSL_set_msg_callback_arg(ssl, arg) SSL_ctrl((ssl), SSL_CTRL_SET_MSG_CALLBACK_ARG, 0, (arg))
 
+/* SSL_CTX_set_keylog_bio sets configures all SSL objects attached to |ctx| to
+ * log session material to |keylog_bio|. This is intended for debugging use with
+ * tools like Wireshark. |ctx| takes ownership of |keylog_bio|.
+ *
+ * The format is described in
+ * https://developer.mozilla.org/en-US/docs/Mozilla/Projects/NSS/Key_Log_Format. */
+void SSL_CTX_set_keylog_bio(SSL_CTX *ctx, BIO *keylog_bio);
+
 
 struct ssl_aead_ctx_st;
 typedef struct ssl_aead_ctx_st SSL_AEAD_CTX;
@@ -1033,6 +1041,11 @@ struct ssl_ctx_st
 
 	/* If true, a client will request a stapled OCSP response. */
 	char ocsp_stapling_enabled;
+
+	/* If not NULL, session key material will be logged to this BIO for
+	 * debugging purposes. The format matches NSS's and is readable by
+	 * Wireshark. */
+	BIO *keylog_bio;
 	};
 
 #endif
@@ -2474,6 +2487,8 @@ OPENSSL_EXPORT void ERR_load_SSL_strings(void);
 #define SSL_F_ssl3_expect_change_cipher_spec 282
 #define SSL_F_ssl23_get_v2_client_hello 283
 #define SSL_F_ssl3_cert_verify_hash 284
+#define SSL_F_ssl_ctx_log_rsa_client_key_exchange 285
+#define SSL_F_ssl_ctx_log_master_secret 286
 #define SSL_R_UNABLE_TO_FIND_ECDH_PARAMETERS 100
 #define SSL_R_DECRYPTION_FAILED_OR_BAD_RECORD_MAC 101
 #define SSL_R_INVALID_NULL_CMD_NAME 102

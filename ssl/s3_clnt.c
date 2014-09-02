@@ -2015,6 +2015,13 @@ int ssl3_send_client_key_exchange(SSL *s)
 				goto err;
 				}
 
+			/* Log the premaster secret, if logging is enabled. */
+			if (!ssl_ctx_log_rsa_client_key_exchange(s->ctx,
+					p, n, tmp_buf, sizeof(tmp_buf)))
+				{
+				goto err;
+				}
+
 			/* Fix buf for TLS and beyond */
 			if (s->version > SSL3_VERSION)
 				{

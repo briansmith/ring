@@ -18,6 +18,7 @@
 #include <vector>
 
 #include <errno.h>
+#include <stdlib.h>
 #include <sys/types.h>
 #include <sys/socket.h>
 
@@ -252,6 +253,16 @@ bool Client(const std::vector<std::string> &args) {
   }
 
   SSL_CTX *ctx = SSL_CTX_new(SSLv23_client_method());
+
+  const char *keylog_file = getenv("SSLKEYLOGFILE");
+  if (keylog_file) {
+    BIO *keylog_bio = BIO_new_file(keylog_file, "a");
+    if (!keylog_bio) {
+      ERR_print_errors_cb(PrintErrorCallback, stderr);
+      return false;
+    }
+    SSL_CTX_set_keylog_bio(ctx, keylog_bio);
+  }
 
   int sock = -1;
   if (!Connect(&sock, args_map["-connect"])) {

@@ -1091,6 +1091,19 @@ int tls1_check_chain(SSL *s, X509 *x, EVP_PKEY *pk, STACK_OF(X509) *chain,
 								int idx);
 void tls1_set_cert_validity(SSL *s);
 
+/* ssl_ctx_log_rsa_client_key_exchange logs |premaster| to |ctx|, if logging is
+ * enabled. It returns one on success and zero on failure. The entry is
+ * identified by the first 8 bytes of |encrypted_premaster|. */
+int ssl_ctx_log_rsa_client_key_exchange(SSL_CTX *ctx,
+	const uint8_t *encrypted_premaster, size_t encrypted_premaster_len,
+	const uint8_t *premaster, size_t premaster_len);
+
+/* ssl_ctx_log_master_secret logs |master| to |ctx|, if logging is enabled. It
+ * returns one on success and zero on failure. The entry is identified by
+ * |client_random|. */
+int ssl_ctx_log_master_secret(SSL_CTX *ctx,
+	const uint8_t *client_random, size_t client_random_len,
+	const uint8_t *master, size_t master_len);
 
 int ssl3_can_cutthrough(const SSL *s);
 int ssl_get_max_version(const SSL *s);

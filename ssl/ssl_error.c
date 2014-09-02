@@ -163,6 +163,8 @@ const ERR_STRING_DATA SSL_error_string_data[] = {
   {ERR_PACK(ERR_LIB_SSL, SSL_F_ssl_cipher_process_rulestr, 0), "ssl_cipher_process_rulestr"},
   {ERR_PACK(ERR_LIB_SSL, SSL_F_ssl_cipher_strength_sort, 0), "ssl_cipher_strength_sort"},
   {ERR_PACK(ERR_LIB_SSL, SSL_F_ssl_create_cipher_list, 0), "ssl_create_cipher_list"},
+  {ERR_PACK(ERR_LIB_SSL, SSL_F_ssl_ctx_log_master_secret, 0), "ssl_ctx_log_master_secret"},
+  {ERR_PACK(ERR_LIB_SSL, SSL_F_ssl_ctx_log_rsa_client_key_exchange, 0), "ssl_ctx_log_rsa_client_key_exchange"},
   {ERR_PACK(ERR_LIB_SSL, SSL_F_ssl_ctx_make_profiles, 0), "ssl_ctx_make_profiles"},
   {ERR_PACK(ERR_LIB_SSL, SSL_F_ssl_get_new_session, 0), "ssl_get_new_session"},
   {ERR_PACK(ERR_LIB_SSL, SSL_F_ssl_get_prev_session, 0), "ssl_get_prev_session"},
