@@ -1165,7 +1165,6 @@ dtls1_retransmit_message(SSL *s, unsigned short seq, unsigned long frag_off,
 	saved_state.write_hash = s->write_hash;
 	saved_state.session = s->session;
 	saved_state.epoch = s->d1->w_epoch;
-	saved_state.epoch = s->d1->w_epoch;
 	
 	s->d1->retransmitting = 1;
 	

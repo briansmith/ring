@@ -132,13 +132,12 @@ static int mem_free(BIO *bio) {
 }
 
 static int mem_read(BIO *bio, char *out, int outl) {
-  int ret = -1;
-  BUF_MEM *b;
+  int ret;
+  BUF_MEM *b = (BUF_MEM*) bio->ptr;
 
-  b = (BUF_MEM *)bio->ptr;
   BIO_clear_retry_flags(bio);
   ret = outl;
-  if (ret > (int)b->length) {
+  if (b->length < INT_MAX && ret > (int)b->length) {
     ret = b->length;
   }
 

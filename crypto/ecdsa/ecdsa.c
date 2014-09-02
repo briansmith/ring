@@ -140,8 +140,9 @@ int ECDSA_do_verify(const uint8_t *digest, size_t digest_len,
   }
 
   /* check input values */
-  if (eckey == NULL || (group = EC_KEY_get0_group(eckey)) == NULL ||
-      (pub_key = EC_KEY_get0_public_key(eckey)) == NULL || sig == NULL) {
+  if ((group = EC_KEY_get0_group(eckey)) == NULL ||
+      (pub_key = EC_KEY_get0_public_key(eckey)) == NULL ||
+      sig == NULL) {
     OPENSSL_PUT_ERROR(ECDSA, ECDSA_do_verify, ECDSA_R_MISSING_PARAMETERS);
     return 0;
   }

@@ -127,9 +127,13 @@ int example_EVP_DigestSignInit(void) {
     fprintf(stderr, "sig_len mismatch\n");
     goto out;
   }
+
   sig = malloc(sig_len);
-  if (sig == NULL ||
-      EVP_DigestSignFinal(&md_ctx, sig, &sig_len) != 1) {
+  if (sig == NULL) {
+    goto out;
+  }
+  if (EVP_DigestSignFinal(&md_ctx, sig, &sig_len) != 1) {
+    free(sig);
     goto out;
   }
 

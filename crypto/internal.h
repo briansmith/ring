@@ -111,6 +111,10 @@
 
 #include <openssl/ex_data.h>
 
+#if defined(__cplusplus)
+extern "C" {
+#endif
+
 
 /* st_CRYPTO_EX_DATA_IMPL contains an ex_data implementation. See the comments
  * in ex_data.h for details of the behaviour of each of the functions. */

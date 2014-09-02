@@ -2229,9 +2229,8 @@ int ssl3_send_client_key_exchange(SSL *s)
 
 			/* Free allocated memory */
 			BN_CTX_free(bn_ctx);
-			if (encodedPoint != NULL) OPENSSL_free(encodedPoint);
-			if (clnt_ecdh != NULL)
-				 EC_KEY_free(clnt_ecdh);
+			OPENSSL_free(encodedPoint);
+			EC_KEY_free(clnt_ecdh);
 			EVP_PKEY_free(srvr_pub_pkey);
 			}
 		else if (!(alg_k & SSL_kPSK) || ((alg_k & SSL_kPSK) && !(alg_a & SSL_aPSK)))
