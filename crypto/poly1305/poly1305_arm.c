@@ -17,8 +17,7 @@
 
 #include <openssl/poly1305.h>
 
-
-#if defined(OPENSSL_ARM)
+#if defined(OPENSSL_ARM) && !defined(OPENSSL_NO_ASM)
 
 typedef struct {
   uint32_t v[12]; /* for alignment; only using 10 */
@@ -285,4 +284,4 @@ void CRYPTO_poly1305_finish_neon(poly1305_state *state, uint8_t mac[16]) {
   fe1305x2_tobytearray(mac, h);
 }
 
-#endif  /* OPENSSL_ARM */
+#endif  /* OPENSSL_ARM && !OPENSSL_NO_ASM */

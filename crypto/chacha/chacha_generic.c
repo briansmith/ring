@@ -47,7 +47,7 @@ static const char sigma[16] = "expand 32-byte k";
   x[a] = PLUS(x[a],x[b]); x[d] = ROTATE(XOR(x[d],x[a]), 8); \
   x[c] = PLUS(x[c],x[d]); x[b] = ROTATE(XOR(x[b],x[c]), 7);
 
-#if defined(OPENSSL_ARM)
+#if defined(OPENSSL_ARM) && !defined(OPENSSL_NO_ASM)
 /* Defined in chacha_vec.c */
 void CRYPTO_chacha_20_neon(uint8_t *out, const uint8_t *in, size_t in_len,
                            const uint8_t key[32], const uint8_t nonce[8],
@@ -87,7 +87,7 @@ void CRYPTO_chacha_20(uint8_t *out, const uint8_t *in, size_t in_len,
   uint8_t buf[64];
   size_t todo, i;
 
-#if defined(OPENSSL_ARM)
+#if defined(OPENSSL_ARM) && !defined(OPENSSL_NO_ASM)
   if (CRYPTO_is_NEON_capable() && ((intptr_t)in & 15) == 0 &&
       ((intptr_t)out & 15) == 0) {
     CRYPTO_chacha_20_neon(out, in, in_len, key, nonce, counter);

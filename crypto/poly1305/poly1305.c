@@ -48,7 +48,7 @@ static void U32TO8_LE(uint8_t *m, uint32_t v) {
 }
 #endif
 
-#if defined(OPENSSL_ARM)
+#if defined(OPENSSL_ARM) && !defined(OPENSSL_NO_ASM)
 void CRYPTO_poly1305_init_neon(poly1305_state *state, const uint8_t key[32]);
 
 void CRYPTO_poly1305_update_neon(poly1305_state *state, const uint8_t *in,
@@ -165,7 +165,7 @@ void CRYPTO_poly1305_init(poly1305_state *statep, const uint8_t key[32]) {
   struct poly1305_state_st *state = (struct poly1305_state_st *)statep;
   uint32_t t0, t1, t2, t3;
 
-#if defined(OPENSSL_ARM)
+#if defined(OPENSSL_ARM) && !defined(OPENSSL_NO_ASM)
   if (CRYPTO_is_NEON_functional()) {
     CRYPTO_poly1305_init_neon(statep, key);
     return;
@@ -212,7 +212,7 @@ void CRYPTO_poly1305_update(poly1305_state *statep, const uint8_t *in,
   unsigned int i;
   struct poly1305_state_st *state = (struct poly1305_state_st *)statep;
 
-#if defined(OPENSSL_ARM)
+#if defined(OPENSSL_ARM) && !defined(OPENSSL_NO_ASM)
   if (CRYPTO_is_NEON_functional()) {
     CRYPTO_poly1305_update_neon(statep, in, in_len);
     return;
@@ -255,7 +255,7 @@ void CRYPTO_poly1305_finish(poly1305_state *statep, uint8_t mac[16]) {
   uint32_t g0, g1, g2, g3, g4;
   uint32_t b, nb;
 
-#if defined(OPENSSL_ARM)
+#if defined(OPENSSL_ARM) && !defined(OPENSSL_NO_ASM)
   if (CRYPTO_is_NEON_functional()) {
     CRYPTO_poly1305_finish_neon(statep, mac);
     return;

@@ -21,6 +21,8 @@
 #
 #     /opt/gcc-linaro-arm-linux-gnueabihf-4.7-2012.10-20121022_linux/bin/arm-linux-gnueabihf-gcc -O3 -mcpu=cortex-a8 -mfpu=neon -S chacha_vec.c -I ../../include -fpic -o chacha_vec_arm.S
 
+#if !defined(OPENSSL_NO_ASM)
+
 	.syntax unified
 	.cpu cortex-a8
 	.eabi_attribute 27, 3
@@ -884,3 +886,5 @@ CRYPTO_chacha_20_neon:
 	.word	1797285236
 	.ident	"GCC: (crosstool-NG linaro-1.13.1-4.7-2012.10-20121022 - Linaro GCC 2012.10) 4.7.3 20121001 (prerelease)"
 	.section	.note.GNU-stack,"",%progbits
+
+#endif  /* !OPENSSL_NO_ASM */
