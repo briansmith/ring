@@ -1020,7 +1020,7 @@ int tls1_get_shared_curve(SSL *s);
 int tls1_set_curves(uint16_t **out_curve_ids, size_t *out_curve_ids_len,
 	const int *curves, size_t ncurves);
 
-int tls1_check_ec_tmp_key(SSL *s, unsigned long id);
+int tls1_check_ec_tmp_key(SSL *s);
 
 int tls1_shared_list(SSL *s,
 			const unsigned char *l1, size_t l1len,

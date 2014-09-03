@@ -1871,7 +1871,7 @@ const SSL_CIPHER *ssl3_choose_cipher(SSL *s, STACK_OF(SSL_CIPHER) *clnt,
 		/* if we are considering an ECC cipher suite that uses
 		 * an ephemeral EC key check it */
 		if (alg_k & SSL_kEECDH)
-			ok = ok && tls1_check_ec_tmp_key(s, c->id);
+			ok = ok && tls1_check_ec_tmp_key(s);
 
 		if (ok && sk_SSL_CIPHER_find(allow, &cipher_index, c))
 			{

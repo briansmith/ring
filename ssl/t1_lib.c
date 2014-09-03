@@ -432,13 +432,14 @@ uint16_t tls1_ec_nid2curve_id(int nid)
 	return 0;
 	}
 
-/* tls1_get_curvelist sets |*out_curve_ids| and |*out_curve_ids_len| to the list
- * of allowed curve IDs. If |get_client_curves| is non-zero, return the client
- * curve list. Otherwise, return the preferred list. */
-static void tls1_get_curvelist(SSL *s, int get_client_curves,
+/* tls1_get_curvelist sets |*out_curve_ids| and |*out_curve_ids_len|
+ * to the list of allowed curve IDs. If |get_peer_curves| is non-zero,
+ * return the peer's curve list. Otherwise, return the preferred
+ * list. */
+static void tls1_get_curvelist(SSL *s, int get_peer_curves,
 	const uint16_t **out_curve_ids, size_t *out_curve_ids_len)
 	{
-	if (get_client_curves)
+	if (get_peer_curves)
 		{
 		*out_curve_ids = s->session->tlsext_ellipticcurvelist;
 		*out_curve_ids_len = s->session->tlsext_ellipticcurvelist_length;
@@ -585,42 +586,48 @@ static int tls1_curve_params_from_ec_key(uint16_t *out_curve_id, uint8_t *out_co
 	return 1;
 	}
 
-/* Check an EC key is compatible with extensions */
-static int tls1_check_ec_key(SSL *s,
-	const uint16_t *curve_id, const uint8_t *comp_id)
+/* tls1_check_point_format returns one if |comp_id| is consistent with the
+ * peer's point format preferences. */
+static int tls1_check_point_format(SSL *s, uint8_t comp_id)
+	{
+	uint8_t *p = s->session->tlsext_ecpointformatlist;
+	size_t plen = s->session->tlsext_ecpointformatlist_length;
+	size_t i;
+
+	/* If point formats extension present check it, otherwise everything
+	 * is supported (see RFC4492). */
+	if (p == NULL)
+		return 1;
+
+	for (i = 0; i < plen; i++)
+		{
+		if (comp_id == p[i])
+			return 1;
+		}
+	return 0;
+	}
+
+/* tls1_check_curve_id returns one if |curve_id| is consistent with both our and
+ * the peer's curve preferences. Note: if called as the client, only our
+ * preferences are checked; the peer (the server) does not send preferences. */
+static int tls1_check_curve_id(SSL *s, uint16_t curve_id)
 	{
 	const uint16_t *curves;
-	size_t curves_len, i;
-	int j;
-	/* If point formats extension present check it, otherwise everything
-	 * is supported (see RFC4492).
-	 */
-	if (comp_id && s->session->tlsext_ecpointformatlist)
-		{
-		uint8_t *p = s->session->tlsext_ecpointformatlist;
-		size_t plen = s->session->tlsext_ecpointformatlist_length;
-		for (i = 0; i < plen; i++)
-			{
-			if (*comp_id == p[i])
-				break;
-			}
-		if (i == plen)
-			return 0;
-		}
-	if (!curve_id)
-		return 1;
-	/* Check curve is consistent with client and server preferences */
+	size_t curves_len, i, j;
+
+	/* Check against our list, then the peer's list. */
 	for (j = 0; j <= 1; j++)
 		{
 		tls1_get_curvelist(s, j, &curves, &curves_len);
 		for (i = 0; i < curves_len; i++)
 			{
-			if (curves[i] == *curve_id)
+			if (curves[i] == curve_id)
 				break;
 			}
 		if (i == curves_len)
 			return 0;
-		/* For clients can only check sent curve list */
+		/* Servers do not present a preference list so, if we are a
+		 * client, only check our list. */
 		if (!s->server)
 			return 1;
 		}
@@ -667,20 +674,17 @@ static int tls1_check_cert_param(SSL *s, X509 *x, int set_ee_md)
 	if (!rv)
 		return 0;
 	/* Can't check curve_id for client certs as we don't have a
-	 * supported curves extension.
-	 */
-	return tls1_check_ec_key(s, s->server ? &curve_id : NULL, &comp_id);
+	 * supported curves extension. */
+	if (s->server && !tls1_check_curve_id(s, curve_id))
+		return 0;
+	return tls1_check_point_format(s, comp_id);
 	}
+
 /* Check EC temporary key is compatible with client extensions */
-int tls1_check_ec_tmp_key(SSL *s, unsigned long cid)
+int tls1_check_ec_tmp_key(SSL *s)
 	{
 	uint16_t curve_id;
 	EC_KEY *ec = s->cert->ecdh_tmp;
-#ifdef OPENSSL_SSL_DEBUG_BROKEN_PROTOCOL
-	/* Allow any curve: not just those peer supports */
-	if (s->cert->cert_flags & SSL_CERT_FLAG_BROKEN_PROTOCOL)
-		return 1;
-#endif
 	if (s->cert->ecdh_tmp_auto)
 		{
 		/* Need a shared curve */
@@ -693,14 +697,8 @@ int tls1_check_ec_tmp_key(SSL *s, unsigned long cid)
 		else
 			return 0;
 		}
-	if (!tls1_curve_params_from_ec_key(&curve_id, NULL, ec))
-		return 0;
-/* Set this to allow use of invalid curves for testing */
-#if 0
-	return 1;
-#else
-	return tls1_check_ec_key(s, &curve_id, NULL);
-#endif
+	return tls1_curve_params_from_ec_key(&curve_id, NULL, ec) &&
+		tls1_check_curve_id(s, curve_id);
 	}
 
 
@@ -788,11 +786,15 @@ int tls12_check_peer_sigalg(const EVP_MD **out_md, int *out_alert,
 			*out_alert = SSL_AD_INTERNAL_ERROR;
 			return 0;
 			}
-		if (!s->server && !tls1_check_ec_key(s, &curve_id, &comp_id))
+		if (s->server)
 			{
-			OPENSSL_PUT_ERROR(SSL, tls12_check_peer_sigalg, SSL_R_WRONG_CURVE);
-			*out_alert = SSL_AD_ILLEGAL_PARAMETER;
-			return 0;
+			if (!tls1_check_curve_id(s, curve_id) ||
+				!tls1_check_point_format(s, comp_id))
+				{
+				OPENSSL_PUT_ERROR(SSL, tls12_check_peer_sigalg, SSL_R_WRONG_CURVE);
+				*out_alert = SSL_AD_ILLEGAL_PARAMETER;
+				return 0;
+				}
 			}
 		}
 
