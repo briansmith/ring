@@ -683,7 +683,7 @@ OPENSSL_EXPORT void SSL_set_msg_callback(SSL *ssl, void (*cb)(int write_p, int v
  *
  * The format is described in
  * https://developer.mozilla.org/en-US/docs/Mozilla/Projects/NSS/Key_Log_Format. */
-void SSL_CTX_set_keylog_bio(SSL_CTX *ctx, BIO *keylog_bio);
+OPENSSL_EXPORT void SSL_CTX_set_keylog_bio(SSL_CTX *ctx, BIO *keylog_bio);
 
 
 struct ssl_aead_ctx_st;
