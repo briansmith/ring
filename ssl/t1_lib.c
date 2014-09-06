@@ -1783,7 +1783,7 @@ static int ssl_scan_clienthello_tlsext(SSL *s, CBS *cbs, int *out_alert)
 		!(s->options & SSL_OP_ALLOW_UNSAFE_LEGACY_RENEGOTIATION))
 		{
 		*out_alert = SSL_AD_HANDSHAKE_FAILURE;
-	 	OPENSSL_PUT_ERROR(SSL, ssl_add_serverhello_tlsext, SSL_R_UNSAFE_LEGACY_RENEGOTIATION_DISABLED);
+		OPENSSL_PUT_ERROR(SSL, ssl_scan_clienthello_tlsext, SSL_R_UNSAFE_LEGACY_RENEGOTIATION_DISABLED);
 		return 0;
 		}
 	/* If no signature algorithms extension set default values */
@@ -2193,7 +2193,7 @@ static int ssl_check_serverhello_tlsext(SSL *s)
 			}
 		if (!found_uncompressed)
 			{
-			OPENSSL_PUT_ERROR(SSL, ssl_add_serverhello_tlsext, SSL_R_TLS_INVALID_ECPOINTFORMAT_LIST);
+			OPENSSL_PUT_ERROR(SSL, ssl_check_serverhello_tlsext, SSL_R_TLS_INVALID_ECPOINTFORMAT_LIST);
 			return -1;
 			}
 		}
