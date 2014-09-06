@@ -351,6 +351,10 @@ size_t BIO_pending(const BIO *bio) {
   return BIO_ctrl((BIO *) bio, BIO_CTRL_PENDING, 0, NULL);
 }
 
+size_t BIO_ctrl_pending(const BIO *bio) {
+  return BIO_pending(bio);
+}
+
 size_t BIO_wpending(const BIO *bio) {
   return BIO_ctrl((BIO *) bio, BIO_CTRL_WPENDING, 0, NULL);
 }

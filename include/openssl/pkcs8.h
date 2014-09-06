@@ -129,6 +129,10 @@ OPENSSL_EXPORT int PKCS12_get_key_and_certs(EVP_PKEY **out_key,
                                             STACK_OF(X509) *out_certs,
                                             CBS *in, const char *password);
 
+/* PKCS12_PBE_add does nothing. It exists for compatibility with OpenSSL. */
+OPENSSL_EXPORT void PKCS12_PBE_add();
+
+
 #if defined(__cplusplus)
 }  /* extern C */
 #endif

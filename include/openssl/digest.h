@@ -200,6 +200,10 @@ OPENSSL_EXPORT size_t EVP_MD_block_size(const EVP_MD *md);
  * |in|. It returns one on success and zero on error. */
 OPENSSL_EXPORT int EVP_MD_CTX_copy(EVP_MD_CTX *out, const EVP_MD_CTX *in);
 
+/* EVP_add_digest does nothing and returns one. It exists only for
+ * compatibility with OpenSSL. */
+OPENSSL_EXPORT int EVP_add_digest(const EVP_MD *digest);
+
 
 /* Digest operation accessors. */
 

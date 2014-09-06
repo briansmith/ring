@@ -1015,3 +1015,5 @@ err:
 
   return ret;
 }
+
+void PKCS12_PBE_add(){};

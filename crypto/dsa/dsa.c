@@ -60,6 +60,7 @@
 #include <openssl/dsa.h>
 
 #include <openssl/asn1.h>
+#include <openssl/dh.h>
 #include <openssl/engine.h>
 #include <openssl/err.h>
 #include <openssl/ex_data.h>
@@ -331,4 +332,36 @@ int DSA_set_ex_data(DSA *d, int idx, void *arg) {
 
 void *DSA_get_ex_data(const DSA *d, int idx) {
   return CRYPTO_get_ex_data(&d->ex_data, idx);
+}
+
+DH *DSA_dup_DH(const DSA *r) {
+  DH *ret = NULL;
+
+  if (r == NULL) {
+    goto err;
+  }
+  ret = DH_new();
+  if (ret == NULL) {
+    goto err;
+  }
+  if (r->q != NULL) {
+    ret->priv_length = BN_num_bits(r->q);
+    if ((ret->q = BN_dup(r->q)) == NULL) {
+      goto err;
+    }
+  }
+  if ((r->p != NULL && (ret->p = BN_dup(r->p)) == NULL) ||
+      (r->g != NULL && (ret->g = BN_dup(r->g)) == NULL) ||
+      (r->pub_key != NULL && (ret->pub_key = BN_dup(r->pub_key)) == NULL) ||
+      (r->priv_key != NULL && (ret->priv_key = BN_dup(r->priv_key)) == NULL)) {
+      goto err;
+  }
+
+  return ret;
+
+err:
+  if (ret != NULL) {
+    DH_free(ret);
+  }
+  return NULL;
 }

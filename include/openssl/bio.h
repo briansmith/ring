@@ -235,6 +235,10 @@ OPENSSL_EXPORT long BIO_callback_ctrl(BIO *bio, int cmd, bio_info_cb fp);
 /* BIO_pending returns the number of bytes pending to be read. */
 OPENSSL_EXPORT size_t BIO_pending(const BIO *bio);
 
+/* BIO_ctrl_pending calls |BIO_pending| and exists only for compatibility with
+ * OpenSSL. */
+OPENSSL_EXPORT size_t BIO_ctrl_pending(const BIO *bio);
+
 /* BIO_wpending returns the number of bytes pending to be written. */
 OPENSSL_EXPORT size_t BIO_wpending(const BIO *bio);
 

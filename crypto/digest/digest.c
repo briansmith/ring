@@ -267,3 +267,7 @@ void EVP_MD_CTX_clear_flags(EVP_MD_CTX *ctx, uint32_t flags) {
 uint32_t EVP_MD_CTX_test_flags(const EVP_MD_CTX *ctx, uint32_t flags) {
   return ctx->flags & flags;
 }
+
+int EVP_add_digest(const EVP_MD *digest) {
+  return 1;
+}

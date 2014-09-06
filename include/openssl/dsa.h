@@ -291,6 +291,14 @@ OPENSSL_EXPORT int DSA_sign_setup(const DSA *dsa, BN_CTX *ctx,
                                   BIGNUM **out_kinv, BIGNUM **out_r);
 
 
+/* Conversion. */
+
+/* DSA_dup_DH returns a |DH| constructed from the parameters of |dsa|. This is
+ * sometimes needed when Diffie-Hellman parameters are stored in the form of
+ * DSA parameters. It returns an allocated |DH| on success or NULL on error. */
+OPENSSL_EXPORT DH *DSA_dup_DH(const DSA *dsa);
+
+
 /* ex_data functions.
  *
  * These functions are wrappers. See |ex_data.h| for details. */

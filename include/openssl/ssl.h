@@ -522,13 +522,13 @@ struct ssl_session_st
 #define SSL_OP_NO_SSL_MASK (SSL_OP_NO_SSLv2|SSL_OP_NO_SSLv3|\
 	SSL_OP_NO_TLSv1|SSL_OP_NO_TLSv1_1|SSL_OP_NO_TLSv1_2)
 
-/* These next two were never actually used for anything since SSLeay
- * zap so we have some more flags.
- */
-/* The next flag deliberately changes the ciphertest, this is a check
- * for the PKCS#1 attack */
-#define SSL_OP_PKCS1_CHECK_1				0x0
-#define SSL_OP_PKCS1_CHECK_2				0x0
+/* The following flags do nothing and are included only to make it easier to
+ * compile code with BoringSSL. */
+#define SSL_OP_DONT_INSERT_EMPTY_FRAGMENTS		0
+#define SSL_OP_MICROSOFT_SESS_ID_BUG			0
+#define SSL_OP_NETSCAPE_CHALLENGE_BUG			0
+#define SSL_OP_SSLREF2_REUSE_CERT_TYPE_BUG		0
+#define SSL_OP_TLS_BLOCK_PADDING_BUG			0
 
 /* Allow SSL_write(..., n) to return r with 0 < r < n (i.e. report success
  * when just a single record has been written): */
