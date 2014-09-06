@@ -679,8 +679,8 @@ func runTest(test *testCase, buildDir string) error {
 	conn.Close()
 	if err == nil && test.resumeSession {
 		err = doExchange(test, &config, connResume, test.messageLen)
-		connResume.Close()
 	}
+	connResume.Close()
 
 	childErr := shim.Wait()
 
