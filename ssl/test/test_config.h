@@ -48,6 +48,10 @@ struct TestConfig {
   bool shim_writes_first;
   bool tls_d5_bug;
   std::string host_name;
+  std::string advertise_alpn;
+  std::string expected_alpn;
+  std::string expected_advertised_alpn;
+  std::string select_alpn;
 };
 
 bool ParseConfig(int argc, char **argv, TestConfig *out_config);

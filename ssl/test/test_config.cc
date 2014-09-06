@@ -68,6 +68,10 @@ const StringFlag kStringFlags[] = {
   { "-select-next-proto", &TestConfig::select_next_proto },
   { "-send-channel-id", &TestConfig::send_channel_id },
   { "-host-name", &TestConfig::host_name },
+  { "-advertise-alpn", &TestConfig::advertise_alpn },
+  { "-expect-alpn", &TestConfig::expected_alpn },
+  { "-expect-advertised-alpn", &TestConfig::expected_advertised_alpn },
+  { "-select-alpn", &TestConfig::select_alpn },
 };
 
 const size_t kNumStringFlags = sizeof(kStringFlags) / sizeof(kStringFlags[0]);

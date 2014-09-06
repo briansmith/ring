@@ -113,6 +113,9 @@ type testCase struct {
 	// expectChannelID controls whether the connection should have
 	// negotiated a Channel ID with channelIDKey.
 	expectChannelID bool
+	// expectedNextProto controls whether the connection should
+	// negotiate a next protocol via NPN or ALPN.
+	expectedNextProto string
 	// messageLen is the length, in bytes, of the test message that will be
 	// sent.
 	messageLen int
@@ -511,6 +514,12 @@ func doExchange(test *testCase, config *Config, conn net.Conn, messageLen int) e
 			channelIDKey.X.Cmp(channelIDKey.X) != 0 ||
 			channelIDKey.Y.Cmp(channelIDKey.Y) != 0 {
 			return fmt.Errorf("incorrect channel ID")
+		}
+	}
+
+	if expected := test.expectedNextProto; expected != "" {
+		if actual := tlsConn.ConnectionState().NegotiatedProtocol; actual != expected {
+			return fmt.Errorf("next proto mismatch: got %s, wanted %s", actual, expected)
 		}
 	}
 
@@ -1129,13 +1138,13 @@ func addStateMachineCoverageTests(async, splitHandshake bool, protocol protocol)
 			protocol: protocol,
 			name:     "NPN-Client" + suffix,
 			config: Config{
-				CipherSuites: []uint16{TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256},
-				NextProtos:   []string{"foo"},
+				NextProtos: []string{"foo"},
 				Bugs: ProtocolBugs{
 					MaxHandshakeRecordLength: maxHandshakeRecordLength,
 				},
 			},
-			flags: append(flags, "-select-next-proto", "foo"),
+			flags:             append(flags, "-select-next-proto", "foo"),
+			expectedNextProto: "foo",
 		})
 		testCases = append(testCases, testCase{
 			protocol: protocol,
@@ -1150,6 +1159,7 @@ func addStateMachineCoverageTests(async, splitHandshake bool, protocol protocol)
 			flags: append(flags,
 				"-advertise-npn", "\x03foo\x03bar\x03baz",
 				"-expect-next-proto", "bar"),
+			expectedNextProto: "bar",
 		})
 
 		// Client does False Start and negotiates NPN.
@@ -1167,6 +1177,25 @@ func addStateMachineCoverageTests(async, splitHandshake bool, protocol protocol)
 			flags: append(flags,
 				"-false-start",
 				"-select-next-proto", "foo"),
+			shimWritesFirst: true,
+			resumeSession:   true,
+		})
+
+		// Client does False Start and negotiates ALPN.
+		testCases = append(testCases, testCase{
+			protocol: protocol,
+			name:     "FalseStart-ALPN" + suffix,
+			config: Config{
+				CipherSuites: []uint16{TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256},
+				NextProtos:   []string{"foo"},
+				Bugs: ProtocolBugs{
+					ExpectFalseStart:         true,
+					MaxHandshakeRecordLength: maxHandshakeRecordLength,
+				},
+			},
+			flags: append(flags,
+				"-false-start",
+				"-advertise-alpn", "\x03foo"),
 			shimWritesFirst: true,
 			resumeSession:   true,
 		})
@@ -1406,6 +1435,32 @@ func addExtensionTests() {
 		},
 		flags:         []string{"-expect-server-name", "example.com"},
 		resumeSession: true,
+	})
+	testCases = append(testCases, testCase{
+		testType: clientTest,
+		name:     "ALPNClient",
+		config: Config{
+			NextProtos: []string{"foo"},
+		},
+		flags: []string{
+			"-advertise-alpn", "\x03foo\x03bar\x03baz",
+			"-expect-alpn", "foo",
+		},
+		expectedNextProto: "foo",
+		resumeSession:     true,
+	})
+	testCases = append(testCases, testCase{
+		testType: serverTest,
+		name:     "ALPNServer",
+		config: Config{
+			NextProtos: []string{"foo", "bar", "baz"},
+		},
+		flags: []string{
+			"-expect-advertised-alpn", "\x03foo\x03bar\x03baz",
+			"-select-alpn", "foo",
+		},
+		expectedNextProto: "foo",
+		resumeSession:     true,
 	})
 }
 

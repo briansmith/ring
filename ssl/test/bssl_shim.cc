@@ -139,6 +139,29 @@ static int next_proto_select_callback(SSL* ssl,
   return SSL_TLSEXT_ERR_OK;
 }
 
+static int alpn_select_callback(SSL* ssl,
+                                const uint8_t** out,
+                                uint8_t* outlen,
+                                const uint8_t* in,
+                                unsigned inlen,
+                                void* arg) {
+  const TestConfig *config = GetConfigPtr(ssl);
+  if (config->select_alpn.empty())
+    return SSL_TLSEXT_ERR_NOACK;
+
+  if (!config->expected_advertised_alpn.empty() &&
+      (config->expected_advertised_alpn.size() != inlen ||
+       memcmp(config->expected_advertised_alpn.data(),
+              in, inlen) != 0)) {
+    fprintf(stderr, "bad ALPN select callback inputs\n");
+    exit(1);
+  }
+
+  *out = (const uint8_t*)config->select_alpn.data();
+  *outlen = config->select_alpn.size();
+  return SSL_TLSEXT_ERR_OK;
+}
+
 static int cookie_generate_callback(SSL *ssl, uint8_t *cookie, size_t *cookie_len) {
   *cookie_len = 32;
   memset(cookie, 42, *cookie_len);
@@ -213,8 +236,13 @@ static SSL_CTX *setup_ctx(const TestConfig *config) {
 
   SSL_CTX_set_next_protos_advertised_cb(
       ssl_ctx, next_protos_advertised_callback, NULL);
-  SSL_CTX_set_next_proto_select_cb(
-      ssl_ctx, next_proto_select_callback, NULL);
+  if (!config->select_next_proto.empty()) {
+    SSL_CTX_set_next_proto_select_cb(ssl_ctx, next_proto_select_callback, NULL);
+  }
+
+  if (!config->select_alpn.empty()) {
+    SSL_CTX_set_alpn_select_cb(ssl_ctx, alpn_select_callback, NULL);
+  }
 
   SSL_CTX_set_cookie_generate_cb(ssl_ctx, cookie_generate_callback);
   SSL_CTX_set_cookie_verify_cb(ssl_ctx, cookie_verify_callback);
@@ -339,6 +367,10 @@ static int do_exchange(SSL_SESSION **out_session,
   if (!config->host_name.empty()) {
     SSL_set_tlsext_host_name(ssl, config->host_name.c_str());
   }
+  if (!config->advertise_alpn.empty()) {
+    SSL_set_alpn_protos(ssl, (const uint8_t *)config->advertise_alpn.data(),
+                        config->advertise_alpn.size());
+  }
 
   BIO *bio = BIO_new_fd(fd, 1 /* take ownership */);
   if (bio == NULL) {
@@ -421,6 +453,18 @@ static int do_exchange(SSL_SESSION **out_session,
         memcmp(next_proto, config->expected_next_proto.data(),
                next_proto_len) != 0) {
       fprintf(stderr, "negotiated next proto mismatch\n");
+      return 2;
+    }
+  }
+
+  if (!config->expected_alpn.empty()) {
+    const uint8_t *alpn_proto;
+    unsigned alpn_proto_len;
+    SSL_get0_alpn_selected(ssl, &alpn_proto, &alpn_proto_len);
+    if (alpn_proto_len != config->expected_alpn.size() ||
+        memcmp(alpn_proto, config->expected_alpn.data(),
+               alpn_proto_len) != 0) {
+      fprintf(stderr, "negotiated alpn proto mismatch\n");
       return 2;
     }
   }
