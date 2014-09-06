@@ -225,6 +225,7 @@ Curves:
 		if selectedProto, fallback := mutualProtocol(hs.clientHello.alpnProtocols, c.config.NextProtos); !fallback {
 			hs.hello.alpnProtocol = selectedProto
 			c.clientProtocol = selectedProto
+			c.usedALPN = true
 		}
 	} else {
 		// Although sending an empty NPN extension is reasonable, Firefox has

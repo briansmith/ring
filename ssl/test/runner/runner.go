@@ -97,6 +97,11 @@ const (
 	dtls
 )
 
+const (
+	alpn = 1
+	npn  = 2
+)
+
 type testCase struct {
 	testType      testType
 	protocol      protocol
@@ -116,6 +121,9 @@ type testCase struct {
 	// expectedNextProto controls whether the connection should
 	// negotiate a next protocol via NPN or ALPN.
 	expectedNextProto string
+	// expectedNextProtoType, if non-zero, is the expected next
+	// protocol negotiation mechanism.
+	expectedNextProtoType int
 	// messageLen is the length, in bytes, of the test message that will be
 	// sent.
 	messageLen int
@@ -520,6 +528,12 @@ func doExchange(test *testCase, config *Config, conn net.Conn, messageLen int) e
 	if expected := test.expectedNextProto; expected != "" {
 		if actual := tlsConn.ConnectionState().NegotiatedProtocol; actual != expected {
 			return fmt.Errorf("next proto mismatch: got %s, wanted %s", actual, expected)
+		}
+	}
+
+	if test.expectedNextProtoType != 0 {
+		if (test.expectedNextProtoType == alpn) != tlsConn.ConnectionState().NegotiatedProtocolFromALPN {
+			return fmt.Errorf("next proto type mismatch")
 		}
 	}
 
@@ -1143,8 +1157,9 @@ func addStateMachineCoverageTests(async, splitHandshake bool, protocol protocol)
 					MaxHandshakeRecordLength: maxHandshakeRecordLength,
 				},
 			},
-			flags:             append(flags, "-select-next-proto", "foo"),
-			expectedNextProto: "foo",
+			flags:                 append(flags, "-select-next-proto", "foo"),
+			expectedNextProto:     "foo",
+			expectedNextProtoType: npn,
 		})
 		testCases = append(testCases, testCase{
 			protocol: protocol,
@@ -1159,7 +1174,8 @@ func addStateMachineCoverageTests(async, splitHandshake bool, protocol protocol)
 			flags: append(flags,
 				"-advertise-npn", "\x03foo\x03bar\x03baz",
 				"-expect-next-proto", "bar"),
-			expectedNextProto: "bar",
+			expectedNextProto:     "bar",
+			expectedNextProtoType: npn,
 		})
 
 		// Client does False Start and negotiates NPN.
@@ -1446,8 +1462,9 @@ func addExtensionTests() {
 			"-advertise-alpn", "\x03foo\x03bar\x03baz",
 			"-expect-alpn", "foo",
 		},
-		expectedNextProto: "foo",
-		resumeSession:     true,
+		expectedNextProto:     "foo",
+		expectedNextProtoType: alpn,
+		resumeSession:         true,
 	})
 	testCases = append(testCases, testCase{
 		testType: serverTest,
@@ -1459,8 +1476,43 @@ func addExtensionTests() {
 			"-expect-advertised-alpn", "\x03foo\x03bar\x03baz",
 			"-select-alpn", "foo",
 		},
-		expectedNextProto: "foo",
-		resumeSession:     true,
+		expectedNextProto:     "foo",
+		expectedNextProtoType: alpn,
+		resumeSession:         true,
+	})
+	// Test that the server prefers ALPN over NPN.
+	testCases = append(testCases, testCase{
+		testType: serverTest,
+		name:     "ALPNServer-Preferred",
+		config: Config{
+			NextProtos: []string{"foo", "bar", "baz"},
+		},
+		flags: []string{
+			"-expect-advertised-alpn", "\x03foo\x03bar\x03baz",
+			"-select-alpn", "foo",
+			"-advertise-npn", "\x03foo\x03bar\x03baz",
+		},
+		expectedNextProto:     "foo",
+		expectedNextProtoType: alpn,
+		resumeSession:         true,
+	})
+	testCases = append(testCases, testCase{
+		testType: serverTest,
+		name:     "ALPNServer-Preferred-Swapped",
+		config: Config{
+			NextProtos: []string{"foo", "bar", "baz"},
+			Bugs: ProtocolBugs{
+				SwapNPNAndALPN: true,
+			},
+		},
+		flags: []string{
+			"-expect-advertised-alpn", "\x03foo\x03bar\x03baz",
+			"-select-alpn", "foo",
+			"-advertise-npn", "\x03foo\x03bar\x03baz",
+		},
+		expectedNextProto:     "foo",
+		expectedNextProtoType: alpn,
+		resumeSession:         true,
 	})
 }
 

@@ -69,6 +69,7 @@ func (c *Conn) clientHandshake() error {
 		alpnProtocols:       c.config.NextProtos,
 		duplicateExtension:  c.config.Bugs.DuplicateExtension,
 		channelIDSupported:  c.config.ChannelID != nil,
+		npnLast:             c.config.Bugs.SwapNPNAndALPN,
 	}
 
 	if c.config.Bugs.SendClientVersion != 0 {
@@ -601,6 +602,7 @@ func (hs *clientHandshakeState) processServerHello() (bool, error) {
 	if serverHasALPN {
 		c.clientProtocol = hs.serverHello.alpnProtocol
 		c.clientProtocolFallback = false
+		c.usedALPN = true
 	}
 
 	if !hs.hello.channelIDSupported && hs.serverHello.channelIDRequested {

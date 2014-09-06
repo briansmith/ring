@@ -27,6 +27,7 @@ type clientHelloMsg struct {
 	alpnProtocols       []string
 	duplicateExtension  bool
 	channelIDSupported  bool
+	npnLast             bool
 }
 
 func (m *clientHelloMsg) equal(i interface{}) bool {
@@ -54,7 +55,8 @@ func (m *clientHelloMsg) equal(i interface{}) bool {
 		m.secureRenegotiation == m1.secureRenegotiation &&
 		eqStrings(m.alpnProtocols, m1.alpnProtocols) &&
 		m.duplicateExtension == m1.duplicateExtension &&
-		m.channelIDSupported == m1.channelIDSupported
+		m.channelIDSupported == m1.channelIDSupported &&
+		m.npnLast == m1.npnLast
 }
 
 func (m *clientHelloMsg) marshal() []byte {
@@ -160,7 +162,7 @@ func (m *clientHelloMsg) marshal() []byte {
 		z[1] = 0xff
 		z = z[4:]
 	}
-	if m.nextProtoNeg {
+	if m.nextProtoNeg && !m.npnLast {
 		z[0] = byte(extensionNextProtoNeg >> 8)
 		z[1] = byte(extensionNextProtoNeg & 0xff)
 		// The length is always 0
@@ -303,6 +305,12 @@ func (m *clientHelloMsg) marshal() []byte {
 	if m.channelIDSupported {
 		z[0] = byte(extensionChannelID >> 8)
 		z[1] = byte(extensionChannelID & 0xff)
+		z = z[4:]
+	}
+	if m.nextProtoNeg && m.npnLast {
+		z[0] = byte(extensionNextProtoNeg >> 8)
+		z[1] = byte(extensionNextProtoNeg & 0xff)
+		// The length is always 0
 		z = z[4:]
 	}
 	if m.duplicateExtension {

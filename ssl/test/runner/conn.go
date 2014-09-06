@@ -47,6 +47,7 @@ type Conn struct {
 
 	clientProtocol         string
 	clientProtocolFallback bool
+	usedALPN               bool
 
 	channelID *ecdsa.PublicKey
 
@@ -1105,6 +1106,7 @@ func (c *Conn) ConnectionState() ConnectionState {
 		state.NegotiatedProtocol = c.clientProtocol
 		state.DidResume = c.didResume
 		state.NegotiatedProtocolIsMutual = !c.clientProtocolFallback
+		state.NegotiatedProtocolFromALPN = c.usedALPN
 		state.CipherSuite = c.cipherSuite
 		state.PeerCertificates = c.peerCertificates
 		state.VerifiedChains = c.verifiedChains
