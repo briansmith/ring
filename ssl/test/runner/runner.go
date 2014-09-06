@@ -202,36 +202,6 @@ var testCases = []testCase{
 		flags: []string{"-fallback-scsv"},
 	},
 	{
-		testType: serverTest,
-		name:     "ServerNameExtension",
-		config: Config{
-			ServerName: "example.com",
-		},
-		flags: []string{"-expect-server-name", "example.com"},
-	},
-	{
-		testType: clientTest,
-		name:     "DuplicateExtensionClient",
-		config: Config{
-			Bugs: ProtocolBugs{
-				DuplicateExtension: true,
-			},
-		},
-		shouldFail:         true,
-		expectedLocalError: "remote error: error decoding message",
-	},
-	{
-		testType: serverTest,
-		name:     "DuplicateExtensionServer",
-		config: Config{
-			Bugs: ProtocolBugs{
-				DuplicateExtension: true,
-			},
-		},
-		shouldFail:         true,
-		expectedLocalError: "remote error: error decoding message",
-	},
-	{
 		name: "ClientCertificateTypes",
 		config: Config{
 			ClientAuth: RequestClientCert,
@@ -1372,6 +1342,73 @@ func addD5BugTests() {
 	})
 }
 
+func addExtensionTests() {
+	testCases = append(testCases, testCase{
+		testType: clientTest,
+		name:     "DuplicateExtensionClient",
+		config: Config{
+			Bugs: ProtocolBugs{
+				DuplicateExtension: true,
+			},
+		},
+		shouldFail:         true,
+		expectedLocalError: "remote error: error decoding message",
+	})
+	testCases = append(testCases, testCase{
+		testType: serverTest,
+		name:     "DuplicateExtensionServer",
+		config: Config{
+			Bugs: ProtocolBugs{
+				DuplicateExtension: true,
+			},
+		},
+		shouldFail:         true,
+		expectedLocalError: "remote error: error decoding message",
+	})
+	testCases = append(testCases, testCase{
+		testType: clientTest,
+		name:     "ServerNameExtensionClient",
+		config: Config{
+			Bugs: ProtocolBugs{
+				ExpectServerName: "example.com",
+			},
+		},
+		flags: []string{"-host-name", "example.com"},
+	})
+	testCases = append(testCases, testCase{
+		testType: clientTest,
+		name:     "ServerNameExtensionClient",
+		config: Config{
+			Bugs: ProtocolBugs{
+				ExpectServerName: "mismatch.com",
+			},
+		},
+		flags:              []string{"-host-name", "example.com"},
+		shouldFail:         true,
+		expectedLocalError: "tls: unexpected server name",
+	})
+	testCases = append(testCases, testCase{
+		testType: clientTest,
+		name:     "ServerNameExtensionClient",
+		config: Config{
+			Bugs: ProtocolBugs{
+				ExpectServerName: "missing.com",
+			},
+		},
+		shouldFail:         true,
+		expectedLocalError: "tls: unexpected server name",
+	})
+	testCases = append(testCases, testCase{
+		testType: serverTest,
+		name:     "ServerNameExtensionServer",
+		config: Config{
+			ServerName: "example.com",
+		},
+		flags:         []string{"-expect-server-name", "example.com"},
+		resumeSession: true,
+	})
+}
+
 func worker(statusChan chan statusMsg, c chan *testCase, buildDir string, wg *sync.WaitGroup) {
 	defer wg.Done()
 
@@ -1425,6 +1462,7 @@ func main() {
 	addClientAuthTests()
 	addVersionNegotiationTests()
 	addD5BugTests()
+	addExtensionTests()
 	for _, async := range []bool{false, true} {
 		for _, splitHandshake := range []bool{false, true} {
 			for _, protocol := range []protocol{tls, dtls} {

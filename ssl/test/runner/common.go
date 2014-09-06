@@ -449,6 +449,10 @@ type ProtocolBugs struct {
 	// SkipCipherVersionCheck causes the server to negotiate
 	// TLS 1.2 ciphers in earlier versions of TLS.
 	SkipCipherVersionCheck bool
+
+	// ExpectServerName, if not empty, is the hostname the client
+	// must specify in the server_name extension.
+	ExpectServerName string
 }
 
 func (c *Config) serverInit() {

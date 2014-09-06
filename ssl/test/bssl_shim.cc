@@ -336,6 +336,9 @@ static int do_exchange(SSL_SESSION **out_session,
     }
     EVP_PKEY_free(pkey);
   }
+  if (!config->host_name.empty()) {
+    SSL_set_tlsext_host_name(ssl, config->host_name.c_str());
+  }
 
   BIO *bio = BIO_new_fd(fd, 1 /* take ownership */);
   if (bio == NULL) {
