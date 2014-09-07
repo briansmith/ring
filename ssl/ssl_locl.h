@@ -359,14 +359,9 @@
 /*
  * Cipher strength information.
  */
-#define SSL_EXP_MASK		0x00000003L
-#define SSL_STRONG_MASK		0x000001fcL
-
-#define SSL_NOT_EXP		0x00000001L
-
-#define SSL_MEDIUM		0x00000040L
-#define SSL_HIGH		0x00000080L
-#define SSL_FIPS		0x00000100L
+#define SSL_MEDIUM		0x00000001L
+#define SSL_HIGH		0x00000002L
+#define SSL_FIPS		0x00000004L
 
 /* we have used 000001ff - 23 bits left to go */
 

@@ -593,9 +593,7 @@ static void ssl_cipher_apply_rule(unsigned long cipher_id,
 				continue;
 			if (alg_ssl && !(alg_ssl & cp->algorithm_ssl))
 				continue;
-			if ((algo_strength & SSL_EXP_MASK) && !(algo_strength & SSL_EXP_MASK & cp->algo_strength))
-				continue;
-			if ((algo_strength & SSL_STRONG_MASK) && !(algo_strength & SSL_STRONG_MASK & cp->algo_strength))
+			if (algo_strength && !(algo_strength & cp->algo_strength))
 				continue;
 			}
 
@@ -922,26 +920,15 @@ static int ssl_cipher_process_rulestr(const char *rule_str,
 					alg_mac = ca_list[j]->algorithm_mac;
 				}
 			
-			if (ca_list[j]->algo_strength & SSL_EXP_MASK)
+			if (ca_list[j]->algo_strength)
 				{
-				if (algo_strength & SSL_EXP_MASK)
+				if (algo_strength)
 					{
-					algo_strength &= (ca_list[j]->algo_strength & SSL_EXP_MASK) | ~SSL_EXP_MASK;
-					if (!(algo_strength & SSL_EXP_MASK)) { found = 0; break; }
+					algo_strength &= ca_list[j]->algo_strength;
+					if (!algo_strength) { found = 0; break; }
 					}
 				else
-					algo_strength |= ca_list[j]->algo_strength & SSL_EXP_MASK;
-				}
-
-			if (ca_list[j]->algo_strength & SSL_STRONG_MASK)
-				{
-				if (algo_strength & SSL_STRONG_MASK)
-					{
-					algo_strength &= (ca_list[j]->algo_strength & SSL_STRONG_MASK) | ~SSL_STRONG_MASK;
-					if (!(algo_strength & SSL_STRONG_MASK)) { found = 0; break; }
-					}
-				else
-					algo_strength |= ca_list[j]->algo_strength & SSL_STRONG_MASK;
+					algo_strength |= ca_list[j]->algo_strength;
 				}
 			
 			if (ca_list[j]->valid)
