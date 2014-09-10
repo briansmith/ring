@@ -936,7 +936,7 @@ while($line=<>) {
 
 print "\n$current_segment\tENDS\n"	if ($current_segment && $masm);
 print "END\n"				if ($masm);
-print "#endif"				if ($gas);
+print "#endif\n"			if ($gas);
 
 
 close STDOUT;
