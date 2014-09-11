@@ -58,6 +58,7 @@
 
 #include <openssl/bio.h>
 #include <openssl/bn.h>
+#include <openssl/crypto.h>
 #include <openssl/err.h>
 #include <openssl/obj.h>
 
@@ -393,6 +394,8 @@ int main(int argc, char *argv[]) {
   int clen = 0;
   int num;
   int n;
+
+  CRYPTO_library_init();
 
   plen = sizeof(ptext_ex) - 1;
 

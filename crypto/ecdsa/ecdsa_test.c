@@ -54,6 +54,7 @@
 
 #include <openssl/bio.h>
 #include <openssl/bn.h>
+#include <openssl/crypto.h>
 #include <openssl/ec.h>
 #include <openssl/err.h>
 #include <openssl/mem.h>
@@ -285,9 +286,10 @@ int main(void) {
   int ret = 1;
   BIO *out;
 
-  out = BIO_new_fp(stdout, BIO_NOCLOSE);
-
+  CRYPTO_library_init();
   ERR_load_crypto_strings();
+
+  out = BIO_new_fp(stdout, BIO_NOCLOSE);
 
   if (!test_builtin(out))
     goto err;

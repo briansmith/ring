@@ -55,8 +55,9 @@
 
 #include <stdio.h>
 
-#include <openssl/md5.h>
+#include <openssl/crypto.h>
 #include <openssl/digest.h>
+#include <openssl/md5.h>
 
 
 static const char *const test[] = {
@@ -77,6 +78,8 @@ int main(int argc, char **argv) {
   uint8_t md[MD5_DIGEST_LENGTH];
   char md_hex[sizeof(md) * 2 + 1];
   int ok = 1;
+
+  CRYPTO_library_init();
 
   for (i = 0; test[i] != NULL; i++) {
     EVP_Digest(test[i], strlen(test[i]), md, NULL, EVP_md5(), NULL);

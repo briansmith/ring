@@ -17,6 +17,7 @@
 
 #include <openssl/bio.h>
 #include <openssl/bytestring.h>
+#include <openssl/crypto.h>
 #include <openssl/err.h>
 #include <openssl/evp.h>
 #include <openssl/pkcs8.h>
@@ -705,6 +706,7 @@ static int test(const char *name, const uint8_t *der, size_t der_len) {
 }
 
 int main(int argc, char **argv) {
+  CRYPTO_library_init();
   ERR_load_crypto_strings();
 
   if (!test("OpenSSL", kOpenSSL, sizeof(kOpenSSL)) ||

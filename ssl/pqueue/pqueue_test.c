@@ -16,6 +16,7 @@
 #include <string.h>
 
 #include <openssl/pqueue.h>
+#include <openssl/ssl.h>
 
 
 static int trivial() {
@@ -79,6 +80,8 @@ static int fixed_random() {
 }
 
 int main(void) {
+  SSL_library_init();
+
   if (!trivial() || !fixed_random()) {
     return 1;
   }

@@ -56,6 +56,7 @@
 
 #include <stdio.h>
 
+#include <openssl/crypto.h>
 #include <openssl/digest.h>
 #include <openssl/hmac.h>
 
@@ -123,6 +124,8 @@ int main(int argc, char *argv[]) {
   int err = 0;
   uint8_t out[EVP_MAX_MD_SIZE];
   unsigned out_len;
+
+  CRYPTO_library_init();
 
   for (i = 0; i < NUM_TESTS; i++) {
     const struct test_st *test = &kTests[i];

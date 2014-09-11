@@ -71,6 +71,7 @@
 
 #include <openssl/bio.h>
 #include <openssl/bn.h>
+#include <openssl/crypto.h>
 #include <openssl/err.h>
 #include <openssl/mem.h>
 
@@ -134,6 +135,8 @@ int main(int argc, char *argv[]) {
   BN_CTX *ctx;
   BIO *out = NULL;
   char *outfile = NULL;
+
+  CRYPTO_library_init();
 
   results = 0;
 

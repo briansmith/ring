@@ -56,9 +56,10 @@
 
 #include <stdio.h>
 
-#include <openssl/cipher.h>
-#include <openssl/err.h>
 #include <openssl/bio.h>
+#include <openssl/cipher.h>
+#include <openssl/crypto.h>
+#include <openssl/err.h>
 
 
 static void hexdump(FILE *f, const char *title, const uint8_t *s, int l) {
@@ -330,6 +331,8 @@ static int test_cipher(const char *cipher, const uint8_t *key, int kn,
 int main(int argc, char **argv) {
   const char *input_file;
   FILE *f;
+
+  CRYPTO_library_init();
 
   if (argc != 2) {
     fprintf(stderr, "%s <test file>\n", argv[0]);

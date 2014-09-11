@@ -49,6 +49,7 @@
 #include <stdio.h>
 
 #include <openssl/aes.h>
+#include <openssl/crypto.h>
 #include <openssl/mem.h>
 #include <openssl/modes.h>
 
@@ -416,6 +417,8 @@ out:
 int main(void) {
   int ret = 0;
   unsigned i;
+
+  CRYPTO_library_init();
 
   for (i = 0; i < sizeof(test_cases) / sizeof(struct test_case); i++) {
     if (!run_test_case(i, &test_cases[i])) {

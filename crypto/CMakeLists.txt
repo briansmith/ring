@@ -113,6 +113,7 @@ add_library(
 	crypto
 	STATIC
 
+	crypto.c
 	crypto_error.c
 	mem.c
 	thread.c

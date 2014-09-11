@@ -16,6 +16,7 @@
 #include <stdlib.h>
 
 #include <openssl/bytestring.h>
+#include <openssl/crypto.h>
 #include <openssl/stack.h>
 #include <openssl/x509.h>
 
@@ -394,6 +395,8 @@ static int test_reparse(const uint8_t *der_bytes, size_t der_len) {
 }
 
 int main(void) {
+  CRYPTO_library_init();
+
   if (!test_reparse(kPKCS7NSS, sizeof(kPKCS7NSS)) ||
       !test_reparse(kPKCS7Windows, sizeof(kPKCS7Windows))) {
     return 1;

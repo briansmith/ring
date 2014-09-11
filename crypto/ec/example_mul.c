@@ -68,6 +68,7 @@
 #include <stdio.h>
 
 #include <openssl/bn.h>
+#include <openssl/crypto.h>
 #include <openssl/ec.h>
 #include <openssl/obj.h>
 
@@ -120,6 +121,8 @@ err:
 }
 
 int main(void) {
+  CRYPTO_library_init();
+
   if (!example_EC_POINT_mul()) {
     fprintf(stderr, "failed\n");
     return 1;

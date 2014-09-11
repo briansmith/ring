@@ -60,6 +60,7 @@
 
 #include <openssl/bio.h>
 #include <openssl/bn.h>
+#include <openssl/crypto.h>
 #include <openssl/mem.h>
 
 #include "internal.h"
@@ -92,6 +93,8 @@ int main(int argc, char *argv[]) {
   unsigned char *abuf = NULL, *bbuf = NULL;
   int i, alen, blen, aout, bout, ret = 1;
   BIO *out;
+
+  CRYPTO_library_init();
 
   out = BIO_new(BIO_s_file());
   if (out == NULL) {

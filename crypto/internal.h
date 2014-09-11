@@ -144,6 +144,10 @@ struct st_CRYPTO_EX_DATA_IMPL {
 
 #endif  /* OPENSSL_WINDOWS */
 
+#if defined(OPENSSL_X86) || defined(OPENSSL_X86_64)
+/* OPENSSL_cpuid_setup initializes OPENSSL_ia32cap_P. */
+void OPENSSL_cpuid_setup(void);
+#endif
 
 #if defined(__cplusplus)
 }  /* extern C */

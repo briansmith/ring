@@ -78,10 +78,6 @@ uint32_t OPENSSL_ia32cap_P[4] = {0};
 /* OPENSSL_ia32_cpuid is defined in cpu-x86_64-asm.pl. */
 extern uint64_t OPENSSL_ia32_cpuid(uint32_t*);
 
-#if !defined(OPENSSL_WINDOWS)
-void OPENSSL_cpuid_setup(void) __attribute__ ((constructor));
-#endif
-
 /* handle_cpu_env applies the value from |in| to the CPUID values in |out[0]|
  * and |out[1]|. See the comment in |OPENSSL_cpuid_setup| about this. */
 static void handle_cpu_env(uint32_t *out, const char *in) {
@@ -101,14 +97,7 @@ static void handle_cpu_env(uint32_t *out, const char *in) {
   }
 }
 
-#if defined(OPENSSL_WINDOWS)
-#pragma section(".CRT$XCU", read)
-void __cdecl OPENSSL_cpuid_setup(void);
-__declspec(allocate(".CRT$XCU")) void(*cpuid_constructor)(void) = OPENSSL_cpuid_setup;
-void __cdecl OPENSSL_cpuid_setup(void) {
-#else
 void OPENSSL_cpuid_setup(void) {
-#endif
   const char *env1, *env2;
 
 #if defined(OPENSSL_X86_64)

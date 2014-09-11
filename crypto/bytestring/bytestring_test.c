@@ -15,6 +15,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#include <openssl/crypto.h>
 #include <openssl/bytestring.h>
 
 #include "internal.h"
@@ -434,6 +435,8 @@ static int test_ber_convert(void) {
 }
 
 int main(void) {
+  CRYPTO_library_init();
+
   if (!test_skip() ||
       !test_get_u() ||
       !test_get_prefixed() ||

@@ -12,12 +12,34 @@
  * OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
  * CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE. */
 
-/* This header is provided in order to make compiling against code that expects
-   OpenSSL easier. */
+#ifndef OPENSSL_HEADER_CRYPTO_H
+#define OPENSSL_HEADER_CRYPTO_H
+
+#include <openssl/base.h>
+
+#include <openssl/mem.h>
+
+#if defined(__cplusplus)
+extern "C" {
+#endif
+
+
+/* crypto.h contains functions for initializing the crypto library. */
+
+
+/* CRYPTO_library_init initializes the crypto library. It must be called if the
+ * library is built with BORINGSSL_NO_STATIC_INITIALIZER. Otherwise, it does
+ * nothing and a static initializer is used instead. */
+OPENSSL_EXPORT void CRYPTO_library_init(void);
+
+
+#if defined(__cplusplus)
+}  /* extern C */
+#endif
 
 #define CRYPTO_F_CRYPTO_set_ex_data 100
 #define CRYPTO_F_get_class 101
 #define CRYPTO_F_get_new_index 102
 #define CRYPTO_F_get_func_pointers 103
 
-#include "mem.h"
+#endif  /* OPENSSL_HEADER_CRYPTO_H */

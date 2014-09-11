@@ -18,6 +18,7 @@
 #include <string.h>
 
 #include <openssl/aead.h>
+#include <openssl/crypto.h>
 
 /* This program tests an AEAD against a series of test vectors from a file. The
  * test vector file consists of key-value lines where the key and value are
@@ -154,6 +155,8 @@ int main(int argc, char **argv) {
 
   unsigned char bufs[NUM_TYPES][BUF_MAX];
   unsigned int lengths[NUM_TYPES];
+
+  CRYPTO_library_init();
 
   if (argc != 3) {
     fprintf(stderr, "%s <aead> <test file.txt>\n", argv[0]);

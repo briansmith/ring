@@ -14,6 +14,7 @@
 
 #define _BSD_SOURCE
 
+#include <openssl/crypto.h>
 #include <openssl/lhash.h>
 
 #include <stdio.h>
@@ -113,9 +114,13 @@ static char *rand_string(void) {
 }
 
 int main(int argc, char **argv) {
-  _LHASH *lh = lh_new(NULL, NULL);
+  _LHASH *lh;
   struct dummy_lhash dummy_lh = {NULL};
   unsigned i;
+
+  CRYPTO_library_init();
+
+  lh = lh_new(NULL, NULL);
 
   for (i = 0; i < 100000; i++) {
     unsigned action;

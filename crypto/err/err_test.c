@@ -14,6 +14,7 @@
 
 #include <stdio.h>
 
+#include <openssl/crypto.h>
 #include <openssl/err.h>
 #include <openssl/mem.h>
 
@@ -112,6 +113,8 @@ static int test_release(void) {
 }
 
 int main(void) {
+  CRYPTO_library_init();
+
   if (!test_overflow() ||
       !test_put_error() ||
       !test_clear_error() ||

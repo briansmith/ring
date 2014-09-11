@@ -17,6 +17,7 @@
 #include <stdlib.h>
 
 #include <openssl/bio.h>
+#include <openssl/crypto.h>
 #include <openssl/digest.h>
 #include <openssl/evp.h>
 #include <openssl/rsa.h>
@@ -198,6 +199,8 @@ out:
 }
 
 int main(void) {
+  CRYPTO_library_init();
+
   if (!example_EVP_DigestSignInit()) {
     fprintf(stderr, "EVP_DigestSignInit failed\n");
     return 1;

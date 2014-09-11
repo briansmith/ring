@@ -61,6 +61,7 @@
 
 #include <openssl/bio.h>
 #include <openssl/bn.h>
+#include <openssl/crypto.h>
 
 #include "internal.h"
 
@@ -106,6 +107,8 @@ int main(int argc, char **argv) {
   unsigned long h;
   unsigned char sig[256];
   unsigned int siglen;
+
+  CRYPTO_library_init();
 
   bio_err = BIO_new_fp(stderr, BIO_NOCLOSE);
   bio_out = BIO_new_fp(stdout, BIO_NOCLOSE);

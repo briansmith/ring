@@ -22,6 +22,7 @@
 #include <unistd.h>
 
 #include <openssl/bio.h>
+#include <openssl/crypto.h>
 #include <openssl/err.h>
 
 
@@ -145,6 +146,7 @@ static int test_printf(void) {
 }
 
 int main(void) {
+  CRYPTO_library_init();
   ERR_load_crypto_strings();
 
   if (!test_socket_connect()) {
