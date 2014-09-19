@@ -61,7 +61,7 @@
 #include <openssl/cpu.h>
 
 
-#if defined(OPENSSL_X86) || defined(OPENSSL_X86_64)
+#if !defined(OPENSSL_NO_ASM) && (defined(OPENSSL_X86) || defined(OPENSSL_X86_64))
 
 #include <stdio.h>
 #include <inttypes.h>
@@ -132,4 +132,4 @@ void OPENSSL_cpuid_setup(void) {
   }
 }
 
-#endif  /* OPENSSL_X86 || OPENSSL_X86_64 */
+#endif  /* !OPENSSL_NO_ASM && (OPENSSL_X86 || OPENSSL_X86_64) */

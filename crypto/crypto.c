@@ -16,13 +16,21 @@
 
 #include "internal.h"
 
+#if !defined(OPENSSL_NO_ASM) && \
+    (defined(OPENSSL_X86) || defined(OPENSSL_X86_64))
+/* x86 and x86_64 need to record the result of a cpuid call for the asm to work
+ * correctly, unless compiled without asm code. */
+#define NEED_CPUID
 
-/* Currently, the only configurations which require a static initializer are x86
- * and x86_64. Don't bother emitting one in other cases. */
-#if !defined(OPENSSL_X86) && !defined(OPENSSL_X86_64) && \
-    !defined(BORINGSSL_NO_STATIC_INITIALIZER)
+#else
+
+/* Otherwise, don't emit a static initialiser. */
+
+#if !defined(BORINGSSL_NO_STATIC_INITIALIZER)
 #define BORINGSSL_NO_STATIC_INITIALIZER
 #endif
+
+#endif  /* !OPENSSL_NO_ASM && (OPENSSL_X86 || OPENSSL_X86_64) */
 
 #if defined(OPENSSL_WINDOWS)
 #define OPENSSL_CDECL __cdecl
@@ -45,7 +53,7 @@ __declspec(allocate(".CRT$XCU")) void(*library_init_constructor)(void) =
  * BORINGSSL_NO_STATIC_INITIALIZER isn't defined, this is set as a static
  * initializer. Otherwise, it is called by CRYPTO_library_init. */
 static void OPENSSL_CDECL do_library_init(void) {
-#if defined(OPENSSL_X86) || defined(OPENSSL_X86_64)
+#if defined(NEED_CPUID)
   OPENSSL_cpuid_setup();
 #endif
 }
