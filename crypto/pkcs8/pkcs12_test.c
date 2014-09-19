@@ -705,13 +705,56 @@ static int test(const char *name, const uint8_t *der, size_t der_len) {
   return 1;
 }
 
+static int test_compat(const uint8_t *der, size_t der_len) {
+  PKCS12 *p12;
+  X509 *cert = NULL;
+  STACK_OF(X509) *ca_certs = NULL;
+  EVP_PKEY *key;
+  BIO *bio;
+
+  bio = BIO_new_mem_buf((void*) der, der_len);
+
+  p12 = d2i_PKCS12_bio(bio, NULL);
+  if (p12 == NULL) {
+    fprintf(stderr, "PKCS12_parse failed.\n");
+    BIO_print_errors_fp(stderr);
+    return 0;
+  }
+  BIO_free(bio);
+
+  if (!PKCS12_parse(p12, "foo", &key, &cert, &ca_certs)) {
+    fprintf(stderr, "PKCS12_parse failed.\n");
+    BIO_print_errors_fp(stderr);
+    return 0;
+  }
+
+  if (key == NULL || cert == NULL) {
+    fprintf(stderr, "Bad result from PKCS12_parse.\n");
+    return 0;
+  }
+
+  EVP_PKEY_free(key);
+  X509_free(cert);
+
+  if (sk_X509_num(ca_certs) != 0) {
+    fprintf(stderr, "Bad result from PKCS12_parse.\n");
+    return 0;
+  }
+  sk_X509_free(ca_certs);
+
+  PKCS12_free(p12);
+
+  return 1;
+}
+
 int main(int argc, char **argv) {
   CRYPTO_library_init();
   ERR_load_crypto_strings();
 
   if (!test("OpenSSL", kOpenSSL, sizeof(kOpenSSL)) ||
       !test("NSS", kNSS, sizeof(kNSS)) ||
-      !test("Windows", kWindows, sizeof(kWindows))) {
+      !test("Windows", kWindows, sizeof(kWindows)) ||
+      !test_compat(kWindows, sizeof(kWindows))) {
     return 1;
   }
 

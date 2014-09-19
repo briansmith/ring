@@ -40,7 +40,7 @@ static const struct argument kArguments[] = {
     },
 };
 
-bool PKCS12(const std::vector<std::string> &args) {
+bool DoPKCS12(const std::vector<std::string> &args) {
   std::map<std::string, std::string> args_map;
 
   if (!ParseKeyValueArguments(&args_map, args, kArguments) ||

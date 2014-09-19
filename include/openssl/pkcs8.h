@@ -59,6 +59,8 @@
 
 #include <openssl/base.h>
 
+#include <stdio.h>
+
 #include <openssl/x509.h>
 
 #if defined(__cplusplus)
@@ -129,9 +131,42 @@ OPENSSL_EXPORT int PKCS12_get_key_and_certs(EVP_PKEY **out_key,
                                             STACK_OF(X509) *out_certs,
                                             CBS *in, const char *password);
 
+
+/* Deprecated functions. */
+
 /* PKCS12_PBE_add does nothing. It exists for compatibility with OpenSSL. */
 OPENSSL_EXPORT void PKCS12_PBE_add();
 
+/* d2i_PKCS12 is a dummy function that copies |*ber_bytes| into a
+ * |PKCS12| structure. The |out_p12| argument must be NULL. On exit,
+ * |*ber_bytes| will be advanced by |ber_len|. It returns a fresh |PKCS12|
+ * structure or NULL on error.
+ *
+ * Note: unlike other d2i functions, |d2i_PKCS12| will always consume |ber_len|
+ * bytes.*/
+OPENSSL_EXPORT PKCS12 *d2i_PKCS12(PKCS12 **out_p12, const uint8_t **ber_bytes,
+                                  size_t ber_len);
+
+/* d2i_PKCS12_bio acts like |d2i_PKCS12| but reads from a |BIO|. */
+OPENSSL_EXPORT PKCS12* d2i_PKCS12_bio(BIO *bio, PKCS12 **out_p12);
+
+/* d2i_PKCS12_fp acts like |d2i_PKCS12| but reads from a |FILE|. */
+OPENSSL_EXPORT PKCS12* d2i_PKCS12_fp(FILE *fp, PKCS12 **out_p12);
+
+/* PKCS12_parse calls |PKCS12_get_key_and_certs| on the ASN.1 data stored in
+ * |p12|. The |out_pkey| and |out_cert| arguments must not be NULL and, on
+ * successful exit, the private key and first certificate will be stored in
+ * them. The |out_ca_certs| argument may be NULL but, if not, then any extra
+ * certificates will be appended to |*out_ca_certs|. If |*out_ca_certs| is NULL
+ * then it will be set to a freshly allocated stack containing the extra certs.
+ *
+ * It returns one on success and zero on error. */
+OPENSSL_EXPORT int PKCS12_parse(const PKCS12 *p12, const char *password,
+                                EVP_PKEY **out_pkey, X509 **out_cert,
+                                STACK_OF(X509) **out_ca_certs);
+
+/* PKCS12_free frees |p12| and its contents. */
+OPENSSL_EXPORT void PKCS12_free(PKCS12 *p12);
 
 #if defined(__cplusplus)
 }  /* extern C */

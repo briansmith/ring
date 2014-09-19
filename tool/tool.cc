@@ -20,7 +20,7 @@
 
 
 bool Client(const std::vector<std::string> &args);
-bool PKCS12(const std::vector<std::string> &args);
+bool DoPKCS12(const std::vector<std::string> &args);
 bool Speed(const std::vector<std::string> &args);
 
 static void usage(const char *name) {
@@ -45,7 +45,7 @@ int main(int argc, char **argv) {
   } else if (tool == "s_client" || tool == "client") {
     return !Client(args);
   } else if (tool == "pkcs12") {
-    return !PKCS12(args);
+    return !DoPKCS12(args);
   } else {
     usage(argv[0]);
     return 1;

@@ -192,6 +192,7 @@ typedef struct hmac_ctx_st HMAC_CTX;
 typedef struct md4_state_st MD4_CTX;
 typedef struct md5_state_st MD5_CTX;
 typedef struct pkcs8_priv_key_info_st PKCS8_PRIV_KEY_INFO;
+typedef struct pkcs12_st PKCS12;
 typedef struct rand_meth_st RAND_METHOD;
 typedef struct rsa_meth_st RSA_METHOD;
 typedef struct rsa_st RSA;
