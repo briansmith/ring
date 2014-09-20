@@ -991,7 +991,6 @@ static int ssl_cipher_process_rulestr(const char *rule_str,
 			while ((*l != '\0') && !ITEM_SEP(*l))
 				l++;
 			}
-		if (*l == '\0') break; /* done */
 		}
 
 	if (in_group)
