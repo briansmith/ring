@@ -761,20 +761,8 @@ static int ssl_cipher_process_rulestr(const char *rule_str,
 			{ rule = CIPHER_DEL; l++; }
 		else if (ch == '+')
 			{ rule = CIPHER_ORD; l++; }
-		else if (ch == '!' && has_group)
-			{
-			OPENSSL_PUT_ERROR(SSL, ssl_cipher_process_rulestr, SSL_R_MIXED_SPECIAL_OPERATOR_WITH_GROUPS);
-			retval = found = in_group = 0;
-			break;
-			}
 		else if (ch == '!')
 			{ rule = CIPHER_KILL; l++; }
-		else if (ch == '@' && has_group)
-			{
-			OPENSSL_PUT_ERROR(SSL, ssl_cipher_process_rulestr, SSL_R_MIXED_SPECIAL_OPERATOR_WITH_GROUPS);
-			retval = found = in_group = 0;
-			break;
-			}
 		else if (ch == '@')
 			{ rule = CIPHER_SPECIAL; l++; }
 		else if (ch == '[')
@@ -792,6 +780,16 @@ static int ssl_cipher_process_rulestr(const char *rule_str,
 			}
 		else
 			{ rule = CIPHER_ADD; }
+
+		/* If preference groups are enabled, the only legal
+		 * operator is +. Otherwise the in_group bits will get
+		 * mixed up. */
+		if (has_group && rule != CIPHER_ADD)
+			{
+			OPENSSL_PUT_ERROR(SSL, ssl_cipher_process_rulestr, SSL_R_MIXED_SPECIAL_OPERATOR_WITH_GROUPS);
+			retval = found = in_group = 0;
+			break;
+			}
 
 		if (ITEM_SEP(ch))
 			{
