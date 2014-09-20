@@ -783,7 +783,7 @@ DECLARE_LHASH_OF(SSL_SESSION);
 struct ssl_cipher_preference_list_st
 	{
 	STACK_OF(SSL_CIPHER) *ciphers;
-	unsigned char *in_group_flags;
+	uint8_t *in_group_flags;
 	};
 
 struct ssl_ctx_st

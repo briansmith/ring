@@ -53,4 +53,4 @@ add_executable(
 	ssl_test.c
 )
 
-target_link_libraries(ssl_test crypto)
+target_link_libraries(ssl_test ssl crypto)
