@@ -172,6 +172,13 @@ SSL3_ENC_METHOD ssl3_undef_enc_method={
 		 int use_context)) ssl_undefined_function,
 	};
 
+/* Some error codes are special. Ensure the make_errors.go script
+ * never regresses this. */
+OPENSSL_COMPILE_ASSERT(
+	SSL_R_TLSV1_ALERT_NO_RENEGOTIATION ==
+		SSL_AD_NO_RENEGOTIATION + SSL_AD_REASON_OFFSET,
+	ssl_alert_reason_code_mismatch);
+
 int SSL_clear(SSL *s)
 	{
 
