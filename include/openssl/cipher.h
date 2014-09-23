@@ -356,6 +356,32 @@ OPENSSL_EXPORT int EVP_BytesToKey(const EVP_CIPHER *type, const EVP_MD *md,
 #define EVP_CIPH_CUSTOM_COPY 0x1000
 
 
+/* Deprecated functions */
+
+/* EVP_CipherInit acts like EVP_CipherInit_ex except that |EVP_CIPHER_CTX_init|
+ * is called on |cipher| first, if |cipher| is not NULL. */
+OPENSSL_EXPORT int EVP_CipherInit(EVP_CIPHER_CTX *ctx, const EVP_CIPHER *cipher,
+                                  const uint8_t *key, const uint8_t *iv,
+                                  int enc);
+
+/* EVP_EncryptInit calls |EVP_CipherInit| with |enc| equal to one. */
+OPENSSL_EXPORT int EVP_EncryptInit(EVP_CIPHER_CTX *ctx,
+                                   const EVP_CIPHER *cipher, const uint8_t *key,
+                                   const uint8_t *iv);
+
+/* EVP_DecryptInit calls |EVP_CipherInit| with |enc| equal to zero. */
+OPENSSL_EXPORT int EVP_DecryptInit(EVP_CIPHER_CTX *ctx,
+                                   const EVP_CIPHER *cipher, const uint8_t *key,
+                                   const uint8_t *iv);
+
+/* EVP_add_cipher_alias does nothing and returns one. */
+OPENSSL_EXPORT int EVP_add_cipher_alias(const char *a, const char *b);
+
+/* EVP_get_cipherbyname returns an |EVP_CIPHER| given a human readable name in
+ * |name|, or NULL if the name is unknown. */
+OPENSSL_EXPORT const EVP_CIPHER *EVP_get_cipherbyname(const char *name);
+
+
 /* Private functions. */
 
 /* EVP_CIPH_NO_PADDING disables padding in block ciphers. */

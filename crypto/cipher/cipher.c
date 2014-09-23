@@ -56,8 +56,9 @@
 
 #include <openssl/cipher.h>
 
-#include <string.h>
 #include <assert.h>
+#include <string.h>
+#include <strings.h>
 
 #include <openssl/err.h>
 #include <openssl/mem.h>
@@ -91,14 +92,6 @@ EVP_CIPHER_CTX *EVP_CIPHER_CTX_new(void) {
     EVP_CIPHER_CTX_init(ctx);
   }
   return ctx;
-}
-
-int EVP_CipherInit(EVP_CIPHER_CTX *ctx, const EVP_CIPHER *cipher,
-                   const unsigned char *key, const unsigned char *iv, int enc) {
-  if (cipher) {
-    EVP_CIPHER_CTX_init(ctx);
-  }
-  return EVP_CipherInit_ex(ctx, cipher, NULL, key, iv, enc);
 }
 
 int EVP_CIPHER_CTX_cleanup(EVP_CIPHER_CTX *c) {
@@ -612,4 +605,51 @@ uint32_t EVP_CIPHER_flags(const EVP_CIPHER *cipher) {
 
 uint32_t EVP_CIPHER_mode(const EVP_CIPHER *cipher) {
   return cipher->flags & EVP_CIPH_MODE_MASK;
+}
+
+int EVP_CipherInit(EVP_CIPHER_CTX *ctx, const EVP_CIPHER *cipher,
+                   const uint8_t *key, const uint8_t *iv, int enc) {
+  if (cipher) {
+    EVP_CIPHER_CTX_init(ctx);
+  }
+  return EVP_CipherInit_ex(ctx, cipher, NULL, key, iv, enc);
+}
+
+int EVP_EncryptInit(EVP_CIPHER_CTX *ctx, const EVP_CIPHER *cipher,
+                    const uint8_t *key, const uint8_t *iv) {
+  return EVP_CipherInit(ctx, cipher, key, iv, 1);
+}
+
+int EVP_DecryptInit(EVP_CIPHER_CTX *ctx, const EVP_CIPHER *cipher,
+                    const uint8_t *key, const uint8_t *iv) {
+  return EVP_CipherInit(ctx, cipher, key, iv, 0);
+}
+
+int EVP_add_cipher_alias(const char *a, const char *b) {
+  return 1;
+}
+
+const EVP_CIPHER *EVP_get_cipherbyname(const char *name) {
+  if (strcasecmp(name, "rc4") == 0) {
+    return EVP_rc4();
+  } else if (strcasecmp(name, "des-cbc") == 0) {
+    return EVP_des_cbc();
+  } else if (strcasecmp(name, "3des-cbc") == 0 ||
+             strcasecmp(name, "3des") == 0) {
+    return EVP_des_ede3_cbc();
+  } else if (strcasecmp(name, "aes-128-cbc") == 0) {
+    return EVP_aes_128_cbc();
+  } else if (strcasecmp(name, "aes-256-cbc") == 0) {
+    return EVP_aes_256_cbc();
+  } else if (strcasecmp(name, "aes-128-ctr") == 0) {
+    return EVP_aes_128_ctr();
+  } else if (strcasecmp(name, "aes-256-ctr") == 0) {
+    return EVP_aes_256_ctr();
+  } else if (strcasecmp(name, "aes-128-ecb") == 0) {
+    return EVP_aes_128_ecb();
+  } else if (strcasecmp(name, "aes-256-ecb") == 0) {
+    return EVP_aes_256_ecb();
+  }
+
+  return NULL;
 }
