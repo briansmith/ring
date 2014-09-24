@@ -62,14 +62,40 @@
 #include "ssl_locl.h"
 
 
-static const SSL_METHOD *ssl3_get_method(int ver);
 static const SSL_METHOD *ssl3_get_method(int ver)
 	{
-	if (ver == SSL3_VERSION)
-		return(SSLv3_method());
-	else 
-		return(NULL);
+	switch (ver)
+		{
+	case TLS1_2_VERSION:
+		return TLSv1_2_method();
+	case TLS1_1_VERSION:
+		return TLSv1_1_method();
+	case TLS1_VERSION:
+		return TLSv1_method();
+	case SSL3_VERSION:
+		return SSLv3_method();
+	default:
+		return NULL;
+		}
 	}
+
+IMPLEMENT_tls_meth_func(TLS1_2_VERSION, TLSv1_2_method,
+			ssl3_accept,
+			ssl3_connect,
+			ssl3_get_method,
+			TLSv1_2_enc_data)
+
+IMPLEMENT_tls_meth_func(TLS1_1_VERSION, TLSv1_1_method,
+			ssl3_accept,
+			ssl3_connect,
+			ssl3_get_method,
+			TLSv1_1_enc_data)
+
+IMPLEMENT_tls_meth_func(TLS1_VERSION, TLSv1_method,
+			ssl3_accept,
+			ssl3_connect,
+			ssl3_get_method,
+			TLSv1_enc_data)
 
 IMPLEMENT_tls_meth_func(SSL3_VERSION, SSLv3_method,
 			ssl3_accept,
