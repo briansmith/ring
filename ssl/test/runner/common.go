@@ -460,6 +460,10 @@ type ProtocolBugs struct {
 	// ALPN on the server. This is to test that server preference
 	// of ALPN works regardless of their relative order.
 	SwapNPNAndALPN bool
+
+	// AllowSessionVersionMismatch causes the server to resume sessions
+	// regardless of the version associated with the session.
+	AllowSessionVersionMismatch bool
 }
 
 func (c *Config) serverInit() {
