@@ -1959,7 +1959,7 @@ int ssl3_send_client_key_exchange(SSL *s)
 				}
 			psk_err = 0;
 		psk_err:
-			OPENSSL_cleanse(identity, PSK_MAX_IDENTITY_LEN);
+			OPENSSL_cleanse(identity, sizeof(identity));
 			OPENSSL_cleanse(pre_ms, sizeof(pre_ms));
 			if (psk_err != 0)
 				{
