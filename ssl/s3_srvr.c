@@ -181,10 +181,11 @@ static const SSL_METHOD *ssl3_get_server_method(int ver)
 		return(NULL);
 	}
 
-IMPLEMENT_ssl3_meth_func(SSLv3_server_method,
+IMPLEMENT_tls_meth_func(SSL3_VERSION, SSLv3_server_method,
 			ssl3_accept,
 			ssl_undefined_function,
-			ssl3_get_server_method)
+			ssl3_get_server_method,
+			SSLv3_enc_data)
 
 int ssl3_accept(SSL *s)
 	{

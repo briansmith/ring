@@ -685,40 +685,6 @@ const SSL_METHOD *func_name(void)  \
 	return &func_name##_data; \
 	}
 
-#define IMPLEMENT_ssl3_meth_func(func_name, s_accept, s_connect, s_get_meth) \
-const SSL_METHOD *func_name(void)  \
-	{ \
-	static const SSL_METHOD func_name##_data= { \
-		SSL3_VERSION, \
-		ssl3_new, \
-		ssl3_clear, \
-		ssl3_free, \
-		s_accept, \
-		s_connect, \
-		ssl3_read, \
-		ssl3_peek, \
-		ssl3_write, \
-		ssl3_shutdown, \
-		ssl3_renegotiate, \
-		ssl3_renegotiate_check, \
-		ssl3_get_message, \
-		ssl3_read_bytes, \
-		ssl3_write_bytes, \
-		ssl3_dispatch_alert, \
-		ssl3_ctrl, \
-		ssl3_ctx_ctrl, \
-		ssl3_pending, \
-		ssl3_num_ciphers, \
-		ssl3_get_cipher, \
-		s_get_meth, \
-		&SSLv3_enc_data, \
-		ssl_undefined_void_function, \
-		ssl3_callback_ctrl, \
-		ssl3_ctx_callback_ctrl, \
-	}; \
-	return &func_name##_data; \
-	}
-
 #define IMPLEMENT_ssl23_meth_func(func_name, s_accept, s_connect, s_get_meth) \
 const SSL_METHOD *func_name(void)  \
 	{ \
