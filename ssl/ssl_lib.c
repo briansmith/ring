@@ -1151,11 +1151,8 @@ long SSL_ctrl(SSL *s,int cmd,long larg,void *parg)
 		s->max_cert_list=larg;
 		return(l);
 	case SSL_CTRL_SET_MTU:
-#ifndef OPENSSL_NO_DTLS1
 		if (larg < (long)dtls1_min_mtu())
 			return 0;
-#endif
-
 		if (SSL_IS_DTLS(s))
 			{
 			s->d1->mtu = larg;

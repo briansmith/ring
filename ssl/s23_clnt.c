@@ -288,17 +288,10 @@ static int ssl23_client_hello(SSL *s)
 	 * TLS1>=1, it would be insufficient to pass SSL_NO_TLSv1, the
 	 * answer is SSL_OP_NO_TLSv1|SSL_OP_NO_SSLv3|SSL_OP_NO_SSLv2.
 	 */
-	mask =	SSL_OP_NO_TLSv1_1|SSL_OP_NO_TLSv1
-		|SSL_OP_NO_SSLv3
-		;
-#if !defined(OPENSSL_NO_TLS1_2_CLIENT)
+	mask = SSL_OP_NO_TLSv1_1|SSL_OP_NO_TLSv1|SSL_OP_NO_SSLv3;
 	version = TLS1_2_VERSION;
-
 	if ((options & SSL_OP_NO_TLSv1_2) && (options & mask) != mask)
 		version = TLS1_1_VERSION;
-#else
-	version = TLS1_1_VERSION;
-#endif
 	mask &= ~SSL_OP_NO_TLSv1_1;
 	if ((options & SSL_OP_NO_TLSv1_1) && (options & mask) != mask)
 		version = TLS1_VERSION;
