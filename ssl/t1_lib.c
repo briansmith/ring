@@ -2176,28 +2176,11 @@ static int ssl_check_serverhello_tlsext(SSL *s)
 	 */
 	unsigned long alg_k = s->s3->tmp.new_cipher->algorithm_mkey;
 	unsigned long alg_a = s->s3->tmp.new_cipher->algorithm_auth;
-	if ((s->tlsext_ecpointformatlist != NULL) && (s->tlsext_ecpointformatlist_length > 0) && 
-	    (s->session->tlsext_ecpointformatlist != NULL) && (s->session->tlsext_ecpointformatlist_length > 0) && 
-	    ((alg_k & SSL_kEECDH) || (alg_a & SSL_aECDSA)))
+	if (((alg_k & SSL_kEECDH) || (alg_a & SSL_aECDSA)) &&
+		!tls1_check_point_format(s, TLSEXT_ECPOINTFORMAT_uncompressed))
 		{
-		/* we are using an ECC cipher */
-		size_t i;
-		unsigned char *list;
-		int found_uncompressed = 0;
-		list = s->session->tlsext_ecpointformatlist;
-		for (i = 0; i < s->session->tlsext_ecpointformatlist_length; i++)
-			{
-			if (*(list++) == TLSEXT_ECPOINTFORMAT_uncompressed)
-				{
-				found_uncompressed = 1;
-				break;
-				}
-			}
-		if (!found_uncompressed)
-			{
-			OPENSSL_PUT_ERROR(SSL, ssl_check_serverhello_tlsext, SSL_R_TLS_INVALID_ECPOINTFORMAT_LIST);
-			return -1;
-			}
+		OPENSSL_PUT_ERROR(SSL, ssl_check_serverhello_tlsext, SSL_R_TLS_INVALID_ECPOINTFORMAT_LIST);
+		return -1;
 		}
 	ret = SSL_TLSEXT_ERR_OK;
 
