@@ -1492,13 +1492,12 @@ char *SSL_get_shared_ciphers(const SSL *s,char *buf,int len)
 	return(buf);
 	}
 
-int ssl_cipher_list_to_bytes(SSL *s,STACK_OF(SSL_CIPHER) *sk,unsigned char *p)
+int ssl_cipher_list_to_bytes(SSL *s, STACK_OF(SSL_CIPHER) *sk, uint8_t *p)
 	{
-	int i;
+	size_t i;
 	const SSL_CIPHER *c;
 	CERT *ct = s->cert;
-	unsigned char *q;
-	int no_scsv = s->renegotiate;
+	uint8_t *q;
 	/* Set disabled masks for this session */
 	ssl_set_client_disabled(s);
 
@@ -1513,41 +1512,22 @@ int ssl_cipher_list_to_bytes(SSL *s,STACK_OF(SSL_CIPHER) *sk,unsigned char *p)
 			c->algorithm_mkey & ct->mask_k ||
 			c->algorithm_auth & ct->mask_a)
 			continue;
-#ifdef OPENSSL_SSL_DEBUG_BROKEN_PROTOCOL
-		if (c->id == SSL3_CK_SCSV)
-			{
-			if (no_scsv)
-				continue;
-			else
-				no_scsv = 1;
-			}
-#endif
 		s2n(ssl3_get_cipher_value(c), p);
 		}
-	/* If p == q, no ciphers and caller indicates an error. Otherwise
-	 * add SCSV if not renegotiating.
-	 */
-	if (p != q)
+	/* If all ciphers were disabled, return the error to the caller. */
+	if (p == q)
 		{
-		if (!no_scsv)
-			{
-			static const SSL_CIPHER scsv =
-				{
-				0, NULL, SSL3_CK_SCSV, 0, 0, 0, 0, 0, 0, 0, 0, 0
-				};
-			s2n(ssl3_get_cipher_value(&scsv), p);
-#ifdef OPENSSL_RI_DEBUG
-			fprintf(stderr, "SCSV sent by client\n");
-#endif
-			}
-		if (s->fallback_scsv)
-			{
-			static const SSL_CIPHER fallback_scsv =
-				{
-				0, NULL, SSL3_CK_FALLBACK_SCSV, 0, 0, 0, 0, 0, 0, 0, 0, 0
-				};
-			s2n(ssl3_get_cipher_value(&fallback_scsv), p);
-			}
+		return 0;
+		}
+
+	/* Add SCSVs. */
+	if (!s->renegotiate)
+		{
+		s2n(SSL3_CK_SCSV & 0xffff, p);
+		}
+	if (s->fallback_scsv)
+		{
+		s2n(SSL3_CK_FALLBACK_SCSV & 0xffff, p);
 		}
 
 	return(p-q);
