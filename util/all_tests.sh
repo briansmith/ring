@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # Copyright (c) 2014, Google Inc.
 #
@@ -54,7 +54,7 @@ TESTS="
 IFS=$'\n'
 for bin in $TESTS; do
   echo $bin
-  out=$(/bin/bash -c "$bin" | tail -n 1)
+  out=$(bash -c "$bin" | tail -n 1)
   if [ $? -ne 0 ]; then
     echo $bin failed to complete.
     exit 1
