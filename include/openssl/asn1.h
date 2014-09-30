@@ -392,7 +392,7 @@ typedef const ASN1_ITEM ASN1_ITEM_EXP;
 #define ASN1_ITEM_rptr(ref) (&(ref##_it))
 
 #define DECLARE_ASN1_ITEM(name) \
-	extern const ASN1_ITEM name##_it;
+	extern OPENSSL_EXPORT const ASN1_ITEM name##_it;
 
 /* Parameters used by ASN1_STRING_print_ex() */
 
