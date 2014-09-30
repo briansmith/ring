@@ -40,8 +40,7 @@ static const size_t kNumTests = sizeof(test_vectors) / sizeof(test_vectors[0]);
 
 static int test_encode(void) {
   uint8_t out[9];
-  size_t i;
-  ssize_t len;
+  size_t i, len;
 
   for (i = 0; i < kNumTests; i++) {
     const TEST_VECTOR *t = &test_vectors[i];
