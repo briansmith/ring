@@ -25,7 +25,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. */
 
 #if !defined(_POSIX_C_SOURCE)
-#define _POSIX_C_SOURCE 1  /* for readdir_r */
+#define _POSIX_C_SOURCE 201409  /* for readdir_r */
 #endif
 
 #include "directory.h"
