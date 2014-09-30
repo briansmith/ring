@@ -207,7 +207,7 @@ extern "C" {
 					:"r"((unsigned int)(l)));\
 				   *((unsigned int *)(c))=r; (c)+=4; r;	})
 #    elif defined(__ORDER_BIG_ENDIAN__) && __BYTE_ORDER__==__ORDER_BIG_ENDIAN__
-#     define HOST_c2l(c,l)	((l)=*((const unsigned int *)(c)), (c)+=4, (l))
+#     define HOST_c2l(c,l)	(void)((l)=*((const unsigned int *)(c)), (c)+=4)
 #     define HOST_l2c(l,c)	(*((unsigned int *)(c))=(l), (c)+=4, (l))
 #    endif
 #   endif
@@ -216,11 +216,10 @@ extern "C" {
 #endif
 
 #ifndef HOST_c2l
-#define HOST_c2l(c,l)	(l =(((unsigned long)(*((c)++)))<<24),		\
+#define HOST_c2l(c,l)	(void)(l =(((unsigned long)(*((c)++)))<<24),	\
 			 l|=(((unsigned long)(*((c)++)))<<16),		\
 			 l|=(((unsigned long)(*((c)++)))<< 8),		\
-			 l|=(((unsigned long)(*((c)++)))    ),		\
-			 l)
+			 l|=(((unsigned long)(*((c)++)))    ))
 #endif
 #ifndef HOST_l2c
 #define HOST_l2c(l,c)	(*((c)++)=(unsigned char)(((l)>>24)&0xff),	\
@@ -234,16 +233,15 @@ extern "C" {
 
 #if defined(OPENSSL_X86) || defined(OPENSSL_X86_64)
    /* See comment in DATA_ORDER_IS_BIG_ENDIAN section. */
-#  define HOST_c2l(c,l)	((l)=*((const unsigned int *)(c)), (c)+=4, l)
+#  define HOST_c2l(c,l)	(void)((l)=*((const unsigned int *)(c)), (c)+=4)
 #  define HOST_l2c(l,c)	(*((unsigned int *)(c))=(l), (c)+=4, l)
 #endif
 
 #ifndef HOST_c2l
-#define HOST_c2l(c,l)	(l =(((unsigned long)(*((c)++)))    ),		\
+#define HOST_c2l(c,l)	(void)(l =(((unsigned long)(*((c)++)))    ),	\
 			 l|=(((unsigned long)(*((c)++)))<< 8),		\
 			 l|=(((unsigned long)(*((c)++)))<<16),		\
-			 l|=(((unsigned long)(*((c)++)))<<24),		\
-			 l)
+			 l|=(((unsigned long)(*((c)++)))<<24))
 #endif
 #ifndef HOST_l2c
 #define HOST_l2c(l,c)	(*((c)++)=(unsigned char)(((l)    )&0xff),	\
