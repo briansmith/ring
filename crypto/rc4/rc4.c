@@ -56,11 +56,17 @@
 
 #include <openssl/rc4.h>
 
-
 #if defined(OPENSSL_NO_ASM) || \
     (!defined(OPENSSL_X86_64) && !defined(OPENSSL_X86))
 
-#define RC4_CHUNK unsigned long
+#if defined(OPENSSL_64_BIT)
+#define RC4_CHUNK uint64_t
+#elif defined(OPENSSL_32_BIT)
+#define RC4_CHUNK uint32_t
+#else
+#error "Unknown word size"
+#endif
+
 #define RC4_INT uint32_t
 
 
@@ -157,12 +163,12 @@ void RC4(RC4_KEY *key, size_t len, const uint8_t *in, uint8_t *out) {
         otp |= RC4_STEP << BESHFT(1);
         otp |= RC4_STEP << BESHFT(2);
         otp |= RC4_STEP << BESHFT(3);
-        if (sizeof(RC4_CHUNK) == 8) {
-          otp |= RC4_STEP << BESHFT(4);
-          otp |= RC4_STEP << BESHFT(5);
-          otp |= RC4_STEP << BESHFT(6);
-          otp |= RC4_STEP << BESHFT(7);
-        }
+#if defined(OPENSSL_64_BIT)
+        otp |= RC4_STEP << BESHFT(4);
+        otp |= RC4_STEP << BESHFT(5);
+        otp |= RC4_STEP << BESHFT(6);
+        otp |= RC4_STEP << BESHFT(7);
+#endif
         *(RC4_CHUNK *)out = otp ^ ichunk;
         in += sizeof(RC4_CHUNK);
         out += sizeof(RC4_CHUNK);
@@ -206,12 +212,12 @@ void RC4(RC4_KEY *key, size_t len, const uint8_t *in, uint8_t *out) {
         otp |= RC4_STEP << 8;
         otp |= RC4_STEP << 16;
         otp |= RC4_STEP << 24;
-        if (sizeof(RC4_CHUNK) == 8) {
-          otp |= RC4_STEP << LESHFT(4);
-          otp |= RC4_STEP << LESHFT(5);
-          otp |= RC4_STEP << LESHFT(6);
-          otp |= RC4_STEP << LESHFT(7);
-        }
+#if defined(OPENSSL_64_BIT)
+        otp |= RC4_STEP << LESHFT(4);
+        otp |= RC4_STEP << LESHFT(5);
+        otp |= RC4_STEP << LESHFT(6);
+        otp |= RC4_STEP << LESHFT(7);
+#endif
         *(RC4_CHUNK *)out = otp ^ ichunk;
         in += sizeof(RC4_CHUNK);
         out += sizeof(RC4_CHUNK);
