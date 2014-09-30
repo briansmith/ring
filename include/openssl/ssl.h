@@ -564,9 +564,6 @@ struct ssl_session_st
  */
 #define SSL_CERT_FLAG_TLS_STRICT		0x00000001L
 
-/* Perform all sorts of protocol violations for testing purposes */
-#define SSL_CERT_FLAG_BROKEN_PROTOCOL		0x10000000
-
 /* Flags for building certificate chains */
 /* Treat any existing certificates as untrusted CAs */
 #define SSL_BUILD_CHAIN_FLAG_UNTRUSTED		0x1

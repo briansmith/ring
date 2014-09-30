@@ -2672,32 +2672,6 @@ int tls1_process_sigalgs(SSL *s, const CBS *sigalgs)
 
 	tls1_set_shared_sigalgs(s);
 
-#ifdef OPENSSL_SSL_DEBUG_BROKEN_PROTOCOL
-	if (s->cert->cert_flags & SSL_CERT_FLAG_BROKEN_PROTOCOL)
-		{
-		/* Use first set signature preference to force message
-		 * digest, ignoring any peer preferences.
-		 */
-		const unsigned char *sigs = NULL;
-		if (s->server)
-			sigs = c->conf_sigalgs;
-		else
-			sigs = c->client_sigalgs;
-		if (sigs)
-			{
-			idx = tls12_get_pkey_idx(sigs[1]);
-			md = tls12_get_hash(sigs[0]);
-			c->pkeys[idx].digest = md;
-			c->pkeys[idx].valid_flags = CERT_PKEY_EXPLICIT_SIGN;
-			if (idx == SSL_PKEY_RSA_SIGN)
-				{
-				c->pkeys[SSL_PKEY_RSA_ENC].valid_flags = CERT_PKEY_EXPLICIT_SIGN;
-				c->pkeys[SSL_PKEY_RSA_ENC].digest = md;
-				}
-			}
-		}
-#endif
-
 	for (i = 0, sigptr = c->shared_sigalgs;
 			i < c->shared_sigalgslen; i++, sigptr++)
 		{
@@ -2960,15 +2934,6 @@ int tls1_check_chain(SSL *s, X509 *x, EVP_PKEY *pk, STACK_OF(X509) *chain,
 		/* If no cert or key, forget it */
 		if (!x || !pk)
 			goto end;
-#ifdef OPENSSL_SSL_DEBUG_BROKEN_PROTOCOL
-		/* Allow any certificate to pass test */
-		if (s->cert->cert_flags & SSL_CERT_FLAG_BROKEN_PROTOCOL)
-			{
-			rv = CERT_PKEY_STRICT_FLAGS|CERT_PKEY_EXPLICIT_SIGN|CERT_PKEY_VALID|CERT_PKEY_SIGN;
-			cpk->valid_flags = rv;
-			return rv;
-			}
-#endif
 		}
 	else
 		{
