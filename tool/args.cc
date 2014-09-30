@@ -16,6 +16,7 @@
 #include <vector>
 #include <map>
 
+#include <stdio.h>
 #include <string.h>
 
 #include "internal.h"

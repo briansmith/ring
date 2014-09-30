@@ -26,6 +26,7 @@
 #include <arpa/inet.h>
 #include <fcntl.h>
 #include <netdb.h>
+#include <netinet/in.h>
 #include <sys/select.h>
 #include <unistd.h>
 #else
