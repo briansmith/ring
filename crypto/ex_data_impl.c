@@ -130,8 +130,6 @@ typedef struct crypto_ex_data_func_st {
 typedef struct st_ex_class_item {
   STACK_OF(CRYPTO_EX_DATA_FUNCS) *meth;
   int class_value;
-  /* TODO(fork): isn't |meth_num| just the length of |meth|? */
-  int meth_num;
 } EX_CLASS_ITEM;
 
 static LHASH_OF(EX_CLASS_ITEM) *global_classes = NULL;
@@ -215,7 +213,6 @@ static EX_CLASS_ITEM *get_class(int class_value) {
     class_item = OPENSSL_malloc(sizeof(EX_CLASS_ITEM));
     if (class_item) {
       class_item->class_value = class_value;
-      class_item->meth_num = 0;
       class_item->meth = sk_CRYPTO_EX_DATA_FUNCS_new_null();
       if (class_item->meth != NULL) {
         EX_CLASS_ITEM *old_data;
@@ -265,17 +262,14 @@ static int get_new_index(int class_value, long argl, void *argp,
   funcs->free_func = free_func;
 
   CRYPTO_w_lock(CRYPTO_LOCK_EX_DATA);
-  /* TODO(fork): this loop appears to only ever run once. */
-  while (sk_CRYPTO_EX_DATA_FUNCS_num(item->meth) <= item->meth_num) {
-    if (!sk_CRYPTO_EX_DATA_FUNCS_push(item->meth, NULL)) {
-      OPENSSL_PUT_ERROR(CRYPTO, get_new_index, ERR_R_MALLOC_FAILURE);
-      OPENSSL_free(funcs);
-      goto err;
-    }
+
+  if (!sk_CRYPTO_EX_DATA_FUNCS_push(item->meth, funcs)) {
+    OPENSSL_PUT_ERROR(CRYPTO, get_new_index, ERR_R_MALLOC_FAILURE);
+    OPENSSL_free(funcs);
+    goto err;
   }
 
-  ret = item->meth_num++;
-  (void)sk_CRYPTO_EX_DATA_FUNCS_set(item->meth, ret, funcs);
+  ret = sk_CRYPTO_EX_DATA_FUNCS_num(item->meth) - 1;
 
 err:
   CRYPTO_w_unlock(CRYPTO_LOCK_EX_DATA);
