@@ -66,6 +66,12 @@
 #include "internal.h"
 
 
+#if !defined(OPENSSL_WINDOWS)
+static int closesocket(int sock) {
+  return close(sock);
+}
+#endif
+
 static int sock_new(BIO *bio) {
   bio->init = 0;
   bio->num = 0;
@@ -81,7 +87,7 @@ static int sock_free(BIO *bio) {
 
   if (bio->shutdown) {
     if (bio->init) {
-      close(bio->num);
+      closesocket(bio->num);
     }
     bio->init = 0;
     bio->flags = 0;

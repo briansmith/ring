@@ -14,17 +14,31 @@
 
 #define _BSD_SOURCE
 
+#include <openssl/base.h>
+
+#if !defined(OPENSSL_WINDOWS)
 #include <arpa/inet.h>
 #include <fcntl.h>
 #include <netinet/in.h>
 #include <string.h>
 #include <sys/socket.h>
 #include <unistd.h>
+#else
+#include <io.h>
+#include <WinSock2.h>
+#include <WS2tcpip.h>
+#endif
 
 #include <openssl/bio.h>
 #include <openssl/crypto.h>
 #include <openssl/err.h>
 
+
+#if !defined(OPENSSL_WINDOWS)
+static int closesocket(int sock) {
+  return close(sock);
+}
+#endif
 
 static int test_socket_connect(void) {
   int listening_sock = socket(AF_INET, SOCK_STREAM, 0);
@@ -37,8 +51,8 @@ static int test_socket_connect(void) {
 
   memset(&sin, 0, sizeof(sin));
   sin.sin_family = AF_INET;
-  if (!inet_aton("127.0.0.1", &sin.sin_addr)) {
-    perror("inet_aton");
+  if (!inet_pton(AF_INET, "127.0.0.1", &sin.sin_addr)) {
+    perror("inet_pton");
     return 0;
   }
 
@@ -58,8 +72,8 @@ static int test_socket_connect(void) {
     return 0;
   }
 
-  snprintf(hostname, sizeof(hostname), "%s:%d", "127.0.0.1",
-           ntohs(sin.sin_port));
+  BIO_snprintf(hostname, sizeof(hostname), "%s:%d", "127.0.0.1",
+               ntohs(sin.sin_port));
   bio = BIO_new_connect(hostname);
   if (!bio) {
     fprintf(stderr, "BIO_new_connect failed.\n");
@@ -88,8 +102,8 @@ static int test_socket_connect(void) {
     return 0;
   }
 
-  close(sock);
-  close(listening_sock);
+  closesocket(sock);
+  closesocket(listening_sock);
   BIO_free(bio);
 
   return 1;

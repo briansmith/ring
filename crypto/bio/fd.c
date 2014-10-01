@@ -61,6 +61,7 @@
 #if !defined(OPENSSL_WINDOWS)
 #include <unistd.h>
 #else
+#include <io.h>
 #include <Windows.h>
 #endif
 
@@ -101,8 +102,8 @@ static int bio_fd_non_fatal_error(int err) {
   return 0;
 }
 
-#if defined(WIN32)
-static int bio_fd_should_retry(int i) {
+#if defined(OPENSSL_WINDOWS)
+int bio_fd_should_retry(int i) {
   if (i == -1) {
     return bio_fd_non_fatal_error((int)GetLastError());
   }

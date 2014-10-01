@@ -102,6 +102,12 @@ typedef struct bio_connect_st {
   int (*info_callback)(const BIO *bio, int state, int ret);
 } BIO_CONNECT;
 
+#if !defined(OPENSSL_WINDOWS)
+static int closesocket(int sock) {
+  return close(sock);
+}
+#endif
+
 /* maybe_copy_ipv4_address sets |*ipv4| to the IPv4 address from |ss| (in
  * big-endian order), if |ss| contains an IPv4 socket address. */
 static void maybe_copy_ipv4_address(uint8_t *ipv4,
@@ -302,7 +308,7 @@ static void conn_close_socket(BIO *bio) {
   if (c->state == BIO_CONN_S_OK) {
     shutdown(bio->num, 2);
   }
-  close(bio->num);
+  closesocket(bio->num);
   bio->num = -1;
 }
 
