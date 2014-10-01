@@ -1001,12 +1001,13 @@ int ssl3_get_client_hello(SSL *s)
 	/* If it is a hit, check that the cipher is in the list */
 	if (s->hit && CBS_len(&cipher_suites) > 0)
 		{
+		size_t j;
 		int found_cipher = 0;
 		unsigned long id = s->session->cipher->id;
 
-		for (i=0; i<sk_SSL_CIPHER_num(ciphers); i++)
+		for (j = 0; j < sk_SSL_CIPHER_num(ciphers); j++)
 			{
-			c=sk_SSL_CIPHER_value(ciphers,i);
+			c = sk_SSL_CIPHER_value(ciphers, j);
 			if (c->id == id)
 				{
 				found_cipher = 1;
@@ -1683,7 +1684,8 @@ err:
 int ssl3_send_certificate_request(SSL *s)
 	{
 	unsigned char *p,*d;
-	int i,j,nl,off,n;
+	size_t i;
+	int j,nl,off,n;
 	STACK_OF(X509_NAME) *sk=NULL;
 	X509_NAME *name;
 	BUF_MEM *buf;

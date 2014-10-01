@@ -1780,7 +1780,8 @@ const SSL_CIPHER *ssl3_choose_cipher(SSL *s, STACK_OF(SSL_CIPHER) *clnt,
 	{
 	const SSL_CIPHER *c,*ret=NULL;
 	STACK_OF(SSL_CIPHER) *srvr = server_pref->ciphers, *prio, *allow;
-	int i,ok;
+	size_t i;
+	int ok;
 	size_t cipher_index;
 	CERT *cert;
 	unsigned long alg_k,alg_a,mask_k,mask_a;
@@ -1880,12 +1881,12 @@ const SSL_CIPHER *ssl3_choose_cipher(SSL *s, STACK_OF(SSL_CIPHER) *clnt,
 				/* This element of |prio| is in a group. Update
 				 * the minimum index found so far and continue
 				 * looking. */
-				if (group_min == -1 || group_min > cipher_index)
+				if (group_min == -1 || (size_t)group_min > cipher_index)
 					group_min = cipher_index;
 				}
 			else
 				{
-				if (group_min != -1 && group_min < cipher_index)
+				if (group_min != -1 && (size_t)group_min < cipher_index)
 					cipher_index = group_min;
 				ret=sk_SSL_CIPHER_value(allow,cipher_index);
 				break;

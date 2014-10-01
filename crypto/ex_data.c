@@ -177,7 +177,7 @@ int CRYPTO_set_ex_data(CRYPTO_EX_DATA *ad, int index, void *val) {
 }
 
 void *CRYPTO_get_ex_data(const CRYPTO_EX_DATA *ad, int idx) {
-  if (ad->sk == NULL || idx >= sk_void_num(ad->sk)) {
+  if (ad->sk == NULL || idx < 0 || (size_t)idx >= sk_void_num(ad->sk)) {
     return NULL;
   }
   return sk_void_value(ad->sk, idx);

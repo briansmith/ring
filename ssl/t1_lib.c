@@ -894,7 +894,7 @@ unsigned char *ssl_add_clienthello_tlsext(SSL *s, unsigned char *buf, unsigned c
 	int using_ecc = 0;
 	if (s->version >= TLS1_VERSION || SSL_IS_DTLS(s))
 		{
-		int i;
+		size_t i;
 		unsigned long alg_k, alg_a;
 		STACK_OF(SSL_CIPHER) *cipher_stack = SSL_get_ciphers(s);
 
@@ -2883,7 +2883,7 @@ static int tls1_check_sig_alg(CERT *c, X509 *x, int default_nid)
 static int ssl_check_ca_name(STACK_OF(X509_NAME) *names, X509 *x)
 	{
 	X509_NAME *nm;
-	int i;
+	size_t i;
 	nm = X509_get_issuer_name(x);
 	for (i = 0; i < sk_X509_NAME_num(names); i++)
 		{
@@ -2911,7 +2911,7 @@ static int ssl_check_ca_name(STACK_OF(X509_NAME) *names, X509 *x)
 int tls1_check_chain(SSL *s, X509 *x, EVP_PKEY *pk, STACK_OF(X509) *chain,
 									int idx)
 	{
-	int i;
+	size_t i;
 	int rv = 0;
 	int check_flags = 0, strict_mode;
 	CERT_PKEY *cpk = NULL;

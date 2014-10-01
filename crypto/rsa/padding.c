@@ -55,6 +55,8 @@
 
 #include <openssl/rsa.h>
 
+#include <assert.h>
+
 #include <openssl/digest.h>
 #include <openssl/err.h>
 #include <openssl/mem.h>
@@ -659,7 +661,7 @@ int RSA_padding_add_PKCS1_PSS_mgf1(RSA *rsa, unsigned char *EM,
                                    int sLen) {
   int i;
   int ret = 0;
-  int maskedDBLen, MSBits, emLen;
+  size_t maskedDBLen, MSBits, emLen;
   size_t hLen;
   unsigned char *H, *salt = NULL, *p;
   EVP_MD_CTX ctx;
@@ -693,6 +695,7 @@ int RSA_padding_add_PKCS1_PSS_mgf1(RSA *rsa, unsigned char *EM,
   MSBits = (BN_num_bits(rsa->n) - 1) & 0x7;
   emLen = RSA_size(rsa);
   if (MSBits == 0) {
+    assert(emLen >= 1);
     *EM++ = 0;
     emLen--;
   }

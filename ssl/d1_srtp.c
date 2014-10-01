@@ -312,7 +312,7 @@ int ssl_parse_clienthello_use_srtp_ext(SSL *s, CBS *cbs, int *out_alert)
 	CBS profile_ids, srtp_mki;
 	SRTP_PROTECTION_PROFILE *cprof, *sprof;
 	STACK_OF(SRTP_PROTECTION_PROFILE) *clnt = 0,*srvr;
-	int i,j;
+	size_t i,j;
 	int ret = 0;
 
 	if (!CBS_get_u16_length_prefixed(cbs, &profile_ids) ||
@@ -405,7 +405,7 @@ int ssl_parse_serverhello_use_srtp_ext(SSL *s, CBS *cbs, int *out_alert)
 	{
 	CBS profile_ids, srtp_mki;
 	uint16_t profile_id;
-	int i;
+	size_t i;
 
 	STACK_OF(SRTP_PROTECTION_PROFILE) *clnt;
 	SRTP_PROTECTION_PROFILE *prof;

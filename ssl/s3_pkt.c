@@ -574,7 +574,7 @@ int ssl3_write_bytes(SSL *s, int type, const void *buf_, int len)
 	 * buffer ... so we trap and report the error in a way the user
 	 * will notice
 	 */
-	if (len < tot)
+	if (len < 0 || (size_t)len < tot)
 		{
 		OPENSSL_PUT_ERROR(SSL, ssl3_write_bytes, SSL_R_BAD_LENGTH);
 		return(-1);

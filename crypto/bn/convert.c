@@ -163,7 +163,7 @@ int BN_bn2bin_padded(uint8_t *out, size_t len, const BIGNUM *in) {
 
   /* Check if the integer is too big. This case can exit early in non-constant
    * time. */
-  if (in->top > (len + (BN_BYTES - 1)) / BN_BYTES) {
+  if ((size_t)in->top > (len + (BN_BYTES - 1)) / BN_BYTES) {
     return 0;
   }
   if ((len % BN_BYTES) != 0) {

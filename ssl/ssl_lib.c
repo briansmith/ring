@@ -1381,18 +1381,20 @@ STACK_OF(SSL_CIPHER) *ssl_get_ciphers_by_id(SSL *s)
 	}
 
 /** The old interface to get the same thing as SSL_get_ciphers() */
-const char *SSL_get_cipher_list(const SSL *s,int n)
+const char *SSL_get_cipher_list(const SSL *s, int n)
 	{
 	const SSL_CIPHER *c;
 	STACK_OF(SSL_CIPHER) *sk;
 
-	if (s == NULL) return(NULL);
-	sk=SSL_get_ciphers(s);
-	if ((sk == NULL) || (sk_SSL_CIPHER_num(sk) <= n))
-		return(NULL);
-	c=sk_SSL_CIPHER_value(sk,n);
-	if (c == NULL) return(NULL);
-	return(c->name);
+	if (s == NULL)
+		return NULL;
+	sk = SSL_get_ciphers(s);
+	if (sk == NULL || n < 0 || (size_t)n >= sk_SSL_CIPHER_num(sk))
+		return NULL;
+	c = sk_SSL_CIPHER_value(sk, n);
+	if (c == NULL)
+		return NULL;
+	return c->name;
 	}
 
 /** specify the ciphers to be used by default by the SSL_CTX */
@@ -1458,7 +1460,7 @@ char *SSL_get_shared_ciphers(const SSL *s,char *buf,int len)
 	char *p;
 	STACK_OF(SSL_CIPHER) *sk;
 	const SSL_CIPHER *c;
-	int i;
+	size_t i;
 
 	if ((s->session == NULL) || (s->session->ciphers == NULL) ||
 		(len < 2))

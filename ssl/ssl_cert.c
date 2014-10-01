@@ -664,7 +664,7 @@ static void set_client_CA_list(STACK_OF(X509_NAME) **ca_list,STACK_OF(X509_NAME)
 
 STACK_OF(X509_NAME) *SSL_dup_CA_list(STACK_OF(X509_NAME) *sk)
 	{
-	int i;
+	size_t i;
 	STACK_OF(X509_NAME) *ret;
 	X509_NAME *name;
 
@@ -965,7 +965,7 @@ int ssl_add_cert_chain(SSL *s, CERT_PKEY *cpk, unsigned long *l)
 	{
 	BUF_MEM *buf = s->init_buf;
 	int no_chain;
-	int i;
+	size_t i;
 
 	X509 *x;
 	STACK_OF(X509) *extra_certs;
@@ -1060,12 +1060,13 @@ int ssl_build_cert_chain(CERT *c, X509_STORE *chain_store, int flags)
 	/* Rearranging and check the chain: add everything to a store */
 	if (flags & SSL_BUILD_CHAIN_FLAG_CHECK)
 		{
+		size_t j;
 		chain_store = X509_STORE_new();
 		if (!chain_store)
 			goto err;
-		for (i = 0; i < sk_X509_num(cpk->chain); i++)
+		for (j = 0; j < sk_X509_num(cpk->chain); j++)
 			{
-			x = sk_X509_value(cpk->chain, i);
+			x = sk_X509_value(cpk->chain, j);
 			if (!X509_STORE_add_cert(chain_store, x))
 				{
 				error = ERR_peek_last_error();

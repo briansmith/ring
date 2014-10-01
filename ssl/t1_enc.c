@@ -603,7 +603,7 @@ int tls1_setup_key_block(SSL *s)
 		/* For "stateful" AEADs (i.e. compatibility with pre-AEAD
 		 * cipher suites) the key length reported by
 		 * |EVP_AEAD_key_length| will include the MAC key bytes. */
-		if (key_len < mac_secret_size)
+		if (key_len < (size_t)mac_secret_size)
 			{
 			OPENSSL_PUT_ERROR(SSL, tls1_change_cipher_state, ERR_R_INTERNAL_ERROR);
 			return 0;

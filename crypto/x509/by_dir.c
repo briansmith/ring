@@ -199,7 +199,7 @@ static void free_dir(X509_LOOKUP *lu)
 
 static int add_cert_dir(BY_DIR *ctx, const char *dir, int type)
 	{
-	int j,len;
+	size_t j,len;
 	const char *s,*ss,*p;
 
 	if (dir == NULL || !*dir)
@@ -217,13 +217,13 @@ static int add_cert_dir(BY_DIR *ctx, const char *dir, int type)
 			BY_DIR_ENTRY *ent;
 			ss=s;
 			s=p+1;
-			len=(int)(p-ss);
+			len=p-ss;
 			if (len == 0) continue;
 			for (j=0; j < sk_BY_DIR_ENTRY_num(ctx->dirs); j++)
 				{
 				ent = sk_BY_DIR_ENTRY_value(ctx->dirs, j);
-				if (strlen(ent->dir) == (size_t)len &&
-				    strncmp(ent->dir,ss,(unsigned int)len) == 0)
+				if (strlen(ent->dir) == len &&
+				    strncmp(ent->dir,ss,len) == 0)
 					break;
 				}
 			if (j < sk_BY_DIR_ENTRY_num(ctx->dirs))
@@ -242,13 +242,13 @@ static int add_cert_dir(BY_DIR *ctx, const char *dir, int type)
 				return 0;
 			ent->dir_type = type;
 			ent->hashes = sk_BY_DIR_HASH_new(by_dir_hash_cmp);
-			ent->dir = OPENSSL_malloc((unsigned int)len+1);
+			ent->dir = OPENSSL_malloc(len+1);
 			if (!ent->dir || !ent->hashes)
 				{
 				by_dir_entry_free(ent);
 				return 0;
 				}
-			strncpy(ent->dir,ss,(unsigned int)len);
+			strncpy(ent->dir,ss,len);
 			ent->dir[len] = '\0';
 			if (!sk_BY_DIR_ENTRY_push(ctx->dirs, ent))
 				{
@@ -275,7 +275,8 @@ static int get_cert_by_subject(X509_LOOKUP *xl, int type, X509_NAME *name,
 			} crl;
 		} data;
 	int ok=0;
-	int i,j,k;
+	size_t i;
+	int j,k;
 	unsigned long h;
 	unsigned long hash_array[2];
 	int hash_index;
