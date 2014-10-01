@@ -44,8 +44,7 @@ static int test_overflow(void) {
 static int test_put_error(void) {
   uint32_t packed_error;
   int line, flags;
-  const char *file;
-  char *data;
+  const char *file, *data;
 
   if (ERR_get_error() != 0) {
     fprintf(stderr, "ERR_get_error returned value before an error was added.\n");
@@ -67,8 +66,6 @@ static int test_put_error(void) {
     fprintf(stderr, "Bad error data returned.\n");
     return 0;
   }
-
-  OPENSSL_free(data);
 
   return 1;
 }

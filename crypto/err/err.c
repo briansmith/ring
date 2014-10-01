@@ -168,7 +168,7 @@ static ERR_STATE *err_get_state(void) {
 }
 
 static uint32_t get_error_values(int inc, int top, const char **file, int *line,
-                                 char **data, int *flags) {
+                                 const char **data, int *flags) {
   unsigned i = 0;
   ERR_STATE *state;
   struct err_error_st *error;
@@ -211,6 +211,12 @@ static uint32_t get_error_values(int inc, int top, const char **file, int *line,
       if (flags != NULL) {
         *flags = error->flags & ERR_FLAG_PUBLIC_MASK;
       }
+      if (error->flags & ERR_FLAG_MALLOCED) {
+        if (state->to_free) {
+          OPENSSL_free(state->to_free);
+        }
+        state->to_free = error->data;
+      }
       error->data = NULL;
       error->flags = 0;
     }
@@ -234,7 +240,7 @@ uint32_t ERR_get_error_line(const char **file, int *line) {
 }
 
 uint32_t ERR_get_error_line_data(const char **file, int *line,
-                                 char **data, int *flags) {
+                                 const char **data, int *flags) {
   return get_error_values(1, 0, file, line, data, flags);
 }
 
@@ -248,7 +254,7 @@ uint32_t ERR_peek_error_line(const char **file, int *line) {
 
 uint32_t ERR_peek_error_line_data(const char **file, int *line,
                                   const char **data, int *flags) {
-  return get_error_values(0, 0, file, line, (char **) data, flags);
+  return get_error_values(0, 0, file, line, data, flags);
 }
 
 uint32_t ERR_peek_last_error(void) {
@@ -261,7 +267,7 @@ uint32_t ERR_peek_last_error_line(const char **file, int *line) {
 
 uint32_t ERR_peek_last_error_line_data(const char **file, int *line,
                                        const char **data, int *flags) {
-  return get_error_values(0, 1, file, line, (char **) data, flags);
+  return get_error_values(0, 1, file, line, data, flags);
 }
 
 void ERR_clear_error(void) {
@@ -270,6 +276,9 @@ void ERR_clear_error(void) {
 
   for (i = 0; i < ERR_NUM_ERRORS; i++) {
     err_clear(&state->errors[i]);
+  }
+  if (state->to_free) {
+    OPENSSL_free(state->to_free);
   }
 
   state->top = state->bottom = 0;
@@ -294,7 +303,9 @@ void ERR_remove_thread_state(const CRYPTO_THREADID *tid) {
   for (i = 0; i < ERR_NUM_ERRORS; i++) {
     err_clear(&state->errors[i]);
   }
-
+  if (state->to_free) {
+    OPENSSL_free(state->to_free);
+  }
   OPENSSL_free(state);
 }
 
@@ -433,8 +444,7 @@ void ERR_print_errors_cb(ERR_print_errors_callback_t callback, void *ctx) {
   char buf[ERR_ERROR_STRING_BUF_LEN];
   char buf2[1024];
   unsigned long thread_hash;
-  const char *file;
-  char *data;
+  const char *file, *data;
   int line, flags;
   uint32_t packed_error;
 
@@ -452,9 +462,6 @@ void ERR_print_errors_cb(ERR_print_errors_callback_t callback, void *ctx) {
                  file, line, (flags & ERR_FLAG_STRING) ? data : "");
     if (callback(buf2, strlen(buf2), ctx) <= 0) {
       break;
-    }
-    if (flags & ERR_FLAG_MALLOCED) {
-      OPENSSL_free(data);
     }
   }
 }

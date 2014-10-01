@@ -166,9 +166,12 @@ OPENSSL_EXPORT uint32_t ERR_get_error_line(const char **file, int *line);
 
 /* ERR_get_error_line_data acts like |ERR_get_error_line|, but also returns the
  * error-specific data pointer and flags. The flags are a bitwise-OR of
- * |ERR_FLAG_*| values. */
+ * |ERR_FLAG_*| values. The error-specific data is owned by the error queue
+ * and the pointer becomes invalid after the next call that affects the same
+ * thread's error queue. If |*flags| contains |ERR_FLAG_STRING| then |*data| is
+ * human-readable. */
 OPENSSL_EXPORT uint32_t ERR_get_error_line_data(const char **file, int *line,
-                                                char **data, int *flags);
+                                                const char **data, int *flags);
 
 /* The "peek" functions act like the |ERR_get_error| functions, above, but they
  * do not remove the error from the queue. */
@@ -325,12 +328,9 @@ struct err_error_st {
   uint8_t flags;
 };
 
-/* ERR_FLAG_MALLOCED means the the |data| member must be freed when no longer
- * needed. */
-#define ERR_FLAG_MALLOCED 1
 /* ERR_FLAG_STRING means that the |data| member is a NUL-terminated string that
  * can be printed. */
-#define ERR_FLAG_STRING 2
+#define ERR_FLAG_STRING 1
 /* ERR_TXT_STRING is provided for compatibility with code that assumes that
  * it's using OpenSSL. */
 #define ERR_TXT_STRING ERR_FLAG_STRING
@@ -342,9 +342,12 @@ struct err_error_st {
 /* The following flag values are internal and are masked when flags are
  * returned from functions like |ERR_get_error_line_data|. */
 
+/* ERR_FLAG_MALLOCED means the the |data| member must be freed when no longer
+ * needed. */
+#define ERR_FLAG_MALLOCED 16
 /* ERR_FLAG_MARK is used to indicate a reversion point in the queue. See
  * |ERR_pop_to_mark|. */
-#define ERR_FLAG_MARK 16
+#define ERR_FLAG_MARK 32
 
 /* ERR_NUM_ERRORS is the limit of the number of errors in the queue. */
 #define ERR_NUM_ERRORS 16
@@ -362,6 +365,10 @@ typedef struct err_state_st {
   unsigned top;
   /* bottom contains the index of the last error in the queue. */
   unsigned bottom;
+
+  /* to_free, if not NULL, contains a pointer owned by this structure that was
+   * previously a |data| pointer of one of the elements of |errors|. */
+  void *to_free;
 } ERR_STATE;
 
 enum {
