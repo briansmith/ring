@@ -707,7 +707,6 @@ void SSL_SESSION_free(SSL_SESSION *ss)
 	OPENSSL_cleanse(ss->session_id,sizeof ss->session_id);
 	if (ss->sess_cert != NULL) ssl_sess_cert_free(ss->sess_cert);
 	if (ss->peer != NULL) X509_free(ss->peer);
-	if (ss->ciphers != NULL) sk_SSL_CIPHER_free(ss->ciphers);
 	if (ss->tlsext_hostname != NULL) OPENSSL_free(ss->tlsext_hostname);
 	if (ss->tlsext_tick != NULL) OPENSSL_free(ss->tlsext_tick);
 	ss->tlsext_ecpointformatlist_length = 0;

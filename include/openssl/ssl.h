@@ -434,8 +434,6 @@ struct ssl_session_st
 					 * needs to be used to load
 					 * the 'cipher' structure */
 
-	STACK_OF(SSL_CIPHER) *ciphers; /* shared ciphers? */
-
 	CRYPTO_EX_DATA ex_data; /* application specific data */
 
 	/* These are used to make removal of session-ids more
@@ -545,10 +543,7 @@ struct ssl_session_st
 #define SSL_MODE_NO_AUTO_CHAIN 0x00000008L
 /* Save RAM by releasing read and write buffers when they're empty. (SSL3 and
  * TLS only.)  "Released" buffers are put onto a free-list in the context or
- * just freed (depending on the context's setting for freelist_max_len). Also
- * frees up RAM by releasing the list of client ciphersuites as soon as
- * possible (SSL3 and TLS only). This stops SSL_get_shared_ciphers from
- * working. */
+ * just freed (depending on the context's setting for freelist_max_len). */
 #define SSL_MODE_RELEASE_BUFFERS 0x00000010L
 
 /* Send the current time in the Random fields of the ClientHello and
@@ -1924,7 +1919,6 @@ OPENSSL_EXPORT int	SSL_get_fd(const SSL *s);
 OPENSSL_EXPORT int	SSL_get_rfd(const SSL *s);
 OPENSSL_EXPORT int	SSL_get_wfd(const SSL *s);
 OPENSSL_EXPORT const char  * SSL_get_cipher_list(const SSL *s,int n);
-OPENSSL_EXPORT char *	SSL_get_shared_ciphers(const SSL *s, char *buf, int len);
 OPENSSL_EXPORT int	SSL_get_read_ahead(const SSL * s);
 OPENSSL_EXPORT int	SSL_pending(const SSL *s);
 #ifndef OPENSSL_NO_SOCK

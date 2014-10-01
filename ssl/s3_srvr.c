@@ -1074,13 +1074,10 @@ int ssl3_get_client_hello(SSL *s)
 			ciphers, &pref_cipher, s->tls_session_secret_cb_arg))
 			{
 			s->hit=1;
-			s->session->ciphers=ciphers;
 			s->session->verify_result=X509_V_OK;
 
-			ciphers=NULL;
-
 			/* check if some cipher was preferred by call back */
-			pref_cipher=pref_cipher ? pref_cipher : ssl3_choose_cipher(s, s->session->ciphers, ssl_get_cipher_preferences(s));
+			pref_cipher=pref_cipher ? pref_cipher : ssl3_choose_cipher(s, ciphers, ssl_get_cipher_preferences(s));
 			if (pref_cipher == NULL)
 				{
 				al=SSL_AD_HANDSHAKE_FAILURE;
@@ -1096,26 +1093,21 @@ int ssl3_get_client_hello(SSL *s)
 			if (s->cipher_list_by_id)
 				sk_SSL_CIPHER_free(s->cipher_list_by_id);
 
-			s->cipher_list = ssl_cipher_preference_list_from_ciphers(s->session->ciphers);
-			s->cipher_list_by_id = sk_SSL_CIPHER_dup(s->session->ciphers);
+			s->cipher_list = ssl_cipher_preference_list_from_ciphers(ciphers);
+			s->cipher_list_by_id = sk_SSL_CIPHER_dup(ciphers);
 			}
 		}
 
-	/* Given s->session->ciphers and SSL_get_ciphers, we must
-	 * pick a cipher */
+	/* Given ciphers and SSL_get_ciphers, we must pick a cipher */
 
 	if (!s->hit)
 		{
-		if (s->session->ciphers != NULL)
-			sk_SSL_CIPHER_free(s->session->ciphers);
-		s->session->ciphers=ciphers;
 		if (ciphers == NULL)
 			{
 			al=SSL_AD_ILLEGAL_PARAMETER;
 			OPENSSL_PUT_ERROR(SSL, ssl3_get_client_hello, SSL_R_NO_CIPHERS_PASSED);
 			goto f_err;
 			}
-		ciphers=NULL;
 		/* Let cert callback update server certificates if required */
 		if (s->cert->cert_cb)
 			{
@@ -1129,12 +1121,11 @@ int ssl3_get_client_hello(SSL *s)
 			if (rv < 0)
 				{
 				s->rwstate=SSL_X509_LOOKUP;
-				return -1;
+				goto err;
 				}
 			s->rwstate = SSL_NOTHING;
 			}
-		c=ssl3_choose_cipher(s,s->session->ciphers,
-				     ssl_get_cipher_preferences(s));
+		c=ssl3_choose_cipher(s, ciphers, ssl_get_cipher_preferences(s));
 
 		if (c == NULL)
 			{
@@ -1202,15 +1193,6 @@ int ssl3_send_server_hello(SSL *s)
 		    s->s3->tlsext_channel_id_new &&
 		    s->session->original_handshake_hash_len == 0)
 			s->s3->tlsext_channel_id_valid = 0;
-
-		if (s->mode & SSL_MODE_RELEASE_BUFFERS)
-			{
-			/* Free s->session->ciphers in order to release memory. This
-			 * breaks SSL_get_shared_ciphers(), but many servers will
-			 * prefer the memory savings. */
-			sk_SSL_CIPHER_free(s->session->ciphers);
-			s->session->ciphers = NULL;
-			}
 
 		buf=(unsigned char *)s->init_buf->data;
 		/* Do the message type and length last */
