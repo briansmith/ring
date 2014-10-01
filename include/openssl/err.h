@@ -460,9 +460,9 @@ enum {
   (((((uint32_t)lib) & 0xff) << 24) | ((((uint32_t)func) & 0xfff) << 12) | \
    ((((uint32_t)reason) & 0xfff)))
 
-#define ERR_GET_LIB(packed_error) (((packed_error) >> 24) & 0xff)
-#define ERR_GET_FUNC(packed_error) (((packed_error) >> 12) & 0xfff)
-#define ERR_GET_REASON(packed_error) ((packed_error) & 0xfff)
+#define ERR_GET_LIB(packed_error) ((int)(((packed_error) >> 24) & 0xff))
+#define ERR_GET_FUNC(packed_error) ((int)(((packed_error) >> 12) & 0xfff))
+#define ERR_GET_REASON(packed_error) ((int)((packed_error) & 0xfff))
 
 /* ERR_STRING_DATA is the type of an lhash node that contains a mapping from a
  * library, function or reason code to a string representation of it. */
