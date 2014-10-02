@@ -292,8 +292,6 @@ int ssl3_change_cipher_state(SSL *s, int which)
 
 	memcpy(mac_secret,ms,i);
 
-	s->session->key_arg_length=0;
-
 	EVP_CipherInit_ex(dd,c,NULL,key,iv,(which & SSL3_CC_WRITE));
 
 #ifdef OPENSSL_SSL_TRACE_CRYPTO

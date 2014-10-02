@@ -108,7 +108,6 @@ typedef struct ssl_session_asn1_st
 	ASN1_OCTET_STRING master_key;
 	ASN1_OCTET_STRING session_id;
 	ASN1_OCTET_STRING session_id_context;
-	ASN1_OCTET_STRING key_arg;
 	ASN1_INTEGER time;
 	ASN1_INTEGER timeout;
 	ASN1_INTEGER verify_result;
@@ -186,10 +185,6 @@ int i2d_SSL_SESSION(SSL_SESSION *in, unsigned char **pp)
 	a.session_id_context.length=in->sid_ctx_length;
 	a.session_id_context.type=V_ASN1_OCTET_STRING;
 	a.session_id_context.data=in->sid_ctx;
-
-	a.key_arg.length=in->key_arg_length;
-	a.key_arg.type=V_ASN1_OCTET_STRING;
-	a.key_arg.data=in->key_arg;
 
 	if (in->time != 0L)
 		{
@@ -282,8 +277,6 @@ int i2d_SSL_SESSION(SSL_SESSION *in, unsigned char **pp)
 	M_ASN1_I2D_len(&(a.cipher),		i2d_ASN1_OCTET_STRING);
 	M_ASN1_I2D_len(&(a.session_id),		i2d_ASN1_OCTET_STRING);
 	M_ASN1_I2D_len(&(a.master_key),		i2d_ASN1_OCTET_STRING);
-	if (in->key_arg_length > 0)
-		M_ASN1_I2D_len_IMP_opt(&(a.key_arg),i2d_ASN1_OCTET_STRING);
 	if (in->time != 0L)
 		M_ASN1_I2D_len_EXP_opt(&(a.time),i2d_ASN1_INTEGER,1,v1);
 	if (in->timeout != 0L)
@@ -321,8 +314,6 @@ int i2d_SSL_SESSION(SSL_SESSION *in, unsigned char **pp)
 	M_ASN1_I2D_put(&(a.cipher),		i2d_ASN1_OCTET_STRING);
 	M_ASN1_I2D_put(&(a.session_id),		i2d_ASN1_OCTET_STRING);
 	M_ASN1_I2D_put(&(a.master_key),		i2d_ASN1_OCTET_STRING);
-	if (in->key_arg_length > 0)
-		M_ASN1_I2D_put_IMP_opt(&(a.key_arg),i2d_ASN1_OCTET_STRING,0);
 	if (in->time != 0L)
 		M_ASN1_I2D_put_EXP_opt(&(a.time),i2d_ASN1_INTEGER,1,v1);
 	if (in->timeout != 0L)
@@ -448,12 +439,9 @@ SSL_SESSION *d2i_SSL_SESSION(SSL_SESSION **a, const unsigned char **pp,
 
 	os.length=0;
 
+	/* [0] is the tag for key_arg, a no longer used remnant of
+	 * SSLv2. */
 	M_ASN1_D2I_get_IMP_opt(osp,d2i_ASN1_OCTET_STRING,0,V_ASN1_OCTET_STRING);
-	if (os.length > SSL_MAX_KEY_ARG_LENGTH)
-		ret->key_arg_length=SSL_MAX_KEY_ARG_LENGTH;
-	else
-		ret->key_arg_length=os.length;
-	memcpy(ret->key_arg,os.data,ret->key_arg_length);
 	if (os.data != NULL) OPENSSL_free(os.data);
 
 	ai.length=0;

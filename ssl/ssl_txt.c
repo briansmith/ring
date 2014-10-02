@@ -156,16 +156,6 @@ int SSL_SESSION_print(BIO *bp, const SSL_SESSION *x)
 		{
 		if (BIO_printf(bp,"%02X",x->master_key[i]) <= 0) goto err;
 		}
-	if (BIO_puts(bp,"\n    Key-Arg   : ") <= 0) goto err;
-	if (x->key_arg_length == 0)
-		{
-		if (BIO_puts(bp,"None") <= 0) goto err;
-		}
-	else
-		for (i=0; i<x->key_arg_length; i++)
-			{
-			if (BIO_printf(bp,"%02X",x->key_arg[i]) <= 0) goto err;
-			}
 	if (BIO_puts(bp,"\n    PSK identity: ") <= 0) goto err;
 	if (BIO_printf(bp, "%s", x->psk_identity ? x->psk_identity : "None") <= 0) goto err;
 	if (BIO_puts(bp,"\n    PSK identity hint: ") <= 0) goto err;
