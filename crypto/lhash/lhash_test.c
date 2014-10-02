@@ -12,7 +12,9 @@
  * OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
  * CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE. */
 
+#if !defined(_POSIX_C_SOURCE)
 #define _POSIX_C_SOURCE 201410L
+#endif
 
 #include <openssl/crypto.h>
 #include <openssl/lhash.h>

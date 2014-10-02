@@ -53,7 +53,9 @@
  * copied and put under another distribution licence
  * [including the GNU Public Licence.] */
 
+#if !defined(_POSIX_C_SOURCE)
 #define _POSIX_C_SOURCE 201410L  /* needed for strdup, snprintf, vprintf etc */
+#endif
 
 #include <openssl/mem.h>
 
