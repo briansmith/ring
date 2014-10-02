@@ -55,9 +55,7 @@
  * (eay@cryptsoft.com).  This product includes software written by Tim
  * Hudson (tjh@cryptsoft.com). */
 
-#if !defined(_BSD_SOURCE)
-#define _BSD_SOURCE /* for gmtime_r */
-#endif
+#define _POSIX_C_SOURCE 201410L  /* for gmtime_r */
 
 #include <openssl/time_support.h>
 

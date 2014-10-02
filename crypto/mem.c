@@ -53,9 +53,7 @@
  * copied and put under another distribution licence
  * [including the GNU Public Licence.] */
 
-#if !defined(_BSD_SOURCE)
-#define _BSD_SOURCE /* needed for strdup, snprintf, vprintf etc */
-#endif
+#define _POSIX_C_SOURCE 201410L  /* needed for strdup, snprintf, vprintf etc */
 
 #include <openssl/mem.h>
 
@@ -66,6 +64,8 @@
 
 #if defined(OPENSSL_WINDOWS)
 #include <Windows.h>
+#else
+#include <strings.h>
 #endif
 
 

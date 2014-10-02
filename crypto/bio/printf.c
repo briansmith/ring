@@ -54,8 +54,8 @@
  * copied and put under another distribution licence
  * [including the GNU Public Licence.] */
 
-#if !defined(_BSD_SOURCE)
-#define _BSD_SOURCE  /* for snprintf, vprintf etc */
+#if !defined(_POSIX_C_SOURCE)
+#define _POSIX_C_SOURCE 201410L  /* for snprintf, vprintf etc */
 #endif
 
 #include <openssl/bio.h>
