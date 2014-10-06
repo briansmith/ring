@@ -116,7 +116,7 @@ struct sha_state_st {
 /* SHA224_Init initialises |sha| and returns 1. */
 OPENSSL_EXPORT int SHA224_Init(SHA256_CTX *sha);
 
-/* SHA224_Update adds |len| bytes from |data| to |sha|. */
+/* SHA224_Update adds |len| bytes from |data| to |sha| and returns 1. */
 OPENSSL_EXPORT int SHA224_Update(SHA256_CTX *sha, const void *data, size_t len);
 
 /* SHA224_Final adds the final padding to |sha| and writes the resulting digest
@@ -140,7 +140,7 @@ OPENSSL_EXPORT uint8_t *SHA224(const uint8_t *data, size_t len, uint8_t *out);
 /* SHA256_Init initialises |sha| and returns 1. */
 OPENSSL_EXPORT int SHA256_Init(SHA256_CTX *sha);
 
-/* SHA256_Update adds |len| bytes from |data| to |sha|. */
+/* SHA256_Update adds |len| bytes from |data| to |sha| and returns 1. */
 OPENSSL_EXPORT int SHA256_Update(SHA256_CTX *sha, const void *data, size_t len);
 
 /* SHA256_Final adds the final padding to |sha| and writes the resulting digest
@@ -175,7 +175,7 @@ struct sha256_state_st {
 /* SHA384_Init initialises |sha| and returns 1. */
 OPENSSL_EXPORT int SHA384_Init(SHA512_CTX *sha);
 
-/* SHA384_Update adds |len| bytes from |data| to |sha|. */
+/* SHA384_Update adds |len| bytes from |data| to |sha| and returns 1. */
 OPENSSL_EXPORT int SHA384_Update(SHA512_CTX *sha, const void *data, size_t len);
 
 /* SHA384_Final adds the final padding to |sha| and writes the resulting digest
@@ -203,7 +203,7 @@ OPENSSL_EXPORT void SHA384_Transform(SHA512_CTX *sha, const uint8_t *data);
 /* SHA512_Init initialises |sha| and returns 1. */
 OPENSSL_EXPORT int SHA512_Init(SHA512_CTX *sha);
 
-/* SHA512_Update adds |len| bytes from |data| to |sha|. */
+/* SHA512_Update adds |len| bytes from |data| to |sha| and returns 1. */
 OPENSSL_EXPORT int SHA512_Update(SHA512_CTX *sha, const void *data, size_t len);
 
 /* SHA512_Final adds the final padding to |sha| and writes the resulting digest
