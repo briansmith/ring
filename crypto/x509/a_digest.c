@@ -65,7 +65,7 @@
 int ASN1_digest(i2d_of_void *i2d, const EVP_MD *type, char *data,
 		unsigned char *md, unsigned int *len)
 	{
-	int i;
+	int i, ret;
 	unsigned char *str,*p;
 
 	i=i2d(data,NULL);
@@ -77,23 +77,21 @@ int ASN1_digest(i2d_of_void *i2d, const EVP_MD *type, char *data,
 	p=str;
 	i2d(data,&p);
 
-	if (!EVP_Digest(str, i, md, len, type, NULL))
-		return 0;
+	ret = EVP_Digest(str, i, md, len, type, NULL);
 	OPENSSL_free(str);
-	return(1);
+	return ret;
 	}
 
 int ASN1_item_digest(const ASN1_ITEM *it, const EVP_MD *type, void *asn,
 		unsigned char *md, unsigned int *len)
 	{
-	int i;
+	int i, ret;
 	unsigned char *str = NULL;
 
 	i=ASN1_item_i2d(asn,&str, it);
 	if (!str) return(0);
 
-	if (!EVP_Digest(str, i, md, len, type, NULL))
-		return 0;
+	ret = EVP_Digest(str, i, md, len, type, NULL);
 	OPENSSL_free(str);
-	return(1);
+	return ret;
 	}

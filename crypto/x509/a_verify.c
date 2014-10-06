@@ -149,6 +149,8 @@ int ASN1_item_verify(const ASN1_ITEM *it, X509_ALGOR *a,
 
 	if (!EVP_DigestVerifyUpdate(&ctx,buf_in,inl))
 		{
+		OPENSSL_cleanse(buf_in,(unsigned int)inl);
+		OPENSSL_free(buf_in);
 		OPENSSL_PUT_ERROR(X509, ASN1_item_verify, ERR_R_EVP_LIB);
 		ret=0;
 		goto err;
