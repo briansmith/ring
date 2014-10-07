@@ -279,6 +279,7 @@ void ERR_clear_error(void) {
   }
   if (state->to_free) {
     OPENSSL_free(state->to_free);
+    state->to_free = NULL;
   }
 
   state->top = state->bottom = 0;
