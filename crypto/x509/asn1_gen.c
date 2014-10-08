@@ -375,7 +375,7 @@ static int asn1_cb(const char *elem, int len, void *bitstr)
 			arg->format = ASN1_GEN_FORMAT_BITLIST;
 		else
 			{
-			OPENSSL_PUT_ERROR(X509, asn1_cb, ASN1_R_UNKOWN_FORMAT);
+			OPENSSL_PUT_ERROR(X509, asn1_cb, ASN1_R_UNKNOWN_FORMAT);
 			return -1;
 			}
 		break;
