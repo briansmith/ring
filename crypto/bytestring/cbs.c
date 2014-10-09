@@ -264,6 +264,13 @@ int CBS_get_asn1_element(CBS *cbs, CBS *out, unsigned tag_value) {
   return cbs_get_asn1(cbs, out, tag_value, 0 /* include header */);
 }
 
+int CBS_peek_asn1_tag(const CBS *cbs, unsigned tag_value) {
+  if (CBS_len(cbs) < 1) {
+    return 0;
+  }
+  return CBS_data(cbs)[0] == tag_value;
+}
+
 int CBS_get_asn1_uint64(CBS *cbs, uint64_t *out) {
   CBS bytes;
   const uint8_t *data;

@@ -109,6 +109,10 @@ static int test_get_asn1(void) {
   CBS data, contents;
 
   CBS_init(&data, kData1, sizeof(kData1));
+  if (CBS_peek_asn1_tag(&data, 0x1) ||
+      !CBS_peek_asn1_tag(&data, 0x30)) {
+    return 0;
+  }
   if (!CBS_get_asn1(&data, &contents, 0x30) ||
       CBS_len(&contents) != 2 ||
       memcmp(CBS_data(&contents), "\x01\x02", 2) != 0) {
@@ -142,6 +146,11 @@ static int test_get_asn1(void) {
   CBS_init(&data, kData1, sizeof(kData1));
   /* wrong tag. */
   if (CBS_get_asn1(&data, &contents, 0x31)) {
+    return 0;
+  }
+
+  CBS_init(&data, NULL, 0);
+  if (CBS_peek_asn1_tag(&data, 0x30)) {
     return 0;
   }
 

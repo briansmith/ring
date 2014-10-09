@@ -141,6 +141,13 @@ OPENSSL_EXPORT int CBS_get_asn1(CBS *cbs, CBS *out, unsigned tag_value);
  * ASN.1 header bytes too. */
 OPENSSL_EXPORT int CBS_get_asn1_element(CBS *cbs, CBS *out, unsigned tag_value);
 
+/* CBS_peek_asn1_tag looks ahead at the next ASN.1 tag and returns one
+ * if the next ASN.1 element on |cbs| would have tag |tag_value|. If
+ * |cbs| is empty or the tag does not match, it returns zero. Note: if
+ * it returns one, CBS_get_asn1 may still fail if the rest of the
+ * element is malformed. */
+OPENSSL_EXPORT int CBS_peek_asn1_tag(const CBS *cbs, unsigned tag_value);
+
 /* CBS_get_any_asn1_element sets |*out| to contain the next ASN.1 element from
  * |*cbs| (including header bytes) and advances |*cbs|. It sets |*out_tag| to
  * the tag number and |*out_header_len| to the length of the ASN.1 header. If
