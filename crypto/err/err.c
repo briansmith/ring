@@ -699,6 +699,7 @@ extern const ERR_STRING_DATA DSA_error_string_data[];
 extern const ERR_STRING_DATA ECDH_error_string_data[];
 extern const ERR_STRING_DATA ECDSA_error_string_data[];
 extern const ERR_STRING_DATA EC_error_string_data[];
+extern const ERR_STRING_DATA ENGINE_error_string_data[];
 extern const ERR_STRING_DATA EVP_error_string_data[];
 extern const ERR_STRING_DATA OBJ_error_string_data[];
 extern const ERR_STRING_DATA PEM_error_string_data[];
@@ -752,6 +753,7 @@ static void err_load_strings(void) {
   ERR_load_strings(ECDH_error_string_data);
   ERR_load_strings(ECDSA_error_string_data);
   ERR_load_strings(EC_error_string_data);
+  ERR_load_strings(ENGINE_error_string_data);
   ERR_load_strings(EVP_error_string_data);
   ERR_load_strings(OBJ_error_string_data);
   ERR_load_strings(PEM_error_string_data);

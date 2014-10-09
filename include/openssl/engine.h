@@ -100,4 +100,6 @@ struct openssl_method_common_st {
 }  /* extern C */
 #endif
 
+#define ENGINE_R_OPERATION_NOT_SUPPORTED 100
+
 #endif  /* OPENSSL_HEADER_ENGINE_H */

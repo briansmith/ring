@@ -17,6 +17,7 @@
 #include <openssl/dh.h>
 #include <openssl/dsa.h>
 #include <openssl/ec_key.h>
+#include <openssl/err.h>
 #include <openssl/mem.h>
 #include <openssl/rsa.h>
 #include <openssl/thread.h>
@@ -131,3 +132,5 @@ void METHOD_unref(void *method_in) {
     OPENSSL_free(method);
   }
 }
+
+OPENSSL_DECLARE_ERROR_REASON(ENGINE, OPERATION_NOT_SUPPORTED);
