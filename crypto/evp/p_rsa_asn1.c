@@ -583,16 +583,14 @@ err:
   return NULL;
 }
 
-/* From PSS AlgorithmIdentifier set public key parameters. If pkey
- * isn't NULL then the EVP_MD_CTX is setup and initalised. If it
- * is NULL parameters are passed to pkctx instead. */
-static int rsa_pss_to_ctx(EVP_MD_CTX *ctx, EVP_PKEY_CTX *pkctx,
-                          X509_ALGOR *sigalg, EVP_PKEY *pkey) {
+/* From PSS AlgorithmIdentifier set public key parameters. */
+static int rsa_pss_to_ctx(EVP_MD_CTX *ctx, X509_ALGOR *sigalg, EVP_PKEY *pkey) {
   int ret = 0;
   int saltlen;
   const EVP_MD *mgf1md = NULL, *md = NULL;
   RSA_PSS_PARAMS *pss;
   X509_ALGOR *maskHash;
+  EVP_PKEY_CTX *pkctx;
 
   /* Sanity check: make sure it is PSS */
   if (OBJ_obj2nid(sigalg->algorithm) != NID_rsassaPss) {
@@ -634,22 +632,8 @@ static int rsa_pss_to_ctx(EVP_MD_CTX *ctx, EVP_PKEY_CTX *pkctx,
     goto err;
   }
 
-  if (pkey) {
-    if (!EVP_DigestVerifyInit(ctx, &pkctx, md, NULL, pkey)) {
-      goto err;
-    }
-  } else {
-    const EVP_MD *checkmd;
-    if (EVP_PKEY_CTX_get_signature_md(pkctx, &checkmd) <= 0) {
-      goto err;
-    }
-    if (EVP_MD_type(md) != EVP_MD_type(checkmd)) {
-      OPENSSL_PUT_ERROR(EVP, rsa_pss_to_ctx, EVP_R_DIGEST_DOES_NOT_MATCH);
-      goto err;
-    }
-  }
-
-  if (EVP_PKEY_CTX_set_rsa_padding(pkctx, RSA_PKCS1_PSS_PADDING) <= 0 ||
+  if (!EVP_DigestVerifyInit(ctx, &pkctx, md, NULL, pkey) ||
+      EVP_PKEY_CTX_set_rsa_padding(pkctx, RSA_PKCS1_PSS_PADDING) <= 0 ||
       EVP_PKEY_CTX_set_rsa_pss_saltlen(pkctx, saltlen) <= 0 ||
       EVP_PKEY_CTX_set_rsa_mgf1_md(pkctx, mgf1md) <= 0) {
     goto err;
@@ -676,7 +660,7 @@ static int rsa_item_verify(EVP_MD_CTX *ctx, const ASN1_ITEM *it, void *asn,
     OPENSSL_PUT_ERROR(EVP, rsa_item_verify, EVP_R_UNSUPPORTED_SIGNATURE_TYPE);
     return -1;
   }
-  if (rsa_pss_to_ctx(ctx, NULL, sigalg, pkey)) {
+  if (rsa_pss_to_ctx(ctx, sigalg, pkey)) {
     /* Carry on */
     return 2;
   }
