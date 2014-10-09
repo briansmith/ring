@@ -588,7 +588,7 @@ err:
  * is NULL parameters are passed to pkctx instead. */
 static int rsa_pss_to_ctx(EVP_MD_CTX *ctx, EVP_PKEY_CTX *pkctx,
                           X509_ALGOR *sigalg, EVP_PKEY *pkey) {
-  int ret = -1;
+  int ret = 0;
   int saltlen;
   const EVP_MD *mgf1md = NULL, *md = NULL;
   RSA_PSS_PARAMS *pss;
@@ -597,7 +597,7 @@ static int rsa_pss_to_ctx(EVP_MD_CTX *ctx, EVP_PKEY_CTX *pkctx,
   /* Sanity check: make sure it is PSS */
   if (OBJ_obj2nid(sigalg->algorithm) != NID_rsassaPss) {
     OPENSSL_PUT_ERROR(EVP, rsa_pss_to_ctx, EVP_R_UNSUPPORTED_SIGNATURE_TYPE);
-    return -1;
+    return 0;
   }
   /* Decode PSS parameters */
   pss = rsa_pss_decode(sigalg, &maskHash);
