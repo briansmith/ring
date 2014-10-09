@@ -844,10 +844,6 @@ OPENSSL_EXPORT int ASN1_verify(i2d_of_void *i2d, X509_ALGOR *algor1,
 OPENSSL_EXPORT int ASN1_digest(i2d_of_void *i2d,const EVP_MD *type,char *data,
 		unsigned char *md,unsigned int *len);
 
-OPENSSL_EXPORT int ASN1_sign(i2d_of_void *i2d, X509_ALGOR *algor1,
-	      X509_ALGOR *algor2, ASN1_BIT_STRING *signature,
-	      char *data,EVP_PKEY *pkey, const EVP_MD *type);
-
 OPENSSL_EXPORT int ASN1_item_digest(const ASN1_ITEM *it,const EVP_MD *type,void *data,
 	unsigned char *md,unsigned int *len);
 
