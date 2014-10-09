@@ -84,65 +84,20 @@ int ASN1_item_sign_ctx(const ASN1_ITEM *it,
 		X509_ALGOR *algor1, X509_ALGOR *algor2,
 	     	ASN1_BIT_STRING *signature, void *asn, EVP_MD_CTX *ctx)
 	{
-	const EVP_MD *type;
 	EVP_PKEY *pkey;
 	unsigned char *buf_in=NULL,*buf_out=NULL;
 	size_t inl=0,outl=0,outll=0;
-	int signid, paramtype;
-	int rv;
 
-	type = EVP_MD_CTX_md(ctx);
 	pkey = EVP_PKEY_CTX_get0_pkey(ctx->pctx);
 
-	if (!type || !pkey)
+	/* Write out the requested copies of the AlgorithmIdentifier. */
+	if (algor1 && !EVP_DigestSignAlgorithm(ctx, algor1))
 		{
-		OPENSSL_PUT_ERROR(X509, ASN1_item_sign_ctx, X509_R_CONTEXT_NOT_INITIALISED);
-		return 0;
+		goto err;
 		}
-
-	if (pkey->ameth->item_sign)
+	if (algor2 && !EVP_DigestSignAlgorithm(ctx, algor2))
 		{
-		rv = pkey->ameth->item_sign(ctx, it, asn, algor1, algor2,
-						signature);
-		if (rv == 1)
-			outl = signature->length;
-		/* Return value meanings:
-		 * <=0: error.
-		 *   1: method does everything.
-		 *   2: carry on as normal.
-		 *   3: ASN1 method sets algorithm identifiers: just sign.
-		 */
-		if (rv <= 0)
-			OPENSSL_PUT_ERROR(X509, ASN1_item_sign_ctx, ERR_R_EVP_LIB);
-		if (rv <= 1)
-			goto err;
-		}
-	else
-		rv = 2;
-
-	if (rv == 2)
-		{
-		/* TODO(fork): EVP_MD_FLAG_PKEY_METHOD_SIGNATURE seems to mean
-		 * "is SHA". */
-		if (!pkey->ameth ||
-			!OBJ_find_sigid_by_algs(&signid,
-						EVP_MD_type(type),
-						pkey->ameth->pkey_id))
-			{
-			OPENSSL_PUT_ERROR(X509, ASN1_item_sign_ctx, X509_R_DIGEST_AND_KEY_TYPE_NOT_SUPPORTED);
-			return 0;
-			}
-
-		if (pkey->ameth->pkey_flags & ASN1_PKEY_SIGPARAM_NULL)
-			paramtype = V_ASN1_NULL;
-		else
-			paramtype = V_ASN1_UNDEF;
-
-		if (algor1)
-			X509_ALGOR_set0(algor1, OBJ_nid2obj(signid), paramtype, NULL);
-		if (algor2)
-			X509_ALGOR_set0(algor2, OBJ_nid2obj(signid), paramtype, NULL);
-
+		goto err;
 		}
 
 	inl=ASN1_item_i2d(asn,&buf_in, it);

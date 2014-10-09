@@ -67,7 +67,24 @@ extern "C" {
 /* These values are flags for EVP_PKEY_ASN1_METHOD.flags. */
 #define ASN1_PKEY_ALIAS 0x1
 #define ASN1_PKEY_DYNAMIC 0x2
+
+/* ASN1_PKEY_SIGPARAM_NULL controls whether the default behavior of
+ * EVP_DigestSignAlgorithm writes an explicit NULL parameter in the
+ * AlgorithmIdentifier. */
 #define ASN1_PKEY_SIGPARAM_NULL 0x4
+
+/* evp_digest_sign_algorithm_result_t is the return value of the
+ * digest_sign_algorithm function in EVP_PKEY_ASN1_METHOD. */
+typedef enum {
+  /* EVP_DIGEST_SIGN_ALGORITHM_ERROR signals an error. */
+  EVP_DIGEST_SIGN_ALGORITHM_ERROR = 0,
+  /* EVP_DIGEST_SIGN_ALGORITHM_SUCCESS signals that the parameters were
+   * serialized in the AlgorithmIdentifier. */
+  EVP_DIGEST_SIGN_ALGORITHM_SUCCESS = 1,
+  /* EVP_DIGEST_SIGN_ALGORITHM_DEFAULT signals that the parameters are
+   * serialized using the default behavior. */
+  EVP_DIGEST_SIGN_ALGORITHM_DEFAULT = 2,
+} evp_digest_sign_algorithm_result_t;
 
 struct evp_pkey_asn1_method_st {
   int pkey_id;
@@ -113,11 +130,14 @@ struct evp_pkey_asn1_method_st {
   int (*old_priv_decode)(EVP_PKEY *pkey, const unsigned char **pder,
                          int derlen);
   int (*old_priv_encode)(const EVP_PKEY *pkey, unsigned char **pder);
-  /* Custom ASN1 signature verification */
-  int (*item_verify)(EVP_MD_CTX *ctx, const ASN1_ITEM *it, void *asn,
-                     X509_ALGOR *a, ASN1_BIT_STRING *sig, EVP_PKEY *pkey);
-  int (*item_sign)(EVP_MD_CTX *ctx, const ASN1_ITEM *it, void *asn,
-                   X509_ALGOR *alg1, X509_ALGOR *alg2, ASN1_BIT_STRING *sig);
+
+  /* Converting parameters to/from AlgorithmIdentifier (X509_ALGOR). */
+  int (*digest_verify_init_from_algorithm)(EVP_MD_CTX *ctx,
+                                           X509_ALGOR *algor,
+                                           EVP_PKEY *pkey);
+  evp_digest_sign_algorithm_result_t (*digest_sign_algorithm)(
+      EVP_MD_CTX *ctx,
+      X509_ALGOR *algor);
 
 } /* EVP_PKEY_ASN1_METHOD */;
 

@@ -17,6 +17,8 @@
 #include <openssl/evp.h>
 
 const ERR_STRING_DATA EVP_error_string_data[] = {
+  {ERR_PACK(ERR_LIB_EVP, EVP_F_EVP_DigestSignAlgorithm, 0), "EVP_DigestSignAlgorithm"},
+  {ERR_PACK(ERR_LIB_EVP, EVP_F_EVP_DigestVerifyInitFromAlgorithm, 0), "EVP_DigestVerifyInitFromAlgorithm"},
   {ERR_PACK(ERR_LIB_EVP, EVP_F_EVP_PKEY_CTX_ctrl, 0), "EVP_PKEY_CTX_ctrl"},
   {ERR_PACK(ERR_LIB_EVP, EVP_F_EVP_PKEY_copy_parameters, 0), "EVP_PKEY_copy_parameters"},
   {ERR_PACK(ERR_LIB_EVP, EVP_F_EVP_PKEY_decrypt, 0), "EVP_PKEY_decrypt"},
@@ -74,6 +76,7 @@ const ERR_STRING_DATA EVP_error_string_data[] = {
   {ERR_PACK(ERR_LIB_EVP, EVP_F_rsa_pub_decode, 0), "rsa_pub_decode"},
   {ERR_PACK(ERR_LIB_EVP, 0, EVP_R_BUFFER_TOO_SMALL), "BUFFER_TOO_SMALL"},
   {ERR_PACK(ERR_LIB_EVP, 0, EVP_R_COMMAND_NOT_SUPPORTED), "COMMAND_NOT_SUPPORTED"},
+  {ERR_PACK(ERR_LIB_EVP, 0, EVP_R_CONTEXT_NOT_INITIALISED), "CONTEXT_NOT_INITIALISED"},
   {ERR_PACK(ERR_LIB_EVP, 0, EVP_R_DECODE_ERROR), "DECODE_ERROR"},
   {ERR_PACK(ERR_LIB_EVP, 0, EVP_R_DIFFERENT_KEY_TYPES), "DIFFERENT_KEY_TYPES"},
   {ERR_PACK(ERR_LIB_EVP, 0, EVP_R_DIFFERENT_PARAMETERS), "DIFFERENT_PARAMETERS"},
