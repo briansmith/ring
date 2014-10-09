@@ -207,8 +207,8 @@ static int pkey_rsa_sign(EVP_PKEY_CTX *ctx, uint8_t *sig, size_t *siglen,
         if (!setup_tbuf(rctx, ctx) ||
             !RSA_padding_add_PKCS1_PSS_mgf1(rsa, rctx->tbuf, tbs, rctx->md,
                                             rctx->mgf1md, rctx->saltlen) ||
-            !RSA_encrypt(rsa, siglen, sig, *siglen, rctx->tbuf, key_len,
-                         RSA_NO_PADDING)) {
+            !RSA_sign_raw(rsa, siglen, sig, *siglen, rctx->tbuf, key_len,
+                          RSA_NO_PADDING)) {
           return 0;
         }
         return 1;
