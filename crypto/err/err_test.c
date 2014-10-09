@@ -58,7 +58,6 @@ static int test_put_error(void) {
   if (strcmp(file, "test") != 0 ||
       line != 4 ||
       (flags & ERR_FLAG_STRING) == 0 ||
-      (flags & ERR_FLAG_MALLOCED) == 0 ||
       ERR_GET_LIB(packed_error) != 1 ||
       ERR_GET_FUNC(packed_error) != 2 ||
       ERR_GET_REASON(packed_error) != 3 ||
