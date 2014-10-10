@@ -29,16 +29,17 @@ type Conn struct {
 	isClient bool
 
 	// constant after handshake; protected by handshakeMutex
-	handshakeMutex    sync.Mutex // handshakeMutex < in.Mutex, out.Mutex, errMutex
-	handshakeErr      error      // error resulting from handshake
-	vers              uint16     // TLS version
-	haveVers          bool       // version has been negotiated
-	config            *Config    // configuration passed to constructor
-	handshakeComplete bool
-	didResume         bool // whether this connection was a session resumption
-	cipherSuite       uint16
-	ocspResponse      []byte // stapled OCSP response
-	peerCertificates  []*x509.Certificate
+	handshakeMutex       sync.Mutex // handshakeMutex < in.Mutex, out.Mutex, errMutex
+	handshakeErr         error      // error resulting from handshake
+	vers                 uint16     // TLS version
+	haveVers             bool       // version has been negotiated
+	config               *Config    // configuration passed to constructor
+	handshakeComplete    bool
+	didResume            bool // whether this connection was a session resumption
+	extendedMasterSecret bool // whether this session used an extended master secret
+	cipherSuite          uint16
+	ocspResponse         []byte // stapled OCSP response
+	peerCertificates     []*x509.Certificate
 	// verifiedChains contains the certificate chains that we built, as
 	// opposed to the ones presented by the server.
 	verifiedChains [][]*x509.Certificate

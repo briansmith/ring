@@ -237,6 +237,7 @@ Curves:
 			hs.hello.nextProtos = config.NextProtos
 		}
 	}
+	hs.hello.extendedMasterSecret = c.vers >= VersionTLS10 && hs.clientHello.extendedMasterSecret && !c.config.Bugs.NoExtendedMasterSecret
 
 	if len(config.Certificates) == 0 {
 		c.sendAlert(alertInternalError)
@@ -373,6 +374,7 @@ func (hs *serverHandshakeState) doResumeHandshake() error {
 	}
 
 	hs.masterSecret = hs.sessionState.masterSecret
+	c.extendedMasterSecret = hs.sessionState.extendedMasterSecret
 
 	return nil
 }
@@ -387,6 +389,7 @@ func (hs *serverHandshakeState) doFullHandshake() error {
 
 	hs.hello.ticketSupported = hs.clientHello.ticketSupported && !config.SessionTicketsDisabled
 	hs.hello.cipherSuite = hs.suite.id
+	c.extendedMasterSecret = hs.hello.extendedMasterSecret
 
 	hs.finishedHash = newFinishedHash(c.vers, hs.suite)
 	hs.writeClientHash(hs.clientHello.marshal())
@@ -502,7 +505,14 @@ func (hs *serverHandshakeState) doFullHandshake() error {
 		c.sendAlert(alertHandshakeFailure)
 		return err
 	}
-	hs.masterSecret = masterFromPreMasterSecret(c.vers, hs.suite, preMasterSecret, hs.clientHello.random, hs.hello.random)
+	if c.extendedMasterSecret {
+		hs.masterSecret = extendedMasterFromPreMasterSecret(c.vers, hs.suite, preMasterSecret, hs.finishedHash)
+	} else {
+		if c.config.Bugs.RequireExtendedMasterSecret {
+			return errors.New("tls: extended master secret required but not supported by peer")
+		}
+		hs.masterSecret = masterFromPreMasterSecret(c.vers, hs.suite, preMasterSecret, hs.clientHello.random, hs.hello.random)
+	}
 
 	// If we received a client cert in response to our certificate request message,
 	// the client will send us a certificateVerifyMsg immediately after the

@@ -222,6 +222,43 @@ static int test_get_asn1(void) {
   return 1;
 }
 
+static int test_get_optional_asn1_bool(void) {
+  CBS data;
+  int val;
+
+  static const uint8_t kTrue[] = {0x0a, 3, CBS_ASN1_BOOLEAN, 1, 0xff};
+  static const uint8_t kFalse[] = {0x0a, 3, CBS_ASN1_BOOLEAN, 1, 0x00};
+  static const uint8_t kInvalid[] = {0x0a, 3, CBS_ASN1_BOOLEAN, 1, 0x01};
+
+  CBS_init(&data, NULL, 0);
+  val = 2;
+  if (!CBS_get_optional_asn1_bool(&data, &val, 0x0a, 0) ||
+      val != 0) {
+    return 0;
+  }
+
+  CBS_init(&data, kTrue, sizeof(kTrue));
+  val = 2;
+  if (!CBS_get_optional_asn1_bool(&data, &val, 0x0a, 0) ||
+      val != 1) {
+    return 0;
+  }
+
+  CBS_init(&data, kFalse, sizeof(kFalse));
+  val = 2;
+  if (!CBS_get_optional_asn1_bool(&data, &val, 0x0a, 1) ||
+      val != 0) {
+    return 0;
+  }
+
+  CBS_init(&data, kInvalid, sizeof(kInvalid));
+  if (CBS_get_optional_asn1_bool(&data, &val, 0x0a, 1)) {
+    return 0;
+  }
+
+  return 1;
+}
+
 static int test_cbb_basic(void) {
   static const uint8_t kExpected[] = {1, 2, 3, 4, 5, 6, 7, 8};
   uint8_t *buf;
@@ -604,7 +641,8 @@ int main(void) {
       !test_cbb_prefixed() ||
       !test_cbb_asn1() ||
       !test_ber_convert() ||
-      !test_asn1_uint64()) {
+      !test_asn1_uint64() ||
+      !test_get_optional_asn1_bool()) {
     return 1;
   }
 

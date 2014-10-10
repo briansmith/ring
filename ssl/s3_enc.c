@@ -510,7 +510,7 @@ void ssl3_finish_mac(SSL *s, const unsigned char *buf, int len)
 		}	
 	}
 
-int ssl3_digest_cached_records(SSL *s)
+int ssl3_digest_cached_records(SSL *s, enum should_free_handshake_buffer_t should_free_handshake_buffer)
 	{
 	int i;
 	long mask;
@@ -542,9 +542,13 @@ int ssl3_digest_cached_records(SSL *s)
 			s->s3->handshake_dgst[i]=NULL;
 			}
 		}
-	/* Free handshake_buffer BIO */
-	BIO_free(s->s3->handshake_buffer);
-	s->s3->handshake_buffer = NULL;
+
+	if (should_free_handshake_buffer == free_handshake_buffer)
+		{
+		/* Free handshake_buffer BIO */
+		BIO_free(s->s3->handshake_buffer);
+		s->s3->handshake_buffer = NULL;
+		}
 
 	return 1;
 	}
@@ -581,7 +585,7 @@ static int ssl3_handshake_mac(SSL *s, int md_nid,
 	EVP_MD_CTX ctx,*d=NULL;
 
 	if (s->s3->handshake_buffer) 
-		if (!ssl3_digest_cached_records(s))
+		if (!ssl3_digest_cached_records(s, free_handshake_buffer))
 			return 0;
 
 	/* Search for digest of specified type in the handshake_dgst

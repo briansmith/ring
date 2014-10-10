@@ -152,8 +152,6 @@ static int tls1_P_hash(const EVP_MD *md, const unsigned char *sec,
 			const void *seed1, int seed1_len,
 			const void *seed2, int seed2_len,
 			const void *seed3, int seed3_len,
-			const void *seed4, int seed4_len,
-			const void *seed5, int seed5_len,
 			unsigned char *out, int olen)
 	{
 	int chunk;
@@ -182,10 +180,6 @@ static int tls1_P_hash(const EVP_MD *md, const unsigned char *sec,
 		goto err;
 	if (seed3 && !EVP_DigestSignUpdate(&ctx,seed3,seed3_len))
 		goto err;
-	if (seed4 && !EVP_DigestSignUpdate(&ctx,seed4,seed4_len))
-		goto err;
-	if (seed5 && !EVP_DigestSignUpdate(&ctx,seed5,seed5_len))
-		goto err;
 	A1_len = EVP_MAX_MD_SIZE;
 	if (!EVP_DigestSignFinal(&ctx,A1,&A1_len))
 		goto err;
@@ -204,10 +198,6 @@ static int tls1_P_hash(const EVP_MD *md, const unsigned char *sec,
 		if (seed2 && !EVP_DigestSignUpdate(&ctx,seed2,seed2_len))
 			goto err;
 		if (seed3 && !EVP_DigestSignUpdate(&ctx,seed3,seed3_len))
-			goto err;
-		if (seed4 && !EVP_DigestSignUpdate(&ctx,seed4,seed4_len))
-			goto err;
-		if (seed5 && !EVP_DigestSignUpdate(&ctx,seed5,seed5_len))
 			goto err;
 
 		if (olen > chunk)
@@ -246,8 +236,6 @@ static int tls1_PRF(long digest_mask,
 		     const void *seed1, int seed1_len,
 		     const void *seed2, int seed2_len,
 		     const void *seed3, int seed3_len,
-		     const void *seed4, int seed4_len,
-		     const void *seed5, int seed5_len,
 		     const unsigned char *sec, int slen,
 		     unsigned char *out1,
 		     unsigned char *out2, int olen)
@@ -275,7 +263,7 @@ static int tls1_PRF(long digest_mask,
 				goto err;				
 			}
 			if (!tls1_P_hash(md ,S1,len+(slen&1),
-					seed1,seed1_len,seed2,seed2_len,seed3,seed3_len,seed4,seed4_len,seed5,seed5_len,
+					seed1,seed1_len,seed2,seed2_len,seed3,seed3_len,
 					out2,olen))
 				goto err;
 			S1+=len;
@@ -298,7 +286,6 @@ static int tls1_generate_key_block(SSL *s, unsigned char *km,
 		 TLS_MD_KEY_EXPANSION_CONST,TLS_MD_KEY_EXPANSION_CONST_SIZE,
 		 s->s3->server_random,SSL3_RANDOM_SIZE,
 		 s->s3->client_random,SSL3_RANDOM_SIZE,
-		 NULL,0,NULL,0,
 		 s->session->master_key,s->session->master_key_length,
 		 km,tmp,num);
 #ifdef KSSL_DEBUG
@@ -1011,8 +998,8 @@ int tls1_cert_verify_mac(SSL *s, int md_nid, unsigned char *out)
 	EVP_MD_CTX ctx, *d=NULL;
 	int i;
 
-	if (s->s3->handshake_buffer) 
-		if (!ssl3_digest_cached_records(s))
+	if (s->s3->handshake_buffer)
+		if (!ssl3_digest_cached_records(s, free_handshake_buffer))
 			return 0;
 
 	for (i=0;i<SSL_MAX_DIGEST;i++) 
@@ -1093,7 +1080,7 @@ int tls1_final_finish_mac(SSL *s,
 	int digests_len;
 
 	if (s->s3->handshake_buffer)
-		if (!ssl3_digest_cached_records(s))
+		if (!ssl3_digest_cached_records(s, free_handshake_buffer))
 			return 0;
 
 	digests_len = tls1_handshake_digest(s, buf, sizeof(buf));
@@ -1104,7 +1091,7 @@ int tls1_final_finish_mac(SSL *s,
 		}
 		
 	if (!tls1_PRF(ssl_get_algorithm2(s),
-			str,slen, buf, digests_len, NULL,0, NULL,0, NULL,0,
+			str,slen, buf, digests_len, NULL,0,
 			s->session->master_key,s->session->master_key_length,
 			out,buf2,sizeof buf2))
 		err = 1;
@@ -1212,22 +1199,57 @@ int tls1_generate_master_secret(SSL *s, unsigned char *out, unsigned char *p,
 	     int len)
 	{
 	unsigned char buff[SSL_MAX_MASTER_KEY_LENGTH];
-	const void *co = NULL, *so = NULL;
-	int col = 0, sol = 0;
-
 
 #ifdef KSSL_DEBUG
 	printf ("tls1_generate_master_secret(%p,%p, %p, %d)\n", s,out, p,len);
 #endif	/* KSSL_DEBUG */
 
-	tls1_PRF(ssl_get_algorithm2(s),
-		TLS_MD_MASTER_SECRET_CONST,TLS_MD_MASTER_SECRET_CONST_SIZE,
-		s->s3->client_random,SSL3_RANDOM_SIZE,
-		co, col,
-		s->s3->server_random,SSL3_RANDOM_SIZE,
-		so, sol,
-		p,len,
-		s->session->master_key,buff,sizeof buff);
+	if (s->s3->tmp.extended_master_secret)
+		{
+		uint8_t digests[2*EVP_MAX_MD_SIZE];
+		int digests_len;
+
+		if (s->s3->handshake_buffer)
+			{
+			/* The master secret is based on the handshake hash
+			 * just after sending the ClientKeyExchange. However,
+			 * we might have a client certificate to send, in which
+			 * case we might need different hashes for the
+			 * verification and thus still need the handshake
+			 * buffer around. Keeping both a handshake buffer *and*
+			 * running hashes isn't yet supported so, when it comes
+			 * to calculating the Finished hash, we'll have to hash
+			 * the handshake buffer again. */
+			if (!ssl3_digest_cached_records(s, dont_free_handshake_buffer))
+				return 0;
+			}
+
+		digests_len = tls1_handshake_digest(s, digests, sizeof(digests));
+
+		if (digests_len == -1)
+			{
+			return 0;
+			}
+
+		tls1_PRF(ssl_get_algorithm2(s),
+			TLS_MD_EXTENDED_MASTER_SECRET_CONST,
+			TLS_MD_EXTENDED_MASTER_SECRET_CONST_SIZE,
+			digests, digests_len,
+			NULL, 0,
+			p, len,
+			s->session->master_key,
+			buff, sizeof(buff));
+		}
+	else
+		{
+		tls1_PRF(ssl_get_algorithm2(s),
+			TLS_MD_MASTER_SECRET_CONST,TLS_MD_MASTER_SECRET_CONST_SIZE,
+			s->s3->client_random,SSL3_RANDOM_SIZE,
+			s->s3->server_random,SSL3_RANDOM_SIZE,
+			p, len,
+			s->session->master_key,buff,sizeof buff);
+		}
+
 #ifdef SSL_DEBUG
 	fprintf(stderr, "Premaster Secret:\n");
 	BIO_dump_fp(stderr, (char *)p, len);
@@ -1328,8 +1350,6 @@ int tls1_export_keying_material(SSL *s, unsigned char *out, size_t olen,
 
 	rv = tls1_PRF(ssl_get_algorithm2(s),
 		      val, vallen,
-		      NULL, 0,
-		      NULL, 0,
 		      NULL, 0,
 		      NULL, 0,
 		      s->session->master_key,s->session->master_key_length,

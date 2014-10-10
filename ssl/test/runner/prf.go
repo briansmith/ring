@@ -117,6 +117,7 @@ const (
 )
 
 var masterSecretLabel = []byte("master secret")
+var extendedMasterSecretLabel = []byte("extended master secret")
 var keyExpansionLabel = []byte("key expansion")
 var clientFinishedLabel = []byte("client finished")
 var serverFinishedLabel = []byte("server finished")
@@ -147,6 +148,15 @@ func masterFromPreMasterSecret(version uint16, suite *cipherSuite, preMasterSecr
 	copy(seed[len(clientRandom):], serverRandom)
 	masterSecret := make([]byte, masterSecretLength)
 	prfForVersion(version, suite)(masterSecret, preMasterSecret, masterSecretLabel, seed[0:])
+	return masterSecret
+}
+
+// extendedMasterFromPreMasterSecret generates the master secret from the
+// pre-master secret when the Triple Handshake fix is in effect. See
+// https://tools.ietf.org/html/draft-ietf-tls-session-hash-01
+func extendedMasterFromPreMasterSecret(version uint16, suite *cipherSuite, preMasterSecret []byte, h finishedHash) []byte {
+	masterSecret := make([]byte, masterSecretLength)
+	prfForVersion(version, suite)(masterSecret, preMasterSecret, extendedMasterSecretLabel, h.Sum())
 	return masterSecret
 }
 
@@ -221,6 +231,16 @@ func (h *finishedHash) Write(msg []byte) (n int, err error) {
 	return len(msg), nil
 }
 
+func (h finishedHash) Sum() []byte {
+	if h.version >= VersionTLS12 {
+		return h.client.Sum(nil)
+	}
+
+	out := make([]byte, 0, md5.Size+sha1.Size)
+	out = h.clientMD5.Sum(out)
+	return h.client.Sum(out)
+}
+
 // finishedSum30 calculates the contents of the verify_data member of a SSLv3
 // Finished message given the MD5 and SHA1 hashes of a set of handshake
 // messages.
@@ -264,15 +284,7 @@ func (h finishedHash) clientSum(masterSecret []byte) []byte {
 	}
 
 	out := make([]byte, finishedVerifyLength)
-	if h.version >= VersionTLS12 {
-		seed := h.client.Sum(nil)
-		h.prf(out, masterSecret, clientFinishedLabel, seed)
-	} else {
-		seed := make([]byte, 0, md5.Size+sha1.Size)
-		seed = h.clientMD5.Sum(seed)
-		seed = h.client.Sum(seed)
-		h.prf(out, masterSecret, clientFinishedLabel, seed)
-	}
+	h.prf(out, masterSecret, clientFinishedLabel, h.Sum())
 	return out
 }
 
@@ -284,15 +296,7 @@ func (h finishedHash) serverSum(masterSecret []byte) []byte {
 	}
 
 	out := make([]byte, finishedVerifyLength)
-	if h.version >= VersionTLS12 {
-		seed := h.server.Sum(nil)
-		h.prf(out, masterSecret, serverFinishedLabel, seed)
-	} else {
-		seed := make([]byte, 0, md5.Size+sha1.Size)
-		seed = h.serverMD5.Sum(seed)
-		seed = h.server.Sum(seed)
-		h.prf(out, masterSecret, serverFinishedLabel, seed)
-	}
+	h.prf(out, masterSecret, serverFinishedLabel, h.Sum())
 	return out
 }
 
@@ -334,14 +338,10 @@ func (h finishedHash) hashForClientCertificate(signatureAndHash signatureAndHash
 		return digest[:], crypto.SHA256, nil
 	}
 	if signatureAndHash.signature == signatureECDSA {
-		digest := h.server.Sum(nil)
-		return digest, crypto.SHA1, nil
+		return h.server.Sum(nil), crypto.SHA1, nil
 	}
 
-	digest := make([]byte, 0, 36)
-	digest = h.serverMD5.Sum(digest)
-	digest = h.server.Sum(digest)
-	return digest, crypto.MD5SHA1, nil
+	return h.Sum(), crypto.MD5SHA1, nil
 }
 
 // hashForChannelID returns the hash to be signed for TLS Channel

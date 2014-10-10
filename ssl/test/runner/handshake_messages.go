@@ -7,27 +7,28 @@ package main
 import "bytes"
 
 type clientHelloMsg struct {
-	raw                 []byte
-	isDTLS              bool
-	vers                uint16
-	random              []byte
-	sessionId           []byte
-	cookie              []byte
-	cipherSuites        []uint16
-	compressionMethods  []uint8
-	nextProtoNeg        bool
-	serverName          string
-	ocspStapling        bool
-	supportedCurves     []CurveID
-	supportedPoints     []uint8
-	ticketSupported     bool
-	sessionTicket       []uint8
-	signatureAndHashes  []signatureAndHash
-	secureRenegotiation bool
-	alpnProtocols       []string
-	duplicateExtension  bool
-	channelIDSupported  bool
-	npnLast             bool
+	raw                  []byte
+	isDTLS               bool
+	vers                 uint16
+	random               []byte
+	sessionId            []byte
+	cookie               []byte
+	cipherSuites         []uint16
+	compressionMethods   []uint8
+	nextProtoNeg         bool
+	serverName           string
+	ocspStapling         bool
+	supportedCurves      []CurveID
+	supportedPoints      []uint8
+	ticketSupported      bool
+	sessionTicket        []uint8
+	signatureAndHashes   []signatureAndHash
+	secureRenegotiation  bool
+	alpnProtocols        []string
+	duplicateExtension   bool
+	channelIDSupported   bool
+	npnLast              bool
+	extendedMasterSecret bool
 }
 
 func (m *clientHelloMsg) equal(i interface{}) bool {
@@ -56,7 +57,8 @@ func (m *clientHelloMsg) equal(i interface{}) bool {
 		eqStrings(m.alpnProtocols, m1.alpnProtocols) &&
 		m.duplicateExtension == m1.duplicateExtension &&
 		m.channelIDSupported == m1.channelIDSupported &&
-		m.npnLast == m1.npnLast
+		m.npnLast == m1.npnLast &&
+		m.extendedMasterSecret == m1.extendedMasterSecret
 }
 
 func (m *clientHelloMsg) marshal() []byte {
@@ -116,6 +118,9 @@ func (m *clientHelloMsg) marshal() []byte {
 			extensionsLength++
 			extensionsLength += len(s)
 		}
+		numExtensions++
+	}
+	if m.extendedMasterSecret {
 		numExtensions++
 	}
 	if numExtensions > 0 {
@@ -319,6 +324,12 @@ func (m *clientHelloMsg) marshal() []byte {
 		z[1] = 0xff
 		z = z[4:]
 	}
+	if m.extendedMasterSecret {
+		// https://tools.ietf.org/html/draft-ietf-tls-session-hash-01
+		z[0] = byte(extensionExtendedMasterSecret >> 8)
+		z[1] = byte(extensionExtendedMasterSecret & 0xff)
+		z = z[4:]
+	}
 
 	m.raw = x
 
@@ -385,6 +396,7 @@ func (m *clientHelloMsg) unmarshal(data []byte) bool {
 	m.sessionTicket = nil
 	m.signatureAndHashes = nil
 	m.alpnProtocols = nil
+	m.extendedMasterSecret = false
 
 	if len(data) == 0 {
 		// ClientHello is optionally followed by extension data
@@ -517,6 +529,11 @@ func (m *clientHelloMsg) unmarshal(data []byte) bool {
 				return false
 			}
 			m.channelIDSupported = true
+		case extensionExtendedMasterSecret:
+			if length != 0 {
+				return false
+			}
+			m.extendedMasterSecret = true
 		}
 		data = data[length:]
 	}
@@ -525,21 +542,22 @@ func (m *clientHelloMsg) unmarshal(data []byte) bool {
 }
 
 type serverHelloMsg struct {
-	raw                 []byte
-	isDTLS              bool
-	vers                uint16
-	random              []byte
-	sessionId           []byte
-	cipherSuite         uint16
-	compressionMethod   uint8
-	nextProtoNeg        bool
-	nextProtos          []string
-	ocspStapling        bool
-	ticketSupported     bool
-	secureRenegotiation bool
-	alpnProtocol        string
-	duplicateExtension  bool
-	channelIDRequested  bool
+	raw                  []byte
+	isDTLS               bool
+	vers                 uint16
+	random               []byte
+	sessionId            []byte
+	cipherSuite          uint16
+	compressionMethod    uint8
+	nextProtoNeg         bool
+	nextProtos           []string
+	ocspStapling         bool
+	ticketSupported      bool
+	secureRenegotiation  bool
+	alpnProtocol         string
+	duplicateExtension   bool
+	channelIDRequested   bool
+	extendedMasterSecret bool
 }
 
 func (m *serverHelloMsg) equal(i interface{}) bool {
@@ -562,7 +580,8 @@ func (m *serverHelloMsg) equal(i interface{}) bool {
 		m.secureRenegotiation == m1.secureRenegotiation &&
 		m.alpnProtocol == m1.alpnProtocol &&
 		m.duplicateExtension == m1.duplicateExtension &&
-		m.channelIDRequested == m1.channelIDRequested
+		m.channelIDRequested == m1.channelIDRequested &&
+		m.extendedMasterSecret == m1.extendedMasterSecret
 }
 
 func (m *serverHelloMsg) marshal() []byte {
@@ -604,6 +623,9 @@ func (m *serverHelloMsg) marshal() []byte {
 			panic("invalid ALPN protocol")
 		}
 		extensionsLength += 2 + 1 + alpnLen
+		numExtensions++
+	}
+	if m.extendedMasterSecret {
 		numExtensions++
 	}
 
@@ -699,6 +721,11 @@ func (m *serverHelloMsg) marshal() []byte {
 		z[1] = 0xff
 		z = z[4:]
 	}
+	if m.extendedMasterSecret {
+		z[0] = byte(extensionExtendedMasterSecret >> 8)
+		z[1] = byte(extensionExtendedMasterSecret & 0xff)
+		z = z[4:]
+	}
 
 	m.raw = x
 
@@ -730,6 +757,7 @@ func (m *serverHelloMsg) unmarshal(data []byte) bool {
 	m.ocspStapling = false
 	m.ticketSupported = false
 	m.alpnProtocol = ""
+	m.extendedMasterSecret = false
 
 	if len(data) == 0 {
 		// ServerHello is optionally followed by extension data
@@ -805,6 +833,11 @@ func (m *serverHelloMsg) unmarshal(data []byte) bool {
 				return false
 			}
 			m.channelIDRequested = true
+		case extensionExtendedMasterSecret:
+			if length != 0 {
+				return false
+			}
+			m.extendedMasterSecret = true
 		}
 		data = data[length:]
 	}

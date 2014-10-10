@@ -193,6 +193,14 @@ OPENSSL_EXPORT int CBS_get_optional_asn1_uint64(CBS *cbs, uint64_t *out,
                                                 unsigned tag,
                                                 uint64_t default_value);
 
+/* CBS_get_optional_asn1_bool gets an optional, explicitly-tagged BOOLEAN from
+ * |cbs|. If present, it sets |*out| to either zero or one, based on the
+ * boolean. Otherwise, it sets |*out| to |default_value|. It returns one on
+ * success, whether or not the element was present, and zero on decode
+ * failure. */
+OPENSSL_EXPORT int CBS_get_optional_asn1_bool(CBS *cbs, int *out, unsigned tag,
+                                              int default_value);
+
 
 /* CRYPTO ByteBuilder.
  *

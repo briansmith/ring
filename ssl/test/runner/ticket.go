@@ -18,11 +18,12 @@ import (
 // sessionState contains the information that is serialized into a session
 // ticket in order to later resume a connection.
 type sessionState struct {
-	vers          uint16
-	cipherSuite   uint16
-	masterSecret  []byte
-	handshakeHash []byte
-	certificates  [][]byte
+	vers                 uint16
+	cipherSuite          uint16
+	masterSecret         []byte
+	handshakeHash        []byte
+	certificates         [][]byte
+	extendedMasterSecret bool
 }
 
 func (s *sessionState) equal(i interface{}) bool {
@@ -34,7 +35,8 @@ func (s *sessionState) equal(i interface{}) bool {
 	if s.vers != s1.vers ||
 		s.cipherSuite != s1.cipherSuite ||
 		!bytes.Equal(s.masterSecret, s1.masterSecret) ||
-		!bytes.Equal(s.handshakeHash, s1.handshakeHash) {
+		!bytes.Equal(s.handshakeHash, s1.handshakeHash) ||
+		s.extendedMasterSecret != s1.extendedMasterSecret {
 		return false
 	}
 
@@ -56,6 +58,7 @@ func (s *sessionState) marshal() []byte {
 	for _, cert := range s.certificates {
 		length += 4 + len(cert)
 	}
+	length++
 
 	ret := make([]byte, length)
 	x := ret
@@ -87,6 +90,11 @@ func (s *sessionState) marshal() []byte {
 		copy(x[4:], cert)
 		x = x[4+len(cert):]
 	}
+
+	if s.extendedMasterSecret {
+		x[0] = 1
+	}
+	x = x[1:]
 
 	return ret
 }
@@ -143,6 +151,16 @@ func (s *sessionState) unmarshal(data []byte) bool {
 		s.certificates[i] = data[:certLen]
 		data = data[certLen:]
 	}
+
+	if len(data) < 1 {
+		return false
+	}
+
+	s.extendedMasterSecret = false
+	if data[0] == 1 {
+		s.extendedMasterSecret = true
+	}
+	data = data[1:]
 
 	if len(data) > 0 {
 		return false

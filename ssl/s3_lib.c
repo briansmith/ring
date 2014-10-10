@@ -942,7 +942,8 @@ SSL3_ENC_METHOD SSLv3_enc_data={
 	0,
 	SSL3_HM_HEADER_LENGTH,
 	ssl3_set_handshake_header,
-	ssl3_handshake_write
+	ssl3_handshake_write,
+	ssl3_add_to_finished_hash,
 	};
 
 int ssl3_num_ciphers(void)
@@ -975,9 +976,14 @@ void ssl3_set_handshake_header(SSL *s, int htype, unsigned long len)
 	s->init_off = 0;
 	}
 
-int ssl3_handshake_write(SSL *s)
+int ssl3_handshake_write(SSL *s, enum should_add_to_finished_hash should_add_to_finished_hash)
 	{
-	return ssl3_do_write(s, SSL3_RT_HANDSHAKE);
+	return ssl3_do_write(s, SSL3_RT_HANDSHAKE, should_add_to_finished_hash);
+	}
+
+void ssl3_add_to_finished_hash(SSL *s)
+	{
+	ssl3_finish_mac(s, (uint8_t*) s->init_buf->data, s->init_num);
 	}
 
 int ssl3_new(SSL *s)

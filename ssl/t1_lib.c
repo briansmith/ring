@@ -140,7 +140,8 @@ SSL3_ENC_METHOD TLSv1_enc_data={
 	0,
 	SSL3_HM_HEADER_LENGTH,
 	ssl3_set_handshake_header,
-	ssl3_handshake_write
+	ssl3_handshake_write,
+	ssl3_add_to_finished_hash,
 	};
 
 SSL3_ENC_METHOD TLSv1_1_enc_data={
@@ -159,7 +160,8 @@ SSL3_ENC_METHOD TLSv1_1_enc_data={
 	SSL_ENC_FLAG_EXPLICIT_IV,
 	SSL3_HM_HEADER_LENGTH,
 	ssl3_set_handshake_header,
-	ssl3_handshake_write
+	ssl3_handshake_write,
+	ssl3_add_to_finished_hash,
 	};
 
 SSL3_ENC_METHOD TLSv1_2_enc_data={
@@ -179,7 +181,8 @@ SSL3_ENC_METHOD TLSv1_2_enc_data={
 		|SSL_ENC_FLAG_TLS1_2_CIPHERS,
 	SSL3_HM_HEADER_LENGTH,
 	ssl3_set_handshake_header,
-	ssl3_handshake_write
+	ssl3_handshake_write,
+	ssl3_add_to_finished_hash,
 	};
 
 static int compare_uint16_t(const void *p1, const void *p2)
@@ -978,6 +981,15 @@ unsigned char *ssl_add_clienthello_tlsext(SSL *s, unsigned char *buf, unsigned c
           ret += el;
         }
 
+	/* Add extended master secret. */
+	if (s->version != SSL3_VERSION)
+		{
+		if (limit - ret - 4 < 0)
+			return NULL;
+		s2n(TLSEXT_TYPE_extended_master_secret,ret);
+		s2n(0,ret);
+		}
+
 	if (!(SSL_get_options(s) & SSL_OP_NO_TICKET))
 		{
 		int ticklen;
@@ -1246,6 +1258,14 @@ unsigned char *ssl_add_serverhello_tlsext(SSL *s, unsigned char *buf, unsigned c
           ret += el;
         }
 
+	if (s->s3->tmp.extended_master_secret)
+		{
+		if ((long)(limit - ret - 4) < 0) return NULL;
+
+		s2n(TLSEXT_TYPE_extended_master_secret,ret);
+		s2n(0,ret);
+		}
+
 	if (using_ecc)
 		{
 		const unsigned char *plist;
@@ -1423,6 +1443,7 @@ static int ssl_scan_clienthello_tlsext(SSL *s, CBS *cbs, int *out_alert)
 	s->should_ack_sni = 0;
 	s->s3->next_proto_neg_seen = 0;
 	s->s3->tmp.certificate_status_expected = 0;
+	s->s3->tmp.extended_master_secret = 0;
 
 	if (s->s3->alpn_selected)
 		{
@@ -1782,6 +1803,18 @@ static int ssl_scan_clienthello_tlsext(SSL *s, CBS *cbs, int *out_alert)
 			if (!ssl_parse_clienthello_use_srtp_ext(s, &extension, out_alert))
 				return 0;
                         }
+
+		else if (type == TLSEXT_TYPE_extended_master_secret &&
+			 s->version != SSL3_VERSION)
+			{
+			if (CBS_len(&extension) != 0)
+				{
+				*out_alert = SSL_AD_DECODE_ERROR;
+				return 0;
+				}
+
+			s->s3->tmp.extended_master_secret = 1;
+			}
 		}
 
 	ri_check:
@@ -1851,6 +1884,7 @@ static int ssl_scan_serverhello_tlsext(SSL *s, CBS *cbs, int *out_alert)
 
 	s->tlsext_ticket_expected = 0;
 	s->s3->tmp.certificate_status_expected = 0;
+	s->s3->tmp.extended_master_secret = 0;
 
 	if (s->s3->alpn_selected)
 		{
@@ -2086,6 +2120,20 @@ static int ssl_scan_serverhello_tlsext(SSL *s, CBS *cbs, int *out_alert)
                         if (!ssl_parse_serverhello_use_srtp_ext(s, &extension, out_alert))
                                 return 0;
                         }
+
+		else if (type == TLSEXT_TYPE_extended_master_secret)
+			{
+			if (/* It is invalid for the server to select EMS and
+			       SSLv3. */
+			    s->version == SSL3_VERSION ||
+			    CBS_len(&extension) != 0)
+				{
+				*out_alert = SSL_AD_DECODE_ERROR;
+				return 0;
+				}
+
+			s->s3->tmp.extended_master_secret = 1;
+			}
 		}
 
 	if (!s->hit && tlsext_servername == 1)
@@ -2779,7 +2827,7 @@ tls1_channel_id_hash(EVP_MD_CTX *md, SSL *s)
 	static const char kClientIDMagic[] = "TLS Channel ID signature";
 
 	if (s->s3->handshake_buffer)
-		if (!ssl3_digest_cached_records(s))
+		if (!ssl3_digest_cached_records(s, free_handshake_buffer))
 			return 0;
 
 	EVP_DigestUpdate(md, kClientIDMagic, sizeof(kClientIDMagic));

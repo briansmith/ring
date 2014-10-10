@@ -482,6 +482,13 @@ static int do_exchange(SSL_SESSION **out_session,
     }
   }
 
+  if (config->expect_extended_master_secret) {
+    if (!ssl->session->extended_master_secret) {
+      fprintf(stderr, "No EMS for session when expected");
+      return 2;
+    }
+  }
+
   if (config->write_different_record_sizes) {
     if (config->is_dtls) {
       fprintf(stderr, "write_different_record_sizes not supported for DTLS\n");

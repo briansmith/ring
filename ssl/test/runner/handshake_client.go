@@ -56,24 +56,29 @@ func (c *Conn) clientHandshake() error {
 	}
 
 	hello := &clientHelloMsg{
-		isDTLS:              c.isDTLS,
-		vers:                c.config.maxVersion(),
-		compressionMethods:  []uint8{compressionNone},
-		random:              make([]byte, 32),
-		ocspStapling:        true,
-		serverName:          c.config.ServerName,
-		supportedCurves:     c.config.curvePreferences(),
-		supportedPoints:     []uint8{pointFormatUncompressed},
-		nextProtoNeg:        len(c.config.NextProtos) > 0,
-		secureRenegotiation: true,
-		alpnProtocols:       c.config.NextProtos,
-		duplicateExtension:  c.config.Bugs.DuplicateExtension,
-		channelIDSupported:  c.config.ChannelID != nil,
-		npnLast:             c.config.Bugs.SwapNPNAndALPN,
+		isDTLS:               c.isDTLS,
+		vers:                 c.config.maxVersion(),
+		compressionMethods:   []uint8{compressionNone},
+		random:               make([]byte, 32),
+		ocspStapling:         true,
+		serverName:           c.config.ServerName,
+		supportedCurves:      c.config.curvePreferences(),
+		supportedPoints:      []uint8{pointFormatUncompressed},
+		nextProtoNeg:         len(c.config.NextProtos) > 0,
+		secureRenegotiation:  true,
+		alpnProtocols:        c.config.NextProtos,
+		duplicateExtension:   c.config.Bugs.DuplicateExtension,
+		channelIDSupported:   c.config.ChannelID != nil,
+		npnLast:              c.config.Bugs.SwapNPNAndALPN,
+		extendedMasterSecret: c.config.maxVersion() >= VersionTLS10,
 	}
 
 	if c.config.Bugs.SendClientVersion != 0 {
 		hello.vers = c.config.Bugs.SendClientVersion
+	}
+
+	if c.config.Bugs.NoExtendedMasterSecret {
+		hello.extendedMasterSecret = false
 	}
 
 	possibleCipherSuites := c.config.cipherSuites()
@@ -503,7 +508,15 @@ func (hs *clientHandshakeState) doFullHandshake() error {
 		c.writeRecord(recordTypeHandshake, ckx.marshal())
 	}
 
-	hs.masterSecret = masterFromPreMasterSecret(c.vers, hs.suite, preMasterSecret, hs.hello.random, hs.serverHello.random)
+	if hs.serverHello.extendedMasterSecret && c.vers >= VersionTLS10 {
+		hs.masterSecret = extendedMasterFromPreMasterSecret(c.vers, hs.suite, preMasterSecret, hs.finishedHash)
+		c.extendedMasterSecret = true
+	} else {
+		if c.config.Bugs.RequireExtendedMasterSecret {
+			return errors.New("tls: extended master secret required but not supported by peer")
+		}
+		hs.masterSecret = masterFromPreMasterSecret(c.vers, hs.suite, preMasterSecret, hs.hello.random, hs.serverHello.random)
+	}
 
 	if chainToSend != nil {
 		var signed []byte
@@ -629,6 +642,7 @@ func (hs *clientHandshakeState) processServerHello() (bool, error) {
 		// Restore masterSecret and peerCerts from previous state
 		hs.masterSecret = hs.session.masterSecret
 		c.peerCertificates = hs.session.serverCertificates
+		c.extendedMasterSecret = hs.session.extendedMasterSecret
 		hs.finishedHash.discardHandshakeBuffer()
 		return true, nil
 	}

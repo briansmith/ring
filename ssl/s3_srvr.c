@@ -444,7 +444,7 @@ int ssl3_accept(SSL *s)
 				s->s3->tmp.cert_request=0;
 				s->state=SSL3_ST_SW_SRVR_DONE_A;
 				if (s->s3->handshake_buffer)
-					if (!ssl3_digest_cached_records(s))
+					if (!ssl3_digest_cached_records(s, free_handshake_buffer))
 						return -1;
 				}
 			else
@@ -1144,7 +1144,7 @@ int ssl3_get_client_hello(SSL *s)
 
 	if (!SSL_USE_SIGALGS(s) || !(s->verify_mode & SSL_VERIFY_PEER))
 		{
-		if (!ssl3_digest_cached_records(s))
+		if (!ssl3_digest_cached_records(s, free_handshake_buffer))
 			goto f_err;
 		}
 	
@@ -2203,6 +2203,9 @@ int ssl3_get_client_key_exchange(SSL *s)
 	s->session->master_key_length = s->method->ssl3_enc
 		->generate_master_secret(s,
 			s->session->master_key, premaster_secret, premaster_secret_len);
+	if (s->session->master_key_length == 0)
+		goto err;
+	s->session->extended_master_secret = s->s3->tmp.extended_master_secret;
 
 	OPENSSL_cleanse(premaster_secret, premaster_secret_len);
 	OPENSSL_free(premaster_secret);
@@ -2243,7 +2246,7 @@ int ssl3_get_cert_verify(SSL *s)
 	 * client certificate. */
 	if (peer == NULL)
 		{
-		if (s->s3->handshake_buffer && !ssl3_digest_cached_records(s))
+		if (s->s3->handshake_buffer && !ssl3_digest_cached_records(s, free_handshake_buffer))
 			return -1;
 		return 1;
 		}
@@ -2284,7 +2287,7 @@ int ssl3_get_cert_verify(SSL *s)
 
 	/* The handshake buffer is no longer necessary, and we may hash the
 	 * current message.*/
-	if (s->s3->handshake_buffer && !ssl3_digest_cached_records(s))
+	if (s->s3->handshake_buffer && !ssl3_digest_cached_records(s, free_handshake_buffer))
 		goto err;
 	ssl3_hash_current_message(s);
 
@@ -2453,7 +2456,7 @@ int ssl3_get_client_certificate(SSL *s)
 			goto f_err;
 			}
 		/* No client certificate so digest cached records */
-		if (s->s3->handshake_buffer && !ssl3_digest_cached_records(s))
+		if (s->s3->handshake_buffer && !ssl3_digest_cached_records(s, free_handshake_buffer))
 			{
 			al=SSL_AD_INTERNAL_ERROR;
 			goto f_err;

@@ -57,6 +57,8 @@ const BoolFlag kBoolFlags[] = {
   { "-shim-writes-first", &TestConfig::shim_writes_first },
   { "-tls-d5-bug", &TestConfig::tls_d5_bug },
   { "-expect-session-miss", &TestConfig::expect_session_miss },
+  { "-expect-extended-master-secret",
+    &TestConfig::expect_extended_master_secret },
 };
 
 const size_t kNumBoolFlags = sizeof(kBoolFlags) / sizeof(kBoolFlags[0]);
@@ -105,7 +107,8 @@ TestConfig::TestConfig()
       cookie_exchange(false),
       shim_writes_first(false),
       tls_d5_bug(false),
-      expect_session_miss(false) {
+      expect_session_miss(false),
+      expect_extended_master_secret(false) {
 }
 
 bool ParseConfig(int argc, char **argv, TestConfig *out_config) {

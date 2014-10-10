@@ -356,3 +356,33 @@ int CBS_get_optional_asn1_uint64(CBS *cbs, uint64_t *out, unsigned tag,
   }
   return 1;
 }
+
+int CBS_get_optional_asn1_bool(CBS *cbs, int *out, unsigned tag,
+                               int default_value) {
+  CBS child, child2;
+  int present;
+  if (!CBS_get_optional_asn1(cbs, &child, &present, tag)) {
+    return 0;
+  }
+  if (present) {
+    uint8_t boolean;
+
+    if (!CBS_get_asn1(&child, &child2, CBS_ASN1_BOOLEAN) ||
+        CBS_len(&child2) != 1 ||
+        CBS_len(&child) != 0) {
+      return 0;
+    }
+
+    boolean = CBS_data(&child2)[0];
+    if (boolean == 0) {
+      *out = 0;
+    } else if (boolean == 0xff) {
+      *out = 1;
+    } else {
+      return 0;
+    }
+  } else {
+    *out = default_value;
+  }
+  return 1;
+}

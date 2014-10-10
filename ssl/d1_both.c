@@ -229,7 +229,7 @@ dtls1_hm_fragment_free(hm_fragment *frag)
 	}
 
 /* send s->init_buf in records of type 'type' (SSL3_RT_HANDSHAKE or SSL3_RT_CHANGE_CIPHER_SPEC) */
-int dtls1_do_write(SSL *s, int type)
+int dtls1_do_write(SSL *s, int type, enum should_add_to_finished_hash should_add_to_finished_hash)
 	{
 	int ret;
 	int curr_mtu;
@@ -365,7 +365,8 @@ int dtls1_do_write(SSL *s, int type)
 			 * message got sent.  but why would this happen? */
 			assert(len == (unsigned int)ret);
 
-			if (type == SSL3_RT_HANDSHAKE && ! s->d1->retransmitting)
+			if (type == SSL3_RT_HANDSHAKE && !s->d1->retransmitting &&
+			    should_add_to_finished_hash == add_to_finished_hash)
 				{
 				/* should not be done for 'Hello Request's, but in that case
 				 * we'll ignore the result anyway */
@@ -967,7 +968,7 @@ int dtls1_send_change_cipher_spec(SSL *s, int a, int b)
 		}
 
 	/* SSL3_ST_CW_CHANGE_B */
-	return(dtls1_do_write(s,SSL3_RT_CHANGE_CIPHER_SPEC));
+	return(dtls1_do_write(s,SSL3_RT_CHANGE_CIPHER_SPEC, dont_add_to_finished_hash));
 	}
 
 int dtls1_read_failed(SSL *s, int code)
@@ -1181,7 +1182,7 @@ dtls1_retransmit_message(SSL *s, unsigned short seq, unsigned long frag_off,
 	}
 	
 	ret = dtls1_do_write(s, frag->msg_header.is_ccs ? 
-						 SSL3_RT_CHANGE_CIPHER_SPEC : SSL3_RT_HANDSHAKE);
+						 SSL3_RT_CHANGE_CIPHER_SPEC : SSL3_RT_HANDSHAKE, add_to_finished_hash);
 	
 	/* restore current state */
 	s->enc_write_ctx = saved_state.enc_write_ctx;

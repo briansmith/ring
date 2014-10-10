@@ -432,6 +432,11 @@ struct ssl_session_st
 	 * resumption. */
 	unsigned char original_handshake_hash[EVP_MAX_MD_SIZE];
 	unsigned int original_handshake_hash_len;
+
+	/* extended_master_secret is true if the master secret in this session
+	 * was generated using EMS and thus isn't vulnerable to the Triple
+	 * Handshake attack. */
+	char extended_master_secret;
 	};
 
 #endif

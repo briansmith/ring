@@ -117,6 +117,7 @@
  *                                  -- contents of SCT extension
  *     ocspResponse            [16] OCTET STRING OPTIONAL,
  *                                   -- stapled OCSP response from the server
+ *     extendedMasterSecret    [17] BOOLEAN OPTIONAL,
  * }
  *
  * Note: When the relevant features were #ifdef'd out, support for
@@ -151,6 +152,8 @@ static const int kSignedCertTimestampListTag =
     CBS_ASN1_CONSTRUCTED | CBS_ASN1_CONTEXT_SPECIFIC | 15;
 static const int kOCSPResponseTag =
     CBS_ASN1_CONSTRUCTED | CBS_ASN1_CONTEXT_SPECIFIC | 16;
+static const int kExtendedMasterSecretTag =
+    CBS_ASN1_CONSTRUCTED | CBS_ASN1_CONTEXT_SPECIFIC | 17;
 
 int i2d_SSL_SESSION(SSL_SESSION *in, uint8_t **pp) {
   CBB cbb, session, child, child2;
@@ -321,6 +324,15 @@ int i2d_SSL_SESSION(SSL_SESSION *in, uint8_t **pp) {
     }
   }
 
+  if (in->extended_master_secret) {
+    if (!CBB_add_asn1(&session, &child, kExtendedMasterSecretTag) ||
+        !CBB_add_asn1(&child, &child2, CBS_ASN1_BOOLEAN) ||
+        !CBB_add_u8(&child2, 0xff)) {
+      OPENSSL_PUT_ERROR(SSL, i2d_SSL_SESSION, ERR_R_MALLOC_FAILURE);
+      goto err;
+    }
+  }
+
   if (!CBB_finish(&cbb, &out, &len)) {
     OPENSSL_PUT_ERROR(SSL, i2d_SSL_SESSION, ERR_R_MALLOC_FAILURE);
     goto err;
@@ -399,7 +411,7 @@ SSL_SESSION *d2i_SSL_SESSION(SSL_SESSION **a, const uint8_t **pp, long length) {
   SSL_SESSION *ret = NULL;
   CBS cbs, session, cipher, session_id, master_key;
   CBS key_arg, peer, sid_ctx, peer_sha256, original_handshake_hash;
-  int has_key_arg, has_peer, has_peer_sha256;
+  int has_key_arg, has_peer, has_peer_sha256, extended_master_secret;
   uint64_t version, ssl_version;
   uint64_t session_time, timeout, verify_result, ticket_lifetime_hint;
 
@@ -464,6 +476,13 @@ SSL_SESSION *d2i_SSL_SESSION(SSL_SESSION **a, const uint8_t **pp, long length) {
           kOCSPResponseTag)) {
     goto err;
   }
+  if (!CBS_get_optional_asn1_bool(&session, &extended_master_secret,
+                                  kExtendedMasterSecretTag,
+                                  0 /* default to false */)) {
+    OPENSSL_PUT_ERROR(SSL, d2i_SSL_SESSION, SSL_R_INVALID_SSL_SESSION);
+    goto err;
+  }
+  ret->extended_master_secret = extended_master_secret;
 
   /* Ignore |version|. The structure version number is ignored. */
 

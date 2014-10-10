@@ -568,6 +568,11 @@ struct tls_sigalgs_st
 
 #define FP_ICC  (int (*)(const void *,const void *))
 
+enum should_add_to_finished_hash {
+  add_to_finished_hash,
+  dont_add_to_finished_hash,
+};
+
 /* This is for the SSLv3/TLSv1.0 differences in crypto/hash stuff
  * It is a bit of a mess of functions, but hell, think of it as
  * an opaque structure :-) */
@@ -597,7 +602,9 @@ typedef struct ssl3_enc_method
 	/* Set the handshake header */
 	void (*set_handshake_header)(SSL *s, int type, unsigned long len);
 	/* Write out handshake message */
-	int (*do_write)(SSL *s);
+	int (*do_write)(SSL *s, enum should_add_to_finished_hash should_add_to_finished_hash);
+	/* Add the current handshake message to the finished hash. */
+	void (*add_to_finished_hash)(SSL *s);
 	} SSL3_ENC_METHOD;
 
 #define SSL_HM_HEADER_LENGTH(s)	s->method->ssl3_enc->hhlen
@@ -605,7 +612,7 @@ typedef struct ssl3_enc_method
 	(((unsigned char *)s->init_buf->data) + s->method->ssl3_enc->hhlen)
 #define ssl_set_handshake_header(s, htype, len) \
 	s->method->ssl3_enc->set_handshake_header(s, htype, len)
-#define ssl_do_write(s)  s->method->ssl3_enc->do_write(s)
+#define ssl_do_write(s)  s->method->ssl3_enc->do_write(s, add_to_finished_hash)
 
 /* Values for enc_flags */
 
@@ -823,7 +830,7 @@ int ssl3_setup_key_block(SSL *s);
 int ssl3_send_change_cipher_spec(SSL *s,int state_a,int state_b);
 int ssl3_change_cipher_state(SSL *s,int which);
 void ssl3_cleanup_key_block(SSL *s);
-int ssl3_do_write(SSL *s,int type);
+int ssl3_do_write(SSL *s,int type, enum should_add_to_finished_hash should_add_to_finished_hash);
 int ssl3_send_alert(SSL *s,int level, int desc);
 int ssl3_generate_master_secret(SSL *s, unsigned char *out,
 	unsigned char *p, int len);
@@ -865,7 +872,13 @@ int	ssl3_setup_read_buffer(SSL *s);
 int	ssl3_setup_write_buffer(SSL *s);
 int	ssl3_release_read_buffer(SSL *s);
 int	ssl3_release_write_buffer(SSL *s);
-int	ssl3_digest_cached_records(SSL *s);
+
+enum should_free_handshake_buffer_t {
+	free_handshake_buffer,
+	dont_free_handshake_buffer,
+};
+int	ssl3_digest_cached_records(SSL *s, enum should_free_handshake_buffer_t);
+
 int	ssl3_new(SSL *s);
 void	ssl3_free(SSL *s);
 int	ssl3_accept(SSL *s);
@@ -885,13 +898,14 @@ void ssl3_record_sequence_update(unsigned char *seq);
 int ssl3_do_change_cipher_spec(SSL *ssl);
 
 void ssl3_set_handshake_header(SSL *s, int htype, unsigned long len);
-int ssl3_handshake_write(SSL *s);
+int ssl3_handshake_write(SSL *s, enum should_add_to_finished_hash should_add_to_finished_hash);
+void ssl3_add_to_finished_hash(SSL *s);
 
 int ssl23_read(SSL *s, void *buf, int len);
 int ssl23_peek(SSL *s, void *buf, int len);
 int ssl23_write(SSL *s, const void *buf, int len);
 
-int dtls1_do_write(SSL *s,int type);
+int dtls1_do_write(SSL *s,int type, enum should_add_to_finished_hash should_add_to_finished_hash);
 int ssl3_read_n(SSL *s, int n, int max, int extend);
 int dtls1_read_bytes(SSL *s, int type, unsigned char *buf, int len, int peek);
 int ssl3_write_pending(SSL *s, int type, const unsigned char *buf,

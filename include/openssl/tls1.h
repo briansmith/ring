@@ -240,6 +240,9 @@ extern "C" {
  */
 #define TLSEXT_TYPE_padding	21
 
+/* https://tools.ietf.org/html/draft-ietf-tls-session-hash-01 */
+#define TLSEXT_TYPE_extended_master_secret	23
+
 /* ExtensionType value from RFC4507 */
 #define TLSEXT_TYPE_session_ticket		35
 
@@ -704,6 +707,8 @@ SSL_CTX_callback_ctrl(ssl,SSL_CTRL_SET_TLSEXT_TICKET_KEY_CB,(void (*)(void))cb)
 #define TLS_MD_IV_BLOCK_CONST_SIZE		8
 #define TLS_MD_MASTER_SECRET_CONST		"master secret"
 #define TLS_MD_MASTER_SECRET_CONST_SIZE		13
+#define TLS_MD_EXTENDED_MASTER_SECRET_CONST	"extended master secret"
+#define TLS_MD_EXTENDED_MASTER_SECRET_CONST_SIZE	22
 
 
 /* TLS Session Ticket extension struct */

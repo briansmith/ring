@@ -22,6 +22,8 @@ import (
 )
 
 var useValgrind = flag.Bool("valgrind", false, "If true, run code under valgrind")
+var useGDB = flag.Bool("gdb", false, "If true, run BoringSSL code under gdb")
+var flagDebug *bool = flag.Bool("debug", false, "Hexdump the contents of the connection")
 
 const (
 	rsaCertificateFile   = "cert.pem"
@@ -693,10 +695,11 @@ func runTest(test *testCase, buildDir string) error {
 	var shim *exec.Cmd
 	if *useValgrind {
 		shim = valgrindOf(false, shim_path, flags...)
+	} else if *useGDB {
+		shim = gdbOf(shim_path, flags...)
 	} else {
 		shim = exec.Command(shim_path, flags...)
 	}
-	// shim = gdbOf(shim_path, flags...)
 	shim.ExtraFiles = []*os.File{shimEnd, shimEndResume}
 	shim.Stdin = os.Stdin
 	var stdoutBuf, stderrBuf bytes.Buffer
@@ -717,8 +720,19 @@ func runTest(test *testCase, buildDir string) error {
 		}
 	}
 
+	var connDebug *recordingConn
+	if *flagDebug {
+		connDebug = &recordingConn{Conn: conn}
+		conn = connDebug
+	}
+
 	err := doExchange(test, &config, conn, test.messageLen,
 		false /* not a resumption */)
+
+	if *flagDebug {
+		connDebug.WriteTo(os.Stdout)
+	}
+
 	conn.Close()
 	if err == nil && test.resumeSession {
 		var resumeConfig Config
@@ -1068,6 +1082,62 @@ func addClientAuthTests() {
 			})
 		}
 	}
+}
+
+func addExtendedMasterSecretTests() {
+	const expectEMSFlag = "-expect-extended-master-secret"
+
+	for _, with := range []bool{false, true} {
+		prefix := "No"
+		var flags []string
+		if with {
+			prefix = ""
+			flags = []string{expectEMSFlag}
+		}
+
+		for _, isClient := range []bool{false, true} {
+			suffix := "-Server"
+			testType := serverTest
+			if isClient {
+				suffix = "-Client"
+				testType = clientTest
+			}
+
+			for _, ver := range tlsVersions {
+				test := testCase{
+					testType: testType,
+					name:     prefix + "ExtendedMasterSecret-" + ver.name + suffix,
+					config: Config{
+						MinVersion: ver.version,
+						MaxVersion: ver.version,
+						Bugs: ProtocolBugs{
+							NoExtendedMasterSecret:      !with,
+							RequireExtendedMasterSecret: with,
+						},
+					},
+					flags:              flags,
+					shouldFail:         ver.version == VersionSSL30 && with,
+				}
+				if test.shouldFail {
+					test.expectedLocalError = "extended master secret required but not supported by peer"
+				}
+				testCases = append(testCases, test)
+			}
+		}
+	}
+
+	// When a session is resumed, it should still be aware that its master
+	// secret was generated via EMS and thus it's safe to use tls-unique.
+	testCases = append(testCases, testCase{
+		name: "ExtendedMasterSecret-Resume",
+		config: Config{
+			Bugs: ProtocolBugs{
+				RequireExtendedMasterSecret: true,
+			},
+		},
+		flags:         []string{expectEMSFlag},
+		resumeSession: true,
+	})
 }
 
 // Adds tests that try to cover the range of the handshake state machine, under
@@ -1568,7 +1638,7 @@ func addExtensionTests() {
 			},
 		},
 		resumeSession: true,
-		shouldFail: true,
+		shouldFail:    true,
 		expectedError: ":DECODE_ERROR:",
 	})
 }
@@ -1690,6 +1760,7 @@ func main() {
 	addD5BugTests()
 	addExtensionTests()
 	addResumptionVersionTests()
+	addExtendedMasterSecretTests()
 	for _, async := range []bool{false, true} {
 		for _, splitHandshake := range []bool{false, true} {
 			for _, protocol := range []protocol{tls, dtls} {
