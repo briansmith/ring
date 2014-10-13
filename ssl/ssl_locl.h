@@ -410,9 +410,7 @@
 #define PENDING_SESSION -10000
 #define CERTIFICATE_SELECTION_PENDING -10001
 
-/* From ECC-TLS draft, used in encoding the curve type in 
- * ECParameters
- */
+/* From RFC4492, used in encoding the curve type in ECParameters */
 #define EXPLICIT_PRIME_CURVE_TYPE  1   
 #define EXPLICIT_CHAR2_CURVE_TYPE  2
 #define NAMED_CURVE_TYPE           3

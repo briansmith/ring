@@ -231,7 +231,7 @@ extern "C" {
 /* ExtensionType value from RFC5620 */
 #define TLSEXT_TYPE_heartbeat	15
 
-/* ExtensionType value from draft-ietf-tls-applayerprotoneg-00 */
+/* ExtensionType value from RFC7301 */
 #define TLSEXT_TYPE_application_layer_protocol_negotiation 16
 
 /* ExtensionType value for TLS padding extension.
@@ -264,12 +264,10 @@ extern "C" {
 /* status request value from RFC 3546 */
 #define TLSEXT_STATUSTYPE_ocsp 1
 
-/* ECPointFormat values from draft-ietf-tls-ecc-12 */
-#define TLSEXT_ECPOINTFORMAT_first			0
+/* ECPointFormat values from RFC 4492 */
 #define TLSEXT_ECPOINTFORMAT_uncompressed		0
 #define TLSEXT_ECPOINTFORMAT_ansiX962_compressed_prime	1
 #define TLSEXT_ECPOINTFORMAT_ansiX962_compressed_char2	2
-#define TLSEXT_ECPOINTFORMAT_last			2
 
 /* Signature and hash algorithms from RFC 5246 */
 
@@ -278,9 +276,6 @@ extern "C" {
 #define TLSEXT_signature_dsa				2
 #define TLSEXT_signature_ecdsa				3
 
-/* Total number of different signature algorithms */
-#define TLSEXT_signature_num				4
-
 #define TLSEXT_hash_none				0
 #define TLSEXT_hash_md5					1
 #define TLSEXT_hash_sha1				2
@@ -288,10 +283,6 @@ extern "C" {
 #define TLSEXT_hash_sha256				4
 #define TLSEXT_hash_sha384				5
 #define TLSEXT_hash_sha512				6
-
-/* Total number of different digest algorithms */
-
-#define TLSEXT_hash_num					7
 
 /* Flag set for unrecognised algorithms */
 #define TLSEXT_nid_unknown				0x1000000
@@ -450,7 +441,7 @@ SSL_CTX_callback_ctrl(ssl,SSL_CTRL_SET_TLSEXT_TICKET_KEY_CB,(void (*)(void))cb)
 #define TLS1_CK_ADH_WITH_AES_128_GCM_SHA256		0x030000A6
 #define TLS1_CK_ADH_WITH_AES_256_GCM_SHA384		0x030000A7
 
-/* ECC ciphersuites from draft-ietf-tls-ecc-12.txt with changes soon to be in draft 13 */
+/* ECC ciphersuites from RFC4492 */
 #define TLS1_CK_ECDH_ECDSA_WITH_NULL_SHA                0x0300C001
 #define TLS1_CK_ECDH_ECDSA_WITH_RC4_128_SHA             0x0300C002
 #define TLS1_CK_ECDH_ECDSA_WITH_DES_192_CBC3_SHA        0x0300C003
@@ -550,7 +541,7 @@ SSL_CTX_callback_ctrl(ssl,SSL_CTRL_SET_TLSEXT_TICKET_KEY_CB,(void (*)(void))cb)
 #define TLS1_TXT_DHE_RSA_WITH_AES_256_SHA		"DHE-RSA-AES256-SHA"
 #define TLS1_TXT_ADH_WITH_AES_256_SHA			"ADH-AES256-SHA"
 
-/* ECC ciphersuites from draft-ietf-tls-ecc-01.txt (Mar 15, 2001) */
+/* ECC ciphersuites from RFC4492 */
 #define TLS1_TXT_ECDH_ECDSA_WITH_NULL_SHA               "ECDH-ECDSA-NULL-SHA"
 #define TLS1_TXT_ECDH_ECDSA_WITH_RC4_128_SHA            "ECDH-ECDSA-RC4-SHA"
 #define TLS1_TXT_ECDH_ECDSA_WITH_DES_192_CBC3_SHA       "ECDH-ECDSA-DES-CBC3-SHA"

@@ -125,7 +125,7 @@
 extern "C" {
 #endif
 
-/* Signalling cipher suite value: from draft-ietf-tls-renegotiation-03.txt */
+/* Signalling cipher suite value: from RFC5746 */
 #define SSL3_CK_SCSV				0x030000FF
 /* Fallback signalling cipher suite value: not IANA assigned.
  * See https://tools.ietf.org/html/draft-bmoeller-tls-downgrade-scsv-01 */

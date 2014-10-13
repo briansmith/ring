@@ -369,6 +369,7 @@ SSL_early_callback_ctx_extension_get(const struct ssl_early_callback_ctx *ctx,
 	}
 
 
+/* ECC curves from RFC4492 */
 static const int nid_list[] =
 	{
 		NID_sect163k1, /* sect163k1 (1) */
@@ -415,7 +416,6 @@ static const uint16_t eccurves_default[] =
 
 int tls1_ec_curve_id2nid(uint16_t curve_id)
 	{
-	/* ECC curves from draft-ietf-tls-ecc-12.txt (Oct. 17, 2005) */
 	if (curve_id < 1 || curve_id > sizeof(nid_list)/sizeof(nid_list[0]))
 		return OBJ_undef;
 	return nid_list[curve_id-1];
@@ -1131,11 +1131,6 @@ unsigned char *ssl_add_clienthello_tlsext(SSL *s, unsigned char *buf, unsigned c
 		s2n(TLSEXT_TYPE_elliptic_curves,ret);
 		s2n((curves_len * 2) + 2, ret);
 
-		/* NB: draft-ietf-tls-ecc-12.txt uses a one-byte prefix for
-		 * elliptic_curve_list, but the examples use two bytes.
-		 * http://www1.ietf.org/mail-archive/web/tls/current/msg00538.html
-		 * resolves this to two bytes.
-		 */
 		s2n(curves_len * 2, ret);
 		for (i = 0; i < curves_len; i++)
 			{
