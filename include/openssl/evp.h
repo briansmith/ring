@@ -836,6 +836,7 @@ struct evp_pkey_st {
 #define EVP_F_hmac_signctx 154
 #define EVP_F_EVP_DigestVerifyInitFromAlgorithm 155
 #define EVP_F_EVP_DigestSignAlgorithm 156
+#define EVP_F_rsa_digest_verify_init_from_algorithm 157
 #define EVP_R_UNSUPPORTED_PUBLIC_KEY_TYPE 100
 #define EVP_R_UNSUPPORTED_SIGNATURE_TYPE 101
 #define EVP_R_INVALID_DIGEST_TYPE 102
@@ -883,5 +884,9 @@ struct evp_pkey_st {
 #define EVP_R_INVALID_PSS_SALTLEN 144
 #define EVP_R_UNKNOWN_PUBLIC_KEY_TYPE 145
 #define EVP_R_CONTEXT_NOT_INITIALISED 146
+#define EVP_R_DIGEST_AND_KEY_TYPE_NOT_SUPPORTED 147
+#define EVP_R_WRONG_PUBLIC_KEY_TYPE 148
+#define EVP_R_UNKNOWN_SIGNATURE_ALGORITHM 149
+#define EVP_R_UNKNOWN_MESSAGE_DIGEST_ALGORITHM 150
 
 #endif  /* OPENSSL_HEADER_EVP_H */

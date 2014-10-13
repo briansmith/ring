@@ -656,7 +656,8 @@ static int rsa_digest_verify_init_from_algorithm(EVP_MD_CTX *ctx,
                                                  EVP_PKEY *pkey) {
   /* Sanity check: make sure it is PSS */
   if (OBJ_obj2nid(sigalg->algorithm) != NID_rsassaPss) {
-    OPENSSL_PUT_ERROR(EVP, rsa_item_verify, EVP_R_UNSUPPORTED_SIGNATURE_TYPE);
+    OPENSSL_PUT_ERROR(EVP, rsa_digest_verify_init_from_algorithm,
+                      EVP_R_UNSUPPORTED_SIGNATURE_TYPE);
     return 0;
   }
   return rsa_pss_to_ctx(ctx, sigalg, pkey);

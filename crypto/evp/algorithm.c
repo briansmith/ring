@@ -66,9 +66,6 @@
 #include "internal.h"
 
 
-/* These functions use error codes under the ASN1 and X509 namespaces for
- * compatibility with OpenSSL. */
-
 int EVP_DigestSignAlgorithm(EVP_MD_CTX *ctx, X509_ALGOR *algor) {
   const EVP_MD *digest;
   EVP_PKEY *pkey;
@@ -101,7 +98,7 @@ int EVP_DigestSignAlgorithm(EVP_MD_CTX *ctx, X509_ALGOR *algor) {
   if (!OBJ_find_sigid_by_algs(&sign_nid, EVP_MD_type(digest),
                               pkey->ameth->pkey_id)) {
     OPENSSL_PUT_ERROR(EVP, EVP_DigestSignAlgorithm,
-                      X509_R_DIGEST_AND_KEY_TYPE_NOT_SUPPORTED);
+                      EVP_R_DIGEST_AND_KEY_TYPE_NOT_SUPPORTED);
     return 0;
   }
 
@@ -126,7 +123,7 @@ int EVP_DigestVerifyInitFromAlgorithm(EVP_MD_CTX *ctx,
   if (!OBJ_find_sigid_algs(OBJ_obj2nid(algor->algorithm), &digest_nid,
                            &pkey_nid)) {
     OPENSSL_PUT_ERROR(EVP, EVP_DigestVerifyInitFromAlgorithm,
-                      ASN1_R_UNKNOWN_SIGNATURE_ALGORITHM);
+                      EVP_R_UNKNOWN_SIGNATURE_ALGORITHM);
     return 0;
   }
 
@@ -134,7 +131,7 @@ int EVP_DigestVerifyInitFromAlgorithm(EVP_MD_CTX *ctx,
   ameth = EVP_PKEY_asn1_find(NULL, pkey_nid);
   if (ameth == NULL || ameth->pkey_id != pkey->ameth->pkey_id) {
     OPENSSL_PUT_ERROR(EVP, EVP_DigestVerifyInitFromAlgorithm,
-                      ASN1_R_WRONG_PUBLIC_KEY_TYPE);
+                      EVP_R_WRONG_PUBLIC_KEY_TYPE);
     return 0;
   }
 
@@ -142,7 +139,7 @@ int EVP_DigestVerifyInitFromAlgorithm(EVP_MD_CTX *ctx,
   if (digest_nid == NID_undef) {
     if (!pkey->ameth || !pkey->ameth->digest_verify_init_from_algorithm) {
       OPENSSL_PUT_ERROR(EVP, EVP_DigestVerifyInitFromAlgorithm,
-                        ASN1_R_UNKNOWN_SIGNATURE_ALGORITHM);
+                        EVP_R_UNKNOWN_SIGNATURE_ALGORITHM);
       return 0;
     }
 
@@ -153,7 +150,7 @@ int EVP_DigestVerifyInitFromAlgorithm(EVP_MD_CTX *ctx,
   digest = EVP_get_digestbynid(digest_nid);
   if (digest == NULL) {
     OPENSSL_PUT_ERROR(EVP, EVP_DigestVerifyInitFromAlgorithm,
-                      ASN1_R_UNKNOWN_MESSAGE_DIGEST_ALGORITHM);
+                      EVP_R_UNKNOWN_MESSAGE_DIGEST_ALGORITHM);
     return 0;
   }
 
