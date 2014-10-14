@@ -35,6 +35,7 @@
 #include <openssl/crypto.h>
 #include <openssl/err.h>
 
+#define MIN(a, b) ((a < b) ? a : b)
 
 #if !defined(OPENSSL_WINDOWS)
 static int closesocket(int sock) {
@@ -119,6 +120,155 @@ static int test_socket_connect(void) {
   return 1;
 }
 
+
+/* bio_read_zero_copy_wrapper is a wrapper around the zero-copy APIs to make
+ * testing easier. */
+static size_t bio_read_zero_copy_wrapper(BIO* bio, void* data, size_t len) {
+  uint8_t* read_buf;
+  size_t read_buf_offset;
+  size_t available_bytes;
+  size_t len_read = 0;
+
+  do {
+    if (!BIO_zero_copy_get_read_buf(bio, &read_buf, &read_buf_offset,
+                                    &available_bytes)) {
+      return 0;
+    }
+
+    available_bytes = MIN(available_bytes, len - len_read);
+    memmove(data + len_read, read_buf + read_buf_offset, available_bytes);
+
+    BIO_zero_copy_get_read_buf_done(bio, available_bytes);
+
+    len_read += available_bytes;
+  } while (len - len_read > 0 && available_bytes > 0);
+
+  return len_read;
+}
+
+/* bio_write_zero_copy_wrapper is a wrapper around the zero-copy APIs to make
+ * testing easier. */
+static size_t bio_write_zero_copy_wrapper(BIO* bio, const void* data,
+                                          size_t len) {
+  uint8_t* write_buf;
+  size_t write_buf_offset;
+  size_t available_bytes;
+  size_t len_written = 0;
+
+  do {
+    if (!BIO_zero_copy_get_write_buf(bio, &write_buf, &write_buf_offset,
+                                     &available_bytes)) {
+      return 0;
+    }
+
+    available_bytes = MIN(available_bytes, len - len_written);
+    memmove(write_buf + write_buf_offset, data + len_written, available_bytes);
+
+    BIO_zero_copy_get_write_buf_done(bio, available_bytes);
+
+    len_written += available_bytes;
+  } while (len - len_written > 0 && available_bytes > 0);
+
+  return len_written;
+}
+
+static int test_zero_copy_bio_pairs(void) {
+  /* Test read and write, especially triggering the ring buffer wrap-around.*/
+  BIO* bio1;
+  BIO* bio2;
+  size_t i, j;
+  uint8_t bio1_application_send_buffer[1024];
+  uint8_t bio2_application_recv_buffer[1024];
+  size_t total_read = 0;
+  size_t total_write = 0;
+  uint8_t* write_buf;
+  size_t write_buf_offset;
+  size_t available_bytes;
+  size_t bytes_left;
+
+  const size_t kLengths[] = {254, 255, 256, 257, 510, 511, 512, 513};
+
+  /* These trigger ring buffer wrap around. */
+  const size_t kPartialLengths[] = {0, 1, 2, 3, 128, 255, 256, 257, 511, 512};
+
+  static const size_t kBufferSize = 512;
+
+  srand(1);
+  for (i = 0; i < sizeof(bio1_application_send_buffer); i++) {
+    bio1_application_send_buffer[i] = rand() & 255;
+  }
+
+  /* Transfer bytes from bio1_application_send_buffer to
+   * bio2_application_recv_buffer in various ways. */
+  for (i = 0; i < sizeof(kLengths) / sizeof(kLengths[0]); i++) {
+    for (j = 0; j < sizeof(kPartialLengths) / sizeof(kPartialLengths[0]); j++) {
+      total_write = 0;
+      total_read = 0;
+
+      BIO_new_bio_pair(&bio1, kBufferSize, &bio2, kBufferSize);
+
+      total_write += bio_write_zero_copy_wrapper(
+          bio1, bio1_application_send_buffer, kLengths[i]);
+
+      /* This tests interleaved read/write calls. Do a read between zero copy
+       * write calls. */
+      if (!BIO_zero_copy_get_write_buf(bio1, &write_buf, &write_buf_offset,
+                                       &available_bytes)) {
+        return 0;
+      }
+
+      /* Free kPartialLengths[j] bytes in the beginning of bio1 write buffer.
+       * This enables ring buffer wrap around for the next write. */
+      total_read += BIO_read(bio2, bio2_application_recv_buffer + total_read,
+                             kPartialLengths[j]);
+
+      size_t interleaved_write_len = MIN(kPartialLengths[j], available_bytes);
+
+      /* Write the data for the interleaved write call. If the buffer becomes
+       * empty after a read, the write offset is normally set to 0. Check that
+       * this does not happen for interleaved read/write and that
+       * |write_buf_offset| is still valid. */
+      memcpy(write_buf + write_buf_offset,
+             bio1_application_send_buffer + total_write, interleaved_write_len);
+      if (BIO_zero_copy_get_write_buf_done(bio1, interleaved_write_len)) {
+        total_write += interleaved_write_len;
+      }
+
+      /* Do another write in case |write_buf_offset| was wrapped */
+      total_write += bio_write_zero_copy_wrapper(
+          bio1, bio1_application_send_buffer + total_write,
+          kPartialLengths[j] - interleaved_write_len);
+
+      /* Drain the rest. */
+      bytes_left = BIO_pending(bio2);
+      total_read += bio_read_zero_copy_wrapper(
+          bio2, bio2_application_recv_buffer + total_read, bytes_left);
+
+      BIO_free(bio1);
+      BIO_free(bio2);
+
+      if (total_read != total_write) {
+        fprintf(stderr, "Lengths not equal in round (%u, %u)\n", (unsigned)i,
+                (unsigned)j);
+        return 0;
+      }
+      if (total_read > kLengths[i] + kPartialLengths[j]) {
+        fprintf(stderr, "Bad lengths in round (%u, %u)\n", (unsigned)i,
+                (unsigned)j);
+        return 0;
+      }
+      if (memcmp(bio1_application_send_buffer, bio2_application_recv_buffer,
+                 total_read) != 0) {
+        fprintf(stderr, "Buffers not equal in round (%u, %u)\n", (unsigned)i,
+                (unsigned)j);
+        return 0;
+      }
+    }
+  }
+
+  return 1;
+}
+
 static int test_printf(void) {
   /* Test a short output, a very long one, and various sizes around
    * 256 (the size of the buffer) to ensure edge cases are correct. */
@@ -198,6 +348,10 @@ int main(void) {
   }
 
   if (!test_printf()) {
+    return 1;
+  }
+
+  if (!test_zero_copy_bio_pairs()) {
     return 1;
   }
 
