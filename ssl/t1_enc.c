@@ -334,6 +334,20 @@ static int tls1_aead_ctx_init(SSL_AEAD_CTX **aead_ctx)
 	return 1;
 	}
 
+static void tls1_cleanup_enc_ctx(EVP_CIPHER_CTX **ctx)
+	{
+	if (*ctx != NULL)
+		EVP_CIPHER_CTX_free(*ctx);
+	*ctx = NULL;
+	}
+
+static void tls1_cleanup_hash_ctx(EVP_MD_CTX **ctx)
+	{
+	if (*ctx != NULL)
+		EVP_MD_CTX_destroy(*ctx);
+	*ctx = NULL;
+	}
+
 static int tls1_change_cipher_state_aead(SSL *s, char is_read,
 	const unsigned char *key, unsigned key_len,
 	const unsigned char *iv, unsigned iv_len,
@@ -345,6 +359,17 @@ static int tls1_change_cipher_state_aead(SSL *s, char is_read,
 	 * which simulates pre-AEAD cipher suites. It needs to be large enough
 	 * to cope with the largest pair of keys. */
 	uint8_t mac_key_and_key[32 /* HMAC(SHA256) */ + 32 /* AES-256 */];
+
+	if (is_read)
+		{
+		tls1_cleanup_enc_ctx(&s->enc_read_ctx);
+		tls1_cleanup_hash_ctx(&s->read_hash);
+		}
+	else
+		{
+		tls1_cleanup_enc_ctx(&s->enc_write_ctx);
+		tls1_cleanup_hash_ctx(&s->write_hash);
+		}
 
 	if (mac_secret_len > 0)
 		{
@@ -376,7 +401,14 @@ static int tls1_change_cipher_state_aead(SSL *s, char is_read,
 
 	if (!EVP_AEAD_CTX_init(&aead_ctx->ctx, aead, key, key_len,
 			       EVP_AEAD_DEFAULT_TAG_LENGTH, NULL /* engine */))
+		{
+		OPENSSL_free(aead_ctx);
+		if (is_read)
+			s->aead_read_ctx = NULL;
+		else
+			s->aead_write_ctx = NULL;
 		return 0;
+		}
 	if (iv_len > sizeof(aead_ctx->fixed_nonce))
 		{
 		OPENSSL_PUT_ERROR(SSL, tls1_change_cipher_state_aead, ERR_R_INTERNAL_ERROR);
@@ -399,6 +431,16 @@ static int tls1_change_cipher_state_aead(SSL *s, char is_read,
 	return 1;
 	}
 
+static void tls1_cleanup_aead_ctx(SSL_AEAD_CTX **ctx)
+	{
+	if (*ctx != NULL)
+		{
+		EVP_AEAD_CTX_cleanup(&(*ctx)->ctx);
+		OPENSSL_free(*ctx);
+		}
+	*ctx = NULL;
+	}
+
 /* tls1_change_cipher_state_cipher performs the work needed to switch cipher
  * states when using EVP_CIPHER. The argument |is_read| is true iff this
  * function is being called due to reading, as opposed to writing, a
@@ -414,6 +456,11 @@ static int tls1_change_cipher_state_cipher(
 	const EVP_CIPHER *cipher = s->s3->tmp.new_sym_enc;
 	EVP_CIPHER_CTX *cipher_ctx;
 	EVP_MD_CTX *mac_ctx;
+
+	if (is_read)
+		tls1_cleanup_aead_ctx(&s->aead_read_ctx);
+	else
+		tls1_cleanup_aead_ctx(&s->aead_write_ctx);
 
 	if (is_read)
 		{
