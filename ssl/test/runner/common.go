@@ -464,6 +464,14 @@ type ProtocolBugs struct {
 	// AllowSessionVersionMismatch causes the server to resume sessions
 	// regardless of the version associated with the session.
 	AllowSessionVersionMismatch bool
+
+	// CorruptTicket causes a client to corrupt a session ticket before
+	// sending it in a resume handshake.
+	CorruptTicket bool
+
+	// OversizedSessionId causes the session id that is sent with a ticket
+	// resumption attempt to be too large (33 bytes).
+	OversizedSessionId bool
 }
 
 func (c *Config) serverInit() {

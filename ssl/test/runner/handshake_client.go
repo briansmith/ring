@@ -148,10 +148,25 @@ NextCipherSuite:
 
 	if session != nil {
 		hello.sessionTicket = session.sessionTicket
+		if c.config.Bugs.CorruptTicket {
+			hello.sessionTicket = make([]byte, len(session.sessionTicket))
+			copy(hello.sessionTicket, session.sessionTicket)
+			if len(hello.sessionTicket) > 0 {
+				offset := 40
+				if offset > len(hello.sessionTicket) {
+					offset = len(hello.sessionTicket) - 1
+				}
+				hello.sessionTicket[offset] ^= 0x40
+			}
+		}
 		// A random session ID is used to detect when the
 		// server accepted the ticket and is resuming a session
 		// (see RFC 5077).
-		hello.sessionId = make([]byte, 16)
+		sessionIdLen := 16
+		if c.config.Bugs.OversizedSessionId {
+			sessionIdLen = 33
+		}
+		hello.sessionId = make([]byte, sessionIdLen)
 		if _, err := io.ReadFull(c.config.rand(), hello.sessionId); err != nil {
 			c.sendAlert(alertInternalError)
 			return errors.New("tls: short read from Rand: " + err.Error())

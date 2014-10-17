@@ -649,6 +649,10 @@ func openSocketPair() (shimEnd *os.File, conn net.Conn) {
 }
 
 func runTest(test *testCase, buildDir string) error {
+	if !test.shouldFail && (len(test.expectedError) > 0 || len(test.expectedLocalError) > 0) {
+		panic("Error expected without shouldFail in " + test.name)
+	}
+
 	shimEnd, conn := openSocketPair()
 	shimEndResume, connResume := openSocketPair()
 
@@ -1541,6 +1545,31 @@ func addExtensionTests() {
 		expectedNextProto:     "foo",
 		expectedNextProtoType: alpn,
 		resumeSession:         true,
+	})
+	// Resume with a corrupt ticket.
+	testCases = append(testCases, testCase{
+		testType: serverTest,
+		name:     "CorruptTicket",
+		config: Config{
+			Bugs: ProtocolBugs{
+				CorruptTicket: true,
+			},
+		},
+		resumeSession: true,
+		flags:         []string{"-expect-session-miss"},
+	})
+	// Resume with an oversized session id.
+	testCases = append(testCases, testCase{
+		testType: serverTest,
+		name:     "OversizedSessionId",
+		config: Config{
+			Bugs: ProtocolBugs{
+				OversizedSessionId: true,
+			},
+		},
+		resumeSession: true,
+		shouldFail: true,
+		expectedError: ":DECODE_ERROR:",
 	})
 }
 
