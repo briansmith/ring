@@ -76,6 +76,7 @@ static int fixed_random() {
     }
     curr = next;
   }
+  pqueue_free(q);
   return 1;
 }
 
