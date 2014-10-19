@@ -80,13 +80,9 @@
  * OTHER ENTITY BASED ON INFRINGEMENT OF INTELLECTUAL PROPERTY RIGHTS OR
  * OTHERWISE. */
 
-#include <assert.h>
 #include <limits.h>
-#include <stdio.h>
-#include <stdlib.h>
+#include <string.h>
 
-#include <openssl/asn1.h>
-#include <openssl/asn1_mac.h>
 #include <openssl/bytestring.h>
 #include <openssl/err.h>
 #include <openssl/x509.h>
@@ -156,253 +152,199 @@ static const int kSignedCertTimestampListTag =
 static const int kOCSPResponseTag =
     CBS_ASN1_CONSTRUCTED | CBS_ASN1_CONTEXT_SPECIFIC | 16;
 
-typedef struct ssl_session_asn1_st
-	{
-	ASN1_INTEGER version;
-	ASN1_INTEGER ssl_version;
-	ASN1_OCTET_STRING cipher;
-	ASN1_OCTET_STRING comp_id;
-	ASN1_OCTET_STRING master_key;
-	ASN1_OCTET_STRING session_id;
-	ASN1_OCTET_STRING session_id_context;
-	ASN1_INTEGER time;
-	ASN1_INTEGER timeout;
-	ASN1_INTEGER verify_result;
-	ASN1_OCTET_STRING tlsext_hostname;
-	ASN1_INTEGER tlsext_tick_lifetime;
-	ASN1_OCTET_STRING tlsext_tick;
-	ASN1_OCTET_STRING psk_identity_hint;
-	ASN1_OCTET_STRING psk_identity;
-	ASN1_OCTET_STRING peer_sha256;
-	ASN1_OCTET_STRING original_handshake_hash;
-	ASN1_OCTET_STRING tlsext_signed_cert_timestamp_list;
-	ASN1_OCTET_STRING ocsp_response;
-	} SSL_SESSION_ASN1;
+int i2d_SSL_SESSION(SSL_SESSION *in, uint8_t **pp) {
+  CBB cbb, session, child, child2;
+  uint16_t cipher_id;
+  uint8_t *out;
+  size_t len;
 
-int i2d_SSL_SESSION(SSL_SESSION *in, unsigned char **pp)
-	{
-#define LSIZE2 (sizeof(long)*2)
-	int v1=0,v2=0,v3=0,v4=0,v5=0,v7=0,v8=0,v13=0,v14=0,v15=0,v16=0;
-	unsigned char buf[4],ibuf1[LSIZE2],ibuf2[LSIZE2];
-	unsigned char ibuf3[LSIZE2],ibuf4[LSIZE2],ibuf5[LSIZE2];
-	int v6=0,v9=0,v10=0;
-	unsigned char ibuf6[LSIZE2];
-	long l;
-	SSL_SESSION_ASN1 a;
-	M_ASN1_I2D_vars(in);
+  if (in == NULL || (in->cipher == NULL && in->cipher_id == 0)) {
+    return 0;
+  }
 
-	if ((in == NULL) || ((in->cipher == NULL) && (in->cipher_id == 0)))
-		return(0);
+  if (!CBB_init(&cbb, 0)) {
+    return 0;
+  }
 
-	/* Note that I cheat in the following 2 assignments.  I know
-	 * that if the ASN1_INTEGER passed to ASN1_INTEGER_set
-	 * is > sizeof(long)+1, the buffer will not be re-OPENSSL_malloc()ed.
-	 * This is a bit evil but makes things simple, no dynamic allocation
-	 * to clean up :-) */
-	a.version.length=LSIZE2;
-	a.version.type=V_ASN1_INTEGER;
-	a.version.data=ibuf1;
-	ASN1_INTEGER_set(&(a.version),SSL_SESSION_ASN1_VERSION);
+  if (in->cipher == NULL) {
+    cipher_id = in->cipher_id & 0xffff;
+  } else {
+    cipher_id = in->cipher->id & 0xffff;
+  }
 
-	a.ssl_version.length=LSIZE2;
-	a.ssl_version.type=V_ASN1_INTEGER;
-	a.ssl_version.data=ibuf2;
-	ASN1_INTEGER_set(&(a.ssl_version),in->ssl_version);
+  if (!CBB_add_asn1(&cbb, &session, CBS_ASN1_SEQUENCE) ||
+      !CBB_add_asn1_uint64(&session, SSL_SESSION_ASN1_VERSION) ||
+      !CBB_add_asn1_uint64(&session, in->ssl_version) ||
+      !CBB_add_asn1(&session, &child, CBS_ASN1_OCTETSTRING) ||
+      !CBB_add_u16(&child, cipher_id) ||
+      !CBB_add_asn1(&session, &child, CBS_ASN1_OCTETSTRING) ||
+      !CBB_add_bytes(&child, in->session_id, in->session_id_length) ||
+      !CBB_add_asn1(&session, &child, CBS_ASN1_OCTETSTRING) ||
+      !CBB_add_bytes(&child, in->master_key, in->master_key_length)) {
+    OPENSSL_PUT_ERROR(SSL, i2d_SSL_SESSION, ERR_R_MALLOC_FAILURE);
+    goto err;
+  }
 
-	a.cipher.type=V_ASN1_OCTET_STRING;
-	a.cipher.data=buf;
+  if (in->time != 0) {
+    if (!CBB_add_asn1(&session, &child, kTimeTag) ||
+        !CBB_add_asn1_uint64(&child, in->time)) {
+      OPENSSL_PUT_ERROR(SSL, i2d_SSL_SESSION, ERR_R_MALLOC_FAILURE);
+      goto err;
+    }
+  }
 
-	if (in->cipher == NULL)
-		l=in->cipher_id;
-	else
-		l=in->cipher->id;
-	if (in->ssl_version == SSL2_VERSION)
-		{
-		a.cipher.length=3;
-		buf[0]=((unsigned char)(l>>16L))&0xff;
-		buf[1]=((unsigned char)(l>> 8L))&0xff;
-		buf[2]=((unsigned char)(l     ))&0xff;
-		}
-	else
-		{
-		a.cipher.length=2;
-		buf[0]=((unsigned char)(l>>8L))&0xff;
-		buf[1]=((unsigned char)(l    ))&0xff;
-		}
+  if (in->timeout != 0) {
+    if (!CBB_add_asn1(&session, &child, kTimeoutTag) ||
+        !CBB_add_asn1_uint64(&child, in->timeout)) {
+      OPENSSL_PUT_ERROR(SSL, i2d_SSL_SESSION, ERR_R_MALLOC_FAILURE);
+      goto err;
+    }
+  }
 
+  /* The peer certificate is only serialized if the SHA-256 isn't
+   * serialized instead. */
+  if (in->peer && !in->peer_sha256_valid) {
+    uint8_t *buf;
+    int len = i2d_X509(in->peer, NULL);
+    if (len < 0) {
+      goto err;
+    }
+    if (!CBB_add_asn1(&session, &child, kPeerTag) ||
+        !CBB_add_space(&child, &buf, len)) {
+      OPENSSL_PUT_ERROR(SSL, i2d_SSL_SESSION, ERR_R_MALLOC_FAILURE);
+      goto err;
+    }
+    if (buf != NULL && i2d_X509(in->peer, &buf) < 0) {
+      goto err;
+    }
+  }
 
-	a.master_key.length=in->master_key_length;
-	a.master_key.type=V_ASN1_OCTET_STRING;
-	a.master_key.data=in->master_key;
+  /* Although it is OPTIONAL and usually empty, OpenSSL has
+   * historically always encoded the sid_ctx. */
+  if (!CBB_add_asn1(&session, &child, kSessionIDContextTag) ||
+      !CBB_add_asn1(&child, &child2, CBS_ASN1_OCTETSTRING) ||
+      !CBB_add_bytes(&child2, in->sid_ctx, in->sid_ctx_length)) {
+    OPENSSL_PUT_ERROR(SSL, i2d_SSL_SESSION, ERR_R_MALLOC_FAILURE);
+    goto err;
+  }
 
-	a.session_id.length=in->session_id_length;
-	a.session_id.type=V_ASN1_OCTET_STRING;
-	a.session_id.data=in->session_id;
+  if (in->verify_result != X509_V_OK) {
+    if (!CBB_add_asn1(&session, &child, kVerifyResultTag) ||
+        !CBB_add_asn1_uint64(&child, in->verify_result)) {
+      OPENSSL_PUT_ERROR(SSL, i2d_SSL_SESSION, ERR_R_MALLOC_FAILURE);
+      goto err;
+    }
+  }
 
-	a.session_id_context.length=in->sid_ctx_length;
-	a.session_id_context.type=V_ASN1_OCTET_STRING;
-	a.session_id_context.data=in->sid_ctx;
+  if (in->tlsext_hostname) {
+    if (!CBB_add_asn1(&session, &child, kHostNameTag) ||
+        !CBB_add_asn1(&child, &child2, CBS_ASN1_OCTETSTRING) ||
+        !CBB_add_bytes(&child2, (const uint8_t *)in->tlsext_hostname,
+                       strlen(in->tlsext_hostname))) {
+      OPENSSL_PUT_ERROR(SSL, i2d_SSL_SESSION, ERR_R_MALLOC_FAILURE);
+      goto err;
+    }
+  }
 
-	if (in->time != 0L)
-		{
-		a.time.length=LSIZE2;
-		a.time.type=V_ASN1_INTEGER;
-		a.time.data=ibuf3;
-		ASN1_INTEGER_set(&(a.time),in->time);
-		}
+  if (in->psk_identity_hint) {
+    if (!CBB_add_asn1(&session, &child, kPSKIdentityHintTag) ||
+        !CBB_add_asn1(&child, &child2, CBS_ASN1_OCTETSTRING) ||
+        !CBB_add_bytes(&child2, (const uint8_t *)in->psk_identity_hint,
+                       strlen(in->psk_identity_hint))) {
+      OPENSSL_PUT_ERROR(SSL, i2d_SSL_SESSION, ERR_R_MALLOC_FAILURE);
+      goto err;
+    }
+  }
 
-	if (in->timeout != 0L)
-		{
-		a.timeout.length=LSIZE2;
-		a.timeout.type=V_ASN1_INTEGER;
-		a.timeout.data=ibuf4;
-		ASN1_INTEGER_set(&(a.timeout),in->timeout);
-		}
+  if (in->psk_identity) {
+    if (!CBB_add_asn1(&session, &child, kPSKIdentityTag) ||
+        !CBB_add_asn1(&child, &child2, CBS_ASN1_OCTETSTRING) ||
+        !CBB_add_bytes(&child2, (const uint8_t *)in->psk_identity,
+                       strlen(in->psk_identity))) {
+      OPENSSL_PUT_ERROR(SSL, i2d_SSL_SESSION, ERR_R_MALLOC_FAILURE);
+      goto err;
+    }
+  }
 
-	if (in->verify_result != X509_V_OK)
-		{
-		a.verify_result.length=LSIZE2;
-		a.verify_result.type=V_ASN1_INTEGER;
-		a.verify_result.data=ibuf5;
-		ASN1_INTEGER_set(&a.verify_result,in->verify_result);
-		}
+  if (in->tlsext_tick_lifetime_hint > 0) {
+    if (!CBB_add_asn1(&session, &child, kTicketLifetimeHintTag) ||
+        !CBB_add_asn1_uint64(&child, in->tlsext_tick_lifetime_hint)) {
+      OPENSSL_PUT_ERROR(SSL, i2d_SSL_SESSION, ERR_R_MALLOC_FAILURE);
+      goto err;
+    }
+  }
 
-	if (in->tlsext_hostname)
-                {
-                a.tlsext_hostname.length=strlen(in->tlsext_hostname);
-                a.tlsext_hostname.type=V_ASN1_OCTET_STRING;
-                a.tlsext_hostname.data=(unsigned char *)in->tlsext_hostname;
-                }
-	if (in->tlsext_tick)
-                {
-                a.tlsext_tick.length= in->tlsext_ticklen;
-                a.tlsext_tick.type=V_ASN1_OCTET_STRING;
-                a.tlsext_tick.data=(unsigned char *)in->tlsext_tick;
-                }
-	if (in->tlsext_tick_lifetime_hint > 0)
-		{
-		a.tlsext_tick_lifetime.length=LSIZE2;
-		a.tlsext_tick_lifetime.type=V_ASN1_INTEGER;
-		a.tlsext_tick_lifetime.data=ibuf6;
-		ASN1_INTEGER_set(&a.tlsext_tick_lifetime,in->tlsext_tick_lifetime_hint);
-		}
-	if (in->psk_identity_hint)
-		{
-		a.psk_identity_hint.length=strlen(in->psk_identity_hint);
-		a.psk_identity_hint.type=V_ASN1_OCTET_STRING;
-		a.psk_identity_hint.data=(unsigned char *)(in->psk_identity_hint);
-		}
-	if (in->psk_identity)
-		{
-		a.psk_identity.length=strlen(in->psk_identity);
-		a.psk_identity.type=V_ASN1_OCTET_STRING;
-		a.psk_identity.data=(unsigned char *)(in->psk_identity);
-		}
+  if (in->tlsext_tick) {
+    if (!CBB_add_asn1(&session, &child, kTicketTag) ||
+        !CBB_add_asn1(&child, &child2, CBS_ASN1_OCTETSTRING) ||
+        !CBB_add_bytes(&child2, in->tlsext_tick, in->tlsext_ticklen)) {
+      OPENSSL_PUT_ERROR(SSL, i2d_SSL_SESSION, ERR_R_MALLOC_FAILURE);
+      goto err;
+    }
+  }
 
-	if (in->peer_sha256_valid)
-		{
-		a.peer_sha256.length = sizeof(in->peer_sha256);
-		a.peer_sha256.type = V_ASN1_OCTET_STRING;
-		a.peer_sha256.data = in->peer_sha256;
-		}
+  if (in->peer_sha256_valid) {
+    if (!CBB_add_asn1(&session, &child, kPeerSHA256Tag) ||
+        !CBB_add_asn1(&child, &child2, CBS_ASN1_OCTETSTRING) ||
+        !CBB_add_bytes(&child2, in->peer_sha256, sizeof(in->peer_sha256))) {
+      OPENSSL_PUT_ERROR(SSL, i2d_SSL_SESSION, ERR_R_MALLOC_FAILURE);
+      goto err;
+    }
+  }
 
-	if (in->original_handshake_hash_len > 0)
-		{
-		a.original_handshake_hash.length = in->original_handshake_hash_len;
-		a.original_handshake_hash.type = V_ASN1_OCTET_STRING;
-		a.original_handshake_hash.data = in->original_handshake_hash;
-		}
+  if (in->original_handshake_hash_len > 0) {
+    if (!CBB_add_asn1(&session, &child, kOriginalHandshakeHashTag) ||
+        !CBB_add_asn1(&child, &child2, CBS_ASN1_OCTETSTRING) ||
+        !CBB_add_bytes(&child2, in->original_handshake_hash,
+                       in->original_handshake_hash_len)) {
+      OPENSSL_PUT_ERROR(SSL, i2d_SSL_SESSION, ERR_R_MALLOC_FAILURE);
+      goto err;
+    }
+  }
 
-	if (in->tlsext_signed_cert_timestamp_list_length > 0)
-		{
-		a.tlsext_signed_cert_timestamp_list.length =
-				in->tlsext_signed_cert_timestamp_list_length;
-		a.tlsext_signed_cert_timestamp_list.type = V_ASN1_OCTET_STRING;
-		a.tlsext_signed_cert_timestamp_list.data =
-				in->tlsext_signed_cert_timestamp_list;
-		}
+  if (in->tlsext_signed_cert_timestamp_list_length > 0) {
+    if (!CBB_add_asn1(&session, &child, kSignedCertTimestampListTag) ||
+        !CBB_add_asn1(&child, &child2, CBS_ASN1_OCTETSTRING) ||
+        !CBB_add_bytes(&child2, in->tlsext_signed_cert_timestamp_list,
+                       in->tlsext_signed_cert_timestamp_list_length)) {
+      OPENSSL_PUT_ERROR(SSL, i2d_SSL_SESSION, ERR_R_MALLOC_FAILURE);
+      goto err;
+    }
+  }
 
-	if (in->ocsp_response_length > 0)
-		{
-		a.ocsp_response.length = in->ocsp_response_length;
-		a.ocsp_response.type = V_ASN1_OCTET_STRING;
-		a.ocsp_response.data = in->ocsp_response;
-		}
+  if (in->ocsp_response_length > 0) {
+    if (!CBB_add_asn1(&session, &child, kOCSPResponseTag) ||
+        !CBB_add_asn1(&child, &child2, CBS_ASN1_OCTETSTRING) ||
+        !CBB_add_bytes(&child2, in->ocsp_response, in->ocsp_response_length)) {
+      OPENSSL_PUT_ERROR(SSL, i2d_SSL_SESSION, ERR_R_MALLOC_FAILURE);
+      goto err;
+    }
+  }
 
-	M_ASN1_I2D_len(&(a.version),		i2d_ASN1_INTEGER);
-	M_ASN1_I2D_len(&(a.ssl_version),	i2d_ASN1_INTEGER);
-	M_ASN1_I2D_len(&(a.cipher),		i2d_ASN1_OCTET_STRING);
-	M_ASN1_I2D_len(&(a.session_id),		i2d_ASN1_OCTET_STRING);
-	M_ASN1_I2D_len(&(a.master_key),		i2d_ASN1_OCTET_STRING);
-	if (in->time != 0L)
-		M_ASN1_I2D_len_EXP_opt(&(a.time),i2d_ASN1_INTEGER,1,v1);
-	if (in->timeout != 0L)
-		M_ASN1_I2D_len_EXP_opt(&(a.timeout),i2d_ASN1_INTEGER,2,v2);
-	if (in->peer != NULL && in->peer_sha256_valid == 0)
-		M_ASN1_I2D_len_EXP_opt(in->peer,i2d_X509,3,v3);
-	M_ASN1_I2D_len_EXP_opt(&a.session_id_context,i2d_ASN1_OCTET_STRING,4,v4);
-	if (in->verify_result != X509_V_OK)
-		M_ASN1_I2D_len_EXP_opt(&(a.verify_result),i2d_ASN1_INTEGER,5,v5);
+  if (!CBB_finish(&cbb, &out, &len)) {
+    OPENSSL_PUT_ERROR(SSL, i2d_SSL_SESSION, ERR_R_MALLOC_FAILURE);
+    goto err;
+  }
 
-	if (in->tlsext_tick_lifetime_hint > 0)
-      	 	M_ASN1_I2D_len_EXP_opt(&a.tlsext_tick_lifetime, i2d_ASN1_INTEGER,9,v9);
-	if (in->tlsext_tick)
-        	M_ASN1_I2D_len_EXP_opt(&(a.tlsext_tick), i2d_ASN1_OCTET_STRING,10,v10);
-	if (in->tlsext_hostname)
-        	M_ASN1_I2D_len_EXP_opt(&(a.tlsext_hostname), i2d_ASN1_OCTET_STRING,6,v6);
-	if (in->psk_identity_hint)
-        	M_ASN1_I2D_len_EXP_opt(&(a.psk_identity_hint), i2d_ASN1_OCTET_STRING,7,v7);
-	if (in->psk_identity)
-        	M_ASN1_I2D_len_EXP_opt(&(a.psk_identity), i2d_ASN1_OCTET_STRING,8,v8);
-	if (in->peer_sha256_valid)
-		M_ASN1_I2D_len_EXP_opt(&(a.peer_sha256),i2d_ASN1_OCTET_STRING,13,v13);
-	if (in->original_handshake_hash_len > 0)
-		M_ASN1_I2D_len_EXP_opt(&(a.original_handshake_hash),i2d_ASN1_OCTET_STRING,14,v14);
-	if (in->tlsext_signed_cert_timestamp_list_length > 0)
-		M_ASN1_I2D_len_EXP_opt(&(a.tlsext_signed_cert_timestamp_list),
-				i2d_ASN1_OCTET_STRING, 15, v15);
-	if (in->ocsp_response_length > 0)
-		M_ASN1_I2D_len_EXP_opt(&(a.ocsp_response), i2d_ASN1_OCTET_STRING, 16, v16);
+  if (len > INT_MAX) {
+    OPENSSL_free(out);
+    OPENSSL_PUT_ERROR(SSL, i2d_SSL_SESSION, ERR_R_OVERFLOW);
+    return -1;
+  }
 
-	M_ASN1_I2D_seq_total();
+  /* TODO(davidben): Provide a safer API and deprecate this one. */
+  if (pp) {
+    memcpy(*pp, out, len);
+    *pp += len;
+  }
+  OPENSSL_free(out);
 
-	M_ASN1_I2D_put(&(a.version),		i2d_ASN1_INTEGER);
-	M_ASN1_I2D_put(&(a.ssl_version),	i2d_ASN1_INTEGER);
-	M_ASN1_I2D_put(&(a.cipher),		i2d_ASN1_OCTET_STRING);
-	M_ASN1_I2D_put(&(a.session_id),		i2d_ASN1_OCTET_STRING);
-	M_ASN1_I2D_put(&(a.master_key),		i2d_ASN1_OCTET_STRING);
-	if (in->time != 0L)
-		M_ASN1_I2D_put_EXP_opt(&(a.time),i2d_ASN1_INTEGER,1,v1);
-	if (in->timeout != 0L)
-		M_ASN1_I2D_put_EXP_opt(&(a.timeout),i2d_ASN1_INTEGER,2,v2);
-	if (in->peer != NULL && in->peer_sha256_valid == 0)
-		M_ASN1_I2D_put_EXP_opt(in->peer,i2d_X509,3,v3);
-	M_ASN1_I2D_put_EXP_opt(&a.session_id_context,i2d_ASN1_OCTET_STRING,4,
-			       v4);
-	if (in->verify_result != X509_V_OK)
-		M_ASN1_I2D_put_EXP_opt(&a.verify_result,i2d_ASN1_INTEGER,5,v5);
-	if (in->tlsext_hostname)
-        	M_ASN1_I2D_put_EXP_opt(&(a.tlsext_hostname), i2d_ASN1_OCTET_STRING,6,v6);
-	if (in->psk_identity_hint)
-		M_ASN1_I2D_put_EXP_opt(&(a.psk_identity_hint), i2d_ASN1_OCTET_STRING,7,v7);
-	if (in->psk_identity)
-		M_ASN1_I2D_put_EXP_opt(&(a.psk_identity), i2d_ASN1_OCTET_STRING,8,v8);
-	if (in->tlsext_tick_lifetime_hint > 0)
-      	 	M_ASN1_I2D_put_EXP_opt(&a.tlsext_tick_lifetime, i2d_ASN1_INTEGER,9,v9);
-	if (in->tlsext_tick)
-        	M_ASN1_I2D_put_EXP_opt(&(a.tlsext_tick), i2d_ASN1_OCTET_STRING,10,v10);
-	if (in->peer_sha256_valid)
-		M_ASN1_I2D_put_EXP_opt(&(a.peer_sha256),i2d_ASN1_OCTET_STRING,13,v13);
-	if (in->original_handshake_hash_len > 0)
-		M_ASN1_I2D_put_EXP_opt(&(a.original_handshake_hash),i2d_ASN1_OCTET_STRING,14,v14);
-	if (in->tlsext_signed_cert_timestamp_list_length > 0)
-		M_ASN1_I2D_put_EXP_opt(&(a.tlsext_signed_cert_timestamp_list),
-				i2d_ASN1_OCTET_STRING, 15, v15);
-	if (in->ocsp_response > 0)
-		M_ASN1_I2D_put_EXP_opt(&(a.ocsp_response), i2d_ASN1_OCTET_STRING, 16, v16);
+  return len;
 
-	M_ASN1_I2D_finish();
-	}
+err:
+  CBB_cleanup(&cbb);
+  return -1;
+}
 
 /* d2i_SSL_SESSION_get_string gets an optional ASN.1 OCTET STRING
  * explicitly tagged with |tag| from |cbs| and saves it in |*out|. On

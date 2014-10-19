@@ -2434,6 +2434,7 @@ OPENSSL_EXPORT void ERR_load_SSL_strings(void);
 #define SSL_F_ssl_ctx_log_rsa_client_key_exchange 285
 #define SSL_F_ssl_ctx_log_master_secret 286
 #define SSL_F_d2i_SSL_SESSION 287
+#define SSL_F_i2d_SSL_SESSION 288
 #define SSL_R_UNABLE_TO_FIND_ECDH_PARAMETERS 100
 #define SSL_R_DECRYPTION_FAILED_OR_BAD_RECORD_MAC 101
 #define SSL_R_INVALID_NULL_CMD_NAME 102

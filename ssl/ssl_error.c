@@ -88,6 +88,7 @@ const ERR_STRING_DATA SSL_error_string_data[] = {
   {ERR_PACK(ERR_LIB_SSL, SSL_F_dtls1_write_app_data_bytes, 0), "dtls1_write_app_data_bytes"},
   {ERR_PACK(ERR_LIB_SSL, SSL_F_fclose, 0), "fclose"},
   {ERR_PACK(ERR_LIB_SSL, SSL_F_fprintf, 0), "fprintf"},
+  {ERR_PACK(ERR_LIB_SSL, SSL_F_i2d_SSL_SESSION, 0), "i2d_SSL_SESSION"},
   {ERR_PACK(ERR_LIB_SSL, SSL_F_printf, 0), "printf"},
   {ERR_PACK(ERR_LIB_SSL, SSL_F_read_authz, 0), "read_authz"},
   {ERR_PACK(ERR_LIB_SSL, SSL_F_ssl23_accept, 0), "ssl23_accept"},
