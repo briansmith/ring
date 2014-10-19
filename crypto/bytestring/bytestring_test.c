@@ -443,6 +443,85 @@ static int test_ber_convert(void) {
                         sizeof(kNSSBER));
 }
 
+typedef struct {
+  uint64_t value;
+  const char *encoding;
+  size_t encoding_len;
+} ASN1_UINT64_TEST;
+
+static const ASN1_UINT64_TEST kAsn1Uint64Tests[] = {
+  {0, "\x02\x01\x00", 3},
+  {1, "\x02\x01\x01", 3},
+  {127, "\x02\x01\x7f", 3},
+  {128, "\x02\x02\x00\x80", 4},
+  {0xdeadbeef, "\x02\x05\x00\xde\xad\xbe\xef", 7},
+  {0x0102030405060708, "\x02\x08\x01\x02\x03\x04\x05\x06\x07\x08", 10},
+  {0xffffffffffffffff, "\x02\x09\x00\xff\xff\xff\xff\xff\xff\xff\xff", 11},
+};
+
+typedef struct {
+  const char *encoding;
+  size_t encoding_len;
+} ASN1_INVALID_UINT64_TEST;
+
+static const ASN1_INVALID_UINT64_TEST kAsn1InvalidUint64Tests[] = {
+  /* Bad tag. */
+  {"\x03\x01\x00", 3},
+  /* Negative number. */
+  {"\x02\x01\x80", 3},
+  /* Overflow */
+  {"\x02\x09\x01\x00\x00\x00\x00\x00\x00\x00\x00", 11},
+};
+
+static int test_asn1_uint64(void) {
+  size_t i;
+
+  for (i = 0; i < sizeof(kAsn1Uint64Tests) / sizeof(kAsn1Uint64Tests[0]); i++) {
+    const ASN1_UINT64_TEST *test = &kAsn1Uint64Tests[i];
+    CBS cbs;
+    uint64_t value;
+    CBB cbb;
+    uint8_t *out;
+    size_t len;
+
+    CBS_init(&cbs, (const uint8_t *)test->encoding, test->encoding_len);
+    if (!CBS_get_asn1_uint64(&cbs, &value) ||
+        CBS_len(&cbs) != 0 ||
+        value != test->value) {
+      return 0;
+    }
+
+    if (!CBB_init(&cbb, 0)) {
+      return 0;
+    }
+    if (!CBB_add_asn1_uint64(&cbb, test->value) ||
+        !CBB_finish(&cbb, &out, &len)) {
+      CBB_cleanup(&cbb);
+      return 0;
+    }
+    if (len != test->encoding_len || memcmp(out, test->encoding, len) != 0) {
+      free(out);
+      return 0;
+    }
+    free(out);
+  }
+
+  for (i = 0;
+       i < sizeof(kAsn1InvalidUint64Tests) / sizeof(kAsn1InvalidUint64Tests[0]);
+       i++) {
+    const ASN1_INVALID_UINT64_TEST *test = &kAsn1InvalidUint64Tests[i];
+    CBS cbs;
+    uint64_t value;
+
+    CBS_init(&cbs, (const uint8_t *)test->encoding, test->encoding_len);
+    if (CBS_get_asn1_uint64(&cbs, &value)) {
+      return 0;
+    }
+  }
+
+  return 1;
+}
+
 int main(void) {
   CRYPTO_library_init();
 
@@ -457,7 +536,8 @@ int main(void) {
       !test_cbb_misuse() ||
       !test_cbb_prefixed() ||
       !test_cbb_asn1() ||
-      !test_ber_convert()) {
+      !test_ber_convert() ||
+      !test_asn1_uint64()) {
     return 1;
   }
 

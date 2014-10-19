@@ -336,3 +336,39 @@ int CBB_add_u24(CBB *cbb, uint32_t value) {
 
   return cbb_buffer_add_u(cbb->base, value, 3);
 }
+
+int CBB_add_asn1_uint64(CBB *cbb, uint64_t value) {
+  CBB child;
+  size_t i;
+  int started = 0;
+
+  if (!CBB_add_asn1(cbb, &child, CBS_ASN1_INTEGER)) {
+    return 0;
+  }
+
+  for (i = 0; i < 8; i++) {
+    uint8_t byte = (value >> 8*(7-i)) & 0xff;
+    if (!started) {
+      if (byte == 0) {
+        /* Don't encode leading zeros. */
+        continue;
+      }
+      /* If the high bit is set, add a padding byte to make it
+       * unsigned. */
+      if ((byte & 0x80) && !CBB_add_u8(&child, 0)) {
+        return 0;
+      }
+      started = 1;
+    }
+    if (!CBB_add_u8(&child, byte)) {
+      return 0;
+    }
+  }
+
+  /* 0 is encoded as a single 0, not the empty string. */
+  if (!started && !CBB_add_u8(&child, 0)) {
+    return 0;
+  }
+
+  return CBB_flush(cbb);
+}
