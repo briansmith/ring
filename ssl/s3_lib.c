@@ -1019,6 +1019,10 @@ void ssl3_free(SSL *s)
 		sk_X509_NAME_pop_free(s->s3->tmp.ca_names,X509_NAME_free);
 	if (s->s3->tmp.certificate_types != NULL)
 		OPENSSL_free(s->s3->tmp.certificate_types);
+	if (s->s3->tmp.peer_ecpointformatlist)
+		OPENSSL_free(s->s3->tmp.peer_ecpointformatlist);
+	if (s->s3->tmp.peer_ellipticcurvelist)
+		OPENSSL_free(s->s3->tmp.peer_ellipticcurvelist);
 	if (s->s3->handshake_buffer) {
 		BIO_free(s->s3->handshake_buffer);
 	}
@@ -1275,12 +1279,8 @@ long ssl3_ctrl(SSL *s, int cmd, long larg, void *parg)
 
 	case SSL_CTRL_GET_CURVES:
 		{
-		const uint16_t *clist;
-		size_t clistlen;
-		if (!s->session)
-			return 0;
-		clist = s->session->tlsext_ellipticcurvelist;
-		clistlen = s->session->tlsext_ellipticcurvelist_length;
+		const uint16_t *clist = s->s3->tmp.peer_ellipticcurvelist;
+		size_t clistlen = s->s3->tmp.peer_ellipticcurvelist_length;
 		if (parg)
 			{
 			size_t i;
@@ -1385,12 +1385,11 @@ long ssl3_ctrl(SSL *s, int cmd, long larg, void *parg)
 			}
 	case SSL_CTRL_GET_EC_POINT_FORMATS:
 		{
-		SSL_SESSION *sess = s->session;
-		const unsigned char **pformat = parg;
-		if (!sess || !sess->tlsext_ecpointformatlist)
+		if (!s->s3->tmp.peer_ecpointformatlist)
 			return 0;
-		*pformat = sess->tlsext_ecpointformatlist;
-		return (int)sess->tlsext_ecpointformatlist_length;
+		const uint8_t **pformat = parg;
+		*pformat = s->s3->tmp.peer_ecpointformatlist;
+		return (int)s->s3->tmp.peer_ecpointformatlist_length;
 		}
 
 	case SSL_CTRL_CHANNEL_ID:

@@ -440,10 +440,6 @@ struct ssl_session_st
 	 * efficient and to implement a maximum cache size. */
 	struct ssl_session_st *prev,*next;
 	char *tlsext_hostname;
-	size_t tlsext_ecpointformatlist_length;
-	unsigned char *tlsext_ecpointformatlist; /* peer's list */
-	size_t tlsext_ellipticcurvelist_length;
-	uint16_t *tlsext_ellipticcurvelist; /* peer's list */
 	/* RFC4507 info */
 	uint8_t *tlsext_tick;	/* Session ticket */
 	size_t tlsext_ticklen;		/* Session ticket length */

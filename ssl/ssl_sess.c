@@ -709,10 +709,6 @@ void SSL_SESSION_free(SSL_SESSION *ss)
 	if (ss->peer != NULL) X509_free(ss->peer);
 	if (ss->tlsext_hostname != NULL) OPENSSL_free(ss->tlsext_hostname);
 	if (ss->tlsext_tick != NULL) OPENSSL_free(ss->tlsext_tick);
-	ss->tlsext_ecpointformatlist_length = 0;
-	if (ss->tlsext_ecpointformatlist != NULL) OPENSSL_free(ss->tlsext_ecpointformatlist);
-	ss->tlsext_ellipticcurvelist_length = 0;
-	if (ss->tlsext_ellipticcurvelist != NULL) OPENSSL_free(ss->tlsext_ellipticcurvelist);
 	if (ss->tlsext_signed_cert_timestamp_list != NULL)
 		OPENSSL_free(ss->tlsext_signed_cert_timestamp_list);
 	if (ss->ocsp_response != NULL)

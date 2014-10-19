@@ -441,8 +441,8 @@ static void tls1_get_curvelist(SSL *s, int get_peer_curves,
 	{
 	if (get_peer_curves)
 		{
-		*out_curve_ids = s->session->tlsext_ellipticcurvelist;
-		*out_curve_ids_len = s->session->tlsext_ellipticcurvelist_length;
+		*out_curve_ids = s->s3->tmp.peer_ellipticcurvelist;
+		*out_curve_ids_len = s->s3->tmp.peer_ellipticcurvelist_length;
 		return;
 		}
 
@@ -590,8 +590,8 @@ static int tls1_curve_params_from_ec_key(uint16_t *out_curve_id, uint8_t *out_co
  * peer's point format preferences. */
 static int tls1_check_point_format(SSL *s, uint8_t comp_id)
 	{
-	uint8_t *p = s->session->tlsext_ecpointformatlist;
-	size_t plen = s->session->tlsext_ecpointformatlist_length;
+	uint8_t *p = s->s3->tmp.peer_ecpointformatlist;
+	size_t plen = s->s3->tmp.peer_ecpointformatlist_length;
 	size_t i;
 
 	/* If point formats extension present check it, otherwise everything
@@ -1206,7 +1206,7 @@ unsigned char *ssl_add_serverhello_tlsext(SSL *s, unsigned char *buf, unsigned c
 	unsigned long alg_k = s->s3->tmp.new_cipher->algorithm_mkey;
 	unsigned long alg_a = s->s3->tmp.new_cipher->algorithm_auth;
 	int using_ecc = (alg_k & SSL_kEECDH) || (alg_a & SSL_aECDSA);
-	using_ecc = using_ecc && (s->session->tlsext_ecpointformatlist != NULL);
+	using_ecc = using_ecc && (s->s3->tmp.peer_ecpointformatlist != NULL);
 	/* don't add extensions for SSLv3, unless doing secure renegotiation */
 	if (s->version == SSL3_VERSION && !s->s3->send_connection_binding)
 		return orig;
@@ -1436,7 +1436,7 @@ static int ssl_scan_clienthello_tlsext(SSL *s, CBS *cbs, int *out_alert)
 		OPENSSL_free(s->cert->peer_sigalgs);
 		s->cert->peer_sigalgs = NULL;
 		}
-	/* Clear any shared sigtnature algorithms */
+	/* Clear any shared signature algorithms */
 	if (s->cert->shared_sigalgs)
 		{
 		OPENSSL_free(s->cert->shared_sigalgs);
@@ -1447,6 +1447,19 @@ static int ssl_scan_clienthello_tlsext(SSL *s, CBS *cbs, int *out_alert)
 		{
 		s->cert->pkeys[i].digest = NULL;
 		s->cert->pkeys[i].valid_flags = 0;
+		}
+	/* Clear ECC extensions */
+	if (s->s3->tmp.peer_ecpointformatlist != 0)
+		{
+		OPENSSL_free(s->s3->tmp.peer_ecpointformatlist);
+		s->s3->tmp.peer_ecpointformatlist = NULL;
+		s->s3->tmp.peer_ecpointformatlist_length = 0;
+		}
+	if (s->s3->tmp.peer_ellipticcurvelist != 0)
+		{
+		OPENSSL_free(s->s3->tmp.peer_ellipticcurvelist);
+		s->s3->tmp.peer_ellipticcurvelist = NULL;
+		s->s3->tmp.peer_ellipticcurvelist_length = 0;
 		}
 
 	/* There may be no extensions. */
@@ -1593,15 +1606,12 @@ static int ssl_scan_clienthello_tlsext(SSL *s, CBS *cbs, int *out_alert)
 				return 0;
 				}
 
-			if (!s->hit)
+			if (!CBS_stow(&ec_point_format_list,
+					&s->s3->tmp.peer_ecpointformatlist,
+					&s->s3->tmp.peer_ecpointformatlist_length))
 				{
-				if (!CBS_stow(&ec_point_format_list,
-						&s->session->tlsext_ecpointformatlist,
-						&s->session->tlsext_ecpointformatlist_length))
-					{
-					*out_alert = SSL_AD_INTERNAL_ERROR;
-					return 0;
-					}
+				*out_alert = SSL_AD_INTERNAL_ERROR;
+				return 0;
 				}
 			}
 		else if (type == TLSEXT_TYPE_elliptic_curves)
@@ -1618,37 +1628,34 @@ static int ssl_scan_clienthello_tlsext(SSL *s, CBS *cbs, int *out_alert)
 				return 0;
 				}
 
-			if (!s->hit)
+			if (s->s3->tmp.peer_ellipticcurvelist)
 				{
-				if (s->session->tlsext_ellipticcurvelist)
-					{
-					OPENSSL_free(s->session->tlsext_ellipticcurvelist);
-					s->session->tlsext_ellipticcurvelist_length = 0;
-					}
-				s->session->tlsext_ellipticcurvelist =
-					(uint16_t*)OPENSSL_malloc(CBS_len(&elliptic_curve_list));
-				if (s->session->tlsext_ellipticcurvelist == NULL)
-					{
-					*out_alert = SSL_AD_INTERNAL_ERROR;
-					return 0;
-					}
-				num_curves = CBS_len(&elliptic_curve_list) / 2;
-				for (i = 0; i < num_curves; i++)
-					{
-					if (!CBS_get_u16(&elliptic_curve_list,
-							&s->session->tlsext_ellipticcurvelist[i]))
-						{
-						*out_alert = SSL_AD_INTERNAL_ERROR;
-						return 0;
-						}
-					}
-				if (CBS_len(&elliptic_curve_list) != 0)
-					{
-					*out_alert = SSL_AD_INTERNAL_ERROR;
-					return 0;
-					}
-				s->session->tlsext_ellipticcurvelist_length = num_curves;
+				OPENSSL_free(s->s3->tmp.peer_ellipticcurvelist);
+				s->s3->tmp.peer_ellipticcurvelist_length = 0;
 				}
+			s->s3->tmp.peer_ellipticcurvelist =
+				(uint16_t*)OPENSSL_malloc(CBS_len(&elliptic_curve_list));
+			if (s->s3->tmp.peer_ellipticcurvelist == NULL)
+					{
+					*out_alert = SSL_AD_INTERNAL_ERROR;
+					return 0;
+					}
+			num_curves = CBS_len(&elliptic_curve_list) / 2;
+			for (i = 0; i < num_curves; i++)
+				{
+				if (!CBS_get_u16(&elliptic_curve_list,
+						&s->s3->tmp.peer_ellipticcurvelist[i]))
+					{
+					*out_alert = SSL_AD_INTERNAL_ERROR;
+					return 0;
+					}
+				}
+			if (CBS_len(&elliptic_curve_list) != 0)
+				{
+				*out_alert = SSL_AD_INTERNAL_ERROR;
+				return 0;
+				}
+			s->s3->tmp.peer_ellipticcurvelist_length = num_curves;
 			}
 		else if (type == TLSEXT_TYPE_session_ticket)
 			{
@@ -1851,6 +1858,14 @@ static int ssl_scan_serverhello_tlsext(SSL *s, CBS *cbs, int *out_alert)
 		s->s3->alpn_selected = NULL;
 		}
 
+	/* Clear ECC extensions */
+	if (s->s3->tmp.peer_ecpointformatlist != 0)
+		{
+		OPENSSL_free(s->s3->tmp.peer_ecpointformatlist);
+		s->s3->tmp.peer_ecpointformatlist = NULL;
+		s->s3->tmp.peer_ecpointformatlist_length = 0;
+		}
+
 	/* There may be no extensions. */
 	if (CBS_len(cbs) == 0)
 		{
@@ -1911,15 +1926,12 @@ static int ssl_scan_serverhello_tlsext(SSL *s, CBS *cbs, int *out_alert)
 				return 0;
 				}
 
-			if (!s->hit)
+			if (!CBS_stow(&ec_point_format_list,
+					&s->s3->tmp.peer_ecpointformatlist,
+					&s->s3->tmp.peer_ecpointformatlist_length))
 				{
-				if (!CBS_stow(&ec_point_format_list,
-						&s->session->tlsext_ecpointformatlist,
-						&s->session->tlsext_ecpointformatlist_length))
-					{
-					*out_alert = SSL_AD_INTERNAL_ERROR;
-					return 0;
-					}
+				*out_alert = SSL_AD_INTERNAL_ERROR;
+				return 0;
 				}
 			}
 		else if (type == TLSEXT_TYPE_session_ticket)
