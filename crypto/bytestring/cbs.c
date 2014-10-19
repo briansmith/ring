@@ -305,3 +305,54 @@ int CBS_get_asn1_uint64(CBS *cbs, uint64_t *out) {
 
   return 1;
 }
+
+int CBS_get_optional_asn1(CBS *cbs, CBS *out, int *out_present, unsigned tag) {
+  if (CBS_peek_asn1_tag(cbs, tag)) {
+    if (!CBS_get_asn1(cbs, out, tag)) {
+      return 0;
+    }
+    *out_present = 1;
+  } else {
+    *out_present = 0;
+  }
+  return 1;
+}
+
+int CBS_get_optional_asn1_octet_string(CBS *cbs, CBS *out, int *out_present,
+                                       unsigned tag) {
+  CBS child;
+  int present;
+  if (!CBS_get_optional_asn1(cbs, &child, &present, tag)) {
+    return 0;
+  }
+  if (present) {
+    if (!CBS_get_asn1(&child, out, CBS_ASN1_OCTETSTRING) ||
+        CBS_len(&child) != 0) {
+      return 0;
+    }
+  } else {
+    CBS_init(out, NULL, 0);
+  }
+  if (out_present) {
+    *out_present = present;
+  }
+  return 1;
+}
+
+int CBS_get_optional_asn1_uint64(CBS *cbs, uint64_t *out, unsigned tag,
+                                 uint64_t default_value) {
+  CBS child;
+  int present;
+  if (!CBS_get_optional_asn1(cbs, &child, &present, tag)) {
+    return 0;
+  }
+  if (present) {
+    if (!CBS_get_asn1_uint64(&child, out) ||
+        CBS_len(&child) != 0) {
+      return 0;
+    }
+  } else {
+    *out = default_value;
+  }
+  return 1;
+}

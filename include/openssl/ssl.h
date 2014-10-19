@@ -359,34 +359,8 @@ struct ssl_method_st
 	long (*ssl_ctx_callback_ctrl)(SSL_CTX *s, int cb_id, void (*fp)(void));
 	};
 
-/* Lets make this into an ASN.1 type structure as follows
- * SSL_SESSION_ID ::= SEQUENCE {
- *	version 		INTEGER,	-- structure version number
- *	SSLversion 		INTEGER,	-- SSL version number
- *	Cipher 			OCTET STRING,	-- the 3 byte cipher ID
- *	Session_ID 		OCTET STRING,	-- the Session ID
- *	Master_key 		OCTET STRING,	-- the master key
- *	Key_Arg [ 0 ] IMPLICIT	OCTET STRING,	-- the optional Key argument
- *	Time [ 1 ] EXPLICIT	INTEGER,	-- optional Start Time
- *	Timeout [ 2 ] EXPLICIT	INTEGER,	-- optional Timeout ins seconds
- *	Peer [ 3 ] EXPLICIT	X509,		-- optional Peer Certificate
- *	Session_ID_context [ 4 ] EXPLICIT OCTET STRING,   -- the Session ID context
- *	Verify_result [ 5 ] EXPLICIT INTEGER,   -- X509_V_... code for `Peer'
- *	HostName [ 6 ] EXPLICIT OCTET STRING,   -- optional HostName from servername TLS extension 
- *	PSK_identity_hint [ 7 ] EXPLICIT OCTET STRING, -- optional PSK identity hint
- *	PSK_identity [ 8 ] EXPLICIT OCTET STRING,  -- optional PSK identity
- *	Ticket_lifetime_hint [9] EXPLICIT INTEGER, -- server's lifetime hint for session ticket
- *	Ticket [10]             EXPLICIT OCTET STRING, -- session ticket (clients only)
- *	Compression_meth [11]   EXPLICIT OCTET STRING, -- optional compression method
- *	SRP_username [ 12 ] EXPLICIT OCTET STRING -- optional SRP username
- *	Peer SHA256 [13]        EXPLICIT OCTET STRING, -- optional SHA256 hash of Peer certifiate
- *	original handshake hash [14] EXPLICIT OCTET STRING, -- optional original handshake hash
- *	tlsext_signed_cert_timestamp_list [15] EXPLICIT OCTET STRING, -- optional signed cert timestamp list extension
- *	ocsp_response [16] EXPLICIT OCTET STRING, -- optional saved OCSP response from the server
- *	}
- * Look in ssl/ssl_asn1.c for more details
- * I'm using EXPLICIT tags so I can read the damn things using asn1parse :-).
- */
+/* An SSL_SESSION represents an SSL session that may be resumed in an
+ * abbreviated handshake. */
 struct ssl_session_st
 	{
 	int ssl_version;	/* what ssl version session info is
@@ -2459,6 +2433,7 @@ OPENSSL_EXPORT void ERR_load_SSL_strings(void);
 #define SSL_F_ssl3_cert_verify_hash 284
 #define SSL_F_ssl_ctx_log_rsa_client_key_exchange 285
 #define SSL_F_ssl_ctx_log_master_secret 286
+#define SSL_F_d2i_SSL_SESSION 287
 #define SSL_R_UNABLE_TO_FIND_ECDH_PARAMETERS 100
 #define SSL_R_DECRYPTION_FAILED_OR_BAD_RECORD_MAC 101
 #define SSL_R_INVALID_NULL_CMD_NAME 102
@@ -2772,6 +2747,7 @@ OPENSSL_EXPORT void ERR_load_SSL_strings(void);
 #define SSL_R_UNPROCESSED_HANDSHAKE_DATA 440
 #define SSL_R_HANDSHAKE_RECORD_BEFORE_CCS 441
 #define SSL_R_SESSION_MAY_NOT_BE_CREATED 442
+#define SSL_R_INVALID_SSL_SESSION 443
 #define SSL_R_SSLV3_ALERT_CLOSE_NOTIFY 1000
 #define SSL_R_SSLV3_ALERT_UNEXPECTED_MESSAGE 1010
 #define SSL_R_SSLV3_ALERT_BAD_RECORD_MAC 1020
