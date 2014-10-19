@@ -117,8 +117,6 @@ static int next_protos_advertised_callback(SSL *ssl,
   if (config->advertise_npn.empty())
     return SSL_TLSEXT_ERR_NOACK;
 
-  // TODO(davidben): Support passing byte strings with NULs to the
-  // test shim.
   *out = (const uint8_t*)config->advertise_npn.data();
   *out_len = config->advertise_npn.size();
   return SSL_TLSEXT_ERR_OK;
