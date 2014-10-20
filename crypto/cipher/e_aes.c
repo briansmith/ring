@@ -612,7 +612,7 @@ static const EVP_CIPHER aes_128_ctr = {
 
 static const EVP_CIPHER aes_128_ecb = {
     NID_aes_128_ecb,     16 /* block_size */, 16 /* key_size */,
-    16 /* iv_len */,     sizeof(EVP_AES_KEY), EVP_CIPH_ECB_MODE,
+    0 /* iv_len */,      sizeof(EVP_AES_KEY), EVP_CIPH_ECB_MODE,
     NULL /* app_data */, aes_init_key,        aes_ecb_cipher,
     NULL /* cleanup */,  NULL /* ctrl */};
 
@@ -640,7 +640,7 @@ static const EVP_CIPHER aes_256_ctr = {
 
 static const EVP_CIPHER aes_256_ecb = {
     NID_aes_128_ecb,     16 /* block_size */, 32 /* key_size */,
-    16 /* iv_len */,     sizeof(EVP_AES_KEY), EVP_CIPH_ECB_MODE,
+    0 /* iv_len */,      sizeof(EVP_AES_KEY), EVP_CIPH_ECB_MODE,
     NULL /* app_data */, aes_init_key,        aes_ecb_cipher,
     NULL /* cleanup */,  NULL /* ctrl */};
 
@@ -760,7 +760,7 @@ static const EVP_CIPHER aesni_128_ctr = {
 
 static const EVP_CIPHER aesni_128_ecb = {
     NID_aes_128_ecb,     16 /* block_size */, 16 /* key_size */,
-    16 /* iv_len */,     sizeof(EVP_AES_KEY), EVP_CIPH_ECB_MODE,
+    0 /* iv_len */,      sizeof(EVP_AES_KEY), EVP_CIPH_ECB_MODE,
     NULL /* app_data */, aesni_init_key,      aesni_ecb_cipher,
     NULL /* cleanup */,  NULL /* ctrl */};
 
@@ -788,7 +788,7 @@ static const EVP_CIPHER aesni_256_ctr = {
 
 static const EVP_CIPHER aesni_256_ecb = {
     NID_aes_128_ecb,     16 /* block_size */, 32 /* key_size */,
-    16 /* iv_len */,     sizeof(EVP_AES_KEY), EVP_CIPH_ECB_MODE,
+    0 /* iv_len */,      sizeof(EVP_AES_KEY), EVP_CIPH_ECB_MODE,
     NULL /* app_data */, aesni_init_key,      aesni_ecb_cipher,
     NULL /* cleanup */,  NULL /* ctrl */};
 
