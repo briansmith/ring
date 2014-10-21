@@ -467,6 +467,8 @@ typedef struct {
 static const ASN1_INVALID_UINT64_TEST kAsn1InvalidUint64Tests[] = {
   /* Bad tag. */
   {"\x03\x01\x00", 3},
+  /* Empty contents. */
+  {"\x02\x00", 2},
   /* Negative number. */
   {"\x02\x01\x80", 3},
   /* Overflow */
