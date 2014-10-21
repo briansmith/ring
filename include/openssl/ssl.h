@@ -1987,9 +1987,7 @@ OPENSSL_EXPORT int	SSL_set_generate_session_id(SSL *, GEN_SESSION_CB);
 OPENSSL_EXPORT int	SSL_has_matching_session_id(const SSL *ssl, const unsigned char *id, unsigned int id_len);
 OPENSSL_EXPORT SSL_SESSION *d2i_SSL_SESSION(SSL_SESSION **a,const unsigned char **pp, long length);
 
-#ifdef HEADER_X509_H
 OPENSSL_EXPORT X509 *	SSL_get_peer_certificate(const SSL *s);
-#endif
 
 OPENSSL_EXPORT STACK_OF(X509) *SSL_get_peer_cert_chain(const SSL *s);
 
