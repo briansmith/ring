@@ -2535,61 +2535,62 @@ int ssl3_send_new_session_ticket(SSL *s)
 	{
 	if (s->state == SSL3_ST_SW_SESSION_TICKET_A)
 		{
-		unsigned char *p, *senc, *macstart;
-		const unsigned char *const_p;
-		int len, slen_full, slen;
-		SSL_SESSION *sess;
+		uint8_t *session;
+		size_t session_len;
+		uint8_t *p, *macstart;
+		int len;
 		unsigned int hlen;
 		EVP_CIPHER_CTX ctx;
 		HMAC_CTX hctx;
 		SSL_CTX *tctx = s->initial_ctx;
 		unsigned char iv[EVP_MAX_IV_LENGTH];
 		unsigned char key_name[16];
+		/* The maximum overhead of encrypting the session is 16 (key
+		 * name) + IV + one block of encryption overhead + HMAC.  */
+		const size_t max_ticket_overhead = 16 + EVP_MAX_IV_LENGTH +
+			EVP_MAX_BLOCK_LENGTH + EVP_MAX_MD_SIZE;
 
-		/* get session encoding length */
-		slen_full = i2d_SSL_SESSION(s->session, NULL);
-		/* Some length values are 16 bits, so forget it if session is
- 		 * too long
- 		 */
-		if (slen_full > 0xFF00)
-			return -1;
-		senc = OPENSSL_malloc(slen_full);
-		if (!senc)
-			return -1;
-		p = senc;
-		i2d_SSL_SESSION(s->session, &p);
-
-		/* create a fresh copy (not shared with other threads) to clean up */
-		const_p = senc;
-		sess = d2i_SSL_SESSION(NULL, &const_p, slen_full);
-		if (sess == NULL)
+		/* Serialize the SSL_SESSION to be encoded into the ticket. */
+		if (!SSL_SESSION_to_bytes_for_ticket(s->session, &session,
+				&session_len))
 			{
-			OPENSSL_free(senc);
 			return -1;
 			}
-		sess->session_id_length = 0; /* ID is irrelevant for the ticket */
 
-		slen = i2d_SSL_SESSION(sess, NULL);
-		if (slen > slen_full) /* shouldn't ever happen */
+		/* If the session is too long, emit a dummy value rather than
+		 * abort the connection. */
+		if (session_len > 0xFFFF - max_ticket_overhead)
 			{
-			OPENSSL_free(senc);
-			return -1;
+			const char kTicketPlaceholder[] = "TICKET TOO LARGE";
+			size_t placeholder_len = strlen(kTicketPlaceholder);
+
+			OPENSSL_free(session);
+
+			p = ssl_handshake_start(s);
+			/* Emit ticket_lifetime_hint. */
+			l2n(0, p);
+			/* Emit ticket. */
+			s2n(placeholder_len, p);
+			memcpy(p, kTicketPlaceholder, placeholder_len);
+			p += placeholder_len;
+
+			len = p - ssl_handshake_start(s);
+			ssl_set_handshake_header(s, SSL3_MT_NEWSESSION_TICKET, len);
+			s->state = SSL3_ST_SW_SESSION_TICKET_B;
+			return ssl_do_write(s);
 			}
-		p = senc;
-		i2d_SSL_SESSION(sess, &p);
-		SSL_SESSION_free(sess);
 
 		/* Grow buffer if need be: the length calculation is as
- 		 * follows handshake_header_length +
+		 * follows: handshake_header_length +
  		 * 4 (ticket lifetime hint) + 2 (ticket length) +
- 		 * 16 (key name) + max_iv_len (iv length) +
- 		 * session_length + max_enc_block_size (max encrypted session
- 		 * length) + max_md_size (HMAC).
- 		 */
+		 * max_ticket_overhead + * session_length */
 		if (!BUF_MEM_grow(s->init_buf,
-			SSL_HM_HEADER_LENGTH(s) + 22 + EVP_MAX_IV_LENGTH +
-			EVP_MAX_BLOCK_LENGTH + EVP_MAX_MD_SIZE + slen))
+				SSL_HM_HEADER_LENGTH(s) + 6 +
+				max_ticket_overhead + session_len))
+			{
+			OPENSSL_free(session);
 			return -1;
+			}
 		p = ssl_handshake_start(s);
 		EVP_CIPHER_CTX_init(&ctx);
 		HMAC_CTX_init(&hctx);
@@ -2602,7 +2603,7 @@ int ssl3_send_new_session_ticket(SSL *s)
 			if (tctx->tlsext_ticket_key_cb(s, key_name, iv, &ctx,
 							 &hctx, 1) < 0)
 				{
-				OPENSSL_free(senc);
+				OPENSSL_free(session);
 				return -1;
 				}
 			}
@@ -2632,7 +2633,7 @@ int ssl3_send_new_session_ticket(SSL *s)
 		memcpy(p, iv, EVP_CIPHER_CTX_iv_length(&ctx));
 		p += EVP_CIPHER_CTX_iv_length(&ctx);
 		/* Encrypt session data */
-		EVP_EncryptUpdate(&ctx, p, &len, senc, slen);
+		EVP_EncryptUpdate(&ctx, p, &len, session, session_len);
 		p += len;
 		EVP_EncryptFinal_ex(&ctx, p, &len);
 		p += len;
@@ -2651,7 +2652,7 @@ int ssl3_send_new_session_ticket(SSL *s)
 		p = ssl_handshake_start(s) + 4;
 		s2n(len - 6, p);
 		s->state=SSL3_ST_SW_SESSION_TICKET_B;
-		OPENSSL_free(senc);
+		OPENSSL_free(session);
 		}
 
 	/* SSL3_ST_SW_SESSION_TICKET_B */

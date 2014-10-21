@@ -127,7 +127,7 @@ static const int kTimeoutTag =
     CBS_ASN1_CONSTRUCTED | CBS_ASN1_CONTEXT_SPECIFIC | 2;
 static const int kPeerTag =
     CBS_ASN1_CONSTRUCTED | CBS_ASN1_CONTEXT_SPECIFIC | 3;
-static const int kSessionIDContextTag =
+ static const int kSessionIDContextTag =
     CBS_ASN1_CONSTRUCTED | CBS_ASN1_CONTEXT_SPECIFIC | 4;
 static const int kVerifyResultTag =
     CBS_ASN1_CONSTRUCTED | CBS_ASN1_CONTEXT_SPECIFIC | 5;
@@ -152,11 +152,10 @@ static const int kOCSPResponseTag =
 static const int kExtendedMasterSecretTag =
     CBS_ASN1_CONSTRUCTED | CBS_ASN1_CONTEXT_SPECIFIC | 17;
 
-int i2d_SSL_SESSION(SSL_SESSION *in, uint8_t **pp) {
+static int SSL_SESSION_to_bytes_full(SSL_SESSION *in, uint8_t **out_data,
+                                     size_t *out_len, int for_ticket) {
   CBB cbb, session, child, child2;
   uint16_t cipher_id;
-  uint8_t *out;
-  size_t len;
 
   if (in == NULL || (in->cipher == NULL && in->cipher_id == 0)) {
     return 0;
@@ -178,7 +177,9 @@ int i2d_SSL_SESSION(SSL_SESSION *in, uint8_t **pp) {
       !CBB_add_asn1(&session, &child, CBS_ASN1_OCTETSTRING) ||
       !CBB_add_u16(&child, cipher_id) ||
       !CBB_add_asn1(&session, &child, CBS_ASN1_OCTETSTRING) ||
-      !CBB_add_bytes(&child, in->session_id, in->session_id_length) ||
+      /* The session ID is irrelevant for a session ticket. */
+      !CBB_add_bytes(&child, in->session_id,
+                     for_ticket ? 0 : in->session_id_length) ||
       !CBB_add_asn1(&session, &child, CBS_ASN1_OCTETSTRING) ||
       !CBB_add_bytes(&child, in->master_key, in->master_key_length)) {
     OPENSSL_PUT_ERROR(SSL, i2d_SSL_SESSION, ERR_R_MALLOC_FAILURE);
@@ -330,9 +331,32 @@ int i2d_SSL_SESSION(SSL_SESSION *in, uint8_t **pp) {
     }
   }
 
-  if (!CBB_finish(&cbb, &out, &len)) {
+  if (!CBB_finish(&cbb, out_data, out_len)) {
     OPENSSL_PUT_ERROR(SSL, i2d_SSL_SESSION, ERR_R_MALLOC_FAILURE);
     goto err;
+  }
+  return 1;
+
+ err:
+  CBB_cleanup(&cbb);
+  return 0;
+}
+
+int SSL_SESSION_to_bytes(SSL_SESSION *in, uint8_t **out_data, size_t *out_len) {
+  return SSL_SESSION_to_bytes_full(in, out_data, out_len, 0);
+}
+
+int SSL_SESSION_to_bytes_for_ticket(SSL_SESSION *in, uint8_t **out_data,
+                                    size_t *out_len) {
+  return SSL_SESSION_to_bytes_full(in, out_data, out_len, 1);
+}
+
+int i2d_SSL_SESSION(SSL_SESSION *in, uint8_t **pp) {
+  uint8_t *out;
+  size_t len;
+
+  if (!SSL_SESSION_to_bytes(in, &out, &len)) {
+    return -1;
   }
 
   if (len > INT_MAX) {
@@ -341,7 +365,6 @@ int i2d_SSL_SESSION(SSL_SESSION *in, uint8_t **pp) {
     return -1;
   }
 
-  /* TODO(davidben): Provide a safer API and deprecate this one. */
   if (pp) {
     memcpy(*pp, out, len);
     *pp += len;
@@ -349,10 +372,6 @@ int i2d_SSL_SESSION(SSL_SESSION *in, uint8_t **pp) {
   OPENSSL_free(out);
 
   return len;
-
-err:
-  CBB_cleanup(&cbb);
-  return -1;
 }
 
 /* d2i_SSL_SESSION_get_string gets an optional ASN.1 OCTET STRING
