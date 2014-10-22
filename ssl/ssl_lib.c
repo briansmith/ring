@@ -1495,8 +1495,7 @@ int ssl_cipher_list_to_bytes(SSL *s, STACK_OF(SSL_CIPHER) *sk, uint8_t *p)
 	return(p-q);
 	}
 
-STACK_OF(SSL_CIPHER) *ssl_bytes_to_cipher_list(SSL *s, const CBS *cbs,
-					       STACK_OF(SSL_CIPHER) **skp)
+STACK_OF(SSL_CIPHER) *ssl_bytes_to_cipher_list(SSL *s, const CBS *cbs)
 	{
 	CBS cipher_suites = *cbs;
 	const SSL_CIPHER *c;
@@ -1508,14 +1507,14 @@ STACK_OF(SSL_CIPHER) *ssl_bytes_to_cipher_list(SSL *s, const CBS *cbs,
 	if (CBS_len(&cipher_suites) % 2 != 0)
 		{
 		OPENSSL_PUT_ERROR(SSL, ssl_bytes_to_cipher_list, SSL_R_ERROR_IN_RECEIVED_CIPHER_LIST);
-		return(NULL);
+		return NULL;
 		}
-	if ((skp == NULL) || (*skp == NULL))
-		sk=sk_SSL_CIPHER_new_null(); /* change perhaps later */
-	else
+
+	sk = sk_SSL_CIPHER_new_null();
+	if (sk == NULL)
 		{
-		sk= *skp;
-		sk_SSL_CIPHER_zero(sk);
+		OPENSSL_PUT_ERROR(SSL, ssl_bytes_to_cipher_list, ERR_R_MALLOC_FAILURE);
+		goto err;
 		}
 
 	if (!CBS_stow(&cipher_suites,
@@ -1535,10 +1534,10 @@ STACK_OF(SSL_CIPHER) *ssl_bytes_to_cipher_list(SSL *s, const CBS *cbs,
 			goto err;
 			}
 
-		/* Check for SCSV */
+		/* Check for SCSV. */
 		if (s->s3 && cipher_suite == (SSL3_CK_SCSV & 0xffff))
 			{
-			/* SCSV fatal if renegotiating */
+			/* SCSV is fatal if renegotiating. */
 			if (s->renegotiate)
 				{
 				OPENSSL_PUT_ERROR(SSL, ssl_bytes_to_cipher_list, SSL_R_SCSV_RECEIVED_WHEN_RENEGOTIATING);
@@ -1546,25 +1545,25 @@ STACK_OF(SSL_CIPHER) *ssl_bytes_to_cipher_list(SSL *s, const CBS *cbs,
 				goto err;
 				}
 			s->s3->send_connection_binding = 1;
-#ifdef OPENSSL_RI_DEBUG
-			fprintf(stderr, "SCSV received by server\n");
-#endif
 			continue;
 			}
 
-		/* Check for FALLBACK_SCSV */
-		if (s->s3 && cipher_suite == (SSL3_CK_FALLBACK_SCSV & 0xffff) &&
-			s->version < ssl_get_max_version(s))
+		/* Check for FALLBACK_SCSV. */
+		if (s->s3 && cipher_suite == (SSL3_CK_FALLBACK_SCSV & 0xffff))
 			{
-			OPENSSL_PUT_ERROR(SSL, ssl_bytes_to_cipher_list, SSL_R_INAPPROPRIATE_FALLBACK);
-			ssl3_send_alert(s,SSL3_AL_FATAL,SSL3_AD_INAPPROPRIATE_FALLBACK);
-			goto err;
+			if (s->version < ssl_get_max_version(s))
+				{
+				OPENSSL_PUT_ERROR(SSL, ssl_bytes_to_cipher_list, SSL_R_INAPPROPRIATE_FALLBACK);
+				ssl3_send_alert(s, SSL3_AL_FATAL, SSL3_AD_INAPPROPRIATE_FALLBACK);
+				goto err;
+				}
+			continue;
 			}
 
 		c = ssl3_get_cipher_by_value(cipher_suite);
 		if (c != NULL)
 			{
-			if (!sk_SSL_CIPHER_push(sk,c))
+			if (!sk_SSL_CIPHER_push(sk, c))
 				{
 				OPENSSL_PUT_ERROR(SSL, ssl_bytes_to_cipher_list, ERR_R_MALLOC_FAILURE);
 				goto err;
@@ -1572,13 +1571,12 @@ STACK_OF(SSL_CIPHER) *ssl_bytes_to_cipher_list(SSL *s, const CBS *cbs,
 			}
 		}
 
-	if (skp != NULL)
-		*skp=sk;
-	return(sk);
+	return sk;
+
 err:
-	if ((skp == NULL) || (*skp == NULL))
+	if (sk != NULL)
 		sk_SSL_CIPHER_free(sk);
-	return(NULL);
+	return NULL;
 	}
 
 

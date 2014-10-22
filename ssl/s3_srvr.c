@@ -993,7 +993,8 @@ int ssl3_get_client_hello(SSL *s)
 		goto f_err;
 		}
 
-	if (ssl_bytes_to_cipher_list(s, &cipher_suites, &ciphers) == NULL)
+	ciphers = ssl_bytes_to_cipher_list(s, &cipher_suites);
+	if (ciphers == NULL)
 		{
 		goto err;
 		}
