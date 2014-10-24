@@ -19,6 +19,7 @@
 #include <openssl/bytestring.h>
 
 #include "internal.h"
+#include "../internal.h"
 
 
 static int test_skip(void) {
@@ -557,8 +558,10 @@ static const ASN1_UINT64_TEST kAsn1Uint64Tests[] = {
   {127, "\x02\x01\x7f", 3},
   {128, "\x02\x02\x00\x80", 4},
   {0xdeadbeef, "\x02\x05\x00\xde\xad\xbe\xef", 7},
-  {0x0102030405060708, "\x02\x08\x01\x02\x03\x04\x05\x06\x07\x08", 10},
-  {0xffffffffffffffff, "\x02\x09\x00\xff\xff\xff\xff\xff\xff\xff\xff", 11},
+  {OPENSSL_U64(0x0102030405060708),
+   "\x02\x08\x01\x02\x03\x04\x05\x06\x07\x08", 10},
+  {OPENSSL_U64(0xffffffffffffffff),
+    "\x02\x09\x00\xff\xff\xff\xff\xff\xff\xff\xff", 11},
 };
 
 typedef struct {
