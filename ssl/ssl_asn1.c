@@ -98,8 +98,6 @@
  *     cipher                      OCTET STRING, -- two bytes long
  *     sessionID                   OCTET STRING,
  *     masterKey                   OCTET STRING,
- *     keyArg                  [0] IMPLICIT OCTET STRING OPTIONAL,
- *                                 -- ignored: legacy SSLv2-only field.
  *     time                    [1] INTEGER OPTIONAL, -- seconds since UNIX epoch
  *     timeout                 [2] INTEGER OPTIONAL, -- in seconds
  *     peer                    [3] Certificate OPTIONAL,
@@ -410,8 +408,8 @@ static int d2i_SSL_SESSION_get_octet_string(CBS *cbs, uint8_t **out_ptr,
 SSL_SESSION *d2i_SSL_SESSION(SSL_SESSION **a, const uint8_t **pp, long length) {
   SSL_SESSION *ret = NULL;
   CBS cbs, session, cipher, session_id, master_key;
-  CBS key_arg, peer, sid_ctx, peer_sha256, original_handshake_hash;
-  int has_key_arg, has_peer, has_peer_sha256, extended_master_secret;
+  CBS peer, sid_ctx, peer_sha256, original_handshake_hash;
+  int has_peer, has_peer_sha256, extended_master_secret;
   uint64_t version, ssl_version;
   uint64_t session_time, timeout, verify_result, ticket_lifetime_hint;
 
@@ -431,7 +429,6 @@ SSL_SESSION *d2i_SSL_SESSION(SSL_SESSION **a, const uint8_t **pp, long length) {
       !CBS_get_asn1(&session, &cipher, CBS_ASN1_OCTETSTRING) ||
       !CBS_get_asn1(&session, &session_id, CBS_ASN1_OCTETSTRING) ||
       !CBS_get_asn1(&session, &master_key, CBS_ASN1_OCTETSTRING) ||
-      !CBS_get_optional_asn1(&session, &key_arg, &has_key_arg, kKeyArgTag) ||
       !CBS_get_optional_asn1_uint64(&session, &session_time, kTimeTag,
                                     time(NULL)) ||
       !CBS_get_optional_asn1_uint64(&session, &timeout, kTimeoutTag, 3) ||

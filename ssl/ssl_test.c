@@ -307,20 +307,6 @@ static const char kOpenSSLSession[] =
  * filling in missing fields from |kOpenSSLSession|. This includes
  * providing |peer_sha256|, so |peer| is not serialized. */
 static const char kCustomSession[] =
-  "MIIBggIBAQICAwMEAsAvBCAG5Q1ndq4Yfmbeo1zwLkNRKmCXGdNgWvGT3cskV0yQ"
-  "kAQwJlrlzkAWBOWiLj/jJ76D7l+UXoizP2KI2C7I2FccqMmIfFmmkUy32nIJ0mZH"
-  "IWoJgAEBoQYCBFRDO46iBAICASykAwQBAqUDAgEUphAEDnd3dy5nb29nbGUuY29t"
-  "pwcEBWhlbGxvqAcEBXdvcmxkqQUCAwGJwKqBpwSBpBwUQvoeOk0Kg36SYTcLEkXq"
-  "KwOBfF9vE4KX0NxeLwjcDTpsuh3qXEaZ992r1N38VDcyS6P7I6HBYN9BsNHM362z"
-  "ZnY27GpTw+Kwd751CLoXFPoaMOe57dbBpXoro6Pd3BTbf/Tzr88K06yEOTDKPNj3"
-  "+inbMaVigtK4PLyPq+Topyzvx9USFgRvyuoxn0Hgb+R0A3j6SLRuyOdAi4gv7Y5o"
-  "liynrSIEIAYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGrgMEAQevAwQB"
-  "BLADBAEF";
-
-/* kCustomSession2 is kCustomSession with the old SSLv2-only key_arg
- * field removed. Encoding the decoded version of kCustomSession
- * should not preserve key_arg. */
-static const char kCustomSession2[] =
   "MIIBfwIBAQICAwMEAsAvBCAG5Q1ndq4Yfmbeo1zwLkNRKmCXGdNgWvGT3cskV0yQ"
   "kAQwJlrlzkAWBOWiLj/jJ76D7l+UXoizP2KI2C7I2FccqMmIfFmmkUy32nIJ0mZH"
   "IWoJoQYCBFRDO46iBAICASykAwQBAqUDAgEUphAEDnd3dy5nb29nbGUuY29tpwcE"
@@ -355,18 +341,16 @@ static int decode_base64(uint8_t **out, size_t *out_len, const char *in) {
   return 1;
 }
 
-static int test_ssl_session_asn1(const char *input_b64,
-                                 const char *expected_b64) {
+static int test_ssl_session_asn1(const char *input_b64) {
   int ret = 0, len;
-  size_t input_len, expected_len;
-  uint8_t *input = NULL, *expected = NULL, *encoded = NULL;
+  size_t input_len;
+  uint8_t *input = NULL, *encoded = NULL;
   const uint8_t *cptr;
   uint8_t *ptr;
   SSL_SESSION *session = NULL;
 
   /* Decode the input. */
-  if (!decode_base64(&input, &input_len, input_b64) ||
-      !decode_base64(&expected, &expected_len, expected_b64)) {
+  if (!decode_base64(&input, &input_len, input_b64)) {
     goto done;
   }
 
@@ -380,27 +364,27 @@ static int test_ssl_session_asn1(const char *input_b64,
 
   /* Verify the SSL_SESSION encoding round-trips. */
   len = i2d_SSL_SESSION(session, NULL);
-  if (len < 0 || (size_t)len != expected_len) {
+  if (len < 0 || (size_t)len != input_len) {
     fprintf(stderr, "i2d_SSL_SESSION(NULL) returned invalid length\n");
     goto done;
   }
 
-  encoded = OPENSSL_malloc(expected_len);
+  encoded = OPENSSL_malloc(input_len);
   if (encoded == NULL) {
     fprintf(stderr, "malloc failed\n");
     goto done;
   }
   ptr = encoded;
   len = i2d_SSL_SESSION(session, &ptr);
-  if (len < 0 || (size_t)len != expected_len) {
+  if (len < 0 || (size_t)len != input_len) {
     fprintf(stderr, "i2d_SSL_SESSION returned invalid length\n");
     goto done;
   }
-  if (ptr != encoded + expected_len) {
+  if (ptr != encoded + input_len) {
     fprintf(stderr, "i2d_SSL_SESSION did not advance ptr correctly\n");
     goto done;
   }
-  if (memcmp(expected, encoded, expected_len) != 0) {
+  if (memcmp(input, encoded, input_len) != 0) {
     fprintf(stderr, "i2d_SSL_SESSION did not round-trip\n");
     goto done;
   }
@@ -418,9 +402,6 @@ static int test_ssl_session_asn1(const char *input_b64,
   if (input) {
     OPENSSL_free(input);
   }
-  if (expected) {
-    OPENSSL_free(expected);
-  }
   if (encoded) {
     OPENSSL_free(encoded);
   }
@@ -431,9 +412,8 @@ int main(void) {
   SSL_library_init();
 
   if (!test_cipher_rules() ||
-      !test_ssl_session_asn1(kOpenSSLSession, kOpenSSLSession) ||
-      !test_ssl_session_asn1(kCustomSession, kCustomSession2) ||
-      !test_ssl_session_asn1(kCustomSession2, kCustomSession2)) {
+      !test_ssl_session_asn1(kOpenSSLSession) ||
+      !test_ssl_session_asn1(kCustomSession)) {
     return 1;
   }
 
