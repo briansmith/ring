@@ -121,7 +121,6 @@
  * Note: When the relevant features were #ifdef'd out, support for
  * parsing compressionMethod [11] and srpUsername [12] was lost. */
 
-static const int kKeyArgTag = CBS_ASN1_CONTEXT_SPECIFIC | 0;
 static const int kTimeTag =
     CBS_ASN1_CONSTRUCTED | CBS_ASN1_CONTEXT_SPECIFIC | 1;
 static const int kTimeoutTag =
