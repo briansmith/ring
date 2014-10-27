@@ -1391,9 +1391,9 @@ long ssl3_ctrl(SSL *s, int cmd, long larg, void *parg)
 			}
 	case SSL_CTRL_GET_EC_POINT_FORMATS:
 		{
+		const uint8_t **pformat = parg;
 		if (!s->s3->tmp.peer_ecpointformatlist)
 			return 0;
-		const uint8_t **pformat = parg;
 		*pformat = s->s3->tmp.peer_ecpointformatlist;
 		return (int)s->s3->tmp.peer_ecpointformatlist_length;
 		}
