@@ -114,8 +114,6 @@
   Copyright (C) 2011, RTFM, Inc.
 */
 
-#ifndef OPENSSL_NO_SRTP
-
 #include <stdio.h>
 
 #include <openssl/bytestring.h>
@@ -226,19 +224,16 @@ static int ssl_ctx_make_profiles(const char *profiles_string,STACK_OF(SRTP_PROTE
     
 	return 1;
 	}
-    
-int SSL_CTX_set_tlsext_use_srtp(SSL_CTX *ctx,const char *profiles)
+
+int SSL_CTX_set_srtp_profiles(SSL_CTX *ctx, const char *profiles)
 	{
-	/* This API inverts its return value. */
-	return !ssl_ctx_make_profiles(profiles,&ctx->srtp_profiles);
+	return ssl_ctx_make_profiles(profiles, &ctx->srtp_profiles);
 	}
 
-int SSL_set_tlsext_use_srtp(SSL *s,const char *profiles)
+int SSL_set_srtp_profiles(SSL *s, const char *profiles)
 	{
-	/* This API inverts its return value. */
-	return !ssl_ctx_make_profiles(profiles,&s->srtp_profiles);
+	return ssl_ctx_make_profiles(profiles, &s->srtp_profiles);
 	}
-
 
 STACK_OF(SRTP_PROTECTION_PROFILE) *SSL_get_srtp_profiles(SSL *s)
 	{
@@ -261,6 +256,18 @@ STACK_OF(SRTP_PROTECTION_PROFILE) *SSL_get_srtp_profiles(SSL *s)
 SRTP_PROTECTION_PROFILE *SSL_get_selected_srtp_profile(SSL *s)
 	{
 	return s->srtp_profile;
+	}
+
+int SSL_CTX_set_tlsext_use_srtp(SSL_CTX *ctx, const char *profiles)
+	{
+	/* This API inverts its return value. */
+	return !SSL_CTX_set_srtp_profiles(ctx, profiles);
+	}
+
+int SSL_set_tlsext_use_srtp(SSL *s, const char *profiles)
+	{
+	/* This API inverts its return value. */
+	return !SSL_set_srtp_profiles(s, profiles);
 	}
 
 /* Note: this function returns 0 length if there are no 
@@ -464,6 +471,3 @@ int ssl_parse_serverhello_use_srtp_ext(SSL *s, CBS *cbs, int *out_alert)
 	*out_alert = SSL_AD_ILLEGAL_PARAMETER;
 	return 0;
 	}
-
-
-#endif
