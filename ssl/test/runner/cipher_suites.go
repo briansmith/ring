@@ -112,6 +112,7 @@ var cipherSuites = []*cipherSuite{
 	{TLS_ECDHE_RSA_WITH_3DES_EDE_CBC_SHA, 24, 20, 8, ecdheRSAKA, suiteECDHE, cipher3DES, macSHA1, nil},
 	{TLS_DHE_RSA_WITH_3DES_EDE_CBC_SHA, 24, 20, 8, dheRSAKA, 0, cipher3DES, macSHA1, nil},
 	{TLS_RSA_WITH_3DES_EDE_CBC_SHA, 24, 20, 8, rsaKA, 0, cipher3DES, macSHA1, nil},
+	{TLS_ECDHE_PSK_WITH_AES_128_GCM_SHA256, 16, 0, 4, ecdhePSKKA, suiteECDHE | suiteTLS12 | suitePSK, nil, nil, aeadAESGCM},
 	{TLS_PSK_WITH_RC4_128_SHA, 16, 20, 0, pskKA, suiteNoDTLS | suitePSK, cipherRC4, macSHA1, nil},
 	{TLS_PSK_WITH_AES_128_CBC_SHA, 16, 20, 16, pskKA, suitePSK, cipherAES, macSHA1, nil},
 	{TLS_PSK_WITH_AES_256_CBC_SHA, 32, 20, 16, pskKA, suitePSK, cipherAES, macSHA1, nil},
@@ -293,7 +294,7 @@ func rsaKA(version uint16) keyAgreement {
 
 func ecdheECDSAKA(version uint16) keyAgreement {
 	return &ecdheKeyAgreement{
-		signedKeyAgreement: signedKeyAgreement{
+		auth: &signedKeyAgreement{
 			sigType: signatureECDSA,
 			version: version,
 		},
@@ -302,7 +303,7 @@ func ecdheECDSAKA(version uint16) keyAgreement {
 
 func ecdheRSAKA(version uint16) keyAgreement {
 	return &ecdheKeyAgreement{
-		signedKeyAgreement: signedKeyAgreement{
+		auth: &signedKeyAgreement{
 			sigType: signatureRSA,
 			version: version,
 		},
@@ -311,7 +312,7 @@ func ecdheRSAKA(version uint16) keyAgreement {
 
 func dheRSAKA(version uint16) keyAgreement {
 	return &dheKeyAgreement{
-		signedKeyAgreement: signedKeyAgreement{
+		auth: &signedKeyAgreement{
 			sigType: signatureRSA,
 			version: version,
 		},
@@ -319,7 +320,17 @@ func dheRSAKA(version uint16) keyAgreement {
 }
 
 func pskKA(version uint16) keyAgreement {
-	return &pskKeyAgreement{}
+	return &pskKeyAgreement{
+		base: &nilKeyAgreement{},
+	}
+}
+
+func ecdhePSKKA(version uint16) keyAgreement {
+	return &pskKeyAgreement{
+		base: &ecdheKeyAgreement{
+			auth: &nilKeyAgreementAuthentication{},
+		},
+	}
 }
 
 // mutualCipherSuite returns a cipherSuite given a list of supported
@@ -376,4 +387,9 @@ const (
 	TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256   uint16 = 0xc02f
 	TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384   uint16 = 0xc030
 	fallbackSCSV                            uint16 = 0x5600
+)
+
+// Additional cipher suite IDs, not IANA-assigned.
+const (
+	TLS_ECDHE_PSK_WITH_AES_128_GCM_SHA256 uint16 = 0xcafe
 )
