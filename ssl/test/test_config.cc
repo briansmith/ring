@@ -76,6 +76,8 @@ const StringFlag kStringFlags[] = {
   { "-expect-alpn", &TestConfig::expected_alpn },
   { "-expect-advertised-alpn", &TestConfig::expected_advertised_alpn },
   { "-select-alpn", &TestConfig::select_alpn },
+  { "-psk", &TestConfig::psk },
+  { "-psk-identity", &TestConfig::psk_identity },
 };
 
 const size_t kNumStringFlags = sizeof(kStringFlags) / sizeof(kStringFlags[0]);

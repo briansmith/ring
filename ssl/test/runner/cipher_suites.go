@@ -57,6 +57,9 @@ const (
 	// suiteNoDTLS indicates that the cipher suite cannot be used
 	// in DTLS.
 	suiteNoDTLS
+	// suitePSK indicates that the cipher suite authenticates with
+	// a pre-shared key rather than a server private key.
+	suitePSK
 )
 
 // A cipherSuite is a specific combination of key agreement, cipher and MAC
@@ -109,6 +112,9 @@ var cipherSuites = []*cipherSuite{
 	{TLS_ECDHE_RSA_WITH_3DES_EDE_CBC_SHA, 24, 20, 8, ecdheRSAKA, suiteECDHE, cipher3DES, macSHA1, nil},
 	{TLS_DHE_RSA_WITH_3DES_EDE_CBC_SHA, 24, 20, 8, dheRSAKA, 0, cipher3DES, macSHA1, nil},
 	{TLS_RSA_WITH_3DES_EDE_CBC_SHA, 24, 20, 8, rsaKA, 0, cipher3DES, macSHA1, nil},
+	{TLS_PSK_WITH_RC4_128_SHA, 16, 20, 0, pskKA, suiteNoDTLS | suitePSK, cipherRC4, macSHA1, nil},
+	{TLS_PSK_WITH_AES_128_CBC_SHA, 16, 20, 16, pskKA, suitePSK, cipherAES, macSHA1, nil},
+	{TLS_PSK_WITH_AES_256_CBC_SHA, 32, 20, 16, pskKA, suitePSK, cipherAES, macSHA1, nil},
 }
 
 func cipherRC4(key, iv []byte, isRead bool) interface{} {
@@ -312,6 +318,10 @@ func dheRSAKA(version uint16) keyAgreement {
 	}
 }
 
+func pskKA(version uint16) keyAgreement {
+	return &pskKeyAgreement{}
+}
+
 // mutualCipherSuite returns a cipherSuite given a list of supported
 // ciphersuites and the id requested by the peer.
 func mutualCipherSuite(have []uint16, want uint16) *cipherSuite {
@@ -343,6 +353,9 @@ const (
 	TLS_RSA_WITH_AES_256_CBC_SHA256         uint16 = 0x003d
 	TLS_DHE_RSA_WITH_AES_128_CBC_SHA256     uint16 = 0x0067
 	TLS_DHE_RSA_WITH_AES_256_CBC_SHA256     uint16 = 0x006b
+	TLS_PSK_WITH_RC4_128_SHA                uint16 = 0x008a
+	TLS_PSK_WITH_AES_128_CBC_SHA            uint16 = 0x008c
+	TLS_PSK_WITH_AES_256_CBC_SHA            uint16 = 0x008d
 	TLS_RSA_WITH_AES_128_GCM_SHA256         uint16 = 0x009c
 	TLS_RSA_WITH_AES_256_GCM_SHA384         uint16 = 0x009d
 	TLS_DHE_RSA_WITH_AES_128_GCM_SHA256     uint16 = 0x009e

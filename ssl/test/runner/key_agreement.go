@@ -586,3 +586,90 @@ func (ka *dheKeyAgreement) generateClientKeyExchange(config *Config, clientHello
 
 	return preMasterSecret, ckx, nil
 }
+
+// makePSKPremaster formats a PSK pre-master secret based on
+// otherSecret from the base key exchange and psk.
+func makePSKPremaster(otherSecret, psk []byte) []byte {
+	out := make([]byte, 0, 2+len(otherSecret)+2+len(psk))
+	out = append(out, byte(len(otherSecret)>>8), byte(len(otherSecret)))
+	out = append(out, otherSecret...)
+	out = append(out, byte(len(psk)>>8), byte(len(psk)))
+	out = append(out, psk...)
+	return out
+}
+
+// pskKeyAgreement implements the PSK key agreement.
+type pskKeyAgreement struct {
+	identityHint string
+}
+
+func (ka *pskKeyAgreement) generateServerKeyExchange(config *Config, cert *Certificate, clientHello *clientHelloMsg, hello *serverHelloMsg) (*serverKeyExchangeMsg, error) {
+	// ServerKeyExchange is optional if the identity hint is empty.
+	if config.PreSharedKeyIdentity == "" {
+		return nil, nil
+	}
+	bytes := make([]byte, 2+len(config.PreSharedKeyIdentity))
+	bytes[0] = byte(len(config.PreSharedKeyIdentity) >> 8)
+	bytes[1] = byte(len(config.PreSharedKeyIdentity))
+	copy(bytes[2:], []byte(config.PreSharedKeyIdentity))
+
+	skx := new(serverKeyExchangeMsg)
+	skx.key = bytes
+	return skx, nil
+}
+
+func (ka *pskKeyAgreement) processClientKeyExchange(config *Config, cert *Certificate, ckx *clientKeyExchangeMsg, version uint16) ([]byte, error) {
+	if len(ckx.ciphertext) < 2 {
+		return nil, errClientKeyExchange
+	}
+	identityLen := (int(ckx.ciphertext[0]) << 8) | int(ckx.ciphertext[1])
+	if 2+identityLen != len(ckx.ciphertext) {
+		return nil, errClientKeyExchange
+	}
+	identity := string(ckx.ciphertext[2:])
+
+	if identity != config.PreSharedKeyIdentity {
+		return nil, errors.New("tls: unexpected identity")
+	}
+
+	if config.PreSharedKey == nil {
+		return nil, errors.New("tls: pre-shared key not configured")
+	}
+	otherSecret := make([]byte, len(config.PreSharedKey))
+	return makePSKPremaster(otherSecret, config.PreSharedKey), nil
+}
+
+func (ka *pskKeyAgreement) processServerKeyExchange(config *Config, clientHello *clientHelloMsg, serverHello *serverHelloMsg, cert *x509.Certificate, skx *serverKeyExchangeMsg) error {
+	if len(skx.key) < 2 {
+		return errServerKeyExchange
+	}
+	identityLen := (int(skx.key[0]) << 8) | int(skx.key[1])
+	if 2+identityLen != len(skx.key) {
+		return errServerKeyExchange
+	}
+	ka.identityHint = string(skx.key[2:])
+	return nil
+}
+
+func (ka *pskKeyAgreement) generateClientKeyExchange(config *Config, clientHello *clientHelloMsg, cert *x509.Certificate) ([]byte, *clientKeyExchangeMsg, error) {
+	// The server only sends an identity hint but, for purposes of
+	// test code, the server always sends the hint and it is
+	// required to match.
+	if ka.identityHint != config.PreSharedKeyIdentity {
+		return nil, nil, errors.New("tls: unexpected identity")
+	}
+
+	bytes := make([]byte, 2+len(config.PreSharedKeyIdentity))
+	bytes[0] = byte(len(config.PreSharedKeyIdentity) >> 8)
+	bytes[1] = byte(len(config.PreSharedKeyIdentity))
+	copy(bytes[2:], []byte(config.PreSharedKeyIdentity))
+
+	ckx := new(clientKeyExchangeMsg)
+	ckx.ciphertext = bytes
+
+	if config.PreSharedKey == nil {
+		return nil, nil, errors.New("tls: pre-shared key not configured")
+	}
+	otherSecret := make([]byte, len(config.PreSharedKey))
+	return makePSKPremaster(otherSecret, config.PreSharedKey), ckx, nil
+}

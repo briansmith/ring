@@ -54,6 +54,8 @@ struct TestConfig {
   std::string select_alpn;
   bool expect_session_miss;
   bool expect_extended_master_secret;
+  std::string psk;
+  std::string psk_identity;
 };
 
 bool ParseConfig(int argc, char **argv, TestConfig *out_config);

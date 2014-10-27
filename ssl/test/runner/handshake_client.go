@@ -308,60 +308,65 @@ NextCipherSuite:
 func (hs *clientHandshakeState) doFullHandshake() error {
 	c := hs.c
 
-	msg, err := c.readHandshake()
-	if err != nil {
-		return err
-	}
-	certMsg, ok := msg.(*certificateMsg)
-	if !ok || len(certMsg.certificates) == 0 {
-		c.sendAlert(alertUnexpectedMessage)
-		return unexpectedMessageError(certMsg, msg)
-	}
-	hs.writeServerHash(certMsg.marshal())
-
-	certs := make([]*x509.Certificate, len(certMsg.certificates))
-	for i, asn1Data := range certMsg.certificates {
-		cert, err := x509.ParseCertificate(asn1Data)
+	var leaf *x509.Certificate
+	if hs.suite.flags&suitePSK == 0 {
+		msg, err := c.readHandshake()
 		if err != nil {
-			c.sendAlert(alertBadCertificate)
-			return errors.New("tls: failed to parse certificate from server: " + err.Error())
-		}
-		certs[i] = cert
-	}
-
-	if !c.config.InsecureSkipVerify {
-		opts := x509.VerifyOptions{
-			Roots:         c.config.RootCAs,
-			CurrentTime:   c.config.time(),
-			DNSName:       c.config.ServerName,
-			Intermediates: x509.NewCertPool(),
-		}
-
-		for i, cert := range certs {
-			if i == 0 {
-				continue
-			}
-			opts.Intermediates.AddCert(cert)
-		}
-		c.verifiedChains, err = certs[0].Verify(opts)
-		if err != nil {
-			c.sendAlert(alertBadCertificate)
 			return err
 		}
-	}
 
-	switch certs[0].PublicKey.(type) {
-	case *rsa.PublicKey, *ecdsa.PublicKey:
-		break
-	default:
-		c.sendAlert(alertUnsupportedCertificate)
-		return fmt.Errorf("tls: server's certificate contains an unsupported type of public key: %T", certs[0].PublicKey)
-	}
+		certMsg, ok := msg.(*certificateMsg)
+		if !ok || len(certMsg.certificates) == 0 {
+			c.sendAlert(alertUnexpectedMessage)
+			return unexpectedMessageError(certMsg, msg)
+		}
+		hs.writeServerHash(certMsg.marshal())
 
-	c.peerCertificates = certs
+		certs := make([]*x509.Certificate, len(certMsg.certificates))
+		for i, asn1Data := range certMsg.certificates {
+			cert, err := x509.ParseCertificate(asn1Data)
+			if err != nil {
+				c.sendAlert(alertBadCertificate)
+				return errors.New("tls: failed to parse certificate from server: " + err.Error())
+			}
+			certs[i] = cert
+		}
+		leaf = certs[0]
+
+		if !c.config.InsecureSkipVerify {
+			opts := x509.VerifyOptions{
+				Roots:         c.config.RootCAs,
+				CurrentTime:   c.config.time(),
+				DNSName:       c.config.ServerName,
+				Intermediates: x509.NewCertPool(),
+			}
+
+			for i, cert := range certs {
+				if i == 0 {
+					continue
+				}
+				opts.Intermediates.AddCert(cert)
+			}
+			c.verifiedChains, err = leaf.Verify(opts)
+			if err != nil {
+				c.sendAlert(alertBadCertificate)
+				return err
+			}
+		}
+
+		switch leaf.PublicKey.(type) {
+		case *rsa.PublicKey, *ecdsa.PublicKey:
+			break
+		default:
+			c.sendAlert(alertUnsupportedCertificate)
+			return fmt.Errorf("tls: server's certificate contains an unsupported type of public key: %T", leaf.PublicKey)
+		}
+
+		c.peerCertificates = certs
+	}
 
 	if hs.serverHello.ocspStapling {
-		msg, err = c.readHandshake()
+		msg, err := c.readHandshake()
 		if err != nil {
 			return err
 		}
@@ -377,7 +382,7 @@ func (hs *clientHandshakeState) doFullHandshake() error {
 		}
 	}
 
-	msg, err = c.readHandshake()
+	msg, err := c.readHandshake()
 	if err != nil {
 		return err
 	}
@@ -387,7 +392,7 @@ func (hs *clientHandshakeState) doFullHandshake() error {
 	skx, ok := msg.(*serverKeyExchangeMsg)
 	if ok {
 		hs.writeServerHash(skx.marshal())
-		err = keyAgreement.processServerKeyExchange(c.config, hs.hello, hs.serverHello, certs[0], skx)
+		err = keyAgreement.processServerKeyExchange(c.config, hs.hello, hs.serverHello, leaf, skx)
 		if err != nil {
 			c.sendAlert(alertUnexpectedMessage)
 			return err
@@ -488,7 +493,7 @@ func (hs *clientHandshakeState) doFullHandshake() error {
 	// Certificate message, even if it's empty because we don't have a
 	// certificate to send.
 	if certRequested {
-		certMsg = new(certificateMsg)
+		certMsg := new(certificateMsg)
 		if chainToSend != nil {
 			certMsg.certificates = chainToSend.Certificate
 		}
@@ -496,7 +501,7 @@ func (hs *clientHandshakeState) doFullHandshake() error {
 		c.writeRecord(recordTypeHandshake, certMsg.marshal())
 	}
 
-	preMasterSecret, ckx, err := keyAgreement.generateClientKeyExchange(c.config, hs.hello, certs[0])
+	preMasterSecret, ckx, err := keyAgreement.generateClientKeyExchange(c.config, hs.hello, leaf)
 	if err != nil {
 		c.sendAlert(alertInternalError)
 		return err

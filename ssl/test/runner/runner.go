@@ -835,6 +835,9 @@ var testCipherSuites = []struct {
 	{"ECDHE-RSA-AES256-SHA", TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA},
 	{"ECDHE-RSA-AES256-SHA384", TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA384},
 	{"ECDHE-RSA-RC4-SHA", TLS_ECDHE_RSA_WITH_RC4_128_SHA},
+	{"PSK-AES128-CBC-SHA", TLS_PSK_WITH_AES_128_CBC_SHA},
+	{"PSK-AES256-CBC-SHA", TLS_PSK_WITH_AES_256_CBC_SHA},
+	{"PSK-RC4-SHA", TLS_PSK_WITH_RC4_128_SHA},
 	{"RC4-MD5", TLS_RSA_WITH_RC4_128_MD5},
 	{"RC4-SHA", TLS_RSA_WITH_RC4_128_SHA},
 }
@@ -847,6 +850,9 @@ func isTLS12Only(suiteName string) bool {
 
 func addCipherSuiteTests() {
 	for _, suite := range testCipherSuites {
+		const psk = "12345"
+		const pskIdentity = "luggage combo"
+
 		var cert Certificate
 		var certFile string
 		var keyFile string
@@ -858,6 +864,13 @@ func addCipherSuiteTests() {
 			cert = getRSACertificate()
 			certFile = rsaCertificateFile
 			keyFile = rsaKeyFile
+		}
+
+		var flags []string
+		if strings.HasPrefix(suite.name, "PSK-") || strings.Contains(suite.name, "-PSK-") {
+			flags = append(flags,
+				"-psk", psk,
+				"-psk-identity", pskIdentity)
 		}
 
 		for _, ver := range tlsVersions {
@@ -874,11 +887,14 @@ func addCipherSuiteTests() {
 				testType: clientTest,
 				name:     ver.name + "-" + suite.name + "-client",
 				config: Config{
-					MinVersion:   ver.version,
-					MaxVersion:   ver.version,
-					CipherSuites: []uint16{suite.id},
-					Certificates: []Certificate{cert},
+					MinVersion:           ver.version,
+					MaxVersion:           ver.version,
+					CipherSuites:         []uint16{suite.id},
+					Certificates:         []Certificate{cert},
+					PreSharedKey:         []byte(psk),
+					PreSharedKeyIdentity: pskIdentity,
 				},
+				flags:         flags,
 				resumeSession: resumeSession,
 			})
 
@@ -886,13 +902,16 @@ func addCipherSuiteTests() {
 				testType: serverTest,
 				name:     ver.name + "-" + suite.name + "-server",
 				config: Config{
-					MinVersion:   ver.version,
-					MaxVersion:   ver.version,
-					CipherSuites: []uint16{suite.id},
-					Certificates: []Certificate{cert},
+					MinVersion:           ver.version,
+					MaxVersion:           ver.version,
+					CipherSuites:         []uint16{suite.id},
+					Certificates:         []Certificate{cert},
+					PreSharedKey:         []byte(psk),
+					PreSharedKeyIdentity: pskIdentity,
 				},
 				certFile:      certFile,
 				keyFile:       keyFile,
+				flags:         flags,
 				resumeSession: resumeSession,
 			})
 
@@ -903,11 +922,14 @@ func addCipherSuiteTests() {
 					protocol: dtls,
 					name:     "D" + ver.name + "-" + suite.name + "-client",
 					config: Config{
-						MinVersion:   ver.version,
-						MaxVersion:   ver.version,
-						CipherSuites: []uint16{suite.id},
-						Certificates: []Certificate{cert},
+						MinVersion:           ver.version,
+						MaxVersion:           ver.version,
+						CipherSuites:         []uint16{suite.id},
+						Certificates:         []Certificate{cert},
+						PreSharedKey:         []byte(psk),
+						PreSharedKeyIdentity: pskIdentity,
 					},
+					flags:         flags,
 					resumeSession: resumeSession,
 				})
 				testCases = append(testCases, testCase{
@@ -915,13 +937,16 @@ func addCipherSuiteTests() {
 					protocol: dtls,
 					name:     "D" + ver.name + "-" + suite.name + "-server",
 					config: Config{
-						MinVersion:   ver.version,
-						MaxVersion:   ver.version,
-						CipherSuites: []uint16{suite.id},
-						Certificates: []Certificate{cert},
+						MinVersion:           ver.version,
+						MaxVersion:           ver.version,
+						CipherSuites:         []uint16{suite.id},
+						Certificates:         []Certificate{cert},
+						PreSharedKey:         []byte(psk),
+						PreSharedKeyIdentity: pskIdentity,
 					},
 					certFile:      certFile,
 					keyFile:       keyFile,
+					flags:         flags,
 					resumeSession: resumeSession,
 				})
 			}
@@ -1115,8 +1140,8 @@ func addExtendedMasterSecretTests() {
 							RequireExtendedMasterSecret: with,
 						},
 					},
-					flags:              flags,
-					shouldFail:         ver.version == VersionSSL30 && with,
+					flags:      flags,
+					shouldFail: ver.version == VersionSSL30 && with,
 				}
 				if test.shouldFail {
 					test.expectedLocalError = "extended master secret required but not supported by peer"
@@ -1246,6 +1271,34 @@ func addStateMachineCoverageTests(async, splitHandshake bool, protocol protocol)
 			},
 		},
 		flags: flags,
+	})
+
+	// Skip ServerKeyExchange in PSK key exchange if there's no
+	// identity hint.
+	testCases = append(testCases, testCase{
+		protocol: protocol,
+		name:     "EmptyPSKHint-Client" + suffix,
+		config: Config{
+			CipherSuites: []uint16{TLS_PSK_WITH_AES_128_CBC_SHA},
+			PreSharedKey: []byte("secret"),
+			Bugs: ProtocolBugs{
+				MaxHandshakeRecordLength: maxHandshakeRecordLength,
+			},
+		},
+		flags: append(flags, "-psk", "secret"),
+	})
+	testCases = append(testCases, testCase{
+		protocol: protocol,
+		testType: serverTest,
+		name:     "EmptyPSKHint-Server" + suffix,
+		config: Config{
+			CipherSuites: []uint16{TLS_PSK_WITH_AES_128_CBC_SHA},
+			PreSharedKey: []byte("secret"),
+			Bugs: ProtocolBugs{
+				MaxHandshakeRecordLength: maxHandshakeRecordLength,
+			},
+		},
+		flags: append(flags, "-psk", "secret"),
 	})
 
 	if protocol == tls {

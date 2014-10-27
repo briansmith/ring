@@ -25,6 +25,7 @@
 #include <sys/types.h>
 
 #include <openssl/bio.h>
+#include <openssl/buf.h>
 #include <openssl/bytestring.h>
 #include <openssl/ssl.h>
 
@@ -178,6 +179,48 @@ static int cookie_verify_callback(SSL *ssl, const uint8_t *cookie, size_t cookie
     }
   }
   return 1;
+}
+
+static unsigned psk_client_callback(SSL *ssl, const char *hint,
+                                    char *out_identity,
+                                    unsigned max_identity_len,
+                                    uint8_t *out_psk, unsigned max_psk_len) {
+  const TestConfig *config = GetConfigPtr(ssl);
+
+  if (strcmp(hint ? hint : "", config->psk_identity.c_str()) != 0) {
+    fprintf(stderr, "Server PSK hint did not match.\n");
+    return 0;
+  }
+
+  // Account for the trailing '\0' for the identity.
+  if (config->psk_identity.size() >= max_identity_len ||
+      config->psk.size() > max_psk_len) {
+    fprintf(stderr, "PSK buffers too small\n");
+    return 0;
+  }
+
+  BUF_strlcpy(out_identity, config->psk_identity.c_str(),
+              max_identity_len);
+  memcpy(out_psk, config->psk.data(), config->psk.size());
+  return config->psk.size();
+}
+
+static unsigned psk_server_callback(SSL *ssl, const char *identity,
+                                    uint8_t *out_psk, unsigned max_psk_len) {
+  const TestConfig *config = GetConfigPtr(ssl);
+
+  if (strcmp(identity, config->psk_identity.c_str()) != 0) {
+    fprintf(stderr, "Client PSK identity did not match.\n");
+    return 0;
+  }
+
+  if (config->psk.size() > max_psk_len) {
+    fprintf(stderr, "PSK buffers too small\n");
+    return 0;
+  }
+
+  memcpy(out_psk, config->psk.data(), config->psk.size());
+  return config->psk.size();
 }
 
 static SSL_CTX *setup_ctx(const TestConfig *config) {
@@ -368,6 +411,16 @@ static int do_exchange(SSL_SESSION **out_session,
   if (!config->advertise_alpn.empty()) {
     SSL_set_alpn_protos(ssl, (const uint8_t *)config->advertise_alpn.data(),
                         config->advertise_alpn.size());
+  }
+  if (!config->psk.empty()) {
+    SSL_set_psk_client_callback(ssl, psk_client_callback);
+    SSL_set_psk_server_callback(ssl, psk_server_callback);
+  }
+  if (!config->psk_identity.empty()) {
+    if (!SSL_use_psk_identity_hint(ssl, config->psk_identity.c_str())) {
+      BIO_print_errors_fp(stdout);
+      return 1;
+    }
   }
 
   BIO *bio = BIO_new_fd(fd, 1 /* take ownership */);

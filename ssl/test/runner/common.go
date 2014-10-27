@@ -325,6 +325,14 @@ type Config struct {
 	// returned in the ConnectionState.
 	RequestChannelID bool
 
+	// PreSharedKey, if not nil, is the pre-shared key to use with
+	// the PSK cipher suites.
+	PreSharedKey []byte
+
+	// PreSharedKeyIdentity, if not empty, is the identity to use
+	// with the PSK cipher suites.
+	PreSharedKeyIdentity string
+
 	// Bugs specifies optional misbehaviour to be used for testing other
 	// implementations.
 	Bugs ProtocolBugs
@@ -737,9 +745,10 @@ func defaultCipherSuites() []uint16 {
 }
 
 func initDefaultCipherSuites() {
-	varDefaultCipherSuites = make([]uint16, len(cipherSuites))
-	for i, suite := range cipherSuites {
-		varDefaultCipherSuites[i] = suite.id
+	for _, suite := range cipherSuites {
+		if suite.flags&suitePSK == 0 {
+			varDefaultCipherSuites = append(varDefaultCipherSuites, suite.id)
+		}
 	}
 }
 
