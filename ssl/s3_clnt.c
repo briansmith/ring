@@ -2192,23 +2192,23 @@ int ssl3_send_client_key_exchange(SSL *s)
 			/* ECDHE PSK ciphersuites from RFC 5489 */
 			if ((alg_a & SSL_aPSK) && psk_len != 0)
 				{
-				uint8_t *t;
+				CBB cbb, child;
 
-				pms_len = 2+psk_len+2+n;
-				pms = OPENSSL_malloc(pms_len);
-				if (pms == NULL)
+				if (!CBB_init(&cbb, 2+psk_len+2+n))
 					{
 					OPENSSL_PUT_ERROR(SSL, ssl3_send_client_key_exchange, ERR_R_MALLOC_FAILURE);
 					goto err;
 					}
-
-				t = pms;
-				memset(t, 0, pms_len);
-				s2n(psk_len, t);
-				memcpy(t, psk, psk_len);
-				t += psk_len;
-				s2n(n, t);
-				memcpy(t, p, n);
+				if (!CBB_add_u16_length_prefixed(&cbb, &child) ||
+					!CBB_add_bytes(&child, p, n) ||
+					!CBB_add_u16_length_prefixed(&cbb, &child) ||
+					!CBB_add_bytes(&child, psk, psk_len) ||
+					!CBB_finish(&cbb, &pms, &pms_len))
+					{
+					CBB_cleanup(&cbb);
+					OPENSSL_PUT_ERROR(SSL, ssl3_send_client_key_exchange, ERR_R_INTERNAL_ERROR);
+					goto err;
+					}
 				}
 			if (!(alg_a & SSL_aPSK))
 				{
