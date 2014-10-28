@@ -47,6 +47,10 @@ static const struct argument kArguments[] = {
      "The hostname and port of the server to connect to, e.g. foo.com:443",
     },
     {
+     "-cipher", false,
+     "An OpenSSL-style cipher suite string that configures the offered ciphers",
+    },
+    {
      "", false, "",
     },
 };
@@ -263,6 +267,10 @@ bool Client(const std::vector<std::string> &args) {
       return false;
     }
     SSL_CTX_set_keylog_bio(ctx, keylog_bio);
+  }
+
+  if (args_map.count("-cipher") != 0) {
+    SSL_CTX_set_cipher_list(ctx, args_map["-cipher"].c_str());
   }
 
   int sock = -1;
