@@ -290,10 +290,7 @@ OPENSSL_EXPORT int EVP_DigestVerifyUpdate(EVP_MD_CTX *ctx, const void *data,
 
 /* EVP_DigestVerifyFinal verifies that |sig_len| bytes of |sig| are a valid
  * signature for the data that has been included by one or more calls to
- * |EVP_DigestVerifyUpdate|.
- *
- * It returns one on success and <= 0 on error. WARNING: this differs from the
- * usual return value convention. */
+ * |EVP_DigestVerifyUpdate|. It returns one on success and zero otherwise. */
 OPENSSL_EXPORT int EVP_DigestVerifyFinal(EVP_MD_CTX *ctx, const uint8_t *sig,
                                          size_t sig_len);
 
@@ -462,8 +459,8 @@ OPENSSL_EXPORT int EVP_PKEY_sign_init(EVP_PKEY_CTX *ctx);
  * space available at |sig|. If sufficient, the signature will be written to
  * |sig| and |*sig_len| updated with the true length.
  *
- * WARNING: Setting |out| to NULL only gives the maximum size of the
- * plaintext. The actual plaintext may be smaller.
+ * WARNING: Setting |sig| to NULL only gives the maximum size of the
+ * signature. The actual signature may be smaller.
  *
  * It returns one on success or zero on error. (Note: this differs from
  * OpenSSL, which can also return negative values to indicate an error. ) */

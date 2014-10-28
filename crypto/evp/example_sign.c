@@ -196,12 +196,12 @@ static int example_EVP_DigestSignInit(void) {
 
   pkey = load_example_rsa_key();
   if (pkey == NULL ||
-      EVP_DigestSignInit(&md_ctx, NULL, EVP_sha256(), NULL, pkey) != 1 ||
-      EVP_DigestSignUpdate(&md_ctx, kMsg, sizeof(kMsg)) != 1) {
+      !EVP_DigestSignInit(&md_ctx, NULL, EVP_sha256(), NULL, pkey) ||
+      !EVP_DigestSignUpdate(&md_ctx, kMsg, sizeof(kMsg))) {
     goto out;
   }
   /* Determine the size of the signature. */
-  if (EVP_DigestSignFinal(&md_ctx, NULL, &sig_len) != 1) {
+  if (!EVP_DigestSignFinal(&md_ctx, NULL, &sig_len)) {
     goto out;
   }
   /* Sanity check for testing. */
@@ -211,14 +211,14 @@ static int example_EVP_DigestSignInit(void) {
   }
 
   sig = malloc(sig_len);
-  if (sig == NULL || EVP_DigestSignFinal(&md_ctx, sig, &sig_len) != 1) {
+  if (sig == NULL || !EVP_DigestSignFinal(&md_ctx, sig, &sig_len)) {
     goto out;
   }
 
   /* Ensure that the signature round-trips. */
-  if (EVP_DigestVerifyInit(&md_ctx_verify, NULL, EVP_sha256(), NULL, pkey) != 1 ||
-      EVP_DigestVerifyUpdate(&md_ctx_verify, kMsg, sizeof(kMsg)) != 1 ||
-      EVP_DigestVerifyFinal(&md_ctx_verify, sig, sig_len) != 1) {
+  if (!EVP_DigestVerifyInit(&md_ctx_verify, NULL, EVP_sha256(), NULL, pkey) ||
+      !EVP_DigestVerifyUpdate(&md_ctx_verify, kMsg, sizeof(kMsg)) ||
+      !EVP_DigestVerifyFinal(&md_ctx_verify, sig, sig_len)) {
     goto out;
   }
 
@@ -250,9 +250,9 @@ static int example_EVP_DigestVerifyInit(void) {
 
   pkey = load_example_rsa_key();
   if (pkey == NULL ||
-      EVP_DigestVerifyInit(&md_ctx, NULL, EVP_sha256(), NULL, pkey) != 1 ||
-      EVP_DigestVerifyUpdate(&md_ctx, kMsg, sizeof(kMsg)) != 1 ||
-      EVP_DigestVerifyFinal(&md_ctx, kSignature, sizeof(kSignature)) != 1) {
+      !EVP_DigestVerifyInit(&md_ctx, NULL, EVP_sha256(), NULL, pkey) ||
+      !EVP_DigestVerifyUpdate(&md_ctx, kMsg, sizeof(kMsg)) ||
+      !EVP_DigestVerifyFinal(&md_ctx, kSignature, sizeof(kSignature))) {
     goto out;
   }
   ret = 1;
@@ -282,7 +282,7 @@ static int test_algorithm_roundtrip(EVP_MD_CTX *md_ctx, EVP_PKEY *pkey) {
 
   EVP_MD_CTX_init(&md_ctx_verify);
 
-  if (EVP_DigestSignUpdate(md_ctx, kMsg, sizeof(kMsg)) != 1) {
+  if (!EVP_DigestSignUpdate(md_ctx, kMsg, sizeof(kMsg))) {
     goto out;
   }
 
@@ -293,7 +293,7 @@ static int test_algorithm_roundtrip(EVP_MD_CTX *md_ctx, EVP_PKEY *pkey) {
   }
 
   /* Determine the size of the signature. */
-  if (EVP_DigestSignFinal(md_ctx, NULL, &sig_len) != 1) {
+  if (!EVP_DigestSignFinal(md_ctx, NULL, &sig_len)) {
     goto out;
   }
   /* Sanity check for testing. */
@@ -303,14 +303,14 @@ static int test_algorithm_roundtrip(EVP_MD_CTX *md_ctx, EVP_PKEY *pkey) {
   }
 
   sig = malloc(sig_len);
-  if (sig == NULL || EVP_DigestSignFinal(md_ctx, sig, &sig_len) != 1) {
+  if (sig == NULL || !EVP_DigestSignFinal(md_ctx, sig, &sig_len)) {
     goto out;
   }
 
   /* Ensure that the signature round-trips. */
-  if (EVP_DigestVerifyInitFromAlgorithm(&md_ctx_verify, algor, pkey) != 1 ||
-      EVP_DigestVerifyUpdate(&md_ctx_verify, kMsg, sizeof(kMsg)) != 1 ||
-      EVP_DigestVerifyFinal(&md_ctx_verify, sig, sig_len) != 1) {
+  if (!EVP_DigestVerifyInitFromAlgorithm(&md_ctx_verify, algor, pkey) ||
+      !EVP_DigestVerifyUpdate(&md_ctx_verify, kMsg, sizeof(kMsg)) ||
+      !EVP_DigestVerifyFinal(&md_ctx_verify, sig, sig_len)) {
     goto out;
   }
 
@@ -342,7 +342,7 @@ static int test_EVP_DigestSignAlgorithm(void) {
   }
 
   /* Test a simple AlgorithmIdentifier. */
-  if (EVP_DigestSignInit(&md_ctx, &pkey_ctx, EVP_sha256(), NULL, pkey) != 1 ||
+  if (!EVP_DigestSignInit(&md_ctx, &pkey_ctx, EVP_sha256(), NULL, pkey) ||
       !test_algorithm_roundtrip(&md_ctx, pkey)) {
     fprintf(stderr, "RSA with SHA-256 failed\n");
     goto out;
@@ -352,7 +352,7 @@ static int test_EVP_DigestSignAlgorithm(void) {
   EVP_MD_CTX_init(&md_ctx);
 
   /* Test RSA-PSS with custom parameters. */
-  if (EVP_DigestSignInit(&md_ctx, &pkey_ctx, EVP_sha256(), NULL, pkey) != 1 ||
+  if (!EVP_DigestSignInit(&md_ctx, &pkey_ctx, EVP_sha256(), NULL, pkey) ||
       EVP_PKEY_CTX_set_rsa_padding(pkey_ctx, RSA_PKCS1_PSS_PADDING) != 1 ||
       EVP_PKEY_CTX_set_rsa_mgf1_md(pkey_ctx, EVP_sha512()) != 1 ||
       !test_algorithm_roundtrip(&md_ctx, pkey)) {
@@ -412,11 +412,11 @@ static int example_EVP_DigestVerifyInitFromAlgorithm(void) {
 
   pkey = load_example_rsa_key();
   if (pkey == NULL ||
-      EVP_DigestVerifyInitFromAlgorithm(&md_ctx, algor, pkey) != 1||
-      EVP_DigestVerifyUpdate(&md_ctx, CBS_data(&tbs_cert),
-                             CBS_len(&tbs_cert)) != 1 ||
-      EVP_DigestVerifyFinal(&md_ctx, CBS_data(&signature),
-                            CBS_len(&signature)) != 1) {
+      !EVP_DigestVerifyInitFromAlgorithm(&md_ctx, algor, pkey) ||
+      !EVP_DigestVerifyUpdate(&md_ctx, CBS_data(&tbs_cert),
+                              CBS_len(&tbs_cert)) ||
+      !EVP_DigestVerifyFinal(&md_ctx, CBS_data(&signature),
+                             CBS_len(&signature))) {
     goto out;
   }
   ret = 1;
