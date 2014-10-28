@@ -2141,9 +2141,13 @@ int ssl3_get_client_key_exchange(SSL *s)
 			}
 
 		EVP_PKEY_free(clnt_pub_pkey);
+		clnt_pub_pkey = NULL;
 		EC_POINT_free(clnt_ecpoint);
+		clnt_ecpoint = NULL;
 		EC_KEY_free(srvr_ecdh);
+		srvr_ecdh = NULL;
 		BN_CTX_free(bn_ctx);
+		bn_ctx = NULL;
 		EC_KEY_free(s->s3->tmp.ecdh);
 		s->s3->tmp.ecdh = NULL;
 
