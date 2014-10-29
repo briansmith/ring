@@ -150,6 +150,12 @@ type testCase struct {
 	// shimWritesFirst controls whether the shim sends an initial "hello"
 	// message before doing a roundtrip with the runner.
 	shimWritesFirst bool
+	// renegotiate indicates the the connection should be renegotiated
+	// during the exchange.
+	renegotiate bool
+	// renegotiateCiphers is a list of ciphersuite ids that will be
+	// switched in just before renegotiation.
+	renegotiateCiphers []uint16
 	// flags, if not empty, contains a list of command-line flags that will
 	// be passed to the shim program.
 	flags []string
@@ -563,6 +569,17 @@ func doExchange(test *testCase, config *Config, conn net.Conn, messageLen int, i
 		if string(buf[:]) != "hello" {
 			return fmt.Errorf("bad initial message")
 		}
+	}
+
+	if test.renegotiate {
+		if test.renegotiateCiphers != nil {
+			config.CipherSuites = test.renegotiateCiphers
+		}
+		if err := tlsConn.Renegotiate(); err != nil {
+			return err
+		}
+	} else if test.renegotiateCiphers != nil {
+		panic("renegotiateCiphers without renegotiate")
 	}
 
 	if messageLen < 0 {
@@ -1793,6 +1810,48 @@ func addRenegotiationTests() {
 		expectedError:   ":RENEGOTIATION_MISMATCH:",
 	})
 	// TODO(agl): test the renegotiation info SCSV.
+	testCases = append(testCases, testCase{
+		name:        "Renegotiate-Client",
+		renegotiate: true,
+	})
+	testCases = append(testCases, testCase{
+		name:        "Renegotiate-Client-EmptyExt",
+		renegotiate: true,
+		config: Config{
+			Bugs: ProtocolBugs{
+				EmptyRenegotiationInfo: true,
+			},
+		},
+		shouldFail:    true,
+		expectedError: ":RENEGOTIATION_MISMATCH:",
+	})
+	testCases = append(testCases, testCase{
+		name:        "Renegotiate-Client-BadExt",
+		renegotiate: true,
+		config: Config{
+			Bugs: ProtocolBugs{
+				BadRenegotiationInfo: true,
+			},
+		},
+		shouldFail:    true,
+		expectedError: ":RENEGOTIATION_MISMATCH:",
+	})
+	testCases = append(testCases, testCase{
+		name:        "Renegotiate-Client-SwitchCiphers",
+		renegotiate: true,
+		config: Config{
+			CipherSuites: []uint16{TLS_RSA_WITH_RC4_128_SHA},
+		},
+		renegotiateCiphers: []uint16{TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256},
+	})
+	testCases = append(testCases, testCase{
+		name:        "Renegotiate-Client-SwitchCiphers2",
+		renegotiate: true,
+		config: Config{
+			CipherSuites: []uint16{TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256},
+		},
+		renegotiateCiphers: []uint16{TLS_RSA_WITH_RC4_128_SHA},
+	})
 }
 
 func worker(statusChan chan statusMsg, c chan *testCase, buildDir string, wg *sync.WaitGroup) {

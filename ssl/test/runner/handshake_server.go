@@ -215,11 +215,21 @@ Curves:
 		return false, err
 	}
 
-	if len(hs.clientHello.secureRenegotiation) > 1 {
+	if !bytes.Equal(c.clientVerify, hs.clientHello.secureRenegotiation) {
 		c.sendAlert(alertHandshakeFailure)
-		return false, errors.New("tls: client is doing a renegotiation handshake")
+		return false, errors.New("tls: renegotiation mismatch")
 	}
-	hs.hello.secureRenegotiation = hs.clientHello.secureRenegotiation
+
+	if len(c.clientVerify) > 0 && !c.config.Bugs.EmptyRenegotiationInfo {
+		hs.hello.secureRenegotiation = append(hs.hello.secureRenegotiation, c.clientVerify...)
+		hs.hello.secureRenegotiation = append(hs.hello.secureRenegotiation, c.serverVerify...)
+		if c.config.Bugs.BadRenegotiationInfo {
+			hs.hello.secureRenegotiation[0] ^= 0x80
+		}
+	} else {
+		hs.hello.secureRenegotiation = hs.clientHello.secureRenegotiation
+	}
+
 	hs.hello.compressionMethod = compressionNone
 	hs.hello.duplicateExtension = c.config.Bugs.DuplicateExtension
 	if len(hs.clientHello.serverName) > 0 {

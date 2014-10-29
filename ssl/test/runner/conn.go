@@ -1031,6 +1031,16 @@ func (c *Conn) handleRenegotiation() error {
 	return c.Handshake()
 }
 
+func (c *Conn) Renegotiate() error {
+	if !c.isClient {
+		helloReq := new(helloRequestMsg)
+		c.writeRecord(recordTypeHandshake, helloReq.marshal())
+	}
+
+	c.handshakeComplete = false
+	return c.Handshake()
+}
+
 // Read can be made to time out and return a net.Error with Timeout() == true
 // after a fixed time limit; see SetDeadline and SetReadDeadline.
 func (c *Conn) Read(b []byte) (n int, err error) {
