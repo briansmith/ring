@@ -61,7 +61,7 @@
 #include "internal.h"
 
 
-#if defined(OPENSSL_WINDOWS) || defined(OPENSSL_NO_ASM) || \
+#if defined(OPENSSL_NO_ASM) || \
     (!defined(OPENSSL_X86_64) && !defined(OPENSSL_X86))
 
 #if defined(OPENSSL_WINDOWS)

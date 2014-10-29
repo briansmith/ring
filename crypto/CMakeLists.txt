@@ -13,8 +13,8 @@ else()
 		message("Using masm")
 		set(PERLASM_STYLE masm)
 	else()
-		message("Using win32n")
-		set(PERLASM_STYLE win32n)
+		message("Using win32")
+		set(PERLASM_STYLE win32)
 	endif()
 	set(ASM_EXT asm)
 	enable_language(ASM_MASM)
@@ -27,9 +27,10 @@ function(perlasm dest src)
 		DEPENDS
 		${src}
 		${PROJECT_SOURCE_DIR}/crypto/perlasm/x86_64-xlate.pl
+		${PROJECT_SOURCE_DIR}/crypto/perlasm/x86asm.pl
 		${PROJECT_SOURCE_DIR}/crypto/perlasm/x86gas.pl
-		${PROJECT_SOURCE_DIR}/crypto/perlasm/x86asm.pl
-		${PROJECT_SOURCE_DIR}/crypto/perlasm/x86asm.pl
+		${PROJECT_SOURCE_DIR}/crypto/perlasm/x86masm.pl
+		${PROJECT_SOURCE_DIR}/crypto/perlasm/x86nasm.pl
 		WORKING_DIRECTORY .
 	)
 endfunction()

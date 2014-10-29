@@ -235,9 +235,9 @@ sub ::asciz
 
 sub ::asm_finish
 {   &file_end();
-    print "#if defined(__i386__)\n";
+    print "#if defined(__i386__)\n" unless $win32;
     print @out;
-    print "#endif\n";
+    print "#endif\n" unless $win32;
 }
 
 sub ::asm_init
