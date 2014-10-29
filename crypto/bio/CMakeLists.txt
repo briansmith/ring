@@ -26,3 +26,6 @@ add_executable(
 )
 
 target_link_libraries(bio_test crypto)
+if (WIN32)
+	target_link_libraries(bio_test ws2_32)
+endif()

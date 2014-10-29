@@ -53,9 +53,9 @@
  * Hudson (tjh@cryptsoft.com). */
 
 #include <string.h>
-#include <strings.h>
 
 #include <openssl/crypto.h>
+#include <openssl/mem.h>
 #include <openssl/x509.h>
 #include <openssl/x509v3.h>
 
@@ -326,7 +326,7 @@ static void run_cert(X509 *crt, const char *nameincert,
 	const char *const *pname = names;
 	while (*pname)
 		{
-		int samename = strcasecmp(nameincert, *pname) == 0;
+		int samename = OPENSSL_strcasecmp(nameincert, *pname) == 0;
 		size_t namelen = strlen(*pname);
 		char *name = malloc(namelen);
 		int match, ret;
