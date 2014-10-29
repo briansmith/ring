@@ -65,7 +65,7 @@ func (c *Conn) clientHandshake() error {
 		supportedCurves:      c.config.curvePreferences(),
 		supportedPoints:      []uint8{pointFormatUncompressed},
 		nextProtoNeg:         len(c.config.NextProtos) > 0,
-		secureRenegotiation:  true,
+		secureRenegotiation:  []byte{},
 		alpnProtocols:        c.config.NextProtos,
 		duplicateExtension:   c.config.Bugs.DuplicateExtension,
 		channelIDSupported:   c.config.ChannelID != nil,
@@ -79,6 +79,15 @@ func (c *Conn) clientHandshake() error {
 
 	if c.config.Bugs.NoExtendedMasterSecret {
 		hello.extendedMasterSecret = false
+	}
+
+	if len(c.clientVerify) > 0 && !c.config.Bugs.EmptyRenegotiationInfo {
+		if c.config.Bugs.BadRenegotiationInfo {
+			hello.secureRenegotiation = append(hello.secureRenegotiation, c.clientVerify...)
+			hello.secureRenegotiation[0] ^= 0x80
+		} else {
+			hello.secureRenegotiation = c.clientVerify
+		}
 	}
 
 	possibleCipherSuites := c.config.cipherSuites()
@@ -238,6 +247,16 @@ NextCipherSuite:
 	if suite == nil {
 		c.sendAlert(alertHandshakeFailure)
 		return fmt.Errorf("tls: server selected an unsupported cipher suite")
+	}
+
+	if len(c.clientVerify) > 0 {
+		var expectedRenegInfo []byte
+		expectedRenegInfo = append(expectedRenegInfo, c.clientVerify...)
+		expectedRenegInfo = append(expectedRenegInfo, c.serverVerify...)
+		if !bytes.Equal(serverHello.secureRenegotiation, expectedRenegInfo) {
+			c.sendAlert(alertHandshakeFailure)
+			return fmt.Errorf("tls: renegotiation mismatch")
+		}
 	}
 
 	hs := &clientHandshakeState{
@@ -680,6 +699,7 @@ func (hs *clientHandshakeState) readFinished() error {
 			return errors.New("tls: server's Finished message was incorrect")
 		}
 	}
+	c.serverVerify = append(c.serverVerify[:0], serverFinished.verifyData...)
 	hs.writeServerHash(serverFinished.marshal())
 	return nil
 }
@@ -766,6 +786,7 @@ func (hs *clientHandshakeState) sendFinished(isResume bool) error {
 	} else {
 		finished.verifyData = hs.finishedHash.clientSum(hs.masterSecret)
 	}
+	c.clientVerify = append(c.clientVerify[:0], finished.verifyData...)
 	finishedBytes := finished.marshal()
 	hs.writeHash(finishedBytes, seqno)
 	postCCSBytes = append(postCCSBytes, finishedBytes...)

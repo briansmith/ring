@@ -59,6 +59,7 @@ const BoolFlag kBoolFlags[] = {
   { "-expect-session-miss", &TestConfig::expect_session_miss },
   { "-expect-extended-master-secret",
     &TestConfig::expect_extended_master_secret },
+  { "-renegotiate", &TestConfig::renegotiate },
 };
 
 const size_t kNumBoolFlags = sizeof(kBoolFlags) / sizeof(kBoolFlags[0]);
@@ -110,7 +111,8 @@ TestConfig::TestConfig()
       shim_writes_first(false),
       tls_d5_bug(false),
       expect_session_miss(false),
-      expect_extended_master_secret(false) {
+      expect_extended_master_secret(false),
+      renegotiate(false) {
 }
 
 bool ParseConfig(int argc, char **argv, TestConfig *out_config) {

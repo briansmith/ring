@@ -48,6 +48,7 @@ const (
 
 // TLS handshake message types.
 const (
+	typeHelloRequest        uint8 = 0
 	typeClientHello         uint8 = 1
 	typeServerHello         uint8 = 2
 	typeHelloVerifyRequest  uint8 = 3
@@ -490,6 +491,14 @@ type ProtocolBugs struct {
 	// NoExtendedMasterSecret causes the client and server to behave is if
 	// they didn't support an extended master secret.
 	NoExtendedMasterSecret bool
+
+	// EmptyRenegotiationInfo causes the renegotiation extension to be
+	// empty in a renegotiation handshake.
+	EmptyRenegotiationInfo bool
+
+	// BadRenegotiationInfo causes the renegotiation extension value in a
+	// renegotiation handshake to be incorrect.
+	BadRenegotiationInfo bool
 }
 
 func (c *Config) serverInit() {

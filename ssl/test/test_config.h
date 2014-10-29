@@ -56,6 +56,7 @@ struct TestConfig {
   bool expect_extended_master_secret;
   std::string psk;
   std::string psk_identity;
+  bool renegotiate;
 };
 
 bool ParseConfig(int argc, char **argv, TestConfig *out_config);

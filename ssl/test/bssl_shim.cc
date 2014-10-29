@@ -542,6 +542,30 @@ static int do_exchange(SSL_SESSION **out_session,
     }
   }
 
+  if (config->renegotiate) {
+    if (config->async) {
+      fprintf(stderr, "--renegotiate is not supported with --async.\n");
+      return 2;
+    }
+
+    SSL_renegotiate(ssl);
+
+    ret = SSL_do_handshake(ssl);
+    if (ret != 1) {
+      SSL_free(ssl);
+      BIO_print_errors_fp(stdout);
+      return 2;
+    }
+
+    SSL_set_state(ssl, SSL_ST_ACCEPT);
+    ret = SSL_do_handshake(ssl);
+    if (ret != 1) {
+      SSL_free(ssl);
+      BIO_print_errors_fp(stdout);
+      return 2;
+    }
+  }
+
   if (config->write_different_record_sizes) {
     if (config->is_dtls) {
       fprintf(stderr, "write_different_record_sizes not supported for DTLS\n");

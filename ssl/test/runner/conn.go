@@ -50,6 +50,10 @@ type Conn struct {
 	clientProtocolFallback bool
 	usedALPN               bool
 
+	// verify_data values for the renegotiation extension.
+	clientVerify []byte
+	serverVerify []byte
+
 	channelID *ecdsa.PublicKey
 
 	// input/output
@@ -129,9 +133,10 @@ func (hc *halfConn) setErrorLocked(err error) error {
 }
 
 func (hc *halfConn) error() error {
-	hc.Lock()
+	// This should be locked, but I've removed it for the renegotiation
+	// tests since we don't concurrently read and write the same tls.Conn
+	// in any case during testing.
 	err := hc.err
-	hc.Unlock()
 	return err
 }
 
@@ -651,7 +656,7 @@ func (c *Conn) doReadRecord(want recordType) (recordType, *block, error) {
 func (c *Conn) readRecord(want recordType) error {
 	// Caller must be in sync with connection:
 	// handshake data if handshake not yet completed,
-	// else application data.  (We don't support renegotiation.)
+	// else application data.
 	switch want {
 	default:
 		c.sendAlert(alertInternalError)
@@ -725,7 +730,12 @@ Again:
 	case recordTypeHandshake:
 		// TODO(rsc): Should at least pick off connection close.
 		if typ != want {
-			return c.in.setErrorLocked(c.sendAlert(alertNoRenegotiation))
+			// A client might need to process a HelloRequest from
+			// the server, thus receiving a handshake message when
+			// application data is expected is ok.
+			if !c.isClient {
+				return c.in.setErrorLocked(c.sendAlert(alertNoRenegotiation))
+			}
 		}
 		c.hand.Write(data)
 	}
@@ -908,6 +918,8 @@ func (c *Conn) readHandshake() (interface{}, error) {
 
 	var m handshakeMessage
 	switch data[0] {
+	case typeHelloRequest:
+		m = new(helloRequestMsg)
 	case typeClientHello:
 		m = &clientHelloMsg{
 			isDTLS: c.isDTLS,
@@ -1000,6 +1012,25 @@ func (c *Conn) Write(b []byte) (int, error) {
 	return n + m, c.out.setErrorLocked(err)
 }
 
+func (c *Conn) handleRenegotiation() error {
+	c.handshakeComplete = false
+	if !c.isClient {
+		panic("renegotiation should only happen for a client")
+	}
+
+	msg, err := c.readHandshake()
+	if err != nil {
+		return err
+	}
+	_, ok := msg.(*helloRequestMsg)
+	if !ok {
+		c.sendAlert(alertUnexpectedMessage)
+		return alertUnexpectedMessage
+	}
+
+	return c.Handshake()
+}
+
 // Read can be made to time out and return a net.Error with Timeout() == true
 // after a fixed time limit; see SetDeadline and SetReadDeadline.
 func (c *Conn) Read(b []byte) (n int, err error) {
@@ -1018,6 +1049,14 @@ func (c *Conn) Read(b []byte) (n int, err error) {
 			if err := c.readRecord(recordTypeApplicationData); err != nil {
 				// Soft error, like EAGAIN
 				return 0, err
+			}
+			if c.hand.Len() > 0 {
+				// We received handshake bytes, indicating the
+				// start of a renegotiation.
+				if err := c.handleRenegotiation(); err != nil {
+					return 0, err
+				}
+				continue
 			}
 		}
 		if err := c.in.err; err != nil {

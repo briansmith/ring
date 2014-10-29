@@ -214,6 +214,11 @@ Curves:
 		c.sendAlert(alertInternalError)
 		return false, err
 	}
+
+	if len(hs.clientHello.secureRenegotiation) > 1 {
+		c.sendAlert(alertHandshakeFailure)
+		return false, errors.New("tls: client is doing a renegotiation handshake")
+	}
 	hs.hello.secureRenegotiation = hs.clientHello.secureRenegotiation
 	hs.hello.compressionMethod = compressionNone
 	hs.hello.duplicateExtension = c.config.Bugs.DuplicateExtension
@@ -693,6 +698,7 @@ func (hs *serverHandshakeState) readFinished(isResume bool) error {
 		c.sendAlert(alertHandshakeFailure)
 		return errors.New("tls: client's Finished message is incorrect")
 	}
+	c.clientVerify = append(c.clientVerify[:0], clientFinished.verifyData...)
 
 	hs.writeClientHash(clientFinished.marshal())
 	return nil
@@ -730,6 +736,7 @@ func (hs *serverHandshakeState) sendFinished() error {
 
 	finished := new(finishedMsg)
 	finished.verifyData = hs.finishedHash.serverSum(hs.masterSecret)
+	c.serverVerify = append(c.serverVerify[:0], finished.verifyData...)
 	postCCSBytes := finished.marshal()
 	hs.writeServerHash(postCCSBytes)
 

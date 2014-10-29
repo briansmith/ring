@@ -1759,6 +1759,42 @@ func addResumptionVersionTests() {
 	}
 }
 
+func addRenegotiationTests() {
+	testCases = append(testCases, testCase{
+		testType:        serverTest,
+		name:            "Renegotiate-Server",
+		flags:           []string{"-renegotiate"},
+		shimWritesFirst: true,
+	})
+	testCases = append(testCases, testCase{
+		testType: serverTest,
+		name:     "Renegotiate-Server-EmptyExt",
+		config: Config{
+			Bugs: ProtocolBugs{
+				EmptyRenegotiationInfo: true,
+			},
+		},
+		flags:           []string{"-renegotiate"},
+		shimWritesFirst: true,
+		shouldFail:      true,
+		expectedError:   ":RENEGOTIATION_MISMATCH:",
+	})
+	testCases = append(testCases, testCase{
+		testType: serverTest,
+		name:     "Renegotiate-Server-BadExt",
+		config: Config{
+			Bugs: ProtocolBugs{
+				BadRenegotiationInfo: true,
+			},
+		},
+		flags:           []string{"-renegotiate"},
+		shimWritesFirst: true,
+		shouldFail:      true,
+		expectedError:   ":RENEGOTIATION_MISMATCH:",
+	})
+	// TODO(agl): test the renegotiation info SCSV.
+}
+
 func worker(statusChan chan statusMsg, c chan *testCase, buildDir string, wg *sync.WaitGroup) {
 	defer wg.Done()
 
@@ -1815,6 +1851,7 @@ func main() {
 	addExtensionTests()
 	addResumptionVersionTests()
 	addExtendedMasterSecretTests()
+	addRenegotiationTests()
 	for _, async := range []bool{false, true} {
 		for _, splitHandshake := range []bool{false, true} {
 			for _, protocol := range []protocol{tls, dtls} {
