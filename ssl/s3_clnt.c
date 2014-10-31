@@ -1550,11 +1550,11 @@ int ssl3_get_server_key_exchange(SSL *s)
 			}
 		else
 			{
-			EVP_VerifyInit_ex(&md_ctx, md, NULL);
-			EVP_VerifyUpdate(&md_ctx,&(s->s3->client_random[0]),SSL3_RANDOM_SIZE);
-			EVP_VerifyUpdate(&md_ctx,&(s->s3->server_random[0]),SSL3_RANDOM_SIZE);
-			EVP_VerifyUpdate(&md_ctx, CBS_data(&parameter), CBS_len(&parameter));
-			if (EVP_VerifyFinal(&md_ctx, CBS_data(&signature), CBS_len(&signature), pkey) <= 0)
+			if (!EVP_DigestVerifyInit(&md_ctx, NULL, md, NULL, pkey) ||
+				!EVP_DigestVerifyUpdate(&md_ctx, s->s3->client_random, SSL3_RANDOM_SIZE) ||
+				!EVP_DigestVerifyUpdate(&md_ctx, s->s3->server_random, SSL3_RANDOM_SIZE) ||
+				!EVP_DigestVerifyUpdate(&md_ctx, CBS_data(&parameter), CBS_len(&parameter)) ||
+				!EVP_DigestVerifyFinal(&md_ctx, CBS_data(&signature), CBS_len(&signature)))
 				{
 				/* bad signature */
 				al=SSL_AD_DECRYPT_ERROR;

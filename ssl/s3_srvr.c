@@ -1609,6 +1609,8 @@ int ssl3_send_server_key_exchange(SSL *s)
 			else
 			if (md)
 				{
+				size_t sig_len = EVP_PKEY_size(pkey);
+
 				/* send signature algorithm */
 				if (SSL_USE_SIGALGS(s))
 					{
@@ -1621,24 +1623,19 @@ int ssl3_send_server_key_exchange(SSL *s)
 						}
 					p+=2;
 					}
-#ifdef SSL_DEBUG
-				fprintf(stderr, "Using hash %s\n",
-							EVP_MD_name(md));
-#endif
-				EVP_SignInit_ex(&md_ctx, md, NULL);
-				EVP_SignUpdate(&md_ctx,&(s->s3->client_random[0]),SSL3_RANDOM_SIZE);
-				EVP_SignUpdate(&md_ctx,&(s->s3->server_random[0]),SSL3_RANDOM_SIZE);
-				EVP_SignUpdate(&md_ctx,d,n);
-				if (!EVP_SignFinal(&md_ctx,&(p[2]),
-					(unsigned int *)&i,pkey))
+				if (!EVP_DigestSignInit(&md_ctx, NULL, md, NULL, pkey) ||
+					!EVP_DigestSignUpdate(&md_ctx, s->s3->client_random, SSL3_RANDOM_SIZE) ||
+					!EVP_DigestSignUpdate(&md_ctx, s->s3->server_random, SSL3_RANDOM_SIZE) ||
+					!EVP_DigestSignUpdate(&md_ctx, d, n) ||
+					!EVP_DigestSignFinal(&md_ctx, &p[2], &sig_len))
 					{
 					OPENSSL_PUT_ERROR(SSL, ssl3_send_server_key_exchange, ERR_LIB_EVP);
 					goto err;
 					}
-				s2n(i,p);
-				n+=i+2;
+				s2n(sig_len, p);
+				n += sig_len + 2;
 				if (SSL_USE_SIGALGS(s))
-					n+= 2;
+					n += 2;
 				}
 			else
 				{
