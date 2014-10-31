@@ -645,7 +645,6 @@ static const char *const kLibraryNames[ERR_NUM_LIBS] = {
     "PKCS7 routines",                             /* ERR_LIB_PKCS7 */
     "PKCS8 routines",                             /* ERR_LIB_PKCS8 */
     "X509 V3 routines",                           /* ERR_LIB_X509V3 */
-    "PKCS12 routines",                            /* ERR_LIB_PKCS12 */
     "random number generator",                    /* ERR_LIB_RAND */
     "ENGINE routines",                            /* ERR_LIB_ENGINE */
     "OCSP routines",                              /* ERR_LIB_OCSP */
