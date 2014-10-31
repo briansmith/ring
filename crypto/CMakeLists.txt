@@ -10,18 +10,16 @@ elseif(UNIX)
 	enable_language(ASM)
 else()
 	if (CMAKE_CL_64)
-		message("Using masm")
-		set(PERLASM_STYLE masm)
-		enable_language(ASM_MASM)
+		message("Using nasm")
+		set(PERLASM_STYLE nasm)
 	else()
 		message("Using win32n")
 		set(PERLASM_STYLE win32n)
-
-		# On 32-bit, upstream supports only NASM, not MASM. We'll use Yasm, specifically.
-		set(CMAKE_ASM_NASM_COMPILER "yasm")
-		enable_language(ASM_NASM)
 	endif()
+
+	# On Windows, we use the NASM output, specifically built with Yasm.
 	set(ASM_EXT asm)
+	enable_language(ASM_NASM)
 endif()
 
 function(perlasm dest src)

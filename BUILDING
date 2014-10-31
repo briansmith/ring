@@ -25,4 +25,9 @@ BORINGSSL_IMPLEMENTATION. On Windows, where functions need to be tagged with
 BORINGSSL_SHARED_LIBRARY defined in the code which #includes the BoringSSL
 headers.
 
+To build on Windows, Yasm[2] is required for assembly. Either ensure yasm.exe
+is in %PATH% or configure CMAKE_ASM_NASM_COMPILER appropriately. Note that
+full Windows support is still in progress.
+
 [1] http://martine.github.io/ninja/
+[2] http://yasm.tortall.net/
