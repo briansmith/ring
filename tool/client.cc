@@ -14,6 +14,9 @@
 
 #include <openssl/base.h>
 
+// TODO(davidben): bssl client does not work on Windows.
+#if !defined(OPENSSL_WINDOWS)
+
 #include <string>
 #include <vector>
 
@@ -299,3 +302,5 @@ bool Client(const std::vector<std::string> &args) {
   SSL_CTX_free(ctx);
   return ok;
 }
+
+#endif  // !OPENSSL_WINDOWS

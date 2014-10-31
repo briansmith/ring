@@ -19,7 +19,9 @@
 #include <openssl/ssl.h>
 
 
+#if !defined(OPENSSL_WINDOWS)
 bool Client(const std::vector<std::string> &args);
+#endif
 bool DoPKCS12(const std::vector<std::string> &args);
 bool Speed(const std::vector<std::string> &args);
 
@@ -42,8 +44,10 @@ int main(int argc, char **argv) {
 
   if (tool == "speed") {
     return !Speed(args);
+#if !defined(OPENSSL_WINDOWS)
   } else if (tool == "s_client" || tool == "client") {
     return !Client(args);
+#endif
   } else if (tool == "pkcs12") {
     return !DoPKCS12(args);
   } else {

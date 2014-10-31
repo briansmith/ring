@@ -8,6 +8,7 @@ if(CMAKE_COMPILER_IS_GNUCXX OR "${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
 elseif(MSVC)
 	# Disable warnings for implicit integer narrowing.
 	set(CMAKE_C_FLAGS "/wd4267")
+	set(CMAKE_CXX_FLAGS "/wd4267")
 endif()
 
 add_definitions(-DBORINGSSL_IMPLEMENTATION)
