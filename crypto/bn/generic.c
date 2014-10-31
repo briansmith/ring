@@ -61,8 +61,13 @@
 #include "internal.h"
 
 
+/* Generic implementations of most operations are needed for:
+ * - Configurations without inline assembly.
+ * - Architectures other than x86 or x86_64.
+ * - Windows x84_64; x86_64-gcc.c does not build on MSVC. */
 #if defined(OPENSSL_NO_ASM) || \
-    (!defined(OPENSSL_X86_64) && !defined(OPENSSL_X86))
+    (!defined(OPENSSL_X86_64) && !defined(OPENSSL_X86)) || \
+    (defined(OPENSSL_X86_64) && defined(OPENSSL_WINDOWS))
 
 #if defined(OPENSSL_WINDOWS)
 #define alloca _alloca

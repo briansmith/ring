@@ -56,6 +56,8 @@
  *    machine.
  */
 
+ /* TODO(davidben): Get this file working on Windows x64. */
+
 #undef mul
 #undef mul_add
 
