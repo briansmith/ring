@@ -138,7 +138,6 @@ BIGNUM *bn_expand(BIGNUM *bn, unsigned bits);
 #if defined(OPENSSL_64_BIT)
 
 #define BN_ULLONG	unsigned long long
-#define BN_LONG		long
 #define BN_BITS		128
 #define BN_BYTES	8
 #define BN_BITS4	32
@@ -158,7 +157,6 @@ BIGNUM *bn_expand(BIGNUM *bn, unsigned bits);
 
 #define BN_ULLONG	unsigned long long
 #define BN_MASK	(0xffffffffffffffffLL)
-#define BN_LONG		int32_t
 #define BN_BITS		64
 #define BN_BYTES	4
 #define BN_BITS4	16
