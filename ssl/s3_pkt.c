@@ -1298,15 +1298,7 @@ start:
 		if (((s->state&SSL_ST_MASK) == SSL_ST_OK) &&
 			!(s->s3->flags & SSL3_FLAGS_NO_RENEGOTIATE_CIPHERS))
 			{
-#if 0 /* worked only because C operator preferences are not as expected (and
-       * because this is not really needed for clients except for detecting
-       * protocol violations): */
-			s->state=SSL_ST_BEFORE|(s->server)
-				?SSL_ST_ACCEPT
-				:SSL_ST_CONNECT;
-#else
 			s->state = s->server ? SSL_ST_ACCEPT : SSL_ST_CONNECT;
-#endif
 			s->renegotiate=1;
 			s->new_session=1;
 			}
