@@ -65,13 +65,11 @@ extern "C" {
 
 
 /* These values are flags for EVP_PKEY_ASN1_METHOD.flags. */
-#define ASN1_PKEY_ALIAS 0x1
-#define ASN1_PKEY_DYNAMIC 0x2
 
 /* ASN1_PKEY_SIGPARAM_NULL controls whether the default behavior of
  * EVP_DigestSignAlgorithm writes an explicit NULL parameter in the
  * AlgorithmIdentifier. */
-#define ASN1_PKEY_SIGPARAM_NULL 0x4
+#define ASN1_PKEY_SIGPARAM_NULL 0x1
 
 /* evp_digest_sign_algorithm_result_t is the return value of the
  * digest_sign_algorithm function in EVP_PKEY_ASN1_METHOD. */

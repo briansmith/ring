@@ -717,9 +717,3 @@ const EVP_PKEY_ASN1_METHOD rsa_asn1_meth = {
   rsa_digest_verify_init_from_algorithm,
   rsa_digest_sign_algorithm,
 };
-
-const EVP_PKEY_ASN1_METHOD rsa_asn1_meth_2 = {
-  EVP_PKEY_RSA2,
-  EVP_PKEY_RSA,
-  ASN1_PKEY_ALIAS,
-};
