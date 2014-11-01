@@ -431,6 +431,13 @@ type ProtocolBugs struct {
 	// the first 6 bytes of the ClientHello.
 	FragmentClientVersion bool
 
+	// FragmentAlert will cause all alerts to be fragmented across
+	// two records.
+	FragmentAlert bool
+
+	// SendSpuriousAlert will cause an spurious, unwanted alert to be sent.
+	SendSpuriousAlert bool
+
 	// RsaClientKeyExchangeVersion, if non-zero, causes the client to send a
 	// ClientKeyExchange with the specified version rather than the
 	// client_version when performing the RSA key exchange.

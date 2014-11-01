@@ -354,6 +354,18 @@ var testCases = []testCase{
 	},
 	{
 		testType: serverTest,
+		name:     "FragmentAlert",
+		config: Config{
+			Bugs: ProtocolBugs{
+				FragmentAlert: true,
+				SendSpuriousAlert: true,
+			},
+		},
+		shouldFail:    true,
+		expectedError: ":BAD_ALERT:",
+	},
+	{
+		testType: serverTest,
 		name:     "EarlyChangeCipherSpec-server-1",
 		config: Config{
 			Bugs: ProtocolBugs{

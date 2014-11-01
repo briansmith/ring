@@ -372,10 +372,8 @@ typedef struct ssl3_state_st
 	SSL3_RECORD rrec;	/* each decoded record goes in here */
 	SSL3_RECORD wrec;	/* goes out from here */
 
-	/* storage for Alert/Handshake protocol data received but not
+	/* storage for Handshake protocol data received but not
 	 * yet processed by ssl3_read_bytes: */
-	unsigned char alert_fragment[2];
-	unsigned int alert_fragment_len;
 	unsigned char handshake_fragment[4];
 	unsigned int handshake_fragment_len;
 

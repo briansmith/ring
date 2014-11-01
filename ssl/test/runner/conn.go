@@ -769,7 +769,12 @@ func (c *Conn) sendAlertLocked(err alert) error {
 		c.tmp[0] = alertLevelError
 	}
 	c.tmp[1] = byte(err)
-	c.writeRecord(recordTypeAlert, c.tmp[0:2])
+	if c.config.Bugs.FragmentAlert {
+		c.writeRecord(recordTypeAlert, c.tmp[0:1])
+		c.writeRecord(recordTypeAlert, c.tmp[1:2])
+	} else {
+		c.writeRecord(recordTypeAlert, c.tmp[0:2])
+	}
 	// closeNotify is a special case in that it isn't an error:
 	if err != alertCloseNotify {
 		return c.out.setErrorLocked(&net.OpError{Op: "local error", Err: err})
@@ -999,6 +1004,10 @@ func (c *Conn) Write(b []byte) (int, error) {
 
 	if !c.handshakeComplete {
 		return 0, alertInternalError
+	}
+
+	if c.config.Bugs.SendSpuriousAlert {
+		c.sendAlertLocked(alertRecordOverflow)
 	}
 
 	// SSL 3.0 and TLS 1.0 are susceptible to a chosen-plaintext
