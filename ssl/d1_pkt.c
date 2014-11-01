@@ -918,14 +918,6 @@ start:
              *  may be fragmented--don't always expect dest_maxlen bytes */
 			if ( rr->length < dest_maxlen)
 				{
-#ifdef DTLS1_AD_MISSING_HANDSHAKE_MESSAGE
-				/*
-				 * for normal alerts rr->length is 2, while
-				 * dest_maxlen is 7 if we were to handle this
-				 * non-existing alert...
-				 */
-				FIX ME
-#endif
 				s->rstate=SSL_ST_READ_HEADER;
 				rr->length = 0;
 				goto start;
@@ -1038,31 +1030,6 @@ start:
 				s->shutdown |= SSL_RECEIVED_SHUTDOWN;
 				return(0);
 				}
-#if 0
-            /* XXX: this is a possible improvement in the future */
-			/* now check if it's a missing record */
-			if (alert_descr == DTLS1_AD_MISSING_HANDSHAKE_MESSAGE)
-				{
-				unsigned short seq;
-				unsigned int frag_off;
-				unsigned char *p = &(s->d1->alert_fragment[2]);
-
-				n2s(p, seq);
-				n2l3(p, frag_off);
-
-				dtls1_retransmit_message(s,
-										 dtls1_get_queue_priority(frag->msg_header.seq, 0),
-										 frag_off, &found);
-				if ( ! found  && SSL_in_init(s))
-					{
-					/* fprintf( stderr,"in init = %d\n", SSL_in_init(s)); */
-					/* requested a message not yet sent, 
-					   send an alert ourselves */
-					ssl3_send_alert(s,SSL3_AL_WARNING,
-						DTLS1_AD_MISSING_HANDSHAKE_MESSAGE);
-					}
-				}
-#endif
 			}
 		else if (alert_level == 2) /* fatal */
 			{
@@ -1577,24 +1544,6 @@ int dtls1_dispatch_alert(SSL *s)
 	*ptr++ = s->s3->send_alert[0];
 	*ptr++ = s->s3->send_alert[1];
 
-#ifdef DTLS1_AD_MISSING_HANDSHAKE_MESSAGE
-	if (s->s3->send_alert[1] == DTLS1_AD_MISSING_HANDSHAKE_MESSAGE)
-		{	
-		s2n(s->d1->handshake_read_seq, ptr);
-#if 0
-		if ( s->d1->r_msg_hdr.frag_off == 0)  /* waiting for a new msg */
-
-		else
-			s2n(s->d1->r_msg_hdr.seq, ptr); /* partial msg read */
-#endif
-
-#if 0
-		fprintf(stderr, "s->d1->handshake_read_seq = %d, s->d1->r_msg_hdr.seq = %d\n",s->d1->handshake_read_seq,s->d1->r_msg_hdr.seq);
-#endif
-		l2n3(s->d1->r_msg_hdr.frag_off, ptr);
-		}
-#endif
-
 	i = do_dtls1_write(s, SSL3_RT_ALERT, &buf[0], sizeof(buf));
 	if (i <= 0)
 		{
@@ -1603,11 +1552,7 @@ int dtls1_dispatch_alert(SSL *s)
 		}
 	else
 		{
-		if (s->s3->send_alert[0] == SSL3_AL_FATAL
-#ifdef DTLS1_AD_MISSING_HANDSHAKE_MESSAGE
-		    || s->s3->send_alert[1] == DTLS1_AD_MISSING_HANDSHAKE_MESSAGE
-#endif
-		    )
+		if (s->s3->send_alert[0] == SSL3_AL_FATAL)
 			(void)BIO_flush(s->wbio);
 
 		if (s->msg_callback)

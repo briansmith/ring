@@ -72,11 +72,6 @@ extern "C" {
 /* Special value for method supporting multiple versions */
 #define DTLS_ANY_VERSION		0x1FFFF
 
-#if 0
-/* this alert description is not specified anywhere... */
-#define DTLS1_AD_MISSING_HANDSHAKE_MESSAGE    110
-#endif
-
 /* lengths of messages */
 #define DTLS1_COOKIE_LENGTH                     256
 
@@ -89,11 +84,7 @@ extern "C" {
 
 #define DTLS1_CCS_HEADER_LENGTH                  1
 
-#ifdef DTLS1_AD_MISSING_HANDSHAKE_MESSAGE
-#define DTLS1_AL_HEADER_LENGTH                   7
-#else
 #define DTLS1_AL_HEADER_LENGTH                   2
-#endif
 
 #ifndef OPENSSL_NO_SSL_INTERN
 
