@@ -163,7 +163,6 @@ int a2i_ASN1_INTEGER(BIO *bp, ASN1_INTEGER *bs, char *buf, int size)
 			if (sp == NULL)
 				{
 				OPENSSL_PUT_ERROR(ASN1, a2i_ASN1_INTEGER, ERR_R_MALLOC_FAILURE);
-				if (s != NULL) OPENSSL_free(s);
 				goto err;
 				}
 			s=sp;
@@ -204,6 +203,8 @@ err:
 err_sl:
 		OPENSSL_PUT_ERROR(ASN1, a2i_ASN1_INTEGER, ASN1_R_SHORT_LINE);
 		}
+	if (s != NULL)
+		OPENSSL_free(s);
 	return(ret);
 	}
 
