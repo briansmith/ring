@@ -63,7 +63,6 @@
 
 
 OPENSSL_DECLARE_ERROR_FUNCTION(X509, d2i_X509_PKEY);
-OPENSSL_DECLARE_ERROR_FUNCTION(X509, X509_PKEY_new);
 
 /* need to implement */
 int i2d_X509_PKEY(X509_PKEY *a, unsigned char **pp)
@@ -112,22 +111,27 @@ X509_PKEY *d2i_X509_PKEY(X509_PKEY **a, const unsigned char **pp, long length)
 
 X509_PKEY *X509_PKEY_new(void)
 	{
-	X509_PKEY *ret=NULL;
-	ASN1_CTX c;
-
-	M_ASN1_New_Malloc(ret,X509_PKEY);
-	ret->version=0;
-	M_ASN1_New(ret->enc_algor,X509_ALGOR_new);
-	M_ASN1_New(ret->enc_pkey,M_ASN1_OCTET_STRING_new);
-	ret->dec_pkey=NULL;
-	ret->key_length=0;
-	ret->key_data=NULL;
-	ret->key_free=0;
-	ret->cipher.cipher=NULL;
-	memset(ret->cipher.iv,0,EVP_MAX_IV_LENGTH);
+	X509_PKEY *ret = OPENSSL_malloc(sizeof(X509_PKEY));
+	if (ret == NULL)
+		{
+		OPENSSL_PUT_ERROR(X509, X509_PKEY_new, ERR_R_MALLOC_FAILURE);
+		goto err;
+		}
+	memset(ret, 0, sizeof(X509_PKEY));
 	ret->references=1;
-	return(ret);
-	M_ASN1_New_Error(X509_F_X509_PKEY_new);
+
+	ret->enc_algor = X509_ALGOR_new();
+	if (ret->enc_algor == NULL)
+		goto err;
+	ret->enc_pkey = M_ASN1_OCTET_STRING_new();
+	if (ret->enc_pkey == NULL)
+		goto err;
+	return ret;
+
+err:
+	if (ret != NULL)
+		X509_PKEY_free(ret);
+	return NULL;
 	}
 
 void X509_PKEY_free(X509_PKEY *x)
