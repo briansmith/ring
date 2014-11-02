@@ -57,57 +57,9 @@
 #include <openssl/x509.h>
 
 #include <openssl/asn1.h>
-#include <openssl/asn1_mac.h>
 #include <openssl/mem.h>
 #include <openssl/err.h>
 
-
-OPENSSL_DECLARE_ERROR_FUNCTION(X509, d2i_X509_PKEY);
-
-/* need to implement */
-int i2d_X509_PKEY(X509_PKEY *a, unsigned char **pp)
-	{
-	return(0);
-	}
-
-X509_PKEY *d2i_X509_PKEY(X509_PKEY **a, const unsigned char **pp, long length)
-	{
-	int i;
-	M_ASN1_D2I_vars(a,X509_PKEY *,X509_PKEY_new);
-
-	M_ASN1_D2I_Init();
-	M_ASN1_D2I_start_sequence();
-	M_ASN1_D2I_get_x(X509_ALGOR,ret->enc_algor,d2i_X509_ALGOR);
-	M_ASN1_D2I_get_x(ASN1_OCTET_STRING,ret->enc_pkey,d2i_ASN1_OCTET_STRING);
-
-	ret->cipher.cipher=NULL;
-
-        /* TODO(fork): fix */
-	/*ret->cipher.cipher=EVP_get_cipherbyname(
-		OBJ_nid2ln(OBJ_obj2nid(ret->enc_algor->algorithm)));*/
-
-	if (ret->cipher.cipher == NULL)
-		{
-		c.error=ASN1_R_UNSUPPORTED_CIPHER;
-		c.line=__LINE__;
-		goto err;
-		}
-	if (ret->enc_algor->parameter->type == V_ASN1_OCTET_STRING) 
-		{
-		i=ret->enc_algor->parameter->value.octet_string->length;
-		if (i > EVP_MAX_IV_LENGTH)
-			{
-			c.error=ASN1_R_IV_TOO_LARGE;
-			c.line=__LINE__;
-			goto err;
-			}
-		memcpy(ret->cipher.iv,
-			ret->enc_algor->parameter->value.octet_string->data,i);
-		}
-	else
-		memset(ret->cipher.iv,0,EVP_MAX_IV_LENGTH);
-	M_ASN1_D2I_Finish(a,X509_PKEY_free,X509_F_d2i_X509_PKEY);
-	}
 
 X509_PKEY *X509_PKEY_new(void)
 	{
