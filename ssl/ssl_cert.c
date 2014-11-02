@@ -361,13 +361,7 @@ CERT *ssl_cert_dup(CERT *cert)
 	return(ret);
 	
 err:
-	if (ret->dh_tmp != NULL)
-		DH_free(ret->dh_tmp);
-	if (ret->ecdh_tmp != NULL)
-		EC_KEY_free(ret->ecdh_tmp);
-
-	ssl_cert_clear_certs(ret);
-
+	ssl_cert_free(ret);
 	return NULL;
 	}
 
