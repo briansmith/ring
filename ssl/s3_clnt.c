@@ -2699,11 +2699,12 @@ int ssl3_send_channel_id(SSL *s)
 	/* The first byte of public_key will be 0x4, denoting an uncompressed key. */
 	memcpy(d, public_key + 1, 64);
 	d += 64;
-	memset(d, 0, 2 * 32);
-	BN_bn2bin(sig->r, d + 32 - BN_num_bytes(sig->r));
-	d += 32;
-	BN_bn2bin(sig->s, d + 32 - BN_num_bytes(sig->s));
-	d += 32;
+	if (!BN_bn2bin_padded(d, 32, sig->r) ||
+		!BN_bn2bin_padded(d + 32, 32, sig->s))
+		{
+		OPENSSL_PUT_ERROR(SSL, ssl3_send_channel_id, ERR_R_INTERNAL_ERROR);
+		goto err;
+		}
 
 	s->state = SSL3_ST_CW_CHANNEL_ID_B;
 	s->init_num = 4 + 2 + 2 + TLSEXT_CHANNEL_ID_SIZE;
