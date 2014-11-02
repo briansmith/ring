@@ -599,14 +599,13 @@ static int asn1_template_noexp_d2i(ASN1_VALUE **val,
 	{
 	int flags, aclass;
 	int ret;
-	const unsigned char *p, *q;
+	const unsigned char *p;
 	if (!val)
 		return 0;
 	flags = tt->flags;
 	aclass = flags & ASN1_TFLG_TAG_CLASS;
 
 	p = *in;
-	q = p;
 
 	if (flags & ASN1_TFLG_SK_MASK)
 		{
@@ -663,7 +662,7 @@ static int asn1_template_noexp_d2i(ASN1_VALUE **val,
 		while(len > 0)
 			{
 			ASN1_VALUE *skfield;
-			q = p;
+			const unsigned char *q = p;
 			/* See if EOC found */
 			if (asn1_check_eoc(&p, len))
 				{

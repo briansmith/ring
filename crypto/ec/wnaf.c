@@ -443,8 +443,8 @@ int ec_wNAF_mul(const EC_GROUP *group, EC_POINT *r, const BIGNUM *scalar,
          * as the wNAF belonging to the generator,
          * so wNAF splitting will not buy us anything. */
 
-        numblocks = 1;
-        totalnum = num + 1; /* don't use wNAF splitting */
+        numblocks = 1; /* don't use wNAF splitting */
+        totalnum = num + numblocks;
         wNAF[num] = tmp_wNAF;
         wNAF[num + 1] = NULL;
         wNAF_len[num] = tmp_len;
