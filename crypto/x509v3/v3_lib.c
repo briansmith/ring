@@ -79,10 +79,12 @@ int X509V3_EXT_add(X509V3_EXT_METHOD *ext)
 {
 	if(!ext_list && !(ext_list = sk_X509V3_EXT_METHOD_new(ext_stack_cmp))) {
 		OPENSSL_PUT_ERROR(X509V3, X509V3_EXT_add, ERR_R_MALLOC_FAILURE);
+		ext_list_free(ext);
 		return 0;
 	}
 	if(!sk_X509V3_EXT_METHOD_push(ext_list, ext)) {
 		OPENSSL_PUT_ERROR(X509V3, X509V3_EXT_add, ERR_R_MALLOC_FAILURE);
+		ext_list_free(ext);
 		return 0;
 	}
 	return 1;
