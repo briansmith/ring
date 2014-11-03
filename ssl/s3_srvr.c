@@ -1181,8 +1181,7 @@ int ssl3_send_server_hello(SSL *s)
 		{
 		/* We only accept ChannelIDs on connections with ECDHE in order
 		 * to avoid a known attack while we fix ChannelID itself. */
-		if (s->s3 &&
-		    s->s3->tlsext_channel_id_valid &&
+		if (s->s3->tlsext_channel_id_valid &&
 		    (s->s3->tmp.new_cipher->algorithm_mkey & SSL_kEECDH) == 0)
 			s->s3->tlsext_channel_id_valid = 0;
 
