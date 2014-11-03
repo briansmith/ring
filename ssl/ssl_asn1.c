@@ -105,7 +105,6 @@
  *     verifyResult            [5] INTEGER OPTIONAL,  -- one of X509_V_* codes
  *     hostName                [6] OCTET STRING OPTIONAL,
  *                                 -- from server_name extension
- *     pskIdentityHint         [7] OCTET STRING OPTIONAL,
  *     pskIdentity             [8] OCTET STRING OPTIONAL,
  *     ticketLifetimeHint      [9] INTEGER OPTIONAL,       -- client-only
  *     ticket                  [10] OCTET STRING OPTIONAL, -- client-only
@@ -118,8 +117,13 @@
  *     extendedMasterSecret    [17] BOOLEAN OPTIONAL,
  * }
  *
- * Note: When the relevant features were #ifdef'd out, support for
- * parsing compressionMethod [11] and srpUsername [12] was lost. */
+ * Note: historically this serialization has included other optional
+ * fields. Their presense is currently treated as a parse error:
+ *
+ *     keyArg                  [0] IMPLICIT OCTET STRING OPTIONAL,
+ *     pskIdentityHint         [7] OCTET STRING OPTIONAL,
+ *     compressionMethod       [11] OCTET STRING OPTIONAL,
+ *     srpUsername             [12] OCTET STRING OPTIONAL, */
 
 static const int kTimeTag =
     CBS_ASN1_CONSTRUCTED | CBS_ASN1_CONTEXT_SPECIFIC | 1;
@@ -133,8 +137,6 @@ static const int kVerifyResultTag =
     CBS_ASN1_CONSTRUCTED | CBS_ASN1_CONTEXT_SPECIFIC | 5;
 static const int kHostNameTag =
     CBS_ASN1_CONSTRUCTED | CBS_ASN1_CONTEXT_SPECIFIC | 6;
-static const int kPSKIdentityHintTag =
-    CBS_ASN1_CONSTRUCTED | CBS_ASN1_CONTEXT_SPECIFIC | 7;
 static const int kPSKIdentityTag =
     CBS_ASN1_CONSTRUCTED | CBS_ASN1_CONTEXT_SPECIFIC | 8;
 static const int kTicketLifetimeHintTag =
@@ -242,16 +244,6 @@ static int SSL_SESSION_to_bytes_full(SSL_SESSION *in, uint8_t **out_data,
         !CBB_add_asn1(&child, &child2, CBS_ASN1_OCTETSTRING) ||
         !CBB_add_bytes(&child2, (const uint8_t *)in->tlsext_hostname,
                        strlen(in->tlsext_hostname))) {
-      OPENSSL_PUT_ERROR(SSL, i2d_SSL_SESSION, ERR_R_MALLOC_FAILURE);
-      goto err;
-    }
-  }
-
-  if (in->psk_identity_hint) {
-    if (!CBB_add_asn1(&session, &child, kPSKIdentityHintTag) ||
-        !CBB_add_asn1(&child, &child2, CBS_ASN1_OCTETSTRING) ||
-        !CBB_add_bytes(&child2, (const uint8_t *)in->psk_identity_hint,
-                       strlen(in->psk_identity_hint))) {
       OPENSSL_PUT_ERROR(SSL, i2d_SSL_SESSION, ERR_R_MALLOC_FAILURE);
       goto err;
     }
@@ -460,8 +452,6 @@ SSL_SESSION *d2i_SSL_SESSION(SSL_SESSION **a, const uint8_t **pp, long length) {
   }
   if (!d2i_SSL_SESSION_get_string(&session, &ret->tlsext_hostname,
                                   kHostNameTag) ||
-      !d2i_SSL_SESSION_get_string(&session, &ret->psk_identity_hint,
-                                  kPSKIdentityHintTag) ||
       !d2i_SSL_SESSION_get_string(&session, &ret->psk_identity,
                                   kPSKIdentityTag)) {
     goto err;

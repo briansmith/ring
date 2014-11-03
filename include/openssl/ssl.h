@@ -377,7 +377,6 @@ struct ssl_session_st
 	unsigned int sid_ctx_length;
 	unsigned char sid_ctx[SSL_MAX_SID_CTX_LENGTH];
 
-	char *psk_identity_hint;
 	char *psk_identity;
 	/* Used to indicate that session resumption is not allowed.
 	 * Applications can also set this bit for a new session via
@@ -917,7 +916,10 @@ struct ssl_ctx_st
 	int (*tlsext_status_cb)(SSL *ssl, void *arg);
 	void *tlsext_status_arg;
 
+	/* Server-only: psk_identity_hint is the default identity hint to send
+	 * in PSK-based key exchanges. */
 	char *psk_identity_hint;
+
 	unsigned int (*psk_client_callback)(SSL *ssl, const char *hint, char *identity,
 		unsigned int max_identity_len, unsigned char *psk,
 		unsigned int max_psk_len);
@@ -1305,10 +1307,10 @@ struct ssl_st
 
 	void (*info_callback)(const SSL *ssl,int type,int val); /* optional informational callback */
 
-	/* PSK identity hint is stored here only to enable setting a hint on an SSL object before an
-	 * SSL_SESSION is associated with it. Once an SSL_SESSION is associated with this SSL object,
-	 * the psk_identity_hint from the session takes precedence over this one. */
+	/* Server-only: psk_identity_hint is the identity hint to send in
+	 * PSK-based key exchanges. */
 	char *psk_identity_hint;
+
 	unsigned int (*psk_client_callback)(SSL *ssl, const char *hint, char *identity,
 		unsigned int max_identity_len, unsigned char *psk,
 		unsigned int max_psk_len);

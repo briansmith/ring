@@ -360,7 +360,7 @@ int dtls1_accept(SSL *s)
 			 * in sync.
 			 */
 			if (ssl_cipher_requires_server_key_exchange(s->s3->tmp.new_cipher) ||
-			    ((alg_a & SSL_aPSK) && s->session->psk_identity_hint))
+			    ((alg_a & SSL_aPSK) && s->psk_identity_hint))
 				{
 				dtls1_start_timer(s);
 				ret=ssl3_send_server_key_exchange(s);

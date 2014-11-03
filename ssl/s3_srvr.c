@@ -406,7 +406,7 @@ int ssl3_accept(SSL *s)
 			 * in sync.
 			 */
 			if (ssl_cipher_requires_server_key_exchange(s->s3->tmp.new_cipher) ||
-			    ((alg_a & SSL_aPSK) && s->session->psk_identity_hint))
+			    ((alg_a & SSL_aPSK) && s->psk_identity_hint))
 				{
 				ret=ssl3_send_server_key_exchange(s);
 				if (ret <= 0) goto end;
@@ -1314,7 +1314,7 @@ int ssl3_send_server_key_exchange(SSL *s)
 		if (alg_a & SSL_aPSK)
 			{
 			/* size for PSK identity hint */
-			psk_identity_hint = s->session->psk_identity_hint;
+			psk_identity_hint = s->psk_identity_hint;
 			if (psk_identity_hint)
 				psk_identity_hint_len = strlen(psk_identity_hint);
 			else

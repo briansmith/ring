@@ -1208,10 +1208,13 @@ int ssl3_get_server_key_exchange(SSL *s)
 			 * |sess_cert|. */
 			if (s->session->sess_cert == NULL)
 				s->session->sess_cert = ssl_sess_cert_new();
-			if (s->session->psk_identity_hint)
+
+			/* TODO(davidben): This should be reset in one place
+			 * with the rest of the handshake state. */
+			if (s->s3->tmp.peer_psk_identity_hint)
 				{
-				OPENSSL_free(s->session->psk_identity_hint);
-				s->session->psk_identity_hint = NULL;
+				OPENSSL_free(s->s3->tmp.peer_psk_identity_hint);
+				s->s3->tmp.peer_psk_identity_hint = NULL;
 				}
 			}
 		s->s3->tmp.reuse_message=1;
@@ -1275,9 +1278,9 @@ int ssl3_get_server_key_exchange(SSL *s)
 			}
 
 		/* Save the identity hint as a C string. */
-		if (!CBS_strdup(&psk_identity_hint, &s->session->psk_identity_hint))
+		if (!CBS_strdup(&psk_identity_hint, &s->s3->tmp.peer_psk_identity_hint))
 			{
-			al = SSL_AD_HANDSHAKE_FAILURE;
+			al = SSL_AD_INTERNAL_ERROR;
 			OPENSSL_PUT_ERROR(SSL, ssl3_get_server_key_exchange, ERR_R_MALLOC_FAILURE);
 			goto f_err;
 			}
@@ -1874,7 +1877,7 @@ int ssl3_send_client_key_exchange(SSL *s)
 				}
 
 			memset(identity, 0, sizeof(identity));
-			psk_len = s->psk_client_callback(s, s->session->psk_identity_hint,
+			psk_len = s->psk_client_callback(s, s->s3->tmp.peer_psk_identity_hint,
 				identity, sizeof(identity), psk, sizeof(psk));
 			if (psk_len > PSK_MAX_PSK_LEN)
 				{

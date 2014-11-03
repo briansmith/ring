@@ -2928,35 +2928,18 @@ int SSL_use_psk_identity_hint(SSL *s, const char *identity_hint)
 		return 0;
 		}
 
-	/* Clear hint in SSL and associated SSL_SESSION (if any). */
+	/* Clear currently configured hint, if any. */
 	if (s->psk_identity_hint != NULL)
 		{
 		OPENSSL_free(s->psk_identity_hint);
 		s->psk_identity_hint = NULL;
 		}
-	if (s->session != NULL && s->session->psk_identity_hint != NULL)
-		{
-		OPENSSL_free(s->session->psk_identity_hint);
-		s->session->psk_identity_hint = NULL;
-		}
 
 	if (identity_hint != NULL)
 		{
-		/* The hint is stored in SSL and SSL_SESSION with the one in
-		 * SSL_SESSION taking precedence. Thus, if SSL_SESSION is avaiable,
-		 * we store the hint there, otherwise we store it in SSL. */
-		if (s->session != NULL)
-			{
-			s->session->psk_identity_hint = BUF_strdup(identity_hint);
-			if (s->session->psk_identity_hint == NULL)
-				return 0;
-			}
-		else
-			{
-			s->psk_identity_hint = BUF_strdup(identity_hint);
-			if (s->psk_identity_hint == NULL)
-				return 0;
-			}
+		s->psk_identity_hint = BUF_strdup(identity_hint);
+		if (s->psk_identity_hint == NULL)
+			return 0;
 		}
 	return 1;
 	}
@@ -2965,11 +2948,7 @@ const char *SSL_get_psk_identity_hint(const SSL *s)
 	{
 	if (s == NULL)
 		return NULL;
-	/* The hint is stored in SSL and SSL_SESSION with the one in SSL_SESSION
-	 * taking precedence. */
-	if (s->session != NULL)
-		return(s->session->psk_identity_hint);
-	return(s->psk_identity_hint);
+	return s->psk_identity_hint;
 	}
 
 const char *SSL_get_psk_identity(const SSL *s)

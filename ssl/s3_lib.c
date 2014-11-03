@@ -1029,6 +1029,8 @@ void ssl3_free(SSL *s)
 		OPENSSL_free(s->s3->tmp.peer_ecpointformatlist);
 	if (s->s3->tmp.peer_ellipticcurvelist)
 		OPENSSL_free(s->s3->tmp.peer_ellipticcurvelist);
+	if (s->s3->tmp.peer_psk_identity_hint)
+		OPENSSL_free(s->s3->tmp.peer_psk_identity_hint);
 	if (s->s3->handshake_buffer) {
 		BIO_free(s->s3->handshake_buffer);
 	}
@@ -1064,6 +1066,9 @@ void ssl3_clear(SSL *s)
 	if (s->s3->tmp.peer_ellipticcurvelist)
 		OPENSSL_free(s->s3->tmp.peer_ellipticcurvelist);
 	s->s3->tmp.peer_ellipticcurvelist = NULL;
+	if (s->s3->tmp.peer_psk_identity_hint)
+		OPENSSL_free(s->s3->tmp.peer_psk_identity_hint);
+	s->s3->tmp.peer_psk_identity_hint = NULL;
 
 	if (s->s3->tmp.dh != NULL)
 		{

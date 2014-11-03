@@ -377,16 +377,6 @@ int ssl_get_new_session(SSL *s, int session)
 				return 0;
 				}
 			}
-		if (s->psk_identity_hint)
-			{
-			ss->psk_identity_hint = BUF_strdup(s->psk_identity_hint);
-			if (ss->psk_identity_hint == NULL)
-				{
-				OPENSSL_PUT_ERROR(SSL, ssl_get_new_session, ERR_R_MALLOC_FAILURE);
-				SSL_SESSION_free(ss);
-				return 0;
-				}
-			}
 		}
 	else
 		{
@@ -712,8 +702,6 @@ void SSL_SESSION_free(SSL_SESSION *ss)
 		OPENSSL_free(ss->tlsext_signed_cert_timestamp_list);
 	if (ss->ocsp_response != NULL)
 		OPENSSL_free(ss->ocsp_response);
-	if (ss->psk_identity_hint != NULL)
-		OPENSSL_free(ss->psk_identity_hint);
 	if (ss->psk_identity != NULL)
 		OPENSSL_free(ss->psk_identity);
 	OPENSSL_cleanse(ss,sizeof(*ss));

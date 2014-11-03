@@ -492,6 +492,10 @@ typedef struct ssl3_state_st
 		 * doesn't matter if the session that's being resumed didn't
 		 * use it to create the master secret initially. */
 		char extended_master_secret;
+
+		/* Client-only: peer_psk_identity_hint is the psk_identity_hint
+		 * sent by the server when using a PSK key exchange. */
+		char *peer_psk_identity_hint;
 		} tmp;
 
         /* Connection binding to prevent renegotiation attacks */
