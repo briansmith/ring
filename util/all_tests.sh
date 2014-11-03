@@ -36,7 +36,7 @@ TESTS="
 ./crypto/ec/example_mul
 ./crypto/ecdsa/ecdsa_test
 ./crypto/err/err_test
-./crypto/evp/example_sign
+./crypto/evp/evp_test
 ./crypto/hmac/hmac_test
 ./crypto/lhash/lhash_test
 ./crypto/md5/md5_test

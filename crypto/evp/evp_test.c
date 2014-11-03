@@ -258,7 +258,7 @@ out:
   return ret;
 }
 
-static int example_EVP_DigestSignInit(void) {
+static int test_EVP_DigestSignInit(void) {
   int ret = 0;
   EVP_PKEY *pkey = NULL;
   uint8_t *sig = NULL;
@@ -315,7 +315,7 @@ out:
   return ret;
 }
 
-static int example_EVP_DigestVerifyInit(void) {
+static int test_EVP_DigestVerifyInit(void) {
   int ret = 0;
   EVP_PKEY *pkey = NULL;
   EVP_MD_CTX md_ctx;
@@ -449,7 +449,7 @@ out:
   return ret;
 }
 
-static int example_EVP_DigestVerifyInitFromAlgorithm(void) {
+static int test_EVP_DigestVerifyInitFromAlgorithm(void) {
   int ret = 0;
   CBS cert, cert_body, tbs_cert, algorithm, signature;
   uint8_t padding;
@@ -543,12 +543,12 @@ int main(void) {
   CRYPTO_library_init();
   ERR_load_crypto_strings();
 
-  if (!example_EVP_DigestSignInit()) {
+  if (!test_EVP_DigestSignInit()) {
     fprintf(stderr, "EVP_DigestSignInit failed\n");
     return 1;
   }
 
-  if (!example_EVP_DigestVerifyInit()) {
+  if (!test_EVP_DigestVerifyInit()) {
     fprintf(stderr, "EVP_DigestVerifyInit failed\n");
     return 1;
   }
@@ -558,7 +558,7 @@ int main(void) {
     return 1;
   }
 
-  if (!example_EVP_DigestVerifyInitFromAlgorithm()) {
+  if (!test_EVP_DigestVerifyInitFromAlgorithm()) {
     fprintf(stderr, "EVP_DigestVerifyInitFromAlgorithm failed\n");
     return 1;
   }

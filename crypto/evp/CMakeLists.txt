@@ -23,9 +23,9 @@ add_library(
 
 
 add_executable(
-	example_sign
+	evp_test
 
-	example_sign.c
+	evp_test.c
 )
 
-target_link_libraries(example_sign crypto)
+target_link_libraries(evp_test crypto)
