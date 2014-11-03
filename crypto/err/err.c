@@ -474,6 +474,9 @@ static void err_set_error_data(char *data, int flags) {
   struct err_error_st *error;
 
   if (state->top == state->bottom) {
+    if (flags & ERR_FLAG_MALLOCED) {
+      OPENSSL_free(data);
+    }
     return;
   }
 
