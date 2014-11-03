@@ -177,6 +177,8 @@ int X509_PURPOSE_add(int id, int trust, int flags,
 {
 	int idx;
 	X509_PURPOSE *ptmp;
+	char *name_dup, *sname_dup;
+
 	/* This is set according to what we change: application can't set it */
 	flags &= ~X509_PURPOSE_DYNAMIC;
 	/* This will always be set for application modified trust entries */
@@ -192,18 +194,28 @@ int X509_PURPOSE_add(int id, int trust, int flags,
 		ptmp->flags = X509_PURPOSE_DYNAMIC;
 	} else ptmp = X509_PURPOSE_get0(idx);
 
+	/* Duplicate the supplied names. */
+	name_dup = BUF_strdup(name);
+	sname_dup = BUF_strdup(sname);
+	if (name_dup == NULL || sname_dup == NULL) {
+		OPENSSL_PUT_ERROR(X509, X509_TRUST_add, ERR_R_MALLOC_FAILURE);
+		if (name_dup != NULL)
+			OPENSSL_free(name_dup);
+		if (sname_dup != NULL)
+			OPENSSL_free(sname_dup);
+		if (idx == -1)
+			OPENSSL_free(ptmp);
+		return 0;
+	}
+
 	/* OPENSSL_free existing name if dynamic */
 	if(ptmp->flags & X509_PURPOSE_DYNAMIC_NAME) {
 		OPENSSL_free(ptmp->name);
 		OPENSSL_free(ptmp->sname);
 	}
 	/* dup supplied name */
-	ptmp->name = BUF_strdup(name);
-	ptmp->sname = BUF_strdup(sname);
-	if(!ptmp->name || !ptmp->sname) {
-		OPENSSL_PUT_ERROR(X509V3, X509_PURPOSE_add, ERR_R_MALLOC_FAILURE);
-		return 0;
-	}
+	ptmp->name = name_dup;
+	ptmp->sname = sname_dup;
 	/* Keep the dynamic flag of existing entry */
 	ptmp->flags &= X509_PURPOSE_DYNAMIC;
 	/* Set all other flags */
@@ -218,10 +230,12 @@ int X509_PURPOSE_add(int id, int trust, int flags,
 	if(idx == -1) {
 		if(!xptable && !(xptable = sk_X509_PURPOSE_new(xp_cmp))) {
 			OPENSSL_PUT_ERROR(X509V3, X509_PURPOSE_add, ERR_R_MALLOC_FAILURE);
+			xptable_free(ptmp);
 			return 0;
 		}
 		if (!sk_X509_PURPOSE_push(xptable, ptmp)) {
 			OPENSSL_PUT_ERROR(X509V3, X509_PURPOSE_add, ERR_R_MALLOC_FAILURE);
+			xptable_free(ptmp);
 			return 0;
 		}
 	}
