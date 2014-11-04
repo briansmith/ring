@@ -179,10 +179,6 @@ int dtls1_enc(SSL *s, int send)
 			enc=EVP_CIPHER_CTX_cipher(s->enc_read_ctx);
 		}
 
-#ifdef KSSL_DEBUG
-	printf("dtls1_enc(%d)\n", send);
-#endif    /* KSSL_DEBUG */
-
 	if ((s->session == NULL) || (ds == NULL) ||
 		(enc == NULL))
 		{
@@ -208,24 +204,6 @@ int dtls1_enc(SSL *s, int send)
 			rec->length+=i;
 			}
 
-#ifdef KSSL_DEBUG
-		{
-                unsigned long ui;
-		printf("EVP_Cipher(ds=%p,rec->data=%p,rec->input=%p,l=%ld) ==>\n",
-                        ds,rec->data,rec->input,l);
-		printf("\tEVP_CIPHER_CTX: %d buf_len, %d key_len [%d %d], %d iv_len\n",
-                        ds->buf_len, ds->cipher->key_len,
-                        DES_KEY_SZ, DES_SCHEDULE_SZ,
-                        ds->cipher->iv_len);
-		printf("\t\tIV: ");
-		for (i=0; i<ds->cipher->iv_len; i++) printf("%02X", ds->iv[i]);
-		printf("\n");
-		printf("\trec->input=");
-		for (ui=0; ui<l; ui++) printf(" %02x", rec->input[ui]);
-		printf("\n");
-		}
-#endif	/* KSSL_DEBUG */
-
 		if (!send)
 			{
 			if (l == 0 || l%bs != 0)
@@ -233,15 +211,6 @@ int dtls1_enc(SSL *s, int send)
 			}
 		
 		EVP_Cipher(ds,rec->data,rec->input,l);
-
-#ifdef KSSL_DEBUG
-		{
-                unsigned long i;
-                printf("\trec->data=");
-		for (i=0; i<l; i++)
-                        printf(" %02x", rec->data[i]);  printf("\n");
-                }
-#endif	/* KSSL_DEBUG */
 
 		if ((bs != 1) && !send)
 			return tls1_cbc_remove_padding(s, rec, bs, mac_size);
