@@ -225,9 +225,20 @@ static inline unsigned int constant_time_eq(unsigned int a, unsigned int b) {
   return constant_time_is_zero(a ^ b);
 }
 
-/* constant_time_eq_8 acts like constant_time_eq but returns an 8-bit mask. */
+/* constant_time_eq_8 acts like |constant_time_eq| but returns an 8-bit mask. */
 static inline uint8_t constant_time_eq_8(unsigned int a, unsigned int b) {
   return (uint8_t)(constant_time_eq(a, b));
+}
+
+/* constant_time_eq_int acts like |constant_time_eq| but works on int values. */
+static inline unsigned int constant_time_eq_int(int a, int b) {
+  return constant_time_eq((unsigned)(a), (unsigned)(b));
+}
+
+/* constant_time_eq_int_8 acts like |constant_time_eq_int| but returns an 8-bit
+ * mask. */
+static inline uint8_t constant_time_eq_int_8(int a, int b) {
+  return constant_time_eq_8((unsigned)(a), (unsigned)(b));
 }
 
 /* constant_time_select returns (mask & a) | (~mask & b). When |mask| is all 1s
