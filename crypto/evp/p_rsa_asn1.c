@@ -409,24 +409,6 @@ static int rsa_sig_print(BIO *bp, const X509_ALGOR *sigalg,
   return 1;
 }
 
-static int rsa_pkey_ctrl(EVP_PKEY *pkey, int op, long arg1, void *arg2) {
-  X509_ALGOR *alg = NULL;
-  switch (op) {
-    case ASN1_PKEY_CTRL_DEFAULT_MD_NID:
-      *(int *)arg2 = NID_sha1;
-      return 1;
-
-    default:
-      return -2;
-  }
-
-  if (alg) {
-    X509_ALGOR_set0(alg, OBJ_nid2obj(NID_rsaEncryption), V_ASN1_NULL, 0);
-  }
-
-  return 1;
-}
-
 static int old_rsa_priv_decode(EVP_PKEY *pkey, const unsigned char **pder,
                                int derlen) {
   RSA *rsa = d2i_RSAPrivateKey(NULL, pder, derlen);
@@ -709,7 +691,6 @@ const EVP_PKEY_ASN1_METHOD rsa_asn1_meth = {
 
   rsa_sig_print,
   int_rsa_free,
-  rsa_pkey_ctrl,
 
   old_rsa_priv_decode,
   old_rsa_priv_encode,

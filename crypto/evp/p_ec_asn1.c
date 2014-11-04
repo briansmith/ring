@@ -538,17 +538,6 @@ static int old_ec_priv_encode(const EVP_PKEY *pkey, uint8_t **pder) {
   return i2d_ECPrivateKey(pkey->pkey.ec, pder);
 }
 
-static int ec_pkey_ctrl(EVP_PKEY *pkey, int op, long arg1, void *arg2) {
-  switch (op) {
-    case ASN1_PKEY_CTRL_DEFAULT_MD_NID:
-      *(int *)arg2 = NID_sha1;
-      return 2;
-
-    default:
-      return -2;
-  }
-}
-
 const EVP_PKEY_ASN1_METHOD ec_asn1_meth = {
   EVP_PKEY_EC,
   EVP_PKEY_EC,
@@ -579,7 +568,6 @@ const EVP_PKEY_ASN1_METHOD ec_asn1_meth = {
   0,
 
   int_ec_free,
-  ec_pkey_ctrl,
   old_ec_priv_decode,
   old_ec_priv_encode
 };

@@ -712,17 +712,6 @@ OPENSSL_EXPORT int EVP_PKEY_CTX_get0_rsa_oaep_label(EVP_PKEY_CTX *ctx,
 #define EVP_PKEY_ECDH_KDF_X9_62 2
 
 
-/* PKEY ctrl commands.
- *
- * These values are passed as the |op| argument to
- * EVP_PKEY_ASN1_METHOD.pkey_ctrl. */
-
-/* ASN1_PKEY_CTRL_DEFAULT_MD_NID expects |arg2| to be an |int*| and sets the
- * pointed at int to be the NID of the default hash function used in
- * signing. */
-#define ASN1_PKEY_CTRL_DEFAULT_MD_NID 0x3
-
-
 /* Private functions */
 
 /* OpenSSL_add_all_algorithms does nothing. */

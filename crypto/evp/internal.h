@@ -121,7 +121,6 @@ struct evp_pkey_asn1_method_st {
 
 
   void (*pkey_free)(EVP_PKEY *pkey);
-  int (*pkey_ctrl)(EVP_PKEY *pkey, int op, long arg1, void *arg2);
 
   /* Legacy functions for old PEM */
 
