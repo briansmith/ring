@@ -169,7 +169,7 @@ void OPENSSL_cpuid_setup(void);
  * can be written as
  *
  * unsigned int lt = constant_time_lt(a, b);
- * c = a & lt | b & ~lt; */
+ * c = constant_time_select(lt, a, b); */
 
 /* constant_time_msb returns the given value with the MSB copied to all the
  * other bits. Uses the fact that arithmetic shift shifts-in the sign bit.
@@ -228,6 +228,27 @@ static inline unsigned int constant_time_eq(unsigned int a, unsigned int b) {
 /* constant_time_eq_8 acts like constant_time_eq but returns an 8-bit mask. */
 static inline uint8_t constant_time_eq_8(unsigned int a, unsigned int b) {
   return (uint8_t)(constant_time_eq(a, b));
+}
+
+/* constant_time_select returns (mask & a) | (~mask & b). When |mask| is all 1s
+ * or all 0s (as returned by the methods above), the select methods return
+ * either |a| (if |mask| is nonzero) or |b| (if |mask| is zero). */
+static inline unsigned int constant_time_select(unsigned int mask,
+                                                unsigned int a, unsigned int b) {
+  return (mask & a) | (~mask & b);
+}
+
+/* constant_time_select_8 acts like |constant_time_select| but operates on
+ * 8-bit values. */
+static inline uint8_t constant_time_select_8(uint8_t mask, uint8_t a,
+                                             uint8_t b) {
+  return (uint8_t)(constant_time_select(mask, a, b));
+}
+
+/* constant_time_select_int acts like |constant_time_select| but operates on
+ * ints. */
+static inline int constant_time_select_int(unsigned int mask, int a, int b) {
+  return (int)(constant_time_select(mask, (unsigned)(a), (unsigned)(b)));
 }
 
 
