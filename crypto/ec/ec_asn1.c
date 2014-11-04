@@ -341,19 +341,19 @@ EC_KEY *d2i_ECPrivateKey(EC_KEY **a, const uint8_t **in, long len) {
     goto err;
   }
 
-  /* TODO(fork): loading the public key is silly. Why not calculate it? */
+  if (ret->pub_key) {
+    EC_POINT_free(ret->pub_key);
+  }
+  ret->pub_key = EC_POINT_new(ret->group);
+  if (ret->pub_key == NULL) {
+    OPENSSL_PUT_ERROR(EC, d2i_ECPrivateKey, ERR_R_EC_LIB);
+    goto err;
+  }
+
   if (priv_key->publicKey) {
     const uint8_t *pub_oct;
     size_t pub_oct_len;
 
-    if (ret->pub_key) {
-      EC_POINT_free(ret->pub_key);
-    }
-    ret->pub_key = EC_POINT_new(ret->group);
-    if (ret->pub_key == NULL) {
-      OPENSSL_PUT_ERROR(EC, d2i_ECPrivateKey, ERR_R_EC_LIB);
-      goto err;
-    }
     pub_oct = M_ASN1_STRING_data(priv_key->publicKey);
     pub_oct_len = M_ASN1_STRING_length(priv_key->publicKey);
     /* save the point conversion form */
@@ -363,6 +363,14 @@ EC_KEY *d2i_ECPrivateKey(EC_KEY **a, const uint8_t **in, long len) {
       OPENSSL_PUT_ERROR(EC, d2i_ECPrivateKey, ERR_R_EC_LIB);
       goto err;
     }
+  } else {
+    if (!EC_POINT_mul(ret->group, ret->pub_key, ret->priv_key, NULL, NULL,
+                      NULL)) {
+      OPENSSL_PUT_ERROR(EC, d2i_ECPrivateKey, ERR_R_EC_LIB);
+      goto err;
+    }
+    /* Remember the original private-key-only encoding. */
+    ret->enc_flag |= EC_PKEY_NO_PUBKEY;
   }
 
   ok = 1;

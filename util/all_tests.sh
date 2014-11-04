@@ -34,6 +34,7 @@ TESTS="
 ./crypto/dh/dh_test
 ./crypto/digest/digest_test
 ./crypto/dsa/dsa_test
+./crypto/ec/ec_test
 ./crypto/ec/example_mul
 ./crypto/ecdsa/ecdsa_test
 ./crypto/err/err_test

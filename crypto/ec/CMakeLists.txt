@@ -21,4 +21,11 @@ add_executable(
 	example_mul.c
 )
 
+add_executable(
+	ec_test
+
+	ec_test.c
+)
+
 target_link_libraries(example_mul crypto)
+target_link_libraries(ec_test crypto)
