@@ -14,57 +14,36 @@
 
 #include <openssl/rand.h>
 
-#include <openssl/thread.h>
-
-
 #if defined(OPENSSL_WINDOWS)
 
+#include <limits.h>
 #include <stdlib.h>
 #include <Windows.h>
-#include <Wincrypt.h>
 
-static char global_provider_init;
-static HCRYPTPROV global_provider;
+/* #define needed to link in RtlGenRandom(), a.k.a. SystemFunction036.  See the
+ * "Community Additions" comment on MSDN here:
+ * http://msdn.microsoft.com/en-us/library/windows/desktop/aa387694.aspx */
+#define SystemFunction036 NTAPI SystemFunction036
+#include <NTSecAPI.h>
+#undef SystemFunction036
+
 
 void RAND_cleanup(void) {
-  CRYPTO_w_lock(CRYPTO_LOCK_RAND);
-  CryptReleaseContext(global_provider, 0);
-  global_provider_init = 0;
-  CRYPTO_w_unlock(CRYPTO_LOCK_RAND);
 }
 
 int RAND_bytes(uint8_t *out, size_t requested) {
-  HCRYPTPROV provider = 0;
-  int ok;
-
-  CRYPTO_r_lock(CRYPTO_LOCK_RAND);
-  if (!global_provider_init) {
-    CRYPTO_r_unlock(CRYPTO_LOCK_RAND);
-    CRYPTO_w_lock(CRYPTO_LOCK_RAND);
-    if (!global_provider_init) {
-      if (CryptAcquireContext(&global_provider, NULL, NULL, PROV_RSA_FULL,
-                              CRYPT_VERIFYCONTEXT | CRYPT_SILENT)) {
-        global_provider_init = 1;
-      }
+  while (requested > 0) {
+    ULONG output_bytes_this_pass = ULONG_MAX;
+    if (requested < output_bytes_this_pass) {
+      output_bytes_this_pass = requested;
     }
-    CRYPTO_w_unlock(CRYPTO_LOCK_RAND);
-    CRYPTO_r_lock(CRYPTO_LOCK_RAND);
+    if (RtlGenRandom(out, output_bytes_this_pass) == FALSE) {
+      abort();
+      return 0;
+    }
+    requested -= output_bytes_this_pass;
+    out += output_bytes_this_pass;
   }
-
-  ok = global_provider_init;
-  provider = global_provider;
-  CRYPTO_r_unlock(CRYPTO_LOCK_RAND);
-
-  if (!ok) {
-    abort();
-    return ok;
-  }
-
-  if (TRUE != CryptGenRandom(provider, requested, out)) {
-    abort();
-    return 0;
-  }
-
   return 1;
 }
 
