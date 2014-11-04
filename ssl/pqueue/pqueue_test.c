@@ -45,32 +45,57 @@ static int trivial() {
 
 static int fixed_random() {
   /* Random order of 10 elements, chosen by
-     random.choice(list(itertools.permutations(range(10)))) */
+   * random.choice(list(itertools.permutations(range(10)))) */
   int ordering[NUM_ITEMS] = {9, 6, 3, 4, 0, 2, 7, 1, 8, 5};
   int i;
   pqueue q = pqueue_new();
+  uint8_t priority[8] = {0};
+  piterator iter;
+  pitem *curr, *item;
+
   if (q == NULL) {
     return 0;
   }
-  uint8_t priority[8] = {0};
+
   /* Insert the elements */
   for (i = 0; i < NUM_ITEMS; i++) {
     priority[7] = ordering[i];
-    pitem *item = pitem_new(priority, &ordering[i]);
-    pqueue_insert(q, item);
+    item = pitem_new(priority, &ordering[i]);
+    if (pqueue_insert(q, item) != item) {
+      return 0;
+    }
   }
-  piterator iter = pqueue_iterator(q);
-  pitem *curr = pqueue_next(&iter);
+
+  /* Insert the elements again. This inserts duplicates and should
+   * fail. */
+  for (i = 0; i < NUM_ITEMS; i++) {
+    priority[7] = ordering[i];
+    item = pitem_new(priority, &ordering[i]);
+    if (pqueue_insert(q, item) != NULL) {
+      return 0;
+    }
+    pitem_free(item);
+  }
+
+  if (pqueue_size(q) != NUM_ITEMS) {
+    return 0;
+  }
+
+  /* Iterate over the elements. */
+  iter = pqueue_iterator(q);
+  curr = pqueue_next(&iter);
   if (curr == NULL) {
     return 0;
   }
   while (1) {
     pitem *next = pqueue_next(&iter);
+    int *curr_data, *next_data;
+
     if (next == NULL) {
       break;
     }
-    int *curr_data = (int*)curr->data;
-    int *next_data = (int*)next->data;
+    curr_data = (int*)curr->data;
+    next_data = (int*)next->data;
     if (*curr_data >= *next_data) {
       return 0;
     }
