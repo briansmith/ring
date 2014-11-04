@@ -1338,9 +1338,10 @@ err:
   }
   if (prod_Z != NULL) {
     for (i = 0; i < num; i++) {
-      if (prod_Z[i] != NULL) {
-        BN_clear_free(prod_Z[i]);
+      if (prod_Z[i] == NULL) {
+        break;
       }
+      BN_clear_free(prod_Z[i]);
     }
     OPENSSL_free(prod_Z);
   }
