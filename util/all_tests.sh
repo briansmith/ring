@@ -31,6 +31,7 @@ TESTS="
 ./crypto/cipher/aead_test chacha20-poly1305 $SRC/crypto/cipher/chacha20_poly1305_tests.txt
 ./crypto/cipher/aead_test rc4-md5 $SRC/crypto/cipher/rc4_md5_tests.txt
 ./crypto/cipher/cipher_test $SRC/crypto/cipher/cipher_test.txt
+./crypto/constant_time_test
 ./crypto/dh/dh_test
 ./crypto/digest/digest_test
 ./crypto/dsa/dsa_test

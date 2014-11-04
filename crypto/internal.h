@@ -172,21 +172,45 @@ void OPENSSL_cpuid_setup(void);
  * c = constant_time_select(lt, a, b); */
 
 /* constant_time_msb returns the given value with the MSB copied to all the
- * other bits. Uses the fact that arithmetic shift shifts-in the sign bit.
- * However, this is not ensured by the C standard so you may need to replace
- * this with something else on odd CPUs. */
+ * other bits. */
 static inline unsigned int constant_time_msb(unsigned int a) {
   return (unsigned int)((int)(a) >> (sizeof(int) * 8 - 1));
 }
 
 /* constant_time_lt returns 0xff..f if a < b and 0 otherwise. */
 static inline unsigned int constant_time_lt(unsigned int a, unsigned int b) {
-  unsigned int lt;
-  /* Case 1: msb(a) == msb(b). a < b iff the MSB of a - b is set.*/
-  lt = ~(a ^ b) & (a - b);
-  /* Case 2: msb(a) != msb(b). a < b iff the MSB of b is set. */
-  lt |= ~a & b;
-  return constant_time_msb(lt);
+  /* Consider the two cases of the problem:
+   *   msb(a) == msb(b): a < b iff the MSB of a - b is set.
+   *   msb(a) != msb(b): a < b iff the MSB of b is set.
+   *
+   * If msb(a) == msb(b) then the following evaluates as:
+   *   msb(a^((a^b)|((a-b)^a))) ==
+   *   msb(a^((a-b) ^ a))       ==   (because msb(a^b) == 0)
+   *   msb(a^a^(a-b))           ==   (rearranging)
+   *   msb(a-b)                      (because ∀x. x^x == 0)
+   *
+   * Else, if msb(a) != msb(b) then the following evaluates as:
+   *   msb(a^((a^b)|((a-b)^a))) ==
+   *   msb(a^(𝟙 | ((a-b)^a)))   ==   (because msb(a^b) == 1 and 𝟙
+   *                                  represents a value s.t. msb(𝟙) = 1)
+   *   msb(a^𝟙)                 ==   (because ORing with 1 results in 1)
+   *   msb(b)
+   *
+   *
+   * Here is an SMT-LIB verification of this formula:
+   *
+   * (define-fun lt ((a (_ BitVec 32)) (b (_ BitVec 32))) (_ BitVec 32)
+   *   (bvxor a (bvor (bvxor a b) (bvxor (bvsub a b) a)))
+   * )
+   *
+   * (declare-fun a () (_ BitVec 32))
+   * (declare-fun b () (_ BitVec 32))
+   *
+   * (assert (not (= (= #x00000001 (bvlshr (lt a b) #x0000001f)) (bvult a b))))
+   * (check-sat)
+   * (get-model)
+   */
+  return constant_time_msb(a^((a^b)|((a-b)^a)));
 }
 
 /* constant_time_lt_8 acts like |constant_time_lt| but returns an 8-bit mask. */
@@ -196,12 +220,7 @@ static inline uint8_t constant_time_lt_8(unsigned int a, unsigned int b) {
 
 /* constant_time_gt returns 0xff..f if a >= b and 0 otherwise. */
 static inline unsigned int constant_time_ge(unsigned int a, unsigned int b) {
-  unsigned int ge;
-  /* Case 1: msb(a) == msb(b). a >= b iff the MSB of a - b is not set.*/
-  ge = ~((a ^ b) | (a - b));
-  /* Case 2: msb(a) != msb(b). a >= b iff the MSB of a is set. */
-  ge |= a & ~b;
-  return constant_time_msb(ge);
+  return ~constant_time_lt(a, b);
 }
 
 /* constant_time_ge_8 acts like |constant_time_ge| but returns an 8-bit mask. */
@@ -211,6 +230,18 @@ static inline uint8_t constant_time_ge_8(unsigned int a, unsigned int b) {
 
 /* constant_time_is_zero returns 0xff..f if a == 0 and 0 otherwise. */
 static inline unsigned int constant_time_is_zero(unsigned int a) {
+  /* Here is an SMT-LIB verification of this formula:
+   *
+   * (define-fun is_zero ((a (_ BitVec 32))) (_ BitVec 32)
+   *   (bvand (bvnot a) (bvsub a #x00000001))
+   * )
+   *
+   * (declare-fun a () (_ BitVec 32))
+   *
+   * (assert (not (= (= #x00000001 (bvlshr (is_zero a) #x0000001f)) (= a #x00000000))))
+   * (check-sat)
+   * (get-model)
+   */
   return constant_time_msb(~a & (a - 1));
 }
 
