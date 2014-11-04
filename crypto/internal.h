@@ -149,6 +149,88 @@ struct st_CRYPTO_EX_DATA_IMPL {
 void OPENSSL_cpuid_setup(void);
 #endif
 
+#if !defined(inline)
+#define inline __inline
+#endif
+
+
+/* Constant-time utility functions.
+ *
+ * The following methods return a bitmask of all ones (0xff...f) for true and 0
+ * for false. This is useful for choosing a value based on the result of a
+ * conditional in constant time. For example,
+ *
+ * if (a < b) {
+ *   c = a;
+ * } else {
+ *   c = b;
+ * }
+ *
+ * can be written as
+ *
+ * unsigned int lt = constant_time_lt(a, b);
+ * c = a & lt | b & ~lt; */
+
+/* constant_time_msb returns the given value with the MSB copied to all the
+ * other bits. Uses the fact that arithmetic shift shifts-in the sign bit.
+ * However, this is not ensured by the C standard so you may need to replace
+ * this with something else on odd CPUs. */
+static inline unsigned int constant_time_msb(unsigned int a) {
+  return (unsigned int)((int)(a) >> (sizeof(int) * 8 - 1));
+}
+
+/* constant_time_lt returns 0xff..f if a < b and 0 otherwise. */
+static inline unsigned int constant_time_lt(unsigned int a, unsigned int b) {
+  unsigned int lt;
+  /* Case 1: msb(a) == msb(b). a < b iff the MSB of a - b is set.*/
+  lt = ~(a ^ b) & (a - b);
+  /* Case 2: msb(a) != msb(b). a < b iff the MSB of b is set. */
+  lt |= ~a & b;
+  return constant_time_msb(lt);
+}
+
+/* constant_time_lt_8 acts like |constant_time_lt| but returns an 8-bit mask. */
+static inline uint8_t constant_time_lt_8(unsigned int a, unsigned int b) {
+  return (uint8_t)(constant_time_lt(a, b));
+}
+
+/* constant_time_gt returns 0xff..f if a >= b and 0 otherwise. */
+static inline unsigned int constant_time_ge(unsigned int a, unsigned int b) {
+  unsigned int ge;
+  /* Case 1: msb(a) == msb(b). a >= b iff the MSB of a - b is not set.*/
+  ge = ~((a ^ b) | (a - b));
+  /* Case 2: msb(a) != msb(b). a >= b iff the MSB of a is set. */
+  ge |= a & ~b;
+  return constant_time_msb(ge);
+}
+
+/* constant_time_ge_8 acts like |constant_time_ge| but returns an 8-bit mask. */
+static inline uint8_t constant_time_ge_8(unsigned int a, unsigned int b) {
+  return (uint8_t)(constant_time_ge(a, b));
+}
+
+/* constant_time_is_zero returns 0xff..f if a == 0 and 0 otherwise. */
+static inline unsigned int constant_time_is_zero(unsigned int a) {
+  return constant_time_msb(~a & (a - 1));
+}
+
+/* constant_time_is_zero_8 acts like constant_time_is_zero but returns an 8-bit
+ * mask. */
+static inline uint8_t constant_time_is_zero_8(unsigned int a) {
+  return (uint8_t)(constant_time_is_zero(a));
+}
+
+/* constant_time_eq returns 0xff..f if a == b and 0 otherwise. */
+static inline unsigned int constant_time_eq(unsigned int a, unsigned int b) {
+  return constant_time_is_zero(a ^ b);
+}
+
+/* constant_time_eq_8 acts like constant_time_eq but returns an 8-bit mask. */
+static inline uint8_t constant_time_eq_8(unsigned int a, unsigned int b) {
+  return (uint8_t)(constant_time_eq(a, b));
+}
+
+
 #if defined(__cplusplus)
 }  /* extern C */
 #endif

@@ -166,5 +166,13 @@ add_library(
 	$<TARGET_OBJECTS:pkcs8>
 )
 
+add_executable(
+	constant_time_test
+
+	constant_time_test.c
+)
+
+target_link_libraries(constant_time_test crypto)
+
 perlasm(cpu-x86_64-asm.${ASM_EXT} cpu-x86_64-asm.pl)
 perlasm(cpu-x86-asm.${ASM_EXT} cpu-x86-asm.pl)
