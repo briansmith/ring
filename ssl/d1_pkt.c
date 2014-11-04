@@ -976,23 +976,6 @@ start:
 					OPENSSL_PUT_ERROR(SSL, dtls1_read_bytes, SSL_R_SSL_HANDSHAKE_FAILURE);
 					return(-1);
 					}
-
-				if (!(s->mode & SSL_MODE_AUTO_RETRY))
-					{
-					if (s->s3->rbuf.left == 0) /* no read-ahead left? */
-						{
-						BIO *bio;
-						/* In the case where we try to read application data,
-						 * but we trigger an SSL handshake, we return -1 with
-						 * the retry option set.  Otherwise renegotiation may
-						 * cause nasty problems in the blocking world */
-						s->rwstate=SSL_READING;
-						bio=SSL_get_rbio(s);
-						BIO_clear_retry_flags(bio);
-						BIO_set_retry_read(bio);
-						return(-1);
-						}
-					}
 				}
 			}
 		/* we either finished a handshake or ignored the request,
@@ -1155,22 +1138,6 @@ start:
 			return(-1);
 			}
 
-		if (!(s->mode & SSL_MODE_AUTO_RETRY))
-			{
-			if (s->s3->rbuf.left == 0) /* no read-ahead left? */
-				{
-				BIO *bio;
-				/* In the case where we try to read application data,
-				 * but we trigger an SSL handshake, we return -1 with
-				 * the retry option set.  Otherwise renegotiation may
-				 * cause nasty problems in the blocking world */
-				s->rwstate=SSL_READING;
-				bio=SSL_get_rbio(s);
-				BIO_clear_retry_flags(bio);
-				BIO_set_retry_read(bio);
-				return(-1);
-				}
-			}
 		goto start;
 		}
 
