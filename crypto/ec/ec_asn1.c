@@ -352,11 +352,16 @@ EC_KEY *d2i_ECPrivateKey(EC_KEY **a, const uint8_t **in, long len) {
 
   if (priv_key->publicKey) {
     const uint8_t *pub_oct;
-    size_t pub_oct_len;
+    int pub_oct_len;
 
     pub_oct = M_ASN1_STRING_data(priv_key->publicKey);
     pub_oct_len = M_ASN1_STRING_length(priv_key->publicKey);
-    /* save the point conversion form */
+    /* The first byte (the point conversion form) must be present. */
+    if (pub_oct_len <= 0) {
+      OPENSSL_PUT_ERROR(EC, d2i_ECPrivateKey, EC_R_BUFFER_TOO_SMALL);
+      goto err;
+    }
+    /* Save the point conversion form. */
     ret->conv_form = (point_conversion_form_t)(pub_oct[0] & ~0x01);
     if (!EC_POINT_oct2point(ret->group, ret->pub_key, pub_oct, pub_oct_len,
                             NULL)) {
