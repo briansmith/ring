@@ -51,11 +51,3 @@ perlasm(sha512-586.${ASM_EXT} asm/sha512-586.pl)
 perlasm(sha1-armv4-large.${ASM_EXT} asm/sha1-armv4-large.pl)
 perlasm(sha256-armv4.${ASM_EXT} asm/sha256-armv4.pl)
 perlasm(sha512-armv4.${ASM_EXT} asm/sha512-armv4.pl)
-
-add_executable(
-	sha1_test
-
-	sha1_test.c
-)
-
-target_link_libraries(sha1_test crypto)

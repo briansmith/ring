@@ -28,11 +28,3 @@ add_library(
 
 perlasm(md5-x86_64.${ASM_EXT} asm/md5-x86_64.pl)
 perlasm(md5-586.${ASM_EXT} asm/md5-586.pl)
-
-add_executable(
-	md5_test
-
-	md5_test.c
-)
-
-target_link_libraries(md5_test crypto)

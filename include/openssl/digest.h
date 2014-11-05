@@ -142,7 +142,7 @@ OPENSSL_EXPORT int EVP_DigestUpdate(EVP_MD_CTX *ctx, const void *data,
  * |md_out|. At most |EVP_MAX_MD_SIZE| bytes are written. If |out_size| is not
  * NULL then |*out_size| is set to the number of bytes written. It returns one
  * on success and zero otherwise. After this call, the hash cannot be updated
- * or finished again until |EVP_DigestFinal_ex| is called to start another
+ * or finished again until |EVP_DigestInit_ex| is called to start another
  * hashing operation. */
 OPENSSL_EXPORT int EVP_DigestFinal_ex(EVP_MD_CTX *ctx, uint8_t *md_out,
                                       unsigned int *out_size);

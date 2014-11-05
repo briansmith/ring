@@ -32,6 +32,7 @@ TESTS="
 ./crypto/cipher/aead_test rc4-md5 $SRC/crypto/cipher/rc4_md5_tests.txt
 ./crypto/cipher/cipher_test $SRC/crypto/cipher/cipher_test.txt
 ./crypto/dh/dh_test
+./crypto/digest/digest_test
 ./crypto/dsa/dsa_test
 ./crypto/ec/example_mul
 ./crypto/ecdsa/ecdsa_test
@@ -39,11 +40,9 @@ TESTS="
 ./crypto/evp/evp_test
 ./crypto/hmac/hmac_test
 ./crypto/lhash/lhash_test
-./crypto/md5/md5_test
 ./crypto/modes/gcm_test
 ./crypto/pkcs8/pkcs12_test
 ./crypto/rsa/rsa_test
-./crypto/sha/sha1_test
 ./crypto/x509/pkcs7_test
 ./crypto/x509v3/tab_test
 ./crypto/x509v3/v3name_test
