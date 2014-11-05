@@ -339,7 +339,6 @@ typedef struct ssl3_buffer_st
 
 
 #define SSL3_FLAGS_NO_RENEGOTIATE_CIPHERS	0x0001
-#define SSL3_FLAGS_POP_BUFFER			0x0004
 /* TODO(davidben): This flag can probably be merged into s3->change_cipher_spec
  * to something tri-state. (Normal / Expect CCS / Between CCS and Finished). */
 #define SSL3_FLAGS_EXPECT_CCS			0x0080
@@ -349,7 +348,6 @@ typedef struct ssl3_buffer_st
 typedef struct ssl3_state_st
 	{
 	long flags;
-	int delay_buf_pop_ret;
 
 	unsigned char read_sequence[8];
 	int read_mac_secret_size;

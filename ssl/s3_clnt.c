@@ -467,8 +467,6 @@ int ssl3_connect(SSL *s)
 			if (ret <= 0) goto end;
 			s->state=SSL3_ST_CW_FLUSH;
 
-			/* clear flags */
-			s->s3->flags&= ~SSL3_FLAGS_POP_BUFFER;
 			if (s->hit)
 				{
 				s->s3->tmp.next_state=SSL_ST_OK;
@@ -579,11 +577,8 @@ int ssl3_connect(SSL *s)
 				s->init_buf=NULL;
 				}
 
-			/* If we are not 'joining' the last two packets,
-			 * remove the buffering now */
-			if (!(s->s3->flags & SSL3_FLAGS_POP_BUFFER))
-				ssl_free_wbio_buffer(s);
-			/* else do it later in ssl3_write */
+			/* Remove write buffering now. */
+			ssl_free_wbio_buffer(s);
 
 			s->init_num=0;
 			s->renegotiate=0;
