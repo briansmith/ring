@@ -644,32 +644,24 @@ again:
 		goto again;   /* get another record */
 		}
 
-		/* Check whether this is a repeat, or aged record.
-		 * Don't check if we're listening and this message is
-		 * a ClientHello. They can look as if they're replayed,
-		 * since they arrive from different connections and
-		 * would be dropped unnecessarily.
-		 */
-		if (!(s->d1->listen && rr->type == SSL3_RT_HANDSHAKE &&
-		    *p == SSL3_MT_CLIENT_HELLO) &&
-		    !dtls1_record_replay_check(s, bitmap))
-			{
-			rr->length = 0;
-			s->packet_length=0; /* dump this record */
-			goto again;     /* get another record */
-			}
+	/* Check whether this is a repeat, or aged record. */
+	if (!dtls1_record_replay_check(s, bitmap))
+		{
+		rr->length = 0;
+		s->packet_length=0; /* dump this record */
+		goto again;     /* get another record */
+		}
 
 	/* just read a 0 length packet */
 	if (rr->length == 0) goto again;
 
 	/* If this record is from the next epoch (either HM or ALERT),
 	 * and a handshake is currently in progress, buffer it since it
-	 * cannot be processed at this time. However, do not buffer
-	 * anything while listening.
+	 * cannot be processed at this time.
 	 */
 	if (is_next_epoch)
 		{
-		if ((SSL_in_init(s) || s->in_handshake) && !s->d1->listen)
+		if (SSL_in_init(s) || s->in_handshake)
 			{
 			dtls1_buffer_record(s, &(s->d1->unprocessed_rcds), rr->seq_num);
 			}
@@ -797,12 +789,6 @@ start:
 			else
 				goto start;
 			}
-		}
-
-	if (s->d1->listen && rr->type != SSL3_RT_HANDSHAKE)
-		{
-		rr->length = 0;
-		goto start;
 		}
 
 	/* we now have a packet which can be read and processed */

@@ -209,9 +209,6 @@ typedef struct dtls1_state_st
 	 */
 	record_pqueue buffered_app_data;
 
-	/* Is set when listening for new connections with dtls1_listen() */
-	unsigned int listen;
-
 	unsigned int mtu; /* max DTLS packet size */
 
 	struct hm_header_st w_msg_hdr;

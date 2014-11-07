@@ -166,7 +166,6 @@ int dtls1_accept(SSL *s)
 	unsigned long alg_a;
 	int ret= -1;
 	int new_state,state,skip=0;
-	int listen;
 
 	ERR_clear_error();
 	ERR_clear_system_error();
@@ -175,14 +174,10 @@ int dtls1_accept(SSL *s)
 		cb=s->info_callback;
 	else if (s->ctx->info_callback != NULL)
 		cb=s->ctx->info_callback;
-	
-	listen = s->d1->listen;
 
 	/* init things to blank */
 	s->in_handshake++;
 	if (!SSL_in_init(s) || SSL_in_before(s)) SSL_clear(s);
-
-	s->d1->listen = listen;
 
 	if (s->cert == NULL)
 		{
@@ -295,27 +290,6 @@ int dtls1_accept(SSL *s)
 				s->state = SSL3_ST_SW_SRVR_HELLO_A;
 
 			s->init_num=0;
-
-			/* Reflect ClientHello sequence to remain stateless while listening */
-			if (listen)
-				{
-				memcpy(s->s3->write_sequence, s->s3->read_sequence, sizeof(s->s3->write_sequence));
-				}
-
-			/* If we're just listening, stop here */
-			if (listen && s->state == SSL3_ST_SW_SRVR_HELLO_A)
-				{
-				ret = 2;
-				s->d1->listen = 0;
-				/* Set expected sequence numbers
-				 * to continue the handshake.
-				 */
-				s->d1->handshake_read_seq = 2;
-				s->d1->handshake_write_seq = 1;
-				s->d1->next_handshake_write_seq = 1;
-				goto end;
-				}
-			
 			break;
 			
 		case DTLS1_ST_SW_HELLO_VERIFY_REQUEST_A:

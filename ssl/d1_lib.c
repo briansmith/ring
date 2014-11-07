@@ -75,7 +75,6 @@ static void get_current_time(OPENSSL_timeval *t);
 static OPENSSL_timeval* dtls1_get_timeout(SSL *s, OPENSSL_timeval* timeleft);
 static void dtls1_set_handshake_header(SSL *s, int type, unsigned long len);
 static int dtls1_handshake_write(SSL *s, enum should_add_to_finished_hash should_add_to_finished_hash);
-int dtls1_listen(SSL *s, struct sockaddr *client);
 static void dtls1_add_to_finished_hash(SSL *s);
 
 SSL3_ENC_METHOD DTLSv1_enc_data={
@@ -295,9 +294,6 @@ long dtls1_ctrl(SSL *s, int cmd, long larg, void *parg)
 	case DTLS_CTRL_HANDLE_TIMEOUT:
 		ret = dtls1_handle_timeout(s);
 		break;
-	case DTLS_CTRL_LISTEN:
-		ret = dtls1_listen(s, parg);
-		break;
 
 	default:
 		ret = ssl3_ctrl(s, cmd, larg, parg);
@@ -480,20 +476,6 @@ static void get_current_time(OPENSSL_timeval *t)
 	gettimeofday(t, NULL);
 #endif
 }
-
-int dtls1_listen(SSL *s, struct sockaddr *client)
-	{
-	int ret;
-
-	SSL_set_options(s, SSL_OP_COOKIE_EXCHANGE);
-	s->d1->listen = 1;
-
-	ret = SSL_accept(s);
-	if (ret <= 0) return ret;
-	
-	BIO_ctrl(SSL_get_rbio(s), BIO_CTRL_DGRAM_GET_PEER, 0, &client);
-	return 1;
-	}
 
 static void dtls1_set_handshake_header(SSL *s, int htype, unsigned long len)
 	{
