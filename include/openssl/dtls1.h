@@ -103,11 +103,12 @@ typedef struct timeval OPENSSL_timeval;
 
 typedef struct dtls1_bitmap_st
 	{
-	unsigned long map;		/* track 32 packets on 32-bit systems
-					   and 64 - on 64-bit systems */
-	unsigned char max_seq_num[8];	/* max record number seen so far,
-					   64-bit value in big-endian
-					   encoding */
+	/* map is a bit mask of the last 64 sequence numbers. Bit
+	 * |1<<i| corresponds to |max_seq_num - i|. */
+	uint64_t map;
+	/* max_seq_num is the largest sequence number seen so far. It
+	 * is a 64-bit value in big-endian encoding. */
+	uint8_t max_seq_num[8];
 	} DTLS1_BITMAP;
 
 struct dtls1_retransmit_state

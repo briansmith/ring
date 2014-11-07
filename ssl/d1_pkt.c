@@ -1452,7 +1452,7 @@ static int dtls1_record_replay_check(SSL *s, DTLS1_BITMAP *bitmap)
 	shift = -cmp;
 	if (shift >= sizeof(bitmap->map)*8)
 		return 0; /* stale, outside the window */
-	else if (bitmap->map & (1UL<<shift))
+	else if (bitmap->map & (((uint64_t) 1) << shift))
 		return 0; /* record previously received */
 
 	memcpy (s->s3->rrec.seq_num,seq,8);
@@ -1479,7 +1479,7 @@ static void dtls1_record_bitmap_update(SSL *s, DTLS1_BITMAP *bitmap)
 	else	{
 		shift = -cmp;
 		if (shift < sizeof(bitmap->map)*8)
-			bitmap->map |= 1UL<<shift;
+			bitmap->map |= ((uint64_t) 1) << shift;
 		}
 	}
 
