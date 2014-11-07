@@ -156,6 +156,9 @@ type testCase struct {
 	// renegotiateCiphers is a list of ciphersuite ids that will be
 	// switched in just before renegotiation.
 	renegotiateCiphers []uint16
+	// replayWrites, if true, configures the underlying transport
+	// to replay every write it makes in DTLS tests.
+	replayWrites bool
 	// flags, if not empty, contains a list of command-line flags that will
 	// be passed to the shim program.
 	flags []string
@@ -497,6 +500,9 @@ var testCases = []testCase{
 func doExchange(test *testCase, config *Config, conn net.Conn, messageLen int, isResume bool) error {
 	if test.protocol == dtls {
 		conn = newPacketAdaptor(conn)
+		if test.replayWrites {
+			conn = newReplayAdaptor(conn)
+		}
 	}
 
 	if test.sendPrefix != "" {
@@ -1854,6 +1860,28 @@ func addRenegotiationTests() {
 	})
 }
 
+func addDTLSReplayTests() {
+	// Test that sequence number replays are detected.
+	testCases = append(testCases, testCase{
+		protocol:     dtls,
+		name:         "DTLS-Replay",
+		replayWrites: true,
+	})
+
+	// Test the outgoing sequence number skipping by values larger
+	// than the retransmit window.
+	testCases = append(testCases, testCase{
+		protocol: dtls,
+		name:     "DTLS-Replay-LargeGaps",
+		config: Config{
+			Bugs: ProtocolBugs{
+				SequenceNumberIncrement: 127,
+			},
+		},
+		replayWrites: true,
+	})
+}
+
 func worker(statusChan chan statusMsg, c chan *testCase, buildDir string, wg *sync.WaitGroup) {
 	defer wg.Done()
 
@@ -1911,6 +1939,7 @@ func main() {
 	addResumptionVersionTests()
 	addExtendedMasterSecretTests()
 	addRenegotiationTests()
+	addDTLSReplayTests()
 	for _, async := range []bool{false, true} {
 		for _, splitHandshake := range []bool{false, true} {
 			for _, protocol := range []protocol{tls, dtls} {

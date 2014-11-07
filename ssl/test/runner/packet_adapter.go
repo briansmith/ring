@@ -14,6 +14,9 @@ type packetAdaptor struct {
 	net.Conn
 }
 
+// newPacketAdaptor wraps a reliable streaming net.Conn into a
+// reliable packet-based net.Conn. Every packet is encoded with a
+// 32-bit length prefix as a framing layer.
 func newPacketAdaptor(conn net.Conn) net.Conn {
 	return &packetAdaptor{conn}
 }
@@ -47,4 +50,29 @@ func (p *packetAdaptor) Write(b []byte) (int, error) {
 		return 0, errors.New("internal error: length mismatch!")
 	}
 	return len(b), nil
+}
+
+type replayAdaptor struct {
+	net.Conn
+	prevWrite []byte
+}
+
+// newReplayAdaptor wraps a packeted net.Conn. It transforms it into
+// one which, after writing a packet, always replays the previous
+// write.
+func newReplayAdaptor(conn net.Conn) net.Conn {
+	return &replayAdaptor{Conn: conn}
+}
+
+func (r *replayAdaptor) Write(b []byte) (int, error) {
+	n, err := r.Conn.Write(b)
+
+	// Replay the previous packet and save the current one to
+	// replay next.
+	if r.prevWrite != nil {
+		r.Conn.Write(r.prevWrite)
+	}
+	r.prevWrite = append(r.prevWrite[:0], b...)
+
+	return n, err
 }

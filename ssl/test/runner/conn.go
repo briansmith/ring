@@ -71,6 +71,13 @@ type Conn struct {
 	tmp [16]byte
 }
 
+func (c *Conn) init() {
+	c.in.isDTLS = c.isDTLS
+	c.out.isDTLS = c.isDTLS
+	c.in.config = c.config
+	c.out.config = c.config
+}
+
 // Access to net.Conn methods.
 // Cannot just embed net.Conn because that would
 // export the struct field too.
@@ -164,23 +171,29 @@ func (hc *halfConn) changeCipherSpec(config *Config) error {
 }
 
 // incSeq increments the sequence number.
-func (hc *halfConn) incSeq() {
+func (hc *halfConn) incSeq(isOutgoing bool) {
 	limit := 0
+	increment := uint64(1)
 	if hc.isDTLS {
 		// Increment up to the epoch in DTLS.
 		limit = 2
+
+		if isOutgoing && hc.config.Bugs.SequenceNumberIncrement != 0 {
+			increment = hc.config.Bugs.SequenceNumberIncrement
+		}
 	}
 	for i := 7; i >= limit; i-- {
-		hc.seq[i]++
-		if hc.seq[i] != 0 {
-			return
-		}
+		increment += uint64(hc.seq[i])
+		hc.seq[i] = byte(increment)
+		increment >>= 8
 	}
 
 	// Not allowed to let sequence number wrap.
 	// Instead, must renegotiate before it does.
 	// Not likely enough to bother.
-	panic("TLS: sequence number wraparound")
+	if increment != 0 {
+		panic("TLS: sequence number wraparound")
+	}
 }
 
 // incEpoch resets the sequence number. In DTLS, it increments the
@@ -380,7 +393,7 @@ func (hc *halfConn) decrypt(b *block) (ok bool, prefixLen int, alertValue alert)
 		}
 		hc.inDigestBuf = localMAC
 	}
-	hc.incSeq()
+	hc.incSeq(false)
 
 	return true, recordHeaderLen + explicitIVLen, 0
 }
@@ -467,7 +480,7 @@ func (hc *halfConn) encrypt(b *block, explicitIVLen int) (bool, alert) {
 	n := len(b.data) - recordHeaderLen
 	b.data[recordHeaderLen-2] = byte(n >> 8)
 	b.data[recordHeaderLen-1] = byte(n)
-	hc.incSeq()
+	hc.incSeq(true)
 
 	return true, 0
 }

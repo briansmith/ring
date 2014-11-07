@@ -301,13 +301,9 @@ func (c *Conn) dtlsDoReadHandshake() ([]byte, error) {
 // The configuration config must be non-nil and must have
 // at least one certificate.
 func DTLSServer(conn net.Conn, config *Config) *Conn {
-	return &Conn{
-		config: config,
-		isDTLS: true,
-		conn:   conn,
-		in:     halfConn{isDTLS: true},
-		out:    halfConn{isDTLS: true},
-	}
+	c := &Conn{config: config, isDTLS: true, conn: conn}
+	c.init()
+	return c
 }
 
 // DTLSClient returns a new DTLS client side connection
@@ -315,12 +311,7 @@ func DTLSServer(conn net.Conn, config *Config) *Conn {
 // The config cannot be nil: users must set either ServerHostname or
 // InsecureSkipVerify in the config.
 func DTLSClient(conn net.Conn, config *Config) *Conn {
-	return &Conn{
-		config:   config,
-		isClient: true,
-		isDTLS:   true,
-		conn:     conn,
-		in:       halfConn{isDTLS: true},
-		out:      halfConn{isDTLS: true},
-	}
+	c := &Conn{config: config, isClient: true, isDTLS: true, conn: conn}
+	c.init()
+	return c
 }

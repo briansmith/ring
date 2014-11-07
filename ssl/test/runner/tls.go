@@ -23,7 +23,9 @@ import (
 // The configuration config must be non-nil and must have
 // at least one certificate.
 func Server(conn net.Conn, config *Config) *Conn {
-	return &Conn{conn: conn, config: config}
+	c := &Conn{conn: conn, config: config}
+	c.init()
+	return c
 }
 
 // Client returns a new TLS client side connection
@@ -31,7 +33,9 @@ func Server(conn net.Conn, config *Config) *Conn {
 // The config cannot be nil: users must set either ServerHostname or
 // InsecureSkipVerify in the config.
 func Client(conn net.Conn, config *Config) *Conn {
-	return &Conn{conn: conn, config: config, isClient: true}
+	c := &Conn{conn: conn, config: config, isClient: true}
+	c.init()
+	return c
 }
 
 // A listener implements a network listener (net.Listener) for TLS connections.

@@ -499,6 +499,12 @@ type ProtocolBugs struct {
 	// BadRenegotiationInfo causes the renegotiation extension value in a
 	// renegotiation handshake to be incorrect.
 	BadRenegotiationInfo bool
+
+	// SequenceNumberIncrement, if non-zero, causes outgoing sequence
+	// numbers in DTLS to increment by that value rather by 1. This is to
+	// stress the replay bitmap window by simulating extreme packet loss and
+	// retransmit at the record layer.
+	SequenceNumberIncrement uint64
 }
 
 func (c *Config) serverInit() {
