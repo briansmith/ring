@@ -567,8 +567,6 @@ void ssl_sess_cert_free(SESS_CERT *sc)
 #endif
 		}
 
-	if (sc->peer_rsa_tmp != NULL)
-		RSA_free(sc->peer_rsa_tmp);
 	if (sc->peer_dh_tmp != NULL)
 		DH_free(sc->peer_dh_tmp);
 	if (sc->peer_ecdh_tmp != NULL)

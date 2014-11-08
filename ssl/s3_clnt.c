@@ -1230,11 +1230,6 @@ int ssl3_get_server_key_exchange(SSL *s)
 
 	if (s->session->sess_cert != NULL)
 		{
-		if (s->session->sess_cert->peer_rsa_tmp != NULL)
-			{
-			RSA_free(s->session->sess_cert->peer_rsa_tmp);
-			s->session->sess_cert->peer_rsa_tmp=NULL;
-			}
 		if (s->session->sess_cert->peer_dh_tmp)
 			{
 			DH_free(s->session->sess_cert->peer_dh_tmp);
@@ -1293,55 +1288,7 @@ int ssl3_get_server_key_exchange(SSL *s)
 			}
 		}
 
-	if (alg_k & SSL_kRSA)
-		{
-		CBS rsa_modulus, rsa_exponent;
-
-		/* TODO(davidben): This was originally for export
-		 * reasons. Do we still need to support it? */
-
-		if (!CBS_get_u16_length_prefixed(&server_key_exchange, &rsa_modulus) ||
-			CBS_len(&rsa_modulus) == 0 ||
-			!CBS_get_u16_length_prefixed(&server_key_exchange, &rsa_exponent) ||
-			CBS_len(&rsa_exponent) == 0)
-			{
-			al = SSL_AD_DECODE_ERROR;
-			OPENSSL_PUT_ERROR(SSL, ssl3_get_server_key_exchange, SSL_R_DECODE_ERROR);
-			goto f_err;
-			}
-
-		if ((rsa=RSA_new()) == NULL)
-			{
-			OPENSSL_PUT_ERROR(SSL, ssl3_get_server_key_exchange, ERR_R_MALLOC_FAILURE);
-			goto err;
-			}
-
-		if (!(rsa->n = BN_bin2bn(CBS_data(&rsa_modulus),
-					CBS_len(&rsa_modulus), rsa->n)))
-			{
-			OPENSSL_PUT_ERROR(SSL, ssl3_get_server_key_exchange, ERR_R_BN_LIB);
-			goto err;
-			}
-
-		if (!(rsa->e = BN_bin2bn(CBS_data(&rsa_exponent),
-					CBS_len(&rsa_exponent), rsa->e)))
-			{
-			OPENSSL_PUT_ERROR(SSL, ssl3_get_server_key_exchange, ERR_R_BN_LIB);
-			goto err;
-			}
-
-		/* this should be because we are using an export cipher */
-		if (alg_a & SSL_aRSA)
-			pkey=X509_get_pubkey(s->session->sess_cert->peer_pkeys[SSL_PKEY_RSA_ENC].x509);
-		else
-			{
-			OPENSSL_PUT_ERROR(SSL, ssl3_get_server_key_exchange, ERR_R_INTERNAL_ERROR);
-			goto err;
-			}
-		s->session->sess_cert->peer_rsa_tmp=rsa;
-		rsa=NULL;
-		}
-	else if (alg_k & SSL_kEDH)
+	if (alg_k & SSL_kEDH)
 		{
 		CBS dh_p, dh_g, dh_Ys;
 
@@ -1990,21 +1937,16 @@ int ssl3_send_client_key_exchange(SSL *s)
 				goto err;
 				}
 
-			if (s->session->sess_cert->peer_rsa_tmp != NULL)
-				rsa=s->session->sess_cert->peer_rsa_tmp;
-			else
+			pkey=X509_get_pubkey(s->session->sess_cert->peer_pkeys[SSL_PKEY_RSA_ENC].x509);
+			if ((pkey == NULL) ||
+				(pkey->type != EVP_PKEY_RSA) ||
+				(pkey->pkey.rsa == NULL))
 				{
-				pkey=X509_get_pubkey(s->session->sess_cert->peer_pkeys[SSL_PKEY_RSA_ENC].x509);
-				if ((pkey == NULL) ||
-					(pkey->type != EVP_PKEY_RSA) ||
-					(pkey->pkey.rsa == NULL))
-					{
-					OPENSSL_PUT_ERROR(SSL, ssl3_send_client_key_exchange, ERR_R_INTERNAL_ERROR);
-					goto err;
-					}
-				rsa=pkey->pkey.rsa;
-				EVP_PKEY_free(pkey);
+				OPENSSL_PUT_ERROR(SSL, ssl3_send_client_key_exchange, ERR_R_INTERNAL_ERROR);
+				goto err;
 				}
+			rsa=pkey->pkey.rsa;
+			EVP_PKEY_free(pkey);
 				
 			pms[0]=s->client_version>>8;
 			pms[1]=s->client_version&0xff;
@@ -2499,7 +2441,6 @@ int ssl3_check_cert_and_algorithm(SSL *s)
 	long alg_k,alg_a;
 	EVP_PKEY *pkey=NULL;
 	SESS_CERT *sc;
-	RSA *rsa;
 	DH *dh;
 
 	/* we don't have a certificate */
@@ -2516,7 +2457,6 @@ int ssl3_check_cert_and_algorithm(SSL *s)
 		goto err;
 		}
 
-	rsa=s->session->sess_cert->peer_rsa_tmp;
 	dh=s->session->sess_cert->peer_dh_tmp;
 
 	/* This is the passed certificate */
@@ -2551,8 +2491,7 @@ int ssl3_check_cert_and_algorithm(SSL *s)
 		OPENSSL_PUT_ERROR(SSL, ssl3_check_cert_and_algorithm, SSL_R_MISSING_RSA_SIGNING_CERT);
 		goto f_err;
 		}
-	if ((alg_k & SSL_kRSA) &&
-		!(has_bits(i,EVP_PK_RSA|EVP_PKT_ENC) || (rsa != NULL)))
+	if ((alg_k & SSL_kRSA) && !has_bits(i,EVP_PK_RSA|EVP_PKT_ENC))
 		{
 		OPENSSL_PUT_ERROR(SSL, ssl3_check_cert_and_algorithm, SSL_R_MISSING_RSA_ENCRYPTING_CERT);
 		goto f_err;

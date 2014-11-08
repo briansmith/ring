@@ -537,8 +537,7 @@ typedef struct sess_cert_st
 	/* Obviously we don't have the private keys of these,
 	 * so maybe we shouldn't even use the CERT_PKEY type here. */
 
-	RSA *peer_rsa_tmp; /* not used for SSL 2 */
-	DH *peer_dh_tmp; /* not used for SSL 2 */
+	DH *peer_dh_tmp;
 	EC_KEY *peer_ecdh_tmp;
 	} SESS_CERT;
 /* Structure containing decoded values of signature algorithms extension */

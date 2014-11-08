@@ -1381,14 +1381,12 @@ long ssl3_ctrl(SSL *s, int cmd, long larg, void *parg)
 			EVP_PKEY *ptmp;
 			int rv = 0;
 			sc = s->session->sess_cert;
-			if (!sc->peer_rsa_tmp && !sc->peer_dh_tmp && !sc->peer_ecdh_tmp)
+			if (!sc->peer_dh_tmp && !sc->peer_ecdh_tmp)
 				return 0;
 			ptmp = EVP_PKEY_new();
 			if (!ptmp)
 				return 0;
-			if (sc->peer_rsa_tmp)
-				rv = EVP_PKEY_set1_RSA(ptmp, sc->peer_rsa_tmp);
-			else if (sc->peer_dh_tmp)
+			if (sc->peer_dh_tmp)
 				rv = EVP_PKEY_set1_DH(ptmp, sc->peer_dh_tmp);
 			else if (sc->peer_ecdh_tmp)
 				rv = EVP_PKEY_set1_EC_KEY(ptmp, sc->peer_ecdh_tmp);

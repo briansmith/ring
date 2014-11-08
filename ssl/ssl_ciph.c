@@ -1456,15 +1456,7 @@ int ssl_cipher_has_server_public_key(const SSL_CIPHER *cipher)
  *
  * Unlike ssl_cipher_has_server_public_key, some ciphers take optional
  * ServerKeyExchanges. PSK and RSA_PSK only use the ServerKeyExchange
- * to communicate a psk_identity_hint, so it is optional.
- *
- * Also, as implemented, the RSA key exchange takes an optional
- * ServerKeyExchange containing a signed ephemeral RSA encryption key.
- *
- * TODO(davidben): Can we remove the RSA one? This is a remnant of
- * RSA_EXPORT ciphers which required this (it was used to generate an
- * ephemeral 512-bit RSA encryption key), but it's allowed for all RSA
- * ciphers. */
+ * to communicate a psk_identity_hint, so it is optional. */
 int ssl_cipher_requires_server_key_exchange(const SSL_CIPHER *cipher)
 	{
 	/* Ephemeral Diffie-Hellman key exchanges require a
