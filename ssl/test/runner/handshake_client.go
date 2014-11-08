@@ -90,6 +90,10 @@ func (c *Conn) clientHandshake() error {
 		}
 	}
 
+	if c.config.Bugs.NoRenegotiationInfo {
+		hello.secureRenegotiation = nil
+	}
+
 	possibleCipherSuites := c.config.cipherSuites()
 	hello.cipherSuites = make([]uint16, 0, len(possibleCipherSuites))
 
@@ -249,7 +253,7 @@ NextCipherSuite:
 		return fmt.Errorf("tls: server selected an unsupported cipher suite")
 	}
 
-	if len(c.clientVerify) > 0 {
+	if len(c.clientVerify) > 0 && !c.config.Bugs.NoRenegotiationInfo {
 		var expectedRenegInfo []byte
 		expectedRenegInfo = append(expectedRenegInfo, c.clientVerify...)
 		expectedRenegInfo = append(expectedRenegInfo, c.serverVerify...)

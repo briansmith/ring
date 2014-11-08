@@ -57,6 +57,7 @@ struct TestConfig {
   std::string psk;
   std::string psk_identity;
   bool renegotiate;
+  bool allow_unsafe_legacy_renegotiation;
 };
 
 bool ParseConfig(int argc, char **argv, TestConfig *out_config);

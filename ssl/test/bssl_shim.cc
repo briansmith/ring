@@ -388,6 +388,9 @@ static int do_exchange(SSL_SESSION **out_session,
   if (config->tls_d5_bug) {
     SSL_set_options(ssl, SSL_OP_TLS_D5_BUG);
   }
+  if (config->allow_unsafe_legacy_renegotiation) {
+    SSL_set_options(ssl, SSL_OP_ALLOW_UNSAFE_LEGACY_RENEGOTIATION);
+  }
   if (!config->expected_channel_id.empty()) {
     SSL_enable_tls_channel_id(ssl);
   }

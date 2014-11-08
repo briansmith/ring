@@ -488,7 +488,7 @@ type ProtocolBugs struct {
 	// the extended master secret option.
 	RequireExtendedMasterSecret bool
 
-	// NoExtendedMasterSecret causes the client and server to behave is if
+	// NoExtendedMasterSecret causes the client and server to behave as if
 	// they didn't support an extended master secret.
 	NoExtendedMasterSecret bool
 
@@ -499,6 +499,10 @@ type ProtocolBugs struct {
 	// BadRenegotiationInfo causes the renegotiation extension value in a
 	// renegotiation handshake to be incorrect.
 	BadRenegotiationInfo bool
+
+	// NoRenegotiationInfo causes the client to behave as if it
+	// didn't support the renegotiation info extension.
+	NoRenegotiationInfo bool
 
 	// SequenceNumberIncrement, if non-zero, causes outgoing sequence
 	// numbers in DTLS to increment by that value rather by 1. This is to

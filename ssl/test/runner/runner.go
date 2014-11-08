@@ -1826,6 +1826,34 @@ func addRenegotiationTests() {
 		shouldFail:      true,
 		expectedError:   ":RENEGOTIATION_MISMATCH:",
 	})
+	testCases = append(testCases, testCase{
+		testType:    serverTest,
+		name:        "Renegotiate-Server-ClientInitiated",
+		renegotiate: true,
+	})
+	testCases = append(testCases, testCase{
+		testType:    serverTest,
+		name:        "Renegotiate-Server-ClientInitiated-NoExt",
+		renegotiate: true,
+		config: Config{
+			Bugs: ProtocolBugs{
+				NoRenegotiationInfo: true,
+			},
+		},
+		shouldFail:    true,
+		expectedError: ":UNSAFE_LEGACY_RENEGOTIATION_DISABLED:",
+	})
+	testCases = append(testCases, testCase{
+		testType:    serverTest,
+		name:        "Renegotiate-Server-ClientInitiated-NoExt-Allowed",
+		renegotiate: true,
+		config: Config{
+			Bugs: ProtocolBugs{
+				NoRenegotiationInfo: true,
+			},
+		},
+		flags: []string{"-allow-unsafe-legacy-renegotiation"},
+	})
 	// TODO(agl): test the renegotiation info SCSV.
 	testCases = append(testCases, testCase{
 		name:        "Renegotiate-Client",

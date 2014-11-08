@@ -60,6 +60,8 @@ const BoolFlag kBoolFlags[] = {
   { "-expect-extended-master-secret",
     &TestConfig::expect_extended_master_secret },
   { "-renegotiate", &TestConfig::renegotiate },
+  { "-allow-unsafe-legacy-renegotiation",
+    &TestConfig::allow_unsafe_legacy_renegotiation },
 };
 
 const size_t kNumBoolFlags = sizeof(kBoolFlags) / sizeof(kBoolFlags[0]);
@@ -112,7 +114,8 @@ TestConfig::TestConfig()
       tls_d5_bug(false),
       expect_session_miss(false),
       expect_extended_master_secret(false),
-      renegotiate(false) {
+      renegotiate(false),
+      allow_unsafe_legacy_renegotiation(false) {
 }
 
 bool ParseConfig(int argc, char **argv, TestConfig *out_config) {
