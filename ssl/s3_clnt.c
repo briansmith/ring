@@ -1943,6 +1943,8 @@ int ssl3_send_client_key_exchange(SSL *s)
 				(pkey->pkey.rsa == NULL))
 				{
 				OPENSSL_PUT_ERROR(SSL, ssl3_send_client_key_exchange, ERR_R_INTERNAL_ERROR);
+				if (pkey != NULL)
+					EVP_PKEY_free(pkey);
 				goto err;
 				}
 			rsa=pkey->pkey.rsa;
