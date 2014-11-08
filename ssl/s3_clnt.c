@@ -2184,7 +2184,7 @@ int ssl3_send_client_key_exchange(SSL *s)
 
 		/* For a PSK cipher suite, other_secret is combined
 		 * with the pre-shared key. */
-		if ((alg_a & SSL_aPSK) && psk_len != 0)
+		if (alg_a & SSL_aPSK)
 			{
 			CBB cbb, child;
 			uint8_t *new_pms;
