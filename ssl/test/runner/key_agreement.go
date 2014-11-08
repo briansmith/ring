@@ -28,6 +28,11 @@ var errServerKeyExchange = errors.New("tls: invalid ServerKeyExchange message")
 type rsaKeyAgreement struct{}
 
 func (ka rsaKeyAgreement) generateServerKeyExchange(config *Config, cert *Certificate, clientHello *clientHelloMsg, hello *serverHelloMsg) (*serverKeyExchangeMsg, error) {
+	if config.Bugs.RSAServerKeyExchange {
+		// Send an empty ServerKeyExchange message.
+		return &serverKeyExchangeMsg{}, nil
+	}
+
 	return nil, nil
 }
 

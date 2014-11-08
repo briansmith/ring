@@ -495,6 +495,17 @@ var testCases = []testCase{
 		shouldFail:    true,
 		expectedError: ":WRONG_CIPHER_RETURNED:",
 	},
+	{
+		name: "RSAServerKeyExchange",
+		config: Config{
+			CipherSuites: []uint16{TLS_RSA_WITH_AES_128_CBC_SHA},
+			Bugs: ProtocolBugs{
+				RSAServerKeyExchange: true,
+			},
+		},
+		shouldFail:    true,
+		expectedError: ":UNEXPECTED_MESSAGE:",
+	},
 }
 
 func doExchange(test *testCase, config *Config, conn net.Conn, messageLen int, isResume bool) error {
