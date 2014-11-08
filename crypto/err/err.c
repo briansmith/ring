@@ -181,6 +181,7 @@ static uint32_t get_error_values(int inc, int top, const char **file, int *line,
   }
 
   if (top) {
+    assert(!inc);
     /* last error */
     i = state->top;
   } else {
@@ -211,14 +212,21 @@ static uint32_t get_error_values(int inc, int top, const char **file, int *line,
       if (flags != NULL) {
         *flags = error->flags & ERR_FLAG_PUBLIC_MASK;
       }
-      if (error->flags & ERR_FLAG_MALLOCED) {
-        if (state->to_free) {
-          OPENSSL_free(state->to_free);
+      /* If this error is being removed, take ownership of data from
+       * the error. The semantics are such that the caller doesn't
+       * take ownership either. Instead the error system takes
+       * ownership and retains it until the next call that affects the
+       * error queue. */
+      if (inc) {
+        if (error->flags & ERR_FLAG_MALLOCED) {
+          if (state->to_free) {
+            OPENSSL_free(state->to_free);
+          }
+          state->to_free = error->data;
         }
-        state->to_free = error->data;
+        error->data = NULL;
+        error->flags = 0;
       }
-      error->data = NULL;
-      error->flags = 0;
     }
   }
 

@@ -42,9 +42,9 @@ static int test_overflow(void) {
 }
 
 static int test_put_error(void) {
-  uint32_t packed_error;
-  int line, flags;
-  const char *file, *data;
+  uint32_t peeked_packed_error, packed_error;
+  int peeked_line, line, peeked_flags, flags;
+  const char *peeked_file, *file, *peeked_data, *data;
 
   if (ERR_get_error() != 0) {
     fprintf(stderr, "ERR_get_error returned value before an error was added.\n");
@@ -54,7 +54,18 @@ static int test_put_error(void) {
   ERR_put_error(1, 2, 3, "test", 4);
   ERR_add_error_data(1, "testing");
 
+  peeked_packed_error = ERR_peek_error_line_data(&peeked_file, &peeked_line,
+                                                 &peeked_data, &peeked_flags);
   packed_error = ERR_get_error_line_data(&file, &line, &data, &flags);
+
+  if (peeked_packed_error != packed_error ||
+      peeked_file != file ||
+      peeked_data != data ||
+      peeked_flags != flags) {
+    fprintf(stderr, "Bad peeked error data returned.\n");
+    return 0;
+  }
+
   if (strcmp(file, "test") != 0 ||
       line != 4 ||
       (flags & ERR_FLAG_STRING) == 0 ||
