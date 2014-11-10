@@ -217,14 +217,15 @@ int test_builtin(BIO *out) {
       goto builtin_err;
     }
     buf_len = 2 * bn_len;
-    raw_buf = OPENSSL_malloc(buf_len);
+    raw_buf = OPENSSL_malloc(2 * bn_len);
     if (raw_buf == NULL) {
       goto builtin_err;
     }
     /* Pad the bignums with leading zeroes. */
-    memset(raw_buf, 0, buf_len);
-    BN_bn2bin(ecdsa_sig->r, raw_buf + bn_len - r_len);
-    BN_bn2bin(ecdsa_sig->s, raw_buf + buf_len - s_len);
+    if (!BN_bn2bin_padded(raw_buf, bn_len, ecdsa_sig->r) ||
+        !BN_bn2bin_padded(raw_buf + bn_len, bn_len, ecdsa_sig->s)) {
+      goto builtin_err;
+    }
 
     /* Modify a single byte in the buffer. */
     offset = raw_buf[10] % buf_len;

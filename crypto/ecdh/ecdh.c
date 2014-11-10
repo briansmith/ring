@@ -81,7 +81,7 @@ int ECDH_compute_key(void *out, size_t outlen, const EC_POINT *pub_key,
   const BIGNUM *priv;
   const EC_GROUP *group;
   int ret = -1;
-  size_t buflen, len;
+  size_t buflen;
   uint8_t *buf = NULL;
 
   if ((ctx = BN_CTX_new()) == NULL) {
@@ -116,20 +116,14 @@ int ECDH_compute_key(void *out, size_t outlen, const EC_POINT *pub_key,
   }
 
   buflen = (EC_GROUP_get_degree(group) + 7) / 8;
-  len = BN_num_bytes(x);
-  if (len > buflen) {
-    OPENSSL_PUT_ERROR(ECDH, ECDH_compute_key, ERR_R_INTERNAL_ERROR);
-    goto err;
-  }
   buf = OPENSSL_malloc(buflen);
   if (buf == NULL) {
     OPENSSL_PUT_ERROR(ECDH, ECDH_compute_key, ERR_R_MALLOC_FAILURE);
     goto err;
   }
 
-  memset(buf, 0, buflen - len);
-  if (len != (size_t)BN_bn2bin(x, buf + buflen - len)) {
-    OPENSSL_PUT_ERROR(ECDH, ECDH_compute_key, ERR_R_BN_LIB);
+  if (!BN_bn2bin_padded(buf, buflen, x)) {
+    OPENSSL_PUT_ERROR(ECDH, ECDH_compute_key, ERR_R_INTERNAL_ERROR);
     goto err;
   }
 

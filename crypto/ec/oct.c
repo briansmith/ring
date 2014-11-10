@@ -81,7 +81,7 @@ static size_t ec_GFp_simple_point2oct(const EC_GROUP *group,
   BN_CTX *new_ctx = NULL;
   int used_ctx = 0;
   BIGNUM *x, *y;
-  size_t field_len, i, skip;
+  size_t field_len, i;
 
   if ((form != POINT_CONVERSION_COMPRESSED) &&
       (form != POINT_CONVERSION_UNCOMPRESSED) &&
@@ -117,58 +117,45 @@ static size_t ec_GFp_simple_point2oct(const EC_GROUP *group,
 
     if (ctx == NULL) {
       ctx = new_ctx = BN_CTX_new();
-      if (ctx == NULL)
+      if (ctx == NULL) {
         return 0;
+      }
     }
 
     BN_CTX_start(ctx);
     used_ctx = 1;
     x = BN_CTX_get(ctx);
     y = BN_CTX_get(ctx);
-    if (y == NULL)
+    if (y == NULL) {
       goto err;
+    }
 
-    if (!EC_POINT_get_affine_coordinates_GFp(group, point, x, y, ctx))
+    if (!EC_POINT_get_affine_coordinates_GFp(group, point, x, y, ctx)) {
       goto err;
+    }
 
     if ((form == POINT_CONVERSION_COMPRESSED ||
          form == POINT_CONVERSION_HYBRID) &&
-        BN_is_odd(y))
+        BN_is_odd(y)) {
       buf[0] = form + 1;
-    else
+    } else {
       buf[0] = form;
-
+    }
     i = 1;
 
-    skip = field_len - BN_num_bytes(x);
-    if (skip > field_len) {
+    if (!BN_bn2bin_padded(buf + i, field_len, x)) {
       OPENSSL_PUT_ERROR(EC, ec_GFp_simple_point2oct, ERR_R_INTERNAL_ERROR);
       goto err;
     }
-    while (skip > 0) {
-      buf[i++] = 0;
-      skip--;
-    }
-    skip = BN_bn2bin(x, buf + i);
-    i += skip;
-    if (i != 1 + field_len) {
-      OPENSSL_PUT_ERROR(EC, ec_GFp_simple_point2oct, ERR_R_INTERNAL_ERROR);
-      goto err;
-    }
+    i += field_len;
 
     if (form == POINT_CONVERSION_UNCOMPRESSED ||
         form == POINT_CONVERSION_HYBRID) {
-      skip = field_len - BN_num_bytes(y);
-      if (skip > field_len) {
+      if (!BN_bn2bin_padded(buf + i, field_len, y)) {
         OPENSSL_PUT_ERROR(EC, ec_GFp_simple_point2oct, ERR_R_INTERNAL_ERROR);
         goto err;
       }
-      while (skip > 0) {
-        buf[i++] = 0;
-        skip--;
-      }
-      skip = BN_bn2bin(y, buf + i);
-      i += skip;
+      i += field_len;
     }
 
     if (i != ret) {
@@ -177,17 +164,21 @@ static size_t ec_GFp_simple_point2oct(const EC_GROUP *group,
     }
   }
 
-  if (used_ctx)
+  if (used_ctx) {
     BN_CTX_end(ctx);
-  if (new_ctx != NULL)
+  }
+  if (new_ctx != NULL) {
     BN_CTX_free(new_ctx);
+  }
   return ret;
 
 err:
-  if (used_ctx)
+  if (used_ctx) {
     BN_CTX_end(ctx);
-  if (new_ctx != NULL)
+  }
+  if (new_ctx != NULL) {
     BN_CTX_free(new_ctx);
+  }
   return 0;
 }
 
