@@ -66,18 +66,24 @@ int test_builtin(BIO *out) {
   size_t n = 0;
   EC_KEY *eckey = NULL, *wrong_eckey = NULL;
   EC_GROUP *group;
+  BIGNUM *order = NULL;
   ECDSA_SIG *ecdsa_sig = NULL;
   unsigned char digest[20], wrong_digest[20];
   unsigned char *signature = NULL;
   const unsigned char *sig_ptr;
   unsigned char *sig_ptr2;
   unsigned char *raw_buf = NULL;
-  unsigned int sig_len, degree, r_len, s_len, bn_len, buf_len;
+  unsigned int sig_len, r_len, s_len, bn_len, buf_len;
   int nid, ret = 0;
 
   /* fill digest values with some random data */
   if (!RAND_pseudo_bytes(digest, 20) || !RAND_pseudo_bytes(wrong_digest, 20)) {
     BIO_printf(out, "ERROR: unable to get random data\n");
+    goto builtin_err;
+  }
+
+  order = BN_new();
+  if (order == NULL) {
     goto builtin_err;
   }
 
@@ -108,8 +114,10 @@ int test_builtin(BIO *out) {
       goto builtin_err;
     }
     EC_GROUP_free(group);
-    degree = EC_GROUP_get_degree(EC_KEY_get0_group(eckey));
-    if (degree < 160) {
+    if (!EC_GROUP_get_order(EC_KEY_get0_group(eckey), order, NULL)) {
+      goto builtin_err;
+    }
+    if (BN_num_bits(order) < 160) {
       /* Too small to test. */
       EC_KEY_free(eckey);
       eckey = NULL;
@@ -203,7 +211,7 @@ int test_builtin(BIO *out) {
     /* Store the two BIGNUMs in raw_buf. */
     r_len = BN_num_bytes(ecdsa_sig->r);
     s_len = BN_num_bytes(ecdsa_sig->s);
-    bn_len = (degree + 7) / 8;
+    bn_len = BN_num_bytes(order);
     if (r_len > bn_len || s_len > bn_len) {
       BIO_printf(out, " failed\n");
       goto builtin_err;
@@ -268,16 +276,24 @@ int test_builtin(BIO *out) {
 
   ret = 1;
 builtin_err:
-  if (eckey)
+  if (eckey) {
     EC_KEY_free(eckey);
-  if (wrong_eckey)
+  }
+  if (order) {
+    BN_free(order);
+  }
+  if (wrong_eckey) {
     EC_KEY_free(wrong_eckey);
-  if (ecdsa_sig)
+  }
+  if (ecdsa_sig) {
     ECDSA_SIG_free(ecdsa_sig);
-  if (signature)
+  }
+  if (signature) {
     OPENSSL_free(signature);
-  if (raw_buf)
+  }
+  if (raw_buf) {
     OPENSSL_free(raw_buf);
+  }
 
   return ret;
 }
