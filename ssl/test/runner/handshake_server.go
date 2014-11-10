@@ -327,13 +327,9 @@ func (hs *serverHandshakeState) checkForResumption() bool {
 		return false
 	}
 
-	if !c.config.Bugs.AllowSessionVersionMismatch {
-		if hs.sessionState.vers > hs.clientHello.vers {
-			return false
-		}
-		if vers, ok := c.config.mutualVersion(hs.sessionState.vers); !ok || vers != hs.sessionState.vers {
-			return false
-		}
+	// Never resume a session for a different SSL version.
+	if !c.config.Bugs.AllowSessionVersionMismatch && c.vers != hs.sessionState.vers {
+		return false
 	}
 
 	cipherSuiteOk := false
