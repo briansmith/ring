@@ -904,12 +904,6 @@ int ssl3_get_client_hello(SSL *s)
 		{
 		CBS cookie;
 
-		/* TODO(davidben): The length check here is off. Per
-		 * spec, the maximum cookie length is 32. However, the
-		 * DTLS1_COOKIE_LENGTH check is checking against 256,
-		 * not 32 (so it's actually redundant).
-		 * 07a9d1a2c2b735cbc327065000b545deb5e136cf from
-		 * OpenSSL switched this from 32 to 256. */
 		if (!CBS_get_u8_length_prefixed(&client_hello, &cookie) ||
 			CBS_len(&cookie) > DTLS1_COOKIE_LENGTH)
 			{
