@@ -1745,13 +1745,6 @@ func addResumptionVersionTests() {
 			}
 			suffix := "-" + sessionVers.name + "-" + resumeVers.name
 
-			// TODO(davidben): Write equivalent tests for the server
-			// and clean up the server's logic. This requires being
-			// able to give the shim a different set of SSL_OP_NO_*
-			// flags between the initial connection and the
-			// resume. Perhaps resumption should be tested by
-			// serializing the SSL_SESSION and starting a second
-			// shim.
 			testCases = append(testCases, testCase{
 				name:          "Resume-Client" + suffix,
 				resumeSession: true,
@@ -1786,6 +1779,27 @@ func addResumptionVersionTests() {
 					MaxVersion:             resumeVers.version,
 					CipherSuites:           []uint16{TLS_RSA_WITH_RC4_128_SHA},
 					SessionTicketsDisabled: true,
+				},
+				expectedResumeVersion: resumeVers.version,
+			})
+
+			var flags []string
+			if sessionVers.version != resumeVers.version {
+				flags = append(flags, "-expect-session-miss")
+			}
+			testCases = append(testCases, testCase{
+				testType:      serverTest,
+				name:          "Resume-Server" + suffix,
+				flags:         flags,
+				resumeSession: true,
+				config: Config{
+					MaxVersion:   sessionVers.version,
+					CipherSuites: []uint16{TLS_RSA_WITH_RC4_128_SHA},
+				},
+				expectedVersion: sessionVers.version,
+				resumeConfig: &Config{
+					MaxVersion:   resumeVers.version,
+					CipherSuites: []uint16{TLS_RSA_WITH_RC4_128_SHA},
 				},
 				expectedResumeVersion: resumeVers.version,
 			})
