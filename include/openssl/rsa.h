@@ -259,8 +259,12 @@ OPENSSL_EXPORT int RSA_public_decrypt(int flen, const uint8_t *from,
 OPENSSL_EXPORT unsigned RSA_size(const RSA *rsa);
 
 /* RSA_is_opaque returns one if |rsa| is opaque and doesn't expose its key
- * material. Otherwise it return zero. */
+ * material. Otherwise it returns zero. */
 OPENSSL_EXPORT int RSA_is_opaque(const RSA *rsa);
+
+/* RSA_supports_digest returns one if |rsa| supports signing digests
+ * of type |md|. Otherwise it returns zero. */
+OPENSSL_EXPORT int RSA_supports_digest(const RSA *rsa, const EVP_MD *md);
 
 /* RSAPublicKey_dup allocates a fresh |RSA| and copies the private key from
  * |rsa| into it. It returns the fresh |RSA| object, or NULL on error. */
@@ -410,6 +414,10 @@ struct rsa_meth_st {
   int flags;
 
   int (*keygen)(RSA *rsa, int bits, BIGNUM *e, BN_GENCB *cb);
+
+  /* supports_digest returns one if |rsa| supports digests of type
+   * |md|. If null, it is assumed that all digests are supported. */
+  int (*supports_digest)(const RSA *rsa, const EVP_MD *md);
 };
 
 
