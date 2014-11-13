@@ -654,36 +654,30 @@ static void tls1_get_formatlist(SSL *s, const unsigned char **pformats,
 		}
 	}
 
-/* Check cert parameters compatible with extensions: currently just checks
- * EC certificates have compatible curves and compression.
- */
-static int tls1_check_cert_param(SSL *s, X509 *x)
+int tls1_check_ec_cert(SSL *s, X509 *x)
 	{
-	uint8_t comp_id;
+	int ret = 0;
+	EVP_PKEY *pkey = X509_get_pubkey(x);
 	uint16_t curve_id;
-	EVP_PKEY *pkey;
-	int rv;
-	pkey = X509_get_pubkey(x);
-	if (!pkey)
-		return 0;
-	/* If not EC nothing to do */
-	if (pkey->type != EVP_PKEY_EC)
+	uint8_t comp_id;
+
+	if (!pkey ||
+		pkey->type != EVP_PKEY_EC ||
+		!tls1_curve_params_from_ec_key(&curve_id, &comp_id, pkey->pkey.ec) ||
+		!tls1_check_curve_id(s, curve_id) ||
+		!tls1_check_point_format(s, comp_id))
 		{
-		EVP_PKEY_free(pkey);
-		return 1;
+		goto done;
 		}
-	rv = tls1_curve_params_from_ec_key(&curve_id, &comp_id, pkey->pkey.ec);
-	EVP_PKEY_free(pkey);
-	if (!rv)
-		return 0;
-	/* Can't check curve_id for client certs as we don't have a
-	 * supported curves extension. */
-	if (s->server && !tls1_check_curve_id(s, curve_id))
-		return 0;
-	return tls1_check_point_format(s, comp_id);
+
+	ret = 1;
+
+done:
+	if (pkey)
+		EVP_PKEY_free(pkey);
+	return ret;
 	}
 
-/* Check EC temporary key is compatible with client extensions */
 int tls1_check_ec_tmp_key(SSL *s)
 	{
 	uint16_t curve_id;
@@ -1457,11 +1451,10 @@ static int ssl_scan_clienthello_tlsext(SSL *s, CBS *cbs, int *out_alert)
 		OPENSSL_free(s->cert->shared_sigalgs);
 		s->cert->shared_sigalgs = NULL;
 		}
-	/* Clear certificate digests and validity flags */
+	/* Clear certificate digests. */
 	for (i = 0; i < SSL_PKEY_NUM; i++)
 		{
 		s->cert->pkeys[i].digest = NULL;
-		s->cert->pkeys[i].valid_flags = 0;
 		}
 	/* Clear ECC extensions */
 	if (s->s3->tmp.peer_ecpointformatlist != 0)
@@ -2913,37 +2906,5 @@ int tls1_set_sigalgs(CERT *c, const int *psig_nids, size_t salglen, int client)
 	err:
 	OPENSSL_free(sigalgs);
 	return 0;
-	}
-
-/* Check certificate chain is consistent with TLS extensions and is usable by
- * server. This allows the server to check chains before attempting to use them.
- */
-
-void tls1_check_chain(SSL *s, size_t idx)
-	{
-	CERT_PKEY *cpk = &s->cert->pkeys[idx];
-
-	/* Clear the flags. */
-	cpk->valid_flags = 0;
-
-	/* If no cert or key, forget it. */
-	if (!cpk->x509 || !cpk->privatekey)
-		return;
-
-	/* Check cert parameters are consistent */
-	if (!tls1_check_cert_param(s, cpk->x509))
-		return;
-
-	cpk->valid_flags = CERT_PKEY_VALID;
-	if (!SSL_USE_SIGALGS(s) || cpk->digest)
-		cpk->valid_flags |= CERT_PKEY_SIGN;
-	}
-
-/* Set validity of certificates in an SSL structure */
-void tls1_set_cert_validity(SSL *s)
-	{
-	tls1_check_chain(s, SSL_PKEY_RSA_ENC);
-	tls1_check_chain(s, SSL_PKEY_RSA_SIGN);
-	tls1_check_chain(s, SSL_PKEY_ECC);
 	}
 

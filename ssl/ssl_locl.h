@@ -421,13 +421,6 @@
 #define SSL_GET_MESSAGE_DONT_HASH_MESSAGE 0
 #define SSL_GET_MESSAGE_HASH_MESSAGE 1
 
-/* Flags for a CERT_PKEY. */
-
-/* Certificate can be used with this session */
-#define CERT_PKEY_VALID		0x1
-/* Certificate can also be used for signing */
-#define CERT_PKEY_SIGN		0x2
-
 typedef struct cert_pkey_st
 	{
 	X509 *x509;
@@ -436,11 +429,6 @@ typedef struct cert_pkey_st
 	const EVP_MD *digest;
 	/* Chain for this certificate */
 	STACK_OF(X509) *chain;
-	/* Set if CERT_PKEY can be used with current SSL session: e.g.
-	 * appropriate curve, signature algorithms etc. If zero it can't be
-	 * used at all.
-	 */
-	int valid_flags;
 	} CERT_PKEY;
 
 typedef struct cert_st
@@ -1046,6 +1034,13 @@ int tls1_get_shared_curve(SSL *s);
 int tls1_set_curves(uint16_t **out_curve_ids, size_t *out_curve_ids_len,
 	const int *curves, size_t ncurves);
 
+/* tls1_check_ec_cert returns one if |x| is an ECC certificate with curve and
+ * point format compatible with the client's preferences. Otherwise it returns
+ * zero. */
+int tls1_check_ec_cert(SSL *s, X509 *x);
+
+/* tls1_check_ec_tmp_key returns one if the EC temporary key is compatible with
+ * client extensions and zero otherwise. */
 int tls1_check_ec_tmp_key(SSL *s);
 
 int tls1_shared_list(SSL *s,
@@ -1073,8 +1068,6 @@ int tls1_record_handshake_hashes_for_channel_id(SSL *s);
 
 int tls1_set_sigalgs_list(CERT *c, const char *str, int client);
 int tls1_set_sigalgs(CERT *c, const int *salg, size_t salglen, int client);
-void tls1_check_chain(SSL *s, size_t idx);
-void tls1_set_cert_validity(SSL *s);
 
 /* ssl_ctx_log_rsa_client_key_exchange logs |premaster| to |ctx|, if logging is
  * enabled. It returns one on success and zero on failure. The entry is

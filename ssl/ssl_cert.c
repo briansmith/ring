@@ -290,7 +290,6 @@ CERT *ssl_cert_dup(CERT *cert)
 				goto err;
 				}
 			}
-		rpk->valid_flags = 0;
 		}
 	
 	/* Set digests to defaults. NB: we don't copy existing values as they
@@ -389,8 +388,6 @@ void ssl_cert_clear_certs(CERT *c)
 			sk_X509_pop_free(cpk->chain, X509_free);
 			cpk->chain = NULL;
 			}
-		/* Clear all flags. */
-		cpk->valid_flags = 0;
 		}
 	}
 

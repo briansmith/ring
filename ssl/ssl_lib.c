@@ -2104,11 +2104,16 @@ void SSL_set_cert_cb(SSL *s, int (*cb)(SSL *ssl, void *arg), void *arg)
 	ssl_cert_set_cert_cb(s->cert, cb, arg);
 	}
 
+static int ssl_has_key(SSL *s, size_t idx)
+	{
+	CERT_PKEY *cpk = &s->cert->pkeys[idx];
+	return cpk->x509 && cpk->privatekey;
+	}
+
 void ssl_get_compatible_server_ciphers(SSL *s, unsigned long *out_mask_k,
 	unsigned long *out_mask_a)
 	{
 	CERT *c = s->cert;
-	CERT_PKEY *cpk;
 	int rsa_enc, rsa_sign, dh_tmp;
 	unsigned long mask_k, mask_a;
 	int have_ecc_cert, ecdsa_ok;
@@ -2126,12 +2131,9 @@ void ssl_get_compatible_server_ciphers(SSL *s, unsigned long *out_mask_k,
 	dh_tmp = (c->dh_tmp != NULL || c->dh_tmp_cb != NULL);
 
 	have_ecdh_tmp = (c->ecdh_tmp || c->ecdh_tmp_cb || c->ecdh_tmp_auto);
-	cpk = &(c->pkeys[SSL_PKEY_RSA_ENC]);
-	rsa_enc = cpk->valid_flags & CERT_PKEY_VALID;
-	cpk = &(c->pkeys[SSL_PKEY_RSA_SIGN]);
-	rsa_sign = cpk->valid_flags & CERT_PKEY_SIGN;
-	cpk = &(c->pkeys[SSL_PKEY_ECC]);
-	have_ecc_cert = cpk->valid_flags & CERT_PKEY_VALID;
+	rsa_enc = ssl_has_key(s, SSL_PKEY_RSA_ENC);
+	rsa_sign = ssl_has_key(s, SSL_PKEY_RSA_SIGN);
+	have_ecc_cert = ssl_has_key(s, SSL_PKEY_ECC);
 	mask_k = 0;
 	mask_a = 0;
 
@@ -2149,16 +2151,15 @@ void ssl_get_compatible_server_ciphers(SSL *s, unsigned long *out_mask_k,
 	mask_a |= SSL_aNULL;
 
 	/* An ECC certificate may be usable for ECDSA cipher suites depending on
-         * the key usage extension. */
+         * the key usage extension and on the client's curve preferences. */
 	if (have_ecc_cert)
 		{
-		cpk = &c->pkeys[SSL_PKEY_ECC];
-		x = cpk->x509;
+		x = c->pkeys[SSL_PKEY_ECC].x509;
 		/* This call populates extension flags (ex_flags) */
 		X509_check_purpose(x, -1, 0);
 		ecdsa_ok = (x->ex_flags & EXFLAG_KUSAGE) ?
 		    (x->ex_kusage & X509v3_KU_DIGITAL_SIGNATURE) : 1;
-		if (!(cpk->valid_flags & CERT_PKEY_SIGN))
+		if (!tls1_check_ec_cert(s, x))
 			ecdsa_ok = 0;
 		if (ecdsa_ok)
 			{

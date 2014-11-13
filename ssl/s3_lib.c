@@ -1806,7 +1806,6 @@ const SSL_CIPHER *ssl3_choose_cipher(SSL *s, STACK_OF(SSL_CIPHER) *clnt,
 		allow = srvr;
 		}
 
-	tls1_set_cert_validity(s);
 	ssl_get_compatible_server_ciphers(s, &mask_k, &mask_a);
 
 	for (i=0; i<sk_SSL_CIPHER_num(prio); i++)

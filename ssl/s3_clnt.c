@@ -1649,11 +1649,10 @@ int ssl3_get_certificate_request(SSL *s)
 			OPENSSL_PUT_ERROR(SSL, ssl3_get_certificate_request, SSL_R_DECODE_ERROR);
 			goto err;
 			}
-		/* Clear certificate digests and validity flags */
+		/* Clear certificate digests. */
 		for (i = 0; i < SSL_PKEY_NUM; i++)
 			{
 			s->cert->pkeys[i].digest = NULL;
-			s->cert->pkeys[i].valid_flags = 0;
 			}
 		if (!tls1_process_sigalgs(s, &supported_signature_algorithms))
 			{
