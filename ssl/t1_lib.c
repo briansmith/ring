@@ -822,11 +822,6 @@ int tls12_check_peer_sigalg(const EVP_MD **out_md, int *out_alert,
 		*out_alert = SSL_AD_ILLEGAL_PARAMETER;
 		return 0;
 		}
-	/* Store the digest used so applications can retrieve it if they
-	 * wish.
-	 */
-	if (s->session && s->session->sess_cert)
-		s->session->sess_cert->peer_key->digest = *out_md;
 	return 1;
 	}
 /* Get a mask of disabled algorithms: an algorithm is disabled

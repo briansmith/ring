@@ -1358,25 +1358,6 @@ long ssl3_ctrl(SSL *s, int cmd, long larg, void *parg)
 	case SSL_CTRL_SET_CHAIN_CERT_STORE:
 		return ssl_cert_set_cert_store(s->cert, parg, 1, larg);
 
-	case SSL_CTRL_GET_PEER_SIGNATURE_NID:
-		if (SSL_USE_SIGALGS(s))
-			{
-			if (s->session && s->session->sess_cert)
-				{
-				const EVP_MD *sig;
-				sig = s->session->sess_cert->peer_key->digest;
-				if (sig)
-					{
-					*(int *)parg = EVP_MD_type(sig);
-					return 1;
-					}
-				}
-			return 0;
-			}
-		/* Might want to do something here for other versions */
-		else
-			return 0;
-
 	case SSL_CTRL_GET_SERVER_TMP_KEY:
 		if (s->server || !s->session || !s->session->sess_cert)
 			return 0;
