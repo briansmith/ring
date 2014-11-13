@@ -2949,62 +2949,29 @@ static int ssl_check_ca_name(STACK_OF(X509_NAME) *names, X509 *x)
 	return 0;
 	}
 
-/* Check certificate chain is consistent with TLS extensions and is
- * usable by server. This servers two purposes: it allows users to 
- * check chains before passing them to the server and it allows the
- * server to check chains before attempting to use them.
+/* Check certificate chain is consistent with TLS extensions and is usable by
+ * server. This allows the server to check chains before attempting to use them.
  */
 
-/* Flags which need to be set for a certificate when stict mode not set */
-
-#define CERT_PKEY_VALID_FLAGS \
-	(CERT_PKEY_EE_SIGNATURE|CERT_PKEY_EE_PARAM)
-/* Strict mode flags */
-#define CERT_PKEY_STRICT_FLAGS \
-	 (CERT_PKEY_VALID_FLAGS|CERT_PKEY_CA_SIGNATURE|CERT_PKEY_CA_PARAM \
-	 | CERT_PKEY_ISSUER_NAME|CERT_PKEY_CERT_TYPE)
-
-int tls1_check_chain(SSL *s, X509 *x, EVP_PKEY *pk, STACK_OF(X509) *chain,
-									int idx)
+int tls1_check_chain(SSL *s, int idx)
 	{
 	size_t i;
 	int rv = 0;
 	int check_flags = 0, strict_mode;
 	CERT_PKEY *cpk = NULL;
 	CERT *c = s->cert;
-	/* idx == -1 means checking server chains */
-	if (idx != -1)
-		{
-		/* idx == -2 means checking client certificate chains */
-		if (idx == -2)
-			{
-			cpk = c->key;
-			idx = cpk - c->pkeys;
-			}
-		else
-			cpk = c->pkeys + idx;
-		x = cpk->x509;
-		pk = cpk->privatekey;
-		chain = cpk->chain;
-		strict_mode = c->cert_flags & SSL_CERT_FLAGS_CHECK_TLS_STRICT;
-		/* If no cert or key, forget it */
-		if (!x || !pk)
-			goto end;
-		}
-	else
-		{
-		if (!x || !pk)
-			goto end;
-		idx = ssl_cert_type(x, pk);
-		if (idx == -1)
-			goto end;
-		cpk = c->pkeys + idx;
-		if (c->cert_flags & SSL_CERT_FLAGS_CHECK_TLS_STRICT)
-			check_flags = CERT_PKEY_STRICT_FLAGS;
-		else
-			check_flags = CERT_PKEY_VALID_FLAGS;
-		strict_mode = 1;
-		}
+	X509 *x;
+	EVP_PKEY *pk;
+	STACK_OF(X509) *chain;
+
+	cpk = c->pkeys + idx;
+	x = cpk->x509;
+	pk = cpk->privatekey;
+	chain = cpk->chain;
+	strict_mode = c->cert_flags & SSL_CERT_FLAGS_CHECK_TLS_STRICT;
+	/* If no cert or key, forget it */
+	if (!x || !pk)
+		goto end;
 
 	/* Check all signature algorithms are consistent with
 	 * signature algorithms extension if TLS 1.2 or later
@@ -3199,13 +3166,8 @@ int tls1_check_chain(SSL *s, X509 *x, EVP_PKEY *pk, STACK_OF(X509) *chain,
 /* Set validity of certificates in an SSL structure */
 void tls1_set_cert_validity(SSL *s)
 	{
-	tls1_check_chain(s, NULL, NULL, NULL, SSL_PKEY_RSA_ENC);
-	tls1_check_chain(s, NULL, NULL, NULL, SSL_PKEY_RSA_SIGN);
-	tls1_check_chain(s, NULL, NULL, NULL, SSL_PKEY_ECC);
-	}
-/* User level utiity function to check a chain is suitable */
-int SSL_check_chain(SSL *s, X509 *x, EVP_PKEY *pk, STACK_OF(X509) *chain)
-	{
-	return tls1_check_chain(s, x, pk, chain, -1);
+	tls1_check_chain(s, SSL_PKEY_RSA_ENC);
+	tls1_check_chain(s, SSL_PKEY_RSA_SIGN);
+	tls1_check_chain(s, SSL_PKEY_ECC);
 	}
 

@@ -2351,7 +2351,7 @@ static int ssl3_check_client_certificate(SSL *s)
 	/* If strict mode check suitability of chain before using it.
 	 */
 	if (s->cert->cert_flags & SSL_CERT_FLAGS_CHECK_TLS_STRICT &&
-		!tls1_check_chain(s, NULL, NULL, NULL, -2))
+		!tls1_check_chain(s, s->cert->key - s->cert->pkeys))
 		return 0;
 	return 1;
 	}

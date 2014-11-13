@@ -543,26 +543,6 @@ struct ssl_session_st
 /* Clear verification errors from queue */
 #define SSL_BUILD_CHAIN_FLAG_CLEAR_ERROR	0x10
 
-/* Flags returned by SSL_check_chain */
-/* Certificate can be used with this session */
-#define CERT_PKEY_VALID		0x1
-/* Certificate can also be used for signing */
-#define CERT_PKEY_SIGN		0x2
-/* EE certificate signing algorithm OK */
-#define CERT_PKEY_EE_SIGNATURE	0x10
-/* CA signature algorithms OK */
-#define CERT_PKEY_CA_SIGNATURE	0x20
-/* EE certificate parameters OK */
-#define CERT_PKEY_EE_PARAM	0x40
-/* CA certificate parameters OK */
-#define CERT_PKEY_CA_PARAM	0x80
-/* Client CA issuer names match (always set for server cert) */
-#define CERT_PKEY_ISSUER_NAME	0x200
-/* Cert type matches client types (always set for server cert) */
-#define CERT_PKEY_CERT_TYPE	0x400
-/* Cert chain suitable to Suite B */
-#define CERT_PKEY_SUITEB	0x800
-
 #define SSL_CONF_FLAG_CMDLINE		0x1
 #define SSL_CONF_FLAG_FILE		0x2
 #define SSL_CONF_FLAG_CLIENT		0x4
