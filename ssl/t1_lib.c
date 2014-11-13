@@ -657,7 +657,7 @@ static void tls1_get_formatlist(SSL *s, const unsigned char **pformats,
 /* Check cert parameters compatible with extensions: currently just checks
  * EC certificates have compatible curves and compression.
  */
-static int tls1_check_cert_param(SSL *s, X509 *x, int set_ee_md)
+static int tls1_check_cert_param(SSL *s, X509 *x)
 	{
 	uint8_t comp_id;
 	uint16_t curve_id;
@@ -2920,52 +2920,24 @@ int tls1_set_sigalgs(CERT *c, const int *psig_nids, size_t salglen, int client)
  * server. This allows the server to check chains before attempting to use them.
  */
 
-int tls1_check_chain(SSL *s, int idx)
+void tls1_check_chain(SSL *s, size_t idx)
 	{
-	int rv = 0;
-	CERT_PKEY *cpk = NULL;
-	CERT *c = s->cert;
-	X509 *x;
-	EVP_PKEY *pk;
+	CERT_PKEY *cpk = &s->cert->pkeys[idx];
 
-	cpk = c->pkeys + idx;
-	x = cpk->x509;
-	pk = cpk->privatekey;
-	/* If no cert or key, forget it */
-	if (!x || !pk)
-		goto end;
+	/* Clear the flags. */
+	cpk->valid_flags = 0;
+
+	/* If no cert or key, forget it. */
+	if (!cpk->x509 || !cpk->privatekey)
+		return;
 
 	/* Check cert parameters are consistent */
-	if (tls1_check_cert_param(s, x, 2))
-		rv |= CERT_PKEY_EE_PARAM;
-	else
-		goto end;
-	if (!s->server)
-		rv |= CERT_PKEY_CA_PARAM;
-	rv |= CERT_PKEY_ISSUER_NAME|CERT_PKEY_CERT_TYPE|CERT_PKEY_VALID;
+	if (!tls1_check_cert_param(s, cpk->x509))
+		return;
 
-	end:
-
-	if (TLS1_get_version(s) >= TLS1_2_VERSION)
-		{
-		if (cpk->digest)
-			rv |= CERT_PKEY_SIGN;
-		}
-	else
-		rv |= CERT_PKEY_SIGN;
-
-	/* When checking a CERT_PKEY structure all flags are irrelevant
-	 * if the chain is invalid.
-	 */
-	if (rv & CERT_PKEY_VALID)
-		cpk->valid_flags = rv;
-	else
-		{
-		/* Clear flags. */
-		cpk->valid_flags = 0;
-		return 0;
-		}
-	return rv;
+	cpk->valid_flags = CERT_PKEY_VALID;
+	if (!SSL_USE_SIGALGS(s) || cpk->digest)
+		cpk->valid_flags |= CERT_PKEY_SIGN;
 	}
 
 /* Set validity of certificates in an SSL structure */

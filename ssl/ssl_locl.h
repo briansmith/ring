@@ -427,20 +427,6 @@
 #define CERT_PKEY_VALID		0x1
 /* Certificate can also be used for signing */
 #define CERT_PKEY_SIGN		0x2
-/* EE certificate signing algorithm OK */
-#define CERT_PKEY_EE_SIGNATURE	0x10
-/* CA signature algorithms OK */
-#define CERT_PKEY_CA_SIGNATURE	0x20
-/* EE certificate parameters OK */
-#define CERT_PKEY_EE_PARAM	0x40
-/* CA certificate parameters OK */
-#define CERT_PKEY_CA_PARAM	0x80
-/* Client CA issuer names match (always set for server cert) */
-#define CERT_PKEY_ISSUER_NAME	0x200
-/* Cert type matches client types (always set for server cert) */
-#define CERT_PKEY_CERT_TYPE	0x400
-/* Cert chain suitable to Suite B */
-#define CERT_PKEY_SUITEB	0x800
 
 typedef struct cert_pkey_st
 	{
@@ -1077,7 +1063,7 @@ int tls1_record_handshake_hashes_for_channel_id(SSL *s);
 
 int tls1_set_sigalgs_list(CERT *c, const char *str, int client);
 int tls1_set_sigalgs(CERT *c, const int *salg, size_t salglen, int client);
-int tls1_check_chain(SSL *s, int idx);
+void tls1_check_chain(SSL *s, size_t idx);
 void tls1_set_cert_validity(SSL *s);
 
 /* ssl_ctx_log_rsa_client_key_exchange logs |premaster| to |ctx|, if logging is
