@@ -556,8 +556,6 @@ struct ssl_session_st
 #define CERT_PKEY_EE_PARAM	0x40
 /* CA certificate parameters OK */
 #define CERT_PKEY_CA_PARAM	0x80
-/* Signing explicitly allowed as opposed to SHA1 fallback */
-#define CERT_PKEY_EXPLICIT_SIGN	0x100
 /* Client CA issuer names match (always set for server cert) */
 #define CERT_PKEY_ISSUER_NAME	0x200
 /* Cert type matches client types (always set for server cert) */

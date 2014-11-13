@@ -2738,10 +2738,8 @@ int tls1_process_sigalgs(SSL *s, const CBS *sigalgs)
 			{
 			md = tls12_get_hash(sigptr->rhash);
 			c->pkeys[idx].digest = md;
-			c->pkeys[idx].valid_flags = CERT_PKEY_EXPLICIT_SIGN;
 			if (idx == SSL_PKEY_RSA_SIGN)
 				{
-				c->pkeys[SSL_PKEY_RSA_ENC].valid_flags = CERT_PKEY_EXPLICIT_SIGN;
 				c->pkeys[SSL_PKEY_RSA_ENC].digest = md;
 				}
 			}
@@ -3175,13 +3173,11 @@ int tls1_check_chain(SSL *s, X509 *x, EVP_PKEY *pk, STACK_OF(X509) *chain,
 
 	if (TLS1_get_version(s) >= TLS1_2_VERSION)
 		{
-		if (cpk->valid_flags & CERT_PKEY_EXPLICIT_SIGN)
-			rv |= CERT_PKEY_EXPLICIT_SIGN|CERT_PKEY_SIGN;
-		else if (cpk->digest)
+		if (cpk->digest)
 			rv |= CERT_PKEY_SIGN;
 		}
 	else
-		rv |= CERT_PKEY_SIGN|CERT_PKEY_EXPLICIT_SIGN;
+		rv |= CERT_PKEY_SIGN;
 
 	/* When checking a CERT_PKEY structure all flags are irrelevant
 	 * if the chain is invalid.
@@ -3192,8 +3188,8 @@ int tls1_check_chain(SSL *s, X509 *x, EVP_PKEY *pk, STACK_OF(X509) *chain,
 			cpk->valid_flags = rv;
 		else
 			{
-			/* Preserve explicit sign flag, clear rest */
-			cpk->valid_flags &= CERT_PKEY_EXPLICIT_SIGN;
+			/* Clear flags. */
+			cpk->valid_flags = 0;
 			return 0;
 			}
 		}

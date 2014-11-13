@@ -390,8 +390,8 @@ void ssl_cert_clear_certs(CERT *c)
 			sk_X509_pop_free(cpk->chain, X509_free);
 			cpk->chain = NULL;
 			}
-		/* Clear all flags apart from explicit sign */
-		cpk->valid_flags &= CERT_PKEY_EXPLICIT_SIGN;
+		/* Clear all flags. */
+		cpk->valid_flags = 0;
 		}
 	}
 
