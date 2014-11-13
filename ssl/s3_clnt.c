@@ -2348,11 +2348,6 @@ static int ssl3_check_client_certificate(SSL *s)
 	/* If no suitable signature algorithm can't use certificate */
 	if (SSL_USE_SIGALGS(s) && !s->cert->key->digest)
 		return 0;
-	/* If strict mode check suitability of chain before using it.
-	 */
-	if (s->cert->cert_flags & SSL_CERT_FLAGS_CHECK_TLS_STRICT &&
-		!tls1_check_chain(s, s->cert->key - s->cert->pkeys))
-		return 0;
 	return 1;
 	}
 

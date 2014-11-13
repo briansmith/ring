@@ -808,8 +808,8 @@ int tls12_check_peer_sigalg(const EVP_MD **out_md, int *out_alert,
 		if (hash == sent_sigs[0] && signature == sent_sigs[1])
 			break;
 		}
-	/* Allow fallback to SHA1 if not strict mode */
-	if (i == sent_sigslen && (hash != TLSEXT_hash_sha1 || s->cert->cert_flags & SSL_CERT_FLAGS_CHECK_TLS_STRICT))
+	/* Allow fallback to SHA-1. */
+	if (i == sent_sigslen && hash != TLSEXT_hash_sha1)
 		{
 		OPENSSL_PUT_ERROR(SSL, tls12_check_peer_sigalg, SSL_R_WRONG_SIGNATURE_TYPE);
 		*out_alert = SSL_AD_ILLEGAL_PARAMETER;
@@ -2745,22 +2745,17 @@ int tls1_process_sigalgs(SSL *s, const CBS *sigalgs)
 			}
 
 		}
-	/* In strict mode leave unset digests as NULL to indicate we can't
-	 * use the certificate for signing.
+
+	/* Set any remaining keys to default values. NOTE: if alg is
+	 * not supported it stays as NULL.
 	 */
-	if (!(s->cert->cert_flags & SSL_CERT_FLAGS_CHECK_TLS_STRICT))
+	if (!c->pkeys[SSL_PKEY_RSA_SIGN].digest)
 		{
-		/* Set any remaining keys to default values. NOTE: if alg is
-		 * not supported it stays as NULL.
-	 	 */
-		if (!c->pkeys[SSL_PKEY_RSA_SIGN].digest)
-			{
-			c->pkeys[SSL_PKEY_RSA_SIGN].digest = EVP_sha1();
-			c->pkeys[SSL_PKEY_RSA_ENC].digest = EVP_sha1();
-			}
-		if (!c->pkeys[SSL_PKEY_ECC].digest)
-			c->pkeys[SSL_PKEY_ECC].digest = EVP_sha1();
+		c->pkeys[SSL_PKEY_RSA_SIGN].digest = EVP_sha1();
+		c->pkeys[SSL_PKEY_RSA_ENC].digest = EVP_sha1();
 		}
+	if (!c->pkeys[SSL_PKEY_ECC].digest)
+		c->pkeys[SSL_PKEY_ECC].digest = EVP_sha1();
 	return 1;
 	}
 
@@ -2921,124 +2916,24 @@ int tls1_set_sigalgs(CERT *c, const int *psig_nids, size_t salglen, int client)
 	return 0;
 	}
 
-static int tls1_check_sig_alg(CERT *c, X509 *x, int default_nid)
-	{
-	int sig_nid;
-	size_t i;
-	if (default_nid == -1)
-		return 1;
-	sig_nid = X509_get_signature_nid(x);
-	if (default_nid)
-		return sig_nid == default_nid ? 1 : 0;
-	for (i = 0; i < c->shared_sigalgslen; i++)
-		if (sig_nid == c->shared_sigalgs[i].signandhash_nid)
-			return 1;
-	return 0;
-	}
-/* Check to see if a certificate issuer name matches list of CA names */
-static int ssl_check_ca_name(STACK_OF(X509_NAME) *names, X509 *x)
-	{
-	X509_NAME *nm;
-	size_t i;
-	nm = X509_get_issuer_name(x);
-	for (i = 0; i < sk_X509_NAME_num(names); i++)
-		{
-		if(!X509_NAME_cmp(nm, sk_X509_NAME_value(names, i)))
-			return 1;
-		}
-	return 0;
-	}
-
 /* Check certificate chain is consistent with TLS extensions and is usable by
  * server. This allows the server to check chains before attempting to use them.
  */
 
 int tls1_check_chain(SSL *s, int idx)
 	{
-	size_t i;
 	int rv = 0;
-	int strict_mode;
 	CERT_PKEY *cpk = NULL;
 	CERT *c = s->cert;
 	X509 *x;
 	EVP_PKEY *pk;
-	STACK_OF(X509) *chain;
 
 	cpk = c->pkeys + idx;
 	x = cpk->x509;
 	pk = cpk->privatekey;
-	chain = cpk->chain;
-	strict_mode = c->cert_flags & SSL_CERT_FLAGS_CHECK_TLS_STRICT;
 	/* If no cert or key, forget it */
 	if (!x || !pk)
 		goto end;
-
-	/* Check all signature algorithms are consistent with
-	 * signature algorithms extension if TLS 1.2 or later
-	 * and strict mode.
-	 */
-	if (TLS1_get_version(s) >= TLS1_2_VERSION && strict_mode)
-		{
-		int default_nid;
-		unsigned char rsign = 0;
-		if (c->peer_sigalgs)
-			default_nid = 0;
-		/* If no sigalgs extension use defaults from RFC5246 */
-		else
-			{
-			switch(idx)
-				{	
-			case SSL_PKEY_RSA_ENC:
-			case SSL_PKEY_RSA_SIGN:
-				rsign = TLSEXT_signature_rsa;
-				default_nid = NID_sha1WithRSAEncryption;
-				break;
-
-			case SSL_PKEY_ECC:
-				rsign = TLSEXT_signature_ecdsa;
-				default_nid = NID_ecdsa_with_SHA1;
-				break;
-
-			default:
-				default_nid = -1;
-				break;
-				}
-			}
-		/* If peer sent no signature algorithms extension and we
-		 * have set preferred signature algorithms check we support
-		 * sha1.
-		 */
-		if (default_nid > 0 && c->conf_sigalgs)
-			{
-			size_t j;
-			const unsigned char *p = c->conf_sigalgs;
-			for (j = 0; j < c->conf_sigalgslen; j += 2, p += 2)
-				{
-				if (p[0] == TLSEXT_hash_sha1 && p[1] == rsign)
-					break;
-				}
-			if (j == c->conf_sigalgslen)
-				{
-				goto end;
-				}
-			}
-		/* Check signature algorithm of each cert in chain */
-		if (!tls1_check_sig_alg(c, x, default_nid))
-			{
-			goto end;
-			}
-		else
-			rv |= CERT_PKEY_EE_SIGNATURE;
-		rv |= CERT_PKEY_CA_SIGNATURE;
-		for (i = 0; i < sk_X509_num(chain); i++)
-			{
-			if (!tls1_check_sig_alg(c, sk_X509_value(chain, i),
-							default_nid))
-				{
-				goto end;
-				}
-			}
-		}
 
 	/* Check cert parameters are consistent */
 	if (tls1_check_cert_param(s, x, 2))
@@ -3047,75 +2942,7 @@ int tls1_check_chain(SSL *s, int idx)
 		goto end;
 	if (!s->server)
 		rv |= CERT_PKEY_CA_PARAM;
-	/* In strict mode check rest of chain too */
-	else if (strict_mode)
-		{
-		rv |= CERT_PKEY_CA_PARAM;
-		for (i = 0; i < sk_X509_num(chain); i++)
-			{
-			X509 *ca = sk_X509_value(chain, i);
-			if (!tls1_check_cert_param(s, ca, 0))
-				{
-				goto end;
-				}
-			}
-		}
-	if (!s->server && strict_mode)
-		{
-		STACK_OF(X509_NAME) *ca_dn;
-		uint8_t check_type = 0;
-		switch (pk->type)
-			{
-		case EVP_PKEY_RSA:
-			check_type = TLS_CT_RSA_SIGN;
-			break;
-		case EVP_PKEY_EC:
-			check_type = TLS_CT_ECDSA_SIGN;
-			break;
-			}
-		if (check_type)
-			{
-			if (s->s3->tmp.certificate_types &&
-				memchr(s->s3->tmp.certificate_types, check_type, s->s3->tmp.num_certificate_types))
-				{
-					rv |= CERT_PKEY_CERT_TYPE;
-				}
-			if (!(rv & CERT_PKEY_CERT_TYPE))
-				goto end;
-			}
-		else
-			rv |= CERT_PKEY_CERT_TYPE;
-
-
-		ca_dn = s->s3->tmp.ca_names;
-
-		if (!sk_X509_NAME_num(ca_dn))
-			rv |= CERT_PKEY_ISSUER_NAME;
-
-		if (!(rv & CERT_PKEY_ISSUER_NAME))
-			{
-			if (ssl_check_ca_name(ca_dn, x))
-				rv |= CERT_PKEY_ISSUER_NAME;
-			}
-		if (!(rv & CERT_PKEY_ISSUER_NAME))
-			{
-			for (i = 0; i < sk_X509_num(chain); i++)
-				{
-				X509 *xtmp = sk_X509_value(chain, i);
-				if (ssl_check_ca_name(ca_dn, xtmp))
-					{
-					rv |= CERT_PKEY_ISSUER_NAME;
-					break;
-					}
-				}
-			}
-		if (!(rv & CERT_PKEY_ISSUER_NAME))
-			goto end;
-		}
-	else
-		rv |= CERT_PKEY_ISSUER_NAME|CERT_PKEY_CERT_TYPE;
-
-	rv |= CERT_PKEY_VALID;
+	rv |= CERT_PKEY_ISSUER_NAME|CERT_PKEY_CERT_TYPE|CERT_PKEY_VALID;
 
 	end:
 

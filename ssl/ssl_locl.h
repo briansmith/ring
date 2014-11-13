@@ -457,9 +457,6 @@ typedef struct cert_pkey_st
 	int valid_flags;
 	} CERT_PKEY;
 
-#define SSL_CERT_FLAGS_CHECK_TLS_STRICT \
-	SSL_CERT_FLAG_TLS_STRICT
-
 typedef struct cert_st
 	{
 	/* Current active set */
