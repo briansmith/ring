@@ -2957,7 +2957,7 @@ int tls1_check_chain(SSL *s, int idx)
 	{
 	size_t i;
 	int rv = 0;
-	int check_flags = 0, strict_mode;
+	int strict_mode;
 	CERT_PKEY *cpk = NULL;
 	CERT *c = s->cert;
 	X509 *x;
@@ -3019,16 +3019,13 @@ int tls1_check_chain(SSL *s, int idx)
 				}
 			if (j == c->conf_sigalgslen)
 				{
-				if (check_flags)
-					goto skip_sigs;
-				else
-					goto end;
+				goto end;
 				}
 			}
 		/* Check signature algorithm of each cert in chain */
 		if (!tls1_check_sig_alg(c, x, default_nid))
 			{
-			if (!check_flags) goto end;
+			goto end;
 			}
 		else
 			rv |= CERT_PKEY_EE_SIGNATURE;
@@ -3038,24 +3035,15 @@ int tls1_check_chain(SSL *s, int idx)
 			if (!tls1_check_sig_alg(c, sk_X509_value(chain, i),
 							default_nid))
 				{
-				if (check_flags)
-					{
-					rv &= ~CERT_PKEY_CA_SIGNATURE;
-					break;
-					}
-				else
-					goto end;
+				goto end;
 				}
 			}
 		}
-	/* Else not TLS 1.2, so mark EE and CA signing algorithms OK */
-	else if(check_flags)
-		rv |= CERT_PKEY_EE_SIGNATURE|CERT_PKEY_CA_SIGNATURE;
-	skip_sigs:
+
 	/* Check cert parameters are consistent */
-	if (tls1_check_cert_param(s, x, check_flags ? 1 : 2))
+	if (tls1_check_cert_param(s, x, 2))
 		rv |= CERT_PKEY_EE_PARAM;
-	else if (!check_flags)
+	else
 		goto end;
 	if (!s->server)
 		rv |= CERT_PKEY_CA_PARAM;
@@ -3068,13 +3056,7 @@ int tls1_check_chain(SSL *s, int idx)
 			X509 *ca = sk_X509_value(chain, i);
 			if (!tls1_check_cert_param(s, ca, 0))
 				{
-				if (check_flags)
-					{
-					rv &= ~CERT_PKEY_CA_PARAM;
-					break;
-					}
-				else
-					goto end;
+				goto end;
 				}
 			}
 		}
@@ -3098,7 +3080,7 @@ int tls1_check_chain(SSL *s, int idx)
 				{
 					rv |= CERT_PKEY_CERT_TYPE;
 				}
-			if (!(rv & CERT_PKEY_CERT_TYPE) && !check_flags)
+			if (!(rv & CERT_PKEY_CERT_TYPE))
 				goto end;
 			}
 		else
@@ -3127,14 +3109,13 @@ int tls1_check_chain(SSL *s, int idx)
 					}
 				}
 			}
-		if (!check_flags && !(rv & CERT_PKEY_ISSUER_NAME))
+		if (!(rv & CERT_PKEY_ISSUER_NAME))
 			goto end;
 		}
 	else
 		rv |= CERT_PKEY_ISSUER_NAME|CERT_PKEY_CERT_TYPE;
 
-	if (!check_flags || (rv & check_flags) == check_flags)
-		rv |= CERT_PKEY_VALID;
+	rv |= CERT_PKEY_VALID;
 
 	end:
 
@@ -3149,16 +3130,13 @@ int tls1_check_chain(SSL *s, int idx)
 	/* When checking a CERT_PKEY structure all flags are irrelevant
 	 * if the chain is invalid.
 	 */
-	if (!check_flags)
+	if (rv & CERT_PKEY_VALID)
+		cpk->valid_flags = rv;
+	else
 		{
-		if (rv & CERT_PKEY_VALID)
-			cpk->valid_flags = rv;
-		else
-			{
-			/* Clear flags. */
-			cpk->valid_flags = 0;
-			return 0;
-			}
+		/* Clear flags. */
+		cpk->valid_flags = 0;
+		return 0;
 		}
 	return rv;
 	}
