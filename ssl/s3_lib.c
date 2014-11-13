@@ -1783,7 +1783,6 @@ const SSL_CIPHER *ssl3_choose_cipher(SSL *s, STACK_OF(SSL_CIPHER) *clnt,
 	size_t i;
 	int ok;
 	size_t cipher_index;
-	CERT *cert;
 	unsigned long alg_k,alg_a,mask_k,mask_a;
 	/* in_group_flags will either be NULL, or will point to an array of
 	 * bytes which indicate equal-preference groups in the |prio| stack.
@@ -1793,34 +1792,6 @@ const SSL_CIPHER *ssl3_choose_cipher(SSL *s, STACK_OF(SSL_CIPHER) *clnt,
 	/* group_min contains the minimal index so far found in a group, or -1
 	 * if no such value exists yet. */
 	int group_min = -1;
-
-	/* Let's see which ciphers we can support */
-	cert=s->cert;
-
-#if 0
-	/* Do not set the compare functions, because this may lead to a
-	 * reordering by "id". We want to keep the original ordering.
-	 * We may pay a price in performance during sk_SSL_CIPHER_find(),
-	 * but would have to pay with the price of sk_SSL_CIPHER_dup().
-	 */
-	sk_SSL_CIPHER_set_cmp_func(srvr, ssl_cipher_ptr_id_cmp);
-	sk_SSL_CIPHER_set_cmp_func(clnt, ssl_cipher_ptr_id_cmp);
-#endif
-
-#ifdef CIPHER_DEBUG
-	printf("Server has %d from %p:\n", sk_SSL_CIPHER_num(srvr), (void *)srvr);
-	for(i=0 ; i < sk_SSL_CIPHER_num(srvr) ; ++i)
-		{
-		c=sk_SSL_CIPHER_value(srvr,i);
-		printf("%p:%s\n",(void *)c,c->name);
-		}
-	printf("Client sent %d from %p:\n", sk_SSL_CIPHER_num(clnt), (void *)clnt);
-	for(i=0 ; i < sk_SSL_CIPHER_num(clnt) ; ++i)
-	    {
-	    c=sk_SSL_CIPHER_value(clnt,i);
-	    printf("%p:%s\n",(void *)c,c->name);
-	    }
-#endif
 
 	if (s->options & SSL_OP_CIPHER_SERVER_PREFERENCE)
 		{
@@ -1836,6 +1807,7 @@ const SSL_CIPHER *ssl3_choose_cipher(SSL *s, STACK_OF(SSL_CIPHER) *clnt,
 		}
 
 	tls1_set_cert_validity(s);
+	ssl_get_compatible_server_ciphers(s, &mask_k, &mask_a);
 
 	for (i=0; i<sk_SSL_CIPHER_num(prio); i++)
 		{
@@ -1848,27 +1820,10 @@ const SSL_CIPHER *ssl3_choose_cipher(SSL *s, STACK_OF(SSL_CIPHER) *clnt,
 			!SSL_USE_TLS1_2_CIPHERS(s))
 			ok = 0;
 
-		ssl_set_cert_masks(cert,c);
-		mask_k = cert->mask_k;
-		mask_a = cert->mask_a;
-
 		alg_k=c->algorithm_mkey;
 		alg_a=c->algorithm_auth;
 
-		/* with PSK there must be server callback set */
-		if ((alg_a & SSL_aPSK) && s->psk_server_callback == NULL)
-			ok = 0;
-
 		ok = ok && (alg_k & mask_k) && (alg_a & mask_a);
-#ifdef CIPHER_DEBUG
-		printf("%d:[%08lX:%08lX:%08lX:%08lX]%p:%s\n",ok,alg_k,alg_a,mask_k,mask_a,(void *)c,
-		       c->name);
-#endif
-
-		/* if we are considering an ECC cipher suite that uses
-		 * an ephemeral EC key check it */
-		if (alg_k & SSL_kEECDH)
-			ok = ok && tls1_check_ec_tmp_key(s);
 
 		if (ok && sk_SSL_CIPHER_find(allow, &cipher_index, c))
 			{

@@ -877,7 +877,6 @@ void ssl_set_client_disabled(SSL *s)
 		c->mask_a |= SSL_aPSK;
 		c->mask_k |= SSL_kPSK;
 		}
-	c->valid = 1;
 	}
 
 /* header_len is the length of the ClientHello header written so far, used to

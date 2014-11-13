@@ -199,7 +199,6 @@ CERT *ssl_cert_dup(CERT *cert)
 	/* or ret->key = ret->pkeys + (cert->key - cert->pkeys),
 	 * if you find that more readable */
 
-	ret->valid = cert->valid;
 	ret->mask_k = cert->mask_k;
 	ret->mask_a = cert->mask_a;
 

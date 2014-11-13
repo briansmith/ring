@@ -450,16 +450,19 @@ typedef struct cert_st
 			 * Probably it would make more sense to store
 			 * an index, not a pointer. */
  
-	/* For servers the following masks are for the key and auth
-	 * algorithms that are supported by the certs below.
-	 * For clients they are masks of *disabled* algorithms based
-	 * on the current session.
-	 */
-	int valid;
+	/* For clients the following masks are of *disabled* key and auth
+	 * algorithms based on the current session.
+	 *
+	 * TODO(davidben): Remove these. They get checked twice: when sending
+	 * the ClientHello and when processing the ServerHello. However,
+	 * mask_ssl is a different value both times. mask_k and mask_a are not,
+	 * but is a round-about way of checking the server's cipher was one of
+	 * the advertised ones. (Currently it checks the masks and then the list
+	 * of ciphers prior to applying the masks in ClientHello.) */
 	unsigned long mask_k;
 	unsigned long mask_a;
-	/* Client only */
 	unsigned long mask_ssl;
+
 	DH *dh_tmp;
 	DH *(*dh_tmp_cb)(SSL *ssl,int is_export,int keysize);
 	EC_KEY *ecdh_tmp;
@@ -817,7 +820,14 @@ int ssl_undefined_const_function(const SSL *s);
 CERT_PKEY *ssl_get_server_send_pkey(const SSL *s);
 EVP_PKEY *ssl_get_sign_pkey(SSL *s,const SSL_CIPHER *c, const EVP_MD **pmd);
 int ssl_cert_type(X509 *x,EVP_PKEY *pkey);
-void ssl_set_cert_masks(CERT *c, const SSL_CIPHER *cipher);
+
+/* ssl_get_compatible_server_ciphers determines the key exchange and
+ * authentication cipher suite masks compatible with the server configuration
+ * and current ClientHello parameters of |s|. It sets |*out_mask_k| to the key
+ * exchange mask and |*out_mask_a| to the authentication mask. */
+void ssl_get_compatible_server_ciphers(SSL *s, unsigned long *out_mask_k,
+	unsigned long *out_mask_a);
+
 STACK_OF(SSL_CIPHER) *ssl_get_ciphers_by_id(SSL *s);
 int ssl_verify_alarm_type(long type);
 int ssl_fill_hello_random(SSL *s, int server, unsigned char *field, int len);

@@ -2104,46 +2104,49 @@ void SSL_set_cert_cb(SSL *s, int (*cb)(SSL *ssl, void *arg), void *arg)
 	ssl_cert_set_cert_cb(s->cert, cb, arg);
 	}
 
-void ssl_set_cert_masks(CERT *c, const SSL_CIPHER *cipher)
+void ssl_get_compatible_server_ciphers(SSL *s, unsigned long *out_mask_k,
+	unsigned long *out_mask_a)
 	{
+	CERT *c = s->cert;
 	CERT_PKEY *cpk;
-	int rsa_enc,rsa_sign,dh_tmp;
-	unsigned long mask_k,mask_a;
+	int rsa_enc, rsa_sign, dh_tmp;
+	unsigned long mask_k, mask_a;
 	int have_ecc_cert, ecdsa_ok;
 	int have_ecdh_tmp;
-	X509 *x = NULL;
-	if (c == NULL) return;
+	X509 *x;
 
-	dh_tmp=(c->dh_tmp != NULL || c->dh_tmp_cb != NULL);
+	if (c == NULL)
+		{
+		/* TODO(davidben): Is this codepath possible? */
+		*out_mask_k = 0;
+		*out_mask_a = 0;
+		return;
+		}
 
-	have_ecdh_tmp=(c->ecdh_tmp || c->ecdh_tmp_cb || c->ecdh_tmp_auto);
-	cpk= &(c->pkeys[SSL_PKEY_RSA_ENC]);
-	rsa_enc= cpk->valid_flags & CERT_PKEY_VALID;
-	cpk= &(c->pkeys[SSL_PKEY_RSA_SIGN]);
-	rsa_sign= cpk->valid_flags & CERT_PKEY_SIGN;
-	cpk= &(c->pkeys[SSL_PKEY_ECC]);
-	have_ecc_cert= cpk->valid_flags & CERT_PKEY_VALID;
-	mask_k=0;
-	mask_a=0;
+	dh_tmp = (c->dh_tmp != NULL || c->dh_tmp_cb != NULL);
 
-#ifdef CIPHER_DEBUG
-	printf("rt=%d rte=%d dht=%d ecdht=%d re=%d ree=%d rs=%d ds=%d dhr=%d dhd=%d\n",
-	        rsa_tmp,rsa_tmp_export,dh_tmp,have_ecdh_tmp,
-		rsa_enc,rsa_enc_export,rsa_sign,dsa_sign,dh_rsa,dh_dsa);
-#endif
-	
+	have_ecdh_tmp = (c->ecdh_tmp || c->ecdh_tmp_cb || c->ecdh_tmp_auto);
+	cpk = &(c->pkeys[SSL_PKEY_RSA_ENC]);
+	rsa_enc = cpk->valid_flags & CERT_PKEY_VALID;
+	cpk = &(c->pkeys[SSL_PKEY_RSA_SIGN]);
+	rsa_sign = cpk->valid_flags & CERT_PKEY_SIGN;
+	cpk = &(c->pkeys[SSL_PKEY_ECC]);
+	have_ecc_cert = cpk->valid_flags & CERT_PKEY_VALID;
+	mask_k = 0;
+	mask_a = 0;
+
 	if (rsa_enc)
-		mask_k|=SSL_kRSA;
+		mask_k |= SSL_kRSA;
 
 	if (dh_tmp)
-		mask_k|=SSL_kEDH;
+		mask_k |= SSL_kEDH;
 
 	if (rsa_enc || rsa_sign)
 		{
-		mask_a|=SSL_aRSA;
+		mask_a |= SSL_aRSA;
 		}
 
-	mask_a|=SSL_aNULL;
+	mask_a |= SSL_aNULL;
 
 	/* An ECC certificate may be usable for ECDSA cipher suites depending on
          * the key usage extension. */
@@ -2159,21 +2162,26 @@ void ssl_set_cert_masks(CERT *c, const SSL_CIPHER *cipher)
 			ecdsa_ok = 0;
 		if (ecdsa_ok)
 			{
-			mask_a|=SSL_aECDSA;
+			mask_a |= SSL_aECDSA;
 			}
 		}
 
-	if (have_ecdh_tmp)
+	/* If we are considering an ECC cipher suite that uses an ephemeral EC
+	 * key, check it. */
+	if (have_ecdh_tmp && tls1_check_ec_tmp_key(s))
 		{
-		mask_k|=SSL_kEECDH;
+		mask_k |= SSL_kEECDH;
 		}
 
-	mask_k |= SSL_kPSK;
-	mask_a |= SSL_aPSK;
+	/* PSK requires a server callback. */
+	if (s->psk_server_callback != NULL)
+		{
+		mask_k |= SSL_kPSK;
+		mask_a |= SSL_aPSK;
+		}
 
-	c->mask_k=mask_k;
-	c->mask_a=mask_a;
-	c->valid=1;
+	*out_mask_k = mask_k;
+	*out_mask_a = mask_a;
 	}
 
 /* This handy macro borrowed from crypto/x509v3/v3_purp.c */
@@ -2223,20 +2231,14 @@ static int ssl_get_server_cert_index(const SSL *s)
 
 CERT_PKEY *ssl_get_server_send_pkey(const SSL *s)
 	{
-	CERT *c;
-	int i;
-
-	c = s->cert;
-	ssl_set_cert_masks(c, s->s3->tmp.new_cipher);
-
-	i = ssl_get_server_cert_index(s);
+	int i = ssl_get_server_cert_index(s);
 
 	/* This may or may not be an error. */
 	if (i < 0)
 		return NULL;
 
 	/* May be NULL. */
-	return &c->pkeys[i];
+	return &s->cert->pkeys[i];
 	}
 
 EVP_PKEY *ssl_get_sign_pkey(SSL *s,const SSL_CIPHER *cipher, const EVP_MD **pmd)
