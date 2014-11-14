@@ -1565,7 +1565,6 @@ int ssl3_get_certificate_request(SSL *s)
 	{
 	int ok,ret=0;
 	unsigned long n;
-	unsigned int i;
 	X509_NAME *xn=NULL;
 	STACK_OF(X509_NAME) *ca_sk=NULL;
 	CBS cbs;
@@ -1648,11 +1647,6 @@ int ssl3_get_certificate_request(SSL *s)
 			ssl3_send_alert(s,SSL3_AL_FATAL,SSL_AD_DECODE_ERROR);
 			OPENSSL_PUT_ERROR(SSL, ssl3_get_certificate_request, SSL_R_DECODE_ERROR);
 			goto err;
-			}
-		/* Clear certificate digests. */
-		for (i = 0; i < SSL_PKEY_NUM; i++)
-			{
-			s->cert->pkeys[i].digest = NULL;
 			}
 		if (!tls1_process_sigalgs(s, &supported_signature_algorithms))
 			{
@@ -2278,7 +2272,7 @@ int ssl3_send_cert_verify(SSL *s)
 		/* Write out the digest type if needbe. */
 		if (SSL_USE_SIGALGS(s))
 			{
-			md = s->cert->key->digest;
+			md = tls1_choose_signing_digest(s, pkey);
 			if (!tls12_get_sigandhash(p, pkey, md))
 				{
 				OPENSSL_PUT_ERROR(SSL, ssl3_send_cert_verify, ERR_R_INTERNAL_ERROR);
@@ -2337,17 +2331,11 @@ err:
 	return(-1);
 	}
 
-/* Check a certificate can be used for client authentication. Currently
- * check the cert exists and if we have a suitable digest for TLS 1.2.
- */
-static int ssl3_check_client_certificate(SSL *s)
+/* ssl3_has_client_certificate returns true if a client certificate is
+ * configured. */
+static int ssl3_has_client_certificate(SSL *s)
 	{
-	if (!s->cert || !s->cert->key->x509 || !s->cert->key->privatekey)
-		return 0;
-	/* If no suitable signature algorithm can't use certificate */
-	if (SSL_USE_SIGALGS(s) && !s->cert->key->digest)
-		return 0;
-	return 1;
+	return s->cert && s->cert->key->x509 && s->cert->key->privatekey;
 	}
 
 int ssl3_send_client_certificate(SSL *s)
@@ -2374,7 +2362,7 @@ int ssl3_send_client_certificate(SSL *s)
 				}
 			s->rwstate=SSL_NOTHING;
 			}
-		if (ssl3_check_client_certificate(s))
+		if (ssl3_has_client_certificate(s))
 			s->state=SSL3_ST_CW_CERT_C;
 		else
 			s->state=SSL3_ST_CW_CERT_B;
@@ -2408,7 +2396,7 @@ int ssl3_send_client_certificate(SSL *s)
 
 		if (x509 != NULL) X509_free(x509);
 		if (pkey != NULL) EVP_PKEY_free(pkey);
-		if (i && !ssl3_check_client_certificate(s))
+		if (i && !ssl3_has_client_certificate(s))
 			i = 0;
 		if (i == 0)
 			{

@@ -1426,7 +1426,6 @@ static int ssl_scan_clienthello_tlsext(SSL *s, CBS *cbs, int *out_alert)
 	{	
 	int renegotiate_seen = 0;
 	CBS extensions;
-	size_t i;
 
 	s->should_ack_sni = 0;
 	s->s3->next_proto_neg_seen = 0;
@@ -1450,11 +1449,6 @@ static int ssl_scan_clienthello_tlsext(SSL *s, CBS *cbs, int *out_alert)
 		{
 		OPENSSL_free(s->cert->shared_sigalgs);
 		s->cert->shared_sigalgs = NULL;
-		}
-	/* Clear certificate digests. */
-	for (i = 0; i < SSL_PKEY_NUM; i++)
-		{
-		s->cert->pkeys[i].digest = NULL;
 		}
 	/* Clear ECC extensions */
 	if (s->s3->tmp.peer_ecpointformatlist != 0)
@@ -1815,9 +1809,6 @@ static int ssl_scan_clienthello_tlsext(SSL *s, CBS *cbs, int *out_alert)
 		OPENSSL_PUT_ERROR(SSL, ssl_scan_clienthello_tlsext, SSL_R_UNSAFE_LEGACY_RENEGOTIATION_DISABLED);
 		return 0;
 		}
-	/* If no signature algorithms extension set default values */
-	if (!s->cert->peer_sigalgs)
-		ssl_cert_set_default_md(s->cert);
 
 	return 1;
 	}
@@ -2566,14 +2557,16 @@ const EVP_MD *tls12_get_hash(unsigned char hash_alg)
 		}
 	}
 
-static int tls12_get_pkey_idx(unsigned char sig_alg)
+/* tls12_get_pkey_type returns the EVP_PKEY type corresponding to TLS signature
+ * algorithm |sig_alg|. It returns -1 if the type is unknown. */
+static int tls12_get_pkey_type(uint8_t sig_alg)
 	{
 	switch(sig_alg)
 		{
 	case TLSEXT_signature_rsa:
-		return SSL_PKEY_RSA_SIGN;
+		return EVP_PKEY_RSA;
 	case TLSEXT_signature_ecdsa:
-		return SSL_PKEY_ECC;
+		return EVP_PKEY_EC;
 		}
 	return -1;
 	}
@@ -2620,7 +2613,7 @@ static int tls12_do_shared_sigalgs(TLS_SIGALGS *shsig,
 		/* Skip disabled hashes or signature algorithms */
 		if (tls12_get_hash(ptmp[0]) == NULL)
 			continue;
-		if (tls12_get_pkey_idx(ptmp[1]) == -1)
+		if (tls12_get_pkey_type(ptmp[1]) == -1)
 			continue;
 		for (j = 0, atmp = allow; j < allowlen; j+=2, atmp+=2)
 			{
@@ -2701,11 +2694,7 @@ static int tls1_set_shared_sigalgs(SSL *s)
 
 int tls1_process_sigalgs(SSL *s, const CBS *sigalgs)
 	{
-	int idx;
-	size_t i;
-	const EVP_MD *md;
 	CERT *c = s->cert;
-	TLS_SIGALGS *sigptr;
 
 	/* Extension ignored for inappropriate versions */
 	if (!SSL_USE_SIGALGS(s))
@@ -2721,36 +2710,29 @@ int tls1_process_sigalgs(SSL *s, const CBS *sigalgs)
 		return 0;
 
 	tls1_set_shared_sigalgs(s);
-
-	for (i = 0, sigptr = c->shared_sigalgs;
-			i < c->shared_sigalgslen; i++, sigptr++)
-		{
-		idx = tls12_get_pkey_idx(sigptr->rsign);
-		if (idx > 0 && c->pkeys[idx].digest == NULL)
-			{
-			md = tls12_get_hash(sigptr->rhash);
-			c->pkeys[idx].digest = md;
-			if (idx == SSL_PKEY_RSA_SIGN)
-				{
-				c->pkeys[SSL_PKEY_RSA_ENC].digest = md;
-				}
-			}
-
-		}
-
-	/* Set any remaining keys to default values. NOTE: if alg is
-	 * not supported it stays as NULL.
-	 */
-	if (!c->pkeys[SSL_PKEY_RSA_SIGN].digest)
-		{
-		c->pkeys[SSL_PKEY_RSA_SIGN].digest = EVP_sha1();
-		c->pkeys[SSL_PKEY_RSA_ENC].digest = EVP_sha1();
-		}
-	if (!c->pkeys[SSL_PKEY_ECC].digest)
-		c->pkeys[SSL_PKEY_ECC].digest = EVP_sha1();
 	return 1;
 	}
 
+const EVP_MD *tls1_choose_signing_digest(SSL *s, EVP_PKEY *pkey)
+	{
+	CERT *c = s->cert;
+	int type = EVP_PKEY_id(pkey);
+	size_t i;
+
+	/* Select the first shared digest supported by our key. */
+	for (i = 0; i < c->shared_sigalgslen; i++)
+		{
+		const EVP_MD *md = tls12_get_hash(c->shared_sigalgs[i].rhash);
+		if (md == NULL || tls12_get_pkey_type(c->shared_sigalgs[i].rsign) != type)
+			continue;
+		if (!EVP_PKEY_supports_digest(pkey, md))
+			continue;
+		return md;
+		}
+
+	/* If no suitable digest may be found, default to SHA-1. */
+	return EVP_sha1();
+	}
 
 int SSL_get_sigalgs(SSL *s, int idx,
 			int *psign, int *phash, int *psignhash,

@@ -1288,7 +1288,6 @@ int ssl3_send_server_key_exchange(SSL *s)
 	const char* psk_identity_hint = NULL;
 	size_t psk_identity_hint_len = 0;
 	EVP_PKEY *pkey;
-	const EVP_MD *md = NULL;
 	unsigned char *p,*d;
 	int al,i;
 	unsigned long alg_k;
@@ -1510,7 +1509,7 @@ int ssl3_send_server_key_exchange(SSL *s)
 
 		if (ssl_cipher_has_server_public_key(s->s3->tmp.new_cipher))
 			{
-			if ((pkey=ssl_get_sign_pkey(s,s->s3->tmp.new_cipher,&md))
+			if ((pkey=ssl_get_sign_pkey(s,s->s3->tmp.new_cipher))
 				== NULL)
 				{
 				al=SSL_AD_DECODE_ERROR;
@@ -1607,13 +1606,15 @@ int ssl3_send_server_key_exchange(SSL *s)
 				n+=u+2;
 				}
 			else
-			if (md)
 				{
+				const EVP_MD *md;
 				size_t sig_len = EVP_PKEY_size(pkey);
+
 
 				/* send signature algorithm */
 				if (SSL_USE_SIGALGS(s))
 					{
+					md = tls1_choose_signing_digest(s, pkey);
 					if (!tls12_get_sigandhash(p, pkey, md))
 						{
 						/* Should never happen */
@@ -1622,6 +1623,10 @@ int ssl3_send_server_key_exchange(SSL *s)
 						goto f_err;
 						}
 					p+=2;
+					}
+				else
+					{
+					md = EVP_sha1();
 					}
 				if (!EVP_DigestSignInit(&md_ctx, NULL, md, NULL, pkey) ||
 					!EVP_DigestSignUpdate(&md_ctx, s->s3->client_random, SSL3_RANDOM_SIZE) ||
@@ -1636,13 +1641,6 @@ int ssl3_send_server_key_exchange(SSL *s)
 				n += sig_len + 2;
 				if (SSL_USE_SIGALGS(s))
 					n += 2;
-				}
-			else
-				{
-				/* Is this error check actually needed? */
-				al=SSL_AD_HANDSHAKE_FAILURE;
-				OPENSSL_PUT_ERROR(SSL, ssl3_send_server_key_exchange, SSL_R_UNKNOWN_PKEY_TYPE);
-				goto f_err;
 				}
 			}
 

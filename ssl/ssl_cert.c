@@ -156,14 +156,6 @@ int SSL_get_ex_data_X509_STORE_CTX_idx(void)
 	return ssl_x509_store_ctx_idx;
 	}
 
-void ssl_cert_set_default_md(CERT *cert)
-	{
-	/* Set digest values to defaults */
-	cert->pkeys[SSL_PKEY_RSA_SIGN].digest = EVP_sha1();
-	cert->pkeys[SSL_PKEY_RSA_ENC].digest = EVP_sha1();
-	cert->pkeys[SSL_PKEY_ECC].digest = EVP_sha1();
-	}
-
 CERT *ssl_cert_new(void)
 	{
 	CERT *ret;
@@ -177,7 +169,6 @@ CERT *ssl_cert_new(void)
 	memset(ret,0,sizeof(CERT));
 
 	ret->key= &(ret->pkeys[SSL_PKEY_RSA_ENC]);
-	ssl_cert_set_default_md(ret);
 	return(ret);
 	}
 
@@ -292,10 +283,6 @@ CERT *ssl_cert_dup(CERT *cert)
 			}
 		}
 	
-	/* Set digests to defaults. NB: we don't copy existing values as they
-	 * will be set during handshake.
-	 */
-	ssl_cert_set_default_md(ret);
 	/* Peer sigalgs set to NULL as we get these from handshake too */
 	ret->peer_sigalgs = NULL;
 	ret->peer_sigalgslen = 0;

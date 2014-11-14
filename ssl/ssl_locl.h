@@ -425,8 +425,6 @@ typedef struct cert_pkey_st
 	{
 	X509 *x509;
 	EVP_PKEY *privatekey;
-	/* Digest to use when signing */
-	const EVP_MD *digest;
 	/* Chain for this certificate */
 	STACK_OF(X509) *chain;
 	} CERT_PKEY;
@@ -759,7 +757,6 @@ void ssl_clear_cipher_ctx(SSL *s);
 int ssl_clear_bad_session(SSL *s);
 CERT *ssl_cert_new(void);
 CERT *ssl_cert_dup(CERT *cert);
-void ssl_cert_set_default_md(CERT *cert);
 int ssl_cert_inst(CERT **o);
 void ssl_cert_clear_certs(CERT *c);
 void ssl_cert_free(CERT *c);
@@ -806,7 +803,7 @@ int ssl_undefined_function(SSL *s);
 int ssl_undefined_void_function(void);
 int ssl_undefined_const_function(const SSL *s);
 CERT_PKEY *ssl_get_server_send_pkey(const SSL *s);
-EVP_PKEY *ssl_get_sign_pkey(SSL *s,const SSL_CIPHER *c, const EVP_MD **pmd);
+EVP_PKEY *ssl_get_sign_pkey(SSL *s,const SSL_CIPHER *c);
 int ssl_cert_type(X509 *x,EVP_PKEY *pkey);
 
 /* ssl_get_compatible_server_ciphers determines the key exchange and
@@ -1095,6 +1092,11 @@ int ssl_add_clienthello_renegotiate_ext(SSL *s, unsigned char *p, int *len,
 int ssl_parse_clienthello_renegotiate_ext(SSL *s, CBS *cbs, int *out_alert);
 long ssl_get_algorithm2(SSL *s);
 int tls1_process_sigalgs(SSL *s, const CBS *sigalgs);
+
+/* tls1_choose_signing_digest returns a digest for use with |pkey| based on the
+ * peer's preferences recorded for |s| and the digests supported by |pkey|. */
+const EVP_MD *tls1_choose_signing_digest(SSL *s, EVP_PKEY *pkey);
+
 size_t tls12_get_psigalgs(SSL *s, const unsigned char **psigs);
 int tls12_check_peer_sigalg(const EVP_MD **out_md, int *out_alert, SSL *s,
 	CBS *cbs, EVP_PKEY *pkey);

@@ -2242,7 +2242,7 @@ CERT_PKEY *ssl_get_server_send_pkey(const SSL *s)
 	return &s->cert->pkeys[i];
 	}
 
-EVP_PKEY *ssl_get_sign_pkey(SSL *s,const SSL_CIPHER *cipher, const EVP_MD **pmd)
+EVP_PKEY *ssl_get_sign_pkey(SSL *s,const SSL_CIPHER *cipher)
 	{
 	unsigned long alg_a;
 	CERT *c;
@@ -2266,8 +2266,6 @@ EVP_PKEY *ssl_get_sign_pkey(SSL *s,const SSL_CIPHER *cipher, const EVP_MD **pmd)
 		OPENSSL_PUT_ERROR(SSL, ssl_get_sign_pkey, ERR_R_INTERNAL_ERROR);
 		return(NULL);
 		}
-	if (pmd)
-		*pmd = c->pkeys[idx].digest;
 	return c->pkeys[idx].privatekey;
 	}
 
