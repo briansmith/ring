@@ -12,7 +12,6 @@ import (
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/sha1"
-	"crypto/sha256"
 	"crypto/x509"
 	"encoding/asn1"
 	"errors"
@@ -125,28 +124,20 @@ func md5SHA1Hash(slices [][]byte) []byte {
 	return md5sha1
 }
 
-// sha256Hash implements TLS 1.2's hash function.
-func sha256Hash(slices [][]byte) []byte {
-	h := sha256.New()
-	for _, slice := range slices {
-		h.Write(slice)
-	}
-	return h.Sum(nil)
-}
-
 // hashForServerKeyExchange hashes the given slices and returns their digest
 // and the identifier of the hash function used. The hashFunc argument is only
 // used for >= TLS 1.2 and precisely identifies the hash function to use.
 func hashForServerKeyExchange(sigType, hashFunc uint8, version uint16, slices ...[]byte) ([]byte, crypto.Hash, error) {
 	if version >= VersionTLS12 {
-		switch hashFunc {
-		case hashSHA256:
-			return sha256Hash(slices), crypto.SHA256, nil
-		case hashSHA1:
-			return sha1Hash(slices), crypto.SHA1, nil
-		default:
-			return nil, crypto.Hash(0), errors.New("tls: unknown hash function used by peer")
+		hash, err := lookupTLSHash(hashFunc)
+		if err != nil {
+			return nil, 0, err
 		}
+		h := hash.New()
+		for _, slice := range slices {
+			h.Write(slice)
+		}
+		return h.Sum(nil), hash, nil
 	}
 	if sigType == signatureECDSA {
 		return sha1Hash(slices), crypto.SHA1, nil
@@ -306,6 +297,10 @@ func (ka *signedKeyAgreement) verifyParameters(config *Config, clientHello *clie
 		tls12HashId = sigAndHash[0]
 		if len(sig) < 2 {
 			return errServerKeyExchange
+		}
+
+		if !isSupportedSignatureAndHash(signatureAndHash{ka.sigType, tls12HashId}, config.signatureAndHashesForClient()) {
+			return errors.New("tls: unsupported hash function for ServerKeyExchange")
 		}
 	}
 	sigLen := int(sig[0])<<8 | int(sig[1])

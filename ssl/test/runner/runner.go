@@ -2030,6 +2030,114 @@ func addDTLSReplayTests() {
 	})
 }
 
+var testHashes = []struct {
+	name string
+	id   uint8
+}{
+	{"SHA1", hashSHA1},
+	{"SHA224", hashSHA224},
+	{"SHA256", hashSHA256},
+	{"SHA384", hashSHA384},
+	{"SHA512", hashSHA512},
+}
+
+func addSigningHashTests() {
+	// Make sure each hash works. Include some fake hashes in the list and
+	// ensure they're ignored.
+	for _, hash := range testHashes {
+		testCases = append(testCases, testCase{
+			name: "SigningHash-ClientAuth-" + hash.name,
+			config: Config{
+				ClientAuth: RequireAnyClientCert,
+				SignatureAndHashes: []signatureAndHash{
+					{signatureRSA, 42},
+					{signatureRSA, hash.id},
+					{signatureRSA, 255},
+				},
+			},
+			flags: []string{
+				"-cert-file", rsaCertificateFile,
+				"-key-file", rsaKeyFile,
+			},
+		})
+
+		testCases = append(testCases, testCase{
+			testType: serverTest,
+			name:     "SigningHash-ServerKeyExchange-Sign-" + hash.name,
+			config: Config{
+				CipherSuites: []uint16{TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256},
+				SignatureAndHashes: []signatureAndHash{
+					{signatureRSA, 42},
+					{signatureRSA, hash.id},
+					{signatureRSA, 255},
+				},
+			},
+		})
+	}
+
+	// Test that hash resolution takes the signature type into account.
+	testCases = append(testCases, testCase{
+		name: "SigningHash-ClientAuth-SignatureType",
+		config: Config{
+			ClientAuth: RequireAnyClientCert,
+			SignatureAndHashes: []signatureAndHash{
+				{signatureECDSA, hashSHA512},
+				{signatureRSA, hashSHA384},
+				{signatureECDSA, hashSHA1},
+			},
+		},
+		flags: []string{
+			"-cert-file", rsaCertificateFile,
+			"-key-file", rsaKeyFile,
+		},
+	})
+
+	testCases = append(testCases, testCase{
+		testType: serverTest,
+		name:     "SigningHash-ServerKeyExchange-SignatureType",
+		config: Config{
+			CipherSuites: []uint16{TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256},
+			SignatureAndHashes: []signatureAndHash{
+				{signatureECDSA, hashSHA512},
+				{signatureRSA, hashSHA384},
+				{signatureECDSA, hashSHA1},
+			},
+		},
+	})
+
+	// Test that, if the list is missing, the peer falls back to SHA-1.
+	testCases = append(testCases, testCase{
+		name: "SigningHash-ClientAuth-Fallback",
+		config: Config{
+			ClientAuth: RequireAnyClientCert,
+			SignatureAndHashes: []signatureAndHash{
+				{signatureRSA, hashSHA1},
+			},
+			Bugs: ProtocolBugs{
+				NoSignatureAndHashes: true,
+			},
+		},
+		flags: []string{
+			"-cert-file", rsaCertificateFile,
+			"-key-file", rsaKeyFile,
+		},
+	})
+
+	testCases = append(testCases, testCase{
+		testType: serverTest,
+		name:     "SigningHash-ServerKeyExchange-Fallback",
+		config: Config{
+			CipherSuites: []uint16{TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256},
+			SignatureAndHashes: []signatureAndHash{
+				{signatureRSA, hashSHA1},
+			},
+			Bugs: ProtocolBugs{
+				NoSignatureAndHashes: true,
+			},
+		},
+	})
+}
+
 func worker(statusChan chan statusMsg, c chan *testCase, buildDir string, wg *sync.WaitGroup) {
 	defer wg.Done()
 
@@ -2088,6 +2196,7 @@ func main() {
 	addExtendedMasterSecretTests()
 	addRenegotiationTests()
 	addDTLSReplayTests()
+	addSigningHashTests()
 	for _, async := range []bool{false, true} {
 		for _, splitHandshake := range []bool{false, true} {
 			for _, protocol := range []protocol{tls, dtls} {

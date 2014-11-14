@@ -467,7 +467,9 @@ func (hs *serverHandshakeState) doFullHandshake() error {
 		}
 		if c.vers >= VersionTLS12 {
 			certReq.hasSignatureAndHash = true
-			certReq.signatureAndHashes = supportedClientCertSignatureAlgorithms
+			if !config.Bugs.NoSignatureAndHashes {
+				certReq.signatureAndHashes = config.signatureAndHashesForServer()
+			}
 		}
 
 		// An empty list of certificateAuthorities signals to
@@ -567,6 +569,9 @@ func (hs *serverHandshakeState) doFullHandshake() error {
 		var signatureAndHash signatureAndHash
 		if certVerify.hasSignatureAndHash {
 			signatureAndHash = certVerify.signatureAndHash
+			if !isSupportedSignatureAndHash(signatureAndHash, config.signatureAndHashesForServer()) {
+				return errors.New("tls: unsupported hash function for client certificate")
+			}
 		} else {
 			// Before TLS 1.2 the signature algorithm was implicit
 			// from the key type, and only one hash per signature

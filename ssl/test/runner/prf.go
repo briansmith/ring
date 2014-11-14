@@ -185,6 +185,27 @@ func keysFromMasterSecret(version uint16, suite *cipherSuite, masterSecret, clie
 	return
 }
 
+// lookupTLSHash looks up the corresponding crypto.Hash for a given
+// TLS hash identifier.
+func lookupTLSHash(hash uint8) (crypto.Hash, error) {
+	switch hash {
+	case hashMD5:
+		return crypto.MD5, nil
+	case hashSHA1:
+		return crypto.SHA1, nil
+	case hashSHA224:
+		return crypto.SHA224, nil
+	case hashSHA256:
+		return crypto.SHA256, nil
+	case hashSHA384:
+		return crypto.SHA384, nil
+	case hashSHA512:
+		return crypto.SHA512, nil
+	default:
+		return 0, errors.New("tls: unsupported hash algorithm")
+	}
+}
+
 func newFinishedHash(version uint16, cipherSuite *cipherSuite) finishedHash {
 	if version >= VersionTLS12 {
 		newHash := sha256.New
@@ -331,11 +352,13 @@ func (h finishedHash) hashForClientCertificate(signatureAndHash signatureAndHash
 		return finishedSum30(md5Hash, sha1Hash, masterSecret, nil), crypto.MD5SHA1, nil
 	}
 	if h.version >= VersionTLS12 {
-		if signatureAndHash.hash != hashSHA256 {
-			return nil, 0, errors.New("tls: unsupported hash function for client certificate")
+		hashAlg, err := lookupTLSHash(signatureAndHash.hash)
+		if err != nil {
+			return nil, 0, err
 		}
-		digest := sha256.Sum256(h.buffer)
-		return digest[:], crypto.SHA256, nil
+		hash := hashAlg.New()
+		hash.Write(h.buffer)
+		return hash.Sum(nil), hashAlg, nil
 	}
 	if signatureAndHash.signature == signatureECDSA {
 		return h.server.Sum(nil), crypto.SHA1, nil
