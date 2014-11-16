@@ -129,6 +129,9 @@ type testCase struct {
 	// expectedNextProtoType, if non-zero, is the expected next
 	// protocol negotiation mechanism.
 	expectedNextProtoType int
+	// expectedSRTPProtectionProfile is the DTLS-SRTP profile that
+	// should be negotiated. If zero, none should be negotiated.
+	expectedSRTPProtectionProfile uint16
 	// messageLen is the length, in bytes, of the test message that will be
 	// sent.
 	messageLen int
@@ -357,7 +360,7 @@ var testCases = []testCase{
 		name:     "FragmentAlert",
 		config: Config{
 			Bugs: ProtocolBugs{
-				FragmentAlert: true,
+				FragmentAlert:     true,
 				SendSpuriousAlert: true,
 			},
 		},
@@ -587,6 +590,10 @@ func doExchange(test *testCase, config *Config, conn net.Conn, messageLen int, i
 		if (test.expectedNextProtoType == alpn) != tlsConn.ConnectionState().NegotiatedProtocolFromALPN {
 			return fmt.Errorf("next proto type mismatch")
 		}
+	}
+
+	if p := tlsConn.ConnectionState().SRTPProtectionProfile; p != test.expectedSRTPProtectionProfile {
+		return fmt.Errorf("SRTP profile mismatch: got %d, wanted %d", p, test.expectedSRTPProtectionProfile)
 	}
 
 	if test.shimWritesFirst {
@@ -1740,6 +1747,82 @@ func addExtensionTests() {
 		resumeSession: true,
 		shouldFail:    true,
 		expectedError: ":DECODE_ERROR:",
+	})
+	// Basic DTLS-SRTP tests. Include fake profiles to ensure they
+	// are ignored.
+	testCases = append(testCases, testCase{
+		protocol: dtls,
+		name:     "SRTP-Client",
+		config: Config{
+			SRTPProtectionProfiles: []uint16{40, SRTP_AES128_CM_HMAC_SHA1_80, 42},
+		},
+		flags: []string{
+			"-srtp-profiles",
+			"SRTP_AES128_CM_SHA1_80:SRTP_AES128_CM_SHA1_32",
+		},
+		expectedSRTPProtectionProfile: SRTP_AES128_CM_HMAC_SHA1_80,
+	})
+	testCases = append(testCases, testCase{
+		protocol: dtls,
+		testType: serverTest,
+		name:     "SRTP-Server",
+		config: Config{
+			SRTPProtectionProfiles: []uint16{40, SRTP_AES128_CM_HMAC_SHA1_80, 42},
+		},
+		flags: []string{
+			"-srtp-profiles",
+			"SRTP_AES128_CM_SHA1_80:SRTP_AES128_CM_SHA1_32",
+		},
+		expectedSRTPProtectionProfile: SRTP_AES128_CM_HMAC_SHA1_80,
+	})
+	// Test that the MKI is ignored.
+	testCases = append(testCases, testCase{
+		protocol: dtls,
+		testType: serverTest,
+		name:     "SRTP-Server-IgnoreMKI",
+		config: Config{
+			SRTPProtectionProfiles: []uint16{SRTP_AES128_CM_HMAC_SHA1_80},
+			Bugs: ProtocolBugs{
+				SRTPMasterKeyIdentifer: "bogus",
+			},
+		},
+		flags: []string{
+			"-srtp-profiles",
+			"SRTP_AES128_CM_SHA1_80:SRTP_AES128_CM_SHA1_32",
+		},
+		expectedSRTPProtectionProfile: SRTP_AES128_CM_HMAC_SHA1_80,
+	})
+	// Test that SRTP isn't negotiated on the server if there were
+	// no matching profiles.
+	testCases = append(testCases, testCase{
+		protocol: dtls,
+		testType: serverTest,
+		name:     "SRTP-Server-NoMatch",
+		config: Config{
+			SRTPProtectionProfiles: []uint16{100, 101, 102},
+		},
+		flags: []string{
+			"-srtp-profiles",
+			"SRTP_AES128_CM_SHA1_80:SRTP_AES128_CM_SHA1_32",
+		},
+		expectedSRTPProtectionProfile: 0,
+	})
+	// Test that the server returning an invalid SRTP profile is
+	// flagged as an error by the client.
+	testCases = append(testCases, testCase{
+		protocol: dtls,
+		name:     "SRTP-Client-NoMatch",
+		config: Config{
+			Bugs: ProtocolBugs{
+				SendSRTPProtectionProfile: SRTP_AES128_CM_HMAC_SHA1_32,
+			},
+		},
+		flags: []string{
+			"-srtp-profiles",
+			"SRTP_AES128_CM_SHA1_80",
+		},
+		shouldFail:    true,
+		expectedError: ":BAD_SRTP_PROTECTION_PROFILE_LIST:",
 	})
 }
 

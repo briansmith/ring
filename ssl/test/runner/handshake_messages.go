@@ -7,28 +7,30 @@ package main
 import "bytes"
 
 type clientHelloMsg struct {
-	raw                  []byte
-	isDTLS               bool
-	vers                 uint16
-	random               []byte
-	sessionId            []byte
-	cookie               []byte
-	cipherSuites         []uint16
-	compressionMethods   []uint8
-	nextProtoNeg         bool
-	serverName           string
-	ocspStapling         bool
-	supportedCurves      []CurveID
-	supportedPoints      []uint8
-	ticketSupported      bool
-	sessionTicket        []uint8
-	signatureAndHashes   []signatureAndHash
-	secureRenegotiation  []byte
-	alpnProtocols        []string
-	duplicateExtension   bool
-	channelIDSupported   bool
-	npnLast              bool
-	extendedMasterSecret bool
+	raw                     []byte
+	isDTLS                  bool
+	vers                    uint16
+	random                  []byte
+	sessionId               []byte
+	cookie                  []byte
+	cipherSuites            []uint16
+	compressionMethods      []uint8
+	nextProtoNeg            bool
+	serverName              string
+	ocspStapling            bool
+	supportedCurves         []CurveID
+	supportedPoints         []uint8
+	ticketSupported         bool
+	sessionTicket           []uint8
+	signatureAndHashes      []signatureAndHash
+	secureRenegotiation     []byte
+	alpnProtocols           []string
+	duplicateExtension      bool
+	channelIDSupported      bool
+	npnLast                 bool
+	extendedMasterSecret    bool
+	srtpProtectionProfiles  []uint16
+	srtpMasterKeyIdentifier string
 }
 
 func (m *clientHelloMsg) equal(i interface{}) bool {
@@ -59,7 +61,9 @@ func (m *clientHelloMsg) equal(i interface{}) bool {
 		m.duplicateExtension == m1.duplicateExtension &&
 		m.channelIDSupported == m1.channelIDSupported &&
 		m.npnLast == m1.npnLast &&
-		m.extendedMasterSecret == m1.extendedMasterSecret
+		m.extendedMasterSecret == m1.extendedMasterSecret &&
+		eqUint16s(m.srtpProtectionProfiles, m1.srtpProtectionProfiles) &&
+		m.srtpMasterKeyIdentifier == m1.srtpMasterKeyIdentifier
 }
 
 func (m *clientHelloMsg) marshal() []byte {
@@ -122,6 +126,11 @@ func (m *clientHelloMsg) marshal() []byte {
 		numExtensions++
 	}
 	if m.extendedMasterSecret {
+		numExtensions++
+	}
+	if len(m.srtpProtectionProfiles) > 0 {
+		extensionsLength += 2 + 2*len(m.srtpProtectionProfiles)
+		extensionsLength += 1 + len(m.srtpMasterKeyIdentifier)
 		numExtensions++
 	}
 	if numExtensions > 0 {
@@ -334,6 +343,29 @@ func (m *clientHelloMsg) marshal() []byte {
 		z[1] = byte(extensionExtendedMasterSecret & 0xff)
 		z = z[4:]
 	}
+	if len(m.srtpProtectionProfiles) > 0 {
+		z[0] = byte(extensionUseSRTP >> 8)
+		z[1] = byte(extensionUseSRTP & 0xff)
+
+		profilesLen := 2 * len(m.srtpProtectionProfiles)
+		mkiLen := len(m.srtpMasterKeyIdentifier)
+		l := 2 + profilesLen + 1 + mkiLen
+		z[2] = byte(l >> 8)
+		z[3] = byte(l & 0xff)
+
+		z[4] = byte(profilesLen >> 8)
+		z[5] = byte(profilesLen & 0xff)
+		z = z[6:]
+		for _, p := range m.srtpProtectionProfiles {
+			z[0] = byte(p >> 8)
+			z[1] = byte(p & 0xff)
+			z = z[2:]
+		}
+
+		z[0] = byte(mkiLen)
+		copy(z[1:], []byte(m.srtpMasterKeyIdentifier))
+		z = z[1+mkiLen:]
+	}
 
 	m.raw = x
 
@@ -538,6 +570,25 @@ func (m *clientHelloMsg) unmarshal(data []byte) bool {
 				return false
 			}
 			m.extendedMasterSecret = true
+		case extensionUseSRTP:
+			if length < 2 {
+				return false
+			}
+			l := int(data[0])<<8 | int(data[1])
+			if l > length-2 || l%2 != 0 {
+				return false
+			}
+			n := l / 2
+			m.srtpProtectionProfiles = make([]uint16, n)
+			d := data[2:length]
+			for i := 0; i < n; i++ {
+				m.srtpProtectionProfiles[i] = uint16(d[0])<<8 | uint16(d[1])
+				d = d[2:]
+			}
+			if len(d) < 1 || int(d[0]) != len(d)-1 {
+				return false
+			}
+			m.srtpMasterKeyIdentifier = string(d[1:])
 		}
 		data = data[length:]
 	}
@@ -546,22 +597,24 @@ func (m *clientHelloMsg) unmarshal(data []byte) bool {
 }
 
 type serverHelloMsg struct {
-	raw                  []byte
-	isDTLS               bool
-	vers                 uint16
-	random               []byte
-	sessionId            []byte
-	cipherSuite          uint16
-	compressionMethod    uint8
-	nextProtoNeg         bool
-	nextProtos           []string
-	ocspStapling         bool
-	ticketSupported      bool
-	secureRenegotiation  []byte
-	alpnProtocol         string
-	duplicateExtension   bool
-	channelIDRequested   bool
-	extendedMasterSecret bool
+	raw                     []byte
+	isDTLS                  bool
+	vers                    uint16
+	random                  []byte
+	sessionId               []byte
+	cipherSuite             uint16
+	compressionMethod       uint8
+	nextProtoNeg            bool
+	nextProtos              []string
+	ocspStapling            bool
+	ticketSupported         bool
+	secureRenegotiation     []byte
+	alpnProtocol            string
+	duplicateExtension      bool
+	channelIDRequested      bool
+	extendedMasterSecret    bool
+	srtpProtectionProfile   uint16
+	srtpMasterKeyIdentifier string
 }
 
 func (m *serverHelloMsg) equal(i interface{}) bool {
@@ -586,7 +639,9 @@ func (m *serverHelloMsg) equal(i interface{}) bool {
 		m.alpnProtocol == m1.alpnProtocol &&
 		m.duplicateExtension == m1.duplicateExtension &&
 		m.channelIDRequested == m1.channelIDRequested &&
-		m.extendedMasterSecret == m1.extendedMasterSecret
+		m.extendedMasterSecret == m1.extendedMasterSecret &&
+		m.srtpProtectionProfile == m1.srtpProtectionProfile &&
+		m.srtpMasterKeyIdentifier == m1.srtpMasterKeyIdentifier
 }
 
 func (m *serverHelloMsg) marshal() []byte {
@@ -631,6 +686,10 @@ func (m *serverHelloMsg) marshal() []byte {
 		numExtensions++
 	}
 	if m.extendedMasterSecret {
+		numExtensions++
+	}
+	if m.srtpProtectionProfile != 0 {
+		extensionsLength += 2 + 2 + 1 + len(m.srtpMasterKeyIdentifier)
 		numExtensions++
 	}
 
@@ -733,6 +792,21 @@ func (m *serverHelloMsg) marshal() []byte {
 		z[0] = byte(extensionExtendedMasterSecret >> 8)
 		z[1] = byte(extensionExtendedMasterSecret & 0xff)
 		z = z[4:]
+	}
+	if m.srtpProtectionProfile != 0 {
+		z[0] = byte(extensionUseSRTP >> 8)
+		z[1] = byte(extensionUseSRTP & 0xff)
+		l := 2 + 2 + 1 + len(m.srtpMasterKeyIdentifier)
+		z[2] = byte(l >> 8)
+		z[3] = byte(l & 0xff)
+		z[4] = 0
+		z[5] = 2
+		z[6] = byte(m.srtpProtectionProfile >> 8)
+		z[7] = byte(m.srtpProtectionProfile & 0xff)
+		l = len(m.srtpMasterKeyIdentifier)
+		z[8] = byte(l)
+		copy(z[9:], []byte(m.srtpMasterKeyIdentifier))
+		z = z[9+l:]
 	}
 
 	m.raw = x
@@ -846,6 +920,20 @@ func (m *serverHelloMsg) unmarshal(data []byte) bool {
 				return false
 			}
 			m.extendedMasterSecret = true
+		case extensionUseSRTP:
+			if length < 2+2+1 {
+				return false
+			}
+			if data[0] != 0 || data[1] != 2 {
+				return false
+			}
+			m.srtpProtectionProfile = uint16(data[2])<<8 | uint16(data[3])
+			d := data[4:length]
+			l := int(d[0])
+			if l != len(d)-1 {
+				return false
+			}
+			m.srtpMasterKeyIdentifier = string(d[1:])
 		}
 		data = data[length:]
 	}

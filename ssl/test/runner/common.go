@@ -77,6 +77,7 @@ const (
 	extensionSupportedCurves      uint16 = 10
 	extensionSupportedPoints      uint16 = 11
 	extensionSignatureAlgorithms  uint16 = 13
+	extensionUseSRTP              uint16 = 14
 	extensionALPN                 uint16 = 16
 	extensionExtendedMasterSecret uint16 = 23
 	extensionSessionTicket        uint16 = 35
@@ -161,6 +162,12 @@ var supportedClientCertSignatureAlgorithms = []signatureAndHash{
 	{signatureECDSA, hashSHA256},
 }
 
+// SRTP protection profiles (See RFC 5764, section 4.1.2)
+const (
+	SRTP_AES128_CM_HMAC_SHA1_80 uint16 = 0x0001
+	SRTP_AES128_CM_HMAC_SHA1_32        = 0x0002
+)
+
 // ConnectionState records basic TLS details about the connection.
 type ConnectionState struct {
 	Version                    uint16                // TLS version used by the connection (e.g. VersionTLS12)
@@ -174,6 +181,7 @@ type ConnectionState struct {
 	PeerCertificates           []*x509.Certificate   // certificate chain presented by remote peer
 	VerifiedChains             [][]*x509.Certificate // verified chains built from PeerCertificates
 	ChannelID                  *ecdsa.PublicKey      // the channel ID for this connection
+	SRTPProtectionProfile      uint16                // the negotiated DTLS-SRTP protection profile
 }
 
 // ClientAuthType declares the policy the server will follow for
@@ -333,6 +341,10 @@ type Config struct {
 	// PreSharedKeyIdentity, if not empty, is the identity to use
 	// with the PSK cipher suites.
 	PreSharedKeyIdentity string
+
+	// SRTPProtectionProfiles, if not nil, is the list of SRTP
+	// protection profiles to offer in DTLS-SRTP.
+	SRTPProtectionProfiles []uint16
 
 	// Bugs specifies optional misbehaviour to be used for testing other
 	// implementations.
@@ -520,6 +532,15 @@ type ProtocolBugs struct {
 	// RSAServerKeyExchange, if true, causes the server to send a
 	// ServerKeyExchange message in the plain RSA key exchange.
 	RSAServerKeyExchange bool
+
+	// SRTPMasterKeyIdentifer, if not empty, is the SRTP MKI value that the
+	// client offers when negotiating SRTP. MKI support is still missing so
+	// the peer must still send none.
+	SRTPMasterKeyIdentifer string
+
+	// SendSRTPProtectionProfile, if non-zero, is the SRTP profile that the
+	// server sends in the ServerHello instead of the negotiated one.
+	SendSRTPProtectionProfile uint16
 }
 
 func (c *Config) serverInit() {

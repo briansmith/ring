@@ -56,6 +56,8 @@ type Conn struct {
 
 	channelID *ecdsa.PublicKey
 
+	srtpProtectionProfile uint16
+
 	// input/output
 	in, out  halfConn     // in.Mutex < out.Mutex
 	rawInput *block       // raw input, right off the wire
@@ -1184,6 +1186,7 @@ func (c *Conn) ConnectionState() ConnectionState {
 		state.VerifiedChains = c.verifiedChains
 		state.ServerName = c.serverName
 		state.ChannelID = c.channelID
+		state.SRTPProtectionProfile = c.srtpProtectionProfile
 	}
 
 	return state

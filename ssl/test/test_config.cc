@@ -81,6 +81,7 @@ const StringFlag kStringFlags[] = {
   { "-select-alpn", &TestConfig::select_alpn },
   { "-psk", &TestConfig::psk },
   { "-psk-identity", &TestConfig::psk_identity },
+  { "-srtp-profiles", &TestConfig::srtp_profiles },
 };
 
 const size_t kNumStringFlags = sizeof(kStringFlags) / sizeof(kStringFlags[0]);

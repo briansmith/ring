@@ -425,6 +425,12 @@ static int do_exchange(SSL_SESSION **out_session,
       return 1;
     }
   }
+  if (!config->srtp_profiles.empty()) {
+    if (!SSL_set_srtp_profiles(ssl, config->srtp_profiles.c_str())) {
+      BIO_print_errors_fp(stdout);
+      return 1;
+    }
+  }
 
   BIO *bio = BIO_new_fd(fd, 1 /* take ownership */);
   if (bio == NULL) {

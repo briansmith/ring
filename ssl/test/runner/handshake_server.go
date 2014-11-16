@@ -270,6 +270,23 @@ Curves:
 		hs.hello.channelIDRequested = true
 	}
 
+	if hs.clientHello.srtpProtectionProfiles != nil {
+	SRTPLoop:
+		for _, p1 := range c.config.SRTPProtectionProfiles {
+			for _, p2 := range hs.clientHello.srtpProtectionProfiles {
+				if p1 == p2 {
+					hs.hello.srtpProtectionProfile = p1
+					c.srtpProtectionProfile = p1
+					break SRTPLoop
+				}
+			}
+		}
+	}
+
+	if c.config.Bugs.SendSRTPProtectionProfile != 0 {
+		hs.hello.srtpProtectionProfile = c.config.Bugs.SendSRTPProtectionProfile
+	}
+
 	_, hs.ecdsaOk = hs.cert.PrivateKey.(*ecdsa.PrivateKey)
 
 	if hs.checkForResumption() {

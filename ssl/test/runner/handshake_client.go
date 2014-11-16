@@ -56,21 +56,23 @@ func (c *Conn) clientHandshake() error {
 	}
 
 	hello := &clientHelloMsg{
-		isDTLS:               c.isDTLS,
-		vers:                 c.config.maxVersion(),
-		compressionMethods:   []uint8{compressionNone},
-		random:               make([]byte, 32),
-		ocspStapling:         true,
-		serverName:           c.config.ServerName,
-		supportedCurves:      c.config.curvePreferences(),
-		supportedPoints:      []uint8{pointFormatUncompressed},
-		nextProtoNeg:         len(c.config.NextProtos) > 0,
-		secureRenegotiation:  []byte{},
-		alpnProtocols:        c.config.NextProtos,
-		duplicateExtension:   c.config.Bugs.DuplicateExtension,
-		channelIDSupported:   c.config.ChannelID != nil,
-		npnLast:              c.config.Bugs.SwapNPNAndALPN,
-		extendedMasterSecret: c.config.maxVersion() >= VersionTLS10,
+		isDTLS:                  c.isDTLS,
+		vers:                    c.config.maxVersion(),
+		compressionMethods:      []uint8{compressionNone},
+		random:                  make([]byte, 32),
+		ocspStapling:            true,
+		serverName:              c.config.ServerName,
+		supportedCurves:         c.config.curvePreferences(),
+		supportedPoints:         []uint8{pointFormatUncompressed},
+		nextProtoNeg:            len(c.config.NextProtos) > 0,
+		secureRenegotiation:     []byte{},
+		alpnProtocols:           c.config.NextProtos,
+		duplicateExtension:      c.config.Bugs.DuplicateExtension,
+		channelIDSupported:      c.config.ChannelID != nil,
+		npnLast:                 c.config.Bugs.SwapNPNAndALPN,
+		extendedMasterSecret:    c.config.maxVersion() >= VersionTLS10,
+		srtpProtectionProfiles:  c.config.SRTPProtectionProfiles,
+		srtpMasterKeyIdentifier: c.config.Bugs.SRTPMasterKeyIdentifer,
 	}
 
 	if c.config.Bugs.SendClientVersion != 0 {
@@ -664,6 +666,25 @@ func (hs *clientHandshakeState) processServerHello() (bool, error) {
 	if !hs.hello.channelIDSupported && hs.serverHello.channelIDRequested {
 		c.sendAlert(alertHandshakeFailure)
 		return false, errors.New("server advertised unrequested Channel ID extension")
+	}
+
+	if hs.serverHello.srtpProtectionProfile != 0 {
+		if hs.serverHello.srtpMasterKeyIdentifier != "" {
+			return false, errors.New("tls: server selected SRTP MKI value")
+		}
+
+		found := false
+		for _, p := range c.config.SRTPProtectionProfiles {
+			if p == hs.serverHello.srtpProtectionProfile {
+				found = true
+				break
+			}
+		}
+		if !found {
+			return false, errors.New("tls: server advertised unsupported SRTP profile")
+		}
+
+		c.srtpProtectionProfile = hs.serverHello.srtpProtectionProfile
 	}
 
 	if hs.serverResumedSession() {
