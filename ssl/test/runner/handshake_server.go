@@ -335,13 +335,25 @@ Curves:
 func (hs *serverHandshakeState) checkForResumption() bool {
 	c := hs.c
 
-	if c.config.SessionTicketsDisabled {
-		return false
-	}
+	if len(hs.clientHello.sessionTicket) > 0 {
+		if c.config.SessionTicketsDisabled {
+			return false
+		}
 
-	var ok bool
-	if hs.sessionState, ok = c.decryptTicket(hs.clientHello.sessionTicket); !ok {
-		return false
+		var ok bool
+		if hs.sessionState, ok = c.decryptTicket(hs.clientHello.sessionTicket); !ok {
+			return false
+		}
+	} else {
+		if c.config.ServerSessionCache == nil {
+			return false
+		}
+
+		var ok bool
+		sessionId := string(hs.clientHello.sessionId)
+		if hs.sessionState, ok = c.config.ServerSessionCache.Get(sessionId); !ok {
+			return false
+		}
 	}
 
 	// Never resume a session for a different SSL version.
@@ -416,9 +428,18 @@ func (hs *serverHandshakeState) doFullHandshake() error {
 		hs.hello.ocspStapling = true
 	}
 
-	hs.hello.ticketSupported = hs.clientHello.ticketSupported && !config.SessionTicketsDisabled
+	hs.hello.ticketSupported = hs.clientHello.ticketSupported && !config.SessionTicketsDisabled && c.vers > VersionSSL30
 	hs.hello.cipherSuite = hs.suite.id
 	c.extendedMasterSecret = hs.hello.extendedMasterSecret
+
+	// Generate a session ID if we're to save the session.
+	if !hs.hello.ticketSupported && config.ServerSessionCache != nil {
+		hs.hello.sessionId = make([]byte, 32)
+		if _, err := io.ReadFull(config.rand(), hs.hello.sessionId); err != nil {
+			c.sendAlert(alertInternalError)
+			return errors.New("tls: short read from Rand: " + err.Error())
+		}
+	}
 
 	hs.finishedHash = newFinishedHash(c.vers, hs.suite)
 	hs.writeClientHash(hs.clientHello.marshal())
@@ -733,14 +754,7 @@ func (hs *serverHandshakeState) readFinished(isResume bool) error {
 }
 
 func (hs *serverHandshakeState) sendSessionTicket() error {
-	if !hs.hello.ticketSupported || hs.c.config.Bugs.SkipNewSessionTicket {
-		return nil
-	}
-
 	c := hs.c
-	m := new(newSessionTicketMsg)
-
-	var err error
 	state := sessionState{
 		vers:          c.vers,
 		cipherSuite:   hs.suite.id,
@@ -748,6 +762,17 @@ func (hs *serverHandshakeState) sendSessionTicket() error {
 		certificates:  hs.certsFromClient,
 		handshakeHash: hs.finishedHash.server.Sum(nil),
 	}
+
+	if !hs.hello.ticketSupported || hs.c.config.Bugs.SkipNewSessionTicket {
+		if c.config.ServerSessionCache != nil && len(hs.hello.sessionId) != 0 {
+			c.config.ServerSessionCache.Put(string(hs.hello.sessionId), &state)
+		}
+		return nil
+	}
+
+	m := new(newSessionTicketMsg)
+
+	var err error
 	m.ticket, err = c.encryptTicket(&state)
 	if err != nil {
 		return err

@@ -148,10 +148,14 @@ type testCase struct {
 	// which attempts to resume the first session.
 	resumeSession bool
 	// resumeConfig, if not nil, points to a Config to be used on
-	// resumption. SessionTicketKey and ClientSessionCache are copied from
-	// the initial connection's config. If nil, the initial connection's
-	// config is used.
+	// resumption. Unless newSessionsOnResume is set,
+	// SessionTicketKey, ServerSessionCache, and
+	// ClientSessionCache are copied from the initial connection's
+	// config. If nil, the initial connection's config is used.
 	resumeConfig *Config
+	// newSessionsOnResume, if true, will cause resumeConfig to
+	// use a different session resumption context.
+	newSessionsOnResume bool
 	// sendPrefix sends a prefix on the socket before actually performing a
 	// handshake.
 	sendPrefix string
@@ -787,6 +791,7 @@ func runTest(test *testCase, buildDir string, mallocNumToFail int64) error {
 
 	config := test.config
 	config.ClientSessionCache = NewLRUClientSessionCache(1)
+	config.ServerSessionCache = NewLRUServerSessionCache(1)
 	if test.testType == clientTest {
 		if len(config.Certificates) == 0 {
 			config.Certificates = []Certificate{getRSACertificate()}
@@ -814,8 +819,11 @@ func runTest(test *testCase, buildDir string, mallocNumToFail int64) error {
 			if len(resumeConfig.Certificates) == 0 {
 				resumeConfig.Certificates = []Certificate{getRSACertificate()}
 			}
-			resumeConfig.SessionTicketKey = config.SessionTicketKey
-			resumeConfig.ClientSessionCache = config.ClientSessionCache
+			if !test.newSessionsOnResume {
+				resumeConfig.SessionTicketKey = config.SessionTicketKey
+				resumeConfig.ClientSessionCache = config.ClientSessionCache
+				resumeConfig.ServerSessionCache = config.ServerSessionCache
+			}
 		} else {
 			resumeConfig = config
 		}
@@ -957,11 +965,6 @@ func addCipherSuiteTests() {
 				continue
 			}
 
-			// Go's TLS implementation only implements session
-			// resumption with tickets, so SSLv3 cannot resume
-			// sessions.
-			resumeSession := ver.version != VersionSSL30
-
 			testCases = append(testCases, testCase{
 				testType: clientTest,
 				name:     ver.name + "-" + suite.name + "-client",
@@ -974,7 +977,7 @@ func addCipherSuiteTests() {
 					PreSharedKeyIdentity: pskIdentity,
 				},
 				flags:         flags,
-				resumeSession: resumeSession,
+				resumeSession: true,
 			})
 
 			testCases = append(testCases, testCase{
@@ -991,7 +994,7 @@ func addCipherSuiteTests() {
 				certFile:      certFile,
 				keyFile:       keyFile,
 				flags:         flags,
-				resumeSession: resumeSession,
+				resumeSession: true,
 			})
 
 			// TODO(davidben): Fix DTLS 1.2 support and test that.
@@ -1009,7 +1012,7 @@ func addCipherSuiteTests() {
 						PreSharedKeyIdentity: pskIdentity,
 					},
 					flags:         flags,
-					resumeSession: resumeSession,
+					resumeSession: true,
 				})
 				testCases = append(testCases, testCase{
 					testType: serverTest,
@@ -1026,7 +1029,7 @@ func addCipherSuiteTests() {
 					certFile:      certFile,
 					keyFile:       keyFile,
 					flags:         flags,
-					resumeSession: resumeSession,
+					resumeSession: true,
 				})
 			}
 		}
@@ -1265,7 +1268,8 @@ func addStateMachineCoverageTests(async, splitHandshake bool, protocol protocol)
 		maxHandshakeRecordLength = 1
 	}
 
-	// Basic handshake, with resumption. Client and server.
+	// Basic handshake, with resumption. Client and server,
+	// session ID and session ticket.
 	testCases = append(testCases, testCase{
 		protocol: protocol,
 		name:     "Basic-Client" + suffix,
@@ -1291,9 +1295,34 @@ func addStateMachineCoverageTests(async, splitHandshake bool, protocol protocol)
 	})
 	testCases = append(testCases, testCase{
 		protocol: protocol,
+		name:     "Basic-Client-NoTicket" + suffix,
+		config: Config{
+			SessionTicketsDisabled: true,
+			Bugs: ProtocolBugs{
+				MaxHandshakeRecordLength: maxHandshakeRecordLength,
+			},
+		},
+		flags:         flags,
+		resumeSession: true,
+	})
+	testCases = append(testCases, testCase{
+		protocol: protocol,
 		testType: serverTest,
 		name:     "Basic-Server" + suffix,
 		config: Config{
+			Bugs: ProtocolBugs{
+				MaxHandshakeRecordLength: maxHandshakeRecordLength,
+			},
+		},
+		flags:         flags,
+		resumeSession: true,
+	})
+	testCases = append(testCases, testCase{
+		protocol: protocol,
+		testType: serverTest,
+		name:     "Basic-Server-NoTickets" + suffix,
+		config: Config{
+			SessionTicketsDisabled: true,
 			Bugs: ProtocolBugs{
 				MaxHandshakeRecordLength: maxHandshakeRecordLength,
 			},
@@ -1854,15 +1883,7 @@ func addExtensionTests() {
 func addResumptionVersionTests() {
 	// TODO(davidben): Once DTLS 1.2 is working, test that as well.
 	for _, sessionVers := range tlsVersions {
-		// TODO(davidben): SSLv3 is omitted here because runner does not
-		// support resumption with session IDs.
-		if sessionVers.version == VersionSSL30 {
-			continue
-		}
 		for _, resumeVers := range tlsVersions {
-			if resumeVers.version == VersionSSL30 {
-				continue
-			}
 			suffix := "-" + sessionVers.name + "-" + resumeVers.name
 
 			testCases = append(testCases, testCase{
@@ -1896,10 +1917,10 @@ func addResumptionVersionTests() {
 				},
 				expectedVersion: sessionVers.version,
 				resumeConfig: &Config{
-					MaxVersion:             resumeVers.version,
-					CipherSuites:           []uint16{TLS_RSA_WITH_RC4_128_SHA},
-					SessionTicketsDisabled: true,
+					MaxVersion:   resumeVers.version,
+					CipherSuites: []uint16{TLS_RSA_WITH_RC4_128_SHA},
 				},
+				newSessionsOnResume:   true,
 				expectedResumeVersion: resumeVers.version,
 			})
 

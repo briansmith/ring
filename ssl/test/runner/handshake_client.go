@@ -136,18 +136,17 @@ NextCipherSuite:
 	var session *ClientSessionState
 	var cacheKey string
 	sessionCache := c.config.ClientSessionCache
-	if c.config.SessionTicketsDisabled {
-		sessionCache = nil
-	}
 
 	if sessionCache != nil {
-		hello.ticketSupported = true
+		hello.ticketSupported = !c.config.SessionTicketsDisabled
 
 		// Try to resume a previously negotiated TLS session, if
 		// available.
 		cacheKey = clientSessionCacheKey(c.conn.RemoteAddr(), c.config)
 		candidateSession, ok := sessionCache.Get(cacheKey)
 		if ok {
+			ticketOk := !c.config.SessionTicketsDisabled || candidateSession.sessionTicket == nil
+
 			// Check that the ciphersuite/version used for the
 			// previous session are still valid.
 			cipherSuiteOk := false
@@ -160,36 +159,40 @@ NextCipherSuite:
 
 			versOk := candidateSession.vers >= c.config.minVersion() &&
 				candidateSession.vers <= c.config.maxVersion()
-			if versOk && cipherSuiteOk {
+			if ticketOk && versOk && cipherSuiteOk {
 				session = candidateSession
 			}
 		}
 	}
 
 	if session != nil {
-		hello.sessionTicket = session.sessionTicket
-		if c.config.Bugs.CorruptTicket {
-			hello.sessionTicket = make([]byte, len(session.sessionTicket))
-			copy(hello.sessionTicket, session.sessionTicket)
-			if len(hello.sessionTicket) > 0 {
-				offset := 40
-				if offset > len(hello.sessionTicket) {
-					offset = len(hello.sessionTicket) - 1
+		if session.sessionTicket != nil {
+			hello.sessionTicket = session.sessionTicket
+			if c.config.Bugs.CorruptTicket {
+				hello.sessionTicket = make([]byte, len(session.sessionTicket))
+				copy(hello.sessionTicket, session.sessionTicket)
+				if len(hello.sessionTicket) > 0 {
+					offset := 40
+					if offset > len(hello.sessionTicket) {
+						offset = len(hello.sessionTicket) - 1
+					}
+					hello.sessionTicket[offset] ^= 0x40
 				}
-				hello.sessionTicket[offset] ^= 0x40
 			}
-		}
-		// A random session ID is used to detect when the
-		// server accepted the ticket and is resuming a session
-		// (see RFC 5077).
-		sessionIdLen := 16
-		if c.config.Bugs.OversizedSessionId {
-			sessionIdLen = 33
-		}
-		hello.sessionId = make([]byte, sessionIdLen)
-		if _, err := io.ReadFull(c.config.rand(), hello.sessionId); err != nil {
-			c.sendAlert(alertInternalError)
-			return errors.New("tls: short read from Rand: " + err.Error())
+			// A random session ID is used to detect when the
+			// server accepted the ticket and is resuming a session
+			// (see RFC 5077).
+			sessionIdLen := 16
+			if c.config.Bugs.OversizedSessionId {
+				sessionIdLen = 33
+			}
+			hello.sessionId = make([]byte, sessionIdLen)
+			if _, err := io.ReadFull(c.config.rand(), hello.sessionId); err != nil {
+				c.sendAlert(alertInternalError)
+				return errors.New("tls: short read from Rand: " + err.Error())
+			}
+		} else {
+			hello.sessionId = session.sessionId
 		}
 	}
 
@@ -730,11 +733,26 @@ func (hs *clientHandshakeState) readFinished() error {
 }
 
 func (hs *clientHandshakeState) readSessionTicket() error {
+	c := hs.c
+
+	// Create a session with no server identifier. Either a
+	// session ID or session ticket will be attached.
+	session := &ClientSessionState{
+		vers:               c.vers,
+		cipherSuite:        hs.suite.id,
+		masterSecret:       hs.masterSecret,
+		handshakeHash:      hs.finishedHash.server.Sum(nil),
+		serverCertificates: c.peerCertificates,
+	}
+
 	if !hs.serverHello.ticketSupported {
+		if hs.session == nil && len(hs.serverHello.sessionId) > 0 {
+			session.sessionId = hs.serverHello.sessionId
+			hs.session = session
+		}
 		return nil
 	}
 
-	c := hs.c
 	msg, err := c.readHandshake()
 	if err != nil {
 		return err
@@ -745,14 +763,8 @@ func (hs *clientHandshakeState) readSessionTicket() error {
 		return unexpectedMessageError(sessionTicketMsg, msg)
 	}
 
-	hs.session = &ClientSessionState{
-		sessionTicket:      sessionTicketMsg.ticket,
-		vers:               c.vers,
-		cipherSuite:        hs.suite.id,
-		masterSecret:       hs.masterSecret,
-		handshakeHash:      hs.finishedHash.server.Sum(nil),
-		serverCertificates: c.peerCertificates,
-	}
+	session.sessionTicket = sessionTicketMsg.ticket
+	hs.session = session
 
 	hs.writeServerHash(sessionTicketMsg.marshal())
 
