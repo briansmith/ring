@@ -330,11 +330,6 @@ static int ssl23_client_hello(SSL *s)
 			version_major = SSL3_VERSION_MAJOR;
 			version_minor = SSL3_VERSION_MINOR;
 			}
-		else if (version == SSL2_VERSION)
-			{
-			version_major = SSL2_VERSION_MAJOR;
-			version_minor = SSL2_VERSION_MINOR;
-			}
 		else
 			{
 			OPENSSL_PUT_ERROR(SSL, ssl23_client_hello, SSL_R_NO_PROTOCOLS_AVAILABLE);

@@ -1185,9 +1185,7 @@ OPENSSL_EXPORT int ssl_get_new_session(SSL *s, int session);
 
 struct ssl_st
 	{
-	/* protocol version
-	 * (one of SSL2_VERSION, SSL3_VERSION, TLS1_VERSION, DTLS1_VERSION)
-	 */
+	/* version is the protocol version. */
 	int version;
 	int type; /* SSL_ST_CONNECT or SSL_ST_ACCEPT */
 

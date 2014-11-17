@@ -259,9 +259,7 @@ int SSL_CTX_set_ssl_version(SSL_CTX *ctx,const SSL_METHOD *meth)
 
 	sk=ssl_create_cipher_list(
 		ctx->method, &ctx->cipher_list, &ctx->cipher_list_by_id,
-		meth->version == SSL2_VERSION ?
-			"SSLv2" :
-			SSL_DEFAULT_CIPHER_LIST,
+		SSL_DEFAULT_CIPHER_LIST,
 		ctx->cert);
 
 	if ((sk == NULL) || (sk_SSL_CIPHER_num(sk) <= 0))
@@ -481,17 +479,6 @@ int SSL_has_matching_session_id(const SSL *ssl, const unsigned char *id,
 	r.ssl_version = ssl->version;
 	r.session_id_length = id_len;
 	memcpy(r.session_id, id, id_len);
-	/* NB: SSLv2 always uses a fixed 16-byte session ID, so even if a
-	 * callback is calling us to check the uniqueness of a shorter ID, it
-	 * must be compared as a padded-out ID because that is what it will be
-	 * converted to when the callback has finished choosing it. */
-	if((r.ssl_version == SSL2_VERSION) &&
-			(id_len < SSL2_SSL_SESSION_ID_LENGTH))
-		{
-		memset(r.session_id + id_len, 0,
-			SSL2_SSL_SESSION_ID_LENGTH - id_len);
-		r.session_id_length = SSL2_SSL_SESSION_ID_LENGTH;
-		}
 
 	CRYPTO_r_lock(CRYPTO_LOCK_SSL_CTX);
 	p = lh_SSL_SESSION_retrieve(ssl->ctx->sessions, &r);
@@ -1952,7 +1939,7 @@ SSL_CTX *SSL_CTX_new(const SSL_METHOD *meth)
 
 	ssl_create_cipher_list(ret->method,
 		&ret->cipher_list,&ret->cipher_list_by_id,
-		meth->version == SSL2_VERSION ? "SSLv2" : SSL_DEFAULT_CIPHER_LIST, ret->cert);
+		SSL_DEFAULT_CIPHER_LIST, ret->cert);
 	if (ret->cipher_list == NULL
 	    || sk_SSL_CIPHER_num(ret->cipher_list->ciphers) <= 0)
 		{
@@ -2432,17 +2419,9 @@ int SSL_get_error(const SSL *s,int i)
 
 	if (i == 0)
 		{
-		if (s->version == SSL2_VERSION)
-			{
-			/* assume it is the socket being closed */
+		if ((s->shutdown & SSL_RECEIVED_SHUTDOWN) &&
+			(s->s3->warn_alert == SSL_AD_CLOSE_NOTIFY))
 			return(SSL_ERROR_ZERO_RETURN);
-			}
-		else
-			{
-			if ((s->shutdown & SSL_RECEIVED_SHUTDOWN) &&
-				(s->s3->warn_alert == SSL_AD_CLOSE_NOTIFY))
-				return(SSL_ERROR_ZERO_RETURN);
-			}
 		}
 	return(SSL_ERROR_SYSCALL);
 	}
@@ -2526,8 +2505,6 @@ static const char *ssl_get_version(int version)
 		return("TLSv1");
 	else if (version == SSL3_VERSION)
 		return("SSLv3");
-	else if (version == SSL2_VERSION)
-		return("SSLv2");
 	else
 		return("unknown");
 	}
@@ -3176,8 +3153,6 @@ int ssl_get_max_version(const SSL *s)
 		return TLS1_VERSION;
 	if (!(s->options & SSL_OP_NO_SSLv3))
 		return SSL3_VERSION;
-	if (!(s->options & SSL_OP_NO_SSLv2))
-		return SSL2_VERSION;
 	return 0;
 	}
 
