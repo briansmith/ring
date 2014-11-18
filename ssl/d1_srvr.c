@@ -239,9 +239,15 @@ int dtls1_accept(SSL *s)
 				 * the output is sent in a way that TCP likes :-)
 				 * ...but not with SCTP :-)
 				 */
-					if (!ssl_init_wbio_buffer(s,1)) { ret= -1; goto end; }
+				if (!ssl_init_wbio_buffer(s,1)) { ret= -1; goto end; }
 
-				ssl3_init_finished_mac(s);
+				if (!ssl3_init_finished_mac(s))
+					{
+					OPENSSL_PUT_ERROR(SSL, dtls1_accept, ERR_R_INTERNAL_ERROR);
+					ret = -1;
+					goto end;
+					}
+
 				s->state=SSL3_ST_SR_CLNT_HELLO_A;
 				s->ctx->stats.sess_accept++;
 				}
@@ -267,7 +273,12 @@ int dtls1_accept(SSL *s)
 			s->state=SSL3_ST_SW_FLUSH;
 			s->init_num=0;
 
-			ssl3_init_finished_mac(s);
+			if (!ssl3_init_finished_mac(s))
+				{
+				OPENSSL_PUT_ERROR(SSL, dtls1_accept, ERR_R_INTERNAL_ERROR);
+				ret = -1;
+				goto end;
+				}
 			break;
 
 		case SSL3_ST_SW_HELLO_REQ_C:
@@ -301,7 +312,12 @@ int dtls1_accept(SSL *s)
 			s->s3->tmp.next_state=SSL3_ST_SR_CLNT_HELLO_A;
 
 			/* HelloVerifyRequest resets Finished MAC */
-			ssl3_init_finished_mac(s);
+			if (!ssl3_init_finished_mac(s))
+				{
+				OPENSSL_PUT_ERROR(SSL, dtls1_accept, ERR_R_INTERNAL_ERROR);
+				ret = -1;
+				goto end;
+				}
 			break;
 			
 

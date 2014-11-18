@@ -3167,7 +3167,10 @@ EVP_MD_CTX *ssl_replace_hash(EVP_MD_CTX **hash,const EVP_MD *md)
 {
 	ssl_clear_hash_ctx(hash);
 	*hash = EVP_MD_CTX_create();
-	if (md) EVP_DigestInit_ex(*hash,md,NULL);
+	if (md != NULL && *hash != NULL)
+		{
+		EVP_DigestInit_ex(*hash,md,NULL);
+		}
 	return *hash;
 }
 void ssl_clear_hash_ctx(EVP_MD_CTX **hash) 

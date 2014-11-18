@@ -109,6 +109,10 @@ static int pkey_hmac_copy(EVP_PKEY_CTX *dst, EVP_PKEY_CTX *src) {
 static void pkey_hmac_cleanup(EVP_PKEY_CTX *ctx) {
   HMAC_PKEY_CTX *hctx = ctx->data;
 
+  if (hctx == NULL) {
+    return;
+  }
+
   HMAC_CTX_cleanup(&hctx->ctx);
   if (hctx->ktmp.data) {
     if (hctx->ktmp.length) {

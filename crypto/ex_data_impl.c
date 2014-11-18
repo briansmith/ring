@@ -193,8 +193,10 @@ static LHASH_OF(EX_CLASS_ITEM) *get_classes(void) {
 static void cleanup(void) {
   LHASH_OF(EX_CLASS_ITEM) *classes = get_classes();
 
-  lh_EX_CLASS_ITEM_doall(classes, class_free);
-  lh_EX_CLASS_ITEM_free(classes);
+  if (classes != NULL) {
+    lh_EX_CLASS_ITEM_doall(classes, class_free);
+    lh_EX_CLASS_ITEM_free(classes);
+  }
 
   global_classes = NULL;
 }
@@ -203,6 +205,10 @@ static EX_CLASS_ITEM *get_class(int class_value) {
   LHASH_OF(EX_CLASS_ITEM) *const classes = get_classes();
   EX_CLASS_ITEM template, *class_item;
   int ok = 0;
+
+  if (classes == NULL) {
+    return NULL;
+  }
 
   CRYPTO_w_lock(CRYPTO_LOCK_EX_DATA);
   template.class_value = class_value;

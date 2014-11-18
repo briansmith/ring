@@ -447,6 +447,8 @@ static int tls1_change_cipher_state_cipher(
 
 		cipher_ctx = s->enc_read_ctx;
 		mac_ctx = ssl_replace_hash(&s->read_hash, NULL);
+		if (mac_ctx == NULL)
+			goto err;
 
 		memcpy(s->s3->read_mac_secret, mac_secret, mac_secret_len);
 		s->s3->read_mac_secret_size = mac_secret_len;
@@ -476,7 +478,11 @@ static int tls1_change_cipher_state_cipher(
 			s->write_hash = mac_ctx;
 			}
 		else
+			{
 			mac_ctx = ssl_replace_hash(&s->write_hash, NULL);
+			if (mac_ctx == NULL)
+				goto err;
+			}
 
 		memcpy(s->s3->write_mac_secret, mac_secret, mac_secret_len);
 		s->s3->write_mac_secret_size = mac_secret_len;
@@ -487,10 +493,15 @@ static int tls1_change_cipher_state_cipher(
 				     NULL, mac_secret, mac_secret_len);
 	if (!mac_key)
 		return 0;
-	EVP_DigestSignInit(mac_ctx, NULL, s->s3->tmp.new_hash, NULL, mac_key);
+	if (!EVP_DigestSignInit(mac_ctx, NULL, s->s3->tmp.new_hash, NULL, mac_key))
+		{
+		EVP_PKEY_free(mac_key);
+		goto err;
+		}
 	EVP_PKEY_free(mac_key);
 
-	EVP_CipherInit_ex(cipher_ctx, cipher, NULL /* engine */, key, iv, !is_read);
+	if (!EVP_CipherInit_ex(cipher_ctx, cipher, NULL /* engine */, key, iv, !is_read))
+		goto err;
 
 	return 1;
 
@@ -1063,7 +1074,7 @@ int tls1_mac(SSL *ssl, unsigned char *md, int send)
 	unsigned char *seq;
 	EVP_MD_CTX *hash;
 	size_t md_size, orig_len;
-	int i;
+	int i, ok;
 	EVP_MD_CTX hmac, *mac_ctx;
 	unsigned char header[13];
 	int t;
@@ -1085,9 +1096,9 @@ int tls1_mac(SSL *ssl, unsigned char *md, int send)
 	assert(t >= 0);
 	md_size=t;
 
-	if (!EVP_MD_CTX_copy(&hmac,hash))
-		return -1;
 	mac_ctx = &hmac;
+	if (!EVP_MD_CTX_copy(mac_ctx, hash))
+		return -1;
 
 	if (SSL_IS_DTLS(ssl))
 		{
@@ -1119,7 +1130,7 @@ int tls1_mac(SSL *ssl, unsigned char *md, int send)
 		 * timing-side channel information about how many blocks of
 		 * data we are hashing because that gives an attacker a
 		 * timing-oracle. */
-		ssl3_cbc_digest_record(
+		ok = ssl3_cbc_digest_record(
 			mac_ctx,
 			md, &md_size,
 			header, rec->input,
@@ -1132,22 +1143,24 @@ int tls1_mac(SSL *ssl, unsigned char *md, int send)
 		{
 		EVP_DigestSignUpdate(mac_ctx,header,sizeof(header));
 		EVP_DigestSignUpdate(mac_ctx,rec->input,rec->length);
-		t=EVP_DigestSignFinal(mac_ctx,md,&md_size);
-		assert(t > 0);
+		ok = EVP_DigestSignFinal(mac_ctx,md,&md_size);
 		}
-		
-	EVP_MD_CTX_cleanup(&hmac);
+
+	EVP_MD_CTX_cleanup(mac_ctx);
+
+	if (!ok)
+		return -1;
 
 	if (!SSL_IS_DTLS(ssl))
 		{
 		for (i=7; i>=0; i--)
 			{
 			++seq[i];
-			if (seq[i] != 0) break; 
+			if (seq[i] != 0) break;
 			}
 		}
 
-	return(md_size);
+	return md_size;
 	}
 
 int tls1_generate_master_secret(SSL *s, unsigned char *out, unsigned char *p,

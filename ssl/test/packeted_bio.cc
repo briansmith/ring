@@ -67,7 +67,9 @@ static int packeted_read(BIO *bio, char *out, int outl) {
   uint32_t len = (len_bytes[0] << 24) | (len_bytes[1] << 16) |
       (len_bytes[2] << 8) | len_bytes[3];
   char *buf = (char *)OPENSSL_malloc(len);
-  assert(buf != NULL);
+  if (buf == NULL) {
+    return -1;
+  }
   ret = BIO_read(bio->next_bio, buf, len);
   assert(ret == (int)len);
 

@@ -242,7 +242,12 @@ int dtls1_connect(SSL *s)
 			s->shutdown=0;
 
 			/* every DTLS ClientHello resets Finished MAC */
-			ssl3_init_finished_mac(s);
+			if (!ssl3_init_finished_mac(s))
+				{
+				OPENSSL_PUT_ERROR(SSL, dtls1_connect, ERR_R_INTERNAL_ERROR);
+				ret = -1;
+				goto end;
+				}
 
 			dtls1_start_timer(s);
 			ret=ssl3_send_client_hello(s);

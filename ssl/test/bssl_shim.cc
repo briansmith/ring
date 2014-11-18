@@ -41,8 +41,8 @@ static int usage(const char *program) {
 
 static int g_ex_data_index = 0;
 
-static void SetConfigPtr(SSL *ssl, const TestConfig *config) {
-  SSL_set_ex_data(ssl, g_ex_data_index, (void *)config);
+static bool SetConfigPtr(SSL *ssl, const TestConfig *config) {
+  return SSL_set_ex_data(ssl, g_ex_data_index, (void *)config) == 1;
 }
 
 static const TestConfig *GetConfigPtr(SSL *ssl) {
@@ -267,7 +267,8 @@ static SSL_CTX *setup_ctx(const TestConfig *config) {
   }
 
   dh = DH_get_2048_256(NULL);
-  if (!SSL_CTX_set_tmp_dh(ssl_ctx, dh)) {
+  if (dh == NULL ||
+      !SSL_CTX_set_tmp_dh(ssl_ctx, dh)) {
     goto err;
   }
 
@@ -335,7 +336,10 @@ static int do_exchange(SSL_SESSION **out_session,
     return 1;
   }
 
-  SetConfigPtr(ssl, config);
+  if (!SetConfigPtr(ssl, config)) {
+    BIO_print_errors_fp(stdout);
+    return 1;
+  }
 
   if (config->fallback_scsv) {
     if (!SSL_enable_fallback_scsv(ssl)) {

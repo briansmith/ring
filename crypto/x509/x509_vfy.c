@@ -2247,38 +2247,26 @@ int X509_STORE_CTX_init(X509_STORE_CTX *ctx, X509_STORE *store, X509 *x509,
 	     STACK_OF(X509) *chain)
 	{
 	int ret = 1;
+	int ex_data_allocated = 0;
+
+	memset(ctx, 0, sizeof(X509_STORE_CTX));
 	ctx->ctx=store;
-	ctx->current_method=0;
 	ctx->cert=x509;
 	ctx->untrusted=chain;
-	ctx->crls = NULL;
-	ctx->last_untrusted=0;
-	ctx->other_ctx=NULL;
-	ctx->valid=0;
-	ctx->chain=NULL;
-	ctx->error=0;
-	ctx->explicit_policy=0;
-	ctx->error_depth=0;
-	ctx->current_cert=NULL;
-	ctx->current_issuer=NULL;
-	ctx->current_crl=NULL;
-	ctx->current_crl_score=0;
-	ctx->current_reasons=0;
-	ctx->tree = NULL;
-	ctx->parent = NULL;
+
+	if(!CRYPTO_new_ex_data(CRYPTO_EX_INDEX_X509_STORE_CTX, ctx,
+			       &ctx->ex_data))
+		{
+		goto err;
+		}
+	ex_data_allocated = 1;
 
 	ctx->param = X509_VERIFY_PARAM_new();
-
 	if (!ctx->param)
-		{
-		OPENSSL_PUT_ERROR(X509, X509_STORE_CTX_init, ERR_R_MALLOC_FAILURE);
-		return 0;
-		}
+		goto err;
 
 	/* Inherit callbacks and flags from X509_STORE if not set
-	 * use defaults.
-	 */
-
+	 * use defaults. */
 
 	if (store)
 		ret = X509_VERIFY_PARAM_inherit(ctx->param, store->param);
@@ -2298,10 +2286,7 @@ int X509_STORE_CTX_init(X509_STORE_CTX *ctx, X509_STORE *store, X509 *x509,
 					X509_VERIFY_PARAM_lookup("default"));
 
 	if (ret == 0)
-		{
-		OPENSSL_PUT_ERROR(X509, X509_STORE_CTX_init, ERR_R_MALLOC_FAILURE);
-		return 0;
-		}
+		goto err;
 
 	if (store && store->check_issued)
 		ctx->check_issued = store->check_issued;
@@ -2355,19 +2340,21 @@ int X509_STORE_CTX_init(X509_STORE_CTX *ctx, X509_STORE *store, X509 *x509,
 
 	ctx->check_policy = check_policy;
 
-
-	/* This memset() can't make any sense anyway, so it's removed. As
-	 * X509_STORE_CTX_cleanup does a proper "free" on the ex_data, we put a
-	 * corresponding "new" here and remove this bogus initialisation. */
-	/* memset(&(ctx->ex_data),0,sizeof(CRYPTO_EX_DATA)); */
-	if(!CRYPTO_new_ex_data(CRYPTO_EX_INDEX_X509_STORE_CTX, ctx,
-				&(ctx->ex_data)))
-		{
-		OPENSSL_free(ctx);
-		OPENSSL_PUT_ERROR(X509, X509_STORE_CTX_init, ERR_R_MALLOC_FAILURE);
-		return 0;
-		}
 	return 1;
+
+err:
+	if (ex_data_allocated)
+		{
+		CRYPTO_free_ex_data(CRYPTO_EX_INDEX_X509_STORE_CTX, ctx, &ctx->ex_data);
+		}
+	if (ctx->param != NULL)
+		{
+		X509_VERIFY_PARAM_free(ctx->param);
+		}
+
+	memset(ctx, 0, sizeof(X509_STORE_CTX));
+	OPENSSL_PUT_ERROR(X509, X509_STORE_CTX_init, ERR_R_MALLOC_FAILURE);
+	return 0;
 	}
 
 /* Set alternative lookup method: just a STACK of trusted certificates.

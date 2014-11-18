@@ -829,6 +829,7 @@ struct evp_pkey_st {
 #define EVP_F_EVP_DigestVerifyInitFromAlgorithm 155
 #define EVP_F_EVP_DigestSignAlgorithm 156
 #define EVP_F_rsa_digest_verify_init_from_algorithm 157
+#define EVP_F_EVP_PKEY_CTX_dup 158
 #define EVP_R_UNSUPPORTED_PUBLIC_KEY_TYPE 100
 #define EVP_R_UNSUPPORTED_SIGNATURE_TYPE 101
 #define EVP_R_INVALID_DIGEST_TYPE 102

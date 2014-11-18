@@ -188,7 +188,12 @@ int ssl23_connect(SSL *s)
 
 			if (!ssl3_setup_buffers(s)) { ret= -1; goto end; }
 
-			ssl3_init_finished_mac(s);
+			if (!ssl3_init_finished_mac(s))
+				{
+				OPENSSL_PUT_ERROR(SSL, ssl23_connect, ERR_R_INTERNAL_ERROR);
+				ret = -1;
+				goto end;
+				}
 
 			s->state=SSL23_ST_CW_CLNT_HELLO_A;
 			s->ctx->stats.sess_connect++;

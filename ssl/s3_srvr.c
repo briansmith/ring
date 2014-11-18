@@ -294,7 +294,12 @@ int ssl3_accept(SSL *s)
 				 */
 				if (!ssl_init_wbio_buffer(s,1)) { ret= -1; goto end; }
 				
-				ssl3_init_finished_mac(s);
+				if (!ssl3_init_finished_mac(s))
+					{
+					OPENSSL_PUT_ERROR(SSL, ssl3_accept, ERR_R_INTERNAL_ERROR);
+					ret = -1;
+					goto end;
+					}
 				s->state=SSL3_ST_SR_CLNT_HELLO_A;
 				s->ctx->stats.sess_accept++;
 				}
@@ -329,7 +334,12 @@ int ssl3_accept(SSL *s)
 			s->state=SSL3_ST_SW_FLUSH;
 			s->init_num=0;
 
-			ssl3_init_finished_mac(s);
+			if (!ssl3_init_finished_mac(s))
+				{
+				OPENSSL_PUT_ERROR(SSL, ssl3_accept, ERR_R_INTERNAL_ERROR);
+				ret = -1;
+				goto end;
+				}
 			break;
 
 		case SSL3_ST_SW_HELLO_REQ_C:
@@ -2578,16 +2588,22 @@ int ssl3_send_new_session_ticket(SSL *s)
 							 &hctx, 1) < 0)
 				{
 				OPENSSL_free(session);
+				EVP_CIPHER_CTX_cleanup(&ctx);
+				HMAC_CTX_cleanup(&hctx);
 				return -1;
 				}
 			}
 		else
 			{
 			RAND_pseudo_bytes(iv, 16);
-			EVP_EncryptInit_ex(&ctx, EVP_aes_128_cbc(), NULL,
-					tctx->tlsext_tick_aes_key, iv);
-			HMAC_Init_ex(&hctx, tctx->tlsext_tick_hmac_key, 16,
-					tlsext_tick_md(), NULL);
+			if (!EVP_EncryptInit_ex(&ctx, EVP_aes_128_cbc(), NULL, tctx->tlsext_tick_aes_key, iv) ||
+			    !HMAC_Init_ex(&hctx, tctx->tlsext_tick_hmac_key, 16, tlsext_tick_md(), NULL))
+				{
+				OPENSSL_free(session);
+				EVP_CIPHER_CTX_cleanup(&ctx);
+				HMAC_CTX_cleanup(&hctx);
+				return -1;
+				}
 			memcpy(key_name, tctx->tlsext_tick_key_name, 16);
 			}
 

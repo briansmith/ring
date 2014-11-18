@@ -124,7 +124,10 @@ static EVP_PKEY_CTX *evp_pkey_ctx_new(EVP_PKEY *pkey, ENGINE *e, int id) {
 
   if (pmeth->init) {
     if (pmeth->init(ret) <= 0) {
-      EVP_PKEY_CTX_free(ret);
+      if (pkey) {
+        EVP_PKEY_free(ret->pkey);
+      }
+      OPENSSL_free(ret);
       return NULL;
     }
   }
@@ -176,17 +179,25 @@ EVP_PKEY_CTX *EVP_PKEY_CTX_dup(EVP_PKEY_CTX *pctx) {
 
   if (pctx->pkey) {
     rctx->pkey = EVP_PKEY_dup(pctx->pkey);
+    if (rctx->pkey == NULL) {
+      goto err;
+    }
   }
 
   if (pctx->peerkey) {
     rctx->peerkey = EVP_PKEY_dup(pctx->peerkey);
+    if (rctx->peerkey == NULL) {
+      goto err;
+    }
   }
 
   if (pctx->pmeth->copy(rctx, pctx) > 0) {
     return rctx;
   }
 
+err:
   EVP_PKEY_CTX_free(rctx);
+  OPENSSL_PUT_ERROR(EVP, EVP_PKEY_CTX_dup, ERR_LIB_EVP);
   return NULL;
 }
 
@@ -485,6 +496,10 @@ int EVP_PKEY_keygen(EVP_PKEY_CTX *ctx, EVP_PKEY **ppkey) {
 
   if (!*ppkey) {
     *ppkey = EVP_PKEY_new();
+    if (!*ppkey) {
+      OPENSSL_PUT_ERROR(EVP, EVP_PKEY_keygen, ERR_LIB_EVP);
+      return 0;
+    }
   }
 
   if (!ctx->pmeth->keygen(ctx, *ppkey)) {

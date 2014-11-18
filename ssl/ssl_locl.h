@@ -819,7 +819,7 @@ int ssl_fill_hello_random(SSL *s, int server, unsigned char *field, int len);
 
 const SSL_CIPHER *ssl3_get_cipher_by_value(uint16_t value);
 uint16_t ssl3_get_cipher_value(const SSL_CIPHER *c);
-void ssl3_init_finished_mac(SSL *s);
+int ssl3_init_finished_mac(SSL *s);
 int ssl3_send_server_certificate(SSL *s);
 int ssl3_send_new_session_ticket(SSL *s);
 int ssl3_send_cert_status(SSL *s);
@@ -1120,7 +1120,7 @@ int tls1_cbc_remove_padding(const SSL* s,
 			    unsigned block_size,
 			    unsigned mac_size);
 char ssl3_cbc_record_digest_supported(const EVP_MD_CTX *ctx);
-void ssl3_cbc_digest_record(
+int ssl3_cbc_digest_record(
 	const EVP_MD_CTX *ctx,
 	unsigned char* md_out,
 	size_t* md_out_size,

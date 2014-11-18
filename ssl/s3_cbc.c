@@ -333,7 +333,7 @@ char ssl3_cbc_record_digest_supported(const EVP_MD_CTX *ctx)
  *   ctx: the EVP_MD_CTX from which we take the hash function.
  *     ssl3_cbc_record_digest_supported must return true for this EVP_MD_CTX.
  *   md_out: the digest output. At most EVP_MAX_MD_SIZE bytes will be written.
- *   md_out_size: if non-NULL, the number of output bytes is written here.
+ *   md_out_size: the number of output bytes is written here.
  *   header: the 13-byte, TLS record header.
  *   data: the record data itself, less any preceeding explicit IV.
  *   data_plus_mac_size: the secret, reported length of the data and MAC
@@ -346,7 +346,7 @@ char ssl3_cbc_record_digest_supported(const EVP_MD_CTX *ctx)
  * functions, above, we know that data_plus_mac_size is large enough to contain
  * a padding byte and MAC. (If the padding was invalid, it might contain the
  * padding too. ) */
-void ssl3_cbc_digest_record(
+int ssl3_cbc_digest_record(
 	const EVP_MD_CTX *ctx,
 	unsigned char* md_out,
 	size_t* md_out_size,
@@ -409,9 +409,8 @@ void ssl3_cbc_digest_record(
 			 * called first to check that the hash function is
 			 * supported. */
 			assert(0);
-			if (md_out_size)
-				*md_out_size = -1;
-			return;
+			*md_out_size = 0;
+			return 0;
 		}
 
 	assert(md_length_size <= MAX_HASH_BIT_COUNT_BYTES);
@@ -591,7 +590,12 @@ void ssl3_cbc_digest_record(
 		}
 
 	EVP_MD_CTX_init(&md_ctx);
-	EVP_DigestInit_ex(&md_ctx, ctx->digest, NULL /* engine */);
+	if (!EVP_DigestInit_ex(&md_ctx, ctx->digest, NULL /* engine */))
+		{
+		EVP_MD_CTX_cleanup(&md_ctx);
+		return 0;
+		}
+
 	if (is_sslv3)
 		{
 		/* We repurpose |hmac_pad| to contain the SSLv3 pad2 block. */
@@ -611,7 +615,8 @@ void ssl3_cbc_digest_record(
 		EVP_DigestUpdate(&md_ctx, mac_out, md_size);
 		}
 	EVP_DigestFinal(&md_ctx, md_out, &md_out_size_u);
-	if (md_out_size)
-		*md_out_size = md_out_size_u;
+	*md_out_size = md_out_size_u;
 	EVP_MD_CTX_cleanup(&md_ctx);
+
+	return 1;
 	}

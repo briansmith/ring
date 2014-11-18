@@ -16,14 +16,19 @@ import (
 	"os/exec"
 	"path"
 	"runtime"
+	"strconv"
 	"strings"
 	"sync"
 	"syscall"
 )
 
-var useValgrind = flag.Bool("valgrind", false, "If true, run code under valgrind")
-var useGDB = flag.Bool("gdb", false, "If true, run BoringSSL code under gdb")
-var flagDebug *bool = flag.Bool("debug", false, "Hexdump the contents of the connection")
+var (
+	useValgrind            = flag.Bool("valgrind", false, "If true, run code under valgrind")
+	useGDB                 = flag.Bool("gdb", false, "If true, run BoringSSL code under gdb")
+	flagDebug       *bool  = flag.Bool("debug", false, "Hexdump the contents of the connection")
+	mallocTest      *int64 = flag.Int64("malloc-test", -1, "If non-negative, run each test with each malloc in turn failing from the given number onwards.")
+	mallocTestDebug *bool  = flag.Bool("malloc-test-debug", false, "If true, ask bssl_shim to abort rather than fail a malloc. This can be used with a specific value for --malloc-test to identity the malloc failing that is causing problems.")
+)
 
 const (
 	rsaCertificateFile   = "cert.pem"
@@ -703,7 +708,15 @@ func openSocketPair() (shimEnd *os.File, conn net.Conn) {
 	return shimEnd, conn
 }
 
-func runTest(test *testCase, buildDir string) error {
+type moreMallocsError struct{}
+
+func (moreMallocsError) Error() string {
+	return "child process did not exhaust all allocation calls"
+}
+
+var errMoreMallocs = moreMallocsError{}
+
+func runTest(test *testCase, buildDir string, mallocNumToFail int64) error {
 	if !test.shouldFail && (len(test.expectedError) > 0 || len(test.expectedLocalError) > 0) {
 		panic("Error expected without shouldFail in " + test.name)
 	}
@@ -758,6 +771,13 @@ func runTest(test *testCase, buildDir string) error {
 	var stdoutBuf, stderrBuf bytes.Buffer
 	shim.Stdout = &stdoutBuf
 	shim.Stderr = &stderrBuf
+	if mallocNumToFail >= 0 {
+		shim.Env = []string{"MALLOC_NUMBER_TO_FAIL=" + strconv.FormatInt(mallocNumToFail, 10)}
+		if *mallocTestDebug {
+			shim.Env = append(shim.Env, "MALLOC_ABORT_ON_FAIL=1")
+		}
+		shim.Env = append(shim.Env, "_MALLOC_CHECK=1")
+	}
 
 	if err := shim.Start(); err != nil {
 		panic(err)
@@ -805,6 +825,11 @@ func runTest(test *testCase, buildDir string) error {
 	connResume.Close()
 
 	childErr := shim.Wait()
+	if exitError, ok := childErr.(*exec.ExitError); ok {
+		if exitError.Sys().(syscall.WaitStatus).ExitStatus() == 88 {
+			return errMoreMallocs
+		}
+	}
 
 	stdout := string(stdoutBuf.Bytes())
 	stderr := string(stderrBuf.Bytes())
@@ -2142,8 +2167,22 @@ func worker(statusChan chan statusMsg, c chan *testCase, buildDir string, wg *sy
 	defer wg.Done()
 
 	for test := range c {
-		statusChan <- statusMsg{test: test, started: true}
-		err := runTest(test, buildDir)
+		var err error
+
+		if *mallocTest < 0 {
+			statusChan <- statusMsg{test: test, started: true}
+			err = runTest(test, buildDir, -1)
+		} else {
+			for mallocNumToFail := int64(*mallocTest); ; mallocNumToFail++ {
+				statusChan <- statusMsg{test: test, started: true}
+				if err = runTest(test, buildDir, mallocNumToFail); err != errMoreMallocs {
+					if err != nil {
+						fmt.Printf("\n\nmalloc test failed at %d: %s\n", mallocNumToFail, err)
+					}
+					break
+				}
+			}
+		}
 		statusChan <- statusMsg{test: test, err: err}
 	}
 }

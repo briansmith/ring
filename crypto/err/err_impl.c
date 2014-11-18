@@ -231,6 +231,11 @@ static ERR_STATE *err_get_state(void) {
     CRYPTO_r_lock(CRYPTO_LOCK_ERR);
   }
 
+  if (state_hash == NULL) {
+    CRYPTO_r_unlock(CRYPTO_LOCK_ERR);
+    return NULL;
+  }
+
   state = lh_ERR_STATE_retrieve(state_hash, &pattern);
   CRYPTO_r_unlock(CRYPTO_LOCK_ERR);
   if (state != NULL) {

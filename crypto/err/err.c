@@ -175,8 +175,7 @@ static uint32_t get_error_values(int inc, int top, const char **file, int *line,
   uint32_t ret;
 
   state = err_get_state();
-
-  if (state->bottom == state->top) {
+  if (state == NULL || state->bottom == state->top) {
     return 0;
   }
 
@@ -281,6 +280,10 @@ uint32_t ERR_peek_last_error_line_data(const char **file, int *line,
 void ERR_clear_error(void) {
   ERR_STATE *const state = err_get_state();
   unsigned i;
+
+  if (state == NULL) {
+    return;
+  }
 
   for (i = 0; i < ERR_NUM_ERRORS; i++) {
     err_clear(&state->errors[i]);
@@ -481,7 +484,7 @@ static void err_set_error_data(char *data, int flags) {
   ERR_STATE *const state = err_get_state();
   struct err_error_st *error;
 
-  if (state->top == state->bottom) {
+  if (state == NULL || state->top == state->bottom) {
     if (flags & ERR_FLAG_MALLOCED) {
       OPENSSL_free(data);
     }
@@ -499,6 +502,10 @@ void ERR_put_error(int library, int func, int reason, const char *file,
                    unsigned line) {
   ERR_STATE *const state = err_get_state();
   struct err_error_st *error;
+
+  if (state == NULL) {
+    return;
+  }
 
   if (library == ERR_LIB_SYS && reason == 0) {
 #if defined(WIN32)
@@ -600,7 +607,7 @@ void ERR_add_error_dataf(const char *format, ...) {
 int ERR_set_mark(void) {
   ERR_STATE *const state = err_get_state();
 
-  if (state->bottom == state->top) {
+  if (state == NULL || state->bottom == state->top) {
     return 0;
   }
   state->errors[state->top].flags |= ERR_FLAG_MARK;
@@ -610,6 +617,10 @@ int ERR_set_mark(void) {
 int ERR_pop_to_mark(void) {
   ERR_STATE *const state = err_get_state();
   struct err_error_st *error;
+
+  if (state == NULL) {
+    return 0;
+  }
 
   while (state->bottom != state->top) {
     error = &state->errors[state->top];

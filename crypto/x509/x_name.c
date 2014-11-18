@@ -354,10 +354,15 @@ static int x509_name_canon(X509_NAME *a)
 			if(!entries)
 				goto err;
 			if(!sk_STACK_OF_X509_NAME_ENTRY_push(intname, entries))
+				{
+				sk_X509_NAME_ENTRY_free(entries);
 				goto err;
+				}
 			set = entry->set;
 			}
 		tmpentry = X509_NAME_ENTRY_new();
+		if (tmpentry == NULL)
+			goto err;
 		tmpentry->object = OBJ_dup(entry->object);
 		if (!asn1_string_canon(tmpentry->value, entry->value))
 			goto err;

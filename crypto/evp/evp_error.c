@@ -20,6 +20,7 @@ const ERR_STRING_DATA EVP_error_string_data[] = {
   {ERR_PACK(ERR_LIB_EVP, EVP_F_EVP_DigestSignAlgorithm, 0), "EVP_DigestSignAlgorithm"},
   {ERR_PACK(ERR_LIB_EVP, EVP_F_EVP_DigestVerifyInitFromAlgorithm, 0), "EVP_DigestVerifyInitFromAlgorithm"},
   {ERR_PACK(ERR_LIB_EVP, EVP_F_EVP_PKEY_CTX_ctrl, 0), "EVP_PKEY_CTX_ctrl"},
+  {ERR_PACK(ERR_LIB_EVP, EVP_F_EVP_PKEY_CTX_dup, 0), "EVP_PKEY_CTX_dup"},
   {ERR_PACK(ERR_LIB_EVP, EVP_F_EVP_PKEY_copy_parameters, 0), "EVP_PKEY_copy_parameters"},
   {ERR_PACK(ERR_LIB_EVP, EVP_F_EVP_PKEY_decrypt, 0), "EVP_PKEY_decrypt"},
   {ERR_PACK(ERR_LIB_EVP, EVP_F_EVP_PKEY_decrypt_init, 0), "EVP_PKEY_decrypt_init"},
