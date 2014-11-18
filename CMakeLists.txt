@@ -36,6 +36,13 @@ else()
 	message(FATAL_ERROR "Unknown processor:" ${CMAKE_SYSTEM_PROCESSOR})
 endif()
 
+if (${ARCH} STREQUAL "x86" AND APPLE)
+	# With CMake 2.8.x, ${CMAKE_SYSTEM_PROCESSOR} evalutes to i386 on OS X,
+	# but clang defaults to 64-bit builds on OS X unless otherwise told.
+	# Set ARCH to x86_64 so clang and CMake agree. This is fixed in CMake 3.
+	set(ARCH "x86_64")
+endif()
+
 add_subdirectory(crypto)
 add_subdirectory(ssl)
 add_subdirectory(ssl/test)
