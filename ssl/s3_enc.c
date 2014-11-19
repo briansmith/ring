@@ -300,7 +300,8 @@ int ssl3_change_cipher_state(SSL *s, int which)
 
 	memcpy(mac_secret,ms,i);
 
-	EVP_CipherInit_ex(dd,c,NULL,key,iv,(which & SSL3_CC_WRITE));
+	if (!EVP_CipherInit_ex(dd,c,NULL,key,iv,(which & SSL3_CC_WRITE)))
+		goto err2;
 
 #ifdef OPENSSL_SSL_TRACE_CRYPTO
 	if (s->msg_callback)
@@ -561,6 +562,7 @@ int ssl3_digest_cached_records(SSL *s, enum should_free_handshake_buffer_t shoul
 			if (!EVP_DigestInit_ex(s->s3->handshake_dgst[i], md, NULL))
 				{
 				EVP_MD_CTX_destroy(s->s3->handshake_dgst[i]);
+				s->s3->handshake_dgst[i] = NULL;
 				OPENSSL_PUT_ERROR(SSL, ssl3_digest_cached_records, ERR_LIB_EVP);
 				return 0;
 				}

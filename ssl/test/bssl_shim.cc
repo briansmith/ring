@@ -669,6 +669,9 @@ int main(int argc, char **argv) {
     return 1;
   }
   g_ex_data_index = SSL_get_ex_new_index(0, NULL, NULL, NULL, NULL);
+  if (g_ex_data_index < 0) {
+    return 1;
+  }
 
   TestConfig config;
   if (!ParseConfig(argc - 1, argv + 1, &config)) {
