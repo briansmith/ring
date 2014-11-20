@@ -789,59 +789,6 @@ long SSL_CTX_get_timeout(const SSL_CTX *s)
 	return(s->session_timeout);
 	}
 
-int SSL_set_session_secret_cb(SSL *s, int (*tls_session_secret_cb)(SSL *s, void *secret, int *secret_len,
-	STACK_OF(SSL_CIPHER) *peer_ciphers, const SSL_CIPHER **cipher, void *arg), void *arg)
-	{
-	if (s == NULL) return(0);
-	s->tls_session_secret_cb = tls_session_secret_cb;
-	s->tls_session_secret_cb_arg = arg;
-	return(1);
-	}
-
-int SSL_set_session_ticket_ext_cb(SSL *s, tls_session_ticket_ext_cb_fn cb,
-				  void *arg)
-	{
-	if (s == NULL) return(0);
-	s->tls_session_ticket_ext_cb = cb;
-	s->tls_session_ticket_ext_cb_arg = arg;
-	return(1);
-	}
-
-int SSL_set_session_ticket_ext(SSL *s, void *ext_data, int ext_len)
-	{
-	if (s->version >= TLS1_VERSION)
-		{
-		if (s->tlsext_session_ticket)
-			{
-			OPENSSL_free(s->tlsext_session_ticket);
-			s->tlsext_session_ticket = NULL;
-			}
-
-		s->tlsext_session_ticket = OPENSSL_malloc(sizeof(TLS_SESSION_TICKET_EXT) + ext_len);
-		if (!s->tlsext_session_ticket)
-			{
-			OPENSSL_PUT_ERROR(SSL, SSL_set_session_ticket_ext, ERR_R_MALLOC_FAILURE);
-			return 0;
-			}
-
-		if (ext_data)
-			{
-			s->tlsext_session_ticket->length = ext_len;
-			s->tlsext_session_ticket->data = s->tlsext_session_ticket + 1;
-			memcpy(s->tlsext_session_ticket->data, ext_data, ext_len);
-			}
-		else
-			{
-			s->tlsext_session_ticket->length = 0;
-			s->tlsext_session_ticket->data = NULL;
-			}
-
-		return 1;
-		}
-
-	return 0;
-	}
-
 typedef struct timeout_param_st
 	{
 	SSL_CTX *ctx;

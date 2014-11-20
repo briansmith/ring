@@ -980,25 +980,10 @@ unsigned char *ssl_add_clienthello_tlsext(SSL *s, unsigned char *buf, unsigned c
 
 	if (!(SSL_get_options(s) & SSL_OP_NO_TICKET))
 		{
-		int ticklen;
+		int ticklen = 0;
 		if (!s->new_session && s->session && s->session->tlsext_tick)
 			ticklen = s->session->tlsext_ticklen;
-		else if (s->session && s->tlsext_session_ticket &&
-			 s->tlsext_session_ticket->data)
-			{
-			s->session->tlsext_tick = BUF_memdup(
-			       s->tlsext_session_ticket->data,
-			       s->tlsext_session_ticket->length);
-			if (!s->session->tlsext_tick)
-				return NULL;
-			ticklen = s->tlsext_session_ticket->length;
-			s->session->tlsext_ticklen = ticklen;
-			}
-		else
-			ticklen = 0;
-		if (ticklen == 0 && s->tlsext_session_ticket &&
-		    s->tlsext_session_ticket->data == NULL)
-			goto skip_ext;
+
 		/* Check for enough room 2 for extension type, 2 for len
  		 * rest for ticket
   		 */
@@ -1011,7 +996,6 @@ unsigned char *ssl_add_clienthello_tlsext(SSL *s, unsigned char *buf, unsigned c
 			ret += ticklen;
 			}
 		}
-		skip_ext:
 
 	if (SSL_USE_SIGALGS(s))
 		{
@@ -1659,15 +1643,6 @@ static int ssl_scan_clienthello_tlsext(SSL *s, CBS *cbs, int *out_alert)
 				}
 			s->s3->tmp.peer_ellipticcurvelist_length = num_curves;
 			}
-		else if (type == TLSEXT_TYPE_session_ticket)
-			{
-			if (s->tls_session_ticket_ext_cb &&
-				!s->tls_session_ticket_ext_cb(s, CBS_data(&extension), CBS_len(&extension), s->tls_session_ticket_ext_cb_arg))
-				{
-				*out_alert = SSL_AD_INTERNAL_ERROR;
-				return 0;
-				}
-			}
 		else if (type == TLSEXT_TYPE_renegotiate)
 			{
 			if (!ssl_parse_clienthello_renegotiate_ext(s, &extension, out_alert))
@@ -1948,14 +1923,6 @@ static int ssl_scan_serverhello_tlsext(SSL *s, CBS *cbs, int *out_alert)
 			}
 		else if (type == TLSEXT_TYPE_session_ticket)
 			{
-			if (s->tls_session_ticket_ext_cb &&
-				!s->tls_session_ticket_ext_cb(s, CBS_data(&extension), CBS_len(&extension),
-                                        s->tls_session_ticket_ext_cb_arg))
-				{
-				*out_alert = SSL_AD_INTERNAL_ERROR;
-				return 0;
-				}
-
 			if ((SSL_get_options(s) & SSL_OP_NO_TICKET) || CBS_len(&extension) > 0)
 				{
 				*out_alert = SSL_AD_UNSUPPORTED_EXTENSION;
@@ -2272,26 +2239,21 @@ int ssl_parse_serverhello_tlsext(SSL *s, CBS *cbs)
  *   ret: (output) on return, if a ticket was decrypted, then this is set to
  *       point to the resulting session.
  *
- * If s->tls_session_secret_cb is set then we are expecting a pre-shared key
- * ciphersuite, in which case we have no use for session tickets and one will
- * never be decrypted, nor will s->tlsext_ticket_expected be set to 1.
- *
  * Returns:
  *   -1: fatal error, either from parsing or decrypting the ticket.
  *    0: no ticket was found (or was ignored, based on settings).
  *    1: a zero length extension was found, indicating that the client supports
  *       session tickets but doesn't currently have one to offer.
- *    2: either s->tls_session_secret_cb was set, or a ticket was offered but
- *       couldn't be decrypted because of a non-fatal error.
+ *    2: a ticket was offered but couldn't be decrypted because of a non-fatal
+ *       error.
  *    3: a ticket was successfully decrypted and *ret was set.
  *
  * Side effects:
  *   Sets s->tlsext_ticket_expected to 1 if the server will have to issue
  *   a new session ticket to the client because the client indicated support
- *   (and s->tls_session_secret_cb is NULL) but the client either doesn't have
- *   a session ticket or we couldn't use the one it gave us, or if
- *   s->ctx->tlsext_ticket_key_cb asked to renew the client's ticket.
- *   Otherwise, s->tlsext_ticket_expected is set to 0.
+ *   but the client either doesn't have a session ticket or we couldn't use
+ *   the one it gave us, or if s->ctx->tlsext_ticket_key_cb asked to renew
+ *   the client's ticket.  Otherwise, s->tlsext_ticket_expected is set to 0.
  */
 int tls1_process_ticket(SSL *s, const struct ssl_early_callback_ctx *ctx,
 			SSL_SESSION **ret)
@@ -2320,15 +2282,6 @@ int tls1_process_ticket(SSL *s, const struct ssl_early_callback_ctx *ctx,
 		 * currently have one. */
 		s->tlsext_ticket_expected = 1;
 		return 1;
-		}
-	if (s->tls_session_secret_cb)
-		{
-		/* Indicate that the ticket couldn't be
-		 * decrypted rather than generating the session
-		 * from ticket now, trigger abbreviated
-		 * handshake based on external mechanism to
-		 * calculate the master secret later. */
-		return 2;
 		}
 	r = tls_decrypt_ticket(s, data, len, ctx->session_id,
 			       ctx->session_id_len, ret);

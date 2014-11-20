@@ -280,7 +280,6 @@ extern "C" {
  * 'struct ssl_st *' function parameters used to prototype callbacks
  * in SSL_CTX. */
 typedef struct ssl_st *ssl_crock_st;
-typedef struct tls_session_ticket_ext_st TLS_SESSION_TICKET_EXT;
 typedef struct ssl_method_st SSL_METHOD;
 typedef struct ssl_cipher_st SSL_CIPHER;
 typedef struct ssl_session_st SSL_SESSION;
@@ -297,9 +296,6 @@ typedef struct srtp_protection_profile_st
        } SRTP_PROTECTION_PROFILE;
 
 DECLARE_STACK_OF(SRTP_PROTECTION_PROFILE)
-
-typedef int (*tls_session_ticket_ext_cb_fn)(SSL *s, const unsigned char *data, int len, void *arg);
-typedef int (*tls_session_secret_cb_fn)(SSL *s, void *secret, int *secret_len, STACK_OF(SSL_CIPHER) *peer_ciphers, const SSL_CIPHER **cipher, void *arg);
 
 #ifndef OPENSSL_NO_SSL_INTERN
 
@@ -1329,17 +1325,6 @@ struct ssl_st
 	size_t tlsext_ellipticcurvelist_length;
 	uint16_t *tlsext_ellipticcurvelist; /* our list */
 
-	/* TLS Session Ticket extension override */
-	TLS_SESSION_TICKET_EXT *tlsext_session_ticket;
-
-	/* TLS Session Ticket extension callback */
-	tls_session_ticket_ext_cb_fn tls_session_ticket_ext_cb;
-	void *tls_session_ticket_ext_cb_arg;
-
-	/* TLS pre-shared secret session resumption */
-	tls_session_secret_cb_fn tls_session_secret_cb;
-	void *tls_session_secret_cb_arg;
-
 	SSL_CTX * initial_ctx; /* initial ctx, used to store sessions */
 
 	/* Next protocol negotiation. For the client, this is the protocol that
@@ -2212,14 +2197,6 @@ OPENSSL_EXPORT const void *SSL_get_current_expansion(SSL *s);
 OPENSSL_EXPORT const char *SSL_COMP_get_name(const void *comp);
 OPENSSL_EXPORT void *SSL_COMP_get_compression_methods(void);
 OPENSSL_EXPORT int SSL_COMP_add_compression_method(int id,void *cm);
-
-/* TLS extensions functions */
-OPENSSL_EXPORT int SSL_set_session_ticket_ext(SSL *s, void *ext_data, int ext_len);
-
-OPENSSL_EXPORT int SSL_set_session_ticket_ext_cb(SSL *s, tls_session_ticket_ext_cb_fn cb, void *arg);
-
-/* Pre-shared secret session resumption functions */
-OPENSSL_EXPORT int SSL_set_session_secret_cb(SSL *s, tls_session_secret_cb_fn tls_session_secret_cb, void *arg);
 
 OPENSSL_EXPORT void SSL_set_debug(SSL *s, int debug);
 OPENSSL_EXPORT int SSL_cache_hit(SSL *s);

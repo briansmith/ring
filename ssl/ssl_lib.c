@@ -682,11 +682,6 @@ void SSL_free(SSL *s)
         if (s->srtp_profiles)
             sk_SRTP_PROTECTION_PROFILE_free(s->srtp_profiles);
 
-	if (s->tlsext_session_ticket)
-		{
-		OPENSSL_free(s->tlsext_session_ticket);
-		}
-
 	OPENSSL_free(s);
 	}
 

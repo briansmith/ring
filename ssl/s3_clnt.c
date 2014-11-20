@@ -881,26 +881,7 @@ int ssl3_get_server_hello(SSL *s)
 	/* Copy over the server random. */
 	memcpy(s->s3->server_random, CBS_data(&server_random), SSL3_RANDOM_SIZE);
 
-	s->hit = 0;
-
-	/* check if we want to resume the session based on external pre-shared secret */
-	if (s->version >= TLS1_VERSION && s->tls_session_secret_cb)
-		{
-		const SSL_CIPHER *pref_cipher=NULL;
-		s->session->master_key_length=sizeof(s->session->master_key);
-		if (s->tls_session_secret_cb(s, s->session->master_key,
-					     &s->session->master_key_length,
-					     NULL, &pref_cipher,
-					     s->tls_session_secret_cb_arg))
-			{
-			s->session->cipher = pref_cipher ?
-				pref_cipher :
-				ssl3_get_cipher_by_value(cipher_suite);
-			s->hit = 1;
-			}
-		}
-
-	if (!s->hit && CBS_len(&session_id) != 0 &&
+	if (CBS_len(&session_id) != 0 &&
 		CBS_mem_equal(&session_id,
 			s->session->session_id, s->session->session_id_length))
 		{
@@ -914,10 +895,10 @@ int ssl3_get_server_hello(SSL *s)
 			}
 		s->hit = 1;
 		}
-
-	/* a miss or crap from the other end */
-	if (!s->hit)
+	else
 		{
+		/* The session wasn't resumed. */
+		s->hit = 0;
 		/* If we were trying for session-id reuse, make a new
 		 * SSL_SESSION so we don't stuff up other people */
 		if (s->session->session_id_length > 0)

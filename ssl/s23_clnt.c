@@ -244,7 +244,7 @@ end:
 	return(ret);
 	}
 
-/* Fill a ClientRandom or ServerRandom field of length len. Returns <= 0
+/* Fill a ClientRandom or ServerRandom field of length len. Returns 0
  * on failure, 1 on success. */
 int ssl_fill_hello_random(SSL *s, int server, unsigned char *result, int len)
 	{
@@ -260,10 +260,10 @@ int ssl_fill_hello_random(SSL *s, int server, unsigned char *result, int len)
 			unsigned long Time = (unsigned long)time(NULL);
 			unsigned char *p = result;
 			l2n(Time, p);
-			return RAND_pseudo_bytes(p, len-4);
+			return RAND_bytes(p, len-4);
 			}
 		else
-			return RAND_pseudo_bytes(result, len);
+			return RAND_bytes(result, len);
 	}
 
 static int ssl23_client_hello(SSL *s)

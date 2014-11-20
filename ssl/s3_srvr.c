@@ -1064,54 +1064,7 @@ int ssl3_get_client_hello(SSL *s)
 		goto f_err;
 		}
 
-	/* Check if we want to use external pre-shared secret for this
-	 * handshake for not reused session only. We need to generate
-	 * server_random before calling tls_session_secret_cb in order to allow
-	 * SessionTicket processing to use it in key derivation. */
-	{
-		unsigned char *pos;
-		pos=s->s3->server_random;
-		if (ssl_fill_hello_random(s, 1, pos, SSL3_RANDOM_SIZE) <= 0)
-			{
-			goto f_err;
-			}
-	}
-
-	if (!s->hit && s->version >= TLS1_VERSION && s->tls_session_secret_cb)
-		{
-		const SSL_CIPHER *pref_cipher=NULL;
-
-		s->session->master_key_length=sizeof(s->session->master_key);
-		if(s->tls_session_secret_cb(s, s->session->master_key, &s->session->master_key_length,
-			ciphers, &pref_cipher, s->tls_session_secret_cb_arg))
-			{
-			s->hit=1;
-			s->session->verify_result=X509_V_OK;
-
-			/* check if some cipher was preferred by call back */
-			pref_cipher=pref_cipher ? pref_cipher : ssl3_choose_cipher(s, ciphers, ssl_get_cipher_preferences(s));
-			if (pref_cipher == NULL)
-				{
-				al=SSL_AD_HANDSHAKE_FAILURE;
-				OPENSSL_PUT_ERROR(SSL, ssl3_get_client_hello, SSL_R_NO_SHARED_CIPHER);
-				goto f_err;
-				}
-
-			s->session->cipher=pref_cipher;
-
-			if (s->cipher_list)
-				ssl_cipher_preference_list_free(s->cipher_list);
-
-			if (s->cipher_list_by_id)
-				sk_SSL_CIPHER_free(s->cipher_list_by_id);
-
-			s->cipher_list = ssl_cipher_preference_list_from_ciphers(ciphers);
-			s->cipher_list_by_id = sk_SSL_CIPHER_dup(ciphers);
-			}
-		}
-
 	/* Given ciphers and SSL_get_ciphers, we must pick a cipher */
-
 	if (!s->hit)
 		{
 		if (ciphers == NULL)
@@ -1213,6 +1166,11 @@ int ssl3_send_server_hello(SSL *s)
 		*(p++)=s->version&0xff;
 
 		/* Random stuff */
+		if (!ssl_fill_hello_random(s, 1, s->s3->server_random, SSL3_RANDOM_SIZE))
+			{
+			OPENSSL_PUT_ERROR(SSL, ssl3_send_server_hello, ERR_R_INTERNAL_ERROR);
+			return -1;
+			}
 		memcpy(p,s->s3->server_random,SSL3_RANDOM_SIZE);
 		p+=SSL3_RANDOM_SIZE;
 
