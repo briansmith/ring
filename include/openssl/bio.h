@@ -588,18 +588,15 @@ OPENSSL_EXPORT int BIO_new_bio_pair(BIO **out1, size_t writebuf1, BIO **out2,
 
 /* BIO_new_bio_pair_external_buf is the same as |BIO_new_bio_pair| with the
  * difference that the caller keeps ownership of the write buffers
- * |ext_writebuf1| and |ext_writebuf2|. This is useful when using zero copy API
- * for read and write operations, in cases where the buffers need to outlive the
- * BIO pairs. It returns one on success and zero on error. */
+ * |ext_writebuf1_len| and |ext_writebuf2_len|. This is useful when using zero
+ * copy API for read and write operations, in cases where the buffers need to
+ * outlive the BIO pairs. It returns one on success and zero on error. */
 OPENSSL_EXPORT int BIO_new_bio_pair_external_buf(BIO** bio1_p,
-                                                 size_t writebuf1,
+                                                 size_t writebuf1_len,
                                                  uint8_t* ext_writebuf1,
                                                  BIO** bio2_p,
-                                                 size_t writebuf2,
+                                                 size_t writebuf2_len,
                                                  uint8_t* ext_writebuf2);
-
-/* BIO_s_bio returns the method for a BIO pair. */
-OPENSSL_EXPORT const BIO_METHOD *BIO_s_bio(void);
 
 /* BIO_ctrl_get_read_request returns the number of bytes that the other side of
  * |bio| tried (unsuccessfully) to read. */
