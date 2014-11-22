@@ -650,7 +650,7 @@ extern SSL3_ENC_METHOD DTLSv1_enc_data;
 extern SSL3_ENC_METHOD DTLSv1_2_enc_data;
 
 #define IMPLEMENT_tls_meth_func(version, func_name, s_accept, s_connect, \
-				s_get_meth, enc_data) \
+				enc_data) \
 const SSL_METHOD *func_name(void)  \
 	{ \
 	static const SSL_METHOD func_name##_data= { \
@@ -675,7 +675,6 @@ const SSL_METHOD *func_name(void)  \
 		ssl3_pending, \
 		ssl3_num_ciphers, \
 		ssl3_get_cipher, \
-		s_get_meth, \
 		&enc_data, \
 		ssl_undefined_void_function, \
 		ssl3_callback_ctrl, \
@@ -684,7 +683,7 @@ const SSL_METHOD *func_name(void)  \
 	return &func_name##_data; \
 	}
 
-#define IMPLEMENT_ssl23_meth_func(func_name, s_accept, s_connect, s_get_meth) \
+#define IMPLEMENT_ssl23_meth_func(func_name, s_accept, s_connect) \
 const SSL_METHOD *func_name(void)  \
 	{ \
 	static const SSL_METHOD func_name##_data= { \
@@ -709,7 +708,6 @@ const SSL_METHOD *func_name(void)  \
 	ssl_undefined_const_function, \
 	ssl3_num_ciphers, \
 	ssl3_get_cipher, \
-	s_get_meth, \
 	&TLSv1_2_enc_data, \
 	ssl_undefined_void_function, \
 	ssl3_callback_ctrl, \
@@ -719,7 +717,7 @@ const SSL_METHOD *func_name(void)  \
 	}
 
 #define IMPLEMENT_dtls1_meth_func(version, func_name, s_accept, s_connect, \
-					s_get_meth, enc_data) \
+					enc_data) \
 const SSL_METHOD *func_name(void)  \
 	{ \
 	static const SSL_METHOD func_name##_data= { \
@@ -744,7 +742,6 @@ const SSL_METHOD *func_name(void)  \
 		ssl3_pending, \
 		ssl3_num_ciphers, \
 		dtls1_get_cipher, \
-		s_get_meth, \
 		&enc_data, \
 		ssl_undefined_void_function, \
 		ssl3_callback_ctrl, \

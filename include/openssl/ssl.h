@@ -348,7 +348,6 @@ struct ssl_method_st
 	int (*ssl_pending)(const SSL *s);
 	int (*num_ciphers)(void);
 	const SSL_CIPHER *(*get_cipher)(unsigned ncipher);
-	const struct ssl_method_st *(*get_ssl_method)(int version);
 	struct ssl3_enc_method *ssl3_enc; /* Extra SSLv3/TLS stuff */
 	int (*ssl_version)(void);
 	long (*ssl_callback_ctrl)(SSL *s, int cb_id, void (*fp)(void));
@@ -2074,7 +2073,6 @@ OPENSSL_EXPORT int SSL_shutdown(SSL *s);
 
 OPENSSL_EXPORT const SSL_METHOD *SSL_CTX_get_ssl_method(SSL_CTX *ctx);
 OPENSSL_EXPORT const SSL_METHOD *SSL_get_ssl_method(SSL *s);
-OPENSSL_EXPORT int SSL_set_ssl_method(SSL *s, const SSL_METHOD *method);
 OPENSSL_EXPORT const char *SSL_alert_type_string_long(int value);
 OPENSSL_EXPORT const char *SSL_alert_type_string(int value);
 OPENSSL_EXPORT const char *SSL_alert_desc_string_long(int value);

@@ -116,24 +116,12 @@
 
 #include "ssl_locl.h"
 
-static const SSL_METHOD *ssl23_get_client_method(int ver);
 static int ssl23_client_hello(SSL *s);
 static int ssl23_get_server_hello(SSL *s);
-static const SSL_METHOD *ssl23_get_client_method(int ver)
-	{
-	/* When SSL_set_session is called, do NOT switch to the version-specific
-	 * method table. The server may still negotiate a different version when
-	 * rejecting the session.
-	 *
-	 * TODO(davidben): Clean this up. This duplicates logic from the
-	 * version-specific tables. https://crbug.com/403378 */
-	return SSLv23_client_method();
-	}
 
 IMPLEMENT_ssl23_meth_func(SSLv23_client_method,
 			ssl_undefined_function,
-			ssl23_connect,
-			ssl23_get_client_method)
+			ssl23_connect)
 
 int ssl23_connect(SSL *s)
 	{
@@ -299,16 +287,14 @@ static int ssl23_client_hello(SSL *s)
 	buf=(unsigned char *)s->init_buf->data;
 	if (s->state == SSL23_ST_CW_CLNT_HELLO_A)
 		{
-		/* Check if the session is resumable. If not, drop it. */
-		if (s->session != NULL)
-			{
-			if (s->session->ssl_version > version ||
+		/* If the configured session was created at a version
+		 * higher than our maximum version, drop it. */
+		if (s->session &&
+			(s->session->ssl_version > version ||
 				s->session->session_id_length == 0 ||
-				s->session->not_resumable)
-				{
-				SSL_SESSION_free(s->session);
-				s->session = NULL;
-				}
+				s->session->not_resumable))
+			{
+			SSL_set_session(s, NULL);
 			}
 
 		p=s->s3->client_random;

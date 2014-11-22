@@ -118,7 +118,6 @@
 
 #include "ssl_locl.h"
 
-static const SSL_METHOD *ssl23_get_server_method(int ver);
 static int ssl23_get_client_hello(SSL *s);
 static int ssl23_get_v2_client_hello(SSL *s);
 
@@ -138,8 +137,7 @@ static const SSL_METHOD *ssl23_get_server_method(int ver)
 
 IMPLEMENT_ssl23_meth_func(SSLv23_server_method,
 			ssl23_accept,
-			ssl_undefined_function,
-			ssl23_get_server_method)
+			ssl_undefined_function)
 
 int ssl23_accept(SSL *s)
 	{

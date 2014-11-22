@@ -172,45 +172,24 @@
 #include "../crypto/internal.h"
 #include "../crypto/dh/internal.h"
 
-static const SSL_METHOD *ssl3_get_server_method(int ver)
-	{
-	switch (ver)
-		{
-	case TLS1_2_VERSION:
-		return TLSv1_2_server_method();
-	case TLS1_1_VERSION:
-		return TLSv1_1_server_method();
-	case TLS1_VERSION:
-		return TLSv1_server_method();
-	case SSL3_VERSION:
-		return SSLv3_server_method();
-	default:
-		return NULL;
-		}
-	}
-
 IMPLEMENT_tls_meth_func(TLS1_2_VERSION, TLSv1_2_server_method,
 			ssl3_accept,
 			ssl_undefined_function,
-			ssl3_get_server_method,
 			TLSv1_2_enc_data)
 
 IMPLEMENT_tls_meth_func(TLS1_1_VERSION, TLSv1_1_server_method,
 			ssl3_accept,
 			ssl_undefined_function,
-			ssl3_get_server_method,
 			TLSv1_1_enc_data)
 
 IMPLEMENT_tls_meth_func(TLS1_VERSION, TLSv1_server_method,
 			ssl3_accept,
 			ssl_undefined_function,
-			ssl3_get_server_method,
 			TLSv1_enc_data)
 
 IMPLEMENT_tls_meth_func(SSL3_VERSION, SSLv3_server_method,
 			ssl3_accept,
 			ssl_undefined_function,
-			ssl3_get_server_method,
 			SSLv3_enc_data)
 
 int ssl3_accept(SSL *s)
