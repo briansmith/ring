@@ -120,6 +120,9 @@ func (hs *serverHandshakeState) readClientHello() (isResume bool, err error) {
 		c.sendAlert(alertUnexpectedMessage)
 		return false, unexpectedMessageError(hs.clientHello, msg)
 	}
+	if config.Bugs.RequireFastradioPadding && len(hs.clientHello.raw) < 1000 {
+		return false, errors.New("tls: ClientHello record size should be larger than 1000 bytes when padding enabled.")
+	}
 
 	if c.isDTLS && !config.Bugs.SkipHelloVerifyRequest {
 		// Per RFC 6347, the version field in HelloVerifyRequest SHOULD

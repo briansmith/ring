@@ -65,6 +65,7 @@ const BoolFlag kBoolFlags[] = {
   { "-enable-ocsp-stapling", &TestConfig::enable_ocsp_stapling },
   { "-enable-signed-cert-timestamps",
     &TestConfig::enable_signed_cert_timestamps },
+  { "-fastradio-padding", &TestConfig::fastradio_padding },
 };
 
 const size_t kNumBoolFlags = sizeof(kBoolFlags) / sizeof(kBoolFlags[0]);
@@ -124,7 +125,8 @@ TestConfig::TestConfig()
       renegotiate(false),
       allow_unsafe_legacy_renegotiation(false),
       enable_ocsp_stapling(false),
-      enable_signed_cert_timestamps(false) {
+      enable_signed_cert_timestamps(false),
+      fastradio_padding(false) {
 }
 
 bool ParseConfig(int argc, char **argv, TestConfig *out_config) {

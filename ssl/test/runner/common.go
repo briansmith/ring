@@ -582,6 +582,10 @@ type ProtocolBugs struct {
 	// to require that all ClientHellos match in offered version
 	// across a renego.
 	RequireSameRenegoClientVersion bool
+
+	// RequireFastradioPadding, if true, requires that ClientHello messages
+	// be at least 1000 bytes long.
+	RequireFastradioPadding bool
 }
 
 func (c *Config) serverInit() {

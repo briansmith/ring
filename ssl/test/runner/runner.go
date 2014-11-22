@@ -2156,6 +2156,29 @@ func addDTLSReplayTests() {
 	})
 }
 
+func addFastRadioPaddingTests() {
+	testCases = append(testCases, testCase {
+		protocol:	tls,
+		name:		"FastRadio-Padding",
+		config: Config{
+			Bugs: ProtocolBugs{
+				RequireFastradioPadding: true,
+			},
+		},
+		flags:		[]string{"-fastradio-padding"},
+	})
+	testCases = append(testCases, testCase {
+		protocol:	dtls,
+		name:		"FastRadio-Padding",
+		config: Config{
+			Bugs: ProtocolBugs{
+				RequireFastradioPadding: true,
+			},
+		},
+		flags:		[]string{"-fastradio-padding"},
+	})
+}
+
 var testHashes = []struct {
 	name string
 	id   uint8
@@ -2337,6 +2360,7 @@ func main() {
 	addRenegotiationTests()
 	addDTLSReplayTests()
 	addSigningHashTests()
+	addFastRadioPaddingTests()
 	for _, async := range []bool{false, true} {
 		for _, splitHandshake := range []bool{false, true} {
 			for _, protocol := range []protocol{tls, dtls} {

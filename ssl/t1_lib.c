@@ -1144,17 +1144,33 @@ unsigned char *ssl_add_clienthello_tlsext(SSL *s, unsigned char *buf, unsigned c
 		}
 
 #ifdef TLSEXT_TYPE_padding
-	/* Add padding to workaround bugs in F5 terminators.
-	 * See https://tools.ietf.org/html/draft-agl-tls-padding-03
-	 *
-	 * NB: because this code works out the length of all existing
-	 * extensions it MUST always appear last. */
 	if (header_len > 0)
 		{
+		size_t clienthello_minsize = 0;
 		header_len += ret - orig;
 		if (header_len > 0xff && header_len < 0x200)
 			{
-			size_t padding_len = 0x200 - header_len;
+			/* Add padding to workaround bugs in F5 terminators.
+			 * See https://tools.ietf.org/html/draft-agl-tls-padding-03
+			 *
+			 * NB: because this code works out the length of all existing
+			 * extensions it MUST always appear last. */
+			clienthello_minsize = 0x200;
+			}
+		if (s->fastradio_padding)
+			{
+			/* Pad the ClientHello record to 1024 bytes to fast forward
+			* the radio into DCH (high data rate) state in 3G networks.
+			* Note that when fastradio_padding is enabled, even if the
+			* header_len is less than 255 bytes, the padding will be
+			* applied regardless. This is slightly different from the TLS
+			* padding extension suggested in
+			* https://tools.ietf.org/html/draft-agl-tls-padding-03 */
+			clienthello_minsize = 0x400;
+			}
+		if (header_len < clienthello_minsize)
+			{
+			size_t padding_len = clienthello_minsize - header_len;
 			/* Extensions take at least four bytes to encode. Always
 			 * include least one byte of data if including the
 			 * extension. WebSphere Application Server 7.0 is

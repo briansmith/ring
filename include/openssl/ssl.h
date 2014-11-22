@@ -1110,6 +1110,12 @@ OPENSSL_EXPORT void SSL_CTX_set_alpn_select_cb(SSL_CTX* ctx,
 				void *arg);
 OPENSSL_EXPORT void SSL_get0_alpn_selected(const SSL *ssl, const unsigned char **data,
 			    unsigned *len); 
+
+/* SSL_enable_fastradio_padding controls whether fastradio padding is enabled
+ * on |ssl|. If it is, ClientHello messages are padded to 1024 bytes. This
+ * causes 3G radios to switch to DCH mode (high data rate). */
+OPENSSL_EXPORT void SSL_enable_fastradio_padding(SSL *ssl, char on_off);
+
 /* the maximum length of the buffer given to callbacks containing the
  * resulting identity/psk */
 #define PSK_MAX_IDENTITY_LEN 128
@@ -1358,6 +1364,11 @@ struct ssl_st
 	/* fallback_scsv is non-zero iff we are sending the TLS_FALLBACK_SCSV
 	 * cipher suite value. Only applies to a client. */
 	char fallback_scsv;
+
+	/* fastradio_padding, if true, causes ClientHellos to be padded to 1024
+	 * bytes. This ensures that the cellular radio is fast forwarded to DCH
+	 * (high data rate) state in 3G networks. */
+	 char fastradio_padding;
 	};
 
 #endif

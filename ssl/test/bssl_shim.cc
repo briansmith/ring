@@ -429,6 +429,7 @@ static int do_exchange(SSL_SESSION **out_session,
     BIO_print_errors_fp(stdout);
     return 1;
   }
+  SSL_enable_fastradio_padding(ssl, config->fastradio_padding);
 
   BIO *bio = BIO_new_fd(fd, 1 /* take ownership */);
   if (bio == NULL) {
