@@ -555,12 +555,6 @@ static int ssl23_get_server_hello(SSL *s)
 		goto err;
 		}
 	s->init_num=0;
-
-	/* If there was no session to resume, now that the final version is
-	 * determined, insert a fresh one. */
-	if (s->session == NULL && !ssl_get_new_session(s,0))
-		goto err;
-
 	return(SSL_connect(s));
 err:
 	return(-1);

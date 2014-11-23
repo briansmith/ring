@@ -148,6 +148,7 @@
  * OTHERWISE.
  */
 
+#include <assert.h>
 #include <stdio.h>
 
 #include <openssl/buf.h>
@@ -627,15 +628,6 @@ int ssl3_send_client_hello(SSL *s)
 	buf=(unsigned char *)s->init_buf->data;
 	if (s->state == SSL3_ST_CW_CLNT_HELLO_A)
 		{
-		SSL_SESSION *sess = s->session;
-		if (sess == NULL ||
-			sess->ssl_version != s->version ||
-			!sess->session_id_length ||
-			sess->not_resumable)
-			{
-			if (!ssl_get_new_session(s,0))
-				goto err;
-			}
 		if (s->method->version == DTLS_ANY_VERSION)
 			{
 			/* Determine which DTLS version to use */
@@ -666,6 +658,18 @@ int ssl3_send_client_hello(SSL *s)
 				}
 			s->client_version = s->version;
 			}
+
+		/* If the configured session was created at a version
+		 * higher than our maximum version, drop it. */
+		if (s->session &&
+			(s->session->session_id_length == 0 ||
+				s->session->not_resumable ||
+				(!SSL_IS_DTLS(s) && s->session->ssl_version > s->version) ||
+				(SSL_IS_DTLS(s) && s->session->ssl_version < s->version)))
+			{
+			SSL_set_session(s, NULL);
+			}
+
 		/* else use the pre-loaded session */
 
 		p=s->s3->client_random;
@@ -727,7 +731,7 @@ int ssl3_send_client_hello(SSL *s)
 		p+=SSL3_RANDOM_SIZE;
 
 		/* Session ID */
-		if (s->new_session)
+		if (s->new_session || s->session == NULL)
 			i=0;
 		else
 			i=s->session->session_id_length;
@@ -868,7 +872,8 @@ int ssl3_get_server_hello(SSL *s)
 	/* Copy over the server random. */
 	memcpy(s->s3->server_random, CBS_data(&server_random), SSL3_RANDOM_SIZE);
 
-	if (CBS_len(&session_id) != 0 &&
+	assert(s->session == NULL || s->session->session_id_length > 0);
+	if (s->session != NULL &&
 		CBS_mem_equal(&session_id,
 			s->session->session_id, s->session->session_id_length))
 		{
@@ -884,16 +889,12 @@ int ssl3_get_server_hello(SSL *s)
 		}
 	else
 		{
-		/* The session wasn't resumed. */
+		/* The session wasn't resumed. Create a fresh SSL_SESSION to
+		 * fill out. */
 		s->hit = 0;
-		/* If we were trying for session-id reuse, make a new
-		 * SSL_SESSION so we don't stuff up other people */
-		if (s->session->session_id_length > 0)
+		if (!ssl_get_new_session(s, 0))
 			{
-			if (!ssl_get_new_session(s,0))
-				{
-				goto f_err;
-				}
+			goto f_err;
 			}
 		/* Note: session_id could be empty. */
 		s->session->session_id_length = CBS_len(&session_id);
