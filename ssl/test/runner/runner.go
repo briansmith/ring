@@ -540,6 +540,15 @@ var testCases = []testCase{
 }
 
 func doExchange(test *testCase, config *Config, conn net.Conn, messageLen int, isResume bool) error {
+	var connDebug *recordingConn
+	if *flagDebug {
+		connDebug = &recordingConn{Conn: conn}
+		conn = connDebug
+		defer func() {
+			connDebug.WriteTo(os.Stdout)
+		}()
+	}
+
 	if test.protocol == dtls {
 		conn = newPacketAdaptor(conn)
 		if test.replayWrites {
@@ -805,20 +814,10 @@ func runTest(test *testCase, buildDir string, mallocNumToFail int64) error {
 		}
 	}
 
-	var connDebug *recordingConn
-	if *flagDebug {
-		connDebug = &recordingConn{Conn: conn}
-		conn = connDebug
-	}
-
 	err := doExchange(test, &config, conn, test.messageLen,
 		false /* not a resumption */)
-
-	if *flagDebug {
-		connDebug.WriteTo(os.Stdout)
-	}
-
 	conn.Close()
+
 	if err == nil && test.resumeSession {
 		var resumeConfig Config
 		if test.resumeConfig != nil {
