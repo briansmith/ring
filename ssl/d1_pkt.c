@@ -587,7 +587,15 @@ again:
 			{
 			if (version != s->version)
 				{
-				/* unexpected version, silently discard */
+				/* The record's version doesn't match, so
+				 * silently drop it.
+				 *
+				 * TODO(davidben): This doesn't work. The DTLS
+				 * record layer is not packet-based, so the
+				 * remainder of the packet isn't dropped and we
+				 * get a framing error. It's also unclear what
+				 * it means to silently drop a record in a
+				 * packet containing two records. */
 				rr->length = 0;
 				s->packet_length = 0;
 				goto again;

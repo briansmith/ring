@@ -317,6 +317,10 @@ const SSL_CIPHER *dtls1_get_cipher(unsigned int u)
 		{
 		if (ciph->algorithm_enc == SSL_RC4)
 			return NULL;
+		/* TODO(davidben): EVP_AEAD does not work in DTLS yet. */
+		if (ciph->algorithm2 & SSL_CIPHER_ALGORITHM2_AEAD ||
+			ciph->algorithm2 & SSL_CIPHER_ALGORITHM2_STATEFUL_AEAD)
+			return NULL;
 		}
 
 	return ciph;

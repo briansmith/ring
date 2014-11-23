@@ -229,14 +229,10 @@ static SSL_CTX *setup_ctx(const TestConfig *config) {
 
   const SSL_METHOD *method;
   if (config->is_dtls) {
-    // TODO(davidben): Get DTLS 1.2 working and test the version negotiation
-    // codepath. This doesn't currently work because
-    // - Session resumption is broken: https://crbug.com/403378
-    // - DTLS hasn't been updated for EVP_AEAD.
     if (config->is_server) {
-      method = DTLSv1_server_method();
+      method = DTLS_server_method();
     } else {
-      method = DTLSv1_client_method();
+      method = DTLS_client_method();
     }
   } else {
     if (config->is_server) {

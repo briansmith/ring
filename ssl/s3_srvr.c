@@ -851,50 +851,6 @@ int ssl3_get_client_hello(SSL *s)
 	/* Load the client random. */
 	memcpy(s->s3->client_random, CBS_data(&client_random), SSL3_RANDOM_SIZE);
 
-	s->hit=0;
-	/* Versions before 0.9.7 always allow clients to resume sessions in renegotiation.
-	 * 0.9.7 and later allow this by default, but optionally ignore resumption requests
-	 * with flag SSL_OP_NO_SESSION_RESUMPTION_ON_RENEGOTIATION (it's a new flag rather
-	 * than a change to default behavior so that applications relying on this for security
-	 * won't even compile against older library versions).
-	 *
-	 * 1.0.1 and later also have a function SSL_renegotiate_abbreviated() to request
-	 * renegotiation but not a new session (s->new_session remains unset): for servers,
-	 * this essentially just means that the SSL_OP_NO_SESSION_RESUMPTION_ON_RENEGOTIATION
-	 * setting will be ignored.
-	 */
-	if ((s->new_session && (s->options & SSL_OP_NO_SESSION_RESUMPTION_ON_RENEGOTIATION)))
-		{
-		if (!ssl_get_new_session(s,1))
-			goto err;
-		}
-	else
-		{
-		i = ssl_get_prev_session(s, &early_ctx);
-		if (i == PENDING_SESSION)
-			{
-			ret = PENDING_SESSION;
-			goto err;
-			}
-		else if (i == -1)
-			{
-			goto err;
-			}
-
-		/* Only resume if the session's version matches the negotiated
-		 * version: most clients do not accept a mismatch. */
-		if (i == 1 && s->version == s->session->ssl_version)
-			{
-			s->hit = 1;
-			}
-		else
-			{
-			/* No session was found or it was unacceptable. */
-			if (!ssl_get_new_session(s, 1))
-				goto err;
-			}
-		}
-
 	if (SSL_IS_DTLS(s))
 		{
 		CBS cookie;
@@ -956,7 +912,50 @@ int ssl3_get_client_hello(SSL *s)
 				al = SSL_AD_PROTOCOL_VERSION;
 				goto f_err;
 				}
-			s->session->ssl_version = s->version;
+			}
+		}
+
+	s->hit=0;
+	/* Versions before 0.9.7 always allow clients to resume sessions in renegotiation.
+	 * 0.9.7 and later allow this by default, but optionally ignore resumption requests
+	 * with flag SSL_OP_NO_SESSION_RESUMPTION_ON_RENEGOTIATION (it's a new flag rather
+	 * than a change to default behavior so that applications relying on this for security
+	 * won't even compile against older library versions).
+	 *
+	 * 1.0.1 and later also have a function SSL_renegotiate_abbreviated() to request
+	 * renegotiation but not a new session (s->new_session remains unset): for servers,
+	 * this essentially just means that the SSL_OP_NO_SESSION_RESUMPTION_ON_RENEGOTIATION
+	 * setting will be ignored.
+	 */
+	if ((s->new_session && (s->options & SSL_OP_NO_SESSION_RESUMPTION_ON_RENEGOTIATION)))
+		{
+		if (!ssl_get_new_session(s,1))
+			goto err;
+		}
+	else
+		{
+		i = ssl_get_prev_session(s, &early_ctx);
+		if (i == PENDING_SESSION)
+			{
+			ret = PENDING_SESSION;
+			goto err;
+			}
+		else if (i == -1)
+			{
+			goto err;
+			}
+
+		/* Only resume if the session's version matches the negotiated
+		 * version: most clients do not accept a mismatch. */
+		if (i == 1 && s->version == s->session->ssl_version)
+			{
+			s->hit = 1;
+			}
+		else
+			{
+			/* No session was found or it was unacceptable. */
+			if (!ssl_get_new_session(s, 1))
+				goto err;
 			}
 		}
 

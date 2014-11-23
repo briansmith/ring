@@ -889,11 +889,12 @@ var tlsVersions = []struct {
 	name    string
 	version uint16
 	flag    string
+	hasDTLS bool
 }{
-	{"SSL3", VersionSSL30, "-no-ssl3"},
-	{"TLS1", VersionTLS10, "-no-tls1"},
-	{"TLS11", VersionTLS11, "-no-tls11"},
-	{"TLS12", VersionTLS12, "-no-tls12"},
+	{"SSL3", VersionSSL30, "-no-ssl3", false},
+	{"TLS1", VersionTLS10, "-no-tls1", true},
+	{"TLS11", VersionTLS11, "-no-tls11", false},
+	{"TLS12", VersionTLS12, "-no-tls12", true},
 }
 
 var testCipherSuites = []struct {
@@ -935,10 +936,21 @@ var testCipherSuites = []struct {
 	{"RC4-SHA", TLS_RSA_WITH_RC4_128_SHA},
 }
 
+func hasComponent(suiteName, component string) bool {
+	return strings.Contains("-"+suiteName+"-", "-"+component+"-")
+}
+
 func isTLS12Only(suiteName string) bool {
-	return strings.HasSuffix(suiteName, "-GCM") ||
-		strings.HasSuffix(suiteName, "-SHA256") ||
-		strings.HasSuffix(suiteName, "-SHA384")
+	return hasComponent(suiteName, "GCM") ||
+		hasComponent(suiteName, "SHA256") ||
+		hasComponent(suiteName, "SHA384")
+}
+
+func isDTLSCipher(suiteName string) bool {
+	// TODO(davidben): AES-GCM exists in DTLS 1.2 but is currently
+	// broken because DTLS is not EVP_AEAD-aware.
+	return !hasComponent(suiteName, "RC4") &&
+		!hasComponent(suiteName, "GCM")
 }
 
 func addCipherSuiteTests() {
@@ -949,7 +961,7 @@ func addCipherSuiteTests() {
 		var cert Certificate
 		var certFile string
 		var keyFile string
-		if strings.Contains(suite.name, "ECDSA") {
+		if hasComponent(suite.name, "ECDSA") {
 			cert = getECDSACertificate()
 			certFile = ecdsaCertificateFile
 			keyFile = ecdsaKeyFile
@@ -960,7 +972,7 @@ func addCipherSuiteTests() {
 		}
 
 		var flags []string
-		if strings.HasPrefix(suite.name, "PSK-") || strings.Contains(suite.name, "-PSK-") {
+		if hasComponent(suite.name, "PSK") {
 			flags = append(flags,
 				"-psk", psk,
 				"-psk-identity", pskIdentity)
@@ -1003,8 +1015,7 @@ func addCipherSuiteTests() {
 				resumeSession: true,
 			})
 
-			// TODO(davidben): Fix DTLS 1.2 support and test that.
-			if ver.version == VersionTLS10 && strings.Index(suite.name, "RC4") == -1 {
+			if ver.hasDTLS && isDTLSCipher(suite.name) {
 				testCases = append(testCases, testCase{
 					testType: clientTest,
 					protocol: dtls,
@@ -1593,31 +1604,43 @@ func addVersionNegotiationTests() {
 		}
 
 		for _, runnerVers := range tlsVersions {
-			expectedVersion := shimVers.version
-			if runnerVers.version < shimVers.version {
-				expectedVersion = runnerVers.version
+			protocols := []protocol{tls}
+			if runnerVers.hasDTLS && shimVers.hasDTLS {
+				protocols = append(protocols, dtls)
 			}
-			suffix := shimVers.name + "-" + runnerVers.name
+			for _, protocol := range protocols {
+				expectedVersion := shimVers.version
+				if runnerVers.version < shimVers.version {
+					expectedVersion = runnerVers.version
+				}
 
-			testCases = append(testCases, testCase{
-				testType: clientTest,
-				name:     "VersionNegotiation-Client-" + suffix,
-				config: Config{
-					MaxVersion: runnerVers.version,
-				},
-				flags:           flags,
-				expectedVersion: expectedVersion,
-			})
+				suffix := shimVers.name + "-" + runnerVers.name
+				if protocol == dtls {
+					suffix += "-DTLS"
+				}
 
-			testCases = append(testCases, testCase{
-				testType: serverTest,
-				name:     "VersionNegotiation-Server-" + suffix,
-				config: Config{
-					MaxVersion: runnerVers.version,
-				},
-				flags:           flags,
-				expectedVersion: expectedVersion,
-			})
+				testCases = append(testCases, testCase{
+					protocol: protocol,
+					testType: clientTest,
+					name:     "VersionNegotiation-Client-" + suffix,
+					config: Config{
+						MaxVersion: runnerVers.version,
+					},
+					flags:           flags,
+					expectedVersion: expectedVersion,
+				})
+
+				testCases = append(testCases, testCase{
+					protocol: protocol,
+					testType: serverTest,
+					name:     "VersionNegotiation-Server-" + suffix,
+					config: Config{
+						MaxVersion: runnerVers.version,
+					},
+					flags:           flags,
+					expectedVersion: expectedVersion,
+				})
+			}
 		}
 	}
 }
@@ -1904,69 +1927,80 @@ func addExtensionTests() {
 }
 
 func addResumptionVersionTests() {
-	// TODO(davidben): Once DTLS 1.2 is working, test that as well.
 	for _, sessionVers := range tlsVersions {
 		for _, resumeVers := range tlsVersions {
-			suffix := "-" + sessionVers.name + "-" + resumeVers.name
-
-			testCases = append(testCases, testCase{
-				name:          "Resume-Client" + suffix,
-				resumeSession: true,
-				config: Config{
-					MaxVersion:   sessionVers.version,
-					CipherSuites: []uint16{TLS_RSA_WITH_RC4_128_SHA},
-					Bugs: ProtocolBugs{
-						AllowSessionVersionMismatch: true,
-					},
-				},
-				expectedVersion: sessionVers.version,
-				resumeConfig: &Config{
-					MaxVersion:   resumeVers.version,
-					CipherSuites: []uint16{TLS_RSA_WITH_RC4_128_SHA},
-					Bugs: ProtocolBugs{
-						AllowSessionVersionMismatch: true,
-					},
-				},
-				expectedResumeVersion: resumeVers.version,
-			})
-
-			testCases = append(testCases, testCase{
-				name:          "Resume-Client-NoResume" + suffix,
-				flags:         []string{"-expect-session-miss"},
-				resumeSession: true,
-				config: Config{
-					MaxVersion:   sessionVers.version,
-					CipherSuites: []uint16{TLS_RSA_WITH_RC4_128_SHA},
-				},
-				expectedVersion: sessionVers.version,
-				resumeConfig: &Config{
-					MaxVersion:   resumeVers.version,
-					CipherSuites: []uint16{TLS_RSA_WITH_RC4_128_SHA},
-				},
-				newSessionsOnResume:   true,
-				expectedResumeVersion: resumeVers.version,
-			})
-
-			var flags []string
-			if sessionVers.version != resumeVers.version {
-				flags = append(flags, "-expect-session-miss")
+			protocols := []protocol{tls}
+			if sessionVers.hasDTLS && resumeVers.hasDTLS {
+				protocols = append(protocols, dtls)
 			}
-			testCases = append(testCases, testCase{
-				testType:      serverTest,
-				name:          "Resume-Server" + suffix,
-				flags:         flags,
-				resumeSession: true,
-				config: Config{
-					MaxVersion:   sessionVers.version,
-					CipherSuites: []uint16{TLS_RSA_WITH_RC4_128_SHA},
-				},
-				expectedVersion: sessionVers.version,
-				resumeConfig: &Config{
-					MaxVersion:   resumeVers.version,
-					CipherSuites: []uint16{TLS_RSA_WITH_RC4_128_SHA},
-				},
-				expectedResumeVersion: resumeVers.version,
-			})
+			for _, protocol := range protocols {
+				suffix := "-" + sessionVers.name + "-" + resumeVers.name
+				if protocol == dtls {
+					suffix += "-DTLS"
+				}
+
+				testCases = append(testCases, testCase{
+					protocol:      protocol,
+					name:          "Resume-Client" + suffix,
+					resumeSession: true,
+					config: Config{
+						MaxVersion:   sessionVers.version,
+						CipherSuites: []uint16{TLS_RSA_WITH_AES_128_CBC_SHA},
+						Bugs: ProtocolBugs{
+							AllowSessionVersionMismatch: true,
+						},
+					},
+					expectedVersion: sessionVers.version,
+					resumeConfig: &Config{
+						MaxVersion:   resumeVers.version,
+						CipherSuites: []uint16{TLS_RSA_WITH_AES_128_CBC_SHA},
+						Bugs: ProtocolBugs{
+							AllowSessionVersionMismatch: true,
+						},
+					},
+					expectedResumeVersion: resumeVers.version,
+				})
+
+				testCases = append(testCases, testCase{
+					protocol:      protocol,
+					name:          "Resume-Client-NoResume" + suffix,
+					flags:         []string{"-expect-session-miss"},
+					resumeSession: true,
+					config: Config{
+						MaxVersion:   sessionVers.version,
+						CipherSuites: []uint16{TLS_RSA_WITH_AES_128_CBC_SHA},
+					},
+					expectedVersion: sessionVers.version,
+					resumeConfig: &Config{
+						MaxVersion:   resumeVers.version,
+						CipherSuites: []uint16{TLS_RSA_WITH_AES_128_CBC_SHA},
+					},
+					newSessionsOnResume:   true,
+					expectedResumeVersion: resumeVers.version,
+				})
+
+				var flags []string
+				if sessionVers.version != resumeVers.version {
+					flags = append(flags, "-expect-session-miss")
+				}
+				testCases = append(testCases, testCase{
+					protocol:      protocol,
+					testType:      serverTest,
+					name:          "Resume-Server" + suffix,
+					flags:         flags,
+					resumeSession: true,
+					config: Config{
+						MaxVersion:   sessionVers.version,
+						CipherSuites: []uint16{TLS_RSA_WITH_AES_128_CBC_SHA},
+					},
+					expectedVersion: sessionVers.version,
+					resumeConfig: &Config{
+						MaxVersion:   resumeVers.version,
+						CipherSuites: []uint16{TLS_RSA_WITH_AES_128_CBC_SHA},
+					},
+					expectedResumeVersion: resumeVers.version,
+				})
+			}
 		}
 	}
 }
