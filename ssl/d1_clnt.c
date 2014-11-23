@@ -188,9 +188,6 @@ int dtls1_connect(SSL *s)
 				goto end;
 				}
 				
-			/* s->version=SSL3_VERSION; */
-			s->type=SSL_ST_CONNECT;
-
 			if (s->init_buf == NULL)
 				{
 				if ((buf=BUF_MEM_new()) == NULL)

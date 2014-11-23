@@ -168,9 +168,6 @@ int ssl23_accept(SSL *s)
 			s->server=1;
 			if (cb != NULL) cb(s,SSL_CB_HANDSHAKE_START,1);
 
-			/* s->version=SSL3_VERSION; */
-			s->type=SSL_ST_ACCEPT;
-
 			if (s->init_buf == NULL)
 				{
 				if ((buf=BUF_MEM_new()) == NULL)

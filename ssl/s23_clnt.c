@@ -152,9 +152,6 @@ int ssl23_connect(SSL *s)
 			s->server=0;
 			if (cb != NULL) cb(s,SSL_CB_HANDSHAKE_START,1);
 
-			/* s->version=TLS1_VERSION; */
-			s->type=SSL_ST_CONNECT;
-
 			if (s->init_buf == NULL)
 				{
 				if ((buf=BUF_MEM_new()) == NULL)

@@ -1158,7 +1158,6 @@ struct ssl_st
 	{
 	/* version is the protocol version. */
 	int version;
-	int type; /* SSL_ST_CONNECT or SSL_ST_ACCEPT */
 
 	const SSL_METHOD *method; /* SSLv3 */
 

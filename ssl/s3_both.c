@@ -178,22 +178,22 @@ int ssl3_send_finished(SSL *s, int a, int b, const char *sender, int slen)
 			return 0;
 			}
 
-                /* Copy the finished so we can use it for
-                   renegotiation checks */
-                if(s->type == SSL_ST_CONNECT)
-                        {
-                         assert(i <= EVP_MAX_MD_SIZE);
-                         memcpy(s->s3->previous_client_finished, 
-                             s->s3->tmp.finish_md, i);
-                         s->s3->previous_client_finished_len=i;
-                        }
-                else
-                        {
-                        assert(i <= EVP_MAX_MD_SIZE);
-                        memcpy(s->s3->previous_server_finished, 
-                            s->s3->tmp.finish_md, i);
-                        s->s3->previous_server_finished_len=i;
-                        }
+		/* Copy the finished so we can use it for
+		 * renegotiation checks */
+		if (s->server)
+			{
+			assert(i <= EVP_MAX_MD_SIZE);
+			memcpy(s->s3->previous_server_finished,
+				s->s3->tmp.finish_md, i);
+			s->s3->previous_server_finished_len = i;
+			}
+		else
+			{
+			assert(i <= EVP_MAX_MD_SIZE);
+			memcpy(s->s3->previous_client_finished,
+				s->s3->tmp.finish_md, i);
+			s->s3->previous_client_finished_len = i;
+			}
 
 		ssl_set_handshake_header(s, SSL3_MT_FINISHED, l);
 		s->state=b;
@@ -276,22 +276,22 @@ int ssl3_get_finished(SSL *s, int a, int b)
 		goto f_err;
 		}
 
-        /* Copy the finished so we can use it for
-           renegotiation checks */
-        if(s->type == SSL_ST_ACCEPT)
-                {
-                assert(i <= EVP_MAX_MD_SIZE);
-                memcpy(s->s3->previous_client_finished, 
-                    s->s3->tmp.peer_finish_md, i);
-                s->s3->previous_client_finished_len=i;
-                }
-        else
-                {
-                assert(i <= EVP_MAX_MD_SIZE);
-                memcpy(s->s3->previous_server_finished, 
-                    s->s3->tmp.peer_finish_md, i);
-                s->s3->previous_server_finished_len=i;
-                }
+	/* Copy the finished so we can use it for renegotiation
+	 * checks */
+	if (s->server)
+		{
+		assert(i <= EVP_MAX_MD_SIZE);
+		memcpy(s->s3->previous_client_finished,
+			s->s3->tmp.peer_finish_md, i);
+		s->s3->previous_client_finished_len = i;
+		}
+	else
+		{
+		assert(i <= EVP_MAX_MD_SIZE);
+		memcpy(s->s3->previous_server_finished,
+			s->s3->tmp.peer_finish_md, i);
+		s->s3->previous_server_finished_len = i;
+		}
 
 	return(1);
 f_err:

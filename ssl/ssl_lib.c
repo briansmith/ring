@@ -210,8 +210,6 @@ int SSL_clear(SSL *s)
 		}
 #endif
 
-	s->type=0;
-
 	s->state=SSL_ST_BEFORE|((s->server)?SSL_ST_ACCEPT:SSL_ST_CONNECT);
 
 	s->version=s->method->version;

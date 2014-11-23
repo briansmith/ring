@@ -238,7 +238,6 @@ int ssl3_accept(SSL *s)
 				OPENSSL_PUT_ERROR(SSL, ssl3_accept, ERR_R_INTERNAL_ERROR);
 				return -1;
 				}
-			s->type=SSL_ST_ACCEPT;
 
 			if (s->init_buf == NULL)
 				{
