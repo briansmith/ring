@@ -1170,16 +1170,11 @@ struct ssl_st
 	 * same.  This is so data can be read and written to different
 	 * handlers */
 
-#ifndef OPENSSL_NO_BIO
 	BIO *rbio; /* used by SSL_read */
 	BIO *wbio; /* used by SSL_write */
 	BIO *bbio; /* used during session-id reuse to concatenate
 		    * messages */
-#else
-	char *rbio; /* used by SSL_read */
-	char *wbio; /* used by SSL_write */
-	char *bbio;
-#endif
+
 	/* This holds a variable that indicates what we were doing
 	 * when a 0 or -1 is returned.  This is needed for
 	 * non-blocking IO so we know what request needs re-doing when
@@ -1847,11 +1842,9 @@ OPENSSL_EXPORT int	SSL_set_fd(SSL *s, int fd);
 OPENSSL_EXPORT int	SSL_set_rfd(SSL *s, int fd);
 OPENSSL_EXPORT int	SSL_set_wfd(SSL *s, int fd);
 #endif
-#ifndef OPENSSL_NO_BIO
 OPENSSL_EXPORT void	SSL_set_bio(SSL *s, BIO *rbio,BIO *wbio);
 OPENSSL_EXPORT BIO *	SSL_get_rbio(const SSL *s);
 OPENSSL_EXPORT BIO *	SSL_get_wbio(const SSL *s);
-#endif
 OPENSSL_EXPORT int	SSL_set_cipher_list(SSL *s, const char *str);
 OPENSSL_EXPORT void	SSL_set_read_ahead(SSL *s, int yes);
 OPENSSL_EXPORT int	SSL_get_verify_mode(const SSL *s);
@@ -1902,9 +1895,7 @@ OPENSSL_EXPORT const unsigned char *SSL_SESSION_get_id(const SSL_SESSION *s, uns
 #ifndef OPENSSL_NO_FP_API
 OPENSSL_EXPORT int	SSL_SESSION_print_fp(FILE *fp,const SSL_SESSION *ses);
 #endif
-#ifndef OPENSSL_NO_BIO
 OPENSSL_EXPORT int	SSL_SESSION_print(BIO *fp,const SSL_SESSION *ses);
-#endif
 OPENSSL_EXPORT void	SSL_SESSION_free(SSL_SESSION *ses);
 OPENSSL_EXPORT int	SSL_set_session(SSL *to, SSL_SESSION *session);
 OPENSSL_EXPORT int	SSL_CTX_add_session(SSL_CTX *s, SSL_SESSION *c);

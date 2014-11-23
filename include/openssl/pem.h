@@ -339,7 +339,6 @@ OPENSSL_EXPORT int PEM_write_bio_##name(BIO *bp, type *x, const EVP_CIPHER *enc,
 
 #endif
 
-#ifndef OPENSSL_NO_BIO
 #define DECLARE_PEM_read_bio(name, type) \
 	OPENSSL_EXPORT type *PEM_read_bio_##name(BIO *bp, type **x, pem_password_cb *cb, void *u);
 
@@ -353,14 +352,6 @@ OPENSSL_EXPORT int PEM_write_bio_##name(BIO *bp, type *x, const EVP_CIPHER *enc,
 	OPENSSL_EXPORT int PEM_write_bio_##name(BIO *bp, type *x, const EVP_CIPHER *enc, \
 	     unsigned char *kstr, int klen, pem_password_cb *cb, void *u);
 
-#else
-
-#define DECLARE_PEM_read_bio(name, type) /**/
-#define DECLARE_PEM_write_bio(name, type) /**/
-#define DECLARE_PEM_write_bio_const(name, type) /**/
-#define DECLARE_PEM_write_cb_bio(name, type) /**/
-
-#endif
 
 #define DECLARE_PEM_write(name, type) \
 	DECLARE_PEM_write_bio(name, type) \
@@ -401,7 +392,6 @@ typedef int pem_password_cb(char *buf, int size, int rwflag);
 OPENSSL_EXPORT int	PEM_get_EVP_CIPHER_INFO(char *header, EVP_CIPHER_INFO *cipher);
 OPENSSL_EXPORT int	PEM_do_header (EVP_CIPHER_INFO *cipher, unsigned char *data,long *len, pem_password_cb *callback,void *u);
 
-#ifndef OPENSSL_NO_BIO
 OPENSSL_EXPORT int	PEM_read_bio(BIO *bp, char **name, char **header, unsigned char **data,long *len);
 OPENSSL_EXPORT int	PEM_write_bio(BIO *bp,const char *name, const char *hdr, const unsigned char *data, long len);
 OPENSSL_EXPORT int PEM_bytes_read_bio(unsigned char **pdata, long *plen, char **pnm, const char *name, BIO *bp, pem_password_cb *cb, void *u);
@@ -410,7 +400,6 @@ OPENSSL_EXPORT int	PEM_ASN1_write_bio(i2d_of_void *i2d,const char *name,BIO *bp,
 
 OPENSSL_EXPORT STACK_OF(X509_INFO) *	PEM_X509_INFO_read_bio(BIO *bp, STACK_OF(X509_INFO) *sk, pem_password_cb *cb, void *u);
 OPENSSL_EXPORT int	PEM_X509_INFO_write_bio(BIO *bp,X509_INFO *xi, EVP_CIPHER *enc, unsigned char *kstr, int klen, pem_password_cb *cd, void *u);
-#endif
 
 OPENSSL_EXPORT int	PEM_read(FILE *fp, char **name, char **header, unsigned char **data,long *len);
 OPENSSL_EXPORT int	PEM_write(FILE *fp, const char *name, const char *hdr, const unsigned char *data, long len);

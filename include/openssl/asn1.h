@@ -63,9 +63,7 @@
 
 #include <time.h>
 
-#ifndef OPENSSL_NO_BIO
 #include <openssl/bio.h>
-#endif
 #include <openssl/stack.h>
 
 #include <openssl/bn.h>
@@ -778,9 +776,7 @@ OPENSSL_EXPORT int		ASN1_BIT_STRING_set_bit(ASN1_BIT_STRING *a, int n, int value
 OPENSSL_EXPORT int		ASN1_BIT_STRING_get_bit(ASN1_BIT_STRING *a, int n);
 OPENSSL_EXPORT int            ASN1_BIT_STRING_check(ASN1_BIT_STRING *a, unsigned char *flags, int flags_len);
 
-#ifndef OPENSSL_NO_BIO
 OPENSSL_EXPORT int ASN1_BIT_STRING_name_print(BIO *out, ASN1_BIT_STRING *bs, BIT_STRING_BITNAME *tbl, int indent);
-#endif
 OPENSSL_EXPORT int ASN1_BIT_STRING_num_asc(char *name, BIT_STRING_BITNAME *tbl);
 OPENSSL_EXPORT int ASN1_BIT_STRING_set_asc(ASN1_BIT_STRING *bs, char *name, int value, BIT_STRING_BITNAME *tbl);
 
@@ -852,7 +848,6 @@ OPENSSL_EXPORT STACK_OF(OPENSSL_BLOCK) *d2i_ASN1_SET(STACK_OF(OPENSSL_BLOCK) **a
 			      void (*free_func)(OPENSSL_BLOCK), int ex_tag,
 			      int ex_class);
 
-#ifndef OPENSSL_NO_BIO
 OPENSSL_EXPORT int i2a_ASN1_INTEGER(BIO *bp, ASN1_INTEGER *a);
 OPENSSL_EXPORT int a2i_ASN1_INTEGER(BIO *bp,ASN1_INTEGER *bs,char *buf,int size);
 OPENSSL_EXPORT int i2a_ASN1_ENUMERATED(BIO *bp, ASN1_ENUMERATED *a);
@@ -860,7 +855,6 @@ OPENSSL_EXPORT int a2i_ASN1_ENUMERATED(BIO *bp,ASN1_ENUMERATED *bs,char *buf,int
 OPENSSL_EXPORT int i2a_ASN1_OBJECT(BIO *bp,ASN1_OBJECT *a);
 OPENSSL_EXPORT int a2i_ASN1_STRING(BIO *bp,ASN1_STRING *bs,char *buf,int size);
 OPENSSL_EXPORT int i2a_ASN1_STRING(BIO *bp, ASN1_STRING *a, int type);
-#endif
 OPENSSL_EXPORT int i2t_ASN1_OBJECT(char *buf,int buf_len,ASN1_OBJECT *a);
 
 OPENSSL_EXPORT int a2d_ASN1_OBJECT(unsigned char *out,int olen, const char *buf, int num);
@@ -947,7 +941,6 @@ OPENSSL_EXPORT int ASN1_STRING_print_ex_fp(FILE *fp, ASN1_STRING *str, unsigned 
 
 OPENSSL_EXPORT int ASN1_STRING_to_UTF8(unsigned char **out, ASN1_STRING *in);
 
-#ifndef OPENSSL_NO_BIO
 OPENSSL_EXPORT void *ASN1_d2i_bio(void *(*xnew)(void), d2i_of_void *d2i, BIO *in, void **x);
 
 #define ASN1_d2i_bio_of(type,xnew,d2i,in,x) \
@@ -978,7 +971,6 @@ OPENSSL_EXPORT int ASN1_STRING_print_ex(BIO *out, ASN1_STRING *str, unsigned lon
 OPENSSL_EXPORT int ASN1_bn_print(BIO *bp, const char *number, const BIGNUM *num, unsigned char *buf, int off);
 OPENSSL_EXPORT int ASN1_parse(BIO *bp,const unsigned char *pp,long len,int indent);
 OPENSSL_EXPORT int ASN1_parse_dump(BIO *bp,const unsigned char *pp,long len,int indent,int dump);
-#endif
 OPENSSL_EXPORT const char *ASN1_tag2str(int tag);
 
 /* Used to load and write netscape format cert */

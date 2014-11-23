@@ -676,7 +676,6 @@ OPENSSL_EXPORT int i2d_PUBKEY_fp(FILE *fp, EVP_PKEY *pkey);
 OPENSSL_EXPORT EVP_PKEY *d2i_PUBKEY_fp(FILE *fp, EVP_PKEY **a);
 #endif
 
-#ifndef OPENSSL_NO_BIO
 OPENSSL_EXPORT X509 *d2i_X509_bio(BIO *bp,X509 **x509);
 OPENSSL_EXPORT int i2d_X509_bio(BIO *bp,X509 *x509);
 OPENSSL_EXPORT X509_CRL *d2i_X509_CRL_bio(BIO *bp,X509_CRL **crl);
@@ -709,7 +708,6 @@ OPENSSL_EXPORT int i2d_PrivateKey_bio(BIO *bp, EVP_PKEY *pkey);
 OPENSSL_EXPORT EVP_PKEY *d2i_PrivateKey_bio(BIO *bp, EVP_PKEY **a);
 OPENSSL_EXPORT int i2d_PUBKEY_bio(BIO *bp, EVP_PKEY *pkey);
 OPENSSL_EXPORT EVP_PKEY *d2i_PUBKEY_bio(BIO *bp, EVP_PKEY **a);
-#endif
 
 OPENSSL_EXPORT X509 *X509_dup(X509 *x509);
 OPENSSL_EXPORT X509_ATTRIBUTE *X509_ATTRIBUTE_dup(X509_ATTRIBUTE *xa);
@@ -948,7 +946,6 @@ OPENSSL_EXPORT int		X509_REQ_print_fp(FILE *bp,X509_REQ *req);
 OPENSSL_EXPORT int X509_NAME_print_ex_fp(FILE *fp, X509_NAME *nm, int indent, unsigned long flags);
 #endif
 
-#ifndef OPENSSL_NO_BIO
 OPENSSL_EXPORT int		X509_NAME_print(BIO *bp, X509_NAME *name, int obase);
 OPENSSL_EXPORT int X509_NAME_print_ex(BIO *out, X509_NAME *nm, int indent, unsigned long flags);
 OPENSSL_EXPORT int		X509_print_ex(BIO *bp,X509 *x, unsigned long nmflag, unsigned long cflag);
@@ -958,7 +955,6 @@ OPENSSL_EXPORT int		X509_CERT_AUX_print(BIO *bp,X509_CERT_AUX *x, int indent);
 OPENSSL_EXPORT int		X509_CRL_print(BIO *bp,X509_CRL *x);
 OPENSSL_EXPORT int		X509_REQ_print_ex(BIO *bp, X509_REQ *x, unsigned long nmflag, unsigned long cflag);
 OPENSSL_EXPORT int		X509_REQ_print(BIO *bp,X509_REQ *req);
-#endif
 
 OPENSSL_EXPORT int 		X509_NAME_entry_count(X509_NAME *name);
 OPENSSL_EXPORT int 		X509_NAME_get_text_by_NID(X509_NAME *name, int nid,
