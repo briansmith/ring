@@ -1814,15 +1814,6 @@ DECLARE_PEM_rw(SSL_SESSION, SSL_SESSION)
 #define SSL_enable_fallback_scsv(s) \
 	SSL_ctrl(s, SSL_CTRL_FALLBACK_SCSV, 0, NULL)
 
-#ifndef OPENSSL_NO_BIO
-OPENSSL_EXPORT BIO_METHOD *BIO_f_ssl(void);
-OPENSSL_EXPORT BIO *BIO_new_ssl(SSL_CTX *ctx,int client);
-OPENSSL_EXPORT BIO *BIO_new_ssl_connect(SSL_CTX *ctx);
-OPENSSL_EXPORT BIO *BIO_new_buffer_ssl_connect(SSL_CTX *ctx);
-OPENSSL_EXPORT void BIO_ssl_shutdown(BIO *ssl_bio);
-
-#endif
-
 OPENSSL_EXPORT int	SSL_CTX_set_cipher_list(SSL_CTX *,const char *str);
 OPENSSL_EXPORT int	SSL_CTX_set_cipher_list_tls11(SSL_CTX *,const char *str);
 OPENSSL_EXPORT SSL_CTX *SSL_CTX_new(const SSL_METHOD *meth);
