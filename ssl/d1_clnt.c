@@ -128,24 +128,6 @@
 
 static int dtls1_get_hello_verify(SSL *s);
 
-IMPLEMENT_dtls1_meth_func(DTLS1_VERSION,
-			DTLSv1_client_method,
-			ssl_undefined_function,
-			dtls1_connect,
-			DTLSv1_enc_data)
-
-IMPLEMENT_dtls1_meth_func(DTLS1_2_VERSION,
-			DTLSv1_2_client_method,
-			ssl_undefined_function,
-			dtls1_connect,
-			DTLSv1_2_enc_data)
-
-IMPLEMENT_dtls1_meth_func(DTLS_ANY_VERSION,
-			DTLS_client_method,
-			ssl_undefined_function,
-			dtls1_connect,
-			DTLSv1_2_enc_data)
-
 int dtls1_connect(SSL *s)
 	{
 	BUF_MEM *buf=NULL;

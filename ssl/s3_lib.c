@@ -1412,8 +1412,6 @@ long ssl3_ctrl(SSL *s, int cmd, long larg, void *parg)
 		break;
 
 	case SSL_CTRL_GET_CHANNEL_ID:
-		if (!s->server)
-			break;
 		if (!s->s3->tlsext_channel_id_valid)
 			break;
 		memcpy(parg, s->s3->tlsext_channel_id, larg < 64 ? larg : 64);
@@ -1666,9 +1664,6 @@ long ssl3_ctx_ctrl(SSL_CTX *ctx, int cmd, long larg, void *parg)
 		return ssl_cert_select_current(ctx->cert, (X509 *)parg);
 
 	case SSL_CTRL_CHANNEL_ID:
-		/* must be called on a server */
-		if (ctx->method->ssl_accept == ssl_undefined_function)
-			return 0;
 		ctx->tlsext_channel_id_enabled=1;
 		return 1;
 

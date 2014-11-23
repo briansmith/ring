@@ -128,24 +128,6 @@
 
 static int dtls1_send_hello_verify_request(SSL *s);
 
-IMPLEMENT_dtls1_meth_func(DTLS1_VERSION,
-			DTLSv1_server_method,
-			dtls1_accept,
-			ssl_undefined_function,
-			DTLSv1_enc_data)
-
-IMPLEMENT_dtls1_meth_func(DTLS1_2_VERSION,
-			DTLSv1_2_server_method,
-			dtls1_accept,
-			ssl_undefined_function,
-			DTLSv1_2_enc_data)
-
-IMPLEMENT_dtls1_meth_func(DTLS_ANY_VERSION,
-			DTLS_server_method,
-			dtls1_accept,
-			ssl_undefined_function,
-			DTLSv1_2_enc_data)
-
 int dtls1_accept(SSL *s)
 	{
 	BUF_MEM *buf;

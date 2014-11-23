@@ -231,21 +231,7 @@ static SSL_CTX *setup_ctx(const TestConfig *config) {
   SSL_CTX *ssl_ctx = NULL;
   DH *dh = NULL;
 
-  const SSL_METHOD *method;
-  if (config->is_dtls) {
-    if (config->is_server) {
-      method = DTLS_server_method();
-    } else {
-      method = DTLS_client_method();
-    }
-  } else {
-    if (config->is_server) {
-      method = SSLv23_server_method();
-    } else {
-      method = SSLv23_client_method();
-    }
-  }
-  ssl_ctx = SSL_CTX_new(method);
+  ssl_ctx = SSL_CTX_new(config->is_dtls ? DTLS_method() : SSLv23_method());
   if (ssl_ctx == NULL) {
     goto err;
   }

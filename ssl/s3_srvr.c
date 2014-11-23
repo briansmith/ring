@@ -172,26 +172,6 @@
 #include "../crypto/internal.h"
 #include "../crypto/dh/internal.h"
 
-IMPLEMENT_tls_meth_func(TLS1_2_VERSION, TLSv1_2_server_method,
-			ssl3_accept,
-			ssl_undefined_function,
-			TLSv1_2_enc_data)
-
-IMPLEMENT_tls_meth_func(TLS1_1_VERSION, TLSv1_1_server_method,
-			ssl3_accept,
-			ssl_undefined_function,
-			TLSv1_1_enc_data)
-
-IMPLEMENT_tls_meth_func(TLS1_VERSION, TLSv1_server_method,
-			ssl3_accept,
-			ssl_undefined_function,
-			TLSv1_enc_data)
-
-IMPLEMENT_tls_meth_func(SSL3_VERSION, SSLv3_server_method,
-			ssl3_accept,
-			ssl_undefined_function,
-			SSLv3_enc_data)
-
 int ssl3_accept(SSL *s)
 	{
 	BUF_MEM *buf;

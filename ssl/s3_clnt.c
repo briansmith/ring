@@ -166,26 +166,6 @@
 #include "ssl_locl.h"
 #include "../crypto/dh/internal.h"
 
-IMPLEMENT_tls_meth_func(TLS1_2_VERSION, TLSv1_2_client_method,
-			ssl_undefined_function,
-			ssl3_connect,
-			TLSv1_2_enc_data)
-
-IMPLEMENT_tls_meth_func(TLS1_1_VERSION, TLSv1_1_client_method,
-			ssl_undefined_function,
-			ssl3_connect,
-			TLSv1_1_enc_data)
-
-IMPLEMENT_tls_meth_func(TLS1_VERSION, TLSv1_client_method,
-			ssl_undefined_function,
-			ssl3_connect,
-			TLSv1_enc_data)
-
-IMPLEMENT_tls_meth_func(SSL3_VERSION, SSLv3_client_method,
-			ssl_undefined_function,
-			ssl3_connect,
-			SSLv3_enc_data)
-
 int ssl3_connect(SSL *s)
 	{
 	BUF_MEM *buf=NULL;

@@ -77,3 +77,43 @@ IMPLEMENT_tls_meth_func(SSL3_VERSION, SSLv3_method,
 			ssl3_accept,
 			ssl3_connect,
 			SSLv3_enc_data)
+
+const SSL_METHOD *TLSv1_2_server_method(void)
+	{
+	return TLSv1_2_method();
+	}
+
+const SSL_METHOD *TLSv1_1_server_method(void)
+	{
+	return TLSv1_1_method();
+	}
+
+const SSL_METHOD *TLSv1_server_method(void)
+	{
+	return TLSv1_method();
+	}
+
+const SSL_METHOD *SSLv3_server_method(void)
+	{
+	return SSLv3_method();
+	}
+
+const SSL_METHOD *TLSv1_2_client_method(void)
+	{
+	return TLSv1_2_method();
+	}
+
+const SSL_METHOD *TLSv1_1_client_method(void)
+	{
+	return TLSv1_1_method();
+	}
+
+const SSL_METHOD *TLSv1_client_method(void)
+	{
+	return TLSv1_method();
+	}
+
+const SSL_METHOD *SSLv3_client_method(void)
+	{
+	return SSLv3_method();
+	}
