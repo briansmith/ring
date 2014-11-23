@@ -2284,16 +2284,6 @@ void ssl_update_cache(SSL *s,int mode)
 		}
 	}
 
-const SSL_METHOD *SSL_CTX_get_ssl_method(SSL_CTX *ctx)
-	{
-	return ctx->method;
-	}
-
-const SSL_METHOD *SSL_get_ssl_method(SSL *s)
-	{
-	return(s->method);
-	}
-
 int SSL_get_error(const SSL *s,int i)
 	{
 	int reason;
@@ -2444,12 +2434,6 @@ int ssl_undefined_const_function(const SSL *s)
 	{
 	OPENSSL_PUT_ERROR(SSL, ssl_undefined_const_function, ERR_R_SHOULD_NOT_HAVE_BEEN_CALLED);
 	return(0);
-	}
-
-SSL_METHOD *ssl_bad_method(int ver)
-	{
-	OPENSSL_PUT_ERROR(SSL, ssl_bad_method, ERR_R_SHOULD_NOT_HAVE_BEEN_CALLED);
-	return(NULL);
 	}
 
 static const char *ssl_get_version(int version)

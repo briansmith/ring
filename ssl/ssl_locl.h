@@ -640,8 +640,6 @@ extern SSL3_ENC_METHOD ssl3_undef_enc_method;
 extern const SSL_CIPHER ssl3_ciphers[];
 
 
-SSL_METHOD *ssl_bad_method(int ver);
-
 extern SSL3_ENC_METHOD TLSv1_enc_data;
 extern SSL3_ENC_METHOD TLSv1_1_enc_data;
 extern SSL3_ENC_METHOD TLSv1_2_enc_data;

@@ -276,10 +276,6 @@ extern "C" {
 #define SSL_FILETYPE_ASN1	X509_FILETYPE_ASN1
 #define SSL_FILETYPE_PEM	X509_FILETYPE_PEM
 
-/* This is needed to stop compilers complaining about the
- * 'struct ssl_st *' function parameters used to prototype callbacks
- * in SSL_CTX. */
-typedef struct ssl_st *ssl_crock_st;
 typedef struct ssl_method_st SSL_METHOD;
 typedef struct ssl_cipher_st SSL_CIPHER;
 typedef struct ssl_session_st SSL_SESSION;
@@ -2053,8 +2049,6 @@ OPENSSL_EXPORT int SSL_renegotiate_abbreviated(SSL *s);
 OPENSSL_EXPORT int SSL_renegotiate_pending(SSL *s);
 OPENSSL_EXPORT int SSL_shutdown(SSL *s);
 
-OPENSSL_EXPORT const SSL_METHOD *SSL_CTX_get_ssl_method(SSL_CTX *ctx);
-OPENSSL_EXPORT const SSL_METHOD *SSL_get_ssl_method(SSL *s);
 OPENSSL_EXPORT const char *SSL_alert_type_string_long(int value);
 OPENSSL_EXPORT const char *SSL_alert_type_string(int value);
 OPENSSL_EXPORT const char *SSL_alert_desc_string_long(int value);
