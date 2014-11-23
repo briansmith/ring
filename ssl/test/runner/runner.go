@@ -2109,6 +2109,16 @@ func addRenegotiationTests() {
 		},
 		renegotiateCiphers: []uint16{TLS_RSA_WITH_RC4_128_SHA},
 	})
+	testCases = append(testCases, testCase{
+		name:        "Renegotiate-SameClientVersion",
+		renegotiate: true,
+		config: Config{
+			MaxVersion: VersionTLS10,
+			Bugs: ProtocolBugs{
+				RequireSameRenegoClientVersion: true,
+			},
+		},
+	})
 }
 
 func addDTLSReplayTests() {

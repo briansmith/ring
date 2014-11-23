@@ -717,14 +717,8 @@ int ssl3_send_client_hello(SSL *s)
 		 * client_version in client hello and not resetting it to
 		 * the negotiated version.
 		 */
-#if 0
-		*(p++)=s->version>>8;
-		*(p++)=s->version&0xff;
-		s->client_version=s->version;
-#else
 		*(p++)=s->client_version>>8;
 		*(p++)=s->client_version&0xff;
-#endif
 
 		/* Random stuff */
 		memcpy(p,s->s3->client_random,SSL3_RANDOM_SIZE);

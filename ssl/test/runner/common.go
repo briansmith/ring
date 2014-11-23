@@ -577,6 +577,11 @@ type ProtocolBugs struct {
 	// CertificateRequest message. None the less, the configured set will
 	// still be enforced.
 	NoSignatureAndHashes bool
+
+	// RequireSameRenegoClientVersion, if true, causes the server
+	// to require that all ClientHellos match in offered version
+	// across a renego.
+	RequireSameRenegoClientVersion bool
 }
 
 func (c *Config) serverInit() {

@@ -58,6 +58,8 @@ type Conn struct {
 
 	srtpProtectionProfile uint16
 
+	clientVersion uint16
+
 	// input/output
 	in, out  halfConn     // in.Mutex < out.Mutex
 	rawInput *block       // raw input, right off the wire

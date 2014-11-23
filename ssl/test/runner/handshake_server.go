@@ -162,6 +162,13 @@ func (hs *serverHandshakeState) readClientHello() (isResume bool, err error) {
 		hs.clientHello = newClientHello
 	}
 
+	if config.Bugs.RequireSameRenegoClientVersion && c.clientVersion != 0 {
+		if c.clientVersion != hs.clientHello.vers {
+			return false, fmt.Errorf("tls: client offered different version on renego")
+		}
+	}
+	c.clientVersion = hs.clientHello.vers
+
 	c.vers, ok = config.mutualVersion(hs.clientHello.vers)
 	if !ok {
 		c.sendAlert(alertProtocolVersion)
