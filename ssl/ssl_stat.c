@@ -91,15 +91,12 @@ const char *SSL_state_string_long(const SSL *s)
 
 	switch (s->state)
 		{
-case SSL_ST_BEFORE: str="before SSL initialization"; break;
 case SSL_ST_ACCEPT: str="before accept initialization"; break;
 case SSL_ST_CONNECT: str="before connect initialization"; break;
 case SSL_ST_OK: str="SSL negotiation finished successfully"; break;
 case SSL_ST_RENEGOTIATE:	str="SSL renegotiate ciphers"; break;
 case SSL_ST_BEFORE|SSL_ST_CONNECT: str="before/connect initialization"; break;
-case SSL_ST_OK|SSL_ST_CONNECT: str="ok/connect SSL initialization"; break;
 case SSL_ST_BEFORE|SSL_ST_ACCEPT: str="before/accept initialization"; break;
-case SSL_ST_OK|SSL_ST_ACCEPT: str="ok/accept SSL initialization"; break;
 
 /* SSLv3 additions */
 case SSL3_ST_CW_CLNT_HELLO_A:	str="SSLv3 write client hello A"; break;
@@ -211,7 +208,6 @@ const char *SSL_state_string(const SSL *s)
 
 	switch (s->state)
 		{
-case SSL_ST_BEFORE:				str="PINIT "; break;
 case SSL_ST_ACCEPT:				str="AINIT "; break;
 case SSL_ST_CONNECT:				str="CINIT "; break;
 case SSL_ST_OK:			 		str="SSLOK "; break;

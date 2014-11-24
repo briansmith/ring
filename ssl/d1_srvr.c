@@ -183,10 +183,8 @@ int dtls1_accept(SSL *s)
 			s->renegotiate=1;
 			/* s->state=SSL_ST_ACCEPT; */
 
-		case SSL_ST_BEFORE:
 		case SSL_ST_ACCEPT:
 		case SSL_ST_BEFORE|SSL_ST_ACCEPT:
-		case SSL_ST_OK|SSL_ST_ACCEPT:
 
 			s->server=1;
 			if (cb != NULL) cb(s,SSL_CB_HANDSHAKE_START,1);

@@ -147,10 +147,8 @@ int ssl23_connect(SSL *s)
 
 		switch(s->state)
 			{
-		case SSL_ST_BEFORE:
 		case SSL_ST_CONNECT:
 		case SSL_ST_BEFORE|SSL_ST_CONNECT:
-		case SSL_ST_OK|SSL_ST_CONNECT:
 
 			s->server=0;
 			if (cb != NULL) cb(s,SSL_CB_HANDSHAKE_START,1);
