@@ -1612,7 +1612,7 @@ int SSL_enable_ocsp_stapling(SSL *ssl)
 	return 1;
 	}
 
-void SSL_get0_signed_cert_timestamp_list(const SSL *ssl, uint8_t **out, size_t *out_len)
+void SSL_get0_signed_cert_timestamp_list(const SSL *ssl, const uint8_t **out, size_t *out_len)
 	{
 	SSL_SESSION *session = ssl->session;
 
@@ -1626,7 +1626,7 @@ void SSL_get0_signed_cert_timestamp_list(const SSL *ssl, uint8_t **out, size_t *
 	*out_len = session->tlsext_signed_cert_timestamp_list_length;
 	}
 
-void SSL_get0_ocsp_response(const SSL *ssl, uint8_t **out, size_t *out_len)
+void SSL_get0_ocsp_response(const SSL *ssl, const uint8_t **out, size_t *out_len)
 	{
 	SSL_SESSION *session = ssl->session;
 

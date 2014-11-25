@@ -1068,14 +1068,16 @@ OPENSSL_EXPORT void SSL_CTX_enable_ocsp_stapling(SSL_CTX *ctx);
  * If no SCT was received then |*out_len| will be zero on return.
  *
  * WARNING: the returned data is not guaranteed to be well formed. */
-OPENSSL_EXPORT void SSL_get0_signed_cert_timestamp_list(const SSL *ssl, uint8_t **out, size_t *out_len);
+OPENSSL_EXPORT void SSL_get0_signed_cert_timestamp_list(const SSL *ssl,
+	const uint8_t **out, size_t *out_len);
 
 /* SSL_get0_ocsp_response sets |*out| and |*out_len| to point to |*out_len|
  * bytes of an OCSP response from the server. This is the DER encoding of an
  * OCSPResponse type as defined in RFC 2560.
  *
  * WARNING: the returned data is not guaranteed to be well formed. */
-OPENSSL_EXPORT void SSL_get0_ocsp_response(const SSL *ssl, uint8_t **out, size_t *out_len);
+OPENSSL_EXPORT void SSL_get0_ocsp_response(const SSL *ssl,
+	const uint8_t **out, size_t *out_len);
 
 OPENSSL_EXPORT void SSL_CTX_set_next_protos_advertised_cb(SSL_CTX *s,
 					   int (*cb) (SSL *ssl,
