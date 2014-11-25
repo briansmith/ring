@@ -428,6 +428,10 @@ func (hs *serverHandshakeState) doFullHandshake() error {
 		hs.hello.ocspStapling = true
 	}
 
+	if hs.clientHello.sctListSupported && len(hs.cert.SignedCertificateTimestampList) > 0 {
+		hs.hello.sctList = hs.cert.SignedCertificateTimestampList
+	}
+
 	hs.hello.ticketSupported = hs.clientHello.ticketSupported && !config.SessionTicketsDisabled && c.vers > VersionSSL30
 	hs.hello.cipherSuite = hs.suite.id
 	c.extendedMasterSecret = hs.hello.extendedMasterSecret

@@ -59,6 +59,10 @@ struct TestConfig {
   bool renegotiate;
   bool allow_unsafe_legacy_renegotiation;
   std::string srtp_profiles;
+  bool enable_ocsp_stapling;
+  std::string expected_ocsp_response;
+  bool enable_signed_cert_timestamps;
+  std::string expected_signed_cert_timestamps;
 };
 
 bool ParseConfig(int argc, char **argv, TestConfig *out_config);

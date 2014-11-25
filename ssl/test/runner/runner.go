@@ -45,17 +45,24 @@ var rsaCertificate, ecdsaCertificate Certificate
 var channelIDKey *ecdsa.PrivateKey
 var channelIDBytes []byte
 
+var testOCSPResponse = []byte{1, 2, 3, 4}
+var testSCTList = []byte{5, 6, 7, 8}
+
 func initCertificates() {
 	var err error
 	rsaCertificate, err = LoadX509KeyPair(rsaCertificateFile, rsaKeyFile)
 	if err != nil {
 		panic(err)
 	}
+	rsaCertificate.OCSPStaple = testOCSPResponse
+	rsaCertificate.SignedCertificateTimestampList = testSCTList
 
 	ecdsaCertificate, err = LoadX509KeyPair(ecdsaCertificateFile, ecdsaKeyFile)
 	if err != nil {
 		panic(err)
 	}
+	ecdsaCertificate.OCSPStaple = testOCSPResponse
+	ecdsaCertificate.SignedCertificateTimestampList = testSCTList
 
 	channelIDPEMBlock, err := ioutil.ReadFile(channelIDKeyFile)
 	if err != nil {
@@ -1877,6 +1884,23 @@ func addExtensionTests() {
 		},
 		shouldFail:    true,
 		expectedError: ":BAD_SRTP_PROTECTION_PROFILE_LIST:",
+	})
+	// Test OCSP stapling and SCT list.
+	testCases = append(testCases, testCase{
+		name: "OCSPStapling",
+		flags: []string{
+			"-enable-ocsp-stapling",
+			"-expect-ocsp-response",
+			base64.StdEncoding.EncodeToString(testOCSPResponse),
+		},
+	})
+	testCases = append(testCases, testCase{
+		name: "SignedCertificateTimestampList",
+		flags: []string{
+			"-enable-signed-cert-timestamps",
+			"-expect-signed-cert-timestamps",
+			base64.StdEncoding.EncodeToString(testSCTList),
+		},
 	})
 }
 

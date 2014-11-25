@@ -72,18 +72,19 @@ const (
 
 // TLS extension numbers
 const (
-	extensionServerName           uint16 = 0
-	extensionStatusRequest        uint16 = 5
-	extensionSupportedCurves      uint16 = 10
-	extensionSupportedPoints      uint16 = 11
-	extensionSignatureAlgorithms  uint16 = 13
-	extensionUseSRTP              uint16 = 14
-	extensionALPN                 uint16 = 16
-	extensionExtendedMasterSecret uint16 = 23
-	extensionSessionTicket        uint16 = 35
-	extensionNextProtoNeg         uint16 = 13172 // not IANA assigned
-	extensionRenegotiationInfo    uint16 = 0xff01
-	extensionChannelID            uint16 = 30032 // not IANA assigned
+	extensionServerName                 uint16 = 0
+	extensionStatusRequest              uint16 = 5
+	extensionSupportedCurves            uint16 = 10
+	extensionSupportedPoints            uint16 = 11
+	extensionSignatureAlgorithms        uint16 = 13
+	extensionUseSRTP                    uint16 = 14
+	extensionALPN                       uint16 = 16
+	extensionSignedCertificateTimestamp uint16 = 18
+	extensionExtendedMasterSecret       uint16 = 23
+	extensionSessionTicket              uint16 = 35
+	extensionNextProtoNeg               uint16 = 13172 // not IANA assigned
+	extensionRenegotiationInfo          uint16 = 0xff01
+	extensionChannelID                  uint16 = 30032 // not IANA assigned
 )
 
 // TLS signaling cipher suite values
@@ -731,6 +732,10 @@ type Certificate struct {
 	// OCSPStaple contains an optional OCSP response which will be served
 	// to clients that request it.
 	OCSPStaple []byte
+	// SignedCertificateTimestampList contains an optional encoded
+	// SignedCertificateTimestampList structure which will be
+	// served to clients that request it.
+	SignedCertificateTimestampList []byte
 	// Leaf is the parsed form of the leaf certificate, which may be
 	// initialized using x509.ParseCertificate to reduce per-handshake
 	// processing for TLS clients doing client authentication. If nil, the

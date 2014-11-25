@@ -62,6 +62,9 @@ const BoolFlag kBoolFlags[] = {
   { "-renegotiate", &TestConfig::renegotiate },
   { "-allow-unsafe-legacy-renegotiation",
     &TestConfig::allow_unsafe_legacy_renegotiation },
+  { "-enable-ocsp-stapling", &TestConfig::enable_ocsp_stapling },
+  { "-enable-signed-cert-timestamps",
+    &TestConfig::enable_signed_cert_timestamps },
 };
 
 const size_t kNumBoolFlags = sizeof(kBoolFlags) / sizeof(kBoolFlags[0]);
@@ -89,6 +92,9 @@ const size_t kNumStringFlags = sizeof(kStringFlags) / sizeof(kStringFlags[0]);
 const StringFlag kBase64Flags[] = {
   { "-expect-certificate-types", &TestConfig::expected_certificate_types },
   { "-expect-channel-id", &TestConfig::expected_channel_id },
+  { "-expect-ocsp-response", &TestConfig::expected_ocsp_response },
+  { "-expect-signed-cert-timestamps",
+    &TestConfig::expected_signed_cert_timestamps },
 };
 
 const size_t kNumBase64Flags = sizeof(kBase64Flags) / sizeof(kBase64Flags[0]);
@@ -116,7 +122,9 @@ TestConfig::TestConfig()
       expect_session_miss(false),
       expect_extended_master_secret(false),
       renegotiate(false),
-      allow_unsafe_legacy_renegotiation(false) {
+      allow_unsafe_legacy_renegotiation(false),
+      enable_ocsp_stapling(false),
+      enable_signed_cert_timestamps(false) {
 }
 
 bool ParseConfig(int argc, char **argv, TestConfig *out_config) {

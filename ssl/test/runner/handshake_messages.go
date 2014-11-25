@@ -31,6 +31,7 @@ type clientHelloMsg struct {
 	extendedMasterSecret    bool
 	srtpProtectionProfiles  []uint16
 	srtpMasterKeyIdentifier string
+	sctListSupported        bool
 }
 
 func (m *clientHelloMsg) equal(i interface{}) bool {
@@ -63,7 +64,8 @@ func (m *clientHelloMsg) equal(i interface{}) bool {
 		m.npnLast == m1.npnLast &&
 		m.extendedMasterSecret == m1.extendedMasterSecret &&
 		eqUint16s(m.srtpProtectionProfiles, m1.srtpProtectionProfiles) &&
-		m.srtpMasterKeyIdentifier == m1.srtpMasterKeyIdentifier
+		m.srtpMasterKeyIdentifier == m1.srtpMasterKeyIdentifier &&
+		m.sctListSupported == m1.sctListSupported
 }
 
 func (m *clientHelloMsg) marshal() []byte {
@@ -131,6 +133,9 @@ func (m *clientHelloMsg) marshal() []byte {
 	if len(m.srtpProtectionProfiles) > 0 {
 		extensionsLength += 2 + 2*len(m.srtpProtectionProfiles)
 		extensionsLength += 1 + len(m.srtpMasterKeyIdentifier)
+		numExtensions++
+	}
+	if m.sctListSupported {
 		numExtensions++
 	}
 	if numExtensions > 0 {
@@ -366,6 +371,11 @@ func (m *clientHelloMsg) marshal() []byte {
 		copy(z[1:], []byte(m.srtpMasterKeyIdentifier))
 		z = z[1+mkiLen:]
 	}
+	if m.sctListSupported {
+		z[0] = byte(extensionSignedCertificateTimestamp >> 8)
+		z[1] = byte(extensionSignedCertificateTimestamp & 0xff)
+		z = z[4:]
+	}
 
 	m.raw = x
 
@@ -589,6 +599,11 @@ func (m *clientHelloMsg) unmarshal(data []byte) bool {
 				return false
 			}
 			m.srtpMasterKeyIdentifier = string(d[1:])
+		case extensionSignedCertificateTimestamp:
+			if length != 0 {
+				return false
+			}
+			m.sctListSupported = true
 		}
 		data = data[length:]
 	}
@@ -615,6 +630,7 @@ type serverHelloMsg struct {
 	extendedMasterSecret    bool
 	srtpProtectionProfile   uint16
 	srtpMasterKeyIdentifier string
+	sctList                 []byte
 }
 
 func (m *serverHelloMsg) equal(i interface{}) bool {
@@ -641,7 +657,8 @@ func (m *serverHelloMsg) equal(i interface{}) bool {
 		m.channelIDRequested == m1.channelIDRequested &&
 		m.extendedMasterSecret == m1.extendedMasterSecret &&
 		m.srtpProtectionProfile == m1.srtpProtectionProfile &&
-		m.srtpMasterKeyIdentifier == m1.srtpMasterKeyIdentifier
+		m.srtpMasterKeyIdentifier == m1.srtpMasterKeyIdentifier &&
+		bytes.Equal(m.sctList, m1.sctList)
 }
 
 func (m *serverHelloMsg) marshal() []byte {
@@ -690,6 +707,10 @@ func (m *serverHelloMsg) marshal() []byte {
 	}
 	if m.srtpProtectionProfile != 0 {
 		extensionsLength += 2 + 2 + 1 + len(m.srtpMasterKeyIdentifier)
+		numExtensions++
+	}
+	if m.sctList != nil {
+		extensionsLength += len(m.sctList)
 		numExtensions++
 	}
 
@@ -807,6 +828,15 @@ func (m *serverHelloMsg) marshal() []byte {
 		z[8] = byte(l)
 		copy(z[9:], []byte(m.srtpMasterKeyIdentifier))
 		z = z[9+l:]
+	}
+	if m.sctList != nil {
+		z[0] = byte(extensionSignedCertificateTimestamp >> 8)
+		z[1] = byte(extensionSignedCertificateTimestamp & 0xff)
+		l := len(m.sctList)
+		z[2] = byte(l >> 8)
+		z[3] = byte(l & 0xff)
+		copy(z[4:], m.sctList)
+		z = z[4+l:]
 	}
 
 	m.raw = x
@@ -934,6 +964,15 @@ func (m *serverHelloMsg) unmarshal(data []byte) bool {
 				return false
 			}
 			m.srtpMasterKeyIdentifier = string(d[1:])
+		case extensionSignedCertificateTimestamp:
+			if length < 2 {
+				return false
+			}
+			l := int(data[0])<<8 | int(data[1])
+			if l != len(data)-2 {
+				return false
+			}
+			m.sctList = data[2:length]
 		}
 		data = data[length:]
 	}
