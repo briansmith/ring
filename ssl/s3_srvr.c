@@ -1201,10 +1201,6 @@ int ssl3_send_server_done(SSL *s)
 
 int ssl3_send_server_key_exchange(SSL *s)
 	{
-	unsigned char *q;
-	int j,num;
-	unsigned char md_buf[MD5_DIGEST_LENGTH+SHA_DIGEST_LENGTH];
-	unsigned int u;
 	DH *dh=NULL,*dhp;
 	EC_KEY *ecdh=NULL, *ecdhp;
 	unsigned char *encodedPoint = NULL;
@@ -1506,68 +1502,44 @@ int ssl3_send_server_key_exchange(SSL *s)
 			{
 			/* n is the length of the params, they start at &(d[4])
 			 * and p points to the space at the end. */
-			if (pkey->type == EVP_PKEY_RSA && !SSL_USE_SIGALGS(s))
+			const EVP_MD *md;
+			size_t sig_len = EVP_PKEY_size(pkey);
+
+			/* Determine signature algorithm. */
+			if (SSL_USE_SIGALGS(s))
 				{
-				q=md_buf;
-				j=0;
-				for (num=2; num > 0; num--)
+				md = tls1_choose_signing_digest(s, pkey);
+				if (!tls12_get_sigandhash(p, pkey, md))
 					{
-					EVP_DigestInit_ex(&md_ctx,
-						(num == 2) ? EVP_md5() : EVP_sha1(), NULL);
-					EVP_DigestUpdate(&md_ctx,&(s->s3->client_random[0]),SSL3_RANDOM_SIZE);
-					EVP_DigestUpdate(&md_ctx,&(s->s3->server_random[0]),SSL3_RANDOM_SIZE);
-					EVP_DigestUpdate(&md_ctx,d,n);
-					EVP_DigestFinal_ex(&md_ctx,q,
-						(unsigned int *)&i);
-					q+=i;
-					j+=i;
+					/* Should never happen */
+					al=SSL_AD_INTERNAL_ERROR;
+					OPENSSL_PUT_ERROR(SSL, ssl3_send_server_key_exchange, ERR_R_INTERNAL_ERROR);
+					goto f_err;
 					}
-				if (RSA_sign(NID_md5_sha1, md_buf, j,
-					&(p[2]), &u, pkey->pkey.rsa) <= 0)
-					{
-					OPENSSL_PUT_ERROR(SSL, ssl3_send_server_key_exchange, ERR_LIB_RSA);
-					goto err;
-					}
-				s2n(u,p);
-				n+=u+2;
+				p+=2;
+				}
+			else if (pkey->type == EVP_PKEY_RSA)
+				{
+				md = EVP_md5_sha1();
 				}
 			else
 				{
-				const EVP_MD *md;
-				size_t sig_len = EVP_PKEY_size(pkey);
-
-
-				/* send signature algorithm */
-				if (SSL_USE_SIGALGS(s))
-					{
-					md = tls1_choose_signing_digest(s, pkey);
-					if (!tls12_get_sigandhash(p, pkey, md))
-						{
-						/* Should never happen */
-						al=SSL_AD_INTERNAL_ERROR;
-						OPENSSL_PUT_ERROR(SSL, ssl3_send_server_key_exchange, ERR_R_INTERNAL_ERROR);
-						goto f_err;
-						}
-					p+=2;
-					}
-				else
-					{
-					md = EVP_sha1();
-					}
-				if (!EVP_DigestSignInit(&md_ctx, NULL, md, NULL, pkey) ||
-					!EVP_DigestSignUpdate(&md_ctx, s->s3->client_random, SSL3_RANDOM_SIZE) ||
-					!EVP_DigestSignUpdate(&md_ctx, s->s3->server_random, SSL3_RANDOM_SIZE) ||
-					!EVP_DigestSignUpdate(&md_ctx, d, n) ||
-					!EVP_DigestSignFinal(&md_ctx, &p[2], &sig_len))
-					{
-					OPENSSL_PUT_ERROR(SSL, ssl3_send_server_key_exchange, ERR_LIB_EVP);
-					goto err;
-					}
-				s2n(sig_len, p);
-				n += sig_len + 2;
-				if (SSL_USE_SIGALGS(s))
-					n += 2;
+				md = EVP_sha1();
 				}
+
+			if (!EVP_DigestSignInit(&md_ctx, NULL, md, NULL, pkey) ||
+				!EVP_DigestSignUpdate(&md_ctx, s->s3->client_random, SSL3_RANDOM_SIZE) ||
+				!EVP_DigestSignUpdate(&md_ctx, s->s3->server_random, SSL3_RANDOM_SIZE) ||
+				!EVP_DigestSignUpdate(&md_ctx, d, n) ||
+				!EVP_DigestSignFinal(&md_ctx, &p[2], &sig_len))
+				{
+				OPENSSL_PUT_ERROR(SSL, ssl3_send_server_key_exchange, ERR_LIB_EVP);
+				goto err;
+				}
+			s2n(sig_len, p);
+			n += sig_len + 2;
+			if (SSL_USE_SIGALGS(s))
+				n += 2;
 			}
 
 		ssl_set_handshake_header(s, SSL3_MT_SERVER_KEY_EXCHANGE, n);

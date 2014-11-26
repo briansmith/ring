@@ -193,6 +193,45 @@ static const EVP_MD sha512_md = {
 
 const EVP_MD *EVP_sha512(void) { return &sha512_md; }
 
+
+typedef struct {
+  MD5_CTX md5;
+  SHA_CTX sha1;
+} MD5_SHA1_CTX;
+
+static int md5_sha1_init(EVP_MD_CTX *md_ctx) {
+  MD5_SHA1_CTX *ctx = md_ctx->md_data;
+  return MD5_Init(&ctx->md5) && SHA1_Init(&ctx->sha1);
+}
+
+static int md5_sha1_update(EVP_MD_CTX *md_ctx, const void *data, size_t count) {
+  MD5_SHA1_CTX *ctx = md_ctx->md_data;
+  return MD5_Update(&ctx->md5, data, count) && SHA1_Update(&ctx->sha1, data, count);
+}
+
+static int md5_sha1_final(EVP_MD_CTX *md_ctx, unsigned char *out) {
+  MD5_SHA1_CTX *ctx = md_ctx->md_data;
+  if (!MD5_Final(out, &ctx->md5) ||
+      !SHA1_Final(out + MD5_DIGEST_LENGTH, &ctx->sha1)) {
+    return 0;
+  }
+  return 1;
+}
+
+static const EVP_MD md5_sha1_md = {
+    NID_md5_sha1,
+    MD5_DIGEST_LENGTH + SHA_DIGEST_LENGTH,
+    0 /* flags */,
+    md5_sha1_init,
+    md5_sha1_update,
+    md5_sha1_final,
+    64 /* block size */,
+    sizeof(MD5_SHA1_CTX),
+};
+
+const EVP_MD *EVP_md5_sha1(void) { return &md5_sha1_md; }
+
+
 struct nid_to_digest {
   int nid;
   const EVP_MD *(*md_func)();
@@ -205,6 +244,7 @@ static const struct nid_to_digest nid_to_digest_mapping[] = {
   { NID_sha256, EVP_sha256 },
   { NID_sha384, EVP_sha384 },
   { NID_sha512, EVP_sha512 },
+  { NID_md5_sha1, EVP_md5_sha1 },
   { NID_dsaWithSHA, EVP_sha1 },
   { NID_dsaWithSHA1, EVP_sha1 },
   { NID_ecdsa_with_SHA1, EVP_sha1 },

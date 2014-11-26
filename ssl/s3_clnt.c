@@ -1428,8 +1428,14 @@ int ssl3_get_server_key_exchange(SSL *s)
 			if (!tls12_check_peer_sigalg(&md, &al, s, &server_key_exchange, pkey))
 				goto f_err;
 			}
+		else if (pkey->type == EVP_PKEY_RSA)
+			{
+			md = EVP_md5_sha1();
+			}
 		else
+			{
 			md = EVP_sha1();
+			}
 
 		/* The last field in |server_key_exchange| is the
 		 * signature. */
@@ -1441,47 +1447,16 @@ int ssl3_get_server_key_exchange(SSL *s)
 			goto f_err;
 			}
 
-		if (pkey->type == EVP_PKEY_RSA && !SSL_USE_SIGALGS(s))
+		if (!EVP_DigestVerifyInit(&md_ctx, NULL, md, NULL, pkey) ||
+			!EVP_DigestVerifyUpdate(&md_ctx, s->s3->client_random, SSL3_RANDOM_SIZE) ||
+			!EVP_DigestVerifyUpdate(&md_ctx, s->s3->server_random, SSL3_RANDOM_SIZE) ||
+			!EVP_DigestVerifyUpdate(&md_ctx, CBS_data(&parameter), CBS_len(&parameter)) ||
+			!EVP_DigestVerifyFinal(&md_ctx, CBS_data(&signature), CBS_len(&signature)))
 			{
-			int num;
-			unsigned char *q, md_buf[EVP_MAX_MD_SIZE*2];
-			size_t md_len = 0;
-
-			q=md_buf;
-			for (num=2; num > 0; num--)
-				{
-				unsigned int digest_len;
-				EVP_DigestInit_ex(&md_ctx,
-					(num == 2) ? EVP_md5() : EVP_sha1(), NULL);
-				EVP_DigestUpdate(&md_ctx,&(s->s3->client_random[0]),SSL3_RANDOM_SIZE);
-				EVP_DigestUpdate(&md_ctx,&(s->s3->server_random[0]),SSL3_RANDOM_SIZE);
-				EVP_DigestUpdate(&md_ctx, CBS_data(&parameter), CBS_len(&parameter));
-				EVP_DigestFinal_ex(&md_ctx, q, &digest_len);
-				q += digest_len;
-				md_len += digest_len;
-				}
-			if (!RSA_verify(NID_md5_sha1, md_buf, md_len,
-					CBS_data(&signature), CBS_len(&signature),
-					pkey->pkey.rsa))
-				{
-				al = SSL_AD_DECRYPT_ERROR;
-				OPENSSL_PUT_ERROR(SSL, ssl3_get_server_key_exchange, SSL_R_BAD_SIGNATURE);
-				goto f_err;
-				}
-			}
-		else
-			{
-			if (!EVP_DigestVerifyInit(&md_ctx, NULL, md, NULL, pkey) ||
-				!EVP_DigestVerifyUpdate(&md_ctx, s->s3->client_random, SSL3_RANDOM_SIZE) ||
-				!EVP_DigestVerifyUpdate(&md_ctx, s->s3->server_random, SSL3_RANDOM_SIZE) ||
-				!EVP_DigestVerifyUpdate(&md_ctx, CBS_data(&parameter), CBS_len(&parameter)) ||
-				!EVP_DigestVerifyFinal(&md_ctx, CBS_data(&signature), CBS_len(&signature)))
-				{
-				/* bad signature */
-				al=SSL_AD_DECRYPT_ERROR;
-				OPENSSL_PUT_ERROR(SSL, ssl3_get_server_key_exchange, SSL_R_BAD_SIGNATURE);
-				goto f_err;
-				}
+			/* bad signature */
+			al=SSL_AD_DECRYPT_ERROR;
+			OPENSSL_PUT_ERROR(SSL, ssl3_get_server_key_exchange, SSL_R_BAD_SIGNATURE);
+			goto f_err;
 			}
 		}
 	else

@@ -523,10 +523,7 @@ int ssl3_cert_verify_hash(SSL *s, uint8_t *out, size_t *out_len, const EVP_MD **
 				NID_sha1, out + MD5_DIGEST_LENGTH) == 0)
 			return 0;
 		*out_len = MD5_DIGEST_LENGTH + SHA_DIGEST_LENGTH;
-		/* Using a NULL signature MD makes EVP_PKEY_sign perform
-		 * a raw RSA signature, rather than wrapping in a
-		 * DigestInfo. */
-		*out_md = NULL;
+		*out_md = EVP_md5_sha1();
 		}
 	else if (pkey->type == EVP_PKEY_EC)
 		{

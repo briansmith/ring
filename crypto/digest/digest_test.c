@@ -112,6 +112,10 @@ static const TEST_VECTOR kTestVectors[] = {
       "hijklmnoijklmnopjklmnopqklmnopqrlmnopqrsmnopqrstnopqrstu", 1,
       "8e959b75dae313da8cf4f72814fc143f8f7779c6eb9f7fa17299aeadb6889018"
       "501d289e4900f7e4331b99dec4b5433ac7d329eeb6dd26545e96e55b874be909" },
+
+    /* MD5-SHA1 tests. */
+    { &EVP_md5_sha1, NULL, "abc", 1,
+      "900150983cd24fb0d6963f7d28e17f72a9993e364706816aba3e25717850c26c9cd0d89d" },
 };
 
 static int compare_digest(const TEST_VECTOR *test,
