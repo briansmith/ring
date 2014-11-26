@@ -640,6 +640,10 @@ int dtls1_send_hello_verify_request(SSL *s)
 		*(p++) = DTLS1_VERSION >> 8;
 		*(p++) = DTLS1_VERSION & 0xFF;
 
+		/* Inform the callback how much space is in the
+		 * cookie's buffer. */
+		s->d1->cookie_len = sizeof(s->d1->cookie);
+
 		if (s->ctx->app_gen_cookie_cb == NULL ||
 		     s->ctx->app_gen_cookie_cb(s, s->d1->cookie, &(s->d1->cookie_len)) == 0)
 			{

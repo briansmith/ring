@@ -255,11 +255,6 @@ void dtls1_clear(SSL *s)
 
 		memset(s->d1, 0, sizeof(*(s->d1)));
 
-		if (s->server)
-			{
-			s->d1->cookie_len = sizeof(s->d1->cookie);
-			}
-
 		if (SSL_get_options(s) & SSL_OP_NO_QUERY_MTU)
 			{
 			s->d1->mtu = mtu;

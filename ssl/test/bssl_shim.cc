@@ -162,6 +162,10 @@ static int alpn_select_callback(SSL* ssl,
 }
 
 static int cookie_generate_callback(SSL *ssl, uint8_t *cookie, size_t *cookie_len) {
+  if (*cookie_len < 32) {
+    fprintf(stderr, "Insufficient space for cookie\n");
+    return 0;
+  }
   *cookie_len = 32;
   memset(cookie, 42, *cookie_len);
   return 1;
