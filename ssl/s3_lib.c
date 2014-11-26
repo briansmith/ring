@@ -1399,8 +1399,6 @@ long ssl3_ctrl(SSL *s, int cmd, long larg, void *parg)
 		break;
 
 	case SSL_CTRL_SET_CHANNEL_ID:
-		if (s->server)
-			break;
 		s->tlsext_channel_id_enabled = 1;
 		if (EVP_PKEY_bits(parg) != 256)
 			{
@@ -1422,8 +1420,6 @@ long ssl3_ctrl(SSL *s, int cmd, long larg, void *parg)
 		return 64;
 
 	case SSL_CTRL_FALLBACK_SCSV:
-		if (s->server)
-			break;
 		s->fallback_scsv = 1;
 		ret = 1;
 		break;

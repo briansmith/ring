@@ -387,11 +387,8 @@ SSL *SSL_new(SSL_CTX *ctx)
 	s->psk_client_callback=ctx->psk_client_callback;
 	s->psk_server_callback=ctx->psk_server_callback;
 
-	if (!s->server)
-		{
-		s->signed_cert_timestamps_enabled = s->ctx->signed_cert_timestamps_enabled;
-		s->ocsp_stapling_enabled = s->ctx->ocsp_stapling_enabled;
-		}
+	s->signed_cert_timestamps_enabled = s->ctx->signed_cert_timestamps_enabled;
+	s->ocsp_stapling_enabled = s->ctx->ocsp_stapling_enabled;
 
 	return(s);
 err:
@@ -1590,10 +1587,6 @@ void SSL_CTX_enable_signed_cert_timestamps(SSL_CTX *ctx)
 
 int SSL_enable_signed_cert_timestamps(SSL *ssl)
 	{
-	/* Currently not implemented server-side. */
-	if (ssl->server)
-		return 0;
-
 	ssl->signed_cert_timestamps_enabled = 1;
 	return 1;
 	}
@@ -1605,9 +1598,6 @@ void SSL_CTX_enable_ocsp_stapling(SSL_CTX *ctx)
 
 int SSL_enable_ocsp_stapling(SSL *ssl)
 	{
-	/* Currently not implemented server-side. */
-	if (ssl->server)
-		return 0;
 	ssl->ocsp_stapling_enabled = 1;
 	return 1;
 	}
