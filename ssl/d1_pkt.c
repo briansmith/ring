@@ -954,9 +954,7 @@ start:
 			s->msg_callback(0, s->version, SSL3_RT_HANDSHAKE, 
 				s->d1->handshake_fragment, 4, s, s->msg_callback_arg);
 
-		if (SSL_is_init_finished(s) &&
-			!(s->s3->flags & SSL3_FLAGS_NO_RENEGOTIATE_CIPHERS) &&
-			!s->s3->renegotiate)
+		if (SSL_is_init_finished(s) && !s->s3->renegotiate)
 			{
 			s->d1->handshake_read_seq++;
 			s->new_session = 1;
@@ -1109,8 +1107,7 @@ start:
 			goto start;
 			}
 
-		if (((s->state&SSL_ST_MASK) == SSL_ST_OK) &&
-			!(s->s3->flags & SSL3_FLAGS_NO_RENEGOTIATE_CIPHERS))
+		if ((s->state&SSL_ST_MASK) == SSL_ST_OK)
 			{
 			s->state = s->server ? SSL_ST_ACCEPT : SSL_ST_CONNECT;
 			s->renegotiate=1;

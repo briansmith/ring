@@ -338,7 +338,6 @@ typedef struct ssl3_buffer_st
 #define SSL3_CT_FORTEZZA_DMS			20
 
 
-#define SSL3_FLAGS_NO_RENEGOTIATE_CIPHERS	0x0001
 /* TODO(davidben): This flag can probably be merged into s3->change_cipher_spec
  * to something tri-state. (Normal / Expect CCS / Between CCS and Finished). */
 #define SSL3_FLAGS_EXPECT_CCS			0x0080
