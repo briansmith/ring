@@ -209,9 +209,7 @@ int ssl3_accept(SSL *s)
 	else if (s->ctx->info_callback != NULL)
 		cb=s->ctx->info_callback;
 
-	/* init things to blank */
 	s->in_handshake++;
-	if (!SSL_in_init(s) || SSL_in_before(s)) SSL_clear(s);
 
 	if (s->cert == NULL)
 		{
