@@ -2392,8 +2392,6 @@ int SSL_do_handshake(SSL *s)
 	return(ret);
 	}
 
-/* For the next 2 functions, SSL_clear() sets shutdown and so
- * one of these calls will reset it */
 void SSL_set_accept_state(SSL *s)
 	{
 	s->server=1;
