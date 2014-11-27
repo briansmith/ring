@@ -200,6 +200,7 @@ int ssl3_accept(SSL *s)
 	int ret= -1;
 	int new_state,state,skip=0;
 
+	assert(s->handshake_func == ssl3_accept);
 	ERR_clear_error();
 	ERR_clear_system_error();
 
@@ -663,7 +664,6 @@ int ssl3_accept(SSL *s)
 				
 				s->ctx->stats.sess_accept_good++;
 				/* s->server=1; */
-				s->handshake_func=ssl3_accept;
 
 				if (cb != NULL) cb(s,SSL_CB_HANDSHAKE_DONE,1);
 				}

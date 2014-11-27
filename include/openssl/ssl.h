@@ -2405,6 +2405,8 @@ OPENSSL_EXPORT void ERR_load_SSL_strings(void);
 #define SSL_F_d2i_SSL_SESSION_get_string 290
 #define SSL_F_ssl3_send_new_session_ticket 291
 #define SSL_F_SSL_SESSION_to_bytes_full 292
+#define SSL_F_SSL_accept 293
+#define SSL_F_SSL_connect 294
 #define SSL_R_UNABLE_TO_FIND_ECDH_PARAMETERS 100
 #define SSL_R_DECRYPTION_FAILED_OR_BAD_RECORD_MAC 101
 #define SSL_R_INVALID_NULL_CMD_NAME 102

@@ -977,7 +977,13 @@ int SSL_accept(SSL *s)
 		/* Not properly initialized yet */
 		SSL_set_accept_state(s);
 
-	return(s->method->ssl_accept(s));
+	if (s->handshake_func != s->method->ssl_accept)
+		{
+		OPENSSL_PUT_ERROR(SSL, SSL_connect, ERR_R_INTERNAL_ERROR);
+		return -1;
+		}
+
+	return s->handshake_func(s);
 	}
 
 int SSL_connect(SSL *s)
@@ -986,7 +992,13 @@ int SSL_connect(SSL *s)
 		/* Not properly initialized yet */
 		SSL_set_connect_state(s);
 
-	return(s->method->ssl_connect(s));
+	if (s->handshake_func != s->method->ssl_connect)
+		{
+		OPENSSL_PUT_ERROR(SSL, SSL_connect, ERR_R_INTERNAL_ERROR);
+		return -1;
+		}
+
+	return s->handshake_func(s);
 	}
 
 long SSL_get_default_timeout(const SSL *s)

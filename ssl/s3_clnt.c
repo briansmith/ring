@@ -193,6 +193,7 @@ int ssl3_connect(SSL *s)
 	int ret= -1;
 	int new_state,state,skip=0;
 
+	assert(s->handshake_func == ssl3_connect);
 	ERR_clear_error();
 	ERR_clear_system_error();
 
@@ -574,7 +575,6 @@ int ssl3_connect(SSL *s)
 
 			ret=1;
 			/* s->server=0; */
-			s->handshake_func=ssl3_connect;
 			s->ctx->stats.sess_connect_good++;
 
 			if (cb != NULL) cb(s,SSL_CB_HANDSHAKE_DONE,1);

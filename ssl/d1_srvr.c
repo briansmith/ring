@@ -112,6 +112,7 @@
  * [including the GNU Public Licence.]
  */
 
+#include <assert.h>
 #include <stdio.h>
 
 #include <openssl/bn.h>
@@ -153,6 +154,7 @@ int dtls1_accept(SSL *s)
 	int ret= -1;
 	int new_state,state,skip=0;
 
+	assert(s->handshake_func == dtls1_accept);
 	ERR_clear_error();
 	ERR_clear_system_error();
 
@@ -576,7 +578,6 @@ int dtls1_accept(SSL *s)
 				
 				s->ctx->stats.sess_accept_good++;
 				/* s->server=1; */
-				s->handshake_func=dtls1_accept;
 
 				if (cb != NULL) cb(s,SSL_CB_HANDSHAKE_DONE,1);
 				}
