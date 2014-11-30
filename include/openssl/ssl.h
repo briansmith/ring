@@ -1300,7 +1300,6 @@ struct ssl_st
 	unsigned long options; /* protocol behaviour */
 	unsigned long mode; /* API behaviour */
 	long max_cert_list;
-	int first_packet;
 	int client_version;	/* what was passed, used for
 				 * SSLv3/TLS rollback check */
 	unsigned int max_send_fragment;

@@ -365,6 +365,10 @@ typedef struct ssl3_state_st
 	/* The value of 'extra' when the buffers were initialized */
 	int init_extra;
 
+	/* have_version is true if the connection's final version is
+	 * known. Otherwise the version has not been negotiated yet. */
+	char have_version;
+
 	SSL3_BUFFER rbuf;	/* read IO goes into here */
 	SSL3_BUFFER wbuf;	/* write IO goes into here */
 

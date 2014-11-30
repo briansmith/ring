@@ -341,12 +341,12 @@ fprintf(stderr, "Record type=%d, Length=%d\n", rr->type, rr->length);
 #endif
 
 		/* Lets check version */
-		if (!s->first_packet)
+		if (s->s3->have_version)
 			{
 			if (version != s->version)
 				{
 				OPENSSL_PUT_ERROR(SSL, ssl3_get_record, SSL_R_WRONG_VERSION_NUMBER);
-                                if ((s->version & 0xFF00) == (version & 0xFF00) && !s->enc_write_ctx && !s->write_hash)
+                                if ((s->version & 0xFF00) == (version & 0xFF00))
                                 	/* Send back error using their minor version number :-) */
 					s->version = (unsigned short)version;
 				al=SSL_AD_PROTOCOL_VERSION;

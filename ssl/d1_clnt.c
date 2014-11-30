@@ -552,7 +552,6 @@ static int dtls1_get_hello_verify(SSL *s)
 	CBS hello_verify_request, cookie;
 	uint16_t server_version;
 
-	s->first_packet = 1;
 	n=s->method->ssl_get_message(s,
 		DTLS1_ST_CR_HELLO_VERIFY_REQUEST_A,
 		DTLS1_ST_CR_HELLO_VERIFY_REQUEST_B,
@@ -561,7 +560,6 @@ static int dtls1_get_hello_verify(SSL *s)
 		20000,
 		SSL_GET_MESSAGE_HASH_MESSAGE,
 		&ok);
-	s->first_packet = 0;
 
 	if (!ok) return((int)n);
 

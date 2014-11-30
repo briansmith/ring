@@ -777,11 +777,6 @@ int ssl3_get_server_hello(SSL *s)
 	uint8_t compression_method;
 	unsigned long mask_ssl;
 
-	/* DTLS_ANY_VERSION does not sniff the version ahead of time,
-	 * so disable the version check. */
-	if (SSL_IS_DTLS(s))
-		s->first_packet = 1;
-
 	n=s->method->ssl_get_message(s,
 		SSL3_ST_CR_SRVR_HELLO_A,
 		SSL3_ST_CR_SRVR_HELLO_B,
@@ -789,9 +784,6 @@ int ssl3_get_server_hello(SSL *s)
 		20000, /* ?? */
 		SSL_GET_MESSAGE_HASH_MESSAGE,
 		&ok);
-
-	if (SSL_IS_DTLS(s))
-		s->first_packet = 0;
 
 	if (!ok) return((int)n);
 
@@ -836,6 +828,12 @@ int ssl3_get_server_hello(SSL *s)
 		al = SSL_AD_PROTOCOL_VERSION;
 		goto f_err;
 		}
+
+	/* At this point, the connection's version is known and s->version is
+	 * fixed. Begin enforcing the record-layer version. Note: SSLv23_method
+	 * currently determines its version sooner, but it will later be moved
+	 * to this point. */
+	s->s3->have_version = 1;
 
 	/* Copy over the server random. */
 	memcpy(s->s3->server_random, CBS_data(&server_random), SSL3_RANDOM_SIZE);

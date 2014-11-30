@@ -715,7 +715,6 @@ int ssl3_get_client_hello(SSL *s)
 	switch (s->state) {
 	case SSL3_ST_SR_CLNT_HELLO_A:
 	case SSL3_ST_SR_CLNT_HELLO_B:
-		s->first_packet=1;
 		n=s->method->ssl_get_message(s,
 			SSL3_ST_SR_CLNT_HELLO_A,
 			SSL3_ST_SR_CLNT_HELLO_B,
@@ -725,7 +724,6 @@ int ssl3_get_client_hello(SSL *s)
 			&ok);
 
 		if (!ok) return((int)n);
-		s->first_packet=0;
 
 		/* If we require cookies and this ClientHello doesn't
 		 * contain one, just return since we do not want to
@@ -814,7 +812,7 @@ int ssl3_get_client_hello(SSL *s)
 		{
 		OPENSSL_PUT_ERROR(SSL, ssl3_get_client_hello, SSL_R_WRONG_VERSION_NUMBER);
 		if ((s->client_version>>8) == SSL3_VERSION_MAJOR &&
-			!s->enc_write_ctx && !s->write_hash)
+			!s->s3->have_version)
 			{
 			/* similar to ssl3_get_record, send alert using remote version number */
 			s->version = s->client_version;
@@ -889,6 +887,12 @@ int ssl3_get_client_hello(SSL *s)
 				}
 			}
 		}
+
+	/* At this point, the connection's version is known and s->version is
+	 * fixed. Begin enforcing the record-layer version. Note: SSLv23_method
+	 * currently determines its version sooner, but it will later be moved
+	 * to this point. */
+	s->s3->have_version = 1;
 
 	s->hit=0;
 	/* Versions before 0.9.7 always allow clients to resume sessions in renegotiation.

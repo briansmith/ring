@@ -583,7 +583,7 @@ again:
 		n2s(p,rr->length);
 
 		/* Lets check version */
-		if (!s->first_packet)
+		if (s->s3->have_version)
 			{
 			if (version != s->version)
 				{

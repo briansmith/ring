@@ -243,8 +243,6 @@ int SSL_clear(SSL *s)
 	ssl_clear_hash_ctx(&s->read_hash);
 	ssl_clear_hash_ctx(&s->write_hash);
 
-	s->first_packet=0;
-
 	s->method->ssl_clear(s);
 	return(1);
 	}
