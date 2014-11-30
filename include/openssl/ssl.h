@@ -1188,7 +1188,11 @@ struct ssl_st
 	 * test instead of an "init" member.
 	 */
 
-	int server;	/* are we the server side? - mostly used by SSL_clear*/
+	/* server is true iff the this SSL* is the server half. Note:
+	 * before the SSL* is initialized by either
+	 * SSL_set_accept_state or SSL_set_connect_state, the side is
+	 * not determined. In this state, server is always false. */
+	int server;
 
 	int new_session;/* Generate a new session or reuse an old one.
 	                 * NB: For servers, the 'new' session may actually be a previously

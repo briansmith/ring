@@ -210,7 +210,20 @@ int SSL_clear(SSL *s)
 		}
 #endif
 
-	s->state=SSL_ST_BEFORE|((s->server)?SSL_ST_ACCEPT:SSL_ST_CONNECT);
+	/* SSL_clear may be called before or after the |s| is initialized in
+	 * either accept or connect state. In the latter case, SSL_clear should
+	 * preserve the half and reset |s->state| accordingly. */
+	if (s->handshake_func != NULL)
+		{
+		if (s->server)
+			SSL_set_accept_state(s);
+		else
+			SSL_set_connect_state(s);
+		}
+	else
+		{
+		assert(s->state == 0);
+		}
 
 	s->version=s->method->version;
 	s->client_version=s->version;
@@ -369,7 +382,6 @@ SSL *SSL_new(SSL_CTX *ctx)
 		goto err;
 
 	s->references=1;
-	s->server=(ctx->method->ssl_accept == ssl_undefined_function)?0:1;
 
 	SSL_clear(s);
 
