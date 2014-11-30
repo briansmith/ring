@@ -106,6 +106,7 @@
  * (eay@cryptsoft.com).  This product includes software written by Tim
  * Hudson (tjh@cryptsoft.com). */
 
+#include <assert.h>
 #include <stdio.h>
 
 #include <openssl/buf.h>
@@ -130,6 +131,9 @@ int ssl23_connect(SSL *s)
 	int ret= -1;
 	int new_state,state;
 
+	assert(s->handshake_func == ssl23_connect);
+	assert(!s->server);
+
 	ERR_clear_error();
 	ERR_clear_system_error();
 
@@ -149,7 +153,6 @@ int ssl23_connect(SSL *s)
 		case SSL_ST_CONNECT:
 		case SSL_ST_BEFORE|SSL_ST_CONNECT:
 
-			s->server=0;
 			if (cb != NULL) cb(s,SSL_CB_HANDSHAKE_START,1);
 
 			if (s->init_buf == NULL)

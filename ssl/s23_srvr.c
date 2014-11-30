@@ -146,6 +146,9 @@ int ssl23_accept(SSL *s)
 	int ret= -1;
 	int new_state,state;
 
+	assert(s->handshake_func == ssl23_accept);
+	assert(s->server);
+
 	ERR_clear_error();
 	ERR_clear_system_error();
 
@@ -165,7 +168,6 @@ int ssl23_accept(SSL *s)
 		case SSL_ST_ACCEPT:
 		case SSL_ST_BEFORE|SSL_ST_ACCEPT:
 
-			s->server=1;
 			if (cb != NULL) cb(s,SSL_CB_HANDSHAKE_START,1);
 
 			if (s->init_buf == NULL)

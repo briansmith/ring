@@ -137,6 +137,8 @@ int dtls1_accept(SSL *s)
 	int new_state,state,skip=0;
 
 	assert(s->handshake_func == dtls1_accept);
+	assert(s->server);
+
 	ERR_clear_error();
 	ERR_clear_system_error();
 
@@ -166,7 +168,6 @@ int dtls1_accept(SSL *s)
 		case SSL_ST_ACCEPT:
 		case SSL_ST_BEFORE|SSL_ST_ACCEPT:
 
-			s->server=1;
 			if (cb != NULL) cb(s,SSL_CB_HANDSHAKE_START,1);
 
 			if ((s->version & 0xff00) != (DTLS1_VERSION & 0xff00))

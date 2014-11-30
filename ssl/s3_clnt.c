@@ -174,6 +174,8 @@ int ssl3_connect(SSL *s)
 	int new_state,state,skip=0;
 
 	assert(s->handshake_func == ssl3_connect);
+	assert(!s->server);
+
 	ERR_clear_error();
 	ERR_clear_system_error();
 
@@ -198,7 +200,6 @@ int ssl3_connect(SSL *s)
 		case SSL_ST_CONNECT:
 		case SSL_ST_BEFORE|SSL_ST_CONNECT:
 
-			s->server=0;
 			if (cb != NULL) cb(s,SSL_CB_HANDSHAKE_START,1);
 
 			if ((s->version & 0xff00 ) != 0x0300)
