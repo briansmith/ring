@@ -59,6 +59,7 @@
 #include <assert.h>
 
 #include <openssl/cipher.h>
+#include <openssl/cpu.h>
 #include <openssl/err.h>
 #include <openssl/md5.h>
 #include <openssl/mem.h>
@@ -176,7 +177,6 @@ static int aead_rc4_md5_tls_seal(const EVP_AEAD_CTX *ctx, uint8_t *out,
   MD5_CTX md;
 #if defined(STITCHED_CALL)
   size_t rc4_off, md5_off, blocks;
-  extern unsigned int OPENSSL_ia32cap_P[];
 #else
   const size_t rc4_off = 0;
   const size_t md5_off = 0;
