@@ -390,7 +390,7 @@ err:
 static int ssl23_get_v2_client_hello(SSL *s)
 	{
 	uint8_t *p;
-	size_t i;
+	size_t rand_len;
 	int n = 0;
 
 	CBS v2_client_hello, cipher_specs, session_id, challenge;
@@ -449,8 +449,10 @@ static int ssl23_get_v2_client_hello(SSL *s)
 	/* The client_random is the V2ClientHello challenge. Truncate or
 	 * left-pad with zeros as needed. */
 	memset(random, 0, SSL3_RANDOM_SIZE);
-	i = (CBS_len(&challenge) > SSL3_RANDOM_SIZE) ? SSL3_RANDOM_SIZE : CBS_len(&challenge);
-	memcpy(random, CBS_data(&challenge), i);
+	rand_len = CBS_len(&challenge);
+	if (rand_len > SSL3_RANDOM_SIZE)
+		rand_len = SSL3_RANDOM_SIZE;
+	memcpy(random + (SSL3_RANDOM_SIZE - rand_len), CBS_data(&challenge), rand_len);
 
 	/* Write out an equivalent SSLv3 ClientHello. */
 	if (!CBB_init_fixed(&client_hello, (uint8_t *)s->init_buf->data, s->init_buf->max))

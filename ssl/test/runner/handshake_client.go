@@ -198,12 +198,14 @@ NextCipherSuite:
 
 	var helloBytes []byte
 	if c.config.Bugs.SendV2ClientHello {
+		// Test that the peer left-pads random.
+		hello.random[0] = 0
 		v2Hello := &v2ClientHelloMsg{
 			vers:         hello.vers,
 			cipherSuites: hello.cipherSuites,
 			// No session resumption for V2ClientHello.
 			sessionId: nil,
-			challenge: hello.random,
+			challenge: hello.random[1:],
 		}
 		helloBytes = v2Hello.marshal()
 		c.writeV2Record(helloBytes)
