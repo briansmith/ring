@@ -933,6 +933,13 @@ void dtls1_double_timeout(SSL *s);
 unsigned int dtls1_min_mtu(void);
 
 /* some client-only functions */
+
+/* ssl3_get_max_client_version returns the maximum protocol version configured
+ * for the client. It is guaranteed that the set of allowed versions at or below
+ * this maximum version is contiguous. If all versions are disabled, it returns
+ * zero. */
+uint16_t ssl3_get_max_client_version(SSL *s);
+
 int ssl3_send_client_hello(SSL *s);
 int ssl3_get_server_hello(SSL *s);
 int ssl3_get_certificate_request(SSL *s);

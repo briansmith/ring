@@ -592,6 +592,48 @@ end:
 	return(ret);
 	}
 
+uint16_t ssl3_get_max_client_version(SSL *s)
+	{
+	unsigned long options = s->options;
+	uint16_t version = 0;
+
+	/* OpenSSL's API for controlling versions entails blacklisting
+	 * individual protocols. This has two problems. First, on the client,
+	 * the protocol can only express a contiguous range of versions. Second,
+	 * a library consumer trying to set a maximum version cannot disable
+	 * protocol versions that get added in a future version of the library.
+	 *
+	 * To account for both of these, OpenSSL interprets the client-side
+	 * bitmask as a min/max range by picking the lowest contiguous non-empty
+	 * range of enabled protocols. Note that this means it is impossible to
+	 * set a maximum version of TLS 1.2 in a future-proof way.
+	 *
+	 * By this scheme, the maximum version is the lowest version V such that
+	 * V is enabled and V+1 is disabled or unimplemented.
+	 *
+	 * TODO(davidben): Deprecate this API in favor of more sensible
+	 * min_version/max_version settings. */
+	if (SSL_IS_DTLS(s))
+		{
+		if (!(options & SSL_OP_NO_DTLSv1_2))
+			version = DTLS1_2_VERSION;
+		if (!(options & SSL_OP_NO_DTLSv1) && (options & SSL_OP_NO_DTLSv1_2))
+			version = DTLS1_VERSION;
+		}
+	else
+		{
+		if (!(options & SSL_OP_NO_TLSv1_2))
+			version = TLS1_2_VERSION;
+		if (!(options & SSL_OP_NO_TLSv1_1) && (options & SSL_OP_NO_TLSv1_2))
+			version = TLS1_1_VERSION;
+		if (!(options & SSL_OP_NO_TLSv1) && (options & SSL_OP_NO_TLSv1_1))
+			version = TLS1_VERSION;
+		if (!(options & SSL_OP_NO_SSLv3) && (options & SSL_OP_NO_TLSv1))
+			version = SSL3_VERSION;
+		}
+
+	return version;
+	}
 
 int ssl3_send_client_hello(SSL *s)
 	{
@@ -605,33 +647,15 @@ int ssl3_send_client_hello(SSL *s)
 		{
 		if (s->method->version == DTLS_ANY_VERSION)
 			{
-			/* Determine which DTLS version to use */
-			int options = s->options;
-			/* If DTLS 1.2 disabled correct the version number */
-			if (options & SSL_OP_NO_DTLSv1_2)
+			uint16_t max_version = ssl3_get_max_client_version(s);
+			/* Disabling all versions is silly: return an error. */
+			if (max_version == 0)
 				{
-				/* Disabling all versions is silly: return an
-				 * error.
-				 */
-				if (options & SSL_OP_NO_DTLSv1)
-					{
-					OPENSSL_PUT_ERROR(SSL, ssl3_send_client_hello, SSL_R_WRONG_SSL_VERSION);
-					goto err;
-					}
-				/* Update method so we don't use any DTLS 1.2
-				 * features.
-				 */
-				s->method = DTLSv1_client_method();
-				s->version = DTLS1_VERSION;
+				OPENSSL_PUT_ERROR(SSL, ssl3_send_client_hello, SSL_R_WRONG_SSL_VERSION);
+				goto err;
 				}
-			else
-				{
-				/* We only support one version: update method */
-				if (options & SSL_OP_NO_DTLSv1)
-					s->method = DTLSv1_2_client_method();
-				s->version = DTLS1_2_VERSION;
-				}
-			s->client_version = s->version;
+			s->version = max_version;
+			s->client_version = max_version;
 			}
 
 		/* If the configured session was created at a version

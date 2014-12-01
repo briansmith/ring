@@ -257,29 +257,16 @@ static int ssl23_client_hello(SSL *s)
 	unsigned char *p,*d;
 	int i;
 	unsigned long l;
-	int version = 0, version_major, version_minor;
+	uint16_t version;
+	uint8_t version_major, version_minor;
 	int ret;
-	unsigned long mask, options = s->options;
 
-	/*
-	 * SSL_OP_NO_X disables all protocols above X *if* there are
-	 * some protocols below X enabled. This is required in order
-	 * to maintain "version capability" vector contiguous. So
-	 * that if application wants to disable TLS1.0 in favour of
-	 * TLS1>=1, it would be insufficient to pass SSL_NO_TLSv1, the
-	 * answer is SSL_OP_NO_TLSv1|SSL_OP_NO_SSLv3|SSL_OP_NO_SSLv2.
-	 */
-	mask = SSL_OP_NO_TLSv1_1|SSL_OP_NO_TLSv1|SSL_OP_NO_SSLv3;
-	version = TLS1_2_VERSION;
-	if ((options & SSL_OP_NO_TLSv1_2) && (options & mask) != mask)
-		version = TLS1_1_VERSION;
-	mask &= ~SSL_OP_NO_TLSv1_1;
-	if ((options & SSL_OP_NO_TLSv1_1) && (options & mask) != mask)
-		version = TLS1_VERSION;
-	mask &= ~SSL_OP_NO_TLSv1;
-	if ((options & SSL_OP_NO_TLSv1) && (options & mask) != mask)
-		version = SSL3_VERSION;
-	mask &= ~SSL_OP_NO_SSLv3;
+	version = ssl3_get_max_client_version(s);
+	if (version == 0)
+		{
+		OPENSSL_PUT_ERROR(SSL, ssl23_client_hello, SSL_R_WRONG_SSL_VERSION);
+		return -1;
+		}
 
 	buf=(unsigned char *)s->init_buf->data;
 	if (s->state == SSL23_ST_CW_CLNT_HELLO_A)

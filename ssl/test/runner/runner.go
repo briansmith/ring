@@ -537,6 +537,19 @@ var testCases = []testCase{
 		shouldFail:    true,
 		expectedError: ":UNEXPECTED_MESSAGE:",
 	},
+	{
+		name:          "DisableEverything",
+		flags:         []string{"-no-tls12", "-no-tls11", "-no-tls1", "-no-ssl3"},
+		shouldFail:    true,
+		expectedError: ":WRONG_SSL_VERSION:",
+	},
+	{
+		protocol:      dtls,
+		name:          "DisableEverything-DTLS",
+		flags:         []string{"-no-tls12", "-no-tls1"},
+		shouldFail:    true,
+		expectedError: ":WRONG_SSL_VERSION:",
+	},
 }
 
 func doExchange(test *testCase, config *Config, conn net.Conn, messageLen int, isResume bool) error {
