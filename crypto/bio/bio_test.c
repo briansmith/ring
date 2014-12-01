@@ -123,8 +123,8 @@ static int test_socket_connect(void) {
 
 /* bio_read_zero_copy_wrapper is a wrapper around the zero-copy APIs to make
  * testing easier. */
-static size_t bio_read_zero_copy_wrapper(BIO* bio, void* data, size_t len) {
-  uint8_t* read_buf;
+static size_t bio_read_zero_copy_wrapper(BIO *bio, uint8_t *data, size_t len) {
+  uint8_t *read_buf;
   size_t read_buf_offset;
   size_t available_bytes;
   size_t len_read = 0;
@@ -148,9 +148,9 @@ static size_t bio_read_zero_copy_wrapper(BIO* bio, void* data, size_t len) {
 
 /* bio_write_zero_copy_wrapper is a wrapper around the zero-copy APIs to make
  * testing easier. */
-static size_t bio_write_zero_copy_wrapper(BIO* bio, const void* data,
+static size_t bio_write_zero_copy_wrapper(BIO *bio, const uint8_t *data,
                                           size_t len) {
-  uint8_t* write_buf;
+  uint8_t *write_buf;
   size_t write_buf_offset;
   size_t available_bytes;
   size_t len_written = 0;
