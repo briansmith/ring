@@ -10,4 +10,7 @@ add_executable(
 	test_config.cc
 )
 
-target_link_libraries(bssl_shim ssl crypto dl)
+target_link_libraries(bssl_shim ssl crypto)
+if (NOT APPLE AND NOT WIN32)
+	target_link_libraries(bssl_shim dl)
+endif()
