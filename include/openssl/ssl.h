@@ -2185,26 +2185,6 @@ OPENSSL_EXPORT int SSL_is_server(SSL *s);
  * these values. */
 OPENSSL_EXPORT void SSL_get_structure_sizes(size_t* ssl_size, size_t* ssl_ctx_size, size_t* ssl_session_size);
 
-OPENSSL_EXPORT SSL_CONF_CTX *SSL_CONF_CTX_new(void);
-OPENSSL_EXPORT int SSL_CONF_CTX_finish(SSL_CONF_CTX *cctx);
-OPENSSL_EXPORT void SSL_CONF_CTX_free(SSL_CONF_CTX *cctx);
-OPENSSL_EXPORT unsigned int SSL_CONF_CTX_set_flags(SSL_CONF_CTX *cctx, unsigned int flags);
-OPENSSL_EXPORT unsigned int SSL_CONF_CTX_clear_flags(SSL_CONF_CTX *cctx, unsigned int flags);
-OPENSSL_EXPORT int SSL_CONF_CTX_set1_prefix(SSL_CONF_CTX *cctx, const char *pre);
-
-OPENSSL_EXPORT void SSL_CONF_CTX_set_ssl(SSL_CONF_CTX *cctx, SSL *ssl);
-OPENSSL_EXPORT void SSL_CONF_CTX_set_ssl_ctx(SSL_CONF_CTX *cctx, SSL_CTX *ctx);
-
-OPENSSL_EXPORT int SSL_CONF_cmd(SSL_CONF_CTX *cctx, const char *cmd, const char *value);
-OPENSSL_EXPORT int SSL_CONF_cmd_argv(SSL_CONF_CTX *cctx, int *pargc, char ***pargv);
-OPENSSL_EXPORT int SSL_CONF_cmd_value_type(SSL_CONF_CTX *cctx, const char *cmd);
-
-#ifndef OPENSSL_NO_SSL_TRACE
-OPENSSL_EXPORT void SSL_trace(int write_p, int version, int content_type,
-		const void *buf, size_t len, SSL *ssl, void *arg);
-OPENSSL_EXPORT const char *SSL_CIPHER_standard_name(const SSL_CIPHER *c);
-#endif
-
 OPENSSL_EXPORT void ERR_load_SSL_strings(void);
 
 
