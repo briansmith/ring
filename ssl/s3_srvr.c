@@ -657,13 +657,6 @@ int ssl3_accept(SSL *s)
 		
 		if (!s->s3->tmp.reuse_message && !skip)
 			{
-			if (s->debug)
-				{
-				if ((ret=BIO_flush(s->wbio)) <= 0)
-					goto end;
-				}
-
-
 			if ((cb != NULL) && (s->state != state))
 				{
 				new_state=s->state;

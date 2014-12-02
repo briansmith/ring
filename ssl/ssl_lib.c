@@ -3130,11 +3130,6 @@ void ssl_clear_hash_ctx(EVP_MD_CTX **hash)
 	*hash=NULL;
 }
 
-void SSL_set_debug(SSL *s, int debug)
-	{
-	s->debug = debug;
-	}
-
 int SSL_cache_hit(SSL *s)
 	{
 	return s->hit;

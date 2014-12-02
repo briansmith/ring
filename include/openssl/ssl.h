@@ -1285,9 +1285,6 @@ struct ssl_st
 		unsigned char *psk, unsigned int max_psk_len);
 
 	SSL_CTX *ctx;
-	/* set this flag to 1 and a sleep(1) is put into all SSL_read()
-	 * and SSL_write() calls, good for nbio debuging :-) */
-	int debug;	
 
 	/* extra application data */
 	long verify_result;
@@ -2176,7 +2173,6 @@ OPENSSL_EXPORT const char *SSL_COMP_get_name(const void *comp);
 OPENSSL_EXPORT void *SSL_COMP_get_compression_methods(void);
 OPENSSL_EXPORT int SSL_COMP_add_compression_method(int id,void *cm);
 
-OPENSSL_EXPORT void SSL_set_debug(SSL *s, int debug);
 OPENSSL_EXPORT int SSL_cache_hit(SSL *s);
 OPENSSL_EXPORT int SSL_is_server(SSL *s);
 
