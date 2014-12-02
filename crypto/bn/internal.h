@@ -239,7 +239,8 @@ int bn_mul_mont(BN_ULONG *rp, const BN_ULONG *ap, const BN_ULONG *bp,
   }
 
 #if !defined(OPENSSL_NO_ASM) && defined(OPENSSL_X86_64)
-# if defined(__GNUC__) && __GNUC__>=2
+/* Windows clang lacks _umul128, but inline asm works. */
+# if (defined(__GNUC__) && __GNUC__>=2) || defined(__clang__)
 #  define BN_UMULT_HIGH(a,b)	({	\
 	register BN_ULONG ret,discard;	\
 	__asm__ ("mulq	%3"		\
@@ -252,8 +253,7 @@ int bn_mul_mont(BN_ULONG *rp, const BN_ULONG *ap, const BN_ULONG *bp,
 		: "=a"(low),"=d"(high)	\
 		: "a"(a),"g"(b)		\
 		: "cc");
-# endif
-# if defined(_MSC_VER) && _MSC_VER>=1400
+# elif defined(_MSC_VER) && _MSC_VER>=1400
    unsigned __int64 __umulh	(unsigned __int64 a,unsigned __int64 b);
    unsigned __int64 _umul128	(unsigned __int64 a,unsigned __int64 b,
 				 unsigned __int64 *h);
