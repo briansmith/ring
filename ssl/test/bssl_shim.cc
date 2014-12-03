@@ -469,7 +469,7 @@ static int do_exchange(SSL_SESSION **out_session,
     return 2;
   }
 
-  if (is_resume && (SSL_session_reused(ssl) == config->expect_session_miss)) {
+  if (is_resume && (!!SSL_session_reused(ssl) == config->expect_session_miss)) {
     fprintf(stderr, "session was%s reused\n",
             SSL_session_reused(ssl) ? "" : " not");
     return 2;
