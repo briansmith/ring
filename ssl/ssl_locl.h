@@ -986,7 +986,6 @@ int dtls1_shutdown(SSL *s);
 long dtls1_get_message(SSL *s, int st1, int stn, int mt, long max, int hash_message, int *ok);
 int dtls1_get_record(SSL *s);
 int dtls1_dispatch_alert(SSL *s);
-int dtls1_enc(SSL *s, int snd);
 
 int ssl_init_wbio_buffer(SSL *s, int push);
 void ssl_free_wbio_buffer(SSL *s);

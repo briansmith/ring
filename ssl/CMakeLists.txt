@@ -8,7 +8,6 @@ add_library(
 
 	d1_both.c
 	d1_clnt.c
-	d1_enc.c
 	d1_lib.c
 	d1_meth.c
 	d1_pkt.c
