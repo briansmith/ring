@@ -1,4 +1,10 @@
-#!/usr/local/bin/perl
+#!/usr/bin/env perl
+
+if (scalar @ARGV != 3)
+	{
+	print "Usage: perl objects.pl objects.txt obj_mac.num ../../include/openssl/obj_mac.h\n";
+	exit 1;
+	}
 
 open (NUMIN,"$ARGV[1]") || die "Can't open number file $ARGV[1]";
 $max_nid=0;
@@ -121,7 +127,7 @@ open (OUT,">$ARGV[2]") || die "Can't open output file $ARGV[2]";
 print OUT <<'EOF';
 /* THIS FILE IS GENERATED FROM objects.txt by objects.pl via the
  * following command:
- * perl objects.pl objects.txt obj_mac.num obj_mac.h */
+ * perl objects.pl objects.txt obj_mac.num ../../include/openssl/obj_mac.h */
 
 /* Copyright (C) 1995-1997 Eric Young (eay@cryptsoft.com)
  * All rights reserved.
