@@ -1031,23 +1031,17 @@ int ssl3_get_server_certificate(SSL *s)
 		x = d2i_X509(NULL, &data, CBS_len(&certificate));
 		if (x == NULL)
 			{
-			al=SSL_AD_BAD_CERTIFICATE;
+			al = SSL_AD_BAD_CERTIFICATE;
 			OPENSSL_PUT_ERROR(SSL, ssl3_get_server_certificate, ERR_R_ASN1_LIB);
 			goto f_err;
 			}
-		if (!CBS_skip(&certificate, data - CBS_data(&certificate)))
-			{
-			al = SSL_AD_INTERNAL_ERROR;
-			OPENSSL_PUT_ERROR(SSL, ssl3_get_server_certificate, ERR_R_INTERNAL_ERROR);
-			goto f_err;
-			}
-		if (CBS_len(&certificate) != 0)
+		if (data != CBS_data(&certificate) + CBS_len(&certificate))
 			{
 			al = SSL_AD_DECODE_ERROR;
 			OPENSSL_PUT_ERROR(SSL, ssl3_get_server_certificate, SSL_R_CERT_LENGTH_MISMATCH);
 			goto f_err;
 			}
-		if (!sk_X509_push(sk,x))
+		if (!sk_X509_push(sk, x))
 			{
 			OPENSSL_PUT_ERROR(SSL, ssl3_get_server_certificate, ERR_R_MALLOC_FAILURE);
 			goto err;

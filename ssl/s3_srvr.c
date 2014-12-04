@@ -2282,19 +2282,13 @@ int ssl3_get_client_certificate(SSL *s)
 			OPENSSL_PUT_ERROR(SSL, ssl3_get_client_certificate, ERR_R_ASN1_LIB);
 			goto f_err;
 			}
-		if (!CBS_skip(&certificate, data - CBS_data(&certificate)))
-			{
-			al = SSL_AD_INTERNAL_ERROR;
-			OPENSSL_PUT_ERROR(SSL, ssl3_get_client_certificate, ERR_R_INTERNAL_ERROR);
-			goto f_err;
-			}
-		if (CBS_len(&certificate) != 0)
+		if (data != CBS_data(&certificate) + CBS_len(&certificate))
 			{
 			al = SSL_AD_DECODE_ERROR;
 			OPENSSL_PUT_ERROR(SSL, ssl3_get_client_certificate, SSL_R_CERT_LENGTH_MISMATCH);
 			goto f_err;
 			}
-		if (!sk_X509_push(sk,x))
+		if (!sk_X509_push(sk, x))
 			{
 			OPENSSL_PUT_ERROR(SSL, ssl3_get_client_certificate, ERR_R_MALLOC_FAILURE);
 			goto err;
