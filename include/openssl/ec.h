@@ -146,11 +146,6 @@ OPENSSL_EXPORT int EC_GROUP_get_curve_name(const EC_GROUP *group);
  * element of the field underlying |group|. */
 OPENSSL_EXPORT int EC_GROUP_get_degree(const EC_GROUP *group);
 
-/* EC_GROUP_set_point_conversion_form sets the form that serialised points will
- * take as one of the |POINT_CONVERSION_*| values. */
-OPENSSL_EXPORT void EC_GROUP_set_point_conversion_form(
-    EC_GROUP *group, point_conversion_form_t form);
-
 /* EC_GROUP_precompute_mult precomputes multiplies of the generator in order to
  * speed up operations that involve calculating generator multiples. It returns
  * one on sucess and zero otherwise. If |ctx| is not NULL, it may be used. */

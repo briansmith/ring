@@ -247,7 +247,6 @@ EC_GROUP *ec_group_new(const EC_METHOD *meth) {
   ret->meth = meth;
   BN_init(&ret->order);
   BN_init(&ret->cofactor);
-  ret->asn1_form = POINT_CONVERSION_UNCOMPRESSED;
 
   if (!meth->group_init(ret)) {
     OPENSSL_free(ret);
@@ -457,7 +456,6 @@ int EC_GROUP_copy(EC_GROUP *dest, const EC_GROUP *src) {
   }
 
   dest->curve_name = src->curve_name;
-  dest->asn1_form = src->asn1_form;
 
   return dest->meth->group_copy(dest, src);
 }
@@ -538,11 +536,6 @@ int EC_GROUP_get_degree(const EC_GROUP *group) {
     return 0;
   }
   return group->meth->group_get_degree(group);
-}
-
-void EC_GROUP_set_point_conversion_form(EC_GROUP *group,
-                                        point_conversion_form_t form) {
-  group->asn1_form = form;
 }
 
 int EC_GROUP_precompute_mult(EC_GROUP *group, BN_CTX *ctx) {

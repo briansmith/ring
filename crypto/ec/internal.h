@@ -199,7 +199,6 @@ struct ec_group_st {
   BIGNUM order, cofactor;
 
   int curve_name; /* optional NID for named curve */
-  point_conversion_form_t asn1_form;
 
   struct ec_pre_comp_st *pre_comp;
 

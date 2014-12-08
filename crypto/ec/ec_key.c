@@ -295,9 +295,6 @@ point_conversion_form_t EC_KEY_get_conv_form(const EC_KEY *key) {
 
 void EC_KEY_set_conv_form(EC_KEY *key, point_conversion_form_t cform) {
   key->conv_form = cform;
-  if (key->group != NULL) {
-    EC_GROUP_set_point_conversion_form(key->group, cform);
-  }
 }
 
 int EC_KEY_precompute_mult(EC_KEY *key, BN_CTX *ctx) {
