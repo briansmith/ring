@@ -447,37 +447,15 @@ static int ssl23_get_server_hello(SSL *s)
 	         ((p[0] == SSL3_RT_HANDSHAKE && p[5] == SSL3_MT_SERVER_HELLO) ||
 	          (p[0] == SSL3_RT_ALERT && p[3] == 0 && p[4] == 2)))
 		{
-		/* we have sslv3 or tls1 (server hello or alert) */
-
-		if ((p[2] == SSL3_VERSION_MINOR) &&
-			!(s->options & SSL_OP_NO_SSLv3))
-			{
-			s->version=SSL3_VERSION;
-			s->method=SSLv3_client_method();
-			}
-		else if ((p[2] == TLS1_VERSION_MINOR) &&
-			!(s->options & SSL_OP_NO_TLSv1))
-			{
-			s->version=TLS1_VERSION;
-			s->method=TLSv1_client_method();
-			}
-		else if ((p[2] == TLS1_1_VERSION_MINOR) &&
-			!(s->options & SSL_OP_NO_TLSv1_1))
-			{
-			s->version=TLS1_1_VERSION;
-			s->method=TLSv1_1_client_method();
-			}
-		else if ((p[2] == TLS1_2_VERSION_MINOR) &&
-			!(s->options & SSL_OP_NO_TLSv1_2))
-			{
-			s->version=TLS1_2_VERSION;
-			s->method=TLSv1_2_client_method();
-			}
-		else
+		uint16_t version = (p[1] << 8) | p[2];
+		if (!ssl3_is_version_enabled(s, version))
 			{
 			OPENSSL_PUT_ERROR(SSL, ssl23_get_server_hello, SSL_R_UNSUPPORTED_PROTOCOL);
 			goto err;
 			}
+		s->version = version;
+		s->method = ssl3_get_method(version);
+		assert(s->method != NULL);
 
 		if (p[0] == SSL3_RT_ALERT && p[5] != SSL3_AL_WARNING)
 			{

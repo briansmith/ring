@@ -121,20 +121,6 @@
 static int ssl23_get_client_hello(SSL *s);
 static int ssl23_get_v2_client_hello(SSL *s);
 
-static const SSL_METHOD *ssl23_get_server_method(int ver)
-	{
-	if (ver == SSL3_VERSION)
-		return(SSLv3_server_method());
-	else if (ver == TLS1_VERSION)
-		return(TLSv1_server_method());
-	else if (ver == TLS1_1_VERSION)
-		return(TLSv1_1_server_method());
-	else if (ver == TLS1_2_VERSION)
-		return(TLSv1_2_server_method());
-	else
-		return(NULL);
-	}
-
 int ssl23_accept(SSL *s)
 	{
 	BUF_MEM *buf;
@@ -213,7 +199,7 @@ int ssl23_accept(SSL *s)
 				}
 
 			s->state = SSL3_ST_SR_CLNT_HELLO_A;
-			s->method = ssl23_get_server_method(s->version);
+			s->method = ssl3_get_method(s->version);
 			assert(s->method != NULL);
 			s->handshake_func = s->method->ssl_accept;
 			s->init_num = 0;
@@ -244,35 +230,6 @@ end:
 	if (cb != NULL)
 		cb(s,SSL_CB_ACCEPT_EXIT,ret);
 	return(ret);
-	}
-
-/* ssl23_get_mutual_version determines the highest supported version for a
- * client which reports a highest version of |client_version|. On success, it
- * returns 1 and sets |*out_version| to the negotiated version. Otherwise, it
- * returns 0. */
-static int ssl23_get_mutual_version(SSL *s, int *out_version, uint16_t client_version)
-	{
-	if (client_version >= TLS1_2_VERSION && !(s->options & SSL_OP_NO_TLSv1_2))
-		{
-		*out_version = TLS1_2_VERSION;
-		return 1;
-		}
-	if (client_version >= TLS1_1_VERSION && !(s->options & SSL_OP_NO_TLSv1_1))
-		{
-		*out_version = TLS1_1_VERSION;
-		return 1;
-		}
-	if (client_version >= TLS1_VERSION && !(s->options & SSL_OP_NO_TLSv1))
-		{
-		*out_version = TLS1_VERSION;
-		return 1;
-		}
-	if (client_version >= SSL3_VERSION && !(s->options & SSL_OP_NO_SSLv3))
-		{
-		*out_version = SSL3_VERSION;
-		return 1;
-		}
-	return 0;
 	}
 
 static int ssl23_get_client_hello(SSL *s)
@@ -336,11 +293,13 @@ static int ssl23_get_client_hello(SSL *s)
 		/* This is a V2ClientHello. Determine the version to
 		 * use. */
 		uint16_t client_version = (p[3] << 8) | p[4];
-		if (!ssl23_get_mutual_version(s, &s->version, client_version))
+		uint16_t version = ssl3_get_mutual_version(s, client_version);
+		if (version == 0)
 			{
 			OPENSSL_PUT_ERROR(SSL, ssl23_get_client_hello, SSL_R_UNSUPPORTED_PROTOCOL);
 			goto err;
 			}
+		s->version = version;
 		/* Parse the entire V2ClientHello. */
 		s->state = SSL23_ST_SR_V2_CLNT_HELLO;
 		}
@@ -355,7 +314,7 @@ static int ssl23_get_client_hello(SSL *s)
 		 * this, so we simply reject such connections to avoid
 		 * protocol version downgrade attacks. */
 		uint16_t record_length = (p[3] << 8) | p[4];
-		uint16_t client_version;
+		uint16_t client_version, version;
 		if (record_length < 6)
 			{
 			OPENSSL_PUT_ERROR(SSL, ssl23_get_client_hello, SSL_R_RECORD_TOO_SMALL);
@@ -363,11 +322,13 @@ static int ssl23_get_client_hello(SSL *s)
 			}
 
 		client_version = (p[9] << 8) | p[10];
-		if (!ssl23_get_mutual_version(s, &s->version, client_version))
+		version = ssl3_get_mutual_version(s, client_version);
+		if (version == 0)
 			{
 			OPENSSL_PUT_ERROR(SSL, ssl23_get_client_hello, SSL_R_UNSUPPORTED_PROTOCOL);
 			goto err;
 			}
+		s->version = version;
 
                 /* Reset the record-layer state for SSL3. */
                 assert(s->rstate == SSL_ST_READ_HEADER);

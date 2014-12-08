@@ -854,25 +854,17 @@ int ssl3_get_client_hello(SSL *s)
 		if (s->method->version == DTLS_ANY_VERSION)
 			{
 			/* Select version to use */
-			if (s->client_version <= DTLS1_2_VERSION &&
-				!(s->options & SSL_OP_NO_DTLSv1_2))
-				{
-				s->version = DTLS1_2_VERSION;
-				s->method = DTLSv1_2_server_method();
-				}
-			else if (s->client_version <= DTLS1_VERSION &&
-				!(s->options & SSL_OP_NO_DTLSv1))
-				{
-				s->version = DTLS1_VERSION;
-				s->method = DTLSv1_server_method();
-				}
-			else
+			uint16_t version = ssl3_get_mutual_version(s, client_version);
+			if (version == 0)
 				{
 				OPENSSL_PUT_ERROR(SSL, ssl3_get_client_hello, SSL_R_WRONG_VERSION_NUMBER);
 				s->version = s->client_version;
 				al = SSL_AD_PROTOCOL_VERSION;
 				goto f_err;
 				}
+			s->version = version;
+			s->method = ssl3_get_method(version);
+			assert(s->method != NULL);
 			}
 		}
 

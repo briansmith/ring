@@ -929,13 +929,6 @@ unsigned int dtls1_min_mtu(void);
 void dtls1_hm_fragment_free(hm_fragment *frag);
 
 /* some client-only functions */
-
-/* ssl3_get_max_client_version returns the maximum protocol version configured
- * for the client. It is guaranteed that the set of allowed versions at or below
- * this maximum version is contiguous. If all versions are disabled, it returns
- * zero. */
-uint16_t ssl3_get_max_client_version(SSL *s);
-
 int ssl3_send_client_hello(SSL *s);
 int ssl3_get_server_hello(SSL *s);
 int ssl3_get_certificate_request(SSL *s);
@@ -1078,7 +1071,30 @@ int ssl_ctx_log_master_secret(SSL_CTX *ctx,
 	const uint8_t *master, size_t master_len);
 
 int ssl3_can_cutthrough(const SSL *s);
-int ssl_get_max_version(const SSL *s);
+
+/* ssl3_get_method returns the version-locked SSL_METHOD corresponding
+ * to |version|. */
+const SSL_METHOD *ssl3_get_method(uint16_t version);
+
+/* ssl3_get_max_server_version returns the maximum SSL/TLS version number
+ * supported by |s| as a server, or zero if all versions are disabled. */
+uint16_t ssl3_get_max_server_version(const SSL *s);
+
+/* ssl3_get_mutual_version selects the protocol version on |s| for a client
+ * which advertises |client_version|. If no suitable version exists, it returns
+ * zero. */
+uint16_t ssl3_get_mutual_version(SSL *s, uint16_t client_version);
+
+/* ssl3_get_max_client_version returns the maximum protocol version configured
+ * for the client. It is guaranteed that the set of allowed versions at or below
+ * this maximum version is contiguous. If all versions are disabled, it returns
+ * zero. */
+uint16_t ssl3_get_max_client_version(SSL *s);
+
+/* ssl3_is_version_enabled returns one if |version| is an enabled protocol
+ * version for |s| and zero otherwise. */
+int ssl3_is_version_enabled(SSL *s, uint16_t version);
+
 EVP_MD_CTX* ssl_replace_hash(EVP_MD_CTX **hash,const EVP_MD *md) ;
 void ssl_clear_hash_ctx(EVP_MD_CTX **hash);
 int ssl_add_serverhello_renegotiate_ext(SSL *s, unsigned char *p, int *len,
