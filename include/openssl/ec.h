@@ -85,10 +85,7 @@ typedef enum {
 	 *  which solution of the quadratic equation y is  */
 	POINT_CONVERSION_COMPRESSED = 2,
 	/** the point is encoded as z||x||y, where z is the octet 0x02  */
-	POINT_CONVERSION_UNCOMPRESSED = 4,
-	/** the point is encoded as z||x||y, where the octet z specifies
-         *  which solution of the quadratic equation y is  */
-	POINT_CONVERSION_HYBRID = 6
+	POINT_CONVERSION_UNCOMPRESSED = 4
 } point_conversion_form_t;
 
 

@@ -84,8 +84,7 @@ static size_t ec_GFp_simple_point2oct(const EC_GROUP *group,
   size_t field_len, i;
 
   if ((form != POINT_CONVERSION_COMPRESSED) &&
-      (form != POINT_CONVERSION_UNCOMPRESSED) &&
-      (form != POINT_CONVERSION_HYBRID)) {
+      (form != POINT_CONVERSION_UNCOMPRESSED)) {
     OPENSSL_PUT_ERROR(EC, ec_GFp_simple_point2oct, EC_R_INVALID_FORM);
     goto err;
   }
@@ -134,8 +133,7 @@ static size_t ec_GFp_simple_point2oct(const EC_GROUP *group,
       goto err;
     }
 
-    if ((form == POINT_CONVERSION_COMPRESSED ||
-         form == POINT_CONVERSION_HYBRID) &&
+    if ((form == POINT_CONVERSION_COMPRESSED) &&
         BN_is_odd(y)) {
       buf[0] = form + 1;
     } else {
@@ -149,8 +147,7 @@ static size_t ec_GFp_simple_point2oct(const EC_GROUP *group,
     }
     i += field_len;
 
-    if (form == POINT_CONVERSION_UNCOMPRESSED ||
-        form == POINT_CONVERSION_HYBRID) {
+    if (form == POINT_CONVERSION_UNCOMPRESSED) {
       if (!BN_bn2bin_padded(buf + i, field_len, y)) {
         OPENSSL_PUT_ERROR(EC, ec_GFp_simple_point2oct, ERR_R_INTERNAL_ERROR);
         goto err;
@@ -201,8 +198,7 @@ static int ec_GFp_simple_oct2point(const EC_GROUP *group, EC_POINT *point,
   y_bit = form & 1;
   form = form & ~1U;
   if ((form != 0) && (form != POINT_CONVERSION_COMPRESSED) &&
-      (form != POINT_CONVERSION_UNCOMPRESSED) &&
-      (form != POINT_CONVERSION_HYBRID)) {
+      (form != POINT_CONVERSION_UNCOMPRESSED)) {
     OPENSSL_PUT_ERROR(EC, ec_GFp_simple_oct2point, EC_R_INVALID_ENCODING);
     return 0;
   }
@@ -257,12 +253,6 @@ static int ec_GFp_simple_oct2point(const EC_GROUP *group, EC_POINT *point,
     if (BN_ucmp(y, &group->field) >= 0) {
       OPENSSL_PUT_ERROR(EC, ec_GFp_simple_oct2point, EC_R_INVALID_ENCODING);
       goto err;
-    }
-    if (form == POINT_CONVERSION_HYBRID) {
-      if (y_bit != BN_is_odd(y)) {
-        OPENSSL_PUT_ERROR(EC, ec_GFp_simple_oct2point, EC_R_INVALID_ENCODING);
-        goto err;
-      }
     }
 
     if (!EC_POINT_set_affine_coordinates_GFp(group, point, x, y, ctx))
