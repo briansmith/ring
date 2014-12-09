@@ -678,6 +678,7 @@ static const char *const kLibraryNames[ERR_NUM_LIBS] = {
     "Digest functions",                           /* ERR_LIB_DIGEST */
     "Cipher functions",                           /* ERR_LIB_CIPHER */
     "User defined functions",                     /* ERR_LIB_USER */
+    "HKDF functions",                             /* ERR_LIB_HKDF */
 };
 
 #define NUM_SYS_ERRNOS 127
@@ -722,6 +723,7 @@ extern const ERR_STRING_DATA ECDSA_error_string_data[];
 extern const ERR_STRING_DATA EC_error_string_data[];
 extern const ERR_STRING_DATA ENGINE_error_string_data[];
 extern const ERR_STRING_DATA EVP_error_string_data[];
+extern const ERR_STRING_DATA HKDF_error_string_data[];
 extern const ERR_STRING_DATA OBJ_error_string_data[];
 extern const ERR_STRING_DATA PEM_error_string_data[];
 extern const ERR_STRING_DATA PKCS8_error_string_data[];
@@ -776,6 +778,7 @@ static void err_load_strings(void) {
   ERR_load_strings(EC_error_string_data);
   ERR_load_strings(ENGINE_error_string_data);
   ERR_load_strings(EVP_error_string_data);
+  ERR_load_strings(HKDF_error_string_data);
   ERR_load_strings(OBJ_error_string_data);
   ERR_load_strings(PEM_error_string_data);
   ERR_load_strings(PKCS8_error_string_data);

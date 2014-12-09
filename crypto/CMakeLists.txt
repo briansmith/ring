@@ -105,6 +105,7 @@ add_subdirectory(hmac)
 
 # Level 3
 add_subdirectory(evp)
+add_subdirectory(hkdf)
 add_subdirectory(pem)
 add_subdirectory(x509)
 add_subdirectory(x509v3)
@@ -160,6 +161,7 @@ add_library(
 	$<TARGET_OBJECTS:ecdsa>
 	$<TARGET_OBJECTS:hmac>
 	$<TARGET_OBJECTS:evp>
+	$<TARGET_OBJECTS:hkdf>
 	$<TARGET_OBJECTS:pem>
 	$<TARGET_OBJECTS:x509>
 	$<TARGET_OBJECTS:x509v3>
