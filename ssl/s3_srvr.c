@@ -725,7 +725,6 @@ int ssl3_get_client_hello(SSL *s)
 		 */
 		if (SSL_IS_DTLS(s) && (SSL_get_options(s) & SSL_OP_COOKIE_EXCHANGE))
 			{
-			CBS session_id;
 			uint8_t cookie_length;
 
 			CBS_init(&client_hello, s->init_msg, n);
@@ -764,18 +763,18 @@ int ssl3_get_client_hello(SSL *s)
 		if (s->state == SSL3_ST_SR_CLNT_HELLO_C &&
 		    s->ctx->select_certificate_cb != NULL)
 			{
-			int ret;
-
 			s->state = SSL3_ST_SR_CLNT_HELLO_D;
-			ret = s->ctx->select_certificate_cb(&early_ctx);
-			if (ret == 0)
-				return CERTIFICATE_SELECTION_PENDING;
-			else if (ret == -1)
+			switch (s->ctx->select_certificate_cb(&early_ctx))
 				{
-				/* Connection rejected. */
-				al = SSL_AD_ACCESS_DENIED;
-				OPENSSL_PUT_ERROR(SSL, ssl3_get_client_hello, SSL_R_CONNECTION_REJECTED);
-				goto f_err;
+				case 0:
+					return CERTIFICATE_SELECTION_PENDING;
+				case -1:
+					/* Connection rejected. */
+					al = SSL_AD_ACCESS_DENIED;
+					OPENSSL_PUT_ERROR(SSL, ssl3_get_client_hello, SSL_R_CONNECTION_REJECTED);
+					goto f_err;
+				default:
+					/* fallthrough */;
 				}
 			}
 		s->state = SSL3_ST_SR_CLNT_HELLO_D;

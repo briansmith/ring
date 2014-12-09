@@ -122,15 +122,17 @@ static int cbs_convert_ber(CBS *in, CBB *out, char squash_header,
          * implicit and the tags within are fragments of a primitive type that
          * need to be concatenated. */
         if (context_specific && (tag & CBS_ASN1_CONSTRUCTED)) {
-          CBS in_copy, contents;
-          unsigned tag;
-          size_t header_len;
+          CBS in_copy, inner_contents;
+          unsigned inner_tag;
+          size_t inner_header_len;
 
           CBS_init(&in_copy, CBS_data(in), CBS_len(in));
-          if (!CBS_get_any_asn1_element(&in_copy, &contents, &tag, &header_len)) {
+          if (!CBS_get_any_asn1_element(&in_copy, &inner_contents, &inner_tag,
+                                        &inner_header_len)) {
             return 0;
           }
-          if (CBS_len(&contents) > header_len && is_primitive_type(tag)) {
+          if (CBS_len(&inner_contents) > inner_header_len &&
+              is_primitive_type(inner_tag)) {
             squash_child_headers = 1;
           }
         }

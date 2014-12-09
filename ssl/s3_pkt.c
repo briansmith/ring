@@ -1083,12 +1083,12 @@ start:
 		{
 		const size_t size = sizeof(s->s3->handshake_fragment);
 		const size_t avail = size - s->s3->handshake_fragment_len;
-		const size_t len = (rr->length < avail) ? rr->length : avail;
+		const size_t todo = (rr->length < avail) ? rr->length : avail;
 		memcpy(s->s3->handshake_fragment + s->s3->handshake_fragment_len,
-			&rr->data[rr->off], len);
-		rr->off += len;
-		rr->length -= len;
-		s->s3->handshake_fragment_len += len;
+			&rr->data[rr->off], todo);
+		rr->off += todo;
+		rr->length -= todo;
+		s->s3->handshake_fragment_len += todo;
 		if (s->s3->handshake_fragment_len < size)
 			{
 			goto start; /* fragment was too small */
@@ -1096,7 +1096,6 @@ start:
 		}
 	else if (rr->type == SSL3_RT_ALERT)
 		{
-		const size_t len = sizeof(alert_buffer);
 		/* Note that this will still allow multiple alerts to
 		 * be processed in the same record */
 		if (rr->length < sizeof(alert_buffer))
@@ -1105,9 +1104,9 @@ start:
 			OPENSSL_PUT_ERROR(SSL, ssl3_read_bytes, SSL_R_BAD_ALERT);
 			goto f_err;
 			}
-		memcpy(alert_buffer, &rr->data[rr->off], len);
-		rr->off += len;
-		rr->length -= len;
+		memcpy(alert_buffer, &rr->data[rr->off], sizeof(alert_buffer));
+		rr->off += sizeof(alert_buffer);
+		rr->length -= sizeof(alert_buffer);
 		}
 
 	/* s->s3->handshake_fragment_len == 4  iff  rr->type == SSL3_RT_HANDSHAKE;
