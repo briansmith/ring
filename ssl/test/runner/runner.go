@@ -1632,12 +1632,19 @@ func addVersionNegotiationTests() {
 					suffix += "-DTLS"
 				}
 
+				clientVers := shimVers.version
+				if clientVers > VersionTLS10 {
+					clientVers = VersionTLS10
+				}
 				testCases = append(testCases, testCase{
 					protocol: protocol,
 					testType: clientTest,
 					name:     "VersionNegotiation-Client-" + suffix,
 					config: Config{
 						MaxVersion: runnerVers.version,
+						Bugs: ProtocolBugs{
+							ExpectInitialRecordVersion: clientVers,
+						},
 					},
 					flags:           flags,
 					expectedVersion: expectedVersion,
@@ -1649,6 +1656,9 @@ func addVersionNegotiationTests() {
 					name:     "VersionNegotiation-Server-" + suffix,
 					config: Config{
 						MaxVersion: runnerVers.version,
+						Bugs: ProtocolBugs{
+							ExpectInitialRecordVersion: expectedVersion,
+						},
 					},
 					flags:           flags,
 					expectedVersion: expectedVersion,
@@ -2157,25 +2167,25 @@ func addDTLSReplayTests() {
 }
 
 func addFastRadioPaddingTests() {
-	testCases = append(testCases, testCase {
-		protocol:	tls,
-		name:		"FastRadio-Padding",
+	testCases = append(testCases, testCase{
+		protocol: tls,
+		name:     "FastRadio-Padding",
 		config: Config{
 			Bugs: ProtocolBugs{
 				RequireFastradioPadding: true,
 			},
 		},
-		flags:		[]string{"-fastradio-padding"},
+		flags: []string{"-fastradio-padding"},
 	})
-	testCases = append(testCases, testCase {
-		protocol:	dtls,
-		name:		"FastRadio-Padding",
+	testCases = append(testCases, testCase{
+		protocol: dtls,
+		name:     "FastRadio-Padding",
 		config: Config{
 			Bugs: ProtocolBugs{
 				RequireFastradioPadding: true,
 			},
 		},
-		flags:		[]string{"-fastradio-padding"},
+		flags: []string{"-fastradio-padding"},
 	})
 }
 

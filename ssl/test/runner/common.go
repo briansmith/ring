@@ -586,6 +586,10 @@ type ProtocolBugs struct {
 	// RequireFastradioPadding, if true, requires that ClientHello messages
 	// be at least 1000 bytes long.
 	RequireFastradioPadding bool
+
+	// ExpectInitialRecordVersion, if non-zero, is the expected
+	// version of the records before the version is determined.
+	ExpectInitialRecordVersion uint16
 }
 
 func (c *Config) serverInit() {
