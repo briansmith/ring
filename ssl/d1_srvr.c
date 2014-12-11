@@ -138,6 +138,7 @@ int dtls1_accept(SSL *s)
 
 	assert(s->handshake_func == dtls1_accept);
 	assert(s->server);
+	assert(SSL_IS_DTLS(s));
 
 	ERR_clear_error();
 	ERR_clear_system_error();
@@ -169,12 +170,6 @@ int dtls1_accept(SSL *s)
 		case SSL_ST_BEFORE|SSL_ST_ACCEPT:
 
 			if (cb != NULL) cb(s,SSL_CB_HANDSHAKE_START,1);
-
-			if ((s->version & 0xff00) != (DTLS1_VERSION & 0xff00))
-				{
-				OPENSSL_PUT_ERROR(SSL, dtls1_accept, ERR_R_INTERNAL_ERROR);
-				return -1;
-				}
 
 			if (s->init_buf == NULL)
 				{

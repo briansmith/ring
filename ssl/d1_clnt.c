@@ -137,6 +137,7 @@ int dtls1_connect(SSL *s)
 
 	assert(s->handshake_func == dtls1_connect);
 	assert(!s->server);
+	assert(SSL_IS_DTLS(s));
 
 	ERR_clear_error();
 	ERR_clear_system_error();
@@ -164,13 +165,6 @@ int dtls1_connect(SSL *s)
 
 			if (cb != NULL) cb(s,SSL_CB_HANDSHAKE_START,1);
 
-			if ((s->version & 0xff00 ) != (DTLS1_VERSION & 0xff00))
-				{
-				OPENSSL_PUT_ERROR(SSL, dtls1_connect, ERR_R_INTERNAL_ERROR);
-				ret = -1;
-				goto end;
-				}
-				
 			if (s->init_buf == NULL)
 				{
 				if ((buf=BUF_MEM_new()) == NULL)

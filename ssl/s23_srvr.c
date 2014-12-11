@@ -144,6 +144,7 @@ int ssl23_accept(SSL *s)
 
 	assert(s->handshake_func == ssl23_accept);
 	assert(s->server);
+	assert(!SSL_IS_DTLS(s));
 
 	ERR_clear_error();
 	ERR_clear_system_error();

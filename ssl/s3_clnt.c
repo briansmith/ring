@@ -175,6 +175,7 @@ int ssl3_connect(SSL *s)
 
 	assert(s->handshake_func == ssl3_connect);
 	assert(!s->server);
+	assert(!SSL_IS_DTLS(s));
 
 	ERR_clear_error();
 	ERR_clear_system_error();
@@ -202,13 +203,6 @@ int ssl3_connect(SSL *s)
 
 			if (cb != NULL) cb(s,SSL_CB_HANDSHAKE_START,1);
 
-			if ((s->version & 0xff00 ) != 0x0300)
-				{
-				OPENSSL_PUT_ERROR(SSL, ssl3_connect, ERR_R_INTERNAL_ERROR);
-				ret = -1;
-				goto end;
-				}
-				
 			if (s->init_buf == NULL)
 				{
 				if ((buf=BUF_MEM_new()) == NULL)

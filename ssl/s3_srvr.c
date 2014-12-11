@@ -182,6 +182,7 @@ int ssl3_accept(SSL *s)
 
 	assert(s->handshake_func == ssl3_accept);
 	assert(s->server);
+	assert(!SSL_IS_DTLS(s));
 
 	ERR_clear_error();
 	ERR_clear_system_error();
@@ -213,12 +214,6 @@ int ssl3_accept(SSL *s)
 		case SSL_ST_BEFORE|SSL_ST_ACCEPT:
 
 			if (cb != NULL) cb(s,SSL_CB_HANDSHAKE_START,1);
-
-			if ((s->version>>8) != 3)
-				{
-				OPENSSL_PUT_ERROR(SSL, ssl3_accept, ERR_R_INTERNAL_ERROR);
-				return -1;
-				}
 
 			if (s->init_buf == NULL)
 				{
