@@ -381,6 +381,11 @@ static int ssl23_get_client_hello(SSL *s)
 		/* Ready to switch versions. */
 		s->state = SSL23_ST_SR_SWITCH_VERSION;
 		}
+	else
+		{
+		OPENSSL_PUT_ERROR(SSL, ssl23_get_client_hello, SSL_R_UNKNOWN_PROTOCOL);
+		goto err;
+		}
 
 	return 1;
 err:

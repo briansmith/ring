@@ -515,6 +515,13 @@ var testCases = []testCase{
 		expectedError: ":HTTPS_PROXY_REQUEST:",
 	},
 	{
+		testType:      serverTest,
+		name:          "Garbage",
+		sendPrefix:    "blah",
+		shouldFail:    true,
+		expectedError: ":UNKNOWN_PROTOCOL:",
+	},
+	{
 		name: "SkipCipherVersionCheck",
 		config: Config{
 			CipherSuites: []uint16{TLS_RSA_WITH_AES_128_GCM_SHA256},
