@@ -376,13 +376,13 @@ int dtls1_connect(SSL *s)
 			s->init_num=0;
 
 			s->session->cipher=s->s3->tmp.new_cipher;
-			if (!s->method->ssl3_enc->setup_key_block(s))
+			if (!s->enc_method->setup_key_block(s))
 				{
 				ret= -1;
 				goto end;
 				}
 
-			if (!s->method->ssl3_enc->change_cipher_state(s,
+			if (!s->enc_method->change_cipher_state(s,
 				SSL3_CHANGE_CIPHER_CLIENT_WRITE))
 				{
 				ret= -1;
@@ -398,8 +398,8 @@ int dtls1_connect(SSL *s)
 				dtls1_start_timer(s);
 			ret=ssl3_send_finished(s,
 				SSL3_ST_CW_FINISHED_A,SSL3_ST_CW_FINISHED_B,
-				s->method->ssl3_enc->client_finished_label,
-				s->method->ssl3_enc->client_finished_label_len);
+				s->enc_method->client_finished_label,
+				s->enc_method->client_finished_label_len);
 			if (ret <= 0) goto end;
 			s->state=SSL3_ST_CW_FLUSH;
 

@@ -162,7 +162,7 @@ int ssl3_send_finished(SSL *s, int a, int b, const char *sender, int slen)
 		{
 		p = ssl_handshake_start(s);
 
-		i=s->method->ssl3_enc->final_finish_mac(s,
+		i=s->enc_method->final_finish_mac(s,
 			sender,slen,s->s3->tmp.finish_md);
 		if (i == 0)
 			return 0;
@@ -215,16 +215,16 @@ static void ssl3_take_mac(SSL *s)
 		return;
 	if (s->state & SSL_ST_CONNECT)
 		{
-		sender=s->method->ssl3_enc->server_finished_label;
-		slen=s->method->ssl3_enc->server_finished_label_len;
+		sender=s->enc_method->server_finished_label;
+		slen=s->enc_method->server_finished_label_len;
 		}
 	else
 		{
-		sender=s->method->ssl3_enc->client_finished_label;
-		slen=s->method->ssl3_enc->client_finished_label_len;
+		sender=s->enc_method->client_finished_label;
+		slen=s->enc_method->client_finished_label_len;
 		}
 
-	s->s3->tmp.peer_finish_md_len = s->method->ssl3_enc->final_finish_mac(s,
+	s->s3->tmp.peer_finish_md_len = s->enc_method->final_finish_mac(s,
 		sender,slen,s->s3->tmp.peer_finish_md);
 	}
 
@@ -519,8 +519,8 @@ int ssl3_cert_verify_hash(SSL *s, uint8_t *out, size_t *out_len, const EVP_MD **
 		}
 	else if (pkey->type == EVP_PKEY_RSA)
 		{
-		if (s->method->ssl3_enc->cert_verify_mac(s, NID_md5, out) == 0 ||
-			s->method->ssl3_enc->cert_verify_mac(s,
+		if (s->enc_method->cert_verify_mac(s, NID_md5, out) == 0 ||
+			s->enc_method->cert_verify_mac(s,
 				NID_sha1, out + MD5_DIGEST_LENGTH) == 0)
 			return 0;
 		*out_len = MD5_DIGEST_LENGTH + SHA_DIGEST_LENGTH;
@@ -528,7 +528,7 @@ int ssl3_cert_verify_hash(SSL *s, uint8_t *out, size_t *out_len, const EVP_MD **
 		}
 	else if (pkey->type == EVP_PKEY_EC)
 		{
-		if (s->method->ssl3_enc->cert_verify_mac(s, NID_sha1, out) == 0)
+		if (s->enc_method->cert_verify_mac(s, NID_sha1, out) == 0)
 			return 0;
 		*out_len = SHA_DIGEST_LENGTH;
 		*out_md = EVP_sha1();

@@ -381,13 +381,13 @@ int ssl3_connect(SSL *s)
 			s->init_num=0;
 
 			s->session->cipher=s->s3->tmp.new_cipher;
-			if (!s->method->ssl3_enc->setup_key_block(s))
+			if (!s->enc_method->setup_key_block(s))
 				{
 				ret= -1;
 				goto end;
 				}
 
-			if (!s->method->ssl3_enc->change_cipher_state(s,
+			if (!s->enc_method->change_cipher_state(s,
 				SSL3_CHANGE_CIPHER_CLIENT_WRITE))
 				{
 				ret= -1;
@@ -417,8 +417,8 @@ int ssl3_connect(SSL *s)
 		case SSL3_ST_CW_FINISHED_B:
 			ret=ssl3_send_finished(s,
 				SSL3_ST_CW_FINISHED_A,SSL3_ST_CW_FINISHED_B,
-				s->method->ssl3_enc->client_finished_label,
-				s->method->ssl3_enc->client_finished_label_len);
+				s->enc_method->client_finished_label,
+				s->enc_method->client_finished_label_len);
 			if (ret <= 0) goto end;
 			s->state=SSL3_ST_CW_FLUSH;
 
@@ -783,6 +783,8 @@ int ssl3_get_server_hello(SSL *s)
 		s->version = server_version;
 		s->method = ssl3_get_method(server_version);
 		assert(s->method != NULL);
+		s->enc_method = ssl3_get_enc_method(server_version);
+		assert(s->enc_method != NULL);
 		}
 
 	if (server_version != s->version)
@@ -2091,10 +2093,10 @@ int ssl3_send_client_key_exchange(SSL *s)
 
 		/* The message must be added to the finished hash before
 		 * calculating the master secret. */
-		s->method->ssl3_enc->add_to_finished_hash(s);
+		s->enc_method->add_to_finished_hash(s);
 
 		s->session->master_key_length =
-			s->method->ssl3_enc->generate_master_secret(s,
+			s->enc_method->generate_master_secret(s,
 				s->session->master_key,
 				pms, pms_len);
 		if (s->session->master_key_length == 0)
@@ -2108,7 +2110,7 @@ int ssl3_send_client_key_exchange(SSL *s)
 
 	/* SSL3_ST_CW_KEY_EXCH_B */
 	/* The message has already been added to the finished hash. */
-	return s->method->ssl3_enc->do_write(s, dont_add_to_finished_hash);
+	return s->enc_method->do_write(s, dont_add_to_finished_hash);
 
 err:
 	BN_CTX_free(bn_ctx);

@@ -345,7 +345,6 @@ struct ssl_method_st
 	int (*ssl_pending)(const SSL *s);
 	int (*num_ciphers)(void);
 	const SSL_CIPHER *(*get_cipher)(unsigned ncipher);
-	const SSL3_ENC_METHOD *ssl3_enc; /* Extra SSLv3/TLS stuff */
 	int (*ssl_version)(void);
 	long (*ssl_callback_ctrl)(SSL *s, int cb_id, void (*fp)(void));
 	long (*ssl_ctx_callback_ctrl)(SSL_CTX *s, int cb_id, void (*fp)(void));
@@ -1168,7 +1167,16 @@ struct ssl_st
 	/* version is the protocol version. */
 	int version;
 
-	const SSL_METHOD *method; /* SSLv3 */
+	/* method is the method table corresponding to the current protocol
+	 * (DTLS or TLS).
+	 *
+	 * TODO(davidben): For now, it also corresponds to the protocol version,
+	 * but that will soon change. */
+	const SSL_METHOD *method;
+
+	/* enc_method is the method table corresponding to the current protocol
+	 * version. */
+	const SSL3_ENC_METHOD *enc_method;
 
 	/* There are 2 BIO's even though they are normally both the
 	 * same.  This is so data can be read and written to different

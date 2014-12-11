@@ -410,7 +410,7 @@ fprintf(stderr, "Record type=%d, Length=%d\n", rr->type, rr->length);
 	/* decrypt in place in 'rr->input' */
 	rr->data=rr->input;
 
-	enc_err = s->method->ssl3_enc->enc(s,0);
+	enc_err = s->enc_method->enc(s,0);
 	/* enc_err is:
 	 *    0: (in non-constant time) if the record is publically invalid.
 	 *    1: if the padding is valid
@@ -477,7 +477,7 @@ printf("\n");
 			mac = &rr->data[rr->length];
 			}
 
-		i=s->method->ssl3_enc->mac(s,md,0 /* not send */);
+		i=s->enc_method->mac(s,md,0 /* not send */);
 		if (i < 0 || mac == NULL || CRYPTO_memcmp(md, mac, (size_t)mac_size) != 0)
 			enc_err = -1;
 		if (rr->length > SSL3_RT_MAX_COMPRESSED_LENGTH+extra+mac_size)
@@ -788,7 +788,7 @@ static int do_ssl3_write(SSL *s, int type, const unsigned char *buf,
 
 	if (mac_size != 0)
 		{
-		if (s->method->ssl3_enc->mac(s,&(p[wr->length + eivlen]),1) < 0)
+		if (s->enc_method->mac(s,&(p[wr->length + eivlen]),1) < 0)
 			goto err;
 		wr->length+=mac_size;
 		}
@@ -803,7 +803,7 @@ static int do_ssl3_write(SSL *s, int type, const unsigned char *buf,
 		wr->length += eivlen;
 		}
 
-	if (s->method->ssl3_enc->enc(s, 1) < 1)
+	if (s->enc_method->enc(s, 1) < 1)
 		goto err;
 
 	/* record length after mac and block padding */
@@ -1366,10 +1366,10 @@ int ssl3_do_change_cipher_spec(SSL *s)
 			}
 
 		s->session->cipher=s->s3->tmp.new_cipher;
-		if (!s->method->ssl3_enc->setup_key_block(s)) return(0);
+		if (!s->enc_method->setup_key_block(s)) return(0);
 		}
 
-	if (!s->method->ssl3_enc->change_cipher_state(s,i))
+	if (!s->enc_method->change_cipher_state(s,i))
 		return(0);
 
 	return(1);
@@ -1378,7 +1378,7 @@ int ssl3_do_change_cipher_spec(SSL *s)
 int ssl3_send_alert(SSL *s, int level, int desc)
 	{
 	/* Map tls/ssl alert value to correct one */
-	desc=s->method->ssl3_enc->alert_value(desc);
+	desc=s->enc_method->alert_value(desc);
 	if (s->version == SSL3_VERSION && desc == SSL_AD_PROTOCOL_VERSION)
 		desc = SSL_AD_HANDSHAKE_FAILURE; /* SSL 3.0 does not have protocol_version alerts */
 	if (desc < 0) return -1;

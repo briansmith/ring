@@ -1,5 +1,5 @@
 /* Copyright (C) 1995-1998 Eric Young (eay@cryptsoft.com)
- * All rights reserved.
+* All rights reserved.
  *
  * This package is an SSL implementation written
  * by Eric Young (eay@cryptsoft.com).
@@ -456,6 +456,8 @@ static int ssl23_get_server_hello(SSL *s)
 		s->version = version;
 		s->method = ssl3_get_method(version);
 		assert(s->method != NULL);
+		s->enc_method = ssl3_get_enc_method(s->version);
+		assert(s->enc_method != NULL);
 
 		if (p[0] == SSL3_RT_ALERT && p[5] != SSL3_AL_WARNING)
 			{

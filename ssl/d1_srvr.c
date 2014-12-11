@@ -488,7 +488,7 @@ int dtls1_accept(SSL *s)
 		case SSL3_ST_SW_CHANGE_B:
 
 			s->session->cipher=s->s3->tmp.new_cipher;
-			if (!s->method->ssl3_enc->setup_key_block(s))
+			if (!s->enc_method->setup_key_block(s))
 				{ ret= -1; goto end; }
 
 			ret=dtls1_send_change_cipher_spec(s,
@@ -499,7 +499,7 @@ int dtls1_accept(SSL *s)
 			s->state=SSL3_ST_SW_FINISHED_A;
 			s->init_num=0;
 
-			if (!s->method->ssl3_enc->change_cipher_state(s,
+			if (!s->enc_method->change_cipher_state(s,
 				SSL3_CHANGE_CIPHER_SERVER_WRITE))
 				{
 				ret= -1;
@@ -513,8 +513,8 @@ int dtls1_accept(SSL *s)
 		case SSL3_ST_SW_FINISHED_B:
 			ret=ssl3_send_finished(s,
 				SSL3_ST_SW_FINISHED_A,SSL3_ST_SW_FINISHED_B,
-				s->method->ssl3_enc->server_finished_label,
-				s->method->ssl3_enc->server_finished_label_len);
+				s->enc_method->server_finished_label,
+				s->enc_method->server_finished_label_len);
 			if (ret <= 0) goto end;
 			s->state=SSL3_ST_SW_FLUSH;
 			if (s->hit)

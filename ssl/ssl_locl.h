@@ -366,20 +366,20 @@
 /* we have used 000001ff - 23 bits left to go */
 
 /* Check if an SSL structure is using DTLS */
-#define SSL_IS_DTLS(s)	(s->method->ssl3_enc->enc_flags & SSL_ENC_FLAG_DTLS)
+#define SSL_IS_DTLS(s)	(s->enc_method->enc_flags & SSL_ENC_FLAG_DTLS)
 /* See if we need explicit IV */
 #define SSL_USE_EXPLICIT_IV(s)	\
-		(s->method->ssl3_enc->enc_flags & SSL_ENC_FLAG_EXPLICIT_IV)
+		(s->enc_method->enc_flags & SSL_ENC_FLAG_EXPLICIT_IV)
 /* See if we use signature algorithms extension
  * and signature algorithm before signatures.
  */
 #define SSL_USE_SIGALGS(s)	\
-			(s->method->ssl3_enc->enc_flags & SSL_ENC_FLAG_SIGALGS)
+			(s->enc_method->enc_flags & SSL_ENC_FLAG_SIGALGS)
 /* Allow TLS 1.2 ciphersuites: applies to DTLS 1.2 as well as TLS 1.2:
  * may apply to others in future.
  */
 #define SSL_USE_TLS1_2_CIPHERS(s)	\
-		(s->method->ssl3_enc->enc_flags & SSL_ENC_FLAG_TLS1_2_CIPHERS)
+		(s->enc_method->enc_flags & SSL_ENC_FLAG_TLS1_2_CIPHERS)
 /* Determine if a client can use TLS 1.2 ciphersuites: can't rely on method
  * flags because it may not be set to correct version yet.
  */
@@ -597,12 +597,12 @@ struct ssl3_enc_method
 	void (*add_to_finished_hash)(SSL *s);
 	};
 
-#define SSL_HM_HEADER_LENGTH(s)	s->method->ssl3_enc->hhlen
+#define SSL_HM_HEADER_LENGTH(s)	s->enc_method->hhlen
 #define ssl_handshake_start(s) \
-	(((unsigned char *)s->init_buf->data) + s->method->ssl3_enc->hhlen)
+	(((unsigned char *)s->init_buf->data) + s->enc_method->hhlen)
 #define ssl_set_handshake_header(s, htype, len) \
-	s->method->ssl3_enc->set_handshake_header(s, htype, len)
-#define ssl_do_write(s)  s->method->ssl3_enc->do_write(s, add_to_finished_hash)
+	s->enc_method->set_handshake_header(s, htype, len)
+#define ssl_do_write(s)  s->enc_method->do_write(s, add_to_finished_hash)
 
 /* Values for enc_flags */
 
@@ -644,7 +644,7 @@ extern const SSL3_ENC_METHOD SSLv3_enc_data;
 extern const SSL3_ENC_METHOD DTLSv1_enc_data;
 extern const SSL3_ENC_METHOD DTLSv1_2_enc_data;
 
-#define IMPLEMENT_tls_meth_func(version, func_name, enc_data) \
+#define IMPLEMENT_tls_meth_func(version, func_name) \
 const SSL_METHOD *func_name(void)  \
 	{ \
 	static const SSL_METHOD func_name##_data= { \
@@ -669,7 +669,6 @@ const SSL_METHOD *func_name(void)  \
 		ssl3_pending, \
 		ssl3_num_ciphers, \
 		ssl3_get_cipher, \
-		&enc_data, \
 		ssl_undefined_void_function, \
 		ssl3_callback_ctrl, \
 		ssl3_ctx_callback_ctrl, \
@@ -702,7 +701,6 @@ const SSL_METHOD *func_name(void)  \
 	ssl_undefined_const_function, \
 	ssl3_num_ciphers, \
 	ssl3_get_cipher, \
-	&TLSv1_2_enc_data, \
 	ssl_undefined_void_function, \
 	ssl3_callback_ctrl, \
 	ssl3_ctx_callback_ctrl, \
@@ -710,7 +708,7 @@ const SSL_METHOD *func_name(void)  \
 	return &func_name##_data; \
 	}
 
-#define IMPLEMENT_dtls1_meth_func(version, func_name, enc_data) \
+#define IMPLEMENT_dtls1_meth_func(version, func_name) \
 const SSL_METHOD *func_name(void)  \
 	{ \
 	static const SSL_METHOD func_name##_data= { \
@@ -735,7 +733,6 @@ const SSL_METHOD *func_name(void)  \
 		ssl3_pending, \
 		ssl3_num_ciphers, \
 		dtls1_get_cipher, \
-		&enc_data, \
 		ssl_undefined_void_function, \
 		ssl3_callback_ctrl, \
 		ssl3_ctx_callback_ctrl, \
@@ -1075,6 +1072,10 @@ int ssl3_can_cutthrough(const SSL *s);
 /* ssl3_get_method returns the version-locked SSL_METHOD corresponding
  * to |version|. */
 const SSL_METHOD *ssl3_get_method(uint16_t version);
+
+/* ssl3_get_enc_method returns the SSL3_ENC_METHOD corresponding to
+ * |version|. */
+const SSL3_ENC_METHOD *ssl3_get_enc_method(uint16_t version);
 
 /* ssl3_get_max_server_version returns the maximum SSL/TLS version number
  * supported by |s| as a server, or zero if all versions are disabled. */

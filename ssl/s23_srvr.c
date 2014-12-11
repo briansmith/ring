@@ -201,6 +201,8 @@ int ssl23_accept(SSL *s)
 			s->state = SSL3_ST_SR_CLNT_HELLO_A;
 			s->method = ssl3_get_method(s->version);
 			assert(s->method != NULL);
+			s->enc_method = ssl3_get_enc_method(s->version);
+			assert(s->enc_method != NULL);
 			s->handshake_func = s->method->ssl_accept;
 			s->init_num = 0;
 

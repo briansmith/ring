@@ -338,6 +338,8 @@ SSL *SSL_new(SSL_CTX *ctx)
 
 	if (!s->method->ssl_new(s))
 		goto err;
+	s->enc_method = ssl3_get_enc_method(s->version);
+	assert(s->enc_method != NULL);
 
 	s->references=1;
 
@@ -1792,7 +1794,7 @@ int SSL_export_keying_material(SSL *s, unsigned char *out, size_t olen,
 	if (s->version < TLS1_VERSION)
 		return -1;
 
-	return s->method->ssl3_enc->export_keying_material(s, out, olen, label,
+	return s->enc_method->export_keying_material(s, out, olen, label,
 							   llen, p, plen,
 							   use_context);
 	}
@@ -3064,6 +3066,27 @@ const SSL_METHOD *ssl3_get_method(uint16_t version)
 		return DTLSv1_method();
 	case DTLS1_2_VERSION:
 		return DTLSv1_2_method();
+	default:
+		return NULL;
+		}
+	}
+
+const SSL3_ENC_METHOD *ssl3_get_enc_method(uint16_t version)
+	{
+	switch (version)
+		{
+	case SSL3_VERSION:
+		return &SSLv3_enc_data;
+	case TLS1_VERSION:
+		return &TLSv1_enc_data;
+	case TLS1_1_VERSION:
+		return &TLSv1_1_enc_data;
+	case TLS1_2_VERSION:
+		return &TLSv1_2_enc_data;
+	case DTLS1_VERSION:
+		return &DTLSv1_enc_data;
+	case DTLS1_2_VERSION:
+		return &DTLSv1_2_enc_data;
 	default:
 		return NULL;
 		}
