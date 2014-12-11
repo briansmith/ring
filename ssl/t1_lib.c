@@ -1138,7 +1138,6 @@ unsigned char *ssl_add_clienthello_tlsext(SSL *s, unsigned char *buf, unsigned c
 			}
 		}
 
-#ifdef TLSEXT_TYPE_padding
 	if (header_len > 0)
 		{
 		size_t clienthello_minsize = 0;
@@ -1183,7 +1182,6 @@ unsigned char *ssl_add_clienthello_tlsext(SSL *s, unsigned char *buf, unsigned c
 			ret += padding_len;
 			}
 		}
-#endif
 
 	if ((extdatalen = ret-orig-2)== 0)
 		return orig;
