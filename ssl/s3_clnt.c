@@ -590,7 +590,7 @@ int ssl3_send_client_hello(SSL *s)
 	buf=(unsigned char *)s->init_buf->data;
 	if (s->state == SSL3_ST_CW_CLNT_HELLO_A)
 		{
-		if (s->method->version == DTLS_ANY_VERSION)
+		if (!s->s3->have_version && s->method->version == DTLS_ANY_VERSION)
 			{
 			uint16_t max_version = ssl3_get_max_client_version(s);
 			/* Disabling all versions is silly: return an error. */
@@ -771,7 +771,7 @@ int ssl3_get_server_hello(SSL *s)
 		goto f_err;
 		}
 
-	if (s->method->version == DTLS_ANY_VERSION)
+	if (!s->s3->have_version && s->method->version == DTLS_ANY_VERSION)
 		{
 		if (!ssl3_is_version_enabled(s, server_version))
 			{
@@ -781,13 +781,10 @@ int ssl3_get_server_hello(SSL *s)
 			goto f_err;
 			}
 		s->version = server_version;
-		s->method = ssl3_get_method(server_version);
-		assert(s->method != NULL);
 		s->enc_method = ssl3_get_enc_method(server_version);
 		assert(s->enc_method != NULL);
 		}
-
-	if (server_version != s->version)
+	else if (server_version != s->version)
 		{
 		OPENSSL_PUT_ERROR(SSL, ssl3_get_server_hello, SSL_R_WRONG_SSL_VERSION);
 		s->version = (s->version & 0xff00) | (server_version & 0xff);

@@ -794,21 +794,6 @@ int ssl3_get_client_hello(SSL *s)
 	 * (may differ: see RFC 2246, Appendix E, second paragraph) */
 	s->client_version = client_version;
 
-	if (SSL_IS_DTLS(s)  ?	(s->client_version > s->version &&
-				 s->method->version != DTLS_ANY_VERSION)
-			    :	(s->client_version < s->version))
-		{
-		OPENSSL_PUT_ERROR(SSL, ssl3_get_client_hello, SSL_R_WRONG_VERSION_NUMBER);
-		if ((s->client_version>>8) == SSL3_VERSION_MAJOR &&
-			!s->s3->have_version)
-			{
-			/* similar to ssl3_get_record, send alert using remote version number */
-			s->version = s->client_version;
-			}
-		al = SSL_AD_PROTOCOL_VERSION;
-		goto f_err;
-		}
-
 	/* Load the client random. */
 	memcpy(s->s3->client_random, CBS_data(&client_random), SSL3_RANDOM_SIZE);
 
@@ -850,24 +835,35 @@ int ssl3_get_client_hello(SSL *s)
 			 * don't send HelloVerifyRequest. */
 			ret = -2;
 			}
+		}
 
-		if (s->method->version == DTLS_ANY_VERSION)
+	if (!s->s3->have_version && s->method->version == DTLS_ANY_VERSION)
+		{
+		/* Select version to use */
+		uint16_t version = ssl3_get_mutual_version(s, client_version);
+		if (version == 0)
 			{
-			/* Select version to use */
-			uint16_t version = ssl3_get_mutual_version(s, client_version);
-			if (version == 0)
-				{
-				OPENSSL_PUT_ERROR(SSL, ssl3_get_client_hello, SSL_R_WRONG_VERSION_NUMBER);
-				s->version = s->client_version;
-				al = SSL_AD_PROTOCOL_VERSION;
-				goto f_err;
-				}
-			s->version = version;
-			s->method = ssl3_get_method(version);
-			assert(s->method != NULL);
-			s->enc_method = ssl3_get_enc_method(version);
-			assert(s->enc_method != NULL);
+			OPENSSL_PUT_ERROR(SSL, ssl3_get_client_hello, SSL_R_WRONG_VERSION_NUMBER);
+			s->version = s->client_version;
+			al = SSL_AD_PROTOCOL_VERSION;
+			goto f_err;
 			}
+		s->version = version;
+		s->enc_method = ssl3_get_enc_method(version);
+		assert(s->enc_method != NULL);
+		}
+	else if (SSL_IS_DTLS(s)  ?	(s->client_version > s->version)
+		                 :	(s->client_version < s->version))
+		{
+		OPENSSL_PUT_ERROR(SSL, ssl3_get_client_hello, SSL_R_WRONG_VERSION_NUMBER);
+		if ((s->client_version>>8) == SSL3_VERSION_MAJOR &&
+			!s->s3->have_version)
+			{
+			/* similar to ssl3_get_record, send alert using remote version number */
+			s->version = s->client_version;
+			}
+		al = SSL_AD_PROTOCOL_VERSION;
+		goto f_err;
 		}
 
 	/* At this point, the connection's version is known and s->version is

@@ -1317,15 +1317,15 @@ static int do_dtls1_write(SSL *s, int type, const unsigned char *buf,
 	 * we haven't decided which version to use yet send back using 
 	 * version 1.0 header: otherwise some clients will ignore it.
 	 */
-	if (s->method->version == DTLS_ANY_VERSION)
+	if (!s->s3->have_version)
 		{
-		*(p++)=DTLS1_VERSION>>8;
-		*(p++)=DTLS1_VERSION&0xff;
+		*(p++) = DTLS1_VERSION >> 8;
+		*(p++) = DTLS1_VERSION & 0xff;
 		}
 	else
 		{
-		*(p++)=s->version>>8;
-		*(p++)=s->version&0xff;
+		*(p++) = s->version >> 8;
+		*(p++) = s->version & 0xff;
 		}
 
 	/* field where we are to write out packet epoch, seq num and len */
