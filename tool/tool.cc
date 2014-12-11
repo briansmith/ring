@@ -21,12 +21,13 @@
 
 #if !defined(OPENSSL_WINDOWS)
 bool Client(const std::vector<std::string> &args);
+bool Server(const std::vector<std::string> &args);
 #endif
 bool DoPKCS12(const std::vector<std::string> &args);
 bool Speed(const std::vector<std::string> &args);
 
 static void usage(const char *name) {
-  printf("Usage: %s [speed|client|pkcs12]\n", name);
+  printf("Usage: %s [speed|client|server|pkcs12]\n", name);
 }
 
 int main(int argc, char **argv) {
@@ -47,6 +48,8 @@ int main(int argc, char **argv) {
 #if !defined(OPENSSL_WINDOWS)
   } else if (tool == "s_client" || tool == "client") {
     return !Client(args);
+  } else if (tool == "s_server" || tool == "server") {
+    return !Server(args);
 #endif
   } else if (tool == "pkcs12") {
     return !DoPKCS12(args);

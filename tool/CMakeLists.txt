@@ -5,10 +5,12 @@ add_executable(
 
 	args.cc
 	client.cc
+	server.cc
 	const.cc
 	pkcs12.cc
 	speed.cc
 	tool.cc
+	transport_common.cc
 )
 
 if (APPLE OR WIN32)

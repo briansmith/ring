@@ -23,7 +23,6 @@
 #include <errno.h>
 #include <stdlib.h>
 #include <sys/types.h>
-#include <sys/socket.h>
 
 #include <openssl/err.h>
 #include <openssl/ssl.h>
@@ -34,19 +33,23 @@
 
 static const struct argument kArguments[] = {
     {
-     "-connect", true,
-     "The hostname and port of the server to connect to, e.g. foo.com:443",
+     "-accept", true,
+     "The port of the server to bind on; eg 45102",
     },
     {
      "-cipher", false,
      "An OpenSSL-style cipher suite string that configures the offered ciphers",
     },
     {
+      "-key", false,
+      "Private-key file to use (default is server.pem)",
+    },
+    {
      "", false, "",
     },
 };
 
-bool Client(const std::vector<std::string> &args) {
+bool Server(const std::vector<std::string> &args) {
   std::map<std::string, std::string> args_map;
 
   if (!ParseKeyValueArguments(&args_map, args, kArguments)) {
@@ -54,16 +57,21 @@ bool Client(const std::vector<std::string> &args) {
     return false;
   }
 
-  SSL_CTX *ctx = SSL_CTX_new(SSLv23_client_method());
+  SSL_CTX *ctx = SSL_CTX_new(SSLv23_server_method());
+  SSL_CTX_set_options(ctx, SSL_OP_NO_SSLv3);
 
-  const char *keylog_file = getenv("SSLKEYLOGFILE");
-  if (keylog_file) {
-    BIO *keylog_bio = BIO_new_file(keylog_file, "a");
-    if (!keylog_bio) {
-      ERR_print_errors_cb(PrintErrorCallback, stderr);
-      return false;
-    }
-    SSL_CTX_set_keylog_bio(ctx, keylog_bio);
+  // Server authentication is required.
+  std::string key_file = "server.pem";
+  if (args_map.count("-key") != 0) {
+    key_file = args_map["-key"];
+  }
+  if (SSL_CTX_use_PrivateKey_file(ctx, key_file.c_str(), SSL_FILETYPE_PEM) <= 0) {
+    fprintf(stderr, "Failed to load private key: %s\n", key_file.c_str());
+    return false;
+  }
+  if (SSL_CTX_use_certificate_chain_file(ctx, key_file.c_str()) != 1) {
+    fprintf(stderr, "Failed to load cert chain: %s\n", key_file.c_str());
+    return false;
   }
 
   if (args_map.count("-cipher") != 0 &&
@@ -73,7 +81,7 @@ bool Client(const std::vector<std::string> &args) {
   }
 
   int sock = -1;
-  if (!Connect(&sock, args_map["-connect"])) {
+  if (!Accept(&sock, args_map["-accept"])) {
     return false;
   }
 
@@ -81,7 +89,7 @@ bool Client(const std::vector<std::string> &args) {
   SSL *ssl = SSL_new(ctx);
   SSL_set_bio(ssl, bio, bio);
 
-  int ret = SSL_connect(ssl);
+  int ret = SSL_accept(ssl);
   if (ret != 1) {
     int ssl_err = SSL_get_error(ssl, ret);
     fprintf(stderr, "Error while connecting: %d\n", ssl_err);
