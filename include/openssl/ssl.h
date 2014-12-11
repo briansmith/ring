@@ -281,6 +281,7 @@ typedef struct ssl_cipher_st SSL_CIPHER;
 typedef struct ssl_session_st SSL_SESSION;
 typedef struct tls_sigalgs_st TLS_SIGALGS;
 typedef struct ssl_conf_ctx_st SSL_CONF_CTX;
+typedef struct ssl3_enc_method SSL3_ENC_METHOD;
 
 DECLARE_STACK_OF(SSL_CIPHER)
 
@@ -344,7 +345,7 @@ struct ssl_method_st
 	int (*ssl_pending)(const SSL *s);
 	int (*num_ciphers)(void);
 	const SSL_CIPHER *(*get_cipher)(unsigned ncipher);
-	struct ssl3_enc_method *ssl3_enc; /* Extra SSLv3/TLS stuff */
+	const SSL3_ENC_METHOD *ssl3_enc; /* Extra SSLv3/TLS stuff */
 	int (*ssl_version)(void);
 	long (*ssl_callback_ctrl)(SSL *s, int cb_id, void (*fp)(void));
 	long (*ssl_ctx_callback_ctrl)(SSL_CTX *s, int cb_id, void (*fp)(void));

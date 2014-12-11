@@ -566,7 +566,7 @@ enum should_add_to_finished_hash {
 /* This is for the SSLv3/TLSv1.0 differences in crypto/hash stuff
  * It is a bit of a mess of functions, but hell, think of it as
  * an opaque structure :-) */
-typedef struct ssl3_enc_method
+struct ssl3_enc_method
 	{
 	int (*enc)(SSL *, int);
 	int (*mac)(SSL *, unsigned char *, int);
@@ -595,7 +595,7 @@ typedef struct ssl3_enc_method
 	int (*do_write)(SSL *s, enum should_add_to_finished_hash should_add_to_finished_hash);
 	/* Add the current handshake message to the finished hash. */
 	void (*add_to_finished_hash)(SSL *s);
-	} SSL3_ENC_METHOD;
+	};
 
 #define SSL_HM_HEADER_LENGTH(s)	s->method->ssl3_enc->hhlen
 #define ssl_handshake_start(s) \
@@ -634,16 +634,15 @@ struct ssl_aead_ctx_st
 	};
 
 
-extern SSL3_ENC_METHOD ssl3_undef_enc_method;
 extern const SSL_CIPHER ssl3_ciphers[];
 
 
-extern SSL3_ENC_METHOD TLSv1_enc_data;
-extern SSL3_ENC_METHOD TLSv1_1_enc_data;
-extern SSL3_ENC_METHOD TLSv1_2_enc_data;
-extern SSL3_ENC_METHOD SSLv3_enc_data;
-extern SSL3_ENC_METHOD DTLSv1_enc_data;
-extern SSL3_ENC_METHOD DTLSv1_2_enc_data;
+extern const SSL3_ENC_METHOD TLSv1_enc_data;
+extern const SSL3_ENC_METHOD TLSv1_1_enc_data;
+extern const SSL3_ENC_METHOD TLSv1_2_enc_data;
+extern const SSL3_ENC_METHOD SSLv3_enc_data;
+extern const SSL3_ENC_METHOD DTLSv1_enc_data;
+extern const SSL3_ENC_METHOD DTLSv1_2_enc_data;
 
 #define IMPLEMENT_tls_meth_func(version, func_name, s_accept, s_connect, \
 				enc_data) \

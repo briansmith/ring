@@ -77,7 +77,7 @@ static void dtls1_set_handshake_header(SSL *s, int type, unsigned long len);
 static int dtls1_handshake_write(SSL *s, enum should_add_to_finished_hash should_add_to_finished_hash);
 static void dtls1_add_to_finished_hash(SSL *s);
 
-SSL3_ENC_METHOD DTLSv1_enc_data={
+const SSL3_ENC_METHOD DTLSv1_enc_data = {
     	tls1_enc,
 	tls1_mac,
 	tls1_setup_key_block,
@@ -97,7 +97,7 @@ SSL3_ENC_METHOD DTLSv1_enc_data={
 	dtls1_add_to_finished_hash,
 	};
 
-SSL3_ENC_METHOD DTLSv1_2_enc_data={
+const SSL3_ENC_METHOD DTLSv1_2_enc_data = {
     	tls1_enc,
 	tls1_mac,
 	tls1_setup_key_block,

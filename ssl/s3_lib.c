@@ -924,7 +924,7 @@ const SSL_CIPHER ssl3_ciphers[]={
 /* end of list */
 	};
 
-SSL3_ENC_METHOD SSLv3_enc_data={
+const SSL3_ENC_METHOD SSLv3_enc_data = {
 	ssl3_enc,
 	n_ssl3_mac,
 	ssl3_setup_key_block,

@@ -152,26 +152,6 @@
 
 #include "ssl_locl.h"
 
-SSL3_ENC_METHOD ssl3_undef_enc_method={
-	/* evil casts, but these functions are only called if there's a library bug */
-	(int (*)(SSL *,int))ssl_undefined_function,
-	(int (*)(SSL *, unsigned char *, int))ssl_undefined_function,
-	ssl_undefined_function,
-	(int (*)(SSL *, unsigned char *, unsigned char *, int))ssl_undefined_function,
-	(int (*)(SSL*, int))ssl_undefined_function,
-	(int (*)(SSL *,  const char*, int, unsigned char *))ssl_undefined_function,
-	0,	/* finish_mac_length */
-	(int (*)(SSL *, int, unsigned char *))ssl_undefined_function,
-	NULL,	/* client_finished_label */
-	0,	/* client_finished_label_len */
-	NULL,	/* server_finished_label */
-	0,	/* server_finished_label_len */
-	(int (*)(int))ssl_undefined_function,
-	(int (*)(SSL *, unsigned char *, size_t, const char *,
-		 size_t, const unsigned char *, size_t,
-		 int use_context)) ssl_undefined_function,
-	};
-
 /* Some error codes are special. Ensure the make_errors.go script
  * never regresses this. */
 OPENSSL_COMPILE_ASSERT(
