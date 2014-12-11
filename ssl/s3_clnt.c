@@ -837,7 +837,7 @@ int ssl3_get_server_hello(SSL *s)
 			al = SSL_AD_PROTOCOL_VERSION;
 			goto f_err;
 			}
-		s->version = s->client_version = s->method->version;
+		s->version = s->method->version;
 		}
 
 	if (server_version != s->version)
