@@ -644,8 +644,7 @@ extern const SSL3_ENC_METHOD SSLv3_enc_data;
 extern const SSL3_ENC_METHOD DTLSv1_enc_data;
 extern const SSL3_ENC_METHOD DTLSv1_2_enc_data;
 
-#define IMPLEMENT_tls_meth_func(version, func_name, s_accept, s_connect, \
-				enc_data) \
+#define IMPLEMENT_tls_meth_func(version, func_name, enc_data) \
 const SSL_METHOD *func_name(void)  \
 	{ \
 	static const SSL_METHOD func_name##_data= { \
@@ -653,8 +652,8 @@ const SSL_METHOD *func_name(void)  \
 		ssl3_new, \
 		ssl3_clear, \
 		ssl3_free, \
-		s_accept, \
-		s_connect, \
+		ssl3_accept, \
+		ssl3_connect, \
 		ssl3_read, \
 		ssl3_peek, \
 		ssl3_write, \
@@ -678,7 +677,7 @@ const SSL_METHOD *func_name(void)  \
 	return &func_name##_data; \
 	}
 
-#define IMPLEMENT_ssl23_meth_func(func_name, s_accept, s_connect) \
+#define IMPLEMENT_ssl23_meth_func(func_name) \
 const SSL_METHOD *func_name(void)  \
 	{ \
 	static const SSL_METHOD func_name##_data= { \
@@ -686,8 +685,8 @@ const SSL_METHOD *func_name(void)  \
 	ssl3_new, \
 	ssl3_clear, \
 	ssl3_free, \
-	s_accept, \
-	s_connect, \
+	ssl23_accept, \
+	ssl23_connect, \
 	ssl23_read, \
 	ssl23_peek, \
 	ssl23_write, \
@@ -711,8 +710,7 @@ const SSL_METHOD *func_name(void)  \
 	return &func_name##_data; \
 	}
 
-#define IMPLEMENT_dtls1_meth_func(version, func_name, s_accept, s_connect, \
-					enc_data) \
+#define IMPLEMENT_dtls1_meth_func(version, func_name, enc_data) \
 const SSL_METHOD *func_name(void)  \
 	{ \
 	static const SSL_METHOD func_name##_data= { \
@@ -720,8 +718,8 @@ const SSL_METHOD *func_name(void)  \
 		dtls1_new, \
 		dtls1_clear, \
 		dtls1_free, \
-		s_accept, \
-		s_connect, \
+		dtls1_accept, \
+		dtls1_connect, \
 		ssl3_read, \
 		ssl3_peek, \
 		ssl3_write, \

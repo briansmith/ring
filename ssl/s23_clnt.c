@@ -120,10 +120,6 @@
 static int ssl23_client_hello(SSL *s);
 static int ssl23_get_server_hello(SSL *s);
 
-IMPLEMENT_ssl23_meth_func(SSLv23_client_method,
-			ssl23_accept,
-			ssl23_connect)
-
 int ssl23_connect(SSL *s)
 	{
 	BUF_MEM *buf=NULL;

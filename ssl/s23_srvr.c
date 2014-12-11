@@ -135,10 +135,6 @@ static const SSL_METHOD *ssl23_get_server_method(int ver)
 		return(NULL);
 	}
 
-IMPLEMENT_ssl23_meth_func(SSLv23_server_method,
-			ssl23_accept,
-			ssl23_connect)
-
 int ssl23_accept(SSL *s)
 	{
 	BUF_MEM *buf;

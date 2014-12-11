@@ -58,23 +58,11 @@
 #include "ssl_locl.h"
 
 
-IMPLEMENT_dtls1_meth_func(DTLS1_VERSION,
-			DTLSv1_method,
-			dtls1_accept,
-			dtls1_connect,
-			DTLSv1_enc_data)
+IMPLEMENT_dtls1_meth_func(DTLS1_VERSION, DTLSv1_method, DTLSv1_enc_data)
 
-IMPLEMENT_dtls1_meth_func(DTLS1_2_VERSION,
-			DTLSv1_2_method,
-			dtls1_accept,
-			dtls1_connect,
-			DTLSv1_2_enc_data)
+IMPLEMENT_dtls1_meth_func(DTLS1_2_VERSION, DTLSv1_2_method, DTLSv1_2_enc_data)
 
-IMPLEMENT_dtls1_meth_func(DTLS_ANY_VERSION,
-			DTLS_method,
-			dtls1_accept,
-			dtls1_connect,
-			DTLSv1_2_enc_data)
+IMPLEMENT_dtls1_meth_func(DTLS_ANY_VERSION, DTLS_method, DTLSv1_2_enc_data)
 
 const SSL_METHOD *DTLSv1_2_server_method(void)
 	{

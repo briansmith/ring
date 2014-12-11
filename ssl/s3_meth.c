@@ -58,25 +58,13 @@
 #include "ssl_locl.h"
 
 
-IMPLEMENT_tls_meth_func(TLS1_2_VERSION, TLSv1_2_method,
-			ssl3_accept,
-			ssl3_connect,
-			TLSv1_2_enc_data)
+IMPLEMENT_tls_meth_func(TLS1_2_VERSION, TLSv1_2_method, TLSv1_2_enc_data)
 
-IMPLEMENT_tls_meth_func(TLS1_1_VERSION, TLSv1_1_method,
-			ssl3_accept,
-			ssl3_connect,
-			TLSv1_1_enc_data)
+IMPLEMENT_tls_meth_func(TLS1_1_VERSION, TLSv1_1_method, TLSv1_1_enc_data)
 
-IMPLEMENT_tls_meth_func(TLS1_VERSION, TLSv1_method,
-			ssl3_accept,
-			ssl3_connect,
-			TLSv1_enc_data)
+IMPLEMENT_tls_meth_func(TLS1_VERSION, TLSv1_method, TLSv1_enc_data)
 
-IMPLEMENT_tls_meth_func(SSL3_VERSION, SSLv3_method,
-			ssl3_accept,
-			ssl3_connect,
-			SSLv3_enc_data)
+IMPLEMENT_tls_meth_func(SSL3_VERSION, SSLv3_method, SSLv3_enc_data)
 
 const SSL_METHOD *TLSv1_2_server_method(void)
 	{
