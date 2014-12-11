@@ -1915,12 +1915,11 @@ int ssl3_shutdown(SSL *s)
 	{
 	int ret;
 
-	/* Don't do anything much if we have not done the handshake or
-	 * we don't want to send messages :-) */
-	if ((s->quiet_shutdown) || (s->state == SSL_ST_BEFORE))
+	/* Do nothing if configured not to send a close_notify. */
+	if (s->quiet_shutdown)
 		{
-		s->shutdown=(SSL_SENT_SHUTDOWN|SSL_RECEIVED_SHUTDOWN);
-		return(1);
+		s->shutdown = SSL_SENT_SHUTDOWN|SSL_RECEIVED_SHUTDOWN;
+		return 1;
 		}
 
 	if (!(s->shutdown & SSL_SENT_SHUTDOWN))

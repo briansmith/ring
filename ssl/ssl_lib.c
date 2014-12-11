@@ -2375,7 +2375,7 @@ int SSL_do_handshake(SSL *s)
 
 	s->method->ssl_renegotiate_check(s);
 
-	if (SSL_in_init(s) || SSL_in_before(s))
+	if (SSL_in_init(s))
 		{
 		ret=s->handshake_func(s);
 		}
