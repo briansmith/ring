@@ -430,6 +430,12 @@ static int do_exchange(SSL_SESSION **out_session,
     return 1;
   }
   SSL_enable_fastradio_padding(ssl, config->fastradio_padding);
+  if (config->min_version != 0) {
+    SSL_set_min_version(ssl, (uint16_t)config->min_version);
+  }
+  if (config->max_version != 0) {
+    SSL_set_max_version(ssl, (uint16_t)config->max_version);
+  }
 
   BIO *bio = BIO_new_fd(fd, 1 /* take ownership */);
   if (bio == NULL) {

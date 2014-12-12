@@ -246,6 +246,9 @@ SSL *SSL_new(SSL_CTX *ctx)
 	if (s == NULL) goto err;
 	memset(s,0,sizeof(SSL));
 
+	s->min_version = ctx->min_version;
+	s->max_version = ctx->max_version;
+
 	s->options=ctx->options;
 	s->mode=ctx->mode;
 	s->max_cert_list=ctx->max_cert_list;
@@ -2878,6 +2881,26 @@ void SSL_CTX_set_psk_server_callback(SSL_CTX *ctx,
 	ctx->psk_server_callback = cb;
 	}
 
+void SSL_CTX_set_min_version(SSL_CTX *ctx, uint16_t version)
+	{
+	ctx->min_version = version;
+	}
+
+void SSL_CTX_set_max_version(SSL_CTX *ctx, uint16_t version)
+	{
+	ctx->max_version = version;
+	}
+
+void SSL_set_min_version(SSL *ssl, uint16_t version)
+	{
+	ssl->min_version = version;
+	}
+
+void SSL_set_max_version(SSL *ssl, uint16_t version)
+	{
+	ssl->max_version = version;
+	}
+
 void SSL_CTX_set_msg_callback(SSL_CTX *ctx, void (*cb)(int write_p, int version, int content_type, const void *buf, size_t len, SSL *ssl, void *arg))
 	{
 	SSL_CTX_callback_ctrl(ctx, SSL_CTRL_SET_MSG_CALLBACK, (void (*)(void))cb);
@@ -3094,47 +3117,69 @@ const SSL3_ENC_METHOD *ssl3_get_enc_method(uint16_t version)
 
 uint16_t ssl3_get_max_server_version(const SSL *s)
 	{
+	uint16_t max_version;
+
 	if (SSL_IS_DTLS(s))
 		{
-		if (!(s->options & SSL_OP_NO_DTLSv1_2))
+		max_version = (s->max_version != 0) ? s->max_version : DTLS1_2_VERSION;
+		if (!(s->options & SSL_OP_NO_DTLSv1_2) && DTLS1_2_VERSION >= max_version)
 			return DTLS1_2_VERSION;
-		if (!(s->options & SSL_OP_NO_DTLSv1))
+		if (!(s->options & SSL_OP_NO_DTLSv1) && DTLS1_VERSION >= max_version)
 			return DTLS1_VERSION;
 		return 0;
 		}
 
-	if (!(s->options & SSL_OP_NO_TLSv1_2))
+	max_version = (s->max_version != 0) ? s->max_version : TLS1_2_VERSION;
+	if (!(s->options & SSL_OP_NO_TLSv1_2) && TLS1_2_VERSION <= max_version)
 		return TLS1_2_VERSION;
-	if (!(s->options & SSL_OP_NO_TLSv1_1))
+	if (!(s->options & SSL_OP_NO_TLSv1_1) && TLS1_1_VERSION <= max_version)
 		return TLS1_1_VERSION;
-	if (!(s->options & SSL_OP_NO_TLSv1))
+	if (!(s->options & SSL_OP_NO_TLSv1) && TLS1_VERSION <= max_version)
 		return TLS1_VERSION;
-	if (!(s->options & SSL_OP_NO_SSLv3))
+	if (!(s->options & SSL_OP_NO_SSLv3) && SSL3_VERSION <= max_version)
 		return SSL3_VERSION;
 	return 0;
 	}
 
 uint16_t ssl3_get_mutual_version(SSL *s, uint16_t client_version)
 	{
+	uint16_t version = 0;
+
 	if (SSL_IS_DTLS(s))
 		{
+		/* Clamp client_version to max_version. */
+		if (s->max_version != 0 && client_version < s->max_version)
+			client_version = s->max_version;
+
 		if (client_version <= DTLS1_2_VERSION && !(s->options & SSL_OP_NO_DTLSv1_2))
-			return DTLS1_2_VERSION;
-		if (client_version <= DTLS1_VERSION && !(s->options & SSL_OP_NO_DTLSv1))
-			return DTLS1_VERSION;
-		return 0;
+			version = DTLS1_2_VERSION;
+		else if (client_version <= DTLS1_VERSION && !(s->options & SSL_OP_NO_DTLSv1))
+			version = DTLS1_VERSION;
+
+		/* Check against min_version. */
+		if (version != 0 && s->min_version != 0 && version > s->min_version)
+			return 0;
+		return version;
 		}
 	else
 		{
+		/* Clamp client_version to max_version. */
+		if (s->max_version != 0 && client_version > s->max_version)
+			client_version = s->max_version;
+
 		if (client_version >= TLS1_2_VERSION && !(s->options & SSL_OP_NO_TLSv1_2))
-			return TLS1_2_VERSION;
-		if (client_version >= TLS1_1_VERSION && !(s->options & SSL_OP_NO_TLSv1_1))
-			return TLS1_1_VERSION;
-		if (client_version >= TLS1_VERSION && !(s->options & SSL_OP_NO_TLSv1))
-			return TLS1_VERSION;
-		if (client_version >= SSL3_VERSION && !(s->options & SSL_OP_NO_SSLv3))
-			return SSL3_VERSION;
-		return 0;
+			version =  TLS1_2_VERSION;
+		else if (client_version >= TLS1_1_VERSION && !(s->options & SSL_OP_NO_TLSv1_1))
+			version = TLS1_1_VERSION;
+		else if (client_version >= TLS1_VERSION && !(s->options & SSL_OP_NO_TLSv1))
+			version = TLS1_VERSION;
+		else if (client_version >= SSL3_VERSION && !(s->options & SSL_OP_NO_SSLv3))
+			version = SSL3_VERSION;
+
+		/* Check against min_version. */
+		if (version != 0 && s->min_version != 0 && version < s->min_version)
+			return 0;
+		return version;
 		}
 	}
 
@@ -3155,16 +3200,15 @@ uint16_t ssl3_get_max_client_version(SSL *s)
 	 * set a maximum version of TLS 1.2 in a future-proof way.
 	 *
 	 * By this scheme, the maximum version is the lowest version V such that
-	 * V is enabled and V+1 is disabled or unimplemented.
-	 *
-	 * TODO(davidben): Deprecate this API in favor of more sensible
-	 * min_version/max_version settings. */
+	 * V is enabled and V+1 is disabled or unimplemented. */
 	if (SSL_IS_DTLS(s))
 		{
 		if (!(options & SSL_OP_NO_DTLSv1_2))
 			version = DTLS1_2_VERSION;
 		if (!(options & SSL_OP_NO_DTLSv1) && (options & SSL_OP_NO_DTLSv1_2))
 			version = DTLS1_VERSION;
+		if (s->max_version != 0 && version < s->max_version)
+			version = s->max_version;
 		}
 	else
 		{
@@ -3176,6 +3220,8 @@ uint16_t ssl3_get_max_client_version(SSL *s)
 			version = TLS1_VERSION;
 		if (!(options & SSL_OP_NO_SSLv3) && (options & SSL_OP_NO_TLSv1))
 			version = SSL3_VERSION;
+		if (s->max_version != 0 && version > s->max_version)
+			version = s->max_version;
 		}
 
 	return version;
@@ -3185,6 +3231,10 @@ int ssl3_is_version_enabled(SSL *s, uint16_t version)
 	{
 	if (SSL_IS_DTLS(s))
 		{
+		if (s->max_version != 0 && version < s->max_version)
+			return 0;
+		if (s->min_version != 0 && version > s->min_version)
+			return 0;
 		switch (version)
 			{
 		case DTLS1_VERSION:
@@ -3197,6 +3247,10 @@ int ssl3_is_version_enabled(SSL *s, uint16_t version)
 		}
 	else
 		{
+		if (s->max_version != 0 && version > s->max_version)
+			return 0;
+		if (s->min_version != 0 && version < s->min_version)
+			return 0;
 		switch (version)
 			{
 		case SSL3_VERSION:

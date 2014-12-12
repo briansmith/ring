@@ -470,6 +470,8 @@ struct ssl_session_st
 /* SSL_OP_TLS_ROLLBACK_BUG does nothing. */
 #define SSL_OP_TLS_ROLLBACK_BUG				0x00800000L
 
+/* Deprecated: Use SSL_CTX_set_min_version and SSL_CTX_set_max_version
+ * instead. */
 #define SSL_OP_NO_SSLv2					0x01000000L
 #define SSL_OP_NO_SSLv3					0x02000000L
 #define SSL_OP_NO_TLSv1					0x04000000L
@@ -605,6 +607,22 @@ struct ssl_session_st
 #define SSL_clear_cert_flags(s,op) \
 	SSL_ctrl((s),SSL_CTRL_CLEAR_CERT_FLAGS,(op),NULL)
 
+/* SSL_CTX_set_min_version sets the minimum protocol version for |ctx| to
+ * |version|. */
+void SSL_CTX_set_min_version(SSL_CTX *ctx, uint16_t version);
+
+/* SSL_CTX_set_max_version sets the maximum protocol version for |ctx| to
+ * |version|. */
+void SSL_CTX_set_max_version(SSL_CTX *ctx, uint16_t version);
+
+/* SSL_set_min_version sets the minimum protocol version for |ssl| to
+ * |version|. */
+void SSL_set_min_version(SSL *ssl, uint16_t version);
+
+/* SSL_set_max_version sets the maximum protocol version for |ssl| to
+ * |version|. */
+void SSL_set_max_version(SSL *ssl, uint16_t version);
+
 OPENSSL_EXPORT void SSL_CTX_set_msg_callback(SSL_CTX *ctx, void (*cb)(int write_p, int version, int content_type, const void *buf, size_t len, SSL *ssl, void *arg));
 OPENSSL_EXPORT void SSL_set_msg_callback(SSL *ssl, void (*cb)(int write_p, int version, int content_type, const void *buf, size_t len, SSL *ssl, void *arg));
 #define SSL_CTX_set_msg_callback_arg(ctx, arg) SSL_CTX_ctrl((ctx), SSL_CTRL_SET_MSG_CALLBACK_ARG, 0, (arg))
@@ -722,6 +740,16 @@ struct ssl_cipher_preference_list_st
 struct ssl_ctx_st
 	{
 	const SSL_METHOD *method;
+
+	/* max_version is the maximum acceptable protocol version. If
+	 * zero, the maximum supported version, currently (D)TLS 1.2,
+	 * is used. */
+	uint16_t max_version;
+
+	/* min_version is the minimum acceptable protocl version. If
+	 * zero, the minimum supported version, currently SSL 3.0 and
+	 * DTLS 1.0, is used */
+	uint16_t min_version;
 
 	struct ssl_cipher_preference_list_st *cipher_list;
 	/* same as above but sorted for lookup */
@@ -1177,6 +1205,14 @@ struct ssl_st
 	/* enc_method is the method table corresponding to the current protocol
 	 * version. */
 	const SSL3_ENC_METHOD *enc_method;
+
+	/* max_version is the maximum acceptable protocol version. If zero, the
+	 * maximum supported version, currently (D)TLS 1.2, is used. */
+	uint16_t max_version;
+
+	/* min_version is the minimum acceptable protocl version. If zero, the
+	 * minimum supported version, currently SSL 3.0 and DTLS 1.0, is used */
+	uint16_t min_version;
 
 	/* There are 2 BIO's even though they are normally both the
 	 * same.  This is so data can be read and written to different

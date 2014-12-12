@@ -64,6 +64,8 @@ struct TestConfig {
   bool enable_signed_cert_timestamps;
   std::string expected_signed_cert_timestamps;
   bool fastradio_padding;
+  int min_version;
+  int max_version;
 };
 
 bool ParseConfig(int argc, char **argv, TestConfig *out_config);

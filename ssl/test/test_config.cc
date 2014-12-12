@@ -15,6 +15,7 @@
 #include "test_config.h"
 
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 #include <memory>
@@ -23,20 +24,26 @@
 
 namespace {
 
-typedef bool TestConfig::*BoolMember;
-typedef std::string TestConfig::*StringMember;
-
-struct BoolFlag {
+template <typename T>
+struct Flag {
   const char *flag;
-  BoolMember member;
+  T TestConfig::*member;
 };
 
-struct StringFlag {
-  const char *flag;
-  StringMember member;
-};
+// FindField looks for the flag in |flags| that matches |flag|. If one is found,
+// it returns a pointer to the corresponding field in |config|. Otherwise, it
+// returns NULL.
+template<typename T, size_t N>
+T *FindField(TestConfig *config, const Flag<T> (&flags)[N], const char *flag) {
+  for (size_t i = 0; i < N; i++) {
+    if (strcmp(flag, flags[i].flag) == 0) {
+      return &(config->*(flags[i].member));
+    }
+  }
+  return NULL;
+}
 
-const BoolFlag kBoolFlags[] = {
+const Flag<bool> kBoolFlags[] = {
   { "-server", &TestConfig::is_server },
   { "-dtls", &TestConfig::is_dtls },
   { "-resume", &TestConfig::resume },
@@ -68,9 +75,7 @@ const BoolFlag kBoolFlags[] = {
   { "-fastradio-padding", &TestConfig::fastradio_padding },
 };
 
-const size_t kNumBoolFlags = sizeof(kBoolFlags) / sizeof(kBoolFlags[0]);
-
-const StringFlag kStringFlags[] = {
+const Flag<std::string> kStringFlags[] = {
   { "-key-file", &TestConfig::key_file },
   { "-cert-file", &TestConfig::cert_file },
   { "-expect-server-name", &TestConfig::expected_server_name },
@@ -88,9 +93,7 @@ const StringFlag kStringFlags[] = {
   { "-srtp-profiles", &TestConfig::srtp_profiles },
 };
 
-const size_t kNumStringFlags = sizeof(kStringFlags) / sizeof(kStringFlags[0]);
-
-const StringFlag kBase64Flags[] = {
+const Flag<std::string> kBase64Flags[] = {
   { "-expect-certificate-types", &TestConfig::expected_certificate_types },
   { "-expect-channel-id", &TestConfig::expected_channel_id },
   { "-expect-ocsp-response", &TestConfig::expected_ocsp_response },
@@ -98,7 +101,10 @@ const StringFlag kBase64Flags[] = {
     &TestConfig::expected_signed_cert_timestamps },
 };
 
-const size_t kNumBase64Flags = sizeof(kBase64Flags) / sizeof(kBase64Flags[0]);
+const Flag<int> kIntFlags[] = {
+  { "-min-version", &TestConfig::min_version },
+  { "-max-version", &TestConfig::max_version },
+};
 
 }  // namespace
 
@@ -126,43 +132,32 @@ TestConfig::TestConfig()
       allow_unsafe_legacy_renegotiation(false),
       enable_ocsp_stapling(false),
       enable_signed_cert_timestamps(false),
-      fastradio_padding(false) {
+      fastradio_padding(false),
+      min_version(0),
+      max_version(0) {
 }
 
 bool ParseConfig(int argc, char **argv, TestConfig *out_config) {
   for (int i = 0; i < argc; i++) {
-    size_t j;
-    for (j = 0; j < kNumBoolFlags; j++) {
-      if (strcmp(argv[i], kBoolFlags[j].flag) == 0) {
-        break;
-      }
-    }
-    if (j < kNumBoolFlags) {
-      out_config->*(kBoolFlags[j].member) = true;
+    bool *bool_field = FindField(out_config, kBoolFlags, argv[i]);
+    if (bool_field != NULL) {
+      *bool_field = true;
       continue;
     }
 
-    for (j = 0; j < kNumStringFlags; j++) {
-      if (strcmp(argv[i], kStringFlags[j].flag) == 0) {
-        break;
-      }
-    }
-    if (j < kNumStringFlags) {
+    std::string *string_field = FindField(out_config, kStringFlags, argv[i]);
+    if (string_field != NULL) {
       i++;
       if (i >= argc) {
         fprintf(stderr, "Missing parameter\n");
         return false;
       }
-      out_config->*(kStringFlags[j].member) = argv[i];
+      string_field->assign(argv[i]);
       continue;
     }
 
-    for (j = 0; j < kNumBase64Flags; j++) {
-      if (strcmp(argv[i], kBase64Flags[j].flag) == 0) {
-        break;
-      }
-    }
-    if (j < kNumBase64Flags) {
+    std::string *base64_field = FindField(out_config, kBase64Flags, argv[i]);
+    if (base64_field != NULL) {
       i++;
       if (i >= argc) {
         fprintf(stderr, "Missing parameter\n");
@@ -178,8 +173,18 @@ bool ParseConfig(int argc, char **argv, TestConfig *out_config) {
                             strlen(argv[i]))) {
         fprintf(stderr, "Invalid base64: %s\n", argv[i]);
       }
-      out_config->*(kBase64Flags[j].member) = std::string(
-          reinterpret_cast<const char *>(decoded.get()), len);
+      base64_field->assign(reinterpret_cast<const char *>(decoded.get()), len);
+      continue;
+    }
+
+    int *int_field = FindField(out_config, kIntFlags, argv[i]);
+    if (int_field) {
+      i++;
+      if (i >= argc) {
+        fprintf(stderr, "Missing parameter\n");
+        return false;
+      }
+      *int_field = atoi(argv[i]);
       continue;
     }
 

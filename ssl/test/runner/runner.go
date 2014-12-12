@@ -1639,6 +1639,8 @@ func addVersionNegotiationTests() {
 					suffix += "-DTLS"
 				}
 
+				shimVersFlag := strconv.Itoa(int(versionToWire(shimVers.version, protocol == dtls)))
+
 				clientVers := shimVers.version
 				if clientVers > VersionTLS10 {
 					clientVers = VersionTLS10
@@ -1656,6 +1658,19 @@ func addVersionNegotiationTests() {
 					flags:           flags,
 					expectedVersion: expectedVersion,
 				})
+				testCases = append(testCases, testCase{
+					protocol: protocol,
+					testType: clientTest,
+					name:     "VersionNegotiation-Client2-" + suffix,
+					config: Config{
+						MaxVersion: runnerVers.version,
+						Bugs: ProtocolBugs{
+							ExpectInitialRecordVersion: clientVers,
+						},
+					},
+					flags:           []string{"-max-version", shimVersFlag},
+					expectedVersion: expectedVersion,
+				})
 
 				testCases = append(testCases, testCase{
 					protocol: protocol,
@@ -1668,6 +1683,19 @@ func addVersionNegotiationTests() {
 						},
 					},
 					flags:           flags,
+					expectedVersion: expectedVersion,
+				})
+				testCases = append(testCases, testCase{
+					protocol: protocol,
+					testType: serverTest,
+					name:     "VersionNegotiation-Server2-" + suffix,
+					config: Config{
+						MaxVersion: runnerVers.version,
+						Bugs: ProtocolBugs{
+							ExpectInitialRecordVersion: expectedVersion,
+						},
+					},
+					flags:           []string{"-max-version", shimVersFlag},
 					expectedVersion: expectedVersion,
 				})
 			}
