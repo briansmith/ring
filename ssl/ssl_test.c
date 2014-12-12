@@ -420,12 +420,34 @@ static int test_ssl_session_asn1(const char *input_b64) {
   return ret;
 }
 
+int test_default_version(uint16_t version, const SSL_METHOD *(*method)(void)) {
+  SSL_CTX *ctx;
+  int ret;
+
+  ctx = SSL_CTX_new(method());
+  if (ctx == NULL) {
+    return 0;
+  }
+
+  ret = ctx->min_version == version && ctx->max_version == version;
+  SSL_CTX_free(ctx);
+  return ret;
+}
+
 int main(void) {
   SSL_library_init();
 
   if (!test_cipher_rules() ||
       !test_ssl_session_asn1(kOpenSSLSession) ||
-      !test_ssl_session_asn1(kCustomSession)) {
+      !test_ssl_session_asn1(kCustomSession) ||
+      !test_default_version(0, &TLS_method) ||
+      !test_default_version(SSL3_VERSION, &SSLv3_method) ||
+      !test_default_version(TLS1_VERSION, &TLSv1_method) ||
+      !test_default_version(TLS1_1_VERSION, &TLSv1_1_method) ||
+      !test_default_version(TLS1_2_VERSION, &TLSv1_2_method) ||
+      !test_default_version(0, &DTLS_method) ||
+      !test_default_version(DTLS1_VERSION, &DTLSv1_method) ||
+      !test_default_version(DTLS1_2_VERSION, &DTLSv1_2_method)) {
     return 1;
   }
 

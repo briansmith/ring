@@ -1123,7 +1123,7 @@ int ssl3_get_client_hello(SSL *s)
 			}
 		}
 
-	if (!s->s3->have_version && s->method->version == DTLS_ANY_VERSION)
+	if (!s->s3->have_version)
 		{
 		/* Select version to use */
 		uint16_t version = ssl3_get_mutual_version(s, client_version);
@@ -1137,6 +1137,10 @@ int ssl3_get_client_hello(SSL *s)
 		s->version = version;
 		s->enc_method = ssl3_get_enc_method(version);
 		assert(s->enc_method != NULL);
+		/* At this point, the connection's version is known and
+		 * s->version is fixed. Begin enforcing the record-layer
+		 * version. */
+		s->s3->have_version = 1;
 		}
 	else if (SSL_IS_DTLS(s)  ?	(s->client_version > s->version)
 		                 :	(s->client_version < s->version))
@@ -1151,12 +1155,6 @@ int ssl3_get_client_hello(SSL *s)
 		al = SSL_AD_PROTOCOL_VERSION;
 		goto f_err;
 		}
-
-	/* At this point, the connection's version is known and s->version is
-	 * fixed. Begin enforcing the record-layer version. Note: SSLv23_method
-	 * currently determines its version sooner, but it will later be moved
-	 * to this point. */
-	s->s3->have_version = 1;
 
 	s->hit=0;
 	/* Versions before 0.9.7 always allow clients to resume sessions in renegotiation.

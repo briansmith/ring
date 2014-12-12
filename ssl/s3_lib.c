@@ -1119,7 +1119,7 @@ void ssl3_clear(SSL *s)
 	s->s3->total_renegotiations=0;
 	s->s3->num_renegotiations=0;
 	s->s3->in_read_app_data=0;
-	s->version = s->method->version;
+	s->version = TLS1_2_VERSION;
 
 	if (s->next_proto_negotiated)
 		{

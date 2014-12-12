@@ -687,7 +687,7 @@ printf("\nkey block\n");
 { int z; for (z=0; z<num; z++) printf("%02X%c",p1[z],((z+1)%16)?' ':'\n'); }
 #endif
 
-	if (s->method->version <= TLS1_VERSION &&
+	if (!SSL_USE_EXPLICIT_IV(s) &&
 	    (s->mode & SSL_MODE_CBC_RECORD_SPLITTING) != 0)
 		{
 		/* enable vulnerability countermeasure for CBC ciphers with

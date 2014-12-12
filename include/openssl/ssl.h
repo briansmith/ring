@@ -277,6 +277,7 @@ extern "C" {
 #define SSL_FILETYPE_PEM	X509_FILETYPE_PEM
 
 typedef struct ssl_method_st SSL_METHOD;
+typedef struct ssl_protocol_method_st SSL_PROTOCOL_METHOD;
 typedef struct ssl_cipher_st SSL_CIPHER;
 typedef struct ssl_session_st SSL_SESSION;
 typedef struct tls_sigalgs_st TLS_SIGALGS;
@@ -316,38 +317,6 @@ struct ssl_cipher_st
 					   ssl_locl.h */
 	int strength_bits;		/* Number of bits really used */
 	int alg_bits;			/* Number of bits for algorithm */
-	};
-
-
-/* Used to hold functions for SSLv2 or SSLv3/TLSv1 functions */
-struct ssl_method_st
-	{
-	int version;
-	int (*ssl_new)(SSL *s);
-	void (*ssl_clear)(SSL *s);
-	void (*ssl_free)(SSL *s);
-	int (*ssl_accept)(SSL *s);
-	int (*ssl_connect)(SSL *s);
-	int (*ssl_read)(SSL *s,void *buf,int len);
-	int (*ssl_peek)(SSL *s,void *buf,int len);
-	int (*ssl_write)(SSL *s,const void *buf,int len);
-	int (*ssl_shutdown)(SSL *s);
-	int (*ssl_renegotiate)(SSL *s);
-	int (*ssl_renegotiate_check)(SSL *s);
-	long (*ssl_get_message)(SSL *s, int st1, int stn, int mt, long
-		max, int hash_message, int *ok);
-	int (*ssl_read_bytes)(SSL *s, int type, unsigned char *buf, int len, 
-		int peek);
-	int (*ssl_write_bytes)(SSL *s, int type, const void *buf_, int len);
-	int (*ssl_dispatch_alert)(SSL *s);
-	long (*ssl_ctrl)(SSL *s,int cmd,long larg,void *parg);
-	long (*ssl_ctx_ctrl)(SSL_CTX *ctx,int cmd,long larg,void *parg);
-	int (*ssl_pending)(const SSL *s);
-	int (*num_ciphers)(void);
-	const SSL_CIPHER *(*get_cipher)(unsigned ncipher);
-	int (*ssl_version)(void);
-	long (*ssl_callback_ctrl)(SSL *s, int cb_id, void (*fp)(void));
-	long (*ssl_ctx_callback_ctrl)(SSL_CTX *s, int cb_id, void (*fp)(void));
 	};
 
 /* An SSL_SESSION represents an SSL session that may be resumed in an
@@ -739,7 +708,7 @@ struct ssl_cipher_preference_list_st
 
 struct ssl_ctx_st
 	{
-	const SSL_METHOD *method;
+	const SSL_PROTOCOL_METHOD *method;
 
 	/* max_version is the maximum acceptable protocol version. If
 	 * zero, the maximum supported version, currently (D)TLS 1.2,
@@ -1196,11 +1165,8 @@ struct ssl_st
 	int version;
 
 	/* method is the method table corresponding to the current protocol
-	 * (DTLS or TLS).
-	 *
-	 * TODO(davidben): For now, it also corresponds to the protocol version,
-	 * but that will soon change. */
-	const SSL_METHOD *method;
+	 * (DTLS or TLS). */
+	const SSL_PROTOCOL_METHOD *method;
 
 	/* enc_method is the method table corresponding to the current protocol
 	 * version. */
@@ -2066,38 +2032,47 @@ OPENSSL_EXPORT int SSL_CIPHER_has_MD5_HMAC(const SSL_CIPHER *c);
 OPENSSL_EXPORT int SSL_CIPHER_is_AESGCM(const SSL_CIPHER *c);
 OPENSSL_EXPORT int SSL_CIPHER_is_CHACHA20POLY1305(const SSL_CIPHER *c);
 
-OPENSSL_EXPORT const SSL_METHOD *SSLv3_method(void);		/* SSLv3 */
-OPENSSL_EXPORT const SSL_METHOD *SSLv3_server_method(void);	/* SSLv3 */
-OPENSSL_EXPORT const SSL_METHOD *SSLv3_client_method(void);	/* SSLv3 */
+/* TLS_method is the SSL_METHOD used for TLS (and SSLv3) connections. */
+OPENSSL_EXPORT const SSL_METHOD *TLS_method(void);
 
-OPENSSL_EXPORT const SSL_METHOD *SSLv23_method(void);	/* SSLv3 but can rollback to v2 */
-OPENSSL_EXPORT const SSL_METHOD *SSLv23_server_method(void);	/* SSLv3 but can rollback to v2 */
-OPENSSL_EXPORT const SSL_METHOD *SSLv23_client_method(void);	/* SSLv3 but can rollback to v2 */
-
-OPENSSL_EXPORT const SSL_METHOD *TLSv1_method(void);		/* TLSv1.0 */
-OPENSSL_EXPORT const SSL_METHOD *TLSv1_server_method(void);	/* TLSv1.0 */
-OPENSSL_EXPORT const SSL_METHOD *TLSv1_client_method(void);	/* TLSv1.0 */
-
-OPENSSL_EXPORT const SSL_METHOD *TLSv1_1_method(void);		/* TLSv1.1 */
-OPENSSL_EXPORT const SSL_METHOD *TLSv1_1_server_method(void);	/* TLSv1.1 */
-OPENSSL_EXPORT const SSL_METHOD *TLSv1_1_client_method(void);	/* TLSv1.1 */
-
-OPENSSL_EXPORT const SSL_METHOD *TLSv1_2_method(void);		/* TLSv1.2 */
-OPENSSL_EXPORT const SSL_METHOD *TLSv1_2_server_method(void);	/* TLSv1.2 */
-OPENSSL_EXPORT const SSL_METHOD *TLSv1_2_client_method(void);	/* TLSv1.2 */
+/* DTLS_method is the SSL_METHOD used for DTLS connections. */
+OPENSSL_EXPORT const SSL_METHOD *DTLS_method(void);
 
 
-OPENSSL_EXPORT const SSL_METHOD *DTLSv1_method(void);		/* DTLSv1.0 */
-OPENSSL_EXPORT const SSL_METHOD *DTLSv1_server_method(void);	/* DTLSv1.0 */
-OPENSSL_EXPORT const SSL_METHOD *DTLSv1_client_method(void);	/* DTLSv1.0 */
+/* Deprecated methods. */
 
-OPENSSL_EXPORT const SSL_METHOD *DTLSv1_2_method(void);	/* DTLSv1.2 */
-OPENSSL_EXPORT const SSL_METHOD *DTLSv1_2_server_method(void);	/* DTLSv1.2 */
-OPENSSL_EXPORT const SSL_METHOD *DTLSv1_2_client_method(void);	/* DTLSv1.2 */
+/* SSLv23_method calls TLS_method. */
+OPENSSL_EXPORT const SSL_METHOD *SSLv23_method(void);
 
-OPENSSL_EXPORT const SSL_METHOD *DTLS_method(void);		/* DTLS 1.0 and 1.2 */
-OPENSSL_EXPORT const SSL_METHOD *DTLS_server_method(void);	/* DTLS 1.0 and 1.2 */
-OPENSSL_EXPORT const SSL_METHOD *DTLS_client_method(void);	/* DTLS 1.0 and 1.2 */
+/* Version-specific methods behave exactly like TLS_method and DTLS_method they
+ * also call SSL_CTX_set_min_version and SSL_CTX_set_max_version to lock
+ * connections to that protocol version. */
+OPENSSL_EXPORT const SSL_METHOD *SSLv3_method(void);
+OPENSSL_EXPORT const SSL_METHOD *TLSv1_method(void);
+OPENSSL_EXPORT const SSL_METHOD *TLSv1_1_method(void);
+OPENSSL_EXPORT const SSL_METHOD *TLSv1_2_method(void);
+OPENSSL_EXPORT const SSL_METHOD *DTLSv1_method(void);
+OPENSSL_EXPORT const SSL_METHOD *DTLSv1_2_method(void);
+
+/* Client- and server-specific methods call their corresponding generic
+ * methods. */
+OPENSSL_EXPORT const SSL_METHOD *SSLv23_server_method(void);
+OPENSSL_EXPORT const SSL_METHOD *SSLv23_client_method(void);
+OPENSSL_EXPORT const SSL_METHOD *SSLv3_server_method(void);
+OPENSSL_EXPORT const SSL_METHOD *SSLv3_client_method(void);
+OPENSSL_EXPORT const SSL_METHOD *TLSv1_server_method(void);
+OPENSSL_EXPORT const SSL_METHOD *TLSv1_client_method(void);
+OPENSSL_EXPORT const SSL_METHOD *TLSv1_1_server_method(void);
+OPENSSL_EXPORT const SSL_METHOD *TLSv1_1_client_method(void);
+OPENSSL_EXPORT const SSL_METHOD *TLSv1_2_server_method(void);
+OPENSSL_EXPORT const SSL_METHOD *TLSv1_2_client_method(void);
+OPENSSL_EXPORT const SSL_METHOD *DTLS_server_method(void);
+OPENSSL_EXPORT const SSL_METHOD *DTLS_client_method(void);
+OPENSSL_EXPORT const SSL_METHOD *DTLSv1_server_method(void);
+OPENSSL_EXPORT const SSL_METHOD *DTLSv1_client_method(void);
+OPENSSL_EXPORT const SSL_METHOD *DTLSv1_2_server_method(void);
+OPENSSL_EXPORT const SSL_METHOD *DTLSv1_2_client_method(void);
+
 
 OPENSSL_EXPORT STACK_OF(SSL_CIPHER) *SSL_get_ciphers(const SSL *s);
 

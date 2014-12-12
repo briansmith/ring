@@ -231,7 +231,7 @@ static SSL_CTX *setup_ctx(const TestConfig *config) {
   SSL_CTX *ssl_ctx = NULL;
   DH *dh = NULL;
 
-  ssl_ctx = SSL_CTX_new(config->is_dtls ? DTLS_method() : SSLv23_method());
+  ssl_ctx = SSL_CTX_new(config->is_dtls ? DTLS_method() : TLS_method());
   if (ssl_ctx == NULL) {
     goto err;
   }

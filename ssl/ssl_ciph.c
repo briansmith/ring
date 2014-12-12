@@ -418,7 +418,7 @@ static void ll_append_head(CIPHER_ORDER **head, CIPHER_ORDER *curr,
 	*head=curr;
 	}
 
-static void ssl_cipher_collect_ciphers(const SSL_METHOD *ssl_method,
+static void ssl_cipher_collect_ciphers(const SSL_PROTOCOL_METHOD *ssl_method,
                 int num_of_ciphers,
                 CIPHER_ORDER *co_list,
                 CIPHER_ORDER **head_p, CIPHER_ORDER **tail_p)
@@ -991,7 +991,7 @@ static int ssl_cipher_process_rulestr(const char *rule_str,
 	}
 
 
-STACK_OF(SSL_CIPHER) *ssl_create_cipher_list(const SSL_METHOD *ssl_method,
+STACK_OF(SSL_CIPHER) *ssl_create_cipher_list(const SSL_PROTOCOL_METHOD *ssl_method,
 		struct ssl_cipher_preference_list_st **cipher_list,
 		STACK_OF(SSL_CIPHER) **cipher_list_by_id,
 		const char *rule_str, CERT *c)

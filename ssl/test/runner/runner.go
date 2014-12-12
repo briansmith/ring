@@ -445,8 +445,7 @@ var testCases = []testCase{
 				FragmentClientVersion:    true,
 			},
 		},
-		shouldFail:    true,
-		expectedError: ":RECORD_TOO_SMALL:",
+		expectedVersion: VersionTLS12,
 	},
 	{
 		testType: serverTest,

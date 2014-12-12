@@ -590,7 +590,7 @@ int ssl3_send_client_hello(SSL *s)
 	buf=(unsigned char *)s->init_buf->data;
 	if (s->state == SSL3_ST_CW_CLNT_HELLO_A)
 		{
-		if (!s->s3->have_version && s->method->version == DTLS_ANY_VERSION)
+		if (!s->s3->have_version)
 			{
 			uint16_t max_version = ssl3_get_max_client_version(s);
 			/* Disabling all versions is silly: return an error. */
@@ -771,7 +771,7 @@ int ssl3_get_server_hello(SSL *s)
 		goto f_err;
 		}
 
-	if (!s->s3->have_version && s->method->version == DTLS_ANY_VERSION)
+	if (!s->s3->have_version)
 		{
 		if (!ssl3_is_version_enabled(s, server_version))
 			{
@@ -783,6 +783,10 @@ int ssl3_get_server_hello(SSL *s)
 		s->version = server_version;
 		s->enc_method = ssl3_get_enc_method(server_version);
 		assert(s->enc_method != NULL);
+		/* At this point, the connection's version is known and
+		 * s->version is fixed. Begin enforcing the record-layer
+		 * version. */
+		s->s3->have_version = 1;
 		}
 	else if (server_version != s->version)
 		{
@@ -791,12 +795,6 @@ int ssl3_get_server_hello(SSL *s)
 		al = SSL_AD_PROTOCOL_VERSION;
 		goto f_err;
 		}
-
-	/* At this point, the connection's version is known and s->version is
-	 * fixed. Begin enforcing the record-layer version. Note: SSLv23_method
-	 * currently determines its version sooner, but it will later be moved
-	 * to this point. */
-	s->s3->have_version = 1;
 
 	/* Copy over the server random. */
 	memcpy(s->s3->server_random, CBS_data(&server_random), SSL3_RANDOM_SIZE);

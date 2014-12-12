@@ -563,6 +563,48 @@ enum should_add_to_finished_hash {
   dont_add_to_finished_hash,
 };
 
+/* SSL_METHOD is a compatibility structure to support the legacy
+ * version-locked methods. */
+struct ssl_method_st
+	{
+	/* version, if non-zero, is the only protocol version acceptable to an
+	 * SSL_CTX initialized from this method. */
+	uint16_t version;
+	/* method is the underlying SSL_PROTOCOL_METHOD that initializes the
+	 * SSL_CTX. */
+	const SSL_PROTOCOL_METHOD *method;
+	};
+
+/* Used to hold functions for SSLv2 or SSLv3/TLSv1 functions */
+struct ssl_protocol_method_st
+	{
+	int (*ssl_new)(SSL *s);
+	void (*ssl_clear)(SSL *s);
+	void (*ssl_free)(SSL *s);
+	int (*ssl_accept)(SSL *s);
+	int (*ssl_connect)(SSL *s);
+	int (*ssl_read)(SSL *s,void *buf,int len);
+	int (*ssl_peek)(SSL *s,void *buf,int len);
+	int (*ssl_write)(SSL *s,const void *buf,int len);
+	int (*ssl_shutdown)(SSL *s);
+	int (*ssl_renegotiate)(SSL *s);
+	int (*ssl_renegotiate_check)(SSL *s);
+	long (*ssl_get_message)(SSL *s, int st1, int stn, int mt, long
+		max, int hash_message, int *ok);
+	int (*ssl_read_bytes)(SSL *s, int type, unsigned char *buf, int len,
+		int peek);
+	int (*ssl_write_bytes)(SSL *s, int type, const void *buf_, int len);
+	int (*ssl_dispatch_alert)(SSL *s);
+	long (*ssl_ctrl)(SSL *s,int cmd,long larg,void *parg);
+	long (*ssl_ctx_ctrl)(SSL_CTX *ctx,int cmd,long larg,void *parg);
+	int (*ssl_pending)(const SSL *s);
+	int (*num_ciphers)(void);
+	const SSL_CIPHER *(*get_cipher)(unsigned ncipher);
+	int (*ssl_version)(void);
+	long (*ssl_callback_ctrl)(SSL *s, int cb_id, void (*fp)(void));
+	long (*ssl_ctx_callback_ctrl)(SSL_CTX *s, int cb_id, void (*fp)(void));
+	};
+
 /* This is for the SSLv3/TLSv1.0 differences in crypto/hash stuff
  * It is a bit of a mess of functions, but hell, think of it as
  * an opaque structure :-) */
@@ -636,109 +678,12 @@ struct ssl_aead_ctx_st
 
 extern const SSL_CIPHER ssl3_ciphers[];
 
-
 extern const SSL3_ENC_METHOD TLSv1_enc_data;
 extern const SSL3_ENC_METHOD TLSv1_1_enc_data;
 extern const SSL3_ENC_METHOD TLSv1_2_enc_data;
 extern const SSL3_ENC_METHOD SSLv3_enc_data;
 extern const SSL3_ENC_METHOD DTLSv1_enc_data;
 extern const SSL3_ENC_METHOD DTLSv1_2_enc_data;
-
-#define IMPLEMENT_tls_meth_func(version, func_name) \
-const SSL_METHOD *func_name(void)  \
-	{ \
-	static const SSL_METHOD func_name##_data= { \
-		version, \
-		ssl3_new, \
-		ssl3_clear, \
-		ssl3_free, \
-		ssl3_accept, \
-		ssl3_connect, \
-		ssl3_read, \
-		ssl3_peek, \
-		ssl3_write, \
-		ssl3_shutdown, \
-		ssl3_renegotiate, \
-		ssl3_renegotiate_check, \
-		ssl3_get_message, \
-		ssl3_read_bytes, \
-		ssl3_write_bytes, \
-		ssl3_dispatch_alert, \
-		ssl3_ctrl, \
-		ssl3_ctx_ctrl, \
-		ssl3_pending, \
-		ssl3_num_ciphers, \
-		ssl3_get_cipher, \
-		ssl_undefined_void_function, \
-		ssl3_callback_ctrl, \
-		ssl3_ctx_callback_ctrl, \
-	}; \
-	return &func_name##_data; \
-	}
-
-#define IMPLEMENT_ssl23_meth_func(func_name) \
-const SSL_METHOD *func_name(void)  \
-	{ \
-	static const SSL_METHOD func_name##_data= { \
-	TLS1_2_VERSION, \
-	ssl3_new, \
-	ssl3_clear, \
-	ssl3_free, \
-	ssl23_accept, \
-	ssl23_connect, \
-	ssl23_read, \
-	ssl23_peek, \
-	ssl23_write, \
-	ssl_undefined_function, \
-	ssl_undefined_function, \
-	ssl_ok, \
-	ssl3_get_message, \
-	ssl3_read_bytes, \
-	ssl3_write_bytes, \
-	ssl3_dispatch_alert, \
-	ssl3_ctrl, \
-	ssl3_ctx_ctrl, \
-	ssl_undefined_const_function, \
-	ssl3_num_ciphers, \
-	ssl3_get_cipher, \
-	ssl_undefined_void_function, \
-	ssl3_callback_ctrl, \
-	ssl3_ctx_callback_ctrl, \
-	}; \
-	return &func_name##_data; \
-	}
-
-#define IMPLEMENT_dtls1_meth_func(version, func_name) \
-const SSL_METHOD *func_name(void)  \
-	{ \
-	static const SSL_METHOD func_name##_data= { \
-		version, \
-		dtls1_new, \
-		dtls1_clear, \
-		dtls1_free, \
-		dtls1_accept, \
-		dtls1_connect, \
-		ssl3_read, \
-		ssl3_peek, \
-		ssl3_write, \
-		dtls1_shutdown, \
-		ssl3_renegotiate, \
-		ssl3_renegotiate_check, \
-		dtls1_get_message, \
-		dtls1_read_bytes, \
-		dtls1_write_app_data_bytes, \
-		dtls1_dispatch_alert, \
-		dtls1_ctrl, \
-		ssl3_ctx_ctrl, \
-		ssl3_pending, \
-		ssl3_num_ciphers, \
-		dtls1_get_cipher, \
-		ssl_undefined_void_function, \
-		ssl3_callback_ctrl, \
-		ssl3_ctx_callback_ctrl, \
-	}; \
-	return &func_name##_data; \
-	}
 
 void ssl_clear_cipher_ctx(SSL *s);
 int ssl_clear_bad_session(SSL *s);
@@ -755,7 +700,7 @@ int ssl_cipher_id_cmp(const void *in_a, const void *in_b);
 int ssl_cipher_ptr_id_cmp(const SSL_CIPHER **ap, const SSL_CIPHER **bp);
 STACK_OF(SSL_CIPHER) *ssl_bytes_to_cipher_list(SSL *s, const CBS *cbs);
 int ssl_cipher_list_to_bytes(SSL *s, STACK_OF(SSL_CIPHER) *sk, uint8_t *p);
-STACK_OF(SSL_CIPHER) *ssl_create_cipher_list(const SSL_METHOD *meth,
+STACK_OF(SSL_CIPHER) *ssl_create_cipher_list(const SSL_PROTOCOL_METHOD *meth,
 					     struct ssl_cipher_preference_list_st **pref,
 					     STACK_OF(SSL_CIPHER) **sorted,
 					     const char *rule_str, CERT *c);
@@ -886,10 +831,6 @@ void ssl3_set_handshake_header(SSL *s, int htype, unsigned long len);
 int ssl3_handshake_write(SSL *s, enum should_add_to_finished_hash should_add_to_finished_hash);
 void ssl3_add_to_finished_hash(SSL *s);
 
-int ssl23_read(SSL *s, void *buf, int len);
-int ssl23_peek(SSL *s, void *buf, int len);
-int ssl23_write(SSL *s, const void *buf, int len);
-
 int dtls1_do_write(SSL *s,int type, enum should_add_to_finished_hash should_add_to_finished_hash);
 int ssl3_read_n(SSL *s, int n, int max, int extend);
 int dtls1_read_bytes(SSL *s, int type, unsigned char *buf, int len, int peek);
@@ -958,11 +899,6 @@ int ssl3_get_client_key_exchange(SSL *s);
 int ssl3_get_cert_verify(SSL *s);
 int ssl3_get_next_proto(SSL *s);
 int ssl3_get_channel_id(SSL *s);
-
-int ssl23_accept(SSL *s);
-int ssl23_connect(SSL *s);
-int ssl23_read_bytes(SSL *s, int n);
-int ssl23_write_bytes(SSL *s);
 
 int dtls1_new(SSL *s);
 int	dtls1_accept(SSL *s);
@@ -1070,10 +1006,6 @@ int ssl_ctx_log_master_secret(SSL_CTX *ctx,
 	const uint8_t *master, size_t master_len);
 
 int ssl3_can_cutthrough(const SSL *s);
-
-/* ssl3_get_method returns the version-locked SSL_METHOD corresponding
- * to |version|. */
-const SSL_METHOD *ssl3_get_method(uint16_t version);
 
 /* ssl3_get_enc_method returns the SSL3_ENC_METHOD corresponding to
  * |version|. */

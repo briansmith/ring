@@ -205,8 +205,6 @@ int SSL_clear(SSL *s)
 		assert(s->state == 0);
 		}
 
-	s->version=s->method->version;
-	s->client_version=s->version;
 	s->rwstate=SSL_NOTHING;
 	s->rstate=SSL_ST_READ_HEADER;
 #if 0
@@ -224,6 +222,7 @@ int SSL_clear(SSL *s)
 	ssl_clear_hash_ctx(&s->write_hash);
 
 	s->method->ssl_clear(s);
+	s->client_version=s->version;
 	return(1);
 	}
 
@@ -1847,7 +1846,7 @@ SSL_CTX *SSL_CTX_new(const SSL_METHOD *meth)
 
 	memset(ret,0,sizeof(SSL_CTX));
 
-	ret->method=meth;
+	ret->method = meth->method;
 
 	ret->cert_store=NULL;
 	ret->session_cache_mode=SSL_SESS_CACHE_SERVER;
@@ -1941,6 +1940,14 @@ SSL_CTX *SSL_CTX_new(const SSL_METHOD *meth)
 	 * deployed might change this.
 	 */
 	ret->options |= SSL_OP_LEGACY_SERVER_CONNECT;
+
+	/* Lock the SSL_CTX to the specified version, for compatibility with
+	 * legacy uses of SSL_METHOD. */
+	if (meth->version != 0)
+		{
+		SSL_CTX_set_max_version(ret, meth->version);
+		SSL_CTX_set_min_version(ret, meth->version);
+		}
 
 	return(ret);
 err:
@@ -3071,27 +3078,6 @@ int ssl3_can_cutthrough(const SSL *s)
 		}
 
 	return 1;
-	}
-
-const SSL_METHOD *ssl3_get_method(uint16_t version)
-	{
-	switch (version)
-		{
-	case SSL3_VERSION:
-		return SSLv3_method();
-	case TLS1_VERSION:
-		return TLSv1_method();
-	case TLS1_1_VERSION:
-		return TLSv1_1_method();
-	case TLS1_2_VERSION:
-		return TLSv1_2_method();
-	case DTLS1_VERSION:
-		return DTLSv1_method();
-	case DTLS1_2_VERSION:
-		return DTLSv1_2_method();
-	default:
-		return NULL;
-		}
 	}
 
 const SSL3_ENC_METHOD *ssl3_get_enc_method(uint16_t version)

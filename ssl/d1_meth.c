@@ -58,38 +58,80 @@
 #include "ssl_locl.h"
 
 
-IMPLEMENT_dtls1_meth_func(DTLS1_VERSION, DTLSv1_method)
+static const SSL_PROTOCOL_METHOD DTLS_protocol_method = {
+    dtls1_new,
+    dtls1_clear,
+    dtls1_free,
+    dtls1_accept,
+    dtls1_connect,
+    ssl3_read,
+    ssl3_peek,
+    ssl3_write,
+    dtls1_shutdown,
+    ssl3_renegotiate,
+    ssl3_renegotiate_check,
+    dtls1_get_message,
+    dtls1_read_bytes,
+    dtls1_write_app_data_bytes,
+    dtls1_dispatch_alert,
+    dtls1_ctrl,
+    ssl3_ctx_ctrl,
+    ssl3_pending,
+    ssl3_num_ciphers,
+    dtls1_get_cipher,
+    ssl_undefined_void_function,
+    ssl3_callback_ctrl,
+    ssl3_ctx_callback_ctrl,
+};
 
-IMPLEMENT_dtls1_meth_func(DTLS1_2_VERSION, DTLSv1_2_method)
+const SSL_METHOD *DTLS_method(void) {
+  static const SSL_METHOD method = {
+      0,
+      &DTLS_protocol_method,
+  };
+  return &method;
+}
 
-IMPLEMENT_dtls1_meth_func(DTLS_ANY_VERSION, DTLS_method)
+/* Legacy version-locked methods. */
 
-const SSL_METHOD *DTLSv1_2_server_method(void)
-	{
-	return DTLSv1_2_method();
-	}
+const SSL_METHOD *DTLSv1_2_method(void) {
+  static const SSL_METHOD method = {
+      DTLS1_2_VERSION,
+      &DTLS_protocol_method,
+  };
+  return &method;
+}
 
-const SSL_METHOD *DTLSv1_server_method(void)
-	{
-	return DTLSv1_method();
-	}
+const SSL_METHOD *DTLSv1_method(void) {
+  static const SSL_METHOD method = {
+      DTLS1_VERSION,
+      &DTLS_protocol_method,
+  };
+  return &method;
+}
 
-const SSL_METHOD *DTLS_server_method(void)
-	{
-	return DTLS_method();
-	}
+/* Legacy side-specific methods. */
 
-const SSL_METHOD *DTLSv1_2_client_method(void)
-	{
-	return DTLSv1_2_method();
-	}
+const SSL_METHOD *DTLSv1_2_server_method(void) {
+  return DTLSv1_2_method();
+}
 
-const SSL_METHOD *DTLSv1_client_method(void)
-	{
-	return DTLSv1_method();
-	}
+const SSL_METHOD *DTLSv1_server_method(void) {
+  return DTLSv1_method();
+}
 
-const SSL_METHOD *DTLS_client_method(void)
-	{
-	return DTLS_method();
-	}
+const SSL_METHOD *DTLSv1_2_client_method(void) {
+  return DTLSv1_2_method();
+}
+
+const SSL_METHOD *DTLSv1_client_method(void) {
+  return DTLSv1_method();
+}
+
+const SSL_METHOD *DTLS_server_method(void) {
+  return DTLS_method();
+}
+
+const SSL_METHOD *DTLS_client_method(void) {
+  return DTLS_method();
+}
