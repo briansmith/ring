@@ -130,7 +130,7 @@ static int dtls1_send_hello_verify_request(SSL *s);
 
 int dtls1_accept(SSL *s)
 	{
-	BUF_MEM *buf;
+	BUF_MEM *buf = NULL;
 	void (*cb)(const SSL *ssl,int type,int val)=NULL;
 	unsigned long alg_a;
 	int ret= -1;
@@ -184,6 +184,7 @@ int dtls1_accept(SSL *s)
 					goto end;
 					}
 				s->init_buf=buf;
+				buf = NULL;
 				}
 
 			if (!ssl3_setup_buffers(s))
@@ -588,7 +589,8 @@ end:
 	/* BIO_flush(s->wbio); */
 
 	s->in_handshake--;
-
+	if (buf != NULL)
+		BUF_MEM_free(buf);
 	if (cb != NULL)
 		cb(s,SSL_CB_ACCEPT_EXIT,ret);
 	return(ret);
