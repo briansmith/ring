@@ -172,6 +172,10 @@
 #include "../crypto/internal.h"
 #include "../crypto/dh/internal.h"
 
+/* INITIAL_SNIFF_BUFFER_SIZE is the number of bytes read in the initial sniff
+ * buffer. */
+#define INITIAL_SNIFF_BUFFER_SIZE 8
+
 int ssl3_accept(SSL *s)
 	{
 	BUF_MEM *buf = NULL;
@@ -207,55 +211,33 @@ int ssl3_accept(SSL *s)
 		switch (s->state)
 			{
 		case SSL_ST_RENEGOTIATE:
-			s->renegotiate=1;
-			/* s->state=SSL_ST_ACCEPT; */
+			/* This state is the renegotiate entry point. It sends a
+			 * HelloRequest and nothing else. */
+			s->renegotiate = 1;
 
-		case SSL_ST_ACCEPT:
-		case SSL_ST_BEFORE|SSL_ST_ACCEPT:
-
-			if (cb != NULL) cb(s,SSL_CB_HANDSHAKE_START,1);
+			if (cb != NULL)
+				cb(s, SSL_CB_HANDSHAKE_START, 1);
 
 			if (s->init_buf == NULL)
 				{
-				if ((buf=BUF_MEM_new()) == NULL)
+				buf = BUF_MEM_new();
+				if (!buf || !BUF_MEM_grow(buf, SSL3_RT_MAX_PLAIN_LENGTH))
 					{
-					ret= -1;
-					goto end;
-					}
-				if (!BUF_MEM_grow(buf,SSL3_RT_MAX_PLAIN_LENGTH))
-					{
-					ret= -1;
-					goto end;
-					}
-				s->init_buf=buf;
-				buf = NULL;
-				}
-
-			if (!ssl3_setup_buffers(s))
-				{
-				ret= -1;
-				goto end;
-				}
-
-			s->init_num=0;
-
-			if (s->state != SSL_ST_RENEGOTIATE)
-				{
-				/* Ok, we now need to push on a buffering BIO so that
-				 * the output is sent in a way that TCP likes :-)
-				 */
-				if (!ssl_init_wbio_buffer(s,1)) { ret= -1; goto end; }
-				
-				if (!ssl3_init_finished_mac(s))
-					{
-					OPENSSL_PUT_ERROR(SSL, ssl3_accept, ERR_R_INTERNAL_ERROR);
 					ret = -1;
 					goto end;
 					}
-				s->state=SSL3_ST_SR_CLNT_HELLO_A;
-				s->ctx->stats.sess_accept++;
+				s->init_buf = buf;
+				buf = NULL;
 				}
-			else if (!s->s3->send_connection_binding &&
+			s->init_num = 0;
+
+			if (!ssl3_setup_buffers(s))
+				{
+				ret = -1;
+				goto end;
+				}
+
+			if (!s->s3->send_connection_binding &&
 				!(s->options & SSL_OP_ALLOW_UNSAFE_LEGACY_RENEGOTIATION))
 				{
 				/* Server attempting to renegotiate with
@@ -267,13 +249,9 @@ int ssl3_accept(SSL *s)
 				ret = -1;
 				goto end;
 				}
-			else
-				{
-				/* s->state == SSL_ST_RENEGOTIATE,
-				 * we will just send a HelloRequest */
-				s->ctx->stats.sess_accept_renegotiate++;
-				s->state=SSL3_ST_SW_HELLO_REQ_A;
-				}
+
+			s->ctx->stats.sess_accept_renegotiate++;
+			s->state = SSL3_ST_SW_HELLO_REQ_A;
 			break;
 
 		case SSL3_ST_SW_HELLO_REQ_A:
@@ -296,6 +274,75 @@ int ssl3_accept(SSL *s)
 
 		case SSL3_ST_SW_HELLO_REQ_C:
 			s->state=SSL_ST_OK;
+			break;
+
+		case SSL_ST_ACCEPT:
+		case SSL_ST_BEFORE|SSL_ST_ACCEPT:
+			/* This state is the entry point for the handshake
+			 * itself (initial and renegotiation).  */
+			if (cb != NULL)
+				cb(s, SSL_CB_HANDSHAKE_START, 1);
+
+			if (s->init_buf == NULL)
+				{
+				buf = BUF_MEM_new();
+				if (!buf || !BUF_MEM_grow(buf, SSL3_RT_MAX_PLAIN_LENGTH))
+					{
+					ret = -1;
+					goto end;
+					}
+				s->init_buf = buf;
+				buf = NULL;
+				}
+			s->init_num = 0;
+
+			if (!ssl3_init_finished_mac(s))
+				{
+				OPENSSL_PUT_ERROR(SSL, ssl3_accept, ERR_R_INTERNAL_ERROR);
+				ret = -1;
+				goto end;
+				}
+
+			if (!s->s3->have_version)
+				{
+				/* This is the initial handshake. The record
+				 * layer has not been initialized yet. Sniff for
+				 * a V2ClientHello before reading a ClientHello
+				 * normally. */
+				assert(s->s3->rbuf.buf == NULL);
+				assert(s->s3->wbuf.buf == NULL);
+				s->state = SSL3_ST_SR_INITIAL_BYTES;
+				}
+			else
+				{
+				/* Enable a write buffer. This groups handshake
+				 * messages within a flight into a single
+				 * write. */
+				if (!ssl3_setup_buffers(s) ||
+					!ssl_init_wbio_buffer(s, 1))
+					{
+					ret = -1;
+					goto end;
+					}
+				s->state = SSL3_ST_SR_CLNT_HELLO_A;
+				}
+			s->ctx->stats.sess_accept++;
+			break;
+
+		case SSL3_ST_SR_INITIAL_BYTES:
+			ret = ssl3_get_initial_bytes(s);
+			if (ret <= 0)
+				goto end;
+			/* ssl3_get_initial_bytes sets s->state to one of
+			 * SSL3_ST_SR_V2_CLIENT_HELLO or SSL3_ST_SR_CLNT_HELLO_A
+			 * on success. */
+			break;
+
+		case SSL3_ST_SR_V2_CLIENT_HELLO:
+			ret = ssl3_get_v2_client_hello(s);
+			if (ret <= 0)
+				goto end;
+			s->state = SSL3_ST_SR_CLNT_HELLO_A;
 			break;
 
 		case SSL3_ST_SR_CLNT_HELLO_A:
@@ -672,6 +719,242 @@ end:
 	if (cb != NULL)
 		cb(s,SSL_CB_ACCEPT_EXIT,ret);
 	return(ret);
+	}
+
+static int ssl3_read_sniff_buffer(SSL *s, size_t n)
+	{
+	if (s->s3->sniff_buffer == NULL)
+		{
+		s->s3->sniff_buffer = BUF_MEM_new();
+		}
+	if (s->s3->sniff_buffer == NULL ||
+		!BUF_MEM_grow(s->s3->sniff_buffer, n))
+		{
+		return -1;
+		}
+
+	while (s->s3->sniff_buffer_len < n)
+		{
+		int ret;
+
+		s->rwstate = SSL_READING;
+		ret = BIO_read(s->rbio,
+			s->s3->sniff_buffer->data + s->s3->sniff_buffer_len,
+			n - s->s3->sniff_buffer_len);
+		if (ret <= 0)
+			return ret;
+		s->rwstate = SSL_NOTHING;
+		s->s3->sniff_buffer_len += ret;
+		}
+	return 1;
+	}
+
+int ssl3_get_initial_bytes(SSL *s)
+	{
+	int ret;
+	const uint8_t *p;
+
+	/* Read the first 8 bytes. To recognize a ClientHello or V2ClientHello
+	 * only needs the first 6 bytes, but 8 is needed to recognize CONNECT
+	 * below. */
+	ret = ssl3_read_sniff_buffer(s, INITIAL_SNIFF_BUFFER_SIZE);
+	if (ret <= 0)
+		return ret;
+	assert(s->s3->sniff_buffer_len >= INITIAL_SNIFF_BUFFER_SIZE);
+	p = (const uint8_t *)s->s3->sniff_buffer->data;
+
+	/* Some dedicated error codes for protocol mixups should the application
+	 * wish to interpret them differently. (These do not overlap with
+	 * ClientHello or V2ClientHello.) */
+	if (strncmp("GET ", (const char *)p, 4) == 0 ||
+		strncmp("POST ", (const char *)p, 5) == 0 ||
+		strncmp("HEAD ", (const char *)p, 5) == 0 ||
+		strncmp("PUT ", (const char *)p, 4) == 0)
+		{
+		OPENSSL_PUT_ERROR(SSL, ssl3_get_initial_bytes, SSL_R_HTTP_REQUEST);
+		return -1;
+		}
+	if (strncmp("CONNECT ", (const char *)p, 8) == 0)
+		{
+		OPENSSL_PUT_ERROR(SSL, ssl3_get_initial_bytes, SSL_R_HTTPS_PROXY_REQUEST);
+		return -1;
+		}
+
+	/* Determine if this is a ClientHello or V2ClientHello. */
+
+	if (p[0] & 0x80 && p[2] == SSL2_MT_CLIENT_HELLO &&
+		p[3] >= SSL3_VERSION_MAJOR)
+		{
+		/* This is a V2ClientHello. */
+		s->state = SSL3_ST_SR_V2_CLIENT_HELLO;
+		return 1;
+		}
+	if (p[0] == SSL3_RT_HANDSHAKE && p[1] >= SSL3_VERSION_MAJOR &&
+		p[5] == SSL3_MT_CLIENT_HELLO)
+		{
+		/* This is a ClientHello. Initialize the record layer with the
+		 * already consumed data and continue the handshake. */
+		if (!ssl3_setup_buffers(s) || !ssl_init_wbio_buffer(s, 1))
+			{
+			return -1;
+			}
+		assert(s->rstate == SSL_ST_READ_HEADER);
+		memcpy(s->s3->rbuf.buf, p, s->s3->sniff_buffer_len);
+		s->s3->rbuf.offset = 0;
+		s->s3->rbuf.left = s->s3->sniff_buffer_len;
+		s->packet_length = 0;
+
+		BUF_MEM_free(s->s3->sniff_buffer);
+		s->s3->sniff_buffer = NULL;
+		s->s3->sniff_buffer_len = 0;
+
+		s->state = SSL3_ST_SR_CLNT_HELLO_A;
+		return 1;
+		}
+
+	OPENSSL_PUT_ERROR(SSL, ssl3_get_initial_bytes, SSL_R_UNKNOWN_PROTOCOL);
+	return -1;
+	}
+
+int ssl3_get_v2_client_hello(SSL *s)
+	{
+	const uint8_t *p;
+	int ret;
+	CBS v2_client_hello, cipher_specs, session_id, challenge;
+	size_t msg_length, rand_len, len;
+	uint8_t msg_type;
+	uint16_t version, cipher_spec_length, session_id_length, challenge_length;
+	CBB client_hello, hello_body, cipher_suites;
+	uint8_t random[SSL3_RANDOM_SIZE];
+
+	/* Read the remainder of the V2ClientHello. We have previously read 8
+	 * bytes in ssl3_get_initial_bytes. */
+	assert(s->s3->sniff_buffer_len >= INITIAL_SNIFF_BUFFER_SIZE);
+	p = (const uint8_t *)s->s3->sniff_buffer->data;
+	msg_length = ((p[0] & 0x7f) << 8) | p[1];
+	if (msg_length > (1024 * 4))
+		{
+		OPENSSL_PUT_ERROR(SSL, ssl3_get_v2_client_hello, SSL_R_RECORD_TOO_LARGE);
+		return -1;
+		}
+	if (msg_length < INITIAL_SNIFF_BUFFER_SIZE - 2)
+		{
+		/* Reject lengths that are too short early. We have already read
+		 * 8 bytes, so we should not attempt to process an (invalid)
+		 * V2ClientHello which would be shorter than that. */
+		OPENSSL_PUT_ERROR(SSL, ssl3_get_v2_client_hello, SSL_R_RECORD_LENGTH_MISMATCH);
+		return -1;
+		}
+
+	ret = ssl3_read_sniff_buffer(s, msg_length + 2);
+	if (ret <= 0)
+		return ret;
+	assert(s->s3->sniff_buffer_len == msg_length + 2);
+	CBS_init(&v2_client_hello,
+		(const uint8_t *)s->s3->sniff_buffer->data + 2, msg_length);
+
+	/* The V2ClientHello without the length is incorporated into the
+	 * Finished hash. */
+	ssl3_finish_mac(s, CBS_data(&v2_client_hello), CBS_len(&v2_client_hello));
+	if (s->msg_callback)
+		s->msg_callback(0, SSL2_VERSION, 0, CBS_data(&v2_client_hello),
+			CBS_len(&v2_client_hello), s, s->msg_callback_arg);
+
+	if (!CBS_get_u8(&v2_client_hello, &msg_type) ||
+		!CBS_get_u16(&v2_client_hello, &version) ||
+		!CBS_get_u16(&v2_client_hello, &cipher_spec_length) ||
+		!CBS_get_u16(&v2_client_hello, &session_id_length) ||
+		!CBS_get_u16(&v2_client_hello, &challenge_length) ||
+		!CBS_get_bytes(&v2_client_hello, &cipher_specs, cipher_spec_length) ||
+		!CBS_get_bytes(&v2_client_hello, &session_id, session_id_length) ||
+		!CBS_get_bytes(&v2_client_hello, &challenge, challenge_length) ||
+		CBS_len(&v2_client_hello) != 0)
+		{
+		OPENSSL_PUT_ERROR(SSL, ssl3_get_v2_client_hello, SSL_R_DECODE_ERROR);
+		return -1;
+		}
+
+	/* msg_type has already been checked. */
+	assert(msg_type == SSL2_MT_CLIENT_HELLO);
+
+	/* The client_random is the V2ClientHello challenge. Truncate or
+	 * left-pad with zeros as needed. */
+	memset(random, 0, SSL3_RANDOM_SIZE);
+	rand_len = CBS_len(&challenge);
+	if (rand_len > SSL3_RANDOM_SIZE)
+		rand_len = SSL3_RANDOM_SIZE;
+	memcpy(random + (SSL3_RANDOM_SIZE - rand_len), CBS_data(&challenge), rand_len);
+
+	/* Write out an equivalent SSLv3 ClientHello. */
+	if (!CBB_init_fixed(&client_hello, (uint8_t *)s->init_buf->data, s->init_buf->max))
+		{
+		OPENSSL_PUT_ERROR(SSL, ssl3_get_v2_client_hello, ERR_R_MALLOC_FAILURE);
+		return -1;
+		}
+	if (!CBB_add_u8(&client_hello, SSL3_MT_CLIENT_HELLO) ||
+		!CBB_add_u24_length_prefixed(&client_hello, &hello_body) ||
+		!CBB_add_u16(&hello_body, version) ||
+		!CBB_add_bytes(&hello_body, random, SSL3_RANDOM_SIZE) ||
+		/* No session id. */
+		!CBB_add_u8(&hello_body, 0) ||
+		!CBB_add_u16_length_prefixed(&hello_body, &cipher_suites))
+		{
+		CBB_cleanup(&client_hello);
+		OPENSSL_PUT_ERROR(SSL, ssl3_get_v2_client_hello, ERR_R_INTERNAL_ERROR);
+		return -1;
+		}
+
+	/* Copy the cipher suites. */
+	while (CBS_len(&cipher_specs) > 0)
+		{
+		uint32_t cipher_spec;
+		if (!CBS_get_u24(&cipher_specs, &cipher_spec))
+			{
+			CBB_cleanup(&client_hello);
+			OPENSSL_PUT_ERROR(SSL, ssl3_get_v2_client_hello, SSL_R_DECODE_ERROR);
+			return -1;
+			}
+
+		/* Skip SSLv2 ciphers. */
+		if ((cipher_spec & 0xff0000) != 0)
+			continue;
+		if (!CBB_add_u16(&cipher_suites, cipher_spec))
+			{
+			CBB_cleanup(&client_hello);
+			OPENSSL_PUT_ERROR(SSL, ssl3_get_v2_client_hello, ERR_R_INTERNAL_ERROR);
+			return -1;
+			}
+		}
+
+	/* Add the null compression scheme and finish. */
+	if (!CBB_add_u8(&hello_body, 1) ||
+		!CBB_add_u8(&hello_body, 0) ||
+		!CBB_finish(&client_hello, NULL, &len))
+		{
+		CBB_cleanup(&client_hello);
+		OPENSSL_PUT_ERROR(SSL, ssl3_get_v2_client_hello, ERR_R_INTERNAL_ERROR);
+		return -1;
+		}
+
+	/* Mark the message for "re"-use by the version-specific
+	 * method. */
+	s->s3->tmp.reuse_message = 1;
+	s->s3->tmp.message_type = SSL3_MT_CLIENT_HELLO;
+	/* The handshake message header is 4 bytes. */
+	s->s3->tmp.message_size = len - 4;
+
+	/* Initialize the record layer. */
+	if (!ssl3_setup_buffers(s) || !ssl_init_wbio_buffer(s, 1))
+		{
+		return -1;
+		}
+
+	/* Drop the sniff buffer. */
+	BUF_MEM_free(s->s3->sniff_buffer);
+	s->s3->sniff_buffer = NULL;
+	s->s3->sniff_buffer_len = 0;
+
+	return 1;
 	}
 
 int ssl3_send_hello_request(SSL *s)

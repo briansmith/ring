@@ -1011,6 +1011,9 @@ void ssl3_free(SSL *s)
 	if(s == NULL)
 	    return;
 
+	if (s->s3->sniff_buffer != NULL)
+		BUF_MEM_free(s->s3->sniff_buffer);
+
 	ssl3_cleanup_key_block(s);
 	if (s->s3->rbuf.buf != NULL)
 		ssl3_release_read_buffer(s);
@@ -1052,6 +1055,10 @@ void ssl3_clear(SSL *s)
 	/* TODO(davidben): Can this just call ssl3_free +
 	 * ssl3_new. rbuf, wbuf, and init_extra are preserved, but
 	 * this may not serve anything more than saving a malloc. */
+
+	if (s->s3->sniff_buffer != NULL)
+		BUF_MEM_free(s->s3->sniff_buffer);
+	s->s3->sniff_buffer = NULL;
 
 	ssl3_cleanup_key_block(s);
 	if (s->s3->tmp.ca_names != NULL)

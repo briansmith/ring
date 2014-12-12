@@ -369,6 +369,12 @@ typedef struct ssl3_state_st
 	 * known. Otherwise the version has not been negotiated yet. */
 	char have_version;
 
+	/* sniff_buffer is used by the server in the initial handshake
+	 * to read a V2ClientHello before the record layer is
+	 * initialized. */
+	BUF_MEM *sniff_buffer;
+	size_t sniff_buffer_len;
+
 	SSL3_BUFFER rbuf;	/* read IO goes into here */
 	SSL3_BUFFER wbuf;	/* write IO goes into here */
 
@@ -589,6 +595,8 @@ typedef struct ssl3_state_st
 /* extra state */
 #define SSL3_ST_SW_FLUSH		(0x100|SSL_ST_ACCEPT)
 /* read from client */
+#define SSL3_ST_SR_INITIAL_BYTES	(0x240|SSL_ST_ACCEPT)
+#define SSL3_ST_SR_V2_CLIENT_HELLO	(0x241|SSL_ST_ACCEPT)
 /* Do not change the number values, they do matter */
 #define SSL3_ST_SR_CLNT_HELLO_A		(0x110|SSL_ST_ACCEPT)
 #define SSL3_ST_SR_CLNT_HELLO_B		(0x111|SSL_ST_ACCEPT)
@@ -624,6 +632,7 @@ typedef struct ssl3_state_st
 #define SSL3_ST_SR_CHANNEL_ID_B		(0x231|SSL_ST_ACCEPT)
 #define SSL3_ST_SR_FINISHED_A		(0x1C0|SSL_ST_ACCEPT)
 #define SSL3_ST_SR_FINISHED_B		(0x1C1|SSL_ST_ACCEPT)
+
 /* write to client */
 #define SSL3_ST_SW_CHANGE_A		(0x1D0|SSL_ST_ACCEPT)
 #define SSL3_ST_SW_CHANGE_B		(0x1D1|SSL_ST_ACCEPT)

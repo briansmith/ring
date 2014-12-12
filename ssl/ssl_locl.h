@@ -945,6 +945,8 @@ int ssl3_send_channel_id(SSL *s);
 int dtls1_client_hello(SSL *s);
 
 /* some server-only functions */
+int ssl3_get_initial_bytes(SSL *s);
+int ssl3_get_v2_client_hello(SSL *s);
 int ssl3_get_client_hello(SSL *s);
 int ssl3_send_server_hello(SSL *s);
 int ssl3_send_hello_request(SSL *s);
