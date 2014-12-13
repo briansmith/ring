@@ -843,7 +843,7 @@ int ssl3_get_client_hello(SSL *s)
 		uint16_t version = ssl3_get_mutual_version(s, client_version);
 		if (version == 0)
 			{
-			OPENSSL_PUT_ERROR(SSL, ssl3_get_client_hello, SSL_R_WRONG_VERSION_NUMBER);
+			OPENSSL_PUT_ERROR(SSL, ssl3_get_client_hello, SSL_R_UNSUPPORTED_PROTOCOL);
 			s->version = s->client_version;
 			al = SSL_AD_PROTOCOL_VERSION;
 			goto f_err;

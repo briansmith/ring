@@ -775,7 +775,7 @@ int ssl3_get_server_hello(SSL *s)
 		{
 		if (!ssl3_is_version_enabled(s, server_version))
 			{
-			OPENSSL_PUT_ERROR(SSL, ssl3_get_server_hello, SSL_R_WRONG_SSL_VERSION);
+			OPENSSL_PUT_ERROR(SSL, ssl3_get_server_hello, SSL_R_UNSUPPORTED_PROTOCOL);
 			s->version = server_version;
 			al = SSL_AD_PROTOCOL_VERSION;
 			goto f_err;

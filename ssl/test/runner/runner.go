@@ -1703,6 +1703,94 @@ func addVersionNegotiationTests() {
 	}
 }
 
+func addMinimumVersionTests() {
+	for i, shimVers := range tlsVersions {
+		// Assemble flags to disable all older versions on the shim.
+		var flags []string
+		for _, vers := range tlsVersions[:i] {
+			flags = append(flags, vers.flag)
+		}
+
+		for _, runnerVers := range tlsVersions {
+			protocols := []protocol{tls}
+			if runnerVers.hasDTLS && shimVers.hasDTLS {
+				protocols = append(protocols, dtls)
+			}
+			for _, protocol := range protocols {
+				suffix := shimVers.name + "-" + runnerVers.name
+				if protocol == dtls {
+					suffix += "-DTLS"
+				}
+				shimVersFlag := strconv.Itoa(int(versionToWire(shimVers.version, protocol == dtls)))
+
+				// TODO(davidben): This should also assert on
+				// expectedLocalError to check we send an alert
+				// rather than close the connection, but the TLS
+				// code currently fails this.
+				var expectedVersion uint16
+				var shouldFail bool
+				var expectedError string
+				if runnerVers.version >= shimVers.version {
+					expectedVersion = runnerVers.version
+				} else {
+					shouldFail = true
+					expectedError = ":UNSUPPORTED_PROTOCOL:"
+				}
+
+				testCases = append(testCases, testCase{
+					protocol: protocol,
+					testType: clientTest,
+					name:     "MinimumVersion-Client-" + suffix,
+					config: Config{
+						MaxVersion: runnerVers.version,
+					},
+					flags:           flags,
+					expectedVersion: expectedVersion,
+					shouldFail:      shouldFail,
+					expectedError:   expectedError,
+				})
+				testCases = append(testCases, testCase{
+					protocol: protocol,
+					testType: clientTest,
+					name:     "MinimumVersion-Client2-" + suffix,
+					config: Config{
+						MaxVersion: runnerVers.version,
+					},
+					flags:           []string{"-min-version", shimVersFlag},
+					expectedVersion: expectedVersion,
+					shouldFail:      shouldFail,
+					expectedError:   expectedError,
+				})
+
+				testCases = append(testCases, testCase{
+					protocol: protocol,
+					testType: serverTest,
+					name:     "MinimumVersion-Server-" + suffix,
+					config: Config{
+						MaxVersion: runnerVers.version,
+					},
+					flags:           flags,
+					expectedVersion: expectedVersion,
+					shouldFail:      shouldFail,
+					expectedError:   expectedError,
+				})
+				testCases = append(testCases, testCase{
+					protocol: protocol,
+					testType: serverTest,
+					name:     "MinimumVersion-Server2-" + suffix,
+					config: Config{
+						MaxVersion: runnerVers.version,
+					},
+					flags:           []string{"-min-version", shimVersFlag},
+					expectedVersion: expectedVersion,
+					shouldFail:      shouldFail,
+					expectedError:   expectedError,
+				})
+			}
+		}
+	}
+}
+
 func addD5BugTests() {
 	testCases = append(testCases, testCase{
 		testType: serverTest,
@@ -2398,6 +2486,7 @@ func main() {
 	addCBCSplittingTests()
 	addClientAuthTests()
 	addVersionNegotiationTests()
+	addMinimumVersionTests()
 	addD5BugTests()
 	addExtensionTests()
 	addResumptionVersionTests()
