@@ -777,6 +777,9 @@ int ssl3_get_server_hello(SSL *s)
 			{
 			OPENSSL_PUT_ERROR(SSL, ssl3_get_server_hello, SSL_R_UNSUPPORTED_PROTOCOL);
 			s->version = server_version;
+			/* Mark the version as fixed so the record-layer version
+			 * is not clamped to TLS 1.0. */
+			s->s3->have_version = 1;
 			al = SSL_AD_PROTOCOL_VERSION;
 			goto f_err;
 			}

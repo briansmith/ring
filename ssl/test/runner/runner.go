@@ -1722,18 +1722,20 @@ func addMinimumVersionTests() {
 				}
 				shimVersFlag := strconv.Itoa(int(versionToWire(shimVers.version, protocol == dtls)))
 
-				// TODO(davidben): This should also assert on
-				// expectedLocalError to check we send an alert
-				// rather than close the connection, but the TLS
-				// code currently fails this.
 				var expectedVersion uint16
 				var shouldFail bool
 				var expectedError string
+				var expectedLocalError string
 				if runnerVers.version >= shimVers.version {
 					expectedVersion = runnerVers.version
 				} else {
 					shouldFail = true
 					expectedError = ":UNSUPPORTED_PROTOCOL:"
+					if runnerVers.version > VersionSSL30 {
+						expectedLocalError = "remote error: protocol version not supported"
+					} else {
+						expectedLocalError = "remote error: handshake failure"
+					}
 				}
 
 				testCases = append(testCases, testCase{
@@ -1743,10 +1745,11 @@ func addMinimumVersionTests() {
 					config: Config{
 						MaxVersion: runnerVers.version,
 					},
-					flags:           flags,
-					expectedVersion: expectedVersion,
-					shouldFail:      shouldFail,
-					expectedError:   expectedError,
+					flags:              flags,
+					expectedVersion:    expectedVersion,
+					shouldFail:         shouldFail,
+					expectedError:      expectedError,
+					expectedLocalError: expectedLocalError,
 				})
 				testCases = append(testCases, testCase{
 					protocol: protocol,
@@ -1755,10 +1758,11 @@ func addMinimumVersionTests() {
 					config: Config{
 						MaxVersion: runnerVers.version,
 					},
-					flags:           []string{"-min-version", shimVersFlag},
-					expectedVersion: expectedVersion,
-					shouldFail:      shouldFail,
-					expectedError:   expectedError,
+					flags:              []string{"-min-version", shimVersFlag},
+					expectedVersion:    expectedVersion,
+					shouldFail:         shouldFail,
+					expectedError:      expectedError,
+					expectedLocalError: expectedLocalError,
 				})
 
 				testCases = append(testCases, testCase{
@@ -1768,10 +1772,11 @@ func addMinimumVersionTests() {
 					config: Config{
 						MaxVersion: runnerVers.version,
 					},
-					flags:           flags,
-					expectedVersion: expectedVersion,
-					shouldFail:      shouldFail,
-					expectedError:   expectedError,
+					flags:              flags,
+					expectedVersion:    expectedVersion,
+					shouldFail:         shouldFail,
+					expectedError:      expectedError,
+					expectedLocalError: expectedLocalError,
 				})
 				testCases = append(testCases, testCase{
 					protocol: protocol,
@@ -1780,10 +1785,11 @@ func addMinimumVersionTests() {
 					config: Config{
 						MaxVersion: runnerVers.version,
 					},
-					flags:           []string{"-min-version", shimVersFlag},
-					expectedVersion: expectedVersion,
-					shouldFail:      shouldFail,
-					expectedError:   expectedError,
+					flags:              []string{"-min-version", shimVersFlag},
+					expectedVersion:    expectedVersion,
+					shouldFail:         shouldFail,
+					expectedError:      expectedError,
+					expectedLocalError: expectedLocalError,
 				})
 			}
 		}
