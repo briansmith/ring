@@ -2022,9 +2022,6 @@ OPENSSL_EXPORT int SSL_CIPHER_has_MD5_HMAC(const SSL_CIPHER *c);
 OPENSSL_EXPORT int SSL_CIPHER_is_AESGCM(const SSL_CIPHER *c);
 OPENSSL_EXPORT int SSL_CIPHER_is_CHACHA20POLY1305(const SSL_CIPHER *c);
 
-/* This sets the 'default' SSL version that SSL_new() will create */
-OPENSSL_EXPORT int SSL_CTX_set_ssl_version(SSL_CTX *ctx, const SSL_METHOD *meth);
-
 OPENSSL_EXPORT const SSL_METHOD *SSLv3_method(void);		/* SSLv3 */
 OPENSSL_EXPORT const SSL_METHOD *SSLv3_server_method(void);	/* SSLv3 */
 OPENSSL_EXPORT const SSL_METHOD *SSLv3_client_method(void);	/* SSLv3 */

@@ -227,26 +227,6 @@ int SSL_clear(SSL *s)
 	return(1);
 	}
 
-/** Used to change an SSL_CTXs default SSL method type */
-int SSL_CTX_set_ssl_version(SSL_CTX *ctx,const SSL_METHOD *meth)
-	{
-	STACK_OF(SSL_CIPHER) *sk;
-
-	ctx->method=meth;
-
-	sk=ssl_create_cipher_list(
-		ctx->method, &ctx->cipher_list, &ctx->cipher_list_by_id,
-		SSL_DEFAULT_CIPHER_LIST,
-		ctx->cert);
-
-	if ((sk == NULL) || (sk_SSL_CIPHER_num(sk) <= 0))
-		{
-		OPENSSL_PUT_ERROR(SSL, SSL_CTX_set_ssl_version, SSL_R_SSL_LIBRARY_HAS_NO_CIPHERS);
-		return(0);
-		}
-	return(1);
-	}
-
 SSL *SSL_new(SSL_CTX *ctx)
 	{
 	SSL *s;
