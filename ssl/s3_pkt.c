@@ -736,16 +736,18 @@ static int do_ssl3_write(SSL *s, int type, const unsigned char *buf,
 	*(p++)=type&0xff;
 	wr->type=type;
 
-	*(p++)=(s->version>>8);
-	/* Some servers hang if iniatial client hello is larger than 256
-	 * bytes and record version number > TLS 1.0
-	 */
-	if (s->state == SSL3_ST_CW_CLNT_HELLO_B
-				&& !s->renegotiate
-				&& TLS1_get_version(s) > TLS1_VERSION)
-		*(p++) = 0x1;
+	/* Some servers hang if initial ClientHello is larger than 256
+	 * bytes and record version number > TLS 1.0. */
+	if (!s->s3->have_version && s->version > SSL3_VERSION)
+		{
+		*(p++) = TLS1_VERSION >> 8;
+		*(p++) = TLS1_VERSION & 0xff;
+		}
 	else
-		*(p++)=s->version&0xff;
+		{
+		*(p++) = s->version >> 8;
+		*(p++) = s->version & 0xff;
+		}
 
 	/* field where we are to write out packet length */
 	plen=p;
