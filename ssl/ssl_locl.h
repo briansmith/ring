@@ -747,7 +747,7 @@ void ssl_get_compatible_server_ciphers(SSL *s, unsigned long *out_mask_k,
 
 STACK_OF(SSL_CIPHER) *ssl_get_ciphers_by_id(SSL *s);
 int ssl_verify_alarm_type(long type);
-int ssl_fill_hello_random(SSL *s, int server, unsigned char *field, int len);
+int ssl_fill_hello_random(SSL *s, int server, uint8_t *field, size_t len);
 
 const SSL_CIPHER *ssl3_get_cipher_by_value(uint16_t value);
 uint16_t ssl3_get_cipher_value(const SSL_CIPHER *c);

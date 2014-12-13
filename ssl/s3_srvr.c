@@ -782,7 +782,7 @@ int ssl3_get_initial_bytes(SSL *s)
 
 	/* Determine if this is a ClientHello or V2ClientHello. */
 
-	if (p[0] & 0x80 && p[2] == SSL2_MT_CLIENT_HELLO &&
+	if ((p[0] & 0x80) && p[2] == SSL2_MT_CLIENT_HELLO &&
 		p[3] >= SSL3_VERSION_MAJOR)
 		{
 		/* This is a V2ClientHello. */
