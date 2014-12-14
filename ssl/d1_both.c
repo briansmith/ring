@@ -170,11 +170,6 @@ static unsigned int dtls1_guess_mtu(unsigned int curr_mtu);
 static void dtls1_fix_message_header(SSL *s, unsigned long frag_off,
                                      unsigned long frag_len);
 static unsigned char *dtls1_write_message_header(SSL *s, unsigned char *p);
-static void dtls1_set_message_header_int(SSL *s, unsigned char mt,
-                                         unsigned long len,
-                                         unsigned short seq_num,
-                                         unsigned long frag_off,
-                                         unsigned long frag_len);
 static long dtls1_get_message_fragment(SSL *s, int stn, long max, int *ok);
 
 static hm_fragment *dtls1_hm_fragment_new(unsigned long frag_len,
@@ -909,8 +904,8 @@ int dtls1_send_change_cipher_spec(SSL *s, int a, int b) {
 
     s->init_off = 0;
 
-    dtls1_set_message_header_int(s, SSL3_MT_CCS, 0, s->d1->handshake_write_seq,
-                                 0, 0);
+    dtls1_set_message_header(s, SSL3_MT_CCS, 0, s->d1->handshake_write_seq, 0,
+                             0);
 
     /* buffer the message to handle re-xmits */
     dtls1_buffer_message(s, 1);
@@ -1073,9 +1068,9 @@ int dtls1_retransmit_message(SSL *s, unsigned short seq, unsigned long frag_off,
          frag->msg_header.msg_len + header_length);
   s->init_num = frag->msg_header.msg_len + header_length;
 
-  dtls1_set_message_header_int(s, frag->msg_header.type,
-                               frag->msg_header.msg_len, frag->msg_header.seq,
-                               0, frag->msg_header.frag_len);
+  dtls1_set_message_header(s, frag->msg_header.type,
+                           frag->msg_header.msg_len, frag->msg_header.seq,
+                           0, frag->msg_header.frag_len);
 
   /* save current state */
   saved_state.enc_write_ctx = s->enc_write_ctx;
@@ -1132,25 +1127,10 @@ void dtls1_clear_record_buffer(SSL *s) {
   }
 }
 
-uint8_t *dtls1_set_message_header(SSL *s, uint8_t *p, uint8_t mt,
-                                  unsigned long len, unsigned long frag_off,
-                                  unsigned long frag_len) {
-  if (frag_off == 0) {
-    s->d1->handshake_write_seq = s->d1->next_handshake_write_seq;
-    s->d1->next_handshake_write_seq++;
-  }
-
-  dtls1_set_message_header_int(s, mt, len, s->d1->handshake_write_seq, frag_off,
-                               frag_len);
-
-  return p += DTLS1_HM_HEADER_LENGTH;
-}
-
 /* don't actually do the writing, wait till the MTU has been retrieved */
-static void dtls1_set_message_header_int(SSL *s, uint8_t mt, unsigned long len,
-                                         unsigned short seq_num,
-                                         unsigned long frag_off,
-                                         unsigned long frag_len) {
+void dtls1_set_message_header(SSL *s, uint8_t mt, unsigned long len,
+                              unsigned short seq_num, unsigned long frag_off,
+                              unsigned long frag_len) {
   struct hm_header_st *msg_hdr = &s->d1->w_msg_hdr;
 
   msg_hdr->type = mt;

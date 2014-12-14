@@ -836,9 +836,8 @@ int ssl3_read_n(SSL *s, int n, int max, int extend);
 int dtls1_read_bytes(SSL *s, int type, unsigned char *buf, int len, int peek);
 int ssl3_write_pending(SSL *s, int type, const unsigned char *buf,
 	unsigned int len);
-unsigned char *dtls1_set_message_header(SSL *s, 
-	unsigned char *p, unsigned char mt,	unsigned long len, 
-	unsigned long frag_off, unsigned long frag_len);
+void dtls1_set_message_header(SSL *s, uint8_t mt, unsigned long len,
+	unsigned short seq_num, unsigned long frag_off, unsigned long frag_len);
 
 int dtls1_write_app_data_bytes(SSL *s, int type, const void *buf, int len);
 int dtls1_write_bytes(SSL *s, int type, const void *buf, int len);
