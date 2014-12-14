@@ -2379,22 +2379,23 @@ err:
 int ssl3_send_next_proto(SSL *s)
 	{
 	unsigned int len, padding_len;
-	unsigned char *d;
+	uint8_t *d, *p;
 
 	if (s->state == SSL3_ST_CW_NEXT_PROTO_A)
 		{
 		len = s->next_proto_negotiated_len;
 		padding_len = 32 - ((len + 2) % 32);
-		d = (unsigned char *)s->init_buf->data;
-		d[4] = len;
-		memcpy(d + 5, s->next_proto_negotiated, len);
-		d[5 + len] = padding_len;
-		memset(d + 6 + len, 0, padding_len);
-		*(d++)=SSL3_MT_NEXT_PROTO;
-		l2n3(2 + len + padding_len, d);
+
+		d = p = ssl_handshake_start(s);
+		*(p++) = len;
+		memcpy(p, s->next_proto_negotiated, len);
+		p += len;
+		*(p++) = padding_len;
+		memset(p, 0, padding_len);
+		p += padding_len;
+
+		ssl_set_handshake_header(s, SSL3_MT_NEXT_PROTO, p - d);
 		s->state = SSL3_ST_CW_NEXT_PROTO_B;
-		s->init_num = 4 + 2 + len + padding_len;
-		s->init_off = 0;
 		}
 
 	return ssl3_do_write(s, SSL3_RT_HANDSHAKE, add_to_finished_hash);
@@ -2403,12 +2404,12 @@ int ssl3_send_next_proto(SSL *s)
 
 int ssl3_send_channel_id(SSL *s)
 	{
-	unsigned char *d;
+	uint8_t *d;
 	int ret = -1, public_key_len;
 	EVP_MD_CTX md_ctx;
 	size_t sig_len;
 	ECDSA_SIG *sig = NULL;
-	unsigned char *public_key = NULL, *derp, *der_sig = NULL;
+	uint8_t *public_key = NULL, *derp, *der_sig = NULL;
 
 	if (s->state != SSL3_ST_CW_CHANNEL_ID_A)
 		return ssl3_do_write(s, SSL3_RT_HANDSHAKE, add_to_finished_hash);
@@ -2429,9 +2430,7 @@ int ssl3_send_channel_id(SSL *s)
 		}
 	s->rwstate=SSL_NOTHING;
 
-	d = (unsigned char *)s->init_buf->data;
-	*(d++)=SSL3_MT_ENCRYPTED_EXTENSIONS;
-	l2n3(2 + 2 + TLSEXT_CHANNEL_ID_SIZE, d);
+	d = ssl_handshake_start(s);
 	if (s->s3->tlsext_channel_id_new)
 		s2n(TLSEXT_TYPE_channel_id_new, d);
 	else
@@ -2511,9 +2510,9 @@ int ssl3_send_channel_id(SSL *s)
 		goto err;
 		}
 
+	ssl_set_handshake_header(s, SSL3_MT_ENCRYPTED_EXTENSIONS,
+		2 + 2 + TLSEXT_CHANNEL_ID_SIZE);
 	s->state = SSL3_ST_CW_CHANNEL_ID_B;
-	s->init_num = 4 + 2 + 2 + TLSEXT_CHANNEL_ID_SIZE;
-	s->init_off = 0;
 
 	ret = ssl3_do_write(s, SSL3_RT_HANDSHAKE, add_to_finished_hash);
 
