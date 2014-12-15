@@ -238,7 +238,7 @@ int ssl3_get_finished(SSL *s, int a, int b)
 		a,
 		b,
 		SSL3_MT_FINISHED,
-		64, /* should actually be 36+4 :-) */
+		EVP_MAX_MD_SIZE,
 		SSL_GET_MESSAGE_DONT_HASH_MESSAGE,
 		&ok);
 
