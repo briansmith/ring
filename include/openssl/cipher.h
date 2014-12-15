@@ -80,11 +80,14 @@ OPENSSL_EXPORT const EVP_CIPHER *EVP_des_ede3_cbc(void);
 OPENSSL_EXPORT const EVP_CIPHER *EVP_aes_128_ecb(void);
 OPENSSL_EXPORT const EVP_CIPHER *EVP_aes_128_cbc(void);
 OPENSSL_EXPORT const EVP_CIPHER *EVP_aes_128_ctr(void);
-OPENSSL_EXPORT const EVP_CIPHER *EVP_aes_128_gcm(void);
 
 OPENSSL_EXPORT const EVP_CIPHER *EVP_aes_256_ecb(void);
 OPENSSL_EXPORT const EVP_CIPHER *EVP_aes_256_cbc(void);
 OPENSSL_EXPORT const EVP_CIPHER *EVP_aes_256_ctr(void);
+
+/* Deprecated AES-GCM implementations that set |EVP_CIPH_FLAG_CUSTOM_CIPHER|.
+ * Use |EVP_aead_aes_128_gcm| and |EVP_aead_aes_256_gcm| instead. */
+OPENSSL_EXPORT const EVP_CIPHER *EVP_aes_128_gcm(void);
 OPENSSL_EXPORT const EVP_CIPHER *EVP_aes_256_gcm(void);
 
 /* EVP_enc_null returns a 'cipher' that passes plaintext through as
@@ -190,10 +193,17 @@ OPENSSL_EXPORT int EVP_DecryptFinal_ex(EVP_CIPHER_CTX *ctx, unsigned char *out,
                                        int *out_len);
 
 /* EVP_Cipher performs a one-shot encryption/decryption operation. No partial
- * blocks etc are maintained between calls. It returns the number of bytes
- * written or -1 on error.
+ * blocks etc are maintained between calls. It returns one on success and zero
+ * otherwise, unless |EVP_CIPHER_flags| has |EVP_CIPH_FLAG_CUSTOM_CIPHER|
+ * set. Then it returns the number of bytes written or -1 on error.
  *
- * WARNING: this differs from the usual return value convention. */
+ * WARNING: this differs from the usual return value convention when using
+ * |EVP_CIPH_FLAG_CUSTOM_CIPHER|.
+ *
+ * TODO(davidben): The normal ciphers currently never fail, even if, e.g.,
+ * |in_len| is not a multiple of the block size for CBC-mode decryption. The
+ * input just gets rounded up while the output gets truncated. This should
+ * either be officially documented or fail. */
 OPENSSL_EXPORT int EVP_Cipher(EVP_CIPHER_CTX *ctx, uint8_t *out,
                               const uint8_t *in, size_t in_len);
 

@@ -469,7 +469,7 @@ int ssl3_enc(SSL *s, int send)
 			/* otherwise, rec->length >= bs */
 			}
 		
-		if (EVP_Cipher(ds,rec->data, rec->input, l) < 0)
+		if (!EVP_Cipher(ds, rec->data, rec->input, l))
 			return -1;
 
 		if (EVP_MD_CTX_md(s->read_hash) != NULL)

@@ -941,11 +941,8 @@ int tls1_enc(SSL *s, int send)
 				return 0;
 			}
 		
-		i = EVP_Cipher(ds,rec->data,rec->input,l);
-		if ((EVP_CIPHER_flags(ds->cipher)&EVP_CIPH_FLAG_CUSTOM_CIPHER)
-						?(i<0)
-						:(i==0))
-			return -1;	/* AEAD can fail to verify MAC */
+		if (!EVP_Cipher(ds, rec->data, rec->input, l))
+			return -1;
 
 		ret = 1;
 		if (EVP_MD_CTX_md(s->read_hash) != NULL)
