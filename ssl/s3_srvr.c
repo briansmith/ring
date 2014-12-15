@@ -1148,12 +1148,6 @@ int ssl3_get_client_hello(SSL *s)
 		                 :	(s->client_version < s->version))
 		{
 		OPENSSL_PUT_ERROR(SSL, ssl3_get_client_hello, SSL_R_WRONG_VERSION_NUMBER);
-		if ((s->client_version>>8) == SSL3_VERSION_MAJOR &&
-			!s->s3->have_version)
-			{
-			/* similar to ssl3_get_record, send alert using remote version number */
-			s->version = s->client_version;
-			}
 		al = SSL_AD_PROTOCOL_VERSION;
 		goto f_err;
 		}

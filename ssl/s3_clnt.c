@@ -794,7 +794,6 @@ int ssl3_get_server_hello(SSL *s)
 	else if (server_version != s->version)
 		{
 		OPENSSL_PUT_ERROR(SSL, ssl3_get_server_hello, SSL_R_WRONG_SSL_VERSION);
-		s->version = (s->version & 0xff00) | (server_version & 0xff);
 		al = SSL_AD_PROTOCOL_VERSION;
 		goto f_err;
 		}
