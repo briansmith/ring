@@ -230,7 +230,6 @@ typedef struct dtls1_state_st
 	unsigned char handshake_fragment[DTLS1_HM_HEADER_LENGTH];
 	unsigned int handshake_fragment_len;
 
-	unsigned int retransmitting;
 	unsigned int change_cipher_spec_ok;
 	} DTLS1_STATE;
 

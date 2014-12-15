@@ -228,9 +228,7 @@ void dtls1_hm_fragment_free(hm_fragment *frag) {
 
 /* send s->init_buf in records of type 'type' (SSL3_RT_HANDSHAKE or
  * SSL3_RT_CHANGE_CIPHER_SPEC) */
-int dtls1_do_write(
-    SSL *s, int type,
-    enum should_add_to_finished_hash should_add_to_finished_hash) {
+int dtls1_do_write(SSL *s, int type) {
   int ret;
   int curr_mtu;
   unsigned int len, frag_off, mac_size = 0, blocksize = 0;
@@ -326,32 +324,6 @@ int dtls1_do_write(
       /* bad if this assert fails, only part of the handshake message got sent.
        * But why would this happen? */
       assert(len == (unsigned int)ret);
-
-      if (type == SSL3_RT_HANDSHAKE && !s->d1->retransmitting &&
-          should_add_to_finished_hash == add_to_finished_hash) {
-        /* should not be done for 'Hello Request's, but in that case
-         * we'll ignore the result anyway */
-        uint8_t *p = (uint8_t *)&s->init_buf->data[s->init_off];
-        const struct hm_header_st *msg_hdr = &s->d1->w_msg_hdr;
-        int xlen;
-
-        if (frag_off == 0) {
-          /* reconstruct message header is if it
-           * is being sent in single fragment */
-          *p++ = msg_hdr->type;
-          l2n3(msg_hdr->msg_len, p);
-          s2n(msg_hdr->seq, p);
-          l2n3(0, p);
-          l2n3(msg_hdr->msg_len, p);
-          p -= DTLS1_HM_HEADER_LENGTH;
-          xlen = ret;
-        } else {
-          p += DTLS1_HM_HEADER_LENGTH;
-          xlen = ret - DTLS1_HM_HEADER_LENGTH;
-        }
-
-        ssl3_finish_mac(s, p, xlen);
-      }
 
       if (ret == s->init_num) {
         if (s->msg_callback) {
@@ -914,8 +886,7 @@ int dtls1_send_change_cipher_spec(SSL *s, int a, int b) {
   }
 
   /* SSL3_ST_CW_CHANGE_B */
-  return dtls1_do_write(s, SSL3_RT_CHANGE_CIPHER_SPEC,
-                        dont_add_to_finished_hash);
+  return dtls1_do_write(s, SSL3_RT_CHANGE_CIPHER_SPEC);
 }
 
 int dtls1_read_failed(SSL *s, int code) {
@@ -1078,8 +1049,6 @@ int dtls1_retransmit_message(SSL *s, unsigned short seq, unsigned long frag_off,
   saved_state.session = s->session;
   saved_state.epoch = s->d1->w_epoch;
 
-  s->d1->retransmitting = 1;
-
   /* restore state in which the message was originally sent */
   s->enc_write_ctx = frag->msg_header.saved_retransmit_state.enc_write_ctx;
   s->write_hash = frag->msg_header.saved_retransmit_state.write_hash;
@@ -1094,8 +1063,7 @@ int dtls1_retransmit_message(SSL *s, unsigned short seq, unsigned long frag_off,
   }
 
   ret = dtls1_do_write(s, frag->msg_header.is_ccs ? SSL3_RT_CHANGE_CIPHER_SPEC
-                                                  : SSL3_RT_HANDSHAKE,
-                       add_to_finished_hash);
+                                                  : SSL3_RT_HANDSHAKE);
 
   /* restore current state */
   s->enc_write_ctx = saved_state.enc_write_ctx;
@@ -1109,8 +1077,6 @@ int dtls1_retransmit_message(SSL *s, unsigned short seq, unsigned long frag_off,
     memcpy(s->s3->write_sequence, save_write_sequence,
            sizeof(s->s3->write_sequence));
   }
-
-  s->d1->retransmitting = 0;
 
   (void)BIO_flush(SSL_get_wbio(s));
   return ret;

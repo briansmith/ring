@@ -1899,6 +1899,7 @@ int ssl3_send_certificate_request(SSL *s)
 			*(p++)=0;
 			*(p++)=0;
 			s->init_num += 4;
+			ssl3_finish_mac(s, p - 4, 4);
 			}
 #endif
 
@@ -2784,10 +2785,10 @@ int ssl3_send_new_session_ticket(SSL *s)
 		/* Now write out lengths: p points to end of data written */
 		/* Total length */
 		len = p - ssl_handshake_start(s);
-		ssl_set_handshake_header(s, SSL3_MT_NEWSESSION_TICKET, len);
 		/* Skip ticket lifetime hint */
 		p = ssl_handshake_start(s) + 4;
 		s2n(len - 6, p);
+		ssl_set_handshake_header(s, SSL3_MT_NEWSESSION_TICKET, len);
 		s->state=SSL3_ST_SW_SESSION_TICKET_B;
 		OPENSSL_free(session);
 		}

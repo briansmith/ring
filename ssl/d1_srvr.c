@@ -628,5 +628,5 @@ int dtls1_send_hello_verify_request(SSL *s)
 		}
 
 	/* s->state = DTLS1_ST_SW_HELLO_VERIFY_REQUEST_B */
-	return(dtls1_do_write(s,SSL3_RT_HANDSHAKE, add_to_finished_hash));
+	return ssl_do_write(s);
 	}

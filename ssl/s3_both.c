@@ -127,20 +127,13 @@
 #include "ssl_locl.h"
 
 /* send s->init_buf in records of type 'type' (SSL3_RT_HANDSHAKE or SSL3_RT_CHANGE_CIPHER_SPEC) */
-int ssl3_do_write(SSL *s, int type, enum should_add_to_finished_hash should_add_to_finished_hash)
+int ssl3_do_write(SSL *s, int type)
 	{
 	int ret;
 
 	ret=ssl3_write_bytes(s,type,&s->init_buf->data[s->init_off],
 	                     s->init_num);
 	if (ret < 0) return(-1);
-	if (type == SSL3_RT_HANDSHAKE && should_add_to_finished_hash == add_to_finished_hash)
-		{
-		/* should not be done for 'Hello Request's, but in that case
-		 * we'll ignore the result anyway */
-		ssl3_finish_mac(s,(unsigned char *)&s->init_buf->data[s->init_off],ret);
-		}
-	
 	if (ret == s->init_num)
 		{
 		if (s->msg_callback)
@@ -322,7 +315,7 @@ int ssl3_send_change_cipher_spec(SSL *s, int a, int b)
 		}
 
 	/* SSL3_ST_CW_CHANGE_B */
-	return(ssl3_do_write(s,SSL3_RT_CHANGE_CIPHER_SPEC, dont_add_to_finished_hash));
+	return ssl3_do_write(s, SSL3_RT_CHANGE_CIPHER_SPEC);
 	}
 
 unsigned long ssl3_output_cert_chain(SSL *s, CERT_PKEY *cpk)

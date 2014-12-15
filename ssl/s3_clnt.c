@@ -2086,12 +2086,10 @@ int ssl3_send_client_key_exchange(SSL *s)
 			pms_len = new_pms_len;
 			}
 
-		ssl_set_handshake_header(s, SSL3_MT_CLIENT_KEY_EXCHANGE, n);
-		s->state=SSL3_ST_CW_KEY_EXCH_B;
-
 		/* The message must be added to the finished hash before
 		 * calculating the master secret. */
-		s->enc_method->add_to_finished_hash(s);
+		ssl_set_handshake_header(s, SSL3_MT_CLIENT_KEY_EXCHANGE, n);
+		s->state=SSL3_ST_CW_KEY_EXCH_B;
 
 		s->session->master_key_length =
 			s->enc_method->generate_master_secret(s,
@@ -2107,8 +2105,7 @@ int ssl3_send_client_key_exchange(SSL *s)
 		}
 
 	/* SSL3_ST_CW_KEY_EXCH_B */
-	/* The message has already been added to the finished hash. */
-	return s->enc_method->do_write(s, dont_add_to_finished_hash);
+	return s->enc_method->do_write(s);
 
 err:
 	BN_CTX_free(bn_ctx);
@@ -2398,7 +2395,7 @@ int ssl3_send_next_proto(SSL *s)
 		s->state = SSL3_ST_CW_NEXT_PROTO_B;
 		}
 
-	return ssl3_do_write(s, SSL3_RT_HANDSHAKE, add_to_finished_hash);
+	return ssl_do_write(s);
 }
 
 
@@ -2412,7 +2409,7 @@ int ssl3_send_channel_id(SSL *s)
 	uint8_t *public_key = NULL, *derp, *der_sig = NULL;
 
 	if (s->state != SSL3_ST_CW_CHANNEL_ID_A)
-		return ssl3_do_write(s, SSL3_RT_HANDSHAKE, add_to_finished_hash);
+		return ssl_do_write(s);
 
 	if (!s->tlsext_channel_id_private && s->ctx->channel_id_cb)
 		{
@@ -2514,7 +2511,7 @@ int ssl3_send_channel_id(SSL *s)
 		2 + 2 + TLSEXT_CHANNEL_ID_SIZE);
 	s->state = SSL3_ST_CW_CHANNEL_ID_B;
 
-	ret = ssl3_do_write(s, SSL3_RT_HANDSHAKE, add_to_finished_hash);
+	ret = ssl_do_write(s);
 
 err:
 	EVP_MD_CTX_cleanup(&md_ctx);

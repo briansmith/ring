@@ -141,7 +141,6 @@ const SSL3_ENC_METHOD TLSv1_enc_data = {
 	SSL3_HM_HEADER_LENGTH,
 	ssl3_set_handshake_header,
 	ssl3_handshake_write,
-	ssl3_add_to_finished_hash,
 	};
 
 const SSL3_ENC_METHOD TLSv1_1_enc_data = {
@@ -161,7 +160,6 @@ const SSL3_ENC_METHOD TLSv1_1_enc_data = {
 	SSL3_HM_HEADER_LENGTH,
 	ssl3_set_handshake_header,
 	ssl3_handshake_write,
-	ssl3_add_to_finished_hash,
 	};
 
 const SSL3_ENC_METHOD TLSv1_2_enc_data = {
@@ -182,7 +180,6 @@ const SSL3_ENC_METHOD TLSv1_2_enc_data = {
 	SSL3_HM_HEADER_LENGTH,
 	ssl3_set_handshake_header,
 	ssl3_handshake_write,
-	ssl3_add_to_finished_hash,
 	};
 
 static int compare_uint16_t(const void *p1, const void *p2)

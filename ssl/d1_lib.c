@@ -74,9 +74,7 @@
 static void get_current_time(OPENSSL_timeval *t);
 static OPENSSL_timeval *dtls1_get_timeout(SSL *s, OPENSSL_timeval *timeleft);
 static void dtls1_set_handshake_header(SSL *s, int type, unsigned long len);
-static int dtls1_handshake_write(
-    SSL *s, enum should_add_to_finished_hash should_add_to_finished_hash);
-static void dtls1_add_to_finished_hash(SSL *s);
+static int dtls1_handshake_write(SSL *s);
 
 const SSL3_ENC_METHOD DTLSv1_enc_data = {
   tls1_enc,
@@ -95,7 +93,6 @@ const SSL3_ENC_METHOD DTLSv1_enc_data = {
   DTLS1_HM_HEADER_LENGTH,
   dtls1_set_handshake_header,
   dtls1_handshake_write,
-  dtls1_add_to_finished_hash,
 };
 
 const SSL3_ENC_METHOD DTLSv1_2_enc_data = {
@@ -116,7 +113,6 @@ const SSL3_ENC_METHOD DTLSv1_2_enc_data = {
   DTLS1_HM_HEADER_LENGTH,
   dtls1_set_handshake_header,
   dtls1_handshake_write,
-  dtls1_add_to_finished_hash,
 };
 
 int dtls1_new(SSL *s) {
@@ -448,6 +444,11 @@ static void get_current_time(OPENSSL_timeval *t) {
 }
 
 static void dtls1_set_handshake_header(SSL *s, int htype, unsigned long len) {
+  uint8_t *message = (uint8_t *)s->init_buf->data;
+  const struct hm_header_st *msg_hdr = &s->d1->w_msg_hdr;
+  uint8_t serialised_header[DTLS1_HM_HEADER_LENGTH];
+  uint8_t *p = serialised_header;
+
   s->d1->handshake_write_seq = s->d1->next_handshake_write_seq;
   s->d1->next_handshake_write_seq++;
 
@@ -457,26 +458,18 @@ static void dtls1_set_handshake_header(SSL *s, int htype, unsigned long len) {
 
   /* Buffer the message to handle re-xmits */
   dtls1_buffer_message(s, 0);
-}
 
-static int dtls1_handshake_write(
-    SSL *s, enum should_add_to_finished_hash should_add_to_finished_hash) {
-  return dtls1_do_write(s, SSL3_RT_HANDSHAKE, should_add_to_finished_hash);
-}
-
-static void dtls1_add_to_finished_hash(SSL *s) {
-  uint8_t *record = (uint8_t *)&s->init_buf->data[s->init_off];
-  const struct hm_header_st *msg_hdr = &s->d1->w_msg_hdr;
-  uint8_t serialised_header[DTLS1_HM_HEADER_LENGTH];
-  uint8_t *p = serialised_header;
-
-  /* Construct the message header as if it were a single fragment. */
+  /* Add the new message to the handshake hash. Serialize the message
+   * header as if it were a single fragment. */
   *p++ = msg_hdr->type;
   l2n3(msg_hdr->msg_len, p);
   s2n(msg_hdr->seq, p);
   l2n3(0, p);
   l2n3(msg_hdr->msg_len, p);
   ssl3_finish_mac(s, serialised_header, sizeof(serialised_header));
-  ssl3_finish_mac(s, record + DTLS1_HM_HEADER_LENGTH,
-                  s->init_num - DTLS1_HM_HEADER_LENGTH);
+  ssl3_finish_mac(s, message + DTLS1_HM_HEADER_LENGTH, len);
+}
+
+static int dtls1_handshake_write(SSL *s) {
+  return dtls1_do_write(s, SSL3_RT_HANDSHAKE);
 }
