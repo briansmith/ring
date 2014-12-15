@@ -465,6 +465,8 @@ int ssl3_accept(SSL *s)
 #ifndef NETSCAPE_HANG_BUG
 				s->state=SSL3_ST_SW_SRVR_DONE_A;
 #else
+				/* ServerHelloDone was already sent in the
+				 * previous record. */
 				s->state=SSL3_ST_SW_FLUSH;
 				s->s3->tmp.next_state=SSL3_ST_SR_CERT_A;
 #endif
@@ -1883,6 +1885,8 @@ int ssl3_send_certificate_request(SSL *s)
 #ifdef NETSCAPE_HANG_BUG
 		if (!SSL_IS_DTLS(s))
 			{
+			/* Prepare a ServerHelloDone in the same record. This is
+			 * to workaround a hang in Netscape. */
 			if (!BUF_MEM_grow_clean(buf, s->init_num + 4))
 				{
 				OPENSSL_PUT_ERROR(SSL, ssl3_send_certificate_request, ERR_R_BUF_LIB);
