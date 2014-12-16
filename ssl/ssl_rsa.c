@@ -183,7 +183,7 @@ static int ssl_set_pkey(CERT *c, EVP_PKEY *pkey)
 	{
 	int i;
 
-	i=ssl_cert_type(NULL,pkey);
+	i=ssl_cert_type(pkey);
 	if (i < 0)
 		{
 		OPENSSL_PUT_ERROR(SSL, ssl_set_pkey, SSL_R_UNKNOWN_CERTIFICATE_TYPE);
@@ -394,7 +394,7 @@ static int ssl_set_cert(CERT *c, X509 *x)
 		return(0);
 		}
 
-	i=ssl_cert_type(x,pkey);
+	i=ssl_cert_type(pkey);
 	if (i < 0)
 		{
 		OPENSSL_PUT_ERROR(SSL, ssl_set_cert, SSL_R_UNKNOWN_CERTIFICATE_TYPE);

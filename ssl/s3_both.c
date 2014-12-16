@@ -497,29 +497,15 @@ int ssl3_cert_verify_hash(SSL *s, uint8_t *out, size_t *out_len,
   return 1;
 }
 
-int ssl_cert_type(X509 *x, EVP_PKEY *pkey) {
-  EVP_PKEY *pk = pkey;
-  int ret = -1;
-
-  if (pk == NULL) {
-    pk = X509_get_pubkey(x);
+int ssl_cert_type(EVP_PKEY *pkey) {
+  switch (pkey->type) {
+    case EVP_PKEY_RSA:
+      return SSL_PKEY_RSA_ENC;
+    case EVP_PKEY_EC:
+      return SSL_PKEY_ECC;
+    default:
+      return -1;
   }
-
-  if (pk == NULL) {
-    goto err;
-  }
-
-  if (pk->type == EVP_PKEY_RSA) {
-    ret = SSL_PKEY_RSA_ENC;
-  } else if (pk->type == EVP_PKEY_EC) {
-    ret = SSL_PKEY_ECC;
-  }
-
-err:
-  if (!pkey) {
-    EVP_PKEY_free(pk);
-  }
-  return ret;
 }
 
 int ssl_verify_alarm_type(long type) {

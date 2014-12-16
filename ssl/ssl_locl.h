@@ -729,7 +729,7 @@ int ssl_undefined_void_function(void);
 int ssl_undefined_const_function(const SSL *s);
 CERT_PKEY *ssl_get_server_send_pkey(const SSL *s);
 EVP_PKEY *ssl_get_sign_pkey(SSL *s,const SSL_CIPHER *c);
-int ssl_cert_type(X509 *x,EVP_PKEY *pkey);
+int ssl_cert_type(EVP_PKEY *pkey);
 
 /* ssl_get_compatible_server_ciphers determines the key exchange and
  * authentication cipher suite masks compatible with the server configuration

@@ -1026,7 +1026,7 @@ int ssl3_get_server_certificate(SSL *s)
 		goto f_err;
 		}
 
-	i=ssl_cert_type(x,pkey);
+	i = ssl_cert_type(pkey);
 	if (i < 0)
 		{
 		x=NULL;
