@@ -81,9 +81,10 @@ static char to_char(uint8_t b) {
   return b;
 }
 
-/* hexdump adds |len| bytes of |data| to the current hex dump described by
+/* hexdump_write adds |len| bytes of |data| to the current hex dump described by
  * |ctx|. */
-static int hexdump(struct hexdump_ctx *ctx, const uint8_t *data, size_t len) {
+static int hexdump_write(struct hexdump_ctx *ctx, const uint8_t *data,
+                         size_t len) {
   size_t i;
   char buf[10];
   unsigned l;
@@ -182,7 +183,7 @@ int BIO_hexdump(BIO *bio, const uint8_t *data, size_t len, unsigned indent) {
   ctx.bio = bio;
   ctx.indent = indent;
 
-  if (!hexdump(&ctx, data, len) || !finish(&ctx)) {
+  if (!hexdump_write(&ctx, data, len) || !finish(&ctx)) {
     return 0;
   }
 
