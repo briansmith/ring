@@ -1031,7 +1031,9 @@ STACK_OF(SSL_CIPHER) *ssl_create_cipher_list(const SSL_PROTOCOL_METHOD *ssl_meth
 	/* Now arrange all ciphers by preference:
 	 * TODO(davidben): Compute this order once and copy it. */
 
-	/* Everything else being equal, prefer ephemeral ECDH over other key exchange mechanisms */
+	/* Everything else being equal, prefer ECDHE_ECDSA then ECDHE_RSA over
+         * other key exchange mechanisms */
+	ssl_cipher_apply_rule(0, SSL_kEECDH, SSL_aECDSA, 0, 0, 0, 0, CIPHER_ADD, -1, 0, &head, &tail);
 	ssl_cipher_apply_rule(0, SSL_kEECDH, 0, 0, 0, 0, 0, CIPHER_ADD, -1, 0, &head, &tail);
 	ssl_cipher_apply_rule(0, SSL_kEECDH, 0, 0, 0, 0, 0, CIPHER_DEL, -1, 0, &head, &tail);
 
