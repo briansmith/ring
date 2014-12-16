@@ -135,7 +135,7 @@ OPENSSL_EXPORT int PKCS12_get_key_and_certs(EVP_PKEY **out_key,
 /* Deprecated functions. */
 
 /* PKCS12_PBE_add does nothing. It exists for compatibility with OpenSSL. */
-OPENSSL_EXPORT void PKCS12_PBE_add();
+OPENSSL_EXPORT void PKCS12_PBE_add(void);
 
 /* d2i_PKCS12 is a dummy function that copies |*ber_bytes| into a
  * |PKCS12| structure. The |out_p12| argument must be NULL. On exit,

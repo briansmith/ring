@@ -234,7 +234,7 @@ const EVP_MD *EVP_md5_sha1(void) { return &md5_sha1_md; }
 
 struct nid_to_digest {
   int nid;
-  const EVP_MD *(*md_func)();
+  const EVP_MD* (*md_func)(void);
 };
 
 static const struct nid_to_digest nid_to_digest_mapping[] = {

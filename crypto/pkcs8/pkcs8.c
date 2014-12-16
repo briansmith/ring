@@ -263,8 +263,8 @@ typedef int (*keygen_func)(EVP_CIPHER_CTX *ctx, const uint8_t *pass_raw,
 
 struct pbe_suite {
   int pbe_nid;
-  const EVP_CIPHER* (*cipher_func)();
-  const EVP_MD* (*md_func)();
+  const EVP_CIPHER* (*cipher_func)(void);
+  const EVP_MD* (*md_func)(void);
   keygen_func keygen;
 };
 
