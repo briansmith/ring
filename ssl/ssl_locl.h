@@ -584,8 +584,9 @@ struct ssl_protocol_method_st
 	int (*ssl_shutdown)(SSL *s);
 	int (*ssl_renegotiate)(SSL *s);
 	int (*ssl_renegotiate_check)(SSL *s);
-	long (*ssl_get_message)(SSL *s, int st1, int stn, int mt, long
-		max, int hash_message, int *ok);
+	long (*ssl_get_message)(SSL *s, int header_state, int body_state,
+				int msg_type, long max, int hash_message,
+				int *ok);
 	int (*ssl_read_bytes)(SSL *s, int type, unsigned char *buf, int len,
 		int peek);
 	int (*ssl_write_bytes)(SSL *s, int type, const void *buf_, int len);
@@ -758,7 +759,8 @@ int ssl3_send_alert(SSL *s,int level, int desc);
 int ssl3_generate_master_secret(SSL *s, unsigned char *out,
 	unsigned char *p, int len);
 int ssl3_get_req_cert_type(SSL *s,unsigned char *p);
-long ssl3_get_message(SSL *s, int st1, int stn, int mt, long max, int hash_message, int *ok);
+long ssl3_get_message(SSL *s, int header_state, int body_state, int msg_type,
+		      long max, int hash_message, int *ok);
 
 /* ssl3_hash_current_message incorporates the current handshake message into
  * the handshake hash. */
