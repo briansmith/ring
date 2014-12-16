@@ -797,13 +797,7 @@ static int do_ssl3_write(SSL *s, int type, const unsigned char *buf,
 
 	wr->input=p;
 	wr->data=p;
-
-	if (eivlen)
-		{
-	/*	if (RAND_pseudo_bytes(p, eivlen) <= 0)
-			goto err; */
-		wr->length += eivlen;
-		}
+	wr->length += eivlen;
 
 	if (s->enc_method->enc(s, 1) < 1)
 		goto err;

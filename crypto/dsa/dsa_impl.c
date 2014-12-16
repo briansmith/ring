@@ -530,7 +530,9 @@ static int paramgen(DSA *ret, unsigned bits, const uint8_t *seed_in,
         goto err;
 
       if (!seed_len) {
-        RAND_pseudo_bytes(seed, qsize);
+        if (!RAND_bytes(seed, qsize)) {
+          goto err;
+        }
         seed_is_random = 1;
       } else {
         seed_is_random = 0;

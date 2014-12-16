@@ -181,13 +181,13 @@ int RSA_padding_add_PKCS1_type_2(uint8_t *to, unsigned tlen,
   /* pad out with non-zero random data */
   j = tlen - 3 - flen;
 
-  if (RAND_pseudo_bytes(p, j) <= 0) {
+  if (!RAND_bytes(p, j)) {
     return 0;
   }
 
   for (i = 0; i < j; i++) {
     while (*p == 0) {
-      if (RAND_pseudo_bytes(p, 1) <= 0) {
+      if (!RAND_bytes(p, 1)) {
         return 0;
       }
     }
@@ -411,7 +411,7 @@ int RSA_padding_add_PKCS1_OAEP_mgf1(uint8_t *to, unsigned tlen,
   memset(db + mdlen, 0, emlen - flen - 2 * mdlen - 1);
   db[emlen - flen - mdlen - 1] = 0x01;
   memcpy(db + emlen - flen - mdlen, from, flen);
-  if (RAND_pseudo_bytes(seed, mdlen) <= 0) {
+  if (!RAND_bytes(seed, mdlen)) {
     return 0;
   }
 
@@ -718,7 +718,7 @@ int RSA_padding_add_PKCS1_PSS_mgf1(RSA *rsa, unsigned char *EM,
                         ERR_R_MALLOC_FAILURE);
       goto err;
     }
-    if (RAND_pseudo_bytes(salt, sLen) <= 0) {
+    if (!RAND_bytes(salt, sLen)) {
       goto err;
     }
   }

@@ -448,8 +448,7 @@ static int aes_gcm_ctrl(EVP_CIPHER_CTX *c, int type, int arg, void *ptr) {
       if (arg) {
         memcpy(gctx->iv, ptr, arg);
       }
-      if (c->encrypt &&
-          RAND_pseudo_bytes(gctx->iv + arg, gctx->ivlen - arg) <= 0) {
+      if (c->encrypt && !RAND_bytes(gctx->iv + arg, gctx->ivlen - arg)) {
         return 0;
       }
       gctx->iv_gen = 1;

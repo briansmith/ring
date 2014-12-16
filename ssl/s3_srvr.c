@@ -2057,8 +2057,8 @@ int ssl3_get_client_key_exchange(SSL *s)
 		 * the TLS RFC and generates a random premaster secret for the
 		 * case that the decrypt fails. See
 		 * https://tools.ietf.org/html/rfc5246#section-7.4.7.1 */
-		if (RAND_pseudo_bytes(rand_premaster_secret,
-				      sizeof(rand_premaster_secret)) <= 0)
+		if (!RAND_bytes(rand_premaster_secret,
+				sizeof(rand_premaster_secret)))
 			goto err;
 
 		/* Allocate a buffer large enough for an RSA decryption. */
@@ -2737,9 +2737,9 @@ int ssl3_send_new_session_ticket(SSL *s)
 			}
 		else
 			{
-			RAND_pseudo_bytes(iv, 16);
-			if (!EVP_EncryptInit_ex(&ctx, EVP_aes_128_cbc(), NULL, tctx->tlsext_tick_aes_key, iv) ||
-			    !HMAC_Init_ex(&hctx, tctx->tlsext_tick_hmac_key, 16, tlsext_tick_md(), NULL))
+			if (!RAND_bytes(iv, 16) ||
+				!EVP_EncryptInit_ex(&ctx, EVP_aes_128_cbc(), NULL, tctx->tlsext_tick_aes_key, iv) ||
+				!HMAC_Init_ex(&hctx, tctx->tlsext_tick_hmac_key, 16, tlsext_tick_md(), NULL))
 				{
 				OPENSSL_free(session);
 				EVP_CIPHER_CTX_cleanup(&ctx);

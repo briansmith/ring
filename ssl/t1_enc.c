@@ -895,7 +895,7 @@ int tls1_enc(SSL *s, int send)
 					fprintf(stderr,
 						"%s:%d: rec->data != rec->input\n",
 						__FILE__, __LINE__);
-				else if (RAND_bytes(rec->input, ivlen) <= 0)
+				else if (!RAND_bytes(rec->input, ivlen))
 					return -1;
 				}
 			}

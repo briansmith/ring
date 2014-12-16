@@ -1826,8 +1826,8 @@ int ssl3_send_client_key_exchange(SSL *s)
 				
 			pms[0]=s->client_version>>8;
 			pms[1]=s->client_version&0xff;
-			if (RAND_bytes(&pms[2],SSL_MAX_MASTER_KEY_LENGTH-2) <= 0)
-					goto err;
+			if (!RAND_bytes(&pms[2], SSL_MAX_MASTER_KEY_LENGTH - 2))
+				goto err;
 
 			s->session->master_key_length=SSL_MAX_MASTER_KEY_LENGTH;
 
