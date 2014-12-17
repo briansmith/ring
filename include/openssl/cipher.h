@@ -193,9 +193,12 @@ OPENSSL_EXPORT int EVP_DecryptFinal_ex(EVP_CIPHER_CTX *ctx, unsigned char *out,
                                        int *out_len);
 
 /* EVP_Cipher performs a one-shot encryption/decryption operation. No partial
- * blocks etc are maintained between calls. It returns one on success and zero
- * otherwise, unless |EVP_CIPHER_flags| has |EVP_CIPH_FLAG_CUSTOM_CIPHER|
- * set. Then it returns the number of bytes written or -1 on error.
+ * blocks are maintained between calls. However, any internal cipher state is
+ * still updated. For CBC-mode ciphers, the IV is updated to the final
+ * ciphertext block. For stream ciphers, the stream is advanced past the bytes
+ * used. It returns one on success and zero otherwise, unless |EVP_CIPHER_flags|
+ * has |EVP_CIPH_FLAG_CUSTOM_CIPHER| set. Then it returns the number of bytes
+ * written or -1 on error.
  *
  * WARNING: this differs from the usual return value convention when using
  * |EVP_CIPH_FLAG_CUSTOM_CIPHER|.
