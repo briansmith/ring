@@ -145,6 +145,20 @@ int main(int argc, char *argv[]) {
     }
   }
 
+  /* Test that HMAC() functions corretly when called with key=NULL */
+  const struct test_st *test = &kTests[0];
+  if (NULL == HMAC(EVP_md5(), NULL, test->key_len, test->data,
+                   test->data_len, out, &out_len)) {
+    printf("HMAC failed.\n");
+    err++;
+  }
+
+  p = to_hex(out, out_len);
+  if (strcmp(p, test->hex_digest) != 0) {
+    printf("got %s instead of %s\n", p, test->hex_digest);
+    err++;
+  }
+
   if (err) {
     return 1;
   }

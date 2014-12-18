@@ -74,6 +74,13 @@ uint8_t *HMAC(const EVP_MD *evp_md, const void *key, size_t key_len,
     out = static_out_buffer;
   }
 
+  /* If key_len is 0, the value of key doesn't matter. However, if we pass
+   * key == NULL into HMAC_Init, it interprets it to mean "use the previous
+   * value" instead of using a key of length 0. */
+  if (key == NULL && key_len == 0) {
+    key = static_out_buffer;
+  }
+
   HMAC_CTX_init(&ctx);
   if (!HMAC_Init(&ctx, key, key_len, evp_md) ||
       !HMAC_Update(&ctx, data, data_len) ||
