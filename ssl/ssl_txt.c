@@ -89,102 +89,130 @@
 
 #include "ssl_locl.h"
 
-int SSL_SESSION_print_fp(FILE *fp, const SSL_SESSION *x)
-	{
-	BIO *b;
-	int ret;
 
-	if ((b=BIO_new(BIO_s_file())) == NULL)
-		{
-		OPENSSL_PUT_ERROR(SSL, SSL_SESSION_print_fp, ERR_R_BUF_LIB);
-		return(0);
-		}
-	BIO_set_fp(b,fp,BIO_NOCLOSE);
-	ret=SSL_SESSION_print(b,x);
-	BIO_free(b);
-	return(ret);
-	}
+int SSL_SESSION_print_fp(FILE *fp, const SSL_SESSION *x) {
+  BIO *b;
+  int ret;
 
-int SSL_SESSION_print(BIO *bp, const SSL_SESSION *x)
-	{
-	unsigned int i;
-	const char *s;
+  b = BIO_new(BIO_s_file());
+  if (b == NULL) {
+    OPENSSL_PUT_ERROR(SSL, SSL_SESSION_print_fp, ERR_R_BUF_LIB);
+    return 0;
+  }
 
-	if (x == NULL) goto err;
-	if (BIO_puts(bp,"SSL-Session:\n") <= 0) goto err;
-	if (x->ssl_version == SSL3_VERSION)
-		s="SSLv3";
-	else if (x->ssl_version == TLS1_2_VERSION)
-		s="TLSv1.2";
-	else if (x->ssl_version == TLS1_1_VERSION)
-		s="TLSv1.1";
-	else if (x->ssl_version == TLS1_VERSION)
-		s="TLSv1";
-	else if (x->ssl_version == DTLS1_VERSION)
-		s="DTLSv1";
-	else if (x->ssl_version == DTLS1_2_VERSION)
-		s="DTLSv1.2";
-	else
-		s="unknown";
-	if (BIO_printf(bp,"    Protocol  : %s\n",s) <= 0) goto err;
+  BIO_set_fp(b, fp, BIO_NOCLOSE);
+  ret = SSL_SESSION_print(b, x);
+  BIO_free(b);
+  return ret;
+}
 
-	if (x->cipher == NULL)
-		{
-		if (BIO_printf(bp,"    Cipher    : %06lX\n",x->cipher_id&0xffffff) <= 0)
-			goto err;
-		}
-	else
-		{
-		if (BIO_printf(bp,"    Cipher    : %s\n",((x->cipher == NULL)?"unknown":x->cipher->name)) <= 0)
-			goto err;
-		}
-	if (BIO_puts(bp,"    Session-ID: ") <= 0) goto err;
-	for (i=0; i<x->session_id_length; i++)
-		{
-		if (BIO_printf(bp,"%02X",x->session_id[i]) <= 0) goto err;
-		}
-	if (BIO_puts(bp,"\n    Session-ID-ctx: ") <= 0) goto err;
-	for (i=0; i<x->sid_ctx_length; i++)
-		{
-		if (BIO_printf(bp,"%02X",x->sid_ctx[i]) <= 0)
-			goto err;
-		}
-	if (BIO_puts(bp,"\n    Master-Key: ") <= 0) goto err;
-	for (i=0; i<(unsigned int)x->master_key_length; i++)
-		{
-		if (BIO_printf(bp,"%02X",x->master_key[i]) <= 0) goto err;
-		}
-	if (BIO_puts(bp,"\n    PSK identity: ") <= 0) goto err;
-	if (BIO_printf(bp, "%s", x->psk_identity ? x->psk_identity : "None") <= 0) goto err;
-	if (x->tlsext_tick_lifetime_hint)
-		{
-		if (BIO_printf(bp,
-			"\n    TLS session ticket lifetime hint: %" PRIu32 " (seconds)",
-			x->tlsext_tick_lifetime_hint) <=0)
-			goto err;
-		}
-	if (x->tlsext_tick)
-		{
-		if (BIO_puts(bp, "\n    TLS session ticket:\n") <= 0) goto err;
-		if (BIO_hexdump(bp, x->tlsext_tick, x->tlsext_ticklen, 4) <= 0)
-			goto err;
-		}
+int SSL_SESSION_print(BIO *bp, const SSL_SESSION *x) {
+  unsigned int i;
+  const char *s;
 
-	if (x->time != 0L)
-		{
-		if (BIO_printf(bp, "\n    Start Time: %ld",x->time) <= 0) goto err;
-		}
-	if (x->timeout != 0L)
-		{
-		if (BIO_printf(bp, "\n    Timeout   : %ld (sec)",x->timeout) <= 0) goto err;
-		}
-	if (BIO_puts(bp,"\n") <= 0) goto err;
+  if (x == NULL ||
+      BIO_puts(bp, "SSL-Session:\n") <= 0) {
+    goto err;
+  }
 
-	if (BIO_puts(bp, "    Verify return code: ") <= 0) goto err;
-	if (BIO_printf(bp, "%ld (%s)\n", x->verify_result,
-		X509_verify_cert_error_string(x->verify_result)) <= 0) goto err;
-		
-	return(1);
+  if (x->ssl_version == SSL3_VERSION) {
+    s = "SSLv3";
+  } else if (x->ssl_version == TLS1_2_VERSION) {
+    s = "TLSv1.2";
+  } else if (x->ssl_version == TLS1_1_VERSION) {
+    s = "TLSv1.1";
+  } else if (x->ssl_version == TLS1_VERSION) {
+    s = "TLSv1";
+  } else if (x->ssl_version == DTLS1_VERSION) {
+    s = "DTLSv1";
+  } else if (x->ssl_version == DTLS1_2_VERSION) {
+    s = "DTLSv1.2";
+  } else {
+    s = "unknown";
+  }
+
+  if (BIO_printf(bp, "    Protocol  : %s\n", s) <= 0) {
+    goto err;
+  }
+
+  if (x->cipher == NULL) {
+    if (BIO_printf(bp, "    Cipher    : %06lX\n", x->cipher_id & 0xffffff) <=
+        0) {
+      goto err;
+    }
+  } else {
+    if (BIO_printf(bp, "    Cipher    : %s\n",
+                   ((x->cipher == NULL) ? "unknown" : x->cipher->name)) <= 0) {
+      goto err;
+    }
+  }
+
+  if (BIO_puts(bp, "    Session-ID: ") <= 0) {
+    goto err;
+  }
+
+  for (i = 0; i < x->session_id_length; i++) {
+    if (BIO_printf(bp, "%02X", x->session_id[i]) <= 0)
+      goto err;
+  }
+
+  if (BIO_puts(bp, "\n    Session-ID-ctx: ") <= 0) {
+    goto err;
+  }
+
+  for (i = 0; i < x->sid_ctx_length; i++) {
+    if (BIO_printf(bp, "%02X", x->sid_ctx[i]) <= 0) {
+      goto err;
+    }
+  }
+
+  if (BIO_puts(bp, "\n    Master-Key: ") <= 0) {
+    goto err;
+  }
+
+  for (i = 0; i < (unsigned int)x->master_key_length; i++) {
+    if (BIO_printf(bp, "%02X", x->master_key[i]) <= 0) {
+      goto err;
+    }
+  }
+
+  if (BIO_puts(bp, "\n    PSK identity: ") <= 0 ||
+      BIO_printf(bp, "%s", x->psk_identity ? x->psk_identity : "None") <= 0) {
+    goto err;
+  }
+
+  if (x->tlsext_tick_lifetime_hint &&
+      BIO_printf(bp, "\n    TLS session ticket lifetime hint: %" PRIu32
+                     " (seconds)",
+                 x->tlsext_tick_lifetime_hint) <= 0) {
+    goto err;
+  }
+
+  if (x->tlsext_tick) {
+    if (BIO_puts(bp, "\n    TLS session ticket:\n") <= 0 ||
+        BIO_hexdump(bp, x->tlsext_tick, x->tlsext_ticklen, 4) <= 0) {
+      goto err;
+    }
+  }
+
+  if (x->time != 0L && BIO_printf(bp, "\n    Start Time: %ld", x->time) <= 0) {
+    goto err;
+  }
+
+  if (x->timeout != 0L &&
+      BIO_printf(bp, "\n    Timeout   : %ld (sec)", x->timeout) <= 0) {
+    goto err;
+  }
+
+  if (BIO_puts(bp, "\n") <= 0 ||
+      BIO_puts(bp, "    Verify return code: ") <= 0 ||
+      BIO_printf(bp, "%ld (%s)\n", x->verify_result,
+                 X509_verify_cert_error_string(x->verify_result)) <= 0) {
+    goto err;
+  }
+
+  return 1;
+
 err:
-	return(0);
-	}
+  return 0;
+}

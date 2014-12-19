@@ -60,15 +60,13 @@
 
 extern const ERR_STRING_DATA SSL_error_string_data[];
 
-int SSL_library_init(void)
-	{
-	CRYPTO_library_init();
-	SSL_load_error_strings();
-	return(1);
-	}
+int SSL_library_init(void) {
+  CRYPTO_library_init();
+  SSL_load_error_strings();
+  return 1;
+}
 
-void SSL_load_error_strings(void)
-	{
-	ERR_load_crypto_strings();
-	ERR_load_strings(SSL_error_string_data);
-	}
+void SSL_load_error_strings(void) {
+  ERR_load_crypto_strings();
+  ERR_load_strings(SSL_error_string_data);
+}

@@ -115,148 +115,133 @@
 
 #include "ssl_locl.h"
 
+
 /* Add the client's renegotiation binding */
 int ssl_add_clienthello_renegotiate_ext(SSL *s, unsigned char *p, int *len,
-					int maxlen)
-    {
-    if(p)
-        {
-	if((s->s3->previous_client_finished_len+1) > maxlen)
-            {
-            OPENSSL_PUT_ERROR(SSL, ssl_add_clienthello_renegotiate_ext, SSL_R_RENEGOTIATE_EXT_TOO_LONG);
-            return 0;
-            }
-            
-        /* Length byte */
-	*p = s->s3->previous_client_finished_len;
-        p++;
-
-        memcpy(p, s->s3->previous_client_finished,
-	       s->s3->previous_client_finished_len);
-#ifdef OPENSSL_RI_DEBUG
-    fprintf(stderr, "%s RI extension sent by client\n",
-		s->s3->previous_client_finished_len ? "Non-empty" : "Empty");
-#endif
-        }
-    
-    *len=s->s3->previous_client_finished_len + 1;
-
- 
-    return 1;
+                                        int maxlen) {
+  if (p) {
+    if (s->s3->previous_client_finished_len + 1 > maxlen) {
+      OPENSSL_PUT_ERROR(SSL, ssl_add_clienthello_renegotiate_ext,
+                        SSL_R_RENEGOTIATE_EXT_TOO_LONG);
+      return 0;
     }
 
-/* Parse the client's renegotiation binding and abort if it's not
-   right */
-int ssl_parse_clienthello_renegotiate_ext(SSL *s, CBS *cbs, int *out_alert)
-    {
-    CBS renegotiated_connection;
+    /* Length byte */
+    *p = s->s3->previous_client_finished_len;
+    p++;
 
-    if (!CBS_get_u8_length_prefixed(cbs, &renegotiated_connection) ||
-	    CBS_len(cbs) != 0)
-	    {
-	    OPENSSL_PUT_ERROR(SSL, ssl_parse_clienthello_renegotiate_ext, SSL_R_RENEGOTIATION_ENCODING_ERR);
-	    *out_alert = SSL_AD_DECODE_ERROR;
-	    return 0;
-	    }
+    memcpy(p, s->s3->previous_client_finished,
+           s->s3->previous_client_finished_len);
+  }
 
-    /* Check that the extension matches */
-    if (!CBS_mem_equal(&renegotiated_connection,
-		    s->s3->previous_client_finished,
-		    s->s3->previous_client_finished_len))
-	    {
-	    OPENSSL_PUT_ERROR(SSL, ssl_parse_clienthello_renegotiate_ext, SSL_R_RENEGOTIATION_MISMATCH);
-	    *out_alert = SSL_AD_HANDSHAKE_FAILURE;
-	    return 0;
-	    }
+  *len = s->s3->previous_client_finished_len + 1;
 
-    s->s3->send_connection_binding = 1;
+  return 1;
+}
 
-    return 1;
-    }
+/* Parse the client's renegotiation binding and abort if it's not right */
+int ssl_parse_clienthello_renegotiate_ext(SSL *s, CBS *cbs, int *out_alert) {
+  CBS renegotiated_connection;
+
+  if (!CBS_get_u8_length_prefixed(cbs, &renegotiated_connection) ||
+      CBS_len(cbs) != 0) {
+    OPENSSL_PUT_ERROR(SSL, ssl_parse_clienthello_renegotiate_ext,
+                      SSL_R_RENEGOTIATION_ENCODING_ERR);
+    *out_alert = SSL_AD_DECODE_ERROR;
+    return 0;
+  }
+
+  /* Check that the extension matches */
+  if (!CBS_mem_equal(&renegotiated_connection, s->s3->previous_client_finished,
+                     s->s3->previous_client_finished_len)) {
+    OPENSSL_PUT_ERROR(SSL, ssl_parse_clienthello_renegotiate_ext,
+                      SSL_R_RENEGOTIATION_MISMATCH);
+    *out_alert = SSL_AD_HANDSHAKE_FAILURE;
+    return 0;
+  }
+
+  s->s3->send_connection_binding = 1;
+
+  return 1;
+}
 
 /* Add the server's renegotiation binding */
 int ssl_add_serverhello_renegotiate_ext(SSL *s, unsigned char *p, int *len,
-					int maxlen)
-    {
-    if(p)
-        {
-        if((s->s3->previous_client_finished_len +
-            s->s3->previous_server_finished_len + 1) > maxlen)
-            {
-            OPENSSL_PUT_ERROR(SSL, ssl_add_serverhello_renegotiate_ext, SSL_R_RENEGOTIATE_EXT_TOO_LONG);
-            return 0;
-            }
-        
-        /* Length byte */
-        *p = s->s3->previous_client_finished_len + s->s3->previous_server_finished_len;
-        p++;
-
-        memcpy(p, s->s3->previous_client_finished,
-	       s->s3->previous_client_finished_len);
-        p += s->s3->previous_client_finished_len;
-
-        memcpy(p, s->s3->previous_server_finished,
-	       s->s3->previous_server_finished_len);
-#ifdef OPENSSL_RI_DEBUG
-    fprintf(stderr, "%s RI extension sent by server\n",
-    		s->s3->previous_client_finished_len ? "Non-empty" : "Empty");
-#endif
-        }
-    
-    *len=s->s3->previous_client_finished_len
-	+ s->s3->previous_server_finished_len + 1;
-    
-    return 1;
+                                        int maxlen) {
+  if (p) {
+    if (s->s3->previous_client_finished_len +
+            s->s3->previous_server_finished_len + 1 >
+        maxlen) {
+      OPENSSL_PUT_ERROR(SSL, ssl_add_serverhello_renegotiate_ext,
+                        SSL_R_RENEGOTIATE_EXT_TOO_LONG);
+      return 0;
     }
 
-/* Parse the server's renegotiation binding and abort if it's not
-   right */
-int ssl_parse_serverhello_renegotiate_ext(SSL *s, CBS *cbs, int *out_alert)
-    {
-    int expected_len=s->s3->previous_client_finished_len
-	+ s->s3->previous_server_finished_len;
-    CBS renegotiated_connection;
-    const uint8_t *d;
+    /* Length byte */
+    *p = s->s3->previous_client_finished_len +
+         s->s3->previous_server_finished_len;
+    p++;
 
-    /* Check for logic errors */
-    assert(!expected_len || s->s3->previous_client_finished_len);
-    assert(!expected_len || s->s3->previous_server_finished_len);
+    memcpy(p, s->s3->previous_client_finished,
+           s->s3->previous_client_finished_len);
+    p += s->s3->previous_client_finished_len;
 
-    /* Parse out the extension contents. */
-    if (!CBS_get_u8_length_prefixed(cbs, &renegotiated_connection) ||
-        CBS_len(cbs) != 0)
-        {
-        OPENSSL_PUT_ERROR(SSL, ssl_parse_serverhello_renegotiate_ext, SSL_R_RENEGOTIATION_ENCODING_ERR);
-        *out_alert = SSL_AD_ILLEGAL_PARAMETER;
-        return 0;
-        }
-    
-    /* Check that the extension matches. */
-    if(CBS_len(&renegotiated_connection) != expected_len)
-        {
-        OPENSSL_PUT_ERROR(SSL, ssl_parse_serverhello_renegotiate_ext, SSL_R_RENEGOTIATION_MISMATCH);
-        *out_alert = SSL_AD_HANDSHAKE_FAILURE;
-        return 0;
-        }
+    memcpy(p, s->s3->previous_server_finished,
+           s->s3->previous_server_finished_len);
+  }
 
-    d = CBS_data(&renegotiated_connection);
-    if(memcmp(d, s->s3->previous_client_finished,
-	      s->s3->previous_client_finished_len))
-        {
-        OPENSSL_PUT_ERROR(SSL, ssl_parse_serverhello_renegotiate_ext, SSL_R_RENEGOTIATION_MISMATCH);
-        *out_alert = SSL_AD_HANDSHAKE_FAILURE;
-        return 0;
-        }
-    d += s->s3->previous_client_finished_len;
+  *len = s->s3->previous_client_finished_len +
+         s->s3->previous_server_finished_len + 1;
 
-    if(memcmp(d, s->s3->previous_server_finished,
-	      s->s3->previous_server_finished_len))
-        {
-        OPENSSL_PUT_ERROR(SSL, ssl_parse_serverhello_renegotiate_ext, SSL_R_RENEGOTIATION_MISMATCH);
-        *out_alert = SSL_AD_ILLEGAL_PARAMETER;
-        return 0;
-        }
-    s->s3->send_connection_binding = 1;
+  return 1;
+}
 
-    return 1;
-    }
+/* Parse the server's renegotiation binding and abort if it's not right */
+int ssl_parse_serverhello_renegotiate_ext(SSL *s, CBS *cbs, int *out_alert) {
+  int expected_len =
+      s->s3->previous_client_finished_len + s->s3->previous_server_finished_len;
+  CBS renegotiated_connection;
+  const uint8_t *d;
+
+  /* Check for logic errors */
+  assert(!expected_len || s->s3->previous_client_finished_len);
+  assert(!expected_len || s->s3->previous_server_finished_len);
+
+  /* Parse out the extension contents. */
+  if (!CBS_get_u8_length_prefixed(cbs, &renegotiated_connection) ||
+      CBS_len(cbs) != 0) {
+    OPENSSL_PUT_ERROR(SSL, ssl_parse_serverhello_renegotiate_ext,
+                      SSL_R_RENEGOTIATION_ENCODING_ERR);
+    *out_alert = SSL_AD_ILLEGAL_PARAMETER;
+    return 0;
+  }
+
+  /* Check that the extension matches. */
+  if (CBS_len(&renegotiated_connection) != expected_len) {
+    OPENSSL_PUT_ERROR(SSL, ssl_parse_serverhello_renegotiate_ext,
+                      SSL_R_RENEGOTIATION_MISMATCH);
+    *out_alert = SSL_AD_HANDSHAKE_FAILURE;
+    return 0;
+  }
+
+  d = CBS_data(&renegotiated_connection);
+  if (memcmp(d, s->s3->previous_client_finished,
+             s->s3->previous_client_finished_len)) {
+    OPENSSL_PUT_ERROR(SSL, ssl_parse_serverhello_renegotiate_ext,
+                      SSL_R_RENEGOTIATION_MISMATCH);
+    *out_alert = SSL_AD_HANDSHAKE_FAILURE;
+    return 0;
+  }
+  d += s->s3->previous_client_finished_len;
+
+  if (memcmp(d, s->s3->previous_server_finished,
+             s->s3->previous_server_finished_len)) {
+    OPENSSL_PUT_ERROR(SSL, ssl_parse_serverhello_renegotiate_ext,
+                      SSL_R_RENEGOTIATION_MISMATCH);
+    *out_alert = SSL_AD_ILLEGAL_PARAMETER;
+    return 0;
+  }
+  s->s3->send_connection_binding = 1;
+
+  return 1;
+}
