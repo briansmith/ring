@@ -293,6 +293,10 @@ static void err_shutdown(void) {
     lh_ERR_STRING_DATA_free(error_hash);
     error_hash = NULL;
   }
+  if (state_hash) {
+    lh_ERR_STATE_free(state_hash);
+    state_hash = NULL;
+  }
   CRYPTO_w_unlock(CRYPTO_LOCK_ERR);
 }
 

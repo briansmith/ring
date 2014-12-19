@@ -167,6 +167,7 @@ static void data_funcs_free(CRYPTO_EX_DATA_FUNCS *funcs) {
  * structures. */
 static void class_free(EX_CLASS_ITEM *item) {
   sk_CRYPTO_EX_DATA_FUNCS_pop_free(item->meth, data_funcs_free);
+  OPENSSL_free(item);
 }
 
 static LHASH_OF(EX_CLASS_ITEM) *get_classes(void) {

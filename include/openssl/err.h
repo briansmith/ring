@@ -148,8 +148,10 @@ extern "C" {
  * human-readable strings. */
 OPENSSL_EXPORT void ERR_load_crypto_strings(void);
 
-/* ERR_free_strings frees any internal error values that have been loaded. This
- * should only be called at process shutdown. */
+/* ERR_free_strings frees any memory retained by the error system, expect for
+ * per-thread structures which are assumed to have already been freed with
+ * |ERR_remove_thread_state|. This should only be called at process
+ * shutdown. */
 OPENSSL_EXPORT void ERR_free_strings(void);
 
 
