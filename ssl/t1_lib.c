@@ -945,7 +945,8 @@ uint8_t *ssl_add_clienthello_tlsext(SSL *s, uint8_t *buf, uint8_t *limit,
     s2n(0, ret);
   }
 
-  if (s->ctx->next_proto_select_cb && !s->s3->tmp.finish_md_len) {
+  if (s->ctx->next_proto_select_cb && !s->s3->tmp.finish_md_len &&
+      !SSL_IS_DTLS(s)) {
     /* The client advertises an emtpy extension to indicate its support for
      * Next Protocol Negotiation */
     if (limit - ret - 4 < 0) {
@@ -976,7 +977,7 @@ uint8_t *ssl_add_clienthello_tlsext(SSL *s, uint8_t *buf, uint8_t *limit,
     ret += s->alpn_client_proto_list_len;
   }
 
-  if (s->tlsext_channel_id_enabled) {
+  if (s->tlsext_channel_id_enabled && !SSL_IS_DTLS(s)) {
     /* The client advertises an emtpy extension to indicate its support for
      * Channel ID. */
     if (limit - ret - 4 < 0) {
@@ -1591,7 +1592,8 @@ static int ssl_scan_clienthello_tlsext(SSL *s, CBS *cbs, int *out_alert) {
         return 0;
       }
     } else if (type == TLSEXT_TYPE_next_proto_neg &&
-               s->s3->tmp.finish_md_len == 0 && s->s3->alpn_selected == NULL) {
+               s->s3->tmp.finish_md_len == 0 && s->s3->alpn_selected == NULL &&
+               !SSL_IS_DTLS(s)) {
       /* The extension must be empty. */
       if (CBS_len(&extension) != 0) {
         *out_alert = SSL_AD_DECODE_ERROR;
@@ -1618,7 +1620,8 @@ static int ssl_scan_clienthello_tlsext(SSL *s, CBS *cbs, int *out_alert) {
       }
       /* ALPN takes precedence over NPN. */
       s->s3->next_proto_neg_seen = 0;
-    } else if (type == TLSEXT_TYPE_channel_id && s->tlsext_channel_id_enabled) {
+    } else if (type == TLSEXT_TYPE_channel_id && s->tlsext_channel_id_enabled &&
+               !SSL_IS_DTLS(s)) {
       /* The extension must be empty. */
       if (CBS_len(&extension) != 0) {
         *out_alert = SSL_AD_DECODE_ERROR;
@@ -1627,7 +1630,7 @@ static int ssl_scan_clienthello_tlsext(SSL *s, CBS *cbs, int *out_alert) {
 
       s->s3->tlsext_channel_id_valid = 1;
     } else if (type == TLSEXT_TYPE_channel_id_new &&
-               s->tlsext_channel_id_enabled) {
+               s->tlsext_channel_id_enabled && !SSL_IS_DTLS(s)) {
       /* The extension must be empty. */
       if (CBS_len(&extension) != 0) {
         *out_alert = SSL_AD_DECODE_ERROR;
@@ -1802,7 +1805,8 @@ static int ssl_scan_serverhello_tlsext(SSL *s, CBS *cbs, int *out_alert) {
       /* Set a flag to expect a CertificateStatus message */
       s->s3->tmp.certificate_status_expected = 1;
     } else if (type == TLSEXT_TYPE_next_proto_neg &&
-               s->s3->tmp.finish_md_len == 0) {
+               s->s3->tmp.finish_md_len == 0 &&
+               !SSL_IS_DTLS(s)) {
       uint8_t *selected;
       uint8_t selected_len;
 
@@ -1858,14 +1862,14 @@ static int ssl_scan_serverhello_tlsext(SSL *s, CBS *cbs, int *out_alert) {
         *out_alert = SSL_AD_INTERNAL_ERROR;
         return 0;
       }
-    } else if (type == TLSEXT_TYPE_channel_id) {
+    } else if (type == TLSEXT_TYPE_channel_id && !SSL_IS_DTLS(s)) {
       if (CBS_len(&extension) != 0) {
         *out_alert = SSL_AD_DECODE_ERROR;
         return 0;
       }
 
       s->s3->tlsext_channel_id_valid = 1;
-    } else if (type == TLSEXT_TYPE_channel_id_new) {
+    } else if (type == TLSEXT_TYPE_channel_id_new && !SSL_IS_DTLS(s)) {
       if (CBS_len(&extension) != 0) {
         *out_alert = SSL_AD_DECODE_ERROR;
         return 0;
