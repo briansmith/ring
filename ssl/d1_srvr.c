@@ -430,8 +430,6 @@ int dtls1_accept(SSL *s) {
 
       case SSL3_ST_SR_CERT_VRFY_A:
       case SSL3_ST_SR_CERT_VRFY_B:
-        s->d1->change_cipher_spec_ok = 1;
-        /* we should decide if we expected this one */
         ret = ssl3_get_cert_verify(s);
         if (ret <= 0) {
           goto end;
