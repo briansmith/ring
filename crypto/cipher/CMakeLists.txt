@@ -16,6 +16,8 @@ add_library(
 	e_des.c
 	e_aes.c
 	e_chacha20poly1305.c
+
+	tls_cbc.c
 )
 
 add_executable(
