@@ -306,7 +306,7 @@ static int aead_tls_open(const EVP_AEAD_CTX *ctx, uint8_t *out,
   int padding_ok;
   unsigned data_plus_mac_len, data_len;
   if (EVP_CIPHER_CTX_mode(&tls_ctx->cipher_ctx) == EVP_CIPH_CBC_MODE) {
-    padding_ok = EVP_tls1_cbc_remove_padding(
+    padding_ok = EVP_tls_cbc_remove_padding(
         &data_plus_mac_len, out, total,
         EVP_CIPHER_CTX_block_size(&tls_ctx->cipher_ctx),
         (unsigned)HMAC_size(&tls_ctx->hmac_ctx));
@@ -342,18 +342,17 @@ static int aead_tls_open(const EVP_AEAD_CTX *ctx, uint8_t *out,
   uint8_t record_mac_tmp[EVP_MAX_MD_SIZE];
   uint8_t *record_mac;
   if (EVP_CIPHER_CTX_mode(&tls_ctx->cipher_ctx) == EVP_CIPH_CBC_MODE &&
-      EVP_ssl3_cbc_record_digest_supported(tls_ctx->hmac_ctx.md)) {
-    if (!EVP_ssl3_cbc_digest_record(tls_ctx->hmac_ctx.md, mac, &mac_len,
-                                    ad_fixed, out, data_plus_mac_len, total,
-                                    tls_ctx->mac_key, tls_ctx->mac_key_len,
-                                    0 /* !is_sslv3 */)) {
+      EVP_tls_cbc_record_digest_supported(tls_ctx->hmac_ctx.md)) {
+    if (!EVP_tls_cbc_digest_record(tls_ctx->hmac_ctx.md, mac, &mac_len,
+                                   ad_fixed, out, data_plus_mac_len, total,
+                                   tls_ctx->mac_key, tls_ctx->mac_key_len)) {
       OPENSSL_PUT_ERROR(CIPHER, aead_tls_open, CIPHER_R_BAD_DECRYPT);
       return 0;
     }
     assert(mac_len == HMAC_size(&tls_ctx->hmac_ctx));
 
     record_mac = record_mac_tmp;
-    EVP_ssl3_cbc_copy_mac(record_mac, mac_len, out, data_plus_mac_len, total);
+    EVP_tls_cbc_copy_mac(record_mac, mac_len, out, data_plus_mac_len, total);
   } else {
     /* We should support the constant-time path for all CBC-mode ciphers
      * implemented. */
@@ -379,7 +378,7 @@ static int aead_tls_open(const EVP_AEAD_CTX *ctx, uint8_t *out,
   /* Perform the MAC check and the padding check in constant-time. It should be
    * safe to simply perform the padding check first, but it would not be under a
    * different choice of MAC location on padding failure. See
-   * EVP_tls1_cbc_remove_padding. */
+   * EVP_tls_cbc_remove_padding. */
   unsigned good = constant_time_eq_int(CRYPTO_memcmp(record_mac, mac, mac_len),
                                        0);
   good &= constant_time_eq_int(padding_ok, 1);
