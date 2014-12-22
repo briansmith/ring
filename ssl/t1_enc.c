@@ -229,12 +229,24 @@ static int tls1_PRF(long digest_mask,
                     const void *seed2, int seed2_len,
                     const void *seed3, int seed3_len,
                     const uint8_t *sec, int slen,
-                    uint8_t *out1, uint8_t *out2, int olen) {
+                    uint8_t *out, int olen) {
   int len, i, idx, count;
   const uint8_t *S1;
   long m;
   const EVP_MD *md;
   int ret = 0;
+  uint8_t *tmp;
+
+  if (olen <= 0) {
+    return 1;
+  }
+
+  /* Allocate a temporary buffer. */
+  tmp = OPENSSL_malloc(olen);
+  if (tmp == NULL) {
+    OPENSSL_PUT_ERROR(SSL, tls1_PRF, ERR_R_MALLOC_FAILURE);
+    return 0;
+  }
 
   /* Count number of digests and partition sec evenly */
   count = 0;
@@ -248,7 +260,7 @@ static int tls1_PRF(long digest_mask,
     slen = 0;
   }
   S1 = sec;
-  memset(out1, 0, olen);
+  memset(out, 0, olen);
   for (idx = 0; ssl_get_handshake_digest(idx, &m, &md); idx++) {
     if ((m << TLS1_PRF_DGST_SHIFT) & digest_mask) {
       if (!md) {
@@ -256,27 +268,29 @@ static int tls1_PRF(long digest_mask,
         goto err;
       }
       if (!tls1_P_hash(md, S1, len + (slen & 1), seed1, seed1_len, seed2,
-                       seed2_len, seed3, seed3_len, out2, olen)) {
+                       seed2_len, seed3, seed3_len, tmp, olen)) {
         goto err;
       }
       S1 += len;
       for (i = 0; i < olen; i++) {
-        out1[i] ^= out2[i];
+        out[i] ^= tmp[i];
       }
     }
   }
   ret = 1;
 
 err:
+  OPENSSL_cleanse(tmp, olen);
+  OPENSSL_free(tmp);
   return ret;
 }
 
-static int tls1_generate_key_block(SSL *s, uint8_t *km, uint8_t *tmp, int num) {
+static int tls1_generate_key_block(SSL *s, uint8_t *km, int num) {
   return tls1_PRF(ssl_get_algorithm2(s), TLS_MD_KEY_EXPANSION_CONST,
                   TLS_MD_KEY_EXPANSION_CONST_SIZE, s->s3->server_random,
                   SSL3_RANDOM_SIZE, s->s3->client_random, SSL3_RANDOM_SIZE,
                   s->session->master_key, s->session->master_key_length, km,
-                  tmp, num);
+                  num);
 }
 
 /* tls1_aead_ctx_init allocates |*aead_ctx|, if needed and returns 1. It
@@ -582,7 +596,7 @@ int tls1_change_cipher_state(SSL *s, int which) {
 }
 
 int tls1_setup_key_block(SSL *s) {
-  uint8_t *p1, *p2 = NULL;
+  uint8_t *p;
   const EVP_CIPHER *c = NULL;
   const EVP_MD *hash = NULL;
   const EVP_AEAD *aead = NULL;
@@ -638,22 +652,16 @@ int tls1_setup_key_block(SSL *s) {
 
   ssl3_cleanup_key_block(s);
 
-  p1 = (uint8_t *)OPENSSL_malloc(num);
-  if (p1 == NULL) {
+  p = (uint8_t *)OPENSSL_malloc(num);
+  if (p == NULL) {
     OPENSSL_PUT_ERROR(SSL, tls1_setup_key_block, ERR_R_MALLOC_FAILURE);
     goto err;
   }
 
   s->s3->tmp.key_block_length = num;
-  s->s3->tmp.key_block = p1;
+  s->s3->tmp.key_block = p;
 
-  p2 = (uint8_t *)OPENSSL_malloc(num);
-  if (p2 == NULL) {
-    OPENSSL_PUT_ERROR(SSL, tls1_setup_key_block, ERR_R_MALLOC_FAILURE);
-    goto err;
-  }
-
-  if (!tls1_generate_key_block(s, p1, p2, num)) {
+  if (!tls1_generate_key_block(s, p, num)) {
     goto err;
   }
 
@@ -672,10 +680,6 @@ int tls1_setup_key_block(SSL *s) {
   ret = 1;
 
 err:
-  if (p2) {
-    OPENSSL_cleanse(p2, num);
-    OPENSSL_free(p2);
-  }
   return ret;
 
 cipher_unavailable_err:
@@ -983,7 +987,6 @@ int tls1_handshake_digest(SSL *s, uint8_t *out, size_t out_len) {
 
 int tls1_final_finish_mac(SSL *s, const char *str, int slen, uint8_t *out) {
   uint8_t buf[2 * EVP_MAX_MD_SIZE];
-  uint8_t buf2[12];
   int err = 0;
   int digests_len;
 
@@ -1000,14 +1003,14 @@ int tls1_final_finish_mac(SSL *s, const char *str, int slen, uint8_t *out) {
 
   if (!tls1_PRF(ssl_get_algorithm2(s), str, slen, buf, digests_len, NULL, 0,
                 s->session->master_key, s->session->master_key_length, out,
-                buf2, sizeof buf2)) {
+                12)) {
     err = 1;
   }
 
   if (err) {
     return 0;
   } else {
-    return sizeof(buf2);
+    return 12;
   }
 }
 
@@ -1095,8 +1098,6 @@ int tls1_mac(SSL *ssl, uint8_t *md, int send) {
 }
 
 int tls1_generate_master_secret(SSL *s, uint8_t *out, uint8_t *p, int len) {
-  uint8_t buff[SSL_MAX_MASTER_KEY_LENGTH];
-
   if (s->s3->tmp.extended_master_secret) {
     uint8_t digests[2 * EVP_MAX_MD_SIZE];
     int digests_len;
@@ -1119,14 +1120,19 @@ int tls1_generate_master_secret(SSL *s, uint8_t *out, uint8_t *p, int len) {
       return 0;
     }
 
-    tls1_PRF(ssl_get_algorithm2(s), TLS_MD_EXTENDED_MASTER_SECRET_CONST,
-             TLS_MD_EXTENDED_MASTER_SECRET_CONST_SIZE, digests, digests_len,
-             NULL, 0, p, len, s->session->master_key, buff, sizeof(buff));
+    if (!tls1_PRF(ssl_get_algorithm2(s), TLS_MD_EXTENDED_MASTER_SECRET_CONST,
+                  TLS_MD_EXTENDED_MASTER_SECRET_CONST_SIZE, digests,
+                  digests_len, NULL, 0, p, len, s->session->master_key,
+                  SSL_MAX_MASTER_KEY_LENGTH)) {
+      return 0;
+    }
   } else {
-    tls1_PRF(ssl_get_algorithm2(s), TLS_MD_MASTER_SECRET_CONST,
-             TLS_MD_MASTER_SECRET_CONST_SIZE, s->s3->client_random,
-             SSL3_RANDOM_SIZE, s->s3->server_random, SSL3_RANDOM_SIZE, p, len,
-             s->session->master_key, buff, sizeof buff);
+    if (!tls1_PRF(ssl_get_algorithm2(s), TLS_MD_MASTER_SECRET_CONST,
+                  TLS_MD_MASTER_SECRET_CONST_SIZE, s->s3->client_random,
+                  SSL3_RANDOM_SIZE, s->s3->server_random, SSL3_RANDOM_SIZE, p,
+                  len, s->session->master_key, SSL_MAX_MASTER_KEY_LENGTH)) {
+      return 0;
+    }
   }
 
   return SSL3_MASTER_SECRET_SIZE;
@@ -1136,15 +1142,9 @@ int tls1_export_keying_material(SSL *s, uint8_t *out, size_t olen,
                                 const char *label, size_t llen,
                                 const uint8_t *context, size_t contextlen,
                                 int use_context) {
-  uint8_t *buff;
   uint8_t *val = NULL;
   size_t vallen, currentvalpos;
   int ret;
-
-  buff = OPENSSL_malloc(olen);
-  if (buff == NULL) {
-    goto err2;
-  }
 
   /* construct PRF arguments we construct the PRF argument ourself rather than
    * passing separate values into the TLS PRF to ensure that the concatenation
@@ -1193,7 +1193,7 @@ int tls1_export_keying_material(SSL *s, uint8_t *out, size_t olen,
 
   ret = tls1_PRF(ssl_get_algorithm2(s), val, vallen, NULL, 0, NULL, 0,
                  s->session->master_key, s->session->master_key_length, out,
-                 buff, olen);
+                 olen);
 
   goto out;
 
@@ -1208,9 +1208,6 @@ err2:
   ret = 0;
 
 out:
-  if (buff != NULL) {
-    OPENSSL_free(buff);
-  }
   if (val != NULL) {
     OPENSSL_free(val);
   }
