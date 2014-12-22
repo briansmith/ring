@@ -363,21 +363,11 @@
  * indicates that the cipher is implemented via an EVP_AEAD. */
 #define SSL_CIPHER_ALGORITHM2_AEAD (1 << 23)
 
-/* SSL_CIPHER_AEAD_FIXED_NONCE_LEN returns the number of bytes of fixed nonce
- * for an SSL_CIPHER* with the SSL_CIPHER_ALGORITHM2_AEAD flag. */
-#define SSL_CIPHER_AEAD_FIXED_NONCE_LEN(ssl_cipher) \
-  (((ssl_cipher->algorithm2 >> 24) & 0xf) * 2)
-
 /* SSL_CIPHER_ALGORITHM2_VARIABLE_NONCE_INCLUDED_IN_RECORD is a flag in
  * SSL_CIPHER.algorithm2 which indicates that the variable part of the nonce is
  * included as a prefix of the record. (AES-GCM, for example, does with with an
  * 8-byte variable nonce.) */
 #define SSL_CIPHER_ALGORITHM2_VARIABLE_NONCE_INCLUDED_IN_RECORD (1<<22)
-
-/* SSL_CIPHER_ALGORITHM2_STATEFUL_AEAD is a flag in SSL_CIPHER.algorithm2 which
- * indicates that the AEAD is stateful and so doesn't take an nonce. This is
- * only true of legacy cipher suites. */
-#define SSL_CIPHER_ALGORITHM2_STATEFUL_AEAD (1<<28)
 
 /* Cipher strength information. */
 #define SSL_MEDIUM 0x00000001L
@@ -643,6 +633,13 @@ struct ssl_aead_ctx_st {
   /* variable_nonce_included_in_record is non-zero if the variable nonce
    * for a record is included as a prefix before the ciphertext. */
   char variable_nonce_included_in_record;
+  /* random_variable_nonce is non-zero if the variable nonce is
+   * randomly generated, rather than derived from the sequence
+   * number. */
+  char random_variable_nonce;
+  /* omit_length_in_ad is non-zero if the length should be omitted in the
+   * AEAD's ad parameter. */
+  char omit_length_in_ad;
 };
 
 extern const SSL_CIPHER ssl3_ciphers[];
@@ -681,12 +678,22 @@ void ssl_cipher_preference_list_free(
 struct ssl_cipher_preference_list_st *ssl_cipher_preference_list_from_ciphers(
     STACK_OF(SSL_CIPHER) * ciphers);
 struct ssl_cipher_preference_list_st *ssl_get_cipher_preferences(SSL *s);
-int ssl_cipher_get_evp_aead(const SSL_SESSION *s, const EVP_AEAD **aead);
+
+/* ssl_cipher_get_evp_aead sets |*out_aead| to point to the correct EVP_AEAD
+* object for |cipher| protocol version |version|. It sets |*out_mac_secret_len|
+* and |*out_fixed_iv_len| to the MAC key length and fixed IV length,
+* respectively. The MAC key length is zero except for legacy block and stream
+* ciphers. It returns 1 on success and 0 on error. */
+int ssl_cipher_get_evp_aead(const EVP_AEAD **out_aead,
+                            size_t *out_mac_secret_len,
+                            size_t *out_fixed_iv_len,
+                            const SSL_CIPHER *cipher, uint16_t version);
+
 int ssl_cipher_get_evp(const SSL_SESSION *s, const EVP_CIPHER **enc,
                        const EVP_MD **md, int *mac_pkey_type,
-                       int *mac_secret_size);
+                       size_t *mac_secret_size);
 int ssl_cipher_get_mac(const SSL_SESSION *s, const EVP_MD **md,
-                       int *mac_pkey_type, int *mac_secret_size);
+                       int *mac_pkey_type, size_t *mac_secret_size);
 int ssl_get_handshake_digest(int i, long *mask, const EVP_MD **md);
 int ssl_cipher_get_cert_index(const SSL_CIPHER *c);
 int ssl_cipher_has_server_public_key(const SSL_CIPHER *cipher);
@@ -998,6 +1005,15 @@ uint16_t ssl3_get_max_client_version(SSL *s);
 /* ssl3_is_version_enabled returns one if |version| is an enabled protocol
  * version for |s| and zero otherwise. */
 int ssl3_is_version_enabled(SSL *s, uint16_t version);
+
+/* ssl3_version_from_wire maps |wire_version| to a protocol version. For
+ * SSLv3/TLS, the version is returned as-is. For DTLS, the corresponding TLS
+ * version is used. Note that this mapping is not injective but preserves
+ * comparisons.
+ *
+ * TODO(davidben): To normalize some DTLS-specific code, move away from using
+ * the wire version except at API boundaries. */
+uint16_t ssl3_version_from_wire(SSL *s, uint16_t wire_version);
 
 EVP_MD_CTX *ssl_replace_hash(EVP_MD_CTX **hash, const EVP_MD *md);
 void ssl_clear_hash_ctx(EVP_MD_CTX **hash);

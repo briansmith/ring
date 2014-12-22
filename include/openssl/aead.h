@@ -104,7 +104,7 @@ OPENSSL_EXPORT const EVP_AEAD *EVP_aead_chacha20_poly1305(void);
 /* EVP_aead_aes_128_key_wrap is AES-128 Key Wrap mode. This should never be
  * used except to interoperate with existing systems that use this mode.
  *
- * If the nonce is emtpy then the default nonce will be used, otherwise it must
+ * If the nonce is empty then the default nonce will be used, otherwise it must
  * be eight bytes long. The input must be a multiple of eight bytes long. No
  * additional data can be given to this mode. */
 OPENSSL_EXPORT const EVP_AEAD *EVP_aead_aes_128_key_wrap(void);
@@ -124,13 +124,24 @@ OPENSSL_EXPORT int EVP_has_aes_hardware(void);
  *
  * These AEAD primitives do not meet the definition of generic AEADs. They are
  * all specific to TLS in some fashion and should not be used outside of that
- * context. */
+ * context. They require an additional data of length 11 (the standard TLS one
+ * with the length omitted). They are also stateful, so a given |EVP_AEAD_CTX|
+ * may only be used for one of seal or open, but not both. */
 
-/* EVP_aead_rc4_md5_tls uses RC4 and HMAC(MD5) in MAC-then-encrypt mode. Unlike
- * a standard AEAD, this is stateful as the RC4 state is carried from operation
- * to operation. */
 OPENSSL_EXPORT const EVP_AEAD *EVP_aead_rc4_md5_tls(void);
+OPENSSL_EXPORT const EVP_AEAD *EVP_aead_rc4_sha1_tls(void);
 
+OPENSSL_EXPORT const EVP_AEAD *EVP_aead_aes_128_cbc_sha1_tls(void);
+OPENSSL_EXPORT const EVP_AEAD *EVP_aead_aes_128_cbc_sha1_tls_implicit_iv(void);
+OPENSSL_EXPORT const EVP_AEAD *EVP_aead_aes_128_cbc_sha256_tls(void);
+
+OPENSSL_EXPORT const EVP_AEAD *EVP_aead_aes_256_cbc_sha1_tls(void);
+OPENSSL_EXPORT const EVP_AEAD *EVP_aead_aes_256_cbc_sha1_tls_implicit_iv(void);
+OPENSSL_EXPORT const EVP_AEAD *EVP_aead_aes_256_cbc_sha256_tls(void);
+OPENSSL_EXPORT const EVP_AEAD *EVP_aead_aes_256_cbc_sha384_tls(void);
+
+OPENSSL_EXPORT const EVP_AEAD *EVP_aead_des_ede3_cbc_sha1_tls(void);
+OPENSSL_EXPORT const EVP_AEAD *EVP_aead_des_ede3_cbc_sha1_tls_implicit_iv(void);
 
 /* Utility functions. */
 
@@ -163,9 +174,17 @@ typedef struct evp_aead_ctx_st {
   void *aead_state;
 } EVP_AEAD_CTX;
 
+/* EVP_AEAD_MAX_KEY_LENGTH contains the maximum key length used by
+ * any AEAD defined in this header. */
+#define EVP_AEAD_MAX_KEY_LENGTH 80
+
+/* EVP_AEAD_MAX_NONCE_LENGTH contains the maximum nonce length used by
+ * any AEAD defined in this header. */
+#define EVP_AEAD_MAX_NONCE_LENGTH 16
+
 /* EVP_AEAD_MAX_OVERHEAD contains the maximum overhead used by any AEAD
  * defined in this header. */
-#define EVP_AEAD_MAX_OVERHEAD 16
+#define EVP_AEAD_MAX_OVERHEAD 64
 
 /* EVP_AEAD_DEFAULT_TAG_LENGTH is a magic value that can be passed to
  * EVP_AEAD_CTX_init to indicate that the default tag length for an AEAD should

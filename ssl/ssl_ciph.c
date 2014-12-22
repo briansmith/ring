@@ -142,8 +142,10 @@
 #include <assert.h>
 
 #include <openssl/engine.h>
+#include <openssl/md5.h>
 #include <openssl/mem.h>
 #include <openssl/obj.h>
+#include <openssl/sha.h>
 
 #include "ssl_locl.h"
 
@@ -241,49 +243,109 @@ static const SSL_CIPHER cipher_aliases[] =
      {0, SSL_TXT_FIPS, 0, 0, 0, 0, 0, 0, SSL_FIPS, 0, 0, 0},
 };
 
-/* ssl_cipher_get_evp_aead sets |*aead| to point to the correct EVP_AEAD object
- * for |s->cipher|. It returns 1 on success and 0 on error. */
-int ssl_cipher_get_evp_aead(const SSL_SESSION *s, const EVP_AEAD **aead) {
-  const SSL_CIPHER *c = s->cipher;
+int ssl_cipher_get_evp_aead(const EVP_AEAD **out_aead,
+                            size_t *out_mac_secret_len,
+                            size_t *out_fixed_iv_len,
+                            const SSL_CIPHER *cipher, uint16_t version) {
+  *out_aead = NULL;
+  *out_mac_secret_len = 0;
+  *out_fixed_iv_len = 0;
 
-  *aead = NULL;
-
-  if (c == NULL) {
-    return 0;
-  }
-
-  if ((c->algorithm2 & SSL_CIPHER_ALGORITHM2_AEAD) == 0 &&
-      (c->algorithm2 & SSL_CIPHER_ALGORITHM2_STATEFUL_AEAD) == 0) {
-    return 0;
-  }
-
-  switch (c->algorithm_enc) {
+  switch (cipher->algorithm_enc) {
     case SSL_AES128GCM:
-      *aead = EVP_aead_aes_128_gcm();
+      *out_aead = EVP_aead_aes_128_gcm();
+      *out_fixed_iv_len = 4;
       return 1;
 
     case SSL_AES256GCM:
-      *aead = EVP_aead_aes_256_gcm();
+      *out_aead = EVP_aead_aes_256_gcm();
+      *out_fixed_iv_len = 4;
       return 1;
 
     case SSL_CHACHA20POLY1305:
-      *aead = EVP_aead_chacha20_poly1305();
+      *out_aead = EVP_aead_chacha20_poly1305();
+      *out_fixed_iv_len = 0;
       return 1;
 
     case SSL_RC4:
-      if (c->algorithm_mac != SSL_MD5) {
-        return 0;
+      switch (cipher->algorithm_mac) {
+        case SSL_MD5:
+          *out_aead = EVP_aead_rc4_md5_tls();
+          *out_mac_secret_len = MD5_DIGEST_LENGTH;
+          return 1;
+        case SSL_SHA1:
+          *out_aead = EVP_aead_rc4_sha1_tls();
+          *out_mac_secret_len = SHA_DIGEST_LENGTH;
+          return 1;
+        default:
+          return 0;
       }
-      *aead = EVP_aead_rc4_md5_tls();
-      return 1;
-  }
 
-  return 0;
+    case SSL_AES128:
+      switch (cipher->algorithm_mac) {
+        case SSL_SHA1:
+          if (version <= TLS1_VERSION) {
+            *out_aead = EVP_aead_aes_128_cbc_sha1_tls_implicit_iv();
+            *out_fixed_iv_len = 16;
+          } else {
+            *out_aead = EVP_aead_aes_128_cbc_sha1_tls();
+          }
+          *out_mac_secret_len = SHA_DIGEST_LENGTH;
+          return 1;
+        case SSL_SHA256:
+          *out_aead = EVP_aead_aes_128_cbc_sha256_tls();
+          *out_mac_secret_len = SHA256_DIGEST_LENGTH;
+          return 1;
+        default:
+          return 0;
+      }
+
+    case SSL_AES256:
+      switch (cipher->algorithm_mac) {
+        case SSL_SHA1:
+          if (version <= TLS1_VERSION) {
+            *out_aead = EVP_aead_aes_256_cbc_sha1_tls_implicit_iv();
+            *out_fixed_iv_len = 16;
+          } else {
+            *out_aead = EVP_aead_aes_256_cbc_sha1_tls();
+          }
+          *out_mac_secret_len = SHA_DIGEST_LENGTH;
+          return 1;
+        case SSL_SHA256:
+          *out_aead = EVP_aead_aes_256_cbc_sha256_tls();
+          *out_mac_secret_len = SHA256_DIGEST_LENGTH;
+          return 1;
+        case SSL_SHA384:
+          *out_aead = EVP_aead_aes_256_cbc_sha384_tls();
+          *out_mac_secret_len = SHA384_DIGEST_LENGTH;
+          return 1;
+        default:
+          return 0;
+      }
+
+    case SSL_3DES:
+      switch (cipher->algorithm_mac) {
+        case SSL_SHA1:
+          if (version <= TLS1_VERSION) {
+            *out_aead = EVP_aead_des_ede3_cbc_sha1_tls_implicit_iv();
+            *out_fixed_iv_len = 8;
+          } else {
+            *out_aead = EVP_aead_des_ede3_cbc_sha1_tls();
+          }
+          *out_mac_secret_len = SHA_DIGEST_LENGTH;
+          return 1;
+        default:
+          return 0;
+      }
+
+    default:
+      return 0;
+  }
 }
 
 int ssl_cipher_get_evp(const SSL_SESSION *s, const EVP_CIPHER **enc,
                        const EVP_MD **md, int *mac_pkey_type,
-                       int *mac_secret_size) {
+                       size_t *mac_secret_size) {
   const SSL_CIPHER *c;
 
   c = s->cipher;
@@ -347,7 +409,7 @@ int ssl_cipher_get_evp(const SSL_SESSION *s, const EVP_CIPHER **enc,
 }
 
 int ssl_cipher_get_mac(const SSL_SESSION *s, const EVP_MD **md,
-                       int *mac_pkey_type, int *mac_secret_size) {
+                       int *mac_pkey_type, size_t *mac_secret_size) {
   const SSL_CIPHER *c;
 
   c = s->cipher;

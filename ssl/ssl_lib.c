@@ -3165,6 +3165,27 @@ int ssl3_is_version_enabled(SSL *s, uint16_t version) {
   }
 }
 
+uint16_t ssl3_version_from_wire(SSL *s, uint16_t wire_version) {
+  if (!SSL_IS_DTLS(s)) {
+    return wire_version;
+  }
+
+  uint16_t tls_version = ~wire_version;
+  uint16_t version = tls_version + 0x0201;
+  /* If either component overflowed, clamp it so comparisons still work. */
+  if ((version >> 8) < (tls_version >> 8)) {
+    version = 0xff00 | (version & 0xff);
+  }
+  if ((version & 0xff) < (tls_version & 0xff)) {
+    version = (version & 0xff00) | 0xff;
+  }
+  /* DTLS 1.0 maps to TLS 1.1, not TLS 1.0. */
+  if (version == TLS1_VERSION) {
+    version = TLS1_1_VERSION;
+  }
+  return version;
+}
+
 /* Allocates new EVP_MD_CTX and sets pointer to it into given pointer vairable,
  * freeing  EVP_MD_CTX previously stored in that variable, if any. If EVP_MD
  * pointer is passed, initializes ctx with this md Returns newly allocated

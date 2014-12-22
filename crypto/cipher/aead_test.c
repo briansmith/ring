@@ -18,7 +18,9 @@
 #include <string.h>
 
 #include <openssl/aead.h>
+#include <openssl/bio.h>
 #include <openssl/crypto.h>
+#include <openssl/err.h>
 
 /* This program tests an AEAD against a series of test vectors from a file. The
  * test vector file consists of key-value lines where the key and value are
@@ -74,7 +76,7 @@ static int run_test_case(const EVP_AEAD *aead,
                          unsigned int line_no) {
   EVP_AEAD_CTX ctx;
   size_t ciphertext_len, plaintext_len;
-  unsigned char out[BUF_MAX + EVP_AEAD_MAX_OVERHEAD], out2[BUF_MAX];
+  unsigned char out[BUF_MAX + EVP_AEAD_MAX_OVERHEAD + 1], out2[BUF_MAX];
 
   if (!EVP_AEAD_CTX_init(&ctx, aead, bufs[KEY], lengths[KEY], lengths[TAG],
                          NULL)) {
@@ -114,9 +116,11 @@ static int run_test_case(const EVP_AEAD *aead,
     return 0;
   }
 
-  if (!EVP_AEAD_CTX_open(&ctx, out2, &plaintext_len, lengths[IN], bufs[NONCE],
-                         lengths[NONCE], out, ciphertext_len, bufs[AD],
-                         lengths[AD])) {
+  /* The "stateful" AEADs require |max_out| be |in_len| despite the final
+   * output always being smaller by at least tag length. */
+  if (!EVP_AEAD_CTX_open(&ctx, out2, &plaintext_len, ciphertext_len,
+                         bufs[NONCE], lengths[NONCE], out, ciphertext_len,
+                         bufs[AD], lengths[AD])) {
     fprintf(stderr, "Failed to decrypt on line %u\n", line_no);
     return 0;
   }
@@ -136,13 +140,34 @@ static int run_test_case(const EVP_AEAD *aead,
     return 0;
   }
 
+  /* Garbage at the end isn't ignored. */
+  out[ciphertext_len] = 0;
+  if (EVP_AEAD_CTX_open(&ctx, out2, &plaintext_len, ciphertext_len + 1, bufs[NONCE],
+                        lengths[NONCE], out, ciphertext_len + 1, bufs[AD],
+                        lengths[AD])) {
+    fprintf(stderr, "Decrypted bad data on line %u\n", line_no);
+    return 0;
+  }
+  ERR_clear_error();
+
+  /* The "stateful" AEADs for implementing pre-AEAD cipher suites need to be
+   * reset after each operation. */
+  EVP_AEAD_CTX_cleanup(&ctx);
+  if (!EVP_AEAD_CTX_init(&ctx, aead, bufs[KEY], lengths[KEY], lengths[TAG],
+                         NULL)) {
+    fprintf(stderr, "Failed to init AEAD on line %u\n", line_no);
+    return 0;
+  }
+
+  /* Verify integrity is checked. */
   out[0] ^= 0x80;
-  if (EVP_AEAD_CTX_open(&ctx, out2, &plaintext_len, lengths[IN], bufs[NONCE],
+  if (EVP_AEAD_CTX_open(&ctx, out2, &plaintext_len, ciphertext_len, bufs[NONCE],
                         lengths[NONCE], out, ciphertext_len, bufs[AD],
                         lengths[AD])) {
     fprintf(stderr, "Decrypted bad data on line %u\n", line_no);
     return 0;
   }
+  ERR_clear_error();
 
   EVP_AEAD_CTX_cleanup(&ctx);
   return 1;
@@ -157,6 +182,7 @@ int main(int argc, char **argv) {
   unsigned int lengths[NUM_TYPES];
 
   CRYPTO_library_init();
+  ERR_load_crypto_strings();
 
   if (argc != 3) {
     fprintf(stderr, "%s <aead> <test file.txt>\n", argv[0]);
@@ -169,8 +195,28 @@ int main(int argc, char **argv) {
     aead = EVP_aead_aes_256_gcm();
   } else if (strcmp(argv[1], "chacha20-poly1305") == 0) {
     aead = EVP_aead_chacha20_poly1305();
-  } else if (strcmp(argv[1], "rc4-md5") == 0) {
+  } else if (strcmp(argv[1], "rc4-md5-tls") == 0) {
     aead = EVP_aead_rc4_md5_tls();
+  } else if (strcmp(argv[1], "rc4-sha1-tls") == 0) {
+    aead = EVP_aead_rc4_sha1_tls();
+  } else if (strcmp(argv[1], "aes-128-cbc-sha1-tls") == 0) {
+    aead = EVP_aead_aes_128_cbc_sha1_tls();
+  } else if (strcmp(argv[1], "aes-128-cbc-sha1-tls-implicit-iv") == 0) {
+    aead = EVP_aead_aes_128_cbc_sha1_tls_implicit_iv();
+  } else if (strcmp(argv[1], "aes-128-cbc-sha256-tls") == 0) {
+    aead = EVP_aead_aes_128_cbc_sha256_tls();
+  } else if (strcmp(argv[1], "aes-256-cbc-sha1-tls") == 0) {
+    aead = EVP_aead_aes_256_cbc_sha1_tls();
+  } else if (strcmp(argv[1], "aes-256-cbc-sha1-tls-implicit-iv") == 0) {
+    aead = EVP_aead_aes_256_cbc_sha1_tls_implicit_iv();
+  } else if (strcmp(argv[1], "aes-256-cbc-sha256-tls") == 0) {
+    aead = EVP_aead_aes_256_cbc_sha256_tls();
+  } else if (strcmp(argv[1], "aes-256-cbc-sha384-tls") == 0) {
+    aead = EVP_aead_aes_256_cbc_sha384_tls();
+  } else if (strcmp(argv[1], "des-ede3-cbc-sha1-tls") == 0) {
+    aead = EVP_aead_des_ede3_cbc_sha1_tls();
+  } else if (strcmp(argv[1], "des-ede3-cbc-sha1-tls-implicit-iv") == 0) {
+    aead = EVP_aead_des_ede3_cbc_sha1_tls_implicit_iv();
   } else if (strcmp(argv[1], "aes-128-key-wrap") == 0) {
     aead = EVP_aead_aes_128_key_wrap();
   } else if (strcmp(argv[1], "aes-256-key-wrap") == 0) {
@@ -218,6 +264,7 @@ int main(int argc, char **argv) {
 
       if (any_values_set) {
         if (!run_test_case(aead, bufs, lengths, line_no)) {
+          BIO_print_errors_fp(stderr);
           return 4;
         }
 

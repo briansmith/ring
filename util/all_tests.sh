@@ -24,13 +24,23 @@ TESTS="
 ./crypto/bio/bio_test
 ./crypto/bn/bn_test
 ./crypto/bytestring/bytestring_test
-./crypto/cipher/aead_test aes-128-gcm $SRC/crypto/cipher/aes_128_gcm_tests.txt
-./crypto/cipher/aead_test aes-128-key-wrap $SRC/crypto/cipher/aes_128_key_wrap_tests.txt
-./crypto/cipher/aead_test aes-256-gcm $SRC/crypto/cipher/aes_256_gcm_tests.txt
-./crypto/cipher/aead_test aes-256-key-wrap $SRC/crypto/cipher/aes_256_key_wrap_tests.txt
-./crypto/cipher/aead_test chacha20-poly1305 $SRC/crypto/cipher/chacha20_poly1305_tests.txt
-./crypto/cipher/aead_test rc4-md5 $SRC/crypto/cipher/rc4_md5_tests.txt
-./crypto/cipher/cipher_test $SRC/crypto/cipher/cipher_test.txt
+./crypto/cipher/aead_test aes-128-gcm $SRC/crypto/cipher/test/aes_128_gcm_tests.txt
+./crypto/cipher/aead_test aes-128-key-wrap $SRC/crypto/cipher/test/aes_128_key_wrap_tests.txt
+./crypto/cipher/aead_test aes-256-gcm $SRC/crypto/cipher/test/aes_256_gcm_tests.txt
+./crypto/cipher/aead_test aes-256-key-wrap $SRC/crypto/cipher/test/aes_256_key_wrap_tests.txt
+./crypto/cipher/aead_test chacha20-poly1305 $SRC/crypto/cipher/test/chacha20_poly1305_tests.txt
+./crypto/cipher/aead_test rc4-md5-tls $SRC/crypto/cipher/test/rc4_md5_tls_tests.txt
+./crypto/cipher/aead_test rc4-sha1-tls $SRC/crypto/cipher/test/rc4_sha1_tls_tests.txt
+./crypto/cipher/aead_test aes-128-cbc-sha1-tls $SRC/crypto/cipher/test/aes_128_cbc_sha1_tls_tests.txt
+./crypto/cipher/aead_test aes-128-cbc-sha1-tls-implicit-iv $SRC/crypto/cipher/test/aes_128_cbc_sha1_tls_implicit_iv_tests.txt
+./crypto/cipher/aead_test aes-128-cbc-sha256-tls $SRC/crypto/cipher/test/aes_128_cbc_sha256_tls_tests.txt
+./crypto/cipher/aead_test aes-256-cbc-sha1-tls $SRC/crypto/cipher/test/aes_256_cbc_sha1_tls_tests.txt
+./crypto/cipher/aead_test aes-256-cbc-sha1-tls-implicit-iv $SRC/crypto/cipher/test/aes_256_cbc_sha1_tls_implicit_iv_tests.txt
+./crypto/cipher/aead_test aes-256-cbc-sha256-tls $SRC/crypto/cipher/test/aes_256_cbc_sha256_tls_tests.txt
+./crypto/cipher/aead_test aes-256-cbc-sha384-tls $SRC/crypto/cipher/test/aes_256_cbc_sha384_tls_tests.txt
+./crypto/cipher/aead_test des-ede3-cbc-sha1-tls $SRC/crypto/cipher/test/des_ede3_cbc_sha1_tls_tests.txt
+./crypto/cipher/aead_test des-ede3-cbc-sha1-tls-implicit-iv $SRC/crypto/cipher/test/des_ede3_cbc_sha1_tls_implicit_iv_tests.txt
+./crypto/cipher/cipher_test $SRC/crypto/cipher/test/cipher_test.txt
 ./crypto/constant_time_test
 ./crypto/dh/dh_test
 ./crypto/digest/digest_test

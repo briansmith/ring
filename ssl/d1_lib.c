@@ -267,8 +267,7 @@ const SSL_CIPHER *dtls1_get_cipher(unsigned int u) {
       return NULL;
     }
     /* TODO(davidben): EVP_AEAD does not work in DTLS yet. */
-    if (ciph->algorithm2 & SSL_CIPHER_ALGORITHM2_AEAD ||
-        ciph->algorithm2 & SSL_CIPHER_ALGORITHM2_STATEFUL_AEAD) {
+    if (ciph->algorithm2 & SSL_CIPHER_ALGORITHM2_AEAD) {
       return NULL;
     }
   }

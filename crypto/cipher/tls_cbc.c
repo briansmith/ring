@@ -132,6 +132,10 @@ int EVP_tls1_cbc_remove_padding(unsigned *out_len,
    * one or more of the lower eight bits of |good| will be cleared. */
   good = constant_time_eq(0xff, good & 0xff);
 
+  /* Always treat |padding_length| as zero on error. If, assuming block size of
+   * 16, a padding of [<15 arbitrary bytes> 15] treated |padding_length| as 16
+   * and returned -1, distinguishing good MAC and bad padding from bad MAC and
+   * bad padding would give POODLE's padding oracle. */
   padding_length = good & (padding_length + 1);
   *out_len = in_len - padding_length;
 

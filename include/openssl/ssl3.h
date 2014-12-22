@@ -468,7 +468,9 @@ typedef struct ssl3_state_st
 		const EVP_AEAD *new_aead;
 		const EVP_MD *new_hash;
 		int new_mac_pkey_type;
-		int new_mac_secret_size;
+		uint8_t new_mac_secret_len;
+		uint8_t new_fixed_iv_len;
+		uint8_t new_variable_iv_len;
 
 		/* Server-only: cert_request is true if a client certificate was
 		 * requested. */

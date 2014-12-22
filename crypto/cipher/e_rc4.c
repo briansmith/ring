@@ -208,6 +208,13 @@ static int aead_rc4_md5_tls_seal(const EVP_AEAD_CTX *ctx, uint8_t *out,
    * https://tools.ietf.org/html/rfc5246#section-6.2.3.1 */
   MD5_Update(&md, ad, ad_len);
 
+  /* To allow for CBC mode which changes cipher length, |ad| doesn't include the
+   * length for legacy ciphers. */
+  uint8_t ad_extra[2];
+  ad_extra[0] = (uint8_t)(in_len >> 8);
+  ad_extra[1] = (uint8_t)(in_len & 0xff);
+  MD5_Update(&md, ad_extra, sizeof(ad_extra));
+
 #if defined(STITCHED_CALL)
   /* 32 is $MOD from rc4_md5-x86_64.pl. */
   rc4_off = 32 - 1 - (rc4_ctx->rc4.x & (32 - 1));
@@ -287,7 +294,7 @@ static int aead_rc4_md5_tls_open(const EVP_AEAD_CTX *ctx, uint8_t *out,
   plaintext_len = in_len - rc4_ctx->tag_len;
 
   if (nonce_len != 0) {
-    OPENSSL_PUT_ERROR(CIPHER, aead_rc4_md5_tls_seal, CIPHER_R_TOO_LARGE);
+    OPENSSL_PUT_ERROR(CIPHER, aead_rc4_md5_tls_open, CIPHER_R_TOO_LARGE);
     return 0;
   }
 
@@ -300,6 +307,13 @@ static int aead_rc4_md5_tls_open(const EVP_AEAD_CTX *ctx, uint8_t *out,
   /* The MAC's payload begins with the additional data. See
    * https://tools.ietf.org/html/rfc5246#section-6.2.3.1 */
   MD5_Update(&md, ad, ad_len);
+
+  /* To allow for CBC mode which changes cipher length, |ad| doesn't include the
+   * length for legacy ciphers. */
+  uint8_t ad_extra[2];
+  ad_extra[0] = (uint8_t)(plaintext_len >> 8);
+  ad_extra[1] = (uint8_t)(plaintext_len & 0xff);
+  MD5_Update(&md, ad_extra, sizeof(ad_extra));
 
 #if defined(STITCHED_CALL)
   rc4_off = 32 - 1 - (rc4_ctx->rc4.x & (32 - 1));

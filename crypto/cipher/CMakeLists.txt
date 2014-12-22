@@ -18,6 +18,7 @@ add_library(
 	e_chacha20poly1305.c
 
 	tls_cbc.c
+	e_tls.c
 )
 
 add_executable(
