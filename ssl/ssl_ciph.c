@@ -1070,7 +1070,7 @@ ssl_create_cipher_list(const SSL_PROTOCOL_METHOD *ssl_method,
     ok = ssl_cipher_process_rulestr(rule_p, &head, &tail, ca_list);
   }
 
-  OPENSSL_free(ca_list); /* Not needed anymore */
+  OPENSSL_free((void *)ca_list); /* Not needed anymore */
 
   if (!ok) {
     goto err;
