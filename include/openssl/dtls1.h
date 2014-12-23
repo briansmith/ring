@@ -111,8 +111,7 @@ typedef struct dtls1_bitmap_st
 
 struct dtls1_retransmit_state
 	{
-	EVP_CIPHER_CTX *enc_write_ctx;	/* cryptographic state */
-	EVP_MD_CTX *write_hash;			/* used for mac generation */
+	SSL_AEAD_CTX *aead_write_ctx;
 	SSL_SESSION *session;
 	unsigned short epoch;
 	};

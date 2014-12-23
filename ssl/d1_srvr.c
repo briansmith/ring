@@ -294,9 +294,7 @@ int dtls1_accept(SSL *s) {
 
       case SSL3_ST_SW_CERT_A:
       case SSL3_ST_SW_CERT_B:
-        /* Check if it is anon DH or normal PSK */
-        if (!(s->s3->tmp.new_cipher->algorithm_auth & SSL_aNULL) &&
-            !(s->s3->tmp.new_cipher->algorithm_mkey & SSL_kPSK)) {
+        if (ssl_cipher_has_server_public_key(s->s3->tmp.new_cipher)) {
           dtls1_start_timer(s);
           ret = ssl3_send_server_certificate(s);
           if (ret <= 0) {

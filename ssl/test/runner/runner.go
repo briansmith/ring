@@ -998,10 +998,7 @@ func isTLS12Only(suiteName string) bool {
 }
 
 func isDTLSCipher(suiteName string) bool {
-	// TODO(davidben): AES-GCM exists in DTLS 1.2 but is currently
-	// broken because DTLS is not EVP_AEAD-aware.
-	return !hasComponent(suiteName, "RC4") &&
-		!hasComponent(suiteName, "GCM")
+	return !hasComponent(suiteName, "RC4")
 }
 
 func addCipherSuiteTests() {

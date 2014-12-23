@@ -362,6 +362,15 @@ static int tls1_change_cipher_state_aead(SSL *s, char is_read,
     }
     aead_ctx = s->aead_read_ctx;
   } else {
+    /* When updating the cipher state for DTLS, we do not wish to overwrite the
+     * old ones because DTLS stores pointers to them in order to implement
+     * retransmission. See dtls1_hm_fragment_free.
+     *
+     * TODO(davidben): Simplify aead_write_ctx ownership, probably by just
+     * forbidding DTLS renego. */
+    if (SSL_IS_DTLS(s)) {
+      s->aead_write_ctx = NULL;
+    }
     if (!tls1_aead_ctx_init(&s->aead_write_ctx)) {
       return 0;
     }
@@ -440,7 +449,17 @@ static int tls1_change_cipher_state_cipher(SSL *s, char is_read,
   if (is_read) {
     tls1_cleanup_aead_ctx(&s->aead_read_ctx);
   } else {
-    tls1_cleanup_aead_ctx(&s->aead_write_ctx);
+    /* When updating the cipher state for DTLS, we do not wish to free the old
+     * ones because DTLS stores pointers to them in order to implement
+     * retransmission. See dtls1_hm_fragment_free.
+     *
+     * TODO(davidben): Simplify aead_write_ctx ownership, probably by just
+     * forbidding DTLS renego. */
+    if (!SSL_IS_DTLS(s)) {
+      tls1_cleanup_aead_ctx(&s->aead_write_ctx);
+    } else {
+      s->aead_write_ctx = NULL;
+    }
   }
 
   if (is_read) {
@@ -622,8 +641,8 @@ int tls1_setup_key_block(SSL *s) {
     goto cipher_unavailable_err;
   }
 
-  /* TODO(davidben): Make DTLS record-layer code EVP_AEAD-aware. */
-  if (!SSL_IS_DTLS(s)) {
+  /* TODO(davidben): Prune away dead code. To be done in follow-up commit. */
+  if (1) {
     if (!ssl_cipher_get_evp_aead(&aead, &mac_secret_len, &fixed_iv_len,
                                  s->session->cipher,
                                  ssl3_version_from_wire(s, s->version))) {
