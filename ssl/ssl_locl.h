@@ -579,7 +579,7 @@ struct ssl3_enc_method {
   int (*enc)(SSL *, int);
   int (*mac)(SSL *, uint8_t *, int);
   int (*setup_key_block)(SSL *);
-  int (*generate_master_secret)(SSL *, uint8_t *, uint8_t *, int);
+  int (*generate_master_secret)(SSL *, uint8_t *, const uint8_t *, size_t);
   int (*change_cipher_state)(SSL *, int);
   int (*final_finish_mac)(SSL *, const char *, int, uint8_t *);
   int finish_mac_length;
@@ -741,7 +741,8 @@ int ssl3_change_cipher_state(SSL *s, int which);
 void ssl3_cleanup_key_block(SSL *s);
 int ssl3_do_write(SSL *s, int type);
 int ssl3_send_alert(SSL *s, int level, int desc);
-int ssl3_generate_master_secret(SSL *s, uint8_t *out, uint8_t *p, int len);
+int ssl3_generate_master_secret(SSL *s, uint8_t *out,
+                                const uint8_t *premaster, size_t premaster_len);
 int ssl3_get_req_cert_type(SSL *s, uint8_t *p);
 long ssl3_get_message(SSL *s, int header_state, int body_state, int msg_type,
                       long max, int hash_message, int *ok);
@@ -900,8 +901,8 @@ int tls1_handshake_digest(SSL *s, uint8_t *out, size_t out_len);
 int tls1_final_finish_mac(SSL *s, const char *str, int slen, uint8_t *p);
 int tls1_cert_verify_mac(SSL *s, int md_nid, uint8_t *p);
 int tls1_mac(SSL *ssl, uint8_t *md, int snd);
-int tls1_generate_master_secret(SSL *s, uint8_t *out, uint8_t *premaster,
-                                int premaster_len);
+int tls1_generate_master_secret(SSL *s, uint8_t *out, const uint8_t *premaster,
+                                size_t premaster_len);
 int tls1_export_keying_material(SSL *s, uint8_t *out, size_t olen,
                                 const char *label, size_t llen,
                                 const uint8_t *p, size_t plen, int use_context);

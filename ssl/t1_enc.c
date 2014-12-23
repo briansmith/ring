@@ -1142,8 +1142,8 @@ int tls1_mac(SSL *ssl, uint8_t *md, int send) {
   return md_size;
 }
 
-int tls1_generate_master_secret(SSL *s, uint8_t *out, uint8_t *premaster,
-                                int premaster_len) {
+int tls1_generate_master_secret(SSL *s, uint8_t *out, const uint8_t *premaster,
+                                size_t premaster_len) {
   if (s->s3->tmp.extended_master_secret) {
     uint8_t digests[2 * EVP_MAX_MD_SIZE];
     int digests_len;
