@@ -270,16 +270,12 @@ static int ssl3_get_record(SSL *s) {
   int ssl_major, ssl_minor, al;
   int enc_err, n, i, ret = -1;
   SSL3_RECORD *rr;
-  SSL_SESSION *sess;
   uint8_t *p;
-  uint8_t md[EVP_MAX_MD_SIZE];
   short version;
-  unsigned mac_size, orig_len;
   size_t extra;
   unsigned empty_record_count = 0;
 
   rr = &s->s3->rrec;
-  sess = s->session;
 
   if (s->options & SSL_OP_MICROSOFT_BIG_SSLV3_BUFFER) {
     extra = SSL3_RT_MAX_EXTRA;
@@ -387,55 +383,6 @@ again:
     OPENSSL_PUT_ERROR(SSL, ssl3_get_record, SSL_R_BLOCK_CIPHER_PAD_IS_WRONG);
     goto f_err;
   }
-
-  /* |r->length| is now the compressed data plus MAC. */
-  if (sess != NULL && s->enc_read_ctx != NULL &&
-      EVP_MD_CTX_md(s->read_hash) != NULL) {
-    /* s->read_hash != NULL => mac_size != -1 */
-    uint8_t *mac = NULL;
-    uint8_t mac_tmp[EVP_MAX_MD_SIZE];
-    mac_size = EVP_MD_CTX_size(s->read_hash);
-    assert(mac_size <= EVP_MAX_MD_SIZE);
-
-    /* kludge: *_cbc_remove_padding passes padding length in rr->type */
-    orig_len = rr->length + ((unsigned int)rr->type >> 8);
-
-    /* orig_len is the length of the record before any padding was removed.
-     * This is public information, as is the MAC in use, therefore we can
-     * safely process the record in a different amount of time if it's too
-     * short to possibly contain a MAC. */
-    if (orig_len < mac_size ||
-        /* CBC records must have a padding length byte too. */
-        (EVP_CIPHER_CTX_mode(s->enc_read_ctx) == EVP_CIPH_CBC_MODE &&
-         orig_len < mac_size + 1)) {
-      al = SSL_AD_DECODE_ERROR;
-      OPENSSL_PUT_ERROR(SSL, ssl3_get_record, SSL_R_LENGTH_TOO_SHORT);
-      goto f_err;
-    }
-
-    if (EVP_CIPHER_CTX_mode(s->enc_read_ctx) == EVP_CIPH_CBC_MODE) {
-      /* We update the length so that the TLS header bytes can be constructed
-       * correctly but we need to extract the MAC in constant time from within
-       * the record, without leaking the contents of the padding bytes. */
-      mac = mac_tmp;
-      ssl3_cbc_copy_mac(mac_tmp, rr, mac_size, orig_len);
-      rr->length -= mac_size;
-    } else {
-      /* In this case there's no padding, so |orig_len| equals |rec->length|
-       * and we checked that there's enough bytes for |mac_size| above. */
-      rr->length -= mac_size;
-      mac = &rr->data[rr->length];
-    }
-
-    i = s->enc_method->mac(s, md, 0 /* not send */);
-    if (i < 0 || mac == NULL || CRYPTO_memcmp(md, mac, (size_t)mac_size) != 0) {
-      enc_err = -1;
-    }
-    if (rr->length > SSL3_RT_MAX_COMPRESSED_LENGTH + extra + mac_size) {
-      enc_err = -1;
-    }
-  }
-
   if (enc_err < 0) {
     /* A separate 'decryption_failed' alert was introduced with TLS 1.0, SSL
      * 3.0 only has 'bad_record_mac'.  But unless a decryption failure is
@@ -570,13 +517,12 @@ int ssl3_write_bytes(SSL *s, int type, const void *buf_, int len) {
 static int do_ssl3_write(SSL *s, int type, const uint8_t *buf, unsigned int len,
                          char fragment, char is_fragment) {
   uint8_t *p, *plen;
-  int i, mac_size;
+  int i;
   int prefix_len = 0;
   int eivlen = 0;
   long align = 0;
   SSL3_RECORD *wr;
   SSL3_BUFFER *wb = &(s->s3->wbuf);
-  SSL_SESSION *sess;
 
   /* first check if there is a SSL3_BUFFER still being written out. This will
    * happen with non blocking IO */
@@ -602,17 +548,6 @@ static int do_ssl3_write(SSL *s, int type, const uint8_t *buf, unsigned int len,
   }
 
   wr = &s->s3->wrec;
-  sess = s->session;
-
-  if (sess == NULL || s->enc_write_ctx == NULL ||
-      EVP_MD_CTX_md(s->write_hash) == NULL) {
-    mac_size = 0;
-  } else {
-    mac_size = EVP_MD_CTX_size(s->write_hash);
-    if (mac_size < 0) {
-      goto err;
-    }
-  }
 
   if (fragment) {
     /* countermeasure against known-IV weakness in CBC ciphersuites (see
@@ -667,15 +602,9 @@ static int do_ssl3_write(SSL *s, int type, const uint8_t *buf, unsigned int len,
   plen = p;
   p += 2;
 
-  /* Explicit IV length, block ciphers appropriate version flag */
-  if (s->enc_write_ctx && SSL_USE_EXPLICIT_IV(s) &&
-      EVP_CIPHER_CTX_mode(s->enc_write_ctx) == EVP_CIPH_CBC_MODE) {
-    eivlen = EVP_CIPHER_CTX_iv_length(s->enc_write_ctx);
-    if (eivlen <= 1) {
-      eivlen = 0;
-    }
-  } else if (s->aead_write_ctx != NULL &&
-             s->aead_write_ctx->variable_nonce_included_in_record) {
+  /* Leave room for the variable nonce for AEADs which specify it explicitly. */
+  if (s->aead_write_ctx != NULL &&
+      s->aead_write_ctx->variable_nonce_included_in_record) {
     eivlen = s->aead_write_ctx->variable_nonce_len;
   }
 
@@ -691,13 +620,6 @@ static int do_ssl3_write(SSL *s, int type, const uint8_t *buf, unsigned int len,
 
   /* we should still have the output to wr->data and the input from wr->input.
    * Length should be wr->length. wr->data still points in the wb->buf */
-
-  if (mac_size != 0) {
-    if (s->enc_method->mac(s, &(p[wr->length + eivlen]), 1) < 0) {
-      goto err;
-    }
-    wr->length += mac_size;
-  }
 
   wr->input = p;
   wr->data = p;
@@ -930,7 +852,9 @@ start:
     /* make sure that we are not getting application data when we are doing a
      * handshake for the first time */
     if (SSL_in_init(s) && type == SSL3_RT_APPLICATION_DATA &&
-        s->enc_read_ctx == NULL) {
+        s->aead_read_ctx == NULL) {
+      /* TODO(davidben): Is this check redundant with the handshake_func
+       * check? */
       al = SSL_AD_UNEXPECTED_MESSAGE;
       OPENSSL_PUT_ERROR(SSL, ssl3_read_bytes, SSL_R_APP_DATA_IN_HANDSHAKE);
       goto f_err;

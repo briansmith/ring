@@ -1259,19 +1259,8 @@ struct ssl_st
 	struct ssl_cipher_preference_list_st *cipher_list;
 	STACK_OF(SSL_CIPHER) *cipher_list_by_id;
 
-	/* These are the ones being used, the ones in SSL_SESSION are
-	 * the ones to be 'copied' into these ones */
-	SSL_AEAD_CTX *aead_read_ctx;	/* AEAD context. If non-NULL, then
-					   |enc_read_ctx| and |read_hash| are
-					   ignored. */
-	EVP_CIPHER_CTX *enc_read_ctx;		/* cryptographic state */
-	EVP_MD_CTX *read_hash;		/* used for mac generation */
-
-	SSL_AEAD_CTX *aead_write_ctx;	/* AEAD context. If non-NULL, then
-					   |enc_write_ctx| and |write_hash| are
-					   ignored. */
-	EVP_CIPHER_CTX *enc_write_ctx;		/* cryptographic state */
-	EVP_MD_CTX *write_hash;		/* used for mac generation */
+	SSL_AEAD_CTX *aead_read_ctx;
+	SSL_AEAD_CTX *aead_write_ctx;
 
 	/* session info */
 

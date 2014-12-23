@@ -558,7 +558,6 @@ const SSL_CIPHER ssl3_ciphers[] = {
 
 const SSL3_ENC_METHOD SSLv3_enc_data = {
     tls1_enc,
-    tls1_mac,
     ssl3_prf,
     tls1_setup_key_block,
     tls1_generate_master_secret,

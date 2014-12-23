@@ -208,8 +208,6 @@ int SSL_clear(SSL *s) {
   s->packet_length = 0;
 
   ssl_clear_cipher_ctx(s);
-  ssl_clear_hash_ctx(&s->read_hash);
-  ssl_clear_hash_ctx(&s->write_hash);
 
   if (s->next_proto_negotiated) {
     OPENSSL_free(s->next_proto_negotiated);
@@ -607,8 +605,6 @@ void SSL_free(SSL *s) {
   }
 
   ssl_clear_cipher_ctx(s);
-  ssl_clear_hash_ctx(&s->read_hash);
-  ssl_clear_hash_ctx(&s->write_hash);
 
   if (s->cert != NULL) {
     ssl_cert_free(s->cert);
@@ -2365,8 +2361,6 @@ void SSL_set_accept_state(SSL *s) {
   s->handshake_func = s->method->ssl_accept;
   /* clear the current cipher */
   ssl_clear_cipher_ctx(s);
-  ssl_clear_hash_ctx(&s->read_hash);
-  ssl_clear_hash_ctx(&s->write_hash);
 }
 
 void SSL_set_connect_state(SSL *s) {
@@ -2376,8 +2370,6 @@ void SSL_set_connect_state(SSL *s) {
   s->handshake_func = s->method->ssl_connect;
   /* clear the current cipher */
   ssl_clear_cipher_ctx(s);
-  ssl_clear_hash_ctx(&s->read_hash);
-  ssl_clear_hash_ctx(&s->write_hash);
 }
 
 int ssl_undefined_function(SSL *s) {
@@ -2426,18 +2418,6 @@ const char *SSL_SESSION_get_version(const SSL_SESSION *sess) {
 }
 
 void ssl_clear_cipher_ctx(SSL *s) {
-  if (s->enc_read_ctx != NULL) {
-    EVP_CIPHER_CTX_cleanup(s->enc_read_ctx);
-    OPENSSL_free(s->enc_read_ctx);
-    s->enc_read_ctx = NULL;
-  }
-
-  if (s->enc_write_ctx != NULL) {
-    EVP_CIPHER_CTX_cleanup(s->enc_write_ctx);
-    OPENSSL_free(s->enc_write_ctx);
-    s->enc_write_ctx = NULL;
-  }
-
   if (s->aead_read_ctx != NULL) {
     EVP_AEAD_CTX_cleanup(&s->aead_read_ctx->ctx);
     OPENSSL_free(s->aead_read_ctx);
@@ -3184,27 +3164,6 @@ uint16_t ssl3_version_from_wire(SSL *s, uint16_t wire_version) {
     version = TLS1_1_VERSION;
   }
   return version;
-}
-
-/* Allocates new EVP_MD_CTX and sets pointer to it into given pointer vairable,
- * freeing  EVP_MD_CTX previously stored in that variable, if any. If EVP_MD
- * pointer is passed, initializes ctx with this md Returns newly allocated
- * ctx. */
-EVP_MD_CTX *ssl_replace_hash(EVP_MD_CTX **hash, const EVP_MD *md) {
-  ssl_clear_hash_ctx(hash);
-  *hash = EVP_MD_CTX_create();
-  if (md != NULL && *hash != NULL && !EVP_DigestInit_ex(*hash, md, NULL)) {
-    EVP_MD_CTX_destroy(*hash);
-    *hash = NULL;
-  }
-  return *hash;
-}
-
-void ssl_clear_hash_ctx(EVP_MD_CTX **hash) {
-  if (*hash) {
-    EVP_MD_CTX_destroy(*hash);
-  }
-  *hash = NULL;
 }
 
 int SSL_cache_hit(SSL *s) { return s->hit; }

@@ -577,7 +577,6 @@ struct ssl_protocol_method_st {
  * of a mess of functions, but hell, think of it as an opaque structure. */
 struct ssl3_enc_method {
   int (*enc)(SSL *, int);
-  int (*mac)(SSL *, uint8_t *, int);
   int (*prf)(SSL *, uint8_t *, size_t, const uint8_t *, size_t, const char *,
              size_t, const uint8_t *, size_t, const uint8_t *, size_t);
   int (*setup_key_block)(SSL *);
@@ -694,11 +693,6 @@ int ssl_cipher_get_evp_aead(const EVP_AEAD **out_aead,
                             size_t *out_fixed_iv_len,
                             const SSL_CIPHER *cipher, uint16_t version);
 
-int ssl_cipher_get_evp(const SSL_SESSION *s, const EVP_CIPHER **enc,
-                       const EVP_MD **md, int *mac_pkey_type,
-                       size_t *mac_secret_size);
-int ssl_cipher_get_mac(const SSL_SESSION *s, const EVP_MD **md,
-                       int *mac_pkey_type, size_t *mac_secret_size);
 int ssl_get_handshake_digest(size_t i, long *mask, const EVP_MD **md);
 int ssl_cipher_get_cert_index(const SSL_CIPHER *c);
 int ssl_cipher_has_server_public_key(const SSL_CIPHER *cipher);
@@ -913,7 +907,6 @@ int tls1_enc(SSL *s, int snd);
 int tls1_handshake_digest(SSL *s, uint8_t *out, size_t out_len);
 int tls1_final_finish_mac(SSL *s, const char *str, int slen, uint8_t *p);
 int tls1_cert_verify_mac(SSL *s, int md_nid, uint8_t *p);
-int tls1_mac(SSL *ssl, uint8_t *md, int snd);
 int tls1_generate_master_secret(SSL *s, uint8_t *out, const uint8_t *premaster,
                                 size_t premaster_len);
 int tls1_export_keying_material(SSL *s, uint8_t *out, size_t olen,
@@ -1030,8 +1023,6 @@ int ssl3_is_version_enabled(SSL *s, uint16_t version);
  * the wire version except at API boundaries. */
 uint16_t ssl3_version_from_wire(SSL *s, uint16_t wire_version);
 
-EVP_MD_CTX *ssl_replace_hash(EVP_MD_CTX **hash, const EVP_MD *md);
-void ssl_clear_hash_ctx(EVP_MD_CTX **hash);
 int ssl_add_serverhello_renegotiate_ext(SSL *s, uint8_t *p, int *len,
                                         int maxlen);
 int ssl_parse_serverhello_renegotiate_ext(SSL *s, CBS *cbs, int *out_alert);
@@ -1054,20 +1045,5 @@ int ssl_add_clienthello_use_srtp_ext(SSL *s, uint8_t *p, int *len, int maxlen);
 int ssl_parse_clienthello_use_srtp_ext(SSL *s, CBS *cbs, int *out_alert);
 int ssl_add_serverhello_use_srtp_ext(SSL *s, uint8_t *p, int *len, int maxlen);
 int ssl_parse_serverhello_use_srtp_ext(SSL *s, CBS *cbs, int *out_alert);
-
-/* s3_cbc.c */
-void ssl3_cbc_copy_mac(uint8_t *out, const SSL3_RECORD *rec, unsigned md_size,
-                       unsigned orig_len);
-int ssl3_cbc_remove_padding(const SSL *s, SSL3_RECORD *rec, unsigned block_size,
-                            unsigned mac_size);
-int tls1_cbc_remove_padding(const SSL *s, SSL3_RECORD *rec, unsigned block_size,
-                            unsigned mac_size);
-char ssl3_cbc_record_digest_supported(const EVP_MD_CTX *ctx);
-int ssl3_cbc_digest_record(const EVP_MD_CTX *ctx, uint8_t *md_out,
-                           size_t *md_out_size, const uint8_t header[13],
-                           const uint8_t *data, size_t data_plus_mac_size,
-                           size_t data_plus_mac_plus_padding_size,
-                           const uint8_t *mac_secret,
-                           unsigned mac_secret_length, char is_sslv3);
 
 #endif
