@@ -694,7 +694,7 @@ int ssl_cipher_get_evp(const SSL_SESSION *s, const EVP_CIPHER **enc,
                        size_t *mac_secret_size);
 int ssl_cipher_get_mac(const SSL_SESSION *s, const EVP_MD **md,
                        int *mac_pkey_type, size_t *mac_secret_size);
-int ssl_get_handshake_digest(int i, long *mask, const EVP_MD **md);
+int ssl_get_handshake_digest(size_t i, long *mask, const EVP_MD **md);
 int ssl_cipher_get_cert_index(const SSL_CIPHER *c);
 int ssl_cipher_has_server_public_key(const SSL_CIPHER *cipher);
 int ssl_cipher_requires_server_key_exchange(const SSL_CIPHER *cipher);
@@ -900,7 +900,8 @@ int tls1_handshake_digest(SSL *s, uint8_t *out, size_t out_len);
 int tls1_final_finish_mac(SSL *s, const char *str, int slen, uint8_t *p);
 int tls1_cert_verify_mac(SSL *s, int md_nid, uint8_t *p);
 int tls1_mac(SSL *ssl, uint8_t *md, int snd);
-int tls1_generate_master_secret(SSL *s, uint8_t *out, uint8_t *p, int len);
+int tls1_generate_master_secret(SSL *s, uint8_t *out, uint8_t *premaster,
+                                int premaster_len);
 int tls1_export_keying_material(SSL *s, uint8_t *out, size_t olen,
                                 const char *label, size_t llen,
                                 const uint8_t *p, size_t plen, int use_context);

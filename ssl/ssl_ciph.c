@@ -448,8 +448,8 @@ int ssl_cipher_get_mac(const SSL_SESSION *s, const EVP_MD **md,
   return 1;
 }
 
-int ssl_get_handshake_digest(int idx, long *mask, const EVP_MD **md) {
-  if (idx < 0 || idx >= SSL_MAX_DIGEST) {
+int ssl_get_handshake_digest(size_t idx, long *mask, const EVP_MD **md) {
+  if (idx >= SSL_MAX_DIGEST) {
     return 0;
   }
   *mask = ssl_handshake_digests[idx].mask;
