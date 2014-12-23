@@ -252,7 +252,8 @@ struct env_md_ctx_st {
    * context. */
   void *md_data;
   /* update is usually copied from |digest->update| but can differ in some
-   * cases, i.e. HMAC. */
+   * cases, i.e. HMAC.
+   * TODO(davidben): Remove this hook once |EVP_PKEY_HMAC| is gone. */
   int (*update)(EVP_MD_CTX *ctx, const void *data, size_t count);
 
   /* pctx is an opaque (at this layer) pointer to additional context that
