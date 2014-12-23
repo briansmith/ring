@@ -40,6 +40,11 @@ TESTS="
 ./crypto/cipher/aead_test aes-256-cbc-sha384-tls $SRC/crypto/cipher/test/aes_256_cbc_sha384_tls_tests.txt
 ./crypto/cipher/aead_test des-ede3-cbc-sha1-tls $SRC/crypto/cipher/test/des_ede3_cbc_sha1_tls_tests.txt
 ./crypto/cipher/aead_test des-ede3-cbc-sha1-tls-implicit-iv $SRC/crypto/cipher/test/des_ede3_cbc_sha1_tls_implicit_iv_tests.txt
+./crypto/cipher/aead_test rc4-md5-ssl3 $SRC/crypto/cipher/test/rc4_md5_ssl3_tests.txt
+./crypto/cipher/aead_test rc4-sha1-ssl3 $SRC/crypto/cipher/test/rc4_sha1_ssl3_tests.txt
+./crypto/cipher/aead_test aes-128-cbc-sha1-ssl3 $SRC/crypto/cipher/test/aes_128_cbc_sha1_ssl3_tests.txt
+./crypto/cipher/aead_test aes-256-cbc-sha1-ssl3 $SRC/crypto/cipher/test/aes_256_cbc_sha1_ssl3_tests.txt
+./crypto/cipher/aead_test des-ede3-cbc-sha1-ssl3 $SRC/crypto/cipher/test/des_ede3_cbc_sha1_ssl3_tests.txt
 ./crypto/cipher/cipher_test $SRC/crypto/cipher/test/cipher_test.txt
 ./crypto/constant_time_test
 ./crypto/dh/dh_test

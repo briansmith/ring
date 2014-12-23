@@ -557,12 +557,12 @@ const SSL_CIPHER ssl3_ciphers[] = {
 };
 
 const SSL3_ENC_METHOD SSLv3_enc_data = {
-    ssl3_enc,
-    n_ssl3_mac,
+    tls1_enc,
+    tls1_mac,
     ssl3_prf,
-    ssl3_setup_key_block,
+    tls1_setup_key_block,
     tls1_generate_master_secret,
-    ssl3_change_cipher_state,
+    tls1_change_cipher_state,
     ssl3_final_finish_mac,
     MD5_DIGEST_LENGTH+SHA_DIGEST_LENGTH,
     ssl3_cert_verify_mac,

@@ -401,6 +401,7 @@ static int tls1_change_cipher_state_aead(SSL *s, char is_read,
     aead_ctx->omit_length_in_ad = 1;
   }
   aead_ctx->variable_nonce_len = s->s3->tmp.new_variable_iv_len;
+  aead_ctx->omit_version_in_ad = (s->version == SSL3_VERSION);
 
   if (aead_ctx->variable_nonce_len + aead_ctx->fixed_nonce_len !=
       EVP_AEAD_nonce_length(aead)) {
@@ -759,8 +760,11 @@ int tls1_enc(SSL *s, int send) {
     }
 
     ad[8] = rec->type;
-    ad[9] = (uint8_t)(s->version >> 8);
-    ad[10] = (uint8_t)(s->version);
+    ad_len = 9;
+    if (!aead->omit_version_in_ad) {
+      ad[ad_len++] = (uint8_t)(s->version >> 8);
+      ad[ad_len++] = (uint8_t)(s->version);
+    }
 
     if (aead->fixed_nonce_len + aead->variable_nonce_len > sizeof(nonce)) {
       OPENSSL_PUT_ERROR(SSL, tls1_enc, ERR_R_INTERNAL_ERROR);
@@ -803,12 +807,9 @@ int tls1_enc(SSL *s, int send) {
         eivlen = aead->variable_nonce_len;
       }
 
-      if (aead->omit_length_in_ad) {
-        ad_len = 11;
-      } else {
-        ad[11] = len >> 8;
-        ad[12] = len & 0xff;
-        ad_len = 13;
+      if (!aead->omit_length_in_ad) {
+        ad[ad_len++] = len >> 8;
+        ad[ad_len++] = len & 0xff;
       }
 
       if (!EVP_AEAD_CTX_seal(&aead->ctx, out + eivlen, &n, len + aead->tag_len,
@@ -843,17 +844,14 @@ int tls1_enc(SSL *s, int send) {
         out += aead->variable_nonce_len;
       }
 
-      if (aead->omit_length_in_ad) {
-        ad_len = 11;
-      } else {
+      if (!aead->omit_length_in_ad) {
         if (len < aead->tag_len) {
           return 0;
         }
         size_t plaintext_len = len - aead->tag_len;
 
-        ad[11] = plaintext_len >> 8;
-        ad[12] = plaintext_len & 0xff;
-        ad_len = 13;
+        ad[ad_len++] = plaintext_len >> 8;
+        ad[ad_len++] = plaintext_len & 0xff;
       }
 
       if (!EVP_AEAD_CTX_open(&aead->ctx, out, &n, rec->length, nonce, nonce_used, in,

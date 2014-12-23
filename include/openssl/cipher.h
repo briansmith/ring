@@ -526,6 +526,10 @@ OPENSSL_EXPORT const EVP_CIPHER *EVP_aes_192_cbc(void);
 #define CIPHER_F_aead_tls_open 124
 #define CIPHER_F_aead_tls_seal 125
 #define CIPHER_F_aead_tls_ensure_cipher_init 126
+#define CIPHER_F_aead_ssl3_open 127
+#define CIPHER_F_aead_ssl3_seal 128
+#define CIPHER_F_aead_ssl3_init 129
+#define CIPHER_F_aead_ssl3_ensure_cipher_init 130
 #define CIPHER_R_WRAP_MODE_NOT_ALLOWED 100
 #define CIPHER_R_AES_KEY_SETUP_FAILED 101
 #define CIPHER_R_INPUT_NOT_INITIALIZED 102

@@ -217,6 +217,16 @@ int main(int argc, char **argv) {
     aead = EVP_aead_des_ede3_cbc_sha1_tls();
   } else if (strcmp(argv[1], "des-ede3-cbc-sha1-tls-implicit-iv") == 0) {
     aead = EVP_aead_des_ede3_cbc_sha1_tls_implicit_iv();
+  } else if (strcmp(argv[1], "rc4-md5-ssl3") == 0) {
+    aead = EVP_aead_rc4_md5_ssl3();
+  } else if (strcmp(argv[1], "rc4-sha1-ssl3") == 0) {
+    aead = EVP_aead_rc4_sha1_ssl3();
+  } else if (strcmp(argv[1], "aes-128-cbc-sha1-ssl3") == 0) {
+    aead = EVP_aead_aes_128_cbc_sha1_ssl3();
+  } else if (strcmp(argv[1], "aes-256-cbc-sha1-ssl3") == 0) {
+    aead = EVP_aead_aes_256_cbc_sha1_ssl3();
+  } else if (strcmp(argv[1], "des-ede3-cbc-sha1-ssl3") == 0) {
+    aead = EVP_aead_des_ede3_cbc_sha1_ssl3();
   } else if (strcmp(argv[1], "aes-128-key-wrap") == 0) {
     aead = EVP_aead_aes_128_key_wrap();
   } else if (strcmp(argv[1], "aes-256-key-wrap") == 0) {

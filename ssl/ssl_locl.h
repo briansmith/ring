@@ -642,6 +642,9 @@ struct ssl_aead_ctx_st {
   /* omit_length_in_ad is non-zero if the length should be omitted in the
    * AEAD's ad parameter. */
   char omit_length_in_ad;
+  /* omit_version_in_ad is non-zero if the version should be omitted
+   * in the AEAD's ad parameter. */
+  char omit_version_in_ad;
 };
 
 extern const SSL_CIPHER ssl3_ciphers[];
@@ -737,13 +740,11 @@ int ssl3_send_server_certificate(SSL *s);
 int ssl3_send_new_session_ticket(SSL *s);
 int ssl3_send_cert_status(SSL *s);
 int ssl3_get_finished(SSL *s, int state_a, int state_b);
-int ssl3_setup_key_block(SSL *s);
 int ssl3_send_change_cipher_spec(SSL *s, int state_a, int state_b);
 int ssl3_prf(SSL *s, uint8_t *out, size_t out_len, const uint8_t *secret,
              size_t secret_len, const char *label, size_t label_len,
              const uint8_t *seed1, size_t seed1_len,
              const uint8_t *seed2, size_t seed2_len);
-int ssl3_change_cipher_state(SSL *s, int which);
 void ssl3_cleanup_key_block(SSL *s);
 int ssl3_do_write(SSL *s, int type);
 int ssl3_send_alert(SSL *s, int level, int desc);
@@ -776,8 +777,6 @@ int ssl3_write_bytes(SSL *s, int type, const void *buf, int len);
 int ssl3_final_finish_mac(SSL *s, const char *sender, int slen, uint8_t *p);
 int ssl3_cert_verify_mac(SSL *s, int md_nid, uint8_t *p);
 void ssl3_finish_mac(SSL *s, const uint8_t *buf, int len);
-int ssl3_enc(SSL *s, int send_data);
-int n_ssl3_mac(SSL *ssl, uint8_t *md, int send_data);
 void ssl3_free_digest_list(SSL *s);
 unsigned long ssl3_output_cert_chain(SSL *s, CERT_PKEY *cpk);
 const SSL_CIPHER *ssl3_choose_cipher(

@@ -143,6 +143,18 @@ OPENSSL_EXPORT const EVP_AEAD *EVP_aead_aes_256_cbc_sha384_tls(void);
 OPENSSL_EXPORT const EVP_AEAD *EVP_aead_des_ede3_cbc_sha1_tls(void);
 OPENSSL_EXPORT const EVP_AEAD *EVP_aead_des_ede3_cbc_sha1_tls_implicit_iv(void);
 
+/* SSLv3 specific AEAD algorithms.
+ *
+ * These AEAD primitives do not meet the definition of generic AEADs. They are
+ * all specific to SSLv3 in some fashion and should not be used outside of that
+ * context. */
+
+OPENSSL_EXPORT const EVP_AEAD *EVP_aead_rc4_md5_ssl3(void);
+OPENSSL_EXPORT const EVP_AEAD *EVP_aead_rc4_sha1_ssl3(void);
+OPENSSL_EXPORT const EVP_AEAD *EVP_aead_aes_128_cbc_sha1_ssl3(void);
+OPENSSL_EXPORT const EVP_AEAD *EVP_aead_aes_256_cbc_sha1_ssl3(void);
+OPENSSL_EXPORT const EVP_AEAD *EVP_aead_des_ede3_cbc_sha1_ssl3(void);
+
 /* Utility functions. */
 
 /* EVP_AEAD_key_length returns the length, in bytes, of the keys used by

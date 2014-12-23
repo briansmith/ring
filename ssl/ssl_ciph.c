@@ -270,11 +270,19 @@ int ssl_cipher_get_evp_aead(const EVP_AEAD **out_aead,
     case SSL_RC4:
       switch (cipher->algorithm_mac) {
         case SSL_MD5:
-          *out_aead = EVP_aead_rc4_md5_tls();
+          if (version == SSL3_VERSION) {
+            *out_aead = EVP_aead_rc4_md5_ssl3();
+          } else {
+            *out_aead = EVP_aead_rc4_md5_tls();
+          }
           *out_mac_secret_len = MD5_DIGEST_LENGTH;
           return 1;
         case SSL_SHA1:
-          *out_aead = EVP_aead_rc4_sha1_tls();
+          if (version == SSL3_VERSION) {
+            *out_aead = EVP_aead_rc4_sha1_ssl3();
+          } else {
+            *out_aead = EVP_aead_rc4_sha1_tls();
+          }
           *out_mac_secret_len = SHA_DIGEST_LENGTH;
           return 1;
         default:
@@ -284,7 +292,10 @@ int ssl_cipher_get_evp_aead(const EVP_AEAD **out_aead,
     case SSL_AES128:
       switch (cipher->algorithm_mac) {
         case SSL_SHA1:
-          if (version <= TLS1_VERSION) {
+          if (version == SSL3_VERSION) {
+            *out_aead = EVP_aead_aes_128_cbc_sha1_ssl3();
+            *out_fixed_iv_len = 16;
+          } else if (version == TLS1_VERSION) {
             *out_aead = EVP_aead_aes_128_cbc_sha1_tls_implicit_iv();
             *out_fixed_iv_len = 16;
           } else {
@@ -303,7 +314,10 @@ int ssl_cipher_get_evp_aead(const EVP_AEAD **out_aead,
     case SSL_AES256:
       switch (cipher->algorithm_mac) {
         case SSL_SHA1:
-          if (version <= TLS1_VERSION) {
+          if (version == SSL3_VERSION) {
+            *out_aead = EVP_aead_aes_256_cbc_sha1_ssl3();
+            *out_fixed_iv_len = 16;
+          } else if (version == TLS1_VERSION) {
             *out_aead = EVP_aead_aes_256_cbc_sha1_tls_implicit_iv();
             *out_fixed_iv_len = 16;
           } else {
@@ -326,7 +340,10 @@ int ssl_cipher_get_evp_aead(const EVP_AEAD **out_aead,
     case SSL_3DES:
       switch (cipher->algorithm_mac) {
         case SSL_SHA1:
-          if (version <= TLS1_VERSION) {
+          if (version == SSL3_VERSION) {
+            *out_aead = EVP_aead_des_ede3_cbc_sha1_ssl3();
+            *out_fixed_iv_len = 8;
+          } else if (version == TLS1_VERSION) {
             *out_aead = EVP_aead_des_ede3_cbc_sha1_tls_implicit_iv();
             *out_fixed_iv_len = 8;
           } else {
