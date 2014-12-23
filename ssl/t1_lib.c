@@ -129,6 +129,7 @@ static int ssl_check_serverhello_tlsext(SSL *s);
 const SSL3_ENC_METHOD TLSv1_enc_data = {
     tls1_enc,
     tls1_mac,
+    tls1_prf,
     tls1_setup_key_block,
     tls1_generate_master_secret,
     tls1_change_cipher_state,
@@ -148,6 +149,7 @@ const SSL3_ENC_METHOD TLSv1_enc_data = {
 const SSL3_ENC_METHOD TLSv1_1_enc_data = {
     tls1_enc,
     tls1_mac,
+    tls1_prf,
     tls1_setup_key_block,
     tls1_generate_master_secret,
     tls1_change_cipher_state,
@@ -167,6 +169,7 @@ const SSL3_ENC_METHOD TLSv1_1_enc_data = {
 const SSL3_ENC_METHOD TLSv1_2_enc_data = {
     tls1_enc,
     tls1_mac,
+    tls1_prf,
     tls1_setup_key_block,
     tls1_generate_master_secret,
     tls1_change_cipher_state,

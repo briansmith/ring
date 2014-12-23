@@ -2269,7 +2269,7 @@ OPENSSL_EXPORT int SSL_set_session_ticket_ext_cb(SSL *s, void *cb, void *arg);
 #define SSL_F_ssl3_connect 128
 #define SSL_F_dtls1_connect 129
 #define SSL_F_SSL_use_RSAPrivateKey 130
-#define SSL_F_tls1_PRF 131
+#define SSL_F_tls1_prf 131
 #define SSL_F_ssl_bytes_to_cipher_list 132
 #define SSL_F_ssl3_do_change_cipher_spec 133
 #define SSL_F_SSL_SESSION_set1_id_context 134
@@ -2435,7 +2435,7 @@ OPENSSL_EXPORT int SSL_set_session_ticket_ext_cb(SSL *s, void *cb, void *arg);
 #define SSL_F_ssl3_get_v2_client_hello 295
 #define SSL_F_ssl3_get_initial_bytes 296
 #define SSL_F_tls1_enc 297
-#define SSL_F_ssl3_PRF 298
+#define SSL_F_ssl3_prf 298
 #define SSL_R_UNABLE_TO_FIND_ECDH_PARAMETERS 100
 #define SSL_R_DECRYPTION_FAILED_OR_BAD_RECORD_MAC 101
 #define SSL_R_INVALID_NULL_CMD_NAME 102

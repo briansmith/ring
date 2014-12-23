@@ -162,10 +162,10 @@ static const uint8_t ssl3_pad_2[48] = {
 static int ssl3_handshake_mac(SSL *s, int md_nid, const char *sender, int len,
                               uint8_t *p);
 
-static int ssl3_PRF(uint8_t *out, size_t out_len,
-                    const uint8_t *secret, size_t secret_len,
-                    const uint8_t *seed1, size_t seed1_len,
-                    const uint8_t *seed2, size_t seed2_len) {
+int ssl3_prf(SSL *s, uint8_t *out, size_t out_len, const uint8_t *secret,
+             size_t secret_len, const char *label, size_t label_len,
+             const uint8_t *seed1, size_t seed1_len,
+             const uint8_t *seed2, size_t seed2_len) {
   EVP_MD_CTX md5;
   EVP_MD_CTX sha1;
   uint8_t buf[16], smd[SHA_DIGEST_LENGTH];
@@ -179,7 +179,7 @@ static int ssl3_PRF(uint8_t *out, size_t out_len,
     k++;
     if (k > sizeof(buf)) {
       /* bug: 'buf' is too small for this ciphersuite */
-      OPENSSL_PUT_ERROR(SSL, ssl3_PRF, ERR_R_INTERNAL_ERROR);
+      OPENSSL_PUT_ERROR(SSL, ssl3_prf, ERR_R_INTERNAL_ERROR);
       return 0;
     }
 
@@ -188,11 +188,12 @@ static int ssl3_PRF(uint8_t *out, size_t out_len,
     }
     c++;
     if (!EVP_DigestInit_ex(&sha1, EVP_sha1(), NULL)) {
-      OPENSSL_PUT_ERROR(SSL, ssl3_PRF, ERR_LIB_EVP);
+      OPENSSL_PUT_ERROR(SSL, ssl3_prf, ERR_LIB_EVP);
       return 0;
     }
     EVP_DigestUpdate(&sha1, buf, k);
     EVP_DigestUpdate(&sha1, secret, secret_len);
+    /* |label| is ignored for SSLv3. */
     if (seed1_len) {
       EVP_DigestUpdate(&sha1, seed1, seed1_len);
     }
@@ -202,7 +203,7 @@ static int ssl3_PRF(uint8_t *out, size_t out_len,
     EVP_DigestFinal_ex(&sha1, smd, NULL);
 
     if (!EVP_DigestInit_ex(&md5, EVP_md5(), NULL)) {
-      OPENSSL_PUT_ERROR(SSL, ssl3_PRF, ERR_LIB_EVP);
+      OPENSSL_PUT_ERROR(SSL, ssl3_prf, ERR_LIB_EVP);
       return 0;
     }
     EVP_DigestUpdate(&md5, secret, secret_len);
@@ -225,9 +226,13 @@ static int ssl3_PRF(uint8_t *out, size_t out_len,
 }
 
 static int ssl3_generate_key_block(SSL *s, uint8_t *out, size_t out_len) {
-  return ssl3_PRF(out, out_len, s->session->master_key,
-                  s->session->master_key_length, s->s3->server_random,
-                  SSL3_RANDOM_SIZE, s->s3->client_random, SSL3_RANDOM_SIZE);
+  return s->enc_method->prf(s, out, out_len, s->session->master_key,
+                            s->session->master_key_length,
+                            TLS_MD_KEY_EXPANSION_CONST,
+                            TLS_MD_KEY_EXPANSION_CONST_SIZE,
+                            s->s3->server_random, SSL3_RANDOM_SIZE,
+                            s->s3->client_random,
+                            SSL3_RANDOM_SIZE);
 }
 
 int ssl3_change_cipher_state(SSL *s, int which) {
@@ -748,17 +753,6 @@ void ssl3_record_sequence_update(uint8_t *seq) {
       break;
     }
   }
-}
-
-int ssl3_generate_master_secret(SSL *s, uint8_t *out, const uint8_t *premaster,
-                                size_t premaster_len) {
-  if (!ssl3_PRF(out, SSL3_MASTER_SECRET_SIZE, premaster, premaster_len,
-                s->s3->client_random, SSL3_RANDOM_SIZE, s->s3->server_random,
-                SSL3_RANDOM_SIZE)) {
-    return 0;
-  }
-
-  return SSL3_MASTER_SECRET_SIZE;
 }
 
 int ssl3_alert_code(int code) {

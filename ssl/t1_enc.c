@@ -219,16 +219,10 @@ err:
   return ret;
 }
 
-/* tls1_PRF computes the TLS PRF function as described in RFC 5246, section 5
- * and RFC 2246 section 5. It writes |out_len| bytes to |out|, using
- * |digest_mask| to select the hash functions, |secret| as the secret, and
- * |label| as the label. |seed1| and |seed2| are concatenated to form the seed
- * parameter. It returns one on success and zero on failure. */
-static int tls1_PRF(uint8_t *out, size_t out_len, long digest_mask,
-                    const uint8_t *secret, size_t secret_len,
-                    const char *label, size_t label_len,
-                    const uint8_t *seed1, size_t seed1_len,
-                    const uint8_t *seed2, size_t seed2_len) {
+int tls1_prf(SSL *s, uint8_t *out, size_t out_len, const uint8_t *secret,
+             size_t secret_len, const char *label, size_t label_len,
+             const uint8_t *seed1, size_t seed1_len,
+             const uint8_t *seed2, size_t seed2_len) {
   size_t idx, len, count, i;
   const uint8_t *S1;
   long m;
@@ -243,14 +237,14 @@ static int tls1_PRF(uint8_t *out, size_t out_len, long digest_mask,
   /* Allocate a temporary buffer. */
   tmp = OPENSSL_malloc(out_len);
   if (tmp == NULL) {
-    OPENSSL_PUT_ERROR(SSL, tls1_PRF, ERR_R_MALLOC_FAILURE);
+    OPENSSL_PUT_ERROR(SSL, tls1_prf, ERR_R_MALLOC_FAILURE);
     return 0;
   }
 
   /* Count number of digests and partition |secret| evenly. */
   count = 0;
   for (idx = 0; ssl_get_handshake_digest(idx, &m, &md); idx++) {
-    if ((m << TLS1_PRF_DGST_SHIFT) & digest_mask) {
+    if ((m << TLS1_PRF_DGST_SHIFT) & ssl_get_algorithm2(s)) {
       count++;
     }
   }
@@ -265,7 +259,7 @@ static int tls1_PRF(uint8_t *out, size_t out_len, long digest_mask,
   S1 = secret;
   memset(out, 0, out_len);
   for (idx = 0; ssl_get_handshake_digest(idx, &m, &md); idx++) {
-    if ((m << TLS1_PRF_DGST_SHIFT) & digest_mask) {
+    if ((m << TLS1_PRF_DGST_SHIFT) & ssl_get_algorithm2(s)) {
       /* If |count| is 2 and |secret_len| is odd, |secret| is partitioned into
        * two halves with an overlapping byte. */
       if (!tls1_P_hash(tmp, out_len, md, S1, len + (secret_len & 1),
@@ -288,11 +282,13 @@ err:
 }
 
 static int tls1_generate_key_block(SSL *s, uint8_t *out, size_t out_len) {
-  return tls1_PRF(out, out_len, ssl_get_algorithm2(s),
-                  s->session->master_key, s->session->master_key_length,
-                  TLS_MD_KEY_EXPANSION_CONST, TLS_MD_KEY_EXPANSION_CONST_SIZE,
-                  s->s3->server_random, SSL3_RANDOM_SIZE, s->s3->client_random,
-                  SSL3_RANDOM_SIZE);
+  return s->enc_method->prf(s, out, out_len, s->session->master_key,
+                            s->session->master_key_length,
+                            TLS_MD_KEY_EXPANSION_CONST,
+                            TLS_MD_KEY_EXPANSION_CONST_SIZE,
+                            s->s3->server_random, SSL3_RANDOM_SIZE,
+                            s->s3->client_random,
+                            SSL3_RANDOM_SIZE);
 }
 
 /* tls1_aead_ctx_init allocates |*aead_ctx|, if needed and returns 1. It
@@ -1046,9 +1042,9 @@ int tls1_final_finish_mac(SSL *s, const char *str, int slen, uint8_t *out) {
     digests_len = 0;
   }
 
-  if (!tls1_PRF(out, 12, ssl_get_algorithm2(s), s->session->master_key,
-                s->session->master_key_length, str, slen, buf, digests_len,
-                NULL, 0)) {
+  if (!s->enc_method->prf(s, out, 12, s->session->master_key,
+                          s->session->master_key_length, str, slen, buf,
+                          digests_len, NULL, 0)) {
     err = 1;
   }
 
@@ -1165,18 +1161,18 @@ int tls1_generate_master_secret(SSL *s, uint8_t *out, const uint8_t *premaster,
       return 0;
     }
 
-    if (!tls1_PRF(out, SSL3_MASTER_SECRET_SIZE, ssl_get_algorithm2(s),
-                  premaster, premaster_len, TLS_MD_EXTENDED_MASTER_SECRET_CONST,
-                  TLS_MD_EXTENDED_MASTER_SECRET_CONST_SIZE, digests,
-                  digests_len, NULL, 0)) {
+    if (!s->enc_method->prf(s, out, SSL3_MASTER_SECRET_SIZE, premaster,
+                            premaster_len, TLS_MD_EXTENDED_MASTER_SECRET_CONST,
+                            TLS_MD_EXTENDED_MASTER_SECRET_CONST_SIZE, digests,
+                            digests_len, NULL, 0)) {
       return 0;
     }
   } else {
-    if (!tls1_PRF(out, SSL3_MASTER_SECRET_SIZE, ssl_get_algorithm2(s),
-                  premaster, premaster_len, TLS_MD_MASTER_SECRET_CONST,
-                  TLS_MD_MASTER_SECRET_CONST_SIZE, s->s3->client_random,
-                  SSL3_RANDOM_SIZE, s->s3->server_random,
-                  SSL3_RANDOM_SIZE)) {
+    if (!s->enc_method->prf(s, out, SSL3_MASTER_SECRET_SIZE, premaster,
+                            premaster_len, TLS_MD_MASTER_SECRET_CONST,
+                            TLS_MD_MASTER_SECRET_CONST_SIZE,
+                            s->s3->client_random, SSL3_RANDOM_SIZE,
+                            s->s3->server_random, SSL3_RANDOM_SIZE)) {
       return 0;
     }
   }
@@ -1237,9 +1233,12 @@ int tls1_export_keying_material(SSL *s, uint8_t *out, size_t olen,
     goto err1;
   }
 
-  ret = tls1_PRF(out, olen, ssl_get_algorithm2(s), s->session->master_key,
-                 s->session->master_key_length, (const char *)val, vallen, NULL,
-                 0, NULL, 0);
+  /* SSL_export_keying_material is not implemented for SSLv3, so passing
+   * everything through the label parameter works. */
+  assert(s->version != SSL3_VERSION);
+  ret = s->enc_method->prf(s, out, olen, s->session->master_key,
+                           s->session->master_key_length, (const char *)val,
+                           vallen, NULL, 0, NULL, 0);
   goto out;
 
 err1:

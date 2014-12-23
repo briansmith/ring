@@ -578,6 +578,8 @@ struct ssl_protocol_method_st {
 struct ssl3_enc_method {
   int (*enc)(SSL *, int);
   int (*mac)(SSL *, uint8_t *, int);
+  int (*prf)(SSL *, uint8_t *, size_t, const uint8_t *, size_t, const char *,
+             size_t, const uint8_t *, size_t, const uint8_t *, size_t);
   int (*setup_key_block)(SSL *);
   int (*generate_master_secret)(SSL *, uint8_t *, const uint8_t *, size_t);
   int (*change_cipher_state)(SSL *, int);
@@ -737,12 +739,14 @@ int ssl3_send_cert_status(SSL *s);
 int ssl3_get_finished(SSL *s, int state_a, int state_b);
 int ssl3_setup_key_block(SSL *s);
 int ssl3_send_change_cipher_spec(SSL *s, int state_a, int state_b);
+int ssl3_prf(SSL *s, uint8_t *out, size_t out_len, const uint8_t *secret,
+             size_t secret_len, const char *label, size_t label_len,
+             const uint8_t *seed1, size_t seed1_len,
+             const uint8_t *seed2, size_t seed2_len);
 int ssl3_change_cipher_state(SSL *s, int which);
 void ssl3_cleanup_key_block(SSL *s);
 int ssl3_do_write(SSL *s, int type);
 int ssl3_send_alert(SSL *s, int level, int desc);
-int ssl3_generate_master_secret(SSL *s, uint8_t *out,
-                                const uint8_t *premaster, size_t premaster_len);
 int ssl3_get_req_cert_type(SSL *s, uint8_t *p);
 long ssl3_get_message(SSL *s, int header_state, int body_state, int msg_type,
                       long max, int hash_message, int *ok);
@@ -893,6 +897,16 @@ int dtls1_dispatch_alert(SSL *s);
 
 int ssl_init_wbio_buffer(SSL *s, int push);
 void ssl_free_wbio_buffer(SSL *s);
+
+/* tls1_prf computes the TLS PRF function for |s| as described in RFC 5246,
+ * section 5 and RFC 2246 section 5. It writes |out_len| bytes to |out|, using
+ * |secret| as the secret and |label| as the label. |seed1| and |seed2| are
+ * concatenated to form the seed parameter. It returns one on success and zero
+ * on failure. */
+int tls1_prf(SSL *s, uint8_t *out, size_t out_len, const uint8_t *secret,
+             size_t secret_len, const char *label, size_t label_len,
+             const uint8_t *seed1, size_t seed1_len,
+             const uint8_t *seed2, size_t seed2_len);
 
 int tls1_change_cipher_state(SSL *s, int which);
 int tls1_setup_key_block(SSL *s);

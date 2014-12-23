@@ -79,6 +79,7 @@ static int dtls1_handshake_write(SSL *s);
 const SSL3_ENC_METHOD DTLSv1_enc_data = {
   tls1_enc,
   tls1_mac,
+  tls1_prf,
   tls1_setup_key_block,
   tls1_generate_master_secret,
   tls1_change_cipher_state,
@@ -98,6 +99,7 @@ const SSL3_ENC_METHOD DTLSv1_enc_data = {
 const SSL3_ENC_METHOD DTLSv1_2_enc_data = {
   tls1_enc,
   tls1_mac,
+  tls1_prf,
   tls1_setup_key_block,
   tls1_generate_master_secret,
   tls1_change_cipher_state,
