@@ -51,11 +51,14 @@ enum {
   CT,      /* hex encoded ciphertext (not including the authenticator,
               which is next). */
   TAG,     /* hex encoded authenticator. */
+  NO_SEAL, /* non-zero length if seal(IN) is not expected to be CT+TAG,
+              however open(CT+TAG) should still be IN. */
+  FAILS,   /* non-zero length if open(CT+TAG) is expected to fail. */
   NUM_TYPES,
 };
 
-static const char NAMES[6][NUM_TYPES] = {
-    "KEY", "NONCE", "IN", "AD", "CT", "TAG",
+static const char NAMES[8][NUM_TYPES] = {
+  "KEY", "NONCE", "IN", "AD", "CT", "TAG", "NO_SEAL", "FAILS",
 };
 
 static unsigned char hex_digit(char h) {
@@ -84,27 +87,33 @@ static int run_test_case(const EVP_AEAD *aead,
     return 0;
   }
 
-  if (!EVP_AEAD_CTX_seal(&ctx, out, &ciphertext_len, sizeof(out), bufs[NONCE],
-                         lengths[NONCE], bufs[IN], lengths[IN], bufs[AD],
-                         lengths[AD])) {
-    fprintf(stderr, "Failed to run AEAD on line %u\n", line_no);
-    return 0;
-  }
+  if (!lengths[NO_SEAL]) {
+    if (!EVP_AEAD_CTX_seal(&ctx, out, &ciphertext_len, sizeof(out), bufs[NONCE],
+                           lengths[NONCE], bufs[IN], lengths[IN], bufs[AD],
+                           lengths[AD])) {
+      fprintf(stderr, "Failed to run AEAD on line %u\n", line_no);
+      return 0;
+    }
 
-  if (ciphertext_len != lengths[CT] + lengths[TAG]) {
-    fprintf(stderr, "Bad output length on line %u: %u vs %u\n", line_no,
-            (unsigned)ciphertext_len, (unsigned)(lengths[CT] + lengths[TAG]));
-    return 0;
-  }
+    if (ciphertext_len != lengths[CT] + lengths[TAG]) {
+      fprintf(stderr, "Bad output length on line %u: %u vs %u\n", line_no,
+              (unsigned)ciphertext_len, (unsigned)(lengths[CT] + lengths[TAG]));
+      return 0;
+    }
 
-  if (memcmp(out, bufs[CT], lengths[CT]) != 0) {
-    fprintf(stderr, "Bad output on line %u\n", line_no);
-    return 0;
-  }
+    if (memcmp(out, bufs[CT], lengths[CT]) != 0) {
+      fprintf(stderr, "Bad output on line %u\n", line_no);
+      return 0;
+    }
 
-  if (memcmp(out + lengths[CT], bufs[TAG], lengths[TAG]) != 0) {
-    fprintf(stderr, "Bad tag on line %u\n", line_no);
-    return 0;
+    if (memcmp(out + lengths[CT], bufs[TAG], lengths[TAG]) != 0) {
+      fprintf(stderr, "Bad tag on line %u\n", line_no);
+      return 0;
+    }
+  } else {
+    memcpy(out, bufs[CT], lengths[CT]);
+    memcpy(out + lengths[CT], bufs[TAG], lengths[TAG]);
+    ciphertext_len = lengths[CT] + lengths[TAG];
   }
 
   /* The "stateful" AEADs for implementing pre-AEAD cipher suites need to be
@@ -118,56 +127,65 @@ static int run_test_case(const EVP_AEAD *aead,
 
   /* The "stateful" AEADs require |max_out| be |in_len| despite the final
    * output always being smaller by at least tag length. */
-  if (!EVP_AEAD_CTX_open(&ctx, out2, &plaintext_len, ciphertext_len,
-                         bufs[NONCE], lengths[NONCE], out, ciphertext_len,
-                         bufs[AD], lengths[AD])) {
-    fprintf(stderr, "Failed to decrypt on line %u\n", line_no);
-    return 0;
-  }
+  int ret = EVP_AEAD_CTX_open(&ctx, out2, &plaintext_len, ciphertext_len,
+                              bufs[NONCE], lengths[NONCE], out, ciphertext_len,
+                              bufs[AD], lengths[AD]);
+  if (lengths[FAILS]) {
+    if (ret) {
+      fprintf(stderr, "Decrypted bad data on line %u\n", line_no);
+      return 0;
+    }
+    ERR_clear_error();
+  } else {
+    if (!ret) {
+      fprintf(stderr, "Failed to decrypt on line %u\n", line_no);
+      return 0;
+    }
 
-  if (plaintext_len != lengths[IN]) {
-    fprintf(stderr, "Bad decrypt on line %u: %u\n", line_no,
-            (unsigned)ciphertext_len);
-    return 0;
-  }
+    if (plaintext_len != lengths[IN]) {
+      fprintf(stderr, "Bad decrypt on line %u: %u\n", line_no,
+              (unsigned)ciphertext_len);
+      return 0;
+    }
 
-  /* The "stateful" AEADs for implementing pre-AEAD cipher suites need to be
-   * reset after each operation. */
-  EVP_AEAD_CTX_cleanup(&ctx);
-  if (!EVP_AEAD_CTX_init(&ctx, aead, bufs[KEY], lengths[KEY], lengths[TAG],
-                         NULL)) {
-    fprintf(stderr, "Failed to init AEAD on line %u\n", line_no);
-    return 0;
-  }
+    /* The "stateful" AEADs for implementing pre-AEAD cipher suites need to be
+     * reset after each operation. */
+    EVP_AEAD_CTX_cleanup(&ctx);
+    if (!EVP_AEAD_CTX_init(&ctx, aead, bufs[KEY], lengths[KEY], lengths[TAG],
+                           NULL)) {
+      fprintf(stderr, "Failed to init AEAD on line %u\n", line_no);
+      return 0;
+    }
 
-  /* Garbage at the end isn't ignored. */
-  out[ciphertext_len] = 0;
-  if (EVP_AEAD_CTX_open(&ctx, out2, &plaintext_len, ciphertext_len + 1, bufs[NONCE],
-                        lengths[NONCE], out, ciphertext_len + 1, bufs[AD],
-                        lengths[AD])) {
-    fprintf(stderr, "Decrypted bad data on line %u\n", line_no);
-    return 0;
-  }
-  ERR_clear_error();
+    /* The "stateful" AEADs for implementing pre-AEAD cipher suites need to be
+     * reset after each operation. */
+    EVP_AEAD_CTX_cleanup(&ctx);
+    if (!EVP_AEAD_CTX_init(&ctx, aead, bufs[KEY], lengths[KEY], lengths[TAG],
+                           NULL)) {
+      fprintf(stderr, "Failed to init AEAD on line %u\n", line_no);
+      return 0;
+    }
 
-  /* The "stateful" AEADs for implementing pre-AEAD cipher suites need to be
-   * reset after each operation. */
-  EVP_AEAD_CTX_cleanup(&ctx);
-  if (!EVP_AEAD_CTX_init(&ctx, aead, bufs[KEY], lengths[KEY], lengths[TAG],
-                         NULL)) {
-    fprintf(stderr, "Failed to init AEAD on line %u\n", line_no);
-    return 0;
-  }
+    /* Garbage at the end isn't ignored. */
+    out[ciphertext_len] = 0;
+    if (EVP_AEAD_CTX_open(&ctx, out2, &plaintext_len, ciphertext_len + 1,
+                          bufs[NONCE], lengths[NONCE], out, ciphertext_len + 1,
+                          bufs[AD], lengths[AD])) {
+      fprintf(stderr, "Decrypted bad data on line %u\n", line_no);
+      return 0;
+    }
+    ERR_clear_error();
 
-  /* Verify integrity is checked. */
-  out[0] ^= 0x80;
-  if (EVP_AEAD_CTX_open(&ctx, out2, &plaintext_len, ciphertext_len, bufs[NONCE],
-                        lengths[NONCE], out, ciphertext_len, bufs[AD],
-                        lengths[AD])) {
-    fprintf(stderr, "Decrypted bad data on line %u\n", line_no);
-    return 0;
+    /* Verify integrity is checked. */
+    out[0] ^= 0x80;
+    if (EVP_AEAD_CTX_open(&ctx, out2, &plaintext_len, ciphertext_len, bufs[NONCE],
+                          lengths[NONCE], out, ciphertext_len, bufs[AD],
+                          lengths[AD])) {
+      fprintf(stderr, "Decrypted bad data on line %u\n", line_no);
+      return 0;
+    }
+    ERR_clear_error();
   }
-  ERR_clear_error();
 
   EVP_AEAD_CTX_cleanup(&ctx);
   return 1;
