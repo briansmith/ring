@@ -185,7 +185,7 @@ static int aead_tls_seal(const EVP_AEAD_CTX *ctx, uint8_t *out,
   unsigned mac_len;
   HMAC_CTX hmac_ctx;
   HMAC_CTX_init(&hmac_ctx);
-  if (!HMAC_CTX_copy(&hmac_ctx, &tls_ctx->hmac_ctx) ||
+  if (!HMAC_CTX_copy_ex(&hmac_ctx, &tls_ctx->hmac_ctx) ||
       !HMAC_Update(&hmac_ctx, ad, ad_len) ||
       !HMAC_Update(&hmac_ctx, ad_extra, sizeof(ad_extra)) ||
       !HMAC_Update(&hmac_ctx, in, in_len) ||
@@ -361,7 +361,7 @@ static int aead_tls_open(const EVP_AEAD_CTX *ctx, uint8_t *out,
     HMAC_CTX hmac_ctx;
     HMAC_CTX_init(&hmac_ctx);
     unsigned mac_len_u;
-    if (!HMAC_CTX_copy(&hmac_ctx, &tls_ctx->hmac_ctx) ||
+    if (!HMAC_CTX_copy_ex(&hmac_ctx, &tls_ctx->hmac_ctx) ||
         !HMAC_Update(&hmac_ctx, ad_fixed, ad_len) ||
         !HMAC_Update(&hmac_ctx, out, data_len) ||
         !HMAC_Final(&hmac_ctx, mac, &mac_len_u)) {

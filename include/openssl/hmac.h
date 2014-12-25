@@ -119,10 +119,10 @@ OPENSSL_EXPORT int HMAC_Final(HMAC_CTX *ctx, uint8_t *out,
  * |ctx|. On entry, |ctx| must have been setup with |HMAC_Init_ex|. */
 OPENSSL_EXPORT size_t HMAC_size(const HMAC_CTX *ctx);
 
-/* HMAC_CTX_copy sets |dest| equal to |src|. On entry, |dest| must have been
+/* HMAC_CTX_copy_ex sets |dest| equal to |src|. On entry, |dest| must have been
  * initialised by calling |HMAC_CTX_init|. It returns one on success and zero
  * on error. */
-OPENSSL_EXPORT int HMAC_CTX_copy(HMAC_CTX *dest, const HMAC_CTX *src);
+OPENSSL_EXPORT int HMAC_CTX_copy_ex(HMAC_CTX *dest, const HMAC_CTX *src);
 
 /* HMAC_CTX_set_flags ORs |flags| into the flags of the underlying digests of
  * |ctx|, which must have been setup by a call to |HMAC_Init_ex|. See
@@ -136,6 +136,11 @@ OPENSSL_EXPORT void HMAC_CTX_set_flags(HMAC_CTX *ctx, unsigned long flags);
 
 OPENSSL_EXPORT int HMAC_Init(HMAC_CTX *ctx, const void *key, int key_len,
                              const EVP_MD *md);
+
+/* HMAC_CTX_copy calls |HMAC_CTX_init| on |dest| and then sets it equal to
+ * |src|. On entry, |dest| must /not/ be initialised for an operation with
+ * |HMAC_Init_ex|. It returns one on success and zero on error. */
+OPENSSL_EXPORT int HMAC_CTX_copy(HMAC_CTX *dest, const HMAC_CTX *src);
 
 
 /* Private functions */

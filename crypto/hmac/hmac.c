@@ -188,10 +188,10 @@ size_t HMAC_size(const HMAC_CTX *ctx) {
   return EVP_MD_size(ctx->md);
 }
 
-int HMAC_CTX_copy(HMAC_CTX *dest, const HMAC_CTX *src) {
-  if (!EVP_MD_CTX_copy(&dest->i_ctx, &src->i_ctx) ||
-      !EVP_MD_CTX_copy(&dest->o_ctx, &src->o_ctx) ||
-      !EVP_MD_CTX_copy(&dest->md_ctx, &src->md_ctx)) {
+int HMAC_CTX_copy_ex(HMAC_CTX *dest, const HMAC_CTX *src) {
+  if (!EVP_MD_CTX_copy_ex(&dest->i_ctx, &src->i_ctx) ||
+      !EVP_MD_CTX_copy_ex(&dest->o_ctx, &src->o_ctx) ||
+      !EVP_MD_CTX_copy_ex(&dest->md_ctx, &src->md_ctx)) {
     return 0;
   }
 
@@ -212,4 +212,9 @@ int HMAC_Init(HMAC_CTX *ctx, const void *key, int key_len, const EVP_MD *md) {
     HMAC_CTX_init(ctx);
   }
   return HMAC_Init_ex(ctx, key, key_len, md, NULL);
+}
+
+int HMAC_CTX_copy(HMAC_CTX *dest, const HMAC_CTX *src) {
+  HMAC_CTX_init(dest);
+  return HMAC_CTX_copy_ex(dest, src);
 }
