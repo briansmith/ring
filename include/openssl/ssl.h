@@ -2030,9 +2030,9 @@ OPENSSL_EXPORT const SSL_METHOD *DTLS_method(void);
 /* SSLv23_method calls TLS_method. */
 OPENSSL_EXPORT const SSL_METHOD *SSLv23_method(void);
 
-/* Version-specific methods behave exactly like TLS_method and DTLS_method they
- * also call SSL_CTX_set_min_version and SSL_CTX_set_max_version to lock
- * connections to that protocol version. */
+/* Version-specific methods behave exactly like TLS_method and DTLS_method
+ * except they also call SSL_CTX_set_min_version and SSL_CTX_set_max_version to
+ * lock connections to that protocol version. */
 OPENSSL_EXPORT const SSL_METHOD *SSLv3_method(void);
 OPENSSL_EXPORT const SSL_METHOD *TLSv1_method(void);
 OPENSSL_EXPORT const SSL_METHOD *TLSv1_1_method(void);

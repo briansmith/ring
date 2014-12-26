@@ -68,6 +68,9 @@ extern "C" {
 #endif
 
 
+/* Runtime CPU feature support */
+
+
 #if defined(OPENSSL_X86) || defined(OPENSSL_X86_64)
 /* OPENSSL_ia32cap_P contains the Intel CPUID bits when running on an x86 or
  * x86-64 system.

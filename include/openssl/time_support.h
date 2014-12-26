@@ -67,6 +67,9 @@ extern "C" {
 #endif
 
 
+/* Wrapper functions for time functions. */
+
+
 /* OPENSSL_gmtime wraps |gmtime_r|. See the manual page for that function. */
 struct tm *OPENSSL_gmtime(const time_t *timer, struct tm *result);
 

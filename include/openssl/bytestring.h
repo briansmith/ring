@@ -317,6 +317,7 @@ OPENSSL_EXPORT int CBB_add_u24(CBB *cbb, uint32_t value);
  * error. */
 OPENSSL_EXPORT int CBB_add_asn1_uint64(CBB *cbb, uint64_t value);
 
+
 #if defined(__cplusplus)
 }  /* extern C */
 #endif

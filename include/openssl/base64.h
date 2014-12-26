@@ -99,8 +99,8 @@ OPENSSL_EXPORT void EVP_EncodeFinal(EVP_ENCODE_CTX *ctx, uint8_t *out,
 /* EVP_EncodeBlock encodes |src_len| bytes from |src| and writes the
  * result to |dst| with a trailing NUL. It returns the number of bytes
  * written, not including this trailing NUL. */
-OPENSSL_EXPORT size_t
-    EVP_EncodeBlock(uint8_t *dst, const uint8_t *src, size_t src_len);
+OPENSSL_EXPORT size_t EVP_EncodeBlock(uint8_t *dst, const uint8_t *src,
+                                      size_t src_len);
 
 /* EVP_EncodedLength sets |*out_len| to the number of bytes that will be needed
  * to call |EVP_EncodeBlock| on an input of length |len|. This includes the
@@ -157,6 +157,7 @@ OPENSSL_EXPORT int EVP_DecodeFinal(EVP_ENCODE_CTX *ctx, uint8_t *out,
  * whitespace. */
 OPENSSL_EXPORT int EVP_DecodeBlock(uint8_t *dst, const uint8_t *src,
                                    size_t src_len);
+
 
 struct evp_encode_ctx_st {
   unsigned num;    /* number saved in a partial encode/decode */

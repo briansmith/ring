@@ -76,6 +76,9 @@ extern "C" {
 #endif
 
 
+/* Elliptic curve Diffie-Hellman. */
+
+
 /* ECDH_compute_key calculates the shared key between |pub_key| and |priv_key|.
  * If |KDF| is not NULL, then it is called with the bytes of the shared key and
  * the parameter |out|. When |KDF| returns, the value of |*outlen| becomes the

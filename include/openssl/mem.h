@@ -65,7 +65,9 @@ extern "C" {
 #endif
 
 
-/* OpenSSL has, historically, had a complex set of malloc debugging options.
+/* Memory and string functions, see also buf.h.
+ *
+ * OpenSSL has, historically, had a complex set of malloc debugging options.
  * However, that was written in a time before Valgrind and ASAN. Since we now
  * have those tools, the OpenSSL allocation functions are simply macros around
  * the standard memory functions. */

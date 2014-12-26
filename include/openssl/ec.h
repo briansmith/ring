@@ -75,6 +75,9 @@ extern "C" {
 #endif
 
 
+/* Low-level operations on elliptic curves. */
+
+
 typedef struct ec_group_st EC_GROUP;
 typedef struct ec_point_st EC_POINT;
 

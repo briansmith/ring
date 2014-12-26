@@ -64,6 +64,9 @@ extern "C" {
 #endif
 
 
+/* DES. */
+
+
 typedef struct DES_cblock_st {
   uint8_t bytes[8];
 } DES_cblock;

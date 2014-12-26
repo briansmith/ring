@@ -64,6 +64,9 @@ extern "C" {
 #endif
 
 
+/* Memory and string functions, see also mem.h. */
+
+
 /* BUF_MEM is a generic buffer object used by OpenSSL. */
 struct buf_mem_st {
   size_t length; /* current number of bytes */

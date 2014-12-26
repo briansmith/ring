@@ -237,8 +237,8 @@ OPENSSL_EXPORT void EVP_MD_CTX_clear_flags(EVP_MD_CTX *ctx, uint32_t flags);
 
 /* EVP_MD_CTX_test_flags returns the AND of |flags| and the flags member of
  * |ctx|. */
-OPENSSL_EXPORT uint32_t
-    EVP_MD_CTX_test_flags(const EVP_MD_CTX *ctx, uint32_t flags);
+OPENSSL_EXPORT uint32_t EVP_MD_CTX_test_flags(const EVP_MD_CTX *ctx,
+                                              uint32_t flags);
 
 
 struct evp_md_pctx_ops;

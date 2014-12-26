@@ -64,7 +64,7 @@ extern "C" {
 #endif
 
 
-/* SHA-1. */
+/* The SHA family of hash functions (SHA-1 and SHA-2). */
 
 
 /* SHA_CBLOCK is the block size of SHA-1. */

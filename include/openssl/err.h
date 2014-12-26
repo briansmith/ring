@@ -186,9 +186,10 @@ OPENSSL_EXPORT uint32_t ERR_peek_error_line_data(const char **file, int *line,
  * they return the most recent error. */
 OPENSSL_EXPORT uint32_t ERR_peek_last_error(void);
 OPENSSL_EXPORT uint32_t ERR_peek_last_error_line(const char **file, int *line);
-OPENSSL_EXPORT uint32_t
-    ERR_peek_last_error_line_data(const char **file, int *line,
-                                  const char **data, int *flags);
+OPENSSL_EXPORT uint32_t ERR_peek_last_error_line_data(const char **file,
+                                                      int *line,
+                                                      const char **data,
+                                                      int *flags);
 
 /* ERR_error_string generates a human-readable string representing
  * |packed_error|, places it at |buf| (which must be at least

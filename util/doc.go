@@ -420,9 +420,17 @@ func markupPipeWords(s string) template.HTML {
 }
 
 func markupFirstWord(s template.HTML) template.HTML {
-	i := strings.Index(string(s), " ")
-	if i > 0 {
-		return "<span class=\"first-word\">" + s[:i] + "</span>" + s[i:]
+	start := 0
+again:
+	end := strings.Index(string(s[start:]), " ")
+	if end > 0 {
+		end += start
+		w := strings.ToLower(string(s[start:end]))
+		if w == "a" || w == "an" || w == "deprecated:" {
+			start = end + 1
+			goto again
+		}
+		return s[:start] + "<span class=\"first-word\">" + s[start:end] + "</span>" + s[end:]
 	}
 	return s
 }
@@ -445,7 +453,7 @@ func generate(outPath string, config *Config) (map[string]string, error) {
 		"markupFirstWord": markupFirstWord,
 		"newlinesToBR":    newlinesToBR,
 	})
-	headerTmpl, err := headerTmpl.Parse(`<!DOCTYPE html5>
+	headerTmpl, err := headerTmpl.Parse(`<!DOCTYPE html>
 <html>
   <head>
     <title>BoringSSL - {{.Name}}</title>
@@ -462,7 +470,7 @@ func generate(outPath string, config *Config) (map[string]string, error) {
     <ol>
       {{range .Sections}}
         {{if not .IsPrivate}}
-          {{if .Preamble}}<li class="header"><a href="#section-{{.Num}}">{{.Preamble | firstSentence}}</a></li>{{end}}
+          {{if .Preamble}}<li class="header"><a href="#section-{{.Num}}">{{.Preamble | firstSentence | html | markupPipeWords}}</a></li>{{end}}
           {{range .Decls}}
             {{if .Name}}<li><a href="#decl-{{.Num}}"><tt>{{.Name}}</tt></a></li>{{end}}
           {{end}}
