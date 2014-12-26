@@ -858,13 +858,7 @@ int ssl3_get_server_hello(SSL *s) {
     goto f_err;
   }
 
-  /* Depending on the session caching (internal/external), the cipher
-     and/or cipher_id values may not be set. Make sure that cipher_id is set
-     and use it for comparison. */
-  if (s->session->cipher) {
-    s->session->cipher_id = s->session->cipher->id;
-  }
-  if (s->hit && s->session->cipher_id != c->id) {
+  if (s->hit && s->session->cipher != c) {
     al = SSL_AD_ILLEGAL_PARAMETER;
     OPENSSL_PUT_ERROR(SSL, ssl3_get_server_hello,
                       SSL_R_OLD_SESSION_CIPHER_NOT_RETURNED);

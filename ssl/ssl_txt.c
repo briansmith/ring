@@ -135,16 +135,9 @@ int SSL_SESSION_print(BIO *bp, const SSL_SESSION *x) {
     goto err;
   }
 
-  if (x->cipher == NULL) {
-    if (BIO_printf(bp, "    Cipher    : %06lX\n", x->cipher_id & 0xffffff) <=
-        0) {
-      goto err;
-    }
-  } else {
-    if (BIO_printf(bp, "    Cipher    : %s\n",
-                   ((x->cipher == NULL) ? "unknown" : x->cipher->name)) <= 0) {
-      goto err;
-    }
+  if (BIO_printf(bp, "    Cipher    : %s\n",
+                 ((x->cipher == NULL) ? "unknown" : x->cipher->name)) <= 0) {
+    goto err;
   }
 
   if (BIO_puts(bp, "    Session-ID: ") <= 0) {

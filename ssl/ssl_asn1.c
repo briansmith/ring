@@ -157,9 +157,8 @@ static const int kExtendedMasterSecretTag =
 static int SSL_SESSION_to_bytes_full(SSL_SESSION *in, uint8_t **out_data,
                                      size_t *out_len, int for_ticket) {
   CBB cbb, session, child, child2;
-  uint16_t cipher_id;
 
-  if (in == NULL || (in->cipher == NULL && in->cipher_id == 0)) {
+  if (in == NULL || in->cipher == NULL) {
     return 0;
   }
 
@@ -167,17 +166,11 @@ static int SSL_SESSION_to_bytes_full(SSL_SESSION *in, uint8_t **out_data,
     return 0;
   }
 
-  if (in->cipher == NULL) {
-    cipher_id = in->cipher_id & 0xffff;
-  } else {
-    cipher_id = in->cipher->id & 0xffff;
-  }
-
   if (!CBB_add_asn1(&cbb, &session, CBS_ASN1_SEQUENCE) ||
       !CBB_add_asn1_uint64(&session, SSL_SESSION_ASN1_VERSION) ||
       !CBB_add_asn1_uint64(&session, in->ssl_version) ||
       !CBB_add_asn1(&session, &child, CBS_ASN1_OCTETSTRING) ||
-      !CBB_add_u16(&child, cipher_id) ||
+      !CBB_add_u16(&child, (uint16_t)(in->cipher->id & 0xffff)) ||
       !CBB_add_asn1(&session, &child, CBS_ASN1_OCTETSTRING) ||
       /* The session ID is irrelevant for a session ticket. */
       !CBB_add_bytes(&child, in->session_id,
@@ -499,13 +492,12 @@ SSL_SESSION *d2i_SSL_SESSION(SSL_SESSION **a, const uint8_t **pp, long length) {
   }
   ret->ssl_version = ssl_version;
 
-  if (CBS_len(&cipher) != 2) {
+  uint16_t cipher_value;
+  if (!CBS_get_u16(&cipher, &cipher_value) || CBS_len(&cipher) != 0) {
     OPENSSL_PUT_ERROR(SSL, d2i_SSL_SESSION, SSL_R_CIPHER_CODE_WRONG_LENGTH);
     goto err;
   }
-  ret->cipher_id =
-      0x03000000L | (CBS_data(&cipher)[0] << 8L) | CBS_data(&cipher)[1];
-  ret->cipher = ssl3_get_cipher_by_value(ret->cipher_id & 0xffff);
+  ret->cipher = ssl3_get_cipher_by_value(cipher_value);
   if (ret->cipher == NULL) {
     OPENSSL_PUT_ERROR(SSL, d2i_SSL_SESSION, SSL_R_UNSUPPORTED_CIPHER);
     goto err;

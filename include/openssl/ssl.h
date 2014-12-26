@@ -360,9 +360,6 @@ struct ssl_session_st
 	long time;
 
 	const SSL_CIPHER *cipher;
-	unsigned long cipher_id;	/* when ASN.1 loaded, this
-					 * needs to be used to load
-					 * the 'cipher' structure */
 
 	CRYPTO_EX_DATA ex_data; /* application specific data */
 
