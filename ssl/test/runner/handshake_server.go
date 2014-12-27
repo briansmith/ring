@@ -444,6 +444,9 @@ func (hs *serverHandshakeState) doFullHandshake() error {
 
 	hs.hello.ticketSupported = hs.clientHello.ticketSupported && !config.SessionTicketsDisabled && c.vers > VersionSSL30
 	hs.hello.cipherSuite = hs.suite.id
+	if config.Bugs.SendCipherSuite != 0 {
+		hs.hello.cipherSuite = config.Bugs.SendCipherSuite
+	}
 	c.extendedMasterSecret = hs.hello.extendedMasterSecret
 
 	// Generate a session ID if we're to save the session.

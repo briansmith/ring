@@ -588,6 +588,30 @@ var testCases = []testCase{
 		shouldFail:         true,
 		expectedLocalError: "dtls: exceeded maximum packet length",
 	},
+	{
+		name: "CertMismatchRSA",
+		config: Config{
+			CipherSuites: []uint16{TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256},
+			Certificates: []Certificate{getECDSACertificate()},
+			Bugs: ProtocolBugs{
+				SendCipherSuite: TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,
+			},
+		},
+		shouldFail:    true,
+		expectedError: ":WRONG_CERTIFICATE_TYPE:",
+	},
+	{
+		name: "CertMismatchECDSA",
+		config: Config{
+			CipherSuites: []uint16{TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256},
+			Certificates: []Certificate{getRSACertificate()},
+			Bugs: ProtocolBugs{
+				SendCipherSuite: TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256,
+			},
+		},
+		shouldFail:    true,
+		expectedError: ":WRONG_CERTIFICATE_TYPE:",
+	},
 }
 
 func doExchange(test *testCase, config *Config, conn net.Conn, messageLen int, isResume bool) error {

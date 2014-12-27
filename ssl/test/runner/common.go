@@ -594,6 +594,11 @@ type ProtocolBugs struct {
 	// MaxPacketLength, if non-zero, is the maximum acceptable size for a
 	// packet.
 	MaxPacketLength int
+
+	// SendCipherSuite, if non-zero, is the cipher suite value that the
+	// server will send in the ServerHello. This does not affect the cipher
+	// the server believes it has actually negotiated.
+	SendCipherSuite uint16
 }
 
 func (c *Config) serverInit() {
