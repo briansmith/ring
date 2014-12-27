@@ -1377,7 +1377,7 @@ int ssl3_send_server_key_exchange(SSL *s) {
   EC_KEY *ecdh = NULL, *ecdhp;
   uint8_t *encodedPoint = NULL;
   int encodedlen = 0;
-  int curve_id = 0;
+  uint16_t curve_id = 0;
   BN_CTX *bn_ctx = NULL;
   const char *psk_identity_hint = NULL;
   size_t psk_identity_hint_len = 0;
@@ -1517,10 +1517,8 @@ int ssl3_send_server_key_exchange(SSL *s) {
         goto err;
       }
 
-      /* We only support ephemeral ECDH keys over named (not generic) curves.
-       * For supported named curves, curve_id is non-zero. */
-      curve_id = tls1_ec_nid2curve_id(EC_GROUP_get_curve_name(group));
-      if (curve_id == 0) {
+      /* We only support ephemeral ECDH keys over named (not generic) curves. */
+      if (!tls1_ec_nid2curve_id(&curve_id, EC_GROUP_get_curve_name(group))) {
         OPENSSL_PUT_ERROR(SSL, ssl3_send_server_key_exchange,
                           SSL_R_UNSUPPORTED_ELLIPTIC_CURVE);
         goto err;
@@ -1617,18 +1615,14 @@ int ssl3_send_server_key_exchange(SSL *s) {
        * [1 byte CurveType], [2 byte CurveName]
        * [1 byte length of encoded point], followed by
        * the actual encoded point itself. */
-      *p = NAMED_CURVE_TYPE;
-      p += 1;
-      *p = 0;
-      p += 1;
-      *p = curve_id;
-      p += 1;
-      *p = encodedlen;
-      p += 1;
-      memcpy((uint8_t *)p, (uint8_t *)encodedPoint, encodedlen);
+      *(p++) = NAMED_CURVE_TYPE;
+      *(p++) = (uint8_t)(curve_id >> 8);
+      *(p++) = (uint8_t)(curve_id & 0xff);
+      *(p++) = encodedlen;
+      memcpy(p, encodedPoint, encodedlen);
+      p += encodedlen;
       OPENSSL_free(encodedPoint);
       encodedPoint = NULL;
-      p += encodedlen;
     }
 
     /* not anonymous */

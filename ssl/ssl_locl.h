@@ -919,7 +919,7 @@ int ssl_check_srvr_ecc_cert_and_alg(X509 *x, SSL *s);
 
 char ssl_early_callback_init(struct ssl_early_callback_ctx *ctx);
 int tls1_ec_curve_id2nid(uint16_t curve_id);
-uint16_t tls1_ec_nid2curve_id(int nid);
+int tls1_ec_nid2curve_id(uint16_t *out_curve_id, int nid);
 
 /* tls1_check_curve parses ECParameters out of |cbs|, modifying it. It
  * checks the curve is one of our preferences and writes the

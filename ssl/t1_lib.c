@@ -354,16 +354,7 @@ struct tls_curve {
   int nid;
 };
 
-/* ECC curves from RFC4492.
- *
- * NOTE: tls1_ec_curve_id2nid and tls1_set_curves assume that
- *
- * (a) 0 is not a valid curve ID.
- *
- * (b) The largest curve ID is 31.
- *
- * Those implementations must be revised before adding support for curve IDs
- * that break these assumptions. */
+/* ECC curves from RFC4492. */
 static const struct tls_curve tls_curves[] = {
     {21, NID_secp224r1},
     {23, NID_X9_62_prime256v1},
@@ -391,16 +382,14 @@ int tls1_ec_curve_id2nid(uint16_t curve_id) {
   return NID_undef;
 }
 
-uint16_t tls1_ec_nid2curve_id(int nid) {
+int tls1_ec_nid2curve_id(uint16_t *out_curve_id, int nid) {
   size_t i;
   for (i = 0; i < sizeof(tls_curves) / sizeof(tls_curves[0]); i++) {
     if (nid == tls_curves[i].nid) {
-      return tls_curves[i].curve_id;
+      *out_curve_id = tls_curves[i].curve_id;
+      return 1;
     }
   }
-
-  /* Use 0 for a non-existent curve ID. Note: this assumes that curve
-   * ID 0 will never be allocated. */
   return 0;
 }
 
@@ -479,25 +468,16 @@ int tls1_set_curves(uint16_t **out_curve_ids, size_t *out_curve_ids_len,
   uint16_t *curve_ids;
   size_t i;
 
-  /* Bitmap of curves included to detect duplicates: only works
-   * while curve ids < 32. */
-  uint32_t dup_list = 0;
   curve_ids = (uint16_t *)OPENSSL_malloc(ncurves * sizeof(uint16_t));
   if (curve_ids == NULL) {
     return 0;
   }
 
   for (i = 0; i < ncurves; i++) {
-    uint32_t idmask;
-    uint16_t id;
-    id = tls1_ec_nid2curve_id(curves[i]);
-    idmask = ((uint32_t)1) << id;
-    if (!id || (dup_list & idmask)) {
+    if (!tls1_ec_nid2curve_id(&curve_ids[i], curves[i])) {
       OPENSSL_free(curve_ids);
       return 0;
     }
-    dup_list |= idmask;
-    curve_ids[i] = id;
   }
 
   if (*out_curve_ids) {
@@ -529,8 +509,7 @@ static int tls1_curve_params_from_ec_key(uint16_t *out_curve_id,
 
   /* Determine curve ID */
   nid = EC_GROUP_get_curve_name(grp);
-  id = tls1_ec_nid2curve_id(nid);
-  if (!id) {
+  if (!tls1_ec_nid2curve_id(&id, nid)) {
     return 0;
   }
 
