@@ -855,7 +855,7 @@ long ssl3_ctrl(SSL *s, int cmd, long larg, void *parg) {
         int nid;
         for (i = 0; i < clistlen; i++) {
           nid = tls1_ec_curve_id2nid(clist[i]);
-          if (nid != OBJ_undef) {
+          if (nid != NID_undef) {
             cptr[i] = nid;
           } else {
             cptr[i] = TLSEXT_nid_unknown | clist[i];

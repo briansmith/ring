@@ -393,7 +393,7 @@ static const uint16_t eccurves_default[] = {
 
 int tls1_ec_curve_id2nid(uint16_t curve_id) {
   if (curve_id < 1 || curve_id > sizeof(nid_list) / sizeof(nid_list[0])) {
-    return OBJ_undef;
+    return NID_undef;
   }
   return nid_list[curve_id - 1];
 }
