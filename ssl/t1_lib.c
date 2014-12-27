@@ -349,36 +349,26 @@ char SSL_early_callback_ctx_extension_get(
   return 0;
 }
 
-/* ECC curves from RFC4492 */
-static const int nid_list[] = {
-    NID_sect163k1,        /* sect163k1 (1) */
-    NID_sect163r1,        /* sect163r1 (2) */
-    NID_sect163r2,        /* sect163r2 (3) */
-    NID_sect193r1,        /* sect193r1 (4) */
-    NID_sect193r2,        /* sect193r2 (5) */
-    NID_sect233k1,        /* sect233k1 (6) */
-    NID_sect233r1,        /* sect233r1 (7) */
-    NID_sect239k1,        /* sect239k1 (8) */
-    NID_sect283k1,        /* sect283k1 (9) */
-    NID_sect283r1,        /* sect283r1 (10) */
-    NID_sect409k1,        /* sect409k1 (11) */
-    NID_sect409r1,        /* sect409r1 (12) */
-    NID_sect571k1,        /* sect571k1 (13) */
-    NID_sect571r1,        /* sect571r1 (14) */
-    NID_secp160k1,        /* secp160k1 (15) */
-    NID_secp160r1,        /* secp160r1 (16) */
-    NID_secp160r2,        /* secp160r2 (17) */
-    NID_secp192k1,        /* secp192k1 (18) */
-    NID_X9_62_prime192v1, /* secp192r1 (19) */
-    NID_secp224k1,        /* secp224k1 (20) */
-    NID_secp224r1,        /* secp224r1 (21) */
-    NID_secp256k1,        /* secp256k1 (22) */
-    NID_X9_62_prime256v1, /* secp256r1 (23) */
-    NID_secp384r1,        /* secp384r1 (24) */
-    NID_secp521r1,        /* secp521r1 (25) */
-    NID_brainpoolP256r1,  /* brainpoolP256r1 (26) */
-    NID_brainpoolP384r1,  /* brainpoolP384r1 (27) */
-    NID_brainpoolP512r1   /* brainpool512r1 (28) */
+struct tls_curve {
+  uint16_t curve_id;
+  int nid;
+};
+
+/* ECC curves from RFC4492.
+ *
+ * NOTE: tls1_ec_curve_id2nid and tls1_set_curves assume that
+ *
+ * (a) 0 is not a valid curve ID.
+ *
+ * (b) The largest curve ID is 31.
+ *
+ * Those implementations must be revised before adding support for curve IDs
+ * that break these assumptions. */
+static const struct tls_curve tls_curves[] = {
+    {21, NID_secp224r1},
+    {23, NID_X9_62_prime256v1},
+    {24, NID_secp384r1},
+    {25, NID_secp521r1},
 };
 
 static const uint8_t ecformats_default[] = {
@@ -386,29 +376,31 @@ static const uint8_t ecformats_default[] = {
 };
 
 static const uint16_t eccurves_default[] = {
-    23, /* secp256r1 (23) */
-    24, /* secp384r1 (24) */
-    25, /* secp521r1 (25) */
+    23, /* X9_64_prime256v1 */
+    24, /* secp384r1 */
+    25, /* secp521r1 */
 };
 
 int tls1_ec_curve_id2nid(uint16_t curve_id) {
-  if (curve_id < 1 || curve_id > sizeof(nid_list) / sizeof(nid_list[0])) {
-    return NID_undef;
+  size_t i;
+  for (i = 0; i < sizeof(tls_curves) / sizeof(tls_curves[0]); i++) {
+    if (curve_id == tls_curves[i].curve_id) {
+      return tls_curves[i].nid;
+    }
   }
-  return nid_list[curve_id - 1];
+  return NID_undef;
 }
 
 uint16_t tls1_ec_nid2curve_id(int nid) {
   size_t i;
-  for (i = 0; i < sizeof(nid_list) / sizeof(nid_list[0]); i++) {
-    /* nid_list[i] stores the NID corresponding to curve ID i+1. */
-    if (nid == nid_list[i]) {
-      return i + 1;
+  for (i = 0; i < sizeof(tls_curves) / sizeof(tls_curves[0]); i++) {
+    if (nid == tls_curves[i].nid) {
+      return tls_curves[i].curve_id;
     }
   }
 
-  /* Use 0 for non-existent curve ID. Note: this assumes that curve ID 0 will
-   * never be allocated. */
+  /* Use 0 for a non-existent curve ID. Note: this assumes that curve
+   * ID 0 will never be allocated. */
   return 0;
 }
 
@@ -481,17 +473,6 @@ int tls1_get_shared_curve(SSL *s) {
 
   return NID_undef;
 }
-
-/* NOTE: tls1_ec_curve_id2nid and tls1_set_curves assume that
- *
- * (a) 0 is not a valid curve ID.
- *
- * (b) The largest curve ID is 31.
- *
- * Those implementations must be revised before adding support for curve IDs
- * that break these assumptions. */
-OPENSSL_COMPILE_ASSERT((sizeof(nid_list) / sizeof(nid_list[0])) < 32,
-                       small_curve_ids);
 
 int tls1_set_curves(uint16_t **out_curve_ids, size_t *out_curve_ids_len,
                     const int *curves, size_t ncurves) {
