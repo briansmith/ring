@@ -231,6 +231,9 @@ int RSA_message_index_PKCS1_type_2(const uint8_t *from, size_t from_len,
   /* PKCS#1 v1.5 decryption. See "PKCS #1 v2.2: RSA Cryptography
    * Standard", section 7.2.2. */
   if (from_len < RSA_PKCS1_PADDING_SIZE) {
+    /* |from| is zero-padded to the size of the RSA modulus, a public value, so
+     * this can be rejected in non-constant time. */
+    *out_index = 0;
     return 0;
   }
 
@@ -256,8 +259,9 @@ int RSA_message_index_PKCS1_type_2(const uint8_t *from, size_t from_len,
   valid_index &= constant_time_le(2 + 8, zero_index);
 
   /* Skip the zero byte. */
-  *out_index = zero_index + 1;
+  zero_index++;
 
+  *out_index = constant_time_select(valid_index, zero_index, 0);
   return valid_index;
 }
 

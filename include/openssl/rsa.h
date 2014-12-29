@@ -164,9 +164,8 @@ OPENSSL_EXPORT int RSA_private_decrypt(int flen, const uint8_t *from,
  * valid PKCS #1 message, it returns one and sets |*out_index| to the start of
  * the unpadded message. The unpadded message is a suffix of the input and has
  * length |from_len - *out_index|. Otherwise, it returns zero and sets
- * |*out_index| to some undefined value. This function runs in time independent
- * of the input data and is intended to be used directly to avoid
- * Bleichenbacher's attack.
+ * |*out_index| to zero. This function runs in time independent of the input
+ * data and is intended to be used directly to avoid Bleichenbacher's attack.
  *
  * WARNING: This function behaves differently from the usual OpenSSL convention
  * in that it does NOT put an error on the queue in the error case. */
