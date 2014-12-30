@@ -90,13 +90,6 @@ OPENSSL_EXPORT int ECDH_compute_key(void *out, size_t outlen,
                                     void *(*KDF)(const void *in, size_t inlen,
                                                  void *out, size_t *outlen));
 
-/* ECDH_KDF_X9_62 writes |outlen| bytes to |out| using the KDF from X9.62
- * applied to |Z| and |sinfo| and using the hash |md|. It returns one on
- * success and zero otherwise. */
-OPENSSL_EXPORT int ECDH_KDF_X9_62(uint8_t *out, size_t outlen, const uint8_t *Z,
-                                  size_t Zlen, const uint8_t *sinfo,
-                                  size_t sinfolen, const EVP_MD *md);
-
 
 #if defined(__cplusplus)
 }  /* extern C */

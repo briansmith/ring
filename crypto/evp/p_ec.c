@@ -76,19 +76,6 @@ typedef struct {
   EC_GROUP *gen_group;
   /* message digest */
   const EVP_MD *md;
-  /* Duplicate key if custom cofactor needed */
-  EC_KEY *co_key;
-  /* Cofactor mode */
-  signed char cofactor_mode;
-  /* KDF (if any) to use for ECDH */
-  char kdf_type;
-  /* Message digest to use for key derivation */
-  const EVP_MD *kdf_md;
-  /* User key material */
-  unsigned char *kdf_ukm;
-  size_t kdf_ukmlen;
-  /* KDF output length */
-  size_t kdf_outlen;
 } EC_PKEY_CTX;
 
 
@@ -99,8 +86,6 @@ static int pkey_ec_init(EVP_PKEY_CTX *ctx) {
     return 0;
   }
   memset(dctx, 0, sizeof(EC_PKEY_CTX));
-  dctx->cofactor_mode = -1;
-  dctx->kdf_type = EVP_PKEY_ECDH_KDF_NONE;
 
   ctx->data = dctx;
 
@@ -123,24 +108,6 @@ static int pkey_ec_copy(EVP_PKEY_CTX *dst, EVP_PKEY_CTX *src) {
   }
   dctx->md = sctx->md;
 
-  if (sctx->co_key) {
-    dctx->co_key = EC_KEY_dup(sctx->co_key);
-    if (!dctx->co_key) {
-      return 0;
-    }
-  }
-  dctx->kdf_type = sctx->kdf_type;
-  dctx->kdf_md = sctx->kdf_md;
-  dctx->kdf_outlen = sctx->kdf_outlen;
-  if (sctx->kdf_ukm) {
-    dctx->kdf_ukm = BUF_memdup(sctx->kdf_ukm, sctx->kdf_ukmlen);
-    if (!dctx->kdf_ukm) {
-      return 0;
-    }
-  } else {
-    dctx->kdf_ukm = NULL;
-  }
-  dctx->kdf_ukmlen = sctx->kdf_ukmlen;
   return 1;
 }
 
@@ -152,12 +119,6 @@ static void pkey_ec_cleanup(EVP_PKEY_CTX *ctx) {
 
   if (dctx->gen_group) {
     EC_GROUP_free(dctx->gen_group);
-  }
-  if (dctx->co_key) {
-    EC_KEY_free(dctx->co_key);
-  }
-  if (dctx->kdf_ukm) {
-    OPENSSL_free(dctx->kdf_ukm);
   }
   OPENSSL_free(dctx);
 }
@@ -209,14 +170,13 @@ static int pkey_ec_derive(EVP_PKEY_CTX *ctx, uint8_t *key,
   size_t outlen;
   const EC_POINT *pubkey = NULL;
   EC_KEY *eckey;
-  EC_PKEY_CTX *dctx = ctx->data;
 
   if (!ctx->pkey || !ctx->peerkey) {
     OPENSSL_PUT_ERROR(EVP, pkey_ec_derive, EVP_R_KEYS_NOT_SET);
     return 0;
   }
 
-  eckey = dctx->co_key ? dctx->co_key : ctx->pkey->pkey.ec;
+  eckey = ctx->pkey->pkey.ec;
 
   if (!key) {
     const EC_GROUP *group;
@@ -239,46 +199,6 @@ static int pkey_ec_derive(EVP_PKEY_CTX *ctx, uint8_t *key,
   return 1;
 }
 
-static int pkey_ec_kdf_derive(EVP_PKEY_CTX *ctx, uint8_t *key,
-                              size_t *keylen) {
-  EC_PKEY_CTX *dctx = ctx->data;
-  uint8_t *ktmp = NULL;
-  size_t ktmplen;
-  int rv = 0;
-
-  if (dctx->kdf_type == EVP_PKEY_ECDH_KDF_NONE) {
-    return pkey_ec_derive(ctx, key, keylen);
-  }
-  if (!key) {
-    *keylen = dctx->kdf_outlen;
-    return 1;
-  }
-  if (*keylen != dctx->kdf_outlen ||
-      !pkey_ec_derive(ctx, NULL, &ktmplen)) {
-    return 0;
-  }
-  ktmp = OPENSSL_malloc(ktmplen);
-  if (!ktmp) {
-    return 0;
-  }
-  if (!pkey_ec_derive(ctx, ktmp, &ktmplen)) {
-    goto err;
-  }
-
-  if (!ECDH_KDF_X9_62(key, *keylen, ktmp, ktmplen, dctx->kdf_ukm,
-                      dctx->kdf_ukmlen, dctx->kdf_md)) {
-    goto err;
-  }
-  rv = 1;
-
-err:
-  if (ktmp) {
-    OPENSSL_cleanse(ktmp, ktmplen);
-    OPENSSL_free(ktmp);
-  }
-  return rv;
-}
-
 static int pkey_ec_ctrl(EVP_PKEY_CTX *ctx, int type, int p1, void *p2) {
   EC_PKEY_CTX *dctx = ctx->data;
   EC_GROUP *group;
@@ -294,46 +214,6 @@ static int pkey_ec_ctrl(EVP_PKEY_CTX *ctx, int type, int p1, void *p2) {
         EC_GROUP_free(dctx->gen_group);
       dctx->gen_group = group;
       return 1;
-
-    case EVP_PKEY_CTRL_EC_KDF_TYPE:
-      if (p1 == -2)
-        return dctx->kdf_type;
-      if (p1 != EVP_PKEY_ECDH_KDF_NONE && p1 != EVP_PKEY_ECDH_KDF_X9_62)
-        return -2;
-      dctx->kdf_type = p1;
-      return 1;
-
-    case EVP_PKEY_CTRL_EC_KDF_MD:
-      dctx->kdf_md = p2;
-      return 1;
-
-    case EVP_PKEY_CTRL_GET_EC_KDF_MD:
-      *(const EVP_MD **)p2 = dctx->kdf_md;
-      return 1;
-
-    case EVP_PKEY_CTRL_EC_KDF_OUTLEN:
-      if (p1 <= 0)
-        return -2;
-      dctx->kdf_outlen = (size_t)p1;
-      return 1;
-
-    case EVP_PKEY_CTRL_GET_EC_KDF_OUTLEN:
-      *(int *)p2 = dctx->kdf_outlen;
-      return 1;
-
-    case EVP_PKEY_CTRL_EC_KDF_UKM:
-      if (dctx->kdf_ukm)
-        OPENSSL_free(dctx->kdf_ukm);
-      dctx->kdf_ukm = p2;
-      if (p2)
-        dctx->kdf_ukmlen = p1;
-      else
-        dctx->kdf_ukmlen = 0;
-      return 1;
-
-    case EVP_PKEY_CTRL_GET_EC_KDF_UKM:
-      *(unsigned char **)p2 = dctx->kdf_ukm;
-      return dctx->kdf_ukmlen;
 
     case EVP_PKEY_CTRL_MD:
       if (EVP_MD_type((const EVP_MD *)p2) != NID_sha1 &&
@@ -417,5 +297,5 @@ const EVP_PKEY_METHOD ec_pkey_meth = {
     pkey_ec_verify,         0 /* signctx_init */, 0 /* signctx */,
     0 /* verifyctx_init */, 0 /* verifyctx */,    0 /* encrypt_init */,
     0 /* encrypt */,        0 /* decrypt_init */, 0 /* decrypt */,
-    0 /* derive_init */,    pkey_ec_kdf_derive,   pkey_ec_ctrl,
+    0 /* derive_init */,    pkey_ec_derive,       pkey_ec_ctrl,
 };
