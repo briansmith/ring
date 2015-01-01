@@ -97,7 +97,7 @@ static int def_crl_verify(X509_CRL *crl, EVP_PKEY *r);
 static int def_crl_lookup(X509_CRL *crl,
 		X509_REVOKED **ret, ASN1_INTEGER *serial, X509_NAME *issuer);
 
-static X509_CRL_METHOD int_crl_meth =
+static const X509_CRL_METHOD int_crl_meth =
 	{
 	0,
 	0,0,

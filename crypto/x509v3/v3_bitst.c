@@ -62,7 +62,7 @@
 #include <openssl/x509v3.h>
 
 
-static BIT_STRING_BITNAME ns_cert_type_table[] = {
+static const BIT_STRING_BITNAME ns_cert_type_table[] = {
 {0, "SSL Client", "client"},
 {1, "SSL Server", "server"},
 {2, "S/MIME", "email"},
@@ -74,7 +74,7 @@ static BIT_STRING_BITNAME ns_cert_type_table[] = {
 {-1, NULL, NULL}
 };
 
-static BIT_STRING_BITNAME key_usage_type_table[] = {
+static const BIT_STRING_BITNAME key_usage_type_table[] = {
 {0, "Digital Signature", "digitalSignature"},
 {1, "Non Repudiation", "nonRepudiation"},
 {2, "Key Encipherment", "keyEncipherment"},
@@ -95,7 +95,7 @@ const X509V3_EXT_METHOD v3_key_usage = EXT_BITSTRING(NID_key_usage, key_usage_ty
 STACK_OF(CONF_VALUE) *i2v_ASN1_BIT_STRING(X509V3_EXT_METHOD *method,
 	     ASN1_BIT_STRING *bits, STACK_OF(CONF_VALUE) *ret)
 {
-	BIT_STRING_BITNAME *bnam;
+	const BIT_STRING_BITNAME *bnam;
 	for(bnam =method->usr_data; bnam->lname; bnam++) {
 		if(ASN1_BIT_STRING_get_bit(bits, bnam->bitnum)) 
 			X509V3_add_value(bnam->lname, NULL, &ret);
@@ -109,7 +109,7 @@ ASN1_BIT_STRING *v2i_ASN1_BIT_STRING(X509V3_EXT_METHOD *method,
 	CONF_VALUE *val;
 	ASN1_BIT_STRING *bs;
 	size_t i;
-	BIT_STRING_BITNAME *bnam;
+	const BIT_STRING_BITNAME *bnam;
 	if(!(bs = M_ASN1_BIT_STRING_new())) {
 		OPENSSL_PUT_ERROR(X509V3, v2i_ASN1_BIT_STRING, ERR_R_MALLOC_FAILURE);
 		return NULL;

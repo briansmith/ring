@@ -871,8 +871,8 @@ OPENSSL_EXPORT int		X509_REQ_set_subject_name(X509_REQ *req,X509_NAME *name);
 OPENSSL_EXPORT int		X509_REQ_set_pubkey(X509_REQ *x, EVP_PKEY *pkey);
 OPENSSL_EXPORT EVP_PKEY *	X509_REQ_get_pubkey(X509_REQ *req);
 OPENSSL_EXPORT int		X509_REQ_extension_nid(int nid);
-OPENSSL_EXPORT int *		X509_REQ_get_extension_nids(void);
-OPENSSL_EXPORT void		X509_REQ_set_extension_nids(int *nids);
+OPENSSL_EXPORT const int *	X509_REQ_get_extension_nids(void);
+OPENSSL_EXPORT void		X509_REQ_set_extension_nids(const int *nids);
 OPENSSL_EXPORT STACK_OF(X509_EXTENSION) *X509_REQ_get_extensions(X509_REQ *req);
 OPENSSL_EXPORT int X509_REQ_add_extensions_nid(X509_REQ *req, STACK_OF(X509_EXTENSION) *exts,
 				int nid);

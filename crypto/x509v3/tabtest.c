@@ -70,7 +70,7 @@
 int main(void)
 {
 	int i, prev = -1, bad = 0;
-	const X509V3_EXT_METHOD **tmp;
+	const X509V3_EXT_METHOD *const *tmp;
         CRYPTO_library_init();
 	i = sizeof(standard_exts) / sizeof(X509V3_EXT_METHOD *);
 	if(i != STANDARD_EXTENSION_COUNT)

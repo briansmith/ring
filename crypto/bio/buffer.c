@@ -480,7 +480,7 @@ static int buffer_puts(BIO *b, const char *str) {
   return buffer_write(b, str, strlen(str));
 }
 
-static BIO_METHOD methods_buffer = {
+static const BIO_METHOD methods_buffer = {
     BIO_TYPE_BUFFER, "buffer",             buffer_write, buffer_read,
     buffer_puts,     buffer_gets,          buffer_ctrl,  buffer_new,
     buffer_free,     buffer_callback_ctrl,

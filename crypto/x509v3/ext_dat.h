@@ -74,7 +74,7 @@ extern X509V3_EXT_METHOD v3_addr, v3_asid;
 /* TODO(fork): OCSP support */
 #define OPENSSL_NO_OCSP
 
-static const X509V3_EXT_METHOD *standard_exts[] = {
+static const X509V3_EXT_METHOD *const standard_exts[] = {
 &v3_nscert,
 &v3_ns_ia5_list[0],
 &v3_ns_ia5_list[1],

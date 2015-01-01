@@ -130,7 +130,7 @@ X509 *issuer_cert;
 X509 *subject_cert;
 X509_REQ *subject_req;
 X509_CRL *crl;
-X509V3_CONF_METHOD *db_meth;
+const X509V3_CONF_METHOD *db_meth;
 void *db;
 /* Maybe more here */
 };
@@ -389,7 +389,7 @@ struct ISSUING_DIST_POINT_st
 			(X509V3_EXT_I2V)i2v_ASN1_BIT_STRING, \
 			(X509V3_EXT_V2I)v2i_ASN1_BIT_STRING, \
 			NULL, NULL, \
-			table}
+			(void *)table}
 
 #define EXT_IA5STRING(nid) { nid, 0, ASN1_ITEM_ref(ASN1_IA5STRING), \
 			0,0,0,0, \

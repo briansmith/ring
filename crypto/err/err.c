@@ -688,7 +688,7 @@ static const char *const kLibraryNames[ERR_NUM_LIBS] = {
  * allocated on the heap. */
 static ERR_STRING_DATA kStaticErrors[ERR_NUM_LIBS * 2 + NUM_SYS_ERRNOS];
 
-static ERR_STRING_DATA kGlobalErrors[] = {
+static const ERR_STRING_DATA kGlobalErrors[] = {
     {ERR_R_MALLOC_FAILURE, "malloc failure"},
     {ERR_R_SHOULD_NOT_HAVE_BEEN_CALLED, "function should not be called"},
     {ERR_R_PASSED_NULL_PARAMETER, "passed a null parameter"},

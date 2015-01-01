@@ -1052,7 +1052,7 @@ OPENSSL_EXPORT void ASN1_PCTX_set_oid_flags(ASN1_PCTX *p, unsigned long flags);
 OPENSSL_EXPORT unsigned long ASN1_PCTX_get_str_flags(ASN1_PCTX *p);
 OPENSSL_EXPORT void ASN1_PCTX_set_str_flags(ASN1_PCTX *p, unsigned long flags);
 
-OPENSSL_EXPORT BIO_METHOD *BIO_f_asn1(void);
+OPENSSL_EXPORT const BIO_METHOD *BIO_f_asn1(void);
 
 OPENSSL_EXPORT BIO *BIO_new_NDEF(BIO *out, ASN1_VALUE *val, const ASN1_ITEM *it);
 

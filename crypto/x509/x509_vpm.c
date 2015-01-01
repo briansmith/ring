@@ -438,7 +438,7 @@ const char *X509_VERIFY_PARAM_get0_name(const X509_VERIFY_PARAM *param)
 	return param->name;
 	}
 
-static X509_VERIFY_PARAM_ID _empty_id = {NULL, 0, 0U, NULL, 0, NULL, 0};
+static const X509_VERIFY_PARAM_ID _empty_id = {NULL, 0, 0U, NULL, 0, NULL, 0};
 
 #define vpm_empty_id (X509_VERIFY_PARAM_ID *)&_empty_id
 

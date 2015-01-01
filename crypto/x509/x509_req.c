@@ -155,9 +155,9 @@ int X509_REQ_check_private_key(X509_REQ *x, EVP_PKEY *k)
  * used and there may be more: so the list is configurable.
  */
 
-static int ext_nid_list[] = { NID_ext_req, NID_ms_ext_req, NID_undef};
+static const int ext_nid_list[] = { NID_ext_req, NID_ms_ext_req, NID_undef};
 
-static int *ext_nids = ext_nid_list;
+static const int *ext_nids = ext_nid_list;
 
 int X509_REQ_extension_nid(int req_nid)
 {
@@ -169,12 +169,12 @@ int X509_REQ_extension_nid(int req_nid)
 	}
 }
 
-int *X509_REQ_get_extension_nids(void)
+const int *X509_REQ_get_extension_nids(void)
 {
 	return ext_nids;
 }
 	
-void X509_REQ_set_extension_nids(int *nids)
+void X509_REQ_set_extension_nids(const int *nids)
 {
 	ext_nids = nids;
 }
@@ -183,7 +183,8 @@ STACK_OF(X509_EXTENSION) *X509_REQ_get_extensions(X509_REQ *req)
 	{
 	X509_ATTRIBUTE *attr;
 	ASN1_TYPE *ext = NULL;
-	int idx, *pnid;
+	int idx;
+	const int *pnid;
 	const unsigned char *p;
 
 	if ((req == NULL) || (req->req_info == NULL) || !ext_nids)
