@@ -1337,8 +1337,13 @@ struct ssl_st
 	uint8_t *next_proto_negotiated;
 	size_t next_proto_negotiated_len;
 
-	STACK_OF(SRTP_PROTECTION_PROFILE) *srtp_profiles;  /* What we'll do */
-	SRTP_PROTECTION_PROFILE *srtp_profile;            /* What's been chosen */
+	/* srtp_profiles is the list of configured SRTP protection profiles for
+	 * DTLS-SRTP. */
+	STACK_OF(SRTP_PROTECTION_PROFILE) *srtp_profiles;
+
+	/* srtp_profile is the selected SRTP protection profile for
+	 * DTLS-SRTP. */
+	const SRTP_PROTECTION_PROFILE *srtp_profile;
 
 	/* Copied from the SSL_CTX. For a server, means that we'll accept
 	 * Channel IDs from clients. For a client, means that we'll advertise

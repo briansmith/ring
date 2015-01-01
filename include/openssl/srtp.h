@@ -148,7 +148,8 @@ OPENSSL_EXPORT STACK_OF(SRTP_PROTECTION_PROFILE) *SSL_get_srtp_profiles(
 
 /* SSL_get_selected_srtp_profile returns the selected SRTP profile, or NULL if
  * SRTP was not negotiated. */
-OPENSSL_EXPORT SRTP_PROTECTION_PROFILE *SSL_get_selected_srtp_profile(SSL *s);
+OPENSSL_EXPORT const SRTP_PROTECTION_PROFILE *SSL_get_selected_srtp_profile(
+    SSL *s);
 
 
 /* Deprecated functions */

@@ -1792,92 +1792,6 @@
                     comp)))
 
 
-/* SRTP_PROTECTION_PROFILE */
-#define sk_SRTP_PROTECTION_PROFILE_new(comp)                                   \
-  ((STACK_OF(SRTP_PROTECTION_PROFILE) *)sk_new(                                \
-      CHECKED_CAST(stack_cmp_func, int (*)(const SRTP_PROTECTION_PROFILE **a,  \
-                                           const SRTP_PROTECTION_PROFILE **b), \
-                   comp)))
-
-#define sk_SRTP_PROTECTION_PROFILE_new_null() \
-  ((STACK_OF(SRTP_PROTECTION_PROFILE) *)sk_new_null())
-
-#define sk_SRTP_PROTECTION_PROFILE_num(sk) \
-  sk_num(CHECKED_CAST(_STACK *, STACK_OF(SRTP_PROTECTION_PROFILE) *, sk))
-
-#define sk_SRTP_PROTECTION_PROFILE_zero(sk) \
-  sk_zero(CHECKED_CAST(_STACK *, STACK_OF(SRTP_PROTECTION_PROFILE) *, sk));
-
-#define sk_SRTP_PROTECTION_PROFILE_value(sk, i)                              \
-  ((SRTP_PROTECTION_PROFILE *)sk_value(                                      \
-      CHECKED_CAST(_STACK *, const STACK_OF(SRTP_PROTECTION_PROFILE) *, sk), \
-      (i)))
-
-#define sk_SRTP_PROTECTION_PROFILE_set(sk, i, p)                            \
-  ((SRTP_PROTECTION_PROFILE *)sk_set(                                       \
-      CHECKED_CAST(_STACK *, STACK_OF(SRTP_PROTECTION_PROFILE) *, sk), (i), \
-      CHECKED_CAST(void *, SRTP_PROTECTION_PROFILE *, p)))
-
-#define sk_SRTP_PROTECTION_PROFILE_free(sk) \
-  sk_free(CHECKED_CAST(_STACK *, STACK_OF(SRTP_PROTECTION_PROFILE) *, sk))
-
-#define sk_SRTP_PROTECTION_PROFILE_pop_free(sk, free_func)                     \
-  sk_pop_free(CHECKED_CAST(_STACK *, STACK_OF(SRTP_PROTECTION_PROFILE) *, sk), \
-              CHECKED_CAST(void (*)(void *),                                   \
-                           void (*)(SRTP_PROTECTION_PROFILE *), free_func))
-
-#define sk_SRTP_PROTECTION_PROFILE_insert(sk, p, where)                      \
-  sk_insert(CHECKED_CAST(_STACK *, STACK_OF(SRTP_PROTECTION_PROFILE) *, sk), \
-            CHECKED_CAST(void *, SRTP_PROTECTION_PROFILE *, p), (where))
-
-#define sk_SRTP_PROTECTION_PROFILE_delete(sk, where)                   \
-  ((SRTP_PROTECTION_PROFILE *)sk_delete(                               \
-      CHECKED_CAST(_STACK *, STACK_OF(SRTP_PROTECTION_PROFILE) *, sk), \
-      (where)))
-
-#define sk_SRTP_PROTECTION_PROFILE_delete_ptr(sk, p)                   \
-  ((SRTP_PROTECTION_PROFILE *)sk_delete_ptr(                           \
-      CHECKED_CAST(_STACK *, STACK_OF(SRTP_PROTECTION_PROFILE) *, sk), \
-      CHECKED_CAST(void *, SRTP_PROTECTION_PROFILE *, p)))
-
-#define sk_SRTP_PROTECTION_PROFILE_find(sk, out_index, p)                  \
-  sk_find(CHECKED_CAST(_STACK *, STACK_OF(SRTP_PROTECTION_PROFILE) *, sk), \
-          (out_index), CHECKED_CAST(void *, SRTP_PROTECTION_PROFILE *, p))
-
-#define sk_SRTP_PROTECTION_PROFILE_shift(sk) \
-  ((SRTP_PROTECTION_PROFILE *)sk_shift(      \
-      CHECKED_CAST(_STACK *, STACK_OF(SRTP_PROTECTION_PROFILE) *, sk)))
-
-#define sk_SRTP_PROTECTION_PROFILE_push(sk, p)                             \
-  sk_push(CHECKED_CAST(_STACK *, STACK_OF(SRTP_PROTECTION_PROFILE) *, sk), \
-          CHECKED_CAST(void *, SRTP_PROTECTION_PROFILE *, p))
-
-#define sk_SRTP_PROTECTION_PROFILE_pop(sk) \
-  ((SRTP_PROTECTION_PROFILE *)sk_pop(      \
-      CHECKED_CAST(_STACK *, STACK_OF(SRTP_PROTECTION_PROFILE) *, sk)))
-
-#define sk_SRTP_PROTECTION_PROFILE_dup(sk)      \
-  ((STACK_OF(SRTP_PROTECTION_PROFILE) *)sk_dup( \
-      CHECKED_CAST(_STACK *, const STACK_OF(SRTP_PROTECTION_PROFILE) *, sk)))
-
-#define sk_SRTP_PROTECTION_PROFILE_sort(sk) \
-  sk_sort(CHECKED_CAST(_STACK *, STACK_OF(SRTP_PROTECTION_PROFILE) *, sk))
-
-#define sk_SRTP_PROTECTION_PROFILE_is_sorted(sk) \
-  sk_is_sorted(                                  \
-      CHECKED_CAST(_STACK *, const STACK_OF(SRTP_PROTECTION_PROFILE) *, sk))
-
-#define sk_SRTP_PROTECTION_PROFILE_set_cmp_func(sk, comp)               \
-  ((int (*)(const SRTP_PROTECTION_PROFILE **a,                          \
-            const SRTP_PROTECTION_PROFILE **b))                         \
-   sk_set_cmp_func(                                                     \
-       CHECKED_CAST(_STACK *, STACK_OF(SRTP_PROTECTION_PROFILE) *, sk), \
-       CHECKED_CAST(stack_cmp_func,                                     \
-                    int (*)(const SRTP_PROTECTION_PROFILE **a,          \
-                            const SRTP_PROTECTION_PROFILE **b),         \
-                    comp)))
-
-
 /* SSL_COMP */
 #define sk_SSL_COMP_new(comp)                 \
   ((STACK_OF(SSL_COMP) *)sk_new(CHECKED_CAST( \
@@ -3466,6 +3380,94 @@
       CHECKED_CAST(_STACK *, STACK_OF(void)*, sk),                          \
       CHECKED_CAST(stack_cmp_func, int (*)(const void **a, const void **b), \
                    comp)))
+
+
+/* SRTP_PROTECTION_PROFILE */
+#define sk_SRTP_PROTECTION_PROFILE_new(comp)                            \
+  ((STACK_OF(SRTP_PROTECTION_PROFILE) *)sk_new(CHECKED_CAST(            \
+      stack_cmp_func, int (*)(const const SRTP_PROTECTION_PROFILE **a,  \
+                              const const SRTP_PROTECTION_PROFILE **b), \
+      comp)))
+
+#define sk_SRTP_PROTECTION_PROFILE_new_null() \
+  ((STACK_OF(SRTP_PROTECTION_PROFILE) *)sk_new_null())
+
+#define sk_SRTP_PROTECTION_PROFILE_num(sk) \
+  sk_num(CHECKED_CAST(_STACK *, STACK_OF(SRTP_PROTECTION_PROFILE) *, sk))
+
+#define sk_SRTP_PROTECTION_PROFILE_zero(sk) \
+  sk_zero(CHECKED_CAST(_STACK *, STACK_OF(SRTP_PROTECTION_PROFILE) *, sk));
+
+#define sk_SRTP_PROTECTION_PROFILE_value(sk, i)                              \
+  ((const SRTP_PROTECTION_PROFILE *)sk_value(                                \
+      CHECKED_CAST(_STACK *, const STACK_OF(SRTP_PROTECTION_PROFILE) *, sk), \
+      (i)))
+
+#define sk_SRTP_PROTECTION_PROFILE_set(sk, i, p)                            \
+  ((const SRTP_PROTECTION_PROFILE *)sk_set(                                 \
+      CHECKED_CAST(_STACK *, STACK_OF(SRTP_PROTECTION_PROFILE) *, sk), (i), \
+      CHECKED_CAST(void *, const SRTP_PROTECTION_PROFILE *, p)))
+
+#define sk_SRTP_PROTECTION_PROFILE_free(sk) \
+  sk_free(CHECKED_CAST(_STACK *, STACK_OF(SRTP_PROTECTION_PROFILE) *, sk))
+
+#define sk_SRTP_PROTECTION_PROFILE_pop_free(sk, free_func)             \
+  sk_pop_free(                                                         \
+      CHECKED_CAST(_STACK *, STACK_OF(SRTP_PROTECTION_PROFILE) *, sk), \
+      CHECKED_CAST(void (*)(void *),                                   \
+                   void (*)(const SRTP_PROTECTION_PROFILE *), free_func))
+
+#define sk_SRTP_PROTECTION_PROFILE_insert(sk, p, where)                      \
+  sk_insert(CHECKED_CAST(_STACK *, STACK_OF(SRTP_PROTECTION_PROFILE) *, sk), \
+            CHECKED_CAST(void *, const SRTP_PROTECTION_PROFILE *, p), (where))
+
+#define sk_SRTP_PROTECTION_PROFILE_delete(sk, where)                   \
+  ((const SRTP_PROTECTION_PROFILE *)sk_delete(                         \
+      CHECKED_CAST(_STACK *, STACK_OF(SRTP_PROTECTION_PROFILE) *, sk), \
+      (where)))
+
+#define sk_SRTP_PROTECTION_PROFILE_delete_ptr(sk, p)                   \
+  ((const SRTP_PROTECTION_PROFILE *)sk_delete_ptr(                     \
+      CHECKED_CAST(_STACK *, STACK_OF(SRTP_PROTECTION_PROFILE) *, sk), \
+      CHECKED_CAST(void *, const SRTP_PROTECTION_PROFILE *, p)))
+
+#define sk_SRTP_PROTECTION_PROFILE_find(sk, out_index, p)                  \
+  sk_find(CHECKED_CAST(_STACK *, STACK_OF(SRTP_PROTECTION_PROFILE) *, sk), \
+          (out_index),                                                     \
+          CHECKED_CAST(void *, const SRTP_PROTECTION_PROFILE *, p))
+
+#define sk_SRTP_PROTECTION_PROFILE_shift(sk)  \
+  ((const SRTP_PROTECTION_PROFILE *)sk_shift( \
+      CHECKED_CAST(_STACK *, STACK_OF(SRTP_PROTECTION_PROFILE) *, sk)))
+
+#define sk_SRTP_PROTECTION_PROFILE_push(sk, p)                             \
+  sk_push(CHECKED_CAST(_STACK *, STACK_OF(SRTP_PROTECTION_PROFILE) *, sk), \
+          CHECKED_CAST(void *, const SRTP_PROTECTION_PROFILE *, p))
+
+#define sk_SRTP_PROTECTION_PROFILE_pop(sk)  \
+  ((const SRTP_PROTECTION_PROFILE *)sk_pop( \
+      CHECKED_CAST(_STACK *, STACK_OF(SRTP_PROTECTION_PROFILE) *, sk)))
+
+#define sk_SRTP_PROTECTION_PROFILE_dup(sk)      \
+  ((STACK_OF(SRTP_PROTECTION_PROFILE) *)sk_dup( \
+      CHECKED_CAST(_STACK *, const STACK_OF(SRTP_PROTECTION_PROFILE) *, sk)))
+
+#define sk_SRTP_PROTECTION_PROFILE_sort(sk) \
+  sk_sort(CHECKED_CAST(_STACK *, STACK_OF(SRTP_PROTECTION_PROFILE) *, sk))
+
+#define sk_SRTP_PROTECTION_PROFILE_is_sorted(sk) \
+  sk_is_sorted(                                  \
+      CHECKED_CAST(_STACK *, const STACK_OF(SRTP_PROTECTION_PROFILE) *, sk))
+
+#define sk_SRTP_PROTECTION_PROFILE_set_cmp_func(sk, comp)               \
+  ((int (*)(const SRTP_PROTECTION_PROFILE **a,                          \
+            const SRTP_PROTECTION_PROFILE **b))                         \
+   sk_set_cmp_func(                                                     \
+       CHECKED_CAST(_STACK *, STACK_OF(SRTP_PROTECTION_PROFILE) *, sk), \
+       CHECKED_CAST(stack_cmp_func,                                     \
+                    int (*)(const SRTP_PROTECTION_PROFILE **a,          \
+                            const SRTP_PROTECTION_PROFILE **b),         \
+                    comp)))
 
 
 /* SSL_CIPHER */

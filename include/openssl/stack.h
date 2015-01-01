@@ -145,7 +145,6 @@ STACK_OF(type) {\
  * STACK_OF:POLICYINFO
  * STACK_OF:POLICYQUALINFO
  * STACK_OF:POLICY_MAPPING
- * STACK_OF:SRTP_PROTECTION_PROFILE
  * STACK_OF:SSL_COMP
  * STACK_OF:STACK_OF_X509_NAME_ENTRY
  * STACK_OF:SXNETID
@@ -168,9 +167,10 @@ STACK_OF(type) {\
  * STACK_OF:X509_VERIFY_PARAM
  * STACK_OF:void
  *
- * We declare STACK_OF(SSL_CIPHER) differently; every SSL_CIPHER is const,
- * so the stack should return const pointers to retain type-checking.
+ * Some stacks contain only const structures, so the stack should return const
+ * pointers to retain type-checking.
  *
+ * CONST_STACK_OF:SRTP_PROTECTION_PROFILE
  * CONST_STACK_OF:SSL_CIPHER */
 
 

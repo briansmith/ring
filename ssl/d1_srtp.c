@@ -124,7 +124,7 @@
 #include <openssl/srtp.h>
 
 
-static SRTP_PROTECTION_PROFILE srtp_known_profiles[] = {
+static const SRTP_PROTECTION_PROFILE srtp_known_profiles[] = {
     {
      "SRTP_AES128_CM_SHA1_80", SRTP_AES128_CM_SHA1_80,
     },
@@ -135,8 +135,9 @@ static SRTP_PROTECTION_PROFILE srtp_known_profiles[] = {
 };
 
 static int find_profile_by_name(const char *profile_name,
-                                SRTP_PROTECTION_PROFILE **pptr, size_t len) {
-  SRTP_PROTECTION_PROFILE *p;
+                                const SRTP_PROTECTION_PROFILE **pptr,
+                                size_t len) {
+  const SRTP_PROTECTION_PROFILE *p;
 
   p = srtp_known_profiles;
   while (p->name) {
@@ -152,8 +153,8 @@ static int find_profile_by_name(const char *profile_name,
 }
 
 static int find_profile_by_num(unsigned profile_num,
-                               SRTP_PROTECTION_PROFILE **pptr) {
-  SRTP_PROTECTION_PROFILE *p;
+                               const SRTP_PROTECTION_PROFILE **pptr) {
+  const SRTP_PROTECTION_PROFILE *p;
 
   p = srtp_known_profiles;
   while (p->name) {
@@ -182,7 +183,7 @@ static int ssl_ctx_make_profiles(const char *profiles_string,
   }
 
   do {
-    SRTP_PROTECTION_PROFILE *p;
+    const SRTP_PROTECTION_PROFILE *p;
 
     col = strchr(ptr, ':');
     if (find_profile_by_name(ptr, &p, col ? col - ptr : strlen(ptr))) {
@@ -227,7 +228,7 @@ STACK_OF(SRTP_PROTECTION_PROFILE) *SSL_get_srtp_profiles(SSL *s) {
   return NULL;
 }
 
-SRTP_PROTECTION_PROFILE *SSL_get_selected_srtp_profile(SSL *s) {
+const SRTP_PROTECTION_PROFILE *SSL_get_selected_srtp_profile(SSL *s) {
   return s->srtp_profile;
 }
 
@@ -246,7 +247,7 @@ int ssl_add_clienthello_use_srtp_ext(SSL *s, uint8_t *p, int *len, int maxlen) {
   int ct = 0;
   int i;
   STACK_OF(SRTP_PROTECTION_PROFILE) *clnt = 0;
-  SRTP_PROTECTION_PROFILE *prof;
+  const SRTP_PROTECTION_PROFILE *prof;
 
   clnt = SSL_get_srtp_profiles(s);
   ct = sk_SRTP_PROTECTION_PROFILE_num(clnt); /* -1 if clnt == 0 */
@@ -282,7 +283,7 @@ int ssl_add_clienthello_use_srtp_ext(SSL *s, uint8_t *p, int *len, int maxlen) {
 
 int ssl_parse_clienthello_use_srtp_ext(SSL *s, CBS *cbs, int *out_alert) {
   CBS profile_ids, srtp_mki;
-  SRTP_PROTECTION_PROFILE *cprof, *sprof;
+  const SRTP_PROTECTION_PROFILE *cprof, *sprof;
   STACK_OF(SRTP_PROTECTION_PROFILE) *client_profiles = 0, *server_profiles;
   size_t i, j;
   int ret = 0;
@@ -378,7 +379,7 @@ int ssl_parse_serverhello_use_srtp_ext(SSL *s, CBS *cbs, int *out_alert) {
   size_t i;
 
   STACK_OF(SRTP_PROTECTION_PROFILE) *client_profiles;
-  SRTP_PROTECTION_PROFILE *prof;
+  const SRTP_PROTECTION_PROFILE *prof;
 
   /* The extension consists of a u16-prefixed profile ID list containing a
    * single uint16_t profile ID, then followed by a u8-prefixed srtp_mki field.
