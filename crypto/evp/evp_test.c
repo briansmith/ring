@@ -229,6 +229,20 @@ static const uint8_t kExampleECKeyDER[] = {
     0xc1,
 };
 
+/* kExampleBadECKeyDER is a sample EC private key encoded as an ECPrivateKey
+ * structure. The private key is equal to the order and will fail to import */
+static const uint8_t kExampleBadECKeyDER[] = {
+    0x30, 0x66, 0x02, 0x01, 0x00, 0x30, 0x13, 0x06, 0x07, 0x2A, 0x86, 0x48,
+    0xCE, 0x3D, 0x02, 0x01, 0x06, 0x08, 0x2A, 0x86, 0x48, 0xCE, 0x3D, 0x03,
+    0x01, 0x07, 0x04, 0x4C, 0x30, 0x4A, 0x02, 0x01, 0x01, 0x04, 0x20, 0xFF,
+    0xFF, 0xFF, 0xFF, 0x00, 0x00, 0x00, 0x00, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
+    0xFF, 0xFF, 0xFF, 0xBC, 0xE6, 0xFA, 0xAD, 0xA7, 0x17, 0x9E, 0x84, 0xF3,
+    0xB9, 0xCA, 0xC2, 0xFC, 0x63, 0x25, 0x51, 0xA1, 0x23, 0x03, 0x21, 0x00,
+    0x00, 0xFF, 0xFF, 0xFF, 0x00, 0x00, 0x00, 0x00, 0xFF, 0xFF, 0xFF, 0xFF,
+    0xFF, 0xFF, 0xFF, 0xFF, 0xBC, 0xE6, 0xFA, 0xAD, 0xA7, 0x17, 0x9E, 0x84,
+    0xF3, 0xB9, 0xCA, 0xC2, 0xFC, 0x63, 0x25, 0x51
+};
+
 static EVP_PKEY *load_example_rsa_key(void) {
   EVP_PKEY *ret = NULL;
   const uint8_t *derp = kExampleRSAKeyDER;
@@ -539,6 +553,40 @@ done:
   return ret;
 }
 
+/* Tests loading a bad key in PKCS8 format */
+static int test_EVP_PKCS82PKEY(void) {
+  int ret = 0;
+  const uint8_t *derp = kExampleBadECKeyDER;
+  PKCS8_PRIV_KEY_INFO *p8inf = NULL;
+  EVP_PKEY *pkey = NULL;
+
+  p8inf = d2i_PKCS8_PRIV_KEY_INFO(NULL, &derp, sizeof(kExampleBadECKeyDER));
+
+  if (!p8inf || derp != kExampleBadECKeyDER + sizeof(kExampleBadECKeyDER)) {
+    fprintf(stderr, "Failed to parse key\n");
+    goto done;
+  }
+
+  pkey = EVP_PKCS82PKEY(p8inf);
+  if (pkey) {
+    fprintf(stderr, "Imported invalid EC key\n");
+    goto done;
+  }
+
+  ret = 1;
+
+done:
+  if (p8inf != NULL) {
+    PKCS8_PRIV_KEY_INFO_free(p8inf);
+  }
+
+  if (pkey != NULL) {
+    EVP_PKEY_free(pkey);
+  }
+
+  return ret;
+}
+
 int main(void) {
   CRYPTO_library_init();
   ERR_load_crypto_strings();
@@ -578,6 +626,11 @@ int main(void) {
   if (!test_d2i_AutoPrivateKey(kExampleECKeyDER, sizeof(kExampleECKeyDER),
                                EVP_PKEY_EC)) {
     fprintf(stderr, "d2i_AutoPrivateKey(kExampleECKeyDER) failed\n");
+    return 1;
+  }
+
+  if (!test_EVP_PKCS82PKEY()) {
+    fprintf(stderr, "test_EVP_PKCS82PKEY failed\n");
     return 1;
   }
 
