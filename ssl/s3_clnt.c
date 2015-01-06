@@ -748,6 +748,18 @@ int ssl3_get_server_hello(SSL *s) {
                                  SSL_GET_MESSAGE_HASH_MESSAGE, &ok);
 
   if (!ok) {
+    uint32_t err = ERR_peek_error();
+    if (ERR_GET_LIB(err) == ERR_LIB_SSL &&
+        ERR_GET_REASON(err) == SSL_R_SSLV3_ALERT_HANDSHAKE_FAILURE) {
+      /* Add a dedicated error code to the queue for a handshake_failure alert
+       * in response to ClientHello. This matches NSS's client behavior and
+       * gives a better error on a (probable) failure to negotiate initial
+       * parameters. Note: this error code comes after the original one.
+       *
+       * See https://crbug.com/446505. */
+      OPENSSL_PUT_ERROR(SSL, ssl3_get_server_hello,
+                        SSL_R_HANDSHAKE_FAILURE_ON_CLIENT_HELLO);
+    }
     return n;
   }
 

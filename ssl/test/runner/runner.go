@@ -556,6 +556,14 @@ var testCases = []testCase{
 		shouldFail:    true,
 		expectedError: ":WRONG_SSL_VERSION:",
 	},
+	{
+		name: "NoSharedCipher",
+		config: Config{
+			CipherSuites: []uint16{},
+		},
+		shouldFail:    true,
+		expectedError: ":HANDSHAKE_FAILURE_ON_CLIENT_HELLO:",
+	},
 }
 
 func doExchange(test *testCase, config *Config, conn net.Conn, messageLen int, isResume bool) error {
