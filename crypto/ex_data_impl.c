@@ -151,7 +151,7 @@ static uint32_t class_hash(const EX_CLASS_ITEM *a) {
   return a->class_value;
 }
 
-/* class_cmp is a comparision function for an LHASH of |EX_CLASS_ITEM|
+/* class_cmp is a comparison function for an LHASH of |EX_CLASS_ITEM|
  * structures. */
 static int class_cmp(const EX_CLASS_ITEM *a, const EX_CLASS_ITEM *b) {
   return a->class_value - b->class_value;

@@ -86,10 +86,10 @@ extern "C" {
  * STACK_OF(foo), the macros would be sk_foo_new, sk_foo_pop etc. */
 
 
-/* stack_cmp_func is a comparision function that returns a value < 0, 0 or > 0
+/* stack_cmp_func is a comparison function that returns a value < 0, 0 or > 0
  * if |*a| is less than, equal to or greater than |*b|, respectively.  Note the
  * extra indirection - the function is given a pointer to a pointer to the
- * element. This differs from the usual qsort/bsearch comparision function. */
+ * element. This differs from the usual qsort/bsearch comparison function. */
 typedef int (*stack_cmp_func)(const void **a, const void **b);
 
 /* stack_st contains an array of pointers. It is not designed to be used
@@ -104,7 +104,7 @@ typedef struct stack_st {
   /* num_alloc contains the number of pointers allocated in the buffer pointed
    * to by |data|, which may be larger than |num|. */
   size_t num_alloc;
-  /* comp is an optional comparision function. */
+  /* comp is an optional comparison function. */
   stack_cmp_func comp;
 } _STACK;
 
@@ -203,7 +203,7 @@ DEFINE_SPECIAL_STACK_OF(OPENSSL_BLOCK, uint8_t)
 /* These are the raw stack functions, you shouldn't be using them. Rather you
  * should be using the type stack macros implemented above. */
 
-/* sk_new creates a new, empty stack with the given comparision function, which
+/* sk_new creates a new, empty stack with the given comparison function, which
  * may be zero. It returns the new stack or NULL on allocation failure. */
 OPENSSL_EXPORT _STACK *sk_new(stack_cmp_func comp);
 
@@ -249,7 +249,7 @@ OPENSSL_EXPORT void *sk_delete(_STACK *sk, size_t where);
  * otherwise it returns NULL. */
 OPENSSL_EXPORT void *sk_delete_ptr(_STACK *sk, void *p);
 
-/* sk_find returns the first value in the stack equal to |p|. If a comparision
+/* sk_find returns the first value in the stack equal to |p|. If a comparison
  * function has been set on the stack, then equality is defined by it and the
  * stack will be sorted if need be so that a binary search can be used.
  * Otherwise pointer equality is used. If a matching element is found, its
