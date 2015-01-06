@@ -23,11 +23,15 @@ static int test_overflow(void) {
   unsigned i;
 
   for (i = 0; i < ERR_NUM_ERRORS*2; i++) {
-    ERR_put_error(1, 2, 3, "test", 1);
+    ERR_put_error(1, 2, i+1, "test", 1);
   }
 
   for (i = 0; i < ERR_NUM_ERRORS - 1; i++) {
-    if (ERR_get_error() == 0) {
+    uint32_t err = ERR_get_error();
+    /* Errors are returned in order they were pushed, with the least recent ones
+     * removed, up to |ERR_NUM_ERRORS - 1| errors. So the errors returned are
+     * |ERR_NUM_ERRORS + 2| through |ERR_NUM_ERRORS * 2|, inclusive. */
+    if (err == 0 || ERR_GET_REASON(err) != i + ERR_NUM_ERRORS + 2) {
       fprintf(stderr, "ERR_get_error failed at %u\n", i);
       return 0;
     }
