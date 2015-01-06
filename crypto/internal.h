@@ -132,7 +132,7 @@ struct st_CRYPTO_EX_DATA_IMPL {
 };
 
 
-#if defined(OPENSSL_WINDOWS)
+#if defined(_MSC_VER)
 #define OPENSSL_U64(x) x##UI64
 #else
 
@@ -142,7 +142,7 @@ struct st_CRYPTO_EX_DATA_IMPL {
 #define OPENSSL_U64(x) x##ULL
 #endif
 
-#endif  /* OPENSSL_WINDOWS */
+#endif  /* defined(_MSC_VER) */
 
 #if defined(OPENSSL_X86) || defined(OPENSSL_X86_64)
 /* OPENSSL_cpuid_setup initializes OPENSSL_ia32cap_P. */
