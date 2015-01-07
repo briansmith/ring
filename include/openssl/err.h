@@ -525,6 +525,15 @@ struct ERR_FNS_st {
 OPENSSL_EXPORT void ERR_load_BIO_strings(void);
 
 
+/* Android compatibility section.
+ *
+ * These functions are declared, temporarily, for Android because
+ * wpa_supplicant will take a little time to sync with upstream. Outside of
+ * Android they'll have no definition. */
+
+OPENSSL_EXPORT void ERR_remove_state(unsigned long pid);
+
+
 #if defined(__cplusplus)
 } /* extern C */
 #endif

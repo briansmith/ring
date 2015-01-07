@@ -485,6 +485,16 @@ typedef struct evp_cipher_info_st {
 } EVP_CIPHER_INFO;
 
 
+/* Android compatibility section.
+ *
+ * These functions are declared, temporarily, for Android because
+ * wpa_supplicant will take a little time to sync with upstream. Outside of
+ * Android they'll have no definition. */
+
+OPENSSL_EXPORT const EVP_CIPHER *EVP_aes_192_ecb(void);
+OPENSSL_EXPORT const EVP_CIPHER *EVP_aes_192_cbc(void);
+
+
 #if defined(__cplusplus)
 }  /* extern C */
 #endif

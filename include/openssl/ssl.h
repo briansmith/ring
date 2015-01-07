@@ -2218,6 +2218,19 @@ OPENSSL_EXPORT void SSL_get_structure_sizes(size_t* ssl_size, size_t* ssl_ctx_si
 OPENSSL_EXPORT void ERR_load_SSL_strings(void);
 
 
+/* Android compatibility section.
+ *
+ * These functions are declared, temporarily, for Android because
+ * wpa_supplicant will take a little time to sync with upstream. Outside of
+ * Android they'll have no definition. */
+
+#define SSL_F_SSL_SET_SESSION_TICKET_EXT doesnt_exist
+
+OPENSSL_EXPORT int SSL_set_session_ticket_ext(SSL *s, void *ext_data, int ext_len);
+OPENSSL_EXPORT int SSL_set_session_secret_cb(SSL *s, void *cb, void *arg);
+OPENSSL_EXPORT int SSL_set_session_ticket_ext_cb(SSL *s, void *cb, void *arg);
+
+
 #ifdef  __cplusplus
 }
 #endif
