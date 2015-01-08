@@ -38,6 +38,7 @@ func wireToVersion(vers uint16, isDTLS bool) uint16 {
 }
 
 func (c *Conn) dtlsDoReadRecord(want recordType) (recordType, *block, error) {
+Again:
 	recordHeaderLen := dtlsRecordHeaderLen
 
 	if c.rawInput == nil {
@@ -81,6 +82,13 @@ func (c *Conn) dtlsDoReadRecord(want recordType) (recordType, *block, error) {
 		}
 	}
 	seq := b.data[3:11]
+	if !bytes.Equal(seq[:2], c.in.seq[:2]) {
+		// If the epoch didn't match, silently drop the record.
+		// BoringSSL retransmits on an internal timer, so it may flakily
+		// revisit the previous epoch if retransmiting ChangeCipherSpec
+		// and Finished.
+		goto Again
+	}
 	// For test purposes, we assume a reliable channel. Require
 	// that the explicit sequence number matches the incrementing
 	// one we maintain. A real implementation would maintain a
@@ -242,9 +250,9 @@ func (c *Conn) dtlsWriteRecord(typ recordType, data []byte) (n int, err error) {
 
 func (c *Conn) dtlsDoReadHandshake() ([]byte, error) {
 	// Assemble a full handshake message.  For test purposes, this
-	// implementation assumes fragments arrive in order. It may
-	// need to be cleverer if we ever test BoringSSL's retransmit
-	// behavior.
+	// implementation assumes fragments arrive in order, but tolerates
+	// retransmits. It may need to be cleverer if we ever test BoringSSL's
+	// retransmit behavior.
 	for len(c.handMsg) < 4+c.handMsgLen {
 		// Get a new handshake record if the previous has been
 		// exhausted.
@@ -273,9 +281,16 @@ func (c *Conn) dtlsDoReadHandshake() ([]byte, error) {
 		}
 		fragment := c.hand.Next(fragLen)
 
-		// Check it's a fragment for the right message.
-		if fragSeq != c.recvHandshakeSeq {
-			return nil, errors.New("dtls: bad handshake sequence number")
+		if fragSeq < c.recvHandshakeSeq {
+			// BoringSSL retransmits based on an internal timer, so
+			// it may flakily retransmit part of a handshake
+			// message. Ignore those fragments.
+			//
+			// TODO(davidben): Revise this if BoringSSL's retransmit
+			// logic is made more deterministic.
+			continue
+		} else if fragSeq > c.recvHandshakeSeq {
+			return nil, errors.New("dtls: handshake messages sent out of order")
 		}
 
 		// Check that the length is consistent.

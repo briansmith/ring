@@ -756,8 +756,11 @@ Again:
 		if typ != want {
 			// A client might need to process a HelloRequest from
 			// the server, thus receiving a handshake message when
-			// application data is expected is ok.
-			if !c.isClient {
+			// application data is expected is ok. Moreover, a DTLS
+			// peer who sends Finished second may retransmit the
+			// final leg. BoringSSL retrainsmits on an internal
+			// timer, so this may also occur in test code.
+			if !c.isClient && !c.isDTLS {
 				return c.in.setErrorLocked(c.sendAlert(alertNoRenegotiation))
 			}
 		}
@@ -1093,9 +1096,9 @@ func (c *Conn) Read(b []byte) (n int, err error) {
 				// Soft error, like EAGAIN
 				return 0, err
 			}
-			if c.hand.Len() > 0 {
+			if c.hand.Len() > 0 && !c.isDTLS {
 				// We received handshake bytes, indicating the
-				// start of a renegotiation.
+				// start of a renegotiation or a DTLS retransmit.
 				if err := c.handleRenegotiation(); err != nil {
 					return 0, err
 				}
