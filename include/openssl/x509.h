@@ -720,6 +720,7 @@ OPENSSL_EXPORT int X509_ALGOR_set0(X509_ALGOR *alg, const ASN1_OBJECT *aobj, int
 OPENSSL_EXPORT void X509_ALGOR_get0(ASN1_OBJECT **paobj, int *pptype, void **ppval,
 						X509_ALGOR *algor);
 OPENSSL_EXPORT void X509_ALGOR_set_md(X509_ALGOR *alg, const EVP_MD *md);
+OPENSSL_EXPORT int X509_ALGOR_cmp(const X509_ALGOR *a, const X509_ALGOR *b);
 
 OPENSSL_EXPORT X509_NAME *X509_NAME_dup(X509_NAME *xn);
 OPENSSL_EXPORT X509_NAME_ENTRY *X509_NAME_ENTRY_dup(X509_NAME_ENTRY *ne);
@@ -833,9 +834,6 @@ DECLARE_ASN1_FUNCTIONS(NETSCAPE_CERT_SEQUENCE)
 OPENSSL_EXPORT X509_INFO *	X509_INFO_new(void);
 OPENSSL_EXPORT void		X509_INFO_free(X509_INFO *a);
 OPENSSL_EXPORT char *		X509_NAME_oneline(X509_NAME *a,char *buf,int size);
-
-OPENSSL_EXPORT int ASN1_verify(i2d_of_void *i2d, X509_ALGOR *algor1,
-		ASN1_BIT_STRING *signature,char *data,EVP_PKEY *pkey);
 
 OPENSSL_EXPORT int ASN1_digest(i2d_of_void *i2d,const EVP_MD *type,char *data,
 		unsigned char *md,unsigned int *len);
@@ -1306,5 +1304,6 @@ OPENSSL_EXPORT int PKCS7_bundle_certificates(
 #define X509_R_CRL_ALREADY_DELTA 135
 #define X509_R_ERR_ASN1_LIB 136
 #define X509_R_AKID_MISMATCH 137
+#define X509_R_INVALID_BIT_STRING_BITS_LEFT 138
 
 #endif

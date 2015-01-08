@@ -74,18 +74,31 @@ int ECDSA_verify(int type, const uint8_t *digest, size_t digest_len,
                  const uint8_t *sig, size_t sig_len, EC_KEY *eckey) {
   ECDSA_SIG *s;
   int ret = 0;
+  uint8_t *der = NULL;
 
   if (eckey->ecdsa_meth && eckey->ecdsa_meth->verify) {
     return eckey->ecdsa_meth->verify(digest, digest_len, sig, sig_len, eckey);
   }
 
   s = ECDSA_SIG_new();
-  if (s == NULL || d2i_ECDSA_SIG(&s, &sig, sig_len) == NULL) {
+  const uint8_t *sigp = sig;
+  if (s == NULL || d2i_ECDSA_SIG(&s, &sigp, sig_len) == NULL ||
+      sigp != sig + sig_len) {
     goto err;
   }
+
+  /* Ensure that the signature uses DER and doesn't have trailing garbage. */
+  const int der_len = i2d_ECDSA_SIG(s, &der);
+  if (der_len < 0 || (size_t) der_len != sig_len || memcmp(sig, der, sig_len)) {
+    goto err;
+  }
+
   ret = ECDSA_do_verify(digest, digest_len, s, eckey);
 
 err:
+  if (der != NULL) {
+    OPENSSL_free(der);
+  }
   if (s != NULL) {
     ECDSA_SIG_free(s);
   }

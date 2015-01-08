@@ -84,6 +84,12 @@ int ASN1_item_verify(const ASN1_ITEM *it, X509_ALGOR *a,
 		return 0;
 		}
 
+	if (signature->type == V_ASN1_BIT_STRING && signature->flags & 0x7)
+		{
+		OPENSSL_PUT_ERROR(X509, ASN1_item_verify, X509_R_INVALID_BIT_STRING_BITS_LEFT);
+		return 0;
+		}
+
 	EVP_MD_CTX_init(&ctx);
 
 	if (!EVP_DigestVerifyInitFromAlgorithm(&ctx, a, pkey))

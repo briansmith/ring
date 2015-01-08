@@ -243,13 +243,21 @@ int DSA_verify(int type, const uint8_t *digest, size_t digest_len,
                const uint8_t *sig, size_t sig_len, const DSA *dsa) {
   DSA_SIG *s = NULL;
   int ret = -1, valid;
+  uint8_t *der = NULL;
 
   s = DSA_SIG_new();
   if (s == NULL) {
     goto err;
   }
 
-  if (d2i_DSA_SIG(&s, &sig, sig_len) == NULL) {
+  const uint8_t *sigp = sig;
+  if (d2i_DSA_SIG(&s, &sigp, sig_len) == NULL || sigp != sig + sig_len) {
+    goto err;
+  }
+
+  /* Ensure that the signature uses DER and doesn't have trailing garbage. */
+  int der_len = i2d_DSA_SIG(s, &der);
+  if (der_len < 0 || (size_t)der_len != sig_len || memcmp(sig, der, sig_len)) {
     goto err;
   }
 
@@ -260,6 +268,9 @@ int DSA_verify(int type, const uint8_t *digest, size_t digest_len,
   ret = valid;
 
 err:
+  if (der != NULL) {
+    OPENSSL_free(der);
+  }
   if (s) {
     DSA_SIG_free(s);
   }
