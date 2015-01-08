@@ -235,7 +235,7 @@ static int dtls1_buffer_record(SSL *s, record_pqueue *queue,
     }
 
     OPENSSL_PUT_ERROR(SSL, dtls1_buffer_record, ERR_R_INTERNAL_ERROR);
-    return 0;
+    return -1;
   }
 
   rdata->packet = s->packet;
@@ -251,21 +251,24 @@ static int dtls1_buffer_record(SSL *s, record_pqueue *queue,
   memset(&(s->s3->rrec), 0, sizeof(SSL3_RECORD));
 
   if (!ssl3_setup_buffers(s)) {
-    OPENSSL_PUT_ERROR(SSL, dtls1_buffer_record, ERR_R_INTERNAL_ERROR);
-    OPENSSL_free(rdata);
-    pitem_free(item);
-    return 0;
+    goto internal_error;
   }
 
   /* insert should not fail, since duplicates are dropped */
   if (pqueue_insert(queue->q, item) == NULL) {
-    OPENSSL_PUT_ERROR(SSL, dtls1_buffer_record, ERR_R_INTERNAL_ERROR);
-    OPENSSL_free(rdata);
-    pitem_free(item);
-    return 0;
+    goto internal_error;
   }
 
   return 1;
+
+internal_error:
+  OPENSSL_PUT_ERROR(SSL, dtls1_buffer_record, ERR_R_INTERNAL_ERROR);
+  if (rdata->rbuf.buf != NULL) {
+    OPENSSL_free(rdata->rbuf.buf);
+  }
+  OPENSSL_free(rdata);
+  pitem_free(item);
+  return -1;
 }
 
 static int dtls1_retrieve_buffered_record(SSL *s, record_pqueue *queue) {
@@ -310,7 +313,10 @@ static int dtls1_process_buffered_records(SSL *s) {
       if (!dtls1_process_record(s)) {
         return 0;
       }
-      dtls1_buffer_record(s, &(s->d1->processed_rcds), s->s3->rrec.seq_num);
+      if (dtls1_buffer_record(s, &(s->d1->processed_rcds),
+                              s->s3->rrec.seq_num) < 0) {
+        return -1;
+      }
     }
   }
 
@@ -438,7 +444,6 @@ static int dtls1_process_record(SSL *s) {
 
   /* we have pulled in a full packet so zero things */
   s->packet_length = 0;
-  dtls1_record_bitmap_update(s, &(s->d1->bitmap)); /* Mark receipt of record. */
   return 1;
 
 f_err:
@@ -470,7 +475,9 @@ int dtls1_get_record(SSL *s) {
 
   /* The epoch may have changed. If so, process all the pending records. This
    * is a non-blocking operation. */
-  dtls1_process_buffered_records(s);
+  if (dtls1_process_buffered_records(s) < 0) {
+    return -1;
+  }
 
   /* If we're renegotiating, then there may be buffered records. */
   if (dtls1_get_processed_record(s)) {
@@ -597,7 +604,10 @@ again:
    */
   if (is_next_epoch) {
     if (SSL_in_init(s) || s->in_handshake) {
-      dtls1_buffer_record(s, &(s->d1->unprocessed_rcds), rr->seq_num);
+      if (dtls1_buffer_record(s, &(s->d1->unprocessed_rcds), rr->seq_num) < 0) {
+        return -1;
+      }
+      dtls1_record_bitmap_update(s, bitmap); /* Mark receipt of record. */
     }
     rr->length = 0;
     s->packet_length = 0;
@@ -609,6 +619,7 @@ again:
     s->packet_length = 0; /* dump this record */
     goto again;           /* get another record */
   }
+  dtls1_record_bitmap_update(s, bitmap); /* Mark receipt of record. */
 
   return 1;
 }
@@ -729,7 +740,10 @@ start:
     /* We now have application data between CCS and Finished. Most likely the
      * packets were reordered on their way, so buffer the application data for
      * later processing rather than dropping the connection. */
-    dtls1_buffer_record(s, &(s->d1->buffered_app_data), rr->seq_num);
+    if (dtls1_buffer_record(s, &(s->d1->buffered_app_data), rr->seq_num) < 0) {
+      OPENSSL_PUT_ERROR(SSL, dtls1_read_bytes, ERR_R_INTERNAL_ERROR);
+      return -1;
+    }
     rr->length = 0;
     goto start;
   }
