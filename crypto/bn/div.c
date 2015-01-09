@@ -263,7 +263,7 @@ int BN_div(BIGNUM *dv, BIGNUM *rm, const BIGNUM *num, const BIGNUM *divisor,
 #ifdef BN_LLONG
       BN_ULLONG t2;
 
-#if defined(BN_LLONG) && defined(BN_DIV2W) && !defined(div_asm)
+#if defined(BN_LLONG) && !defined(div_asm)
       q = (BN_ULONG)(((((BN_ULLONG)n0) << BN_BITS2) | n1) / d0);
 #else
       q = div_asm(n0, n1, d0);

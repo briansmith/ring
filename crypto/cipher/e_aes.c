@@ -103,14 +103,33 @@ static char bsaes_capable(void) {
 }
 #endif
 
-#elif !defined(OPENSSL_NO_ASM) && defined(OPENSSL_ARM)
+#elif !defined(OPENSSL_NO_ASM) && \
+    (defined(OPENSSL_ARM) || defined(OPENSSL_AARCH64))
 #include "../arm_arch.h"
-#if __ARM_ARCH__ >= 7
+
+#if defined(OPENSSL_ARM)
 #define BSAES
 static char bsaes_capable(void) {
   return CRYPTO_is_NEON_capable();
 }
-#endif  /* __ARM_ARCH__ >= 7 */
+#endif
+
+#define HWAES
+static char hwaes_capable(void) {
+  return (OPENSSL_armcap_P & ARMV8_AES) != 0;
+}
+
+int aes_v8_set_encrypt_key(const uint8_t *user_key, const int bits,
+                           AES_KEY *key);
+int aes_v8_set_decrypt_key(const uint8_t *user_key, const int bits,
+                           AES_KEY *key);
+void aes_v8_encrypt(const uint8_t *in, uint8_t *out, const AES_KEY *key);
+void aes_v8_decrypt(const uint8_t *in, uint8_t *out, const AES_KEY *key);
+void aes_v8_cbc_encrypt(const uint8_t *in, uint8_t *out, size_t length,
+                        const AES_KEY *key, uint8_t *ivec, const int enc);
+void aes_v8_ctr32_encrypt_blocks(const uint8_t *in, uint8_t *out, size_t len,
+                                 const AES_KEY *key, const uint8_t ivec[16]);
+
 #endif  /* OPENSSL_ARM */
 
 #if defined(BSAES)
@@ -174,6 +193,41 @@ void vpaes_cbc_encrypt(const uint8_t *in, uint8_t *out, size_t length,
 }
 #endif
 
+#if !defined(HWAES)
+/* If HWAES isn't defined then we provide dummy functions for each of the hwaes
+ * functions. */
+int hwaes_capable() {
+  return 0;
+}
+
+int aes_v8_set_encrypt_key(const uint8_t *user_key, int bits,
+                           AES_KEY *key) {
+  abort();
+}
+
+int aes_v8_set_decrypt_key(const uint8_t *user_key, int bits, AES_KEY *key) {
+  abort();
+}
+
+void aes_v8_encrypt(const uint8_t *in, uint8_t *out, const AES_KEY *key) {
+  abort();
+}
+
+void aes_v8_decrypt(const uint8_t *in, uint8_t *out, const AES_KEY *key) {
+  abort();
+}
+
+void aes_v8_cbc_encrypt(const uint8_t *in, uint8_t *out, size_t length,
+                        const AES_KEY *key, uint8_t *ivec, int enc) {
+  abort();
+}
+
+void aes_v8_ctr32_encrypt_blocks(const uint8_t *in, uint8_t *out, size_t len,
+                                 const AES_KEY *key, const uint8_t ivec[16]) {
+  abort();
+}
+#endif
+
 #if !defined(OPENSSL_NO_ASM) && \
     (defined(OPENSSL_X86_64) || defined(OPENSSL_X86))
 int aesni_set_encrypt_key(const uint8_t *userKey, int bits, AES_KEY *key);
@@ -227,7 +281,14 @@ static int aes_init_key(EVP_CIPHER_CTX *ctx, const uint8_t *key,
 
   mode = ctx->cipher->flags & EVP_CIPH_MODE_MASK;
   if ((mode == EVP_CIPH_ECB_MODE || mode == EVP_CIPH_CBC_MODE) && !enc) {
-    if (bsaes_capable() && mode == EVP_CIPH_CBC_MODE) {
+    if (hwaes_capable()) {
+      ret = aes_v8_set_decrypt_key(key, ctx->key_len * 8, &dat->ks.ks);
+      dat->block = (block128_f)aes_v8_decrypt;
+      dat->stream.cbc = NULL;
+      if (mode == EVP_CIPH_CBC_MODE) {
+        dat->stream.cbc = (cbc128_f)aes_v8_cbc_encrypt;
+      }
+    } else if (bsaes_capable() && mode == EVP_CIPH_CBC_MODE) {
       ret = AES_set_decrypt_key(key, ctx->key_len * 8, &dat->ks.ks);
       dat->block = (block128_f)AES_decrypt;
       dat->stream.cbc = (cbc128_f)bsaes_cbc_encrypt;
@@ -241,6 +302,15 @@ static int aes_init_key(EVP_CIPHER_CTX *ctx, const uint8_t *key,
       dat->block = (block128_f)AES_decrypt;
       dat->stream.cbc =
           mode == EVP_CIPH_CBC_MODE ? (cbc128_f)AES_cbc_encrypt : NULL;
+    }
+  } else if (hwaes_capable()) {
+    ret = aes_v8_set_encrypt_key(key, ctx->key_len * 8, &dat->ks.ks);
+    dat->block = (block128_f)aes_v8_encrypt;
+    dat->stream.cbc = NULL;
+    if (mode == EVP_CIPH_CBC_MODE) {
+      dat->stream.cbc = (cbc128_f)aes_v8_cbc_encrypt;
+    } else if (mode == EVP_CIPH_CTR_MODE) {
+      dat->stream.ctr = (ctr128_f)aes_v8_ctr32_encrypt_blocks;
     }
   } else if (bsaes_capable() && mode == EVP_CIPH_CTR_MODE) {
     ret = AES_set_encrypt_key(key, ctx->key_len * 8, &dat->ks.ks);
@@ -316,6 +386,12 @@ static int aes_ctr_cipher(EVP_CIPHER_CTX *ctx, unsigned char *out,
 
 static ctr128_f aes_gcm_set_key(AES_KEY *aes_key, GCM128_CONTEXT *gcm_ctx,
                                 const uint8_t *key, size_t key_len) {
+  if (hwaes_capable()) {
+    aes_v8_set_encrypt_key(key, key_len * 8, aes_key);
+    CRYPTO_gcm128_init(gcm_ctx, aes_key, (block128_f)aes_v8_encrypt);
+    return (ctr128_f)aes_v8_ctr32_encrypt_blocks;
+  }
+
   if (bsaes_capable()) {
     AES_set_encrypt_key(key, key_len * 8, aes_key);
     CRYPTO_gcm128_init(gcm_ctx, aes_key, (block128_f)AES_encrypt);
@@ -1274,6 +1350,8 @@ const EVP_AEAD *EVP_aead_aes_256_key_wrap(void) { return &aead_aes_256_key_wrap;
 int EVP_has_aes_hardware(void) {
 #if defined(OPENSSL_X86) || defined(OPENSSL_X86_64)
   return aesni_capable() && crypto_gcm_clmul_enabled();
+#elif defined(OPENSSL_ARM) || defined(OPENSSL_AARCH64)
+  return hwaes_capable() && (OPENSSL_armcap_P & ARMV8_PMULL);
 #else
   return 0;
 #endif

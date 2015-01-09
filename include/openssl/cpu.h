@@ -89,7 +89,7 @@ extern "C" {
 extern uint32_t OPENSSL_ia32cap_P[4];
 #endif
 
-#if defined(OPENSSL_ARM)
+#if defined(OPENSSL_ARM) || defined(OPENSSL_AARCH64)
 /* CRYPTO_is_NEON_capable returns true if the current CPU has a NEON unit. Note
  * that |OPENSSL_armcap_P| also exists and contains the same information in a
  * form that's easier for assembly to use. */

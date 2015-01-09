@@ -144,7 +144,8 @@ struct st_CRYPTO_EX_DATA_IMPL {
 
 #endif  /* defined(_MSC_VER) */
 
-#if defined(OPENSSL_X86) || defined(OPENSSL_X86_64)
+#if defined(OPENSSL_X86) || defined(OPENSSL_X86_64) || defined(OPENSSL_ARM) || \
+    defined(OPENSSL_AARCH64)
 /* OPENSSL_cpuid_setup initializes OPENSSL_ia32cap_P. */
 void OPENSSL_cpuid_setup(void);
 #endif

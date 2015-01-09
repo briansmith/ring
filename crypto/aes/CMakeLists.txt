@@ -27,6 +27,15 @@ if (${ARCH} STREQUAL "arm")
 
 		aes-armv4.${ASM_EXT}
 		bsaes-armv7.${ASM_EXT}
+		aesv8-armx.${ASM_EXT}
+	)
+endif()
+
+if (${ARCH} STREQUAL "aarch64")
+	set(
+		AES_ARCH_SOURCES
+
+		aesv8-armx.${ASM_EXT}
 	)
 endif()
 
@@ -50,3 +59,4 @@ perlasm(vpaes-x86.${ASM_EXT} asm/vpaes-x86.pl)
 perlasm(aesni-x86.${ASM_EXT} asm/aesni-x86.pl)
 perlasm(aes-armv4.${ASM_EXT} asm/aes-armv4.pl)
 perlasm(bsaes-armv7.${ASM_EXT} asm/bsaes-armv7.pl)
+perlasm(aesv8-armx.${ASM_EXT} asm/aesv8-armx.pl)

@@ -12,7 +12,11 @@
  * OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
  * CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE. */
 
-#if defined(__linux__)
+#include <openssl/base.h>
+
+// This file isn't built on ARM or Aarch64 because we link statically in those
+// builds and trying to override malloc in a static link doesn't work.
+#if defined(__linux__) && !defined(OPENSSL_ARM) && !defined(OPENSSL_AARCH64)
 
 #include <stdint.h>
 #include <stdlib.h>
@@ -123,4 +127,4 @@ void *realloc(void *ptr, size_t size) {
 
 }  // extern "C"
 
-#endif  /* defined(linux) */
+#endif  /* defined(linux) && !ARM && !AARCH64 */

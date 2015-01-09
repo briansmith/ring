@@ -87,8 +87,9 @@
  *   apply a number of optimizations to mitigate potential performance
  *   penalties caused by previous design decision; */
 
-#if !defined(OPENSSL_NO_ASM) && \
-    (defined(OPENSSL_X86) || defined(OPENSSL_X86_64) || defined(OPENSSL_ARM))
+#if !defined(OPENSSL_NO_ASM) &&                         \
+    (defined(OPENSSL_X86) || defined(OPENSSL_X86_64) || \
+     defined(OPENSSL_ARM) || defined(OPENSSL_AARCH64))
 #define SHA512_BLOCK_CAN_MANAGE_UNALIGNED_DATA
 #define SHA512_ASM
 #endif

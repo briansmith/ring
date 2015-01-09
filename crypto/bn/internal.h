@@ -142,8 +142,14 @@ BIGNUM *bn_expand(BIGNUM *bn, unsigned bits);
 
 #if defined(OPENSSL_64_BIT)
 
-#define BN_ULLONG	unsigned long long
+#if !defined(_MSC_VER)
+/* MSVC doesn't support two-word integers on 64-bit. */
+#define BN_LLONG	__int128_t
+#define BN_ULLONG	__uint128_t
+#endif
+
 #define BN_BITS		128
+#define BN_BITS2	64
 #define BN_BYTES	8
 #define BN_BITS4	32
 #define BN_MASK		(0xffffffffffffffffffffffffffffffffLL)
@@ -160,9 +166,11 @@ BIGNUM *bn_expand(BIGNUM *bn, unsigned bits);
 
 #elif defined(OPENSSL_32_BIT)
 
-#define BN_ULLONG	unsigned long long
-#define BN_MASK	(0xffffffffffffffffLL)
+#define BN_LLONG	int64_t
+#define BN_ULLONG	uint64_t
+#define BN_MASK		(0xffffffffffffffffLL)
 #define BN_BITS		64
+#define BN_BITS2	32
 #define BN_BYTES	4
 #define BN_BITS4	16
 #define BN_MASK2	(0xffffffffL)
@@ -188,6 +196,11 @@ BIGNUM *bn_expand(BIGNUM *bn, unsigned bits);
 #define BN_MUL_LOW_RECURSIVE_SIZE_NORMAL (32) /* 32 */
 #define BN_MONT_CTX_SET_SIZE_WORD (64)        /* 32 */
 
+#if defined(BN_LLONG)
+#define Lw(t) (((BN_ULONG)(t))&BN_MASK2)
+#define Hw(t) (((BN_ULONG)((t)>>BN_BITS2))&BN_MASK2)
+#endif
+
 BN_ULONG bn_mul_add_words(BN_ULONG *rp, const BN_ULONG *ap, int num, BN_ULONG w);
 BN_ULONG bn_mul_words(BN_ULONG *rp, const BN_ULONG *ap, int num, BN_ULONG w);
 void     bn_sqr_words(BN_ULONG *rp, const BN_ULONG *ap, int num);
@@ -212,6 +225,8 @@ int bn_cmp_part_words(const BN_ULONG *a, const BN_ULONG *b, int cl, int dl);
 
 int bn_mul_mont(BN_ULONG *rp, const BN_ULONG *ap, const BN_ULONG *bp,
                 const BN_ULONG *np, const BN_ULONG *n0, int num);
+
+#if !defined(BN_LLONG)
 
 #define LBITS(a) ((a) & BN_MASK2l)
 #define HBITS(a) (((a) >> BN_BITS4) & BN_MASK2l)
@@ -242,6 +257,8 @@ int bn_mul_mont(BN_ULONG *rp, const BN_ULONG *ap, const BN_ULONG *bp,
     (l) = lt;                     \
     (h) = ht;                     \
   }
+
+#endif  /* !defined(BN_LLONG) */
 
 #if !defined(OPENSSL_NO_ASM) && defined(OPENSSL_X86_64)
 # if defined(__GNUC__) && __GNUC__ >= 2
