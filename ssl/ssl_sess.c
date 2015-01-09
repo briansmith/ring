@@ -764,7 +764,7 @@ static void timeout_doall_arg(SSL_SESSION *sess, void *void_param) {
     /* timeout */
     /* The reason we don't call SSL_CTX_remove_session() is to
      * save on locking overhead */
-    lh_SSL_SESSION_delete(param->cache, sess);
+    (void) lh_SSL_SESSION_delete(param->cache, sess);
     SSL_SESSION_list_remove(param->ctx, sess);
     sess->not_resumable = 1;
     if (param->ctx->remove_session_cb != NULL) {

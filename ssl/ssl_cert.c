@@ -801,7 +801,7 @@ int SSL_add_file_cert_subjects_to_stack(STACK_OF(X509_NAME) * stack,
     X509_free(x);
   }
 
-  sk_X509_NAME_set_cmp_func(stack, oldcmp);
+  (void) sk_X509_NAME_set_cmp_func(stack, oldcmp);
 
   return ret;
 }
