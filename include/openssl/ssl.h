@@ -1887,7 +1887,9 @@ OPENSSL_EXPORT int	SSL_add_dir_cert_subjects_to_stack(STACK_OF(X509_NAME) *stack
 
 #endif
 
+/* SSL_load_error_strings does nothing. */
 OPENSSL_EXPORT void	SSL_load_error_strings(void );
+
 OPENSSL_EXPORT const char *SSL_state_string(const SSL *s);
 OPENSSL_EXPORT const char *SSL_rstate_string(const SSL *s);
 OPENSSL_EXPORT const char *SSL_state_string_long(const SSL *s);
@@ -2085,7 +2087,9 @@ OPENSSL_EXPORT void SSL_set_accept_state(SSL *s);
 
 OPENSSL_EXPORT long SSL_get_default_timeout(const SSL *s);
 
-OPENSSL_EXPORT int SSL_library_init(void );
+/* SSL_library_init initializes the crypto and SSL libraries, loads their error
+ * strings, and returns one. */
+OPENSSL_EXPORT int SSL_library_init(void);
 
 OPENSSL_EXPORT const char *SSL_CIPHER_description(const SSL_CIPHER *,char *buf,int size);
 OPENSSL_EXPORT STACK_OF(X509_NAME) *SSL_dup_CA_list(STACK_OF(X509_NAME) *sk);
