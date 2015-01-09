@@ -3,7 +3,7 @@ cmake_minimum_required (VERSION 2.8.8)
 project (BoringSSL)
 
 if(CMAKE_COMPILER_IS_GNUCXX OR "${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
-	set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall -Wshadow -Werror -ggdb -std=c89")
+	set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall -Wshadow -Werror -ggdb")
 	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wshadow -Werror -ggdb -std=c++0x")
 elseif(MSVC)
 	# Disable warnings for implicit integer narrowing.
