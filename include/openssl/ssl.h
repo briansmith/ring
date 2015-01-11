@@ -2422,6 +2422,7 @@ OPENSSL_EXPORT int SSL_set_session_ticket_ext_cb(SSL *s, void *cb, void *arg);
 #define SSL_F_ssl3_get_initial_bytes 296
 #define SSL_F_tls1_enc 297
 #define SSL_F_ssl3_prf 298
+#define SSL_F_dtls1_do_write 299
 #define SSL_R_UNABLE_TO_FIND_ECDH_PARAMETERS 100
 #define SSL_R_DECRYPTION_FAILED_OR_BAD_RECORD_MAC 101
 #define SSL_R_INVALID_NULL_CMD_NAME 102
@@ -2738,6 +2739,7 @@ OPENSSL_EXPORT int SSL_set_session_ticket_ext_cb(SSL *s, void *cb, void *arg);
 #define SSL_R_INVALID_SSL_SESSION 443
 #define SSL_R_BAD_ALERT 444
 #define SSL_R_HANDSHAKE_FAILURE_ON_CLIENT_HELLO 445
+#define SSL_R_MTU_TOO_SMALL 446
 #define SSL_R_SSLV3_ALERT_CLOSE_NOTIFY 1000
 #define SSL_R_SSLV3_ALERT_UNEXPECTED_MESSAGE 1010
 #define SSL_R_SSLV3_ALERT_BAD_RECORD_MAC 1020
