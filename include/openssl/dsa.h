@@ -160,7 +160,7 @@ OPENSSL_EXPORT DSA_SIG *DSA_do_sign(const uint8_t *digest, size_t digest_len,
 OPENSSL_EXPORT int DSA_do_verify(const uint8_t *digest, size_t digest_len,
                                  DSA_SIG *sig, const DSA *dsa);
 
-/* DSA_check_signature sets |*out_valid| to zero. Then it verifies that |sig|
+/* DSA_do_check_signature sets |*out_valid| to zero. Then it verifies that |sig|
  * is a valid signature, by the public key in |dsa| of the hash in |digest|
  * and, if so, it sets |*out_valid| to one.
  *

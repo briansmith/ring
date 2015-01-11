@@ -199,20 +199,11 @@ DSA_SIG *DSA_do_sign(const uint8_t *digest, size_t digest_len, DSA *dsa) {
 
 int DSA_do_verify(const uint8_t *digest, size_t digest_len, DSA_SIG *sig,
                   const DSA *dsa) {
-  int valid, ret;
-
-  if (dsa->meth->verify) {
-    ret = dsa->meth->verify(&valid, digest, digest_len, sig, dsa);
-  } else {
-    ret = DSA_default_method.verify(&valid, digest, digest_len, sig, dsa);
-  }
-
-  if (!ret) {
+  int valid;
+  if (!DSA_do_check_signature(&valid, digest, digest_len, sig, dsa)) {
     return -1;
-  } else if (!valid) {
-    return 0;
   }
-  return 1;
+  return valid;
 }
 
 int DSA_do_check_signature(int *out_valid, const uint8_t *digest,
@@ -241,8 +232,18 @@ int DSA_sign(int type, const uint8_t *digest, size_t digest_len,
 
 int DSA_verify(int type, const uint8_t *digest, size_t digest_len,
                const uint8_t *sig, size_t sig_len, const DSA *dsa) {
+  int valid;
+  if (!DSA_check_signature(&valid, digest, digest_len, sig, sig_len, dsa)) {
+    return -1;
+  }
+  return valid;
+}
+
+int DSA_check_signature(int *out_valid, const uint8_t *digest,
+                        size_t digest_len, const uint8_t *sig, size_t sig_len,
+                        const DSA *dsa) {
   DSA_SIG *s = NULL;
-  int ret = -1, valid;
+  int ret = 0;
   uint8_t *der = NULL;
 
   s = DSA_SIG_new();
@@ -261,40 +262,12 @@ int DSA_verify(int type, const uint8_t *digest, size_t digest_len,
     goto err;
   }
 
-  if (!DSA_do_check_signature(&valid, digest, digest_len, s, dsa)) {
-    goto err;
-  }
-
-  ret = valid;
+  ret = DSA_do_check_signature(out_valid, digest, digest_len, s, dsa);
 
 err:
   if (der != NULL) {
     OPENSSL_free(der);
   }
-  if (s) {
-    DSA_SIG_free(s);
-  }
-  return ret;
-}
-
-int DSA_check_signature(int *out_valid, const uint8_t *digest,
-                        size_t digest_len, const uint8_t *sig, size_t sig_len,
-                        const DSA *dsa) {
-  DSA_SIG *s = NULL;
-  int ret = 0;
-
-  s = DSA_SIG_new();
-  if (s == NULL) {
-    goto err;
-  }
-
-  if (d2i_DSA_SIG(&s, &sig, sig_len) == NULL) {
-    goto err;
-  }
-
-  ret = DSA_do_check_signature(out_valid, digest, digest_len, s, dsa);
-
-err:
   if (s) {
     DSA_SIG_free(s);
   }
