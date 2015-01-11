@@ -162,7 +162,13 @@ int dtls1_new(SSL *s) {
   }
 
   s->d1 = d1;
-  s->method->ssl_clear(s);
+
+  /* Set the version to the highest version for DTLS. This controls the initial
+   * state of |s->enc_method| and what the API reports as the version prior to
+   * negotiation.
+   *
+   * TODO(davidben): This is fragile and confusing. */
+  s->version = DTLS1_2_VERSION;
   return 1;
 }
 
@@ -214,6 +220,10 @@ static void dtls1_clear_queues(SSL *s) {
 void dtls1_free(SSL *s) {
   ssl3_free(s);
 
+  if (s == NULL || s->d1 == NULL) {
+    return;
+  }
+
   dtls1_clear_queues(s);
 
   pqueue_free(s->d1->unprocessed_rcds.q);
@@ -224,41 +234,6 @@ void dtls1_free(SSL *s) {
 
   OPENSSL_free(s->d1);
   s->d1 = NULL;
-}
-
-void dtls1_clear(SSL *s) {
-  pqueue unprocessed_rcds;
-  pqueue processed_rcds;
-  pqueue buffered_messages;
-  pqueue sent_messages;
-  pqueue buffered_app_data;
-  unsigned int mtu;
-
-  if (s->d1) {
-    unprocessed_rcds = s->d1->unprocessed_rcds.q;
-    processed_rcds = s->d1->processed_rcds.q;
-    buffered_messages = s->d1->buffered_messages;
-    sent_messages = s->d1->sent_messages;
-    buffered_app_data = s->d1->buffered_app_data.q;
-    mtu = s->d1->mtu;
-
-    dtls1_clear_queues(s);
-
-    memset(s->d1, 0, sizeof(*(s->d1)));
-
-    if (SSL_get_options(s) & SSL_OP_NO_QUERY_MTU) {
-      s->d1->mtu = mtu;
-    }
-
-    s->d1->unprocessed_rcds.q = unprocessed_rcds;
-    s->d1->processed_rcds.q = processed_rcds;
-    s->d1->buffered_messages = buffered_messages;
-    s->d1->sent_messages = sent_messages;
-    s->d1->buffered_app_data.q = buffered_app_data;
-  }
-
-  ssl3_clear(s);
-  s->version = DTLS1_2_VERSION;
 }
 
 long dtls1_ctrl(SSL *s, int cmd, long larg, void *parg) {

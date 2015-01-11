@@ -60,7 +60,6 @@
 
 static const SSL_PROTOCOL_METHOD DTLS_protocol_method = {
   dtls1_new,
-  dtls1_clear,
   dtls1_free,
   dtls1_accept,
   dtls1_connect,

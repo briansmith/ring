@@ -190,6 +190,12 @@ int SSL_clear(SSL *s) {
     assert(s->state == 0);
   }
 
+  /* TODO(davidben): Some state on |s| is reset both in |SSL_new| and
+   * |SSL_clear| because it is per-connection state rather than configuration
+   * state. Per-connection state should be on |s->s3| and |s->d1| so it is
+   * naturally reset at the right points between |SSL_new|, |SSL_clear|, and
+   * |ssl3_new|. */
+
   s->rwstate = SSL_NOTHING;
   s->rstate = SSL_ST_READ_HEADER;
 
@@ -198,11 +204,39 @@ int SSL_clear(SSL *s) {
     s->init_buf = NULL;
   }
 
+  s->packet = NULL;
+  s->packet_length = 0;
+
   ssl_clear_cipher_ctx(s);
   ssl_clear_hash_ctx(&s->read_hash);
   ssl_clear_hash_ctx(&s->write_hash);
 
-  s->method->ssl_clear(s);
+  if (s->next_proto_negotiated) {
+    OPENSSL_free(s->next_proto_negotiated);
+    s->next_proto_negotiated = NULL;
+    s->next_proto_negotiated_len = 0;
+  }
+
+  /* The s->d1->mtu is simultaneously configuration (preserved across
+   * clear) and connection-specific state (gets reset).
+   *
+   * TODO(davidben): Avoid this. */
+  unsigned mtu = 0;
+  if (s->d1 != NULL) {
+    mtu = s->d1->mtu;
+  }
+
+  s->method->ssl_free(s);
+  if (!s->method->ssl_new(s)) {
+    return 0;
+  }
+  s->enc_method = ssl3_get_enc_method(s->version);
+  assert(s->enc_method != NULL);
+
+  if (SSL_IS_DTLS(s) && (SSL_get_options(s) & SSL_OP_NO_QUERY_MTU)) {
+    s->d1->mtu = mtu;
+  }
+
   s->client_version = s->version;
 
   return 1;
@@ -315,7 +349,8 @@ SSL *SSL_new(SSL_CTX *ctx) {
 
   s->references = 1;
 
-  SSL_clear(s);
+  s->rwstate = SSL_NOTHING;
+  s->rstate = SSL_ST_READ_HEADER;
 
   CRYPTO_new_ex_data(CRYPTO_EX_INDEX_SSL, s, &s->ex_data);
 

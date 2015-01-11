@@ -559,7 +559,6 @@ struct ssl_method_st {
 /* Used to hold functions for SSLv2 or SSLv3/TLSv1 functions */
 struct ssl_protocol_method_st {
   int (*ssl_new)(SSL *s);
-  void (*ssl_clear)(SSL *s);
   void (*ssl_free)(SSL *s);
   int (*ssl_accept)(SSL *s);
   int (*ssl_connect)(SSL *s);
@@ -792,7 +791,6 @@ int ssl3_read(SSL *s, void *buf, int len);
 int ssl3_peek(SSL *s, void *buf, int len);
 int ssl3_write(SSL *s, const void *buf, int len);
 int ssl3_shutdown(SSL *s);
-void ssl3_clear(SSL *s);
 long ssl3_ctrl(SSL *s, int cmd, long larg, void *parg);
 long ssl3_ctx_ctrl(SSL_CTX *s, int cmd, long larg, void *parg);
 long ssl3_callback_ctrl(SSL *s, int cmd, void (*fp)(void));
@@ -877,7 +875,6 @@ int dtls1_new(SSL *s);
 int dtls1_accept(SSL *s);
 int dtls1_connect(SSL *s);
 void dtls1_free(SSL *s);
-void dtls1_clear(SSL *s);
 long dtls1_ctrl(SSL *s, int cmd, long larg, void *parg);
 int dtls1_shutdown(SSL *s);
 

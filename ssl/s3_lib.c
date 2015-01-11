@@ -640,15 +640,20 @@ int ssl3_new(SSL *s) {
   memset(s3->wrec.seq_num, 0, sizeof(s3->wrec.seq_num));
 
   s->s3 = s3;
-  s->method->ssl_clear(s);
 
+  /* Set the version to the highest supported version for TLS. This controls the
+   * initial state of |s->enc_method| and what the API reports as the version
+   * prior to negotiation.
+   *
+   * TODO(davidben): This is fragile and confusing. */
+  s->version = TLS1_2_VERSION;
   return 1;
 err:
   return 0;
 }
 
 void ssl3_free(SSL *s) {
-  if (s == NULL) {
+  if (s == NULL || s->s3 == NULL) {
     return;
   }
 
@@ -697,92 +702,6 @@ void ssl3_free(SSL *s) {
   OPENSSL_cleanse(s->s3, sizeof *s->s3);
   OPENSSL_free(s->s3);
   s->s3 = NULL;
-}
-
-void ssl3_clear(SSL *s) {
-  uint8_t *rp, *wp;
-  size_t rlen, wlen;
-  int init_extra;
-
-  /* TODO(davidben): Can this just call ssl3_free + ssl3_new. rbuf, wbuf, and
-   * init_extra are preserved, but this may not serve anything more than saving
-   * a malloc. */
-
-  if (s->s3->sniff_buffer != NULL) {
-    BUF_MEM_free(s->s3->sniff_buffer);
-  }
-  s->s3->sniff_buffer = NULL;
-
-  ssl3_cleanup_key_block(s);
-  if (s->s3->tmp.ca_names != NULL) {
-    sk_X509_NAME_pop_free(s->s3->tmp.ca_names, X509_NAME_free);
-  }
-  s->s3->tmp.ca_names = NULL;
-  if (s->s3->tmp.certificate_types != NULL) {
-    OPENSSL_free(s->s3->tmp.certificate_types);
-  }
-  s->s3->tmp.certificate_types = NULL;
-  if (s->s3->tmp.peer_ecpointformatlist) {
-    OPENSSL_free(s->s3->tmp.peer_ecpointformatlist);
-  }
-  s->s3->tmp.peer_ecpointformatlist = NULL;
-  if (s->s3->tmp.peer_ellipticcurvelist) {
-    OPENSSL_free(s->s3->tmp.peer_ellipticcurvelist);
-  }
-  s->s3->tmp.peer_ellipticcurvelist = NULL;
-  if (s->s3->tmp.peer_psk_identity_hint) {
-    OPENSSL_free(s->s3->tmp.peer_psk_identity_hint);
-  }
-  s->s3->tmp.peer_psk_identity_hint = NULL;
-
-  if (s->s3->tmp.dh != NULL) {
-    DH_free(s->s3->tmp.dh);
-    s->s3->tmp.dh = NULL;
-  }
-  if (s->s3->tmp.ecdh != NULL) {
-    EC_KEY_free(s->s3->tmp.ecdh);
-    s->s3->tmp.ecdh = NULL;
-  }
-  rp = s->s3->rbuf.buf;
-  wp = s->s3->wbuf.buf;
-  rlen = s->s3->rbuf.len;
-  wlen = s->s3->wbuf.len;
-  init_extra = s->s3->init_extra;
-  if (s->s3->handshake_buffer) {
-    BIO_free(s->s3->handshake_buffer);
-    s->s3->handshake_buffer = NULL;
-  }
-  if (s->s3->handshake_dgst) {
-    ssl3_free_digest_list(s);
-  }
-
-  if (s->s3->alpn_selected) {
-    OPENSSL_free(s->s3->alpn_selected);
-    s->s3->alpn_selected = NULL;
-  }
-  memset(s->s3, 0, sizeof *s->s3);
-  s->s3->rbuf.buf = rp;
-  s->s3->wbuf.buf = wp;
-  s->s3->rbuf.len = rlen;
-  s->s3->wbuf.len = wlen;
-  s->s3->init_extra = init_extra;
-
-  ssl_free_wbio_buffer(s);
-
-  s->packet_length = 0;
-  s->s3->renegotiate = 0;
-  s->s3->total_renegotiations = 0;
-  s->s3->num_renegotiations = 0;
-  s->s3->in_read_app_data = 0;
-  s->version = TLS1_2_VERSION;
-
-  if (s->next_proto_negotiated) {
-    OPENSSL_free(s->next_proto_negotiated);
-    s->next_proto_negotiated = NULL;
-    s->next_proto_negotiated_len = 0;
-  }
-
-  s->s3->tlsext_channel_id_valid = 0;
 }
 
 static int ssl3_set_req_cert_type(CERT *c, const uint8_t *p, size_t len);
