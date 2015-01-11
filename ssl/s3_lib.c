@@ -640,12 +640,6 @@ int ssl3_new(SSL *s) {
   memset(s3->wrec.seq_num, 0, sizeof(s3->wrec.seq_num));
 
   s->s3 = s3;
-
-  s->tlsext_channel_id_enabled = s->ctx->tlsext_channel_id_enabled;
-  if (s->ctx->tlsext_channel_id_private) {
-    s->tlsext_channel_id_private =
-        EVP_PKEY_dup(s->ctx->tlsext_channel_id_private);
-  }
   s->method->ssl_clear(s);
 
   return 1;

@@ -329,6 +329,11 @@ SSL *SSL_new(SSL_CTX *ctx) {
   s->psk_client_callback = ctx->psk_client_callback;
   s->psk_server_callback = ctx->psk_server_callback;
 
+  s->tlsext_channel_id_enabled = ctx->tlsext_channel_id_enabled;
+  if (ctx->tlsext_channel_id_private) {
+    s->tlsext_channel_id_private = EVP_PKEY_dup(ctx->tlsext_channel_id_private);
+  }
+
   s->signed_cert_timestamps_enabled = s->ctx->signed_cert_timestamps_enabled;
   s->ocsp_stapling_enabled = s->ctx->ocsp_stapling_enabled;
 
