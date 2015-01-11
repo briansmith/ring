@@ -134,10 +134,6 @@ int dtls1_new(SSL *s) {
   d1->sent_messages = pqueue_new();
   d1->buffered_app_data.q = pqueue_new();
 
-  if (s->server) {
-    d1->cookie_len = sizeof(s->d1->cookie);
-  }
-
   if (!d1->unprocessed_rcds.q || !d1->processed_rcds.q ||
       !d1->buffered_messages || !d1->sent_messages ||
       !d1->buffered_app_data.q) {
