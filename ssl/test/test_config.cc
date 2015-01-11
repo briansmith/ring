@@ -104,6 +104,7 @@ const Flag<std::string> kBase64Flags[] = {
 const Flag<int> kIntFlags[] = {
   { "-min-version", &TestConfig::min_version },
   { "-max-version", &TestConfig::max_version },
+  { "-mtu", &TestConfig::mtu },
 };
 
 }  // namespace
@@ -134,7 +135,8 @@ TestConfig::TestConfig()
       enable_signed_cert_timestamps(false),
       fastradio_padding(false),
       min_version(0),
-      max_version(0) {
+      max_version(0),
+      mtu(0) {
 }
 
 bool ParseConfig(int argc, char **argv, TestConfig *out_config) {

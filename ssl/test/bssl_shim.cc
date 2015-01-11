@@ -436,6 +436,10 @@ static int do_exchange(SSL_SESSION **out_session,
   if (config->max_version != 0) {
     SSL_set_max_version(ssl, (uint16_t)config->max_version);
   }
+  if (config->mtu != 0) {
+    SSL_set_options(ssl, SSL_OP_NO_QUERY_MTU);
+    SSL_set_mtu(ssl, config->mtu);
+  }
 
   BIO *bio = BIO_new_fd(fd, 1 /* take ownership */);
   if (bio == NULL) {

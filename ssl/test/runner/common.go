@@ -590,6 +590,10 @@ type ProtocolBugs struct {
 	// ExpectInitialRecordVersion, if non-zero, is the expected
 	// version of the records before the version is determined.
 	ExpectInitialRecordVersion uint16
+
+	// MaxPacketLength, if non-zero, is the maximum acceptable size for a
+	// packet.
+	MaxPacketLength int
 }
 
 func (c *Config) serverInit() {

@@ -66,6 +66,7 @@ struct TestConfig {
   bool fastradio_padding;
   int min_version;
   int max_version;
+  int mtu;
 };
 
 bool ParseConfig(int argc, char **argv, TestConfig *out_config);

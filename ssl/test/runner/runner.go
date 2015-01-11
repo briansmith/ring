@@ -564,6 +564,30 @@ var testCases = []testCase{
 		shouldFail:    true,
 		expectedError: ":HANDSHAKE_FAILURE_ON_CLIENT_HELLO:",
 	},
+	{
+		protocol: dtls,
+		testType: serverTest,
+		name:     "MTU",
+		config: Config{
+			Bugs: ProtocolBugs{
+				MaxPacketLength: 256,
+			},
+		},
+		flags: []string{"-mtu", "256"},
+	},
+	{
+		protocol: dtls,
+		testType: serverTest,
+		name:     "MTUExceeded",
+		config: Config{
+			Bugs: ProtocolBugs{
+				MaxPacketLength: 255,
+			},
+		},
+		flags:              []string{"-mtu", "256"},
+		shouldFail:         true,
+		expectedLocalError: "dtls: exceeded maximum packet length",
+	},
 }
 
 func doExchange(test *testCase, config *Config, conn net.Conn, messageLen int, isResume bool) error {

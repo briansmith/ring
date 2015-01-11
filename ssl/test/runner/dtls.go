@@ -53,6 +53,9 @@ func (c *Conn) dtlsDoReadRecord(want recordType) (recordType, *block, error) {
 		if err != nil {
 			return 0, nil, err
 		}
+		if c.config.Bugs.MaxPacketLength != 0 && n > c.config.Bugs.MaxPacketLength {
+			return 0, nil, fmt.Errorf("dtls: exceeded maximum packet length")
+		}
 		c.rawInput.resize(n)
 	}
 
