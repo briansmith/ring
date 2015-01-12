@@ -163,10 +163,18 @@ static const uint8_t bitmask_start_values[] = {0xff, 0xfe, 0xfc, 0xf8,
 static const uint8_t bitmask_end_values[] = {0xff, 0x01, 0x03, 0x07,
                                              0x0f, 0x1f, 0x3f, 0x7f};
 
-/* XDTLS:  figure out the right values */
-static const unsigned int g_probable_mtu[] = {1500 - 28, 512 - 28, 256 - 28};
+/* TODO(davidben): 28 comes from the size of IP + UDP header. Is this reasonable
+ * for these values? Notably, why is kMinMTU a function of the transport
+ * protocol's overhead rather than, say, what's needed to hold a minimally-sized
+ * handshake fragment plus protocol overhead. */
 
-static unsigned int dtls1_guess_mtu(unsigned int curr_mtu);
+/* kMinMTU is the minimum acceptable MTU value. */
+static const unsigned int kMinMTU = 256 - 28;
+
+/* kDefaultMTU is the default MTU value to use if neither the user nor
+ * the underlying BIO supplies one. */
+static const unsigned int kDefaultMTU = 1500 - 28;
+
 static void dtls1_fix_message_header(SSL *s, unsigned long frag_off,
                                      unsigned long frag_len);
 static unsigned char *dtls1_write_message_header(SSL *s, unsigned char *p);
@@ -248,8 +256,7 @@ int dtls1_do_write(SSL *s, int type) {
     /* I've seen the kernel return bogus numbers when it doesn't know
      * (initial write), so just make sure we have a reasonable number */
     if (s->d1->mtu < dtls1_min_mtu()) {
-      s->d1->mtu = 0;
-      s->d1->mtu = dtls1_guess_mtu(s->d1->mtu);
+      s->d1->mtu = kDefaultMTU;
       BIO_ctrl(SSL_get_wbio(s), BIO_CTRL_DGRAM_SET_MTU, s->d1->mtu, NULL);
     }
   }
@@ -1128,24 +1135,7 @@ static uint8_t *dtls1_write_message_header(SSL *s, uint8_t *p) {
 }
 
 unsigned int dtls1_min_mtu(void) {
-  return g_probable_mtu[(sizeof(g_probable_mtu) / sizeof(g_probable_mtu[0])) -
-                        1];
-}
-
-static unsigned int dtls1_guess_mtu(unsigned int curr_mtu) {
-  unsigned int i;
-
-  if (curr_mtu == 0) {
-    return g_probable_mtu[0];
-  }
-
-  for (i = 0; i < sizeof(g_probable_mtu) / sizeof(g_probable_mtu[0]); i++) {
-    if (curr_mtu > g_probable_mtu[i]) {
-      return g_probable_mtu[i];
-    }
-  }
-
-  return curr_mtu;
+  return kMinMTU;
 }
 
 void dtls1_get_message_header(uint8_t *data,
