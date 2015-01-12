@@ -251,11 +251,10 @@ int dtls1_do_write(SSL *s, int type) {
   /* AHA!  Figure out the MTU, and stick to the right size */
   if (s->d1->mtu < dtls1_min_mtu() &&
       !(SSL_get_options(s) & SSL_OP_NO_QUERY_MTU)) {
-    s->d1->mtu = BIO_ctrl(SSL_get_wbio(s), BIO_CTRL_DGRAM_QUERY_MTU, 0, NULL);
-
-    /* I've seen the kernel return bogus numbers when it doesn't know
-     * (initial write), so just make sure we have a reasonable number */
-    if (s->d1->mtu < dtls1_min_mtu()) {
+    long mtu = BIO_ctrl(SSL_get_wbio(s), BIO_CTRL_DGRAM_QUERY_MTU, 0, NULL);
+    if (mtu >= 0 && mtu <= (1 << 30) && (unsigned)mtu >= dtls1_min_mtu()) {
+      s->d1->mtu = (unsigned)mtu;
+    } else {
       s->d1->mtu = kDefaultMTU;
       BIO_ctrl(SSL_get_wbio(s), BIO_CTRL_DGRAM_SET_MTU, s->d1->mtu, NULL);
     }
