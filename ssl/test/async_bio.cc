@@ -61,7 +61,7 @@ static int async_write(BIO *bio, const char *in, int inl) {
   if (ret <= 0) {
     BIO_copy_next_retry(bio);
   } else {
-    a->write_quota -= ret;
+    a->write_quota -= (a->datagram ? 1 : ret);
   }
   return ret;
 }
