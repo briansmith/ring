@@ -286,6 +286,8 @@ int dtls1_do_write(SSL *s, int type) {
 
     /* XDTLS: this function is too long.  split out the CCS part */
     if (type == SSL3_RT_HANDSHAKE) {
+      /* If this isn't the first fragment, reserve space to prepend a new
+       * fragment header. This will override the body of a previous fragment. */
       if (s->init_off != 0) {
         assert(s->init_off > DTLS1_HM_HEADER_LENGTH);
         s->init_off -= DTLS1_HM_HEADER_LENGTH;
@@ -321,38 +323,28 @@ int dtls1_do_write(SSL *s, int type) {
 
     ret = dtls1_write_bytes(s, type, &s->init_buf->data[s->init_off], len);
     if (ret < 0) {
-      /* might need to update MTU here, but we don't know which previous packet
-       * caused the failure -- so can't really retransmit anything.  continue
-       * as if everything is fine and wait for an alert to handle the
-       * retransmit. */
-      if (!(SSL_get_options(s) & SSL_OP_NO_QUERY_MTU) &&
-          BIO_ctrl(SSL_get_wbio(s), BIO_CTRL_DGRAM_MTU_EXCEEDED, 0, NULL) > 0) {
-        s->d1->mtu =
-            BIO_ctrl(SSL_get_wbio(s), BIO_CTRL_DGRAM_QUERY_MTU, 0, NULL);
-      } else {
-        return -1;
-      }
-    } else {
-      /* bad if this assert fails, only part of the handshake message got sent.
-       * But why would this happen? */
-      assert(len == (unsigned int)ret);
-
-      if (ret == s->init_num) {
-        if (s->msg_callback) {
-          s->msg_callback(1, s->version, type, s->init_buf->data,
-                          (size_t)(s->init_off + s->init_num), s,
-                          s->msg_callback_arg);
-        }
-
-        s->init_off = 0; /* done writing this message */
-        s->init_num = 0;
-
-        return 1;
-      }
-      s->init_off += ret;
-      s->init_num -= ret;
-      frag_off += (ret -= DTLS1_HM_HEADER_LENGTH);
+      return -1;
     }
+
+    /* bad if this assert fails, only part of the handshake message got sent.
+     * But why would this happen? */
+    assert(len == (unsigned int)ret);
+
+    if (ret == s->init_num) {
+      if (s->msg_callback) {
+        s->msg_callback(1, s->version, type, s->init_buf->data,
+                        (size_t)(s->init_off + s->init_num), s,
+                        s->msg_callback_arg);
+      }
+
+      s->init_off = 0; /* done writing this message */
+      s->init_num = 0;
+
+      return 1;
+    }
+    s->init_off += ret;
+    s->init_num -= ret;
+    frag_off += (ret -= DTLS1_HM_HEADER_LENGTH);
   }
 
   return 0;
