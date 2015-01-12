@@ -374,13 +374,7 @@ SSL *SSL_new(SSL_CTX *ctx) {
 
 err:
   if (s != NULL) {
-    if (s->cert != NULL) {
-      ssl_cert_free(s->cert);
-    }
-    if (s->ctx != NULL) {
-      SSL_CTX_free(s->ctx);
-    }
-    OPENSSL_free(s);
+    SSL_free(s);
   }
   OPENSSL_PUT_ERROR(SSL, SSL_new, ERR_R_MALLOC_FAILURE);
 
