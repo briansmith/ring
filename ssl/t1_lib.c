@@ -1394,6 +1394,7 @@ static int ssl_scan_clienthello_tlsext(SSL *s, CBS *cbs, int *out_alert) {
   CBS extensions;
 
   s->should_ack_sni = 0;
+  s->srtp_profile = NULL;
   s->s3->next_proto_neg_seen = 0;
   s->s3->tmp.certificate_status_expected = 0;
   s->s3->tmp.extended_master_secret = 0;
@@ -1746,10 +1747,10 @@ static int ssl_scan_serverhello_tlsext(SSL *s, CBS *cbs, int *out_alert) {
    * systematically reset on a new handshake; perhaps allocate it fresh each
    * time so it's not even kept around post-handshake. */
   s->s3->next_proto_neg_seen = 0;
-
   s->tlsext_ticket_expected = 0;
   s->s3->tmp.certificate_status_expected = 0;
   s->s3->tmp.extended_master_secret = 0;
+  s->srtp_profile = NULL;
 
   if (s->s3->alpn_selected) {
     OPENSSL_free(s->s3->alpn_selected);
