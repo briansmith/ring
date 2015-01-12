@@ -1066,7 +1066,9 @@ ssl_create_cipher_list(const SSL_PROTOCOL_METHOD *ssl_method,
    * to the resulting precedence to the STACK_OF(SSL_CIPHER). */
   for (curr = head; curr != NULL; curr = curr->next) {
     if (curr->active) {
-      sk_SSL_CIPHER_push(cipherstack, curr->cipher);
+      if (!sk_SSL_CIPHER_push(cipherstack, curr->cipher)) {
+        goto err;
+      }
       in_group_flags[num_in_group_flags++] = curr->in_group;
     }
   }
