@@ -1259,5 +1259,6 @@ OPENSSL_EXPORT int BIO_asn1_get_suffix(BIO *b, asn1_ps_func **psuffix, asn1_ps_f
 #define ASN1_R_WRONG_TAG 221
 #define ASN1_R_BOOLEAN_IS_WRONG_LENGTH 222
 #define ASN1_R_TYPE_NOT_PRIMITIVE 223
+#define ASN1_R_INVALID_BIT_STRING_BITS_LEFT 224
 
 #endif

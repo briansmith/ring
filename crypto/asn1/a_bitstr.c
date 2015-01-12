@@ -118,11 +118,12 @@ ASN1_BIT_STRING *c2i_ASN1_BIT_STRING(ASN1_BIT_STRING **a,
 	ASN1_BIT_STRING *ret=NULL;
 	const unsigned char *p;
 	unsigned char *s;
-	int i;
+	int padding;
 
 	if (len < 1)
 		{
-		i=ASN1_R_STRING_TOO_SHORT;
+		OPENSSL_PUT_ERROR(ASN1, c2i_ASN1_BIT_STRING,
+			ASN1_R_STRING_TOO_SHORT);
 		goto err;
 		}
 
@@ -134,23 +135,31 @@ ASN1_BIT_STRING *c2i_ASN1_BIT_STRING(ASN1_BIT_STRING **a,
 		ret=(*a);
 
 	p= *pp;
-	i= *(p++);
+	padding = *(p++);
+	if (padding > 7)
+		{
+		OPENSSL_PUT_ERROR(ASN1, c2i_ASN1_BIT_STRING,
+			ASN1_R_INVALID_BIT_STRING_BITS_LEFT);
+		goto err;
+		}
+
 	/* We do this to preserve the settings.  If we modify
 	 * the settings, via the _set_bit function, we will recalculate
 	 * on output */
 	ret->flags&= ~(ASN1_STRING_FLAG_BITS_LEFT|0x07); /* clear */
-	ret->flags|=(ASN1_STRING_FLAG_BITS_LEFT|(i&0x07)); /* set */
+	ret->flags|=(ASN1_STRING_FLAG_BITS_LEFT|padding); /* set */
 
 	if (len-- > 1) /* using one because of the bits left byte */
 		{
 		s=(unsigned char *)OPENSSL_malloc((int)len);
 		if (s == NULL)
 			{
-			i=ERR_R_MALLOC_FAILURE;
+			OPENSSL_PUT_ERROR(ASN1, c2i_ASN1_BIT_STRING,
+				ERR_R_MALLOC_FAILURE);
 			goto err;
 			}
 		memcpy(s,p,(int)len);
-		s[len-1]&=(0xff<<i);
+		s[len-1]&=(0xff<<padding);
 		p+=len;
 		}
 	else
@@ -164,7 +173,6 @@ ASN1_BIT_STRING *c2i_ASN1_BIT_STRING(ASN1_BIT_STRING **a,
 	*pp=p;
 	return(ret);
 err:
-	OPENSSL_PUT_ERROR(ASN1, c2i_ASN1_BIT_STRING, i);
 	if ((ret != NULL) && ((a == NULL) || (*a != ret)))
 		M_ASN1_BIT_STRING_free(ret);
 	return(NULL);
