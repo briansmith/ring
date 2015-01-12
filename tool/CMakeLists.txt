@@ -5,9 +5,10 @@ add_executable(
 
 	args.cc
 	client.cc
-	server.cc
 	const.cc
+	digest.cc
 	pkcs12.cc
+	server.cc
 	speed.cc
 	tool.cc
 	transport_common.cc
