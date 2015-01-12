@@ -278,15 +278,27 @@ int dtls1_do_write(SSL *s, int type) {
 
   frag_off = 0;
   while (s->init_num) {
+    /* Account for data in the buffering BIO; multiple records may be packed
+     * into a single packet during the handshake.
+     *
+     * TODO(davidben): This is buggy; if the MTU is larger than the buffer size,
+     * the large record will be split across two packets. Moreover, in that
+     * case, the |dtls1_write_bytes| call may not return synchronously. This
+     * will break on retry as the |s->init_off| and |s->init_num| adjustment
+     * will run a second time. */
     curr_mtu = s->d1->mtu - BIO_wpending(SSL_get_wbio(s)) -
         DTLS1_RT_HEADER_LENGTH - max_overhead;
 
     if (curr_mtu <= DTLS1_HM_HEADER_LENGTH) {
-      /* grr.. we could get an error if MTU picked was wrong */
+      /* Flush the buffer and continue with a fresh packet.
+       *
+       * TODO(davidben): If |BIO_flush| is not synchronous and requires multiple
+       * calls to |dtls1_do_write|, |frag_off| will be wrong. */
       ret = BIO_flush(SSL_get_wbio(s));
       if (ret <= 0) {
         return ret;
       }
+      assert(BIO_wpending(SSL_get_wbio(s)) == 0);
       curr_mtu = s->d1->mtu - DTLS1_RT_HEADER_LENGTH - max_overhead;
     }
 
