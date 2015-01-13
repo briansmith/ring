@@ -369,7 +369,6 @@ static const uint8_t ecformats_default[] = {
 static const uint16_t eccurves_default[] = {
     23, /* X9_64_prime256v1 */
     24, /* secp384r1 */
-    25, /* secp521r1 */
 };
 
 int tls1_ec_curve_id2nid(uint16_t curve_id) {
