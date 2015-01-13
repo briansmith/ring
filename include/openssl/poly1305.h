@@ -36,7 +36,7 @@ extern void CRYPTO_poly1305_update(poly1305_state* state, const uint8_t* in,
                                    size_t in_len);
 
 /* poly1305_finish completes the poly1305 calculation and writes a 16 byte
- * authentication tag to |mac|. */
+ * authentication tag to |mac|. The |mac| address must be 16-byte aligned. */
 extern void CRYPTO_poly1305_finish(poly1305_state* state, uint8_t mac[16]);
 
 
