@@ -164,7 +164,7 @@ static int aead_tls_seal(const EVP_AEAD_CTX *ctx, uint8_t *out,
     return 0;
   }
 
-  if (ad_len != 13 - 2) {
+  if (ad_len != 13 - 2 /* length bytes */) {
     OPENSSL_PUT_ERROR(CIPHER, aead_tls_seal, CIPHER_R_INVALID_AD_SIZE);
     return 0;
   }
@@ -266,7 +266,7 @@ static int aead_tls_open(const EVP_AEAD_CTX *ctx, uint8_t *out,
     return 0;
   }
 
-  if (ad_len != 13 - 2) {
+  if (ad_len != 13 - 2 /* length bytes */) {
     OPENSSL_PUT_ERROR(CIPHER, aead_tls_open, CIPHER_R_INVALID_AD_SIZE);
     return 0;
   }

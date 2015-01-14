@@ -58,7 +58,7 @@ static int ssl3_mac(AEAD_SSL3_CTX *ssl3_ctx, uint8_t *out, unsigned *out_len,
   EVP_MD_CTX md_ctx;
   EVP_MD_CTX_init(&md_ctx);
 
-  uint8_t pad[EVP_MAX_MD_SIZE];
+  uint8_t pad[48];
   uint8_t tmp[EVP_MAX_MD_SIZE];
   memset(pad, 0x36, pad_len);
   if (!EVP_MD_CTX_copy_ex(&md_ctx, &ssl3_ctx->md_ctx) ||
@@ -192,7 +192,7 @@ static int aead_ssl3_seal(const EVP_AEAD_CTX *ctx, uint8_t *out,
     return 0;
   }
 
-  if (ad_len != 11 - 2) {
+  if (ad_len != 11 - 2 /* length bytes */) {
     OPENSSL_PUT_ERROR(CIPHER, aead_ssl3_seal, CIPHER_R_INVALID_AD_SIZE);
     return 0;
   }
@@ -275,7 +275,7 @@ static int aead_ssl3_open(const EVP_AEAD_CTX *ctx, uint8_t *out,
     return 0;
   }
 
-  if (ad_len != 11 - 2) {
+  if (ad_len != 11 - 2 /* length bytes */) {
     OPENSSL_PUT_ERROR(CIPHER, aead_ssl3_open, CIPHER_R_INVALID_AD_SIZE);
     return 0;
   }

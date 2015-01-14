@@ -165,7 +165,7 @@ int EVP_tls_cbc_record_digest_supported(const EVP_MD *md);
  * record.
  *
  *   md: the hash function used in the HMAC.
- *     tls_cbc_record_digest_supported must return true for this hash.
+ *     EVP_tls_cbc_record_digest_supported must return true for this hash.
  *   md_out: the digest output. At most EVP_MAX_MD_SIZE bytes will be written.
  *   md_out_size: the number of output bytes is written here.
  *   header: the 13-byte, TLS record header.

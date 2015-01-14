@@ -157,15 +157,6 @@ static int run_test_case(const EVP_AEAD *aead,
       return 0;
     }
 
-    /* The "stateful" AEADs for implementing pre-AEAD cipher suites need to be
-     * reset after each operation. */
-    EVP_AEAD_CTX_cleanup(&ctx);
-    if (!EVP_AEAD_CTX_init(&ctx, aead, bufs[KEY], lengths[KEY], lengths[TAG],
-                           NULL)) {
-      fprintf(stderr, "Failed to init AEAD on line %u\n", line_no);
-      return 0;
-    }
-
     /* Garbage at the end isn't ignored. */
     out[ciphertext_len] = 0;
     if (EVP_AEAD_CTX_open(&ctx, out2, &plaintext_len, ciphertext_len + 1,
@@ -175,6 +166,15 @@ static int run_test_case(const EVP_AEAD *aead,
       return 0;
     }
     ERR_clear_error();
+
+    /* The "stateful" AEADs for implementing pre-AEAD cipher suites need to be
+     * reset after each operation. */
+    EVP_AEAD_CTX_cleanup(&ctx);
+    if (!EVP_AEAD_CTX_init(&ctx, aead, bufs[KEY], lengths[KEY], lengths[TAG],
+                           NULL)) {
+      fprintf(stderr, "Failed to init AEAD on line %u\n", line_no);
+      return 0;
+    }
 
     /* Verify integrity is checked. */
     out[0] ^= 0x80;
