@@ -287,13 +287,14 @@ static ERR_STATE *err_release_state(const CRYPTO_THREADID *tid) {
   return state;
 }
 
-static void err_shutdown(void) {
+static void err_shutdown(void (*err_state_free_cb)(ERR_STATE*)) {
   CRYPTO_w_lock(CRYPTO_LOCK_ERR);
   if (error_hash) {
     lh_ERR_STRING_DATA_free(error_hash);
     error_hash = NULL;
   }
   if (state_hash) {
+    lh_ERR_STATE_doall(state_hash, err_state_free_cb);
     lh_ERR_STATE_free(state_hash);
     state_hash = NULL;
   }

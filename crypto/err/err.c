@@ -296,10 +296,21 @@ void ERR_clear_error(void) {
   state->top = state->bottom = 0;
 }
 
+static void err_state_free(ERR_STATE *state) {
+  unsigned i;
+
+  for (i = 0; i < ERR_NUM_ERRORS; i++) {
+    err_clear(&state->errors[i]);
+  }
+  if (state->to_free) {
+    OPENSSL_free(state->to_free);
+  }
+  OPENSSL_free(state);
+}
+
 void ERR_remove_thread_state(const CRYPTO_THREADID *tid) {
   CRYPTO_THREADID current;
   ERR_STATE *state;
-  unsigned i;
 
   if (tid == NULL) {
     CRYPTO_THREADID_current(&current);
@@ -312,13 +323,7 @@ void ERR_remove_thread_state(const CRYPTO_THREADID *tid) {
     return;
   }
 
-  for (i = 0; i < ERR_NUM_ERRORS; i++) {
-    err_clear(&state->errors[i]);
-  }
-  if (state->to_free) {
-    OPENSSL_free(state->to_free);
-  }
-  OPENSSL_free(state);
+  err_state_free(state);
 }
 
 int ERR_get_next_error_library(void) {
@@ -800,7 +805,7 @@ void ERR_load_crypto_strings(void) { err_load_strings(); }
 
 void ERR_free_strings(void) {
   err_fns_check();
-  ERRFN(shutdown)();
+  ERRFN(shutdown)(err_state_free);
 }
 
 void ERR_load_BIO_strings(void) {}

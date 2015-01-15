@@ -488,7 +488,7 @@ OPENSSL_EXPORT void ERR_load_strings(const ERR_STRING_DATA *str);
 /* ERR_FNS_st is a structure of function pointers that contains the actual
  * implementation of the error queue handling functions. */
 struct ERR_FNS_st {
-  void (*shutdown)(void);
+  void (*shutdown)(void (*err_state_free_cb)(ERR_STATE*));
   ERR_STRING_DATA *(*get_item)(uint32_t packed_error);
   ERR_STRING_DATA *(*set_item)(const ERR_STRING_DATA *);
   ERR_STRING_DATA *(*del_item)(uint32_t packed_error);
