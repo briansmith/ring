@@ -210,6 +210,66 @@ static const BN_ULONG dh2048_256_q[] = {0x64F5FBD3, 0xA308B0FE, 0x1EB3750B,
 #error "unsupported BN_BITS2"
 #endif
 
+#if BN_BITS2 == 32
+#define TOBN(lo, hi) lo, hi
+#elif BN_BITS2 == 64
+#define TOBN(lo, hi) ((BN_ULONG)hi << 32 | lo)
+#else
+#error "unsupported BN_BITS2"
+#endif
+
+/* dh1024_safe_prime_1 is hard-coded in Apache httpd 2.2,
+ * modules/ssl/ssl_engine_dh.c. */
+static const BN_ULONG dh1024_safe_prime_1[] = {
+    TOBN(0x24218EB3, 0xE7393E0F), TOBN(0xE2BD68B0, 0x7DE0F4D6),
+    TOBN(0x88AEAA74, 0x07DD62DB), TOBN(0x9DDD3305, 0x10EA9FCC),
+    TOBN(0x74087D15, 0xA7DBCA78), TOBN(0x78045B07, 0xDAE88600),
+    TOBN(0x1AAD3B72, 0x33168A46), TOBN(0x7BEDDCFD, 0xFF590137),
+    TOBN(0x7A635E81, 0xFE324A46), TOBN(0x420B2A29, 0x5AC179BA),
+    TOBN(0x177E16D5, 0x13B4B4D7), TOBN(0x639C72FB, 0x849F912E),
+    TOBN(0x98BCE951, 0xB88174CB), TOBN(0xA45F520B, 0x0C84D239),
+    TOBN(0x4AFD0AD5, 0x36D693D3), TOBN(0xCBBBDC19, 0xD67DE440),
+};
+
+/* dh1024_safe_prime_2 is hard-coded in nginx,
+ * src/event/ngx_event_openssl.c. */
+static const BN_ULONG dh1024_safe_prime_2[] = {
+    TOBN(0xCFE16B9B, 0x071DF045), TOBN(0x146757DA, 0x88D0F65D),
+    TOBN(0x58FAFD49, 0x4A63AB1E), TOBN(0xEF9EA027, 0x35D8CECE),
+    TOBN(0x70CC9A50, 0x25ECE662), TOBN(0x81DC2CA7, 0xF29BA5DF),
+    TOBN(0xF7D36CC8, 0x8F68B076), TOBN(0xA757E304, 0x60E91A92),
+    TOBN(0x9BE67780, 0x87A2BC04), TOBN(0xA5FDF1D2, 0xBEECA565),
+    TOBN(0x922614C5, 0x5CCBBAA8), TOBN(0xE710800C, 0x6C030276),
+    TOBN(0x0FB3504C, 0x08EED4EB), TOBN(0x68B42D4B, 0xD958A3F5),
+    TOBN(0x80E9CFDB, 0x7C43FCF5), TOBN(0xD8467490, 0xBBBC2DCA),
+};
+
+/* dh1024_safe_prime_3 is offered as a parameter by several high-traffic sites,
+ * including mozilla.org, as of Jan 2015. */
+static const BN_ULONG dh1024_safe_prime_3[] = {
+    TOBN(0x349E721B, 0x671746AE), TOBN(0xD75E93B2, 0x258A0655),
+    TOBN(0x25592EB6, 0xD425E6FB), TOBN(0xBF7CDD9A, 0x0C46AB04),
+    TOBN(0x28968680, 0x0AD0BC99), TOBN(0xD0B7EB49, 0xF53907FB),
+    TOBN(0xEBC85C1D, 0x202EABB3), TOBN(0x364D8C71, 0x3129C693),
+    TOBN(0x2D46F195, 0x53728351), TOBN(0x8C76CC85, 0xDF326DD6),
+    TOBN(0x9188E24E, 0xF898B3F9), TOBN(0x2855DFD2, 0x95EFB13C),
+    TOBN(0x7B2241FE, 0x1F5DAC48), TOBN(0x99A13D9F, 0x117B6BF7),
+    TOBN(0x3A3468C7, 0x0F97CDDA), TOBN(0x74A8297B, 0xC9BBF5F7)};
+
+/* dh1024_safe_prime_4 is hard-coded in Apache httpd 2.0,
+ * modules/ssl/ssl_engine_dh.c. */
+static const BN_ULONG dh1024_safe_prime_4[] = {
+    TOBN(0x0DD5C86B, 0x5085E21F), TOBN(0xD823C650, 0x871538DF),
+    TOBN(0x262E56A8, 0x125136F7), TOBN(0x839EB5DB, 0x974E9EF1),
+    TOBN(0x1B13A63C, 0xEA9BAD99), TOBN(0x3D76E05E, 0x6044CF02),
+    TOBN(0x1BAC9B5C, 0x611EBBBE), TOBN(0x4E5327DF, 0x3E371D79),
+    TOBN(0x061CBC05, 0x000E6EDD), TOBN(0x20129B48, 0x2F971F3C),
+    TOBN(0x3048D5A2, 0xA6EF09C4), TOBN(0xCBD523A6, 0xFA15A259),
+    TOBN(0x4A79A770, 0x2A206490), TOBN(0x51BB055E, 0x91B78182),
+    TOBN(0xBDD4798E, 0x7CF180C3), TOBN(0x495BE32C, 0xE6969D3D)};
+
+static const BN_ULONG bn_two_data[] = {2};
+
 #define STATIC_BIGNUM(x)                                     \
   {                                                          \
     (BN_ULONG *) x, sizeof(x) / sizeof(BN_ULONG),            \
@@ -237,6 +297,15 @@ static const struct standard_parameters dh2048_256 = {
   STATIC_BIGNUM(dh2048_256_q),
   STATIC_BIGNUM(dh2048_256_g),
 };
+
+static const BIGNUM dh1024_safe_prime[] = {
+  STATIC_BIGNUM(dh1024_safe_prime_1),
+  STATIC_BIGNUM(dh1024_safe_prime_2),
+  STATIC_BIGNUM(dh1024_safe_prime_3),
+  STATIC_BIGNUM(dh1024_safe_prime_4)
+};
+
+BIGNUM bn_two = STATIC_BIGNUM(bn_two_data);
 
 static DH *get_standard_parameters(const struct standard_parameters *params,
                                    const ENGINE *engine) {
@@ -268,4 +337,25 @@ DH *DH_get_2048_224(const ENGINE *engine) {
 
 DH *DH_get_2048_256(const ENGINE *engine) {
   return get_standard_parameters(&dh2048_256, engine);
+}
+
+void DH_check_standard_parameters(DH *dh) {
+  int i;
+
+  if (dh->p == NULL ||
+      dh->g == NULL ||
+      BN_num_bytes(dh->p) != (1024 / 8) ||
+      BN_cmp(dh->g, &bn_two) != 0) {
+    return;
+  }
+
+  for (i = 0; i < sizeof(dh1024_safe_prime) / sizeof(dh1024_safe_prime[0]);
+       i++) {
+    if (BN_cmp(dh->p, &dh1024_safe_prime[i]) == 0) {
+      /* The well-known DH groups are known to have safe primes. In this case
+       * we can safely reduce the size of the private key. */
+      dh->priv_length = 161;
+      break;
+    }
+  }
 }

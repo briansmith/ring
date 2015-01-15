@@ -67,6 +67,10 @@ extern "C" {
 #endif
 
 
+/* DH_check_standard_parameters checks if the parameters in |dh| are well
+ * known and safe. If so, it sets |dh->priv_length| to an appropriately smaller
+ * value than the default. */
+void DH_check_standard_parameters(DH *dh);
 
 
 #if defined(__cplusplus)

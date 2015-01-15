@@ -221,6 +221,7 @@ static int generate_key(DH *dh) {
       } while (BN_is_zero(priv_key) || BN_is_one(priv_key));
     } else {
       /* secret exponent length */
+      DH_check_standard_parameters(dh);
       l = dh->priv_length ? dh->priv_length : BN_num_bits(dh->p) - 1;
       if (!BN_rand(priv_key, l, 0, 0)) {
         goto err;
