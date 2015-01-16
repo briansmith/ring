@@ -182,7 +182,7 @@ uint8_t *AllocAligned(size_t size) {
 #endif
 
 static bool SpeedAEADChunk(const EVP_AEAD *aead, const std::string &name,
-                           size_t chunk_len) {
+                           size_t chunk_len, size_t ad_len) {
   EVP_AEAD_CTX ctx;
   const size_t key_len = EVP_AEAD_key_length(aead);
   const size_t nonce_len = EVP_AEAD_nonce_length(aead);
@@ -197,6 +197,8 @@ static bool SpeedAEADChunk(const EVP_AEAD *aead, const std::string &name,
   std::unique_ptr<uint8_t, free_functor<uint8_t>> out(
       AllocAligned(chunk_len + overhead_len));
   memset(out.get(), 0, chunk_len + overhead_len);
+  std::unique_ptr<uint8_t[]> ad(new uint8_t[ad_len]);
+  memset(ad.get(), 0, ad_len);
 
   if (!EVP_AEAD_CTX_init(&ctx, aead, key.get(), key_len,
                          EVP_AEAD_DEFAULT_TAG_LENGTH, NULL)) {
@@ -206,13 +208,13 @@ static bool SpeedAEADChunk(const EVP_AEAD *aead, const std::string &name,
   }
 
   TimeResults results;
-  if (!TimeFunction(&results, [chunk_len, overhead_len, nonce_len, &in, &out,
-                               &ctx, &nonce]() -> bool {
+  if (!TimeFunction(&results, [chunk_len, overhead_len, nonce_len, ad_len, &in,
+                               &out, &ctx, &nonce, &ad]() -> bool {
         size_t out_len;
 
-        return EVP_AEAD_CTX_seal(&ctx, out.get(), &out_len,
-                                 chunk_len + overhead_len, nonce.get(),
-                                 nonce_len, in.get(), chunk_len, NULL, 0);
+        return EVP_AEAD_CTX_seal(
+            &ctx, out.get(), &out_len, chunk_len + overhead_len, nonce.get(),
+            nonce_len, in.get(), chunk_len, ad.get(), ad_len);
       })) {
     fprintf(stderr, "EVP_AEAD_CTX_seal failed.\n");
     BIO_print_errors_fp(stderr);
@@ -226,10 +228,11 @@ static bool SpeedAEADChunk(const EVP_AEAD *aead, const std::string &name,
   return true;
 }
 
-static bool SpeedAEAD(const EVP_AEAD *aead, const std::string &name) {
-  return SpeedAEADChunk(aead, name + " (16 bytes)", 16) &&
-         SpeedAEADChunk(aead, name + " (1350 bytes)", 1350) &&
-         SpeedAEADChunk(aead, name + " (8192 bytes)", 8192);
+static bool SpeedAEAD(const EVP_AEAD *aead, const std::string &name,
+                      size_t ad_len) {
+  return SpeedAEADChunk(aead, name + " (16 bytes)", 16, ad_len) &&
+         SpeedAEADChunk(aead, name + " (1350 bytes)", 1350, ad_len) &&
+         SpeedAEADChunk(aead, name + " (8192 bytes)", 8192, ad_len);
 }
 
 static bool SpeedHashChunk(const EVP_MD *md, const std::string &name,
@@ -298,10 +301,21 @@ bool Speed(const std::vector<std::string> &args) {
 
   RSA_free(key);
 
-  if (!SpeedAEAD(EVP_aead_aes_128_gcm(), "AES-128-GCM") ||
-      !SpeedAEAD(EVP_aead_aes_256_gcm(), "AES-256-GCM") ||
-      !SpeedAEAD(EVP_aead_chacha20_poly1305(), "ChaCha20-Poly1305") ||
-      !SpeedAEAD(EVP_aead_rc4_md5_tls(), "RC4-MD5") ||
+  // kTLSADLen is the number of bytes of additional data that TLS passes to
+  // AEADs.
+  static const size_t kTLSADLen = 13;
+  // kLegacyADLen is the number of bytes that TLS passes to the "legacy" AEADs.
+  // These are AEADs that weren't originally defined as AEADs, but which we use
+  // via the AEAD interface. In order for that to work, they have some TLS
+  // knowledge in them and construct a couple of the AD bytes internally.
+  static const size_t kLegacyADLen = kTLSADLen - 2;
+
+  if (!SpeedAEAD(EVP_aead_aes_128_gcm(), "AES-128-GCM", kTLSADLen) ||
+      !SpeedAEAD(EVP_aead_aes_256_gcm(), "AES-256-GCM", kTLSADLen) ||
+      !SpeedAEAD(EVP_aead_chacha20_poly1305(), "ChaCha20-Poly1305", kTLSADLen) ||
+      !SpeedAEAD(EVP_aead_rc4_md5_tls(), "RC4-MD5", kLegacyADLen) ||
+      !SpeedAEAD(EVP_aead_aes_128_cbc_sha1_tls(), "AES-128-CBC-SHA1", kLegacyADLen) ||
+      !SpeedAEAD(EVP_aead_aes_256_cbc_sha1_tls(), "AES-256-CBC-SHA1", kLegacyADLen) ||
       !SpeedHash(EVP_sha1(), "SHA-1") ||
       !SpeedHash(EVP_sha256(), "SHA-256") ||
       !SpeedHash(EVP_sha512(), "SHA-512")) {
