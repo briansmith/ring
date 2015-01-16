@@ -59,6 +59,10 @@
 #include "internal.h"
 #include "../modes/internal.h"
 
+#if defined(OPENSSL_ARM) || defined(OPENSSL_AARCH64)
+#include "../arm_arch.h"
+#endif
+
 
 typedef struct {
   union {
