@@ -162,6 +162,25 @@ static bool SpeedRSA(const std::string& key_name, RSA *key) {
   return true;
 }
 
+template<typename T>
+struct free_functor {
+  void operator()(T* ptr) {
+    free(ptr);
+  }
+};
+
+#if defined(OPENSSL_WINDOWS)
+#define AllocAligned malloc
+#else
+uint8_t *AllocAligned(size_t size) {
+  void *ptr;
+  if (posix_memalign(&ptr, 64, size)) {
+    abort();
+  }
+  return static_cast<uint8_t*>(ptr);
+}
+#endif
+
 static bool SpeedAEADChunk(const EVP_AEAD *aead, const std::string &name,
                            size_t chunk_len) {
   EVP_AEAD_CTX ctx;
@@ -173,9 +192,10 @@ static bool SpeedAEADChunk(const EVP_AEAD *aead, const std::string &name,
   memset(key.get(), 0, key_len);
   std::unique_ptr<uint8_t[]> nonce(new uint8_t[nonce_len]);
   memset(nonce.get(), 0, nonce_len);
-  std::unique_ptr<uint8_t[]> in(new uint8_t[chunk_len]);
+  std::unique_ptr<uint8_t, free_functor<uint8_t>> in(AllocAligned(chunk_len));
   memset(in.get(), 0, chunk_len);
-  std::unique_ptr<uint8_t[]> out(new uint8_t[chunk_len + overhead_len]);
+  std::unique_ptr<uint8_t, free_functor<uint8_t>> out(
+      AllocAligned(chunk_len + overhead_len));
   memset(out.get(), 0, chunk_len + overhead_len);
 
   if (!EVP_AEAD_CTX_init(&ctx, aead, key.get(), key_len,
