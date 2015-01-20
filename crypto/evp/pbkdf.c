@@ -58,7 +58,7 @@
 #include <openssl/hmac.h>
 
 
-int PKCS5_PBKDF2_HMAC(const char *password, int password_len,
+int PKCS5_PBKDF2_HMAC(const char *password, size_t password_len,
                       const uint8_t *salt, size_t salt_len, unsigned iterations,
                       const EVP_MD *digest, size_t key_len, uint8_t *out_key) {
   uint8_t digest_tmp[EVP_MAX_MD_SIZE], *p, itmp[4];
@@ -71,13 +71,6 @@ int PKCS5_PBKDF2_HMAC(const char *password, int password_len,
   HMAC_CTX_init(&hctx_tpl);
   p = out_key;
   tkeylen = key_len;
-  if (password == NULL) {
-    password_len = 0;
-  } else if (password_len == -1) {
-    /* TODO(fork): remove this hack. The OpenSSL code took the strlen when the
-     * length is given as -1. */
-    password_len = strlen(password);
-  }
   if (!HMAC_Init_ex(&hctx_tpl, password, password_len, digest, NULL)) {
     HMAC_CTX_cleanup(&hctx_tpl);
     return 0;
@@ -131,7 +124,7 @@ int PKCS5_PBKDF2_HMAC(const char *password, int password_len,
   return 1;
 }
 
-int PKCS5_PBKDF2_HMAC_SHA1(const char *password, int password_len,
+int PKCS5_PBKDF2_HMAC_SHA1(const char *password, size_t password_len,
                            const uint8_t *salt, size_t salt_len,
                            unsigned iterations, size_t key_len,
                            uint8_t *out_key) {

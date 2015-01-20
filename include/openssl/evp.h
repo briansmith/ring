@@ -398,7 +398,7 @@ OPENSSL_EXPORT int EVP_PKEY_print_params(BIO *out, const EVP_PKEY *pkey,
 /* PKCS5_PBKDF2_HMAC computes |iterations| iterations of PBKDF2 of |password|
  * and |salt|, using |digest|, and outputs |key_len| bytes to |out_key|. It
  * returns one on success and zero on error. */
-OPENSSL_EXPORT int PKCS5_PBKDF2_HMAC(const char *password, int password_len,
+OPENSSL_EXPORT int PKCS5_PBKDF2_HMAC(const char *password, size_t password_len,
                                      const uint8_t *salt, size_t salt_len,
                                      unsigned iterations, const EVP_MD *digest,
                                      size_t key_len, uint8_t *out_key);
@@ -406,7 +406,7 @@ OPENSSL_EXPORT int PKCS5_PBKDF2_HMAC(const char *password, int password_len,
 /* PKCS5_PBKDF2_HMAC_SHA1 is the same as PKCS5_PBKDF2_HMAC, but with |digest|
  * fixed to |EVP_sha1|. */
 OPENSSL_EXPORT int PKCS5_PBKDF2_HMAC_SHA1(const char *password,
-                                          int password_len, const uint8_t *salt,
+                                          size_t password_len, const uint8_t *salt,
                                           size_t salt_len, unsigned iterations,
                                           size_t key_len, uint8_t *out_key);
 
