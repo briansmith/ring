@@ -1377,6 +1377,12 @@ struct ssl_st
 	 * bytes. This ensures that the cellular radio is fast forwarded to DCH
 	 * (high data rate) state in 3G networks. */
 	 char fastradio_padding;
+
+	/* These fields are always NULL and exist only to keep wpa_supplicant
+	 * happy about the change to EVP_AEAD. They are only needed for
+	 * EAP-FAST, which we don't support. */
+	EVP_CIPHER_CTX *enc_read_ctx;
+	EVP_MD_CTX *read_hash;
 	};
 
 #endif
