@@ -170,7 +170,13 @@ struct free_functor {
 };
 
 #if defined(OPENSSL_WINDOWS)
-#define AllocAligned malloc
+uint8_t *AllocAligned(size_t size) {
+  void *ptr = malloc(size);
+  if (ptr == NULL) {
+    abort();
+  }
+  return static_cast<uint8_t*>(ptr);
+}
 #else
 uint8_t *AllocAligned(size_t size) {
   void *ptr;
