@@ -268,7 +268,7 @@ int ssl3_read_n(SSL *s, int n, int max, int extend) {
 /* used only by ssl3_read_bytes */
 static int ssl3_get_record(SSL *s) {
   int ssl_major, ssl_minor, al;
-  int enc_err, n, i, ret = -1;
+  int n, i, ret = -1;
   SSL3_RECORD *rr;
   uint8_t *p;
   short version;
@@ -373,22 +373,7 @@ again:
   /* decrypt in place in 'rr->input' */
   rr->data = rr->input;
 
-  enc_err = s->enc_method->enc(s, 0);
-  /* enc_err is:
-   *    0: (in non-constant time) if the record is publically invalid.
-   *    1: if the padding is valid
-   *    -1: if the padding is invalid */
-  if (enc_err == 0) {
-    al = SSL_AD_DECRYPTION_FAILED;
-    OPENSSL_PUT_ERROR(SSL, ssl3_get_record, SSL_R_BLOCK_CIPHER_PAD_IS_WRONG);
-    goto f_err;
-  }
-  if (enc_err < 0) {
-    /* A separate 'decryption_failed' alert was introduced with TLS 1.0, SSL
-     * 3.0 only has 'bad_record_mac'.  But unless a decryption failure is
-     * directly visible from the ciphertext anyway, we should not reveal which
-     * kind of error occured – this might become visible to an attacker (e.g.
-     * via a logfile) */
+  if (!s->enc_method->enc(s, 0)) {
     al = SSL_AD_BAD_RECORD_MAC;
     OPENSSL_PUT_ERROR(SSL, ssl3_get_record,
                       SSL_R_DECRYPTION_FAILED_OR_BAD_RECORD_MAC);
@@ -625,7 +610,7 @@ static int do_ssl3_write(SSL *s, int type, const uint8_t *buf, unsigned int len,
   wr->data = p;
   wr->length += eivlen;
 
-  if (s->enc_method->enc(s, 1) < 1) {
+  if (!s->enc_method->enc(s, 1)) {
     goto err;
   }
 

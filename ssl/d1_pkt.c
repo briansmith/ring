@@ -329,7 +329,6 @@ static int dtls1_process_buffered_records(SSL *s) {
 
 static int dtls1_process_record(SSL *s) {
   int al;
-  int enc_err;
   SSL3_RECORD *rr;
 
   rr = &(s->s3->rrec);
@@ -357,19 +356,8 @@ static int dtls1_process_record(SSL *s) {
   /* decrypt in place in 'rr->input' */
   rr->data = rr->input;
 
-  enc_err = s->enc_method->enc(s, 0);
-  /* enc_err is:
-   *    0: (in non-constant time) if the record is publically invalid.
-   *    1: if the padding is valid
-   *    -1: if the padding is invalid */
-  if (enc_err == 0) {
+  if (!s->enc_method->enc(s, 0)) {
     /* For DTLS we simply ignore bad packets. */
-    rr->length = 0;
-    s->packet_length = 0;
-    goto err;
-  }
-  if (enc_err < 0) {
-    /* decryption failed, silently discard message */
     rr->length = 0;
     s->packet_length = 0;
     goto err;
@@ -1171,7 +1159,7 @@ static int do_dtls1_write(SSL *s, int type, const uint8_t *buf,
   wr->data = p;
   wr->length += eivlen;
 
-  if (s->enc_method->enc(s, 1) < 1) {
+  if (!s->enc_method->enc(s, 1)) {
     goto err;
   }
 

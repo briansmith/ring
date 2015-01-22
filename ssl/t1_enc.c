@@ -565,14 +565,7 @@ cipher_unavailable_err:
 }
 
 /* tls1_enc encrypts/decrypts the record in |s->wrec| / |s->rrec|,
- * respectively.
- *
- * Returns:
- *   0: (in non-constant time) if the record is publically invalid (i.e. too
- *       short etc).
- *   1: if the record's padding is valid / the encryption was successful.
- *   -1: if the record's padding/AEAD-authenticator is invalid or, if sending,
- *       an internal error occured. */
+ * respectively. It returns one on success and zero on failure. */
 int tls1_enc(SSL *s, int send) {
   SSL3_RECORD *rec;
   const SSL_AEAD_CTX *aead;
@@ -586,6 +579,7 @@ int tls1_enc(SSL *s, int send) {
   }
 
   if (s->session == NULL || aead == NULL) {
+    /* Handle the initial NULL cipher. */
     memmove(rec->data, rec->input, rec->length);
     rec->input = rec->data;
     return 1;
@@ -623,7 +617,7 @@ int tls1_enc(SSL *s, int send) {
 
   if (aead->fixed_nonce_len + aead->variable_nonce_len > sizeof(nonce)) {
     OPENSSL_PUT_ERROR(SSL, tls1_enc, ERR_R_INTERNAL_ERROR);
-    return -1; /* internal error - should never happen. */
+    return 0;
   }
 
   memcpy(nonce, aead->fixed_nonce, aead->fixed_nonce_len);
@@ -639,14 +633,14 @@ int tls1_enc(SSL *s, int send) {
     if (aead->random_variable_nonce) {
       assert(aead->variable_nonce_included_in_record);
       if (!RAND_bytes(nonce + nonce_used, aead->variable_nonce_len)) {
-        return -1;
+        return 0;
       }
     } else {
       /* When sending we use the sequence number as the variable part of the
        * nonce. */
       if (aead->variable_nonce_len != 8) {
         OPENSSL_PUT_ERROR(SSL, tls1_enc, ERR_R_INTERNAL_ERROR);
-        return -1;
+        return 0;
       }
       memcpy(nonce + nonce_used, ad, aead->variable_nonce_len);
     }
@@ -669,7 +663,7 @@ int tls1_enc(SSL *s, int send) {
 
     if (!EVP_AEAD_CTX_seal(&aead->ctx, out + eivlen, &n, len + aead->tag_len,
                            nonce, nonce_used, in + eivlen, len, ad, ad_len)) {
-      return -1;
+      return 0;
     }
 
     if (aead->variable_nonce_included_in_record) {
@@ -681,7 +675,7 @@ int tls1_enc(SSL *s, int send) {
 
     if (rec->data != rec->input) {
       OPENSSL_PUT_ERROR(SSL, tls1_enc, ERR_R_INTERNAL_ERROR);
-      return -1; /* internal error - should never happen. */
+      return 0;
     }
     out = in = rec->input;
 
@@ -711,7 +705,7 @@ int tls1_enc(SSL *s, int send) {
 
     if (!EVP_AEAD_CTX_open(&aead->ctx, out, &n, rec->length, nonce, nonce_used, in,
                            len, ad, ad_len)) {
-      return -1;
+      return 0;
     }
 
     rec->data = rec->input = out;
