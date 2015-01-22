@@ -357,7 +357,9 @@ static int dtls1_process_record(SSL *s) {
   rr->data = rr->input;
 
   if (!s->enc_method->enc(s, 0)) {
-    /* For DTLS we simply ignore bad packets. */
+    /* Bad packets are silently dropped in DTLS. Clear the error queue of any
+     * errors decryption may have added. */
+    ERR_clear_error();
     rr->length = 0;
     s->packet_length = 0;
     goto err;

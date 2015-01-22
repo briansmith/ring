@@ -76,3 +76,26 @@ func (r *replayAdaptor) Write(b []byte) (int, error) {
 
 	return n, err
 }
+
+type damageAdaptor struct {
+	net.Conn
+	damage bool
+}
+
+// newDamageAdaptor wraps a packeted net.Conn. It transforms it into one which
+// optionally damages the final byte of every Write() call.
+func newDamageAdaptor(conn net.Conn) *damageAdaptor {
+	return &damageAdaptor{Conn: conn}
+}
+
+func (d *damageAdaptor) setDamage(damage bool) {
+	d.damage = damage
+}
+
+func (d *damageAdaptor) Write(b []byte) (int, error) {
+	if d.damage && len(b) > 0 {
+		b = append([]byte{}, b...)
+		b[len(b)-1]++
+	}
+	return d.Conn.Write(b)
+}

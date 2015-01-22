@@ -178,6 +178,9 @@ type testCase struct {
 	// replayWrites, if true, configures the underlying transport
 	// to replay every write it makes in DTLS tests.
 	replayWrites bool
+	// damageFirstWrite, if true, configures the underlying transport to
+	// damage the final byte of the first application data write.
+	damageFirstWrite bool
 	// flags, if not empty, contains a list of command-line flags that will
 	// be passed to the shim program.
 	flags []string
@@ -612,10 +615,28 @@ var testCases = []testCase{
 		shouldFail:    true,
 		expectedError: ":WRONG_CERTIFICATE_TYPE:",
 	},
+	{
+		name:             "TLSFatalBadPackets",
+		damageFirstWrite: true,
+		shouldFail:       true,
+		expectedError:    ":DECRYPTION_FAILED_OR_BAD_RECORD_MAC:",
+	},
+	{
+		protocol:         dtls,
+		name:             "DTLSIgnoreBadPackets",
+		damageFirstWrite: true,
+	},
+	{
+		protocol:         dtls,
+		name:             "DTLSIgnoreBadPackets-Async",
+		damageFirstWrite: true,
+		flags:            []string{"-async"},
+	},
 }
 
 func doExchange(test *testCase, config *Config, conn net.Conn, messageLen int, isResume bool) error {
 	var connDebug *recordingConn
+	var connDamage *damageAdaptor
 	if *flagDebug {
 		connDebug = &recordingConn{Conn: conn}
 		conn = connDebug
@@ -629,6 +650,11 @@ func doExchange(test *testCase, config *Config, conn net.Conn, messageLen int, i
 		if test.replayWrites {
 			conn = newReplayAdaptor(conn)
 		}
+	}
+
+	if test.damageFirstWrite {
+		connDamage = newDamageAdaptor(conn)
+		conn = connDamage
 	}
 
 	if test.sendPrefix != "" {
@@ -716,6 +742,12 @@ func doExchange(test *testCase, config *Config, conn net.Conn, messageLen int, i
 		}
 	} else if test.renegotiateCiphers != nil {
 		panic("renegotiateCiphers without renegotiate")
+	}
+
+	if test.damageFirstWrite {
+		connDamage.setDamage(true)
+		tlsConn.Write([]byte("DAMAGED WRITE"))
+		connDamage.setDamage(false)
 	}
 
 	if messageLen < 0 {
