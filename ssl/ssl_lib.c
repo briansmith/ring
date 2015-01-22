@@ -2251,12 +2251,17 @@ int SSL_get_error(const SSL *s, int i) {
     return SSL_ERROR_SSL;
   }
 
-  if (i == 0 && (s->shutdown & SSL_RECEIVED_SHUTDOWN) &&
-      (s->s3->warn_alert == SSL_AD_CLOSE_NOTIFY)) {
-    return SSL_ERROR_ZERO_RETURN;
+  if (i == 0) {
+    if ((s->shutdown & SSL_RECEIVED_SHUTDOWN) &&
+        (s->s3->warn_alert == SSL_AD_CLOSE_NOTIFY)) {
+      /* The socket was cleanly shut down with a close_notify. */
+      return SSL_ERROR_ZERO_RETURN;
+    }
+    /* An EOF was observed which violates the protocol, and the underlying
+     * transport does not participate in the error queue. Bubble up to the
+     * caller. */
+    return SSL_ERROR_SYSCALL;
   }
-
-  assert(i < 0);
 
   if (SSL_want_session(s)) {
     return SSL_ERROR_PENDING_SESSION;

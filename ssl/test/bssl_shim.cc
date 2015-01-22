@@ -656,25 +656,41 @@ static int do_exchange(SSL_SESSION **out_session,
       do {
         n = SSL_read(ssl, buf, sizeof(buf));
       } while (config->async && retry_async(ssl, n, bio));
-      if (n < 0) {
+      int err = SSL_get_error(ssl, n);
+      if (err == SSL_ERROR_ZERO_RETURN ||
+          (n == 0 && err == SSL_ERROR_SYSCALL)) {
+        if (n != 0) {
+          fprintf(stderr, "Invalid SSL_get_error output\n");
+          return 3;
+        }
+        /* Accept shutdowns with or without close_notify.
+         * TODO(davidben): Write tests which distinguish these two cases. */
+        break;
+      } else if (err != SSL_ERROR_NONE) {
+        if (n > 0) {
+          fprintf(stderr, "Invalid SSL_get_error output\n");
+          return 3;
+        }
         SSL_free(ssl);
         BIO_print_errors_fp(stdout);
         return 3;
-      } else if (n == 0) {
-        break;
-      } else {
-        for (int i = 0; i < n; i++) {
-          buf[i] ^= 0xff;
-        }
-        int w;
-        do {
-          w = SSL_write(ssl, buf, n);
-        } while (config->async && retry_async(ssl, w, bio));
-        if (w != n) {
-          SSL_free(ssl);
-          BIO_print_errors_fp(stdout);
-          return 4;
-        }
+      }
+      /* Successfully read data. */
+      if (n <= 0) {
+        fprintf(stderr, "Invalid SSL_get_error output\n");
+        return 3;
+      }
+      for (int i = 0; i < n; i++) {
+        buf[i] ^= 0xff;
+      }
+      int w;
+      do {
+        w = SSL_write(ssl, buf, n);
+      } while (config->async && retry_async(ssl, w, bio));
+      if (w != n) {
+        SSL_free(ssl);
+        BIO_print_errors_fp(stdout);
+        return 4;
       }
     }
   }
