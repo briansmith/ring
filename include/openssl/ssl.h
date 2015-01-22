@@ -2058,7 +2058,6 @@ OPENSSL_EXPORT STACK_OF(SSL_CIPHER) *SSL_get_ciphers(const SSL *s);
 
 OPENSSL_EXPORT int SSL_do_handshake(SSL *s);
 OPENSSL_EXPORT int SSL_renegotiate(SSL *s);
-OPENSSL_EXPORT int SSL_renegotiate_abbreviated(SSL *s);
 OPENSSL_EXPORT int SSL_renegotiate_pending(SSL *s);
 OPENSSL_EXPORT int SSL_shutdown(SSL *s);
 

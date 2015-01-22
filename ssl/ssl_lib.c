@@ -1013,15 +1013,6 @@ int SSL_renegotiate(SSL *s) {
   return s->method->ssl_renegotiate(s);
 }
 
-int SSL_renegotiate_abbreviated(SSL *s) {
-  if (s->renegotiate == 0) {
-    s->renegotiate = 1;
-  }
-
-  s->new_session = 0;
-  return s->method->ssl_renegotiate(s);
-}
-
 int SSL_renegotiate_pending(SSL *s) {
   /* becomes true when negotiation is requested; false again once a handshake
    * has finished */
