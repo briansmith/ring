@@ -1,22 +1,53 @@
-mkdir build
-cd build
-cmake ..
-make
+Build Prerequisites:
+
+  * CMake[1] 2.8.8 or later is required.
+
+  * Perl 5.6.1 or later is required. On Windows, Strawberry Perl and MSYS Perl
+    have both been reported to work.
+
+  * On Windows you currently must use Ninja[2] to build; on other platforms,
+    it is not required, but recommended, because it makes builds faster.
+
+  * If you need to build Ninja from source, then a recent version of
+    Python[3] is required (Python 2.7.5 works).
+
+  * On Windows only, Yasm[4] is required.
+
+  * A C compiler is required. On Windows, MSVC 12 (Visual Studio 2013) or later
+    are supported. Recent versions of GCC and Clang should work on non-Windows
+    platforms, and maybe on Windows too.
+
+  * Bash is required for running some tests, but not for building.
+
+  * Go[5] is required for running some tests, but not for building. Note that
+    these tests do not work on Windows.
+
+Using Ninja (note the 'N' is capitalized in the cmake invocation):
+
+  mkdir build
+  cd build
+  cmake -GNinja ..
+  ninja
+
+Using makefiles (does not work on Windows):
+
+  mkdir build
+  cd build
+  cmake ..
+  make
+
+You usually don't need to run cmake again after changing CMakeLists.txt files
+because the build scripts will detect changes to them and rebuild themselves
+automatically.
 
 Note that the default build flags in the top-leve CMakeLists.txt are for
 debugging - optimisation isn't enabled.
-
-If you'll be building a lot, then installing Ninja[1] is highly recommended.
-Wipe out the build directory and recreate it, but using:
-
-cmake -GNinja ..
-ninja
 
 If you want to cross-compile then there are example toolchain files for 32-bit
 Intel and ARM in util/. Wipe out the build directory, recreate it and run cmake
 like this:
 
-cmake -DCMAKE_TOOLCHAIN_FILE=../util/arm-toolchain.cmake -GNinja ..
+  cmake -DCMAKE_TOOLCHAIN_FILE=../util/arm-toolchain.cmake -GNinja ..
 
 If you want to build as a shared library you need to tweak the STATIC tags in
 the CMakeLists.txts and also define BORINGSSL_SHARED_LIBRARY and
@@ -25,9 +56,34 @@ BORINGSSL_IMPLEMENTATION. On Windows, where functions need to be tagged with
 BORINGSSL_SHARED_LIBRARY defined in the code which #includes the BoringSSL
 headers.
 
-To build on Windows, Yasm[2] is required for assembly. Either ensure yasm.exe
-is in %PATH% or configure CMAKE_ASM_NASM_COMPILER appropriately. Note that
-full Windows support is still in progress.
+Known Limitations on Windows:
 
-[1] http://martine.github.io/ninja/
-[2] http://yasm.tortall.net/
+  * Versions of cmake since 3.0.2 have a bug in its Ninja generator that causes
+    yasm to output warnings "yasm: warning: can open only one input file, only
+    the last file will be processed". These warnings can be safely ignored.
+    The cmake bug is http://www.cmake.org/Bug/view.php?id=15253.
+
+  * cmake can generate Visual Studio projects, but the generated project files
+    don't have steps for assembling the assembly language source files, so they
+    currently cannot be used to build BoringSSL.
+
+  * The bssl client, server, s_client, and s_server commands are not built on
+    Windows.
+
+  * The bssl md5sum, sha1sum, sha256sum, etc. commands are not built on
+    Windows.
+
+  * The tests written in Go do not work.
+
+[1] http://www.cmake.org/download/
+
+[2] https://martine.github.io/ninja/
+
+[3] https://www.python.org/downloads/
+
+[4] http://yasm.tortall.net/
+
+    Either ensure yasm.exe is in %PATH% or configure CMAKE_ASM_NASM_COMPILER
+    appropriately.
+
+[5] https://golang.org/dl/
