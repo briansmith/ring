@@ -51,6 +51,7 @@ const ERR_STRING_DATA SSL_error_string_data[] = {
   {ERR_PACK(ERR_LIB_SSL, SSL_F_SSL_new, 0), "SSL_new"},
   {ERR_PACK(ERR_LIB_SSL, SSL_F_SSL_peek, 0), "SSL_peek"},
   {ERR_PACK(ERR_LIB_SSL, SSL_F_SSL_read, 0), "SSL_read"},
+  {ERR_PACK(ERR_LIB_SSL, SSL_F_SSL_renegotiate, 0), "SSL_renegotiate"},
   {ERR_PACK(ERR_LIB_SSL, SSL_F_SSL_set_cipher_list, 0), "SSL_set_cipher_list"},
   {ERR_PACK(ERR_LIB_SSL, SSL_F_SSL_set_fd, 0), "SSL_set_fd"},
   {ERR_PACK(ERR_LIB_SSL, SSL_F_SSL_set_rfd, 0), "SSL_set_rfd"},

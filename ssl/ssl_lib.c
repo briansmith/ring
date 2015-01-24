@@ -1005,6 +1005,12 @@ int SSL_shutdown(SSL *s) {
 }
 
 int SSL_renegotiate(SSL *s) {
+  if (SSL_IS_DTLS(s)) {
+    /* Renegotiation is not supported for DTLS. */
+    OPENSSL_PUT_ERROR(SSL, SSL_renegotiate, ERR_R_SHOULD_NOT_HAVE_BEEN_CALLED);
+    return 0;
+  }
+
   if (s->renegotiate == 0) {
     s->renegotiate = 1;
   }

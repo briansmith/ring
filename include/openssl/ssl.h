@@ -2433,6 +2433,7 @@ OPENSSL_EXPORT int SSL_set_session_ticket_ext_cb(SSL *s, void *cb, void *arg);
 #define SSL_F_tls1_enc 297
 #define SSL_F_ssl3_prf 298
 #define SSL_F_dtls1_do_write 299
+#define SSL_F_SSL_renegotiate 300
 #define SSL_R_UNABLE_TO_FIND_ECDH_PARAMETERS 100
 #define SSL_R_DECRYPTION_FAILED_OR_BAD_RECORD_MAC 101
 #define SSL_R_INVALID_NULL_CMD_NAME 102
