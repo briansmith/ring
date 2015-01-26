@@ -93,6 +93,8 @@ uint8_t *HMAC(const EVP_MD *evp_md, const void *key, size_t key_len,
 }
 
 void HMAC_CTX_init(HMAC_CTX *ctx) {
+  ctx->md = NULL;
+  ctx->key_length = 0;
   EVP_MD_CTX_init(&ctx->i_ctx);
   EVP_MD_CTX_init(&ctx->o_ctx);
   EVP_MD_CTX_init(&ctx->md_ctx);
@@ -111,6 +113,15 @@ int HMAC_Init_ex(HMAC_CTX *ctx, const void *key, size_t key_len,
   uint8_t pad[HMAC_MAX_MD_CBLOCK];
 
   if (md != NULL) {
+    if (ctx->md == NULL && key == NULL && ctx->key_length == 0) {
+      /* TODO(eroman): Change the API instead of this hack.
+       * If a key hasn't yet been assigned to the context, then default to using
+       * an all-zero key. This is to work around callers of
+       * HMAC_Init_ex(key=NULL, key_len=0) intending to set a zero-length key.
+       * Rather than resulting in uninitialized memory reads, it will
+       * predictably use a zero key. */
+      memset(ctx->key, 0, sizeof(ctx->key));
+    }
     reset = 1;
     ctx->md = md;
   } else {
