@@ -599,6 +599,10 @@ type ProtocolBugs struct {
 	// server will send in the ServerHello. This does not affect the cipher
 	// the server believes it has actually negotiated.
 	SendCipherSuite uint16
+
+	// AppDataAfterChangeCipherSpec, if not null, causes application data to
+	// be sent immediately after ChangeCipherSpec.
+	AppDataAfterChangeCipherSpec []byte
 }
 
 func (c *Config) serverInit() {

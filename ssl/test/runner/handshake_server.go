@@ -819,6 +819,10 @@ func (hs *serverHandshakeState) sendFinished() error {
 		c.writeRecord(recordTypeChangeCipherSpec, []byte{1})
 	}
 
+	if c.config.Bugs.AppDataAfterChangeCipherSpec != nil {
+		c.writeRecord(recordTypeApplicationData, c.config.Bugs.AppDataAfterChangeCipherSpec)
+	}
+
 	c.writeRecord(recordTypeHandshake, postCCSBytes)
 
 	c.cipherSuite = hs.suite.id

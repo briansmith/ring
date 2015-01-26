@@ -632,6 +632,25 @@ var testCases = []testCase{
 		damageFirstWrite: true,
 		flags:            []string{"-async"},
 	},
+	{
+		name: "AppDataAfterChangeCipherSpec",
+		config: Config{
+			Bugs: ProtocolBugs{
+				AppDataAfterChangeCipherSpec: []byte("TEST MESSAGE"),
+			},
+		},
+		shouldFail:    true,
+		expectedError: ":DATA_BETWEEN_CCS_AND_FINISHED:",
+	},
+	{
+		protocol: dtls,
+		name:     "AppDataAfterChangeCipherSpec-DTLS",
+		config: Config{
+			Bugs: ProtocolBugs{
+				AppDataAfterChangeCipherSpec: []byte("TEST MESSAGE"),
+			},
+		},
+	},
 }
 
 func doExchange(test *testCase, config *Config, conn net.Conn, messageLen int, isResume bool) error {
@@ -759,14 +778,21 @@ func doExchange(test *testCase, config *Config, conn net.Conn, messageLen int, i
 		return err
 	}
 
-	if messageLen == 0 {
-		messageLen = 32
+	var testMessage []byte
+	if config.Bugs.AppDataAfterChangeCipherSpec != nil {
+		// We've already sent a message. Expect the shim to echo it
+		// back.
+		testMessage = config.Bugs.AppDataAfterChangeCipherSpec
+	} else {
+		if messageLen == 0 {
+			messageLen = 32
+		}
+		testMessage = make([]byte, messageLen)
+		for i := range testMessage {
+			testMessage[i] = 0x42
+		}
+		tlsConn.Write(testMessage)
 	}
-	testMessage := make([]byte, messageLen)
-	for i := range testMessage {
-		testMessage[i] = 0x42
-	}
-	tlsConn.Write(testMessage)
 
 	buf := make([]byte, len(testMessage))
 	if test.protocol == dtls {

@@ -840,6 +840,10 @@ func (hs *clientHandshakeState) sendFinished(isResume bool) error {
 		c.writeRecord(recordTypeChangeCipherSpec, []byte{1})
 	}
 
+	if c.config.Bugs.AppDataAfterChangeCipherSpec != nil {
+		c.writeRecord(recordTypeApplicationData, c.config.Bugs.AppDataAfterChangeCipherSpec)
+	}
+
 	c.writeRecord(recordTypeHandshake, postCCSBytes)
 	return nil
 }
