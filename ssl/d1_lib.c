@@ -72,6 +72,14 @@
 
 #include "ssl_locl.h"
 
+/* DTLS1_MTU_TIMEOUTS is the maximum number of timeouts to expire
+ * before starting to decrease the MTU. */
+#define DTLS1_MTU_TIMEOUTS                     2
+
+/* DTLS1_MAX_TIMEOUTS is the maximum number of timeouts to expire
+ * before failing the DTLS handshake. */
+#define DTLS1_MAX_TIMEOUTS                     12
+
 static void get_current_time(SSL *ssl, OPENSSL_timeval *out_clock);
 static OPENSSL_timeval *dtls1_get_timeout(SSL *s, OPENSSL_timeval *timeleft);
 static void dtls1_set_handshake_header(SSL *s, int type, unsigned long len);
@@ -344,7 +352,7 @@ void dtls1_double_timeout(SSL *s) {
 
 void dtls1_stop_timer(SSL *s) {
   /* Reset everything */
-  memset(&(s->d1->timeout), 0, sizeof(struct dtls1_timeout_st));
+  s->d1->num_timeouts = 0;
   memset(&s->d1->next_timeout, 0, sizeof(OPENSSL_timeval));
   s->d1->timeout_duration = 1;
   BIO_ctrl(SSL_get_rbio(s), BIO_CTRL_DGRAM_SET_NEXT_TIMEOUT, 0,
@@ -354,10 +362,10 @@ void dtls1_stop_timer(SSL *s) {
 }
 
 int dtls1_check_timeout_num(SSL *s) {
-  s->d1->timeout.num_alerts++;
+  s->d1->num_timeouts++;
 
   /* Reduce MTU after 2 unsuccessful retransmissions */
-  if (s->d1->timeout.num_alerts > 2 &&
+  if (s->d1->num_timeouts > DTLS1_MTU_TIMEOUTS &&
       !(SSL_get_options(s) & SSL_OP_NO_QUERY_MTU)) {
     long mtu = BIO_ctrl(SSL_get_wbio(s), BIO_CTRL_DGRAM_GET_FALLBACK_MTU, 0,
                         NULL);
@@ -366,7 +374,7 @@ int dtls1_check_timeout_num(SSL *s) {
     }
   }
 
-  if (s->d1->timeout.num_alerts > DTLS1_TMO_ALERT_COUNT) {
+  if (s->d1->num_timeouts > DTLS1_MAX_TIMEOUTS) {
     /* fail the connection, enough alerts have been sent */
     OPENSSL_PUT_ERROR(SSL, dtls1_check_timeout_num, SSL_R_READ_TIMEOUT_EXPIRED);
     return -1;
@@ -385,11 +393,6 @@ int dtls1_handle_timeout(SSL *s) {
 
   if (dtls1_check_timeout_num(s) < 0) {
     return -1;
-  }
-
-  s->d1->timeout.read_timeouts++;
-  if (s->d1->timeout.read_timeouts > DTLS1_TMO_READ_COUNT) {
-    s->d1->timeout.read_timeouts = 1;
   }
 
   dtls1_start_timer(s);

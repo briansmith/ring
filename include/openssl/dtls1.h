@@ -121,18 +121,6 @@ struct ccs_header_st
 	unsigned short seq;
 	};
 
-struct dtls1_timeout_st
-	{
-	/* Number of read timeouts so far */
-	unsigned int read_timeouts;
-	
-	/* Number of write timeouts so far */
-	unsigned int write_timeouts;
-	
-	/* Number of alerts received so far */
-	unsigned int num_alerts;
-	};
-
 typedef struct record_pqueue_st
 	{
 	unsigned short epoch;
@@ -200,7 +188,9 @@ typedef struct dtls1_state_st
 	struct hm_header_st w_msg_hdr;
 	struct hm_header_st r_msg_hdr;
 
-	struct dtls1_timeout_st timeout;
+	/* num_timeouts is the number of times the retransmit timer
+	 * has fired since the last time it was reset. */
+	unsigned int num_timeouts;
 
 	/* Indicates when the last handshake msg or heartbeat sent will
 	 * timeout. Because of header issues on Windows, this cannot actually
@@ -229,12 +219,6 @@ typedef struct dtls1_record_data_st
 	} DTLS1_RECORD_DATA;
 
 #endif
-
-/* Timeout multipliers (timeout slice is defined in apps/timeouts.h */
-#define DTLS1_TMO_READ_COUNT                      2
-#define DTLS1_TMO_WRITE_COUNT                     2
-
-#define DTLS1_TMO_ALERT_COUNT                     12
 
 #ifdef  __cplusplus
 }
