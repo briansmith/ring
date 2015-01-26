@@ -913,7 +913,7 @@ uint8_t *ssl_add_clienthello_tlsext(SSL *s, uint8_t *buf, uint8_t *limit,
     }
   }
 
-  if (SSL_USE_SIGALGS(s)) {
+  if (ssl3_version_from_wire(s, s->client_version) >= TLS1_2_VERSION) {
     size_t salglen;
     const uint8_t *salg;
     salglen = tls12_get_psigalgs(s, &salg);
