@@ -361,6 +361,18 @@ struct ssl_session_st {
   char extended_master_secret;
 };
 
+#if defined(OPENSSL_WINDOWS)
+/* Because of Windows header issues, we can't get the normal declaration of
+ * timeval. */
+typedef struct OPENSSL_timeval_st {
+  long tv_sec;
+  long tv_usec;
+} OPENSSL_timeval;
+#else
+#include <sys/time.h>
+typedef struct timeval OPENSSL_timeval;
+#endif
+
 /* SSL_OP_LEGACY_SERVER_CONNECT allows initial connection to servers that don't
  * support RI */
 #define SSL_OP_LEGACY_SERVER_CONNECT 0x00000004L
@@ -893,6 +905,10 @@ struct ssl_ctx_st {
   /* If not NULL, session key material will be logged to this BIO for debugging
    * purposes. The format matches NSS's and is readable by Wireshark. */
   BIO *keylog_bio;
+
+  /* current_time_cb, if not NULL, is the function to use to get the current
+   * time. It sets |*out_clock| to the current time. */
+  void (*current_time_cb)(SSL *ssl, OPENSSL_timeval *out_clock);
 };
 
 #define SSL_SESS_CACHE_OFF 0x0000
@@ -1596,8 +1612,26 @@ DECLARE_PEM_rw(SSL_SESSION, SSL_SESSION)
 
 #define SSL_CTRL_FALLBACK_SCSV 120
 
+/* DTLSv1_get_timeout queries the next DTLS handshake timeout. If there is a
+ * timeout in progress, it sets |*((OPENSSL_timeval*)arg)| to the time remaining
+ * and returns one. Otherwise, it returns zero.
+ *
+ * When the timeout expires, call |DTLSv1_handle_timeout| to handle the
+ * retransmit behavior.
+ *
+ * NOTE: This function must be queried again whenever the handshake state
+ * machine changes, including when |DTLSv1_handle_timeout| is called. */
 #define DTLSv1_get_timeout(ssl, arg) \
   SSL_ctrl(ssl, DTLS_CTRL_GET_TIMEOUT, 0, (void *)arg)
+
+/* DTLSv1_handle_timeout is called when a DTLS handshake timeout expires. If no
+ * timeout had expired, it returns 0. Otherwise, it retransmits the previous
+ * flight of handshake messages and returns 1. If too many timeouts had expired
+ * without progress or an error occurs, it returns -1.
+ *
+ * NOTE: The caller's external timer should be compatible with the one |ssl|
+ * queries within some fudge factor. Otherwise, the call will be a no-op, but
+ * |DTLSv1_get_timeout| will return an updated timeout. */
 #define DTLSv1_handle_timeout(ssl) \
   SSL_ctrl(ssl, DTLS_CTRL_HANDLE_TIMEOUT, 0, NULL)
 

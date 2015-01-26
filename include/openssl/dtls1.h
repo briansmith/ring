@@ -87,18 +87,6 @@ extern "C" {
 #ifndef OPENSSL_NO_SSL_INTERN
 
 
-#if defined(OPENSSL_WINDOWS)
-/* Because of Windows header issues, we can't get the normal declaration of
- * timeval. */
-typedef struct OPENSSL_timeval_st {
-	long tv_sec;
-	long tv_usec;
-} OPENSSL_timeval;
-#else
-#include <sys/time.h>
-typedef struct timeval OPENSSL_timeval;
-#endif
-
 typedef struct dtls1_bitmap_st
 	{
 	/* map is a bit mask of the last 64 sequence numbers. Bit

@@ -72,7 +72,7 @@
 
 #include "ssl_locl.h"
 
-static void get_current_time(OPENSSL_timeval *t);
+static void get_current_time(SSL *ssl, OPENSSL_timeval *out_clock);
 static OPENSSL_timeval *dtls1_get_timeout(SSL *s, OPENSSL_timeval *timeleft);
 static void dtls1_set_handshake_header(SSL *s, int type, unsigned long len);
 static int dtls1_handshake_write(SSL *s);
@@ -272,7 +272,7 @@ void dtls1_start_timer(SSL *s) {
   }
 
   /* Set timeout to current time */
-  get_current_time(&s->d1->next_timeout);
+  get_current_time(s, &s->d1->next_timeout);
 
   /* Add duration to current time */
   s->d1->next_timeout.tv_sec += s->d1->timeout_duration;
@@ -289,7 +289,7 @@ static OPENSSL_timeval *dtls1_get_timeout(SSL *s, OPENSSL_timeval *timeleft) {
   }
 
   /* Get current time */
-  get_current_time(&timenow);
+  get_current_time(s, &timenow);
 
   /* If timer already expired, set remaining time to 0 */
   if (s->d1->next_timeout.tv_sec < timenow.tv_sec ||
@@ -396,14 +396,19 @@ int dtls1_handle_timeout(SSL *s) {
   return dtls1_retransmit_buffered_messages(s);
 }
 
-static void get_current_time(OPENSSL_timeval *t) {
+static void get_current_time(SSL *ssl, OPENSSL_timeval *out_clock) {
+  if (ssl->ctx->current_time_cb != NULL) {
+    ssl->ctx->current_time_cb(ssl, out_clock);
+    return;
+  }
+
 #if defined(OPENSSL_WINDOWS)
   struct _timeb time;
   _ftime(&time);
-  t->tv_sec = time.time;
-  t->tv_usec = time.millitm * 1000;
+  out_clock->tv_sec = time.time;
+  out_clock->tv_usec = time.millitm * 1000;
 #else
-  gettimeofday(t, NULL);
+  gettimeofday(out_clock, NULL);
 #endif
 }
 
