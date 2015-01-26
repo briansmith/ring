@@ -715,27 +715,32 @@ int CONF_parse_list(const char *list, char sep, int remove_whitespace,
   lstart = list;
   for (;;) {
     if (remove_whitespace) {
-      while (*lstart && isspace((unsigned char)*lstart))
+      while (*lstart && isspace((unsigned char)*lstart)) {
         lstart++;
+      }
     }
     p = strchr(lstart, sep);
-    if (p == lstart || !*lstart)
+    if (p == lstart || !*lstart) {
       ret = list_cb(NULL, 0, arg);
-    else {
-      if (p)
+    } else {
+      if (p) {
         tmpend = p - 1;
-      else
+      } else {
         tmpend = lstart + strlen(lstart) - 1;
+      }
       if (remove_whitespace) {
-        while (isspace((unsigned char)*tmpend))
+        while (isspace((unsigned char)*tmpend)) {
           tmpend--;
+        }
       }
       ret = list_cb(lstart, tmpend - lstart + 1, arg);
     }
-    if (ret <= 0)
+    if (ret <= 0) {
       return ret;
-    if (p == NULL)
+    }
+    if (p == NULL) {
       return 1;
+    }
     lstart = p + 1;
   }
 }
