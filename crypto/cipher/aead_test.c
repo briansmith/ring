@@ -74,12 +74,16 @@ static unsigned char hex_digit(char h) {
 }
 
 static int run_test_case(const EVP_AEAD *aead,
-                         unsigned char bufs[NUM_TYPES][BUF_MAX],
+                         uint8_t bufs[NUM_TYPES][BUF_MAX],
                          const unsigned int lengths[NUM_TYPES],
                          unsigned int line_no) {
   EVP_AEAD_CTX ctx;
   size_t ciphertext_len, plaintext_len;
-  unsigned char out[BUF_MAX + EVP_AEAD_MAX_OVERHEAD + 1], out2[BUF_MAX];
+  uint8_t out[BUF_MAX + EVP_AEAD_MAX_OVERHEAD + 1];
+  /* Note: When calling |EVP_AEAD_CTX_open|, the "stateful" AEADs require
+   * |max_out| be at least |in_len| despite the final output always being
+   * smaller by at least tag length. */
+  uint8_t out2[sizeof(out)];
 
   if (!EVP_AEAD_CTX_init(&ctx, aead, bufs[KEY], lengths[KEY], lengths[TAG],
                          NULL)) {
@@ -125,9 +129,7 @@ static int run_test_case(const EVP_AEAD *aead,
     return 0;
   }
 
-  /* The "stateful" AEADs require |max_out| be |in_len| despite the final
-   * output always being smaller by at least tag length. */
-  int ret = EVP_AEAD_CTX_open(&ctx, out2, &plaintext_len, ciphertext_len,
+  int ret = EVP_AEAD_CTX_open(&ctx, out2, &plaintext_len, sizeof(out2),
                               bufs[NONCE], lengths[NONCE], out, ciphertext_len,
                               bufs[AD], lengths[AD]);
   if (lengths[FAILS]) {
@@ -159,7 +161,7 @@ static int run_test_case(const EVP_AEAD *aead,
 
     /* Garbage at the end isn't ignored. */
     out[ciphertext_len] = 0;
-    if (EVP_AEAD_CTX_open(&ctx, out2, &plaintext_len, ciphertext_len + 1,
+    if (EVP_AEAD_CTX_open(&ctx, out2, &plaintext_len, sizeof(out2),
                           bufs[NONCE], lengths[NONCE], out, ciphertext_len + 1,
                           bufs[AD], lengths[AD])) {
       fprintf(stderr, "Decrypted bad data on line %u\n", line_no);
@@ -178,7 +180,7 @@ static int run_test_case(const EVP_AEAD *aead,
 
     /* Verify integrity is checked. */
     out[0] ^= 0x80;
-    if (EVP_AEAD_CTX_open(&ctx, out2, &plaintext_len, ciphertext_len, bufs[NONCE],
+    if (EVP_AEAD_CTX_open(&ctx, out2, &plaintext_len, sizeof(out2), bufs[NONCE],
                           lengths[NONCE], out, ciphertext_len, bufs[AD],
                           lengths[AD])) {
       fprintf(stderr, "Decrypted bad data on line %u\n", line_no);
