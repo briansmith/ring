@@ -1,6 +1,9 @@
 include_directories(. ../include)
 
 if(APPLE)
+	if (${ARCH} STREQUAL "x86")
+		set(PERLASM_FLAGS "-fPIC")
+	endif()
 	set(PERLASM_STYLE macosx)
 	set(ASM_EXT S)
 	enable_language(ASM)
@@ -9,6 +12,9 @@ elseif(UNIX)
 		# The "armx" Perl scripts look for "64" in the style argument
 		# in order to decide whether to generate 32- or 64-bit asm.
 		set(PERLASM_STYLE linux64)
+	elseif (${ARCH} STREQUAL "x86")
+		set(PERLASM_FLAGS "-fPIC")
+		set(PERLASM_STYLE elf)
 	else()
 		set(PERLASM_STYLE elf)
 	endif()
@@ -31,7 +37,7 @@ endif()
 function(perlasm dest src)
 	add_custom_command(
 		OUTPUT ${dest}
-		COMMAND perl ${CMAKE_CURRENT_SOURCE_DIR}/${src} ${PERLASM_STYLE} ${ARGN} > ${dest}
+		COMMAND perl ${CMAKE_CURRENT_SOURCE_DIR}/${src} ${PERLASM_STYLE} ${PERLASM_FLAGS} ${ARGN} > ${dest}
 		DEPENDS
 		${src}
 		${PROJECT_SOURCE_DIR}/crypto/perlasm/x86_64-xlate.pl
