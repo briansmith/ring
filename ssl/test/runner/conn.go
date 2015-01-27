@@ -131,6 +131,7 @@ type halfConn struct {
 
 	nextCipher interface{} // next encryption state
 	nextMac    macFunction // next MAC algorithm
+	nextSeq    [6]byte     // next epoch's starting sequence number in DTLS
 
 	// used to save allocating a new buffer for each MAC.
 	inDigestBuf, outDigestBuf []byte
@@ -200,10 +201,20 @@ func (hc *halfConn) incSeq(isOutgoing bool) {
 	}
 }
 
-// incEpoch resets the sequence number. In DTLS, it increments the
-// epoch half of the sequence number.
+// incNextSeq increments the starting sequence number for the next epoch.
+func (hc *halfConn) incNextSeq() {
+	for i := len(hc.nextSeq) - 1; i >= 0; i-- {
+		hc.nextSeq[i]++
+		if hc.nextSeq[i] != 0 {
+			return
+		}
+	}
+	panic("TLS: sequence number wraparound")
+}
+
+// incEpoch resets the sequence number. In DTLS, it also increments the epoch
+// half of the sequence number.
 func (hc *halfConn) incEpoch() {
-	limit := 0
 	if hc.isDTLS {
 		for i := 1; i >= 0; i-- {
 			hc.seq[i]++
@@ -214,11 +225,14 @@ func (hc *halfConn) incEpoch() {
 				panic("TLS: epoch number wraparound")
 			}
 		}
-		limit = 2
-	}
-	seq := hc.seq[limit:]
-	for i := range seq {
-		seq[i] = 0
+		copy(hc.seq[2:], hc.nextSeq[:])
+		for i := range hc.nextSeq {
+			hc.nextSeq[i] = 0
+		}
+	} else {
+		for i := range hc.seq {
+			hc.seq[i] = 0
+		}
 	}
 }
 
@@ -998,6 +1012,67 @@ func (c *Conn) readHandshake() (interface{}, error) {
 		return nil, c.in.setErrorLocked(c.sendAlert(alertUnexpectedMessage))
 	}
 	return m, nil
+}
+
+// skipPacket processes all the DTLS records in packet. It updates
+// sequence number expectations but otherwise ignores them.
+func (c *Conn) skipPacket(packet []byte) error {
+	for len(packet) > 0 {
+		// Dropped packets are completely ignored save to update
+		// expected sequence numbers for this and the next epoch. (We
+		// don't assert on the contents of the packets both for
+		// simplicity and because a previous test with one shorter
+		// timeout schedule would have done so.)
+		epoch := packet[3:5]
+		seq := packet[5:11]
+		length := uint16(packet[11])<<8 | uint16(packet[12])
+		if bytes.Equal(c.in.seq[:2], epoch) {
+			if !bytes.Equal(c.in.seq[2:], seq) {
+				return errors.New("tls: sequence mismatch")
+			}
+			c.in.incSeq(false)
+		} else {
+			if !bytes.Equal(c.in.nextSeq[:], seq) {
+				return errors.New("tls: sequence mismatch")
+			}
+			c.in.incNextSeq()
+		}
+		packet = packet[13+length:]
+	}
+	return nil
+}
+
+// simulatePacketLoss simulates the loss of a handshake leg from the
+// peer based on the schedule in c.config.Bugs. If resendFunc is
+// non-nil, it is called after each simulated timeout to retransmit
+// handshake messages from the local end. This is used in cases where
+// the peer retransmits on a stale Finished rather than a timeout.
+func (c *Conn) simulatePacketLoss(resendFunc func()) error {
+	if len(c.config.Bugs.TimeoutSchedule) == 0 {
+		return nil
+	}
+	if !c.isDTLS {
+		return errors.New("tls: TimeoutSchedule may only be set in DTLS")
+	}
+	if c.config.Bugs.PacketAdaptor == nil {
+		return errors.New("tls: TimeoutSchedule set without PacketAdapter")
+	}
+	for _, timeout := range c.config.Bugs.TimeoutSchedule {
+		// Simulate a timeout.
+		packets, err := c.config.Bugs.PacketAdaptor.SendReadTimeout(timeout)
+		if err != nil {
+			return err
+		}
+		for _, packet := range packets {
+			if err := c.skipPacket(packet); err != nil {
+				return err
+			}
+		}
+		if resendFunc != nil {
+			resendFunc()
+		}
+	}
+	return nil
 }
 
 // Write writes data to the connection.

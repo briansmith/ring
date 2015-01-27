@@ -33,6 +33,7 @@ type serverHandshakeState struct {
 	masterSecret    []byte
 	certsFromClient [][]byte
 	cert            *Certificate
+	finishedBytes   []byte
 }
 
 // serverHandshake performs a TLS handshake as a server.
@@ -69,6 +70,12 @@ func (c *Conn) serverHandshake() error {
 			}
 		}
 		if err := hs.sendFinished(); err != nil {
+			return err
+		}
+		// Most retransmits are triggered by a timeout, but the final
+		// leg of the handshake is retransmited upon re-receiving a
+		// Finished.
+		if err := c.simulatePacketLoss(func() { c.writeRecord(recordTypeHandshake, hs.finishedBytes) }); err != nil {
 			return err
 		}
 		if err := hs.readFinished(isResume); err != nil {
@@ -110,6 +117,9 @@ func (hs *serverHandshakeState) readClientHello() (isResume bool, err error) {
 	config := hs.c.config
 	c := hs.c
 
+	if err := c.simulatePacketLoss(nil); err != nil {
+		return false, err
+	}
 	msg, err := c.readHandshake()
 	if err != nil {
 		return false, err
@@ -137,6 +147,9 @@ func (hs *serverHandshakeState) readClientHello() (isResume bool, err error) {
 		}
 		c.writeRecord(recordTypeHandshake, helloVerifyRequest.marshal())
 
+		if err := c.simulatePacketLoss(nil); err != nil {
+			return false, err
+		}
 		msg, err := c.readHandshake()
 		if err != nil {
 			return false, err
@@ -533,6 +546,9 @@ func (hs *serverHandshakeState) doFullHandshake() error {
 
 	var pub crypto.PublicKey // public key for client auth, if any
 
+	if err := c.simulatePacketLoss(nil); err != nil {
+		return err
+	}
 	msg, err := c.readHandshake()
 	if err != nil {
 		return err
@@ -812,8 +828,9 @@ func (hs *serverHandshakeState) sendFinished() error {
 	finished := new(finishedMsg)
 	finished.verifyData = hs.finishedHash.serverSum(hs.masterSecret)
 	c.serverVerify = append(c.serverVerify[:0], finished.verifyData...)
-	postCCSBytes := finished.marshal()
-	hs.writeServerHash(postCCSBytes)
+	hs.finishedBytes = finished.marshal()
+	hs.writeServerHash(hs.finishedBytes)
+	postCCSBytes := hs.finishedBytes
 
 	if c.config.Bugs.FragmentAcrossChangeCipherSpec {
 		c.writeRecord(recordTypeHandshake, postCCSBytes[:5])

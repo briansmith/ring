@@ -22,13 +22,14 @@ import (
 )
 
 type clientHandshakeState struct {
-	c            *Conn
-	serverHello  *serverHelloMsg
-	hello        *clientHelloMsg
-	suite        *cipherSuite
-	finishedHash finishedHash
-	masterSecret []byte
-	session      *ClientSessionState
+	c             *Conn
+	serverHello   *serverHelloMsg
+	hello         *clientHelloMsg
+	suite         *cipherSuite
+	finishedHash  finishedHash
+	masterSecret  []byte
+	session       *ClientSessionState
+	finishedBytes []byte
 }
 
 func (c *Conn) clientHandshake() error {
@@ -214,6 +215,9 @@ NextCipherSuite:
 		c.writeRecord(recordTypeHandshake, helloBytes)
 	}
 
+	if err := c.simulatePacketLoss(nil); err != nil {
+		return err
+	}
 	msg, err := c.readHandshake()
 	if err != nil {
 		return err
@@ -234,6 +238,9 @@ NextCipherSuite:
 			helloBytes = hello.marshal()
 			c.writeRecord(recordTypeHandshake, helloBytes)
 
+			if err := c.simulatePacketLoss(nil); err != nil {
+				return err
+			}
 			msg, err = c.readHandshake()
 			if err != nil {
 				return err
@@ -315,6 +322,12 @@ NextCipherSuite:
 			return err
 		}
 		if err := hs.sendFinished(isResume); err != nil {
+			return err
+		}
+		// Most retransmits are triggered by a timeout, but the final
+		// leg of the handshake is retransmited upon re-receiving a
+		// Finished.
+		if err := c.simulatePacketLoss(func() { c.writeRecord(recordTypeHandshake, hs.finishedBytes) }); err != nil {
 			return err
 		}
 		if err := hs.readSessionTicket(); err != nil {
@@ -826,9 +839,9 @@ func (hs *clientHandshakeState) sendFinished(isResume bool) error {
 		finished.verifyData = hs.finishedHash.clientSum(hs.masterSecret)
 	}
 	c.clientVerify = append(c.clientVerify[:0], finished.verifyData...)
-	finishedBytes := finished.marshal()
-	hs.writeHash(finishedBytes, seqno)
-	postCCSBytes = append(postCCSBytes, finishedBytes...)
+	hs.finishedBytes = finished.marshal()
+	hs.writeHash(hs.finishedBytes, seqno)
+	postCCSBytes = append(postCCSBytes, hs.finishedBytes...)
 
 	if c.config.Bugs.FragmentAcrossChangeCipherSpec {
 		c.writeRecord(recordTypeHandshake, postCCSBytes[:5])

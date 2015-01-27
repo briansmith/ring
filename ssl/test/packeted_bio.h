@@ -16,17 +16,19 @@
 #define HEADER_PACKETED_BIO
 
 #include <openssl/bio.h>
+#include <openssl/ssl.h>
 
 
-// packeted_bio_create creates a filter BIO for testing protocols which expect
-// datagram BIOs. It implements a reliable datagram socket and reads and writes
-// packets by prefixing each packet with a big-endian 32-bit length. It must be
-// layered over a reliable blocking stream BIO.
+// packeted_bio_create creates a filter BIO which implements a reliable in-order
+// blocking datagram socket. The resulting BIO, on |BIO_read|, may simulate a
+// timeout which sets |*out_timeout| to the timeout and fails the read.
+// |*out_timeout| must be zero on entry to |BIO_read|; it is an error to not
+// apply the timeout before the next |BIO_read|.
 //
-// Note: packeted_bio_create exists because a SOCK_DGRAM socketpair on OS X is
-// does not block the caller, unlike on Linux. Writes simply fail with
-// ENOBUFS. POSIX also does not guarantee that such sockets are reliable.
-BIO *packeted_bio_create();
+// Note: The read timeout simulation is intended to be used with the async BIO
+// wrapper. It doesn't simulate BIO_CTRL_DGRAM_SET_NEXT_TIMEOUT, used in DTLS's
+// blocking mode.
+BIO *packeted_bio_create(OPENSSL_timeval *out_timeout);
 
 
 #endif  // HEADER_PACKETED_BIO

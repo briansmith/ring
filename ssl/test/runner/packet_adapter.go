@@ -6,50 +6,115 @@ package main
 
 import (
 	"encoding/binary"
-	"errors"
+	"fmt"
+	"io"
 	"net"
+	"time"
 )
+
+// opcodePacket signals a packet, encoded with a 32-bit length prefix, followed
+// by the payload.
+const opcodePacket = byte('P')
+
+// opcodeTimeout signals a read timeout, encoded by a 64-bit number of
+// nanoseconds. On receipt, the peer should reply with
+// opcodeTimeoutAck. opcodeTimeout may only be sent by the Go side.
+const opcodeTimeout = byte('T')
+
+// opcodeTimeoutAck acknowledges a read timeout. This opcode has no payload and
+// may only be sent by the C side. Timeout ACKs act as a synchronization point
+// at the timeout, to bracket one flight of messages from C.
+const opcodeTimeoutAck = byte('t')
 
 type packetAdaptor struct {
 	net.Conn
 }
 
-// newPacketAdaptor wraps a reliable streaming net.Conn into a
-// reliable packet-based net.Conn. Every packet is encoded with a
-// 32-bit length prefix as a framing layer.
-func newPacketAdaptor(conn net.Conn) net.Conn {
+// newPacketAdaptor wraps a reliable streaming net.Conn into a reliable
+// packet-based net.Conn. The stream contains packets and control commands,
+// distinguished by a one byte opcode.
+func newPacketAdaptor(conn net.Conn) *packetAdaptor {
 	return &packetAdaptor{conn}
 }
 
-func (p *packetAdaptor) Read(b []byte) (int, error) {
-	var length uint32
-	if err := binary.Read(p.Conn, binary.BigEndian, &length); err != nil {
+func (p *packetAdaptor) readOpcode() (byte, error) {
+	out := make([]byte, 1)
+	if _, err := io.ReadFull(p.Conn, out); err != nil {
 		return 0, err
 	}
+	return out[0], nil
+}
+
+func (p *packetAdaptor) readPacketBody() ([]byte, error) {
+	var length uint32
+	if err := binary.Read(p.Conn, binary.BigEndian, &length); err != nil {
+		return nil, err
+	}
 	out := make([]byte, length)
-	n, err := p.Conn.Read(out)
+	if _, err := io.ReadFull(p.Conn, out); err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (p *packetAdaptor) Read(b []byte) (int, error) {
+	opcode, err := p.readOpcode()
 	if err != nil {
 		return 0, err
 	}
-	if n != int(length) {
-		return 0, errors.New("internal error: length mismatch!")
+	if opcode != opcodePacket {
+		return 0, fmt.Errorf("unexpected opcode '%s'", opcode)
+	}
+	out, err := p.readPacketBody()
+	if err != nil {
+		return 0, err
 	}
 	return copy(b, out), nil
 }
 
 func (p *packetAdaptor) Write(b []byte) (int, error) {
-	length := uint32(len(b))
-	if err := binary.Write(p.Conn, binary.BigEndian, length); err != nil {
+	payload := make([]byte, 1+4+len(b))
+	payload[0] = opcodePacket
+	binary.BigEndian.PutUint32(payload[1:5], uint32(len(b)))
+	copy(payload[5:], b)
+	if _, err := p.Conn.Write(payload); err != nil {
 		return 0, err
-	}
-	n, err := p.Conn.Write(b)
-	if err != nil {
-		return 0, err
-	}
-	if n != len(b) {
-		return 0, errors.New("internal error: length mismatch!")
 	}
 	return len(b), nil
+}
+
+// SendReadTimeout instructs the peer to simulate a read timeout. It then waits
+// for acknowledgement of the timeout, buffering any packets received since
+// then. The packets are then returned.
+func (p *packetAdaptor) SendReadTimeout(d time.Duration) ([][]byte, error) {
+	payload := make([]byte, 1+8)
+	payload[0] = opcodeTimeout
+	binary.BigEndian.PutUint64(payload[1:], uint64(d.Nanoseconds()))
+	if _, err := p.Conn.Write(payload); err != nil {
+		return nil, err
+	}
+
+	packets := make([][]byte, 0)
+	for {
+		opcode, err := p.readOpcode()
+		if err != nil {
+			return nil, err
+		}
+		switch opcode {
+		case opcodeTimeoutAck:
+			// Done! Return the packets buffered and continue.
+			return packets, nil
+		case opcodePacket:
+			// Buffer the packet for the caller to process.
+			packet, err := p.readPacketBody()
+			if err != nil {
+				return nil, err
+			}
+			packets = append(packets, packet)
+		default:
+			return nil, fmt.Errorf("unexpected opcode '%s'", opcode)
+		}
+	}
 }
 
 type replayAdaptor struct {

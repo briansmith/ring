@@ -603,6 +603,13 @@ type ProtocolBugs struct {
 	// AppDataAfterChangeCipherSpec, if not null, causes application data to
 	// be sent immediately after ChangeCipherSpec.
 	AppDataAfterChangeCipherSpec []byte
+
+	// TimeoutSchedule is the schedule of packet drops and simulated
+	// timeouts for before each handshake leg from the peer.
+	TimeoutSchedule []time.Duration
+
+	// PacketAdaptor is the packetAdaptor to use to simulate timeouts.
+	PacketAdaptor *packetAdaptor
 }
 
 func (c *Config) serverInit() {

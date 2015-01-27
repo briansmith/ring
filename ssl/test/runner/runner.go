@@ -20,6 +20,7 @@ import (
 	"strings"
 	"sync"
 	"syscall"
+	"time"
 )
 
 var (
@@ -665,7 +666,8 @@ func doExchange(test *testCase, config *Config, conn net.Conn, messageLen int, i
 	}
 
 	if test.protocol == dtls {
-		conn = newPacketAdaptor(conn)
+		config.Bugs.PacketAdaptor = newPacketAdaptor(conn)
+		conn = config.Bugs.PacketAdaptor
 		if test.replayWrites {
 			conn = newReplayAdaptor(conn)
 		}
@@ -2536,6 +2538,87 @@ func addSigningHashTests() {
 	})
 }
 
+// timeouts is the retransmit schedule for BoringSSL. It doubles and
+// caps at 60 seconds. On the 13th timeout, it gives up.
+var timeouts = []time.Duration{
+	1 * time.Second,
+	2 * time.Second,
+	4 * time.Second,
+	8 * time.Second,
+	16 * time.Second,
+	32 * time.Second,
+	60 * time.Second,
+	60 * time.Second,
+	60 * time.Second,
+	60 * time.Second,
+	60 * time.Second,
+	60 * time.Second,
+	60 * time.Second,
+}
+
+func addDTLSRetransmitTests() {
+	// Test that this is indeed the timeout schedule. Stress all
+	// four patterns of handshake.
+	for i := 1; i < len(timeouts); i++ {
+		number := strconv.Itoa(i)
+		testCases = append(testCases, testCase{
+			protocol: dtls,
+			name:     "DTLS-Retransmit-Client-" + number,
+			config: Config{
+				Bugs: ProtocolBugs{
+					TimeoutSchedule: timeouts[:i],
+				},
+			},
+			resumeSession: true,
+			flags:         []string{"-async"},
+		})
+		testCases = append(testCases, testCase{
+			protocol: dtls,
+			testType: serverTest,
+			name:     "DTLS-Retransmit-Server-" + number,
+			config: Config{
+				Bugs: ProtocolBugs{
+					TimeoutSchedule: timeouts[:i],
+				},
+			},
+			resumeSession: true,
+			flags:         []string{"-async"},
+		})
+	}
+
+	// Test that exceeding the timeout schedule hits a read
+	// timeout.
+	testCases = append(testCases, testCase{
+		protocol: dtls,
+		name:     "DTLS-Retransmit-Timeout",
+		config: Config{
+			Bugs: ProtocolBugs{
+				TimeoutSchedule: timeouts,
+			},
+		},
+		resumeSession: true,
+		flags:         []string{"-async"},
+		shouldFail:    true,
+		expectedError: ":READ_TIMEOUT_EXPIRED:",
+	})
+
+	// Test that timeout handling has a fudge factor, due to API
+	// problems.
+	testCases = append(testCases, testCase{
+		protocol: dtls,
+		name:     "DTLS-Retransmit-Fudge",
+		config: Config{
+			Bugs: ProtocolBugs{
+				TimeoutSchedule: []time.Duration{
+					timeouts[0] - 10*time.Millisecond,
+				},
+			},
+		},
+		resumeSession: true,
+		flags:         []string{"-async"},
+	})
+}
+
 func worker(statusChan chan statusMsg, c chan *testCase, buildDir string, wg *sync.WaitGroup) {
 	defer wg.Done()
 
@@ -2611,6 +2694,7 @@ func main() {
 	addDTLSReplayTests()
 	addSigningHashTests()
 	addFastRadioPaddingTests()
+	addDTLSRetransmitTests()
 	for _, async := range []bool{false, true} {
 		for _, splitHandshake := range []bool{false, true} {
 			for _, protocol := range []protocol{tls, dtls} {

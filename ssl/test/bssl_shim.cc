@@ -41,6 +41,7 @@ static int usage(const char *program) {
 }
 
 static int g_ex_data_index = 0;
+static int g_ex_data_clock_index = 0;
 
 static bool SetConfigPtr(SSL *ssl, const TestConfig *config) {
   return SSL_set_ex_data(ssl, g_ex_data_index, (void *)config) == 1;
@@ -48,6 +49,14 @@ static bool SetConfigPtr(SSL *ssl, const TestConfig *config) {
 
 static const TestConfig *GetConfigPtr(SSL *ssl) {
   return (const TestConfig *)SSL_get_ex_data(ssl, g_ex_data_index);
+}
+
+static bool SetClockPtr(SSL *ssl, OPENSSL_timeval *clock) {
+  return SSL_set_ex_data(ssl, g_ex_data_clock_index, (void *)clock) == 1;
+}
+
+static OPENSSL_timeval *GetClockPtr(SSL *ssl) {
+  return (OPENSSL_timeval *)SSL_get_ex_data(ssl, g_ex_data_clock_index);
 }
 
 static EVP_PKEY *LoadPrivateKey(const std::string &file) {
@@ -229,7 +238,7 @@ static unsigned psk_server_callback(SSL *ssl, const char *identity,
 }
 
 static void current_time_cb(SSL *ssl, OPENSSL_timeval *out_clock) {
-  memset(out_clock, 0, sizeof(*out_clock));
+  *out_clock = *GetClockPtr(ssl);
 }
 
 static SSL_CTX *setup_ctx(const TestConfig *config) {
@@ -297,11 +306,29 @@ static SSL_CTX *setup_ctx(const TestConfig *config) {
   return NULL;
 }
 
-static int retry_async(SSL *ssl, int ret, BIO *bio) {
+static int retry_async(SSL *ssl, int ret, BIO *bio,
+                       OPENSSL_timeval *clock_delta) {
   // No error; don't retry.
   if (ret >= 0) {
     return 0;
   }
+
+  if (clock_delta->tv_usec != 0 || clock_delta->tv_sec != 0) {
+    // Process the timeout and retry.
+    OPENSSL_timeval *clock = GetClockPtr(ssl);
+    clock->tv_usec += clock_delta->tv_usec;
+    clock->tv_sec += clock->tv_usec / 1000000;
+    clock->tv_usec %= 1000000;
+    clock->tv_sec += clock_delta->tv_sec;
+    memset(clock_delta, 0, sizeof(*clock_delta));
+
+    if (DTLSv1_handle_timeout(ssl) < 0) {
+      printf("Error retransmitting.\n");
+      return 0;
+    }
+    return 1;
+  }
+
   // See if we needed to read or write more. If so, allow one byte through on
   // the appropriate end to maximally stress the state machine.
   int err = SSL_get_error(ssl, ret);
@@ -323,13 +350,15 @@ static int do_exchange(SSL_SESSION **out_session,
                        SSL_SESSION *session) {
   early_callback_called = 0;
 
+  OPENSSL_timeval clock = {0}, clock_delta = {0};
   SSL *ssl = SSL_new(ssl_ctx);
   if (ssl == NULL) {
     BIO_print_errors_fp(stdout);
     return 1;
   }
 
-  if (!SetConfigPtr(ssl, config)) {
+  if (!SetConfigPtr(ssl, config) ||
+      !SetClockPtr(ssl, &clock)) {
     BIO_print_errors_fp(stdout);
     return 1;
   }
@@ -454,7 +483,7 @@ static int do_exchange(SSL_SESSION **out_session,
     return 1;
   }
   if (config->is_dtls) {
-    BIO *packeted = packeted_bio_create();
+    BIO *packeted = packeted_bio_create(&clock_delta);
     BIO_push(packeted, bio);
     bio = packeted;
   }
@@ -480,7 +509,7 @@ static int do_exchange(SSL_SESSION **out_session,
     } else {
       ret = SSL_connect(ssl);
     }
-  } while (config->async && retry_async(ssl, ret, bio));
+  } while (config->async && retry_async(ssl, ret, bio, &clock_delta));
   if (ret != 1) {
     SSL_free(ssl);
     BIO_print_errors_fp(stdout);
@@ -641,7 +670,7 @@ static int do_exchange(SSL_SESSION **out_session,
         if (w > 0) {
           off += (size_t) w;
         }
-      } while ((config->async && retry_async(ssl, w, bio)) ||
+      } while ((config->async && retry_async(ssl, w, bio, &clock_delta)) ||
                (w > 0 && off < len));
 
       if (w < 0 || off != len) {
@@ -655,14 +684,14 @@ static int do_exchange(SSL_SESSION **out_session,
       int w;
       do {
         w = SSL_write(ssl, "hello", 5);
-      } while (config->async && retry_async(ssl, w, bio));
+      } while (config->async && retry_async(ssl, w, bio, &clock_delta));
     }
     for (;;) {
       uint8_t buf[512];
       int n;
       do {
         n = SSL_read(ssl, buf, sizeof(buf));
-      } while (config->async && retry_async(ssl, n, bio));
+      } while (config->async && retry_async(ssl, n, bio, &clock_delta));
       int err = SSL_get_error(ssl, n);
       if (err == SSL_ERROR_ZERO_RETURN ||
           (n == 0 && err == SSL_ERROR_SYSCALL)) {
@@ -693,7 +722,7 @@ static int do_exchange(SSL_SESSION **out_session,
       int w;
       do {
         w = SSL_write(ssl, buf, n);
-      } while (config->async && retry_async(ssl, w, bio));
+      } while (config->async && retry_async(ssl, w, bio, &clock_delta));
       if (w != n) {
         SSL_free(ssl);
         BIO_print_errors_fp(stdout);
@@ -720,7 +749,8 @@ int main(int argc, char **argv) {
     return 1;
   }
   g_ex_data_index = SSL_get_ex_new_index(0, NULL, NULL, NULL, NULL);
-  if (g_ex_data_index < 0) {
+  g_ex_data_clock_index = SSL_get_ex_new_index(0, NULL, NULL, NULL, NULL);
+  if (g_ex_data_index < 0 || g_ex_data_clock_index < 0) {
     return 1;
   }
 
