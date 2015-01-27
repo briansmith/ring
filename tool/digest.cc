@@ -14,8 +14,6 @@
 
 #include <openssl/base.h>
 
-#if !defined(OPENSSL_WINDOWS)
-
 #include <memory>
 #include <string>
 #include <vector>
@@ -26,10 +24,22 @@
 #include <stdio.h>
 #include <sys/stat.h>
 #include <sys/types.h>
+
+#if !defined(OPENSSL_WINDOWS)
 #include <unistd.h>
+#if !defined(O_BINARY)
+#define O_BINARY 0
+#endif
+#else
+#define NOMINMAX
+#define WIN32_LEAN_AND_MEAN
+#include <windows.h>
+#include <io.h>
+#define PATH_MAX MAX_PATH
+#define read _read
+#endif
 
 #include <openssl/digest.h>
-
 
 struct close_delete {
   void operator()(int *fd) {
@@ -70,13 +80,14 @@ static const char kStdinName[] = "standard input";
 static bool OpenFile(int *out_fd, const std::string &filename) {
   *out_fd = -1;
 
-  int fd = open(filename.c_str(), O_RDONLY);
+  int fd = open(filename.c_str(), O_RDONLY | O_BINARY);
   if (fd < 0) {
     fprintf(stderr, "Failed to open input file '%s': %s\n", filename.c_str(),
             strerror(errno));
     return false;
   }
 
+#if !defined(OPENSSL_WINDOWS)
   struct stat st;
   if (fstat(fd, &st)) {
     fprintf(stderr, "Failed to stat input file '%s': %s\n", filename.c_str(),
@@ -88,6 +99,7 @@ static bool OpenFile(int *out_fd, const std::string &filename) {
     fprintf(stderr, "%s: not a regular file\n", filename.c_str());
     goto err;
   }
+#endif
 
   *out_fd = fd;
   return true;
@@ -179,6 +191,14 @@ static bool PrintFileSum(const EVP_MD *md, const Source &source) {
     return false;
   }
 
+  // TODO: When given "--binary" or "-b", we should print " *" instead of "  "
+  // between the digest and the filename.
+  //
+  // MSYS and Cygwin md5sum default to binary mode by default, whereas other
+  // platforms' tools default to text mode by default. We default to text mode
+  // by default and consider text mode equivalent to binary mode (i.e. we
+  // always use Unix semantics, even on Windows), which means that our default
+  // output will differ from the MSYS and Cygwin tools' default output.
   printf("%s  %s\n", hex_digest.c_str(),
          source.is_stdin() ? "-" : source.filename().c_str());
   return true;
@@ -213,7 +233,7 @@ static bool Check(const CheckModeArguments &args, const EVP_MD *md,
       return false;
     }
 
-    file = fdopen(fd, "r");
+    file = fdopen(fd, "rb");
     if (!file) {
       perror("fdopen");
       close(fd);
@@ -366,7 +386,7 @@ static bool DigestSum(const EVP_MD *md,
         switch (arg[i]) {
           case 'b':
           case 't':
-            // Binary/text mode – irrelevent.
+            // Binary/text mode – irrelevent, even on Windows.
             break;
           case 'c':
             check_mode = true;
@@ -381,7 +401,7 @@ static bool DigestSum(const EVP_MD *md,
         }
       }
     } else if (arg == "--binary" || arg == "--text") {
-      // Binary/text mode – irrelevent.
+      // Binary/text mode – irrelevent, even on Windows.
     } else if (arg == "--check") {
       check_mode = true;
     } else if (arg == "--quiet") {
@@ -455,5 +475,3 @@ bool SHA384Sum(const std::vector<std::string> &args) {
 bool SHA512Sum(const std::vector<std::string> &args) {
   return DigestSum(EVP_sha512(), args);
 }
-
-#endif  /* !OPENSSL_WINDOWS */

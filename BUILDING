@@ -70,9 +70,6 @@ Known Limitations on Windows:
   * The bssl client, server, s_client, and s_server commands are not built on
     Windows.
 
-  * The bssl md5sum, sha1sum, sha256sum, etc. commands are not built on
-    Windows.
-
   * The tests written in Go do not work.
 
 [1] http://www.cmake.org/download/
