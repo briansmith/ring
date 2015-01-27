@@ -355,7 +355,7 @@ static bool DigestSum(const EVP_MD *md,
       break;
     }
 
-    if (arg[0] == "-") {
+    if (arg == "-") {
       // "-" ends the argument list and indicates that stdin should be used.
       sources.push_back(Source(Source::STDIN));
       break;
