@@ -19,6 +19,13 @@ endif()
 
 add_definitions(-DBORINGSSL_IMPLEMENTATION)
 
+if (BUILD_SHARED_LIBS)
+	add_definitions(-DBORINGSSL_SHARED_LIBRARY)
+	# Enable position-independent code globally. This is needed because
+	# some library targets are OBJECT libraries.
+	set(CMAKE_POSITION_INDEPENDENT_CODE TRUE)
+endif()
+
 if (${CMAKE_SYSTEM_PROCESSOR} STREQUAL "x86_64")
 	set(ARCH "x86_64")
 elseif (${CMAKE_SYSTEM_PROCESSOR} STREQUAL "amd64")

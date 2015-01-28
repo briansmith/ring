@@ -134,7 +134,6 @@ add_subdirectory(pkcs8)
 
 add_library(
 	crypto
-	STATIC
 
 	crypto.c
 	crypto_error.c
