@@ -16,6 +16,7 @@
 
 #if defined(OPENSSL_WINDOWS)
 
+#define WIN32_LEAN_AND_MEAN
 #include <limits.h>
 #include <stdlib.h>
 #include <Windows.h>

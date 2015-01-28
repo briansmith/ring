@@ -35,7 +35,6 @@
 #include <io.h>
 #include <WinSock2.h>
 #include <WS2tcpip.h>
-typedef int socklen_t;
 typedef int ssize_t;
 #define read _read
 #define write _write
