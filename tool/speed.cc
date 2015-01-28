@@ -169,26 +169,15 @@ struct free_functor {
   }
 };
 
-#if defined(OPENSSL_WINDOWS)
-uint8_t *AllocAligned(size_t size) {
-  void *ptr = malloc(size);
-  if (ptr == NULL) {
-    abort();
-  }
-  return static_cast<uint8_t*>(ptr);
+static uint8_t *align(uint8_t *in, unsigned alignment) {
+  return reinterpret_cast<uint8_t *>(
+      (reinterpret_cast<uintptr_t>(in) + alignment) & ~(alignment - 1));
 }
-#else
-uint8_t *AllocAligned(size_t size) {
-  void *ptr;
-  if (posix_memalign(&ptr, 64, size)) {
-    abort();
-  }
-  return static_cast<uint8_t*>(ptr);
-}
-#endif
 
 static bool SpeedAEADChunk(const EVP_AEAD *aead, const std::string &name,
                            size_t chunk_len, size_t ad_len) {
+  static const unsigned kAlignment = 16;
+
   EVP_AEAD_CTX ctx;
   const size_t key_len = EVP_AEAD_key_length(aead);
   const size_t nonce_len = EVP_AEAD_nonce_length(aead);
@@ -198,13 +187,17 @@ static bool SpeedAEADChunk(const EVP_AEAD *aead, const std::string &name,
   memset(key.get(), 0, key_len);
   std::unique_ptr<uint8_t[]> nonce(new uint8_t[nonce_len]);
   memset(nonce.get(), 0, nonce_len);
-  std::unique_ptr<uint8_t, free_functor<uint8_t>> in(AllocAligned(chunk_len));
-  memset(in.get(), 0, chunk_len);
-  std::unique_ptr<uint8_t, free_functor<uint8_t>> out(
-      AllocAligned(chunk_len + overhead_len));
-  memset(out.get(), 0, chunk_len + overhead_len);
+  std::unique_ptr<uint8_t, free_functor<uint8_t>> in_storage(
+      new uint8_t[chunk_len + kAlignment]);
+  std::unique_ptr<uint8_t, free_functor<uint8_t>> out_storage(
+      new uint8_t[chunk_len + overhead_len + kAlignment]);
   std::unique_ptr<uint8_t[]> ad(new uint8_t[ad_len]);
   memset(ad.get(), 0, ad_len);
+
+  uint8_t *const in = align(in_storage.get(), kAlignment);
+  memset(in, 0, chunk_len);
+  uint8_t *const out = align(out_storage.get(), kAlignment);
+  memset(out, 0, chunk_len + overhead_len);
 
   if (!EVP_AEAD_CTX_init(&ctx, aead, key.get(), key_len,
                          EVP_AEAD_DEFAULT_TAG_LENGTH, NULL)) {
@@ -214,13 +207,13 @@ static bool SpeedAEADChunk(const EVP_AEAD *aead, const std::string &name,
   }
 
   TimeResults results;
-  if (!TimeFunction(&results, [chunk_len, overhead_len, nonce_len, ad_len, &in,
-                               &out, &ctx, &nonce, &ad]() -> bool {
+  if (!TimeFunction(&results, [chunk_len, overhead_len, nonce_len, ad_len, in,
+                               out, &ctx, &nonce, &ad]() -> bool {
         size_t out_len;
 
         return EVP_AEAD_CTX_seal(
-            &ctx, out.get(), &out_len, chunk_len + overhead_len, nonce.get(),
-            nonce_len, in.get(), chunk_len, ad.get(), ad_len);
+            &ctx, out, &out_len, chunk_len + overhead_len, nonce.get(),
+            nonce_len, in, chunk_len, ad.get(), ad_len);
       })) {
     fprintf(stderr, "EVP_AEAD_CTX_seal failed.\n");
     BIO_print_errors_fp(stderr);
