@@ -26,10 +26,8 @@
 #endif
 
 
-#if !defined(OPENSSL_WINDOWS)
 bool Client(const std::vector<std::string> &args);
 bool Server(const std::vector<std::string> &args);
-#endif
 bool MD5Sum(const std::vector<std::string> &args);
 bool SHA1Sum(const std::vector<std::string> &args);
 bool SHA224Sum(const std::vector<std::string> &args);
@@ -49,12 +47,10 @@ struct Tool {
 static const Tool kTools[] = {
   { "speed", Speed },
   { "pkcs12", DoPKCS12 },
-#if !defined(OPENSSL_WINDOWS)
   { "client", Client },
   { "s_client", Client },
   { "server", Server },
   { "s_server", Server },
-#endif
   { "md5sum", MD5Sum },
   { "sha1sum", SHA1Sum },
   { "sha224sum", SHA224Sum },

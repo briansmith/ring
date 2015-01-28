@@ -18,6 +18,8 @@
 #include <openssl/ssl.h>
 #include <string.h>
 
+// InitSocketLibrary calls the Windows socket init functions, if needed.
+bool InitSocketLibrary();
 
 // Connect sets |*out_sock| to be a socket connected to the destination given
 // in |hostname_and_port|, which should be of the form "www.example.com:123".

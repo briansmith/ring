@@ -14,9 +14,6 @@
 
 #include <openssl/base.h>
 
-// TODO(davidben): bssl client does not work on Windows.
-#if !defined(OPENSSL_WINDOWS)
-
 #include <string>
 #include <vector>
 
@@ -50,6 +47,10 @@ static const struct argument kArguments[] = {
 };
 
 bool Server(const std::vector<std::string> &args) {
+  if (!InitSocketLibrary()) {
+    return false;
+  }
+
   std::map<std::string, std::string> args_map;
 
   if (!ParseKeyValueArguments(&args_map, args, kArguments)) {
@@ -106,6 +107,3 @@ bool Server(const std::vector<std::string> &args) {
   SSL_CTX_free(ctx);
   return ok;
 }
-
-
-#endif  // !OPENSSL_WINDOWS

@@ -37,6 +37,7 @@
 #include <io.h>
 #define PATH_MAX MAX_PATH
 #define read _read
+typedef int ssize_t;
 #endif
 
 #include <openssl/digest.h>
