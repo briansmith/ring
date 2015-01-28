@@ -28,4 +28,11 @@ add_executable(
 	evp_test.c
 )
 
+add_executable(
+	pbkdf_test
+
+	pbkdf_test.c
+)
+
 target_link_libraries(evp_test crypto)
+target_link_libraries(pbkdf_test crypto)
