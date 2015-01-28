@@ -514,19 +514,19 @@ struct ssl_session_st {
 
 /* SSL_CTX_set_min_version sets the minimum protocol version for |ctx| to
  * |version|. */
-void SSL_CTX_set_min_version(SSL_CTX *ctx, uint16_t version);
+OPENSSL_EXPORT void SSL_CTX_set_min_version(SSL_CTX *ctx, uint16_t version);
 
 /* SSL_CTX_set_max_version sets the maximum protocol version for |ctx| to
  * |version|. */
-void SSL_CTX_set_max_version(SSL_CTX *ctx, uint16_t version);
+OPENSSL_EXPORT void SSL_CTX_set_max_version(SSL_CTX *ctx, uint16_t version);
 
 /* SSL_set_min_version sets the minimum protocol version for |ssl| to
  * |version|. */
-void SSL_set_min_version(SSL *ssl, uint16_t version);
+OPENSSL_EXPORT void SSL_set_min_version(SSL *ssl, uint16_t version);
 
 /* SSL_set_max_version sets the maximum protocol version for |ssl| to
  * |version|. */
-void SSL_set_max_version(SSL *ssl, uint16_t version);
+OPENSSL_EXPORT void SSL_set_max_version(SSL *ssl, uint16_t version);
 
 OPENSSL_EXPORT void SSL_CTX_set_msg_callback(
     SSL_CTX *ctx, void (*cb)(int write_p, int version, int content_type,
