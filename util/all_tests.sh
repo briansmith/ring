@@ -46,7 +46,6 @@ TESTS="
 ./crypto/cipher/aead_test aes-256-cbc-sha1-ssl3 $SRC/crypto/cipher/test/aes_256_cbc_sha1_ssl3_tests.txt
 ./crypto/cipher/aead_test des-ede3-cbc-sha1-ssl3 $SRC/crypto/cipher/test/des_ede3_cbc_sha1_ssl3_tests.txt
 ./crypto/cipher/cipher_test $SRC/crypto/cipher/test/cipher_test.txt
-./crypto/conf/conf_test
 ./crypto/constant_time_test
 ./crypto/dh/dh_test
 ./crypto/digest/digest_test
