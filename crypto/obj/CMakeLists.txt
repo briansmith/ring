@@ -1,11 +1,11 @@
 include_directories(. .. ../../include)
 
 add_library(
-	obj
+  obj
 
-	OBJECT
+  OBJECT
 
-	obj.c
-	obj_xref.c
-	obj_error.c
+  obj.c
+  obj_xref.c
+  obj_error.c
 )

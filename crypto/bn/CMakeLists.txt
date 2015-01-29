@@ -1,61 +1,61 @@
 include_directories(. .. ../../include)
 
 if (${ARCH} STREQUAL "x86_64")
-	set(
-		BN_ARCH_SOURCES
+  set(
+    BN_ARCH_SOURCES
 
-		asm/x86_64-gcc.c
-		x86_64-mont.${ASM_EXT}
-		x86_64-mont5.${ASM_EXT}
-		rsaz-x86_64.${ASM_EXT}
-		rsaz-avx2.${ASM_EXT}
+    asm/x86_64-gcc.c
+    x86_64-mont.${ASM_EXT}
+    x86_64-mont5.${ASM_EXT}
+    rsaz-x86_64.${ASM_EXT}
+    rsaz-avx2.${ASM_EXT}
 
-		rsaz_exp.c
-	)
+    rsaz_exp.c
+  )
 endif()
 
 if (${ARCH} STREQUAL "x86")
-	set(
-		BN_ARCH_SOURCES
+  set(
+    BN_ARCH_SOURCES
 
-		bn-586.${ASM_EXT}
-		co-586.${ASM_EXT}
-		x86-mont.${ASM_EXT}
-	)
+    bn-586.${ASM_EXT}
+    co-586.${ASM_EXT}
+    x86-mont.${ASM_EXT}
+  )
 endif()
 
 if (${ARCH} STREQUAL "arm")
-	set(
-		BN_ARCH_SOURCES
+  set(
+    BN_ARCH_SOURCES
 
-		armv4-mont.${ASM_EXT}
-	)
+    armv4-mont.${ASM_EXT}
+  )
 endif()
 
 add_library(
-	bn
+  bn
 
-	OBJECT
+  OBJECT
 
-	bn_error.c
-	add.c
-	bn.c
-	cmp.c
-	convert.c
-	ctx.c
-	div.c
-	exponentiation.c
-	generic.c
-	gcd.c
-	kronecker.c
-	montgomery.c
-	mul.c
-	prime.c
-	random.c
-	shift.c
-	sqrt.c
+  bn_error.c
+  add.c
+  bn.c
+  cmp.c
+  convert.c
+  ctx.c
+  div.c
+  exponentiation.c
+  generic.c
+  gcd.c
+  kronecker.c
+  montgomery.c
+  mul.c
+  prime.c
+  random.c
+  shift.c
+  sqrt.c
 
-	${BN_ARCH_SOURCES}
+  ${BN_ARCH_SOURCES}
 )
 
 perlasm(x86_64-mont.${ASM_EXT} asm/x86_64-mont.pl)
@@ -68,9 +68,9 @@ perlasm(x86-mont.${ASM_EXT} asm/x86-mont.pl)
 perlasm(armv4-mont.${ASM_EXT} asm/armv4-mont.pl)
 
 add_executable(
-	bn_test
+  bn_test
 
-	bn_test.c
+  bn_test.c
 )
 
 target_link_libraries(bn_test crypto)

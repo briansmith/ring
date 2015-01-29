@@ -1,10 +1,10 @@
 include_directories(. .. ../../include)
 
 add_library(
-	engine
+  engine
 
-	OBJECT
+  OBJECT
 
-	engine.c
-	engine_error.c
+  engine.c
+  engine_error.c
 )

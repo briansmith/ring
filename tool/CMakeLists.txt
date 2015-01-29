@@ -1,21 +1,21 @@
 include_directories(../include)
 
 add_executable(
-	bssl
+  bssl
 
-	args.cc
-	client.cc
-	const.cc
-	digest.cc
-	pkcs12.cc
-	server.cc
-	speed.cc
-	tool.cc
-	transport_common.cc
+  args.cc
+  client.cc
+  const.cc
+  digest.cc
+  pkcs12.cc
+  server.cc
+  speed.cc
+  tool.cc
+  transport_common.cc
 )
 
 if (APPLE OR WIN32)
-	target_link_libraries(bssl ssl crypto)
+  target_link_libraries(bssl ssl crypto)
 else()
-	target_link_libraries(bssl ssl crypto -lrt)
+  target_link_libraries(bssl ssl crypto -lrt)
 endif()

@@ -1,19 +1,19 @@
 include_directories(. .. ../../include)
 
 add_library(
-	digest
+  digest
 
-	OBJECT
+  OBJECT
 
-	digest.c
-	digests.c
-	digest_error.c
+  digest.c
+  digests.c
+  digest_error.c
 )
 
 add_executable(
-	digest_test
+  digest_test
 
-	digest_test.c
+  digest_test.c
 )
 
 target_link_libraries(digest_test crypto)

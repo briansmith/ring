@@ -1,9 +1,9 @@
 include_directories(. .. ../../include)
 
 add_library(
-	md4
+  md4
 
-	OBJECT
+  OBJECT
 
-	md4.c
+  md4.c
 )

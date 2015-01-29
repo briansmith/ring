@@ -1,11 +1,11 @@
 include_directories(. .. ../../include)
 
 add_library(
-	rand
+  rand
 
-	OBJECT
+  OBJECT
 
-	rand.c
-	urandom.c
-	windows.c
+  rand.c
+  urandom.c
+  windows.c
 )

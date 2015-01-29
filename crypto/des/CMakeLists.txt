@@ -1,9 +1,9 @@
 include_directories(. .. ../../include)
 
 add_library(
-	des
+  des
 
-	OBJECT
+  OBJECT
 
-	des.c
+  des.c
 )

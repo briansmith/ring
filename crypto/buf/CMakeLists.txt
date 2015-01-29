@@ -1,10 +1,10 @@
 include_directories(. .. ../../include)
 
 add_library(
-	buf
+  buf
 
-	OBJECT
+  OBJECT
 
-	buf.c
-	buf_error.c
+  buf.c
+  buf_error.c
 )

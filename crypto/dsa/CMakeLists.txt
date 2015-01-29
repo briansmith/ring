@@ -1,20 +1,20 @@
 include_directories(. .. ../../include)
 
 add_library(
-	dsa
+  dsa
 
-	OBJECT
+  OBJECT
 
-	dsa.c
-	dsa_impl.c
-	dsa_asn1.c
-	dsa_error.c
+  dsa.c
+  dsa_impl.c
+  dsa_asn1.c
+  dsa_error.c
 )
 
 add_executable(
-	dsa_test
+  dsa_test
 
-	dsa_test.c
+  dsa_test.c
 )
 
 target_link_libraries(dsa_test crypto)

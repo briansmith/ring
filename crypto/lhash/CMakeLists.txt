@@ -1,17 +1,17 @@
 include_directories(. .. ../../include)
 
 add_library(
-	lhash
+  lhash
 
-	OBJECT
+  OBJECT
 
-	lhash.c
+  lhash.c
 )
 
 add_executable(
-	lhash_test
+  lhash_test
 
-	lhash_test.c
+  lhash_test.c
 )
 
 target_link_libraries(lhash_test crypto)

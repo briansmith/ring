@@ -1,20 +1,20 @@
 include_directories(. .. ../../include)
 
 if (${ARCH} STREQUAL "arm")
-	set(
-		CHACHA_ARCH_SOURCES
+  set(
+    CHACHA_ARCH_SOURCES
 
-		chacha_vec_arm.S
-	)
+    chacha_vec_arm.S
+  )
 endif()
 
 add_library(
-	chacha
+  chacha
 
-	OBJECT
+  OBJECT
 
-	chacha_generic.c
-	chacha_vec.c
+  chacha_generic.c
+  chacha_vec.c
 
-	${CHACHA_ARCH_SOURCES}
+  ${CHACHA_ARCH_SOURCES}
 )

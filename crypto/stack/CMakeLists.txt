@@ -1,9 +1,9 @@
 include_directories(. .. ../../include)
 
 add_library(
-	stack
+  stack
 
-	OBJECT
+  OBJECT
 
-	stack.c
+  stack.c
 )

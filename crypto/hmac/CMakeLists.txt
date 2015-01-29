@@ -1,18 +1,18 @@
 include_directories(. .. ../../include)
 
 add_library(
-	hmac
+  hmac
 
-	OBJECT
+  OBJECT
 
-	hmac.c
+  hmac.c
 )
 
 
 add_executable(
-	hmac_test
+  hmac_test
 
-	hmac_test.c
+  hmac_test.c
 )
 
 target_link_libraries(hmac_test crypto)
