@@ -27,7 +27,9 @@
 #include <openssl/rsa.h>
 
 #if defined(OPENSSL_WINDOWS)
+#pragma warning(push, 3)
 #include <Windows.h>
+#pragma warning(pop)
 #elif defined(OPENSSL_APPLE)
 #include <sys/time.h>
 #endif

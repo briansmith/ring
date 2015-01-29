@@ -62,7 +62,9 @@
 #include <unistd.h>
 #else
 #include <io.h>
+#pragma warning(push, 3)
 #include <Windows.h>
+#pragma warning(pop)
 #endif
 
 #include <openssl/buf.h>

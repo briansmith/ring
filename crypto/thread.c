@@ -59,7 +59,9 @@
 #include <errno.h>
 
 #if defined(OPENSSL_WINDOWS)
+#pragma warning(push, 3)
 #include <Windows.h>
+#pragma warning(pop)
 #endif
 
 #include <openssl/mem.h>

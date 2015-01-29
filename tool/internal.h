@@ -17,8 +17,20 @@
 
 #include <string>
 #include <vector>
+
+#if defined(_MSC_VER)
+#pragma warning(push)
+// MSVC issues warning C4702 for unreachable code in its xtree header when
+// compiling with -D_HAS_EXCEPTIONS=0. See
+// https://connect.microsoft.com/VisualStudio/feedback/details/809962
+#pragma warning(disable: 4702)
+#endif
+
 #include <map>
 
+#if defined(_MSC_VER)
+#pragma warning(pop)
+#endif
 
 struct argument {
   const char name[15];

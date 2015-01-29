@@ -19,7 +19,7 @@
 #include <openssl/ssl.h>
 
 
-static int trivial() {
+static int trivial(void) {
   pqueue q = pqueue_new();
   if (q == NULL) {
     return 0;
@@ -43,7 +43,7 @@ static int trivial() {
 
 #define NUM_ITEMS 10
 
-static int fixed_random() {
+static int fixed_random(void) {
   /* Random order of 10 elements, chosen by
    * random.choice(list(itertools.permutations(range(10)))) */
   int ordering[NUM_ITEMS] = {9, 6, 3, 4, 0, 2, 7, 1, 8, 5};

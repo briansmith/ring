@@ -413,7 +413,6 @@ int main(int argc, char *argv[]) {
         break;
       default:
         abort();
-        return 1;
     }
 
     if (!RSA_check_key(key)) {

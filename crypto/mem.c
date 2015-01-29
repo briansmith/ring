@@ -65,7 +65,9 @@
 #include <string.h>
 
 #if defined(OPENSSL_WINDOWS)
+#pragma warning(push, 3)
 #include <Windows.h>
+#pragma warning(pop)
 #else
 #include <strings.h>
 #endif

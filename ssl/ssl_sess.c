@@ -146,7 +146,7 @@
 /* The address of this is a magic value, a pointer to which is returned by
  * SSL_magic_pending_session_ptr(). It allows a session callback to indicate
  * that it needs to asynchronously fetch session information. */
-static const char g_pending_session_magic;
+static const char g_pending_session_magic = 0;
 
 static void SSL_SESSION_list_remove(SSL_CTX *ctx, SSL_SESSION *s);
 static void SSL_SESSION_list_add(SSL_CTX *ctx,SSL_SESSION *s);

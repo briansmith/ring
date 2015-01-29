@@ -70,7 +70,8 @@ void CRYPTO_cfb128_encrypt(const uint8_t *in, uint8_t *out, size_t len,
       --len;
       n = (n + 1) % 16;
     }
-    if (STRICT_ALIGNMENT && ((size_t)in | (size_t)out | (size_t)ivec) % sizeof(size_t) != 0) {
+#if STRICT_ALIGNMENT
+    if (((size_t)in | (size_t)out | (size_t)ivec) % sizeof(size_t) != 0) {
       while (l < len) {
         if (n == 0) {
           (*block)(ivec, ivec, key);
@@ -82,6 +83,7 @@ void CRYPTO_cfb128_encrypt(const uint8_t *in, uint8_t *out, size_t len,
       *num = n;
       return;
     }
+#endif
     while (len >= 16) {
       (*block)(ivec, ivec, key);
       for (; n < 16; n += sizeof(size_t)) {

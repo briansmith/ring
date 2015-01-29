@@ -200,7 +200,7 @@ void vpaes_cbc_encrypt(const uint8_t *in, uint8_t *out, size_t length,
 #if !defined(HWAES)
 /* If HWAES isn't defined then we provide dummy functions for each of the hwaes
  * functions. */
-int hwaes_capable() {
+int hwaes_capable(void) {
   return 0;
 }
 

@@ -32,11 +32,12 @@
 #else
 #define NOMINMAX
 #include <io.h>
+#pragma warning(push, 3)
 #include <WinSock2.h>
 #include <WS2tcpip.h>
+#pragma warning(pop)
+
 typedef int ssize_t;
-#define read _read
-#define write _write
 #pragma comment(lib, "Ws2_32.lib")
 #endif
 

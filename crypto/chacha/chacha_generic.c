@@ -21,7 +21,8 @@
 #if defined(OPENSSL_WINDOWS) || (!defined(OPENSSL_X86_64) && !defined(OPENSSL_X86)) || !defined(__SSE2__)
 
 /* sigma contains the ChaCha constants, which happen to be an ASCII string. */
-static const char sigma[16] = "expand 32-byte k";
+static const uint8_t sigma[16] = { 'e', 'x', 'p', 'a', 'n', 'd', ' ', '3',
+                                   '2', '-', 'b', 'y', 't', 'e', ' ', 'k' };
 
 #define ROTATE(v, n) (((v) << (n)) | ((v) >> (32 - (n))))
 #define XOR(v, w) ((v) ^ (w))

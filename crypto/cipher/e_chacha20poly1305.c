@@ -81,7 +81,7 @@ static void poly1305_update_with_length(poly1305_state *poly1305,
   CRYPTO_poly1305_update(poly1305, length_bytes, sizeof(length_bytes));
 }
 
-#if __arm__
+#if defined(__arm__)
 #define ALIGNED __attribute__((aligned(16)))
 #else
 #define ALIGNED

@@ -86,7 +86,6 @@ void CRYPTO_ctr128_encrypt(const uint8_t *in, uint8_t *out, size_t len,
                            uint8_t ecount_buf[16], unsigned int *num,
                            block128_f block) {
   unsigned int n;
-  size_t l=0;
 
   assert(in && out && key && ecount_buf && num);
   assert(*num < 16);
@@ -100,8 +99,9 @@ void CRYPTO_ctr128_encrypt(const uint8_t *in, uint8_t *out, size_t len,
     n = (n + 1) % 16;
   }
 
-  if (STRICT_ALIGNMENT &&
-      ((size_t)in | (size_t)out | (size_t)ivec) % sizeof(size_t) != 0) {
+#if STRICT_ALIGNMENT
+  if (((size_t)in | (size_t)out | (size_t)ivec) % sizeof(size_t) != 0) {
+    size_t l = 0;
     while (l < len) {
       if (n == 0) {
         (*block)(ivec, ecount_buf, key);
@@ -115,6 +115,7 @@ void CRYPTO_ctr128_encrypt(const uint8_t *in, uint8_t *out, size_t len,
     *num = n;
     return;
   }
+#endif
 
   while (len >= 16) {
     (*block)(ivec, ecount_buf, key);

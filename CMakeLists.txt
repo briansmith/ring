@@ -6,9 +6,43 @@ if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
   set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall -Werror -ggdb -fvisibility=hidden")
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Werror -ggdb -std=c++0x -fvisibility=hidden")
 elseif(MSVC)
-  # Disable warnings for implicit integer narrowing.
-  set(CMAKE_C_FLAGS "/wd4267")
-  set(CMAKE_CXX_FLAGS "/wd4267")
+  set(MSVC_DISABLED_WARNINGS_LIST
+      "C4100" # 'exarg' : unreferenced formal parameter
+      "C4127" # conditional expression is constant
+      "C4200" # nonstandard extension used : zero-sized array in
+              # struct/union.
+      "C4242" # 'function' : conversion from 'int' to 'uint8_t',
+              # possible loss of data
+      "C4244" # 'function' : conversion from 'int' to 'uint8_t',
+              # possible loss of data
+      "C4245" # 'initializing' : conversion from 'long' to
+              # 'unsigned long', signed/unsigned mismatch
+      "C4296" # '>=' : expression is always true
+      "C4350" # behavior change: 'std::_Wrap_alloc...'
+      "C4365" # '=' : conversion from 'size_t' to 'int',
+              # signed/unsigned mismatch
+      "C4389" # '!=' : signed/unsigned mismatch
+      "C4510" # 'argument' : default constructor could not be generated
+      "C4512" # 'argument' : assignment operator could not be generated
+      "C4514" # 'function': unreferenced inline function has been removed
+      "C4548" # expression before comma has no effect; expected expression with
+              # side-effect" caused by FD_* macros.
+      "C4610" # struct 'argument' can never be instantiated - user defined
+              # constructor required.
+      "C4701" # potentially uninitialized local variable 'mdlen' used
+      "C4706" # assignment within conditional expression
+      "C4710" # 'function': function not inlined
+      "C4711" # function 'function' selected for inline expansion
+      "C4800" # 'int' : forcing value to bool 'true' or 'false'
+              # (performance warning)
+      "C4820" # 'bytes' bytes padding added after construct 'member_name'
+      "C4996" # 'read': The POSIX name for this item is deprecated. Instead,
+              # use the ISO C++ conformant name: _read.
+     )
+  string(REPLACE "C" " -wd" MSVC_DISABLED_WARNINGS_STR
+                            ${MSVC_DISABLED_WARNINGS_LIST})
+  set(CMAKE_C_FLAGS   "-Wall -WX ${MSVC_DISABLED_WARNINGS_STR}")
+  set(CMAKE_CXX_FLAGS "-Wall -WX ${MSVC_DISABLED_WARNINGS_STR}")
   add_definitions(-D_HAS_EXCEPTIONS=0)
   add_definitions(-DWIN32_LEAN_AND_MEAN)
 endif()

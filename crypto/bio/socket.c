@@ -62,7 +62,9 @@
 #if !defined(OPENSSL_WINDOWS)
 #include <unistd.h>
 #else
+#pragma warning(push, 3)
 #include <WinSock2.h>
+#pragma warning(pop)
 #endif
 
 #include "internal.h"

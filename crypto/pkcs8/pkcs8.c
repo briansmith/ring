@@ -1019,7 +1019,7 @@ err:
   return ret;
 }
 
-void PKCS12_PBE_add(){};
+void PKCS12_PBE_add(void) {}
 
 struct pkcs12_st {
   uint8_t *ber_bytes;

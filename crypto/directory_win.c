@@ -30,7 +30,9 @@
 
 #if defined(OPENSSL_WINDOWS)
 
+#pragma warning(push, 3)
 #include <windows.h>
+#pragma warning(pop)
 #include <tchar.h>
 #include <errno.h>
 

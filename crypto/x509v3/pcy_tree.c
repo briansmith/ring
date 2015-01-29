@@ -554,8 +554,6 @@ static int tree_prune(X509_POLICY_TREE *tree, X509_POLICY_LEVEL *curr)
 			}
 		}
 
-	return 1;
-
 	}
 
 static int tree_add_auth_node(STACK_OF(X509_POLICY_NODE) **pnodes,

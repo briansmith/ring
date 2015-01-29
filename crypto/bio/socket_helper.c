@@ -24,8 +24,10 @@
 #include <netdb.h>
 #include <unistd.h>
 #else
+#pragma warning(push, 3)
 #include <WinSock2.h>
 #include <WS2tcpip.h>
+#pragma warning(pop)
 #endif
 
 #include "internal.h"

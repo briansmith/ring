@@ -57,7 +57,6 @@ void CRYPTO_ofb128_encrypt(const uint8_t *in, uint8_t *out, size_t len,
                            const void *key, uint8_t ivec[16], int *num,
                            block128_f block) {
   unsigned int n;
-  size_t l=0;
 
   assert(in && out && key && ivec && num);
   assert((16 % sizeof(size_t)) == 0);
@@ -70,8 +69,9 @@ void CRYPTO_ofb128_encrypt(const uint8_t *in, uint8_t *out, size_t len,
     n = (n + 1) % 16;
   }
 
-  if (STRICT_ALIGNMENT &&
-      ((size_t)in | (size_t)out | (size_t)ivec) % sizeof(size_t) != 0) {
+#if STRICT_ALIGNMENT
+  if (((size_t)in | (size_t)out | (size_t)ivec) % sizeof(size_t) != 0) {
+    size_t l = 0;
     while (l < len) {
       if (n == 0) {
         (*block)(ivec, ivec, key);
@@ -84,6 +84,7 @@ void CRYPTO_ofb128_encrypt(const uint8_t *in, uint8_t *out, size_t len,
     *num = n;
     return;
   }
+#endif
 
   while (len >= 16) {
     (*block)(ivec, ivec, key);

@@ -415,6 +415,6 @@ static const EVP_CIPHER rc2_40_cbc_cipher = {
     rc2_ctrl,
 };
 
-const EVP_CIPHER *EVP_rc2_40_cbc() {
+const EVP_CIPHER *EVP_rc2_40_cbc(void) {
   return &rc2_40_cbc_cipher;
 }

@@ -115,7 +115,9 @@
 #include <stdio.h>
 
 #if defined(OPENSSL_WINDOWS)
+#pragma warning(push, 3)
 #include <Windows.h>
+#pragma warning(pop)
 #endif
 
 #include <openssl/lhash.h>
@@ -621,17 +623,17 @@ int ERR_set_mark(void) {
 
 int ERR_pop_to_mark(void) {
   ERR_STATE *const state = err_get_state();
-  struct err_error_st *error;
 
   if (state == NULL) {
     return 0;
   }
 
   while (state->bottom != state->top) {
-    error = &state->errors[state->top];
+    struct err_error_st *error = &state->errors[state->top];
 
     if ((error->flags & ERR_FLAG_MARK) != 0) {
-      break;
+      error->flags &= ~ERR_FLAG_MARK;
+      return 1;
     }
 
     err_clear(error);
@@ -642,12 +644,7 @@ int ERR_pop_to_mark(void) {
     }
   }
 
-  if (state->bottom == state->top) {
-    return 0;
-  }
-
-  error->flags &= ~ERR_FLAG_MARK;
-  return 1;
+  return 0;
 }
 
 static const char *const kLibraryNames[ERR_NUM_LIBS] = {
