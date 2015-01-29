@@ -10,6 +10,7 @@ elseif(MSVC)
   set(CMAKE_C_FLAGS "/wd4267")
   set(CMAKE_CXX_FLAGS "/wd4267")
   add_definitions(-D_HAS_EXCEPTIONS=0)
+  add_definitions(-DWIN32_LEAN_AND_MEAN)
 endif()
 
 if((CMAKE_COMPILER_IS_GNUCXX AND CMAKE_C_COMPILER_VERSION VERSION_GREATER "4.5.99") OR

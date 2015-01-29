@@ -30,7 +30,6 @@
 #include <sys/socket.h>
 #include <unistd.h>
 #else
-#define WIN32_LEAN_AND_MEAN // prevent conflicting defines of X509_* names
 #define NOMINMAX
 #include <io.h>
 #include <WinSock2.h>

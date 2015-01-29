@@ -26,7 +26,6 @@
 #include <sys/socket.h>
 #include <unistd.h>
 #else
-#define WIN32_LEAN_AND_MEAN
 #include <io.h>
 #include <WinSock2.h>
 #include <WS2tcpip.h>
