@@ -88,8 +88,7 @@ void CRYPTO_chacha_20(uint8_t *out, const uint8_t *in, size_t in_len,
   size_t todo, i;
 
 #if defined(OPENSSL_ARM) && !defined(OPENSSL_NO_ASM)
-  if (CRYPTO_is_NEON_capable() && ((intptr_t)in & 15) == 0 &&
-      ((intptr_t)out & 15) == 0) {
+  if (CRYPTO_is_NEON_capable()) {
     CRYPTO_chacha_20_neon(out, in, in_len, key, nonce, counter);
     return;
   }
