@@ -45,7 +45,6 @@ elseif(MSVC)
               # copy constructor is inaccessible or deleted
       "C4626" # assignment operator could not be generated because a base class
               # assignment operator is inaccessible or deleted
-      "C4701" # potentially uninitialized local variable 'mdlen' used
       "C4706" # assignment within conditional expression
       "C4710" # 'function': function not inlined
       "C4711" # function 'function' selected for inline expansion

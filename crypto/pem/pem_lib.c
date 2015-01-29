@@ -363,10 +363,11 @@ int PEM_ASN1_write_bio(i2d_of_void *i2d, const char *name, BIO *bp,
 			|| !EVP_EncryptUpdate(&ctx,data,&j,data,i)
 			|| !EVP_EncryptFinal_ex(&ctx,&(data[j]),&i))
 			ret = 0;
+		else
+			i += j;
 		EVP_CIPHER_CTX_cleanup(&ctx);
 		if (ret == 0)
 			goto err;
-		i+=j;
 		}
 	else
 		{

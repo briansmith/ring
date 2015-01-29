@@ -64,6 +64,8 @@
 #include <openssl/obj.h>
 #include <openssl/x509v3.h>
 
+#include "../internal.h"
+
 
 /* Although this file is in crypto/x509 for layering purposes, it emits errors
  * from the ASN.1 module for OpenSSL compatibility. */
@@ -141,6 +143,7 @@ ASN1_TYPE *ASN1_generate_nconf(char *str, CONF *nconf)
 	}
 
 ASN1_TYPE *ASN1_generate_v3(char *str, X509V3_CTX *cnf)
+                            OPENSSL_SUPPRESS_POTENTIALLY_UNINITIALIZED_WARNINGS
 	{
 	ASN1_TYPE *ret;
 	tag_exp_arg asn1_tags;

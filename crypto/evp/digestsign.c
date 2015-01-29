@@ -162,12 +162,12 @@ int EVP_DigestSignFinal(EVP_MD_CTX *ctx, uint8_t *out_sig,
       r = tmp_ctx.pctx->pmeth->signctx(tmp_ctx.pctx, out_sig, out_sig_len, &tmp_ctx);
     } else {
       r = EVP_DigestFinal_ex(&tmp_ctx, md, &mdlen);
+      if (r) {
+        r = EVP_PKEY_sign(ctx->pctx, out_sig, out_sig_len, md, mdlen);
+      }
     }
     EVP_MD_CTX_cleanup(&tmp_ctx);
-    if (has_signctx || !r) {
-      return r;
-    }
-    return EVP_PKEY_sign(ctx->pctx, out_sig, out_sig_len, md, mdlen);
+    return r;
   } else {
     if (has_signctx) {
       return ctx->pctx->pmeth->signctx(ctx->pctx, out_sig, out_sig_len, ctx);
@@ -184,21 +184,21 @@ int EVP_DigestVerifyFinal(EVP_MD_CTX *ctx, const uint8_t *sig,
   uint8_t md[EVP_MAX_MD_SIZE];
   int r;
   unsigned int mdlen;
-  const int has_verifyctx = ctx->pctx->pmeth->verifyctx != NULL;
 
   EVP_MD_CTX_init(&tmp_ctx);
   if (!EVP_MD_CTX_copy_ex(&tmp_ctx, ctx)) {
     return 0;
   }
-  if (has_verifyctx) {
+  if (ctx->pctx->pmeth->verifyctx) {
     r = tmp_ctx.pctx->pmeth->verifyctx(tmp_ctx.pctx, sig, sig_len, &tmp_ctx);
   } else {
     r = EVP_DigestFinal_ex(&tmp_ctx, md, &mdlen);
+    if (r) {
+      r = EVP_PKEY_verify(ctx->pctx, sig, sig_len, md, mdlen);
+    }
   }
 
   EVP_MD_CTX_cleanup(&tmp_ctx);
-  if (has_verifyctx || !r) {
-    return r;
-  }
-  return EVP_PKEY_verify(ctx->pctx, sig, sig_len, md, mdlen);
+
+  return r;
 }

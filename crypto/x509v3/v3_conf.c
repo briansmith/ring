@@ -67,6 +67,8 @@
 #include <openssl/x509.h>
 #include <openssl/x509v3.h>
 
+#include "../internal.h"
+
 
 static int v3_check_critical(char **value);
 static int v3_check_generic(char **value);
@@ -260,6 +262,7 @@ static int v3_check_generic(char **value)
 static X509_EXTENSION *v3_generic_extension(const char *ext, char *value,
 					    int crit, int gen_type,
 					    X509V3_CTX *ctx)
+        OPENSSL_SUPPRESS_POTENTIALLY_UNINITIALIZED_WARNINGS
 	{
 	unsigned char *ext_der=NULL;
 	long ext_len;

@@ -361,10 +361,6 @@ static int pkcs1_prefixed_msg(uint8_t **out_msg, size_t *out_msg_len,
                               int *is_alloced, int hash_nid, const uint8_t *msg,
                               size_t msg_len) {
   unsigned i;
-  const uint8_t* prefix = NULL;
-  unsigned prefix_len;
-  uint8_t *signed_msg;
-  unsigned signed_msg_len;
 
   if (hash_nid == NID_md5_sha1) {
     /* Special case: SSL signature, just check the length. */
@@ -381,38 +377,39 @@ static int pkcs1_prefixed_msg(uint8_t **out_msg, size_t *out_msg_len,
 
   for (i = 0; kPKCS1SigPrefixes[i].nid != NID_undef; i++) {
     const struct pkcs1_sig_prefix *sig_prefix = &kPKCS1SigPrefixes[i];
-    if (sig_prefix->nid == hash_nid) {
-      prefix = sig_prefix->bytes;
-      prefix_len = sig_prefix->len;
-      break;
+    if (sig_prefix->nid != hash_nid) {
+      continue;
     }
+
+    const uint8_t* prefix = sig_prefix->bytes;
+    unsigned prefix_len = sig_prefix->len;
+    unsigned signed_msg_len;
+    uint8_t *signed_msg;
+
+    signed_msg_len = prefix_len + msg_len;
+    if (signed_msg_len < prefix_len) {
+      OPENSSL_PUT_ERROR(RSA, pkcs1_prefixed_msg, RSA_R_TOO_LONG);
+      return 0;
+    }
+
+    signed_msg = OPENSSL_malloc(signed_msg_len);
+    if (!signed_msg) {
+      OPENSSL_PUT_ERROR(RSA, pkcs1_prefixed_msg, ERR_R_MALLOC_FAILURE);
+      return 0;
+    }
+
+    memcpy(signed_msg, prefix, prefix_len);
+    memcpy(signed_msg + prefix_len, msg, msg_len);
+
+    *out_msg = signed_msg;
+    *out_msg_len = signed_msg_len;
+    *is_alloced = 1;
+
+    return 1;
   }
 
-  if (prefix == NULL) {
-    OPENSSL_PUT_ERROR(RSA, pkcs1_prefixed_msg, RSA_R_UNKNOWN_ALGORITHM_TYPE);
-    return 0;
-  }
-
-  signed_msg_len = prefix_len + msg_len;
-  if (signed_msg_len < prefix_len) {
-    OPENSSL_PUT_ERROR(RSA, pkcs1_prefixed_msg, RSA_R_TOO_LONG);
-    return 0;
-  }
-
-  signed_msg = OPENSSL_malloc(signed_msg_len);
-  if (!signed_msg) {
-    OPENSSL_PUT_ERROR(RSA, pkcs1_prefixed_msg, ERR_R_MALLOC_FAILURE);
-    return 0;
-  }
-
-  memcpy(signed_msg, prefix, prefix_len);
-  memcpy(signed_msg + prefix_len, msg, msg_len);
-
-  *out_msg = signed_msg;
-  *out_msg_len = signed_msg_len;
-  *is_alloced = 1;
-
-  return 1;
+  OPENSSL_PUT_ERROR(RSA, pkcs1_prefixed_msg, RSA_R_UNKNOWN_ALGORITHM_TYPE);
+  return 0;
 }
 
 int RSA_sign(int hash_nid, const uint8_t *in, unsigned in_len, uint8_t *out,
