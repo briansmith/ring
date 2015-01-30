@@ -72,6 +72,7 @@ if (${ARCH} STREQUAL "arm")
     CRYPTO_ARCH_SOURCES
 
     cpu-arm.c
+    cpu-arm-asm.S
   )
 endif()
 

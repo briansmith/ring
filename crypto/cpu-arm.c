@@ -17,7 +17,8 @@
 #if defined(OPENSSL_ARM) || defined(OPENSSL_AARCH64)
 
 #include <inttypes.h>
-#include <stdio.h>
+#include <setjmp.h>
+#include <signal.h>
 
 #include "arm_arch.h"
 
@@ -35,7 +36,11 @@ char CRYPTO_is_NEON_capable(void) {
   return (OPENSSL_armcap_P & ARMV7_NEON) != 0;
 }
 
+static char g_set_neon_called = 0;
+
 void CRYPTO_set_NEON_capable(char neon_capable) {
+  g_set_neon_called = 1;
+
   if (neon_capable) {
     OPENSSL_armcap_P |= ARMV7_NEON;
   } else {
@@ -56,8 +61,66 @@ void CRYPTO_set_NEON_functional(char neon_functional) {
   }
 }
 
+static sigjmp_buf sigill_jmp;
+
+static void sigill_handler(int signal) {
+  siglongjmp(sigill_jmp, signal);
+}
+
+void CRYPTO_arm_neon_probe();
+
+// probe_for_NEON returns 1 if a NEON instruction runs successfully. Because
+// getauxval doesn't exist on Android until Jelly Bean, supporting NEON on
+// older devices requires this.
+static int probe_for_NEON() {
+  int supported = 0;
+
+#if !defined(OPENSSL_NO_ASM)
+  sigset_t sigmask;
+  sigfillset(&sigmask);
+  sigdelset(&sigmask, SIGILL);
+  sigdelset(&sigmask, SIGTRAP);
+  sigdelset(&sigmask, SIGFPE);
+  sigdelset(&sigmask, SIGBUS);
+  sigdelset(&sigmask, SIGSEGV);
+
+  struct sigaction sigill_original_action, sigill_action;
+  memset(&sigill_action, 0, sizeof(sigill_action));
+  sigill_action.sa_handler = sigill_handler;
+  sigill_action.sa_mask = sigmask;
+
+  sigset_t original_sigmask;
+  sigprocmask(SIG_SETMASK, &sigmask, &original_sigmask);
+  sigaction(SIGILL, &sigill_action, &sigill_original_action);
+
+
+  if (sigsetjmp(sigill_jmp, 1 /* save signals */) == 0) {
+    // This function cannot be inline asm because GCC will refuse to compile
+    // inline NEON instructions unless building with -mfpu=neon, which would
+    // defeat the point of probing for support at runtime.
+    CRYPTO_arm_neon_probe();
+    supported = 1;
+  }
+  // Note that Android up to and including Lollipop doesn't restore the signal
+  // mask correctly after returning from a sigsetjmp. So that would need to be
+  // set again here if more probes were added.
+  // See https://android-review.googlesource.com/#/c/127624/
+
+  sigaction(SIGILL, &sigill_original_action, NULL);
+  sigprocmask(SIG_SETMASK, &original_sigmask, NULL);
+#endif
+
+  return supported;
+}
+
 void OPENSSL_cpuid_setup(void) {
   if (getauxval == NULL) {
+    // |CRYPTO_is_NEON_capable| can be true even if |CRYPTO_set_NEON_capable|
+    // has never been called if the code was compiled with NEON support enabled
+    // (e.g. -mfpu=neon).
+    if (!g_set_neon_called && !CRYPTO_is_NEON_capable() && probe_for_NEON()) {
+      OPENSSL_armcap_P |= ARMV7_NEON;
+    }
     return;
   }
 
