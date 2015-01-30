@@ -71,6 +71,7 @@
 #include "internal.h"
 
 
+extern const EVP_PKEY_ASN1_METHOD dsa_asn1_meth;
 extern const EVP_PKEY_ASN1_METHOD ec_asn1_meth;
 extern const EVP_PKEY_ASN1_METHOD hmac_asn1_meth;
 extern const EVP_PKEY_ASN1_METHOD rsa_asn1_meth;
@@ -208,6 +209,8 @@ const EVP_PKEY_ASN1_METHOD *EVP_PKEY_asn1_find(ENGINE **pengine, int nid) {
       return &hmac_asn1_meth;
     case EVP_PKEY_EC:
       return &ec_asn1_meth;
+    case EVP_PKEY_DSA:
+      return &dsa_asn1_meth;
     default:
       return NULL;
   }
