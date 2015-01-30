@@ -1421,3 +1421,5 @@ CRYPTO_chacha_20_neon:
 	.word	1797285236
 	.ident	"GCC: (Linaro GCC 2014.11) 4.9.3 20141031 (prerelease)"
 	.section	.note.GNU-stack,"",%progbits
+
+#endif  /* !OPENSSL_NO_ASM */
