@@ -75,7 +75,10 @@ func (c *Conn) serverHandshake() error {
 		// Most retransmits are triggered by a timeout, but the final
 		// leg of the handshake is retransmited upon re-receiving a
 		// Finished.
-		if err := c.simulatePacketLoss(func() { c.writeRecord(recordTypeHandshake, hs.finishedBytes) }); err != nil {
+		if err := c.simulatePacketLoss(func() {
+			c.writeRecord(recordTypeHandshake, hs.finishedBytes)
+			c.dtlsFlushHandshake(false)
+		}); err != nil {
 			return err
 		}
 		if err := hs.readFinished(isResume); err != nil {
@@ -146,6 +149,9 @@ func (hs *serverHandshakeState) readClientHello() (isResume bool, err error) {
 			return false, errors.New("dtls: short read from Rand: " + err.Error())
 		}
 		c.writeRecord(recordTypeHandshake, helloVerifyRequest.marshal())
+		if err := c.dtlsFlushHandshake(true); err != nil {
+			return false, err
+		}
 
 		if err := c.simulatePacketLoss(nil); err != nil {
 			return false, err
@@ -543,6 +549,9 @@ func (hs *serverHandshakeState) doFullHandshake() error {
 	helloDone := new(serverHelloDoneMsg)
 	hs.writeServerHash(helloDone.marshal())
 	c.writeRecord(recordTypeHandshake, helloDone.marshal())
+	if err := c.dtlsFlushHandshake(true); err != nil {
+		return err
+	}
 
 	var pub crypto.PublicKey // public key for client auth, if any
 
@@ -836,6 +845,9 @@ func (hs *serverHandshakeState) sendFinished() error {
 		c.writeRecord(recordTypeHandshake, postCCSBytes[:5])
 		postCCSBytes = postCCSBytes[5:]
 	}
+	if err := c.dtlsFlushHandshake(true); err != nil {
+		return err
+	}
 
 	if !c.config.Bugs.SkipChangeCipherSpec {
 		c.writeRecord(recordTypeChangeCipherSpec, []byte{1})
@@ -846,6 +858,9 @@ func (hs *serverHandshakeState) sendFinished() error {
 	}
 
 	c.writeRecord(recordTypeHandshake, postCCSBytes)
+	if err := c.dtlsFlushHandshake(false); err != nil {
+		return err
+	}
 
 	c.cipherSuite = hs.suite.id
 

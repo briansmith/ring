@@ -214,6 +214,9 @@ NextCipherSuite:
 		helloBytes = hello.marshal()
 		c.writeRecord(recordTypeHandshake, helloBytes)
 	}
+	if err := c.dtlsFlushHandshake(true); err != nil {
+		return err
+	}
 
 	if err := c.simulatePacketLoss(nil); err != nil {
 		return err
@@ -237,6 +240,9 @@ NextCipherSuite:
 			hello.cookie = helloVerifyRequest.cookie
 			helloBytes = hello.marshal()
 			c.writeRecord(recordTypeHandshake, helloBytes)
+			if err := c.dtlsFlushHandshake(true); err != nil {
+				return err
+			}
 
 			if err := c.simulatePacketLoss(nil); err != nil {
 				return err
@@ -327,7 +333,10 @@ NextCipherSuite:
 		// Most retransmits are triggered by a timeout, but the final
 		// leg of the handshake is retransmited upon re-receiving a
 		// Finished.
-		if err := c.simulatePacketLoss(func() { c.writeRecord(recordTypeHandshake, hs.finishedBytes) }); err != nil {
+		if err := c.simulatePacketLoss(func() {
+			c.writeRecord(recordTypeHandshake, hs.finishedBytes)
+			c.dtlsFlushHandshake(false)
+		}); err != nil {
 			return err
 		}
 		if err := hs.readSessionTicket(); err != nil {
@@ -612,6 +621,9 @@ func (hs *clientHandshakeState) doFullHandshake() error {
 		hs.writeClientHash(certVerify.marshal())
 		c.writeRecord(recordTypeHandshake, certVerify.marshal())
 	}
+	if err := c.dtlsFlushHandshake(true); err != nil {
+		return err
+	}
 
 	hs.finishedHash.discardHandshakeBuffer()
 
@@ -847,6 +859,9 @@ func (hs *clientHandshakeState) sendFinished(isResume bool) error {
 		c.writeRecord(recordTypeHandshake, postCCSBytes[:5])
 		postCCSBytes = postCCSBytes[5:]
 	}
+	if err := c.dtlsFlushHandshake(true); err != nil {
+		return err
+	}
 
 	if !c.config.Bugs.SkipChangeCipherSpec &&
 		c.config.Bugs.EarlyChangeCipherSpec == 0 {
@@ -858,6 +873,9 @@ func (hs *clientHandshakeState) sendFinished(isResume bool) error {
 	}
 
 	c.writeRecord(recordTypeHandshake, postCCSBytes)
+	if err := c.dtlsFlushHandshake(false); err != nil {
+		return err
+	}
 	return nil
 }
 

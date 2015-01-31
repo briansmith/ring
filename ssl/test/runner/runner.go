@@ -652,6 +652,36 @@ var testCases = []testCase{
 			},
 		},
 	},
+	{
+		protocol: dtls,
+		name:     "ReorderHandshakeFragments-Small-DTLS",
+		config: Config{
+			Bugs: ProtocolBugs{
+				ReorderHandshakeFragments: true,
+				// Small enough that every handshake message is
+				// fragmented.
+				MaxHandshakeRecordLength: 2,
+			},
+		},
+	},
+	{
+		protocol: dtls,
+		name:     "ReorderHandshakeFragments-Large-DTLS",
+		config: Config{
+			Bugs: ProtocolBugs{
+				ReorderHandshakeFragments: true,
+				// Large enough that no handshake message is
+				// fragmented.
+				//
+				// TODO(davidben): Also test interaction of
+				// complete handshake messages with
+				// fragments. The current logic is full of bugs
+				// here, so the reassembly logic needs a rewrite
+				// before those tests will pass.
+				MaxHandshakeRecordLength: 2048,
+			},
+		},
+	},
 }
 
 func doExchange(test *testCase, config *Config, conn net.Conn, messageLen int, isResume bool) error {

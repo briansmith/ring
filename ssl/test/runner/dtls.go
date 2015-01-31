@@ -20,6 +20,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"math/rand"
 	"net"
 )
 
@@ -125,10 +126,6 @@ func (c *Conn) dtlsWriteRecord(typ recordType, data []byte) (n int, err error) {
 	// FragmentAcrossChangeCipherSpec. (Which is unfortunate
 	// because OpenSSL's DTLS implementation will probably accept
 	// such fragmentation and could do with a fix + tests.)
-	if len(data) < 4 {
-		// This should not happen.
-		panic(data)
-	}
 	header := data[:4]
 	data = data[4:]
 
@@ -151,12 +148,13 @@ func (c *Conn) dtlsWriteRecord(typ recordType, data []byte) (n int, err error) {
 		fragment = append(fragment, byte(m>>16), byte(m>>8), byte(m))
 		fragment = append(fragment, data[:m]...)
 
-		// TODO(davidben): A real DTLS implementation needs to
-		// retransmit handshake messages. For testing purposes, we don't
-		// actually care.
-		_, err = c.dtlsWriteRawRecord(recordTypeHandshake, fragment)
-		if err != nil {
-			break
+		// Buffer the fragment for later. They will be sent (and
+		// reordered) on flush.
+		c.pendingFragments = append(c.pendingFragments, fragment)
+
+		if c.config.Bugs.ReorderHandshakeFragments && m > (maxLen+1)/2 {
+			// Overlap each fragment by half.
+			m = (maxLen + 1) / 2
 		}
 		n += m
 		data = data[m:]
@@ -166,6 +164,38 @@ func (c *Conn) dtlsWriteRecord(typ recordType, data []byte) (n int, err error) {
 	// handshake message.
 	c.sendHandshakeSeq++
 	return
+}
+
+func (c *Conn) dtlsFlushHandshake(duplicate bool) error {
+	if !c.isDTLS {
+		return nil
+	}
+
+	var fragments []byte
+	fragments, c.pendingFragments = c.pendingFragments, fragments
+
+	if c.config.Bugs.ReorderHandshakeFragments {
+		if duplicate {
+			fragments = append(fragments, fragments...)
+		}
+		perm := rand.New(rand.NewSource(0)).Perm(len(fragments))
+		tmp := make([][]byte, len(fragments))
+		for i := range tmp {
+			tmp[i] = fragments[perm[i]]
+		}
+		fragments = tmp
+	}
+
+	// Send them all.
+	for _, fragment := range fragments {
+		// TODO(davidben): A real DTLS implementation needs to
+		// retransmit handshake messages. For testing purposes, we don't
+		// actually care.
+		if _, err := c.dtlsWriteRawRecord(recordTypeHandshake, fragment); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func (c *Conn) dtlsWriteRawRecord(typ recordType, data []byte) (n int, err error) {

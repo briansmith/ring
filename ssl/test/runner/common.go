@@ -610,6 +610,12 @@ type ProtocolBugs struct {
 
 	// PacketAdaptor is the packetAdaptor to use to simulate timeouts.
 	PacketAdaptor *packetAdaptor
+
+	// ReorderHandshakeFragments, if true, causes handshake fragments in
+	// DTLS to overlap and be sent in the wrong order. It also causes
+	// pre-CCS flights to be sent twice. (Post-CCS flights consist of
+	// Finished and will trigger a spurious retransmit.)
+	ReorderHandshakeFragments bool
 }
 
 func (c *Config) serverInit() {

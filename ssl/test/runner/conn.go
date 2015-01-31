@@ -69,8 +69,9 @@ type Conn struct {
 	// DTLS state
 	sendHandshakeSeq uint16
 	recvHandshakeSeq uint16
-	handMsg          []byte // pending assembled handshake message
-	handMsgLen       int    // handshake message length, not including the header
+	handMsg          []byte   // pending assembled handshake message
+	handMsgLen       int      // handshake message length, not including the header
+	pendingFragments [][]byte // pending outgoing handshake fragments.
 
 	tmp [16]byte
 }
