@@ -146,8 +146,6 @@
  * OTHER ENTITY BASED ON INFRINGEMENT OF INTELLECTUAL PROPERTY RIGHTS OR
  * OTHERWISE. */
 
-#define NETSCAPE_HANG_BUG
-
 #include <assert.h>
 #include <stdio.h>
 #include <string.h>
@@ -449,14 +447,7 @@ int ssl3_accept(SSL *s) {
           if (ret <= 0) {
             goto end;
           }
-#ifndef NETSCAPE_HANG_BUG
           s->state = SSL3_ST_SW_SRVR_DONE_A;
-#else
-          /* ServerHelloDone was already sent in the
-           * previous record. */
-          s->state = SSL3_ST_SW_FLUSH;
-          s->s3->tmp.next_state = SSL3_ST_SR_CERT_A;
-#endif
           s->init_num = 0;
         }
         break;
@@ -1741,26 +1732,6 @@ int ssl3_send_certificate_request(SSL *s) {
     s2n(nl, p);
 
     ssl_set_handshake_header(s, SSL3_MT_CERTIFICATE_REQUEST, n);
-
-#ifdef NETSCAPE_HANG_BUG
-    if (!SSL_IS_DTLS(s)) {
-      /* Prepare a ServerHelloDone in the same record. This is to workaround a
-       * hang in Netscape. */
-      if (!BUF_MEM_grow_clean(buf, s->init_num + 4)) {
-        OPENSSL_PUT_ERROR(SSL, ssl3_send_certificate_request, ERR_R_BUF_LIB);
-        goto err;
-      }
-      p = (uint8_t *)s->init_buf->data + s->init_num;
-      /* do the header */
-      *(p++) = SSL3_MT_SERVER_DONE;
-      *(p++) = 0;
-      *(p++) = 0;
-      *(p++) = 0;
-      s->init_num += 4;
-      ssl3_finish_mac(s, p - 4, 4);
-    }
-#endif
-
     s->state = SSL3_ST_SW_CERT_REQ_B;
   }
 

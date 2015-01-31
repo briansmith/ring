@@ -368,12 +368,7 @@ int dtls1_accept(SSL *s) {
           if (ret <= 0) {
             goto end;
           }
-#ifndef NETSCAPE_HANG_BUG
           s->state = SSL3_ST_SW_SRVR_DONE_A;
-#else
-          s->state = SSL3_ST_SW_FLUSH;
-          s->s3->tmp.next_state = SSL3_ST_SR_CERT_A;
-#endif
           s->init_num = 0;
         }
         break;
