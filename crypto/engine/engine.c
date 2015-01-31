@@ -14,6 +14,8 @@
 
 #include <openssl/engine.h>
 
+#include <string.h>
+
 #include <openssl/dh.h>
 #include <openssl/dsa.h>
 #include <openssl/ec_key.h>

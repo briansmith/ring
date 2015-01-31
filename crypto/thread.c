@@ -57,6 +57,7 @@
 #include <openssl/thread.h>
 
 #include <errno.h>
+#include <string.h>
 
 #if defined(OPENSSL_WINDOWS)
 #pragma warning(push, 3)
@@ -66,6 +67,7 @@
 
 #include <openssl/mem.h>
 #include <openssl/type_check.h>
+
 
 /* lock_names contains the names of all the locks defined in thread.h. */
 static const char *const lock_names[] = {

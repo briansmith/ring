@@ -56,6 +56,8 @@
 
 #include <openssl/x509.h>
 
+#include <string.h>
+
 #include <openssl/asn1.h>
 #include <openssl/mem.h>
 #include <openssl/obj.h>

@@ -57,6 +57,7 @@
 #include <openssl/evp.h>
 
 #include <assert.h>
+#include <string.h>
 
 #include <openssl/bio.h>
 #include <openssl/dh.h>

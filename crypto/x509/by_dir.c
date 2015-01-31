@@ -55,8 +55,9 @@
  * copied and put under another distribution licence
  * [including the GNU Public Licence.] */
 
-#include <sys/types.h>
+#include <string.h>
 #include <sys/stat.h>
+#include <sys/types.h>
 
 #include <openssl/buf.h>
 #include <openssl/err.h>

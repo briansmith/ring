@@ -58,6 +58,7 @@
 
 #include <assert.h>
 #include <limits.h>
+#include <string.h>
 
 
 static const unsigned char data_bin2ascii[65] =

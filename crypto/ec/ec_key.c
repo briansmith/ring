@@ -67,6 +67,8 @@
 
 #include <openssl/ec_key.h>
 
+#include <string.h>
+
 #include <openssl/ec.h>
 #include <openssl/engine.h>
 #include <openssl/err.h>

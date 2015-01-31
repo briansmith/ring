@@ -59,6 +59,8 @@
 
 #include <openssl/dsa.h>
 
+#include <string.h>
+
 #include <openssl/asn1.h>
 #include <openssl/dh.h>
 #include <openssl/engine.h>
@@ -67,6 +69,7 @@
 #include <openssl/mem.h>
 
 #include "internal.h"
+
 
 extern const DSA_METHOD DSA_default_method;
 

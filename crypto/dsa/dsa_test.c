@@ -59,6 +59,8 @@
 
 #include <openssl/dsa.h>
 
+#include <string.h>
+
 #include <openssl/bio.h>
 #include <openssl/bn.h>
 #include <openssl/crypto.h>

@@ -56,6 +56,7 @@
 #include <openssl/rsa.h>
 
 #include <assert.h>
+#include <string.h>
 
 #include <openssl/digest.h>
 #include <openssl/err.h>

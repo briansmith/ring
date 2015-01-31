@@ -57,6 +57,7 @@
 #include <openssl/asn1.h>
 
 #include <assert.h>
+#include <string.h>
 
 #include <openssl/bio.h>
 #include <openssl/mem.h>

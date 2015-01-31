@@ -55,6 +55,7 @@
  * [including the GNU Public Licence.] */
 
 #include <stdio.h>
+#include <string.h>
 
 #include <openssl/bio.h>
 #include <openssl/cipher.h>

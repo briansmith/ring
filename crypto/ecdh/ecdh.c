@@ -66,6 +66,8 @@
 
 #include <openssl/ecdh.h>
 
+#include <string.h>
+
 #include <openssl/bn.h>
 #include <openssl/digest.h>
 #include <openssl/err.h>

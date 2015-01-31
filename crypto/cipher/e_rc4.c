@@ -57,6 +57,7 @@
 #include <openssl/aead.h>
 
 #include <assert.h>
+#include <string.h>
 
 #include <openssl/cipher.h>
 #include <openssl/cpu.h>

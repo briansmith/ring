@@ -108,6 +108,8 @@
 
 #include <openssl/bn.h>
 
+#include <string.h>
+
 #include <openssl/mem.h>
 #include <openssl/thread.h>
 

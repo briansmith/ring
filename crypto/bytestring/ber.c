@@ -14,6 +14,8 @@
 
 #include <openssl/bytestring.h>
 
+#include <string.h>
+
 #include "internal.h"
 
 

@@ -51,6 +51,7 @@
  * Hudson (tjh@cryptsoft.com). */
 
 #include <assert.h>
+#include <string.h>
 
 #include <openssl/digest.h>
 #include <openssl/obj.h>

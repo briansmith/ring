@@ -108,11 +108,14 @@
 
 #include <openssl/rsa.h>
 
+#include <string.h>
+
 #include <openssl/bn.h>
 #include <openssl/mem.h>
 #include <openssl/err.h>
 
 #include "internal.h"
+
 
 #define BN_BLINDING_COUNTER 32
 

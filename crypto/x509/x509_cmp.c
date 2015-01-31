@@ -55,6 +55,8 @@
  * copied and put under another distribution licence
  * [including the GNU Public Licence.] */
 
+#include <string.h>
+
 #include <openssl/asn1.h>
 #include <openssl/buf.h>
 #include <openssl/digest.h>

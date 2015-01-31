@@ -56,6 +56,8 @@
 
 #include <openssl/rsa.h>
 
+#include <string.h>
+
 #include <openssl/bn.h>
 #include <openssl/err.h>
 #include <openssl/mem.h>

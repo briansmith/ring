@@ -68,6 +68,7 @@
  * Laboratories. */
 
 #include <stdio.h>
+#include <string.h>
 
 #include <openssl/bio.h>
 #include <openssl/bn.h>
@@ -76,6 +77,7 @@
 #include <openssl/mem.h>
 
 #include "internal.h"
+
 
 static const int num0 = 100; /* number of tests */
 static const int num1 = 50;  /* additional tests for some functions */

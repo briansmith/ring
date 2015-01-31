@@ -57,6 +57,7 @@
 #include <openssl/bn.h>
 
 #include <assert.h>
+#include <string.h>
 
 #include "internal.h"
 

@@ -52,6 +52,8 @@
  * (eay@cryptsoft.com).  This product includes software written by Tim
  * Hudson (tjh@cryptsoft.com). */
 
+#include <string.h>
+
 #include <openssl/base64.h>
 #include <openssl/err.h>
 #include <openssl/mem.h>

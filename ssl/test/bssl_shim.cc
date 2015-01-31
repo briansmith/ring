@@ -22,6 +22,7 @@
 #include <unistd.h>
 #endif
 
+#include <string.h>
 #include <sys/types.h>
 
 #include <openssl/bio.h>

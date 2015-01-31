@@ -16,7 +16,10 @@
 
 #include <openssl/chacha.h>
 
+#include <string.h>
+
 #include <openssl/cpu.h>
+
 
 #if defined(OPENSSL_WINDOWS) || (!defined(OPENSSL_X86_64) && !defined(OPENSSL_X86)) || !defined(__SSE2__)
 

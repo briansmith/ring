@@ -57,6 +57,7 @@
 #include <openssl/bio.h>
 
 #include <limits.h>
+#include <string.h>
 
 #include <openssl/buf.h>
 #include <openssl/err.h>

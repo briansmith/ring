@@ -57,6 +57,7 @@
 #include <openssl/hmac.h>
 
 #include <assert.h>
+#include <string.h>
 
 #include <openssl/mem.h>
 

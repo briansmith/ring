@@ -55,6 +55,8 @@
  * copied and put under another distribution licence
  * [including the GNU Public Licence.] */
 
+#include <string.h>
+
 #include <openssl/err.h>
 #include <openssl/lhash.h>
 #include <openssl/mem.h>

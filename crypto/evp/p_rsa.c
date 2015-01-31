@@ -55,6 +55,8 @@
 
 #include <openssl/evp.h>
 
+#include <string.h>
+
 #include <openssl/bn.h>
 #include <openssl/buf.h>
 #include <openssl/digest.h>

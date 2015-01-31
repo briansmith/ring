@@ -57,6 +57,7 @@
 #include <openssl/bio.h>
 
 #include <limits.h>
+#include <string.h>
 
 
 /* hexdump_ctx contains the state of a hexdump. */

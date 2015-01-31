@@ -56,6 +56,8 @@
 
 #include <openssl/dh.h>
 
+#include <string.h>
+
 #include <openssl/bn.h>
 #include <openssl/buf.h>
 #include <openssl/err.h>

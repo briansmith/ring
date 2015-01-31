@@ -55,6 +55,7 @@
  * Hudson (tjh@cryptsoft.com). */
 
 #include <stdio.h>
+#include <string.h>
 
 #include <openssl/conf.h>
 #include <openssl/err.h>

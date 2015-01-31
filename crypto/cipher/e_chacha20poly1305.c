@@ -14,6 +14,8 @@
 
 #include <openssl/aead.h>
 
+#include <string.h>
+
 #include <openssl/chacha.h>
 #include <openssl/cipher.h>
 #include <openssl/err.h>

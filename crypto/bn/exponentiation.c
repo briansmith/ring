@@ -109,6 +109,7 @@
 #include <openssl/bn.h>
 
 #include <assert.h>
+#include <string.h>
 
 #include <openssl/cpu.h>
 #include <openssl/err.h>

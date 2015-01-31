@@ -113,6 +113,7 @@
 #include <inttypes.h>
 #include <stdarg.h>
 #include <stdio.h>
+#include <string.h>
 
 #if defined(OPENSSL_WINDOWS)
 #pragma warning(push, 3)

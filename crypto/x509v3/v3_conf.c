@@ -56,8 +56,9 @@
 
 /* extension creation utilities */
 
-#include <stdio.h>
 #include <ctype.h>
+#include <stdio.h>
+#include <string.h>
 
 #include <openssl/conf.h>
 #include <openssl/err.h>

@@ -63,8 +63,9 @@
 
 #if !defined(OPENSSL_NO_ASM) && (defined(OPENSSL_X86) || defined(OPENSSL_X86_64))
 
-#include <stdio.h>
 #include <inttypes.h>
+#include <stdio.h>
+#include <string.h>
 
 /* OPENSSL_ia32_cpuid is defined in cpu-x86_64-asm.pl. */
 extern uint64_t OPENSSL_ia32_cpuid(uint32_t*);

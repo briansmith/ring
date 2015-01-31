@@ -53,6 +53,7 @@
  * (eay@cryptsoft.com).  This product includes software written by Tim
  * Hudson (tjh@cryptsoft.com). */
 
+#include <string.h>
 
 #include <openssl/asn1t.h>
 #include <openssl/cipher.h>

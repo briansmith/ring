@@ -57,6 +57,7 @@
 #include <openssl/asn1.h>
 
 #include <limits.h>
+#include <string.h>
 
 #include <openssl/asn1_mac.h>
 #include <openssl/err.h>

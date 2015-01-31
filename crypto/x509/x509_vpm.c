@@ -52,6 +52,8 @@
  * (eay@cryptsoft.com).  This product includes software written by Tim
  * Hudson (tjh@cryptsoft.com). */
 
+#include <string.h>
+
 #include <openssl/buf.h>
 #include <openssl/lhash.h>
 #include <openssl/mem.h>
@@ -60,6 +62,7 @@
 #include <openssl/x509v3.h>
 
 #include "vpm_int.h"
+
 
 /* X509_VERIFY_PARAM functions */
 

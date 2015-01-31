@@ -56,6 +56,8 @@
 
 #include <openssl/stack.h>
 
+#include <string.h>
+
 #include <openssl/mem.h>
 
 /* kMinSize is the number of pointers that will be initially allocated in a new

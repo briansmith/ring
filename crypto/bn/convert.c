@@ -58,6 +58,7 @@
 
 #include <ctype.h>
 #include <stdio.h>
+#include <string.h>
 
 #include <openssl/bio.h>
 #include <openssl/err.h>

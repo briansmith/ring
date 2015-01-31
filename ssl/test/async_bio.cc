@@ -15,7 +15,10 @@
 #include "async_bio.h"
 
 #include <errno.h>
+#include <string.h>
+
 #include <openssl/mem.h>
+
 
 namespace {
 

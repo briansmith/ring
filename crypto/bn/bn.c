@@ -57,6 +57,8 @@
 #include <openssl/bn.h>
 
 #include <limits.h>
+#include <string.h>
+
 #include <openssl/err.h>
 #include <openssl/mem.h>
 

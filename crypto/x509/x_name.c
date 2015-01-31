@@ -55,6 +55,7 @@
  * [including the GNU Public Licence.] */
 
 #include <ctype.h>
+#include <string.h>
 
 #include <openssl/asn1.h>
 #include <openssl/asn1t.h>

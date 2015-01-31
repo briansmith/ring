@@ -18,6 +18,7 @@
 #include <vector>
 
 #include <stdint.h>
+#include <string.h>
 #include <time.h>
 
 #include <openssl/aead.h>
@@ -33,6 +34,7 @@
 #elif defined(OPENSSL_APPLE)
 #include <sys/time.h>
 #endif
+
 
 extern "C" {
 // These values are DER encoded, RSA private keys.

@@ -56,6 +56,8 @@
 
 #include <openssl/pqueue.h>
 
+#include <string.h>
+
 #include <openssl/mem.h>
 
 

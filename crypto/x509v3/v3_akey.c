@@ -55,6 +55,7 @@
  * Hudson (tjh@cryptsoft.com). */
 
 #include <stdio.h>
+#include <string.h>
 
 #include <openssl/asn1.h>
 #include <openssl/asn1t.h>

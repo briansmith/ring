@@ -49,6 +49,7 @@
 #include <openssl/modes.h>
 
 #include <assert.h>
+#include <string.h>
 
 #include "internal.h"
 

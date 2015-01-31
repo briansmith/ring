@@ -15,6 +15,7 @@
 #include <openssl/hkdf.h>
 
 #include <assert.h>
+#include <string.h>
 
 #include <openssl/err.h>
 #include <openssl/hmac.h>

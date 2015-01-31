@@ -46,6 +46,8 @@
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  * ==================================================================== */
 
+#include <string.h>
+
 #include <openssl/aead.h>
 #include <openssl/aes.h>
 #include <openssl/cipher.h>

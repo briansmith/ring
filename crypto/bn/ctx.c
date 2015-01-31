@@ -54,6 +54,8 @@
 
 #include <openssl/bn.h>
 
+#include <string.h>
+
 #include <openssl/err.h>
 #include <openssl/mem.h>
 

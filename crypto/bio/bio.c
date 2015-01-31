@@ -57,8 +57,9 @@
 #include <openssl/bio.h>
 
 #include <errno.h>
-#include <stddef.h>
 #include <limits.h>
+#include <stddef.h>
+#include <string.h>
 
 #include <openssl/err.h>
 #include <openssl/mem.h>

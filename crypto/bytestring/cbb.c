@@ -15,6 +15,7 @@
 #include <openssl/bytestring.h>
 
 #include <assert.h>
+#include <string.h>
 
 #include <openssl/mem.h>
 

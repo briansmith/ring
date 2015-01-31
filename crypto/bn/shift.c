@@ -56,7 +56,10 @@
 
 #include <openssl/bn.h>
 
+#include <string.h>
+
 #include "internal.h"
+
 
 int BN_lshift(BIGNUM *r, const BIGNUM *a, int n) {
   int i, nw, lb, rb;

@@ -58,6 +58,7 @@
 #include <openssl/bio.h>
 
 #include <fcntl.h>
+#include <string.h>
 
 #if !defined(OPENSSL_WINDOWS)
 #include <unistd.h>

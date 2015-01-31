@@ -22,6 +22,7 @@
 #include <fcntl.h>
 #include <limits.h>
 #include <stdio.h>
+#include <string.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 
@@ -41,6 +42,7 @@ typedef int ssize_t;
 #endif
 
 #include <openssl/digest.h>
+
 
 struct close_delete {
   void operator()(int *fd) {

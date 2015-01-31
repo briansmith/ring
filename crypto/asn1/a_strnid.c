@@ -57,6 +57,7 @@
 #include <openssl/asn1.h>
 
 #include <stdlib.h>  /* For bsearch */
+#include <string.h>
 
 #include <openssl/err.h>
 #include <openssl/mem.h>

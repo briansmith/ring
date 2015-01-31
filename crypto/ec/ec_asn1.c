@@ -53,6 +53,8 @@
 
 #include <openssl/ec.h>
 
+#include <string.h>
+
 #include <openssl/asn1.h>
 #include <openssl/asn1t.h>
 #include <openssl/bn.h>

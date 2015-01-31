@@ -13,6 +13,7 @@
  * CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE. */
 
 #include <stdio.h>
+#include <string.h>
 
 #include <openssl/crypto.h>
 #include <openssl/err.h>

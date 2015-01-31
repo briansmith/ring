@@ -58,6 +58,7 @@
 #include <assert.h>
 #include <ctype.h>
 #include <stdio.h>
+#include <string.h>
 
 #include <openssl/base64.h>
 #include <openssl/buf.h>

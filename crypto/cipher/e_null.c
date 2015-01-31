@@ -56,6 +56,8 @@
 
 #include <openssl/cipher.h>
 
+#include <string.h>
+
 #include <openssl/obj.h>
 
 #include "internal.h"

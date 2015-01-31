@@ -109,6 +109,7 @@
 #include <openssl/err.h>
 
 #include <assert.h>
+#include <string.h>
 
 #include <openssl/lhash.h>
 #include <openssl/mem.h>

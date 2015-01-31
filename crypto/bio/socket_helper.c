@@ -18,6 +18,7 @@
 #include <openssl/err.h>
 
 #include <fcntl.h>
+#include <string.h>
 #include <sys/types.h>
 
 #if !defined(OPENSSL_WINDOWS)

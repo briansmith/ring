@@ -56,6 +56,8 @@
 
 #include <openssl/md4.h>
 
+#include <string.h>
+
 
 /* Implemented from RFC1186 The MD4 Message-Digest Algorithm. */
 

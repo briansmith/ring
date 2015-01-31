@@ -57,6 +57,7 @@
 #include <openssl/dh.h>
 
 #include <stdio.h>
+#include <string.h>
 
 #include <openssl/bio.h>
 #include <openssl/bn.h>

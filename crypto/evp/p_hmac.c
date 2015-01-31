@@ -55,6 +55,8 @@
 
 #include <openssl/evp.h>
 
+#include <string.h>
+
 #include <openssl/asn1.h>
 #include <openssl/err.h>
 #include <openssl/hmac.h>
