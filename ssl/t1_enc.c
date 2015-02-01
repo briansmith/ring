@@ -340,14 +340,12 @@ static int tls1_change_cipher_state_aead(SSL *s, char is_read,
     }
     aead_ctx = s->aead_read_ctx;
   } else {
-    /* When updating the cipher state for DTLS, we do not wish to overwrite the
-     * old ones because DTLS stores pointers to them in order to implement
-     * retransmission. See dtls1_hm_fragment_free.
-     *
-     * TODO(davidben): Simplify aead_write_ctx ownership, probably by just
-     * forbidding DTLS renego. */
-    if (SSL_IS_DTLS(s)) {
-      s->aead_write_ctx = NULL;
+    if (SSL_IS_DTLS(s) && s->aead_write_ctx != NULL) {
+      /* DTLS renegotiation is unsupported, so a CCS can only switch away from
+       * the NULL cipher. This simplifies renegotiation. */
+      OPENSSL_PUT_ERROR(SSL, tls1_change_cipher_state_aead,
+                        ERR_R_INTERNAL_ERROR);
+      return 0;
     }
     if (!tls1_aead_ctx_init(&s->aead_write_ctx)) {
       return 0;
@@ -578,7 +576,7 @@ int tls1_enc(SSL *s, int send) {
     aead = s->aead_read_ctx;
   }
 
-  if (s->session == NULL || aead == NULL) {
+  if (aead == NULL) {
     /* Handle the initial NULL cipher. */
     memmove(rec->data, rec->input, rec->length);
     rec->input = rec->data;

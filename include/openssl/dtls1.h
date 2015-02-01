@@ -93,12 +93,6 @@ typedef struct dtls1_bitmap_st {
   uint8_t max_seq_num[8];
 } DTLS1_BITMAP;
 
-struct dtls1_retransmit_state {
-  SSL_AEAD_CTX *aead_write_ctx;
-  SSL_SESSION *session;
-  uint16_t epoch;
-};
-
 struct hm_header_st {
   uint8_t type;
   unsigned long msg_len;
@@ -106,7 +100,9 @@ struct hm_header_st {
   unsigned long frag_off;
   unsigned long frag_len;
   unsigned int is_ccs;
-  struct dtls1_retransmit_state saved_retransmit_state;
+  /* epoch, for buffered outgoing messages, is the epoch the message was
+   * originally sent in. */
+  uint16_t epoch;
 };
 
 struct ccs_header_st {

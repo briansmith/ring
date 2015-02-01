@@ -221,16 +221,6 @@ static hm_fragment *dtls1_hm_fragment_new(unsigned long frag_len,
 }
 
 void dtls1_hm_fragment_free(hm_fragment *frag) {
-  if (frag->msg_header.is_ccs) {
-    /* TODO(davidben): Simplify aead_write_ctx ownership, probably by just
-     * forbidding DTLS renego. */
-    SSL_AEAD_CTX *aead_write_ctx =
-        frag->msg_header.saved_retransmit_state.aead_write_ctx;
-    if (aead_write_ctx) {
-      EVP_AEAD_CTX_cleanup(&aead_write_ctx->ctx);
-      OPENSSL_free(aead_write_ctx);
-    }
-  }
   if (frag->fragment) {
     OPENSSL_free(frag->fragment);
   }
@@ -995,11 +985,7 @@ int dtls1_buffer_message(SSL *s, int is_ccs) {
   frag->msg_header.frag_off = 0;
   frag->msg_header.frag_len = s->d1->w_msg_hdr.msg_len;
   frag->msg_header.is_ccs = is_ccs;
-
-  /* save current state*/
-  frag->msg_header.saved_retransmit_state.aead_write_ctx = s->aead_write_ctx;
-  frag->msg_header.saved_retransmit_state.session = s->session;
-  frag->msg_header.saved_retransmit_state.epoch = s->d1->w_epoch;
+  frag->msg_header.epoch = s->d1->w_epoch;
 
   memset(seq64be, 0, sizeof(seq64be));
   seq64be[6] = (uint8_t)(
@@ -1026,7 +1012,6 @@ int dtls1_retransmit_message(SSL *s, unsigned short seq, unsigned long frag_off,
   hm_fragment *frag;
   unsigned long header_length;
   uint8_t seq64be[8];
-  struct dtls1_retransmit_state saved_state;
   uint8_t save_write_sequence[8];
 
   /* assert(s->init_num == 0);
@@ -1061,32 +1046,40 @@ int dtls1_retransmit_message(SSL *s, unsigned short seq, unsigned long frag_off,
                            frag->msg_header.msg_len, frag->msg_header.seq,
                            0, frag->msg_header.frag_len);
 
-  /* save current state */
-  saved_state.aead_write_ctx = s->aead_write_ctx;
-  saved_state.session = s->session;
-  saved_state.epoch = s->d1->w_epoch;
+  /* Save current state. */
+  SSL_AEAD_CTX *aead_write_ctx = s->aead_write_ctx;
+  uint16_t epoch = s->d1->w_epoch;
 
-  /* restore state in which the message was originally sent */
-  s->aead_write_ctx = frag->msg_header.saved_retransmit_state.aead_write_ctx;
-  s->session = frag->msg_header.saved_retransmit_state.session;
-  s->d1->w_epoch = frag->msg_header.saved_retransmit_state.epoch;
-
-  if (frag->msg_header.saved_retransmit_state.epoch == saved_state.epoch - 1) {
+  /* DTLS renegotiation is unsupported, so only epochs 0 (NULL cipher) and 1
+   * (negotiated cipher) exist. */
+  assert(epoch == 0 || epoch == 1);
+  assert(frag->msg_header.epoch <= epoch);
+  const int fragment_from_previous_epoch = (epoch == 1 &&
+                                            frag->msg_header.epoch == 0);
+  if (fragment_from_previous_epoch) {
+    /* Rewind to the previous epoch.
+     *
+     * TODO(davidben): Instead of swapping out connection-global state, this
+     * logic should pass a "use previous epoch" parameter down to lower-level
+     * functions. */
+    s->d1->w_epoch = frag->msg_header.epoch;
+    s->aead_write_ctx = NULL;
     memcpy(save_write_sequence, s->s3->write_sequence,
            sizeof(s->s3->write_sequence));
     memcpy(s->s3->write_sequence, s->d1->last_write_sequence,
            sizeof(s->s3->write_sequence));
+  } else {
+    /* Otherwise the messages must be from the same epoch. */
+    assert(frag->msg_header.epoch == epoch);
   }
 
   ret = dtls1_do_write(s, frag->msg_header.is_ccs ? SSL3_RT_CHANGE_CIPHER_SPEC
                                                   : SSL3_RT_HANDSHAKE);
 
-  /* restore current state */
-  s->aead_write_ctx = saved_state.aead_write_ctx;
-  s->session = saved_state.session;
-  s->d1->w_epoch = saved_state.epoch;
-
-  if (frag->msg_header.saved_retransmit_state.epoch == saved_state.epoch - 1) {
+  if (fragment_from_previous_epoch) {
+    /* Restore the current epoch. */
+    s->aead_write_ctx = aead_write_ctx;
+    s->d1->w_epoch = epoch;
     memcpy(s->d1->last_write_sequence, s->s3->write_sequence,
            sizeof(s->s3->write_sequence));
     memcpy(s->s3->write_sequence, save_write_sequence,

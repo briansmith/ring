@@ -171,7 +171,7 @@ func (c *Conn) dtlsFlushHandshake(duplicate bool) error {
 		return nil
 	}
 
-	var fragments []byte
+	var fragments [][]byte
 	fragments, c.pendingFragments = c.pendingFragments, fragments
 
 	if c.config.Bugs.ReorderHandshakeFragments {
