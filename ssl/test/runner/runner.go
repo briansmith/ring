@@ -388,6 +388,19 @@ var testCases = []testCase{
 		expectedError: ":BAD_ALERT:",
 	},
 	{
+		protocol: dtls,
+		testType: serverTest,
+		name:     "FragmentAlert-DTLS",
+		config: Config{
+			Bugs: ProtocolBugs{
+				FragmentAlert:     true,
+				SendSpuriousAlert: true,
+			},
+		},
+		shouldFail:    true,
+		expectedError: ":BAD_ALERT:",
+	},
+	{
 		testType: serverTest,
 		name:     "EarlyChangeCipherSpec-server-1",
 		config: Config{

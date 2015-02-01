@@ -181,8 +181,6 @@ static int satsub64be(const uint8_t *v1, const uint8_t *v2) {
   }
 }
 
-static int have_handshake_fragment(SSL *s, int type, uint8_t *buf, int len,
-                                   int peek);
 static int dtls1_record_replay_check(SSL *s, DTLS1_BITMAP *bitmap);
 static void dtls1_record_bitmap_update(SSL *s, DTLS1_BITMAP *bitmap);
 static DTLS1_BITMAP *dtls1_get_bitmap(SSL *s, SSL3_RECORD *rr,
@@ -589,7 +587,7 @@ again:
  *             none of our business
  */
 int dtls1_read_bytes(SSL *s, int type, unsigned char *buf, int len, int peek) {
-  int al, i, j, ret;
+  int al, i, ret;
   unsigned int n;
   SSL3_RECORD *rr;
   void (*cb)(const SSL *ssl, int type2, int val) = NULL;
@@ -605,14 +603,6 @@ int dtls1_read_bytes(SSL *s, int type, unsigned char *buf, int len, int peek) {
     OPENSSL_PUT_ERROR(SSL, dtls1_read_bytes, ERR_R_INTERNAL_ERROR);
     return -1;
   }
-
-  /* check whether there's a handshake message (client hello?) waiting */
-  ret = have_handshake_fragment(s, type, buf, len, peek);
-  if (ret) {
-    return ret;
-  }
-
-  /* Now s->d1->handshake_fragment_len == 0 if type == SSL3_RT_HANDSHAKE. */
 
   if (!s->in_handshake && SSL_in_init(s)) {
     /* type == SSL3_RT_APPLICATION_DATA */
@@ -729,58 +719,25 @@ start:
     return n;
   }
 
-  /* If we get here, then type != rr->type; if we have a handshake message,
-   * then it was unexpected (Hello Request or Client Hello). */
+  /* If we get here, then type != rr->type. */
 
-  /* In case of record types for which we have 'fragment' storage, fill that so
-   * that we can process the data at a fixed place. */
-  {
-    unsigned int k, dest_maxlen = 0;
-    uint8_t *dest = NULL;
-    unsigned int *dest_len = NULL;
-
-    if (rr->type == SSL3_RT_HANDSHAKE) {
-      dest_maxlen = sizeof s->d1->handshake_fragment;
-      dest = s->d1->handshake_fragment;
-      dest_len = &s->d1->handshake_fragment_len;
-    } else if (rr->type == SSL3_RT_ALERT) {
-      dest_maxlen = sizeof(s->d1->alert_fragment);
-      dest = s->d1->alert_fragment;
-      dest_len = &s->d1->alert_fragment_len;
+  /* If an alert record, process one alert out of the record. Note that we allow
+   * a single record to contain multiple alerts. */
+  if (rr->type == SSL3_RT_ALERT) {
+    /* Alerts may not be fragmented. */
+    if (rr->length < 2) {
+      al = SSL_AD_DECODE_ERROR;
+      OPENSSL_PUT_ERROR(SSL, ssl3_read_bytes, SSL_R_BAD_ALERT);
+      goto f_err;
     }
-
-    if (dest_maxlen > 0) {
-      /* XDTLS:  In a pathological case, the Client Hello
-       *  may be fragmented--don't always expect dest_maxlen bytes */
-      if (rr->length < dest_maxlen) {
-        s->rstate = SSL_ST_READ_HEADER;
-        rr->length = 0;
-        goto start;
-      }
-
-      /* now move 'n' bytes: */
-      for (k = 0; k < dest_maxlen; k++) {
-        dest[k] = rr->data[rr->off++];
-        rr->length--;
-      }
-      *dest_len = dest_maxlen;
-    }
-  }
-
-  /* s->d1->handshake_fragment_len == 12  iff  rr->type == SSL3_RT_HANDSHAKE;
-   * s->d1->alert_fragment_len == 7      iff  rr->type == SSL3_RT_ALERT.
-   * (Possibly rr is 'empty' now, i.e. rr->length may be 0.) */
-
-  if (s->d1->alert_fragment_len >= DTLS1_AL_HEADER_LENGTH) {
-    int alert_level = s->d1->alert_fragment[0];
-    int alert_descr = s->d1->alert_fragment[1];
-
-    s->d1->alert_fragment_len = 0;
 
     if (s->msg_callback) {
-      s->msg_callback(0, s->version, SSL3_RT_ALERT, s->d1->alert_fragment, 2, s,
+      s->msg_callback(0, s->version, SSL3_RT_ALERT, &rr->data[rr->off], 2, s,
                       s->msg_callback_arg);
     }
+    uint8_t alert_level = rr->data[rr->off++];
+    uint8_t alert_descr = rr->data[rr->off++];
+    rr->length -= 2;
 
     if (s->info_callback != NULL) {
       cb = s->info_callback;
@@ -789,8 +746,8 @@ start:
     }
 
     if (cb != NULL) {
-      j = (alert_level << 8) | alert_descr;
-      cb(s, SSL_CB_READ_ALERT, j);
+      uint16_t alert = (alert_level << 8) | alert_descr;
+      cb(s, SSL_CB_READ_ALERT, alert);
     }
 
     if (alert_level == 1) { /* warning */
@@ -870,19 +827,17 @@ start:
     goto start;
   }
 
-  /* Unexpected handshake message. It may be a retransmitted
-   * Finished. Otherwise, it's a protocol violation or unsupported renegotiate
-   * attempt. */
-  if ((s->d1->handshake_fragment_len >= DTLS1_HM_HEADER_LENGTH) &&
-      !s->in_handshake) {
-    struct hm_header_st msg_hdr;
-
-    /* this may just be a stale retransmit */
-    dtls1_get_message_header(rr->data, &msg_hdr);
-    if (rr->epoch != s->d1->r_epoch) {
-      rr->length = 0;
-      goto start;
+  /* Unexpected handshake message. It may be a retransmitted Finished (the only
+   * post-CCS message). Otherwise, it's a pre-CCS handshake message from an
+   * unsupported renegotiation attempt. */
+  if (rr->type == SSL3_RT_HANDSHAKE && !s->in_handshake) {
+    if (rr->length < DTLS1_HM_HEADER_LENGTH) {
+      al = SSL_AD_DECODE_ERROR;
+      OPENSSL_PUT_ERROR(SSL, ssl3_read_bytes, SSL_R_BAD_HANDSHAKE_RECORD);
+      goto f_err;
     }
+    struct hm_header_st msg_hdr;
+    dtls1_get_message_header(&rr->data[rr->off], &msg_hdr);
 
     /* Ignore the Finished, but retransmit our last flight of messages. If the
      * peer sends the second Finished, they may not have received ours. */
@@ -953,35 +908,6 @@ int dtls1_write_app_data_bytes(SSL *s, int type, const void *buf_, int len) {
 
   i = dtls1_write_bytes(s, type, buf_, len);
   return i;
-}
-
-
-/* this only happens when a client hello is received and a handshake is
- * started. */
-static int have_handshake_fragment(SSL *s, int type, uint8_t *buf,
-                                   int len, int peek) {
-  if (type == SSL3_RT_HANDSHAKE && s->d1->handshake_fragment_len > 0) {
-    /* (partially) satisfy request from storage */
-    uint8_t *src = s->d1->handshake_fragment;
-    uint8_t *dst = buf;
-    unsigned int k, n;
-
-    /* peek == 0 */
-    n = 0;
-    while (len > 0 && s->d1->handshake_fragment_len > 0) {
-      *dst++ = *src++;
-      len--;
-      s->d1->handshake_fragment_len--;
-      n++;
-    }
-    /* move any remaining fragment bytes: */
-    for (k = 0; k < s->d1->handshake_fragment_len; k++) {
-      s->d1->handshake_fragment[k] = *src++;
-    }
-    return n;
-  }
-
-  return 0;
 }
 
 /* Call this to write data in records of type 'type' It will return <= 0 if not

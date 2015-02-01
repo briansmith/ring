@@ -184,13 +184,6 @@ typedef struct dtls1_state_st {
   /* Timeout duration */
   unsigned short timeout_duration;
 
-  /* storage for Alert/Handshake protocol data received but not yet processed by
-   * ssl3_read_bytes: */
-  uint8_t alert_fragment[DTLS1_AL_HEADER_LENGTH];
-  unsigned int alert_fragment_len;
-  uint8_t handshake_fragment[DTLS1_HM_HEADER_LENGTH];
-  unsigned int handshake_fragment_len;
-
   unsigned int change_cipher_spec_ok;
 } DTLS1_STATE;
 
