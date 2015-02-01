@@ -687,12 +687,9 @@ static int dtls1_process_out_of_seq_message(SSL *s,
   }
 
   /* Discard the message if sequence number was already there, is
-   * too far in the future, already in the queue or if we received
-   * a FINISHED before the SERVER_HELLO, which then must be a stale
-   * retransmit. */
+   * too far in the future, or already in the queue. */
   if (msg_hdr->seq <= s->d1->handshake_read_seq ||
-      msg_hdr->seq > s->d1->handshake_read_seq + 10 || item != NULL ||
-      (s->d1->handshake_read_seq == 0 && msg_hdr->type == SSL3_MT_FINISHED)) {
+      msg_hdr->seq > s->d1->handshake_read_seq + 10 || item != NULL) {
     uint8_t devnull[256];
 
     while (frag_len) {
