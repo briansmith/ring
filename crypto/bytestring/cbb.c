@@ -280,6 +280,11 @@ int CBB_add_u24_length_prefixed(CBB *cbb, CBB *out_contents) {
 }
 
 int CBB_add_asn1(CBB *cbb, CBB *out_contents, uint8_t tag) {
+  if ((tag & 0x1f) == 0x1f) {
+    /* Long form identifier octets are not supported. */
+    return 0;
+  }
+
   if (!CBB_flush(cbb) ||
       !CBB_add_u8(cbb, tag)) {
     return 0;

@@ -287,7 +287,9 @@ OPENSSL_EXPORT int CBB_add_u24_length_prefixed(CBB *cbb, CBB *out_contents);
 
 /* CBB_add_asn sets |*out_contents| to a |CBB| into which the contents of an
  * ASN.1 object can be written. The |tag| argument will be used as the tag for
- * the object. It returns one on success or zero on error. */
+ * the object. Passing in |tag| number 31 will return in an error since only
+ * single octet identifiers are supported. It returns one on success or zero
+ * on error. */
 OPENSSL_EXPORT int CBB_add_asn1(CBB *cbb, CBB *out_contents, uint8_t tag);
 
 /* CBB_add_bytes appends |len| bytes from |data| to |cbb|. It returns one on
