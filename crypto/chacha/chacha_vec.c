@@ -40,6 +40,7 @@ typedef unsigned vec __attribute__((vector_size(16)));
  * This implementation supports parallel processing of multiple blocks,
  * including potentially using general-purpose registers. */
 #if __ARM_NEON__
+#include <string.h>
 #include <arm_neon.h>
 #define GPR_TOO 1
 #define VBPI 2
@@ -162,29 +163,15 @@ void CRYPTO_chacha_20(
 	uint8_t alignment_buffer[16] __attribute__((aligned(16)));
 #endif
 	vec s0, s1, s2, s3;
-#if !defined(__ARM_NEON__) && !defined(__SSE2__)
-	__attribute__ ((aligned (16))) unsigned key[8], nonce[4];
-#endif
 	__attribute__ ((aligned (16))) unsigned chacha_const[] =
 		{0x61707865,0x3320646E,0x79622D32,0x6B206574};
-#if defined(__ARM_NEON__) || defined(__SSE2__)
 	kp = (unsigned *)key;
-#else
-	((vec *)key)[0] = REVV_BE(((vec *)key)[0]);
-	((vec *)key)[1] = REVV_BE(((vec *)key)[1]);
-	nonce[0] = REVW_BE(((unsigned *)nonce)[0]);
-	nonce[1] = REVW_BE(((unsigned *)nonce)[1]);
-	nonce[2] = REVW_BE(((unsigned *)nonce)[2]);
-	nonce[3] = REVW_BE(((unsigned *)nonce)[3]);
-	kp = (unsigned *)key;
-	np = (unsigned *)nonce;
-#endif
 #if defined(__ARM_NEON__)
 	np = (unsigned*) nonce;
 #endif
 	s0 = LOAD_ALIGNED(chacha_const);
-	s1 = LOAD_ALIGNED(&((vec*)kp)[0]);
-	s2 = LOAD_ALIGNED(&((vec*)kp)[1]);
+	s1 = LOAD(&((vec*)kp)[0]);
+	s2 = LOAD(&((vec*)kp)[1]);
 	s3 = (vec){
 		counter & 0xffffffff,
 #if __ARM_NEON__ || defined(OPENSSL_X86)
