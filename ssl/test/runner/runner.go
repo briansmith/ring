@@ -695,6 +695,27 @@ var testCases = []testCase{
 			},
 		},
 	},
+	{
+		name: "SendInvalidRecordType",
+		config: Config{
+			Bugs: ProtocolBugs{
+				SendInvalidRecordType: true,
+			},
+		},
+		shouldFail:    true,
+		expectedError: ":UNEXPECTED_RECORD:",
+	},
+	{
+		protocol: dtls,
+		name:     "SendInvalidRecordType-DTLS",
+		config: Config{
+			Bugs: ProtocolBugs{
+				SendInvalidRecordType: true,
+			},
+		},
+		shouldFail:    true,
+		expectedError: ":UNEXPECTED_RECORD:",
+	},
 }
 
 func doExchange(test *testCase, config *Config, conn net.Conn, messageLen int, isResume bool) error {

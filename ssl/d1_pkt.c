@@ -852,32 +852,11 @@ start:
     }
   }
 
-  switch (rr->type) {
-    default:
-      /* TLS just ignores unknown message types */
-      if (s->version == TLS1_VERSION) {
-        rr->length = 0;
-        goto start;
-      }
-      al = SSL_AD_UNEXPECTED_MESSAGE;
-      OPENSSL_PUT_ERROR(SSL, dtls1_read_bytes, SSL_R_UNEXPECTED_RECORD);
-      goto f_err;
+  /* We already handled these. */
+  assert(rr->type != SSL3_RT_CHANGE_CIPHER_SPEC && rr->type != SSL3_RT_ALERT);
 
-    case SSL3_RT_CHANGE_CIPHER_SPEC:
-    case SSL3_RT_ALERT:
-      /* We already handled all of these. */
-      al = SSL_AD_UNEXPECTED_MESSAGE;
-      OPENSSL_PUT_ERROR(SSL, dtls1_read_bytes, ERR_R_INTERNAL_ERROR);
-      goto f_err;
-
-    case SSL3_RT_HANDSHAKE:
-    case SSL3_RT_APPLICATION_DATA:
-      al = SSL_AD_UNEXPECTED_MESSAGE;
-      OPENSSL_PUT_ERROR(SSL, dtls1_read_bytes, SSL_R_UNEXPECTED_RECORD);
-      goto f_err;
-  }
-
-  /* not reached */
+  al = SSL_AD_UNEXPECTED_MESSAGE;
+  OPENSSL_PUT_ERROR(SSL, dtls1_read_bytes, SSL_R_UNEXPECTED_RECORD);
 
 f_err:
   ssl3_send_alert(s, SSL3_AL_FATAL, al);

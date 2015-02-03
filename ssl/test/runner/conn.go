@@ -1250,6 +1250,9 @@ func (c *Conn) Handshake() error {
 	} else {
 		c.handshakeErr = c.serverHandshake()
 	}
+	if c.handshakeErr == nil && c.config.Bugs.SendInvalidRecordType {
+		c.writeRecord(recordType(42), []byte("invalid record"))
+	}
 	return c.handshakeErr
 }
 

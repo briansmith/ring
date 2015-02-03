@@ -1072,24 +1072,14 @@ start:
 
   switch (rr->type) {
     default:
-      /* TLS up to v1.1 just ignores unknown message types. TLS v1.2 gives an
-       * unexpected message alert. */
-      if (s->version >= TLS1_VERSION && s->version <= TLS1_1_VERSION) {
-        rr->length = 0;
-        goto start;
-      }
+      /* We already handled all of these, with the possible exception of
+       * SSL3_RT_HANDSHAKE when s->in_handshake is set, but that should not
+       * happen when type != rr->type. */
+      assert(rr->type != SSL3_RT_CHANGE_CIPHER_SPEC &&
+             rr->type != SSL3_RT_ALERT && rr->type != SSL3_RT_HANDSHAKE);
+
       al = SSL_AD_UNEXPECTED_MESSAGE;
       OPENSSL_PUT_ERROR(SSL, ssl3_read_bytes, SSL_R_UNEXPECTED_RECORD);
-      goto f_err;
-
-    case SSL3_RT_CHANGE_CIPHER_SPEC:
-    case SSL3_RT_ALERT:
-    case SSL3_RT_HANDSHAKE:
-      /* we already handled all of these, with the possible exception of
-       * SSL3_RT_HANDSHAKE when s->in_handshake is set, but that should not
-       * happen when type != rr->type */
-      al = SSL_AD_UNEXPECTED_MESSAGE;
-      OPENSSL_PUT_ERROR(SSL, ssl3_read_bytes, ERR_R_INTERNAL_ERROR);
       goto f_err;
 
     case SSL3_RT_APPLICATION_DATA:

@@ -616,6 +616,10 @@ type ProtocolBugs struct {
 	// pre-CCS flights to be sent twice. (Post-CCS flights consist of
 	// Finished and will trigger a spurious retransmit.)
 	ReorderHandshakeFragments bool
+
+	// SendInvalidRecordType, if true, causes a record with an invalid
+	// content type to be sent immediately following the handshake.
+	SendInvalidRecordType bool
 }
 
 func (c *Config) serverInit() {
