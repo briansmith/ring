@@ -19,6 +19,7 @@
 #include <inttypes.h>
 #include <setjmp.h>
 #include <signal.h>
+#include <string.h>
 
 #include "arm_arch.h"
 
