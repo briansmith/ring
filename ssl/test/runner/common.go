@@ -475,8 +475,9 @@ type ProtocolBugs struct {
 	// two records.
 	FragmentAlert bool
 
-	// SendSpuriousAlert will cause an spurious, unwanted alert to be sent.
-	SendSpuriousAlert bool
+	// SendSpuriousAlert, if non-zero, will cause an spurious, unwanted
+	// alert to be sent.
+	SendSpuriousAlert alert
 
 	// RsaClientKeyExchangeVersion, if non-zero, causes the client to send a
 	// ClientKeyExchange with the specified version rather than the

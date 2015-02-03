@@ -377,11 +377,34 @@ var testCases = []testCase{
 	},
 	{
 		testType: serverTest,
+		name:     "Alert",
+		config: Config{
+			Bugs: ProtocolBugs{
+				SendSpuriousAlert: alertRecordOverflow,
+			},
+		},
+		shouldFail:    true,
+		expectedError: ":TLSV1_ALERT_RECORD_OVERFLOW:",
+	},
+	{
+		protocol: dtls,
+		testType: serverTest,
+		name:     "Alert-DTLS",
+		config: Config{
+			Bugs: ProtocolBugs{
+				SendSpuriousAlert: alertRecordOverflow,
+			},
+		},
+		shouldFail:    true,
+		expectedError: ":TLSV1_ALERT_RECORD_OVERFLOW:",
+	},
+	{
+		testType: serverTest,
 		name:     "FragmentAlert",
 		config: Config{
 			Bugs: ProtocolBugs{
 				FragmentAlert:     true,
-				SendSpuriousAlert: true,
+				SendSpuriousAlert: alertRecordOverflow,
 			},
 		},
 		shouldFail:    true,
@@ -394,7 +417,7 @@ var testCases = []testCase{
 		config: Config{
 			Bugs: ProtocolBugs{
 				FragmentAlert:     true,
-				SendSpuriousAlert: true,
+				SendSpuriousAlert: alertRecordOverflow,
 			},
 		},
 		shouldFail:    true,

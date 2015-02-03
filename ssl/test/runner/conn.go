@@ -1093,8 +1093,8 @@ func (c *Conn) Write(b []byte) (int, error) {
 		return 0, alertInternalError
 	}
 
-	if c.config.Bugs.SendSpuriousAlert {
-		c.sendAlertLocked(alertRecordOverflow)
+	if c.config.Bugs.SendSpuriousAlert != 0 {
+		c.sendAlertLocked(c.config.Bugs.SendSpuriousAlert)
 	}
 
 	// SSL 3.0 and TLS 1.0 are susceptible to a chosen-plaintext
