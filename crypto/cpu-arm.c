@@ -62,6 +62,8 @@ void CRYPTO_set_NEON_functional(char neon_functional) {
   }
 }
 
+#if !defined(OPENSSL_NO_ASM) && defined(OPENSSL_ARM)
+
 static sigjmp_buf sigill_jmp;
 
 static void sigill_handler(int signal) {
@@ -76,7 +78,6 @@ void CRYPTO_arm_neon_probe();
 static int probe_for_NEON() {
   int supported = 0;
 
-#if !defined(OPENSSL_NO_ASM)
   sigset_t sigmask;
   sigfillset(&sigmask);
   sigdelset(&sigmask, SIGILL);
@@ -109,16 +110,26 @@ static int probe_for_NEON() {
 
   sigaction(SIGILL, &sigill_original_action, NULL);
   sigprocmask(SIG_SETMASK, &original_sigmask, NULL);
-#endif
 
   return supported;
 }
 
+#else
+
+static int probe_for_NEON() {
+  return 0;
+}
+
+#endif  /* !OPENSSL_NO_ASM && OPENSSL_ARM */
+
 void OPENSSL_cpuid_setup(void) {
   if (getauxval == NULL) {
-    // |CRYPTO_is_NEON_capable| can be true even if |CRYPTO_set_NEON_capable|
-    // has never been called if the code was compiled with NEON support enabled
-    // (e.g. -mfpu=neon).
+    // On ARM, but not AArch64, try a NEON instruction and see whether it works
+    // in order to probe for NEON support.
+    //
+    // Note that |CRYPTO_is_NEON_capable| can be true even if
+    // |CRYPTO_set_NEON_capable| has never been called if the code was compiled
+    // with NEON support enabled (e.g. -mfpu=neon).
     if (!g_set_neon_called && !CRYPTO_is_NEON_capable() && probe_for_NEON()) {
       OPENSSL_armcap_P |= ARMV7_NEON;
     }

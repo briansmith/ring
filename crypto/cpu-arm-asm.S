@@ -12,7 +12,7 @@
 # OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 # CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-#if !defined(OPENSSL_NO_ASM)
+#if !defined(OPENSSL_NO_ASM) && defined(__arm__)
 
 .syntax unified
 .cpu cortex-a8
@@ -29,4 +29,4 @@ CRYPTO_arm_neon_probe:
   bx lr
 .section .note.GNU-stack,"",%progbits
 
-#endif  /* !OPENSSL_NO_ASM */
+#endif  /* !OPENSSL_NO_ASM && __arm__ */
