@@ -518,6 +518,9 @@ out:
   if (pkey) {
     EVP_PKEY_free(pkey);
   }
+  if (algor != NULL) {
+    X509_ALGOR_free(algor);
+  }
 
   return ret;
 }
