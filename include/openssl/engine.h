@@ -78,12 +78,14 @@ OPENSSL_EXPORT ECDSA_METHOD *ENGINE_get_ECDSA_method(const ENGINE *engine);
  * These functions take a void* type but actually operate on all method
  * structures. */
 
-/* METHOD_ref increments the reference count of |method|. */
-OPENSSL_EXPORT void METHOD_ref(void *method);
+/* METHOD_ref increments the reference count of |method|. This is a no-op for
+ * now because all methods are currently static. */
+void METHOD_ref(void *method);
 
 /* METHOD_unref decrements the reference count of |method| and frees it if the
- * reference count drops to zero. */
-OPENSSL_EXPORT void METHOD_unref(void *method);
+ * reference count drops to zero. This is a no-op for now because all methods
+ * are currently static. */
+void METHOD_unref(void *method);
 
 
 /* Private functions. */
