@@ -1322,33 +1322,118 @@ const char *SSL_CIPHER_get_kx_name(const SSL_CIPHER *cipher) {
 
   switch (cipher->algorithm_mkey) {
     case SSL_kRSA:
-      return SSL_TXT_RSA;
+      return "RSA";
 
     case SSL_kEDH:
       switch (cipher->algorithm_auth) {
         case SSL_aRSA:
-          return "DHE_" SSL_TXT_RSA;
+          return "DHE_RSA";
         case SSL_aNULL:
-          return SSL_TXT_DH "_anon";
+          return "DH_anon";
         default:
+          assert(0);
           return "UNKNOWN";
       }
 
     case SSL_kEECDH:
       switch (cipher->algorithm_auth) {
         case SSL_aECDSA:
-          return "ECDHE_" SSL_TXT_ECDSA;
+          return "ECDHE_ECDSA";
         case SSL_aRSA:
-          return "ECDHE_" SSL_TXT_RSA;
+          return "ECDHE_RSA";
+        case SSL_aPSK:
+          return "ECDHE_PSK";
         case SSL_aNULL:
-          return SSL_TXT_ECDH "_anon";
+          return "ECDH_anon";
         default:
+          assert(0);
           return "UNKNOWN";
       }
 
+    case SSL_kPSK:
+      assert(cipher->algorithm_auth == SSL_aPSK);
+      return "PSK";
+
     default:
+      assert(0);
       return "UNKNOWN";
   }
+}
+
+static const char *ssl_cipher_get_enc_name(const SSL_CIPHER *cipher) {
+  switch (cipher->algorithm_enc) {
+    case SSL_3DES:
+      return "3DES_EDE_CBC";
+    case SSL_RC4:
+      return "RC4";
+    case SSL_AES128:
+      return "AES_128_CBC";
+    case SSL_AES256:
+      return "AES_256_CBC";
+    case SSL_AES128GCM:
+      return "AES_128_GCM";
+    case SSL_AES256GCM:
+      return "AES_256_GCM";
+    case SSL_CHACHA20POLY1305:
+      return "CHACHA20_POLY1305";
+      break;
+    default:
+      assert(0);
+      return "UNKNOWN";
+  }
+}
+
+static const char *ssl_cipher_get_prf_name(const SSL_CIPHER *cipher) {
+  if ((cipher->algorithm2 & TLS1_PRF) == TLS1_PRF) {
+    /* Before TLS 1.2, the PRF component is the hash used in the HMAC, which is
+     * only ever MD5 or SHA-1. */
+    switch (cipher->algorithm_mac) {
+      case SSL_MD5:
+        return "MD5";
+      case SSL_SHA1:
+        return "SHA";
+      default:
+        assert(0);
+        return "UNKNOWN";
+    }
+  } else if (cipher->algorithm2 & TLS1_PRF_SHA256) {
+    return "SHA256";
+  } else if (cipher->algorithm2 & TLS1_PRF_SHA384) {
+    return "SHA384";
+  } else {
+    assert(0);
+    return "UNKNOWN";
+  }
+}
+
+char *SSL_CIPHER_get_rfc_name(const SSL_CIPHER *cipher) {
+  if (cipher == NULL) {
+    return NULL;
+  }
+
+  const char *kx_name = SSL_CIPHER_get_kx_name(cipher);
+  const char *enc_name = ssl_cipher_get_enc_name(cipher);
+  const char *prf_name = ssl_cipher_get_prf_name(cipher);
+
+  /* The final name is TLS_{kx_name}_WITH_{enc_name}_{prf_name}. */
+  size_t len = 4 + strlen(kx_name) + 6 + strlen(enc_name) + 1 +
+      strlen(prf_name) + 1;
+  char *ret = OPENSSL_malloc(len);
+  if (ret == NULL) {
+    return NULL;
+  }
+  if (BUF_strlcpy(ret, "TLS_", len) >= len ||
+      BUF_strlcat(ret, kx_name, len) >= len ||
+      BUF_strlcat(ret, "_WITH_", len) >= len ||
+      BUF_strlcat(ret, enc_name, len) >= len ||
+      BUF_strlcat(ret, "_", len) >= len ||
+      BUF_strlcat(ret, prf_name, len) >= len) {
+    assert(0);
+    OPENSSL_free(ret);
+    return NULL;
+  }
+  assert(strlen(ret) + 1 == len);
+  return ret;
 }
 
 /* number of bits for symmetric cipher */
