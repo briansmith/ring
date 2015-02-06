@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"sort"
 	"strconv"
@@ -36,17 +37,20 @@ const reservedReasonCode = 1000
 var resetFlag *bool = flag.Bool("reset", false, "If true, ignore current assignments and reassign from scratch")
 
 func makeErrors(reset bool) error {
+	topLevelPath, err := findToplevel()
+	if err != nil {
+		return err
+	}
+
 	dirName, err := os.Getwd()
 	if err != nil {
 		return err
 	}
 
 	lib := filepath.Base(dirName)
-	headerPath, err := findHeader(lib + ".h")
-	if err != nil {
-		return err
-	}
-	sourcePath := lib + "_error.c"
+	headerPath := filepath.Join(topLevelPath, "include", "openssl", lib+".h")
+	errDir := filepath.Join(topLevelPath, "crypto", "err")
+	dataPath := filepath.Join(errDir, lib+".errordata")
 
 	headerFile, err := os.Open(headerPath)
 	if err != nil {
@@ -90,7 +94,7 @@ func makeErrors(reset bool) error {
 	}
 
 	for _, name := range filenames {
-		if !strings.HasSuffix(name, ".c") || name == sourcePath {
+		if !strings.HasSuffix(name, ".c") {
 			continue
 		}
 
@@ -119,55 +123,51 @@ func makeErrors(reset bool) error {
 	}
 	os.Rename(headerPath+".tmp", headerPath)
 
-	sourceFile, err := os.OpenFile(sourcePath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0644)
+	dataFile, err := os.OpenFile(dataPath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0644)
 	if err != nil {
 		return err
 	}
-	defer sourceFile.Close()
 
-	fmt.Fprintf(sourceFile, `/* Copyright (c) 2014, Google Inc.
- *
- * Permission to use, copy, modify, and/or distribute this software for any
- * purpose with or without fee is hereby granted, provided that the above
- * copyright notice and this permission notice appear in all copies.
- *
- * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
- * WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
- * MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY
- * SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
- * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION
- * OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
- * CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE. */
+	outputStrings(dataFile, lib, typeFunctions, functions)
+	outputStrings(dataFile, lib, typeReasons, reasons)
+	dataFile.Close()
 
-#include <openssl/err.h>
+	generateCmd := exec.Command("go", "run", "err_data_generate.go")
+	generateCmd.Dir = errDir
 
-#include <openssl/%s.h>
+	errDataH, err := os.OpenFile(filepath.Join(errDir, "err_data.h"), os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0644)
+	if err != nil {
+		return err
+	}
+	defer errDataH.Close()
 
-const ERR_STRING_DATA %s_error_string_data[] = {
-`, lib, prefix)
-	outputStrings(sourceFile, lib, typeFunctions, functions)
-	outputStrings(sourceFile, lib, typeReasons, reasons)
+	generateCmd.Stdout = errDataH
+	generateCmd.Stderr = os.Stderr
 
-	sourceFile.WriteString("  {0, NULL},\n};\n")
+	if err := generateCmd.Start(); err != nil {
+		return err
+	}
+	if err := generateCmd.Wait(); err != nil {
+		return err
+	}
 
 	return nil
 }
 
-func findHeader(basename string) (path string, err error) {
-	includeDir := filepath.Join("..", "include")
+func findToplevel() (path string, err error) {
+	path = ".."
+	buildingPath := filepath.Join(path, "BUILDING")
 
-	fi, err := os.Stat(includeDir)
+	_, err = os.Stat(buildingPath)
 	if err != nil && os.IsNotExist(err) {
-		includeDir = filepath.Join("..", includeDir)
-		fi, err = os.Stat(includeDir)
+		path = filepath.Join("..", path)
+		buildingPath = filepath.Join(path, "BUILDING")
+		_, err = os.Stat(buildingPath)
 	}
 	if err != nil {
-		return "", errors.New("cannot find path to include directory")
+		return "", errors.New("Cannot find BUILDING file at the top-level")
 	}
-	if !fi.IsDir() {
-		return "", errors.New("include node is not a directory")
-	}
-	return filepath.Join(includeDir, "openssl", basename), nil
+	return path, nil
 }
 
 type assignment struct {
@@ -295,18 +295,17 @@ func outputStrings(w io.Writer, lib string, ty int, assignments map[string]int) 
 	sort.Strings(keys)
 
 	for _, key := range keys {
-		var pack string
-		if ty == typeFunctions {
-			pack = key + ", 0"
-		} else {
-			pack = "0, " + key
+		typeString := "function"
+		if ty == typeReasons {
+			typeString = "reason"
 		}
-
-		fmt.Fprintf(w, "  {ERR_PACK(ERR_LIB_%s, %s), \"%s\"},\n", lib, pack, key[prefixLen:])
+		fmt.Fprintf(w, "%s,%s,%d,%s\n", lib, typeString, assignments[key], key[prefixLen:])
 	}
 }
 
 func assignNewValues(assignments map[string]int, reserved int) {
+	// Needs to be in sync with the reason limit in
+	// |ERR_reason_error_string|.
 	max := 99
 
 	for _, value := range assignments {

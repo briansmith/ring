@@ -6,5 +6,4 @@ add_library(
   OBJECT
 
   buf.c
-  buf_error.c
 )

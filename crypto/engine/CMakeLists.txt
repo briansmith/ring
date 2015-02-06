@@ -6,5 +6,4 @@ add_library(
   OBJECT
 
   engine.c
-  engine_error.c
 )

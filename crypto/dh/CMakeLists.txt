@@ -10,7 +10,6 @@ add_library(
   params.c
   check.c
   dh_asn1.c
-  dh_error.c
 )
 
 add_executable(

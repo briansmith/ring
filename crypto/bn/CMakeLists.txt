@@ -37,7 +37,6 @@ add_library(
 
   OBJECT
 
-  bn_error.c
   add.c
   bn.c
   cmp.c

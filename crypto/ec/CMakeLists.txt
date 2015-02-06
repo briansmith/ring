@@ -12,7 +12,6 @@ add_library(
   wnaf.c
   ec_key.c
   ec_asn1.c
-  ec_error.c
 )
 
 add_executable(

@@ -6,7 +6,6 @@ add_library(
   OBJECT
 
   pem_all.c
-  pem_error.c
   pem_info.c
   pem_lib.c
   pem_oth.c

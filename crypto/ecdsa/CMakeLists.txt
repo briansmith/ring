@@ -7,7 +7,6 @@ add_library(
 
   ecdsa.c
   ecdsa_asn1.c
-  ecdsa_error.c
 )
 
 

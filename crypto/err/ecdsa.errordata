@@ -1,0 +1,11 @@
+ECDSA,function,103,ECDSA_do_sign_ex
+ECDSA,function,101,ECDSA_do_verify
+ECDSA,function,104,ECDSA_sign_ex
+ECDSA,function,102,ECDSA_sign_setup
+ECDSA,function,100,digest_to_bn
+ECDSA,function,105,ecdsa_sign_setup
+ECDSA,reason,103,BAD_SIGNATURE
+ECDSA,reason,102,MISSING_PARAMETERS
+ECDSA,reason,101,NEED_NEW_SETUP_VALUES
+ECDSA,reason,104,NOT_IMPLEMENTED
+ECDSA,reason,100,RANDOM_NUMBER_GENERATION_FAILED

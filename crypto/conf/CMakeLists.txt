@@ -6,5 +6,4 @@ add_library(
   OBJECT
 
   conf.c
-  conf_error.c
 )

@@ -7,7 +7,6 @@ add_library(
 
   digest.c
   digests.c
-  digest_error.c
 )
 
 add_executable(

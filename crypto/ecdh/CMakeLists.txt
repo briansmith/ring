@@ -6,5 +6,4 @@ add_library(
   OBJECT
 
   ecdh.c
-  ecdh_error.c
 )

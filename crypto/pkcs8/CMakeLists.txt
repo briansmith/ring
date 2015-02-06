@@ -9,7 +9,6 @@ add_library(
   p8_pkey.c
   p5_pbe.c
   p5_pbev2.c
-  pkcs8_error.c
 )
 
 add_executable(

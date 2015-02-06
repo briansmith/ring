@@ -137,7 +137,6 @@ add_library(
   crypto
 
   crypto.c
-  crypto_error.c
   mem.c
   thread.c
   ex_data.c

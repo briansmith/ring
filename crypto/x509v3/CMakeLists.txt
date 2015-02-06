@@ -41,7 +41,6 @@ add_library(
   v3_skey.c
   v3_sxnet.c
   v3_utl.c
-  x509v3_error.c
 )
 
 add_executable(

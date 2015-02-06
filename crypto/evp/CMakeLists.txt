@@ -10,7 +10,6 @@ add_library(
   digestsign.c
   evp.c
   evp_ctx.c
-  evp_error.c
   p_ec.c
   p_ec_asn1.c
   p_hmac.c

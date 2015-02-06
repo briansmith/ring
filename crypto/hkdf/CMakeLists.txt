@@ -6,7 +6,6 @@ add_library(
   OBJECT
 
   hkdf.c
-  hkdf_error.c
 )
 
 add_executable(

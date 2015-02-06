@@ -8,7 +8,6 @@ add_library(
   dsa.c
   dsa_impl.c
   dsa_asn1.c
-  dsa_error.c
 )
 
 add_executable(

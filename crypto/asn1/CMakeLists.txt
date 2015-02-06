@@ -23,7 +23,6 @@ add_library(
   a_type.c
   a_utctm.c
   a_utf8.c
-  asn1_error.c
   asn1_lib.c
   asn1_par.c
   asn_pack.c

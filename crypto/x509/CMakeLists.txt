@@ -22,7 +22,6 @@ add_library(
   x509_cmp.c
   x509_d2.c
   x509_def.c
-  x509_error.c
   x509_ext.c
   x509_lu.c
   x509_obj.c

@@ -10,7 +10,6 @@ add_library(
   blinding.c
   padding.c
   rsa_asn1.c
-  rsa_error.c
 )
 
 add_executable(

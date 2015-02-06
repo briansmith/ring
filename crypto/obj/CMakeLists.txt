@@ -7,5 +7,4 @@ add_library(
 
   obj.c
   obj_xref.c
-  obj_error.c
 )
