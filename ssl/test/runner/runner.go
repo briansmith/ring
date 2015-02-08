@@ -739,6 +739,26 @@ var testCases = []testCase{
 		shouldFail:    true,
 		expectedError: ":UNEXPECTED_RECORD:",
 	},
+	{
+		name: "FalseStart-SkipServerSecondLeg",
+		config: Config{
+			CipherSuites: []uint16{TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256},
+			NextProtos:   []string{"foo"},
+			Bugs: ProtocolBugs{
+				SkipNewSessionTicket: true,
+				SkipChangeCipherSpec: true,
+				SkipFinished:         true,
+				ExpectFalseStart:     true,
+			},
+		},
+		flags: []string{
+			"-false-start",
+			"-advertise-alpn", "\x03foo",
+		},
+		shimWritesFirst: true,
+		shouldFail:      true,
+		expectedError:   ":UNEXPECTED_RECORD:",
+	},
 }
 
 func doExchange(test *testCase, config *Config, conn net.Conn, messageLen int, isResume bool) error {

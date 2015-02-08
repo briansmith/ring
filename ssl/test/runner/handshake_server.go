@@ -857,9 +857,11 @@ func (hs *serverHandshakeState) sendFinished() error {
 		c.writeRecord(recordTypeApplicationData, c.config.Bugs.AppDataAfterChangeCipherSpec)
 	}
 
-	c.writeRecord(recordTypeHandshake, postCCSBytes)
-	if err := c.dtlsFlushHandshake(false); err != nil {
-		return err
+	if !c.config.Bugs.SkipFinished {
+		c.writeRecord(recordTypeHandshake, postCCSBytes)
+		if err := c.dtlsFlushHandshake(false); err != nil {
+			return err
+		}
 	}
 
 	c.cipherSuite = hs.suite.id

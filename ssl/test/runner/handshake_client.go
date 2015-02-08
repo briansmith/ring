@@ -872,9 +872,11 @@ func (hs *clientHandshakeState) sendFinished(isResume bool) error {
 		c.writeRecord(recordTypeApplicationData, c.config.Bugs.AppDataAfterChangeCipherSpec)
 	}
 
-	c.writeRecord(recordTypeHandshake, postCCSBytes)
-	if err := c.dtlsFlushHandshake(false); err != nil {
-		return err
+	if !c.config.Bugs.SkipFinished {
+		c.writeRecord(recordTypeHandshake, postCCSBytes)
+		if err := c.dtlsFlushHandshake(false); err != nil {
+			return err
+		}
 	}
 	return nil
 }
