@@ -81,6 +81,9 @@ static const SSL_PROTOCOL_METHOD DTLS_protocol_method = {
   ssl_undefined_void_function,
   ssl3_callback_ctrl,
   ssl3_ctx_callback_ctrl,
+  DTLS1_HM_HEADER_LENGTH,
+  dtls1_set_handshake_header,
+  dtls1_handshake_write,
 };
 
 const SSL_METHOD *DTLS_method(void) {

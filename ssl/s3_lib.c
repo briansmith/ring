@@ -570,9 +570,6 @@ const SSL3_ENC_METHOD SSLv3_enc_data = {
     (int (*)(SSL *, uint8_t *, size_t, const char *, size_t, const uint8_t *,
              size_t, int use_context)) ssl_undefined_function,
     0,
-    SSL3_HM_HEADER_LENGTH,
-    ssl3_set_handshake_header,
-    ssl3_handshake_write,
 };
 
 int ssl3_num_ciphers(void) { return SSL3_NUM_CIPHERS; }

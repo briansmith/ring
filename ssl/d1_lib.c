@@ -82,8 +82,6 @@
 
 static void get_current_time(SSL *ssl, OPENSSL_timeval *out_clock);
 static OPENSSL_timeval *dtls1_get_timeout(SSL *s, OPENSSL_timeval *timeleft);
-static int dtls1_set_handshake_header(SSL *s, int type, unsigned long len);
-static int dtls1_handshake_write(SSL *s);
 
 const SSL3_ENC_METHOD DTLSv1_enc_data = {
   tls1_enc,
@@ -98,9 +96,6 @@ const SSL3_ENC_METHOD DTLSv1_enc_data = {
   tls1_alert_code,
   tls1_export_keying_material,
   SSL_ENC_FLAG_DTLS|SSL_ENC_FLAG_EXPLICIT_IV,
-  DTLS1_HM_HEADER_LENGTH,
-  dtls1_set_handshake_header,
-  dtls1_handshake_write,
 };
 
 const SSL3_ENC_METHOD DTLSv1_2_enc_data = {
@@ -117,9 +112,6 @@ const SSL3_ENC_METHOD DTLSv1_2_enc_data = {
   tls1_export_keying_material,
   SSL_ENC_FLAG_DTLS | SSL_ENC_FLAG_EXPLICIT_IV | SSL_ENC_FLAG_SIGALGS |
       SSL_ENC_FLAG_SHA256_PRF | SSL_ENC_FLAG_TLS1_2_CIPHERS,
-  DTLS1_HM_HEADER_LENGTH,
-  dtls1_set_handshake_header,
-  dtls1_handshake_write,
 };
 
 int dtls1_new(SSL *s) {
@@ -413,7 +405,7 @@ static void get_current_time(SSL *ssl, OPENSSL_timeval *out_clock) {
 #endif
 }
 
-static int dtls1_set_handshake_header(SSL *s, int htype, unsigned long len) {
+int dtls1_set_handshake_header(SSL *s, int htype, unsigned long len) {
   uint8_t *message = (uint8_t *)s->init_buf->data;
   const struct hm_header_st *msg_hdr = &s->d1->w_msg_hdr;
   uint8_t serialised_header[DTLS1_HM_HEADER_LENGTH];
@@ -440,6 +432,6 @@ static int dtls1_set_handshake_header(SSL *s, int htype, unsigned long len) {
          ssl3_finish_mac(s, message + DTLS1_HM_HEADER_LENGTH, len);
 }
 
-static int dtls1_handshake_write(SSL *s) {
+int dtls1_handshake_write(SSL *s) {
   return dtls1_do_write(s, SSL3_RT_HANDSHAKE);
 }

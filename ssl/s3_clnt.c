@@ -2019,7 +2019,7 @@ int ssl3_send_client_key_exchange(SSL *s) {
   }
 
   /* SSL3_ST_CW_KEY_EXCH_B */
-  return s->enc_method->do_write(s);
+  return s->method->do_write(s);
 
 err:
   BN_CTX_free(bn_ctx);

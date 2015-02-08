@@ -139,9 +139,6 @@ const SSL3_ENC_METHOD TLSv1_enc_data = {
     tls1_alert_code,
     tls1_export_keying_material,
     0,
-    SSL3_HM_HEADER_LENGTH,
-    ssl3_set_handshake_header,
-    ssl3_handshake_write,
 };
 
 const SSL3_ENC_METHOD TLSv1_1_enc_data = {
@@ -157,9 +154,6 @@ const SSL3_ENC_METHOD TLSv1_1_enc_data = {
     tls1_alert_code,
     tls1_export_keying_material,
     SSL_ENC_FLAG_EXPLICIT_IV,
-    SSL3_HM_HEADER_LENGTH,
-    ssl3_set_handshake_header,
-    ssl3_handshake_write,
 };
 
 const SSL3_ENC_METHOD TLSv1_2_enc_data = {
@@ -176,9 +170,6 @@ const SSL3_ENC_METHOD TLSv1_2_enc_data = {
     tls1_export_keying_material,
     SSL_ENC_FLAG_EXPLICIT_IV|SSL_ENC_FLAG_SIGALGS|SSL_ENC_FLAG_SHA256_PRF
             |SSL_ENC_FLAG_TLS1_2_CIPHERS,
-    SSL3_HM_HEADER_LENGTH,
-    ssl3_set_handshake_header,
-    ssl3_handshake_write,
 };
 
 static int compare_uint16_t(const void *p1, const void *p2) {

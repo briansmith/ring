@@ -559,6 +559,12 @@ struct ssl_protocol_method_st {
   int (*ssl_version)(void);
   long (*ssl_callback_ctrl)(SSL *s, int cb_id, void (*fp)(void));
   long (*ssl_ctx_callback_ctrl)(SSL_CTX *s, int cb_id, void (*fp)(void));
+  /* Handshake header length */
+  unsigned int hhlen;
+  /* Set the handshake header */
+  int (*set_handshake_header)(SSL *s, int type, unsigned long len);
+  /* Write out handshake message */
+  int (*do_write)(SSL *s);
 };
 
 /* This is for the SSLv3/TLSv1.0 differences in crypto/hash stuff It is a bit
@@ -581,20 +587,14 @@ struct ssl3_enc_method {
                                 const uint8_t *, size_t, int use_context);
   /* Various flags indicating protocol version requirements */
   unsigned int enc_flags;
-  /* Handshake header length */
-  unsigned int hhlen;
-  /* Set the handshake header */
-  int (*set_handshake_header)(SSL *s, int type, unsigned long len);
-  /* Write out handshake message */
-  int (*do_write)(SSL *s);
 };
 
-#define SSL_HM_HEADER_LENGTH(s) s->enc_method->hhlen
+#define SSL_HM_HEADER_LENGTH(s) s->method->hhlen
 #define ssl_handshake_start(s) \
-  (((uint8_t *)s->init_buf->data) + s->enc_method->hhlen)
+  (((uint8_t *)s->init_buf->data) + s->method->hhlen)
 #define ssl_set_handshake_header(s, htype, len) \
-  s->enc_method->set_handshake_header(s, htype, len)
-#define ssl_do_write(s) s->enc_method->do_write(s)
+  s->method->set_handshake_header(s, htype, len)
+#define ssl_do_write(s) s->method->do_write(s)
 
 /* Values for enc_flags */
 
@@ -817,6 +817,9 @@ void dtls1_get_message_header(uint8_t *data, struct hm_header_st *msg_hdr);
 void dtls1_reset_seq_numbers(SSL *s, int rw);
 int dtls1_check_timeout_num(SSL *s);
 int dtls1_handle_timeout(SSL *s);
+int dtls1_set_handshake_header(SSL *s, int type, unsigned long len);
+int dtls1_handshake_write(SSL *s);
+
 const SSL_CIPHER *dtls1_get_cipher(unsigned int u);
 void dtls1_start_timer(SSL *s);
 void dtls1_stop_timer(SSL *s);
