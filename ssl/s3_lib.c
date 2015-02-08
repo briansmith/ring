@@ -563,7 +563,6 @@ const SSL3_ENC_METHOD SSLv3_enc_data = {
     tls1_generate_master_secret,
     tls1_change_cipher_state,
     ssl3_final_finish_mac,
-    MD5_DIGEST_LENGTH+SHA_DIGEST_LENGTH,
     ssl3_cert_verify_mac,
     SSL3_MD_CLIENT_FINISHED_CONST, 4,
     SSL3_MD_SERVER_FINISHED_CONST, 4,

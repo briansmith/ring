@@ -571,7 +571,6 @@ struct ssl3_enc_method {
   int (*generate_master_secret)(SSL *, uint8_t *, const uint8_t *, size_t);
   int (*change_cipher_state)(SSL *, int);
   int (*final_finish_mac)(SSL *, const char *, int, uint8_t *);
-  int finish_mac_length;
   int (*cert_verify_mac)(SSL *, int, uint8_t *);
   const char *client_finished_label;
   int client_finished_label_len;

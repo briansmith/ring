@@ -689,8 +689,6 @@ OPENSSL_EXPORT int SSL_get_shared_sigalgs(SSL *s, int idx, int *psign,
 #define TLS_CT_RSA_FIXED_ECDH 65
 #define TLS_CT_ECDSA_FIXED_ECDH 66
 
-#define TLS1_FINISH_MAC_LENGTH 12
-
 #define TLS_MD_MAX_CONST_SIZE 20
 #define TLS_MD_CLIENT_FINISH_CONST "client finished"
 #define TLS_MD_CLIENT_FINISH_CONST_SIZE 15
