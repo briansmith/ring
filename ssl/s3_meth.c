@@ -77,7 +77,6 @@ static const SSL_PROTOCOL_METHOD TLS_protocol_method = {
     ssl3_pending,
     ssl3_num_ciphers,
     ssl3_get_cipher,
-    ssl_undefined_void_function,
     ssl3_callback_ctrl,
     ssl3_ctx_callback_ctrl,
     SSL3_HM_HEADER_LENGTH,

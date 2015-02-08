@@ -556,7 +556,6 @@ struct ssl_protocol_method_st {
   int (*ssl_pending)(const SSL *s);
   int (*num_ciphers)(void);
   const SSL_CIPHER *(*get_cipher)(unsigned ncipher);
-  int (*ssl_version)(void);
   long (*ssl_callback_ctrl)(SSL *s, int cb_id, void (*fp)(void));
   long (*ssl_ctx_callback_ctrl)(SSL_CTX *s, int cb_id, void (*fp)(void));
   /* Handshake header length */
