@@ -1262,8 +1262,9 @@ const char *SSL_CIPHER_description(const SSL_CIPHER *cipher, char *buf,
   if (buf == NULL) {
     len = 128;
     buf = OPENSSL_malloc(len);
-    if (buf == NULL)
-      return "OPENSSL_malloc Error";
+    if (buf == NULL) {
+      return NULL;
+    }
   } else if (len < 128) {
     return "Buffer too small";
   }

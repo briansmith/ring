@@ -188,6 +188,10 @@ int RAND_bytes(uint8_t *out, size_t requested) {
 
     if (!buf) {
       buf = (struct rand_buffer *)OPENSSL_malloc(BUF_SIZE);
+      if (!buf) {
+        abort();
+        return 0;
+      }
       /* The buffer doesn't contain any random bytes yet
        * so we mark it as fully used so that it will be
        * filled below. */
