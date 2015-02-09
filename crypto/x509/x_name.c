@@ -175,6 +175,16 @@ static void x509_name_ex_free(ASN1_VALUE **pval, const ASN1_ITEM *it)
 	*pval = NULL;
 }
 
+static void local_sk_X509_NAME_ENTRY_free(STACK_OF(X509_NAME_ENTRY) *ne)
+{
+	sk_X509_NAME_ENTRY_free(ne);
+}
+
+static void local_sk_X509_NAME_ENTRY_pop_free(STACK_OF(X509_NAME_ENTRY) *ne)
+{
+	sk_X509_NAME_ENTRY_pop_free(ne, X509_NAME_ENTRY_free);
+}
+
 static int x509_name_ex_d2i(ASN1_VALUE **val,
 			const unsigned char **in, long len, const ASN1_ITEM *it,
 				int tag, int aclass, char opt, ASN1_TLC *ctx)
@@ -197,9 +207,14 @@ static int x509_name_ex_d2i(ASN1_VALUE **val,
 	if(ret <= 0) return ret;
 
 	if(*val) x509_name_ex_free(val, NULL);
-	if(!x509_name_ex_new(&nm.a, NULL)) goto err;
 	/* We've decoded it: now cache encoding */
-	if(!BUF_MEM_grow(nm.x->bytes, p - q)) goto err;
+	if (!x509_name_ex_new(&nm.a, NULL) ||
+		!BUF_MEM_grow(nm.x->bytes, p - q))
+		{
+		sk_STACK_OF_X509_NAME_ENTRY_pop_free(intname.s,
+			local_sk_X509_NAME_ENTRY_pop_free);
+		goto err;
+		}
 	memcpy(nm.x->bytes->data, q, p - q);
 
 	/* Convert internal representation to X509_NAME structure */
@@ -247,16 +262,6 @@ static int x509_name_ex_i2d(ASN1_VALUE **val, unsigned char **out, const ASN1_IT
 	}
 	return ret;
 }
-
-static void local_sk_X509_NAME_ENTRY_free(STACK_OF(X509_NAME_ENTRY) *ne)
-	{
-	sk_X509_NAME_ENTRY_free(ne);
-	}
-
-static void local_sk_X509_NAME_ENTRY_pop_free(STACK_OF(X509_NAME_ENTRY) *ne)
-	{
-	sk_X509_NAME_ENTRY_pop_free(ne, X509_NAME_ENTRY_free);
-	}
 
 static int x509_name_encode(X509_NAME *a)
 {

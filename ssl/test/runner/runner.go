@@ -1053,7 +1053,8 @@ func runTest(test *testCase, buildDir string, mallocNumToFail int64) error {
 	shim.Stdout = &stdoutBuf
 	shim.Stderr = &stderrBuf
 	if mallocNumToFail >= 0 {
-		shim.Env = []string{"MALLOC_NUMBER_TO_FAIL=" + strconv.FormatInt(mallocNumToFail, 10)}
+		shim.Env = os.Environ()
+		shim.Env = append(shim.Env, "MALLOC_NUMBER_TO_FAIL="+strconv.FormatInt(mallocNumToFail, 10))
 		if *mallocTestDebug {
 			shim.Env = append(shim.Env, "MALLOC_ABORT_ON_FAIL=1")
 		}
