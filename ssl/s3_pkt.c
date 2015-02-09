@@ -772,8 +772,13 @@ int ssl3_read_bytes(SSL *s, int type, uint8_t *buf, int len, int peek) {
 
   /* Now s->s3->handshake_fragment_len == 0 if type == SSL3_RT_HANDSHAKE. */
 
-  if (!s->in_handshake && SSL_in_init(s)) {
-    /* type == SSL3_RT_APPLICATION_DATA */
+  /* This may require multiple iterations. False Start will cause
+   * |s->handshake_func| to signal success one step early, but the handshake
+   * must be completely finished before other modes are accepted.
+   *
+   * TODO(davidben): Move this check up to a higher level. */
+  while (!s->in_handshake && SSL_in_init(s)) {
+    assert(type == SSL3_RT_APPLICATION_DATA);
     i = s->handshake_func(s);
     if (i < 0) {
       return i;

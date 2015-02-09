@@ -759,6 +759,25 @@ var testCases = []testCase{
 		shouldFail:      true,
 		expectedError:   ":UNEXPECTED_RECORD:",
 	},
+	{
+		name: "FalseStart-SkipServerSecondLeg-Implicit",
+		config: Config{
+			CipherSuites: []uint16{TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256},
+			NextProtos:   []string{"foo"},
+			Bugs: ProtocolBugs{
+				SkipNewSessionTicket: true,
+				SkipChangeCipherSpec: true,
+				SkipFinished:         true,
+			},
+		},
+		flags: []string{
+			"-implicit-handshake",
+			"-false-start",
+			"-advertise-alpn", "\x03foo",
+		},
+		shouldFail:    true,
+		expectedError: ":UNEXPECTED_RECORD:",
+	},
 }
 
 func doExchange(test *testCase, config *Config, conn net.Conn, messageLen int, isResume bool) error {
@@ -1756,6 +1775,24 @@ func addStateMachineCoverageTests(async, splitHandshake bool, protocol protocol)
 				"-advertise-alpn", "\x03foo"),
 			shimWritesFirst: true,
 			resumeSession:   true,
+		})
+
+		// Client does False Start but doesn't explicitly call
+		// SSL_connect.
+		testCases = append(testCases, testCase{
+			protocol: protocol,
+			name:     "FalseStart-Implicit" + suffix,
+			config: Config{
+				CipherSuites: []uint16{TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256},
+				NextProtos:   []string{"foo"},
+				Bugs: ProtocolBugs{
+					MaxHandshakeRecordLength: maxHandshakeRecordLength,
+				},
+			},
+			flags: append(flags,
+				"-implicit-handshake",
+				"-false-start",
+				"-advertise-alpn", "\x03foo"),
 		})
 
 		// False Start without session tickets.
