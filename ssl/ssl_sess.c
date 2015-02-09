@@ -425,11 +425,8 @@ int ssl_get_prev_session(SSL *s, const struct ssl_early_callback_ctx *ctx) {
     }
     memcpy(data.session_id, ctx->session_id, ctx->session_id_len);
     CRYPTO_r_lock(CRYPTO_LOCK_SSL_CTX);
-    ret = lh_SSL_SESSION_retrieve(s->initial_ctx->sessions, &data);
-    if (ret != NULL) {
-      /* don't allow other threads to steal it: */
-      CRYPTO_add(&ret->references, 1, CRYPTO_LOCK_SSL_SESSION);
-    }
+    ret = SSL_SESSION_up_ref(lh_SSL_SESSION_retrieve(s->initial_ctx->sessions,
+                                                     &data));
     CRYPTO_r_unlock(CRYPTO_LOCK_SSL_CTX);
     if (ret == NULL) {
       s->initial_ctx->stats.sess_miss++;
@@ -455,7 +452,7 @@ int ssl_get_prev_session(SSL *s, const struct ssl_early_callback_ctx *ctx) {
        * shared between threads, it must handle the reference count itself
        * [i.e. copy == 0], or things won't be thread-safe). */
       if (copy) {
-        CRYPTO_add(&ret->references, 1, CRYPTO_LOCK_SSL_SESSION);
+        SSL_SESSION_up_ref(ret);
       }
 
       /* Add the externally cached session to the internal cache as well if and
@@ -538,7 +535,7 @@ int SSL_CTX_add_session(SSL_CTX *ctx, SSL_SESSION *c) {
   /* add just 1 reference count for the SSL_CTX's session cache even though it
    * has two ways of access: each session is in a doubly linked list and an
    * lhash */
-  CRYPTO_add(&c->references, 1, CRYPTO_LOCK_SSL_SESSION);
+  SSL_SESSION_up_ref(c);
   /* if session c is in already in cache, we take back the increment later */
 
   CRYPTO_w_lock(CRYPTO_LOCK_SSL_CTX);
@@ -623,6 +620,13 @@ static int remove_session_lock(SSL_CTX *ctx, SSL_SESSION *c, int lock) {
   return ret;
 }
 
+SSL_SESSION *SSL_SESSION_up_ref(SSL_SESSION *session) {
+  if (session) {
+    CRYPTO_add(&session->references, 1, CRYPTO_LOCK_SSL_SESSION);
+  }
+  return session;
+}
+
 void SSL_SESSION_free(SSL_SESSION *ss) {
   int i;
 
@@ -674,7 +678,7 @@ int SSL_set_session(SSL *s, SSL_SESSION *session) {
   }
   s->session = session;
   if (session != NULL) {
-    CRYPTO_add(&session->references, 1, CRYPTO_LOCK_SSL_SESSION);
+    SSL_SESSION_up_ref(session);
     s->verify_result = session->verify_result;
   }
 

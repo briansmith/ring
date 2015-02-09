@@ -1893,7 +1893,15 @@ OPENSSL_EXPORT const uint8_t *SSL_SESSION_get_id(const SSL_SESSION *s,
                                                  unsigned int *len);
 OPENSSL_EXPORT int SSL_SESSION_print_fp(FILE *fp, const SSL_SESSION *ses);
 OPENSSL_EXPORT int SSL_SESSION_print(BIO *fp, const SSL_SESSION *ses);
-OPENSSL_EXPORT void SSL_SESSION_free(SSL_SESSION *ses);
+
+/* SSL_SESSION_up_ref, if |session| is not NULL, increments the reference count
+ * of |session|. It then returns |session|. */
+OPENSSL_EXPORT SSL_SESSION *SSL_SESSION_up_ref(SSL_SESSION *session);
+
+/* SSL_SESSION_free decrements the reference count of |session|. If it reaches
+ * zero, all data referenced by |session| and |session| itself are released. */
+OPENSSL_EXPORT void SSL_SESSION_free(SSL_SESSION *session);
+
 OPENSSL_EXPORT int SSL_set_session(SSL *to, SSL_SESSION *session);
 OPENSSL_EXPORT int SSL_CTX_add_session(SSL_CTX *s, SSL_SESSION *c);
 OPENSSL_EXPORT int SSL_CTX_remove_session(SSL_CTX *, SSL_SESSION *c);

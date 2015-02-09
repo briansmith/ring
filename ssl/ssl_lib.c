@@ -2212,8 +2212,7 @@ void ssl_update_cache(SSL *s, int mode) {
       ((i & SSL_SESS_CACHE_NO_INTERNAL_STORE) ||
        SSL_CTX_add_session(s->initial_ctx, s->session)) &&
       s->initial_ctx->new_session_cb != NULL) {
-    CRYPTO_add(&s->session->references, 1, CRYPTO_LOCK_SSL_SESSION);
-    if (!s->initial_ctx->new_session_cb(s, s->session)) {
+    if (!s->initial_ctx->new_session_cb(s, SSL_SESSION_up_ref(s->session))) {
       SSL_SESSION_free(s->session);
     }
   }
