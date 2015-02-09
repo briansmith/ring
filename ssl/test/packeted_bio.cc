@@ -184,8 +184,8 @@ const BIO_METHOD packeted_bio_method = {
 
 }  // namespace
 
-BIO *packeted_bio_create(OPENSSL_timeval *out_timeout) {
-  BIO *bio = BIO_new(&packeted_bio_method);
+ScopedBIO packeted_bio_create(OPENSSL_timeval *out_timeout) {
+  ScopedBIO bio(BIO_new(&packeted_bio_method));
   bio->ptr = out_timeout;
   return bio;
 }

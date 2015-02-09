@@ -32,11 +32,11 @@
 
 #include "async_bio.h"
 #include "packeted_bio.h"
+#include "scoped_types.h"
 #include "test_config.h"
 
 static int usage(const char *program) {
-  fprintf(stderr, "Usage: %s [flags...]\n",
-          program);
+  fprintf(stderr, "Usage: %s [flags...]\n", program);
   return 1;
 }
 
@@ -59,17 +59,12 @@ static OPENSSL_timeval *GetClockPtr(SSL *ssl) {
   return (OPENSSL_timeval *)SSL_get_ex_data(ssl, g_ex_data_clock_index);
 }
 
-static EVP_PKEY *LoadPrivateKey(const std::string &file) {
-  BIO *bio = BIO_new(BIO_s_file());
-  if (bio == NULL) {
-    return NULL;
+static ScopedEVP_PKEY LoadPrivateKey(const std::string &file) {
+  ScopedBIO bio(BIO_new(BIO_s_file()));
+  if (!bio || !BIO_read_filename(bio.get(), file.c_str())) {
+    return nullptr;
   }
-  if (!BIO_read_filename(bio, file.c_str())) {
-    BIO_free(bio);
-    return NULL;
-  }
-  EVP_PKEY *pkey = PEM_read_bio_PrivateKey(bio, NULL, NULL, NULL);
-  BIO_free(bio);
+  ScopedEVP_PKEY pkey(PEM_read_bio_PrivateKey(bio.get(), NULL, NULL, NULL));
   return pkey;
 }
 
@@ -241,13 +236,11 @@ static void current_time_cb(SSL *ssl, OPENSSL_timeval *out_clock) {
   *out_clock = *GetClockPtr(ssl);
 }
 
-static SSL_CTX *setup_ctx(const TestConfig *config) {
-  SSL_CTX *ssl_ctx = NULL;
-  DH *dh = NULL;
-
-  ssl_ctx = SSL_CTX_new(config->is_dtls ? DTLS_method() : TLS_method());
-  if (ssl_ctx == NULL) {
-    goto err;
+static ScopedSSL_CTX setup_ctx(const TestConfig *config) {
+  ScopedSSL_CTX ssl_ctx(SSL_CTX_new(
+      config->is_dtls ? DTLS_method() : TLS_method()));
+  if (!ssl_ctx) {
+    return nullptr;
   }
 
   if (config->is_dtls) {
@@ -255,58 +248,48 @@ static SSL_CTX *setup_ctx(const TestConfig *config) {
     //
     // TODO(davidben): this should not be necessary. DTLS code should only
     // expect a datagram BIO.
-    SSL_CTX_set_read_ahead(ssl_ctx, 1);
+    SSL_CTX_set_read_ahead(ssl_ctx.get(), 1);
   }
 
-  if (!SSL_CTX_set_ecdh_auto(ssl_ctx, 1)) {
-    goto err;
+  if (!SSL_CTX_set_ecdh_auto(ssl_ctx.get(), 1)) {
+    return nullptr;
   }
 
-  if (!SSL_CTX_set_cipher_list(ssl_ctx, "ALL")) {
-    goto err;
+  if (!SSL_CTX_set_cipher_list(ssl_ctx.get(), "ALL")) {
+    return nullptr;
   }
 
-  dh = DH_get_2048_256(NULL);
-  if (dh == NULL ||
-      !SSL_CTX_set_tmp_dh(ssl_ctx, dh)) {
-    goto err;
+  ScopedDH dh(DH_get_2048_256(NULL));
+  if (!dh || !SSL_CTX_set_tmp_dh(ssl_ctx.get(), dh.get())) {
+    return nullptr;
   }
 
-  SSL_CTX_set_session_cache_mode(ssl_ctx, SSL_SESS_CACHE_BOTH);
+  SSL_CTX_set_session_cache_mode(ssl_ctx.get(), SSL_SESS_CACHE_BOTH);
 
   ssl_ctx->select_certificate_cb = select_certificate_callback;
 
   SSL_CTX_set_next_protos_advertised_cb(
-      ssl_ctx, next_protos_advertised_callback, NULL);
+      ssl_ctx.get(), next_protos_advertised_callback, NULL);
   if (!config->select_next_proto.empty()) {
-    SSL_CTX_set_next_proto_select_cb(ssl_ctx, next_proto_select_callback, NULL);
+    SSL_CTX_set_next_proto_select_cb(ssl_ctx.get(), next_proto_select_callback,
+                                     NULL);
   }
 
   if (!config->select_alpn.empty()) {
-    SSL_CTX_set_alpn_select_cb(ssl_ctx, alpn_select_callback, NULL);
+    SSL_CTX_set_alpn_select_cb(ssl_ctx.get(), alpn_select_callback, NULL);
   }
 
-  SSL_CTX_set_cookie_generate_cb(ssl_ctx, cookie_generate_callback);
-  SSL_CTX_set_cookie_verify_cb(ssl_ctx, cookie_verify_callback);
+  SSL_CTX_set_cookie_generate_cb(ssl_ctx.get(), cookie_generate_callback);
+  SSL_CTX_set_cookie_verify_cb(ssl_ctx.get(), cookie_verify_callback);
 
   ssl_ctx->tlsext_channel_id_enabled_new = 1;
 
   ssl_ctx->current_time_cb = current_time_cb;
 
-  DH_free(dh);
   return ssl_ctx;
-
- err:
-  if (dh != NULL) {
-    DH_free(dh);
-  }
-  if (ssl_ctx != NULL) {
-    SSL_CTX_free(ssl_ctx);
-  }
-  return NULL;
 }
 
-static int retry_async(SSL *ssl, int ret, BIO *bio,
+static int retry_async(SSL *ssl, int ret, BIO *async,
                        OPENSSL_timeval *clock_delta) {
   // No error; don't retry.
   if (ret >= 0) {
@@ -333,16 +316,16 @@ static int retry_async(SSL *ssl, int ret, BIO *bio,
   // the appropriate end to maximally stress the state machine.
   int err = SSL_get_error(ssl, ret);
   if (err == SSL_ERROR_WANT_READ) {
-    async_bio_allow_read(bio, 1);
+    async_bio_allow_read(async, 1);
     return 1;
   } else if (err == SSL_ERROR_WANT_WRITE) {
-    async_bio_allow_write(bio, 1);
+    async_bio_allow_write(async, 1);
     return 1;
   }
   return 0;
 }
 
-static int do_exchange(SSL_SESSION **out_session,
+static int do_exchange(ScopedSSL_SESSION *out_session,
                        SSL_CTX *ssl_ctx,
                        const TestConfig *config,
                        bool is_resume,
@@ -351,152 +334,149 @@ static int do_exchange(SSL_SESSION **out_session,
   early_callback_called = 0;
 
   OPENSSL_timeval clock = {0}, clock_delta = {0};
-  SSL *ssl = SSL_new(ssl_ctx);
-  if (ssl == NULL) {
+  ScopedSSL ssl(SSL_new(ssl_ctx));
+  if (!ssl) {
     BIO_print_errors_fp(stdout);
     return 1;
   }
 
-  if (!SetConfigPtr(ssl, config) ||
-      !SetClockPtr(ssl, &clock)) {
+  if (!SetConfigPtr(ssl.get(), config) ||
+      !SetClockPtr(ssl.get(), &clock)) {
     BIO_print_errors_fp(stdout);
     return 1;
   }
 
   if (config->fallback_scsv) {
-    if (!SSL_enable_fallback_scsv(ssl)) {
+    if (!SSL_enable_fallback_scsv(ssl.get())) {
       BIO_print_errors_fp(stdout);
       return 1;
     }
   }
   if (!config->key_file.empty()) {
-    if (!SSL_use_PrivateKey_file(ssl, config->key_file.c_str(),
+    if (!SSL_use_PrivateKey_file(ssl.get(), config->key_file.c_str(),
                                  SSL_FILETYPE_PEM)) {
       BIO_print_errors_fp(stdout);
       return 1;
     }
   }
   if (!config->cert_file.empty()) {
-    if (!SSL_use_certificate_file(ssl, config->cert_file.c_str(),
+    if (!SSL_use_certificate_file(ssl.get(), config->cert_file.c_str(),
                                   SSL_FILETYPE_PEM)) {
       BIO_print_errors_fp(stdout);
       return 1;
     }
   }
   if (config->require_any_client_certificate) {
-    SSL_set_verify(ssl, SSL_VERIFY_PEER|SSL_VERIFY_FAIL_IF_NO_PEER_CERT,
+    SSL_set_verify(ssl.get(), SSL_VERIFY_PEER|SSL_VERIFY_FAIL_IF_NO_PEER_CERT,
                    skip_verify);
   }
   if (config->false_start) {
-    SSL_set_mode(ssl, SSL_MODE_HANDSHAKE_CUTTHROUGH);
+    SSL_set_mode(ssl.get(), SSL_MODE_HANDSHAKE_CUTTHROUGH);
   }
   if (config->cbc_record_splitting) {
-    SSL_set_mode(ssl, SSL_MODE_CBC_RECORD_SPLITTING);
+    SSL_set_mode(ssl.get(), SSL_MODE_CBC_RECORD_SPLITTING);
   }
   if (config->partial_write) {
-    SSL_set_mode(ssl, SSL_MODE_ENABLE_PARTIAL_WRITE);
+    SSL_set_mode(ssl.get(), SSL_MODE_ENABLE_PARTIAL_WRITE);
   }
   if (config->no_tls12) {
-    SSL_set_options(ssl, SSL_OP_NO_TLSv1_2);
+    SSL_set_options(ssl.get(), SSL_OP_NO_TLSv1_2);
   }
   if (config->no_tls11) {
-    SSL_set_options(ssl, SSL_OP_NO_TLSv1_1);
+    SSL_set_options(ssl.get(), SSL_OP_NO_TLSv1_1);
   }
   if (config->no_tls1) {
-    SSL_set_options(ssl, SSL_OP_NO_TLSv1);
+    SSL_set_options(ssl.get(), SSL_OP_NO_TLSv1);
   }
   if (config->no_ssl3) {
-    SSL_set_options(ssl, SSL_OP_NO_SSLv3);
+    SSL_set_options(ssl.get(), SSL_OP_NO_SSLv3);
   }
   if (config->cookie_exchange) {
-    SSL_set_options(ssl, SSL_OP_COOKIE_EXCHANGE);
+    SSL_set_options(ssl.get(), SSL_OP_COOKIE_EXCHANGE);
   }
   if (config->tls_d5_bug) {
-    SSL_set_options(ssl, SSL_OP_TLS_D5_BUG);
+    SSL_set_options(ssl.get(), SSL_OP_TLS_D5_BUG);
   }
   if (config->allow_unsafe_legacy_renegotiation) {
-    SSL_set_options(ssl, SSL_OP_ALLOW_UNSAFE_LEGACY_RENEGOTIATION);
+    SSL_set_options(ssl.get(), SSL_OP_ALLOW_UNSAFE_LEGACY_RENEGOTIATION);
   }
   if (!config->expected_channel_id.empty()) {
-    SSL_enable_tls_channel_id(ssl);
+    SSL_enable_tls_channel_id(ssl.get());
   }
   if (!config->send_channel_id.empty()) {
-    EVP_PKEY *pkey = LoadPrivateKey(config->send_channel_id);
-    if (pkey == NULL) {
+    SSL_enable_tls_channel_id(ssl.get());
+    ScopedEVP_PKEY pkey = LoadPrivateKey(config->send_channel_id);
+    if (!pkey || !SSL_set1_tls_channel_id(ssl.get(), pkey.get())) {
       BIO_print_errors_fp(stdout);
       return 1;
     }
-    SSL_enable_tls_channel_id(ssl);
-    if (!SSL_set1_tls_channel_id(ssl, pkey)) {
-      EVP_PKEY_free(pkey);
-      BIO_print_errors_fp(stdout);
-      return 1;
-    }
-    EVP_PKEY_free(pkey);
   }
   if (!config->host_name.empty()) {
-    SSL_set_tlsext_host_name(ssl, config->host_name.c_str());
+    SSL_set_tlsext_host_name(ssl.get(), config->host_name.c_str());
   }
   if (!config->advertise_alpn.empty()) {
-    SSL_set_alpn_protos(ssl, (const uint8_t *)config->advertise_alpn.data(),
+    SSL_set_alpn_protos(ssl.get(), (const uint8_t *)config->advertise_alpn.data(),
                         config->advertise_alpn.size());
   }
   if (!config->psk.empty()) {
-    SSL_set_psk_client_callback(ssl, psk_client_callback);
-    SSL_set_psk_server_callback(ssl, psk_server_callback);
+    SSL_set_psk_client_callback(ssl.get(), psk_client_callback);
+    SSL_set_psk_server_callback(ssl.get(), psk_server_callback);
   }
   if (!config->psk_identity.empty() &&
-      !SSL_use_psk_identity_hint(ssl, config->psk_identity.c_str())) {
+      !SSL_use_psk_identity_hint(ssl.get(), config->psk_identity.c_str())) {
     BIO_print_errors_fp(stdout);
     return 1;
   }
   if (!config->srtp_profiles.empty() &&
-      !SSL_set_srtp_profiles(ssl, config->srtp_profiles.c_str())) {
+      !SSL_set_srtp_profiles(ssl.get(), config->srtp_profiles.c_str())) {
     BIO_print_errors_fp(stdout);
     return 1;
   }
   if (config->enable_ocsp_stapling &&
-      !SSL_enable_ocsp_stapling(ssl)) {
+      !SSL_enable_ocsp_stapling(ssl.get())) {
     BIO_print_errors_fp(stdout);
     return 1;
   }
   if (config->enable_signed_cert_timestamps &&
-      !SSL_enable_signed_cert_timestamps(ssl)) {
+      !SSL_enable_signed_cert_timestamps(ssl.get())) {
     BIO_print_errors_fp(stdout);
     return 1;
   }
-  SSL_enable_fastradio_padding(ssl, config->fastradio_padding);
+  SSL_enable_fastradio_padding(ssl.get(), config->fastradio_padding);
   if (config->min_version != 0) {
-    SSL_set_min_version(ssl, (uint16_t)config->min_version);
+    SSL_set_min_version(ssl.get(), (uint16_t)config->min_version);
   }
   if (config->max_version != 0) {
-    SSL_set_max_version(ssl, (uint16_t)config->max_version);
+    SSL_set_max_version(ssl.get(), (uint16_t)config->max_version);
   }
   if (config->mtu != 0) {
-    SSL_set_options(ssl, SSL_OP_NO_QUERY_MTU);
-    SSL_set_mtu(ssl, config->mtu);
+    SSL_set_options(ssl.get(), SSL_OP_NO_QUERY_MTU);
+    SSL_set_mtu(ssl.get(), config->mtu);
   }
 
-  BIO *bio = BIO_new_fd(fd, 1 /* take ownership */);
-  if (bio == NULL) {
+  ScopedBIO bio(BIO_new_fd(fd, 1 /* take ownership */));
+  if (!bio) {
     BIO_print_errors_fp(stdout);
     return 1;
   }
   if (config->is_dtls) {
-    BIO *packeted = packeted_bio_create(&clock_delta);
-    BIO_push(packeted, bio);
-    bio = packeted;
+    ScopedBIO packeted = packeted_bio_create(&clock_delta);
+    BIO_push(packeted.get(), bio.release());
+    bio = std::move(packeted);
   }
+  BIO *async = NULL;
   if (config->async) {
-    BIO *async =
+    ScopedBIO async_scoped =
         config->is_dtls ? async_bio_create_datagram() : async_bio_create();
-    BIO_push(async, bio);
-    bio = async;
+    BIO_push(async_scoped.get(), bio.release());
+    async = async_scoped.get();
+    bio = std::move(async_scoped);
   }
-  SSL_set_bio(ssl, bio, bio);
+  SSL_set_bio(ssl.get(), bio.get(), bio.get());
+  bio.release();  // SSL_set_bio takes ownership.
 
   if (session != NULL) {
-    if (SSL_set_session(ssl, session) != 1) {
+    if (SSL_set_session(ssl.get(), session) != 1) {
       fprintf(stderr, "failed to set session\n");
       return 2;
     }
@@ -505,34 +485,33 @@ static int do_exchange(SSL_SESSION **out_session,
   int ret;
   if (config->implicit_handshake) {
     if (config->is_server) {
-      SSL_set_accept_state(ssl);
+      SSL_set_accept_state(ssl.get());
     } else {
-      SSL_set_connect_state(ssl);
+      SSL_set_connect_state(ssl.get());
     }
   } else {
     do {
       if (config->is_server) {
-        ret = SSL_accept(ssl);
+        ret = SSL_accept(ssl.get());
       } else {
-        ret = SSL_connect(ssl);
+        ret = SSL_connect(ssl.get());
       }
-    } while (config->async && retry_async(ssl, ret, bio, &clock_delta));
+    } while (config->async && retry_async(ssl.get(), ret, async, &clock_delta));
     if (ret != 1) {
-      SSL_free(ssl);
       BIO_print_errors_fp(stdout);
       return 2;
     }
 
     if (is_resume &&
-        (!!SSL_session_reused(ssl) == config->expect_session_miss)) {
+        (!!SSL_session_reused(ssl.get()) == config->expect_session_miss)) {
       fprintf(stderr, "session was%s reused\n",
-              SSL_session_reused(ssl) ? "" : " not");
+              SSL_session_reused(ssl.get()) ? "" : " not");
       return 2;
     }
 
     if (!config->expected_server_name.empty()) {
       const char *server_name =
-        SSL_get_servername(ssl, TLSEXT_NAMETYPE_host_name);
+        SSL_get_servername(ssl.get(), TLSEXT_NAMETYPE_host_name);
       if (server_name != config->expected_server_name) {
         fprintf(stderr, "servername mismatch (got %s; want %s)\n",
                 server_name, config->expected_server_name.c_str());
@@ -548,7 +527,7 @@ static int do_exchange(SSL_SESSION **out_session,
     if (!config->expected_certificate_types.empty()) {
       uint8_t *certificate_types;
       int num_certificate_types =
-        SSL_get0_certificate_types(ssl, &certificate_types);
+        SSL_get0_certificate_types(ssl.get(), &certificate_types);
       if (num_certificate_types !=
           (int)config->expected_certificate_types.size() ||
           memcmp(certificate_types,
@@ -562,7 +541,7 @@ static int do_exchange(SSL_SESSION **out_session,
     if (!config->expected_next_proto.empty()) {
       const uint8_t *next_proto;
       unsigned next_proto_len;
-      SSL_get0_next_proto_negotiated(ssl, &next_proto, &next_proto_len);
+      SSL_get0_next_proto_negotiated(ssl.get(), &next_proto, &next_proto_len);
       if (next_proto_len != config->expected_next_proto.size() ||
           memcmp(next_proto, config->expected_next_proto.data(),
                  next_proto_len) != 0) {
@@ -574,7 +553,7 @@ static int do_exchange(SSL_SESSION **out_session,
     if (!config->expected_alpn.empty()) {
       const uint8_t *alpn_proto;
       unsigned alpn_proto_len;
-      SSL_get0_alpn_selected(ssl, &alpn_proto, &alpn_proto_len);
+      SSL_get0_alpn_selected(ssl.get(), &alpn_proto, &alpn_proto_len);
       if (alpn_proto_len != config->expected_alpn.size() ||
           memcmp(alpn_proto, config->expected_alpn.data(),
                  alpn_proto_len) != 0) {
@@ -585,7 +564,7 @@ static int do_exchange(SSL_SESSION **out_session,
 
     if (!config->expected_channel_id.empty()) {
       uint8_t channel_id[64];
-      if (!SSL_get_tls_channel_id(ssl, channel_id, sizeof(channel_id))) {
+      if (!SSL_get_tls_channel_id(ssl.get(), channel_id, sizeof(channel_id))) {
         fprintf(stderr, "no channel id negotiated\n");
         return 2;
       }
@@ -607,7 +586,7 @@ static int do_exchange(SSL_SESSION **out_session,
     if (!config->expected_ocsp_response.empty()) {
       const uint8_t *data;
       size_t len;
-      SSL_get0_ocsp_response(ssl, &data, &len);
+      SSL_get0_ocsp_response(ssl.get(), &data, &len);
       if (config->expected_ocsp_response.size() != len ||
           memcmp(config->expected_ocsp_response.data(), data, len) != 0) {
         fprintf(stderr, "OCSP response mismatch\n");
@@ -618,7 +597,7 @@ static int do_exchange(SSL_SESSION **out_session,
     if (!config->expected_signed_cert_timestamps.empty()) {
       const uint8_t *data;
       size_t len;
-      SSL_get0_signed_cert_timestamp_list(ssl, &data, &len);
+      SSL_get0_signed_cert_timestamp_list(ssl.get(), &data, &len);
       if (config->expected_signed_cert_timestamps.size() != len ||
           memcmp(config->expected_signed_cert_timestamps.data(),
                  data, len) != 0) {
@@ -638,19 +617,17 @@ static int do_exchange(SSL_SESSION **out_session,
       return 2;
     }
 
-    SSL_renegotiate(ssl);
+    SSL_renegotiate(ssl.get());
 
-    ret = SSL_do_handshake(ssl);
+    ret = SSL_do_handshake(ssl.get());
     if (ret != 1) {
-      SSL_free(ssl);
       BIO_print_errors_fp(stdout);
       return 2;
     }
 
-    SSL_set_state(ssl, SSL_ST_ACCEPT);
-    ret = SSL_do_handshake(ssl);
+    SSL_set_state(ssl.get(), SSL_ST_ACCEPT);
+    ret = SSL_do_handshake(ssl.get());
     if (ret != 1) {
-      SSL_free(ssl);
       BIO_print_errors_fp(stdout);
       return 2;
     }
@@ -679,15 +656,14 @@ static int do_exchange(SSL_SESSION **out_session,
       }
 
       do {
-        w = SSL_write(ssl, buf + off, len - off);
+        w = SSL_write(ssl.get(), buf + off, len - off);
         if (w > 0) {
           off += (size_t) w;
         }
-      } while ((config->async && retry_async(ssl, w, bio, &clock_delta)) ||
+      } while ((config->async && retry_async(ssl.get(), w, async, &clock_delta)) ||
                (w > 0 && off < len));
 
       if (w < 0 || off != len) {
-        SSL_free(ssl);
         BIO_print_errors_fp(stdout);
         return 4;
       }
@@ -696,16 +672,16 @@ static int do_exchange(SSL_SESSION **out_session,
     if (config->shim_writes_first) {
       int w;
       do {
-        w = SSL_write(ssl, "hello", 5);
-      } while (config->async && retry_async(ssl, w, bio, &clock_delta));
+        w = SSL_write(ssl.get(), "hello", 5);
+      } while (config->async && retry_async(ssl.get(), w, async, &clock_delta));
     }
     for (;;) {
       uint8_t buf[512];
       int n;
       do {
-        n = SSL_read(ssl, buf, sizeof(buf));
-      } while (config->async && retry_async(ssl, n, bio, &clock_delta));
-      int err = SSL_get_error(ssl, n);
+        n = SSL_read(ssl.get(), buf, sizeof(buf));
+      } while (config->async && retry_async(ssl.get(), n, async, &clock_delta));
+      int err = SSL_get_error(ssl.get(), n);
       if (err == SSL_ERROR_ZERO_RETURN ||
           (n == 0 && err == SSL_ERROR_SYSCALL)) {
         if (n != 0) {
@@ -720,7 +696,6 @@ static int do_exchange(SSL_SESSION **out_session,
           fprintf(stderr, "Invalid SSL_get_error output\n");
           return 3;
         }
-        SSL_free(ssl);
         BIO_print_errors_fp(stdout);
         return 3;
       }
@@ -734,10 +709,9 @@ static int do_exchange(SSL_SESSION **out_session,
       }
       int w;
       do {
-        w = SSL_write(ssl, buf, n);
-      } while (config->async && retry_async(ssl, w, bio, &clock_delta));
+        w = SSL_write(ssl.get(), buf, n);
+      } while (config->async && retry_async(ssl.get(), w, async, &clock_delta));
       if (w != n) {
-        SSL_free(ssl);
         BIO_print_errors_fp(stdout);
         return 4;
       }
@@ -745,11 +719,10 @@ static int do_exchange(SSL_SESSION **out_session,
   }
 
   if (out_session) {
-    *out_session = SSL_get1_session(ssl);
+    out_session->reset(SSL_get1_session(ssl.get()));
   }
 
-  SSL_shutdown(ssl);
-  SSL_free(ssl);
+  SSL_shutdown(ssl.get());
   return 0;
 }
 
@@ -772,36 +745,31 @@ int main(int argc, char **argv) {
     return usage(argv[0]);
   }
 
-  SSL_CTX *ssl_ctx = setup_ctx(&config);
-  if (ssl_ctx == NULL) {
+  ScopedSSL_CTX ssl_ctx = setup_ctx(&config);
+  if (!ssl_ctx) {
     BIO_print_errors_fp(stdout);
     return 1;
   }
 
-  SSL_SESSION *session = NULL;
+  ScopedSSL_SESSION session;
   int ret = do_exchange(&session,
-                        ssl_ctx, &config,
+                        ssl_ctx.get(), &config,
                         false /* is_resume */,
                         3 /* fd */, NULL /* session */);
   if (ret != 0) {
-    goto out;
+    return ret;
   }
 
   if (config.resume) {
     ret = do_exchange(NULL,
-                      ssl_ctx, &config,
+                      ssl_ctx.get(), &config,
                       true /* is_resume */,
                       4 /* fd */,
-                      config.is_server ? NULL : session);
+                      config.is_server ? NULL : session.get());
     if (ret != 0) {
-      goto out;
+      return ret;
     }
   }
 
-  ret = 0;
-
-out:
-  SSL_SESSION_free(session);
-  SSL_CTX_free(ssl_ctx);
-  return ret;
+  return 0;
 }

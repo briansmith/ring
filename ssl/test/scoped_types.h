@@ -1,4 +1,4 @@
-/* Copyright (c) 2014, Google Inc.
+/* Copyright (c) 2015, Google Inc.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -12,25 +12,34 @@
  * OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
  * CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE. */
 
-#ifndef HEADER_PACKETED_BIO
-#define HEADER_PACKETED_BIO
+#ifndef HEADER_SCOPED_TYPES
+#define HEADER_SCOPED_TYPES
+
+#include <memory>
 
 #include <openssl/bio.h>
+#include <openssl/dh.h>
+#include <openssl/evp.h>
 #include <openssl/ssl.h>
 
-#include "scoped_types.h"
+
+template<typename T, void (*func)(T*)>
+struct OpenSSLDeleter {
+  void operator()(T *obj) {
+    func(obj);
+  }
+};
+
+template<typename T, void (*func)(T*)>
+using ScopedOpenSSLType = std::unique_ptr<T, OpenSSLDeleter<T, func>>;
+
+using ScopedBIO = ScopedOpenSSLType<BIO, BIO_vfree>;
+using ScopedDH = ScopedOpenSSLType<DH, DH_free>;
+using ScopedEVP_PKEY = ScopedOpenSSLType<EVP_PKEY, EVP_PKEY_free>;
+
+using ScopedSSL = ScopedOpenSSLType<SSL, SSL_free>;
+using ScopedSSL_CTX = ScopedOpenSSLType<SSL_CTX, SSL_CTX_free>;
+using ScopedSSL_SESSION = ScopedOpenSSLType<SSL_SESSION, SSL_SESSION_free>;
 
 
-// packeted_bio_create creates a filter BIO which implements a reliable in-order
-// blocking datagram socket. The resulting BIO, on |BIO_read|, may simulate a
-// timeout which sets |*out_timeout| to the timeout and fails the read.
-// |*out_timeout| must be zero on entry to |BIO_read|; it is an error to not
-// apply the timeout before the next |BIO_read|.
-//
-// Note: The read timeout simulation is intended to be used with the async BIO
-// wrapper. It doesn't simulate BIO_CTRL_DGRAM_SET_NEXT_TIMEOUT, used in DTLS's
-// blocking mode.
-ScopedBIO packeted_bio_create(OPENSSL_timeval *out_timeout);
-
-
-#endif  // HEADER_PACKETED_BIO
+#endif  // HEADER_SCOPED_TYPES

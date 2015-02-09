@@ -150,16 +150,16 @@ const BIO_METHOD async_bio_method = {
 
 }  // namespace
 
-BIO *async_bio_create() {
-  return BIO_new(&async_bio_method);
+ScopedBIO async_bio_create() {
+  return ScopedBIO(BIO_new(&async_bio_method));
 }
 
-BIO *async_bio_create_datagram() {
-  BIO *ret = BIO_new(&async_bio_method);
+ScopedBIO async_bio_create_datagram() {
+  ScopedBIO ret(BIO_new(&async_bio_method));
   if (!ret) {
-    return NULL;
+    return nullptr;
   }
-  get_data(ret)->datagram = true;
+  get_data(ret.get())->datagram = true;
   return ret;
 }
 
