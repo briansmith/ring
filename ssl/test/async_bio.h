@@ -20,23 +20,23 @@
 #include "scoped_types.h"
 
 
-// async_bio_create creates a filter BIO for testing asynchronous state
+// AsyncBioCreate creates a filter BIO for testing asynchronous state
 // machines which consume a stream socket. Reads and writes will fail
 // and return EAGAIN unless explicitly allowed. Each async BIO has a
 // read quota and a write quota. Initially both are zero. As each is
 // incremented, bytes are allowed to flow through the BIO.
-ScopedBIO async_bio_create();
+ScopedBIO AsyncBioCreate();
 
-// async_bio_create_datagram creates a filter BIO for testing for
+// AsyncBioCreateDatagram creates a filter BIO for testing for
 // asynchronous state machines which consume datagram sockets. The read
 // and write quota count in packets rather than bytes.
-ScopedBIO async_bio_create_datagram();
+ScopedBIO AsyncBioCreateDatagram();
 
-// async_bio_allow_read increments |bio|'s read quota by |count|.
-void async_bio_allow_read(BIO *bio, size_t count);
+// AsyncBioAllowRead increments |bio|'s read quota by |count|.
+void AsyncBioAllowRead(BIO *bio, size_t count);
 
-// async_bio_allow_write increments |bio|'s write quota by |count|.
-void async_bio_allow_write(BIO *bio, size_t count);
+// AsyncBioAllowWrite increments |bio|'s write quota by |count|.
+void AsyncBioAllowWrite(BIO *bio, size_t count);
 
 
 #endif  // HEADER_ASYNC_BIO

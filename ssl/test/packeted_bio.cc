@@ -23,13 +23,13 @@
 
 namespace {
 
-extern const BIO_METHOD packeted_bio_method;
+extern const BIO_METHOD g_packeted_bio_method;
 
 const uint8_t kOpcodePacket = 'P';
 const uint8_t kOpcodeTimeout = 'T';
 const uint8_t kOpcodeTimeoutAck = 't';
 
-static int packeted_write(BIO *bio, const char *in, int inl) {
+static int PacketedWrite(BIO *bio, const char *in, int inl) {
   if (bio->next_bio == NULL) {
     return 0;
   }
@@ -55,7 +55,7 @@ static int packeted_write(BIO *bio, const char *in, int inl) {
   return ret;
 }
 
-static int packeted_read(BIO *bio, char *out, int outl) {
+static int PacketedRead(BIO *bio, char *out, int outl) {
   if (bio->next_bio == NULL) {
     return 0;
   }
@@ -138,7 +138,7 @@ static int packeted_read(BIO *bio, char *out, int outl) {
   return outl;
 }
 
-static long packeted_ctrl(BIO *bio, int cmd, long num, void *ptr) {
+static long PacketedCtrl(BIO *bio, int cmd, long num, void *ptr) {
   if (bio->next_bio == NULL) {
     return 0;
   }
@@ -148,12 +148,12 @@ static long packeted_ctrl(BIO *bio, int cmd, long num, void *ptr) {
   return ret;
 }
 
-static int packeted_new(BIO *bio) {
+static int PacketedNew(BIO *bio) {
   bio->init = 1;
   return 1;
 }
 
-static int packeted_free(BIO *bio) {
+static int PacketedFree(BIO *bio) {
   if (bio == NULL) {
     return 0;
   }
@@ -162,30 +162,30 @@ static int packeted_free(BIO *bio) {
   return 1;
 }
 
-static long packeted_callback_ctrl(BIO *bio, int cmd, bio_info_cb fp) {
+static long PacketedCallbackCtrl(BIO *bio, int cmd, bio_info_cb fp) {
   if (bio->next_bio == NULL) {
     return 0;
   }
   return BIO_callback_ctrl(bio->next_bio, cmd, fp);
 }
 
-const BIO_METHOD packeted_bio_method = {
+const BIO_METHOD g_packeted_bio_method = {
   BIO_TYPE_FILTER,
   "packeted bio",
-  packeted_write,
-  packeted_read,
+  PacketedWrite,
+  PacketedRead,
   NULL /* puts */,
   NULL /* gets */,
-  packeted_ctrl,
-  packeted_new,
-  packeted_free,
-  packeted_callback_ctrl,
+  PacketedCtrl,
+  PacketedNew,
+  PacketedFree,
+  PacketedCallbackCtrl,
 };
 
 }  // namespace
 
-ScopedBIO packeted_bio_create(OPENSSL_timeval *out_timeout) {
-  ScopedBIO bio(BIO_new(&packeted_bio_method));
+ScopedBIO PacketedBioCreate(OPENSSL_timeval *out_timeout) {
+  ScopedBIO bio(BIO_new(&g_packeted_bio_method));
   bio->ptr = out_timeout;
   return bio;
 }

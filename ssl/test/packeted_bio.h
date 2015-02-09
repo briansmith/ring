@@ -21,7 +21,7 @@
 #include "scoped_types.h"
 
 
-// packeted_bio_create creates a filter BIO which implements a reliable in-order
+// PacketedBioCreate creates a filter BIO which implements a reliable in-order
 // blocking datagram socket. The resulting BIO, on |BIO_read|, may simulate a
 // timeout which sets |*out_timeout| to the timeout and fails the read.
 // |*out_timeout| must be zero on entry to |BIO_read|; it is an error to not
@@ -30,7 +30,7 @@
 // Note: The read timeout simulation is intended to be used with the async BIO
 // wrapper. It doesn't simulate BIO_CTRL_DGRAM_SET_NEXT_TIMEOUT, used in DTLS's
 // blocking mode.
-ScopedBIO packeted_bio_create(OPENSSL_timeval *out_timeout);
+ScopedBIO PacketedBioCreate(OPENSSL_timeval *out_timeout);
 
 
 #endif  // HEADER_PACKETED_BIO

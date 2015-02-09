@@ -22,23 +22,23 @@
 
 namespace {
 
-extern const BIO_METHOD async_bio_method;
+extern const BIO_METHOD g_async_bio_method;
 
-struct async_bio {
+struct AsyncBio {
   bool datagram;
   size_t read_quota;
   size_t write_quota;
 };
 
-async_bio *get_data(BIO *bio) {
-  if (bio->method != &async_bio_method) {
+AsyncBio *GetData(BIO *bio) {
+  if (bio->method != &g_async_bio_method) {
     return NULL;
   }
-  return (async_bio *)bio->ptr;
+  return (AsyncBio *)bio->ptr;
 }
 
-static int async_write(BIO *bio, const char *in, int inl) {
-  async_bio *a = get_data(bio);
+static int AsyncWrite(BIO *bio, const char *in, int inl) {
+  AsyncBio *a = GetData(bio);
   if (a == NULL || bio->next_bio == NULL) {
     return 0;
   }
@@ -69,8 +69,8 @@ static int async_write(BIO *bio, const char *in, int inl) {
   return ret;
 }
 
-static int async_read(BIO *bio, char *out, int outl) {
-  async_bio *a = get_data(bio);
+static int AsyncRead(BIO *bio, char *out, int outl) {
+  AsyncBio *a = GetData(bio);
   if (a == NULL || bio->next_bio == NULL) {
     return 0;
   }
@@ -95,7 +95,7 @@ static int async_read(BIO *bio, char *out, int outl) {
   return ret;
 }
 
-static long async_ctrl(BIO *bio, int cmd, long num, void *ptr) {
+static long AsyncCtrl(BIO *bio, int cmd, long num, void *ptr) {
   if (bio->next_bio == NULL) {
     return 0;
   }
@@ -105,8 +105,8 @@ static long async_ctrl(BIO *bio, int cmd, long num, void *ptr) {
   return ret;
 }
 
-static int async_new(BIO *bio) {
-  async_bio *a = (async_bio *)OPENSSL_malloc(sizeof(*a));
+static int AsyncNew(BIO *bio) {
+  AsyncBio *a = (AsyncBio *)OPENSSL_malloc(sizeof(*a));
   if (a == NULL) {
     return 0;
   }
@@ -116,7 +116,7 @@ static int async_new(BIO *bio) {
   return 1;
 }
 
-static int async_free(BIO *bio) {
+static int AsyncFree(BIO *bio) {
   if (bio == NULL) {
     return 0;
   }
@@ -128,51 +128,51 @@ static int async_free(BIO *bio) {
   return 1;
 }
 
-static long async_callback_ctrl(BIO *bio, int cmd, bio_info_cb fp) {
+static long AsyncCallbackCtrl(BIO *bio, int cmd, bio_info_cb fp) {
   if (bio->next_bio == NULL) {
     return 0;
   }
   return BIO_callback_ctrl(bio->next_bio, cmd, fp);
 }
 
-const BIO_METHOD async_bio_method = {
+const BIO_METHOD g_async_bio_method = {
   BIO_TYPE_FILTER,
   "async bio",
-  async_write,
-  async_read,
+  AsyncWrite,
+  AsyncRead,
   NULL /* puts */,
   NULL /* gets */,
-  async_ctrl,
-  async_new,
-  async_free,
-  async_callback_ctrl,
+  AsyncCtrl,
+  AsyncNew,
+  AsyncFree,
+  AsyncCallbackCtrl,
 };
 
 }  // namespace
 
-ScopedBIO async_bio_create() {
-  return ScopedBIO(BIO_new(&async_bio_method));
+ScopedBIO AsyncBioCreate() {
+  return ScopedBIO(BIO_new(&g_async_bio_method));
 }
 
-ScopedBIO async_bio_create_datagram() {
-  ScopedBIO ret(BIO_new(&async_bio_method));
+ScopedBIO AsyncBioCreateDatagram() {
+  ScopedBIO ret(BIO_new(&g_async_bio_method));
   if (!ret) {
     return nullptr;
   }
-  get_data(ret.get())->datagram = true;
+  GetData(ret.get())->datagram = true;
   return ret;
 }
 
-void async_bio_allow_read(BIO *bio, size_t count) {
-  async_bio *a = get_data(bio);
+void AsyncBioAllowRead(BIO *bio, size_t count) {
+  AsyncBio *a = GetData(bio);
   if (a == NULL) {
     return;
   }
   a->read_quota += count;
 }
 
-void async_bio_allow_write(BIO *bio, size_t count) {
-  async_bio *a = get_data(bio);
+void AsyncBioAllowWrite(BIO *bio, size_t count) {
+  AsyncBio *a = GetData(bio);
   if (a == NULL) {
     return;
   }
