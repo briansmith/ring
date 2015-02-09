@@ -45,6 +45,8 @@ struct AsyncState {
 
   ScopedEVP_PKEY channel_id;
   bool cert_ready;
+  ScopedSSL_SESSION session;
+  ScopedSSL_SESSION pending_session;
 };
 
 static void AsyncExFree(void *parent, void *ptr, CRYPTO_EX_DATA *ad, int index,
@@ -290,6 +292,19 @@ static int cert_callback(SSL *ssl, void *arg) {
   return 1;
 }
 
+static SSL_SESSION *get_session_callback(SSL *ssl, uint8_t *data, int len,
+                                         int *copy) {
+  AsyncState *async_state = GetAsyncState(ssl);
+  if (async_state->session) {
+    *copy = 0;
+    return async_state->session.release();
+  } else if (async_state->pending_session) {
+    return SSL_magic_pending_session_ptr();
+  } else {
+    return NULL;
+  }
+}
+
 static ScopedSSL_CTX setup_ctx(const TestConfig *config) {
   ScopedSSL_CTX ssl_ctx(SSL_CTX_new(
       config->is_dtls ? DTLS_method() : TLS_method()));
@@ -318,7 +333,15 @@ static ScopedSSL_CTX setup_ctx(const TestConfig *config) {
     return nullptr;
   }
 
-  SSL_CTX_set_session_cache_mode(ssl_ctx.get(), SSL_SESS_CACHE_BOTH);
+  if (config->async && config->is_server) {
+    // Disable the internal session cache. To test asynchronous session lookup,
+    // we use an external session cache.
+    SSL_CTX_set_session_cache_mode(
+        ssl_ctx.get(), SSL_SESS_CACHE_BOTH | SSL_SESS_CACHE_NO_INTERNAL);
+    SSL_CTX_sess_set_get_cb(ssl_ctx.get(), get_session_callback);
+  } else {
+    SSL_CTX_set_session_cache_mode(ssl_ctx.get(), SSL_SESS_CACHE_BOTH);
+  }
 
   ssl_ctx->select_certificate_cb = select_certificate_callback;
 
@@ -382,6 +405,10 @@ static int retry_async(SSL *ssl, int ret, BIO *async,
       return 1;
     case SSL_ERROR_WANT_X509_LOOKUP:
       GetAsyncState(ssl)->cert_ready = true;
+      return 1;
+    case SSL_ERROR_PENDING_SESSION:
+      GetAsyncState(ssl)->session =
+          std::move(GetAsyncState(ssl)->pending_session);
       return 1;
     default:
       return 0;
@@ -537,9 +564,16 @@ static int do_exchange(ScopedSSL_SESSION *out_session,
   bio.release();  // SSL_set_bio takes ownership.
 
   if (session != NULL) {
-    if (SSL_set_session(ssl.get(), session) != 1) {
-      fprintf(stderr, "failed to set session\n");
-      return 2;
+    if (!config->is_server) {
+      if (SSL_set_session(ssl.get(), session) != 1) {
+        fprintf(stderr, "failed to set session\n");
+        return 2;
+      }
+    } else if (config->async) {
+      // The internal session cache is disabled, so install the session
+      // manually.
+      GetAsyncState(ssl.get())->pending_session.reset(
+          SSL_SESSION_up_ref(session));
     }
   }
 
@@ -814,20 +848,15 @@ int main(int argc, char **argv) {
   }
 
   ScopedSSL_SESSION session;
-  int ret = do_exchange(&session,
-                        ssl_ctx.get(), &config,
-                        false /* is_resume */,
+  int ret = do_exchange(&session, ssl_ctx.get(), &config, false /* is_resume */,
                         3 /* fd */, NULL /* session */);
   if (ret != 0) {
     return ret;
   }
 
   if (config.resume) {
-    ret = do_exchange(NULL,
-                      ssl_ctx.get(), &config,
-                      true /* is_resume */,
-                      4 /* fd */,
-                      config.is_server ? NULL : session.get());
+    ret = do_exchange(NULL, ssl_ctx.get(), &config, true /* is_resume */,
+                      4 /* fd */, session.get());
     if (ret != 0) {
       return ret;
     }
