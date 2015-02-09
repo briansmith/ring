@@ -335,14 +335,6 @@ int ssl3_accept(SSL *s) {
       case SSL3_ST_SR_CLNT_HELLO_D:
         s->shutdown = 0;
         ret = ssl3_get_client_hello(s);
-        if (ret == PENDING_SESSION) {
-          s->rwstate = SSL_PENDING_SESSION;
-          goto end;
-        }
-        if (ret == CERTIFICATE_SELECTION_PENDING) {
-          s->rwstate = SSL_CERTIFICATE_SELECTION_PENDING;
-          goto end;
-        }
         if (ret <= 0) {
           goto end;
         }
@@ -997,7 +989,8 @@ int ssl3_get_client_hello(SSL *s) {
         s->state = SSL3_ST_SR_CLNT_HELLO_D;
         switch (s->ctx->select_certificate_cb(&early_ctx)) {
           case 0:
-            return CERTIFICATE_SELECTION_PENDING;
+            s->rwstate = SSL_CERTIFICATE_SELECTION_PENDING;
+            goto err;
 
           case -1:
             /* Connection rejected. */
@@ -1109,7 +1102,7 @@ int ssl3_get_client_hello(SSL *s) {
   } else {
     i = ssl_get_prev_session(s, &early_ctx);
     if (i == PENDING_SESSION) {
-      ret = PENDING_SESSION;
+      s->rwstate = SSL_PENDING_SESSION;
       goto err;
     } else if (i == -1) {
       goto err;

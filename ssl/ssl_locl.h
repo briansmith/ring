@@ -395,7 +395,6 @@
  * SSL_aDSS <- DSA_SIGN */
 
 #define PENDING_SESSION -10000
-#define CERTIFICATE_SELECTION_PENDING -10001
 
 /* From RFC4492, used in encoding the curve type in ECParameters */
 #define EXPLICIT_PRIME_CURVE_TYPE 1
