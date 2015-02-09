@@ -1398,11 +1398,15 @@ extern "C" {
 /* Is the SSL_connection established? */
 #define SSL_get_state(a) SSL_state(a)
 #define SSL_is_init_finished(a) (SSL_state(a) == SSL_ST_OK)
-#define SSL_in_init(a) \
-  ((SSL_state(a) & SSL_ST_INIT) && !SSL_cutthrough_complete(a))
+#define SSL_in_init(a) (SSL_state(a) & SSL_ST_INIT)
 #define SSL_in_before(a) (SSL_state(a) & SSL_ST_BEFORE)
 #define SSL_in_connect_init(a) (SSL_state(a) & SSL_ST_CONNECT)
 #define SSL_in_accept_init(a) (SSL_state(a) & SSL_ST_ACCEPT)
+
+/* SSL_cutthrough_complete returns one if |s| has a pending unfinished handshake
+ * that has completed cut-through. |SSL_write| may be called at this point
+ * without waiting for the peer, but |SSL_read| will require the handshake
+ * to be completed. */
 OPENSSL_EXPORT int SSL_cutthrough_complete(const SSL *s);
 
 /* The following 2 states are kept in ssl->rstate when reads fail,

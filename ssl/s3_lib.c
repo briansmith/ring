@@ -1478,17 +1478,12 @@ int ssl3_write(SSL *s, const void *buf, int len) {
 }
 
 static int ssl3_read_internal(SSL *s, void *buf, int len, int peek) {
-  int ret;
-
   ERR_clear_system_error();
   if (s->s3->renegotiate) {
     ssl3_renegotiate_check(s);
   }
-  s->s3->in_read_app_data = 1;
-  ret = s->method->ssl_read_bytes(s, SSL3_RT_APPLICATION_DATA, buf, len, peek);
-  s->s3->in_read_app_data = 0;
 
-  return ret;
+  return s->method->ssl_read_bytes(s, SSL3_RT_APPLICATION_DATA, buf, len, peek);
 }
 
 int ssl3_read(SSL *s, void *buf, int len) {

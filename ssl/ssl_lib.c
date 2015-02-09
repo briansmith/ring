@@ -2902,18 +2902,7 @@ int ssl_ctx_log_master_secret(SSL_CTX *ctx, const uint8_t *client_random,
 }
 
 int SSL_cutthrough_complete(const SSL *s) {
-  return (
-      !s->server && /* cutthrough only applies to clients */
-      !s->hit &&    /* full-handshake */
-      s->version >= SSL3_VERSION &&
-      s->s3->in_read_app_data == 0 && /* cutthrough only applies to write() */
-      (SSL_get_mode((SSL *)s) &
-       SSL_MODE_HANDSHAKE_CUTTHROUGH) && /* cutthrough enabled */
-      ssl3_can_cutthrough(s) &&          /* cutthrough allowed */
-      s->s3->previous_server_finished_len ==
-          0 && /* not a renegotiation handshake */
-      (s->state == SSL3_ST_CR_SESSION_TICKET_A || /* ready to write app-data*/
-       s->state == SSL3_ST_CR_CHANGE || s->state == SSL3_ST_CR_FINISHED_A));
+  return s->s3->tmp.cutthrough_complete;
 }
 
 void SSL_get_structure_sizes(size_t *ssl_size, size_t *ssl_ctx_size,

@@ -401,8 +401,6 @@ typedef struct ssl3_state_st {
   int total_renegotiations;
   int num_renegotiations;
 
-  int in_read_app_data;
-
   /* State pertaining to the pending handshake.
    *
    * TODO(davidben): State is current spread all over the place. Move
@@ -486,6 +484,10 @@ typedef struct ssl3_state_st {
     /* new_mac_secret_size is unused and exists only until wpa_supplicant can
      * be updated. It is only needed for EAP-FAST, which we don't support. */
     uint8_t new_mac_secret_size;
+
+    /* Client-only: cutthrough_complete is one if there is a pending handshake,
+     * but cut-through is completed so the client may write data. */
+    char cutthrough_complete;
   } tmp;
 
   /* Connection binding to prevent renegotiation attacks */

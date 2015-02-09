@@ -529,6 +529,7 @@ int ssl3_connect(SSL *s) {
         } else {
           s->state = SSL3_ST_CR_CHANGE;
         }
+        s->s3->tmp.cutthrough_complete = 1;
 
         ssl_free_wbio_buffer(s);
         ret = 1;
@@ -549,6 +550,7 @@ int ssl3_connect(SSL *s) {
         s->init_num = 0;
         s->renegotiate = 0;
         s->new_session = 0;
+        s->s3->tmp.cutthrough_complete = 0;
 
         ssl_update_cache(s, SSL_SESS_CACHE_CLIENT);
         if (s->hit) {
