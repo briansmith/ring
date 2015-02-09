@@ -41,7 +41,10 @@ static int usage(const char *program) {
 }
 
 struct AsyncState {
+  AsyncState() : cert_ready(false) {}
+
   ScopedEVP_PKEY channel_id;
+  bool cert_ready;
 };
 
 static void AsyncExFree(void *parent, void *ptr, CRYPTO_EX_DATA *ad, int index,
@@ -88,6 +91,21 @@ static ScopedEVP_PKEY LoadPrivateKey(const std::string &file) {
   }
   ScopedEVP_PKEY pkey(PEM_read_bio_PrivateKey(bio.get(), NULL, NULL, NULL));
   return pkey;
+}
+
+static bool InstallCertificate(SSL *ssl) {
+  const TestConfig *config = GetConfigPtr(ssl);
+  if (!config->key_file.empty() &&
+      !SSL_use_PrivateKey_file(ssl, config->key_file.c_str(),
+                               SSL_FILETYPE_PEM)) {
+    return false;
+  }
+  if (!config->cert_file.empty() &&
+      !SSL_use_certificate_file(ssl, config->cert_file.c_str(),
+                                SSL_FILETYPE_PEM)) {
+    return false;
+  }
+  return true;
 }
 
 static int early_callback_called = 0;
@@ -262,6 +280,16 @@ static void channel_id_callback(SSL *ssl, EVP_PKEY **out_pkey) {
   *out_pkey = GetAsyncState(ssl)->channel_id.release();
 }
 
+static int cert_callback(SSL *ssl, void *arg) {
+  if (!GetAsyncState(ssl)->cert_ready) {
+    return -1;
+  }
+  if (!InstallCertificate(ssl)) {
+    return 0;
+  }
+  return 1;
+}
+
 static ScopedSSL_CTX setup_ctx(const TestConfig *config) {
   ScopedSSL_CTX ssl_ctx(SSL_CTX_new(
       config->is_dtls ? DTLS_method() : TLS_method()));
@@ -352,6 +380,9 @@ static int retry_async(SSL *ssl, int ret, BIO *async,
       GetAsyncState(ssl)->channel_id =
           LoadPrivateKey(GetConfigPtr(ssl)->send_channel_id);
       return 1;
+    case SSL_ERROR_WANT_X509_LOOKUP:
+      GetAsyncState(ssl)->cert_ready = true;
+      return 1;
     default:
       return 0;
   }
@@ -385,19 +416,13 @@ static int do_exchange(ScopedSSL_SESSION *out_session,
       return 1;
     }
   }
-  if (!config->key_file.empty()) {
-    if (!SSL_use_PrivateKey_file(ssl.get(), config->key_file.c_str(),
-                                 SSL_FILETYPE_PEM)) {
-      BIO_print_errors_fp(stdout);
-      return 1;
-    }
-  }
-  if (!config->cert_file.empty()) {
-    if (!SSL_use_certificate_file(ssl.get(), config->cert_file.c_str(),
-                                  SSL_FILETYPE_PEM)) {
-      BIO_print_errors_fp(stdout);
-      return 1;
-    }
+  if (config->async) {
+    // TODO(davidben): Also test |s->ctx->client_cert_cb| on the client and
+    // |s->ctx->select_certificate_cb| on the server.
+    SSL_set_cert_cb(ssl.get(), cert_callback, NULL);
+  } else if (!InstallCertificate(ssl.get())) {
+    BIO_print_errors_fp(stdout);
+    return 1;
   }
   if (config->require_any_client_certificate) {
     SSL_set_verify(ssl.get(), SSL_VERIFY_PEER|SSL_VERIFY_FAIL_IF_NO_PEER_CERT,
