@@ -67,6 +67,7 @@ struct TestConfig {
   int min_version;
   int max_version;
   int mtu;
+  bool implicit_handshake;
 };
 
 bool ParseConfig(int argc, char **argv, TestConfig *out_config);

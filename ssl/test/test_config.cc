@@ -73,6 +73,7 @@ const Flag<bool> kBoolFlags[] = {
   { "-enable-signed-cert-timestamps",
     &TestConfig::enable_signed_cert_timestamps },
   { "-fastradio-padding", &TestConfig::fastradio_padding },
+  { "-implicit-handshake", &TestConfig::implicit_handshake },
 };
 
 const Flag<std::string> kStringFlags[] = {
@@ -136,7 +137,8 @@ TestConfig::TestConfig()
       fastradio_padding(false),
       min_version(0),
       max_version(0),
-      mtu(0) {
+      mtu(0),
+      implicit_handshake(false) {
 }
 
 bool ParseConfig(int argc, char **argv, TestConfig *out_config) {

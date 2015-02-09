@@ -592,10 +592,6 @@ int dtls1_read_bytes(SSL *s, int type, unsigned char *buf, int len, int peek) {
   SSL3_RECORD *rr;
   void (*cb)(const SSL *ssl, int type2, int val) = NULL;
 
-  if (s->s3->rbuf.buf == NULL && !ssl3_setup_buffers(s)) {
-      return -1;
-  }
-
   /* XXX: check what the second '&& type' is about */
   if ((type && (type != SSL3_RT_APPLICATION_DATA) &&
        (type != SSL3_RT_HANDSHAKE) && type) ||
@@ -614,6 +610,11 @@ int dtls1_read_bytes(SSL *s, int type, unsigned char *buf, int len, int peek) {
       OPENSSL_PUT_ERROR(SSL, dtls1_read_bytes, SSL_R_SSL_HANDSHAKE_FAILURE);
       return -1;
     }
+  }
+
+  if (s->s3->rbuf.buf == NULL && !ssl3_setup_buffers(s)) {
+    /* TODO(davidben): Is this redundant with the calls in the handshake? */
+    return -1;
   }
 
 start:

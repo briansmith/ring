@@ -743,10 +743,6 @@ int ssl3_read_bytes(SSL *s, int type, uint8_t *buf, int len, int peek) {
   void (*cb)(const SSL *ssl, int type2, int val) = NULL;
   uint8_t alert_buffer[2];
 
-  if (s->s3->rbuf.buf == NULL && !ssl3_setup_read_buffer(s)) {
-    return -1;
-  }
-
   if ((type && type != SSL3_RT_APPLICATION_DATA && type != SSL3_RT_HANDSHAKE) ||
       (peek && type != SSL3_RT_APPLICATION_DATA)) {
     OPENSSL_PUT_ERROR(SSL, ssl3_read_bytes, ERR_R_INTERNAL_ERROR);
@@ -786,6 +782,11 @@ int ssl3_read_bytes(SSL *s, int type, uint8_t *buf, int len, int peek) {
       OPENSSL_PUT_ERROR(SSL, ssl3_read_bytes, SSL_R_SSL_HANDSHAKE_FAILURE);
       return -1;
     }
+  }
+
+  if (s->s3->rbuf.buf == NULL && !ssl3_setup_read_buffer(s)) {
+    /* TODO(davidben): Is this redundant with the calls in the handshake? */
+    return -1;
   }
 
 start:
