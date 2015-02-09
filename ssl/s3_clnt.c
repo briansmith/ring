@@ -1529,7 +1529,7 @@ err:
 }
 
 int ssl3_get_new_session_ticket(SSL *s) {
-  int ok, al, ret = 0;
+  int ok, al;
   long n;
   CBS new_session_ticket, ticket;
 
@@ -1558,21 +1558,15 @@ int ssl3_get_new_session_ticket(SSL *s) {
     goto err;
   }
 
-  /* There are two ways to detect a resumed ticket sesion. One is to set an
-   * appropriate session ID and then the server must return a match in
-   * ServerHello. This allows the normal client session ID matching to work and
-   * we know much earlier that the ticket has been accepted.
-   *
-   * The other way is to set zero length session ID when the ticket is
-   * presented and rely on the handshake to determine session resumption.
-   *
-   * We choose the former approach because this fits in with assumptions
-   * elsewhere in OpenSSL. The session ID is set to the SHA256 (or SHA1 is
-   * SHA256 is disabled) hash of the ticket. */
-  EVP_Digest(CBS_data(&ticket), CBS_len(&ticket), s->session->session_id,
-             &s->session->session_id_length, EVP_sha256(), NULL);
-  ret = 1;
-  return ret;
+  /* Generate a session ID for this session based on the session ticket. We use
+   * the session ID mechanism for detecting ticket resumption. This also fits in
+   * with assumptions elsewhere in OpenSSL.*/
+  if (!EVP_Digest(CBS_data(&ticket), CBS_len(&ticket), s->session->session_id,
+                  &s->session->session_id_length, EVP_sha256(), NULL)) {
+    goto err;
+  }
+
+  return 1;
 
 f_err:
   ssl3_send_alert(s, SSL3_AL_FATAL, al);
