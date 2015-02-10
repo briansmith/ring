@@ -116,7 +116,6 @@
 
 
 DEFINE_LHASH_OF(ERR_STATE);
-DEFINE_LHASH_OF(ERR_STRING_DATA);
 
 /* state_hash is a map from thread ID to ERR_STATE. It works like thread-local
  * storage. */

@@ -128,46 +128,6 @@
                             void (*)(ERR_STATE *, void *), func), \
                arg);
 
-/* ERR_STRING_DATA */
-#define lh_ERR_STRING_DATA_new(hash, comp)                                 \
-  ((LHASH_OF(ERR_STRING_DATA) *)lh_new(                                    \
-      CHECKED_CAST(lhash_hash_func, uint32_t (*)(const ERR_STRING_DATA *), \
-                   hash),                                                  \
-      CHECKED_CAST(                                                        \
-          lhash_cmp_func,                                                  \
-          int (*)(const ERR_STRING_DATA *a, const ERR_STRING_DATA *b), comp)))
-
-#define lh_ERR_STRING_DATA_free(lh) \
-  lh_free(CHECKED_CAST(_LHASH *, LHASH_OF(ERR_STRING_DATA) *, lh));
-
-#define lh_ERR_STRING_DATA_num_items(lh) \
-  lh_num_items(CHECKED_CAST(_LHASH *, LHASH_OF(ERR_STRING_DATA) *, lh))
-
-#define lh_ERR_STRING_DATA_retrieve(lh, data)                  \
-  ((ERR_STRING_DATA *)lh_retrieve(                             \
-      CHECKED_CAST(_LHASH *, LHASH_OF(ERR_STRING_DATA) *, lh), \
-      CHECKED_CAST(void *, ERR_STRING_DATA *, data)))
-
-#define lh_ERR_STRING_DATA_insert(lh, old_data, data)                \
-  lh_insert(CHECKED_CAST(_LHASH *, LHASH_OF(ERR_STRING_DATA) *, lh), \
-            CHECKED_CAST(void **, ERR_STRING_DATA **, old_data),     \
-            CHECKED_CAST(void *, ERR_STRING_DATA *, data))
-
-#define lh_ERR_STRING_DATA_delete(lh, data)                    \
-  ((ERR_STRING_DATA *)lh_delete(                               \
-      CHECKED_CAST(_LHASH *, LHASH_OF(ERR_STRING_DATA) *, lh), \
-      CHECKED_CAST(void *, ERR_STRING_DATA *, data)))
-
-#define lh_ERR_STRING_DATA_doall(lh, func)                          \
-  lh_doall(CHECKED_CAST(_LHASH *, LHASH_OF(ERR_STRING_DATA) *, lh), \
-           CHECKED_CAST(void (*)(void *), void (*)(ERR_STRING_DATA *), func));
-
-#define lh_ERR_STRING_DATA_doall_arg(lh, func, arg)                     \
-  lh_doall_arg(CHECKED_CAST(_LHASH *, LHASH_OF(ERR_STRING_DATA) *, lh), \
-               CHECKED_CAST(void (*)(void *, void *),                   \
-                            void (*)(ERR_STRING_DATA *, void *), func), \
-               arg);
-
 /* EX_CLASS_ITEM */
 #define lh_EX_CLASS_ITEM_new(hash, comp)                                    \
   ((LHASH_OF(EX_CLASS_ITEM) *)lh_new(                                       \

@@ -778,6 +778,9 @@ int ERR_pop_to_mark(void) {
 
 void ERR_load_crypto_strings(void) {}
 
-void ERR_free_strings(void) {}
+void ERR_free_strings(void) {
+  err_fns_check();
+  ERRFN(shutdown)(err_state_free);
+}
 
 void ERR_load_BIO_strings(void) {}

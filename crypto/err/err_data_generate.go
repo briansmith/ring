@@ -272,9 +272,9 @@ func main() {
 `)
 
 	for i, name := range libraryNames {
-		fmt.Fprintf(out, "OPENSSL_COMPILE_ASSERT(ERR_LIB_%s == %d, library_values_changed);\n", name, i+1)
+		fmt.Fprintf(out, "OPENSSL_COMPILE_ASSERT(ERR_LIB_%s == %d, library_values_changed_%d);\n", name, i+1, i+1)
 	}
-	fmt.Fprintf(out, "OPENSSL_COMPILE_ASSERT(ERR_NUM_LIBS == %d, library_values_changed);\n", len(libraryNames) + 1)
+	fmt.Fprintf(out, "OPENSSL_COMPILE_ASSERT(ERR_NUM_LIBS == %d, library_values_changed_num);\n", len(libraryNames) + 1)
 	out.WriteString("\n")
 
 	e.functions.WriteTo(out, "Function")

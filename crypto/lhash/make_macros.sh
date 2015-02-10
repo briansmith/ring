@@ -1,6 +1,9 @@
 #!/bin/sh
 
-cat > lhash_macros.h << EOF
+include_dir=../../include/openssl
+out=${include_dir}/lhash_macros.h
+
+cat > $out << EOF
 /* Copyright (c) 2014, Google Inc.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
@@ -24,7 +27,7 @@ EOF
 output_lhash () {
   type=$1
 
-  cat >> lhash_macros.h << EOF
+  cat >> $out << EOF
 /* ${type} */
 #define lh_${type}_new(hash, comp)\\
 ((LHASH_OF(${type})*) lh_new(CHECKED_CAST(lhash_hash_func, uint32_t (*) (const ${type} *), hash), CHECKED_CAST(lhash_cmp_func, int (*) (const ${type} *a, const ${type} *b), comp)))
@@ -54,11 +57,11 @@ output_lhash () {
 EOF
 }
 
-lhash_types=$(cat lhash.h | grep '^ \* LHASH_OF:' | sed -e 's/.*LHASH_OF://' -e 's/ .*//')
+lhash_types=$(cat ${include_dir}/lhash.h | grep '^ \* LHASH_OF:' | sed -e 's/.*LHASH_OF://' -e 's/ .*//')
 
 for type in $lhash_types; do
   echo Hash of ${type}
   output_lhash "${type}"
 done
 
-clang-format -i lhash_macros.h
+clang-format -i $out
