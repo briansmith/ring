@@ -238,6 +238,7 @@ func main() {
 		panic(err)
 	}
 
+	sort.Strings(names)
 	for _, name := range names {
 		if !strings.HasSuffix(name, ".errordata") {
 			continue
