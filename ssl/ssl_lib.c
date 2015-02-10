@@ -345,8 +345,6 @@ SSL *SSL_new(SSL_CTX *ctx) {
   s->enc_method = ssl3_get_enc_method(s->version);
   assert(s->enc_method != NULL);
 
-  s->references = 1;
-
   s->rwstate = SSL_NOTHING;
   s->rstate = SSL_ST_READ_HEADER;
 
@@ -547,14 +545,7 @@ X509_VERIFY_PARAM *SSL_get0_param(SSL *ssl) { return ssl->param; }
 void SSL_certs_clear(SSL *s) { ssl_cert_clear_certs(s->cert); }
 
 void SSL_free(SSL *s) {
-  int i;
-
   if (s == NULL) {
-    return;
-  }
-
-  i = CRYPTO_add(&s->references, -1, CRYPTO_LOCK_SSL);
-  if (i > 0) {
     return;
   }
 

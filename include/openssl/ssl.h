@@ -1262,7 +1262,6 @@ struct ssl_st {
   /* for server side, keep the list of CA_dn we can use */
   STACK_OF(X509_NAME) *client_CA;
 
-  int references;
   unsigned long options; /* protocol behaviour */
   unsigned long mode;    /* API behaviour */
   long max_cert_list;
