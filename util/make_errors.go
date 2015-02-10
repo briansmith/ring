@@ -319,16 +319,23 @@ func assignNewValues(assignments map[string]int, reserved int) {
 
 	max++
 
+	// Sort the keys, so this script is reproducible.
+	keys := make([]string, 0, len(assignments))
 	for key, value := range assignments {
 		if value == -1 {
-			if reserved >= 0 && max >= reserved {
-				// If this happens, try passing
-				// -reset. Otherwise bump up reservedReasonCode.
-				panic("Automatically-assigned values exceeded limit!")
-			}
-			assignments[key] = max
-			max++
+			keys = append(keys, key)
 		}
+	}
+	sort.Strings(keys)
+
+	for _, key := range keys {
+		if reserved >= 0 && max >= reserved {
+			// If this happens, try passing -reset. Otherwise bump
+			// up reservedReasonCode.
+			panic("Automatically-assigned values exceeded limit!")
+		}
+		assignments[key] = max
+		max++
 	}
 }
 
