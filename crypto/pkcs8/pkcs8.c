@@ -427,7 +427,7 @@ PKCS8_PRIV_KEY_INFO *PKCS8_decrypt(X509_SIG *pkcs8, const char *pass,
       pass_len = strlen(pass);
     }
     if (!ascii_to_ucs2(pass, pass_len, &pass_raw, &pass_raw_len)) {
-      OPENSSL_PUT_ERROR(PKCS8, pkcs12_key_gen_asc, PKCS8_R_DECODE_ERROR);
+      OPENSSL_PUT_ERROR(PKCS8, PKCS8_decrypt, PKCS8_R_DECODE_ERROR);
       return NULL;
     }
   }
@@ -491,7 +491,7 @@ X509_SIG *PKCS8_encrypt(int pbe_nid, const EVP_CIPHER *cipher, const char *pass,
       pass_len = strlen(pass);
     }
     if (!ascii_to_ucs2(pass, pass_len, &pass_raw, &pass_raw_len)) {
-      OPENSSL_PUT_ERROR(PKCS8, pkcs12_key_gen_asc, PKCS8_R_DECODE_ERROR);
+      OPENSSL_PUT_ERROR(PKCS8, PKCS8_encrypt, PKCS8_R_DECODE_ERROR);
       return NULL;
     }
   }
@@ -699,7 +699,8 @@ static int PKCS12_handle_content_info(CBS *content_info, unsigned depth,
   if (!CBS_get_asn1(content_info, &content_type, CBS_ASN1_OBJECT) ||
       !CBS_get_asn1(content_info, &wrapped_contents,
                         CBS_ASN1_CONTEXT_SPECIFIC | CBS_ASN1_CONSTRUCTED | 0)) {
-    OPENSSL_PUT_ERROR(PKCS8, PKCS12_parse, PKCS8_R_BAD_PKCS12_DATA);
+    OPENSSL_PUT_ERROR(PKCS8, PKCS12_handle_content_info,
+                      PKCS8_R_BAD_PKCS12_DATA);
     goto err;
   }
 
@@ -884,27 +885,28 @@ int PKCS12_get_key_and_certs(EVP_PKEY **out_key, STACK_OF(X509) *out_certs,
   if (!CBS_get_asn1(&in, &pfx, CBS_ASN1_SEQUENCE) ||
       CBS_len(&in) != 0 ||
       !CBS_get_asn1_uint64(&pfx, &version)) {
-    OPENSSL_PUT_ERROR(PKCS8, PKCS12_parse, PKCS8_R_BAD_PKCS12_DATA);
+    OPENSSL_PUT_ERROR(PKCS8, PKCS12_get_key_and_certs, PKCS8_R_BAD_PKCS12_DATA);
     goto err;
   }
 
   if (version < 3) {
-    OPENSSL_PUT_ERROR(PKCS8, PKCS12_parse, PKCS8_R_BAD_PKCS12_VERSION);
+    OPENSSL_PUT_ERROR(PKCS8, PKCS12_get_key_and_certs,
+                      PKCS8_R_BAD_PKCS12_VERSION);
     goto err;
   }
 
   if (!CBS_get_asn1(&pfx, &authsafe, CBS_ASN1_SEQUENCE)) {
-    OPENSSL_PUT_ERROR(PKCS8, PKCS12_parse, PKCS8_R_BAD_PKCS12_DATA);
+    OPENSSL_PUT_ERROR(PKCS8, PKCS12_get_key_and_certs, PKCS8_R_BAD_PKCS12_DATA);
     goto err;
   }
 
   if (CBS_len(&pfx) == 0) {
-    OPENSSL_PUT_ERROR(PKCS8, PKCS12_parse, PKCS8_R_MISSING_MAC);
+    OPENSSL_PUT_ERROR(PKCS8, PKCS12_get_key_and_certs, PKCS8_R_MISSING_MAC);
     goto err;
   }
 
   if (!CBS_get_asn1(&pfx, &mac_data, CBS_ASN1_SEQUENCE)) {
-    OPENSSL_PUT_ERROR(PKCS8, PKCS12_parse, PKCS8_R_BAD_PKCS12_DATA);
+    OPENSSL_PUT_ERROR(PKCS8, PKCS12_get_key_and_certs, PKCS8_R_BAD_PKCS12_DATA);
     goto err;
   }
 
@@ -913,7 +915,7 @@ int PKCS12_get_key_and_certs(EVP_PKEY **out_key, STACK_OF(X509) *out_certs,
   if (!CBS_get_asn1(&authsafe, &content_type, CBS_ASN1_OBJECT) ||
       !CBS_get_asn1(&authsafe, &wrapped_authsafes,
                         CBS_ASN1_CONTEXT_SPECIFIC | CBS_ASN1_CONSTRUCTED | 0)) {
-    OPENSSL_PUT_ERROR(PKCS8, PKCS12_parse, PKCS8_R_BAD_PKCS12_DATA);
+    OPENSSL_PUT_ERROR(PKCS8, PKCS12_get_key_and_certs, PKCS8_R_BAD_PKCS12_DATA);
     goto err;
   }
 
@@ -921,13 +923,13 @@ int PKCS12_get_key_and_certs(EVP_PKEY **out_key, STACK_OF(X509) *out_certs,
    * latter indicates that it's signed by a public key, which isn't
    * supported. */
   if (OBJ_cbs2nid(&content_type) != NID_pkcs7_data) {
-    OPENSSL_PUT_ERROR(PKCS8, PKCS12_parse,
+    OPENSSL_PUT_ERROR(PKCS8, PKCS12_get_key_and_certs,
                       PKCS8_R_PKCS12_PUBLIC_KEY_INTEGRITY_NOT_SUPPORTED);
     goto err;
   }
 
   if (!CBS_get_asn1(&wrapped_authsafes, &authsafes, CBS_ASN1_OCTETSTRING)) {
-    OPENSSL_PUT_ERROR(PKCS8, PKCS12_parse, PKCS8_R_BAD_PKCS12_DATA);
+    OPENSSL_PUT_ERROR(PKCS8, PKCS12_get_key_and_certs, PKCS8_R_BAD_PKCS12_DATA);
     goto err;
   }
 
@@ -935,7 +937,7 @@ int PKCS12_get_key_and_certs(EVP_PKEY **out_key, STACK_OF(X509) *out_certs,
   ctx.out_certs = out_certs;
   if (!ascii_to_ucs2(password, strlen(password), &ctx.password,
                      &ctx.password_len)) {
-    OPENSSL_PUT_ERROR(PKCS8, PKCS12_parse, PKCS8_R_DECODE_ERROR);
+    OPENSSL_PUT_ERROR(PKCS8, PKCS12_get_key_and_certs, PKCS8_R_DECODE_ERROR);
     goto err;
   }
 
@@ -954,7 +956,7 @@ int PKCS12_get_key_and_certs(EVP_PKEY **out_key, STACK_OF(X509) *out_certs,
         !CBS_get_asn1(&hash_type_seq, &hash_oid, CBS_ASN1_OBJECT) ||
         !CBS_get_asn1(&mac, &expected_mac, CBS_ASN1_OCTETSTRING) ||
         !CBS_get_asn1(&mac_data, &salt, CBS_ASN1_OCTETSTRING)) {
-      OPENSSL_PUT_ERROR(PKCS8, PKCS12_parse, PKCS8_R_BAD_PKCS12_DATA);
+      OPENSSL_PUT_ERROR(PKCS8, PKCS12_get_key_and_certs, PKCS8_R_BAD_PKCS12_DATA);
       goto err;
     }
 
@@ -963,7 +965,8 @@ int PKCS12_get_key_and_certs(EVP_PKEY **out_key, STACK_OF(X509) *out_certs,
     if (CBS_len(&mac_data) > 0) {
       if (!CBS_get_asn1_uint64(&mac_data, &iterations) ||
           iterations > INT_MAX) {
-        OPENSSL_PUT_ERROR(PKCS8, PKCS12_parse, PKCS8_R_BAD_PKCS12_DATA);
+        OPENSSL_PUT_ERROR(PKCS8, PKCS12_get_key_and_certs,
+                          PKCS8_R_BAD_PKCS12_DATA);
         goto err;
       }
     }
@@ -971,7 +974,7 @@ int PKCS12_get_key_and_certs(EVP_PKEY **out_key, STACK_OF(X509) *out_certs,
     hash_nid = OBJ_cbs2nid(&hash_oid);
     if (hash_nid == NID_undef ||
         (md = EVP_get_digestbynid(hash_nid)) == NULL) {
-      OPENSSL_PUT_ERROR(PKCS8, PKCS12_parse, PKCS8_R_UNKNOWN_HASH);
+      OPENSSL_PUT_ERROR(PKCS8, PKCS12_get_key_and_certs, PKCS8_R_UNKNOWN_HASH);
       goto err;
     }
 
@@ -987,7 +990,8 @@ int PKCS12_get_key_and_certs(EVP_PKEY **out_key, STACK_OF(X509) *out_certs,
     }
 
     if (!CBS_mem_equal(&expected_mac, hmac, hmac_len)) {
-      OPENSSL_PUT_ERROR(PKCS8, PKCS12_parse, PKCS8_R_INCORRECT_PASSWORD);
+      OPENSSL_PUT_ERROR(PKCS8, PKCS12_get_key_and_certs,
+                        PKCS8_R_INCORRECT_PASSWORD);
       goto err;
     }
   }

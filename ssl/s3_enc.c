@@ -383,7 +383,7 @@ static int ssl3_handshake_mac(SSL *s, int md_nid, const char *sender, int len,
   EVP_MD_CTX_init(&ctx);
   if (!EVP_MD_CTX_copy_ex(&ctx, d)) {
     EVP_MD_CTX_cleanup(&ctx);
-    OPENSSL_PUT_ERROR(SSL, ssl3_generate_key_block, ERR_LIB_EVP);
+    OPENSSL_PUT_ERROR(SSL, ssl3_handshake_mac, ERR_LIB_EVP);
     return 0;
   }
 
@@ -402,7 +402,7 @@ static int ssl3_handshake_mac(SSL *s, int md_nid, const char *sender, int len,
 
   if (!EVP_DigestInit_ex(&ctx, EVP_MD_CTX_md(&ctx), NULL)) {
     EVP_MD_CTX_cleanup(&ctx);
-    OPENSSL_PUT_ERROR(SSL, ssl3_generate_key_block, ERR_LIB_EVP);
+    OPENSSL_PUT_ERROR(SSL, ssl3_handshake_mac, ERR_LIB_EVP);
     return 0;
   }
   EVP_DigestUpdate(&ctx, s->session->master_key, s->session->master_key_length);
