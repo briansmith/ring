@@ -146,10 +146,10 @@ func (st *stringList) WriteTo(out stringWriter, name string) {
 	}
 	out.WriteString("};\n\n")
 
-	out.WriteString("static const char k" + name + "StringData[] = \"")
+	out.WriteString("static const char k" + name + "StringData[] =\n    \"")
 	for i, c := range st.stringData {
 		if c == 0 {
-			out.WriteString("\\0")
+			out.WriteString("\\0\"\n    \"")
 			continue
 		}
 		out.Write(st.stringData[i : i+1])
