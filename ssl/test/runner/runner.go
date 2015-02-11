@@ -24,11 +24,13 @@ import (
 )
 
 var (
-	useValgrind            = flag.Bool("valgrind", false, "If true, run code under valgrind")
-	useGDB                 = flag.Bool("gdb", false, "If true, run BoringSSL code under gdb")
-	flagDebug       *bool  = flag.Bool("debug", false, "Hexdump the contents of the connection")
-	mallocTest      *int64 = flag.Int64("malloc-test", -1, "If non-negative, run each test with each malloc in turn failing from the given number onwards.")
-	mallocTestDebug *bool  = flag.Bool("malloc-test-debug", false, "If true, ask bssl_shim to abort rather than fail a malloc. This can be used with a specific value for --malloc-test to identity the malloc failing that is causing problems.")
+	useValgrind     = flag.Bool("valgrind", false, "If true, run code under valgrind")
+	useGDB          = flag.Bool("gdb", false, "If true, run BoringSSL code under gdb")
+	flagDebug       = flag.Bool("debug", false, "Hexdump the contents of the connection")
+	mallocTest      = flag.Int64("malloc-test", -1, "If non-negative, run each test with each malloc in turn failing from the given number onwards.")
+	mallocTestDebug = flag.Bool("malloc-test-debug", false, "If true, ask bssl_shim to abort rather than fail a malloc. This can be used with a specific value for --malloc-test to identity the malloc failing that is causing problems.")
+	jsonOutput      = flag.String("json-output", "", "The file to output JSON results to.")
+	pipe            = flag.Bool("pipe", false, "If true, print status output suitable for piping into another program.")
 )
 
 const (
@@ -1798,7 +1800,7 @@ func addStateMachineCoverageTests(async, splitHandshake bool, protocol protocol)
 
 		// False Start without session tickets.
 		testCases = append(testCases, testCase{
-			name: "FalseStart-SessionTicketsDisabled",
+			name: "FalseStart-SessionTicketsDisabled" + suffix,
 			config: Config{
 				CipherSuites:           []uint16{TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256},
 				NextProtos:             []string{"foo"},
@@ -2134,7 +2136,7 @@ func addExtensionTests() {
 	})
 	testCases = append(testCases, testCase{
 		testType: clientTest,
-		name:     "ServerNameExtensionClient",
+		name:     "ServerNameExtensionClientMismatch",
 		config: Config{
 			Bugs: ProtocolBugs{
 				ExpectServerName: "mismatch.com",
@@ -2146,7 +2148,7 @@ func addExtensionTests() {
 	})
 	testCases = append(testCases, testCase{
 		testType: clientTest,
-		name:     "ServerNameExtensionClient",
+		name:     "ServerNameExtensionClientMissing",
 		config: Config{
 			Bugs: ProtocolBugs{
 				ExpectServerName: "missing.com",
@@ -2576,7 +2578,7 @@ func addFastRadioPaddingTests() {
 	})
 	testCases = append(testCases, testCase{
 		protocol: dtls,
-		name:     "FastRadio-Padding",
+		name:     "FastRadio-Padding-DTLS",
 		config: Config{
 			Bugs: ProtocolBugs{
 				RequireFastradioPadding: true,
@@ -2805,27 +2807,43 @@ type statusMsg struct {
 	err     error
 }
 
-func statusPrinter(doneChan chan struct{}, statusChan chan statusMsg, total int) {
+func statusPrinter(doneChan chan *testOutput, statusChan chan statusMsg, total int) {
 	var started, done, failed, lineLen int
-	defer close(doneChan)
 
+	testOutput := newTestOutput()
 	for msg := range statusChan {
+		if !*pipe {
+			// Erase the previous status line.
+			fmt.Printf("\x1b[%dD\x1b[K", lineLen)
+		}
+
 		if msg.started {
 			started++
 		} else {
 			done++
+
+			if msg.err != nil {
+				fmt.Printf("FAILED (%s)\n%s\n", msg.test.name, msg.err)
+				failed++
+				testOutput.addResult(msg.test.name, "FAIL")
+			} else {
+				if *pipe {
+					// Print each test instead of a status line.
+					fmt.Printf("PASSED (%s)\n", msg.test.name)
+				}
+				testOutput.addResult(msg.test.name, "PASS")
+			}
 		}
 
-		fmt.Printf("\x1b[%dD\x1b[K", lineLen)
-
-		if msg.err != nil {
-			fmt.Printf("FAILED (%s)\n%s\n", msg.test.name, msg.err)
-			failed++
+		if !*pipe {
+			// Print a new status line.
+			line := fmt.Sprintf("%d/%d/%d/%d", failed, done, started, total)
+			lineLen = len(line)
+			os.Stdout.WriteString(line)
 		}
-		line := fmt.Sprintf("%d/%d/%d/%d", failed, done, started, total)
-		lineLen = len(line)
-		os.Stdout.WriteString(line)
 	}
+
+	doneChan <- testOutput
 }
 
 func main() {
@@ -2865,7 +2883,7 @@ func main() {
 
 	statusChan := make(chan statusMsg, numWorkers)
 	testChan := make(chan *testCase, numWorkers)
-	doneChan := make(chan struct{})
+	doneChan := make(chan *testOutput)
 
 	go statusPrinter(doneChan, statusChan, len(testCases))
 
@@ -2883,7 +2901,13 @@ func main() {
 	close(testChan)
 	wg.Wait()
 	close(statusChan)
-	<-doneChan
+	testOutput := <-doneChan
 
 	fmt.Printf("\n")
+
+	if *jsonOutput != "" {
+		if err := testOutput.writeTo(*jsonOutput); err != nil {
+			fmt.Fprintf(os.Stderr, "Error: %s\n", err)
+		}
+	}
 }

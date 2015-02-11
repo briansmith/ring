@@ -16,12 +16,14 @@ package main
 
 import (
 	"bytes"
+	"encoding/json"
 	"flag"
 	"fmt"
 	"os"
 	"os/exec"
 	"path"
 	"strings"
+	"time"
 )
 
 // TODO(davidben): Link tests with the malloc shim and port -malloc-test to this runner.
@@ -29,6 +31,7 @@ import (
 var (
 	useValgrind = flag.Bool("valgrind", false, "If true, run code under valgrind")
 	buildDir    = flag.String("build-dir", "build", "The build directory to run the tests from.")
+	jsonOutput  = flag.String("json-output", "", "The file to output JSON results to.")
 )
 
 type test []string
@@ -83,6 +86,54 @@ var tests = []test{
 	{"ssl/ssl_test"},
 }
 
+// testOutput is a representation of Chromium's JSON test result format. See
+// https://www.chromium.org/developers/the-json-test-results-format
+type testOutput struct {
+	Version           int                   `json:"version"`
+	Interrupted       bool                  `json:"interrupted"`
+	PathDelimiter     string                `json:"path_delimiter"`
+	SecondsSinceEpoch float64               `json:"seconds_since_epoch"`
+	NumFailuresByType map[string]int        `json:"num_failures_by_type"`
+	Tests             map[string]testResult `json:"tests"`
+}
+
+type testResult struct {
+	Actual   string `json:"actual"`
+	Expected string `json:"expected"`
+}
+
+func newTestOutput() *testOutput {
+	return &testOutput{
+		Version:           3,
+		PathDelimiter:     ".",
+		SecondsSinceEpoch: float64(time.Now().UnixNano()) / float64(time.Second/time.Nanosecond),
+		NumFailuresByType: make(map[string]int),
+		Tests:             make(map[string]testResult),
+	}
+}
+
+func (t *testOutput) addResult(name, result string) {
+	if _, found := t.Tests[name]; found {
+		panic(name)
+	}
+	t.Tests[name] = testResult{Actual: result, Expected: "PASS"}
+	t.NumFailuresByType[result]++
+}
+
+func (t *testOutput) writeTo(name string) error {
+	file, err := os.Create(name)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+	out, err := json.MarshalIndent(t, "", "  ")
+	if err != nil {
+		return err
+	}
+	_, err = file.Write(out)
+	return err
+}
+
 func valgrindOf(dbAttach bool, path string, args ...string) *exec.Cmd {
 	valgrindArgs := []string{"--error-exitcode=99", "--track-origins=yes", "--leak-check=full"}
 	if dbAttach {
@@ -124,21 +175,39 @@ func runTest(test test) (passed bool, err error) {
 	return false, nil
 }
 
+// shortTestName returns the short name of a test. It assumes that any argument
+// which ends in .txt is a path to a data file and not relevant to the test's
+// uniqueness.
+func shortTestName(test test) string {
+	var args []string
+	for _, arg := range test {
+		if !strings.HasSuffix(arg, ".txt") {
+			args = append(args, arg)
+		}
+	}
+	return strings.Join(args, " ")
+}
+
 func main() {
 	flag.Parse()
 
+	testOutput := newTestOutput()
 	var failed []test
 	for _, test := range tests {
 		fmt.Printf("%s\n", strings.Join([]string(test), " "))
+
+		name := shortTestName(test)
 		passed, err := runTest(test)
 		if err != nil {
-			fmt.Printf("%s failed to complete: %s\n", test[0], err.Error())
+			fmt.Printf("%s failed to complete: %s\n", test[0], err)
 			failed = append(failed, test)
-			continue
-		}
-		if !passed {
+			testOutput.addResult(name, "CRASHED")
+		} else if !passed {
 			fmt.Printf("%s failed to print PASS on the last line.\n", test[0])
 			failed = append(failed, test)
+			testOutput.addResult(name, "FAIL")
+		} else {
+			testOutput.addResult(name, "PASS")
 		}
 	}
 
@@ -148,6 +217,12 @@ func main() {
 		fmt.Printf("\n%d of %d tests failed:\n", len(failed), len(tests))
 		for _, test := range failed {
 			fmt.Printf("\t%s\n", strings.Join([]string(test), " "))
+		}
+	}
+
+	if *jsonOutput != "" {
+		if err := testOutput.writeTo(*jsonOutput); err != nil {
+			fmt.Fprintf(os.Stderr, "Error: %s\n", err)
 		}
 	}
 }
