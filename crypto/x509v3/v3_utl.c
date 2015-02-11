@@ -971,20 +971,28 @@ static int do_x509_check(X509 *x, const unsigned char *chk, size_t chklen,
 int X509_check_host(X509 *x, const unsigned char *chk, size_t chklen,
 					unsigned int flags)
 	{
-	if (chk && memchr(chk, '\0', chklen))
-		return 0;
+	if (chk == NULL)
+		return -2;
+	if (memchr(chk, '\0', chklen))
+		return -2;
 	return do_x509_check(x, chk, chklen, flags, GEN_DNS);
 	}
 
 int X509_check_email(X509 *x, const unsigned char *chk, size_t chklen,
 					unsigned int flags)
 	{
+	if (chk == NULL)
+		return -2;
+	if (memchr(chk, '\0', chklen))
+		return -2;
 	return do_x509_check(x, chk, chklen, flags, GEN_EMAIL);
 	}
 
 int X509_check_ip(X509 *x, const unsigned char *chk, size_t chklen,
 					unsigned int flags)
 	{
+	if (chk == NULL)
+		return -2;
 	return do_x509_check(x, chk, chklen, flags, GEN_IPADD);
 	}
 
@@ -992,6 +1000,8 @@ int X509_check_ip_asc(X509 *x, const char *ipasc, unsigned int flags)
 	{
 	unsigned char ipout[16];
 	int iplen;
+	if (ipasc == NULL)
+		return -2;
 	iplen = a2i_ipadd(ipout, ipasc);
 	if (iplen == 0)
 		return -2;
