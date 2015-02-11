@@ -708,12 +708,12 @@ static int check_hosts(X509 *x, X509_VERIFY_PARAM_ID *id)
 	{
 	size_t i;
 	size_t n = sk_OPENSSL_STRING_num(id->hosts);
-	unsigned char *name;
+	char *name;
 
 	for (i = 0; i < n; ++i)
 		{
-		name = (unsigned char *)sk_OPENSSL_STRING_value(id->hosts, i);
-		if (X509_check_host(x, name, strlen((const char*) name), id->hostflags,
+		name = sk_OPENSSL_STRING_value(id->hosts, i);
+		if (X509_check_host(x, name, strlen(name), id->hostflags,
 				    &id->peername) > 0)
 			return 1;
 		}

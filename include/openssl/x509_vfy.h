@@ -554,15 +554,15 @@ OPENSSL_EXPORT int X509_VERIFY_PARAM_set1_policies(X509_VERIFY_PARAM *param,
 					STACK_OF(ASN1_OBJECT) *policies);
 
 OPENSSL_EXPORT int X509_VERIFY_PARAM_set1_host(X509_VERIFY_PARAM *param,
-				const unsigned char *name, size_t namelen);
+				const char *name, size_t namelen);
 OPENSSL_EXPORT int X509_VERIFY_PARAM_add1_host(X509_VERIFY_PARAM *param,
-					       const unsigned char *name,
+					       const char *name,
 					       size_t namelen);
 OPENSSL_EXPORT void X509_VERIFY_PARAM_set_hostflags(X509_VERIFY_PARAM *param,
 					unsigned int flags);
 OPENSSL_EXPORT char *X509_VERIFY_PARAM_get0_peername(X509_VERIFY_PARAM *);
 OPENSSL_EXPORT int X509_VERIFY_PARAM_set1_email(X509_VERIFY_PARAM *param,
-				const unsigned char *email, size_t emaillen);
+				const char *email, size_t emaillen);
 OPENSSL_EXPORT int X509_VERIFY_PARAM_set1_ip(X509_VERIFY_PARAM *param,
 					const unsigned char *ip, size_t iplen);
 OPENSSL_EXPORT int X509_VERIFY_PARAM_set1_ip_asc(X509_VERIFY_PARAM *param, const char *ipasc);
