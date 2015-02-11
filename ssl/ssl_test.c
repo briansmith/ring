@@ -495,7 +495,7 @@ static const CIPHER_RFC_NAME_TEST kCipherRFCNameTests[] = {
   { "ECDHE-PSK-WITH-AES-128-GCM-SHA256", "TLS_ECDHE_PSK_WITH_AES_128_GCM_SHA256" },
 };
 
-static int test_cipher_get_rfc_name() {
+static int test_cipher_get_rfc_name(void) {
   size_t i;
 
   for (i = 0; i < sizeof(kCipherRFCNameTests) / sizeof(kCipherRFCNameTests[0]);

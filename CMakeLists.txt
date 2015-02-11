@@ -11,12 +11,19 @@ elseif(MSVC)
       "C4127" # conditional expression is constant
       "C4200" # nonstandard extension used : zero-sized array in
               # struct/union.
+      "C4210" # nonstandard extension used : function given file scope
       "C4242" # 'function' : conversion from 'int' to 'uint8_t',
               # possible loss of data
       "C4244" # 'function' : conversion from 'int' to 'uint8_t',
               # possible loss of data
       "C4245" # 'initializing' : conversion from 'long' to
               # 'unsigned long', signed/unsigned mismatch
+      "C4267" # conversion from 'size_t' to 'int', possible loss of data
+      "C4311" # 'type cast' : pointer truncation from 'uint8_t *' to 'long'
+              # TODO(davidben): Fix the s3_pkt.c's alignment code to avoid this.
+      "C4371" # layout of class may have changed from a previous version of the
+              # compiler due to better packing of member '...'
+      "C4388" # signed/unsigned mismatch
       "C4296" # '>=' : expression is always true
       "C4350" # behavior change: 'std::_Wrap_alloc...'
       "C4365" # '=' : conversion from 'size_t' to 'int',
@@ -29,6 +36,10 @@ elseif(MSVC)
               # side-effect" caused by FD_* macros.
       "C4610" # struct 'argument' can never be instantiated - user defined
               # constructor required.
+      "C4625" # copy constructor could not be generated because a base class
+              # copy constructor is inaccessible or deleted
+      "C4626" # assignment operator could not be generated because a base class
+              # assignment operator is inaccessible or deleted
       "C4701" # potentially uninitialized local variable 'mdlen' used
       "C4706" # assignment within conditional expression
       "C4710" # 'function': function not inlined
