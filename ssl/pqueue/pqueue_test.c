@@ -19,6 +19,17 @@
 #include <openssl/ssl.h>
 
 
+static void clear_and_free_queue(pqueue q) {
+  for (;;) {
+    pitem *item = pqueue_pop(q);
+    if (item == NULL) {
+      break;
+    }
+    pitem_free(item);
+  }
+  pqueue_free(q);
+}
+
 static int trivial(void) {
   pqueue q = pqueue_new();
   if (q == NULL) {
@@ -37,7 +48,7 @@ static int trivial(void) {
     return 0;
   }
   pitem_free(item);
-  pqueue_free(q);
+  clear_and_free_queue(q);
   return 1;
 }
 
@@ -101,7 +112,7 @@ static int fixed_random(void) {
     }
     curr = next;
   }
-  pqueue_free(q);
+  clear_and_free_queue(q);
   return 1;
 }
 
