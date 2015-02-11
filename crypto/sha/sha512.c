@@ -189,8 +189,9 @@ int SHA512_Update(SHA512_CTX *c, const void *in_data, size_t len) {
   uint8_t *p = c->u.p;
   const uint8_t *data = (const uint8_t *)in_data;
 
-  if (len == 0)
+  if (len == 0) {
     return 1;
+  }
 
   l = (c->Nl + (((uint64_t)len) << 3)) & OPENSSL_U64(0xffffffffffffffff);
   if (l < c->Nl) {
@@ -218,14 +219,21 @@ int SHA512_Update(SHA512_CTX *c, const void *in_data, size_t len) {
 
   if (len >= sizeof(c->u)) {
 #ifndef SHA512_BLOCK_CAN_MANAGE_UNALIGNED_DATA
-    if ((size_t)data % sizeof(c->u.d[0]) != 0)
-      while (len >= sizeof(c->u))
-        memcpy(p, data, sizeof(c->u)), sha512_block_data_order(c, p, 1),
-            len -= sizeof(c->u), data += sizeof(c->u);
-    else
+    if ((size_t)data % sizeof(c->u.d[0]) != 0) {
+      while (len >= sizeof(c->u)) {
+        memcpy(p, data, sizeof(c->u));
+        sha512_block_data_order(c, p, 1);
+        len -= sizeof(c->u);
+        data += sizeof(c->u);
+      }
+    } else
 #endif
-      sha512_block_data_order(c, data, len / sizeof(c->u)), data += len,
-          len %= sizeof(c->u), data -= len;
+    {
+      sha512_block_data_order(c, data, len / sizeof(c->u));
+      data += len;
+      len %= sizeof(c->u);
+      data -= len;
+    }
   }
 
   if (len != 0) {

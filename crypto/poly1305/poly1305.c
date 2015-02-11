@@ -132,19 +132,23 @@ poly1305_donna_mul:
   b = (uint32_t)(t[4] >> 26);
   state->h0 += b * 5;
 
-  if (len >= 16)
+  if (len >= 16) {
     goto poly1305_donna_16bytes;
+  }
 
 /* final bytes */
 poly1305_donna_atmost15bytes:
-  if (!len)
+  if (!len) {
     return;
+  }
 
-  for (j = 0; j < len; j++)
+  for (j = 0; j < len; j++) {
     mp[j] = in[j];
+  }
   mp[j++] = 1;
-  for (; j < 16; j++)
+  for (; j < 16; j++) {
     mp[j] = 0;
+  }
   len = 0;
 
   t0 = U8TO32_LE(mp + 0);
@@ -221,10 +225,12 @@ void CRYPTO_poly1305_update(poly1305_state *statep, const uint8_t *in,
 
   if (state->buf_used) {
     unsigned int todo = 16 - state->buf_used;
-    if (todo > in_len)
+    if (todo > in_len) {
       todo = in_len;
-    for (i = 0; i < todo; i++)
+    }
+    for (i = 0; i < todo; i++) {
       state->buf[state->buf_used + i] = in[i];
+    }
     state->buf_used += todo;
     in_len -= todo;
     in += todo;
@@ -243,8 +249,9 @@ void CRYPTO_poly1305_update(poly1305_state *statep, const uint8_t *in,
   }
 
   if (in_len) {
-    for (i = 0; i < in_len; i++)
+    for (i = 0; i < in_len; i++) {
       state->buf[i] = in[i];
+    }
     state->buf_used = in_len;
   }
 }
@@ -262,8 +269,9 @@ void CRYPTO_poly1305_finish(poly1305_state *statep, uint8_t mac[16]) {
   }
 #endif
 
-  if (state->buf_used)
+  if (state->buf_used) {
     poly1305_update(state, state->buf, state->buf_used);
+  }
 
   b = state->h0 >> 26;
   state->h0 = state->h0 & 0x3ffffff;

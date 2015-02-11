@@ -123,23 +123,28 @@ static int pkcs12_key_gen_raw(const uint8_t *pass_raw, size_t pass_raw_len,
   Ai = OPENSSL_malloc(u);
   B = OPENSSL_malloc(v + 1);
   Slen = v * ((salt_len + v - 1) / v);
-  if (pass_raw_len)
+  if (pass_raw_len) {
     Plen = v * ((pass_raw_len + v - 1) / v);
-  else
+  } else {
     Plen = 0;
+  }
   Ilen = Slen + Plen;
   I = OPENSSL_malloc(Ilen);
   Ij = BN_new();
   Bpl1 = BN_new();
-  if (!D || !Ai || !B || !I || !Ij || !Bpl1)
+  if (!D || !Ai || !B || !I || !Ij || !Bpl1) {
     goto err;
-  for (i = 0; i < v; i++)
+  }
+  for (i = 0; i < v; i++) {
     D[i] = id;
+  }
   p = I;
-  for (i = 0; i < Slen; i++)
+  for (i = 0; i < Slen; i++) {
     *p++ = salt[i % salt_len];
-  for (i = 0; i < Plen; i++)
+  }
+  for (i = 0; i < Plen; i++) {
     *p++ = pass_raw[i % pass_raw_len];
+  }
   for (;;) {
     if (!EVP_DigestInit_ex(&ctx, md_type, NULL) ||
         !EVP_DigestUpdate(&ctx, D, v) ||
@@ -161,31 +166,33 @@ static int pkcs12_key_gen_raw(const uint8_t *pass_raw, size_t pass_raw_len,
     }
     out_len -= u;
     out += u;
-    for (j = 0; j < v; j++)
+    for (j = 0; j < v; j++) {
       B[j] = Ai[j % u];
+    }
     /* Work out B + 1 first then can use B as tmp space */
-    if (!BN_bin2bn(B, v, Bpl1))
+    if (!BN_bin2bn(B, v, Bpl1) ||
+        !BN_add_word(Bpl1, 1)) {
       goto err;
-    if (!BN_add_word(Bpl1, 1))
-      goto err;
+    }
     for (j = 0; j < Ilen; j += v) {
-      if (!BN_bin2bn(I + j, v, Ij))
+      if (!BN_bin2bn(I + j, v, Ij) ||
+          !BN_add(Ij, Ij, Bpl1) ||
+          !BN_bn2bin(Ij, B)) {
         goto err;
-      if (!BN_add(Ij, Ij, Bpl1))
-        goto err;
-      if (!BN_bn2bin(Ij, B))
-        goto err;
+      }
       Ijlen = BN_num_bytes(Ij);
       /* If more than 2^(v*8) - 1 cut off MSB */
       if (Ijlen > v) {
-        if (!BN_bn2bin(Ij, B))
+        if (!BN_bn2bin(Ij, B)) {
           goto err;
+        }
         memcpy(I + j, B + 1, v);
         /* If less than v bytes pad with zeroes */
       } else if (Ijlen < v) {
         memset(I + j, 0, v - Ijlen);
-        if (!BN_bn2bin(Ij, I + j + v - Ijlen))
+        if (!BN_bn2bin(Ij, I + j + v - Ijlen)) {
           goto err;
+        }
       } else if (!BN_bn2bin(Ij, I + j)) {
         goto err;
       }
@@ -547,8 +554,9 @@ EVP_PKEY *EVP_PKCS82PKEY(PKCS8_PRIV_KEY_INFO *p8) {
   ASN1_OBJECT *algoid;
   char obj_tmp[80];
 
-  if (!PKCS8_pkey_get0(&algoid, NULL, NULL, NULL, p8))
+  if (!PKCS8_pkey_get0(&algoid, NULL, NULL, NULL, p8)) {
     return NULL;
+  }
 
   pkey = EVP_PKEY_new();
   if (pkey == NULL) {

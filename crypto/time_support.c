@@ -129,8 +129,9 @@ static int julian_adj(const struct tm *tm, int off_day, long offset_sec,
   /* Work out Julian day of new date */
   time_jd += offset_day;
 
-  if (time_jd < 0)
+  if (time_jd < 0) {
     return 0;
+  }
 
   *pday = time_jd;
   *psec = offset_hms;
@@ -142,15 +143,17 @@ int OPENSSL_gmtime_adj(struct tm *tm, int off_day, long offset_sec) {
   long time_jd;
 
   /* Convert time and offset into julian day and seconds */
-  if (!julian_adj(tm, off_day, offset_sec, &time_jd, &time_sec))
+  if (!julian_adj(tm, off_day, offset_sec, &time_jd, &time_sec)) {
     return 0;
+  }
 
   /* Convert Julian day back to date */
 
   julian_to_date(time_jd, &time_year, &time_month, &time_day);
 
-  if (time_year < 1900 || time_year > 9999)
+  if (time_year < 1900 || time_year > 9999) {
     return 0;
+  }
 
   /* Update tm structure */
 

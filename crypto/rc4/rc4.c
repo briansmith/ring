@@ -285,34 +285,42 @@ void RC4(RC4_KEY *key, size_t len, const uint8_t *in, uint8_t *out) {
       in += 8;
       out += 8;
 #endif
-      if (--i == 0)
+      if (--i == 0) {
         break;
+      }
     }
   }
   i = len & 0x07;
   if (i) {
     for (;;) {
       RC4_LOOP(in, out, 0);
-      if (--i == 0)
+      if (--i == 0) {
         break;
+      }
       RC4_LOOP(in, out, 1);
-      if (--i == 0)
+      if (--i == 0) {
         break;
+      }
       RC4_LOOP(in, out, 2);
-      if (--i == 0)
+      if (--i == 0) {
         break;
+      }
       RC4_LOOP(in, out, 3);
-      if (--i == 0)
+      if (--i == 0) {
         break;
+      }
       RC4_LOOP(in, out, 4);
-      if (--i == 0)
+      if (--i == 0) {
         break;
+      }
       RC4_LOOP(in, out, 5);
-      if (--i == 0)
+      if (--i == 0) {
         break;
+      }
       RC4_LOOP(in, out, 6);
-      if (--i == 0)
+      if (--i == 0) {
         break;
+      }
     }
   }
   key->x = x;

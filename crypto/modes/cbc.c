@@ -128,8 +128,9 @@ void CRYPTO_cbc128_decrypt(const uint8_t *in, uint8_t *out, size_t len,
         ((size_t)in | (size_t)out | (size_t)ivec) % sizeof(size_t) != 0) {
       while (len >= 16) {
         (*block)(in, out, key);
-        for (n = 0; n < 16; ++n)
+        for (n = 0; n < 16; ++n) {
           out[n] ^= iv[n];
+        }
         iv = in;
         len -= 16;
         in += 16;
@@ -140,8 +141,9 @@ void CRYPTO_cbc128_decrypt(const uint8_t *in, uint8_t *out, size_t len,
         size_t *out_t = (size_t *)out, *iv_t = (size_t *)iv;
 
         (*block)(in, out, key);
-        for (n = 0; n < 16 / sizeof(size_t); n++)
+        for (n = 0; n < 16 / sizeof(size_t); n++) {
           out_t[n] ^= iv_t[n];
+        }
         iv = in;
         len -= 16;
         in += 16;

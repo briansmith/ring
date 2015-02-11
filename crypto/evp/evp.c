@@ -142,8 +142,9 @@ int EVP_PKEY_cmp(const EVP_PKEY *a, const EVP_PKEY *b) {
     /* Compare parameters if the algorithm has them */
     if (a->ameth->param_cmp) {
       ret = a->ameth->param_cmp(a, b);
-      if (ret <= 0)
+      if (ret <= 0) {
         return ret;
+      }
     }
 
     if (a->ameth->pub_cmp) {
@@ -246,8 +247,9 @@ EVP_PKEY *EVP_PKEY_new_mac_key(int type, ENGINE *e, const uint8_t *mac_key,
   }
 
 merr:
-  if (mac_ctx)
+  if (mac_ctx) {
     EVP_PKEY_CTX_free(mac_ctx);
+  }
   return ret;
 }
 

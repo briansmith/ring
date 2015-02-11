@@ -127,29 +127,39 @@ void RSA_free(RSA *rsa) {
 
   CRYPTO_free_ex_data(CRYPTO_EX_INDEX_DSA, rsa, &rsa->ex_data);
 
-  if (rsa->n != NULL)
+  if (rsa->n != NULL) {
     BN_clear_free(rsa->n);
-  if (rsa->e != NULL)
+  }
+  if (rsa->e != NULL) {
     BN_clear_free(rsa->e);
-  if (rsa->d != NULL)
+  }
+  if (rsa->d != NULL) {
     BN_clear_free(rsa->d);
-  if (rsa->p != NULL)
+  }
+  if (rsa->p != NULL) {
     BN_clear_free(rsa->p);
-  if (rsa->q != NULL)
+  }
+  if (rsa->q != NULL) {
     BN_clear_free(rsa->q);
-  if (rsa->dmp1 != NULL)
+  }
+  if (rsa->dmp1 != NULL) {
     BN_clear_free(rsa->dmp1);
-  if (rsa->dmq1 != NULL)
+  }
+  if (rsa->dmq1 != NULL) {
     BN_clear_free(rsa->dmq1);
-  if (rsa->iqmp != NULL)
+  }
+  if (rsa->iqmp != NULL) {
     BN_clear_free(rsa->iqmp);
+  }
   for (u = 0; u < rsa->num_blindings; u++) {
     BN_BLINDING_free(rsa->blindings[u]);
   }
-  if (rsa->blindings != NULL)
+  if (rsa->blindings != NULL) {
     OPENSSL_free(rsa->blindings);
-  if (rsa->blindings_inuse != NULL)
+  }
+  if (rsa->blindings_inuse != NULL) {
     OPENSSL_free(rsa->blindings_inuse);
+  }
   OPENSSL_free(rsa);
 }
 

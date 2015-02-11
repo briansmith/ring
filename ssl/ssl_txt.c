@@ -145,8 +145,9 @@ int SSL_SESSION_print(BIO *bp, const SSL_SESSION *x) {
   }
 
   for (i = 0; i < x->session_id_length; i++) {
-    if (BIO_printf(bp, "%02X", x->session_id[i]) <= 0)
+    if (BIO_printf(bp, "%02X", x->session_id[i]) <= 0) {
       goto err;
+    }
   }
 
   if (BIO_puts(bp, "\n    Session-ID-ctx: ") <= 0) {

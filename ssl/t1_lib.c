@@ -255,8 +255,9 @@ static int tls1_check_duplicate_extensions(const CBS *cbs) {
   ret = 1;
 
 done:
-  if (extension_types)
+  if (extension_types) {
     OPENSSL_free(extension_types);
+  }
   return ret;
 }
 

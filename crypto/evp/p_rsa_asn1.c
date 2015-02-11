@@ -463,12 +463,15 @@ static int rsa_md_to_mgf1(X509_ALGOR **palg, const EVP_MD *mgf1md) {
   stmp = NULL;
 
 err:
-  if (stmp)
+  if (stmp) {
     ASN1_STRING_free(stmp);
-  if (algtmp)
+  }
+  if (algtmp) {
     X509_ALGOR_free(algtmp);
-  if (*palg)
+  }
+  if (*palg) {
     return 1;
+  }
 
   return 0;
 }
@@ -560,12 +563,15 @@ static ASN1_STRING *rsa_ctx_to_pss(EVP_PKEY_CTX *pkctx) {
   rv = 1;
 
 err:
-  if (pss)
+  if (pss) {
     RSA_PSS_PARAMS_free(pss);
-  if (rv)
+  }
+  if (rv) {
     return os;
-  if (os)
+  }
+  if (os) {
     ASN1_STRING_free(os);
+  }
   return NULL;
 }
 

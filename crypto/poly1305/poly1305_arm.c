@@ -135,13 +135,15 @@ static void fe1305x2_frombytearray(fe1305x2 *r, const uint8_t *x,
   int i;
   uint8_t t[17];
 
-  for (i = 0; (i < 16) && (i < xlen); i++)
+  for (i = 0; (i < 16) && (i < xlen); i++) {
     t[i] = x[i];
+  }
   xlen -= i;
   x += i;
   t[i++] = 1;
-  for (; i < 17; i++)
+  for (; i < 17; i++) {
     t[i] = 0;
+  }
 
   r->v[0] = 0x3ffffff & load32(t);
   r->v[2] = 0x3ffffff & (load32(t + 3) >> 2);
@@ -150,19 +152,22 @@ static void fe1305x2_frombytearray(fe1305x2 *r, const uint8_t *x,
   r->v[8] = load32(t + 13);
 
   if (xlen) {
-    for (i = 0; (i < 16) && (i < xlen); i++)
+    for (i = 0; (i < 16) && (i < xlen); i++) {
       t[i] = x[i];
+    }
     t[i++] = 1;
-    for (; i < 17; i++)
+    for (; i < 17; i++) {
       t[i] = 0;
+    }
 
     r->v[1] = 0x3ffffff & load32(t);
     r->v[3] = 0x3ffffff & (load32(t + 3) >> 2);
     r->v[5] = 0x3ffffff & (load32(t + 6) >> 4);
     r->v[7] = 0x3ffffff & (load32(t + 9) >> 6);
     r->v[9] = load32(t + 13);
-  } else
+  } else {
     r->v[1] = r->v[3] = r->v[5] = r->v[7] = r->v[9] = 0;
+  }
 }
 
 static const fe1305x2 zero __attribute__((aligned(16)));
@@ -188,8 +193,9 @@ void CRYPTO_poly1305_init_neon(poly1305_state *state, const uint8_t key[32]) {
   r->v[7] = r->v[6] = 0x3f03fff & ((*(uint32_t *)(key + 9)) >> 6);
   r->v[9] = r->v[8] = 0x00fffff & ((*(uint32_t *)(key + 12)) >> 8);
 
-  for (j = 0; j < 10; j++)
+  for (j = 0; j < 10; j++) {
     h->v[j] = 0; /* XXX: should fast-forward a bit */
+  }
 
   addmulmod(precomp, r, r, &zero);                 /* precompute r^2 */
   addmulmod(precomp + 1, precomp, precomp, &zero); /* precompute r^4 */
@@ -209,10 +215,12 @@ void CRYPTO_poly1305_update_neon(poly1305_state *state, const uint8_t *in,
 
   if (st->buf_used) {
     unsigned int todo = 32 - st->buf_used;
-    if (todo > in_len)
+    if (todo > in_len) {
       todo = in_len;
-    for (i = 0; i < todo; i++)
+    }
+    for (i = 0; i < todo; i++) {
       st->buf[st->buf_used + i] = in[i];
+    }
     st->buf_used += todo;
     in_len -= todo;
     in += todo;
@@ -220,24 +228,27 @@ void CRYPTO_poly1305_update_neon(poly1305_state *state, const uint8_t *in,
     if (st->buf_used == sizeof(st->buf) && in_len) {
       addmulmod(h, h, precomp, &zero);
       fe1305x2_frombytearray(c, st->buf, sizeof(st->buf));
-      for (i = 0; i < 10; i++)
+      for (i = 0; i < 10; i++) {
         h->v[i] += c->v[i];
+      }
       st->buf_used = 0;
     }
   }
 
   while (in_len > 32) {
     unsigned int tlen = 1048576;
-    if (in_len < tlen)
+    if (in_len < tlen) {
       tlen = in_len;
+    }
     tlen -= blocks(h, precomp, in, tlen);
     in_len -= tlen;
     in += tlen;
   }
 
   if (in_len) {
-    for (i = 0; i < in_len; i++)
+    for (i = 0; i < in_len; i++) {
       st->buf[i] = in[i];
+    }
     st->buf_used = in_len;
   }
 }

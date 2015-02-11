@@ -478,8 +478,9 @@ int main(int argc, char *argv[]) {
       int b;
       unsigned char saved = ctext[n];
       for (b = 0; b < 256; ++b) {
-        if (b == saved)
+        if (b == saved) {
           continue;
+        }
         ctext[n] = b;
         num =
             RSA_private_decrypt(num, ctext, ptext, key, RSA_PKCS1_OAEP_PADDING);

@@ -620,8 +620,9 @@ int RSA_verify_PKCS1_PSS_mgf1(RSA *rsa, const uint8_t *mHash,
   if (MSBits) {
     DB[0] &= 0xFF >> (8 - MSBits);
   }
-  for (i = 0; DB[i] == 0 && i < (maskedDBLen - 1); i++)
+  for (i = 0; DB[i] == 0 && i < (maskedDBLen - 1); i++) {
     ;
+  }
   if (DB[i++] != 0x1) {
     OPENSSL_PUT_ERROR(RSA, RSA_verify_PKCS1_PSS_mgf1,
                       RSA_R_SLEN_RECOVERY_FAILED);

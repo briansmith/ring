@@ -1050,8 +1050,9 @@ int ssl_build_cert_chain(CERT *c, X509_STORE *chain_store, int flags) {
   }
 
   cpk->chain = chain;
-  if (rv == 0)
+  if (rv == 0) {
     rv = 1;
+  }
 
 err:
   if (flags & SSL_BUILD_CHAIN_FLAG_CHECK) {

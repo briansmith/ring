@@ -367,8 +367,9 @@ static void HASH_BLOCK_DATA_ORDER(SHA_CTX *c, const void *p, size_t num) {
     c->h3 = (c->h3 + B) & 0xffffffffL;
     c->h4 = (c->h4 + C) & 0xffffffffL;
 
-    if (--num == 0)
+    if (--num == 0) {
       break;
+    }
 
     A = c->h0;
     B = c->h1;

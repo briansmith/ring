@@ -121,8 +121,9 @@ void CRYPTO_ctr128_encrypt(const uint8_t *in, uint8_t *out, size_t len,
   while (len >= 16) {
     (*block)(ivec, ecount_buf, key);
     ctr128_inc(ivec);
-    for (; n < 16; n += sizeof(size_t))
+    for (; n < 16; n += sizeof(size_t)) {
       *(size_t *)(out + n) = *(size_t *)(in + n) ^ *(size_t *)(ecount_buf + n);
+    }
     len -= 16;
     out += 16;
     in += 16;
@@ -179,8 +180,9 @@ void CRYPTO_ctr128_encrypt_ctr32(const uint8_t *in, uint8_t *out,
     /* 1<<28 is just a not-so-small yet not-so-large number...
      * Below condition is practically never met, but it has to
      * be checked for code correctness. */
-    if (sizeof(size_t) > sizeof(unsigned int) && blocks > (1U << 28))
+    if (sizeof(size_t) > sizeof(unsigned int) && blocks > (1U << 28)) {
       blocks = (1U << 28);
+    }
     /* As (*func) operates on 32-bit counter, caller
      * has to handle overflow. 'if' below detects the
      * overflow, which is then handled by limiting the
@@ -194,8 +196,9 @@ void CRYPTO_ctr128_encrypt_ctr32(const uint8_t *in, uint8_t *out,
     /* (*func) does not update ivec, caller does: */
     PUTU32(ivec + 12, ctr32);
     /* ... overflow was detected, propogate carry. */
-    if (ctr32 == 0)
+    if (ctr32 == 0) {
       ctr96_inc(ivec);
+    }
     blocks *= 16;
     len -= blocks;
     out += blocks;

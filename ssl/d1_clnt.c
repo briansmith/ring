@@ -490,8 +490,9 @@ int dtls1_connect(SSL *s) {
         ret = 1;
         s->ctx->stats.sess_connect_good++;
 
-        if (cb != NULL)
+        if (cb != NULL) {
           cb(s, SSL_CB_HANDSHAKE_DONE, 1);
+        }
 
         /* done with handshaking */
         s->d1->handshake_read_seq = 0;

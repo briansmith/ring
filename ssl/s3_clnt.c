@@ -199,8 +199,9 @@ int ssl3_connect(SSL *s) {
         /* fallthrough */
       case SSL_ST_CONNECT:
       case SSL_ST_BEFORE | SSL_ST_CONNECT:
-        if (cb != NULL)
+        if (cb != NULL) {
           cb(s, SSL_CB_HANDSHAKE_START, 1);
+        }
 
         if (s->init_buf == NULL) {
           buf = BUF_MEM_new();
@@ -445,8 +446,9 @@ int ssl3_connect(SSL *s) {
            * hashes. */
           if (s->s3->tlsext_channel_id_new) {
             ret = tls1_record_handshake_hashes_for_channel_id(s);
-            if (ret <= 0)
+            if (ret <= 0) {
               goto end;
+            }
           }
           if ((SSL_get_mode(s) & SSL_MODE_HANDSHAKE_CUTTHROUGH) &&
               ssl3_can_cutthrough(s) &&

@@ -394,8 +394,9 @@ int ssl3_accept(SSL *s) {
         if (ssl_cipher_requires_server_key_exchange(s->s3->tmp.new_cipher) ||
             ((alg_a & SSL_aPSK) && s->psk_identity_hint)) {
           ret = ssl3_send_server_key_exchange(s);
-          if (ret <= 0)
+          if (ret <= 0) {
             goto end;
+          }
         } else {
           skip = 1;
         }

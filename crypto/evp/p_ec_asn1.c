@@ -201,8 +201,9 @@ static int eckey_pub_decode(EVP_PKEY *pkey, X509_PUBKEY *pubkey) {
   return 1;
 
 err:
-  if (eckey)
+  if (eckey) {
     EC_KEY_free(eckey);
+  }
   return 0;
 }
 
@@ -235,8 +236,9 @@ static int eckey_priv_decode(EVP_PKEY *pkey, PKCS8_PRIV_KEY_INFO *p8) {
 
   eckey = eckey_type2param(ptype, pval);
 
-  if (!eckey)
+  if (!eckey) {
     goto ecliberr;
+  }
 
   /* We have parameters now set private key */
   if (!d2i_ECPrivateKey(&eckey, &p, pklen)) {
@@ -282,8 +284,9 @@ static int eckey_priv_decode(EVP_PKEY *pkey, PKCS8_PRIV_KEY_INFO *p8) {
 ecliberr:
   OPENSSL_PUT_ERROR(EVP, eckey_priv_decode, ERR_R_EC_LIB);
 ecerr:
-  if (eckey)
+  if (eckey) {
     EC_KEY_free(eckey);
+  }
   return 0;
 }
 
@@ -435,10 +438,12 @@ static int do_EC_KEY_print(BIO *bp, const EC_KEY *x, int off, int ktype) {
 
   if (ktype == 2) {
     priv_key = EC_KEY_get0_private_key(x);
-    if (priv_key && (i = (size_t)BN_num_bytes(priv_key)) > buf_len)
+    if (priv_key && (i = (size_t)BN_num_bytes(priv_key)) > buf_len) {
       buf_len = i;
-  } else
+    }
+  } else {
     priv_key = NULL;
+  }
 
   if (ktype > 0) {
     buf_len += 10;
@@ -447,24 +452,27 @@ static int do_EC_KEY_print(BIO *bp, const EC_KEY *x, int off, int ktype) {
       goto err;
     }
   }
-  if (ktype == 2)
+  if (ktype == 2) {
     ecstr = "Private-Key";
-  else if (ktype == 1)
+  } else if (ktype == 1) {
     ecstr = "Public-Key";
-  else
+  } else {
     ecstr = "ECDSA-Parameters";
+  }
 
-  if (!BIO_indent(bp, off, 128))
+  if (!BIO_indent(bp, off, 128)) {
     goto err;
-  if ((order = BN_new()) == NULL)
+  }
+  order = BN_new();
+  if (order == NULL || !EC_GROUP_get_order(group, order, NULL) ||
+      BIO_printf(bp, "%s: (%d bit)\n", ecstr, BN_num_bits(order)) <= 0) {
     goto err;
-  if (!EC_GROUP_get_order(group, order, NULL))
-    goto err;
-  if (BIO_printf(bp, "%s: (%d bit)\n", ecstr, BN_num_bits(order)) <= 0)
-    goto err;
+  }
 
-  if ((priv_key != NULL) && !ASN1_bn_print(bp, "priv:", priv_key, buffer, off))
+  if ((priv_key != NULL) &&
+      !ASN1_bn_print(bp, "priv:", priv_key, buffer, off)) {
     goto err;
+  }
   if (pub_key_bytes != NULL) {
     BIO_hexdump(bp, pub_key_bytes, pub_key_bytes_len, off);
   }
@@ -475,16 +483,21 @@ static int do_EC_KEY_print(BIO *bp, const EC_KEY *x, int off, int ktype) {
   ret = 1;
 
 err:
-  if (!ret)
+  if (!ret) {
     OPENSSL_PUT_ERROR(EVP, do_EC_KEY_print, reason);
-  if (pub_key_bytes)
+  }
+  if (pub_key_bytes) {
     OPENSSL_free(pub_key_bytes);
-  if (order)
+  }
+  if (order) {
     BN_free(order);
-  if (ctx)
+  }
+  if (ctx) {
     BN_CTX_free(ctx);
-  if (buffer != NULL)
+  }
+  if (buffer != NULL) {
     OPENSSL_free(buffer);
+  }
   return ret;
 }
 

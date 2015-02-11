@@ -727,8 +727,9 @@ void CRYPTO_poly1305_update(poly1305_state *state, const uint8_t *m,
       bytes -= want;
       m += want;
       st->leftover += want;
-      if ((st->leftover < 32) || (bytes == 0))
+      if ((st->leftover < 32) || (bytes == 0)) {
         return;
+      }
       poly1305_first_block(st, st->buffer);
       st->leftover = 0;
     }
@@ -742,8 +743,9 @@ void CRYPTO_poly1305_update(poly1305_state *state, const uint8_t *m,
     bytes -= want;
     m += want;
     st->leftover += want;
-    if (st->leftover < 64)
+    if (st->leftover < 64) {
       return;
+    }
     poly1305_blocks(st, st->buffer, 64);
     st->leftover = 0;
   }
@@ -791,8 +793,9 @@ void CRYPTO_poly1305_finish(poly1305_state *state, uint8_t mac[16]) {
   s1 = r1 * (5 << 2);
   s2 = r2 * (5 << 2);
 
-  if (leftover < 16)
+  if (leftover < 16) {
     goto poly1305_donna_atmost15bytes;
+  }
 
 poly1305_donna_atleast16bytes:
   t0 = U8TO64_LE(m + 0);
@@ -821,13 +824,15 @@ poly1305_donna_mul:
 
   m += 16;
   leftover -= 16;
-  if (leftover >= 16)
+  if (leftover >= 16) {
     goto poly1305_donna_atleast16bytes;
+  }
 
 /* final bytes */
 poly1305_donna_atmost15bytes:
-  if (!leftover)
+  if (!leftover) {
     goto poly1305_donna_finish;
+  }
 
   m[leftover++] = 1;
   poly1305_block_zero(m + leftover, 16 - leftover);

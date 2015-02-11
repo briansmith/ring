@@ -182,14 +182,18 @@ void BN_BLINDING_free(BN_BLINDING *r) {
     return;
   }
 
-  if (r->A != NULL)
+  if (r->A != NULL) {
     BN_free(r->A);
-  if (r->Ai != NULL)
+  }
+  if (r->Ai != NULL) {
     BN_free(r->Ai);
-  if (r->e != NULL)
+  }
+  if (r->e != NULL) {
     BN_free(r->e);
-  if (r->mod != NULL)
+  }
+  if (r->mod != NULL) {
     BN_free(r->mod);
+  }
   OPENSSL_free(r);
 }
 

@@ -88,8 +88,9 @@ static int urandom_buffering = 0;
 /* urandom_get_fd_locked returns a file descriptor to /dev/urandom. The caller
  * of this function must hold CRYPTO_LOCK_RAND. */
 static int urandom_get_fd_locked(void) {
-  if (urandom_fd != -2)
+  if (urandom_fd != -2) {
     return urandom_fd;
+  }
 
   urandom_fd = open("/dev/urandom", O_RDONLY);
   return urandom_fd;
