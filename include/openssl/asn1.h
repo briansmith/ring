@@ -1139,6 +1139,13 @@ OPENSSL_EXPORT int BIO_asn1_get_suffix(BIO *b, asn1_ps_func **psuffix, asn1_ps_f
 #define ASN1_F_ASN1_get_object 158
 #define ASN1_F_d2i_ASN1_bytes 159
 #define ASN1_F_a2i_ASN1_ENUMERATED 160
+#define ASN1_F_ASN1_generate_v3 161
+#define ASN1_F_append_exp 162
+#define ASN1_F_asn1_cb 163
+#define ASN1_F_asn1_str2type 164
+#define ASN1_F_bitstr_cb 165
+#define ASN1_F_i2d_PrivateKey 166
+#define ASN1_F_parse_tagging 167
 #define ASN1_R_ASN1_SIG_PARSE_ERROR 100
 #define ASN1_R_ADDING_OBJECT 101
 #define ASN1_R_MIME_NO_CONTENT_TYPE 102

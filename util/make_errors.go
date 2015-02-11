@@ -366,8 +366,7 @@ func addFunctionsAndReasons(functions, reasons map[string]int, filename, prefix 
 	}
 	defer file.Close()
 
-	prefix += "_"
-	reasonPrefix := prefix + "R_"
+	reasonPrefix := prefix + "_R_"
 	var currentFunction string
 
 	scanner := bufio.NewScanner(file)
@@ -394,8 +393,9 @@ func addFunctionsAndReasons(functions, reasons map[string]int, filename, prefix 
 			}
 		}
 
-		if strings.Contains(line, "OPENSSL_PUT_ERROR(") {
-			functionToken := prefix + "F_" + currentFunction
+		// Do not include cross-module error lines.
+		if strings.Contains(line, "OPENSSL_PUT_ERROR(" + prefix + ",") {
+			functionToken := prefix + "_F_" + currentFunction
 			if _, ok := functions[functionToken]; !ok {
 				functions[functionToken] = -1
 			}
@@ -405,7 +405,7 @@ func addFunctionsAndReasons(functions, reasons map[string]int, filename, prefix 
 		handleDeclareMacro(line, "_F_", "OPENSSL_DECLARE_ERROR_FUNCTION(", functions)
 
 		for len(line) > 0 {
-			i := strings.Index(line, prefix)
+			i := strings.Index(line, prefix + "_")
 			if i == -1 {
 				break
 			}

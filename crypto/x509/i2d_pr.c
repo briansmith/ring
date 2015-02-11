@@ -57,8 +57,7 @@
 
 #include <openssl/x509.h>
 
-#include <stdio.h>
-
+#include <openssl/asn1.h>
 #include <openssl/err.h>
 #include <openssl/evp.h>
 
@@ -77,7 +76,9 @@ int i2d_PrivateKey(const EVP_PKEY *a, unsigned char **pp)
 		PKCS8_PRIV_KEY_INFO_free(p8);
 		return ret;
 	}
-	OPENSSL_PUT_ERROR(X509, i2d_PrivateKey, ASN1_R_UNSUPPORTED_PUBLIC_KEY_TYPE);
+	/* Although this file is in crypto/x509 for layering reasons, it emits
+	 * an error code from ASN1 for OpenSSL compatibility. */
+	OPENSSL_PUT_ERROR(ASN1, i2d_PrivateKey, ASN1_R_UNSUPPORTED_PUBLIC_KEY_TYPE);
 	return -1;
 	}
 

@@ -13,6 +13,7 @@ ASN1,function,132,ASN1_TIME_adj
 ASN1,function,137,ASN1_UTCTIME_adj
 ASN1,function,103,ASN1_d2i_fp
 ASN1,function,101,ASN1_dup
+ASN1,function,161,ASN1_generate_v3
 ASN1,function,158,ASN1_get_object
 ASN1,function,145,ASN1_i2d_bio
 ASN1,function,153,ASN1_i2d_fp
@@ -36,6 +37,8 @@ ASN1,function,123,a2d_ASN1_OBJECT
 ASN1,function,160,a2i_ASN1_ENUMERATED
 ASN1,function,114,a2i_ASN1_INTEGER
 ASN1,function,102,a2i_ASN1_STRING
+ASN1,function,162,append_exp
+ASN1,function,163,asn1_cb
 ASN1,function,152,asn1_check_tlen
 ASN1,function,156,asn1_collate_primitive
 ASN1,function,115,asn1_collect
@@ -45,8 +48,10 @@ ASN1,function,107,asn1_do_adb
 ASN1,function,109,asn1_ex_c2i
 ASN1,function,149,asn1_find_end
 ASN1,function,105,asn1_item_ex_combine_new
+ASN1,function,164,asn1_str2type
 ASN1,function,100,asn1_template_ex_d2i
 ASN1,function,141,asn1_template_noexp_d2i
+ASN1,function,165,bitstr_cb
 ASN1,function,142,c2i_ASN1_BIT_STRING
 ASN1,function,110,c2i_ASN1_INTEGER
 ASN1,function,118,c2i_ASN1_OBJECT
@@ -58,7 +63,9 @@ ASN1,function,147,d2i_ASN1_UTCTIME
 ASN1,function,159,d2i_ASN1_bytes
 ASN1,function,113,d2i_ASN1_type_bytes
 ASN1,function,131,i2d_ASN1_TIME
+ASN1,function,166,i2d_PrivateKey
 ASN1,function,121,long_c2i
+ASN1,function,167,parse_tagging
 ASN1,reason,101,ADDING_OBJECT
 ASN1,reason,158,ASN1_LENGTH_MISMATCH
 ASN1,reason,123,ASN1_PARSE_ERROR
