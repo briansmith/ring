@@ -682,8 +682,9 @@ loop:
     for (i = 1; i < NUMPRIMES && primes[i] < rnd_word; i++) {
       if ((mods[i] + delta) % primes[i] == 0) {
         delta += 2;
-        if (delta > maxdelta)
+        if (delta > maxdelta) {
           goto again;
+        }
         goto loop;
       }
     }
@@ -693,8 +694,9 @@ loop:
        * that gcd(rnd-1,primes) == 1 (except for 2) */
       if (((mods[i] + delta) % primes[i]) <= 1) {
         delta += 2;
-        if (delta > maxdelta)
+        if (delta > maxdelta) {
           goto again;
+        }
         goto loop;
       }
     }

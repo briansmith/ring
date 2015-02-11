@@ -586,8 +586,9 @@ static BIGNUM *BN_mod_inverse_no_branch(BIGNUM *out, const BIGNUM *a,
      */
     pB = &local_B;
     BN_with_flags(pB, B, BN_FLG_CONSTTIME);
-    if (!BN_nnmod(B, pB, A, ctx))
+    if (!BN_nnmod(B, pB, A, ctx)) {
       goto err;
+    }
   }
   sign = -1;
   /* From  B = a mod |n|,  A = |n|  it follows that

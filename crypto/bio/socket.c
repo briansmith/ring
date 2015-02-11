@@ -150,11 +150,13 @@ static long sock_ctrl(BIO *b, int cmd, long num, void *ptr) {
     case BIO_C_GET_FD:
       if (b->init) {
         ip = (int *)ptr;
-        if (ip != NULL)
+        if (ip != NULL) {
           *ip = b->num;
+        }
         ret = b->num;
-      } else
+      } else {
         ret = -1;
+      }
       break;
     case BIO_CTRL_GET_CLOSE:
       ret = b->shutdown;

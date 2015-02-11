@@ -315,8 +315,9 @@ static long buffer_ctrl(BIO *b, int cmd, long num, void *ptr) {
     case BIO_CTRL_WPENDING:
       ret = (long)ctx->obuf_len;
       if (ret == 0) {
-        if (b->next_bio == NULL)
+        if (b->next_bio == NULL) {
           return 0;
+        }
         ret = BIO_ctrl(b->next_bio, cmd, num, ptr);
       }
       break;

@@ -128,8 +128,9 @@ static int sign_setup(const DSA *dsa, BN_CTX *ctx_in, BIGNUM **kinvp,
   }
 
   /* Compute r = (g^k mod p) mod q */
-  if (!BN_copy(&kq, &k))
+  if (!BN_copy(&kq, &k)) {
     goto err;
+  }
 
   /* We do not want timing information to leak the length of k,
    * so we compute g^k using an equivalent exponent of fixed length.
@@ -137,11 +138,11 @@ static int sign_setup(const DSA *dsa, BN_CTX *ctx_in, BIGNUM **kinvp,
    * (This is a kludge that we need because the BN_mod_exp_mont()
    * does not let us specify the desired timing behaviour.) */
 
-  if (!BN_add(&kq, &kq, dsa->q))
+  if (!BN_add(&kq, &kq, dsa->q)) {
     goto err;
-  if (BN_num_bits(&kq) <= BN_num_bits(dsa->q)) {
-    if (!BN_add(&kq, &kq, dsa->q))
-      goto err;
+  }
+  if (BN_num_bits(&kq) <= BN_num_bits(dsa->q) && !BN_add(&kq, &kq, dsa->q)) {
+    goto err;
   }
 
   K = &kq;

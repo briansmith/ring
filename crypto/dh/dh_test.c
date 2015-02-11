@@ -70,14 +70,15 @@
 static int cb(int p, int n, BN_GENCB *arg) {
   char c = '*';
 
-  if (p == 0)
+  if (p == 0) {
     c = '.';
-  if (p == 1)
+  } else if (p == 1) {
     c = '+';
-  if (p == 2)
+  } else if (p == 2) {
     c = '*';
-  if (p == 3)
+  } else if (p == 3) {
     c = '\n';
+  }
   BIO_write(arg->arg, &c, 1);
   (void)BIO_flush(arg->arg);
 
@@ -109,16 +110,21 @@ int main(int argc, char *argv[]) {
     goto err;
   }
 
-  if (!DH_check(a, &i))
+  if (!DH_check(a, &i)) {
     goto err;
-  if (i & DH_CHECK_P_NOT_PRIME)
+  }
+  if (i & DH_CHECK_P_NOT_PRIME) {
     BIO_puts(out, "p value is not prime\n");
-  if (i & DH_CHECK_P_NOT_SAFE_PRIME)
+  }
+  if (i & DH_CHECK_P_NOT_SAFE_PRIME) {
     BIO_puts(out, "p value is not a safe prime\n");
-  if (i & DH_CHECK_UNABLE_TO_CHECK_GENERATOR)
+  }
+  if (i & DH_CHECK_UNABLE_TO_CHECK_GENERATOR) {
     BIO_puts(out, "unable to check the generator value\n");
-  if (i & DH_CHECK_NOT_SUITABLE_GENERATOR)
+  }
+  if (i & DH_CHECK_NOT_SUITABLE_GENERATOR) {
     BIO_puts(out, "the g value is not a generator\n");
+  }
 
   BIO_puts(out, "\np    =");
   BN_print(out, a->p);
@@ -137,16 +143,18 @@ int main(int argc, char *argv[]) {
     goto err;
   }
 
-  if (!DH_generate_key(a))
+  if (!DH_generate_key(a)) {
     goto err;
+  }
   BIO_puts(out, "pri 1=");
   BN_print(out, a->priv_key);
   BIO_puts(out, "\npub 1=");
   BN_print(out, a->pub_key);
   BIO_puts(out, "\n");
 
-  if (!DH_generate_key(b))
+  if (!DH_generate_key(b)) {
     goto err;
+  }
   BIO_puts(out, "pri 2=");
   BN_print(out, b->priv_key);
   BIO_puts(out, "\npub 2=");
@@ -177,23 +185,29 @@ int main(int argc, char *argv[]) {
   if ((aout < 4) || (bout != aout) || (memcmp(abuf, bbuf, aout) != 0)) {
     fprintf(stderr, "Error in DH routines\n");
     ret = 1;
-  } else
+  } else {
     ret = 0;
+  }
 
-  if (!run_rfc5114_tests())
+  if (!run_rfc5114_tests()) {
     ret = 1;
+  }
 
 err:
   BIO_print_errors_fp(stderr);
 
-  if (abuf != NULL)
+  if (abuf != NULL) {
     OPENSSL_free(abuf);
-  if (bbuf != NULL)
+  }
+  if (bbuf != NULL) {
     OPENSSL_free(bbuf);
-  if (b != NULL)
+  }
+  if (b != NULL) {
     DH_free(b);
-  if (a != NULL)
+  }
+  if (a != NULL) {
     DH_free(a);
+  }
   BIO_free(out);
   return ret;
 }
@@ -433,8 +447,9 @@ static int run_rfc5114_tests(void) {
     /* Set up DH structures setting key components */
     dhA = td->get_param(NULL);
     dhB = td->get_param(NULL);
-    if (!dhA || !dhB)
+    if (!dhA || !dhB) {
       goto bad_err;
+    }
 
     dhA->priv_key = BN_bin2bn(td->xA, td->xA_len, NULL);
     dhA->pub_key = BN_bin2bn(td->yA, td->yA_len, NULL);
@@ -442,27 +457,29 @@ static int run_rfc5114_tests(void) {
     dhB->priv_key = BN_bin2bn(td->xB, td->xB_len, NULL);
     dhB->pub_key = BN_bin2bn(td->yB, td->yB_len, NULL);
 
-    if (!dhA->priv_key || !dhA->pub_key || !dhB->priv_key || !dhB->pub_key)
+    if (!dhA->priv_key || !dhA->pub_key || !dhB->priv_key || !dhB->pub_key) {
       goto bad_err;
+    }
 
     if ((td->Z_len != (size_t)DH_size(dhA)) ||
-        (td->Z_len != (size_t)DH_size(dhB)))
+        (td->Z_len != (size_t)DH_size(dhB))) {
       goto err;
+    }
 
     Z1 = OPENSSL_malloc(DH_size(dhA));
     Z2 = OPENSSL_malloc(DH_size(dhB));
     /* Work out shared secrets using both sides and compare
      * with expected values.
      */
-    if (!DH_compute_key(Z1, dhB->pub_key, dhA))
+    if (!DH_compute_key(Z1, dhB->pub_key, dhA) ||
+        !DH_compute_key(Z2, dhA->pub_key, dhB)) {
       goto bad_err;
-    if (!DH_compute_key(Z2, dhA->pub_key, dhB))
-      goto bad_err;
+    }
 
-    if (memcmp(Z1, td->Z, td->Z_len))
+    if (memcmp(Z1, td->Z, td->Z_len) ||
+        memcmp(Z2, td->Z, td->Z_len)) {
       goto err;
-    if (memcmp(Z2, td->Z, td->Z_len))
-      goto err;
+    }
 
     printf("RFC5114 parameter test %d OK\n", i + 1);
 

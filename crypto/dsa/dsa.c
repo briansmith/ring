@@ -128,20 +128,27 @@ void DSA_free(DSA *dsa) {
 
   CRYPTO_free_ex_data(CRYPTO_EX_INDEX_DSA, dsa, &dsa->ex_data);
 
-  if (dsa->p != NULL)
+  if (dsa->p != NULL) {
     BN_clear_free(dsa->p);
-  if (dsa->q != NULL)
+  }
+  if (dsa->q != NULL) {
     BN_clear_free(dsa->q);
-  if (dsa->g != NULL)
+  }
+  if (dsa->g != NULL) {
     BN_clear_free(dsa->g);
-  if (dsa->pub_key != NULL)
+  }
+  if (dsa->pub_key != NULL) {
     BN_clear_free(dsa->pub_key);
-  if (dsa->priv_key != NULL)
+  }
+  if (dsa->priv_key != NULL) {
     BN_clear_free(dsa->priv_key);
-  if (dsa->kinv != NULL)
+  }
+  if (dsa->kinv != NULL) {
     BN_clear_free(dsa->kinv);
-  if (dsa->r != NULL)
+  }
+  if (dsa->r != NULL) {
     BN_clear_free(dsa->r);
+  }
   OPENSSL_free(dsa);
 }
 

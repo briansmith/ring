@@ -200,13 +200,15 @@ unsigned BN_num_bits_word(BN_ULONG l) {
     if (l & 0xffff000000000000L) {
       if (l & 0xff00000000000000L) {
         return (bits[(int)(l >> 56)] + 56);
-      } else
+      } else {
         return (bits[(int)(l >> 48)] + 48);
+      }
     } else {
       if (l & 0x0000ff0000000000L) {
         return (bits[(int)(l >> 40)] + 40);
-      } else
+      } else {
         return (bits[(int)(l >> 32)] + 32);
+      }
     }
   } else
 #endif

@@ -100,8 +100,9 @@ BN_ULONG bn_mul_add_words(BN_ULONG *rp, const BN_ULONG *ap, int num,
                           BN_ULONG w) {
   BN_ULONG c1 = 0;
 
-  if (num <= 0)
+  if (num <= 0) {
     return (c1);
+  }
 
   while (num & ~3) {
     mul_add(rp[0], ap[0], w, c1);
@@ -114,23 +115,26 @@ BN_ULONG bn_mul_add_words(BN_ULONG *rp, const BN_ULONG *ap, int num,
   }
   if (num) {
     mul_add(rp[0], ap[0], w, c1);
-    if (--num == 0)
+    if (--num == 0) {
       return c1;
+    }
     mul_add(rp[1], ap[1], w, c1);
-    if (--num == 0)
+    if (--num == 0) {
       return c1;
+    }
     mul_add(rp[2], ap[2], w, c1);
     return c1;
   }
 
-  return (c1);
+  return c1;
 }
 
 BN_ULONG bn_mul_words(BN_ULONG *rp, const BN_ULONG *ap, int num, BN_ULONG w) {
   BN_ULONG c1 = 0;
 
-  if (num <= 0)
-    return (c1);
+  if (num <= 0) {
+    return c1;
+  }
 
   while (num & ~3) {
     mul(rp[0], ap[0], w, c1);
@@ -143,19 +147,22 @@ BN_ULONG bn_mul_words(BN_ULONG *rp, const BN_ULONG *ap, int num, BN_ULONG w) {
   }
   if (num) {
     mul(rp[0], ap[0], w, c1);
-    if (--num == 0)
+    if (--num == 0) {
       return c1;
+    }
     mul(rp[1], ap[1], w, c1);
-    if (--num == 0)
+    if (--num == 0) {
       return c1;
+    }
     mul(rp[2], ap[2], w, c1);
   }
-  return (c1);
+  return c1;
 }
 
 void bn_sqr_words(BN_ULONG *r, const BN_ULONG *a, int n) {
-  if (n <= 0)
+  if (n <= 0) {
     return;
+  }
 
   while (n & ~3) {
     sqr(r[0], r[1], a[0]);
@@ -168,11 +175,13 @@ void bn_sqr_words(BN_ULONG *r, const BN_ULONG *a, int n) {
   }
   if (n) {
     sqr(r[0], r[1], a[0]);
-    if (--n == 0)
+    if (--n == 0) {
       return;
+    }
     sqr(r[2], r[3], a[1]);
-    if (--n == 0)
+    if (--n == 0) {
       return;
+    }
     sqr(r[4], r[5], a[2]);
   }
 }
@@ -190,8 +199,9 @@ BN_ULONG bn_add_words(BN_ULONG *rp, const BN_ULONG *ap, const BN_ULONG *bp,
   BN_ULONG ret;
   size_t i = 0;
 
-  if (n <= 0)
+  if (n <= 0) {
     return 0;
+  }
 
   asm volatile (
       "	subq	%0,%0		\n" /* clear carry */
@@ -216,8 +226,9 @@ BN_ULONG bn_sub_words(BN_ULONG *rp, const BN_ULONG *ap, const BN_ULONG *bp,
   BN_ULONG ret;
   size_t i = 0;
 
-  if (n <= 0)
+  if (n <= 0) {
     return 0;
+  }
 
   asm volatile (
       "	subq	%0,%0		\n" /* clear borrow */
@@ -242,47 +253,56 @@ BN_ULONG bn_sub_words(BN_ULONG *r, BN_ULONG *a, BN_ULONG *b, int n) {
   BN_ULONG t1, t2;
   int c = 0;
 
-  if (n <= 0)
-    return ((BN_ULONG)0);
+  if (n <= 0) {
+    return (BN_ULONG)0;
+  }
 
   for (;;) {
     t1 = a[0];
     t2 = b[0];
     r[0] = (t1 - t2 - c) & BN_MASK2;
-    if (t1 != t2)
+    if (t1 != t2) {
       c = (t1 < t2);
-    if (--n <= 0)
+    }
+    if (--n <= 0) {
       break;
+    }
 
     t1 = a[1];
     t2 = b[1];
     r[1] = (t1 - t2 - c) & BN_MASK2;
-    if (t1 != t2)
+    if (t1 != t2) {
       c = (t1 < t2);
-    if (--n <= 0)
+    }
+    if (--n <= 0) {
       break;
+    }
 
     t1 = a[2];
     t2 = b[2];
     r[2] = (t1 - t2 - c) & BN_MASK2;
-    if (t1 != t2)
+    if (t1 != t2) {
       c = (t1 < t2);
-    if (--n <= 0)
+    }
+    if (--n <= 0) {
       break;
+    }
 
     t1 = a[3];
     t2 = b[3];
     r[3] = (t1 - t2 - c) & BN_MASK2;
-    if (t1 != t2)
+    if (t1 != t2) {
       c = (t1 < t2);
-    if (--n <= 0)
+    }
+    if (--n <= 0) {
       break;
+    }
 
     a += 4;
     b += 4;
     r += 4;
   }
-  return (c);
+  return c;
 }
 #endif
 

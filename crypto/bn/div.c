@@ -278,12 +278,14 @@ int BN_div(BIGNUM *dv, BIGNUM *rm, const BIGNUM *num, const BIGNUM *divisor,
       t2 = (BN_ULLONG)d1 * q;
 
       for (;;) {
-        if (t2 <= ((((BN_ULLONG)rem) << BN_BITS2) | wnump[-2]))
+        if (t2 <= ((((BN_ULLONG)rem) << BN_BITS2) | wnump[-2])) {
           break;
+        }
         q--;
         rem += d0;
-        if (rem < d0)
+        if (rem < d0) {
           break; /* don't let rem overflow */
+        }
         t2 -= d1;
       }
 #else /* !BN_LLONG */
@@ -316,14 +318,17 @@ int BN_div(BIGNUM *dv, BIGNUM *rm, const BIGNUM *num, const BIGNUM *divisor,
 #endif
 
       for (;;) {
-        if ((t2h < rem) || ((t2h == rem) && (t2l <= wnump[-2])))
+        if ((t2h < rem) || ((t2h == rem) && (t2l <= wnump[-2]))) {
           break;
+        }
         q--;
         rem += d0;
-        if (rem < d0)
+        if (rem < d0) {
           break; /* don't let rem overflow */
-        if (t2l < d1)
+        }
+        if (t2l < d1) {
           t2h--;
+        }
         t2l -= d1;
       }
 #endif /* !BN_LLONG */

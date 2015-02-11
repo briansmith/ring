@@ -68,8 +68,9 @@ static void hexdump(FILE *f, const char *title, const uint8_t *s, int l) {
 
   fprintf(f, "%s", title);
   for (; n < l; ++n) {
-    if ((n % 16) == 0)
+    if ((n % 16) == 0) {
       fprintf(f, "\n%04x", n);
+    }
     fprintf(f, " %02x", s[n]);
   }
   fprintf(f, "\n");
@@ -388,8 +389,9 @@ int main(int argc, char **argv) {
       if (p[-1] == '\n') {
         encdec = -1;
         p[-1] = '\0';
-      } else
+      } else {
         encdec = atoi(sstrsep(&p, "\n"));
+      }
     }
 
     kn = convert(key);

@@ -514,8 +514,9 @@ int BN_from_montgomery(BIGNUM *ret, const BIGNUM *a, const BN_MONT_CTX *mont,
     return 0;
   }
 
-  if (BN_copy(t, a))
+  if (BN_copy(t, a)) {
     retn = BN_from_montgomery_word(ret, t, mont);
+  }
   BN_CTX_end(ctx);
 
   return retn;

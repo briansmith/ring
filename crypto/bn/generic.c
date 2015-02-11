@@ -585,23 +585,27 @@ BN_ULONG bn_sub_words(BN_ULONG *r, const BN_ULONG *a, const BN_ULONG *b,
     t1 = a[0];
     t2 = b[0];
     r[0] = (t1 - t2 - c) & BN_MASK2;
-    if (t1 != t2)
+    if (t1 != t2) {
       c = (t1 < t2);
+    }
     t1 = a[1];
     t2 = b[1];
     r[1] = (t1 - t2 - c) & BN_MASK2;
-    if (t1 != t2)
+    if (t1 != t2) {
       c = (t1 < t2);
+    }
     t1 = a[2];
     t2 = b[2];
     r[2] = (t1 - t2 - c) & BN_MASK2;
-    if (t1 != t2)
+    if (t1 != t2) {
       c = (t1 < t2);
+    }
     t1 = a[3];
     t2 = b[3];
     r[3] = (t1 - t2 - c) & BN_MASK2;
-    if (t1 != t2)
+    if (t1 != t2) {
       c = (t1 < t2);
+    }
     a += 4;
     b += 4;
     r += 4;
@@ -611,8 +615,9 @@ BN_ULONG bn_sub_words(BN_ULONG *r, const BN_ULONG *a, const BN_ULONG *b,
     t1 = a[0];
     t2 = b[0];
     r[0] = (t1 - t2 - c) & BN_MASK2;
-    if (t1 != t2)
+    if (t1 != t2) {
       c = (t1 < t2);
+    }
     a++;
     b++;
     r++;
@@ -1050,11 +1055,13 @@ int bn_mul_mont(BN_ULONG *rp, const BN_ULONG *ap, const BN_ULONG *bp,
 #ifdef mul64
   mh = HBITS(ml);
   ml = LBITS(ml);
-  for (j = 0; j < num; ++j)
+  for (j = 0; j < num; ++j) {
     mul(tp[j], ap[j], ml, mh, c0);
+  }
 #else
-  for (j = 0; j < num; ++j)
+  for (j = 0; j < num; ++j) {
     mul(tp[j], ap[j], ml, c0);
+  }
 #endif
 
   tp[num] = c0;
@@ -1067,11 +1074,13 @@ int bn_mul_mont(BN_ULONG *rp, const BN_ULONG *ap, const BN_ULONG *bp,
 #ifdef mul64
     mh = HBITS(ml);
     ml = LBITS(ml);
-    for (j = 0; j < num; ++j)
+    for (j = 0; j < num; ++j) {
       mul_add(tp[j], ap[j], ml, mh, c0);
+    }
 #else
-    for (j = 0; j < num; ++j)
+    for (j = 0; j < num; ++j) {
       mul_add(tp[j], ap[j], ml, c0);
+    }
 #endif
     c1 = (tp[num] + c0) & BN_MASK2;
     tp[num] = c1;
@@ -1104,13 +1113,15 @@ int bn_mul_mont(BN_ULONG *rp, const BN_ULONG *ap, const BN_ULONG *bp,
   if (tp[num] != 0 || tp[num - 1] >= np[num - 1]) {
     c0 = bn_sub_words(rp, tp, np, num);
     if (tp[num] != 0 || c0 == 0) {
-      for (i = 0; i < num + 2; i++)
+      for (i = 0; i < num + 2; i++) {
         vp[i] = 0;
+      }
       return 1;
     }
   }
-  for (i = 0; i < num; i++)
+  for (i = 0; i < num; i++) {
     rp[i] = tp[i], vp[i] = 0;
+  }
   vp[num] = 0;
   vp[num + 1] = 0;
   return 1;

@@ -145,11 +145,12 @@ int main(int argc, char *argv[]) {
   argc--;
   argv++;
   while (argc >= 1) {
-    if (strcmp(*argv, "-results") == 0)
+    if (strcmp(*argv, "-results") == 0) {
       results = 1;
-    else if (strcmp(*argv, "-out") == 0) {
-      if (--argc < 1)
+    } else if (strcmp(*argv, "-out") == 0) {
+      if (--argc < 1) {
         break;
+      }
       outfile = *(++argv);
     }
     argc--;
@@ -158,8 +159,9 @@ int main(int argc, char *argv[]) {
 
 
   ctx = BN_CTX_new();
-  if (ctx == NULL)
+  if (ctx == NULL) {
     return 1;
+  }
 
   out = BIO_new(BIO_s_file());
   if (out == NULL) {
@@ -175,82 +177,98 @@ int main(int argc, char *argv[]) {
     }
   }
 
-  if (!results)
+  if (!results) {
     BIO_puts(out, "obase=16\nibase=16\n");
+  }
 
   message(out, "BN_add");
-  if (!test_add(out))
+  if (!test_add(out)) {
     goto err;
+  }
   (void)BIO_flush(out);
 
   message(out, "BN_sub");
-  if (!test_sub(out))
+  if (!test_sub(out)) {
     goto err;
+  }
   (void)BIO_flush(out);
 
   message(out, "BN_lshift1");
-  if (!test_lshift1(out))
+  if (!test_lshift1(out)) {
     goto err;
+  }
   (void)BIO_flush(out);
 
   message(out, "BN_lshift (fixed)");
-  if (!test_lshift(out, ctx, BN_bin2bn(lst, sizeof(lst) - 1, NULL)))
+  if (!test_lshift(out, ctx, BN_bin2bn(lst, sizeof(lst) - 1, NULL))) {
     goto err;
+  }
   (void)BIO_flush(out);
 
   message(out, "BN_lshift");
-  if (!test_lshift(out, ctx, NULL))
+  if (!test_lshift(out, ctx, NULL)) {
     goto err;
+  }
   (void)BIO_flush(out);
 
   message(out, "BN_rshift1");
-  if (!test_rshift1(out))
+  if (!test_rshift1(out)) {
     goto err;
+  }
   (void)BIO_flush(out);
 
   message(out, "BN_rshift");
-  if (!test_rshift(out, ctx))
+  if (!test_rshift(out, ctx)) {
     goto err;
+  }
   (void)BIO_flush(out);
 
   message(out, "BN_sqr");
-  if (!test_sqr(out, ctx))
+  if (!test_sqr(out, ctx)) {
     goto err;
+  }
   (void)BIO_flush(out);
 
   message(out, "BN_mul");
-  if (!test_mul(out))
+  if (!test_mul(out)) {
     goto err;
+  }
   (void)BIO_flush(out);
 
   message(out, "BN_div");
-  if (!test_div(out, ctx))
+  if (!test_div(out, ctx)) {
     goto err;
+  }
   (void)BIO_flush(out);
 
   message(out, "BN_div_word");
-  if (!test_div_word(out))
+  if (!test_div_word(out)) {
     goto err;
+  }
   (void)BIO_flush(out);
 
   message(out, "BN_mod");
-  if (!test_mod(out, ctx))
+  if (!test_mod(out, ctx)) {
     goto err;
+  }
   (void)BIO_flush(out);
 
   message(out, "BN_mod_mul");
-  if (!test_mod_mul(out, ctx))
+  if (!test_mod_mul(out, ctx)) {
     goto err;
+  }
   (void)BIO_flush(out);
 
   message(out, "BN_mont");
-  if (!test_mont(out, ctx))
+  if (!test_mont(out, ctx)) {
     goto err;
+  }
   (void)BIO_flush(out);
 
   message(out, "BN_mod_exp");
-  if (!test_mod_exp(out, ctx))
+  if (!test_mod_exp(out, ctx)) {
     goto err;
+  }
   (void)BIO_flush(out);
 
   message(out, "BN_mod_exp_mont_consttime");
@@ -268,23 +286,27 @@ int main(int argc, char *argv[]) {
   (void)BIO_flush(out);
 
   message(out, "BN_mod_sqrt");
-  if (!test_mod_sqrt(out, ctx))
+  if (!test_mod_sqrt(out, ctx)) {
     goto err;
+  }
   (void)BIO_flush(out);
 
   message(out, "Small prime generation");
-  if (!test_small_prime(out, ctx))
+  if (!test_small_prime(out, ctx)) {
     goto err;
+  }
   (void)BIO_flush(out);
 
   message(out, "BN_sqrt");
-  if (!test_sqrt(out, ctx))
+  if (!test_sqrt(out, ctx)) {
     goto err;
+  }
   (void)BIO_flush(out);
 
   message(out, "BN_bn2bin_padded");
-  if (!test_bn2bin_padded(out, ctx))
+  if (!test_bn2bin_padded(out, ctx)) {
     goto err;
+  }
   (void)BIO_flush(out);
 
   BN_CTX_free(ctx);
@@ -352,8 +374,9 @@ int test_sub(BIO *bp) {
     if (i < num1) {
       BN_rand(&a, 512, 0, 0);
       BN_copy(&b, &a);
-      if (BN_set_bit(&a, i) == 0)
+      if (BN_set_bit(&a, i) == 0) {
         return (0);
+      }
       BN_add_word(&b, i);
     } else {
       BN_rand(&b, 400 + i - num1, 0, 0);
@@ -400,8 +423,9 @@ int test_div(BIO *bp, BN_CTX *ctx) {
       BN_copy(&b, &a);
       BN_lshift(&a, &a, i);
       BN_add_word(&a, i);
-    } else
+    } else {
       BN_rand(&b, 50 + 3 * (i - num1), 0, 0);
+    }
     a.neg = rand_neg();
     b.neg = rand_neg();
     BN_div(&d, &c, &a, &b, ctx);
@@ -561,9 +585,9 @@ int test_lshift(BIO *bp, BN_CTX *ctx, BIGNUM *a_) {
   d = BN_new();
   BN_one(c);
 
-  if (a_)
+  if (a_) {
     a = a_;
-  else {
+  } else {
     a = BN_new();
     BN_rand(a, 200, 0, 0); /**/
     a->neg = rand_neg();
@@ -610,8 +634,9 @@ int test_mul(BIO *bp) {
   BN_CTX *ctx;
 
   ctx = BN_CTX_new();
-  if (ctx == NULL)
+  if (ctx == NULL) {
     abort();
+  }
 
   BN_init(&a);
   BN_init(&b);
@@ -623,8 +648,9 @@ int test_mul(BIO *bp) {
     if (i <= num1) {
       BN_rand(&a, 100, 0, 0);
       BN_rand(&b, 100, 0, 0);
-    } else
+    } else {
       BN_rand(&b, i - num1, 0, 0);
+    }
     a.neg = rand_neg();
     b.neg = rand_neg();
     BN_mul(&c, &a, &b, ctx);
@@ -826,16 +852,18 @@ int test_mont(BIO *bp, BN_CTX *ctx) {
   BN_init(&n);
 
   mont = BN_MONT_CTX_new();
-  if (mont == NULL)
+  if (mont == NULL) {
     return 0;
+  }
 
   BN_rand(&a, 100, 0, 0); /**/
   BN_rand(&b, 100, 0, 0); /**/
   for (i = 0; i < num2; i++) {
     int bits = (200 * (i + 1)) / num2;
 
-    if (bits == 0)
+    if (bits == 0) {
       continue;
+    }
     BN_rand(&n, bits, 0, 1);
     BN_MONT_CTX_set(mont, &n, ctx);
 
@@ -942,8 +970,9 @@ int test_mod_mul(BIO *bp, BN_CTX *ctx) {
       if (!BN_mod_mul(e, a, b, c, ctx)) {
         unsigned long l;
 
-        while ((l = ERR_get_error()))
+        while ((l = ERR_get_error())) {
           fprintf(stderr, "ERROR:%s\n", ERR_error_string(l, NULL));
+        }
         abort();
       }
       if (bp != NULL) {
@@ -1000,8 +1029,9 @@ int test_mod_exp(BIO *bp, BN_CTX *ctx) {
     BN_rand(a, 20 + i * 5, 0, 0); /**/
     BN_rand(b, 2 + i, 0, 0);      /**/
 
-    if (!BN_mod_exp(d, a, b, c, ctx))
+    if (!BN_mod_exp(d, a, b, c, ctx)) {
       return (0);
+    }
 
     if (bp != NULL) {
       if (!results) {
@@ -1046,8 +1076,9 @@ int test_mod_exp_mont_consttime(BIO *bp, BN_CTX *ctx) {
     BN_rand(a, 20 + i * 5, 0, 0); /**/
     BN_rand(b, 2 + i, 0, 0);      /**/
 
-    if (!BN_mod_exp_mont_consttime(d, a, b, c, ctx, NULL))
+    if (!BN_mod_exp_mont_consttime(d, a, b, c, ctx, NULL)) {
       return (00);
+    }
 
     if (bp != NULL) {
       if (!results) {
@@ -1096,8 +1127,9 @@ int test_mod_exp_mont5(BIO *bp, BN_CTX *ctx) {
   /* Zero exponent */
   BN_rand(a, 1024, 0, 0);
   BN_zero(p);
-  if (!BN_mod_exp_mont_consttime(d, a, p, m, ctx, NULL))
+  if (!BN_mod_exp_mont_consttime(d, a, p, m, ctx, NULL)) {
     return 0;
+  }
   if (!BN_is_one(d)) {
     fprintf(stderr, "Modular exponentiation test failed!\n");
     return 0;
@@ -1105,8 +1137,9 @@ int test_mod_exp_mont5(BIO *bp, BN_CTX *ctx) {
   /* Zero input */
   BN_rand(p, 1024, 0, 0);
   BN_zero(a);
-  if (!BN_mod_exp_mont_consttime(d, a, p, m, ctx, NULL))
+  if (!BN_mod_exp_mont_consttime(d, a, p, m, ctx, NULL)) {
     return 0;
+  }
   if (!BN_is_zero(d)) {
     fprintf(stderr, "Modular exponentiation test failed!\n");
     return 0;
@@ -1128,10 +1161,10 @@ int test_mod_exp_mont5(BIO *bp, BN_CTX *ctx) {
   }
   /* Finally, some regular test vectors. */
   BN_rand(e, 1024, 0, 0);
-  if (!BN_mod_exp_mont_consttime(d, e, p, m, ctx, NULL))
+  if (!BN_mod_exp_mont_consttime(d, e, p, m, ctx, NULL) ||
+      !BN_mod_exp(a, e, p, m, ctx)) {
     return 0;
-  if (!BN_mod_exp(a, e, p, m, ctx))
-    return 0;
+  }
   if (BN_cmp(a, d) != 0) {
     fprintf(stderr, "Modular exponentiation test failed!\n");
     return 0;
@@ -1143,7 +1176,7 @@ int test_mod_exp_mont5(BIO *bp, BN_CTX *ctx) {
   BN_free(m);
   BN_free(d);
   BN_free(e);
-  return (1);
+  return 1;
 }
 
 int test_exp(BIO *bp, BN_CTX *ctx) {
@@ -1161,8 +1194,9 @@ int test_exp(BIO *bp, BN_CTX *ctx) {
     BN_rand(a, 20 + i * 5, 0, 0); /**/
     BN_rand(b, 2 + i, 0, 0);      /**/
 
-    if (BN_exp(d, a, b, ctx) <= 0)
+    if (BN_exp(d, a, b, ctx) <= 0) {
       return (0);
+    }
 
     if (bp != NULL) {
       if (!results) {
@@ -1175,8 +1209,9 @@ int test_exp(BIO *bp, BN_CTX *ctx) {
       BIO_puts(bp, "\n");
     }
     BN_one(e);
-    for (; !BN_is_zero(b); BN_sub(b, b, one))
+    for (; !BN_is_zero(b); BN_sub(b, b, one)) {
       BN_mul(e, e, a, ctx);
+    }
     BN_sub(e, e, d);
     if (!BN_is_zero(e)) {
       fprintf(stderr, "Exponentiation test failed!\n");
@@ -1188,7 +1223,7 @@ int test_exp(BIO *bp, BN_CTX *ctx) {
   BN_free(d);
   BN_free(e);
   BN_free(one);
-  return (1);
+  return 1;
 }
 
 /* test_exp_mod_zero tests that x**0 mod 1 == 0. */
@@ -1230,14 +1265,15 @@ static int test_exp_mod_zero(void) {
 static int genprime_cb(int p, int n, BN_GENCB *arg) {
   char c = '*';
 
-  if (p == 0)
+  if (p == 0) {
     c = '.';
-  if (p == 1)
+  } else if (p == 1) {
     c = '+';
-  if (p == 2)
+  } else if (p == 2) {
     c = '*';
-  if (p == 3)
+  } else if (p == 3) {
     c = '\n';
+  }
   putc(c, stdout);
   fflush(stdout);
   return 1;
@@ -1252,8 +1288,9 @@ int test_mod_sqrt(BIO *bp, BN_CTX *ctx) {
   a = BN_new();
   p = BN_new();
   r = BN_new();
-  if (a == NULL || p == NULL || r == NULL)
+  if (a == NULL || p == NULL || r == NULL) {
     goto err;
+  }
 
   BN_GENCB_set(&cb, genprime_cb, NULL);
 
@@ -1261,16 +1298,18 @@ int test_mod_sqrt(BIO *bp, BN_CTX *ctx) {
     if (i < 8) {
       unsigned primes[8] = {2, 3, 5, 7, 11, 13, 17, 19};
 
-      if (!BN_set_word(p, primes[i]))
+      if (!BN_set_word(p, primes[i])) {
         goto err;
+      }
     } else {
-      if (!BN_set_word(a, 32))
+      if (!BN_set_word(a, 32) ||
+          !BN_set_word(r, 2 * i + 1)) {
         goto err;
-      if (!BN_set_word(r, 2 * i + 1))
-        goto err;
+      }
 
-      if (!BN_generate_prime_ex(p, 256, 0, a, r, &cb))
+      if (!BN_generate_prime_ex(p, 256, 0, a, r, &cb)) {
         goto err;
+      }
       putc('\n', stdout);
     }
     p->neg = rand_neg();
@@ -1278,31 +1317,24 @@ int test_mod_sqrt(BIO *bp, BN_CTX *ctx) {
     for (j = 0; j < num2; j++) {
       /* construct 'a' such that it is a square modulo p,
        * but in general not a proper square and not reduced modulo p */
-      if (!BN_rand(r, 256, 0, 3))
+      if (!BN_rand(r, 256, 0, 3) ||
+          !BN_nnmod(r, r, p, ctx) ||
+          !BN_mod_sqr(r, r, p, ctx) ||
+          !BN_rand(a, 256, 0, 3) ||
+          !BN_nnmod(a, a, p, ctx) ||
+          !BN_mod_sqr(a, a, p, ctx) ||
+          !BN_mul(a, a, r, ctx)) {
         goto err;
-      if (!BN_nnmod(r, r, p, ctx))
-        goto err;
-      if (!BN_mod_sqr(r, r, p, ctx))
-        goto err;
-      if (!BN_rand(a, 256, 0, 3))
-        goto err;
-      if (!BN_nnmod(a, a, p, ctx))
-        goto err;
-      if (!BN_mod_sqr(a, a, p, ctx))
-        goto err;
-      if (!BN_mul(a, a, r, ctx))
-        goto err;
-      if (rand_neg())
-        if (!BN_sub(a, a, p))
+      }
+      if (rand_neg() && !BN_sub(a, a, p)) {
           goto err;
+      }
 
-      if (!BN_mod_sqrt(r, a, p, ctx))
+      if (!BN_mod_sqrt(r, a, p, ctx) ||
+          !BN_mod_sqr(r, r, p, ctx) ||
+          !BN_nnmod(a, a, p, ctx)) {
         goto err;
-      if (!BN_mod_sqr(r, r, p, ctx))
-        goto err;
-
-      if (!BN_nnmod(a, a, p, ctx))
-        goto err;
+      }
 
       if (BN_cmp(a, r) != 0) {
         fprintf(stderr, "BN_mod_sqrt failed: a = ");
@@ -1324,12 +1356,15 @@ int test_mod_sqrt(BIO *bp, BN_CTX *ctx) {
   }
   ret = 1;
 err:
-  if (a != NULL)
+  if (a != NULL) {
     BN_free(a);
-  if (p != NULL)
+  }
+  if (p != NULL) {
     BN_free(p);
-  if (r != NULL)
+  }
+  if (r != NULL) {
     BN_free(r);
+  }
   return ret;
 }
 

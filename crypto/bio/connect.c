@@ -397,10 +397,11 @@ static long conn_ctrl(BIO *bio, int cmd, long num, void *ptr) {
       break;
     case BIO_C_DO_STATE_MACHINE:
       /* use this one to start the connection */
-      if (data->state != BIO_CONN_S_OK)
+      if (data->state != BIO_CONN_S_OK) {
         ret = (long)conn_state(bio, data);
-      else
+      } else {
         ret = 1;
+      }
       break;
     case BIO_C_GET_CONNECT:
       /* TODO(fork): can this be removed? (Or maybe this whole file). */

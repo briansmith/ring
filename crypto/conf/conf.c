@@ -530,20 +530,22 @@ static int def_load_bio(CONF *conf, BIO *in, long *out_error_line) {
     BIO_gets(in, p, CONFBUFSIZE - 1);
     p[CONFBUFSIZE - 1] = '\0';
     ii = i = strlen(p);
-    if (i == 0 && !again)
+    if (i == 0 && !again) {
       break;
+    }
     again = 0;
     while (i > 0) {
-      if ((p[i - 1] != '\r') && (p[i - 1] != '\n'))
+      if ((p[i - 1] != '\r') && (p[i - 1] != '\n')) {
         break;
-      else
+      } else {
         i--;
+      }
     }
     /* we removed some trailing stuff so there is a new
      * line on the end. */
-    if (ii && i == ii)
+    if (ii && i == ii) {
       again = 1; /* long line */
-    else {
+    } else {
       p[i] = '\0';
       eline++; /* another input line */
     }
@@ -564,15 +566,17 @@ static int def_load_bio(CONF *conf, BIO *in, long *out_error_line) {
         again = 1;
       }
     }
-    if (again)
+    if (again) {
       continue;
+    }
     bufnum = 0;
     buf = buff->data;
 
     clear_comments(conf, buf);
     s = eat_ws(conf, buf);
-    if (IS_EOF(conf, *s))
+    if (IS_EOF(conf, *s)) {
       continue; /* blank line */
+    }
     if (*s == '[') {
       char *ss;
 
@@ -591,10 +595,12 @@ static int def_load_bio(CONF *conf, BIO *in, long *out_error_line) {
         goto err;
       }
       *end = '\0';
-      if (!str_copy(conf, NULL, &section, start))
+      if (!str_copy(conf, NULL, &section, start)) {
         goto err;
-      if ((sv = get_section(conf, section)) == NULL)
+      }
+      if ((sv = get_section(conf, section)) == NULL) {
         sv = NCONF_new_section(conf, section);
+      }
       if (sv == NULL) {
         OPENSSL_PUT_ERROR(CONF, def_load_bio, CONF_R_UNABLE_TO_CREATE_NEW_SECTION);
         goto err;
@@ -619,11 +625,13 @@ static int def_load_bio(CONF *conf, BIO *in, long *out_error_line) {
       *end = '\0';
       p++;
       start = eat_ws(conf, p);
-      while (!IS_EOF(conf, *p))
+      while (!IS_EOF(conf, *p)) {
         p++;
+      }
       p--;
-      while ((p != start) && (IS_WS(conf, *p)))
+      while ((p != start) && (IS_WS(conf, *p))) {
         p--;
+      }
       p++;
       *p = '\0';
 
@@ -631,8 +639,9 @@ static int def_load_bio(CONF *conf, BIO *in, long *out_error_line) {
         OPENSSL_PUT_ERROR(CONF, def_load_bio, ERR_R_MALLOC_FAILURE);
         goto err;
       }
-      if (psection == NULL)
+      if (psection == NULL) {
         psection = section;
+      }
       v->name = (char *)OPENSSL_malloc(strlen(pname) + 1);
       v->value = NULL;
       if (v->name == NULL) {
@@ -640,18 +649,21 @@ static int def_load_bio(CONF *conf, BIO *in, long *out_error_line) {
         goto err;
       }
       BUF_strlcpy(v->name, pname, strlen(pname) + 1);
-      if (!str_copy(conf, psection, &(v->value), start))
+      if (!str_copy(conf, psection, &(v->value), start)) {
         goto err;
+      }
 
       if (strcmp(psection, section) != 0) {
-        if ((tv = get_section(conf, psection)) == NULL)
+        if ((tv = get_section(conf, psection)) == NULL) {
           tv = NCONF_new_section(conf, psection);
+        }
         if (tv == NULL) {
           OPENSSL_PUT_ERROR(CONF, def_load_bio, CONF_R_UNABLE_TO_CREATE_NEW_SECTION);
           goto err;
         }
-      } else
+      } else {
         tv = sv;
+      }
       if (add_string(conf, tv, v) == 0) {
         OPENSSL_PUT_ERROR(CONF, def_load_bio, ERR_R_MALLOC_FAILURE);
         goto err;
@@ -659,29 +671,37 @@ static int def_load_bio(CONF *conf, BIO *in, long *out_error_line) {
       v = NULL;
     }
   }
-  if (buff != NULL)
+  if (buff != NULL) {
     BUF_MEM_free(buff);
-  if (section != NULL)
+  }
+  if (section != NULL) {
     OPENSSL_free(section);
+  }
   return 1;
 
 err:
-  if (buff != NULL)
+  if (buff != NULL) {
     BUF_MEM_free(buff);
-  if (section != NULL)
+  }
+  if (section != NULL) {
     OPENSSL_free(section);
-  if (out_error_line != NULL)
+  }
+  if (out_error_line != NULL) {
     *out_error_line = eline;
+  }
   BIO_snprintf(btmp, sizeof btmp, "%ld", eline);
   ERR_add_error_data(2, "line ", btmp);
 
   if (v != NULL) {
-    if (v->name != NULL)
+    if (v->name != NULL) {
       OPENSSL_free(v->name);
-    if (v->value != NULL)
+    }
+    if (v->value != NULL) {
       OPENSSL_free(v->value);
-    if (v != NULL)
+    }
+    if (v != NULL) {
       OPENSSL_free(v);
+    }
   }
   return 0;
 }
