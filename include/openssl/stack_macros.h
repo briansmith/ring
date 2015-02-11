@@ -96,6 +96,14 @@
                                                 const ACCESS_DESCRIPTION **b), \
                         comp)))
 
+#define sk_ACCESS_DESCRIPTION_deep_copy(sk, copy_func, free_func)             \
+  ((STACK_OF(ACCESS_DESCRIPTION) *)sk_deep_copy(                              \
+      CHECKED_CAST(const _STACK *, const STACK_OF(ACCESS_DESCRIPTION) *, sk), \
+      CHECKED_CAST(void *(*)(void *),                                         \
+                   ACCESS_DESCRIPTION *(*)(ACCESS_DESCRIPTION *), copy_func), \
+      CHECKED_CAST(void (*)(void *), void (*)(ACCESS_DESCRIPTION *),          \
+                   free_func)))
+
 /* ASN1_ADB_TABLE */
 #define sk_ASN1_ADB_TABLE_new(comp)                 \
   ((STACK_OF(ASN1_ADB_TABLE) *)sk_new(CHECKED_CAST( \
@@ -173,6 +181,13 @@
            CHECKED_CAST(stack_cmp_func, int (*)(const ASN1_ADB_TABLE **a,  \
                                                 const ASN1_ADB_TABLE **b), \
                         comp)))
+
+#define sk_ASN1_ADB_TABLE_deep_copy(sk, copy_func, free_func)                \
+  ((STACK_OF(ASN1_ADB_TABLE) *)sk_deep_copy(                                 \
+      CHECKED_CAST(const _STACK *, const STACK_OF(ASN1_ADB_TABLE) *, sk),    \
+      CHECKED_CAST(void *(*)(void *), ASN1_ADB_TABLE *(*)(ASN1_ADB_TABLE *), \
+                   copy_func),                                               \
+      CHECKED_CAST(void (*)(void *), void (*)(ASN1_ADB_TABLE *), free_func)))
 
 /* ASN1_GENERALSTRING */
 #define sk_ASN1_GENERALSTRING_new(comp)                                    \
@@ -254,6 +269,14 @@
                                                 const ASN1_GENERALSTRING **b), \
                         comp)))
 
+#define sk_ASN1_GENERALSTRING_deep_copy(sk, copy_func, free_func)             \
+  ((STACK_OF(ASN1_GENERALSTRING) *)sk_deep_copy(                              \
+      CHECKED_CAST(const _STACK *, const STACK_OF(ASN1_GENERALSTRING) *, sk), \
+      CHECKED_CAST(void *(*)(void *),                                         \
+                   ASN1_GENERALSTRING *(*)(ASN1_GENERALSTRING *), copy_func), \
+      CHECKED_CAST(void (*)(void *), void (*)(ASN1_GENERALSTRING *),          \
+                   free_func)))
+
 /* ASN1_INTEGER */
 #define sk_ASN1_INTEGER_new(comp)                                              \
   ((STACK_OF(ASN1_INTEGER) *)sk_new(CHECKED_CAST(                              \
@@ -330,6 +353,13 @@
                    int (*)(const ASN1_INTEGER **a, const ASN1_INTEGER **b),  \
                    comp)))
 
+#define sk_ASN1_INTEGER_deep_copy(sk, copy_func, free_func)              \
+  ((STACK_OF(ASN1_INTEGER) *)sk_deep_copy(                               \
+      CHECKED_CAST(const _STACK *, const STACK_OF(ASN1_INTEGER) *, sk),  \
+      CHECKED_CAST(void *(*)(void *), ASN1_INTEGER *(*)(ASN1_INTEGER *), \
+                   copy_func),                                           \
+      CHECKED_CAST(void (*)(void *), void (*)(ASN1_INTEGER *), free_func)))
+
 /* ASN1_OBJECT */
 #define sk_ASN1_OBJECT_new(comp)                                             \
   ((STACK_OF(ASN1_OBJECT) *)sk_new(CHECKED_CAST(                             \
@@ -403,6 +433,13 @@
       CHECKED_CAST(stack_cmp_func,                                         \
                    int (*)(const ASN1_OBJECT **a, const ASN1_OBJECT **b),  \
                    comp)))
+
+#define sk_ASN1_OBJECT_deep_copy(sk, copy_func, free_func)             \
+  ((STACK_OF(ASN1_OBJECT) *)sk_deep_copy(                              \
+      CHECKED_CAST(const _STACK *, const STACK_OF(ASN1_OBJECT) *, sk), \
+      CHECKED_CAST(void *(*)(void *), ASN1_OBJECT *(*)(ASN1_OBJECT *), \
+                   copy_func),                                         \
+      CHECKED_CAST(void (*)(void *), void (*)(ASN1_OBJECT *), free_func)))
 
 /* ASN1_STRING_TABLE */
 #define sk_ASN1_STRING_TABLE_new(comp)                                   \
@@ -484,6 +521,14 @@
                                                 const ASN1_STRING_TABLE **b), \
                         comp)))
 
+#define sk_ASN1_STRING_TABLE_deep_copy(sk, copy_func, free_func)             \
+  ((STACK_OF(ASN1_STRING_TABLE) *)sk_deep_copy(                              \
+      CHECKED_CAST(const _STACK *, const STACK_OF(ASN1_STRING_TABLE) *, sk), \
+      CHECKED_CAST(void *(*)(void *),                                        \
+                   ASN1_STRING_TABLE *(*)(ASN1_STRING_TABLE *), copy_func),  \
+      CHECKED_CAST(void (*)(void *), void (*)(ASN1_STRING_TABLE *),          \
+                   free_func)))
+
 /* ASN1_TYPE */
 #define sk_ASN1_TYPE_new(comp)     \
   ((STACK_OF(ASN1_TYPE) *)sk_new(  \
@@ -556,6 +601,12 @@
       CHECKED_CAST(_STACK *, STACK_OF(ASN1_TYPE) *, sk),               \
       CHECKED_CAST(stack_cmp_func,                                     \
                    int (*)(const ASN1_TYPE **a, const ASN1_TYPE **b), comp)))
+
+#define sk_ASN1_TYPE_deep_copy(sk, copy_func, free_func)                       \
+  ((STACK_OF(ASN1_TYPE) *)sk_deep_copy(                                        \
+      CHECKED_CAST(const _STACK *, const STACK_OF(ASN1_TYPE) *, sk),           \
+      CHECKED_CAST(void *(*)(void *), ASN1_TYPE *(*)(ASN1_TYPE *), copy_func), \
+      CHECKED_CAST(void (*)(void *), void (*)(ASN1_TYPE *), free_func)))
 
 /* ASN1_VALUE */
 #define sk_ASN1_VALUE_new(comp)                                            \
@@ -631,6 +682,13 @@
                    int (*)(const ASN1_VALUE **a, const ASN1_VALUE **b),  \
                    comp)))
 
+#define sk_ASN1_VALUE_deep_copy(sk, copy_func, free_func)             \
+  ((STACK_OF(ASN1_VALUE) *)sk_deep_copy(                              \
+      CHECKED_CAST(const _STACK *, const STACK_OF(ASN1_VALUE) *, sk), \
+      CHECKED_CAST(void *(*)(void *), ASN1_VALUE *(*)(ASN1_VALUE *),  \
+                   copy_func),                                        \
+      CHECKED_CAST(void (*)(void *), void (*)(ASN1_VALUE *), free_func)))
+
 /* BIO */
 #define sk_BIO_new(comp)                 \
   ((STACK_OF(BIO) *)sk_new(CHECKED_CAST( \
@@ -693,6 +751,12 @@
       CHECKED_CAST(_STACK *, STACK_OF(BIO) *, sk),                        \
       CHECKED_CAST(stack_cmp_func, int (*)(const BIO **a, const BIO **b), \
                    comp)))
+
+#define sk_BIO_deep_copy(sk, copy_func, free_func)                 \
+  ((STACK_OF(BIO) *)sk_deep_copy(                                  \
+      CHECKED_CAST(const _STACK *, const STACK_OF(BIO) *, sk),     \
+      CHECKED_CAST(void *(*)(void *), BIO *(*)(BIO *), copy_func), \
+      CHECKED_CAST(void (*)(void *), void (*)(BIO *), free_func)))
 
 /* BY_DIR_ENTRY */
 #define sk_BY_DIR_ENTRY_new(comp)                                              \
@@ -770,6 +834,13 @@
                    int (*)(const BY_DIR_ENTRY **a, const BY_DIR_ENTRY **b),  \
                    comp)))
 
+#define sk_BY_DIR_ENTRY_deep_copy(sk, copy_func, free_func)              \
+  ((STACK_OF(BY_DIR_ENTRY) *)sk_deep_copy(                               \
+      CHECKED_CAST(const _STACK *, const STACK_OF(BY_DIR_ENTRY) *, sk),  \
+      CHECKED_CAST(void *(*)(void *), BY_DIR_ENTRY *(*)(BY_DIR_ENTRY *), \
+                   copy_func),                                           \
+      CHECKED_CAST(void (*)(void *), void (*)(BY_DIR_ENTRY *), free_func)))
+
 /* BY_DIR_HASH */
 #define sk_BY_DIR_HASH_new(comp)                                             \
   ((STACK_OF(BY_DIR_HASH) *)sk_new(CHECKED_CAST(                             \
@@ -844,6 +915,13 @@
                    int (*)(const BY_DIR_HASH **a, const BY_DIR_HASH **b),  \
                    comp)))
 
+#define sk_BY_DIR_HASH_deep_copy(sk, copy_func, free_func)             \
+  ((STACK_OF(BY_DIR_HASH) *)sk_deep_copy(                              \
+      CHECKED_CAST(const _STACK *, const STACK_OF(BY_DIR_HASH) *, sk), \
+      CHECKED_CAST(void *(*)(void *), BY_DIR_HASH *(*)(BY_DIR_HASH *), \
+                   copy_func),                                         \
+      CHECKED_CAST(void (*)(void *), void (*)(BY_DIR_HASH *), free_func)))
+
 /* CONF_VALUE */
 #define sk_CONF_VALUE_new(comp)                                            \
   ((STACK_OF(CONF_VALUE) *)sk_new(CHECKED_CAST(                            \
@@ -917,6 +995,13 @@
       CHECKED_CAST(stack_cmp_func,                                       \
                    int (*)(const CONF_VALUE **a, const CONF_VALUE **b),  \
                    comp)))
+
+#define sk_CONF_VALUE_deep_copy(sk, copy_func, free_func)             \
+  ((STACK_OF(CONF_VALUE) *)sk_deep_copy(                              \
+      CHECKED_CAST(const _STACK *, const STACK_OF(CONF_VALUE) *, sk), \
+      CHECKED_CAST(void *(*)(void *), CONF_VALUE *(*)(CONF_VALUE *),  \
+                   copy_func),                                        \
+      CHECKED_CAST(void (*)(void *), void (*)(CONF_VALUE *), free_func)))
 
 /* CRYPTO_EX_DATA_FUNCS */
 #define sk_CRYPTO_EX_DATA_FUNCS_new(comp)                                      \
@@ -1001,6 +1086,16 @@
                                 const CRYPTO_EX_DATA_FUNCS **b),             \
                         comp)))
 
+#define sk_CRYPTO_EX_DATA_FUNCS_deep_copy(sk, copy_func, free_func)        \
+  ((STACK_OF(CRYPTO_EX_DATA_FUNCS) *)sk_deep_copy(                         \
+      CHECKED_CAST(const _STACK *, const STACK_OF(CRYPTO_EX_DATA_FUNCS) *, \
+                   sk),                                                    \
+      CHECKED_CAST(void *(*)(void *),                                      \
+                   CRYPTO_EX_DATA_FUNCS *(*)(CRYPTO_EX_DATA_FUNCS *),      \
+                   copy_func),                                             \
+      CHECKED_CAST(void (*)(void *), void (*)(CRYPTO_EX_DATA_FUNCS *),     \
+                   free_func)))
+
 /* DIST_POINT */
 #define sk_DIST_POINT_new(comp)                                            \
   ((STACK_OF(DIST_POINT) *)sk_new(CHECKED_CAST(                            \
@@ -1074,6 +1169,13 @@
       CHECKED_CAST(stack_cmp_func,                                       \
                    int (*)(const DIST_POINT **a, const DIST_POINT **b),  \
                    comp)))
+
+#define sk_DIST_POINT_deep_copy(sk, copy_func, free_func)             \
+  ((STACK_OF(DIST_POINT) *)sk_deep_copy(                              \
+      CHECKED_CAST(const _STACK *, const STACK_OF(DIST_POINT) *, sk), \
+      CHECKED_CAST(void *(*)(void *), DIST_POINT *(*)(DIST_POINT *),  \
+                   copy_func),                                        \
+      CHECKED_CAST(void (*)(void *), void (*)(DIST_POINT *), free_func)))
 
 /* GENERAL_NAME */
 #define sk_GENERAL_NAME_new(comp)                                              \
@@ -1151,6 +1253,13 @@
                    int (*)(const GENERAL_NAME **a, const GENERAL_NAME **b),  \
                    comp)))
 
+#define sk_GENERAL_NAME_deep_copy(sk, copy_func, free_func)              \
+  ((STACK_OF(GENERAL_NAME) *)sk_deep_copy(                               \
+      CHECKED_CAST(const _STACK *, const STACK_OF(GENERAL_NAME) *, sk),  \
+      CHECKED_CAST(void *(*)(void *), GENERAL_NAME *(*)(GENERAL_NAME *), \
+                   copy_func),                                           \
+      CHECKED_CAST(void (*)(void *), void (*)(GENERAL_NAME *), free_func)))
+
 /* GENERAL_NAMES */
 #define sk_GENERAL_NAMES_new(comp)                 \
   ((STACK_OF(GENERAL_NAMES) *)sk_new(CHECKED_CAST( \
@@ -1227,6 +1336,13 @@
       CHECKED_CAST(stack_cmp_func,                                             \
                    int (*)(const GENERAL_NAMES **a, const GENERAL_NAMES **b),  \
                    comp)))
+
+#define sk_GENERAL_NAMES_deep_copy(sk, copy_func, free_func)               \
+  ((STACK_OF(GENERAL_NAMES) *)sk_deep_copy(                                \
+      CHECKED_CAST(const _STACK *, const STACK_OF(GENERAL_NAMES) *, sk),   \
+      CHECKED_CAST(void *(*)(void *), GENERAL_NAMES *(*)(GENERAL_NAMES *), \
+                   copy_func),                                             \
+      CHECKED_CAST(void (*)(void *), void (*)(GENERAL_NAMES *), free_func)))
 
 /* GENERAL_SUBTREE */
 #define sk_GENERAL_SUBTREE_new(comp)                 \
@@ -1307,6 +1423,13 @@
                                                 const GENERAL_SUBTREE **b), \
                         comp)))
 
+#define sk_GENERAL_SUBTREE_deep_copy(sk, copy_func, free_func)                 \
+  ((STACK_OF(GENERAL_SUBTREE) *)sk_deep_copy(                                  \
+      CHECKED_CAST(const _STACK *, const STACK_OF(GENERAL_SUBTREE) *, sk),     \
+      CHECKED_CAST(void *(*)(void *), GENERAL_SUBTREE *(*)(GENERAL_SUBTREE *), \
+                   copy_func),                                                 \
+      CHECKED_CAST(void (*)(void *), void (*)(GENERAL_SUBTREE *), free_func)))
+
 /* MIME_HEADER */
 #define sk_MIME_HEADER_new(comp)                                             \
   ((STACK_OF(MIME_HEADER) *)sk_new(CHECKED_CAST(                             \
@@ -1380,6 +1503,13 @@
       CHECKED_CAST(stack_cmp_func,                                         \
                    int (*)(const MIME_HEADER **a, const MIME_HEADER **b),  \
                    comp)))
+
+#define sk_MIME_HEADER_deep_copy(sk, copy_func, free_func)             \
+  ((STACK_OF(MIME_HEADER) *)sk_deep_copy(                              \
+      CHECKED_CAST(const _STACK *, const STACK_OF(MIME_HEADER) *, sk), \
+      CHECKED_CAST(void *(*)(void *), MIME_HEADER *(*)(MIME_HEADER *), \
+                   copy_func),                                         \
+      CHECKED_CAST(void (*)(void *), void (*)(MIME_HEADER *), free_func)))
 
 /* PKCS7_SIGNER_INFO */
 #define sk_PKCS7_SIGNER_INFO_new(comp)                                   \
@@ -1461,6 +1591,14 @@
                                                 const PKCS7_SIGNER_INFO **b), \
                         comp)))
 
+#define sk_PKCS7_SIGNER_INFO_deep_copy(sk, copy_func, free_func)             \
+  ((STACK_OF(PKCS7_SIGNER_INFO) *)sk_deep_copy(                              \
+      CHECKED_CAST(const _STACK *, const STACK_OF(PKCS7_SIGNER_INFO) *, sk), \
+      CHECKED_CAST(void *(*)(void *),                                        \
+                   PKCS7_SIGNER_INFO *(*)(PKCS7_SIGNER_INFO *), copy_func),  \
+      CHECKED_CAST(void (*)(void *), void (*)(PKCS7_SIGNER_INFO *),          \
+                   free_func)))
+
 /* PKCS7_RECIP_INFO */
 #define sk_PKCS7_RECIP_INFO_new(comp)                 \
   ((STACK_OF(PKCS7_RECIP_INFO) *)sk_new(CHECKED_CAST( \
@@ -1540,6 +1678,14 @@
                                                 const PKCS7_RECIP_INFO **b), \
                         comp)))
 
+#define sk_PKCS7_RECIP_INFO_deep_copy(sk, copy_func, free_func)             \
+  ((STACK_OF(PKCS7_RECIP_INFO) *)sk_deep_copy(                              \
+      CHECKED_CAST(const _STACK *, const STACK_OF(PKCS7_RECIP_INFO) *, sk), \
+      CHECKED_CAST(void *(*)(void *),                                       \
+                   PKCS7_RECIP_INFO *(*)(PKCS7_RECIP_INFO *), copy_func),   \
+      CHECKED_CAST(void (*)(void *), void (*)(PKCS7_RECIP_INFO *),          \
+                   free_func)))
+
 /* POLICYINFO */
 #define sk_POLICYINFO_new(comp)                                            \
   ((STACK_OF(POLICYINFO) *)sk_new(CHECKED_CAST(                            \
@@ -1613,6 +1759,13 @@
       CHECKED_CAST(stack_cmp_func,                                       \
                    int (*)(const POLICYINFO **a, const POLICYINFO **b),  \
                    comp)))
+
+#define sk_POLICYINFO_deep_copy(sk, copy_func, free_func)             \
+  ((STACK_OF(POLICYINFO) *)sk_deep_copy(                              \
+      CHECKED_CAST(const _STACK *, const STACK_OF(POLICYINFO) *, sk), \
+      CHECKED_CAST(void *(*)(void *), POLICYINFO *(*)(POLICYINFO *),  \
+                   copy_func),                                        \
+      CHECKED_CAST(void (*)(void *), void (*)(POLICYINFO *), free_func)))
 
 /* POLICYQUALINFO */
 #define sk_POLICYQUALINFO_new(comp)                 \
@@ -1692,6 +1845,13 @@
                                                 const POLICYQUALINFO **b), \
                         comp)))
 
+#define sk_POLICYQUALINFO_deep_copy(sk, copy_func, free_func)                \
+  ((STACK_OF(POLICYQUALINFO) *)sk_deep_copy(                                 \
+      CHECKED_CAST(const _STACK *, const STACK_OF(POLICYQUALINFO) *, sk),    \
+      CHECKED_CAST(void *(*)(void *), POLICYQUALINFO *(*)(POLICYQUALINFO *), \
+                   copy_func),                                               \
+      CHECKED_CAST(void (*)(void *), void (*)(POLICYQUALINFO *), free_func)))
+
 /* POLICY_MAPPING */
 #define sk_POLICY_MAPPING_new(comp)                 \
   ((STACK_OF(POLICY_MAPPING) *)sk_new(CHECKED_CAST( \
@@ -1770,6 +1930,13 @@
                                                 const POLICY_MAPPING **b), \
                         comp)))
 
+#define sk_POLICY_MAPPING_deep_copy(sk, copy_func, free_func)                \
+  ((STACK_OF(POLICY_MAPPING) *)sk_deep_copy(                                 \
+      CHECKED_CAST(const _STACK *, const STACK_OF(POLICY_MAPPING) *, sk),    \
+      CHECKED_CAST(void *(*)(void *), POLICY_MAPPING *(*)(POLICY_MAPPING *), \
+                   copy_func),                                               \
+      CHECKED_CAST(void (*)(void *), void (*)(POLICY_MAPPING *), free_func)))
+
 /* SSL_COMP */
 #define sk_SSL_COMP_new(comp)                 \
   ((STACK_OF(SSL_COMP) *)sk_new(CHECKED_CAST( \
@@ -1839,6 +2006,12 @@
       CHECKED_CAST(_STACK *, STACK_OF(SSL_COMP) *, sk),              \
       CHECKED_CAST(stack_cmp_func,                                   \
                    int (*)(const SSL_COMP **a, const SSL_COMP **b), comp)))
+
+#define sk_SSL_COMP_deep_copy(sk, copy_func, free_func)                      \
+  ((STACK_OF(SSL_COMP) *)sk_deep_copy(                                       \
+      CHECKED_CAST(const _STACK *, const STACK_OF(SSL_COMP) *, sk),          \
+      CHECKED_CAST(void *(*)(void *), SSL_COMP *(*)(SSL_COMP *), copy_func), \
+      CHECKED_CAST(void (*)(void *), void (*)(SSL_COMP *), free_func)))
 
 /* STACK_OF_X509_NAME_ENTRY */
 #define sk_STACK_OF_X509_NAME_ENTRY_new(comp)                      \
@@ -1926,6 +2099,16 @@
                                 const STACK_OF_X509_NAME_ENTRY **b),         \
                         comp)))
 
+#define sk_STACK_OF_X509_NAME_ENTRY_deep_copy(sk, copy_func, free_func)        \
+  ((STACK_OF(STACK_OF_X509_NAME_ENTRY) *)sk_deep_copy(                         \
+      CHECKED_CAST(const _STACK *, const STACK_OF(STACK_OF_X509_NAME_ENTRY) *, \
+                   sk),                                                        \
+      CHECKED_CAST(void *(*)(void *),                                          \
+                   STACK_OF_X509_NAME_ENTRY *(*)(STACK_OF_X509_NAME_ENTRY *),  \
+                   copy_func),                                                 \
+      CHECKED_CAST(void (*)(void *), void (*)(STACK_OF_X509_NAME_ENTRY *),     \
+                   free_func)))
+
 /* SXNETID */
 #define sk_SXNETID_new(comp)                 \
   ((STACK_OF(SXNETID) *)sk_new(CHECKED_CAST( \
@@ -1996,6 +2179,12 @@
       CHECKED_CAST(stack_cmp_func,                                 \
                    int (*)(const SXNETID **a, const SXNETID **b), comp)))
 
+#define sk_SXNETID_deep_copy(sk, copy_func, free_func)                     \
+  ((STACK_OF(SXNETID) *)sk_deep_copy(                                      \
+      CHECKED_CAST(const _STACK *, const STACK_OF(SXNETID) *, sk),         \
+      CHECKED_CAST(void *(*)(void *), SXNETID *(*)(SXNETID *), copy_func), \
+      CHECKED_CAST(void (*)(void *), void (*)(SXNETID *), free_func)))
+
 /* X509 */
 #define sk_X509_new(comp)                 \
   ((STACK_OF(X509) *)sk_new(CHECKED_CAST( \
@@ -2058,6 +2247,12 @@
       CHECKED_CAST(_STACK *, STACK_OF(X509) *, sk),                         \
       CHECKED_CAST(stack_cmp_func, int (*)(const X509 **a, const X509 **b), \
                    comp)))
+
+#define sk_X509_deep_copy(sk, copy_func, free_func)                  \
+  ((STACK_OF(X509) *)sk_deep_copy(                                   \
+      CHECKED_CAST(const _STACK *, const STACK_OF(X509) *, sk),      \
+      CHECKED_CAST(void *(*)(void *), X509 *(*)(X509 *), copy_func), \
+      CHECKED_CAST(void (*)(void *), void (*)(X509 *), free_func)))
 
 /* X509V3_EXT_METHOD */
 #define sk_X509V3_EXT_METHOD_new(comp)                                   \
@@ -2139,6 +2334,14 @@
                                                 const X509V3_EXT_METHOD **b), \
                         comp)))
 
+#define sk_X509V3_EXT_METHOD_deep_copy(sk, copy_func, free_func)             \
+  ((STACK_OF(X509V3_EXT_METHOD) *)sk_deep_copy(                              \
+      CHECKED_CAST(const _STACK *, const STACK_OF(X509V3_EXT_METHOD) *, sk), \
+      CHECKED_CAST(void *(*)(void *),                                        \
+                   X509V3_EXT_METHOD *(*)(X509V3_EXT_METHOD *), copy_func),  \
+      CHECKED_CAST(void (*)(void *), void (*)(X509V3_EXT_METHOD *),          \
+                   free_func)))
+
 /* X509_ALGOR */
 #define sk_X509_ALGOR_new(comp)                                            \
   ((STACK_OF(X509_ALGOR) *)sk_new(CHECKED_CAST(                            \
@@ -2212,6 +2415,13 @@
       CHECKED_CAST(stack_cmp_func,                                       \
                    int (*)(const X509_ALGOR **a, const X509_ALGOR **b),  \
                    comp)))
+
+#define sk_X509_ALGOR_deep_copy(sk, copy_func, free_func)             \
+  ((STACK_OF(X509_ALGOR) *)sk_deep_copy(                              \
+      CHECKED_CAST(const _STACK *, const STACK_OF(X509_ALGOR) *, sk), \
+      CHECKED_CAST(void *(*)(void *), X509_ALGOR *(*)(X509_ALGOR *),  \
+                   copy_func),                                        \
+      CHECKED_CAST(void (*)(void *), void (*)(X509_ALGOR *), free_func)))
 
 /* X509_ATTRIBUTE */
 #define sk_X509_ATTRIBUTE_new(comp)                 \
@@ -2291,6 +2501,13 @@
                                                 const X509_ATTRIBUTE **b), \
                         comp)))
 
+#define sk_X509_ATTRIBUTE_deep_copy(sk, copy_func, free_func)                \
+  ((STACK_OF(X509_ATTRIBUTE) *)sk_deep_copy(                                 \
+      CHECKED_CAST(const _STACK *, const STACK_OF(X509_ATTRIBUTE) *, sk),    \
+      CHECKED_CAST(void *(*)(void *), X509_ATTRIBUTE *(*)(X509_ATTRIBUTE *), \
+                   copy_func),                                               \
+      CHECKED_CAST(void (*)(void *), void (*)(X509_ATTRIBUTE *), free_func)))
+
 /* X509_CRL */
 #define sk_X509_CRL_new(comp)                 \
   ((STACK_OF(X509_CRL) *)sk_new(CHECKED_CAST( \
@@ -2360,6 +2577,12 @@
       CHECKED_CAST(_STACK *, STACK_OF(X509_CRL) *, sk),              \
       CHECKED_CAST(stack_cmp_func,                                   \
                    int (*)(const X509_CRL **a, const X509_CRL **b), comp)))
+
+#define sk_X509_CRL_deep_copy(sk, copy_func, free_func)                      \
+  ((STACK_OF(X509_CRL) *)sk_deep_copy(                                       \
+      CHECKED_CAST(const _STACK *, const STACK_OF(X509_CRL) *, sk),          \
+      CHECKED_CAST(void *(*)(void *), X509_CRL *(*)(X509_CRL *), copy_func), \
+      CHECKED_CAST(void (*)(void *), void (*)(X509_CRL *), free_func)))
 
 /* X509_EXTENSION */
 #define sk_X509_EXTENSION_new(comp)                 \
@@ -2439,6 +2662,13 @@
                                                 const X509_EXTENSION **b), \
                         comp)))
 
+#define sk_X509_EXTENSION_deep_copy(sk, copy_func, free_func)                \
+  ((STACK_OF(X509_EXTENSION) *)sk_deep_copy(                                 \
+      CHECKED_CAST(const _STACK *, const STACK_OF(X509_EXTENSION) *, sk),    \
+      CHECKED_CAST(void *(*)(void *), X509_EXTENSION *(*)(X509_EXTENSION *), \
+                   copy_func),                                               \
+      CHECKED_CAST(void (*)(void *), void (*)(X509_EXTENSION *), free_func)))
+
 /* X509_INFO */
 #define sk_X509_INFO_new(comp)     \
   ((STACK_OF(X509_INFO) *)sk_new(  \
@@ -2511,6 +2741,12 @@
       CHECKED_CAST(_STACK *, STACK_OF(X509_INFO) *, sk),               \
       CHECKED_CAST(stack_cmp_func,                                     \
                    int (*)(const X509_INFO **a, const X509_INFO **b), comp)))
+
+#define sk_X509_INFO_deep_copy(sk, copy_func, free_func)                       \
+  ((STACK_OF(X509_INFO) *)sk_deep_copy(                                        \
+      CHECKED_CAST(const _STACK *, const STACK_OF(X509_INFO) *, sk),           \
+      CHECKED_CAST(void *(*)(void *), X509_INFO *(*)(X509_INFO *), copy_func), \
+      CHECKED_CAST(void (*)(void *), void (*)(X509_INFO *), free_func)))
 
 /* X509_LOOKUP */
 #define sk_X509_LOOKUP_new(comp)                                             \
@@ -2586,6 +2822,13 @@
                    int (*)(const X509_LOOKUP **a, const X509_LOOKUP **b),  \
                    comp)))
 
+#define sk_X509_LOOKUP_deep_copy(sk, copy_func, free_func)             \
+  ((STACK_OF(X509_LOOKUP) *)sk_deep_copy(                              \
+      CHECKED_CAST(const _STACK *, const STACK_OF(X509_LOOKUP) *, sk), \
+      CHECKED_CAST(void *(*)(void *), X509_LOOKUP *(*)(X509_LOOKUP *), \
+                   copy_func),                                         \
+      CHECKED_CAST(void (*)(void *), void (*)(X509_LOOKUP *), free_func)))
+
 /* X509_NAME */
 #define sk_X509_NAME_new(comp)     \
   ((STACK_OF(X509_NAME) *)sk_new(  \
@@ -2658,6 +2901,12 @@
       CHECKED_CAST(_STACK *, STACK_OF(X509_NAME) *, sk),               \
       CHECKED_CAST(stack_cmp_func,                                     \
                    int (*)(const X509_NAME **a, const X509_NAME **b), comp)))
+
+#define sk_X509_NAME_deep_copy(sk, copy_func, free_func)                       \
+  ((STACK_OF(X509_NAME) *)sk_deep_copy(                                        \
+      CHECKED_CAST(const _STACK *, const STACK_OF(X509_NAME) *, sk),           \
+      CHECKED_CAST(void *(*)(void *), X509_NAME *(*)(X509_NAME *), copy_func), \
+      CHECKED_CAST(void (*)(void *), void (*)(X509_NAME *), free_func)))
 
 /* X509_NAME_ENTRY */
 #define sk_X509_NAME_ENTRY_new(comp)                 \
@@ -2738,6 +2987,13 @@
                                                 const X509_NAME_ENTRY **b), \
                         comp)))
 
+#define sk_X509_NAME_ENTRY_deep_copy(sk, copy_func, free_func)                 \
+  ((STACK_OF(X509_NAME_ENTRY) *)sk_deep_copy(                                  \
+      CHECKED_CAST(const _STACK *, const STACK_OF(X509_NAME_ENTRY) *, sk),     \
+      CHECKED_CAST(void *(*)(void *), X509_NAME_ENTRY *(*)(X509_NAME_ENTRY *), \
+                   copy_func),                                                 \
+      CHECKED_CAST(void (*)(void *), void (*)(X509_NAME_ENTRY *), free_func)))
+
 /* X509_OBJECT */
 #define sk_X509_OBJECT_new(comp)                                             \
   ((STACK_OF(X509_OBJECT) *)sk_new(CHECKED_CAST(                             \
@@ -2811,6 +3067,13 @@
       CHECKED_CAST(stack_cmp_func,                                         \
                    int (*)(const X509_OBJECT **a, const X509_OBJECT **b),  \
                    comp)))
+
+#define sk_X509_OBJECT_deep_copy(sk, copy_func, free_func)             \
+  ((STACK_OF(X509_OBJECT) *)sk_deep_copy(                              \
+      CHECKED_CAST(const _STACK *, const STACK_OF(X509_OBJECT) *, sk), \
+      CHECKED_CAST(void *(*)(void *), X509_OBJECT *(*)(X509_OBJECT *), \
+                   copy_func),                                         \
+      CHECKED_CAST(void (*)(void *), void (*)(X509_OBJECT *), free_func)))
 
 /* X509_POLICY_DATA */
 #define sk_X509_POLICY_DATA_new(comp)                 \
@@ -2891,6 +3154,14 @@
                                                 const X509_POLICY_DATA **b), \
                         comp)))
 
+#define sk_X509_POLICY_DATA_deep_copy(sk, copy_func, free_func)             \
+  ((STACK_OF(X509_POLICY_DATA) *)sk_deep_copy(                              \
+      CHECKED_CAST(const _STACK *, const STACK_OF(X509_POLICY_DATA) *, sk), \
+      CHECKED_CAST(void *(*)(void *),                                       \
+                   X509_POLICY_DATA *(*)(X509_POLICY_DATA *), copy_func),   \
+      CHECKED_CAST(void (*)(void *), void (*)(X509_POLICY_DATA *),          \
+                   free_func)))
+
 /* X509_POLICY_NODE */
 #define sk_X509_POLICY_NODE_new(comp)                 \
   ((STACK_OF(X509_POLICY_NODE) *)sk_new(CHECKED_CAST( \
@@ -2970,6 +3241,14 @@
                                                 const X509_POLICY_NODE **b), \
                         comp)))
 
+#define sk_X509_POLICY_NODE_deep_copy(sk, copy_func, free_func)             \
+  ((STACK_OF(X509_POLICY_NODE) *)sk_deep_copy(                              \
+      CHECKED_CAST(const _STACK *, const STACK_OF(X509_POLICY_NODE) *, sk), \
+      CHECKED_CAST(void *(*)(void *),                                       \
+                   X509_POLICY_NODE *(*)(X509_POLICY_NODE *), copy_func),   \
+      CHECKED_CAST(void (*)(void *), void (*)(X509_POLICY_NODE *),          \
+                   free_func)))
+
 /* X509_PURPOSE */
 #define sk_X509_PURPOSE_new(comp)                                              \
   ((STACK_OF(X509_PURPOSE) *)sk_new(CHECKED_CAST(                              \
@@ -3045,6 +3324,13 @@
       CHECKED_CAST(stack_cmp_func,                                           \
                    int (*)(const X509_PURPOSE **a, const X509_PURPOSE **b),  \
                    comp)))
+
+#define sk_X509_PURPOSE_deep_copy(sk, copy_func, free_func)              \
+  ((STACK_OF(X509_PURPOSE) *)sk_deep_copy(                               \
+      CHECKED_CAST(const _STACK *, const STACK_OF(X509_PURPOSE) *, sk),  \
+      CHECKED_CAST(void *(*)(void *), X509_PURPOSE *(*)(X509_PURPOSE *), \
+                   copy_func),                                           \
+      CHECKED_CAST(void (*)(void *), void (*)(X509_PURPOSE *), free_func)))
 
 /* X509_REVOKED */
 #define sk_X509_REVOKED_new(comp)                                              \
@@ -3122,6 +3408,13 @@
                    int (*)(const X509_REVOKED **a, const X509_REVOKED **b),  \
                    comp)))
 
+#define sk_X509_REVOKED_deep_copy(sk, copy_func, free_func)              \
+  ((STACK_OF(X509_REVOKED) *)sk_deep_copy(                               \
+      CHECKED_CAST(const _STACK *, const STACK_OF(X509_REVOKED) *, sk),  \
+      CHECKED_CAST(void *(*)(void *), X509_REVOKED *(*)(X509_REVOKED *), \
+                   copy_func),                                           \
+      CHECKED_CAST(void (*)(void *), void (*)(X509_REVOKED *), free_func)))
+
 /* X509_TRUST */
 #define sk_X509_TRUST_new(comp)                                            \
   ((STACK_OF(X509_TRUST) *)sk_new(CHECKED_CAST(                            \
@@ -3195,6 +3488,13 @@
       CHECKED_CAST(stack_cmp_func,                                       \
                    int (*)(const X509_TRUST **a, const X509_TRUST **b),  \
                    comp)))
+
+#define sk_X509_TRUST_deep_copy(sk, copy_func, free_func)             \
+  ((STACK_OF(X509_TRUST) *)sk_deep_copy(                              \
+      CHECKED_CAST(const _STACK *, const STACK_OF(X509_TRUST) *, sk), \
+      CHECKED_CAST(void *(*)(void *), X509_TRUST *(*)(X509_TRUST *),  \
+                   copy_func),                                        \
+      CHECKED_CAST(void (*)(void *), void (*)(X509_TRUST *), free_func)))
 
 /* X509_VERIFY_PARAM */
 #define sk_X509_VERIFY_PARAM_new(comp)                                   \
@@ -3276,6 +3576,14 @@
                                                 const X509_VERIFY_PARAM **b), \
                         comp)))
 
+#define sk_X509_VERIFY_PARAM_deep_copy(sk, copy_func, free_func)             \
+  ((STACK_OF(X509_VERIFY_PARAM) *)sk_deep_copy(                              \
+      CHECKED_CAST(const _STACK *, const STACK_OF(X509_VERIFY_PARAM) *, sk), \
+      CHECKED_CAST(void *(*)(void *),                                        \
+                   X509_VERIFY_PARAM *(*)(X509_VERIFY_PARAM *), copy_func),  \
+      CHECKED_CAST(void (*)(void *), void (*)(X509_VERIFY_PARAM *),          \
+                   free_func)))
+
 /* void */
 #define sk_void_new(comp)                \
   ((STACK_OF(void)*)sk_new(CHECKED_CAST( \
@@ -3338,6 +3646,12 @@
       CHECKED_CAST(_STACK *, STACK_OF(void)*, sk),                          \
       CHECKED_CAST(stack_cmp_func, int (*)(const void **a, const void **b), \
                    comp)))
+
+#define sk_void_deep_copy(sk, copy_func, free_func)                  \
+  ((STACK_OF(void)*)sk_deep_copy(                                    \
+      CHECKED_CAST(const _STACK *, const STACK_OF(void)*, sk),       \
+      CHECKED_CAST(void *(*)(void *), void *(*)(void *), copy_func), \
+      CHECKED_CAST(void (*)(void *), void (*)(void *), free_func)))
 
 /* SRTP_PROTECTION_PROFILE */
 #define sk_SRTP_PROTECTION_PROFILE_new(comp)                            \
@@ -3426,6 +3740,16 @@
                                 const SRTP_PROTECTION_PROFILE **b),         \
                         comp)))
 
+#define sk_SRTP_PROTECTION_PROFILE_deep_copy(sk, copy_func, free_func)        \
+  ((STACK_OF(SRTP_PROTECTION_PROFILE) *)sk_deep_copy(                         \
+      CHECKED_CAST(const _STACK *, const STACK_OF(SRTP_PROTECTION_PROFILE) *, \
+                   sk),                                                       \
+      CHECKED_CAST(void *(*)(void *), const SRTP_PROTECTION_PROFILE *(*)(     \
+                                          const SRTP_PROTECTION_PROFILE *),   \
+                   copy_func),                                                \
+      CHECKED_CAST(void (*)(void *),                                          \
+                   void (*)(const SRTP_PROTECTION_PROFILE *), free_func)))
+
 /* SSL_CIPHER */
 #define sk_SSL_CIPHER_new(comp)                 \
   ((STACK_OF(SSL_CIPHER) *)sk_new(CHECKED_CAST( \
@@ -3502,6 +3826,14 @@
       CHECKED_CAST(stack_cmp_func,                                       \
                    int (*)(const SSL_CIPHER **a, const SSL_CIPHER **b),  \
                    comp)))
+
+#define sk_SSL_CIPHER_deep_copy(sk, copy_func, free_func)                 \
+  ((STACK_OF(SSL_CIPHER) *)sk_deep_copy(                                  \
+      CHECKED_CAST(const _STACK *, const STACK_OF(SSL_CIPHER) *, sk),     \
+      CHECKED_CAST(void *(*)(void *),                                     \
+                   const SSL_CIPHER *(*)(const SSL_CIPHER *), copy_func), \
+      CHECKED_CAST(void (*)(void *), void (*)(const SSL_CIPHER *),        \
+                   free_func)))
 
 /* OPENSSL_STRING */
 #define sk_OPENSSL_STRING_new(comp)                 \
@@ -3581,6 +3913,13 @@
                                                 const OPENSSL_STRING **b), \
                         comp)))
 
+#define sk_OPENSSL_STRING_deep_copy(sk, copy_func, free_func)             \
+  ((STACK_OF(OPENSSL_STRING) *)sk_deep_copy(                              \
+      CHECKED_CAST(const _STACK *, const STACK_OF(OPENSSL_STRING) *, sk), \
+      CHECKED_CAST(void *(*)(void *), OPENSSL_STRING (*)(OPENSSL_STRING), \
+                   copy_func),                                            \
+      CHECKED_CAST(void (*)(void *), void (*)(OPENSSL_STRING), free_func)))
+
 /* OPENSSL_BLOCK */
 #define sk_OPENSSL_BLOCK_new(comp)                                             \
   ((STACK_OF(OPENSSL_BLOCK) *)sk_new(CHECKED_CAST(                             \
@@ -3656,3 +3995,10 @@
       CHECKED_CAST(stack_cmp_func,                                             \
                    int (*)(const OPENSSL_BLOCK **a, const OPENSSL_BLOCK **b),  \
                    comp)))
+
+#define sk_OPENSSL_BLOCK_deep_copy(sk, copy_func, free_func)             \
+  ((STACK_OF(OPENSSL_BLOCK) *)sk_deep_copy(                              \
+      CHECKED_CAST(const _STACK *, const STACK_OF(OPENSSL_BLOCK) *, sk), \
+      CHECKED_CAST(void *(*)(void *), OPENSSL_BLOCK (*)(OPENSSL_BLOCK),  \
+                   copy_func),                                           \
+      CHECKED_CAST(void (*)(void *), void (*)(OPENSSL_BLOCK), free_func)))

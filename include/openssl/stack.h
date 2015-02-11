@@ -286,6 +286,13 @@ OPENSSL_EXPORT int sk_is_sorted(const _STACK *sk);
  * the previous one. */
 OPENSSL_EXPORT stack_cmp_func sk_set_cmp_func(_STACK *sk, stack_cmp_func comp);
 
+/* sk_deep_copy performs a copy of |sk| and of each of the non-NULL elements in
+ * |sk| by using |copy_func|. If an error occurs, |free_func| is used to free
+ * any copies already made and NULL is returned. */
+OPENSSL_EXPORT _STACK *sk_deep_copy(const _STACK *sk,
+                                    void *(*copy_func)(void *),
+                                    void (*free_func)(void *));
+
 
 #if defined(__cplusplus)
 }  /* extern C */

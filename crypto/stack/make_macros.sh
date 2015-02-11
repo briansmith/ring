@@ -86,6 +86,9 @@ output_stack () {
 #define sk_${type}_set_cmp_func(sk, comp)\\
   ((int (*) (const ${type} **a, const ${type} **b)) sk_set_cmp_func(CHECKED_CAST(_STACK*, STACK_OF(${type})*, sk), CHECKED_CAST(stack_cmp_func, int (*) (const ${type} **a, const ${type} **b), comp)))
 
+#define sk_${type}_deep_copy(sk, copy_func, free_func)\\
+((STACK_OF(${type})*) sk_deep_copy(CHECKED_CAST(const _STACK*, const STACK_OF(${type})*, sk), CHECKED_CAST(void* (*) (void*), ${ptrtype} (*) (${ptrtype}), copy_func), CHECKED_CAST(void (*) (void*), void (*) (${ptrtype}), free_func)))
+
 
 EOF
 }
