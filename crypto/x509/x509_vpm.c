@@ -143,6 +143,11 @@ static void x509_verify_param_zero(X509_VERIFY_PARAM *param)
 		string_stack_free(paramid->hosts);
 		paramid->hosts = NULL;
 		}
+	if (paramid->peername)
+		{
+		OPENSSL_free(paramid->peername);
+		paramid->peername = NULL;
+		}
 	if (paramid->email)
 		{
 		OPENSSL_free(paramid->email);
@@ -476,6 +481,11 @@ void X509_VERIFY_PARAM_set_hostflags(X509_VERIFY_PARAM *param,
 	param->id->hostflags = flags;
 	}
 
+char *X509_VERIFY_PARAM_get0_peername(X509_VERIFY_PARAM *param)
+	{
+	return param->id->peername;
+	}
+
 int X509_VERIFY_PARAM_set1_email(X509_VERIFY_PARAM *param,
 				const unsigned char *email, size_t emaillen)
 	{
@@ -511,7 +521,7 @@ const char *X509_VERIFY_PARAM_get0_name(const X509_VERIFY_PARAM *param)
 	return param->name;
 	}
 
-static const X509_VERIFY_PARAM_ID _empty_id = {NULL, 0U, NULL, 0, NULL, 0};
+static const X509_VERIFY_PARAM_ID _empty_id = {NULL, 0U, NULL, NULL, 0, NULL, 0};
 
 #define vpm_empty_id (X509_VERIFY_PARAM_ID *)&_empty_id
 
