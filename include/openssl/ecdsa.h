@@ -172,16 +172,15 @@ OPENSSL_EXPORT int i2d_ECDSA_SIG(const ECDSA_SIG *sig, uint8_t **outp);
 }  /* extern C */
 #endif
 
-#define ECDSA_F_digest_to_bn 100
+#define ECDSA_F_ECDSA_do_sign_ex 100
 #define ECDSA_F_ECDSA_do_verify 101
-#define ECDSA_F_ECDSA_sign_setup 102
-#define ECDSA_F_ECDSA_do_sign_ex 103
-#define ECDSA_F_ECDSA_sign_ex 104
-#define ECDSA_F_ecdsa_sign_setup 105
-#define ECDSA_R_RANDOM_NUMBER_GENERATION_FAILED 100
-#define ECDSA_R_NEED_NEW_SETUP_VALUES 101
-#define ECDSA_R_MISSING_PARAMETERS 102
-#define ECDSA_R_BAD_SIGNATURE 103
-#define ECDSA_R_NOT_IMPLEMENTED 104
+#define ECDSA_F_ECDSA_sign_ex 102
+#define ECDSA_F_digest_to_bn 103
+#define ECDSA_F_ecdsa_sign_setup 104
+#define ECDSA_R_BAD_SIGNATURE 100
+#define ECDSA_R_MISSING_PARAMETERS 101
+#define ECDSA_R_NEED_NEW_SETUP_VALUES 102
+#define ECDSA_R_NOT_IMPLEMENTED 103
+#define ECDSA_R_RANDOM_NUMBER_GENERATION_FAILED 104
 
 #endif  /* OPENSSL_HEADER_ECDSA_H */

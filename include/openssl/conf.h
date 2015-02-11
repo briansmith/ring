@@ -131,14 +131,14 @@ int CONF_parse_list(const char *list, char sep, int remove_whitespace,
 #endif
 
 #define CONF_F_CONF_parse_list 100
-#define CONF_F_str_copy 101
+#define CONF_F_NCONF_load 101
 #define CONF_F_def_load_bio 102
-#define CONF_F_NCONF_load 103
-#define CONF_R_MISSING_EQUAL_SIGN 100
-#define CONF_R_LIST_CANNOT_BE_NULL 101
-#define CONF_R_NO_CLOSE_BRACE 102
-#define CONF_R_VARIABLE_HAS_NO_VALUE 103
+#define CONF_F_str_copy 103
+#define CONF_R_LIST_CANNOT_BE_NULL 100
+#define CONF_R_MISSING_CLOSE_SQUARE_BRACKET 101
+#define CONF_R_MISSING_EQUAL_SIGN 102
+#define CONF_R_NO_CLOSE_BRACE 103
 #define CONF_R_UNABLE_TO_CREATE_NEW_SECTION 104
-#define CONF_R_MISSING_CLOSE_SQUARE_BRACKET 105
+#define CONF_R_VARIABLE_HAS_NO_VALUE 105
 
 #endif  /* OPENSSL_HEADER_THREAD_H */

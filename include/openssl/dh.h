@@ -251,12 +251,12 @@ struct dh_st {
 }  /* extern C */
 #endif
 
-#define DH_F_generate_parameters 100
-#define DH_F_generate_key 101
-#define DH_F_compute_key 102
-#define DH_F_DH_new_method 103
-#define DH_R_INVALID_PUBKEY 100
-#define DH_R_BAD_GENERATOR 101
+#define DH_F_DH_new_method 100
+#define DH_F_compute_key 101
+#define DH_F_generate_key 102
+#define DH_F_generate_parameters 103
+#define DH_R_BAD_GENERATOR 100
+#define DH_R_INVALID_PUBKEY 101
 #define DH_R_MODULUS_TOO_LARGE 102
 #define DH_R_NO_PRIVATE_VALUE 103
 

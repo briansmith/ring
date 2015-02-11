@@ -364,14 +364,14 @@ struct dsa_st {
 }  /* extern C */
 #endif
 
-#define DSA_F_sign 100
-#define DSA_F_verify 101
-#define DSA_F_dsa_sig_cb 102
-#define DSA_F_DSA_new_method 103
-#define DSA_F_sign_setup 104
-#define DSA_R_NEED_NEW_SETUP_VALUES 100
-#define DSA_R_BAD_Q_VALUE 101
+#define DSA_F_DSA_new_method 100
+#define DSA_F_dsa_sig_cb 101
+#define DSA_F_sign 102
+#define DSA_F_sign_setup 103
+#define DSA_F_verify 104
+#define DSA_R_BAD_Q_VALUE 100
+#define DSA_R_MISSING_PARAMETERS 101
 #define DSA_R_MODULUS_TOO_LARGE 102
-#define DSA_R_MISSING_PARAMETERS 103
+#define DSA_R_NEED_NEW_SETUP_VALUES 103
 
 #endif  /* OPENSSL_HEADER_DSA_H */

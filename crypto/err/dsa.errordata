@@ -1,9 +1,9 @@
-DSA,function,103,DSA_new_method
-DSA,function,102,dsa_sig_cb
-DSA,function,100,sign
-DSA,function,104,sign_setup
-DSA,function,101,verify
-DSA,reason,101,BAD_Q_VALUE
-DSA,reason,103,MISSING_PARAMETERS
+DSA,function,100,DSA_new_method
+DSA,function,101,dsa_sig_cb
+DSA,function,102,sign
+DSA,function,103,sign_setup
+DSA,function,104,verify
+DSA,reason,100,BAD_Q_VALUE
+DSA,reason,101,MISSING_PARAMETERS
 DSA,reason,102,MODULUS_TOO_LARGE
-DSA,reason,100,NEED_NEW_SETUP_VALUES
+DSA,reason,103,NEED_NEW_SETUP_VALUES

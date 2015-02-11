@@ -96,8 +96,8 @@ OPENSSL_EXPORT int ECDH_compute_key(void *out, size_t outlen,
 #endif
 
 #define ECDH_F_ECDH_compute_key 100
-#define ECDH_R_POINT_ARITHMETIC_FAILURE 100
-#define ECDH_R_KDF_FAILED 101
-#define ECDH_R_NO_PRIVATE_VALUE 102
+#define ECDH_R_KDF_FAILED 100
+#define ECDH_R_NO_PRIVATE_VALUE 101
+#define ECDH_R_POINT_ARITHMETIC_FAILURE 102
 
 #endif  /* OPENSSL_HEADER_ECDH_H */

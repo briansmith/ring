@@ -193,10 +193,10 @@ OPENSSL_EXPORT int OBJ_find_sigid_by_algs(int *out_sign_nid, int digest_nid,
 }  /* extern C */
 #endif
 
-#define OBJ_F_OBJ_txt2obj 100
-#define OBJ_F_OBJ_create 101
-#define OBJ_F_OBJ_dup 102
-#define OBJ_F_OBJ_nid2obj 103
+#define OBJ_F_OBJ_create 100
+#define OBJ_F_OBJ_dup 101
+#define OBJ_F_OBJ_nid2obj 102
+#define OBJ_F_OBJ_txt2obj 103
 #define OBJ_R_UNKNOWN_NID 100
 
 #endif  /* OPENSSL_HEADER_OBJECTS_H */

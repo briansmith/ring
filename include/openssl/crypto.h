@@ -39,7 +39,7 @@ OPENSSL_EXPORT void CRYPTO_library_init(void);
 
 #define CRYPTO_F_CRYPTO_set_ex_data 100
 #define CRYPTO_F_get_class 101
-#define CRYPTO_F_get_new_index 102
-#define CRYPTO_F_get_func_pointers 103
+#define CRYPTO_F_get_func_pointers 102
+#define CRYPTO_F_get_new_index 103
 
 #endif  /* OPENSSL_HEADER_CRYPTO_H */
