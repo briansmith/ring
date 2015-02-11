@@ -355,14 +355,18 @@ err:
       BN_clear_free(r);
     }
   }
-  if (ctx_in == NULL)
+  if (ctx_in == NULL) {
     BN_CTX_free(ctx);
-  if (order != NULL)
+  }
+  if (order != NULL) {
     BN_free(order);
-  if (tmp_point != NULL)
+  }
+  if (tmp_point != NULL) {
     EC_POINT_free(tmp_point);
-  if (X)
+  }
+  if (X) {
     BN_clear_free(X);
+  }
   return ret;
 }
 
@@ -461,16 +465,21 @@ err:
     ECDSA_SIG_free(ret);
     ret = NULL;
   }
-  if (ctx)
+  if (ctx) {
     BN_CTX_free(ctx);
-  if (m)
+  }
+  if (m) {
     BN_clear_free(m);
-  if (tmp)
+  }
+  if (tmp) {
     BN_clear_free(tmp);
-  if (order)
+  }
+  if (order) {
     BN_free(order);
-  if (kinv)
+  }
+  if (kinv) {
     BN_clear_free(kinv);
+  }
   return ret;
 }
 

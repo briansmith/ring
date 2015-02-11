@@ -357,22 +357,30 @@ err:
     EC_GROUP_free(group);
     group = NULL;
   }
-  if (P)
+  if (P) {
     EC_POINT_free(P);
-  if (ctx)
+  }
+  if (ctx) {
     BN_CTX_free(ctx);
-  if (p)
+  }
+  if (p) {
     BN_free(p);
-  if (a)
+  }
+  if (a) {
     BN_free(a);
-  if (b)
+  }
+  if (b) {
     BN_free(b);
-  if (order)
+  }
+  if (order) {
     BN_free(order);
-  if (x)
+  }
+  if (x) {
     BN_free(x);
-  if (y)
+  }
+  if (y) {
     BN_free(y);
+  }
   return group;
 }
 

@@ -160,20 +160,24 @@ int ec_GFp_mont_group_copy(EC_GROUP *dest, const EC_GROUP *src) {
     dest->field_data2 = NULL;
   }
 
-  if (!ec_GFp_simple_group_copy(dest, src))
+  if (!ec_GFp_simple_group_copy(dest, src)) {
     return 0;
+  }
 
   if (src->field_data1 != NULL) {
     dest->field_data1 = BN_MONT_CTX_new();
-    if (dest->field_data1 == NULL)
+    if (dest->field_data1 == NULL) {
       return 0;
-    if (!BN_MONT_CTX_copy(dest->field_data1, src->field_data1))
+    }
+    if (!BN_MONT_CTX_copy(dest->field_data1, src->field_data1)) {
       goto err;
+    }
   }
   if (src->field_data2 != NULL) {
     dest->field_data2 = BN_dup(src->field_data2);
-    if (dest->field_data2 == NULL)
+    if (dest->field_data2 == NULL) {
       goto err;
+    }
   }
 
   return 1;
@@ -204,22 +208,23 @@ int ec_GFp_mont_group_set_curve(EC_GROUP *group, const BIGNUM *p,
 
   if (ctx == NULL) {
     ctx = new_ctx = BN_CTX_new();
-    if (ctx == NULL)
+    if (ctx == NULL) {
       return 0;
+    }
   }
 
   mont = BN_MONT_CTX_new();
-  if (mont == NULL)
+  if (mont == NULL) {
     goto err;
+  }
   if (!BN_MONT_CTX_set(mont, p, ctx)) {
     OPENSSL_PUT_ERROR(EC, ec_GFp_mont_group_set_curve, ERR_R_BN_LIB);
     goto err;
   }
   one = BN_new();
-  if (one == NULL)
+  if (one == NULL || !BN_to_montgomery(one, BN_value_one(), mont, ctx)) {
     goto err;
-  if (!BN_to_montgomery(one, BN_value_one(), mont, ctx))
-    goto err;
+  }
 
   group->field_data1 = mont;
   mont = NULL;
@@ -236,10 +241,12 @@ int ec_GFp_mont_group_set_curve(EC_GROUP *group, const BIGNUM *p,
   }
 
 err:
-  if (new_ctx != NULL)
+  if (new_ctx != NULL) {
     BN_CTX_free(new_ctx);
-  if (mont != NULL)
+  }
+  if (mont != NULL) {
     BN_MONT_CTX_free(mont);
+  }
   return ret;
 }
 
@@ -290,7 +297,8 @@ int ec_GFp_mont_field_set_to_one(const EC_GROUP *group, BIGNUM *r,
     return 0;
   }
 
-  if (!BN_copy(r, group->field_data2))
+  if (!BN_copy(r, group->field_data2)) {
     return 0;
+  }
   return 1;
 }

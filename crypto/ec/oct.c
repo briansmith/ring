@@ -227,40 +227,46 @@ static int ec_GFp_simple_oct2point(const EC_GROUP *group, EC_POINT *point,
 
   if (ctx == NULL) {
     ctx = new_ctx = BN_CTX_new();
-    if (ctx == NULL)
+    if (ctx == NULL) {
       return 0;
+    }
   }
 
   BN_CTX_start(ctx);
   x = BN_CTX_get(ctx);
   y = BN_CTX_get(ctx);
-  if (y == NULL)
+  if (y == NULL) {
     goto err;
+  }
 
-  if (!BN_bin2bn(buf + 1, field_len, x))
+  if (!BN_bin2bn(buf + 1, field_len, x)) {
     goto err;
+  }
   if (BN_ucmp(x, &group->field) >= 0) {
     OPENSSL_PUT_ERROR(EC, ec_GFp_simple_oct2point, EC_R_INVALID_ENCODING);
     goto err;
   }
 
   if (form == POINT_CONVERSION_COMPRESSED) {
-    if (!EC_POINT_set_compressed_coordinates_GFp(group, point, x, y_bit, ctx))
+    if (!EC_POINT_set_compressed_coordinates_GFp(group, point, x, y_bit, ctx)) {
       goto err;
+    }
   } else {
-    if (!BN_bin2bn(buf + 1 + field_len, field_len, y))
+    if (!BN_bin2bn(buf + 1 + field_len, field_len, y)) {
       goto err;
+    }
     if (BN_ucmp(y, &group->field) >= 0) {
       OPENSSL_PUT_ERROR(EC, ec_GFp_simple_oct2point, EC_R_INVALID_ENCODING);
       goto err;
     }
 
-    if (!EC_POINT_set_affine_coordinates_GFp(group, point, x, y, ctx))
+    if (!EC_POINT_set_affine_coordinates_GFp(group, point, x, y, ctx)) {
       goto err;
+    }
   }
 
-  if (!EC_POINT_is_on_curve(group, point, ctx)) /* test required by X9.62 */
-  {
+  /* test required by X9.62 */
+  if (!EC_POINT_is_on_curve(group, point, ctx)) {
     OPENSSL_PUT_ERROR(EC, ec_GFp_simple_oct2point, EC_R_POINT_IS_NOT_ON_CURVE);
     goto err;
   }
@@ -269,8 +275,9 @@ static int ec_GFp_simple_oct2point(const EC_GROUP *group, EC_POINT *point,
 
 err:
   BN_CTX_end(ctx);
-  if (new_ctx != NULL)
+  if (new_ctx != NULL) {
     BN_CTX_free(new_ctx);
+  }
   return ret;
 }
 
@@ -441,15 +448,17 @@ int ec_GFp_simple_set_compressed_coordinates(const EC_GROUP *group,
     goto err;
   }
 
-  if (!EC_POINT_set_affine_coordinates_GFp(group, point, x, y, ctx))
+  if (!EC_POINT_set_affine_coordinates_GFp(group, point, x, y, ctx)) {
     goto err;
+  }
 
   ret = 1;
 
 err:
   BN_CTX_end(ctx);
-  if (new_ctx != NULL)
+  if (new_ctx != NULL) {
     BN_CTX_free(new_ctx);
+  }
   return ret;
 }
 

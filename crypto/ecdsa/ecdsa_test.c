@@ -308,21 +308,25 @@ int main(void) {
 
   out = BIO_new_fp(stdout, BIO_NOCLOSE);
 
-  if (!test_builtin(out))
+  if (!test_builtin(out)) {
     goto err;
+  }
 
   ret = 0;
 
 err:
-  if (ret)
+  if (ret) {
     BIO_printf(out, "\nECDSA test failed\n");
-  else
+  } else {
     BIO_printf(out, "\nPASS\n");
-  if (ret)
+  }
+  if (ret) {
     BIO_print_errors(out);
+  }
 
-  if (out != NULL)
+  if (out != NULL) {
     BIO_free(out);
+  }
 
   return ret;
 }

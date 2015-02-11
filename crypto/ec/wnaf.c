@@ -97,8 +97,9 @@ typedef struct ec_pre_comp_st {
 static EC_PRE_COMP *ec_pre_comp_new(const EC_GROUP *group) {
   EC_PRE_COMP *ret = NULL;
 
-  if (!group)
+  if (!group) {
     return NULL;
+  }
 
   ret = (EC_PRE_COMP *)OPENSSL_malloc(sizeof(EC_PRE_COMP));
   if (!ret) {
@@ -272,8 +273,9 @@ err:
     OPENSSL_free(r);
     r = NULL;
   }
-  if (ok)
+  if (ok) {
     *ret_len = len;
+  }
   return r;
 }
 
@@ -341,8 +343,9 @@ int ec_wNAF_mul(const EC_GROUP *group, EC_POINT *r, const BIGNUM *scalar,
 
   if (ctx == NULL) {
     ctx = new_ctx = BN_CTX_new();
-    if (ctx == NULL)
+    if (ctx == NULL) {
       goto err;
+    }
   }
 
   if (scalar != NULL) {
@@ -365,8 +368,9 @@ int ec_wNAF_mul(const EC_GROUP *group, EC_POINT *r, const BIGNUM *scalar,
       numblocks = (BN_num_bits(scalar) / blocksize) + 1;
 
       /* we cannot use more blocks than we have precomputation for */
-      if (numblocks > pre_comp->numblocks)
+      if (numblocks > pre_comp->numblocks) {
         numblocks = pre_comp->numblocks;
+      }
 
       pre_points_per_block = (size_t)1 << (pre_comp->w - 1);
 
@@ -413,10 +417,12 @@ int ec_wNAF_mul(const EC_GROUP *group, EC_POINT *r, const BIGNUM *scalar,
     wNAF[i + 1] = NULL; /* make sure we always have a pivot */
     wNAF[i] =
         compute_wNAF((i < num ? scalars[i] : scalar), wsize[i], &wNAF_len[i]);
-    if (wNAF[i] == NULL)
+    if (wNAF[i] == NULL) {
       goto err;
-    if (wNAF_len[i] > max_len)
+    }
+    if (wNAF_len[i] > max_len) {
       max_len = wNAF_len[i];
+    }
   }
 
   if (numblocks) {
@@ -440,8 +446,9 @@ int ec_wNAF_mul(const EC_GROUP *group, EC_POINT *r, const BIGNUM *scalar,
       /* use the window size for which we have precomputation */
       wsize[num] = pre_comp->w;
       tmp_wNAF = compute_wNAF(scalar, wsize[num], &tmp_len);
-      if (!tmp_wNAF)
+      if (!tmp_wNAF) {
         goto err;
+      }
 
       if (tmp_len <= max_len) {
         /* One of the other wNAFs is at least as long
@@ -484,10 +491,11 @@ int ec_wNAF_mul(const EC_GROUP *group, EC_POINT *r, const BIGNUM *scalar,
               goto err;
             }
             tmp_len -= blocksize;
-          } else
+          } else {
             /* last block gets whatever is left
              * (this could be more or less than 'blocksize'!) */
             wNAF_len[i] = tmp_len;
+          }
 
           wNAF[i + 1] = NULL;
           wNAF[i] = OPENSSL_malloc(wNAF_len[i]);
@@ -497,8 +505,9 @@ int ec_wNAF_mul(const EC_GROUP *group, EC_POINT *r, const BIGNUM *scalar,
             goto err;
           }
           memcpy(wNAF[i], pp, wNAF_len[i]);
-          if (wNAF_len[i] > max_len)
+          if (wNAF_len[i] > max_len) {
             max_len = wNAF_len[i];
+          }
 
           if (*tmp_points == NULL) {
             OPENSSL_PUT_ERROR(EC, ec_wNAF_mul, ERR_R_INTERNAL_ERROR);
@@ -531,8 +540,9 @@ int ec_wNAF_mul(const EC_GROUP *group, EC_POINT *r, const BIGNUM *scalar,
     val_sub[i] = v;
     for (j = 0; j < ((size_t)1 << (wsize[i] - 1)); j++) {
       *v = EC_POINT_new(group);
-      if (*v == NULL)
+      if (*v == NULL) {
         goto err;
+      }
       v++;
     }
   }
@@ -541,8 +551,9 @@ int ec_wNAF_mul(const EC_GROUP *group, EC_POINT *r, const BIGNUM *scalar,
     goto err;
   }
 
-  if (!(tmp = EC_POINT_new(group)))
+  if (!(tmp = EC_POINT_new(group))) {
     goto err;
+  }
 
   /* prepare precomputed values:
    *    val_sub[i][0] :=     points[i]
@@ -552,34 +563,36 @@ int ec_wNAF_mul(const EC_GROUP *group, EC_POINT *r, const BIGNUM *scalar,
    */
   for (i = 0; i < num + num_scalar; i++) {
     if (i < num) {
-      if (!EC_POINT_copy(val_sub[i][0], points[i]))
+      if (!EC_POINT_copy(val_sub[i][0], points[i])) {
         goto err;
-    } else {
-      if (!EC_POINT_copy(val_sub[i][0], generator))
-        goto err;
+      }
+    } else if (!EC_POINT_copy(val_sub[i][0], generator)) {
+      goto err;
     }
 
     if (wsize[i] > 1) {
-      if (!EC_POINT_dbl(group, tmp, val_sub[i][0], ctx))
+      if (!EC_POINT_dbl(group, tmp, val_sub[i][0], ctx)) {
         goto err;
+      }
       for (j = 1; j < ((size_t)1 << (wsize[i] - 1)); j++) {
-        if (!EC_POINT_add(group, val_sub[i][j], val_sub[i][j - 1], tmp, ctx))
+        if (!EC_POINT_add(group, val_sub[i][j], val_sub[i][j - 1], tmp, ctx)) {
           goto err;
+        }
       }
     }
   }
 
 #if 1 /* optional; EC_window_bits_for_scalar_size assumes we do this step */
-  if (!EC_POINTs_make_affine(group, num_val, val, ctx))
+  if (!EC_POINTs_make_affine(group, num_val, val, ctx)) {
     goto err;
+  }
 #endif
 
   r_is_at_infinity = 1;
 
   for (k = max_len - 1; k >= 0; k--) {
-    if (!r_is_at_infinity) {
-      if (!EC_POINT_dbl(group, r, r, ctx))
-        goto err;
+    if (!r_is_at_infinity && !EC_POINT_dbl(group, r, r, ctx)) {
+      goto err;
     }
 
     for (i = 0; i < totalnum; i++) {
@@ -590,13 +603,13 @@ int ec_wNAF_mul(const EC_GROUP *group, EC_POINT *r, const BIGNUM *scalar,
         if (digit) {
           is_neg = digit < 0;
 
-          if (is_neg)
+          if (is_neg) {
             digit = -digit;
+          }
 
           if (is_neg != r_is_inverted) {
-            if (!r_is_at_infinity) {
-              if (!EC_POINT_invert(group, r, ctx))
-                goto err;
+            if (!r_is_at_infinity && !EC_POINT_invert(group, r, ctx)) {
+              goto err;
             }
             r_is_inverted = !r_is_inverted;
           }
@@ -604,12 +617,14 @@ int ec_wNAF_mul(const EC_GROUP *group, EC_POINT *r, const BIGNUM *scalar,
           /* digit > 0 */
 
           if (r_is_at_infinity) {
-            if (!EC_POINT_copy(r, val_sub[i][digit >> 1]))
+            if (!EC_POINT_copy(r, val_sub[i][digit >> 1])) {
               goto err;
+            }
             r_is_at_infinity = 0;
           } else {
-            if (!EC_POINT_add(group, r, r, val_sub[i][digit >> 1], ctx))
+            if (!EC_POINT_add(group, r, r, val_sub[i][digit >> 1], ctx)) {
               goto err;
+            }
           }
         }
       }
@@ -617,36 +632,41 @@ int ec_wNAF_mul(const EC_GROUP *group, EC_POINT *r, const BIGNUM *scalar,
   }
 
   if (r_is_at_infinity) {
-    if (!EC_POINT_set_to_infinity(group, r))
+    if (!EC_POINT_set_to_infinity(group, r)) {
       goto err;
-  } else {
-    if (r_is_inverted)
-      if (!EC_POINT_invert(group, r, ctx))
-        goto err;
+    }
+  } else if (r_is_inverted && !EC_POINT_invert(group, r, ctx)) {
+    goto err;
   }
 
   ret = 1;
 
 err:
-  if (new_ctx != NULL)
+  if (new_ctx != NULL) {
     BN_CTX_free(new_ctx);
-  if (tmp != NULL)
+  }
+  if (tmp != NULL) {
     EC_POINT_free(tmp);
-  if (wsize != NULL)
+  }
+  if (wsize != NULL) {
     OPENSSL_free(wsize);
-  if (wNAF_len != NULL)
+  }
+  if (wNAF_len != NULL) {
     OPENSSL_free(wNAF_len);
+  }
   if (wNAF != NULL) {
     signed char **w;
 
-    for (w = wNAF; *w != NULL; w++)
+    for (w = wNAF; *w != NULL; w++) {
       OPENSSL_free(*w);
+    }
 
     OPENSSL_free(wNAF);
   }
   if (val != NULL) {
-    for (v = val; *v != NULL; v++)
+    for (v = val; *v != NULL; v++) {
       EC_POINT_clear_free(*v);
+    }
 
     OPENSSL_free(val);
   }
@@ -695,8 +715,10 @@ int ec_wNAF_precompute_mult(EC_GROUP *group, BN_CTX *ctx) {
     group->pre_comp = NULL;
   }
 
-  if ((pre_comp = ec_pre_comp_new(group)) == NULL)
+  pre_comp = ec_pre_comp_new(group);
+  if (pre_comp == NULL) {
     return 0;
+  }
 
   generator = EC_GROUP_get0_generator(group);
   if (generator == NULL) {
@@ -706,17 +728,20 @@ int ec_wNAF_precompute_mult(EC_GROUP *group, BN_CTX *ctx) {
 
   if (ctx == NULL) {
     ctx = new_ctx = BN_CTX_new();
-    if (ctx == NULL)
+    if (ctx == NULL) {
       goto err;
+    }
   }
 
   BN_CTX_start(ctx);
   order = BN_CTX_get(ctx);
-  if (order == NULL)
+  if (order == NULL) {
     goto err;
+  }
 
-  if (!EC_GROUP_get_order(group, order, ctx))
+  if (!EC_GROUP_get_order(group, order, ctx)) {
     goto err;
+  }
   if (BN_is_zero(order)) {
     OPENSSL_PUT_ERROR(EC, ec_wNAF_precompute_mult, EC_R_UNKNOWN_ORDER);
     goto err;
@@ -764,23 +789,27 @@ int ec_wNAF_precompute_mult(EC_GROUP *group, BN_CTX *ctx) {
     goto err;
   }
 
-  if (!EC_POINT_copy(base, generator))
+  if (!EC_POINT_copy(base, generator)) {
     goto err;
+  }
 
   /* do the precomputation */
   for (i = 0; i < numblocks; i++) {
     size_t j;
 
-    if (!EC_POINT_dbl(group, tmp_point, base, ctx))
+    if (!EC_POINT_dbl(group, tmp_point, base, ctx)) {
       goto err;
+    }
 
-    if (!EC_POINT_copy(*var++, base))
+    if (!EC_POINT_copy(*var++, base)) {
       goto err;
+    }
 
     for (j = 1; j < pre_points_per_block; j++, var++) {
       /* calculate odd multiples of the current base point */
-      if (!EC_POINT_add(group, *var, tmp_point, *(var - 1), ctx))
+      if (!EC_POINT_add(group, *var, tmp_point, *(var - 1), ctx)) {
         goto err;
+      }
     }
 
     if (i < numblocks - 1) {
@@ -792,17 +821,20 @@ int ec_wNAF_precompute_mult(EC_GROUP *group, BN_CTX *ctx) {
         goto err;
       }
 
-      if (!EC_POINT_dbl(group, base, tmp_point, ctx))
+      if (!EC_POINT_dbl(group, base, tmp_point, ctx)) {
         goto err;
+      }
       for (k = 2; k < blocksize; k++) {
-        if (!EC_POINT_dbl(group, base, base, ctx))
+        if (!EC_POINT_dbl(group, base, base, ctx)) {
           goto err;
+        }
       }
     }
   }
 
-  if (!EC_POINTs_make_affine(group, num, points, ctx))
+  if (!EC_POINTs_make_affine(group, num, points, ctx)) {
     goto err;
+  }
 
   pre_comp->group = group;
   pre_comp->blocksize = blocksize;
@@ -818,23 +850,29 @@ int ec_wNAF_precompute_mult(EC_GROUP *group, BN_CTX *ctx) {
   ret = 1;
 
 err:
-  if (ctx != NULL)
+  if (ctx != NULL) {
     BN_CTX_end(ctx);
-  if (new_ctx != NULL)
+  }
+  if (new_ctx != NULL) {
     BN_CTX_free(new_ctx);
-  if (pre_comp)
+  }
+  if (pre_comp) {
     ec_pre_comp_free(pre_comp);
+  }
   if (points) {
     EC_POINT **p;
 
-    for (p = points; *p != NULL; p++)
+    for (p = points; *p != NULL; p++) {
       EC_POINT_free(*p);
+    }
     OPENSSL_free(points);
   }
-  if (tmp_point)
+  if (tmp_point) {
     EC_POINT_free(tmp_point);
-  if (base)
+  }
+  if (base) {
     EC_POINT_free(base);
+  }
   return ret;
 }
 
