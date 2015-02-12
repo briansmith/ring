@@ -212,6 +212,7 @@ static int asn1_item_ex_combine_new(ASN1_VALUE **pval, const ASN1_ITEM *it,
 
 	memerr:
 	OPENSSL_PUT_ERROR(ASN1, asn1_item_ex_combine_new,  ERR_R_MALLOC_FAILURE);
+	ASN1_item_ex_free(pval, it);
 #ifdef CRYPTO_MDEBUG
 	if (it->sname) CRYPTO_pop_info();
 #endif

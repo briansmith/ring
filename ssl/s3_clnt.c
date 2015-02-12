@@ -1243,8 +1243,12 @@ int ssl3_get_server_key_exchange(SSL *s) {
     }
 
     ngroup = EC_GROUP_new_by_curve_name(curve_nid);
-    if (ngroup == NULL ||
-        EC_KEY_set_group(ecdh, ngroup) == 0) {
+    if (ngroup == NULL) {
+      OPENSSL_PUT_ERROR(SSL, ssl3_get_server_key_exchange, ERR_R_EC_LIB);
+      goto err;
+    }
+    if (!EC_KEY_set_group(ecdh, ngroup)) {
+      EC_GROUP_free(ngroup);
       OPENSSL_PUT_ERROR(SSL, ssl3_get_server_key_exchange, ERR_R_EC_LIB);
       goto err;
     }

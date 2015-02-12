@@ -247,6 +247,9 @@ err:
   if (mont != NULL) {
     BN_MONT_CTX_free(mont);
   }
+  if (one != NULL) {
+    BN_free(one);
+  }
   return ret;
 }
 

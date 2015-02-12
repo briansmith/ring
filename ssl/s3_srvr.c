@@ -1979,6 +1979,7 @@ int ssl3_get_client_key_exchange(SSL *s) {
     if (premaster_secret == NULL) {
       OPENSSL_PUT_ERROR(SSL, ssl3_get_client_key_exchange,
                         ERR_R_MALLOC_FAILURE);
+      BN_clear_free(pub);
       goto err;
     }
 
