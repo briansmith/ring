@@ -499,7 +499,7 @@ err:
   }
 }
 
-int EC_GROUP_cmp(const EC_GROUP *a, const EC_GROUP *b) {
+int EC_GROUP_cmp(const EC_GROUP *a, const EC_GROUP *b, BN_CTX *ignored) {
   if (a->curve_name == NID_undef || b->curve_name == NID_undef) {
     return 0;
   }

@@ -117,7 +117,8 @@ OPENSSL_EXPORT EC_GROUP *EC_GROUP_dup(const EC_GROUP *a);
 
 /* EC_GROUP_cmp returns one if |a| and |b| are the same group and zero
  * otherwise. */
-OPENSSL_EXPORT int EC_GROUP_cmp(const EC_GROUP *a, const EC_GROUP *b);
+OPENSSL_EXPORT int EC_GROUP_cmp(const EC_GROUP *a, const EC_GROUP *b,
+                                BN_CTX *ignored);
 
 /* EC_GROUP_get0_generator returns a pointer to the internal |EC_POINT| object
  * in |group| that specifies the generator for the group. */

@@ -382,7 +382,7 @@ static int ec_copy_parameters(EVP_PKEY *to, const EVP_PKEY *from) {
 static int ec_cmp_parameters(const EVP_PKEY *a, const EVP_PKEY *b) {
   const EC_GROUP *group_a = EC_KEY_get0_group(a->pkey.ec),
                  *group_b = EC_KEY_get0_group(b->pkey.ec);
-  return EC_GROUP_cmp(group_a, group_b);
+  return EC_GROUP_cmp(group_a, group_b, NULL);
 }
 
 static void int_ec_free(EVP_PKEY *pkey) { EC_KEY_free(pkey->pkey.ec); }
