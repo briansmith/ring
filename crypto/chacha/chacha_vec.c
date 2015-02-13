@@ -159,7 +159,7 @@ void CRYPTO_chacha_20(
 	{
 	unsigned iters, i, *op=(unsigned *)out, *ip=(unsigned *)in, *kp;
 #if defined(__ARM_NEON__)
-	unsigned np[2];
+	uint32_t np[2];
 	uint8_t alignment_buffer[16] __attribute__((aligned(16)));
 #endif
 	vec s0, s1, s2, s3;
