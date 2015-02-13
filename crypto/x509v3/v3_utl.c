@@ -925,9 +925,6 @@ static int do_x509_check(X509 *x, const char *chk, size_t chklen,
 		equal = equal_case;
 		}
 
-	if (chklen == 0)
-		chklen = strlen(chk);
-
 	gens = X509_get_ext_d2i(x, NID_subject_alt_name, NULL, NULL);
 	if (gens)
 		{
