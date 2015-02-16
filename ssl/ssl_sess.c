@@ -889,18 +889,6 @@ int (*SSL_CTX_get_client_cert_cb(SSL_CTX *ctx))(SSL *ssl, X509 **x509,
   return ctx->client_cert_cb;
 }
 
-void SSL_CTX_set_cookie_generate_cb(SSL_CTX *ctx,
-                                    int (*cb)(SSL *ssl, uint8_t *cookie,
-                                              size_t *cookie_len)) {
-  ctx->app_gen_cookie_cb = cb;
-}
-
-void SSL_CTX_set_cookie_verify_cb(SSL_CTX *ctx,
-                                  int (*cb)(SSL *ssl, const uint8_t *cookie,
-                                            size_t cookie_len)) {
-  ctx->app_verify_cookie_cb = cb;
-}
-
 void SSL_CTX_set_channel_id_cb(SSL_CTX *ctx,
                                void (*cb)(SSL *ssl, EVP_PKEY **pkey)) {
   ctx->channel_id_cb = cb;

@@ -1844,8 +1844,6 @@ SSL_CTX *SSL_CTX_new(const SSL_METHOD *meth) {
   ret->default_passwd_callback = 0;
   ret->default_passwd_callback_userdata = NULL;
   ret->client_cert_cb = 0;
-  ret->app_gen_cookie_cb = 0;
-  ret->app_verify_cookie_cb = 0;
 
   ret->sessions = lh_SSL_SESSION_new(ssl_session_hash, ssl_session_cmp);
   if (ret->sessions == NULL) {

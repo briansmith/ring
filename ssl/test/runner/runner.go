@@ -1880,18 +1880,6 @@ func addStateMachineCoverageTests(async, splitHandshake bool, protocol protocol)
 			},
 			flags: flags,
 		})
-
-		testCases = append(testCases, testCase{
-			testType: serverTest,
-			protocol: protocol,
-			name:     "CookieExchange" + suffix,
-			config: Config{
-				Bugs: ProtocolBugs{
-					MaxHandshakeRecordLength: maxHandshakeRecordLength,
-				},
-			},
-			flags: append(flags, "-cookie-exchange"),
-		})
 	}
 }
 

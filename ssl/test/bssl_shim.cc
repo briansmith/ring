@@ -199,32 +199,6 @@ static int AlpnSelectCallback(SSL* ssl, const uint8_t** out, uint8_t* outlen,
   return SSL_TLSEXT_ERR_OK;
 }
 
-static int CookieGenerateCallback(SSL *ssl, uint8_t *cookie,
-                                  size_t *cookie_len) {
-  if (*cookie_len < 32) {
-    fprintf(stderr, "Insufficient space for cookie\n");
-    return 0;
-  }
-  *cookie_len = 32;
-  memset(cookie, 42, *cookie_len);
-  return 1;
-}
-
-static int CookieVerifyCallback(SSL *ssl, const uint8_t *cookie,
-                                size_t cookie_len) {
-  if (cookie_len != 32) {
-    fprintf(stderr, "Cookie length mismatch.\n");
-    return 0;
-  }
-  for (size_t i = 0; i < cookie_len; i++) {
-    if (cookie[i] != 42) {
-      fprintf(stderr, "Cookie mismatch.\n");
-      return 0;
-    }
-  }
-  return 1;
-}
-
 static unsigned PskClientCallback(SSL *ssl, const char *hint,
                                   char *out_identity,
                                   unsigned max_identity_len,
@@ -349,9 +323,6 @@ static ScopedSSL_CTX SetupCtx(const TestConfig *config) {
     SSL_CTX_set_alpn_select_cb(ssl_ctx.get(), AlpnSelectCallback, NULL);
   }
 
-  SSL_CTX_set_cookie_generate_cb(ssl_ctx.get(), CookieGenerateCallback);
-  SSL_CTX_set_cookie_verify_cb(ssl_ctx.get(), CookieVerifyCallback);
-
   ssl_ctx->tlsext_channel_id_enabled_new = 1;
   SSL_CTX_set_channel_id_cb(ssl_ctx.get(), ChannelIdCallback);
 
@@ -463,9 +434,6 @@ static int DoExchange(ScopedSSL_SESSION *out_session, SSL_CTX *ssl_ctx,
   }
   if (config->no_ssl3) {
     SSL_set_options(ssl.get(), SSL_OP_NO_SSLv3);
-  }
-  if (config->cookie_exchange) {
-    SSL_set_options(ssl.get(), SSL_OP_COOKIE_EXCHANGE);
   }
   if (config->tls_d5_bug) {
     SSL_set_options(ssl.get(), SSL_OP_TLS_D5_BUG);

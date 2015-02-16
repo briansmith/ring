@@ -391,8 +391,6 @@ typedef struct timeval OPENSSL_timeval;
 
 /* DTLS options */
 #define SSL_OP_NO_QUERY_MTU 0x00001000L
-/* Turn on Cookie Exchange (on relevant for servers) */
-#define SSL_OP_COOKIE_EXCHANGE 0x00002000L
 /* Don't use RFC4507 ticket extension */
 #define SSL_OP_NO_TICKET 0x00004000L
 
@@ -748,13 +746,6 @@ struct ssl_ctx_st {
   /* get channel id callback */
   void (*channel_id_cb)(SSL *ssl, EVP_PKEY **pkey);
 
-  /* cookie generate callback */
-  int (*app_gen_cookie_cb)(SSL *ssl, uint8_t *cookie, size_t *cookie_len);
-
-  /* verify cookie callback */
-  int (*app_verify_cookie_cb)(SSL *ssl, const uint8_t *cookie,
-                              size_t cookie_len);
-
   CRYPTO_EX_DATA ex_data;
 
   STACK_OF(X509) *extra_certs;
@@ -987,13 +978,6 @@ OPENSSL_EXPORT void SSL_CTX_set_channel_id_cb(
     SSL_CTX *ctx, void (*channel_id_cb)(SSL *ssl, EVP_PKEY **pkey));
 OPENSSL_EXPORT void (*SSL_CTX_get_channel_id_cb(SSL_CTX *ctx))(SSL *ssl,
                                                                EVP_PKEY **pkey);
-OPENSSL_EXPORT void SSL_CTX_set_cookie_generate_cb(
-    SSL_CTX *ctx,
-    int (*app_gen_cookie_cb)(SSL *ssl, uint8_t *cookie, size_t *cookie_len));
-OPENSSL_EXPORT void SSL_CTX_set_cookie_verify_cb(
-    SSL_CTX *ctx, int (*app_verify_cookie_cb)(SSL *ssl, const uint8_t *cookie,
-                                              size_t cookie_len));
-
 
 /* SSL_enable_signed_cert_timestamps causes |ssl| (which must be the client end
  * of a connection) to request SCTs from the server. See

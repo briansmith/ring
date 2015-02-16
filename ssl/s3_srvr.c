@@ -946,25 +946,6 @@ int ssl3_get_client_hello(SSL *s) {
         return n;
       }
 
-      /* If we require cookies and this ClientHello doesn't contain one, just
-       * return since we do not want to allocate any memory yet. So check
-       * cookie length... */
-      if (SSL_IS_DTLS(s) && (SSL_get_options(s) & SSL_OP_COOKIE_EXCHANGE)) {
-        uint8_t cookie_length;
-
-        CBS_init(&client_hello, s->init_msg, n);
-        if (!CBS_skip(&client_hello, 2 + SSL3_RANDOM_SIZE) ||
-            !CBS_get_u8_length_prefixed(&client_hello, &session_id) ||
-            !CBS_get_u8(&client_hello, &cookie_length)) {
-          al = SSL_AD_DECODE_ERROR;
-          OPENSSL_PUT_ERROR(SSL, ssl3_get_client_hello, SSL_R_DECODE_ERROR);
-          goto f_err;
-        }
-
-        if (cookie_length == 0) {
-          return 1;
-        }
-      }
       s->state = SSL3_ST_SR_CLNT_HELLO_C;
       /* fallthrough */
     case SSL3_ST_SR_CLNT_HELLO_C:
@@ -1037,27 +1018,6 @@ int ssl3_get_client_hello(SSL *s) {
       al = SSL_AD_DECODE_ERROR;
       OPENSSL_PUT_ERROR(SSL, ssl3_get_client_hello, SSL_R_DECODE_ERROR);
       goto f_err;
-    }
-
-    /* Verify the cookie if appropriate option is set. */
-    if ((SSL_get_options(s) & SSL_OP_COOKIE_EXCHANGE) && CBS_len(&cookie) > 0) {
-      if (s->ctx->app_verify_cookie_cb != NULL) {
-        if (s->ctx->app_verify_cookie_cb(s, CBS_data(&cookie),
-                                         CBS_len(&cookie)) == 0) {
-          al = SSL_AD_HANDSHAKE_FAILURE;
-          OPENSSL_PUT_ERROR(SSL, ssl3_get_client_hello, SSL_R_COOKIE_MISMATCH);
-          goto f_err;
-        }
-        /* else cookie verification succeeded */
-      } else if (!CBS_mem_equal(&cookie, s->d1->cookie, s->d1->cookie_len)) {
-        /* default verification */
-        al = SSL_AD_HANDSHAKE_FAILURE;
-        OPENSSL_PUT_ERROR(SSL, ssl3_get_client_hello, SSL_R_COOKIE_MISMATCH);
-        goto f_err;
-      }
-      /* Set to -2 so if successful we return 2 and don't send
-       * HelloVerifyRequest. */
-      ret = -2;
     }
   }
 
