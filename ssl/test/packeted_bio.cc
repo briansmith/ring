@@ -186,6 +186,9 @@ const BIO_METHOD g_packeted_bio_method = {
 
 ScopedBIO PacketedBioCreate(OPENSSL_timeval *out_timeout) {
   ScopedBIO bio(BIO_new(&g_packeted_bio_method));
+  if (!bio) {
+    return nullptr;
+  }
   bio->ptr = out_timeout;
   return bio;
 }

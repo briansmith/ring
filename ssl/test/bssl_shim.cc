@@ -363,10 +363,14 @@ static int RetryAsync(SSL *ssl, int ret, BIO *async,
     case SSL_ERROR_WANT_WRITE:
       AsyncBioAllowWrite(async, 1);
       return 1;
-    case SSL_ERROR_WANT_CHANNEL_ID_LOOKUP:
-      GetTestState(ssl)->channel_id =
-          LoadPrivateKey(GetConfigPtr(ssl)->send_channel_id);
+    case SSL_ERROR_WANT_CHANNEL_ID_LOOKUP: {
+      ScopedEVP_PKEY pkey = LoadPrivateKey(GetConfigPtr(ssl)->send_channel_id);
+      if (!pkey) {
+        return 0;
+      }
+      GetTestState(ssl)->channel_id = std::move(pkey);
       return 1;
+    }
     case SSL_ERROR_WANT_X509_LOOKUP:
       GetTestState(ssl)->cert_ready = true;
       return 1;
@@ -455,12 +459,17 @@ static int DoExchange(ScopedSSL_SESSION *out_session, SSL_CTX *ssl_ctx,
       }
     }
   }
-  if (!config->host_name.empty()) {
-    SSL_set_tlsext_host_name(ssl.get(), config->host_name.c_str());
+  if (!config->host_name.empty() &&
+      !SSL_set_tlsext_host_name(ssl.get(), config->host_name.c_str())) {
+    BIO_print_errors_fp(stdout);
+    return 1;
   }
-  if (!config->advertise_alpn.empty()) {
-    SSL_set_alpn_protos(ssl.get(), (const uint8_t *)config->advertise_alpn.data(),
-                        config->advertise_alpn.size());
+  if (!config->advertise_alpn.empty() &&
+      SSL_set_alpn_protos(ssl.get(),
+                          (const uint8_t *)config->advertise_alpn.data(),
+                          config->advertise_alpn.size()) != 0) {
+    BIO_print_errors_fp(stdout);
+    return 1;
   }
   if (!config->psk.empty()) {
     SSL_set_psk_client_callback(ssl.get(), PskClientCallback);

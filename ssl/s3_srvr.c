@@ -2163,6 +2163,9 @@ int ssl3_get_cert_verify(SSL *s) {
 
   /* Filter out unsupported certificate types. */
   pkey = X509_get_pubkey(peer);
+  if (pkey == NULL) {
+    goto err;
+  }
   if (!(X509_certificate_type(peer, pkey) & EVP_PKT_SIGN) ||
       (pkey->type != EVP_PKEY_RSA && pkey->type != EVP_PKEY_EC)) {
     al = SSL_AD_UNSUPPORTED_CERTIFICATE;
@@ -2413,7 +2416,9 @@ int ssl3_send_server_certificate(SSL *s) {
       return 0;
     }
 
-    ssl3_output_cert_chain(s, cpk);
+    if (!ssl3_output_cert_chain(s, cpk)) {
+      return 0;
+    }
     s->state = SSL3_ST_SW_CERT_B;
   }
 
@@ -2683,6 +2688,9 @@ int ssl3_get_channel_id(SSL *s) {
   BN_init(&y);
   sig.r = BN_new();
   sig.s = BN_new();
+  if (sig.r == NULL || sig.s == NULL) {
+    goto err;
+  }
 
   p = CBS_data(&extension);
   if (BN_bin2bn(p + 0, 32, &x) == NULL ||

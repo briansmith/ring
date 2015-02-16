@@ -1677,11 +1677,6 @@ void SSL_CTX_set_next_proto_select_cb(
   ctx->next_proto_select_cb_arg = arg;
 }
 
-/* SSL_CTX_set_alpn_protos sets the ALPN protocol list on |ctx| to |protos|.
- * |protos| must be in wire-format (i.e. a series of non-empty, 8-bit
- * length-prefixed strings).
- *
- * Returns 0 on success. */
 int SSL_CTX_set_alpn_protos(SSL_CTX *ctx, const uint8_t *protos,
                             unsigned protos_len) {
   if (ctx->alpn_client_proto_list) {
@@ -1697,11 +1692,6 @@ int SSL_CTX_set_alpn_protos(SSL_CTX *ctx, const uint8_t *protos,
   return 0;
 }
 
-/* SSL_set_alpn_protos sets the ALPN protocol list on |ssl| to |protos|.
- * |protos| must be in wire-format (i.e. a series of non-empty, 8-bit
- * length-prefixed strings).
- *
- * Returns 0 on success. */
 int SSL_set_alpn_protos(SSL *ssl, const uint8_t *protos, unsigned protos_len) {
   if (ssl->alpn_client_proto_list) {
     OPENSSL_free(ssl->alpn_client_proto_list);

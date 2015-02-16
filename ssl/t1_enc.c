@@ -737,7 +737,10 @@ int tls1_cert_verify_mac(SSL *s, int md_nid, uint8_t *out) {
   }
 
   EVP_MD_CTX_init(&ctx);
-  EVP_MD_CTX_copy_ex(&ctx, d);
+  if (!EVP_MD_CTX_copy_ex(&ctx, d)) {
+    EVP_MD_CTX_cleanup(&ctx);
+    return 0;
+  }
   EVP_DigestFinal_ex(&ctx, out, &ret);
   EVP_MD_CTX_cleanup(&ctx);
 

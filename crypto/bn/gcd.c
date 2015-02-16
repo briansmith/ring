@@ -258,12 +258,8 @@ BIGNUM *BN_mod_inverse(BIGNUM *out, const BIGNUM *a, const BIGNUM *n,
     goto err;
   }
 
-  BN_one(X);
   BN_zero(Y);
-  if (BN_copy(B, a) == NULL) {
-    goto err;
-  }
-  if (BN_copy(A, n) == NULL) {
+  if (!BN_one(X) || BN_copy(B, a) == NULL || BN_copy(A, n) == NULL) {
     goto err;
   }
   A->neg = 0;
@@ -570,12 +566,8 @@ static BIGNUM *BN_mod_inverse_no_branch(BIGNUM *out, const BIGNUM *a,
     goto err;
   }
 
-  BN_one(X);
   BN_zero(Y);
-  if (BN_copy(B, a) == NULL) {
-    goto err;
-  }
-  if (BN_copy(A, n) == NULL) {
+  if (!BN_one(X) || BN_copy(B, a) == NULL || BN_copy(A, n) == NULL) {
     goto err;
   }
   A->neg = 0;

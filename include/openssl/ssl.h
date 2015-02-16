@@ -1043,10 +1043,24 @@ OPENSSL_EXPORT int SSL_select_next_proto(uint8_t **out, uint8_t *outlen,
 #define OPENSSL_NPN_NEGOTIATED 1
 #define OPENSSL_NPN_NO_OVERLAP 2
 
+/* SSL_CTX_set_alpn_protos sets the ALPN protocol list on |ctx| to |protos|.
+ * |protos| must be in wire-format (i.e. a series of non-empty, 8-bit
+ * length-prefixed strings). It returns zero on success and one on failure.
+ *
+ * WARNING: this function is dangerous because it breaks the usual return value
+ * convention. */
 OPENSSL_EXPORT int SSL_CTX_set_alpn_protos(SSL_CTX *ctx, const uint8_t *protos,
                                            unsigned protos_len);
+
+/* SSL_set_alpn_protos sets the ALPN protocol list on |ssl| to |protos|.
+ * |protos| must be in wire-format (i.e. a series of non-empty, 8-bit
+ * length-prefixed strings). It returns zero on success and one on failure.
+ *
+ * WARNING: this function is dangerous because it breaks the usual return value
+ * convention. */
 OPENSSL_EXPORT int SSL_set_alpn_protos(SSL *ssl, const uint8_t *protos,
                                        unsigned protos_len);
+
 OPENSSL_EXPORT void SSL_CTX_set_alpn_select_cb(
     SSL_CTX *ctx, int (*cb)(SSL *ssl, const uint8_t **out, uint8_t *outlen,
                             const uint8_t *in, unsigned int inlen, void *arg),

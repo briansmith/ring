@@ -362,7 +362,9 @@ int BN_div(BIGNUM *dv, BIGNUM *rm, const BIGNUM *num, const BIGNUM *divisor,
      * BN_rshift() will overwrite it.
      */
     int neg = num->neg;
-    BN_rshift(rm, snum, norm_shift);
+    if (!BN_rshift(rm, snum, norm_shift)) {
+      goto err;
+    }
     if (!BN_is_zero(rm)) {
       rm->neg = neg;
     }

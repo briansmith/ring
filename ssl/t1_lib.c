@@ -2584,7 +2584,10 @@ int tls1_channel_id_hash(EVP_MD_CTX *md, SSL *s) {
     if (s->s3->handshake_dgst[i] == NULL) {
       continue;
     }
-    EVP_MD_CTX_copy_ex(&ctx, s->s3->handshake_dgst[i]);
+    if (!EVP_MD_CTX_copy_ex(&ctx, s->s3->handshake_dgst[i])) {
+      EVP_MD_CTX_cleanup(&ctx);
+      return 0;
+    }
     EVP_DigestFinal_ex(&ctx, temp_digest, &temp_digest_len);
     EVP_DigestUpdate(md, temp_digest, temp_digest_len);
   }

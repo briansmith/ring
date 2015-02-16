@@ -1100,6 +1100,9 @@ int ssl3_get_server_key_exchange(SSL *s) {
        * initialized |sess_cert|. */
       if (s->session->sess_cert == NULL) {
         s->session->sess_cert = ssl_sess_cert_new();
+        if (s->session->sess_cert == NULL) {
+          return -1;
+        }
       }
 
       /* TODO(davidben): This should be reset in one place with the rest of the
@@ -1128,6 +1131,9 @@ int ssl3_get_server_key_exchange(SSL *s) {
     }
   } else {
     s->session->sess_cert = ssl_sess_cert_new();
+    if (s->session->sess_cert == NULL) {
+      return -1;
+    }
   }
 
   alg_k = s->s3->tmp.new_cipher->algorithm_mkey;
@@ -2182,8 +2188,10 @@ int ssl3_send_client_certificate(SSL *s) {
   }
 
   if (s->state == SSL3_ST_CW_CERT_C) {
-    s->state = SSL3_ST_CW_CERT_D;
-    ssl3_output_cert_chain(s, (s->s3->tmp.cert_req == 2) ? NULL : s->cert->key);
+    CERT_PKEY *cert_pkey = (s->s3->tmp.cert_req == 2) ? NULL : s->cert->key;
+    if (!ssl3_output_cert_chain(s, cert_pkey)) {
+      return -1;
+    }
   }
 
   /* SSL3_ST_CW_CERT_D */

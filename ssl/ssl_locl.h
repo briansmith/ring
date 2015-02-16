@@ -758,7 +758,7 @@ int ssl3_final_finish_mac(SSL *s, const char *sender, int slen, uint8_t *p);
 int ssl3_cert_verify_mac(SSL *s, int md_nid, uint8_t *p);
 void ssl3_finish_mac(SSL *s, const uint8_t *buf, int len);
 void ssl3_free_digest_list(SSL *s);
-unsigned long ssl3_output_cert_chain(SSL *s, CERT_PKEY *cpk);
+int ssl3_output_cert_chain(SSL *s, CERT_PKEY *cpk);
 const SSL_CIPHER *ssl3_choose_cipher(
     SSL *ssl, STACK_OF(SSL_CIPHER) * clnt,
     struct ssl_cipher_preference_list_st *srvr);

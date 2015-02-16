@@ -296,7 +296,7 @@ int ssl3_send_change_cipher_spec(SSL *s, int a, int b) {
   return ssl3_do_write(s, SSL3_RT_CHANGE_CIPHER_SPEC);
 }
 
-unsigned long ssl3_output_cert_chain(SSL *s, CERT_PKEY *cpk) {
+int ssl3_output_cert_chain(SSL *s, CERT_PKEY *cpk) {
   uint8_t *p;
   unsigned long l = 3 + SSL_HM_HEADER_LENGTH(s);
 
@@ -309,7 +309,7 @@ unsigned long ssl3_output_cert_chain(SSL *s, CERT_PKEY *cpk) {
   l2n3(l, p);
   l += 3;
   ssl_set_handshake_header(s, SSL3_MT_CERTIFICATE, l);
-  return l + SSL_HM_HEADER_LENGTH(s);
+  return 1;
 }
 
 /* Obtain handshake message of message type |msg_type| (any if |msg_type| == -1),
