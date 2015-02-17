@@ -724,7 +724,9 @@ int ssl3_send_client_hello(SSL *s) {
     }
 
     l = p - d;
-    ssl_set_handshake_header(s, SSL3_MT_CLIENT_HELLO, l);
+    if (!ssl_set_handshake_header(s, SSL3_MT_CLIENT_HELLO, l)) {
+      goto err;
+    }
     s->state = SSL3_ST_CW_CLNT_HELLO_B;
   }
 
@@ -2001,7 +2003,9 @@ int ssl3_send_client_key_exchange(SSL *s) {
 
     /* The message must be added to the finished hash before calculating the
      * master secret. */
-    ssl_set_handshake_header(s, SSL3_MT_CLIENT_KEY_EXCHANGE, n);
+    if (!ssl_set_handshake_header(s, SSL3_MT_CLIENT_KEY_EXCHANGE, n)) {
+      goto err;
+    }
     s->state = SSL3_ST_CW_KEY_EXCH_B;
 
     s->session->master_key_length = s->enc_method->generate_master_secret(
@@ -2097,7 +2101,9 @@ int ssl3_send_cert_verify(SSL *s) {
     s2n(signature_length, p);
     n += signature_length + 2;
 
-    ssl_set_handshake_header(s, SSL3_MT_CERTIFICATE_VERIFY, n);
+    if (!ssl_set_handshake_header(s, SSL3_MT_CERTIFICATE_VERIFY, n)) {
+      goto err;
+    }
     s->state = SSL3_ST_CW_CERT_VRFY_B;
   }
 
@@ -2286,7 +2292,9 @@ int ssl3_send_next_proto(SSL *s) {
     memset(p, 0, padding_len);
     p += padding_len;
 
-    ssl_set_handshake_header(s, SSL3_MT_NEXT_PROTO, p - d);
+    if (!ssl_set_handshake_header(s, SSL3_MT_NEXT_PROTO, p - d)) {
+      return -1;
+    }
     s->state = SSL3_ST_CW_NEXT_PROTO_B;
   }
 
@@ -2397,8 +2405,10 @@ int ssl3_send_channel_id(SSL *s) {
     goto err;
   }
 
-  ssl_set_handshake_header(s, SSL3_MT_ENCRYPTED_EXTENSIONS,
-                           2 + 2 + TLSEXT_CHANNEL_ID_SIZE);
+  if (!ssl_set_handshake_header(s, SSL3_MT_ENCRYPTED_EXTENSIONS,
+                                2 + 2 + TLSEXT_CHANNEL_ID_SIZE)) {
+    goto err;
+  }
   s->state = SSL3_ST_CW_CHANNEL_ID_B;
 
   ret = ssl_do_write(s);

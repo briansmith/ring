@@ -595,7 +595,7 @@ int ssl3_pending(const SSL *s) {
                                                         : 0;
 }
 
-void ssl3_set_handshake_header(SSL *s, int htype, unsigned long len) {
+int ssl3_set_handshake_header(SSL *s, int htype, unsigned long len) {
   uint8_t *p = (uint8_t *)s->init_buf->data;
   *(p++) = htype;
   l2n3(len, p);
@@ -603,7 +603,7 @@ void ssl3_set_handshake_header(SSL *s, int htype, unsigned long len) {
   s->init_off = 0;
 
   /* Add the message to the handshake hash. */
-  ssl3_finish_mac(s, (uint8_t *)s->init_buf->data, s->init_num);
+  return ssl3_finish_mac(s, (uint8_t *)s->init_buf->data, s->init_num);
 }
 
 int ssl3_handshake_write(SSL *s) { return ssl3_do_write(s, SSL3_RT_HANDSHAKE); }

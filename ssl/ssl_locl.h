@@ -583,7 +583,7 @@ struct ssl3_enc_method {
   /* Handshake header length */
   unsigned int hhlen;
   /* Set the handshake header */
-  void (*set_handshake_header)(SSL *s, int type, unsigned long len);
+  int (*set_handshake_header)(SSL *s, int type, unsigned long len);
   /* Write out handshake message */
   int (*do_write)(SSL *s);
 };
@@ -732,9 +732,9 @@ int ssl3_get_req_cert_type(SSL *s, uint8_t *p);
 long ssl3_get_message(SSL *s, int header_state, int body_state, int msg_type,
                       long max, int hash_message, int *ok);
 
-/* ssl3_hash_current_message incorporates the current handshake message into
- * the handshake hash. */
-void ssl3_hash_current_message(SSL *s);
+/* ssl3_hash_current_message incorporates the current handshake message into the
+ * handshake hash. It returns one on success and zero on allocation failure. */
+int ssl3_hash_current_message(SSL *s);
 
 /* ssl3_cert_verify_hash writes the CertificateVerify hash into the bytes
  * pointed to by |out| and writes the number of bytes to |*out_len|. |out| must
@@ -756,7 +756,7 @@ int ssl3_read_bytes(SSL *s, int type, uint8_t *buf, int len, int peek);
 int ssl3_write_bytes(SSL *s, int type, const void *buf, int len);
 int ssl3_final_finish_mac(SSL *s, const char *sender, int slen, uint8_t *p);
 int ssl3_cert_verify_mac(SSL *s, int md_nid, uint8_t *p);
-void ssl3_finish_mac(SSL *s, const uint8_t *buf, int len);
+int ssl3_finish_mac(SSL *s, const uint8_t *buf, int len);
 void ssl3_free_digest_list(SSL *s);
 int ssl3_output_cert_chain(SSL *s, CERT_PKEY *cpk);
 const SSL_CIPHER *ssl3_choose_cipher(
@@ -791,7 +791,7 @@ int ssl3_pending(const SSL *s);
 void ssl3_record_sequence_update(uint8_t *seq);
 int ssl3_do_change_cipher_spec(SSL *ssl);
 
-void ssl3_set_handshake_header(SSL *s, int htype, unsigned long len);
+int ssl3_set_handshake_header(SSL *s, int htype, unsigned long len);
 int ssl3_handshake_write(SSL *s);
 
 int dtls1_do_write(SSL *s, int type);

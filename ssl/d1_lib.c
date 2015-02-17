@@ -82,7 +82,7 @@
 
 static void get_current_time(SSL *ssl, OPENSSL_timeval *out_clock);
 static OPENSSL_timeval *dtls1_get_timeout(SSL *s, OPENSSL_timeval *timeleft);
-static void dtls1_set_handshake_header(SSL *s, int type, unsigned long len);
+static int dtls1_set_handshake_header(SSL *s, int type, unsigned long len);
 static int dtls1_handshake_write(SSL *s);
 
 const SSL3_ENC_METHOD DTLSv1_enc_data = {
@@ -415,7 +415,7 @@ static void get_current_time(SSL *ssl, OPENSSL_timeval *out_clock) {
 #endif
 }
 
-static void dtls1_set_handshake_header(SSL *s, int htype, unsigned long len) {
+static int dtls1_set_handshake_header(SSL *s, int htype, unsigned long len) {
   uint8_t *message = (uint8_t *)s->init_buf->data;
   const struct hm_header_st *msg_hdr = &s->d1->w_msg_hdr;
   uint8_t serialised_header[DTLS1_HM_HEADER_LENGTH];
@@ -438,8 +438,8 @@ static void dtls1_set_handshake_header(SSL *s, int htype, unsigned long len) {
   s2n(msg_hdr->seq, p);
   l2n3(0, p);
   l2n3(msg_hdr->msg_len, p);
-  ssl3_finish_mac(s, serialised_header, sizeof(serialised_header));
-  ssl3_finish_mac(s, message + DTLS1_HM_HEADER_LENGTH, len);
+  return ssl3_finish_mac(s, serialised_header, sizeof(serialised_header)) &&
+         ssl3_finish_mac(s, message + DTLS1_HM_HEADER_LENGTH, len);
 }
 
 static int dtls1_handshake_write(SSL *s) {

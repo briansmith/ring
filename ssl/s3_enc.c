@@ -264,12 +264,11 @@ void ssl3_free_digest_list(SSL *s) {
   s->s3->handshake_dgst = NULL;
 }
 
-void ssl3_finish_mac(SSL *s, const uint8_t *buf, int len) {
+int ssl3_finish_mac(SSL *s, const uint8_t *buf, int len) {
   int i;
 
   if (s->s3->handshake_buffer) {
-    BIO_write(s->s3->handshake_buffer, (void *)buf, len);
-    return;
+    return BIO_write(s->s3->handshake_buffer, (void *)buf, len) >= 0;
   }
 
   for (i = 0; i < SSL_MAX_DIGEST; i++) {
@@ -277,6 +276,7 @@ void ssl3_finish_mac(SSL *s, const uint8_t *buf, int len) {
       EVP_DigestUpdate(s->s3->handshake_dgst[i], buf, len);
     }
   }
+  return 1;
 }
 
 int ssl3_digest_cached_records(

@@ -813,7 +813,10 @@ int ssl3_get_v2_client_hello(SSL *s) {
 
   /* The V2ClientHello without the length is incorporated into the Finished
    * hash. */
-  ssl3_finish_mac(s, CBS_data(&v2_client_hello), CBS_len(&v2_client_hello));
+  if (!ssl3_finish_mac(s, CBS_data(&v2_client_hello),
+                       CBS_len(&v2_client_hello))) {
+    return -1;
+  }
   if (s->msg_callback) {
     s->msg_callback(0, SSL2_VERSION, 0, CBS_data(&v2_client_hello),
                     CBS_len(&v2_client_hello), s, s->msg_callback_arg);
@@ -912,7 +915,9 @@ int ssl3_get_v2_client_hello(SSL *s) {
 
 int ssl3_send_hello_request(SSL *s) {
   if (s->state == SSL3_ST_SW_HELLO_REQ_A) {
-    ssl_set_handshake_header(s, SSL3_MT_HELLO_REQUEST, 0);
+    if (!ssl_set_handshake_header(s, SSL3_MT_HELLO_REQUEST, 0)) {
+      return -1;
+    }
     s->state = SSL3_ST_SW_HELLO_REQ_B;
   }
 
@@ -1299,7 +1304,9 @@ int ssl3_send_server_hello(SSL *s) {
 
     /* do the header */
     l = (p - d);
-    ssl_set_handshake_header(s, SSL3_MT_SERVER_HELLO, l);
+    if (!ssl_set_handshake_header(s, SSL3_MT_SERVER_HELLO, l)) {
+      return -1;
+    }
     s->state = SSL3_ST_SW_SRVR_HELLO_B;
   }
 
@@ -1309,7 +1316,9 @@ int ssl3_send_server_hello(SSL *s) {
 
 int ssl3_send_server_done(SSL *s) {
   if (s->state == SSL3_ST_SW_SRVR_DONE_A) {
-    ssl_set_handshake_header(s, SSL3_MT_SERVER_DONE, 0);
+    if (!ssl_set_handshake_header(s, SSL3_MT_SERVER_DONE, 0)) {
+      return -1;
+    }
     s->state = SSL3_ST_SW_SRVR_DONE_B;
   }
 
@@ -1612,7 +1621,9 @@ int ssl3_send_server_key_exchange(SSL *s) {
       }
     }
 
-    ssl_set_handshake_header(s, SSL3_MT_SERVER_KEY_EXCHANGE, n);
+    if (!ssl_set_handshake_header(s, SSL3_MT_SERVER_KEY_EXCHANGE, n)) {
+      goto err;
+    }
   }
 
   s->state = SSL3_ST_SW_KEY_EXCH_B;
@@ -1685,7 +1696,9 @@ int ssl3_send_certificate_request(SSL *s) {
     p = ssl_handshake_start(s) + off;
     s2n(nl, p);
 
-    ssl_set_handshake_header(s, SSL3_MT_CERTIFICATE_REQUEST, n);
+    if (!ssl_set_handshake_header(s, SSL3_MT_CERTIFICATE_REQUEST, n)) {
+      goto err;
+    }
     s->state = SSL3_ST_SW_CERT_REQ_B;
   }
 
@@ -2193,7 +2206,9 @@ int ssl3_get_cert_verify(SSL *s) {
       !ssl3_digest_cached_records(s, free_handshake_buffer)) {
     goto err;
   }
-  ssl3_hash_current_message(s);
+  if (!ssl3_hash_current_message(s)) {
+    goto err;
+  }
 
   /* Parse and verify the signature. */
   if (!CBS_get_u16_length_prefixed(&certificate_verify, &signature) ||
@@ -2466,7 +2481,9 @@ int ssl3_send_new_session_ticket(SSL *s) {
       p += placeholder_len;
 
       len = p - ssl_handshake_start(s);
-      ssl_set_handshake_header(s, SSL3_MT_NEWSESSION_TICKET, len);
+      if (!ssl_set_handshake_header(s, SSL3_MT_NEWSESSION_TICKET, len)) {
+        return -1;
+      }
       s->state = SSL3_ST_SW_SESSION_TICKET_B;
       return ssl_do_write(s);
     }
@@ -2537,7 +2554,9 @@ int ssl3_send_new_session_ticket(SSL *s) {
     /* Skip ticket lifetime hint */
     p = ssl_handshake_start(s) + 4;
     s2n(len - 6, p);
-    ssl_set_handshake_header(s, SSL3_MT_NEWSESSION_TICKET, len);
+    if (!ssl_set_handshake_header(s, SSL3_MT_NEWSESSION_TICKET, len)) {
+      return -1;
+    }
     s->state = SSL3_ST_SW_SESSION_TICKET_B;
     OPENSSL_free(session);
   }
@@ -2638,7 +2657,9 @@ int ssl3_get_channel_id(SSL *s) {
   EVP_MD_CTX_cleanup(&md_ctx);
   assert(channel_id_hash_len == SHA256_DIGEST_LENGTH);
 
-  ssl3_hash_current_message(s);
+  if (!ssl3_hash_current_message(s)) {
+    return -1;
+  }
 
   /* s->state doesn't reflect whether ChangeCipherSpec has been received in
    * this handshake, but s->s3->change_cipher_spec does (will be reset by

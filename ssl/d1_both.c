@@ -415,8 +415,9 @@ again:
 
   s->init_msg = (uint8_t *)s->init_buf->data + DTLS1_HM_HEADER_LENGTH;
 
-  if (hash_message != SSL_GET_MESSAGE_DONT_HASH_MESSAGE) {
-    ssl3_hash_current_message(s);
+  if (hash_message != SSL_GET_MESSAGE_DONT_HASH_MESSAGE &&
+      !ssl3_hash_current_message(s)) {
+    goto err;
   }
   if (s->msg_callback) {
     s->msg_callback(0, s->version, SSL3_RT_HANDSHAKE, p, msg_len, s,
@@ -431,6 +432,7 @@ again:
 
 f_err:
   ssl3_send_alert(s, SSL3_AL_FATAL, al);
+err:
   *ok = 0;
   return -1;
 }
