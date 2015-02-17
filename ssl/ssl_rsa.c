@@ -182,12 +182,6 @@ static int ssl_set_pkey(CERT *c, EVP_PKEY *pkey) {
   }
 
   if (c->pkeys[i].x509 != NULL) {
-    EVP_PKEY *pktmp;
-    pktmp = X509_get_pubkey(c->pkeys[i].x509);
-    EVP_PKEY_copy_parameters(pktmp, pkey);
-    EVP_PKEY_free(pktmp);
-    ERR_clear_error();
-
     /* Sanity-check that the private key and the certificate match, unless the
      * key is opaque (in case of, say, a smartcard). */
     if (!EVP_PKEY_is_opaque(pkey) &&
@@ -375,9 +369,6 @@ static int ssl_set_cert(CERT *c, X509 *x) {
   }
 
   if (c->pkeys[i].privatekey != NULL) {
-    EVP_PKEY_copy_parameters(pkey, c->pkeys[i].privatekey);
-    ERR_clear_error();
-
     /* Sanity-check that the private key and the certificate match, unless the
      * key is opaque (in case of, say, a smartcard). */
     if (!EVP_PKEY_is_opaque(c->pkeys[i].privatekey) &&
