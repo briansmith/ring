@@ -748,8 +748,6 @@ DECLARE_ASN1_FUNCTIONS(X509_PUBKEY)
 
 OPENSSL_EXPORT int		X509_PUBKEY_set(X509_PUBKEY **x, EVP_PKEY *pkey);
 OPENSSL_EXPORT EVP_PKEY *	X509_PUBKEY_get(X509_PUBKEY *key);
-OPENSSL_EXPORT int		X509_get_pubkey_parameters(EVP_PKEY *pkey,
-					   STACK_OF(X509) *chain);
 OPENSSL_EXPORT int		i2d_PUBKEY(const EVP_PKEY *a,unsigned char **pp);
 OPENSSL_EXPORT EVP_PKEY *	d2i_PUBKEY(EVP_PKEY **a,const unsigned char **pp,
 			long length);
