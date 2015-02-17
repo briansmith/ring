@@ -974,7 +974,9 @@ int ssl_ctx_log_master_secret(SSL_CTX *ctx, const uint8_t *client_random,
                               size_t client_random_len, const uint8_t *master,
                               size_t master_len);
 
-int ssl3_can_cutthrough(const SSL *s);
+/* ssl3_can_false_start returns one if |s| is allowed to False Start and zero
+ * otherwise. */
+int ssl3_can_false_start(const SSL *s);
 
 /* ssl3_get_enc_method returns the SSL3_ENC_METHOD corresponding to
  * |version|. */

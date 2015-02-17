@@ -474,9 +474,14 @@ typedef struct timeval OPENSSL_timeval;
 /* Clear verification errors from queue */
 #define SSL_BUILD_CHAIN_FLAG_CLEAR_ERROR 0x10
 
-/* When set, clients may send application data before receipt of CCS and
- * Finished.  This mode enables full-handshakes to 'complete' in one RTT. */
-#define SSL_MODE_HANDSHAKE_CUTTHROUGH 0x00000080L
+/* SSL_MODE_ENABLE_FALSE_START allows clients to send application data before
+ * receipt of CCS and Finished. This mode enables full-handshakes to 'complete'
+ * in one RTT. See draft-bmoeller-tls-falsestart-01. */
+#define SSL_MODE_ENABLE_FALSE_START 0x00000080L
+
+/* Deprecated: SSL_MODE_HANDSHAKE_CUTTHROUGH is the same as
+ * SSL_MODE_ENABLE_FALSE_START. */
+#define SSL_MODE_HANDSHAKE_CUTTHROUGH SSL_MODE_ENABLE_FALSE_START
 
 /* When set, TLS 1.0 and SSLv3, multi-byte, CBC records will be split in two:
  * the first record will contain a single byte and the second will contain the
@@ -1386,10 +1391,12 @@ extern "C" {
 #define SSL_in_connect_init(a) (SSL_state(a) & SSL_ST_CONNECT)
 #define SSL_in_accept_init(a) (SSL_state(a) & SSL_ST_ACCEPT)
 
-/* SSL_cutthrough_complete returns one if |s| has a pending unfinished handshake
- * that has completed cut-through. |SSL_write| may be called at this point
- * without waiting for the peer, but |SSL_read| will require the handshake
- * to be completed. */
+/* SSL_in_false_start returns one if |s| has a pending unfinished handshake that
+ * is in False Start. |SSL_write| may be called at this point without waiting
+ * for the peer, but |SSL_read| will require the handshake to be completed. */
+OPENSSL_EXPORT int SSL_in_false_start(const SSL *s);
+
+/* Deprecated: SSL_cutthrough_complete calls |SSL_in_false_start|. */
 OPENSSL_EXPORT int SSL_cutthrough_complete(const SSL *s);
 
 /* The following 2 states are kept in ssl->rstate when reads fail,

@@ -415,7 +415,7 @@ static int DoExchange(ScopedSSL_SESSION *out_session, SSL_CTX *ssl_ctx,
                    SkipVerify);
   }
   if (config->false_start) {
-    SSL_set_mode(ssl.get(), SSL_MODE_HANDSHAKE_CUTTHROUGH);
+    SSL_set_mode(ssl.get(), SSL_MODE_ENABLE_FALSE_START);
   }
   if (config->cbc_record_splitting) {
     SSL_set_mode(ssl.get(), SSL_MODE_CBC_RECORD_SPLITTING);

@@ -2887,8 +2887,12 @@ int ssl_ctx_log_master_secret(SSL_CTX *ctx, const uint8_t *client_random,
   return ret;
 }
 
+int SSL_in_false_start(const SSL *s) {
+  return s->s3->tmp.in_false_start;
+}
+
 int SSL_cutthrough_complete(const SSL *s) {
-  return s->s3->tmp.cutthrough_complete;
+  return SSL_in_false_start(s);
 }
 
 void SSL_get_structure_sizes(size_t *ssl_size, size_t *ssl_ctx_size,
@@ -2898,7 +2902,7 @@ void SSL_get_structure_sizes(size_t *ssl_size, size_t *ssl_ctx_size,
   *ssl_session_size = sizeof(SSL_SESSION);
 }
 
-int ssl3_can_cutthrough(const SSL *s) {
+int ssl3_can_false_start(const SSL *s) {
   const SSL_CIPHER *c;
 
   /* require a strong enough cipher */

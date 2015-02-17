@@ -450,12 +450,12 @@ int ssl3_connect(SSL *s) {
               goto end;
             }
           }
-          if ((SSL_get_mode(s) & SSL_MODE_HANDSHAKE_CUTTHROUGH) &&
-              ssl3_can_cutthrough(s) &&
-              /* no cutthrough on renegotiation (would complicate the state
-               * machine) */
+          if ((SSL_get_mode(s) & SSL_MODE_ENABLE_FALSE_START) &&
+              ssl3_can_false_start(s) &&
+              /* No False Start on renegotiation (would complicate the state
+               * machine). */
               s->s3->previous_server_finished_len == 0) {
-            s->s3->tmp.next_state = SSL3_ST_CUTTHROUGH_COMPLETE;
+            s->s3->tmp.next_state = SSL3_ST_FALSE_START;
           } else {
             /* Allow NewSessionTicket if ticket expected */
             if (s->tlsext_ticket_expected) {
@@ -524,14 +524,14 @@ int ssl3_connect(SSL *s) {
         s->state = s->s3->tmp.next_state;
         break;
 
-      case SSL3_ST_CUTTHROUGH_COMPLETE:
+      case SSL3_ST_FALSE_START:
         /* Allow NewSessionTicket if ticket expected */
         if (s->tlsext_ticket_expected) {
           s->state = SSL3_ST_CR_SESSION_TICKET_A;
         } else {
           s->state = SSL3_ST_CR_CHANGE;
         }
-        s->s3->tmp.cutthrough_complete = 1;
+        s->s3->tmp.in_false_start = 1;
 
         ssl_free_wbio_buffer(s);
         ret = 1;
@@ -552,7 +552,7 @@ int ssl3_connect(SSL *s) {
         s->init_num = 0;
         s->renegotiate = 0;
         s->new_session = 0;
-        s->s3->tmp.cutthrough_complete = 0;
+        s->s3->tmp.in_false_start = 0;
 
         ssl_update_cache(s, SSL_SESS_CACHE_CLIENT);
         if (s->hit) {

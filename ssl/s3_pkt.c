@@ -427,7 +427,7 @@ int ssl3_write_bytes(SSL *s, int type, const void *buf_, int len) {
   tot = s->s3->wnum;
   s->s3->wnum = 0;
 
-  if (!s->in_handshake && SSL_in_init(s) && !SSL_cutthrough_complete(s)) {
+  if (!s->in_handshake && SSL_in_init(s) && !SSL_in_false_start(s)) {
     i = s->handshake_func(s);
     if (i < 0) {
       return i;

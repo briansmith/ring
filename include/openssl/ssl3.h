@@ -485,9 +485,9 @@ typedef struct ssl3_state_st {
      * be updated. It is only needed for EAP-FAST, which we don't support. */
     uint8_t new_mac_secret_size;
 
-    /* Client-only: cutthrough_complete is one if there is a pending handshake,
-     * but cut-through is completed so the client may write data. */
-    char cutthrough_complete;
+    /* Client-only: in_false_start is one if there is a pending handshake in
+     * False Start. The client may write data at this point. */
+    char in_false_start;
   } tmp;
 
   /* Connection binding to prevent renegotiation attacks */
@@ -530,7 +530,7 @@ typedef struct ssl3_state_st {
 /* client */
 /* extra state */
 #define SSL3_ST_CW_FLUSH (0x100 | SSL_ST_CONNECT)
-#define SSL3_ST_CUTTHROUGH_COMPLETE (0x101 | SSL_ST_CONNECT)
+#define SSL3_ST_FALSE_START (0x101 | SSL_ST_CONNECT)
 /* write to server */
 #define SSL3_ST_CW_CLNT_HELLO_A (0x110 | SSL_ST_CONNECT)
 #define SSL3_ST_CW_CLNT_HELLO_B (0x111 | SSL_ST_CONNECT)
