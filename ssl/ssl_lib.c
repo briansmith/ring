@@ -2893,26 +2893,19 @@ void SSL_get_structure_sizes(size_t *ssl_size, size_t *ssl_ctx_size,
 }
 
 int ssl3_can_false_start(const SSL *s) {
-  const SSL_CIPHER *c;
+  const SSL_CIPHER *const cipher = SSL_get_current_cipher(s);
 
-  /* require a strong enough cipher */
-  if (SSL_get_cipher_bits(s, NULL) < 128) {
-    return 0;
-  }
-
-  /* require ALPN or NPN extension */
-  if (!s->s3->alpn_selected && !s->s3->next_proto_neg_seen) {
-    return 0;
-  }
-
-  /* require a forward-secret cipher */
-  c = SSL_get_current_cipher(s);
-  if (!c ||
-      (c->algorithm_mkey != SSL_kEDH && c->algorithm_mkey != SSL_kEECDH)) {
-    return 0;
-  }
-
-  return 1;
+  /* False Start only for TLS 1.2 with a forward-secure, AEAD cipher and ALPN or
+   * NPN. */
+  return !SSL_IS_DTLS(s) &&
+      SSL_version(s) >= TLS1_2_VERSION &&
+      (s->s3->alpn_selected || s->s3->next_proto_neg_seen) &&
+      cipher != NULL &&
+      (cipher->algorithm_mkey == SSL_kEDH ||
+       cipher->algorithm_mkey == SSL_kEECDH) &&
+      (cipher->algorithm_enc == SSL_AES128GCM ||
+       cipher->algorithm_enc == SSL_AES256GCM ||
+       cipher->algorithm_enc == SSL_CHACHA20POLY1305);
 }
 
 const SSL3_ENC_METHOD *ssl3_get_enc_method(uint16_t version) {

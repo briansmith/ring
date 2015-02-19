@@ -1742,6 +1742,8 @@ func addStateMachineCoverageTests(async, splitHandshake bool, protocol protocol)
 			expectedNextProtoType: npn,
 		})
 
+		// TODO(davidben): Add tests for when False Start doesn't trigger.
+
 		// Client does False Start and negotiates NPN.
 		testCases = append(testCases, testCase{
 			protocol: protocol,
