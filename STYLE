@@ -90,6 +90,10 @@ prefer out-of-band error signaling for size_t (see Return values).
 
 Naming.
 
+Follow Google naming conventions in C++ files. In C files, use the
+following naming conventions for consistency with existing OpenSSL and C
+styles:
+
 Define structs with typedef named TYPE_NAME. The corresponding struct
 should be named struct type_name_st.
 
@@ -162,8 +166,12 @@ All public symbols must have a documentation comment in their header
 file. The style is based on that of Go. The first sentence begins with
 the symbol name, optionally prefixed with "A" or "An". Apart from the
 initial mention of symbol, references to other symbols or parameter
-names should be surrounded by |pipes|. Don't be too verbose, but do
-document success and failure behaviors.
+names should be surrounded by |pipes|.
+
+Documentation should be concise but completely describe the exposed
+behavior of the function. Pay special note to success/failure behaviors
+and caller obligations on object lifetimes. If this sacrifices
+conciseness, consider simplifying the function's behavior.
 
 /* EVP_DigestVerifyUpdate appends |len| bytes from |data| to the data which
  * will be verified by |EVP_DigestVerifyFinal|. It returns one on success and
