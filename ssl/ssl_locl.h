@@ -809,8 +809,6 @@ int dtls1_send_change_cipher_spec(SSL *s, int a, int b);
 int dtls1_send_finished(SSL *s, int a, int b, const char *sender, int slen);
 int dtls1_read_failed(SSL *s, int code);
 int dtls1_buffer_message(SSL *s, int ccs);
-int dtls1_retransmit_message(SSL *s, unsigned short seq, unsigned long frag_off,
-                             int *found);
 int dtls1_get_queue_priority(unsigned short seq, int is_ccs);
 int dtls1_retransmit_buffered_messages(SSL *s);
 void dtls1_clear_record_buffer(SSL *s);

@@ -933,105 +933,14 @@ int dtls1_get_queue_priority(unsigned short seq, int is_ccs) {
   return seq * 2 - is_ccs;
 }
 
-int dtls1_retransmit_buffered_messages(SSL *s) {
-  pqueue sent = s->d1->sent_messages;
-  piterator iter;
-  pitem *item;
-  hm_fragment *frag;
-  int found = 0;
-
-  iter = pqueue_iterator(sent);
-
-  for (item = pqueue_next(&iter); item != NULL; item = pqueue_next(&iter)) {
-    frag = (hm_fragment *)item->data;
-    if (dtls1_retransmit_message(
-            s, (unsigned short)dtls1_get_queue_priority(
-                   frag->msg_header.seq, frag->msg_header.is_ccs),
-            0, &found) <= 0 &&
-        found) {
-      return -1;
-    }
-  }
-
-  return 1;
-}
-
-int dtls1_buffer_message(SSL *s, int is_ccs) {
-  pitem *item;
-  hm_fragment *frag;
-  uint8_t seq64be[8];
-
-  /* this function is called immediately after a message has
-   * been serialized */
-  assert(s->init_off == 0);
-
-  frag = dtls1_hm_fragment_new(s->init_num, 0);
-  if (!frag) {
-    return 0;
-  }
-
-  memcpy(frag->fragment, s->init_buf->data, s->init_num);
-
-  if (is_ccs) {
-    assert(s->d1->w_msg_hdr.msg_len + DTLS1_CCS_HEADER_LENGTH ==
-           (unsigned int)s->init_num);
-  } else {
-    assert(s->d1->w_msg_hdr.msg_len + DTLS1_HM_HEADER_LENGTH ==
-           (unsigned int)s->init_num);
-  }
-
-  frag->msg_header.msg_len = s->d1->w_msg_hdr.msg_len;
-  frag->msg_header.seq = s->d1->w_msg_hdr.seq;
-  frag->msg_header.type = s->d1->w_msg_hdr.type;
-  frag->msg_header.frag_off = 0;
-  frag->msg_header.frag_len = s->d1->w_msg_hdr.msg_len;
-  frag->msg_header.is_ccs = is_ccs;
-  frag->msg_header.epoch = s->d1->w_epoch;
-
-  memset(seq64be, 0, sizeof(seq64be));
-  seq64be[6] = (uint8_t)(
-      dtls1_get_queue_priority(frag->msg_header.seq, frag->msg_header.is_ccs) >>
-      8);
-  seq64be[7] = (uint8_t)(
-      dtls1_get_queue_priority(frag->msg_header.seq, frag->msg_header.is_ccs));
-
-  item = pitem_new(seq64be, frag);
-  if (item == NULL) {
-    dtls1_hm_fragment_free(frag);
-    return 0;
-  }
-
-  pqueue_insert(s->d1->sent_messages, item);
-  return 1;
-}
-
-int dtls1_retransmit_message(SSL *s, unsigned short seq, unsigned long frag_off,
-                             int *found) {
+static int dtls1_retransmit_message(SSL *s, hm_fragment *frag) {
   int ret;
   /* XDTLS: for now assuming that read/writes are blocking */
-  pitem *item;
-  hm_fragment *frag;
   unsigned long header_length;
-  uint8_t seq64be[8];
   uint8_t save_write_sequence[8];
 
   /* assert(s->init_num == 0);
      assert(s->init_off == 0); */
-
-  /* XDTLS:  the requested message ought to be found, otherwise error */
-  memset(seq64be, 0, sizeof(seq64be));
-  seq64be[6] = (uint8_t)(seq >> 8);
-  seq64be[7] = (uint8_t)seq;
-
-  item = pqueue_find(s->d1->sent_messages, seq64be);
-  if (item == NULL) {
-    assert(0);
-    *found = 0;
-    return 0;
-  }
-
-  *found = 1;
-  frag = (hm_fragment *)item->data;
 
   if (frag->msg_header.is_ccs) {
     header_length = DTLS1_CCS_HEADER_LENGTH;
@@ -1089,6 +998,71 @@ int dtls1_retransmit_message(SSL *s, unsigned short seq, unsigned long frag_off,
 
   (void)BIO_flush(SSL_get_wbio(s));
   return ret;
+}
+
+
+int dtls1_retransmit_buffered_messages(SSL *s) {
+  pqueue sent = s->d1->sent_messages;
+  piterator iter = pqueue_iterator(sent);
+  pitem *item;
+
+  for (item = pqueue_next(&iter); item != NULL; item = pqueue_next(&iter)) {
+    hm_fragment *frag = (hm_fragment *)item->data;
+    if (dtls1_retransmit_message(s, frag) <= 0) {
+      return -1;
+    }
+  }
+
+  return 1;
+}
+
+int dtls1_buffer_message(SSL *s, int is_ccs) {
+  pitem *item;
+  hm_fragment *frag;
+  uint8_t seq64be[8];
+
+  /* this function is called immediately after a message has
+   * been serialized */
+  assert(s->init_off == 0);
+
+  frag = dtls1_hm_fragment_new(s->init_num, 0);
+  if (!frag) {
+    return 0;
+  }
+
+  memcpy(frag->fragment, s->init_buf->data, s->init_num);
+
+  if (is_ccs) {
+    assert(s->d1->w_msg_hdr.msg_len + DTLS1_CCS_HEADER_LENGTH ==
+           (unsigned int)s->init_num);
+  } else {
+    assert(s->d1->w_msg_hdr.msg_len + DTLS1_HM_HEADER_LENGTH ==
+           (unsigned int)s->init_num);
+  }
+
+  frag->msg_header.msg_len = s->d1->w_msg_hdr.msg_len;
+  frag->msg_header.seq = s->d1->w_msg_hdr.seq;
+  frag->msg_header.type = s->d1->w_msg_hdr.type;
+  frag->msg_header.frag_off = 0;
+  frag->msg_header.frag_len = s->d1->w_msg_hdr.msg_len;
+  frag->msg_header.is_ccs = is_ccs;
+  frag->msg_header.epoch = s->d1->w_epoch;
+
+  memset(seq64be, 0, sizeof(seq64be));
+  seq64be[6] = (uint8_t)(
+      dtls1_get_queue_priority(frag->msg_header.seq, frag->msg_header.is_ccs) >>
+      8);
+  seq64be[7] = (uint8_t)(
+      dtls1_get_queue_priority(frag->msg_header.seq, frag->msg_header.is_ccs));
+
+  item = pitem_new(seq64be, frag);
+  if (item == NULL) {
+    dtls1_hm_fragment_free(frag);
+    return 0;
+  }
+
+  pqueue_insert(s->d1->sent_messages, item);
+  return 1;
 }
 
 /* call this function when the buffered messages are no longer needed */
