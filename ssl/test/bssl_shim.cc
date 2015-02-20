@@ -331,11 +331,15 @@ static ScopedSSL_CTX SetupCtx(const TestConfig *config) {
   return ssl_ctx;
 }
 
-static int RetryAsync(SSL *ssl, int ret, BIO *async,
-                      OPENSSL_timeval *clock_delta) {
+// RetryAsync is called after a failed operation on |ssl| with return code
+// |ret|. If the operation should be retried, it simulates one asynchronous
+// event and returns true. Otherwise it returns false. |async| and |clock_delta|
+// are the AsyncBio and simulated timeout for |ssl|, respectively.
+static bool RetryAsync(SSL *ssl, int ret, BIO *async,
+                       OPENSSL_timeval *clock_delta) {
   // No error; don't retry.
   if (ret >= 0) {
-    return 0;
+    return false;
   }
 
   if (clock_delta->tv_usec != 0 || clock_delta->tv_sec != 0) {
@@ -349,9 +353,9 @@ static int RetryAsync(SSL *ssl, int ret, BIO *async,
 
     if (DTLSv1_handle_timeout(ssl) < 0) {
       printf("Error retransmitting.\n");
-      return 0;
+      return false;
     }
-    return 1;
+    return true;
   }
 
   // See if we needed to read or write more. If so, allow one byte through on
@@ -359,51 +363,52 @@ static int RetryAsync(SSL *ssl, int ret, BIO *async,
   switch (SSL_get_error(ssl, ret)) {
     case SSL_ERROR_WANT_READ:
       AsyncBioAllowRead(async, 1);
-      return 1;
+      return true;
     case SSL_ERROR_WANT_WRITE:
       AsyncBioAllowWrite(async, 1);
-      return 1;
+      return true;
     case SSL_ERROR_WANT_CHANNEL_ID_LOOKUP: {
       ScopedEVP_PKEY pkey = LoadPrivateKey(GetConfigPtr(ssl)->send_channel_id);
       if (!pkey) {
-        return 0;
+        return false;
       }
       GetTestState(ssl)->channel_id = std::move(pkey);
-      return 1;
+      return true;
     }
     case SSL_ERROR_WANT_X509_LOOKUP:
       GetTestState(ssl)->cert_ready = true;
-      return 1;
+      return true;
     case SSL_ERROR_PENDING_SESSION:
       GetTestState(ssl)->session =
           std::move(GetTestState(ssl)->pending_session);
-      return 1;
+      return true;
     default:
-      return 0;
+      return false;
   }
 }
 
-static int DoExchange(ScopedSSL_SESSION *out_session, SSL_CTX *ssl_ctx,
-                      const TestConfig *config, bool is_resume,
-                      int fd, SSL_SESSION *session) {
+// DoExchange runs a test SSL exchange against the peer on file descriptor
+// |fd|. On success, it returns true and sets |*out_session| to the negotiated
+// SSL session. If the test is a resumption attempt, |is_resume| is true and
+// |session| is the session from the previous exchange.
+static bool DoExchange(ScopedSSL_SESSION *out_session, SSL_CTX *ssl_ctx,
+                       const TestConfig *config, bool is_resume,
+                       int fd, SSL_SESSION *session) {
   OPENSSL_timeval clock = {0}, clock_delta = {0};
   ScopedSSL ssl(SSL_new(ssl_ctx));
   if (!ssl) {
-    BIO_print_errors_fp(stdout);
-    return 1;
+    return false;
   }
 
   if (!SetConfigPtr(ssl.get(), config) ||
       !SetClockPtr(ssl.get(), &clock) |
       !SetTestState(ssl.get(), std::unique_ptr<TestState>(new TestState))) {
-    BIO_print_errors_fp(stdout);
-    return 1;
+    return false;
   }
 
   if (config->fallback_scsv) {
     if (!SSL_enable_fallback_scsv(ssl.get())) {
-      BIO_print_errors_fp(stdout);
-      return 1;
+      return false;
     }
   }
   if (config->async) {
@@ -411,8 +416,7 @@ static int DoExchange(ScopedSSL_SESSION *out_session, SSL_CTX *ssl_ctx,
     // |s->ctx->select_certificate_cb| on the server.
     SSL_set_cert_cb(ssl.get(), CertCallback, NULL);
   } else if (!InstallCertificate(ssl.get())) {
-    BIO_print_errors_fp(stdout);
-    return 1;
+    return false;
   }
   if (config->require_any_client_certificate) {
     SSL_set_verify(ssl.get(), SSL_VERIFY_PEER|SSL_VERIFY_FAIL_IF_NO_PEER_CERT,
@@ -454,22 +458,19 @@ static int DoExchange(ScopedSSL_SESSION *out_session, SSL_CTX *ssl_ctx,
       // The async case will be supplied by |ChannelIdCallback|.
       ScopedEVP_PKEY pkey = LoadPrivateKey(config->send_channel_id);
       if (!pkey || !SSL_set1_tls_channel_id(ssl.get(), pkey.get())) {
-        BIO_print_errors_fp(stdout);
-        return 1;
+        return false;
       }
     }
   }
   if (!config->host_name.empty() &&
       !SSL_set_tlsext_host_name(ssl.get(), config->host_name.c_str())) {
-    BIO_print_errors_fp(stdout);
-    return 1;
+    return false;
   }
   if (!config->advertise_alpn.empty() &&
       SSL_set_alpn_protos(ssl.get(),
                           (const uint8_t *)config->advertise_alpn.data(),
                           config->advertise_alpn.size()) != 0) {
-    BIO_print_errors_fp(stdout);
-    return 1;
+    return false;
   }
   if (!config->psk.empty()) {
     SSL_set_psk_client_callback(ssl.get(), PskClientCallback);
@@ -477,23 +478,19 @@ static int DoExchange(ScopedSSL_SESSION *out_session, SSL_CTX *ssl_ctx,
   }
   if (!config->psk_identity.empty() &&
       !SSL_use_psk_identity_hint(ssl.get(), config->psk_identity.c_str())) {
-    BIO_print_errors_fp(stdout);
-    return 1;
+    return false;
   }
   if (!config->srtp_profiles.empty() &&
       !SSL_set_srtp_profiles(ssl.get(), config->srtp_profiles.c_str())) {
-    BIO_print_errors_fp(stdout);
-    return 1;
+    return false;
   }
   if (config->enable_ocsp_stapling &&
       !SSL_enable_ocsp_stapling(ssl.get())) {
-    BIO_print_errors_fp(stdout);
-    return 1;
+    return false;
   }
   if (config->enable_signed_cert_timestamps &&
       !SSL_enable_signed_cert_timestamps(ssl.get())) {
-    BIO_print_errors_fp(stdout);
-    return 1;
+    return false;
   }
   SSL_enable_fastradio_padding(ssl.get(), config->fastradio_padding);
   if (config->min_version != 0) {
@@ -509,8 +506,7 @@ static int DoExchange(ScopedSSL_SESSION *out_session, SSL_CTX *ssl_ctx,
 
   ScopedBIO bio(BIO_new_fd(fd, 1 /* take ownership */));
   if (!bio) {
-    BIO_print_errors_fp(stdout);
-    return 1;
+    return false;
   }
   if (config->is_dtls) {
     ScopedBIO packeted = PacketedBioCreate(&clock_delta);
@@ -531,8 +527,7 @@ static int DoExchange(ScopedSSL_SESSION *out_session, SSL_CTX *ssl_ctx,
   if (session != NULL) {
     if (!config->is_server) {
       if (SSL_set_session(ssl.get(), session) != 1) {
-        fprintf(stderr, "failed to set session\n");
-        return 2;
+        return false;
       }
     } else if (config->async) {
       // The internal session cache is disabled, so install the session
@@ -558,15 +553,14 @@ static int DoExchange(ScopedSSL_SESSION *out_session, SSL_CTX *ssl_ctx,
       }
     } while (config->async && RetryAsync(ssl.get(), ret, async, &clock_delta));
     if (ret != 1) {
-      BIO_print_errors_fp(stdout);
-      return 2;
+      return false;
     }
 
     if (is_resume &&
         (!!SSL_session_reused(ssl.get()) == config->expect_session_miss)) {
       fprintf(stderr, "session was%s reused\n",
               SSL_session_reused(ssl.get()) ? "" : " not");
-      return 2;
+      return false;
     }
 
     if (!config->expected_server_name.empty()) {
@@ -575,12 +569,12 @@ static int DoExchange(ScopedSSL_SESSION *out_session, SSL_CTX *ssl_ctx,
       if (server_name != config->expected_server_name) {
         fprintf(stderr, "servername mismatch (got %s; want %s)\n",
                 server_name, config->expected_server_name.c_str());
-        return 2;
+        return false;
       }
 
       if (!GetTestState(ssl.get())->early_callback_called) {
         fprintf(stderr, "early callback not called\n");
-        return 2;
+        return false;
       }
     }
 
@@ -594,7 +588,7 @@ static int DoExchange(ScopedSSL_SESSION *out_session, SSL_CTX *ssl_ctx,
                  config->expected_certificate_types.data(),
                  num_certificate_types) != 0) {
         fprintf(stderr, "certificate types mismatch\n");
-        return 2;
+        return false;
       }
     }
 
@@ -606,7 +600,7 @@ static int DoExchange(ScopedSSL_SESSION *out_session, SSL_CTX *ssl_ctx,
           memcmp(next_proto, config->expected_next_proto.data(),
                  next_proto_len) != 0) {
         fprintf(stderr, "negotiated next proto mismatch\n");
-        return 2;
+        return false;
       }
     }
 
@@ -618,7 +612,7 @@ static int DoExchange(ScopedSSL_SESSION *out_session, SSL_CTX *ssl_ctx,
           memcmp(alpn_proto, config->expected_alpn.data(),
                  alpn_proto_len) != 0) {
         fprintf(stderr, "negotiated alpn proto mismatch\n");
-        return 2;
+        return false;
       }
     }
 
@@ -626,20 +620,20 @@ static int DoExchange(ScopedSSL_SESSION *out_session, SSL_CTX *ssl_ctx,
       uint8_t channel_id[64];
       if (!SSL_get_tls_channel_id(ssl.get(), channel_id, sizeof(channel_id))) {
         fprintf(stderr, "no channel id negotiated\n");
-        return 2;
+        return false;
       }
       if (config->expected_channel_id.size() != 64 ||
           memcmp(config->expected_channel_id.data(),
                  channel_id, 64) != 0) {
         fprintf(stderr, "channel id mismatch\n");
-        return 2;
+        return false;
       }
     }
 
     if (config->expect_extended_master_secret) {
       if (!ssl->session->extended_master_secret) {
         fprintf(stderr, "No EMS for session when expected");
-        return 2;
+        return false;
       }
     }
 
@@ -650,7 +644,7 @@ static int DoExchange(ScopedSSL_SESSION *out_session, SSL_CTX *ssl_ctx,
       if (config->expected_ocsp_response.size() != len ||
           memcmp(config->expected_ocsp_response.data(), data, len) != 0) {
         fprintf(stderr, "OCSP response mismatch\n");
-        return 2;
+        return false;
       }
     }
 
@@ -662,7 +656,7 @@ static int DoExchange(ScopedSSL_SESSION *out_session, SSL_CTX *ssl_ctx,
           memcmp(config->expected_signed_cert_timestamps.data(),
                  data, len) != 0) {
         fprintf(stderr, "SCT list mismatch\n");
-        return 2;
+        return false;
       }
     }
   }
@@ -670,33 +664,31 @@ static int DoExchange(ScopedSSL_SESSION *out_session, SSL_CTX *ssl_ctx,
   if (config->renegotiate) {
     if (config->async) {
       fprintf(stderr, "-renegotiate is not supported with -async.\n");
-      return 2;
+      return false;
     }
     if (config->implicit_handshake) {
       fprintf(stderr, "-renegotiate is not supported with -implicit-handshake.\n");
-      return 2;
+      return false;
     }
 
     SSL_renegotiate(ssl.get());
 
     ret = SSL_do_handshake(ssl.get());
     if (ret != 1) {
-      BIO_print_errors_fp(stdout);
-      return 2;
+      return false;
     }
 
     SSL_set_state(ssl.get(), SSL_ST_ACCEPT);
     ret = SSL_do_handshake(ssl.get());
     if (ret != 1) {
-      BIO_print_errors_fp(stdout);
-      return 2;
+      return false;
     }
   }
 
   if (config->write_different_record_sizes) {
     if (config->is_dtls) {
       fprintf(stderr, "write_different_record_sizes not supported for DTLS\n");
-      return 6;
+      return false;
     }
     // This mode writes a number of different record sizes in an attempt to
     // trip up the CBC record splitting code.
@@ -712,7 +704,7 @@ static int DoExchange(ScopedSSL_SESSION *out_session, SSL_CTX *ssl_ctx,
 
       if (len > sizeof(buf)) {
         fprintf(stderr, "Bad kRecordSizes value.\n");
-        return 5;
+        return false;
       }
 
       do {
@@ -724,8 +716,7 @@ static int DoExchange(ScopedSSL_SESSION *out_session, SSL_CTX *ssl_ctx,
                (w > 0 && off < len));
 
       if (w < 0 || off != len) {
-        BIO_print_errors_fp(stdout);
-        return 4;
+        return false;
       }
     }
   } else {
@@ -746,7 +737,7 @@ static int DoExchange(ScopedSSL_SESSION *out_session, SSL_CTX *ssl_ctx,
           (n == 0 && err == SSL_ERROR_SYSCALL)) {
         if (n != 0) {
           fprintf(stderr, "Invalid SSL_get_error output\n");
-          return 3;
+          return false;
         }
         // Accept shutdowns with or without close_notify.
         // TODO(davidben): Write tests which distinguish these two cases.
@@ -754,15 +745,14 @@ static int DoExchange(ScopedSSL_SESSION *out_session, SSL_CTX *ssl_ctx,
       } else if (err != SSL_ERROR_NONE) {
         if (n > 0) {
           fprintf(stderr, "Invalid SSL_get_error output\n");
-          return 3;
+          return false;
         }
-        BIO_print_errors_fp(stdout);
-        return 3;
+        return false;
       }
       // Successfully read data.
       if (n <= 0) {
         fprintf(stderr, "Invalid SSL_get_error output\n");
-        return 3;
+        return false;
       }
       for (int i = 0; i < n; i++) {
         buf[i] ^= 0xff;
@@ -772,8 +762,7 @@ static int DoExchange(ScopedSSL_SESSION *out_session, SSL_CTX *ssl_ctx,
         w = SSL_write(ssl.get(), buf, n);
       } while (config->async && RetryAsync(ssl.get(), w, async, &clock_delta));
       if (w != n) {
-        BIO_print_errors_fp(stdout);
-        return 4;
+        return false;
       }
     }
   }
@@ -783,7 +772,7 @@ static int DoExchange(ScopedSSL_SESSION *out_session, SSL_CTX *ssl_ctx,
   }
 
   SSL_shutdown(ssl.get());
-  return 0;
+  return true;
 }
 
 int main(int argc, char **argv) {
@@ -813,18 +802,17 @@ int main(int argc, char **argv) {
   }
 
   ScopedSSL_SESSION session;
-  int ret = DoExchange(&session, ssl_ctx.get(), &config, false /* is_resume */,
-                       3 /* fd */, NULL /* session */);
-  if (ret != 0) {
-    return ret;
+  if (!DoExchange(&session, ssl_ctx.get(), &config, false /* is_resume */,
+                  3 /* fd */, NULL /* session */)) {
+    BIO_print_errors_fp(stdout);
+    return 1;
   }
 
-  if (config.resume) {
-    ret = DoExchange(NULL, ssl_ctx.get(), &config, true /* is_resume */,
-                     4 /* fd */, session.get());
-    if (ret != 0) {
-      return ret;
-    }
+  if (config.resume &&
+      !DoExchange(NULL, ssl_ctx.get(), &config, true /* is_resume */,
+                  4 /* fd */, session.get())) {
+    BIO_print_errors_fp(stdout);
+    return 1;
   }
 
   return 0;
