@@ -214,6 +214,7 @@ static const EVP_AEAD aead_chacha20_poly1305 = {
     aead_chacha20_poly1305_cleanup,
     aead_chacha20_poly1305_seal,
     aead_chacha20_poly1305_open,
+    NULL,               /* get_rc4_state */
 };
 
 const EVP_AEAD *EVP_aead_chacha20_poly1305(void) {

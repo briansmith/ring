@@ -3140,3 +3140,13 @@ void SSL_enable_fastradio_padding(SSL *s, char on_off) {
 const SSL_CIPHER *SSL_get_cipher_by_value(uint16_t value) {
   return ssl3_get_cipher_by_value(value);
 }
+
+int SSL_get_rc4_state(const SSL *ssl, const RC4_KEY **read_key,
+                      const RC4_KEY **write_key) {
+  if (ssl->aead_read_ctx == NULL || ssl->aead_write_ctx == NULL) {
+    return 0;
+  }
+
+  return EVP_AEAD_CTX_get_rc4_state(&ssl->aead_read_ctx->ctx, read_key) &&
+         EVP_AEAD_CTX_get_rc4_state(&ssl->aead_write_ctx->ctx, write_key);
+}

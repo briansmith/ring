@@ -2253,6 +2253,12 @@ OPENSSL_EXPORT void ERR_load_SSL_strings(void);
  * https://www.iana.org/assignments/tls-parameters/tls-parameters.xhtml#tls-parameters-4. */
 OPENSSL_EXPORT const SSL_CIPHER *SSL_get_cipher_by_value(uint16_t value);
 
+/* SSL_get_rc4_state sets |*read_key| and |*write_key| to the RC4 states for
+ * the read and write directions. It returns one on success or zero if |ssl|
+ * isn't using an RC4-based cipher suite. */
+OPENSSL_EXPORT int SSL_get_rc4_state(const SSL *ssl, const RC4_KEY **read_key,
+                                     const RC4_KEY **write_key);
+
 
 /* Android compatibility section.
  *

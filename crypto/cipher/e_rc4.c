@@ -372,6 +372,13 @@ static int aead_rc4_md5_tls_open(const EVP_AEAD_CTX *ctx, uint8_t *out,
   return 1;
 }
 
+static int aead_rc4_md5_tls_get_rc4_state(const EVP_AEAD_CTX *ctx,
+                                          const RC4_KEY **out_key) {
+  struct aead_rc4_md5_tls_ctx *rc4_ctx = ctx->aead_state;
+  *out_key = &rc4_ctx->rc4;
+  return 1;
+}
+
 static const EVP_AEAD aead_rc4_md5_tls = {
     16 + MD5_DIGEST_LENGTH, /* key len (RC4 + MD5) */
     0,                      /* nonce len */
@@ -382,6 +389,7 @@ static const EVP_AEAD aead_rc4_md5_tls = {
     aead_rc4_md5_tls_cleanup,
     aead_rc4_md5_tls_seal,
     aead_rc4_md5_tls_open,
+    aead_rc4_md5_tls_get_rc4_state,
 };
 
 const EVP_AEAD *EVP_aead_rc4_md5_tls(void) { return &aead_rc4_md5_tls; }
