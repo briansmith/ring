@@ -494,6 +494,16 @@ typedef struct timeval OPENSSL_timeval;
  * session resumption is used for a given SSL*. */
 #define SSL_MODE_NO_SESSION_CREATION 0x00000200L
 
+/* SSL_MODE_SEND_SERVERHELLO_TIME sends TLS_FALLBACK_SCSV in the ClientHello.
+ * To be set only by applications that reconnect with a downgraded protocol
+ * version; see https://tools.ietf.org/html/draft-ietf-tls-downgrade-scsv-05
+ * for details.
+ *
+ * DO NOT ENABLE THIS if your application attempts a normal handshake. Only use
+ * this in explicit fallback retries, following the guidance in
+ * draft-ietf-tls-downgrade-scsv-05. */
+#define SSL_MODE_SEND_FALLBACK_SCSV 0x00000400L
+
 /* Note: SSL[_CTX]_set_{options,mode} use |= op on the previous value, they
  * cannot be used to clear bits. */
 
@@ -1328,10 +1338,6 @@ struct ssl_st {
                     * 2 if we are a server and are inside a handshake
                     * (i.e. not just sending a HelloRequest) */
 
-  /* fallback_scsv is non-zero iff we are sending the TLS_FALLBACK_SCSV cipher
-   * suite value. Only applies to a client. */
-  char fallback_scsv;
-
   /* fastradio_padding, if true, causes ClientHellos to be padded to 1024
    * bytes. This ensures that the cellular radio is fast forwarded to DCH (high
    * data rate) state in 3G networks. */
@@ -1618,8 +1624,6 @@ DECLARE_PEM_rw(SSL_SESSION, SSL_SESSION)
 #define SSL_CTRL_GET_CHANNEL_ID 118
 #define SSL_CTRL_SET_CHANNEL_ID 119
 
-#define SSL_CTRL_FALLBACK_SCSV 120
-
 /* DTLSv1_get_timeout queries the next DTLS handshake timeout. If there is a
  * timeout in progress, it sets |*((OPENSSL_timeval*)arg)| to the time remaining
  * and returns one. Otherwise, it returns zero.
@@ -1795,9 +1799,6 @@ DECLARE_PEM_rw(SSL_SESSION, SSL_SESSION)
 
 #define SSL_get0_ec_point_formats(s, plst) \
   SSL_ctrl(s, SSL_CTRL_GET_EC_POINT_FORMATS, 0, (char *)plst)
-
-#define SSL_enable_fallback_scsv(s) \
-  SSL_ctrl(s, SSL_CTRL_FALLBACK_SCSV, 0, NULL)
 
 OPENSSL_EXPORT int SSL_CTX_set_cipher_list(SSL_CTX *, const char *str);
 OPENSSL_EXPORT int SSL_CTX_set_cipher_list_tls11(SSL_CTX *, const char *str);

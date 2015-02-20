@@ -406,10 +406,9 @@ static bool DoExchange(ScopedSSL_SESSION *out_session, SSL_CTX *ssl_ctx,
     return false;
   }
 
-  if (config->fallback_scsv) {
-    if (!SSL_enable_fallback_scsv(ssl.get())) {
-      return false;
-    }
+  if (config->fallback_scsv &&
+      !SSL_set_mode(ssl.get(), SSL_MODE_SEND_FALLBACK_SCSV)) {
+    return false;
   }
   if (config->async) {
     // TODO(davidben): Also test |s->ctx->client_cert_cb| on the client and

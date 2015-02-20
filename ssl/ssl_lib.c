@@ -1411,7 +1411,7 @@ int ssl_cipher_list_to_bytes(SSL *s, STACK_OF(SSL_CIPHER) *sk, uint8_t *p) {
     s2n(SSL3_CK_SCSV & 0xffff, p);
   }
 
-  if (s->fallback_scsv) {
+  if (s->mode & SSL_MODE_SEND_FALLBACK_SCSV) {
     s2n(SSL3_CK_FALLBACK_SCSV & 0xffff, p);
   }
 

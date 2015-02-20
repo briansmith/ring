@@ -967,11 +967,6 @@ long ssl3_ctrl(SSL *s, int cmd, long larg, void *parg) {
       memcpy(parg, s->s3->tlsext_channel_id, larg < 64 ? larg : 64);
       return 64;
 
-    case SSL_CTRL_FALLBACK_SCSV:
-      s->fallback_scsv = 1;
-      ret = 1;
-      break;
-
     default:
       break;
   }
