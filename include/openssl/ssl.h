@@ -2236,6 +2236,11 @@ OPENSSL_EXPORT void SSL_get_structure_sizes(size_t *ssl_size,
 
 OPENSSL_EXPORT void ERR_load_SSL_strings(void);
 
+/* SSL_get_cipher_by_value returns the structure representing a TLS cipher
+ * suite based on its assigned number, or NULL if unknown. See
+ * https://www.iana.org/assignments/tls-parameters/tls-parameters.xhtml#tls-parameters-4. */
+OPENSSL_EXPORT const SSL_CIPHER *SSL_get_cipher_by_value(uint16_t value);
+
 
 /* Android compatibility section.
  *

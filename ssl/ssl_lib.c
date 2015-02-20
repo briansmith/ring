@@ -3131,3 +3131,7 @@ int SSL_is_server(SSL *s) { return s->server; }
 void SSL_enable_fastradio_padding(SSL *s, char on_off) {
   s->fastradio_padding = on_off;
 }
+
+const SSL_CIPHER *SSL_get_cipher_by_value(uint16_t value) {
+  return ssl3_get_cipher_by_value(value);
+}
