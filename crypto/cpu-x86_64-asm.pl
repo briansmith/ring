@@ -22,6 +22,7 @@ print<<___;
 
 .globl	OPENSSL_ia32_cpuid
 .type	OPENSSL_ia32_cpuid,\@function,1
+.hidden	OPENSSL_ia32_cpuid
 .align	16
 OPENSSL_ia32_cpuid:
 	# On Windows, $arg1 is rcx, but that will be clobbered. So make Windows

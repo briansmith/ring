@@ -156,6 +156,7 @@ $code.=<<___;
 
 .globl	sha1_block_data_order
 .type	sha1_block_data_order,%function
+.hidden	sha1_block_data_order
 .align	6
 sha1_block_data_order:
 	ldr	x16,.LOPENSSL_armcap_P

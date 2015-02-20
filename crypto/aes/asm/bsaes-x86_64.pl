@@ -1049,6 +1049,7 @@ if (0 && !$win64) {	# following four functions are unsupported interface
 $code.=<<___;
 .globl	bsaes_enc_key_convert
 .type	bsaes_enc_key_convert,\@function,2
+.hidden	bsaes_enc_key_convert
 .align	16
 bsaes_enc_key_convert:
 	mov	240($inp),%r10d		# pass rounds
@@ -1062,6 +1063,7 @@ bsaes_enc_key_convert:
 
 .globl	bsaes_encrypt_128
 .type	bsaes_encrypt_128,\@function,4
+.hidden	bsaes_encrypt_128
 .align	16
 bsaes_encrypt_128:
 .Lenc128_loop:
@@ -1095,6 +1097,7 @@ bsaes_encrypt_128:
 
 .globl	bsaes_dec_key_convert
 .type	bsaes_dec_key_convert,\@function,2
+.hidden	bsaes_dec_key_convert
 .align	16
 bsaes_dec_key_convert:
 	mov	240($inp),%r10d		# pass rounds
@@ -1109,6 +1112,7 @@ bsaes_dec_key_convert:
 
 .globl	bsaes_decrypt_128
 .type	bsaes_decrypt_128,\@function,4
+.hidden	bsaes_decrypt_128
 .align	16
 bsaes_decrypt_128:
 .Ldec128_loop:
@@ -1154,6 +1158,7 @@ if ($ecb) {
 $code.=<<___;
 .globl	bsaes_ecb_encrypt_blocks
 .type	bsaes_ecb_encrypt_blocks,\@abi-omnipotent
+.hidden	bsaes_ecb_encrypt_blocks
 .align	16
 bsaes_ecb_encrypt_blocks:
 	mov	%rsp, %rax
@@ -1355,6 +1360,7 @@ $code.=<<___;
 
 .globl	bsaes_ecb_decrypt_blocks
 .type	bsaes_ecb_decrypt_blocks,\@abi-omnipotent
+.hidden	bsaes_ecb_decrypt_blocks
 .align	16
 bsaes_ecb_decrypt_blocks:
 	mov	%rsp, %rax
@@ -1560,6 +1566,7 @@ $code.=<<___;
 .extern	asm_AES_cbc_encrypt
 .globl	bsaes_cbc_encrypt
 .type	bsaes_cbc_encrypt,\@abi-omnipotent
+.hidden	bsaes_cbc_encrypt
 .align	16
 bsaes_cbc_encrypt:
 ___
@@ -1847,6 +1854,7 @@ $code.=<<___;
 
 .globl	bsaes_ctr32_encrypt_blocks
 .type	bsaes_ctr32_encrypt_blocks,\@abi-omnipotent
+.hidden	bsaes_ctr32_encrypt_blocks
 .align	16
 bsaes_ctr32_encrypt_blocks:
 	mov	%rsp, %rax
@@ -2088,6 +2096,7 @@ $arg6=~s/d$//;
 $code.=<<___;
 .globl	bsaes_xts_encrypt
 .type	bsaes_xts_encrypt,\@abi-omnipotent
+.hidden	bsaes_xts_encrypt
 .align	16
 bsaes_xts_encrypt:
 	mov	%rsp, %rax
@@ -2469,6 +2478,7 @@ $code.=<<___;
 
 .globl	bsaes_xts_decrypt
 .type	bsaes_xts_decrypt,\@abi-omnipotent
+.hidden	bsaes_xts_decrypt
 .align	16
 bsaes_xts_decrypt:
 	mov	%rsp, %rax

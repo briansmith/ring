@@ -256,6 +256,7 @@ ___
 $code.=<<___;
 .globl	${PREFIX}_encrypt
 .type	${PREFIX}_encrypt,\@abi-omnipotent
+.hidden	${PREFIX}_encrypt
 .align	16
 ${PREFIX}_encrypt:
 	movups	($inp),$inout0		# load input
@@ -269,6 +270,7 @@ $code.=<<___;
 
 .globl	${PREFIX}_decrypt
 .type	${PREFIX}_decrypt,\@abi-omnipotent
+.hidden	${PREFIX}_decrypt
 .align	16
 ${PREFIX}_decrypt:
 	movups	($inp),$inout0		# load input
@@ -582,6 +584,7 @@ if ($PREFIX eq "aesni") {
 $code.=<<___;
 .globl	aesni_ecb_encrypt
 .type	aesni_ecb_encrypt,\@function,5
+.hidden	aesni_ecb_encrypt
 .align	16
 aesni_ecb_encrypt:
 ___
@@ -906,6 +909,7 @@ my $bswap_mask="%xmm7";
 $code.=<<___;
 .globl	aesni_ccm64_encrypt_blocks
 .type	aesni_ccm64_encrypt_blocks,\@function,6
+.hidden	aesni_ccm64_encrypt_blocks
 .align	16
 aesni_ccm64_encrypt_blocks:
 ___
@@ -986,6 +990,7 @@ ___
 $code.=<<___;
 .globl	aesni_ccm64_decrypt_blocks
 .type	aesni_ccm64_decrypt_blocks,\@function,6
+.hidden	aesni_ccm64_decrypt_blocks
 .align	16
 aesni_ccm64_decrypt_blocks:
 ___
@@ -1100,6 +1105,7 @@ my $frame_size = 0x80 + ($win64?160:0);
 $code.=<<___;
 .globl	aesni_ctr32_encrypt_blocks
 .type	aesni_ctr32_encrypt_blocks,\@function,5
+.hidden	aesni_ctr32_encrypt_blocks
 .align	16
 aesni_ctr32_encrypt_blocks:
 	lea	(%rsp),%rax
@@ -1611,6 +1617,7 @@ my $frame_size = 0x70 + ($win64?160:0);
 $code.=<<___;
 .globl	aesni_xts_encrypt
 .type	aesni_xts_encrypt,\@function,6
+.hidden	aesni_xts_encrypt
 .align	16
 aesni_xts_encrypt:
 	lea	(%rsp),%rax
@@ -2045,6 +2052,7 @@ ___
 $code.=<<___;
 .globl	aesni_xts_decrypt
 .type	aesni_xts_decrypt,\@function,6
+.hidden	aesni_xts_decrypt
 .align	16
 aesni_xts_decrypt:
 	lea	(%rsp),%rax
@@ -2516,6 +2524,7 @@ my $inp_=$key_;
 $code.=<<___;
 .globl	${PREFIX}_cbc_encrypt
 .type	${PREFIX}_cbc_encrypt,\@function,6
+.hidden	${PREFIX}_cbc_encrypt
 .align	16
 ${PREFIX}_cbc_encrypt:
 	test	$len,$len		# check length
@@ -2973,6 +2982,7 @@ ___
 $code.=<<___;
 .globl	${PREFIX}_set_decrypt_key
 .type	${PREFIX}_set_decrypt_key,\@abi-omnipotent
+.hidden	${PREFIX}_set_decrypt_key
 .align	16
 ${PREFIX}_set_decrypt_key:
 	.byte	0x48,0x83,0xEC,0x08	# sub rsp,8
@@ -3023,6 +3033,7 @@ ___
 $code.=<<___;
 .globl	${PREFIX}_set_encrypt_key
 .type	${PREFIX}_set_encrypt_key,\@abi-omnipotent
+.hidden	${PREFIX}_set_encrypt_key
 .align	16
 ${PREFIX}_set_encrypt_key:
 __aesni_set_encrypt_key:

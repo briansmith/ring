@@ -258,6 +258,7 @@ $code=<<___;
 .extern	OPENSSL_ia32cap_P
 .globl	$func
 .type	$func,\@function,3
+.hidden	$func
 .align	16
 $func:
 ___

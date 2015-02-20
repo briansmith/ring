@@ -225,6 +225,7 @@ $code=<<___;
 
 .globl	gcm_gmult_4bit
 .type	gcm_gmult_4bit,\@function,2
+.hidden	gcm_gmult_4bit
 .align	16
 gcm_gmult_4bit:
 	push	%rbx
@@ -255,6 +256,7 @@ $rem_8bit=$rem_4bit;
 $code.=<<___;
 .globl	gcm_ghash_4bit
 .type	gcm_ghash_4bit,\@function,4
+.hidden	gcm_ghash_4bit
 .align	16
 gcm_ghash_4bit:
 	push	%rbx
@@ -482,6 +484,7 @@ ___
 $code.=<<___;
 .globl	gcm_init_clmul
 .type	gcm_init_clmul,\@abi-omnipotent
+.hidden	gcm_init_clmul
 .align	16
 gcm_init_clmul:
 .L_init_clmul:
@@ -562,6 +565,7 @@ ___
 $code.=<<___;
 .globl	gcm_gmult_clmul
 .type	gcm_gmult_clmul,\@abi-omnipotent
+.hidden	gcm_gmult_clmul
 .align	16
 gcm_gmult_clmul:
 .L_gmult_clmul:
@@ -611,6 +615,7 @@ ___
 $code.=<<___;
 .globl	gcm_ghash_clmul
 .type	gcm_ghash_clmul,\@abi-omnipotent
+.hidden	gcm_ghash_clmul
 .align	32
 gcm_ghash_clmul:
 .L_ghash_clmul:
@@ -967,6 +972,7 @@ ___
 $code.=<<___;
 .globl	gcm_init_avx
 .type	gcm_init_avx,\@abi-omnipotent
+.hidden	gcm_init_avx
 .align	32
 gcm_init_avx:
 ___
@@ -1109,6 +1115,7 @@ ___
 $code.=<<___;
 .globl	gcm_gmult_avx
 .type	gcm_gmult_avx,\@abi-omnipotent
+.hidden	gcm_gmult_avx
 .align	32
 gcm_gmult_avx:
 	jmp	.L_gmult_clmul
@@ -1118,6 +1125,7 @@ ___
 $code.=<<___;
 .globl	gcm_ghash_avx
 .type	gcm_ghash_avx,\@abi-omnipotent
+.hidden	gcm_ghash_avx
 .align	32
 gcm_ghash_avx:
 ___

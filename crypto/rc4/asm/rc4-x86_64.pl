@@ -127,6 +127,7 @@ $code=<<___;
 
 .globl	asm_RC4
 .type	asm_RC4,\@function,4
+.hidden	asm_RC4
 .align	16
 asm_RC4:
 	or	$len,$len
@@ -433,6 +434,7 @@ $ido="%r9";
 $code.=<<___;
 .globl	asm_RC4_set_key
 .type	asm_RC4_set_key,\@function,3
+.hidden	asm_RC4_set_key
 .align	16
 asm_RC4_set_key:
 	lea	8($dat),$dat
@@ -502,32 +504,6 @@ asm_RC4_set_key:
 	mov	%eax,-4($dat)
 	ret
 .size	asm_RC4_set_key,.-asm_RC4_set_key
-
-.globl	RC4_options
-.type	RC4_options,\@abi-omnipotent
-.align	16
-RC4_options:
-	lea	.Lopts(%rip),%rax
-	mov	OPENSSL_ia32cap_P(%rip),%rdx
-	mov	(%rdx),%edx
-	bt	\$20,%edx
-	jc	.L8xchar
-	bt	\$30,%edx
-	jnc	.Ldone
-	add	\$25,%rax
-	ret
-.L8xchar:
-	add	\$12,%rax
-.Ldone:
-	ret
-.align	64
-.Lopts:
-.asciz	"rc4(8x,int)"
-.asciz	"rc4(8x,char)"
-.asciz	"rc4(16x,int)"
-.asciz	"RC4 for x86_64, CRYPTOGAMS by <appro\@openssl.org>"
-.align	64
-.size	RC4_options,.-RC4_options
 ___
 
 # EXCEPTION_DISPOSITION handler (EXCEPTION_RECORD *rec,ULONG64 frame,

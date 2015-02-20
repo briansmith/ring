@@ -110,6 +110,7 @@ $code.=<<___;
 
 .globl	$func
 .type	$func,\@function,$nargs
+.hidden	$func
 $func:
 	cmp	\$0,$len
 	je	.Labort
