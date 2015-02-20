@@ -123,10 +123,6 @@ OPENSSL_ia32_cpuid:
 	cmp	\$0,%r9d
 	jne	.Lnotintel
 	or	\$0x40000000,%edx	# set reserved bit#30 on Intel CPUs
-	and	\$15,%ah
-	cmp	\$15,%ah		# examine Family ID
-	jne	.Lnotintel
-	or	\$0x00100000,%edx	# set reserved bit#20 to engage RC4_CHAR
 .Lnotintel:
 	bt	\$28,%edx		# test hyper-threading bit
 	jnc	.Lgeneric

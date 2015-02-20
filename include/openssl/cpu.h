@@ -78,7 +78,6 @@ extern "C" {
  *   Index 0:
  *     EDX for CPUID where EAX = 1
  *     Bit 30 is used to indicate an Intel CPU
- *     Bit 20 is used to indicate RC4_CHAR
  *   Index 1:
  *     ECX for CPUID where EAX = 1
  *   Index 2:

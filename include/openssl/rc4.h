@@ -69,8 +69,6 @@ extern "C" {
 
 typedef struct rc4_key_st {
   uint32_t x, y;
-  /* data is sometimes used as an array of 32-bit values and sometimes as 8-bit
-   * values, depending on the platform. */
   uint32_t data[256];
 } RC4_KEY;
 
