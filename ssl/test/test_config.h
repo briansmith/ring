@@ -21,6 +21,7 @@
 struct TestConfig {
   TestConfig();
 
+  int port;
   bool is_server;
   bool is_dtls;
   bool resume;

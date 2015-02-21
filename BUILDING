@@ -17,8 +17,7 @@ Build Prerequisites:
     with Platform SDK 8.1 or later are supported. Recent versions of GCC and
     Clang should work on non-Windows platforms, and maybe on Windows too.
 
-  * Go[5] is required for running tests, but not for building. Note that the
-    runner.go tests do not work on Windows.
+  * Go[5] is required for running tests, but not for building.
 
 Using Ninja (note the 'N' is capitalized in the cmake invocation):
 
@@ -62,8 +61,6 @@ Known Limitations on Windows:
   * cmake can generate Visual Studio projects, but the generated project files
     don't have steps for assembling the assembly language source files, so they
     currently cannot be used to build BoringSSL.
-
-  * The tests written in Go do not work.
 
 [1] http://www.cmake.org/download/
 

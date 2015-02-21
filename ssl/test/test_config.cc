@@ -102,6 +102,7 @@ const Flag<std::string> kBase64Flags[] = {
 };
 
 const Flag<int> kIntFlags[] = {
+  { "-port", &TestConfig::port },
   { "-min-version", &TestConfig::min_version },
   { "-max-version", &TestConfig::max_version },
   { "-mtu", &TestConfig::mtu },
@@ -110,7 +111,8 @@ const Flag<int> kIntFlags[] = {
 }  // namespace
 
 TestConfig::TestConfig()
-    : is_server(false),
+    : port(0),
+      is_server(false),
       is_dtls(false),
       resume(false),
       fallback_scsv(false),

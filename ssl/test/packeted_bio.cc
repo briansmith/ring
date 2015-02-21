@@ -49,8 +49,12 @@ static int PacketedWrite(BIO *bio, const char *in, int inl) {
     return ret;
   }
 
-  // Write the buffer. BIOs for which this operation fails are not supported.
+  // Write the buffer.
   ret = BIO_write(bio->next_bio, in, inl);
+  if (ret < 0 || (inl > 0 && ret == 0)) {
+    BIO_copy_next_retry(bio);
+    return ret;
+  }
   assert(ret == inl);
   return ret;
 }
@@ -98,6 +102,9 @@ static int PacketedRead(BIO *bio, char *out, int outl) {
 
     // Send an ACK to the peer.
     ret = BIO_write(bio->next_bio, &kOpcodeTimeoutAck, 1);
+    if (ret <= 0) {
+      return ret;
+    }
     assert(ret == 1);
 
     // Signal to the caller to retry the read, after processing the
