@@ -445,54 +445,47 @@ static int test_default_version(uint16_t version,
   return ret;
 }
 
-static char *cipher_get_rfc_name(const char *name) {
-  SSL_CTX *ctx = SSL_CTX_new(TLS_method());
-  char *ret = NULL;
-
-  if (ctx == NULL) {
-    goto done;
+static char *cipher_get_rfc_name(uint16_t value) {
+  const SSL_CIPHER *cipher = SSL_get_cipher_by_value(value);
+  if (cipher == NULL) {
+    return NULL;
   }
-
-  if (!SSL_CTX_set_cipher_list(ctx, name) ||
-      sk_SSL_CIPHER_num(ctx->cipher_list->ciphers) != 1) {
-    fprintf(stderr, "Error finding cipher '%s'\n", name);
-    BIO_print_errors_fp(stderr);
-    goto done;
-  }
-
-  const SSL_CIPHER *cipher = sk_SSL_CIPHER_value(ctx->cipher_list->ciphers, 0);
-  ret = SSL_CIPHER_get_rfc_name(cipher);
-
-done:
-  if (ctx != NULL) {
-    SSL_CTX_free(ctx);
-  }
-  return ret;
+  return SSL_CIPHER_get_rfc_name(cipher);
 }
 
 typedef struct {
-  const char *name;
+  int id;
   const char *rfc_name;
 } CIPHER_RFC_NAME_TEST;
 
 static const CIPHER_RFC_NAME_TEST kCipherRFCNameTests[] = {
-  { "DES-CBC3-SHA", "TLS_RSA_WITH_3DES_EDE_CBC_SHA" },
-  { "RC4-MD5", "TLS_RSA_WITH_RC4_MD5" },
-  { "AES128-SHA", "TLS_RSA_WITH_AES_128_CBC_SHA" },
-  { "ADH-AES128-SHA", "TLS_DH_anon_WITH_AES_128_CBC_SHA" },
-  { "DHE-RSA-AES256-SHA", "TLS_DHE_RSA_WITH_AES_256_CBC_SHA" },
-  { "DHE-RSA-AES256-SHA256", "TLS_DHE_RSA_WITH_AES_256_CBC_SHA256" },
-  { "AECDH-AES128-SHA", "TLS_ECDH_anon_WITH_AES_128_CBC_SHA" },
-  { "ECDHE-RSA-AES128-SHA256", "TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA256" },
-  { "ECDHE-RSA-AES256-SHA384", "TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA384" },
-  { "ECDHE-RSA-AES128-GCM-SHA256", "TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256" },
-  { "ECDHE-ECDSA-AES128-GCM-SHA256", "TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256" },
-  { "ECDHE-ECDSA-AES256-GCM-SHA384", "TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384" },
-  { "PSK-RC4-SHA", "TLS_PSK_WITH_RC4_SHA" },
+  { SSL3_CK_RSA_DES_192_CBC3_SHA, "TLS_RSA_WITH_3DES_EDE_CBC_SHA" },
+  { SSL3_CK_RSA_RC4_128_MD5, "TLS_RSA_WITH_RC4_MD5" },
+  { TLS1_CK_RSA_WITH_AES_128_SHA, "TLS_RSA_WITH_AES_128_CBC_SHA" },
+  { TLS1_CK_ADH_WITH_AES_128_SHA, "TLS_DH_anon_WITH_AES_128_CBC_SHA" },
+  { TLS1_CK_DHE_RSA_WITH_AES_256_SHA, "TLS_DHE_RSA_WITH_AES_256_CBC_SHA" },
+  { TLS1_CK_DHE_RSA_WITH_AES_256_SHA256,
+    "TLS_DHE_RSA_WITH_AES_256_CBC_SHA256" },
+  { TLS1_CK_ECDH_anon_WITH_AES_128_CBC_SHA,
+    "TLS_ECDH_anon_WITH_AES_128_CBC_SHA" },
+  { TLS1_CK_ECDHE_RSA_WITH_AES_128_SHA256,
+    "TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA256" },
+  { TLS1_CK_ECDHE_RSA_WITH_AES_256_SHA384,
+    "TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA384" },
+  { TLS1_CK_ECDHE_RSA_WITH_AES_128_GCM_SHA256,
+    "TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256" },
+  { TLS1_CK_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256,
+    "TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256" },
+  { TLS1_CK_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384,
+    "TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384" },
+  { TLS1_CK_PSK_WITH_RC4_128_SHA, "TLS_PSK_WITH_RC4_SHA" },
   /* These names are non-standard: */
-  { "ECDHE-RSA-CHACHA20-POLY1305", "TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256" },
-  { "ECDHE-ECDSA-CHACHA20-POLY1305", "TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305_SHA256" },
-  { "ECDHE-PSK-WITH-AES-128-GCM-SHA256", "TLS_ECDHE_PSK_WITH_AES_128_GCM_SHA256" },
+  { TLS1_CK_ECDHE_RSA_CHACHA20_POLY1305,
+    "TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256" },
+  { TLS1_CK_ECDHE_ECDSA_CHACHA20_POLY1305,
+    "TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305_SHA256" },
+  { TLS1_CK_ECDHE_PSK_WITH_AES_128_GCM_SHA256,
+    "TLS_ECDHE_PSK_WITH_AES_128_GCM_SHA256" },
 };
 
 static int test_cipher_get_rfc_name(void) {
@@ -501,9 +494,9 @@ static int test_cipher_get_rfc_name(void) {
   for (i = 0; i < sizeof(kCipherRFCNameTests) / sizeof(kCipherRFCNameTests[0]);
        i++) {
     const CIPHER_RFC_NAME_TEST *test = &kCipherRFCNameTests[i];
-    char *rfc_name = cipher_get_rfc_name(test->name);
+    char *rfc_name = cipher_get_rfc_name(test->id & 0xffff);
     if (rfc_name == NULL) {
-      fprintf(stderr, "cipher_get_rfc_name failed on '%s'\n", test->name);
+      fprintf(stderr, "cipher_get_rfc_name failed on '%s'\n", test->rfc_name);
       return 0;
     }
     if (strcmp(rfc_name, test->rfc_name) != 0) {
