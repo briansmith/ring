@@ -458,12 +458,6 @@ int dtls1_connect(SSL *s) {
       case SSL3_ST_CW_FLUSH:
         s->rwstate = SSL_WRITING;
         if (BIO_flush(s->wbio) <= 0) {
-          /* If the write error was fatal, stop trying */
-          if (!BIO_should_retry(s->wbio)) {
-            s->rwstate = SSL_NOTHING;
-            s->state = s->s3->tmp.next_state;
-          }
-
           ret = -1;
           goto end;
         }
