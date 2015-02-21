@@ -70,6 +70,9 @@ struct TestConfig {
   bool implicit_handshake;
   bool use_early_callback;
   bool fail_early_callback;
+  bool install_ddos_callback;
+  bool fail_ddos_callback;
+  bool fail_second_ddos_callback;
 };
 
 bool ParseConfig(int argc, char **argv, TestConfig *out_config);

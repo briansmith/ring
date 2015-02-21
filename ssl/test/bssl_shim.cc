@@ -308,6 +308,18 @@ static SSL_SESSION *GetSessionCallback(SSL *ssl, uint8_t *data, int len,
   }
 }
 
+static int DDoSCallback(const struct ssl_early_callback_ctx *early_context) {
+  const TestConfig *config = GetConfigPtr(early_context->ssl);
+  static int callback_num = 0;
+
+  callback_num++;
+  if (config->fail_ddos_callback ||
+      (config->fail_second_ddos_callback && callback_num == 2)) {
+    return 0;
+  }
+  return 1;
+}
+
 // Connect returns a new socket connected to localhost on |port| or -1 on
 // error.
 static int Connect(uint16_t port) {
@@ -599,6 +611,9 @@ static bool DoExchange(ScopedSSL_SESSION *out_session, SSL_CTX *ssl_ctx,
   if (config->mtu != 0) {
     SSL_set_options(ssl.get(), SSL_OP_NO_QUERY_MTU);
     SSL_set_mtu(ssl.get(), config->mtu);
+  }
+  if (config->install_ddos_callback) {
+    SSL_CTX_set_dos_protection_cb(ssl_ctx, DDoSCallback);
   }
 
   int sock = Connect(config->port);

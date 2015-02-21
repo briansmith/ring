@@ -2037,6 +2037,37 @@ func addStateMachineCoverageTests(async, splitHandshake bool, protocol protocol)
 	}
 }
 
+func addDDoSCallbackTests() {
+	// DDoS callback.
+
+	for _, resume := range []bool{false, true} {
+		suffix := "Resume"
+		if resume {
+			suffix = "No" + suffix
+		}
+
+		testCases = append(testCases, testCase{
+			testType:      serverTest,
+			name:          "Server-DDoS-OK-" + suffix,
+			flags:         []string{"-install-ddos-callback"},
+			resumeSession: resume,
+		})
+
+		failFlag := "-fail-ddos-callback"
+		if resume {
+			failFlag = "-fail-second-ddos-callback"
+		}
+		testCases = append(testCases, testCase{
+			testType:      serverTest,
+			name:          "Server-DDoS-Reject-" + suffix,
+			flags:         []string{"-install-ddos-callback", failFlag},
+			resumeSession: resume,
+			shouldFail:    true,
+			expectedError: ":CONNECTION_REJECTED:",
+		})
+	}
+}
+
 func addVersionNegotiationTests() {
 	for i, shimVers := range tlsVersions {
 		// Assemble flags to disable all newer versions on the shim.
@@ -3029,6 +3060,7 @@ func main() {
 	addCBCPaddingTests()
 	addCBCSplittingTests()
 	addClientAuthTests()
+	addDDoSCallbackTests()
 	addVersionNegotiationTests()
 	addMinimumVersionTests()
 	addD5BugTests()

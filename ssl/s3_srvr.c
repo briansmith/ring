@@ -1086,6 +1086,13 @@ int ssl3_get_client_hello(SSL *s) {
     }
   }
 
+  if (s->ctx->dos_protection_cb != NULL && s->ctx->dos_protection_cb(&early_ctx) == 0) {
+    /* Connection rejected for DOS reasons. */
+    al = SSL_AD_ACCESS_DENIED;
+    OPENSSL_PUT_ERROR(SSL, ssl3_get_client_hello, SSL_R_CONNECTION_REJECTED);
+    goto f_err;
+  }
+
   if (!CBS_get_u16_length_prefixed(&client_hello, &cipher_suites) ||
       !CBS_get_u8_length_prefixed(&client_hello, &compression_methods) ||
       CBS_len(&compression_methods) == 0) {

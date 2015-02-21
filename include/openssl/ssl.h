@@ -809,6 +809,11 @@ struct ssl_ctx_st {
    * will not call the callback a second time. */
   int (*select_certificate_cb)(const struct ssl_early_callback_ctx *);
 
+  /* dos_protection_cb is called once the resumption decision for a ClientHello
+   * has been made. It returns one to continue the handshake or zero to
+   * abort. */
+  int (*dos_protection_cb) (const struct ssl_early_callback_ctx *);
+
   /* quiet_shutdown is true if the connection should not send a close_notify on
    * shutdown. */
   int quiet_shutdown;
@@ -2227,6 +2232,12 @@ OPENSSL_EXPORT int SSL_COMP_add_compression_method(int id, void *cm);
 
 OPENSSL_EXPORT int SSL_cache_hit(SSL *s);
 OPENSSL_EXPORT int SSL_is_server(SSL *s);
+
+/* SSL_CTX_set_dos_protection_cb sets a callback that is called once the
+ * resumption decision for a ClientHello has been made. It can return 1 to
+ * allow the handshake to continue or zero to cause the handshake to abort. */
+void SSL_CTX_set_dos_protection_cb(
+    SSL_CTX *ctx, int (*cb)(const struct ssl_early_callback_ctx *));
 
 /* SSL_get_structure_sizes returns the sizes of the SSL, SSL_CTX and
  * SSL_SESSION structures so that a test can ensure that outside code agrees on

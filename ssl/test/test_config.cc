@@ -75,6 +75,9 @@ const Flag<bool> kBoolFlags[] = {
   { "-implicit-handshake", &TestConfig::implicit_handshake },
   { "-use-early-callback", &TestConfig::use_early_callback },
   { "-fail-early-callback", &TestConfig::fail_early_callback },
+  { "-install-ddos-callback", &TestConfig::install_ddos_callback },
+  { "-fail-ddos-callback", &TestConfig::fail_ddos_callback },
+  { "-fail-second-ddos-callback", &TestConfig::fail_second_ddos_callback },
 };
 
 const Flag<std::string> kStringFlags[] = {
@@ -142,7 +145,9 @@ TestConfig::TestConfig()
       mtu(0),
       implicit_handshake(false),
       use_early_callback(false),
-      fail_early_callback(false) {
+      fail_early_callback(false),
+      install_ddos_callback(false),
+      fail_ddos_callback(false) {
 }
 
 bool ParseConfig(int argc, char **argv, TestConfig *out_config) {
