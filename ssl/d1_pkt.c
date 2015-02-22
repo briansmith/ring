@@ -736,8 +736,8 @@ start:
       s->msg_callback(0, s->version, SSL3_RT_ALERT, &rr->data[rr->off], 2, s,
                       s->msg_callback_arg);
     }
-    uint8_t alert_level = rr->data[rr->off++];
-    uint8_t alert_descr = rr->data[rr->off++];
+    const uint8_t alert_level = rr->data[rr->off++];
+    const uint8_t alert_descr = rr->data[rr->off++];
     rr->length -= 2;
 
     if (s->info_callback != NULL) {
@@ -751,13 +751,13 @@ start:
       cb(s, SSL_CB_READ_ALERT, alert);
     }
 
-    if (alert_level == 1) { /* warning */
+    if (alert_level == SSL3_AL_WARNING) {
       s->s3->warn_alert = alert_descr;
       if (alert_descr == SSL_AD_CLOSE_NOTIFY) {
         s->shutdown |= SSL_RECEIVED_SHUTDOWN;
         return 0;
       }
-    } else if (alert_level == 2) { /* fatal */
+    } else if (alert_level == SSL3_AL_FATAL) {
       char tmp[16];
 
       s->rwstate = SSL_NOTHING;

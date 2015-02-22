@@ -737,11 +737,10 @@ int ssl3_expect_change_cipher_spec(SSL *s) {
  *             none of our business
  */
 int ssl3_read_bytes(SSL *s, int type, uint8_t *buf, int len, int peek) {
-  int al, i, j, ret;
+  int al, i, ret;
   unsigned int n;
   SSL3_RECORD *rr;
   void (*cb)(const SSL *ssl, int type2, int val) = NULL;
-  uint8_t alert_buffer[2];
 
   if ((type && type != SSL3_RT_APPLICATION_DATA && type != SSL3_RT_HANDSHAKE) ||
       (peek && type != SSL3_RT_APPLICATION_DATA)) {
@@ -896,17 +895,6 @@ start:
     if (s->s3->handshake_fragment_len < size) {
       goto start; /* fragment was too small */
     }
-  } else if (rr->type == SSL3_RT_ALERT) {
-    /* Note that this will still allow multiple alerts to be processed in the
-     * same record */
-    if (rr->length < sizeof(alert_buffer)) {
-      al = SSL_AD_DECODE_ERROR;
-      OPENSSL_PUT_ERROR(SSL, ssl3_read_bytes, SSL_R_BAD_ALERT);
-      goto f_err;
-    }
-    memcpy(alert_buffer, &rr->data[rr->off], sizeof(alert_buffer));
-    rr->off += sizeof(alert_buffer);
-    rr->length -= sizeof(alert_buffer);
   }
 
   /* s->s3->handshake_fragment_len == 4  iff  rr->type == SSL3_RT_HANDSHAKE;
@@ -949,14 +937,23 @@ start:
     goto start;
   }
 
+  /* If an alert record, process one alert out of the record. Note that we allow
+   * a single record to contain multiple alerts. */
   if (rr->type == SSL3_RT_ALERT) {
-    const uint8_t alert_level = alert_buffer[0];
-    const uint8_t alert_descr = alert_buffer[1];
+    /* Alerts may not be fragmented. */
+    if (rr->length < 2) {
+      al = SSL_AD_DECODE_ERROR;
+      OPENSSL_PUT_ERROR(SSL, ssl3_read_bytes, SSL_R_BAD_ALERT);
+      goto f_err;
+    }
 
     if (s->msg_callback) {
-      s->msg_callback(0, s->version, SSL3_RT_ALERT, alert_buffer, 2, s,
+      s->msg_callback(0, s->version, SSL3_RT_ALERT, &rr->data[rr->off], 2, s,
                       s->msg_callback_arg);
     }
+    const uint8_t alert_level = rr->data[rr->off++];
+    const uint8_t alert_descr = rr->data[rr->off++];
+    rr->length -= 2;
 
     if (s->info_callback != NULL) {
       cb = s->info_callback;
@@ -965,12 +962,11 @@ start:
     }
 
     if (cb != NULL) {
-      j = (alert_level << 8) | alert_descr;
-      cb(s, SSL_CB_READ_ALERT, j);
+      uint16_t alert = (alert_level << 8) | alert_descr;
+      cb(s, SSL_CB_READ_ALERT, alert);
     }
 
-    if (alert_level == 1) {
-      /* warning */
+    if (alert_level == SSL3_AL_WARNING) {
       s->s3->warn_alert = alert_descr;
       if (alert_descr == SSL_AD_CLOSE_NOTIFY) {
         s->shutdown |= SSL_RECEIVED_SHUTDOWN;
@@ -989,8 +985,7 @@ start:
         OPENSSL_PUT_ERROR(SSL, ssl3_read_bytes, SSL_R_NO_RENEGOTIATION);
         goto f_err;
       }
-    } else if (alert_level == 2) {
-      /* fatal */
+    } else if (alert_level == SSL3_AL_FATAL) {
       char tmp[16];
 
       s->rwstate = SSL_NOTHING;
