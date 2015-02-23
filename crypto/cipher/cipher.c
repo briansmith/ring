@@ -94,8 +94,8 @@ EVP_CIPHER_CTX *EVP_CIPHER_CTX_new(void) {
 }
 
 int EVP_CIPHER_CTX_cleanup(EVP_CIPHER_CTX *c) {
-  if (c->cipher != NULL && c->cipher->cleanup && !c->cipher->cleanup(c)) {
-    return 0;
+  if (c->cipher != NULL && c->cipher->cleanup) {
+    c->cipher->cleanup(c);
   }
 
   if (c->cipher_data) {

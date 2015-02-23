@@ -445,13 +445,12 @@ static int aes_gcm_init_key(EVP_CIPHER_CTX *ctx, const uint8_t *key,
   return 1;
 }
 
-static int aes_gcm_cleanup(EVP_CIPHER_CTX *c) {
+static void aes_gcm_cleanup(EVP_CIPHER_CTX *c) {
   EVP_AES_GCM_CTX *gctx = c->cipher_data;
   OPENSSL_cleanse(&gctx->gcm, sizeof(gctx->gcm));
   if (gctx->iv != c->iv) {
     OPENSSL_free(gctx->iv);
   }
-  return 1;
 }
 
 /* increment counter (64-bit int) by 1 */

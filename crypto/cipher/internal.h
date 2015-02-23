@@ -97,7 +97,7 @@ struct evp_cipher_st {
   int (*cipher)(EVP_CIPHER_CTX *ctx, uint8_t *out, const uint8_t *in,
                 size_t inl);
 
-  int (*cleanup)(EVP_CIPHER_CTX *);
+  void (*cleanup)(EVP_CIPHER_CTX *);
 
   int (*ctrl)(EVP_CIPHER_CTX *, int type, int arg, void *ptr);
 };

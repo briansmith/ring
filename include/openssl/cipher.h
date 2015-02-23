@@ -117,8 +117,8 @@ OPENSSL_EXPORT void EVP_CIPHER_CTX_init(EVP_CIPHER_CTX *ctx);
  * |EVP_CIPHER_CTX_init| and returns it, or NULL on allocation failure. */
 OPENSSL_EXPORT EVP_CIPHER_CTX *EVP_CIPHER_CTX_new(void);
 
-/* EVP_CIPHER_CTX_cleanup frees any memory referenced by |ctx|. It returns one
- * on success and zero otherwise. */
+/* EVP_CIPHER_CTX_cleanup frees any memory referenced by |ctx|. It returns
+ * one. */
 OPENSSL_EXPORT int EVP_CIPHER_CTX_cleanup(EVP_CIPHER_CTX *ctx);
 
 /* EVP_CIPHER_CTX_free calls |EVP_CIPHER_CTX_cleanup| on |ctx| and then frees
