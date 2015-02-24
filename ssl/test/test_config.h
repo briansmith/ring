@@ -68,6 +68,8 @@ struct TestConfig {
   int max_version;
   int mtu;
   bool implicit_handshake;
+  bool use_early_callback;
+  bool fail_early_callback;
 };
 
 bool ParseConfig(int argc, char **argv, TestConfig *out_config);

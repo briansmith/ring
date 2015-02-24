@@ -805,7 +805,8 @@ struct ssl_ctx_st {
    * before the decision whether to resume a session is made. It may return one
    * to continue the handshake or zero to cause the handshake loop to return
    * with an error and cause SSL_get_error to return
-   * SSL_ERROR_PENDING_CERTIFICATE. */
+   * SSL_ERROR_PENDING_CERTIFICATE. Note: when the handshake loop is resumed, it
+   * will not call the callback a second time. */
   int (*select_certificate_cb)(const struct ssl_early_callback_ctx *);
 
   /* quiet_shutdown is true if the connection should not send a close_notify on

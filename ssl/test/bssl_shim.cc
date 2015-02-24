@@ -139,39 +139,51 @@ static int SelectCertificateCallback(const struct ssl_early_callback_ctx *ctx) {
   const TestConfig *config = GetConfigPtr(ctx->ssl);
   GetTestState(ctx->ssl)->early_callback_called = true;
 
-  if (config->expected_server_name.empty()) {
-    return 1;
+  if (!config->expected_server_name.empty()) {
+    const uint8_t *extension_data;
+    size_t extension_len;
+    CBS extension, server_name_list, host_name;
+    uint8_t name_type;
+
+    if (!SSL_early_callback_ctx_extension_get(ctx, TLSEXT_TYPE_server_name,
+                                              &extension_data,
+                                              &extension_len)) {
+      fprintf(stderr, "Could not find server_name extension.\n");
+      return -1;
+    }
+
+    CBS_init(&extension, extension_data, extension_len);
+    if (!CBS_get_u16_length_prefixed(&extension, &server_name_list) ||
+        CBS_len(&extension) != 0 ||
+        !CBS_get_u8(&server_name_list, &name_type) ||
+        name_type != TLSEXT_NAMETYPE_host_name ||
+        !CBS_get_u16_length_prefixed(&server_name_list, &host_name) ||
+        CBS_len(&server_name_list) != 0) {
+      fprintf(stderr, "Could not decode server_name extension.\n");
+      return -1;
+    }
+
+    if (!CBS_mem_equal(&host_name,
+                       (const uint8_t*)config->expected_server_name.data(),
+                       config->expected_server_name.size())) {
+      fprintf(stderr, "Server name mismatch.\n");
+    }
   }
 
-  const uint8_t *extension_data;
-  size_t extension_len;
-  CBS extension, server_name_list, host_name;
-  uint8_t name_type;
-
-  if (!SSL_early_callback_ctx_extension_get(ctx, TLSEXT_TYPE_server_name,
-                                            &extension_data,
-                                            &extension_len)) {
-    fprintf(stderr, "Could not find server_name extension.\n");
+  if (config->fail_early_callback) {
     return -1;
   }
 
-  CBS_init(&extension, extension_data, extension_len);
-  if (!CBS_get_u16_length_prefixed(&extension, &server_name_list) ||
-      CBS_len(&extension) != 0 ||
-      !CBS_get_u8(&server_name_list, &name_type) ||
-      name_type != TLSEXT_NAMETYPE_host_name ||
-      !CBS_get_u16_length_prefixed(&server_name_list, &host_name) ||
-      CBS_len(&server_name_list) != 0) {
-    fprintf(stderr, "Could not decode server_name extension.\n");
-    return -1;
+  // Install the certificate in the early callback.
+  if (config->use_early_callback) {
+    if (config->async) {
+      // Install the certificate asynchronously.
+      return 0;
+    }
+    if (!InstallCertificate(ctx->ssl)) {
+      return -1;
+    }
   }
-
-  if (!CBS_mem_equal(&host_name,
-                     (const uint8_t*)config->expected_server_name.data(),
-                     config->expected_server_name.size())) {
-    fprintf(stderr, "Server name mismatch.\n");
-  }
-
   return 1;
 }
 
@@ -464,6 +476,9 @@ static bool RetryAsync(SSL *ssl, int ret, BIO *async,
       GetTestState(ssl)->session =
           std::move(GetTestState(ssl)->pending_session);
       return true;
+    case SSL_ERROR_PENDING_CERTIFICATE:
+      // The handshake will resume without a second call to the early callback.
+      return InstallCertificate(ssl);
     default:
       return false;
   }
@@ -492,12 +507,13 @@ static bool DoExchange(ScopedSSL_SESSION *out_session, SSL_CTX *ssl_ctx,
       !SSL_set_mode(ssl.get(), SSL_MODE_SEND_FALLBACK_SCSV)) {
     return false;
   }
-  if (config->async) {
-    // TODO(davidben): Also test |s->ctx->client_cert_cb| on the client and
-    // |s->ctx->select_certificate_cb| on the server.
-    SSL_set_cert_cb(ssl.get(), CertCallback, NULL);
-  } else if (!InstallCertificate(ssl.get())) {
-    return false;
+  if (!config->use_early_callback) {
+    if (config->async) {
+      // TODO(davidben): Also test |s->ctx->client_cert_cb| on the client.
+      SSL_set_cert_cb(ssl.get(), CertCallback, NULL);
+    } else if (!InstallCertificate(ssl.get())) {
+      return false;
+    }
   }
   if (config->require_any_client_certificate) {
     SSL_set_verify(ssl.get(), SSL_VERIFY_PEER|SSL_VERIFY_FAIL_IF_NO_PEER_CERT,
@@ -650,17 +666,17 @@ static bool DoExchange(ScopedSSL_SESSION *out_session, SSL_CTX *ssl_ctx,
       return false;
     }
 
+    if (config->is_server && !GetTestState(ssl.get())->early_callback_called) {
+      fprintf(stderr, "early callback not called\n");
+      return false;
+    }
+
     if (!config->expected_server_name.empty()) {
       const char *server_name =
         SSL_get_servername(ssl.get(), TLSEXT_NAMETYPE_host_name);
       if (server_name != config->expected_server_name) {
         fprintf(stderr, "servername mismatch (got %s; want %s)\n",
                 server_name, config->expected_server_name.c_str());
-        return false;
-      }
-
-      if (!GetTestState(ssl.get())->early_callback_called) {
-        fprintf(stderr, "early callback not called\n");
         return false;
       }
     }

@@ -780,6 +780,14 @@ var testCases = []testCase{
 		shouldFail:    true,
 		expectedError: ":UNEXPECTED_RECORD:",
 	},
+	{
+		testType:           serverTest,
+		name:               "FailEarlyCallback",
+		flags:              []string{"-fail-early-callback"},
+		shouldFail:         true,
+		expectedError:      ":CONNECTION_REJECTED:",
+		expectedLocalError: "remote error: access denied",
+	},
 }
 
 func doExchange(test *testCase, config *Config, conn net.Conn, messageLen int, isResume bool) error {
@@ -1655,6 +1663,18 @@ func addStateMachineCoverageTests(async, splitHandshake bool, protocol protocol)
 			},
 		},
 		flags:         append(flags, "-implicit-handshake"),
+		resumeSession: true,
+	})
+	testCases = append(testCases, testCase{
+		protocol: protocol,
+		testType: serverTest,
+		name:     "Basic-Server-EarlyCallback" + suffix,
+		config: Config{
+			Bugs: ProtocolBugs{
+				MaxHandshakeRecordLength: maxHandshakeRecordLength,
+			},
+		},
+		flags:         append(flags, "-use-early-callback"),
 		resumeSession: true,
 	})
 
