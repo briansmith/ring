@@ -500,10 +500,9 @@ err:
 }
 
 int EC_GROUP_cmp(const EC_GROUP *a, const EC_GROUP *b, BN_CTX *ignored) {
-  if (a->curve_name == NID_undef || b->curve_name == NID_undef) {
-    return 0;
-  }
-  return a->curve_name == b->curve_name;
+  return a->curve_name == NID_undef ||
+         b->curve_name == NID_undef ||
+         a->curve_name != b->curve_name;
 }
 
 const EC_POINT *EC_GROUP_get0_generator(const EC_GROUP *group) {

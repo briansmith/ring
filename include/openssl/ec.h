@@ -115,7 +115,7 @@ OPENSSL_EXPORT int EC_GROUP_copy(EC_GROUP *dest, const EC_GROUP *src);
  * error. */
 OPENSSL_EXPORT EC_GROUP *EC_GROUP_dup(const EC_GROUP *a);
 
-/* EC_GROUP_cmp returns one if |a| and |b| are the same group and zero
+/* EC_GROUP_cmp returns zero if |a| and |b| are the same group and non-zero
  * otherwise. */
 OPENSSL_EXPORT int EC_GROUP_cmp(const EC_GROUP *a, const EC_GROUP *b,
                                 BN_CTX *ignored);
