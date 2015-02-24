@@ -344,8 +344,8 @@ static int aes_init_key(EVP_CIPHER_CTX *ctx, const uint8_t *key,
   return 1;
 }
 
-static int aes_cbc_cipher(EVP_CIPHER_CTX *ctx, unsigned char *out,
-                          const unsigned char *in, size_t len) {
+static int aes_cbc_cipher(EVP_CIPHER_CTX *ctx, uint8_t *out, const uint8_t *in,
+                          size_t len) {
   EVP_AES_KEY *dat = (EVP_AES_KEY *)ctx->cipher_data;
 
   if (dat->stream.cbc) {
@@ -359,8 +359,8 @@ static int aes_cbc_cipher(EVP_CIPHER_CTX *ctx, unsigned char *out,
   return 1;
 }
 
-static int aes_ecb_cipher(EVP_CIPHER_CTX *ctx, unsigned char *out,
-                          const unsigned char *in, size_t len) {
+static int aes_ecb_cipher(EVP_CIPHER_CTX *ctx, uint8_t *out, const uint8_t *in,
+                          size_t len) {
   size_t bl = ctx->cipher->block_size;
   size_t i;
   EVP_AES_KEY *dat = (EVP_AES_KEY *)ctx->cipher_data;
@@ -376,8 +376,8 @@ static int aes_ecb_cipher(EVP_CIPHER_CTX *ctx, unsigned char *out,
   return 1;
 }
 
-static int aes_ctr_cipher(EVP_CIPHER_CTX *ctx, unsigned char *out,
-                          const unsigned char *in, size_t len) {
+static int aes_ctr_cipher(EVP_CIPHER_CTX *ctx, uint8_t *out, const uint8_t *in,
+                          size_t len) {
   unsigned int num = ctx->num;
   EVP_AES_KEY *dat = (EVP_AES_KEY *)ctx->cipher_data;
 
@@ -389,6 +389,14 @@ static int aes_ctr_cipher(EVP_CIPHER_CTX *ctx, unsigned char *out,
                           dat->block);
   }
   ctx->num = (size_t)num;
+  return 1;
+}
+
+static int aes_ofb_cipher(EVP_CIPHER_CTX *ctx, uint8_t *out, const uint8_t *in,
+                          size_t len) {
+  EVP_AES_KEY *dat = (EVP_AES_KEY *)ctx->cipher_data;
+
+  CRYPTO_ofb128_encrypt(in, out, len, &dat->ks, ctx->iv, &ctx->num, dat->block);
   return 1;
 }
 
@@ -733,6 +741,12 @@ static const EVP_CIPHER aes_128_ecb = {
     NULL /* app_data */, aes_init_key,        aes_ecb_cipher,
     NULL /* cleanup */,  NULL /* ctrl */};
 
+static const EVP_CIPHER aes_128_ofb = {
+    NID_aes_128_ofb128,  1 /* block_size */,  16 /* key_size */,
+    16 /* iv_len */,     sizeof(EVP_AES_KEY), EVP_CIPH_OFB_MODE,
+    NULL /* app_data */, aes_init_key,        aes_ofb_cipher,
+    NULL /* cleanup */,  NULL /* ctrl */};
+
 static const EVP_CIPHER aes_128_gcm = {
     NID_aes_128_gcm, 1 /* block_size */, 16 /* key_size */, 12 /* iv_len */,
     sizeof(EVP_AES_GCM_CTX),
@@ -759,6 +773,12 @@ static const EVP_CIPHER aes_256_ecb = {
     NID_aes_256_ecb,     16 /* block_size */, 32 /* key_size */,
     0 /* iv_len */,      sizeof(EVP_AES_KEY), EVP_CIPH_ECB_MODE,
     NULL /* app_data */, aes_init_key,        aes_ecb_cipher,
+    NULL /* cleanup */,  NULL /* ctrl */};
+
+static const EVP_CIPHER aes_256_ofb = {
+    NID_aes_256_ofb128,  1 /* block_size */,  32 /* key_size */,
+    16 /* iv_len */,     sizeof(EVP_AES_KEY), EVP_CIPH_OFB_MODE,
+    NULL /* app_data */, aes_init_key,        aes_ofb_cipher,
     NULL /* cleanup */,  NULL /* ctrl */};
 
 static const EVP_CIPHER aes_256_gcm = {
@@ -881,6 +901,12 @@ static const EVP_CIPHER aesni_128_ecb = {
     NULL /* app_data */, aesni_init_key,      aesni_ecb_cipher,
     NULL /* cleanup */,  NULL /* ctrl */};
 
+static const EVP_CIPHER aesni_128_ofb = {
+    NID_aes_128_ofb128,  1 /* block_size */,  16 /* key_size */,
+    16 /* iv_len */,     sizeof(EVP_AES_KEY), EVP_CIPH_OFB_MODE,
+    NULL /* app_data */, aesni_init_key,      aes_ofb_cipher,
+    NULL /* cleanup */,  NULL /* ctrl */};
+
 static const EVP_CIPHER aesni_128_gcm = {
     NID_aes_128_gcm, 1 /* block_size */, 16 /* key_size */, 12 /* iv_len */,
     sizeof(EVP_AES_GCM_CTX),
@@ -907,6 +933,12 @@ static const EVP_CIPHER aesni_256_ecb = {
     NID_aes_256_ecb,     16 /* block_size */, 32 /* key_size */,
     0 /* iv_len */,      sizeof(EVP_AES_KEY), EVP_CIPH_ECB_MODE,
     NULL /* app_data */, aesni_init_key,      aesni_ecb_cipher,
+    NULL /* cleanup */,  NULL /* ctrl */};
+
+static const EVP_CIPHER aesni_256_ofb = {
+    NID_aes_256_ofb128,  1 /* block_size */,  32 /* key_size */,
+    16 /* iv_len */,     sizeof(EVP_AES_KEY), EVP_CIPH_OFB_MODE,
+    NULL /* app_data */, aesni_init_key,      aes_ofb_cipher,
     NULL /* cleanup */,  NULL /* ctrl */};
 
 static const EVP_CIPHER aesni_256_gcm = {
@@ -943,11 +975,13 @@ static char aesni_capable(void) {
 EVP_CIPHER_FUNCTION(128, cbc)
 EVP_CIPHER_FUNCTION(128, ctr)
 EVP_CIPHER_FUNCTION(128, ecb)
+EVP_CIPHER_FUNCTION(128, ofb)
 EVP_CIPHER_FUNCTION(128, gcm)
 
 EVP_CIPHER_FUNCTION(256, cbc)
 EVP_CIPHER_FUNCTION(256, ctr)
 EVP_CIPHER_FUNCTION(256, ecb)
+EVP_CIPHER_FUNCTION(256, ofb)
 EVP_CIPHER_FUNCTION(256, gcm)
 
 

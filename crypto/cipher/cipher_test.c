@@ -311,6 +311,8 @@ static int test_cipher(const char *cipher, const uint8_t *key, int kn,
     c = EVP_aes_128_cbc();
   } else if (strcmp(cipher, "AES-128-GCM") == 0) {
     c = EVP_aes_128_gcm();
+  } else if (strcmp(cipher, "AES-128-OFB") == 0) {
+    c = EVP_aes_128_ofb();
   } else if (strcmp(cipher, "AES-256-CBC") == 0) {
     c = EVP_aes_256_cbc();
   } else if (strcmp(cipher, "AES-128-CTR") == 0) {
@@ -319,6 +321,8 @@ static int test_cipher(const char *cipher, const uint8_t *key, int kn,
     c = EVP_aes_256_ctr();
   } else if (strcmp(cipher, "AES-256-GCM") == 0) {
     c = EVP_aes_256_gcm();
+  } else if (strcmp(cipher, "AES-256-OFB") == 0) {
+    c = EVP_aes_256_ofb();
   } else {
     fprintf(stderr, "Unknown cipher type %s\n", cipher);
     return 0;
