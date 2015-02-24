@@ -360,8 +360,7 @@ static int sign_raw(RSA *rsa, size_t *out_len, uint8_t *out, size_t max_out,
   }
 
   if (!RSA_private_transform(rsa, out, buf, rsa_size)) {
-      OPENSSL_PUT_ERROR(RSA, sign_raw, ERR_R_INTERNAL_ERROR);
-      goto err;
+    goto err;
   }
 
   *out_len = rsa_size;
@@ -400,7 +399,6 @@ static int decrypt(RSA *rsa, size_t *out_len, uint8_t *out, size_t max_out,
   }
 
   if (!RSA_private_transform(rsa, buf, in, rsa_size)) {
-    OPENSSL_PUT_ERROR(RSA, decrypt, ERR_R_INTERNAL_ERROR);
     goto err;
   }
 
