@@ -490,8 +490,12 @@ func (hs *serverHandshakeState) doFullHandshake() error {
 		certMsg := new(certificateMsg)
 		certMsg.certificates = hs.cert.Certificate
 		if !config.Bugs.UnauthenticatedECDH {
-			hs.writeServerHash(certMsg.marshal())
-			c.writeRecord(recordTypeHandshake, certMsg.marshal())
+			certMsgBytes := certMsg.marshal()
+			if config.Bugs.WrongCertificateMessageType {
+				certMsgBytes[0] += 42
+			}
+			hs.writeServerHash(certMsgBytes)
+			c.writeRecord(recordTypeHandshake, certMsgBytes)
 		}
 	}
 

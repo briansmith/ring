@@ -625,6 +625,10 @@ type ProtocolBugs struct {
 	// SendInvalidRecordType, if true, causes a record with an invalid
 	// content type to be sent immediately following the handshake.
 	SendInvalidRecordType bool
+
+	// WrongCertificateMessageType, if true, causes Certificate message to
+	// be sent with the wrong message type.
+	WrongCertificateMessageType bool
 }
 
 func (c *Config) serverInit() {

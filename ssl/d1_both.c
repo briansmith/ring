@@ -359,10 +359,10 @@ int dtls1_do_write(SSL *s, int type) {
 }
 
 
-/* Obtain handshake message of message type 'mt' (any if mt == -1), maximum
- * acceptable body length 'max'. Read an entire handshake message. Handshake
- * messages arrive in fragments. */
-long dtls1_get_message(SSL *s, int st1, int stn, int mt, long max,
+/* dtls1_get_message reads a handshake message of message type |msg_type| (any
+ * if |msg_type| == -1), maximum acceptable body length |max|. Read an entire
+ * handshake message. Handshake messages arrive in fragments. */
+long dtls1_get_message(SSL *s, int st1, int stn, int msg_type, long max,
                        int hash_message, int *ok) {
   int i, al;
   struct hm_header_st *msg_hdr;
@@ -377,7 +377,7 @@ long dtls1_get_message(SSL *s, int st1, int stn, int mt, long max,
      * would have to have been applied to the previous call. */
     assert(hash_message != SSL_GET_MESSAGE_DONT_HASH_MESSAGE);
     s->s3->tmp.reuse_message = 0;
-    if (mt >= 0 && s->s3->tmp.message_type != mt) {
+    if (msg_type >= 0 && s->s3->tmp.message_type != msg_type) {
       al = SSL_AD_UNEXPECTED_MESSAGE;
       OPENSSL_PUT_ERROR(SSL, dtls1_get_message, SSL_R_UNEXPECTED_MESSAGE);
       goto f_err;
@@ -399,6 +399,12 @@ again:
     goto again;
   } else if (i <= 0 && !*ok) {
     return i;
+  }
+
+  if (msg_type >= 0 && msg_hdr->type != msg_type) {
+    al = SSL_AD_UNEXPECTED_MESSAGE;
+    OPENSSL_PUT_ERROR(SSL, dtls1_get_message, SSL_R_UNEXPECTED_MESSAGE);
+    goto f_err;
   }
 
   p = (uint8_t *)s->init_buf->data;

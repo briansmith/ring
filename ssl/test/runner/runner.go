@@ -788,6 +788,29 @@ var testCases = []testCase{
 		expectedError:      ":CONNECTION_REJECTED:",
 		expectedLocalError: "remote error: access denied",
 	},
+	{
+		name: "WrongMessageType",
+		config: Config{
+			Bugs: ProtocolBugs{
+				WrongCertificateMessageType: true,
+			},
+		},
+		shouldFail:         true,
+		expectedError:      ":UNEXPECTED_MESSAGE:",
+		expectedLocalError: "remote error: unexpected message",
+	},
+	{
+		protocol: dtls,
+		name:     "WrongMessageType-DTLS",
+		config: Config{
+			Bugs: ProtocolBugs{
+				WrongCertificateMessageType: true,
+			},
+		},
+		shouldFail:         true,
+		expectedError:      ":UNEXPECTED_MESSAGE:",
+		expectedLocalError: "remote error: unexpected message",
+	},
 }
 
 func doExchange(test *testCase, config *Config, conn net.Conn, messageLen int, isResume bool) error {
