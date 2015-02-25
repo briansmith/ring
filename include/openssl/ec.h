@@ -107,10 +107,6 @@ OPENSSL_EXPORT EC_GROUP *EC_GROUP_new_by_curve_name(int nid);
 /* EC_GROUP_free frees |group| and the data that it points to. */
 OPENSSL_EXPORT void EC_GROUP_free(EC_GROUP *group);
 
-/* EC_GROUP_copy sets |*dest| equal to |*src|. It returns one on success and
- * zero otherwise. */
-OPENSSL_EXPORT int EC_GROUP_copy(EC_GROUP *dest, const EC_GROUP *src);
-
 /* EC_GROUP_dup returns a fresh |EC_GROUP| which is equal to |a| or NULL on
  * error. */
 OPENSSL_EXPORT EC_GROUP *EC_GROUP_dup(const EC_GROUP *a);
