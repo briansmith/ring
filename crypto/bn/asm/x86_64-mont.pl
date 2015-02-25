@@ -90,7 +90,6 @@ $code=<<___;
 
 .globl	bn_mul_mont
 .type	bn_mul_mont,\@function,6
-.hidden	bn_mul_mont
 .align	16
 bn_mul_mont:
 	test	\$3,${num}d

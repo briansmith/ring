@@ -63,7 +63,6 @@ rcon:
 
 .globl	${prefix}_set_encrypt_key
 .type	${prefix}_set_encrypt_key,%function
-.hidden	${prefix}_set_encrypt_key
 .align	5
 ${prefix}_set_encrypt_key:
 .Lenc_key:
@@ -235,7 +234,6 @@ $code.=<<___;
 
 .globl	${prefix}_set_decrypt_key
 .type	${prefix}_set_decrypt_key,%function
-.hidden	${prefix}_set_decrypt_key
 .align	5
 ${prefix}_set_decrypt_key:
 ___
@@ -300,7 +298,6 @@ my ($rndkey0,$rndkey1,$inout)=map("q$_",(0..3));
 $code.=<<___;
 .globl	${prefix}_${dir}crypt
 .type	${prefix}_${dir}crypt,%function
-.hidden	${prefix}_${dir}crypt
 .align	5
 ${prefix}_${dir}crypt:
 	ldr	$rounds,[$key,#240]
@@ -345,7 +342,6 @@ my ($dat,$tmp,$rndzero_n_last)=($dat0,$tmp0,$tmp1);
 $code.=<<___;
 .globl	${prefix}_cbc_encrypt
 .type	${prefix}_cbc_encrypt,%function
-.hidden	${prefix}_cbc_encrypt
 .align	5
 ${prefix}_cbc_encrypt:
 ___
@@ -653,7 +649,6 @@ my ($dat,$tmp)=($dat0,$tmp0);
 $code.=<<___;
 .globl	${prefix}_ctr32_encrypt_blocks
 .type	${prefix}_ctr32_encrypt_blocks,%function
-.hidden	${prefix}_ctr32_encrypt_blocks
 .align	5
 ${prefix}_ctr32_encrypt_blocks:
 ___

@@ -127,7 +127,6 @@ $code=<<___;
 
 .globl	asm_RC4
 .type	asm_RC4,\@function,4
-.hidden	asm_RC4
 .align	16
 asm_RC4:
 	or	$len,$len
@@ -434,7 +433,6 @@ $ido="%r9";
 $code.=<<___;
 .globl	asm_RC4_set_key
 .type	asm_RC4_set_key,\@function,3
-.hidden	asm_RC4_set_key
 .align	16
 asm_RC4_set_key:
 	lea	8($dat),$dat

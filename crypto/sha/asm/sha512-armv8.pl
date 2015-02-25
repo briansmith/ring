@@ -154,7 +154,6 @@ $code.=<<___;
 
 .globl	$func
 .type	$func,%function
-.hidden	$func
 .align	6
 $func:
 ___

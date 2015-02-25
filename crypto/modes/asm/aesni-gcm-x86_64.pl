@@ -397,7 +397,6 @@ ___
 $code.=<<___;
 .globl	aesni_gcm_decrypt
 .type	aesni_gcm_decrypt,\@function,6
-.hidden	aesni_gcm_decrypt
 .align	32
 aesni_gcm_decrypt:
 	xor	$ret,$ret
@@ -608,7 +607,6 @@ _aesni_ctr32_6x:
 
 .globl	aesni_gcm_encrypt
 .type	aesni_gcm_encrypt,\@function,6
-.hidden	aesni_gcm_encrypt
 .align	32
 aesni_gcm_encrypt:
 	xor	$ret,$ret
@@ -1038,7 +1036,6 @@ $code=<<___;	# assembler is too old
 
 .globl	aesni_gcm_encrypt
 .type	aesni_gcm_encrypt,\@abi-omnipotent
-.hidden	aesni_gcm_encrypt
 aesni_gcm_encrypt:
 	xor	%eax,%eax
 	ret
@@ -1046,7 +1043,6 @@ aesni_gcm_encrypt:
 
 .globl	aesni_gcm_decrypt
 .type	aesni_gcm_decrypt,\@abi-omnipotent
-.hidden	aesni_gcm_decrypt
 aesni_gcm_decrypt:
 	xor	%eax,%eax
 	ret

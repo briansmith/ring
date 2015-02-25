@@ -1283,7 +1283,6 @@ $code.=<<___;
 .align	16
 .globl asm_AES_set_encrypt_key
 .type  asm_AES_set_encrypt_key,\@function,3
-.hidden asm_AES_set_encrypt_key
 asm_AES_set_encrypt_key:
 	push	%rbx
 	push	%rbp
@@ -1549,7 +1548,6 @@ $code.=<<___;
 .align	16
 .globl asm_AES_set_decrypt_key
 .type  asm_AES_set_decrypt_key,\@function,3
-.hidden asm_AES_set_decrypt_key
 asm_AES_set_decrypt_key:
 	push	%rbx
 	push	%rbp

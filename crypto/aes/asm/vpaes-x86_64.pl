@@ -671,7 +671,6 @@ _vpaes_schedule_mangle:
 #
 .globl	${PREFIX}_set_encrypt_key
 .type	${PREFIX}_set_encrypt_key,\@function,3
-.hidden	${PREFIX}_set_encrypt_key
 .align	16
 ${PREFIX}_set_encrypt_key:
 ___
@@ -720,7 +719,6 @@ $code.=<<___;
 
 .globl	${PREFIX}_set_decrypt_key
 .type	${PREFIX}_set_decrypt_key,\@function,3
-.hidden	${PREFIX}_set_decrypt_key
 .align	16
 ${PREFIX}_set_decrypt_key:
 ___
@@ -774,7 +772,6 @@ $code.=<<___;
 
 .globl	${PREFIX}_encrypt
 .type	${PREFIX}_encrypt,\@function,3
-.hidden	${PREFIX}_encrypt
 .align	16
 ${PREFIX}_encrypt:
 ___
@@ -818,7 +815,6 @@ $code.=<<___;
 
 .globl	${PREFIX}_decrypt
 .type	${PREFIX}_decrypt,\@function,3
-.hidden	${PREFIX}_decrypt
 .align	16
 ${PREFIX}_decrypt:
 ___
@@ -868,7 +864,6 @@ my ($inp,$out,$len,$key,$ivp,$enc)=("%rdi","%rsi","%rdx","%rcx","%r8","%r9");
 $code.=<<___;
 .globl	${PREFIX}_cbc_encrypt
 .type	${PREFIX}_cbc_encrypt,\@function,6
-.hidden	${PREFIX}_cbc_encrypt
 .align	16
 ${PREFIX}_cbc_encrypt:
 	xchg	$key,$len
