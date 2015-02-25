@@ -94,6 +94,10 @@ typedef struct DES_ks {
 OPENSSL_EXPORT void DES_set_key(const DES_cblock *key,
                                 DES_key_schedule *schedule);
 
+/* DES_set_odd_parity sets the parity bits (the least-significant bits in each
+ * byte) of |key| given the other bits in each byte. */
+OPENSSL_EXPORT void DES_set_odd_parity(DES_cblock *key);
+
 /* DES_ecb_encrypt encrypts (or decrypts, if |is_encrypt| is |DES_DECRYPT|) a
  * single DES block (8 bytes) from in to out, using the key configured in
  * |schedule|. */
