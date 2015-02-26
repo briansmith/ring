@@ -562,9 +562,10 @@ type ProtocolBugs struct {
 	// retransmit at the record layer.
 	SequenceNumberIncrement uint64
 
-	// RSAServerKeyExchange, if true, causes the server to send a
-	// ServerKeyExchange message in the plain RSA key exchange.
-	RSAServerKeyExchange bool
+	// RSAEphemeralKey, if true, causes the server to send a
+	// ServerKeyExchange message containing an ephemeral key (as in
+	// RSA_EXPORT) in the plain RSA key exchange.
+	RSAEphemeralKey bool
 
 	// SRTPMasterKeyIdentifer, if not empty, is the SRTP MKI value that the
 	// client offers when negotiating SRTP. MKI support is still missing so

@@ -575,11 +575,11 @@ var testCases = []testCase{
 		expectedError: ":WRONG_CIPHER_RETURNED:",
 	},
 	{
-		name: "RSAServerKeyExchange",
+		name: "RSAEphemeralKey",
 		config: Config{
 			CipherSuites: []uint16{TLS_RSA_WITH_AES_128_CBC_SHA},
 			Bugs: ProtocolBugs{
-				RSAServerKeyExchange: true,
+				RSAEphemeralKey: true,
 			},
 		},
 		shouldFail:    true,

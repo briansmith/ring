@@ -289,7 +289,7 @@ func (s tls10MAC) MAC(digestBuf, seq, header, length, data []byte) []byte {
 }
 
 func rsaKA(version uint16) keyAgreement {
-	return &rsaKeyAgreement{}
+	return &rsaKeyAgreement{version: version}
 }
 
 func ecdheECDSAKA(version uint16) keyAgreement {
