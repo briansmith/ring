@@ -309,9 +309,6 @@ EC_KEY *d2i_ECPrivateKey(EC_KEY **a, const uint8_t **in, long len) {
       OPENSSL_PUT_ERROR(EC, d2i_ECPrivateKey, ERR_R_MALLOC_FAILURE);
       goto err;
     }
-    if (a) {
-      *a = ret;
-    }
   } else {
     ret = *a;
   }
@@ -380,17 +377,17 @@ EC_KEY *d2i_ECPrivateKey(EC_KEY **a, const uint8_t **in, long len) {
     ret->enc_flag |= EC_PKEY_NO_PUBKEY;
   }
 
+  if (a) {
+    *a = ret;
+  }
   ok = 1;
 
 err:
   if (!ok) {
-    if (ret) {
+    if (ret && (a == NULL || *a != ret)) {
       EC_KEY_free(ret);
     }
     ret = NULL;
-    if (a) {
-      *a = ret;
-    }
   }
 
   if (priv_key) {
