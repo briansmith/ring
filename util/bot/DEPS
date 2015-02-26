@@ -25,6 +25,17 @@ hooks = [
                 '-s', 'boringssl/util/bot/cmake-linux64.tar.gz.sha1',
     ],
   },
+  {
+    'name': 'cmake_mac',
+    'pattern': '.',
+    'action': [ 'download_from_google_storage',
+                '--no_resume',
+                '--platform=darwin',
+                '--no_auth',
+                '--bucket', 'chromium-tools',
+                '-s', 'boringssl/util/bot/cmake-mac.tar.gz.sha1',
+    ],
+  },
   # TODO(davidben): The cycle time on these bots is on the order of seconds, so
   # these scripts do not currently make any attempt to avoid the extraction step
   # when it's not needed.
@@ -35,6 +46,15 @@ hooks = [
                 'boringssl/util/bot/extract.py',
                 'boringssl/util/bot/cmake-linux64.tar.gz',
                 'boringssl/util/bot/cmake-linux64/',
+    ],
+  },
+  {
+    'name': 'cmake_mac_extract',
+    'pattern': '.',
+    'action': [ 'python',
+                'boringssl/util/bot/extract.py',
+                'boringssl/util/bot/cmake-mac.tar.gz',
+                'boringssl/util/bot/cmake-mac/',
     ],
   },
 ]
