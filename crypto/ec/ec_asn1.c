@@ -290,16 +290,9 @@ EC_KEY *d2i_ECPrivateKey(EC_KEY **a, const uint8_t **in, long len) {
   EC_KEY *ret = NULL;
   EC_PRIVATEKEY *priv_key = NULL;
 
-  priv_key = EC_PRIVATEKEY_new();
-  if (priv_key == NULL) {
-    OPENSSL_PUT_ERROR(EC, d2i_ECPrivateKey, ERR_R_MALLOC_FAILURE);
-    return NULL;
-  }
-
-  priv_key = d2i_EC_PRIVATEKEY(&priv_key, in, len);
+  priv_key = d2i_EC_PRIVATEKEY(NULL, in, len);
   if (priv_key == NULL) {
     OPENSSL_PUT_ERROR(EC, d2i_ECPrivateKey, ERR_R_EC_LIB);
-    EC_PRIVATEKEY_free(priv_key);
     return NULL;
   }
 
