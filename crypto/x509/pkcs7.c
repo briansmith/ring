@@ -19,6 +19,7 @@
 #include <openssl/bytestring.h>
 #include <openssl/err.h>
 #include <openssl/obj.h>
+#include <openssl/pem.h>
 #include <openssl/stack.h>
 
 #include "../bytestring/internal.h"
@@ -210,6 +211,50 @@ err:
     }
   }
 
+  return ret;
+}
+
+int PKCS7_get_PEM_certificates(STACK_OF(X509) *out_certs, BIO *pem_bio) {
+  uint8_t *data;
+  long len;
+  int ret;
+
+  /* Even though we pass PEM_STRING_PKCS7 as the expected PEM type here, PEM
+   * internally will actually allow several other values too, including
+   * "CERTIFICATE". */
+  if (!PEM_bytes_read_bio(&data, &len, NULL /* PEM type output */,
+                          PEM_STRING_PKCS7, pem_bio,
+                          NULL /* password callback */,
+                          NULL /* password callback argument */)) {
+    return 0;
+  }
+
+  CBS cbs;
+  CBS_init(&cbs, data, len);
+  ret = PKCS7_get_certificates(out_certs, &cbs);
+  OPENSSL_free(data);
+  return ret;
+}
+
+int PKCS7_get_PEM_CRLs(STACK_OF(X509_CRL) *out_crls, BIO *pem_bio) {
+  uint8_t *data;
+  long len;
+  int ret;
+
+  /* Even though we pass PEM_STRING_PKCS7 as the expected PEM type here, PEM
+   * internally will actually allow several other values too, including
+   * "CERTIFICATE". */
+  if (!PEM_bytes_read_bio(&data, &len, NULL /* PEM type output */,
+                          PEM_STRING_PKCS7, pem_bio,
+                          NULL /* password callback */,
+                          NULL /* password callback argument */)) {
+    return 0;
+  }
+
+  CBS cbs;
+  CBS_init(&cbs, data, len);
+  ret = PKCS7_get_CRLs(out_crls, &cbs);
+  OPENSSL_free(data);
   return ret;
 }
 

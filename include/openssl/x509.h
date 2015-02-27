@@ -1176,6 +1176,17 @@ OPENSSL_EXPORT int PKCS7_get_CRLs(STACK_OF(X509_CRL) *out_crls, CBS *cbs);
  * |crls| to |out|. It returns one on success and zero on error. */
 OPENSSL_EXPORT int PKCS7_bundle_CRLs(CBB *out, const STACK_OF(X509_CRL) *crls);
 
+/* PKCS7_get_PEM_certificates reads a PEM-encoded, PKCS#7, SignedData structure
+ * from |pem_bio| and appends the included certificates to |out_certs|. It
+ * returns one on success and zero on error. */
+OPENSSL_EXPORT int PKCS7_get_PEM_certificates(STACK_OF(X509) *out_certs,
+                                              BIO *pem_bio);
+
+/* PKCS7_get_PEM_CRLs reads a PEM-encoded, PKCS#7, SignedData structure from
+ * |pem_bio| and appends the included CRLs to |out_crls|. It returns one on
+ * success and zero on error. */
+OPENSSL_EXPORT int PKCS7_get_PEM_CRLs(STACK_OF(X509_CRL) *out_crls,
+                                      BIO *pem_bio);
 
 /* EVP_PK values indicate the algorithm of the public key in a certificate. */
 

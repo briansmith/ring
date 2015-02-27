@@ -412,6 +412,60 @@ static const uint8_t kOpenSSLCRL[] = {
     0xf0, 0x00, 0x54, 0x31, 0x00,
 };
 
+/* kPEMCert is the result of exporting the mail.google.com certificate from
+ * Chrome and then running it through:
+ *   openssl pkcs7 -inform DER -in mail.google.com -outform PEM */
+static const char kPEMCert[] =
+    "-----BEGIN PKCS7-----\n"
+    "MIID+wYJKoZIhvcNAQcCoIID7DCCA+gCAQExADALBgkqhkiG9w0BBwGgggPQMIID\n"
+    "zDCCArSgAwIBAgIIWesoywKxoNQwDQYJKoZIhvcNAQELBQAwSTELMAkGA1UEBhMC\n"
+    "VVMxEzARBgNVBAoTCkdvb2dsZSBJbmMxJTAjBgNVBAMTHEdvb2dsZSBJbnRlcm5l\n"
+    "dCBBdXRob3JpdHkgRzIwHhcNMTUwMjExMTQxNTA2WhcNMTUwNTEyMDAwMDAwWjBp\n"
+    "MQswCQYDVQQGEwJVUzETMBEGA1UECAwKQ2FsaWZvcm5pYTEWMBQGA1UEBwwNTW91\n"
+    "bnRhaW4gVmlldzETMBEGA1UECgwKR29vZ2xlIEluYzEYMBYGA1UEAwwPbWFpbC5n\n"
+    "b29nbGUuY29tMFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAE7MdALmCkcRRf/tzQ\n"
+    "a8eu3J7S5CTQa5ns0ReF9ktlbB1RL56BVGAu4p7BrT32D6gDpiggXq3gxN81A0TG\n"
+    "C2yICKOCAWEwggFdMB0GA1UdJQQWMBQGCCsGAQUFBwMBBggrBgEFBQcDAjAsBgNV\n"
+    "HREEJTAjgg9tYWlsLmdvb2dsZS5jb22CEGluYm94Lmdvb2dsZS5jb20wCwYDVR0P\n"
+    "BAQDAgeAMGgGCCsGAQUFBwEBBFwwWjArBggrBgEFBQcwAoYfaHR0cDovL3BraS5n\n"
+    "b29nbGUuY29tL0dJQUcyLmNydDArBggrBgEFBQcwAYYfaHR0cDovL2NsaWVudHMx\n"
+    "Lmdvb2dsZS5jb20vb2NzcDAdBgNVHQ4EFgQUQqsYsRoWLiG6qmV2N1mpYaHawxAw\n"
+    "DAYDVR0TAQH/BAIwADAfBgNVHSMEGDAWgBRK3QYWG7z2aLV29YG2u2IaulqBLzAX\n"
+    "BgNVHSAEEDAOMAwGCisGAQQB1nkCBQEwMAYDVR0fBCkwJzAloCOgIYYfaHR0cDov\n"
+    "L3BraS5nb29nbGUuY29tL0dJQUcyLmNybDANBgkqhkiG9w0BAQsFAAOCAQEAKNh3\n"
+    "isNuGBisPKVlekOsZR6S8oP/fS/xt6Hqvg0EwFXvhxoJ40rxAB2LMykY17e+ln3P\n"
+    "MwBBlRkwY1btcDT15JwzgaZb38rq/r+Pkb5Qgmx/InA/pw0QHDtwHQp5uXZuvu6p\n"
+    "J/SlCwyq7EOvByWdVQcMU/dhGa3idXEkn/zwfqcG6YjdWKoDmXWZYv3RiP3wJcRB\n"
+    "9+3U1wOe3uebnZLRWO6/w0to1XY8TFHklyw5rwIE5sbxOx5N3Ne8+GgPrUDvGAz0\n"
+    "rAUKnh3b7GNXL1qlZh2qkhB6rUzvtPpg397Asg3xVtExCHOk4zPqzzicttoEbVVy\n"
+    "0T8rIMUNwC4Beh4JVjEA\n"
+    "-----END PKCS7-----\n";
+
+/* kPEMCRL is the result of downloading the Equifax CRL and running:
+     openssl crl2pkcs7 -inform DER -in secureca.crl  */
+static const char kPEMCRL[] =
+    "-----BEGIN PKCS7-----\n"
+    "MIIDhQYJKoZIhvcNAQcCoIIDdjCCA3ICAQExADALBgkqhkiG9w0BBwGgAKGCA1gw\n"
+    "ggNUMIICvTANBgkqhkiG9w0BAQUFADBOMQswCQYDVQQGEwJVUzEQMA4GA1UEChMH\n"
+    "RXF1aWZheDEtMCsGA1UECxMkRXF1aWZheCBTZWN1cmUgQ2VydGlmaWNhdGUgQXV0\n"
+    "aG9yaXR5Fw0xNTAyMjcwMTIzMDBaFw0xNTAzMDkwMTIzMDBaMIICPDAUAgMPWOQX\n"
+    "DTE0MDQyNzA4MTkyMlowFAIDFHYZFw0xNDA2MTgxNTAwMDNaMBQCAw+a+xcNMTQw\n"
+    "NDI5MTgwOTE3WjAUAgMUi8AXDTE0MDcwOTE5NDYzM1owFAIDFOScFw0xNDA0MTYy\n"
+    "MzM5MzVaMBQCAw+GBxcNMTQwNTIxMTU1MDUzWjAUAgMS4ikXDTE0MDYxNzE4NTUx\n"
+    "NVowFAIDDUJmFw0xMjA2MjcxNzEwNTNaMBQCAwMeMxcNMDIwNTE1MTMwNjExWjAU\n"
+    "AgMS4iMXDTE0MDYwNjIwNDAyMVowFAIDE5yrFw0xMDA3MjkxNjQ0MzlaMBQCAxLG\n"
+    "ChcNMTQwNjA2MjIyMTM5WjAUAgMDJYUXDTAyMDUxNDE4MTE1N1owFAIDFIbmFw0x\n"
+    "NDA3MjUwMjAwMzhaMBQCAxOcoRcNMTAwNzI5MTY0NzMyWjAUAgMVTVwXDTE0MDQz\n"
+    "MDAwMDQ0MlowFAIDD/otFw0xNDA2MTcxODUwMTFaMBQCAxN1VRcNMTUwMTE4MDIy\n"
+    "MTMzWjAUAgMPVpYXDTE0MDYyNDEyMzEwMlowFAIDC4CKFw0xMjA2MjcxNzEwMjVa\n"
+    "MBQCAw+UFhcNMTAwMzAxMTM0NTMxWjAUAgMUFrMXDTE0MDYxODE0MzI1NlowFAID\n"
+    "CuGFFw0xMjA2MjcxNzEwMTdaMBQCAxTMPhcNMTQwNzExMTI1NTMxWjAUAgMQW8sX\n"
+    "DTEwMDczMDIxMzEyMFowFAIDFWofFw0xNDAyMjYxMjM1MTlaMA0GCSqGSIb3DQEB\n"
+    "BQUAA4GBAB1cJwcRA/IAvfRGPnH9EISD2dLSGaAg9xpDPazaM/y3QmAapKiyB1xR\n"
+    "FsBCgAoP8EdbS3iQr8esSPjKPBNe9tGIrlWjDIpiRyn4crgkF6+yBh6ncnarlh3g\n"
+    "fNQMQoI9So4Vdy88Kow6BBBV3Lu6sZHue+cjxXETrmshNdNk8ABUMQA=\n"
+    "-----END PKCS7-----\n";
+
 static int test_cert_reparse(const uint8_t *der_bytes, size_t der_len) {
   CBS pkcs7;
   CBB cbb;
@@ -540,12 +594,58 @@ static int test_crl_reparse(const uint8_t *der_bytes, size_t der_len) {
   return 1;
 }
 
+static int test_pem_certs(const char *pem) {
+  BIO *bio = BIO_new_mem_buf((char *) pem, strlen(pem));
+  STACK_OF(X509) *certs = sk_X509_new_null();
+
+  if (!PKCS7_get_PEM_certificates(certs, bio)) {
+    fprintf(stderr, "PKCS7_get_PEM_certificates failed.\n");
+    return 0;
+  }
+
+  if (sk_X509_num(certs) != 1) {
+    fprintf(stderr,
+            "Bad number of certificates from PKCS7_get_PEM_certificates: %u\n",
+            (unsigned)sk_X509_num(certs));
+    return 0;
+  }
+
+  BIO_free(bio);
+  sk_X509_pop_free(certs, X509_free);
+
+  return 1;
+}
+
+static int test_pem_crls(const char *pem) {
+  BIO *bio = BIO_new_mem_buf((char *) pem, strlen(pem));
+  STACK_OF(X509_CRL) *crls = sk_X509_CRL_new_null();
+
+  if (!PKCS7_get_PEM_CRLs(crls, bio)) {
+    fprintf(stderr, "PKCS7_get_PEM_CRLs failed.\n");
+    return 0;
+  }
+
+  if (sk_X509_CRL_num(crls) != 1) {
+    fprintf(stderr,
+            "Bad number of CRLs from PKCS7_get_PEM_CRLs: %u\n",
+            (unsigned)sk_X509_CRL_num(crls));
+    return 0;
+  }
+
+  BIO_free(bio);
+  sk_X509_CRL_pop_free(crls, X509_CRL_free);
+
+  return 1;
+}
+
 int main(void) {
   CRYPTO_library_init();
 
   if (!test_cert_reparse(kPKCS7NSS, sizeof(kPKCS7NSS)) ||
       !test_cert_reparse(kPKCS7Windows, sizeof(kPKCS7Windows)) ||
-      !test_crl_reparse(kOpenSSLCRL, sizeof(kOpenSSLCRL))) {
+      !test_crl_reparse(kOpenSSLCRL, sizeof(kOpenSSLCRL)) ||
+      !test_pem_certs(kPEMCert) ||
+      !test_pem_crls(kPEMCRL)) {
     return 1;
   }
 
