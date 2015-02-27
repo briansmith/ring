@@ -15,6 +15,7 @@
 """Extracts archives."""
 
 
+import optparse
 import os
 import os.path
 import tarfile
@@ -23,21 +24,16 @@ import sys
 import zipfile
 
 
-def FixPath(output, path):
+def CheckedJoin(output, path):
   """
-  FixPath removes the first directory from path and returns the it and the
-  concatenation of output and the remainder. It does sanity checks to ensure
-  the resulting path is under output, but shouldn't be used on untrusted input.
+  CheckedJoin returns os.path.join(output, path). It does sanity checks to
+  ensure the resulting path is under output, but shouldn't be used on untrusted
+  input.
   """
-  # Even on Windows, zip files must always use forward slashes.
-  if '\\' in path or path.startswith('/'):
+  path = os.path.normpath(path)
+  if os.path.isabs(path) or path.startswith('.'):
     raise ValueError(path)
-
-  first, rest = path.split('/', 1)
-  rest = os.path.normpath(rest)
-  if os.path.isabs(rest) or rest.startswith('.'):
-    raise ValueError(rest)
-  return first, os.path.join(output, rest)
+  return os.path.join(output, path)
 
 
 def IterateZip(path):
@@ -47,6 +43,8 @@ def IterateZip(path):
   """
   with zipfile.ZipFile(path, 'r') as zip_file:
     for info in zip_file.infolist():
+      if info.filename.endswith('/'):
+        continue
       yield (info.filename, None, zip_file.open(info))
 
 
@@ -65,11 +63,16 @@ def IterateTar(path):
 
 
 def main(args):
-  if len(args) != 3:
-    print >> sys.stderr, 'Usage: %s ARCHIVE OUTPUT' % (args[0],)
+  parser = optparse.OptionParser(usage='Usage: %prog ARCHIVE OUTPUT')
+  parser.add_option('--no-prefix', dest='no_prefix', action='store_true',
+                    help='Do not remove a prefix from paths in the archive.')
+  options, args = parser.parse_args(args)
+
+  if len(args) != 2:
+    parser.print_help()
     return 1
 
-  _, archive, output = args
+  archive, output = args
 
   if not os.path.exists(archive):
     # Skip archives that weren't downloaded.
@@ -89,32 +92,48 @@ def main(args):
 
     print "Extracting %s to %s" % (archive, output)
     prefix = None
+    num_extracted = 0
     for path, mode, inp in entries:
-      # Pivot the path onto the output directory.
-      new_prefix, fixed_path = FixPath(output, path)
+      # Even on Windows, zip files must always use forward slashes.
+      if '\\' in path or path.startswith('/'):
+        raise ValueError(path)
 
-      # Ensure the archive is consistent.
-      if prefix is None:
-        prefix = new_prefix
-      if prefix != new_prefix:
-        raise ValueError((prefix, new_prefix))
+      if not options.no_prefix:
+        new_prefix, rest = path.split('/', 1)
 
-      # Extract the file.
+        # Ensure the archive is consistent.
+        if prefix is None:
+          prefix = new_prefix
+        if prefix != new_prefix:
+          raise ValueError((prefix, new_prefix))
+      else:
+        rest = path
+
+      # Extract the file into the output directory.
+      fixed_path = CheckedJoin(output, rest)
       if not os.path.isdir(os.path.dirname(fixed_path)):
         os.makedirs(os.path.dirname(fixed_path))
-      with open(fixed_path, 'w') as out:
-        out.write(inp.read())
+      with open(fixed_path, 'wb') as out:
+        shutil.copyfileobj(inp, out)
 
       # Fix up permissions if needbe.
       # TODO(davidben): To be extra tidy, this should only track the execute bit
       # as in git.
       if mode is not None:
         os.chmod(fixed_path, mode)
+
+      # Print every 100 files, so bots do not time out on large archives.
+      num_extracted += 1
+      if num_extracted % 100 == 0:
+        print "Extracted %d files..." % (num_extracted,)
   finally:
     entries.close()
+
+  if num_extracted % 100 == 0:
+    print "Done. Extracted %d files." % (num_extracted,)
 
   return 0
 
 
 if __name__ == '__main__':
-  sys.exit(main(sys.argv))
+  sys.exit(main(sys.argv[1:]))
