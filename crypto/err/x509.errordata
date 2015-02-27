@@ -3,6 +3,7 @@ X509,function,101,ASN1_item_sign_ctx
 X509,function,102,ASN1_item_verify
 X509,function,103,NETSCAPE_SPKI_b64_decode
 X509,function,104,NETSCAPE_SPKI_b64_encode
+X509,function,158,PKCS7_get_CRLs
 X509,function,105,PKCS7_get_certificates
 X509,function,106,X509_ATTRIBUTE_create_by_NID
 X509,function,107,X509_ATTRIBUTE_create_by_OBJ
@@ -52,6 +53,7 @@ X509,function,150,get_cert_by_subject
 X509,function,151,i2d_DSA_PUBKEY
 X509,function,152,i2d_EC_PUBKEY
 X509,function,153,i2d_RSA_PUBKEY
+X509,function,157,pkcs7_parse_header
 X509,function,154,x509_name_encode
 X509,function,155,x509_name_ex_d2i
 X509,function,156,x509_name_ex_new
@@ -78,6 +80,7 @@ X509,reason,119,NEWER_CRL_NOT_NEWER
 X509,reason,120,NOT_PKCS7_SIGNED_DATA
 X509,reason,121,NO_CERTIFICATES_INCLUDED
 X509,reason,122,NO_CERT_SET_FOR_US_TO_VERIFY
+X509,reason,136,NO_CRLS_INCLUDED
 X509,reason,123,NO_CRL_NUMBER
 X509,reason,124,PUBLIC_KEY_DECODE_ERROR
 X509,reason,125,PUBLIC_KEY_ENCODE_ERROR
