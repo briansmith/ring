@@ -112,6 +112,15 @@ OPENSSL_EXPORT void DES_ncbc_encrypt(const uint8_t *in, uint8_t *out,
                                      const DES_key_schedule *schedule,
                                      DES_cblock *ivec, int enc);
 
+/* DES_ecb3_encrypt encrypts (or decrypts, if |enc| is |DES_DECRYPT|) a single
+ * block (8 bytes) of data from |input| to |output| using 3DES. */
+OPENSSL_EXPORT void DES_ecb3_encrypt(const DES_cblock *input,
+                                     DES_cblock *output,
+                                     const DES_key_schedule *ks1,
+                                     const DES_key_schedule *ks2,
+                                     const DES_key_schedule *ks3,
+                                     int enc);
+
 /* DES_ede3_cbc_encrypt encrypts (or decrypts, if |enc| is |DES_DECRYPT|) |len|
  * bytes from |in| to |out| with 3DES in CBC mode. 3DES uses three keys, thus
  * the function takes three different |DES_key_schedule|s. */
