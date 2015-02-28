@@ -257,31 +257,23 @@ const EVP_MD *EVP_md5_sha1(void) { return &md5_sha1_md; }
 struct nid_to_digest {
   int nid;
   const EVP_MD* (*md_func)(void);
-  const char *short_name;
-  const char *long_name;
 };
 
 static const struct nid_to_digest nid_to_digest_mapping[] = {
-  { NID_md5, EVP_md5, SN_md5, LN_md5 },
-  { NID_sha1, EVP_sha1, SN_sha1, LN_sha1 },
-  { NID_sha224, EVP_sha224, SN_sha224, LN_sha224 },
-  { NID_sha256, EVP_sha256, SN_sha256, LN_sha256 },
-  { NID_sha384, EVP_sha384, SN_sha384, LN_sha384 },
-  { NID_sha512, EVP_sha512, SN_sha512, LN_sha512 },
-  { NID_md5_sha1, EVP_md5_sha1, SN_md5_sha1, LN_md5_sha1 },
-  { NID_ecdsa_with_SHA1, EVP_sha1, SN_ecdsa_with_SHA1, NULL },
-  { NID_md5WithRSAEncryption, EVP_md5, SN_md5WithRSAEncryption,
-    LN_md5WithRSAEncryption },
-  { NID_sha1WithRSAEncryption, EVP_sha1, SN_sha1WithRSAEncryption,
-    LN_sha1WithRSAEncryption },
-  { NID_sha224WithRSAEncryption, EVP_sha224, SN_sha224WithRSAEncryption,
-    LN_sha224WithRSAEncryption },
-  { NID_sha256WithRSAEncryption, EVP_sha256, SN_sha256WithRSAEncryption,
-    LN_sha256WithRSAEncryption },
-  { NID_sha384WithRSAEncryption, EVP_sha384, SN_sha384WithRSAEncryption,
-    LN_sha384WithRSAEncryption },
-  { NID_sha512WithRSAEncryption, EVP_sha512, SN_sha512WithRSAEncryption,
-    LN_sha512WithRSAEncryption },
+  { NID_md5, EVP_md5 },
+  { NID_sha1, EVP_sha1 },
+  { NID_sha224, EVP_sha224 },
+  { NID_sha256, EVP_sha256 },
+  { NID_sha384, EVP_sha384 },
+  { NID_sha512, EVP_sha512 },
+  { NID_md5_sha1, EVP_md5_sha1 },
+  { NID_ecdsa_with_SHA1, EVP_sha1 },
+  { NID_md5WithRSAEncryption, EVP_md5 },
+  { NID_sha1WithRSAEncryption, EVP_sha1 },
+  { NID_sha224WithRSAEncryption, EVP_sha224 },
+  { NID_sha256WithRSAEncryption, EVP_sha256 },
+  { NID_sha384WithRSAEncryption, EVP_sha384 },
+  { NID_sha512WithRSAEncryption, EVP_sha512 },
 };
 
 const EVP_MD* EVP_get_digestbynid(int nid) {

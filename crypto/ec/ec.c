@@ -879,10 +879,6 @@ const EC_METHOD *EC_GROUP_method_of(const EC_GROUP *group) {
   return NULL;
 }
 
-int EC_METHOD_get_field_type(const EC_METHOD *meth) {
-  return NID_X9_62_prime_field;
-}
-
 void EC_GROUP_set_point_conversion_form(EC_GROUP *group,
                                         point_conversion_form_t form) {
   if (form != POINT_CONVERSION_UNCOMPRESSED) {
