@@ -41,7 +41,6 @@ add_library(
 
   cbc.c
   ctr.c
-  ofb.c
   cfb.c
   gcm.c
 

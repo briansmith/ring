@@ -81,8 +81,6 @@ static const EVP_CIPHER *GetCipher(const std::string &name) {
     return EVP_aes_128_cbc();
   } else if (name == "AES-128-GCM") {
     return EVP_aes_128_gcm();
-  } else if (name == "AES-128-OFB") {
-    return EVP_aes_128_ofb();
   } else if (name == "AES-192-CBC") {
     return EVP_aes_192_cbc();
   } else if (name == "AES-192-ECB") {
@@ -95,8 +93,6 @@ static const EVP_CIPHER *GetCipher(const std::string &name) {
     return EVP_aes_256_ctr();
   } else if (name == "AES-256-GCM") {
     return EVP_aes_256_gcm();
-  } else if (name == "AES-256-OFB") {
-    return EVP_aes_256_ofb();
   }
   return nullptr;
 }
