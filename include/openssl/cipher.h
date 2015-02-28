@@ -102,12 +102,6 @@ OPENSSL_EXPORT const EVP_CIPHER *EVP_aes_192_gcm(void);
  * ciphertext. */
 OPENSSL_EXPORT const EVP_CIPHER *EVP_enc_null(void);
 
-/* EVP_rc2_40_cbc returns a cipher that implements 40-bit RC2 in CBC mode. This
- * is obviously very, very weak and is included only in order to read PKCS#12
- * files, which often encrypt the certificate chain using this cipher. It is
- * deliberately not exported. */
-const EVP_CIPHER *EVP_rc2_40_cbc(void);
-
 /* EVP_get_cipherbynid returns the cipher corresponding to the given NID, or
  * NULL if no such cipher is known. */
 OPENSSL_EXPORT const EVP_CIPHER *EVP_get_cipherbynid(int nid);
@@ -408,8 +402,8 @@ OPENSSL_EXPORT const EVP_CIPHER *EVP_get_cipherbyname(const char *name);
 /* EVP_CIPHER_CTX_ctrl commands. */
 #define EVP_CTRL_INIT 0x0
 #define EVP_CTRL_SET_KEY_LENGTH 0x1
-#define EVP_CTRL_GET_RC2_KEY_BITS 0x2
-#define EVP_CTRL_SET_RC2_KEY_BITS 0x3
+     /* EVP_CTRL_GET_RC2_KEY_BITS 0x2 */
+     /* EVP_CTRL_SET_RC2_KEY_BITS 0x3 */
 #define EVP_CTRL_GET_RC5_ROUNDS 0x4
 #define EVP_CTRL_SET_RC5_ROUNDS 0x5
 #define EVP_CTRL_RAND_KEY 0x6

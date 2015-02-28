@@ -10,7 +10,6 @@ add_library(
   aead.c
 
   e_null.c
-  e_rc2.c
   e_rc4.c
   e_des.c
   e_aes.c
