@@ -174,34 +174,6 @@ void CRYPTO_cbc128_encrypt(const uint8_t *in, uint8_t *out, size_t len,
 void CRYPTO_cbc128_decrypt(const uint8_t *in, uint8_t *out, size_t len,
                            const void *key, uint8_t ivec[16], block128_f block);
 
-/* CFB. */
-
-/* CRYPTO_cfb128_encrypt encrypts (or decrypts, if |enc| is zero) |len| bytes
- * from |in| to |out| using |block| in CFB mode. There's no requirement that
- * |len| be a multiple of any value and any partial blocks are stored in |ivec|
- * and |*num|, the latter must be zero before the initial call. */
-void CRYPTO_cfb128_encrypt(const uint8_t *in, uint8_t *out, size_t len,
-                           const void *key, uint8_t ivec[16], int *num, int enc,
-                           block128_f block);
-
-/* CRYPTO_cfb128_8_encrypt encrypts (or decrypts, if |enc| is zero) |len| bytes
- * from |in| to |out| using |block| in CFB-8 mode. Prior to the first call
- * |num| should be set to zero. */
-void CRYPTO_cfb128_8_encrypt(const uint8_t *in, uint8_t *out, size_t len,
-                             const void *key, uint8_t ivec[16], int *num,
-                             int enc, block128_f block);
-
-/* CRYPTO_cfb128_1_encrypt encrypts (or decrypts, if |enc| is zero) |len| bytes
- * from |in| to |out| using |block| in CFB-1 mode. Prior to the first call
- * |num| should be set to zero. */
-void CRYPTO_cfb128_1_encrypt(const uint8_t *in, uint8_t *out, size_t bits,
-                             const void *key, uint8_t ivec[16], int *num,
-                             int enc, block128_f block);
-
-size_t CRYPTO_cts128_encrypt_block(const uint8_t *in, uint8_t *out, size_t len,
-                                   const void *key, uint8_t ivec[16],
-                                   block128_f block);
-
 
 #if defined(__cplusplus)
 }  /* extern C */
