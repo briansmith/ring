@@ -101,8 +101,6 @@ static EVP_PKEY_CTX *evp_pkey_ctx_new(EVP_PKEY *pkey, ENGINE *e, int id) {
 
   if (pmeth == NULL) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_UNSUPPORTED_ALGORITHM);
-    const char *name = OBJ_nid2sn(id);
-    ERR_add_error_dataf("algorithm %d (%s)", id, name);
     return NULL;
   }
 

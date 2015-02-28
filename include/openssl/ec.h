@@ -315,9 +315,6 @@ typedef struct ec_method_st EC_METHOD;
 /* EC_GROUP_method_of returns NULL. */
 OPENSSL_EXPORT const EC_METHOD *EC_GROUP_method_of(const EC_GROUP *group);
 
-/* EC_METHOD_get_field_type returns NID_X9_62_prime_field. */
-OPENSSL_EXPORT int EC_METHOD_get_field_type(const EC_METHOD *meth);
-
 /* EC_GROUP_set_point_conversion_form aborts the process if |form| is not
  * |POINT_CONVERSION_UNCOMPRESSED| and otherwise does nothing. */
 OPENSSL_EXPORT void EC_GROUP_set_point_conversion_form(

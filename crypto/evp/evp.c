@@ -277,7 +277,6 @@ int EVP_PKEY_set_type(EVP_PKEY *pkey, int type) {
   ameth = EVP_PKEY_asn1_find(NULL, type);
   if (ameth == NULL) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_UNSUPPORTED_ALGORITHM);
-    ERR_add_error_dataf("algorithm %d (%s)", type, OBJ_nid2sn(type));
     return 0;
   }
 
