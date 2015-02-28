@@ -205,7 +205,13 @@ typedef struct evp_aead_ctx_st {
  * be used. */
 #define EVP_AEAD_DEFAULT_TAG_LENGTH 0
 
-/* EVP_AEAD_init initializes |ctx| for the given AEAD algorithm from |impl|.
+/* evp_aead_direction_t denotes the direction of an AEAD operation. */
+enum evp_aead_direction_t {
+  evp_aead_open,
+  evp_aead_seal,
+};
+
+/* EVP_AEAD_CTX_init initializes |ctx| for the given AEAD algorithm from |impl|.
  * The |impl| argument may be NULL to choose the default implementation.
  * Authentication tags may be truncated by passing a size as |tag_len|. A
  * |tag_len| of zero indicates the default tag length and this is defined as
@@ -214,6 +220,13 @@ typedef struct evp_aead_ctx_st {
 OPENSSL_EXPORT int EVP_AEAD_CTX_init(EVP_AEAD_CTX *ctx, const EVP_AEAD *aead,
                                      const uint8_t *key, size_t key_len,
                                      size_t tag_len, ENGINE *impl);
+
+/* EVP_AEAD_CTX_init_with_direction calls |EVP_AEAD_CTX_init| for normal
+ * AEADs. For TLS-specific and SSL3-specific AEADs, it initializes |ctx| for a
+ * given direction. */
+OPENSSL_EXPORT int EVP_AEAD_CTX_init_with_direction(
+    EVP_AEAD_CTX *ctx, const EVP_AEAD *aead, const uint8_t *key, size_t key_len,
+    size_t tag_len, enum evp_aead_direction_t dir);
 
 /* EVP_AEAD_CTX_cleanup frees any data allocated by |ctx|. */
 OPENSSL_EXPORT void EVP_AEAD_CTX_cleanup(EVP_AEAD_CTX *ctx);

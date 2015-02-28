@@ -30,17 +30,6 @@
 typedef struct {
   EVP_CIPHER_CTX cipher_ctx;
   EVP_MD_CTX md_ctx;
-  /* enc_key is the portion of the key used for the stream or block cipher. It
-   * is retained separately to allow the EVP_CIPHER_CTX to be initialized once
-   * the direction is known. */
-  uint8_t enc_key[EVP_MAX_KEY_LENGTH];
-  uint8_t enc_key_len;
-  /* iv is the portion of the key used for the fixed IV. It is retained
-   * separately to allow the EVP_CIPHER_CTX to be initialized once the direction
-   * is known. */
-  uint8_t iv[EVP_MAX_IV_LENGTH];
-  uint8_t iv_len;
-  char initialized;
 } AEAD_SSL3_CTX;
 
 static int ssl3_mac(AEAD_SSL3_CTX *ssl3_ctx, uint8_t *out, unsigned *out_len,
@@ -87,15 +76,13 @@ static void aead_ssl3_cleanup(EVP_AEAD_CTX *ctx) {
   AEAD_SSL3_CTX *ssl3_ctx = (AEAD_SSL3_CTX *)ctx->aead_state;
   EVP_CIPHER_CTX_cleanup(&ssl3_ctx->cipher_ctx);
   EVP_MD_CTX_cleanup(&ssl3_ctx->md_ctx);
-  OPENSSL_cleanse(&ssl3_ctx->enc_key, sizeof(ssl3_ctx->enc_key));
-  OPENSSL_cleanse(&ssl3_ctx->iv, sizeof(ssl3_ctx->iv));
   OPENSSL_free(ssl3_ctx);
   ctx->aead_state = NULL;
 }
 
 static int aead_ssl3_init(EVP_AEAD_CTX *ctx, const uint8_t *key, size_t key_len,
-                          size_t tag_len, const EVP_CIPHER *cipher,
-                          const EVP_MD *md) {
+                          size_t tag_len, enum evp_aead_direction_t dir,
+                          const EVP_CIPHER *cipher, const EVP_MD *md) {
   if (tag_len != EVP_AEAD_DEFAULT_TAG_LENGTH &&
       tag_len != EVP_MD_size(md)) {
     OPENSSL_PUT_ERROR(CIPHER, aead_ssl3_init, CIPHER_R_UNSUPPORTED_TAG_SIZE);
@@ -109,11 +96,7 @@ static int aead_ssl3_init(EVP_AEAD_CTX *ctx, const uint8_t *key, size_t key_len,
 
   size_t mac_key_len = EVP_MD_size(md);
   size_t enc_key_len = EVP_CIPHER_key_length(cipher);
-  size_t iv_len = EVP_CIPHER_iv_length(cipher);
-  assert(mac_key_len + enc_key_len + iv_len == key_len);
-  assert(mac_key_len < 256);
-  assert(enc_key_len < 256);
-  assert(iv_len < 256);
+  assert(mac_key_len + enc_key_len + EVP_CIPHER_iv_length(cipher) == key_len);
   /* Although EVP_rc4() is a variable-length cipher, the default key size is
    * correct for SSL3. */
 
@@ -124,14 +107,11 @@ static int aead_ssl3_init(EVP_AEAD_CTX *ctx, const uint8_t *key, size_t key_len,
   }
   EVP_CIPHER_CTX_init(&ssl3_ctx->cipher_ctx);
   EVP_MD_CTX_init(&ssl3_ctx->md_ctx);
-  memcpy(ssl3_ctx->enc_key, &key[mac_key_len], enc_key_len);
-  ssl3_ctx->enc_key_len = (uint8_t)enc_key_len;
-  memcpy(ssl3_ctx->iv, &key[mac_key_len + enc_key_len], iv_len);
-  ssl3_ctx->iv_len = (uint8_t)iv_len;
-  ssl3_ctx->initialized = 0;
 
   ctx->aead_state = ssl3_ctx;
-  if (!EVP_CipherInit_ex(&ssl3_ctx->cipher_ctx, cipher, NULL, NULL, NULL, 0) ||
+  if (!EVP_CipherInit_ex(&ssl3_ctx->cipher_ctx, cipher, NULL, &key[mac_key_len],
+                         &key[mac_key_len + enc_key_len],
+                         dir == evp_aead_seal) ||
       !EVP_DigestInit_ex(&ssl3_ctx->md_ctx, md, NULL) ||
       !EVP_DigestUpdate(&ssl3_ctx->md_ctx, key, mac_key_len)) {
     aead_ssl3_cleanup(ctx);
@@ -142,31 +122,6 @@ static int aead_ssl3_init(EVP_AEAD_CTX *ctx, const uint8_t *key, size_t key_len,
   return 1;
 }
 
-/* aead_ssl3_ensure_cipher_init initializes |ssl3_ctx| for encryption (or
- * decryption, if |encrypt| is zero). If it has already been initialized, it
- * ensures the direction matches and fails otherwise. It returns one on success
- * and zero on failure.
- *
- * Note that, unlike normal AEADs, legacy SSL3 AEADs may not be used concurrently
- * due to this (and bulk-cipher-internal) statefulness. */
-static int aead_ssl3_ensure_cipher_init(AEAD_SSL3_CTX *ssl3_ctx, int encrypt) {
-  if (!ssl3_ctx->initialized) {
-    /* Finish initializing the EVP_CIPHER_CTX now that the direction is
-     * known. */
-    if (!EVP_CipherInit_ex(&ssl3_ctx->cipher_ctx, NULL, NULL, ssl3_ctx->enc_key,
-                           ssl3_ctx->iv, encrypt)) {
-      return 0;
-    }
-    ssl3_ctx->initialized = 1;
-  } else if (ssl3_ctx->cipher_ctx.encrypt != encrypt) {
-    /* Unlike a normal AEAD, using an SSL3 AEAD once freezes the direction. */
-    OPENSSL_PUT_ERROR(CIPHER, aead_ssl3_ensure_cipher_init,
-                      CIPHER_R_INVALID_OPERATION);
-    return 0;
-  }
-  return 1;
-}
-
 static int aead_ssl3_seal(const EVP_AEAD_CTX *ctx, uint8_t *out,
                          size_t *out_len, size_t max_out_len,
                          const uint8_t *nonce, size_t nonce_len,
@@ -174,6 +129,12 @@ static int aead_ssl3_seal(const EVP_AEAD_CTX *ctx, uint8_t *out,
                          const uint8_t *ad, size_t ad_len) {
   AEAD_SSL3_CTX *ssl3_ctx = (AEAD_SSL3_CTX *)ctx->aead_state;
   size_t total = 0;
+
+  if (!ssl3_ctx->cipher_ctx.encrypt) {
+    /* Unlike a normal AEAD, an SSL3 AEAD may only be used in one direction. */
+    OPENSSL_PUT_ERROR(CIPHER, aead_ssl3_seal, CIPHER_R_INVALID_OPERATION);
+    return 0;
+  }
 
   if (in_len + EVP_AEAD_max_overhead(ctx->aead) < in_len ||
       in_len > INT_MAX) {
@@ -194,10 +155,6 @@ static int aead_ssl3_seal(const EVP_AEAD_CTX *ctx, uint8_t *out,
 
   if (ad_len != 11 - 2 /* length bytes */) {
     OPENSSL_PUT_ERROR(CIPHER, aead_ssl3_seal, CIPHER_R_INVALID_AD_SIZE);
-    return 0;
-  }
-
-  if (!aead_ssl3_ensure_cipher_init(ssl3_ctx, 1)) {
     return 0;
   }
 
@@ -257,6 +214,12 @@ static int aead_ssl3_open(const EVP_AEAD_CTX *ctx, uint8_t *out,
                          const uint8_t *ad, size_t ad_len) {
   AEAD_SSL3_CTX *ssl3_ctx = (AEAD_SSL3_CTX *)ctx->aead_state;
 
+  if (ssl3_ctx->cipher_ctx.encrypt) {
+    /* Unlike a normal AEAD, an SSL3 AEAD may only be used in one direction. */
+    OPENSSL_PUT_ERROR(CIPHER, aead_ssl3_open, CIPHER_R_INVALID_OPERATION);
+    return 0;
+  }
+
   size_t mac_len = EVP_MD_CTX_size(&ssl3_ctx->md_ctx);
   if (in_len < mac_len) {
     OPENSSL_PUT_ERROR(CIPHER, aead_ssl3_open, CIPHER_R_BAD_DECRYPT);
@@ -283,10 +246,6 @@ static int aead_ssl3_open(const EVP_AEAD_CTX *ctx, uint8_t *out,
   if (in_len > INT_MAX) {
     /* EVP_CIPHER takes int as input. */
     OPENSSL_PUT_ERROR(CIPHER, aead_ssl3_open, CIPHER_R_TOO_LARGE);
-    return 0;
-  }
-
-  if (!aead_ssl3_ensure_cipher_init(ssl3_ctx, 0)) {
     return 0;
   }
 
@@ -338,30 +297,35 @@ static int aead_ssl3_open(const EVP_AEAD_CTX *ctx, uint8_t *out,
 }
 
 static int aead_rc4_md5_ssl3_init(EVP_AEAD_CTX *ctx, const uint8_t *key,
-                                  size_t key_len, size_t tag_len) {
-  return aead_ssl3_init(ctx, key, key_len, tag_len, EVP_rc4(), EVP_md5());
+                                  size_t key_len, size_t tag_len,
+                                  enum evp_aead_direction_t dir) {
+  return aead_ssl3_init(ctx, key, key_len, tag_len, dir, EVP_rc4(), EVP_md5());
 }
 
 static int aead_rc4_sha1_ssl3_init(EVP_AEAD_CTX *ctx, const uint8_t *key,
-                                  size_t key_len, size_t tag_len) {
-  return aead_ssl3_init(ctx, key, key_len, tag_len, EVP_rc4(), EVP_sha1());
+                                   size_t key_len, size_t tag_len,
+                                   enum evp_aead_direction_t dir) {
+  return aead_ssl3_init(ctx, key, key_len, tag_len, dir, EVP_rc4(), EVP_sha1());
 }
 
 static int aead_aes_128_cbc_sha1_ssl3_init(EVP_AEAD_CTX *ctx, const uint8_t *key,
-                                          size_t key_len, size_t tag_len) {
-  return aead_ssl3_init(ctx, key, key_len, tag_len, EVP_aes_128_cbc(),
+                                           size_t key_len, size_t tag_len,
+                                           enum evp_aead_direction_t dir) {
+  return aead_ssl3_init(ctx, key, key_len, tag_len, dir, EVP_aes_128_cbc(),
                         EVP_sha1());
 }
 
 static int aead_aes_256_cbc_sha1_ssl3_init(EVP_AEAD_CTX *ctx, const uint8_t *key,
-                                          size_t key_len, size_t tag_len) {
-  return aead_ssl3_init(ctx, key, key_len, tag_len, EVP_aes_256_cbc(),
+                                           size_t key_len, size_t tag_len,
+                                           enum evp_aead_direction_t dir) {
+  return aead_ssl3_init(ctx, key, key_len, tag_len, dir, EVP_aes_256_cbc(),
                         EVP_sha1());
 }
 static int aead_des_ede3_cbc_sha1_ssl3_init(EVP_AEAD_CTX *ctx,
-                                           const uint8_t *key, size_t key_len,
-                                           size_t tag_len) {
-  return aead_ssl3_init(ctx, key, key_len, tag_len, EVP_des_ede3_cbc(),
+                                            const uint8_t *key, size_t key_len,
+                                            size_t tag_len,
+                                            enum evp_aead_direction_t dir) {
+  return aead_ssl3_init(ctx, key, key_len, tag_len, dir, EVP_des_ede3_cbc(),
                         EVP_sha1());
 }
 
@@ -370,6 +334,7 @@ static const EVP_AEAD aead_rc4_md5_ssl3 = {
     0,                      /* nonce len */
     MD5_DIGEST_LENGTH,      /* overhead */
     MD5_DIGEST_LENGTH,      /* max tag length */
+    NULL, /* init */
     aead_rc4_md5_ssl3_init,
     aead_ssl3_cleanup,
     aead_ssl3_seal,
@@ -381,6 +346,7 @@ static const EVP_AEAD aead_rc4_sha1_ssl3 = {
     0,                      /* nonce len */
     SHA_DIGEST_LENGTH,      /* overhead */
     SHA_DIGEST_LENGTH,      /* max tag length */
+    NULL, /* init */
     aead_rc4_sha1_ssl3_init,
     aead_ssl3_cleanup,
     aead_ssl3_seal,
@@ -392,6 +358,7 @@ static const EVP_AEAD aead_aes_128_cbc_sha1_ssl3 = {
     0,                           /* nonce len */
     16 + SHA_DIGEST_LENGTH,      /* overhead (padding + SHA1) */
     SHA_DIGEST_LENGTH,           /* max tag length */
+    NULL, /* init */
     aead_aes_128_cbc_sha1_ssl3_init,
     aead_ssl3_cleanup,
     aead_ssl3_seal,
@@ -403,6 +370,7 @@ static const EVP_AEAD aead_aes_256_cbc_sha1_ssl3 = {
     0,                           /* nonce len */
     16 + SHA_DIGEST_LENGTH,      /* overhead (padding + SHA1) */
     SHA_DIGEST_LENGTH,           /* max tag length */
+    NULL, /* init */
     aead_aes_256_cbc_sha1_ssl3_init,
     aead_ssl3_cleanup,
     aead_ssl3_seal,
@@ -414,6 +382,7 @@ static const EVP_AEAD aead_des_ede3_cbc_sha1_ssl3 = {
     0,                          /* nonce len */
     8 + SHA_DIGEST_LENGTH,      /* overhead (padding + SHA1) */
     SHA_DIGEST_LENGTH,          /* max tag length */
+    NULL, /* init */
     aead_des_ede3_cbc_sha1_ssl3_init,
     aead_ssl3_cleanup,
     aead_ssl3_seal,

@@ -377,8 +377,11 @@ static const EVP_AEAD aead_rc4_md5_tls = {
     0,                      /* nonce len */
     MD5_DIGEST_LENGTH,      /* overhead */
     MD5_DIGEST_LENGTH,      /* max tag length */
-    aead_rc4_md5_tls_init,  aead_rc4_md5_tls_cleanup,
-    aead_rc4_md5_tls_seal,  aead_rc4_md5_tls_open,
+    aead_rc4_md5_tls_init,
+    NULL, /* init_with_direction */
+    aead_rc4_md5_tls_cleanup,
+    aead_rc4_md5_tls_seal,
+    aead_rc4_md5_tls_open,
 };
 
 const EVP_AEAD *EVP_aead_rc4_md5_tls(void) { return &aead_rc4_md5_tls; }

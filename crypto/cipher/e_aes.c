@@ -1071,8 +1071,11 @@ static const EVP_AEAD aead_aes_128_gcm = {
     12,                       /* nonce len */
     EVP_AEAD_AES_GCM_TAG_LEN, /* overhead */
     EVP_AEAD_AES_GCM_TAG_LEN, /* max tag length */
-    aead_aes_gcm_init,        aead_aes_gcm_cleanup,
-    aead_aes_gcm_seal,        aead_aes_gcm_open,
+    aead_aes_gcm_init,
+    NULL, /* init_with_direction */
+    aead_aes_gcm_cleanup,
+    aead_aes_gcm_seal,
+    aead_aes_gcm_open,
 };
 
 static const EVP_AEAD aead_aes_256_gcm = {
@@ -1080,8 +1083,11 @@ static const EVP_AEAD aead_aes_256_gcm = {
     12,                       /* nonce len */
     EVP_AEAD_AES_GCM_TAG_LEN, /* overhead */
     EVP_AEAD_AES_GCM_TAG_LEN, /* max tag length */
-    aead_aes_gcm_init,        aead_aes_gcm_cleanup,
-    aead_aes_gcm_seal,        aead_aes_gcm_open,
+    aead_aes_gcm_init,
+    NULL, /* init_with_direction */
+    aead_aes_gcm_cleanup,
+    aead_aes_gcm_seal,
+    aead_aes_gcm_open,
 };
 
 const EVP_AEAD *EVP_aead_aes_128_gcm(void) { return &aead_aes_128_gcm; }
@@ -1335,8 +1341,11 @@ static const EVP_AEAD aead_aes_128_key_wrap = {
     8,  /* nonce len */
     8,  /* overhead */
     8,  /* max tag length */
-    aead_aes_key_wrap_init, aead_aes_key_wrap_cleanup,
-    aead_aes_key_wrap_seal, aead_aes_key_wrap_open,
+    aead_aes_key_wrap_init,
+    NULL, /* init_with_direction */
+    aead_aes_key_wrap_cleanup,
+    aead_aes_key_wrap_seal,
+    aead_aes_key_wrap_open,
 };
 
 static const EVP_AEAD aead_aes_256_key_wrap = {
@@ -1344,8 +1353,11 @@ static const EVP_AEAD aead_aes_256_key_wrap = {
     8,  /* nonce len */
     8,  /* overhead */
     8,  /* max tag length */
-    aead_aes_key_wrap_init, aead_aes_key_wrap_cleanup,
-    aead_aes_key_wrap_seal, aead_aes_key_wrap_open,
+    aead_aes_key_wrap_init,
+    NULL, /* init_with_direction */
+    aead_aes_key_wrap_cleanup,
+    aead_aes_key_wrap_seal,
+    aead_aes_key_wrap_open,
 };
 
 const EVP_AEAD *EVP_aead_aes_128_key_wrap(void) { return &aead_aes_128_key_wrap; }

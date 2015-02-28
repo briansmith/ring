@@ -59,6 +59,7 @@
 
 #include <openssl/base.h>
 
+#include <openssl/aead.h>
 #include <openssl/asn1t.h>
 
 #if defined(__cplusplus)
@@ -117,6 +118,9 @@ struct evp_aead_st {
 
   int (*init)(struct evp_aead_ctx_st *, const uint8_t *key,
               size_t key_len, size_t tag_len);
+  int (*init_with_direction)(struct evp_aead_ctx_st *, const uint8_t *key,
+			     size_t key_len, size_t tag_len,
+			     enum evp_aead_direction_t dir);
   void (*cleanup)(struct evp_aead_ctx_st *);
 
   int (*seal)(const struct evp_aead_ctx_st *ctx, uint8_t *out,

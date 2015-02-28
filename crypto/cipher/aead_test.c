@@ -85,8 +85,8 @@ static int run_test_case(const EVP_AEAD *aead,
    * smaller by at least tag length. */
   uint8_t out2[sizeof(out)];
 
-  if (!EVP_AEAD_CTX_init(&ctx, aead, bufs[KEY], lengths[KEY], lengths[TAG],
-                         NULL)) {
+  if (!EVP_AEAD_CTX_init_with_direction(&ctx, aead, bufs[KEY], lengths[KEY],
+                                        lengths[TAG], evp_aead_seal)) {
     fprintf(stderr, "Failed to init AEAD on line %u\n", line_no);
     return 0;
   }
@@ -123,8 +123,8 @@ static int run_test_case(const EVP_AEAD *aead,
   /* The "stateful" AEADs for implementing pre-AEAD cipher suites need to be
    * reset after each operation. */
   EVP_AEAD_CTX_cleanup(&ctx);
-  if (!EVP_AEAD_CTX_init(&ctx, aead, bufs[KEY], lengths[KEY], lengths[TAG],
-                         NULL)) {
+  if (!EVP_AEAD_CTX_init_with_direction(&ctx, aead, bufs[KEY], lengths[KEY],
+                                        lengths[TAG], evp_aead_open)) {
     fprintf(stderr, "Failed to init AEAD on line %u\n", line_no);
     return 0;
   }
@@ -153,8 +153,8 @@ static int run_test_case(const EVP_AEAD *aead,
     /* The "stateful" AEADs for implementing pre-AEAD cipher suites need to be
      * reset after each operation. */
     EVP_AEAD_CTX_cleanup(&ctx);
-    if (!EVP_AEAD_CTX_init(&ctx, aead, bufs[KEY], lengths[KEY], lengths[TAG],
-                           NULL)) {
+    if (!EVP_AEAD_CTX_init_with_direction(&ctx, aead, bufs[KEY], lengths[KEY],
+                                          lengths[TAG], evp_aead_open)) {
       fprintf(stderr, "Failed to init AEAD on line %u\n", line_no);
       return 0;
     }
@@ -172,8 +172,8 @@ static int run_test_case(const EVP_AEAD *aead,
     /* The "stateful" AEADs for implementing pre-AEAD cipher suites need to be
      * reset after each operation. */
     EVP_AEAD_CTX_cleanup(&ctx);
-    if (!EVP_AEAD_CTX_init(&ctx, aead, bufs[KEY], lengths[KEY], lengths[TAG],
-                           NULL)) {
+    if (!EVP_AEAD_CTX_init_with_direction(&ctx, aead, bufs[KEY], lengths[KEY],
+                                          lengths[TAG], evp_aead_open)) {
       fprintf(stderr, "Failed to init AEAD on line %u\n", line_no);
       return 0;
     }
