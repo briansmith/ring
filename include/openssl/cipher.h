@@ -80,12 +80,10 @@ OPENSSL_EXPORT const EVP_CIPHER *EVP_des_ede3_cbc(void);
 OPENSSL_EXPORT const EVP_CIPHER *EVP_aes_128_ecb(void);
 OPENSSL_EXPORT const EVP_CIPHER *EVP_aes_128_cbc(void);
 OPENSSL_EXPORT const EVP_CIPHER *EVP_aes_128_ctr(void);
-OPENSSL_EXPORT const EVP_CIPHER *EVP_aes_128_ofb(void);
 
 OPENSSL_EXPORT const EVP_CIPHER *EVP_aes_256_ecb(void);
 OPENSSL_EXPORT const EVP_CIPHER *EVP_aes_256_cbc(void);
 OPENSSL_EXPORT const EVP_CIPHER *EVP_aes_256_ctr(void);
-OPENSSL_EXPORT const EVP_CIPHER *EVP_aes_256_ofb(void);
 
 /* Deprecated AES-GCM implementations that set |EVP_CIPH_FLAG_CUSTOM_CIPHER|.
  * Use |EVP_aead_aes_128_gcm| and |EVP_aead_aes_256_gcm| instead. */
@@ -324,7 +322,7 @@ OPENSSL_EXPORT int EVP_BytesToKey(const EVP_CIPHER *type, const EVP_MD *md,
 #define EVP_CIPH_ECB_MODE 0x1
 #define EVP_CIPH_CBC_MODE 0x2
 #define EVP_CIPH_CFB_MODE 0x3
-#define EVP_CIPH_OFB_MODE 0x4
+     /* EVP_CIPH_OFB_MODE 0x4 */
 #define EVP_CIPH_CTR_MODE 0x5
 #define EVP_CIPH_GCM_MODE 0x6
 
