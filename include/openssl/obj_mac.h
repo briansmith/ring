@@ -98,7 +98,6 @@
 #define NID_aes_128_ctr 904
 #define NID_aes_128_ecb 418
 #define NID_aes_128_gcm 895
-#define NID_aes_128_ofb128 420
 #define NID_aes_192_cbc 423
 #define NID_aes_192_ctr 905
 #define NID_aes_192_ecb 422
@@ -107,7 +106,6 @@
 #define NID_aes_256_ctr 906
 #define NID_aes_256_ecb 426
 #define NID_aes_256_gcm 901
-#define NID_aes_256_ofb128 428
 #define NID_des_cbc 31
 #define NID_des_ede_cbc 43
 #define NID_des_ede3_cbc 44

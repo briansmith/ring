@@ -210,7 +210,6 @@ int EVP_CipherInit_ex(EVP_CIPHER_CTX *ctx, const EVP_CIPHER *cipher,
         break;
 
       case EVP_CIPH_CTR_MODE:
-      case EVP_CIPH_OFB_MODE:
         ctx->num = 0;
         /* Don't reuse IV for CTR mode */
         if (iv) {
