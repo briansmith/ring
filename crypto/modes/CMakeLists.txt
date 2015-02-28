@@ -41,7 +41,6 @@ add_library(
 
   cbc.c
   ctr.c
-  cfb.c
   gcm.c
 
   ${MODES_ARCH_SOURCES}
