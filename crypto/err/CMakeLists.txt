@@ -14,7 +14,6 @@ add_custom_command(
   ecdsa.errordata
   ec.errordata
   hkdf.errordata
-  obj.errordata
   rsa.errordata
   WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
 )
