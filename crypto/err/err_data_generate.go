@@ -36,7 +36,6 @@ var libraryNames = []string{
 	"DH",
 	"BUF",
 	"OBJ",
-	"CONF",
 	"CRYPTO",
 	"EC",
 	"BIO",

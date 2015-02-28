@@ -8,7 +8,6 @@ add_custom_command(
   bio.errordata
   bn.errordata
   cipher.errordata
-  conf.errordata
   dh.errordata
   digest.errordata
   ecdh.errordata

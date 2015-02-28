@@ -181,8 +181,6 @@ typedef struct bn_mont_ctx_st BN_MONT_CTX;
 typedef struct buf_mem_st BUF_MEM;
 typedef struct cbb_st CBB;
 typedef struct cbs_st CBS;
-typedef struct conf_st CONF;
-typedef struct conf_value_st CONF_VALUE;
 typedef struct dh_method DH_METHOD;
 typedef struct dh_st DH;
 typedef struct ec_key_st EC_KEY;

@@ -489,7 +489,6 @@ static const char *const kLibraryNames[ERR_NUM_LIBS] = {
     "Diffie-Hellman routines",                    /* ERR_LIB_DH */
     "memory buffer routines",                     /* ERR_LIB_BUF */
     "object identifier routines",                 /* ERR_LIB_OBJ */
-    "configuration file routines",                /* ERR_LIB_CONF */
     "common libcrypto routines",                  /* ERR_LIB_CRYPTO */
     "elliptic curve routines",                    /* ERR_LIB_EC */
     "BIO routines",                               /* ERR_LIB_BIO */
