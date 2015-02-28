@@ -112,5 +112,4 @@
 #define NID_des_cbc 31
 #define NID_des_ede_cbc 43
 #define NID_des_ede3_cbc 44
-#define NID_rc2_40_cbc 98
 #define NID_rc4 90
