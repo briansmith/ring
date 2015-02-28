@@ -93,10 +93,3 @@ void AES_cbc_encrypt(const uint8_t *in, uint8_t *out, size_t len,
 }
 
 #endif  /* OPENSSL_NO_ASM || (!OPENSSL_X86_64 && !OPENSSL_X86) */
-
-void AES_cfb128_encrypt(const uint8_t *in, uint8_t *out, size_t length,
-                        const AES_KEY *key, uint8_t *ivec, int *num,
-                        int enc) {
-  CRYPTO_cfb128_encrypt(in, out, length, key, ivec, num, enc,
-                        (block128_f)AES_encrypt);
-}

@@ -319,7 +319,6 @@ OPENSSL_EXPORT int EVP_BytesToKey(const EVP_CIPHER *type, const EVP_MD *md,
 #define EVP_CIPH_STREAM_CIPHER 0x0
 #define EVP_CIPH_ECB_MODE 0x1
 #define EVP_CIPH_CBC_MODE 0x2
-#define EVP_CIPH_CFB_MODE 0x3
 #define EVP_CIPH_CTR_MODE 0x5
 #define EVP_CIPH_GCM_MODE 0x6
 
