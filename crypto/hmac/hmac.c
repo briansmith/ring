@@ -76,7 +76,7 @@ uint8_t *HMAC(const EVP_MD *evp_md, const void *key, size_t key_len,
   }
 
   HMAC_CTX_init(&ctx);
-  if (!HMAC_Init(&ctx, key, key_len, evp_md) ||
+  if (!HMAC_Init_ex(&ctx, key, key_len, evp_md, NULL) ||
       !HMAC_Update(&ctx, data, data_len) ||
       !HMAC_Final(&ctx, out, out_len)) {
     out = NULL;
