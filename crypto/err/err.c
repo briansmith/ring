@@ -486,7 +486,6 @@ static const char *const kLibraryNames[ERR_NUM_LIBS] = {
     "system library",                             /* ERR_LIB_SYS */
     "bignum routines",                            /* ERR_LIB_BN */
     "RSA routines",                               /* ERR_LIB_RSA */
-    "Diffie-Hellman routines",                    /* ERR_LIB_DH */
     "memory buffer routines",                     /* ERR_LIB_BUF */
     "common libcrypto routines",                  /* ERR_LIB_CRYPTO */
     "elliptic curve routines",                    /* ERR_LIB_EC */

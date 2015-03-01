@@ -7,7 +7,6 @@ add_custom_command(
   err_data_generate.go
   bn.errordata
   cipher.errordata
-  dh.errordata
   digest.errordata
   ecdh.errordata
   ecdsa.errordata

@@ -179,7 +179,6 @@ typedef struct bn_mont_ctx_st BN_MONT_CTX;
 typedef struct buf_mem_st BUF_MEM;
 typedef struct cbb_st CBB;
 typedef struct cbs_st CBS;
-typedef struct dh_st DH;
 typedef struct ec_key_st EC_KEY;
 typedef struct ecdsa_sig_st ECDSA_SIG;
 typedef struct engine_st ENGINE;

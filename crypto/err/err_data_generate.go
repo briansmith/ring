@@ -33,7 +33,6 @@ var libraryNames = []string{
 	"SYS",
 	"BN",
 	"RSA",
-	"DH",
 	"BUF",
 	"CRYPTO",
 	"EC",

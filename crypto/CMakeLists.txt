@@ -109,7 +109,6 @@ add_subdirectory(rand)
 add_subdirectory(bn)
 
 # Level 2
-add_subdirectory(dh)
 add_subdirectory(rsa)
 add_subdirectory(ec)
 add_subdirectory(ecdh)
@@ -154,7 +153,6 @@ add_library(
   $<TARGET_OBJECTS:buf>
   $<TARGET_OBJECTS:bn>
   $<TARGET_OBJECTS:rand>
-  $<TARGET_OBJECTS:dh>
   $<TARGET_OBJECTS:rsa>
   $<TARGET_OBJECTS:ec>
   $<TARGET_OBJECTS:ecdh>
