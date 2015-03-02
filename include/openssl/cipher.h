@@ -294,10 +294,6 @@ OPENSSL_EXPORT int EVP_CIPHER_CTX_set_key_length(EVP_CIPHER_CTX *ctx, unsigned k
  * |NID_aes_128_gcm|.) */
 OPENSSL_EXPORT int EVP_CIPHER_nid(const EVP_CIPHER *cipher);
 
-/* EVP_CIPHER_name returns the short name for |cipher| or NULL if no name is
- * known. */
-OPENSSL_EXPORT const char *EVP_CIPHER_name(const EVP_CIPHER *cipher);
-
 /* EVP_CIPHER_block_size returns the block size, in bytes, for |cipher|, or one
  * if |cipher| is a stream cipher. */
 OPENSSL_EXPORT unsigned EVP_CIPHER_block_size(const EVP_CIPHER *cipher);

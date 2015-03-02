@@ -174,9 +174,6 @@ OPENSSL_EXPORT int EVP_Digest(const void *data, size_t len, uint8_t *md_out,
 /* EVP_MD_type returns a NID identifing |md|. (For example, |NID_md5|.) */
 OPENSSL_EXPORT int EVP_MD_type(const EVP_MD *md);
 
-/* EVP_MD_name returns the short name for |md| or NULL if no name is known. */
-OPENSSL_EXPORT const char *EVP_MD_name(const EVP_MD *md);
-
 /* EVP_MD_flags returns the flags for |md|, which is a set of |EVP_MD_FLAG_*|
  * values, ORed together. */
 OPENSSL_EXPORT uint32_t EVP_MD_flags(const EVP_MD *md);

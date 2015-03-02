@@ -123,15 +123,16 @@ static uint8_t *ustrsep(char **p, const char *sep) {
   return (uint8_t *)sstrsep(p, sep);
 }
 
-static void test1(const EVP_CIPHER *c, const uint8_t *key, int kn,
-                  const uint8_t *iv, int in, const uint8_t *plaintext, int pn,
-                  const uint8_t *ciphertext, int cn, const uint8_t *aad, int an,
-                  const uint8_t *tag, int tn, int encdec) {
+static void test1(const char* cipher_name, const EVP_CIPHER *c,
+                  const uint8_t *key, int kn, const uint8_t *iv, int in,
+                  const uint8_t *plaintext, int pn, const uint8_t *ciphertext,
+                  int cn, const uint8_t *aad, int an, const uint8_t *tag,
+                  int tn, int encdec) {
   EVP_CIPHER_CTX ctx;
   uint8_t out[4096];
   int outl, outl2, mode;
 
-  printf("Testing cipher %s%s\n", EVP_CIPHER_name(c),
+  printf("Testing cipher %s%s\n", cipher_name,
          (encdec == 1 ? "(encrypt)"
                       : (encdec == 0 ? "(decrypt)" : "(encrypt/decrypt)")));
   hexdump(stdout, "Key", key, kn);
@@ -329,8 +330,8 @@ static int test_cipher(const char *cipher, const uint8_t *key, int kn,
     return 0;
   }
 
-  test1(c, key, kn, iv, in, plaintext, pn, ciphertext, cn, aad, an, tag, tn,
-        encdec);
+  test1(cipher, c, key, kn, iv, in, plaintext, pn, ciphertext, cn, aad, an,
+        tag, tn, encdec);
 
   return 1;
 }

@@ -91,14 +91,23 @@ int test_builtin(FILE *out) {
   fprintf(out, "\ntesting ECDSA_sign() and ECDSA_verify() "
                "with some internal curves:\n");
 
-  static const int kCurveNIDs[] = {NID_secp224r1, NID_X9_62_prime256v1,
-                                   NID_secp384r1, NID_secp521r1, NID_undef};
-
+  static const struct
+  {
+    int nid;
+    const char *name;
+  } kCurves[] = {
+    { NID_secp224r1, "secp224r1" },
+    { NID_X9_62_prime256v1, "secp256r1" },
+    { NID_secp384r1, "secp384r1" },
+    { NID_secp521r1, "secp521r1" },
+    { NID_undef, NULL }
+  };
+  
   /* now create and verify a signature for every curve */
-  for (n = 0; kCurveNIDs[n] != NID_undef; n++) {
+  for (n = 0; kCurves[n].nid != NID_undef; n++) {
     unsigned char dirt, offset;
 
-    nid = kCurveNIDs[n];
+    nid = kCurves[n].nid;
     /* create new ecdsa key (== EC_KEY) */
     eckey = EC_KEY_new();
     if (eckey == NULL) {
@@ -122,7 +131,7 @@ int test_builtin(FILE *out) {
       continue;
     }
 
-    fprintf(out, "%s: ", OBJ_nid2sn(nid));
+    fprintf(out, "%s: ", kCurves[n].name);
     /* create key */
     if (!EC_KEY_generate_key(eckey)) {
       fprintf(out, " failed\n");

@@ -582,10 +582,6 @@ int EVP_CIPHER_CTX_set_key_length(EVP_CIPHER_CTX *c, unsigned key_len) {
 
 int EVP_CIPHER_nid(const EVP_CIPHER *cipher) { return cipher->nid; }
 
-const char *EVP_CIPHER_name(const EVP_CIPHER *cipher) {
-  return OBJ_nid2sn(cipher->nid);
-}
-
 unsigned EVP_CIPHER_block_size(const EVP_CIPHER *cipher) {
   return cipher->block_size;
 }
