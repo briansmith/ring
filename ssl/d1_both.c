@@ -759,7 +759,6 @@ static long dtls1_get_message_fragment(SSL *s, int stn, long max, int *ok) {
   int i, al;
   struct hm_header_st msg_hdr;
 
-redo:
   /* see if we have the required fragment already */
   if ((frag_len = dtls1_retrieve_buffered_fragment(s, max, ok)) || *ok) {
     if (*ok) {
@@ -801,29 +800,6 @@ redo:
 
   if (frag_len && frag_len < len) {
     return dtls1_reassemble_fragment(s, &msg_hdr, ok);
-  }
-
-  if (!s->server && s->d1->r_msg_hdr.frag_off == 0 &&
-      wire[0] == SSL3_MT_HELLO_REQUEST) {
-    /* The server may always send 'Hello Request' messages --
-     * we are doing a handshake anyway now, so ignore them
-     * if their format is correct. Does not count for
-     * 'Finished' MAC. */
-    if (wire[1] == 0 && wire[2] == 0 && wire[3] == 0) {
-      if (s->msg_callback) {
-        s->msg_callback(0, s->version, SSL3_RT_HANDSHAKE, wire,
-                        DTLS1_HM_HEADER_LENGTH, s, s->msg_callback_arg);
-      }
-
-      s->init_num = 0;
-      goto redo;
-    } else {
-      /* Incorrectly formated Hello request */
-      al = SSL_AD_UNEXPECTED_MESSAGE;
-      OPENSSL_PUT_ERROR(SSL, dtls1_get_message_fragment,
-                        SSL_R_UNEXPECTED_MESSAGE);
-      goto f_err;
-    }
   }
 
   if ((al = dtls1_preprocess_fragment(s, &msg_hdr, max))) {
