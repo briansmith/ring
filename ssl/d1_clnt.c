@@ -533,7 +533,7 @@ static int dtls1_get_hello_verify(SSL *s) {
       s, DTLS1_ST_CR_HELLO_VERIFY_REQUEST_A, DTLS1_ST_CR_HELLO_VERIFY_REQUEST_B,
       -1,
       /* Use the same maximum size as ssl3_get_server_hello. */
-      20000, SSL_GET_MESSAGE_HASH_MESSAGE, &ok);
+      20000, ssl_hash_message, &ok);
 
   if (!ok) {
     return n;

@@ -751,7 +751,7 @@ int ssl3_get_server_hello(SSL *s) {
   n = s->method->ssl_get_message(s, SSL3_ST_CR_SRVR_HELLO_A,
                                  SSL3_ST_CR_SRVR_HELLO_B, SSL3_MT_SERVER_HELLO,
                                  20000, /* ?? */
-                                 SSL_GET_MESSAGE_HASH_MESSAGE, &ok);
+                                 ssl_hash_message, &ok);
 
   if (!ok) {
     uint32_t err = ERR_peek_error();
@@ -931,7 +931,7 @@ int ssl3_get_server_certificate(SSL *s) {
 
   n = s->method->ssl_get_message(s, SSL3_ST_CR_CERT_A, SSL3_ST_CR_CERT_B,
                                  SSL3_MT_CERTIFICATE, s->max_cert_list,
-                                 SSL_GET_MESSAGE_HASH_MESSAGE, &ok);
+                                 ssl_hash_message, &ok);
 
   if (!ok) {
     return n;
@@ -1081,7 +1081,7 @@ int ssl3_get_server_key_exchange(SSL *s) {
    * ServerKeyExchange message may be skipped */
   n = s->method->ssl_get_message(s, SSL3_ST_CR_KEY_EXCH_A,
                                  SSL3_ST_CR_KEY_EXCH_B, -1, s->max_cert_list,
-                                 SSL_GET_MESSAGE_HASH_MESSAGE, &ok);
+                                 ssl_hash_message, &ok);
   if (!ok) {
     return n;
   }
@@ -1409,7 +1409,7 @@ int ssl3_get_certificate_request(SSL *s) {
 
   n = s->method->ssl_get_message(s, SSL3_ST_CR_CERT_REQ_A,
                                  SSL3_ST_CR_CERT_REQ_B, -1, s->max_cert_list,
-                                 SSL_GET_MESSAGE_HASH_MESSAGE, &ok);
+                                 ssl_hash_message, &ok);
 
   if (!ok) {
     return n;
@@ -1551,7 +1551,7 @@ int ssl3_get_new_session_ticket(SSL *s) {
 
   n = s->method->ssl_get_message(
       s, SSL3_ST_CR_SESSION_TICKET_A, SSL3_ST_CR_SESSION_TICKET_B,
-      SSL3_MT_NEWSESSION_TICKET, 16384, SSL_GET_MESSAGE_HASH_MESSAGE, &ok);
+      SSL3_MT_NEWSESSION_TICKET, 16384, ssl_hash_message, &ok);
 
   if (!ok) {
     return n;
@@ -1598,7 +1598,7 @@ int ssl3_get_cert_status(SSL *s) {
 
   n = s->method->ssl_get_message(
       s, SSL3_ST_CR_CERT_STATUS_A, SSL3_ST_CR_CERT_STATUS_B,
-      SSL3_MT_CERTIFICATE_STATUS, 16384, SSL_GET_MESSAGE_HASH_MESSAGE, &ok);
+      SSL3_MT_CERTIFICATE_STATUS, 16384, ssl_hash_message, &ok);
 
   if (!ok) {
     return n;
@@ -1635,7 +1635,7 @@ int ssl3_get_server_done(SSL *s) {
   n = s->method->ssl_get_message(s, SSL3_ST_CR_SRVR_DONE_A,
                                  SSL3_ST_CR_SRVR_DONE_B, SSL3_MT_SERVER_DONE,
                                  30, /* should be very small, like 0 :-) */
-                                 SSL_GET_MESSAGE_HASH_MESSAGE, &ok);
+                                 ssl_hash_message, &ok);
 
   if (!ok) {
     return n;

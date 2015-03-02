@@ -401,9 +401,10 @@
 #define EXPLICIT_CHAR2_CURVE_TYPE 2
 #define NAMED_CURVE_TYPE 3
 
-/* Values for the |hash_message| parameter of |s->method->ssl_get_message|. */
-#define SSL_GET_MESSAGE_DONT_HASH_MESSAGE 0
-#define SSL_GET_MESSAGE_HASH_MESSAGE 1
+enum ssl_hash_message_t {
+  ssl_dont_hash_message,
+  ssl_hash_message,
+};
 
 typedef struct cert_pkey_st {
   X509 *x509;
@@ -545,7 +546,8 @@ struct ssl_protocol_method_st {
   int (*ssl_renegotiate)(SSL *s);
   int (*ssl_renegotiate_check)(SSL *s);
   long (*ssl_get_message)(SSL *s, int header_state, int body_state,
-                          int msg_type, long max, int hash_message, int *ok);
+                          int msg_type, long max,
+                          enum ssl_hash_message_t hash_message, int *ok);
   int (*ssl_read_bytes)(SSL *s, int type, uint8_t *buf, int len, int peek);
   int (*ssl_write_bytes)(SSL *s, int type, const void *buf_, int len);
   int (*ssl_dispatch_alert)(SSL *s);
@@ -730,7 +732,7 @@ int ssl3_do_write(SSL *s, int type);
 int ssl3_send_alert(SSL *s, int level, int desc);
 int ssl3_get_req_cert_type(SSL *s, uint8_t *p);
 long ssl3_get_message(SSL *s, int header_state, int body_state, int msg_type,
-                      long max, int hash_message, int *ok);
+                      long max, enum ssl_hash_message_t hash_message, int *ok);
 
 /* ssl3_hash_current_message incorporates the current handshake message into the
  * handshake hash. It returns one on success and zero on allocation failure. */
@@ -867,7 +869,7 @@ long dtls1_ctrl(SSL *s, int cmd, long larg, void *parg);
 int dtls1_shutdown(SSL *s);
 
 long dtls1_get_message(SSL *s, int st1, int stn, int mt, long max,
-                       int hash_message, int *ok);
+                       enum ssl_hash_message_t hash_message, int *ok);
 int dtls1_get_record(SSL *s);
 int dtls1_dispatch_alert(SSL *s);
 

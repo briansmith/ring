@@ -945,7 +945,7 @@ int ssl3_get_client_hello(SSL *s) {
       n = s->method->ssl_get_message(
           s, SSL3_ST_SR_CLNT_HELLO_A, SSL3_ST_SR_CLNT_HELLO_B,
           SSL3_MT_CLIENT_HELLO, SSL3_RT_MAX_PLAIN_LENGTH,
-          SSL_GET_MESSAGE_HASH_MESSAGE, &ok);
+          ssl_hash_message, &ok);
 
       if (!ok) {
         return n;
@@ -1733,7 +1733,7 @@ int ssl3_get_client_key_exchange(SSL *s) {
   n = s->method->ssl_get_message(s, SSL3_ST_SR_KEY_EXCH_A,
                                  SSL3_ST_SR_KEY_EXCH_B,
                                  SSL3_MT_CLIENT_KEY_EXCHANGE, 2048, /* ??? */
-                                 SSL_GET_MESSAGE_HASH_MESSAGE, &ok);
+                                 ssl_hash_message, &ok);
 
   if (!ok) {
     return n;
@@ -2168,7 +2168,7 @@ int ssl3_get_cert_verify(SSL *s) {
   n = s->method->ssl_get_message(
       s, SSL3_ST_SR_CERT_VRFY_A, SSL3_ST_SR_CERT_VRFY_B,
       SSL3_MT_CERTIFICATE_VERIFY, SSL3_RT_MAX_PLAIN_LENGTH,
-      SSL_GET_MESSAGE_DONT_HASH_MESSAGE, &ok);
+      ssl_dont_hash_message, &ok);
 
   if (!ok) {
     return n;
@@ -2255,8 +2255,7 @@ int ssl3_get_client_certificate(SSL *s) {
   int is_first_certificate = 1;
 
   n = s->method->ssl_get_message(s, SSL3_ST_SR_CERT_A, SSL3_ST_SR_CERT_B, -1,
-                                 s->max_cert_list, SSL_GET_MESSAGE_HASH_MESSAGE,
-                                 &ok);
+                                 s->max_cert_list, ssl_hash_message, &ok);
 
   if (!ok) {
     return n;
@@ -2583,7 +2582,7 @@ int ssl3_get_next_proto(SSL *s) {
   n = s->method->ssl_get_message(s, SSL3_ST_SR_NEXT_PROTO_A,
                                  SSL3_ST_SR_NEXT_PROTO_B, SSL3_MT_NEXT_PROTO,
                                  514, /* See the payload format below */
-                                 SSL_GET_MESSAGE_HASH_MESSAGE, &ok);
+                                 ssl_hash_message, &ok);
 
   if (!ok) {
     return n;
@@ -2638,7 +2637,7 @@ int ssl3_get_channel_id(SSL *s) {
   n = s->method->ssl_get_message(
       s, SSL3_ST_SR_CHANNEL_ID_A, SSL3_ST_SR_CHANNEL_ID_B,
       SSL3_MT_ENCRYPTED_EXTENSIONS, 2 + 2 + TLSEXT_CHANNEL_ID_SIZE,
-      SSL_GET_MESSAGE_DONT_HASH_MESSAGE, &ok);
+      ssl_dont_hash_message, &ok);
 
   if (!ok) {
     return n;

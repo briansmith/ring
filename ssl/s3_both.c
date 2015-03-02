@@ -226,7 +226,7 @@ int ssl3_get_finished(SSL *s, int a, int b) {
 
   message_len =
       s->method->ssl_get_message(s, a, b, SSL3_MT_FINISHED, EVP_MAX_MD_SIZE,
-                                 SSL_GET_MESSAGE_DONT_HASH_MESSAGE, &ok);
+                                 ssl_dont_hash_message, &ok);
 
   if (!ok) {
     return message_len;
@@ -320,17 +320,17 @@ int ssl3_output_cert_chain(SSL *s, CERT_PKEY *cpk) {
  * maximum acceptable body length |max|. The first four bytes (msg_type and
  * length) are read in state |header_state|, the body is read in state |body_state|. */
 long ssl3_get_message(SSL *s, int header_state, int body_state, int msg_type,
-                      long max, int hash_message, int *ok) {
+                      long max, enum ssl_hash_message_t hash_message, int *ok) {
   uint8_t *p;
   unsigned long l;
   long n;
   int al;
 
   if (s->s3->tmp.reuse_message) {
-    /* A SSL_GET_MESSAGE_DONT_HASH_MESSAGE call cannot be combined with
-     * reuse_message; the SSL_GET_MESSAGE_DONT_HASH_MESSAGE would have to have
-     * been applied to the previous call. */
-    assert(hash_message != SSL_GET_MESSAGE_DONT_HASH_MESSAGE);
+    /* A ssl_dont_hash_message call cannot be combined with reuse_message; the
+     * ssl_dont_hash_message would have to have been applied to the previous
+     * call. */
+    assert(hash_message == ssl_hash_message);
     s->s3->tmp.reuse_message = 0;
     if (msg_type >= 0 && s->s3->tmp.message_type != msg_type) {
       al = SSL_AD_UNEXPECTED_MESSAGE;
@@ -420,8 +420,7 @@ long ssl3_get_message(SSL *s, int header_state, int body_state, int msg_type,
   }
 
   /* Feed this message into MAC computation. */
-  if (hash_message != SSL_GET_MESSAGE_DONT_HASH_MESSAGE &&
-      !ssl3_hash_current_message(s)) {
+  if (hash_message == ssl_hash_message && !ssl3_hash_current_message(s)) {
     goto err;
   }
   if (s->msg_callback) {

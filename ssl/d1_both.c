@@ -363,7 +363,7 @@ int dtls1_do_write(SSL *s, int type) {
  * if |msg_type| == -1), maximum acceptable body length |max|. Read an entire
  * handshake message. Handshake messages arrive in fragments. */
 long dtls1_get_message(SSL *s, int st1, int stn, int msg_type, long max,
-                       int hash_message, int *ok) {
+                       enum ssl_hash_message_t hash_message, int *ok) {
   int i, al;
   struct hm_header_st *msg_hdr;
   uint8_t *p;
@@ -372,10 +372,10 @@ long dtls1_get_message(SSL *s, int st1, int stn, int msg_type, long max,
   /* s3->tmp is used to store messages that are unexpected, caused
    * by the absence of an optional handshake message */
   if (s->s3->tmp.reuse_message) {
-    /* A SSL_GET_MESSAGE_DONT_HASH_MESSAGE call cannot be combined
-     * with reuse_message; the SSL_GET_MESSAGE_DONT_HASH_MESSAGE
-     * would have to have been applied to the previous call. */
-    assert(hash_message != SSL_GET_MESSAGE_DONT_HASH_MESSAGE);
+    /* A ssl_dont_hash_message call cannot be combined with reuse_message; the
+     * ssl_dont_hash_message would have to have been applied to the previous
+     * call. */
+    assert(hash_message == ssl_hash_message);
     s->s3->tmp.reuse_message = 0;
     if (msg_type >= 0 && s->s3->tmp.message_type != msg_type) {
       al = SSL_AD_UNEXPECTED_MESSAGE;
@@ -421,8 +421,7 @@ again:
 
   s->init_msg = (uint8_t *)s->init_buf->data + DTLS1_HM_HEADER_LENGTH;
 
-  if (hash_message != SSL_GET_MESSAGE_DONT_HASH_MESSAGE &&
-      !ssl3_hash_current_message(s)) {
+  if (hash_message == ssl_hash_message && !ssl3_hash_current_message(s)) {
     goto err;
   }
   if (s->msg_callback) {
