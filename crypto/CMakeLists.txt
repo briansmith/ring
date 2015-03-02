@@ -91,7 +91,6 @@ add_subdirectory(stack)
 add_subdirectory(lhash)
 add_subdirectory(err)
 add_subdirectory(buf)
-add_subdirectory(base64)
 add_subdirectory(bytestring)
 
 # Level 0.2 - depends on nothing but itself.
@@ -150,7 +149,6 @@ add_library(
   $<TARGET_OBJECTS:stack>
   $<TARGET_OBJECTS:lhash>
   $<TARGET_OBJECTS:err>
-  $<TARGET_OBJECTS:base64>
   $<TARGET_OBJECTS:bytestring>
   $<TARGET_OBJECTS:sha>
   $<TARGET_OBJECTS:md4>
