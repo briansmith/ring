@@ -95,11 +95,11 @@ typedef struct dtls1_bitmap_st {
  * should be moved elsewhere. */
 struct hm_header_st {
   uint8_t type;
-  unsigned long msg_len;
+  uint32_t msg_len;
   uint16_t seq;
-  unsigned long frag_off;
-  unsigned long frag_len;
-  unsigned int is_ccs;
+  uint32_t frag_off;
+  uint32_t frag_len;
+  int is_ccs;
   /* epoch, for buffered outgoing messages, is the epoch the message was
    * originally sent in. */
   uint16_t epoch;
