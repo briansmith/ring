@@ -840,14 +840,19 @@ start:
     struct hm_header_st msg_hdr;
     dtls1_get_message_header(&rr->data[rr->off], &msg_hdr);
 
-    /* Ignore the Finished, but retransmit our last flight of messages. If the
-     * peer sends the second Finished, they may not have received ours. */
+    /* Ignore a stray Finished from the previous handshake. */
     if (msg_hdr.type == SSL3_MT_FINISHED) {
-      if (dtls1_check_timeout_num(s) < 0) {
-        return -1;
+      if (msg_hdr.frag_off == 0) {
+        /* Retransmit our last flight of messages. If the peer sends the second
+         * Finished, they may not have received ours. Only do this for the
+         * first fragment, in case the Finished was fragmented. */
+        if (dtls1_check_timeout_num(s) < 0) {
+          return -1;
+        }
+
+        dtls1_retransmit_buffered_messages(s);
       }
 
-      dtls1_retransmit_buffered_messages(s);
       rr->length = 0;
       goto start;
     }
