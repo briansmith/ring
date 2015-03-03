@@ -162,7 +162,6 @@ static bool TestBuiltin(FILE *out) {
   } kCurves[] = {
       { NID_X9_62_prime256v1, "secp256r1" },
       { NID_secp384r1, "secp384r1" },
-      { NID_secp521r1, "secp521r1" },
       { NID_undef, NULL }
   };
 

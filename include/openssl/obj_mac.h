@@ -90,7 +90,6 @@
 /* ECC named curves */
 #define NID_X9_62_prime256v1 415
 #define NID_secp384r1 715
-#define NID_secp521r1 716
 
 /* Ciphers */
 #define NID_aes_128_cbc 419

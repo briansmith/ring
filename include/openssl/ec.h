@@ -99,8 +99,7 @@ typedef enum {
  *
  * The supported NIDs are:
  *   NID_X9_62_prime256v1,
- *   NID_secp384r1,
- *   NID_secp521r1 */
+ *   NID_secp384r1 */
 OPENSSL_EXPORT EC_GROUP *EC_GROUP_new_by_curve_name(int nid);
 
 /* EC_GROUP_free frees |group| and the data that it points to. */
