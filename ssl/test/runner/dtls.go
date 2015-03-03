@@ -129,6 +129,8 @@ func (c *Conn) dtlsWriteRecord(typ recordType, data []byte) (n int, err error) {
 	header := data[:4]
 	data = data[4:]
 
+	isFinished := header[0] == typeFinished
+
 	firstRun := true
 	for firstRun || len(data) > 0 {
 		firstRun = false
@@ -151,10 +153,17 @@ func (c *Conn) dtlsWriteRecord(typ recordType, data []byte) (n int, err error) {
 		// Buffer the fragment for later. They will be sent (and
 		// reordered) on flush.
 		c.pendingFragments = append(c.pendingFragments, fragment)
+		if c.config.Bugs.ReorderHandshakeFragments {
+			// Don't duplicate Finished to avoid the peer
+			// interpreting it as a retransmit request.
+			if !isFinished {
+				c.pendingFragments = append(c.pendingFragments, fragment)
+			}
 
-		if c.config.Bugs.ReorderHandshakeFragments && m > (maxLen+1)/2 {
-			// Overlap each fragment by half.
-			m = (maxLen + 1) / 2
+			if m > (maxLen+1)/2 {
+				// Overlap each fragment by half.
+				m = (maxLen + 1) / 2
+			}
 		}
 		n += m
 		data = data[m:]
@@ -166,7 +175,7 @@ func (c *Conn) dtlsWriteRecord(typ recordType, data []byte) (n int, err error) {
 	return
 }
 
-func (c *Conn) dtlsFlushHandshake(duplicate bool) error {
+func (c *Conn) dtlsFlushHandshake() error {
 	if !c.isDTLS {
 		return nil
 	}
@@ -175,9 +184,6 @@ func (c *Conn) dtlsFlushHandshake(duplicate bool) error {
 	fragments, c.pendingFragments = c.pendingFragments, fragments
 
 	if c.config.Bugs.ReorderHandshakeFragments {
-		if duplicate {
-			fragments = append(fragments, fragments...)
-		}
 		perm := rand.New(rand.NewSource(0)).Perm(len(fragments))
 		tmp := make([][]byte, len(fragments))
 		for i := range tmp {

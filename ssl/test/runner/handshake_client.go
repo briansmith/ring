@@ -214,7 +214,7 @@ NextCipherSuite:
 		helloBytes = hello.marshal()
 		c.writeRecord(recordTypeHandshake, helloBytes)
 	}
-	c.dtlsFlushHandshake(true)
+	c.dtlsFlushHandshake()
 
 	if err := c.simulatePacketLoss(nil); err != nil {
 		return err
@@ -238,7 +238,7 @@ NextCipherSuite:
 			hello.cookie = helloVerifyRequest.cookie
 			helloBytes = hello.marshal()
 			c.writeRecord(recordTypeHandshake, helloBytes)
-			c.dtlsFlushHandshake(true)
+			c.dtlsFlushHandshake()
 
 			if err := c.simulatePacketLoss(nil); err != nil {
 				return err
@@ -331,7 +331,7 @@ NextCipherSuite:
 		// Finished.
 		if err := c.simulatePacketLoss(func() {
 			c.writeRecord(recordTypeHandshake, hs.finishedBytes)
-			c.dtlsFlushHandshake(false)
+			c.dtlsFlushHandshake()
 		}); err != nil {
 			return err
 		}
@@ -617,7 +617,7 @@ func (hs *clientHandshakeState) doFullHandshake() error {
 		hs.writeClientHash(certVerify.marshal())
 		c.writeRecord(recordTypeHandshake, certVerify.marshal())
 	}
-	c.dtlsFlushHandshake(true)
+	c.dtlsFlushHandshake()
 
 	hs.finishedHash.discardHandshakeBuffer()
 
@@ -853,7 +853,7 @@ func (hs *clientHandshakeState) sendFinished(isResume bool) error {
 		c.writeRecord(recordTypeHandshake, postCCSBytes[:5])
 		postCCSBytes = postCCSBytes[5:]
 	}
-	c.dtlsFlushHandshake(true)
+	c.dtlsFlushHandshake()
 
 	if !c.config.Bugs.SkipChangeCipherSpec &&
 		c.config.Bugs.EarlyChangeCipherSpec == 0 {
@@ -866,7 +866,7 @@ func (hs *clientHandshakeState) sendFinished(isResume bool) error {
 
 	if !c.config.Bugs.SkipFinished {
 		c.writeRecord(recordTypeHandshake, postCCSBytes)
-		c.dtlsFlushHandshake(false)
+		c.dtlsFlushHandshake()
 	}
 	return nil
 }
