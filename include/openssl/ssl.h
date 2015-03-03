@@ -2428,6 +2428,8 @@ OPENSSL_EXPORT int SSL_set_session_ticket_ext_cb(SSL *s, void *cb, void *arg);
 #define SSL_F_tls1_export_keying_material 260
 #define SSL_F_tls1_prf 261
 #define SSL_F_tls1_setup_key_block 262
+#define SSL_F_dtls1_get_buffered_message 263
+#define SSL_F_dtls1_process_fragment 264
 #define SSL_R_APP_DATA_IN_HANDSHAKE 100
 #define SSL_R_ATTEMPT_TO_REUSE_SESSION_IN_DIFFERENT_CONTEXT 101
 #define SSL_R_BAD_ALERT 102
@@ -2599,6 +2601,7 @@ OPENSSL_EXPORT int SSL_set_session_ticket_ext_cb(SSL *s, void *cb, void *arg);
 #define SSL_R_WRONG_VERSION_NUMBER 268
 #define SSL_R_X509_LIB 269
 #define SSL_R_X509_VERIFICATION_SETUP_PROBLEMS 270
+#define SSL_R_FRAGMENT_MISMATCH 271
 #define SSL_R_SSLV3_ALERT_CLOSE_NOTIFY 1000
 #define SSL_R_SSLV3_ALERT_UNEXPECTED_MESSAGE 1010
 #define SSL_R_SSLV3_ALERT_BAD_RECORD_MAC 1020

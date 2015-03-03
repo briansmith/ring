@@ -106,6 +106,16 @@ func (c *Conn) dtlsDoReadRecord(want recordType) (recordType, *block, error) {
 	return typ, b, nil
 }
 
+func (c *Conn) makeFragment(header, data []byte, fragOffset, fragLen int) []byte {
+	fragment := make([]byte, 0, 12+fragLen)
+	fragment = append(fragment, header...)
+	fragment = append(fragment, byte(c.sendHandshakeSeq>>8), byte(c.sendHandshakeSeq))
+	fragment = append(fragment, byte(fragOffset>>16), byte(fragOffset>>8), byte(fragOffset))
+	fragment = append(fragment, byte(fragLen>>16), byte(fragLen>>8), byte(fragLen))
+	fragment = append(fragment, data[fragOffset:fragOffset+fragLen]...)
+	return fragment
+}
+
 func (c *Conn) dtlsWriteRecord(typ recordType, data []byte) (n int, err error) {
 	if typ != recordTypeHandshake {
 		// Only handshake messages are fragmented.
@@ -131,24 +141,27 @@ func (c *Conn) dtlsWriteRecord(typ recordType, data []byte) (n int, err error) {
 
 	isFinished := header[0] == typeFinished
 
+	if c.config.Bugs.SendEmptyFragments {
+		fragment := c.makeFragment(header, data, 0, 0)
+		c.pendingFragments = append(c.pendingFragments, fragment)
+	}
+
 	firstRun := true
-	for firstRun || len(data) > 0 {
+	fragOffset := 0
+	for firstRun || fragOffset < len(data) {
 		firstRun = false
-		m := len(data)
-		if m > maxLen {
-			m = maxLen
+		fragLen := len(data) - fragOffset
+		if fragLen > maxLen {
+			fragLen = maxLen
 		}
 
-		// Standard TLS handshake header.
-		fragment := make([]byte, 0, 12+m)
-		fragment = append(fragment, header...)
-		// message_seq
-		fragment = append(fragment, byte(c.sendHandshakeSeq>>8), byte(c.sendHandshakeSeq))
-		// fragment_offset
-		fragment = append(fragment, byte(n>>16), byte(n>>8), byte(n))
-		// fragment_length
-		fragment = append(fragment, byte(m>>16), byte(m>>8), byte(m))
-		fragment = append(fragment, data[:m]...)
+		fragment := c.makeFragment(header, data, fragOffset, fragLen)
+		if c.config.Bugs.FragmentMessageTypeMismatch && fragOffset > 0 {
+			fragment[0]++
+		}
+		if c.config.Bugs.FragmentMessageLengthMismatch && fragOffset > 0 {
+			fragment[3]++
+		}
 
 		// Buffer the fragment for later. They will be sent (and
 		// reordered) on flush.
@@ -160,13 +173,17 @@ func (c *Conn) dtlsWriteRecord(typ recordType, data []byte) (n int, err error) {
 				c.pendingFragments = append(c.pendingFragments, fragment)
 			}
 
-			if m > (maxLen+1)/2 {
+			if fragLen > (maxLen+1)/2 {
 				// Overlap each fragment by half.
-				m = (maxLen + 1) / 2
+				fragLen = (maxLen + 1) / 2
 			}
 		}
-		n += m
-		data = data[m:]
+		fragOffset += fragLen
+		n += fragLen
+	}
+	if !isFinished && c.config.Bugs.MixCompleteMessageWithFragments {
+		fragment := c.makeFragment(header, data, 0, len(data))
+		c.pendingFragments = append(c.pendingFragments, fragment)
 	}
 
 	// Increment the handshake sequence number for the next
@@ -194,6 +211,18 @@ func (c *Conn) dtlsFlushHandshake() error {
 
 	// Send them all.
 	for _, fragment := range fragments {
+		if c.config.Bugs.SplitFragmentHeader {
+			if _, err := c.dtlsWriteRawRecord(recordTypeHandshake, fragment[:2]); err != nil {
+				return err
+			}
+			fragment = fragment[2:]
+		} else if c.config.Bugs.SplitFragmentBody && len(fragment) > 12 {
+			if _, err := c.dtlsWriteRawRecord(recordTypeHandshake, fragment[:13]); err != nil {
+				return err
+			}
+			fragment = fragment[13:]
+		}
+
 		// TODO(davidben): A real DTLS implementation needs to
 		// retransmit handshake messages. For testing purposes, we don't
 		// actually care.

@@ -77,9 +77,6 @@ extern "C" {
 
 #define DTLS1_HM_HEADER_LENGTH 12
 
-#define DTLS1_HM_BAD_FRAGMENT -2
-#define DTLS1_HM_FRAGMENT_RETRY -3
-
 #define DTLS1_CCS_HEADER_LENGTH 1
 
 #define DTLS1_AL_HEADER_LENGTH 2
@@ -93,6 +90,9 @@ typedef struct dtls1_bitmap_st {
   uint8_t max_seq_num[8];
 } DTLS1_BITMAP;
 
+/* TODO(davidben): This structure is used for both incoming messages and
+ * outgoing messages. |is_ccs| and |epoch| are only used in the latter and
+ * should be moved elsewhere. */
 struct hm_header_st {
   uint8_t type;
   unsigned long msg_len;
@@ -115,6 +115,9 @@ typedef struct record_pqueue_st {
   pqueue q;
 } record_pqueue;
 
+/* TODO(davidben): This structure is used for both incoming messages and
+ * outgoing messages. |fragment| and |reassembly| are only used in the former
+ * and should be moved elsewhere. */
 typedef struct hm_fragment_st {
   struct hm_header_st msg_header;
   uint8_t *fragment;
@@ -153,10 +156,17 @@ typedef struct dtls1_state_st {
   record_pqueue unprocessed_rcds;
   record_pqueue processed_rcds;
 
-  /* Buffered handshake messages */
+  /* buffered_messages is a priority queue of incoming handshake messages that
+   * have yet to be processed.
+   *
+   * TODO(davidben): This data structure may as well be a ring buffer of fixed
+   * size. */
   pqueue buffered_messages;
 
-  /* Buffered (sent) handshake records */
+  /* send_messages is a priority queue of outgoing handshake messages sent in
+   * the most recent handshake flight.
+   *
+   * TODO(davidben): This data structure may as well be a STACK_OF(T). */
   pqueue sent_messages;
 
   /* Buffered application records.  Only for records between CCS and Finished to
@@ -166,7 +176,6 @@ typedef struct dtls1_state_st {
   unsigned int mtu; /* max DTLS packet size */
 
   struct hm_header_st w_msg_hdr;
-  struct hm_header_st r_msg_hdr;
 
   /* num_timeouts is the number of times the retransmit timer has fired since
    * the last time it was reset. */

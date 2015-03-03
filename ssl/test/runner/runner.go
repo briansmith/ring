@@ -710,13 +710,18 @@ var testCases = []testCase{
 				ReorderHandshakeFragments: true,
 				// Large enough that no handshake message is
 				// fragmented.
-				//
-				// TODO(davidben): Also test interaction of
-				// complete handshake messages with
-				// fragments. The current logic is full of bugs
-				// here, so the reassembly logic needs a rewrite
-				// before those tests will pass.
 				MaxHandshakeRecordLength: 2048,
+			},
+		},
+	},
+	{
+		protocol: dtls,
+		name:     "MixCompleteMessageWithFragments-DTLS",
+		config: Config{
+			Bugs: ProtocolBugs{
+				ReorderHandshakeFragments:       true,
+				MixCompleteMessageWithFragments: true,
+				MaxHandshakeRecordLength:        2,
 			},
 		},
 	},
@@ -810,6 +815,61 @@ var testCases = []testCase{
 		shouldFail:         true,
 		expectedError:      ":UNEXPECTED_MESSAGE:",
 		expectedLocalError: "remote error: unexpected message",
+	},
+	{
+		protocol: dtls,
+		name:     "FragmentMessageTypeMismatch-DTLS",
+		config: Config{
+			Bugs: ProtocolBugs{
+				MaxHandshakeRecordLength:    2,
+				FragmentMessageTypeMismatch: true,
+			},
+		},
+		shouldFail:    true,
+		expectedError: ":FRAGMENT_MISMATCH:",
+	},
+	{
+		protocol: dtls,
+		name:     "FragmentMessageLengthMismatch-DTLS",
+		config: Config{
+			Bugs: ProtocolBugs{
+				MaxHandshakeRecordLength:      2,
+				FragmentMessageLengthMismatch: true,
+			},
+		},
+		shouldFail:    true,
+		expectedError: ":FRAGMENT_MISMATCH:",
+	},
+	{
+		protocol: dtls,
+		name:     "SplitFragmentHeader-DTLS",
+		config: Config{
+			Bugs: ProtocolBugs{
+				SplitFragmentHeader: true,
+			},
+		},
+		shouldFail:    true,
+		expectedError: ":UNEXPECTED_MESSAGE:",
+	},
+	{
+		protocol: dtls,
+		name:     "SplitFragmentBody-DTLS",
+		config: Config{
+			Bugs: ProtocolBugs{
+				SplitFragmentBody: true,
+			},
+		},
+		shouldFail:    true,
+		expectedError: ":UNEXPECTED_MESSAGE:",
+	},
+	{
+		protocol: dtls,
+		name:     "SendEmptyFragments-DTLS",
+		config: Config{
+			Bugs: ProtocolBugs{
+				SendEmptyFragments: true,
+			},
+		},
 	},
 }
 

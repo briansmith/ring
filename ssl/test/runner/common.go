@@ -623,6 +623,11 @@ type ProtocolBugs struct {
 	// Finished and will trigger a spurious retransmit.)
 	ReorderHandshakeFragments bool
 
+	// MixCompleteMessageWithFragments, if true, causes handshake
+	// messages in DTLS to redundantly both fragment the message
+	// and include a copy of the full one.
+	MixCompleteMessageWithFragments bool
+
 	// SendInvalidRecordType, if true, causes a record with an invalid
 	// content type to be sent immediately following the handshake.
 	SendInvalidRecordType bool
@@ -630,6 +635,30 @@ type ProtocolBugs struct {
 	// WrongCertificateMessageType, if true, causes Certificate message to
 	// be sent with the wrong message type.
 	WrongCertificateMessageType bool
+
+	// FragmentMessageTypeMismatch, if true, causes all non-initial
+	// handshake fragments in DTLS to have the wrong message type.
+	FragmentMessageTypeMismatch bool
+
+	// FragmentMessageLengthMismatch, if true, causes all non-initial
+	// handshake fragments in DTLS to have the wrong message length.
+	FragmentMessageLengthMismatch bool
+
+	// SplitFragmentHeader, if true, causes the handshake fragments in DTLS
+	// to be split across two records.
+	SplitFragmentHeader bool
+
+	// SplitFragmentBody, if true, causes the handshake bodies in DTLS to be
+	// split across two records.
+	//
+	// TODO(davidben): There's one final split to test: when the header and
+	// body are split across two records. But those are (incorrectly)
+	// accepted right now.
+	SplitFragmentBody bool
+
+	// SendEmptyFragments, if true, causes handshakes to include empty
+	// fragments in DTLS.
+	SendEmptyFragments bool
 }
 
 func (c *Config) serverInit() {
