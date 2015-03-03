@@ -60,6 +60,7 @@ SSL,function,263,dtls1_get_buffered_message
 SSL,function,158,dtls1_get_hello_verify
 SSL,function,159,dtls1_get_message
 SSL,function,160,dtls1_get_message_fragment
+SSL,function,265,dtls1_hm_fragment_new
 SSL,function,161,dtls1_preprocess_fragment
 SSL,function,264,dtls1_process_fragment
 SSL,function,162,dtls1_process_record

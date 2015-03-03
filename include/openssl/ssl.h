@@ -2430,6 +2430,7 @@ OPENSSL_EXPORT int SSL_set_session_ticket_ext_cb(SSL *s, void *cb, void *arg);
 #define SSL_F_tls1_setup_key_block 262
 #define SSL_F_dtls1_get_buffered_message 263
 #define SSL_F_dtls1_process_fragment 264
+#define SSL_F_dtls1_hm_fragment_new 265
 #define SSL_R_APP_DATA_IN_HANDSHAKE 100
 #define SSL_R_ATTEMPT_TO_REUSE_SESSION_IN_DIFFERENT_CONTEXT 101
 #define SSL_R_BAD_ALERT 102

@@ -126,42 +126,6 @@
 
 #include "ssl_locl.h"
 
-#define RSMBLY_BITMASK_SIZE(msg_len) (((msg_len) + 7) / 8)
-
-#define RSMBLY_BITMASK_MARK(bitmask, start, end)                     \
-  {                                                                  \
-    if ((end) - (start) <= 8) {                                      \
-      long ii;                                                       \
-      for (ii = (start); ii < (end); ii++)                           \
-        bitmask[((ii) >> 3)] |= (1 << ((ii)&7));                     \
-    } else {                                                         \
-      long ii;                                                       \
-      bitmask[((start) >> 3)] |= bitmask_start_values[((start)&7)];  \
-      for (ii = (((start) >> 3) + 1); ii < ((((end)-1)) >> 3); ii++) \
-        bitmask[ii] = 0xff;                                          \
-      bitmask[(((end)-1) >> 3)] |= bitmask_end_values[((end)&7)];    \
-    }                                                                \
-  }
-
-#define RSMBLY_BITMASK_IS_COMPLETE(bitmask, msg_len, is_complete)           \
-  {                                                                         \
-    long ii;                                                                \
-    assert((msg_len) > 0);                                                  \
-    is_complete = 1;                                                        \
-    if (bitmask[(((msg_len)-1) >> 3)] != bitmask_end_values[((msg_len)&7)]) \
-      is_complete = 0;                                                      \
-    if (is_complete)                                                        \
-      for (ii = (((msg_len)-1) >> 3) - 1; ii >= 0; ii--)                    \
-        if (bitmask[ii] != 0xff) {                                          \
-          is_complete = 0;                                                  \
-          break;                                                            \
-        }                                                                   \
-  }
-
-static const uint8_t bitmask_start_values[] = {0xff, 0xfe, 0xfc, 0xf8,
-                                               0xf0, 0xe0, 0xc0, 0x80};
-static const uint8_t bitmask_end_values[] = {0xff, 0x01, 0x03, 0x07,
-                                             0x0f, 0x1f, 0x3f, 0x7f};
 
 /* TODO(davidben): 28 comes from the size of IP + UDP header. Is this reasonable
  * for these values? Notably, why is kMinMTU a function of the transport
@@ -191,12 +155,14 @@ static hm_fragment *dtls1_hm_fragment_new(unsigned long frag_len,
 
   frag = (hm_fragment *)OPENSSL_malloc(sizeof(hm_fragment));
   if (frag == NULL) {
+    OPENSSL_PUT_ERROR(SSL, dtls1_hm_fragment_new, ERR_R_MALLOC_FAILURE);
     return NULL;
   }
 
   if (frag_len) {
     buf = (uint8_t *)OPENSSL_malloc(frag_len);
     if (buf == NULL) {
+      OPENSSL_PUT_ERROR(SSL, dtls1_hm_fragment_new, ERR_R_MALLOC_FAILURE);
       OPENSSL_free(frag);
       return NULL;
     }
@@ -207,15 +173,21 @@ static hm_fragment *dtls1_hm_fragment_new(unsigned long frag_len,
 
   /* Initialize reassembly bitmask if necessary */
   if (reassembly && frag_len > 0) {
-    bitmask = (uint8_t *)OPENSSL_malloc(RSMBLY_BITMASK_SIZE(frag_len));
+    if (frag_len + 7 < frag_len) {
+      OPENSSL_PUT_ERROR(SSL, dtls1_hm_fragment_new, ERR_R_OVERFLOW);
+      return NULL;
+    }
+    size_t bitmask_len = (frag_len + 7) / 8;
+    bitmask = (uint8_t *)OPENSSL_malloc(bitmask_len);
     if (bitmask == NULL) {
+      OPENSSL_PUT_ERROR(SSL, dtls1_hm_fragment_new, ERR_R_MALLOC_FAILURE);
       if (buf != NULL) {
         OPENSSL_free(buf);
       }
       OPENSSL_free(frag);
       return NULL;
     }
-    memset(bitmask, 0, RSMBLY_BITMASK_SIZE(frag_len));
+    memset(bitmask, 0, bitmask_len);
   }
 
   frag->reassembly = bitmask;
@@ -231,6 +203,59 @@ void dtls1_hm_fragment_free(hm_fragment *frag) {
     OPENSSL_free(frag->reassembly);
   }
   OPENSSL_free(frag);
+}
+
+#if !defined(inline)
+#define inline __inline
+#endif
+
+/* bit_range returns a |uint8_t| with bits |start|, inclusive, to |end|,
+ * exclusive, set. */
+static inline uint8_t bit_range(size_t start, size_t end) {
+  return (uint8_t)(~((1u << start) - 1) & ((1u << end) - 1));
+}
+
+/* dtls1_hm_fragment_mark marks bytes |start|, inclusive, to |end|, exclusive,
+ * as received in |frag|. If |frag| becomes complete, it clears
+ * |frag->reassembly|. The range must be within the bounds of |frag|'s message
+ * and |frag->reassembly| must not be NULL. */
+static void dtls1_hm_fragment_mark(hm_fragment *frag, size_t start,
+                                   size_t end) {
+  size_t i;
+  size_t msg_len = frag->msg_header.msg_len;
+
+  if (frag->reassembly == NULL || start > end || end > msg_len) {
+    assert(0);
+    return;
+  }
+  /* A zero-length message will never have a pending reassembly. */
+  assert(msg_len > 0);
+
+  if ((start >> 3) == (end >> 3)) {
+    frag->reassembly[start >> 3] |= bit_range(start & 7, end & 7);
+  } else {
+    frag->reassembly[start >> 3] |= bit_range(start & 7, 8);
+    for (i = (start >> 3) + 1; i < (end >> 3); i++) {
+      frag->reassembly[i] = 0xff;
+    }
+    if ((end & 7) != 0) {
+      frag->reassembly[end >> 3] |= bit_range(0, end & 7);
+    }
+  }
+
+  /* Check if the fragment is complete. */
+  for (i = 0; i < (msg_len >> 3); i++) {
+    if (frag->reassembly[i] != 0xff) {
+      return;
+    }
+  }
+  if ((msg_len & 7) != 0 &&
+      frag->reassembly[msg_len >> 3] != bit_range(0, msg_len & 7)) {
+    return;
+  }
+
+  OPENSSL_free(frag->reassembly);
+  frag->reassembly = NULL;
 }
 
 /* send s->init_buf in records of type 'type' (SSL3_RT_HANDSHAKE or
@@ -522,15 +547,8 @@ static int dtls1_process_fragment(SSL *s) {
     ssl3_send_alert(s, SSL3_AL_FATAL, SSL_AD_UNEXPECTED_MESSAGE);
     return -1;
   }
+  dtls1_hm_fragment_mark(frag, frag_off, frag_off + frag_len);
 
-  /* Update whether the message is complete. */
-  int is_complete;
-  RSMBLY_BITMASK_MARK(frag->reassembly, frag_off, frag_off + frag_len);
-  RSMBLY_BITMASK_IS_COMPLETE(frag->reassembly, msg_len, is_complete);
-  if (is_complete) {
-    OPENSSL_free(frag->reassembly);
-    frag->reassembly = NULL;
-  }
   return 1;
 }
 
