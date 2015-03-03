@@ -924,12 +924,6 @@ void dtls1_get_message_header(uint8_t *data,
   n2l3(data, msg_hdr->frag_len);
 }
 
-void dtls1_get_ccs_header(uint8_t *data, struct ccs_header_st *ccs_hdr) {
-  memset(ccs_hdr, 0x00, sizeof(struct ccs_header_st));
-
-  ccs_hdr->type = *(data++);
-}
-
 int dtls1_shutdown(SSL *s) {
   int ret;
   ret = ssl3_shutdown(s);

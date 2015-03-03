@@ -105,11 +105,6 @@ struct hm_header_st {
   uint16_t epoch;
 };
 
-struct ccs_header_st {
-  uint8_t type;
-  uint16_t seq;
-};
-
 typedef struct record_pqueue_st {
   uint16_t epoch;
   pqueue q;

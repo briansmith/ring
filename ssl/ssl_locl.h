@@ -815,7 +815,6 @@ int dtls1_get_queue_priority(unsigned short seq, int is_ccs);
 int dtls1_retransmit_buffered_messages(SSL *s);
 void dtls1_clear_record_buffer(SSL *s);
 void dtls1_get_message_header(uint8_t *data, struct hm_header_st *msg_hdr);
-void dtls1_get_ccs_header(uint8_t *data, struct ccs_header_st *ccs_hdr);
 void dtls1_reset_seq_numbers(SSL *s, int rw);
 int dtls1_check_timeout_num(SSL *s);
 int dtls1_handle_timeout(SSL *s);

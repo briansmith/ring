@@ -786,16 +786,9 @@ start:
   }
 
   if (rr->type == SSL3_RT_CHANGE_CIPHER_SPEC) {
-    struct ccs_header_st ccs_hdr;
-    unsigned int ccs_hdr_len = DTLS1_CCS_HEADER_LENGTH;
-
-    dtls1_get_ccs_header(rr->data, &ccs_hdr);
-
-    /* 'Change Cipher Spec' is just a single byte, so we know
-     * exactly what the record payload has to look like */
-    /* XDTLS: check that epoch is consistent */
-    if ((rr->length != ccs_hdr_len) || (rr->off != 0) ||
-        (rr->data[0] != SSL3_MT_CCS)) {
+    /* 'Change Cipher Spec' is just a single byte, so we know exactly what the
+     * record payload has to look like */
+    if (rr->length != 1 || rr->off != 0 || rr->data[0] != SSL3_MT_CCS) {
       al = SSL_AD_ILLEGAL_PARAMETER;
       OPENSSL_PUT_ERROR(SSL, dtls1_read_bytes, SSL_R_BAD_CHANGE_CIPHER_SPEC);
       goto f_err;
