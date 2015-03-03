@@ -2184,17 +2184,10 @@ const char *SSL_SESSION_get_version(const SSL_SESSION *sess) {
 }
 
 void ssl_clear_cipher_ctx(SSL *s) {
-  if (s->aead_read_ctx != NULL) {
-    EVP_AEAD_CTX_cleanup(&s->aead_read_ctx->ctx);
-    OPENSSL_free(s->aead_read_ctx);
-    s->aead_read_ctx = NULL;
-  }
-
-  if (s->aead_write_ctx != NULL) {
-    EVP_AEAD_CTX_cleanup(&s->aead_write_ctx->ctx);
-    OPENSSL_free(s->aead_write_ctx);
-    s->aead_write_ctx = NULL;
-  }
+  SSL_AEAD_CTX_free(s->aead_read_ctx);
+  s->aead_read_ctx = NULL;
+  SSL_AEAD_CTX_free(s->aead_write_ctx);
+  s->aead_write_ctx = NULL;
 }
 
 X509 *SSL_get_certificate(const SSL *s) {

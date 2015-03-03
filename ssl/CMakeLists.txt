@@ -19,6 +19,7 @@ add_library(
   s3_meth.c
   s3_pkt.c
   s3_srvr.c
+  ssl_aead_ctx.c
   ssl_algs.c
   ssl_asn1.c
   ssl_cert.c

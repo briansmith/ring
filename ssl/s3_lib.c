@@ -478,7 +478,6 @@ const SSL_CIPHER ssl3_ciphers[] = {
 };
 
 const SSL3_ENC_METHOD SSLv3_enc_data = {
-    tls1_enc,
     ssl3_prf,
     tls1_setup_key_block,
     tls1_generate_master_secret,
@@ -533,7 +532,6 @@ int ssl3_new(SSL *s) {
   }
   memset(s3, 0, sizeof *s3);
   memset(s3->rrec.seq_num, 0, sizeof(s3->rrec.seq_num));
-  memset(s3->wrec.seq_num, 0, sizeof(s3->wrec.seq_num));
 
   s->s3 = s3;
 

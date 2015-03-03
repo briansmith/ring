@@ -263,7 +263,6 @@ int dtls1_do_write(SSL *s, int type) {
   int ret;
   int curr_mtu;
   unsigned int len, frag_off;
-  size_t max_overhead = 0;
 
   /* AHA!  Figure out the MTU, and stick to the right size */
   if (s->d1->mtu < dtls1_min_mtu() &&
@@ -286,12 +285,7 @@ int dtls1_do_write(SSL *s, int type) {
   }
 
   /* Determine the maximum overhead of the current cipher. */
-  if (s->aead_write_ctx != NULL) {
-    max_overhead = EVP_AEAD_max_overhead(s->aead_write_ctx->ctx.aead);
-    if (s->aead_write_ctx->variable_nonce_included_in_record) {
-      max_overhead += s->aead_write_ctx->variable_nonce_len;
-    }
-  }
+  size_t max_overhead = SSL_AEAD_CTX_max_overhead(s->aead_write_ctx);
 
   frag_off = 0;
   while (s->init_num) {

@@ -291,6 +291,75 @@ int ssl_cipher_has_server_public_key(const SSL_CIPHER *cipher);
 int ssl_cipher_requires_server_key_exchange(const SSL_CIPHER *cipher);
 
 
+/* Encryption layer. */
+
+/* SSL_AEAD_CTX contains information about an AEAD that is being used to encrypt
+ * an SSL connection. */
+struct ssl_aead_ctx_st {
+  const SSL_CIPHER *cipher;
+  EVP_AEAD_CTX ctx;
+  /* fixed_nonce contains any bytes of the nonce that are fixed for all
+   * records. */
+  uint8_t fixed_nonce[8];
+  uint8_t fixed_nonce_len, variable_nonce_len;
+  /* variable_nonce_included_in_record is non-zero if the variable nonce
+   * for a record is included as a prefix before the ciphertext. */
+  char variable_nonce_included_in_record;
+  /* random_variable_nonce is non-zero if the variable nonce is
+   * randomly generated, rather than derived from the sequence
+   * number. */
+  char random_variable_nonce;
+  /* omit_length_in_ad is non-zero if the length should be omitted in the
+   * AEAD's ad parameter. */
+  char omit_length_in_ad;
+  /* omit_version_in_ad is non-zero if the version should be omitted
+   * in the AEAD's ad parameter. */
+  char omit_version_in_ad;
+} /* SSL_AEAD_CTX */;
+
+/* SSL_AEAD_CTX_new creates a newly-allocated |SSL_AEAD_CTX| using the supplied
+ * key material. It returns NULL on error. Only one of |SSL_AEAD_CTX_open| or
+ * |SSL_AEAD_CTX_seal| may be used with the resulting object, depending on
+ * |direction|. |version| is the normalized protocol version, so DTLS 1.0 is
+ * represented as 0x0301, not 0xffef. */
+SSL_AEAD_CTX *SSL_AEAD_CTX_new(enum evp_aead_direction_t direction,
+                               uint16_t version, const SSL_CIPHER *cipher,
+                               const uint8_t *enc_key, size_t enc_key_len,
+                               const uint8_t *mac_key, size_t mac_key_len,
+                               const uint8_t *fixed_iv, size_t fixed_iv_len);
+
+/* SSL_AEAD_CTX_free frees |ctx|. */
+void SSL_AEAD_CTX_free(SSL_AEAD_CTX *ctx);
+
+/* SSL_AEAD_CTX_explicit_nonce_len returns the length of the explicit nonce for
+ * |ctx|, if any. |ctx| may be NULL to denote the null cipher. */
+size_t SSL_AEAD_CTX_explicit_nonce_len(SSL_AEAD_CTX *ctx);
+
+/* SSL_AEAD_CTX_max_overhead returns the maximum overhead of calling
+ * |SSL_AEAD_CTX_seal|. |ctx| may be NULL to denote the null cipher. */
+size_t SSL_AEAD_CTX_max_overhead(SSL_AEAD_CTX *ctx);
+
+/* SSL_AEAD_CTX_open authenticates and decrypts |in_len| bytes from |in| and
+ * writes the result to |out|. It returns one on success and zero on
+ * error. |ctx| may be NULL to denote the null cipher.
+ *
+ * If |in| and |out| alias then |out| must be <= |in| + |explicit_nonce_len|. */
+int SSL_AEAD_CTX_open(SSL_AEAD_CTX *ctx, uint8_t *out, size_t *out_len,
+                      size_t max_out, uint8_t type, uint16_t wire_version,
+                      const uint8_t seqnum[8], const uint8_t *in,
+                      size_t in_len);
+
+/* SSL_AEAD_CTX_seal encrypts and authenticates |in_len| bytes from |in| and
+ * writes the result to |out|. It returns one on success and zero on
+ * error. |ctx| may be NULL to denote the null cipher.
+ *
+ * If |in| and |out| alias then |out| + |explicit_nonce_len| must be <= |in| */
+int SSL_AEAD_CTX_seal(SSL_AEAD_CTX *ctx, uint8_t *out, size_t *out_len,
+                      size_t max_out, uint8_t type, uint16_t wire_version,
+                      const uint8_t seqnum[8], const uint8_t *in,
+                      size_t in_len);
+
+
 /* Underdocumented functions.
  *
  * Functions below here haven't been touched up and may be underdocumented. */
@@ -596,7 +665,6 @@ struct ssl_protocol_method_st {
 /* This is for the SSLv3/TLSv1.0 differences in crypto/hash stuff It is a bit
  * of a mess of functions, but hell, think of it as an opaque structure. */
 struct ssl3_enc_method {
-  int (*enc)(SSL *, int);
   int (*prf)(SSL *, uint8_t *, size_t, const uint8_t *, size_t, const char *,
              size_t, const uint8_t *, size_t, const uint8_t *, size_t);
   int (*setup_key_block)(SSL *);
@@ -633,30 +701,6 @@ struct ssl3_enc_method {
 /* Allow TLS 1.2 ciphersuites: applies to DTLS 1.2 as well as TLS 1.2:
  * may apply to others in future. */
 #define SSL_ENC_FLAG_TLS1_2_CIPHERS 0x8
-
-/* ssl_aead_ctx_st contains information about an AEAD that is being used to
- * encrypt an SSL connection. */
-struct ssl_aead_ctx_st {
-  const SSL_CIPHER *cipher;
-  EVP_AEAD_CTX ctx;
-  /* fixed_nonce contains any bytes of the nonce that are fixed for all
-   * records. */
-  uint8_t fixed_nonce[8];
-  uint8_t fixed_nonce_len, variable_nonce_len, tag_len;
-  /* variable_nonce_included_in_record is non-zero if the variable nonce
-   * for a record is included as a prefix before the ciphertext. */
-  char variable_nonce_included_in_record;
-  /* random_variable_nonce is non-zero if the variable nonce is
-   * randomly generated, rather than derived from the sequence
-   * number. */
-  char random_variable_nonce;
-  /* omit_length_in_ad is non-zero if the length should be omitted in the
-   * AEAD's ad parameter. */
-  char omit_length_in_ad;
-  /* omit_version_in_ad is non-zero if the version should be omitted
-   * in the AEAD's ad parameter. */
-  char omit_version_in_ad;
-};
 
 /* lengths of messages */
 #define DTLS1_COOKIE_LENGTH 256
@@ -988,7 +1032,6 @@ int tls1_prf(SSL *s, uint8_t *out, size_t out_len, const uint8_t *secret,
 
 int tls1_change_cipher_state(SSL *s, int which);
 int tls1_setup_key_block(SSL *s);
-int tls1_enc(SSL *s, int snd);
 int tls1_handshake_digest(SSL *s, uint8_t *out, size_t out_len);
 int tls1_final_finish_mac(SSL *s, const char *str, int slen, uint8_t *p);
 int tls1_cert_verify_mac(SSL *s, int md_nid, uint8_t *p);

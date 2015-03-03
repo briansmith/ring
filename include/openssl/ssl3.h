@@ -313,13 +313,23 @@ OPENSSL_COMPILE_ASSERT(
 #define SSL3_AD_INAPPROPRIATE_FALLBACK 86 /* fatal */
 
 typedef struct ssl3_record_st {
-  /*r */ int type;            /* type of record */
-  /*rw*/ unsigned int length; /* How many bytes available */
-  /*r */ unsigned int off;    /* read/write offset into 'buf' */
-  /*rw*/ uint8_t *data;       /* pointer to the record data */
-  /*rw*/ uint8_t *input;      /* where the decode bytes are */
-  /*r */ unsigned long epoch; /* epoch number, needed by DTLS1 */
-  /*r */ uint8_t seq_num[8];  /* sequence number, needed by DTLS1 */
+  /* type is the record type. */
+  uint8_t type;
+  /* length is the number of unconsumed bytes of |data|. */
+  uint16_t length;
+  /* off is the number of consumed bytes of |data|. */
+  uint16_t off;
+  /* data is a non-owning pointer to the record contents. The total length of
+   * the buffer is |off| + |length|. */
+  uint8_t *data;
+  /* epoch, in DTLS, is the epoch number of the record. */
+  uint16_t epoch;
+  /* seq_num, in DTLS, is the sequence number of the record. The top two bytes
+   * are always zero.
+   *
+   * TODO(davidben): This is confusing. They should include the epoch or the
+   * field should be six bytes. */
+  uint8_t seq_num[8];
 } SSL3_RECORD;
 
 typedef struct ssl3_buffer_st {
@@ -379,7 +389,6 @@ typedef struct ssl3_state_st {
   SSL3_BUFFER wbuf; /* write IO goes into here */
 
   SSL3_RECORD rrec; /* each decoded record goes in here */
-  SSL3_RECORD wrec; /* goes out from here */
 
   /* storage for Handshake protocol data received but not yet processed by
    * ssl3_read_bytes: */

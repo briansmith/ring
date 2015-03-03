@@ -2720,6 +2720,10 @@ OPENSSL_EXPORT const char *SSLeay_version(int unused);
 #define SSL_F_SSL_set1_tls_channel_id 273
 #define SSL_F_SSL_set_tlsext_host_name 274
 #define SSL_F_ssl3_output_cert_chain 275
+#define SSL_F_SSL_AEAD_CTX_new 276
+#define SSL_F_SSL_AEAD_CTX_open 277
+#define SSL_F_SSL_AEAD_CTX_seal 278
+#define SSL_F_dtls1_seal_record 279
 #define SSL_R_APP_DATA_IN_HANDSHAKE 100
 #define SSL_R_ATTEMPT_TO_REUSE_SESSION_IN_DIFFERENT_CONTEXT 101
 #define SSL_R_BAD_ALERT 102
@@ -2894,6 +2898,7 @@ OPENSSL_EXPORT const char *SSLeay_version(int unused);
 #define SSL_R_FRAGMENT_MISMATCH 271
 #define SSL_R_BUFFER_TOO_SMALL 272
 #define SSL_R_OLD_SESSION_VERSION_NOT_RETURNED 273
+#define SSL_R_OUTPUT_ALIASES_INPUT 274
 #define SSL_R_SSLV3_ALERT_CLOSE_NOTIFY 1000
 #define SSL_R_SSLV3_ALERT_UNEXPECTED_MESSAGE 1010
 #define SSL_R_SSLV3_ALERT_BAD_RECORD_MAC 1020

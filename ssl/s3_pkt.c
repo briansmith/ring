@@ -262,15 +262,13 @@ int ssl3_read_n(SSL *s, int n, int extend) {
  * ssl->s3->rrec.length  - number of bytes */
 /* used only by ssl3_read_bytes */
 static int ssl3_get_record(SSL *s) {
-  int ssl_major, ssl_minor, al;
-  int n, i, ret = -1;
-  SSL3_RECORD *rr;
+  uint8_t ssl_major, ssl_minor;
+  int al, n, i, ret = -1;
+  SSL3_RECORD *rr = &s->s3->rrec;
   uint8_t *p;
-  short version;
+  uint16_t version;
   size_t extra;
   unsigned empty_record_count = 0;
-
-  rr = &s->s3->rrec;
 
 again:
   /* check if we have the header */
@@ -296,7 +294,7 @@ again:
     rr->type = *(p++);
     ssl_major = *(p++);
     ssl_minor = *(p++);
-    version = (ssl_major << 8) | ssl_minor;
+    version = (((uint16_t)ssl_major) << 8) | ssl_minor;
     n2s(p, rr->length);
 
     if (s->s3->have_version && version != s->version) {
@@ -339,40 +337,40 @@ again:
 
   s->rstate = SSL_ST_READ_HEADER; /* set state for later operations */
 
-  /* At this point, s->packet_length == SSL3_RT_HEADER_LNGTH + rr->length, and
-   * we have that many bytes in s->packet. */
-  rr->input = &s->packet[SSL3_RT_HEADER_LENGTH];
+  /* |rr->data| points to |rr->length| bytes of ciphertext in |s->packet|. */
+  rr->data = &s->packet[SSL3_RT_HEADER_LENGTH];
 
-  /* ok, we can now read from |s->packet| data into |rr|. |rr->input| points at
-   * |rr->length| bytes, which need to be copied into |rr->data| by decryption.
-   * When the data is 'copied' into the |rr->data| buffer, |rr->input| will be
-   * pointed at the new buffer. */
-
-  /* We now have - encrypted [ MAC [ compressed [ plain ] ] ]
-   * rr->length bytes of encrypted compressed stuff. */
-
-  /* decrypt in place in 'rr->input' */
-  rr->data = rr->input;
-
-  if (!s->enc_method->enc(s, 0)) {
+  /* Decrypt the packet in-place.
+   *
+   * TODO(davidben): This assumes |s->version| is the same as the record-layer
+   * version which isn't always true, but it only differs with the NULL cipher
+   * which ignores the parameter. */
+  size_t plaintext_len;
+  if (!SSL_AEAD_CTX_open(s->aead_read_ctx, rr->data, &plaintext_len, rr->length,
+                         rr->type, s->version, s->s3->read_sequence, rr->data,
+                         rr->length)) {
     al = SSL_AD_BAD_RECORD_MAC;
     OPENSSL_PUT_ERROR(SSL, ssl3_get_record,
                       SSL_R_DECRYPTION_FAILED_OR_BAD_RECORD_MAC);
     goto f_err;
   }
-
-  if (rr->length > SSL3_RT_MAX_PLAIN_LENGTH + extra) {
+  if (!ssl3_record_sequence_update(s->s3->read_sequence, 8)) {
+    goto err;
+  }
+  if (plaintext_len > SSL3_RT_MAX_PLAIN_LENGTH + extra) {
     al = SSL_AD_RECORD_OVERFLOW;
     OPENSSL_PUT_ERROR(SSL, ssl3_get_record, SSL_R_DATA_LENGTH_TOO_LONG);
     goto f_err;
   }
+  assert(plaintext_len <= (1u << 16));
+  rr->length = plaintext_len;
 
   rr->off = 0;
   /* So at this point the following is true:
    * ssl->s3->rrec.type is the type of record;
    * ssl->s3->rrec.length is the number of bytes in the record;
    * ssl->s3->rrec.off is the offset to first valid byte;
-   * ssl->s3->rrec.data is where to take bytes from (increment after use). */
+   * ssl->s3->rrec.data the first byte of the record body. */
 
   /* we have pulled in a full packet so zero things */
   s->packet_length = 0;
@@ -471,8 +469,8 @@ int ssl3_write_bytes(SSL *s, int type, const void *buf_, int len) {
 
 /* ssl3_seal_record seals a new record of type |type| and plaintext |in| and
  * writes it to |out|. At most |max_out| bytes will be written. It returns one
- * on success and zero on error. On success, |s->s3->wrec| is updated to include
- * the new record. */
+ * on success and zero on error. On success, it updates the write sequence
+ * number. */
 static int ssl3_seal_record(SSL *s, uint8_t *out, size_t *out_len,
                             size_t max_out, uint8_t type, const uint8_t *in,
                             size_t in_len) {
@@ -485,61 +483,30 @@ static int ssl3_seal_record(SSL *s, uint8_t *out, size_t *out_len,
 
   /* Some servers hang if initial ClientHello is larger than 256 bytes and
    * record version number > TLS 1.0. */
+  uint16_t wire_version = s->version;
   if (!s->s3->have_version && s->version > SSL3_VERSION) {
-    out[1] = TLS1_VERSION >> 8;
-    out[2] = TLS1_VERSION & 0xff;
-  } else {
-    out[1] = s->version >> 8;
-    out[2] = s->version & 0xff;
+    wire_version = TLS1_VERSION;
+  }
+  out[1] = wire_version >> 8;
+  out[2] = wire_version & 0xff;
+
+  size_t ciphertext_len;
+  if (!SSL_AEAD_CTX_seal(s->aead_write_ctx, out + SSL3_RT_HEADER_LENGTH,
+                         &ciphertext_len, max_out - SSL3_RT_HEADER_LENGTH,
+                         type, wire_version, s->s3->write_sequence, in,
+                         in_len) ||
+      !ssl3_record_sequence_update(s->s3->write_sequence, 8)) {
+    return 0;
   }
 
-  size_t explicit_nonce_len = 0;
-  if (s->aead_write_ctx != NULL &&
-      s->aead_write_ctx->variable_nonce_included_in_record) {
-    explicit_nonce_len = s->aead_write_ctx->variable_nonce_len;
-  }
-  size_t max_overhead = 0;
-  if (s->aead_write_ctx != NULL) {
-    max_overhead = s->aead_write_ctx->tag_len;
-  }
-
-  /* Assemble the input for |s->enc_method->enc|. The input is the plaintext
-   * with |explicit_nonce_len| bytes of space prepended for the explicit
-   * nonce. The input is copied into |out| and then encrypted in-place to take
-   * advantage of alignment.
-   *
-   * TODO(davidben): |tls1_enc| should accept its inputs and outputs directly
-   * rather than looking up in |wrec| and friends. The |max_overhead| bounds
-   * check would also be unnecessary if |max_out| were passed down. */
-  SSL3_RECORD *wr = &s->s3->wrec;
-  size_t plaintext_len = in_len + explicit_nonce_len;
-  if (plaintext_len < in_len || plaintext_len > INT_MAX ||
-      plaintext_len + max_overhead < plaintext_len) {
+  if (ciphertext_len >= 1 << 16) {
     OPENSSL_PUT_ERROR(SSL, ssl3_seal_record, ERR_R_OVERFLOW);
     return 0;
   }
-  if (max_out - SSL3_RT_HEADER_LENGTH < plaintext_len + max_overhead) {
-    OPENSSL_PUT_ERROR(SSL, ssl3_seal_record, SSL_R_BUFFER_TOO_SMALL);
-    return 0;
-  }
-  wr->type = type;
-  wr->input = out + SSL3_RT_HEADER_LENGTH;
-  wr->data = wr->input;
-  wr->length = plaintext_len;
-  memcpy(wr->input + explicit_nonce_len, in, in_len);
+  out[3] = ciphertext_len >> 8;
+  out[4] = ciphertext_len & 0xff;
 
-  if (!s->enc_method->enc(s, 1)) {
-    return 0;
-  }
-
-  /* |wr->length| has now been set to the ciphertext length. */
-  if (wr->length >= 1 << 16) {
-    OPENSSL_PUT_ERROR(SSL, ssl3_seal_record, ERR_R_OVERFLOW);
-    return 0;
-  }
-  out[3] = wr->length >> 8;
-  out[4] = wr->length & 0xff;
-  *out_len = SSL3_RT_HEADER_LENGTH + (size_t)wr->length;
+  *out_len = SSL3_RT_HEADER_LENGTH + ciphertext_len;
 
  if (s->msg_callback) {
    s->msg_callback(1 /* write */, 0, SSL3_RT_HEADER, out, SSL3_RT_HEADER_LENGTH,

@@ -1,3 +1,6 @@
+SSL,function,276,SSL_AEAD_CTX_new
+SSL,function,277,SSL_AEAD_CTX_open
+SSL,function,278,SSL_AEAD_CTX_seal
 SSL,function,100,SSL_CTX_check_private_key
 SSL,function,101,SSL_CTX_new
 SSL,function,272,SSL_CTX_set1_tls_channel_id
@@ -72,6 +75,7 @@ SSL,function,161,dtls1_preprocess_fragment
 SSL,function,264,dtls1_process_fragment
 SSL,function,162,dtls1_process_record
 SSL,function,163,dtls1_read_bytes
+SSL,function,279,dtls1_seal_record
 SSL,function,164,dtls1_send_hello_verify_request
 SSL,function,165,dtls1_write_app_data_bytes
 SSL,function,166,i2d_SSL_SESSION
@@ -272,6 +276,7 @@ SSL,reason,196,NULL_SSL_CTX
 SSL,reason,197,NULL_SSL_METHOD_PASSED
 SSL,reason,198,OLD_SESSION_CIPHER_NOT_RETURNED
 SSL,reason,273,OLD_SESSION_VERSION_NOT_RETURNED
+SSL,reason,274,OUTPUT_ALIASES_INPUT
 SSL,reason,199,PACKET_LENGTH_TOO_LONG
 SSL,reason,200,PARSE_TLSEXT
 SSL,reason,201,PATH_TOO_LONG
