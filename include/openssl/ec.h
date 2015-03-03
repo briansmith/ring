@@ -98,7 +98,6 @@ typedef enum {
  * curve specified by |nid|, or NULL on error.
  *
  * The supported NIDs are:
- *   NID_secp224r1,
  *   NID_X9_62_prime256v1,
  *   NID_secp384r1,
  *   NID_secp521r1 */

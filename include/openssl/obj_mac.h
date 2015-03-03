@@ -88,7 +88,6 @@
 #define NID_sha512WithRSAEncryption 670
 
 /* ECC named curves */
-#define NID_secp224r1 713
 #define NID_X9_62_prime256v1 415
 #define NID_secp384r1 715
 #define NID_secp521r1 716
