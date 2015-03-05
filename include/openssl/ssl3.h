@@ -117,9 +117,11 @@
 #ifndef HEADER_SSL3_H
 #define HEADER_SSL3_H
 
+#include <openssl/aead.h>
 #include <openssl/buf.h>
 #include <openssl/evp.h>
 #include <openssl/ssl.h>
+#include <openssl/type_check.h>
 
 #ifdef  __cplusplus
 extern "C" {
@@ -237,14 +239,23 @@ extern "C" {
 
 /* The standards give a maximum encryption overhead of 1024 bytes. In practice
  * the value is lower than this. The overhead is the maximum number of padding
- * bytes (256) plus the mac size. */
+ * bytes (256) plus the mac size.
+ *
+ * TODO(davidben): This derivation doesn't take AEADs into account, or TLS 1.1
+ * explicit nonces. It happens to work because |SSL3_RT_MAX_MD_SIZE| is larger
+ * than necessary and no true AEAD has variable overhead in TLS 1.2. */
 #define SSL3_RT_MAX_ENCRYPTED_OVERHEAD (256 + SSL3_RT_MAX_MD_SIZE)
 
-/* OpenSSL currently only uses a padding length of at most one block so the
- * send overhead is smaller. */
-
+/* SSL3_RT_SEND_MAX_ENCRYPTED_OVERHEAD is the maximum overhead in encrypting a
+ * record. This does not include the record header. Some ciphers use explicit
+ * nonces, so it includes both the AEAD overhead as well as the nonce. */
 #define SSL3_RT_SEND_MAX_ENCRYPTED_OVERHEAD \
-  (SSL_RT_MAX_CIPHER_BLOCK_SIZE + SSL3_RT_MAX_MD_SIZE)
+    (EVP_AEAD_MAX_OVERHEAD + EVP_AEAD_MAX_NONCE_LENGTH)
+
+OPENSSL_COMPILE_ASSERT(
+    SSL3_RT_MAX_ENCRYPTED_OVERHEAD >= SSL3_RT_SEND_MAX_ENCRYPTED_OVERHEAD,
+    max_overheads_are_consistent);
+
 
 /* If compression isn't used don't include the compression overhead */
 
