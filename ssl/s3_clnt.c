@@ -1222,7 +1222,6 @@ int ssl3_get_server_key_exchange(SSL *s) {
   } else if (alg_k & SSL_kEECDH) {
     uint16_t curve_id;
     int curve_nid = 0;
-    EC_GROUP *ngroup;
     const EC_GROUP *group;
     CBS point;
 
@@ -1243,24 +1242,12 @@ int ssl3_get_server_key_exchange(SSL *s) {
       goto f_err;
     }
 
-    ecdh = EC_KEY_new();
+    ecdh = EC_KEY_new_by_curve_name(curve_nid);
     if (ecdh == NULL) {
       OPENSSL_PUT_ERROR(SSL, ssl3_get_server_key_exchange,
-                        ERR_R_MALLOC_FAILURE);
+                        ERR_R_EC_LIB);
       goto err;
     }
-
-    ngroup = EC_GROUP_new_by_curve_name(curve_nid);
-    if (ngroup == NULL) {
-      OPENSSL_PUT_ERROR(SSL, ssl3_get_server_key_exchange, ERR_R_EC_LIB);
-      goto err;
-    }
-    if (!EC_KEY_set_group(ecdh, ngroup)) {
-      EC_GROUP_free(ngroup);
-      OPENSSL_PUT_ERROR(SSL, ssl3_get_server_key_exchange, ERR_R_EC_LIB);
-      goto err;
-    }
-    EC_GROUP_free(ngroup);
 
     group = EC_KEY_get0_group(ecdh);
 

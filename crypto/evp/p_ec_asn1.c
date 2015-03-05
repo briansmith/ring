@@ -142,23 +142,14 @@ static EC_KEY *eckey_type2param(int ptype, void *pval) {
     }
   } else if (ptype == V_ASN1_OBJECT) {
     ASN1_OBJECT *poid = pval;
-    EC_GROUP *group;
 
     /* type == V_ASN1_OBJECT => the parameters are given
      * by an asn1 OID */
-    eckey = EC_KEY_new();
+    eckey = EC_KEY_new_by_curve_name(OBJ_obj2nid(poid));
     if (eckey == NULL) {
       OPENSSL_PUT_ERROR(EVP, eckey_type2param, ERR_R_MALLOC_FAILURE);
       goto err;
     }
-    group = EC_GROUP_new_by_curve_name(OBJ_obj2nid(poid));
-    if (group == NULL) {
-      goto err;
-    }
-    if (EC_KEY_set_group(eckey, group) == 0) {
-      goto err;
-    }
-    EC_GROUP_free(group);
   } else {
     OPENSSL_PUT_ERROR(EVP, eckey_type2param, EVP_R_DECODE_ERROR);
     goto err;
