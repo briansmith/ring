@@ -126,6 +126,14 @@
 #include <openssl/thread.h>
 
 
+extern const uint32_t kOpenSSLFunctionValues[];
+extern const size_t kOpenSSLFunctionValuesLen;
+extern const char kOpenSSLFunctionStringData[];
+
+extern const uint32_t kOpenSSLReasonValues[];
+extern const size_t kOpenSSLReasonValuesLen;
+extern const char kOpenSSLReasonStringData[];
+
 /* err_fns contains a pointer to the current error implementation. */
 static const struct ERR_FNS_st *err_fns = NULL;
 extern const struct ERR_FNS_st openssl_err_default_impl;
@@ -423,8 +431,6 @@ void ERR_error_string_n(uint32_t packed_error, char *buf, size_t len) {
   }
 }
 
-#include "err_data.h"
-
 // err_string_cmp is a compare function for searching error values with
 // |bsearch| in |err_string_lookup|.
 static int err_string_cmp(const void *a, const void *b) {
@@ -545,9 +551,9 @@ const char *ERR_func_error_string(uint32_t packed_error) {
   }
 
   return err_string_lookup(ERR_GET_LIB(packed_error),
-                           ERR_GET_FUNC(packed_error), kFunctionValues,
-                           sizeof(kFunctionValues) / sizeof(kFunctionValues[0]),
-                           kFunctionStringData);
+                           ERR_GET_FUNC(packed_error), kOpenSSLFunctionValues,
+                           kOpenSSLFunctionValuesLen,
+                           kOpenSSLFunctionStringData);
 }
 
 const char *ERR_reason_error_string(uint32_t packed_error) {
@@ -582,9 +588,8 @@ const char *ERR_reason_error_string(uint32_t packed_error) {
     }
   }
 
-  return err_string_lookup(lib, reason, kReasonValues,
-                           sizeof(kReasonValues) / sizeof(kReasonValues[0]),
-                           kReasonStringData);
+  return err_string_lookup(lib, reason, kOpenSSLReasonValues,
+                           kOpenSSLReasonValuesLen, kOpenSSLReasonStringData);
 }
 
 void ERR_print_errors_cb(ERR_print_errors_callback_t callback, void *ctx) {

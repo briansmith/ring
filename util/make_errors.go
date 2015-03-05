@@ -21,7 +21,6 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"sort"
 	"strconv"
@@ -131,25 +130,6 @@ func makeErrors(reset bool) error {
 	outputStrings(dataFile, lib, typeFunctions, functions)
 	outputStrings(dataFile, lib, typeReasons, reasons)
 	dataFile.Close()
-
-	generateCmd := exec.Command("go", "run", "err_data_generate.go")
-	generateCmd.Dir = errDir
-
-	errDataH, err := os.OpenFile(filepath.Join(errDir, "err_data.h"), os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0644)
-	if err != nil {
-		return err
-	}
-	defer errDataH.Close()
-
-	generateCmd.Stdout = errDataH
-	generateCmd.Stderr = os.Stderr
-
-	if err := generateCmd.Start(); err != nil {
-		return err
-	}
-	if err := generateCmd.Wait(); err != nil {
-		return err
-	}
 
 	return nil
 }

@@ -4,6 +4,11 @@ project (BoringSSL)
 
 find_package(Perl REQUIRED)
 
+find_program(GO_EXECUTABLE go)
+if (NOT GO_EXECUTABLE)
+  message(FATAL_ERROR "Could not find Go")
+endif()
+
 if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
   set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall -Werror -ggdb -fvisibility=hidden")
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Werror -ggdb -std=c++0x -fvisibility=hidden")
