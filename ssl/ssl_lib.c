@@ -2904,17 +2904,13 @@ const SSL3_ENC_METHOD *ssl3_get_enc_method(uint16_t version) {
     case TLS1_VERSION:
       return &TLSv1_enc_data;
 
+    case DTLS1_VERSION:
     case TLS1_1_VERSION:
       return &TLSv1_1_enc_data;
 
+    case DTLS1_2_VERSION:
     case TLS1_2_VERSION:
       return &TLSv1_2_enc_data;
-
-    case DTLS1_VERSION:
-      return &DTLSv1_enc_data;
-
-    case DTLS1_2_VERSION:
-      return &DTLSv1_2_enc_data;
 
     default:
       return NULL;

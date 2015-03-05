@@ -83,37 +83,6 @@
 static void get_current_time(SSL *ssl, OPENSSL_timeval *out_clock);
 static OPENSSL_timeval *dtls1_get_timeout(SSL *s, OPENSSL_timeval *timeleft);
 
-const SSL3_ENC_METHOD DTLSv1_enc_data = {
-  tls1_enc,
-  tls1_prf,
-  tls1_setup_key_block,
-  tls1_generate_master_secret,
-  tls1_change_cipher_state,
-  tls1_final_finish_mac,
-  tls1_cert_verify_mac,
-  TLS_MD_CLIENT_FINISH_CONST,TLS_MD_CLIENT_FINISH_CONST_SIZE,
-  TLS_MD_SERVER_FINISH_CONST,TLS_MD_SERVER_FINISH_CONST_SIZE,
-  tls1_alert_code,
-  tls1_export_keying_material,
-  SSL_ENC_FLAG_DTLS|SSL_ENC_FLAG_EXPLICIT_IV,
-};
-
-const SSL3_ENC_METHOD DTLSv1_2_enc_data = {
-  tls1_enc,
-  tls1_prf,
-  tls1_setup_key_block,
-  tls1_generate_master_secret,
-  tls1_change_cipher_state,
-  tls1_final_finish_mac,
-  tls1_cert_verify_mac,
-  TLS_MD_CLIENT_FINISH_CONST,TLS_MD_CLIENT_FINISH_CONST_SIZE,
-  TLS_MD_SERVER_FINISH_CONST,TLS_MD_SERVER_FINISH_CONST_SIZE,
-  tls1_alert_code,
-  tls1_export_keying_material,
-  SSL_ENC_FLAG_DTLS | SSL_ENC_FLAG_EXPLICIT_IV | SSL_ENC_FLAG_SIGALGS |
-      SSL_ENC_FLAG_SHA256_PRF | SSL_ENC_FLAG_TLS1_2_CIPHERS,
-};
-
 int dtls1_new(SSL *s) {
   DTLS1_STATE *d1;
 

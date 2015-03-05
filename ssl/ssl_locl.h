@@ -364,7 +364,7 @@
 /* we have used 000001ff - 23 bits left to go */
 
 /* Check if an SSL structure is using DTLS */
-#define SSL_IS_DTLS(s) (s->enc_method->enc_flags & SSL_ENC_FLAG_DTLS)
+#define SSL_IS_DTLS(s) (s->method->is_dtls)
 /* See if we need explicit IV */
 #define SSL_USE_EXPLICIT_IV(s) \
   (s->enc_method->enc_flags & SSL_ENC_FLAG_EXPLICIT_IV)
@@ -535,6 +535,8 @@ struct ssl_method_st {
 
 /* Used to hold functions for SSLv2 or SSLv3/TLSv1 functions */
 struct ssl_protocol_method_st {
+  /* is_dtls is one if the protocol is DTLS and zero otherwise. */
+  char is_dtls;
   int (*ssl_new)(SSL *s);
   void (*ssl_free)(SSL *s);
   int (*ssl_accept)(SSL *s);
@@ -603,11 +605,9 @@ struct ssl3_enc_method {
 #define SSL_ENC_FLAG_SIGALGS 0x2
 /* Uses SHA256 default PRF */
 #define SSL_ENC_FLAG_SHA256_PRF 0x4
-/* Is DTLS */
-#define SSL_ENC_FLAG_DTLS 0x8
 /* Allow TLS 1.2 ciphersuites: applies to DTLS 1.2 as well as TLS 1.2:
  * may apply to others in future. */
-#define SSL_ENC_FLAG_TLS1_2_CIPHERS 0x10
+#define SSL_ENC_FLAG_TLS1_2_CIPHERS 0x8
 
 /* ssl_aead_ctx_st contains information about an AEAD that is being used to
  * encrypt an SSL connection. */
@@ -638,8 +638,6 @@ extern const SSL3_ENC_METHOD TLSv1_enc_data;
 extern const SSL3_ENC_METHOD TLSv1_1_enc_data;
 extern const SSL3_ENC_METHOD TLSv1_2_enc_data;
 extern const SSL3_ENC_METHOD SSLv3_enc_data;
-extern const SSL3_ENC_METHOD DTLSv1_enc_data;
-extern const SSL3_ENC_METHOD DTLSv1_2_enc_data;
 
 void ssl_clear_cipher_ctx(SSL *s);
 int ssl_clear_bad_session(SSL *s);
