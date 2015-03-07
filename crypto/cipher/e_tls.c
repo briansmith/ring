@@ -53,8 +53,8 @@ static void aead_tls_cleanup(EVP_AEAD_CTX *ctx) {
 
 static int aead_tls_init(EVP_AEAD_CTX *ctx, const uint8_t *key, size_t key_len,
                          size_t tag_len, enum evp_aead_direction_t dir,
-			 const EVP_CIPHER *cipher, const EVP_MD *md,
-			 char implicit_iv) {
+                         const EVP_CIPHER *cipher, const EVP_MD *md,
+                         char implicit_iv) {
   if (tag_len != EVP_AEAD_DEFAULT_TAG_LENGTH &&
       tag_len != EVP_MD_size(md)) {
     OPENSSL_PUT_ERROR(CIPHER, aead_tls_init, CIPHER_R_UNSUPPORTED_TAG_SIZE);
