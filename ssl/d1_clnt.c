@@ -551,7 +551,7 @@ static int dtls1_get_hello_verify(SSL *s) {
       !CBS_get_u8_length_prefixed(&hello_verify_request, &cookie) ||
       CBS_len(&hello_verify_request) != 0) {
     al = SSL_AD_DECODE_ERROR;
-    OPENSSL_PUT_ERROR(SSL, ssl3_get_cert_status, SSL_R_DECODE_ERROR);
+    OPENSSL_PUT_ERROR(SSL, dtls1_get_hello_verify, SSL_R_DECODE_ERROR);
     goto f_err;
   }
 

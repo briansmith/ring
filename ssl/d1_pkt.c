@@ -729,7 +729,7 @@ start:
     /* Alerts may not be fragmented. */
     if (rr->length < 2) {
       al = SSL_AD_DECODE_ERROR;
-      OPENSSL_PUT_ERROR(SSL, ssl3_read_bytes, SSL_R_BAD_ALERT);
+      OPENSSL_PUT_ERROR(SSL, dtls1_read_bytes, SSL_R_BAD_ALERT);
       goto f_err;
     }
 
@@ -828,7 +828,7 @@ start:
   if (rr->type == SSL3_RT_HANDSHAKE && !s->in_handshake) {
     if (rr->length < DTLS1_HM_HEADER_LENGTH) {
       al = SSL_AD_DECODE_ERROR;
-      OPENSSL_PUT_ERROR(SSL, ssl3_read_bytes, SSL_R_BAD_HANDSHAKE_RECORD);
+      OPENSSL_PUT_ERROR(SSL, dtls1_read_bytes, SSL_R_BAD_HANDSHAKE_RECORD);
       goto f_err;
     }
     struct hm_header_st msg_hdr;
