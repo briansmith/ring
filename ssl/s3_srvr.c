@@ -2442,14 +2442,19 @@ int ssl3_send_server_certificate(SSL *s) {
 
 /* send a new session ticket (not necessarily for a new session) */
 int ssl3_send_new_session_ticket(SSL *s) {
+  int ret = -1;
+  uint8_t *session = NULL;
+  size_t session_len;
+  EVP_CIPHER_CTX ctx;
+  HMAC_CTX hctx;
+
+  EVP_CIPHER_CTX_init(&ctx);
+  HMAC_CTX_init(&hctx);
+
   if (s->state == SSL3_ST_SW_SESSION_TICKET_A) {
-    uint8_t *session;
-    size_t session_len;
     uint8_t *p, *macstart;
     int len;
     unsigned int hlen;
-    EVP_CIPHER_CTX ctx;
-    HMAC_CTX hctx;
     SSL_CTX *tctx = s->initial_ctx;
     uint8_t iv[EVP_MAX_IV_LENGTH];
     uint8_t key_name[16];
@@ -2460,7 +2465,7 @@ int ssl3_send_new_session_ticket(SSL *s) {
 
     /* Serialize the SSL_SESSION to be encoded into the ticket. */
     if (!SSL_SESSION_to_bytes_for_ticket(s->session, &session, &session_len)) {
-      return -1;
+      goto err;
     }
 
     /* If the session is too long, emit a dummy value rather than abort the
@@ -2470,6 +2475,7 @@ int ssl3_send_new_session_ticket(SSL *s) {
       const size_t placeholder_len = strlen(kTicketPlaceholder);
 
       OPENSSL_free(session);
+      session = NULL;
 
       p = ssl_handshake_start(s);
       /* Emit ticket_lifetime_hint. */
@@ -2481,7 +2487,7 @@ int ssl3_send_new_session_ticket(SSL *s) {
 
       len = p - ssl_handshake_start(s);
       if (!ssl_set_handshake_header(s, SSL3_MT_NEWSESSION_TICKET, len)) {
-        return -1;
+        goto err;
       }
       s->state = SSL3_ST_SW_SESSION_TICKET_B;
       return ssl_do_write(s);
@@ -2492,20 +2498,14 @@ int ssl3_send_new_session_ticket(SSL *s) {
      * max_ticket_overhead + * session_length */
     if (!BUF_MEM_grow(s->init_buf, SSL_HM_HEADER_LENGTH(s) + 6 +
                                        max_ticket_overhead + session_len)) {
-      OPENSSL_free(session);
-      return -1;
+      goto err;
     }
     p = ssl_handshake_start(s);
-    EVP_CIPHER_CTX_init(&ctx);
-    HMAC_CTX_init(&hctx);
     /* Initialize HMAC and cipher contexts. If callback present it does all the
      * work otherwise use generated values from parent ctx. */
     if (tctx->tlsext_ticket_key_cb) {
       if (tctx->tlsext_ticket_key_cb(s, key_name, iv, &ctx, &hctx, 1) < 0) {
-        OPENSSL_free(session);
-        EVP_CIPHER_CTX_cleanup(&ctx);
-        HMAC_CTX_cleanup(&hctx);
-        return -1;
+        goto err;
       }
     } else {
       if (!RAND_bytes(iv, 16) ||
@@ -2513,10 +2513,7 @@ int ssl3_send_new_session_ticket(SSL *s) {
                               tctx->tlsext_tick_aes_key, iv) ||
           !HMAC_Init_ex(&hctx, tctx->tlsext_tick_hmac_key, 16, tlsext_tick_md(),
                         NULL)) {
-        OPENSSL_free(session);
-        EVP_CIPHER_CTX_cleanup(&ctx);
-        HMAC_CTX_cleanup(&hctx);
-        return -1;
+        goto err;
       }
       memcpy(key_name, tctx->tlsext_tick_key_name, 16);
     }
@@ -2536,15 +2533,19 @@ int ssl3_send_new_session_ticket(SSL *s) {
     memcpy(p, iv, EVP_CIPHER_CTX_iv_length(&ctx));
     p += EVP_CIPHER_CTX_iv_length(&ctx);
     /* Encrypt session data */
-    EVP_EncryptUpdate(&ctx, p, &len, session, session_len);
+    if (!EVP_EncryptUpdate(&ctx, p, &len, session, session_len)) {
+      goto err;
+    }
     p += len;
-    EVP_EncryptFinal_ex(&ctx, p, &len);
+    if (!EVP_EncryptFinal_ex(&ctx, p, &len)) {
+      goto err;
+    }
     p += len;
-    EVP_CIPHER_CTX_cleanup(&ctx);
 
-    HMAC_Update(&hctx, macstart, p - macstart);
-    HMAC_Final(&hctx, p, &hlen);
-    HMAC_CTX_cleanup(&hctx);
+    if (!HMAC_Update(&hctx, macstart, p - macstart) ||
+        !HMAC_Final(&hctx, p, &hlen)) {
+      goto err;
+    }
 
     p += hlen;
     /* Now write out lengths: p points to end of data written */
@@ -2554,14 +2555,21 @@ int ssl3_send_new_session_ticket(SSL *s) {
     p = ssl_handshake_start(s) + 4;
     s2n(len - 6, p);
     if (!ssl_set_handshake_header(s, SSL3_MT_NEWSESSION_TICKET, len)) {
-      return -1;
+      goto err;
     }
     s->state = SSL3_ST_SW_SESSION_TICKET_B;
-    OPENSSL_free(session);
   }
 
   /* SSL3_ST_SW_SESSION_TICKET_B */
-  return ssl_do_write(s);
+  ret = ssl_do_write(s);
+
+err:
+  if (session != NULL) {
+    OPENSSL_free(session);
+  }
+  EVP_CIPHER_CTX_cleanup(&ctx);
+  HMAC_CTX_cleanup(&hctx);
+  return ret;
 }
 
 /* ssl3_get_next_proto reads a Next Protocol Negotiation handshake message. It
