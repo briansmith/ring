@@ -201,7 +201,10 @@ int ssl3_read_n(SSL *s, int n, int max, int extend) {
     rb->offset = len + align;
   }
 
-  assert(n <= (int)(rb->len - rb->offset));
+  if (n > (int)(rb->len - rb->offset)) {
+    OPENSSL_PUT_ERROR(SSL, ssl3_read_n, ERR_R_INTERNAL_ERROR);
+    return -1;
+  }
 
   if (!s->read_ahead) {
     /* ignore max parameter */
