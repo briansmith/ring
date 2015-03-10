@@ -214,20 +214,20 @@ int EVP_PKEY_CTX_ctrl(EVP_PKEY_CTX *ctx, int keytype, int optype, int cmd,
                       int p1, void *p2) {
   if (!ctx || !ctx->pmeth || !ctx->pmeth->ctrl) {
     OPENSSL_PUT_ERROR(EVP, EVP_PKEY_CTX_ctrl, EVP_R_COMMAND_NOT_SUPPORTED);
-    return -2;
+    return 0;
   }
   if (keytype != -1 && ctx->pmeth->pkey_id != keytype) {
-    return -1;
+    return 0;
   }
 
   if (ctx->operation == EVP_PKEY_OP_UNDEFINED) {
     OPENSSL_PUT_ERROR(EVP, EVP_PKEY_CTX_ctrl, EVP_R_NO_OPERATION_SET);
-    return -1;
+    return 0;
   }
 
   if (optype != -1 && !(ctx->operation & optype)) {
     OPENSSL_PUT_ERROR(EVP, EVP_PKEY_CTX_ctrl, EVP_R_INVALID_OPERATION);
-    return -1;
+    return 0;
   }
 
   return ctx->pmeth->ctrl(ctx, cmd, p1, p2);

@@ -170,8 +170,49 @@ typedef int EVP_PKEY_gen_cb(EVP_PKEY_CTX *ctx);
 
 #define EVP_PKEY_OP_TYPE_GEN (EVP_PKEY_OP_PARAMGEN | EVP_PKEY_OP_KEYGEN)
 
+/* EVP_PKEY_CTX_ctrl performs |cmd| on |ctx|. The |keytype| and |optype|
+ * arguments can be -1 to specify that any type and operation are acceptable,
+ * otherwise |keytype| must match the type of |ctx| and the bits of |optype|
+ * must intersect the operation flags set on |ctx|.
+ *
+ * The |p1| and |p2| arguments depend on the value of |cmd|.
+ *
+ * It returns one on success and zero on error. */
+OPENSSL_EXPORT int EVP_PKEY_CTX_ctrl(EVP_PKEY_CTX *ctx, int keytype, int optype,
+                                     int cmd, int p1, void *p2);
+
+/* EVP_PKEY_CTRL_DIGESTINIT is an internal value. It's called by
+ * EVP_DigestInit_ex to signal the |EVP_PKEY| that a digest operation is
+ * starting.
+ *
+ * TODO(davidben): This is only needed to support the deprecated HMAC |EVP_PKEY|
+ * types. */
+#define EVP_PKEY_CTRL_DIGESTINIT 3
+
+/* EVP_PKEY_CTRL_PEER_KEY is called with different values of |p1|:
+ *   0: Is called from |EVP_PKEY_derive_set_peer| and |p2| contains a peer key.
+ *      If the return value is <= 0, the key is rejected.
+ *   1: Is called at the end of |EVP_PKEY_derive_set_peer| and |p2| contains a
+ *      peer key. If the return value is <= 0, the key is rejected.
+ *   2: Is called with |p2| == NULL to test whether the peer's key was used.
+ *      (EC)DH always return one in this case.
+ *   3: Is called with |p2| == NULL to set whether the peer's key was used.
+ *      (EC)DH always return one in this case. This was only used for GOST. */
+#define EVP_PKEY_CTRL_PEER_KEY 4
+
+/* EVP_PKEY_CTRL_SET_MAC_KEY sets a MAC key. For example, this can be done an
+ * |EVP_PKEY_CTX| prior to calling |EVP_PKEY_keygen| in order to generate an
+ * HMAC |EVP_PKEY| with the given key. It returns one on success and zero on
+ * error. */
+#define EVP_PKEY_CTRL_SET_MAC_KEY 5
+
+/* EVP_PKEY_ALG_CTRL is the base value from which key-type specific ctrl
+ * commands are numbered. */
+#define EVP_PKEY_ALG_CTRL 0x1000
+
 #define EVP_PKEY_CTRL_MD 1
 #define EVP_PKEY_CTRL_GET_MD 2
+
 #define EVP_PKEY_CTRL_RSA_PADDING (EVP_PKEY_ALG_CTRL + 1)
 #define EVP_PKEY_CTRL_GET_RSA_PADDING (EVP_PKEY_ALG_CTRL + 2)
 #define EVP_PKEY_CTRL_RSA_PSS_SALTLEN (EVP_PKEY_ALG_CTRL + 3)
@@ -184,6 +225,8 @@ typedef int EVP_PKEY_gen_cb(EVP_PKEY_CTX *ctx);
 #define EVP_PKEY_CTRL_GET_RSA_MGF1_MD (EVP_PKEY_ALG_CTRL + 10)
 #define EVP_PKEY_CTRL_RSA_OAEP_LABEL (EVP_PKEY_ALG_CTRL + 11)
 #define EVP_PKEY_CTRL_GET_RSA_OAEP_LABEL (EVP_PKEY_ALG_CTRL + 12)
+
+#define EVP_PKEY_CTRL_EC_PARAMGEN_CURVE_NID (EVP_PKEY_ALG_CTRL + 1)
 
 struct evp_pkey_ctx_st {
   /* Method associated with this operation */

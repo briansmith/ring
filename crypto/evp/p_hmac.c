@@ -205,7 +205,7 @@ static int pkey_hmac_ctrl(EVP_PKEY_CTX *ctx, int type, int p1, void *p2) {
 
     default:
       OPENSSL_PUT_ERROR(EVP, pkey_hmac_ctrl, EVP_R_COMMAND_NOT_SUPPORTED);
-      return -2;
+      return 0;
   }
   return 1;
 }
