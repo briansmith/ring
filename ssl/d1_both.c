@@ -596,7 +596,7 @@ long dtls1_get_message(SSL *s, int st1, int stn, int msg_type, long max,
   assert(s->d1->handshake_read_seq == frag->msg_header.seq);
   assert(frag->reassembly == NULL);
 
-  if (frag->msg_header.msg_len > max) {
+  if (frag->msg_header.msg_len > (size_t)max) {
     OPENSSL_PUT_ERROR(SSL, dtls1_get_message, SSL_R_EXCESSIVE_MESSAGE_SIZE);
     goto err;
   }
