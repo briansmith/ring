@@ -1990,7 +1990,7 @@ static int ssl_check_serverhello_tlsext(SSL *s) {
     ret = s->ctx->tlsext_servername_callback(s, &al,
                                              s->ctx->tlsext_servername_arg);
   } else if (s->initial_ctx != NULL &&
-           s->initial_ctx->tlsext_servername_callback != 0) {
+             s->initial_ctx->tlsext_servername_callback != 0) {
     ret = s->initial_ctx->tlsext_servername_callback(
         s, &al, s->initial_ctx->tlsext_servername_arg);
   }

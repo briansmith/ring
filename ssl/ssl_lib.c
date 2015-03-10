@@ -2975,7 +2975,7 @@ uint16_t ssl3_get_mutual_version(SSL *s, uint16_t client_version) {
     if (client_version <= DTLS1_2_VERSION && !(s->options & SSL_OP_NO_DTLSv1_2)) {
       version = DTLS1_2_VERSION;
     } else if (client_version <= DTLS1_VERSION &&
-             !(s->options & SSL_OP_NO_DTLSv1)) {
+               !(s->options & SSL_OP_NO_DTLSv1)) {
       version = DTLS1_VERSION;
     }
 
