@@ -2,6 +2,7 @@ EVP,function,100,EVP_DigestSignAlgorithm
 EVP,function,101,EVP_DigestVerifyInitFromAlgorithm
 EVP,function,102,EVP_PKEY_CTX_ctrl
 EVP,function,103,EVP_PKEY_CTX_dup
+EVP,function,159,EVP_PKEY_CTX_get0_rsa_oaep_label
 EVP,function,104,EVP_PKEY_copy_parameters
 EVP,function,105,EVP_PKEY_decrypt
 EVP,function,106,EVP_PKEY_decrypt_init

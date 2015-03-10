@@ -55,10 +55,12 @@
 
 #include <openssl/evp.h>
 
+#include <limits.h>
 #include <string.h>
 
 #include <openssl/bn.h>
 #include <openssl/buf.h>
+#include <openssl/bytestring.h>
 #include <openssl/digest.h>
 #include <openssl/err.h>
 #include <openssl/mem.h>
@@ -480,8 +482,8 @@ static int pkey_rsa_ctrl(EVP_PKEY_CTX *ctx, int type, int p1, void *p2) {
         OPENSSL_PUT_ERROR(EVP, pkey_rsa_ctrl, EVP_R_INVALID_PADDING_MODE);
         return -2;
       }
-      *(uint8_t **)p2 = rctx->oaep_label;
-      return rctx->oaep_labellen;
+      CBS_init((CBS *)p2, rctx->oaep_label, rctx->oaep_labellen);
+      return 1;
 
     case EVP_PKEY_CTRL_DIGESTINIT:
       return 1;
@@ -595,6 +597,15 @@ int EVP_PKEY_CTX_set0_rsa_oaep_label(EVP_PKEY_CTX *ctx, const uint8_t *label,
 
 int EVP_PKEY_CTX_get0_rsa_oaep_label(EVP_PKEY_CTX *ctx,
                                      const uint8_t **out_label) {
-  return EVP_PKEY_CTX_ctrl(ctx, EVP_PKEY_RSA, EVP_PKEY_OP_TYPE_CRYPT,
-                           EVP_PKEY_CTRL_GET_RSA_OAEP_LABEL, 0, (void *) out_label);
+  CBS label;
+  if (EVP_PKEY_CTX_ctrl(ctx, EVP_PKEY_RSA, EVP_PKEY_OP_TYPE_CRYPT,
+                        EVP_PKEY_CTRL_GET_RSA_OAEP_LABEL, 0, &label) != 1) {
+    return -1;
+  }
+  if (CBS_len(&label) > INT_MAX) {
+    OPENSSL_PUT_ERROR(EVP, EVP_PKEY_CTX_get0_rsa_oaep_label, ERR_R_OVERFLOW);
+    return -1;
+  }
+  *out_label = CBS_data(&label);
+  return (int)CBS_len(&label);
 }
