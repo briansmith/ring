@@ -65,9 +65,8 @@
 /* md_begin_digset is a callback from the |EVP_MD_CTX| code that is called when
  * a new digest is begun. */
 static int md_begin_digest(EVP_MD_CTX *ctx) {
-  int r = EVP_PKEY_CTX_ctrl(ctx->pctx, -1, EVP_PKEY_OP_TYPE_SIG,
-                            EVP_PKEY_CTRL_DIGESTINIT, 0, ctx);
-  return r > 0 || r == -2;
+  return EVP_PKEY_CTX_ctrl(ctx->pctx, -1, EVP_PKEY_OP_TYPE_SIG,
+                           EVP_PKEY_CTRL_DIGESTINIT, 0, ctx) == 1;
 }
 
 static const struct evp_md_pctx_ops md_pctx_ops = {

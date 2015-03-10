@@ -590,7 +590,10 @@ OPENSSL_EXPORT int EVP_PKEY_CTX_get_signature_md(EVP_PKEY_CTX *ctx,
 
 /* EVP_PKEY_CTRL_DIGESTINIT is an internal value. It's called by
  * EVP_DigestInit_ex to signal the |EVP_PKEY| that a digest operation is
- * starting. */
+ * starting.
+ *
+ * TODO(davidben): This is only needed to support the deprecated HMAC |EVP_PKEY|
+ * types. */
 #define EVP_PKEY_CTRL_DIGESTINIT 3
 
 /* EVP_PKEY_CTRL_PEER_KEY is called with different values of |p1|:
