@@ -92,9 +92,9 @@ int EVP_SignFinal(const EVP_MD_CTX *ctx, uint8_t *sig,
   EVP_MD_CTX_cleanup(&tmp_ctx);
 
   pkctx = EVP_PKEY_CTX_new(pkey, NULL);
-  if (!pkctx || EVP_PKEY_sign_init(pkctx) <= 0 ||
-      EVP_PKEY_CTX_set_signature_md(pkctx, ctx->digest) <= 0 ||
-      EVP_PKEY_sign(pkctx, sig, &sig_len, m, m_len) <= 0) {
+  if (!pkctx || !EVP_PKEY_sign_init(pkctx) ||
+      !EVP_PKEY_CTX_set_signature_md(pkctx, ctx->digest) ||
+      !EVP_PKEY_sign(pkctx, sig, &sig_len, m, m_len)) {
     goto out;
   }
   *out_sig_len = sig_len;
@@ -138,8 +138,8 @@ int EVP_VerifyFinal(EVP_MD_CTX *ctx, const uint8_t *sig, size_t sig_len,
 
   pkctx = EVP_PKEY_CTX_new(pkey, NULL);
   if (!pkctx ||
-      EVP_PKEY_verify_init(pkctx) <= 0 ||
-      EVP_PKEY_CTX_set_signature_md(pkctx, ctx->digest) <= 0) {
+      !EVP_PKEY_verify_init(pkctx) ||
+      !EVP_PKEY_CTX_set_signature_md(pkctx, ctx->digest)) {
     goto out;
   }
   ret = EVP_PKEY_verify(pkctx, sig, sig_len, m, m_len);

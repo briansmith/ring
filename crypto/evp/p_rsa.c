@@ -598,8 +598,8 @@ int EVP_PKEY_CTX_set0_rsa_oaep_label(EVP_PKEY_CTX *ctx, const uint8_t *label,
 int EVP_PKEY_CTX_get0_rsa_oaep_label(EVP_PKEY_CTX *ctx,
                                      const uint8_t **out_label) {
   CBS label;
-  if (EVP_PKEY_CTX_ctrl(ctx, EVP_PKEY_RSA, EVP_PKEY_OP_TYPE_CRYPT,
-                        EVP_PKEY_CTRL_GET_RSA_OAEP_LABEL, 0, &label) != 1) {
+  if (!EVP_PKEY_CTX_ctrl(ctx, EVP_PKEY_RSA, EVP_PKEY_OP_TYPE_CRYPT,
+                         EVP_PKEY_CTRL_GET_RSA_OAEP_LABEL, 0, &label)) {
     return -1;
   }
   if (CBS_len(&label) > INT_MAX) {

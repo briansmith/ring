@@ -66,7 +66,7 @@
  * a new digest is begun. */
 static int md_begin_digest(EVP_MD_CTX *ctx) {
   return EVP_PKEY_CTX_ctrl(ctx->pctx, -1, EVP_PKEY_OP_TYPE_SIG,
-                           EVP_PKEY_CTRL_DIGESTINIT, 0, ctx) == 1;
+                           EVP_PKEY_CTRL_DIGESTINIT, 0, ctx);
 }
 
 static const struct evp_md_pctx_ops md_pctx_ops = {
@@ -97,24 +97,24 @@ static int do_sigver_init(EVP_MD_CTX *ctx, EVP_PKEY_CTX **pctx,
 
   if (is_verify) {
     if (ctx->pctx->pmeth->verifyctx_init) {
-      if (ctx->pctx->pmeth->verifyctx_init(ctx->pctx, ctx) <= 0) {
+      if (!ctx->pctx->pmeth->verifyctx_init(ctx->pctx, ctx)) {
         return 0;
       }
       ctx->pctx->operation = EVP_PKEY_OP_VERIFYCTX;
-    } else if (EVP_PKEY_verify_init(ctx->pctx) <= 0) {
+    } else if (!EVP_PKEY_verify_init(ctx->pctx)) {
       return 0;
     }
   } else {
     if (ctx->pctx->pmeth->signctx_init) {
-      if (ctx->pctx->pmeth->signctx_init(ctx->pctx, ctx) <= 0) {
+      if (!ctx->pctx->pmeth->signctx_init(ctx->pctx, ctx)) {
         return 0;
       }
       ctx->pctx->operation = EVP_PKEY_OP_SIGNCTX;
-    } else if (EVP_PKEY_sign_init(ctx->pctx) <= 0) {
+    } else if (!EVP_PKEY_sign_init(ctx->pctx)) {
       return 0;
     }
   }
-  if (EVP_PKEY_CTX_set_signature_md(ctx->pctx, type) <= 0) {
+  if (!EVP_PKEY_CTX_set_signature_md(ctx->pctx, type)) {
     return 0;
   }
   if (pctx) {

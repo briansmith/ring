@@ -441,8 +441,8 @@ static int test_EVP_DigestSignAlgorithm(void) {
 
   /* Test RSA-PSS with custom parameters. */
   if (!EVP_DigestSignInit(&md_ctx, &pkey_ctx, EVP_sha256(), NULL, pkey) ||
-      EVP_PKEY_CTX_set_rsa_padding(pkey_ctx, RSA_PKCS1_PSS_PADDING) != 1 ||
-      EVP_PKEY_CTX_set_rsa_mgf1_md(pkey_ctx, EVP_sha512()) != 1 ||
+      !EVP_PKEY_CTX_set_rsa_padding(pkey_ctx, RSA_PKCS1_PSS_PADDING) ||
+      !EVP_PKEY_CTX_set_rsa_mgf1_md(pkey_ctx, EVP_sha512()) ||
       !test_algorithm_roundtrip(&md_ctx, pkey)) {
     fprintf(stderr, "RSA-PSS failed\n");
     goto out;
