@@ -212,7 +212,6 @@ void *EVP_PKEY_CTX_get_app_data(EVP_PKEY_CTX *ctx) { return ctx->app_data; }
 
 int EVP_PKEY_CTX_ctrl(EVP_PKEY_CTX *ctx, int keytype, int optype, int cmd,
                       int p1, void *p2) {
-  int ret;
   if (!ctx || !ctx->pmeth || !ctx->pmeth->ctrl) {
     OPENSSL_PUT_ERROR(EVP, EVP_PKEY_CTX_ctrl, EVP_R_COMMAND_NOT_SUPPORTED);
     return -2;
@@ -231,13 +230,7 @@ int EVP_PKEY_CTX_ctrl(EVP_PKEY_CTX *ctx, int keytype, int optype, int cmd,
     return -1;
   }
 
-  ret = ctx->pmeth->ctrl(ctx, cmd, p1, p2);
-
-  if (ret == -2) {
-    OPENSSL_PUT_ERROR(EVP, EVP_PKEY_CTX_ctrl, EVP_R_COMMAND_NOT_SUPPORTED);
-  }
-
-  return ret;
+  return ctx->pmeth->ctrl(ctx, cmd, p1, p2);
 }
 
 int EVP_PKEY_sign_init(EVP_PKEY_CTX *ctx) {

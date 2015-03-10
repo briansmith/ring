@@ -45,6 +45,7 @@ EVP,function,143,pkey_ec_derive
 EVP,function,144,pkey_ec_keygen
 EVP,function,145,pkey_ec_paramgen
 EVP,function,146,pkey_ec_sign
+EVP,function,158,pkey_hmac_ctrl
 EVP,function,147,pkey_rsa_ctrl
 EVP,function,148,pkey_rsa_decrypt
 EVP,function,149,pkey_rsa_encrypt

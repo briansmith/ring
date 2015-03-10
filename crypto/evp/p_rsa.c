@@ -487,6 +487,7 @@ static int pkey_rsa_ctrl(EVP_PKEY_CTX *ctx, int type, int p1, void *p2) {
       return 1;
 
     default:
+      OPENSSL_PUT_ERROR(EVP, pkey_rsa_ctrl, EVP_R_COMMAND_NOT_SUPPORTED);
       return -2;
   }
 }

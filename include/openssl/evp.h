@@ -823,6 +823,7 @@ struct evp_pkey_st {
 #define EVP_F_rsa_priv_encode 155
 #define EVP_F_rsa_pss_to_ctx 156
 #define EVP_F_rsa_pub_decode 157
+#define EVP_F_pkey_hmac_ctrl 158
 #define EVP_R_BUFFER_TOO_SMALL 100
 #define EVP_R_COMMAND_NOT_SUPPORTED 101
 #define EVP_R_CONTEXT_NOT_INITIALISED 102
