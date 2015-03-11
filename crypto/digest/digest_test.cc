@@ -19,7 +19,6 @@
 #include <openssl/crypto.h>
 #include <openssl/digest.h>
 #include <openssl/err.h>
-#include <openssl/md4.h>
 #include <openssl/md5.h>
 #include <openssl/sha.h>
 
@@ -36,7 +35,6 @@ struct MD {
   uint8_t *(*one_shot_func)(const uint8_t *, size_t, uint8_t *);
 };
 
-static const MD md4 = { "MD4", &EVP_md4, nullptr };
 static const MD md5 = { "MD5", &EVP_md5, &MD5 };
 static const MD sha1 = { "SHA1", &EVP_sha1, &SHA1 };
 static const MD sha224 = { "SHA224", &EVP_sha224, &SHA224 };
@@ -57,19 +55,6 @@ struct TestVector {
 };
 
 static const TestVector kTestVectors[] = {
-    // MD4 tests, from RFC 1320. (crypto/md4 does not provide a
-    // one-shot MD4 function.)
-    { md4, "", 1, "31d6cfe0d16ae931b73c59d7e0c089c0" },
-    { md4, "a", 1, "bde52cb31de33e46245e05fbdbd6fb24" },
-    { md4, "abc", 1, "a448017aaf21d8525fc10ae87aa6729d" },
-    { md4, "message digest", 1, "d9130a8164549fe818874806e1c7014b" },
-    { md4, "abcdefghijklmnopqrstuvwxyz", 1,
-      "d79e1c308aa5bbcdeea8ed63df412da9" },
-    { md4,
-      "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789", 1,
-      "043f8582f241db351ce627e153e7f0e4" },
-    { md4, "1234567890", 8, "e33b4ddc9c38f2199c3e7b164fcc0536" },
-
     // MD5 tests, from RFC 1321.
     { md5, "", 1, "d41d8cd98f00b204e9800998ecf8427e" },
     { md5, "a", 1, "0cc175b9c0f1b6a831c399e269772661" },
