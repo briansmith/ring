@@ -296,13 +296,15 @@ static int test_only_d_given(void) {
     goto err;
   }
 
-  if (!RSA_sign(NID_md5, kDummyHash, sizeof(kDummyHash), buf, &buf_len, key)) {
+  if (!RSA_sign(NID_sha256, kDummyHash, sizeof(kDummyHash), buf, &buf_len,
+                key)) {
     fprintf(stderr, "RSA_sign failed with only d given.\n");
     ERR_print_errors_fp(stderr);
     goto err;
   }
 
-  if (!RSA_verify(NID_md5, kDummyHash, sizeof(kDummyHash), buf, buf_len, key)) {
+  if (!RSA_verify(NID_sha256, kDummyHash, sizeof(kDummyHash), buf, buf_len,
+                  key)) {
     fprintf(stderr, "RSA_verify failed with only d given.\n");
     ERR_print_errors_fp(stderr);
     goto err;
@@ -363,14 +365,14 @@ static int test_recover_crt_params(void) {
       return 0;
     }
 
-    if (!RSA_sign(NID_md5, kDummyHash, sizeof(kDummyHash), buf, &buf_len,
+    if (!RSA_sign(NID_sha256, kDummyHash, sizeof(kDummyHash), buf, &buf_len,
                   key2)) {
       fprintf(stderr, "RSA_sign failed with recovered key.\n");
       ERR_print_errors_fp(stderr);
       return 0;
     }
 
-    if (!RSA_verify(NID_md5, kDummyHash, sizeof(kDummyHash), buf, buf_len,
+    if (!RSA_verify(NID_sha256, kDummyHash, sizeof(kDummyHash), buf, buf_len,
                     key2)) {
       fprintf(stderr, "RSA_verify failed with recovered key.\n");
       ERR_print_errors_fp(stderr);

@@ -171,7 +171,7 @@ OPENSSL_EXPORT int EVP_Digest(const void *data, size_t len, uint8_t *md_out,
  * These functions allow code to learn details about an abstract hash
  * function. */
 
-/* EVP_MD_type returns a NID identifing |md|. (For example, |NID_md5|.) */
+/* EVP_MD_type returns a NID identifing |md|. (For example, |NID_sha256|.) */
 OPENSSL_EXPORT int EVP_MD_type(const EVP_MD *md);
 
 /* EVP_MD_flags returns the flags for |md|, which is a set of |EVP_MD_FLAG_*|
@@ -221,7 +221,7 @@ OPENSSL_EXPORT unsigned EVP_MD_CTX_size(const EVP_MD_CTX *ctx);
 OPENSSL_EXPORT unsigned EVP_MD_CTX_block_size(const EVP_MD_CTX *ctx);
 
 /* EVP_MD_CTX_type returns a NID describing the digest function used by |ctx|.
- * (For example, |NID_md5|.) It will crash if a digest hasn't been set on
+ * (For example, |NID_sha256|.) It will crash if a digest hasn't been set on
  * |ctx|. */
 OPENSSL_EXPORT int EVP_MD_CTX_type(const EVP_MD_CTX *ctx);
 
