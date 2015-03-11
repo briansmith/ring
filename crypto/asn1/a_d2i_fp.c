@@ -194,7 +194,7 @@ static int asn1_d2i_read_bio(BIO *in, BUF_MEM **pb)
 			len-off);
 		if (c.inf & 0x80)
 			{
-			unsigned long e;
+			uint32_t e;
 
 			e=ERR_GET_REASON(ERR_peek_error());
 			if (e != ASN1_R_TOO_LONG)

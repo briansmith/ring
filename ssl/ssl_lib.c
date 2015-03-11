@@ -2205,26 +2205,26 @@ void ssl_update_cache(SSL *s, int mode) {
   }
 }
 
-int SSL_get_error(const SSL *s, int i) {
+int SSL_get_error(const SSL *s, int ret_code) {
   int reason;
-  unsigned long l;
+  uint32_t err;
   BIO *bio;
 
-  if (i > 0) {
+  if (ret_code > 0) {
     return SSL_ERROR_NONE;
   }
 
   /* Make things return SSL_ERROR_SYSCALL when doing SSL_do_handshake etc,
    * where we do encode the error */
-  l = ERR_peek_error();
-  if (l != 0) {
-    if (ERR_GET_LIB(l) == ERR_LIB_SYS) {
+  err = ERR_peek_error();
+  if (err != 0) {
+    if (ERR_GET_LIB(err) == ERR_LIB_SYS) {
       return SSL_ERROR_SYSCALL;
     }
     return SSL_ERROR_SSL;
   }
 
-  if (i == 0) {
+  if (ret_code == 0) {
     if ((s->shutdown & SSL_RECEIVED_SHUTDOWN) &&
         (s->s3->warn_alert == SSL_AD_CLOSE_NOTIFY)) {
       /* The socket was cleanly shut down with a close_notify. */

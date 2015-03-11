@@ -968,7 +968,7 @@ int test_mod_mul(BIO *bp, BN_CTX *ctx) {
       a->neg = rand_neg();
       b->neg = rand_neg();
       if (!BN_mod_mul(e, a, b, c, ctx)) {
-        unsigned long l;
+        uint32_t l;
 
         while ((l = ERR_get_error())) {
           fprintf(stderr, "ERROR:%s\n", ERR_error_string(l, NULL));
