@@ -902,16 +902,6 @@ int BN_mod_exp_mont_consttime(BIGNUM *rr, const BIGNUM *a, const BIGNUM *p,
     bn_correct_top(rr);
     ret = 1;
     goto err;
-  } else if ((8 == a->top) && (8 == p->top) && (BN_num_bits(m) == 512)) {
-    if (NULL == bn_wexpand(rr, 8)) {
-      goto err;
-    }
-    RSAZ_512_mod_exp(rr->d, a->d, p->d, m->d, mont->n0[0], mont->RR.d);
-    rr->top = 8;
-    rr->neg = 0;
-    bn_correct_top(rr);
-    ret = 1;
-    goto err;
   }
 #endif
 
