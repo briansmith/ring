@@ -146,7 +146,6 @@ add_library(
   thread_none.c
   thread_pthread.c
   thread_win.c
-  time_support.c
 
   ${CRYPTO_ARCH_SOURCES}
 
