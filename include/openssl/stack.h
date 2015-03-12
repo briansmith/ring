@@ -114,7 +114,7 @@ typedef struct stack_st {
 #define DEFINE_STACK_OF(type) \
 STACK_OF(type) {\
   _STACK stack; \
-};
+}
 
 #define DECLARE_STACK_OF(type) STACK_OF(type);
 
