@@ -60,7 +60,6 @@
 #include <stdio.h>
 #include <string.h>
 
-#include <openssl/bio.h>
 #include <openssl/err.h>
 #include <openssl/mem.h>
 
@@ -444,15 +443,15 @@ int BN_asc2bn(BIGNUM **outp, const char *in) {
   return 1;
 }
 
-int BN_print(BIO *bp, const BIGNUM *a) {
+int BN_print_fp(FILE *fp, const BIGNUM *a) {
   int i, j, v, z = 0;
   int ret = 0;
 
-  if (a->neg && BIO_write(bp, "-", 1) != 1) {
+  if (a->neg && fputc('-', fp) != 1) {
     goto end;
   }
 
-  if (BN_is_zero(a) && BIO_write(bp, "0", 1) != 1) {
+  if (BN_is_zero(a) && fputc('0', fp) != 1) {
     goto end;
   }
 
@@ -461,7 +460,7 @@ int BN_print(BIO *bp, const BIGNUM *a) {
       /* strip leading zeros */
       v = ((int)(a->d[i] >> (long)j)) & 0x0f;
       if (z || v != 0) {
-        if (BIO_write(bp, &hextable[v], 1) != 1) {
+        if (fputc(hextable[v], fp) != 1) {
           goto end;
         }
         z = 1;
@@ -471,21 +470,6 @@ int BN_print(BIO *bp, const BIGNUM *a) {
   ret = 1;
 
 end:
-  return ret;
-}
-
-int BN_print_fp(FILE *fp, const BIGNUM *a) {
-  BIO *b;
-  int ret;
-
-  b = BIO_new(BIO_s_file());
-  if (b == NULL) {
-    return 0;
-  }
-  BIO_set_fp(b, fp, BIO_NOCLOSE);
-  ret = BN_print(b, a);
-  BIO_free(b);
-
   return ret;
 }
 
