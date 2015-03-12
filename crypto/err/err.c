@@ -490,7 +490,6 @@ static const char *const kLibraryNames[ERR_NUM_LIBS] = {
     "memory buffer routines",                     /* ERR_LIB_BUF */
     "common libcrypto routines",                  /* ERR_LIB_CRYPTO */
     "elliptic curve routines",                    /* ERR_LIB_EC */
-    "BIO routines",                               /* ERR_LIB_BIO */
     "random number generator",                    /* ERR_LIB_RAND */
     "UI routines",                                /* ERR_LIB_UI */
     "COMP routines",                              /* ERR_LIB_COMP */

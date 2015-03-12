@@ -141,11 +141,6 @@ extern "C" {
 
 /* Startup and shutdown. */
 
-/* ERR_load_BIO_strings does nothing.
- *
- * TODO(fork): remove. libjingle calls this. */
-OPENSSL_EXPORT void ERR_load_BIO_strings(void);
-
 /* ERR_load_ERR_strings does nothing. */
 OPENSSL_EXPORT void ERR_load_ERR_strings(void);
 
@@ -409,7 +404,6 @@ enum {
   ERR_LIB_BUF,
   ERR_LIB_CRYPTO,
   ERR_LIB_EC,
-  ERR_LIB_BIO,
   ERR_LIB_RAND,
   ERR_LIB_UI,
   ERR_LIB_COMP,
@@ -431,7 +425,6 @@ enum {
 #define ERR_R_BUF_LIB ERR_LIB_BUF
 #define ERR_R_CRYPTO_LIB ERR_LIB_CRYPTO
 #define ERR_R_EC_LIB ERR_LIB_EC
-#define ERR_R_BIO_LIB ERR_LIB_BIO
 #define ERR_R_RAND_LIB ERR_LIB_RAND
 #define ERR_R_DSO_LIB ERR_LIB_DSO
 #define ERR_R_UI_LIB ERR_LIB_UI

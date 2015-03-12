@@ -94,7 +94,6 @@ struct evp_pkey_asn1_method_st {
   int (*pub_decode)(EVP_PKEY *pk, X509_PUBKEY *pub);
   int (*pub_encode)(X509_PUBKEY *pub, const EVP_PKEY *pk);
   int (*pub_cmp)(const EVP_PKEY *a, const EVP_PKEY *b);
-  int (*pub_print)(BIO *out, const EVP_PKEY *pkey, int indent, ASN1_PCTX *pctx);
 
   /* pkey_opaque returns 1 if the |pk| is opaque. Opaque keys are backed by
    * custom implementations which do not expose key material and parameters.*/
@@ -114,11 +113,6 @@ struct evp_pkey_asn1_method_st {
   int (*param_missing)(const EVP_PKEY *pk);
   int (*param_copy)(EVP_PKEY *to, const EVP_PKEY *from);
   int (*param_cmp)(const EVP_PKEY *a, const EVP_PKEY *b);
-  int (*param_print)(BIO *out, const EVP_PKEY *pkey, int indent,
-                     ASN1_PCTX *pctx);
-  int (*sig_print)(BIO *out, const X509_ALGOR *sigalg, const ASN1_STRING *sig,
-                   int indent, ASN1_PCTX *pctx);
-
 
   void (*pkey_free)(EVP_PKEY *pkey);
 
