@@ -78,7 +78,6 @@ extern "C" {
 
 OPENSSL_EXPORT const EVP_MD *EVP_md5(void);
 OPENSSL_EXPORT const EVP_MD *EVP_sha1(void);
-OPENSSL_EXPORT const EVP_MD *EVP_sha224(void);
 OPENSSL_EXPORT const EVP_MD *EVP_sha256(void);
 OPENSSL_EXPORT const EVP_MD *EVP_sha384(void);
 OPENSSL_EXPORT const EVP_MD *EVP_sha512(void);

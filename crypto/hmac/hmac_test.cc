@@ -74,8 +74,6 @@ static const EVP_MD *GetDigest(const std::string &name) {
     return EVP_md5();
   } else if (name == "SHA1") {
     return EVP_sha1();
-  } else if (name == "SHA224") {
-    return EVP_sha224();
   } else if (name == "SHA256") {
     return EVP_sha256();
   } else if (name == "SHA384") {

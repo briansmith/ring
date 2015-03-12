@@ -64,7 +64,6 @@
 /* Digest algorithms */
 #define NID_md5 4
 #define NID_sha1 64
-#define NID_sha224 675
 #define NID_sha256 672
 #define NID_sha384 673
 #define NID_sha512 674
@@ -73,7 +72,6 @@
 #define NID_ecdsa_with_SHA1 416
 #define NID_ecdsa_with_Recommended 791
 #define NID_ecdsa_with_Specified 792
-#define NID_ecdsa_with_SHA224 793
 #define NID_ecdsa_with_SHA256 794
 #define NID_ecdsa_with_SHA384 795
 #define NID_ecdsa_with_SHA512 796

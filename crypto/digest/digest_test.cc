@@ -37,7 +37,6 @@ struct MD {
 
 static const MD md5 = { "MD5", &EVP_md5, &MD5 };
 static const MD sha1 = { "SHA1", &EVP_sha1, &SHA1 };
-static const MD sha224 = { "SHA224", &EVP_sha224, &SHA224 };
 static const MD sha256 = { "SHA256", &EVP_sha256, &SHA256 };
 static const MD sha384 = { "SHA384", &EVP_sha384, &SHA384 };
 static const MD sha512 = { "SHA512", &EVP_sha512, &SHA512 };
@@ -75,16 +74,6 @@ static const TestVector kTestVectors[] = {
     { sha1,
       "0123456701234567012345670123456701234567012345670123456701234567", 10,
       "dea356a2cddd90c7a7ecedc5ebb563934f460452" },
-
-    // SHA-224 tests, from RFC 3874.
-    { sha224, "abc", 1,
-      "23097d223405d8228642a477bda255b32aadbce4bda0b3f7e36c9da7" },
-    { sha224,
-      "abcdbcdecdefdefgefghfghighijhijkijkljklmklmnlmnomnopnopq", 1,
-      "75388b16512776cc5dba5da1fd890150b0c6455cb4f58b1952522525" },
-    { sha224,
-      "a", 1000000,
-      "20794655980c91d8bbb4c1ea97618a4bf03f42581948b2ee4ee7ad67" },
 
     // SHA-256 tests, from NIST.
     { sha256, "abc", 1,

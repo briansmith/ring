@@ -112,27 +112,6 @@ static const EVP_MD sha1_md = {
 const EVP_MD *EVP_sha1(void) { return &sha1_md; }
 
 
-static void sha224_init(EVP_MD_CTX *ctx) {
-  CHECK(SHA224_Init(ctx->md_data));
-}
-
-static void sha224_update(EVP_MD_CTX *ctx, const void *data, size_t count) {
-  CHECK(SHA224_Update(ctx->md_data, data, count));
-}
-
-static void sha224_final(EVP_MD_CTX *ctx, uint8_t *md) {
-  CHECK(SHA224_Final(md, ctx->md_data));
-}
-
-static const EVP_MD sha224_md = {
-    NID_sha224,          SHA224_DIGEST_LENGTH, 0 /* flags */,
-    sha224_init,         sha224_update,        sha224_final,
-    64 /* block size */, sizeof(SHA256_CTX),
-};
-
-const EVP_MD *EVP_sha224(void) { return &sha224_md; }
-
-
 static void sha256_init(EVP_MD_CTX *ctx) {
   CHECK(SHA256_Init(ctx->md_data));
 }
@@ -204,14 +183,12 @@ struct nid_to_digest {
 static const struct nid_to_digest nid_to_digest_mapping[] = {
   { NID_md5, EVP_md5 },
   { NID_sha1, EVP_sha1 },
-  { NID_sha224, EVP_sha224 },
   { NID_sha256, EVP_sha256 },
   { NID_sha384, EVP_sha384 },
   { NID_sha512, EVP_sha512 },
   { NID_ecdsa_with_SHA1, EVP_sha1 },
   { NID_md5WithRSAEncryption, EVP_md5 },
   { NID_sha1WithRSAEncryption, EVP_sha1 },
-  { NID_sha224WithRSAEncryption, EVP_sha224 },
   { NID_sha256WithRSAEncryption, EVP_sha256 },
   { NID_sha384WithRSAEncryption, EVP_sha384 },
   { NID_sha512WithRSAEncryption, EVP_sha512 },
