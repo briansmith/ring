@@ -52,7 +52,6 @@
 
 #include <openssl/ecdsa.h>
 
-#include <openssl/bio.h>
 #include <openssl/bn.h>
 #include <openssl/crypto.h>
 #include <openssl/ec.h>
@@ -62,7 +61,7 @@
 #include <openssl/rand.h>
 
 
-int test_builtin(BIO *out) {
+int test_builtin(FILE *out) {
   size_t n = 0;
   EC_KEY *eckey = NULL, *wrong_eckey = NULL;
   EC_GROUP *group;
@@ -78,7 +77,7 @@ int test_builtin(BIO *out) {
 
   /* fill digest values with some random data */
   if (!RAND_bytes(digest, 20) || !RAND_bytes(wrong_digest, 20)) {
-    BIO_printf(out, "ERROR: unable to get random data\n");
+    fprintf(out, "ERROR: unable to get random data\n");
     goto builtin_err;
   }
 
@@ -89,9 +88,8 @@ int test_builtin(BIO *out) {
 
   /* create and verify a ecdsa signature with every availble curve
    * (with ) */
-  BIO_printf(out,
-             "\ntesting ECDSA_sign() and ECDSA_verify() "
-             "with some internal curves:\n");
+  fprintf(out, "\ntesting ECDSA_sign() and ECDSA_verify() "
+               "with some internal curves:\n");
 
   static const int kCurveNIDs[] = {NID_secp224r1, NID_X9_62_prime256v1,
                                    NID_secp384r1, NID_secp521r1, NID_undef};
@@ -124,10 +122,10 @@ int test_builtin(BIO *out) {
       continue;
     }
 
-    BIO_printf(out, "%s: ", OBJ_nid2sn(nid));
+    fprintf(out, "%s: ", OBJ_nid2sn(nid));
     /* create key */
     if (!EC_KEY_generate_key(eckey)) {
-      BIO_printf(out, " failed\n");
+      fprintf(out, " failed\n");
       goto builtin_err;
     }
     /* create second key */
@@ -144,19 +142,19 @@ int test_builtin(BIO *out) {
     }
     EC_GROUP_free(group);
     if (!EC_KEY_generate_key(wrong_eckey)) {
-      BIO_printf(out, " failed\n");
+      fprintf(out, " failed\n");
       goto builtin_err;
     }
 
-    BIO_printf(out, ".");
-    (void)BIO_flush(out);
+    fprintf(out, ".");
+    fflush(out);
     /* check key */
     if (!EC_KEY_check_key(eckey)) {
-      BIO_printf(out, " failed\n");
+      fprintf(out, " failed\n");
       goto builtin_err;
     }
-    BIO_printf(out, ".");
-    (void)BIO_flush(out);
+    fprintf(out, ".");
+    fflush(out);
     /* create signature */
     sig_len = ECDSA_size(eckey);
     signature = OPENSSL_malloc(sig_len);
@@ -164,39 +162,39 @@ int test_builtin(BIO *out) {
       goto builtin_err;
     }
     if (!ECDSA_sign(0, digest, 20, signature, &sig_len, eckey)) {
-      BIO_printf(out, " failed\n");
+      fprintf(out, " failed\n");
       goto builtin_err;
     }
-    BIO_printf(out, ".");
-    (void)BIO_flush(out);
+    fprintf(out, ".");
+    fflush(out);
     /* verify signature */
     if (ECDSA_verify(0, digest, 20, signature, sig_len, eckey) != 1) {
-      BIO_printf(out, " failed\n");
+      fprintf(out, " failed\n");
       goto builtin_err;
     }
-    BIO_printf(out, ".");
-    (void)BIO_flush(out);
+    fprintf(out, ".");
+    fflush(out);
     /* verify signature with the wrong key */
     if (ECDSA_verify(0, digest, 20, signature, sig_len, wrong_eckey) == 1) {
-      BIO_printf(out, " failed\n");
+      fprintf(out, " failed\n");
       goto builtin_err;
     }
-    BIO_printf(out, ".");
-    (void)BIO_flush(out);
+    fprintf(out, ".");
+    fflush(out);
     /* wrong digest */
     if (ECDSA_verify(0, wrong_digest, 20, signature, sig_len, eckey) == 1) {
-      BIO_printf(out, " failed\n");
+      fprintf(out, " failed\n");
       goto builtin_err;
     }
-    BIO_printf(out, ".");
-    (void)BIO_flush(out);
+    fprintf(out, ".");
+    fflush(out);
     /* wrong length */
     if (ECDSA_verify(0, digest, 20, signature, sig_len - 1, eckey) == 1) {
-      BIO_printf(out, " failed\n");
+      fprintf(out, " failed\n");
       goto builtin_err;
     }
-    BIO_printf(out, ".");
-    (void)BIO_flush(out);
+    fprintf(out, ".");
+    fflush(out);
 
     /* Modify a single byte of the signature: to ensure we don't
      * garble the ASN1 structure, we read the raw signature and
@@ -204,7 +202,7 @@ int test_builtin(BIO *out) {
     sig_ptr = signature;
     ecdsa_sig = d2i_ECDSA_SIG(NULL, &sig_ptr, sig_len);
     if (ecdsa_sig == NULL) {
-      BIO_printf(out, " failed\n");
+      fprintf(out, " failed\n");
       goto builtin_err;
     }
 
@@ -213,7 +211,7 @@ int test_builtin(BIO *out) {
     s_len = BN_num_bytes(ecdsa_sig->s);
     bn_len = BN_num_bytes(order);
     if (r_len > bn_len || s_len > bn_len) {
-      BIO_printf(out, " failed\n");
+      fprintf(out, " failed\n");
       goto builtin_err;
     }
     buf_len = 2 * bn_len;
@@ -240,7 +238,7 @@ int test_builtin(BIO *out) {
     sig_ptr2 = signature;
     sig_len = i2d_ECDSA_SIG(ecdsa_sig, &sig_ptr2);
     if (ECDSA_verify(0, digest, 20, signature, sig_len, eckey) == 1) {
-      BIO_printf(out, " failed\n");
+      fprintf(out, " failed\n");
       goto builtin_err;
     }
     /* Sanity check: undo the modification and verify signature. */
@@ -253,13 +251,13 @@ int test_builtin(BIO *out) {
     sig_ptr2 = signature;
     sig_len = i2d_ECDSA_SIG(ecdsa_sig, &sig_ptr2);
     if (ECDSA_verify(0, digest, 20, signature, sig_len, eckey) != 1) {
-      BIO_printf(out, " failed\n");
+      fprintf(out, " failed\n");
       goto builtin_err;
     }
-    BIO_printf(out, ".");
-    (void)BIO_flush(out);
+    fprintf(out, ".");
+    fflush(out);
 
-    BIO_printf(out, " ok\n");
+    fprintf(out, " ok\n");
     /* cleanup */
     /* clean bogus errors */
     ERR_clear_error();
@@ -301,14 +299,11 @@ builtin_err:
 
 int main(void) {
   int ret = 1;
-  BIO *out;
 
   CRYPTO_library_init();
   ERR_load_crypto_strings();
 
-  out = BIO_new_fp(stdout, BIO_NOCLOSE);
-
-  if (!test_builtin(out)) {
+  if (!test_builtin(stdout)) {
     goto err;
   }
 
@@ -316,16 +311,12 @@ int main(void) {
 
 err:
   if (ret) {
-    BIO_printf(out, "\nECDSA test failed\n");
+    printf("\nECDSA test failed\n");
   } else {
-    BIO_printf(out, "\nPASS\n");
+    printf("\nPASS\n");
   }
   if (ret) {
-    BIO_print_errors(out);
-  }
-
-  if (out != NULL) {
-    BIO_free(out);
+    ERR_print_errors_fp(stdout);
   }
 
   return ret;

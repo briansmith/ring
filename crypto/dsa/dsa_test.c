@@ -61,7 +61,6 @@
 
 #include <string.h>
 
-#include <openssl/bio.h>
 #include <openssl/bn.h>
 #include <openssl/crypto.h>
 #include <openssl/err.h>
@@ -166,9 +165,6 @@ static const uint8_t fips_sig_bad_r[] = {
     0xdc, 0xd8, 0xc8,
 };
 
-static BIO *bio_err = NULL;
-static BIO *bio_out = NULL;
-
 static DSA *get_fips_dsa(void) {
   DSA *dsa = DSA_new();
   if (!dsa) {
@@ -187,7 +183,7 @@ static DSA *get_fips_dsa(void) {
   return dsa;
 }
 
-static int test_generate(void) {
+static int test_generate(FILE *out) {
   BN_GENCB cb;
   DSA *dsa = NULL;
   int counter, ok = 0, i, j;
@@ -196,49 +192,49 @@ static int test_generate(void) {
   uint8_t sig[256];
   unsigned int siglen;
 
-  BIO_printf(bio_out, "test generation of DSA parameters\n");
+  fprintf(out, "test generation of DSA parameters\n");
 
-  BN_GENCB_set(&cb, dsa_cb, bio_out);
+  BN_GENCB_set(&cb, dsa_cb, out);
   dsa = DSA_new();
   if (dsa == NULL ||
       !DSA_generate_parameters_ex(dsa, 512, seed, 20, &counter, &h, &cb)) {
     goto end;
   }
 
-  BIO_printf(bio_out, "seed\n");
+  fprintf(out, "seed\n");
   for (i = 0; i < 20; i += 4) {
-    BIO_printf(bio_out, "%02X%02X%02X%02X ", seed[i], seed[i + 1], seed[i + 2],
-               seed[i + 3]);
+    fprintf(out, "%02X%02X%02X%02X ", seed[i], seed[i + 1], seed[i + 2],
+            seed[i + 3]);
   }
-  BIO_printf(bio_out, "\ncounter=%d h=%ld\n", counter, h);
+  fprintf(out, "\ncounter=%d h=%ld\n", counter, h);
 
   if (counter != 105) {
-    BIO_printf(bio_err, "counter should be 105\n");
+    fprintf(stderr, "counter should be 105\n");
     goto end;
   }
   if (h != 2) {
-    BIO_printf(bio_err, "h should be 2\n");
+    fprintf(stderr, "h should be 2\n");
     goto end;
   }
 
   i = BN_bn2bin(dsa->q, buf);
   j = sizeof(fips_q);
   if (i != j || memcmp(buf, fips_q, i) != 0) {
-    BIO_printf(bio_err, "q value is wrong\n");
+    fprintf(stderr, "q value is wrong\n");
     goto end;
   }
 
   i = BN_bn2bin(dsa->p, buf);
   j = sizeof(fips_p);
   if (i != j || memcmp(buf, fips_p, i) != 0) {
-    BIO_printf(bio_err, "p value is wrong\n");
+    fprintf(stderr, "p value is wrong\n");
     goto end;
   }
 
   i = BN_bn2bin(dsa->g, buf);
   j = sizeof(fips_g);
   if (i != j || memcmp(buf, fips_g, i) != 0) {
-    BIO_printf(bio_err, "g value is wrong\n");
+    fprintf(stderr, "g value is wrong\n");
     goto end;
   }
 
@@ -247,7 +243,7 @@ static int test_generate(void) {
   if (DSA_verify(0, fips_digest, sizeof(fips_digest), sig, siglen, dsa) == 1) {
     ok = 1;
   } else {
-    BIO_printf(bio_err, "verification failure\n");
+    fprintf(stderr, "verification failure\n");
   }
 
 end:
@@ -267,7 +263,7 @@ static int test_verify(const uint8_t *sig, size_t sig_len, int expect) {
 
   int ret = DSA_verify(0, fips_digest, sizeof(fips_digest), sig, sig_len, dsa);
   if (ret != expect) {
-    BIO_printf(bio_err, "DSA_verify returned %d, want %d\n", ret, expect);
+    fprintf(stderr, "DSA_verify returned %d, want %d\n", ret, expect);
     goto end;
   }
   ok = 1;
@@ -285,23 +281,16 @@ end:
 int main(int argc, char **argv) {
   CRYPTO_library_init();
 
-  bio_err = BIO_new_fp(stderr, BIO_NOCLOSE);
-  bio_out = BIO_new_fp(stdout, BIO_NOCLOSE);
-
-  if (!test_generate() ||
+  if (!test_generate(stdout) ||
       !test_verify(fips_sig, sizeof(fips_sig), 1) ||
       !test_verify(fips_sig_negative, sizeof(fips_sig_negative), -1) ||
       !test_verify(fips_sig_extra, sizeof(fips_sig_extra), -1) ||
       !test_verify(fips_sig_bad_length, sizeof(fips_sig_bad_length), -1) ||
       !test_verify(fips_sig_bad_r, sizeof(fips_sig_bad_r), 0)) {
-    BIO_print_errors(bio_err);
-    BIO_free(bio_err);
-    BIO_free(bio_out);
+    ERR_print_errors_fp(stderr);
     return 1;
   }
 
-  BIO_free(bio_err);
-  BIO_free(bio_out);
   printf("PASS\n");
   return 0;
 }
@@ -326,11 +315,11 @@ static int dsa_cb(int p, int n, BN_GENCB *arg) {
     c = '\n';
   }
 
-  BIO_write(arg->arg, &c, 1);
-  (void)BIO_flush(arg->arg);
+  fputc(c, arg->arg);
+  fflush(arg->arg);
 
   if (!ok && p == 0 && num > 1) {
-    BIO_printf((BIO *)arg, "error in dsatest\n");
+    fprintf(stderr, "error in dsatest\n");
     return 0;
   }
 

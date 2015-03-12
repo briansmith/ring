@@ -59,7 +59,6 @@
 #include <stdio.h>
 #include <string.h>
 
-#include <openssl/bio.h>
 #include <openssl/bn.h>
 #include <openssl/crypto.h>
 #include <openssl/err.h>
@@ -80,8 +79,8 @@ static int cb(int p, int n, BN_GENCB *arg) {
   } else if (p == 3) {
     c = '\n';
   }
-  BIO_write(arg->arg, &c, 1);
-  (void)BIO_flush(arg->arg);
+  fputc(c, arg->arg);
+  fflush(arg->arg);
 
   return 1;
 }
@@ -95,17 +94,10 @@ int main(int argc, char *argv[]) {
   char buf[12];
   unsigned char *abuf = NULL, *bbuf = NULL;
   int i, alen, blen, aout, bout, ret = 1;
-  BIO *out;
 
   CRYPTO_library_init();
 
-  out = BIO_new(BIO_s_file());
-  if (out == NULL) {
-    return 1;
-  }
-  BIO_set_fp(out, stdout, BIO_NOCLOSE);
-
-  BN_GENCB_set(&_cb, &cb, out);
+  BN_GENCB_set(&_cb, &cb, stdout);
   if (((a = DH_new()) == NULL) ||
       !DH_generate_parameters_ex(a, 64, DH_GENERATOR_5, &_cb)) {
     goto err;
@@ -115,23 +107,23 @@ int main(int argc, char *argv[]) {
     goto err;
   }
   if (i & DH_CHECK_P_NOT_PRIME) {
-    BIO_puts(out, "p value is not prime\n");
+    puts("p value is not prime\n");
   }
   if (i & DH_CHECK_P_NOT_SAFE_PRIME) {
-    BIO_puts(out, "p value is not a safe prime\n");
+    puts("p value is not a safe prime\n");
   }
   if (i & DH_CHECK_UNABLE_TO_CHECK_GENERATOR) {
-    BIO_puts(out, "unable to check the generator value\n");
+    puts("unable to check the generator value\n");
   }
   if (i & DH_CHECK_NOT_SUITABLE_GENERATOR) {
-    BIO_puts(out, "the g value is not a generator\n");
+    puts("the g value is not a generator\n");
   }
 
-  BIO_puts(out, "\np    =");
-  BN_print(out, a->p);
-  BIO_puts(out, "\ng    =");
-  BN_print(out, a->g);
-  BIO_puts(out, "\n");
+  puts("\np    =");
+  BN_print_fp(stdout, a->p);
+  puts("\ng    =");
+  BN_print_fp(stdout, a->g);
+  puts("\n");
 
   b = DH_new();
   if (b == NULL) {
@@ -147,42 +139,42 @@ int main(int argc, char *argv[]) {
   if (!DH_generate_key(a)) {
     goto err;
   }
-  BIO_puts(out, "pri 1=");
-  BN_print(out, a->priv_key);
-  BIO_puts(out, "\npub 1=");
-  BN_print(out, a->pub_key);
-  BIO_puts(out, "\n");
+  puts("pri 1=");
+  BN_print_fp(stdout, a->priv_key);
+  puts("\npub 1=");
+  BN_print_fp(stdout, a->pub_key);
+  puts("\n");
 
   if (!DH_generate_key(b)) {
     goto err;
   }
-  BIO_puts(out, "pri 2=");
-  BN_print(out, b->priv_key);
-  BIO_puts(out, "\npub 2=");
-  BN_print(out, b->pub_key);
-  BIO_puts(out, "\n");
+  puts("pri 2=");
+  BN_print_fp(stdout, b->priv_key);
+  puts("\npub 2=");
+  BN_print_fp(stdout, b->pub_key);
+  puts("\n");
 
   alen = DH_size(a);
   abuf = (unsigned char *)OPENSSL_malloc(alen);
   aout = DH_compute_key(abuf, b->pub_key, a);
 
-  BIO_puts(out, "key1 =");
+  puts("key1 =");
   for (i = 0; i < aout; i++) {
     sprintf(buf, "%02X", abuf[i]);
-    BIO_puts(out, buf);
+    puts(buf);
   }
-  BIO_puts(out, "\n");
+  puts("\n");
 
   blen = DH_size(b);
   bbuf = (unsigned char *)OPENSSL_malloc(blen);
   bout = DH_compute_key(bbuf, a->pub_key, b);
 
-  BIO_puts(out, "key2 =");
+  puts("key2 =");
   for (i = 0; i < bout; i++) {
     sprintf(buf, "%02X", bbuf[i]);
-    BIO_puts(out, buf);
+    puts(buf);
   }
-  BIO_puts(out, "\n");
+  puts("\n");
   if ((aout < 4) || (bout != aout) || (memcmp(abuf, bbuf, aout) != 0)) {
     fprintf(stderr, "Error in DH routines\n");
     ret = 1;
@@ -209,7 +201,6 @@ err:
   if (a != NULL) {
     DH_free(a);
   }
-  BIO_free(out);
   return ret;
 }
 
