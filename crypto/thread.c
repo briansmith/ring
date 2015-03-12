@@ -66,27 +66,18 @@
 #endif
 
 #include <openssl/mem.h>
-#include <openssl/type_check.h>
 
+
+#define CRYPTO_LOCK_ITEM(x) #x
 
 /* lock_names contains the names of all the locks defined in thread.h. */
 static const char *const lock_names[] = {
-    "<<ERROR>>",    "err",          "ex_data",       "x509",
-    "x509_info",    "x509_pkey",    "x509_crl",      "x509_req",
-    "dsa",          "rsa",          "evp_pkey",      "x509_store",
-    "ssl_ctx",      "ssl_cert",     "ssl_session",   "ssl_sess_cert",
-    "ssl",          "ssl_method",   "rand",          "rand2",
-    "debug_malloc", "BIO",          "gethostbyname", "getservbyname",
-    "readdir",      "RSA_blinding", "dh",            "debug_malloc2",
-    "dso",          "dynlock",      "engine",        "ui",
-    "ecdsa",        "ec",           "ecdh",          "bn",
-    "ec_pre_comp",  "store",        "comp",          "fips",
-    "fips2",        "obj",
+  CRYPTO_LOCK_LIST
 };
 
-OPENSSL_COMPILE_ASSERT(CRYPTO_NUM_LOCKS ==
-                           sizeof(lock_names) / sizeof(lock_names[0]),
-                       CRYPTO_NUM_LOCKS_inconsistent);
+#undef CRYPTO_LOCK_ITEM
+
+#define CRYPTO_NUM_LOCKS (sizeof(lock_names) / sizeof(lock_names[0]))
 
 static void (*locking_callback)(int mode, int lock_num, const char *file,
                                 int line) = 0;
