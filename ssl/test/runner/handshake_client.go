@@ -863,6 +863,10 @@ func (hs *clientHandshakeState) sendFinished(isResume bool) error {
 	if c.config.Bugs.AppDataAfterChangeCipherSpec != nil {
 		c.writeRecord(recordTypeApplicationData, c.config.Bugs.AppDataAfterChangeCipherSpec)
 	}
+	if c.config.Bugs.AlertAfterChangeCipherSpec != 0 {
+		c.sendAlert(c.config.Bugs.AlertAfterChangeCipherSpec)
+		return errors.New("tls: simulating post-CCS alert")
+	}
 
 	if !c.config.Bugs.SkipFinished {
 		c.writeRecord(recordTypeHandshake, postCCSBytes)

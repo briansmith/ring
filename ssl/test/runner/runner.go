@@ -691,6 +691,27 @@ var testCases = []testCase{
 		},
 	},
 	{
+		name: "AlertAfterChangeCipherSpec",
+		config: Config{
+			Bugs: ProtocolBugs{
+				AlertAfterChangeCipherSpec: alertRecordOverflow,
+			},
+		},
+		shouldFail:    true,
+		expectedError: ":TLSV1_ALERT_RECORD_OVERFLOW:",
+	},
+	{
+		protocol: dtls,
+		name:     "AlertAfterChangeCipherSpec-DTLS",
+		config: Config{
+			Bugs: ProtocolBugs{
+				AlertAfterChangeCipherSpec: alertRecordOverflow,
+			},
+		},
+		shouldFail:    true,
+		expectedError: ":TLSV1_ALERT_RECORD_OVERFLOW:",
+	},
+	{
 		protocol: dtls,
 		name:     "ReorderHandshakeFragments-Small-DTLS",
 		config: Config{

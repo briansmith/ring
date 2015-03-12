@@ -610,6 +610,10 @@ type ProtocolBugs struct {
 	// be sent immediately after ChangeCipherSpec.
 	AppDataAfterChangeCipherSpec []byte
 
+	// AlertAfterChangeCipherSpec, if non-zero, causes an alert to be sent
+	// immediately after ChangeCipherSpec.
+	AlertAfterChangeCipherSpec alert
+
 	// TimeoutSchedule is the schedule of packet drops and simulated
 	// timeouts for before each handshake leg from the peer.
 	TimeoutSchedule []time.Duration

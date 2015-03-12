@@ -815,9 +815,10 @@ start:
 
   /* we now have a packet which can be read and processed */
 
-  if (s->s3->change_cipher_spec /* set when we receive ChangeCipherSpec,
-                                 * reset by ssl3_get_finished */
-      && rr->type != SSL3_RT_HANDSHAKE) {
+  /* |change_cipher_spec is set when we receive a ChangeCipherSpec and reset by
+   * ssl3_get_finished. */
+  if (s->s3->change_cipher_spec && rr->type != SSL3_RT_HANDSHAKE &&
+      rr->type != SSL3_RT_ALERT) {
     al = SSL_AD_UNEXPECTED_MESSAGE;
     OPENSSL_PUT_ERROR(SSL, ssl3_read_bytes,
                       SSL_R_DATA_BETWEEN_CCS_AND_FINISHED);
