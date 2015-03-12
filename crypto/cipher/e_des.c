@@ -61,8 +61,6 @@
 #include "internal.h"
 
 
-#define EVP_MAXCHUNK (1<<30)
-
 typedef struct {
   union {
     double align;
@@ -83,18 +81,8 @@ static int des_cbc_cipher(EVP_CIPHER_CTX *ctx, uint8_t *out, const uint8_t *in,
                           size_t in_len) {
   EVP_DES_KEY *dat = (EVP_DES_KEY *)ctx->cipher_data;
 
-  while (in_len >= EVP_MAXCHUNK) {
-    DES_ncbc_encrypt(in, out, EVP_MAXCHUNK, &dat->ks.ks, (DES_cblock *)ctx->iv,
-                     ctx->encrypt);
-    in_len -= EVP_MAXCHUNK;
-    in += EVP_MAXCHUNK;
-    out += EVP_MAXCHUNK;
-  }
-
-  if (in_len) {
-    DES_ncbc_encrypt(in, out, (long)in_len, &dat->ks.ks,
-                     (DES_cblock *)ctx->iv, ctx->encrypt);
-  }
+  DES_ncbc_encrypt(in, out, in_len, &dat->ks.ks, (DES_cblock *)ctx->iv,
+                   ctx->encrypt);
 
   return 1;
 }
@@ -132,18 +120,8 @@ static int des_ede3_cbc_cipher(EVP_CIPHER_CTX *ctx, uint8_t *out,
                               const uint8_t *in, size_t in_len) {
   DES_EDE_KEY *dat = (DES_EDE_KEY*) ctx->cipher_data;
 
-  while (in_len >= EVP_MAXCHUNK) {
-    DES_ede3_cbc_encrypt(in, out, EVP_MAXCHUNK, &dat->ks.ks[0], &dat->ks.ks[1],
-                         &dat->ks.ks[2], (DES_cblock *)ctx->iv, ctx->encrypt);
-    in_len -= EVP_MAXCHUNK;
-    in += EVP_MAXCHUNK;
-    out += EVP_MAXCHUNK;
-  }
-
-  if (in_len) {
-    DES_ede3_cbc_encrypt(in, out, in_len, &dat->ks.ks[0], &dat->ks.ks[1],
-                         &dat->ks.ks[2], (DES_cblock *)ctx->iv, ctx->encrypt);
-  }
+  DES_ede3_cbc_encrypt(in, out, in_len, &dat->ks.ks[0], &dat->ks.ks[1],
+                       &dat->ks.ks[2], (DES_cblock *)ctx->iv, ctx->encrypt);
 
   return 1;
 }
