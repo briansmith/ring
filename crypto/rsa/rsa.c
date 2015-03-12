@@ -125,7 +125,7 @@ void RSA_free(RSA *rsa) {
   }
   METHOD_unref(rsa->meth);
 
-  CRYPTO_free_ex_data(CRYPTO_EX_INDEX_DSA, rsa, &rsa->ex_data);
+  CRYPTO_free_ex_data(CRYPTO_EX_INDEX_RSA, rsa, &rsa->ex_data);
 
   if (rsa->n != NULL) {
     BN_clear_free(rsa->n);
