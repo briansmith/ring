@@ -41,14 +41,6 @@ struct OpenSSLDeleter {
   }
 };
 
-template<typename StackType, typename T, void (*func)(T*)>
-struct OpenSSLStackDeleter {
-  void operator()(StackType *obj) {
-    sk_pop_free(reinterpret_cast<_STACK*>(obj),
-                reinterpret_cast<void (*)(void *)>(func));
-  }
-};
-
 template<typename T>
 struct OpenSSLFree {
   void operator()(T *buf) {
@@ -64,10 +56,6 @@ struct FileCloser {
 
 template<typename T, void (*func)(T*)>
 using ScopedOpenSSLType = bssl::unique_ptr<T, OpenSSLDeleter<T, func>>;
-
-template<typename StackType, typename T, void (*func)(T*)>
-using ScopedOpenSSLStack =
-    bssl::unique_ptr<StackType, OpenSSLStackDeleter<StackType, T, func>>;
 
 template<typename T, typename CleanupRet, void (*init_func)(T*),
          CleanupRet (*cleanup_func)(T*)>
