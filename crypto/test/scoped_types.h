@@ -18,7 +18,6 @@
 #include <stdint.h>
 #include <stdio.h>
 
-#include <openssl/bio.h>
 #include <openssl/bn.h>
 #include <openssl/dh.h>
 #include <openssl/ec.h>
@@ -89,7 +88,6 @@ class ScopedOpenSSLContext {
   T ctx_;
 };
 
-using ScopedBIO = ScopedOpenSSLType<BIO, BIO_vfree>;
 using ScopedBIGNUM = ScopedOpenSSLType<BIGNUM, BN_free>;
 using ScopedBN_CTX = ScopedOpenSSLType<BN_CTX, BN_CTX_free>;
 using ScopedBN_MONT_CTX = ScopedOpenSSLType<BN_MONT_CTX, BN_MONT_CTX_free>;

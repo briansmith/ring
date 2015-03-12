@@ -126,11 +126,12 @@ extern "C" {
  *
  * Each error contains:
  *   1) The library (i.e. ec, pem, rsa) which created it.
- *   2) The function, file, and line number of the call that added the error.
- *   3) A pointer to some error specific data, which may be NULL.
+ *   2) A function identifier and reason code.
+ *   3) The file and line number of the call that added the error.
+ *   4) A pointer to some error specific data, which may be NULL.
  *
- * The library identifier and reason code are packed in a uint32_t and there
- * exist various functions for unpacking it.
+ * The library identifier, function identifier and reason code are packed in a
+ * uint32_t and there exist various functions for unpacking it.
  *
  * The typical behaviour is that an error will occur deep in a call queue and
  * that code will push an error onto the error queue. As the error queue
@@ -140,11 +141,6 @@ extern "C" {
 
 
 /* Startup and shutdown. */
-
-/* ERR_load_BIO_strings does nothing.
- *
- * TODO(fork): remove. libjingle calls this. */
-OPENSSL_EXPORT void ERR_load_BIO_strings(void);
 
 /* ERR_load_ERR_strings does nothing. */
 OPENSSL_EXPORT void ERR_load_ERR_strings(void);
@@ -205,10 +201,10 @@ OPENSSL_EXPORT uint32_t ERR_peek_last_error_line_data(const char **file,
  *
  * The string will have the following format:
  *
- *   error:[error code]:[library name]:OPENSSL_internal:[reason string]
+ *   error:[error code]:[library name]:[function name]:[reason string]
  *
- * error code is an 8 digit hexadecimal number; library name and reason string
- * are ASCII text.
+ * error code is an 8 digit hexadecimal number; library name, function name
+ * and reason string are ASCII text.
  *
  * TODO(fork): remove in favour of |ERR_error_string_n|. */
 OPENSSL_EXPORT char *ERR_error_string(uint32_t packed_error, char *buf);
@@ -268,11 +264,11 @@ OPENSSL_EXPORT void ERR_print_errors_fp(FILE *file);
 OPENSSL_EXPORT void ERR_clear_error(void);
 
 /* ERR_remove_thread_state clears the error queue for the current thread if
- * |tid| is NULL. Otherwise it calls |assert(0)|, because it's no longer
- * possible to delete the error queue for other threads.
+ * |tid| is NULL. Otherwise it does nothing because it's no longer possible to
+ * delete the error queue for other threads.
  *
  * Error queues are thread-local data and are deleted automatically. You do not
- * need to call this function. Use |ERR_clear_error|. */
+ * need to call this function. See |ERR_clear_error|. */
 OPENSSL_EXPORT void ERR_remove_thread_state(const CRYPTO_THREADID *tid);
 
 
@@ -408,7 +404,6 @@ enum {
   ERR_LIB_BUF,
   ERR_LIB_CRYPTO,
   ERR_LIB_EC,
-  ERR_LIB_BIO,
   ERR_LIB_RAND,
   ERR_LIB_UI,
   ERR_LIB_COMP,
@@ -429,7 +424,6 @@ enum {
 #define ERR_R_BUF_LIB ERR_LIB_BUF
 #define ERR_R_CRYPTO_LIB ERR_LIB_CRYPTO
 #define ERR_R_EC_LIB ERR_LIB_EC
-#define ERR_R_BIO_LIB ERR_LIB_BIO
 #define ERR_R_RAND_LIB ERR_LIB_RAND
 #define ERR_R_DSO_LIB ERR_LIB_DSO
 #define ERR_R_UI_LIB ERR_LIB_UI

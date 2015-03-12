@@ -104,14 +104,11 @@ add_subdirectory(rc4)
 add_subdirectory(chacha)
 add_subdirectory(poly1305)
 
-# Level 1.1 - depends only on 0.* and itself.
+# Level 1 - depends only on 0.* and itself.
 add_subdirectory(digest)
 add_subdirectory(cipher)
 add_subdirectory(rand)
 add_subdirectory(bn)
-
-# Level 1.2 - depends only on 0.* and itself.
-add_subdirectory(bio)
 
 # Level 2
 add_subdirectory(dh)
@@ -160,7 +157,6 @@ add_library(
   $<TARGET_OBJECTS:poly1305>
   $<TARGET_OBJECTS:buf>
   $<TARGET_OBJECTS:bn>
-  $<TARGET_OBJECTS:bio>
   $<TARGET_OBJECTS:rand>
   $<TARGET_OBJECTS:dh>
   $<TARGET_OBJECTS:rsa>
