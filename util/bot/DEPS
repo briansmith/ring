@@ -12,6 +12,14 @@
 # OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 # CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
+vars = {
+  'chromium_git': 'https://chromium.googlesource.com',
+}
+
+deps = {
+  'boringssl/util/bot/gyp':
+    Var('chromium_git') + '/external/gyp.git' + '@' + '4a9b712d5cb4a5ba7a9950128a7219569caf7263',
+}
 
 hooks = [
   {
@@ -67,6 +75,14 @@ hooks = [
                 '--no_auth',
                 '--bucket', 'chromium-tools',
                 '-s', 'boringssl/util/bot/yasm-win32.exe.sha1',
+    ],
+  },
+  {
+    'name': 'win_toolchain',
+    'pattern': '.',
+    'action': [ 'python',
+                'boringssl/util/bot/vs_toolchain.py',
+                'update',
     ],
   },
   # TODO(davidben): Only extract archives when they've changed. Extracting perl
