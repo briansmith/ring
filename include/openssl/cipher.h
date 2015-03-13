@@ -531,6 +531,9 @@ OPENSSL_EXPORT const EVP_CIPHER *EVP_aes_192_cbc(void);
 #define CIPHER_F_aes_init_key 129
 #define CIPHER_F_aesni_init_key 130
 #define CIPHER_F_EVP_AEAD_CTX_init_with_direction 131
+#define CIPHER_F_aead_aes_ctr_hmac_sha256_init 132
+#define CIPHER_F_aead_aes_ctr_hmac_sha256_open 133
+#define CIPHER_F_aead_aes_ctr_hmac_sha256_seal 134
 #define CIPHER_R_AES_KEY_SETUP_FAILED 100
 #define CIPHER_R_BAD_DECRYPT 101
 #define CIPHER_R_BAD_KEY_LENGTH 102

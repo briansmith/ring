@@ -8,6 +8,9 @@ CIPHER,function,105,EVP_CIPHER_CTX_set_key_length
 CIPHER,function,106,EVP_CipherInit_ex
 CIPHER,function,107,EVP_DecryptFinal_ex
 CIPHER,function,108,EVP_EncryptFinal_ex
+CIPHER,function,132,aead_aes_ctr_hmac_sha256_init
+CIPHER,function,133,aead_aes_ctr_hmac_sha256_open
+CIPHER,function,134,aead_aes_ctr_hmac_sha256_seal
 CIPHER,function,109,aead_aes_gcm_init
 CIPHER,function,110,aead_aes_gcm_open
 CIPHER,function,111,aead_aes_gcm_seal

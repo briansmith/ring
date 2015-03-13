@@ -115,6 +115,15 @@ OPENSSL_EXPORT const EVP_AEAD *EVP_aead_aes_128_key_wrap(void);
  * See |EVP_aead_aes_128_key_wrap| for details. */
 OPENSSL_EXPORT const EVP_AEAD *EVP_aead_aes_256_key_wrap(void);
 
+/* EVP_aead_aes_128_ctr_hmac_sha256 is AES-128 in CTR mode with HMAC-SHA256 for
+ * authentication. The nonce is 12 bytes; the bottom 32-bits are used as the
+ * block counter, thus the maximum plaintext size is 64GB. */
+OPENSSL_EXPORT const EVP_AEAD *EVP_aead_aes_128_ctr_hmac_sha256(void);
+
+/* EVP_aead_aes_128_ctr_hmac_sha256 is AES-256 in CTR mode with HMAC-SHA256 for
+ * authentication. See |EVP_aead_aes_128_ctr_hmac_sha256| for details. */
+OPENSSL_EXPORT const EVP_AEAD *EVP_aead_aes_256_ctr_hmac_sha256(void);
+
 /* EVP_has_aes_hardware returns one if we enable hardware support for fast and
  * constant-time AES-GCM. */
 OPENSSL_EXPORT int EVP_has_aes_hardware(void);

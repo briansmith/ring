@@ -251,6 +251,10 @@ int main(int argc, char **argv) {
     aead = EVP_aead_aes_128_key_wrap();
   } else if (strcmp(argv[1], "aes-256-key-wrap") == 0) {
     aead = EVP_aead_aes_256_key_wrap();
+  } else if (strcmp(argv[1], "aes-128-ctr-hmac-sha256") == 0) {
+    aead = EVP_aead_aes_128_ctr_hmac_sha256();
+  } else if (strcmp(argv[1], "aes-256-ctr-hmac-sha256") == 0) {
+    aead = EVP_aead_aes_256_ctr_hmac_sha256();
   } else {
     fprintf(stderr, "Unknown AEAD: %s\n", argv[1]);
     return 2;
