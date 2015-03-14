@@ -94,7 +94,7 @@ add_subdirectory(buf)
 add_subdirectory(base64)
 add_subdirectory(bytestring)
 
-# Level 0.2 - depends on nothing but itself
+# Level 0.2 - depends on nothing but itself.
 add_subdirectory(sha)
 add_subdirectory(md4)
 add_subdirectory(md5)
@@ -106,12 +106,14 @@ add_subdirectory(conf)
 add_subdirectory(chacha)
 add_subdirectory(poly1305)
 
-# Level 1, depends only on 0.*
+# Level 1.1 - depends only on 0.* and itself.
 add_subdirectory(digest)
 add_subdirectory(cipher)
 add_subdirectory(rand)
-add_subdirectory(bio)
 add_subdirectory(bn)
+
+# Level 1.2 - depends only on 0.* and itself.
+add_subdirectory(bio)
 add_subdirectory(obj)
 
 # Level 2
