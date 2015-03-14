@@ -204,7 +204,7 @@ static int NextProtosAdvertisedCallback(SSL *ssl, const uint8_t **out,
 }
 
 static int NextProtoSelectCallback(SSL* ssl, uint8_t** out, uint8_t* outlen,
-                            const uint8_t* in, unsigned inlen, void* arg) {
+                                   const uint8_t* in, unsigned inlen, void* arg) {
   const TestConfig *config = GetConfigPtr(ssl);
   if (config->select_next_proto.empty()) {
     return SSL_TLSEXT_ERR_NOACK;

@@ -173,8 +173,7 @@ int ssl3_send_finished(SSL *s, int a, int b, const char *sender, int slen) {
       return 0;
     }
 
-    /* Copy the finished so we can use it for
-     * renegotiation checks */
+    /* Copy the finished so we can use it for renegotiation checks */
     if (s->server) {
       assert(n <= EVP_MAX_MD_SIZE);
       memcpy(s->s3->previous_server_finished, s->s3->tmp.finish_md, n);

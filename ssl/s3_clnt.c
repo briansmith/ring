@@ -390,12 +390,8 @@ int ssl3_connect(SSL *s) {
         s->init_num = 0;
 
         s->session->cipher = s->s3->tmp.new_cipher;
-        if (!s->enc_method->setup_key_block(s)) {
-          ret = -1;
-          goto end;
-        }
-
-        if (!s->enc_method->change_cipher_state(
+        if (!s->enc_method->setup_key_block(s) ||
+            !s->enc_method->change_cipher_state(
                 s, SSL3_CHANGE_CIPHER_CLIENT_WRITE)) {
           ret = -1;
           goto end;
