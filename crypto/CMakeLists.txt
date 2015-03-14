@@ -87,7 +87,6 @@ if (${ARCH} STREQUAL "aarch64")
 endif()
 
 # Level 0.1 - depends on nothing outside this set.
-add_subdirectory(stack)
 add_subdirectory(lhash)
 add_subdirectory(err)
 add_subdirectory(buf)
@@ -142,7 +141,6 @@ add_library(
 
   ${CRYPTO_ARCH_SOURCES}
 
-  $<TARGET_OBJECTS:stack>
   $<TARGET_OBJECTS:lhash>
   $<TARGET_OBJECTS:err>
   $<TARGET_OBJECTS:bytestring>
