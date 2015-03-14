@@ -60,7 +60,6 @@
 #include <openssl/base.h>
 
 #include <openssl/bn.h>
-#include <openssl/ex_data.h>
 
 #if defined(__cplusplus)
 extern "C" {

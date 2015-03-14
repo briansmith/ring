@@ -60,7 +60,6 @@
 #include <openssl/base.h>
 
 #include <openssl/engine.h>
-#include <openssl/ex_data.h>
 #include <openssl/thread.h>
 
 #if defined(__cplusplus)
@@ -192,18 +191,6 @@ OPENSSL_EXPORT DH *d2i_DHparams(DH **ret, const unsigned char **inp, long len);
 OPENSSL_EXPORT int i2d_DHparams(const DH *in, unsigned char **outp);
 
 
-/* ex_data functions.
- *
- * See |ex_data.h| for details. */
-
-OPENSSL_EXPORT int DH_get_ex_new_index(long argl, void *argp,
-                                       CRYPTO_EX_new *new_func,
-                                       CRYPTO_EX_dup *dup_func,
-                                       CRYPTO_EX_free *free_func);
-OPENSSL_EXPORT int DH_set_ex_data(DH *d, int idx, void *arg);
-OPENSSL_EXPORT void *DH_get_ex_data(DH *d, int idx);
-
-
 /* dh_method contains function pointers to override the implementation of DH.
  * See |engine.h| for details. */
 struct dh_method {
@@ -254,7 +241,6 @@ struct dh_st {
 
   int flags;
   CRYPTO_refcount_t references;
-  CRYPTO_EX_DATA ex_data;
 };
 
 

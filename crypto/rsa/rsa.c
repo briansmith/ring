@@ -61,7 +61,6 @@
 #include <openssl/bn.h>
 #include <openssl/engine.h>
 #include <openssl/err.h>
-#include <openssl/ex_data.h>
 #include <openssl/mem.h>
 #include <openssl/obj.h>
 #include <openssl/thread.h>
@@ -71,8 +70,6 @@
 
 
 extern const RSA_METHOD RSA_default_method;
-
-static CRYPTO_EX_DATA_CLASS g_ex_data_class = CRYPTO_EX_DATA_CLASS_INIT;
 
 RSA *RSA_new(void) { return RSA_new_method(NULL); }
 
@@ -98,14 +95,7 @@ RSA *RSA_new_method(const ENGINE *engine) {
   rsa->flags = rsa->meth->flags;
   CRYPTO_MUTEX_init(&rsa->lock);
 
-  if (!CRYPTO_new_ex_data(&g_ex_data_class, rsa, &rsa->ex_data)) {
-    METHOD_unref(rsa->meth);
-    OPENSSL_free(rsa);
-    return NULL;
-  }
-
   if (rsa->meth->init && !rsa->meth->init(rsa)) {
-    CRYPTO_free_ex_data(&g_ex_data_class, rsa, &rsa->ex_data);
     METHOD_unref(rsa->meth);
     OPENSSL_free(rsa);
     return NULL;
@@ -141,8 +131,6 @@ void RSA_free(RSA *rsa) {
     rsa->meth->finish(rsa);
   }
   METHOD_unref(rsa->meth);
-
-  CRYPTO_free_ex_data(&g_ex_data_class, rsa, &rsa->ex_data);
 
   BN_clear_free(rsa->n);
   BN_clear_free(rsa->e);
@@ -289,24 +277,6 @@ int RSA_supports_digest(const RSA *rsa, const EVP_MD *md) {
     return rsa->meth->supports_digest(rsa, md);
   }
   return 1;
-}
-
-int RSA_get_ex_new_index(long argl, void *argp, CRYPTO_EX_new *new_func,
-                         CRYPTO_EX_dup *dup_func, CRYPTO_EX_free *free_func) {
-  int index;
-  if (!CRYPTO_get_ex_new_index(&g_ex_data_class, &index, argl, argp, new_func,
-                               dup_func, free_func)) {
-    return -1;
-  }
-  return index;
-}
-
-int RSA_set_ex_data(RSA *d, int idx, void *arg) {
-  return CRYPTO_set_ex_data(&d->ex_data, idx, arg);
-}
-
-void *RSA_get_ex_data(const RSA *d, int idx) {
-  return CRYPTO_get_ex_data(&d->ex_data, idx);
 }
 
 /* SSL_SIG_LENGTH is the size of an SSL/TLS (prior to TLS 1.2) signature: it's

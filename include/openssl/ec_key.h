@@ -72,7 +72,6 @@
 
 #include <openssl/ec.h>
 #include <openssl/engine.h>
-#include <openssl/ex_data.h>
 
 #if defined(__cplusplus)
 extern "C" {
@@ -179,18 +178,6 @@ OPENSSL_EXPORT int EC_KEY_set_public_key_affine_coordinates(EC_KEY *key,
  * corresponding public key and stores both in |key|. It returns one on success
  * or zero otherwise. */
 OPENSSL_EXPORT int EC_KEY_generate_key(EC_KEY *key);
-
-
-/* ex_data functions.
- *
- * These functions are wrappers. See |ex_data.h| for details. */
-
-OPENSSL_EXPORT int EC_KEY_get_ex_new_index(long argl, void *argp,
-                                           CRYPTO_EX_new *new_func,
-                                           CRYPTO_EX_dup *dup_func,
-                                           CRYPTO_EX_free *free_func);
-OPENSSL_EXPORT int EC_KEY_set_ex_data(EC_KEY *r, int idx, void *arg);
-OPENSSL_EXPORT void *EC_KEY_get_ex_data(const EC_KEY *r, int idx);
 
 
 /* ECDSA method. */
