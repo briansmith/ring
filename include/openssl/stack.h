@@ -122,7 +122,6 @@ STACK_OF(type) {\
  * generates the stack_macros.h file that contains macros for the following
  * types of stacks:
  *
- * STACK_OF:CRYPTO_EX_DATA_FUNCS
  * STACK_OF:RSA_additional_prime
  * STACK_OF:void
  *

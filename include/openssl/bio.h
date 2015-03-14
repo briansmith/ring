@@ -62,7 +62,6 @@
 #include <stdio.h>  /* For FILE */
 
 #include <openssl/err.h> /* for ERR_print_errors_fp */
-#include <openssl/ex_data.h>
 #include <openssl/stack.h>
 #include <openssl/thread.h>
 
