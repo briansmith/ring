@@ -136,7 +136,6 @@ add_library(
   crypto.c
   directory_posix.c
   directory_win.c
-  ex_data.c
   mem.c
   refcount_c11.c
   refcount_lock.c

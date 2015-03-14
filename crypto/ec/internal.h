@@ -71,7 +71,6 @@
 #include <openssl/base.h>
 
 #include <openssl/bn.h>
-#include <openssl/ex_data.h>
 #include <openssl/thread.h>
 
 #if defined(__cplusplus)
@@ -336,8 +335,6 @@ struct ec_key_st {
   int flags;
 
   ECDSA_METHOD *ecdsa_meth;
-
-  CRYPTO_EX_DATA ex_data;
 } /* EC_KEY */;
 
 /* curve_data contains data about a built-in elliptic curve. */

@@ -60,7 +60,7 @@
 #include <openssl/base.h>
 
 #include <openssl/engine.h>
-#include <openssl/ex_data.h>
+#include <openssl/stack.h>
 #include <openssl/thread.h>
 
 #if defined(__cplusplus)
@@ -406,18 +406,6 @@ OPENSSL_EXPORT RSA *d2i_RSAPrivateKey(RSA **out, const uint8_t **inp, long len);
  * not, or a negative value on error. */
 OPENSSL_EXPORT int i2d_RSAPrivateKey(const RSA *in, uint8_t **outp);
 
-
-/* ex_data functions.
- *
- * See |ex_data.h| for details. */
-
-OPENSSL_EXPORT int RSA_get_ex_new_index(long argl, void *argp,
-                                        CRYPTO_EX_new *new_func,
-                                        CRYPTO_EX_dup *dup_func,
-                                        CRYPTO_EX_free *free_func);
-OPENSSL_EXPORT int RSA_set_ex_data(RSA *r, int idx, void *arg);
-OPENSSL_EXPORT void *RSA_get_ex_data(const RSA *r, int idx);
-
 /* RSA_FLAG_OPAQUE specifies that this RSA_METHOD does not expose its key
  * material. This may be set if, for instance, it is wrapping some other crypto
  * API, like a platform key store. */
@@ -537,8 +525,6 @@ struct rsa_st {
 
   STACK_OF(RSA_additional_prime) *additional_primes;
 
-  /* be careful using this if the RSA structure is shared */
-  CRYPTO_EX_DATA ex_data;
   CRYPTO_refcount_t references;
   int flags;
 

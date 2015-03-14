@@ -109,7 +109,7 @@
 #ifndef OPENSSL_HEADER_CRYPTO_INTERNAL_H
 #define OPENSSL_HEADER_CRYPTO_INTERNAL_H
 
-#include <openssl/ex_data.h>
+#include <openssl/base.h>
 #include <openssl/thread.h>
 
 #if defined(OPENSSL_NO_THREADS)
@@ -481,63 +481,6 @@ OPENSSL_EXPORT void *CRYPTO_get_thread_local(thread_local_data_t value);
 OPENSSL_EXPORT int CRYPTO_set_thread_local(
     thread_local_data_t index, void *value,
     thread_local_destructor_t destructor);
-
-
-/* ex_data */
-
-typedef struct crypto_ex_data_func_st CRYPTO_EX_DATA_FUNCS;
-
-/* CRYPTO_EX_DATA_CLASS tracks the ex_indices registered for a type which
- * supports ex_data. It should defined as a static global within the module
- * which defines that type. */
-typedef struct {
-  struct CRYPTO_STATIC_MUTEX lock;
-  STACK_OF(CRYPTO_EX_DATA_FUNCS) *meth;
-  /* num_reserved is one if the ex_data index zero is reserved for legacy
-   * |TYPE_get_app_data| functions. */
-  uint8_t num_reserved;
-} CRYPTO_EX_DATA_CLASS;
-
-#define CRYPTO_EX_DATA_CLASS_INIT {CRYPTO_STATIC_MUTEX_INIT, NULL, 0}
-#define CRYPTO_EX_DATA_CLASS_INIT_WITH_APP_DATA \
-    {CRYPTO_STATIC_MUTEX_INIT, NULL, 1}
-
-/* CRYPTO_get_ex_new_index allocates a new index for |ex_data_class| and writes
- * it to |*out_index|. Each class of object should provide a wrapper function
- * that uses the correct |CRYPTO_EX_DATA_CLASS|. It returns one on success and
- * zero otherwise. */
-OPENSSL_EXPORT int CRYPTO_get_ex_new_index(CRYPTO_EX_DATA_CLASS *ex_data_class,
-                                           int *out_index, long argl,
-                                           void *argp, CRYPTO_EX_new *new_func,
-                                           CRYPTO_EX_dup *dup_func,
-                                           CRYPTO_EX_free *free_func);
-
-/* CRYPTO_set_ex_data sets an extra data pointer on a given object. Each class
- * of object should provide a wrapper function. */
-OPENSSL_EXPORT int CRYPTO_set_ex_data(CRYPTO_EX_DATA *ad, int index, void *val);
-
-/* CRYPTO_get_ex_data returns an extra data pointer for a given object, or NULL
- * if no such index exists. Each class of object should provide a wrapper
- * function. */
-OPENSSL_EXPORT void *CRYPTO_get_ex_data(const CRYPTO_EX_DATA *ad, int index);
-
-/* CRYPTO_new_ex_data initialises a newly allocated |CRYPTO_EX_DATA| which is
- * embedded inside of |obj| which is of class |ex_data_class|. Returns one on
- * success and zero otherwise. */
-OPENSSL_EXPORT int CRYPTO_new_ex_data(CRYPTO_EX_DATA_CLASS *ex_data_class,
-                                      void *obj, CRYPTO_EX_DATA *ad);
-
-/* CRYPTO_dup_ex_data duplicates |from| into a freshly allocated
- * |CRYPTO_EX_DATA|, |to|. Both of which are inside objects of the given
- * class. It returns one on success and zero otherwise. */
-OPENSSL_EXPORT int CRYPTO_dup_ex_data(CRYPTO_EX_DATA_CLASS *ex_data_class,
-                                      CRYPTO_EX_DATA *to,
-                                      const CRYPTO_EX_DATA *from);
-
-/* CRYPTO_free_ex_data frees |ad|, which is embedded inside |obj|, which is an
- * object of the given class. */
-OPENSSL_EXPORT void CRYPTO_free_ex_data(CRYPTO_EX_DATA_CLASS *ex_data_class,
-                                        void *obj, CRYPTO_EX_DATA *ad);
 
 
 #if defined(__cplusplus)

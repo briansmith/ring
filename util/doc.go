@@ -36,7 +36,7 @@ type ConfigSection struct {
 
 // HeaderFile is the internal representation of a header file.
 type HeaderFile struct {
-	// Name is the basename of the header file (e.g. "ex_data.html").
+	// Name is the basename of the header file (e.g. "rsa.html").
 	Name string
 	// Preamble contains a comment for the file as a whole. Each string
 	// is a separate paragraph.
