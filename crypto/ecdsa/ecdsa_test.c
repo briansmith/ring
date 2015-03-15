@@ -60,41 +60,53 @@
 #include <openssl/obj.h>
 #include <openssl/rand.h>
 
+typedef enum api_t {
+  encoded_api,
+  raw_api,
+};
+
 /* verify_ecdsa_sig returns 1 on success, 0 on failure. */
-static int verify_ecdsa_sig(const uint8_t *digest, size_t digest_len,
-                            const ECDSA_SIG *ecdsa_sig, EC_KEY *eckey,
-                            int expected_result) {
-  int ret = 0;
+static int verify_ecdsa_sig(enum api_t api, const uint8_t *digest,
+                            size_t digest_len, const ECDSA_SIG *ecdsa_sig,
+                            EC_KEY *eckey, int expected_result) {
+  int actual_result;
 
-  int sig_len = i2d_ECDSA_SIG(ecdsa_sig, NULL);
-  if (sig_len <= 0) {
-    return 0;
-  }
-  uint8_t *signature = OPENSSL_malloc(sig_len);
-  if (signature == NULL) {
-    return 0;
-  }
-  uint8_t *sig_ptr = signature;
-  sig_len = i2d_ECDSA_SIG(ecdsa_sig, &sig_ptr);
-  if (sig_len <= 0) {
-    goto err;
-  }
-  int actual_result = ECDSA_verify(0, digest, digest_len, signature, sig_len,
+  switch (api) {
+    case encoded_api: {
+      int sig_len = i2d_ECDSA_SIG(ecdsa_sig, NULL);
+      if (sig_len <= 0) {
+        return 0;
+      }
+      uint8_t *signature = OPENSSL_malloc(sig_len);
+      if (signature == NULL) {
+        return 0;
+      }
+      uint8_t *sig_ptr = signature;
+      sig_len = i2d_ECDSA_SIG(ecdsa_sig, &sig_ptr);
+      if (sig_len <= 0) {
+        OPENSSL_free(signature);
+        return 0;
+      }
+      actual_result = ECDSA_verify(0, digest, digest_len, signature, sig_len,
                                    eckey);
-  if (expected_result != actual_result) {
-    goto err;
-  }
+      OPENSSL_free(signature);
+      break;
+    }
 
-  ret = 1;
-err:
-  OPENSSL_free(signature);
-  return ret;
+    case raw_api:
+      actual_result = ECDSA_do_verify(digest, digest_len, ecdsa_sig, eckey);
+      break;
+
+    default:
+      return 0;
+  }
+  return expected_result == actual_result;
 }
 
 /* test_tampered_sig verifies that signature verification fails when a valid
  * signature is tampered with. |ecdsa_sig| must be a valid signature, which
  * will be modified. test_tampered_sig returns 1 on success, 0 on failure. */
-static int test_tampered_sig(FILE *out, const uint8_t *digest,
+static int test_tampered_sig(FILE *out, enum api_t api, const uint8_t *digest,
                              size_t digest_len, ECDSA_SIG *ecdsa_sig,
                              EC_KEY *eckey, const BIGNUM *order) {
   int ret = 0;
@@ -128,7 +140,7 @@ static int test_tampered_sig(FILE *out, const uint8_t *digest,
   /* Now read the BIGNUMs back in from raw_buf. */
   if (BN_bin2bn(raw_buf, bn_len, ecdsa_sig->r) == NULL ||
       BN_bin2bn(raw_buf + bn_len, bn_len, ecdsa_sig->s) == NULL ||
-      !verify_ecdsa_sig(digest, digest_len, ecdsa_sig, eckey, 0)) {
+      !verify_ecdsa_sig(api, digest, digest_len, ecdsa_sig, eckey, 0)) {
     goto err;
   }
 
@@ -136,7 +148,7 @@ static int test_tampered_sig(FILE *out, const uint8_t *digest,
   raw_buf[offset] ^= dirt;
   if (BN_bin2bn(raw_buf, bn_len, ecdsa_sig->r) == NULL ||
       BN_bin2bn(raw_buf + bn_len, bn_len, ecdsa_sig->s) == NULL ||
-      !verify_ecdsa_sig(digest, digest_len, ecdsa_sig, eckey, 1)) {
+      !verify_ecdsa_sig(api, digest, digest_len, ecdsa_sig, eckey, 1)) {
     goto err;
   }
 
@@ -156,8 +168,6 @@ static int test_builtin(FILE *out) {
   ECDSA_SIG *ecdsa_sig = NULL;
   uint8_t digest[20], wrong_digest[20];
   uint8_t *signature = NULL;
-  const uint8_t *sig_ptr;
-  unsigned sig_len;
   int nid, ret = 0;
 
   /* fill digest values with some random data */
@@ -171,10 +181,9 @@ static int test_builtin(FILE *out) {
     goto builtin_err;
   }
 
-  /* create and verify a ecdsa signature with every availble curve
-   * (with ) */
-  fprintf(out, "\ntesting ECDSA_sign() and ECDSA_verify() "
-               "with some internal curves:\n");
+  /* Create and verify ecdsa signatures with every available curve. */
+  fputs("\ntesting ECDSA_sign(), ECDSA_verify(), ECDSA_do_sign(), and "
+        "ECDSA_do_verify() with some internal curves:\n", out);
 
   static const struct
   {
@@ -248,8 +257,10 @@ static int test_builtin(FILE *out) {
     }
     fprintf(out, ".");
     fflush(out);
-    /* create signature */
-    sig_len = ECDSA_size(eckey);
+
+    /* Test ASN.1-encoded signatures. */
+    /* Create a signature. */
+    unsigned sig_len = ECDSA_size(eckey);
     signature = OPENSSL_malloc(sig_len);
     if (signature == NULL) {
       goto builtin_err;
@@ -288,14 +299,55 @@ static int test_builtin(FILE *out) {
     }
     fprintf(out, ".");
     fflush(out);
-    /* Tampering with a signature causes verification to fail. */
-    sig_ptr = signature;
+    /* Verify a tampered signature. */
+    const uint8_t *sig_ptr = signature;
     ecdsa_sig = d2i_ECDSA_SIG(NULL, &sig_ptr, sig_len);
     if (ecdsa_sig == NULL) {
       fprintf(out, " failed\n");
       goto builtin_err;
     }
-    if (!test_tampered_sig(out, digest, 20, ecdsa_sig, eckey, order)) {
+    if (!test_tampered_sig(out, encoded_api, digest, 20, ecdsa_sig, eckey,
+                           order)) {
+      fprintf(out, " failed\n");
+      goto builtin_err;
+    }
+    fprintf(out, ".");
+    fflush(out);
+    OPENSSL_free(signature);
+    signature = NULL;
+
+    /* Test ECDSA_SIG signing and verification. */
+    /* Create a signature. */
+    ecdsa_sig = ECDSA_do_sign(digest, 20, eckey);
+    if (!ecdsa_sig) {
+      fprintf(out, " failed\n");
+      goto builtin_err;
+    }
+    fprintf(out, ".");
+    fflush(out);
+    /* Verify the signature using the correct key. */
+    if (!ECDSA_do_verify(digest, 20, ecdsa_sig, eckey)) {
+      fprintf(out, " failed\n");
+      goto builtin_err;
+    }
+    fprintf(out, ".");
+    fflush(out);
+    /* Verify the signature with the wrong key. */
+    if (ECDSA_do_verify(digest, 20, ecdsa_sig, wrong_eckey)) {
+      fprintf(out, " failed\n");
+      goto builtin_err;
+    }
+    fprintf(out, ".");
+    fflush(out);
+    /* Verify the signature using the wrong digest. */
+    if (ECDSA_do_verify(wrong_digest, 20, ecdsa_sig, eckey)) {
+      fprintf(out, " failed\n");
+      goto builtin_err;
+    }
+    fprintf(out, ".");
+    fflush(out);
+    /* Verify a tampered signature. */
+    if (!test_tampered_sig(out, raw_api, digest, 20, ecdsa_sig, eckey, order)) {
       fprintf(out, " failed\n");
       goto builtin_err;
     }
@@ -306,8 +358,6 @@ static int test_builtin(FILE *out) {
     /* cleanup */
     /* clean bogus errors */
     ERR_clear_error();
-    OPENSSL_free(signature);
-    signature = NULL;
     EC_KEY_free(eckey);
     eckey = NULL;
     EC_KEY_free(wrong_eckey);
