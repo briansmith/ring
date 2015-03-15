@@ -107,17 +107,13 @@ OPENSSL_EXPORT ECDSA_SIG *ECDSA_SIG_new(void);
 OPENSSL_EXPORT void ECDSA_SIG_free(ECDSA_SIG *sig);
 
 /* ECDSA_sign signs |digest_len| bytes from |digest| with |key| and returns the
- * resulting signature structure, or NULL on error.
- *
- * TODO(fork): remove this function. */
+ * resulting signature structure, or NULL on error. */
 OPENSSL_EXPORT ECDSA_SIG *ECDSA_do_sign(const uint8_t *digest,
                                         size_t digest_len, EC_KEY *key);
 
 /* ECDSA_verify verifies that |sig| constitutes a valid signature by |key| of
  * |digest|. It returns one on success or zero if the signature is invalid or
- * on error.
- *
- * TODO(fork): remove this function. */
+ * on error. */
 OPENSSL_EXPORT int ECDSA_do_verify(const uint8_t *digest, size_t digest_len,
                                    const ECDSA_SIG *sig, EC_KEY *key);
 
