@@ -63,7 +63,6 @@
 
 /* Digest algorithms */
 #define NID_md5 4
-#define NID_md5_sha1 114
 #define NID_sha1 64
 #define NID_sha224 675
 #define NID_sha256 672

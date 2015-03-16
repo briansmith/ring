@@ -168,10 +168,6 @@ int RSA_public_decrypt(int flen, const uint8_t *from, uint8_t *to, RSA *rsa,
   return out_len;
 }
 
-/* SSL_SIG_LENGTH is the size of an SSL/TLS (prior to TLS 1.2) signature: it's
- * the length of an MD5 and SHA1 hash. */
-static const unsigned SSL_SIG_LENGTH = 36;
-
 /* pkcs1_sig_prefix contains the ASN.1, DER encoded prefix for a hash that is
  * to be signed with PKCS#1. */
 struct pkcs1_sig_prefix {
@@ -232,19 +228,6 @@ int RSA_add_pkcs1_prefix(uint8_t **out_msg, size_t *out_msg_len,
                          size_t msg_len) {
   unsigned i;
 
-  if (hash_nid == NID_md5_sha1) {
-    /* Special case: SSL signature, just check the length. */
-    if (msg_len != SSL_SIG_LENGTH) {
-      OPENSSL_PUT_ERROR(RSA, RSA_R_INVALID_MESSAGE_LENGTH);
-      return 0;
-    }
-
-    *out_msg = (uint8_t*) msg;
-    *out_msg_len = SSL_SIG_LENGTH;
-    *is_alloced = 0;
-    return 1;
-  }
-
   for (i = 0; kPKCS1SigPrefixes[i].nid != NID_undef; i++) {
     const struct pkcs1_sig_prefix *sig_prefix = &kPKCS1SigPrefixes[i];
     if (sig_prefix->nid != hash_nid) {
@@ -268,15 +251,15 @@ int RSA_add_pkcs1_prefix(uint8_t **out_msg, size_t *out_msg_len,
       return 0;
     }
 
-    memcpy(signed_msg, prefix, prefix_len);
-    memcpy(signed_msg + prefix_len, msg, msg_len);
+  memcpy(signed_msg, prefix, prefix_len);
+  memcpy(signed_msg + prefix_len, msg, msg_len);
 
-    *out_msg = signed_msg;
-    *out_msg_len = signed_msg_len;
-    *is_alloced = 1;
+  *out_msg = signed_msg;
+  *out_msg_len = signed_msg_len;
+  *is_alloced = 1;
 
-    return 1;
-  }
+  return 1;
+}
 
   OPENSSL_PUT_ERROR(RSA, RSA_R_UNKNOWN_ALGORITHM_TYPE);
   return 0;
@@ -326,11 +309,6 @@ int RSA_verify(int hash_nid, const uint8_t *msg, size_t msg_len,
 
   if (sig_len != rsa_size) {
     OPENSSL_PUT_ERROR(RSA, RSA_R_WRONG_SIGNATURE_LENGTH);
-    return 0;
-  }
-
-  if (hash_nid == NID_md5_sha1 && msg_len != SSL_SIG_LENGTH) {
-    OPENSSL_PUT_ERROR(RSA, RSA_R_INVALID_MESSAGE_LENGTH);
     return 0;
   }
 
