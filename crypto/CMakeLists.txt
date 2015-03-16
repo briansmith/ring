@@ -140,6 +140,8 @@ add_library(
   crypto.c
   mem.c
   thread.c
+  thread_pthread.c
+  thread_win.c
   ex_data.c
   ex_data_impl.c
   time_support.c
@@ -194,6 +196,18 @@ add_executable(
 )
 
 target_link_libraries(constant_time_test crypto)
+
+add_executable(
+  thread_test
+
+  thread_test.c
+)
+
+if(MSVC)
+  target_link_libraries(thread_test crypto)
+else()
+  target_link_libraries(thread_test crypto pthread)
+endif()
 
 perlasm(cpu-x86_64-asm.${ASM_EXT} cpu-x86_64-asm.pl)
 perlasm(cpu-x86-asm.${ASM_EXT} cpu-x86-asm.pl)

@@ -111,6 +111,10 @@
 
 #include <openssl/ex_data.h>
 
+#if !defined(OPENSSL_WINDOWS)
+#include <pthread.h>
+#endif
+
 #if defined(__cplusplus)
 extern "C" {
 #endif
@@ -293,6 +297,62 @@ static inline uint8_t constant_time_select_8(uint8_t mask, uint8_t a,
 static inline int constant_time_select_int(unsigned int mask, int a, int b) {
   return (int)(constant_time_select(mask, (unsigned)(a), (unsigned)(b)));
 }
+
+
+/* Thread-safe initialisation. */
+
+#if !defined(OPENSSL_WINDOWS)
+typedef pthread_once_t CRYPTO_once_t;
+#define CRYPTO_ONCE_INIT PTHREAD_ONCE_INIT
+#else
+typedef int32_t CRYPTO_once_t;
+#define CRYPTO_ONCE_INIT 0
+#endif
+
+/* CRYPTO_once calls |init| exactly once per process. This is thread-safe: if
+ * concurrent threads call |CRYPTO_once| with the same |CRYPTO_once_t| argument
+ * then they will block until |init| completes, but |init| will have only been
+ * called once.
+ *
+ * The |once| argument must be a |CRYPTO_once_t| that has been initialised with
+ * the value |CRYPTO_ONCE_INIT|. */
+void CRYPTO_once(CRYPTO_once_t *once, void (*init)(void));
+
+
+/* Thread local storage. */
+
+/* thread_local_data_t enumerates the types of thread-local data that can be
+ * stored. */
+typedef enum {
+  OPENSSL_THREAD_LOCAL_ERR = 0,
+  OPENSSL_THREAD_LOCAL_TEST,
+  NUM_OPENSSL_THREAD_LOCALS,
+} thread_local_data_t;
+
+/* thread_local_destructor_t is the type of a destructor function that will be
+ * called when a thread exits and its thread-local storage needs to be freed. */
+typedef void (*thread_local_destructor_t)(void *);
+
+/* CRYPTO_get_thread_local gets the pointer value that is stored for the
+ * current thread for the given index, or NULL if none has been set. */
+void *CRYPTO_get_thread_local(thread_local_data_t value);
+
+/* CRYPTO_set_thread_local sets a pointer value for the current thread at the
+ * given index. This function should only be called once per thread for a given
+ * |index|: rather than update the pointer value itself, update the data that
+ * is pointed to.
+ *
+ * The destructor function will be called when a thread exits to free this
+ * thread-local data. All calls to |CRYPTO_set_thread_local| with the same
+ * |index| should have the same |destructor| argument. The destructor may be
+ * called with a NULL argument if a thread that never set a thread-local
+ * pointer for |index|, exits. The destructor may be called concurrently with
+ * different arguments.
+ *
+ * This function returns one on success or zero on error. If it returns zero
+ * then |destructor| has been called with |value| already. */
+int CRYPTO_set_thread_local(thread_local_data_t index, void *value,
+                            thread_local_destructor_t destructor);
 
 
 #if defined(__cplusplus)
