@@ -2702,27 +2702,40 @@ func addResumptionVersionTests() {
 					suffix += "-DTLS"
 				}
 
-				testCases = append(testCases, testCase{
-					protocol:      protocol,
-					name:          "Resume-Client" + suffix,
-					resumeSession: true,
-					config: Config{
-						MaxVersion:   sessionVers.version,
-						CipherSuites: []uint16{TLS_RSA_WITH_AES_128_CBC_SHA},
-						Bugs: ProtocolBugs{
-							AllowSessionVersionMismatch: true,
+				if sessionVers.version == resumeVers.version {
+					testCases = append(testCases, testCase{
+						protocol:      protocol,
+						name:          "Resume-Client" + suffix,
+						resumeSession: true,
+						config: Config{
+							MaxVersion:   sessionVers.version,
+							CipherSuites: []uint16{TLS_RSA_WITH_AES_128_CBC_SHA},
 						},
-					},
-					expectedVersion: sessionVers.version,
-					resumeConfig: &Config{
-						MaxVersion:   resumeVers.version,
-						CipherSuites: []uint16{TLS_RSA_WITH_AES_128_CBC_SHA},
-						Bugs: ProtocolBugs{
-							AllowSessionVersionMismatch: true,
+						expectedVersion:       sessionVers.version,
+						expectedResumeVersion: resumeVers.version,
+					})
+				} else {
+					testCases = append(testCases, testCase{
+						protocol:      protocol,
+						name:          "Resume-Client-Mismatch" + suffix,
+						resumeSession: true,
+						config: Config{
+							MaxVersion:   sessionVers.version,
+							CipherSuites: []uint16{TLS_RSA_WITH_AES_128_CBC_SHA},
 						},
-					},
-					expectedResumeVersion: resumeVers.version,
-				})
+						expectedVersion: sessionVers.version,
+						resumeConfig: &Config{
+							MaxVersion:   resumeVers.version,
+							CipherSuites: []uint16{TLS_RSA_WITH_AES_128_CBC_SHA},
+							Bugs: ProtocolBugs{
+								AllowSessionVersionMismatch: true,
+							},
+						},
+						expectedResumeVersion: resumeVers.version,
+						shouldFail:            true,
+						expectedError:         ":OLD_SESSION_VERSION_NOT_RETURNED:",
+					})
+				}
 
 				testCases = append(testCases, testCase{
 					protocol:      protocol,
@@ -2766,6 +2779,22 @@ func addResumptionVersionTests() {
 			}
 		}
 	}
+
+	testCases = append(testCases, testCase{
+		name:          "Resume-Client-CipherMismatch",
+		resumeSession: true,
+		config: Config{
+			CipherSuites: []uint16{TLS_RSA_WITH_AES_128_GCM_SHA256},
+		},
+		resumeConfig: &Config{
+			CipherSuites: []uint16{TLS_RSA_WITH_AES_128_GCM_SHA256},
+			Bugs: ProtocolBugs{
+				SendCipherSuite: TLS_RSA_WITH_AES_128_CBC_SHA,
+			},
+		},
+		shouldFail:    true,
+		expectedError: ":OLD_SESSION_CIPHER_NOT_RETURNED:",
+	})
 }
 
 func addRenegotiationTests() {

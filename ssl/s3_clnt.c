@@ -855,23 +855,21 @@ int ssl3_get_server_hello(SSL *s) {
     goto f_err;
   }
 
-  if (s->hit && s->session->cipher != c) {
-    al = SSL_AD_ILLEGAL_PARAMETER;
-    OPENSSL_PUT_ERROR(SSL, ssl3_get_server_hello,
-                      SSL_R_OLD_SESSION_CIPHER_NOT_RETURNED);
-    goto f_err;
+  if (s->hit) {
+    if (s->session->cipher != c) {
+      al = SSL_AD_ILLEGAL_PARAMETER;
+      OPENSSL_PUT_ERROR(SSL, ssl3_get_server_hello,
+                        SSL_R_OLD_SESSION_CIPHER_NOT_RETURNED);
+      goto f_err;
+    }
+    if (s->session->ssl_version != s->version) {
+      al = SSL_AD_ILLEGAL_PARAMETER;
+      OPENSSL_PUT_ERROR(SSL, ssl3_get_server_hello,
+                        SSL_R_OLD_SESSION_VERSION_NOT_RETURNED);
+      goto f_err;
+    }
   }
   s->s3->tmp.new_cipher = c;
-
-  /* Most clients also require that the negotiated version match the session's
-   * version if resuming. However OpenSSL has historically not had the
-   * corresponding logic on the server, so this may not be compatible,
-   * depending on other factors. (Whether the ClientHello version is clamped to
-   * the session's version and whether the session cache is keyed on IP
-   * address.)
-   *
-   * TODO(davidben): See if we can still enforce this? Perhaps for the future
-   * TLS 1.3 and forward if this is fixed upstream. */
 
   /* Don't digest cached records if no sigalgs: we may need them for client
    * authentication. */
