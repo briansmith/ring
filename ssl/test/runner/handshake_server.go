@@ -193,6 +193,9 @@ func (hs *serverHandshakeState) readClientHello() (isResume bool, err error) {
 	if c.clientVersion < VersionTLS12 && len(hs.clientHello.signatureAndHashes) > 0 {
 		return false, fmt.Errorf("tls: client included signature_algorithms before TLS 1.2")
 	}
+	if config.Bugs.IgnorePeerSignatureAlgorithmPreferences {
+		hs.clientHello.signatureAndHashes = config.signatureAndHashesForServer()
+	}
 
 	c.vers, ok = config.mutualVersion(hs.clientHello.vers)
 	if !ok {

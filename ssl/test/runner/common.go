@@ -675,6 +675,10 @@ type ProtocolBugs struct {
 	// IgnorePeerCipherPreferences, if true, causes the peer's cipher
 	// preferences to be ignored.
 	IgnorePeerCipherPreferences bool
+
+	// IgnorePeerSignatureAlgorithmPreferences, if true, causes the peer's
+	// signature algorithm preferences to be ignored.
+	IgnorePeerSignatureAlgorithmPreferences bool
 }
 
 func (c *Config) serverInit() {

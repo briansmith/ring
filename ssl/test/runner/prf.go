@@ -323,14 +323,14 @@ func (h finishedHash) serverSum(masterSecret []byte) []byte {
 
 // selectClientCertSignatureAlgorithm returns a signatureAndHash to sign a
 // client's CertificateVerify with, or an error if none can be found.
-func (h finishedHash) selectClientCertSignatureAlgorithm(serverList []signatureAndHash, sigType uint8) (signatureAndHash, error) {
+func (h finishedHash) selectClientCertSignatureAlgorithm(serverList, clientList []signatureAndHash, sigType uint8) (signatureAndHash, error) {
 	if h.version < VersionTLS12 {
 		// Nothing to negotiate before TLS 1.2.
 		return signatureAndHash{signature: sigType}, nil
 	}
 
 	for _, v := range serverList {
-		if v.signature == sigType && v.hash == hashSHA256 {
+		if v.signature == sigType && isSupportedSignatureAndHash(v, clientList) {
 			return v, nil
 		}
 	}

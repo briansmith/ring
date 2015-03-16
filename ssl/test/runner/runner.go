@@ -2922,6 +2922,45 @@ func addSigningHashTests() {
 			},
 		},
 	})
+
+	// Test that hash preferences are enforced. BoringSSL defaults to
+	// rejecting MD5 signatures.
+	testCases = append(testCases, testCase{
+		testType: serverTest,
+		name:     "SigningHash-ClientAuth-Enforced",
+		config: Config{
+			Certificates: []Certificate{rsaCertificate},
+			SignatureAndHashes: []signatureAndHash{
+				{signatureRSA, hashMD5},
+				// Advertise SHA-1 so the handshake will
+				// proceed, but the shim's preferences will be
+				// ignored in CertificateVerify generation, so
+				// MD5 will be chosen.
+				{signatureRSA, hashSHA1},
+			},
+			Bugs: ProtocolBugs{
+				IgnorePeerSignatureAlgorithmPreferences: true,
+			},
+		},
+		flags:         []string{"-require-any-client-certificate"},
+		shouldFail:    true,
+		expectedError: ":WRONG_SIGNATURE_TYPE:",
+	})
+
+	testCases = append(testCases, testCase{
+		name: "SigningHash-ServerKeyExchange-Enforced",
+		config: Config{
+			CipherSuites: []uint16{TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256},
+			SignatureAndHashes: []signatureAndHash{
+				{signatureRSA, hashMD5},
+			},
+			Bugs: ProtocolBugs{
+				IgnorePeerSignatureAlgorithmPreferences: true,
+			},
+		},
+		shouldFail:    true,
+		expectedError: ":WRONG_SIGNATURE_TYPE:",
+	})
 }
 
 // timeouts is the retransmit schedule for BoringSSL. It doubles and
