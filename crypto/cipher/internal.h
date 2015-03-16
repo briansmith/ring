@@ -68,7 +68,7 @@ extern "C" {
 
 
 struct evp_cipher_st {
-  /* type contains a NID identifing the cipher. (For example, NID_rc4.) */
+  /* type contains a NID identifing the cipher. (e.g. NID_aes_128_gcm.) */
   int nid;
 
   /* block_size contains the block size, in bytes, of the cipher, or 1 for a

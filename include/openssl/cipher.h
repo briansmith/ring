@@ -237,7 +237,8 @@ OPENSSL_EXPORT const EVP_CIPHER *EVP_CIPHER_CTX_cipher(
     const EVP_CIPHER_CTX *ctx);
 
 /* EVP_CIPHER_CTX_nid returns a NID identifying the |EVP_CIPHER| underlying
- * |ctx| (e.g. |NID_rc4|). It will crash if no cipher has been configured. */
+ * |ctx| (e.g. |NID_aes_128_gcm|). It will crash if no cipher has been
+ * configured. */
 OPENSSL_EXPORT int EVP_CIPHER_CTX_nid(const EVP_CIPHER_CTX *ctx);
 
 /* EVP_CIPHER_CTX_block_size returns the block size, in bytes, of the cipher
@@ -290,7 +291,7 @@ OPENSSL_EXPORT int EVP_CIPHER_CTX_set_key_length(EVP_CIPHER_CTX *ctx, unsigned k
 /* Cipher accessors. */
 
 /* EVP_CIPHER_nid returns a NID identifing |cipher|. (For example,
- * |NID_rc4|.) */
+ * |NID_aes_128_gcm|.) */
 OPENSSL_EXPORT int EVP_CIPHER_nid(const EVP_CIPHER *cipher);
 
 /* EVP_CIPHER_name returns the short name for |cipher| or NULL if no name is
