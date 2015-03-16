@@ -43,7 +43,6 @@ var libraryNames = []string{
 	"CONF",
 	"CRYPTO",
 	"EC",
-	"SSL",
 	"BIO",
 	"PKCS7",
 	"PKCS8",

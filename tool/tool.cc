@@ -16,7 +16,6 @@
 #include <vector>
 
 #include <openssl/err.h>
-#include <openssl/ssl.h>
 
 #if defined(OPENSSL_WINDOWS)
 #include <fcntl.h>
@@ -26,7 +25,6 @@
 #endif
 
 
-bool Client(const std::vector<std::string> &args);
 bool DoPKCS12(const std::vector<std::string> &args);
 bool GenerateRSAKey(const std::vector<std::string> &args);
 bool MD5Sum(const std::vector<std::string> &args);
@@ -36,7 +34,6 @@ bool SHA224Sum(const std::vector<std::string> &args);
 bool SHA256Sum(const std::vector<std::string> &args);
 bool SHA384Sum(const std::vector<std::string> &args);
 bool SHA512Sum(const std::vector<std::string> &args);
-bool Server(const std::vector<std::string> &args);
 bool Speed(const std::vector<std::string> &args);
 
 typedef bool (*tool_func_t)(const std::vector<std::string> &args);
@@ -47,14 +44,10 @@ struct Tool {
 };
 
 static const Tool kTools[] = {
-  { "client", Client },
   { "genrsa", GenerateRSAKey },
   { "md5sum", MD5Sum },
   { "pkcs12", DoPKCS12 },
   { "rand", Rand },
-  { "s_client", Client },
-  { "s_server", Server },
-  { "server", Server },
   { "sha1sum", SHA1Sum },
   { "sha224sum", SHA224Sum },
   { "sha256sum", SHA256Sum },
@@ -108,8 +101,6 @@ int main(int argc, char **argv) {
     return 1;
   }
 #endif
-
-  SSL_library_init();
 
   int starting_arg = 1;
   tool_func_t tool = nullptr;

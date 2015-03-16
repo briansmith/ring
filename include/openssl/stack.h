@@ -146,8 +146,6 @@ STACK_OF(type) {\
  * STACK_OF:POLICYQUALINFO
  * STACK_OF:POLICY_MAPPING
  * STACK_OF:RSA_additional_prime
- * STACK_OF:SSL_COMP
- * STACK_OF:SSL_CUSTOM_EXTENSION
  * STACK_OF:STACK_OF_X509_NAME_ENTRY
  * STACK_OF:SXNETID
  * STACK_OF:X509
@@ -171,9 +169,7 @@ STACK_OF(type) {\
  *
  * Some stacks contain only const structures, so the stack should return const
  * pointers to retain type-checking.
- *
- * CONST_STACK_OF:SRTP_PROTECTION_PROFILE
- * CONST_STACK_OF:SSL_CIPHER */
+ */
 
 
 /* Some stacks are special because, although we would like STACK_OF(char *),
