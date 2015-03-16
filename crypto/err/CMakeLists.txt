@@ -22,7 +22,6 @@ add_custom_command(
   pem.errordata
   pkcs8.errordata
   rsa.errordata
-  ssl.errordata
   x509.errordata
   x509v3.errordata
   WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}

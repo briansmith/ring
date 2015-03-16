@@ -145,6 +145,4 @@ if (OPENSSL_NO_ASM)
 endif()
 
 add_subdirectory(crypto)
-add_subdirectory(ssl)
-add_subdirectory(ssl/test)
 add_subdirectory(tool)

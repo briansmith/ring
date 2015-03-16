@@ -496,7 +496,6 @@ static const char *const kLibraryNames[ERR_NUM_LIBS] = {
     "configuration file routines",                /* ERR_LIB_CONF */
     "common libcrypto routines",                  /* ERR_LIB_CRYPTO */
     "elliptic curve routines",                    /* ERR_LIB_EC */
-    "SSL routines",                               /* ERR_LIB_SSL */
     "BIO routines",                               /* ERR_LIB_BIO */
     "PKCS7 routines",                             /* ERR_LIB_PKCS7 */
     "PKCS8 routines",                             /* ERR_LIB_PKCS8 */
