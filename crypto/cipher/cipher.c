@@ -621,9 +621,7 @@ int EVP_add_cipher_alias(const char *a, const char *b) {
 }
 
 const EVP_CIPHER *EVP_get_cipherbyname(const char *name) {
-  if (OPENSSL_strcasecmp(name, "rc4") == 0) {
-    return EVP_rc4();
-  } else if (OPENSSL_strcasecmp(name, "des-cbc") == 0) {
+  if (OPENSSL_strcasecmp(name, "des-cbc") == 0) {
     return EVP_des_cbc();
   } else if (OPENSSL_strcasecmp(name, "3des-cbc") == 0 ||
              OPENSSL_strcasecmp(name, "3des") == 0) {

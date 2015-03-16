@@ -100,7 +100,6 @@ add_subdirectory(md5)
 add_subdirectory(modes)
 add_subdirectory(aes)
 add_subdirectory(des)
-add_subdirectory(rc4)
 add_subdirectory(chacha)
 add_subdirectory(poly1305)
 
@@ -152,7 +151,6 @@ add_library(
   $<TARGET_OBJECTS:modes>
   $<TARGET_OBJECTS:aes>
   $<TARGET_OBJECTS:des>
-  $<TARGET_OBJECTS:rc4>
   $<TARGET_OBJECTS:chacha>
   $<TARGET_OBJECTS:poly1305>
   $<TARGET_OBJECTS:buf>
