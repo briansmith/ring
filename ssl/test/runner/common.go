@@ -671,6 +671,10 @@ type ProtocolBugs struct {
 	// NoSignatureAlgorithmsOnRenego, if true, causes renegotiations to omit
 	// the signature_algorithms extension.
 	NoSignatureAlgorithmsOnRenego bool
+
+	// IgnorePeerCipherPreferences, if true, causes the peer's cipher
+	// preferences to be ignored.
+	IgnorePeerCipherPreferences bool
 }
 
 func (c *Config) serverInit() {

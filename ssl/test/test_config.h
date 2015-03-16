@@ -73,6 +73,7 @@ struct TestConfig {
   bool install_ddos_callback;
   bool fail_ddos_callback;
   bool fail_second_ddos_callback;
+  std::string cipher;
 };
 
 bool ParseConfig(int argc, char **argv, TestConfig *out_config);

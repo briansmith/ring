@@ -96,6 +96,7 @@ const Flag<std::string> kStringFlags[] = {
   { "-psk", &TestConfig::psk },
   { "-psk-identity", &TestConfig::psk_identity },
   { "-srtp-profiles", &TestConfig::srtp_profiles },
+  { "-cipher", &TestConfig::cipher },
 };
 
 const Flag<std::string> kBase64Flags[] = {

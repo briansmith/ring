@@ -340,6 +340,9 @@ Curves:
 		return false, errors.New("tls: fallback SCSV found when not expected")
 	}
 
+	if config.Bugs.IgnorePeerCipherPreferences {
+		hs.clientHello.cipherSuites = c.config.cipherSuites()
+	}
 	var preferenceList, supportedList []uint16
 	if c.config.PreferServerCipherSuites {
 		preferenceList = c.config.cipherSuites()

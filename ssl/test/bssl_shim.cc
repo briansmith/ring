@@ -615,6 +615,10 @@ static bool DoExchange(ScopedSSL_SESSION *out_session, SSL_CTX *ssl_ctx,
   if (config->install_ddos_callback) {
     SSL_CTX_set_dos_protection_cb(ssl_ctx, DDoSCallback);
   }
+  if (!config->cipher.empty() &&
+      !SSL_set_cipher_list(ssl.get(), config->cipher.c_str())) {
+    return false;
+  }
 
   int sock = Connect(config->port);
   if (sock == -1) {

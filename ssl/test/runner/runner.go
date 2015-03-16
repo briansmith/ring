@@ -892,6 +892,18 @@ var testCases = []testCase{
 			},
 		},
 	},
+	{
+		name: "UnsupportedCipherSuite",
+		config: Config{
+			CipherSuites: []uint16{TLS_RSA_WITH_RC4_128_SHA},
+			Bugs: ProtocolBugs{
+				IgnorePeerCipherPreferences: true,
+			},
+		},
+		flags:         []string{"-cipher", "DEFAULT:!RC4"},
+		shouldFail:    true,
+		expectedError: ":WRONG_CIPHER_RETURNED:",
+	},
 }
 
 func doExchange(test *testCase, config *Config, conn net.Conn, messageLen int, isResume bool) error {
