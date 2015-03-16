@@ -211,8 +211,6 @@ typedef struct rsa_st RSA;
 typedef struct sha256_state_st SHA256_CTX;
 typedef struct sha512_state_st SHA512_CTX;
 typedef struct sha_state_st SHA_CTX;
-typedef struct ssl_ctx_st SSL_CTX;
-typedef struct ssl_st SSL;
 typedef struct st_ERR_FNS ERR_FNS;
 typedef struct v3_ext_ctx X509V3_CTX;
 typedef struct x509_crl_method_st X509_CRL_METHOD;
