@@ -93,10 +93,10 @@ static int probe_for_NEON() {
 
   sigset_t original_sigmask;
   sigprocmask(SIG_SETMASK, &sigmask, &original_sigmask);
-  sigaction(SIGILL, &sigill_action, &sigill_original_action);
-
 
   if (sigsetjmp(sigill_jmp, 1 /* save signals */) == 0) {
+    sigaction(SIGILL, &sigill_action, &sigill_original_action);
+
     // This function cannot be inline asm because GCC will refuse to compile
     // inline NEON instructions unless building with -mfpu=neon, which would
     // defeat the point of probing for support at runtime.
