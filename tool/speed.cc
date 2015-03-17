@@ -175,7 +175,8 @@ struct free_functor {
 
 static uint8_t *align(uint8_t *in, unsigned alignment) {
   return reinterpret_cast<uint8_t *>(
-      (reinterpret_cast<uintptr_t>(in) + alignment) & ~(alignment - 1));
+      (reinterpret_cast<uintptr_t>(in) + alignment) &
+      ~static_cast<size_t>(alignment - 1));
 }
 
 static bool SpeedAEADChunk(const EVP_AEAD *aead, const std::string &name,
