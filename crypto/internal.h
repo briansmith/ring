@@ -120,6 +120,26 @@ extern "C" {
 #endif
 
 
+/* MSVC will sometimes correctly detect unreachable code and issue a warning,
+ * which breaks the build since we treat errors as warnings, in some rare cases
+ * where we want to allow the dead code to continue to exist. In these
+ * situations, annotate the function containing the unreachable code with
+ * OPENSSL_SUPPRESS_UNREACHABLE_CODE_WARNINGS after its parameters:
+ *
+ *    void f() OPENSSL_SUPPRESS_UNREACHABLE_CODE_WARNINGS {
+ *       ...
+ *    }
+ *
+ * Note that MSVC's reachability analysis seems to operate on a whole-function
+ * basis, so the annotation must be placed on the entire function, not just a
+ * block within the function. */
+#if defined(_MSC_VER)
+#define OPENSSL_SUPPRESS_UNREACHABLE_CODE_WARNINGS \
+        __pragma(warning(suppress:4702))
+#else
+#define OPENSSL_SUPPRESS_UNREACHABLE_CODE_WARNINGS
+#endif
+
 /* st_CRYPTO_EX_DATA_IMPL contains an ex_data implementation. See the comments
  * in ex_data.h for details of the behaviour of each of the functions. */
 struct st_CRYPTO_EX_DATA_IMPL {
