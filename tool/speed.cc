@@ -195,8 +195,9 @@ static bool SpeedAEADChunk(const EVP_AEAD *aead, const std::string &name,
   uint8_t *const out = align(out_storage.get(), kAlignment);
   memset(out, 0, chunk_len + overhead_len);
 
-  if (!EVP_AEAD_CTX_init(&ctx, aead, key.get(), key_len,
-                         EVP_AEAD_DEFAULT_TAG_LENGTH, NULL)) {
+  if (!EVP_AEAD_CTX_init_with_direction(&ctx, aead, key.get(), key_len,
+                                        EVP_AEAD_DEFAULT_TAG_LENGTH,
+                                        evp_aead_seal)) {
     fprintf(stderr, "Failed to create EVP_AEAD_CTX.\n");
     BIO_print_errors_fp(stderr);
     return false;
