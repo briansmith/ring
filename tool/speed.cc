@@ -166,13 +166,6 @@ static bool SpeedRSA(const std::string& key_name, RSA *key) {
   return true;
 }
 
-template<typename T>
-struct free_functor {
-  void operator()(T* ptr) {
-    free(ptr);
-  }
-};
-
 static uint8_t *align(uint8_t *in, unsigned alignment) {
   return reinterpret_cast<uint8_t *>(
       (reinterpret_cast<uintptr_t>(in) + alignment) &
@@ -192,10 +185,8 @@ static bool SpeedAEADChunk(const EVP_AEAD *aead, const std::string &name,
   memset(key.get(), 0, key_len);
   std::unique_ptr<uint8_t[]> nonce(new uint8_t[nonce_len]);
   memset(nonce.get(), 0, nonce_len);
-  std::unique_ptr<uint8_t, free_functor<uint8_t>> in_storage(
-      new uint8_t[chunk_len + kAlignment]);
-  std::unique_ptr<uint8_t, free_functor<uint8_t>> out_storage(
-      new uint8_t[chunk_len + overhead_len + kAlignment]);
+  std::unique_ptr<uint8_t[]> in_storage(new uint8_t[chunk_len + kAlignment]);
+  std::unique_ptr<uint8_t[]> out_storage(new uint8_t[chunk_len + overhead_len + kAlignment]);
   std::unique_ptr<uint8_t[]> ad(new uint8_t[ad_len]);
   memset(ad.get(), 0, ad_len);
 
