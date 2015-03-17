@@ -120,13 +120,14 @@ OPENSSL_EXPORT const EVP_AEAD *EVP_aead_aes_256_key_wrap(void);
 OPENSSL_EXPORT int EVP_has_aes_hardware(void);
 
 
-/* TLS specific AEAD algorithms.
+/* TLS-specific AEAD algorithms.
  *
  * These AEAD primitives do not meet the definition of generic AEADs. They are
- * all specific to TLS in some fashion and should not be used outside of that
- * context. They require an additional data of length 11 (the standard TLS one
- * with the length omitted). They are also stateful, so a given |EVP_AEAD_CTX|
- * may only be used for one of seal or open, but not both. */
+ * all specific to TLS and should not be used outside of that context. They must
+ * be initialized with |EVP_AEAD_CTX_init_with_direction|, are stateful, and may
+ * not be used concurrently. Any nonces are used as IVs, so they must be
+ * unpredictable. They only accept an |ad| parameter of length 11 (the standard
+ * TLS one with length omitted). */
 
 OPENSSL_EXPORT const EVP_AEAD *EVP_aead_rc4_md5_tls(void);
 OPENSSL_EXPORT const EVP_AEAD *EVP_aead_rc4_sha1_tls(void);
@@ -144,11 +145,13 @@ OPENSSL_EXPORT const EVP_AEAD *EVP_aead_des_ede3_cbc_sha1_tls(void);
 OPENSSL_EXPORT const EVP_AEAD *EVP_aead_des_ede3_cbc_sha1_tls_implicit_iv(void);
 
 
-/* SSLv3 specific AEAD algorithms.
+/* SSLv3-specific AEAD algorithms.
  *
  * These AEAD primitives do not meet the definition of generic AEADs. They are
- * all specific to SSLv3 in some fashion and should not be used outside of that
- * context. */
+ * all specific to SSLv3 and should not be used outside of that context. They
+ * must be initialized with |EVP_AEAD_CTX_init_with_direction|, are stateful,
+ * and may not be used concurrently. They only accept an |ad| parameter of
+ * length 9 (the standard TLS one with length and version omitted). */
 
 OPENSSL_EXPORT const EVP_AEAD *EVP_aead_rc4_md5_ssl3(void);
 OPENSSL_EXPORT const EVP_AEAD *EVP_aead_rc4_sha1_ssl3(void);
