@@ -473,29 +473,6 @@ int BN_mod_sqr(BIGNUM *r, const BIGNUM *a, const BIGNUM *m, BN_CTX *ctx) {
   return BN_mod(r, r, m, ctx);
 }
 
-int BN_mod_lshift(BIGNUM *r, const BIGNUM *a, int n, const BIGNUM *m,
-                  BN_CTX *ctx) {
-  BIGNUM *abs_m = NULL;
-  int ret;
-
-  if (!BN_nnmod(r, a, m, ctx)) {
-    return 0;
-  }
-
-  if (m->neg) {
-    abs_m = BN_dup(m);
-    if (abs_m == NULL) {
-      return 0;
-    }
-    abs_m->neg = 0;
-  }
-
-  ret = BN_mod_lshift_quick(r, r, n, (abs_m ? abs_m : m));
-
-  BN_free(abs_m);
-  return ret;
-}
-
 int BN_mod_lshift_quick(BIGNUM *r, const BIGNUM *a, int n, const BIGNUM *m) {
   if (r != a) {
     if (BN_copy(r, a) == NULL) {
