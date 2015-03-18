@@ -652,7 +652,7 @@ OPENSSL_EXPORT int BIO_zero_copy_get_read_buf_done(BIO* bio, size_t bytes_read);
  * stack.
  *
  * The zero copy write operation is completed by calling
- * |BIO_zero_copy_write_buf_don|e. Neither |BIO_zero_copy_get_write_buf_done|
+ * |BIO_zero_copy_write_buf_done|. Neither |BIO_zero_copy_get_write_buf|
  * nor any other I/O write operation may be called while a zero copy write
  * operation is active. */
 OPENSSL_EXPORT int BIO_zero_copy_get_write_buf(BIO* bio,
