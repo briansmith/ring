@@ -67,10 +67,11 @@ extern "C" {
 /* RC4. */
 
 
-struct rc4_key_st {
+typedef struct rc4_key_st {
   uint32_t x, y;
   uint32_t data[256];
-} /* RC4_KEY */;
+} RC4_KEY;
+
 
 /* RC4_set_key performs an RC4 key schedule and initialises |rc4key| with |len|
  * bytes of key material from |key|. */

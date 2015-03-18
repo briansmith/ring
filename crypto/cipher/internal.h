@@ -94,8 +94,6 @@ struct evp_aead_st {
               size_t max_out_len, const uint8_t *nonce, size_t nonce_len,
               const uint8_t *in, size_t in_len, const uint8_t *ad,
               size_t ad_len);
-
-  int (*get_rc4_state)(const EVP_AEAD_CTX *ctx, const RC4_KEY **out_key);
 };
 
 

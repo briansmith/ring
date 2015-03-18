@@ -164,7 +164,6 @@ typedef struct hmac_ctx_st HMAC_CTX;
 typedef struct md4_state_st MD4_CTX;
 typedef struct md5_state_st MD5_CTX;
 typedef struct rand_meth_st RAND_METHOD;
-typedef struct rc4_key_st RC4_KEY;
 typedef struct rsa_st RSA;
 typedef struct sha256_state_st SHA256_CTX;
 typedef struct sha512_state_st SHA512_CTX;

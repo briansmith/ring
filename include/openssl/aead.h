@@ -306,14 +306,6 @@ OPENSSL_EXPORT int EVP_AEAD_CTX_open(const EVP_AEAD_CTX *ctx, uint8_t *out,
                                      const uint8_t *ad, size_t ad_len);
 
 
-/* Obscure functions. */
-
-/* EVP_AEAD_CTX_get_rc4_state sets |*out_key| to point to an RC4 key structure.
- * It returns one on success or zero if |ctx| doesn't have an RC4 key. */
-OPENSSL_EXPORT int EVP_AEAD_CTX_get_rc4_state(const EVP_AEAD_CTX *ctx,
-                                              const RC4_KEY **out_key);
-
-
 #if defined(__cplusplus)
 }  /* extern C */
 #endif
