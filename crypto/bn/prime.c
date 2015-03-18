@@ -451,10 +451,6 @@ err:
   return found;
 }
 
-int BN_is_prime_ex(const BIGNUM *candidate, int checks, BN_CTX *ctx, BN_GENCB *cb) {
-  return BN_is_prime_fasttest_ex(candidate, checks, ctx, 0, cb);
-}
-
 int BN_is_prime_fasttest_ex(const BIGNUM *a, int checks, BN_CTX *ctx_passed,
                             int do_trial_division, BN_GENCB *cb) {
   int i, j, ret = -1;

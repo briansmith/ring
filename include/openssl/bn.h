@@ -637,13 +637,6 @@ OPENSSL_EXPORT int BN_is_prime_fasttest_ex(const BIGNUM *candidate, int checks,
                                            BN_CTX *ctx, int do_trial_division,
                                            BN_GENCB *cb);
 
-/* BN_is_prime_ex acts the same as |BN_is_prime_fasttest_ex| with
- * |do_trial_division| set to zero.
- *
- * WARNING: deprecated: Use |BN_primality_test|. */
-OPENSSL_EXPORT int BN_is_prime_ex(const BIGNUM *candidate, int checks,
-                                  BN_CTX *ctx, BN_GENCB *cb);
-
 
 /* Number theory functions */
 
