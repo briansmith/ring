@@ -1201,7 +1201,6 @@ static const EVP_AEAD aead_aes_128_gcm = {
     aead_aes_gcm_cleanup,
     aead_aes_gcm_seal,
     aead_aes_gcm_open,
-    NULL,                     /* get_rc4_state */
 };
 
 static const EVP_AEAD aead_aes_256_gcm = {
@@ -1214,7 +1213,6 @@ static const EVP_AEAD aead_aes_256_gcm = {
     aead_aes_gcm_cleanup,
     aead_aes_gcm_seal,
     aead_aes_gcm_open,
-    NULL,                     /* get_rc4_state */
 };
 
 const EVP_AEAD *EVP_aead_aes_128_gcm(void) { return &aead_aes_128_gcm; }
@@ -1461,7 +1459,6 @@ static const EVP_AEAD aead_aes_128_key_wrap = {
     aead_aes_key_wrap_cleanup,
     aead_aes_key_wrap_seal,
     aead_aes_key_wrap_open,
-    NULL,  /* get_rc4_state */
 };
 
 static const EVP_AEAD aead_aes_256_key_wrap = {
@@ -1474,7 +1471,6 @@ static const EVP_AEAD aead_aes_256_key_wrap = {
     aead_aes_key_wrap_cleanup,
     aead_aes_key_wrap_seal,
     aead_aes_key_wrap_open,
-    NULL,  /* get_rc4_state */
 };
 
 const EVP_AEAD *EVP_aead_aes_128_key_wrap(void) { return &aead_aes_128_key_wrap; }
@@ -1724,7 +1720,6 @@ static const EVP_AEAD aead_aes_128_ctr_hmac_sha256 = {
     aead_aes_ctr_hmac_sha256_cleanup,
     aead_aes_ctr_hmac_sha256_seal,
     aead_aes_ctr_hmac_sha256_open,
-    NULL /* get_rc4_state */,
 };
 
 static const EVP_AEAD aead_aes_256_ctr_hmac_sha256 = {
@@ -1738,7 +1733,6 @@ static const EVP_AEAD aead_aes_256_ctr_hmac_sha256 = {
     aead_aes_ctr_hmac_sha256_cleanup,
     aead_aes_ctr_hmac_sha256_seal,
     aead_aes_ctr_hmac_sha256_open,
-    NULL /* get_rc4_state */,
 };
 
 const EVP_AEAD *EVP_aead_aes_128_ctr_hmac_sha256(void) {
