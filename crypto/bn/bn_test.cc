@@ -307,12 +307,6 @@ int main(int argc, char *argv[]) {
   }
   flush_fp(bc_file.get());
 
-  message(bc_file.get(), "BN_sqrt");
-  if (!test_sqrt(bc_file.get(), ctx.get())) {
-    return 1;
-  }
-  flush_fp(bc_file.get());
-
   if (!test_bn2bin_padded(ctx.get()) ||
       !test_dec2bn(ctx.get()) ||
       !test_hex2bn(ctx.get()) ||
@@ -1302,51 +1296,6 @@ static bool test_small_prime(FILE *fp, BN_CTX *ctx) {
     fprintf(fp, "Expected %u bit prime, got %u bit number\n", kBits,
             BN_num_bits(r.get()));
     return false;
-  }
-
-  return true;
-}
-
-static bool test_sqrt(FILE *fp, BN_CTX *ctx) {
-  ScopedBIGNUM n(BN_new());
-  ScopedBIGNUM nn(BN_new());
-  ScopedBIGNUM sqrt(BN_new());
-  if (!n || !nn || !sqrt) {
-    return false;
-  }
-
-  // Test some random squares.
-  for (int i = 0; i < 100; i++) {
-    if (!BN_rand(n.get(), 1024 /* bit length */,
-                 -1 /* no modification of top bits */,
-                 0 /* don't modify bottom bit */) ||
-        !BN_mul(nn.get(), n.get(), n.get(), ctx) ||
-        !BN_sqrt(sqrt.get(), nn.get(), ctx)) {
-      ERR_print_errors_fp(stderr);
-      return false;
-    }
-    if (BN_cmp(n.get(), sqrt.get()) != 0) {
-      fprintf(stderr, "Bad result from BN_sqrt.\n");
-      return false;
-    }
-  }
-
-  // Test some non-squares.
-  for (int i = 0; i < 100; i++) {
-    if (!BN_rand(n.get(), 1024 /* bit length */,
-                 -1 /* no modification of top bits */,
-                 0 /* don't modify bottom bit */) ||
-        !BN_mul(nn.get(), n.get(), n.get(), ctx) ||
-        !BN_add(nn.get(), nn.get(), BN_value_one())) {
-      ERR_print_errors_fp(stderr);
-      return false;
-    }
-
-    if (BN_sqrt(sqrt.get(), nn.get(), ctx)) {
-      char *nn_str = BN_bn2dec(nn.get());
-      fprintf(stderr, "BIO_sqrt didn't fail on a non-square: %s\n", nn_str);
-      OPENSSL_free(nn_str);
-    }
   }
 
   return true;
