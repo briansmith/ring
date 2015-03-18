@@ -451,22 +451,6 @@ err:
   return found;
 }
 
-int BN_primality_test(int *is_probably_prime, const BIGNUM *candidate,
-                      int checks, BN_CTX *ctx, int do_trial_division,
-                      BN_GENCB *cb) {
-  switch (BN_is_prime_fasttest_ex(candidate, checks, ctx, do_trial_division, cb)) {
-    case 1:
-      *is_probably_prime = 1;
-      return 1;
-    case 0:
-      *is_probably_prime = 0;
-      return 1;
-    default:
-      *is_probably_prime = 0;
-      return 0;
-  }
-}
-
 int BN_is_prime_ex(const BIGNUM *candidate, int checks, BN_CTX *ctx, BN_GENCB *cb) {
   return BN_is_prime_fasttest_ex(candidate, checks, ctx, 0, cb);
 }
