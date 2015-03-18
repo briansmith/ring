@@ -126,7 +126,7 @@ int HMAC_Init_ex(HMAC_CTX *ctx, const void *key, size_t key_len,
       if (!EVP_DigestInit_ex(&ctx->md_ctx, md, impl) ||
           !EVP_DigestUpdate(&ctx->md_ctx, key, key_len) ||
           !EVP_DigestFinal_ex(&ctx->md_ctx, key_block, &key_block_len)) {
-        goto err;
+        return 0;
       }
     } else {
       assert(key_len >= 0 && key_len <= sizeof(key_block));
@@ -143,7 +143,7 @@ int HMAC_Init_ex(HMAC_CTX *ctx, const void *key, size_t key_len,
     }
     if (!EVP_DigestInit_ex(&ctx->i_ctx, md, impl) ||
         !EVP_DigestUpdate(&ctx->i_ctx, pad, EVP_MD_block_size(md))) {
-      goto err;
+      return 0;
     }
 
     for (i = 0; i < HMAC_MAX_MD_CBLOCK; i++) {
@@ -151,20 +151,17 @@ int HMAC_Init_ex(HMAC_CTX *ctx, const void *key, size_t key_len,
     }
     if (!EVP_DigestInit_ex(&ctx->o_ctx, md, impl) ||
         !EVP_DigestUpdate(&ctx->o_ctx, pad, EVP_MD_block_size(md))) {
-      goto err;
+      return 0;
     }
 
     ctx->md = md;
   }
 
   if (!EVP_MD_CTX_copy_ex(&ctx->md_ctx, &ctx->i_ctx)) {
-    goto err;
+    return 0;
   }
 
   return 1;
-
-err:
-  return 0;
 }
 
 int HMAC_Update(HMAC_CTX *ctx, const uint8_t *data, size_t data_len) {
