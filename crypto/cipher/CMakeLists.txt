@@ -6,7 +6,6 @@ add_library(
   OBJECT
 
   cipher.c
-  derive_key.c
   aead.c
 
   e_null.c
