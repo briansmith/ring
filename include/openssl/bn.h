@@ -622,25 +622,6 @@ OPENSSL_EXPORT int BN_generate_prime_ex(BIGNUM *ret, int bits, int safe,
  * Miller-Rabin checks that gives a false positive rate of ~2^{-80}. */
 #define BN_prime_checks 0
 
-/* BN_primality_test sets |*is_probably_prime| to one if |candidate| is
- * probably a prime number by the Miller-Rabin test or zero if it's certainly
- * not.
- *
- * If |do_trial_division| is non-zero then |candidate| will be tested against a
- * list of small primes before Miller-Rabin tests. The probability of this
- * function returning a false positive is 2^{2*checks}. If |checks| is
- * |BN_prime_checks| then a value that results in approximately 2^{-80} false
- * positive probability is used. If |cb| is not NULL then it is called during
- * the checking process. See the comment above |BN_GENCB|.
- *
- * The function returns one on success and zero on error.
- *
- * (If you are unsure whether you want |do_trial_division|, don't set it.) */
-OPENSSL_EXPORT int BN_primality_test(int *is_probably_prime,
-                                     const BIGNUM *candidate, int checks,
-                                     BN_CTX *ctx, int do_trial_division,
-                                     BN_GENCB *cb);
-
 /* BN_is_prime_fasttest_ex returns one if |candidate| is probably a prime
  * number by the Miller-Rabin test, zero if it's certainly not and -1 on error.
  *
