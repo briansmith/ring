@@ -515,11 +515,6 @@ OPENSSL_EXPORT int BN_mod_mul(BIGNUM *r, const BIGNUM *a, const BIGNUM *b,
 OPENSSL_EXPORT int BN_mod_sqr(BIGNUM *r, const BIGNUM *a, const BIGNUM *m,
                               BN_CTX *ctx);
 
-/* BN_mod_lshift sets |r| = (|a| << n) mod |m|, where |r| and |a| may be the
- * same pointer. It returns one on success and zero on error. */
-OPENSSL_EXPORT int BN_mod_lshift(BIGNUM *r, const BIGNUM *a, int n,
-                                 const BIGNUM *m, BN_CTX *ctx);
-
 /* BN_mod_lshift_quick acts like |BN_mod_lshift| but requires that |a| be
  * non-negative and less than |m|. */
 OPENSSL_EXPORT int BN_mod_lshift_quick(BIGNUM *r, const BIGNUM *a, int n,
