@@ -413,12 +413,6 @@ OPENSSL_EXPORT int BN_div(BIGNUM *quotient, BIGNUM *rem,
  * remainder or (BN_ULONG)-1 on error. */
 OPENSSL_EXPORT BN_ULONG BN_div_word(BIGNUM *numerator, BN_ULONG divisor);
 
-/* BN_sqrt sets |*out_sqrt| (which may be the same |BIGNUM| as |in|) to the
- * square root of |in|, using |ctx|. It returns one on success or zero on
- * error. Negative numbers and non-square numbers will result in an error with
- * appropriate errors on the error queue. */
-OPENSSL_EXPORT int BN_sqrt(BIGNUM *out_sqrt, const BIGNUM *in, BN_CTX *ctx);
-
 
 /* Comparison functions */
 
