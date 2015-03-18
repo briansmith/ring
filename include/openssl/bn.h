@@ -474,10 +474,6 @@ OPENSSL_EXPORT int BN_clear_bit(BIGNUM *a, int n);
  * or zero if the bit doesn't exist. */
 OPENSSL_EXPORT int BN_is_bit_set(const BIGNUM *a, int n);
 
-/* BN_mask_bits truncates |a| so that it is only |n| bits long. It returns one
- * on success or zero if |n| is greater than the length of |a| already. */
-OPENSSL_EXPORT int BN_mask_bits(BIGNUM *a, int n);
-
 
 /* Modulo arithmetic. */
 
