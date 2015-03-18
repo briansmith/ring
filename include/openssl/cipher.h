@@ -294,18 +294,6 @@ OPENSSL_EXPORT uint32_t EVP_CIPHER_flags(const EVP_CIPHER *cipher);
 OPENSSL_EXPORT uint32_t EVP_CIPHER_mode(const EVP_CIPHER *cipher);
 
 
-/* Key derivation. */
-
-/* EVP_BytesToKey generates a key and IV for the cipher |type| by iterating
- * |md| |count| times using |data| and |salt|. On entry, the |key| and |iv|
- * buffers must have enough space to hold a key and IV for |type|. It returns
- * the length of the key on success or zero on error. */
-OPENSSL_EXPORT int EVP_BytesToKey(const EVP_CIPHER *type, const EVP_MD *md,
-                                  const uint8_t *salt, const uint8_t *data,
-                                  size_t data_len, unsigned count, uint8_t *key,
-                                  uint8_t *iv);
-
-
 /* Cipher modes (for |EVP_CIPHER_mode|). */
 
 #define EVP_CIPH_STREAM_CIPHER 0x0
