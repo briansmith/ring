@@ -119,12 +119,15 @@ OPENSSL_EXPORT int EVP_PKEY_copy_parameters(EVP_PKEY *to, const EVP_PKEY *from);
  * parameters or zero if not, or if the algorithm doesn't take parameters. */
 OPENSSL_EXPORT int EVP_PKEY_missing_parameters(const EVP_PKEY *pkey);
 
-/* EVP_PKEY_size returns the "size", in bytes, of |pkey|. For example, for an
- * RSA key this returns the number of bytes needed to represent the modulus. */
+/* EVP_PKEY_size returns the maximum size, in bytes, of a signature signed by
+ * |pkey|. For an RSA key, this returns the number of bytes needed to represent
+ * the modulus. For an EC key, this returns the maximum size of a DER-encoded
+ * ECDSA signature. */
 OPENSSL_EXPORT int EVP_PKEY_size(const EVP_PKEY *pkey);
 
-/* EVP_PKEY_bits returns the "size", in bits, of |pkey|. For example, for an
- * RSA key, this returns the bit length of the modulus. */
+/* EVP_PKEY_bits returns the "size", in bits, of |pkey|. For an RSA key, this
+ * returns the bit length of the modulus. For an EC key, this returns the bit
+ * length of the group order. */
 OPENSSL_EXPORT int EVP_PKEY_bits(EVP_PKEY *pkey);
 
 /* EVP_PKEY_id returns the type of |pkey|, which is one of the |EVP_PKEY_*|
