@@ -16,6 +16,8 @@
 
 #include <assert.h>
 #include <errno.h>
+#include <limits.h>
+#include <stdio.h>
 #include <string.h>
 
 #include <openssl/mem.h>
@@ -28,6 +30,24 @@ extern const BIO_METHOD g_packeted_bio_method;
 const uint8_t kOpcodePacket = 'P';
 const uint8_t kOpcodeTimeout = 'T';
 const uint8_t kOpcodeTimeoutAck = 't';
+
+// ReadAll reads |len| bytes from |bio| into |out|. It returns 1 on success and
+// 0 or -1 on error.
+static int ReadAll(BIO *bio, uint8_t *out, size_t len) {
+  while (len > 0) {
+    int chunk_len = INT_MAX;
+    if (len <= INT_MAX) {
+      chunk_len = (int)len;
+    }
+    int ret = BIO_read(bio, out, chunk_len);
+    if (ret <= 0) {
+      return ret;
+    }
+    out += ret;
+    len -= ret;
+  }
+  return 1;
+}
 
 static int PacketedWrite(BIO *bio, const char *in, int inl) {
   if (bio->next_bio == NULL) {
@@ -68,22 +88,20 @@ static int PacketedRead(BIO *bio, char *out, int outl) {
 
   // Read the opcode.
   uint8_t opcode;
-  int ret = BIO_read(bio->next_bio, &opcode, sizeof(opcode));
+  int ret = ReadAll(bio->next_bio, &opcode, sizeof(opcode));
   if (ret <= 0) {
     BIO_copy_next_retry(bio);
     return ret;
   }
-  assert(static_cast<size_t>(ret) == sizeof(opcode));
 
   if (opcode == kOpcodeTimeout) {
     // Process the timeout.
     uint8_t buf[8];
-    ret = BIO_read(bio->next_bio, &buf, sizeof(buf));
+    ret = ReadAll(bio->next_bio, buf, sizeof(buf));
     if (ret <= 0) {
       BIO_copy_next_retry(bio);
       return ret;
     }
-    assert(static_cast<size_t>(ret) == sizeof(buf));
     uint64_t timeout = (static_cast<uint64_t>(buf[0]) << 56) |
         (static_cast<uint64_t>(buf[1]) << 48) |
         (static_cast<uint64_t>(buf[2]) << 40) |
@@ -120,22 +138,23 @@ static int PacketedRead(BIO *bio, char *out, int outl) {
 
   // Read the length prefix.
   uint8_t len_bytes[4];
-  ret = BIO_read(bio->next_bio, &len_bytes, sizeof(len_bytes));
+  ret = ReadAll(bio->next_bio, len_bytes, sizeof(len_bytes));
   if (ret <= 0) {
     BIO_copy_next_retry(bio);
     return ret;
   }
-  // BIOs for which a partial length comes back are not supported.
-  assert(static_cast<size_t>(ret) == sizeof(len_bytes));
 
   uint32_t len = (len_bytes[0] << 24) | (len_bytes[1] << 16) |
       (len_bytes[2] << 8) | len_bytes[3];
-  char *buf = (char *)OPENSSL_malloc(len);
+  uint8_t *buf = (uint8_t *)OPENSSL_malloc(len);
   if (buf == NULL) {
     return -1;
   }
-  ret = BIO_read(bio->next_bio, buf, len);
-  assert(ret == (int)len);
+  ret = ReadAll(bio->next_bio, buf, len);
+  if (ret <= 0) {
+    fprintf(stderr, "Packeted BIO was truncated\n");
+    return -1;
+  }
 
   if (outl > (int)len) {
     outl = len;
