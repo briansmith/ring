@@ -137,6 +137,9 @@ NextCipherSuite:
 	var session *ClientSessionState
 	var cacheKey string
 	sessionCache := c.config.ClientSessionCache
+	if c.config.Bugs.NeverResumeOnRenego && c.cipherSuite != 0 {
+		sessionCache = nil
+	}
 
 	if sessionCache != nil {
 		hello.ticketSupported = !c.config.SessionTicketsDisabled

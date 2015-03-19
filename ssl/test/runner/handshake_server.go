@@ -367,6 +367,10 @@ Curves:
 func (hs *serverHandshakeState) checkForResumption() bool {
 	c := hs.c
 
+	if c.config.Bugs.NeverResumeOnRenego && c.cipherSuite != 0 {
+		return false
+	}
+
 	if len(hs.clientHello.sessionTicket) > 0 {
 		if c.config.SessionTicketsDisabled {
 			return false

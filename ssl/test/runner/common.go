@@ -663,6 +663,10 @@ type ProtocolBugs struct {
 	// SendEmptyFragments, if true, causes handshakes to include empty
 	// fragments in DTLS.
 	SendEmptyFragments bool
+
+	// NeverResumeOnRenego, if true, causes renegotiations to always be full
+	// handshakes.
+	NeverResumeOnRenego bool
 }
 
 func (c *Config) serverInit() {

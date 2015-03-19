@@ -2619,6 +2619,17 @@ func addRenegotiationTests() {
 	})
 	testCases = append(testCases, testCase{
 		testType: serverTest,
+		name:     "Renegotiate-Server-Full",
+		config: Config{
+			Bugs: ProtocolBugs{
+				NeverResumeOnRenego: true,
+			},
+		},
+		flags:           []string{"-renegotiate"},
+		shimWritesFirst: true,
+	})
+	testCases = append(testCases, testCase{
+		testType: serverTest,
 		name:     "Renegotiate-Server-EmptyExt",
 		config: Config{
 			Bugs: ProtocolBugs{
@@ -2674,6 +2685,15 @@ func addRenegotiationTests() {
 	// TODO(agl): test the renegotiation info SCSV.
 	testCases = append(testCases, testCase{
 		name:        "Renegotiate-Client",
+		renegotiate: true,
+	})
+	testCases = append(testCases, testCase{
+		name: "Renegotiate-Client-Full",
+		config: Config{
+			Bugs: ProtocolBugs{
+				NeverResumeOnRenego: true,
+			},
+		},
 		renegotiate: true,
 	})
 	testCases = append(testCases, testCase{
