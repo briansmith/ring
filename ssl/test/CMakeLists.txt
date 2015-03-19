@@ -11,6 +11,3 @@ add_executable(
 )
 
 target_link_libraries(bssl_shim ssl crypto)
-if (NOT APPLE AND NOT WIN32)
-  target_link_libraries(bssl_shim dl)
-endif()
