@@ -1033,17 +1033,25 @@ void AES_decrypt(const uint8_t *in, uint8_t *out, const AES_KEY *key) {
 #endif /* ?FULL_UNROLL */
   /* apply last round and
    * map cipher state to byte array block: */
-  s0 = (Td4[(t0 >> 24)] << 24) ^ (Td4[(t3 >> 16) & 0xff] << 16) ^
-       (Td4[(t2 >> 8) & 0xff] << 8) ^ (Td4[(t1) & 0xff]) ^ rk[0];
+  s0 = ((uint32_t)Td4[(t0 >> 24)] << 24) ^
+       ((uint32_t)Td4[(t3 >> 16) & 0xff] << 16) ^
+       ((uint32_t)Td4[(t2 >> 8) & 0xff] << 8) ^
+       ((uint32_t)Td4[(t1) & 0xff]) ^ rk[0];
   PUTU32(out, s0);
-  s1 = (Td4[(t1 >> 24)] << 24) ^ (Td4[(t0 >> 16) & 0xff] << 16) ^
-       (Td4[(t3 >> 8) & 0xff] << 8) ^ (Td4[(t2) & 0xff]) ^ rk[1];
+  s1 = ((uint32_t)Td4[(t1 >> 24)] << 24) ^
+       ((uint32_t)Td4[(t0 >> 16) & 0xff] << 16) ^
+       ((uint32_t)Td4[(t3 >> 8) & 0xff] << 8) ^
+       ((uint32_t)Td4[(t2) & 0xff]) ^ rk[1];
   PUTU32(out + 4, s1);
-  s2 = (Td4[(t2 >> 24)] << 24) ^ (Td4[(t1 >> 16) & 0xff] << 16) ^
-       (Td4[(t0 >> 8) & 0xff] << 8) ^ (Td4[(t3) & 0xff]) ^ rk[2];
+  s2 = ((uint32_t)Td4[(t2 >> 24)] << 24) ^
+       ((uint32_t)Td4[(t1 >> 16) & 0xff] << 16) ^
+       ((uint32_t)Td4[(t0 >> 8) & 0xff] << 8) ^
+       ((uint32_t)Td4[(t3) & 0xff]) ^ rk[2];
   PUTU32(out + 8, s2);
-  s3 = (Td4[(t3 >> 24)] << 24) ^ (Td4[(t2 >> 16) & 0xff] << 16) ^
-       (Td4[(t1 >> 8) & 0xff] << 8) ^ (Td4[(t0) & 0xff]) ^ rk[3];
+  s3 = ((uint32_t)Td4[(t3 >> 24)] << 24) ^
+       ((uint32_t)Td4[(t2 >> 16) & 0xff] << 16) ^
+       ((uint32_t)Td4[(t1 >> 8) & 0xff] << 8) ^
+       ((uint32_t)Td4[(t0) & 0xff]) ^ rk[3];
   PUTU32(out + 12, s3);
 }
 
