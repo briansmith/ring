@@ -156,7 +156,6 @@ int dtls1_connect(SSL *s) {
       case SSL_ST_RENEGOTIATE:
         s->renegotiate = 1;
         s->state = SSL_ST_CONNECT;
-        s->ctx->stats.sess_connect_renegotiate++;
       /* break */
       case SSL_ST_CONNECT:
       case SSL_ST_BEFORE | SSL_ST_CONNECT:
@@ -184,7 +183,6 @@ int dtls1_connect(SSL *s) {
         /* don't push the buffering BIO quite yet */
 
         s->state = SSL3_ST_CW_CLNT_HELLO_A;
-        s->ctx->stats.sess_connect++;
         s->init_num = 0;
         s->d1->send_cookie = 0;
         s->hit = 0;
@@ -477,12 +475,8 @@ int dtls1_connect(SSL *s) {
         s->new_session = 0;
 
         ssl_update_cache(s, SSL_SESS_CACHE_CLIENT);
-        if (s->hit) {
-          s->ctx->stats.sess_hit++;
-        }
 
         ret = 1;
-        s->ctx->stats.sess_connect_good++;
 
         if (cb != NULL) {
           cb(s, SSL_CB_HANDSHAKE_DONE, 1);

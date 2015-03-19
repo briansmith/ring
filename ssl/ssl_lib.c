@@ -1144,37 +1144,19 @@ long SSL_CTX_ctrl(SSL_CTX *ctx, int cmd, long larg, void *parg) {
       return lh_SSL_SESSION_num_items(ctx->sessions);
 
     case SSL_CTRL_SESS_CONNECT:
-      return ctx->stats.sess_connect;
-
     case SSL_CTRL_SESS_CONNECT_GOOD:
-      return ctx->stats.sess_connect_good;
-
     case SSL_CTRL_SESS_CONNECT_RENEGOTIATE:
-      return ctx->stats.sess_connect_renegotiate;
-
     case SSL_CTRL_SESS_ACCEPT:
-      return ctx->stats.sess_accept;
-
     case SSL_CTRL_SESS_ACCEPT_GOOD:
-      return ctx->stats.sess_accept_good;
-
     case SSL_CTRL_SESS_ACCEPT_RENEGOTIATE:
-      return ctx->stats.sess_accept_renegotiate;
-
     case SSL_CTRL_SESS_HIT:
-      return ctx->stats.sess_hit;
-
     case SSL_CTRL_SESS_CB_HIT:
-      return ctx->stats.sess_cb_hit;
-
     case SSL_CTRL_SESS_MISSES:
-      return ctx->stats.sess_miss;
-
     case SSL_CTRL_SESS_TIMEOUTS:
-      return ctx->stats.sess_timeout;
-
     case SSL_CTRL_SESS_CACHE_FULL:
-      return ctx->stats.sess_cache_full;
+      /* Statistics are no longer supported.
+       * TODO(davidben): Try to remove the accessors altogether. */
+      return 0;
 
     case SSL_CTRL_OPTIONS:
       return ctx->options |= larg;
@@ -1797,8 +1779,6 @@ SSL_CTX *SSL_CTX_new(const SSL_METHOD *meth) {
   ret->get_session_cb = 0;
   ret->generate_session_id = 0;
 
-  memset((char *)&ret->stats, 0, sizeof(ret->stats));
-
   ret->references = 1;
   ret->quiet_shutdown = 0;
 
@@ -2164,31 +2144,38 @@ EVP_PKEY *ssl_get_sign_pkey(SSL *s, const SSL_CIPHER *cipher) {
 }
 
 void ssl_update_cache(SSL *s, int mode) {
-  int i;
-
-  /* If the session_id_length is 0, we are not supposed to cache it, and it
-   * would be rather hard to do anyway :-) */
+  /* Never cache sessions with empty session IDs. */
   if (s->session->session_id_length == 0) {
     return;
   }
 
-  i = s->initial_ctx->session_cache_mode;
-  if ((i & mode) && !s->hit &&
-      ((i & SSL_SESS_CACHE_NO_INTERNAL_STORE) ||
-       SSL_CTX_add_session(s->initial_ctx, s->session)) &&
-      s->initial_ctx->new_session_cb != NULL) {
-    if (!s->initial_ctx->new_session_cb(s, SSL_SESSION_up_ref(s->session))) {
+  SSL_CTX *ctx = s->initial_ctx;
+  if ((ctx->session_cache_mode & mode) == mode && !s->hit &&
+      ((ctx->session_cache_mode & SSL_SESS_CACHE_NO_INTERNAL_STORE) ||
+       SSL_CTX_add_session(ctx, s->session)) &&
+      ctx->new_session_cb != NULL) {
+    /* Note: |new_session_cb| is called whether the internal session cache is
+     * used or not. */
+    if (!ctx->new_session_cb(s, SSL_SESSION_up_ref(s->session))) {
       SSL_SESSION_free(s->session);
     }
   }
 
-  /* auto flush every 255 connections */
-  if ((!(i & SSL_SESS_CACHE_NO_AUTO_CLEAR)) && ((i & mode) == mode)) {
-    if ((((mode & SSL_SESS_CACHE_CLIENT)
-              ? s->initial_ctx->stats.sess_connect_good
-              : s->initial_ctx->stats.sess_accept_good) &
-         0xff) == 0xff) {
-      SSL_CTX_flush_sessions(s->initial_ctx, (unsigned long)time(NULL));
+  if (!(ctx->session_cache_mode & SSL_SESS_CACHE_NO_AUTO_CLEAR) &&
+      !(ctx->session_cache_mode & SSL_SESS_CACHE_NO_INTERNAL_STORE) &&
+      (ctx->session_cache_mode & mode) == mode) {
+    /* Automatically flush the internal session cache every 255 connections. */
+    int flush_cache = 0;
+    CRYPTO_w_lock(CRYPTO_LOCK_SSL_CTX);
+    ctx->handshakes_since_cache_flush++;
+    if (ctx->handshakes_since_cache_flush >= 255) {
+      flush_cache = 1;
+      ctx->handshakes_since_cache_flush = 0;
+    }
+    CRYPTO_w_unlock(CRYPTO_LOCK_SSL_CTX);
+
+    if (flush_cache) {
+      SSL_CTX_flush_sessions(ctx, (unsigned long)time(NULL));
     }
   }
 }

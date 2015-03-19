@@ -242,7 +242,6 @@ int ssl3_accept(SSL *s) {
           goto end;
         }
 
-        s->ctx->stats.sess_accept_renegotiate++;
         s->state = SSL3_ST_SW_HELLO_REQ_A;
         break;
 
@@ -309,7 +308,6 @@ int ssl3_accept(SSL *s) {
           }
           s->state = SSL3_ST_SR_CLNT_HELLO_A;
         }
-        s->ctx->stats.sess_accept++;
         break;
 
       case SSL3_ST_SR_INITIAL_BYTES:
@@ -654,8 +652,6 @@ int ssl3_accept(SSL *s) {
           s->new_session = 0;
 
           ssl_update_cache(s, SSL_SESS_CACHE_SERVER);
-
-          s->ctx->stats.sess_accept_good++;
 
           if (cb != NULL) {
             cb(s, SSL_CB_HANDSHAKE_DONE, 1);

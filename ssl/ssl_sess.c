@@ -417,9 +417,6 @@ int ssl_get_prev_session(SSL *s, const struct ssl_early_callback_ctx *ctx) {
     ret = SSL_SESSION_up_ref(lh_SSL_SESSION_retrieve(s->initial_ctx->sessions,
                                                      &data));
     CRYPTO_r_unlock(CRYPTO_LOCK_SSL_CTX);
-    if (ret == NULL) {
-      s->initial_ctx->stats.sess_miss++;
-    }
   }
 
   if (try_session_cache && ret == NULL &&
@@ -434,7 +431,6 @@ int ssl_get_prev_session(SSL *s, const struct ssl_early_callback_ctx *ctx) {
          * unwind the stack and figure out the session asynchronously. */
         return PENDING_SESSION;
       }
-      s->initial_ctx->stats.sess_cb_hit++;
 
       /* Increment reference count now if the session callback asks us to do so
        * (note that if the session structures returned by the callback are
@@ -485,15 +481,12 @@ int ssl_get_prev_session(SSL *s, const struct ssl_early_callback_ctx *ctx) {
 
   if (ret->timeout < (long)(time(NULL) - ret->time)) {
     /* timeout */
-    s->initial_ctx->stats.sess_timeout++;
     if (try_session_cache) {
       /* session was from the cache, so remove it */
       SSL_CTX_remove_session(s->initial_ctx, ret);
     }
     goto err;
   }
-
-  s->initial_ctx->stats.sess_hit++;
 
   if (s->session != NULL) {
     SSL_SESSION_free(s->session);
@@ -565,7 +558,6 @@ int SSL_CTX_add_session(SSL_CTX *ctx, SSL_SESSION *c) {
         if (!remove_session_lock(ctx, ctx->session_cache_tail, 0)) {
           break;
         }
-        ctx->stats.sess_cache_full++;
       }
     }
   }

@@ -702,6 +702,10 @@ struct ssl_ctx_st {
   struct ssl_session_st *session_cache_head;
   struct ssl_session_st *session_cache_tail;
 
+  /* handshakes_since_cache_flush is the number of successful handshakes since
+   * the last cache flush. */
+  int handshakes_since_cache_flush;
+
   /* This can have one of 2 values, ored together,
    * SSL_SESS_CACHE_CLIENT,
    * SSL_SESS_CACHE_SERVER,
@@ -724,26 +728,6 @@ struct ssl_ctx_st {
   void (*remove_session_cb)(struct ssl_ctx_st *ctx, SSL_SESSION *sess);
   SSL_SESSION *(*get_session_cb)(struct ssl_st *ssl, uint8_t *data, int len,
                                  int *copy);
-
-  /* TODO(agl): remove the stats stuff. */
-  struct {
-    int sess_connect;             /* SSL new conn - started */
-    int sess_connect_renegotiate; /* SSL reneg - requested */
-    int sess_connect_good;        /* SSL new conne/reneg - finished */
-    int sess_accept;              /* SSL new accept - started */
-    int sess_accept_renegotiate;  /* SSL reneg - requested */
-    int sess_accept_good;         /* SSL accept/reneg - finished */
-    int sess_miss;                /* session lookup misses  */
-    int sess_timeout;             /* reuse attempt on timeouted session */
-    int sess_cache_full;          /* session removed due to full cache */
-    int sess_hit;                 /* session reuse actually done */
-    int sess_cb_hit;              /* session-id that was not
-                                   * in the cache was
-                                   * passed back via the callback.  This
-                                   * indicates that the application is
-                                   * supplying session-id's from other
-                                   * processes - spooky :-) */
-  } stats;
 
   int references;
 
