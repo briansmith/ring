@@ -296,23 +296,3 @@ const EVP_MD* EVP_get_digestbynid(int nid) {
 
   return NULL;
 }
-
-const EVP_MD* EVP_get_digestbyobj(const ASN1_OBJECT *obj) {
-  return EVP_get_digestbynid(OBJ_obj2nid(obj));
-}
-
-const EVP_MD *EVP_get_digestbyname(const char *name) {
-  unsigned i;
-
-  for (i = 0; i < sizeof(nid_to_digest_mapping) / sizeof(struct nid_to_digest);
-       i++) {
-    const char *short_name = nid_to_digest_mapping[i].short_name;
-    const char *long_name = nid_to_digest_mapping[i].long_name;
-    if ((short_name && strcmp(short_name, name) == 0) ||
-        (long_name && strcmp(long_name, name) == 0)) {
-      return nid_to_digest_mapping[i].md_func();
-    }
-  }
-
-  return NULL;
-}

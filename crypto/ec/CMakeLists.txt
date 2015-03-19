@@ -6,7 +6,6 @@ add_library(
   OBJECT
 
   ec.c
-  ec_asn1.c
   ec_key.c
   ec_montgomery.c
   oct.c
@@ -24,13 +23,4 @@ add_executable(
   $<TARGET_OBJECTS:test_support>
 )
 
-add_executable(
-  ec_test
-
-  ec_test.cc
-
-  $<TARGET_OBJECTS:test_support>
-)
-
 target_link_libraries(example_mul crypto)
-target_link_libraries(ec_test crypto)

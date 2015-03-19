@@ -5,6 +5,5 @@ add_library(
 
   OBJECT
 
-  obj.c
   obj_xref.c
 )

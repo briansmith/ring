@@ -113,7 +113,6 @@ add_subdirectory(rand)
 add_subdirectory(bio)
 add_subdirectory(bn)
 add_subdirectory(obj)
-add_subdirectory(asn1)
 
 # Level 2
 add_subdirectory(engine)
@@ -125,15 +124,7 @@ add_subdirectory(ecdsa)
 add_subdirectory(hmac)
 
 # Level 3
-add_subdirectory(cmac)
-add_subdirectory(evp)
 add_subdirectory(hkdf)
-add_subdirectory(pem)
-add_subdirectory(x509)
-add_subdirectory(x509v3)
-
-# Level 4
-add_subdirectory(pkcs8)
 
 # Test support code
 add_subdirectory(test)
@@ -178,7 +169,6 @@ add_library(
   $<TARGET_OBJECTS:bio>
   $<TARGET_OBJECTS:rand>
   $<TARGET_OBJECTS:obj>
-  $<TARGET_OBJECTS:asn1>
   $<TARGET_OBJECTS:engine>
   $<TARGET_OBJECTS:dh>
   $<TARGET_OBJECTS:rsa>
@@ -186,13 +176,7 @@ add_library(
   $<TARGET_OBJECTS:ecdh>
   $<TARGET_OBJECTS:ecdsa>
   $<TARGET_OBJECTS:hmac>
-  $<TARGET_OBJECTS:cmac>
-  $<TARGET_OBJECTS:evp>
   $<TARGET_OBJECTS:hkdf>
-  $<TARGET_OBJECTS:pem>
-  $<TARGET_OBJECTS:x509>
-  $<TARGET_OBJECTS:x509v3>
-  $<TARGET_OBJECTS:pkcs8>
 )
 
 if(NOT MSVC AND NOT ANDROID)

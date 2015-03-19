@@ -487,22 +487,14 @@ static const char *const kLibraryNames[ERR_NUM_LIBS] = {
     "bignum routines",                            /* ERR_LIB_BN */
     "RSA routines",                               /* ERR_LIB_RSA */
     "Diffie-Hellman routines",                    /* ERR_LIB_DH */
-    "public key routines",                        /* ERR_LIB_EVP */
     "memory buffer routines",                     /* ERR_LIB_BUF */
     "object identifier routines",                 /* ERR_LIB_OBJ */
-    "PEM routines",                               /* ERR_LIB_PEM */
-    "X.509 certificate routines",                 /* ERR_LIB_X509 */
-    "ASN.1 encoding routines",                    /* ERR_LIB_ASN1 */
     "configuration file routines",                /* ERR_LIB_CONF */
     "common libcrypto routines",                  /* ERR_LIB_CRYPTO */
     "elliptic curve routines",                    /* ERR_LIB_EC */
     "BIO routines",                               /* ERR_LIB_BIO */
-    "PKCS7 routines",                             /* ERR_LIB_PKCS7 */
-    "PKCS8 routines",                             /* ERR_LIB_PKCS8 */
-    "X509 V3 routines",                           /* ERR_LIB_X509V3 */
     "random number generator",                    /* ERR_LIB_RAND */
     "ENGINE routines",                            /* ERR_LIB_ENGINE */
-    "OCSP routines",                              /* ERR_LIB_OCSP */
     "UI routines",                                /* ERR_LIB_UI */
     "COMP routines",                              /* ERR_LIB_COMP */
     "ECDSA routines",                             /* ERR_LIB_ECDSA */
