@@ -90,7 +90,7 @@ static const EXPECTED_CIPHER kExpected4[] = {
  * selections. Select AES_128_GCM, but order the key exchanges RSA,
  * DHE_RSA, ECDHE_RSA. */
 static const char kRule5[] =
-    "ALL:-kEECDH:-kEDH:-kRSA:-ALL:"
+    "ALL:-kECDHE:-kDHE:-kRSA:-ALL:"
     "AESGCM+AES128+aRSA";
 
 static const EXPECTED_CIPHER kExpected5[] = {
@@ -140,7 +140,7 @@ static const char kRule8[] =
     "ALL:-CHACHA20:-AES256:-AES128:-RC4:-ALL:"
     /* Select ECDHE ones and sort them by strength. Ties should resolve
      * based on the order above. */
-    "kEECDH:@STRENGTH:-ALL:"
+    "kECDHE:@STRENGTH:-ALL:"
     /* Now bring back everything uses RSA. ECDHE_RSA should be first,
      * sorted by strength. Then RSA, backwards by strength. */
     "aRSA";

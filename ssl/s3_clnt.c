@@ -1174,7 +1174,7 @@ int ssl3_get_server_key_exchange(SSL *s) {
     }
   }
 
-  if (alg_k & SSL_kEDH) {
+  if (alg_k & SSL_kDHE) {
     CBS dh_p, dh_g, dh_Ys;
 
     if (!CBS_get_u16_length_prefixed(&server_key_exchange, &dh_p) ||
@@ -1216,7 +1216,7 @@ int ssl3_get_server_key_exchange(SSL *s) {
 
     s->session->sess_cert->peer_dh_tmp = dh;
     dh = NULL;
-  } else if (alg_k & SSL_kEECDH) {
+  } else if (alg_k & SSL_kECDHE) {
     uint16_t curve_id;
     int curve_nid = 0;
     const EC_GROUP *group;
@@ -1779,7 +1779,7 @@ int ssl3_send_client_key_exchange(SSL *s) {
       if (s->version > SSL3_VERSION) {
         s2n(enc_pms_len, q);
       }
-    } else if (alg_k & SSL_kEDH) {
+    } else if (alg_k & SSL_kDHE) {
       DH *dh_srvr, *dh_clnt;
       SESS_CERT *scert = s->session->sess_cert;
       int dh_len;
@@ -1835,7 +1835,7 @@ int ssl3_send_client_key_exchange(SSL *s) {
       n += 2 + pub_len;
 
       DH_free(dh_clnt);
-    } else if (alg_k & SSL_kEECDH) {
+    } else if (alg_k & SSL_kECDHE) {
       const EC_GROUP *srvr_group = NULL;
       EC_KEY *tkey;
       int field_size = 0, ecdh_len;
@@ -2246,7 +2246,7 @@ int ssl3_check_cert_and_algorithm(SSL *s) {
     goto f_err;
   }
 
-  if ((alg_k & SSL_kEDH) &&
+  if ((alg_k & SSL_kDHE) &&
       !(has_bits(i, EVP_PK_DH | EVP_PKT_EXCH) || dh != NULL)) {
     OPENSSL_PUT_ERROR(SSL, ssl3_check_cert_and_algorithm, SSL_R_MISSING_DH_KEY);
     goto f_err;

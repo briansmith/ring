@@ -182,7 +182,7 @@ static const SSL_CIPHER cipher_aliases[] =
 
      /* "COMPLEMENTOFDEFAULT" (does *not* include ciphersuites not found in
         ALL!) */
-     {0, SSL_TXT_CMPDEF, 0, SSL_kEDH | SSL_kEECDH, SSL_aNULL, 0, 0, 0, 0, 0, 0,
+     {0, SSL_TXT_CMPDEF, 0, SSL_kDHE | SSL_kECDHE, SSL_aNULL, 0, 0, 0, 0, 0, 0,
       0},
 
      /* key exchange aliases
@@ -191,11 +191,13 @@ static const SSL_CIPHER cipher_aliases[] =
       * e.g. kEDH combines DHE_DSS and DHE_RSA) */
      {0, SSL_TXT_kRSA, 0, SSL_kRSA, 0, 0, 0, 0, 0, 0, 0, 0},
 
-     {0, SSL_TXT_kEDH, 0, SSL_kEDH, 0, 0, 0, 0, 0, 0, 0, 0},
-     {0, SSL_TXT_DH, 0, SSL_kEDH, 0, 0, 0, 0, 0, 0, 0, 0},
+     {0, SSL_TXT_kDHE, 0, SSL_kDHE, 0, 0, 0, 0, 0, 0, 0, 0},
+     {0, SSL_TXT_kEDH, 0, SSL_kDHE, 0, 0, 0, 0, 0, 0, 0, 0},
+     {0, SSL_TXT_DH, 0, SSL_kDHE, 0, 0, 0, 0, 0, 0, 0, 0},
 
-     {0, SSL_TXT_kEECDH, 0, SSL_kEECDH, 0, 0, 0, 0, 0, 0, 0, 0},
-     {0, SSL_TXT_ECDH, 0, SSL_kEECDH, 0, 0, 0, 0, 0, 0, 0, 0},
+     {0, SSL_TXT_kECDHE, 0, SSL_kECDHE, 0, 0, 0, 0, 0, 0, 0, 0},
+     {0, SSL_TXT_kEECDH, 0, SSL_kECDHE, 0, 0, 0, 0, 0, 0, 0, 0},
+     {0, SSL_TXT_ECDH, 0, SSL_kECDHE, 0, 0, 0, 0, 0, 0, 0, 0},
 
      {0, SSL_TXT_kPSK, 0, SSL_kPSK, 0, 0, 0, 0, 0, 0, 0, 0},
 
@@ -207,11 +209,13 @@ static const SSL_CIPHER cipher_aliases[] =
      {0, SSL_TXT_aPSK, 0, 0, SSL_aPSK, 0, 0, 0, 0, 0, 0, 0},
 
      /* aliases combining key exchange and server authentication */
-     {0, SSL_TXT_EDH, 0, SSL_kEDH, ~SSL_aNULL, 0, 0, 0, 0, 0, 0, 0},
-     {0, SSL_TXT_EECDH, 0, SSL_kEECDH, ~SSL_aNULL, 0, 0, 0, 0, 0, 0, 0},
+     {0, SSL_TXT_DHE, 0, SSL_kDHE, ~SSL_aNULL, 0, 0, 0, 0, 0, 0, 0},
+     {0, SSL_TXT_EDH, 0, SSL_kDHE, ~SSL_aNULL, 0, 0, 0, 0, 0, 0, 0},
+     {0, SSL_TXT_ECDHE, 0, SSL_kECDHE, ~SSL_aNULL, 0, 0, 0, 0, 0, 0, 0},
+     {0, SSL_TXT_EECDH, 0, SSL_kECDHE, ~SSL_aNULL, 0, 0, 0, 0, 0, 0, 0},
      {0, SSL_TXT_RSA, 0, SSL_kRSA, SSL_aRSA, 0, 0, 0, 0, 0, 0, 0},
-     {0, SSL_TXT_ADH, 0, SSL_kEDH, SSL_aNULL, 0, 0, 0, 0, 0, 0, 0},
-     {0, SSL_TXT_AECDH, 0, SSL_kEECDH, SSL_aNULL, 0, 0, 0, 0, 0, 0, 0},
+     {0, SSL_TXT_ADH, 0, SSL_kDHE, SSL_aNULL, 0, 0, 0, 0, 0, 0, 0},
+     {0, SSL_TXT_AECDH, 0, SSL_kECDHE, SSL_aNULL, 0, 0, 0, 0, 0, 0, 0},
      {0, SSL_TXT_PSK, 0, SSL_kPSK, SSL_aPSK, 0, 0, 0, 0, 0, 0, 0},
 
      /* symmetric encryption aliases */
@@ -956,11 +960,11 @@ ssl_create_cipher_list(const SSL_PROTOCOL_METHOD *ssl_method,
 
   /* Everything else being equal, prefer ECDHE_ECDSA then ECDHE_RSA over other
    * key exchange mechanisms */
-  ssl_cipher_apply_rule(0, SSL_kEECDH, SSL_aECDSA, 0, 0, 0, 0, CIPHER_ADD, -1,
+  ssl_cipher_apply_rule(0, SSL_kECDHE, SSL_aECDSA, 0, 0, 0, 0, CIPHER_ADD, -1,
                         0, &head, &tail);
-  ssl_cipher_apply_rule(0, SSL_kEECDH, 0, 0, 0, 0, 0, CIPHER_ADD, -1, 0, &head,
+  ssl_cipher_apply_rule(0, SSL_kECDHE, 0, 0, 0, 0, 0, CIPHER_ADD, -1, 0, &head,
                         &tail);
-  ssl_cipher_apply_rule(0, SSL_kEECDH, 0, 0, 0, 0, 0, CIPHER_DEL, -1, 0, &head,
+  ssl_cipher_apply_rule(0, SSL_kECDHE, 0, 0, 0, 0, 0, CIPHER_DEL, -1, 0, &head,
                         &tail);
 
   /* Order the bulk ciphers. First the preferred AEAD ciphers. We prefer
@@ -999,7 +1003,7 @@ ssl_create_cipher_list(const SSL_PROTOCOL_METHOD *ssl_method,
   ssl_cipher_apply_rule(0, 0, 0, 0, 0, 0, 0, CIPHER_ADD, -1, 0, &head, &tail);
 
   /* Move ciphers without forward secrecy to the end. */
-  ssl_cipher_apply_rule(0, ~(SSL_kEDH | SSL_kEECDH), 0, 0, 0, 0, 0, CIPHER_ORD,
+  ssl_cipher_apply_rule(0, ~(SSL_kDHE | SSL_kECDHE), 0, 0, 0, 0, 0, CIPHER_ORD,
                         -1, 0, &head, &tail);
 
   /* Move anonymous ciphers to the end.  Usually, these will remain disabled.
@@ -1161,11 +1165,11 @@ const char *SSL_CIPHER_description(const SSL_CIPHER *cipher, char *buf,
       kx = "RSA";
       break;
 
-    case SSL_kEDH:
+    case SSL_kDHE:
       kx = "DH";
       break;
 
-    case SSL_kEECDH:
+    case SSL_kECDHE:
       kx = "ECDH";
       break;
 
@@ -1324,7 +1328,7 @@ const char *SSL_CIPHER_get_kx_name(const SSL_CIPHER *cipher) {
     case SSL_kRSA:
       return "RSA";
 
-    case SSL_kEDH:
+    case SSL_kDHE:
       switch (cipher->algorithm_auth) {
         case SSL_aRSA:
           return "DHE_RSA";
@@ -1335,7 +1339,7 @@ const char *SSL_CIPHER_get_kx_name(const SSL_CIPHER *cipher) {
           return "UNKNOWN";
       }
 
-    case SSL_kEECDH:
+    case SSL_kECDHE:
       switch (cipher->algorithm_auth) {
         case SSL_aECDSA:
           return "ECDHE_ECDSA";
@@ -1498,7 +1502,7 @@ int ssl_cipher_has_server_public_key(const SSL_CIPHER *cipher) {
  * communicate a psk_identity_hint, so it is optional. */
 int ssl_cipher_requires_server_key_exchange(const SSL_CIPHER *cipher) {
   /* Ephemeral Diffie-Hellman key exchanges require a ServerKeyExchange. */
-  if (cipher->algorithm_mkey & SSL_kEDH || cipher->algorithm_mkey & SSL_kEECDH) {
+  if (cipher->algorithm_mkey & SSL_kDHE || cipher->algorithm_mkey & SSL_kECDHE) {
     return 1;
   }
 

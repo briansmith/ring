@@ -2042,7 +2042,7 @@ void ssl_get_compatible_server_ciphers(SSL *s, unsigned long *out_mask_k,
     mask_k |= SSL_kRSA;
   }
   if (dh_tmp) {
-    mask_k |= SSL_kEDH;
+    mask_k |= SSL_kDHE;
   }
   if (rsa_enc || rsa_sign) {
     mask_a |= SSL_aRSA;
@@ -2070,7 +2070,7 @@ void ssl_get_compatible_server_ciphers(SSL *s, unsigned long *out_mask_k,
   /* If we are considering an ECC cipher suite that uses an ephemeral EC
    * key, check it. */
   if (have_ecdh_tmp && tls1_check_ec_tmp_key(s)) {
-    mask_k |= SSL_kEECDH;
+    mask_k |= SSL_kECDHE;
   }
 
   /* PSK requires a server callback. */
@@ -2889,8 +2889,8 @@ int ssl3_can_false_start(const SSL *s) {
       SSL_version(s) >= TLS1_2_VERSION &&
       (s->s3->alpn_selected || s->s3->next_proto_neg_seen) &&
       cipher != NULL &&
-      (cipher->algorithm_mkey == SSL_kEDH ||
-       cipher->algorithm_mkey == SSL_kEECDH) &&
+      (cipher->algorithm_mkey == SSL_kDHE ||
+       cipher->algorithm_mkey == SSL_kECDHE) &&
       (cipher->algorithm_enc == SSL_AES128GCM ||
        cipher->algorithm_enc == SSL_AES256GCM ||
        cipher->algorithm_enc == SSL_CHACHA20POLY1305);

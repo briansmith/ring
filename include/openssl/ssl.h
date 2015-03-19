@@ -178,8 +178,10 @@ extern "C" {
 #define SSL_TXT_aNULL "aNULL"
 
 #define SSL_TXT_kRSA "kRSA"
-#define SSL_TXT_kEDH "kEDH"
-#define SSL_TXT_kEECDH "kEECDH"
+#define SSL_TXT_kDHE "kDHE"
+#define SSL_TXT_kEDH "kEDH" /* same as "kDHE" */
+#define SSL_TXT_kECDHE "kECDHE"
+#define SSL_TXT_kEECDH "kEECDH" /* same as "kECDHE" */
 #define SSL_TXT_kPSK "kPSK"
 
 #define SSL_TXT_aRSA "aRSA"
@@ -187,11 +189,13 @@ extern "C" {
 #define SSL_TXT_aPSK "aPSK"
 
 #define SSL_TXT_DH "DH"
-#define SSL_TXT_EDH "EDH" /* same as "kEDH:-ADH" */
+#define SSL_TXT_DHE "DHE" /* same as "kDHE:-ADH" */
+#define SSL_TXT_EDH "EDH" /* same as "DHE" */
 #define SSL_TXT_ADH "ADH"
 #define SSL_TXT_RSA "RSA"
 #define SSL_TXT_ECDH "ECDH"
-#define SSL_TXT_EECDH "EECDH" /* same as "kEECDH:-AECDH" */
+#define SSL_TXT_ECDHE "ECDHE" /* same as "kECDHE:-AECDH" */
+#define SSL_TXT_EECDH "EECDH" /* same as "ECDHE" */
 #define SSL_TXT_AECDH "AECDH"
 #define SSL_TXT_ECDSA "ECDSA"
 #define SSL_TXT_PSK "PSK"

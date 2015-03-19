@@ -287,8 +287,8 @@
 
 /* Bits for algorithm_mkey (key exchange algorithm) */
 #define SSL_kRSA 0x00000001L   /* RSA key exchange */
-#define SSL_kEDH 0x00000002L   /* tmp DH key no DH cert */
-#define SSL_kEECDH 0x00000004L /* ephemeral ECDH */
+#define SSL_kDHE 0x00000002L   /* tmp DH key no DH cert */
+#define SSL_kECDHE 0x00000004L /* ephemeral ECDH */
 #define SSL_kPSK 0x00000008L   /* PSK */
 
 /* Bits for algorithm_auth (server authentication) */
@@ -390,7 +390,7 @@
 /* SSL_kRSA <- RSA_ENC | (RSA_TMP & RSA_SIGN) |
  * 	    <- (EXPORT & (RSA_ENC | RSA_TMP) & RSA_SIGN)
  * SSL_kDH  <- DH_ENC & (RSA_ENC | RSA_SIGN | DSA_SIGN)
- * SSL_kEDH <- RSA_ENC | RSA_SIGN | DSA_SIGN
+ * SSL_kDHE <- RSA_ENC | RSA_SIGN | DSA_SIGN
  * SSL_aRSA <- RSA_ENC | RSA_SIGN
  * SSL_aDSS <- DSA_SIGN */
 

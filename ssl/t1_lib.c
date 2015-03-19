@@ -800,7 +800,7 @@ uint8_t *ssl_add_clienthello_tlsext(SSL *s, uint8_t *buf, uint8_t *limit,
 
       alg_k = c->algorithm_mkey;
       alg_a = c->algorithm_auth;
-      if ((alg_k & SSL_kEECDH) || (alg_a & SSL_aECDSA)) {
+      if ((alg_k & SSL_kECDHE) || (alg_a & SSL_aECDSA)) {
         using_ecc = 1;
         break;
       }
@@ -1108,7 +1108,7 @@ uint8_t *ssl_add_serverhello_tlsext(SSL *s, uint8_t *buf, uint8_t *limit) {
   int next_proto_neg_seen;
   unsigned long alg_k = s->s3->tmp.new_cipher->algorithm_mkey;
   unsigned long alg_a = s->s3->tmp.new_cipher->algorithm_auth;
-  int using_ecc = (alg_k & SSL_kEECDH) || (alg_a & SSL_aECDSA);
+  int using_ecc = (alg_k & SSL_kECDHE) || (alg_a & SSL_aECDSA);
   using_ecc = using_ecc && (s->s3->tmp.peer_ecpointformatlist != NULL);
 
   /* don't add extensions for SSLv3, unless doing secure renegotiation */
@@ -1980,7 +1980,7 @@ static int ssl_check_serverhello_tlsext(SSL *s) {
    * uncompressed. */
   unsigned long alg_k = s->s3->tmp.new_cipher->algorithm_mkey;
   unsigned long alg_a = s->s3->tmp.new_cipher->algorithm_auth;
-  if (((alg_k & SSL_kEECDH) || (alg_a & SSL_aECDSA)) &&
+  if (((alg_k & SSL_kECDHE) || (alg_a & SSL_aECDSA)) &&
       !tls1_check_point_format(s, TLSEXT_ECPOINTFORMAT_uncompressed)) {
     OPENSSL_PUT_ERROR(SSL, ssl_check_serverhello_tlsext,
                       SSL_R_TLS_INVALID_ECPOINTFORMAT_LIST);

@@ -1242,7 +1242,7 @@ int ssl3_send_server_hello(SSL *s) {
     /* We only accept ChannelIDs on connections with ECDHE in order to avoid a
      * known attack while we fix ChannelID itself. */
     if (s->s3->tlsext_channel_id_valid &&
-        (s->s3->tmp.new_cipher->algorithm_mkey & SSL_kEECDH) == 0) {
+        (s->s3->tmp.new_cipher->algorithm_mkey & SSL_kECDHE) == 0) {
       s->s3->tlsext_channel_id_valid = 0;
     }
 
@@ -1375,7 +1375,7 @@ int ssl3_send_server_key_exchange(SSL *s) {
       n += 2 + psk_identity_hint_len;
     }
 
-    if (alg_k & SSL_kEDH) {
+    if (alg_k & SSL_kDHE) {
       dhp = cert->dh_tmp;
       if (dhp == NULL && s->cert->dh_tmp_cb != NULL) {
         dhp = s->cert->dh_tmp_cb(s, 0, 1024);
@@ -1418,7 +1418,7 @@ int ssl3_send_server_key_exchange(SSL *s) {
       r[0] = dh->p;
       r[1] = dh->g;
       r[2] = dh->pub_key;
-    } else if (alg_k & SSL_kEECDH) {
+    } else if (alg_k & SSL_kECDHE) {
       const EC_GROUP *group;
 
       ecdhp = cert->ecdh_tmp;
@@ -1558,7 +1558,7 @@ int ssl3_send_server_key_exchange(SSL *s) {
       p += nr[i];
     }
 
-    /* Note: ECDHE PSK ciphersuites use SSL_kEECDH and SSL_aPSK. When one of
+    /* Note: ECDHE PSK ciphersuites use SSL_kECDHE and SSL_aPSK. When one of
      * them is used, the server key exchange record needs to have both the
      * psk_identity_hint and the ServerECDHParams. */
     if (alg_a & SSL_aPSK) {
@@ -1570,7 +1570,7 @@ int ssl3_send_server_key_exchange(SSL *s) {
       }
     }
 
-    if (alg_k & SSL_kEECDH) {
+    if (alg_k & SSL_kECDHE) {
       /* We only support named (not generic) curves. In this situation, the
        * serverKeyExchange message has:
        * [1 byte CurveType], [2 byte CurveName]
@@ -1928,7 +1928,7 @@ int ssl3_get_client_key_exchange(SSL *s) {
     }
 
     premaster_secret_len = sizeof(rand_premaster_secret);
-  } else if (alg_k & SSL_kEDH) {
+  } else if (alg_k & SSL_kDHE) {
     CBS dh_Yc;
     int dh_len;
 
@@ -1976,7 +1976,7 @@ int ssl3_get_client_key_exchange(SSL *s) {
     pub = NULL;
 
     premaster_secret_len = dh_len;
-  } else if (alg_k & SSL_kEECDH) {
+  } else if (alg_k & SSL_kECDHE) {
     int field_size = 0, ecdh_len;
     const EC_KEY *tkey;
     const EC_GROUP *group;
