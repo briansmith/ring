@@ -55,6 +55,7 @@
 #include <openssl/asn1.h>
 #include <openssl/asn1t.h>
 #include <openssl/ec_key.h>
+#include <openssl/mem.h>
 
 #include "../ec/internal.h"
 
@@ -67,7 +68,7 @@ ASN1_SEQUENCE(ECDSA_SIG) = {
     ASN1_SIMPLE(ECDSA_SIG, s, CBIGNUM),
 } ASN1_SEQUENCE_END(ECDSA_SIG);
 
-IMPLEMENT_ASN1_FUNCTIONS_const(ECDSA_SIG);
+IMPLEMENT_ASN1_ENCODE_FUNCTIONS_const_fname(ECDSA_SIG, ECDSA_SIG, ECDSA_SIG);
 
 size_t ECDSA_size(const EC_KEY *key) {
   size_t ret, i, group_order_size;
@@ -113,4 +114,28 @@ size_t ECDSA_size(const EC_KEY *key) {
   ret = ASN1_object_size(1, i, V_ASN1_SEQUENCE);
   BN_clear_free(order);
   return ret;
+}
+
+ECDSA_SIG *ECDSA_SIG_new(void) {
+  ECDSA_SIG *sig = OPENSSL_malloc(sizeof(ECDSA_SIG));
+  if (sig == NULL) {
+    return NULL;
+  }
+  sig->r = BN_new();
+  sig->s = BN_new();
+  if (sig->r == NULL || sig->s == NULL) {
+    ECDSA_SIG_free(sig);
+    return NULL;
+  }
+  return sig;
+}
+
+void ECDSA_SIG_free(ECDSA_SIG *sig) {
+  if (sig == NULL) {
+    return;
+  }
+
+  BN_free(sig->r);
+  BN_free(sig->s);
+  OPENSSL_free(sig);
 }
