@@ -178,7 +178,6 @@ CERT *ssl_cert_dup(CERT *cert) {
     OPENSSL_PUT_ERROR(SSL, ssl_cert_dup, ERR_R_MALLOC_FAILURE);
     return NULL;
   }
-
   memset(ret, 0, sizeof(CERT));
 
   ret->key = &ret->pkeys[cert->key - &cert->pkeys[0]];
@@ -243,34 +242,24 @@ CERT *ssl_cert_dup(CERT *cert) {
     }
   }
 
-  /* Peer sigalgs set to NULL as we get these from handshake too */
-  ret->peer_sigalgs = NULL;
-  ret->peer_sigalgslen = 0;
-  /* Configured sigalgs however we copy across */
-
+  /* Copy over signature algorithm configuration. */
   if (cert->conf_sigalgs) {
-    ret->conf_sigalgs = OPENSSL_malloc(cert->conf_sigalgslen);
+    ret->conf_sigalgs = BUF_memdup(cert->conf_sigalgs, cert->conf_sigalgslen);
     if (!ret->conf_sigalgs) {
       goto err;
     }
-    memcpy(ret->conf_sigalgs, cert->conf_sigalgs, cert->conf_sigalgslen);
     ret->conf_sigalgslen = cert->conf_sigalgslen;
-  } else {
-    ret->conf_sigalgs = NULL;
   }
 
   if (cert->client_sigalgs) {
-    ret->client_sigalgs = OPENSSL_malloc(cert->client_sigalgslen);
+    ret->client_sigalgs = BUF_memdup(cert->client_sigalgs,
+                                     cert->client_sigalgslen);
     if (!ret->client_sigalgs) {
       goto err;
     }
-    memcpy(ret->client_sigalgs, cert->client_sigalgs, cert->client_sigalgslen);
     ret->client_sigalgslen = cert->client_sigalgslen;
-  } else {
-    ret->client_sigalgs = NULL;
   }
-  /* Shared sigalgs also NULL */
-  ret->shared_sigalgs = NULL;
+
   /* Copy any custom client certificate types */
   if (cert->client_certificate_types) {
     ret->client_certificate_types = BUF_memdup(
@@ -295,8 +284,6 @@ CERT *ssl_cert_dup(CERT *cert) {
     CRYPTO_add(&cert->chain_store->references, 1, CRYPTO_LOCK_X509_STORE);
     ret->chain_store = cert->chain_store;
   }
-
-  ret->ciphers_raw = NULL;
 
   return ret;
 
