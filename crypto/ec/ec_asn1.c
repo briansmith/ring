@@ -509,18 +509,21 @@ EC_KEY *d2i_ECParameters(EC_KEY **key, const uint8_t **inp, long len) {
       OPENSSL_PUT_ERROR(EC, d2i_ECParameters, ERR_R_MALLOC_FAILURE);
       return NULL;
     }
-    if (key) {
-      *key = ret;
-    }
   } else {
     ret = *key;
   }
 
   if (!d2i_ECPKParameters(&ret->group, inp, len)) {
     OPENSSL_PUT_ERROR(EC, d2i_ECParameters, ERR_R_EC_LIB);
+    if (key == NULL || *key == NULL) {
+      EC_KEY_free(ret);
+    }
     return NULL;
   }
 
+  if (key) {
+    *key = ret;
+  }
   return ret;
 }
 
