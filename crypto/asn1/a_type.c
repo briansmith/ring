@@ -125,6 +125,9 @@ int ASN1_TYPE_cmp(const ASN1_TYPE *a, const ASN1_TYPE *b)
 	case V_ASN1_NULL:
 		result = 0;	/* They do not have content. */
 		break;
+	case V_ASN1_BOOLEAN:
+		result = a->value.boolean - b->value.boolean;
+		break;
 	case V_ASN1_INTEGER:
 	case V_ASN1_NEG_INTEGER:
 	case V_ASN1_ENUMERATED:
