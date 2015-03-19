@@ -16,6 +16,7 @@
 
 #include <algorithm>
 
+#include <openssl/cipher.h>
 #include <openssl/cmac.h>
 
 #include "../test/scoped_types.h"

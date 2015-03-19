@@ -72,9 +72,6 @@
 #include "../internal.h"
 
 
-extern const EVP_PKEY_ASN1_METHOD ec_asn1_meth;
-extern const EVP_PKEY_ASN1_METHOD rsa_asn1_meth;
-
 EVP_PKEY *EVP_PKEY_new(void) {
   EVP_PKEY *ret;
 
@@ -198,19 +195,6 @@ int EVP_PKEY_id(const EVP_PKEY *pkey) {
   return pkey->type;
 }
 
-/* TODO(fork): remove the first argument. */
-const EVP_PKEY_ASN1_METHOD *EVP_PKEY_asn1_find(ENGINE **pengine, int nid) {
-  switch (nid) {
-    case EVP_PKEY_RSA:
-    case EVP_PKEY_RSA2:
-      return &rsa_asn1_meth;
-    case EVP_PKEY_EC:
-      return &ec_asn1_meth;
-    default:
-      return NULL;
-  }
-}
-
 int EVP_PKEY_type(int nid) {
   const EVP_PKEY_ASN1_METHOD *meth = EVP_PKEY_asn1_find(NULL, nid);
   if (meth == NULL) {
@@ -290,17 +274,6 @@ int EVP_PKEY_assign(EVP_PKEY *pkey, int type, void *key) {
   return key != NULL;
 }
 
-const EVP_PKEY_ASN1_METHOD *EVP_PKEY_asn1_find_str(ENGINE **pengine,
-                                                   const char *name,
-                                                   size_t len) {
-  if (len == 3 && memcmp(name, "RSA", 3) == 0) {
-    return &rsa_asn1_meth;
-  } if (len == 2 && memcmp(name, "EC", 2) == 0) {
-    return &ec_asn1_meth;
-  }
-  return NULL;
-}
-
 int EVP_PKEY_set_type(EVP_PKEY *pkey, int type) {
   const EVP_PKEY_ASN1_METHOD *ameth;
 
@@ -333,41 +306,6 @@ int EVP_PKEY_cmp_parameters(const EVP_PKEY *a, const EVP_PKEY *b) {
     return a->ameth->param_cmp(a, b);
   }
   return -2;
-}
-
-static int print_unsupported(BIO *out, const EVP_PKEY *pkey, int indent,
-                             const char *kstr) {
-  BIO_indent(out, indent, 128);
-  BIO_printf(out, "%s algorithm \"%s\" unsupported\n", kstr,
-             OBJ_nid2ln(pkey->type));
-  return 1;
-}
-
-int EVP_PKEY_print_public(BIO *out, const EVP_PKEY *pkey, int indent,
-                          ASN1_PCTX *pctx) {
-  if (pkey->ameth && pkey->ameth->pub_print) {
-    return pkey->ameth->pub_print(out, pkey, indent, pctx);
-  }
-
-  return print_unsupported(out, pkey, indent, "Public Key");
-}
-
-int EVP_PKEY_print_private(BIO *out, const EVP_PKEY *pkey, int indent,
-                           ASN1_PCTX *pctx) {
-  if (pkey->ameth && pkey->ameth->priv_print) {
-    return pkey->ameth->priv_print(out, pkey, indent, pctx);
-  }
-
-  return print_unsupported(out, pkey, indent, "Private Key");
-}
-
-int EVP_PKEY_print_params(BIO *out, const EVP_PKEY *pkey, int indent,
-                          ASN1_PCTX *pctx) {
-  if (pkey->ameth && pkey->ameth->param_print) {
-    return pkey->ameth->param_print(out, pkey, indent, pctx);
-  }
-
-  return print_unsupported(out, pkey, indent, "Parameters");
 }
 
 int EVP_PKEY_CTX_set_signature_md(EVP_PKEY_CTX *ctx, const EVP_MD *md) {

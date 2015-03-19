@@ -5,10 +5,8 @@ add_library(
 
   OBJECT
 
-  algorithm.c
   digestsign.c
   evp.c
-  evp_asn1.c
   evp_ctx.c
   p_ec.c
   p_ec_asn1.c
@@ -20,22 +18,6 @@ add_library(
 
 
 add_executable(
-  evp_extra_test
-
-  evp_extra_test.cc
-
-  $<TARGET_OBJECTS:test_support>
-)
-
-add_executable(
-  evp_test
-
-  evp_test.cc
-
-  $<TARGET_OBJECTS:test_support>
-)
-
-add_executable(
   pbkdf_test
 
   pbkdf_test.cc
@@ -43,6 +25,4 @@ add_executable(
   $<TARGET_OBJECTS:test_support>
 )
 
-target_link_libraries(evp_extra_test crypto)
-target_link_libraries(evp_test crypto)
 target_link_libraries(pbkdf_test crypto)

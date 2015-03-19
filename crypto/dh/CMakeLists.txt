@@ -9,7 +9,6 @@ add_library(
   dh_impl.c
   params.c
   check.c
-  dh_asn1.c
 )
 
 add_executable(

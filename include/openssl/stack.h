@@ -118,75 +118,15 @@ typedef struct stack_st {
  * types of stacks:
  *
  * STACK_OF:ACCESS_DESCRIPTION
- * STACK_OF:ASN1_ADB_TABLE
- * STACK_OF:ASN1_GENERALSTRING
- * STACK_OF:ASN1_INTEGER
- * STACK_OF:ASN1_OBJECT
- * STACK_OF:ASN1_STRING_TABLE
- * STACK_OF:ASN1_TYPE
- * STACK_OF:ASN1_VALUE
- * STACK_OF:BIO
- * STACK_OF:BY_DIR_ENTRY
- * STACK_OF:BY_DIR_HASH
  * STACK_OF:CONF_VALUE
  * STACK_OF:CRYPTO_EX_DATA_FUNCS
- * STACK_OF:DIST_POINT
- * STACK_OF:GENERAL_NAME
- * STACK_OF:GENERAL_NAMES
- * STACK_OF:GENERAL_SUBTREE
- * STACK_OF:MIME_HEADER
- * STACK_OF:PKCS7_RECIP_INFO
- * STACK_OF:PKCS7_SIGNER_INFO
- * STACK_OF:POLICYINFO
- * STACK_OF:POLICYQUALINFO
- * STACK_OF:POLICY_MAPPING
  * STACK_OF:RSA_additional_prime
- * STACK_OF:STACK_OF_X509_NAME_ENTRY
- * STACK_OF:SXNETID
- * STACK_OF:X509
- * STACK_OF:X509V3_EXT_METHOD
- * STACK_OF:X509_ALGOR
- * STACK_OF:X509_ATTRIBUTE
- * STACK_OF:X509_CRL
- * STACK_OF:X509_EXTENSION
- * STACK_OF:X509_INFO
- * STACK_OF:X509_LOOKUP
- * STACK_OF:X509_NAME
- * STACK_OF:X509_NAME_ENTRY
- * STACK_OF:X509_OBJECT
- * STACK_OF:X509_POLICY_DATA
- * STACK_OF:X509_POLICY_NODE
- * STACK_OF:X509_PURPOSE
- * STACK_OF:X509_REVOKED
- * STACK_OF:X509_TRUST
- * STACK_OF:X509_VERIFY_PARAM
  * STACK_OF:void
  *
  * Some stacks contain only const structures, so the stack should return const
  * pointers to retain type-checking.
  */
 
-
-/* Some stacks are special because, although we would like STACK_OF(char *),
- * that would actually be a stack of pointers to char*, but we just want to
- * point to the string directly. In this case we call them "special" and use
- * |DEFINE_SPECIAL_STACK_OF(type)| */
-#define DEFINE_SPECIAL_STACK_OF(type, inner)             \
-  STACK_OF(type) { _STACK special_stack; };              \
-  OPENSSL_COMPILE_ASSERT(sizeof(type) == sizeof(void *), \
-                         special_stack_of_non_pointer_##type);
-
-typedef char *OPENSSL_STRING;
-
-DEFINE_SPECIAL_STACK_OF(OPENSSL_STRING, char)
-DEFINE_SPECIAL_STACK_OF(OPENSSL_BLOCK, uint8_t)
-
-/* The make_macros.sh script in this directory parses the following lines and
- * generates the stack_macros.h file that contains macros for the following
- * types of stacks:
- *
- * SPECIAL_STACK_OF:OPENSSL_STRING
- * SPECIAL_STACK_OF:OPENSSL_BLOCK */
 
 #define IN_STACK_H
 #include <openssl/stack_macros.h>

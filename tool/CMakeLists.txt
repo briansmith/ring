@@ -6,7 +6,6 @@ add_executable(
   args.cc
   const.cc
   digest.cc
-  genrsa.cc
   rand.cc
   speed.cc
   tool.cc

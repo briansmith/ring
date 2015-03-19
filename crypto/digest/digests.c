@@ -288,7 +288,3 @@ const EVP_MD* EVP_get_digestbynid(int nid) {
 
   return NULL;
 }
-
-const EVP_MD* EVP_get_digestbyobj(const ASN1_OBJECT *obj) {
-  return EVP_get_digestbynid(OBJ_obj2nid(obj));
-}

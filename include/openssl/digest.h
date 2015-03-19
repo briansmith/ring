@@ -92,10 +92,6 @@ OPENSSL_EXPORT const EVP_MD *EVP_md5_sha1(void);
  * such digest is known. */
 OPENSSL_EXPORT const EVP_MD *EVP_get_digestbynid(int nid);
 
-/* EVP_get_digestbyobj returns an |EVP_MD| for the given |ASN1_OBJECT|, or NULL
- * if no such digest is known. */
-OPENSSL_EXPORT const EVP_MD *EVP_get_digestbyobj(const ASN1_OBJECT *obj);
-
 
 /* Digest contexts.
  *

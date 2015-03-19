@@ -25,7 +25,6 @@
 #endif
 
 
-bool GenerateRSAKey(const std::vector<std::string> &args);
 bool MD5Sum(const std::vector<std::string> &args);
 bool Rand(const std::vector<std::string> &args);
 bool SHA1Sum(const std::vector<std::string> &args);
@@ -43,7 +42,6 @@ struct Tool {
 };
 
 static const Tool kTools[] = {
-  { "genrsa", GenerateRSAKey },
   { "md5sum", MD5Sum },
   { "rand", Rand },
   { "sha1sum", SHA1Sum },

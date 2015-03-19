@@ -29,10 +29,7 @@
 #include <openssl/evp.h>
 #include <openssl/hmac.h>
 #include <openssl/mem.h>
-#include <openssl/pkcs8.h>
 #include <openssl/rsa.h>
-#include <openssl/stack.h>
-#include <openssl/x509.h>
 
 #include "stl_compat.h"
 
@@ -107,11 +104,7 @@ using ScopedEC_KEY = ScopedOpenSSLType<EC_KEY, EC_KEY_free>;
 using ScopedEC_POINT = ScopedOpenSSLType<EC_POINT, EC_POINT_free>;
 using ScopedEVP_PKEY = ScopedOpenSSLType<EVP_PKEY, EVP_PKEY_free>;
 using ScopedEVP_PKEY_CTX = ScopedOpenSSLType<EVP_PKEY_CTX, EVP_PKEY_CTX_free>;
-using ScopedPKCS8_PRIV_KEY_INFO = ScopedOpenSSLType<PKCS8_PRIV_KEY_INFO,
-                                                    PKCS8_PRIV_KEY_INFO_free>;
 using ScopedRSA = ScopedOpenSSLType<RSA, RSA_free>;
-using ScopedX509_ALGOR = ScopedOpenSSLType<X509_ALGOR, X509_ALGOR_free>;
-
 using ScopedEVP_AEAD_CTX = ScopedOpenSSLContext<EVP_AEAD_CTX, void,
                                                 EVP_AEAD_CTX_zero,
                                                 EVP_AEAD_CTX_cleanup>;
