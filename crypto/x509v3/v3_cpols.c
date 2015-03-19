@@ -294,12 +294,19 @@ static POLICYQUALINFO *notice_section(X509V3_CTX *ctx,
 	if(!(qual = POLICYQUALINFO_new())) goto merr;
         /* TODO(fork): const correctness */
 	qual->pqualid = (ASN1_OBJECT *) OBJ_nid2obj(NID_id_qt_unotice);
+	if (qual->pqualid == NULL)
+		{
+		OPENSSL_PUT_ERROR(X509V3, notice_section, ERR_R_INTERNAL_ERROR);
+		goto err;
+		}
 	if(!(not = USERNOTICE_new())) goto merr;
 	qual->d.usernotice = not;
 	for(i = 0; i < sk_CONF_VALUE_num(unot); i++) {
 		cnf = sk_CONF_VALUE_value(unot, i);
 		if(!strcmp(cnf->name, "explicitText")) {
 			not->exptext = M_ASN1_VISIBLESTRING_new();
+			if (not->exptext == NULL)
+				goto merr;
 			if(!ASN1_STRING_set(not->exptext, cnf->value,
 						 strlen(cnf->value))) goto merr;
 		} else if(!strcmp(cnf->name, "organization")) {
