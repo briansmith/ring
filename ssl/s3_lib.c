@@ -685,14 +685,6 @@ static int ssl3_set_req_cert_type(CERT *c, const uint8_t *p, size_t len);
 long ssl3_ctrl(SSL *s, int cmd, long larg, void *parg) {
   int ret = 0;
 
-  if (cmd == SSL_CTRL_SET_TMP_RSA || cmd == SSL_CTRL_SET_TMP_RSA_CB ||
-      cmd == SSL_CTRL_SET_TMP_DH || cmd == SSL_CTRL_SET_TMP_DH_CB) {
-    if (!ssl_cert_inst(&s->cert)) {
-      OPENSSL_PUT_ERROR(SSL, ssl3_ctrl, ERR_R_MALLOC_FAILURE);
-      return 0;
-    }
-  }
-
   switch (cmd) {
     case SSL_CTRL_GET_SESSION_REUSED:
       ret = s->hit;
@@ -972,12 +964,6 @@ long ssl3_ctrl(SSL *s, int cmd, long larg, void *parg) {
 
 long ssl3_callback_ctrl(SSL *s, int cmd, void (*fp)(void)) {
   int ret = 0;
-
-  if ((cmd == SSL_CTRL_SET_TMP_RSA_CB || cmd == SSL_CTRL_SET_TMP_DH_CB) &&
-      !ssl_cert_inst(&s->cert)) {
-    OPENSSL_PUT_ERROR(SSL, ssl3_callback_ctrl, ERR_R_MALLOC_FAILURE);
-    return 0;
-  }
 
   switch (cmd) {
     case SSL_CTRL_SET_TMP_RSA_CB:

@@ -370,29 +370,6 @@ void ssl_cert_free(CERT *c) {
   OPENSSL_free(c);
 }
 
-int ssl_cert_inst(CERT **o) {
-  /* Create a CERT if there isn't already one (which cannot really happen, as
-   * it is initially created in SSL_CTX_new; but the earlier code usually
-   * allows for that one being non-existant, so we follow that behaviour, as it
-   * might turn out that there actually is a reason for it -- but I'm not sure
-   * that *all* of the existing code could cope with s->cert being NULL,
-   * otherwise we could do without the initialization in SSL_CTX_new). */
-
-  if (o == NULL) {
-    OPENSSL_PUT_ERROR(SSL, ssl_cert_inst, ERR_R_PASSED_NULL_PARAMETER);
-    return 0;
-  }
-  if (*o == NULL) {
-    *o = ssl_cert_new();
-    if (*o == NULL) {
-      OPENSSL_PUT_ERROR(SSL, ssl_cert_new, ERR_R_MALLOC_FAILURE);
-      return 0;
-    }
-  }
-
-  return 1;
-}
-
 int ssl_cert_set0_chain(CERT *c, STACK_OF(X509) * chain) {
   CERT_PKEY *cpk = c->key;
   if (!cpk) {
