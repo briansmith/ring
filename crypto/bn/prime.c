@@ -659,7 +659,13 @@ again:
   /* If bits is so small that it fits into a single word then we
    * additionally don't want to exceed that many bits. */
   if (is_single_word) {
-    BN_ULONG size_limit = (((BN_ULONG)1) << bits) - get_word(rnd) - 1;
+    BN_ULONG size_limit;
+    if (bits == BN_BITS2) {
+      /* Avoid undefined behavior. */
+      size_limit = ~((BN_ULONG)0) - get_word(rnd);
+    } else {
+      size_limit = (((BN_ULONG)1) << bits) - get_word(rnd) - 1;
+    }
     if (size_limit < maxdelta) {
       maxdelta = size_limit;
     }
