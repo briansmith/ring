@@ -59,8 +59,6 @@
 
 #include <openssl/base.h>
 
-#include <openssl/asn1.h>
-
 
 #if defined(__cplusplus)
 extern "C" {
@@ -124,8 +122,6 @@ typedef struct rsa_pss_params_st {
   ASN1_INTEGER *saltLength;
   ASN1_INTEGER *trailerField;
 } RSA_PSS_PARAMS;
-
-DECLARE_ASN1_FUNCTIONS(RSA_PSS_PARAMS)
 
 /* RSA_additional_prime contains information about the third, forth etc prime
  * in a multi-prime RSA key. */

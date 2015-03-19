@@ -357,24 +357,6 @@ OPENSSL_EXPORT int EVP_VerifyFinal(EVP_MD_CTX *ctx, const uint8_t *sig,
                                    size_t sig_len, EVP_PKEY *pkey);
 
 
-/* Printing */
-
-/* EVP_PKEY_print_public prints a textual representation of the public key in
- * |pkey| to |out|. Returns one on success or zero otherwise. */
-OPENSSL_EXPORT int EVP_PKEY_print_public(BIO *out, const EVP_PKEY *pkey,
-                                         int indent, ASN1_PCTX *pctx);
-
-/* EVP_PKEY_print_private prints a textual representation of the private key in
- * |pkey| to |out|. Returns one on success or zero otherwise. */
-OPENSSL_EXPORT int EVP_PKEY_print_private(BIO *out, const EVP_PKEY *pkey,
-                                          int indent, ASN1_PCTX *pctx);
-
-/* EVP_PKEY_print_params prints a textual representation of the parameters in
- * |pkey| to |out|. Returns one on success or zero otherwise. */
-OPENSSL_EXPORT int EVP_PKEY_print_params(BIO *out, const EVP_PKEY *pkey,
-                                         int indent, ASN1_PCTX *pctx);
-
-
 /* Password stretching.
  *
  * Password stretching functions take a low-entropy password and apply a slow

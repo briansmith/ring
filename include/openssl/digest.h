@@ -92,10 +92,6 @@ OPENSSL_EXPORT const EVP_MD *EVP_md5_sha1(void);
  * such digest is known. */
 OPENSSL_EXPORT const EVP_MD *EVP_get_digestbynid(int nid);
 
-/* EVP_get_digestbyobj returns an |EVP_MD| for the given |ASN1_OBJECT|, or NULL
- * if no such digest is known. */
-OPENSSL_EXPORT const EVP_MD *EVP_get_digestbyobj(const ASN1_OBJECT *obj);
-
 
 /* Digest contexts.
  *
@@ -203,10 +199,6 @@ OPENSSL_EXPORT int EVP_MD_CTX_copy(EVP_MD_CTX *out, const EVP_MD_CTX *in);
 /* EVP_add_digest does nothing and returns one. It exists only for
  * compatibility with OpenSSL. */
 OPENSSL_EXPORT int EVP_add_digest(const EVP_MD *digest);
-
-/* EVP_get_cipherbyname returns an |EVP_MD| given a human readable name in
- * |name|, or NULL if the name is unknown. */
-OPENSSL_EXPORT const EVP_MD *EVP_get_digestbyname(const char *);
 
 
 /* Digest operation accessors. */
