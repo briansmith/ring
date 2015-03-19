@@ -1357,12 +1357,14 @@ static int ssl_scan_clienthello_tlsext(SSL *s, CBS *cbs, int *out_alert) {
   if (s->cert->peer_sigalgs) {
     OPENSSL_free(s->cert->peer_sigalgs);
     s->cert->peer_sigalgs = NULL;
+    s->cert->peer_sigalgslen = 0;
   }
 
   /* Clear any shared signature algorithms */
   if (s->cert->shared_sigalgs) {
     OPENSSL_free(s->cert->shared_sigalgs);
     s->cert->shared_sigalgs = NULL;
+    s->cert->shared_sigalgslen = 0;
   }
 
   /* Clear ECC extensions */
@@ -2399,6 +2401,7 @@ static int tls1_set_shared_sigalgs(SSL *s) {
   if (c->shared_sigalgs) {
     OPENSSL_free(c->shared_sigalgs);
     c->shared_sigalgs = NULL;
+    c->shared_sigalgslen = 0;
   }
 
   /* If client use client signature algorithms if not NULL */
@@ -2449,21 +2452,12 @@ int tls1_process_sigalgs(SSL *s, const CBS *sigalgs) {
     return 1;
   }
 
-  /* Length must be even */
-  if (CBS_len(sigalgs) % 2 != 0) {
+  if (CBS_len(sigalgs) % 2 != 0 ||
+      !CBS_stow(sigalgs, &c->peer_sigalgs, &c->peer_sigalgslen) ||
+      !tls1_set_shared_sigalgs(s)) {
     return 0;
   }
 
-  /* Should never happen */
-  if (!c) {
-    return 0;
-  }
-
-  if (!CBS_stow(sigalgs, &c->peer_sigalgs, &c->peer_sigalgslen)) {
-    return 0;
-  }
-
-  tls1_set_shared_sigalgs(s);
   return 1;
 }
 
