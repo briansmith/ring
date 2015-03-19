@@ -130,7 +130,7 @@ NextCipherSuite:
 		return errors.New("tls: short read from Rand: " + err.Error())
 	}
 
-	if hello.vers >= VersionTLS12 && !c.config.Bugs.NoSignatureAndHashes {
+	if hello.vers >= VersionTLS12 && !c.config.Bugs.NoSignatureAndHashes && (c.cipherSuite == 0 || !c.config.Bugs.NoSignatureAlgorithmsOnRenego) {
 		hello.signatureAndHashes = c.config.signatureAndHashesForClient()
 	}
 

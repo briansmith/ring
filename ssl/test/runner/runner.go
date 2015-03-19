@@ -2682,6 +2682,19 @@ func addRenegotiationTests() {
 		},
 		flags: []string{"-allow-unsafe-legacy-renegotiation"},
 	})
+	// Regression test for CVE-2015-0291.
+	testCases = append(testCases, testCase{
+		testType: serverTest,
+		name:     "Renegotiate-Server-NoSignatureAlgorithms",
+		config: Config{
+			Bugs: ProtocolBugs{
+				NeverResumeOnRenego:           true,
+				NoSignatureAlgorithmsOnRenego: true,
+			},
+		},
+		flags:           []string{"-renegotiate"},
+		shimWritesFirst: true,
+	})
 	// TODO(agl): test the renegotiation info SCSV.
 	testCases = append(testCases, testCase{
 		name:        "Renegotiate-Client",

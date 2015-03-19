@@ -667,6 +667,10 @@ type ProtocolBugs struct {
 	// NeverResumeOnRenego, if true, causes renegotiations to always be full
 	// handshakes.
 	NeverResumeOnRenego bool
+
+	// NoSignatureAlgorithmsOnRenego, if true, causes renegotiations to omit
+	// the signature_algorithms extension.
+	NoSignatureAlgorithmsOnRenego bool
 }
 
 func (c *Config) serverInit() {
