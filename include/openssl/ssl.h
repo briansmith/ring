@@ -2276,6 +2276,15 @@ OPENSSL_EXPORT int SSL_set_session_ticket_ext(SSL *s, void *ext_data,
                                               int ext_len);
 OPENSSL_EXPORT int SSL_set_session_secret_cb(SSL *s, void *cb, void *arg);
 OPENSSL_EXPORT int SSL_set_session_ticket_ext_cb(SSL *s, void *cb, void *arg);
+OPENSSL_EXPORT int SSL_set_ssl_method(SSL *s, const SSL_METHOD *method);
+
+#define OPENSSL_VERSION_TEXT "BoringSSL"
+
+#define SSLEAY_VERSION 0
+
+/* SSLeay_version is a compatibility function that returns the string
+ * "BoringSSL". */
+OPENSSL_EXPORT const char *SSLeay_version(int unused);
 
 
 #ifdef  __cplusplus
