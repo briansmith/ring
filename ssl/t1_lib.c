@@ -1577,7 +1577,7 @@ static int ssl_scan_clienthello_tlsext(SSL *s, CBS *cbs, int *out_alert) {
       }
       /* If sigalgs received and no shared algorithms fatal error. */
       if (s->cert->peer_sigalgs && !s->cert->shared_sigalgs) {
-        OPENSSL_PUT_ERROR(SSL, ssl_add_serverhello_tlsext,
+        OPENSSL_PUT_ERROR(SSL, ssl_scan_clienthello_tlsext,
                           SSL_R_NO_SHARED_SIGATURE_ALGORITHMS);
         *out_alert = SSL_AD_ILLEGAL_PARAMETER;
         return 0;

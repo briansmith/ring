@@ -806,7 +806,7 @@ int SSL_add_dir_cert_subjects_to_stack(STACK_OF(X509_NAME) * stack,
   }
 
   if (errno) {
-    OPENSSL_PUT_ERROR(SSL, SSL_add_file_cert_subjects_to_stack, ERR_R_SYS_LIB);
+    OPENSSL_PUT_ERROR(SSL, SSL_add_dir_cert_subjects_to_stack, ERR_R_SYS_LIB);
     ERR_add_error_data(3, "OPENSSL_DIR_read(&ctx, '", dir, "')");
     goto err;
   }

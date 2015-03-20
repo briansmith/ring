@@ -1493,7 +1493,7 @@ int ssl3_get_certificate_request(SSL *s) {
 
     if (!CBS_skip(&distinguished_name, data - CBS_data(&distinguished_name))) {
       ssl3_send_alert(s, SSL3_AL_FATAL, SSL_AD_DECODE_ERROR);
-      OPENSSL_PUT_ERROR(SSL, ssl3_get_server_certificate, ERR_R_INTERNAL_ERROR);
+      OPENSSL_PUT_ERROR(SSL, ssl3_get_certificate_request, ERR_R_INTERNAL_ERROR);
       goto err;
     }
 

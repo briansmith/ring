@@ -369,7 +369,7 @@ static int pkcs1_prefixed_msg(uint8_t **out_msg, size_t *out_msg_len,
   if (hash_nid == NID_md5_sha1) {
     /* Special case: SSL signature, just check the length. */
     if (msg_len != SSL_SIG_LENGTH) {
-      OPENSSL_PUT_ERROR(RSA, RSA_sign, RSA_R_INVALID_MESSAGE_LENGTH);
+      OPENSSL_PUT_ERROR(RSA, pkcs1_prefixed_msg, RSA_R_INVALID_MESSAGE_LENGTH);
       return 0;
     }
 
@@ -389,19 +389,19 @@ static int pkcs1_prefixed_msg(uint8_t **out_msg, size_t *out_msg_len,
   }
 
   if (prefix == NULL) {
-    OPENSSL_PUT_ERROR(RSA, RSA_sign, RSA_R_UNKNOWN_ALGORITHM_TYPE);
+    OPENSSL_PUT_ERROR(RSA, pkcs1_prefixed_msg, RSA_R_UNKNOWN_ALGORITHM_TYPE);
     return 0;
   }
 
   signed_msg_len = prefix_len + msg_len;
   if (signed_msg_len < prefix_len) {
-    OPENSSL_PUT_ERROR(RSA, RSA_sign, RSA_R_TOO_LONG);
+    OPENSSL_PUT_ERROR(RSA, pkcs1_prefixed_msg, RSA_R_TOO_LONG);
     return 0;
   }
 
   signed_msg = OPENSSL_malloc(signed_msg_len);
   if (!signed_msg) {
-    OPENSSL_PUT_ERROR(RSA, RSA_sign, ERR_R_MALLOC_FAILURE);
+    OPENSSL_PUT_ERROR(RSA, pkcs1_prefixed_msg, ERR_R_MALLOC_FAILURE);
     return 0;
   }
 

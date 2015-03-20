@@ -1217,7 +1217,7 @@ static int collect_data(BUF_MEM *buf, const unsigned char **p, long plen)
 		len = buf->length;
 		if (!BUF_MEM_grow_clean(buf, len + plen))
 			{
-			OPENSSL_PUT_ERROR(ASN1, asn1_collect,  ERR_R_MALLOC_FAILURE);
+			OPENSSL_PUT_ERROR(ASN1, collect_data,  ERR_R_MALLOC_FAILURE);
 			return 0;
 			}
 		memcpy(buf->data + len, *p, plen);

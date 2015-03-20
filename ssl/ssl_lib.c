@@ -896,7 +896,7 @@ int SSL_accept(SSL *s) {
   }
 
   if (s->handshake_func != s->method->ssl_accept) {
-    OPENSSL_PUT_ERROR(SSL, SSL_connect, ERR_R_INTERNAL_ERROR);
+    OPENSSL_PUT_ERROR(SSL, SSL_accept, ERR_R_INTERNAL_ERROR);
     return -1;
   }
 

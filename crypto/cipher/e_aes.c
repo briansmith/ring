@@ -1323,7 +1323,7 @@ static int aead_aes_key_wrap_open(const EVP_AEAD_CTX *ctx, uint8_t *out,
   }
 
   if (in_len < 24) {
-    OPENSSL_PUT_ERROR(CIPHER, aead_aes_gcm_open, CIPHER_R_BAD_DECRYPT);
+    OPENSSL_PUT_ERROR(CIPHER, aead_aes_key_wrap_open, CIPHER_R_BAD_DECRYPT);
     return 0;
   }
 
@@ -1360,7 +1360,7 @@ static int aead_aes_key_wrap_open(const EVP_AEAD_CTX *ctx, uint8_t *out,
   }
 
   if (CRYPTO_memcmp(A, nonce, 8) != 0) {
-    OPENSSL_PUT_ERROR(CIPHER, aead_aes_gcm_open, CIPHER_R_BAD_DECRYPT);
+    OPENSSL_PUT_ERROR(CIPHER, aead_aes_key_wrap_open, CIPHER_R_BAD_DECRYPT);
     return 0;
   }
 
