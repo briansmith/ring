@@ -285,6 +285,36 @@ OPENSSL_EXPORT int RSA_check_key(const RSA *rsa);
  * otherwise. */
 OPENSSL_EXPORT int RSA_recover_crt_params(RSA *rsa);
 
+/* RSA_verify_PKCS1_PSS_mgf1 verifies that |EM| is a correct PSS padding of
+ * |mHash|, where |mHash| is a digest produced by |Hash|. |EM| must point to
+ * exactly |RSA_size(rsa)| bytes of data. The |mgf1Hash| argument specifies the
+ * hash function for generating the mask. If NULL, |Hash| is used. The |sLen|
+ * argument specifies the expected salt length in bytes. If |sLen| is -1 then
+ * the salt length is the same as the hash length. If -2, then the salt length
+ * is maximal and is taken from the size of |EM|.
+ *
+ * It returns one on success or zero on error. */
+OPENSSL_EXPORT int RSA_verify_PKCS1_PSS_mgf1(RSA *rsa, const uint8_t *mHash,
+                                             const EVP_MD *Hash,
+                                             const EVP_MD *mgf1Hash,
+                                             const uint8_t *EM, int sLen);
+
+/* RSA_padding_add_PKCS1_PSS_mgf1 writes a PSS padding of |mHash| to |EM|,
+ * where |mHash| is a digest produced by |Hash|. |RSA_size(rsa)| bytes of
+ * output will be written to |EM|. The |mgf1Hash| argument specifies the hash
+ * function for generating the mask. If NULL, |Hash| is used. The |sLen|
+ * argument specifies the expected salt length in bytes. If |sLen| is -1 then
+ * the salt length is the same as the hash length. If -2, then the salt length
+ * is maximal given the space in |EM|.
+ *
+ * It returns one on success or zero on error. */
+OPENSSL_EXPORT int RSA_padding_add_PKCS1_PSS_mgf1(RSA *rsa, uint8_t *EM,
+                                                  const uint8_t *mHash,
+                                                  const EVP_MD *Hash,
+                                                  const EVP_MD *mgf1Hash,
+                                                  int sLen);
+
+
 
 /* ASN.1 functions. */
 

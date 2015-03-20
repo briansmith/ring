@@ -113,15 +113,6 @@ int RSA_padding_add_none(uint8_t *to, unsigned to_len, const uint8_t *from,
 int RSA_padding_check_none(uint8_t *to, unsigned to_len, const uint8_t *from,
                            unsigned from_len);
 
-/* RSA_verify_PKCS1_PSS_mgf1 */
-int RSA_verify_PKCS1_PSS_mgf1(RSA *rsa, const uint8_t *mHash,
-                              const EVP_MD *Hash, const EVP_MD *mgf1Hash,
-                              const uint8_t *EM, int sLen);
-
-int RSA_padding_add_PKCS1_PSS_mgf1(RSA *rsa, uint8_t *EM, const uint8_t *mHash,
-                                   const EVP_MD *Hash, const EVP_MD *mgf1Hash,
-                                   int sLen);
-
 /* RSA_private_transform calls either the method-specific |private_transform|
  * function (if given) or the generic one. See the comment for
  * |private_transform| in |rsa_meth_st|. */
