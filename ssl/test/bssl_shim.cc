@@ -24,8 +24,8 @@
 #else
 #include <io.h>
 #pragma warning(push, 3)
-#include <WinSock2.h>
-#include <WS2tcpip.h>
+#include <winsock2.h>
+#include <ws2tcpip.h>
 #pragma warning(pop)
 
 #pragma comment(lib, "Ws2_32.lib")

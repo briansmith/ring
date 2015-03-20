@@ -64,7 +64,7 @@
 #else
 #include <io.h>
 #pragma warning(push, 3)
-#include <Windows.h>
+#include <windows.h>
 #pragma warning(pop)
 #endif
 
