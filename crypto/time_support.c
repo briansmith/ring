@@ -59,6 +59,12 @@
 #define _POSIX_C_SOURCE 201410L  /* for gmtime_r */
 #endif
 
+#if defined(__MINGW32__)
+#define MINGW_HAS_SECURE_API 1  /* supplied by libmingwex */
+#include <sec_api/time_s.h>  /* for correct definition of gmtime_s */
+#undef MINGW_HAS_SECURE_API
+#endif
+
 #include <openssl/time_support.h>
 
 #define SECS_PER_DAY (24 * 60 * 60)
