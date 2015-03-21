@@ -829,6 +829,13 @@ func (c *Conn) writeV2Record(data []byte) (n int, err error) {
 // to the connection and updates the record layer state.
 // c.out.Mutex <= L.
 func (c *Conn) writeRecord(typ recordType, data []byte) (n int, err error) {
+	if typ != recordTypeAlert && c.config.Bugs.SendWarningAlerts != 0 {
+		alert := make([]byte, 2)
+		alert[0] = alertLevelWarning
+		alert[1] = byte(c.config.Bugs.SendWarningAlerts)
+		c.writeRecord(recordTypeAlert, alert)
+	}
+
 	if c.isDTLS {
 		return c.dtlsWriteRecord(typ, data)
 	}

@@ -679,6 +679,10 @@ type ProtocolBugs struct {
 	// IgnorePeerSignatureAlgorithmPreferences, if true, causes the peer's
 	// signature algorithm preferences to be ignored.
 	IgnorePeerSignatureAlgorithmPreferences bool
+
+	// SendWarningAlerts, if non-zero, causes every record to be prefaced by
+	// a warning alert.
+	SendWarningAlerts alert
 }
 
 func (c *Config) serverInit() {

@@ -904,6 +904,23 @@ var testCases = []testCase{
 		shouldFail:    true,
 		expectedError: ":WRONG_CIPHER_RETURNED:",
 	},
+	{
+		name: "SendWarningAlerts",
+		config: Config{
+			Bugs: ProtocolBugs{
+				SendWarningAlerts: alertAccessDenied,
+			},
+		},
+	},
+	{
+		protocol: dtls,
+		name:     "SendWarningAlerts-DTLS",
+		config: Config{
+			Bugs: ProtocolBugs{
+				SendWarningAlerts: alertAccessDenied,
+			},
+		},
+	},
 }
 
 func doExchange(test *testCase, config *Config, conn net.Conn, messageLen int, isResume bool) error {
