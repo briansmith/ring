@@ -158,9 +158,7 @@ OPENSSL_EXPORT void CRYPTO_lock(int mode, int lock_num, const char *file,
 
 /* CRYPTO_add_lock adds |amount| to |*pointer|, protected by the lock specified
  * by |lock_num|. It returns the new value of |*pointer|. Don't call this
- * function directly, rather use the |CRYPTO_add_lock| macro.
- *
- * TODO(fork): rename to CRYPTO_add_locked. */
+ * function directly, rather use the |CRYPTO_add| macro. */
 OPENSSL_EXPORT int CRYPTO_add_lock(int *pointer, int amount, int lock_num,
                                    const char *file, int line);
 
