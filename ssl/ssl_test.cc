@@ -15,40 +15,45 @@
 #include <stdio.h>
 #include <string.h>
 
+#include <string>
+#include <vector>
+
 #include <openssl/base64.h>
 #include <openssl/bio.h>
 #include <openssl/err.h>
 #include <openssl/ssl.h>
 
-typedef struct {
-  int id;
+#include "test/scoped_types.h"
+
+struct ExpectedCipher {
+  unsigned long id;
   int in_group_flag;
-} EXPECTED_CIPHER;
+};
 
-typedef struct {
-  /* The rule string to apply. */
+struct CipherTest {
+  // The rule string to apply.
   const char *rule;
-  /* The list of expected ciphers, in order, terminated with -1. */
-  const EXPECTED_CIPHER *expected;
-} CIPHER_TEST;
+  // The list of expected ciphers, in order, terminated with -1.
+  const ExpectedCipher *expected;
+};
 
-/* Selecting individual ciphers should work. */
+// Selecting individual ciphers should work.
 static const char kRule1[] =
     "ECDHE-ECDSA-CHACHA20-POLY1305:"
     "ECDHE-RSA-CHACHA20-POLY1305:"
     "ECDHE-ECDSA-AES128-GCM-SHA256:"
     "ECDHE-RSA-AES128-GCM-SHA256";
 
-static const EXPECTED_CIPHER kExpected1[] = {
+static const ExpectedCipher kExpected1[] = {
   { TLS1_CK_ECDHE_ECDSA_CHACHA20_POLY1305, 0 },
   { TLS1_CK_ECDHE_RSA_CHACHA20_POLY1305, 0 },
   { TLS1_CK_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256, 0 },
   { TLS1_CK_ECDHE_RSA_WITH_AES_128_GCM_SHA256, 0 },
-  { -1, -1 },
+  { 0, 0 },
 };
 
-/* + reorders selected ciphers to the end, keeping their relative
- * order. */
+// + reorders selected ciphers to the end, keeping their relative
+// order.
 static const char kRule2[] =
     "ECDHE-ECDSA-CHACHA20-POLY1305:"
     "ECDHE-RSA-CHACHA20-POLY1305:"
@@ -56,15 +61,15 @@ static const char kRule2[] =
     "ECDHE-RSA-AES128-GCM-SHA256:"
     "+aRSA";
 
-static const EXPECTED_CIPHER kExpected2[] = {
+static const ExpectedCipher kExpected2[] = {
   { TLS1_CK_ECDHE_ECDSA_CHACHA20_POLY1305, 0 },
   { TLS1_CK_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256, 0 },
   { TLS1_CK_ECDHE_RSA_CHACHA20_POLY1305, 0 },
   { TLS1_CK_ECDHE_RSA_WITH_AES_128_GCM_SHA256, 0 },
-  { -1, -1 },
+  { 0, 0 },
 };
 
-/* ! banishes ciphers from future selections. */
+// ! banishes ciphers from future selections.
 static const char kRule3[] =
     "!aRSA:"
     "ECDHE-ECDSA-CHACHA20-POLY1305:"
@@ -72,35 +77,35 @@ static const char kRule3[] =
     "ECDHE-ECDSA-AES128-GCM-SHA256:"
     "ECDHE-RSA-AES128-GCM-SHA256";
 
-static const EXPECTED_CIPHER kExpected3[] = {
+static const ExpectedCipher kExpected3[] = {
   { TLS1_CK_ECDHE_ECDSA_CHACHA20_POLY1305, 0 },
   { TLS1_CK_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256, 0 },
-  { -1, -1 },
+  { 0, 0 },
 };
 
-/* Multiple masks can be ANDed in a single rule. */
+// Multiple masks can be ANDed in a single rule.
 static const char kRule4[] = "kRSA+AESGCM+AES128";
 
-static const EXPECTED_CIPHER kExpected4[] = {
+static const ExpectedCipher kExpected4[] = {
   { TLS1_CK_RSA_WITH_AES_128_GCM_SHA256, 0 },
-  { -1, -1 },
+  { 0, 0 },
 };
 
-/* - removes selected ciphers, but preserves their order for future
- * selections. Select AES_128_GCM, but order the key exchanges RSA,
- * DHE_RSA, ECDHE_RSA. */
+// - removes selected ciphers, but preserves their order for future
+// selections. Select AES_128_GCM, but order the key exchanges RSA,
+// DHE_RSA, ECDHE_RSA.
 static const char kRule5[] =
     "ALL:-kECDHE:-kDHE:-kRSA:-ALL:"
     "AESGCM+AES128+aRSA";
 
-static const EXPECTED_CIPHER kExpected5[] = {
+static const ExpectedCipher kExpected5[] = {
   { TLS1_CK_RSA_WITH_AES_128_GCM_SHA256, 0 },
   { TLS1_CK_DHE_RSA_WITH_AES_128_GCM_SHA256, 0 },
   { TLS1_CK_ECDHE_RSA_WITH_AES_128_GCM_SHA256, 0 },
-  { -1, -1 },
+  { 0, 0 },
 };
 
-/* Unknown selectors are no-ops. */
+// Unknown selectors are no-ops.
 static const char kRule6[] =
     "ECDHE-ECDSA-CHACHA20-POLY1305:"
     "ECDHE-RSA-CHACHA20-POLY1305:"
@@ -108,44 +113,44 @@ static const char kRule6[] =
     "ECDHE-RSA-AES128-GCM-SHA256:"
     "BOGUS1:-BOGUS2:+BOGUS3:!BOGUS4";
 
-static const EXPECTED_CIPHER kExpected6[] = {
+static const ExpectedCipher kExpected6[] = {
   { TLS1_CK_ECDHE_ECDSA_CHACHA20_POLY1305, 0 },
   { TLS1_CK_ECDHE_RSA_CHACHA20_POLY1305, 0 },
   { TLS1_CK_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256, 0 },
   { TLS1_CK_ECDHE_RSA_WITH_AES_128_GCM_SHA256, 0 },
-  { -1, -1 },
+  { 0, 0 },
 };
 
-/* Square brackets specify equi-preference groups. */
+// Square brackets specify equi-preference groups.
 static const char kRule7[] =
     "[ECDHE-ECDSA-CHACHA20-POLY1305|ECDHE-ECDSA-AES128-GCM-SHA256]:"
     "[ECDHE-RSA-CHACHA20-POLY1305]:"
     "ECDHE-RSA-AES128-GCM-SHA256";
 
-static const EXPECTED_CIPHER kExpected7[] = {
+static const ExpectedCipher kExpected7[] = {
   { TLS1_CK_ECDHE_ECDSA_CHACHA20_POLY1305, 1 },
   { TLS1_CK_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256, 0 },
   { TLS1_CK_ECDHE_RSA_CHACHA20_POLY1305, 0 },
   { TLS1_CK_ECDHE_RSA_WITH_AES_128_GCM_SHA256, 0 },
-  { -1, -1 },
+  { 0, 0 },
 };
 
-/* @STRENGTH performs a stable strength-sort of the selected
- * ciphers and only the selected ciphers. */
+// @STRENGTH performs a stable strength-sort of the selected
+// ciphers and only the selected ciphers.
 static const char kRule8[] =
-    /* To simplify things, banish all but {ECDHE_RSA,RSA} x
-     * {CHACHA20,AES_256_CBC,AES_128_CBC,RC4} x SHA1. */
+    // To simplify things, banish all but {ECDHE_RSA,RSA} x
+    // {CHACHA20,AES_256_CBC,AES_128_CBC,RC4} x SHA1.
     "!kEDH:!AESGCM:!3DES:!SHA256:!MD5:!SHA384:"
-    /* Order some ciphers backwards by strength. */
+    // Order some ciphers backwards by strength.
     "ALL:-CHACHA20:-AES256:-AES128:-RC4:-ALL:"
-    /* Select ECDHE ones and sort them by strength. Ties should resolve
-     * based on the order above. */
+    // Select ECDHE ones and sort them by strength. Ties should resolve
+    // based on the order above.
     "kECDHE:@STRENGTH:-ALL:"
-    /* Now bring back everything uses RSA. ECDHE_RSA should be first,
-     * sorted by strength. Then RSA, backwards by strength. */
+    // Now bring back everything uses RSA. ECDHE_RSA should be first,
+    // sorted by strength. Then RSA, backwards by strength.
     "aRSA";
 
-static const EXPECTED_CIPHER kExpected8[] = {
+static const ExpectedCipher kExpected8[] = {
   { TLS1_CK_ECDHE_RSA_WITH_AES_256_CBC_SHA, 0 },
   { TLS1_CK_ECDHE_RSA_CHACHA20_POLY1305, 0 },
   { TLS1_CK_ECDHE_RSA_WITH_RC4_128_SHA, 0 },
@@ -153,10 +158,10 @@ static const EXPECTED_CIPHER kExpected8[] = {
   { SSL3_CK_RSA_RC4_128_SHA, 0 },
   { TLS1_CK_RSA_WITH_AES_128_SHA, 0 },
   { TLS1_CK_RSA_WITH_AES_256_SHA, 0 },
-  { -1, -1 },
+  { 0, 0 },
 };
 
-static CIPHER_TEST kCipherTests[] = {
+static CipherTest kCipherTests[] = {
   { kRule1, kExpected1 },
   { kRule2, kExpected2 },
   { kRule3, kExpected3 },
@@ -169,20 +174,20 @@ static CIPHER_TEST kCipherTests[] = {
 };
 
 static const char *kBadRules[] = {
-  /* Invalid brackets. */
+  // Invalid brackets.
   "[ECDHE-RSA-CHACHA20-POLY1305|ECDHE-RSA-AES128-GCM-SHA256",
   "RSA]",
   "[[RSA]]",
-  /* Operators inside brackets */
+  // Operators inside brackets.
   "[+RSA]",
-  /* Unknown directive. */
+  // Unknown directive.
   "@BOGUS",
-  /* Empty cipher lists error at SSL_CTX_set_cipher_list. */
+  // Empty cipher lists error at SSL_CTX_set_cipher_list.
   "",
   "BOGUS",
-  /* Invalid command. */
+  // Invalid command.
   "?BAR",
-  /* Special operators are not allowed if groups are used. */
+  // Special operators are not allowed if groups are used.
   "[ECDHE-RSA-CHACHA20-POLY1305|ECDHE-RSA-AES128-GCM-SHA256]:+FOO",
   "[ECDHE-RSA-CHACHA20-POLY1305|ECDHE-RSA-AES128-GCM-SHA256]:!FOO",
   "[ECDHE-RSA-CHACHA20-POLY1305|ECDHE-RSA-AES128-GCM-SHA256]:-FOO",
@@ -190,15 +195,13 @@ static const char *kBadRules[] = {
   NULL,
 };
 
-static void print_cipher_preference_list(
-    struct ssl_cipher_preference_list_st *list) {
-  size_t i;
-  int in_group = 0;
-  for (i = 0; i < sk_SSL_CIPHER_num(list->ciphers); i++) {
+static void PrintCipherPreferenceList(ssl_cipher_preference_list_st *list) {
+  bool in_group = false;
+  for (size_t i = 0; i < sk_SSL_CIPHER_num(list->ciphers); i++) {
     const SSL_CIPHER *cipher = sk_SSL_CIPHER_value(list->ciphers, i);
     if (!in_group && list->in_group_flags[i]) {
       fprintf(stderr, "\t[\n");
-      in_group = 1;
+      in_group = true;
     }
     fprintf(stderr, "\t");
     if (in_group) {
@@ -207,79 +210,68 @@ static void print_cipher_preference_list(
     fprintf(stderr, "%s\n", SSL_CIPHER_get_name(cipher));
     if (in_group && !list->in_group_flags[i]) {
       fprintf(stderr, "\t]\n");
-      in_group = 0;
+      in_group = false;
     }
   }
 }
 
-static int test_cipher_rule(CIPHER_TEST *t) {
-  int ret = 0;
-  SSL_CTX *ctx = SSL_CTX_new(TLS_method());
-  size_t i;
-
-  if (ctx == NULL) {
-    goto done;
+static bool TestCipherRule(CipherTest *t) {
+  ScopedSSL_CTX ctx(SSL_CTX_new(TLS_method()));
+  if (!ctx) {
+    return false;
   }
 
-  if (!SSL_CTX_set_cipher_list(ctx, t->rule)) {
+  if (!SSL_CTX_set_cipher_list(ctx.get(), t->rule)) {
     fprintf(stderr, "Error testing cipher rule '%s'\n", t->rule);
-    BIO_print_errors_fp(stderr);
-    goto done;
+    return false;
   }
 
-  /* Compare the two lists. */
+  // Compare the two lists.
+  size_t i;
   for (i = 0; i < sk_SSL_CIPHER_num(ctx->cipher_list->ciphers); i++) {
     const SSL_CIPHER *cipher =
         sk_SSL_CIPHER_value(ctx->cipher_list->ciphers, i);
     if (t->expected[i].id != SSL_CIPHER_get_id(cipher) ||
         t->expected[i].in_group_flag != ctx->cipher_list->in_group_flags[i]) {
       fprintf(stderr, "Error: cipher rule '%s' evaluted to:\n", t->rule);
-      print_cipher_preference_list(ctx->cipher_list);
-      goto done;
+      PrintCipherPreferenceList(ctx->cipher_list);
+      return false;
     }
   }
 
-  if (t->expected[i].id != -1) {
+  if (t->expected[i].id != 0) {
     fprintf(stderr, "Error: cipher rule '%s' evaluted to:\n", t->rule);
-    print_cipher_preference_list(ctx->cipher_list);
-    goto done;
+    PrintCipherPreferenceList(ctx->cipher_list);
+    return false;
   }
 
-  ret = 1;
-done:
-  if (ctx != NULL) {
-    SSL_CTX_free(ctx);
-  }
-  return ret;
+  return true;
 }
 
-static int test_cipher_rules(void) {
-  size_t i;
-  for (i = 0; kCipherTests[i].rule != NULL; i++) {
-    if (!test_cipher_rule(&kCipherTests[i])) {
-      return 0;
+static bool TestCipherRules() {
+  for (size_t i = 0; kCipherTests[i].rule != NULL; i++) {
+    if (!TestCipherRule(&kCipherTests[i])) {
+      return false;
     }
   }
 
-  for (i = 0; kBadRules[i] != NULL; i++) {
-    SSL_CTX *ctx = SSL_CTX_new(SSLv23_server_method());
-    if (ctx == NULL) {
-      return 0;
+  for (size_t i = 0; kBadRules[i] != NULL; i++) {
+    ScopedSSL_CTX ctx(SSL_CTX_new(SSLv23_server_method()));
+    if (!ctx) {
+      return false;
     }
-    if (SSL_CTX_set_cipher_list(ctx, kBadRules[i])) {
+    if (SSL_CTX_set_cipher_list(ctx.get(), kBadRules[i])) {
       fprintf(stderr, "Cipher rule '%s' unexpectedly succeeded\n", kBadRules[i]);
-      SSL_CTX_free(ctx);
-      return 0;
+      return false;
     }
     ERR_clear_error();
-    SSL_CTX_free(ctx);
   }
 
-  return 1;
+  return true;
 }
 
-/* kOpenSSLSession is a serialized SSL_SESSION generated from openssl
- * s_client -sess_out. */
+// kOpenSSLSession is a serialized SSL_SESSION generated from openssl
+// s_client -sess_out.
 static const char kOpenSSLSession[] =
     "MIIFpQIBAQICAwMEAsAvBCAG5Q1ndq4Yfmbeo1zwLkNRKmCXGdNgWvGT3cskV0yQ"
     "kAQwJlrlzkAWBOWiLj/jJ76D7l+UXoizP2KI2C7I2FccqMmIfFmmkUy32nIJ0mZH"
@@ -313,9 +305,9 @@ static const char kOpenSSLSession[] =
     "OTDKPNj3+inbMaVigtK4PLyPq+Topyzvx9USFgRvyuoxn0Hgb+R0A3j6SLRuyOdA"
     "i4gv7Y5oliyn";
 
-/* kCustomSession is a custom serialized SSL_SESSION generated by
- * filling in missing fields from |kOpenSSLSession|. This includes
- * providing |peer_sha256|, so |peer| is not serialized. */
+// kCustomSession is a custom serialized SSL_SESSION generated by
+// filling in missing fields from |kOpenSSLSession|. This includes
+// providing |peer_sha256|, so |peer| is not serialized.
 static const char kCustomSession[] =
     "MIIBdgIBAQICAwMEAsAvBCAG5Q1ndq4Yfmbeo1zwLkNRKmCXGdNgWvGT3cskV0yQ"
     "kAQwJlrlzkAWBOWiLj/jJ76D7l+UXoizP2KI2C7I2FccqMmIfFmmkUy32nIJ0mZH"
@@ -326,131 +318,103 @@ static const char kCustomSession[] =
     "q+Topyzvx9USFgRvyuoxn0Hgb+R0A3j6SLRuyOdAi4gv7Y5oliynrSIEIAYGBgYG"
     "BgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGrgMEAQevAwQBBLADBAEF";
 
-static int decode_base64(uint8_t **out, size_t *out_len, const char *in) {
+static bool DecodeBase64(std::vector<uint8_t> *out, const char *in) {
   size_t len;
-
   if (!EVP_DecodedLength(&len, strlen(in))) {
     fprintf(stderr, "EVP_DecodedLength failed\n");
-    return 0;
+    return false;
   }
 
-  *out = OPENSSL_malloc(len);
-  if (*out == NULL) {
-    fprintf(stderr, "malloc failed\n");
-    return 0;
-  }
-
-  if (!EVP_DecodeBase64(*out, out_len, len, (const uint8_t *)in,
+  out->resize(len);
+  if (!EVP_DecodeBase64(bssl::vector_data(out), &len, len, (const uint8_t *)in,
                         strlen(in))) {
     fprintf(stderr, "EVP_DecodeBase64 failed\n");
-    OPENSSL_free(*out);
-    *out = NULL;
-    return 0;
+    return false;
   }
-  return 1;
+  out->resize(len);
+  return true;
 }
 
-static int test_ssl_session_asn1(const char *input_b64) {
-  int ret = 0, len;
-  size_t input_len, encoded_len;
-  uint8_t *input = NULL, *encoded = NULL;
+static bool TestSSL_SESSIONEncoding(const char *input_b64) {
   const uint8_t *cptr;
   uint8_t *ptr;
-  SSL_SESSION *session = NULL;
 
-  /* Decode the input. */
-  if (!decode_base64(&input, &input_len, input_b64)) {
-    goto done;
+  // Decode the input.
+  std::vector<uint8_t> input;
+  if (!DecodeBase64(&input, input_b64)) {
+    return false;
   }
 
-  /* Verify the SSL_SESSION decodes. */
-  cptr = input;
-  session = d2i_SSL_SESSION(NULL, &cptr, input_len);
-  if (session == NULL || cptr != input + input_len) {
+  // Verify the SSL_SESSION decodes.
+  cptr = bssl::vector_data(&input);
+  ScopedSSL_SESSION session(d2i_SSL_SESSION(NULL, &cptr, input.size()));
+  if (!session || cptr != bssl::vector_data(&input) + input.size()) {
     fprintf(stderr, "d2i_SSL_SESSION failed\n");
-    goto done;
+    return false;
   }
 
-  /* Verify the SSL_SESSION encoding round-trips. */
-  if (!SSL_SESSION_to_bytes(session, &encoded, &encoded_len)) {
+  // Verify the SSL_SESSION encoding round-trips.
+  size_t encoded_len;
+  ScopedOpenSSLBytes encoded;
+  uint8_t *encoded_raw;
+  if (!SSL_SESSION_to_bytes(session.get(), &encoded_raw, &encoded_len)) {
     fprintf(stderr, "SSL_SESSION_to_bytes failed\n");
-    goto done;
+    return false;
   }
-  if (encoded_len != input_len ||
-      memcmp(input, encoded, input_len) != 0) {
+  encoded.reset(encoded_raw);
+  if (encoded_len != input.size() ||
+      memcmp(bssl::vector_data(&input), encoded.get(), input.size()) != 0) {
     fprintf(stderr, "SSL_SESSION_to_bytes did not round-trip\n");
-    goto done;
+    return false;
   }
-  OPENSSL_free(encoded);
-  encoded = NULL;
 
-  /* Verify the SSL_SESSION encoding round-trips via the legacy API. */
-  len = i2d_SSL_SESSION(session, NULL);
-  if (len < 0 || (size_t)len != input_len) {
+  // Verify the SSL_SESSION encoding round-trips via the legacy API.
+  int len = i2d_SSL_SESSION(session.get(), NULL);
+  if (len < 0 || (size_t)len != input.size()) {
     fprintf(stderr, "i2d_SSL_SESSION(NULL) returned invalid length\n");
-    goto done;
+    return false;
   }
 
-  encoded = OPENSSL_malloc(input_len);
-  if (encoded == NULL) {
+  encoded.reset((uint8_t *)OPENSSL_malloc(input.size()));
+  if (!encoded) {
     fprintf(stderr, "malloc failed\n");
-    goto done;
+    return false;
   }
-  ptr = encoded;
-  len = i2d_SSL_SESSION(session, &ptr);
-  if (len < 0 || (size_t)len != input_len) {
+
+  ptr = encoded.get();
+  len = i2d_SSL_SESSION(session.get(), &ptr);
+  if (len < 0 || (size_t)len != input.size()) {
     fprintf(stderr, "i2d_SSL_SESSION returned invalid length\n");
-    goto done;
+    return false;
   }
-  if (ptr != encoded + input_len) {
+  if (ptr != encoded.get() + input.size()) {
     fprintf(stderr, "i2d_SSL_SESSION did not advance ptr correctly\n");
-    goto done;
+    return false;
   }
-  if (memcmp(input, encoded, input_len) != 0) {
+  if (memcmp(bssl::vector_data(&input), encoded.get(), input.size()) != 0) {
     fprintf(stderr, "i2d_SSL_SESSION did not round-trip\n");
-    goto done;
+    return false;
   }
 
-  ret = 1;
-
- done:
-  if (!ret) {
-    BIO_print_errors_fp(stderr);
-  }
-
-  if (session) {
-    SSL_SESSION_free(session);
-  }
-  if (input) {
-    OPENSSL_free(input);
-  }
-  if (encoded) {
-    OPENSSL_free(encoded);
-  }
-  return ret;
+  return true;
 }
 
-static int test_default_version(uint16_t version,
-                                const SSL_METHOD *(*method)(void)) {
-  SSL_CTX *ctx;
-  int ret;
-
-  ctx = SSL_CTX_new(method());
-  if (ctx == NULL) {
-    return 0;
+static bool TestDefaultVersion(uint16_t version,
+                               const SSL_METHOD *(*method)(void)) {
+  ScopedSSL_CTX ctx(SSL_CTX_new(method()));
+  if (!ctx) {
+    return false;
   }
-
-  ret = ctx->min_version == version && ctx->max_version == version;
-  SSL_CTX_free(ctx);
-  return ret;
+  return ctx->min_version == version && ctx->max_version == version;
 }
 
-static char *cipher_get_rfc_name(uint16_t value) {
+static bool CipherGetRFCName(std::string *out, uint16_t value) {
   const SSL_CIPHER *cipher = SSL_get_cipher_by_value(value);
   if (cipher == NULL) {
-    return NULL;
+    return false;
   }
-  return SSL_CIPHER_get_rfc_name(cipher);
+  out->assign(SSL_CIPHER_get_rfc_name(cipher));
+  return true;
 }
 
 typedef struct {
@@ -479,7 +443,7 @@ static const CIPHER_RFC_NAME_TEST kCipherRFCNameTests[] = {
   { TLS1_CK_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384,
     "TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384" },
   { TLS1_CK_PSK_WITH_RC4_128_SHA, "TLS_PSK_WITH_RC4_SHA" },
-  /* These names are non-standard: */
+  // These names are non-standard:
   { TLS1_CK_ECDHE_RSA_CHACHA20_POLY1305,
     "TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256" },
   { TLS1_CK_ECDHE_ECDSA_CHACHA20_POLY1305,
@@ -488,43 +452,40 @@ static const CIPHER_RFC_NAME_TEST kCipherRFCNameTests[] = {
     "TLS_ECDHE_PSK_WITH_AES_128_GCM_SHA256" },
 };
 
-static int test_cipher_get_rfc_name(void) {
-  size_t i;
-
-  for (i = 0; i < sizeof(kCipherRFCNameTests) / sizeof(kCipherRFCNameTests[0]);
-       i++) {
+static bool TestCipherGetRFCName(void) {
+  for (size_t i = 0;
+       i < sizeof(kCipherRFCNameTests) / sizeof(kCipherRFCNameTests[0]); i++) {
     const CIPHER_RFC_NAME_TEST *test = &kCipherRFCNameTests[i];
-    char *rfc_name = cipher_get_rfc_name(test->id & 0xffff);
-    if (rfc_name == NULL) {
-      fprintf(stderr, "cipher_get_rfc_name failed on '%s'\n", test->rfc_name);
-      return 0;
+    std::string rfc_name;
+    if (!CipherGetRFCName(&rfc_name, test->id & 0xffff)) {
+      fprintf(stderr, "SSL_CIPHER_get_rfc_name failed\n");
+      return false;
     }
-    if (strcmp(rfc_name, test->rfc_name) != 0) {
+    if (rfc_name != test->rfc_name) {
       fprintf(stderr, "SSL_CIPHER_get_rfc_name: got '%s', wanted '%s'\n",
-              rfc_name, test->rfc_name);
-      OPENSSL_free(rfc_name);
-      return 0;
+              rfc_name.c_str(), test->rfc_name);
+      return false;
     }
-    OPENSSL_free(rfc_name);
   }
-  return 1;
+  return true;
 }
 
 int main(void) {
   SSL_library_init();
 
-  if (!test_cipher_rules() ||
-      !test_ssl_session_asn1(kOpenSSLSession) ||
-      !test_ssl_session_asn1(kCustomSession) ||
-      !test_default_version(0, &TLS_method) ||
-      !test_default_version(SSL3_VERSION, &SSLv3_method) ||
-      !test_default_version(TLS1_VERSION, &TLSv1_method) ||
-      !test_default_version(TLS1_1_VERSION, &TLSv1_1_method) ||
-      !test_default_version(TLS1_2_VERSION, &TLSv1_2_method) ||
-      !test_default_version(0, &DTLS_method) ||
-      !test_default_version(DTLS1_VERSION, &DTLSv1_method) ||
-      !test_default_version(DTLS1_2_VERSION, &DTLSv1_2_method) ||
-      !test_cipher_get_rfc_name()) {
+  if (!TestCipherRules() ||
+      !TestSSL_SESSIONEncoding(kOpenSSLSession) ||
+      !TestSSL_SESSIONEncoding(kCustomSession) ||
+      !TestDefaultVersion(0, &TLS_method) ||
+      !TestDefaultVersion(SSL3_VERSION, &SSLv3_method) ||
+      !TestDefaultVersion(TLS1_VERSION, &TLSv1_method) ||
+      !TestDefaultVersion(TLS1_1_VERSION, &TLSv1_1_method) ||
+      !TestDefaultVersion(TLS1_2_VERSION, &TLSv1_2_method) ||
+      !TestDefaultVersion(0, &DTLS_method) ||
+      !TestDefaultVersion(DTLS1_VERSION, &DTLSv1_method) ||
+      !TestDefaultVersion(DTLS1_2_VERSION, &DTLSv1_2_method) ||
+      !TestCipherGetRFCName()) {
+    BIO_print_errors_fp(stderr);
     return 1;
   }
 

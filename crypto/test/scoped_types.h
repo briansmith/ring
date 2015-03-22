@@ -15,9 +15,12 @@
 #ifndef OPENSSL_HEADER_CRYPTO_TEST_SCOPED_TYPES_H
 #define OPENSSL_HEADER_CRYPTO_TEST_SCOPED_TYPES_H
 
+#include <stdint.h>
+
 #include <openssl/bio.h>
 #include <openssl/dh.h>
 #include <openssl/evp.h>
+#include <openssl/mem.h>
 
 #include "stl_compat.h"
 
@@ -29,12 +32,21 @@ struct OpenSSLDeleter {
   }
 };
 
+template<typename T>
+struct OpenSSLFree {
+  void operator()(T *buf) {
+    OPENSSL_free(buf);
+  }
+};
+
 template<typename T, void (*func)(T*)>
 using ScopedOpenSSLType = bssl::unique_ptr<T, OpenSSLDeleter<T, func>>;
 
 using ScopedBIO = ScopedOpenSSLType<BIO, BIO_vfree>;
 using ScopedDH = ScopedOpenSSLType<DH, DH_free>;
 using ScopedEVP_PKEY = ScopedOpenSSLType<EVP_PKEY, EVP_PKEY_free>;
+
+using ScopedOpenSSLBytes = bssl::unique_ptr<uint8_t, OpenSSLFree<uint8_t>>;
 
 
 #endif  // OPENSSL_HEADER_CRYPTO_TEST_SCOPED_TYPES_H

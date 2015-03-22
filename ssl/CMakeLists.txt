@@ -38,7 +38,7 @@ add_library(
 add_executable(
   ssl_test
 
-  ssl_test.c
+  ssl_test.cc
 )
 
 target_link_libraries(ssl_test ssl crypto)

@@ -17,12 +17,20 @@
 
 #include <assert.h>
 
+#include <vector>
+
 
 // This header contains re-implementations of library functions from C++11. They
 // will be replaced with their standard counterparts once Chromium has C++11
 // library support in its toolchain.
 
 namespace bssl {
+
+// vector_data is a reimplementation of |std::vector::data| from C++11.
+template <class T>
+static T *vector_data(std::vector<T> *out) {
+  return out->empty() ? nullptr : &(*out)[0];
+}
 
 // remove_reference is a reimplementation of |std::remove_reference| from C++11.
 template <class T>
