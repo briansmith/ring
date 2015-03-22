@@ -17,7 +17,7 @@
 
 #include <openssl/bio.h>
 
-#include "scoped_types.h"
+#include "../../crypto/test/scoped_types.h"
 
 
 // AsyncBioCreate creates a filter BIO for testing asynchronous state

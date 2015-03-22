@@ -39,6 +39,9 @@
 #include <openssl/bytestring.h>
 #include <openssl/ssl.h>
 
+#include <memory>
+
+#include "../../crypto/test/scoped_types.h"
 #include "async_bio.h"
 #include "packeted_bio.h"
 #include "scoped_types.h"

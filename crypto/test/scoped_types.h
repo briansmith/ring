@@ -12,17 +12,29 @@
  * OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
  * CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE. */
 
-#ifndef OPENSSL_HEADER_SSL_TEST_SCOPED_TYPES_H
-#define OPENSSL_HEADER_SSL_TEST_SCOPED_TYPES_H
+#ifndef OPENSSL_HEADER_CRYPTO_TEST_SCOPED_TYPES_H
+#define OPENSSL_HEADER_CRYPTO_TEST_SCOPED_TYPES_H
 
-#include <openssl/ssl.h>
+#include <openssl/bio.h>
+#include <openssl/dh.h>
+#include <openssl/evp.h>
 
-#include "../../crypto/test/scoped_types.h"
-
-
-using ScopedSSL = ScopedOpenSSLType<SSL, SSL_free>;
-using ScopedSSL_CTX = ScopedOpenSSLType<SSL_CTX, SSL_CTX_free>;
-using ScopedSSL_SESSION = ScopedOpenSSLType<SSL_SESSION, SSL_SESSION_free>;
+#include "stl_compat.h"
 
 
-#endif  // OPENSSL_HEADER_SSL_TEST_SCOPED_TYPES_H
+template<typename T, void (*func)(T*)>
+struct OpenSSLDeleter {
+  void operator()(T *obj) {
+    func(obj);
+  }
+};
+
+template<typename T, void (*func)(T*)>
+using ScopedOpenSSLType = bssl::unique_ptr<T, OpenSSLDeleter<T, func>>;
+
+using ScopedBIO = ScopedOpenSSLType<BIO, BIO_vfree>;
+using ScopedDH = ScopedOpenSSLType<DH, DH_free>;
+using ScopedEVP_PKEY = ScopedOpenSSLType<EVP_PKEY, EVP_PKEY_free>;
+
+
+#endif  // OPENSSL_HEADER_CRYPTO_TEST_SCOPED_TYPES_H

@@ -18,7 +18,7 @@
 #include <openssl/bio.h>
 #include <openssl/ssl.h>
 
-#include "scoped_types.h"
+#include "../../crypto/test/scoped_types.h"
 
 
 // PacketedBioCreate creates a filter BIO which implements a reliable in-order
