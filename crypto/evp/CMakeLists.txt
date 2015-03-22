@@ -30,7 +30,7 @@ add_executable(
 add_executable(
   pbkdf_test
 
-  pbkdf_test.c
+  pbkdf_test.cc
 )
 
 target_link_libraries(evp_test crypto)
