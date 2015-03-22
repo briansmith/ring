@@ -12,7 +12,7 @@ add_library(
 add_executable(
   digest_test
 
-  digest_test.c
+  digest_test.cc
 )
 
 target_link_libraries(digest_test crypto)
