@@ -24,7 +24,7 @@ add_library(
 add_executable(
   evp_test
 
-  evp_test.c
+  evp_test.cc
 )
 
 add_executable(

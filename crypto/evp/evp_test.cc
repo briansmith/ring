@@ -16,6 +16,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#include <vector>
+
 #include <openssl/bio.h>
 #include <openssl/bytestring.h>
 #include <openssl/crypto.h>
@@ -25,9 +27,11 @@
 #include <openssl/rsa.h>
 #include <openssl/x509.h>
 
+#include "../test/scoped_types.h"
 
-/* kExampleRSAKeyDER is an RSA private key in ASN.1, DER format. Of course, you
- * should never use this key anywhere but in an example. */
+
+// kExampleRSAKeyDER is an RSA private key in ASN.1, DER format. Of course, you
+// should never use this key anywhere but in an example.
 static const uint8_t kExampleRSAKeyDER[] = {
     0x30, 0x82, 0x02, 0x5c, 0x02, 0x01, 0x00, 0x02, 0x81, 0x81, 0x00, 0xf8,
     0xb8, 0x6c, 0x83, 0xb4, 0xbc, 0xd9, 0xa8, 0x57, 0xc0, 0xa5, 0xb4, 0x59,
@@ -98,8 +102,8 @@ static const uint8_t kSignature[] = {
     0x55, 0xa7, 0xab, 0x45, 0x02, 0x97, 0x60, 0x42,
 };
 
-/* kExamplePSSCert is an example self-signed certificate, signed with
- * kExampleRSAKeyDER using RSA-PSS with default hash functions. */
+// kExamplePSSCert is an example self-signed certificate, signed with
+// kExampleRSAKeyDER using RSA-PSS with default hash functions.
 static const uint8_t kExamplePSSCert[] = {
     0x30, 0x82, 0x02, 0x62, 0x30, 0x82, 0x01, 0xc6, 0xa0, 0x03, 0x02, 0x01,
     0x02, 0x02, 0x09, 0x00, 0x8d, 0xea, 0x53, 0x24, 0xfa, 0x48, 0x87, 0xf3,
@@ -155,8 +159,8 @@ static const uint8_t kExamplePSSCert[] = {
     0x8c, 0x16,
 };
 
-/* kExampleRSAKeyPKCS8 is kExampleRSAKeyDER encoded in a PKCS #8
- * PrivateKeyInfo. */
+// kExampleRSAKeyPKCS8 is kExampleRSAKeyDER encoded in a PKCS #8
+// PrivateKeyInfo.
 static const uint8_t kExampleRSAKeyPKCS8[] = {
     0x30, 0x82, 0x02, 0x76, 0x02, 0x01, 0x00, 0x30, 0x0d, 0x06, 0x09, 0x2a,
     0x86, 0x48, 0x86, 0xf7, 0x0d, 0x01, 0x01, 0x01, 0x05, 0x00, 0x04, 0x82,
@@ -213,8 +217,8 @@ static const uint8_t kExampleRSAKeyPKCS8[] = {
     0x08, 0xf1, 0x2d, 0x86, 0x9d, 0xa5, 0x20, 0x1b, 0xe5, 0xdf,
 };
 
-/* kExampleECKeyDER is a sample EC private key encoded as an ECPrivateKey
- * structure. */
+// kExampleECKeyDER is a sample EC private key encoded as an ECPrivateKey
+// structure.
 static const uint8_t kExampleECKeyDER[] = {
     0x30, 0x77, 0x02, 0x01, 0x01, 0x04, 0x20, 0x07, 0x0f, 0x08, 0x72, 0x7a,
     0xd4, 0xa0, 0x4a, 0x9c, 0xdd, 0x59, 0xc9, 0x4d, 0x89, 0x68, 0x77, 0x08,
@@ -229,8 +233,8 @@ static const uint8_t kExampleECKeyDER[] = {
     0xc1,
 };
 
-/* kExampleBadECKeyDER is a sample EC private key encoded as an ECPrivateKey
- * structure. The private key is equal to the order and will fail to import */
+// kExampleBadECKeyDER is a sample EC private key encoded as an ECPrivateKey
+// structure. The private key is equal to the order and will fail to import.
 static const uint8_t kExampleBadECKeyDER[] = {
     0x30, 0x66, 0x02, 0x01, 0x00, 0x30, 0x13, 0x06, 0x07, 0x2A, 0x86, 0x48,
     0xCE, 0x3D, 0x02, 0x01, 0x06, 0x08, 0x2A, 0x86, 0x48, 0xCE, 0x3D, 0x03,
@@ -243,237 +247,143 @@ static const uint8_t kExampleBadECKeyDER[] = {
     0xF3, 0xB9, 0xCA, 0xC2, 0xFC, 0x63, 0x25, 0x51
 };
 
-static EVP_PKEY *load_example_rsa_key(void) {
-  EVP_PKEY *ret = NULL;
+static ScopedEVP_PKEY LoadExampleRSAKey() {
   const uint8_t *derp = kExampleRSAKeyDER;
-  EVP_PKEY *pkey = NULL;
-  RSA *rsa = NULL;
-
-  if (!d2i_RSAPrivateKey(&rsa, &derp, sizeof(kExampleRSAKeyDER))) {
-    return NULL;
+  ScopedRSA rsa(d2i_RSAPrivateKey(nullptr, &derp, sizeof(kExampleRSAKeyDER)));
+  if (!rsa) {
+    return nullptr;
   }
-
-  pkey = EVP_PKEY_new();
-  if (pkey == NULL || !EVP_PKEY_set1_RSA(pkey, rsa)) {
-    goto out;
+  ScopedEVP_PKEY pkey(EVP_PKEY_new());
+  if (!pkey || !EVP_PKEY_set1_RSA(pkey.get(), rsa.get())) {
+    return nullptr;
   }
-
-  ret = pkey;
-  pkey = NULL;
-
-out:
-  if (pkey) {
-    EVP_PKEY_free(pkey);
-  }
-  if (rsa) {
-    RSA_free(rsa);
-  }
-
-  return ret;
+  return pkey;
 }
 
-static int test_EVP_DigestSignInit(void) {
-  int ret = 0;
-  EVP_PKEY *pkey = NULL;
-  uint8_t *sig = NULL;
+static bool TestEVP_DigestSignInit(void) {
+  ScopedEVP_PKEY pkey = LoadExampleRSAKey();
+  ScopedEVP_MD_CTX md_ctx;
+  if (!pkey ||
+      !EVP_DigestSignInit(md_ctx.get(), NULL, EVP_sha256(), NULL, pkey.get()) ||
+      !EVP_DigestSignUpdate(md_ctx.get(), kMsg, sizeof(kMsg))) {
+    return false;
+  }
+  // Determine the size of the signature.
   size_t sig_len = 0;
-  EVP_MD_CTX md_ctx, md_ctx_verify;
-
-  EVP_MD_CTX_init(&md_ctx);
-  EVP_MD_CTX_init(&md_ctx_verify);
-
-  pkey = load_example_rsa_key();
-  if (pkey == NULL ||
-      !EVP_DigestSignInit(&md_ctx, NULL, EVP_sha256(), NULL, pkey) ||
-      !EVP_DigestSignUpdate(&md_ctx, kMsg, sizeof(kMsg))) {
-    goto out;
+  if (!EVP_DigestSignFinal(md_ctx.get(), NULL, &sig_len)) {
+    return false;
   }
-  /* Determine the size of the signature. */
-  if (!EVP_DigestSignFinal(&md_ctx, NULL, &sig_len)) {
-    goto out;
-  }
-  /* Sanity check for testing. */
-  if (sig_len != EVP_PKEY_size(pkey)) {
+  // Sanity check for testing.
+  if (sig_len != (size_t)EVP_PKEY_size(pkey.get())) {
     fprintf(stderr, "sig_len mismatch\n");
-    goto out;
+    return false;
   }
 
-  sig = malloc(sig_len);
-  if (sig == NULL || !EVP_DigestSignFinal(&md_ctx, sig, &sig_len)) {
-    goto out;
+  std::vector<uint8_t> sig;
+  sig.resize(sig_len);
+  if (!EVP_DigestSignFinal(md_ctx.get(), bssl::vector_data(&sig), &sig_len)) {
+    return false;
+  }
+  sig.resize(sig_len);
+
+  // Ensure that the signature round-trips.
+  md_ctx.Reset();
+  if (!EVP_DigestVerifyInit(md_ctx.get(), NULL, EVP_sha256(), NULL, pkey.get()) ||
+      !EVP_DigestVerifyUpdate(md_ctx.get(), kMsg, sizeof(kMsg)) ||
+      !EVP_DigestVerifyFinal(md_ctx.get(), bssl::vector_data(&sig), sig_len)) {
+    return false;
   }
 
-  /* Ensure that the signature round-trips. */
-  if (!EVP_DigestVerifyInit(&md_ctx_verify, NULL, EVP_sha256(), NULL, pkey) ||
-      !EVP_DigestVerifyUpdate(&md_ctx_verify, kMsg, sizeof(kMsg)) ||
-      !EVP_DigestVerifyFinal(&md_ctx_verify, sig, sig_len)) {
-    goto out;
-  }
-
-  ret = 1;
-
-out:
-  if (!ret) {
-    BIO_print_errors_fp(stderr);
-  }
-
-  EVP_MD_CTX_cleanup(&md_ctx);
-  EVP_MD_CTX_cleanup(&md_ctx_verify);
-  if (pkey) {
-    EVP_PKEY_free(pkey);
-  }
-  if (sig) {
-    free(sig);
-  }
-
-  return ret;
+  return true;
 }
 
-static int test_EVP_DigestVerifyInit(void) {
-  int ret = 0;
-  EVP_PKEY *pkey = NULL;
-  EVP_MD_CTX md_ctx;
-
-  EVP_MD_CTX_init(&md_ctx);
-
-  pkey = load_example_rsa_key();
-  if (pkey == NULL ||
-      !EVP_DigestVerifyInit(&md_ctx, NULL, EVP_sha256(), NULL, pkey) ||
-      !EVP_DigestVerifyUpdate(&md_ctx, kMsg, sizeof(kMsg)) ||
-      !EVP_DigestVerifyFinal(&md_ctx, kSignature, sizeof(kSignature))) {
-    goto out;
+static bool TestEVP_DigestVerifyInit(void) {
+  ScopedEVP_PKEY pkey = LoadExampleRSAKey();
+  ScopedEVP_MD_CTX md_ctx;
+  if (!pkey ||
+      !EVP_DigestVerifyInit(md_ctx.get(), NULL, EVP_sha256(), NULL,
+                            pkey.get()) ||
+      !EVP_DigestVerifyUpdate(md_ctx.get(), kMsg, sizeof(kMsg)) ||
+      !EVP_DigestVerifyFinal(md_ctx.get(), kSignature, sizeof(kSignature))) {
+    return false;
   }
-  ret = 1;
-
-out:
-  if (!ret) {
-    BIO_print_errors_fp(stderr);
-  }
-
-  EVP_MD_CTX_cleanup(&md_ctx);
-  if (pkey) {
-    EVP_PKEY_free(pkey);
-  }
-
-  return ret;
+  return true;
 }
 
-/* test_algorithm_roundtrip signs a message using an already-initialized
- * |md_ctx|, sampling the AlgorithmIdentifier. It then uses |pkey| and the
- * AlgorithmIdentifier to verify the signature. */
-static int test_algorithm_roundtrip(EVP_MD_CTX *md_ctx, EVP_PKEY *pkey) {
-  int ret = 0;
-  uint8_t *sig = NULL;
-  size_t sig_len = 0;
-  EVP_MD_CTX md_ctx_verify;
-  X509_ALGOR *algor = NULL;
-
-  EVP_MD_CTX_init(&md_ctx_verify);
-
+// TestAlgorithmRoundtrip signs a message using an already-initialized
+// |md_ctx|, sampling the AlgorithmIdentifier. It then uses |pkey| and the
+// AlgorithmIdentifier to verify the signature.
+static bool TestAlgorithmRoundtrip(EVP_MD_CTX *md_ctx, EVP_PKEY *pkey) {
   if (!EVP_DigestSignUpdate(md_ctx, kMsg, sizeof(kMsg))) {
-    goto out;
+    return false;
   }
 
-  /* Save the algorithm. */
-  algor = X509_ALGOR_new();
-  if (algor == NULL || !EVP_DigestSignAlgorithm(md_ctx, algor)) {
-    goto out;
+  // Save the algorithm.
+  ScopedX509_ALGOR algor(X509_ALGOR_new());
+  if (!algor || !EVP_DigestSignAlgorithm(md_ctx, algor.get())) {
+    return false;
   }
 
-  /* Determine the size of the signature. */
+  // Determine the size of the signature.
+  size_t sig_len = 0;
   if (!EVP_DigestSignFinal(md_ctx, NULL, &sig_len)) {
-    goto out;
+    return false;
   }
-  /* Sanity check for testing. */
-  if (sig_len != EVP_PKEY_size(pkey)) {
+  // Sanity check for testing.
+  if (sig_len != (size_t)EVP_PKEY_size(pkey)) {
     fprintf(stderr, "sig_len mismatch\n");
-    goto out;
+    return false;
   }
 
-  sig = malloc(sig_len);
-  if (sig == NULL || !EVP_DigestSignFinal(md_ctx, sig, &sig_len)) {
-    goto out;
+  std::vector<uint8_t> sig;
+  sig.resize(sig_len);
+  if (!EVP_DigestSignFinal(md_ctx, bssl::vector_data(&sig), &sig_len)) {
+    return false;
+  }
+  sig.resize(sig_len);
+
+  // Ensure that the signature round-trips.
+  ScopedEVP_MD_CTX md_ctx_verify;
+  if (!EVP_DigestVerifyInitFromAlgorithm(md_ctx_verify.get(), algor.get(),
+                                         pkey) ||
+      !EVP_DigestVerifyUpdate(md_ctx_verify.get(), kMsg, sizeof(kMsg)) ||
+      !EVP_DigestVerifyFinal(md_ctx_verify.get(), bssl::vector_data(&sig),
+                             sig_len)) {
+    return false;
   }
 
-  /* Ensure that the signature round-trips. */
-  if (!EVP_DigestVerifyInitFromAlgorithm(&md_ctx_verify, algor, pkey) ||
-      !EVP_DigestVerifyUpdate(&md_ctx_verify, kMsg, sizeof(kMsg)) ||
-      !EVP_DigestVerifyFinal(&md_ctx_verify, sig, sig_len)) {
-    goto out;
-  }
-
-  ret = 1;
-
-out:
-  EVP_MD_CTX_cleanup(&md_ctx_verify);
-  if (sig) {
-    free(sig);
-  }
-  if (algor) {
-    X509_ALGOR_free(algor);
-  }
-
-  return ret;
+  return true;
 }
 
-static int test_EVP_DigestSignAlgorithm(void) {
-  int ret = 0;
-  EVP_PKEY *pkey = NULL;
-  EVP_MD_CTX md_ctx;
-  EVP_PKEY_CTX *pkey_ctx;
+static bool TestEVP_DigestSignAlgorithm(void) {
+  ScopedEVP_PKEY pkey = LoadExampleRSAKey();
 
-  EVP_MD_CTX_init(&md_ctx);
-
-  pkey = load_example_rsa_key();
-  if (pkey == NULL) {
-    goto out;
-  }
-
-  /* Test a simple AlgorithmIdentifier. */
-  if (!EVP_DigestSignInit(&md_ctx, &pkey_ctx, EVP_sha256(), NULL, pkey) ||
-      !test_algorithm_roundtrip(&md_ctx, pkey)) {
+  // Test a simple AlgorithmIdentifier.
+  ScopedEVP_MD_CTX md_ctx;
+  if (!pkey ||
+      !EVP_DigestSignInit(md_ctx.get(), NULL, EVP_sha256(), NULL, pkey.get()) ||
+      !TestAlgorithmRoundtrip(md_ctx.get(), pkey.get())) {
     fprintf(stderr, "RSA with SHA-256 failed\n");
-    goto out;
+    return false;
   }
 
-  EVP_MD_CTX_cleanup(&md_ctx);
-  EVP_MD_CTX_init(&md_ctx);
-
-  /* Test RSA-PSS with custom parameters. */
-  if (!EVP_DigestSignInit(&md_ctx, &pkey_ctx, EVP_sha256(), NULL, pkey) ||
+  // Test RSA-PSS with custom parameters.
+  md_ctx.Reset();
+  EVP_PKEY_CTX *pkey_ctx;
+  if (!EVP_DigestSignInit(md_ctx.get(), &pkey_ctx, EVP_sha256(), NULL,
+                          pkey.get()) ||
       !EVP_PKEY_CTX_set_rsa_padding(pkey_ctx, RSA_PKCS1_PSS_PADDING) ||
       !EVP_PKEY_CTX_set_rsa_mgf1_md(pkey_ctx, EVP_sha512()) ||
-      !test_algorithm_roundtrip(&md_ctx, pkey)) {
+      !TestAlgorithmRoundtrip(md_ctx.get(), pkey.get())) {
     fprintf(stderr, "RSA-PSS failed\n");
-    goto out;
+    return false;
   }
 
-  ret = 1;
-
-out:
-  if (!ret) {
-    BIO_print_errors_fp(stderr);
-  }
-
-  EVP_MD_CTX_cleanup(&md_ctx);
-  if (pkey) {
-    EVP_PKEY_free(pkey);
-  }
-
-  return ret;
+  return true;
 }
 
-static int test_EVP_DigestVerifyInitFromAlgorithm(void) {
-  int ret = 0;
+static bool TestEVP_DigestVerifyInitFromAlgorithm(void) {
   CBS cert, cert_body, tbs_cert, algorithm, signature;
-  uint8_t padding;
-  X509_ALGOR *algor = NULL;
-  const uint8_t *derp;
-  EVP_PKEY *pkey = NULL;
-  EVP_MD_CTX md_ctx;
-
-  EVP_MD_CTX_init(&md_ctx);
-
   CBS_init(&cert, kExamplePSSCert, sizeof(kExamplePSSCert));
   if (!CBS_get_asn1(&cert, &cert_body, CBS_ASN1_SEQUENCE) ||
       CBS_len(&cert) != 0 ||
@@ -482,158 +392,126 @@ static int test_EVP_DigestVerifyInitFromAlgorithm(void) {
       !CBS_get_asn1(&cert_body, &signature, CBS_ASN1_BITSTRING) ||
       CBS_len(&cert_body) != 0) {
     fprintf(stderr, "Failed to parse certificate\n");
-    goto out;
+    return false;
   }
 
-  /* Signatures are BIT STRINGs, but they have are multiple of 8 bytes, so the
-     leading phase byte is just a zero. */
+  // Signatures are BIT STRINGs, but they have are multiple of 8 bytes, so the
+  // leading phase byte is just a zero.
+  uint8_t padding;
   if (!CBS_get_u8(&signature, &padding) || padding != 0) {
     fprintf(stderr, "Invalid signature padding\n");
-    goto out;
+    return false;
   }
 
-  derp = CBS_data(&algorithm);
-  if (!d2i_X509_ALGOR(&algor, &derp, CBS_len(&algorithm)) ||
-      derp != CBS_data(&algorithm) + CBS_len(&algorithm)) {
+  const uint8_t *derp = CBS_data(&algorithm);
+  ScopedX509_ALGOR algor(d2i_X509_ALGOR(NULL, &derp, CBS_len(&algorithm)));
+  if (!algor || derp != CBS_data(&algorithm) + CBS_len(&algorithm)) {
     fprintf(stderr, "Failed to parse algorithm\n");
+    return false;
   }
 
-  pkey = load_example_rsa_key();
-  if (pkey == NULL ||
-      !EVP_DigestVerifyInitFromAlgorithm(&md_ctx, algor, pkey) ||
-      !EVP_DigestVerifyUpdate(&md_ctx, CBS_data(&tbs_cert),
+  ScopedEVP_PKEY pkey = LoadExampleRSAKey();
+  ScopedEVP_MD_CTX md_ctx;
+  if (!pkey ||
+      !EVP_DigestVerifyInitFromAlgorithm(md_ctx.get(), algor.get(),
+                                         pkey.get()) ||
+      !EVP_DigestVerifyUpdate(md_ctx.get(), CBS_data(&tbs_cert),
                               CBS_len(&tbs_cert)) ||
-      !EVP_DigestVerifyFinal(&md_ctx, CBS_data(&signature),
+      !EVP_DigestVerifyFinal(md_ctx.get(), CBS_data(&signature),
                              CBS_len(&signature))) {
-    goto out;
+    return false;
   }
-  ret = 1;
-
-out:
-  if (!ret) {
-    BIO_print_errors_fp(stderr);
-  }
-
-  EVP_MD_CTX_cleanup(&md_ctx);
-  if (pkey) {
-    EVP_PKEY_free(pkey);
-  }
-  if (algor != NULL) {
-    X509_ALGOR_free(algor);
-  }
-
-  return ret;
+  return true;
 }
 
-static int test_d2i_AutoPrivateKey(const uint8_t *input, size_t input_len,
+static bool Testd2i_AutoPrivateKey(const uint8_t *input, size_t input_len,
                                    int expected_id) {
-  int ret = 0;
-  const uint8_t *p;
-  EVP_PKEY *pkey = NULL;
-
-  p = input;
-  pkey = d2i_AutoPrivateKey(NULL, &p, input_len);
-  if (pkey == NULL || p != input + input_len) {
+  const uint8_t *p = input;
+  ScopedEVP_PKEY pkey(d2i_AutoPrivateKey(NULL, &p, input_len));
+  if (!pkey || p != input + input_len) {
     fprintf(stderr, "d2i_AutoPrivateKey failed\n");
-    goto done;
+    return false;
   }
 
-  if (EVP_PKEY_id(pkey) != expected_id) {
+  if (EVP_PKEY_id(pkey.get()) != expected_id) {
     fprintf(stderr, "Did not decode expected type\n");
-    goto done;
+    return false;
   }
 
-  ret = 1;
-
-done:
-  if (!ret) {
-    BIO_print_errors_fp(stderr);
-  }
-
-  if (pkey != NULL) {
-    EVP_PKEY_free(pkey);
-  }
-  return ret;
+  return true;
 }
 
-/* Tests loading a bad key in PKCS8 format */
-static int test_EVP_PKCS82PKEY(void) {
-  int ret = 0;
+// TestEVP_PKCS82PKEY tests loading a bad key in PKCS8 format.
+static bool TestEVP_PKCS82PKEY(void) {
   const uint8_t *derp = kExampleBadECKeyDER;
-  PKCS8_PRIV_KEY_INFO *p8inf = NULL;
-  EVP_PKEY *pkey = NULL;
-
-  p8inf = d2i_PKCS8_PRIV_KEY_INFO(NULL, &derp, sizeof(kExampleBadECKeyDER));
-
+  ScopedPKCS8_PRIV_KEY_INFO p8inf(
+      d2i_PKCS8_PRIV_KEY_INFO(NULL, &derp, sizeof(kExampleBadECKeyDER)));
   if (!p8inf || derp != kExampleBadECKeyDER + sizeof(kExampleBadECKeyDER)) {
     fprintf(stderr, "Failed to parse key\n");
-    goto done;
+    return false;
   }
 
-  pkey = EVP_PKCS82PKEY(p8inf);
+  ScopedEVP_PKEY pkey(EVP_PKCS82PKEY(p8inf.get()));
   if (pkey) {
     fprintf(stderr, "Imported invalid EC key\n");
-    goto done;
+    return false;
   }
 
-  ret = 1;
-
-done:
-  if (p8inf != NULL) {
-    PKCS8_PRIV_KEY_INFO_free(p8inf);
-  }
-
-  if (pkey != NULL) {
-    EVP_PKEY_free(pkey);
-  }
-
-  return ret;
+  return true;
 }
 
 int main(void) {
   CRYPTO_library_init();
   ERR_load_crypto_strings();
 
-  if (!test_EVP_DigestSignInit()) {
+  if (!TestEVP_DigestSignInit()) {
     fprintf(stderr, "EVP_DigestSignInit failed\n");
+    BIO_print_errors_fp(stderr);
     return 1;
   }
 
-  if (!test_EVP_DigestVerifyInit()) {
+  if (!TestEVP_DigestVerifyInit()) {
     fprintf(stderr, "EVP_DigestVerifyInit failed\n");
+    BIO_print_errors_fp(stderr);
     return 1;
   }
 
-  if (!test_EVP_DigestSignAlgorithm()) {
+  if (!TestEVP_DigestSignAlgorithm()) {
     fprintf(stderr, "EVP_DigestSignInit failed\n");
+    BIO_print_errors_fp(stderr);
     return 1;
   }
 
-  if (!test_EVP_DigestVerifyInitFromAlgorithm()) {
+  if (!TestEVP_DigestVerifyInitFromAlgorithm()) {
     fprintf(stderr, "EVP_DigestVerifyInitFromAlgorithm failed\n");
+    BIO_print_errors_fp(stderr);
     return 1;
   }
 
-  if (!test_d2i_AutoPrivateKey(kExampleRSAKeyDER, sizeof(kExampleRSAKeyDER),
-                               EVP_PKEY_RSA)) {
+  if (!Testd2i_AutoPrivateKey(kExampleRSAKeyDER, sizeof(kExampleRSAKeyDER),
+                              EVP_PKEY_RSA)) {
     fprintf(stderr, "d2i_AutoPrivateKey(kExampleRSAKeyDER) failed\n");
+    BIO_print_errors_fp(stderr);
     return 1;
   }
 
-  if (!test_d2i_AutoPrivateKey(kExampleRSAKeyPKCS8, sizeof(kExampleRSAKeyPKCS8),
-                               EVP_PKEY_RSA)) {
+  if (!Testd2i_AutoPrivateKey(kExampleRSAKeyPKCS8, sizeof(kExampleRSAKeyPKCS8),
+                              EVP_PKEY_RSA)) {
     fprintf(stderr, "d2i_AutoPrivateKey(kExampleRSAKeyPKCS8) failed\n");
+    BIO_print_errors_fp(stderr);
     return 1;
   }
 
-  if (!test_d2i_AutoPrivateKey(kExampleECKeyDER, sizeof(kExampleECKeyDER),
-                               EVP_PKEY_EC)) {
+  if (!Testd2i_AutoPrivateKey(kExampleECKeyDER, sizeof(kExampleECKeyDER),
+                              EVP_PKEY_EC)) {
     fprintf(stderr, "d2i_AutoPrivateKey(kExampleECKeyDER) failed\n");
+    BIO_print_errors_fp(stderr);
     return 1;
   }
 
-  if (!test_EVP_PKCS82PKEY()) {
-    fprintf(stderr, "test_EVP_PKCS82PKEY failed\n");
+  if (!TestEVP_PKCS82PKEY()) {
+    fprintf(stderr, "TestEVP_PKCS82PKEY failed\n");
+    BIO_print_errors_fp(stderr);
     return 1;
   }
 

@@ -21,6 +21,8 @@
 #include <openssl/dh.h>
 #include <openssl/evp.h>
 #include <openssl/mem.h>
+#include <openssl/rsa.h>
+#include <openssl/x509.h>
 
 #include "stl_compat.h"
 
@@ -42,9 +44,39 @@ struct OpenSSLFree {
 template<typename T, void (*func)(T*)>
 using ScopedOpenSSLType = bssl::unique_ptr<T, OpenSSLDeleter<T, func>>;
 
+template<typename T, typename CleanupRet, void (*init_func)(T*),
+         CleanupRet (*cleanup_func)(T*)>
+class ScopedOpenSSLContext {
+ public:
+  ScopedOpenSSLContext() {
+    init_func(&ctx_);
+  }
+  ~ScopedOpenSSLContext() {
+    cleanup_func(&ctx_);
+  }
+
+  T *get() { return &ctx_; }
+  const T *get() const { return &ctx_; }
+
+  void Reset() {
+    cleanup_func(&ctx_);
+    init_func(&ctx_);
+  }
+
+ private:
+  T ctx_;
+};
+
 using ScopedBIO = ScopedOpenSSLType<BIO, BIO_vfree>;
 using ScopedDH = ScopedOpenSSLType<DH, DH_free>;
 using ScopedEVP_PKEY = ScopedOpenSSLType<EVP_PKEY, EVP_PKEY_free>;
+using ScopedPKCS8_PRIV_KEY_INFO = ScopedOpenSSLType<PKCS8_PRIV_KEY_INFO,
+                                                    PKCS8_PRIV_KEY_INFO_free>;
+using ScopedRSA = ScopedOpenSSLType<RSA, RSA_free>;
+using ScopedX509_ALGOR = ScopedOpenSSLType<X509_ALGOR, X509_ALGOR_free>;
+
+using ScopedEVP_MD_CTX = ScopedOpenSSLContext<EVP_MD_CTX, int, EVP_MD_CTX_init,
+                                              EVP_MD_CTX_cleanup>;
 
 using ScopedOpenSSLBytes = bssl::unique_ptr<uint8_t, OpenSSLFree<uint8_t>>;
 
