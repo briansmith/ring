@@ -46,10 +46,11 @@ typedef ssize_t read_result_t;
 
 static const struct argument kArguments[] = {
     {
-     "-dump", false, "Dump the key and contents of the given file to stdout",
+     "-dump", kOptionalArgument,
+     "Dump the key and contents of the given file to stdout",
     },
     {
-     "", false, "",
+     "", kOptionalArgument, "",
     },
 };
 

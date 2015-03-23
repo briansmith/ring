@@ -30,19 +30,19 @@
 
 static const struct argument kArguments[] = {
     {
-     "-accept", true,
+     "-accept", kRequiredArgument,
      "The port of the server to bind on; eg 45102",
     },
     {
-     "-cipher", false,
+     "-cipher", kOptionalArgument,
      "An OpenSSL-style cipher suite string that configures the offered ciphers",
     },
     {
-      "-key", false,
+      "-key", kOptionalArgument,
       "Private-key file to use (default is server.pem)",
     },
     {
-     "", false, "",
+     "", kOptionalArgument, "",
     },
 };
 

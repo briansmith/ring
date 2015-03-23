@@ -32,9 +32,15 @@
 #pragma warning(pop)
 #endif
 
+enum ArgumentType {
+  kRequiredArgument,
+  kOptionalArgument,
+  kBooleanArgument,
+};
+
 struct argument {
-  const char name[15];
-  bool required;
+  const char *name;
+  ArgumentType type;
   const char *description;
 };
 

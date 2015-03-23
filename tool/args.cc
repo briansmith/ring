@@ -41,22 +41,26 @@ bool ParseKeyValueArguments(std::map<std::string, std::string> *out_args,
       return false;
     }
 
-    if (i + 1 >= args.size()) {
-      fprintf(stderr, "Missing argument for option: %s\n", arg.c_str());
-      return false;
-    }
-
     if (out_args->find(arg) != out_args->end()) {
-      fprintf(stderr, "Duplicate value given for: %s\n", arg.c_str());
+      fprintf(stderr, "Duplicate argument: %s\n", arg.c_str());
       return false;
     }
 
-    (*out_args)[arg] = args[++i];
+    if (templ->type == kBooleanArgument) {
+      (*out_args)[arg] = "";
+    } else {
+      if (i + 1 >= args.size()) {
+        fprintf(stderr, "Missing argument for option: %s\n", arg.c_str());
+        return false;
+      }
+      (*out_args)[arg] = args[++i];
+    }
   }
 
   for (size_t j = 0; templates[j].name[0] != 0; j++) {
     const struct argument *templ = &templates[j];
-    if (templ->required && out_args->find(templ->name) == out_args->end()) {
+    if (templ->type == kRequiredArgument &&
+        out_args->find(templ->name) == out_args->end()) {
       fprintf(stderr, "Missing value for required argument: %s\n", templ->name);
       return false;
     }
