@@ -148,7 +148,8 @@ TestConfig::TestConfig()
       use_early_callback(false),
       fail_early_callback(false),
       install_ddos_callback(false),
-      fail_ddos_callback(false) {
+      fail_ddos_callback(false),
+      fail_second_ddos_callback(false) {
 }
 
 bool ParseConfig(int argc, char **argv, TestConfig *out_config) {
