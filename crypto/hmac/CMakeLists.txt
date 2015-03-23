@@ -12,7 +12,7 @@ add_library(
 add_executable(
   hmac_test
 
-  hmac_test.c
+  hmac_test.cc
 )
 
 target_link_libraries(hmac_test crypto)

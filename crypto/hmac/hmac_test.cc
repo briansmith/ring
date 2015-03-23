@@ -58,12 +58,17 @@
 #include <stdio.h>
 #include <string.h>
 
+#include <string>
+
 #include <openssl/crypto.h>
 #include <openssl/digest.h>
 #include <openssl/hmac.h>
+#include <openssl/mem.h>
+
+#include "../test/scoped_types.h"
 
 
-struct test_st {
+struct Test {
   uint8_t key[16];
   size_t key_len;
   uint8_t data[64];
@@ -71,9 +76,7 @@ struct test_st {
   const char *hex_digest;
 };
 
-#define NUM_TESTS 4
-
-static const struct test_st kTests[NUM_TESTS] = {
+static const Test kTests[] = {
   {
     "", 0, "More text test vectors to stuff up EBCDIC machines :-)", 54,
     "e9139d1e6ee064ef8cf514fc7dc83e86",
@@ -110,109 +113,105 @@ static const struct test_st kTests[NUM_TESTS] = {
   },
 };
 
-static char *to_hex(const uint8_t *md, size_t md_len) {
-  size_t i;
-  static char buf[80];
-
-  for (i = 0; i < md_len; i++) {
-    sprintf(&(buf[i * 2]), "%02x", md[i]);
+static std::string ToHex(const uint8_t *md, size_t md_len) {
+  std::string ret;
+  for (size_t i = 0; i < md_len; i++) {
+    char buf[2 + 1 /* NUL */];
+    BIO_snprintf(buf, sizeof(buf), "%02x", md[i]);
+    ret.append(buf, 2);
   }
-  return buf;
+  return ret;
 }
 
 int main(int argc, char *argv[]) {
-  unsigned i;
-  char *p;
   int err = 0;
   uint8_t out[EVP_MAX_MD_SIZE];
   unsigned out_len;
 
   CRYPTO_library_init();
 
-  for (i = 0; i < NUM_TESTS; i++) {
-    const struct test_st *test = &kTests[i];
+  for (unsigned i = 0; i < sizeof(kTests) / sizeof(kTests[0]); i++) {
+    const Test *test = &kTests[i];
 
-    /* Test using the one-shot API. */
+    // Test using the one-shot API.
     if (NULL == HMAC(EVP_md5(), test->key, test->key_len, test->data,
                      test->data_len, out, &out_len)) {
       fprintf(stderr, "%u: HMAC failed.\n", i);
       err++;
       continue;
     }
-    p = to_hex(out, out_len);
-    if (strcmp(p, test->hex_digest) != 0) {
-      fprintf(stderr, "%u: got %s instead of %s\n", i, p, test->hex_digest);
+    std::string out_hex = ToHex(out, out_len);
+    if (out_hex != test->hex_digest) {
+      fprintf(stderr, "%u: got %s instead of %s\n", i, out_hex.c_str(),
+              test->hex_digest);
       err++;
     }
 
-    /* Test using HMAC_CTX. */
-    HMAC_CTX ctx;
-    HMAC_CTX_init(&ctx);
-    if (!HMAC_Init_ex(&ctx, test->key, test->key_len, EVP_md5(), NULL) ||
-        !HMAC_Update(&ctx, test->data, test->data_len) ||
-        !HMAC_Final(&ctx, out, &out_len)) {
+    // Test using HMAC_CTX.
+    ScopedHMAC_CTX ctx;
+    if (!HMAC_Init_ex(ctx.get(), test->key, test->key_len, EVP_md5(), NULL) ||
+        !HMAC_Update(ctx.get(), test->data, test->data_len) ||
+        !HMAC_Final(ctx.get(), out, &out_len)) {
       fprintf(stderr, "%u: HMAC failed.\n", i);
       err++;
-      HMAC_CTX_cleanup(&ctx);
       continue;
     }
-    p = to_hex(out, out_len);
-    if (strcmp(p, test->hex_digest) != 0) {
-      fprintf(stderr, "%u: got %s instead of %s\n", i, p, test->hex_digest);
+    out_hex = ToHex(out, out_len);
+    if (out_hex != test->hex_digest) {
+      fprintf(stderr, "%u: got %s instead of %s\n", i, out_hex.c_str(),
+              test->hex_digest);
       err++;
     }
 
-    /* Test that an HMAC_CTX may be reset with the same key. */
-    if (!HMAC_Init_ex(&ctx, NULL, 0, EVP_md5(), NULL) ||
-        !HMAC_Update(&ctx, test->data, test->data_len) ||
-        !HMAC_Final(&ctx, out, &out_len)) {
+    // Test that an HMAC_CTX may be reset with the same key.
+    if (!HMAC_Init_ex(ctx.get(), NULL, 0, EVP_md5(), NULL) ||
+        !HMAC_Update(ctx.get(), test->data, test->data_len) ||
+        !HMAC_Final(ctx.get(), out, &out_len)) {
       fprintf(stderr, "%u: HMAC failed.\n", i);
       err++;
-      HMAC_CTX_cleanup(&ctx);
       continue;
     }
-    p = to_hex(out, out_len);
-    if (strcmp(p, test->hex_digest) != 0) {
-      fprintf(stderr, "%u: got %s instead of %s\n", i, p, test->hex_digest);
+    out_hex = ToHex(out, out_len);
+    if (out_hex != test->hex_digest) {
+      fprintf(stderr, "%u: got %s instead of %s\n", i, out_hex.c_str(),
+              test->hex_digest);
       err++;
     }
-
-    HMAC_CTX_cleanup(&ctx);
   }
 
-  /* Test that HMAC() uses the empty key when called with key = NULL. */
-  const struct test_st *test = &kTests[0];
+  // Test that HMAC() uses the empty key when called with key = NULL.
+  const Test *test = &kTests[0];
   assert(test->key_len == 0);
   if (NULL == HMAC(EVP_md5(), NULL, 0, test->data, test->data_len, out,
                    &out_len)) {
     fprintf(stderr, "HMAC failed.\n");
     err++;
   } else {
-    p = to_hex(out, out_len);
-    if (strcmp(p, test->hex_digest) != 0) {
-      fprintf(stderr, "got %s instead of %s\n", p, test->hex_digest);
+    std::string out_hex = ToHex(out, out_len);
+    if (out_hex != test->hex_digest) {
+      fprintf(stderr, "got %s instead of %s\n", out_hex.c_str(),
+              test->hex_digest);
       err++;
     }
   }
 
-  /* Test that HMAC_Init, etc., uses the empty key when called initially with
-   * key = NULL. */
+  // Test that HMAC_Init, etc., uses the empty key when called initially with
+  // key = NULL.
   assert(test->key_len == 0);
-  HMAC_CTX ctx;
-  HMAC_CTX_init(&ctx);
-  if (!HMAC_Init_ex(&ctx, NULL, 0, EVP_md5(), NULL) ||
-      !HMAC_Update(&ctx, test->data, test->data_len) ||
-      !HMAC_Final(&ctx, out, &out_len)) {
+  ScopedHMAC_CTX ctx;
+  if (!HMAC_Init_ex(ctx.get(), NULL, 0, EVP_md5(), NULL) ||
+      !HMAC_Update(ctx.get(), test->data, test->data_len) ||
+      !HMAC_Final(ctx.get(), out, &out_len)) {
     fprintf(stderr, "HMAC failed.\n");
     err++;
   } else {
-    p = to_hex(out, out_len);
-    if (strcmp(p, test->hex_digest) != 0) {
-      fprintf(stderr, "got %s instead of %s\n", p, test->hex_digest);
+    std::string out_hex = ToHex(out, out_len);
+    if (out_hex != test->hex_digest) {
+      fprintf(stderr, "got %s instead of %s\n", out_hex.c_str(),
+              test->hex_digest);
       err++;
     }
   }
-  HMAC_CTX_cleanup(&ctx);
 
   if (err) {
     return 1;
