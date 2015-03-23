@@ -65,13 +65,11 @@ static int Usage(const char *program) {
 }
 
 struct TestState {
-  TestState() : cert_ready(false), early_callback_called(false) {}
-
   ScopedEVP_PKEY channel_id;
-  bool cert_ready;
+  bool cert_ready = false;
   ScopedSSL_SESSION session;
   ScopedSSL_SESSION pending_session;
-  bool early_callback_called;
+  bool early_callback_called = false;
 };
 
 static void TestStateExFree(void *parent, void *ptr, CRYPTO_EX_DATA *ad,

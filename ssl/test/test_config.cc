@@ -116,42 +116,6 @@ const Flag<int> kIntFlags[] = {
 
 }  // namespace
 
-TestConfig::TestConfig()
-    : port(0),
-      is_server(false),
-      is_dtls(false),
-      resume(false),
-      fallback_scsv(false),
-      require_any_client_certificate(false),
-      false_start(false),
-      async(false),
-      write_different_record_sizes(false),
-      cbc_record_splitting(false),
-      partial_write(false),
-      no_tls12(false),
-      no_tls11(false),
-      no_tls1(false),
-      no_ssl3(false),
-      shim_writes_first(false),
-      tls_d5_bug(false),
-      expect_session_miss(false),
-      expect_extended_master_secret(false),
-      renegotiate(false),
-      allow_unsafe_legacy_renegotiation(false),
-      enable_ocsp_stapling(false),
-      enable_signed_cert_timestamps(false),
-      fastradio_padding(false),
-      min_version(0),
-      max_version(0),
-      mtu(0),
-      implicit_handshake(false),
-      use_early_callback(false),
-      fail_early_callback(false),
-      install_ddos_callback(false),
-      fail_ddos_callback(false),
-      fail_second_ddos_callback(false) {
-}
-
 bool ParseConfig(int argc, char **argv, TestConfig *out_config) {
   for (int i = 0; i < argc; i++) {
     bool *bool_field = FindField(out_config, kBoolFlags, argv[i]);
