@@ -109,12 +109,6 @@ void EVP_PKEY_free(EVP_PKEY *pkey) {
   }
 
   free_it(pkey);
-  if (pkey->attributes) {
-    /* TODO(fork): layering: X509_ATTRIBUTE_free is an X.509 function. In
-     * practice this path isn't called but should be removed in the future. */
-    /*sk_X509_ATTRIBUTE_pop_free(pkey->attributes, X509_ATTRIBUTE_free);*/
-    assert(0);
-  }
   OPENSSL_free(pkey);
 }
 

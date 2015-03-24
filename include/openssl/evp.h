@@ -677,9 +677,6 @@ struct evp_pkey_st {
    * which element (if any) of the |pkey| union is valid. */
   int type;
 
-  /* TODO(fork): document */
-  int save_type;
-
   union {
     char *ptr;
     struct rsa_st *rsa; /* RSA */
@@ -688,16 +685,9 @@ struct evp_pkey_st {
     struct ec_key_st *ec; /* ECC */
   } pkey;
 
-  ENGINE *engine;
-
-  /* TODO(fork): document */
-  int save_parameters;
   /* ameth contains a pointer to a method table that contains many ASN.1
    * methods for the key type. */
   const EVP_PKEY_ASN1_METHOD *ameth;
-
-  /* TODO(fork): document; */
-  STACK_OF(X509_ATTRIBUTE) * attributes; /* [ 0 ] */
 } /* EVP_PKEY */;
 
 
