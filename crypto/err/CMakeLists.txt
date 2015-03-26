@@ -44,7 +44,7 @@ add_library(
 add_executable(
   err_test
 
-  err_test.c
+  err_test.cc
 )
 
 target_link_libraries(err_test crypto)
