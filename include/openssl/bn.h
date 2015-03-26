@@ -473,7 +473,8 @@ OPENSSL_EXPORT BN_ULONG BN_mod_word(const BIGNUM *a, BN_ULONG w);
   BN_div(NULL, (rem), (numerator), (divisor), (ctx))
 
 /* BN_nnmod is a non-negative modulo function. It acts like |BN_mod|, but 0 <=
- * |rem| < |divisor| is always true. */
+ * |rem| < |divisor| is always true. It returns one on success and zero on
+ * error. */
 OPENSSL_EXPORT int BN_nnmod(BIGNUM *rem, const BIGNUM *numerator,
                             const BIGNUM *divisor, BN_CTX *ctx);
 

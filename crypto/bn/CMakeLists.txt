@@ -69,7 +69,7 @@ perlasm(armv4-mont.${ASM_EXT} asm/armv4-mont.pl)
 add_executable(
   bn_test
 
-  bn_test.c
+  bn_test.cc
 )
 
 target_link_libraries(bn_test crypto)
