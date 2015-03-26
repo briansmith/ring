@@ -11,7 +11,7 @@ add_library(
 add_executable(
   base64_test
 
-  base64_test.c
+  base64_test.cc
 )
 
 target_link_libraries(base64_test crypto)

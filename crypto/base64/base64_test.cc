@@ -20,13 +20,13 @@
 #include <openssl/err.h>
 
 
-typedef struct {
+struct TestVector {
   const char *decoded;
   const char *encoded;
-} TEST_VECTOR;
+};
 
-/* Test vectors from RFC 4648. */
-static const TEST_VECTOR test_vectors[] = {
+// Test vectors from RFC 4648.
+static const TestVector kTestVectors[] = {
   { "", "" },
   { "f" , "Zg==" },
   { "fo", "Zm8=" },
@@ -36,95 +36,90 @@ static const TEST_VECTOR test_vectors[] = {
   { "foobar", "Zm9vYmFy" },
 };
 
-static const size_t kNumTests = sizeof(test_vectors) / sizeof(test_vectors[0]);
+static const size_t kNumTests = sizeof(kTestVectors) / sizeof(kTestVectors[0]);
 
-static int test_encode(void) {
-  uint8_t out[9];
-  size_t i, len;
-
-  for (i = 0; i < kNumTests; i++) {
-    const TEST_VECTOR *t = &test_vectors[i];
-    len = EVP_EncodeBlock(out, (const uint8_t*)t->decoded, strlen(t->decoded));
+static bool TestEncode() {
+  for (size_t i = 0; i < kNumTests; i++) {
+    const TestVector *t = &kTestVectors[i];
+    uint8_t out[9];
+    size_t len = EVP_EncodeBlock(out, (const uint8_t*)t->decoded,
+                                 strlen(t->decoded));
     if (len != strlen(t->encoded) ||
         memcmp(out, t->encoded, len) != 0) {
       fprintf(stderr, "encode(\"%s\") = \"%.*s\", want \"%s\"\n",
               t->decoded, (int)len, (const char*)out, t->encoded);
-      return 0;
+      return false;
     }
   }
-  return 1;
+  return true;
 }
 
-static int test_decode(void) {
+static bool TestDecode() {
   uint8_t out[6];
-  size_t i, len;
-  int ret;
+  size_t len;
 
-  for (i = 0; i < kNumTests; i++) {
-    /* Test the normal API. */
-    const TEST_VECTOR *t = &test_vectors[i];
+  for (size_t i = 0; i < kNumTests; i++) {
+    // Test the normal API.
+    const TestVector *t = &kTestVectors[i];
     size_t expected_len = strlen(t->decoded);
     if (!EVP_DecodeBase64(out, &len, sizeof(out),
                           (const uint8_t*)t->encoded, strlen(t->encoded))) {
       fprintf(stderr, "decode(\"%s\") failed\n", t->encoded);
-      return 0;
+      return false;
     }
     if (len != strlen(t->decoded) ||
         memcmp(out, t->decoded, len) != 0) {
       fprintf(stderr, "decode(\"%s\") = \"%.*s\", want \"%s\"\n",
               t->encoded, (int)len, (const char*)out, t->decoded);
-      return 0;
+      return false;
     }
 
-    /* Test that the padding behavior of the deprecated API is
-     * preserved. */
-    ret = EVP_DecodeBlock(out, (const uint8_t*)t->encoded, strlen(t->encoded));
+    // Test that the padding behavior of the deprecated API is preserved.
+    int ret = EVP_DecodeBlock(out, (const uint8_t*)t->encoded,
+                              strlen(t->encoded));
     if (ret < 0) {
       fprintf(stderr, "decode(\"%s\") failed\n", t->encoded);
-      return 0;
+      return false;
     }
     if (ret % 3 != 0) {
       fprintf(stderr, "EVP_DecodeBlock did not ignore padding\n");
-      return 0;
+      return false;
     }
     if (expected_len % 3 != 0) {
       ret -= 3 - (expected_len % 3);
     }
-    if (ret != strlen(t->decoded) ||
+    if (static_cast<size_t>(ret) != strlen(t->decoded) ||
         memcmp(out, t->decoded, ret) != 0) {
       fprintf(stderr, "decode(\"%s\") = \"%.*s\", want \"%s\"\n",
               t->encoded, ret, (const char*)out, t->decoded);
-      return 0;
+      return false;
     }
   }
 
   if (EVP_DecodeBase64(out, &len, sizeof(out), (const uint8_t*)"a!bc", 4)) {
     fprintf(stderr, "Failed to reject invalid characters in the middle.\n");
-    return 0;
+    return false;
   }
 
   if (EVP_DecodeBase64(out, &len, sizeof(out), (const uint8_t*)"a=bc", 4)) {
     fprintf(stderr, "Failed to reject invalid characters in the middle.\n");
-    return 0;
+    return false;
   }
 
   if (EVP_DecodeBase64(out, &len, sizeof(out), (const uint8_t*)"abc", 4)) {
     fprintf(stderr, "Failed to reject invalid input length.\n");
-    return 0;
+    return false;
   }
 
-  return 1;
+  return true;
 }
 
 int main(void) {
   CRYPTO_library_init();
   ERR_load_crypto_strings();
 
-  if (!test_encode()) {
-    return 1;
-  }
-
-  if (!test_decode()) {
+  if (!TestEncode() ||
+      !TestDecode()) {
     return 1;
   }
 
