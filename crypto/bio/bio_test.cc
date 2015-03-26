@@ -37,95 +37,107 @@
 #include <openssl/crypto.h>
 #include <openssl/err.h>
 
-#define MIN(a, b) ((a < b) ? a : b)
+#include <algorithm>
+
+#include "../test/scoped_types.h"
+
 
 #if !defined(OPENSSL_WINDOWS)
 static int closesocket(int sock) {
   return close(sock);
 }
 
-static void print_socket_error(const char *func) {
+static void PrintSocketError(const char *func) {
   perror(func);
 }
 #else
-static void print_socket_error(const char *func) {
+static void PrintSocketError(const char *func) {
   fprintf(stderr, "%s: %d\n", func, WSAGetLastError());
 }
 #endif
 
-static int test_socket_connect(void) {
-  int listening_sock = socket(AF_INET, SOCK_STREAM, 0);
-  int sock;
-  struct sockaddr_in sin;
-  socklen_t sockaddr_len = sizeof(sin);
-  static const char kTestMessage[] = "test";
-  char hostname[80], buf[5];
-  BIO *bio;
+class ScopedSocket {
+ public:
+  ScopedSocket(int sock) : sock_(sock) {}
+  ~ScopedSocket() {
+    closesocket(sock_);
+  }
 
+ private:
+  const int sock_;
+};
+
+static bool TestSocketConnect() {
+  static const char kTestMessage[] = "test";
+
+  int listening_sock = socket(AF_INET, SOCK_STREAM, 0);
+  if (listening_sock == -1) {
+    PrintSocketError("socket");
+    return false;
+  }
+  ScopedSocket listening_sock_closer(listening_sock);
+
+  struct sockaddr_in sin;
   memset(&sin, 0, sizeof(sin));
   sin.sin_family = AF_INET;
   if (!inet_pton(AF_INET, "127.0.0.1", &sin.sin_addr)) {
-    print_socket_error("inet_pton");
-    return 0;
+    PrintSocketError("inet_pton");
+    return false;
   }
-
   if (bind(listening_sock, (struct sockaddr *)&sin, sizeof(sin)) != 0) {
-    print_socket_error("bind");
-    return 0;
+    PrintSocketError("bind");
+    return false;
   }
-
   if (listen(listening_sock, 1)) {
-    print_socket_error("listen");
-    return 0;
+    PrintSocketError("listen");
+    return false;
   }
-
+  socklen_t sockaddr_len = sizeof(sin);
   if (getsockname(listening_sock, (struct sockaddr *)&sin, &sockaddr_len) ||
       sockaddr_len != sizeof(sin)) {
-    print_socket_error("getsockname");
-    return 0;
+    PrintSocketError("getsockname");
+    return false;
   }
 
+  char hostname[80];
   BIO_snprintf(hostname, sizeof(hostname), "%s:%d", "127.0.0.1",
                ntohs(sin.sin_port));
-  bio = BIO_new_connect(hostname);
+  ScopedBIO bio(BIO_new_connect(hostname));
   if (!bio) {
     fprintf(stderr, "BIO_new_connect failed.\n");
-    return 0;
+    return false;
   }
 
-  if (BIO_write(bio, kTestMessage, sizeof(kTestMessage)) !=
+  if (BIO_write(bio.get(), kTestMessage, sizeof(kTestMessage)) !=
       sizeof(kTestMessage)) {
     fprintf(stderr, "BIO_write failed.\n");
     BIO_print_errors_fp(stderr);
-    return 0;
+    return false;
   }
 
-  sock = accept(listening_sock, (struct sockaddr *) &sin, &sockaddr_len);
-  if (sock < 0) {
-    print_socket_error("accept");
-    return 0;
+  int sock = accept(listening_sock, (struct sockaddr *) &sin, &sockaddr_len);
+  if (sock == -1) {
+    PrintSocketError("accept");
+    return false;
   }
+  ScopedSocket sock_closer(sock);
 
+  char buf[5];
   if (recv(sock, buf, sizeof(buf), 0) != sizeof(kTestMessage)) {
-    print_socket_error("read");
-    return 0;
+    PrintSocketError("read");
+    return false;
   }
-
   if (memcmp(buf, kTestMessage, sizeof(kTestMessage))) {
-    return 0;
+    return false;
   }
 
-  closesocket(sock);
-  closesocket(listening_sock);
-  BIO_free(bio);
-
-  return 1;
+  return true;
 }
 
 
-/* bio_read_zero_copy_wrapper is a wrapper around the zero-copy APIs to make
- * testing easier. */
-static size_t bio_read_zero_copy_wrapper(BIO *bio, uint8_t *data, size_t len) {
+// BioReadZeroCopyWrapper is a wrapper around the zero-copy APIs to make
+// testing easier.
+static size_t BioReadZeroCopyWrapper(BIO *bio, uint8_t *data, size_t len) {
   uint8_t *read_buf;
   size_t read_buf_offset;
   size_t available_bytes;
@@ -137,7 +149,7 @@ static size_t bio_read_zero_copy_wrapper(BIO *bio, uint8_t *data, size_t len) {
       return 0;
     }
 
-    available_bytes = MIN(available_bytes, len - len_read);
+    available_bytes = std::min(available_bytes, len - len_read);
     memmove(data + len_read, read_buf + read_buf_offset, available_bytes);
 
     BIO_zero_copy_get_read_buf_done(bio, available_bytes);
@@ -148,10 +160,10 @@ static size_t bio_read_zero_copy_wrapper(BIO *bio, uint8_t *data, size_t len) {
   return len_read;
 }
 
-/* bio_write_zero_copy_wrapper is a wrapper around the zero-copy APIs to make
- * testing easier. */
-static size_t bio_write_zero_copy_wrapper(BIO *bio, const uint8_t *data,
-                                          size_t len) {
+// BioWriteZeroCopyWrapper is a wrapper around the zero-copy APIs to make
+// testing easier.
+static size_t BioWriteZeroCopyWrapper(BIO *bio, const uint8_t *data,
+                                      size_t len) {
   uint8_t *write_buf;
   size_t write_buf_offset;
   size_t available_bytes;
@@ -163,7 +175,7 @@ static size_t bio_write_zero_copy_wrapper(BIO *bio, const uint8_t *data,
       return 0;
     }
 
-    available_bytes = MIN(available_bytes, len - len_written);
+    available_bytes = std::min(available_bytes, len - len_written);
     memmove(write_buf + write_buf_offset, data + len_written, available_bytes);
 
     BIO_zero_copy_get_write_buf_done(bio, available_bytes);
@@ -174,167 +186,157 @@ static size_t bio_write_zero_copy_wrapper(BIO *bio, const uint8_t *data,
   return len_written;
 }
 
-static int test_zero_copy_bio_pairs(void) {
-  /* Test read and write, especially triggering the ring buffer wrap-around.*/
-  BIO* bio1;
-  BIO* bio2;
-  size_t i, j;
+static bool TestZeroCopyBioPairs() {
+  // Test read and write, especially triggering the ring buffer wrap-around.
   uint8_t bio1_application_send_buffer[1024];
   uint8_t bio2_application_recv_buffer[1024];
-  size_t total_read = 0;
-  size_t total_write = 0;
-  uint8_t* write_buf;
-  size_t write_buf_offset;
-  size_t available_bytes;
-  size_t bytes_left;
 
   const size_t kLengths[] = {254, 255, 256, 257, 510, 511, 512, 513};
 
-  /* These trigger ring buffer wrap around. */
+  // These trigger ring buffer wrap around.
   const size_t kPartialLengths[] = {0, 1, 2, 3, 128, 255, 256, 257, 511, 512};
 
   static const size_t kBufferSize = 512;
 
   srand(1);
-  for (i = 0; i < sizeof(bio1_application_send_buffer); i++) {
+  for (size_t i = 0; i < sizeof(bio1_application_send_buffer); i++) {
     bio1_application_send_buffer[i] = rand() & 255;
   }
 
-  /* Transfer bytes from bio1_application_send_buffer to
-   * bio2_application_recv_buffer in various ways. */
-  for (i = 0; i < sizeof(kLengths) / sizeof(kLengths[0]); i++) {
-    for (j = 0; j < sizeof(kPartialLengths) / sizeof(kPartialLengths[0]); j++) {
-      total_write = 0;
-      total_read = 0;
+  // Transfer bytes from bio1_application_send_buffer to
+  // bio2_application_recv_buffer in various ways.
+  for (size_t i = 0; i < sizeof(kLengths) / sizeof(kLengths[0]); i++) {
+    for (size_t j = 0; j < sizeof(kPartialLengths) / sizeof(kPartialLengths[0]);
+         j++) {
+      size_t total_write = 0;
+      size_t total_read = 0;
 
-      BIO_new_bio_pair(&bio1, kBufferSize, &bio2, kBufferSize);
+      BIO *bio1, *bio2;
+      if (!BIO_new_bio_pair(&bio1, kBufferSize, &bio2, kBufferSize)) {
+        return false;
+      }
+      ScopedBIO bio1_scoper(bio1);
+      ScopedBIO bio2_scoper(bio2);
 
-      total_write += bio_write_zero_copy_wrapper(
+      total_write += BioWriteZeroCopyWrapper(
           bio1, bio1_application_send_buffer, kLengths[i]);
 
-      /* This tests interleaved read/write calls. Do a read between zero copy
-       * write calls. */
+      // This tests interleaved read/write calls. Do a read between zero copy
+      // write calls.
+      uint8_t *write_buf;
+      size_t write_buf_offset;
+      size_t available_bytes;
       if (!BIO_zero_copy_get_write_buf(bio1, &write_buf, &write_buf_offset,
                                        &available_bytes)) {
-        return 0;
+        return false;
       }
 
-      /* Free kPartialLengths[j] bytes in the beginning of bio1 write buffer.
-       * This enables ring buffer wrap around for the next write. */
+      // Free kPartialLengths[j] bytes in the beginning of bio1 write buffer.
+      // This enables ring buffer wrap around for the next write.
       total_read += BIO_read(bio2, bio2_application_recv_buffer + total_read,
                              kPartialLengths[j]);
 
-      size_t interleaved_write_len = MIN(kPartialLengths[j], available_bytes);
+      size_t interleaved_write_len = std::min(kPartialLengths[j],
+                                              available_bytes);
 
-      /* Write the data for the interleaved write call. If the buffer becomes
-       * empty after a read, the write offset is normally set to 0. Check that
-       * this does not happen for interleaved read/write and that
-       * |write_buf_offset| is still valid. */
+      // Write the data for the interleaved write call. If the buffer becomes
+      // empty after a read, the write offset is normally set to 0. Check that
+      // this does not happen for interleaved read/write and that
+      // |write_buf_offset| is still valid.
       memcpy(write_buf + write_buf_offset,
              bio1_application_send_buffer + total_write, interleaved_write_len);
       if (BIO_zero_copy_get_write_buf_done(bio1, interleaved_write_len)) {
         total_write += interleaved_write_len;
       }
 
-      /* Do another write in case |write_buf_offset| was wrapped */
-      total_write += bio_write_zero_copy_wrapper(
+      // Do another write in case |write_buf_offset| was wrapped.
+      total_write += BioWriteZeroCopyWrapper(
           bio1, bio1_application_send_buffer + total_write,
           kPartialLengths[j] - interleaved_write_len);
 
-      /* Drain the rest. */
-      bytes_left = BIO_pending(bio2);
-      total_read += bio_read_zero_copy_wrapper(
+      // Drain the rest.
+      size_t bytes_left = BIO_pending(bio2);
+      total_read += BioReadZeroCopyWrapper(
           bio2, bio2_application_recv_buffer + total_read, bytes_left);
-
-      BIO_free(bio1);
-      BIO_free(bio2);
 
       if (total_read != total_write) {
         fprintf(stderr, "Lengths not equal in round (%u, %u)\n", (unsigned)i,
                 (unsigned)j);
-        return 0;
+        return false;
       }
       if (total_read > kLengths[i] + kPartialLengths[j]) {
         fprintf(stderr, "Bad lengths in round (%u, %u)\n", (unsigned)i,
                 (unsigned)j);
-        return 0;
+        return false;
       }
       if (memcmp(bio1_application_send_buffer, bio2_application_recv_buffer,
                  total_read) != 0) {
         fprintf(stderr, "Buffers not equal in round (%u, %u)\n", (unsigned)i,
                 (unsigned)j);
-        return 0;
+        return false;
       }
     }
   }
 
-  return 1;
+  return true;
 }
 
-static int test_printf(void) {
-  /* Test a short output, a very long one, and various sizes around
-   * 256 (the size of the buffer) to ensure edge cases are correct. */
+static bool TestPrintf() {
+  // Test a short output, a very long one, and various sizes around
+  // 256 (the size of the buffer) to ensure edge cases are correct.
   static const size_t kLengths[] = { 5, 250, 251, 252, 253, 254, 1023 };
-  BIO *bio;
-  char string[1024];
-  int ret;
-  const uint8_t *contents;
-  size_t i, len;
 
-  bio = BIO_new(BIO_s_mem());
+  ScopedBIO bio(BIO_new(BIO_s_mem()));
   if (!bio) {
     fprintf(stderr, "BIO_new failed\n");
-    return 0;
+    return false;
   }
 
-  for (i = 0; i < sizeof(kLengths) / sizeof(kLengths[0]); i++) {
+  for (size_t i = 0; i < sizeof(kLengths) / sizeof(kLengths[0]); i++) {
+    char string[1024];
     if (kLengths[i] >= sizeof(string)) {
       fprintf(stderr, "Bad test string length\n");
-      return 0;
+      return false;
     }
     memset(string, 'a', sizeof(string));
     string[kLengths[i]] = '\0';
 
-    ret = BIO_printf(bio, "test %s", string);
-    if (ret != 5 + kLengths[i]) {
+    int ret = BIO_printf(bio.get(), "test %s", string);
+    if (ret < 0 || static_cast<size_t>(ret) != 5 + kLengths[i]) {
       fprintf(stderr, "BIO_printf failed: %d\n", ret);
-      return 0;
+      return false;
     }
-    if (!BIO_mem_contents(bio, &contents, &len)) {
+    const uint8_t *contents;
+    size_t len;
+    if (!BIO_mem_contents(bio.get(), &contents, &len)) {
       fprintf(stderr, "BIO_mem_contents failed\n");
-      return 0;
+      return false;
     }
     if (len != 5 + kLengths[i] ||
         strncmp((const char *)contents, "test ", 5) != 0 ||
         strncmp((const char *)contents + 5, string, kLengths[i]) != 0) {
       fprintf(stderr, "Contents did not match: %.*s\n", (int)len, contents);
-      return 0;
+      return false;
     }
 
-    if (!BIO_reset(bio)) {
+    if (!BIO_reset(bio.get())) {
       fprintf(stderr, "BIO_reset failed\n");
-      return 0;
+      return false;
     }
   }
 
-  BIO_free(bio);
-  return 1;
+  return true;
 }
 
 int main(void) {
-#if defined(OPENSSL_WINDOWS)
-  WSADATA wsa_data;
-  WORD wsa_version;
-  int wsa_err;
-#endif
-
   CRYPTO_library_init();
   ERR_load_crypto_strings();
 
 #if defined(OPENSSL_WINDOWS)
-  /* Initialize Winsock. */
-  wsa_version = MAKEWORD(2, 2);
-  wsa_err = WSAStartup(wsa_version, &wsa_data);
+  // Initialize Winsock.
+  WORD wsa_version = MAKEWORD(2, 2);
+  WSADATA wsa_data;
+  int wsa_err = WSAStartup(wsa_version, &wsa_data);
   if (wsa_err != 0) {
     fprintf(stderr, "WSAStartup failed: %d\n", wsa_err);
     return 1;
@@ -345,15 +347,9 @@ int main(void) {
   }
 #endif
 
-  if (!test_socket_connect()) {
-    return 1;
-  }
-
-  if (!test_printf()) {
-    return 1;
-  }
-
-  if (!test_zero_copy_bio_pairs()) {
+  if (!TestSocketConnect() ||
+      !TestPrintf() ||
+      !TestZeroCopyBioPairs()) {
     return 1;
   }
 
