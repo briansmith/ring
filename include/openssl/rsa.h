@@ -273,13 +273,6 @@ OPENSSL_EXPORT RSA *RSAPrivateKey_dup(const RSA *rsa);
  * returns zero then a more detailed error is available on the error queue. */
 OPENSSL_EXPORT int RSA_check_key(const RSA *rsa);
 
-/* RSA_recover_crt_params uses |rsa->n|, |rsa->d| and |rsa->e| in order to
- * calculate the two primes used and thus the precomputed, CRT values. These
- * values are set in the |p|, |q|, |dmp1|, |dmq1| and |iqmp| members of |rsa|,
- * which must be |NULL| on entry. It returns one on success and zero
- * otherwise. */
-OPENSSL_EXPORT int RSA_recover_crt_params(RSA *rsa);
-
 /* RSA_verify_PKCS1_PSS_mgf1 verifies that |EM| is a correct PSS padding of
  * |mHash|, where |mHash| is a digest produced by |Hash|. |EM| must point to
  * exactly |RSA_size(rsa)| bytes of data. The |mgf1Hash| argument specifies the

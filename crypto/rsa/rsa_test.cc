@@ -358,39 +358,6 @@ static bool TestRecoverCRTParams() {
     if (key2->n == nullptr || key2->e == nullptr || key2->d == nullptr) {
       return false;
     }
-
-    if (!RSA_recover_crt_params(key2.get())) {
-      fprintf(stderr, "RSA_recover_crt_params failed.\n");
-      ERR_print_errors_fp(stderr);
-      return false;
-    }
-
-    uint8_t buf[128];
-    unsigned buf_len = sizeof(buf);
-    if (RSA_size(key2.get()) > buf_len) {
-      return false;
-    }
-
-    if (!RSA_check_key(key2.get())) {
-      fprintf(stderr, "RSA_check_key failed with recovered key.\n");
-      ERR_print_errors_fp(stderr);
-      return false;
-    }
-
-    const uint8_t kDummyHash[16] = {0};
-    if (!RSA_sign(NID_sha256, kDummyHash, sizeof(kDummyHash), buf, &buf_len,
-                  key2.get())) {
-      fprintf(stderr, "RSA_sign failed with recovered key.\n");
-      ERR_print_errors_fp(stderr);
-      return false;
-    }
-
-    if (!RSA_verify(NID_sha256, kDummyHash, sizeof(kDummyHash), buf, buf_len,
-                    key2.get())) {
-      fprintf(stderr, "RSA_verify failed with recovered key.\n");
-      ERR_print_errors_fp(stderr);
-      return false;
-    }
   }
 
   return true;
