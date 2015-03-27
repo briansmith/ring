@@ -13,7 +13,7 @@ add_library(
 add_executable(
   bytestring_test
 
-  bytestring_test.c
+  bytestring_test.cc
 )
 
 target_link_libraries(bytestring_test crypto)
