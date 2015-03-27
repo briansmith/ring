@@ -70,10 +70,6 @@ static int rsa_pub_cmp(const EVP_PKEY *a, const EVP_PKEY *b) {
          BN_cmp(b->pkey.rsa->e, a->pkey.rsa->e) == 0;
 }
 
-static int rsa_opaque(const EVP_PKEY *pkey) {
-  return RSA_is_opaque(pkey->pkey.rsa);
-}
-
 static int rsa_supports_digest(const EVP_PKEY *pkey, const EVP_MD *md) {
   return RSA_supports_digest(pkey->pkey.rsa, md);
 }
@@ -94,7 +90,6 @@ const EVP_PKEY_ASN1_METHOD rsa_asn1_meth = {
 
   rsa_pub_cmp,
 
-  rsa_opaque,
   rsa_supports_digest,
 
   int_rsa_size,

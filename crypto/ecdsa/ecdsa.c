@@ -65,10 +65,6 @@
 
 int ECDSA_sign(int type, const uint8_t *digest, size_t digest_len, uint8_t *sig,
                unsigned int *sig_len, EC_KEY *eckey) {
-  if (eckey->ecdsa_meth && eckey->ecdsa_meth->sign) {
-    return eckey->ecdsa_meth->sign(digest, digest_len, sig, sig_len, eckey);
-  }
-
   return ECDSA_sign_ex(type, digest, digest_len, sig, sig_len, NULL, NULL,
                        eckey);
 }
@@ -78,10 +74,6 @@ int ECDSA_verify(int type, const uint8_t *digest, size_t digest_len,
   ECDSA_SIG *s;
   int ret = 0;
   uint8_t *der = NULL;
-
-  if (eckey->ecdsa_meth && eckey->ecdsa_meth->verify) {
-    return eckey->ecdsa_meth->verify(digest, digest_len, sig, sig_len, eckey);
-  }
 
   /* Decode the ECDSA signature. */
   s = ECDSA_SIG_from_bytes(sig, sig_len);
@@ -147,11 +139,6 @@ int ECDSA_do_verify(const uint8_t *digest, size_t digest_len,
   EC_POINT *point = NULL;
   const EC_GROUP *group;
   const EC_POINT *pub_key;
-
-  if (eckey->ecdsa_meth && eckey->ecdsa_meth->verify) {
-    OPENSSL_PUT_ERROR(ECDSA, ECDSA_R_NOT_IMPLEMENTED);
-    return 0;
-  }
 
   /* check input values */
   if ((group = EC_KEY_get0_group(eckey)) == NULL ||
@@ -367,11 +354,6 @@ ECDSA_SIG *ECDSA_do_sign_ex(const uint8_t *digest, size_t digest_len,
   ECDSA_SIG *ret;
   const BIGNUM *priv_key;
 
-  if (eckey->ecdsa_meth && eckey->ecdsa_meth->sign) {
-    OPENSSL_PUT_ERROR(ECDSA, ECDSA_R_NOT_IMPLEMENTED);
-    return NULL;
-  }
-
   group = EC_KEY_get0_group(eckey);
   priv_key = EC_KEY_get0_private_key(eckey);
 
@@ -460,12 +442,6 @@ int ECDSA_sign_ex(int type, const uint8_t *digest, size_t digest_len,
                   const BIGNUM *r, EC_KEY *eckey) {
   int ret = 0;
   ECDSA_SIG *s = NULL;
-
-  if (eckey->ecdsa_meth && eckey->ecdsa_meth->sign) {
-    OPENSSL_PUT_ERROR(ECDSA, ECDSA_R_NOT_IMPLEMENTED);
-    *sig_len = 0;
-    goto err;
-  }
 
   s = ECDSA_do_sign_ex(digest, digest_len, kinv, r, eckey);
   if (s == NULL) {

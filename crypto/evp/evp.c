@@ -114,13 +114,6 @@ EVP_PKEY *EVP_PKEY_up_ref(EVP_PKEY *pkey) {
   return pkey;
 }
 
-int EVP_PKEY_is_opaque(const EVP_PKEY *pkey) {
-  if (pkey->ameth && pkey->ameth->pkey_opaque) {
-    return pkey->ameth->pkey_opaque(pkey);
-  }
-  return 0;
-}
-
 int EVP_PKEY_supports_digest(const EVP_PKEY *pkey, const EVP_MD *md) {
   if (pkey->ameth && pkey->ameth->pkey_supports_digest) {
     return pkey->ameth->pkey_supports_digest(pkey, md);

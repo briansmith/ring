@@ -70,10 +70,6 @@ struct evp_pkey_asn1_method_st {
 
   int (*pub_cmp)(const EVP_PKEY *a, const EVP_PKEY *b);
 
-  /* pkey_opaque returns 1 if the |pk| is opaque. Opaque keys are backed by
-   * custom implementations which do not expose key material and parameters.*/
-  int (*pkey_opaque)(const EVP_PKEY *pk);
-
   /* pkey_supports_digest returns one if |pkey| supports digests of
    * type |md|. This is intended for use with EVP_PKEYs backing custom
    * implementations which can't sign all digests. If null, it is

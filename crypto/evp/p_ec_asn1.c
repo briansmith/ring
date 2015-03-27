@@ -128,17 +128,12 @@ static int ec_cmp_parameters(const EVP_PKEY *a, const EVP_PKEY *b) {
 
 static void int_ec_free(EVP_PKEY *pkey) { EC_KEY_free(pkey->pkey.ec); }
 
-static int eckey_opaque(const EVP_PKEY *pkey) {
-  return EC_KEY_is_opaque(pkey->pkey.ec);
-}
-
 const EVP_PKEY_ASN1_METHOD ec_asn1_meth = {
   EVP_PKEY_EC,
   EVP_PKEY_EC,
 
   eckey_pub_cmp,
 
-  eckey_opaque,
   0 /* pkey_supports_digest */,
 
   int_ec_size,

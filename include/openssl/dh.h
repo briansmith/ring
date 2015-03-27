@@ -59,7 +59,6 @@
 
 #include <openssl/base.h>
 
-#include <openssl/engine.h>
 #include <openssl/thread.h>
 
 #if defined(__cplusplus)
@@ -191,35 +190,7 @@ OPENSSL_EXPORT DH *d2i_DHparams(DH **ret, const unsigned char **inp, long len);
 OPENSSL_EXPORT int i2d_DHparams(const DH *in, unsigned char **outp);
 
 
-/* dh_method contains function pointers to override the implementation of DH.
- * See |engine.h| for details. */
-struct dh_method {
-  struct openssl_method_common_st common;
-
-  /* app_data is an opaque pointer for the method to use. */
-  void *app_data;
-
-  /* init is called just before the return of |DH_new_method|. It returns one
-   * on success or zero on error. */
-  int (*init)(DH *dh);
-
-  /* finish is called before |dh| is destructed. */
-  void (*finish)(DH *dh);
-
-  /* generate_parameters is called by |DH_generate_parameters_ex|. */
-  int (*generate_parameters)(DH *dh, int prime_bits, int generator,
-                             BN_GENCB *cb);
-
-  /* generate_parameters is called by |DH_generate_key|. */
-  int (*generate_key)(DH *dh);
-
-  /* compute_key is called by |DH_compute_key|. */
-  int (*compute_key)(DH *dh, uint8_t *out, const BIGNUM *pub_key);
-};
-
 struct dh_st {
-  DH_METHOD *meth;
-
   BIGNUM *p;
   BIGNUM *g;
   BIGNUM *pub_key;  /* g^x mod p */

@@ -41,7 +41,6 @@ var libraryNames = []string{
 	"EC",
 	"BIO",
 	"RAND",
-	"ENGINE",
 	"UI",
 	"COMP",
 	"ECDSA",

@@ -333,8 +333,6 @@ struct ec_key_st {
 
   CRYPTO_refcount_t references;
   int flags;
-
-  ECDSA_METHOD *ecdsa_meth;
 } /* EC_KEY */;
 
 /* curve_data contains data about a built-in elliptic curve. */
