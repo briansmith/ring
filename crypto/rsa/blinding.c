@@ -440,7 +440,7 @@ BN_BLINDING *rsa_setup_blinding(RSA *rsa, BN_CTX *in_ctx) {
     }
   }
 
-  ret = BN_BLINDING_create_param(NULL, e, n, ctx, rsa->meth->bn_mod_exp,
+  ret = BN_BLINDING_create_param(NULL, e, n, ctx, BN_mod_exp_mont,
                                  mont_ctx);
   if (ret == NULL) {
     OPENSSL_PUT_ERROR(RSA, ERR_R_BN_LIB);

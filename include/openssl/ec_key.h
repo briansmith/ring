@@ -71,7 +71,6 @@
 #include <openssl/base.h>
 
 #include <openssl/ec.h>
-#include <openssl/engine.h>
 
 #if defined(__cplusplus)
 extern "C" {
@@ -88,7 +87,7 @@ extern "C" {
 OPENSSL_EXPORT EC_KEY *EC_KEY_new(void);
 
 /* EC_KEY_new_method acts the same as |EC_KEY_new|, but takes an explicit
- * |ENGINE|. */
+ * |ENGINE|. ring: |engine| must be NULL. */
 OPENSSL_EXPORT EC_KEY *EC_KEY_new_method(const ENGINE *engine);
 
 /* EC_KEY_new_by_curve_name returns a fresh EC_KEY for group specified by |nid|
@@ -107,10 +106,6 @@ OPENSSL_EXPORT EC_KEY *EC_KEY_dup(const EC_KEY *src);
 /* EC_KEY_up_ref increases the reference count of |key|. It returns one on
  * success and zero otherwise. */
 OPENSSL_EXPORT int EC_KEY_up_ref(EC_KEY *key);
-
-/* EC_KEY_is_opaque returns one if |key| is opaque and doesn't expose its key
- * material. Otherwise it return zero. */
-OPENSSL_EXPORT int EC_KEY_is_opaque(const EC_KEY *key);
 
 /* EC_KEY_get0_group returns a pointer to the |EC_GROUP| object inside |key|. */
 OPENSSL_EXPORT const EC_GROUP *EC_KEY_get0_group(const EC_KEY *key);
@@ -178,40 +173,6 @@ OPENSSL_EXPORT int EC_KEY_set_public_key_affine_coordinates(EC_KEY *key,
  * corresponding public key and stores both in |key|. It returns one on success
  * or zero otherwise. */
 OPENSSL_EXPORT int EC_KEY_generate_key(EC_KEY *key);
-
-
-/* ECDSA method. */
-
-/* ECDSA_FLAG_OPAQUE specifies that this ECDSA_METHOD does not expose its key
- * material. This may be set if, for instance, it is wrapping some other crypto
- * API, like a platform key store. */
-#define ECDSA_FLAG_OPAQUE 1
-
-/* ecdsa_method_st is a structure of function pointers for implementing ECDSA.
- * See engine.h. */
-struct ecdsa_method_st {
-  struct openssl_method_common_st common;
-
-  void *app_data;
-
-  int (*init)(EC_KEY *key);
-  int (*finish)(EC_KEY *key);
-
-  /* group_order_size returns the number of bytes needed to represent the order
-   * of the group. This is used to calculate the maximum size of an ECDSA
-   * signature in |ECDSA_size|. */
-  size_t (*group_order_size)(const EC_KEY *key);
-
-  /* sign matches the arguments and behaviour of |ECDSA_sign|. */
-  int (*sign)(const uint8_t *digest, size_t digest_len, uint8_t *sig,
-              unsigned int *sig_len, EC_KEY *eckey);
-
-  /* verify matches the arguments and behaviour of |ECDSA_verify|. */
-  int (*verify)(const uint8_t *digest, size_t digest_len, const uint8_t *sig,
-                size_t sig_len, EC_KEY *eckey);
-
-  int flags;
-};
 
 
 #if defined(__cplusplus)

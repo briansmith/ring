@@ -59,7 +59,6 @@
 #include <string.h>
 
 #include <openssl/bn.h>
-#include <openssl/engine.h>
 #include <openssl/err.h>
 #include <openssl/mem.h>
 #include <openssl/obj.h>
@@ -69,11 +68,14 @@
 #include "../internal.h"
 
 
-extern const RSA_METHOD RSA_default_method;
-
 RSA *RSA_new(void) { return RSA_new_method(NULL); }
 
 RSA *RSA_new_method(const ENGINE *engine) {
+  if (engine != NULL) {
+    OPENSSL_PUT_ERROR(RSA, ERR_R_MALLOC_FAILURE); /* TODO: error code */
+    return NULL;
+  }
+
   RSA *rsa = (RSA *)OPENSSL_malloc(sizeof(RSA));
   if (rsa == NULL) {
     OPENSSL_PUT_ERROR(RSA, ERR_R_MALLOC_FAILURE);
@@ -82,24 +84,9 @@ RSA *RSA_new_method(const ENGINE *engine) {
 
   memset(rsa, 0, sizeof(RSA));
 
-  if (engine) {
-    rsa->meth = ENGINE_get_RSA_method(engine);
-  }
-
-  if (rsa->meth == NULL) {
-    rsa->meth = (RSA_METHOD*) &RSA_default_method;
-  }
-  METHOD_ref(rsa->meth);
-
   rsa->references = 1;
-  rsa->flags = rsa->meth->flags;
+  rsa->flags = RSA_FLAG_CACHE_PUBLIC | RSA_FLAG_CACHE_PRIVATE;
   CRYPTO_MUTEX_init(&rsa->lock);
-
-  if (rsa->meth->init && !rsa->meth->init(rsa)) {
-    METHOD_unref(rsa->meth);
-    OPENSSL_free(rsa);
-    return NULL;
-  }
 
   return rsa;
 }
@@ -111,14 +98,19 @@ void RSA_free(RSA *rsa) {
     return;
   }
 
+  if (rsa->_method_mod_n != NULL) {
+    BN_MONT_CTX_free(rsa->_method_mod_n);
+  }
+  if (rsa->_method_mod_p != NULL) {
+    BN_MONT_CTX_free(rsa->_method_mod_p);
+  }
+  if (rsa->_method_mod_q != NULL) {
+    BN_MONT_CTX_free(rsa->_method_mod_q);
+  }
+
   if (!CRYPTO_refcount_dec_and_test_zero(&rsa->references)) {
     return;
   }
-
-  if (rsa->meth->finish) {
-    rsa->meth->finish(rsa);
-  }
-  METHOD_unref(rsa->meth);
 
   BN_clear_free(rsa->n);
   BN_clear_free(rsa->e);
@@ -142,24 +134,6 @@ int RSA_up_ref(RSA *rsa) {
   return 1;
 }
 
-int RSA_generate_key_ex(RSA *rsa, int bits, BIGNUM *e_value, BN_GENCB *cb) {
-  if (rsa->meth->keygen) {
-    return rsa->meth->keygen(rsa, bits, e_value, cb);
-  }
-
-  return RSA_default_method.keygen(rsa, bits, e_value, cb);
-}
-
-int RSA_encrypt(RSA *rsa, size_t *out_len, uint8_t *out, size_t max_out,
-                const uint8_t *in, size_t in_len, int padding) {
-  if (rsa->meth->encrypt) {
-    return rsa->meth->encrypt(rsa, out_len, out, max_out, in, in_len, padding);
-  }
-
-  return RSA_default_method.encrypt(rsa, out_len, out, max_out, in, in_len,
-                                    padding);
-}
-
 int RSA_public_encrypt(int flen, const uint8_t *from, uint8_t *to, RSA *rsa,
                        int padding) {
   size_t out_len;
@@ -169,16 +143,6 @@ int RSA_public_encrypt(int flen, const uint8_t *from, uint8_t *to, RSA *rsa,
   }
 
   return out_len;
-}
-
-int RSA_sign_raw(RSA *rsa, size_t *out_len, uint8_t *out, size_t max_out,
-                 const uint8_t *in, size_t in_len, int padding) {
-  if (rsa->meth->sign_raw) {
-    return rsa->meth->sign_raw(rsa, out_len, out, max_out, in, in_len, padding);
-  }
-
-  return RSA_default_method.sign_raw(rsa, out_len, out, max_out, in, in_len,
-                                     padding);
 }
 
 int RSA_private_encrypt(int flen, const uint8_t *from, uint8_t *to, RSA *rsa,
@@ -192,16 +156,6 @@ int RSA_private_encrypt(int flen, const uint8_t *from, uint8_t *to, RSA *rsa,
   return out_len;
 }
 
-int RSA_decrypt(RSA *rsa, size_t *out_len, uint8_t *out, size_t max_out,
-                const uint8_t *in, size_t in_len, int padding) {
-  if (rsa->meth->decrypt) {
-    return rsa->meth->decrypt(rsa, out_len, out, max_out, in, in_len, padding);
-  }
-
-  return RSA_default_method.decrypt(rsa, out_len, out, max_out, in, in_len,
-                                    padding);
-}
-
 int RSA_private_decrypt(int flen, const uint8_t *from, uint8_t *to, RSA *rsa,
                         int padding) {
   size_t out_len;
@@ -213,16 +167,6 @@ int RSA_private_decrypt(int flen, const uint8_t *from, uint8_t *to, RSA *rsa,
   return out_len;
 }
 
-int RSA_verify_raw(RSA *rsa, size_t *out_len, uint8_t *out, size_t max_out,
-                   const uint8_t *in, size_t in_len, int padding) {
-  if (rsa->meth->verify_raw) {
-    return rsa->meth->verify_raw(rsa, out_len, out, max_out, in, in_len, padding);
-  }
-
-  return RSA_default_method.verify_raw(rsa, out_len, out, max_out, in, in_len,
-                                       padding);
-}
-
 int RSA_public_decrypt(int flen, const uint8_t *from, uint8_t *to, RSA *rsa,
                        int padding) {
   size_t out_len;
@@ -232,25 +176,6 @@ int RSA_public_decrypt(int flen, const uint8_t *from, uint8_t *to, RSA *rsa,
   }
 
   return out_len;
-}
-
-unsigned RSA_size(const RSA *rsa) {
-  if (rsa->meth->size) {
-    return rsa->meth->size(rsa);
-  }
-
-  return RSA_default_method.size(rsa);
-}
-
-int RSA_is_opaque(const RSA *rsa) {
-  return rsa->meth && (rsa->meth->flags & RSA_FLAG_OPAQUE);
-}
-
-int RSA_supports_digest(const RSA *rsa, const EVP_MD *md) {
-  if (rsa->meth && rsa->meth->supports_digest) {
-    return rsa->meth->supports_digest(rsa, md);
-  }
-  return 1;
 }
 
 /* SSL_SIG_LENGTH is the size of an SSL/TLS (prior to TLS 1.2) signature: it's
@@ -376,10 +301,6 @@ int RSA_sign(int hash_nid, const uint8_t *in, unsigned in_len, uint8_t *out,
   int signed_msg_is_alloced = 0;
   size_t size_t_out_len;
 
-  if (rsa->meth->sign) {
-    return rsa->meth->sign(hash_nid, in, in_len, out, out_len, rsa);
-  }
-
   if (!RSA_add_pkcs1_prefix(&signed_msg, &signed_msg_len,
                             &signed_msg_is_alloced, hash_nid, in, in_len)) {
     return 0;
@@ -412,10 +333,6 @@ int RSA_verify(int hash_nid, const uint8_t *msg, size_t msg_len,
   uint8_t *signed_msg = NULL;
   size_t signed_msg_len, len;
   int signed_msg_is_alloced = 0;
-
-  if (rsa->meth->verify) {
-    return rsa->meth->verify(hash_nid, msg, msg_len, sig, sig_len, rsa);
-  }
 
   if (sig_len != rsa_size) {
     OPENSSL_PUT_ERROR(RSA, RSA_R_WRONG_SIGNATURE_LENGTH);
@@ -467,11 +384,6 @@ int RSA_check_key(const RSA *key) {
   BIGNUM n, pm1, qm1, lcm, gcd, de, dmp1, dmq1, iqmp;
   BN_CTX *ctx;
   int ok = 0, has_crt_values;
-
-  if (RSA_is_opaque(key)) {
-    /* Opaque keys can't be checked. */
-    return 1;
-  }
 
   if ((key->p != NULL) != (key->q != NULL)) {
     OPENSSL_PUT_ERROR(RSA, RSA_R_ONLY_ONE_OF_P_Q_GIVEN);
@@ -698,17 +610,4 @@ err:
     bn_free_and_null(&rsa->iqmp);
   }
   return ok;
-}
-
-int RSA_private_transform(RSA *rsa, uint8_t *out, const uint8_t *in,
-                          size_t len) {
-  if (rsa->meth->private_transform) {
-    return rsa->meth->private_transform(rsa, out, in, len);
-  }
-
-  return RSA_default_method.private_transform(rsa, out, in, len);
-}
-
-int RSA_blinding_on(RSA *rsa, BN_CTX *ctx) {
-  return 1;
 }

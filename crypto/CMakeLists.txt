@@ -116,7 +116,6 @@ add_subdirectory(bio)
 add_subdirectory(obj)
 
 # Level 2
-add_subdirectory(engine)
 add_subdirectory(dh)
 add_subdirectory(rsa)
 add_subdirectory(ec)
@@ -169,7 +168,6 @@ add_library(
   $<TARGET_OBJECTS:bio>
   $<TARGET_OBJECTS:rand>
   $<TARGET_OBJECTS:obj>
-  $<TARGET_OBJECTS:engine>
   $<TARGET_OBJECTS:dh>
   $<TARGET_OBJECTS:rsa>
   $<TARGET_OBJECTS:ec>

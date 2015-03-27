@@ -110,12 +110,6 @@ int RSA_padding_add_none(uint8_t *to, unsigned to_len, const uint8_t *from,
 int RSA_padding_check_none(uint8_t *to, unsigned to_len, const uint8_t *from,
                            unsigned from_len);
 
-/* RSA_private_transform calls either the method-specific |private_transform|
- * function (if given) or the generic one. See the comment for
- * |private_transform| in |rsa_meth_st|. */
-int RSA_private_transform(RSA *rsa, uint8_t *out, const uint8_t *in,
-                          size_t len);
-
 typedef struct rsa_pss_params_st {
   X509_ALGOR *hashAlgorithm;
   X509_ALGOR *maskGenAlgorithm;
