@@ -65,7 +65,7 @@
 
 #define OPENSSL_DH_MAX_MODULUS_BITS 10000
 
-static int generate_parameters(DH *ret, int prime_bits, int generator, BN_GENCB *cb) {
+int DH_generate_parameters_ex(DH *ret, int prime_bits, int generator, BN_GENCB *cb) {
   /* We generate DH parameters as follows
    * find a prime q which is prime_bits/2 bits long.
    * p=(2*q)+1 or (p-1)/2 = q
@@ -175,7 +175,7 @@ err:
   return ok;
 }
 
-static int generate_key(DH *dh) {
+int DH_generate_key(DH *dh) {
   int ok = 0;
   int generate_new_key = 0;
   unsigned l;
@@ -255,7 +255,7 @@ err:
   return ok;
 }
 
-static int compute_key(DH *dh, unsigned char *out, const BIGNUM *pub_key) {
+int DH_compute_key(unsigned char *out, const BIGNUM *pub_key, DH *dh) {
   BN_CTX *ctx = NULL;
   BN_MONT_CTX *mont = NULL;
   BIGNUM *shared_key;
@@ -311,16 +311,3 @@ err:
 
   return ret;
 }
-
-const struct dh_method DH_default_method = {
-  {
-    0 /* references */,
-    1 /* is_static */,
-  },
-  NULL /* app_data */,
-  NULL /* init */,
-  NULL /* finish */,
-  generate_parameters,
-  generate_key,
-  compute_key,
-};

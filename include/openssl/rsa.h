@@ -59,8 +59,6 @@
 
 #include <openssl/base.h>
 
-#include <openssl/engine.h>
-#include <openssl/stack.h>
 #include <openssl/thread.h>
 
 #if defined(__cplusplus)
@@ -258,10 +256,6 @@ OPENSSL_EXPORT int RSA_public_decrypt(int flen, const uint8_t *from,
  * of a signature or encrypted value using |rsa|. */
 OPENSSL_EXPORT unsigned RSA_size(const RSA *rsa);
 
-/* RSA_is_opaque returns one if |rsa| is opaque and doesn't expose its key
- * material. Otherwise it returns zero. */
-OPENSSL_EXPORT int RSA_is_opaque(const RSA *rsa);
-
 /* RSA_supports_digest returns one if |rsa| supports signing digests
  * of type |md|. Otherwise it returns zero. */
 OPENSSL_EXPORT int RSA_supports_digest(const RSA *rsa, const EVP_MD *md);
@@ -401,10 +395,6 @@ OPENSSL_EXPORT RSA *d2i_RSAPrivateKey(RSA **out, const uint8_t **inp, long len);
 OPENSSL_EXPORT int i2d_RSAPrivateKey(const RSA *in, uint8_t **outp);
 
 
-/* RSA_FLAG_OPAQUE specifies that this RSA_METHOD does not expose its key
- * material. This may be set if, for instance, it is wrapping some other crypto
- * API, like a platform key store. */
-#define RSA_FLAG_OPAQUE 1
 
 /* RSA_FLAG_CACHE_PUBLIC causes a precomputed Montgomery context to be created,
  * on demand, for the public key operations. */
@@ -417,15 +407,6 @@ OPENSSL_EXPORT int i2d_RSAPrivateKey(const RSA *in, uint8_t **outp);
 /* RSA_FLAG_NO_BLINDING disables blinding of private operations. */
 #define RSA_FLAG_NO_BLINDING 8
 
-/* RSA_FLAG_EXT_PKEY means that private key operations will be handled by
- * |mod_exp| and that they do not depend on the private key components being
- * present: for example a key stored in external hardware. */
-#define RSA_FLAG_EXT_PKEY 0x20
-
-/* RSA_FLAG_SIGN_VER causes the |sign| and |verify| functions of |rsa_meth_st|
- * to be called when set. */
-#define RSA_FLAG_SIGN_VER 0x40
-
 
 /* RSA public exponent values. */
 
@@ -433,79 +414,11 @@ OPENSSL_EXPORT int i2d_RSAPrivateKey(const RSA *in, uint8_t **outp);
 #define RSA_F4 0x10001
 
 
-/* Deprecated functions. */
-
-/* RSA_blinding_on returns one. */
-OPENSSL_EXPORT int RSA_blinding_on(RSA *rsa, BN_CTX *ctx);
-
-
-struct rsa_meth_st {
-  struct openssl_method_common_st common;
-
-  void *app_data;
-
-  int (*init)(RSA *rsa);
-  int (*finish)(RSA *rsa);
-
-  /* size returns the size of the RSA modulus in bytes. */
-  size_t (*size)(const RSA *rsa);
-
-  int (*sign)(int type, const uint8_t *m, unsigned int m_length,
-              uint8_t *sigret, unsigned int *siglen, const RSA *rsa);
-
-  int (*verify)(int dtype, const uint8_t *m, unsigned int m_length,
-                const uint8_t *sigbuf, unsigned int siglen, const RSA *rsa);
-
-
-  /* These functions mirror the |RSA_*| functions of the same name. */
-  int (*encrypt)(RSA *rsa, size_t *out_len, uint8_t *out, size_t max_out,
-                 const uint8_t *in, size_t in_len, int padding);
-  int (*sign_raw)(RSA *rsa, size_t *out_len, uint8_t *out, size_t max_out,
-                  const uint8_t *in, size_t in_len, int padding);
-
-  int (*decrypt)(RSA *rsa, size_t *out_len, uint8_t *out, size_t max_out,
-                 const uint8_t *in, size_t in_len, int padding);
-  int (*verify_raw)(RSA *rsa, size_t *out_len, uint8_t *out, size_t max_out,
-                    const uint8_t *in, size_t in_len, int padding);
-
-  /* private_transform takes a big-endian integer from |in|, calculates the
-   * d'th power of it, modulo the RSA modulus and writes the result as a
-   * big-endian integer to |out|. Both |in| and |out| are |len| bytes long and
-   * |len| is always equal to |RSA_size(rsa)|. If the result of the transform
-   * can be represented in fewer than |len| bytes, then |out| must be zero
-   * padded on the left.
-   *
-   * It returns one on success and zero otherwise.
-   *
-   * RSA decrypt and sign operations will call this, thus an ENGINE might wish
-   * to override it in order to avoid having to implement the padding
-   * functionality demanded by those, higher level, operations. */
-  int (*private_transform)(RSA *rsa, uint8_t *out, const uint8_t *in,
-                           size_t len);
-
-  int (*mod_exp)(BIGNUM *r0, const BIGNUM *I, RSA *rsa,
-                 BN_CTX *ctx); /* Can be null */
-  int (*bn_mod_exp)(BIGNUM *r, const BIGNUM *a, const BIGNUM *p,
-                    const BIGNUM *m, BN_CTX *ctx,
-                    BN_MONT_CTX *m_ctx);
-
-  int flags;
-
-  int (*keygen)(RSA *rsa, int bits, BIGNUM *e, BN_GENCB *cb);
-
-  /* supports_digest returns one if |rsa| supports digests of type
-   * |md|. If null, it is assumed that all digests are supported. */
-  int (*supports_digest)(const RSA *rsa, const EVP_MD *md);
-};
-
-
 /* Private functions. */
 
 typedef struct bn_blinding_st BN_BLINDING;
 
 struct rsa_st {
-  RSA_METHOD *meth;
-
   BIGNUM *n;
   BIGNUM *e;
   BIGNUM *d;
@@ -514,8 +427,6 @@ struct rsa_st {
   BIGNUM *dmp1;
   BIGNUM *dmq1;
   BIGNUM *iqmp;
-
-  STACK_OF(RSA_additional_prime) *additional_primes;
 
   CRYPTO_refcount_t references;
   int flags;

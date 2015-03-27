@@ -13,7 +13,6 @@ add_custom_command(
   ecdh.errordata
   ecdsa.errordata
   ec.errordata
-  engine.errordata
   hkdf.errordata
   obj.errordata
   rsa.errordata

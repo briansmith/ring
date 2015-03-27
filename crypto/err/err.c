@@ -493,7 +493,6 @@ static const char *const kLibraryNames[ERR_NUM_LIBS] = {
     "elliptic curve routines",                    /* ERR_LIB_EC */
     "BIO routines",                               /* ERR_LIB_BIO */
     "random number generator",                    /* ERR_LIB_RAND */
-    "ENGINE routines",                            /* ERR_LIB_ENGINE */
     "UI routines",                                /* ERR_LIB_UI */
     "COMP routines",                              /* ERR_LIB_COMP */
     "ECDSA routines",                             /* ERR_LIB_ECDSA */

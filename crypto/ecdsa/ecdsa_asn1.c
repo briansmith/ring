@@ -69,27 +69,22 @@ size_t ECDSA_size(const EC_KEY *key) {
     return 0;
   }
 
-  size_t group_order_size;
-  if (key->ecdsa_meth && key->ecdsa_meth->group_order_size) {
-    group_order_size = key->ecdsa_meth->group_order_size(key);
-  } else {
-    const EC_GROUP *group = EC_KEY_get0_group(key);
-    if (group == NULL) {
-      return 0;
-    }
-
-    BIGNUM *order = BN_new();
-    if (order == NULL) {
-      return 0;
-    }
-    if (!EC_GROUP_get_order(group, order, NULL)) {
-      BN_clear_free(order);
-      return 0;
-    }
-
-    group_order_size = BN_num_bytes(order);
-    BN_clear_free(order);
+  const EC_GROUP *group = EC_KEY_get0_group(key);
+  if (group == NULL) {
+    return 0;
   }
+
+  BIGNUM *order = BN_new();
+  if (order == NULL) {
+    return 0;
+  }
+  if (!EC_GROUP_get_order(group, order, NULL)) {
+    BN_clear_free(order);
+    return 0;
+  }
+
+  size_t group_order_size = BN_num_bytes(order);
+  BN_clear_free(order);
 
   return ECDSA_SIG_max_len(group_order_size);
 }

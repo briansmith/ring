@@ -70,7 +70,6 @@
 #include <string.h>
 
 #include <openssl/ec.h>
-#include <openssl/engine.h>
 #include <openssl/err.h>
 #include <openssl/mem.h>
 #include <openssl/thread.h>
@@ -82,6 +81,11 @@
 EC_KEY *EC_KEY_new(void) { return EC_KEY_new_method(NULL); }
 
 EC_KEY *EC_KEY_new_method(const ENGINE *engine) {
+  if (engine != NULL) {
+    OPENSSL_PUT_ERROR(EC, ERR_R_MALLOC_FAILURE); /* TODO: error code */
+    return NULL;
+  }
+
   EC_KEY *ret = (EC_KEY *)OPENSSL_malloc(sizeof(EC_KEY));
   if (ret == NULL) {
     OPENSSL_PUT_ERROR(EC, ERR_R_MALLOC_FAILURE);
@@ -90,29 +94,11 @@ EC_KEY *EC_KEY_new_method(const ENGINE *engine) {
 
   memset(ret, 0, sizeof(EC_KEY));
 
-  if (engine) {
-    ret->ecdsa_meth = ENGINE_get_ECDSA_method(engine);
-  }
-  if (ret->ecdsa_meth) {
-    METHOD_ref(ret->ecdsa_meth);
-  }
-
   ret->version = 1;
   ret->conv_form = POINT_CONVERSION_UNCOMPRESSED;
   ret->references = 1;
 
-  if (ret->ecdsa_meth && ret->ecdsa_meth->init && !ret->ecdsa_meth->init(ret)) {
-    goto err;
-  }
-
   return ret;
-
-err:
-  if (ret->ecdsa_meth) {
-    METHOD_unref(ret->ecdsa_meth);
-  }
-  OPENSSL_free(ret);
-  return NULL;
 }
 
 EC_KEY *EC_KEY_new_by_curve_name(int nid) {
@@ -136,13 +122,6 @@ void EC_KEY_free(EC_KEY *r) {
 
   if (!CRYPTO_refcount_dec_and_test_zero(&r->references)) {
     return;
-  }
-
-  if (r->ecdsa_meth) {
-    if (r->ecdsa_meth->finish) {
-      r->ecdsa_meth->finish(r);
-    }
-    METHOD_unref(r->ecdsa_meth);
   }
 
   EC_GROUP_free(r->group);
@@ -189,12 +168,6 @@ EC_KEY *EC_KEY_copy(EC_KEY *dest, const EC_KEY *src) {
       return NULL;
     }
   }
-  /* copy method/extra data */
-  if (src->ecdsa_meth) {
-      METHOD_unref(dest->ecdsa_meth);
-      dest->ecdsa_meth = src->ecdsa_meth;
-      METHOD_ref(dest->ecdsa_meth);
-  }
 
   /* copy the rest */
   dest->enc_flag = src->enc_flag;
@@ -223,7 +196,7 @@ int EC_KEY_up_ref(EC_KEY *r) {
 }
 
 int EC_KEY_is_opaque(const EC_KEY *key) {
-  return key->ecdsa_meth && (key->ecdsa_meth->flags & ECDSA_FLAG_OPAQUE);
+  return 0;
 }
 
 const EC_GROUP *EC_KEY_get0_group(const EC_KEY *key) { return key->group; }

@@ -81,12 +81,12 @@ static int finish(RSA *rsa) {
   return 1;
 }
 
-static size_t size(const RSA *rsa) {
+unsigned RSA_size(const RSA *rsa) {
   return BN_num_bytes(rsa->n);
 }
 
-static int encrypt(RSA *rsa, size_t *out_len, uint8_t *out, size_t max_out,
-                   const uint8_t *in, size_t in_len, int padding) {
+int RSA_encrypt(RSA *rsa, size_t *out_len, uint8_t *out, size_t max_out,
+                const uint8_t *in, size_t in_len, int padding) {
   const unsigned rsa_size = RSA_size(rsa);
   BIGNUM *f, *result;
   uint8_t *buf = NULL;
@@ -167,8 +167,7 @@ static int encrypt(RSA *rsa, size_t *out_len, uint8_t *out, size_t max_out,
     }
   }
 
-  if (!rsa->meth->bn_mod_exp(result, f, rsa->e, rsa->n, ctx,
-                             rsa->_method_mod_n)) {
+  if (!BN_mod_exp_mont(result, f, rsa->e, rsa->n, ctx, rsa->_method_mod_n)) {
     goto err;
   }
 
@@ -302,8 +301,8 @@ static void rsa_blinding_release(RSA *rsa, BN_BLINDING *blinding,
 }
 
 /* signing */
-static int sign_raw(RSA *rsa, size_t *out_len, uint8_t *out, size_t max_out,
-                    const uint8_t *in, size_t in_len, int padding) {
+int RSA_sign_raw(RSA *rsa, size_t *out_len, uint8_t *out, size_t max_out,
+                 const uint8_t *in, size_t in_len, int padding) {
   const unsigned rsa_size = RSA_size(rsa);
   uint8_t *buf = NULL;
   int i, ret = 0;
@@ -351,8 +350,8 @@ err:
   return ret;
 }
 
-static int decrypt(RSA *rsa, size_t *out_len, uint8_t *out, size_t max_out,
-                   const uint8_t *in, size_t in_len, int padding) {
+int RSA_decrypt(RSA *rsa, size_t *out_len, uint8_t *out, size_t max_out,
+                const uint8_t *in, size_t in_len, int padding) {
   const unsigned rsa_size = RSA_size(rsa);
   int r = -1;
   uint8_t *buf = NULL;
@@ -411,8 +410,8 @@ err:
   return ret;
 }
 
-static int verify_raw(RSA *rsa, size_t *out_len, uint8_t *out, size_t max_out,
-                      const uint8_t *in, size_t in_len, int padding) {
+int RSA_verify_raw(RSA *rsa, size_t *out_len, uint8_t *out, size_t max_out,
+                   const uint8_t *in, size_t in_len, int padding) {
   const unsigned rsa_size = RSA_size(rsa);
   BIGNUM *f, *result;
   int ret = 0;
@@ -477,8 +476,7 @@ static int verify_raw(RSA *rsa, size_t *out_len, uint8_t *out, size_t max_out,
     }
   }
 
-  if (!rsa->meth->bn_mod_exp(result, f, rsa->e, rsa->n, ctx,
-                             rsa->_method_mod_n)) {
+  if (!BN_mod_exp_mont(result, f, rsa->e, rsa->n, ctx, rsa->_method_mod_n)) {
     goto err;
   }
 
@@ -518,8 +516,8 @@ err:
   return ret;
 }
 
-static int private_transform(RSA *rsa, uint8_t *out, const uint8_t *in,
-                             size_t len) {
+int RSA_private_transform(RSA *rsa, uint8_t *out, const uint8_t *in,
+                          size_t len) {
   BIGNUM *f, *result;
   BN_CTX *ctx = NULL;
   unsigned blinding_index = 0;
@@ -560,30 +558,22 @@ static int private_transform(RSA *rsa, uint8_t *out, const uint8_t *in,
     }
   }
 
-  if ((rsa->flags & RSA_FLAG_EXT_PKEY) ||
-      ((rsa->p != NULL) && (rsa->q != NULL) && (rsa->dmp1 != NULL) &&
-       (rsa->dmq1 != NULL) && (rsa->iqmp != NULL))) {
-    if (!rsa->meth->mod_exp(result, f, rsa, ctx)) {
+  BIGNUM local_d;
+  BIGNUM *d = NULL;
+
+  BN_init(&local_d);
+  d = &local_d;
+  BN_with_flags(d, rsa->d, BN_FLG_CONSTTIME);
+
+  if (rsa->flags & RSA_FLAG_CACHE_PUBLIC) {
+    if (BN_MONT_CTX_set_locked(&rsa->_method_mod_n, &rsa->lock, rsa->n,
+                               ctx) == NULL) {
       goto err;
     }
-  } else {
-    BIGNUM local_d;
-    BIGNUM *d = NULL;
+  }
 
-    BN_init(&local_d);
-    d = &local_d;
-    BN_with_flags(d, rsa->d, BN_FLG_CONSTTIME);
-
-    if (rsa->flags & RSA_FLAG_CACHE_PUBLIC) {
-      if (BN_MONT_CTX_set_locked(&rsa->_method_mod_n, &rsa->lock, rsa->n,
-                                 ctx) == NULL) {
-        goto err;
-      }
-    }
-
-    if (!rsa->meth->bn_mod_exp(result, f, d, rsa->n, ctx, rsa->_method_mod_n)) {
-      goto err;
-    }
+  if (!BN_mod_exp_mont(result, f, d, rsa->n, ctx, rsa->_method_mod_n)) {
+    goto err;
   }
 
   if (blinding) {
@@ -665,7 +655,7 @@ static int mod_exp(BIGNUM *r0, const BIGNUM *I, RSA *rsa, BN_CTX *ctx) {
   /* compute r1^dmq1 mod q */
   dmq1 = &local_dmq1;
   BN_with_flags(dmq1, rsa->dmq1, BN_FLG_CONSTTIME);
-  if (!rsa->meth->bn_mod_exp(m1, r1, dmq1, rsa->q, ctx, rsa->_method_mod_q)) {
+  if (!BN_mod_exp_mont(m1, r1, dmq1, rsa->q, ctx, rsa->_method_mod_q)) {
     goto err;
   }
 
@@ -679,7 +669,7 @@ static int mod_exp(BIGNUM *r0, const BIGNUM *I, RSA *rsa, BN_CTX *ctx) {
   /* compute r1^dmp1 mod p */
   dmp1 = &local_dmp1;
   BN_with_flags(dmp1, rsa->dmp1, BN_FLG_CONSTTIME);
-  if (!rsa->meth->bn_mod_exp(r0, r1, dmp1, rsa->p, ctx, rsa->_method_mod_p)) {
+  if (!BN_mod_exp_mont(r0, r1, dmp1, rsa->p, ctx, rsa->_method_mod_p)) {
     goto err;
   }
 
@@ -725,8 +715,7 @@ static int mod_exp(BIGNUM *r0, const BIGNUM *I, RSA *rsa, BN_CTX *ctx) {
   }
 
   if (rsa->e && rsa->n) {
-    if (!rsa->meth->bn_mod_exp(vrfy, r0, rsa->e, rsa->n, ctx,
-                               rsa->_method_mod_n)) {
+    if (!BN_mod_exp_mont(vrfy, r0, rsa->e, rsa->n, ctx, rsa->_method_mod_n)) {
       goto err;
     }
     /* If 'I' was greater than (or equal to) rsa->n, the operation
@@ -754,7 +743,7 @@ static int mod_exp(BIGNUM *r0, const BIGNUM *I, RSA *rsa, BN_CTX *ctx) {
 
       d = &local_d;
       BN_with_flags(d, rsa->d, BN_FLG_CONSTTIME);
-      if (!rsa->meth->bn_mod_exp(r0, I, d, rsa->n, ctx, rsa->_method_mod_n)) {
+      if (!BN_mod_exp_mont(r0, I, d, rsa->n, ctx, rsa->_method_mod_n)) {
         goto err;
       }
     }
@@ -766,7 +755,7 @@ err:
   return ret;
 }
 
-static int keygen(RSA *rsa, int bits, BIGNUM *e_value, BN_GENCB *cb) {
+int RSA_generate_key_ex(RSA *rsa, int bits, BIGNUM *e_value, BN_GENCB *cb) {
   BIGNUM *r0 = NULL, *r1 = NULL, *r2 = NULL, *r3 = NULL, *tmp;
   BIGNUM local_r0, local_d, local_p;
   BIGNUM *pr0, *d, *p;
@@ -928,33 +917,3 @@ err:
 
   return ok;
 }
-
-const struct rsa_meth_st RSA_default_method = {
-  {
-    0 /* references */,
-    1 /* is_static */,
-  },
-  NULL /* app_data */,
-
-  NULL /* init */,
-  finish,
-
-  size,
-
-  NULL /* sign */,
-  NULL /* verify */,
-
-  encrypt,
-  sign_raw,
-  decrypt,
-  verify_raw,
-
-  private_transform,
-
-  mod_exp /* mod_exp */,
-  BN_mod_exp_mont /* bn_mod_exp */,
-
-  RSA_FLAG_CACHE_PUBLIC | RSA_FLAG_CACHE_PRIVATE,
-
-  keygen,
-};

@@ -68,11 +68,14 @@
 #include "../internal.h"
 
 
-extern const DH_METHOD DH_default_method;
-
 DH *DH_new(void) { return DH_new_method(NULL); }
 
 DH *DH_new_method(const ENGINE *engine) {
+  if (engine != NULL) {
+    OPENSSL_PUT_ERROR(DH, ERR_R_MALLOC_FAILURE); /* TODO: error code */
+    return NULL;
+  }
+
   DH *dh = (DH *)OPENSSL_malloc(sizeof(DH));
   if (dh == NULL) {
     OPENSSL_PUT_ERROR(DH, ERR_R_MALLOC_FAILURE);
@@ -81,24 +84,9 @@ DH *DH_new_method(const ENGINE *engine) {
 
   memset(dh, 0, sizeof(DH));
 
-  if (engine) {
-    dh->meth = ENGINE_get_DH_method(engine);
-  }
-
-  if (dh->meth == NULL) {
-    dh->meth = (DH_METHOD*) &DH_default_method;
-  }
-  METHOD_ref(dh->meth);
-
   CRYPTO_MUTEX_init(&dh->method_mont_p_lock);
 
   dh->references = 1;
-
-  if (dh->meth->init && !dh->meth->init(dh)) {
-    METHOD_unref(dh->meth);
-    OPENSSL_free(dh);
-    return NULL;
-  }
 
   return dh;
 }
@@ -112,11 +100,6 @@ void DH_free(DH *dh) {
     return;
   }
 
-  if (dh->meth->finish) {
-    dh->meth->finish(dh);
-  }
-  METHOD_unref(dh->meth);
-
   if (dh->method_mont_p) BN_MONT_CTX_free(dh->method_mont_p);
   if (dh->p != NULL) BN_clear_free(dh->p);
   if (dh->g != NULL) BN_clear_free(dh->g);
@@ -129,27 +112,6 @@ void DH_free(DH *dh) {
   CRYPTO_MUTEX_cleanup(&dh->method_mont_p_lock);
 
   OPENSSL_free(dh);
-}
-
-int DH_generate_parameters_ex(DH *dh, int prime_bits, int generator, BN_GENCB *cb) {
-  if (dh->meth->generate_parameters) {
-    return dh->meth->generate_parameters(dh, prime_bits, generator, cb);
-  }
-  return DH_default_method.generate_parameters(dh, prime_bits, generator, cb);
-}
-
-int DH_generate_key(DH *dh) {
-  if (dh->meth->generate_key) {
-    return dh->meth->generate_key(dh);
-  }
-  return DH_default_method.generate_key(dh);
-}
-
-int DH_compute_key(unsigned char *out, const BIGNUM *peers_key, DH *dh) {
-  if (dh->meth->compute_key) {
-    return dh->meth->compute_key(dh, out, peers_key);
-  }
-  return DH_default_method.compute_key(dh, out, peers_key);
 }
 
 int DH_size(const DH *dh) { return BN_num_bytes(dh->p); }
