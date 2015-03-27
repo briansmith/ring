@@ -212,13 +212,7 @@ CERT *ssl_cert_dup(CERT *cert) {
   }
   ret->dh_tmp_cb = cert->dh_tmp_cb;
 
-  if (cert->ecdh_tmp) {
-    ret->ecdh_tmp = EC_KEY_dup(cert->ecdh_tmp);
-    if (ret->ecdh_tmp == NULL) {
-      OPENSSL_PUT_ERROR(SSL, ssl_cert_dup, ERR_R_EC_LIB);
-      goto err;
-    }
-  }
+  ret->ecdh_nid = cert->ecdh_nid;
   ret->ecdh_tmp_cb = cert->ecdh_tmp_cb;
   ret->ecdh_tmp_auto = cert->ecdh_tmp_auto;
 
@@ -323,9 +317,6 @@ void ssl_cert_free(CERT *c) {
 
   if (c->dh_tmp) {
     DH_free(c->dh_tmp);
-  }
-  if (c->ecdh_tmp) {
-    EC_KEY_free(c->ecdh_tmp);
   }
 
   ssl_cert_clear_certs(c);

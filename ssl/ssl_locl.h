@@ -434,7 +434,9 @@ typedef struct cert_st {
 
   DH *dh_tmp;
   DH *(*dh_tmp_cb)(SSL *ssl, int is_export, int keysize);
-  EC_KEY *ecdh_tmp;
+  /* ecdh_nid, if not |NID_undef|, is the NID of the curve to use for ephemeral
+   * ECDH keys. */
+  int ecdh_nid;
   /* Callback for generating ephemeral ECDH keys */
   EC_KEY *(*ecdh_tmp_cb)(SSL *ssl, int is_export, int keysize);
   /* Select ECDH parameters automatically */

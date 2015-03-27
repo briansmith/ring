@@ -1331,7 +1331,7 @@ int ssl3_send_server_done(SSL *s) {
 
 int ssl3_send_server_key_exchange(SSL *s) {
   DH *dh = NULL, *dhp;
-  EC_KEY *ecdh = NULL, *ecdhp;
+  EC_KEY *ecdh = NULL;
   uint8_t *encodedPoint = NULL;
   int encodedlen = 0;
   uint16_t curve_id = 0;
@@ -1415,19 +1415,21 @@ int ssl3_send_server_key_exchange(SSL *s) {
       r[1] = dh->g;
       r[2] = dh->pub_key;
     } else if (alg_k & SSL_kECDHE) {
-      const EC_GROUP *group;
-
-      ecdhp = cert->ecdh_tmp;
-      if (s->cert->ecdh_tmp_auto) {
-        /* Get NID of appropriate shared curve */
-        int nid = tls1_get_shared_curve(s);
-        if (nid != NID_undef) {
-          ecdhp = EC_KEY_new_by_curve_name(nid);
+      /* Determine the curve to use. */
+      int nid = NID_undef;
+      if (cert->ecdh_tmp_auto) {
+        nid = tls1_get_shared_curve(s);
+      } else if (cert->ecdh_nid != NID_undef) {
+        nid = cert->ecdh_nid;
+      } else if (cert->ecdh_tmp_cb != NULL) {
+        /* Note: |ecdh_tmp_cb| does NOT pass ownership of the result
+         * to the caller. */
+        EC_KEY *template = s->cert->ecdh_tmp_cb(s, 0, 1024);
+        if (template != NULL && EC_KEY_get0_group(template) != NULL) {
+          nid = EC_GROUP_get_curve_name(EC_KEY_get0_group(template));
         }
-      } else if (ecdhp == NULL && s->cert->ecdh_tmp_cb) {
-        ecdhp = s->cert->ecdh_tmp_cb(s, 0, 1024);
       }
-      if (ecdhp == NULL) {
+      if (nid == NID_undef) {
         al = SSL_AD_HANDSHAKE_FAILURE;
         OPENSSL_PUT_ERROR(SSL, ssl3_send_server_key_exchange,
                           SSL_R_MISSING_TMP_ECDH_KEY);
@@ -1439,42 +1441,19 @@ int ssl3_send_server_key_exchange(SSL *s) {
                           ERR_R_INTERNAL_ERROR);
         goto err;
       }
-
-      /* Duplicate the ECDH structure. */
-      if (ecdhp == NULL) {
-        OPENSSL_PUT_ERROR(SSL, ssl3_send_server_key_exchange, ERR_R_ECDH_LIB);
+      ecdh = EC_KEY_new_by_curve_name(nid);
+      if (ecdh == NULL) {
         goto err;
       }
-
-      if (s->cert->ecdh_tmp_auto) {
-        ecdh = ecdhp;
-      } else {
-        ecdh = EC_KEY_dup(ecdhp);
-        if (ecdh == NULL) {
-          OPENSSL_PUT_ERROR(SSL, ssl3_send_server_key_exchange, ERR_R_ECDH_LIB);
-          goto err;
-        }
-      }
-
       s->s3->tmp.ecdh = ecdh;
-      if (EC_KEY_get0_public_key(ecdh) == NULL ||
-          EC_KEY_get0_private_key(ecdh) == NULL ||
-          (s->options & SSL_OP_SINGLE_ECDH_USE)) {
-        if (!EC_KEY_generate_key(ecdh)) {
-          OPENSSL_PUT_ERROR(SSL, ssl3_send_server_key_exchange, ERR_R_ECDH_LIB);
-          goto err;
-        }
-      }
 
-      group = EC_KEY_get0_group(ecdh);
-      if (group == NULL ||
-          EC_KEY_get0_public_key(ecdh) == NULL ||
-          EC_KEY_get0_private_key(ecdh) == NULL) {
+      if (!EC_KEY_generate_key(ecdh)) {
         OPENSSL_PUT_ERROR(SSL, ssl3_send_server_key_exchange, ERR_R_ECDH_LIB);
         goto err;
       }
 
       /* We only support ephemeral ECDH keys over named (not generic) curves. */
+      const EC_GROUP *group = EC_KEY_get0_group(ecdh);
       if (!tls1_ec_nid2curve_id(&curve_id, EC_GROUP_get_curve_name(group))) {
         OPENSSL_PUT_ERROR(SSL, ssl3_send_server_key_exchange,
                           SSL_R_UNSUPPORTED_ELLIPTIC_CURVE);

@@ -404,7 +404,7 @@ typedef struct timeval OPENSSL_timeval;
 #define SSL_OP_NO_COMPRESSION 0x00020000L
 /* Permit unsafe legacy renegotiation */
 #define SSL_OP_ALLOW_UNSAFE_LEGACY_RENEGOTIATION 0x00040000L
-/* If set, always create a new key when using tmp_ecdh parameters */
+/* SSL_OP_SINGLE_ECDH_USE does nothing. */
 #define SSL_OP_SINGLE_ECDH_USE 0x00080000L
 /* If set, always create a new key when using tmp_dh parameters */
 #define SSL_OP_SINGLE_DH_USE 0x00100000L

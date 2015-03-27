@@ -2011,7 +2011,8 @@ void ssl_get_compatible_server_ciphers(SSL *s, unsigned long *out_mask_k,
 
   dh_tmp = (c->dh_tmp != NULL || c->dh_tmp_cb != NULL);
 
-  have_ecdh_tmp = (c->ecdh_tmp || c->ecdh_tmp_cb || c->ecdh_tmp_auto);
+  have_ecdh_tmp = (c->ecdh_nid != NID_undef || c->ecdh_tmp_cb != NULL ||
+                   c->ecdh_tmp_auto);
   rsa_enc = ssl_has_key(s, SSL_PKEY_RSA_ENC);
   rsa_sign = ssl_has_key(s, SSL_PKEY_RSA_SIGN);
   have_ecc_cert = ssl_has_key(s, SSL_PKEY_ECC);

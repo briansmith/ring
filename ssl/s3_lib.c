@@ -753,26 +753,14 @@ long ssl3_ctrl(SSL *s, int cmd, long larg, void *parg) {
       return ret;
 
     case SSL_CTRL_SET_TMP_ECDH: {
-      EC_KEY *ecdh = NULL;
-
-      if (parg == NULL) {
+      /* For historical reasons, this API expects an |EC_KEY|, but only the
+       * group is used. */
+      EC_KEY *ec_key = (EC_KEY *)parg;
+      if (ec_key == NULL || EC_KEY_get0_group(ec_key) == NULL) {
         OPENSSL_PUT_ERROR(SSL, ssl3_ctrl, ERR_R_PASSED_NULL_PARAMETER);
         return ret;
       }
-      if (!EC_KEY_up_ref((EC_KEY *)parg)) {
-        OPENSSL_PUT_ERROR(SSL, ssl3_ctrl, ERR_R_ECDH_LIB);
-        return ret;
-      }
-      ecdh = (EC_KEY *)parg;
-      if (!(s->options & SSL_OP_SINGLE_ECDH_USE) && !EC_KEY_generate_key(ecdh)) {
-        EC_KEY_free(ecdh);
-        OPENSSL_PUT_ERROR(SSL, ssl3_ctrl, ERR_R_ECDH_LIB);
-        return ret;
-      }
-      if (s->cert->ecdh_tmp != NULL) {
-        EC_KEY_free(s->cert->ecdh_tmp);
-      }
-      s->cert->ecdh_tmp = ecdh;
+      s->cert->ecdh_nid = EC_GROUP_get_curve_name(EC_KEY_get0_group(ec_key));
       ret = 1;
       break;
     }
@@ -1034,28 +1022,14 @@ long ssl3_ctx_ctrl(SSL_CTX *ctx, int cmd, long larg, void *parg) {
       return 0;
 
     case SSL_CTRL_SET_TMP_ECDH: {
-      EC_KEY *ecdh = NULL;
-
-      if (parg == NULL) {
-        OPENSSL_PUT_ERROR(SSL, ssl3_ctx_ctrl, ERR_R_ECDH_LIB);
+      /* For historical reasons, this API expects an |EC_KEY|, but only the
+       * group is used. */
+      EC_KEY *ec_key = (EC_KEY *)parg;
+      if (ec_key == NULL || EC_KEY_get0_group(ec_key) == NULL) {
+        OPENSSL_PUT_ERROR(SSL, ssl3_ctx_ctrl, ERR_R_PASSED_NULL_PARAMETER);
         return 0;
       }
-      ecdh = EC_KEY_dup((EC_KEY *)parg);
-      if (ecdh == NULL) {
-        OPENSSL_PUT_ERROR(SSL, ssl3_ctx_ctrl, ERR_R_EC_LIB);
-        return 0;
-      }
-      if (!(ctx->options & SSL_OP_SINGLE_ECDH_USE) &&
-          !EC_KEY_generate_key(ecdh)) {
-        EC_KEY_free(ecdh);
-        OPENSSL_PUT_ERROR(SSL, ssl3_ctx_ctrl, ERR_R_ECDH_LIB);
-        return 0;
-      }
-
-      if (cert->ecdh_tmp != NULL) {
-        EC_KEY_free(cert->ecdh_tmp);
-      }
-      cert->ecdh_tmp = ecdh;
+      ctx->cert->ecdh_nid = EC_GROUP_get_curve_name(EC_KEY_get0_group(ec_key));
       return 1;
     }
 

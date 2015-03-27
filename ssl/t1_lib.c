@@ -606,23 +606,22 @@ done:
 }
 
 int tls1_check_ec_tmp_key(SSL *s) {
-  uint16_t curve_id;
-  EC_KEY *ec = s->cert->ecdh_tmp;
-
   if (s->cert->ecdh_tmp_auto) {
-    /* Need a shared curve */
+    /* If using |ecdh_tmp_auto|, ECDH is acceptable if there is a shared
+     * curve. */
     return tls1_get_shared_curve(s) != NID_undef;
   }
 
-  if (!ec) {
-    if (s->cert->ecdh_tmp_cb) {
-      return 1;
-    }
-    return 0;
+  if (s->cert->ecdh_nid != NID_undef) {
+    /* If the curve is preconfigured, ECDH is acceptable if the peer supports
+     * the curve. */
+    uint16_t curve_id;
+    return tls1_ec_nid2curve_id(&curve_id, s->cert->ecdh_nid) &&
+           tls1_check_curve_id(s, curve_id);
   }
 
-  return tls1_curve_params_from_ec_key(&curve_id, NULL, ec) &&
-         tls1_check_curve_id(s, curve_id);
+  /* Otherwise, assume the callback will provide an acceptable curve. */
+  return s->cert->ecdh_tmp_cb != NULL;
 }
 
 /* List of supported signature algorithms and hashes. Should make this
