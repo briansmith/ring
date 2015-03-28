@@ -72,7 +72,6 @@
 #include <openssl/bio.h>
 #include <openssl/cipher.h>
 #include <openssl/dh.h>
-#include <openssl/dsa.h>
 #include <openssl/ecdh.h>
 #include <openssl/ecdsa.h>
 #include <openssl/ec.h>
@@ -652,12 +651,6 @@ OPENSSL_EXPORT RSA *d2i_RSAPublicKey_fp(FILE *fp,RSA **rsa);
 OPENSSL_EXPORT int i2d_RSAPublicKey_fp(FILE *fp,RSA *rsa);
 OPENSSL_EXPORT RSA *d2i_RSA_PUBKEY_fp(FILE *fp,RSA **rsa);
 OPENSSL_EXPORT int i2d_RSA_PUBKEY_fp(FILE *fp,RSA *rsa);
-#ifndef OPENSSL_NO_DSA
-OPENSSL_EXPORT DSA *d2i_DSA_PUBKEY_fp(FILE *fp, DSA **dsa);
-OPENSSL_EXPORT int i2d_DSA_PUBKEY_fp(FILE *fp, DSA *dsa);
-OPENSSL_EXPORT DSA *d2i_DSAPrivateKey_fp(FILE *fp, DSA **dsa);
-OPENSSL_EXPORT int i2d_DSAPrivateKey_fp(FILE *fp, DSA *dsa);
-#endif
 OPENSSL_EXPORT EC_KEY *d2i_EC_PUBKEY_fp(FILE *fp, EC_KEY **eckey);
 OPENSSL_EXPORT int   i2d_EC_PUBKEY_fp(FILE *fp, EC_KEY *eckey);
 OPENSSL_EXPORT EC_KEY *d2i_ECPrivateKey_fp(FILE *fp, EC_KEY **eckey);
@@ -686,12 +679,6 @@ OPENSSL_EXPORT RSA *d2i_RSAPublicKey_bio(BIO *bp,RSA **rsa);
 OPENSSL_EXPORT int i2d_RSAPublicKey_bio(BIO *bp,RSA *rsa);
 OPENSSL_EXPORT RSA *d2i_RSA_PUBKEY_bio(BIO *bp,RSA **rsa);
 OPENSSL_EXPORT int i2d_RSA_PUBKEY_bio(BIO *bp,RSA *rsa);
-#ifndef OPENSSL_NO_DSA
-OPENSSL_EXPORT DSA *d2i_DSA_PUBKEY_bio(BIO *bp, DSA **dsa);
-OPENSSL_EXPORT int i2d_DSA_PUBKEY_bio(BIO *bp, DSA *dsa);
-OPENSSL_EXPORT DSA *d2i_DSAPrivateKey_bio(BIO *bp, DSA **dsa);
-OPENSSL_EXPORT int i2d_DSAPrivateKey_bio(BIO *bp, DSA *dsa);
-#endif
 OPENSSL_EXPORT EC_KEY *d2i_EC_PUBKEY_bio(BIO *bp, EC_KEY **eckey);
 OPENSSL_EXPORT int   i2d_EC_PUBKEY_bio(BIO *bp, EC_KEY *eckey);
 OPENSSL_EXPORT EC_KEY *d2i_ECPrivateKey_bio(BIO *bp, EC_KEY **eckey);
@@ -752,11 +739,6 @@ OPENSSL_EXPORT EVP_PKEY *	d2i_PUBKEY(EVP_PKEY **a,const unsigned char **pp,
 OPENSSL_EXPORT int		i2d_RSA_PUBKEY(const RSA *a,unsigned char **pp);
 OPENSSL_EXPORT RSA *		d2i_RSA_PUBKEY(RSA **a,const unsigned char **pp,
 			long length);
-#ifndef OPENSSL_NO_DSA
-OPENSSL_EXPORT int		i2d_DSA_PUBKEY(const DSA *a,unsigned char **pp);
-OPENSSL_EXPORT DSA *		d2i_DSA_PUBKEY(DSA **a,const unsigned char **pp,
-			long length);
-#endif
 OPENSSL_EXPORT int		i2d_EC_PUBKEY(const EC_KEY *a, unsigned char **pp);
 OPENSSL_EXPORT EC_KEY 		*d2i_EC_PUBKEY(EC_KEY **a, const unsigned char **pp,
 			long length);
@@ -1189,14 +1171,14 @@ OPENSSL_EXPORT int PKCS7_get_PEM_CRLs(STACK_OF(X509_CRL) *out_crls,
 /* EVP_PK values indicate the algorithm of the public key in a certificate. */
 
 #define EVP_PK_RSA	0x0001
-#define EVP_PK_DSA	0x0002
+     /* EVP_PK_DSA	0x0002 */
 #define EVP_PK_DH	0x0004
 #define EVP_PK_EC	0x0008
 
 /* EVP_PKS values indicate the algorithm used to sign a certificate. */
 
 #define EVP_PKS_RSA 0x0100
-#define EVP_PKS_DSA 0x0200
+     /* EVP_PKS_DSA 0x0200 */
 #define EVP_PKS_EC 0x0400
 
 /* EVP_PKT values are flags that define what public-key operations can be

@@ -271,46 +271,6 @@ int i2d_RSA_PUBKEY(const RSA *a, unsigned char **pp)
 	return ret;
 	}
 
-#ifndef OPENSSL_NO_DSA
-DSA *d2i_DSA_PUBKEY(DSA **a, const unsigned char **pp,
-	     long length)
-	{
-	EVP_PKEY *pkey;
-	DSA *key;
-	const unsigned char *q;
-	q = *pp;
-	pkey = d2i_PUBKEY(NULL, &q, length);
-	if (!pkey) return NULL;
-	key = EVP_PKEY_get1_DSA(pkey);
-	EVP_PKEY_free(pkey);
-	if (!key) return NULL;
-	*pp = q;
-	if (a)
-		{
-		DSA_free(*a);
-		*a = key;
-		}
-	return key;
-	}
-
-int i2d_DSA_PUBKEY(const DSA *a, unsigned char **pp)
-	{
-	EVP_PKEY *pktmp;
-	int ret;
-	if(!a) return 0;
-	pktmp = EVP_PKEY_new();
-	if(!pktmp)
-		{
-		OPENSSL_PUT_ERROR(X509, ERR_R_MALLOC_FAILURE);
-		return 0;
-		}
-	EVP_PKEY_set1_DSA(pktmp, (DSA*) a);
-	ret = i2d_PUBKEY(pktmp, pp);
-	EVP_PKEY_free(pktmp);
-	return ret;
-	}
-#endif
-
 EC_KEY *d2i_EC_PUBKEY(EC_KEY **a, const unsigned char **pp, long length)
 	{
 	EVP_PKEY *pkey;

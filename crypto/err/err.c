@@ -491,7 +491,6 @@ static const char *const kLibraryNames[ERR_NUM_LIBS] = {
     "memory buffer routines",                     /* ERR_LIB_BUF */
     "object identifier routines",                 /* ERR_LIB_OBJ */
     "PEM routines",                               /* ERR_LIB_PEM */
-    "DSA routines",                               /* ERR_LIB_DSA */
     "X.509 certificate routines",                 /* ERR_LIB_X509 */
     "ASN.1 encoding routines",                    /* ERR_LIB_ASN1 */
     "configuration file routines",                /* ERR_LIB_CONF */

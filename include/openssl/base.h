@@ -202,8 +202,6 @@ typedef struct conf_st CONF;
 typedef struct conf_value_st CONF_VALUE;
 typedef struct dh_method DH_METHOD;
 typedef struct dh_st DH;
-typedef struct dsa_method DSA_METHOD;
-typedef struct dsa_st DSA;
 typedef struct ec_key_st EC_KEY;
 typedef struct ecdsa_method_st ECDSA_METHOD;
 typedef struct ecdsa_sig_st ECDSA_SIG;

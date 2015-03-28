@@ -38,7 +38,6 @@ var libraryNames = []string{
 	"BUF",
 	"OBJ",
 	"PEM",
-	"DSA",
 	"X509",
 	"ASN1",
 	"CONF",

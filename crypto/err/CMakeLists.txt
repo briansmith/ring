@@ -12,7 +12,6 @@ add_custom_command(
   conf.errordata
   dh.errordata
   digest.errordata
-  dsa.errordata
   ecdh.errordata
   ecdsa.errordata
   ec.errordata

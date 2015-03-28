@@ -80,9 +80,6 @@ int X509_certificate_type(X509 *x, EVP_PKEY *pkey)
 /*		if (!sign only extension) */
 			ret|=EVP_PKT_ENC;
 	break;
-	case EVP_PKEY_DSA:
-		ret=EVP_PK_DSA|EVP_PKT_SIGN;
-		break;
 	case EVP_PKEY_EC:
 		ret=EVP_PK_EC|EVP_PKT_SIGN|EVP_PKT_EXCH;
 		break;
@@ -106,10 +103,6 @@ int X509_certificate_type(X509 *x, EVP_PKEY *pkey)
 		case NID_rsaEncryption:
 		case NID_rsa:
 			ret|=EVP_PKS_RSA;
-			break;
-		case NID_dsa:
-		case NID_dsa_2:
-			ret|=EVP_PKS_DSA;
 			break;
 		case NID_X9_62_id_ecPublicKey:
 			ret|=EVP_PKS_EC;
