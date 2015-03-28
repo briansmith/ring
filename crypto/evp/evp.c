@@ -61,7 +61,6 @@
 
 #include <openssl/bio.h>
 #include <openssl/dh.h>
-#include <openssl/dsa.h>
 #include <openssl/ec.h>
 #include <openssl/err.h>
 #include <openssl/mem.h>
@@ -73,7 +72,6 @@
 #include "../internal.h"
 
 
-extern const EVP_PKEY_ASN1_METHOD dsa_asn1_meth;
 extern const EVP_PKEY_ASN1_METHOD ec_asn1_meth;
 extern const EVP_PKEY_ASN1_METHOD rsa_asn1_meth;
 
@@ -208,8 +206,6 @@ const EVP_PKEY_ASN1_METHOD *EVP_PKEY_asn1_find(ENGINE **pengine, int nid) {
       return &rsa_asn1_meth;
     case EVP_PKEY_EC:
       return &ec_asn1_meth;
-    case EVP_PKEY_DSA:
-      return &dsa_asn1_meth;
     default:
       return NULL;
   }
@@ -242,27 +238,6 @@ RSA *EVP_PKEY_get1_RSA(EVP_PKEY *pkey) {
   }
   RSA_up_ref(pkey->pkey.rsa);
   return pkey->pkey.rsa;
-}
-
-int EVP_PKEY_set1_DSA(EVP_PKEY *pkey, DSA *key) {
-  if (EVP_PKEY_assign_DSA(pkey, key)) {
-    DSA_up_ref(key);
-    return 1;
-  }
-  return 0;
-}
-
-int EVP_PKEY_assign_DSA(EVP_PKEY *pkey, DSA *key) {
-  return EVP_PKEY_assign(pkey, EVP_PKEY_DSA, key);
-}
-
-DSA *EVP_PKEY_get1_DSA(EVP_PKEY *pkey) {
-  if (pkey->type != EVP_PKEY_DSA) {
-    OPENSSL_PUT_ERROR(EVP, EVP_R_EXPECTING_A_DSA_KEY);
-    return NULL;
-  }
-  DSA_up_ref(pkey->pkey.dsa);
-  return pkey->pkey.dsa;
 }
 
 int EVP_PKEY_set1_EC_KEY(EVP_PKEY *pkey, EC_KEY *key) {

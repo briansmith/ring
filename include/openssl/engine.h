@@ -57,11 +57,6 @@ OPENSSL_EXPORT int ENGINE_set_DH_method(ENGINE *engine, const DH_METHOD *method,
                                         size_t method_size);
 OPENSSL_EXPORT DH_METHOD *ENGINE_get_DH_method(const ENGINE *engine);
 
-OPENSSL_EXPORT int ENGINE_set_DSA_method(ENGINE *engine,
-                                         const DSA_METHOD *method,
-                                         size_t method_size);
-OPENSSL_EXPORT DSA_METHOD *ENGINE_get_DSA_method(const ENGINE *engine);
-
 OPENSSL_EXPORT int ENGINE_set_RSA_method(ENGINE *engine,
                                          const RSA_METHOD *method,
                                          size_t method_size);

@@ -118,7 +118,6 @@ add_subdirectory(asn1)
 # Level 2
 add_subdirectory(engine)
 add_subdirectory(dh)
-add_subdirectory(dsa)
 add_subdirectory(rsa)
 add_subdirectory(ec)
 add_subdirectory(ecdh)
@@ -182,7 +181,6 @@ add_library(
   $<TARGET_OBJECTS:asn1>
   $<TARGET_OBJECTS:engine>
   $<TARGET_OBJECTS:dh>
-  $<TARGET_OBJECTS:dsa>
   $<TARGET_OBJECTS:rsa>
   $<TARGET_OBJECTS:ec>
   $<TARGET_OBJECTS:ecdh>
