@@ -66,6 +66,7 @@
 #include <openssl/err.h>
 #include <openssl/rand.h>
 #include <openssl/sha.h>
+#include <openssl/thread.h>
 
 #include "internal.h"
 

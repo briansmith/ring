@@ -18,6 +18,7 @@
 
 #include <openssl/bytestring.h>
 #include <openssl/crypto.h>
+#include <openssl/mem.h>
 #include <openssl/stack.h>
 #include <openssl/x509.h>
 

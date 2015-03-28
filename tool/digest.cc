@@ -21,12 +21,11 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <limits.h>
-#include <stdio.h>
-#include <string.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 
 #if !defined(OPENSSL_WINDOWS)
+#include <string.h>
 #include <unistd.h>
 #if !defined(O_BINARY)
 #define O_BINARY 0

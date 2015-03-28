@@ -58,10 +58,8 @@
 #define OPENSSL_HEADER_PKCS8_H
 
 #include <openssl/base.h>
-
-#include <stdio.h>
-
 #include <openssl/x509.h>
+
 
 #if defined(__cplusplus)
 extern "C" {

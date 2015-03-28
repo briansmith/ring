@@ -51,8 +51,6 @@
 
 #include <openssl/base.h>
 
-#include <string.h>
-
 
 #if defined(__cplusplus)
 extern "C" {

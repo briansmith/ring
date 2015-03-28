@@ -58,7 +58,7 @@
 #ifndef HEADER_ASN1T_H
 #define HEADER_ASN1T_H
 
-#include <stddef.h>
+#include <openssl/base.h>
 #include <openssl/asn1.h>
 
 #ifdef OPENSSL_BUILD_SHLIBCRYPTO

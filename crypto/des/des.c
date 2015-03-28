@@ -56,6 +56,8 @@
 
 #include <openssl/des.h>
 
+#include <stdlib.h>
+
 #include "internal.h"
 
 

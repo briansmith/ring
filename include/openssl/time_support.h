@@ -60,7 +60,6 @@
 
 #include <openssl/base.h>
 
-#include <time.h>
 
 #if defined(__cplusplus)
 extern "C" {

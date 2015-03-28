@@ -108,7 +108,11 @@
 
 #include <openssl/ex_data.h>
 
+#include <assert.h>
+#include <string.h>
+
 #include <openssl/err.h>
+#include <openssl/mem.h>
 #include <openssl/thread.h>
 
 #include "crypto_error.h"

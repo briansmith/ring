@@ -56,6 +56,12 @@
 
 #include <openssl/cast.h>
 
+#if defined(OPENSSL_WINDOWS)
+#pragma warning(push, 3)
+#include <intrin.h>
+#pragma warning(pop)
+#endif
+
 #include "../macros.h"
 
 

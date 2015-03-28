@@ -17,7 +17,6 @@
 
 #include <openssl/base.h>
 
-#include <openssl/mem.h>
 
 #if defined(__cplusplus)
 extern "C" {

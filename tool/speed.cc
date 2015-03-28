@@ -19,7 +19,6 @@
 
 #include <stdint.h>
 #include <string.h>
-#include <time.h>
 
 #include <openssl/aead.h>
 #include <openssl/digest.h>

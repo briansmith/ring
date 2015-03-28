@@ -58,7 +58,6 @@
 #define OPENSSL_HEADER_EVP_H
 
 #include <openssl/base.h>
-#include <openssl/stack.h>
 
 /* OpenSSL included digest and cipher functions in this header so we include
  * them for users that still expect that.
@@ -67,9 +66,7 @@
 #include <openssl/aead.h>
 #include <openssl/cipher.h>
 #include <openssl/digest.h>
-#include <openssl/mem.h>
 #include <openssl/obj.h>
-#include <openssl/thread.h>
 
 #if defined(__cplusplus)
 extern "C" {

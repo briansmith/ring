@@ -57,6 +57,7 @@
 #include <openssl/asn1.h>
 
 #include <string.h>
+#include <time.h>
 
 #include <openssl/err.h>
 #include <openssl/mem.h>

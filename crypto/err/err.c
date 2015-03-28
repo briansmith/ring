@@ -111,8 +111,6 @@
 #include <assert.h>
 #include <errno.h>
 #include <inttypes.h>
-#include <stdarg.h>
-#include <stdio.h>
 #include <string.h>
 
 #if defined(OPENSSL_WINDOWS)
@@ -121,7 +119,6 @@
 #pragma warning(pop)
 #endif
 
-#include <openssl/lhash.h>
 #include <openssl/mem.h>
 #include <openssl/thread.h>
 

@@ -56,8 +56,8 @@
 
 /* This file should be the first included by all BoringSSL headers. */
 
+#include <stddef.h>
 #include <stdint.h>
-#include <stdlib.h>
 #include <sys/types.h>
 
 #include <openssl/opensslfeatures.h>
@@ -175,6 +175,8 @@ typedef struct buf_mem_st BUF_MEM;
 typedef struct cbb_st CBB;
 typedef struct cbs_st CBS;
 typedef struct conf_st CONF;
+typedef struct conf_value_st CONF_VALUE;
+typedef int CRYPTO_THREADID;
 typedef struct dh_method DH_METHOD;
 typedef struct dh_st DH;
 typedef struct dsa_method DSA_METHOD;

@@ -67,6 +67,9 @@
 
 #include <openssl/time_support.h>
 
+#include <time.h>
+
+
 #define SECS_PER_DAY (24 * 60 * 60)
 
 struct tm *OPENSSL_gmtime(const time_t *time, struct tm *result) {

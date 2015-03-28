@@ -79,11 +79,11 @@ extern "C" {
  *
  * Config files are representated by a |CONF|. */
 
-typedef struct {
+struct conf_value_st {
   char *section;
   char *name;
   char *value;
-} CONF_VALUE;
+};
 
 struct conf_st {
   LHASH_OF(CONF_VALUE) *data;

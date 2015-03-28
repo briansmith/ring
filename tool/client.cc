@@ -14,13 +14,6 @@
 
 #include <openssl/base.h>
 
-#include <string>
-#include <vector>
-
-#include <errno.h>
-#include <stdlib.h>
-#include <sys/types.h>
-
 #include <openssl/err.h>
 #include <openssl/pem.h>
 #include <openssl/ssl.h>

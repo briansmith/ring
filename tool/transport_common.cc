@@ -18,7 +18,7 @@
 #include <vector>
 
 #include <errno.h>
-#include <stdlib.h>
+#include <stddef.h>
 #include <string.h>
 #include <sys/types.h>
 

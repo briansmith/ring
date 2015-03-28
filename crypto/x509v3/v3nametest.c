@@ -52,6 +52,7 @@
  * (eay@cryptsoft.com).  This product includes software written by Tim
  * Hudson (tjh@cryptsoft.com). */
 
+#include <stdarg.h>
 #include <string.h>
 
 #include <openssl/crypto.h>

@@ -67,6 +67,7 @@
 #include <openssl/mem.h>
 #include <openssl/obj.h>
 #include <openssl/rsa.h>
+#include <openssl/thread.h>
 
 #include "internal.h"
 

@@ -56,10 +56,11 @@
 
 #include <openssl/thread.h>
 
-#include <errno.h>
 #include <string.h>
 
-#if defined(OPENSSL_WINDOWS)
+#if !defined(OPENSSL_WINDOWS)
+#include <errno.h>
+#else
 #pragma warning(push, 3)
 #include <windows.h>
 #pragma warning(pop)

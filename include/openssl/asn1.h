@@ -61,8 +61,6 @@
 
 #include <openssl/base.h>
 
-#include <time.h>
-
 #include <openssl/bio.h>
 #include <openssl/stack.h>
 

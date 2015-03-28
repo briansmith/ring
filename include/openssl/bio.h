@@ -59,7 +59,6 @@
 
 #include <openssl/base.h>
 
-#include <stdarg.h>
 #include <stdio.h>  /* For FILE */
 
 #include <openssl/err.h> /* for ERR_print_errors_fp */

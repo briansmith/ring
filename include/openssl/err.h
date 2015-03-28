@@ -112,8 +112,6 @@
 #include <stdio.h>
 
 #include <openssl/base.h>
-#include <openssl/thread.h>
-#include <openssl/lhash.h>
 
 #if defined(__cplusplus)
 extern "C" {

@@ -60,7 +60,6 @@
 #include <openssl/base.h>
 
 #include <openssl/aead.h>
-#include <openssl/asn1t.h>
 
 #if defined(__cplusplus)
 extern "C" {
