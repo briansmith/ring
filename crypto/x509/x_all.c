@@ -57,7 +57,6 @@
 #include <openssl/asn1.h>
 #include <openssl/buf.h>
 #include <openssl/digest.h>
-#include <openssl/dsa.h>
 #include <openssl/evp.h>
 #include <openssl/rsa.h>
 #include <openssl/stack.h>
@@ -303,52 +302,6 @@ int i2d_RSA_PUBKEY_bio(BIO *bp, RSA *rsa)
 	{
 	return ASN1_i2d_bio_of_const(RSA,i2d_RSA_PUBKEY,bp,rsa);
 	}
-
-#ifndef OPENSSL_NO_DSA
-#ifndef OPENSSL_NO_FP_API
-DSA *d2i_DSAPrivateKey_fp(FILE *fp, DSA **dsa)
-	{
-	return ASN1_d2i_fp_of(DSA,DSA_new,d2i_DSAPrivateKey,fp,dsa);
-	}
-
-int i2d_DSAPrivateKey_fp(FILE *fp, DSA *dsa)
-	{
-	return ASN1_i2d_fp_of_const(DSA,i2d_DSAPrivateKey,fp,dsa);
-	}
-
-DSA *d2i_DSA_PUBKEY_fp(FILE *fp, DSA **dsa)
-	{
-	return ASN1_d2i_fp_of(DSA,DSA_new,d2i_DSA_PUBKEY,fp,dsa);
-	}
-
-int i2d_DSA_PUBKEY_fp(FILE *fp, DSA *dsa)
-	{
-	return ASN1_i2d_fp_of_const(DSA,i2d_DSA_PUBKEY,fp,dsa);
-	}
-#endif
-
-DSA *d2i_DSAPrivateKey_bio(BIO *bp, DSA **dsa)
-	{
-	return ASN1_d2i_bio_of(DSA,DSA_new,d2i_DSAPrivateKey,bp,dsa
-);
-	}
-
-int i2d_DSAPrivateKey_bio(BIO *bp, DSA *dsa)
-	{
-	return ASN1_i2d_bio_of_const(DSA,i2d_DSAPrivateKey,bp,dsa);
-	}
-
-DSA *d2i_DSA_PUBKEY_bio(BIO *bp, DSA **dsa)
-	{
-	return ASN1_d2i_bio_of(DSA,DSA_new,d2i_DSA_PUBKEY,bp,dsa);
-	}
-
-int i2d_DSA_PUBKEY_bio(BIO *bp, DSA *dsa)
-	{
-	return ASN1_i2d_bio_of_const(DSA,i2d_DSA_PUBKEY,bp,dsa);
-	}
-
-#endif
 
 #ifndef OPENSSL_NO_FP_API
 EC_KEY *d2i_EC_PUBKEY_fp(FILE *fp, EC_KEY **eckey)

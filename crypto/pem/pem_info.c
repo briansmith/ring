@@ -63,7 +63,6 @@
 #include <string.h>
 
 #include <openssl/buf.h>
-#include <openssl/dsa.h>
 #include <openssl/err.h>
 #include <openssl/evp.h>
 #include <openssl/mem.h>
@@ -186,28 +185,6 @@ start:
 				raw=1;
 			}
 		else
-#ifndef OPENSSL_NO_DSA
-			if (strcmp(name,PEM_STRING_DSA) == 0)
-			{
-			d2i=(D2I_OF(void))d2i_DSAPrivateKey;
-			if (xi->x_pkey != NULL) 
-				{
-				if (!sk_X509_INFO_push(ret,xi)) goto err;
-				if ((xi=X509_INFO_new()) == NULL) goto err;
-				goto start;
-				}
-
-			xi->enc_data=NULL;
-			xi->enc_len=0;
-
-			xi->x_pkey=X509_PKEY_new();
-			ptype = EVP_PKEY_DSA;
-			pp=&xi->x_pkey->dec_pkey;
-			if ((int)strlen(header) > 10) /* assume encrypted */
-				raw=1;
-			}
-		else
-#endif
  			if (strcmp(name,PEM_STRING_ECPRIVATEKEY) == 0)
  			{
  				d2i=(D2I_OF(void))d2i_ECPrivateKey;
@@ -376,7 +353,7 @@ int PEM_X509_INFO_write_bio(BIO *bp, X509_INFO *xi, EVP_CIPHER *enc,
 			}
 		else
 			{
-			/* Add DSA/DH */
+			/* Add DH */
 			/* normal optionally encrypted stuff */
 			if (PEM_write_bio_RSAPrivateKey(bp,
 				xi->x_pkey->dec_pkey->pkey.rsa,

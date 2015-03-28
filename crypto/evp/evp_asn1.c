@@ -121,10 +121,11 @@ EVP_PKEY *d2i_AutoPrivateKey(EVP_PKEY **out, const uint8_t **inp, long len) {
    * by analyzing it we can determine the passed structure: this
    * assumes the input is surrounded by an ASN1 SEQUENCE. */
   inkey = d2i_ASN1_SEQUENCE_ANY(NULL, &p, len);
-  /* Since we only need to discern "traditional format" RSA and DSA
-   * keys we can just count the elements. */
+  /* Since we only need to discern "traditional format" RSA keys we can just
+   * count the elements. */
   if (sk_ASN1_TYPE_num(inkey) == 6) {
-    keytype = EVP_PKEY_DSA;
+    OPENSSL_PUT_ERROR(EVP, EVP_R_UNSUPPORTED_PUBLIC_KEY_TYPE);
+    return NULL;
   } else if (sk_ASN1_TYPE_num(inkey) == 4) {
     keytype = EVP_PKEY_EC;
   } else if (sk_ASN1_TYPE_num(inkey) == 3) {
@@ -155,8 +156,6 @@ int i2d_PublicKey(EVP_PKEY *key, uint8_t **outp) {
   switch (key->type) {
     case EVP_PKEY_RSA:
       return i2d_RSAPublicKey(key->pkey.rsa, outp);
-    case EVP_PKEY_DSA:
-      return i2d_DSAPublicKey(key->pkey.dsa, outp);
     case EVP_PKEY_EC:
       return i2o_ECPublicKey(key->pkey.ec, outp);
     default:

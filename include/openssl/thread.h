@@ -90,7 +90,8 @@ typedef union crypto_mutex_st {
 } CRYPTO_MUTEX;
 #endif
 
-/* CRYPTO_refcount_t is the type of a reference count.
+
+/* Functions to support multithreading.
  *
  * Since some platforms use C11 atomics to access this, it should have the
  * _Atomic qualifier. However, this header is included by C++ programs as well
@@ -114,15 +115,34 @@ typedef uint32_t CRYPTO_refcount_t;
  * returned NULL.) */
 OPENSSL_EXPORT int CRYPTO_num_locks(void);
 
-/* CRYPTO_set_locking_callback does nothing. */
+/* CRYPTO_set_locking_callback sets a callback function that implements locking
+ * on behalf of OpenSSL. The callback is called whenever OpenSSL needs to lock
+ * or unlock a lock, and locks are specified as a number between zero and
+ * |CRYPTO_num_locks()-1|.
+ *
+ * The mode argument to the callback is a bitwise-OR of either CRYPTO_LOCK or
+ * CRYPTO_UNLOCK, to denote the action, and CRYPTO_READ or CRYPTO_WRITE, to
+ * indicate the type of lock. The |file| and |line| arguments give the location
+ * in the OpenSSL source where the locking action originated. */
 OPENSSL_EXPORT void CRYPTO_set_locking_callback(
     void (*func)(int mode, int lock_num, const char *file, int line));
 
-/* CRYPTO_set_add_lock_callback does nothing. */
+/* CRYPTO_set_add_lock_callback sets an optional callback which is used when
+ * OpenSSL needs to add a fixed amount to an integer. For example, this is used
+ * when maintaining reference counts. Normally the reference counts are
+ * maintained by performing the addition under a lock but, if this callback
+ * has been set, the application is free to implement the operation using
+ * faster methods (i.e. atomic operations).
+ *
+ * The callback is given a pointer to the integer to be altered (|num|), the
+ * amount to add to the integer (|amount|, which may be negative), the number
+ * of the lock which would have been taken to protect the operation and the
+ * position in the OpenSSL code where the operation originated. */
 OPENSSL_EXPORT void CRYPTO_set_add_lock_callback(int (*func)(
     int *num, int amount, int lock_num, const char *file, int line));
 
-/* CRYPTO_get_lock_name returns a fixed, dummy string. */
+/* CRYPTO_get_lock_name returns the name of the lock given by |lock_num|. This
+ * can be used in a locking callback for debugging purposes. */
 OPENSSL_EXPORT const char *CRYPTO_get_lock_name(int lock_num);
 
 /* CRYPTO_THREADID_set_callback returns one. */

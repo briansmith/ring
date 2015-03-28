@@ -149,10 +149,6 @@ OPENSSL_EXPORT int EVP_PKEY_set1_RSA(EVP_PKEY *pkey, RSA *key);
 OPENSSL_EXPORT int EVP_PKEY_assign_RSA(EVP_PKEY *pkey, RSA *key);
 OPENSSL_EXPORT RSA *EVP_PKEY_get1_RSA(EVP_PKEY *pkey);
 
-OPENSSL_EXPORT int EVP_PKEY_set1_DSA(EVP_PKEY *pkey, struct dsa_st *key);
-OPENSSL_EXPORT int EVP_PKEY_assign_DSA(EVP_PKEY *pkey, DSA *key);
-OPENSSL_EXPORT struct dsa_st *EVP_PKEY_get1_DSA(EVP_PKEY *pkey);
-
 OPENSSL_EXPORT int EVP_PKEY_set1_EC_KEY(EVP_PKEY *pkey, struct ec_key_st *key);
 OPENSSL_EXPORT int EVP_PKEY_assign_EC_KEY(EVP_PKEY *pkey, EC_KEY *key);
 OPENSSL_EXPORT struct ec_key_st *EVP_PKEY_get1_EC_KEY(EVP_PKEY *pkey);
@@ -164,7 +160,6 @@ OPENSSL_EXPORT struct dh_st *EVP_PKEY_get1_DH(EVP_PKEY *pkey);
 #define EVP_PKEY_NONE NID_undef
 #define EVP_PKEY_RSA NID_rsaEncryption
 #define EVP_PKEY_RSA2 NID_rsa
-#define EVP_PKEY_DSA NID_dsa
 #define EVP_PKEY_DH NID_dhKeyAgreement
 #define EVP_PKEY_DHX NID_dhpublicnumber
 #define EVP_PKEY_EC NID_X9_62_id_ecPublicKey
@@ -209,13 +204,10 @@ OPENSSL_EXPORT EVP_PKEY *d2i_AutoPrivateKey(EVP_PKEY **out, const uint8_t **inp,
  * the result, whether written or not, or a negative value on error. */
 OPENSSL_EXPORT int i2d_PrivateKey(const EVP_PKEY *key, uint8_t **outp);
 
-/* i2d_PublicKey marshals a public key from |key| to a type-specific format.
- * If |outp| is not NULL then the result is written to |*outp| and
+/* i2d_PublicKey marshals a public key from |key| to an ASN.1, DER
+ * structure. If |outp| is not NULL then the result is written to |*outp| and
  * |*outp| is advanced just past the output. It returns the number of bytes in
- * the result, whether written or not, or a negative value on error.
- *
- * RSA keys are serialized as a DER-encoded RSAPublicKey (RFC 3447) structure.
- * EC keys are serialized as an EC point per SEC 1. */
+ * the result, whether written or not, or a negative value on error. */
 OPENSSL_EXPORT int i2d_PublicKey(EVP_PKEY *key, uint8_t **outp);
 
 
@@ -233,7 +225,8 @@ OPENSSL_EXPORT int EVP_DigestSignInit(EVP_MD_CTX *ctx, EVP_PKEY_CTX **pctx,
                                       EVP_PKEY *pkey);
 
 /* EVP_DigestSignUpdate appends |len| bytes from |data| to the data which will
- * be signed in |EVP_DigestSignFinal|. It returns one. */
+ * be signed in |EVP_DigestSignFinal|. It returns one on success and zero
+ * otherwise. */
 OPENSSL_EXPORT int EVP_DigestSignUpdate(EVP_MD_CTX *ctx, const void *data,
                                         size_t len);
 
@@ -284,7 +277,8 @@ OPENSSL_EXPORT int EVP_DigestVerifyInitFromAlgorithm(EVP_MD_CTX *ctx,
                                                      EVP_PKEY *pkey);
 
 /* EVP_DigestVerifyUpdate appends |len| bytes from |data| to the data which
- * will be verified by |EVP_DigestVerifyFinal|. It returns one. */
+ * will be verified by |EVP_DigestVerifyFinal|. It returns one on success and
+ * zero otherwise. */
 OPENSSL_EXPORT int EVP_DigestVerifyUpdate(EVP_MD_CTX *ctx, const void *data,
                                           size_t len);
 
@@ -369,12 +363,12 @@ OPENSSL_EXPORT int EVP_VerifyFinal(EVP_MD_CTX *ctx, const uint8_t *sig,
 OPENSSL_EXPORT int EVP_PKEY_print_public(BIO *out, const EVP_PKEY *pkey,
                                          int indent, ASN1_PCTX *pctx);
 
-/* EVP_PKEY_print_private prints a textual representation of the private key in
+/* EVP_PKEY_print_public prints a textual representation of the private key in
  * |pkey| to |out|. Returns one on success or zero otherwise. */
 OPENSSL_EXPORT int EVP_PKEY_print_private(BIO *out, const EVP_PKEY *pkey,
                                           int indent, ASN1_PCTX *pctx);
 
-/* EVP_PKEY_print_params prints a textual representation of the parameters in
+/* EVP_PKEY_print_public prints a textual representation of the parameters in
  * |pkey| to |out|. Returns one on success or zero otherwise. */
 OPENSSL_EXPORT int EVP_PKEY_print_params(BIO *out, const EVP_PKEY *pkey,
                                          int indent, ASN1_PCTX *pctx);
@@ -411,13 +405,13 @@ OPENSSL_EXPORT int PKCS5_PBKDF2_HMAC_SHA1(const char *password,
  * returns the context or NULL on error. */
 OPENSSL_EXPORT EVP_PKEY_CTX *EVP_PKEY_CTX_new(EVP_PKEY *pkey, ENGINE *e);
 
-/* EVP_PKEY_CTX_new_id allocates a fresh |EVP_PKEY_CTX| for a key of type |id|
+/* EVP_PKEY_CTX_new allocates a fresh |EVP_PKEY_CTX| for a key of type |id|
  * (e.g. |EVP_PKEY_HMAC|). This can be used for key generation where
  * |EVP_PKEY_CTX_new| can't be used because there isn't an |EVP_PKEY| to pass
  * it. It returns the context or NULL on error. */
 OPENSSL_EXPORT EVP_PKEY_CTX *EVP_PKEY_CTX_new_id(int id, ENGINE *e);
 
-/* EVP_PKEY_CTX_free frees |ctx| and the data it owns. */
+/* EVP_KEY_CTX_free frees |ctx| and the data it owns. */
 OPENSSL_EXPORT void EVP_PKEY_CTX_free(EVP_PKEY_CTX *ctx);
 
 /* EVP_PKEY_CTX_dup allocates a fresh |EVP_PKEY_CTX| and sets it equal to the
@@ -640,7 +634,7 @@ OPENSSL_EXPORT int EVP_PKEY_CTX_get0_rsa_oaep_label(EVP_PKEY_CTX *ctx,
                                                     const uint8_t **out_label);
 
 
-/* Deprecated functions. */
+/* Private functions */
 
 /* OpenSSL_add_all_algorithms does nothing. */
 OPENSSL_EXPORT void OpenSSL_add_all_algorithms(void);
@@ -677,7 +671,6 @@ struct evp_pkey_st {
   union {
     char *ptr;
     RSA *rsa;
-    DSA *dsa;
     DH *dh;
     EC_KEY *ec;
   } pkey;

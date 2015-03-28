@@ -269,8 +269,6 @@ static const struct nid_to_digest nid_to_digest_mapping[] = {
   { NID_sha384, EVP_sha384, SN_sha384, LN_sha384 },
   { NID_sha512, EVP_sha512, SN_sha512, LN_sha512 },
   { NID_md5_sha1, EVP_md5_sha1, SN_md5_sha1, LN_md5_sha1 },
-  { NID_dsaWithSHA, EVP_sha1, SN_dsaWithSHA, LN_dsaWithSHA },
-  { NID_dsaWithSHA1, EVP_sha1, SN_dsaWithSHA1, LN_dsaWithSHA1 },
   { NID_ecdsa_with_SHA1, EVP_sha1, SN_ecdsa_with_SHA1, NULL },
   { NID_md5WithRSAEncryption, EVP_md5, SN_md5WithRSAEncryption,
     LN_md5WithRSAEncryption },

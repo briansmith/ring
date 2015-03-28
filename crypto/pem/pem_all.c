@@ -110,7 +110,6 @@
 
 #include <openssl/bio.h>
 #include <openssl/dh.h>
-#include <openssl/dsa.h>
 #include <openssl/evp.h>
 #include <openssl/pem.h>
 /*#include <openssl/pkcs7.h> */
@@ -119,7 +118,6 @@
 
 
 static RSA *pkey_get_rsa(EVP_PKEY *key, RSA **rsa);
-static DSA *pkey_get_dsa(EVP_PKEY *key, DSA **dsa);
 static EC_KEY *pkey_get_eckey(EVP_PKEY *key, EC_KEY **eckey);
 
 
@@ -131,7 +129,7 @@ IMPLEMENT_PEM_rw(X509_CRL, X509_CRL, PEM_STRING_X509_CRL, X509_CRL)
 
 
 
-/* We treat RSA or DSA private keys as a special case.
+/* We treat RSA private keys as a special case.
  *
  * For private keys we read in an EVP_PKEY structure with
  * PEM_read_bio_PrivateKey() and extract the relevant private
@@ -177,51 +175,6 @@ IMPLEMENT_PEM_write_cb_const(RSAPrivateKey, RSA, PEM_STRING_RSA, RSAPrivateKey)
 
 IMPLEMENT_PEM_rw_const(RSAPublicKey, RSA, PEM_STRING_RSA_PUBLIC, RSAPublicKey)
 IMPLEMENT_PEM_rw(RSA_PUBKEY, RSA, PEM_STRING_PUBLIC, RSA_PUBKEY)
-
-#ifndef OPENSSL_NO_DSA
-
-static DSA *pkey_get_dsa(EVP_PKEY *key, DSA **dsa)
-{
-	DSA *dtmp;
-	if(!key) return NULL;
-	dtmp = EVP_PKEY_get1_DSA(key);
-	EVP_PKEY_free(key);
-	if(!dtmp) return NULL;
-	if(dsa) {
-		DSA_free(*dsa);
-		*dsa = dtmp;
-	}
-	return dtmp;
-}
-
-DSA *PEM_read_bio_DSAPrivateKey(BIO *bp, DSA **dsa, pem_password_cb *cb,
-								void *u)
-{
-	EVP_PKEY *pktmp;
-	pktmp = PEM_read_bio_PrivateKey(bp, NULL, cb, u);
-	return pkey_get_dsa(pktmp, dsa);	/* will free pktmp */
-}
-
-
-IMPLEMENT_PEM_write_cb_const(DSAPrivateKey, DSA, PEM_STRING_DSA, DSAPrivateKey)
-
-IMPLEMENT_PEM_rw(DSA_PUBKEY, DSA, PEM_STRING_PUBLIC, DSA_PUBKEY)
-
-#ifndef OPENSSL_NO_FP_API
-
-DSA *PEM_read_DSAPrivateKey(FILE *fp, DSA **dsa, pem_password_cb *cb,
-								void *u)
-{
-	EVP_PKEY *pktmp;
-	pktmp = PEM_read_PrivateKey(fp, NULL, cb, u);
-	return pkey_get_dsa(pktmp, dsa);	/* will free pktmp */
-}
-
-#endif
-
-IMPLEMENT_PEM_rw_const(DSAparams, DSA, PEM_STRING_DSAPARAMS, DSAparams)
-
-#endif
 
 
 static EC_KEY *pkey_get_eckey(EVP_PKEY *key, EC_KEY **eckey)

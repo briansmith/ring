@@ -18,7 +18,6 @@
 #include <assert.h>
 
 #include <openssl/dh.h>
-#include <openssl/dsa.h>
 #include <openssl/ec_key.h>
 #include <openssl/err.h>
 #include <openssl/mem.h>
@@ -28,7 +27,6 @@
 
 struct engine_st {
   DH_METHOD *dh_method;
-  DSA_METHOD *dsa_method;
   RSA_METHOD *rsa_method;
   ECDSA_METHOD *ecdsa_method;
 };
@@ -72,16 +70,6 @@ int ENGINE_set_DH_method(ENGINE *engine, const DH_METHOD *method,
 
 DH_METHOD *ENGINE_get_DH_method(const ENGINE *engine) {
   return engine->dh_method;
-}
-
-int ENGINE_set_DSA_method(ENGINE *engine, const DSA_METHOD *method,
-                         size_t method_size) {
-  return set_method((void **)&engine->dsa_method, method, method_size,
-                    sizeof(DSA_METHOD));
-}
-
-DSA_METHOD *ENGINE_get_DSA_method(const ENGINE *engine) {
-  return engine->dsa_method;
 }
 
 int ENGINE_set_RSA_method(ENGINE *engine, const RSA_METHOD *method,
