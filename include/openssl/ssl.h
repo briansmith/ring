@@ -2683,10 +2683,8 @@ OPENSSL_EXPORT const char *SSLeay_version(int unused);
  * headers introduces circular dependencies and is inconsistent. The function
  * declarations should move to ssl.h. Many of the constants can probably be
  * pruned or unexported. */
-#include <openssl/ssl2.h>
 #include <openssl/ssl3.h>
 #include <openssl/tls1.h> /* This is mostly sslv3 with a few tweaks */
-#include <openssl/ssl23.h>
 #include <openssl/srtp.h>  /* Support for the use_srtp extension */
 
 

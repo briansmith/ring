@@ -127,6 +127,10 @@
 extern "C" {
 #endif
 
+/* These are kept to support clients that negotiates higher protocol versions
+ * using SSLv2 client hello records. */
+#define SSL2_MT_CLIENT_HELLO 1
+#define SSL2_VERSION 0x0002
 
 /* Signalling cipher suite value: from RFC5746 */
 #define SSL3_CK_SCSV 0x030000FF
