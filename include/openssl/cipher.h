@@ -102,11 +102,6 @@ OPENSSL_EXPORT const EVP_CIPHER *EVP_aes_192_gcm(void);
  * ciphertext. */
 OPENSSL_EXPORT const EVP_CIPHER *EVP_enc_null(void);
 
-/* EVP_get_cipherbynid returns the cipher corresponding to the given NID, or
- * NULL if no such cipher is known. */
-OPENSSL_EXPORT const EVP_CIPHER *EVP_get_cipherbynid(int nid);
-
-
 /* Cipher context allocation.
  *
  * An |EVP_CIPHER_CTX| represents the state of an encryption or decryption in
