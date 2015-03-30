@@ -191,7 +191,7 @@ OPENSSL_EXPORT int RSA_sign(int hash_nid, const uint8_t *in,
                             unsigned int *out_len, RSA *rsa);
 
 /* RSA_sign_raw signs |in_len| bytes from |in| with the public key from |rsa|
- * and writes, at most, |max_out| bytes of encrypted data to |out|. The
+ * and writes, at most, |max_out| bytes of signature data to |out|. The
  * |max_out| argument must be, at least, |RSA_size| in order to ensure success.
  *
  * It returns 1 on success or zero on error.
@@ -255,7 +255,7 @@ OPENSSL_EXPORT int RSA_public_decrypt(int flen, const uint8_t *from,
 /* Utility functions. */
 
 /* RSA_size returns the number of bytes in the modulus, which is also the size
- * of a signature of encrypted value using |rsa|. */
+ * of a signature or encrypted value using |rsa|. */
 OPENSSL_EXPORT unsigned RSA_size(const RSA *rsa);
 
 /* RSA_is_opaque returns one if |rsa| is opaque and doesn't expose its key
