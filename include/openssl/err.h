@@ -471,26 +471,6 @@ enum {
 #define ERR_GET_FUNC(packed_error) ((int)(((packed_error) >> 12) & 0xfff))
 #define ERR_GET_REASON(packed_error) ((int)((packed_error) & 0xfff))
 
-/* ERR_FNS_st is a structure of function pointers that contains the actual
- * implementation of the error queue handling functions. */
-struct ERR_FNS_st {
-  void (*shutdown)(void (*err_state_free_cb)(ERR_STATE*));
-
-  /* get_state returns the ERR_STATE for the current thread. This function
-   * never returns NULL. */
-  ERR_STATE *(*get_state)(void);
-
-  /* release_state returns the |ERR_STATE| for the given thread, or NULL if
-   * none exists. It the return value is not NULL, it also returns ownership of
-   * the |ERR_STATE| and deletes it from its data structures. */
-  ERR_STATE *(*release_state)(const CRYPTO_THREADID *tid);
-
-  /* get_next_library returns a unique value suitable for passing as the
-   * |library| to error calls. It will be distinct from all built-in library
-   * values. */
-  int (*get_next_library)(void);
-};
-
 /* OPENSSL_DECLARE_ERROR_REASON is used by util/make_errors.h (which generates
  * the error defines) to recognise that an additional reason value is needed.
  * This is needed when the reason value is used outside of an

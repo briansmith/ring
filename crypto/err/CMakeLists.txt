@@ -38,7 +38,6 @@ add_library(
 
   err.c
   err_data.c
-  err_impl.c
 )
 
 add_executable(
