@@ -168,7 +168,7 @@ void OPENSSL_cpuid_setup(void) {
   }
 #endif
 
-  OPENSSL_armcap_P |= ARMV7_NEON | ARMV7_NEON_FUNCTIONAL;
+  OPENSSL_armcap_P |= ARMV7_NEON;
 
   if (hwcap & kAES) {
     OPENSSL_armcap_P |= ARMV8_AES;
