@@ -2870,14 +2870,12 @@ void SSL_get_structure_sizes(size_t *ssl_size, size_t *ssl_ctx_size,
 int ssl3_can_false_start(const SSL *s) {
   const SSL_CIPHER *const cipher = SSL_get_current_cipher(s);
 
-  /* False Start only for TLS 1.2 with a forward-secure, AEAD cipher and ALPN or
-   * NPN. */
+  /* False Start only for TLS 1.2 with an ECDHE+AEAD cipher and ALPN or NPN. */
   return !SSL_IS_DTLS(s) &&
       SSL_version(s) >= TLS1_2_VERSION &&
       (s->s3->alpn_selected || s->s3->next_proto_neg_seen) &&
       cipher != NULL &&
-      (cipher->algorithm_mkey == SSL_kDHE ||
-       cipher->algorithm_mkey == SSL_kECDHE) &&
+      cipher->algorithm_mkey == SSL_kECDHE &&
       (cipher->algorithm_enc == SSL_AES128GCM ||
        cipher->algorithm_enc == SSL_AES256GCM ||
        cipher->algorithm_enc == SSL_CHACHA20POLY1305);
