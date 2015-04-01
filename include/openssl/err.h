@@ -145,10 +145,7 @@ extern "C" {
 /* ERR_load_crypto_strings does nothing. */
 OPENSSL_EXPORT void ERR_load_crypto_strings(void);
 
-/* ERR_free_strings frees any memory retained by the error system, expect for
- * per-thread structures which are assumed to have already been freed with
- * |ERR_remove_thread_state|. This should only be called at process
- * shutdown. */
+/* ERR_free_strings does nothing. */
 OPENSSL_EXPORT void ERR_free_strings(void);
 
 
@@ -259,8 +256,12 @@ OPENSSL_EXPORT void ERR_print_errors_cb(ERR_print_errors_callback_t callback,
 /* ERR_clear_error clears the error queue for the current thread. */
 OPENSSL_EXPORT void ERR_clear_error(void);
 
-/* ERR_remove_thread_state deletes the error queue for the given thread. If
- * |tid| is NULL then the error queue for the current thread is deleted. */
+/* ERR_remove_thread_state clears the error queue for the current thread if
+ * |tid| is NULL. Otherwise it does nothing because it's no longer possible to
+ * delete the error queue for other threads.
+ *
+ * Error queues are thread-local data and are deleted automatically. You do not
+ * need to call this function. See |ERR_clear_error|. */
 OPENSSL_EXPORT void ERR_remove_thread_state(const CRYPTO_THREADID *tid);
 
 
@@ -354,9 +355,6 @@ struct err_error_st {
 
 /* ERR_STATE contains the per-thread, error queue. */
 typedef struct err_state_st {
-  /* tid is the identifier of the thread that owns this queue. */
-  CRYPTO_THREADID tid;
-
   /* errors contains the ERR_NUM_ERRORS most recent errors, organised as a ring
    * buffer. */
   struct err_error_st errors[ERR_NUM_ERRORS];

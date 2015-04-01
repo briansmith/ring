@@ -125,6 +125,8 @@
 #include <openssl/mem.h>
 #include <openssl/thread.h>
 
+#include "../internal.h"
+
 
 extern const uint32_t kOpenSSLFunctionValues[];
 extern const size_t kOpenSSLFunctionValuesLen;
@@ -149,82 +151,39 @@ static void err_clear(struct err_error_st *error) {
   memset(error, 0, sizeof(struct err_error_st));
 }
 
-DEFINE_LHASH_OF(ERR_STATE);
-
-/* state_hash is a map from thread ID to ERR_STATE. It works like thread-local
- * storage. */
-static LHASH_OF(ERR_STATE) *state_hash = NULL;
-
 /* global_next_library contains the next custom library value to return. */
 static int global_next_library = ERR_NUM_LIBS;
 
-/* err_state_hash is an lhash hash function for ERR_STATE. */
-static uint32_t err_state_hash(const ERR_STATE *a) {
-  return CRYPTO_THREADID_hash(&a->tid);
-}
+static void err_state_free(void *statep) {
+  ERR_STATE *state = statep;
 
-/* err_state_cmp is an lhash compare function for ERR_STATE. */
-static int err_state_cmp(const ERR_STATE *a, const ERR_STATE *b) {
-  return CRYPTO_THREADID_cmp(&a->tid, &b->tid);
+  if (state == NULL) {
+    return;
+  }
+
+  unsigned i;
+  for (i = 0; i < ERR_NUM_ERRORS; i++) {
+    err_clear(&state->errors[i]);
+  }
+  if (state->to_free) {
+    OPENSSL_free(state->to_free);
+  }
+  OPENSSL_free(state);
 }
 
 /* err_get_state gets the ERR_STATE object for the current thread. */
 static ERR_STATE *err_get_state(void) {
-  CRYPTO_THREADID tid;
-  ERR_STATE pattern, *state, *race_state;
-  int insert_result;
-  static ERR_STATE fallback;
-
-  CRYPTO_THREADID_current(&tid);
-  memset(&pattern, 0, sizeof(pattern));
-  CRYPTO_THREADID_cpy(&pattern.tid, &tid);
-
-  CRYPTO_r_lock(CRYPTO_LOCK_ERR);
-  if (state_hash == NULL) {
-    CRYPTO_r_unlock(CRYPTO_LOCK_ERR);
-    CRYPTO_w_lock(CRYPTO_LOCK_ERR);
-    if (state_hash == NULL) {
-      state_hash = lh_ERR_STATE_new(err_state_hash, err_state_cmp);
-    }
-    CRYPTO_w_unlock(CRYPTO_LOCK_ERR);
-    CRYPTO_r_lock(CRYPTO_LOCK_ERR);
-  }
-
-  if (state_hash == NULL) {
-    CRYPTO_r_unlock(CRYPTO_LOCK_ERR);
-    return NULL;
-  }
-
-  state = lh_ERR_STATE_retrieve(state_hash, &pattern);
-  CRYPTO_r_unlock(CRYPTO_LOCK_ERR);
-  if (state != NULL) {
-    return state;
-  }
-
-  state = OPENSSL_malloc(sizeof(ERR_STATE));
+  ERR_STATE *state = CRYPTO_get_thread_local(OPENSSL_THREAD_LOCAL_ERR);
   if (state == NULL) {
-    CRYPTO_r_unlock(CRYPTO_LOCK_ERR);
-    /* The other error functions don't cope with a failure to get the error
-     * state, so we return a dummy value. */
-    return &fallback;
+    state = OPENSSL_malloc(sizeof(ERR_STATE));
+    if (state == NULL) {
+      return NULL;
+    }
+    memset(state, 0, sizeof(ERR_STATE));
+    if (!CRYPTO_set_thread_local(OPENSSL_THREAD_LOCAL_ERR, state, err_state_free)) {
+      return NULL;
+    }
   }
-
-  memset(state, 0, sizeof(ERR_STATE));
-  CRYPTO_THREADID_cpy(&state->tid, &tid);
-
-  CRYPTO_w_lock(CRYPTO_LOCK_ERR);
-  insert_result = lh_ERR_STATE_insert(state_hash, &race_state, state);
-  CRYPTO_w_unlock(CRYPTO_LOCK_ERR);
-
-  if (!insert_result) {
-    /* Insertion failed because of malloc failure. */
-    OPENSSL_free(state);
-    return &fallback;
-  }
-
-  /* We cannot have raced with another thread to insert an ERR_STATE because no
-   * other thread should be inserting values for this thread. */
-  assert(race_state == NULL);
 
   return state;
 }
@@ -358,43 +317,13 @@ void ERR_clear_error(void) {
   state->top = state->bottom = 0;
 }
 
-static void err_state_free(ERR_STATE *state) {
-  unsigned i;
-
-  for (i = 0; i < ERR_NUM_ERRORS; i++) {
-    err_clear(&state->errors[i]);
-  }
-  if (state->to_free) {
-    OPENSSL_free(state->to_free);
-  }
-  OPENSSL_free(state);
-}
-
 void ERR_remove_thread_state(const CRYPTO_THREADID *tid) {
-  CRYPTO_THREADID current;
-
-  if (tid == NULL) {
-    CRYPTO_THREADID_current(&current);
-    tid = &current;
-  }
-
-  ERR_STATE pattern;
-  CRYPTO_THREADID_cpy(&pattern.tid, tid);
-
-  CRYPTO_r_lock(CRYPTO_LOCK_ERR);
-  if (state_hash == NULL) {
-    CRYPTO_r_unlock(CRYPTO_LOCK_ERR);
+  if (tid != NULL) {
+    assert(0);
     return;
   }
 
-  ERR_STATE *state = lh_ERR_STATE_delete(state_hash, &pattern);
-  CRYPTO_r_unlock(CRYPTO_LOCK_ERR);
-
-  if (state == NULL) {
-    return;
-  }
-
-  err_state_free(state);
+  ERR_clear_error();
 }
 
 int ERR_get_next_error_library(void) {
@@ -848,14 +777,6 @@ int ERR_pop_to_mark(void) {
 
 void ERR_load_crypto_strings(void) {}
 
-void ERR_free_strings(void) {
-  CRYPTO_w_lock(CRYPTO_LOCK_ERR);
-  if (state_hash) {
-    lh_ERR_STATE_doall(state_hash, err_state_free);
-    lh_ERR_STATE_free(state_hash);
-    state_hash = NULL;
-  }
-  CRYPTO_w_unlock(CRYPTO_LOCK_ERR);
-}
+void ERR_free_strings(void) {}
 
 void ERR_load_BIO_strings(void) {}

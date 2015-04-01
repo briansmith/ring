@@ -92,42 +92,6 @@
                             void (*)(CONF_VALUE *, void *), func), \
                arg);
 
-/* ERR_STATE */
-#define lh_ERR_STATE_new(hash, comp)                                        \
-  ((LHASH_OF(ERR_STATE) *)lh_new(                                           \
-      CHECKED_CAST(lhash_hash_func, uint32_t (*)(const ERR_STATE *), hash), \
-      CHECKED_CAST(lhash_cmp_func,                                          \
-                   int (*)(const ERR_STATE *a, const ERR_STATE *b), comp)))
-
-#define lh_ERR_STATE_free(lh) \
-  lh_free(CHECKED_CAST(_LHASH *, LHASH_OF(ERR_STATE) *, lh));
-
-#define lh_ERR_STATE_num_items(lh) \
-  lh_num_items(CHECKED_CAST(_LHASH *, LHASH_OF(ERR_STATE) *, lh))
-
-#define lh_ERR_STATE_retrieve(lh, data)                                        \
-  ((ERR_STATE *)lh_retrieve(CHECKED_CAST(_LHASH *, LHASH_OF(ERR_STATE) *, lh), \
-                            CHECKED_CAST(void *, ERR_STATE *, data)))
-
-#define lh_ERR_STATE_insert(lh, old_data, data)                \
-  lh_insert(CHECKED_CAST(_LHASH *, LHASH_OF(ERR_STATE) *, lh), \
-            CHECKED_CAST(void **, ERR_STATE **, old_data),     \
-            CHECKED_CAST(void *, ERR_STATE *, data))
-
-#define lh_ERR_STATE_delete(lh, data)                                        \
-  ((ERR_STATE *)lh_delete(CHECKED_CAST(_LHASH *, LHASH_OF(ERR_STATE) *, lh), \
-                          CHECKED_CAST(void *, ERR_STATE *, data)))
-
-#define lh_ERR_STATE_doall(lh, func)                          \
-  lh_doall(CHECKED_CAST(_LHASH *, LHASH_OF(ERR_STATE) *, lh), \
-           CHECKED_CAST(void (*)(void *), void (*)(ERR_STATE *), func));
-
-#define lh_ERR_STATE_doall_arg(lh, func, arg)                     \
-  lh_doall_arg(CHECKED_CAST(_LHASH *, LHASH_OF(ERR_STATE) *, lh), \
-               CHECKED_CAST(void (*)(void *, void *),             \
-                            void (*)(ERR_STATE *, void *), func), \
-               arg);
-
 /* EX_CLASS_ITEM */
 #define lh_EX_CLASS_ITEM_new(hash, comp)                                    \
   ((LHASH_OF(EX_CLASS_ITEM) *)lh_new(                                       \
