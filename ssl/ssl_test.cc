@@ -413,7 +413,9 @@ static bool CipherGetRFCName(std::string *out, uint16_t value) {
   if (cipher == NULL) {
     return false;
   }
-  out->assign(SSL_CIPHER_get_rfc_name(cipher));
+  char *rfc_name = SSL_CIPHER_get_rfc_name(cipher);
+  out->assign(rfc_name);
+  OPENSSL_free(rfc_name);
   return true;
 }
 
