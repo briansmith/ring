@@ -587,16 +587,15 @@ const char *ERR_reason_error_string(uint32_t packed_error) {
 }
 
 void ERR_print_errors_cb(ERR_print_errors_callback_t callback, void *ctx) {
-  CRYPTO_THREADID current_thread;
   char buf[ERR_ERROR_STRING_BUF_LEN];
   char buf2[1024];
-  unsigned long thread_hash;
   const char *file, *data;
   int line, flags;
   uint32_t packed_error;
 
-  CRYPTO_THREADID_current(&current_thread);
-  thread_hash = CRYPTO_THREADID_hash(&current_thread);
+  /* thread_hash is the least-significant bits of the |ERR_STATE| pointer value
+   * for this thread. */
+  const unsigned long thread_hash = (uintptr_t) err_get_state();
 
   for (;;) {
     packed_error = ERR_get_error_line_data(&file, &line, &data, &flags);

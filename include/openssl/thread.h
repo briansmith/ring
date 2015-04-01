@@ -67,19 +67,12 @@ extern "C" {
 /* Functions to support multithreading.
  *
  * OpenSSL can safely be used in multi-threaded applications provided that at
- * least two callback functions are set with |CRYPTO_set_locking_callback| and
- * |CRYPTO_THREADID_set_callback|.
+ * least |CRYPTO_set_locking_callback| is set.
  *
  * The locking callback performs mutual exclusion. Rather than using a single
  * lock for all, shared data-structures, OpenSSL requires that the locking
  * callback support a fixed (at run-time) number of different locks, given by
- * |CRYPTO_num_locks|.
- *
- * The thread ID callback is called to record the currently executing thread's
- * identifier in a |CRYPTO_THREADID| structure. If this callback is not
- * provided then the address of |errno| is used as the thread identifier. This
- * is sufficient only if the system has a thread-local |errno| value. */
-
+ * |CRYPTO_num_locks|. */
 
 /* CRYPTO_num_locks returns the number of static locks that the callback
  * function passed to |CRYPTO_set_locking_callback| must be able to handle. */
@@ -116,26 +109,24 @@ OPENSSL_EXPORT void CRYPTO_set_add_lock_callback(int (*func)(
 OPENSSL_EXPORT const char *CRYPTO_get_lock_name(int lock_num);
 
 
-/* CRYPTO_THREADID identifies a thread in a multithreaded program. This
- * structure should not be used directly. Rather applications should use
- * |CRYPTO_THREADID_set_numeric| and |CRYPTO_THREADID_set_pointer|. */
-typedef struct crypto_threadid_st {
-  void *ptr;
-  unsigned long val;
-} CRYPTO_THREADID;
+/* Deprecated functions */
 
-/* CRYPTO_THREADID_set_callback sets a callback function that stores an
- * identifier of the currently executing thread into |threadid|. The
- * CRYPTO_THREADID structure should not be accessed directly. Rather one of
- * |CRYPTO_THREADID_set_numeric| or |CRYPTO_THREADID_set_pointer| should be
- * used depending on whether thread IDs are numbers or pointers on the host
- * system. */
+/* CRYPTO_THREADID is a dummy value. */
+typedef int CRYPTO_THREADID;
+
+/* CRYPTO_THREADID_set_callback does nothing. */
 OPENSSL_EXPORT int CRYPTO_THREADID_set_callback(
     void (*threadid_func)(CRYPTO_THREADID *threadid));
 
+/* CRYPTO_THREADID_set_numeric does nothing. */
 OPENSSL_EXPORT void CRYPTO_THREADID_set_numeric(CRYPTO_THREADID *id,
                                                 unsigned long val);
+
+/* CRYPTO_THREADID_set_pointer does nothing. */
 OPENSSL_EXPORT void CRYPTO_THREADID_set_pointer(CRYPTO_THREADID *id, void *ptr);
+
+/* CRYPTO_THREADID_current does nothing. */
+OPENSSL_EXPORT void CRYPTO_THREADID_current(CRYPTO_THREADID *id);
 
 
 /* Private functions: */
@@ -161,20 +152,6 @@ OPENSSL_EXPORT void CRYPTO_lock(int mode, int lock_num, const char *file,
  * function directly, rather use the |CRYPTO_add| macro. */
 OPENSSL_EXPORT int CRYPTO_add_lock(int *pointer, int amount, int lock_num,
                                    const char *file, int line);
-
-
-/* CRYPTO_THREADID_current stores the current thread identifier in |id|. */
-OPENSSL_EXPORT void CRYPTO_THREADID_current(CRYPTO_THREADID *id);
-
-/* CRYPTO_THREADID_cmp returns < 0, 0 or > 0 if |a| is less than, equal to or
- * greater than |b|, respectively. */
-int CRYPTO_THREADID_cmp(const CRYPTO_THREADID *a, const CRYPTO_THREADID *b);
-
-/* CRYPTO_THREADID_cpy sets |*dest| equal to |*src|. */
-void CRYPTO_THREADID_cpy(CRYPTO_THREADID *dest, const CRYPTO_THREADID *src);
-
-/* CRYPTO_THREADID_hash returns a hash of the numeric value of |id|. */
-uint32_t CRYPTO_THREADID_hash(const CRYPTO_THREADID *id);
 
 /* Lock IDs start from 1. CRYPTO_LOCK_INVALID_LOCK is an unused placeholder
 * used to ensure no lock has ID 0. */

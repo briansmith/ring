@@ -83,8 +83,6 @@ static void (*locking_callback)(int mode, int lock_num, const char *file,
                                 int line) = 0;
 static int (*add_lock_callback)(int *pointer, int amount, int lock_num,
                                 const char *file, int line) = 0;
-static void (*threadid_callback)(CRYPTO_THREADID *) = 0;
-
 
 int CRYPTO_num_locks(void) { return CRYPTO_NUM_LOCKS; }
 
@@ -106,23 +104,13 @@ const char *CRYPTO_get_lock_name(int lock_num) {
   }
 }
 
-int CRYPTO_THREADID_set_callback(void (*func)(CRYPTO_THREADID *)) {
-  if (threadid_callback) {
-    return 0;
-  }
-  threadid_callback = func;
-  return 1;
-}
+int CRYPTO_THREADID_set_callback(void (*func)(CRYPTO_THREADID *)) { return 1; }
 
-void CRYPTO_THREADID_set_numeric(CRYPTO_THREADID *id, unsigned long val) {
-  memset(id, 0, sizeof(*id));
-  id->val = val;
-}
+void CRYPTO_THREADID_set_numeric(CRYPTO_THREADID *id, unsigned long val) {}
 
-void CRYPTO_THREADID_set_pointer(CRYPTO_THREADID *id, void *ptr) {
-  memset(id, 0, sizeof(*id));
-  id->ptr = ptr;
-}
+void CRYPTO_THREADID_set_pointer(CRYPTO_THREADID *id, void *ptr) {}
+
+void CRYPTO_THREADID_current(CRYPTO_THREADID *id) {}
 
 void (*CRYPTO_get_locking_callback(void))(int mode, int lock_num,
                                           const char *file, int line) {
@@ -154,32 +142,6 @@ int CRYPTO_add_lock(int *pointer, int amount, int lock_num, const char *file,
   }
 
   return ret;
-}
-
-void CRYPTO_THREADID_current(CRYPTO_THREADID *id) {
-  if (threadid_callback) {
-    threadid_callback(id);
-    return;
-  }
-
-#if defined(OPENSSL_WINDOWS)
-  CRYPTO_THREADID_set_numeric(id, (unsigned long)GetCurrentThreadId());
-#else
-  /* For everything else, default to using the address of 'errno' */
-  CRYPTO_THREADID_set_pointer(id, (void *)&errno);
-#endif
-}
-
-int CRYPTO_THREADID_cmp(const CRYPTO_THREADID *a, const CRYPTO_THREADID *b) {
-  return memcmp(a, b, sizeof(*a));
-}
-
-void CRYPTO_THREADID_cpy(CRYPTO_THREADID *dest, const CRYPTO_THREADID *src) {
-  memcpy(dest, src, sizeof(*src));
-}
-
-uint32_t CRYPTO_THREADID_hash(const CRYPTO_THREADID *id) {
-  return OPENSSL_hash32(id, sizeof(CRYPTO_THREADID));
 }
 
 void CRYPTO_set_id_callback(unsigned long (*func)(void)) {}

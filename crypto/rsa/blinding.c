@@ -124,7 +124,6 @@ struct bn_blinding_st {
   BIGNUM *Ai;
   BIGNUM *e;
   BIGNUM *mod; /* just a reference */
-  CRYPTO_THREADID tid;
   int counter;
   unsigned long flags;
   BN_MONT_CTX *m_ctx;
@@ -167,7 +166,6 @@ BN_BLINDING *BN_BLINDING_new(const BIGNUM *A, const BIGNUM *Ai, BIGNUM *mod) {
    * to indicate that this is never-used fresh blinding
    * that does not need updating before first use. */
   ret->counter = -1;
-  CRYPTO_THREADID_current(&ret->tid);
   return ret;
 
 err:
@@ -285,8 +283,6 @@ int BN_BLINDING_invert_ex(BIGNUM *n, const BIGNUM *r, BN_BLINDING *b,
 
   return ret;
 }
-
-CRYPTO_THREADID *BN_BLINDING_thread_id(BN_BLINDING *b) { return &b->tid; }
 
 unsigned long BN_BLINDING_get_flags(const BN_BLINDING *b) { return b->flags; }
 
@@ -460,7 +456,6 @@ BN_BLINDING *rsa_setup_blinding(RSA *rsa, BN_CTX *in_ctx) {
     OPENSSL_PUT_ERROR(RSA, rsa_setup_blinding, ERR_R_BN_LIB);
     goto err;
   }
-  CRYPTO_THREADID_current(BN_BLINDING_thread_id(ret));
 
 err:
   BN_CTX_end(ctx);

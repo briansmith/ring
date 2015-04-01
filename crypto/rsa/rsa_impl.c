@@ -218,31 +218,14 @@ static BN_BLINDING *rsa_blinding_get(RSA *rsa, unsigned *index_used,
   char overflow = 0;
 
   CRYPTO_w_lock(CRYPTO_LOCK_RSA_BLINDING);
-  if (rsa->num_blindings > 0) {
-    unsigned i, starting_index;
-    CRYPTO_THREADID threadid;
 
-    /* We start searching the array at a value based on the
-     * threadid in order to try avoid bouncing the BN_BLINDING
-     * values around different threads. It's harmless if
-     * threadid.val is always set to zero. */
-    CRYPTO_THREADID_current(&threadid);
-    starting_index = threadid.val % rsa->num_blindings;
-
-    for (i = starting_index;;) {
-      if (rsa->blindings_inuse[i] == 0) {
-        rsa->blindings_inuse[i] = 1;
-        ret = rsa->blindings[i];
-        *index_used = i;
-        break;
-      }
-      i++;
-      if (i == rsa->num_blindings) {
-        i = 0;
-      }
-      if (i == starting_index) {
-        break;
-      }
+  unsigned i;
+  for (i = 0; i < rsa->num_blindings; i++) {
+    if (rsa->blindings_inuse[i] == 0) {
+      rsa->blindings_inuse[i] = 1;
+      ret = rsa->blindings[i];
+      *index_used = i;
+      break;
     }
   }
 
