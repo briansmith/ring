@@ -921,6 +921,34 @@ var testCases = []testCase{
 			},
 		},
 	},
+	{
+		name: "BadFinished",
+		config: Config{
+			Bugs: ProtocolBugs{
+				BadFinished: true,
+			},
+		},
+		shouldFail:    true,
+		expectedError: ":DIGEST_CHECK_FAILED:",
+	},
+	{
+		name: "FalseStart-BadFinished",
+		config: Config{
+			CipherSuites: []uint16{TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256},
+			NextProtos:   []string{"foo"},
+			Bugs: ProtocolBugs{
+				BadFinished:      true,
+				ExpectFalseStart: true,
+			},
+		},
+		flags: []string{
+			"-false-start",
+			"-advertise-alpn", "\x03foo",
+		},
+		shimWritesFirst: true,
+		shouldFail:      true,
+		expectedError:   ":DIGEST_CHECK_FAILED:",
+	},
 }
 
 func doExchange(test *testCase, config *Config, conn net.Conn, messageLen int, isResume bool) error {

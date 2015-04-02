@@ -846,6 +846,9 @@ func (hs *serverHandshakeState) sendFinished() error {
 
 	finished := new(finishedMsg)
 	finished.verifyData = hs.finishedHash.serverSum(hs.masterSecret)
+	if c.config.Bugs.BadFinished {
+		finished.verifyData[0]++
+	}
 	c.serverVerify = append(c.serverVerify[:0], finished.verifyData...)
 	hs.finishedBytes = finished.marshal()
 	hs.writeServerHash(hs.finishedBytes)

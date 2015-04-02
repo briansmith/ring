@@ -683,6 +683,9 @@ type ProtocolBugs struct {
 	// SendWarningAlerts, if non-zero, causes every record to be prefaced by
 	// a warning alert.
 	SendWarningAlerts alert
+
+	// BadFinished, if true, causes the Finished hash to be broken.
+	BadFinished bool
 }
 
 func (c *Config) serverInit() {
