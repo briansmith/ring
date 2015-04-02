@@ -144,6 +144,10 @@ OPENSSL_EXPORT int DH_size(const DH *dh);
 #define DH_CHECK_INVALID_Q_VALUE 0x20
 #define DH_CHECK_INVALID_J_VALUE 0x40
 
+/* These are compatibility defines. */
+#define DH_NOT_SUITABLE_GENERATOR DH_CHECK_NOT_SUITABLE_GENERATOR
+#define DH_UNABLE_TO_CHECK_GENERATOR DH_CHECK_UNABLE_TO_CHECK_GENERATOR
+
 /* DH_check checks the suitability of |dh| as a Diffie-Hellman group. and sets
  * |DH_CHECK_*| flags in |*out_flags| if it finds any errors. It returns one if
  * |*out_flags| was successfully set and zero on error.
