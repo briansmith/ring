@@ -125,6 +125,12 @@
 
 #include <openssl/base.h>
 
+/* Some versions of inttypes.h will not define print macros in C++ unless
+ * __STDC_FORMAT_MACROS is set. */
+#if !defined(__STDC_FORMAT_MACROS)
+#define __STDC_FORMAT_MACROS
+#endif
+
 #include <inttypes.h>
 
 #if defined(OPENSSL_X86_64) && defined(_MSC_VER) && _MSC_VER >= 1400
