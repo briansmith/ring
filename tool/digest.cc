@@ -32,7 +32,6 @@
 #define O_BINARY 0
 #endif
 #else
-#define NOMINMAX
 #pragma warning(push, 3)
 #include <windows.h>
 #pragma warning(pop)

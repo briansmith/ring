@@ -31,7 +31,6 @@
 #include <sys/socket.h>
 #include <unistd.h>
 #else
-#define NOMINMAX
 #include <io.h>
 #pragma warning(push, 3)
 #include <winsock2.h>
