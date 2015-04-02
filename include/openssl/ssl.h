@@ -2224,7 +2224,7 @@ OPENSSL_EXPORT int SSL_is_server(SSL *s);
 /* SSL_CTX_set_dos_protection_cb sets a callback that is called once the
  * resumption decision for a ClientHello has been made. It can return 1 to
  * allow the handshake to continue or zero to cause the handshake to abort. */
-void SSL_CTX_set_dos_protection_cb(
+OPENSSL_EXPORT void SSL_CTX_set_dos_protection_cb(
     SSL_CTX *ctx, int (*cb)(const struct ssl_early_callback_ctx *));
 
 /* SSL_get_structure_sizes returns the sizes of the SSL, SSL_CTX and

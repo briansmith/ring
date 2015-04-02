@@ -189,6 +189,10 @@ add_library(
   $<TARGET_OBJECTS:pkcs8>
 )
 
+if(NOT MSVC)
+  target_link_libraries(crypto pthread)
+endif()
+
 add_executable(
   constant_time_test
 
@@ -203,11 +207,7 @@ add_executable(
   thread_test.c
 )
 
-if(MSVC)
-  target_link_libraries(thread_test crypto)
-else()
-  target_link_libraries(thread_test crypto pthread)
-endif()
+target_link_libraries(thread_test crypto)
 
 perlasm(cpu-x86_64-asm.${ASM_EXT} cpu-x86_64-asm.pl)
 perlasm(cpu-x86-asm.${ASM_EXT} cpu-x86-asm.pl)

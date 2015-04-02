@@ -49,11 +49,15 @@ add_executable(
   v3nametest.c
 )
 
-add_executable(
-  tab_test
-
-  tabtest.c
-)
-
 target_link_libraries(v3name_test crypto)
-target_link_libraries(tab_test crypto)
+
+if (NOT BUILD_SHARED_LIBS)
+  # TODO(davidben): Fix the shared library build of tab_test.
+  add_executable(
+    tab_test
+
+    tabtest.c
+  )
+
+  target_link_libraries(tab_test crypto)
+endif()
