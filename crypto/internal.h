@@ -316,7 +316,7 @@ typedef int32_t CRYPTO_once_t;
  *
  * The |once| argument must be a |CRYPTO_once_t| that has been initialised with
  * the value |CRYPTO_ONCE_INIT|. */
-void CRYPTO_once(CRYPTO_once_t *once, void (*init)(void));
+OPENSSL_EXPORT void CRYPTO_once(CRYPTO_once_t *once, void (*init)(void));
 
 
 /* Thread local storage. */
@@ -335,7 +335,7 @@ typedef void (*thread_local_destructor_t)(void *);
 
 /* CRYPTO_get_thread_local gets the pointer value that is stored for the
  * current thread for the given index, or NULL if none has been set. */
-void *CRYPTO_get_thread_local(thread_local_data_t value);
+OPENSSL_EXPORT void *CRYPTO_get_thread_local(thread_local_data_t value);
 
 /* CRYPTO_set_thread_local sets a pointer value for the current thread at the
  * given index. This function should only be called once per thread for a given
@@ -351,8 +351,9 @@ void *CRYPTO_get_thread_local(thread_local_data_t value);
  *
  * This function returns one on success or zero on error. If it returns zero
  * then |destructor| has been called with |value| already. */
-int CRYPTO_set_thread_local(thread_local_data_t index, void *value,
-                            thread_local_destructor_t destructor);
+OPENSSL_EXPORT int CRYPTO_set_thread_local(
+    thread_local_data_t index, void *value,
+    thread_local_destructor_t destructor);
 
 
 #if defined(__cplusplus)
