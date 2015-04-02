@@ -781,6 +781,7 @@ var testCases = []testCase{
 		},
 		flags: []string{
 			"-false-start",
+			"-handshake-never-done",
 			"-advertise-alpn", "\x03foo",
 		},
 		shimWritesFirst: true,
@@ -801,6 +802,7 @@ var testCases = []testCase{
 		flags: []string{
 			"-implicit-handshake",
 			"-false-start",
+			"-handshake-never-done",
 			"-advertise-alpn", "\x03foo",
 		},
 		shouldFail:    true,
@@ -943,6 +945,7 @@ var testCases = []testCase{
 		},
 		flags: []string{
 			"-false-start",
+			"-handshake-never-done",
 			"-advertise-alpn", "\x03foo",
 		},
 		shimWritesFirst: true,

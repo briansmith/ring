@@ -73,6 +73,7 @@ struct TestState {
   ScopedSSL_SESSION session;
   ScopedSSL_SESSION pending_session;
   bool early_callback_called = false;
+  bool handshake_done = false;
 };
 
 static void TestStateExFree(void *parent, void *ptr, CRYPTO_EX_DATA *ad,
@@ -88,7 +89,7 @@ static bool SetConfigPtr(SSL *ssl, const TestConfig *config) {
   return SSL_set_ex_data(ssl, g_config_index, (void *)config) == 1;
 }
 
-static const TestConfig *GetConfigPtr(SSL *ssl) {
+static const TestConfig *GetConfigPtr(const SSL *ssl) {
   return (const TestConfig *)SSL_get_ex_data(ssl, g_config_index);
 }
 
@@ -96,7 +97,7 @@ static bool SetClockPtr(SSL *ssl, OPENSSL_timeval *clock) {
   return SSL_set_ex_data(ssl, g_clock_index, (void *)clock) == 1;
 }
 
-static OPENSSL_timeval *GetClockPtr(SSL *ssl) {
+static OPENSSL_timeval *GetClockPtr(const SSL *ssl) {
   return (OPENSSL_timeval *)SSL_get_ex_data(ssl, g_clock_index);
 }
 
@@ -108,7 +109,7 @@ static bool SetTestState(SSL *ssl, std::unique_ptr<TestState> async) {
   return false;
 }
 
-static TestState *GetTestState(SSL *ssl) {
+static TestState *GetTestState(const SSL *ssl) {
   return (TestState *)SSL_get_ex_data(ssl, g_state_index);
 }
 
@@ -321,6 +322,18 @@ static int DDoSCallback(const struct ssl_early_callback_ctx *early_context) {
   return 1;
 }
 
+static void InfoCallback(const SSL *ssl, int type, int val) {
+  if (type == SSL_CB_HANDSHAKE_DONE) {
+    if (GetConfigPtr(ssl)->handshake_never_done) {
+      fprintf(stderr, "handshake completed\n");
+      // Abort before any expected error code is printed, to ensure the overall
+      // test fails.
+      abort();
+    }
+    GetTestState(ssl)->handshake_done = true;
+  }
+}
+
 // Connect returns a new socket connected to localhost on |port| or -1 on
 // error.
 static int Connect(uint16_t port) {
@@ -434,6 +447,8 @@ static ScopedSSL_CTX SetupCtx(const TestConfig *config) {
   SSL_CTX_set_channel_id_cb(ssl_ctx.get(), ChannelIdCallback);
 
   ssl_ctx->current_time_cb = CurrentTimeCallback;
+
+  SSL_CTX_set_info_callback(ssl_ctx.get(), InfoCallback);
 
   return ssl_ctx;
 }
@@ -686,6 +701,13 @@ static bool DoExchange(ScopedSSL_SESSION *out_session, SSL_CTX *ssl_ctx,
       return false;
     }
 
+    bool expect_handshake_done = is_resume || !config->false_start;
+    if (expect_handshake_done != GetTestState(ssl.get())->handshake_done) {
+      fprintf(stderr, "handshake was%s completed\n",
+              GetTestState(ssl.get())->handshake_done ? "" : " not");
+      return false;
+    }
+
     if (config->is_server && !GetTestState(ssl.get())->early_callback_called) {
       fprintf(stderr, "early callback not called\n");
       return false;
@@ -877,6 +899,14 @@ static bool DoExchange(ScopedSSL_SESSION *out_session, SSL_CTX *ssl_ctx,
         fprintf(stderr, "Invalid SSL_get_error output\n");
         return false;
       }
+
+      // After a successful read, with or without False Start, the handshake
+      // must be complete.
+      if (!GetTestState(ssl.get())->handshake_done) {
+        fprintf(stderr, "handshake was not completed after SSL_read\n");
+        return false;
+      }
+
       for (int i = 0; i < n; i++) {
         buf[i] ^= 0xff;
       }
