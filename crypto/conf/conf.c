@@ -90,8 +90,12 @@ static int conf_value_cmp(const CONF_VALUE *a, const CONF_VALUE *b) {
   }
 }
 
-CONF *NCONF_new(void) {
+CONF *NCONF_new(void *method) {
   CONF *conf;
+
+  if (method != NULL) {
+    return NULL;
+  }
 
   conf = OPENSSL_malloc(sizeof(CONF));
   if (conf == NULL) {
@@ -719,6 +723,10 @@ int NCONF_load(CONF *conf, const char *filename, long *out_error_line) {
   BIO_free(in);
 
   return ret;
+}
+
+int NCONF_load_bio(CONF *conf, BIO *bio, long *out_error_line) {
+  return def_load_bio(conf, bio, out_error_line);
 }
 
 int CONF_parse_list(const char *list, char sep, int remove_whitespace,

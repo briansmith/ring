@@ -90,8 +90,9 @@ struct conf_st {
 };
 
 
-/* NCONF_new returns a fresh, empty |CONF|, or NULL on error. */
-CONF *NCONF_new(void);
+/* NCONF_new returns a fresh, empty |CONF|, or NULL on error. The |method|
+ * argument must be NULL. */
+CONF *NCONF_new(void *method);
 
 /* NCONF_free frees all the data owned by |conf| and then |conf| itself. */
 void NCONF_free(CONF *conf);
@@ -101,6 +102,10 @@ void NCONF_free(CONF *conf);
  * error, if |out_error_line| is not NULL, |*out_error_line| is set to the
  * number of the line that contained the error. */
 int NCONF_load(CONF *conf, const char *filename, long *out_error_line);
+
+/* NCONF_load_bio acts like |NCONF_load| but reads from |bio| rather than from
+ * a named file. */
+int NCONF_load_bio(CONF *conf, BIO *bio, long *out_error_line);
 
 /* NCONF_get_section returns a stack of values for a given section in |conf|.
  * If |section| is NULL, the default section is returned. It returns NULL on
