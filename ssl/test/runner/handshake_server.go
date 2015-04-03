@@ -113,6 +113,9 @@ func (c *Conn) serverHandshake() error {
 		}
 	}
 	c.handshakeComplete = true
+	copy(c.clientRandom[:], hs.clientHello.random)
+	copy(c.serverRandom[:], hs.hello.random)
+	copy(c.masterSecret[:], hs.masterSecret)
 
 	return nil
 }
@@ -376,7 +379,7 @@ Curves:
 func (hs *serverHandshakeState) checkForResumption() bool {
 	c := hs.c
 
-	if c.config.Bugs.NeverResumeOnRenego && c.cipherSuite != 0 {
+	if c.config.Bugs.NeverResumeOnRenego && c.cipherSuite != nil {
 		return false
 	}
 
@@ -880,7 +883,7 @@ func (hs *serverHandshakeState) sendFinished() error {
 		c.dtlsFlushHandshake()
 	}
 
-	c.cipherSuite = hs.suite.id
+	c.cipherSuite = hs.suite
 
 	return nil
 }

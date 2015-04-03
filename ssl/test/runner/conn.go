@@ -37,14 +37,16 @@ type Conn struct {
 	handshakeComplete    bool
 	didResume            bool // whether this connection was a session resumption
 	extendedMasterSecret bool // whether this session used an extended master secret
-	cipherSuite          uint16
+	cipherSuite          *cipherSuite
 	ocspResponse         []byte // stapled OCSP response
 	peerCertificates     []*x509.Certificate
 	// verifiedChains contains the certificate chains that we built, as
 	// opposed to the ones presented by the server.
 	verifiedChains [][]*x509.Certificate
 	// serverName contains the server name indicated by the client, if any.
-	serverName string
+	serverName                 string
+	clientRandom, serverRandom [32]byte
+	masterSecret               [48]byte
 
 	clientProtocol         string
 	clientProtocolFallback bool
@@ -1276,7 +1278,7 @@ func (c *Conn) ConnectionState() ConnectionState {
 		state.DidResume = c.didResume
 		state.NegotiatedProtocolIsMutual = !c.clientProtocolFallback
 		state.NegotiatedProtocolFromALPN = c.usedALPN
-		state.CipherSuite = c.cipherSuite
+		state.CipherSuite = c.cipherSuite.id
 		state.PeerCertificates = c.peerCertificates
 		state.VerifiedChains = c.verifiedChains
 		state.ServerName = c.serverName
@@ -1309,4 +1311,29 @@ func (c *Conn) VerifyHostname(host string) error {
 		return errors.New("tls: handshake has not yet been performed")
 	}
 	return c.peerCertificates[0].VerifyHostname(host)
+}
+
+// ExportKeyingMaterial exports keying material from the current connection
+// state, as per RFC 5705.
+func (c *Conn) ExportKeyingMaterial(length int, label, context []byte, useContext bool) ([]byte, error) {
+	c.handshakeMutex.Lock()
+	defer c.handshakeMutex.Unlock()
+	if !c.handshakeComplete {
+		return nil, errors.New("tls: handshake has not yet been performed")
+	}
+
+	seedLen := len(c.clientRandom) + len(c.serverRandom)
+	if useContext {
+		seedLen += 2 + len(context)
+	}
+	seed := make([]byte, 0, seedLen)
+	seed = append(seed, c.clientRandom[:]...)
+	seed = append(seed, c.serverRandom[:]...)
+	if useContext {
+		seed = append(seed, byte(len(context)>>8), byte(len(context)))
+		seed = append(seed, context...)
+	}
+	result := make([]byte, length)
+	prfForVersion(c.vers, c.cipherSuite)(result, c.masterSecret[:], label, seed)
+	return result, nil
 }

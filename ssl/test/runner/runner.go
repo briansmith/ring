@@ -184,6 +184,12 @@ type testCase struct {
 	// damageFirstWrite, if true, configures the underlying transport to
 	// damage the final byte of the first application data write.
 	damageFirstWrite bool
+	// exportKeyingMaterial, if non-zero, configures the test to exchange
+	// keying material and verify they match.
+	exportKeyingMaterial int
+	exportLabel          string
+	exportContext        string
+	useExportContext     bool
 	// flags, if not empty, contains a list of command-line flags that will
 	// be passed to the shim program.
 	flags []string
@@ -1117,6 +1123,20 @@ func doExchange(test *testCase, config *Config, conn net.Conn, messageLen int, i
 		return fmt.Errorf("SRTP profile mismatch: got %d, wanted %d", p, test.expectedSRTPProtectionProfile)
 	}
 
+	if test.exportKeyingMaterial > 0 {
+		actual := make([]byte, test.exportKeyingMaterial)
+		if _, err := io.ReadFull(tlsConn, actual); err != nil {
+			return err
+		}
+		expected, err := tlsConn.ExportKeyingMaterial(test.exportKeyingMaterial, []byte(test.exportLabel), []byte(test.exportContext), test.useExportContext)
+		if err != nil {
+			return err
+		}
+		if !bytes.Equal(actual, expected) {
+			return fmt.Errorf("keying material mismatch")
+		}
+	}
+
 	if test.shimWritesFirst {
 		var buf [5]byte
 		_, err := io.ReadFull(tlsConn, buf[:])
@@ -1293,6 +1313,15 @@ func runTest(test *testCase, buildDir string, mallocNumToFail int64) error {
 		flags = append(flags, "-shim-writes-first")
 	}
 
+	if test.exportKeyingMaterial > 0 {
+		flags = append(flags, "-export-keying-material", strconv.Itoa(test.exportKeyingMaterial))
+		flags = append(flags, "-export-label", test.exportLabel)
+		flags = append(flags, "-export-context", test.exportContext)
+		if test.useExportContext {
+			flags = append(flags, "-use-export-context")
+		}
+	}
+
 	flags = append(flags, test.flags...)
 
 	var shim *exec.Cmd
@@ -1384,7 +1413,7 @@ func runTest(test *testCase, buildDir string, mallocNumToFail int64) error {
 	stdout := string(stdoutBuf.Bytes())
 	stderr := string(stderrBuf.Bytes())
 	failed := err != nil || childErr != nil
-	correctFailure := len(test.expectedError) == 0 || strings.Contains(stdout, test.expectedError)
+	correctFailure := len(test.expectedError) == 0 || strings.Contains(stderr, test.expectedError)
 	localError := "none"
 	if err != nil {
 		localError = err.Error()
@@ -1411,10 +1440,10 @@ func runTest(test *testCase, buildDir string, mallocNumToFail int64) error {
 			panic("internal error")
 		}
 
-		return fmt.Errorf("%s: local error '%s', child error '%s', stdout:\n%s\nstderr:\n%s", msg, localError, childError, string(stdoutBuf.Bytes()), stderr)
+		return fmt.Errorf("%s: local error '%s', child error '%s', stdout:\n%s\nstderr:\n%s", msg, localError, childError, stdout, stderr)
 	}
 
-	if !*useValgrind && len(stderr) > 0 {
+	if !*useValgrind && !failed && len(stderr) > 0 {
 		println(stderr)
 	}
 
@@ -3181,6 +3210,61 @@ func addDTLSRetransmitTests() {
 	})
 }
 
+func addExportKeyingMaterialTests() {
+	for _, vers := range tlsVersions {
+		if vers.version == VersionSSL30 {
+			continue
+		}
+		testCases = append(testCases, testCase{
+			name: "ExportKeyingMaterial-" + vers.name,
+			config: Config{
+				MaxVersion: vers.version,
+			},
+			exportKeyingMaterial: 1024,
+			exportLabel:          "label",
+			exportContext:        "context",
+			useExportContext:     true,
+		})
+		testCases = append(testCases, testCase{
+			name: "ExportKeyingMaterial-NoContext-" + vers.name,
+			config: Config{
+				MaxVersion: vers.version,
+			},
+			exportKeyingMaterial: 1024,
+		})
+		testCases = append(testCases, testCase{
+			name: "ExportKeyingMaterial-EmptyContext-" + vers.name,
+			config: Config{
+				MaxVersion: vers.version,
+			},
+			exportKeyingMaterial: 1024,
+			useExportContext:     true,
+		})
+		testCases = append(testCases, testCase{
+			name: "ExportKeyingMaterial-Small-" + vers.name,
+			config: Config{
+				MaxVersion: vers.version,
+			},
+			exportKeyingMaterial: 1,
+			exportLabel:          "label",
+			exportContext:        "context",
+			useExportContext:     true,
+		})
+	}
+	testCases = append(testCases, testCase{
+		name: "ExportKeyingMaterial-SSL3",
+		config: Config{
+			MaxVersion: VersionSSL30,
+		},
+		exportKeyingMaterial: 1024,
+		exportLabel:          "label",
+		exportContext:        "context",
+		useExportContext:     true,
+		shouldFail:           true,
+		expectedError:        "failed to export keying material",
+	})
+}
+
 func worker(statusChan chan statusMsg, c chan *testCase, buildDir string, wg *sync.WaitGroup) {
 	defer wg.Done()
 
@@ -3278,6 +3362,7 @@ func main() {
 	addSigningHashTests()
 	addFastRadioPaddingTests()
 	addDTLSRetransmitTests()
+	addExportKeyingMaterialTests()
 	for _, async := range []bool{false, true} {
 		for _, splitHandshake := range []bool{false, true} {
 			for _, protocol := range []protocol{tls, dtls} {

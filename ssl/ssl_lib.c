@@ -1709,7 +1709,7 @@ int SSL_export_keying_material(SSL *s, uint8_t *out, size_t olen,
                                const char *label, size_t llen, const uint8_t *p,
                                size_t plen, int use_context) {
   if (s->version < TLS1_VERSION) {
-    return -1;
+    return 0;
   }
 
   return s->enc_method->export_keying_material(s, out, olen, label, llen, p,

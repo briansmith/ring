@@ -129,14 +129,14 @@ NextCipherSuite:
 		return errors.New("tls: short read from Rand: " + err.Error())
 	}
 
-	if hello.vers >= VersionTLS12 && !c.config.Bugs.NoSignatureAndHashes && (c.cipherSuite == 0 || !c.config.Bugs.NoSignatureAlgorithmsOnRenego) {
+	if hello.vers >= VersionTLS12 && !c.config.Bugs.NoSignatureAndHashes && (c.cipherSuite == nil || !c.config.Bugs.NoSignatureAlgorithmsOnRenego) {
 		hello.signatureAndHashes = c.config.signatureAndHashesForClient()
 	}
 
 	var session *ClientSessionState
 	var cacheKey string
 	sessionCache := c.config.ClientSessionCache
-	if c.config.Bugs.NeverResumeOnRenego && c.cipherSuite != 0 {
+	if c.config.Bugs.NeverResumeOnRenego && c.cipherSuite != nil {
 		sessionCache = nil
 	}
 
@@ -351,7 +351,10 @@ NextCipherSuite:
 
 	c.didResume = isResume
 	c.handshakeComplete = true
-	c.cipherSuite = suite.id
+	c.cipherSuite = suite
+	copy(c.clientRandom[:], hs.hello.random)
+	copy(c.serverRandom[:], hs.serverHello.random)
+	copy(c.masterSecret[:], hs.masterSecret)
 	return nil
 }
 

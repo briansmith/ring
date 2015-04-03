@@ -40,6 +40,7 @@
 #include <openssl/ssl.h>
 
 #include <memory>
+#include <vector>
 
 #include "../../crypto/test/scoped_types.h"
 #include "async_bio.h"
@@ -471,7 +472,7 @@ static bool RetryAsync(SSL *ssl, int ret) {
     memset(&test_state->clock_delta, 0, sizeof(test_state->clock_delta));
 
     if (DTLSv1_handle_timeout(ssl) < 0) {
-      printf("Error retransmitting.\n");
+      fprintf(stderr, "Error retransmitting.\n");
       return false;
     }
     return true;
@@ -850,6 +851,22 @@ static bool DoExchange(ScopedSSL_SESSION *out_session, SSL_CTX *ssl_ctx,
     }
   }
 
+  if (config->export_keying_material > 0) {
+    std::vector<uint8_t> result(
+        static_cast<size_t>(config->export_keying_material));
+    if (!SSL_export_keying_material(
+            ssl.get(), result.data(), result.size(),
+            config->export_label.data(), config->export_label.size(),
+            reinterpret_cast<const uint8_t*>(config->export_context.data()),
+            config->export_context.size(), config->use_export_context)) {
+      fprintf(stderr, "failed to export keying material\n");
+      return false;
+    }
+    if (WriteAll(ssl.get(), result.data(), result.size()) < 0) {
+      return false;
+    }
+  }
+
   if (config->write_different_record_sizes) {
     if (config->is_dtls) {
       fprintf(stderr, "write_different_record_sizes not supported for DTLS\n");
@@ -963,21 +980,21 @@ int main(int argc, char **argv) {
 
   ScopedSSL_CTX ssl_ctx = SetupCtx(&config);
   if (!ssl_ctx) {
-    BIO_print_errors_fp(stdout);
+    BIO_print_errors_fp(stderr);
     return 1;
   }
 
   ScopedSSL_SESSION session;
   if (!DoExchange(&session, ssl_ctx.get(), &config, false /* is_resume */,
                   NULL /* session */)) {
-    BIO_print_errors_fp(stdout);
+    BIO_print_errors_fp(stderr);
     return 1;
   }
 
   if (config.resume &&
       !DoExchange(NULL, ssl_ctx.get(), &config, true /* is_resume */,
                   session.get())) {
-    BIO_print_errors_fp(stdout);
+    BIO_print_errors_fp(stderr);
     return 1;
   }
 
