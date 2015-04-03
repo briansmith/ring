@@ -291,7 +291,12 @@ int CBS_get_asn1_uint64(CBS *cbs, uint64_t *out) {
   }
 
   if ((data[0] & 0x80) != 0) {
-    /* negative number */
+    /* Negative number. */
+    return 0;
+  }
+
+  if (data[0] == 0 && len > 1 && (data[1] & 0x80) == 0) {
+    /* Extra leading zeros. */
     return 0;
   }
 
