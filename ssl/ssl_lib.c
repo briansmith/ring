@@ -1705,15 +1705,16 @@ void SSL_get0_alpn_selected(const SSL *ssl, const uint8_t **data,
   }
 }
 
-int SSL_export_keying_material(SSL *s, uint8_t *out, size_t olen,
-                               const char *label, size_t llen, const uint8_t *p,
-                               size_t plen, int use_context) {
+int SSL_export_keying_material(SSL *s, uint8_t *out, size_t out_len,
+                               const char *label, size_t label_len,
+                               const uint8_t *context, size_t context_len,
+                               int use_context) {
   if (s->version < TLS1_VERSION) {
     return 0;
   }
 
-  return s->enc_method->export_keying_material(s, out, olen, label, llen, p,
-                                               plen, use_context);
+  return s->enc_method->export_keying_material(
+      s, out, out_len, label, label_len, context, context_len, use_context);
 }
 
 static uint32_t ssl_session_hash(const SSL_SESSION *a) {

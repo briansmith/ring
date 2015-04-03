@@ -893,9 +893,10 @@ int tls1_final_finish_mac(SSL *s, const char *str, int slen, uint8_t *p);
 int tls1_cert_verify_mac(SSL *s, int md_nid, uint8_t *p);
 int tls1_generate_master_secret(SSL *s, uint8_t *out, const uint8_t *premaster,
                                 size_t premaster_len);
-int tls1_export_keying_material(SSL *s, uint8_t *out, size_t olen,
-                                const char *label, size_t llen,
-                                const uint8_t *p, size_t plen, int use_context);
+int tls1_export_keying_material(SSL *s, uint8_t *out, size_t out_len,
+                                const char *label, size_t label_len,
+                                const uint8_t *context, size_t context_len,
+                                int use_context);
 int tls1_alert_code(int code);
 int ssl3_alert_code(int code);
 int ssl_ok(SSL *s);

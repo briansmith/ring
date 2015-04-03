@@ -865,82 +865,36 @@ int tls1_generate_master_secret(SSL *s, uint8_t *out, const uint8_t *premaster,
   return SSL3_MASTER_SECRET_SIZE;
 }
 
-int tls1_export_keying_material(SSL *s, uint8_t *out, size_t olen,
-                                const char *label, size_t llen,
-                                const uint8_t *context, size_t contextlen,
+int tls1_export_keying_material(SSL *s, uint8_t *out, size_t out_len,
+                                const char *label, size_t label_len,
+                                const uint8_t *context, size_t context_len,
                                 int use_context) {
-  uint8_t *val = NULL;
-  size_t vallen, currentvalpos;
-  int ret;
-
-  /* construct PRF arguments we construct the PRF argument ourself rather than
-   * passing separate values into the TLS PRF to ensure that the concatenation
-   * of values does not create a prohibited label. */
-  vallen = llen + SSL3_RANDOM_SIZE * 2;
+  size_t seed_len = 2 * SSL3_RANDOM_SIZE;
   if (use_context) {
-    vallen += 2 + contextlen;
-  }
-
-  val = OPENSSL_malloc(vallen);
-  if (val == NULL) {
-    goto err2;
-  }
-
-  currentvalpos = 0;
-  memcpy(val + currentvalpos, (uint8_t *)label, llen);
-  currentvalpos += llen;
-  memcpy(val + currentvalpos, s->s3->client_random, SSL3_RANDOM_SIZE);
-  currentvalpos += SSL3_RANDOM_SIZE;
-  memcpy(val + currentvalpos, s->s3->server_random, SSL3_RANDOM_SIZE);
-  currentvalpos += SSL3_RANDOM_SIZE;
-
-  if (use_context) {
-    val[currentvalpos] = (contextlen >> 8) & 0xff;
-    currentvalpos++;
-    val[currentvalpos] = contextlen & 0xff;
-    currentvalpos++;
-    if (contextlen > 0 || context != NULL) {
-      memcpy(val + currentvalpos, context, contextlen);
+    if (context_len >= 1u << 16) {
+      OPENSSL_PUT_ERROR(SSL, tls1_export_keying_material, ERR_R_OVERFLOW);
+      return 0;
     }
+    seed_len += 2 + context_len;
+  }
+  uint8_t *seed = OPENSSL_malloc(seed_len);
+  if (seed == NULL) {
+    OPENSSL_PUT_ERROR(SSL, tls1_export_keying_material, ERR_R_MALLOC_FAILURE);
+    return 0;
   }
 
-  /* disallow prohibited labels note that SSL3_RANDOM_SIZE > max(prohibited
-   * label len) = 15, so size of val > max(prohibited label len) = 15 and the
-   * comparisons won't have buffer overflow. */
-  if (memcmp(val, TLS_MD_CLIENT_FINISH_CONST,
-             TLS_MD_CLIENT_FINISH_CONST_SIZE) == 0 ||
-      memcmp(val, TLS_MD_SERVER_FINISH_CONST,
-             TLS_MD_SERVER_FINISH_CONST_SIZE) == 0 ||
-      memcmp(val, TLS_MD_MASTER_SECRET_CONST,
-             TLS_MD_MASTER_SECRET_CONST_SIZE) == 0 ||
-      memcmp(val, TLS_MD_KEY_EXPANSION_CONST,
-             TLS_MD_KEY_EXPANSION_CONST_SIZE) == 0) {
-    goto err1;
+  memcpy(seed, s->s3->client_random, SSL3_RANDOM_SIZE);
+  memcpy(seed + SSL3_RANDOM_SIZE, s->s3->server_random, SSL3_RANDOM_SIZE);
+  if (use_context) {
+    seed[2 * SSL3_RANDOM_SIZE] = (uint8_t)(context_len >> 8);
+    seed[2 * SSL3_RANDOM_SIZE + 1] = (uint8_t)context_len;
+    memcpy(seed + 2 * SSL3_RANDOM_SIZE + 2, context, context_len);
   }
 
-  /* SSL_export_keying_material is not implemented for SSLv3, so passing
-   * everything through the label parameter works. */
-  assert(s->version != SSL3_VERSION);
-  ret = s->enc_method->prf(s, out, olen, s->session->master_key,
-                           s->session->master_key_length, (const char *)val,
-                           vallen, NULL, 0, NULL, 0);
-  goto out;
-
-err1:
-  OPENSSL_PUT_ERROR(SSL, tls1_export_keying_material,
-                    SSL_R_TLS_ILLEGAL_EXPORTER_LABEL);
-  ret = 0;
-  goto out;
-
-err2:
-  OPENSSL_PUT_ERROR(SSL, tls1_export_keying_material, ERR_R_MALLOC_FAILURE);
-  ret = 0;
-
-out:
-  if (val != NULL) {
-    OPENSSL_free(val);
-  }
-
+  int ret = s->enc_method->prf(s, out, out_len, s->session->master_key,
+                               s->session->master_key_length, label, label_len,
+                               seed, seed_len, NULL, 0);
+  OPENSSL_free(seed);
   return ret;
 }
 
