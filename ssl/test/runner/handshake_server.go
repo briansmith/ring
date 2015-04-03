@@ -97,9 +97,12 @@ func (c *Conn) serverHandshake() error {
 		if err := hs.readFinished(isResume); err != nil {
 			return err
 		}
+		if c.config.Bugs.AlertBeforeFalseStartTest != 0 {
+			c.sendAlert(c.config.Bugs.AlertBeforeFalseStartTest)
+		}
 		if c.config.Bugs.ExpectFalseStart {
 			if err := c.readRecord(recordTypeApplicationData); err != nil {
-				return err
+				return fmt.Errorf("tls: peer did not false start: %s", err)
 			}
 		}
 		if err := hs.sendSessionTicket(); err != nil {

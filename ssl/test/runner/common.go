@@ -506,6 +506,13 @@ type ProtocolBugs struct {
 	// from the peer.
 	ExpectFalseStart bool
 
+	// AlertBeforeFalseStartTest, if non-zero, causes the server to, on full
+	// handshakes, send an alert just before reading the application data
+	// record to test False Start. This can be used in a negative False
+	// Start test to determine whether the peer processed the alert (and
+	// closed the connection) before or after sending app data.
+	AlertBeforeFalseStartTest alert
+
 	// SSL3RSAKeyExchange causes the client to always send an RSA
 	// ClientKeyExchange message without the two-byte length
 	// prefix, as if it were SSL3.
