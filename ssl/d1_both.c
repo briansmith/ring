@@ -489,7 +489,6 @@ static int dtls1_process_fragment(SSL *s) {
   int ret = s->method->ssl_read_bytes(s, SSL3_RT_HANDSHAKE, header,
                                       DTLS1_HM_HEADER_LENGTH, 0);
   if (ret <= 0) {
-    s->rwstate = SSL_READING;
     return ret;
   }
   if (ret != DTLS1_HM_HEADER_LENGTH) {
