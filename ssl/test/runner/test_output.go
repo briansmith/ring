@@ -32,8 +32,9 @@ type testOutput struct {
 }
 
 type testResult struct {
-	Actual   string `json:"actual"`
-	Expected string `json:"expected"`
+	Actual       string `json:"actual"`
+	Expected     string `json:"expected"`
+	IsUnexpected bool   `json:"is_unexpected"`
 }
 
 func newTestOutput() *testOutput {
@@ -50,7 +51,11 @@ func (t *testOutput) addResult(name, result string) {
 	if _, found := t.Tests[name]; found {
 		panic(name)
 	}
-	t.Tests[name] = testResult{Actual: result, Expected: "PASS"}
+	t.Tests[name] = testResult{
+		Actual:       result,
+		Expected:     "PASS",
+		IsUnexpected: result != "PASS",
+	}
 	t.NumFailuresByType[result]++
 }
 
