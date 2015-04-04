@@ -358,7 +358,6 @@ typedef struct ssl3_state_st {
 
   /* flags for countermeasure against known-IV weakness */
   int need_record_splitting;
-  int record_split_done;
 
   /* The value of 'extra' when the buffers were initialized */
   int init_extra;

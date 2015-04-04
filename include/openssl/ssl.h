@@ -2445,6 +2445,7 @@ OPENSSL_EXPORT const char *SSLeay_version(int unused);
 #define SSL_F_dtls1_get_buffered_message 263
 #define SSL_F_dtls1_process_fragment 264
 #define SSL_F_dtls1_hm_fragment_new 265
+#define SSL_F_ssl3_seal_record 266
 #define SSL_R_APP_DATA_IN_HANDSHAKE 100
 #define SSL_R_ATTEMPT_TO_REUSE_SESSION_IN_DIFFERENT_CONTEXT 101
 #define SSL_R_BAD_ALERT 102
@@ -2617,6 +2618,7 @@ OPENSSL_EXPORT const char *SSLeay_version(int unused);
 #define SSL_R_X509_LIB 269
 #define SSL_R_X509_VERIFICATION_SETUP_PROBLEMS 270
 #define SSL_R_FRAGMENT_MISMATCH 271
+#define SSL_R_BUFFER_TOO_SMALL 272
 #define SSL_R_SSLV3_ALERT_CLOSE_NOTIFY 1000
 #define SSL_R_SSLV3_ALERT_UNEXPECTED_MESSAGE 1010
 #define SSL_R_SSLV3_ALERT_BAD_RECORD_MAC 1020
