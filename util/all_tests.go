@@ -219,18 +219,19 @@ func main() {
 		}
 	}
 
-	if len(failed) == 0 {
-		fmt.Printf("\nAll tests passed!\n")
-	} else {
-		fmt.Printf("\n%d of %d tests failed:\n", len(failed), len(tests))
-		for _, test := range failed {
-			fmt.Printf("\t%s\n", strings.Join([]string(test), " "))
-		}
-	}
-
 	if *jsonOutput != "" {
 		if err := testOutput.writeTo(*jsonOutput); err != nil {
 			fmt.Fprintf(os.Stderr, "Error: %s\n", err)
 		}
 	}
+
+	if len(failed) > 0 {
+		fmt.Printf("\n%d of %d tests failed:\n", len(failed), len(tests))
+		for _, test := range failed {
+			fmt.Printf("\t%s\n", strings.Join([]string(test), " "))
+		}
+		os.Exit(1)
+	}
+
+	fmt.Printf("\nAll tests passed!\n")
 }

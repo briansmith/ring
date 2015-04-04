@@ -3404,4 +3404,8 @@ func main() {
 			fmt.Fprintf(os.Stderr, "Error: %s\n", err)
 		}
 	}
+
+	if !testOutput.allPassed {
+		os.Exit(1)
+	}
 }

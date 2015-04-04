@@ -29,6 +29,7 @@ type testOutput struct {
 	SecondsSinceEpoch float64               `json:"seconds_since_epoch"`
 	NumFailuresByType map[string]int        `json:"num_failures_by_type"`
 	Tests             map[string]testResult `json:"tests"`
+	allPassed         bool
 }
 
 type testResult struct {
@@ -44,6 +45,7 @@ func newTestOutput() *testOutput {
 		SecondsSinceEpoch: float64(time.Now().UnixNano()) / float64(time.Second/time.Nanosecond),
 		NumFailuresByType: make(map[string]int),
 		Tests:             make(map[string]testResult),
+		allPassed:         true,
 	}
 }
 
@@ -57,6 +59,9 @@ func (t *testOutput) addResult(name, result string) {
 		IsUnexpected: result != "PASS",
 	}
 	t.NumFailuresByType[result]++
+	if result != "PASS" {
+		t.allPassed = false
+	}
 }
 
 func (t *testOutput) writeTo(name string) error {
