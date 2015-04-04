@@ -596,22 +596,14 @@ static int do_ssl3_write(SSL *s, int type, const uint8_t *buf, unsigned int len,
     eivlen = s->aead_write_ctx->variable_nonce_len;
   }
 
-  /* lets setup the record stuff. */
-  wr->data = p + eivlen;
-  wr->length = (int)(len - (fragment != 0));
-  wr->input = (uint8_t *)buf + (fragment != 0);
-
-  /* we now 'read' from wr->input, wr->length bytes into wr->data */
-
-  memcpy(wr->data, wr->input, wr->length);
-  wr->input = wr->data;
-
-  /* we should still have the output to wr->data and the input from wr->input.
-   * Length should be wr->length. wr->data still points in the wb->buf */
-
+  /* Assemble the input for |s->enc_method->enc|. The input is the plaintext
+   * with |eivlen| bytes of space prepended for the explicit nonce. */
   wr->input = p;
+  wr->length = eivlen + len - (fragment != 0);
+  memcpy(p + eivlen, buf + (fragment != 0), len - (fragment != 0));
+
+  /* Encrypt in-place, so the output also goes into |p|. */
   wr->data = p;
-  wr->length += eivlen;
 
   if (!s->enc_method->enc(s, 1)) {
     goto err;

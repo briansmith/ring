@@ -960,19 +960,14 @@ static int do_dtls1_write(SSL *s, int type, const uint8_t *buf,
     eivlen = s->aead_write_ctx->variable_nonce_len;
   }
 
-  /* lets setup the record stuff. */
-  wr->data = p + eivlen; /* make room for IV in case of CBC */
-  wr->length = (int)len;
-  wr->input = (unsigned char *)buf;
-
-  /* we now 'read' from wr->input, wr->length bytes into wr->data */
-  memcpy(wr->data, wr->input, wr->length);
-  wr->input = wr->data;
-
-  /* this is true regardless of mac size */
+  /* Assemble the input for |s->enc_method->enc|. The input is the plaintext
+   * with |eivlen| bytes of space prepended for the explicit nonce. */
   wr->input = p;
+  wr->length = eivlen + len;
+  memcpy(p + eivlen, buf, len);
+
+  /* Encrypt in-place, so the output also goes into |p|. */
   wr->data = p;
-  wr->length += eivlen;
 
   if (!s->enc_method->enc(s, 1)) {
     goto err;
