@@ -724,12 +724,9 @@ static int do_dtls1_write(SSL *s, int type, const uint8_t *buf,
   SSL3_RECORD *wr;
   SSL3_BUFFER *wb;
 
-  /* first check if there is a SSL3_BUFFER still being written
-   * out.  This will happen with non blocking IO */
-  if (s->s3->wbuf.left != 0) {
-    assert(0); /* XDTLS:  want to see if we ever get here */
-    return ssl3_write_pending(s, type, buf, len);
-  }
+  /* ssl3_write_pending drops the write if |BIO_write| fails in DTLS, so there
+   * is never pending data. */
+  assert(s->s3->wbuf.left == 0);
 
   /* If we have an alert to send, lets send it */
   if (s->s3->alert_dispatch) {

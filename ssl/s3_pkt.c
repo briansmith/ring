@@ -686,6 +686,8 @@ int ssl3_write_pending(SSL *s, int type, const uint8_t *buf, unsigned int len) {
       }
       return i;
     }
+    /* TODO(davidben): This codepath is used in DTLS, but the write
+     * payload may not split across packets. */
     wb->offset += i;
     wb->left -= i;
   }
