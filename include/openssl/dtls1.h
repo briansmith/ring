@@ -135,9 +135,6 @@ typedef struct dtls1_state_st {
   /* records being received in the current epoch */
   DTLS1_BITMAP bitmap;
 
-  /* renegotiation starts a new set of sequence numbers */
-  DTLS1_BITMAP next_bitmap;
-
   /* handshake message numbers */
   uint16_t handshake_write_seq;
   uint16_t next_handshake_write_seq;
@@ -146,10 +143,6 @@ typedef struct dtls1_state_st {
 
   /* save last sequence number for retransmissions */
   uint8_t last_write_sequence[8];
-
-  /* Received handshake records (processed and unprocessed) */
-  record_pqueue unprocessed_rcds;
-  record_pqueue processed_rcds;
 
   /* buffered_messages is a priority queue of incoming handshake messages that
    * have yet to be processed.
