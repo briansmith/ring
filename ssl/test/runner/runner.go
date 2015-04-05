@@ -695,6 +695,8 @@ var testCases = []testCase{
 				AppDataAfterChangeCipherSpec: []byte("TEST MESSAGE"),
 			},
 		},
+		// BoringSSL's DTLS implementation will drop the out-of-order
+		// application data.
 	},
 	{
 		name: "AlertAfterChangeCipherSpec",
@@ -1174,21 +1176,14 @@ func doExchange(test *testCase, config *Config, conn net.Conn, messageLen int, i
 		return err
 	}
 
-	var testMessage []byte
-	if config.Bugs.AppDataAfterChangeCipherSpec != nil {
-		// We've already sent a message. Expect the shim to echo it
-		// back.
-		testMessage = config.Bugs.AppDataAfterChangeCipherSpec
-	} else {
-		if messageLen == 0 {
-			messageLen = 32
-		}
-		testMessage = make([]byte, messageLen)
-		for i := range testMessage {
-			testMessage[i] = 0x42
-		}
-		tlsConn.Write(testMessage)
+	if messageLen == 0 {
+		messageLen = 32
 	}
+	testMessage := make([]byte, messageLen)
+	for i := range testMessage {
+		testMessage[i] = 0x42
+	}
+	tlsConn.Write(testMessage)
 
 	buf := make([]byte, len(testMessage))
 	if test.protocol == dtls {

@@ -183,89 +183,9 @@ static int satsub64be(const uint8_t *v1, const uint8_t *v2) {
 
 static int dtls1_record_replay_check(SSL *s, DTLS1_BITMAP *bitmap);
 static void dtls1_record_bitmap_update(SSL *s, DTLS1_BITMAP *bitmap);
-static int dtls1_buffer_record(SSL *s, record_pqueue *q,
-                               uint8_t *priority);
 static int dtls1_process_record(SSL *s);
 static int do_dtls1_write(SSL *s, int type, const uint8_t *buf,
                           unsigned int len);
-
-/* copy buffered record into SSL structure */
-static int dtls1_copy_record(SSL *s, pitem *item) {
-  DTLS1_RECORD_DATA *rdata;
-
-  rdata = (DTLS1_RECORD_DATA *)item->data;
-
-  if (s->s3->rbuf.buf != NULL) {
-    OPENSSL_free(s->s3->rbuf.buf);
-  }
-
-  s->packet = rdata->packet;
-  s->packet_length = rdata->packet_length;
-  memcpy(&(s->s3->rbuf), &(rdata->rbuf), sizeof(SSL3_BUFFER));
-  memcpy(&(s->s3->rrec), &(rdata->rrec), sizeof(SSL3_RECORD));
-
-  /* Set proper sequence number for mac calculation */
-  memcpy(&(s->s3->read_sequence[2]), &(rdata->packet[5]), 6);
-
-  return 1;
-}
-
-static int dtls1_buffer_record(SSL *s, record_pqueue *queue,
-                               uint8_t *priority) {
-  DTLS1_RECORD_DATA *rdata;
-  pitem *item;
-
-  /* Limit the size of the queue to prevent DOS attacks */
-  if (pqueue_size(queue->q) >= 100) {
-    return 0;
-  }
-
-  rdata = OPENSSL_malloc(sizeof(DTLS1_RECORD_DATA));
-  item = pitem_new(priority, rdata);
-  if (rdata == NULL || item == NULL) {
-    if (rdata != NULL) {
-      OPENSSL_free(rdata);
-    }
-    if (item != NULL) {
-      pitem_free(item);
-    }
-
-    OPENSSL_PUT_ERROR(SSL, dtls1_buffer_record, ERR_R_INTERNAL_ERROR);
-    return -1;
-  }
-
-  rdata->packet = s->packet;
-  rdata->packet_length = s->packet_length;
-  memcpy(&(rdata->rbuf), &(s->s3->rbuf), sizeof(SSL3_BUFFER));
-  memcpy(&(rdata->rrec), &(s->s3->rrec), sizeof(SSL3_RECORD));
-
-  item->data = rdata;
-
-  s->packet = NULL;
-  s->packet_length = 0;
-  memset(&(s->s3->rbuf), 0, sizeof(SSL3_BUFFER));
-  memset(&(s->s3->rrec), 0, sizeof(SSL3_RECORD));
-
-  if (!ssl3_setup_buffers(s)) {
-    goto internal_error;
-  }
-
-  /* insert should not fail, since duplicates are dropped */
-  if (pqueue_insert(queue->q, item) == NULL) {
-    goto internal_error;
-  }
-
-  return 1;
-
-internal_error:
-  OPENSSL_PUT_ERROR(SSL, dtls1_buffer_record, ERR_R_INTERNAL_ERROR);
-  if (rdata->rbuf.buf != NULL) {
-    OPENSSL_free(rdata->rbuf.buf);
-  }
-  OPENSSL_free(rdata);
-  pitem_free(item);
-  return -1;
-}
 
 static int dtls1_process_record(SSL *s) {
   int al;
@@ -540,21 +460,6 @@ start:
    * s->s3->rrec.length   - number of bytes. */
   rr = &s->s3->rrec;
 
-  /* We are not handshaking and have no data yet,
-   * so process data buffered during the last handshake
-   * in advance, if any.
-   */
-  if (s->state == SSL_ST_OK && rr->length == 0) {
-    pitem *item;
-    item = pqueue_pop(s->d1->buffered_app_data.q);
-    if (item) {
-      dtls1_copy_record(s, item);
-
-      OPENSSL_free(item->data);
-      pitem_free(item);
-    }
-  }
-
   /* Check for timeout */
   if (dtls1_handle_timeout(s) > 0) {
     goto start;
@@ -581,12 +486,8 @@ start:
   if (s->s3->change_cipher_spec && rr->type != SSL3_RT_HANDSHAKE &&
       rr->type != SSL3_RT_ALERT) {
     /* We now have an unexpected record between CCS and Finished. Most likely
-     * the packets were reordered on their way, so buffer the application data
-     * for later processing rather than dropping the connection. */
-    if (dtls1_buffer_record(s, &(s->d1->buffered_app_data), rr->seq_num) < 0) {
-      OPENSSL_PUT_ERROR(SSL, dtls1_read_bytes, ERR_R_INTERNAL_ERROR);
-      return -1;
-    }
+     * the packets were reordered on their way. DTLS is unreliable, so drop the
+     * packet and expect the peer to retransmit. */
     rr->length = 0;
     goto start;
   }

@@ -105,11 +105,6 @@ struct hm_header_st {
   uint16_t epoch;
 };
 
-typedef struct record_pqueue_st {
-  uint16_t epoch;
-  pqueue q;
-} record_pqueue;
-
 /* TODO(davidben): This structure is used for both incoming messages and
  * outgoing messages. |fragment| and |reassembly| are only used in the former
  * and should be moved elsewhere. */
@@ -157,10 +152,6 @@ typedef struct dtls1_state_st {
    * TODO(davidben): This data structure may as well be a STACK_OF(T). */
   pqueue sent_messages;
 
-  /* Buffered application records.  Only for records between CCS and Finished to
-   * prevent either protocol violation or unnecessary message loss. */
-  record_pqueue buffered_app_data;
-
   unsigned int mtu; /* max DTLS packet size */
 
   struct hm_header_st w_msg_hdr;
@@ -179,13 +170,6 @@ typedef struct dtls1_state_st {
 
   unsigned int change_cipher_spec_ok;
 } DTLS1_STATE;
-
-typedef struct dtls1_record_data_st {
-  uint8_t *packet;
-  unsigned int packet_length;
-  SSL3_BUFFER rbuf;
-  SSL3_RECORD rrec;
-} DTLS1_RECORD_DATA;
 
 
 #ifdef __cplusplus
