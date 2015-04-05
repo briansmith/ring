@@ -185,7 +185,7 @@ static int dtls1_record_replay_check(SSL *s, DTLS1_BITMAP *bitmap);
 static void dtls1_record_bitmap_update(SSL *s, DTLS1_BITMAP *bitmap);
 static int dtls1_process_record(SSL *s);
 static int do_dtls1_write(SSL *s, int type, const uint8_t *buf,
-                          unsigned int len);
+                          unsigned int len, enum dtls1_use_epoch_t use_epoch);
 
 static int dtls1_process_record(SSL *s) {
   int al;
@@ -695,18 +695,19 @@ int dtls1_write_app_data_bytes(SSL *s, int type, const void *buf_, int len) {
     return -1;
   }
 
-  i = dtls1_write_bytes(s, type, buf_, len);
+  i = dtls1_write_bytes(s, type, buf_, len, dtls1_use_current_epoch);
   return i;
 }
 
 /* Call this to write data in records of type 'type' It will return <= 0 if not
  * all data has been sent or non-blocking IO. */
-int dtls1_write_bytes(SSL *s, int type, const void *buf, int len) {
+int dtls1_write_bytes(SSL *s, int type, const void *buf, int len,
+                      enum dtls1_use_epoch_t use_epoch) {
   int i;
 
   assert(len <= SSL3_RT_MAX_PLAIN_LENGTH);
   s->rwstate = SSL_NOTHING;
-  i = do_dtls1_write(s, type, buf, len);
+  i = do_dtls1_write(s, type, buf, len, use_epoch);
   return i;
 }
 
@@ -716,10 +717,23 @@ int dtls1_write_bytes(SSL *s, int type, const void *buf, int len) {
  * number. */
 static int dtls1_seal_record(SSL *s, uint8_t *out, size_t *out_len,
                              size_t max_out, uint8_t type, const uint8_t *in,
-                             size_t in_len) {
+                             size_t in_len, enum dtls1_use_epoch_t use_epoch) {
   if (max_out < DTLS1_RT_HEADER_LENGTH) {
     OPENSSL_PUT_ERROR(SSL, dtls1_seal_record, SSL_R_BUFFER_TOO_SMALL);
     return 0;
+  }
+
+  /* Determine the parameters for the current epoch. */
+  uint16_t epoch = s->d1->w_epoch;
+  SSL_AEAD_CTX *aead = s->aead_write_ctx;
+  uint8_t *seq = s->s3->write_sequence;
+  if (use_epoch == dtls1_use_previous_epoch) {
+    /* DTLS renegotiation is unsupported, so only epochs 0 (NULL cipher) and 1
+     * (negotiated cipher) exist. */
+    assert(s->d1->w_epoch == 1);
+    epoch = s->d1->w_epoch - 1;
+    aead = NULL;
+    seq = s->d1->last_write_sequence;
   }
 
   out[0] = type;
@@ -728,15 +742,15 @@ static int dtls1_seal_record(SSL *s, uint8_t *out, size_t *out_len,
   out[1] = wire_version >> 8;
   out[2] = wire_version & 0xff;
 
-  out[3] = s->d1->w_epoch >> 8;
-  out[4] = s->d1->w_epoch & 0xff;
-  memcpy(&out[5], &s->s3->write_sequence[2], 6);
+  out[3] = epoch >> 8;
+  out[4] = epoch & 0xff;
+  memcpy(&out[5], &seq[2], 6);
 
   size_t ciphertext_len;
-  if (!SSL_AEAD_CTX_seal(s->aead_write_ctx, out + DTLS1_RT_HEADER_LENGTH,
-                         &ciphertext_len, max_out - DTLS1_RT_HEADER_LENGTH,
-                         type, wire_version, &out[3] /* seq */, in, in_len) ||
-      !ssl3_record_sequence_update(&s->s3->write_sequence[2], 6)) {
+  if (!SSL_AEAD_CTX_seal(aead, out + DTLS1_RT_HEADER_LENGTH, &ciphertext_len,
+                         max_out - DTLS1_RT_HEADER_LENGTH, type, wire_version,
+                         &out[3] /* seq */, in, in_len) ||
+      !ssl3_record_sequence_update(&seq[2], 6)) {
     return 0;
   }
 
@@ -758,7 +772,7 @@ static int dtls1_seal_record(SSL *s, uint8_t *out, size_t *out_len,
 }
 
 static int do_dtls1_write(SSL *s, int type, const uint8_t *buf,
-                          unsigned int len) {
+                          unsigned int len, enum dtls1_use_epoch_t use_epoch) {
   SSL3_BUFFER *wb = &s->s3->wbuf;
 
   /* ssl3_write_pending drops the write if |BIO_write| fails in DTLS, so there
@@ -790,7 +804,8 @@ static int do_dtls1_write(SSL *s, int type, const uint8_t *buf,
   size_t max_out = wb->len - wb->offset;
 
   size_t ciphertext_len;
-  if (!dtls1_seal_record(s, out, &ciphertext_len, max_out, type, buf, len)) {
+  if (!dtls1_seal_record(s, out, &ciphertext_len, max_out, type, buf, len,
+                         use_epoch)) {
     return -1;
   }
 
@@ -863,7 +878,8 @@ int dtls1_dispatch_alert(SSL *s) {
   *ptr++ = s->s3->send_alert[0];
   *ptr++ = s->s3->send_alert[1];
 
-  i = do_dtls1_write(s, SSL3_RT_ALERT, &buf[0], sizeof(buf));
+  i = do_dtls1_write(s, SSL3_RT_ALERT, &buf[0], sizeof(buf),
+                     dtls1_use_current_epoch);
   if (i <= 0) {
     s->s3->alert_dispatch = 1;
   } else {

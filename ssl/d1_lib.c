@@ -338,5 +338,5 @@ int dtls1_set_handshake_header(SSL *s, int htype, unsigned long len) {
 }
 
 int dtls1_handshake_write(SSL *s) {
-  return dtls1_do_write(s, SSL3_RT_HANDSHAKE);
+  return dtls1_do_write(s, SSL3_RT_HANDSHAKE, dtls1_use_current_epoch);
 }

@@ -940,7 +940,12 @@ int ssl3_do_change_cipher_spec(SSL *ssl);
 int ssl3_set_handshake_header(SSL *s, int htype, unsigned long len);
 int ssl3_handshake_write(SSL *s);
 
-int dtls1_do_write(SSL *s, int type);
+enum dtls1_use_epoch_t {
+  dtls1_use_previous_epoch,
+  dtls1_use_current_epoch,
+};
+
+int dtls1_do_write(SSL *s, int type, enum dtls1_use_epoch_t use_epoch);
 int ssl3_read_n(SSL *s, int n, int extend);
 int dtls1_read_bytes(SSL *s, int type, uint8_t *buf, int len, int peek);
 int ssl3_write_pending(SSL *s, int type, const uint8_t *buf, unsigned int len);
@@ -949,7 +954,8 @@ void dtls1_set_message_header(SSL *s, uint8_t mt, unsigned long len,
                               unsigned long frag_len);
 
 int dtls1_write_app_data_bytes(SSL *s, int type, const void *buf, int len);
-int dtls1_write_bytes(SSL *s, int type, const void *buf, int len);
+int dtls1_write_bytes(SSL *s, int type, const void *buf, int len,
+                      enum dtls1_use_epoch_t use_epoch);
 
 int dtls1_send_change_cipher_spec(SSL *s, int a, int b);
 int dtls1_send_finished(SSL *s, int a, int b, const char *sender, int slen);
