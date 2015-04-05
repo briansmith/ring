@@ -330,9 +330,9 @@ again:
       goto err;
     }
 
-    if (rr->length > s->s3->rbuf.len - SSL3_RT_HEADER_LENGTH) {
+    if (rr->length > SSL3_RT_MAX_ENCRYPTED_LENGTH + extra) {
       al = SSL_AD_RECORD_OVERFLOW;
-      OPENSSL_PUT_ERROR(SSL, ssl3_get_record, SSL_R_PACKET_LENGTH_TOO_LONG);
+      OPENSSL_PUT_ERROR(SSL, ssl3_get_record, SSL_R_ENCRYPTED_LENGTH_TOO_LONG);
       goto f_err;
     }
 
@@ -365,13 +365,6 @@ again:
 
   /* We now have - encrypted [ MAC [ compressed [ plain ] ] ]
    * rr->length bytes of encrypted compressed stuff. */
-
-  /* check is not needed I believe */
-  if (rr->length > SSL3_RT_MAX_ENCRYPTED_LENGTH + extra) {
-    al = SSL_AD_RECORD_OVERFLOW;
-    OPENSSL_PUT_ERROR(SSL, ssl3_get_record, SSL_R_ENCRYPTED_LENGTH_TOO_LONG);
-    goto f_err;
-  }
 
   /* decrypt in place in 'rr->input' */
   rr->data = rr->input;

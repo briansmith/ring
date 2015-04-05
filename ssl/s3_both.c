@@ -589,8 +589,7 @@ int ssl3_setup_read_buffer(SSL *s) {
 #endif
 
   if (s->s3->rbuf.buf == NULL) {
-    len = SSL3_RT_MAX_PLAIN_LENGTH + SSL3_RT_MAX_ENCRYPTED_OVERHEAD +
-          headerlen + align;
+    len = SSL3_RT_MAX_ENCRYPTED_LENGTH + headerlen + align;
     if (s->options & SSL_OP_MICROSOFT_BIG_SSLV3_BUFFER) {
       s->s3->init_extra = 1;
       len += SSL3_RT_MAX_EXTRA;
