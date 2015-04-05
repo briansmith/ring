@@ -990,7 +990,9 @@ static int do_dtls1_write(SSL *s, int type, const uint8_t *buf,
   wr->type = type; /* not needed but helps for debugging */
   wr->length += DTLS1_RT_HEADER_LENGTH;
 
-  ssl3_record_sequence_update(&(s->s3->write_sequence[0]));
+  if (!ssl3_record_sequence_update(&s->s3->write_sequence[2], 6)) {
+    goto err;
+  }
 
   /* now let's set up wb */
   wb->left = prefix_len + wr->length;

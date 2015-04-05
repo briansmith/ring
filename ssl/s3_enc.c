@@ -415,15 +415,16 @@ static int ssl3_handshake_mac(SSL *s, int md_nid, const char *sender, int len,
   return ret;
 }
 
-void ssl3_record_sequence_update(uint8_t *seq) {
-  int i;
-
-  for (i = 7; i >= 0; i--) {
+int ssl3_record_sequence_update(uint8_t *seq, size_t seq_len) {
+  size_t i;
+  for (i = seq_len - 1; i < seq_len; i--) {
     ++seq[i];
     if (seq[i] != 0) {
-      break;
+      return 1;
     }
   }
+  OPENSSL_PUT_ERROR(SSL, ssl3_record_sequence_update, ERR_R_OVERFLOW);
+  return 0;
 }
 
 int ssl3_alert_code(int code) {

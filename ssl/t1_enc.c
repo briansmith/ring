@@ -597,13 +597,9 @@ int tls1_enc(SSL *s, int send) {
     memcpy(p, &seq[2], 6);
     memcpy(ad, dtlsseq, 8);
   } else {
-    int i;
     memcpy(ad, seq, 8);
-    for (i = 7; i >= 0; i--) {
-      ++seq[i];
-      if (seq[i] != 0) {
-        break;
-      }
+    if (!ssl3_record_sequence_update(seq, 8)) {
+      return 0;
     }
   }
 

@@ -100,6 +100,7 @@ SSL,function,195,ssl3_handshake_mac
 SSL,function,196,ssl3_prf
 SSL,function,197,ssl3_read_bytes
 SSL,function,198,ssl3_read_n
+SSL,function,267,ssl3_record_sequence_update
 SSL,function,266,ssl3_seal_record
 SSL,function,199,ssl3_send_cert_verify
 SSL,function,200,ssl3_send_certificate_request

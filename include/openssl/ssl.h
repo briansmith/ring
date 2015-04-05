@@ -2446,6 +2446,7 @@ OPENSSL_EXPORT const char *SSLeay_version(int unused);
 #define SSL_F_dtls1_process_fragment 264
 #define SSL_F_dtls1_hm_fragment_new 265
 #define SSL_F_ssl3_seal_record 266
+#define SSL_F_ssl3_record_sequence_update 267
 #define SSL_R_APP_DATA_IN_HANDSHAKE 100
 #define SSL_R_ATTEMPT_TO_REUSE_SESSION_IN_DIFFERENT_CONTEXT 101
 #define SSL_R_BAD_ALERT 102

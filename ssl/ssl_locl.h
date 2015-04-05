@@ -787,7 +787,10 @@ long ssl3_callback_ctrl(SSL *s, int cmd, void (*fp)(void));
 long ssl3_ctx_callback_ctrl(SSL_CTX *s, int cmd, void (*fp)(void));
 int ssl3_pending(const SSL *s);
 
-void ssl3_record_sequence_update(uint8_t *seq);
+/* ssl3_record_sequence_update increments the sequence number in |seq|. It
+ * returns one on success and zero on wraparound. */
+int ssl3_record_sequence_update(uint8_t *seq, size_t seq_len);
+
 int ssl3_do_change_cipher_spec(SSL *ssl);
 
 int ssl3_set_handshake_header(SSL *s, int htype, unsigned long len);
