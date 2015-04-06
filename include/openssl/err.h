@@ -191,28 +191,17 @@ OPENSSL_EXPORT uint32_t ERR_peek_last_error_line_data(const char **file,
                                                       const char **data,
                                                       int *flags);
 
-/* ERR_error_string generates a human-readable string representing
- * |packed_error|, places it at |buf| (which must be at least
- * ERR_ERROR_STRING_BUF_LEN bytes long) and returns |buf|. If |buf| is NULL,
- * the error string is placed in a static buffer which is returned. (The static
- * buffer may be overridden by concurrent calls in other threads so this form
- * is deprecated.)
- *
- * The string will have the following format:
- *
- *   error:[error code]:[library name]:OPENSSL_internal:[reason string]
- *
- * error code is an 8 digit hexadecimal number; library name and reason string
- * are ASCII text.
+/* TODO(ring): In OpenSSL and BoringSSL, ERR_error_string returned a more
+ * information-packed string. That functionality has been removed so that
+ * ring's build system does not need Go, but we should add back something.
  *
  * TODO(fork): remove in favour of |ERR_error_string_n|. */
 OPENSSL_EXPORT char *ERR_error_string(uint32_t packed_error, char *buf);
 #define ERR_ERROR_STRING_BUF_LEN 256
 
-/* ERR_error_string_n is a variant of |ERR_error_string| that writes at most
- * len characters (including the terminating NUL) and truncates the string if
- * necessary. If |len| is greater than zero then |buf| is always NUL
- * terminated. */
+/* TODO(ring): In OpenSSL and BoringSSL, ERR_error_string returned a more
+ * information-packed string. That functionality has been removed so that
+ * ring's build system does not need Go, but we should add back something. */
 OPENSSL_EXPORT void ERR_error_string_n(uint32_t packed_error, char *buf,
                                        size_t len);
 
