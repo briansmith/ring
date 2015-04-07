@@ -69,13 +69,19 @@ static int Usage(const char *program) {
 }
 
 struct TestState {
+  TestState() {
+    // MSVC cannot initialize these inline.
+    memset(&clock, 0, sizeof(clock));
+    memset(&clock_delta, 0, sizeof(clock_delta));
+  }
+
   // async_bio is async BIO which pauses reads and writes.
   BIO *async_bio = nullptr;
   // clock is the current time for the SSL connection.
-  OPENSSL_timeval clock = {0};
+  OPENSSL_timeval clock;
   // clock_delta is how far the clock advanced in the most recent failed
   // |BIO_read|.
-  OPENSSL_timeval clock_delta = {0};
+  OPENSSL_timeval clock_delta;
   ScopedEVP_PKEY channel_id;
   bool cert_ready = false;
   ScopedSSL_SESSION session;
