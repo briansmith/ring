@@ -185,6 +185,8 @@ static const char *kBadRules[] = {
   // Empty cipher lists error at SSL_CTX_set_cipher_list.
   "",
   "BOGUS",
+  // COMPLEMENTOFDEFAULT is empty.
+  "COMPLEMENTOFDEFAULT",
   // Invalid command.
   "?BAR",
   // Special operators are not allowed if groups are used.
@@ -428,12 +430,9 @@ static const CIPHER_RFC_NAME_TEST kCipherRFCNameTests[] = {
   { SSL3_CK_RSA_DES_192_CBC3_SHA, "TLS_RSA_WITH_3DES_EDE_CBC_SHA" },
   { SSL3_CK_RSA_RC4_128_MD5, "TLS_RSA_WITH_RC4_MD5" },
   { TLS1_CK_RSA_WITH_AES_128_SHA, "TLS_RSA_WITH_AES_128_CBC_SHA" },
-  { TLS1_CK_ADH_WITH_AES_128_SHA, "TLS_DH_anon_WITH_AES_128_CBC_SHA" },
   { TLS1_CK_DHE_RSA_WITH_AES_256_SHA, "TLS_DHE_RSA_WITH_AES_256_CBC_SHA" },
   { TLS1_CK_DHE_RSA_WITH_AES_256_SHA256,
     "TLS_DHE_RSA_WITH_AES_256_CBC_SHA256" },
-  { TLS1_CK_ECDH_anon_WITH_AES_128_CBC_SHA,
-    "TLS_ECDH_anon_WITH_AES_128_CBC_SHA" },
   { TLS1_CK_ECDHE_RSA_WITH_AES_128_SHA256,
     "TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA256" },
   { TLS1_CK_ECDHE_RSA_WITH_AES_256_SHA384,

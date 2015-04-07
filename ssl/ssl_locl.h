@@ -293,9 +293,8 @@
 
 /* Bits for algorithm_auth (server authentication) */
 #define SSL_aRSA 0x00000001L   /* RSA auth */
-#define SSL_aNULL 0x00000002L  /* no auth (i.e. use ADH or AECDH) */
-#define SSL_aECDSA 0x00000004L /* ECDSA auth*/
-#define SSL_aPSK 0x00000008L   /* PSK auth */
+#define SSL_aECDSA 0x00000002L /* ECDSA auth*/
+#define SSL_aPSK 0x00000004L   /* PSK auth */
 
 /* Bits for algorithm_enc (symmetric encryption) */
 #define SSL_3DES 0x00000001L

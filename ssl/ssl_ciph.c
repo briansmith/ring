@@ -180,10 +180,7 @@ static const SSL_CIPHER cipher_aliases[] =
     {
      {0, SSL_TXT_ALL, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
 
-     /* "COMPLEMENTOFDEFAULT" (does *not* include ciphersuites not found in
-        ALL!) */
-     {0, SSL_TXT_CMPDEF, 0, SSL_kDHE | SSL_kECDHE, SSL_aNULL, 0, 0, 0, 0, 0, 0,
-      0},
+     /* The "COMPLEMENTOFDEFAULT" rule is omitted. It matches nothing. */
 
      /* key exchange aliases
       * (some of those using only a single bit here combine
@@ -203,19 +200,16 @@ static const SSL_CIPHER cipher_aliases[] =
 
      /* server authentication aliases */
      {0, SSL_TXT_aRSA, 0, 0, SSL_aRSA, 0, 0, 0, 0, 0, 0, 0},
-     {0, SSL_TXT_aNULL, 0, 0, SSL_aNULL, 0, 0, 0, 0, 0, 0, 0},
      {0, SSL_TXT_aECDSA, 0, 0, SSL_aECDSA, 0, 0, 0, 0, 0, 0, 0},
      {0, SSL_TXT_ECDSA, 0, 0, SSL_aECDSA, 0, 0, 0, 0, 0, 0, 0},
      {0, SSL_TXT_aPSK, 0, 0, SSL_aPSK, 0, 0, 0, 0, 0, 0, 0},
 
      /* aliases combining key exchange and server authentication */
-     {0, SSL_TXT_DHE, 0, SSL_kDHE, ~SSL_aNULL, 0, 0, 0, 0, 0, 0, 0},
-     {0, SSL_TXT_EDH, 0, SSL_kDHE, ~SSL_aNULL, 0, 0, 0, 0, 0, 0, 0},
-     {0, SSL_TXT_ECDHE, 0, SSL_kECDHE, ~SSL_aNULL, 0, 0, 0, 0, 0, 0, 0},
-     {0, SSL_TXT_EECDH, 0, SSL_kECDHE, ~SSL_aNULL, 0, 0, 0, 0, 0, 0, 0},
+     {0, SSL_TXT_DHE, 0, SSL_kDHE, 0, 0, 0, 0, 0, 0, 0, 0},
+     {0, SSL_TXT_EDH, 0, SSL_kDHE, 0, 0, 0, 0, 0, 0, 0, 0},
+     {0, SSL_TXT_ECDHE, 0, SSL_kECDHE, 0, 0, 0, 0, 0, 0, 0, 0},
+     {0, SSL_TXT_EECDH, 0, SSL_kECDHE, 0, 0, 0, 0, 0, 0, 0, 0},
      {0, SSL_TXT_RSA, 0, SSL_kRSA, SSL_aRSA, 0, 0, 0, 0, 0, 0, 0},
-     {0, SSL_TXT_ADH, 0, SSL_kDHE, SSL_aNULL, 0, 0, 0, 0, 0, 0, 0},
-     {0, SSL_TXT_AECDH, 0, SSL_kECDHE, SSL_aNULL, 0, 0, 0, 0, 0, 0, 0},
      {0, SSL_TXT_PSK, 0, SSL_kPSK, SSL_aPSK, 0, 0, 0, 0, 0, 0, 0},
 
      /* symmetric encryption aliases */
@@ -1006,13 +1000,6 @@ ssl_create_cipher_list(const SSL_PROTOCOL_METHOD *ssl_method,
   ssl_cipher_apply_rule(0, ~(SSL_kDHE | SSL_kECDHE), 0, 0, 0, 0, 0, CIPHER_ORD,
                         -1, 0, &head, &tail);
 
-  /* Move anonymous ciphers to the end.  Usually, these will remain disabled.
-   * (For applications that allow them, they aren't too bad, but we prefer
-   * authenticated ciphers.)
-   * TODO(davidben): Remove them altogether? */
-  ssl_cipher_apply_rule(0, 0, SSL_aNULL, 0, 0, 0, 0, CIPHER_ORD, -1, 0, &head,
-                        &tail);
-
   /* Now disable everything (maintaining the ordering!) */
   ssl_cipher_apply_rule(0, 0, 0, 0, 0, 0, 0, CIPHER_DEL, -1, 0, &head, &tail);
 
@@ -1186,10 +1173,6 @@ const char *SSL_CIPHER_description(const SSL_CIPHER *cipher, char *buf,
       au = "RSA";
       break;
 
-    case SSL_aNULL:
-      au = "None";
-      break;
-
     case SSL_aECDSA:
       au = "ECDSA";
       break;
@@ -1332,8 +1315,6 @@ const char *SSL_CIPHER_get_kx_name(const SSL_CIPHER *cipher) {
       switch (cipher->algorithm_auth) {
         case SSL_aRSA:
           return "DHE_RSA";
-        case SSL_aNULL:
-          return "DH_anon";
         default:
           assert(0);
           return "UNKNOWN";
@@ -1347,8 +1328,6 @@ const char *SSL_CIPHER_get_kx_name(const SSL_CIPHER *cipher) {
           return "ECDHE_RSA";
         case SSL_aPSK:
           return "ECDHE_PSK";
-        case SSL_aNULL:
-          return "ECDH_anon";
         default:
           assert(0);
           return "UNKNOWN";
@@ -1479,12 +1458,8 @@ int ssl_cipher_get_cert_index(const SSL_CIPHER *c) {
  * public key in the key exchange, sent in a server Certificate message.
  * Otherwise it returns 0. */
 int ssl_cipher_has_server_public_key(const SSL_CIPHER *cipher) {
-  /* Anonymous ciphers do not include a server certificate. */
-  if (cipher->algorithm_auth & SSL_aNULL) {
-    return 0;
-  }
-
-  /* Neither do PSK ciphers, except for RSA_PSK. */
+  /* PSK-authenticated ciphers do not use a public key, except for
+   * RSA_PSK. */
   if ((cipher->algorithm_auth & SSL_aPSK) &&
       !(cipher->algorithm_mkey & SSL_kRSA)) {
     return 0;

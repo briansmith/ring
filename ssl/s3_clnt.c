@@ -1411,15 +1411,6 @@ int ssl3_get_certificate_request(SSL *s) {
     goto err;
   }
 
-  /* TLS does not like anon-DH with client cert */
-  if (s->version > SSL3_VERSION &&
-      (s->s3->tmp.new_cipher->algorithm_auth & SSL_aNULL)) {
-    ssl3_send_alert(s, SSL3_AL_FATAL, SSL_AD_UNEXPECTED_MESSAGE);
-    OPENSSL_PUT_ERROR(SSL, ssl3_get_certificate_request,
-                      SSL_R_TLS_CLIENT_CERT_REQ_WITH_ANON_CIPHER);
-    goto err;
-  }
-
   CBS_init(&cbs, s->init_msg, n);
 
   ca_sk = sk_X509_NAME_new(ca_dn_cmp);

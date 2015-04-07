@@ -2030,8 +2030,6 @@ void ssl_get_compatible_server_ciphers(SSL *s, unsigned long *out_mask_k,
     mask_a |= SSL_aRSA;
   }
 
-  mask_a |= SSL_aNULL;
-
   /* An ECC certificate may be usable for ECDSA cipher suites depending on the
    * key usage extension and on the client's curve preferences. */
   if (have_ecc_cert) {

@@ -320,13 +320,6 @@ int dtls1_accept(SSL *s) {
              * don't request cert during re-negotiation: */
             ((s->session->peer != NULL) &&
              (s->verify_mode & SSL_VERIFY_CLIENT_ONCE)) ||
-            /* never request cert in anonymous ciphersuites
-             * (see section "Certificate request" in SSL 3 drafts
-             * and in RFC 2246): */
-            ((s->s3->tmp.new_cipher->algorithm_auth & SSL_aNULL) &&
-             /* ... except when the application insists on verification
-              * (against the specs, but s3_clnt.c accepts this for SSL 3) */
-             !(s->verify_mode & SSL_VERIFY_FAIL_IF_NO_PEER_CERT)) ||
             /* With normal PSK Certificates and
              * Certificate Requests are omitted */
             (s->s3->tmp.new_cipher->algorithm_mkey & SSL_kPSK)) {

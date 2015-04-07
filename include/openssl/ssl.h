@@ -175,8 +175,6 @@ extern "C" {
 #define SSL_TXT_HIGH "HIGH"
 #define SSL_TXT_FIPS "FIPS"
 
-#define SSL_TXT_aNULL "aNULL"
-
 #define SSL_TXT_kRSA "kRSA"
 #define SSL_TXT_kDHE "kDHE"
 #define SSL_TXT_kEDH "kEDH" /* same as "kDHE" */
@@ -189,14 +187,12 @@ extern "C" {
 #define SSL_TXT_aPSK "aPSK"
 
 #define SSL_TXT_DH "DH"
-#define SSL_TXT_DHE "DHE" /* same as "kDHE:-ADH" */
+#define SSL_TXT_DHE "DHE" /* same as "kDHE" */
 #define SSL_TXT_EDH "EDH" /* same as "DHE" */
-#define SSL_TXT_ADH "ADH"
 #define SSL_TXT_RSA "RSA"
 #define SSL_TXT_ECDH "ECDH"
-#define SSL_TXT_ECDHE "ECDHE" /* same as "kECDHE:-AECDH" */
+#define SSL_TXT_ECDHE "ECDHE" /* same as "kECDHE" */
 #define SSL_TXT_EECDH "EECDH" /* same as "ECDHE" */
-#define SSL_TXT_AECDH "AECDH"
 #define SSL_TXT_ECDSA "ECDSA"
 #define SSL_TXT_PSK "PSK"
 
@@ -238,7 +234,7 @@ extern "C" {
 
 /* The following cipher list is used by default. It also is substituted when an
  * application-defined cipher list string starts with 'DEFAULT'. */
-#define SSL_DEFAULT_CIPHER_LIST "ALL:!aNULL:!eNULL:!SSLv2"
+#define SSL_DEFAULT_CIPHER_LIST "ALL"
 
 /* As of OpenSSL 1.0.0, ssl_create_cipher_list() in ssl/ssl_ciph.c always
  * starts with a reasonable order, and all we have to do for DEFAULT is
