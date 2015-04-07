@@ -16,7 +16,6 @@ package main
 
 import (
 	"bytes"
-	"crypto/cipher"
 	"errors"
 	"fmt"
 	"io"
@@ -248,13 +247,15 @@ func (c *Conn) dtlsWriteRawRecord(typ recordType, data []byte) (n int, err error
 	if cbc, ok := c.out.cipher.(cbcMode); ok {
 		// Block cipher modes have an explicit IV.
 		explicitIVLen = cbc.BlockSize()
-	} else if _, ok := c.out.cipher.(cipher.AEAD); ok {
-		explicitIVLen = 8
-		// The AES-GCM construction in TLS has an explicit nonce so that
-		// the nonce can be random. However, the nonce is only 8 bytes
-		// which is too small for a secure, random nonce. Therefore we
-		// use the sequence number as the nonce.
-		explicitIVIsSeq = true
+	} else if aead, ok := c.out.cipher.(*tlsAead); ok {
+		if aead.explicitNonce {
+			explicitIVLen = 8
+			// The AES-GCM construction in TLS has an explicit nonce so that
+			// the nonce can be random. However, the nonce is only 8 bytes
+			// which is too small for a secure, random nonce. Therefore we
+			// use the sequence number as the nonce.
+			explicitIVIsSeq = true
+		}
 	} else if c.out.cipher != nil {
 		panic("Unknown cipher")
 	}
