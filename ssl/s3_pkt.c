@@ -133,7 +133,7 @@ int ssl3_read_n(SSL *s, int n, int max, int extend) {
    * bytes may be stored in |rbuf| (plus |s->packet_length| bytes if |extend|
    * is one.) */
   int i, len, left;
-  long align = 0;
+  uintptr_t align = 0;
   uint8_t *pkt;
   SSL3_BUFFER *rb;
 
@@ -148,8 +148,8 @@ int ssl3_read_n(SSL *s, int n, int max, int extend) {
 
   left = rb->left;
 
-  align = (long)rb->buf + SSL3_RT_HEADER_LENGTH;
-  align = (-align) & (SSL3_ALIGN_PAYLOAD - 1);
+  align = (uintptr_t)rb->buf + SSL3_RT_HEADER_LENGTH;
+  align = (0 - align) & (SSL3_ALIGN_PAYLOAD - 1);
 
   if (!extend) {
     /* start with empty packet ... */
@@ -604,7 +604,7 @@ static int do_ssl3_write(SSL *s, int type, const uint8_t *buf, unsigned int len,
   } else {
     align = (uintptr_t)wb->buf + SSL3_RT_HEADER_LENGTH;
   }
-  align = (-align) & (SSL3_ALIGN_PAYLOAD - 1);
+  align = (0 - align) & (SSL3_ALIGN_PAYLOAD - 1);
   uint8_t *out = wb->buf + align;
   wb->offset = align;
   size_t max_out = wb->len - wb->offset;

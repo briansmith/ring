@@ -27,7 +27,7 @@ elseif(MSVC)
               # 'unsigned long', signed/unsigned mismatch
       "C4267" # conversion from 'size_t' to 'int', possible loss of data
       "C4311" # 'type cast' : pointer truncation from 'uint8_t *' to 'long'
-              # TODO(davidben): Fix the s3_pkt.c's alignment code to avoid this.
+              # TODO(davidben): Remove this warning once asn1_add_error is gone.
       "C4371" # layout of class may have changed from a previous version of the
               # compiler due to better packing of member '...'
       "C4388" # signed/unsigned mismatch
