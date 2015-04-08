@@ -134,8 +134,8 @@
  * OTHERWISE. */
 
 #include <stdio.h>
+#include <string.h>
 
-#include <openssl/engine.h>
 #include <openssl/err.h>
 #include <openssl/lhash.h>
 #include <openssl/mem.h>

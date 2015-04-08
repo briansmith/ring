@@ -58,6 +58,7 @@
 
 #include <limits.h>
 #include <stdio.h>
+#include <string.h>
 
 #if defined(OPENSSL_WINDOWS)
 #include <sys/timeb.h>

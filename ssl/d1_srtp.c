@@ -115,10 +115,11 @@
 */
 
 #include <stdio.h>
+#include <string.h>
 
 #include <openssl/bytestring.h>
-#include <openssl/obj.h>
 #include <openssl/err.h>
+#include <openssl/obj.h>
 
 #include "internal.h"
 #include <openssl/srtp.h>

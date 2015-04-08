@@ -144,17 +144,7 @@
 
 #include <openssl/base.h>
 
-#include <errno.h>
-#include <stdlib.h>
-#include <string.h>
-#include <time.h>
-
 #include <openssl/aead.h>
-#include <openssl/bio.h>
-#include <openssl/buf.h>
-#include <openssl/dsa.h>
-#include <openssl/err.h>
-#include <openssl/rsa.h>
 #include <openssl/ssl.h>
 #include <openssl/stack.h>
 

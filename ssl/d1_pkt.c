@@ -109,9 +109,9 @@
  * copied and put under another distribution licence
  * [including the GNU Public Licence.] */
 
-#include <stdio.h>
-#include <errno.h>
 #include <assert.h>
+#include <stdio.h>
+#include <string.h>
 
 #include <openssl/buf.h>
 #include <openssl/mem.h>
