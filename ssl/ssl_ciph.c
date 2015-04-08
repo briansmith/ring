@@ -677,12 +677,6 @@ static int ssl_cipher_process_rulestr(const SSL_PROTOCOL_METHOD *ssl_method,
 
     if (in_group) {
       if (ch == ']') {
-        if (!in_group) {
-          OPENSSL_PUT_ERROR(SSL, ssl_cipher_process_rulestr,
-                            SSL_R_UNEXPECTED_GROUP_CLOSE);
-          retval = in_group = 0;
-          break;
-        }
         if (*tail_p) {
           (*tail_p)->in_group = 0;
         }
