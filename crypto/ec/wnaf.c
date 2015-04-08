@@ -709,15 +709,15 @@ int ec_wNAF_precompute_mult(EC_GROUP *group, BN_CTX *ctx) {
     group->pre_comp = NULL;
   }
 
-  pre_comp = ec_pre_comp_new();
-  if (pre_comp == NULL) {
-    return 0;
-  }
-
   generator = EC_GROUP_get0_generator(group);
   if (generator == NULL) {
     OPENSSL_PUT_ERROR(EC, ec_wNAF_precompute_mult, EC_R_UNDEFINED_GENERATOR);
-    goto err;
+    return 0;
+  }
+
+  pre_comp = ec_pre_comp_new();
+  if (pre_comp == NULL) {
+    return 0;
   }
 
   if (ctx == NULL) {
