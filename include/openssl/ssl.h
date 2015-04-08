@@ -272,7 +272,6 @@ DECLARE_STACK_OF(SRTP_PROTECTION_PROFILE)
 
 /* used to hold info on the particular ciphers used */
 struct ssl_cipher_st {
-  int valid;
   const char *name; /* text name */
   uint32_t id; /* id, 4 bytes, first is version */
 
