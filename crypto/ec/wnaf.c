@@ -84,7 +84,6 @@
 
 /* structure for precomputed multiples of the generator */
 typedef struct ec_pre_comp_st {
-  const EC_GROUP *group; /* parent EC_GROUP object */
   size_t blocksize;      /* block size for wNAF splitting */
   size_t numblocks; /* max. number of blocks for which we have precomputation */
   size_t w;         /* window size */
@@ -94,19 +93,14 @@ typedef struct ec_pre_comp_st {
   int references;
 } EC_PRE_COMP;
 
-static EC_PRE_COMP *ec_pre_comp_new(const EC_GROUP *group) {
+static EC_PRE_COMP *ec_pre_comp_new(void) {
   EC_PRE_COMP *ret = NULL;
-
-  if (!group) {
-    return NULL;
-  }
 
   ret = (EC_PRE_COMP *)OPENSSL_malloc(sizeof(EC_PRE_COMP));
   if (!ret) {
     OPENSSL_PUT_ERROR(EC, ec_pre_comp_new, ERR_R_MALLOC_FAILURE);
     return ret;
   }
-  ret->group = group;
   ret->blocksize = 8; /* default */
   ret->numblocks = 0;
   ret->w = 4; /* default */
@@ -715,7 +709,7 @@ int ec_wNAF_precompute_mult(EC_GROUP *group, BN_CTX *ctx) {
     group->pre_comp = NULL;
   }
 
-  pre_comp = ec_pre_comp_new(group);
+  pre_comp = ec_pre_comp_new();
   if (pre_comp == NULL) {
     return 0;
   }
@@ -836,7 +830,6 @@ int ec_wNAF_precompute_mult(EC_GROUP *group, BN_CTX *ctx) {
     goto err;
   }
 
-  pre_comp->group = group;
   pre_comp->blocksize = blocksize;
   pre_comp->numblocks = numblocks;
   pre_comp->w = w;
