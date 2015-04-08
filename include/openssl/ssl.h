@@ -152,6 +152,10 @@
 #include <openssl/pem.h>
 #include <openssl/x509.h>
 
+#if !defined(OPENSSL_WINDOWS)
+#include <sys/time.h>
+#endif
+
 /* Some code expected to get the threading functions by including ssl.h. */
 #include <openssl/thread.h>
 
@@ -368,7 +372,6 @@ typedef struct OPENSSL_timeval_st {
   long tv_usec;
 } OPENSSL_timeval;
 #else
-#include <sys/time.h>
 typedef struct timeval OPENSSL_timeval;
 #endif
 
