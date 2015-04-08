@@ -79,7 +79,7 @@ extern "C" {
 #endif
 
 
-/* ec_key.h conatins functions that handle elliptic-curve points that are
+/* ec_key.h contains functions that handle elliptic-curve points that are
  * public/private keys. */
 
 
