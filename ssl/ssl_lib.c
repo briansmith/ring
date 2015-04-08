@@ -150,7 +150,7 @@
 #include <openssl/rand.h>
 #include <openssl/x509v3.h>
 
-#include "ssl_locl.h"
+#include "internal.h"
 
 /* Some error codes are special. Ensure the make_errors.go script never
  * regresses this. */

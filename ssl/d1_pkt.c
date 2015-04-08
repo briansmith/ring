@@ -119,7 +119,7 @@
 #include <openssl/err.h>
 #include <openssl/rand.h>
 
-#include "ssl_locl.h"
+#include "internal.h"
 
 
 /* mod 128 saturating subtract of two 64-bit values in big-endian order */

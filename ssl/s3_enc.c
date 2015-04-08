@@ -142,7 +142,7 @@
 #include <openssl/md5.h>
 #include <openssl/obj.h>
 
-#include "ssl_locl.h"
+#include "internal.h"
 
 
 static const uint8_t ssl3_pad_1[48] = {

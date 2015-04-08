@@ -124,7 +124,7 @@
 #include <openssl/obj.h>
 #include <openssl/rand.h>
 
-#include "ssl_locl.h"
+#include "internal.h"
 
 static int dtls1_get_hello_verify(SSL *s);
 

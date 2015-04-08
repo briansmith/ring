@@ -124,7 +124,7 @@
 #include <openssl/rand.h>
 #include <openssl/x509.h>
 
-#include "ssl_locl.h"
+#include "internal.h"
 
 
 int dtls1_accept(SSL *s) {

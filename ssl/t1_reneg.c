@@ -113,7 +113,7 @@
 #include <openssl/obj.h>
 #include <openssl/err.h>
 
-#include "ssl_locl.h"
+#include "internal.h"
 
 
 /* Add the client's renegotiation binding */

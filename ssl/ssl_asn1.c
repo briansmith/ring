@@ -87,7 +87,7 @@
 #include <openssl/err.h>
 #include <openssl/x509.h>
 
-#include "ssl_locl.h"
+#include "internal.h"
 
 
 /* An SSL_SESSION is serialized as the following ASN.1 structure:

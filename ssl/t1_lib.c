@@ -117,7 +117,7 @@
 #include <openssl/obj.h>
 #include <openssl/rand.h>
 
-#include "ssl_locl.h"
+#include "internal.h"
 
 
 static int tls_decrypt_ticket(SSL *s, const uint8_t *tick, int ticklen,

@@ -147,7 +147,7 @@
 #include <openssl/obj.h>
 #include <openssl/sha.h>
 
-#include "ssl_locl.h"
+#include "internal.h"
 
 
 struct handshake_digest {

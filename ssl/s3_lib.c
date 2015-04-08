@@ -155,7 +155,7 @@
 #include <openssl/mem.h>
 #include <openssl/obj.h>
 
-#include "ssl_locl.h"
+#include "internal.h"
 
 
 #define SSL3_NUM_CIPHERS (sizeof(ssl3_ciphers) / sizeof(SSL_CIPHER))

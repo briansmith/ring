@@ -126,7 +126,7 @@
 
 #include "../crypto/dh/internal.h"
 #include "../crypto/directory.h"
-#include "ssl_locl.h"
+#include "internal.h"
 
 
 int SSL_get_ex_data_X509_STORE_CTX_idx(void) {

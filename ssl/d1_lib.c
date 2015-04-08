@@ -70,7 +70,7 @@
 #include <openssl/mem.h>
 #include <openssl/obj.h>
 
-#include "ssl_locl.h"
+#include "internal.h"
 
 /* DTLS1_MTU_TIMEOUTS is the maximum number of timeouts to expire
  * before starting to decrease the MTU. */

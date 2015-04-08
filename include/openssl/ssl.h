@@ -281,9 +281,8 @@ struct ssl_cipher_st {
   unsigned long algorithm_ssl;  /* (major) protocol version */
 
   unsigned long algo_strength; /* strength and export flags */
-  unsigned long algorithm2;    /* Extra flags. See SSL2_CF_* in ssl2.h
-                                  and algorithm2 section in
-                                  ssl_locl.h */
+  unsigned long algorithm2;    /* Extra flags. See algorithm2 section in
+                                  ssl/internal.h */
   int strength_bits;           /* Number of bits really used */
   int alg_bits;                /* Number of bits for algorithm */
 };

@@ -54,7 +54,7 @@
  * copied and put under another distribution licence
  * [including the GNU Public Licence.] */
 
-#include "ssl_locl.h"
+#include "internal.h"
 
 
 static const SSL_PROTOCOL_METHOD TLS_protocol_method = {

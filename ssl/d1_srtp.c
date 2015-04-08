@@ -120,7 +120,7 @@
 #include <openssl/obj.h>
 #include <openssl/err.h>
 
-#include "ssl_locl.h"
+#include "internal.h"
 #include <openssl/srtp.h>
 
 

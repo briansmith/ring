@@ -124,7 +124,7 @@
 #include <openssl/rand.h>
 #include <openssl/x509.h>
 
-#include "ssl_locl.h"
+#include "internal.h"
 
 
 /* TODO(davidben): 28 comes from the size of IP + UDP header. Is this reasonable

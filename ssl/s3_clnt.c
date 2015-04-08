@@ -163,7 +163,7 @@
 #include <openssl/engine.h>
 #include <openssl/x509.h>
 
-#include "ssl_locl.h"
+#include "internal.h"
 #include "../crypto/dh/internal.h"
 
 

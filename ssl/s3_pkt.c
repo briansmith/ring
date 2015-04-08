@@ -117,7 +117,7 @@
 #include <openssl/mem.h>
 #include <openssl/rand.h>
 
-#include "ssl_locl.h"
+#include "internal.h"
 
 
 static int do_ssl3_write(SSL *s, int type, const uint8_t *buf, unsigned int len,

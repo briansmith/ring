@@ -144,7 +144,7 @@
 #include <openssl/obj.h>
 #include <openssl/rand.h>
 
-#include "ssl_locl.h"
+#include "internal.h"
 
 
 /* tls1_P_hash computes the TLS P_<hash> function as described in RFC 5246,

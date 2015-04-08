@@ -151,10 +151,6 @@ extern "C" {
 #define SSL2_MIN_CERT_CHALLENGE_LENGTH	16
 #define SSL2_MAX_KEY_MATERIAL_LENGTH	24
 
-#ifndef HEADER_SSL_LOCL_H
-#define  CERT		char
-#endif
-
 #ifndef OPENSSL_NO_SSL_INTERN
 
 typedef struct ssl2_state_st

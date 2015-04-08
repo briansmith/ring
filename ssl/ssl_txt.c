@@ -87,7 +87,7 @@
 #include <openssl/err.h>
 #include <openssl/mem.h>
 
-#include "ssl_locl.h"
+#include "internal.h"
 
 
 int SSL_SESSION_print_fp(FILE *fp, const SSL_SESSION *x) {

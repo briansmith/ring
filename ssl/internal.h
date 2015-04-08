@@ -139,8 +139,8 @@
  * OTHERWISE.
  */
 
-#ifndef HEADER_SSL_LOCL_H
-#define HEADER_SSL_LOCL_H
+#ifndef OPENSSL_HEADER_SSL_INTERNAL_H
+#define OPENSSL_HEADER_SSL_INTERNAL_H
 
 #include <openssl/base.h>
 
@@ -1035,4 +1035,4 @@ int ssl_parse_clienthello_use_srtp_ext(SSL *s, CBS *cbs, int *out_alert);
 int ssl_add_serverhello_use_srtp_ext(SSL *s, uint8_t *p, int *len, int maxlen);
 int ssl_parse_serverhello_use_srtp_ext(SSL *s, CBS *cbs, int *out_alert);
 
-#endif
+#endif /* OPENSSL_HEADER_SSL_INTERNAL_H */

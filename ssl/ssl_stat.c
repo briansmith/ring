@@ -83,7 +83,7 @@
  */
 
 #include <stdio.h>
-#include "ssl_locl.h"
+#include "internal.h"
 
 const char *SSL_state_string_long(const SSL *s) {
   const char *str;

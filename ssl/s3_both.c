@@ -124,7 +124,7 @@
 #include <openssl/sha.h>
 #include <openssl/x509.h>
 
-#include "ssl_locl.h"
+#include "internal.h"
 
 
 /* ssl3_do_write sends |s->init_buf| in records of type 'type'

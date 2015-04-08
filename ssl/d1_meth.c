@@ -55,7 +55,7 @@
  * (eay@cryptsoft.com).  This product includes software written by Tim
  * Hudson (tjh@cryptsoft.com). */
 
-#include "ssl_locl.h"
+#include "internal.h"
 
 
 static const SSL_PROTOCOL_METHOD DTLS_protocol_method = {
