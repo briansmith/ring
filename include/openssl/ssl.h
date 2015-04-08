@@ -274,21 +274,21 @@ DECLARE_STACK_OF(SRTP_PROTECTION_PROFILE)
 struct ssl_cipher_st {
   int valid;
   const char *name; /* text name */
-  unsigned long id; /* id, 4 bytes, first is version */
+  uint32_t id; /* id, 4 bytes, first is version */
 
   /* changed in 0.9.9: these four used to be portions of a single value
    * 'algorithms' */
-  unsigned long algorithm_mkey; /* key exchange algorithm */
-  unsigned long algorithm_auth; /* server authentication */
-  unsigned long algorithm_enc;  /* symmetric encryption */
-  unsigned long algorithm_mac;  /* symmetric authentication */
-  unsigned long algorithm_ssl;  /* (major) protocol version */
+  uint32_t algorithm_mkey; /* key exchange algorithm */
+  uint32_t algorithm_auth; /* server authentication */
+  uint32_t algorithm_enc;  /* symmetric encryption */
+  uint32_t algorithm_mac;  /* symmetric authentication */
+  uint32_t algorithm_ssl;  /* (major) protocol version */
 
-  unsigned long algo_strength; /* strength and export flags */
-  unsigned long algorithm2;    /* Extra flags. See algorithm2 section in
-                                  ssl/internal.h */
-  int strength_bits;           /* Number of bits really used */
-  int alg_bits;                /* Number of bits for algorithm */
+  uint32_t algo_strength; /* strength and export flags */
+  uint32_t algorithm2;    /* Extra flags. See algorithm2 section in
+                             ssl/internal.h */
+  int strength_bits;      /* Number of bits really used */
+  int alg_bits;           /* Number of bits for algorithm */
 };
 
 /* An SSL_SESSION represents an SSL session that may be resumed in an
@@ -1819,7 +1819,7 @@ OPENSSL_EXPORT const char *SSL_CIPHER_get_kx_name(const SSL_CIPHER *cipher);
  * caller is responsible for calling |OPENSSL_free| on the result. */
 OPENSSL_EXPORT char *SSL_CIPHER_get_rfc_name(const SSL_CIPHER *cipher);
 
-OPENSSL_EXPORT unsigned long SSL_CIPHER_get_id(const SSL_CIPHER *c);
+OPENSSL_EXPORT uint32_t SSL_CIPHER_get_id(const SSL_CIPHER *c);
 
 OPENSSL_EXPORT int SSL_get_fd(const SSL *s);
 OPENSSL_EXPORT int SSL_get_rfd(const SSL *s);

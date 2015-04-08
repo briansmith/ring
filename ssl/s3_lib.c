@@ -1137,7 +1137,7 @@ const SSL_CIPHER *ssl3_get_cipher_by_value(uint16_t value) {
 
 /* ssl3_get_cipher_by_value returns the cipher value of |c|. */
 uint16_t ssl3_get_cipher_value(const SSL_CIPHER *c) {
-  unsigned long id = c->id;
+  uint32_t id = c->id;
   /* All ciphers are SSLv3 now. */
   assert((id & 0xff000000) == 0x03000000);
   return id & 0xffff;
@@ -1168,7 +1168,7 @@ const SSL_CIPHER *ssl3_choose_cipher(
   size_t i;
   int ok;
   size_t cipher_index;
-  unsigned long alg_k, alg_a, mask_k, mask_a;
+  uint32_t alg_k, alg_a, mask_k, mask_a;
   /* in_group_flags will either be NULL, or will point to an array of bytes
    * which indicate equal-preference groups in the |prio| stack. See the
    * comment about |in_group_flags| in the |ssl_cipher_preference_list_st|
@@ -1392,9 +1392,9 @@ int ssl3_renegotiate_check(SSL *s) {
 
 /* If we are using default SHA1+MD5 algorithms switch to new SHA256 PRF and
  * handshake macs if required. */
-long ssl_get_algorithm2(SSL *s) {
-  static const unsigned long kMask = SSL_HANDSHAKE_MAC_DEFAULT | TLS1_PRF;
-  long alg2 = s->s3->tmp.new_cipher->algorithm2;
+uint32_t ssl_get_algorithm2(SSL *s) {
+  static const uint32_t kMask = SSL_HANDSHAKE_MAC_DEFAULT | TLS1_PRF;
+  uint32_t alg2 = s->s3->tmp.new_cipher->algorithm2;
   if (s->enc_method->enc_flags & SSL_ENC_FLAG_SHA256_PRF &&
       (alg2 & kMask) == kMask) {
     return SSL_HANDSHAKE_MAC_SHA256 | TLS1_PRF_SHA256;

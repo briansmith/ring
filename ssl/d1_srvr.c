@@ -131,7 +131,7 @@
 int dtls1_accept(SSL *s) {
   BUF_MEM *buf = NULL;
   void (*cb)(const SSL *ssl, int type, int val) = NULL;
-  unsigned long alg_a;
+  uint32_t alg_a;
   int ret = -1;
   int new_state, state, skip = 0;
 

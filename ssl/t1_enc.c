@@ -226,7 +226,7 @@ int tls1_prf(SSL *s, uint8_t *out, size_t out_len, const uint8_t *secret,
              const uint8_t *seed2, size_t seed2_len) {
   size_t idx, len, count, i;
   const uint8_t *S1;
-  long m;
+  uint32_t m;
   const EVP_MD *md;
   int ret = 0;
   uint8_t *tmp;
@@ -755,7 +755,7 @@ int tls1_handshake_digest(SSL *s, uint8_t *out, size_t out_len) {
   EVP_MD_CTX ctx;
   int err = 0, len = 0;
   size_t i;
-  long mask;
+  uint32_t mask;
 
   EVP_MD_CTX_init(&ctx);
 

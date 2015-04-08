@@ -152,7 +152,7 @@
 
 
 struct handshake_digest {
-  long mask;
+  uint32_t mask;
   const EVP_MD *(*md_func)(void);
 };
 
@@ -359,7 +359,7 @@ int ssl_cipher_get_evp_aead(const EVP_AEAD **out_aead,
   }
 }
 
-int ssl_get_handshake_digest(size_t idx, long *mask, const EVP_MD **md) {
+int ssl_get_handshake_digest(size_t idx, uint32_t *mask, const EVP_MD **md) {
   if (idx >= SSL_MAX_DIGEST) {
     return 0;
   }
@@ -489,9 +489,9 @@ static void ssl_cipher_collect_aliases(const SSL_CIPHER **ca_list,
 }
 
 static void ssl_cipher_apply_rule(
-    unsigned long cipher_id, unsigned long alg_mkey, unsigned long alg_auth,
-    unsigned long alg_enc, unsigned long alg_mac, unsigned long alg_ssl,
-    unsigned long algo_strength, int rule, int strength_bits, int in_group,
+    uint32_t cipher_id, uint32_t alg_mkey, uint32_t alg_auth,
+    uint32_t alg_enc, uint32_t alg_mac, uint32_t alg_ssl,
+    uint32_t algo_strength, int rule, int strength_bits, int in_group,
     CIPHER_ORDER **head_p, CIPHER_ORDER **tail_p) {
   CIPHER_ORDER *head, *tail, *curr, *next, *last;
   const SSL_CIPHER *cp;
@@ -647,10 +647,10 @@ static int ssl_cipher_process_rulestr(const char *rule_str,
                                       CIPHER_ORDER **head_p,
                                       CIPHER_ORDER **tail_p,
                                       const SSL_CIPHER **ca_list) {
-  unsigned long alg_mkey, alg_auth, alg_enc, alg_mac, alg_ssl, algo_strength;
+  uint32_t alg_mkey, alg_auth, alg_enc, alg_mac, alg_ssl, algo_strength;
   const char *l, *buf;
   int j, multi, found, rule, retval, ok, buflen, in_group = 0, has_group = 0;
-  unsigned long cipher_id = 0;
+  uint32_t cipher_id = 0;
   char ch;
 
   retval = 1;
@@ -1131,7 +1131,7 @@ const char *SSL_CIPHER_description(const SSL_CIPHER *cipher, char *buf,
                                    int len) {
   const char *ver;
   const char *kx, *au, *enc, *mac;
-  unsigned long alg_mkey, alg_auth, alg_enc, alg_mac, alg_ssl;
+  uint32_t alg_mkey, alg_auth, alg_enc, alg_mac, alg_ssl;
   static const char *format = "%-23s %s Kx=%-8s Au=%-4s Enc=%-9s Mac=%-4s\n";
 
   alg_mkey = cipher->algorithm_mkey;
@@ -1434,7 +1434,7 @@ int SSL_CIPHER_get_bits(const SSL_CIPHER *c, int *alg_bits) {
   return ret;
 }
 
-unsigned long SSL_CIPHER_get_id(const SSL_CIPHER *c) { return c->id; }
+uint32_t SSL_CIPHER_get_id(const SSL_CIPHER *c) { return c->id; }
 
 void *SSL_COMP_get_compression_methods(void) { return NULL; }
 
@@ -1444,7 +1444,7 @@ const char *SSL_COMP_get_name(const void *comp) { return NULL; }
 
 /* For a cipher return the index corresponding to the certificate type */
 int ssl_cipher_get_cert_index(const SSL_CIPHER *c) {
-  unsigned long alg_a = c->algorithm_auth;
+  uint32_t alg_a = c->algorithm_auth;
 
   if (alg_a & SSL_aECDSA) {
     return SSL_PKEY_ECC;

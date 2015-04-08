@@ -1995,11 +1995,11 @@ static int ssl_has_key(SSL *s, size_t idx) {
   return cpk->x509 && cpk->privatekey;
 }
 
-void ssl_get_compatible_server_ciphers(SSL *s, unsigned long *out_mask_k,
-                                       unsigned long *out_mask_a) {
+void ssl_get_compatible_server_ciphers(SSL *s, uint32_t *out_mask_k,
+                                       uint32_t *out_mask_a) {
   CERT *c = s->cert;
   int rsa_enc, rsa_sign, dh_tmp;
-  unsigned long mask_k, mask_a;
+  uint32_t mask_k, mask_a;
   int have_ecc_cert, ecdsa_ok;
   int have_ecdh_tmp;
   X509 *x;

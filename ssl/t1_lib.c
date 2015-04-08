@@ -793,7 +793,7 @@ uint8_t *ssl_add_clienthello_tlsext(SSL *s, uint8_t *buf, uint8_t *limit,
 
   if (s->version >= TLS1_VERSION || SSL_IS_DTLS(s)) {
     size_t i;
-    unsigned long alg_k, alg_a;
+    uint32_t alg_k, alg_a;
     STACK_OF(SSL_CIPHER) *cipher_stack = SSL_get_ciphers(s);
 
     for (i = 0; i < sk_SSL_CIPHER_num(cipher_stack); i++) {
@@ -1107,8 +1107,8 @@ uint8_t *ssl_add_serverhello_tlsext(SSL *s, uint8_t *buf, uint8_t *limit) {
   uint8_t *orig = buf;
   uint8_t *ret = buf;
   int next_proto_neg_seen;
-  unsigned long alg_k = s->s3->tmp.new_cipher->algorithm_mkey;
-  unsigned long alg_a = s->s3->tmp.new_cipher->algorithm_auth;
+  uint32_t alg_k = s->s3->tmp.new_cipher->algorithm_mkey;
+  uint32_t alg_a = s->s3->tmp.new_cipher->algorithm_auth;
   int using_ecc = (alg_k & SSL_kECDHE) || (alg_a & SSL_aECDSA);
   using_ecc = using_ecc && (s->s3->tmp.peer_ecpointformatlist != NULL);
 
@@ -1979,8 +1979,8 @@ static int ssl_check_serverhello_tlsext(SSL *s) {
   /* If we are client and using an elliptic curve cryptography cipher suite,
    * then if server returns an EC point formats lists extension it must contain
    * uncompressed. */
-  unsigned long alg_k = s->s3->tmp.new_cipher->algorithm_mkey;
-  unsigned long alg_a = s->s3->tmp.new_cipher->algorithm_auth;
+  uint32_t alg_k = s->s3->tmp.new_cipher->algorithm_mkey;
+  uint32_t alg_a = s->s3->tmp.new_cipher->algorithm_auth;
   if (((alg_k & SSL_kECDHE) || (alg_a & SSL_aECDSA)) &&
       !tls1_check_point_format(s, TLSEXT_ECPOINTFORMAT_uncompressed)) {
     OPENSSL_PUT_ERROR(SSL, ssl_check_serverhello_tlsext,

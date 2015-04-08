@@ -738,7 +738,7 @@ int ssl3_get_server_hello(SSL *s) {
   CBS server_hello, server_random, session_id;
   uint16_t server_version, cipher_suite;
   uint8_t compression_method;
-  unsigned long mask_ssl;
+  uint32_t mask_ssl;
 
   n = s->method->ssl_get_message(s, SSL3_ST_CR_SRVR_HELLO_A,
                                  SSL3_ST_CR_SRVR_HELLO_B, SSL3_MT_SERVER_HELLO,
@@ -1623,8 +1623,8 @@ int ssl3_get_server_done(SSL *s) {
 int ssl3_send_client_key_exchange(SSL *s) {
   uint8_t *p;
   int n = 0;
-  unsigned long alg_k;
-  unsigned long alg_a;
+  uint32_t alg_k;
+  uint32_t alg_a;
   uint8_t *q;
   EVP_PKEY *pkey = NULL;
   EC_KEY *clnt_ecdh = NULL;

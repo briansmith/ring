@@ -283,7 +283,7 @@ int ssl3_finish_mac(SSL *s, const uint8_t *buf, int len) {
 int ssl3_digest_cached_records(
     SSL *s, enum should_free_handshake_buffer_t should_free_handshake_buffer) {
   int i;
-  long mask;
+  uint32_t mask;
   const EVP_MD *md;
   const uint8_t *hdata;
   size_t hdatalen;

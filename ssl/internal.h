@@ -417,9 +417,9 @@ typedef struct cert_st {
    * round-about way of checking the server's cipher was one of the advertised
    * ones. (Currently it checks the masks and then the list of ciphers prior to
    * applying the masks in ClientHello.) */
-  unsigned long mask_k;
-  unsigned long mask_a;
-  unsigned long mask_ssl;
+  uint32_t mask_k;
+  uint32_t mask_a;
+  uint32_t mask_ssl;
 
   DH *dh_tmp;
   DH *(*dh_tmp_cb)(SSL *ssl, int is_export, int keysize);
@@ -667,7 +667,7 @@ int ssl_cipher_get_evp_aead(const EVP_AEAD **out_aead,
                             size_t *out_fixed_iv_len,
                             const SSL_CIPHER *cipher, uint16_t version);
 
-int ssl_get_handshake_digest(size_t i, long *mask, const EVP_MD **md);
+int ssl_get_handshake_digest(size_t i, uint32_t *mask, const EVP_MD **md);
 int ssl_cipher_get_cert_index(const SSL_CIPHER *c);
 int ssl_cipher_has_server_public_key(const SSL_CIPHER *cipher);
 int ssl_cipher_requires_server_key_exchange(const SSL_CIPHER *cipher);
@@ -694,8 +694,8 @@ int ssl_cert_type(EVP_PKEY *pkey);
  * authentication cipher suite masks compatible with the server configuration
  * and current ClientHello parameters of |s|. It sets |*out_mask_k| to the key
  * exchange mask and |*out_mask_a| to the authentication mask. */
-void ssl_get_compatible_server_ciphers(SSL *s, unsigned long *out_mask_k,
-                                       unsigned long *out_mask_a);
+void ssl_get_compatible_server_ciphers(SSL *s, uint32_t *out_mask_k,
+                                       uint32_t *out_mask_a);
 
 STACK_OF(SSL_CIPHER) * ssl_get_ciphers_by_id(SSL *s);
 int ssl_verify_alarm_type(long type);
@@ -1008,7 +1008,7 @@ int ssl_parse_serverhello_renegotiate_ext(SSL *s, CBS *cbs, int *out_alert);
 int ssl_add_clienthello_renegotiate_ext(SSL *s, uint8_t *p, int *len,
                                         int maxlen);
 int ssl_parse_clienthello_renegotiate_ext(SSL *s, CBS *cbs, int *out_alert);
-long ssl_get_algorithm2(SSL *s);
+uint32_t ssl_get_algorithm2(SSL *s);
 int tls1_process_sigalgs(SSL *s, const CBS *sigalgs);
 
 /* tls1_choose_signing_digest returns a digest for use with |pkey| based on the
