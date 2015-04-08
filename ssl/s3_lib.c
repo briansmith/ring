@@ -493,14 +493,14 @@ const SSL3_ENC_METHOD SSLv3_enc_data = {
     0,
 };
 
-int ssl3_num_ciphers(void) { return SSL3_NUM_CIPHERS; }
+size_t ssl3_num_ciphers(void) { return SSL3_NUM_CIPHERS; }
 
-const SSL_CIPHER *ssl3_get_cipher(unsigned int u) {
-  if (u >= SSL3_NUM_CIPHERS) {
+const SSL_CIPHER *ssl3_get_cipher(size_t i) {
+  if (i >= SSL3_NUM_CIPHERS) {
     return NULL;
   }
 
-  return &ssl3_ciphers[SSL3_NUM_CIPHERS - 1 - u];
+  return &ssl3_ciphers[SSL3_NUM_CIPHERS - 1 - i];
 }
 
 int ssl3_pending(const SSL *s) {

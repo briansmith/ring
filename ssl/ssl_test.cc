@@ -161,6 +161,20 @@ static const ExpectedCipher kExpected8[] = {
   { 0, 0 },
 };
 
+// Exact ciphers may not be used in multi-part rules; they are treated
+// as unknown aliases.
+static const char kRule9[] =
+    "ECDHE-ECDSA-CHACHA20-POLY1305:"
+    "ECDHE-RSA-CHACHA20-POLY1305:"
+    "!ECDHE-RSA-CHACHA20-POLY1305+RSA:"
+    "!ECDSA+ECDHE-ECDSA-CHACHA20-POLY1305";
+
+static const ExpectedCipher kExpected9[] = {
+  { TLS1_CK_ECDHE_ECDSA_CHACHA20_POLY1305, 0 },
+  { TLS1_CK_ECDHE_RSA_CHACHA20_POLY1305, 0 },
+  { 0, 0 },
+};
+
 static CipherTest kCipherTests[] = {
   { kRule1, kExpected1 },
   { kRule2, kExpected2 },
@@ -170,6 +184,7 @@ static CipherTest kCipherTests[] = {
   { kRule6, kExpected6 },
   { kRule7, kExpected7 },
   { kRule8, kExpected8 },
+  { kRule9, kExpected9 },
   { NULL, NULL },
 };
 
@@ -235,14 +250,14 @@ static bool TestCipherRule(CipherTest *t) {
         sk_SSL_CIPHER_value(ctx->cipher_list->ciphers, i);
     if (t->expected[i].id != SSL_CIPHER_get_id(cipher) ||
         t->expected[i].in_group_flag != ctx->cipher_list->in_group_flags[i]) {
-      fprintf(stderr, "Error: cipher rule '%s' evaluted to:\n", t->rule);
+      fprintf(stderr, "Error: cipher rule '%s' evaluated to:\n", t->rule);
       PrintCipherPreferenceList(ctx->cipher_list);
       return false;
     }
   }
 
   if (t->expected[i].id != 0) {
-    fprintf(stderr, "Error: cipher rule '%s' evaluted to:\n", t->rule);
+    fprintf(stderr, "Error: cipher rule '%s' evaluated to:\n", t->rule);
     PrintCipherPreferenceList(ctx->cipher_list);
     return false;
   }

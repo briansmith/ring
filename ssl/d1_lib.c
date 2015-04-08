@@ -178,8 +178,8 @@ long dtls1_ctrl(SSL *s, int cmd, long larg, void *parg) {
   return ret;
 }
 
-const SSL_CIPHER *dtls1_get_cipher(unsigned int u) {
-  const SSL_CIPHER *ciph = ssl3_get_cipher(u);
+const SSL_CIPHER *dtls1_get_cipher(size_t i) {
+  const SSL_CIPHER *ciph = ssl3_get_cipher(i);
   /* DTLS does not support stream ciphers. */
   if (ciph == NULL || ciph->algorithm_enc == SSL_RC4) {
     return NULL;

@@ -547,8 +547,8 @@ struct ssl_protocol_method_st {
   long (*ssl_ctrl)(SSL *s, int cmd, long larg, void *parg);
   long (*ssl_ctx_ctrl)(SSL_CTX *ctx, int cmd, long larg, void *parg);
   int (*ssl_pending)(const SSL *s);
-  int (*num_ciphers)(void);
-  const SSL_CIPHER *(*get_cipher)(unsigned ncipher);
+  size_t (*num_ciphers)(void);
+  const SSL_CIPHER *(*get_cipher)(size_t i);
   long (*ssl_callback_ctrl)(SSL *s, int cb_id, void (*fp)(void));
   long (*ssl_ctx_callback_ctrl)(SSL_CTX *s, int cb_id, void (*fp)(void));
   /* Handshake header length */
@@ -734,8 +734,8 @@ int ssl3_cert_verify_hash(SSL *s, uint8_t *out, size_t *out_len,
                           const EVP_MD **out_md, EVP_PKEY *pkey);
 
 int ssl3_send_finished(SSL *s, int a, int b, const char *sender, int slen);
-int ssl3_num_ciphers(void);
-const SSL_CIPHER *ssl3_get_cipher(unsigned int u);
+size_t ssl3_num_ciphers(void);
+const SSL_CIPHER *ssl3_get_cipher(size_t i);
 int ssl3_renegotiate(SSL *ssl);
 int ssl3_renegotiate_check(SSL *ssl);
 int ssl3_dispatch_alert(SSL *s);
@@ -810,7 +810,7 @@ int dtls1_handle_timeout(SSL *s);
 int dtls1_set_handshake_header(SSL *s, int type, unsigned long len);
 int dtls1_handshake_write(SSL *s);
 
-const SSL_CIPHER *dtls1_get_cipher(unsigned int u);
+const SSL_CIPHER *dtls1_get_cipher(size_t i);
 void dtls1_start_timer(SSL *s);
 void dtls1_stop_timer(SSL *s);
 int dtls1_is_timer_expired(SSL *s);
