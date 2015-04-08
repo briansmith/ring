@@ -3105,6 +3105,10 @@ void SSL_enable_fastradio_padding(SSL *s, char on_off) {
   s->fastradio_padding = on_off;
 }
 
+void SSL_set_reject_peer_renegotiations(SSL *s, int reject) {
+  s->reject_peer_renegotiations = !!reject;
+}
+
 const SSL_CIPHER *SSL_get_cipher_by_value(uint16_t value) {
   return ssl3_get_cipher_by_value(value);
 }

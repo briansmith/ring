@@ -77,6 +77,7 @@ struct TestConfig {
   std::string export_label;
   std::string export_context;
   bool use_export_context = false;
+  bool reject_peer_renegotiations = false;
 };
 
 bool ParseConfig(int argc, char **argv, TestConfig *out_config);

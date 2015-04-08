@@ -2873,6 +2873,15 @@ func addRenegotiationTests() {
 		},
 		flags: []string{"-allow-unsafe-legacy-renegotiation"},
 	})
+	testCases = append(testCases, testCase{
+		testType:           serverTest,
+		name:               "Renegotiate-Server-ClientInitiated-Forbidden",
+		renegotiate:        true,
+		flags:              []string{"-reject-peer-renegotiations"},
+		shouldFail:         true,
+		expectedError:      ":NO_RENEGOTIATION:",
+		expectedLocalError: "remote error: no renegotiation",
+	})
 	// Regression test for CVE-2015-0291.
 	testCases = append(testCases, testCase{
 		testType: serverTest,
@@ -2937,6 +2946,14 @@ func addRenegotiationTests() {
 			CipherSuites: []uint16{TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256},
 		},
 		renegotiateCiphers: []uint16{TLS_RSA_WITH_RC4_128_SHA},
+	})
+	testCases = append(testCases, testCase{
+		name:               "Renegotiate-Client-Forbidden",
+		renegotiate:        true,
+		flags:              []string{"-reject-peer-renegotiations"},
+		shouldFail:         true,
+		expectedError:      ":NO_RENEGOTIATION:",
+		expectedLocalError: "remote error: no renegotiation",
 	})
 	testCases = append(testCases, testCase{
 		name:        "Renegotiate-SameClientVersion",

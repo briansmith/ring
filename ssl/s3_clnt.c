@@ -203,6 +203,15 @@ int ssl3_connect(SSL *s) {
           cb(s, SSL_CB_HANDSHAKE_START, 1);
         }
 
+        if ((s->version >> 8) != 3) {
+          /* TODO(davidben): Some consumers clear |s->version| to break the
+           * handshake in a callback. Remove this when they're using proper
+           * APIs. */
+          OPENSSL_PUT_ERROR(SSL, ssl3_connect, ERR_R_INTERNAL_ERROR);
+          ret = -1;
+          goto end;
+        }
+
         if (s->init_buf == NULL) {
           buf = BUF_MEM_new();
           if (buf == NULL ||

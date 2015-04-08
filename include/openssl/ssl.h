@@ -1135,6 +1135,11 @@ OPENSSL_EXPORT void SSL_get0_alpn_selected(const SSL *ssl, const uint8_t **data,
  * causes 3G radios to switch to DCH mode (high data rate). */
 OPENSSL_EXPORT void SSL_enable_fastradio_padding(SSL *ssl, char on_off);
 
+/* SSL_set_reject_peer_renegotiations controls whether renegotiation attempts by
+ * the peer are rejected. It may be set at any point in a connection's lifetime
+ * to disallow future renegotiations programmatically. */
+OPENSSL_EXPORT void SSL_set_reject_peer_renegotiations(SSL *ssl, int reject);
+
 /* the maximum length of the buffer given to callbacks containing the resulting
  * identity/psk */
 #define PSK_MAX_IDENTITY_LEN 128
@@ -1394,6 +1399,10 @@ struct ssl_st {
    * bytes. This ensures that the cellular radio is fast forwarded to DCH (high
    * data rate) state in 3G networks. */
   char fastradio_padding;
+
+  /* reject_peer_renegotiations, if one, causes causes renegotiation attempts
+   * from the peer to be rejected with a fatal error. */
+  char reject_peer_renegotiations;
 
   /* These fields are always NULL and exist only to keep wpa_supplicant happy
    * about the change to EVP_AEAD. They are only needed for EAP-FAST, which we

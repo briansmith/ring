@@ -80,6 +80,7 @@ const Flag<bool> kBoolFlags[] = {
   { "-fail-second-ddos-callback", &TestConfig::fail_second_ddos_callback },
   { "-handshake-never-done", &TestConfig::handshake_never_done },
   { "-use-export-context", &TestConfig::use_export_context },
+  { "-reject-peer-renegotiations", &TestConfig::reject_peer_renegotiations },
 };
 
 const Flag<std::string> kStringFlags[] = {

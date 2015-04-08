@@ -885,6 +885,14 @@ start:
    * that we can process the data at a fixed place. */
 
   if (rr->type == SSL3_RT_HANDSHAKE) {
+    /* If peer renegotiations are disabled, all out-of-order handshake records
+     * are fatal. */
+    if (s->reject_peer_renegotiations) {
+      al = SSL_AD_NO_RENEGOTIATION;
+      OPENSSL_PUT_ERROR(SSL, ssl3_read_bytes, SSL_R_NO_RENEGOTIATION);
+      goto f_err;
+    }
+
     const size_t size = sizeof(s->s3->handshake_fragment);
     const size_t avail = size - s->s3->handshake_fragment_len;
     const size_t todo = (rr->length < avail) ? rr->length : avail;
