@@ -164,6 +164,87 @@ extern "C" {
 #endif
 
 
+/* Initialization. */
+
+/* SSL_library_init initializes the crypto and SSL libraries and returns one. */
+OPENSSL_EXPORT int SSL_library_init(void);
+
+
+/* Cipher suites. */
+
+/* An SSL_CIPHER represents a cipher suite. */
+typedef struct ssl_cipher_st {
+  /* name is the OpenSSL name for the cipher. */
+  const char *name;
+  /* id is the cipher suite value bitwise OR-d with 0x03000000. */
+  uint32_t id;
+
+  /* The following are internal fields. See ssl/internal.h for their values. */
+
+  uint32_t algorithm_mkey;
+  uint32_t algorithm_auth;
+  uint32_t algorithm_enc;
+  uint32_t algorithm_mac;
+  uint32_t algorithm_ssl;
+  uint32_t algo_strength;
+
+  /* algorithm2 contains extra flags. See ssl/internal.h. */
+  uint32_t algorithm2;
+
+  /* strength_bits is the strength of the cipher in bits. */
+  int strength_bits;
+  /* alg_bits is the number of bits of key material used by the algorithm. */
+  int alg_bits;
+} SSL_CIPHER;
+
+DECLARE_STACK_OF(SSL_CIPHER)
+
+/* SSL_get_cipher_by_value returns the structure representing a TLS cipher
+ * suite based on its assigned number, or NULL if unknown. See
+ * https://www.iana.org/assignments/tls-parameters/tls-parameters.xhtml#tls-parameters-4. */
+OPENSSL_EXPORT const SSL_CIPHER *SSL_get_cipher_by_value(uint16_t value);
+
+/* SSL_CIPHER_get_id returns |cipher|'s id. It may be cast to a |uint16_t| to
+ * get the cipher suite value. */
+OPENSSL_EXPORT uint32_t SSL_CIPHER_get_id(const SSL_CIPHER *cipher);
+
+/* SSL_CIPHER_is_AES returns one if |cipher| uses AES (either GCM or CBC
+ * mode). */
+OPENSSL_EXPORT int SSL_CIPHER_is_AES(const SSL_CIPHER *cipher);
+
+/* SSL_CIPHER_has_MD5_HMAC returns one if |cipher| uses HMAC-MD5. */
+OPENSSL_EXPORT int SSL_CIPHER_has_MD5_HMAC(const SSL_CIPHER *cipher);
+
+/* SSL_CIPHER_is_AESGCM returns one if |cipher| uses AES-GCM. */
+OPENSSL_EXPORT int SSL_CIPHER_is_AESGCM(const SSL_CIPHER *cipher);
+
+/* SSL_CIPHER_is_CHACHA20POLY1305 returns one if |cipher| uses
+ * CHACHA20_POLY1305. */
+OPENSSL_EXPORT int SSL_CIPHER_is_CHACHA20POLY1305(const SSL_CIPHER *cipher);
+
+/* SSL_CIPHER_get_name returns the OpenSSL name of |cipher|. */
+OPENSSL_EXPORT const char *SSL_CIPHER_get_name(const SSL_CIPHER *cipher);
+
+/* SSL_CIPHER_get_kx_name returns a string that describes the key-exchange
+ * method used by |cipher|. For example, "ECDHE_ECDSA". */
+OPENSSL_EXPORT const char *SSL_CIPHER_get_kx_name(const SSL_CIPHER *cipher);
+
+/* SSL_CIPHER_get_rfc_name returns a newly-allocated string with the standard
+ * name for |cipher|. For example, "TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256". The
+ * caller is responsible for calling |OPENSSL_free| on the result. */
+OPENSSL_EXPORT char *SSL_CIPHER_get_rfc_name(const SSL_CIPHER *cipher);
+
+/* SSL_CIPHER_get_bits returns the strength, in bits, of |cipher|. If
+ * |out_alg_bits| is not NULL, it writes the number of bits consumed by the
+ * symmetric algorithm to |*out_alg_bits|. */
+OPENSSL_EXPORT int SSL_CIPHER_get_bits(const SSL_CIPHER *cipher,
+                                       int *out_alg_bits);
+
+
+/* Underdocumented functions.
+ *
+ * Functions below here haven't been touched up and may be underdocumented. */
+
 /* SSLeay version number for ASN.1 encoding of the session information */
 /* Version 0 - initial version
  * Version 1 - added the optional peer certificate. */
@@ -254,13 +335,10 @@ extern "C" {
 
 typedef struct ssl_method_st SSL_METHOD;
 typedef struct ssl_protocol_method_st SSL_PROTOCOL_METHOD;
-typedef struct ssl_cipher_st SSL_CIPHER;
 typedef struct ssl_session_st SSL_SESSION;
 typedef struct tls_sigalgs_st TLS_SIGALGS;
 typedef struct ssl_conf_ctx_st SSL_CONF_CTX;
 typedef struct ssl3_enc_method SSL3_ENC_METHOD;
-
-DECLARE_STACK_OF(SSL_CIPHER)
 
 /* SRTP protection profiles for use with the use_srtp extension (RFC 5764). */
 typedef struct srtp_protection_profile_st {
@@ -269,26 +347,6 @@ typedef struct srtp_protection_profile_st {
 } SRTP_PROTECTION_PROFILE;
 
 DECLARE_STACK_OF(SRTP_PROTECTION_PROFILE)
-
-/* used to hold info on the particular ciphers used */
-struct ssl_cipher_st {
-  const char *name; /* text name */
-  uint32_t id; /* id, 4 bytes, first is version */
-
-  /* changed in 0.9.9: these four used to be portions of a single value
-   * 'algorithms' */
-  uint32_t algorithm_mkey; /* key exchange algorithm */
-  uint32_t algorithm_auth; /* server authentication */
-  uint32_t algorithm_enc;  /* symmetric encryption */
-  uint32_t algorithm_mac;  /* symmetric authentication */
-  uint32_t algorithm_ssl;  /* (major) protocol version */
-
-  uint32_t algo_strength; /* strength and export flags */
-  uint32_t algorithm2;    /* Extra flags. See algorithm2 section in
-                             ssl/internal.h */
-  int strength_bits;      /* Number of bits really used */
-  int alg_bits;           /* Number of bits for algorithm */
-};
 
 /* An SSL_SESSION represents an SSL session that may be resumed in an
  * abbreviated handshake. */
@@ -1790,20 +1848,6 @@ OPENSSL_EXPORT int SSL_clear(SSL *s);
 OPENSSL_EXPORT void SSL_CTX_flush_sessions(SSL_CTX *ctx, long tm);
 
 OPENSSL_EXPORT const SSL_CIPHER *SSL_get_current_cipher(const SSL *s);
-OPENSSL_EXPORT int SSL_CIPHER_get_bits(const SSL_CIPHER *c, int *alg_bits);
-OPENSSL_EXPORT const char *SSL_CIPHER_get_version(const SSL_CIPHER *c);
-OPENSSL_EXPORT const char *SSL_CIPHER_get_name(const SSL_CIPHER *c);
-
-/* SSL_CIPHER_get_kx_name returns a string that describes the key-exchange
- * method used by |cipher|. For example, "ECDHE-ECDSA". */
-OPENSSL_EXPORT const char *SSL_CIPHER_get_kx_name(const SSL_CIPHER *cipher);
-
-/* SSL_CIPHER_get_rfc_name returns a newly-allocated string with the standard
- * name for |cipher|. For example, "TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256". The
- * caller is responsible for calling |OPENSSL_free| on the result. */
-OPENSSL_EXPORT char *SSL_CIPHER_get_rfc_name(const SSL_CIPHER *cipher);
-
-OPENSSL_EXPORT uint32_t SSL_CIPHER_get_id(const SSL_CIPHER *c);
 
 OPENSSL_EXPORT int SSL_get_fd(const SSL *s);
 OPENSSL_EXPORT int SSL_get_rfd(const SSL *s);
@@ -2007,11 +2051,6 @@ OPENSSL_EXPORT const char *SSL_get_version(const SSL *s);
  * |sess|. For example, "TLSv1.2" or "SSLv3". */
 OPENSSL_EXPORT const char *SSL_SESSION_get_version(const SSL_SESSION *sess);
 
-OPENSSL_EXPORT int SSL_CIPHER_is_AES(const SSL_CIPHER *c);
-OPENSSL_EXPORT int SSL_CIPHER_has_MD5_HMAC(const SSL_CIPHER *c);
-OPENSSL_EXPORT int SSL_CIPHER_is_AESGCM(const SSL_CIPHER *c);
-OPENSSL_EXPORT int SSL_CIPHER_is_CHACHA20POLY1305(const SSL_CIPHER *c);
-
 /* TLS_method is the SSL_METHOD used for TLS (and SSLv3) connections. */
 OPENSSL_EXPORT const SSL_METHOD *TLS_method(void);
 
@@ -2081,12 +2120,6 @@ OPENSSL_EXPORT void SSL_set_accept_state(SSL *s);
 
 OPENSSL_EXPORT long SSL_get_default_timeout(const SSL *s);
 
-/* SSL_library_init initializes the crypto and SSL libraries, loads their error
- * strings, and returns one. */
-OPENSSL_EXPORT int SSL_library_init(void);
-
-OPENSSL_EXPORT const char *SSL_CIPHER_description(const SSL_CIPHER *, char *buf,
-                                                  int size);
 OPENSSL_EXPORT STACK_OF(X509_NAME) *SSL_dup_CA_list(STACK_OF(X509_NAME) *sk);
 
 OPENSSL_EXPORT X509 *SSL_get_certificate(const SSL *ssl);
@@ -2196,9 +2229,6 @@ OPENSSL_EXPORT void SSL_set_tmp_ecdh_callback(
 
 OPENSSL_EXPORT const void *SSL_get_current_compression(SSL *s);
 OPENSSL_EXPORT const void *SSL_get_current_expansion(SSL *s);
-OPENSSL_EXPORT const char *SSL_COMP_get_name(const void *comp);
-OPENSSL_EXPORT void *SSL_COMP_get_compression_methods(void);
-OPENSSL_EXPORT int SSL_COMP_add_compression_method(int id, void *cm);
 
 OPENSSL_EXPORT int SSL_cache_hit(SSL *s);
 OPENSSL_EXPORT int SSL_is_server(SSL *s);
@@ -2218,16 +2248,37 @@ OPENSSL_EXPORT void SSL_get_structure_sizes(size_t *ssl_size,
 
 OPENSSL_EXPORT void ERR_load_SSL_strings(void);
 
-/* SSL_get_cipher_by_value returns the structure representing a TLS cipher
- * suite based on its assigned number, or NULL if unknown. See
- * https://www.iana.org/assignments/tls-parameters/tls-parameters.xhtml#tls-parameters-4. */
-OPENSSL_EXPORT const SSL_CIPHER *SSL_get_cipher_by_value(uint16_t value);
-
 /* SSL_get_rc4_state sets |*read_key| and |*write_key| to the RC4 states for
  * the read and write directions. It returns one on success or zero if |ssl|
  * isn't using an RC4-based cipher suite. */
 OPENSSL_EXPORT int SSL_get_rc4_state(const SSL *ssl, const RC4_KEY **read_key,
                                      const RC4_KEY **write_key);
+
+
+/* Deprecated functions. */
+
+/* SSL_CIPHER_description writes a description of |cipher| into |buf| and
+ * returns |buf|. If |buf| is NULL, it returns a newly allocated string, to be
+ * freed with |OPENSSL_free|, or NULL on error.
+ *
+ * The description includes a trailing newline and has the form:
+ * AES128-SHA              SSLv3 Kx=RSA      Au=RSA  Enc=AES(128)  Mac=SHA1
+ *
+ * Consider |SSL_CIPHER_get_name| or |SSL_CIPHER_get_rfc_name| instead. */
+OPENSSL_EXPORT const char *SSL_CIPHER_description(const SSL_CIPHER *cipher,
+                                                  char *buf, int len);
+
+/* SSL_CIPHER_get_version returns the string "TLSv1/SSLv3". */
+OPENSSL_EXPORT const char *SSL_CIPHER_get_version(const SSL_CIPHER *cipher);
+
+/* SSL_COMP_get_compression_methods returns NULL. */
+OPENSSL_EXPORT void *SSL_COMP_get_compression_methods(void);
+
+/* SSL_COMP_add_compression_method returns one. */
+OPENSSL_EXPORT int SSL_COMP_add_compression_method(int id, void *cm);
+
+/* SSL_COMP_get_name returns NULL. */
+OPENSSL_EXPORT const char *SSL_COMP_get_name(const void *comp);
 
 
 /* Android compatibility section.

@@ -244,7 +244,7 @@ int tls1_prf(SSL *s, uint8_t *out, size_t out_len, const uint8_t *secret,
 
   /* Count number of digests and partition |secret| evenly. */
   count = 0;
-  for (idx = 0; ssl_get_handshake_digest(idx, &m, &md); idx++) {
+  for (idx = 0; ssl_get_handshake_digest(&m, &md, idx); idx++) {
     if ((m << TLS1_PRF_DGST_SHIFT) & ssl_get_algorithm2(s)) {
       count++;
     }
@@ -259,7 +259,7 @@ int tls1_prf(SSL *s, uint8_t *out, size_t out_len, const uint8_t *secret,
   }
   S1 = secret;
   memset(out, 0, out_len);
-  for (idx = 0; ssl_get_handshake_digest(idx, &m, &md); idx++) {
+  for (idx = 0; ssl_get_handshake_digest(&m, &md, idx); idx++) {
     if ((m << TLS1_PRF_DGST_SHIFT) & ssl_get_algorithm2(s)) {
       /* If |count| is 2 and |secret_len| is odd, |secret| is partitioned into
        * two halves with an overlapping byte. */
@@ -759,7 +759,7 @@ int tls1_handshake_digest(SSL *s, uint8_t *out, size_t out_len) {
 
   EVP_MD_CTX_init(&ctx);
 
-  for (i = 0; ssl_get_handshake_digest(i, &mask, &md); i++) {
+  for (i = 0; ssl_get_handshake_digest(&mask, &md, i); i++) {
     size_t hash_size;
     unsigned int digest_len;
     EVP_MD_CTX *hdgst = s->s3->handshake_dgst[i];

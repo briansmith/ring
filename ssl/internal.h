@@ -149,6 +149,142 @@
 #include <openssl/stack.h>
 
 
+/* Cipher suites. */
+
+/* Bits for |algorithm_mkey| (key exchange algorithm). */
+#define SSL_kRSA 0x00000001L
+#define SSL_kDHE 0x00000002L
+#define SSL_kECDHE 0x00000004L
+/* SSL_kPSK is only set for plain PSK, not ECDHE_PSK. */
+#define SSL_kPSK 0x00000008L
+
+/* Bits for |algorithm_auth| (server authentication). */
+#define SSL_aRSA 0x00000001L
+#define SSL_aECDSA 0x00000002L
+/* SSL_aPSK is set for both PSK and ECDHE_PSK. */
+#define SSL_aPSK 0x00000004L
+
+/* Bits for |algorithm_enc| (symmetric encryption). */
+#define SSL_3DES 0x00000001L
+#define SSL_RC4 0x00000002L
+#define SSL_AES128 0x00000004L
+#define SSL_AES256 0x00000008L
+#define SSL_AES128GCM 0x00000010L
+#define SSL_AES256GCM 0x00000020L
+#define SSL_CHACHA20POLY1305 0x00000040L
+
+#define SSL_AES (SSL_AES128 | SSL_AES256 | SSL_AES128GCM | SSL_AES256GCM)
+
+/* Bits for |algorithm_mac| (symmetric authentication). */
+#define SSL_MD5 0x00000001L
+#define SSL_SHA1 0x00000002L
+#define SSL_SHA256 0x00000004L
+#define SSL_SHA384 0x00000008L
+/* SSL_AEAD is set for all AEADs. */
+#define SSL_AEAD 0x00000010L
+
+/* Bits for |algorithm_ssl| (protocol version). These denote the first protocol
+ * version which introduced the cipher.
+ *
+ * TODO(davidben): These are extremely confusing, both in code and in
+ * cipher rules. Try to remove them. */
+#define SSL_SSLV3 0x00000002L
+#define SSL_TLSV1 SSL_SSLV3
+#define SSL_TLSV1_2 0x00000004L
+
+/* Bits for |algorithm2| (handshake digests and other extra flags). */
+
+#define SSL_HANDSHAKE_MAC_MD5 0x10
+#define SSL_HANDSHAKE_MAC_SHA 0x20
+#define SSL_HANDSHAKE_MAC_SHA256 0x40
+#define SSL_HANDSHAKE_MAC_SHA384 0x80
+#define SSL_HANDSHAKE_MAC_DEFAULT \
+  (SSL_HANDSHAKE_MAC_MD5 | SSL_HANDSHAKE_MAC_SHA)
+
+/* SSL_MAX_DIGEST is the number of digest types which exist. When adding a new
+ * one, update the table in ssl_cipher.c. */
+#define SSL_MAX_DIGEST 4
+
+#define TLS1_PRF_DGST_MASK (0xff << TLS1_PRF_DGST_SHIFT)
+
+#define TLS1_PRF_DGST_SHIFT 10
+#define TLS1_PRF_MD5 (SSL_HANDSHAKE_MAC_MD5 << TLS1_PRF_DGST_SHIFT)
+#define TLS1_PRF_SHA1 (SSL_HANDSHAKE_MAC_SHA << TLS1_PRF_DGST_SHIFT)
+#define TLS1_PRF_SHA256 (SSL_HANDSHAKE_MAC_SHA256 << TLS1_PRF_DGST_SHIFT)
+#define TLS1_PRF_SHA384 (SSL_HANDSHAKE_MAC_SHA384 << TLS1_PRF_DGST_SHIFT)
+#define TLS1_PRF (TLS1_PRF_MD5 | TLS1_PRF_SHA1)
+
+/* SSL_CIPHER_ALGORITHM2_AEAD is a flag in SSL_CIPHER.algorithm2 which
+ * indicates that the cipher is implemented via an EVP_AEAD. */
+#define SSL_CIPHER_ALGORITHM2_AEAD (1 << 23)
+
+/* SSL_CIPHER_ALGORITHM2_VARIABLE_NONCE_INCLUDED_IN_RECORD is a flag in
+ * SSL_CIPHER.algorithm2 which indicates that the variable part of the nonce is
+ * included as a prefix of the record. (AES-GCM, for example, does with with an
+ * 8-byte variable nonce.) */
+#define SSL_CIPHER_ALGORITHM2_VARIABLE_NONCE_INCLUDED_IN_RECORD (1<<22)
+
+/* Bits for |algo_strength|, cipher strength information. */
+#define SSL_MEDIUM 0x00000001L
+#define SSL_HIGH 0x00000002L
+#define SSL_FIPS 0x00000004L
+
+/* ssl_cipher_get_evp_aead sets |*out_aead| to point to the correct EVP_AEAD
+ * object for |cipher| protocol version |version|. It sets |*out_mac_secret_len|
+ * and |*out_fixed_iv_len| to the MAC key length and fixed IV length,
+ * respectively. The MAC key length is zero except for legacy block and stream
+ * ciphers. It returns 1 on success and 0 on error. */
+int ssl_cipher_get_evp_aead(const EVP_AEAD **out_aead,
+                            size_t *out_mac_secret_len,
+                            size_t *out_fixed_iv_len,
+                            const SSL_CIPHER *cipher, uint16_t version);
+
+/* ssl_get_handshake_digest looks up the |i|th handshake digest type and sets
+ * |*out_mask| to the |SSL_HANDSHAKE_MAC_*| mask and |*out_md| to the
+ * |EVP_MD|. It returns one on successs and zero if |i| >= |SSL_MAX_DIGEST|. */
+int ssl_get_handshake_digest(uint32_t *out_mask, const EVP_MD **out_md,
+                             size_t i);
+
+/* ssl_create_cipher_list evaluates |rule_str| according to the ciphers in
+ * |ssl_method|. It sets |*out_cipher_list| to a newly-allocated
+ * |ssl_cipher_preference_list_st| containing the result.
+ * |*out_cipher_list_by_id| is set to a list of selected ciphers sorted by
+ * id. It returns |(*out_cipher_list)->ciphers| on success and NULL on
+ * failure. */
+STACK_OF(SSL_CIPHER) *
+ssl_create_cipher_list(const SSL_PROTOCOL_METHOD *ssl_method,
+                       struct ssl_cipher_preference_list_st **out_cipher_list,
+                       STACK_OF(SSL_CIPHER) **out_cipher_list_by_id,
+                       const char *rule_str);
+
+/* SSL_PKEY_* denote certificate types. */
+#define SSL_PKEY_RSA_ENC 0
+#define SSL_PKEY_RSA_SIGN 1
+#define SSL_PKEY_ECC 2
+#define SSL_PKEY_NUM 3
+
+/* ssl_cipher_get_cert_index returns the |SSL_PKEY_*| value corresponding to the
+ * certificate type of |cipher| or -1 if there is none. */
+int ssl_cipher_get_cert_index(const SSL_CIPHER *cipher);
+
+/* ssl_cipher_has_server_public_key returns 1 if |cipher| involves a server
+ * public key in the key exchange, sent in a server Certificate message.
+ * Otherwise it returns 0. */
+int ssl_cipher_has_server_public_key(const SSL_CIPHER *cipher);
+
+/* ssl_cipher_requires_server_key_exchange returns 1 if |cipher| requires a
+ * ServerKeyExchange message. Otherwise it returns 0.
+ *
+ * Unlike ssl_cipher_has_server_public_key, some ciphers take optional
+ * ServerKeyExchanges. PSK and RSA_PSK only use the ServerKeyExchange to
+ * communicate a psk_identity_hint, so it is optional. */
+int ssl_cipher_requires_server_key_exchange(const SSL_CIPHER *cipher);
+
+
+/* Underdocumented functions.
+ *
+ * Functions below here haven't been touched up and may be underdocumented. */
+
 #define c2l(c, l)                                                            \
   (l = ((unsigned long)(*((c)++))), l |= (((unsigned long)(*((c)++))) << 8), \
    l |= (((unsigned long)(*((c)++))) << 16),                                 \
@@ -263,94 +399,7 @@
 #define DEC32(a) ((a) = ((a)-1) & 0xffffffffL)
 #define MAX_MAC_SIZE 20 /* up from 16 for SSLv3 */
 
-/* Define the Bitmasks for SSL_CIPHER.algorithms.
- *
- * This bits are used packed as dense as possible. If new methods/ciphers etc
- * will be added, the bits a likely to change, so this information is for
- * internal library use only, even though SSL_CIPHER.algorithms can be publicly
- * accessed. Use the according functions for cipher management instead.
- *
- * The bit mask handling in the selection and sorting scheme in
- * ssl_create_cipher_list() has only limited capabilities, reflecting that the
- * different entities within are mutually exclusive:
- * ONLY ONE BIT PER MASK CAN BE SET AT A TIME. */
-
-/* Bits for algorithm_mkey (key exchange algorithm) */
-#define SSL_kRSA 0x00000001L   /* RSA key exchange */
-#define SSL_kDHE 0x00000002L   /* tmp DH key no DH cert */
-#define SSL_kECDHE 0x00000004L /* ephemeral ECDH */
-#define SSL_kPSK 0x00000008L   /* PSK */
-
-/* Bits for algorithm_auth (server authentication) */
-#define SSL_aRSA 0x00000001L   /* RSA auth */
-#define SSL_aECDSA 0x00000002L /* ECDSA auth*/
-#define SSL_aPSK 0x00000004L   /* PSK auth */
-
-/* Bits for algorithm_enc (symmetric encryption) */
-#define SSL_3DES 0x00000001L
-#define SSL_RC4 0x00000002L
-#define SSL_AES128 0x00000004L
-#define SSL_AES256 0x00000008L
-#define SSL_AES128GCM 0x00000010L
-#define SSL_AES256GCM 0x00000020L
-#define SSL_CHACHA20POLY1305 0x00000040L
-
-#define SSL_AES (SSL_AES128 | SSL_AES256 | SSL_AES128GCM | SSL_AES256GCM)
-
-/* Bits for algorithm_mac (symmetric authentication) */
-
-#define SSL_MD5 0x00000001L
-#define SSL_SHA1 0x00000002L
-#define SSL_SHA256 0x00000004L
-#define SSL_SHA384 0x00000008L
-/* Not a real MAC, just an indication it is part of cipher */
-#define SSL_AEAD 0x00000010L
-
-/* Bits for algorithm_ssl (protocol version) */
-#define SSL_SSLV3 0x00000002L
-#define SSL_TLSV1 SSL_SSLV3 /* for now */
-#define SSL_TLSV1_2 0x00000004L
-
-/* Bits for algorithm2 (handshake digests and other extra flags) */
-
-#define SSL_HANDSHAKE_MAC_MD5 0x10
-#define SSL_HANDSHAKE_MAC_SHA 0x20
-#define SSL_HANDSHAKE_MAC_SHA256 0x40
-#define SSL_HANDSHAKE_MAC_SHA384 0x80
-#define SSL_HANDSHAKE_MAC_DEFAULT \
-  (SSL_HANDSHAKE_MAC_MD5 | SSL_HANDSHAKE_MAC_SHA)
-
-/* When adding new digest in the ssl_ciph.c and increment SSM_MD_NUM_IDX
- * make sure to update this constant too */
-#define SSL_MAX_DIGEST 4
-
-#define TLS1_PRF_DGST_MASK (0xff << TLS1_PRF_DGST_SHIFT)
-
-#define TLS1_PRF_DGST_SHIFT 10
-#define TLS1_PRF_MD5 (SSL_HANDSHAKE_MAC_MD5 << TLS1_PRF_DGST_SHIFT)
-#define TLS1_PRF_SHA1 (SSL_HANDSHAKE_MAC_SHA << TLS1_PRF_DGST_SHIFT)
-#define TLS1_PRF_SHA256 (SSL_HANDSHAKE_MAC_SHA256 << TLS1_PRF_DGST_SHIFT)
-#define TLS1_PRF_SHA384 (SSL_HANDSHAKE_MAC_SHA384 << TLS1_PRF_DGST_SHIFT)
-#define TLS1_PRF (TLS1_PRF_MD5 | TLS1_PRF_SHA1)
-
 #define TLSEXT_CHANNEL_ID_SIZE 128
-
-/* SSL_CIPHER_ALGORITHM2_AEAD is a flag in SSL_CIPHER.algorithm2 which
- * indicates that the cipher is implemented via an EVP_AEAD. */
-#define SSL_CIPHER_ALGORITHM2_AEAD (1 << 23)
-
-/* SSL_CIPHER_ALGORITHM2_VARIABLE_NONCE_INCLUDED_IN_RECORD is a flag in
- * SSL_CIPHER.algorithm2 which indicates that the variable part of the nonce is
- * included as a prefix of the record. (AES-GCM, for example, does with with an
- * 8-byte variable nonce.) */
-#define SSL_CIPHER_ALGORITHM2_VARIABLE_NONCE_INCLUDED_IN_RECORD (1<<22)
-
-/* Cipher strength information. */
-#define SSL_MEDIUM 0x00000001L
-#define SSL_HIGH 0x00000002L
-#define SSL_FIPS 0x00000004L
-
-/* we have used 000001ff - 23 bits left to go */
 
 /* Check if an SSL structure is using DTLS */
 #define SSL_IS_DTLS(s) (s->method->is_dtls)
@@ -369,12 +418,6 @@
 #define SSL_CLIENT_USE_TLS1_2_CIPHERS(s)                       \
   ((SSL_IS_DTLS(s) && s->client_version <= DTLS1_2_VERSION) || \
    (!SSL_IS_DTLS(s) && s->client_version >= TLS1_2_VERSION))
-
-/* Mostly for SSLv3 */
-#define SSL_PKEY_RSA_ENC 0
-#define SSL_PKEY_RSA_SIGN 1
-#define SSL_PKEY_ECC 2
-#define SSL_PKEY_NUM 3
 
 /* SSL_kRSA <- RSA_ENC | (RSA_TMP & RSA_SIGN) |
  * 	    <- (EXPORT & (RSA_ENC | RSA_TMP) & RSA_SIGN)
@@ -644,11 +687,6 @@ int ssl_cipher_id_cmp(const void *in_a, const void *in_b);
 int ssl_cipher_ptr_id_cmp(const SSL_CIPHER **ap, const SSL_CIPHER **bp);
 STACK_OF(SSL_CIPHER) * ssl_bytes_to_cipher_list(SSL *s, const CBS *cbs);
 int ssl_cipher_list_to_bytes(SSL *s, STACK_OF(SSL_CIPHER) * sk, uint8_t *p);
-STACK_OF(SSL_CIPHER) *
-    ssl_create_cipher_list(const SSL_PROTOCOL_METHOD *meth,
-                           struct ssl_cipher_preference_list_st **pref,
-                           STACK_OF(SSL_CIPHER) * *sorted, const char *rule_str,
-                           CERT *c);
 struct ssl_cipher_preference_list_st *ssl_cipher_preference_list_dup(
     struct ssl_cipher_preference_list_st *cipher_list);
 void ssl_cipher_preference_list_free(
@@ -656,21 +694,6 @@ void ssl_cipher_preference_list_free(
 struct ssl_cipher_preference_list_st *ssl_cipher_preference_list_from_ciphers(
     STACK_OF(SSL_CIPHER) * ciphers);
 struct ssl_cipher_preference_list_st *ssl_get_cipher_preferences(SSL *s);
-
-/* ssl_cipher_get_evp_aead sets |*out_aead| to point to the correct EVP_AEAD
-* object for |cipher| protocol version |version|. It sets |*out_mac_secret_len|
-* and |*out_fixed_iv_len| to the MAC key length and fixed IV length,
-* respectively. The MAC key length is zero except for legacy block and stream
-* ciphers. It returns 1 on success and 0 on error. */
-int ssl_cipher_get_evp_aead(const EVP_AEAD **out_aead,
-                            size_t *out_mac_secret_len,
-                            size_t *out_fixed_iv_len,
-                            const SSL_CIPHER *cipher, uint16_t version);
-
-int ssl_get_handshake_digest(size_t i, uint32_t *mask, const EVP_MD **md);
-int ssl_cipher_get_cert_index(const SSL_CIPHER *c);
-int ssl_cipher_has_server_public_key(const SSL_CIPHER *cipher);
-int ssl_cipher_requires_server_key_exchange(const SSL_CIPHER *cipher);
 
 int ssl_cert_set0_chain(CERT *c, STACK_OF(X509) * chain);
 int ssl_cert_set1_chain(CERT *c, STACK_OF(X509) * chain);

@@ -142,11 +142,12 @@
 #include <stdio.h>
 #include <string.h>
 
+#include <openssl/buf.h>
 #include <openssl/err.h>
 #include <openssl/md5.h>
 #include <openssl/mem.h>
-#include <openssl/obj.h>
 #include <openssl/sha.h>
+#include <openssl/stack.h>
 
 #include "internal.h"
 
@@ -376,12 +377,13 @@ int ssl_cipher_get_evp_aead(const EVP_AEAD **out_aead,
   }
 }
 
-int ssl_get_handshake_digest(size_t idx, uint32_t *mask, const EVP_MD **md) {
+int ssl_get_handshake_digest(uint32_t *out_mask, const EVP_MD **out_md,
+                             size_t idx) {
   if (idx >= SSL_MAX_DIGEST) {
     return 0;
   }
-  *mask = ssl_handshake_digests[idx].mask;
-  *md = ssl_handshake_digests[idx].md_func();
+  *out_mask = ssl_handshake_digests[idx].mask;
+  *out_md = ssl_handshake_digests[idx].md_func();
   return 1;
 }
 
@@ -846,9 +848,9 @@ static int ssl_cipher_process_rulestr(const SSL_PROTOCOL_METHOD *ssl_method,
 
 STACK_OF(SSL_CIPHER) *
 ssl_create_cipher_list(const SSL_PROTOCOL_METHOD *ssl_method,
-                       struct ssl_cipher_preference_list_st **cipher_list,
-                       STACK_OF(SSL_CIPHER) * *cipher_list_by_id,
-                       const char *rule_str, CERT *c) {
+                       struct ssl_cipher_preference_list_st **out_cipher_list,
+                       STACK_OF(SSL_CIPHER) **out_cipher_list_by_id,
+                       const char *rule_str) {
   int ok;
   size_t num_of_ciphers;
   STACK_OF(SSL_CIPHER) *cipherstack = NULL, *tmp_cipher_list = NULL;
@@ -859,7 +861,7 @@ ssl_create_cipher_list(const SSL_PROTOCOL_METHOD *ssl_method,
   struct ssl_cipher_preference_list_st *pref_list = NULL;
 
   /* Return with error if nothing to do. */
-  if (rule_str == NULL || cipher_list == NULL) {
+  if (rule_str == NULL || out_cipher_list == NULL) {
     return NULL;
   }
 
@@ -994,21 +996,22 @@ ssl_create_cipher_list(const SSL_PROTOCOL_METHOD *ssl_method,
   memcpy(pref_list->in_group_flags, in_group_flags, num_in_group_flags);
   OPENSSL_free(in_group_flags);
   in_group_flags = NULL;
-  if (*cipher_list != NULL) {
-    ssl_cipher_preference_list_free(*cipher_list);
+  if (*out_cipher_list != NULL) {
+    ssl_cipher_preference_list_free(*out_cipher_list);
   }
-  *cipher_list = pref_list;
+  *out_cipher_list = pref_list;
   pref_list = NULL;
 
-  if (cipher_list_by_id != NULL) {
-    if (*cipher_list_by_id != NULL) {
-      sk_SSL_CIPHER_free(*cipher_list_by_id);
+  if (out_cipher_list_by_id != NULL) {
+    if (*out_cipher_list_by_id != NULL) {
+      sk_SSL_CIPHER_free(*out_cipher_list_by_id);
     }
-    *cipher_list_by_id = tmp_cipher_list;
+    *out_cipher_list_by_id = tmp_cipher_list;
     tmp_cipher_list = NULL;
-    (void) sk_SSL_CIPHER_set_cmp_func(*cipher_list_by_id, ssl_cipher_ptr_id_cmp);
+    (void) sk_SSL_CIPHER_set_cmp_func(*out_cipher_list_by_id,
+                                      ssl_cipher_ptr_id_cmp);
 
-    sk_SSL_CIPHER_sort(*cipher_list_by_id);
+    sk_SSL_CIPHER_sort(*out_cipher_list_by_id);
   } else {
     sk_SSL_CIPHER_free(tmp_cipher_list);
     tmp_cipher_list = NULL;
@@ -1036,6 +1039,161 @@ err:
     OPENSSL_free(pref_list);
   }
   return NULL;
+}
+
+uint32_t SSL_CIPHER_get_id(const SSL_CIPHER *cipher) { return cipher->id; }
+
+int SSL_CIPHER_is_AES(const SSL_CIPHER *cipher) {
+  return (cipher->algorithm_enc & SSL_AES) != 0;
+}
+
+int SSL_CIPHER_has_MD5_HMAC(const SSL_CIPHER *cipher) {
+  return (cipher->algorithm_mac & SSL_MD5) != 0;
+}
+
+int SSL_CIPHER_is_AESGCM(const SSL_CIPHER *cipher) {
+  return (cipher->algorithm_mac & (SSL_AES128GCM | SSL_AES256GCM)) != 0;
+}
+
+int SSL_CIPHER_is_CHACHA20POLY1305(const SSL_CIPHER *cipher) {
+  return (cipher->algorithm_enc & SSL_CHACHA20POLY1305) != 0;
+}
+
+/* return the actual cipher being used */
+const char *SSL_CIPHER_get_name(const SSL_CIPHER *cipher) {
+  if (cipher != NULL) {
+    return cipher->name;
+  }
+
+  return "(NONE)";
+}
+
+const char *SSL_CIPHER_get_kx_name(const SSL_CIPHER *cipher) {
+  if (cipher == NULL) {
+    return "";
+  }
+
+  switch (cipher->algorithm_mkey) {
+    case SSL_kRSA:
+      return "RSA";
+
+    case SSL_kDHE:
+      switch (cipher->algorithm_auth) {
+        case SSL_aRSA:
+          return "DHE_RSA";
+        default:
+          assert(0);
+          return "UNKNOWN";
+      }
+
+    case SSL_kECDHE:
+      switch (cipher->algorithm_auth) {
+        case SSL_aECDSA:
+          return "ECDHE_ECDSA";
+        case SSL_aRSA:
+          return "ECDHE_RSA";
+        case SSL_aPSK:
+          return "ECDHE_PSK";
+        default:
+          assert(0);
+          return "UNKNOWN";
+      }
+
+    case SSL_kPSK:
+      assert(cipher->algorithm_auth == SSL_aPSK);
+      return "PSK";
+
+    default:
+      assert(0);
+      return "UNKNOWN";
+  }
+}
+
+static const char *ssl_cipher_get_enc_name(const SSL_CIPHER *cipher) {
+  switch (cipher->algorithm_enc) {
+    case SSL_3DES:
+      return "3DES_EDE_CBC";
+    case SSL_RC4:
+      return "RC4";
+    case SSL_AES128:
+      return "AES_128_CBC";
+    case SSL_AES256:
+      return "AES_256_CBC";
+    case SSL_AES128GCM:
+      return "AES_128_GCM";
+    case SSL_AES256GCM:
+      return "AES_256_GCM";
+    case SSL_CHACHA20POLY1305:
+      return "CHACHA20_POLY1305";
+      break;
+    default:
+      assert(0);
+      return "UNKNOWN";
+  }
+}
+
+static const char *ssl_cipher_get_prf_name(const SSL_CIPHER *cipher) {
+  if ((cipher->algorithm2 & TLS1_PRF) == TLS1_PRF) {
+    /* Before TLS 1.2, the PRF component is the hash used in the HMAC, which is
+     * only ever MD5 or SHA-1. */
+    switch (cipher->algorithm_mac) {
+      case SSL_MD5:
+        return "MD5";
+      case SSL_SHA1:
+        return "SHA";
+      default:
+        assert(0);
+        return "UNKNOWN";
+    }
+  } else if (cipher->algorithm2 & TLS1_PRF_SHA256) {
+    return "SHA256";
+  } else if (cipher->algorithm2 & TLS1_PRF_SHA384) {
+    return "SHA384";
+  } else {
+    assert(0);
+    return "UNKNOWN";
+  }
+}
+
+char *SSL_CIPHER_get_rfc_name(const SSL_CIPHER *cipher) {
+  if (cipher == NULL) {
+    return NULL;
+  }
+
+  const char *kx_name = SSL_CIPHER_get_kx_name(cipher);
+  const char *enc_name = ssl_cipher_get_enc_name(cipher);
+  const char *prf_name = ssl_cipher_get_prf_name(cipher);
+
+  /* The final name is TLS_{kx_name}_WITH_{enc_name}_{prf_name}. */
+  size_t len = 4 + strlen(kx_name) + 6 + strlen(enc_name) + 1 +
+      strlen(prf_name) + 1;
+  char *ret = OPENSSL_malloc(len);
+  if (ret == NULL) {
+    return NULL;
+  }
+  if (BUF_strlcpy(ret, "TLS_", len) >= len ||
+      BUF_strlcat(ret, kx_name, len) >= len ||
+      BUF_strlcat(ret, "_WITH_", len) >= len ||
+      BUF_strlcat(ret, enc_name, len) >= len ||
+      BUF_strlcat(ret, "_", len) >= len ||
+      BUF_strlcat(ret, prf_name, len) >= len) {
+    assert(0);
+    OPENSSL_free(ret);
+    return NULL;
+  }
+  assert(strlen(ret) + 1 == len);
+  return ret;
+}
+
+int SSL_CIPHER_get_bits(const SSL_CIPHER *cipher, int *out_alg_bits) {
+  if (cipher == NULL) {
+    return 0;
+  }
+
+  if (out_alg_bits != NULL) {
+    *out_alg_bits = cipher->alg_bits;
+  }
+  return cipher->strength_bits;
 }
 
 const char *SSL_CIPHER_description(const SSL_CIPHER *cipher, char *buf,
@@ -1172,180 +1330,9 @@ const char *SSL_CIPHER_description(const SSL_CIPHER *cipher, char *buf,
   return buf;
 }
 
-int SSL_CIPHER_is_AES(const SSL_CIPHER *c) {
-  return (c->algorithm_enc & SSL_AES) != 0;
+const char *SSL_CIPHER_get_version(const SSL_CIPHER *cipher) {
+  return "TLSv1/SSLv3";
 }
-
-int SSL_CIPHER_has_MD5_HMAC(const SSL_CIPHER *c) {
-  return (c->algorithm_mac & SSL_MD5) != 0;
-}
-
-int SSL_CIPHER_is_AESGCM(const SSL_CIPHER *c) {
-  return (c->algorithm_mac & (SSL_AES128GCM | SSL_AES256GCM)) != 0;
-}
-
-int SSL_CIPHER_is_CHACHA20POLY1305(const SSL_CIPHER *c) {
-  return (c->algorithm_enc & SSL_CHACHA20POLY1305) != 0;
-}
-
-const char *SSL_CIPHER_get_version(const SSL_CIPHER *c) {
-  int i;
-
-  if (c == NULL) {
-    return "(NONE)";
-  }
-
-  i = (int)(c->id >> 24L);
-  if (i == 3) {
-    return "TLSv1/SSLv3";
-  } else if (i == 2) {
-    return "SSLv2";
-  } else {
-    return "unknown";
-  }
-}
-
-/* return the actual cipher being used */
-const char *SSL_CIPHER_get_name(const SSL_CIPHER *c) {
-  if (c != NULL) {
-    return c->name;
-  }
-
-  return "(NONE)";
-}
-
-const char *SSL_CIPHER_get_kx_name(const SSL_CIPHER *cipher) {
-  if (cipher == NULL) {
-    return "";
-  }
-
-  switch (cipher->algorithm_mkey) {
-    case SSL_kRSA:
-      return "RSA";
-
-    case SSL_kDHE:
-      switch (cipher->algorithm_auth) {
-        case SSL_aRSA:
-          return "DHE_RSA";
-        default:
-          assert(0);
-          return "UNKNOWN";
-      }
-
-    case SSL_kECDHE:
-      switch (cipher->algorithm_auth) {
-        case SSL_aECDSA:
-          return "ECDHE_ECDSA";
-        case SSL_aRSA:
-          return "ECDHE_RSA";
-        case SSL_aPSK:
-          return "ECDHE_PSK";
-        default:
-          assert(0);
-          return "UNKNOWN";
-      }
-
-    case SSL_kPSK:
-      assert(cipher->algorithm_auth == SSL_aPSK);
-      return "PSK";
-
-    default:
-      assert(0);
-      return "UNKNOWN";
-  }
-}
-
-static const char *ssl_cipher_get_enc_name(const SSL_CIPHER *cipher) {
-  switch (cipher->algorithm_enc) {
-    case SSL_3DES:
-      return "3DES_EDE_CBC";
-    case SSL_RC4:
-      return "RC4";
-    case SSL_AES128:
-      return "AES_128_CBC";
-    case SSL_AES256:
-      return "AES_256_CBC";
-    case SSL_AES128GCM:
-      return "AES_128_GCM";
-    case SSL_AES256GCM:
-      return "AES_256_GCM";
-    case SSL_CHACHA20POLY1305:
-      return "CHACHA20_POLY1305";
-      break;
-    default:
-      assert(0);
-      return "UNKNOWN";
-  }
-}
-
-static const char *ssl_cipher_get_prf_name(const SSL_CIPHER *cipher) {
-  if ((cipher->algorithm2 & TLS1_PRF) == TLS1_PRF) {
-    /* Before TLS 1.2, the PRF component is the hash used in the HMAC, which is
-     * only ever MD5 or SHA-1. */
-    switch (cipher->algorithm_mac) {
-      case SSL_MD5:
-        return "MD5";
-      case SSL_SHA1:
-        return "SHA";
-      default:
-        assert(0);
-        return "UNKNOWN";
-    }
-  } else if (cipher->algorithm2 & TLS1_PRF_SHA256) {
-    return "SHA256";
-  } else if (cipher->algorithm2 & TLS1_PRF_SHA384) {
-    return "SHA384";
-  } else {
-    assert(0);
-    return "UNKNOWN";
-  }
-}
-
-char *SSL_CIPHER_get_rfc_name(const SSL_CIPHER *cipher) {
-  if (cipher == NULL) {
-    return NULL;
-  }
-
-  const char *kx_name = SSL_CIPHER_get_kx_name(cipher);
-  const char *enc_name = ssl_cipher_get_enc_name(cipher);
-  const char *prf_name = ssl_cipher_get_prf_name(cipher);
-
-  /* The final name is TLS_{kx_name}_WITH_{enc_name}_{prf_name}. */
-  size_t len = 4 + strlen(kx_name) + 6 + strlen(enc_name) + 1 +
-      strlen(prf_name) + 1;
-  char *ret = OPENSSL_malloc(len);
-  if (ret == NULL) {
-    return NULL;
-  }
-  if (BUF_strlcpy(ret, "TLS_", len) >= len ||
-      BUF_strlcat(ret, kx_name, len) >= len ||
-      BUF_strlcat(ret, "_WITH_", len) >= len ||
-      BUF_strlcat(ret, enc_name, len) >= len ||
-      BUF_strlcat(ret, "_", len) >= len ||
-      BUF_strlcat(ret, prf_name, len) >= len) {
-    assert(0);
-    OPENSSL_free(ret);
-    return NULL;
-  }
-  assert(strlen(ret) + 1 == len);
-  return ret;
-}
-
-/* number of bits for symmetric cipher */
-int SSL_CIPHER_get_bits(const SSL_CIPHER *c, int *alg_bits) {
-  int ret = 0;
-
-  if (c != NULL) {
-    if (alg_bits != NULL) {
-      *alg_bits = c->alg_bits;
-    }
-    ret = c->strength_bits;
-  }
-
-  return ret;
-}
-
-uint32_t SSL_CIPHER_get_id(const SSL_CIPHER *c) { return c->id; }
 
 void *SSL_COMP_get_compression_methods(void) { return NULL; }
 
@@ -1353,9 +1340,8 @@ int SSL_COMP_add_compression_method(int id, void *cm) { return 1; }
 
 const char *SSL_COMP_get_name(const void *comp) { return NULL; }
 
-/* For a cipher return the index corresponding to the certificate type */
-int ssl_cipher_get_cert_index(const SSL_CIPHER *c) {
-  uint32_t alg_a = c->algorithm_auth;
+int ssl_cipher_get_cert_index(const SSL_CIPHER *cipher) {
+  uint32_t alg_a = cipher->algorithm_auth;
 
   if (alg_a & SSL_aECDSA) {
     return SSL_PKEY_ECC;
@@ -1366,9 +1352,6 @@ int ssl_cipher_get_cert_index(const SSL_CIPHER *c) {
   return -1;
 }
 
-/* ssl_cipher_has_server_public_key returns 1 if |cipher| involves a server
- * public key in the key exchange, sent in a server Certificate message.
- * Otherwise it returns 0. */
 int ssl_cipher_has_server_public_key(const SSL_CIPHER *cipher) {
   /* PSK-authenticated ciphers do not use a public key, except for
    * RSA_PSK. */
@@ -1381,12 +1364,6 @@ int ssl_cipher_has_server_public_key(const SSL_CIPHER *cipher) {
   return 1;
 }
 
-/* ssl_cipher_requires_server_key_exchange returns 1 if |cipher| requires a
- * ServerKeyExchange message. Otherwise it returns 0.
- *
- * Unlike ssl_cipher_has_server_public_key, some ciphers take optional
- * ServerKeyExchanges. PSK and RSA_PSK only use the ServerKeyExchange to
- * communicate a psk_identity_hint, so it is optional. */
 int ssl_cipher_requires_server_key_exchange(const SSL_CIPHER *cipher) {
   /* Ephemeral Diffie-Hellman key exchanges require a ServerKeyExchange. */
   if (cipher->algorithm_mkey & SSL_kDHE || cipher->algorithm_mkey & SSL_kECDHE) {
