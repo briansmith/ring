@@ -111,7 +111,9 @@ func extractComment(lines []string, lineNo int) (comment []string, rest []string
 			err = fmt.Errorf("comment doesn't start with block prefix on line %d: %s", restLineNo, line)
 			return
 		}
-		line = line[2:]
+		if len(line) == 2 || line[2] != '/' {
+			line = line[2:]
+		}
 		if strings.HasPrefix(line, "   ") {
 			/* Identing the lines of a paragraph marks them as
 			* preformatted. */
@@ -193,7 +195,7 @@ func extractDecl(lines []string, lineNo int) (decl string, rest []string, restLi
 func skipPast(s, skip string) string {
 	i := strings.Index(s, skip)
 	if i > 0 {
-		return s[len(skip):]
+		return s[i:]
 	}
 	return s
 }
