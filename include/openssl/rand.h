@@ -22,6 +22,9 @@ extern "C" {
 #endif
 
 
+/* Random number generation. */
+
+
 /* RAND_bytes writes |len| bytes of random data to |buf|. It returns one on
  * success and zero on otherwise. */
 OPENSSL_EXPORT int RAND_bytes(uint8_t *buf, size_t len);
