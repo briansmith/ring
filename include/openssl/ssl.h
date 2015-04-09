@@ -164,6 +164,9 @@ extern "C" {
 #endif
 
 
+/* SSL implementation. */
+
+
 /* Initialization. */
 
 /* SSL_library_init initializes the crypto and SSL libraries and returns one. */
@@ -2057,42 +2060,6 @@ OPENSSL_EXPORT const SSL_METHOD *TLS_method(void);
 /* DTLS_method is the SSL_METHOD used for DTLS connections. */
 OPENSSL_EXPORT const SSL_METHOD *DTLS_method(void);
 
-
-/* Deprecated methods. */
-
-/* SSLv23_method calls TLS_method. */
-OPENSSL_EXPORT const SSL_METHOD *SSLv23_method(void);
-
-/* Version-specific methods behave exactly like TLS_method and DTLS_method
- * except they also call SSL_CTX_set_min_version and SSL_CTX_set_max_version to
- * lock connections to that protocol version. */
-OPENSSL_EXPORT const SSL_METHOD *SSLv3_method(void);
-OPENSSL_EXPORT const SSL_METHOD *TLSv1_method(void);
-OPENSSL_EXPORT const SSL_METHOD *TLSv1_1_method(void);
-OPENSSL_EXPORT const SSL_METHOD *TLSv1_2_method(void);
-OPENSSL_EXPORT const SSL_METHOD *DTLSv1_method(void);
-OPENSSL_EXPORT const SSL_METHOD *DTLSv1_2_method(void);
-
-/* Client- and server-specific methods call their corresponding generic
- * methods. */
-OPENSSL_EXPORT const SSL_METHOD *SSLv23_server_method(void);
-OPENSSL_EXPORT const SSL_METHOD *SSLv23_client_method(void);
-OPENSSL_EXPORT const SSL_METHOD *SSLv3_server_method(void);
-OPENSSL_EXPORT const SSL_METHOD *SSLv3_client_method(void);
-OPENSSL_EXPORT const SSL_METHOD *TLSv1_server_method(void);
-OPENSSL_EXPORT const SSL_METHOD *TLSv1_client_method(void);
-OPENSSL_EXPORT const SSL_METHOD *TLSv1_1_server_method(void);
-OPENSSL_EXPORT const SSL_METHOD *TLSv1_1_client_method(void);
-OPENSSL_EXPORT const SSL_METHOD *TLSv1_2_server_method(void);
-OPENSSL_EXPORT const SSL_METHOD *TLSv1_2_client_method(void);
-OPENSSL_EXPORT const SSL_METHOD *DTLS_server_method(void);
-OPENSSL_EXPORT const SSL_METHOD *DTLS_client_method(void);
-OPENSSL_EXPORT const SSL_METHOD *DTLSv1_server_method(void);
-OPENSSL_EXPORT const SSL_METHOD *DTLSv1_client_method(void);
-OPENSSL_EXPORT const SSL_METHOD *DTLSv1_2_server_method(void);
-OPENSSL_EXPORT const SSL_METHOD *DTLSv1_2_client_method(void);
-
-
 OPENSSL_EXPORT STACK_OF(SSL_CIPHER) *SSL_get_ciphers(const SSL *s);
 
 OPENSSL_EXPORT int SSL_do_handshake(SSL *s);
@@ -2279,6 +2246,38 @@ OPENSSL_EXPORT int SSL_COMP_add_compression_method(int id, void *cm);
 
 /* SSL_COMP_get_name returns NULL. */
 OPENSSL_EXPORT const char *SSL_COMP_get_name(const void *comp);
+
+/* SSLv23_method calls |TLS_method|. */
+OPENSSL_EXPORT const SSL_METHOD *SSLv23_method(void);
+
+/* Version-specific methods behave exactly like |TLS_method| and |DTLS_method|
+ * except they also call |SSL_CTX_set_min_version| and |SSL_CTX_set_max_version|
+ * to lock connections to that protocol version. */
+OPENSSL_EXPORT const SSL_METHOD *SSLv3_method(void);
+OPENSSL_EXPORT const SSL_METHOD *TLSv1_method(void);
+OPENSSL_EXPORT const SSL_METHOD *TLSv1_1_method(void);
+OPENSSL_EXPORT const SSL_METHOD *TLSv1_2_method(void);
+OPENSSL_EXPORT const SSL_METHOD *DTLSv1_method(void);
+OPENSSL_EXPORT const SSL_METHOD *DTLSv1_2_method(void);
+
+/* Client- and server-specific methods call their corresponding generic
+ * methods. */
+OPENSSL_EXPORT const SSL_METHOD *SSLv23_server_method(void);
+OPENSSL_EXPORT const SSL_METHOD *SSLv23_client_method(void);
+OPENSSL_EXPORT const SSL_METHOD *SSLv3_server_method(void);
+OPENSSL_EXPORT const SSL_METHOD *SSLv3_client_method(void);
+OPENSSL_EXPORT const SSL_METHOD *TLSv1_server_method(void);
+OPENSSL_EXPORT const SSL_METHOD *TLSv1_client_method(void);
+OPENSSL_EXPORT const SSL_METHOD *TLSv1_1_server_method(void);
+OPENSSL_EXPORT const SSL_METHOD *TLSv1_1_client_method(void);
+OPENSSL_EXPORT const SSL_METHOD *TLSv1_2_server_method(void);
+OPENSSL_EXPORT const SSL_METHOD *TLSv1_2_client_method(void);
+OPENSSL_EXPORT const SSL_METHOD *DTLS_server_method(void);
+OPENSSL_EXPORT const SSL_METHOD *DTLS_client_method(void);
+OPENSSL_EXPORT const SSL_METHOD *DTLSv1_server_method(void);
+OPENSSL_EXPORT const SSL_METHOD *DTLSv1_client_method(void);
+OPENSSL_EXPORT const SSL_METHOD *DTLSv1_2_server_method(void);
+OPENSSL_EXPORT const SSL_METHOD *DTLSv1_2_client_method(void);
 
 
 /* Android compatibility section.
