@@ -387,18 +387,6 @@ int ssl_cipher_requires_server_key_exchange(const SSL_CIPHER *cipher);
 
 /* LOCAL STUFF */
 
-#define SSL_DECRYPT 0
-#define SSL_ENCRYPT 1
-
-#define TWO_BYTE_BIT 0x80
-#define SEC_ESC_BIT 0x40
-#define TWO_BYTE_MASK 0x7fff
-#define THREE_BYTE_MASK 0x3fff
-
-#define INC32(a) ((a) = ((a) + 1) & 0xffffffffL)
-#define DEC32(a) ((a) = ((a)-1) & 0xffffffffL)
-#define MAX_MAC_SIZE 20 /* up from 16 for SSLv3 */
-
 #define TLSEXT_CHANNEL_ID_SIZE 128
 
 /* Check if an SSL structure is using DTLS */
