@@ -74,6 +74,7 @@ extern "C" {
  * callback support a fixed (at run-time) number of different locks, given by
  * |CRYPTO_num_locks|. */
 
+
 /* CRYPTO_num_locks returns the number of static locks that the callback
  * function passed to |CRYPTO_set_locking_callback| must be able to handle. */
 OPENSSL_EXPORT int CRYPTO_num_locks(void);
@@ -154,7 +155,7 @@ OPENSSL_EXPORT int CRYPTO_add_lock(int *pointer, int amount, int lock_num,
                                    const char *file, int line);
 
 /* Lock IDs start from 1. CRYPTO_LOCK_INVALID_LOCK is an unused placeholder
-* used to ensure no lock has ID 0. */
+ * used to ensure no lock has ID 0. */
 #define CRYPTO_LOCK_LIST \
   CRYPTO_LOCK_ITEM(CRYPTO_LOCK_INVALID_LOCK), \
   CRYPTO_LOCK_ITEM(CRYPTO_LOCK_BIO), \

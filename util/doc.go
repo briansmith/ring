@@ -582,8 +582,8 @@ func generateIndex(outPath string, config *Config, headerDescriptions map[string
 
 func main() {
 	var (
-		configFlag *string = flag.String("config", "", "Location of config file")
-		outputDir  *string = flag.String("out", "", "Path to the directory where the output will be written")
+		configFlag *string = flag.String("config", "doc.config", "Location of config file")
+		outputDir  *string = flag.String("out", ".", "Path to the directory where the output will be written")
 		config     Config
 	)
 

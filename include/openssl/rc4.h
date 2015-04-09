@@ -66,6 +66,7 @@ extern "C" {
 
 /* RC4. */
 
+
 struct rc4_key_st {
   uint32_t x, y;
   uint32_t data[256];

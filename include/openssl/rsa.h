@@ -315,7 +315,6 @@ OPENSSL_EXPORT int RSA_padding_add_PKCS1_PSS_mgf1(RSA *rsa, uint8_t *EM,
                                                   int sLen);
 
 
-
 /* ASN.1 functions. */
 
 /* d2i_RSAPublicKey parses an ASN.1, DER-encoded, RSA public key from |len|
