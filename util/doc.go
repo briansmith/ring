@@ -200,7 +200,18 @@ func skipPast(s, skip string) string {
 	return s
 }
 
+func skipLine(s string) string {
+	i := strings.Index(s, "\n")
+	if i > 0 {
+		return s[i:]
+	}
+	return ""
+}
+
 func getNameFromDecl(decl string) (string, bool) {
+	for strings.HasPrefix(decl, "#if") {
+		decl = skipLine(decl)
+	}
 	if strings.HasPrefix(decl, "struct ") {
 		return "", false
 	}
