@@ -60,18 +60,6 @@ void AES_ctr128_encrypt(const uint8_t *in, uint8_t *out, size_t len,
                         (block128_f)AES_encrypt);
 }
 
-void AES_ecb_encrypt(const uint8_t *in, uint8_t *out, const AES_KEY *key,
-                     const int enc) {
-  assert(in && out && key);
-  assert((AES_ENCRYPT == enc) || (AES_DECRYPT == enc));
-
-  if (AES_ENCRYPT == enc) {
-    AES_encrypt(in, out, key);
-  } else {
-    AES_decrypt(in, out, key);
-  }
-}
-
 #if defined(OPENSSL_NO_ASM) || \
     (!defined(OPENSSL_X86_64) && !defined(OPENSSL_X86))
 void AES_cbc_encrypt(const uint8_t *in, uint8_t *out, size_t len,

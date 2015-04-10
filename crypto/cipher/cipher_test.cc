@@ -73,18 +73,12 @@ static const EVP_CIPHER *GetCipher(const std::string &name) {
     return EVP_des_ede3_cbc();
   } else if (name == "RC4") {
     return EVP_rc4();
-  } else if (name == "AES-128-ECB") {
-    return EVP_aes_128_ecb();
-  } else if (name == "AES-256-ECB") {
-    return EVP_aes_256_ecb();
   } else if (name == "AES-128-CBC") {
     return EVP_aes_128_cbc();
   } else if (name == "AES-128-GCM") {
     return EVP_aes_128_gcm();
   } else if (name == "AES-192-CBC") {
     return EVP_aes_192_cbc();
-  } else if (name == "AES-192-ECB") {
-    return EVP_aes_192_ecb();
   } else if (name == "AES-256-CBC") {
     return EVP_aes_256_cbc();
   } else if (name == "AES-128-CTR") {

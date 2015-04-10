@@ -573,363 +573,6 @@ ___
 &aesni_generate8("dec");
 
 if ($PREFIX eq "aesni") {
-########################################################################
-# void aesni_ecb_encrypt (const void *in, void *out,
-#			  size_t length, const AES_KEY *key,
-#			  int enc);
-$code.=<<___;
-.globl	aesni_ecb_encrypt
-.type	aesni_ecb_encrypt,\@function,5
-.align	16
-aesni_ecb_encrypt:
-___
-$code.=<<___ if ($win64);
-	lea	-0x58(%rsp),%rsp
-	movaps	%xmm6,(%rsp)		# offload $inout4..7
-	movaps	%xmm7,0x10(%rsp)
-	movaps	%xmm8,0x20(%rsp)
-	movaps	%xmm9,0x30(%rsp)
-.Lecb_enc_body:
-___
-$code.=<<___;
-	and	\$-16,$len		# if ($len<16)
-	jz	.Lecb_ret		# return
-
-	mov	240($key),$rounds	# key->rounds
-	$movkey	($key),$rndkey0
-	mov	$key,$key_		# backup $key
-	mov	$rounds,$rnds_		# backup $rounds
-	test	%r8d,%r8d		# 5th argument
-	jz	.Lecb_decrypt
-#--------------------------- ECB ENCRYPT ------------------------------#
-	cmp	\$0x80,$len		# if ($len<8*16)
-	jb	.Lecb_enc_tail		# short input
-
-	movdqu	($inp),$inout0		# load 8 input blocks
-	movdqu	0x10($inp),$inout1
-	movdqu	0x20($inp),$inout2
-	movdqu	0x30($inp),$inout3
-	movdqu	0x40($inp),$inout4
-	movdqu	0x50($inp),$inout5
-	movdqu	0x60($inp),$inout6
-	movdqu	0x70($inp),$inout7
-	lea	0x80($inp),$inp		# $inp+=8*16
-	sub	\$0x80,$len		# $len-=8*16 (can be zero)
-	jmp	.Lecb_enc_loop8_enter
-.align 16
-.Lecb_enc_loop8:
-	movups	$inout0,($out)		# store 8 output blocks
-	mov	$key_,$key		# restore $key
-	movdqu	($inp),$inout0		# load 8 input blocks
-	mov	$rnds_,$rounds		# restore $rounds
-	movups	$inout1,0x10($out)
-	movdqu	0x10($inp),$inout1
-	movups	$inout2,0x20($out)
-	movdqu	0x20($inp),$inout2
-	movups	$inout3,0x30($out)
-	movdqu	0x30($inp),$inout3
-	movups	$inout4,0x40($out)
-	movdqu	0x40($inp),$inout4
-	movups	$inout5,0x50($out)
-	movdqu	0x50($inp),$inout5
-	movups	$inout6,0x60($out)
-	movdqu	0x60($inp),$inout6
-	movups	$inout7,0x70($out)
-	lea	0x80($out),$out		# $out+=8*16
-	movdqu	0x70($inp),$inout7
-	lea	0x80($inp),$inp		# $inp+=8*16
-.Lecb_enc_loop8_enter:
-
-	call	_aesni_encrypt8
-
-	sub	\$0x80,$len
-	jnc	.Lecb_enc_loop8		# loop if $len-=8*16 didn't borrow
-
-	movups	$inout0,($out)		# store 8 output blocks
-	mov	$key_,$key		# restore $key
-	movups	$inout1,0x10($out)
-	mov	$rnds_,$rounds		# restore $rounds
-	movups	$inout2,0x20($out)
-	movups	$inout3,0x30($out)
-	movups	$inout4,0x40($out)
-	movups	$inout5,0x50($out)
-	movups	$inout6,0x60($out)
-	movups	$inout7,0x70($out)
-	lea	0x80($out),$out		# $out+=8*16
-	add	\$0x80,$len		# restore real remaining $len
-	jz	.Lecb_ret		# done if ($len==0)
-
-.Lecb_enc_tail:				# $len is less than 8*16
-	movups	($inp),$inout0
-	cmp	\$0x20,$len
-	jb	.Lecb_enc_one
-	movups	0x10($inp),$inout1
-	je	.Lecb_enc_two
-	movups	0x20($inp),$inout2
-	cmp	\$0x40,$len
-	jb	.Lecb_enc_three
-	movups	0x30($inp),$inout3
-	je	.Lecb_enc_four
-	movups	0x40($inp),$inout4
-	cmp	\$0x60,$len
-	jb	.Lecb_enc_five
-	movups	0x50($inp),$inout5
-	je	.Lecb_enc_six
-	movdqu	0x60($inp),$inout6
-	xorps	$inout7,$inout7
-	call	_aesni_encrypt8
-	movups	$inout0,($out)		# store 7 output blocks
-	movups	$inout1,0x10($out)
-	movups	$inout2,0x20($out)
-	movups	$inout3,0x30($out)
-	movups	$inout4,0x40($out)
-	movups	$inout5,0x50($out)
-	movups	$inout6,0x60($out)
-	jmp	.Lecb_ret
-.align	16
-.Lecb_enc_one:
-___
-	&aesni_generate1("enc",$key,$rounds);
-$code.=<<___;
-	movups	$inout0,($out)		# store one output block
-	jmp	.Lecb_ret
-.align	16
-.Lecb_enc_two:
-	call	_aesni_encrypt2
-	movups	$inout0,($out)		# store 2 output blocks
-	movups	$inout1,0x10($out)
-	jmp	.Lecb_ret
-.align	16
-.Lecb_enc_three:
-	call	_aesni_encrypt3
-	movups	$inout0,($out)		# store 3 output blocks
-	movups	$inout1,0x10($out)
-	movups	$inout2,0x20($out)
-	jmp	.Lecb_ret
-.align	16
-.Lecb_enc_four:
-	call	_aesni_encrypt4
-	movups	$inout0,($out)		# store 4 output blocks
-	movups	$inout1,0x10($out)
-	movups	$inout2,0x20($out)
-	movups	$inout3,0x30($out)
-	jmp	.Lecb_ret
-.align	16
-.Lecb_enc_five:
-	xorps	$inout5,$inout5
-	call	_aesni_encrypt6
-	movups	$inout0,($out)		# store 5 output blocks
-	movups	$inout1,0x10($out)
-	movups	$inout2,0x20($out)
-	movups	$inout3,0x30($out)
-	movups	$inout4,0x40($out)
-	jmp	.Lecb_ret
-.align	16
-.Lecb_enc_six:
-	call	_aesni_encrypt6
-	movups	$inout0,($out)		# store 6 output blocks
-	movups	$inout1,0x10($out)
-	movups	$inout2,0x20($out)
-	movups	$inout3,0x30($out)
-	movups	$inout4,0x40($out)
-	movups	$inout5,0x50($out)
-	jmp	.Lecb_ret
-#--------------------------- ECB DECRYPT ------------------------------#
-.align	16
-.Lecb_decrypt:
-	cmp	\$0x80,$len		# if ($len<8*16)
-	jb	.Lecb_dec_tail		# short input
-
-	movdqu	($inp),$inout0		# load 8 input blocks
-	movdqu	0x10($inp),$inout1
-	movdqu	0x20($inp),$inout2
-	movdqu	0x30($inp),$inout3
-	movdqu	0x40($inp),$inout4
-	movdqu	0x50($inp),$inout5
-	movdqu	0x60($inp),$inout6
-	movdqu	0x70($inp),$inout7
-	lea	0x80($inp),$inp		# $inp+=8*16
-	sub	\$0x80,$len		# $len-=8*16 (can be zero)
-	jmp	.Lecb_dec_loop8_enter
-.align 16
-.Lecb_dec_loop8:
-	movups	$inout0,($out)		# store 8 output blocks
-	mov	$key_,$key		# restore $key
-	movdqu	($inp),$inout0		# load 8 input blocks
-	mov	$rnds_,$rounds		# restore $rounds
-	movups	$inout1,0x10($out)
-	movdqu	0x10($inp),$inout1
-	movups	$inout2,0x20($out)
-	movdqu	0x20($inp),$inout2
-	movups	$inout3,0x30($out)
-	movdqu	0x30($inp),$inout3
-	movups	$inout4,0x40($out)
-	movdqu	0x40($inp),$inout4
-	movups	$inout5,0x50($out)
-	movdqu	0x50($inp),$inout5
-	movups	$inout6,0x60($out)
-	movdqu	0x60($inp),$inout6
-	movups	$inout7,0x70($out)
-	lea	0x80($out),$out		# $out+=8*16
-	movdqu	0x70($inp),$inout7
-	lea	0x80($inp),$inp		# $inp+=8*16
-.Lecb_dec_loop8_enter:
-
-	call	_aesni_decrypt8
-
-	$movkey	($key_),$rndkey0
-	sub	\$0x80,$len
-	jnc	.Lecb_dec_loop8		# loop if $len-=8*16 didn't borrow
-
-	movups	$inout0,($out)		# store 8 output blocks
-	 pxor	$inout0,$inout0		# clear register bank
-	mov	$key_,$key		# restore $key
-	movups	$inout1,0x10($out)
-	 pxor	$inout1,$inout1
-	mov	$rnds_,$rounds		# restore $rounds
-	movups	$inout2,0x20($out)
-	 pxor	$inout2,$inout2
-	movups	$inout3,0x30($out)
-	 pxor	$inout3,$inout3
-	movups	$inout4,0x40($out)
-	 pxor	$inout4,$inout4
-	movups	$inout5,0x50($out)
-	 pxor	$inout5,$inout5
-	movups	$inout6,0x60($out)
-	 pxor	$inout6,$inout6
-	movups	$inout7,0x70($out)
-	 pxor	$inout7,$inout7
-	lea	0x80($out),$out		# $out+=8*16
-	add	\$0x80,$len		# restore real remaining $len
-	jz	.Lecb_ret		# done if ($len==0)
-
-.Lecb_dec_tail:
-	movups	($inp),$inout0
-	cmp	\$0x20,$len
-	jb	.Lecb_dec_one
-	movups	0x10($inp),$inout1
-	je	.Lecb_dec_two
-	movups	0x20($inp),$inout2
-	cmp	\$0x40,$len
-	jb	.Lecb_dec_three
-	movups	0x30($inp),$inout3
-	je	.Lecb_dec_four
-	movups	0x40($inp),$inout4
-	cmp	\$0x60,$len
-	jb	.Lecb_dec_five
-	movups	0x50($inp),$inout5
-	je	.Lecb_dec_six
-	movups	0x60($inp),$inout6
-	$movkey	($key),$rndkey0
-	xorps	$inout7,$inout7
-	call	_aesni_decrypt8
-	movups	$inout0,($out)		# store 7 output blocks
-	 pxor	$inout0,$inout0		# clear register bank
-	movups	$inout1,0x10($out)
-	 pxor	$inout1,$inout1
-	movups	$inout2,0x20($out)
-	 pxor	$inout2,$inout2
-	movups	$inout3,0x30($out)
-	 pxor	$inout3,$inout3
-	movups	$inout4,0x40($out)
-	 pxor	$inout4,$inout4
-	movups	$inout5,0x50($out)
-	 pxor	$inout5,$inout5
-	movups	$inout6,0x60($out)
-	 pxor	$inout6,$inout6
-	 pxor	$inout7,$inout7
-	jmp	.Lecb_ret
-.align	16
-.Lecb_dec_one:
-___
-	&aesni_generate1("dec",$key,$rounds);
-$code.=<<___;
-	movups	$inout0,($out)		# store one output block
-	 pxor	$inout0,$inout0		# clear register bank
-	jmp	.Lecb_ret
-.align	16
-.Lecb_dec_two:
-	call	_aesni_decrypt2
-	movups	$inout0,($out)		# store 2 output blocks
-	 pxor	$inout0,$inout0		# clear register bank
-	movups	$inout1,0x10($out)
-	 pxor	$inout1,$inout1
-	jmp	.Lecb_ret
-.align	16
-.Lecb_dec_three:
-	call	_aesni_decrypt3
-	movups	$inout0,($out)		# store 3 output blocks
-	 pxor	$inout0,$inout0		# clear register bank
-	movups	$inout1,0x10($out)
-	 pxor	$inout1,$inout1
-	movups	$inout2,0x20($out)
-	 pxor	$inout2,$inout2
-	jmp	.Lecb_ret
-.align	16
-.Lecb_dec_four:
-	call	_aesni_decrypt4
-	movups	$inout0,($out)		# store 4 output blocks
-	 pxor	$inout0,$inout0		# clear register bank
-	movups	$inout1,0x10($out)
-	 pxor	$inout1,$inout1
-	movups	$inout2,0x20($out)
-	 pxor	$inout2,$inout2
-	movups	$inout3,0x30($out)
-	 pxor	$inout3,$inout3
-	jmp	.Lecb_ret
-.align	16
-.Lecb_dec_five:
-	xorps	$inout5,$inout5
-	call	_aesni_decrypt6
-	movups	$inout0,($out)		# store 5 output blocks
-	 pxor	$inout0,$inout0		# clear register bank
-	movups	$inout1,0x10($out)
-	 pxor	$inout1,$inout1
-	movups	$inout2,0x20($out)
-	 pxor	$inout2,$inout2
-	movups	$inout3,0x30($out)
-	 pxor	$inout3,$inout3
-	movups	$inout4,0x40($out)
-	 pxor	$inout4,$inout4
-	 pxor	$inout5,$inout5
-	jmp	.Lecb_ret
-.align	16
-.Lecb_dec_six:
-	call	_aesni_decrypt6
-	movups	$inout0,($out)		# store 6 output blocks
-	 pxor	$inout0,$inout0		# clear register bank
-	movups	$inout1,0x10($out)
-	 pxor	$inout1,$inout1
-	movups	$inout2,0x20($out)
-	 pxor	$inout2,$inout2
-	movups	$inout3,0x30($out)
-	 pxor	$inout3,$inout3
-	movups	$inout4,0x40($out)
-	 pxor	$inout4,$inout4
-	movups	$inout5,0x50($out)
-	 pxor	$inout5,$inout5
-
-.Lecb_ret:
-	xorps	$rndkey0,$rndkey0	# %xmm0
-	pxor	$rndkey1,$rndkey1
-___
-$code.=<<___ if ($win64);
-	movaps	(%rsp),%xmm6
-	movaps	%xmm0,(%rsp)		# clear stack
-	movaps	0x10(%rsp),%xmm7
-	movaps	%xmm0,0x10(%rsp)
-	movaps	0x20(%rsp),%xmm8
-	movaps	%xmm0,0x20(%rsp)
-	movaps	0x30(%rsp),%xmm9
-	movaps	%xmm0,0x30(%rsp)
-	lea	0x58(%rsp),%rsp
-.Lecb_enc_ret:
-___
-$code.=<<___;
-	ret
-.size	aesni_ecb_encrypt,.-aesni_ecb_encrypt
-___
-
 {
 ######################################################################
 # void aesni_ccm64_[en|de]crypt_blocks (const void *in, void *out,
@@ -3738,9 +3381,9 @@ $code.=<<___;
 .extern	__imp_RtlVirtualUnwind
 ___
 $code.=<<___ if ($PREFIX eq "aesni");
-.type	ecb_ccm64_se_handler,\@abi-omnipotent
+.type	ccm64_se_handler,\@abi-omnipotent
 .align	16
-ecb_ccm64_se_handler:
+ccm64_se_handler:
 	push	%rsi
 	push	%rdi
 	push	%rbx
@@ -3777,7 +3420,7 @@ ecb_ccm64_se_handler:
 	lea	0x58(%rax),%rax		# adjust stack pointer
 
 	jmp	.Lcommon_seh_tail
-.size	ecb_ccm64_se_handler,.-ecb_ccm64_se_handler
+.size	ccm64_se_handler,.-ccm64_se_handler
 
 .type	ctr_xts_se_handler,\@abi-omnipotent
 .align	16
@@ -3909,10 +3552,6 @@ cbc_se_handler:
 .align	4
 ___
 $code.=<<___ if ($PREFIX eq "aesni");
-	.rva	.LSEH_begin_aesni_ecb_encrypt
-	.rva	.LSEH_end_aesni_ecb_encrypt
-	.rva	.LSEH_info_ecb
-
 	.rva	.LSEH_begin_aesni_ccm64_encrypt_blocks
 	.rva	.LSEH_end_aesni_ccm64_encrypt_blocks
 	.rva	.LSEH_info_ccm64_enc
@@ -3949,17 +3588,13 @@ $code.=<<___;
 .align	8
 ___
 $code.=<<___ if ($PREFIX eq "aesni");
-.LSEH_info_ecb:
-	.byte	9,0,0,0
-	.rva	ecb_ccm64_se_handler
-	.rva	.Lecb_enc_body,.Lecb_enc_ret		# HandlerData[]
 .LSEH_info_ccm64_enc:
 	.byte	9,0,0,0
-	.rva	ecb_ccm64_se_handler
+	.rva	ccm64_se_handler
 	.rva	.Lccm64_enc_body,.Lccm64_enc_ret	# HandlerData[]
 .LSEH_info_ccm64_dec:
 	.byte	9,0,0,0
-	.rva	ecb_ccm64_se_handler
+	.rva	ccm64_se_handler
 	.rva	.Lccm64_dec_body,.Lccm64_dec_ret	# HandlerData[]
 .LSEH_info_ctr32:
 	.byte	9,0,0,0
