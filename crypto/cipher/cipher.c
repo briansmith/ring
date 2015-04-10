@@ -196,7 +196,6 @@ int EVP_CipherInit_ex(EVP_CIPHER_CTX *ctx, const EVP_CIPHER *cipher,
   if (!(EVP_CIPHER_CTX_flags(ctx) & EVP_CIPH_CUSTOM_IV)) {
     switch (EVP_CIPHER_CTX_mode(ctx)) {
       case EVP_CIPH_STREAM_CIPHER:
-      case EVP_CIPH_ECB_MODE:
         break;
 
       case EVP_CIPH_CBC_MODE:
@@ -633,10 +632,6 @@ const EVP_CIPHER *EVP_get_cipherbyname(const char *name) {
     return EVP_aes_128_ctr();
   } else if (OPENSSL_strcasecmp(name, "aes-256-ctr") == 0) {
     return EVP_aes_256_ctr();
-  } else if (OPENSSL_strcasecmp(name, "aes-128-ecb") == 0) {
-    return EVP_aes_128_ecb();
-  } else if (OPENSSL_strcasecmp(name, "aes-256-ecb") == 0) {
-    return EVP_aes_256_ecb();
   }
 
   return NULL;

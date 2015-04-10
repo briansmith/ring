@@ -77,11 +77,9 @@ OPENSSL_EXPORT const EVP_CIPHER *EVP_rc4(void);
 OPENSSL_EXPORT const EVP_CIPHER *EVP_des_cbc(void);
 OPENSSL_EXPORT const EVP_CIPHER *EVP_des_ede3_cbc(void);
 
-OPENSSL_EXPORT const EVP_CIPHER *EVP_aes_128_ecb(void);
 OPENSSL_EXPORT const EVP_CIPHER *EVP_aes_128_cbc(void);
 OPENSSL_EXPORT const EVP_CIPHER *EVP_aes_128_ctr(void);
 
-OPENSSL_EXPORT const EVP_CIPHER *EVP_aes_256_ecb(void);
 OPENSSL_EXPORT const EVP_CIPHER *EVP_aes_256_cbc(void);
 OPENSSL_EXPORT const EVP_CIPHER *EVP_aes_256_ctr(void);
 
@@ -91,7 +89,6 @@ OPENSSL_EXPORT const EVP_CIPHER *EVP_aes_128_gcm(void);
 OPENSSL_EXPORT const EVP_CIPHER *EVP_aes_256_gcm(void);
 
 /* Deprecated 192-bit version of AES. */
-OPENSSL_EXPORT const EVP_CIPHER *EVP_aes_192_ecb(void);
 OPENSSL_EXPORT const EVP_CIPHER *EVP_aes_192_cbc(void);
 OPENSSL_EXPORT const EVP_CIPHER *EVP_aes_192_ctr(void);
 OPENSSL_EXPORT const EVP_CIPHER *EVP_aes_192_gcm(void);
@@ -319,7 +316,6 @@ OPENSSL_EXPORT int EVP_BytesToKey(const EVP_CIPHER *type, const EVP_MD *md,
 /* Cipher modes (for |EVP_CIPHER_mode|). */
 
 #define EVP_CIPH_STREAM_CIPHER 0x0
-#define EVP_CIPH_ECB_MODE 0x1
 #define EVP_CIPH_CBC_MODE 0x2
      /* EVP_CIPH_CFB_MODE 0x3 */
      /* EVP_CIPH_OFB_MODE 0x4 */

@@ -100,7 +100,6 @@
 /* Ciphers */
 #define NID_aes_128_cbc 419
 #define NID_aes_128_ctr 904
-#define NID_aes_128_ecb 418
 #define NID_aes_128_gcm 895
 #define NID_aes_192_cbc 423
 #define NID_aes_192_ctr 905
@@ -108,7 +107,6 @@
 #define NID_aes_192_gcm 898
 #define NID_aes_256_cbc 427
 #define NID_aes_256_ctr 906
-#define NID_aes_256_ecb 426
 #define NID_aes_256_gcm 901
 #define NID_des_cbc 31
 #define NID_des_ede_cbc 43

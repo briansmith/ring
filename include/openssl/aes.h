@@ -113,11 +113,6 @@ OPENSSL_EXPORT void AES_ctr128_encrypt(const uint8_t *in, uint8_t *out,
                                        uint8_t ecount_buf[AES_BLOCK_SIZE],
                                        unsigned int *num);
 
-/* AES_ecb_encrypt encrypts (or decrypts, if |enc| == |AES_DECRYPT|) a single,
- * 16 byte block from |in| to |out|. */
-OPENSSL_EXPORT void AES_ecb_encrypt(const uint8_t *in, uint8_t *out,
-                                    const AES_KEY *key, const int enc);
-
 /* AES_cbc_encrypt encrypts (or decrypts, if |enc| == |AES_DECRYPT|) |len|
  * bytes from |in| to |out|. The length must be a multiple of the block size. */
 OPENSSL_EXPORT void AES_cbc_encrypt(const uint8_t *in, uint8_t *out, size_t len,
