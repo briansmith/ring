@@ -545,25 +545,6 @@ void DES_decrypt3(uint32_t *data, const DES_key_schedule *ks1,
   data[1] = r;
 }
 
-void DES_ecb_encrypt(const DES_cblock *in_block, DES_cblock *out_block,
-                     const DES_key_schedule *schedule, int is_encrypt) {
-  uint32_t l;
-  uint32_t ll[2];
-  const uint8_t *in = in_block->bytes;
-  uint8_t *out = out_block->bytes;
-
-  c2l(in, l);
-  ll[0] = l;
-  c2l(in, l);
-  ll[1] = l;
-  DES_encrypt1(ll, schedule, is_encrypt);
-  l = ll[0];
-  l2c(l, out);
-  l = ll[1];
-  l2c(l, out);
-  ll[0] = ll[1] = 0;
-}
-
 void DES_ncbc_encrypt(const uint8_t *in, uint8_t *out, size_t len,
                       const DES_key_schedule *schedule, DES_cblock *ivec,
                       int enc) {
@@ -638,29 +619,6 @@ void DES_ncbc_encrypt(const uint8_t *in, uint8_t *out, size_t len,
     l2c(xor1, iv);
   }
   tin[0] = tin[1] = 0;
-}
-
-void DES_ecb3_encrypt(const DES_cblock *input, DES_cblock *output,
-                      const DES_key_schedule *ks1, const DES_key_schedule *ks2,
-                      const DES_key_schedule *ks3, int enc) {
-  uint32_t l0, l1;
-  uint32_t ll[2];
-  const uint8_t *in = input->bytes;
-  uint8_t *out = output->bytes;
-
-  c2l(in, l0);
-  c2l(in, l1);
-  ll[0] = l0;
-  ll[1] = l1;
-  if (enc) {
-    DES_encrypt3(ll, ks1, ks2, ks3);
-  } else {
-    DES_decrypt3(ll, ks1, ks2, ks3);
-  }
-  l0 = ll[0];
-  l1 = ll[1];
-  l2c(l0, out);
-  l2c(l1, out);
 }
 
 void DES_ede3_cbc_encrypt(const uint8_t *in, uint8_t *out, size_t len,
