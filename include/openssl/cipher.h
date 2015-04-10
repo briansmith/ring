@@ -86,11 +86,6 @@ OPENSSL_EXPORT const EVP_CIPHER *EVP_aes_256_ctr(void);
 OPENSSL_EXPORT const EVP_CIPHER *EVP_aes_128_gcm(void);
 OPENSSL_EXPORT const EVP_CIPHER *EVP_aes_256_gcm(void);
 
-/* Deprecated 192-bit version of AES. */
-OPENSSL_EXPORT const EVP_CIPHER *EVP_aes_192_cbc(void);
-OPENSSL_EXPORT const EVP_CIPHER *EVP_aes_192_ctr(void);
-OPENSSL_EXPORT const EVP_CIPHER *EVP_aes_192_gcm(void);
-
 /* EVP_enc_null returns a 'cipher' that passes plaintext through as
  * ciphertext. */
 OPENSSL_EXPORT const EVP_CIPHER *EVP_enc_null(void);

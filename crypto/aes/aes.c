@@ -544,9 +544,6 @@ int AES_set_encrypt_key(const uint8_t *key, unsigned bits, AES_KEY *aeskey) {
     case 128:
       aeskey->rounds = 10;
       break;
-    case 192:
-      aeskey->rounds = 12;
-      break;
     case 256:
       aeskey->rounds = 14;
       break;
@@ -578,24 +575,6 @@ int AES_set_encrypt_key(const uint8_t *key, unsigned bits, AES_KEY *aeskey) {
   }
   rk[4] = GETU32(key + 16);
   rk[5] = GETU32(key + 20);
-  if (bits == 192) {
-    while (1) {
-      temp = rk[5];
-      rk[6] = rk[0] ^ (Te2[(temp >> 16) & 0xff] & 0xff000000) ^
-              (Te3[(temp >> 8) & 0xff] & 0x00ff0000) ^
-              (Te0[(temp) & 0xff] & 0x0000ff00) ^
-              (Te1[(temp >> 24)] & 0x000000ff) ^ rcon[i];
-      rk[7] = rk[1] ^ rk[6];
-      rk[8] = rk[2] ^ rk[7];
-      rk[9] = rk[3] ^ rk[8];
-      if (++i == 8) {
-        return 0;
-      }
-      rk[10] = rk[4] ^ rk[9];
-      rk[11] = rk[5] ^ rk[10];
-      rk += 6;
-    }
-  }
   rk[6] = GETU32(key + 24);
   rk[7] = GETU32(key + 28);
   if (bits == 256) {
