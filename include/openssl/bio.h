@@ -62,6 +62,7 @@
 #include <stdarg.h>
 #include <stdio.h>  /* For FILE */
 
+#include <openssl/err.h> /* for ERR_print_errors_fp */
 #include <openssl/ex_data.h>
 #include <openssl/stack.h>
 
@@ -330,10 +331,6 @@ OPENSSL_EXPORT int BIO_indent(BIO *bio, unsigned indent, unsigned max_indent);
  * by |indent| spaces. */
 OPENSSL_EXPORT int BIO_hexdump(BIO *bio, const uint8_t *data, size_t len,
                                unsigned indent);
-
-/* BIO_print_errors_fp prints the current contents of the error stack to |out|
- * using human readable strings where possible. */
-OPENSSL_EXPORT void BIO_print_errors_fp(FILE *out);
 
 /* BIO_print_errors prints the current contents of the error stack to |bio|
  * using human readable strings where possible. */
@@ -704,6 +701,14 @@ OPENSSL_EXPORT int BIO_zero_copy_get_write_buf_done(BIO* bio,
 #define BIO_CTRL_SET_CALLBACK	14  /* opt - set callback function */
 #define BIO_CTRL_GET_CALLBACK	15  /* opt - set callback function */
 #define BIO_CTRL_SET_FILENAME	30	/* BIO_s_file special */
+
+
+/* Android compatibility section.
+ *
+ * A previous version of BoringSSL used in Android renamed ERR_print_errors_fp
+ * to BIO_print_errors_fp. It has subsequently been renamed back to
+ * ERR_print_errors_fp. */
+#define BIO_print_errors_fp ERR_print_errors_fp
 
 
 /* Private functions */

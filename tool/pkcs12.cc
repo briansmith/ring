@@ -31,6 +31,7 @@
 #endif
 
 #include <openssl/bytestring.h>
+#include <openssl/err.h>
 #include <openssl/pem.h>
 #include <openssl/pkcs8.h>
 #include <openssl/stack.h>
@@ -123,7 +124,7 @@ bool DoPKCS12(const std::vector<std::string> &args) {
 
   if (!PKCS12_get_key_and_certs(&key, certs, &pkcs12, password)) {
     fprintf(stderr, "Failed to parse PKCS#12 data:\n");
-    BIO_print_errors_fp(stderr);
+    ERR_print_errors_fp(stderr);
     return false;
   }
 

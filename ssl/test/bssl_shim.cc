@@ -37,6 +37,7 @@
 #include <openssl/bio.h>
 #include <openssl/buf.h>
 #include <openssl/bytestring.h>
+#include <openssl/err.h>
 #include <openssl/ssl.h>
 
 #include <memory>
@@ -986,21 +987,21 @@ int main(int argc, char **argv) {
 
   ScopedSSL_CTX ssl_ctx = SetupCtx(&config);
   if (!ssl_ctx) {
-    BIO_print_errors_fp(stderr);
+    ERR_print_errors_fp(stderr);
     return 1;
   }
 
   ScopedSSL_SESSION session;
   if (!DoExchange(&session, ssl_ctx.get(), &config, false /* is_resume */,
                   NULL /* session */)) {
-    BIO_print_errors_fp(stderr);
+    ERR_print_errors_fp(stderr);
     return 1;
   }
 
   if (config.resume &&
       !DoExchange(NULL, ssl_ctx.get(), &config, true /* is_resume */,
                   session.get())) {
-    BIO_print_errors_fp(stderr);
+    ERR_print_errors_fp(stderr);
     return 1;
   }
 

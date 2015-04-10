@@ -486,7 +486,7 @@ int main(void) {
       !TestDefaultVersion(DTLS1_VERSION, &DTLSv1_method) ||
       !TestDefaultVersion(DTLS1_2_VERSION, &DTLSv1_2_method) ||
       !TestCipherGetRFCName()) {
-    BIO_print_errors_fp(stderr);
+    ERR_print_errors_fp(stderr);
     return 1;
   }
 

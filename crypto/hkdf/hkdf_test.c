@@ -15,7 +15,6 @@
 #include <stdio.h>
 #include <string.h>
 
-#include <openssl/bio.h>
 #include <openssl/crypto.h>
 #include <openssl/digest.h>
 #include <openssl/err.h>
@@ -224,7 +223,7 @@ int main(void) {
     if (!HKDF(buf, test->out_len, test->md_func(), test->ikm, test->ikm_len,
               test->salt, test->salt_len, test->info, test->info_len)) {
       fprintf(stderr, "Call to HKDF failed\n");
-      BIO_print_errors_fp(stderr);
+      ERR_print_errors_fp(stderr);
       return 1;
     }
     if (memcmp(buf, test->out, test->out_len) != 0) {

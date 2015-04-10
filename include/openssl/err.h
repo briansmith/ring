@@ -109,6 +109,8 @@
 #ifndef OPENSSL_HEADER_ERR_H
 #define OPENSSL_HEADER_ERR_H
 
+#include <stdio.h>
+
 #include <openssl/base.h>
 #include <openssl/thread.h>
 #include <openssl/lhash.h>
@@ -250,6 +252,10 @@ typedef int (*ERR_print_errors_callback_t)(const char *str, size_t len,
 OPENSSL_EXPORT void ERR_print_errors_cb(ERR_print_errors_callback_t callback,
                                         void *ctx);
 
+
+/* ERR_print_errors_fp prints the current contents of the error stack to |file|
+ * using human readable strings where possible. */
+OPENSSL_EXPORT void ERR_print_errors_fp(FILE *file);
 
 /* Clearing errors. */
 

@@ -15,7 +15,6 @@
 #include <stdio.h>
 #include <string.h>
 
-#include <openssl/bio.h>
 #include <openssl/crypto.h>
 #include <openssl/ec_key.h>
 #include <openssl/err.h>
@@ -44,7 +43,7 @@ int test_d2i_ECPrivateKey(void) {
 
   if (key == NULL || inp != kECKeyWithoutPublic + sizeof(kECKeyWithoutPublic)) {
     fprintf(stderr, "Failed to parse private key.\n");
-    BIO_print_errors_fp(stderr);
+    ERR_print_errors_fp(stderr);
     goto out;
   }
 
@@ -53,7 +52,7 @@ int test_d2i_ECPrivateKey(void) {
   outp = out;
   if (len != i2d_ECPrivateKey(key, &outp)) {
     fprintf(stderr, "Failed to serialize private key.\n");
-    BIO_print_errors_fp(stderr);
+    ERR_print_errors_fp(stderr);
     goto out;
   }
 

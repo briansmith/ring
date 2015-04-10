@@ -462,12 +462,6 @@ int BIO_indent(BIO *bio, unsigned indent, unsigned max_indent) {
   return 1;
 }
 
-void BIO_print_errors_fp(FILE *out) {
-  BIO *bio = BIO_new_fp(out, BIO_NOCLOSE);
-  BIO_print_errors(bio);
-  BIO_free(bio);
-}
-
 static int print_bio(const char *str, size_t len, void *bio) {
   return BIO_write((BIO *)bio, str, len);
 }

@@ -18,7 +18,6 @@
 #include <string.h>
 
 #include <openssl/aead.h>
-#include <openssl/bio.h>
 #include <openssl/crypto.h>
 #include <openssl/err.h>
 
@@ -298,7 +297,7 @@ int main(int argc, char **argv) {
 
       if (any_values_set) {
         if (!run_test_case(aead, bufs, lengths, line_no)) {
-          BIO_print_errors_fp(stderr);
+          ERR_print_errors_fp(stderr);
           return 4;
         }
 

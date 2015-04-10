@@ -57,7 +57,6 @@
 #include <stdio.h>
 #include <string.h>
 
-#include <openssl/bio.h>
 #include <openssl/cipher.h>
 #include <openssl/crypto.h>
 #include <openssl/err.h>
@@ -158,39 +157,39 @@ static void test1(const EVP_CIPHER *c, const uint8_t *key, int kn,
     if (mode == EVP_CIPH_GCM_MODE) {
       if (!EVP_EncryptInit_ex(&ctx, c, NULL, NULL, NULL)) {
         fprintf(stderr, "EncryptInit failed\n");
-        BIO_print_errors_fp(stderr);
+        ERR_print_errors_fp(stderr);
         exit(10);
       }
       if (!EVP_CIPHER_CTX_ctrl(&ctx, EVP_CTRL_GCM_SET_IVLEN, in, NULL)) {
         fprintf(stderr, "IV length set failed\n");
-        BIO_print_errors_fp(stderr);
+        ERR_print_errors_fp(stderr);
         exit(11);
       }
       if (!EVP_EncryptInit_ex(&ctx, NULL, NULL, key, iv)) {
         fprintf(stderr, "Key/IV set failed\n");
-        BIO_print_errors_fp(stderr);
+        ERR_print_errors_fp(stderr);
         exit(12);
       }
       if (an && !EVP_EncryptUpdate(&ctx, NULL, &outl, aad, an)) {
         fprintf(stderr, "AAD set failed\n");
-        BIO_print_errors_fp(stderr);
+        ERR_print_errors_fp(stderr);
         exit(13);
       }
     } else if (!EVP_EncryptInit_ex(&ctx, c, NULL, key, iv)) {
       fprintf(stderr, "EncryptInit failed\n");
-      BIO_print_errors_fp(stderr);
+      ERR_print_errors_fp(stderr);
       exit(10);
     }
     EVP_CIPHER_CTX_set_padding(&ctx, 0);
 
     if (!EVP_EncryptUpdate(&ctx, out, &outl, plaintext, pn)) {
       fprintf(stderr, "Encrypt failed\n");
-      BIO_print_errors_fp(stderr);
+      ERR_print_errors_fp(stderr);
       exit(6);
     }
     if (!EVP_EncryptFinal_ex(&ctx, out + outl, &outl2)) {
       fprintf(stderr, "EncryptFinal failed\n");
-      BIO_print_errors_fp(stderr);
+      ERR_print_errors_fp(stderr);
       exit(7);
     }
 
@@ -213,7 +212,7 @@ static void test1(const EVP_CIPHER *c, const uint8_t *key, int kn,
        */
       if (!EVP_CIPHER_CTX_ctrl(&ctx, EVP_CTRL_GCM_GET_TAG, tn, rtag)) {
         fprintf(stderr, "Get tag failed\n");
-        BIO_print_errors_fp(stderr);
+        ERR_print_errors_fp(stderr);
         exit(14);
       }
       if (memcmp(rtag, tag, tn)) {
@@ -229,45 +228,45 @@ static void test1(const EVP_CIPHER *c, const uint8_t *key, int kn,
     if (mode == EVP_CIPH_GCM_MODE) {
       if (!EVP_DecryptInit_ex(&ctx, c, NULL, NULL, NULL)) {
         fprintf(stderr, "EncryptInit failed\n");
-        BIO_print_errors_fp(stderr);
+        ERR_print_errors_fp(stderr);
         exit(10);
       }
       if (!EVP_CIPHER_CTX_ctrl(&ctx, EVP_CTRL_GCM_SET_IVLEN, in, NULL)) {
         fprintf(stderr, "IV length set failed\n");
-        BIO_print_errors_fp(stderr);
+        ERR_print_errors_fp(stderr);
         exit(11);
       }
       if (!EVP_DecryptInit_ex(&ctx, NULL, NULL, key, iv)) {
         fprintf(stderr, "Key/IV set failed\n");
-        BIO_print_errors_fp(stderr);
+        ERR_print_errors_fp(stderr);
         exit(12);
       }
       if (!EVP_CIPHER_CTX_ctrl(&ctx, EVP_CTRL_GCM_SET_TAG, tn, (void *)tag)) {
         fprintf(stderr, "Set tag failed\n");
-        BIO_print_errors_fp(stderr);
+        ERR_print_errors_fp(stderr);
         exit(14);
       }
       if (an && !EVP_DecryptUpdate(&ctx, NULL, &outl, aad, an)) {
         fprintf(stderr, "AAD set failed\n");
-        BIO_print_errors_fp(stderr);
+        ERR_print_errors_fp(stderr);
         exit(13);
       }
     } else if (!EVP_DecryptInit_ex(&ctx, c, NULL, key, iv)) {
       fprintf(stderr, "DecryptInit failed\n");
-      BIO_print_errors_fp(stderr);
+      ERR_print_errors_fp(stderr);
       exit(11);
     }
     EVP_CIPHER_CTX_set_padding(&ctx, 0);
 
     if (!EVP_DecryptUpdate(&ctx, out, &outl, ciphertext, cn)) {
       fprintf(stderr, "Decrypt failed\n");
-      BIO_print_errors_fp(stderr);
+      ERR_print_errors_fp(stderr);
       exit(6);
     }
     outl2 = 0;
     if (!EVP_DecryptFinal_ex(&ctx, out + outl, &outl2)) {
       fprintf(stderr, "DecryptFinal failed\n");
-      BIO_print_errors_fp(stderr);
+      ERR_print_errors_fp(stderr);
       exit(7);
     }
 

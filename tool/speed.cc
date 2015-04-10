@@ -22,8 +22,8 @@
 #include <time.h>
 
 #include <openssl/aead.h>
-#include <openssl/bio.h>
 #include <openssl/digest.h>
+#include <openssl/err.h>
 #include <openssl/obj.h>
 #include <openssl/rsa.h>
 
@@ -147,7 +147,7 @@ static bool SpeedRSA(const std::string& key_name, RSA *key) {
                         sig.get(), &sig_len, key);
       })) {
     fprintf(stderr, "RSA_sign failed.\n");
-    BIO_print_errors_fp(stderr);
+    ERR_print_errors_fp(stderr);
     return false;
   }
   results.Print(key_name + " signing");
@@ -158,7 +158,7 @@ static bool SpeedRSA(const std::string& key_name, RSA *key) {
                           sizeof(fake_sha256_hash), sig.get(), sig_len, key);
       })) {
     fprintf(stderr, "RSA_verify failed.\n");
-    BIO_print_errors_fp(stderr);
+    ERR_print_errors_fp(stderr);
     return false;
   }
   results.Print(key_name + " verify");
@@ -199,7 +199,7 @@ static bool SpeedAEADChunk(const EVP_AEAD *aead, const std::string &name,
                                         EVP_AEAD_DEFAULT_TAG_LENGTH,
                                         evp_aead_seal)) {
     fprintf(stderr, "Failed to create EVP_AEAD_CTX.\n");
-    BIO_print_errors_fp(stderr);
+    ERR_print_errors_fp(stderr);
     return false;
   }
 
@@ -213,7 +213,7 @@ static bool SpeedAEADChunk(const EVP_AEAD *aead, const std::string &name,
             nonce_len, in, chunk_len, ad.get(), ad_len);
       })) {
     fprintf(stderr, "EVP_AEAD_CTX_seal failed.\n");
-    BIO_print_errors_fp(stderr);
+    ERR_print_errors_fp(stderr);
     return false;
   }
 
@@ -250,7 +250,7 @@ static bool SpeedHashChunk(const EVP_MD *md, const std::string &name,
                EVP_DigestFinal_ex(ctx, digest, &md_len);
       })) {
     fprintf(stderr, "EVP_DigestInit_ex failed.\n");
-    BIO_print_errors_fp(stderr);
+    ERR_print_errors_fp(stderr);
     return false;
   }
 
@@ -273,7 +273,7 @@ bool Speed(const std::vector<std::string> &args) {
   inp = kDERRSAPrivate2048;
   if (NULL == d2i_RSAPrivateKey(&key, &inp, kDERRSAPrivate2048Len)) {
     fprintf(stderr, "Failed to parse RSA key.\n");
-    BIO_print_errors_fp(stderr);
+    ERR_print_errors_fp(stderr);
     return false;
   }
 
@@ -287,7 +287,7 @@ bool Speed(const std::vector<std::string> &args) {
   inp = kDERRSAPrivate4096;
   if (NULL == d2i_RSAPrivateKey(&key, &inp, kDERRSAPrivate4096Len)) {
     fprintf(stderr, "Failed to parse 4096-bit RSA key.\n");
-    BIO_print_errors_fp(stderr);
+    ERR_print_errors_fp(stderr);
     return 1;
   }
 

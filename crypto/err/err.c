@@ -612,6 +612,17 @@ void ERR_print_errors_cb(ERR_print_errors_callback_t callback, void *ctx) {
   }
 }
 
+static int print_errors_to_file(const char* msg, size_t msg_len, void* ctx) {
+  assert(msg[msg_len] == '\0');
+  FILE* fp = ctx;
+  int res = fputs(msg, fp);
+  return res < 0 ? 0 : 1;
+}
+
+void ERR_print_errors_fp(FILE *file) {
+  ERR_print_errors_cb(print_errors_to_file, file);
+}
+
 /* err_set_error_data sets the data on the most recent error. The |flags|
  * argument is a combination of the |ERR_FLAG_*| values. */
 static void err_set_error_data(char *data, int flags) {

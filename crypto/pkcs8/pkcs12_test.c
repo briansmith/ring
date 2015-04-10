@@ -690,7 +690,7 @@ static int test(const char *name, const uint8_t *der, size_t der_len) {
   CBS_init(&pkcs12, der, der_len);
   if (!PKCS12_get_key_and_certs(&key, certs, &pkcs12, "foo")) {
     fprintf(stderr, "PKCS12 failed on %s data.\n", name);
-    BIO_print_errors_fp(stderr);
+    ERR_print_errors_fp(stderr);
     return 0;
   }
 
@@ -717,14 +717,14 @@ static int test_compat(const uint8_t *der, size_t der_len) {
   p12 = d2i_PKCS12_bio(bio, NULL);
   if (p12 == NULL) {
     fprintf(stderr, "PKCS12_parse failed.\n");
-    BIO_print_errors_fp(stderr);
+    ERR_print_errors_fp(stderr);
     return 0;
   }
   BIO_free(bio);
 
   if (!PKCS12_parse(p12, "foo", &key, &cert, &ca_certs)) {
     fprintf(stderr, "PKCS12_parse failed.\n");
-    BIO_print_errors_fp(stderr);
+    ERR_print_errors_fp(stderr);
     return 0;
   }
 

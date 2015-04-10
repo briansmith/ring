@@ -62,6 +62,7 @@
 #include <openssl/bio.h>
 #include <openssl/bn.h>
 #include <openssl/crypto.h>
+#include <openssl/err.h>
 #include <openssl/mem.h>
 
 #include "internal.h"
@@ -194,7 +195,7 @@ int main(int argc, char *argv[]) {
   }
 
 err:
-  BIO_print_errors_fp(stderr);
+  ERR_print_errors_fp(stderr);
 
   if (abuf != NULL) {
     OPENSSL_free(abuf);
@@ -498,7 +499,7 @@ static int run_rfc5114_tests(void) {
 
 bad_err:
   fprintf(stderr, "Initalisation error RFC5114 set %d\n", i + 1);
-  BIO_print_errors_fp(stderr);
+  ERR_print_errors_fp(stderr);
 
 err:
   if (Z1 != NULL) {
