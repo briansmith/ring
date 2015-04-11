@@ -30,7 +30,6 @@
 	["crypto/evp/pbkdf_test"],
 	["crypto/hkdf/hkdf_test"],
 	["crypto/hmac/hmac_test", "crypto/hmac/hmac_tests.txt"],
-	["crypto/lhash/lhash_test"],
 	["crypto/modes/gcm_test"],
 	["crypto/poly1305/poly1305_test", "crypto/poly1305/poly1305_test.txt"],
 	["crypto/refcount_test"],
