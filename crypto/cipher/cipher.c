@@ -54,7 +54,7 @@
  * copied and put under another distribution licence
  * [including the GNU Public Licence.] */
 
-#include <openssl/cipher.h>
+#include "cipher.h"
 
 #include <assert.h>
 #include <string.h>
@@ -65,21 +65,6 @@
 
 #include "internal.h"
 
-
-const EVP_CIPHER *EVP_get_cipherbynid(int nid) {
-  switch (nid) {
-    case NID_des_ede3_cbc:
-      return EVP_des_ede3_cbc();
-    case NID_des_ede_cbc:
-      return EVP_des_cbc();
-    case NID_aes_128_cbc:
-      return EVP_aes_128_cbc();
-    case NID_aes_256_cbc:
-      return EVP_aes_256_cbc();
-    default:
-      return NULL;
-  }
-}
 
 void EVP_CIPHER_CTX_init(EVP_CIPHER_CTX *ctx) {
   memset(ctx, 0, sizeof(EVP_CIPHER_CTX));
@@ -494,10 +479,6 @@ const EVP_CIPHER *EVP_CIPHER_CTX_cipher(const EVP_CIPHER_CTX *ctx) {
   return ctx->cipher;
 }
 
-int EVP_CIPHER_CTX_nid(const EVP_CIPHER_CTX *ctx) {
-  return ctx->cipher->nid;
-}
-
 unsigned EVP_CIPHER_CTX_block_size(const EVP_CIPHER_CTX *ctx) {
   return ctx->cipher->block_size;
 }
@@ -569,8 +550,6 @@ int EVP_CIPHER_CTX_set_key_length(EVP_CIPHER_CTX *c, unsigned key_len) {
   c->key_len = key_len;
   return 1;
 }
-
-int EVP_CIPHER_nid(const EVP_CIPHER *cipher) { return cipher->nid; }
 
 unsigned EVP_CIPHER_block_size(const EVP_CIPHER *cipher) {
   return cipher->block_size;

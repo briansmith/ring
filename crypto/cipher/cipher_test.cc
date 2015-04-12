@@ -57,13 +57,13 @@
 #include <string>
 #include <vector>
 
-#include <openssl/cipher.h>
 #include <openssl/crypto.h>
 #include <openssl/err.h>
 
 #include "../test/file_test.h"
 #include "../test/scoped_types.h"
 #include "../test/stl_compat.h"
+#include "cipher.h"
 
 
 static const EVP_CIPHER *GetCipher(const std::string &name) {

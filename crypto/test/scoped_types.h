@@ -29,6 +29,7 @@
 #include <openssl/mem.h>
 #include <openssl/rsa.h>
 
+#include "../cipher/cipher.h"
 #include "stl_compat.h"
 
 

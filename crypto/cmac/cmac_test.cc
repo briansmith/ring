@@ -16,9 +16,9 @@
 
 #include <algorithm>
 
-#include <openssl/cipher.h>
 #include <openssl/cmac.h>
 
+#include "../cipher/cipher.h"
 #include "../test/scoped_types.h"
 #include "../test/test_util.h"
 

@@ -17,7 +17,6 @@
 #include <string.h>
 
 #include <openssl/aead.h>
-#include <openssl/cipher.h>
 #include <openssl/err.h>
 #include <openssl/hmac.h>
 #include <openssl/mem.h>
@@ -25,6 +24,7 @@
 #include <openssl/type_check.h>
 
 #include "../crypto/internal.h"
+#include "cipher.h"
 #include "internal.h"
 
 

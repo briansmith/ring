@@ -17,11 +17,11 @@
 #include <string.h>
 
 #include <openssl/chacha.h>
-#include <openssl/cipher.h>
 #include <openssl/err.h>
 #include <openssl/mem.h>
 #include <openssl/poly1305.h>
 
+#include "cipher.h"
 #include "internal.h"
 
 

@@ -216,11 +216,6 @@ OPENSSL_EXPORT int EVP_CipherFinal_ex(EVP_CIPHER_CTX *ctx, uint8_t *out,
 OPENSSL_EXPORT const EVP_CIPHER *EVP_CIPHER_CTX_cipher(
     const EVP_CIPHER_CTX *ctx);
 
-/* EVP_CIPHER_CTX_nid returns a NID identifying the |EVP_CIPHER| underlying
- * |ctx| (e.g. |NID_aes_128_gcm|). It will crash if no cipher has been
- * configured. */
-OPENSSL_EXPORT int EVP_CIPHER_CTX_nid(const EVP_CIPHER_CTX *ctx);
-
 /* EVP_CIPHER_CTX_block_size returns the block size, in bytes, of the cipher
  * underlying |ctx|, or one if the cipher is a stream cipher. It will crash if
  * no cipher has been configured. */
@@ -269,10 +264,6 @@ OPENSSL_EXPORT int EVP_CIPHER_CTX_set_key_length(EVP_CIPHER_CTX *ctx, unsigned k
 
 
 /* Cipher accessors. */
-
-/* EVP_CIPHER_nid returns a NID identifing |cipher|. (For example,
- * |NID_aes_128_gcm|.) */
-OPENSSL_EXPORT int EVP_CIPHER_nid(const EVP_CIPHER *cipher);
 
 /* EVP_CIPHER_block_size returns the block size, in bytes, for |cipher|, or one
  * if |cipher| is a stream cipher. */
@@ -454,9 +445,6 @@ typedef struct evp_cipher_info_st {
 } EVP_CIPHER_INFO;
 
 struct evp_cipher_st {
-  /* type contains a NID identifing the cipher. (e.g. NID_aes_128_gcm.) */
-  int nid;
-
   /* block_size contains the block size, in bytes, of the cipher, or 1 for a
    * stream cipher. */
   unsigned block_size;
