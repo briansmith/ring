@@ -96,15 +96,3 @@
 #define NID_X9_62_prime256v1 415
 #define NID_secp384r1 715
 #define NID_secp521r1 716
-
-/* Ciphers */
-#define NID_aes_128_cbc 419
-#define NID_aes_128_ctr 904
-#define NID_aes_128_gcm 895
-#define NID_aes_256_cbc 427
-#define NID_aes_256_ctr 906
-#define NID_aes_256_gcm 901
-#define NID_des_cbc 31
-#define NID_des_ede_cbc 43
-#define NID_des_ede3_cbc 44
-#define NID_rc4 90

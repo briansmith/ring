@@ -16,9 +16,9 @@
 
 #include <string.h>
 
-#include <openssl/cipher.h>
 #include <openssl/err.h>
 
+#include "cipher.h"
 #include "internal.h"
 
 

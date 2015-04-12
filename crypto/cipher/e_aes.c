@@ -50,7 +50,6 @@
 
 #include <openssl/aead.h>
 #include <openssl/aes.h>
-#include <openssl/cipher.h>
 #include <openssl/cpu.h>
 #include <openssl/err.h>
 #include <openssl/mem.h>
@@ -59,6 +58,7 @@
 #include <openssl/rand.h>
 #include <openssl/sha.h>
 
+#include "cipher.h"
 #include "internal.h"
 #include "../internal.h"
 #include "../modes/internal.h"
@@ -692,19 +692,19 @@ static int aes_gcm_cipher(EVP_CIPHER_CTX *ctx, uint8_t *out, const uint8_t *in,
 }
 
 static const EVP_CIPHER aes_128_cbc = {
-    NID_aes_128_cbc,     16 /* block_size */, 16 /* key_size */,
+    16 /* block_size */, 16 /* key_size */,
     16 /* iv_len */,     sizeof(EVP_AES_KEY), EVP_CIPH_CBC_MODE,
     NULL /* app_data */, aes_init_key,        aes_cbc_cipher,
     NULL /* cleanup */,  NULL /* ctrl */};
 
 static const EVP_CIPHER aes_128_ctr = {
-    NID_aes_128_ctr,     1 /* block_size */,  16 /* key_size */,
+    1 /* block_size */,  16 /* key_size */,
     16 /* iv_len */,     sizeof(EVP_AES_KEY), EVP_CIPH_CTR_MODE,
     NULL /* app_data */, aes_init_key,        aes_ctr_cipher,
     NULL /* cleanup */,  NULL /* ctrl */};
 
 static const EVP_CIPHER aes_128_gcm = {
-    NID_aes_128_gcm, 1 /* block_size */, 16 /* key_size */, 12 /* iv_len */,
+    1 /* block_size */, 16 /* key_size */, 12 /* iv_len */,
     sizeof(EVP_AES_GCM_CTX),
     EVP_CIPH_GCM_MODE | EVP_CIPH_CUSTOM_IV | EVP_CIPH_FLAG_CUSTOM_CIPHER |
         EVP_CIPH_ALWAYS_CALL_INIT | EVP_CIPH_CTRL_INIT |
@@ -714,19 +714,19 @@ static const EVP_CIPHER aes_128_gcm = {
 
 
 static const EVP_CIPHER aes_256_cbc = {
-    NID_aes_256_cbc,     16 /* block_size */, 32 /* key_size */,
+    16 /* block_size */, 32 /* key_size */,
     16 /* iv_len */,     sizeof(EVP_AES_KEY), EVP_CIPH_CBC_MODE,
     NULL /* app_data */, aes_init_key,        aes_cbc_cipher,
     NULL /* cleanup */,  NULL /* ctrl */};
 
 static const EVP_CIPHER aes_256_ctr = {
-    NID_aes_256_ctr,     1 /* block_size */,  32 /* key_size */,
+    1 /* block_size */,  32 /* key_size */,
     16 /* iv_len */,     sizeof(EVP_AES_KEY), EVP_CIPH_CTR_MODE,
     NULL /* app_data */, aes_init_key,        aes_ctr_cipher,
     NULL /* cleanup */,  NULL /* ctrl */};
 
 static const EVP_CIPHER aes_256_gcm = {
-    NID_aes_256_gcm, 1 /* block_size */, 32 /* key_size */, 12 /* iv_len */,
+    1 /* block_size */, 32 /* key_size */, 12 /* iv_len */,
     sizeof(EVP_AES_GCM_CTX),
     EVP_CIPH_GCM_MODE | EVP_CIPH_CUSTOM_IV | EVP_CIPH_FLAG_CUSTOM_CIPHER |
         EVP_CIPH_ALWAYS_CALL_INIT | EVP_CIPH_CTRL_INIT |
@@ -815,19 +815,19 @@ static int aesni_gcm_init_key(EVP_CIPHER_CTX *ctx, const uint8_t *key,
 }
 
 static const EVP_CIPHER aesni_128_cbc = {
-    NID_aes_128_cbc,     16 /* block_size */, 16 /* key_size */,
+    16 /* block_size */, 16 /* key_size */,
     16 /* iv_len */,     sizeof(EVP_AES_KEY), EVP_CIPH_CBC_MODE,
     NULL /* app_data */, aesni_init_key,      aesni_cbc_cipher,
     NULL /* cleanup */,  NULL /* ctrl */};
 
 static const EVP_CIPHER aesni_128_ctr = {
-    NID_aes_128_ctr,     1 /* block_size */,  16 /* key_size */,
+    1 /* block_size */,  16 /* key_size */,
     16 /* iv_len */,     sizeof(EVP_AES_KEY), EVP_CIPH_CTR_MODE,
     NULL /* app_data */, aesni_init_key,      aes_ctr_cipher,
     NULL /* cleanup */,  NULL /* ctrl */};
 
 static const EVP_CIPHER aesni_128_gcm = {
-    NID_aes_128_gcm, 1 /* block_size */, 16 /* key_size */, 12 /* iv_len */,
+    1 /* block_size */, 16 /* key_size */, 12 /* iv_len */,
     sizeof(EVP_AES_GCM_CTX),
     EVP_CIPH_GCM_MODE | EVP_CIPH_CUSTOM_IV | EVP_CIPH_FLAG_CUSTOM_CIPHER |
         EVP_CIPH_ALWAYS_CALL_INIT | EVP_CIPH_CTRL_INIT |
@@ -837,19 +837,19 @@ static const EVP_CIPHER aesni_128_gcm = {
 
 
 static const EVP_CIPHER aesni_256_cbc = {
-    NID_aes_256_cbc,     16 /* block_size */, 32 /* key_size */,
+    16 /* block_size */, 32 /* key_size */,
     16 /* iv_len */,     sizeof(EVP_AES_KEY), EVP_CIPH_CBC_MODE,
     NULL /* app_data */, aesni_init_key,      aesni_cbc_cipher,
     NULL /* cleanup */,  NULL /* ctrl */};
 
 static const EVP_CIPHER aesni_256_ctr = {
-    NID_aes_256_ctr,     1 /* block_size */,  32 /* key_size */,
+    1 /* block_size */,  32 /* key_size */,
     16 /* iv_len */,     sizeof(EVP_AES_KEY), EVP_CIPH_CTR_MODE,
     NULL /* app_data */, aesni_init_key,      aes_ctr_cipher,
     NULL /* cleanup */,  NULL /* ctrl */};
 
 static const EVP_CIPHER aesni_256_gcm = {
-    NID_aes_256_gcm, 1 /* block_size */, 32 /* key_size */, 12 /* iv_len */,
+    1 /* block_size */, 32 /* key_size */, 12 /* iv_len */,
     sizeof(EVP_AES_GCM_CTX),
     EVP_CIPH_GCM_MODE | EVP_CIPH_CUSTOM_IV | EVP_CIPH_FLAG_CUSTOM_CIPHER |
         EVP_CIPH_ALWAYS_CALL_INIT | EVP_CIPH_CTRL_INIT | EVP_CIPH_CUSTOM_COPY |

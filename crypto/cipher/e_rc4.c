@@ -59,7 +59,6 @@
 #include <assert.h>
 #include <string.h>
 
-#include <openssl/cipher.h>
 #include <openssl/cpu.h>
 #include <openssl/err.h>
 #include <openssl/md5.h>
@@ -67,6 +66,7 @@
 #include <openssl/obj.h>
 #include <openssl/rc4.h>
 
+#include "../cipher/cipher.h"
 #include "internal.h"
 
 
@@ -87,7 +87,7 @@ static int rc4_cipher(EVP_CIPHER_CTX *ctx, uint8_t *out, const uint8_t *in,
 }
 
 static const EVP_CIPHER rc4 = {
-    NID_rc4,             1 /* block_size */, 16 /* key_size */,
+    1 /* block_size */, 16 /* key_size */,
     0 /* iv_len */,      sizeof(RC4_KEY),    EVP_CIPH_VARIABLE_LENGTH,
     NULL /* app_data */, rc4_init_key,       rc4_cipher,
     NULL /* cleanup */,  NULL /* ctrl */, };

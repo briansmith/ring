@@ -52,8 +52,9 @@
 #include <string.h>
 
 #include <openssl/aes.h>
-#include <openssl/cipher.h>
 #include <openssl/mem.h>
+
+#include "../cipher/cipher.h"
 
 
 struct cmac_ctx_st {

@@ -17,13 +17,13 @@
 #include <string.h>
 
 #include <openssl/aead.h>
-#include <openssl/cipher.h>
 #include <openssl/err.h>
 #include <openssl/hmac.h>
 #include <openssl/md5.h>
 #include <openssl/mem.h>
 #include <openssl/sha.h>
 
+#include "../cipher/cipher.h"
 #include "internal.h"
 
 
