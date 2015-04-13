@@ -151,6 +151,11 @@ static void err_clear(struct err_error_st *error) {
 /* global_next_library contains the next custom library value to return. */
 static int global_next_library = ERR_NUM_LIBS;
 
+/* global_next_library_mutex protects |global_next_library| from concurrent
+ * updates. */
+static struct CRYPTO_STATIC_MUTEX global_next_library_mutex =
+    CRYPTO_STATIC_MUTEX_INIT;
+
 static void err_state_free(void *statep) {
   ERR_STATE *state = statep;
 
@@ -177,7 +182,8 @@ static ERR_STATE *err_get_state(void) {
       return NULL;
     }
     memset(state, 0, sizeof(ERR_STATE));
-    if (!CRYPTO_set_thread_local(OPENSSL_THREAD_LOCAL_ERR, state, err_state_free)) {
+    if (!CRYPTO_set_thread_local(OPENSSL_THREAD_LOCAL_ERR, state,
+                                 err_state_free)) {
       return NULL;
     }
   }
@@ -326,9 +332,9 @@ void ERR_remove_thread_state(const CRYPTO_THREADID *tid) {
 int ERR_get_next_error_library(void) {
   int ret;
 
-  CRYPTO_w_lock(CRYPTO_LOCK_ERR);
+  CRYPTO_STATIC_MUTEX_lock_write(&global_next_library_mutex);
   ret = global_next_library++;
-  CRYPTO_w_unlock(CRYPTO_LOCK_ERR);
+  CRYPTO_STATIC_MUTEX_unlock(&global_next_library_mutex);
 
   return ret;
 }
