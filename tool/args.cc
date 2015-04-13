@@ -16,6 +16,7 @@
 #include <vector>
 
 #include <stdio.h>
+#include <string.h>
 
 #include "internal.h"
 
@@ -29,7 +30,7 @@ bool ParseKeyValueArguments(std::map<std::string, std::string> *out_args,
     const std::string &arg = args[i];
     const struct argument *templ = nullptr;
     for (size_t j = 0; templates[j].name[0] != 0; j++) {
-      if (arg != std::string(templates[j].name)) {
+      if (strcmp(arg.c_str(), templates[j].name) == 0) {
         templ = &templates[j];
         break;
       }
