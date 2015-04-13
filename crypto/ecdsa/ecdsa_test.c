@@ -60,7 +60,7 @@
 #include <openssl/obj.h>
 #include <openssl/rand.h>
 
-typedef enum api_t {
+enum api_t {
   encoded_api,
   raw_api,
 };
