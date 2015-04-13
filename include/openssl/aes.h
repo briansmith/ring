@@ -146,9 +146,9 @@ OPENSSL_EXPORT void AES_cfb128_encrypt(const uint8_t *in, uint8_t *out,
  * Android they'll have no definition. */
 
 OPENSSL_EXPORT int AES_wrap_key(AES_KEY *key, const uint8_t *iv, uint8_t *out,
-                                const uint8_t *in, size_t in_len);
+                                const uint8_t *in, unsigned in_len);
 OPENSSL_EXPORT int AES_unwrap_key(AES_KEY *key, const uint8_t *iv, uint8_t *out,
-                                  const uint8_t *in, size_t in_len);
+                                  const uint8_t *in, unsigned in_len);
 
 
 #if defined(__cplusplus)

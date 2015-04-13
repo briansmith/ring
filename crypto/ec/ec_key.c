@@ -515,3 +515,5 @@ int EC_KEY_set_ex_data(EC_KEY *d, int idx, void *arg) {
 void *EC_KEY_get_ex_data(const EC_KEY *d, int idx) {
   return CRYPTO_get_ex_data(&d->ex_data, idx);
 }
+
+void EC_KEY_set_asn1_flag(EC_KEY *key, int flag) {}

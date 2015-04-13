@@ -159,6 +159,9 @@
 /* Some code expected to get the threading functions by including ssl.h. */
 #include <openssl/thread.h>
 
+/* wpa_supplicant expects to get the version functions from ssl.h */
+#include <openssl/crypto.h>
+
 #if defined(__cplusplus)
 extern "C" {
 #endif

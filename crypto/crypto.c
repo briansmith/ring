@@ -102,3 +102,11 @@ void CRYPTO_library_init(void) {
   do_library_init();
 #endif
 }
+
+const char *SSLeay_version(int unused) {
+  return SSLeay();
+}
+
+const char *SSLeay(void) {
+  return "BoringSSL";
+}

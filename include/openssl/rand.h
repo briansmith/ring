@@ -47,6 +47,9 @@ OPENSSL_EXPORT void RAND_add(const void *buf, int num, double entropy);
 /* RAND_poll returns one. */
 OPENSSL_EXPORT int RAND_poll(void);
 
+/* RAND_status returns one. */
+OPENSSL_EXPORT int RAND_status(void);
+
 
 #if defined(__cplusplus)
 }  /* extern C */

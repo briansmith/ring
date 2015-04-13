@@ -284,6 +284,22 @@ OPENSSL_EXPORT int EC_POINTs_mul(const EC_GROUP *group, EC_POINT *r,
                                  BN_CTX *ctx);
 
 
+/* Deprecated functions. */
+
+/* EC_GROUP_set_asn1_flag does nothing. */
+OPENSSL_EXPORT void EC_GROUP_set_asn1_flag(EC_GROUP *group, int flag);
+
+#define OPENSSL_EC_NAMED_CURVE 0
+
+typedef struct ec_method_st EC_METHOD;
+
+/* EC_GROUP_method_of returns NULL. */
+OPENSSL_EXPORT const EC_METHOD *EC_GROUP_method_of(const EC_GROUP *group);
+
+/* EC_METHOD_get_field_type returns NID_X9_62_prime_field. */
+OPENSSL_EXPORT int EC_METHOD_get_field_type(const EC_METHOD *meth);
+
+
 /* Old code expects to get EC_KEY from ec.h. */
 #if !defined(OPENSSL_HEADER_EC_KEY_H)
 #include <openssl/ec_key.h>

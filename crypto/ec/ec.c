@@ -861,3 +861,13 @@ int ec_point_set_Jprojective_coordinates_GFp(const EC_GROUP *group, EC_POINT *po
   return group->meth->point_set_Jprojective_coordinates_GFp(group, point, x, y,
                                                             z, ctx);
 }
+
+void EC_GROUP_set_asn1_flag(EC_GROUP *group, int flag) {}
+
+const EC_METHOD *EC_GROUP_method_of(const EC_GROUP *group) {
+  return NULL;
+}
+
+int EC_METHOD_get_field_type(const EC_METHOD *meth) {
+  return NID_X9_62_prime_field;
+}

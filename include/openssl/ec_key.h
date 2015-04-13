@@ -273,6 +273,12 @@ struct ecdsa_method_st {
 };
 
 
+/* Deprecated functions. */
+
+/* EC_KEY_set_asn1_flag does nothing. */
+OPENSSL_EXPORT void EC_KEY_set_asn1_flag(EC_KEY *key, int flag);
+
+
 #if defined(__cplusplus)
 }  /* extern C */
 #endif

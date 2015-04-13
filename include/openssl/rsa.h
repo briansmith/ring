@@ -390,6 +390,12 @@ OPENSSL_EXPORT void *RSA_get_ex_data(const RSA *r, int idx);
 #define RSA_F4 0x10001
 
 
+/* Deprecated functions. */
+
+/* RSA_blinding_on returns one. */
+OPENSSL_EXPORT int RSA_blinding_on(RSA *rsa, BN_CTX *ctx);
+
+
 struct rsa_meth_st {
   struct openssl_method_common_st common;
 
