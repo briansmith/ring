@@ -110,9 +110,14 @@
 #define OPENSSL_HEADER_CRYPTO_INTERNAL_H
 
 #include <openssl/ex_data.h>
+#include <openssl/thread.h>
 
 #if !defined(OPENSSL_WINDOWS)
 #include <pthread.h>
+#else
+#pragma warning(push, 3)
+#include <windows.h>
+#pragma warning(pop)
 #endif
 
 #if defined(__cplusplus)
@@ -358,6 +363,69 @@ typedef int32_t CRYPTO_once_t;
  * The |once| argument must be a |CRYPTO_once_t| that has been initialised with
  * the value |CRYPTO_ONCE_INIT|. */
 OPENSSL_EXPORT void CRYPTO_once(CRYPTO_once_t *once, void (*init)(void));
+
+
+/* Locks.
+ *
+ * Two types of locks are defined: |CRYPTO_MUTEX|, which can be used in
+ * structures as normal, and |struct CRYPTO_STATIC_MUTEX|, which can be used as
+ * a global lock. A global lock must be initialised to the value
+ * |CRYPTO_STATIC_MUTEX_INIT|.
+ *
+ * |CRYPTO_MUTEX| can appear in public structures and so is defined in
+ * thread.h.
+ *
+ * The global lock is a different type because there's no static initialiser
+ * value on Windows for locks, so global locks have to be coupled with a
+ * |CRYPTO_once_t| to ensure that the lock is setup before use. This is done
+ * automatically by |CRYPTO_STATIC_MUTEX_lock_*|. */
+
+#if !defined(OPENSSL_WINDOWS)
+struct CRYPTO_STATIC_MUTEX {
+  pthread_rwlock_t lock;
+};
+#define CRYPTO_STATIC_MUTEX_INIT { PTHREAD_RWLOCK_INITIALIZER }
+#else
+struct CRYPTO_STATIC_MUTEX {
+  CRYPTO_once_t once;
+  CRITICAL_SECTION lock;
+};
+#define CRYPTO_STATIC_MUTEX_INIT { CRYPTO_ONCE_INIT, { 0 } }
+#endif
+
+/* CRYPTO_MUTEX_init initialises |lock|. If |lock| is a static variable, use a
+ * |CRYPTO_STATIC_MUTEX|. */
+void CRYPTO_MUTEX_init(CRYPTO_MUTEX *lock);
+
+/* CRYPTO_MUTEX_lock_read locks |lock| such that other threads may also have a
+ * read lock, but none may have a write lock. (On Windows, read locks are
+ * actually fully exclusive.) */
+void CRYPTO_MUTEX_lock_read(CRYPTO_MUTEX *lock);
+
+/* CRYPTO_MUTEX_lock_write locks |lock| such that no other thread has any type
+ * of lock on it. */
+void CRYPTO_MUTEX_lock_write(CRYPTO_MUTEX *lock);
+
+/* CRYPTO_MUTEX_unlock unlocks |lock|. */
+void CRYPTO_MUTEX_unlock(CRYPTO_MUTEX *lock);
+
+/* CRYPTO_MUTEX_cleanup releases all resources held by |lock|. */
+void CRYPTO_MUTEX_cleanup(CRYPTO_MUTEX *lock);
+
+/* CRYPTO_STATIC_MUTEX_lock_read locks |lock| such that other threads may also
+ * have a read lock, but none may have a write lock. The |lock| variable does
+ * not need to be initialised by any function, but must have been statically
+ * initialised with |CRYPTO_STATIC_MUTEX_INIT|. */
+void CRYPTO_STATIC_MUTEX_lock_read(struct CRYPTO_STATIC_MUTEX *lock);
+
+/* CRYPTO_STATIC_MUTEX_lock_write locks |lock| such that no other thread has
+ * any type of lock on it.  The |lock| variable does not need to be initialised
+ * by any function, but must have been statically initialised with
+ * |CRYPTO_STATIC_MUTEX_INIT|. */
+void CRYPTO_STATIC_MUTEX_lock_write(struct CRYPTO_STATIC_MUTEX *lock);
+
+/* CRYPTO_STATIC_MUTEX_unlock unlocks |lock|. */
+void CRYPTO_STATIC_MUTEX_unlock(struct CRYPTO_STATIC_MUTEX *lock);
 
 
 /* Thread local storage. */

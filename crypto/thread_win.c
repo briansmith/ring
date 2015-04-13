@@ -21,12 +21,17 @@
 #pragma warning(pop)
 
 #include <assert.h>
+#include <stdlib.h>
 #include <string.h>
 
 #include <openssl/mem.h>
+#include <openssl/type_check.h>
 
 
-void CRYPTO_once(CRYPTO_once_t *in_once, void (*init)(void)) {
+OPENSSL_COMPILE_ASSERT(sizeof(CRYPTO_MUTEX) >= sizeof(CRITICAL_SECTION),
+                       CRYPTO_MUTEX_too_small);
+
+static void run_once(CRYPTO_once_t *in_once, void (*init)(void *), void *arg) {
   volatile LONG *once = (LONG*) in_once;
 
   assert(sizeof(LONG) == sizeof(CRYPTO_once_t));
@@ -48,7 +53,7 @@ void CRYPTO_once(CRYPTO_once_t *in_once, void (*init)(void)) {
       case 0:
         /* The value was zero so we are the first thread to call |CRYPTO_once|
          * on it. */
-        init();
+        init(arg);
         /* Write one to indicate that initialisation is complete. */
         InterlockedExchange(once, 1);
         return;
@@ -68,6 +73,64 @@ void CRYPTO_once(CRYPTO_once_t *in_once, void (*init)(void)) {
         abort();
     }
   }
+}
+
+static void call_once_init(void *arg) {
+  void (*init_func)(void);
+  /* MSVC does not like casting between data and function pointers. */
+  memcpy(&init_func, &arg, sizeof(void *));
+  init_func();
+}
+
+void CRYPTO_once(CRYPTO_once_t *in_once, void (*init)(void)) {
+  void *arg;
+  /* MSVC does not like casting between data and function pointers. */
+  memcpy(&arg, &init, sizeof(void *));
+  run_once(in_once, call_once_init, arg);
+}
+
+void CRYPTO_MUTEX_init(CRYPTO_MUTEX *lock) {
+  if (!InitializeCriticalSectionAndSpinCount((CRITICAL_SECTION *) lock, 0x400)) {
+    abort();
+  }
+}
+
+void CRYPTO_MUTEX_lock_read(CRYPTO_MUTEX *lock) {
+  /* Since we have to support Windows XP, read locks are actually exclusive. */
+  EnterCriticalSection((CRITICAL_SECTION *) lock);
+}
+
+void CRYPTO_MUTEX_lock_write(CRYPTO_MUTEX *lock) {
+  EnterCriticalSection((CRITICAL_SECTION *) lock);
+}
+
+void CRYPTO_MUTEX_unlock(CRYPTO_MUTEX *lock) {
+  LeaveCriticalSection((CRITICAL_SECTION *) lock);
+}
+
+void CRYPTO_MUTEX_cleanup(CRYPTO_MUTEX *lock) {
+  DeleteCriticalSection((CRITICAL_SECTION *) lock);
+}
+
+static void static_lock_init(void *arg) {
+  struct CRYPTO_STATIC_MUTEX *lock = arg;
+  if (!InitializeCriticalSectionAndSpinCount(&lock->lock, 0x400)) {
+    abort();
+  }
+}
+
+void CRYPTO_STATIC_MUTEX_lock_read(struct CRYPTO_STATIC_MUTEX *lock) {
+  /* Since we have to support Windows XP, read locks are actually exclusive. */
+  run_once(&lock->once, static_lock_init, lock);
+  EnterCriticalSection(&lock->lock);
+}
+
+void CRYPTO_STATIC_MUTEX_lock_write(struct CRYPTO_STATIC_MUTEX *lock) {
+  CRYPTO_STATIC_MUTEX_lock_read(lock);
+}
+
+void CRYPTO_STATIC_MUTEX_unlock(struct CRYPTO_STATIC_MUTEX *lock) {
+  LeaveCriticalSection(&lock->lock);
 }
 
 static CRITICAL_SECTION g_destructors_lock;
