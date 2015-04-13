@@ -8,6 +8,7 @@ add_executable(
   const.cc
   digest.cc
   pkcs12.cc
+  rand.cc
   server.cc
   speed.cc
   tool.cc

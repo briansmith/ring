@@ -36,6 +36,7 @@ bool SHA384Sum(const std::vector<std::string> &args);
 bool SHA512Sum(const std::vector<std::string> &args);
 bool DoPKCS12(const std::vector<std::string> &args);
 bool Speed(const std::vector<std::string> &args);
+bool Rand(const std::vector<std::string> &args);
 
 typedef bool (*tool_func_t)(const std::vector<std::string> &args);
 
@@ -57,6 +58,7 @@ static const Tool kTools[] = {
   { "sha256sum", SHA256Sum },
   { "sha384sum", SHA384Sum },
   { "sha512sum", SHA512Sum },
+  { "rand", Rand },
   { "", nullptr },
 };
 
