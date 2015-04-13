@@ -24,6 +24,7 @@
 #include <openssl/digest.h>
 #include <openssl/err.h>
 #include <openssl/obj.h>
+#include <openssl/rand.h>
 #include <openssl/rsa.h>
 
 #if defined(OPENSSL_WINDOWS)
@@ -133,13 +134,17 @@ static bool TimeFunction(TimeResults *results, std::function<bool()> func) {
   return true;
 }
 
-static bool SpeedRSA(const std::string& key_name, RSA *key) {
-  TimeResults results;
+static bool SpeedRSA(const std::string &key_name, RSA *key,
+                     const std::string &selected) {
+  if (!selected.empty() && key_name.find(selected) == std::string::npos) {
+    return true;
+  }
 
   std::unique_ptr<uint8_t[]> sig(new uint8_t[RSA_size(key)]);
   const uint8_t fake_sha256_hash[32] = {0};
   unsigned sig_len;
 
+  TimeResults results;
   if (!TimeFunction(&results,
                     [key, &sig, &fake_sha256_hash, &sig_len]() -> bool {
         return RSA_sign(NID_sha256, fake_sha256_hash, sizeof(fake_sha256_hash),
@@ -224,7 +229,11 @@ static bool SpeedAEADChunk(const EVP_AEAD *aead, const std::string &name,
 }
 
 static bool SpeedAEAD(const EVP_AEAD *aead, const std::string &name,
-                      size_t ad_len) {
+                      size_t ad_len, const std::string &selected) {
+  if (!selected.empty() && name.find(selected) == std::string::npos) {
+    return true;
+  }
+
   return SpeedAEADChunk(aead, name + " (16 bytes)", 16, ad_len) &&
          SpeedAEADChunk(aead, name + " (1350 bytes)", 1350, ad_len) &&
          SpeedAEADChunk(aead, name + " (8192 bytes)", 8192, ad_len);
@@ -259,24 +268,65 @@ static bool SpeedHashChunk(const EVP_MD *md, const std::string &name,
 
   return true;
 }
-static bool SpeedHash(const EVP_MD *md, const std::string &name) {
+static bool SpeedHash(const EVP_MD *md, const std::string &name,
+                      const std::string &selected) {
+  if (!selected.empty() && name.find(selected) == std::string::npos) {
+    return true;
+  }
+
   return SpeedHashChunk(md, name + " (16 bytes)", 16) &&
          SpeedHashChunk(md, name + " (256 bytes)", 256) &&
          SpeedHashChunk(md, name + " (8192 bytes)", 8192);
 }
 
+static bool SpeedRandomChunk(const std::string name, size_t chunk_len) {
+  uint8_t scratch[8192];
+
+  if (chunk_len > sizeof(scratch)) {
+    return false;
+  }
+
+  TimeResults results;
+  if (!TimeFunction(&results, [chunk_len, &scratch]() -> bool {
+        RAND_bytes(scratch, chunk_len);
+        return true;
+      })) {
+    return false;
+  }
+
+  results.PrintWithBytes(name, chunk_len);
+  return true;
+}
+
+static bool SpeedRandom(const std::string &selected) {
+  if (!selected.empty() && selected != "RNG") {
+    return true;
+  }
+
+  return SpeedRandomChunk("RNG (16 bytes)", 16) &&
+         SpeedRandomChunk("RNG (256 bytes)", 256) &&
+         SpeedRandomChunk("RNG (8192 bytes)", 8192);
+}
+
 bool Speed(const std::vector<std::string> &args) {
-  const uint8_t *inp;
+  std::string selected;
+  if (args.size() > 1) {
+    fprintf(stderr, "Usage: bssl speed [speed test selector, i.e. 'RNG']\n");
+    return false;
+  }
+  if (args.size() > 0) {
+    selected = args[0];
+  }
 
   RSA *key = NULL;
-  inp = kDERRSAPrivate2048;
+  const uint8_t *inp = kDERRSAPrivate2048;
   if (NULL == d2i_RSAPrivateKey(&key, &inp, kDERRSAPrivate2048Len)) {
     fprintf(stderr, "Failed to parse RSA key.\n");
     ERR_print_errors_fp(stderr);
     return false;
   }
 
-  if (!SpeedRSA("RSA 2048", key)) {
+  if (!SpeedRSA("RSA 2048", key, selected)) {
     return false;
   }
 
@@ -290,7 +340,7 @@ bool Speed(const std::vector<std::string> &args) {
     return 1;
   }
 
-  if (!SpeedRSA("RSA 4096", key)) {
+  if (!SpeedRSA("RSA 4096", key, selected)) {
     return false;
   }
 
@@ -305,17 +355,21 @@ bool Speed(const std::vector<std::string> &args) {
   // knowledge in them and construct a couple of the AD bytes internally.
   static const size_t kLegacyADLen = kTLSADLen - 2;
 
-  if (!SpeedAEAD(EVP_aead_aes_128_gcm(), "AES-128-GCM", kTLSADLen) ||
-      !SpeedAEAD(EVP_aead_aes_256_gcm(), "AES-256-GCM", kTLSADLen) ||
-      !SpeedAEAD(EVP_aead_chacha20_poly1305(), "ChaCha20-Poly1305", kTLSADLen) ||
-      !SpeedAEAD(EVP_aead_rc4_md5_tls(), "RC4-MD5", kLegacyADLen) ||
-      !SpeedAEAD(EVP_aead_aes_128_cbc_sha1_tls(), "AES-128-CBC-SHA1", kLegacyADLen) ||
-      !SpeedAEAD(EVP_aead_aes_256_cbc_sha1_tls(), "AES-256-CBC-SHA1", kLegacyADLen) ||
-      !SpeedHash(EVP_sha1(), "SHA-1") ||
-      !SpeedHash(EVP_sha256(), "SHA-256") ||
-      !SpeedHash(EVP_sha512(), "SHA-512")) {
+  if (!SpeedAEAD(EVP_aead_aes_128_gcm(), "AES-128-GCM", kTLSADLen, selected) ||
+      !SpeedAEAD(EVP_aead_aes_256_gcm(), "AES-256-GCM", kTLSADLen, selected) ||
+      !SpeedAEAD(EVP_aead_chacha20_poly1305(), "ChaCha20-Poly1305", kTLSADLen,
+                 selected) ||
+      !SpeedAEAD(EVP_aead_rc4_md5_tls(), "RC4-MD5", kLegacyADLen, selected) ||
+      !SpeedAEAD(EVP_aead_aes_128_cbc_sha1_tls(), "AES-128-CBC-SHA1",
+                 kLegacyADLen, selected) ||
+      !SpeedAEAD(EVP_aead_aes_256_cbc_sha1_tls(), "AES-256-CBC-SHA1",
+                 kLegacyADLen, selected) ||
+      !SpeedHash(EVP_sha1(), "SHA-1", selected) ||
+      !SpeedHash(EVP_sha256(), "SHA-256", selected) ||
+      !SpeedHash(EVP_sha512(), "SHA-512", selected) ||
+      !SpeedRandom(selected)) {
     return false;
   }
 
-  return 0;
+  return true;
 }
