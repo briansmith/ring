@@ -122,37 +122,32 @@
 /* global_impl is the implementation that we use at runtime. */
 static const CRYPTO_EX_DATA_IMPL *global_impl = NULL;
 
+/* global_impl_once protects the call to |global_impl_init|. */
+static CRYPTO_once_t global_impl_once = CRYPTO_ONCE_INIT;
+
+/* global_user_set_impl is a pointer to a user provided implementation. If this
+ * is non-NULL at the point of the first use of ex_data, |global_impl| will be
+ * set to this value. */
+static const CRYPTO_EX_DATA_IMPL *global_user_set_impl = NULL;
+
 /* ex_data_default_impl is a the default implementation, defined in
  * ex_data_impl.c. */
 extern const CRYPTO_EX_DATA_IMPL ex_data_default_impl;
 
-/* get_impl returns the current ex_data implementatation. */
-static const CRYPTO_EX_DATA_IMPL *get_impl(void) {
-  const CRYPTO_EX_DATA_IMPL *impl;
-
-  CRYPTO_r_lock(CRYPTO_LOCK_EX_DATA);
-  impl = global_impl;
-  CRYPTO_r_unlock(CRYPTO_LOCK_EX_DATA);
-
-  if (impl != NULL) {
-    return impl;
-  }
-
-  CRYPTO_w_lock(CRYPTO_LOCK_EX_DATA);
+/* global_impl_init is called once in order to set |global_impl|. */
+static void global_impl_init(void) {
+  global_impl = global_user_set_impl;
   if (global_impl == NULL) {
     global_impl = &ex_data_default_impl;
   }
-  impl = global_impl;
-  CRYPTO_w_unlock(CRYPTO_LOCK_EX_DATA);
-  return impl;
 }
 
 int CRYPTO_get_ex_new_index(int class_value, long argl, void *argp,
                             CRYPTO_EX_new *new_func, CRYPTO_EX_dup *dup_func,
                             CRYPTO_EX_free *free_func) {
-  const CRYPTO_EX_DATA_IMPL *const impl = get_impl();
-  return impl->get_new_index(class_value, argl, argp, new_func, dup_func,
-                             free_func);
+  CRYPTO_once(&global_impl_once, global_impl_init);
+  return global_impl->get_new_index(class_value, argl, argp, new_func, dup_func,
+                                    free_func);
 }
 
 int CRYPTO_set_ex_data(CRYPTO_EX_DATA *ad, int index, void *val) {
@@ -188,44 +183,38 @@ void *CRYPTO_get_ex_data(const CRYPTO_EX_DATA *ad, int idx) {
 }
 
 int CRYPTO_ex_data_new_class(void) {
-  const CRYPTO_EX_DATA_IMPL *const impl = get_impl();
-  return impl->new_class();
+  CRYPTO_once(&global_impl_once, global_impl_init);
+  return global_impl->new_class();
 }
 
 int CRYPTO_new_ex_data(int class_value, void *obj, CRYPTO_EX_DATA *ad) {
-  const CRYPTO_EX_DATA_IMPL *const impl = get_impl();
-  return impl->new_ex_data(class_value, obj, ad);
+  CRYPTO_once(&global_impl_once, global_impl_init);
+  return global_impl->new_ex_data(class_value, obj, ad);
 }
 
 int CRYPTO_dup_ex_data(int class_value, CRYPTO_EX_DATA *to,
                        const CRYPTO_EX_DATA *from) {
-  const CRYPTO_EX_DATA_IMPL *const impl = get_impl();
-  return impl->dup_ex_data(class_value, to, from);
+  CRYPTO_once(&global_impl_once, global_impl_init);
+  return global_impl->dup_ex_data(class_value, to, from);
 }
 
 void CRYPTO_free_ex_data(int class_value, void *obj, CRYPTO_EX_DATA *ad) {
-  const CRYPTO_EX_DATA_IMPL *const impl = get_impl();
-  impl->free_ex_data(class_value, obj, ad);
+  CRYPTO_once(&global_impl_once, global_impl_init);
+  global_impl->free_ex_data(class_value, obj, ad);
 }
 
 const CRYPTO_EX_DATA_IMPL *CRYPTO_get_ex_data_implementation(void) {
-  return get_impl();
+  CRYPTO_once(&global_impl_once, global_impl_init);
+  return global_impl;
 }
 
 int CRYPTO_set_ex_data_implementation(const CRYPTO_EX_DATA_IMPL *impl) {
-  int ret = 0;
-
-  CRYPTO_w_lock(CRYPTO_LOCK_EX_DATA);
-  if (global_impl == NULL) {
-    ret = 1;
-    global_impl = impl;
-  }
-  CRYPTO_w_unlock(CRYPTO_LOCK_EX_DATA);
-
-  return ret;
+  global_user_set_impl = impl;
+  CRYPTO_once(&global_impl_once, global_impl_init);
+  return (global_impl == impl);
 }
 
 void CRYPTO_cleanup_all_ex_data(void) {
-  const CRYPTO_EX_DATA_IMPL *const impl = get_impl();
-  impl->cleanup();
+  CRYPTO_once(&global_impl_once, global_impl_init);
+  global_impl->cleanup();
 }
