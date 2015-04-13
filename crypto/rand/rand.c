@@ -14,6 +14,134 @@
 
 #include <openssl/rand.h>
 
+#include <string.h>
+
+#include <openssl/mem.h>
+
+#include "internal.h"
+#include "../internal.h"
+
+
+/* It's assumed that the operating system always has an unfailing source of
+ * entropy which is accessed via |CRYPTO_sysrand|. (If the operating system
+ * entropy source fails, it's up to |CRYPTO_sysrand| to abort the process—we
+ * don't try to handle it.)
+ *
+ * In addition, the hardware may provide a low-latency RNG. Intel's rdrand
+ * instruction is the canonical example of this. When a hardware RNG is
+ * available we don't need to worry about an RNG failure arising from fork()ing
+ * the process or moving a VM, so we can keep thread-local RNG state and XOR
+ * the hardware entropy in.
+ *
+ * (We assume that the OS entropy is safe from fork()ing and VM duplication.
+ * This might be a bit of a leap of faith, esp on Windows, but there's nothing
+ * that we can do about it.) */
+
+/* rand_thread_state contains the per-thread state for the RNG. This is only
+ * used if the system has support for a hardware RNG. */
+struct rand_thread_state {
+  uint8_t key[32];
+  uint64_t calls_used;
+  size_t bytes_used;
+  uint8_t partial_block[64];
+  unsigned partial_block_used;
+};
+
+/* kMaxCallsPerRefresh is the maximum number of |RAND_bytes| calls that we'll
+ * serve before reading a new key from the operating system. This only applies
+ * if we have a hardware RNG. */
+static const unsigned kMaxCallsPerRefresh = 1024;
+
+/* kMaxBytesPerRefresh is the maximum number of bytes that we'll return from
+ * |RAND_bytes| before reading a new key from the operating system. This only
+ * applies if we have a hardware RNG. */
+static const uint64_t kMaxBytesPerRefresh = 1024 * 1024;
+
+/* rand_thread_state_free frees a |rand_thread_state|. This is called when a
+ * thread exits. */
+static void rand_thread_state_free(void *state) {
+  if (state == NULL) {
+    return;
+  }
+
+  OPENSSL_cleanse(state, sizeof(struct rand_thread_state));
+  OPENSSL_free(state);
+}
+
+extern void CRYPTO_chacha_20(uint8_t *out, const uint8_t *in, size_t in_len,
+                             const uint8_t key[32], const uint8_t nonce[8],
+                             size_t counter);
+
+int RAND_bytes(uint8_t *buf, const size_t len) {
+  if (len == 0) {
+    return 1;
+  }
+
+  if (!CRYPTO_have_hwrand()) {
+    /* Without a hardware RNG to save us from address-space duplication, the OS
+     * entropy is used directly. */
+    CRYPTO_sysrand(buf, len);
+    return 1;
+  }
+
+  struct rand_thread_state *state =
+      CRYPTO_get_thread_local(OPENSSL_THREAD_LOCAL_RAND);
+  if (state == NULL) {
+    state = OPENSSL_malloc(sizeof(struct rand_thread_state));
+    if (state == NULL ||
+        !CRYPTO_set_thread_local(OPENSSL_THREAD_LOCAL_RAND, state,
+                                 rand_thread_state_free)) {
+      CRYPTO_sysrand(buf, len);
+      return 1;
+    }
+
+    state->calls_used = kMaxCallsPerRefresh;
+  }
+
+  if (state->calls_used >= kMaxCallsPerRefresh ||
+      state->bytes_used >= kMaxBytesPerRefresh) {
+    CRYPTO_sysrand(state->key, sizeof(state->key));
+    state->calls_used = 0;
+    state->bytes_used = 0;
+    state->partial_block_used = sizeof(state->partial_block);
+  }
+
+  CRYPTO_hwrand(buf, len);
+
+  if (len >= sizeof(state->partial_block)) {
+    size_t remaining = len;
+    while (remaining > 0) {
+      // kMaxBytesPerCall is only 2GB, while ChaCha can handle 256GB. But this
+      // is sufficient and easier on 32-bit.
+      static const size_t kMaxBytesPerCall = 0x80000000;
+      size_t todo = remaining;
+      if (todo > kMaxBytesPerCall) {
+        todo = kMaxBytesPerCall;
+      }
+      CRYPTO_chacha_20(buf, buf, todo, state->key,
+                       (uint8_t *)&state->calls_used, 0);
+      buf += todo;
+      remaining -= todo;
+      state->calls_used++;
+    }
+  } else {
+    if (sizeof(state->partial_block) - state->partial_block_used < len) {
+      CRYPTO_chacha_20(state->partial_block, state->partial_block,
+                       sizeof(state->partial_block), state->key,
+                       (uint8_t *)&state->calls_used, 0);
+      state->partial_block_used = 0;
+    }
+
+    unsigned i;
+    for (i = 0; i < len; i++) {
+      buf[i] ^= state->partial_block[state->partial_block_used++];
+    }
+    state->calls_used++;
+  }
+  state->bytes_used += len;
+
+  return 1;
+}
 
 int RAND_pseudo_bytes(uint8_t *buf, size_t len) {
   return RAND_bytes(buf, len);

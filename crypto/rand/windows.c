@@ -32,11 +32,13 @@
 
 #pragma warning(pop)
 
+#include "internal.h"
+
 
 void RAND_cleanup(void) {
 }
 
-int RAND_bytes(uint8_t *out, size_t requested) {
+void CRYPTO_sysrand(uint8_t *out, size_t requested) {
   while (requested > 0) {
     ULONG output_bytes_this_pass = ULONG_MAX;
     if (requested < output_bytes_this_pass) {
@@ -48,7 +50,7 @@ int RAND_bytes(uint8_t *out, size_t requested) {
     requested -= output_bytes_this_pass;
     out += output_bytes_this_pass;
   }
-  return 1;
+  return;
 }
 
 #endif  /* OPENSSL_WINDOWS */
