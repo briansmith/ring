@@ -123,8 +123,9 @@ static int sign_setup(const DSA *dsa, BN_CTX *ctx_in, BIGNUM **kinvp,
 
   BN_set_flags(&k, BN_FLG_CONSTTIME);
 
-  if (!BN_MONT_CTX_set_locked((BN_MONT_CTX **)&dsa->method_mont_p,
-                              CRYPTO_LOCK_DSA, dsa->p, ctx)) {
+  if (BN_MONT_CTX_set_locked((BN_MONT_CTX **)&dsa->method_mont_p,
+                             (CRYPTO_MUTEX *)&dsa->method_mont_p_lock, dsa->p,
+                             ctx) == NULL) {
     goto err;
   }
 
@@ -365,12 +366,14 @@ static int verify(int *out_valid, const uint8_t *dgst, size_t digest_len,
   }
 
   mont = BN_MONT_CTX_set_locked((BN_MONT_CTX **)&dsa->method_mont_p,
-                                CRYPTO_LOCK_DSA, dsa->p, ctx);
+                                (CRYPTO_MUTEX *)&dsa->method_mont_p_lock,
+                                dsa->p, ctx);
   if (!mont) {
     goto err;
   }
 
-  if (!BN_mod_exp2_mont(&t1, dsa->g, &u1, dsa->pub_key, &u2, dsa->p, ctx, mont)) {
+  if (!BN_mod_exp2_mont(&t1, dsa->g, &u1, dsa->pub_key, &u2, dsa->p, ctx,
+                        mont)) {
     goto err;
   }
 

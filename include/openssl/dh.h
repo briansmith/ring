@@ -61,6 +61,7 @@
 
 #include <openssl/engine.h>
 #include <openssl/ex_data.h>
+#include <openssl/thread.h>
 
 #if defined(__cplusplus)
 extern "C" {
@@ -236,6 +237,8 @@ struct dh_st {
   /* priv_length contains the length, in bits, of the private value. If zero,
    * the private value will be the same length as |p|. */
   unsigned priv_length;
+
+  CRYPTO_MUTEX method_mont_p_lock;
   BN_MONT_CTX *method_mont_p;
 
   /* Place holders if we want to do X9.42 DH */

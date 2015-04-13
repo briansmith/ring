@@ -114,6 +114,7 @@
 #include <openssl/thread.h>
 
 #include "internal.h"
+#include "../internal.h"
 
 
 #if !defined(OPENSSL_NO_ASM) && \
@@ -292,44 +293,36 @@ err:
   return ret;
 }
 
-BN_MONT_CTX *BN_MONT_CTX_set_locked(BN_MONT_CTX **pmont, int lock,
-                                    const BIGNUM *mod, BN_CTX *ctx) {
-  BN_MONT_CTX *ret;
+BN_MONT_CTX *BN_MONT_CTX_set_locked(BN_MONT_CTX **pmont, CRYPTO_MUTEX *lock,
+                                    const BIGNUM *mod, BN_CTX *bn_ctx) {
+  CRYPTO_MUTEX_lock_read(lock);
+  BN_MONT_CTX *ctx = *pmont;
+  CRYPTO_MUTEX_unlock(lock);
 
-  CRYPTO_r_lock(lock);
-  ret = *pmont;
-  CRYPTO_r_unlock(lock);
-  if (ret) {
-    return ret;
+  if (ctx) {
+    return ctx;
   }
 
-  /* We don't want to serialise globally while doing our lazy-init math in
-   * BN_MONT_CTX_set. That punishes threads that are doing independent
-   * things. Instead, punish the case where more than one thread tries to
-   * lazy-init the same 'pmont', by having each do the lazy-init math work
-   * independently and only use the one from the thread that wins the race
-   * (the losers throw away the work they've done). */
-  ret = BN_MONT_CTX_new();
-  if (!ret) {
-    return NULL;
-  }
-  if (!BN_MONT_CTX_set(ret, mod, ctx)) {
-    BN_MONT_CTX_free(ret);
-    return NULL;
+  CRYPTO_MUTEX_lock_write(lock);
+  ctx = *pmont;
+  if (ctx) {
+    goto out;
   }
 
-  /* The locked compare-and-set, after the local work is done. */
-  CRYPTO_w_lock(lock);
-  if (*pmont) {
-    BN_MONT_CTX_free(ret);
-    ret = *pmont;
-  } else {
-    *pmont = ret;
+  ctx = BN_MONT_CTX_new();
+  if (ctx == NULL) {
+    goto out;
   }
+  if (!BN_MONT_CTX_set(ctx, mod, bn_ctx)) {
+    BN_MONT_CTX_free(ctx);
+    ctx = NULL;
+    goto out;
+  }
+  *pmont = ctx;
 
-  CRYPTO_w_unlock(lock);
-
-  return ret;
+out:
+  CRYPTO_MUTEX_unlock(lock);
+  return ctx;
 }
 
 int BN_to_montgomery(BIGNUM *ret, const BIGNUM *a, const BN_MONT_CTX *mont,

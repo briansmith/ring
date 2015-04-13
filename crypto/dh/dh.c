@@ -66,6 +66,7 @@
 #include <openssl/thread.h>
 
 #include "internal.h"
+#include "../internal.h"
 
 
 extern const DH_METHOD DH_default_method;
@@ -89,6 +90,8 @@ DH *DH_new_method(const ENGINE *engine) {
     dh->meth = (DH_METHOD*) &DH_default_method;
   }
   METHOD_ref(dh->meth);
+
+  CRYPTO_MUTEX_init(&dh->method_mont_p_lock);
 
   dh->references = 1;
   if (!CRYPTO_new_ex_data(CRYPTO_EX_INDEX_DH, dh, &dh->ex_data)) {
@@ -131,6 +134,7 @@ void DH_free(DH *dh) {
   if (dh->counter != NULL) BN_clear_free(dh->counter);
   if (dh->pub_key != NULL) BN_clear_free(dh->pub_key);
   if (dh->priv_key != NULL) BN_clear_free(dh->priv_key);
+  CRYPTO_MUTEX_cleanup(&dh->method_mont_p_lock);
 
   OPENSSL_free(dh);
 }

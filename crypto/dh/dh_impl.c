@@ -62,6 +62,7 @@
 
 #include "internal.h"
 
+
 #define OPENSSL_DH_MAX_MODULUS_BITS 10000
 
 static int generate_parameters(DH *ret, int prime_bits, int generator, BN_GENCB *cb) {
@@ -207,8 +208,8 @@ static int generate_key(DH *dh) {
     pub_key = dh->pub_key;
   }
 
-  mont =
-      BN_MONT_CTX_set_locked(&dh->method_mont_p, CRYPTO_LOCK_DH, dh->p, ctx);
+  mont = BN_MONT_CTX_set_locked(&dh->method_mont_p, &dh->method_mont_p_lock,
+                                dh->p, ctx);
   if (!mont) {
     goto err;
   }
@@ -282,8 +283,8 @@ static int compute_key(DH *dh, unsigned char *out, const BIGNUM *pub_key) {
     goto err;
   }
 
-  mont =
-      BN_MONT_CTX_set_locked(&dh->method_mont_p, CRYPTO_LOCK_DH, dh->p, ctx);
+  mont = BN_MONT_CTX_set_locked(&dh->method_mont_p, &dh->method_mont_p_lock,
+                                dh->p, ctx);
   if (!mont) {
     goto err;
   }

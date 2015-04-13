@@ -67,6 +67,7 @@
 #include <openssl/thread.h>
 
 #include "internal.h"
+#include "../internal.h"
 
 
 extern const RSA_METHOD RSA_default_method;
@@ -93,6 +94,7 @@ RSA *RSA_new_method(const ENGINE *engine) {
 
   rsa->references = 1;
   rsa->flags = rsa->meth->flags;
+  CRYPTO_MUTEX_init(&rsa->lock);
 
   if (!CRYPTO_new_ex_data(CRYPTO_EX_INDEX_RSA, rsa, &rsa->ex_data)) {
     METHOD_unref(rsa->meth);
@@ -161,6 +163,7 @@ void RSA_free(RSA *rsa) {
   if (rsa->blindings_inuse != NULL) {
     OPENSSL_free(rsa->blindings_inuse);
   }
+  CRYPTO_MUTEX_cleanup(&rsa->lock);
   OPENSSL_free(rsa);
 }
 

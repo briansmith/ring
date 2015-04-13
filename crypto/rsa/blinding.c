@@ -414,6 +414,7 @@ BN_BLINDING *rsa_setup_blinding(RSA *rsa, BN_CTX *in_ctx) {
   BIGNUM *e, *n;
   BN_CTX *ctx;
   BN_BLINDING *ret = NULL;
+  BN_MONT_CTX *mont_ctx = NULL;
 
   if (in_ctx == NULL) {
     ctx = BN_CTX_new();
@@ -445,14 +446,15 @@ BN_BLINDING *rsa_setup_blinding(RSA *rsa, BN_CTX *in_ctx) {
   BN_with_flags(n, rsa->n, BN_FLG_CONSTTIME);
 
   if (rsa->flags & RSA_FLAG_CACHE_PUBLIC) {
-    if (!BN_MONT_CTX_set_locked(&rsa->_method_mod_n, CRYPTO_LOCK_RSA, rsa->n,
-                                ctx)) {
+    mont_ctx =
+        BN_MONT_CTX_set_locked(&rsa->_method_mod_n, &rsa->lock, rsa->n, ctx);
+    if (mont_ctx == NULL) {
       goto err;
     }
   }
 
   ret = BN_BLINDING_create_param(NULL, e, n, ctx, rsa->meth->bn_mod_exp,
-                                 rsa->_method_mod_n);
+                                 mont_ctx);
   if (ret == NULL) {
     OPENSSL_PUT_ERROR(RSA, rsa_setup_blinding, ERR_R_BN_LIB);
     goto err;

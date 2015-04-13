@@ -61,6 +61,7 @@
 
 #include <openssl/engine.h>
 #include <openssl/ex_data.h>
+#include <openssl/thread.h>
 
 #if defined(__cplusplus)
 extern "C" {
@@ -471,18 +472,21 @@ struct rsa_st {
   int references;
   int flags;
 
-  /* Used to cache montgomery values */
+  CRYPTO_MUTEX lock;
+
+  /* Used to cache montgomery values. The creation of these values is protected
+   * by |lock|. */
   BN_MONT_CTX *_method_mod_n;
   BN_MONT_CTX *_method_mod_p;
   BN_MONT_CTX *_method_mod_q;
 
   /* num_blindings contains the size of the |blindings| and |blindings_inuse|
    * arrays. This member and the |blindings_inuse| array are protected by
-   * CRYPTO_LOCK_RSA_BLINDING. */
+   * |lock|. */
   unsigned num_blindings;
   /* blindings is an array of BN_BLINDING structures that can be reserved by a
-   * thread by locking CRYPTO_LOCK_RSA_BLINDING and changing the corresponding
-   * element in |blindings_inuse| from 0 to 1. */
+   * thread by locking |lock| and changing the corresponding element in
+   * |blindings_inuse| from 0 to 1. */
   BN_BLINDING **blindings;
   unsigned char *blindings_inuse;
 };
