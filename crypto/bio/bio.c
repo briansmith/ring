@@ -381,10 +381,6 @@ BIO *BIO_push(BIO *bio, BIO *appended_bio) {
   }
 
   last_bio->next_bio = appended_bio;
-  /* TODO(fork): this seems very suspect. If we got rid of BIO SSL, we could
-   * get rid of this. */
-  BIO_ctrl(bio, BIO_CTRL_PUSH, 0, bio);
-
   return bio;
 }
 
@@ -395,7 +391,6 @@ BIO *BIO_pop(BIO *bio) {
     return NULL;
   }
   ret = bio->next_bio;
-  BIO_ctrl(bio, BIO_CTRL_POP, 0, bio);
   bio->next_bio = NULL;
   return ret;
 }

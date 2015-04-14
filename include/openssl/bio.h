@@ -689,8 +689,6 @@ OPENSSL_EXPORT int BIO_zero_copy_get_write_buf_done(BIO* bio,
 #define BIO_CTRL_INFO		3  /* opt - extra tit-bits */
 #define BIO_CTRL_SET		4  /* man - set the 'IO' type */
 #define BIO_CTRL_GET		5  /* man - get the 'IO' type */
-#define BIO_CTRL_PUSH		6  /* opt - internal, used to signify change */
-#define BIO_CTRL_POP		7  /* opt - internal, used to signify change */
 #define BIO_CTRL_GET_CLOSE	8  /* man - set the 'close' on free */
 #define BIO_CTRL_SET_CLOSE	9  /* man - set the 'close' on free */
 #define BIO_CTRL_PENDING	10  /* opt - is their more data buffered */
@@ -783,7 +781,6 @@ struct bio_st {
   /* num is a BIO-specific value. For example, in fd BIOs it's used to store a
    * file descriptor. */
   int num;
-  /* TODO(fork): drop BIO_CTRL_PUSH/BIO_CTRL_POP. */
   void *ptr;
   /* next_bio points to the next |BIO| in a chain. This |BIO| owns a reference
    * to |next_bio|. */
