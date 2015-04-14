@@ -219,11 +219,18 @@ static const struct curve_data P521 = {
      0xB7, 0x1E, 0x91, 0x38, 0x64, 0x09}};
 
 const struct built_in_curve OPENSSL_built_in_curves[] = {
-  {NID_secp224r1, &P224, 0},
-  {NID_X9_62_prime256v1, &P256, 0},
-  {NID_secp384r1, &P384, 0},
-  {NID_secp521r1, &P521, 0},
-  {NID_undef, 0, 0},
+    {NID_secp224r1, &P224, 0},
+    {
+        NID_X9_62_prime256v1, &P256,
+#if defined(OPENSSL_64_BIT) && !defined(OPENSSL_WINDOWS)
+        EC_GFp_nistp256_method,
+#else
+        0,
+#endif
+    },
+    {NID_secp384r1, &P384, 0},
+    {NID_secp521r1, &P521, 0},
+    {NID_undef, 0, 0},
 };
 
 EC_GROUP *ec_group_new(const EC_METHOD *meth) {

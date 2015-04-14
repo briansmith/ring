@@ -20,13 +20,6 @@
 #include <stdint.h>
 #include <string.h>
 
-#include <openssl/aead.h>
-#include <openssl/digest.h>
-#include <openssl/err.h>
-#include <openssl/obj.h>
-#include <openssl/rand.h>
-#include <openssl/rsa.h>
-
 #if defined(OPENSSL_WINDOWS)
 #pragma warning(push, 3)
 #include <windows.h>
@@ -34,6 +27,15 @@
 #elif defined(OPENSSL_APPLE)
 #include <sys/time.h>
 #endif
+
+#include <openssl/aead.h>
+#include <openssl/digest.h>
+#include <openssl/err.h>
+#include <openssl/obj.h>
+#include <openssl/rand.h>
+#include <openssl/rsa.h>
+
+#include "../crypto/test/scoped_types.h"
 
 
 extern "C" {
@@ -93,7 +95,7 @@ static uint64_t time_now() {
 static bool TimeFunction(TimeResults *results, std::function<bool()> func) {
   // kTotalMS is the total amount of time that we'll aim to measure a function
   // for.
-  static const uint64_t kTotalUS = 3000000;
+  static const uint64_t kTotalUS = 1000000;
   uint64_t start = time_now(), now, delta;
   unsigned done = 0, iterations_between_time_checks;
 
@@ -308,6 +310,100 @@ static bool SpeedRandom(const std::string &selected) {
          SpeedRandomChunk("RNG (8192 bytes)", 8192);
 }
 
+static bool SpeedECDHCurve(const std::string &name, int nid,
+                           const std::string &selected) {
+  if (!selected.empty() && name.find(selected) == std::string::npos) {
+    return true;
+  }
+
+  TimeResults results;
+  if (!TimeFunction(&results, [nid]() -> bool {
+        ScopedEC_KEY key(EC_KEY_new_by_curve_name(nid));
+        if (!key ||
+            !EC_KEY_generate_key(key.get())) {
+          return false;
+        }
+        const EC_GROUP *const group = EC_KEY_get0_group(key.get());
+        ScopedEC_POINT point(EC_POINT_new(group));
+        ScopedBN_CTX ctx(BN_CTX_new());
+
+        ScopedBIGNUM x(BN_new());
+        ScopedBIGNUM y(BN_new());
+
+        if (!point || !ctx || !x || !y ||
+            !EC_POINT_mul(group, point.get(), NULL,
+                          EC_KEY_get0_public_key(key.get()),
+                          EC_KEY_get0_private_key(key.get()), ctx.get()) ||
+            !EC_POINT_get_affine_coordinates_GFp(group, point.get(), x.get(),
+                                                 y.get(), ctx.get())) {
+          return false;
+        }
+
+        return true;
+      })) {
+    return false;
+  }
+
+  results.Print(name);
+  return true;
+}
+
+static bool SpeedECDSACurve(const std::string &name, int nid,
+                            const std::string &selected) {
+  if (!selected.empty() && name.find(selected) == std::string::npos) {
+    return true;
+  }
+
+  ScopedEC_KEY key(EC_KEY_new_by_curve_name(nid));
+  if (!key ||
+      !EC_KEY_generate_key(key.get())) {
+    return false;
+  }
+
+  uint8_t signature[256];
+  if (ECDSA_size(key.get()) > sizeof(signature)) {
+    return false;
+  }
+  uint8_t digest[20];
+  memset(digest, 42, sizeof(digest));
+  unsigned sig_len;
+
+  TimeResults results;
+  if (!TimeFunction(&results, [&key, &signature, &digest, &sig_len]() -> bool {
+        return ECDSA_sign(0, digest, sizeof(digest), signature, &sig_len,
+                          key.get()) == 1;
+      })) {
+    return false;
+  }
+
+  results.Print(name + " signing");
+
+  if (!TimeFunction(&results, [&key, &signature, &digest, sig_len]() -> bool {
+        return ECDSA_verify(0, digest, sizeof(digest), signature, sig_len,
+                            key.get()) == 1;
+      })) {
+    return false;
+  }
+
+  results.Print(name + " verify");
+
+  return true;
+}
+
+static bool SpeedECDH(const std::string &selected) {
+  return SpeedECDHCurve("ECDH P-224", NID_secp224r1, selected) &&
+         SpeedECDHCurve("ECDH P-256", NID_X9_62_prime256v1, selected) &&
+         SpeedECDHCurve("ECDH P-384", NID_secp384r1, selected) &&
+         SpeedECDHCurve("ECDH P-521", NID_secp521r1, selected);
+}
+
+static bool SpeedECDSA(const std::string &selected) {
+  return SpeedECDSACurve("ECDSA P-224", NID_secp224r1, selected) &&
+         SpeedECDSACurve("ECDSA P-256", NID_X9_62_prime256v1, selected) &&
+         SpeedECDSACurve("ECDSA P-384", NID_secp384r1, selected) &&
+         SpeedECDSACurve("ECDSA P-521", NID_secp521r1, selected);
+}
+
 bool Speed(const std::vector<std::string> &args) {
   std::string selected;
   if (args.size() > 1) {
@@ -367,7 +463,9 @@ bool Speed(const std::vector<std::string> &args) {
       !SpeedHash(EVP_sha1(), "SHA-1", selected) ||
       !SpeedHash(EVP_sha256(), "SHA-256", selected) ||
       !SpeedHash(EVP_sha512(), "SHA-512", selected) ||
-      !SpeedRandom(selected)) {
+      !SpeedRandom(selected) ||
+      !SpeedECDH(selected) ||
+      !SpeedECDSA(selected)) {
     return false;
   }
 

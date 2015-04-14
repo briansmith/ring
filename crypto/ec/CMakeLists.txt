@@ -6,12 +6,14 @@ add_library(
   OBJECT
 
   ec.c
-  oct.c
-  simple.c
-  ec_montgomery.c
-  wnaf.c
-  ec_key.c
   ec_asn1.c
+  ec_key.c
+  ec_montgomery.c
+  oct.c
+  p256-64.c
+  util-64.c
+  simple.c
+  wnaf.c
 )
 
 add_executable(

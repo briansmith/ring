@@ -369,6 +369,12 @@ OPENSSL_EXPORT int EC_METHOD_get_field_type(const EC_METHOD *meth);
 #define EC_F_i2d_ECPrivateKey 156
 #define EC_F_i2o_ECPublicKey 157
 #define EC_F_o2i_ECPublicKey 158
+#define EC_F_BN_to_felem 159
+#define EC_F_ec_GFp_nistp256_group_set_curve 160
+#define EC_F_ec_GFp_nistp256_point_get_affine_coordinates 161
+#define EC_F_ec_GFp_nistp256_points_mul 162
+#define EC_F_ec_group_copy 163
+#define EC_F_nistp256_pre_comp_new 164
 #define EC_R_BUFFER_TOO_SMALL 100
 #define EC_R_COORDINATES_OUT_OF_RANGE 101
 #define EC_R_D2I_ECPKPARAMETERS_FAILURE 102
@@ -395,5 +401,7 @@ OPENSSL_EXPORT int EC_METHOD_get_field_type(const EC_METHOD *meth);
 #define EC_R_UNKNOWN_GROUP 123
 #define EC_R_UNKNOWN_ORDER 124
 #define EC_R_WRONG_ORDER 125
+#define EC_R_BIGNUM_OUT_OF_RANGE 126
+#define EC_R_WRONG_CURVE_PARAMETERS 127
 
 #endif  /* OPENSSL_HEADER_EC_H */
