@@ -205,7 +205,7 @@ var testCases = []testCase{
 			},
 		},
 		shouldFail:    true,
-		expectedError: ":BAD_SIGNATURE:",
+		expectedError: ":BAD_SIGNATURE_TEMPORARILY_BREAK_THIS_ON_PURPOSE:",
 	},
 	{
 		name: "BadECDSASignature",
