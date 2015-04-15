@@ -789,8 +789,6 @@ struct bio_st {
    * to |next_bio|. */
   struct bio_st *next_bio; /* used by filter BIOs */
   size_t num_read, num_write;
-
-  CRYPTO_EX_DATA ex_data;
 };
 
 #define BIO_C_SET_CONNECT			100

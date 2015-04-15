@@ -484,7 +484,6 @@ OPENSSL_EXPORT void *CRYPTO_get_ex_data(const CRYPTO_EX_DATA *ad, int index);
  *
  * TODO(fork): WARNING: these are called "INDEX", but they aren't! */
 enum {
-  CRYPTO_EX_INDEX_BIO,
   CRYPTO_EX_INDEX_SSL,
   CRYPTO_EX_INDEX_SSL_CTX,
   CRYPTO_EX_INDEX_SSL_SESSION,

@@ -64,8 +64,6 @@
 #include <openssl/mem.h>
 #include <openssl/thread.h>
 
-#include "../internal.h"
-
 
 /* BIO_set initialises a BIO structure to have the given type and sets the
  * reference count to one. It returns one on success or zero on error. */
@@ -78,15 +76,8 @@ static int bio_set(BIO *bio, const BIO_METHOD *method) {
   bio->method = method;
   bio->shutdown = 1;
 
-  if (!CRYPTO_new_ex_data(CRYPTO_EX_INDEX_BIO, bio, &bio->ex_data)) {
+  if (method->create != NULL && !method->create(bio)) {
     return 0;
-  }
-
-  if (method->create != NULL) {
-    if (!method->create(bio)) {
-      CRYPTO_free_ex_data(CRYPTO_EX_INDEX_BIO, bio, &bio->ex_data);
-      return 0;
-    }
   }
 
   return 1;
@@ -119,8 +110,6 @@ int BIO_free(BIO *bio) {
     }
 
     next_bio = BIO_pop(bio);
-
-    CRYPTO_free_ex_data(CRYPTO_EX_INDEX_BIO, bio, &bio->ex_data);
 
     if (bio->method != NULL && bio->method->destroy != NULL) {
       bio->method->destroy(bio);
