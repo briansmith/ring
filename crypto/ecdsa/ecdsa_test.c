@@ -313,6 +313,8 @@ static int test_builtin(FILE *out) {
     }
     fprintf(out, ".");
     fflush(out);
+    ECDSA_SIG_free(ecdsa_sig);
+    ecdsa_sig = NULL;
     OPENSSL_free(signature);
     signature = NULL;
 
