@@ -166,21 +166,6 @@ extern "C" {
 #define OPENSSL_SUPPRESS_UNREACHABLE_CODE_WARNINGS
 #endif
 
-/* st_CRYPTO_EX_DATA_IMPL contains an ex_data implementation. See the comments
- * in ex_data.h for details of the behaviour of each of the functions. */
-struct st_CRYPTO_EX_DATA_IMPL {
-  int (*new_class)(void);
-  void (*cleanup)(void);
-
-  int (*get_new_index)(int class_value, long argl, void *argp,
-                       CRYPTO_EX_new *new_func, CRYPTO_EX_dup *dup_func,
-                       CRYPTO_EX_free *free_func);
-  int (*new_ex_data)(int class_value, void *obj, CRYPTO_EX_DATA *ad);
-  int (*dup_ex_data)(int class_value, CRYPTO_EX_DATA *to,
-                     const CRYPTO_EX_DATA *from);
-  void (*free_ex_data)(int class_value, void *obj, CRYPTO_EX_DATA *ad);
-};
-
 
 #if defined(_MSC_VER)
 #define OPENSSL_U64(x) x##UI64

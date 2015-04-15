@@ -143,7 +143,6 @@ add_library(
   thread_pthread.c
   thread_win.c
   ex_data.c
-  ex_data_impl.c
   time_support.c
   directory_posix.c
   directory_win.c

@@ -262,23 +262,6 @@ OPENSSL_EXPORT void CRYPTO_free_ex_data(int class_value, void *obj,
                                         CRYPTO_EX_DATA *ad);
 
 
-/* Handling different ex_data implementations. */
-
-/* CRYPTO_EX_DATA_IMPL is the opaque type of an implementation of ex_data. */
-typedef struct st_CRYPTO_EX_DATA_IMPL CRYPTO_EX_DATA_IMPL;
-
-/* CRYPTO_get_ex_data_implementation returns the current implementation of
- * ex_data. */
-OPENSSL_EXPORT const CRYPTO_EX_DATA_IMPL *CRYPTO_get_ex_data_implementation(
-    void);
-
-/* CRYPTO_set_ex_data_implementation sets the implementation of ex_data to use,
- * unless ex_data has already been used and the default implementation
- * installed. It returns one on success and zero otherwise. */
-OPENSSL_EXPORT int CRYPTO_set_ex_data_implementation(
-    const CRYPTO_EX_DATA_IMPL *impl);
-
-
 /* Private functions. */
 
 /* CRYPTO_cleanup_all_ex_data cleans up all ex_data state. It assumes that no
