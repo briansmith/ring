@@ -139,10 +139,6 @@ static struct CRYPTO_STATIC_MUTEX global_classes_lock =
     CRYPTO_STATIC_MUTEX_INIT;
 static LHASH_OF(EX_CLASS_ITEM) *global_classes = NULL;
 
-static struct CRYPTO_STATIC_MUTEX global_next_class_lock =
-    CRYPTO_STATIC_MUTEX_INIT;
-static int global_next_class = 100;
-
 /* class_hash is a hash function used by an LHASH of |EX_CLASS_ITEM|
  * structures. */
 static uint32_t class_hash(const EX_CLASS_ITEM *a) {
@@ -317,14 +313,6 @@ static int get_func_pointers(STACK_OF(CRYPTO_EX_DATA_FUNCS) **out,
   }
 
   return 1;
-}
-
-int CRYPTO_ex_data_new_class(void) {
-  CRYPTO_STATIC_MUTEX_lock_write(&global_next_class_lock);
-  const int ret = global_next_class++;
-  CRYPTO_STATIC_MUTEX_unlock(&global_next_class_lock);
-
-  return ret;
 }
 
 int CRYPTO_new_ex_data(int class_value, void *obj, CRYPTO_EX_DATA *ad) {

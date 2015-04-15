@@ -171,8 +171,7 @@ typedef int CRYPTO_EX_dup(CRYPTO_EX_DATA *to, const CRYPTO_EX_DATA *from,
  * each class of object should provide a wrapper function that sets
  * |class_value| correctly.
  *
- * The |class_value| argument should be one of |CRYPTO_EX_INDEX_*| or a
- * user-defined class value returned from |CRYPTO_ex_data_new_class|.
+ * The |class_value| argument should be one of |CRYPTO_EX_INDEX_*|.
  *
  * See the descriptions of the callback typedefs for details of when they are
  * called. Any of the callback arguments may be NULL. The |argl| and |argp|
@@ -210,8 +209,6 @@ OPENSSL_EXPORT void *CRYPTO_get_ex_data(const CRYPTO_EX_DATA *ad, int index);
 
 /* CRYPTO_EX_INDEX_* are the built-in classes of objects.
  *
- * User defined classes start at 100.
- *
  * TODO(fork): WARNING: these are called "INDEX", but they aren't! */
 enum {
   CRYPTO_EX_INDEX_BIO,
@@ -226,19 +223,6 @@ enum {
   CRYPTO_EX_INDEX_X509,
   CRYPTO_EX_INDEX_EC_KEY,
 };
-
-
-/* User-defined classes of objects.
- *
- * Core OpenSSL code has predefined class values given above (the
- * |CRYPTO_EX_INDEX_*| values). It's possible to get dynamic class values
- * assigned for user-defined objects. */
-
-/* CRYPTO_ex_data_new_class returns a fresh class value for a user-defined type
- * that wishes to use ex_data.
- *
- * TODO(fork): hopefully remove this. */
-OPENSSL_EXPORT int CRYPTO_ex_data_new_class(void);
 
 
 /* Embedding, allocating and freeing |CRYPTO_EX_DATA| structures for objects
