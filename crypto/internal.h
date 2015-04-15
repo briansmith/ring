@@ -453,64 +453,54 @@ OPENSSL_EXPORT int CRYPTO_set_thread_local(
 
 /* ex_data */
 
-/* CRYPTO_get_ex_new_index allocates a new index for ex_data linked with
- * objects of the given |class|. This should not be called directly, rather
- * each class of object should provide a wrapper function that sets
- * |class_value| correctly.
- *
- * The |class_value| argument should be one of |CRYPTO_EX_INDEX_*|.
- *
- * TODO(fork): replace the class_value with a pointer to EX_CLASS_ITEM. Saves
- * having that hash table and some of the lock-bouncing. Maybe have every
- * module have a private global EX_CLASS_ITEM somewhere and any direct callers
- * of CRYPTO_{get,set}_ex_data{,_index} would have to always call the
- * wrappers. */
-OPENSSL_EXPORT int CRYPTO_get_ex_new_index(int class_value, long argl,
+typedef struct crypto_ex_data_func_st CRYPTO_EX_DATA_FUNCS;
+
+/* CRYPTO_EX_DATA_CLASS tracks the ex_indices registered for a type which
+ * supports ex_data. It should defined as a static global within the module
+ * which defines that type. */
+typedef struct {
+  struct CRYPTO_STATIC_MUTEX lock;
+  STACK_OF(CRYPTO_EX_DATA_FUNCS) *meth;
+} CRYPTO_EX_DATA_CLASS;
+
+#define CRYPTO_EX_DATA_CLASS_INIT {CRYPTO_STATIC_MUTEX_INIT, NULL}
+
+/* CRYPTO_get_ex_new_index allocates a new index for |ex_data_class| and writes
+ * it to |*out_index|. Each class of object should provide a wrapper function
+ * that uses the correct |CRYPTO_EX_DATA_CLASS|. It returns one on success and
+ * zero otherwise. */
+OPENSSL_EXPORT int CRYPTO_get_ex_new_index(CRYPTO_EX_DATA_CLASS *ex_data_class,
+                                           int *out_index, long argl,
                                            void *argp, CRYPTO_EX_new *new_func,
                                            CRYPTO_EX_dup *dup_func,
                                            CRYPTO_EX_free *free_func);
 
-/* CRYPTO_set_ex_data sets an extra data pointer on a given object. This should
- * not be called directly, rather each class of object should provide a wrapper
- * function. */
+/* CRYPTO_set_ex_data sets an extra data pointer on a given object. Each class
+ * of object should provide a wrapper function. */
 OPENSSL_EXPORT int CRYPTO_set_ex_data(CRYPTO_EX_DATA *ad, int index, void *val);
 
-/* CRYPTO_set_ex_data return an extra data pointer for a given object, or NULL
- * if no such index exists. This should not be called directly, rather each
- * class of object should provide a wrapper function. */
+/* CRYPTO_get_ex_data returns an extra data pointer for a given object, or NULL
+ * if no such index exists. Each class of object should provide a wrapper
+ * function. */
 OPENSSL_EXPORT void *CRYPTO_get_ex_data(const CRYPTO_EX_DATA *ad, int index);
 
-/* CRYPTO_EX_INDEX_* are the built-in classes of objects.
- *
- * TODO(fork): WARNING: these are called "INDEX", but they aren't! */
-enum {
-  CRYPTO_EX_INDEX_SSL,
-  CRYPTO_EX_INDEX_SSL_CTX,
-  CRYPTO_EX_INDEX_SSL_SESSION,
-  CRYPTO_EX_INDEX_X509_STORE_CTX,
-  CRYPTO_EX_INDEX_RSA,
-  CRYPTO_EX_INDEX_DSA,
-  CRYPTO_EX_INDEX_DH,
-  CRYPTO_EX_INDEX_X509,
-  CRYPTO_EX_INDEX_EC_KEY,
-};
-
 /* CRYPTO_new_ex_data initialises a newly allocated |CRYPTO_EX_DATA| which is
- * embedded inside of |obj| which is of class |class_value|. Returns one on
+ * embedded inside of |obj| which is of class |ex_data_class|. Returns one on
  * success and zero otherwise. */
-OPENSSL_EXPORT int CRYPTO_new_ex_data(int class_value, void *obj,
-                                      CRYPTO_EX_DATA *ad);
+OPENSSL_EXPORT int CRYPTO_new_ex_data(CRYPTO_EX_DATA_CLASS *ex_data_class,
+                                      void *obj, CRYPTO_EX_DATA *ad);
 
 /* CRYPTO_dup_ex_data duplicates |from| into a freshly allocated
  * |CRYPTO_EX_DATA|, |to|. Both of which are inside objects of the given
  * class. It returns one on success and zero otherwise. */
-OPENSSL_EXPORT int CRYPTO_dup_ex_data(int class_value, CRYPTO_EX_DATA *to,
+OPENSSL_EXPORT int CRYPTO_dup_ex_data(CRYPTO_EX_DATA_CLASS *ex_data_class,
+                                      CRYPTO_EX_DATA *to,
                                       const CRYPTO_EX_DATA *from);
 
 /* CRYPTO_free_ex_data frees |ad|, which is embedded inside |obj|, which is an
  * object of the given class. */
-OPENSSL_EXPORT void CRYPTO_free_ex_data(int class_value, void *obj,
-                                        CRYPTO_EX_DATA *ad);
+OPENSSL_EXPORT void CRYPTO_free_ex_data(CRYPTO_EX_DATA_CLASS *ex_data_class,
+                                        void *obj, CRYPTO_EX_DATA *ad);
 
 
 #if defined(__cplusplus)

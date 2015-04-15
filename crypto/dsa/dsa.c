@@ -75,6 +75,8 @@
 
 extern const DSA_METHOD DSA_default_method;
 
+static CRYPTO_EX_DATA_CLASS g_ex_data_class = CRYPTO_EX_DATA_CLASS_INIT;
+
 DSA *DSA_new(void) { return DSA_new_method(NULL); }
 
 DSA *DSA_new_method(const ENGINE *engine) {
@@ -100,14 +102,14 @@ DSA *DSA_new_method(const ENGINE *engine) {
 
   CRYPTO_MUTEX_init(&dsa->method_mont_p_lock);
 
-  if (!CRYPTO_new_ex_data(CRYPTO_EX_INDEX_DSA, dsa, &dsa->ex_data)) {
+  if (!CRYPTO_new_ex_data(&g_ex_data_class, dsa, &dsa->ex_data)) {
     METHOD_unref(dsa->meth);
     OPENSSL_free(dsa);
     return NULL;
   }
 
   if (dsa->meth->init && !dsa->meth->init(dsa)) {
-    CRYPTO_free_ex_data(CRYPTO_EX_INDEX_DSA, dsa, &dsa->ex_data);
+    CRYPTO_free_ex_data(&g_ex_data_class, dsa, &dsa->ex_data);
     METHOD_unref(dsa->meth);
     OPENSSL_free(dsa);
     return NULL;
@@ -130,7 +132,7 @@ void DSA_free(DSA *dsa) {
   }
   METHOD_unref(dsa->meth);
 
-  CRYPTO_free_ex_data(CRYPTO_EX_INDEX_DSA, dsa, &dsa->ex_data);
+  CRYPTO_free_ex_data(&g_ex_data_class, dsa, &dsa->ex_data);
 
   if (dsa->p != NULL) {
     BN_clear_free(dsa->p);
@@ -321,8 +323,12 @@ int DSA_sign_setup(const DSA *dsa, BN_CTX *ctx, BIGNUM **out_kinv,
 
 int DSA_get_ex_new_index(long argl, void *argp, CRYPTO_EX_new *new_func,
                          CRYPTO_EX_dup *dup_func, CRYPTO_EX_free *free_func) {
-  return CRYPTO_get_ex_new_index(CRYPTO_EX_INDEX_DSA, argl, argp, new_func,
-                                 dup_func, free_func);
+  int index;
+  if (!CRYPTO_get_ex_new_index(&g_ex_data_class, &index, argl, argp, new_func,
+                               dup_func, free_func)) {
+    return -1;
+  }
+  return index;
 }
 
 int DSA_set_ex_data(DSA *d, int idx, void *arg) {

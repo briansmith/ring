@@ -80,6 +80,8 @@
 #include "../internal.h"
 
 
+static CRYPTO_EX_DATA_CLASS g_ex_data_class = CRYPTO_EX_DATA_CLASS_INIT;
+
 EC_KEY *EC_KEY_new(void) { return EC_KEY_new_method(NULL); }
 
 EC_KEY *EC_KEY_new_method(const ENGINE *engine) {
@@ -102,7 +104,7 @@ EC_KEY *EC_KEY_new_method(const ENGINE *engine) {
   ret->conv_form = POINT_CONVERSION_UNCOMPRESSED;
   ret->references = 1;
 
-  if (!CRYPTO_new_ex_data(CRYPTO_EX_INDEX_EC_KEY, ret, &ret->ex_data)) {
+  if (!CRYPTO_new_ex_data(&g_ex_data_class, ret, &ret->ex_data)) {
     goto err1;
   }
 
@@ -113,7 +115,7 @@ EC_KEY *EC_KEY_new_method(const ENGINE *engine) {
   return ret;
 
 err2:
-  CRYPTO_free_ex_data(CRYPTO_EX_INDEX_EC_KEY, ret, &ret->ex_data);
+  CRYPTO_free_ex_data(&g_ex_data_class, ret, &ret->ex_data);
 err1:
   if (ret->ecdsa_meth) {
     METHOD_unref(ret->ecdsa_meth);
@@ -161,7 +163,7 @@ void EC_KEY_free(EC_KEY *r) {
     BN_clear_free(r->priv_key);
   }
 
-  CRYPTO_free_ex_data(CRYPTO_EX_INDEX_EC_KEY, r, &r->ex_data);
+  CRYPTO_free_ex_data(&g_ex_data_class, r, &r->ex_data);
 
   OPENSSL_cleanse((void *)r, sizeof(EC_KEY));
   OPENSSL_free(r);
@@ -208,8 +210,8 @@ EC_KEY *EC_KEY_copy(EC_KEY *dest, const EC_KEY *src) {
     }
   }
   /* copy method/extra data */
-  CRYPTO_free_ex_data(CRYPTO_EX_INDEX_EC_KEY, dest, &dest->ex_data);
-  if (!CRYPTO_dup_ex_data(CRYPTO_EX_INDEX_EC_KEY, &dest->ex_data,
+  CRYPTO_free_ex_data(&g_ex_data_class, dest, &dest->ex_data);
+  if (!CRYPTO_dup_ex_data(&g_ex_data_class, &dest->ex_data,
                           &src->ex_data)) {
     return NULL;
   }
@@ -505,8 +507,12 @@ err:
 int EC_KEY_get_ex_new_index(long argl, void *argp, CRYPTO_EX_new *new_func,
                             CRYPTO_EX_dup *dup_func,
                             CRYPTO_EX_free *free_func) {
-  return CRYPTO_get_ex_new_index(CRYPTO_EX_INDEX_EC_KEY, argl, argp, new_func,
-                                 dup_func, free_func);
+  int index;
+  if (!CRYPTO_get_ex_new_index(&g_ex_data_class, &index, argl, argp, new_func,
+                               dup_func, free_func)) {
+    return -1;
+  }
+  return index;
 }
 
 int EC_KEY_set_ex_data(EC_KEY *d, int idx, void *arg) {

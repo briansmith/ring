@@ -92,46 +92,6 @@
                             void (*)(CONF_VALUE *, void *), func), \
                arg);
 
-/* EX_CLASS_ITEM */
-#define lh_EX_CLASS_ITEM_new(hash, comp)                                    \
-  ((LHASH_OF(EX_CLASS_ITEM) *)lh_new(                                       \
-      CHECKED_CAST(lhash_hash_func, uint32_t (*)(const EX_CLASS_ITEM *),    \
-                   hash),                                                   \
-      CHECKED_CAST(lhash_cmp_func,                                          \
-                   int (*)(const EX_CLASS_ITEM *a, const EX_CLASS_ITEM *b), \
-                   comp)))
-
-#define lh_EX_CLASS_ITEM_free(lh) \
-  lh_free(CHECKED_CAST(_LHASH *, LHASH_OF(EX_CLASS_ITEM) *, lh));
-
-#define lh_EX_CLASS_ITEM_num_items(lh) \
-  lh_num_items(CHECKED_CAST(_LHASH *, LHASH_OF(EX_CLASS_ITEM) *, lh))
-
-#define lh_EX_CLASS_ITEM_retrieve(lh, data)                  \
-  ((EX_CLASS_ITEM *)lh_retrieve(                             \
-      CHECKED_CAST(_LHASH *, LHASH_OF(EX_CLASS_ITEM) *, lh), \
-      CHECKED_CAST(void *, EX_CLASS_ITEM *, data)))
-
-#define lh_EX_CLASS_ITEM_insert(lh, old_data, data)                \
-  lh_insert(CHECKED_CAST(_LHASH *, LHASH_OF(EX_CLASS_ITEM) *, lh), \
-            CHECKED_CAST(void **, EX_CLASS_ITEM **, old_data),     \
-            CHECKED_CAST(void *, EX_CLASS_ITEM *, data))
-
-#define lh_EX_CLASS_ITEM_delete(lh, data)                    \
-  ((EX_CLASS_ITEM *)lh_delete(                               \
-      CHECKED_CAST(_LHASH *, LHASH_OF(EX_CLASS_ITEM) *, lh), \
-      CHECKED_CAST(void *, EX_CLASS_ITEM *, data)))
-
-#define lh_EX_CLASS_ITEM_doall(lh, func)                          \
-  lh_doall(CHECKED_CAST(_LHASH *, LHASH_OF(EX_CLASS_ITEM) *, lh), \
-           CHECKED_CAST(void (*)(void *), void (*)(EX_CLASS_ITEM *), func));
-
-#define lh_EX_CLASS_ITEM_doall_arg(lh, func, arg)                     \
-  lh_doall_arg(CHECKED_CAST(_LHASH *, LHASH_OF(EX_CLASS_ITEM) *, lh), \
-               CHECKED_CAST(void (*)(void *, void *),                 \
-                            void (*)(EX_CLASS_ITEM *, void *), func), \
-               arg);
-
 /* SSL_SESSION */
 #define lh_SSL_SESSION_new(hash, comp)                                        \
   ((LHASH_OF(SSL_SESSION) *)lh_new(                                           \

@@ -121,112 +121,25 @@
 #include "internal.h"
 
 
-typedef struct crypto_ex_data_func_st {
+struct crypto_ex_data_func_st {
   long argl;  /* Arbitary long */
   void *argp; /* Arbitary void pointer */
   CRYPTO_EX_new *new_func;
   CRYPTO_EX_free *free_func;
   CRYPTO_EX_dup *dup_func;
-} CRYPTO_EX_DATA_FUNCS;
+};
 
-typedef struct st_ex_class_item {
-  STACK_OF(CRYPTO_EX_DATA_FUNCS) *meth;
-  int class_value;
-} EX_CLASS_ITEM;
-
-static CRYPTO_once_t global_classes_once = CRYPTO_ONCE_INIT;
-static struct CRYPTO_STATIC_MUTEX global_classes_lock =
-    CRYPTO_STATIC_MUTEX_INIT;
-static LHASH_OF(EX_CLASS_ITEM) *global_classes = NULL;
-
-/* class_hash is a hash function used by an LHASH of |EX_CLASS_ITEM|
- * structures. */
-static uint32_t class_hash(const EX_CLASS_ITEM *a) {
-  return a->class_value;
-}
-
-/* class_cmp is a comparison function for an LHASH of |EX_CLASS_ITEM|
- * structures. */
-static int class_cmp(const EX_CLASS_ITEM *a, const EX_CLASS_ITEM *b) {
-  return a->class_value - b->class_value;
-}
-
-/* data_funcs_free is a callback function from |sk_pop_free| that frees a
- * |CRYPTO_EX_DATA_FUNCS|. */
-static void data_funcs_free(CRYPTO_EX_DATA_FUNCS *funcs) {
-  OPENSSL_free(funcs);
-}
-
-/* class_free is a callback function from lh_doall to free the EX_CLASS_ITEM
- * structures. */
-static void class_free(EX_CLASS_ITEM *item) {
-  sk_CRYPTO_EX_DATA_FUNCS_pop_free(item->meth, data_funcs_free);
-  OPENSSL_free(item);
-}
-
-static void global_classes_init(void) {
-  global_classes = lh_EX_CLASS_ITEM_new(class_hash, class_cmp);
-}
-
-static EX_CLASS_ITEM *get_class(int class_value) {
-  EX_CLASS_ITEM template, *class_item;
-  int ok = 0;
-
-  CRYPTO_once(&global_classes_once, global_classes_init);
-
-  if (global_classes == NULL) {
-    return NULL;
-  }
-
-  CRYPTO_STATIC_MUTEX_lock_write(&global_classes_lock);
-  template.class_value = class_value;
-  class_item = lh_EX_CLASS_ITEM_retrieve(global_classes, &template);
-  if (class_item != NULL) {
-    ok = 1;
-  } else {
-    class_item = OPENSSL_malloc(sizeof(EX_CLASS_ITEM));
-    if (class_item) {
-      class_item->class_value = class_value;
-      class_item->meth = sk_CRYPTO_EX_DATA_FUNCS_new_null();
-      if (class_item->meth != NULL) {
-        EX_CLASS_ITEM *old_data;
-        ok = lh_EX_CLASS_ITEM_insert(global_classes, &old_data, class_item);
-        assert(old_data == NULL);
-      }
-    }
-  }
-  CRYPTO_STATIC_MUTEX_unlock(&global_classes_lock);
-
-  if (!ok) {
-    if (class_item) {
-      if (class_item->meth) {
-        sk_CRYPTO_EX_DATA_FUNCS_free(class_item->meth);
-      }
-      OPENSSL_free(class_item);
-      class_item = NULL;
-    }
-
-    OPENSSL_PUT_ERROR(CRYPTO, get_class, ERR_R_MALLOC_FAILURE);
-  }
-
-  return class_item;
-}
-
-int CRYPTO_get_ex_new_index(int class_value, long argl, void *argp,
-                            CRYPTO_EX_new *new_func, CRYPTO_EX_dup *dup_func,
+int CRYPTO_get_ex_new_index(CRYPTO_EX_DATA_CLASS *ex_data_class, int *out_index,
+                            long argl, void *argp, CRYPTO_EX_new *new_func,
+                            CRYPTO_EX_dup *dup_func,
                             CRYPTO_EX_free *free_func) {
-  EX_CLASS_ITEM *const item = get_class(class_value);
   CRYPTO_EX_DATA_FUNCS *funcs;
-  int ret = -1;
-
-  if (!item) {
-    return -1;
-  }
+  int ret = 0;
 
   funcs = OPENSSL_malloc(sizeof(CRYPTO_EX_DATA_FUNCS));
   if (funcs == NULL) {
     OPENSSL_PUT_ERROR(CRYPTO, CRYPTO_get_ex_new_index, ERR_R_MALLOC_FAILURE);
-    return -1;
+    return 0;
   }
 
   funcs->argl = argl;
@@ -235,18 +148,24 @@ int CRYPTO_get_ex_new_index(int class_value, long argl, void *argp,
   funcs->dup_func = dup_func;
   funcs->free_func = free_func;
 
-  CRYPTO_STATIC_MUTEX_lock_write(&global_classes_lock);
+  CRYPTO_STATIC_MUTEX_lock_write(&ex_data_class->lock);
 
-  if (!sk_CRYPTO_EX_DATA_FUNCS_push(item->meth, funcs)) {
+  if (ex_data_class->meth == NULL) {
+    ex_data_class->meth = sk_CRYPTO_EX_DATA_FUNCS_new_null();
+  }
+
+  if (ex_data_class->meth == NULL ||
+      !sk_CRYPTO_EX_DATA_FUNCS_push(ex_data_class->meth, funcs)) {
     OPENSSL_PUT_ERROR(CRYPTO, CRYPTO_get_ex_new_index, ERR_R_MALLOC_FAILURE);
     OPENSSL_free(funcs);
     goto err;
   }
 
-  ret = sk_CRYPTO_EX_DATA_FUNCS_num(item->meth) - 1;
+  *out_index = sk_CRYPTO_EX_DATA_FUNCS_num(ex_data_class->meth) - 1;
+  ret = 1;
 
 err:
-  CRYPTO_STATIC_MUTEX_unlock(&global_classes_lock);
+  CRYPTO_STATIC_MUTEX_unlock(&ex_data_class->lock);
   return ret;
 }
 
@@ -287,25 +206,20 @@ void *CRYPTO_get_ex_data(const CRYPTO_EX_DATA *ad, int idx) {
  * a fresh stack of them. Otherwise it sets |*out| to NULL. It returns one on
  * success or zero on error. */
 static int get_func_pointers(STACK_OF(CRYPTO_EX_DATA_FUNCS) **out,
-                             int class_value) {
-  EX_CLASS_ITEM *const item = get_class(class_value);
+                             CRYPTO_EX_DATA_CLASS *ex_data_class) {
   size_t n;
-
-  if (!item) {
-    return 0;
-  }
 
   *out = NULL;
 
   /* CRYPTO_EX_DATA_FUNCS structures are static once set, so we can take a
    * shallow copy of the list under lock and then use the structures without
    * the lock held. */
-  CRYPTO_STATIC_MUTEX_lock_read(&global_classes_lock);
-  n = sk_CRYPTO_EX_DATA_FUNCS_num(item->meth);
+  CRYPTO_STATIC_MUTEX_lock_read(&ex_data_class->lock);
+  n = sk_CRYPTO_EX_DATA_FUNCS_num(ex_data_class->meth);
   if (n > 0) {
-    *out = sk_CRYPTO_EX_DATA_FUNCS_dup(item->meth);
+    *out = sk_CRYPTO_EX_DATA_FUNCS_dup(ex_data_class->meth);
   }
-  CRYPTO_STATIC_MUTEX_unlock(&global_classes_lock);
+  CRYPTO_STATIC_MUTEX_unlock(&ex_data_class->lock);
 
   if (n > 0 && *out == NULL) {
     OPENSSL_PUT_ERROR(CRYPTO, get_func_pointers, ERR_R_MALLOC_FAILURE);
@@ -315,13 +229,14 @@ static int get_func_pointers(STACK_OF(CRYPTO_EX_DATA_FUNCS) **out,
   return 1;
 }
 
-int CRYPTO_new_ex_data(int class_value, void *obj, CRYPTO_EX_DATA *ad) {
+int CRYPTO_new_ex_data(CRYPTO_EX_DATA_CLASS *ex_data_class, void *obj,
+                       CRYPTO_EX_DATA *ad) {
   STACK_OF(CRYPTO_EX_DATA_FUNCS) *func_pointers;
   size_t i;
 
   ad->sk = NULL;
 
-  if (!get_func_pointers(&func_pointers, class_value)) {
+  if (!get_func_pointers(&func_pointers, ex_data_class)) {
     return 0;
   }
 
@@ -339,7 +254,7 @@ int CRYPTO_new_ex_data(int class_value, void *obj, CRYPTO_EX_DATA *ad) {
   return 1;
 }
 
-int CRYPTO_dup_ex_data(int class_value, CRYPTO_EX_DATA *to,
+int CRYPTO_dup_ex_data(CRYPTO_EX_DATA_CLASS *ex_data_class, CRYPTO_EX_DATA *to,
                        const CRYPTO_EX_DATA *from) {
   STACK_OF(CRYPTO_EX_DATA_FUNCS) *func_pointers;
   size_t i;
@@ -350,7 +265,7 @@ int CRYPTO_dup_ex_data(int class_value, CRYPTO_EX_DATA *to,
     return 1;
   }
 
-  if (!get_func_pointers(&func_pointers, class_value)) {
+  if (!get_func_pointers(&func_pointers, ex_data_class)) {
     return 0;
   }
 
@@ -370,11 +285,12 @@ int CRYPTO_dup_ex_data(int class_value, CRYPTO_EX_DATA *to,
   return 1;
 }
 
-void CRYPTO_free_ex_data(int class_value, void *obj, CRYPTO_EX_DATA *ad) {
+void CRYPTO_free_ex_data(CRYPTO_EX_DATA_CLASS *ex_data_class, void *obj,
+                         CRYPTO_EX_DATA *ad) {
   STACK_OF(CRYPTO_EX_DATA_FUNCS) *func_pointers;
   size_t i;
 
-  if (!get_func_pointers(&func_pointers, class_value)) {
+  if (!get_func_pointers(&func_pointers, ex_data_class)) {
     return;
   }
 
@@ -396,13 +312,4 @@ void CRYPTO_free_ex_data(int class_value, void *obj, CRYPTO_EX_DATA *ad) {
   }
 }
 
-void CRYPTO_cleanup_all_ex_data(void) {
-  CRYPTO_once(&global_classes_once, global_classes_init);
-
-  if (global_classes != NULL) {
-    lh_EX_CLASS_ITEM_doall(global_classes, class_free);
-    lh_EX_CLASS_ITEM_free(global_classes);
-  }
-
-  global_classes = NULL;
-}
+void CRYPTO_cleanup_all_ex_data(void) {}

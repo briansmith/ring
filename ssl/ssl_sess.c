@@ -150,6 +150,8 @@
  * that it needs to asynchronously fetch session information. */
 static const char g_pending_session_magic = 0;
 
+static CRYPTO_EX_DATA_CLASS g_ex_data_class = CRYPTO_EX_DATA_CLASS_INIT;
+
 static void SSL_SESSION_list_remove(SSL_CTX *ctx, SSL_SESSION *s);
 static void SSL_SESSION_list_add(SSL_CTX *ctx, SSL_SESSION *s);
 static int remove_session_lock(SSL_CTX *ctx, SSL_SESSION *c, int lck);
@@ -172,8 +174,12 @@ SSL_SESSION *SSL_get1_session(SSL *ssl) {
 int SSL_SESSION_get_ex_new_index(long argl, void *argp, CRYPTO_EX_new *new_func,
                                  CRYPTO_EX_dup *dup_func,
                                  CRYPTO_EX_free *free_func) {
-  return CRYPTO_get_ex_new_index(CRYPTO_EX_INDEX_SSL_SESSION, argl, argp,
-                                 new_func, dup_func, free_func);
+  int index;
+  if (!CRYPTO_get_ex_new_index(&g_ex_data_class, &index, argl, argp, new_func,
+                               dup_func, free_func)) {
+    return -1;
+  }
+  return index;
 }
 
 int SSL_SESSION_set_ex_data(SSL_SESSION *s, int idx, void *arg) {
@@ -198,7 +204,7 @@ SSL_SESSION *SSL_SESSION_new(void) {
   ss->references = 1;
   ss->timeout = SSL_DEFAULT_SESSION_TIMEOUT;
   ss->time = (unsigned long)time(NULL);
-  CRYPTO_new_ex_data(CRYPTO_EX_INDEX_SSL_SESSION, ss, &ss->ex_data);
+  CRYPTO_new_ex_data(&g_ex_data_class, ss, &ss->ex_data);
   return ss;
 }
 
@@ -622,7 +628,7 @@ void SSL_SESSION_free(SSL_SESSION *ss) {
     return;
   }
 
-  CRYPTO_free_ex_data(CRYPTO_EX_INDEX_SSL_SESSION, ss, &ss->ex_data);
+  CRYPTO_free_ex_data(&g_ex_data_class, ss, &ss->ex_data);
 
   OPENSSL_cleanse(ss->master_key, sizeof ss->master_key);
   OPENSSL_cleanse(ss->session_id, sizeof ss->session_id);

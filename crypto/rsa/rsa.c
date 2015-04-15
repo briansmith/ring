@@ -72,6 +72,8 @@
 
 extern const RSA_METHOD RSA_default_method;
 
+static CRYPTO_EX_DATA_CLASS g_ex_data_class = CRYPTO_EX_DATA_CLASS_INIT;
+
 RSA *RSA_new(void) { return RSA_new_method(NULL); }
 
 RSA *RSA_new_method(const ENGINE *engine) {
@@ -96,14 +98,14 @@ RSA *RSA_new_method(const ENGINE *engine) {
   rsa->flags = rsa->meth->flags;
   CRYPTO_MUTEX_init(&rsa->lock);
 
-  if (!CRYPTO_new_ex_data(CRYPTO_EX_INDEX_RSA, rsa, &rsa->ex_data)) {
+  if (!CRYPTO_new_ex_data(&g_ex_data_class, rsa, &rsa->ex_data)) {
     METHOD_unref(rsa->meth);
     OPENSSL_free(rsa);
     return NULL;
   }
 
   if (rsa->meth->init && !rsa->meth->init(rsa)) {
-    CRYPTO_free_ex_data(CRYPTO_EX_INDEX_RSA, rsa, &rsa->ex_data);
+    CRYPTO_free_ex_data(&g_ex_data_class, rsa, &rsa->ex_data);
     METHOD_unref(rsa->meth);
     OPENSSL_free(rsa);
     return NULL;
@@ -128,7 +130,7 @@ void RSA_free(RSA *rsa) {
   }
   METHOD_unref(rsa->meth);
 
-  CRYPTO_free_ex_data(CRYPTO_EX_INDEX_RSA, rsa, &rsa->ex_data);
+  CRYPTO_free_ex_data(&g_ex_data_class, rsa, &rsa->ex_data);
 
   if (rsa->n != NULL) {
     BN_clear_free(rsa->n);
@@ -285,8 +287,12 @@ int RSA_supports_digest(const RSA *rsa, const EVP_MD *md) {
 
 int RSA_get_ex_new_index(long argl, void *argp, CRYPTO_EX_new *new_func,
                          CRYPTO_EX_dup *dup_func, CRYPTO_EX_free *free_func) {
-  return CRYPTO_get_ex_new_index(CRYPTO_EX_INDEX_RSA, argl, argp, new_func,
-                                 dup_func, free_func);
+  int index;
+  if (!CRYPTO_get_ex_new_index(&g_ex_data_class, &index, argl, argp, new_func,
+                               dup_func, free_func)) {
+    return -1;
+  }
+  return index;
 }
 
 int RSA_set_ex_data(RSA *d, int idx, void *arg) {

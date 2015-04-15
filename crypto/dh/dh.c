@@ -71,6 +71,8 @@
 
 extern const DH_METHOD DH_default_method;
 
+static CRYPTO_EX_DATA_CLASS g_ex_data_class = CRYPTO_EX_DATA_CLASS_INIT;
+
 DH *DH_new(void) { return DH_new_method(NULL); }
 
 DH *DH_new_method(const ENGINE *engine) {
@@ -94,13 +96,13 @@ DH *DH_new_method(const ENGINE *engine) {
   CRYPTO_MUTEX_init(&dh->method_mont_p_lock);
 
   dh->references = 1;
-  if (!CRYPTO_new_ex_data(CRYPTO_EX_INDEX_DH, dh, &dh->ex_data)) {
+  if (!CRYPTO_new_ex_data(&g_ex_data_class, dh, &dh->ex_data)) {
     OPENSSL_free(dh);
     return NULL;
   }
 
   if (dh->meth->init && !dh->meth->init(dh)) {
-    CRYPTO_free_ex_data(CRYPTO_EX_INDEX_DH, dh, &dh->ex_data);
+    CRYPTO_free_ex_data(&g_ex_data_class, dh, &dh->ex_data);
     METHOD_unref(dh->meth);
     OPENSSL_free(dh);
     return NULL;
@@ -123,7 +125,7 @@ void DH_free(DH *dh) {
   }
   METHOD_unref(dh->meth);
 
-  CRYPTO_free_ex_data(CRYPTO_EX_INDEX_DH, dh, &dh->ex_data);
+  CRYPTO_free_ex_data(&g_ex_data_class, dh, &dh->ex_data);
 
   if (dh->method_mont_p) BN_MONT_CTX_free(dh->method_mont_p);
   if (dh->p != NULL) BN_clear_free(dh->p);
@@ -234,8 +236,12 @@ DH *DHparams_dup(const DH *dh) {
 
 int DH_get_ex_new_index(long argl, void *argp, CRYPTO_EX_new *new_func,
                         CRYPTO_EX_dup *dup_func, CRYPTO_EX_free *free_func) {
-  return CRYPTO_get_ex_new_index(CRYPTO_EX_INDEX_DH, argl, argp, new_func,
-                                 dup_func, free_func);
+  int index;
+  if (!CRYPTO_get_ex_new_index(&g_ex_data_class, &index, argl, argp, new_func,
+                               dup_func, free_func)) {
+    return -1;
+  }
+  return index;
 }
 
 int DH_set_ex_data(DH *d, int idx, void *arg) {

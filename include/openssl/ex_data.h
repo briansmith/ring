@@ -197,10 +197,9 @@ typedef int CRYPTO_EX_dup(CRYPTO_EX_DATA *to, const CRYPTO_EX_DATA *from,
                           void **from_d, int index, long argl, void *argp);
 
 
-/* Private functions. */
+/* Deprecated functions. */
 
-/* CRYPTO_cleanup_all_ex_data cleans up all ex_data state. It assumes that no
- * other threads are executing code that might call ex_data functions. */
+/* CRYPTO_cleanup_all_ex_data does nothing. */
 OPENSSL_EXPORT void CRYPTO_cleanup_all_ex_data(void);
 
 struct crypto_ex_data_st {

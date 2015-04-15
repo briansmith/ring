@@ -161,6 +161,9 @@ OPENSSL_COMPILE_ASSERT(SSL_R_TLSV1_ALERT_NO_RENEGOTIATION ==
                            SSL_AD_NO_RENEGOTIATION + SSL_AD_REASON_OFFSET,
                        ssl_alert_reason_code_mismatch);
 
+static CRYPTO_EX_DATA_CLASS g_ex_data_class_ssl = CRYPTO_EX_DATA_CLASS_INIT;
+static CRYPTO_EX_DATA_CLASS g_ex_data_class_ssl_ctx = CRYPTO_EX_DATA_CLASS_INIT;
+
 int SSL_clear(SSL *s) {
   if (s->method == NULL) {
     OPENSSL_PUT_ERROR(SSL, SSL_clear, SSL_R_NO_METHOD_SPECIFIED);
@@ -339,7 +342,7 @@ SSL *SSL_new(SSL_CTX *ctx) {
   s->rwstate = SSL_NOTHING;
   s->rstate = SSL_ST_READ_HEADER;
 
-  CRYPTO_new_ex_data(CRYPTO_EX_INDEX_SSL, s, &s->ex_data);
+  CRYPTO_new_ex_data(&g_ex_data_class_ssl, s, &s->ex_data);
 
   s->psk_identity_hint = NULL;
   if (ctx->psk_identity_hint) {
@@ -542,7 +545,7 @@ void SSL_free(SSL *s) {
     X509_VERIFY_PARAM_free(s->param);
   }
 
-  CRYPTO_free_ex_data(CRYPTO_EX_INDEX_SSL, s, &s->ex_data);
+  CRYPTO_free_ex_data(&g_ex_data_class_ssl, s, &s->ex_data);
 
   if (s->bbio != NULL) {
     /* If the buffering BIO is in place, pop it off */
@@ -1833,7 +1836,7 @@ SSL_CTX *SSL_CTX_new(const SSL_METHOD *meth) {
     goto err;
   }
 
-  CRYPTO_new_ex_data(CRYPTO_EX_INDEX_SSL_CTX, ret, &ret->ex_data);
+  CRYPTO_new_ex_data(&g_ex_data_class_ssl_ctx, ret, &ret->ex_data);
 
   ret->extra_certs = NULL;
 
@@ -1905,7 +1908,7 @@ void SSL_CTX_free(SSL_CTX *a) {
     SSL_CTX_flush_sessions(a, 0);
   }
 
-  CRYPTO_free_ex_data(CRYPTO_EX_INDEX_SSL_CTX, a, &a->ex_data);
+  CRYPTO_free_ex_data(&g_ex_data_class_ssl_ctx, a, &a->ex_data);
 
   if (a->sessions != NULL) {
     lh_SSL_SESSION_free(a->sessions);
@@ -2548,8 +2551,12 @@ long SSL_get_verify_result(const SSL *ssl) { return ssl->verify_result; }
 
 int SSL_get_ex_new_index(long argl, void *argp, CRYPTO_EX_new *new_func,
                          CRYPTO_EX_dup *dup_func, CRYPTO_EX_free *free_func) {
-  return CRYPTO_get_ex_new_index(CRYPTO_EX_INDEX_SSL, argl, argp, new_func,
-                                 dup_func, free_func);
+  int index;
+  if (!CRYPTO_get_ex_new_index(&g_ex_data_class_ssl, &index, argl, argp,
+                               new_func, dup_func, free_func)) {
+    return -1;
+  }
+  return index;
 }
 
 int SSL_set_ex_data(SSL *s, int idx, void *arg) {
@@ -2563,8 +2570,12 @@ void *SSL_get_ex_data(const SSL *s, int idx) {
 int SSL_CTX_get_ex_new_index(long argl, void *argp, CRYPTO_EX_new *new_func,
                              CRYPTO_EX_dup *dup_func,
                              CRYPTO_EX_free *free_func) {
-  return CRYPTO_get_ex_new_index(CRYPTO_EX_INDEX_SSL_CTX, argl, argp, new_func,
-                                 dup_func, free_func);
+  int index;
+  if (!CRYPTO_get_ex_new_index(&g_ex_data_class_ssl_ctx, &index, argl, argp,
+                               new_func, dup_func, free_func)) {
+    return -1;
+  }
+  return index;
 }
 
 int SSL_CTX_set_ex_data(SSL_CTX *s, int idx, void *arg) {
