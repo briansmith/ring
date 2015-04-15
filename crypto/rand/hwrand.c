@@ -27,7 +27,7 @@ int CRYPTO_have_hwrand(void) {
 }
 
 /* CRYPTO_rdrand is defined in asm/rdrand-x86_64.pl */
-extern uint64_t CRYPTO_rdrand();
+extern uint64_t CRYPTO_rdrand(void);
 
 void CRYPTO_hwrand(uint8_t *buf, size_t len) {
   while (len >= 8) {
