@@ -349,7 +349,7 @@ OPENSSL_EXPORT int i2d_RSAPrivateKey(const RSA *in, uint8_t **outp);
 
 /* ex_data functions.
  *
- * These functions are wrappers. See |ex_data.h| for details. */
+ * See |ex_data.h| for details. */
 
 OPENSSL_EXPORT int RSA_get_ex_new_index(long argl, void *argp,
                                         CRYPTO_EX_new *new_func,

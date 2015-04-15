@@ -152,6 +152,8 @@
 #include <openssl/x509v3.h>
 
 #include "internal.h"
+#include "../crypto/internal.h"
+
 
 /* Some error codes are special. Ensure the make_errors.go script never
  * regresses this. */

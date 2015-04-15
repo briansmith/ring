@@ -142,6 +142,8 @@
 #include <openssl/rand.h>
 
 #include "internal.h"
+#include "../crypto/internal.h"
+
 
 /* The address of this is a magic value, a pointer to which is returned by
  * SSL_magic_pending_session_ptr(). It allows a session callback to indicate

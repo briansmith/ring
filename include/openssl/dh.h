@@ -190,7 +190,7 @@ OPENSSL_EXPORT int i2d_DHparams(const DH *in, unsigned char **outp);
 
 /* ex_data functions.
  *
- * These functions are wrappers. See |ex_data.h| for details. */
+ * See |ex_data.h| for details. */
 
 OPENSSL_EXPORT int DH_get_ex_new_index(long argl, void *argp,
                                        CRYPTO_EX_new *new_func,

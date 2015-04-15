@@ -64,6 +64,8 @@
 #include <openssl/mem.h>
 #include <openssl/thread.h>
 
+#include "../internal.h"
+
 
 /* BIO_set initialises a BIO structure to have the given type and sets the
  * reference count to one. It returns one on success or zero on error. */
