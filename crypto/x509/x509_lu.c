@@ -64,8 +64,6 @@
 #include <openssl/x509.h>
 #include <openssl/x509v3.h>
 
-#include "../internal.h"
-
 
 X509_LOOKUP *X509_LOOKUP_new(X509_LOOKUP_METHOD *method)
 	{
@@ -194,9 +192,6 @@ X509_STORE *X509_STORE_new(void)
 	if ((ret->param = X509_VERIFY_PARAM_new()) == NULL)
 		goto err;
 
-	if (!CRYPTO_new_ex_data(CRYPTO_EX_INDEX_X509_STORE, ret, &ret->ex_data))
-		goto err;
-
 	ret->references = 1;
 	return ret;
 err:
@@ -264,7 +259,6 @@ void X509_STORE_free(X509_STORE *vfy)
 	sk_X509_LOOKUP_free(sk);
 	sk_X509_OBJECT_pop_free(vfy->objs, cleanup);
 
-	CRYPTO_free_ex_data(CRYPTO_EX_INDEX_X509_STORE, vfy, &vfy->ex_data);
 	if (vfy->param)
 		X509_VERIFY_PARAM_free(vfy->param);
 	OPENSSL_free(vfy);

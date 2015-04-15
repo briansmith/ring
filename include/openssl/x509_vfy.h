@@ -202,7 +202,6 @@ struct x509_store_st
 	STACK_OF(X509_CRL) * (*lookup_crls)(X509_STORE_CTX *ctx, X509_NAME *nm);
 	int (*cleanup)(X509_STORE_CTX *ctx);
 
-	CRYPTO_EX_DATA ex_data;
 	int references;
 	} /* X509_STORE */;
 
