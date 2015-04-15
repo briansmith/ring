@@ -13,7 +13,7 @@ add_library(
 add_executable(
   ecdsa_test
 
-  ecdsa_test.c
+  ecdsa_test.cc
 )
 
 target_link_libraries(ecdsa_test crypto)
