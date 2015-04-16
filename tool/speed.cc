@@ -20,6 +20,13 @@
 #include <stdint.h>
 #include <string.h>
 
+#include <openssl/aead.h>
+#include <openssl/digest.h>
+#include <openssl/err.h>
+#include <openssl/obj.h>
+#include <openssl/rand.h>
+#include <openssl/rsa.h>
+
 #if defined(OPENSSL_WINDOWS)
 #pragma warning(push, 3)
 #include <windows.h>
@@ -27,13 +34,6 @@
 #elif defined(OPENSSL_APPLE)
 #include <sys/time.h>
 #endif
-
-#include <openssl/aead.h>
-#include <openssl/digest.h>
-#include <openssl/err.h>
-#include <openssl/obj.h>
-#include <openssl/rand.h>
-#include <openssl/rsa.h>
 
 #include "../crypto/test/scoped_types.h"
 
