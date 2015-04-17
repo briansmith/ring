@@ -410,7 +410,7 @@ static int d2i_SSL_SESSION_get_octet_string(CBS *cbs, uint8_t **out_ptr,
 }
 
 SSL_SESSION *d2i_SSL_SESSION(SSL_SESSION **a, const uint8_t **pp, long length) {
-  SSL_SESSION *ret = NULL;
+  SSL_SESSION *ret, *allocated = NULL;
   CBS cbs, session, cipher, session_id, master_key;
   CBS peer, sid_ctx, peer_sha256, original_handshake_hash;
   int has_peer, has_peer_sha256, extended_master_secret;
@@ -420,8 +420,8 @@ SSL_SESSION *d2i_SSL_SESSION(SSL_SESSION **a, const uint8_t **pp, long length) {
   if (a && *a) {
     ret = *a;
   } else {
-    ret = SSL_SESSION_new();
-    if (ret == NULL) {
+    ret = allocated = SSL_SESSION_new();
+    if (allocated == NULL) {
       goto err;
     }
   }
@@ -585,8 +585,8 @@ SSL_SESSION *d2i_SSL_SESSION(SSL_SESSION **a, const uint8_t **pp, long length) {
   return ret;
 
 err:
-  if (a && *a != ret) {
-    SSL_SESSION_free(ret);
+  if (allocated) {
+    SSL_SESSION_free(allocated);
   }
   return NULL;
 }
