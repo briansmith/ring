@@ -63,7 +63,7 @@ func (p *packetAdaptor) Read(b []byte) (int, error) {
 		return 0, err
 	}
 	if opcode != opcodePacket {
-		return 0, fmt.Errorf("unexpected opcode '%s'", opcode)
+		return 0, fmt.Errorf("unexpected opcode '%d'", opcode)
 	}
 	out, err := p.readPacketBody()
 	if err != nil {
@@ -94,7 +94,7 @@ func (p *packetAdaptor) SendReadTimeout(d time.Duration) ([][]byte, error) {
 		return nil, err
 	}
 
-	packets := make([][]byte, 0)
+	var packets [][]byte
 	for {
 		opcode, err := p.readOpcode()
 		if err != nil {
@@ -112,7 +112,7 @@ func (p *packetAdaptor) SendReadTimeout(d time.Duration) ([][]byte, error) {
 			}
 			packets = append(packets, packet)
 		default:
-			return nil, fmt.Errorf("unexpected opcode '%s'", opcode)
+			return nil, fmt.Errorf("unexpected opcode '%d'", opcode)
 		}
 	}
 }
