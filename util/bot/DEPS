@@ -85,6 +85,13 @@ hooks = [
                 'update',
     ],
   },
+  {
+    'name': 'clang',
+    'pattern': '.',
+    'action': [ 'python',
+                'boringssl/util/bot/update_clang.py',
+    ],
+  },
   # TODO(davidben): Only extract archives when they've changed. Extracting perl
   # on Windows is a significant part of the cycle time.
   {
