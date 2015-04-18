@@ -178,7 +178,7 @@
 
 int ssl3_accept(SSL *s) {
   BUF_MEM *buf = NULL;
-  unsigned long alg_a;
+  uint32_t alg_a;
   void (*cb)(const SSL *ssl, int type, int val) = NULL;
   int ret = -1;
   int new_state, state, skip = 0;
@@ -1121,7 +1121,7 @@ int ssl3_get_client_hello(SSL *s) {
   if (s->hit && CBS_len(&cipher_suites) > 0) {
     size_t j;
     int found_cipher = 0;
-    unsigned long id = s->session->cipher->id;
+    uint32_t id = s->session->cipher->id;
 
     for (j = 0; j < sk_SSL_CIPHER_num(ciphers); j++) {
       c = sk_SSL_CIPHER_value(ciphers, j);
@@ -1344,8 +1344,8 @@ int ssl3_send_server_key_exchange(SSL *s) {
   EVP_PKEY *pkey;
   uint8_t *p, *d;
   int al, i;
-  unsigned long alg_k;
-  unsigned long alg_a;
+  uint32_t alg_k;
+  uint32_t alg_a;
   int n;
   CERT *cert;
   BIGNUM *r[4];
@@ -1698,8 +1698,8 @@ int ssl3_get_client_key_exchange(SSL *s) {
   int al, ok;
   long n;
   CBS client_key_exchange;
-  unsigned long alg_k;
-  unsigned long alg_a;
+  uint32_t alg_k;
+  uint32_t alg_a;
   uint8_t *premaster_secret = NULL;
   size_t premaster_secret_len = 0;
   RSA *rsa = NULL;

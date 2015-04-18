@@ -2072,11 +2072,9 @@ void ssl_get_compatible_server_ciphers(SSL *s, uint32_t *out_mask_k,
   (((x)->ex_flags & EXFLAG_KUSAGE) && !((x)->ex_kusage & (usage)))
 
 int ssl_check_srvr_ecc_cert_and_alg(X509 *x, SSL *s) {
-  unsigned long alg_a;
-  int signature_nid = 0, md_nid = 0, pk_nid = 0;
   const SSL_CIPHER *cs = s->s3->tmp.new_cipher;
-
-  alg_a = cs->algorithm_auth;
+  uint32_t alg_a = cs->algorithm_auth;
+  int signature_nid = 0, md_nid = 0, pk_nid = 0;
 
   /* This call populates the ex_flags field correctly */
   X509_check_purpose(x, -1, 0);
@@ -2121,12 +2119,9 @@ CERT_PKEY *ssl_get_server_send_pkey(const SSL *s) {
 }
 
 EVP_PKEY *ssl_get_sign_pkey(SSL *s, const SSL_CIPHER *cipher) {
-  unsigned long alg_a;
-  CERT *c;
+  uint32_t alg_a = cipher->algorithm_auth;
+  CERT *c = s->cert;
   int idx = -1;
-
-  alg_a = cipher->algorithm_auth;
-  c = s->cert;
 
   if (alg_a & SSL_aRSA) {
     if (c->pkeys[SSL_PKEY_RSA_SIGN].privatekey != NULL) {
