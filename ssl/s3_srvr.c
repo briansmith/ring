@@ -1093,22 +1093,12 @@ int ssl3_get_client_hello(SSL *s) {
   }
 
   if (!CBS_get_u16_length_prefixed(&client_hello, &cipher_suites) ||
+      CBS_len(&cipher_suites) == 0 ||
+      CBS_len(&cipher_suites) % 2 != 0 ||
       !CBS_get_u8_length_prefixed(&client_hello, &compression_methods) ||
       CBS_len(&compression_methods) == 0) {
     al = SSL_AD_DECODE_ERROR;
     OPENSSL_PUT_ERROR(SSL, ssl3_get_client_hello, SSL_R_DECODE_ERROR);
-    goto f_err;
-  }
-
-  /* TODO(davidben): Per spec, cipher_suites can never be empty (specified at
-   * the ClientHello structure level). This logic allows it to be empty if
-   * resuming a session. Can we always require non-empty? If a client sends
-   * empty cipher_suites because it's resuming a session, it could always fail
-   * to resume a session, so it's unlikely to actually work. */
-  if (CBS_len(&cipher_suites) == 0 && CBS_len(&session_id) != 0) {
-    /* We need a cipher if we are not resuming a session. */
-    al = SSL_AD_ILLEGAL_PARAMETER;
-    OPENSSL_PUT_ERROR(SSL, ssl3_get_client_hello, SSL_R_NO_CIPHERS_SPECIFIED);
     goto f_err;
   }
 
@@ -1118,7 +1108,7 @@ int ssl3_get_client_hello(SSL *s) {
   }
 
   /* If it is a hit, check that the cipher is in the list. */
-  if (s->hit && CBS_len(&cipher_suites) > 0) {
+  if (s->hit) {
     size_t j;
     int found_cipher = 0;
     uint32_t id = s->session->cipher->id;
