@@ -138,9 +138,6 @@ int RSA_encrypt(RSA *rsa, size_t *out_len, uint8_t *out, size_t max_out,
       i = RSA_padding_add_PKCS1_OAEP_mgf1(buf, rsa_size, in, in_len,
                                           NULL, 0, NULL, NULL);
       break;
-    case RSA_NO_PADDING:
-      i = RSA_padding_add_none(buf, rsa_size, in, in_len);
-      break;
     default:
       OPENSSL_PUT_ERROR(RSA, RSA_R_UNKNOWN_PADDING_TYPE);
       goto err;
@@ -322,9 +319,6 @@ int RSA_sign_raw(RSA *rsa, size_t *out_len, uint8_t *out, size_t max_out,
     case RSA_PKCS1_PADDING:
       i = RSA_padding_add_PKCS1_type_1(buf, rsa_size, in, in_len);
       break;
-    case RSA_NO_PADDING:
-      i = RSA_padding_add_none(buf, rsa_size, in, in_len);
-      break;
     default:
       OPENSSL_PUT_ERROR(RSA, RSA_R_UNKNOWN_PADDING_TYPE);
       goto err;
@@ -385,9 +379,6 @@ int RSA_decrypt(RSA *rsa, size_t *out_len, uint8_t *out, size_t max_out,
       /* Use the default parameters: SHA-1 for both hashes and no label. */
       r = RSA_padding_check_PKCS1_OAEP_mgf1(out, rsa_size, buf, rsa_size,
                                             NULL, 0, NULL, NULL);
-      break;
-    case RSA_NO_PADDING:
-      r = RSA_padding_check_none(out, rsa_size, buf, rsa_size);
       break;
     default:
       OPENSSL_PUT_ERROR(RSA, RSA_R_UNKNOWN_PADDING_TYPE);
@@ -488,9 +479,6 @@ int RSA_verify_raw(RSA *rsa, size_t *out_len, uint8_t *out, size_t max_out,
   switch (padding) {
     case RSA_PKCS1_PADDING:
       r = RSA_padding_check_PKCS1_type_1(out, rsa_size, buf, rsa_size);
-      break;
-    case RSA_NO_PADDING:
-      r = RSA_padding_check_none(out, rsa_size, buf, rsa_size);
       break;
     default:
       OPENSSL_PUT_ERROR(RSA, RSA_R_UNKNOWN_PADDING_TYPE);

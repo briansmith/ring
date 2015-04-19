@@ -74,7 +74,9 @@ extern "C" {
 /* RSA_new returns a new, empty RSA object or NULL on error. */
 OPENSSL_EXPORT RSA *RSA_new(void);
 
-/* RSA_new_method acts the same as |RSA_new| but takes an explicit |ENGINE|. */
+/* RSA_new_method acts the same as |RSA_new| but takes an explicit |ENGINE|.
+ * ring: |engine| must be NULL.
+ */
 OPENSSL_EXPORT RSA *RSA_new_method(const ENGINE *engine);
 
 /* RSA_free decrements the reference count of |rsa| and frees it if the
@@ -103,7 +105,6 @@ OPENSSL_EXPORT int RSA_generate_key_ex(RSA *rsa, int bits, BIGNUM *e,
 
 /* Padding types for encryption. */
 #define RSA_PKCS1_PADDING 1
-#define RSA_NO_PADDING 3
 #define RSA_PKCS1_OAEP_PADDING 4
 /* RSA_PKCS1_PSS_PADDING can only be used via the EVP interface. */
 #define RSA_PKCS1_PSS_PADDING 6
@@ -269,8 +270,8 @@ OPENSSL_EXPORT RSA *RSAPublicKey_dup(const RSA *rsa);
 OPENSSL_EXPORT RSA *RSAPrivateKey_dup(const RSA *rsa);
 
 /* RSA_check_key performs basic validatity tests on |rsa|. It returns one if
- * they pass and zero otherwise. Opaque keys and public keys always pass. If it
- * returns zero then a more detailed error is available on the error queue. */
+ * they pass and zero otherwise. If it returns zero then a more detailed error
+ * is available on the error queue. */
 OPENSSL_EXPORT int RSA_check_key(const RSA *rsa);
 
 /* RSA_verify_PKCS1_PSS_mgf1 verifies that |EM| is a correct PSS padding of
@@ -434,11 +435,11 @@ struct rsa_st {
 
   /* num_blindings contains the size of the |blindings| and |blindings_inuse|
    * arrays. This member and the |blindings_inuse| array are protected by
-   * |lock|. */
+   * CRYPTO_LOCK_RSA_BLINDING. */
   unsigned num_blindings;
   /* blindings is an array of BN_BLINDING structures that can be reserved by a
-   * thread by locking |lock| and changing the corresponding element in
-   * |blindings_inuse| from 0 to 1. */
+   * thread by locking CRYPTO_LOCK_RSA_BLINDING and changing the corresponding
+   * element in |blindings_inuse| from 0 to 1. */
   BN_BLINDING **blindings;
   unsigned char *blindings_inuse;
 };
@@ -459,11 +460,9 @@ struct rsa_st {
 #define RSA_F_RSA_padding_add_PKCS1_PSS_mgf1 108
 #define RSA_F_RSA_padding_add_PKCS1_type_1 109
 #define RSA_F_RSA_padding_add_PKCS1_type_2 110
-#define RSA_F_RSA_padding_add_none 111
 #define RSA_F_RSA_padding_check_PKCS1_OAEP_mgf1 112
 #define RSA_F_RSA_padding_check_PKCS1_type_1 113
 #define RSA_F_RSA_padding_check_PKCS1_type_2 114
-#define RSA_F_RSA_padding_check_none 115
 #define RSA_F_RSA_recover_crt_params 116
 #define RSA_F_RSA_sign 117
 #define RSA_F_RSA_verify 118
