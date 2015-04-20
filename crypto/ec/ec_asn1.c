@@ -409,14 +409,14 @@ int i2d_ECPrivateKey(const EC_KEY *key, uint8_t **outp) {
 
   priv_key->version = key->version;
 
-  buf_len = BN_num_bytes(key->priv_key);
+  buf_len = BN_num_bytes(&key->group->order);
   buffer = OPENSSL_malloc(buf_len);
   if (buffer == NULL) {
     OPENSSL_PUT_ERROR(EC, i2d_ECPrivateKey, ERR_R_MALLOC_FAILURE);
     goto err;
   }
 
-  if (!BN_bn2bin(key->priv_key, buffer)) {
+  if (!BN_bn2bin_padded(buffer, buf_len, key->priv_key)) {
     OPENSSL_PUT_ERROR(EC, i2d_ECPrivateKey, ERR_R_BN_LIB);
     goto err;
   }
