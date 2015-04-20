@@ -2350,6 +2350,12 @@ static const char *ssl_get_version(int version) {
     case SSL3_VERSION:
       return "SSLv3";
 
+    case DTLS1_VERSION:
+      return "DTLSv1";
+
+    case DTLS1_2_VERSION:
+      return "DTLSv1.2";
+
     default:
       return "unknown";
   }
