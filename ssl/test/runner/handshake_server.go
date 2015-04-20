@@ -521,7 +521,7 @@ func (hs *serverHandshakeState) doFullHandshake() error {
 		}
 	}
 
-	if hs.hello.ocspStapling {
+	if hs.hello.ocspStapling && !c.config.Bugs.SkipCertificateStatus {
 		certStatus := new(certificateStatusMsg)
 		certStatus.statusType = statusTypeOCSP
 		certStatus.response = hs.cert.OCSPStaple

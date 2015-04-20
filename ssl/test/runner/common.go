@@ -434,6 +434,11 @@ type ProtocolBugs struct {
 	// HelloVerifyRequest message.
 	SkipHelloVerifyRequest bool
 
+	// SkipCertificateStatus, if true, causes the server to skip the
+	// CertificateStatus message. This is legal because CertificateStatus is
+	// optional, even with a status_request in ServerHello.
+	SkipCertificateStatus bool
+
 	// SkipServerKeyExchange causes the server to skip sending
 	// ServerKeyExchange messages.
 	SkipServerKeyExchange bool

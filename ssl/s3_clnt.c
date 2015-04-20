@@ -1575,10 +1575,17 @@ int ssl3_get_cert_status(SSL *s) {
 
   n = s->method->ssl_get_message(
       s, SSL3_ST_CR_CERT_STATUS_A, SSL3_ST_CR_CERT_STATUS_B,
-      SSL3_MT_CERTIFICATE_STATUS, 16384, ssl_hash_message, &ok);
+      -1, 16384, ssl_hash_message, &ok);
 
   if (!ok) {
     return n;
+  }
+
+  if (s->s3->tmp.message_type != SSL3_MT_CERTIFICATE_STATUS) {
+    /* A server may send status_request in ServerHello and then change
+     * its mind about sending CertificateStatus. */
+    s->s3->tmp.reuse_message = 1;
+    return 1;
   }
 
   CBS_init(&certificate_status, s->init_msg, n);

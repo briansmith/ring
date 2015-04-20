@@ -301,6 +301,18 @@ var testCases = []testCase{
 		expectedError: ":UNEXPECTED_MESSAGE:",
 	},
 	{
+		name: "SkipCertificateStatus",
+		config: Config{
+			CipherSuites: []uint16{TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256},
+			Bugs: ProtocolBugs{
+				SkipCertificateStatus: true,
+			},
+		},
+		flags: []string{
+			"-enable-ocsp-stapling",
+		},
+	},
+	{
 		name: "SkipServerKeyExchange",
 		config: Config{
 			CipherSuites: []uint16{TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256},
