@@ -12,6 +12,8 @@ elseif(UNIX)
     # The "armx" Perl scripts look for "64" in the style argument
     # in order to decide whether to generate 32- or 64-bit asm.
     set(PERLASM_STYLE linux64)
+  elseif (${ARCH} STREQUAL "arm")
+    set(PERLASM_STYLE linux32)
   elseif (${ARCH} STREQUAL "x86")
     set(PERLASM_FLAGS "-fPIC -DOPENSSL_IA32_SSE2")
     set(PERLASM_STYLE elf)
