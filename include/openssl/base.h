@@ -132,6 +132,9 @@ extern "C" {
 
 #endif  /* defined(BORINGSSL_SHARED_LIBRARY) */
 
+/* CRYPTO_THREADID is a dummy value. */
+typedef int CRYPTO_THREADID;
+
 typedef int ASN1_BOOLEAN;
 typedef int ASN1_NULL;
 typedef struct ASN1_ITEM_st ASN1_ITEM;
@@ -176,7 +179,6 @@ typedef struct cbb_st CBB;
 typedef struct cbs_st CBS;
 typedef struct conf_st CONF;
 typedef struct conf_value_st CONF_VALUE;
-typedef int CRYPTO_THREADID;
 typedef struct dh_method DH_METHOD;
 typedef struct dh_st DH;
 typedef struct dsa_method DSA_METHOD;

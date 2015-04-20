@@ -81,8 +81,6 @@ extern "C" {
 /* Use default functions for poin2oct, oct2point and compressed coordinates */
 #define EC_FLAGS_DEFAULT_OCT 0x1
 
-typedef struct ec_method_st EC_METHOD;
-
 struct ec_method_st {
   /* Various method flags */
   int flags;

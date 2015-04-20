@@ -57,6 +57,8 @@
 #ifndef OPENSSL_HEADER_THREAD_H
 #define OPENSSL_HEADER_THREAD_H
 
+#include <sys/types.h>
+
 #include <openssl/base.h>
 
 #if defined(__cplusplus)
@@ -72,6 +74,8 @@ typedef union crypto_mutex_st {
   double alignment;
   uint8_t padding[4*sizeof(void*) + 2*sizeof(int)];
 } CRYPTO_MUTEX;
+#elif defined(__MACH__) && defined(__APPLE__)
+typedef pthread_rwlock_t CRYPTO_MUTEX;
 #else
 /* It is reasonable to include pthread.h on non-Windows systems, however the
  * |pthread_rwlock_t| that we need is hidden under feature flags, and we can't
@@ -132,9 +136,6 @@ OPENSSL_EXPORT const char *CRYPTO_get_lock_name(int lock_num);
 
 
 /* Deprecated functions */
-
-/* CRYPTO_THREADID is a dummy value. */
-typedef int CRYPTO_THREADID;
 
 /* CRYPTO_THREADID_set_callback does nothing. */
 OPENSSL_EXPORT int CRYPTO_THREADID_set_callback(
