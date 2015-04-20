@@ -416,7 +416,7 @@ ASN1_INTEGER *BN_to_ASN1_INTEGER(const BIGNUM *bn, ASN1_INTEGER *ai)
 		OPENSSL_PUT_ERROR(ASN1, BN_to_ASN1_INTEGER, ASN1_R_NESTED_ASN1_ERROR);
 		goto err;
 		}
-	if (BN_is_negative(bn))
+	if (BN_is_negative(bn) && !BN_is_zero(bn))
 		ret->type = V_ASN1_NEG_INTEGER;
 	else ret->type=V_ASN1_INTEGER;
 	j=BN_num_bits(bn);

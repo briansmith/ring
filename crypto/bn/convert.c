@@ -263,20 +263,19 @@ static void decode_hex(BIGNUM *bn, const char *in, int i) {
   bn->top = h;
 }
 
-/* decode_dec decodes |i| bytes of decimal data from |in| and updates |bn|. */
-static void decode_dec(BIGNUM *bn, const char *in, int i) {
-  int j;
+/* decode_dec decodes |in_len| bytes of decimal data from |in| and updates |bn|. */
+static void decode_dec(BIGNUM *bn, const char *in, int in_len) {
+  int i, j;
   BN_ULONG l = 0;
 
-  j = BN_DEC_NUM - (i % BN_DEC_NUM);
+  j = BN_DEC_NUM - (in_len % BN_DEC_NUM);
   if (j == BN_DEC_NUM) {
     j = 0;
   }
   l = 0;
-  while (*in) {
+  for (i = 0; i < in_len; i++) {
     l *= 10;
-    l += *in - '0';
-    in++;
+    l += in[i] - '0';
     if (++j == BN_DEC_NUM) {
       BN_mul_word(bn, BN_DEC_CONV);
       BN_add_word(bn, l);
@@ -320,7 +319,6 @@ static int bn_x2bn(BIGNUM **outp, const char *in, decode_func decode, char_test_
     ret = *outp;
     BN_zero(ret);
   }
-  ret->neg = neg;
 
   /* i is the number of hex digests; */
   if (bn_expand(ret, i * 4) == NULL) {
@@ -330,6 +328,9 @@ static int bn_x2bn(BIGNUM **outp, const char *in, decode_func decode, char_test_
   decode(ret, in, i);
 
   bn_correct_top(ret);
+  if (!BN_is_zero(ret)) {
+    ret->neg = neg;
+  }
 
   *outp = ret;
   return num;
@@ -440,7 +441,7 @@ int BN_asc2bn(BIGNUM **outp, const char *in) {
     }
   }
 
-  if (*orig_in == '-') {
+  if (*orig_in == '-' && !BN_is_zero(*outp)) {
     (*outp)->neg = 1;
   }
 

@@ -107,6 +107,9 @@ static bool test_small_prime(FILE *fp, BN_CTX *ctx);
 static bool test_mod_exp_mont5(FILE *fp, BN_CTX *ctx);
 static bool test_sqrt(FILE *fp, BN_CTX *ctx);
 static bool test_bn2bin_padded(FILE *fp, BN_CTX *ctx);
+static bool test_dec2bn(FILE *fp, BN_CTX *ctx);
+static bool test_hex2bn(FILE *fp, BN_CTX *ctx);
+static bool test_asc2bn(FILE *fp, BN_CTX *ctx);
 
 // g_results can be set to true to cause the result of each computation to be
 // printed.
@@ -279,6 +282,24 @@ int main(int argc, char *argv[]) {
 
   message(stdout, "BN_bn2bin_padded");
   if (!test_bn2bin_padded(stdout, ctx.get())) {
+    return 1;
+  }
+  fflush(stdout);
+
+  message(stdout, "BN_dec2bn");
+  if (!test_dec2bn(stdout, ctx.get())) {
+    return 1;
+  }
+  fflush(stdout);
+
+  message(stdout, "BN_hex2bn");
+  if (!test_hex2bn(stdout, ctx.get())) {
+    return 1;
+  }
+  fflush(stdout);
+
+  message(stdout, "BN_asc2bn");
+  if (!test_asc2bn(stdout, ctx.get())) {
     return 1;
   }
   fflush(stdout);
@@ -1402,6 +1423,150 @@ static bool test_bn2bin_padded(FILE *fp, BN_CTX *ctx) {
       fprintf(stderr, "BN_bn2bin_padded gave a bad result.\n");
       return false;
     }
+  }
+
+  return true;
+}
+
+static int DecimalToBIGNUM(ScopedBIGNUM *out, const char *in) {
+  BIGNUM *raw = NULL;
+  int ret = BN_dec2bn(&raw, in);
+  out->reset(raw);
+  return ret;
+}
+
+static bool test_dec2bn(FILE *fp, BN_CTX *ctx) {
+  ScopedBIGNUM bn;
+  int ret = DecimalToBIGNUM(&bn, "0");
+  if (ret != 1 || !BN_is_zero(bn.get()) || BN_is_negative(bn.get())) {
+    fprintf(stderr, "BN_dec2bn gave a bad result.\n");
+    return false;
+  }
+
+  ret = DecimalToBIGNUM(&bn, "256");
+  if (ret != 3 || !BN_is_word(bn.get(), 256) || BN_is_negative(bn.get())) {
+    fprintf(stderr, "BN_dec2bn gave a bad result.\n");
+    return false;
+  }
+
+  ret = DecimalToBIGNUM(&bn, "-42");
+  if (ret != 3 || !BN_abs_is_word(bn.get(), 42) || !BN_is_negative(bn.get())) {
+    fprintf(stderr, "BN_dec2bn gave a bad result.\n");
+    return false;
+  }
+
+  ret = DecimalToBIGNUM(&bn, "-0");
+  if (ret != 2 || !BN_is_zero(bn.get()) || BN_is_negative(bn.get())) {
+    fprintf(stderr, "BN_dec2bn gave a bad result.\n");
+    return false;
+  }
+
+  ret = DecimalToBIGNUM(&bn, "42trailing garbage is ignored");
+  if (ret != 2 || !BN_abs_is_word(bn.get(), 42) || BN_is_negative(bn.get())) {
+    fprintf(stderr, "BN_dec2bn gave a bad result.\n");
+    return false;
+  }
+
+  return true;
+}
+
+static int HexToBIGNUM(ScopedBIGNUM *out, const char *in) {
+  BIGNUM *raw = NULL;
+  int ret = BN_hex2bn(&raw, in);
+  out->reset(raw);
+  return ret;
+}
+
+static bool test_hex2bn(FILE *fp, BN_CTX *ctx) {
+  ScopedBIGNUM bn;
+  int ret = HexToBIGNUM(&bn, "0");
+  if (ret != 1 || !BN_is_zero(bn.get()) || BN_is_negative(bn.get())) {
+    fprintf(stderr, "BN_hex2bn gave a bad result.\n");
+    return false;
+  }
+
+  ret = HexToBIGNUM(&bn, "256");
+  if (ret != 3 || !BN_is_word(bn.get(), 0x256) || BN_is_negative(bn.get())) {
+    fprintf(stderr, "BN_hex2bn gave a bad result.\n");
+    return false;
+  }
+
+  ret = HexToBIGNUM(&bn, "-42");
+  if (ret != 3 || !BN_abs_is_word(bn.get(), 0x42) || !BN_is_negative(bn.get())) {
+    fprintf(stderr, "BN_hex2bn gave a bad result.\n");
+    return false;
+  }
+
+  ret = HexToBIGNUM(&bn, "-0");
+  if (ret != 2 || !BN_is_zero(bn.get()) || BN_is_negative(bn.get())) {
+    fprintf(stderr, "BN_hex2bn gave a bad result.\n");
+    return false;
+  }
+
+  ret = HexToBIGNUM(&bn, "abctrailing garbage is ignored");
+  if (ret != 3 || !BN_is_word(bn.get(), 0xabc) || BN_is_negative(bn.get())) {
+    fprintf(stderr, "BN_hex2bn gave a bad result.\n");
+    return false;
+  }
+
+  return true;
+}
+
+static ScopedBIGNUM ASCIIToBIGNUM(const char *in) {
+  BIGNUM *raw = NULL;
+  if (!BN_asc2bn(&raw, in)) {
+    return nullptr;
+  }
+  return ScopedBIGNUM(raw);
+}
+
+static bool test_asc2bn(FILE *fp, BN_CTX *ctx) {
+  ScopedBIGNUM bn = ASCIIToBIGNUM("0");
+  if (!bn || !BN_is_zero(bn.get()) || BN_is_negative(bn.get())) {
+    fprintf(stderr, "BN_asc2bn gave a bad result.\n");
+    return false;
+  }
+
+  bn = ASCIIToBIGNUM("256");
+  if (!bn || !BN_is_word(bn.get(), 256) || BN_is_negative(bn.get())) {
+    fprintf(stderr, "BN_asc2bn gave a bad result.\n");
+    return false;
+  }
+
+  bn = ASCIIToBIGNUM("-42");
+  if (!bn || !BN_abs_is_word(bn.get(), 42) || !BN_is_negative(bn.get())) {
+    fprintf(stderr, "BN_asc2bn gave a bad result.\n");
+    return false;
+  }
+
+  bn = ASCIIToBIGNUM("0x1234");
+  if (!bn || !BN_is_word(bn.get(), 0x1234) || BN_is_negative(bn.get())) {
+    fprintf(stderr, "BN_asc2bn gave a bad result.\n");
+    return false;
+  }
+
+  bn = ASCIIToBIGNUM("0X1234");
+  if (!bn || !BN_is_word(bn.get(), 0x1234) || BN_is_negative(bn.get())) {
+    fprintf(stderr, "BN_asc2bn gave a bad result.\n");
+    return false;
+  }
+
+  bn = ASCIIToBIGNUM("-0xabcd");
+  if (!bn || !BN_abs_is_word(bn.get(), 0xabcd) || !BN_is_negative(bn.get())) {
+    fprintf(stderr, "BN_asc2bn gave a bad result.\n");
+    return false;
+  }
+
+  bn = ASCIIToBIGNUM("-0");
+  if (!bn || !BN_is_zero(bn.get()) || BN_is_negative(bn.get())) {
+    fprintf(stderr, "BN_asc2bn gave a bad result.\n");
+    return false;
+  }
+
+  bn = ASCIIToBIGNUM("123trailing garbage is ignored");
+  if (!bn || !BN_is_word(bn.get(), 123) || BN_is_negative(bn.get())) {
+    fprintf(stderr, "BN_asc2bn gave a bad result.\n");
+    return false;
   }
 
   return true;
