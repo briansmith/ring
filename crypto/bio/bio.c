@@ -75,6 +75,7 @@ static int bio_set(BIO *bio, const BIO_METHOD *method) {
 
   bio->method = method;
   bio->shutdown = 1;
+  bio->references = 1;
 
   if (method->create != NULL && !method->create(bio)) {
     return 0;
@@ -102,6 +103,11 @@ int BIO_free(BIO *bio) {
   BIO *next_bio;
 
   for (; bio != NULL; bio = next_bio) {
+    int refs = CRYPTO_add(&bio->references, -1, CRYPTO_LOCK_BIO);
+    if (refs > 0) {
+      return 0;
+    }
+
     if (bio->callback != NULL) {
       int i = (int)bio->callback(bio, BIO_CB_FREE, NULL, 0, 0, 1);
       if (i <= 0) {

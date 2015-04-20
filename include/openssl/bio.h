@@ -781,6 +781,7 @@ struct bio_st {
   /* num is a BIO-specific value. For example, in fd BIOs it's used to store a
    * file descriptor. */
   int num;
+  int references;
   void *ptr;
   /* next_bio points to the next |BIO| in a chain. This |BIO| owns a reference
    * to |next_bio|. */
