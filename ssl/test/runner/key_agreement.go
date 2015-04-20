@@ -234,6 +234,8 @@ func pickTLS12HashForSignature(sigType uint8, clientList, serverList []signature
 
 func curveForCurveID(id CurveID) (elliptic.Curve, bool) {
 	switch id {
+	case CurveP224:
+		return elliptic.P224(), true
 	case CurveP256:
 		return elliptic.P256(), true
 	case CurveP384:

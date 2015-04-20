@@ -915,6 +915,20 @@ var testCases = []testCase{
 		expectedError: ":WRONG_CIPHER_RETURNED:",
 	},
 	{
+		name: "UnsupportedCurve",
+		config: Config{
+			CipherSuites: []uint16{TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256},
+			// BoringSSL implements P-224 but doesn't enable it by
+			// default.
+			CurvePreferences: []CurveID{CurveP224},
+			Bugs: ProtocolBugs{
+				IgnorePeerCurvePreferences: true,
+			},
+		},
+		shouldFail:    true,
+		expectedError: ":WRONG_CURVE:",
+	},
+	{
 		name: "SendWarningAlerts",
 		config: Config{
 			Bugs: ProtocolBugs{

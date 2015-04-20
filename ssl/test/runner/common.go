@@ -97,6 +97,7 @@ const (
 type CurveID uint16
 
 const (
+	CurveP224 CurveID = 21
 	CurveP256 CurveID = 23
 	CurveP384 CurveID = 24
 	CurveP521 CurveID = 25
@@ -686,6 +687,10 @@ type ProtocolBugs struct {
 	// IgnorePeerSignatureAlgorithmPreferences, if true, causes the peer's
 	// signature algorithm preferences to be ignored.
 	IgnorePeerSignatureAlgorithmPreferences bool
+
+	// IgnorePeerCurvePreferences, if true, causes the peer's curve
+	// preferences to be ignored.
+	IgnorePeerCurvePreferences bool
 
 	// SendWarningAlerts, if non-zero, causes every record to be prefaced by
 	// a warning alert.

@@ -215,6 +215,9 @@ func (hs *serverHandshakeState) readClientHello() (isResume bool, err error) {
 
 	supportedCurve := false
 	preferredCurves := config.curvePreferences()
+	if config.Bugs.IgnorePeerCurvePreferences {
+		hs.clientHello.supportedCurves = preferredCurves
+	}
 Curves:
 	for _, curve := range hs.clientHello.supportedCurves {
 		for _, supported := range preferredCurves {
