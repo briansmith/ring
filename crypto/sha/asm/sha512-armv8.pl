@@ -28,9 +28,21 @@
 #	and lags behind assembly only by 50-90%.
 
 $flavour=shift;
+# Unlike most perlasm files, sha512-armv8.pl takes an additional argument to
+# determine which hash function to emit. This differs from upstream OpenSSL so
+# that the script may continue to output to stdout.
+$variant=shift;
 $output=shift;
 
-if ($output =~ /512/) {
+$0 =~ m/(.*[\/\\])[^\/\\]+$/; $dir=$1;
+( $xlate="${dir}arm-xlate.pl" and -f $xlate ) or
+( $xlate="${dir}../../perlasm/arm-xlate.pl" and -f $xlate) or
+die "can't locate arm-xlate.pl";
+
+open OUT,"| \"$^X\" $xlate $flavour $output";
+*STDOUT=*OUT;
+
+if ($variant eq "sha512") {
 	$BITS=512;
 	$SZ=8;
 	@Sigma0=(28,34,39);
@@ -39,7 +51,7 @@ if ($output =~ /512/) {
 	@sigma1=(19,61, 6);
 	$rounds=80;
 	$reg_t="x";
-} else {
+} elsif ($variant eq "sha256") {
 	$BITS=256;
 	$SZ=4;
 	@Sigma0=( 2,13,22);
@@ -48,6 +60,8 @@ if ($output =~ /512/) {
 	@sigma1=(17,19,10);
 	$rounds=64;
 	$reg_t="w";
+} else {
+  die "Unknown variant: $variant";
 }
 
 $func="sha${BITS}_block_data_order";
@@ -152,6 +166,7 @@ $code.=<<___;
 
 .text
 
+.extern	OPENSSL_armcap_P
 .globl	$func
 .type	$func,%function
 .align	6
@@ -181,7 +196,7 @@ $code.=<<___;
 	ldp	$E,$F,[$ctx,#4*$SZ]
 	add	$num,$inp,$num,lsl#`log(16*$SZ)/log(2)`	// end of input
 	ldp	$G,$H,[$ctx,#6*$SZ]
-	adr	$Ktbl,K$BITS
+	adr	$Ktbl,.LK$BITS
 	stp	$ctx,$num,[x29,#96]
 
 .Loop:
@@ -231,8 +246,8 @@ $code.=<<___;
 .size	$func,.-$func
 
 .align	6
-.type	K$BITS,%object
-K$BITS:
+.type	.LK$BITS,%object
+.LK$BITS:
 ___
 $code.=<<___ if ($SZ==8);
 	.quad	0x428a2f98d728ae22,0x7137449123ef65cd
@@ -297,7 +312,7 @@ $code.=<<___ if ($SZ==4);
 	.long	0	//terminator
 ___
 $code.=<<___;
-.size	K$BITS,.-K$BITS
+.size	.LK$BITS,.-.LK$BITS
 .align	3
 .LOPENSSL_armcap_P:
 	.quad	OPENSSL_armcap_P-.
@@ -322,7 +337,7 @@ sha256_block_armv8:
 	add		x29,sp,#0
 
 	ld1.32		{$ABCD,$EFGH},[$ctx]
-	adr		$Ktbl,K256
+	adr		$Ktbl,.LK256
 
 .Loop_hw:
 	ld1		{@MSG[0]-@MSG[3]},[$inp],#64
