@@ -358,7 +358,7 @@ static const uint8_t ecformats_default[] = {
 };
 
 static const uint16_t eccurves_default[] = {
-    23, /* X9_64_prime256v1 */
+    23, /* X9_62_prime256v1 */
     24, /* secp384r1 */
 };
 
@@ -390,6 +390,9 @@ static void tls1_get_curvelist(SSL *s, int get_peer_curves,
                                const uint16_t **out_curve_ids,
                                size_t *out_curve_ids_len) {
   if (get_peer_curves) {
+    /* Only clients send a curve list, so this function is only called
+     * on the server. */
+    assert(s->server);
     *out_curve_ids = s->s3->tmp.peer_ellipticcurvelist;
     *out_curve_ids_len = s->s3->tmp.peer_ellipticcurvelist_length;
     return;
@@ -428,22 +431,38 @@ int tls1_check_curve(SSL *s, CBS *cbs, uint16_t *out_curve_id) {
 }
 
 int tls1_get_shared_curve(SSL *s) {
-  const uint16_t *pref, *supp;
-  size_t preflen, supplen, i, j;
+  const uint16_t *curves, *peer_curves, *pref, *supp;
+  size_t curves_len, peer_curves_len, pref_len, supp_len, i, j;
 
   /* Can't do anything on client side */
   if (s->server == 0) {
     return NID_undef;
   }
 
-  /* Return first preference shared curve */
-  tls1_get_curvelist(s, !!(s->options & SSL_OP_CIPHER_SERVER_PREFERENCE), &supp,
-                     &supplen);
-  tls1_get_curvelist(s, !(s->options & SSL_OP_CIPHER_SERVER_PREFERENCE), &pref,
-                     &preflen);
+  tls1_get_curvelist(s, 0 /* local curves */, &curves, &curves_len);
+  tls1_get_curvelist(s, 1 /* peer curves */, &peer_curves, &peer_curves_len);
 
-  for (i = 0; i < preflen; i++) {
-    for (j = 0; j < supplen; j++) {
+  if (peer_curves_len == 0) {
+    /* Clients are not required to send a supported_curves extension. In this
+     * case, the server is free to pick any curve it likes. See RFC 4492,
+     * section 4, paragraph 3. */
+    return (curves_len == 0) ? NID_undef : tls1_ec_curve_id2nid(curves[0]);
+  }
+
+  if (s->options & SSL_OP_CIPHER_SERVER_PREFERENCE) {
+    pref = curves;
+    pref_len = curves_len;
+    supp = peer_curves;
+    supp_len = peer_curves_len;
+  } else {
+    pref = peer_curves;
+    pref_len = peer_curves_len;
+    supp = curves;
+    supp_len = curves_len;
+  }
+
+  for (i = 0; i < pref_len; i++) {
+    for (j = 0; j < supp_len; j++) {
       if (pref[i] == supp[j]) {
         return tls1_ec_curve_id2nid(pref[i]);
       }
@@ -547,11 +566,23 @@ static int tls1_check_point_format(SSL *s, uint8_t comp_id) {
  * preferences are checked; the peer (the server) does not send preferences. */
 static int tls1_check_curve_id(SSL *s, uint16_t curve_id) {
   const uint16_t *curves;
-  size_t curves_len, i, j;
+  size_t curves_len, i, get_peer_curves;
 
   /* Check against our list, then the peer's list. */
-  for (j = 0; j <= 1; j++) {
-    tls1_get_curvelist(s, j, &curves, &curves_len);
+  for (get_peer_curves = 0; get_peer_curves <= 1; get_peer_curves++) {
+    if (get_peer_curves && !s->server) {
+      /* Servers do not present a preference list so, if we are a client, only
+       * check our list. */
+      continue;
+    }
+
+    tls1_get_curvelist(s, get_peer_curves, &curves, &curves_len);
+    if (get_peer_curves && curves_len == 0) {
+      /* Clients are not required to send a supported_curves extension. In this
+       * case, the server is free to pick any curve it likes. See RFC 4492,
+       * section 4, paragraph 3. */
+      continue;
+    }
     for (i = 0; i < curves_len; i++) {
       if (curves[i] == curve_id) {
         break;
@@ -560,12 +591,6 @@ static int tls1_check_curve_id(SSL *s, uint16_t curve_id) {
 
     if (i == curves_len) {
       return 0;
-    }
-
-    /* Servers do not present a preference list so, if we are a client, only
-     * check our list. */
-    if (!s->server) {
-      return 1;
     }
   }
 

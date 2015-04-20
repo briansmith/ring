@@ -1060,6 +1060,16 @@ var testCases = []testCase{
 		expectedError:      ":TLSV1_ALERT_ACCESS_DENIED:",
 		expectedLocalError: "tls: peer did not false start: EOF",
 	},
+	{
+		testType: serverTest,
+		name:     "NoSupportedCurves",
+		config: Config{
+			CipherSuites: []uint16{TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256},
+			Bugs: ProtocolBugs{
+				NoSupportedCurves: true,
+			},
+		},
+	},
 }
 
 func doExchange(test *testCase, config *Config, conn net.Conn, messageLen int, isResume bool) error {

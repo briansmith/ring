@@ -597,6 +597,10 @@ type ProtocolBugs struct {
 	// still be enforced.
 	NoSignatureAndHashes bool
 
+	// NoSupportedCurves, if true, causes the client to omit the
+	// supported_curves extension.
+	NoSupportedCurves bool
+
 	// RequireSameRenegoClientVersion, if true, causes the server
 	// to require that all ClientHellos match in offered version
 	// across a renego.

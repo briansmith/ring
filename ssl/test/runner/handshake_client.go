@@ -83,6 +83,10 @@ func (c *Conn) clientHandshake() error {
 		hello.extendedMasterSecret = false
 	}
 
+	if c.config.Bugs.NoSupportedCurves {
+		hello.supportedCurves = nil
+	}
+
 	if len(c.clientVerify) > 0 && !c.config.Bugs.EmptyRenegotiationInfo {
 		if c.config.Bugs.BadRenegotiationInfo {
 			hello.secureRenegotiation = append(hello.secureRenegotiation, c.clientVerify...)
