@@ -93,6 +93,7 @@ using ScopedHMAC_CTX = ScopedOpenSSLContext<HMAC_CTX, void, HMAC_CTX_init,
                                             HMAC_CTX_cleanup>;
 
 using ScopedOpenSSLBytes = bssl::unique_ptr<uint8_t, OpenSSLFree<uint8_t>>;
+using ScopedOpenSSLString = bssl::unique_ptr<char, OpenSSLFree<char>>;
 
 
 #endif  // OPENSSL_HEADER_CRYPTO_TEST_SCOPED_TYPES_H

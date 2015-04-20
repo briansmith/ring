@@ -25,7 +25,7 @@ add_executable(
 add_executable(
   ec_test
 
-  ec_test.c
+  ec_test.cc
 )
 
 target_link_libraries(example_mul crypto)

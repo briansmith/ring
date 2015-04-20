@@ -15,11 +15,15 @@
 #include <stdio.h>
 #include <string.h>
 
+#include <vector>
+
 #include <openssl/crypto.h>
 #include <openssl/ec_key.h>
 #include <openssl/err.h>
 #include <openssl/mem.h>
 
+#include "../test/scoped_types.h"
+#include "../test/stl_compat.h"
 #include "internal.h"
 
 
@@ -30,91 +34,66 @@ static const uint8_t kECKeyWithoutPublic[] = {
   0xa0, 0x0a, 0x06, 0x08, 0x2a, 0x86, 0x48, 0xce, 0x3d, 0x03, 0x01, 0x07,
 };
 
-int test_d2i_ECPrivateKey(void) {
-  int len, ret = 0;
-  uint8_t *out = NULL, *outp;
-  const uint8_t *inp;
-  EC_KEY *key = NULL;
-  BIGNUM *x = NULL, *y = NULL;
-  const EC_POINT *public;
-  char *x_hex = NULL, *y_hex = NULL;
+bool Testd2i_ECPrivateKey(void) {
+  const uint8_t *inp = kECKeyWithoutPublic;
+  ScopedEC_KEY key(d2i_ECPrivateKey(NULL, &inp, sizeof(kECKeyWithoutPublic)));
 
-  inp = kECKeyWithoutPublic;
-  key = d2i_ECPrivateKey(NULL, &inp, sizeof(kECKeyWithoutPublic));
-
-  if (key == NULL || inp != kECKeyWithoutPublic + sizeof(kECKeyWithoutPublic)) {
+  if (!key || inp != kECKeyWithoutPublic + sizeof(kECKeyWithoutPublic)) {
     fprintf(stderr, "Failed to parse private key.\n");
     ERR_print_errors_fp(stderr);
-    goto out;
+    return false;
   }
 
-  len = i2d_ECPrivateKey(key, NULL);
-  out = malloc(len);
-  outp = out;
-  if (len != i2d_ECPrivateKey(key, &outp)) {
+  int len = i2d_ECPrivateKey(key.get(), NULL);
+  std::vector<uint8_t> out(len);
+  uint8_t *outp = bssl::vector_data(&out);
+  if (len != i2d_ECPrivateKey(key.get(), &outp)) {
     fprintf(stderr, "Failed to serialize private key.\n");
     ERR_print_errors_fp(stderr);
-    goto out;
+    return false;
   }
 
-  if (0 != memcmp(out, kECKeyWithoutPublic, len)) {
+  if (0 != memcmp(bssl::vector_data(&out), kECKeyWithoutPublic, len)) {
     fprintf(stderr, "Serialisation of key doesn't match original.\n");
-    goto out;
+    return false;
   }
 
-  public = EC_KEY_get0_public_key(key);
-  if (public == NULL) {
+  const EC_POINT *pub_key = EC_KEY_get0_public_key(key.get());
+  if (pub_key == NULL) {
     fprintf(stderr, "Public key missing.\n");
-    goto out;
+    return false;
   }
 
-  x = BN_new();
-  y = BN_new();
-  if (x == NULL || y == NULL) {
-    goto out;
+  ScopedBIGNUM x(BN_new());
+  ScopedBIGNUM y(BN_new());
+  if (!x || !y) {
+    return false;
   }
-  if (!EC_POINT_get_affine_coordinates_GFp(EC_KEY_get0_group(key), public, x, y,
-                                           NULL)) {
+  if (!EC_POINT_get_affine_coordinates_GFp(EC_KEY_get0_group(key.get()),
+                                           pub_key, x.get(), y.get(), NULL)) {
     fprintf(stderr, "Failed to get public key in affine coordinates.\n");
-    goto out;
+    return false;
   }
-  x_hex = BN_bn2hex(x);
-  y_hex = BN_bn2hex(y);
-  if (0 != strcmp(x_hex, "c81561ecf2e54edefe6617db1c7a34a70744ddb261f269b83dacfcd2ade5a681") ||
-      0 != strcmp(y_hex, "e0e2afa3f9b6abe4c698ef6495f1be49a3196c5056acb3763fe4507eec596e88")) {
-    fprintf(stderr, "Incorrect public key: %s %s\n", x_hex, y_hex);
-    goto out;
+  ScopedOpenSSLString x_hex(BN_bn2hex(x.get()));
+  ScopedOpenSSLString y_hex(BN_bn2hex(y.get()));
+  if (0 != strcmp(
+          x_hex.get(),
+          "c81561ecf2e54edefe6617db1c7a34a70744ddb261f269b83dacfcd2ade5a681") ||
+      0 != strcmp(
+          y_hex.get(),
+          "e0e2afa3f9b6abe4c698ef6495f1be49a3196c5056acb3763fe4507eec596e88")) {
+    fprintf(stderr, "Incorrect public key: %s %s\n", x_hex.get(), y_hex.get());
+    return false;
   }
 
-  ret = 1;
-
-out:
-  if (key != NULL) {
-    EC_KEY_free(key);
-  }
-  if (out != NULL) {
-    free(out);
-  }
-  if (x != NULL) {
-    BN_free(x);
-  }
-  if (y != NULL) {
-    BN_free(y);
-  }
-  if (x_hex != NULL) {
-    OPENSSL_free(x_hex);
-  }
-  if (y_hex != NULL) {
-    OPENSSL_free(y_hex);
-  }
-  return ret;
+  return true;
 }
 
 int main(void) {
   CRYPTO_library_init();
   ERR_load_crypto_strings();
 
-  if (!test_d2i_ECPrivateKey()) {
+  if (!Testd2i_ECPrivateKey()) {
     fprintf(stderr, "failed\n");
     return 1;
   }
