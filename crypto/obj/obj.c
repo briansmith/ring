@@ -135,7 +135,7 @@ ASN1_OBJECT *OBJ_dup(const ASN1_OBJECT *o) {
 
   if (o->sn != NULL) {
     sn = OPENSSL_strdup(o->sn);
-    if (sn) {
+    if (sn == NULL) {
       goto err;
     }
   }
