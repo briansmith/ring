@@ -452,6 +452,33 @@ static bool test_div(FILE *fp, BN_CTX *ctx) {
       return false;
     }
   }
+
+  // Test that BN_div never gives negative zero in the quotient.
+  if (!BN_set_word(a.get(), 1) ||
+      !BN_set_word(b.get(), 2)) {
+    return false;
+  }
+  BN_set_negative(a.get(), 1);
+  if (!BN_div(d.get(), c.get(), a.get(), b.get(), ctx)) {
+    return false;
+  }
+  if (!BN_is_zero(d.get()) || BN_is_negative(d.get())) {
+    fprintf(stderr, "Division test failed!\n");
+    return false;
+  }
+
+  // Test that BN_div never gives negative zero in the remainder.
+  if (!BN_set_word(b.get(), 1)) {
+    return false;
+  }
+  if (!BN_div(d.get(), c.get(), a.get(), b.get(), ctx)) {
+    return false;
+  }
+  if (!BN_is_zero(c.get()) || BN_is_negative(c.get())) {
+    fprintf(stderr, "Division test failed!\n");
+    return false;
+  }
+
   return true;
 }
 
