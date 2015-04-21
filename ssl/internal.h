@@ -462,9 +462,6 @@ typedef struct cert_st {
    * keys. If NULL, a curve is selected automatically. See
    * |SSL_CTX_set_tmp_ecdh_callback|. */
   EC_KEY *(*ecdh_tmp_cb)(SSL *ssl, int is_export, int keysize);
-
-  /* Flags related to certificates */
-  unsigned int cert_flags;
   CERT_PKEY pkeys[SSL_PKEY_NUM];
 
   /* Server-only: client_certificate_types is list of certificate types to

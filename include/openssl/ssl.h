@@ -594,14 +594,6 @@ typedef struct timeval OPENSSL_timeval;
 #define SSL_get_secure_renegotiation_support(ssl) \
   SSL_ctrl((SSL *)(ssl), SSL_CTRL_GET_RI_SUPPORT, 0, NULL)
 
-#define SSL_CTX_set_cert_flags(ctx, op) \
-  SSL_CTX_ctrl((ctx), SSL_CTRL_CERT_FLAGS, (op), NULL)
-#define SSL_set_cert_flags(s, op) SSL_ctrl((s), SSL_CTRL_CERT_FLAGS, (op), NULL)
-#define SSL_CTX_clear_cert_flags(ctx, op) \
-  SSL_CTX_ctrl((ctx), SSL_CTRL_CLEAR_CERT_FLAGS, (op), NULL)
-#define SSL_clear_cert_flags(s, op) \
-  SSL_ctrl((s), SSL_CTRL_CLEAR_CERT_FLAGS, (op), NULL)
-
 /* SSL_CTX_set_min_version sets the minimum protocol version for |ctx| to
  * |version|. */
 OPENSSL_EXPORT void SSL_CTX_set_min_version(SSL_CTX *ctx, uint16_t version);
@@ -1652,8 +1644,6 @@ DECLARE_PEM_rw(SSL_SESSION, SSL_SESSION)
 #define SSL_CTRL_SET_CURVES_LIST 92
 #define SSL_CTRL_SET_SIGALGS 97
 #define SSL_CTRL_SET_SIGALGS_LIST 98
-#define SSL_CTRL_CERT_FLAGS 99
-#define SSL_CTRL_CLEAR_CERT_FLAGS 100
 #define SSL_CTRL_SET_CLIENT_SIGALGS 101
 #define SSL_CTRL_SET_CLIENT_SIGALGS_LIST 102
 #define SSL_CTRL_GET_CLIENT_CERT_TYPES 103

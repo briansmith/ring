@@ -1067,12 +1067,6 @@ long SSL_ctrl(SSL *s, int cmd, long larg, void *parg) {
       }
       return 0;
 
-    case SSL_CTRL_CERT_FLAGS:
-      return s->cert->cert_flags |= larg;
-
-    case SSL_CTRL_CLEAR_CERT_FLAGS:
-      return s->cert->cert_flags &= ~larg;
-
     case SSL_CTRL_GET_RAW_CIPHERLIST:
       if (parg) {
         if (s->cert->ciphers_raw == NULL) {
@@ -1182,12 +1176,6 @@ long SSL_CTX_ctrl(SSL_CTX *ctx, int cmd, long larg, void *parg) {
       }
       ctx->max_send_fragment = larg;
       return 1;
-
-    case SSL_CTRL_CERT_FLAGS:
-      return ctx->cert->cert_flags |= larg;
-
-    case SSL_CTRL_CLEAR_CERT_FLAGS:
-      return ctx->cert->cert_flags &= ~larg;
 
     default:
       return ctx->method->ssl_ctx_ctrl(ctx, cmd, larg, parg);
