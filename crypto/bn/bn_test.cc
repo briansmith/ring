@@ -690,6 +690,21 @@ static bool test_mul(FILE *fp) {
       return false;
     }
   }
+
+  // Test that BN_mul never gives negative zero.
+  if (!BN_set_word(a.get(), 1)) {
+    return false;
+  }
+  BN_set_negative(a.get(), 1);
+  BN_zero(b.get());
+  if (!BN_mul(c.get(), a.get(), b.get(), ctx.get())) {
+    return false;
+  }
+  if (!BN_is_zero(c.get()) || BN_is_negative(c.get())) {
+    fprintf(stderr, "Multiplication test failed!\n");
+    return false;
+  }
+
   return true;
 }
 
