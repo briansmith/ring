@@ -119,9 +119,7 @@ static void pkey_ec_cleanup(EVP_PKEY_CTX *ctx) {
     return;
   }
 
-  if (dctx->gen_group) {
-    EC_GROUP_free(dctx->gen_group);
-  }
+  EC_GROUP_free(dctx->gen_group);
   OPENSSL_free(dctx);
 }
 
@@ -212,9 +210,7 @@ static int pkey_ec_ctrl(EVP_PKEY_CTX *ctx, int type, int p1, void *p2) {
         OPENSSL_PUT_ERROR(EVP, pkey_ec_ctrl, EVP_R_INVALID_CURVE);
         return 0;
       }
-      if (dctx->gen_group) {
-        EC_GROUP_free(dctx->gen_group);
-      }
+      EC_GROUP_free(dctx->gen_group);
       dctx->gen_group = group;
       return 1;
 

@@ -245,9 +245,7 @@ static int do_rsa_print(BIO *out, const RSA *rsa, int off,
   ret = 1;
 
 err:
-  if (m != NULL) {
-    OPENSSL_free(m);
-  }
+  OPENSSL_free(m);
   return ret;
 }
 
@@ -394,12 +392,8 @@ static int rsa_sig_print(BIO *bp, const X509_ALGOR *sigalg,
 
     pss = rsa_pss_decode(sigalg, &maskHash);
     rv = rsa_pss_param_print(bp, pss, maskHash, indent);
-    if (pss) {
-      RSA_PSS_PARAMS_free(pss);
-    }
-    if (maskHash) {
-      X509_ALGOR_free(maskHash);
-    }
+    RSA_PSS_PARAMS_free(pss);
+    X509_ALGOR_free(maskHash);
     if (!rv) {
       return 0;
     }
@@ -463,12 +457,8 @@ static int rsa_md_to_mgf1(X509_ALGOR **palg, const EVP_MD *mgf1md) {
   stmp = NULL;
 
 err:
-  if (stmp) {
-    ASN1_STRING_free(stmp);
-  }
-  if (algtmp) {
-    X509_ALGOR_free(algtmp);
-  }
+  ASN1_STRING_free(stmp);
+  X509_ALGOR_free(algtmp);
   if (*palg) {
     return 1;
   }

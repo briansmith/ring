@@ -481,18 +481,10 @@ err:
   if (!ret) {
     OPENSSL_PUT_ERROR(EVP, do_EC_KEY_print, reason);
   }
-  if (pub_key_bytes) {
-    OPENSSL_free(pub_key_bytes);
-  }
-  if (order) {
-    BN_free(order);
-  }
-  if (ctx) {
-    BN_CTX_free(ctx);
-  }
-  if (buffer != NULL) {
-    OPENSSL_free(buffer);
-  }
+  OPENSSL_free(pub_key_bytes);
+  BN_free(order);
+  BN_CTX_free(ctx);
+  OPENSSL_free(buffer);
   return ret;
 }
 

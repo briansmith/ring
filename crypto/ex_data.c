@@ -306,10 +306,8 @@ void CRYPTO_free_ex_data(CRYPTO_EX_DATA_CLASS *ex_data_class, void *obj,
 
   sk_CRYPTO_EX_DATA_FUNCS_free(func_pointers);
 
-  if (ad->sk) {
-    sk_void_free(ad->sk);
-    ad->sk = NULL;
-  }
+  sk_void_free(ad->sk);
+  ad->sk = NULL;
 }
 
 void CRYPTO_cleanup_all_ex_data(void) {}

@@ -127,9 +127,7 @@ static int pkey_rsa_copy(EVP_PKEY_CTX *dst, EVP_PKEY_CTX *src) {
   dctx->md = sctx->md;
   dctx->mgf1md = sctx->mgf1md;
   if (sctx->oaep_label) {
-    if (dctx->oaep_label) {
-      OPENSSL_free(dctx->oaep_label);
-    }
+    OPENSSL_free(dctx->oaep_label);
     dctx->oaep_label = BUF_memdup(sctx->oaep_label, sctx->oaep_labellen);
     if (!dctx->oaep_label) {
       return 0;
@@ -147,15 +145,9 @@ static void pkey_rsa_cleanup(EVP_PKEY_CTX *ctx) {
     return;
   }
 
-  if (rctx->pub_exp) {
-    BN_free(rctx->pub_exp);
-  }
-  if (rctx->tbuf) {
-    OPENSSL_free(rctx->tbuf);
-  }
-  if (rctx->oaep_label) {
-    OPENSSL_free(rctx->oaep_label);
-  }
+  BN_free(rctx->pub_exp);
+  OPENSSL_free(rctx->tbuf);
+  OPENSSL_free(rctx->oaep_label);
   OPENSSL_free(rctx);
 }
 
@@ -463,9 +455,7 @@ static int pkey_rsa_ctrl(EVP_PKEY_CTX *ctx, int type, int p1, void *p2) {
         OPENSSL_PUT_ERROR(EVP, pkey_rsa_ctrl, EVP_R_INVALID_PADDING_MODE);
         return 0;
       }
-      if (rctx->oaep_label) {
-        OPENSSL_free(rctx->oaep_label);
-      }
+      OPENSSL_free(rctx->oaep_label);
       if (p2 && p1 > 0) {
         /* TODO(fork): this seems wrong. Shouldn't it take a copy of the
          * buffer? */

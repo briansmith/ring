@@ -135,7 +135,7 @@ extern const char kOpenSSLReasonStringData[];
 
 /* err_clear_data frees the optional |data| member of the given error. */
 static void err_clear_data(struct err_error_st *error) {
-  if (error->data != NULL && (error->flags & ERR_FLAG_MALLOCED) != 0) {
+  if ((error->flags & ERR_FLAG_MALLOCED) != 0) {
     OPENSSL_free(error->data);
   }
   error->data = NULL;
@@ -167,9 +167,7 @@ static void err_state_free(void *statep) {
   for (i = 0; i < ERR_NUM_ERRORS; i++) {
     err_clear(&state->errors[i]);
   }
-  if (state->to_free) {
-    OPENSSL_free(state->to_free);
-  }
+  OPENSSL_free(state->to_free);
   OPENSSL_free(state);
 }
 
@@ -242,9 +240,7 @@ static uint32_t get_error_values(int inc, int top, const char **file, int *line,
        * error queue. */
       if (inc) {
         if (error->flags & ERR_FLAG_MALLOCED) {
-          if (state->to_free) {
-            OPENSSL_free(state->to_free);
-          }
+          OPENSSL_free(state->to_free);
           state->to_free = error->data;
         }
         error->data = NULL;
@@ -312,10 +308,8 @@ void ERR_clear_error(void) {
   for (i = 0; i < ERR_NUM_ERRORS; i++) {
     err_clear(&state->errors[i]);
   }
-  if (state->to_free) {
-    OPENSSL_free(state->to_free);
-    state->to_free = NULL;
-  }
+  OPENSSL_free(state->to_free);
+  state->to_free = NULL;
 
   state->top = state->bottom = 0;
 }

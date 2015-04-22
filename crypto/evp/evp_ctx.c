@@ -125,9 +125,7 @@ static EVP_PKEY_CTX *evp_pkey_ctx_new(EVP_PKEY *pkey, ENGINE *e, int id) {
 
   if (pmeth->init) {
     if (pmeth->init(ret) <= 0) {
-      if (pkey) {
-        EVP_PKEY_free(ret->pkey);
-      }
+      EVP_PKEY_free(ret->pkey);
       OPENSSL_free(ret);
       return NULL;
     }
@@ -151,12 +149,8 @@ void EVP_PKEY_CTX_free(EVP_PKEY_CTX *ctx) {
   if (ctx->pmeth && ctx->pmeth->cleanup) {
     ctx->pmeth->cleanup(ctx);
   }
-  if (ctx->pkey) {
-    EVP_PKEY_free(ctx->pkey);
-  }
-  if (ctx->peerkey) {
-    EVP_PKEY_free(ctx->peerkey);
-  }
+  EVP_PKEY_free(ctx->pkey);
+  EVP_PKEY_free(ctx->peerkey);
   OPENSSL_free(ctx);
 }
 
@@ -427,9 +421,7 @@ int EVP_PKEY_derive_set_peer(EVP_PKEY_CTX *ctx, EVP_PKEY *peer) {
     return 0;
   }
 
-  if (ctx->peerkey) {
-    EVP_PKEY_free(ctx->peerkey);
-  }
+  EVP_PKEY_free(ctx->peerkey);
   ctx->peerkey = peer;
 
   ret = ctx->pmeth->ctrl(ctx, EVP_PKEY_CTRL_PEER_KEY, 1, peer);

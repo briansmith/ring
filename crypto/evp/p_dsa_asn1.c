@@ -122,12 +122,8 @@ static int dsa_pub_decode(EVP_PKEY *pkey, X509_PUBKEY *pubkey) {
   return 1;
 
 err:
-  if (public_key) {
-    ASN1_INTEGER_free(public_key);
-  }
-  if (dsa) {
-    DSA_free(dsa);
-  }
+  ASN1_INTEGER_free(public_key);
+  DSA_free(dsa);
   return 0;
 }
 
@@ -153,12 +149,8 @@ static int dsa_pub_encode(X509_PUBKEY *pk, const EVP_PKEY *pkey) {
   }
 
 err:
-  if (penc) {
-    OPENSSL_free(penc);
-  }
-  if (pval) {
-    ASN1_STRING_free(pval);
-  }
+  OPENSSL_free(penc);
+  ASN1_STRING_free(pval);
 
   return 0;
 }
@@ -266,11 +258,8 @@ static int dsa_priv_decode(EVP_PKEY *pkey, PKCS8_PRIV_KEY_INFO *p8) {
 
   EVP_PKEY_assign_DSA(pkey, dsa);
   BN_CTX_free(ctx);
-  if (ndsa) {
-    sk_ASN1_TYPE_pop_free(ndsa, ASN1_TYPE_free);
-  } else {
-    ASN1_INTEGER_free(privkey);
-  }
+  sk_ASN1_TYPE_pop_free(ndsa, ASN1_TYPE_free);
+  ASN1_INTEGER_free(privkey);
 
   return 1;
 
@@ -279,9 +268,7 @@ decerr:
 
 dsaerr:
   BN_CTX_free(ctx);
-  if (privkey) {
-    ASN1_INTEGER_free(privkey);
-  }
+  ASN1_INTEGER_free(privkey);
   sk_ASN1_TYPE_pop_free(ndsa, ASN1_TYPE_free);
   DSA_free(dsa);
   return 0;
@@ -331,15 +318,9 @@ static int dsa_priv_encode(PKCS8_PRIV_KEY_INFO *p8, const EVP_PKEY *pkey) {
   return 1;
 
 err:
-  if (dp != NULL) {
-    OPENSSL_free(dp);
-  }
-  if (params != NULL) {
-    ASN1_STRING_free(params);
-  }
-  if (prkey != NULL) {
-    ASN1_INTEGER_free(prkey);
-  }
+  OPENSSL_free(dp);
+  ASN1_STRING_free(params);
+  ASN1_INTEGER_free(prkey);
   return 0;
 }
 
@@ -367,9 +348,7 @@ static int dup_bn_into(BIGNUM **out, BIGNUM *src) {
   if (a == NULL) {
     return 0;
   }
-  if (*out != NULL) {
-    BN_free(*out);
-  }
+  BN_free(*out);
   *out = a;
 
   return 1;
@@ -463,10 +442,8 @@ static int do_dsa_print(BIO *bp, const DSA *x, int off, int ptype) {
   ret = 1;
 
 err:
-  if (m != NULL) {
-    OPENSSL_free(m);
-  }
-  return (ret);
+  OPENSSL_free(m);
+  return ret;
 }
 
 static int dsa_param_decode(EVP_PKEY *pkey, const uint8_t **pder, int derlen) {
@@ -550,9 +527,7 @@ static int dsa_sig_print(BIO *bp, const X509_ALGOR *sigalg,
   rv = 1;
 
 err:
-  if (m) {
-    OPENSSL_free(m);
-  }
+  OPENSSL_free(m);
   DSA_SIG_free(dsa_sig);
   return rv;
 }
