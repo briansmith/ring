@@ -121,14 +121,8 @@ void *ec_pre_comp_dup(EC_PRE_COMP *pre_comp) {
 }
 
 void ec_pre_comp_free(EC_PRE_COMP *pre_comp) {
-  int i;
-
-  if (!pre_comp) {
-    return;
-  }
-
-  i = CRYPTO_add(&pre_comp->references, -1, CRYPTO_LOCK_EC_PRE_COMP);
-  if (i > 0) {
+  if (pre_comp == NULL ||
+      CRYPTO_add(&pre_comp->references, -1, CRYPTO_LOCK_EC_PRE_COMP) > 0) {
     return;
   }
 

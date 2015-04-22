@@ -1870,20 +1870,14 @@ err2:
   return NULL;
 }
 
-void SSL_CTX_free(SSL_CTX *a) {
-  int i;
-
-  if (a == NULL) {
+void SSL_CTX_free(SSL_CTX *ctx) {
+  if (ctx == NULL ||
+      CRYPTO_add(&ctx->references, -1, CRYPTO_LOCK_SSL_CTX) > 0) {
     return;
   }
 
-  i = CRYPTO_add(&a->references, -1, CRYPTO_LOCK_SSL_CTX);
-  if (i > 0) {
-    return;
-  }
-
-  if (a->param) {
-    X509_VERIFY_PARAM_free(a->param);
+  if (ctx->param) {
+    X509_VERIFY_PARAM_free(ctx->param);
   }
 
   /* Free internal session cache. However: the remove_cb() may reference the
@@ -1892,59 +1886,59 @@ void SSL_CTX_free(SSL_CTX *a) {
    * the session cache, the most secure solution seems to be: empty (flush) the
    * cache, then free ex_data, then finally free the cache. (See ticket
    * [openssl.org #212].) */
-  if (a->sessions != NULL) {
-    SSL_CTX_flush_sessions(a, 0);
+  if (ctx->sessions != NULL) {
+    SSL_CTX_flush_sessions(ctx, 0);
   }
 
-  CRYPTO_free_ex_data(&g_ex_data_class_ssl_ctx, a, &a->ex_data);
+  CRYPTO_free_ex_data(&g_ex_data_class_ssl_ctx, ctx, &ctx->ex_data);
 
-  if (a->sessions != NULL) {
-    lh_SSL_SESSION_free(a->sessions);
+  if (ctx->sessions != NULL) {
+    lh_SSL_SESSION_free(ctx->sessions);
   }
-  if (a->cert_store != NULL) {
-    X509_STORE_free(a->cert_store);
+  if (ctx->cert_store != NULL) {
+    X509_STORE_free(ctx->cert_store);
   }
-  if (a->cipher_list != NULL) {
-    ssl_cipher_preference_list_free(a->cipher_list);
+  if (ctx->cipher_list != NULL) {
+    ssl_cipher_preference_list_free(ctx->cipher_list);
   }
-  if (a->cipher_list_by_id != NULL) {
-    sk_SSL_CIPHER_free(a->cipher_list_by_id);
+  if (ctx->cipher_list_by_id != NULL) {
+    sk_SSL_CIPHER_free(ctx->cipher_list_by_id);
   }
-  if (a->cipher_list_tls11 != NULL) {
-    ssl_cipher_preference_list_free(a->cipher_list_tls11);
+  if (ctx->cipher_list_tls11 != NULL) {
+    ssl_cipher_preference_list_free(ctx->cipher_list_tls11);
   }
-  if (a->cert != NULL) {
-    ssl_cert_free(a->cert);
+  if (ctx->cert != NULL) {
+    ssl_cert_free(ctx->cert);
   }
-  if (a->client_CA != NULL) {
-    sk_X509_NAME_pop_free(a->client_CA, X509_NAME_free);
+  if (ctx->client_CA != NULL) {
+    sk_X509_NAME_pop_free(ctx->client_CA, X509_NAME_free);
   }
-  if (a->extra_certs != NULL) {
-    sk_X509_pop_free(a->extra_certs, X509_free);
+  if (ctx->extra_certs != NULL) {
+    sk_X509_pop_free(ctx->extra_certs, X509_free);
   }
-  if (a->srtp_profiles) {
-    sk_SRTP_PROTECTION_PROFILE_free(a->srtp_profiles);
+  if (ctx->srtp_profiles) {
+    sk_SRTP_PROTECTION_PROFILE_free(ctx->srtp_profiles);
   }
-  if (a->psk_identity_hint) {
-    OPENSSL_free(a->psk_identity_hint);
+  if (ctx->psk_identity_hint) {
+    OPENSSL_free(ctx->psk_identity_hint);
   }
-  if (a->tlsext_ecpointformatlist) {
-    OPENSSL_free(a->tlsext_ecpointformatlist);
+  if (ctx->tlsext_ecpointformatlist) {
+    OPENSSL_free(ctx->tlsext_ecpointformatlist);
   }
-  if (a->tlsext_ellipticcurvelist) {
-    OPENSSL_free(a->tlsext_ellipticcurvelist);
+  if (ctx->tlsext_ellipticcurvelist) {
+    OPENSSL_free(ctx->tlsext_ellipticcurvelist);
   }
-  if (a->alpn_client_proto_list != NULL) {
-    OPENSSL_free(a->alpn_client_proto_list);
+  if (ctx->alpn_client_proto_list != NULL) {
+    OPENSSL_free(ctx->alpn_client_proto_list);
   }
-  if (a->tlsext_channel_id_private) {
-    EVP_PKEY_free(a->tlsext_channel_id_private);
+  if (ctx->tlsext_channel_id_private) {
+    EVP_PKEY_free(ctx->tlsext_channel_id_private);
   }
-  if (a->keylog_bio) {
-    BIO_free(a->keylog_bio);
+  if (ctx->keylog_bio) {
+    BIO_free(ctx->keylog_bio);
   }
 
-  OPENSSL_free(a);
+  OPENSSL_free(ctx);
 }
 
 void SSL_CTX_set_default_passwd_cb(SSL_CTX *ctx, pem_password_cb *cb) {

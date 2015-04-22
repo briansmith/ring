@@ -616,45 +616,39 @@ SSL_SESSION *SSL_SESSION_up_ref(SSL_SESSION *session) {
   return session;
 }
 
-void SSL_SESSION_free(SSL_SESSION *ss) {
-  int i;
-
-  if (ss == NULL) {
+void SSL_SESSION_free(SSL_SESSION *session) {
+  if (session == NULL ||
+      CRYPTO_add(&session->references, -1, CRYPTO_LOCK_SSL_SESSION) > 0) {
     return;
   }
 
-  i = CRYPTO_add(&ss->references, -1, CRYPTO_LOCK_SSL_SESSION);
-  if (i > 0) {
-    return;
-  }
+  CRYPTO_free_ex_data(&g_ex_data_class, session, &session->ex_data);
 
-  CRYPTO_free_ex_data(&g_ex_data_class, ss, &ss->ex_data);
-
-  OPENSSL_cleanse(ss->master_key, sizeof ss->master_key);
-  OPENSSL_cleanse(ss->session_id, sizeof ss->session_id);
-  if (ss->sess_cert != NULL) {
-    ssl_sess_cert_free(ss->sess_cert);
+  OPENSSL_cleanse(session->master_key, sizeof(session->master_key));
+  OPENSSL_cleanse(session->session_id, sizeof(session->session_id));
+  if (session->sess_cert != NULL) {
+    ssl_sess_cert_free(session->sess_cert);
   }
-  if (ss->peer != NULL) {
-    X509_free(ss->peer);
+  if (session->peer != NULL) {
+    X509_free(session->peer);
   }
-  if (ss->tlsext_hostname != NULL) {
-    OPENSSL_free(ss->tlsext_hostname);
+  if (session->tlsext_hostname != NULL) {
+    OPENSSL_free(session->tlsext_hostname);
   }
-  if (ss->tlsext_tick != NULL) {
-    OPENSSL_free(ss->tlsext_tick);
+  if (session->tlsext_tick != NULL) {
+    OPENSSL_free(session->tlsext_tick);
   }
-  if (ss->tlsext_signed_cert_timestamp_list != NULL) {
-    OPENSSL_free(ss->tlsext_signed_cert_timestamp_list);
+  if (session->tlsext_signed_cert_timestamp_list != NULL) {
+    OPENSSL_free(session->tlsext_signed_cert_timestamp_list);
   }
-  if (ss->ocsp_response != NULL) {
-    OPENSSL_free(ss->ocsp_response);
+  if (session->ocsp_response != NULL) {
+    OPENSSL_free(session->ocsp_response);
   }
-  if (ss->psk_identity != NULL) {
-    OPENSSL_free(ss->psk_identity);
+  if (session->psk_identity != NULL) {
+    OPENSSL_free(session->psk_identity);
   }
-  OPENSSL_cleanse(ss, sizeof(*ss));
-  OPENSSL_free(ss);
+  OPENSSL_cleanse(session, sizeof(*session));
+  OPENSSL_free(session);
 }
 
 int SSL_set_session(SSL *s, SSL_SESSION *session) {
