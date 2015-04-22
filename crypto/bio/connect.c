@@ -430,11 +430,17 @@ static long conn_ctrl(BIO *bio, int cmd, long num, void *ptr) {
             OPENSSL_free(data->param_hostname);
           }
           data->param_hostname = BUF_strdup(ptr);
+          if (data->param_hostname == NULL) {
+            ret = 0;
+          }
         } else if (num == 1) {
           if (data->param_port != NULL) {
             OPENSSL_free(data->param_port);
           }
           data->param_port = BUF_strdup(ptr);
+          if (data->param_port == NULL) {
+            ret = 0;
+          }
         } else {
           ret = 0;
         }
