@@ -460,6 +460,9 @@ int SSL_set1_param(SSL *ssl, X509_VERIFY_PARAM *vpm) {
 
 void ssl_cipher_preference_list_free(
     struct ssl_cipher_preference_list_st *cipher_list) {
+  if (cipher_list == NULL) {
+    return;
+  }
   sk_SSL_CIPHER_free(cipher_list->ciphers);
   OPENSSL_free(cipher_list->in_group_flags);
   OPENSSL_free(cipher_list);

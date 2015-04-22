@@ -105,7 +105,8 @@ type.
 Some types are allocated within the library while others are
 initialized into a struct allocated by the caller, often on the
 stack. Name these functions TYPE_NAME_new/TYPE_NAME_free and
-TYPE_NAME_init/TYPE_NAME_cleanup, respectively.
+TYPE_NAME_init/TYPE_NAME_cleanup, respectively. All TYPE_NAME_free
+functions must do nothing on NULL input.
 
 If a variable is the length of a pointer value, it has the suffix
 _len. An output parameter is named out or has an out_ prefix. For

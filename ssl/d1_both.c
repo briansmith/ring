@@ -196,6 +196,9 @@ static hm_fragment *dtls1_hm_fragment_new(unsigned long frag_len,
 }
 
 void dtls1_hm_fragment_free(hm_fragment *frag) {
+  if (frag == NULL) {
+    return;
+  }
   if (frag->fragment) {
     OPENSSL_free(frag->fragment);
   }
