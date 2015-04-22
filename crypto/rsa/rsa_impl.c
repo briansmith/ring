@@ -74,15 +74,9 @@
 
 
 static int finish(RSA *rsa) {
-  if (rsa->_method_mod_n != NULL) {
-    BN_MONT_CTX_free(rsa->_method_mod_n);
-  }
-  if (rsa->_method_mod_p != NULL) {
-    BN_MONT_CTX_free(rsa->_method_mod_p);
-  }
-  if (rsa->_method_mod_q != NULL) {
-    BN_MONT_CTX_free(rsa->_method_mod_q);
-  }
+  BN_MONT_CTX_free(rsa->_method_mod_n);
+  BN_MONT_CTX_free(rsa->_method_mod_p);
+  BN_MONT_CTX_free(rsa->_method_mod_q);
 
   return 1;
 }
@@ -274,13 +268,9 @@ static BN_BLINDING *rsa_blinding_get(RSA *rsa, unsigned *index_used,
   new_blindings_inuse[rsa->num_blindings] = 1;
   *index_used = rsa->num_blindings;
 
-  if (rsa->blindings != NULL) {
-    OPENSSL_free(rsa->blindings);
-  }
+  OPENSSL_free(rsa->blindings);
   rsa->blindings = new_blindings;
-  if (rsa->blindings_inuse != NULL) {
-    OPENSSL_free(rsa->blindings_inuse);
-  }
+  OPENSSL_free(rsa->blindings_inuse);
   rsa->blindings_inuse = new_blindings_inuse;
   rsa->num_blindings++;
 

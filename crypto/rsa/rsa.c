@@ -132,39 +132,19 @@ void RSA_free(RSA *rsa) {
 
   CRYPTO_free_ex_data(&g_ex_data_class, rsa, &rsa->ex_data);
 
-  if (rsa->n != NULL) {
-    BN_clear_free(rsa->n);
-  }
-  if (rsa->e != NULL) {
-    BN_clear_free(rsa->e);
-  }
-  if (rsa->d != NULL) {
-    BN_clear_free(rsa->d);
-  }
-  if (rsa->p != NULL) {
-    BN_clear_free(rsa->p);
-  }
-  if (rsa->q != NULL) {
-    BN_clear_free(rsa->q);
-  }
-  if (rsa->dmp1 != NULL) {
-    BN_clear_free(rsa->dmp1);
-  }
-  if (rsa->dmq1 != NULL) {
-    BN_clear_free(rsa->dmq1);
-  }
-  if (rsa->iqmp != NULL) {
-    BN_clear_free(rsa->iqmp);
-  }
+  BN_clear_free(rsa->n);
+  BN_clear_free(rsa->e);
+  BN_clear_free(rsa->d);
+  BN_clear_free(rsa->p);
+  BN_clear_free(rsa->q);
+  BN_clear_free(rsa->dmp1);
+  BN_clear_free(rsa->dmq1);
+  BN_clear_free(rsa->iqmp);
   for (u = 0; u < rsa->num_blindings; u++) {
     BN_BLINDING_free(rsa->blindings[u]);
   }
-  if (rsa->blindings != NULL) {
-    OPENSSL_free(rsa->blindings);
-  }
-  if (rsa->blindings_inuse != NULL) {
-    OPENSSL_free(rsa->blindings_inuse);
-  }
+  OPENSSL_free(rsa->blindings);
+  OPENSSL_free(rsa->blindings_inuse);
   CRYPTO_MUTEX_cleanup(&rsa->lock);
   OPENSSL_free(rsa);
 }
@@ -506,9 +486,7 @@ int RSA_verify(int hash_nid, const uint8_t *msg, size_t msg_len,
   ret = 1;
 
 out:
-  if (buf != NULL) {
-    OPENSSL_free(buf);
-  }
+  OPENSSL_free(buf);
   if (signed_msg_is_alloced) {
     OPENSSL_free(signed_msg);
   }
@@ -516,10 +494,6 @@ out:
 }
 
 static void bn_free_and_null(BIGNUM **bn) {
-  if (*bn == NULL) {
-    return;
-  }
-
   BN_free(*bn);
   *bn = NULL;
 }

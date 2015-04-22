@@ -150,15 +150,9 @@ ASN1_OBJECT *OBJ_dup(const ASN1_OBJECT *o) {
 
 err:
   OPENSSL_PUT_ERROR(OBJ, OBJ_dup, ERR_R_MALLOC_FAILURE);
-  if (ln != NULL) {
-    OPENSSL_free(ln);
-  }
-  if (sn != NULL) {
-    OPENSSL_free(sn);
-  }
-  if (data != NULL) {
-    OPENSSL_free(data);
-  }
+  OPENSSL_free(ln);
+  OPENSSL_free(sn);
+  OPENSSL_free(data);
   OPENSSL_free(r);
   return NULL;
 }
@@ -548,15 +542,11 @@ int OBJ_obj2txt(char *out, int out_len, const ASN1_OBJECT *obj, int dont_return_
     }
   }
 
-  if (bl) {
-    BN_free(bl);
-  }
+  BN_free(bl);
   return n;
 
 err:
-  if (bl) {
-    BN_free(bl);
-  }
+  BN_free(bl);
   return -1;
 }
 
@@ -667,12 +657,8 @@ int OBJ_create(const char *oid, const char *short_name, const char *long_name) {
   op = NULL;
 
 err:
-  if (op != NULL) {
-    ASN1_OBJECT_free(op);
-  }
-  if (buf != NULL) {
-    OPENSSL_free(buf);
-  }
+  ASN1_OBJECT_free(op);
+  OPENSSL_free(buf);
 
   return ret;
 }

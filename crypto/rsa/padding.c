@@ -443,9 +443,7 @@ int RSA_padding_add_PKCS1_OAEP_mgf1(uint8_t *to, unsigned tlen,
   ret = 1;
 
 out:
-  if (dbmask != NULL) {
-    OPENSSL_free(dbmask);
-  }
+  OPENSSL_free(dbmask);
   return ret;
 }
 
@@ -544,9 +542,7 @@ decoding_err:
   OPENSSL_PUT_ERROR(RSA, RSA_padding_check_PKCS1_OAEP_mgf1,
                     RSA_R_OAEP_DECODING_ERROR);
  err:
-  if (db != NULL) {
-    OPENSSL_free(db);
-  }
+  OPENSSL_free(db);
   return -1;
 }
 
@@ -653,9 +649,7 @@ int RSA_verify_PKCS1_PSS_mgf1(RSA *rsa, const uint8_t *mHash,
   }
 
 err:
-  if (DB) {
-    OPENSSL_free(DB);
-  }
+  OPENSSL_free(DB);
   EVP_MD_CTX_cleanup(&ctx);
 
   return ret;
@@ -772,9 +766,7 @@ int RSA_padding_add_PKCS1_PSS_mgf1(RSA *rsa, unsigned char *EM,
   ret = 1;
 
 err:
-  if (salt) {
-    OPENSSL_free(salt);
-  }
+  OPENSSL_free(salt);
 
   return ret;
 }

@@ -294,9 +294,7 @@ static int decode_hex(uint8_t **out, size_t *out_len, const char *in,
   return 1;
 
 err:
-  if (buf) {
-    OPENSSL_free(buf);
-  }
+  OPENSSL_free(buf);
   return 0;
 }
 
@@ -391,27 +389,13 @@ static int run_test_case(unsigned test_num, const struct test_case *test) {
   ret = 1;
 
 out:
-  if (key) {
-    OPENSSL_free(key);
-  }
-  if (plaintext) {
-    OPENSSL_free(plaintext);
-  }
-  if (additional_data) {
-    OPENSSL_free(additional_data);
-  }
-  if (nonce) {
-    OPENSSL_free(nonce);
-  }
-  if (ciphertext) {
-    OPENSSL_free(ciphertext);
-  }
-  if (tag) {
-    OPENSSL_free(tag);
-  }
-  if (out) {
-    OPENSSL_free(out);
-  }
+  OPENSSL_free(key);
+  OPENSSL_free(plaintext);
+  OPENSSL_free(additional_data);
+  OPENSSL_free(nonce);
+  OPENSSL_free(ciphertext);
+  OPENSSL_free(tag);
+  OPENSSL_free(out);
   return ret;
 }
 

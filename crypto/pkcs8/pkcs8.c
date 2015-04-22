@@ -691,9 +691,7 @@ static int PKCS12_handle_content_infos(CBS *content_infos,
   ret = 1;
 
 err:
-  if (der_bytes != NULL) {
-    OPENSSL_free(der_bytes);
-  }
+  OPENSSL_free(der_bytes);
   return ret;
 }
 
@@ -1012,17 +1010,11 @@ int PKCS12_get_key_and_certs(EVP_PKEY **out_key, STACK_OF(X509) *out_certs,
   ret = 1;
 
 err:
-  if (ctx.password) {
-    OPENSSL_free(ctx.password);
-  }
-  if (der_bytes) {
-    OPENSSL_free(der_bytes);
-  }
+  OPENSSL_free(ctx.password);
+  OPENSSL_free(der_bytes);
   if (!ret) {
-    if (*out_key) {
-      EVP_PKEY_free(*out_key);
-      *out_key = NULL;
-    }
+    EVP_PKEY_free(*out_key);
+    *out_key = NULL;
     while (sk_X509_num(out_certs) > original_out_certs_len) {
       X509 *x509 = sk_X509_pop(out_certs);
       X509_free(x509);

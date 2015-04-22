@@ -86,9 +86,7 @@ _STACK *sk_new(stack_cmp_func comp) {
   return ret;
 
 err:
-  if (ret) {
-    OPENSSL_free(ret);
-  }
+  OPENSSL_free(ret);
   return NULL;
 }
 
@@ -324,9 +322,7 @@ _STACK *sk_dup(const _STACK *sk) {
   return ret;
 
 err:
-  if (ret) {
-    sk_free(ret);
-  }
+  sk_free(ret);
   return NULL;
 }
 
