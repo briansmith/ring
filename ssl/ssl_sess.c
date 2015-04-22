@@ -272,10 +272,8 @@ int ssl_get_new_session(SSL *s, int session) {
     ss->timeout = s->initial_ctx->session_timeout;
   }
 
-  if (s->session != NULL) {
-    SSL_SESSION_free(s->session);
-    s->session = NULL;
-  }
+  SSL_SESSION_free(s->session);
+  s->session = NULL;
 
   if (session) {
     if (s->version == SSL3_VERSION || s->version == TLS1_VERSION ||
@@ -496,9 +494,7 @@ int ssl_get_prev_session(SSL *s, const struct ssl_early_callback_ctx *ctx) {
     goto err;
   }
 
-  if (s->session != NULL) {
-    SSL_SESSION_free(s->session);
-  }
+  SSL_SESSION_free(s->session);
   s->session = ret;
   s->verify_result = s->session->verify_result;
   return 1;
@@ -626,27 +622,13 @@ void SSL_SESSION_free(SSL_SESSION *session) {
 
   OPENSSL_cleanse(session->master_key, sizeof(session->master_key));
   OPENSSL_cleanse(session->session_id, sizeof(session->session_id));
-  if (session->sess_cert != NULL) {
-    ssl_sess_cert_free(session->sess_cert);
-  }
-  if (session->peer != NULL) {
-    X509_free(session->peer);
-  }
-  if (session->tlsext_hostname != NULL) {
-    OPENSSL_free(session->tlsext_hostname);
-  }
-  if (session->tlsext_tick != NULL) {
-    OPENSSL_free(session->tlsext_tick);
-  }
-  if (session->tlsext_signed_cert_timestamp_list != NULL) {
-    OPENSSL_free(session->tlsext_signed_cert_timestamp_list);
-  }
-  if (session->ocsp_response != NULL) {
-    OPENSSL_free(session->ocsp_response);
-  }
-  if (session->psk_identity != NULL) {
-    OPENSSL_free(session->psk_identity);
-  }
+  ssl_sess_cert_free(session->sess_cert);
+  X509_free(session->peer);
+  OPENSSL_free(session->tlsext_hostname);
+  OPENSSL_free(session->tlsext_tick);
+  OPENSSL_free(session->tlsext_signed_cert_timestamp_list);
+  OPENSSL_free(session->ocsp_response);
+  OPENSSL_free(session->psk_identity);
   OPENSSL_cleanse(session, sizeof(*session));
   OPENSSL_free(session);
 }
@@ -656,9 +638,7 @@ int SSL_set_session(SSL *s, SSL_SESSION *session) {
     return 1;
   }
 
-  if (s->session != NULL) {
-    SSL_SESSION_free(s->session);
-  }
+  SSL_SESSION_free(s->session);
   s->session = session;
   if (session != NULL) {
     SSL_SESSION_up_ref(session);

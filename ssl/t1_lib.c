@@ -245,9 +245,7 @@ static int tls1_check_duplicate_extensions(const CBS *cbs) {
   ret = 1;
 
 done:
-  if (extension_types) {
-    OPENSSL_free(extension_types);
-  }
+  OPENSSL_free(extension_types);
   return ret;
 }
 
@@ -489,9 +487,7 @@ int tls1_set_curves(uint16_t **out_curve_ids, size_t *out_curve_ids_len,
     }
   }
 
-  if (*out_curve_ids) {
-    OPENSSL_free(*out_curve_ids);
-  }
+  OPENSSL_free(*out_curve_ids);
   *out_curve_ids = curve_ids;
   *out_curve_ids_len = ncurves;
 
@@ -626,9 +622,7 @@ int tls1_check_ec_cert(SSL *s, X509 *x) {
   ret = 1;
 
 done:
-  if (pkey) {
-    EVP_PKEY_free(pkey);
-  }
+  EVP_PKEY_free(pkey);
   return ret;
 }
 
@@ -1346,9 +1340,7 @@ static int tls1_alpn_handle_client_hello(SSL *s, CBS *cbs, int *out_alert) {
       s, &selected, &selected_len, CBS_data(&protocol_name_list),
       CBS_len(&protocol_name_list), s->ctx->alpn_select_cb_arg);
   if (r == SSL_TLSEXT_ERR_OK) {
-    if (s->s3->alpn_selected) {
-      OPENSSL_free(s->s3->alpn_selected);
-    }
+    OPENSSL_free(s->s3->alpn_selected);
     s->s3->alpn_selected = BUF_memdup(selected, selected_len);
     if (!s->s3->alpn_selected) {
       *out_alert = SSL_AD_INTERNAL_ERROR;
@@ -1374,37 +1366,27 @@ static int ssl_scan_clienthello_tlsext(SSL *s, CBS *cbs, int *out_alert) {
   s->s3->tmp.certificate_status_expected = 0;
   s->s3->tmp.extended_master_secret = 0;
 
-  if (s->s3->alpn_selected) {
-    OPENSSL_free(s->s3->alpn_selected);
-    s->s3->alpn_selected = NULL;
-  }
+  OPENSSL_free(s->s3->alpn_selected);
+  s->s3->alpn_selected = NULL;
 
   /* Clear any signature algorithms extension received */
-  if (s->cert->peer_sigalgs) {
-    OPENSSL_free(s->cert->peer_sigalgs);
-    s->cert->peer_sigalgs = NULL;
-    s->cert->peer_sigalgslen = 0;
-  }
+  OPENSSL_free(s->cert->peer_sigalgs);
+  s->cert->peer_sigalgs = NULL;
+  s->cert->peer_sigalgslen = 0;
 
   /* Clear any shared signature algorithms */
-  if (s->cert->shared_sigalgs) {
-    OPENSSL_free(s->cert->shared_sigalgs);
-    s->cert->shared_sigalgs = NULL;
-    s->cert->shared_sigalgslen = 0;
-  }
+  OPENSSL_free(s->cert->shared_sigalgs);
+  s->cert->shared_sigalgs = NULL;
+  s->cert->shared_sigalgslen = 0;
 
   /* Clear ECC extensions */
-  if (s->s3->tmp.peer_ecpointformatlist != 0) {
-    OPENSSL_free(s->s3->tmp.peer_ecpointformatlist);
-    s->s3->tmp.peer_ecpointformatlist = NULL;
-    s->s3->tmp.peer_ecpointformatlist_length = 0;
-  }
+  OPENSSL_free(s->s3->tmp.peer_ecpointformatlist);
+  s->s3->tmp.peer_ecpointformatlist = NULL;
+  s->s3->tmp.peer_ecpointformatlist_length = 0;
 
-  if (s->s3->tmp.peer_ellipticcurvelist != 0) {
-    OPENSSL_free(s->s3->tmp.peer_ellipticcurvelist);
-    s->s3->tmp.peer_ellipticcurvelist = NULL;
-    s->s3->tmp.peer_ellipticcurvelist_length = 0;
-  }
+  OPENSSL_free(s->s3->tmp.peer_ellipticcurvelist);
+  s->s3->tmp.peer_ellipticcurvelist = NULL;
+  s->s3->tmp.peer_ellipticcurvelist_length = 0;
 
   /* There may be no extensions. */
   if (CBS_len(cbs) == 0) {
@@ -1546,10 +1528,8 @@ static int ssl_scan_clienthello_tlsext(SSL *s, CBS *cbs, int *out_alert) {
         return 0;
       }
 
-      if (s->s3->tmp.peer_ellipticcurvelist) {
-        OPENSSL_free(s->s3->tmp.peer_ellipticcurvelist);
-        s->s3->tmp.peer_ellipticcurvelist_length = 0;
-      }
+      OPENSSL_free(s->s3->tmp.peer_ellipticcurvelist);
+      s->s3->tmp.peer_ellipticcurvelist_length = 0;
 
       s->s3->tmp.peer_ellipticcurvelist =
           (uint16_t *)OPENSSL_malloc(CBS_len(&elliptic_curve_list));
@@ -1731,17 +1711,13 @@ static int ssl_scan_serverhello_tlsext(SSL *s, CBS *cbs, int *out_alert) {
   s->s3->tmp.extended_master_secret = 0;
   s->srtp_profile = NULL;
 
-  if (s->s3->alpn_selected) {
-    OPENSSL_free(s->s3->alpn_selected);
-    s->s3->alpn_selected = NULL;
-  }
+  OPENSSL_free(s->s3->alpn_selected);
+  s->s3->alpn_selected = NULL;
 
   /* Clear ECC extensions */
-  if (s->s3->tmp.peer_ecpointformatlist != 0) {
-    OPENSSL_free(s->s3->tmp.peer_ecpointformatlist);
-    s->s3->tmp.peer_ecpointformatlist = NULL;
-    s->s3->tmp.peer_ecpointformatlist_length = 0;
-  }
+  OPENSSL_free(s->s3->tmp.peer_ecpointformatlist);
+  s->s3->tmp.peer_ecpointformatlist = NULL;
+  s->s3->tmp.peer_ecpointformatlist_length = 0;
 
   /* There may be no extensions. */
   if (CBS_len(cbs) == 0) {
@@ -2424,11 +2400,9 @@ static int tls1_set_shared_sigalgs(SSL *s) {
   TLS_SIGALGS *salgs = NULL;
   CERT *c = s->cert;
 
-  if (c->shared_sigalgs) {
-    OPENSSL_free(c->shared_sigalgs);
-    c->shared_sigalgs = NULL;
-    c->shared_sigalgslen = 0;
-  }
+  OPENSSL_free(c->shared_sigalgs);
+  c->shared_sigalgs = NULL;
+  c->shared_sigalgslen = 0;
 
   /* If client use client signature algorithms if not NULL */
   if (!s->server && c->client_sigalgs) {
@@ -2662,15 +2636,11 @@ int tls1_set_sigalgs(CERT *c, const int *psig_nids, size_t salglen,
   }
 
   if (client) {
-    if (c->client_sigalgs) {
-      OPENSSL_free(c->client_sigalgs);
-    }
+    OPENSSL_free(c->client_sigalgs);
     c->client_sigalgs = sigalgs;
     c->client_sigalgslen = salglen;
   } else {
-    if (c->conf_sigalgs) {
-      OPENSSL_free(c->conf_sigalgs);
-    }
+    OPENSSL_free(c->conf_sigalgs);
     c->conf_sigalgs = sigalgs;
     c->conf_sigalgslen = salglen;
   }

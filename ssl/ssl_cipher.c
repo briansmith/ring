@@ -1003,9 +1003,7 @@ ssl_create_cipher_list(const SSL_PROTOCOL_METHOD *ssl_method,
   pref_list = NULL;
 
   if (out_cipher_list_by_id != NULL) {
-    if (*out_cipher_list_by_id != NULL) {
-      sk_SSL_CIPHER_free(*out_cipher_list_by_id);
-    }
+    sk_SSL_CIPHER_free(*out_cipher_list_by_id);
     *out_cipher_list_by_id = tmp_cipher_list;
     tmp_cipher_list = NULL;
     (void) sk_SSL_CIPHER_set_cmp_func(*out_cipher_list_by_id,
@@ -1020,24 +1018,14 @@ ssl_create_cipher_list(const SSL_PROTOCOL_METHOD *ssl_method,
   return cipherstack;
 
 err:
-  if (co_list) {
-    OPENSSL_free(co_list);
-  }
-  if (in_group_flags) {
-    OPENSSL_free(in_group_flags);
-  }
-  if (cipherstack) {
-    sk_SSL_CIPHER_free(cipherstack);
-  }
-  if (tmp_cipher_list) {
-    sk_SSL_CIPHER_free(tmp_cipher_list);
-  }
-  if (pref_list && pref_list->in_group_flags) {
+  OPENSSL_free(co_list);
+  OPENSSL_free(in_group_flags);
+  sk_SSL_CIPHER_free(cipherstack);
+  sk_SSL_CIPHER_free(tmp_cipher_list);
+  if (pref_list) {
     OPENSSL_free(pref_list->in_group_flags);
   }
-  if (pref_list) {
-    OPENSSL_free(pref_list);
-  }
+  OPENSSL_free(pref_list);
   return NULL;
 }
 

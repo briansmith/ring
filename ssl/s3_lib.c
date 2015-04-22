@@ -554,47 +554,21 @@ void ssl3_free(SSL *s) {
     return;
   }
 
-  if (s->s3->sniff_buffer != NULL) {
-    BUF_MEM_free(s->s3->sniff_buffer);
-  }
+  BUF_MEM_free(s->s3->sniff_buffer);
   ssl3_cleanup_key_block(s);
-  if (s->s3->rbuf.buf != NULL) {
-    ssl3_release_read_buffer(s);
-  }
-  if (s->s3->wbuf.buf != NULL) {
-    ssl3_release_write_buffer(s);
-  }
-  if (s->s3->tmp.dh != NULL) {
-    DH_free(s->s3->tmp.dh);
-  }
-  if (s->s3->tmp.ecdh != NULL) {
-    EC_KEY_free(s->s3->tmp.ecdh);
-  }
+  ssl3_release_read_buffer(s);
+  ssl3_release_write_buffer(s);
+  DH_free(s->s3->tmp.dh);
+  EC_KEY_free(s->s3->tmp.ecdh);
 
-  if (s->s3->tmp.ca_names != NULL) {
-    sk_X509_NAME_pop_free(s->s3->tmp.ca_names, X509_NAME_free);
-  }
-  if (s->s3->tmp.certificate_types != NULL) {
-    OPENSSL_free(s->s3->tmp.certificate_types);
-  }
-  if (s->s3->tmp.peer_ecpointformatlist) {
-    OPENSSL_free(s->s3->tmp.peer_ecpointformatlist);
-  }
-  if (s->s3->tmp.peer_ellipticcurvelist) {
-    OPENSSL_free(s->s3->tmp.peer_ellipticcurvelist);
-  }
-  if (s->s3->tmp.peer_psk_identity_hint) {
-    OPENSSL_free(s->s3->tmp.peer_psk_identity_hint);
-  }
-  if (s->s3->handshake_buffer) {
-    BIO_free(s->s3->handshake_buffer);
-  }
-  if (s->s3->handshake_dgst) {
-    ssl3_free_digest_list(s);
-  }
-  if (s->s3->alpn_selected) {
-    OPENSSL_free(s->s3->alpn_selected);
-  }
+  sk_X509_NAME_pop_free(s->s3->tmp.ca_names, X509_NAME_free);
+  OPENSSL_free(s->s3->tmp.certificate_types);
+  OPENSSL_free(s->s3->tmp.peer_ecpointformatlist);
+  OPENSSL_free(s->s3->tmp.peer_ellipticcurvelist);
+  OPENSSL_free(s->s3->tmp.peer_psk_identity_hint);
+  BIO_free(s->s3->handshake_buffer);
+  ssl3_free_digest_list(s);
+  OPENSSL_free(s->s3->alpn_selected);
 
   OPENSSL_cleanse(s->s3, sizeof *s->s3);
   OPENSSL_free(s->s3);
@@ -661,9 +635,7 @@ long ssl3_ctrl(SSL *s, int cmd, long larg, void *parg) {
         OPENSSL_PUT_ERROR(SSL, ssl3_ctrl, ERR_R_DH_LIB);
         return ret;
       }
-      if (s->cert->dh_tmp != NULL) {
-        DH_free(s->cert->dh_tmp);
-      }
+      DH_free(s->cert->dh_tmp);
       s->cert->dh_tmp = dh;
       ret = 1;
       break;
@@ -692,9 +664,7 @@ long ssl3_ctrl(SSL *s, int cmd, long larg, void *parg) {
 
     case SSL_CTRL_SET_TLSEXT_HOSTNAME:
       if (larg == TLSEXT_NAMETYPE_host_name) {
-        if (s->tlsext_hostname != NULL) {
-          OPENSSL_free(s->tlsext_hostname);
-        }
+        OPENSSL_free(s->tlsext_hostname);
         s->tlsext_hostname = NULL;
 
         ret = 1;
@@ -846,9 +816,7 @@ long ssl3_ctrl(SSL *s, int cmd, long larg, void *parg) {
         OPENSSL_PUT_ERROR(SSL, ssl3_ctrl, SSL_R_CHANNEL_ID_NOT_P256);
         break;
       }
-      if (s->tlsext_channel_id_private) {
-        EVP_PKEY_free(s->tlsext_channel_id_private);
-      }
+      EVP_PKEY_free(s->tlsext_channel_id_private);
       s->tlsext_channel_id_private = EVP_PKEY_dup((EVP_PKEY *)parg);
       ret = 1;
       break;
@@ -927,9 +895,7 @@ long ssl3_ctx_ctrl(SSL_CTX *ctx, int cmd, long larg, void *parg) {
         DH_free(new);
         return 0;
       }
-      if (cert->dh_tmp != NULL) {
-        DH_free(cert->dh_tmp);
-      }
+      DH_free(cert->dh_tmp);
       cert->dh_tmp = new;
       return 1;
     }
@@ -1026,10 +992,8 @@ long ssl3_ctx_ctrl(SSL_CTX *ctx, int cmd, long larg, void *parg) {
       break;
 
     case SSL_CTRL_CLEAR_EXTRA_CHAIN_CERTS:
-      if (ctx->extra_certs) {
-        sk_X509_pop_free(ctx->extra_certs, X509_free);
-        ctx->extra_certs = NULL;
-      }
+      sk_X509_pop_free(ctx->extra_certs, X509_free);
+      ctx->extra_certs = NULL;
       break;
 
     case SSL_CTRL_CHAIN:
@@ -1063,9 +1027,7 @@ long ssl3_ctx_ctrl(SSL_CTX *ctx, int cmd, long larg, void *parg) {
         OPENSSL_PUT_ERROR(SSL, ssl3_ctx_ctrl, SSL_R_CHANNEL_ID_NOT_P256);
         break;
       }
-      if (ctx->tlsext_channel_id_private) {
-        EVP_PKEY_free(ctx->tlsext_channel_id_private);
-      }
+      EVP_PKEY_free(ctx->tlsext_channel_id_private);
       ctx->tlsext_channel_id_private = EVP_PKEY_dup((EVP_PKEY *)parg);
       break;
 
@@ -1266,12 +1228,10 @@ int ssl3_get_req_cert_type(SSL *s, uint8_t *p) {
 }
 
 static int ssl3_set_req_cert_type(CERT *c, const uint8_t *p, size_t len) {
-  if (c->client_certificate_types) {
-    OPENSSL_free(c->client_certificate_types);
-    c->client_certificate_types = NULL;
-  }
-
+  OPENSSL_free(c->client_certificate_types);
+  c->client_certificate_types = NULL;
   c->num_client_certificate_types = 0;
+
   if (!p || !len) {
     return 1;
   }

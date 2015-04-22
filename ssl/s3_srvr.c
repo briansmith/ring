@@ -644,7 +644,7 @@ int ssl3_accept(SSL *s) {
 
         /* If we aren't retaining peer certificates then we can discard it
          * now. */
-        if (s->session->peer && s->ctx->retain_only_sha256_of_client_certs) {
+        if (s->ctx->retain_only_sha256_of_client_certs) {
           X509_free(s->session->peer);
           s->session->peer = NULL;
         }
@@ -681,9 +681,7 @@ int ssl3_accept(SSL *s) {
 
 end:
   s->in_handshake--;
-  if (buf != NULL) {
-    BUF_MEM_free(buf);
-  }
+  BUF_MEM_free(buf);
   if (cb != NULL) {
     cb(s, SSL_CB_ACCEPT_EXIT, ret);
   }
@@ -1215,9 +1213,7 @@ int ssl3_get_client_hello(SSL *s) {
   }
 
 err:
-  if (ciphers != NULL) {
-    sk_SSL_CIPHER_free(ciphers);
-  }
+  sk_SSL_CIPHER_free(ciphers);
   return ret;
 }
 
@@ -1608,9 +1604,7 @@ int ssl3_send_server_key_exchange(SSL *s) {
 f_err:
   ssl3_send_alert(s, SSL3_AL_FATAL, al);
 err:
-  if (encodedPoint != NULL) {
-    OPENSSL_free(encodedPoint);
-  }
+  OPENSSL_free(encodedPoint);
   BN_CTX_free(bn_ctx);
   EVP_MD_CTX_cleanup(&md_ctx);
   return -1;
@@ -2105,14 +2099,10 @@ err:
     }
     OPENSSL_free(premaster_secret);
   }
-  if (decrypt_buf) {
-    OPENSSL_free(decrypt_buf);
-  }
+  OPENSSL_free(decrypt_buf);
   EVP_PKEY_free(clnt_pub_pkey);
   EC_POINT_free(clnt_ecpoint);
-  if (srvr_ecdh != NULL) {
-    EC_KEY_free(srvr_ecdh);
-  }
+  EC_KEY_free(srvr_ecdh);
   BN_CTX_free(bn_ctx);
 
   return -1;
@@ -2351,11 +2341,7 @@ int ssl3_get_client_certificate(SSL *s) {
     }
   }
 
-  if (s->session->peer != NULL) {
-    /* This should not be needed */
-    X509_free(s->session->peer);
-  }
-
+  X509_free(s->session->peer);
   s->session->peer = sk_X509_shift(sk);
   s->session->verify_result = s->verify_result;
 
@@ -2368,9 +2354,7 @@ int ssl3_get_client_certificate(SSL *s) {
       goto err;
     }
   }
-  if (s->session->sess_cert->cert_chain != NULL) {
-    sk_X509_pop_free(s->session->sess_cert->cert_chain, X509_free);
-  }
+  sk_X509_pop_free(s->session->sess_cert->cert_chain, X509_free);
   s->session->sess_cert->cert_chain = sk;
   /* Inconsistency alert: cert_chain does *not* include the peer's own
    * certificate, while we do include it in s3_clnt.c */
@@ -2385,12 +2369,8 @@ int ssl3_get_client_certificate(SSL *s) {
   }
 
 err:
-  if (x != NULL) {
-    X509_free(x);
-  }
-  if (sk != NULL) {
-    sk_X509_pop_free(sk, X509_free);
-  }
+  X509_free(x);
+  sk_X509_pop_free(sk, X509_free);
   return ret;
 }
 
@@ -2539,9 +2519,7 @@ int ssl3_send_new_session_ticket(SSL *s) {
   ret = ssl_do_write(s);
 
 err:
-  if (session != NULL) {
-    OPENSSL_free(session);
-  }
+  OPENSSL_free(session);
   EVP_CIPHER_CTX_cleanup(&ctx);
   HMAC_CTX_cleanup(&hctx);
   return ret;
@@ -2731,14 +2709,8 @@ err:
   BN_free(&y);
   BN_free(sig.r);
   BN_free(sig.s);
-  if (key) {
-    EC_KEY_free(key);
-  }
-  if (point) {
-    EC_POINT_free(point);
-  }
-  if (p256) {
-    EC_GROUP_free(p256);
-  }
+  EC_KEY_free(key);
+  EC_POINT_free(point);
+  EC_GROUP_free(p256);
   return ret;
 }

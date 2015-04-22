@@ -314,35 +314,17 @@ void ssl_cert_free(CERT *c) {
     return;
   }
 
-  if (c->dh_tmp) {
-    DH_free(c->dh_tmp);
-  }
+  DH_free(c->dh_tmp);
 
   ssl_cert_clear_certs(c);
-  if (c->peer_sigalgs) {
-    OPENSSL_free(c->peer_sigalgs);
-  }
-  if (c->conf_sigalgs) {
-    OPENSSL_free(c->conf_sigalgs);
-  }
-  if (c->client_sigalgs) {
-    OPENSSL_free(c->client_sigalgs);
-  }
-  if (c->shared_sigalgs) {
-    OPENSSL_free(c->shared_sigalgs);
-  }
-  if (c->client_certificate_types) {
-    OPENSSL_free(c->client_certificate_types);
-  }
-  if (c->verify_store) {
-    X509_STORE_free(c->verify_store);
-  }
-  if (c->chain_store) {
-    X509_STORE_free(c->chain_store);
-  }
-  if (c->ciphers_raw) {
-    OPENSSL_free(c->ciphers_raw);
-  }
+  OPENSSL_free(c->peer_sigalgs);
+  OPENSSL_free(c->conf_sigalgs);
+  OPENSSL_free(c->client_sigalgs);
+  OPENSSL_free(c->shared_sigalgs);
+  OPENSSL_free(c->client_certificate_types);
+  X509_STORE_free(c->verify_store);
+  X509_STORE_free(c->chain_store);
+  OPENSSL_free(c->ciphers_raw);
 
   OPENSSL_free(c);
 }
@@ -352,9 +334,7 @@ int ssl_cert_set0_chain(CERT *c, STACK_OF(X509) * chain) {
   if (!cpk) {
     return 0;
   }
-  if (cpk->chain) {
-    sk_X509_pop_free(cpk->chain, X509_free);
-  }
+  sk_X509_pop_free(cpk->chain, X509_free);
   cpk->chain = chain;
   return 1;
 }
@@ -453,22 +433,14 @@ void ssl_sess_cert_free(SESS_CERT *sc) {
     return;
   }
 
-  if (sc->cert_chain != NULL) {
-    sk_X509_pop_free(sc->cert_chain, X509_free);
-  }
+  sk_X509_pop_free(sc->cert_chain, X509_free);
 
   for (i = 0; i < SSL_PKEY_NUM; i++) {
-    if (sc->peer_pkeys[i].x509 != NULL) {
-      X509_free(sc->peer_pkeys[i].x509);
-    }
+    X509_free(sc->peer_pkeys[i].x509);
   }
 
-  if (sc->peer_dh_tmp != NULL) {
-    DH_free(sc->peer_dh_tmp);
-  }
-  if (sc->peer_ecdh_tmp != NULL) {
-    EC_KEY_free(sc->peer_ecdh_tmp);
-  }
+  DH_free(sc->peer_dh_tmp);
+  EC_KEY_free(sc->peer_ecdh_tmp);
 
   OPENSSL_free(sc);
 }
@@ -527,10 +499,7 @@ int ssl_verify_cert_chain(SSL *s, STACK_OF(X509) * sk) {
 
 static void set_client_CA_list(STACK_OF(X509_NAME) * *ca_list,
                                STACK_OF(X509_NAME) * name_list) {
-  if (*ca_list != NULL) {
-    sk_X509_NAME_pop_free(*ca_list, X509_NAME_free);
-  }
-
+  sk_X509_NAME_pop_free(*ca_list, X509_NAME_free);
   *ca_list = name_list;
 }
 
@@ -673,21 +642,13 @@ STACK_OF(X509_NAME) * SSL_load_client_CA_file(const char *file) {
 
   if (0) {
   err:
-    if (ret != NULL) {
-      sk_X509_NAME_pop_free(ret, X509_NAME_free);
-    }
+    sk_X509_NAME_pop_free(ret, X509_NAME_free);
     ret = NULL;
   }
 
-  if (sk != NULL) {
-    sk_X509_NAME_free(sk);
-  }
-  if (in != NULL) {
-    BIO_free(in);
-  }
-  if (x != NULL) {
-    X509_free(x);
-  }
+  sk_X509_NAME_free(sk);
+  BIO_free(in);
+  X509_free(x);
   if (ret != NULL) {
     ERR_clear_error();
   }
@@ -748,12 +709,8 @@ int SSL_add_file_cert_subjects_to_stack(STACK_OF(X509_NAME) * stack,
     ret = 0;
   }
 
-  if (in != NULL) {
-    BIO_free(in);
-  }
-  if (x != NULL) {
-    X509_free(x);
-  }
+  BIO_free(in);
+  X509_free(x);
 
   (void) sk_X509_NAME_set_cmp_func(stack, oldcmp);
 
@@ -1024,9 +981,7 @@ int ssl_cert_set_cert_store(CERT *c, X509_STORE *store, int chain, int ref) {
     pstore = &c->verify_store;
   }
 
-  if (*pstore) {
-    X509_STORE_free(*pstore);
-  }
+  X509_STORE_free(*pstore);
   *pstore = store;
 
   if (ref && store) {

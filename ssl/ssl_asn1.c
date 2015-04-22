@@ -382,7 +382,7 @@ static int d2i_SSL_SESSION_get_string(CBS *cbs, char **out, unsigned tag) {
       OPENSSL_PUT_ERROR(SSL, d2i_SSL_SESSION, ERR_R_MALLOC_FAILURE);
       return 0;
     }
-  } else if (*out) {
+  } else {
     OPENSSL_free(*out);
     *out = NULL;
   }
@@ -526,10 +526,8 @@ SSL_SESSION *d2i_SSL_SESSION(SSL_SESSION **a, const uint8_t **pp, long length) {
   ret->time = session_time;
   ret->timeout = timeout;
 
-  if (ret->peer != NULL) {
-    X509_free(ret->peer);
-    ret->peer = NULL;
-  }
+  X509_free(ret->peer);
+  ret->peer = NULL;
   if (has_peer) {
     const uint8_t *ptr;
     ptr = CBS_data(&peer);
@@ -585,8 +583,6 @@ SSL_SESSION *d2i_SSL_SESSION(SSL_SESSION **a, const uint8_t **pp, long length) {
   return ret;
 
 err:
-  if (allocated) {
-    SSL_SESSION_free(allocated);
-  }
+  SSL_SESSION_free(allocated);
   return NULL;
 }

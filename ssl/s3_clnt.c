@@ -545,10 +545,8 @@ int ssl3_connect(SSL *s) {
         /* clean a few things up */
         ssl3_cleanup_key_block(s);
 
-        if (s->init_buf != NULL) {
-          BUF_MEM_free(s->init_buf);
-          s->init_buf = NULL;
-        }
+        BUF_MEM_free(s->init_buf);
+        s->init_buf = NULL;
 
         /* Remove write buffering now. */
         ssl_free_wbio_buffer(s);
@@ -588,9 +586,7 @@ int ssl3_connect(SSL *s) {
 
 end:
   s->in_handshake--;
-  if (buf != NULL) {
-    BUF_MEM_free(buf);
-  }
+  BUF_MEM_free(buf);
   if (cb != NULL) {
     cb(s, SSL_CB_CONNECT_EXIT, ret);
   }
@@ -993,9 +989,7 @@ int ssl3_get_server_certificate(SSL *s) {
     goto err;
   }
 
-  if (s->session->sess_cert) {
-    ssl_sess_cert_free(s->session->sess_cert);
-  }
+  ssl_sess_cert_free(s->session->sess_cert);
   s->session->sess_cert = sc;
 
   sc->cert_chain = sk;
@@ -1033,17 +1027,11 @@ int ssl3_get_server_certificate(SSL *s) {
     goto f_err;
   }
   sc->peer_cert_type = i;
-  /* Why would the following ever happen? We just created sc a couple of lines
-   * ago. */
-  if (sc->peer_pkeys[i].x509 != NULL) {
-    X509_free(sc->peer_pkeys[i].x509);
-  }
+  X509_free(sc->peer_pkeys[i].x509);
   sc->peer_pkeys[i].x509 = X509_up_ref(x);
   sc->peer_key = &(sc->peer_pkeys[i]);
 
-  if (s->session->peer != NULL) {
-    X509_free(s->session->peer);
-  }
+  X509_free(s->session->peer);
   s->session->peer = X509_up_ref(x);
 
   s->session->verify_result = s->verify_result;
@@ -1108,10 +1096,8 @@ int ssl3_get_server_key_exchange(SSL *s) {
 
       /* TODO(davidben): This should be reset in one place with the rest of the
        * handshake state. */
-      if (s->s3->tmp.peer_psk_identity_hint) {
-        OPENSSL_free(s->s3->tmp.peer_psk_identity_hint);
-        s->s3->tmp.peer_psk_identity_hint = NULL;
-      }
+      OPENSSL_free(s->s3->tmp.peer_psk_identity_hint);
+      s->s3->tmp.peer_psk_identity_hint = NULL;
     }
     s->s3->tmp.reuse_message = 1;
     return 1;
@@ -1122,14 +1108,10 @@ int ssl3_get_server_key_exchange(SSL *s) {
   server_key_exchange_orig = server_key_exchange;
 
   if (s->session->sess_cert != NULL) {
-    if (s->session->sess_cert->peer_dh_tmp) {
-      DH_free(s->session->sess_cert->peer_dh_tmp);
-      s->session->sess_cert->peer_dh_tmp = NULL;
-    }
-    if (s->session->sess_cert->peer_ecdh_tmp) {
-      EC_KEY_free(s->session->sess_cert->peer_ecdh_tmp);
-      s->session->sess_cert->peer_ecdh_tmp = NULL;
-    }
+    DH_free(s->session->sess_cert->peer_dh_tmp);
+    s->session->sess_cert->peer_dh_tmp = NULL;
+    EC_KEY_free(s->session->sess_cert->peer_ecdh_tmp);
+    s->session->sess_cert->peer_ecdh_tmp = NULL;
   } else {
     s->session->sess_cert = ssl_sess_cert_new();
     if (s->session->sess_cert == NULL) {
@@ -1364,17 +1346,11 @@ f_err:
   ssl3_send_alert(s, SSL3_AL_FATAL, al);
 err:
   EVP_PKEY_free(pkey);
-  if (rsa != NULL) {
-    RSA_free(rsa);
-  }
-  if (dh != NULL) {
-    DH_free(dh);
-  }
+  RSA_free(rsa);
+  DH_free(dh);
   BN_CTX_free(bn_ctx);
   EC_POINT_free(srvr_ecpoint);
-  if (ecdh != NULL) {
-    EC_KEY_free(ecdh);
-  }
+  EC_KEY_free(ecdh);
   EVP_MD_CTX_cleanup(&md_ctx);
   return -1;
 }
@@ -1506,18 +1482,14 @@ int ssl3_get_certificate_request(SSL *s) {
 
   /* we should setup a certificate to return.... */
   s->s3->tmp.cert_req = 1;
-  if (s->s3->tmp.ca_names != NULL) {
-    sk_X509_NAME_pop_free(s->s3->tmp.ca_names, X509_NAME_free);
-  }
+  sk_X509_NAME_pop_free(s->s3->tmp.ca_names, X509_NAME_free);
   s->s3->tmp.ca_names = ca_sk;
   ca_sk = NULL;
 
   ret = 1;
 
 err:
-  if (ca_sk != NULL) {
-    sk_X509_NAME_pop_free(ca_sk, X509_NAME_free);
-  }
+  sk_X509_NAME_pop_free(ca_sk, X509_NAME_free);
   return ret;
 }
 
@@ -1693,10 +1665,7 @@ int ssl3_send_client_key_exchange(SSL *s) {
         goto err;
       }
 
-      if (s->session->psk_identity != NULL) {
-        OPENSSL_free(s->session->psk_identity);
-      }
-
+      OPENSSL_free(s->session->psk_identity);
       s->session->psk_identity = BUF_strdup(identity);
       if (s->session->psk_identity == NULL) {
         OPENSSL_PUT_ERROR(SSL, ssl3_send_client_key_exchange,
@@ -1738,9 +1707,7 @@ int ssl3_send_client_key_exchange(SSL *s) {
           pkey->pkey.rsa == NULL) {
         OPENSSL_PUT_ERROR(SSL, ssl3_send_client_key_exchange,
                           ERR_R_INTERNAL_ERROR);
-        if (pkey != NULL) {
-          EVP_PKEY_free(pkey);
-        }
+        EVP_PKEY_free(pkey);
         goto err;
       }
 
@@ -2007,12 +1974,8 @@ int ssl3_send_client_key_exchange(SSL *s) {
 
 err:
   BN_CTX_free(bn_ctx);
-  if (encodedPoint != NULL) {
-    OPENSSL_free(encodedPoint);
-  }
-  if (clnt_ecdh != NULL) {
-    EC_KEY_free(clnt_ecdh);
-  }
+  OPENSSL_free(encodedPoint);
+  EC_KEY_free(clnt_ecdh);
   EVP_PKEY_free(srvr_pub_pkey);
   if (pms) {
     OPENSSL_cleanse(pms, pms_len);
@@ -2154,12 +2117,8 @@ int ssl3_send_client_certificate(SSL *s) {
                         SSL_R_BAD_DATA_RETURNED_BY_CALLBACK);
     }
 
-    if (x509 != NULL) {
-      X509_free(x509);
-    }
-    if (pkey != NULL) {
-      EVP_PKEY_free(pkey);
-    }
+    X509_free(x509);
+    EVP_PKEY_free(pkey);
     if (i && !ssl3_has_client_certificate(s)) {
       i = 0;
     }
@@ -2399,15 +2358,9 @@ int ssl3_send_channel_id(SSL *s) {
 
 err:
   EVP_MD_CTX_cleanup(&md_ctx);
-  if (public_key) {
-    OPENSSL_free(public_key);
-  }
-  if (der_sig) {
-    OPENSSL_free(der_sig);
-  }
-  if (sig) {
-    ECDSA_SIG_free(sig);
-  }
+  OPENSSL_free(public_key);
+  OPENSSL_free(der_sig);
+  ECDSA_SIG_free(sig);
 
   return ret;
 }

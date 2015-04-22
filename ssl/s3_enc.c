@@ -236,12 +236,8 @@ void ssl3_cleanup_key_block(SSL *s) {
 }
 
 int ssl3_init_finished_mac(SSL *s) {
-  if (s->s3->handshake_buffer) {
-    BIO_free(s->s3->handshake_buffer);
-  }
-  if (s->s3->handshake_dgst) {
-    ssl3_free_digest_list(s);
-  }
+  BIO_free(s->s3->handshake_buffer);
+  ssl3_free_digest_list(s);
   s->s3->handshake_buffer = BIO_new(BIO_s_mem());
   if (s->s3->handshake_buffer == NULL) {
     return 0;

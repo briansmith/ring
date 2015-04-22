@@ -205,21 +205,17 @@ int SSL_clear(SSL *s) {
   s->rwstate = SSL_NOTHING;
   s->rstate = SSL_ST_READ_HEADER;
 
-  if (s->init_buf != NULL) {
-    BUF_MEM_free(s->init_buf);
-    s->init_buf = NULL;
-  }
+  BUF_MEM_free(s->init_buf);
+  s->init_buf = NULL;
 
   s->packet = NULL;
   s->packet_length = 0;
 
   ssl_clear_cipher_ctx(s);
 
-  if (s->next_proto_negotiated) {
-    OPENSSL_free(s->next_proto_negotiated);
-    s->next_proto_negotiated = NULL;
-    s->next_proto_negotiated_len = 0;
-  }
+  OPENSSL_free(s->next_proto_negotiated);
+  s->next_proto_negotiated = NULL;
+  s->next_proto_negotiated_len = 0;
 
   /* The s->d1->mtu is simultaneously configuration (preserved across
    * clear) and connection-specific state (gets reset).
@@ -365,9 +361,7 @@ SSL *SSL_new(SSL_CTX *ctx) {
   return s;
 
 err:
-  if (s != NULL) {
-    SSL_free(s);
-  }
+  SSL_free(s);
   OPENSSL_PUT_ERROR(SSL, SSL_new, ERR_R_MALLOC_FAILURE);
 
   return NULL;
@@ -492,12 +486,7 @@ struct ssl_cipher_preference_list_st *ssl_cipher_preference_list_dup(
   return ret;
 
 err:
-  if (ret && ret->ciphers) {
-    sk_SSL_CIPHER_free(ret->ciphers);
-  }
-  if (ret) {
-    OPENSSL_free(ret);
-  }
+  ssl_cipher_preference_list_free(ret);
   return NULL;
 }
 
@@ -524,12 +513,7 @@ struct ssl_cipher_preference_list_st *ssl_cipher_preference_list_from_ciphers(
   return ret;
 
 err:
-  if (ret && ret->ciphers) {
-    sk_SSL_CIPHER_free(ret->ciphers);
-  }
-  if (ret) {
-    OPENSSL_free(ret);
-  }
+  ssl_cipher_preference_list_free(ret);
   return NULL;
 }
 
@@ -544,9 +528,7 @@ void SSL_free(SSL *s) {
     return;
   }
 
-  if (s->param) {
-    X509_VERIFY_PARAM_free(s->param);
-  }
+  X509_VERIFY_PARAM_free(s->param);
 
   CRYPTO_free_ex_data(&g_ex_data_class_ssl, s, &s->ex_data);
 
@@ -559,74 +541,40 @@ void SSL_free(SSL *s) {
     s->bbio = NULL;
   }
 
-  if (s->rbio != NULL) {
-    BIO_free_all(s->rbio);
-  }
-
-  if (s->wbio != NULL && s->wbio != s->rbio) {
+  int free_wbio = s->wbio != s->rbio;
+  BIO_free_all(s->rbio);
+  if (free_wbio) {
     BIO_free_all(s->wbio);
   }
 
-  if (s->init_buf != NULL) {
-    BUF_MEM_free(s->init_buf);
-  }
+  BUF_MEM_free(s->init_buf);
 
   /* add extra stuff */
-  if (s->cipher_list != NULL) {
-    ssl_cipher_preference_list_free(s->cipher_list);
-  }
-  if (s->cipher_list_by_id != NULL) {
-    sk_SSL_CIPHER_free(s->cipher_list_by_id);
-  }
+  ssl_cipher_preference_list_free(s->cipher_list);
+  sk_SSL_CIPHER_free(s->cipher_list_by_id);
 
-  if (s->session != NULL) {
-    ssl_clear_bad_session(s);
-    SSL_SESSION_free(s->session);
-  }
+  ssl_clear_bad_session(s);
+  SSL_SESSION_free(s->session);
 
   ssl_clear_cipher_ctx(s);
 
-  if (s->cert != NULL) {
-    ssl_cert_free(s->cert);
-  }
+  ssl_cert_free(s->cert);
 
-  if (s->tlsext_hostname) {
-    OPENSSL_free(s->tlsext_hostname);
-  }
-  if (s->initial_ctx) {
-    SSL_CTX_free(s->initial_ctx);
-  }
-  if (s->tlsext_ecpointformatlist) {
-    OPENSSL_free(s->tlsext_ecpointformatlist);
-  }
-  if (s->tlsext_ellipticcurvelist) {
-    OPENSSL_free(s->tlsext_ellipticcurvelist);
-  }
-  if (s->alpn_client_proto_list) {
-    OPENSSL_free(s->alpn_client_proto_list);
-  }
-  if (s->tlsext_channel_id_private) {
-    EVP_PKEY_free(s->tlsext_channel_id_private);
-  }
-  if (s->psk_identity_hint) {
-    OPENSSL_free(s->psk_identity_hint);
-  }
-  if (s->client_CA != NULL) {
-    sk_X509_NAME_pop_free(s->client_CA, X509_NAME_free);
-  }
-  if (s->next_proto_negotiated) {
-    OPENSSL_free(s->next_proto_negotiated);
-  }
-  if (s->srtp_profiles) {
-    sk_SRTP_PROTECTION_PROFILE_free(s->srtp_profiles);
-  }
+  OPENSSL_free(s->tlsext_hostname);
+  SSL_CTX_free(s->initial_ctx);
+  OPENSSL_free(s->tlsext_ecpointformatlist);
+  OPENSSL_free(s->tlsext_ellipticcurvelist);
+  OPENSSL_free(s->alpn_client_proto_list);
+  EVP_PKEY_free(s->tlsext_channel_id_private);
+  OPENSSL_free(s->psk_identity_hint);
+  sk_X509_NAME_pop_free(s->client_CA, X509_NAME_free);
+  OPENSSL_free(s->next_proto_negotiated);
+  sk_SRTP_PROTECTION_PROFILE_free(s->srtp_profiles);
 
   if (s->method != NULL) {
     s->method->ssl_free(s);
   }
-  if (s->ctx) {
-    SSL_CTX_free(s->ctx);
-  }
+  SSL_CTX_free(s->ctx);
 
   OPENSSL_free(s);
 }
@@ -640,10 +588,10 @@ void SSL_set_bio(SSL *s, BIO *rbio, BIO *wbio) {
     }
   }
 
-  if (s->rbio != NULL && s->rbio != rbio) {
+  if (s->rbio != rbio) {
     BIO_free_all(s->rbio);
   }
-  if (s->wbio != NULL && s->wbio != wbio && s->rbio != s->wbio) {
+  if (s->wbio != wbio && s->rbio != s->wbio) {
     BIO_free_all(s->wbio);
   }
   s->rbio = rbio;
@@ -1455,9 +1403,7 @@ STACK_OF(SSL_CIPHER) *ssl_bytes_to_cipher_list(SSL *s, const CBS *cbs) {
   return sk;
 
 err:
-  if (sk != NULL) {
-    sk_SSL_CIPHER_free(sk);
-  }
+  sk_SSL_CIPHER_free(sk);
   return NULL;
 }
 
@@ -1645,10 +1591,7 @@ void SSL_CTX_set_next_proto_select_cb(
 
 int SSL_CTX_set_alpn_protos(SSL_CTX *ctx, const uint8_t *protos,
                             unsigned protos_len) {
-  if (ctx->alpn_client_proto_list) {
-    OPENSSL_free(ctx->alpn_client_proto_list);
-  }
-
+  OPENSSL_free(ctx->alpn_client_proto_list);
   ctx->alpn_client_proto_list = BUF_memdup(protos, protos_len);
   if (!ctx->alpn_client_proto_list) {
     return 1;
@@ -1659,10 +1602,7 @@ int SSL_CTX_set_alpn_protos(SSL_CTX *ctx, const uint8_t *protos,
 }
 
 int SSL_set_alpn_protos(SSL *ssl, const uint8_t *protos, unsigned protos_len) {
-  if (ssl->alpn_client_proto_list) {
-    OPENSSL_free(ssl->alpn_client_proto_list);
-  }
-
+  OPENSSL_free(ssl->alpn_client_proto_list);
   ssl->alpn_client_proto_list = BUF_memdup(protos, protos_len);
   if (!ssl->alpn_client_proto_list) {
     return 1;
@@ -1867,9 +1807,7 @@ SSL_CTX *SSL_CTX_new(const SSL_METHOD *meth) {
 err:
   OPENSSL_PUT_ERROR(SSL, SSL_CTX_new, ERR_R_MALLOC_FAILURE);
 err2:
-  if (ret != NULL) {
-    SSL_CTX_free(ret);
-  }
+  SSL_CTX_free(ret);
   return NULL;
 }
 
@@ -1879,9 +1817,7 @@ void SSL_CTX_free(SSL_CTX *ctx) {
     return;
   }
 
-  if (ctx->param) {
-    X509_VERIFY_PARAM_free(ctx->param);
-  }
+  X509_VERIFY_PARAM_free(ctx->param);
 
   /* Free internal session cache. However: the remove_cb() may reference the
    * ex_data of SSL_CTX, thus the ex_data store can only be removed after the
@@ -1889,57 +1825,25 @@ void SSL_CTX_free(SSL_CTX *ctx) {
    * the session cache, the most secure solution seems to be: empty (flush) the
    * cache, then free ex_data, then finally free the cache. (See ticket
    * [openssl.org #212].) */
-  if (ctx->sessions != NULL) {
-    SSL_CTX_flush_sessions(ctx, 0);
-  }
+  SSL_CTX_flush_sessions(ctx, 0);
 
   CRYPTO_free_ex_data(&g_ex_data_class_ssl_ctx, ctx, &ctx->ex_data);
 
-  if (ctx->sessions != NULL) {
-    lh_SSL_SESSION_free(ctx->sessions);
-  }
-  if (ctx->cert_store != NULL) {
-    X509_STORE_free(ctx->cert_store);
-  }
-  if (ctx->cipher_list != NULL) {
-    ssl_cipher_preference_list_free(ctx->cipher_list);
-  }
-  if (ctx->cipher_list_by_id != NULL) {
-    sk_SSL_CIPHER_free(ctx->cipher_list_by_id);
-  }
-  if (ctx->cipher_list_tls11 != NULL) {
-    ssl_cipher_preference_list_free(ctx->cipher_list_tls11);
-  }
-  if (ctx->cert != NULL) {
-    ssl_cert_free(ctx->cert);
-  }
-  if (ctx->client_CA != NULL) {
-    sk_X509_NAME_pop_free(ctx->client_CA, X509_NAME_free);
-  }
-  if (ctx->extra_certs != NULL) {
-    sk_X509_pop_free(ctx->extra_certs, X509_free);
-  }
-  if (ctx->srtp_profiles) {
-    sk_SRTP_PROTECTION_PROFILE_free(ctx->srtp_profiles);
-  }
-  if (ctx->psk_identity_hint) {
-    OPENSSL_free(ctx->psk_identity_hint);
-  }
-  if (ctx->tlsext_ecpointformatlist) {
-    OPENSSL_free(ctx->tlsext_ecpointformatlist);
-  }
-  if (ctx->tlsext_ellipticcurvelist) {
-    OPENSSL_free(ctx->tlsext_ellipticcurvelist);
-  }
-  if (ctx->alpn_client_proto_list != NULL) {
-    OPENSSL_free(ctx->alpn_client_proto_list);
-  }
-  if (ctx->tlsext_channel_id_private) {
-    EVP_PKEY_free(ctx->tlsext_channel_id_private);
-  }
-  if (ctx->keylog_bio) {
-    BIO_free(ctx->keylog_bio);
-  }
+  lh_SSL_SESSION_free(ctx->sessions);
+  X509_STORE_free(ctx->cert_store);
+  ssl_cipher_preference_list_free(ctx->cipher_list);
+  sk_SSL_CIPHER_free(ctx->cipher_list_by_id);
+  ssl_cipher_preference_list_free(ctx->cipher_list_tls11);
+  ssl_cert_free(ctx->cert);
+  sk_X509_NAME_pop_free(ctx->client_CA, X509_NAME_free);
+  sk_X509_pop_free(ctx->extra_certs, X509_free);
+  sk_SRTP_PROTECTION_PROFILE_free(ctx->srtp_profiles);
+  OPENSSL_free(ctx->psk_identity_hint);
+  OPENSSL_free(ctx->tlsext_ecpointformatlist);
+  OPENSSL_free(ctx->tlsext_ellipticcurvelist);
+  OPENSSL_free(ctx->alpn_client_proto_list);
+  EVP_PKEY_free(ctx->tlsext_channel_id_private);
+  BIO_free(ctx->keylog_bio);
 
   OPENSSL_free(ctx);
 }
@@ -2487,15 +2391,11 @@ SSL_CTX *SSL_set_SSL_CTX(SSL *ssl, SSL_CTX *ctx) {
     ctx = ssl->initial_ctx;
   }
 
-  if (ssl->cert != NULL) {
-    ssl_cert_free(ssl->cert);
-  }
-
+  ssl_cert_free(ssl->cert);
   ssl->cert = ssl_cert_dup(ctx->cert);
+
   CRYPTO_add(&ctx->references, 1, CRYPTO_LOCK_SSL_CTX);
-  if (ssl->ctx != NULL) {
-    SSL_CTX_free(ssl->ctx); /* decrement reference count */
-  }
+  SSL_CTX_free(ssl->ctx); /* decrement reference count */
   ssl->ctx = ctx;
 
   ssl->sid_ctx_length = ctx->sid_ctx_length;
@@ -2576,9 +2476,7 @@ X509_STORE *SSL_CTX_get_cert_store(const SSL_CTX *ctx) {
 }
 
 void SSL_CTX_set_cert_store(SSL_CTX *ctx, X509_STORE *store) {
-  if (ctx->cert_store != NULL) {
-    X509_STORE_free(ctx->cert_store);
-  }
+  X509_STORE_free(ctx->cert_store);
   ctx->cert_store = store;
 }
 
@@ -2626,9 +2524,7 @@ int SSL_CTX_use_psk_identity_hint(SSL_CTX *ctx, const char *identity_hint) {
     return 0;
   }
 
-  if (ctx->psk_identity_hint != NULL) {
-    OPENSSL_free(ctx->psk_identity_hint);
-  }
+  OPENSSL_free(ctx->psk_identity_hint);
 
   if (identity_hint != NULL) {
     ctx->psk_identity_hint = BUF_strdup(identity_hint);
@@ -2654,10 +2550,8 @@ int SSL_use_psk_identity_hint(SSL *s, const char *identity_hint) {
   }
 
   /* Clear currently configured hint, if any. */
-  if (s->psk_identity_hint != NULL) {
-    OPENSSL_free(s->psk_identity_hint);
-    s->psk_identity_hint = NULL;
-  }
+  OPENSSL_free(s->psk_identity_hint);
+  s->psk_identity_hint = NULL;
 
   if (identity_hint != NULL) {
     s->psk_identity_hint = BUF_strdup(identity_hint);
@@ -2740,9 +2634,7 @@ void SSL_set_msg_callback(SSL *ssl,
 }
 
 void SSL_CTX_set_keylog_bio(SSL_CTX *ctx, BIO *keylog_bio) {
-  if (ctx->keylog_bio != NULL) {
-    BIO_free(ctx->keylog_bio);
-  }
+  BIO_free(ctx->keylog_bio);
   ctx->keylog_bio = keylog_bio;
 }
 

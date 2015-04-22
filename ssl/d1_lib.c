@@ -101,12 +101,8 @@ int dtls1_new(SSL *s) {
   d1->sent_messages = pqueue_new();
 
   if (!d1->buffered_messages || !d1->sent_messages) {
-    if (d1->buffered_messages) {
-      pqueue_free(d1->buffered_messages);
-    }
-    if (d1->sent_messages) {
-      pqueue_free(d1->sent_messages);
-    }
+    pqueue_free(d1->buffered_messages);
+    pqueue_free(d1->sent_messages);
     OPENSSL_free(d1);
     ssl3_free(s);
     return 0;

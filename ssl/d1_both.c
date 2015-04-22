@@ -199,12 +199,8 @@ void dtls1_hm_fragment_free(hm_fragment *frag) {
   if (frag == NULL) {
     return;
   }
-  if (frag->fragment) {
-    OPENSSL_free(frag->fragment);
-  }
-  if (frag->reassembly) {
-    OPENSSL_free(frag->reassembly);
-  }
+  OPENSSL_free(frag->fragment);
+  OPENSSL_free(frag->reassembly);
   OPENSSL_free(frag);
 }
 
@@ -660,12 +656,8 @@ long dtls1_get_message(SSL *s, int st1, int stn, int msg_type, long max,
 f_err:
   ssl3_send_alert(s, SSL3_AL_FATAL, al);
 err:
-  if (item != NULL) {
-    pitem_free(item);
-  }
-  if (frag != NULL) {
-    dtls1_hm_fragment_free(frag);
-  }
+  pitem_free(item);
+  dtls1_hm_fragment_free(frag);
   *ok = 0;
   return -1;
 }
