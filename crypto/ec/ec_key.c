@@ -153,15 +153,9 @@ void EC_KEY_free(EC_KEY *r) {
     METHOD_unref(r->ecdsa_meth);
   }
 
-  if (r->group != NULL) {
-    EC_GROUP_free(r->group);
-  }
-  if (r->pub_key != NULL) {
-    EC_POINT_free(r->pub_key);
-  }
-  if (r->priv_key != NULL) {
-    BN_clear_free(r->priv_key);
-  }
+  EC_GROUP_free(r->group);
+  EC_POINT_free(r->pub_key);
+  BN_clear_free(r->priv_key);
 
   CRYPTO_free_ex_data(&g_ex_data_class, r, &r->ex_data);
 
@@ -177,9 +171,7 @@ EC_KEY *EC_KEY_copy(EC_KEY *dest, const EC_KEY *src) {
   /* Copy the parameters. */
   if (src->group) {
     /* TODO(fork): duplicating the group seems wasteful. */
-    if (dest->group) {
-      EC_GROUP_free(dest->group);
-    }
+    EC_GROUP_free(dest->group);
     dest->group = EC_GROUP_dup(src->group);
     if (dest->group == NULL) {
       return NULL;
@@ -188,9 +180,7 @@ EC_KEY *EC_KEY_copy(EC_KEY *dest, const EC_KEY *src) {
 
   /* Copy the public key. */
   if (src->pub_key && src->group) {
-    if (dest->pub_key) {
-      EC_POINT_free(dest->pub_key);
-    }
+    EC_POINT_free(dest->pub_key);
     dest->pub_key = EC_POINT_dup(src->pub_key, src->group);
     if (dest->pub_key == NULL) {
       return NULL;
@@ -248,9 +238,7 @@ int EC_KEY_is_opaque(const EC_KEY *key) {
 const EC_GROUP *EC_KEY_get0_group(const EC_KEY *key) { return key->group; }
 
 int EC_KEY_set_group(EC_KEY *key, const EC_GROUP *group) {
-  if (key->group != NULL) {
-    EC_GROUP_free(key->group);
-  }
+  EC_GROUP_free(key->group);
   /* TODO(fork): duplicating the group seems wasteful but see
    * |EC_KEY_set_conv_form|. */
   key->group = EC_GROUP_dup(group);
@@ -262,9 +250,7 @@ const BIGNUM *EC_KEY_get0_private_key(const EC_KEY *key) {
 }
 
 int EC_KEY_set_private_key(EC_KEY *key, const BIGNUM *priv_key) {
-  if (key->priv_key) {
-    BN_clear_free(key->priv_key);
-  }
+  BN_clear_free(key->priv_key);
   key->priv_key = BN_dup(priv_key);
   return (key->priv_key == NULL) ? 0 : 1;
 }
@@ -274,9 +260,7 @@ const EC_POINT *EC_KEY_get0_public_key(const EC_KEY *key) {
 }
 
 int EC_KEY_set_public_key(EC_KEY *key, const EC_POINT *pub_key) {
-  if (key->pub_key != NULL) {
-    EC_POINT_free(key->pub_key);
-  }
+  EC_POINT_free(key->pub_key);
   key->pub_key = EC_POINT_dup(pub_key, key->group);
   return (key->pub_key == NULL) ? 0 : 1;
 }
@@ -367,12 +351,8 @@ int EC_KEY_check_key(const EC_KEY *eckey) {
   ok = 1;
 
 err:
-  if (ctx != NULL) {
-    BN_CTX_free(ctx);
-  }
-  if (point != NULL) {
-    EC_POINT_free(point);
-  }
+  BN_CTX_free(ctx);
+  EC_POINT_free(point);
   return ok;
 }
 
@@ -423,12 +403,8 @@ int EC_KEY_set_public_key_affine_coordinates(EC_KEY *key, BIGNUM *x,
   ok = 1;
 
 err:
-  if (ctx) {
-    BN_CTX_free(ctx);
-  }
-  if (point) {
-    EC_POINT_free(point);
-  }
+  BN_CTX_free(ctx);
+  EC_POINT_free(point);
   return ok;
 }
 
@@ -489,18 +465,14 @@ int EC_KEY_generate_key(EC_KEY *eckey) {
   ok = 1;
 
 err:
-  if (order) {
-    BN_free(order);
-  }
-  if (pub_key != NULL && eckey->pub_key == NULL) {
+  BN_free(order);
+  if (eckey->pub_key == NULL) {
     EC_POINT_free(pub_key);
   }
-  if (priv_key != NULL && eckey->priv_key == NULL) {
+  if (eckey->priv_key == NULL) {
     BN_free(priv_key);
   }
-  if (ctx != NULL) {
-    BN_CTX_free(ctx);
-  }
+  BN_CTX_free(ctx);
   return ok;
 }
 

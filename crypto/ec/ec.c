@@ -364,30 +364,14 @@ err:
     EC_GROUP_free(group);
     group = NULL;
   }
-  if (P) {
-    EC_POINT_free(P);
-  }
-  if (ctx) {
-    BN_CTX_free(ctx);
-  }
-  if (p) {
-    BN_free(p);
-  }
-  if (a) {
-    BN_free(a);
-  }
-  if (b) {
-    BN_free(b);
-  }
-  if (order) {
-    BN_free(order);
-  }
-  if (x) {
-    BN_free(x);
-  }
-  if (y) {
-    BN_free(y);
-  }
+  EC_POINT_free(P);
+  BN_CTX_free(ctx);
+  BN_free(p);
+  BN_free(a);
+  BN_free(b);
+  BN_free(order);
+  BN_free(x);
+  BN_free(y);
   return group;
 }
 
@@ -424,9 +408,7 @@ void EC_GROUP_free(EC_GROUP *group) {
 
   ec_pre_comp_free(group->pre_comp);
 
-  if (group->generator != NULL) {
-    EC_POINT_free(group->generator);
-  }
+  EC_POINT_free(group->generator);
   BN_free(&group->order);
   BN_free(&group->cofactor);
 
@@ -497,9 +479,7 @@ EC_GROUP *EC_GROUP_dup(const EC_GROUP *a) {
 
 err:
   if (!ok) {
-    if (t) {
-      EC_GROUP_free(t);
-    }
+    EC_GROUP_free(t);
     return NULL;
   } else {
     return t;

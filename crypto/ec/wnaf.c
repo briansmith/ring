@@ -631,18 +631,10 @@ int ec_wNAF_mul(const EC_GROUP *group, EC_POINT *r, const BIGNUM *scalar,
   ret = 1;
 
 err:
-  if (new_ctx != NULL) {
-    BN_CTX_free(new_ctx);
-  }
-  if (tmp != NULL) {
-    EC_POINT_free(tmp);
-  }
-  if (wsize != NULL) {
-    OPENSSL_free(wsize);
-  }
-  if (wNAF_len != NULL) {
-    OPENSSL_free(wNAF_len);
-  }
+  BN_CTX_free(new_ctx);
+  EC_POINT_free(tmp);
+  OPENSSL_free(wsize);
+  OPENSSL_free(wNAF_len);
   if (wNAF != NULL) {
     signed char **w;
 
@@ -659,9 +651,7 @@ err:
 
     OPENSSL_free(val);
   }
-  if (val_sub != NULL) {
-    OPENSSL_free(val_sub);
-  }
+  OPENSSL_free(val_sub);
   return ret;
 }
 
@@ -699,10 +689,8 @@ int ec_wNAF_precompute_mult(EC_GROUP *group, BN_CTX *ctx) {
   int ret = 0;
 
   /* if there is an old EC_PRE_COMP object, throw it away */
-  if (group->pre_comp) {
-    ec_pre_comp_free(group->pre_comp);
-    group->pre_comp = NULL;
-  }
+  ec_pre_comp_free(group->pre_comp);
+  group->pre_comp = NULL;
 
   generator = EC_GROUP_get0_generator(group);
   if (generator == NULL) {
@@ -841,12 +829,8 @@ err:
   if (ctx != NULL) {
     BN_CTX_end(ctx);
   }
-  if (new_ctx != NULL) {
-    BN_CTX_free(new_ctx);
-  }
-  if (pre_comp) {
-    ec_pre_comp_free(pre_comp);
-  }
+  BN_CTX_free(new_ctx);
+  ec_pre_comp_free(pre_comp);
   if (points) {
     EC_POINT **p;
 
@@ -855,12 +839,8 @@ err:
     }
     OPENSSL_free(points);
   }
-  if (tmp_point) {
-    EC_POINT_free(tmp_point);
-  }
-  if (base) {
-    EC_POINT_free(base);
-  }
+  EC_POINT_free(tmp_point);
+  EC_POINT_free(base);
   return ret;
 }
 

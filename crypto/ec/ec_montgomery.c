@@ -127,38 +127,26 @@ int ec_GFp_mont_group_init(EC_GROUP *group) {
 }
 
 void ec_GFp_mont_group_finish(EC_GROUP *group) {
-  if (group->mont != NULL) {
-    BN_MONT_CTX_free(group->mont);
-    group->mont = NULL;
-  }
-  if (group->one != NULL) {
-    BN_free(group->one);
-    group->one = NULL;
-  }
+  BN_MONT_CTX_free(group->mont);
+  group->mont = NULL;
+  BN_free(group->one);
+  group->one = NULL;
   ec_GFp_simple_group_finish(group);
 }
 
 void ec_GFp_mont_group_clear_finish(EC_GROUP *group) {
-  if (group->mont != NULL) {
-    BN_MONT_CTX_free(group->mont);
-    group->mont = NULL;
-  }
-  if (group->one != NULL) {
-    BN_clear_free(group->one);
-    group->one = NULL;
-  }
+  BN_MONT_CTX_free(group->mont);
+  group->mont = NULL;
+  BN_clear_free(group->one);
+  group->one = NULL;
   ec_GFp_simple_group_clear_finish(group);
 }
 
 int ec_GFp_mont_group_copy(EC_GROUP *dest, const EC_GROUP *src) {
-  if (dest->mont != NULL) {
-    BN_MONT_CTX_free(dest->mont);
-    dest->mont = NULL;
-  }
-  if (dest->one != NULL) {
-    BN_clear_free(dest->one);
-    dest->one = NULL;
-  }
+  BN_MONT_CTX_free(dest->mont);
+  dest->mont = NULL;
+  BN_clear_free(dest->one);
+  dest->one = NULL;
 
   if (!ec_GFp_simple_group_copy(dest, src)) {
     return 0;
@@ -183,10 +171,8 @@ int ec_GFp_mont_group_copy(EC_GROUP *dest, const EC_GROUP *src) {
   return 1;
 
 err:
-  if (dest->mont != NULL) {
-    BN_MONT_CTX_free(dest->mont);
-    dest->mont = NULL;
-  }
+  BN_MONT_CTX_free(dest->mont);
+  dest->mont = NULL;
   return 0;
 }
 
@@ -197,14 +183,10 @@ int ec_GFp_mont_group_set_curve(EC_GROUP *group, const BIGNUM *p,
   BIGNUM *one = NULL;
   int ret = 0;
 
-  if (group->mont != NULL) {
-    BN_MONT_CTX_free(group->mont);
-    group->mont = NULL;
-  }
-  if (group->one != NULL) {
-    BN_free(group->one);
-    group->one = NULL;
-  }
+  BN_MONT_CTX_free(group->mont);
+  group->mont = NULL;
+  BN_free(group->one);
+  group->one = NULL;
 
   if (ctx == NULL) {
     ctx = new_ctx = BN_CTX_new();
@@ -241,15 +223,9 @@ int ec_GFp_mont_group_set_curve(EC_GROUP *group, const BIGNUM *p,
   }
 
 err:
-  if (new_ctx != NULL) {
-    BN_CTX_free(new_ctx);
-  }
-  if (mont != NULL) {
-    BN_MONT_CTX_free(mont);
-  }
-  if (one != NULL) {
-    BN_free(one);
-  }
+  BN_CTX_free(new_ctx);
+  BN_MONT_CTX_free(mont);
+  BN_free(one);
   return ret;
 }
 

@@ -164,18 +164,14 @@ static size_t ec_GFp_simple_point2oct(const EC_GROUP *group,
   if (used_ctx) {
     BN_CTX_end(ctx);
   }
-  if (new_ctx != NULL) {
-    BN_CTX_free(new_ctx);
-  }
+  BN_CTX_free(new_ctx);
   return ret;
 
 err:
   if (used_ctx) {
     BN_CTX_end(ctx);
   }
-  if (new_ctx != NULL) {
-    BN_CTX_free(new_ctx);
-  }
+  BN_CTX_free(new_ctx);
   return 0;
 }
 
@@ -275,9 +271,7 @@ static int ec_GFp_simple_oct2point(const EC_GROUP *group, EC_POINT *point,
 
 err:
   BN_CTX_end(ctx);
-  if (new_ctx != NULL) {
-    BN_CTX_free(new_ctx);
-  }
+  BN_CTX_free(new_ctx);
   return ret;
 }
 
@@ -456,9 +450,7 @@ int ec_GFp_simple_set_compressed_coordinates(const EC_GROUP *group,
 
 err:
   BN_CTX_end(ctx);
-  if (new_ctx != NULL) {
-    BN_CTX_free(new_ctx);
-  }
+  BN_CTX_free(new_ctx);
   return ret;
 }
 
