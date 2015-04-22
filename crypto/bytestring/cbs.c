@@ -52,10 +52,8 @@ size_t CBS_len(const CBS *cbs) {
 }
 
 int CBS_stow(const CBS *cbs, uint8_t **out_ptr, size_t *out_len) {
-  if (*out_ptr != NULL) {
-    OPENSSL_free(*out_ptr);
-    *out_ptr = NULL;
-  }
+  OPENSSL_free(*out_ptr);
+  *out_ptr = NULL;
   *out_len = 0;
 
   if (cbs->len == 0) {

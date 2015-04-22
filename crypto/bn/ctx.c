@@ -205,9 +205,7 @@ static void BN_STACK_init(BN_STACK *st) {
 }
 
 static void BN_STACK_finish(BN_STACK *st) {
-  if (st->size) {
-    OPENSSL_free(st->indexes);
-  }
+  OPENSSL_free(st->indexes);
 }
 
 static int BN_STACK_push(BN_STACK *st, unsigned int idx) {
@@ -222,9 +220,7 @@ static int BN_STACK_push(BN_STACK *st, unsigned int idx) {
     if (st->depth) {
       memcpy(newitems, st->indexes, st->depth * sizeof(unsigned int));
     }
-    if (st->size) {
-      OPENSSL_free(st->indexes);
-    }
+    OPENSSL_free(st->indexes);
     st->indexes = newitems;
     st->size = newsize;
   }

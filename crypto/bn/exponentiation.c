@@ -763,7 +763,7 @@ int BN_mod_exp_mont(BIGNUM *rr, const BIGNUM *a, const BIGNUM *p,
   ret = 1;
 
 err:
-  if (in_mont == NULL && mont != NULL) {
+  if (in_mont == NULL) {
     BN_MONT_CTX_free(mont);
   }
   BN_CTX_end(ctx);
@@ -878,8 +878,7 @@ int BN_mod_exp_mont_consttime(BIGNUM *rr, const BIGNUM *a, const BIGNUM *p,
   BN_CTX_start(ctx);
 
   /* Allocate a montgomery context if it was not supplied by the caller.
-   * If this is not done, things will break in the montgomery part.
-   */
+   * If this is not done, things will break in the montgomery part. */
   if (in_mont != NULL) {
     mont = in_mont;
   } else {
@@ -1191,14 +1190,12 @@ int BN_mod_exp_mont_consttime(BIGNUM *rr, const BIGNUM *a, const BIGNUM *p,
   }
   ret = 1;
 err:
-  if ((in_mont == NULL) && (mont != NULL)) {
+  if (in_mont == NULL) {
     BN_MONT_CTX_free(mont);
   }
   if (powerbuf != NULL) {
     OPENSSL_cleanse(powerbuf, powerbufLen);
-    if (powerbufFree) {
-      OPENSSL_free(powerbufFree);
-    }
+    OPENSSL_free(powerbufFree);
   }
   BN_CTX_end(ctx);
   return (ret);
@@ -1353,7 +1350,7 @@ int BN_mod_exp_mont_word(BIGNUM *rr, BN_ULONG a, const BIGNUM *p,
   ret = 1;
 
 err:
-  if (in_mont == NULL && mont != NULL) {
+  if (in_mont == NULL) {
     BN_MONT_CTX_free(mont);
   }
   BN_CTX_end(ctx);
@@ -1557,7 +1554,7 @@ int BN_mod_exp2_mont(BIGNUM *rr, const BIGNUM *a1, const BIGNUM *p1,
   ret = 1;
 
 err:
-  if (in_mont == NULL && mont != NULL) {
+  if (in_mont == NULL) {
     BN_MONT_CTX_free(mont);
   }
   BN_CTX_end(ctx);

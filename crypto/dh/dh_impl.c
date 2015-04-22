@@ -245,10 +245,10 @@ err:
     OPENSSL_PUT_ERROR(DH, generate_key, ERR_R_BN_LIB);
   }
 
-  if (pub_key != NULL && dh->pub_key == NULL) {
+  if (dh->pub_key == NULL) {
     BN_free(pub_key);
   }
-  if (priv_key != NULL && dh->priv_key == NULL) {
+  if (dh->priv_key == NULL) {
     BN_free(priv_key);
   }
   BN_CTX_free(ctx);

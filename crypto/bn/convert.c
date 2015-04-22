@@ -407,13 +407,9 @@ char *BN_bn2dec(const BIGNUM *a) {
   ok = 1;
 
 err:
-  if (bn_data != NULL) {
-    OPENSSL_free(bn_data);
-  }
-  if (t != NULL) {
-    BN_free(t);
-  }
-  if (!ok && buf) {
+  OPENSSL_free(bn_data);
+  BN_free(t);
+  if (!ok) {
     OPENSSL_free(buf);
     buf = NULL;
   }

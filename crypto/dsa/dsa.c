@@ -134,27 +134,13 @@ void DSA_free(DSA *dsa) {
 
   CRYPTO_free_ex_data(&g_ex_data_class, dsa, &dsa->ex_data);
 
-  if (dsa->p != NULL) {
-    BN_clear_free(dsa->p);
-  }
-  if (dsa->q != NULL) {
-    BN_clear_free(dsa->q);
-  }
-  if (dsa->g != NULL) {
-    BN_clear_free(dsa->g);
-  }
-  if (dsa->pub_key != NULL) {
-    BN_clear_free(dsa->pub_key);
-  }
-  if (dsa->priv_key != NULL) {
-    BN_clear_free(dsa->priv_key);
-  }
-  if (dsa->kinv != NULL) {
-    BN_clear_free(dsa->kinv);
-  }
-  if (dsa->r != NULL) {
-    BN_clear_free(dsa->r);
-  }
+  BN_clear_free(dsa->p);
+  BN_clear_free(dsa->q);
+  BN_clear_free(dsa->g);
+  BN_clear_free(dsa->pub_key);
+  BN_clear_free(dsa->priv_key);
+  BN_clear_free(dsa->kinv);
+  BN_clear_free(dsa->r);
   CRYPTO_MUTEX_cleanup(&dsa->method_mont_p_lock);
   OPENSSL_free(dsa);
 }
@@ -198,12 +184,8 @@ void DSA_SIG_free(DSA_SIG *sig) {
     return;
   }
 
-  if (sig->r) {
-    BN_free(sig->r);
-  }
-  if (sig->s) {
-    BN_free(sig->s);
-  }
+  BN_free(sig->r);
+  BN_free(sig->s);
   OPENSSL_free(sig);
 }
 
@@ -282,12 +264,8 @@ int DSA_check_signature(int *out_valid, const uint8_t *digest,
   ret = DSA_do_check_signature(out_valid, digest, digest_len, s, dsa);
 
 err:
-  if (der != NULL) {
-    OPENSSL_free(der);
-  }
-  if (s) {
-    DSA_SIG_free(s);
-  }
+  OPENSSL_free(der);
+  DSA_SIG_free(s);
   return ret;
 }
 
@@ -365,8 +343,6 @@ DH *DSA_dup_DH(const DSA *r) {
   return ret;
 
 err:
-  if (ret != NULL) {
-    DH_free(ret);
-  }
+  DH_free(ret);
   return NULL;
 }

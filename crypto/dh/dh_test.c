@@ -189,18 +189,10 @@ int main(int argc, char *argv[]) {
 err:
   ERR_print_errors_fp(stderr);
 
-  if (abuf != NULL) {
-    OPENSSL_free(abuf);
-  }
-  if (bbuf != NULL) {
-    OPENSSL_free(bbuf);
-  }
-  if (b != NULL) {
-    DH_free(b);
-  }
-  if (a != NULL) {
-    DH_free(a);
-  }
+  OPENSSL_free(abuf);
+  OPENSSL_free(bbuf);
+  DH_free(b);
+  DH_free(a);
   return ret;
 }
 
@@ -493,18 +485,10 @@ bad_err:
   ERR_print_errors_fp(stderr);
 
 err:
-  if (Z1 != NULL) {
-    OPENSSL_free(Z1);
-  }
-  if (Z2 != NULL) {
-    OPENSSL_free(Z2);
-  }
-  if (dhA != NULL) {
-    DH_free(dhA);
-  }
-  if (dhB != NULL) {
-    DH_free(dhB);
-  }
+  OPENSSL_free(Z1);
+  OPENSSL_free(Z2);
+  DH_free(dhA);
+  DH_free(dhB);
 
   fprintf(stderr, "Test failed RFC5114 set %d\n", i + 1);
   return 0;

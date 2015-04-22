@@ -161,9 +161,7 @@ static int conn_state(BIO *bio, BIO_CONNECT *c) {
                 break;
               }
             }
-            if (c->param_port != NULL) {
-              OPENSSL_free(c->param_port);
-            }
+            OPENSSL_free(c->param_port);
             c->param_port = BUF_strdup(p);
           }
         }
@@ -286,12 +284,8 @@ static void BIO_CONNECT_free(BIO_CONNECT *c) {
     return;
   }
 
-  if (c->param_hostname != NULL) {
-    OPENSSL_free(c->param_hostname);
-  }
-  if (c->param_port != NULL) {
-    OPENSSL_free(c->param_port);
-  }
+  OPENSSL_free(c->param_hostname);
+  OPENSSL_free(c->param_port);
   OPENSSL_free(c);
 }
 
@@ -426,17 +420,13 @@ static long conn_ctrl(BIO *bio, int cmd, long num, void *ptr) {
       if (ptr != NULL) {
         bio->init = 1;
         if (num == 0) {
-          if (data->param_hostname != NULL) {
-            OPENSSL_free(data->param_hostname);
-          }
+          OPENSSL_free(data->param_hostname);
           data->param_hostname = BUF_strdup(ptr);
           if (data->param_hostname == NULL) {
             ret = 0;
           }
         } else if (num == 1) {
-          if (data->param_port != NULL) {
-            OPENSSL_free(data->param_port);
-          }
+          OPENSSL_free(data->param_port);
           data->param_port = BUF_strdup(ptr);
           if (data->param_port == NULL) {
             ret = 0;

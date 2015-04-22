@@ -420,7 +420,7 @@ vrfy:
 
 end:
   if (err) {
-    if (ret != NULL && ret != in) {
+    if (ret != in) {
       BN_clear_free(ret);
     }
     ret = NULL;

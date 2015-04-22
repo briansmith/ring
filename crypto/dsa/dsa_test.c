@@ -247,9 +247,7 @@ static int test_generate(FILE *out) {
   }
 
 end:
-  if (dsa != NULL) {
-    DSA_free(dsa);
-  }
+  DSA_free(dsa);
 
   return ok;
 }
@@ -271,9 +269,7 @@ static int test_verify(const uint8_t *sig, size_t sig_len, int expect) {
   ERR_clear_error();
 
 end:
-  if (dsa != NULL) {
-    DSA_free(dsa);
-  }
+  DSA_free(dsa);
 
   return ok;
 }

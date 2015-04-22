@@ -88,7 +88,7 @@ void BN_free(BIGNUM *bn) {
     return;
   }
 
-  if (bn->d != NULL && (bn->flags & BN_FLG_STATIC_DATA) == 0) {
+  if ((bn->flags & BN_FLG_STATIC_DATA) == 0) {
     OPENSSL_free(bn->d);
   }
 
@@ -304,9 +304,7 @@ BIGNUM *bn_wexpand(BIGNUM *bn, unsigned words) {
 
   memcpy(a, bn->d, sizeof(BN_ULONG) * bn->top);
 
-  if (bn->d) {
-    OPENSSL_free(bn->d);
-  }
+  OPENSSL_free(bn->d);
   bn->d = a;
   bn->dmax = words;
 

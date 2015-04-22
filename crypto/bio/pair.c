@@ -145,7 +145,7 @@ static int bio_free(BIO *bio) {
     bio_destroy_pair(bio);
   }
 
-  if (b->buf != NULL && !b->buf_externally_allocated) {
+  if (!b->buf_externally_allocated) {
     OPENSSL_free(b->buf);
   }
 
@@ -793,14 +793,10 @@ int BIO_new_bio_pair_external_buf(BIO** bio1_p, size_t writebuf1_len,
 
 err:
   if (ret == 0) {
-    if (bio1) {
-      BIO_free(bio1);
-      bio1 = NULL;
-    }
-    if (bio2) {
-      BIO_free(bio2);
-      bio2 = NULL;
-    }
+    BIO_free(bio1);
+    bio1 = NULL;
+    BIO_free(bio2);
+    bio2 = NULL;
   }
 
   *bio1_p = bio1;

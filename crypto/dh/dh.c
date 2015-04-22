@@ -179,9 +179,7 @@ static int int_dh_bn_cpy(BIGNUM **dst, const BIGNUM *src) {
     }
   }
 
-  if (*dst) {
-    BN_free(*dst);
-  }
+  BN_free(*dst);
   *dst = a;
   return 1;
 }
@@ -204,11 +202,10 @@ static int int_dh_param_copy(DH *to, const DH *from, int is_x942) {
     return 0;
   }
 
-  if (to->seed) {
-    OPENSSL_free(to->seed);
-    to->seed = NULL;
-    to->seedlen = 0;
-  }
+  OPENSSL_free(to->seed);
+  to->seed = NULL;
+  to->seedlen = 0;
+
   if (from->seed) {
     to->seed = BUF_memdup(from->seed, from->seedlen);
     if (!to->seed) {

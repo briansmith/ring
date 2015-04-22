@@ -66,7 +66,7 @@ int CBB_init_fixed(CBB *cbb, uint8_t *buf, size_t len) {
 
 void CBB_cleanup(CBB *cbb) {
   if (cbb->base) {
-    if (cbb->base->buf && cbb->base->can_resize) {
+    if (cbb->base->can_resize) {
       OPENSSL_free(cbb->base->buf);
     }
     OPENSSL_free(cbb->base);
