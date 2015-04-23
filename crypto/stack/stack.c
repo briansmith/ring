@@ -232,7 +232,7 @@ int sk_find(_STACK *sk, size_t *out_index, void *p) {
   int (*comp_func)(const void *,const void *);
 
   if (sk == NULL) {
-    return -1;
+    return 0;
   }
 
   if (sk->comp == NULL) {
