@@ -559,7 +559,7 @@ typedef struct timeval OPENSSL_timeval;
  * session resumption is used for a given SSL*. */
 #define SSL_MODE_NO_SESSION_CREATION 0x00000200L
 
-/* SSL_MODE_SEND_SERVERHELLO_TIME sends TLS_FALLBACK_SCSV in the ClientHello.
+/* SSL_MODE_SEND_FALLBACK_SCSV sends TLS_FALLBACK_SCSV in the ClientHello.
  * To be set only by applications that reconnect with a downgraded protocol
  * version; see https://tools.ietf.org/html/draft-ietf-tls-downgrade-scsv-05
  * for details.
