@@ -17,6 +17,10 @@
 
 #include <openssl/base.h>
 
+/* Upstream OpenSSL defines |OPENSSL_malloc|, etc., in crypto.h rather than
+ * mem.h. */
+#include <openssl/mem.h>
+
 
 #if defined(__cplusplus)
 extern "C" {
