@@ -1410,9 +1410,7 @@ int ssl3_send_server_key_exchange(SSL *s) {
     } else if (alg_k & SSL_kECDHE) {
       /* Determine the curve to use. */
       int nid = NID_undef;
-      if (cert->ecdh_tmp_auto) {
-        nid = tls1_get_shared_curve(s);
-      } else if (cert->ecdh_nid != NID_undef) {
+      if (cert->ecdh_nid != NID_undef) {
         nid = cert->ecdh_nid;
       } else if (cert->ecdh_tmp_cb != NULL) {
         /* Note: |ecdh_tmp_cb| does NOT pass ownership of the result
@@ -1421,6 +1419,8 @@ int ssl3_send_server_key_exchange(SSL *s) {
         if (template != NULL && EC_KEY_get0_group(template) != NULL) {
           nid = EC_GROUP_get_curve_name(EC_KEY_get0_group(template));
         }
+      } else {
+        nid = tls1_get_shared_curve(s);
       }
       if (nid == NID_undef) {
         al = SSL_AD_HANDSHAKE_FAILURE;

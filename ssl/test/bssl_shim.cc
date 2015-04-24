@@ -413,10 +413,6 @@ static ScopedSSL_CTX SetupCtx(const TestConfig *config) {
     SSL_CTX_set_read_ahead(ssl_ctx.get(), 1);
   }
 
-  if (!SSL_CTX_set_ecdh_auto(ssl_ctx.get(), 1)) {
-    return nullptr;
-  }
-
   if (!SSL_CTX_set_cipher_list(ssl_ctx.get(), "ALL")) {
     return nullptr;
   }

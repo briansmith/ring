@@ -454,13 +454,15 @@ typedef struct cert_st {
 
   DH *dh_tmp;
   DH *(*dh_tmp_cb)(SSL *ssl, int is_export, int keysize);
+
   /* ecdh_nid, if not |NID_undef|, is the NID of the curve to use for ephemeral
-   * ECDH keys. */
+   * ECDH keys. If unset, |ecdh_tmp_cb| is consulted. */
   int ecdh_nid;
-  /* Callback for generating ephemeral ECDH keys */
+  /* ecdh_tmp_cb is a callback for selecting the curve to use for ephemeral ECDH
+   * keys. If NULL, a curve is selected automatically. See
+   * |SSL_CTX_set_tmp_ecdh_callback|. */
   EC_KEY *(*ecdh_tmp_cb)(SSL *ssl, int is_export, int keysize);
-  /* Select ECDH parameters automatically */
-  int ecdh_tmp_auto;
+
   /* Flags related to certificates */
   unsigned int cert_flags;
   CERT_PKEY pkeys[SSL_PKEY_NUM];

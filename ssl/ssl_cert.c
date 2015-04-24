@@ -216,7 +216,6 @@ CERT *ssl_cert_dup(CERT *cert) {
 
   ret->ecdh_nid = cert->ecdh_nid;
   ret->ecdh_tmp_cb = cert->ecdh_tmp_cb;
-  ret->ecdh_tmp_auto = cert->ecdh_tmp_auto;
 
   for (i = 0; i < SSL_PKEY_NUM; i++) {
     CERT_PKEY *cpk = cert->pkeys + i;

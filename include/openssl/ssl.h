@@ -1650,7 +1650,6 @@ DECLARE_PEM_rw(SSL_SESSION, SSL_SESSION)
 #define SSL_CTRL_GET_CURVES 90
 #define SSL_CTRL_SET_CURVES 91
 #define SSL_CTRL_SET_CURVES_LIST 92
-#define SSL_CTRL_SET_ECDH_AUTO 94
 #define SSL_CTRL_SET_SIGALGS 97
 #define SSL_CTRL_SET_SIGALGS_LIST 98
 #define SSL_CTRL_CERT_FLAGS 99
@@ -1711,6 +1710,12 @@ DECLARE_PEM_rw(SSL_SESSION, SSL_SESSION)
   SSL_CTX_ctrl(ctx, SSL_CTRL_SET_TMP_RSA, 0, (char *)rsa)
 #define SSL_CTX_set_tmp_dh(ctx, dh) \
   SSL_CTX_ctrl(ctx, SSL_CTRL_SET_TMP_DH, 0, (char *)dh)
+
+/* SSL_CTX_set_tmp_ecdh configures |ctx| to use the curve from |ecdh| (a const
+ * EC_KEY *) as the curve for ephemeral ECDH keys. For historical reasons, this
+ * API expects an |EC_KEY|, but only the curve is used. It returns one on
+ * success and zero on error. If unset, an appropriate curve will be chosen
+ * automatically. (This is recommended.) */
 #define SSL_CTX_set_tmp_ecdh(ctx, ecdh) \
   SSL_CTX_ctrl(ctx, SSL_CTRL_SET_TMP_ECDH, 0, (char *)ecdh)
 
@@ -1719,6 +1724,12 @@ DECLARE_PEM_rw(SSL_SESSION, SSL_SESSION)
   SSL_ctrl(ssl, SSL_CTRL_SET_TMP_RSA, 0, (char *)rsa)
 #define SSL_set_tmp_dh(ssl, dh) \
   SSL_ctrl(ssl, SSL_CTRL_SET_TMP_DH, 0, (char *)dh)
+
+/* SSL_set_tmp_ecdh configures |ssl| to use the curve from |ecdh| (a const
+ * EC_KEY *) as the curve for ephemeral ECDH keys. For historical reasons, this
+ * API expects an |EC_KEY|, but only the curve is used. It returns one on
+ * success and zero on error. If unset, an appropriate curve will be chosen
+ * automatically. (This is recommended.) */
 #define SSL_set_tmp_ecdh(ssl, ecdh) \
   SSL_ctrl(ssl, SSL_CTRL_SET_TMP_ECDH, 0, (char *)ecdh)
 
@@ -1809,10 +1820,6 @@ DECLARE_PEM_rw(SSL_SESSION, SSL_SESSION)
   SSL_ctrl(ctx, SSL_CTRL_SET_CURVES, clistlen, (char *)clist)
 #define SSL_set1_curves_list(ctx, s) \
   SSL_ctrl(ctx, SSL_CTRL_SET_CURVES_LIST, 0, (char *)s)
-#define SSL_CTX_set_ecdh_auto(ctx, onoff) \
-  SSL_CTX_ctrl(ctx, SSL_CTRL_SET_ECDH_AUTO, onoff, NULL)
-#define SSL_set_ecdh_auto(s, onoff) \
-  SSL_ctrl(s, SSL_CTRL_SET_ECDH_AUTO, onoff, NULL)
 
 #define SSL_CTX_set1_sigalgs(ctx, slist, slistlen) \
   SSL_CTX_ctrl(ctx, SSL_CTRL_SET_SIGALGS, slistlen, (int *)slist)
@@ -2201,10 +2208,34 @@ OPENSSL_EXPORT void SSL_CTX_set_tmp_dh_callback(
 OPENSSL_EXPORT void SSL_set_tmp_dh_callback(SSL *ssl,
                                             DH *(*dh)(SSL *ssl, int is_export,
                                                       int keylength));
+
+/* SSL_CTX_set_tmp_ecdh_callback configures |ctx| to use |callback| to determine
+ * the curve for ephemeral ECDH keys. |callback| should ignore |is_export| and
+ * |keylength| and return an |EC_KEY| of the selected curve or NULL on
+ * error. Only the curve is used, so the |EC_KEY| needn't have a generated
+ * keypair.
+ *
+ * If the callback is unset, an appropriate curve will be chosen automatically.
+ * (This is recommended.)
+ *
+ * WARNING: The caller does not take ownership of the resulting |EC_KEY|, so
+ * |callback| must save and release the object elsewhere. */
 OPENSSL_EXPORT void SSL_CTX_set_tmp_ecdh_callback(
-    SSL_CTX *ctx, EC_KEY *(*ecdh)(SSL *ssl, int is_export, int keylength));
+    SSL_CTX *ctx, EC_KEY *(*callback)(SSL *ssl, int is_export, int keylength));
+
+/* SSL_set_tmp_ecdh_callback configures |ssl| to use |callback| to determine the
+ * curve for ephemeral ECDH keys. |callback| should ignore |is_export| and
+ * |keylength| and return an |EC_KEY| of the selected curve or NULL on
+ * error. Only the curve is used, so the |EC_KEY| needn't have a generated
+ * keypair.
+ *
+ * If the callback is unset, an appropriate curve will be chosen automatically.
+ * (This is recommended.)
+ *
+ * WARNING: The caller does not take ownership of the resulting |EC_KEY|, so
+ * |callback| must save and release the object elsewhere. */
 OPENSSL_EXPORT void SSL_set_tmp_ecdh_callback(
-    SSL *ssl, EC_KEY *(*ecdh)(SSL *ssl, int is_export, int keylength));
+    SSL *ssl, EC_KEY *(*callback)(SSL *ssl, int is_export, int keylength));
 
 OPENSSL_EXPORT const void *SSL_get_current_compression(SSL *s);
 OPENSSL_EXPORT const void *SSL_get_current_expansion(SSL *s);
@@ -2290,6 +2321,12 @@ OPENSSL_EXPORT const SSL_METHOD *DTLSv1_server_method(void);
 OPENSSL_EXPORT const SSL_METHOD *DTLSv1_client_method(void);
 OPENSSL_EXPORT const SSL_METHOD *DTLSv1_2_server_method(void);
 OPENSSL_EXPORT const SSL_METHOD *DTLSv1_2_client_method(void);
+
+/* SSL_CTX_set_ecdh_auto returns one. */
+#define SSL_CTX_set_ecdh_auto(ctx, onoff) 1
+
+/* SSL_set_ecdh_auto returns one. */
+#define SSL_set_ecdh_auto(ssl, onoff) 1
 
 
 /* Android compatibility section.

@@ -2004,7 +2004,6 @@ void ssl_get_compatible_server_ciphers(SSL *s, uint32_t *out_mask_k,
   int rsa_enc, rsa_sign, dh_tmp;
   uint32_t mask_k, mask_a;
   int have_ecc_cert, ecdsa_ok;
-  int have_ecdh_tmp;
   X509 *x;
 
   if (c == NULL) {
@@ -2016,8 +2015,6 @@ void ssl_get_compatible_server_ciphers(SSL *s, uint32_t *out_mask_k,
 
   dh_tmp = (c->dh_tmp != NULL || c->dh_tmp_cb != NULL);
 
-  have_ecdh_tmp = (c->ecdh_nid != NID_undef || c->ecdh_tmp_cb != NULL ||
-                   c->ecdh_tmp_auto);
   rsa_enc = ssl_has_key(s, SSL_PKEY_RSA_ENC);
   rsa_sign = ssl_has_key(s, SSL_PKEY_RSA_SIGN);
   have_ecc_cert = ssl_has_key(s, SSL_PKEY_ECC);
@@ -2053,7 +2050,7 @@ void ssl_get_compatible_server_ciphers(SSL *s, uint32_t *out_mask_k,
 
   /* If we are considering an ECC cipher suite that uses an ephemeral EC
    * key, check it. */
-  if (have_ecdh_tmp && tls1_check_ec_tmp_key(s)) {
+  if (tls1_check_ec_tmp_key(s)) {
     mask_k |= SSL_kECDHE;
   }
 
@@ -2625,15 +2622,16 @@ void SSL_set_tmp_dh_callback(SSL *ssl, DH *(*dh)(SSL *ssl, int is_export,
 }
 
 void SSL_CTX_set_tmp_ecdh_callback(SSL_CTX *ctx,
-                                   EC_KEY *(*ecdh)(SSL *ssl, int is_export,
-                                                   int keylength)) {
-  SSL_CTX_callback_ctrl(ctx, SSL_CTRL_SET_TMP_ECDH_CB, (void (*)(void))ecdh);
+                                   EC_KEY *(*callback)(SSL *ssl, int is_export,
+                                                       int keylength)) {
+  SSL_CTX_callback_ctrl(ctx, SSL_CTRL_SET_TMP_ECDH_CB,
+                        (void (*)(void))callback);
 }
 
 void SSL_set_tmp_ecdh_callback(SSL *ssl,
-                               EC_KEY *(*ecdh)(SSL *ssl, int is_export,
-                                               int keylength)) {
-  SSL_callback_ctrl(ssl, SSL_CTRL_SET_TMP_ECDH_CB, (void (*)(void))ecdh);
+                               EC_KEY *(*callback)(SSL *ssl, int is_export,
+                                                   int keylength)) {
+  SSL_callback_ctrl(ssl, SSL_CTRL_SET_TMP_ECDH_CB, (void (*)(void))callback);
 }
 
 int SSL_CTX_use_psk_identity_hint(SSL_CTX *ctx, const char *identity_hint) {
