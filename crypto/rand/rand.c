@@ -14,6 +14,7 @@
 
 #include <openssl/rand.h>
 
+#include <limits.h>
 #include <string.h>
 
 #include <openssl/mem.h>
@@ -148,6 +149,16 @@ int RAND_pseudo_bytes(uint8_t *buf, size_t len) {
 }
 
 void RAND_seed(const void *buf, int num) {}
+
+int RAND_load_file(const char *path, long num) {
+  if (num < 0) {  /* read the "whole file" */
+    return 1;
+  } else if (num <= INT_MAX) {
+    return (int) num;
+  } else {
+    return INT_MAX;
+  }
+}
 
 void RAND_add(const void *buf, int num, double entropy) {}
 
