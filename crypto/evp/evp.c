@@ -322,6 +322,8 @@ const EVP_PKEY_ASN1_METHOD *EVP_PKEY_asn1_find_str(ENGINE **pengine,
     return &rsa_asn1_meth;
   } if (len == 2 && memcmp(name, "EC", 2) == 0) {
     return &ec_asn1_meth;
+  } else if (len == 3 && memcmp(name, "DSA", 3) == 0) {
+    return &dsa_asn1_meth;
   }
   return NULL;
 }
