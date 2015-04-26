@@ -1780,9 +1780,6 @@ SSL_CTX *SSL_CTX_new(const SSL_METHOD *meth) {
     ret->options |= SSL_OP_NO_TICKET;
   }
 
-  ret->tlsext_status_cb = 0;
-  ret->tlsext_status_arg = NULL;
-
   ret->next_protos_advertised_cb = 0;
   ret->next_proto_select_cb = 0;
   ret->psk_identity_hint = NULL;

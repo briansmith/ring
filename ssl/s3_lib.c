@@ -937,11 +937,6 @@ long ssl3_ctx_ctrl(SSL_CTX *ctx, int cmd, long larg, void *parg) {
       return 1;
     }
 
-    case SSL_CTRL_SET_TLSEXT_STATUS_REQ_CB_ARG:
-      ctx->tlsext_status_arg = parg;
-      return 1;
-      break;
-
     case SSL_CTRL_SET_CURVES:
       return tls1_set_curves(&ctx->tlsext_ellipticcurvelist,
                              &ctx->tlsext_ellipticcurvelist_length, parg, larg);
@@ -1049,10 +1044,6 @@ long ssl3_ctx_callback_ctrl(SSL_CTX *ctx, int cmd, void (*fp)(void)) {
 
     case SSL_CTRL_SET_TLSEXT_SERVERNAME_CB:
       ctx->tlsext_servername_callback = (int (*)(SSL *, int *, void *))fp;
-      break;
-
-    case SSL_CTRL_SET_TLSEXT_STATUS_REQ_CB:
-      ctx->tlsext_status_cb = (int (*)(SSL *, void *))fp;
       break;
 
     case SSL_CTRL_SET_TLSEXT_TICKET_KEY_CB:

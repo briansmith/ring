@@ -874,11 +874,6 @@ struct ssl_ctx_st {
   int (*tlsext_ticket_key_cb)(SSL *ssl, uint8_t *name, uint8_t *iv,
                               EVP_CIPHER_CTX *ectx, HMAC_CTX *hctx, int enc);
 
-  /* certificate status request info */
-  /* Callback for status request */
-  int (*tlsext_status_cb)(SSL *ssl, void *arg);
-  void *tlsext_status_arg;
-
   /* Server-only: psk_identity_hint is the default identity hint to send in
    * PSK-based key exchanges. */
   char *psk_identity_hint;
@@ -1606,8 +1601,6 @@ DECLARE_PEM_rw(SSL_SESSION, SSL_SESSION)
 #define SSL_CTRL_SET_TLSEXT_HOSTNAME 55
 #define SSL_CTRL_GET_TLSEXT_TICKET_KEYS 58
 #define SSL_CTRL_SET_TLSEXT_TICKET_KEYS 59
-#define SSL_CTRL_SET_TLSEXT_STATUS_REQ_CB 63
-#define SSL_CTRL_SET_TLSEXT_STATUS_REQ_CB_ARG 64
 
 #define SSL_CTRL_SET_TLSEXT_TICKET_KEY_CB 72
 
