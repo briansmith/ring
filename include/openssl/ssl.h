@@ -1637,7 +1637,6 @@ DECLARE_PEM_rw(SSL_SESSION, SSL_SESSION)
 #define SSL_CTRL_SET_VERIFY_CERT_STORE 106
 #define SSL_CTRL_SET_CHAIN_CERT_STORE 107
 #define SSL_CTRL_GET_SERVER_TMP_KEY 109
-#define SSL_CTRL_GET_RAW_CIPHERLIST 110
 #define SSL_CTRL_GET_EC_POINT_FORMATS 111
 
 #define SSL_CTRL_GET_CHAIN_CERTS 115
@@ -1824,9 +1823,6 @@ OPENSSL_EXPORT int DTLSv1_handle_timeout(SSL *ssl);
 
 #define SSL_get_server_tmp_key(s, pk) \
   SSL_ctrl(s, SSL_CTRL_GET_SERVER_TMP_KEY, 0, pk)
-
-#define SSL_get0_raw_cipherlist(s, plst) \
-  SSL_ctrl(s, SSL_CTRL_GET_RAW_CIPHERLIST, 0, (char *)plst)
 
 #define SSL_get0_ec_point_formats(s, plst) \
   SSL_ctrl(s, SSL_CTRL_GET_EC_POINT_FORMATS, 0, (char *)plst)

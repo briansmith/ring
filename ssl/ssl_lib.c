@@ -1072,19 +1072,6 @@ long SSL_ctrl(SSL *s, int cmd, long larg, void *parg) {
       }
       return 0;
 
-    case SSL_CTRL_GET_RAW_CIPHERLIST:
-      if (parg) {
-        if (s->cert->ciphers_raw == NULL) {
-          return 0;
-        }
-        *(uint8_t **)parg = s->cert->ciphers_raw;
-        return (int)s->cert->ciphers_rawlen;
-      }
-
-      /* Passing a NULL |parg| returns the size of a single
-       * cipher suite value. */
-      return 2;
-
     default:
       return s->method->ssl_ctrl(s, cmd, larg, parg);
   }
