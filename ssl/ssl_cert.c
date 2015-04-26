@@ -867,7 +867,7 @@ int ssl_build_cert_chain(CERT *c, X509_STORE *chain_store, int flags) {
   STACK_OF(X509) *chain = NULL, *untrusted = NULL;
   X509 *x;
   int i, rv = 0;
-  unsigned long error;
+  uint32_t error;
 
   if (!cpk->x509) {
     OPENSSL_PUT_ERROR(SSL, ssl_build_cert_chain, SSL_R_NO_CERTIFICATE_SET);

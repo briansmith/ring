@@ -611,7 +611,7 @@ int SSL_CTX_use_certificate_chain_file(SSL_CTX *ctx, const char *file) {
      * certificates. */
     X509 *ca;
     int r;
-    unsigned long err;
+    uint32_t err;
 
     SSL_CTX_clear_chain_certs(ctx);
 
