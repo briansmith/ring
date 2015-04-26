@@ -610,12 +610,30 @@ OPENSSL_EXPORT void SSL_set_min_version(SSL *ssl, uint16_t version);
  * |version|. */
 OPENSSL_EXPORT void SSL_set_max_version(SSL *ssl, uint16_t version);
 
+/* SSL_CTX_set_msg_callback installs |cb| as the message callback for |ctx|.
+ * This callback will be called when sending or receiving low-level record
+ * headers, complete handshake messages, ChangeCipherSpec, and alerts.
+ * |write_p| is one for outgoing messages and zero for incoming messages.
+ *
+ * For each record header, |cb| is called with |version| = 0 and |content_type|
+ * = |SSL3_RT_HEADER|. The |len| bytes from |buf| contain the header. Note that
+ * this does not include the record body. If the record is sealed, the length
+ * in the header is the length of the ciphertext.
+ *
+ * For each handshake message, ChangeCipherSpec, and alert, |version| is the
+ * protocol version and |content_type| is the corresponding record type. The
+ * |len| bytes from |buf| contain the handshake message, one-byte
+ * ChangeCipherSpec body, and two-byte alert, respectively. */
 OPENSSL_EXPORT void SSL_CTX_set_msg_callback(
     SSL_CTX *ctx, void (*cb)(int write_p, int version, int content_type,
                              const void *buf, size_t len, SSL *ssl, void *arg));
+
+/* SSL_set_msg_callback installs |cb| as the message callback of |ssl|. See
+ * |SSL_CTX_set_msg_callback| for when this callback is called. */
 OPENSSL_EXPORT void SSL_set_msg_callback(
     SSL *ssl, void (*cb)(int write_p, int version, int content_type,
                          const void *buf, size_t len, SSL *ssl, void *arg));
+
 #define SSL_CTX_set_msg_callback_arg(ctx, arg) \
   SSL_CTX_ctrl((ctx), SSL_CTRL_SET_MSG_CALLBACK_ARG, 0, (arg))
 #define SSL_set_msg_callback_arg(ssl, arg) \
@@ -1550,9 +1568,6 @@ DECLARE_PEM_rw(SSL_SESSION, SSL_SESSION)
 #define SSL_CTRL_SET_TMP_RSA 2
 #define SSL_CTRL_SET_TMP_DH 3
 #define SSL_CTRL_SET_TMP_ECDH 4
-#define SSL_CTRL_SET_TMP_RSA_CB 5
-#define SSL_CTRL_SET_TMP_DH_CB 6
-#define SSL_CTRL_SET_TMP_ECDH_CB 7
 
 #define SSL_CTRL_GET_SESSION_REUSED 8
 #define SSL_CTRL_GET_CLIENT_CERT_REQUEST 9
@@ -1562,7 +1577,6 @@ DECLARE_PEM_rw(SSL_SESSION, SSL_SESSION)
 #define SSL_CTRL_GET_FLAGS 13
 #define SSL_CTRL_EXTRA_CHAIN_CERT 14
 
-#define SSL_CTRL_SET_MSG_CALLBACK 15
 #define SSL_CTRL_SET_MSG_CALLBACK_ARG 16
 
 /* only applies to datagram connections */
@@ -1596,17 +1610,10 @@ DECLARE_PEM_rw(SSL_SESSION, SSL_SESSION)
 #define SSL_CTRL_SET_MAX_SEND_FRAGMENT 52
 
 /* see tls1.h for macros based on these */
-#define SSL_CTRL_SET_TLSEXT_SERVERNAME_CB 53
 #define SSL_CTRL_SET_TLSEXT_SERVERNAME_ARG 54
 #define SSL_CTRL_SET_TLSEXT_HOSTNAME 55
 #define SSL_CTRL_GET_TLSEXT_TICKET_KEYS 58
 #define SSL_CTRL_SET_TLSEXT_TICKET_KEYS 59
-
-#define SSL_CTRL_SET_TLSEXT_TICKET_KEY_CB 72
-
-#define SSL_CTRL_SET_TLS_EXT_SRP_USERNAME_CB 75
-#define SSL_CTRL_SET_SRP_VERIFY_PARAM_CB 76
-#define SSL_CTRL_SET_SRP_GIVE_CLIENT_PWD_CB 77
 
 #define SSL_CTRL_SET_SRP_ARG 78
 #define SSL_CTRL_SET_TLS_EXT_SRP_USERNAME 79
@@ -2038,9 +2045,7 @@ OPENSSL_EXPORT int SSL_read(SSL *ssl, void *buf, int num);
 OPENSSL_EXPORT int SSL_peek(SSL *ssl, void *buf, int num);
 OPENSSL_EXPORT int SSL_write(SSL *ssl, const void *buf, int num);
 OPENSSL_EXPORT long SSL_ctrl(SSL *ssl, int cmd, long larg, void *parg);
-OPENSSL_EXPORT long SSL_callback_ctrl(SSL *, int, void (*)(void));
 OPENSSL_EXPORT long SSL_CTX_ctrl(SSL_CTX *ctx, int cmd, long larg, void *parg);
-OPENSSL_EXPORT long SSL_CTX_callback_ctrl(SSL_CTX *, int, void (*)(void));
 
 OPENSSL_EXPORT int SSL_get_error(const SSL *s, int ret_code);
 /* SSL_get_version returns a string describing the TLS version used by |s|. For
@@ -2173,15 +2178,23 @@ OPENSSL_EXPORT int SSL_get_ex_data_X509_STORE_CTX_idx(void);
 #define SSL_set_max_send_fragment(ssl, m) \
   SSL_ctrl(ssl, SSL_CTRL_SET_MAX_SEND_FRAGMENT, m, NULL)
 
-/* NB: the keylength is only applicable when is_export is true */
-OPENSSL_EXPORT void SSL_CTX_set_tmp_rsa_callback(
-    SSL_CTX *ctx, RSA *(*cb)(SSL *ssl, int is_export, int keylength));
-
-OPENSSL_EXPORT void SSL_set_tmp_rsa_callback(SSL *ssl,
-                                             RSA *(*cb)(SSL *ssl, int is_export,
-                                                        int keylength));
+/* SSL_CTX_set_tmp_dh_callback configures |ctx| to use |callback| to determine
+ * the group for DHE ciphers. |callback| should ignore |is_export| and
+ * |keylength| and return a |DH| of the selected group or NULL on error. Only
+ * the parameters are used, so the |DH| needn't have a generated keypair.
+ *
+ * WARNING: The caller does not take ownership of the resulting |DH|, so
+ * |callback| must save and release the object elsewhere. */
 OPENSSL_EXPORT void SSL_CTX_set_tmp_dh_callback(
-    SSL_CTX *ctx, DH *(*dh)(SSL *ssl, int is_export, int keylength));
+    SSL_CTX *ctx, DH *(*callback)(SSL *ssl, int is_export, int keylength));
+
+/* SSL_set_tmp_dh_callback configures |ssl| to use |callback| to determine the
+ * group for DHE ciphers. |callback| should ignore |is_export| and |keylength|
+ * and return a |DH| of the selected group or NULL on error. Only the
+ * parameters are used, so the |DH| needn't have a generated keypair.
+ *
+ * WARNING: The caller does not take ownership of the resulting |DH|, so
+ * |callback| must save and release the object elsewhere. */
 OPENSSL_EXPORT void SSL_set_tmp_dh_callback(SSL *ssl,
                                             DH *(*dh)(SSL *ssl, int is_export,
                                                       int keylength));
@@ -2299,11 +2312,14 @@ OPENSSL_EXPORT const SSL_METHOD *DTLSv1_client_method(void);
 OPENSSL_EXPORT const SSL_METHOD *DTLSv1_2_server_method(void);
 OPENSSL_EXPORT const SSL_METHOD *DTLSv1_2_client_method(void);
 
-/* SSL_CTX_set_ecdh_auto returns one. */
-#define SSL_CTX_set_ecdh_auto(ctx, onoff) 1
+/* SSL_CTX_set_tmp_rsa_callback does nothing. */
+OPENSSL_EXPORT void SSL_CTX_set_tmp_rsa_callback(
+    SSL_CTX *ctx, RSA *(*cb)(SSL *ssl, int is_export, int keylength));
 
-/* SSL_set_ecdh_auto returns one. */
-#define SSL_set_ecdh_auto(ssl, onoff) 1
+/* SSL_set_tmp_rsa_callback does nothing. */
+OPENSSL_EXPORT void SSL_set_tmp_rsa_callback(SSL *ssl,
+                                             RSA *(*cb)(SSL *ssl, int is_export,
+                                                        int keylength));
 
 
 /* Android compatibility section.
@@ -2327,6 +2343,24 @@ OPENSSL_EXPORT int SSL_set_ssl_method(SSL *s, const SSL_METHOD *method);
 /* SSLeay_version is a compatibility function that returns the string
  * "BoringSSL". */
 OPENSSL_EXPORT const char *SSLeay_version(int unused);
+
+
+/* Preprocessor compatibility section.
+ *
+ * Historically, a number of APIs were implemented in OpenSSL as macros and
+ * constants to 'ctrl' functions. To avoid breaking #ifdefs in consumers, this
+ * section defines a number of legacy macros. */
+
+#define SSL_CTRL_SET_TMP_RSA_CB doesnt_exist
+#define SSL_CTRL_SET_TMP_DH_CB doesnt_exist
+#define SSL_CTRL_SET_TMP_ECDH_CB doesnt_exist
+#define SSL_CTRL_SET_MSG_CALLBACK doesnt_exist
+#define SSL_CTRL_SET_TLSEXT_SERVERNAME_CB doesnt_exist
+#define SSL_CTRL_SET_TLSEXT_TICKET_KEY_CB doesnt_exist
+
+#define SSL_CTX_set_tlsext_servername_callback \
+    SSL_CTX_set_tlsext_servername_callback
+#define SSL_CTX_set_tlsext_ticket_key_cb SSL_CTX_set_tlsext_ticket_key_cb
 
 
 #if defined(__cplusplus)
@@ -2421,7 +2455,6 @@ OPENSSL_EXPORT const char *SSLeay_version(int unused);
 #define SSL_F_dtls1_write_app_data_bytes 165
 #define SSL_F_i2d_SSL_SESSION 166
 #define SSL_F_ssl3_accept 167
-#define SSL_F_ssl3_callback_ctrl 168
 #define SSL_F_ssl3_cert_verify_hash 169
 #define SSL_F_ssl3_check_cert_and_algorithm 170
 #define SSL_F_ssl3_connect 171

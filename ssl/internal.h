@@ -579,8 +579,6 @@ struct ssl_protocol_method_st {
   int (*ssl_pending)(const SSL *s);
   size_t (*num_ciphers)(void);
   const SSL_CIPHER *(*get_cipher)(size_t i);
-  long (*ssl_callback_ctrl)(SSL *s, int cb_id, void (*fp)(void));
-  long (*ssl_ctx_callback_ctrl)(SSL_CTX *s, int cb_id, void (*fp)(void));
   /* Handshake header length */
   unsigned int hhlen;
   /* Set the handshake header */
@@ -782,8 +780,6 @@ int ssl3_write(SSL *s, const void *buf, int len);
 int ssl3_shutdown(SSL *s);
 long ssl3_ctrl(SSL *s, int cmd, long larg, void *parg);
 long ssl3_ctx_ctrl(SSL_CTX *s, int cmd, long larg, void *parg);
-long ssl3_callback_ctrl(SSL *s, int cmd, void (*fp)(void));
-long ssl3_ctx_callback_ctrl(SSL_CTX *s, int cmd, void (*fp)(void));
 int ssl3_pending(const SSL *s);
 
 /* ssl3_record_sequence_update increments the sequence number in |seq|. It

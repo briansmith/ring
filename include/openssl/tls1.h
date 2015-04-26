@@ -321,9 +321,15 @@ OPENSSL_EXPORT int SSL_get_shared_sigalgs(SSL *s, int idx, int *psign,
   SSL_ctrl(s, SSL_CTRL_SET_TLSEXT_HOSTNAME, TLSEXT_NAMETYPE_host_name, \
            (char *)name)
 
-#define SSL_CTX_set_tlsext_servername_callback(ctx, cb)         \
-  SSL_CTX_callback_ctrl(ctx, SSL_CTRL_SET_TLSEXT_SERVERNAME_CB, \
-                        (void (*)(void))cb)
+/* SSL_CTX_set_tlsext_servername_callback configures |callback| to be called on
+ * the server after ClientHello extensions have been parsed and returns one.
+ * |callback| may use |SSL_get_servername| to examine the server_name extension
+ * and return a |SSL_TLSEXT_ERR_*| value. If it returns |SSL_TLSEXT_ERR_NOACK|,
+ * the server_name extension is not acknowledged in the ServerHello. If the
+ * return value signals an alert, |callback| should set |*out_alert| to the
+ * alert to send. */
+OPENSSL_EXPORT int SSL_CTX_set_tlsext_servername_callback(
+    SSL_CTX *ctx, int (*callback)(SSL *ssl, int *out_alert, void *arg));
 
 #define SSL_TLSEXT_ERR_OK 0
 #define SSL_TLSEXT_ERR_ALERT_WARNING 1
@@ -338,10 +344,33 @@ OPENSSL_EXPORT int SSL_get_shared_sigalgs(SSL *s, int idx, int *psign,
 #define SSL_CTX_set_tlsext_ticket_keys(ctx, keys, keylen) \
   SSL_CTX_ctrl((ctx), SSL_CTRL_SET_TLSEXT_TICKET_KEYS, (keylen), (keys))
 
-#define SSL_CTX_set_tlsext_ticket_key_cb(ssl, cb)               \
-  SSL_CTX_callback_ctrl(ssl, SSL_CTRL_SET_TLSEXT_TICKET_KEY_CB, \
-                        (void (*)(void))cb)
-
+/* SSL_CTX_set_tlsext_ticket_key_cb sets the ticket callback to |callback| and
+ * returns one. |callback| will be called when encrypting a new ticket and when
+ * decrypting a ticket from the client.
+ *
+ * In both modes, |ctx| and |hmac_ctx| will already have been initialized with
+ * |EVP_CIPHER_CTX_init| and |HMAC_CTX_init|, respectively. |callback|
+ * configures |hmac_ctx| with an HMAC digest and key, and configures |ctx|
+ * for encryption or decryption, based on the mode.
+ *
+ * When encrypting a new ticket, |encrypt| will be one. It writes a public
+ * 16-byte key name to |key_name| and a fresh IV to |iv|. The output IV length
+ * must match |EVP_CIPHER_CTX_iv_length| of the cipher selected. In this mode,
+ * |callback| returns 1 on success and -1 on error.
+ *
+ * When decrypting a ticket, |encrypt| will be zero. |key_name| will point to a
+ * 16-byte key name and |iv| points to an IV. The length of the IV consumed must
+ * match |EVP_CIPHER_CTX_iv_length| of the cipher selected. In this mode,
+ * |callback| returns -1 to abort the handshake, 0 if decrypting the ticket
+ * failed, and 1 or 2 on success. If it returns 2, the ticket will be renewed.
+ * This may be used to re-key the ticket.
+ *
+ * WARNING: |callback| wildly breaks the usual return value convention and is
+ * called in two different modes. */
+OPENSSL_EXPORT int SSL_CTX_set_tlsext_ticket_key_cb(
+    SSL_CTX *ctx, int (*callback)(SSL *ssl, uint8_t *key_name, uint8_t *iv,
+                                  EVP_CIPHER_CTX *ctx, HMAC_CTX *hmac_ctx,
+                                  int encrypt));
 
 /* PSK ciphersuites from 4279 */
 #define TLS1_CK_PSK_WITH_RC4_128_SHA                    0x0300008A

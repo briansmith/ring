@@ -79,8 +79,6 @@ static const SSL_PROTOCOL_METHOD DTLS_protocol_method = {
     ssl3_pending,
     ssl3_num_ciphers,
     dtls1_get_cipher,
-    ssl3_callback_ctrl,
-    ssl3_ctx_callback_ctrl,
     DTLS1_HM_HEADER_LENGTH,
     dtls1_set_handshake_header,
     dtls1_handshake_write,

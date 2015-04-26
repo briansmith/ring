@@ -69,7 +69,6 @@ SSL,function,164,dtls1_send_hello_verify_request
 SSL,function,165,dtls1_write_app_data_bytes
 SSL,function,166,i2d_SSL_SESSION
 SSL,function,167,ssl3_accept
-SSL,function,168,ssl3_callback_ctrl
 SSL,function,169,ssl3_cert_verify_hash
 SSL,function,170,ssl3_check_cert_and_algorithm
 SSL,function,171,ssl3_connect

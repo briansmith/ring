@@ -615,10 +615,6 @@ long ssl3_ctrl(SSL *s, int cmd, long larg, void *parg) {
       OPENSSL_PUT_ERROR(SSL, ssl3_ctrl, ERR_R_SHOULD_NOT_HAVE_BEEN_CALLED);
       break;
 
-    case SSL_CTRL_SET_TMP_RSA_CB:
-      OPENSSL_PUT_ERROR(SSL, ssl3_ctrl, ERR_R_SHOULD_NOT_HAVE_BEEN_CALLED);
-      return ret;
-
     case SSL_CTRL_SET_TMP_DH: {
       DH *dh = (DH *)parg;
       if (dh == NULL) {
@@ -641,10 +637,6 @@ long ssl3_ctrl(SSL *s, int cmd, long larg, void *parg) {
       break;
     }
 
-    case SSL_CTRL_SET_TMP_DH_CB:
-      OPENSSL_PUT_ERROR(SSL, ssl3_ctrl, ERR_R_SHOULD_NOT_HAVE_BEEN_CALLED);
-      return ret;
-
     case SSL_CTRL_SET_TMP_ECDH: {
       /* For historical reasons, this API expects an |EC_KEY|, but only the
        * group is used. */
@@ -657,10 +649,6 @@ long ssl3_ctrl(SSL *s, int cmd, long larg, void *parg) {
       ret = 1;
       break;
     }
-
-    case SSL_CTRL_SET_TMP_ECDH_CB:
-      OPENSSL_PUT_ERROR(SSL, ssl3_ctrl, ERR_R_SHOULD_NOT_HAVE_BEEN_CALLED);
-      return ret;
 
     case SSL_CTRL_SET_TLSEXT_HOSTNAME:
       if (larg == TLSEXT_NAMETYPE_host_name) {
@@ -831,29 +819,6 @@ long ssl3_ctrl(SSL *s, int cmd, long larg, void *parg) {
   return ret;
 }
 
-long ssl3_callback_ctrl(SSL *s, int cmd, void (*fp)(void)) {
-  int ret = 0;
-
-  switch (cmd) {
-    case SSL_CTRL_SET_TMP_RSA_CB:
-      /* Ignore the callback; temporary RSA keys are never used. */
-      break;
-
-    case SSL_CTRL_SET_TMP_DH_CB:
-      s->cert->dh_tmp_cb = (DH * (*)(SSL *, int, int))fp;
-      break;
-
-    case SSL_CTRL_SET_TMP_ECDH_CB:
-      s->cert->ecdh_tmp_cb = (EC_KEY * (*)(SSL *, int, int))fp;
-      break;
-
-    default:
-      break;
-  }
-
-  return ret;
-}
-
 long ssl3_ctx_ctrl(SSL_CTX *ctx, int cmd, long larg, void *parg) {
   CERT *cert;
 
@@ -865,10 +830,6 @@ long ssl3_ctx_ctrl(SSL_CTX *ctx, int cmd, long larg, void *parg) {
       return 0;
 
     case SSL_CTRL_SET_TMP_RSA:
-      OPENSSL_PUT_ERROR(SSL, ssl3_ctx_ctrl, ERR_R_SHOULD_NOT_HAVE_BEEN_CALLED);
-      return 0;
-
-    case SSL_CTRL_SET_TMP_RSA_CB:
       OPENSSL_PUT_ERROR(SSL, ssl3_ctx_ctrl, ERR_R_SHOULD_NOT_HAVE_BEEN_CALLED);
       return 0;
 
@@ -891,10 +852,6 @@ long ssl3_ctx_ctrl(SSL_CTX *ctx, int cmd, long larg, void *parg) {
       return 1;
     }
 
-    case SSL_CTRL_SET_TMP_DH_CB:
-      OPENSSL_PUT_ERROR(SSL, ssl3_ctx_ctrl, ERR_R_SHOULD_NOT_HAVE_BEEN_CALLED);
-      return 0;
-
     case SSL_CTRL_SET_TMP_ECDH: {
       /* For historical reasons, this API expects an |EC_KEY|, but only the
        * group is used. */
@@ -906,10 +863,6 @@ long ssl3_ctx_ctrl(SSL_CTX *ctx, int cmd, long larg, void *parg) {
       ctx->cert->ecdh_nid = EC_GROUP_get_curve_name(EC_KEY_get0_group(ec_key));
       return 1;
     }
-
-    case SSL_CTRL_SET_TMP_ECDH_CB:
-      OPENSSL_PUT_ERROR(SSL, ssl3_ctx_ctrl, ERR_R_SHOULD_NOT_HAVE_BEEN_CALLED);
-      return 0;
 
     case SSL_CTRL_SET_TLSEXT_SERVERNAME_ARG:
       ctx->tlsext_servername_arg = parg;
@@ -1024,37 +977,17 @@ long ssl3_ctx_ctrl(SSL_CTX *ctx, int cmd, long larg, void *parg) {
   return 1;
 }
 
-long ssl3_ctx_callback_ctrl(SSL_CTX *ctx, int cmd, void (*fp)(void)) {
-  CERT *cert;
+int SSL_CTX_set_tlsext_servername_callback(
+    SSL_CTX *ctx, int (*callback)(SSL *ssl, int *out_alert, void *arg)) {
+  ctx->tlsext_servername_callback = callback;
+  return 1;
+}
 
-  cert = ctx->cert;
-
-  switch (cmd) {
-    case SSL_CTRL_SET_TMP_RSA_CB:
-      /* Ignore the callback; temporary RSA keys are never used. */
-      break;
-
-    case SSL_CTRL_SET_TMP_DH_CB:
-      cert->dh_tmp_cb = (DH * (*)(SSL *, int, int))fp;
-      break;
-
-    case SSL_CTRL_SET_TMP_ECDH_CB:
-      cert->ecdh_tmp_cb = (EC_KEY * (*)(SSL *, int, int))fp;
-      break;
-
-    case SSL_CTRL_SET_TLSEXT_SERVERNAME_CB:
-      ctx->tlsext_servername_callback = (int (*)(SSL *, int *, void *))fp;
-      break;
-
-    case SSL_CTRL_SET_TLSEXT_TICKET_KEY_CB:
-      ctx->tlsext_ticket_key_cb = (int (
-          *)(SSL *, uint8_t *, uint8_t *, EVP_CIPHER_CTX *, HMAC_CTX *, int))fp;
-      break;
-
-    default:
-      return 0;
-  }
-
+int SSL_CTX_set_tlsext_ticket_key_cb(
+    SSL_CTX *ctx, int (*callback)(SSL *ssl, uint8_t *key_name, uint8_t *iv,
+                                  EVP_CIPHER_CTX *ctx, HMAC_CTX *hmac_ctx,
+                                  int encrypt)) {
+  ctx->tlsext_ticket_key_cb = callback;
   return 1;
 }
 
