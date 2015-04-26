@@ -1487,9 +1487,6 @@ struct ssl_st {
  * for the peer, but |SSL_read| will require the handshake to be completed. */
 OPENSSL_EXPORT int SSL_in_false_start(const SSL *s);
 
-/* Deprecated: SSL_cutthrough_complete calls |SSL_in_false_start|. */
-OPENSSL_EXPORT int SSL_cutthrough_complete(const SSL *s);
-
 /* The following 2 states are kept in ssl->rstate when reads fail,
  * you should not need these */
 #define SSL_ST_READ_HEADER 0xF0
@@ -2355,6 +2352,9 @@ OPENSSL_EXPORT int SSL_CTX_sess_timeouts(const SSL_CTX *ctx);
 
 /* SSL_CTX_sess_cache_full returns zero. */
 OPENSSL_EXPORT int SSL_CTX_sess_cache_full(const SSL_CTX *ctx);
+
+/* SSL_cutthrough_complete calls |SSL_in_false_start|. */
+OPENSSL_EXPORT int SSL_cutthrough_complete(const SSL *s);
 
 
 /* Android compatibility section.
