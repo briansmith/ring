@@ -161,6 +161,9 @@ OPENSSL_COMPILE_ASSERT(SSL_R_TLSV1_ALERT_NO_RENEGOTIATION ==
                            SSL_AD_NO_RENEGOTIATION + SSL_AD_REASON_OFFSET,
                        ssl_alert_reason_code_mismatch);
 
+/* kMaxHandshakeSize is the maximum size, in bytes, of a handshake message. */
+static const size_t kMaxHandshakeSize = (1u << 24) - 1;
+
 static CRYPTO_EX_DATA_CLASS g_ex_data_class_ssl = CRYPTO_EX_DATA_CLASS_INIT;
 static CRYPTO_EX_DATA_CLASS g_ex_data_class_ssl_ctx = CRYPTO_EX_DATA_CLASS_INIT;
 
@@ -1009,18 +1012,50 @@ uint32_t SSL_CTX_get_mode(const SSL_CTX *ctx) { return ctx->mode; }
 
 uint32_t SSL_get_mode(const SSL *ssl) { return ssl->mode; }
 
+size_t SSL_CTX_get_max_cert_list(const SSL_CTX *ctx) {
+  return ctx->max_cert_list;
+}
+
+void SSL_CTX_set_max_cert_list(SSL_CTX *ctx, size_t max_cert_list) {
+  if (max_cert_list > kMaxHandshakeSize) {
+    max_cert_list = kMaxHandshakeSize;
+  }
+  ctx->max_cert_list = (uint32_t)max_cert_list;
+}
+
+size_t SSL_get_max_cert_list(const SSL *ssl) {
+  return ssl->max_cert_list;
+}
+
+void SSL_set_max_cert_list(SSL *ssl, size_t max_cert_list) {
+  if (max_cert_list > kMaxHandshakeSize) {
+    max_cert_list = kMaxHandshakeSize;
+  }
+  ssl->max_cert_list = (uint32_t)max_cert_list;
+}
+
+void SSL_CTX_set_max_send_fragment(SSL_CTX *ctx, size_t max_send_fragment) {
+  if (max_send_fragment < 512) {
+    max_send_fragment = 512;
+  }
+  if (max_send_fragment > SSL3_RT_MAX_PLAIN_LENGTH) {
+    max_send_fragment = SSL3_RT_MAX_PLAIN_LENGTH;
+  }
+  ctx->max_send_fragment = (uint16_t)max_send_fragment;
+}
+
+void SSL_set_max_send_fragment(SSL *ssl, size_t max_send_fragment) {
+  if (max_send_fragment < 512) {
+    max_send_fragment = 512;
+  }
+  if (max_send_fragment > SSL3_RT_MAX_PLAIN_LENGTH) {
+    max_send_fragment = SSL3_RT_MAX_PLAIN_LENGTH;
+  }
+  ssl->max_send_fragment = (uint16_t)max_send_fragment;
+}
+
 long SSL_ctrl(SSL *s, int cmd, long larg, void *parg) {
-  long l;
-
   switch (cmd) {
-    case SSL_CTRL_GET_MAX_CERT_LIST:
-      return s->max_cert_list;
-
-    case SSL_CTRL_SET_MAX_CERT_LIST:
-      l = s->max_cert_list;
-      s->max_cert_list = larg;
-      return l;
-
     case SSL_CTRL_SET_MTU:
       if (larg < (long)dtls1_min_mtu()) {
         return 0;
@@ -1030,13 +1065,6 @@ long SSL_ctrl(SSL *s, int cmd, long larg, void *parg) {
         return larg;
       }
       return 0;
-
-    case SSL_CTRL_SET_MAX_SEND_FRAGMENT:
-      if (larg < 512 || larg > SSL3_RT_MAX_PLAIN_LENGTH) {
-        return 0;
-      }
-      s->max_send_fragment = larg;
-      return 1;
 
     case SSL_CTRL_GET_RI_SUPPORT:
       if (s->s3) {
@@ -1068,14 +1096,6 @@ long SSL_CTX_ctrl(SSL_CTX *ctx, int cmd, long larg, void *parg) {
   long l;
 
   switch (cmd) {
-    case SSL_CTRL_GET_MAX_CERT_LIST:
-      return ctx->max_cert_list;
-
-    case SSL_CTRL_SET_MAX_CERT_LIST:
-      l = ctx->max_cert_list;
-      ctx->max_cert_list = larg;
-      return l;
-
     case SSL_CTRL_SET_SESS_CACHE_SIZE:
       l = ctx->session_cache_size;
       ctx->session_cache_size = larg;
@@ -1094,13 +1114,6 @@ long SSL_CTX_ctrl(SSL_CTX *ctx, int cmd, long larg, void *parg) {
 
     case SSL_CTRL_SESS_NUMBER:
       return lh_SSL_SESSION_num_items(ctx->sessions);
-
-    case SSL_CTRL_SET_MAX_SEND_FRAGMENT:
-      if (larg < 512 || larg > SSL3_RT_MAX_PLAIN_LENGTH) {
-        return 0;
-      }
-      ctx->max_send_fragment = larg;
-      return 1;
 
     default:
       return ctx->method->ssl_ctx_ctrl(ctx, cmd, larg, parg);

@@ -925,7 +925,7 @@ int ssl3_get_server_certificate(SSL *s) {
   const uint8_t *data;
 
   n = s->method->ssl_get_message(s, SSL3_ST_CR_CERT_A, SSL3_ST_CR_CERT_B,
-                                 SSL3_MT_CERTIFICATE, s->max_cert_list,
+                                 SSL3_MT_CERTIFICATE, (long)s->max_cert_list,
                                  ssl_hash_message, &ok);
 
   if (!ok) {

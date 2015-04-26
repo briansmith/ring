@@ -470,8 +470,8 @@ static hm_fragment *dtls1_get_buffered_message(
  * be greater if the maximum certificate list size requires it. */
 static size_t dtls1_max_handshake_message_len(const SSL *s) {
   size_t max_len = DTLS1_HM_HEADER_LENGTH + SSL3_RT_MAX_ENCRYPTED_LENGTH;
-  if (max_len < (size_t)s->max_cert_list) {
-    return (size_t)s->max_cert_list;
+  if (max_len < s->max_cert_list) {
+    return s->max_cert_list;
   }
   return max_len;
 }
