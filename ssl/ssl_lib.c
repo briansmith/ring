@@ -2833,7 +2833,7 @@ uint16_t ssl3_get_mutual_version(SSL *s, uint16_t client_version) {
 }
 
 uint16_t ssl3_get_max_client_version(SSL *s) {
-  unsigned long options = s->options;
+  uint32_t options = s->options;
   uint16_t version = 0;
 
   /* OpenSSL's API for controlling versions entails blacklisting individual
