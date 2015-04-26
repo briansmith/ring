@@ -687,11 +687,6 @@ long ssl3_ctrl(SSL *s, int cmd, long larg, void *parg) {
       }
       break;
 
-    case SSL_CTRL_SET_TLSEXT_DEBUG_ARG:
-      s->tlsext_debug_arg = parg;
-      ret = 1;
-      break;
-
     case SSL_CTRL_CHAIN:
       if (larg) {
         return ssl_cert_set1_chain(s->cert, (STACK_OF(X509) *)parg);
@@ -850,11 +845,6 @@ long ssl3_callback_ctrl(SSL *s, int cmd, void (*fp)(void)) {
 
     case SSL_CTRL_SET_TMP_ECDH_CB:
       s->cert->ecdh_tmp_cb = (EC_KEY * (*)(SSL *, int, int))fp;
-      break;
-
-    case SSL_CTRL_SET_TLSEXT_DEBUG_CB:
-      s->tlsext_debug_cb =
-          (void (*)(SSL *, int, int, uint8_t *, int, void *))fp;
       break;
 
     default:

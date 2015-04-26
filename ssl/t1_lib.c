@@ -1411,11 +1411,6 @@ static int ssl_scan_clienthello_tlsext(SSL *s, CBS *cbs, int *out_alert) {
       return 0;
     }
 
-    if (s->tlsext_debug_cb) {
-      s->tlsext_debug_cb(s, 0, type, (uint8_t *)CBS_data(&extension),
-                         CBS_len(&extension), s->tlsext_debug_arg);
-    }
-
     /* The servername extension is treated as follows:
 
        - Only the hostname type is supported with a maximum length of 255.
@@ -1740,11 +1735,6 @@ static int ssl_scan_serverhello_tlsext(SSL *s, CBS *cbs, int *out_alert) {
         !CBS_get_u16_length_prefixed(&extensions, &extension)) {
       *out_alert = SSL_AD_DECODE_ERROR;
       return 0;
-    }
-
-    if (s->tlsext_debug_cb) {
-      s->tlsext_debug_cb(s, 1, type, (uint8_t *)CBS_data(&extension),
-                         CBS_len(&extension), s->tlsext_debug_arg);
     }
 
     if (type == TLSEXT_TYPE_server_name) {

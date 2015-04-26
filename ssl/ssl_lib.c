@@ -292,8 +292,6 @@ SSL *SSL_new(SSL_CTX *ctx) {
 
   CRYPTO_add(&ctx->references, 1, CRYPTO_LOCK_SSL_CTX);
   s->ctx = ctx;
-  s->tlsext_debug_cb = 0;
-  s->tlsext_debug_arg = NULL;
   s->tlsext_ticket_expected = 0;
   CRYPTO_add(&ctx->references, 1, CRYPTO_LOCK_SSL_CTX);
   s->initial_ctx = ctx;

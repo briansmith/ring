@@ -1333,10 +1333,6 @@ struct ssl_st {
   int client_version; /* what was passed, used for
                        * SSLv3/TLS rollback check */
   unsigned int max_send_fragment;
-  /* TLS extension debug callback */
-  void (*tlsext_debug_cb)(SSL *s, int client_server, int type, uint8_t *data,
-                          int len, void *arg);
-  void *tlsext_debug_arg;
   char *tlsext_hostname;
   /* should_ack_sni is true if the SNI extension should be acked. This is
    * only used by a server. */
@@ -1608,8 +1604,6 @@ DECLARE_PEM_rw(SSL_SESSION, SSL_SESSION)
 #define SSL_CTRL_SET_TLSEXT_SERVERNAME_CB 53
 #define SSL_CTRL_SET_TLSEXT_SERVERNAME_ARG 54
 #define SSL_CTRL_SET_TLSEXT_HOSTNAME 55
-#define SSL_CTRL_SET_TLSEXT_DEBUG_CB 56
-#define SSL_CTRL_SET_TLSEXT_DEBUG_ARG 57
 #define SSL_CTRL_GET_TLSEXT_TICKET_KEYS 58
 #define SSL_CTRL_SET_TLSEXT_TICKET_KEYS 59
 #define SSL_CTRL_SET_TLSEXT_STATUS_REQ_CB 63
