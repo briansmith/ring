@@ -1029,27 +1029,7 @@ struct ssl_ctx_st {
 OPENSSL_EXPORT LHASH_OF(SSL_SESSION) *SSL_CTX_sessions(SSL_CTX *ctx);
 #define SSL_CTX_sess_number(ctx) \
   SSL_CTX_ctrl(ctx, SSL_CTRL_SESS_NUMBER, 0, NULL)
-#define SSL_CTX_sess_connect(ctx) \
-  SSL_CTX_ctrl(ctx, SSL_CTRL_SESS_CONNECT, 0, NULL)
-#define SSL_CTX_sess_connect_good(ctx) \
-  SSL_CTX_ctrl(ctx, SSL_CTRL_SESS_CONNECT_GOOD, 0, NULL)
-#define SSL_CTX_sess_connect_renegotiate(ctx) \
-  SSL_CTX_ctrl(ctx, SSL_CTRL_SESS_CONNECT_RENEGOTIATE, 0, NULL)
-#define SSL_CTX_sess_accept(ctx) \
-  SSL_CTX_ctrl(ctx, SSL_CTRL_SESS_ACCEPT, 0, NULL)
-#define SSL_CTX_sess_accept_renegotiate(ctx) \
-  SSL_CTX_ctrl(ctx, SSL_CTRL_SESS_ACCEPT_RENEGOTIATE, 0, NULL)
-#define SSL_CTX_sess_accept_good(ctx) \
-  SSL_CTX_ctrl(ctx, SSL_CTRL_SESS_ACCEPT_GOOD, 0, NULL)
-#define SSL_CTX_sess_hits(ctx) SSL_CTX_ctrl(ctx, SSL_CTRL_SESS_HIT, 0, NULL)
-#define SSL_CTX_sess_cb_hits(ctx) \
-  SSL_CTX_ctrl(ctx, SSL_CTRL_SESS_CB_HIT, 0, NULL)
-#define SSL_CTX_sess_misses(ctx) \
-  SSL_CTX_ctrl(ctx, SSL_CTRL_SESS_MISSES, 0, NULL)
-#define SSL_CTX_sess_timeouts(ctx) \
-  SSL_CTX_ctrl(ctx, SSL_CTRL_SESS_TIMEOUTS, 0, NULL)
-#define SSL_CTX_sess_cache_full(ctx) \
-  SSL_CTX_ctrl(ctx, SSL_CTRL_SESS_CACHE_FULL, 0, NULL)
+
 /* SSL_CTX_enable_tls_channel_id configures a TLS server to accept TLS client
  * IDs from clients. Returns 1 on success. */
 #define SSL_CTX_enable_tls_channel_id(ctx) \
@@ -1619,17 +1599,6 @@ DECLARE_PEM_rw(SSL_SESSION, SSL_SESSION)
 #define SSL_CTRL_SET_MTU 17
 /* Stats */
 #define SSL_CTRL_SESS_NUMBER 20
-#define SSL_CTRL_SESS_CONNECT 21
-#define SSL_CTRL_SESS_CONNECT_GOOD 22
-#define SSL_CTRL_SESS_CONNECT_RENEGOTIATE 23
-#define SSL_CTRL_SESS_ACCEPT 24
-#define SSL_CTRL_SESS_ACCEPT_GOOD 25
-#define SSL_CTRL_SESS_ACCEPT_RENEGOTIATE 26
-#define SSL_CTRL_SESS_HIT 27
-#define SSL_CTRL_SESS_CB_HIT 28
-#define SSL_CTRL_SESS_MISSES 29
-#define SSL_CTRL_SESS_TIMEOUTS 30
-#define SSL_CTRL_SESS_CACHE_FULL 31
 
 #define SSL_CTRL_SET_SESS_CACHE_SIZE 42
 #define SSL_CTRL_GET_SESS_CACHE_SIZE 43
@@ -2345,6 +2314,39 @@ OPENSSL_EXPORT void SSL_CTX_set_tmp_rsa_callback(
 OPENSSL_EXPORT void SSL_set_tmp_rsa_callback(SSL *ssl,
                                              RSA *(*cb)(SSL *ssl, int is_export,
                                                         int keylength));
+
+/* SSL_CTX_sess_connect returns zero. */
+OPENSSL_EXPORT int SSL_CTX_sess_connect(const SSL_CTX *ctx);
+
+/* SSL_CTX_sess_connect_good returns zero. */
+OPENSSL_EXPORT int SSL_CTX_sess_connect_good(const SSL_CTX *ctx);
+
+/* SSL_CTX_sess_connect_renegotiate returns zero. */
+OPENSSL_EXPORT int SSL_CTX_sess_connect_renegotiate(const SSL_CTX *ctx);
+
+/* SSL_CTX_sess_accept returns zero. */
+OPENSSL_EXPORT int SSL_CTX_sess_accept(const SSL_CTX *ctx);
+
+/* SSL_CTX_sess_accept_renegotiate returns zero. */
+OPENSSL_EXPORT int SSL_CTX_sess_accept_renegotiate(const SSL_CTX *ctx);
+
+/* SSL_CTX_sess_accept_good returns zero. */
+OPENSSL_EXPORT int SSL_CTX_sess_accept_good(const SSL_CTX *ctx);
+
+/* SSL_CTX_sess_hits returns zero. */
+OPENSSL_EXPORT int SSL_CTX_sess_hits(const SSL_CTX *ctx);
+
+/* SSL_CTX_sess_cb_hits returns zero. */
+OPENSSL_EXPORT int SSL_CTX_sess_cb_hits(const SSL_CTX *ctx);
+
+/* SSL_CTX_sess_misses returns zero. */
+OPENSSL_EXPORT int SSL_CTX_sess_misses(const SSL_CTX *ctx);
+
+/* SSL_CTX_sess_timeouts returns zero. */
+OPENSSL_EXPORT int SSL_CTX_sess_timeouts(const SSL_CTX *ctx);
+
+/* SSL_CTX_sess_cache_full returns zero. */
+OPENSSL_EXPORT int SSL_CTX_sess_cache_full(const SSL_CTX *ctx);
 
 
 /* Android compatibility section.

@@ -1095,21 +1095,6 @@ long SSL_CTX_ctrl(SSL_CTX *ctx, int cmd, long larg, void *parg) {
     case SSL_CTRL_SESS_NUMBER:
       return lh_SSL_SESSION_num_items(ctx->sessions);
 
-    case SSL_CTRL_SESS_CONNECT:
-    case SSL_CTRL_SESS_CONNECT_GOOD:
-    case SSL_CTRL_SESS_CONNECT_RENEGOTIATE:
-    case SSL_CTRL_SESS_ACCEPT:
-    case SSL_CTRL_SESS_ACCEPT_GOOD:
-    case SSL_CTRL_SESS_ACCEPT_RENEGOTIATE:
-    case SSL_CTRL_SESS_HIT:
-    case SSL_CTRL_SESS_CB_HIT:
-    case SSL_CTRL_SESS_MISSES:
-    case SSL_CTRL_SESS_TIMEOUTS:
-    case SSL_CTRL_SESS_CACHE_FULL:
-      /* Statistics are no longer supported.
-       * TODO(davidben): Try to remove the accessors altogether. */
-      return 0;
-
     case SSL_CTRL_SET_MAX_SEND_FRAGMENT:
       if (larg < 512 || larg > SSL3_RT_MAX_PLAIN_LENGTH) {
         return 0;
@@ -2990,3 +2975,15 @@ int SSL_get_rc4_state(const SSL *ssl, const RC4_KEY **read_key,
   return EVP_AEAD_CTX_get_rc4_state(&ssl->aead_read_ctx->ctx, read_key) &&
          EVP_AEAD_CTX_get_rc4_state(&ssl->aead_write_ctx->ctx, write_key);
 }
+
+int SSL_CTX_sess_connect(const SSL_CTX *ctx) { return 0; }
+int SSL_CTX_sess_connect_good(const SSL_CTX *ctx) { return 0; }
+int SSL_CTX_sess_connect_renegotiate(const SSL_CTX *ctx) { return 0; }
+int SSL_CTX_sess_accept(const SSL_CTX *ctx) { return 0; }
+int SSL_CTX_sess_accept_renegotiate(const SSL_CTX *ctx) { return 0; }
+int SSL_CTX_sess_accept_good(const SSL_CTX *ctx) { return 0; }
+int SSL_CTX_sess_hits(const SSL_CTX *ctx) { return 0; }
+int SSL_CTX_sess_cb_hits(const SSL_CTX *ctx) { return 0; }
+int SSL_CTX_sess_misses(const SSL_CTX *ctx) { return 0; }
+int SSL_CTX_sess_timeouts(const SSL_CTX *ctx) { return 0; }
+int SSL_CTX_sess_cache_full(const SSL_CTX *ctx) { return 0; }
