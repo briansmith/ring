@@ -2459,7 +2459,8 @@ int ssl3_send_new_session_ticket(SSL *s) {
     /* Initialize HMAC and cipher contexts. If callback present it does all the
      * work otherwise use generated values from parent ctx. */
     if (tctx->tlsext_ticket_key_cb) {
-      if (tctx->tlsext_ticket_key_cb(s, key_name, iv, &ctx, &hctx, 1) < 0) {
+      if (tctx->tlsext_ticket_key_cb(s, key_name, iv, &ctx, &hctx,
+                                     1 /* encrypt */) < 0) {
         goto err;
       }
     } else {

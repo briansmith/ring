@@ -2116,8 +2116,11 @@ static int tls_decrypt_ticket(SSL *s, const uint8_t *etick, int eticklen,
   EVP_CIPHER_CTX ctx;
   SSL_CTX *tctx = s->initial_ctx;
 
-  /* Need at least keyname + iv + some encrypted data */
-  if (eticklen < 48) {
+  /* Ensure there is room for the key name and the largest IV
+   * |tlsext_ticket_key_cb| may try to consume. The real limit may be lower, but
+   * the maximum IV length should be well under the minimum size for the
+   * session material and HMAC. */
+  if (eticklen < 16 + EVP_MAX_IV_LENGTH) {
     return 2;
   }
 
@@ -2126,7 +2129,8 @@ static int tls_decrypt_ticket(SSL *s, const uint8_t *etick, int eticklen,
   EVP_CIPHER_CTX_init(&ctx);
   if (tctx->tlsext_ticket_key_cb) {
     uint8_t *nctick = (uint8_t *)etick;
-    int rv = tctx->tlsext_ticket_key_cb(s, nctick, nctick + 16, &ctx, &hctx, 0);
+    int rv = tctx->tlsext_ticket_key_cb(s, nctick, nctick + 16, &ctx, &hctx,
+                                        0 /* decrypt */);
     if (rv < 0) {
       return -1;
     }
@@ -2151,13 +2155,13 @@ static int tls_decrypt_ticket(SSL *s, const uint8_t *etick, int eticklen,
     }
   }
 
-  /* Attempt to process session ticket, first conduct sanity and integrity
-   * checks on ticket. */
+  /* First, check the MAC. The MAC is at the end of the ticket. */
   mlen = HMAC_size(&hctx);
-  if (mlen < 0) {
+  if (eticklen < 16 + EVP_CIPHER_CTX_iv_length(&ctx) + 1 + mlen) {
+    /* The ticket must be large enough for key name, IV, data, and MAC. */
     HMAC_CTX_cleanup(&hctx);
     EVP_CIPHER_CTX_cleanup(&ctx);
-    return -1;
+    return 2;
   }
   eticklen -= mlen;
   /* Check HMAC of encrypted ticket */
