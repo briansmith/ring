@@ -409,7 +409,6 @@ typedef struct ssl3_state_st {
    * no more data in the read or write buffers */
   int renegotiate;
   int total_renegotiations;
-  int num_renegotiations;
 
   /* State pertaining to the pending handshake.
    *

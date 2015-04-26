@@ -589,14 +589,6 @@ long ssl3_ctrl(SSL *s, int cmd, long larg, void *parg) {
       break;
 
     case SSL_CTRL_GET_NUM_RENEGOTIATIONS:
-      ret = s->s3->num_renegotiations;
-      break;
-
-    case SSL_CTRL_CLEAR_NUM_RENEGOTIATIONS:
-      ret = s->s3->num_renegotiations;
-      s->s3->num_renegotiations = 0;
-      break;
-
     case SSL_CTRL_GET_TOTAL_RENEGOTIATIONS:
       ret = s->s3->total_renegotiations;
       break;
@@ -1249,7 +1241,6 @@ int ssl3_renegotiate_check(SSL *s) {
      * need to go to SSL_ST_ACCEPT. */
     s->state = SSL_ST_RENEGOTIATE;
     s->s3->renegotiate = 0;
-    s->s3->num_renegotiations++;
     s->s3->total_renegotiations++;
     return 1;
   }
