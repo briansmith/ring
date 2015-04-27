@@ -323,7 +323,7 @@ int EVP_PKEY_set1_DH(EVP_PKEY *pkey, DH *key) {
 }
 
 int EVP_PKEY_assign_DH(EVP_PKEY *pkey, DH *key) {
-  return EVP_PKEY_assign(pkey, EVP_PKEY_EC, key);
+  return EVP_PKEY_assign(pkey, EVP_PKEY_DH, key);
 }
 
 DH *EVP_PKEY_get1_DH(EVP_PKEY *pkey) {
