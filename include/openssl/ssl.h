@@ -1573,16 +1573,9 @@ DECLARE_PEM_rw(SSL_SESSION, SSL_SESSION)
 #define SSL_ERROR_PENDING_SESSION 11
 #define SSL_ERROR_PENDING_CERTIFICATE 12
 
-#define SSL_CTRL_NEED_TMP_RSA 1
-#define SSL_CTRL_SET_TMP_RSA 2
 #define SSL_CTRL_SET_TMP_DH 3
 #define SSL_CTRL_SET_TMP_ECDH 4
 
-#define SSL_CTRL_GET_SESSION_REUSED 8
-#define SSL_CTRL_GET_CLIENT_CERT_REQUEST 9
-#define SSL_CTRL_GET_NUM_RENEGOTIATIONS 10
-#define SSL_CTRL_GET_TOTAL_RENEGOTIATIONS 12
-#define SSL_CTRL_GET_FLAGS 13
 #define SSL_CTRL_EXTRA_CHAIN_CERT 14
 
 /* see tls1.h for macros based on these */
@@ -1647,17 +1640,17 @@ OPENSSL_EXPORT int DTLSv1_get_timeout(const SSL *ssl, OPENSSL_timeval *out);
  * WARNING: This function breaks the usual return value convention. */
 OPENSSL_EXPORT int DTLSv1_handle_timeout(SSL *ssl);
 
-#define SSL_session_reused(ssl) \
-  SSL_ctrl((ssl), SSL_CTRL_GET_SESSION_REUSED, 0, NULL)
-#define SSL_num_renegotiations(ssl) \
-  SSL_ctrl((ssl), SSL_CTRL_GET_NUM_RENEGOTIATIONS, 0, NULL)
-#define SSL_total_renegotiations(ssl) \
-  SSL_ctrl((ssl), SSL_CTRL_GET_TOTAL_RENEGOTIATIONS, 0, NULL)
+/* SSL_session_reused returns one if |ssl| performed an abbreviated handshake
+ * and zero otherwise.
+ *
+ * TODO(davidben): Hammer down the semantics of this API while a handshake,
+ * initial or renego, is in progress. */
+OPENSSL_EXPORT int SSL_session_reused(const SSL *ssl);
 
-#define SSL_CTX_need_tmp_RSA(ctx) \
-  SSL_CTX_ctrl(ctx, SSL_CTRL_NEED_TMP_RSA, 0, NULL)
-#define SSL_CTX_set_tmp_rsa(ctx, rsa) \
-  SSL_CTX_ctrl(ctx, SSL_CTRL_SET_TMP_RSA, 0, (char *)rsa)
+/* SSL_total_renegotiations returns the total number of renegotiation handshakes
+ * peformed by |ssl|. This includes the pending renegotiation, if any. */
+OPENSSL_EXPORT int SSL_total_renegotiations(const SSL *ssl);
+
 #define SSL_CTX_set_tmp_dh(ctx, dh) \
   SSL_CTX_ctrl(ctx, SSL_CTRL_SET_TMP_DH, 0, (char *)dh)
 
@@ -1669,9 +1662,6 @@ OPENSSL_EXPORT int DTLSv1_handle_timeout(SSL *ssl);
 #define SSL_CTX_set_tmp_ecdh(ctx, ecdh) \
   SSL_CTX_ctrl(ctx, SSL_CTRL_SET_TMP_ECDH, 0, (char *)ecdh)
 
-#define SSL_need_tmp_RSA(ssl) SSL_ctrl(ssl, SSL_CTRL_NEED_TMP_RSA, 0, NULL)
-#define SSL_set_tmp_rsa(ssl, rsa) \
-  SSL_ctrl(ssl, SSL_CTRL_SET_TMP_RSA, 0, (char *)rsa)
 #define SSL_set_tmp_dh(ssl, dh) \
   SSL_ctrl(ssl, SSL_CTRL_SET_TMP_DH, 0, (char *)dh)
 
@@ -2356,6 +2346,21 @@ OPENSSL_EXPORT int SSL_CTX_sess_cache_full(const SSL_CTX *ctx);
 /* SSL_cutthrough_complete calls |SSL_in_false_start|. */
 OPENSSL_EXPORT int SSL_cutthrough_complete(const SSL *s);
 
+/* SSL_num_renegotiations calls |SSL_total_renegotiations|. */
+OPENSSL_EXPORT int SSL_num_renegotiations(const SSL *ssl);
+
+/* SSL_CTX_need_tmp_RSA returns zero. */
+OPENSSL_EXPORT int SSL_CTX_need_tmp_RSA(const SSL_CTX *ctx);
+
+/* SSL_need_tmp_RSA returns zero. */
+OPENSSL_EXPORT int SSL_need_tmp_RSA(const SSL *ssl);
+
+/* SSL_CTX_set_tmp_rsa returns one. */
+OPENSSL_EXPORT int SSL_CTX_set_tmp_rsa(SSL_CTX *ctx, const RSA *rsa);
+
+/* SSL_set_tmp_rsa returns one. */
+OPENSSL_EXPORT int SSL_set_tmp_rsa(SSL *ssl, const RSA *rsa);
+
 
 /* Android compatibility section.
  *
@@ -2386,9 +2391,14 @@ OPENSSL_EXPORT const char *SSLeay_version(int unused);
  * constants to 'ctrl' functions. To avoid breaking #ifdefs in consumers, this
  * section defines a number of legacy macros. */
 
+#define SSL_CTRL_NEED_TMP_RSA doesnt_exist
+#define SSL_CTRL_SET_TMP_RSA doesnt_exist
 #define SSL_CTRL_SET_TMP_RSA_CB doesnt_exist
 #define SSL_CTRL_SET_TMP_DH_CB doesnt_exist
 #define SSL_CTRL_SET_TMP_ECDH_CB doesnt_exist
+#define SSL_CTRL_GET_SESSION_REUSED doesnt_exist
+#define SSL_CTRL_GET_NUM_RENEGOTIATIONS doesnt_exist
+#define SSL_CTRL_GET_TOTAL_RENEGOTIATIONS doesnt_exist
 #define SSL_CTRL_SET_MSG_CALLBACK doesnt_exist
 #define SSL_CTRL_SET_MSG_CALLBACK_ARG doesnt_exist
 #define SSL_CTRL_SET_MTU doesnt_exist
@@ -2412,6 +2422,13 @@ OPENSSL_EXPORT const char *SSLeay_version(int unused);
 #define SSL_CTRL_CLEAR_OPTIONS doesnt_exist
 #define SSL_CTRL_CLEAR_MODE doesnt_exist
 
+#define SSL_CTX_need_tmp_RSA SSL_CTX_need_tmp_RSA
+#define SSL_need_tmp_RSA SSL_need_tmp_RSA
+#define SSL_CTX_set_tmp_rsa SSL_CTX_set_tmp_rsa
+#define SSL_set_tmp_rsa SSL_set_tmp_rsa
+#define SSL_session_reused SSL_session_reused
+#define SSL_num_renegotiations SSL_num_renegotiations
+#define SSL_total_renegotiations SSL_total_renegotiations
 #define SSL_CTX_set_msg_callback_arg SSL_CTX_set_msg_callback_arg
 #define SSL_set_msg_callback_arg SSL_set_msg_callback_arg
 #define SSL_set_mtu SSL_set_mtu

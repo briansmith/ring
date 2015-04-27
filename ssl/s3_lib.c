@@ -577,36 +577,38 @@ void ssl3_free(SSL *s) {
 
 static int ssl3_set_req_cert_type(CERT *c, const uint8_t *p, size_t len);
 
+int SSL_session_reused(const SSL *ssl) {
+  return ssl->hit;
+}
+
+int SSL_total_renegotiations(const SSL *ssl) {
+  return ssl->s3->total_renegotiations;
+}
+
+int SSL_num_renegotiations(const SSL *ssl) {
+  return SSL_total_renegotiations(ssl);
+}
+
+int SSL_CTX_need_tmp_RSA(const SSL_CTX *ctx) {
+  return 0;
+}
+
+int SSL_need_rsa(const SSL *ssl) {
+  return 0;
+}
+
+int SSL_CTX_set_tmp_rsa(SSL_CTX *ctx, const RSA *rsa) {
+  return 1;
+}
+
+int SSL_set_tmp_rsa(SSL *ssl, const RSA *rsa) {
+  return 1;
+}
+
 long ssl3_ctrl(SSL *s, int cmd, long larg, void *parg) {
   int ret = 0;
 
   switch (cmd) {
-    case SSL_CTRL_GET_SESSION_REUSED:
-      ret = s->hit;
-      break;
-
-    case SSL_CTRL_GET_CLIENT_CERT_REQUEST:
-      break;
-
-    case SSL_CTRL_GET_NUM_RENEGOTIATIONS:
-    case SSL_CTRL_GET_TOTAL_RENEGOTIATIONS:
-      ret = s->s3->total_renegotiations;
-      break;
-
-    case SSL_CTRL_GET_FLAGS:
-      ret = (int)(s->s3->flags);
-      break;
-
-    case SSL_CTRL_NEED_TMP_RSA:
-      /* Temporary RSA keys are never used. */
-      ret = 0;
-      break;
-
-    case SSL_CTRL_SET_TMP_RSA:
-      /* Temporary RSA keys are never used. */
-      OPENSSL_PUT_ERROR(SSL, ssl3_ctrl, ERR_R_SHOULD_NOT_HAVE_BEEN_CALLED);
-      break;
-
     case SSL_CTRL_SET_TMP_DH:
       DH_free(s->cert->dh_tmp);
       s->cert->dh_tmp = DHparams_dup((DH *)parg);
@@ -806,14 +808,6 @@ long ssl3_ctx_ctrl(SSL_CTX *ctx, int cmd, long larg, void *parg) {
   cert = ctx->cert;
 
   switch (cmd) {
-    case SSL_CTRL_NEED_TMP_RSA:
-      /* Temporary RSA keys are never used. */
-      return 0;
-
-    case SSL_CTRL_SET_TMP_RSA:
-      OPENSSL_PUT_ERROR(SSL, ssl3_ctx_ctrl, ERR_R_SHOULD_NOT_HAVE_BEEN_CALLED);
-      return 0;
-
     case SSL_CTRL_SET_TMP_DH:
       DH_free(cert->dh_tmp);
       cert->dh_tmp = DHparams_dup((DH *)parg);
