@@ -1377,27 +1377,16 @@ int ssl3_send_server_key_exchange(SSL *s) {
                           ERR_R_INTERNAL_ERROR);
         goto err;
       }
-
       dh = DHparams_dup(dhp);
       if (dh == NULL) {
         OPENSSL_PUT_ERROR(SSL, ssl3_send_server_key_exchange, ERR_R_DH_LIB);
         goto err;
       }
-
       s->s3->tmp.dh = dh;
-      if (dhp->pub_key == NULL || dhp->priv_key == NULL ||
-          (s->options & SSL_OP_SINGLE_DH_USE)) {
-        if (!DH_generate_key(dh)) {
-          OPENSSL_PUT_ERROR(SSL, ssl3_send_server_key_exchange, ERR_R_DH_LIB);
-          goto err;
-        }
-      } else {
-        dh->pub_key = BN_dup(dhp->pub_key);
-        dh->priv_key = BN_dup(dhp->priv_key);
-        if (dh->pub_key == NULL || dh->priv_key == NULL) {
-          OPENSSL_PUT_ERROR(SSL, ssl3_send_server_key_exchange, ERR_R_DH_LIB);
-          goto err;
-        }
+
+      if (!DH_generate_key(dh)) {
+        OPENSSL_PUT_ERROR(SSL, ssl3_send_server_key_exchange, ERR_R_DH_LIB);
+        goto err;
       }
 
       r[0] = dh->p;

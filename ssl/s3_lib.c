@@ -607,27 +607,16 @@ long ssl3_ctrl(SSL *s, int cmd, long larg, void *parg) {
       OPENSSL_PUT_ERROR(SSL, ssl3_ctrl, ERR_R_SHOULD_NOT_HAVE_BEEN_CALLED);
       break;
 
-    case SSL_CTRL_SET_TMP_DH: {
-      DH *dh = (DH *)parg;
-      if (dh == NULL) {
-        OPENSSL_PUT_ERROR(SSL, ssl3_ctrl, ERR_R_PASSED_NULL_PARAMETER);
-        return ret;
-      }
-      dh = DHparams_dup(dh);
-      if (dh == NULL) {
-        OPENSSL_PUT_ERROR(SSL, ssl3_ctrl, ERR_R_DH_LIB);
-        return ret;
-      }
-      if (!(s->options & SSL_OP_SINGLE_DH_USE) && !DH_generate_key(dh)) {
-        DH_free(dh);
-        OPENSSL_PUT_ERROR(SSL, ssl3_ctrl, ERR_R_DH_LIB);
-        return ret;
-      }
+    case SSL_CTRL_SET_TMP_DH:
       DH_free(s->cert->dh_tmp);
-      s->cert->dh_tmp = dh;
+      s->cert->dh_tmp = DHparams_dup((DH *)parg);
+      if (s->cert->dh_tmp == NULL) {
+        OPENSSL_PUT_ERROR(SSL, ssl3_ctx_ctrl, ERR_R_DH_LIB);
+        ret = 0;
+        break;
+      }
       ret = 1;
       break;
-    }
 
     case SSL_CTRL_SET_TMP_ECDH: {
       /* For historical reasons, this API expects an |EC_KEY|, but only the
@@ -825,24 +814,14 @@ long ssl3_ctx_ctrl(SSL_CTX *ctx, int cmd, long larg, void *parg) {
       OPENSSL_PUT_ERROR(SSL, ssl3_ctx_ctrl, ERR_R_SHOULD_NOT_HAVE_BEEN_CALLED);
       return 0;
 
-    case SSL_CTRL_SET_TMP_DH: {
-      DH *new = NULL, *dh;
-
-      dh = (DH *)parg;
-      new = DHparams_dup(dh);
-      if (new == NULL) {
-        OPENSSL_PUT_ERROR(SSL, ssl3_ctx_ctrl, ERR_R_DH_LIB);
-        return 0;
-      }
-      if (!(ctx->options & SSL_OP_SINGLE_DH_USE) && !DH_generate_key(new)) {
-        OPENSSL_PUT_ERROR(SSL, ssl3_ctx_ctrl, ERR_R_DH_LIB);
-        DH_free(new);
-        return 0;
-      }
+    case SSL_CTRL_SET_TMP_DH:
       DH_free(cert->dh_tmp);
-      cert->dh_tmp = new;
+      cert->dh_tmp = DHparams_dup((DH *)parg);
+      if (cert->dh_tmp == NULL) {
+        OPENSSL_PUT_ERROR(SSL, ssl3_ctx_ctrl, ERR_R_DH_LIB);
+        return 0;
+      }
       return 1;
-    }
 
     case SSL_CTRL_SET_TMP_ECDH: {
       /* For historical reasons, this API expects an |EC_KEY|, but only the

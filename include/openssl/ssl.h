@@ -467,7 +467,7 @@ typedef struct timeval OPENSSL_timeval;
 #define SSL_OP_ALLOW_UNSAFE_LEGACY_RENEGOTIATION 0x00040000L
 /* SSL_OP_SINGLE_ECDH_USE does nothing. */
 #define SSL_OP_SINGLE_ECDH_USE 0x00080000L
-/* If set, always create a new key when using tmp_dh parameters */
+/* SSL_OP_SINGLE_DH_USE does nothing. */
 #define SSL_OP_SINGLE_DH_USE 0x00100000L
 /* Set on servers to choose the cipher according to the server's preferences */
 #define SSL_OP_CIPHER_SERVER_PREFERENCE 0x00400000L
