@@ -24,7 +24,6 @@
 
 #include "../test/scoped_types.h"
 #include "../test/stl_compat.h"
-#include "internal.h"
 
 
 // kECKeyWithoutPublic is an ECPrivateKey with the optional publicKey field
