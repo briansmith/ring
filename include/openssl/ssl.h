@@ -1573,9 +1573,6 @@ DECLARE_PEM_rw(SSL_SESSION, SSL_SESSION)
 #define SSL_ERROR_PENDING_SESSION 11
 #define SSL_ERROR_PENDING_CERTIFICATE 12
 
-#define SSL_CTRL_SET_TMP_DH 3
-#define SSL_CTRL_SET_TMP_ECDH 4
-
 #define SSL_CTRL_EXTRA_CHAIN_CERT 14
 
 /* see tls1.h for macros based on these */
@@ -1651,27 +1648,29 @@ OPENSSL_EXPORT int SSL_session_reused(const SSL *ssl);
  * peformed by |ssl|. This includes the pending renegotiation, if any. */
 OPENSSL_EXPORT int SSL_total_renegotiations(const SSL *ssl);
 
-#define SSL_CTX_set_tmp_dh(ctx, dh) \
-  SSL_CTX_ctrl(ctx, SSL_CTRL_SET_TMP_DH, 0, (char *)dh)
+/* SSL_CTX_set_tmp_dh configures |ctx| to use the group from |dh| as the group
+ * for DHE. Only the group is used, so |dh| needn't have a keypair. It returns
+ * one on success and zero on error. */
+OPENSSL_EXPORT int SSL_CTX_set_tmp_dh(SSL_CTX *ctx, const DH *dh);
 
-/* SSL_CTX_set_tmp_ecdh configures |ctx| to use the curve from |ecdh| (a const
- * EC_KEY *) as the curve for ephemeral ECDH keys. For historical reasons, this
- * API expects an |EC_KEY|, but only the curve is used. It returns one on
- * success and zero on error. If unset, an appropriate curve will be chosen
- * automatically. (This is recommended.) */
-#define SSL_CTX_set_tmp_ecdh(ctx, ecdh) \
-  SSL_CTX_ctrl(ctx, SSL_CTRL_SET_TMP_ECDH, 0, (char *)ecdh)
+/* SSL_set_tmp_dh configures |ssl| to use the group from |dh| as the group for
+ * DHE. Only the group is used, so |dh| needn't have a keypair. It returns one
+ * on success and zero on error. */
+OPENSSL_EXPORT int SSL_set_tmp_dh(SSL *ssl, const DH *dh);
 
-#define SSL_set_tmp_dh(ssl, dh) \
-  SSL_ctrl(ssl, SSL_CTRL_SET_TMP_DH, 0, (char *)dh)
+/* SSL_CTX_set_tmp_ecdh configures |ctx| to use the curve from |ecdh| as the
+ * curve for ephemeral ECDH keys. For historical reasons, this API expects an
+ * |EC_KEY|, but only the curve is used. It returns one on success and zero on
+ * error. If unset, an appropriate curve will be chosen automatically. (This is
+ * recommended.) */
+OPENSSL_EXPORT int SSL_CTX_set_tmp_ecdh(SSL_CTX *ctx, const EC_KEY *ec_key);
 
-/* SSL_set_tmp_ecdh configures |ssl| to use the curve from |ecdh| (a const
- * EC_KEY *) as the curve for ephemeral ECDH keys. For historical reasons, this
- * API expects an |EC_KEY|, but only the curve is used. It returns one on
- * success and zero on error. If unset, an appropriate curve will be chosen
- * automatically. (This is recommended.) */
-#define SSL_set_tmp_ecdh(ssl, ecdh) \
-  SSL_ctrl(ssl, SSL_CTRL_SET_TMP_ECDH, 0, (char *)ecdh)
+/* SSL_set_tmp_ecdh configures |ssl| to use the curve from |ecdh| as the curve
+ * for ephemeral ECDH keys. For historical reasons, this API expects an
+ * |EC_KEY|, but only the curve is used. It returns one on success and zero on
+ * error. If unset, an appropriate curve will be chosen automatically. (This is
+ * recommended.) */
+OPENSSL_EXPORT int SSL_set_tmp_ecdh(SSL *ssl, const EC_KEY *ec_key);
 
 /* SSL_enable_tls_channel_id either configures a TLS server to accept TLS
  * client IDs from clients, or configure a client to send TLS client IDs to
@@ -2393,6 +2392,8 @@ OPENSSL_EXPORT const char *SSLeay_version(int unused);
 
 #define SSL_CTRL_NEED_TMP_RSA doesnt_exist
 #define SSL_CTRL_SET_TMP_RSA doesnt_exist
+#define SSL_CTRL_SET_TMP_DH doesnt_exist
+#define SSL_CTRL_SET_TMP_ECDH doesnt_exist
 #define SSL_CTRL_SET_TMP_RSA_CB doesnt_exist
 #define SSL_CTRL_SET_TMP_DH_CB doesnt_exist
 #define SSL_CTRL_SET_TMP_ECDH_CB doesnt_exist
@@ -2426,6 +2427,10 @@ OPENSSL_EXPORT const char *SSLeay_version(int unused);
 #define SSL_need_tmp_RSA SSL_need_tmp_RSA
 #define SSL_CTX_set_tmp_rsa SSL_CTX_set_tmp_rsa
 #define SSL_set_tmp_rsa SSL_set_tmp_rsa
+#define SSL_CTX_set_tmp_dh SSL_CTX_set_tmp_dh
+#define SSL_set_tmp_dh SSL_set_tmp_dh
+#define SSL_CTX_set_tmp_ecdh SSL_CTX_set_tmp_ecdh
+#define SSL_set_tmp_ecdh SSL_set_tmp_ecdh
 #define SSL_session_reused SSL_session_reused
 #define SSL_num_renegotiations SSL_num_renegotiations
 #define SSL_total_renegotiations SSL_total_renegotiations
@@ -2657,6 +2662,10 @@ OPENSSL_EXPORT const char *SSLeay_version(int unused);
 #define SSL_F_dtls1_hm_fragment_new 265
 #define SSL_F_ssl3_seal_record 266
 #define SSL_F_ssl3_record_sequence_update 267
+#define SSL_F_SSL_CTX_set_tmp_dh 268
+#define SSL_F_SSL_CTX_set_tmp_ecdh 269
+#define SSL_F_SSL_set_tmp_dh 270
+#define SSL_F_SSL_set_tmp_ecdh 271
 #define SSL_R_APP_DATA_IN_HANDSHAKE 100
 #define SSL_R_ATTEMPT_TO_REUSE_SESSION_IN_DIFFERENT_CONTEXT 101
 #define SSL_R_BAD_ALERT 102

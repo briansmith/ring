@@ -3,6 +3,8 @@ SSL,function,101,SSL_CTX_new
 SSL,function,102,SSL_CTX_set_cipher_list
 SSL,function,103,SSL_CTX_set_cipher_list_tls11
 SSL,function,104,SSL_CTX_set_session_id_context
+SSL,function,268,SSL_CTX_set_tmp_dh
+SSL,function,269,SSL_CTX_set_tmp_ecdh
 SSL,function,105,SSL_CTX_use_PrivateKey
 SSL,function,106,SSL_CTX_use_PrivateKey_ASN1
 SSL,function,107,SSL_CTX_use_PrivateKey_file
@@ -34,6 +36,8 @@ SSL,function,132,SSL_set_cipher_list
 SSL,function,133,SSL_set_fd
 SSL,function,134,SSL_set_rfd
 SSL,function,135,SSL_set_session_id_context
+SSL,function,270,SSL_set_tmp_dh
+SSL,function,271,SSL_set_tmp_ecdh
 SSL,function,136,SSL_set_wfd
 SSL,function,137,SSL_shutdown
 SSL,function,138,SSL_use_PrivateKey

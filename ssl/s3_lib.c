@@ -605,34 +605,48 @@ int SSL_set_tmp_rsa(SSL *ssl, const RSA *rsa) {
   return 1;
 }
 
+int SSL_CTX_set_tmp_dh(SSL_CTX *ctx, const DH *dh) {
+  DH_free(ctx->cert->dh_tmp);
+  ctx->cert->dh_tmp = DHparams_dup(dh);
+  if (ctx->cert->dh_tmp == NULL) {
+    OPENSSL_PUT_ERROR(SSL, SSL_CTX_set_tmp_dh, ERR_R_DH_LIB);
+    return 0;
+  }
+  return 1;
+}
+
+int SSL_set_tmp_dh(SSL *ssl, const DH *dh) {
+  DH_free(ssl->cert->dh_tmp);
+  ssl->cert->dh_tmp = DHparams_dup(dh);
+  if (ssl->cert->dh_tmp == NULL) {
+    OPENSSL_PUT_ERROR(SSL, SSL_set_tmp_dh, ERR_R_DH_LIB);
+    return 0;
+  }
+  return 1;
+}
+
+int SSL_CTX_set_tmp_ecdh(SSL_CTX *ctx, const EC_KEY *ec_key) {
+  if (ec_key == NULL || EC_KEY_get0_group(ec_key) == NULL) {
+    OPENSSL_PUT_ERROR(SSL, SSL_CTX_set_tmp_ecdh, ERR_R_PASSED_NULL_PARAMETER);
+    return 0;
+  }
+  ctx->cert->ecdh_nid = EC_GROUP_get_curve_name(EC_KEY_get0_group(ec_key));
+  return 1;
+}
+
+int SSL_set_tmp_ecdh(SSL *ssl, const EC_KEY *ec_key) {
+  if (ec_key == NULL || EC_KEY_get0_group(ec_key) == NULL) {
+    OPENSSL_PUT_ERROR(SSL, SSL_set_tmp_ecdh, ERR_R_PASSED_NULL_PARAMETER);
+    return 0;
+  }
+  ssl->cert->ecdh_nid = EC_GROUP_get_curve_name(EC_KEY_get0_group(ec_key));
+  return 1;
+}
+
 long ssl3_ctrl(SSL *s, int cmd, long larg, void *parg) {
   int ret = 0;
 
   switch (cmd) {
-    case SSL_CTRL_SET_TMP_DH:
-      DH_free(s->cert->dh_tmp);
-      s->cert->dh_tmp = DHparams_dup((DH *)parg);
-      if (s->cert->dh_tmp == NULL) {
-        OPENSSL_PUT_ERROR(SSL, ssl3_ctx_ctrl, ERR_R_DH_LIB);
-        ret = 0;
-        break;
-      }
-      ret = 1;
-      break;
-
-    case SSL_CTRL_SET_TMP_ECDH: {
-      /* For historical reasons, this API expects an |EC_KEY|, but only the
-       * group is used. */
-      const EC_KEY *ec_key = (const EC_KEY *)parg;
-      if (ec_key == NULL || EC_KEY_get0_group(ec_key) == NULL) {
-        OPENSSL_PUT_ERROR(SSL, ssl3_ctrl, ERR_R_PASSED_NULL_PARAMETER);
-        return ret;
-      }
-      s->cert->ecdh_nid = EC_GROUP_get_curve_name(EC_KEY_get0_group(ec_key));
-      ret = 1;
-      break;
-    }
-
     case SSL_CTRL_SET_TLSEXT_HOSTNAME:
       if (larg == TLSEXT_NAMETYPE_host_name) {
         OPENSSL_free(s->tlsext_hostname);
@@ -808,27 +822,6 @@ long ssl3_ctx_ctrl(SSL_CTX *ctx, int cmd, long larg, void *parg) {
   cert = ctx->cert;
 
   switch (cmd) {
-    case SSL_CTRL_SET_TMP_DH:
-      DH_free(cert->dh_tmp);
-      cert->dh_tmp = DHparams_dup((DH *)parg);
-      if (cert->dh_tmp == NULL) {
-        OPENSSL_PUT_ERROR(SSL, ssl3_ctx_ctrl, ERR_R_DH_LIB);
-        return 0;
-      }
-      return 1;
-
-    case SSL_CTRL_SET_TMP_ECDH: {
-      /* For historical reasons, this API expects an |EC_KEY|, but only the
-       * group is used. */
-      const EC_KEY *ec_key = (const EC_KEY *)parg;
-      if (ec_key == NULL || EC_KEY_get0_group(ec_key) == NULL) {
-        OPENSSL_PUT_ERROR(SSL, ssl3_ctx_ctrl, ERR_R_PASSED_NULL_PARAMETER);
-        return 0;
-      }
-      ctx->cert->ecdh_nid = EC_GROUP_get_curve_name(EC_KEY_get0_group(ec_key));
-      return 1;
-    }
-
     case SSL_CTRL_SET_TLSEXT_SERVERNAME_ARG:
       ctx->tlsext_servername_arg = parg;
       break;
