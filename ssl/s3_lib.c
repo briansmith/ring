@@ -643,6 +643,49 @@ int SSL_set_tmp_ecdh(SSL *ssl, const EC_KEY *ec_key) {
   return 1;
 }
 
+int SSL_CTX_enable_tls_channel_id(SSL_CTX *ctx) {
+  ctx->tlsext_channel_id_enabled = 1;
+  return 1;
+}
+
+int SSL_enable_tls_channel_id(SSL *ssl) {
+  ssl->tlsext_channel_id_enabled = 1;
+  return 1;
+}
+
+int SSL_CTX_set1_tls_channel_id(SSL_CTX *ctx, EVP_PKEY *private_key) {
+  ctx->tlsext_channel_id_enabled = 1;
+  if (EVP_PKEY_id(private_key) != EVP_PKEY_EC ||
+      EVP_PKEY_bits(private_key) != 256) {
+    OPENSSL_PUT_ERROR(SSL, SSL_CTX_set1_tls_channel_id,
+                      SSL_R_CHANNEL_ID_NOT_P256);
+    return 0;
+  }
+  EVP_PKEY_free(ctx->tlsext_channel_id_private);
+  ctx->tlsext_channel_id_private = EVP_PKEY_dup(private_key);
+  return 1;
+}
+
+int SSL_set1_tls_channel_id(SSL *ssl, EVP_PKEY *private_key) {
+  ssl->tlsext_channel_id_enabled = 1;
+  if (EVP_PKEY_id(private_key) != EVP_PKEY_EC ||
+      EVP_PKEY_bits(private_key) != 256) {
+    OPENSSL_PUT_ERROR(SSL, SSL_set1_tls_channel_id, SSL_R_CHANNEL_ID_NOT_P256);
+    return 0;
+  }
+  EVP_PKEY_free(ssl->tlsext_channel_id_private);
+  ssl->tlsext_channel_id_private = EVP_PKEY_dup(private_key);
+  return 1;
+}
+
+size_t SSL_get_tls_channel_id(SSL *ssl, uint8_t *out, size_t max_out) {
+  if (!ssl->s3->tlsext_channel_id_valid) {
+    return 0;
+  }
+  memcpy(out, ssl->s3->tlsext_channel_id, (max_out < 64) ? max_out : 64);
+  return 64;
+}
+
 long ssl3_ctrl(SSL *s, int cmd, long larg, void *parg) {
   int ret = 0;
 
@@ -786,29 +829,6 @@ long ssl3_ctrl(SSL *s, int cmd, long larg, void *parg) {
       return (int)s->s3->tmp.peer_ecpointformatlist_length;
     }
 
-    case SSL_CTRL_CHANNEL_ID:
-      s->tlsext_channel_id_enabled = 1;
-      ret = 1;
-      break;
-
-    case SSL_CTRL_SET_CHANNEL_ID:
-      s->tlsext_channel_id_enabled = 1;
-      if (EVP_PKEY_bits(parg) != 256) {
-        OPENSSL_PUT_ERROR(SSL, ssl3_ctrl, SSL_R_CHANNEL_ID_NOT_P256);
-        break;
-      }
-      EVP_PKEY_free(s->tlsext_channel_id_private);
-      s->tlsext_channel_id_private = EVP_PKEY_dup((EVP_PKEY *)parg);
-      ret = 1;
-      break;
-
-    case SSL_CTRL_GET_CHANNEL_ID:
-      if (!s->s3->tlsext_channel_id_valid) {
-        break;
-      }
-      memcpy(parg, s->s3->tlsext_channel_id, larg < 64 ? larg : 64);
-      return 64;
-
     default:
       break;
   }
@@ -913,20 +933,6 @@ long ssl3_ctx_ctrl(SSL_CTX *ctx, int cmd, long larg, void *parg) {
 
     case SSL_CTRL_SELECT_CURRENT_CERT:
       return ssl_cert_select_current(ctx->cert, (X509 *)parg);
-
-    case SSL_CTRL_CHANNEL_ID:
-      ctx->tlsext_channel_id_enabled = 1;
-      return 1;
-
-    case SSL_CTRL_SET_CHANNEL_ID:
-      ctx->tlsext_channel_id_enabled = 1;
-      if (EVP_PKEY_bits(parg) != 256) {
-        OPENSSL_PUT_ERROR(SSL, ssl3_ctx_ctrl, SSL_R_CHANNEL_ID_NOT_P256);
-        break;
-      }
-      EVP_PKEY_free(ctx->tlsext_channel_id_private);
-      ctx->tlsext_channel_id_private = EVP_PKEY_dup((EVP_PKEY *)parg);
-      break;
 
     default:
       return 0;

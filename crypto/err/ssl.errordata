@@ -1,5 +1,6 @@
 SSL,function,100,SSL_CTX_check_private_key
 SSL,function,101,SSL_CTX_new
+SSL,function,272,SSL_CTX_set1_tls_channel_id
 SSL,function,102,SSL_CTX_set_cipher_list
 SSL,function,103,SSL_CTX_set_cipher_list_tls11
 SSL,function,104,SSL_CTX_set_session_id_context
@@ -32,6 +33,7 @@ SSL,function,128,SSL_new
 SSL,function,129,SSL_peek
 SSL,function,130,SSL_read
 SSL,function,131,SSL_renegotiate
+SSL,function,273,SSL_set1_tls_channel_id
 SSL,function,132,SSL_set_cipher_list
 SSL,function,133,SSL_set_fd
 SSL,function,134,SSL_set_rfd

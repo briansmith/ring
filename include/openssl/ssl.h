@@ -1024,11 +1024,6 @@ OPENSSL_EXPORT LHASH_OF(SSL_SESSION) *SSL_CTX_sessions(SSL_CTX *ctx);
  * session cache. */
 OPENSSL_EXPORT size_t SSL_CTX_sess_number(const SSL_CTX *ctx);
 
-/* SSL_CTX_enable_tls_channel_id configures a TLS server to accept TLS client
- * IDs from clients. Returns 1 on success. */
-#define SSL_CTX_enable_tls_channel_id(ctx) \
-  SSL_CTX_ctrl(ctx, SSL_CTRL_CHANNEL_ID, 0, NULL)
-
 OPENSSL_EXPORT void SSL_CTX_sess_set_new_cb(
     SSL_CTX *ctx, int (*new_session_cb)(struct ssl_st *ssl, SSL_SESSION *sess));
 OPENSSL_EXPORT int (*SSL_CTX_sess_get_new_cb(SSL_CTX *ctx))(struct ssl_st *ssl,
@@ -1610,10 +1605,6 @@ DECLARE_PEM_rw(SSL_SESSION, SSL_SESSION)
 #define SSL_CTRL_GET_CHAIN_CERTS 115
 #define SSL_CTRL_SELECT_CURRENT_CERT 116
 
-#define SSL_CTRL_CHANNEL_ID 117
-#define SSL_CTRL_GET_CHANNEL_ID 118
-#define SSL_CTRL_SET_CHANNEL_ID 119
-
 /* DTLSv1_get_timeout queries the next DTLS handshake timeout. If there is a
  * timeout in progress, it sets |*out| to the time remaining and returns one.
  * Otherwise, it returns zero.
@@ -1672,26 +1663,34 @@ OPENSSL_EXPORT int SSL_CTX_set_tmp_ecdh(SSL_CTX *ctx, const EC_KEY *ec_key);
  * recommended.) */
 OPENSSL_EXPORT int SSL_set_tmp_ecdh(SSL *ssl, const EC_KEY *ec_key);
 
+/* SSL_CTX_enable_tls_channel_id either configures a TLS server to accept TLS
+ * client IDs from clients, or configures a client to send TLS client IDs to
+ * a server. It returns one. */
+OPENSSL_EXPORT int SSL_CTX_enable_tls_channel_id(SSL_CTX *ctx);
+
 /* SSL_enable_tls_channel_id either configures a TLS server to accept TLS
  * client IDs from clients, or configure a client to send TLS client IDs to
- * server. Returns 1 on success. */
-#define SSL_enable_tls_channel_id(s) SSL_ctrl(s, SSL_CTRL_CHANNEL_ID, 0, NULL)
+ * server. It returns one. */
+OPENSSL_EXPORT int SSL_enable_tls_channel_id(SSL *ssl);
+
+/* SSL_CTX_set1_tls_channel_id configures a TLS client to send a TLS Channel ID
+ * to compatible servers. |private_key| must be a P-256 EC key. It returns one
+ * on success and zero on error. */
+OPENSSL_EXPORT int SSL_CTX_set1_tls_channel_id(SSL_CTX *ctx,
+                                               EVP_PKEY *private_key);
 
 /* SSL_set1_tls_channel_id configures a TLS client to send a TLS Channel ID to
- * compatible servers. private_key must be a P-256 EVP_PKEY*. Returns 1 on
- * success. */
-#define SSL_set1_tls_channel_id(s, private_key) \
-  SSL_ctrl(s, SSL_CTRL_SET_CHANNEL_ID, 0, (void *)private_key)
-#define SSL_CTX_set1_tls_channel_id(ctx, private_key) \
-  SSL_CTX_ctrl(ctx, SSL_CTRL_SET_CHANNEL_ID, 0, (void *)private_key)
+ * compatible servers. |private_key| must be a P-256 EC key. It returns one on
+ * success and zero on error. */
+OPENSSL_EXPORT int SSL_set1_tls_channel_id(SSL *ssl, EVP_PKEY *private_key);
 
 /* SSL_get_tls_channel_id gets the client's TLS Channel ID from a server SSL*
- * and copies up to the first |channel_id_len| bytes into |channel_id|. The
- * Channel ID consists of the client's P-256 public key as an (x,y) pair where
- * each is a 32-byte, big-endian field element. Returns 0 if the client didn't
- * offer a Channel ID and the length of the complete Channel ID otherwise. */
-#define SSL_get_tls_channel_id(ctx, channel_id, channel_id_len) \
-  SSL_ctrl(ctx, SSL_CTRL_GET_CHANNEL_ID, channel_id_len, (void *)channel_id)
+ * and copies up to the first |max_out| bytes into |out|. The Channel ID
+ * consists of the client's P-256 public key as an (x,y) pair where each is a
+ * 32-byte, big-endian field element. It returns 0 if the client didn't offer a
+ * Channel ID and the length of the complete Channel ID otherwise. */
+OPENSSL_EXPORT size_t SSL_get_tls_channel_id(SSL *ssl, uint8_t *out,
+                                             size_t max_out);
 
 #define SSL_CTX_add_extra_chain_cert(ctx, x509) \
   SSL_CTX_ctrl(ctx, SSL_CTRL_EXTRA_CHAIN_CERT, 0, (char *)x509)
@@ -2422,6 +2421,9 @@ OPENSSL_EXPORT const char *SSLeay_version(int unused);
 #define SSL_CTRL_GET_RI_SUPPORT doesnt_exist
 #define SSL_CTRL_CLEAR_OPTIONS doesnt_exist
 #define SSL_CTRL_CLEAR_MODE doesnt_exist
+#define SSL_CTRL_CHANNEL_ID doesnt_exist
+#define SSL_CTRL_GET_CHANNEL_ID doesnt_exist
+#define SSL_CTRL_SET_CHANNEL_ID doesnt_exist
 
 #define SSL_CTX_need_tmp_RSA SSL_CTX_need_tmp_RSA
 #define SSL_need_tmp_RSA SSL_need_tmp_RSA
@@ -2469,6 +2471,11 @@ OPENSSL_EXPORT const char *SSLeay_version(int unused);
 #define SSL_clear_options SSL_clear_options
 #define SSL_CTX_clear_mode SSL_CTX_clear_mode
 #define SSL_clear_mode SSL_clear_mode
+#define SSL_CTX_enable_tls_channel_id SSL_CTX_enable_tls_channel_id
+#define SSL_enable_tls_channel_id SSL_enable_tls_channel_id
+#define SSL_set1_tls_channel_id SSL_set1_tls_channel_id
+#define SSL_CTX_set1_tls_channel_id SSL_CTX_set1_tls_channel_id
+#define SSL_get_tls_channel_id SSL_get_tls_channel_id
 
 
 #if defined(__cplusplus)
@@ -2666,6 +2673,8 @@ OPENSSL_EXPORT const char *SSLeay_version(int unused);
 #define SSL_F_SSL_CTX_set_tmp_ecdh 269
 #define SSL_F_SSL_set_tmp_dh 270
 #define SSL_F_SSL_set_tmp_ecdh 271
+#define SSL_F_SSL_CTX_set1_tls_channel_id 272
+#define SSL_F_SSL_set1_tls_channel_id 273
 #define SSL_R_APP_DATA_IN_HANDSHAKE 100
 #define SSL_R_ATTEMPT_TO_REUSE_SESSION_IN_DIFFERENT_CONTEXT 101
 #define SSL_R_BAD_ALERT 102
