@@ -1571,8 +1571,6 @@ DECLARE_PEM_rw(SSL_SESSION, SSL_SESSION)
 #define SSL_CTRL_EXTRA_CHAIN_CERT 14
 
 /* see tls1.h for macros based on these */
-#define SSL_CTRL_SET_TLSEXT_SERVERNAME_ARG 54
-#define SSL_CTRL_SET_TLSEXT_HOSTNAME 55
 #define SSL_CTRL_GET_TLSEXT_TICKET_KEYS 58
 #define SSL_CTRL_SET_TLSEXT_TICKET_KEYS 59
 
@@ -2415,6 +2413,8 @@ OPENSSL_EXPORT const char *SSLeay_version(int unused);
 #define SSL_CTRL_SET_MAX_CERT_LIST doesnt_exist
 #define SSL_CTRL_SET_MAX_SEND_FRAGMENT doesnt_exist
 #define SSL_CTRL_SET_TLSEXT_SERVERNAME_CB doesnt_exist
+#define SSL_CTRL_SET_TLSEXT_SERVERNAME_ARG doesnt_exist
+#define SSL_CTRL_SET_TLSEXT_HOSTNAME doesnt_exist
 #define SSL_CTRL_SET_TLSEXT_TICKET_KEY_CB doesnt_exist
 #define DTLS_CTRL_GET_TIMEOUT doesnt_exist
 #define DTLS_CTRL_HANDLE_TIMEOUT doesnt_exist
@@ -2462,6 +2462,8 @@ OPENSSL_EXPORT const char *SSLeay_version(int unused);
 #define SSL_set_max_send_fragment SSL_set_max_send_fragment
 #define SSL_CTX_set_tlsext_servername_callback \
     SSL_CTX_set_tlsext_servername_callback
+#define SSL_CTX_set_tlsext_servername_arg SSL_CTX_set_tlsext_servername_arg
+#define SSL_set_tlsext_host_name SSL_set_tlsext_host_name
 #define SSL_CTX_set_tlsext_ticket_key_cb SSL_CTX_set_tlsext_ticket_key_cb
 #define DTLSv1_get_timeout DTLSv1_get_timeout
 #define DTLSv1_handle_timeout DTLSv1_handle_timeout
@@ -2675,6 +2677,7 @@ OPENSSL_EXPORT const char *SSLeay_version(int unused);
 #define SSL_F_SSL_set_tmp_ecdh 271
 #define SSL_F_SSL_CTX_set1_tls_channel_id 272
 #define SSL_F_SSL_set1_tls_channel_id 273
+#define SSL_F_SSL_set_tlsext_host_name 274
 #define SSL_R_APP_DATA_IN_HANDSHAKE 100
 #define SSL_R_ATTEMPT_TO_REUSE_SESSION_IN_DIFFERENT_CONTEXT 101
 #define SSL_R_BAD_ALERT 102

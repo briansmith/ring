@@ -317,9 +317,9 @@ OPENSSL_EXPORT int SSL_get_shared_sigalgs(SSL *s, int idx, int *psign,
                                           int *phash, int *psignandhash,
                                           uint8_t *rsig, uint8_t *rhash);
 
-#define SSL_set_tlsext_host_name(s, name)                              \
-  SSL_ctrl(s, SSL_CTRL_SET_TLSEXT_HOSTNAME, TLSEXT_NAMETYPE_host_name, \
-           (char *)name)
+/* SSL_set_tlsext_host_name, for a client, configures |ssl| to advertise |name|
+ * in the server_name extension. It returns one on success and zero on error. */
+OPENSSL_EXPORT int SSL_set_tlsext_host_name(SSL *ssl, const char *name);
 
 /* SSL_CTX_set_tlsext_servername_callback configures |callback| to be called on
  * the server after ClientHello extensions have been parsed and returns one.
@@ -336,8 +336,9 @@ OPENSSL_EXPORT int SSL_CTX_set_tlsext_servername_callback(
 #define SSL_TLSEXT_ERR_ALERT_FATAL 2
 #define SSL_TLSEXT_ERR_NOACK 3
 
-#define SSL_CTX_set_tlsext_servername_arg(ctx, arg) \
-  SSL_CTX_ctrl(ctx, SSL_CTRL_SET_TLSEXT_SERVERNAME_ARG, 0, (void *)arg)
+/* SSL_CTX_set_tlsext_servername_arg sets the argument to the servername
+ * callback and returns one. See |SSL_CTX_set_tlsext_servername_callback|. */
+OPENSSL_EXPORT int SSL_CTX_set_tlsext_servername_arg(SSL_CTX *ctx, void *arg);
 
 #define SSL_CTX_get_tlsext_ticket_keys(ctx, keys, keylen) \
   SSL_CTX_ctrl((ctx), SSL_CTRL_GET_TLSEXT_TICKET_KEYS, (keylen), (keys))

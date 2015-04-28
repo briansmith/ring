@@ -686,35 +686,30 @@ size_t SSL_get_tls_channel_id(SSL *ssl, uint8_t *out, size_t max_out) {
   return 64;
 }
 
+int SSL_set_tlsext_host_name(SSL *ssl, const char *name) {
+  OPENSSL_free(ssl->tlsext_hostname);
+  ssl->tlsext_hostname = NULL;
+
+  if (name == NULL) {
+    return 1;
+  }
+  if (strlen(name) > TLSEXT_MAXLEN_host_name) {
+    OPENSSL_PUT_ERROR(SSL, SSL_set_tlsext_host_name,
+                      SSL_R_SSL3_EXT_INVALID_SERVERNAME);
+    return 0;
+  }
+  ssl->tlsext_hostname = BUF_strdup(name);
+  if (ssl->tlsext_hostname == NULL) {
+    OPENSSL_PUT_ERROR(SSL, SSL_set_tlsext_host_name, ERR_R_MALLOC_FAILURE);
+    return 0;
+  }
+  return 1;
+}
+
 long ssl3_ctrl(SSL *s, int cmd, long larg, void *parg) {
   int ret = 0;
 
   switch (cmd) {
-    case SSL_CTRL_SET_TLSEXT_HOSTNAME:
-      if (larg == TLSEXT_NAMETYPE_host_name) {
-        OPENSSL_free(s->tlsext_hostname);
-        s->tlsext_hostname = NULL;
-
-        ret = 1;
-        if (parg == NULL) {
-          break;
-        }
-        if (strlen((char *)parg) > TLSEXT_MAXLEN_host_name) {
-          OPENSSL_PUT_ERROR(SSL, ssl3_ctrl, SSL_R_SSL3_EXT_INVALID_SERVERNAME);
-          return 0;
-        }
-        s->tlsext_hostname = BUF_strdup((char *) parg);
-        if (s->tlsext_hostname == NULL) {
-          OPENSSL_PUT_ERROR(SSL, ssl3_ctrl, ERR_R_INTERNAL_ERROR);
-          return 0;
-        }
-      } else {
-        OPENSSL_PUT_ERROR(SSL, ssl3_ctrl,
-                          SSL_R_SSL3_EXT_INVALID_SERVERNAME_TYPE);
-        return 0;
-      }
-      break;
-
     case SSL_CTRL_CHAIN:
       if (larg) {
         return ssl_cert_set1_chain(s->cert, (STACK_OF(X509) *)parg);
@@ -842,10 +837,6 @@ long ssl3_ctx_ctrl(SSL_CTX *ctx, int cmd, long larg, void *parg) {
   cert = ctx->cert;
 
   switch (cmd) {
-    case SSL_CTRL_SET_TLSEXT_SERVERNAME_ARG:
-      ctx->tlsext_servername_arg = parg;
-      break;
-
     case SSL_CTRL_SET_TLSEXT_TICKET_KEYS:
     case SSL_CTRL_GET_TLSEXT_TICKET_KEYS: {
       uint8_t *keys = parg;
@@ -944,6 +935,11 @@ long ssl3_ctx_ctrl(SSL_CTX *ctx, int cmd, long larg, void *parg) {
 int SSL_CTX_set_tlsext_servername_callback(
     SSL_CTX *ctx, int (*callback)(SSL *ssl, int *out_alert, void *arg)) {
   ctx->tlsext_servername_callback = callback;
+  return 1;
+}
+
+int SSL_CTX_set_tlsext_servername_arg(SSL_CTX *ctx, void *arg) {
+  ctx->tlsext_servername_arg = arg;
   return 1;
 }
 

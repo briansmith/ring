@@ -38,6 +38,7 @@ SSL,function,132,SSL_set_cipher_list
 SSL,function,133,SSL_set_fd
 SSL,function,134,SSL_set_rfd
 SSL,function,135,SSL_set_session_id_context
+SSL,function,274,SSL_set_tlsext_host_name
 SSL,function,270,SSL_set_tmp_dh
 SSL,function,271,SSL_set_tmp_ecdh
 SSL,function,136,SSL_set_wfd
