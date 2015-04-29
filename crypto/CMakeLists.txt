@@ -191,7 +191,7 @@ add_library(
   $<TARGET_OBJECTS:pkcs8>
 )
 
-if(NOT MSVC)
+if(NOT MSVC AND NOT ANDROID)
   target_link_libraries(crypto pthread)
 endif()
 

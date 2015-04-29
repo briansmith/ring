@@ -2,9 +2,16 @@ cmake_minimum_required (VERSION 2.8.10)
 
 project (BoringSSL)
 
-find_package(Perl REQUIRED)
+if(ANDROID)
+  # Android-NDK CMake files reconfigure the path and so Go and Perl won't be
+  # found. However, ninja will still find them in $PATH if we just name them.
+  set(PERL_EXECUTABLE "perl")
+  set(GO_EXECUTABLE "go")
+else()
+  find_package(Perl REQUIRED)
+  find_program(GO_EXECUTABLE go)
+endif()
 
-find_program(GO_EXECUTABLE go)
 if (NOT GO_EXECUTABLE)
   message(FATAL_ERROR "Could not find Go")
 endif()
@@ -97,10 +104,19 @@ elseif (${CMAKE_SYSTEM_PROCESSOR} STREQUAL "i686")
   set(ARCH "x86")
 elseif (${CMAKE_SYSTEM_PROCESSOR} STREQUAL "arm")
   set(ARCH "arm")
+elseif (${CMAKE_SYSTEM_PROCESSOR} STREQUAL "armv7-a")
+  set(ARCH "arm")
 elseif (${CMAKE_SYSTEM_PROCESSOR} STREQUAL "aarch64")
   set(ARCH "aarch64")
 else()
   message(FATAL_ERROR "Unknown processor:" ${CMAKE_SYSTEM_PROCESSOR})
+endif()
+
+if (ANDROID AND ${ARCH} STREQUAL "arm")
+  # The Android-NDK CMake files somehow fail to set the -march flag for
+  # assembly files. Without this flag, the compiler believes that it's
+  # building for ARMv5.
+  set(CMAKE_ASM_FLAGS "${CMAKE_ASM_FLAGS} -march=armv7-a")
 endif()
 
 if (${ARCH} STREQUAL "x86" AND APPLE)

@@ -30,9 +30,6 @@
 
 unsigned long getauxval(unsigned long type) __attribute__((weak));
 
-static const unsigned long AT_HWCAP = 16;
-static const unsigned long AT_HWCAP2 = 26;
-
 char CRYPTO_is_NEON_capable(void) {
   return (OPENSSL_armcap_P & ARMV7_NEON) != 0;
 }
@@ -136,6 +133,7 @@ void OPENSSL_cpuid_setup(void) {
     return;
   }
 
+  static const unsigned long AT_HWCAP = 16;
   unsigned long hwcap = getauxval(AT_HWCAP);
 
 #if defined(OPENSSL_ARM)
@@ -146,6 +144,7 @@ void OPENSSL_cpuid_setup(void) {
 
   /* In 32-bit mode, the ARMv8 feature bits are in a different aux vector
    * value. */
+  static const unsigned long AT_HWCAP2 = 26;
   hwcap = getauxval(AT_HWCAP2);
 
   /* See /usr/include/asm/hwcap.h on an ARM installation for the source of
