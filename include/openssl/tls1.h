@@ -679,7 +679,7 @@ OPENSSL_EXPORT int SSL_get_shared_sigalgs(SSL *s, int idx, int *psign,
 
 /* Non-standard ECDHE PSK ciphersuites */
 #define TLS1_TXT_ECDHE_PSK_WITH_AES_128_GCM_SHA256 \
-  "ECDHE-PSK-WITH-AES-128-GCM-SHA256"
+  "ECDHE-PSK-AES128-GCM-SHA256"
 
 #define TLS_CT_RSA_SIGN 1
 #define TLS_CT_DSS_SIGN 2
