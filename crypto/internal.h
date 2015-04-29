@@ -369,7 +369,19 @@ OPENSSL_EXPORT void CRYPTO_once(CRYPTO_once_t *once, void (*init)(void));
 struct CRYPTO_STATIC_MUTEX {
   pthread_rwlock_t lock;
 };
+
+#if !defined(PTHREAD_RWLOCK_INITIALIZER) && defined(__native_client__) && \
+    defined(_NEWLIB_VERSION)
+/* newlib under NaCl is missing PTHREAD_RWLOCK_INITIALIZER. See
+ * https://code.google.com/p/nativeclient/issues/detail?id=4160. Remove this
+ * when that bug is fixed. */
+#define CRYPTO_STATIC_MUTEX_INIT                                        \
+  { { PTHREAD_MUTEX_INITIALIZER, 0, 0, NACL_PTHREAD_ILLEGAL_THREAD_ID,  \
+      PTHREAD_COND_INITIALIZER, PTHREAD_COND_INITIALIZER } }
+#else
 #define CRYPTO_STATIC_MUTEX_INIT { PTHREAD_RWLOCK_INITIALIZER }
+#endif
+
 #else
 struct CRYPTO_STATIC_MUTEX {
   CRYPTO_once_t once;
