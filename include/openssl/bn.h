@@ -126,6 +126,7 @@
 #include <openssl/base.h>
 #include <openssl/thread.h>
 
+#include <inttypes.h>  /* for PRIu64 and friends */
 #include <stdio.h>  /* for FILE* */
 
 #if defined(__cplusplus)
@@ -142,9 +143,15 @@ extern "C" {
 #if defined(OPENSSL_64_BIT)
 #define BN_ULONG uint64_t
 #define BN_BITS2 64
+#define BN_DEC_FMT1	"%" PRIu64
+#define BN_DEC_FMT2	"%019" PRIu64
+#define BN_HEX_FMT1	"%" PRIx64
 #elif defined(OPENSSL_32_BIT)
 #define BN_ULONG uint32_t
 #define BN_BITS2 32
+#define BN_DEC_FMT1	"%" PRIu32
+#define BN_DEC_FMT2	"%09" PRIu32
+#define BN_HEX_FMT1	"%" PRIx32
 #else
 #error "Must define either OPENSSL_32_BIT or OPENSSL_64_BIT"
 #endif

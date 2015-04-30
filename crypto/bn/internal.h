@@ -131,8 +131,6 @@
 #define __STDC_FORMAT_MACROS
 #endif
 
-#include <inttypes.h>
-
 #if defined(OPENSSL_X86_64) && defined(_MSC_VER) && _MSC_VER >= 1400
 #pragma warning(push, 3)
 #include <intrin.h>
@@ -167,10 +165,7 @@ BIGNUM *bn_expand(BIGNUM *bn, unsigned bits);
 #define BN_MASK2h1	(0xffffffff80000000L)
 #define BN_TBIT		(0x8000000000000000L)
 #define BN_DEC_CONV	(10000000000000000000UL)
-#define BN_DEC_FMT1	"%" PRIu64
-#define BN_DEC_FMT2	"%019" PRIu64
 #define BN_DEC_NUM	19
-#define BN_HEX_FMT1	"%" PRIx64
 
 #elif defined(OPENSSL_32_BIT)
 
@@ -187,10 +182,7 @@ BIGNUM *bn_expand(BIGNUM *bn, unsigned bits);
 #define BN_MASK2h	(0xffff0000L)
 #define BN_TBIT		(0x80000000L)
 #define BN_DEC_CONV	(1000000000L)
-#define BN_DEC_FMT1	"%" PRIu32
-#define BN_DEC_FMT2	"%09" PRIu32
 #define BN_DEC_NUM	9
-#define BN_HEX_FMT1	"%" PRIx32
 
 #else
 #error "Must define either OPENSSL_32_BIT or OPENSSL_64_BIT"
