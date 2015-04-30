@@ -142,6 +142,14 @@ extern "C" {
 
 /* Startup and shutdown. */
 
+/* ERR_load_BIO_strings does nothing.
+ *
+ * TODO(fork): remove. libjingle calls this. */
+OPENSSL_EXPORT void ERR_load_BIO_strings(void);
+
+/* ERR_load_ERR_strings does nothing. */
+OPENSSL_EXPORT void ERR_load_ERR_strings(void);
+
 /* ERR_load_crypto_strings does nothing. */
 OPENSSL_EXPORT void ERR_load_crypto_strings(void);
 
@@ -486,11 +494,6 @@ enum {
  * |OPENSSL_PUT_ERROR| * macro. The resulting define will be
  * ${lib}_F_${reason}. */
 #define OPENSSL_DECLARE_ERROR_FUNCTION(lib, function_name)
-
-/* ERR_load_BIO_strings does nothing.
- *
- * TODO(fork): remove. libjingle calls this. */
-OPENSSL_EXPORT void ERR_load_BIO_strings(void);
 
 
 /* Android compatibility section.
