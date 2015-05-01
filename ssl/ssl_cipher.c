@@ -173,7 +173,6 @@ static const struct handshake_digest ssl_handshake_digests[SSL_MAX_DIGEST] = {
 typedef struct cipher_order_st {
   const SSL_CIPHER *cipher;
   int active;
-  int dead;
   int in_group;
   struct cipher_order_st *next, *prev;
 } CIPHER_ORDER;
