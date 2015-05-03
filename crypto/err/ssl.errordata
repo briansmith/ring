@@ -159,9 +159,6 @@ SSL,function,245,ssl_scan_serverhello_tlsext
 SSL,function,246,ssl_sess_cert_new
 SSL,function,247,ssl_set_cert
 SSL,function,248,ssl_set_pkey
-SSL,function,249,ssl_undefined_const_function
-SSL,function,250,ssl_undefined_function
-SSL,function,251,ssl_undefined_void_function
 SSL,function,252,ssl_verify_cert_chain
 SSL,function,253,tls12_check_peer_sigalg
 SSL,function,254,tls1_aead_ctx_init

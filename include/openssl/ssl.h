@@ -2652,9 +2652,6 @@ OPENSSL_EXPORT const char *SSLeay_version(int unused);
 #define SSL_F_ssl_sess_cert_new 246
 #define SSL_F_ssl_set_cert 247
 #define SSL_F_ssl_set_pkey 248
-#define SSL_F_ssl_undefined_const_function 249
-#define SSL_F_ssl_undefined_function 250
-#define SSL_F_ssl_undefined_void_function 251
 #define SSL_F_ssl_verify_cert_chain 252
 #define SSL_F_tls12_check_peer_sigalg 253
 #define SSL_F_tls1_aead_ctx_init 254

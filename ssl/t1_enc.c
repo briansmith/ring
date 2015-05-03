@@ -866,6 +866,12 @@ int tls1_export_keying_material(SSL *s, uint8_t *out, size_t out_len,
                                 const char *label, size_t label_len,
                                 const uint8_t *context, size_t context_len,
                                 int use_context) {
+  if (!s->s3->have_version || s->version == SSL3_VERSION) {
+    OPENSSL_PUT_ERROR(SSL, tls1_export_keying_material,
+                      ERR_R_SHOULD_NOT_HAVE_BEEN_CALLED);
+    return 0;
+  }
+
   size_t seed_len = 2 * SSL3_RANDOM_SIZE;
   if (use_context) {
     if (context_len >= 1u << 16) {

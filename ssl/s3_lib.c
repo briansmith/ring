@@ -488,8 +488,7 @@ const SSL3_ENC_METHOD SSLv3_enc_data = {
     SSL3_MD_CLIENT_FINISHED_CONST, 4,
     SSL3_MD_SERVER_FINISHED_CONST, 4,
     ssl3_alert_code,
-    (int (*)(SSL *, uint8_t *, size_t, const char *, size_t, const uint8_t *,
-             size_t, int use_context)) ssl_undefined_function,
+    tls1_export_keying_material,
     0,
 };
 

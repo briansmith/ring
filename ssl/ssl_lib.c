@@ -2155,24 +2155,6 @@ void SSL_set_connect_state(SSL *s) {
   ssl_clear_cipher_ctx(s);
 }
 
-int ssl_undefined_function(SSL *s) {
-  OPENSSL_PUT_ERROR(SSL, ssl_undefined_function,
-                    ERR_R_SHOULD_NOT_HAVE_BEEN_CALLED);
-  return 0;
-}
-
-int ssl_undefined_void_function(void) {
-  OPENSSL_PUT_ERROR(SSL, ssl_undefined_void_function,
-                    ERR_R_SHOULD_NOT_HAVE_BEEN_CALLED);
-  return 0;
-}
-
-int ssl_undefined_const_function(const SSL *s) {
-  OPENSSL_PUT_ERROR(SSL, ssl_undefined_const_function,
-                    ERR_R_SHOULD_NOT_HAVE_BEEN_CALLED);
-  return 0;
-}
-
 static const char *ssl_get_version(int version) {
   switch (version) {
     case TLS1_2_VERSION:
