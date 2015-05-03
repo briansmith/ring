@@ -430,7 +430,7 @@ typedef struct cert_pkey_st {
   X509 *x509;
   EVP_PKEY *privatekey;
   /* Chain for this certificate */
-  STACK_OF(X509) * chain;
+  STACK_OF(X509) *chain;
 } CERT_PKEY;
 
 typedef struct cert_st {
@@ -516,7 +516,7 @@ typedef struct cert_st {
 } CERT;
 
 typedef struct sess_cert_st {
-  STACK_OF(X509) * cert_chain; /* as received from peer (not for SSL2) */
+  STACK_OF(X509) *cert_chain; /* as received from peer (not for SSL2) */
 
   /* The 'peer_...' members are used only by clients. */
   int peer_cert_type;
@@ -670,24 +670,24 @@ int ssl_set_peer_cert_type(SESS_CERT *c, int type);
 int ssl_get_prev_session(SSL *s, const struct ssl_early_callback_ctx *ctx);
 int ssl_cipher_id_cmp(const void *in_a, const void *in_b);
 int ssl_cipher_ptr_id_cmp(const SSL_CIPHER **ap, const SSL_CIPHER **bp);
-STACK_OF(SSL_CIPHER) * ssl_bytes_to_cipher_list(SSL *s, const CBS *cbs);
-int ssl_cipher_list_to_bytes(SSL *s, STACK_OF(SSL_CIPHER) * sk, uint8_t *p);
+STACK_OF(SSL_CIPHER) *ssl_bytes_to_cipher_list(SSL *s, const CBS *cbs);
+int ssl_cipher_list_to_bytes(SSL *s, STACK_OF(SSL_CIPHER) *sk, uint8_t *p);
 struct ssl_cipher_preference_list_st *ssl_cipher_preference_list_dup(
     struct ssl_cipher_preference_list_st *cipher_list);
 void ssl_cipher_preference_list_free(
     struct ssl_cipher_preference_list_st *cipher_list);
 struct ssl_cipher_preference_list_st *ssl_cipher_preference_list_from_ciphers(
-    STACK_OF(SSL_CIPHER) * ciphers);
+    STACK_OF(SSL_CIPHER) *ciphers);
 struct ssl_cipher_preference_list_st *ssl_get_cipher_preferences(SSL *s);
 
-int ssl_cert_set0_chain(CERT *c, STACK_OF(X509) * chain);
-int ssl_cert_set1_chain(CERT *c, STACK_OF(X509) * chain);
+int ssl_cert_set0_chain(CERT *c, STACK_OF(X509) *chain);
+int ssl_cert_set1_chain(CERT *c, STACK_OF(X509) *chain);
 int ssl_cert_add0_chain_cert(CERT *c, X509 *x);
 int ssl_cert_add1_chain_cert(CERT *c, X509 *x);
 int ssl_cert_select_current(CERT *c, X509 *x);
 void ssl_cert_set_cert_cb(CERT *c, int (*cb)(SSL *ssl, void *arg), void *arg);
 
-int ssl_verify_cert_chain(SSL *s, STACK_OF(X509) * sk);
+int ssl_verify_cert_chain(SSL *s, STACK_OF(X509) *sk);
 int ssl_add_cert_chain(SSL *s, CERT_PKEY *cpk, unsigned long *l);
 int ssl_build_cert_chain(CERT *c, X509_STORE *chain_store, int flags);
 int ssl_cert_set_cert_store(CERT *c, X509_STORE *store, int chain, int ref);
@@ -705,7 +705,7 @@ int ssl_cert_type(EVP_PKEY *pkey);
 void ssl_get_compatible_server_ciphers(SSL *s, uint32_t *out_mask_k,
                                        uint32_t *out_mask_a);
 
-STACK_OF(SSL_CIPHER) * ssl_get_ciphers_by_id(SSL *s);
+STACK_OF(SSL_CIPHER) *ssl_get_ciphers_by_id(SSL *s);
 int ssl_verify_alarm_type(long type);
 int ssl_fill_hello_random(SSL *s, int server, uint8_t *field, size_t len);
 
@@ -756,7 +756,7 @@ int ssl3_finish_mac(SSL *s, const uint8_t *buf, int len);
 void ssl3_free_digest_list(SSL *s);
 int ssl3_output_cert_chain(SSL *s, CERT_PKEY *cpk);
 const SSL_CIPHER *ssl3_choose_cipher(
-    SSL *ssl, STACK_OF(SSL_CIPHER) * clnt,
+    SSL *ssl, STACK_OF(SSL_CIPHER) *clnt,
     struct ssl_cipher_preference_list_st *srvr);
 int ssl3_setup_buffers(SSL *s);
 int ssl3_setup_read_buffer(SSL *s);

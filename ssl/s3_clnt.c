@@ -735,7 +735,7 @@ err:
 }
 
 int ssl3_get_server_hello(SSL *s) {
-  STACK_OF(SSL_CIPHER) * sk;
+  STACK_OF(SSL_CIPHER) *sk;
   const SSL_CIPHER *c;
   CERT *ct = s->cert;
   int al = SSL_AD_INTERNAL_ERROR, ok;

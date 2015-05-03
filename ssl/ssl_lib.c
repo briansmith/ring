@@ -492,7 +492,7 @@ err:
 }
 
 struct ssl_cipher_preference_list_st *ssl_cipher_preference_list_from_ciphers(
-    STACK_OF(SSL_CIPHER) * ciphers) {
+    STACK_OF(SSL_CIPHER) *ciphers) {
   struct ssl_cipher_preference_list_st *ret = NULL;
   size_t n = sk_SSL_CIPHER_num(ciphers);
 
@@ -790,8 +790,8 @@ X509 *SSL_get_peer_certificate(const SSL *s) {
   return X509_up_ref(r);
 }
 
-STACK_OF(X509) * SSL_get_peer_cert_chain(const SSL *s) {
-  STACK_OF(X509) * r;
+STACK_OF(X509) *SSL_get_peer_cert_chain(const SSL *s) {
+  STACK_OF(X509) *r;
 
   if (s == NULL || s->session == NULL || s->session->sess_cert == NULL) {
     r = NULL;
@@ -1130,7 +1130,7 @@ int ssl_cipher_ptr_id_cmp(const SSL_CIPHER **ap, const SSL_CIPHER **bp) {
 
 /* return a STACK of the ciphers available for the SSL and in order of
  * preference */
-STACK_OF(SSL_CIPHER) * SSL_get_ciphers(const SSL *s) {
+STACK_OF(SSL_CIPHER) *SSL_get_ciphers(const SSL *s) {
   if (s == NULL) {
     return NULL;
   }
@@ -1153,7 +1153,7 @@ STACK_OF(SSL_CIPHER) * SSL_get_ciphers(const SSL *s) {
 
 /* return a STACK of the ciphers available for the SSL and in order of
  * algorithm id */
-STACK_OF(SSL_CIPHER) * ssl_get_ciphers_by_id(SSL *s) {
+STACK_OF(SSL_CIPHER) *ssl_get_ciphers_by_id(SSL *s) {
   if (s == NULL) {
     return NULL;
   }
@@ -1172,7 +1172,7 @@ STACK_OF(SSL_CIPHER) * ssl_get_ciphers_by_id(SSL *s) {
 /* The old interface to get the same thing as SSL_get_ciphers() */
 const char *SSL_get_cipher_list(const SSL *s, int n) {
   const SSL_CIPHER *c;
-  STACK_OF(SSL_CIPHER) * sk;
+  STACK_OF(SSL_CIPHER) *sk;
 
   if (s == NULL) {
     return NULL;
@@ -1289,7 +1289,7 @@ int ssl_cipher_list_to_bytes(SSL *s, STACK_OF(SSL_CIPHER) *sk, uint8_t *p) {
 STACK_OF(SSL_CIPHER) *ssl_bytes_to_cipher_list(SSL *s, const CBS *cbs) {
   CBS cipher_suites = *cbs;
   const SSL_CIPHER *c;
-  STACK_OF(SSL_CIPHER) * sk;
+  STACK_OF(SSL_CIPHER) *sk;
 
   if (s->s3) {
     s->s3->send_connection_binding = 0;

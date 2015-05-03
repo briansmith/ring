@@ -720,7 +720,7 @@ long SSL_CTX_get_timeout(const SSL_CTX *s) {
 typedef struct timeout_param_st {
   SSL_CTX *ctx;
   long time;
-  LHASH_OF(SSL_SESSION) * cache;
+  LHASH_OF(SSL_SESSION) *cache;
 } TIMEOUT_PARAM;
 
 static void timeout_doall_arg(SSL_SESSION *sess, void *void_param) {

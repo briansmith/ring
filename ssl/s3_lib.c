@@ -986,7 +986,7 @@ struct ssl_cipher_preference_list_st *ssl_get_cipher_preferences(SSL *s) {
 }
 
 const SSL_CIPHER *ssl3_choose_cipher(
-    SSL *s, STACK_OF(SSL_CIPHER) * clnt,
+    SSL *s, STACK_OF(SSL_CIPHER) *clnt,
     struct ssl_cipher_preference_list_st *server_pref) {
   const SSL_CIPHER *c, *ret = NULL;
   STACK_OF(SSL_CIPHER) *srvr = server_pref->ciphers, *prio, *allow;
