@@ -792,12 +792,13 @@ int ssl_add_cert_chain(SSL *s, CERT_PKEY *cpk, unsigned long *l) {
   int no_chain = 0;
   size_t i;
 
-  X509 *x = NULL;
-  STACK_OF(X509) * extra_certs;
+  X509 *x = cpk->x509;
+  STACK_OF(X509) *extra_certs;
   X509_STORE *chain_store;
 
-  if (cpk) {
-    x = cpk->x509;
+  if (x == NULL) {
+    OPENSSL_PUT_ERROR(SSL, ssl_add_cert_chain, SSL_R_NO_CERTIFICATE_SET);
+    return 0;
   }
 
   if (s->cert->chain_store) {
@@ -817,44 +818,36 @@ int ssl_add_cert_chain(SSL *s, CERT_PKEY *cpk, unsigned long *l) {
     no_chain = 1;
   }
 
-  /* TLSv1 sends a chain with nothing in it, instead of an alert. */
-  if (!BUF_MEM_grow_clean(buf, 10)) {
-    OPENSSL_PUT_ERROR(SSL, ssl_add_cert_chain, ERR_R_BUF_LIB);
-    return 0;
-  }
-
-  if (x != NULL) {
-    if (no_chain) {
-      if (!ssl_add_cert_to_buf(buf, l, x)) {
-        return 0;
-      }
-    } else {
-      X509_STORE_CTX xs_ctx;
-
-      if (!X509_STORE_CTX_init(&xs_ctx, chain_store, x, NULL)) {
-        OPENSSL_PUT_ERROR(SSL, ssl_add_cert_chain, ERR_R_X509_LIB);
-        return 0;
-      }
-      X509_verify_cert(&xs_ctx);
-      /* Don't leave errors in the queue */
-      ERR_clear_error();
-      for (i = 0; i < sk_X509_num(xs_ctx.chain); i++) {
-        x = sk_X509_value(xs_ctx.chain, i);
-
-        if (!ssl_add_cert_to_buf(buf, l, x)) {
-          X509_STORE_CTX_cleanup(&xs_ctx);
-          return 0;
-        }
-      }
-      X509_STORE_CTX_cleanup(&xs_ctx);
-    }
-  }
-
-  for (i = 0; i < sk_X509_num(extra_certs); i++) {
-    x = sk_X509_value(extra_certs, i);
+  if (no_chain) {
     if (!ssl_add_cert_to_buf(buf, l, x)) {
       return 0;
     }
+
+    for (i = 0; i < sk_X509_num(extra_certs); i++) {
+      x = sk_X509_value(extra_certs, i);
+      if (!ssl_add_cert_to_buf(buf, l, x)) {
+        return 0;
+      }
+    }
+  } else {
+    X509_STORE_CTX xs_ctx;
+
+    if (!X509_STORE_CTX_init(&xs_ctx, chain_store, x, NULL)) {
+      OPENSSL_PUT_ERROR(SSL, ssl_add_cert_chain, ERR_R_X509_LIB);
+      return 0;
+    }
+    X509_verify_cert(&xs_ctx);
+    /* Don't leave errors in the queue */
+    ERR_clear_error();
+    for (i = 0; i < sk_X509_num(xs_ctx.chain); i++) {
+      x = sk_X509_value(xs_ctx.chain, i);
+
+      if (!ssl_add_cert_to_buf(buf, l, x)) {
+        X509_STORE_CTX_cleanup(&xs_ctx);
+        return 0;
+      }
+    }
+    X509_STORE_CTX_cleanup(&xs_ctx);
   }
 
   return 1;

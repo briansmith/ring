@@ -305,7 +305,13 @@ int ssl3_output_cert_chain(SSL *s, CERT_PKEY *cpk) {
   uint8_t *p;
   unsigned long l = 3 + SSL_HM_HEADER_LENGTH(s);
 
-  if (!ssl_add_cert_chain(s, cpk, &l)) {
+  if (cpk == NULL) {
+    /* TLSv1 sends a chain with nothing in it, instead of an alert. */
+    if (!BUF_MEM_grow_clean(s->init_buf, 10)) {
+      OPENSSL_PUT_ERROR(SSL, ssl3_output_cert_chain, ERR_R_BUF_LIB);
+      return 0;
+    }
+  } else if (!ssl_add_cert_chain(s, cpk, &l)) {
     return 0;
   }
 

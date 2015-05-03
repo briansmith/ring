@@ -103,6 +103,7 @@ SSL,function,192,ssl3_get_server_hello
 SSL,function,193,ssl3_get_server_key_exchange
 SSL,function,194,ssl3_get_v2_client_hello
 SSL,function,195,ssl3_handshake_mac
+SSL,function,275,ssl3_output_cert_chain
 SSL,function,196,ssl3_prf
 SSL,function,197,ssl3_read_bytes
 SSL,function,198,ssl3_read_n

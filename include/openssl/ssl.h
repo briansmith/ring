@@ -2678,6 +2678,7 @@ OPENSSL_EXPORT const char *SSLeay_version(int unused);
 #define SSL_F_SSL_CTX_set1_tls_channel_id 272
 #define SSL_F_SSL_set1_tls_channel_id 273
 #define SSL_F_SSL_set_tlsext_host_name 274
+#define SSL_F_ssl3_output_cert_chain 275
 #define SSL_R_APP_DATA_IN_HANDSHAKE 100
 #define SSL_R_ATTEMPT_TO_REUSE_SESSION_IN_DIFFERENT_CONTEXT 101
 #define SSL_R_BAD_ALERT 102
