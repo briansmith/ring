@@ -110,6 +110,11 @@ if (${ARCH} STREQUAL "x86" AND APPLE)
   set(ARCH "x86_64")
 endif()
 
+if (OPENSSL_NO_ASM)
+  add_definitions(-DOPENSSL_NO_ASM)
+  set(ARCH "generic")
+endif()
+
 add_subdirectory(crypto)
 add_subdirectory(ssl)
 add_subdirectory(ssl/test)

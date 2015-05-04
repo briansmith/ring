@@ -20,7 +20,7 @@
 #include <openssl/cpu.h>
 
 
-#if defined(OPENSSL_X86_64)
+#if defined(OPENSSL_X86_64) && !defined(OPENSSL_NO_ASM)
 
 int CRYPTO_have_hwrand(void) {
   return (OPENSSL_ia32cap_P[1] & (1u << 30)) != 0;
