@@ -1607,7 +1607,7 @@ func addCipherSuiteTests() {
 					MaxVersion:           ver.version,
 					CipherSuites:         []uint16{suite.id},
 					Certificates:         []Certificate{cert},
-					PreSharedKey:         []byte(psk),
+					PreSharedKey:         []byte("WRONG PSK"),
 					PreSharedKeyIdentity: pskIdentity,
 				},
 				flags:         flags,

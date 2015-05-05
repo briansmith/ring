@@ -495,7 +495,7 @@ int main(void) {
       !TestDefaultVersion(SSL3_VERSION, &SSLv3_method) ||
       !TestDefaultVersion(TLS1_VERSION, &TLSv1_method) ||
       !TestDefaultVersion(TLS1_1_VERSION, &TLSv1_1_method) ||
-      !TestDefaultVersion(TLS1_2_VERSION, &TLSv1_2_method) ||
+      !TestDefaultVersion(TLS1_1_VERSION, &TLSv1_2_method) ||
       !TestDefaultVersion(0, &DTLS_method) ||
       !TestDefaultVersion(DTLS1_VERSION, &DTLSv1_method) ||
       !TestDefaultVersion(DTLS1_2_VERSION, &DTLSv1_2_method) ||
