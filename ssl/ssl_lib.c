@@ -754,9 +754,13 @@ void SSL_set_verify_depth(SSL *s, int depth) {
   X509_VERIFY_PARAM_set_depth(s->param, depth);
 }
 
-void SSL_set_read_ahead(SSL *s, int yes) { s->read_ahead = yes; }
+int SSL_CTX_get_read_ahead(const SSL_CTX *ctx) { return ctx->read_ahead; }
 
 int SSL_get_read_ahead(const SSL *s) { return s->read_ahead; }
+
+void SSL_CTX_set_read_ahead(SSL_CTX *ctx, int yes) { ctx->read_ahead = !!yes; }
+
+void SSL_set_read_ahead(SSL *s, int yes) { s->read_ahead = !!yes; }
 
 int SSL_pending(const SSL *s) {
   /* SSL_pending cannot work properly if read-ahead is enabled
@@ -957,34 +961,58 @@ int SSL_renegotiate_pending(SSL *s) {
   return s->renegotiate != 0;
 }
 
+uint32_t SSL_CTX_set_options(SSL_CTX *ctx, uint32_t options) {
+  ctx->options |= options;
+  return ctx->options;
+}
+
+uint32_t SSL_set_options(SSL *ssl, uint32_t options) {
+  ssl->options |= options;
+  return ssl->options;
+}
+
+uint32_t SSL_CTX_clear_options(SSL_CTX *ctx, uint32_t options) {
+  ctx->options &= ~options;
+  return ctx->options;
+}
+
+uint32_t SSL_clear_options(SSL *ssl, uint32_t options) {
+  ssl->options &= ~options;
+  return ssl->options;
+}
+
+uint32_t SSL_CTX_get_options(const SSL_CTX *ctx) { return ctx->options; }
+
+uint32_t SSL_get_options(const SSL *ssl) { return ssl->options; }
+
+uint32_t SSL_CTX_set_mode(SSL_CTX *ctx, uint32_t mode) {
+  ctx->mode |= mode;
+  return ctx->mode;
+}
+
+uint32_t SSL_set_mode(SSL *ssl, uint32_t mode) {
+  ssl->mode |= mode;
+  return ssl->mode;
+}
+
+uint32_t SSL_CTX_clear_mode(SSL_CTX *ctx, uint32_t mode) {
+  ctx->mode &= ~mode;
+  return ctx->mode;
+}
+
+uint32_t SSL_clear_mode(SSL *ssl, uint32_t mode) {
+  ssl->mode &= ~mode;
+  return ssl->mode;
+}
+
+uint32_t SSL_CTX_get_mode(const SSL_CTX *ctx) { return ctx->mode; }
+
+uint32_t SSL_get_mode(const SSL *ssl) { return ssl->mode; }
+
 long SSL_ctrl(SSL *s, int cmd, long larg, void *parg) {
   long l;
 
   switch (cmd) {
-    case SSL_CTRL_GET_READ_AHEAD:
-      return s->read_ahead;
-
-    case SSL_CTRL_SET_READ_AHEAD:
-      l = s->read_ahead;
-      s->read_ahead = larg;
-      return l;
-
-    case SSL_CTRL_SET_MSG_CALLBACK_ARG:
-      s->msg_callback_arg = parg;
-      return 1;
-
-    case SSL_CTRL_OPTIONS:
-      return s->options |= larg;
-
-    case SSL_CTRL_CLEAR_OPTIONS:
-      return s->options &= ~larg;
-
-    case SSL_CTRL_MODE:
-      return s->mode |= larg;
-
-    case SSL_CTRL_CLEAR_MODE:
-      return s->mode &= ~larg;
-
     case SSL_CTRL_GET_MAX_CERT_LIST:
       return s->max_cert_list;
 
@@ -1040,18 +1068,6 @@ long SSL_CTX_ctrl(SSL_CTX *ctx, int cmd, long larg, void *parg) {
   long l;
 
   switch (cmd) {
-    case SSL_CTRL_GET_READ_AHEAD:
-      return ctx->read_ahead;
-
-    case SSL_CTRL_SET_READ_AHEAD:
-      l = ctx->read_ahead;
-      ctx->read_ahead = larg;
-      return l;
-
-    case SSL_CTRL_SET_MSG_CALLBACK_ARG:
-      ctx->msg_callback_arg = parg;
-      return 1;
-
     case SSL_CTRL_GET_MAX_CERT_LIST:
       return ctx->max_cert_list;
 
@@ -1093,18 +1109,6 @@ long SSL_CTX_ctrl(SSL_CTX *ctx, int cmd, long larg, void *parg) {
       /* Statistics are no longer supported.
        * TODO(davidben): Try to remove the accessors altogether. */
       return 0;
-
-    case SSL_CTRL_OPTIONS:
-      return ctx->options |= larg;
-
-    case SSL_CTRL_CLEAR_OPTIONS:
-      return ctx->options &= ~larg;
-
-    case SSL_CTRL_MODE:
-      return ctx->mode |= larg;
-
-    case SSL_CTRL_CLEAR_MODE:
-      return ctx->mode &= ~larg;
 
     case SSL_CTRL_SET_MAX_SEND_FRAGMENT:
       if (larg < 512 || larg > SSL3_RT_MAX_PLAIN_LENGTH) {
@@ -2592,11 +2596,20 @@ void SSL_CTX_set_msg_callback(SSL_CTX *ctx,
                                          size_t len, SSL *ssl, void *arg)) {
   ctx->msg_callback = cb;
 }
+
+void SSL_CTX_set_msg_callback_arg(SSL_CTX *ctx, void *arg) {
+  ctx->msg_callback_arg = arg;
+}
+
 void SSL_set_msg_callback(SSL *ssl,
                           void (*cb)(int write_p, int version, int content_type,
                                      const void *buf, size_t len, SSL *ssl,
                                      void *arg)) {
   ssl->msg_callback = cb;
+}
+
+void SSL_set_msg_callback_arg(SSL *ssl, void *arg) {
+  ssl->msg_callback_arg = arg;
 }
 
 void SSL_CTX_set_keylog_bio(SSL_CTX *ctx, BIO *keylog_bio) {

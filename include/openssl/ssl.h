@@ -569,26 +569,62 @@ typedef struct timeval OPENSSL_timeval;
  * draft-ietf-tls-downgrade-scsv-05. */
 #define SSL_MODE_SEND_FALLBACK_SCSV 0x00000400L
 
-/* Note: SSL[_CTX]_set_{options,mode} use |= op on the previous value, they
- * cannot be used to clear bits. */
+/* SSL_CTX_set_options enables all options set in |options| (which should be one
+ * or more of the |SSL_OP_*| values, ORed together) in |ctx|. It returns a
+ * bitmask representing the resulting enabled options. */
+OPENSSL_EXPORT uint32_t SSL_CTX_set_options(SSL_CTX *ctx, uint32_t options);
 
-#define SSL_CTX_set_options(ctx, op) \
-  SSL_CTX_ctrl((ctx), SSL_CTRL_OPTIONS, (op), NULL)
-#define SSL_CTX_clear_options(ctx, op) \
-  SSL_CTX_ctrl((ctx), SSL_CTRL_CLEAR_OPTIONS, (op), NULL)
-#define SSL_CTX_get_options(ctx) SSL_CTX_ctrl((ctx), SSL_CTRL_OPTIONS, 0, NULL)
-#define SSL_set_options(ssl, op) SSL_ctrl((ssl), SSL_CTRL_OPTIONS, (op), NULL)
-#define SSL_clear_options(ssl, op) \
-  SSL_ctrl((ssl), SSL_CTRL_CLEAR_OPTIONS, (op), NULL)
-#define SSL_get_options(ssl) SSL_ctrl((ssl), SSL_CTRL_OPTIONS, 0, NULL)
+/* SSL_CTX_clear_options disables all options set in |options| (which should be
+ * one or more of the |SSL_OP_*| values, ORed together) in |ctx|. It returns a
+ * bitmask representing the resulting enabled options. */
+OPENSSL_EXPORT uint32_t SSL_CTX_clear_options(SSL_CTX *ctx, uint32_t options);
 
-#define SSL_CTX_set_mode(ctx, op) SSL_CTX_ctrl((ctx), SSL_CTRL_MODE, (op), NULL)
-#define SSL_CTX_clear_mode(ctx, op) \
-  SSL_CTX_ctrl((ctx), SSL_CTRL_CLEAR_MODE, (op), NULL)
-#define SSL_CTX_get_mode(ctx) SSL_CTX_ctrl((ctx), SSL_CTRL_MODE, 0, NULL)
-#define SSL_clear_mode(ssl, op) SSL_ctrl((ssl), SSL_CTRL_CLEAR_MODE, (op), NULL)
-#define SSL_set_mode(ssl, op) SSL_ctrl((ssl), SSL_CTRL_MODE, (op), NULL)
-#define SSL_get_mode(ssl) SSL_ctrl((ssl), SSL_CTRL_MODE, 0, NULL)
+/* SSL_CTX_get_options returns a bitmask of |SSL_OP_*| values that represent all
+ * the options enabled for |ctx|. */
+OPENSSL_EXPORT uint32_t SSL_CTX_get_options(const SSL_CTX *ctx);
+
+/* SSL_set_options enables all options set in |options| (which should be one or
+ * more of the |SSL_OP_*| values, ORed together) in |ssl|. It returns a bitmask
+ * representing the resulting enabled options. */
+OPENSSL_EXPORT uint32_t SSL_set_options(SSL *ssl, uint32_t options);
+
+/* SSL_clear_options disables all options set in |options| (which should be one
+ * or more of the |SSL_OP_*| values, ORed together) in |ssl|. It returns a
+ * bitmask representing the resulting enabled options. */
+OPENSSL_EXPORT uint32_t SSL_clear_options(SSL *ssl, uint32_t options);
+
+/* SSL_get_options returns a bitmask of |SSL_OP_*| values that represent all the
+ * options enabled for |ssl|. */
+OPENSSL_EXPORT uint32_t SSL_get_options(const SSL *ssl);
+
+/* SSL_CTX_set_mode enables all modes set in |mode| (which should be one or more
+ * of the |SSL_MODE_*| values, ORed together) in |ctx|. It returns a bitmask
+ * representing the resulting enabled modes. */
+OPENSSL_EXPORT uint32_t SSL_CTX_set_mode(SSL_CTX *ctx, uint32_t mode);
+
+/* SSL_CTX_clear_mode disables all modes set in |mode| (which should be one or
+ * more of the |SSL_MODE_*| values, ORed together) in |ctx|. It returns a
+ * bitmask representing the resulting enabled modes. */
+OPENSSL_EXPORT uint32_t SSL_CTX_clear_mode(SSL_CTX *ctx, uint32_t mode);
+
+/* SSL_CTX_get_mode returns a bitmask of |SSL_MODE_*| values that represent all
+ * the modes enabled for |ssl|. */
+OPENSSL_EXPORT uint32_t SSL_CTX_get_mode(const SSL_CTX *ctx);
+
+/* SSL_set_mode enables all modes set in |mode| (which should be one or more of
+ * the |SSL_MODE_*| values, ORed together) in |ssl|. It returns a bitmask
+ * representing the resulting enabled modes. */
+OPENSSL_EXPORT uint32_t SSL_set_mode(SSL *ssl, uint32_t mode);
+
+/* SSL_clear_mode disables all modes set in |mode| (which should be one or more
+ * of the |SSL_MODE_*| values, ORed together) in |ssl|. It returns a bitmask
+ * representing the resulting enabled modes. */
+OPENSSL_EXPORT uint32_t SSL_clear_mode(SSL *ssl, uint32_t mode);
+
+/* SSL_get_mode returns a bitmask of |SSL_MODE_*| values that represent all the
+ * modes enabled for |ssl|. */
+OPENSSL_EXPORT uint32_t SSL_get_mode(const SSL *ssl);
+
 #define SSL_set_mtu(ssl, mtu) SSL_ctrl((ssl), SSL_CTRL_SET_MTU, (mtu), NULL)
 
 #define SSL_get_secure_renegotiation_support(ssl) \
@@ -628,16 +664,18 @@ OPENSSL_EXPORT void SSL_CTX_set_msg_callback(
     SSL_CTX *ctx, void (*cb)(int write_p, int version, int content_type,
                              const void *buf, size_t len, SSL *ssl, void *arg));
 
+/* SSL_CTX_set_msg_callback_arg sets the |arg| parameter of the message
+ * callback. */
+OPENSSL_EXPORT void SSL_CTX_set_msg_callback_arg(SSL_CTX *ctx, void *arg);
+
 /* SSL_set_msg_callback installs |cb| as the message callback of |ssl|. See
  * |SSL_CTX_set_msg_callback| for when this callback is called. */
 OPENSSL_EXPORT void SSL_set_msg_callback(
     SSL *ssl, void (*cb)(int write_p, int version, int content_type,
                          const void *buf, size_t len, SSL *ssl, void *arg));
 
-#define SSL_CTX_set_msg_callback_arg(ctx, arg) \
-  SSL_CTX_ctrl((ctx), SSL_CTRL_SET_MSG_CALLBACK_ARG, 0, (arg))
-#define SSL_set_msg_callback_arg(ssl, arg) \
-  SSL_ctrl((ssl), SSL_CTRL_SET_MSG_CALLBACK_ARG, 0, (arg))
+/* set_msg_callback_arg sets the |arg| parameter of the message callback. */
+OPENSSL_EXPORT void SSL_set_msg_callback_arg(SSL *ssl, void *arg);
 
 /* SSL_CTX_set_keylog_bio sets configures all SSL objects attached to |ctx| to
  * log session material to |keylog_bio|. This is intended for debugging use
@@ -1577,8 +1615,6 @@ DECLARE_PEM_rw(SSL_SESSION, SSL_SESSION)
 #define SSL_CTRL_GET_FLAGS 13
 #define SSL_CTRL_EXTRA_CHAIN_CERT 14
 
-#define SSL_CTRL_SET_MSG_CALLBACK_ARG 16
-
 /* only applies to datagram connections */
 #define SSL_CTRL_SET_MTU 17
 /* Stats */
@@ -1594,11 +1630,7 @@ DECLARE_PEM_rw(SSL_SESSION, SSL_SESSION)
 #define SSL_CTRL_SESS_MISSES 29
 #define SSL_CTRL_SESS_TIMEOUTS 30
 #define SSL_CTRL_SESS_CACHE_FULL 31
-#define SSL_CTRL_OPTIONS 32
-#define SSL_CTRL_MODE 33
 
-#define SSL_CTRL_GET_READ_AHEAD 40
-#define SSL_CTRL_SET_READ_AHEAD 41
 #define SSL_CTRL_SET_SESS_CACHE_SIZE 42
 #define SSL_CTRL_GET_SESS_CACHE_SIZE 43
 #define SSL_CTRL_SET_SESS_CACHE_MODE 44
@@ -1621,8 +1653,6 @@ DECLARE_PEM_rw(SSL_SESSION, SSL_SESSION)
 #define SSL_CTRL_SET_TLS_EXT_SRP_PASSWORD 81
 
 #define SSL_CTRL_GET_RI_SUPPORT 76
-#define SSL_CTRL_CLEAR_OPTIONS 77
-#define SSL_CTRL_CLEAR_MODE 78
 
 #define SSL_CTRL_GET_EXTRA_CHAIN_CERTS 82
 #define SSL_CTRL_CLEAR_EXTRA_CHAIN_CERTS 83
@@ -2155,12 +2185,10 @@ OPENSSL_EXPORT int SSL_get_ex_data_X509_STORE_CTX_idx(void);
 #define SSL_CTX_get_session_cache_mode(ctx) \
   SSL_CTX_ctrl(ctx, SSL_CTRL_GET_SESS_CACHE_MODE, 0, NULL)
 
-#define SSL_CTX_get_default_read_ahead(ctx) SSL_CTX_get_read_ahead(ctx)
-#define SSL_CTX_set_default_read_ahead(ctx, m) SSL_CTX_set_read_ahead(ctx, m)
-#define SSL_CTX_get_read_ahead(ctx) \
-  SSL_CTX_ctrl(ctx, SSL_CTRL_GET_READ_AHEAD, 0, NULL)
-#define SSL_CTX_set_read_ahead(ctx, m) \
-  SSL_CTX_ctrl(ctx, SSL_CTRL_SET_READ_AHEAD, m, NULL)
+/* TODO(davidben): Deprecate read_ahead functions after https://crbug.com/447431
+ * is resolved. */
+OPENSSL_EXPORT int SSL_CTX_get_read_ahead(const SSL_CTX *ctx);
+OPENSSL_EXPORT void SSL_CTX_set_read_ahead(SSL_CTX *ctx, int yes);
 #define SSL_CTX_get_max_cert_list(ctx) \
   SSL_CTX_ctrl(ctx, SSL_CTRL_GET_MAX_CERT_LIST, 0, NULL)
 #define SSL_CTX_set_max_cert_list(ctx, m) \
@@ -2352,16 +2380,39 @@ OPENSSL_EXPORT const char *SSLeay_version(int unused);
 #define SSL_CTRL_SET_TMP_DH_CB doesnt_exist
 #define SSL_CTRL_SET_TMP_ECDH_CB doesnt_exist
 #define SSL_CTRL_SET_MSG_CALLBACK doesnt_exist
+#define SSL_CTRL_SET_MSG_CALLBACK_ARG doesnt_exist
+#define SSL_CTRL_OPTIONS doesnt_exist
+#define SSL_CTRL_MODE doesnt_exist
+#define SSL_CTRL_GET_READ_AHEAD doesnt_exist
+#define SSL_CTRL_SET_READ_AHEAD doesnt_exist
 #define SSL_CTRL_SET_TLSEXT_SERVERNAME_CB doesnt_exist
 #define SSL_CTRL_SET_TLSEXT_TICKET_KEY_CB doesnt_exist
 #define DTLS_CTRL_GET_TIMEOUT doesnt_exist
 #define DTLS_CTRL_HANDLE_TIMEOUT doesnt_exist
+#define SSL_CTRL_CLEAR_OPTIONS doesnt_exist
+#define SSL_CTRL_CLEAR_MODE doesnt_exist
 
+#define SSL_CTX_set_msg_callback_arg SSL_CTX_set_msg_callback_arg
+#define SSL_set_msg_callback_arg SSL_set_msg_callback_arg
+#define SSL_CTX_get_options SSL_CTX_get_options
+#define SSL_CTX_set_options SSL_CTX_set_options
+#define SSL_get_options SSL_get_options
+#define SSL_set_options SSL_set_options
+#define SSL_CTX_get_mode SSL_CTX_get_mode
+#define SSL_CTX_set_mode SSL_CTX_set_mode
+#define SSL_get_mode SSL_get_mode
+#define SSL_set_mode SSL_set_mode
+#define SSL_CTX_get_read_ahead SSL_CTX_get_read_ahead
+#define SSL_CTX_set_read_ahead SSL_CTX_set_read_ahead
 #define SSL_CTX_set_tlsext_servername_callback \
     SSL_CTX_set_tlsext_servername_callback
 #define SSL_CTX_set_tlsext_ticket_key_cb SSL_CTX_set_tlsext_ticket_key_cb
 #define DTLSv1_get_timeout DTLSv1_get_timeout
 #define DTLSv1_handle_timeout DTLSv1_handle_timeout
+#define SSL_CTX_clear_options SSL_CTX_clear_options
+#define SSL_clear_options SSL_clear_options
+#define SSL_CTX_clear_mode SSL_CTX_clear_mode
+#define SSL_clear_mode SSL_clear_mode
 
 
 #if defined(__cplusplus)
