@@ -65,6 +65,7 @@ var tests = []test{
 	{"crypto/cipher/aead_test", "aes-128-ctr-hmac-sha256", "crypto/cipher/test/aes_128_ctr_hmac_sha256.txt"},
 	{"crypto/cipher/aead_test", "aes-256-ctr-hmac-sha256", "crypto/cipher/test/aes_256_ctr_hmac_sha256.txt"},
 	{"crypto/cipher/cipher_test", "crypto/cipher/test/cipher_test.txt"},
+	{"crypto/cmac/cmac_test"},
 	{"crypto/constant_time_test"},
 	{"crypto/dh/dh_test"},
 	{"crypto/digest/digest_test"},

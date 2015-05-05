@@ -177,6 +177,7 @@ typedef struct bn_mont_ctx_st BN_MONT_CTX;
 typedef struct buf_mem_st BUF_MEM;
 typedef struct cbb_st CBB;
 typedef struct cbs_st CBS;
+typedef struct cmac_ctx_st CMAC_CTX;
 typedef struct conf_st CONF;
 typedef struct conf_value_st CONF_VALUE;
 typedef struct dh_method DH_METHOD;
