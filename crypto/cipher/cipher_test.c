@@ -315,6 +315,8 @@ static int test_cipher(const char *cipher, const uint8_t *key, int kn,
     c = EVP_aes_128_ofb();
   } else if (strcmp(cipher, "AES-192-CBC") == 0) {
     c = EVP_aes_192_cbc();
+  } else if (strcmp(cipher, "AES-192-ECB") == 0) {
+    c = EVP_aes_192_ecb();
   } else if (strcmp(cipher, "AES-256-CBC") == 0) {
     c = EVP_aes_256_cbc();
   } else if (strcmp(cipher, "AES-128-CTR") == 0) {
