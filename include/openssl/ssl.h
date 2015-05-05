@@ -625,10 +625,13 @@ OPENSSL_EXPORT uint32_t SSL_clear_mode(SSL *ssl, uint32_t mode);
  * modes enabled for |ssl|. */
 OPENSSL_EXPORT uint32_t SSL_get_mode(const SSL *ssl);
 
-#define SSL_set_mtu(ssl, mtu) SSL_ctrl((ssl), SSL_CTRL_SET_MTU, (mtu), NULL)
+/* SSL_set_mtu sets the |ssl|'s MTU in DTLS to |mtu|. It returns one on success
+ * and zero on failure. */
+OPENSSL_EXPORT int SSL_set_mtu(SSL *ssl, unsigned mtu);
 
-#define SSL_get_secure_renegotiation_support(ssl) \
-  SSL_ctrl((SSL *)(ssl), SSL_CTRL_GET_RI_SUPPORT, 0, NULL)
+/* SSL_get_secure_renegotiation_support returns one if the peer supports secure
+ * renegotiation (RFC 5746) and zero otherwise. */
+OPENSSL_EXPORT int SSL_get_secure_renegotiation_support(const SSL *ssl);
 
 /* SSL_CTX_set_min_version sets the minimum protocol version for |ctx| to
  * |version|. */
@@ -1595,8 +1598,6 @@ DECLARE_PEM_rw(SSL_SESSION, SSL_SESSION)
 #define SSL_CTRL_GET_FLAGS 13
 #define SSL_CTRL_EXTRA_CHAIN_CERT 14
 
-/* only applies to datagram connections */
-#define SSL_CTRL_SET_MTU 17
 /* Stats */
 #define SSL_CTRL_SESS_NUMBER 20
 
@@ -1615,8 +1616,6 @@ DECLARE_PEM_rw(SSL_SESSION, SSL_SESSION)
 #define SSL_CTRL_SET_TLS_EXT_SRP_USERNAME 79
 #define SSL_CTRL_SET_TLS_EXT_SRP_STRENGTH 80
 #define SSL_CTRL_SET_TLS_EXT_SRP_PASSWORD 81
-
-#define SSL_CTRL_GET_RI_SUPPORT 76
 
 #define SSL_CTRL_GET_EXTRA_CHAIN_CERTS 82
 #define SSL_CTRL_CLEAR_EXTRA_CHAIN_CERTS 83
@@ -2392,6 +2391,7 @@ OPENSSL_EXPORT const char *SSLeay_version(int unused);
 #define SSL_CTRL_SET_TMP_ECDH_CB doesnt_exist
 #define SSL_CTRL_SET_MSG_CALLBACK doesnt_exist
 #define SSL_CTRL_SET_MSG_CALLBACK_ARG doesnt_exist
+#define SSL_CTRL_SET_MTU doesnt_exist
 #define SSL_CTRL_OPTIONS doesnt_exist
 #define SSL_CTRL_MODE doesnt_exist
 #define SSL_CTRL_GET_READ_AHEAD doesnt_exist
@@ -2403,11 +2403,13 @@ OPENSSL_EXPORT const char *SSLeay_version(int unused);
 #define SSL_CTRL_SET_TLSEXT_TICKET_KEY_CB doesnt_exist
 #define DTLS_CTRL_GET_TIMEOUT doesnt_exist
 #define DTLS_CTRL_HANDLE_TIMEOUT doesnt_exist
+#define SSL_CTRL_GET_RI_SUPPORT doesnt_exist
 #define SSL_CTRL_CLEAR_OPTIONS doesnt_exist
 #define SSL_CTRL_CLEAR_MODE doesnt_exist
 
 #define SSL_CTX_set_msg_callback_arg SSL_CTX_set_msg_callback_arg
 #define SSL_set_msg_callback_arg SSL_set_msg_callback_arg
+#define SSL_set_mtu SSL_set_mtu
 #define SSL_CTX_get_options SSL_CTX_get_options
 #define SSL_CTX_set_options SSL_CTX_set_options
 #define SSL_get_options SSL_get_options
@@ -2429,6 +2431,8 @@ OPENSSL_EXPORT const char *SSLeay_version(int unused);
 #define SSL_CTX_set_tlsext_ticket_key_cb SSL_CTX_set_tlsext_ticket_key_cb
 #define DTLSv1_get_timeout DTLSv1_get_timeout
 #define DTLSv1_handle_timeout DTLSv1_handle_timeout
+#define SSL_get_secure_renegotiation_support \
+    SSL_get_secure_renegotiation_support
 #define SSL_CTX_clear_options SSL_CTX_clear_options
 #define SSL_clear_options SSL_clear_options
 #define SSL_CTX_clear_mode SSL_CTX_clear_mode

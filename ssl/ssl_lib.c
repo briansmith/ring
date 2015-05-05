@@ -1054,27 +1054,20 @@ void SSL_set_max_send_fragment(SSL *ssl, size_t max_send_fragment) {
   ssl->max_send_fragment = (uint16_t)max_send_fragment;
 }
 
-long SSL_ctrl(SSL *s, int cmd, long larg, void *parg) {
-  switch (cmd) {
-    case SSL_CTRL_SET_MTU:
-      if (larg < (long)dtls1_min_mtu()) {
-        return 0;
-      }
-      if (SSL_IS_DTLS(s)) {
-        s->d1->mtu = larg;
-        return larg;
-      }
-      return 0;
-
-    case SSL_CTRL_GET_RI_SUPPORT:
-      if (s->s3) {
-        return s->s3->send_connection_binding;
-      }
-      return 0;
-
-    default:
-      return s->method->ssl_ctrl(s, cmd, larg, parg);
+int SSL_set_mtu(SSL *ssl, unsigned mtu) {
+  if (!SSL_IS_DTLS(ssl) || mtu < dtls1_min_mtu()) {
+    return 0;
   }
+  ssl->d1->mtu = mtu;
+  return 1;
+}
+
+int SSL_get_secure_renegotiation_support(const SSL *ssl) {
+  return ssl->s3->send_connection_binding;
+}
+
+long SSL_ctrl(SSL *s, int cmd, long larg, void *parg) {
+  return s->method->ssl_ctrl(s, cmd, larg, parg);
 }
 
 LHASH_OF(SSL_SESSION) *SSL_CTX_sessions(SSL_CTX *ctx) { return ctx->sessions; }
