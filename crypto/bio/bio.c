@@ -126,6 +126,11 @@ int BIO_free(BIO *bio) {
   return 1;
 }
 
+BIO *BIO_up_ref(BIO *bio) {
+  CRYPTO_add(&bio->references, 1, CRYPTO_LOCK_BIO);
+  return bio;
+}
+
 void BIO_vfree(BIO *bio) {
   BIO_free(bio);
 }

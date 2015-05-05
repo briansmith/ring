@@ -86,6 +86,9 @@ OPENSSL_EXPORT EVP_PKEY *EVP_PKEY_new(void);
  * itself. */
 OPENSSL_EXPORT void EVP_PKEY_free(EVP_PKEY *pkey);
 
+/* EVP_PKEY_up_ref increments the reference count of |pkey| and returns it. */
+OPENSSL_EXPORT EVP_PKEY *EVP_PKEY_up_ref(EVP_PKEY *pkey);
+
 /* EVP_PKEY_is_opaque returns one if |pkey| is opaque. Opaque keys are backed by
  * custom implementations which do not expose key material and parameters. It is
  * an error to attempt to duplicate, export, or compare an opaque key. */
@@ -103,10 +106,6 @@ OPENSSL_EXPORT int EVP_PKEY_supports_digest(const EVP_PKEY *pkey,
  * WARNING: this differs from the traditional return value of a "cmp"
  * function. */
 OPENSSL_EXPORT int EVP_PKEY_cmp(const EVP_PKEY *a, const EVP_PKEY *b);
-
-/* EVP_PKEY_dup adds one to the reference count of |pkey| and returns
- * |pkey|. */
-OPENSSL_EXPORT EVP_PKEY *EVP_PKEY_dup(EVP_PKEY *pkey);
 
 /* EVP_PKEY_copy_parameters sets the parameters of |to| to equal the parameters
  * of |from|. It returns one on success and zero on error. */
@@ -647,6 +646,17 @@ OPENSSL_EXPORT int EVP_PKEY_CTX_set0_rsa_oaep_label(EVP_PKEY_CTX *ctx,
  * WARNING: the return value differs from the usual return value convention. */
 OPENSSL_EXPORT int EVP_PKEY_CTX_get0_rsa_oaep_label(EVP_PKEY_CTX *ctx,
                                                     const uint8_t **out_label);
+
+
+/* Deprecated functions. */
+
+/* EVP_PKEY_dup adds one to the reference count of |pkey| and returns
+ * |pkey|.
+ *
+ * WARNING: this is a |_dup| function that doesn't actually duplicate! Use
+ * |EVP_PKEY_up_ref| if you want to increment the reference count without
+ * confusion. */
+OPENSSL_EXPORT EVP_PKEY *EVP_PKEY_dup(EVP_PKEY *pkey);
 
 
 /* Private functions */

@@ -114,6 +114,11 @@ void EVP_PKEY_free(EVP_PKEY *pkey) {
   OPENSSL_free(pkey);
 }
 
+EVP_PKEY *EVP_PKEY_up_ref(EVP_PKEY *pkey) {
+  CRYPTO_add(&pkey->references, 1, CRYPTO_LOCK_EVP_PKEY);
+  return pkey;
+}
+
 int EVP_PKEY_is_opaque(const EVP_PKEY *pkey) {
   if (pkey->ameth && pkey->ameth->pkey_opaque) {
     return pkey->ameth->pkey_opaque(pkey);
@@ -149,11 +154,6 @@ int EVP_PKEY_cmp(const EVP_PKEY *a, const EVP_PKEY *b) {
   }
 
   return -2;
-}
-
-EVP_PKEY *EVP_PKEY_dup(EVP_PKEY *pkey) {
-  CRYPTO_add(&pkey->references, 1, CRYPTO_LOCK_EVP_PKEY);
-  return pkey;
 }
 
 int EVP_PKEY_copy_parameters(EVP_PKEY *to, const EVP_PKEY *from) {
@@ -433,6 +433,10 @@ int EVP_PKEY_CTX_set_signature_md(EVP_PKEY_CTX *ctx, const EVP_MD *md) {
 int EVP_PKEY_CTX_get_signature_md(EVP_PKEY_CTX *ctx, const EVP_MD **out_md) {
   return EVP_PKEY_CTX_ctrl(ctx, -1, EVP_PKEY_OP_TYPE_SIG, EVP_PKEY_CTRL_GET_MD,
                            0, (void *)out_md);
+}
+
+EVP_PKEY *EVP_PKEY_dup(EVP_PKEY *pkey) {
+  return EVP_PKEY_up_ref(pkey);
 }
 
 void OpenSSL_add_all_algorithms(void) {}
