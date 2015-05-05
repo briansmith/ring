@@ -2157,7 +2157,7 @@ static int tls_decrypt_ticket(SSL *s, const uint8_t *etick, int eticklen,
 
   /* First, check the MAC. The MAC is at the end of the ticket. */
   mlen = HMAC_size(&hctx);
-  if (eticklen < 16 + EVP_CIPHER_CTX_iv_length(&ctx) + 1 + mlen) {
+  if ((size_t) eticklen < 16 + EVP_CIPHER_CTX_iv_length(&ctx) + 1 + mlen) {
     /* The ticket must be large enough for key name, IV, data, and MAC. */
     HMAC_CTX_cleanup(&hctx);
     EVP_CIPHER_CTX_cleanup(&ctx);
