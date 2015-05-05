@@ -1749,6 +1749,7 @@ static const EVP_AEAD aead_aes_128_ctr_hmac_sha256 = {
     aead_aes_ctr_hmac_sha256_cleanup,
     aead_aes_ctr_hmac_sha256_seal,
     aead_aes_ctr_hmac_sha256_open,
+    NULL /* get_rc4_state */,
 };
 
 static const EVP_AEAD aead_aes_256_ctr_hmac_sha256 = {
@@ -1762,6 +1763,7 @@ static const EVP_AEAD aead_aes_256_ctr_hmac_sha256 = {
     aead_aes_ctr_hmac_sha256_cleanup,
     aead_aes_ctr_hmac_sha256_seal,
     aead_aes_ctr_hmac_sha256_open,
+    NULL /* get_rc4_state */,
 };
 
 const EVP_AEAD *EVP_aead_aes_128_ctr_hmac_sha256(void) {
