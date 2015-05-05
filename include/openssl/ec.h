@@ -299,6 +299,11 @@ OPENSSL_EXPORT const EC_METHOD *EC_GROUP_method_of(const EC_GROUP *group);
 /* EC_METHOD_get_field_type returns NID_X9_62_prime_field. */
 OPENSSL_EXPORT int EC_METHOD_get_field_type(const EC_METHOD *meth);
 
+/* EC_GROUP_set_point_conversion_form aborts the process if |form| is not
+ * |POINT_CONVERSION_UNCOMPRESSED| and otherwise does nothing. */
+OPENSSL_EXPORT void EC_GROUP_set_point_conversion_form(
+    EC_GROUP *group, point_conversion_form_t form);
+
 
 /* Old code expects to get EC_KEY from ec.h. */
 #if !defined(OPENSSL_HEADER_EC_KEY_H)
