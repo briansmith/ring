@@ -1307,12 +1307,6 @@ STACK_OF(SSL_CIPHER) *ssl_bytes_to_cipher_list(SSL *s, const CBS *cbs) {
     goto err;
   }
 
-  if (!CBS_stow(&cipher_suites, &s->cert->ciphers_raw,
-                &s->cert->ciphers_rawlen)) {
-    OPENSSL_PUT_ERROR(SSL, ssl_bytes_to_cipher_list, ERR_R_MALLOC_FAILURE);
-    goto err;
-  }
-
   while (CBS_len(&cipher_suites) > 0) {
     uint16_t cipher_suite;
 

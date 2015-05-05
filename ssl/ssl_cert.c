@@ -324,7 +324,6 @@ void ssl_cert_free(CERT *c) {
   OPENSSL_free(c->client_certificate_types);
   X509_STORE_free(c->verify_store);
   X509_STORE_free(c->chain_store);
-  OPENSSL_free(c->ciphers_raw);
 
   OPENSSL_free(c);
 }

@@ -509,10 +509,6 @@ typedef struct cert_st {
    * If NULL the parent SSL_CTX store is used instead. */
   X509_STORE *chain_store;
   X509_STORE *verify_store;
-
-  /* Raw values of the cipher list from a client */
-  uint8_t *ciphers_raw;
-  size_t ciphers_rawlen;
 } CERT;
 
 typedef struct sess_cert_st {
