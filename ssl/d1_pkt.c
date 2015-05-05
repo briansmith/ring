@@ -461,7 +461,7 @@ start:
   rr = &s->s3->rrec;
 
   /* Check for timeout */
-  if (dtls1_handle_timeout(s) > 0) {
+  if (DTLSv1_handle_timeout(s) > 0) {
     goto start;
   }
 

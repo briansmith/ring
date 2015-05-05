@@ -81,8 +81,7 @@
  * before failing the DTLS handshake. */
 #define DTLS1_MAX_TIMEOUTS                     12
 
-static void get_current_time(SSL *ssl, OPENSSL_timeval *out_clock);
-static OPENSSL_timeval *dtls1_get_timeout(SSL *s, OPENSSL_timeval *timeleft);
+static void get_current_time(const SSL *ssl, OPENSSL_timeval *out_clock);
 
 int dtls1_new(SSL *s) {
   DTLS1_STATE *d1;
@@ -152,28 +151,6 @@ void dtls1_free(SSL *s) {
   s->d1 = NULL;
 }
 
-long dtls1_ctrl(SSL *s, int cmd, long larg, void *parg) {
-  int ret = 0;
-
-  switch (cmd) {
-    case DTLS_CTRL_GET_TIMEOUT:
-      if (dtls1_get_timeout(s, (OPENSSL_timeval *)parg) != NULL) {
-        ret = 1;
-      }
-      break;
-
-    case DTLS_CTRL_HANDLE_TIMEOUT:
-      ret = dtls1_handle_timeout(s);
-      break;
-
-    default:
-      ret = ssl3_ctrl(s, cmd, larg, parg);
-      break;
-  }
-
-  return ret;
-}
-
 const SSL_CIPHER *dtls1_get_cipher(size_t i) {
   const SSL_CIPHER *ciph = ssl3_get_cipher(i);
   /* DTLS does not support stream ciphers. */
@@ -199,48 +176,51 @@ void dtls1_start_timer(SSL *s) {
            &s->d1->next_timeout);
 }
 
-static OPENSSL_timeval *dtls1_get_timeout(SSL *s, OPENSSL_timeval *timeleft) {
-  OPENSSL_timeval timenow;
+int DTLSv1_get_timeout(const SSL *ssl, OPENSSL_timeval *out) {
+  if (!SSL_IS_DTLS(ssl)) {
+    return 0;
+  }
 
   /* If no timeout is set, just return NULL */
-  if (s->d1->next_timeout.tv_sec == 0 && s->d1->next_timeout.tv_usec == 0) {
-    return NULL;
+  if (ssl->d1->next_timeout.tv_sec == 0 && ssl->d1->next_timeout.tv_usec == 0) {
+    return 0;
   }
 
   /* Get current time */
-  get_current_time(s, &timenow);
+  OPENSSL_timeval timenow;
+  get_current_time(ssl, &timenow);
 
   /* If timer already expired, set remaining time to 0 */
-  if (s->d1->next_timeout.tv_sec < timenow.tv_sec ||
-      (s->d1->next_timeout.tv_sec == timenow.tv_sec &&
-       s->d1->next_timeout.tv_usec <= timenow.tv_usec)) {
-    memset(timeleft, 0, sizeof(OPENSSL_timeval));
-    return timeleft;
+  if (ssl->d1->next_timeout.tv_sec < timenow.tv_sec ||
+      (ssl->d1->next_timeout.tv_sec == timenow.tv_sec &&
+       ssl->d1->next_timeout.tv_usec <= timenow.tv_usec)) {
+    memset(out, 0, sizeof(OPENSSL_timeval));
+    return 1;
   }
 
   /* Calculate time left until timer expires */
-  memcpy(timeleft, &s->d1->next_timeout, sizeof(OPENSSL_timeval));
-  timeleft->tv_sec -= timenow.tv_sec;
-  timeleft->tv_usec -= timenow.tv_usec;
-  if (timeleft->tv_usec < 0) {
-    timeleft->tv_sec--;
-    timeleft->tv_usec += 1000000;
+  memcpy(out, &ssl->d1->next_timeout, sizeof(OPENSSL_timeval));
+  out->tv_sec -= timenow.tv_sec;
+  out->tv_usec -= timenow.tv_usec;
+  if (out->tv_usec < 0) {
+    out->tv_sec--;
+    out->tv_usec += 1000000;
   }
 
   /* If remaining time is less than 15 ms, set it to 0 to prevent issues
    * because of small devergences with socket timeouts. */
-  if (timeleft->tv_sec == 0 && timeleft->tv_usec < 15000) {
-    memset(timeleft, 0, sizeof(OPENSSL_timeval));
+  if (out->tv_sec == 0 && out->tv_usec < 15000) {
+    memset(out, 0, sizeof(OPENSSL_timeval));
   }
 
-  return timeleft;
+  return 1;
 }
 
 int dtls1_is_timer_expired(SSL *s) {
   OPENSSL_timeval timeleft;
 
   /* Get time left until timeout, return false if no timer running */
-  if (dtls1_get_timeout(s, &timeleft) == NULL) {
+  if (!DTLSv1_get_timeout(s, &timeleft)) {
     return 0;
   }
 
@@ -294,23 +274,27 @@ int dtls1_check_timeout_num(SSL *s) {
   return 0;
 }
 
-int dtls1_handle_timeout(SSL *s) {
-  /* if no timer is expired, don't do anything */
-  if (!dtls1_is_timer_expired(s)) {
-    return 0;
-  }
-
-  dtls1_double_timeout(s);
-
-  if (dtls1_check_timeout_num(s) < 0) {
+int DTLSv1_handle_timeout(SSL *ssl) {
+  if (!SSL_IS_DTLS(ssl)) {
     return -1;
   }
 
-  dtls1_start_timer(s);
-  return dtls1_retransmit_buffered_messages(s);
+  /* if no timer is expired, don't do anything */
+  if (!dtls1_is_timer_expired(ssl)) {
+    return 0;
+  }
+
+  dtls1_double_timeout(ssl);
+
+  if (dtls1_check_timeout_num(ssl) < 0) {
+    return -1;
+  }
+
+  dtls1_start_timer(ssl);
+  return dtls1_retransmit_buffered_messages(ssl);
 }
 
-static void get_current_time(SSL *ssl, OPENSSL_timeval *out_clock) {
+static void get_current_time(const SSL *ssl, OPENSSL_timeval *out_clock) {
   if (ssl->ctx->current_time_cb != NULL) {
     ssl->ctx->current_time_cb(ssl, out_clock);
     return;

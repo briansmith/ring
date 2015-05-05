@@ -285,7 +285,7 @@ static unsigned PskServerCallback(SSL *ssl, const char *identity,
   return config->psk.size();
 }
 
-static void CurrentTimeCallback(SSL *ssl, OPENSSL_timeval *out_clock) {
+static void CurrentTimeCallback(const SSL *ssl, OPENSSL_timeval *out_clock) {
   *out_clock = GetTestState(ssl)->clock;
 }
 

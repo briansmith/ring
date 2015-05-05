@@ -711,7 +711,7 @@ int dtls1_read_failed(SSL *s, int code) {
     return code;
   }
 
-  return dtls1_handle_timeout(s);
+  return DTLSv1_handle_timeout(s);
 }
 
 int dtls1_get_queue_priority(unsigned short seq, int is_ccs) {

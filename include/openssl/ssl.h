@@ -974,7 +974,7 @@ struct ssl_ctx_st {
 
   /* current_time_cb, if not NULL, is the function to use to get the current
    * time. It sets |*out_clock| to the current time. */
-  void (*current_time_cb)(SSL *ssl, OPENSSL_timeval *out_clock);
+  void (*current_time_cb)(const SSL *ssl, OPENSSL_timeval *out_clock);
 };
 
 #define SSL_SESS_CACHE_OFF 0x0000
@@ -1620,9 +1620,6 @@ DECLARE_PEM_rw(SSL_SESSION, SSL_SESSION)
 #define SSL_CTRL_SET_TLS_EXT_SRP_STRENGTH 80
 #define SSL_CTRL_SET_TLS_EXT_SRP_PASSWORD 81
 
-#define DTLS_CTRL_GET_TIMEOUT 73
-#define DTLS_CTRL_HANDLE_TIMEOUT 74
-
 #define SSL_CTRL_GET_RI_SUPPORT 76
 #define SSL_CTRL_CLEAR_OPTIONS 77
 #define SSL_CTRL_CLEAR_MODE 78
@@ -1657,16 +1654,15 @@ DECLARE_PEM_rw(SSL_SESSION, SSL_SESSION)
 #define SSL_CTRL_SET_CHANNEL_ID 119
 
 /* DTLSv1_get_timeout queries the next DTLS handshake timeout. If there is a
- * timeout in progress, it sets |*((OPENSSL_timeval*)arg)| to the time remaining
- * and returns one. Otherwise, it returns zero.
+ * timeout in progress, it sets |*out| to the time remaining and returns one.
+ * Otherwise, it returns zero.
  *
  * When the timeout expires, call |DTLSv1_handle_timeout| to handle the
  * retransmit behavior.
  *
  * NOTE: This function must be queried again whenever the handshake state
  * machine changes, including when |DTLSv1_handle_timeout| is called. */
-#define DTLSv1_get_timeout(ssl, arg) \
-  SSL_ctrl(ssl, DTLS_CTRL_GET_TIMEOUT, 0, (void *)arg)
+OPENSSL_EXPORT int DTLSv1_get_timeout(const SSL *ssl, OPENSSL_timeval *out);
 
 /* DTLSv1_handle_timeout is called when a DTLS handshake timeout expires. If no
  * timeout had expired, it returns 0. Otherwise, it retransmits the previous
@@ -1675,9 +1671,10 @@ DECLARE_PEM_rw(SSL_SESSION, SSL_SESSION)
  *
  * NOTE: The caller's external timer should be compatible with the one |ssl|
  * queries within some fudge factor. Otherwise, the call will be a no-op, but
- * |DTLSv1_get_timeout| will return an updated timeout. */
-#define DTLSv1_handle_timeout(ssl) \
-  SSL_ctrl(ssl, DTLS_CTRL_HANDLE_TIMEOUT, 0, NULL)
+ * |DTLSv1_get_timeout| will return an updated timeout.
+ *
+ * WARNING: This function breaks the usual return value convention. */
+OPENSSL_EXPORT int DTLSv1_handle_timeout(SSL *ssl);
 
 #define SSL_session_reused(ssl) \
   SSL_ctrl((ssl), SSL_CTRL_GET_SESSION_REUSED, 0, NULL)
@@ -2357,10 +2354,14 @@ OPENSSL_EXPORT const char *SSLeay_version(int unused);
 #define SSL_CTRL_SET_MSG_CALLBACK doesnt_exist
 #define SSL_CTRL_SET_TLSEXT_SERVERNAME_CB doesnt_exist
 #define SSL_CTRL_SET_TLSEXT_TICKET_KEY_CB doesnt_exist
+#define DTLS_CTRL_GET_TIMEOUT doesnt_exist
+#define DTLS_CTRL_HANDLE_TIMEOUT doesnt_exist
 
 #define SSL_CTX_set_tlsext_servername_callback \
     SSL_CTX_set_tlsext_servername_callback
 #define SSL_CTX_set_tlsext_ticket_key_cb SSL_CTX_set_tlsext_ticket_key_cb
+#define DTLSv1_get_timeout DTLSv1_get_timeout
+#define DTLSv1_handle_timeout DTLSv1_handle_timeout
 
 
 #if defined(__cplusplus)

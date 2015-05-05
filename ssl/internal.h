@@ -812,7 +812,6 @@ void dtls1_clear_record_buffer(SSL *s);
 void dtls1_get_message_header(uint8_t *data, struct hm_header_st *msg_hdr);
 void dtls1_reset_seq_numbers(SSL *s, int rw);
 int dtls1_check_timeout_num(SSL *s);
-int dtls1_handle_timeout(SSL *s);
 int dtls1_set_handshake_header(SSL *s, int type, unsigned long len);
 int dtls1_handshake_write(SSL *s);
 
@@ -862,7 +861,6 @@ int dtls1_new(SSL *s);
 int dtls1_accept(SSL *s);
 int dtls1_connect(SSL *s);
 void dtls1_free(SSL *s);
-long dtls1_ctrl(SSL *s, int cmd, long larg, void *parg);
 int dtls1_shutdown(SSL *s);
 
 long dtls1_get_message(SSL *s, int st1, int stn, int mt, long max,

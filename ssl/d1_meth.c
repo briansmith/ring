@@ -74,7 +74,7 @@ static const SSL_PROTOCOL_METHOD DTLS_protocol_method = {
     dtls1_read_bytes,
     dtls1_write_app_data_bytes,
     dtls1_dispatch_alert,
-    dtls1_ctrl,
+    ssl3_ctrl,
     ssl3_ctx_ctrl,
     ssl3_pending,
     ssl3_num_ciphers,
