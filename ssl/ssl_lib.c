@@ -1072,32 +1072,32 @@ long SSL_ctrl(SSL *s, int cmd, long larg, void *parg) {
 
 LHASH_OF(SSL_SESSION) *SSL_CTX_sessions(SSL_CTX *ctx) { return ctx->sessions; }
 
+size_t SSL_CTX_sess_number(const SSL_CTX *ctx) {
+  return lh_SSL_SESSION_num_items(ctx->sessions);
+}
+
+unsigned long SSL_CTX_sess_set_cache_size(SSL_CTX *ctx, unsigned long size) {
+  unsigned long ret = ctx->session_cache_size;
+  ctx->session_cache_size = size;
+  return ret;
+}
+
+unsigned long SSL_CTX_sess_get_cache_size(const SSL_CTX *ctx) {
+  return ctx->session_cache_size;
+}
+
+int SSL_CTX_set_session_cache_mode(SSL_CTX *ctx, int mode) {
+  int ret = ctx->session_cache_mode;
+  ctx->session_cache_mode = mode;
+  return ret;
+}
+
+int SSL_CTX_get_session_cache_mode(const SSL_CTX *ctx) {
+  return ctx->session_cache_mode;
+}
+
 long SSL_CTX_ctrl(SSL_CTX *ctx, int cmd, long larg, void *parg) {
-  long l;
-
-  switch (cmd) {
-    case SSL_CTRL_SET_SESS_CACHE_SIZE:
-      l = ctx->session_cache_size;
-      ctx->session_cache_size = larg;
-      return l;
-
-    case SSL_CTRL_GET_SESS_CACHE_SIZE:
-      return ctx->session_cache_size;
-
-    case SSL_CTRL_SET_SESS_CACHE_MODE:
-      l = ctx->session_cache_mode;
-      ctx->session_cache_mode = larg;
-      return l;
-
-    case SSL_CTRL_GET_SESS_CACHE_MODE:
-      return ctx->session_cache_mode;
-
-    case SSL_CTRL_SESS_NUMBER:
-      return lh_SSL_SESSION_num_items(ctx->sessions);
-
-    default:
-      return ctx->method->ssl_ctx_ctrl(ctx, cmd, larg, parg);
-  }
+  return ctx->method->ssl_ctx_ctrl(ctx, cmd, larg, parg);
 }
 
 int ssl_cipher_id_cmp(const void *in_a, const void *in_b) {

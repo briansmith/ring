@@ -1018,20 +1018,11 @@ struct ssl_ctx_st {
   void (*current_time_cb)(const SSL *ssl, OPENSSL_timeval *out_clock);
 };
 
-#define SSL_SESS_CACHE_OFF 0x0000
-#define SSL_SESS_CACHE_CLIENT 0x0001
-#define SSL_SESS_CACHE_SERVER 0x0002
-#define SSL_SESS_CACHE_BOTH (SSL_SESS_CACHE_CLIENT | SSL_SESS_CACHE_SERVER)
-#define SSL_SESS_CACHE_NO_AUTO_CLEAR 0x0080
-/* See SSL_CTX_set_session_cache_mode(3) */
-#define SSL_SESS_CACHE_NO_INTERNAL_LOOKUP 0x0100
-#define SSL_SESS_CACHE_NO_INTERNAL_STORE 0x0200
-#define SSL_SESS_CACHE_NO_INTERNAL \
-  (SSL_SESS_CACHE_NO_INTERNAL_LOOKUP | SSL_SESS_CACHE_NO_INTERNAL_STORE)
-
 OPENSSL_EXPORT LHASH_OF(SSL_SESSION) *SSL_CTX_sessions(SSL_CTX *ctx);
-#define SSL_CTX_sess_number(ctx) \
-  SSL_CTX_ctrl(ctx, SSL_CTRL_SESS_NUMBER, 0, NULL)
+
+/* SSL_CTX_sess_number returns the number of sessions in |ctx|'s internal
+ * session cache. */
+OPENSSL_EXPORT size_t SSL_CTX_sess_number(const SSL_CTX *ctx);
 
 /* SSL_CTX_enable_tls_channel_id configures a TLS server to accept TLS client
  * IDs from clients. Returns 1 on success. */
@@ -1595,14 +1586,6 @@ DECLARE_PEM_rw(SSL_SESSION, SSL_SESSION)
 #define SSL_CTRL_GET_FLAGS 13
 #define SSL_CTRL_EXTRA_CHAIN_CERT 14
 
-/* Stats */
-#define SSL_CTRL_SESS_NUMBER 20
-
-#define SSL_CTRL_SET_SESS_CACHE_SIZE 42
-#define SSL_CTRL_GET_SESS_CACHE_SIZE 43
-#define SSL_CTRL_SET_SESS_CACHE_MODE 44
-#define SSL_CTRL_GET_SESS_CACHE_MODE 45
-
 /* see tls1.h for macros based on these */
 #define SSL_CTRL_SET_TLSEXT_SERVERNAME_ARG 54
 #define SSL_CTRL_SET_TLSEXT_HOSTNAME 55
@@ -2132,14 +2115,34 @@ OPENSSL_EXPORT int SSL_CTX_get_ex_new_index(long argl, void *argp,
 
 OPENSSL_EXPORT int SSL_get_ex_data_X509_STORE_CTX_idx(void);
 
-#define SSL_CTX_sess_set_cache_size(ctx, t) \
-  SSL_CTX_ctrl(ctx, SSL_CTRL_SET_SESS_CACHE_SIZE, t, NULL)
-#define SSL_CTX_sess_get_cache_size(ctx) \
-  SSL_CTX_ctrl(ctx, SSL_CTRL_GET_SESS_CACHE_SIZE, 0, NULL)
-#define SSL_CTX_set_session_cache_mode(ctx, m) \
-  SSL_CTX_ctrl(ctx, SSL_CTRL_SET_SESS_CACHE_MODE, m, NULL)
-#define SSL_CTX_get_session_cache_mode(ctx) \
-  SSL_CTX_ctrl(ctx, SSL_CTRL_GET_SESS_CACHE_MODE, 0, NULL)
+/* SSL_CTX_sess_set_cache_size sets the maximum size of |ctx|'s session cache to
+ * |size|. It returns the previous value. */
+OPENSSL_EXPORT unsigned long SSL_CTX_sess_set_cache_size(SSL_CTX *ctx,
+                                                         unsigned long size);
+
+/* SSL_CTX_sess_set_cache_size returns the maximum size of |ctx|'s session
+ * cache. */
+OPENSSL_EXPORT unsigned long SSL_CTX_sess_get_cache_size(const SSL_CTX *ctx);
+
+/* SSL_SESS_CACHE_* are the possible session cache mode bits.
+ * TODO(davidben): Document. */
+#define SSL_SESS_CACHE_OFF 0x0000
+#define SSL_SESS_CACHE_CLIENT 0x0001
+#define SSL_SESS_CACHE_SERVER 0x0002
+#define SSL_SESS_CACHE_BOTH (SSL_SESS_CACHE_CLIENT | SSL_SESS_CACHE_SERVER)
+#define SSL_SESS_CACHE_NO_AUTO_CLEAR 0x0080
+#define SSL_SESS_CACHE_NO_INTERNAL_LOOKUP 0x0100
+#define SSL_SESS_CACHE_NO_INTERNAL_STORE 0x0200
+#define SSL_SESS_CACHE_NO_INTERNAL \
+  (SSL_SESS_CACHE_NO_INTERNAL_LOOKUP | SSL_SESS_CACHE_NO_INTERNAL_STORE)
+
+/* SSL_CTX_set_session_cache_mode sets the session cache mode bits for |ctx| to
+ * |mode|. It returns the previous value. */
+OPENSSL_EXPORT int SSL_CTX_set_session_cache_mode(SSL_CTX *ctx, int mode);
+
+/* SSL_CTX_get_session_cache_mode returns the session cache mode bits for
+ * |ctx| */
+OPENSSL_EXPORT int SSL_CTX_get_session_cache_mode(const SSL_CTX *ctx);
 
 /* TODO(davidben): Deprecate read_ahead functions after https://crbug.com/447431
  * is resolved. */
@@ -2392,10 +2395,15 @@ OPENSSL_EXPORT const char *SSLeay_version(int unused);
 #define SSL_CTRL_SET_MSG_CALLBACK doesnt_exist
 #define SSL_CTRL_SET_MSG_CALLBACK_ARG doesnt_exist
 #define SSL_CTRL_SET_MTU doesnt_exist
+#define SSL_CTRL_SESS_NUMBER doesnt_exist
 #define SSL_CTRL_OPTIONS doesnt_exist
 #define SSL_CTRL_MODE doesnt_exist
 #define SSL_CTRL_GET_READ_AHEAD doesnt_exist
 #define SSL_CTRL_SET_READ_AHEAD doesnt_exist
+#define SSL_CTRL_SET_SESS_CACHE_SIZE doesnt_exist
+#define SSL_CTRL_GET_SESS_CACHE_SIZE doesnt_exist
+#define SSL_CTRL_SET_SESS_CACHE_MODE doesnt_exist
+#define SSL_CTRL_GET_SESS_CACHE_MODE doesnt_exist
 #define SSL_CTRL_GET_MAX_CERT_LIST doesnt_exist
 #define SSL_CTRL_SET_MAX_CERT_LIST doesnt_exist
 #define SSL_CTRL_SET_MAX_SEND_FRAGMENT doesnt_exist
@@ -2410,6 +2418,7 @@ OPENSSL_EXPORT const char *SSLeay_version(int unused);
 #define SSL_CTX_set_msg_callback_arg SSL_CTX_set_msg_callback_arg
 #define SSL_set_msg_callback_arg SSL_set_msg_callback_arg
 #define SSL_set_mtu SSL_set_mtu
+#define SSL_CTX_sess_number SSL_CTX_sess_number
 #define SSL_CTX_get_options SSL_CTX_get_options
 #define SSL_CTX_set_options SSL_CTX_set_options
 #define SSL_get_options SSL_get_options
@@ -2420,6 +2429,10 @@ OPENSSL_EXPORT const char *SSLeay_version(int unused);
 #define SSL_set_mode SSL_set_mode
 #define SSL_CTX_get_read_ahead SSL_CTX_get_read_ahead
 #define SSL_CTX_set_read_ahead SSL_CTX_set_read_ahead
+#define SSL_CTX_sess_set_cache_size SSL_CTX_sess_set_cache_size
+#define SSL_CTX_sess_get_cache_size SSL_CTX_sess_get_cache_size
+#define SSL_CTX_set_session_cache_mode SSL_CTX_set_session_cache_mode
+#define SSL_CTX_get_session_cache_mode SSL_CTX_get_session_cache_mode
 #define SSL_CTX_get_max_cert_list SSL_CTX_get_max_cert_list
 #define SSL_get_max_cert_list SSL_get_max_cert_list
 #define SSL_CTX_set_max_cert_list SSL_CTX_set_max_cert_list
