@@ -832,10 +832,6 @@ long ssl3_ctrl(SSL *s, int cmd, long larg, void *parg) {
 }
 
 long ssl3_ctx_ctrl(SSL_CTX *ctx, int cmd, long larg, void *parg) {
-  CERT *cert;
-
-  cert = ctx->cert;
-
   switch (cmd) {
     case SSL_CTRL_SET_TLSEXT_TICKET_KEYS:
     case SSL_CTRL_GET_TLSEXT_TICKET_KEYS: {
