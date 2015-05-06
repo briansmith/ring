@@ -180,7 +180,7 @@ static int ssl_set_pkey(CERT *c, EVP_PKEY *pkey) {
   }
 
   EVP_PKEY_free(c->pkeys[i].privatekey);
-  c->pkeys[i].privatekey = EVP_PKEY_dup(pkey);
+  c->pkeys[i].privatekey = EVP_PKEY_up_ref(pkey);
   c->key = &(c->pkeys[i]);
 
   return 1;

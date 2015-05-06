@@ -134,7 +134,7 @@ EVP_PKEY *X509_PUBKEY_get(X509_PUBKEY *key)
 
 	if (key->pkey != NULL)
 		{
-		return EVP_PKEY_dup(key->pkey);
+		return EVP_PKEY_up_ref(key->pkey);
 		}
 
 	if (key->public_key == NULL) goto error;
@@ -179,7 +179,7 @@ EVP_PKEY *X509_PUBKEY_get(X509_PUBKEY *key)
 		CRYPTO_w_unlock(CRYPTO_LOCK_EVP_PKEY);
 		}
 
-	return EVP_PKEY_dup(ret);
+	return EVP_PKEY_up_ref(ret);
 
 	error:
 	if (ret != NULL)

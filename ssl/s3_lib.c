@@ -661,7 +661,7 @@ int SSL_CTX_set1_tls_channel_id(SSL_CTX *ctx, EVP_PKEY *private_key) {
     return 0;
   }
   EVP_PKEY_free(ctx->tlsext_channel_id_private);
-  ctx->tlsext_channel_id_private = EVP_PKEY_dup(private_key);
+  ctx->tlsext_channel_id_private = EVP_PKEY_up_ref(private_key);
   return 1;
 }
 
@@ -673,7 +673,7 @@ int SSL_set1_tls_channel_id(SSL *ssl, EVP_PKEY *private_key) {
     return 0;
   }
   EVP_PKEY_free(ssl->tlsext_channel_id_private);
-  ssl->tlsext_channel_id_private = EVP_PKEY_dup(private_key);
+  ssl->tlsext_channel_id_private = EVP_PKEY_up_ref(private_key);
   return 1;
 }
 

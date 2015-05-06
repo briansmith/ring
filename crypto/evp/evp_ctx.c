@@ -120,7 +120,7 @@ static EVP_PKEY_CTX *evp_pkey_ctx_new(EVP_PKEY *pkey, ENGINE *e, int id) {
   ret->operation = EVP_PKEY_OP_UNDEFINED;
 
   if (pkey) {
-    ret->pkey = EVP_PKEY_dup(pkey);
+    ret->pkey = EVP_PKEY_up_ref(pkey);
   }
 
   if (pmeth->init) {
@@ -173,14 +173,14 @@ EVP_PKEY_CTX *EVP_PKEY_CTX_dup(EVP_PKEY_CTX *pctx) {
   rctx->operation = pctx->operation;
 
   if (pctx->pkey) {
-    rctx->pkey = EVP_PKEY_dup(pctx->pkey);
+    rctx->pkey = EVP_PKEY_up_ref(pctx->pkey);
     if (rctx->pkey == NULL) {
       goto err;
     }
   }
 
   if (pctx->peerkey) {
-    rctx->peerkey = EVP_PKEY_dup(pctx->peerkey);
+    rctx->peerkey = EVP_PKEY_up_ref(pctx->peerkey);
     if (rctx->peerkey == NULL) {
       goto err;
     }
@@ -431,7 +431,7 @@ int EVP_PKEY_derive_set_peer(EVP_PKEY_CTX *ctx, EVP_PKEY *peer) {
     return 0;
   }
 
-  EVP_PKEY_dup(peer);
+  EVP_PKEY_up_ref(peer);
   return 1;
 }
 

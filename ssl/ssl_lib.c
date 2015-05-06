@@ -353,7 +353,8 @@ SSL *SSL_new(SSL_CTX *ctx) {
 
   s->tlsext_channel_id_enabled = ctx->tlsext_channel_id_enabled;
   if (ctx->tlsext_channel_id_private) {
-    s->tlsext_channel_id_private = EVP_PKEY_dup(ctx->tlsext_channel_id_private);
+    s->tlsext_channel_id_private =
+        EVP_PKEY_up_ref(ctx->tlsext_channel_id_private);
   }
 
   s->signed_cert_timestamps_enabled = s->ctx->signed_cert_timestamps_enabled;

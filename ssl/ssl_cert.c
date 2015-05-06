@@ -225,7 +225,7 @@ CERT *ssl_cert_dup(CERT *cert) {
     }
 
     if (cpk->privatekey != NULL) {
-      rpk->privatekey = EVP_PKEY_dup(cpk->privatekey);
+      rpk->privatekey = EVP_PKEY_up_ref(cpk->privatekey);
     }
 
     if (cpk->chain) {
