@@ -307,7 +307,7 @@ int ssl3_output_cert_chain(SSL *s, CERT_PKEY *cpk) {
 
   if (cpk == NULL) {
     /* TLSv1 sends a chain with nothing in it, instead of an alert. */
-    if (!BUF_MEM_grow_clean(s->init_buf, 10)) {
+    if (!BUF_MEM_grow_clean(s->init_buf, l)) {
       OPENSSL_PUT_ERROR(SSL, ssl3_output_cert_chain, ERR_R_BUF_LIB);
       return 0;
     }
