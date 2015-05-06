@@ -666,6 +666,12 @@ OPENSSL_EXPORT EVP_PKEY *EVP_PKEY_dup(EVP_PKEY *pkey);
 /* OpenSSL_add_all_algorithms does nothing. */
 OPENSSL_EXPORT void OpenSSL_add_all_algorithms(void);
 
+/* OpenSSL_add_all_ciphers does nothing. */
+OPENSSL_EXPORT void OpenSSL_add_all_ciphers(void);
+
+/* OpenSSL_add_all_digests does nothing. */
+OPENSSL_EXPORT void OpenSSL_add_all_digests(void);
+
 /* EVP_cleanup does nothing. */
 OPENSSL_EXPORT void EVP_cleanup(void);
 

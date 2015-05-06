@@ -442,4 +442,8 @@ EVP_PKEY *EVP_PKEY_dup(EVP_PKEY *pkey) {
 
 void OpenSSL_add_all_algorithms(void) {}
 
+void OpenSSL_add_all_ciphers(void) {}
+
+void OpenSSL_add_all_digests(void) {}
+
 void EVP_cleanup(void) {}
