@@ -269,11 +269,11 @@ OPENSSL_EXPORT void ERR_print_errors_fp(FILE *file);
 OPENSSL_EXPORT void ERR_clear_error(void);
 
 /* ERR_remove_thread_state clears the error queue for the current thread if
- * |tid| is NULL. Otherwise it does nothing because it's no longer possible to
- * delete the error queue for other threads.
+ * |tid| is NULL. Otherwise it calls |assert(0)|, because it's no longer
+ * possible to delete the error queue for other threads.
  *
  * Error queues are thread-local data and are deleted automatically. You do not
- * need to call this function. See |ERR_clear_error|. */
+ * need to call this function. Use |ERR_clear_error|. */
 OPENSSL_EXPORT void ERR_remove_thread_state(const CRYPTO_THREADID *tid);
 
 
@@ -283,6 +283,12 @@ OPENSSL_EXPORT void ERR_remove_thread_state(const CRYPTO_THREADID *tid);
  * |library| argument to |ERR_put_error|. This is intended for code that wishes
  * to push its own, non-standard errors to the error queue. */
 OPENSSL_EXPORT int ERR_get_next_error_library(void);
+
+
+/* Deprecated functions. */
+
+/* |ERR_remove_state| calls |ERR_clear_error|. */
+OPENSSL_EXPORT void ERR_remove_state(unsigned long pid);
 
 
 /* Private functions. */
@@ -494,15 +500,6 @@ enum {
  * |OPENSSL_PUT_ERROR| * macro. The resulting define will be
  * ${lib}_F_${reason}. */
 #define OPENSSL_DECLARE_ERROR_FUNCTION(lib, function_name)
-
-
-/* Android compatibility section.
- *
- * These functions are declared, temporarily, for Android because
- * wpa_supplicant will take a little time to sync with upstream. Outside of
- * Android they'll have no definition. */
-
-OPENSSL_EXPORT void ERR_remove_state(unsigned long pid);
 
 
 #if defined(__cplusplus)

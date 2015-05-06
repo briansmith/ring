@@ -333,6 +333,10 @@ int ERR_get_next_error_library(void) {
   return ret;
 }
 
+void ERR_remove_state(unsigned long pid) {
+  ERR_clear_error();
+}
+
 void ERR_clear_system_error(void) {
   errno = 0;
 }
