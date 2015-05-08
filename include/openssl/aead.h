@@ -252,8 +252,8 @@ OPENSSL_EXPORT void EVP_AEAD_CTX_cleanup(EVP_AEAD_CTX *ctx);
  *
  * At most |max_out_len| bytes are written to |out| and, in order to ensure
  * success, |max_out_len| should be |in_len| plus the result of
- * |EVP_AEAD_overhead|. On successful return, |*out_len| is set to the actual
- * number of bytes written.
+ * |EVP_AEAD_max_overhead|. On successful return, |*out_len| is set to the
+ * actual number of bytes written.
  *
  * The length of |nonce|, |nonce_len|, must be equal to the result of
  * |EVP_AEAD_nonce_length| for this AEAD.
