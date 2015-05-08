@@ -162,6 +162,11 @@
 /* wpa_supplicant expects to get the version functions from ssl.h */
 #include <openssl/crypto.h>
 
+/* Forward-declare struct timeval. On Windows, it is defined in winsock2.h and
+ * Windows headers define too many macros to be included in public headers.
+ * However, only a forward declaration is needed. */
+struct timeval;
+
 #if defined(__cplusplus)
 extern "C" {
 #endif
@@ -448,17 +453,6 @@ struct ssl_session_st {
    * attack. */
   char extended_master_secret;
 };
-
-#if defined(OPENSSL_WINDOWS)
-/* Because of Windows header issues, we can't get the normal declaration of
- * timeval. */
-typedef struct OPENSSL_timeval_st {
-  long tv_sec;
-  long tv_usec;
-} OPENSSL_timeval;
-#else
-typedef struct timeval OPENSSL_timeval;
-#endif
 
 /* SSL_OP_LEGACY_SERVER_CONNECT allows initial connection to servers that don't
  * support RI */
@@ -1037,7 +1031,7 @@ struct ssl_ctx_st {
 
   /* current_time_cb, if not NULL, is the function to use to get the current
    * time. It sets |*out_clock| to the current time. */
-  void (*current_time_cb)(const SSL *ssl, OPENSSL_timeval *out_clock);
+  void (*current_time_cb)(const SSL *ssl, struct timeval *out_clock);
 };
 
 OPENSSL_EXPORT LHASH_OF(SSL_SESSION) *SSL_CTX_sessions(SSL_CTX *ctx);
@@ -1634,7 +1628,7 @@ DECLARE_PEM_rw(SSL_SESSION, SSL_SESSION)
  *
  * NOTE: This function must be queried again whenever the handshake state
  * machine changes, including when |DTLSv1_handle_timeout| is called. */
-OPENSSL_EXPORT int DTLSv1_get_timeout(const SSL *ssl, OPENSSL_timeval *out);
+OPENSSL_EXPORT int DTLSv1_get_timeout(const SSL *ssl, struct timeval *out);
 
 /* DTLSv1_handle_timeout is called when a DTLS handshake timeout expires. If no
  * timeout had expired, it returns 0. Otherwise, it retransmits the previous

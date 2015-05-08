@@ -15,10 +15,18 @@
 #ifndef HEADER_PACKETED_BIO
 #define HEADER_PACKETED_BIO
 
+#include <openssl/base.h>
 #include <openssl/bio.h>
-#include <openssl/ssl.h>
 
 #include "../../crypto/test/scoped_types.h"
+
+#if defined(OPENSSL_WINDOWS)
+#pragma warning(push, 3)
+#include <winsock2.h>
+#pragma warning(pop)
+#else
+#include <sys/types.h>
+#endif
 
 
 // PacketedBioCreate creates a filter BIO which implements a reliable in-order
@@ -30,7 +38,7 @@
 // Note: The read timeout simulation is intended to be used with the async BIO
 // wrapper. It doesn't simulate BIO_CTRL_DGRAM_SET_NEXT_TIMEOUT, used in DTLS's
 // blocking mode.
-ScopedBIO PacketedBioCreate(OPENSSL_timeval *out_timeout);
+ScopedBIO PacketedBioCreate(timeval *out_timeout);
 
 
 #endif  // HEADER_PACKETED_BIO

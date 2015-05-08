@@ -20,6 +20,7 @@
 #include <netinet/tcp.h>
 #include <signal.h>
 #include <sys/socket.h>
+#include <sys/types.h>
 #include <unistd.h>
 #else
 #include <io.h>
@@ -79,10 +80,10 @@ struct TestState {
   // async_bio is async BIO which pauses reads and writes.
   BIO *async_bio = nullptr;
   // clock is the current time for the SSL connection.
-  OPENSSL_timeval clock;
+  timeval clock;
   // clock_delta is how far the clock advanced in the most recent failed
   // |BIO_read|.
-  OPENSSL_timeval clock_delta;
+  timeval clock_delta;
   ScopedEVP_PKEY channel_id;
   bool cert_ready = false;
   ScopedSSL_SESSION session;
@@ -285,7 +286,7 @@ static unsigned PskServerCallback(SSL *ssl, const char *identity,
   return config->psk.size();
 }
 
-static void CurrentTimeCallback(const SSL *ssl, OPENSSL_timeval *out_clock) {
+static void CurrentTimeCallback(const SSL *ssl, timeval *out_clock) {
   *out_clock = GetTestState(ssl)->clock;
 }
 

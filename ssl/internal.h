@@ -149,6 +149,15 @@
 #include <openssl/ssl.h>
 #include <openssl/stack.h>
 
+#if defined(OPENSSL_WINDOWS)
+/* Windows defines struct timeval in winsock2.h. */
+#pragma warning(push, 3)
+#include <winsock2.h>
+#pragma warning(pop)
+#else
+#include <sys/types.h>
+#endif
+
 
 /* Cipher suites. */
 
@@ -739,9 +748,8 @@ typedef struct dtls1_state_st {
   unsigned int num_timeouts;
 
   /* Indicates when the last handshake msg or heartbeat sent will
-   * timeout. Because of header issues on Windows, this cannot actually be a
-   * struct timeval. */
-  OPENSSL_timeval next_timeout;
+   * timeout. */
+  struct timeval next_timeout;
 
   /* Timeout duration */
   unsigned short timeout_duration;
