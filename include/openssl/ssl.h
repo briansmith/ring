@@ -176,6 +176,28 @@ extern "C" {
 OPENSSL_EXPORT int SSL_library_init(void);
 
 
+/* Protocol version constants */
+
+#define SSL3_VERSION 0x0300
+#define SSL3_VERSION_MAJOR 0x03
+#define SSL3_VERSION_MINOR 0x00
+
+#define TLS1_2_VERSION 0x0303
+#define TLS1_2_VERSION_MAJOR 0x03
+#define TLS1_2_VERSION_MINOR 0x03
+
+#define TLS1_1_VERSION 0x0302
+#define TLS1_1_VERSION_MAJOR 0x03
+#define TLS1_1_VERSION_MINOR 0x02
+
+#define TLS1_VERSION 0x0301
+#define TLS1_VERSION_MAJOR 0x03
+#define TLS1_VERSION_MINOR 0x01
+
+#define DTLS1_VERSION 0xFEFF
+#define DTLS1_2_VERSION 0xFEFD
+
+
 /* Cipher suites. */
 
 /* An SSL_CIPHER represents a cipher suite. */
@@ -2495,7 +2517,6 @@ OPENSSL_EXPORT const char *SSLeay_version(int unused);
 #include <openssl/ssl2.h>
 #include <openssl/ssl3.h>
 #include <openssl/tls1.h> /* This is mostly sslv3 with a few tweaks */
-#include <openssl/dtls1.h> /* Datagram TLS */
 #include <openssl/ssl23.h>
 #include <openssl/srtp.h>  /* Support for the use_srtp extension */
 

@@ -145,6 +145,7 @@
 #include <openssl/base.h>
 
 #include <openssl/aead.h>
+#include <openssl/pqueue.h>
 #include <openssl/ssl.h>
 #include <openssl/stack.h>
 
@@ -646,6 +647,107 @@ struct ssl_aead_ctx_st {
    * in the AEAD's ad parameter. */
   char omit_version_in_ad;
 };
+
+/* lengths of messages */
+#define DTLS1_COOKIE_LENGTH 256
+
+#define DTLS1_RT_HEADER_LENGTH 13
+
+#define DTLS1_HM_HEADER_LENGTH 12
+
+#define DTLS1_CCS_HEADER_LENGTH 1
+
+#define DTLS1_AL_HEADER_LENGTH 2
+
+typedef struct dtls1_bitmap_st {
+  /* map is a bit mask of the last 64 sequence numbers. Bit
+   * |1<<i| corresponds to |max_seq_num - i|. */
+  uint64_t map;
+  /* max_seq_num is the largest sequence number seen so far. It
+   * is a 64-bit value in big-endian encoding. */
+  uint8_t max_seq_num[8];
+} DTLS1_BITMAP;
+
+/* TODO(davidben): This structure is used for both incoming messages and
+ * outgoing messages. |is_ccs| and |epoch| are only used in the latter and
+ * should be moved elsewhere. */
+struct hm_header_st {
+  uint8_t type;
+  uint32_t msg_len;
+  uint16_t seq;
+  uint32_t frag_off;
+  uint32_t frag_len;
+  int is_ccs;
+  /* epoch, for buffered outgoing messages, is the epoch the message was
+   * originally sent in. */
+  uint16_t epoch;
+};
+
+/* TODO(davidben): This structure is used for both incoming messages and
+ * outgoing messages. |fragment| and |reassembly| are only used in the former
+ * and should be moved elsewhere. */
+typedef struct hm_fragment_st {
+  struct hm_header_st msg_header;
+  uint8_t *fragment;
+  uint8_t *reassembly;
+} hm_fragment;
+
+typedef struct dtls1_state_st {
+  /* send_cookie is true if we are resending the ClientHello
+   * with a cookie from a HelloVerifyRequest. */
+  unsigned int send_cookie;
+
+  uint8_t cookie[DTLS1_COOKIE_LENGTH];
+  size_t cookie_len;
+
+  /* The current data and handshake epoch.  This is initially undefined, and
+   * starts at zero once the initial handshake is completed. */
+  uint16_t r_epoch;
+  uint16_t w_epoch;
+
+  /* records being received in the current epoch */
+  DTLS1_BITMAP bitmap;
+
+  /* handshake message numbers */
+  uint16_t handshake_write_seq;
+  uint16_t next_handshake_write_seq;
+
+  uint16_t handshake_read_seq;
+
+  /* save last sequence number for retransmissions */
+  uint8_t last_write_sequence[8];
+
+  /* buffered_messages is a priority queue of incoming handshake messages that
+   * have yet to be processed.
+   *
+   * TODO(davidben): This data structure may as well be a ring buffer of fixed
+   * size. */
+  pqueue buffered_messages;
+
+  /* send_messages is a priority queue of outgoing handshake messages sent in
+   * the most recent handshake flight.
+   *
+   * TODO(davidben): This data structure may as well be a STACK_OF(T). */
+  pqueue sent_messages;
+
+  unsigned int mtu; /* max DTLS packet size */
+
+  struct hm_header_st w_msg_hdr;
+
+  /* num_timeouts is the number of times the retransmit timer has fired since
+   * the last time it was reset. */
+  unsigned int num_timeouts;
+
+  /* Indicates when the last handshake msg or heartbeat sent will
+   * timeout. Because of header issues on Windows, this cannot actually be a
+   * struct timeval. */
+  OPENSSL_timeval next_timeout;
+
+  /* Timeout duration */
+  unsigned short timeout_duration;
+
+  unsigned int change_cipher_spec_ok;
+} DTLS1_STATE;
 
 extern const SSL_CIPHER ssl3_ciphers[];
 
