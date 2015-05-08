@@ -32,9 +32,8 @@ OPENSSL_COMPILE_ASSERT(sizeof(CRYPTO_MUTEX) >= sizeof(CRITICAL_SECTION),
                        CRYPTO_MUTEX_too_small);
 
 static void run_once(CRYPTO_once_t *in_once, void (*init)(void *), void *arg) {
-  volatile LONG *once = (LONG*) in_once;
+  volatile LONG *once = in_once;
 
-  assert(sizeof(LONG) == sizeof(CRYPTO_once_t));
   /* Values must be aligned. */
   assert((((uintptr_t) once) & 3) == 0);
 

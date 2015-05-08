@@ -336,7 +336,7 @@ static inline int constant_time_select_int(unsigned int mask, int a, int b) {
 typedef pthread_once_t CRYPTO_once_t;
 #define CRYPTO_ONCE_INIT PTHREAD_ONCE_INIT
 #else
-typedef int32_t CRYPTO_once_t;
+typedef LONG CRYPTO_once_t;
 #define CRYPTO_ONCE_INIT 0
 #endif
 
