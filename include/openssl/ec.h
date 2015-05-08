@@ -380,6 +380,7 @@ OPENSSL_EXPORT void EC_GROUP_set_point_conversion_form(
 #define EC_F_ec_GFp_nistp256_points_mul 162
 #define EC_F_ec_group_copy 163
 #define EC_F_nistp256_pre_comp_new 164
+#define EC_F_EC_KEY_new_by_curve_name 165
 #define EC_R_BUFFER_TOO_SMALL 100
 #define EC_R_COORDINATES_OUT_OF_RANGE 101
 #define EC_R_D2I_ECPKPARAMETERS_FAILURE 102

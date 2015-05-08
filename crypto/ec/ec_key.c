@@ -127,6 +127,7 @@ err1:
 EC_KEY *EC_KEY_new_by_curve_name(int nid) {
   EC_KEY *ret = EC_KEY_new();
   if (ret == NULL) {
+    OPENSSL_PUT_ERROR(EC, EC_KEY_new_by_curve_name, ERR_R_MALLOC_FAILURE);
     return NULL;
   }
   ret->group = EC_GROUP_new_by_curve_name(nid);

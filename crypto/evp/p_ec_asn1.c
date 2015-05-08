@@ -147,7 +147,6 @@ static EC_KEY *eckey_type2param(int ptype, void *pval) {
      * by an asn1 OID */
     eckey = EC_KEY_new_by_curve_name(OBJ_obj2nid(poid));
     if (eckey == NULL) {
-      OPENSSL_PUT_ERROR(EVP, eckey_type2param, ERR_R_MALLOC_FAILURE);
       goto err;
     }
   } else {
