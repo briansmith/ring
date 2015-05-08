@@ -112,12 +112,13 @@
 #include <openssl/ex_data.h>
 #include <openssl/thread.h>
 
-#if !defined(OPENSSL_WINDOWS)
-#include <pthread.h>
-#else
+#if defined(OPENSSL_NO_THREADS)
+#elif defined(OPENSSL_WINDOWS)
 #pragma warning(push, 3)
 #include <windows.h>
 #pragma warning(pop)
+#else
+#include <pthread.h>
 #endif
 
 #if defined(__cplusplus)
@@ -332,12 +333,15 @@ static inline int constant_time_select_int(unsigned int mask, int a, int b) {
 
 /* Thread-safe initialisation. */
 
-#if !defined(OPENSSL_WINDOWS)
-typedef pthread_once_t CRYPTO_once_t;
-#define CRYPTO_ONCE_INIT PTHREAD_ONCE_INIT
-#else
+#if defined(OPENSSL_NO_THREADS)
+typedef uint32_t CRYPTO_once_t;
+#define CRYPTO_ONCE_INIT 0
+#elif defined(OPENSSL_WINDOWS)
 typedef LONG CRYPTO_once_t;
 #define CRYPTO_ONCE_INIT 0
+#else
+typedef pthread_once_t CRYPTO_once_t;
+#define CRYPTO_ONCE_INIT PTHREAD_ONCE_INIT
 #endif
 
 /* CRYPTO_once calls |init| exactly once per process. This is thread-safe: if
@@ -365,17 +369,20 @@ OPENSSL_EXPORT void CRYPTO_once(CRYPTO_once_t *once, void (*init)(void));
  * |CRYPTO_once_t| to ensure that the lock is setup before use. This is done
  * automatically by |CRYPTO_STATIC_MUTEX_lock_*|. */
 
-#if !defined(OPENSSL_WINDOWS)
-struct CRYPTO_STATIC_MUTEX {
-  pthread_rwlock_t lock;
-};
-#define CRYPTO_STATIC_MUTEX_INIT { PTHREAD_RWLOCK_INITIALIZER }
-#else
+#if defined(OPENSSL_NO_THREADS)
+struct CRYPTO_STATIC_MUTEX {};
+#define CRYPTO_STATIC_MUTEX_INIT {}
+#elif defined(OPENSSL_WINDOWS)
 struct CRYPTO_STATIC_MUTEX {
   CRYPTO_once_t once;
   CRITICAL_SECTION lock;
 };
 #define CRYPTO_STATIC_MUTEX_INIT { CRYPTO_ONCE_INIT, { 0 } }
+#else
+struct CRYPTO_STATIC_MUTEX {
+  pthread_rwlock_t lock;
+};
+#define CRYPTO_STATIC_MUTEX_INIT { PTHREAD_RWLOCK_INITIALIZER }
 #endif
 
 /* CRYPTO_MUTEX_init initialises |lock|. If |lock| is a static variable, use a

@@ -144,6 +144,7 @@ add_library(
   crypto.c
   mem.c
   thread.c
+  thread_none.c
   thread_pthread.c
   thread_win.c
   ex_data.c

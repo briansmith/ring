@@ -66,7 +66,9 @@ extern "C" {
 #endif
 
 
-#if defined(OPENSSL_WINDOWS)
+#if defined(OPENSSL_NO_THREADS)
+typedef struct crypto_mutex_st {} CRYPTO_MUTEX;
+#elif defined(OPENSSL_WINDOWS)
 /* CRYPTO_MUTEX can appear in public header files so we really don't want to
  * pull in windows.h. It's statically asserted that this structure is large
  * enough to contain a Windows CRITICAL_SECTION by thread_win.c. */

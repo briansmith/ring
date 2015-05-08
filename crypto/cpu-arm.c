@@ -17,9 +17,12 @@
 #if defined(OPENSSL_ARM) || defined(OPENSSL_AARCH64)
 
 #include <inttypes.h>
+#include <string.h>
+
+#if !defined(OPENSSL_TRUSTY)
 #include <setjmp.h>
 #include <signal.h>
-#include <string.h>
+#endif
 
 #include "arm_arch.h"
 
@@ -59,7 +62,7 @@ void CRYPTO_set_NEON_functional(char neon_functional) {
   }
 }
 
-#if !defined(OPENSSL_NO_ASM) && defined(OPENSSL_ARM)
+#if !defined(OPENSSL_NO_ASM) && defined(OPENSSL_ARM) && !defined(OPENSSL_TRUSTY)
 
 static sigjmp_buf sigill_jmp;
 
@@ -113,11 +116,11 @@ static int probe_for_NEON() {
 
 #else
 
-static int probe_for_NEON() {
+static int probe_for_NEON(void) {
   return 0;
 }
 
-#endif  /* !OPENSSL_NO_ASM && OPENSSL_ARM */
+#endif  /* !OPENSSL_NO_ASM && OPENSSL_ARM && !OPENSSL_TRUSTY */
 
 void OPENSSL_cpuid_setup(void) {
   if (getauxval == NULL) {

@@ -17,6 +17,8 @@
 #include <stdio.h>
 
 
+#if !defined(OPENSSL_NO_THREADS)
+
 #if defined(OPENSSL_WINDOWS)
 
 #pragma warning(push, 3)
@@ -189,3 +191,12 @@ int main(int argc, char **argv) {
   printf("PASS\n");
   return 0;
 }
+
+#else  /* OPENSSL_NO_THREADS */
+
+int main(int argc, char **argv) {
+  printf("PASS\n");
+  return 0;
+}
+
+#endif
