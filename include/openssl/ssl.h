@@ -762,7 +762,7 @@ struct ssl_comp_st {
 };
 
 DECLARE_STACK_OF(SSL_COMP)
-DECLARE_LHASH_OF(SSL_SESSION);
+DECLARE_LHASH_OF(SSL_SESSION)
 
 /* ssl_cipher_preference_list_st contains a list of SSL_CIPHERs with
  * equal-preference groups. For TLS clients, the groups are moot because the
