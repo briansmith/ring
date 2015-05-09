@@ -139,7 +139,12 @@ extern "C" {
  * will allow you to work with numbers until you run out of memory. */
 
 
-/* BN_ULONG is the native word size when working with big integers. */
+/* BN_ULONG is the native word size when working with big integers.
+ *
+ * Note: on some platforms, inttypes.h does not define print format macros in
+ * C++ unless |__STDC_FORMAT_MACROS| defined. As this is a public header, bn.h
+ * does not define |__STDC_FORMAT_MACROS| itself. C++ source files which use the
+ * FMT macros must define it externally. */
 #if defined(OPENSSL_64_BIT)
 #define BN_ULONG uint64_t
 #define BN_BITS2 64

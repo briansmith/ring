@@ -67,6 +67,11 @@
  * Sheueling Chang Shantz and Douglas Stebila of Sun Microsystems
  * Laboratories. */
 
+/* For BIGNUM format macros. */
+#if !defined(__STDC_FORMAT_MACROS)
+#define __STDC_FORMAT_MACROS
+#endif
+
 #include <stdio.h>
 #include <string.h>
 
@@ -76,7 +81,6 @@
 #include <openssl/mem.h>
 
 #include "../crypto/test/scoped_types.h"
-#include "internal.h"
 
 
 static const int num0 = 100; // number of tests
