@@ -273,7 +273,7 @@ again:
   /* check if we have the header */
   if ((s->rstate != SSL_ST_READ_BODY) ||
       (s->packet_length < DTLS1_RT_HEADER_LENGTH)) {
-    n = ssl3_read_n(s, DTLS1_RT_HEADER_LENGTH, s->s3->rbuf.len, 0);
+    n = ssl3_read_n(s, DTLS1_RT_HEADER_LENGTH, 0);
     /* read timeout is handled by dtls1_read_bytes */
     if (n <= 0) {
       return n; /* error or non-blocking */
@@ -345,7 +345,7 @@ again:
   if (rr->length > s->packet_length - DTLS1_RT_HEADER_LENGTH) {
     /* now s->packet_length == DTLS1_RT_HEADER_LENGTH */
     i = rr->length;
-    n = ssl3_read_n(s, i, i, 1);
+    n = ssl3_read_n(s, i, 1);
     if (n <= 0) {
       return n; /* error or non-blocking io */
     }

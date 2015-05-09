@@ -124,14 +124,14 @@ static int do_ssl3_write(SSL *s, int type, const uint8_t *buf, unsigned int len,
                          char fragment);
 static int ssl3_get_record(SSL *s);
 
-int ssl3_read_n(SSL *s, int n, int max, int extend) {
+int ssl3_read_n(SSL *s, int n, int extend) {
   /* If |extend| is 0, obtain new n-byte packet;
    * if |extend| is 1, increase packet by another n bytes.
    *
    * The packet will be in the sub-array of |s->s3->rbuf.buf| specified by
-   * |s->packet| and |s->packet_length|. (If |s->read_ahead| is set, |max|
-   * bytes may be stored in |rbuf| (plus |s->packet_length| bytes if |extend|
-   * is one.) */
+   * |s->packet| and |s->packet_length|. (If |s->read_ahead| is set and |extend|
+   * is 0, additional bytes may be read into |rbuf|, up to the size of the
+   * buffer.) */
   int i, len, left;
   uintptr_t align = 0;
   uint8_t *pkt;
@@ -206,16 +206,9 @@ int ssl3_read_n(SSL *s, int n, int max, int extend) {
     return -1;
   }
 
-  if (!s->read_ahead) {
-    /* ignore max parameter */
-    max = n;
-  } else {
-    if (max < n) {
-      max = n;
-    }
-    if (max > (int)(rb->len - rb->offset)) {
-      max = rb->len - rb->offset;
-    }
+  int max = n;
+  if (s->read_ahead && !extend) {
+    max = rb->len - rb->offset;
   }
 
   while (left < n) {
@@ -296,7 +289,7 @@ again:
   /* check if we have the header */
   if (s->rstate != SSL_ST_READ_BODY ||
       s->packet_length < SSL3_RT_HEADER_LENGTH) {
-    n = ssl3_read_n(s, SSL3_RT_HEADER_LENGTH, s->s3->rbuf.len, 0);
+    n = ssl3_read_n(s, SSL3_RT_HEADER_LENGTH, 0);
     if (n <= 0) {
       return n; /* error or non-blocking */
     }
@@ -339,7 +332,7 @@ again:
   if (rr->length > s->packet_length - SSL3_RT_HEADER_LENGTH) {
     /* now s->packet_length == SSL3_RT_HEADER_LENGTH */
     i = rr->length;
-    n = ssl3_read_n(s, i, i, 1);
+    n = ssl3_read_n(s, i, 1);
     if (n <= 0) {
       /* Error or non-blocking IO. Now |n| == |rr->length|, and
        * |s->packet_length| == |SSL3_RT_HEADER_LENGTH| + |rr->length|. */

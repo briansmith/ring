@@ -895,7 +895,7 @@ int ssl3_set_handshake_header(SSL *s, int htype, unsigned long len);
 int ssl3_handshake_write(SSL *s);
 
 int dtls1_do_write(SSL *s, int type);
-int ssl3_read_n(SSL *s, int n, int max, int extend);
+int ssl3_read_n(SSL *s, int n, int extend);
 int dtls1_read_bytes(SSL *s, int type, uint8_t *buf, int len, int peek);
 int ssl3_write_pending(SSL *s, int type, const uint8_t *buf, unsigned int len);
 void dtls1_set_message_header(SSL *s, uint8_t mt, unsigned long len,
