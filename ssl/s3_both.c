@@ -672,6 +672,7 @@ int ssl3_release_write_buffer(SSL *s) {
 int ssl3_release_read_buffer(SSL *s) {
   OPENSSL_free(s->s3->rbuf.buf);
   s->s3->rbuf.buf = NULL;
+  s->packet = NULL;
   return 1;
 }
 
