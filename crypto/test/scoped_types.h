@@ -27,7 +27,9 @@
 #include <openssl/evp.h>
 #include <openssl/hmac.h>
 #include <openssl/mem.h>
+#include <openssl/pkcs8.h>
 #include <openssl/rsa.h>
+#include <openssl/stack.h>
 #include <openssl/x509.h>
 
 #include "stl_compat.h"
@@ -40,6 +42,14 @@ struct OpenSSLDeleter {
   }
 };
 
+template<typename StackType, typename T, void (*func)(T*)>
+struct OpenSSLStackDeleter {
+  void operator()(StackType *obj) {
+    sk_pop_free(reinterpret_cast<_STACK*>(obj),
+                reinterpret_cast<void (*)(void *)>(func));
+  }
+};
+
 template<typename T>
 struct OpenSSLFree {
   void operator()(T *buf) {
@@ -49,6 +59,10 @@ struct OpenSSLFree {
 
 template<typename T, void (*func)(T*)>
 using ScopedOpenSSLType = bssl::unique_ptr<T, OpenSSLDeleter<T, func>>;
+
+template<typename StackType, typename T, void (*func)(T*)>
+using ScopedOpenSSLStack =
+    bssl::unique_ptr<StackType, OpenSSLStackDeleter<StackType, T, func>>;
 
 template<typename T, typename CleanupRet, void (*init_func)(T*),
          CleanupRet (*cleanup_func)(T*)>
@@ -86,8 +100,12 @@ using ScopedEC_POINT = ScopedOpenSSLType<EC_POINT, EC_POINT_free>;
 using ScopedEVP_PKEY = ScopedOpenSSLType<EVP_PKEY, EVP_PKEY_free>;
 using ScopedPKCS8_PRIV_KEY_INFO = ScopedOpenSSLType<PKCS8_PRIV_KEY_INFO,
                                                     PKCS8_PRIV_KEY_INFO_free>;
+using ScopedPKCS12 = ScopedOpenSSLType<PKCS12, PKCS12_free>;
 using ScopedRSA = ScopedOpenSSLType<RSA, RSA_free>;
+using ScopedX509 = ScopedOpenSSLType<X509, X509_free>;
 using ScopedX509_ALGOR = ScopedOpenSSLType<X509_ALGOR, X509_ALGOR_free>;
+
+using ScopedX509Stack = ScopedOpenSSLStack<STACK_OF(X509), X509, X509_free>;
 
 using ScopedEVP_MD_CTX = ScopedOpenSSLContext<EVP_MD_CTX, int, EVP_MD_CTX_init,
                                               EVP_MD_CTX_cleanup>;

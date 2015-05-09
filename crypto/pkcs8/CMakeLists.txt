@@ -14,7 +14,7 @@ add_library(
 add_executable(
   pkcs12_test
 
-  pkcs12_test.c
+  pkcs12_test.cc
 )
 
 target_link_libraries(pkcs12_test crypto)
