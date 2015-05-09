@@ -744,6 +744,9 @@ static int do_dtls1_write(SSL *s, int type, const uint8_t *buf,
   wr = &(s->s3->wrec);
   wb = &(s->s3->wbuf);
 
+  if (wb->buf == NULL && !ssl3_setup_write_buffer(s)) {
+    return -1;
+  }
   p = wb->buf + prefix_len;
 
   /* write the header */

@@ -232,7 +232,7 @@ int ssl3_read_n(SSL *s, int n, int max, int extend) {
 
     if (i <= 0) {
       rb->left = left;
-      if (!SSL_IS_DTLS(s) && len + left == 0) {
+      if (len + left == 0) {
         ssl3_release_read_buffer(s);
       }
       return i;
@@ -672,9 +672,7 @@ int ssl3_write_pending(SSL *s, int type, const uint8_t *buf, unsigned int len) {
     if (i == wb->left) {
       wb->left = 0;
       wb->offset += i;
-      if (!SSL_IS_DTLS(s)) {
-        ssl3_release_write_buffer(s);
-      }
+      ssl3_release_write_buffer(s);
       s->rwstate = SSL_NOTHING;
       return s->s3->wpend_ret;
     } else if (i <= 0) {
