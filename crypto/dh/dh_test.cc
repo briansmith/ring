@@ -59,15 +59,35 @@
 #include <stdio.h>
 #include <string.h>
 
+#include <vector>
+
 #include <openssl/bn.h>
 #include <openssl/crypto.h>
 #include <openssl/err.h>
 #include <openssl/mem.h>
 
 #include "internal.h"
+#include "../test/scoped_types.h"
+#include "../test/stl_compat.h"
 
 
-static int cb(int p, int n, BN_GENCB *arg) {
+static bool RunBasicTests();
+static bool RunRFC5114Tests();
+
+int main(int argc, char *argv[]) {
+  CRYPTO_library_init();
+
+  if (!RunBasicTests() ||
+      !RunRFC5114Tests()) {
+    ERR_print_errors_fp(stderr);
+    return 1;
+  }
+
+  printf("PASS\n");
+  return 0;
+}
+
+static int GenerateCallback(int p, int n, BN_GENCB *arg) {
   char c = '*';
 
   if (p == 0) {
@@ -79,129 +99,113 @@ static int cb(int p, int n, BN_GENCB *arg) {
   } else if (p == 3) {
     c = '\n';
   }
-  fputc(c, arg->arg);
-  fflush(arg->arg);
+  FILE *out = reinterpret_cast<FILE*>(arg->arg);
+  fputc(c, out);
+  fflush(out);
 
   return 1;
 }
 
-static int run_rfc5114_tests(void);
-
-int main(int argc, char *argv[]) {
-  BN_GENCB _cb;
-  DH *a;
-  DH *b = NULL;
-  char buf[12];
-  unsigned char *abuf = NULL, *bbuf = NULL;
-  int i, alen, blen, aout, bout, ret = 1;
-
-  CRYPTO_library_init();
-
-  BN_GENCB_set(&_cb, &cb, stdout);
-  if (((a = DH_new()) == NULL) ||
-      !DH_generate_parameters_ex(a, 64, DH_GENERATOR_5, &_cb)) {
-    goto err;
+static bool RunBasicTests() {
+  BN_GENCB cb;
+  BN_GENCB_set(&cb, &GenerateCallback, stdout);
+  ScopedDH a(DH_new());
+  if (!a || !DH_generate_parameters_ex(a.get(), 64, DH_GENERATOR_5, &cb)) {
+    return false;
   }
 
-  if (!DH_check(a, &i)) {
-    goto err;
+  int check_result;
+  if (!DH_check(a.get(), &check_result)) {
+    return false;
   }
-  if (i & DH_CHECK_P_NOT_PRIME) {
-    puts("p value is not prime\n");
+  if (check_result & DH_CHECK_P_NOT_PRIME) {
+    printf("p value is not prime\n");
   }
-  if (i & DH_CHECK_P_NOT_SAFE_PRIME) {
-    puts("p value is not a safe prime\n");
+  if (check_result & DH_CHECK_P_NOT_SAFE_PRIME) {
+    printf("p value is not a safe prime\n");
   }
-  if (i & DH_CHECK_UNABLE_TO_CHECK_GENERATOR) {
-    puts("unable to check the generator value\n");
+  if (check_result & DH_CHECK_UNABLE_TO_CHECK_GENERATOR) {
+    printf("unable to check the generator value\n");
   }
-  if (i & DH_CHECK_NOT_SUITABLE_GENERATOR) {
-    puts("the g value is not a generator\n");
+  if (check_result & DH_CHECK_NOT_SUITABLE_GENERATOR) {
+    printf("the g value is not a generator\n");
   }
 
-  puts("\np    =");
+  printf("\np    = ");
   BN_print_fp(stdout, a->p);
-  puts("\ng    =");
+  printf("\ng    = ");
   BN_print_fp(stdout, a->g);
-  puts("\n");
+  printf("\n");
 
-  b = DH_new();
-  if (b == NULL) {
-    goto err;
+  ScopedDH b(DH_new());
+  if (!b) {
+    return false;
   }
 
   b->p = BN_dup(a->p);
   b->g = BN_dup(a->g);
-  if (b->p == NULL || b->g == NULL) {
-    goto err;
+  if (b->p == nullptr || b->g == nullptr) {
+    return false;
   }
 
-  if (!DH_generate_key(a)) {
-    goto err;
+  if (!DH_generate_key(a.get())) {
+    return false;
   }
-  puts("pri 1=");
+  printf("pri1 = ");
   BN_print_fp(stdout, a->priv_key);
-  puts("\npub 1=");
+  printf("\npub1 = ");
   BN_print_fp(stdout, a->pub_key);
-  puts("\n");
+  printf("\n");
 
-  if (!DH_generate_key(b)) {
-    goto err;
+  if (!DH_generate_key(b.get())) {
+    return false;
   }
-  puts("pri 2=");
+  printf("pri2 = ");
   BN_print_fp(stdout, b->priv_key);
-  puts("\npub 2=");
+  printf("\npub2 = ");
   BN_print_fp(stdout, b->pub_key);
-  puts("\n");
+  printf("\n");
 
-  alen = DH_size(a);
-  abuf = (unsigned char *)OPENSSL_malloc(alen);
-  aout = DH_compute_key(abuf, b->pub_key, a);
-
-  puts("key1 =");
-  for (i = 0; i < aout; i++) {
-    sprintf(buf, "%02X", abuf[i]);
-    puts(buf);
+  std::vector<uint8_t> key1(DH_size(a.get()));
+  int ret = DH_compute_key(bssl::vector_data(&key1), b->pub_key, a.get());
+  if (ret < 0) {
+    return false;
   }
-  puts("\n");
+  key1.resize(ret);
 
-  blen = DH_size(b);
-  bbuf = (unsigned char *)OPENSSL_malloc(blen);
-  bout = DH_compute_key(bbuf, a->pub_key, b);
-
-  puts("key2 =");
-  for (i = 0; i < bout; i++) {
-    sprintf(buf, "%02X", bbuf[i]);
-    puts(buf);
+  printf("key1 = ");
+  for (size_t i = 0; i < key1.size(); i++) {
+    printf("%02x", key1[i]);
   }
-  puts("\n");
-  if ((aout < 4) || (bout != aout) || (memcmp(abuf, bbuf, aout) != 0)) {
+  printf("\n");
+
+  std::vector<uint8_t> key2(DH_size(b.get()));
+  ret = DH_compute_key(bssl::vector_data(&key2), a->pub_key, b.get());
+  if (ret < 0) {
+    return false;
+  }
+  key2.resize(ret);
+
+  printf("key2 = ");
+  for (size_t i = 0; i < key2.size(); i++) {
+    printf("%02x", key2[i]);
+  }
+  printf("\n");
+
+  if (key1.size() < 4 || key1 != key2) {
     fprintf(stderr, "Error in DH routines\n");
-    ret = 1;
-  } else {
-    ret = 0;
+    return false;
   }
 
-  if (!run_rfc5114_tests()) {
-    ret = 1;
-  }
-
-err:
-  ERR_print_errors_fp(stderr);
-
-  OPENSSL_free(abuf);
-  OPENSSL_free(bbuf);
-  DH_free(b);
-  DH_free(a);
-  return ret;
+  return true;
 }
 
 /* Test data from RFC 5114 */
 
-static const unsigned char dhtest_1024_160_xA[] = {
+static const uint8_t kDHTest1024_160_xA[] = {
     0xB9, 0xA3, 0xB3, 0xAE, 0x8F, 0xEF, 0xC1, 0xA2, 0x93, 0x04,
     0x96, 0x50, 0x70, 0x86, 0xF8, 0x45, 0x5D, 0x48, 0x94, 0x3E};
-static const unsigned char dhtest_1024_160_yA[] = {
+static const uint8_t kDHTest1024_160_yA[] = {
     0x2A, 0x85, 0x3B, 0x3D, 0x92, 0x19, 0x75, 0x01, 0xB9, 0x01, 0x5B, 0x2D,
     0xEB, 0x3E, 0xD8, 0x4F, 0x5E, 0x02, 0x1D, 0xCC, 0x3E, 0x52, 0xF1, 0x09,
     0xD3, 0x27, 0x3D, 0x2B, 0x75, 0x21, 0x28, 0x1C, 0xBA, 0xBE, 0x0E, 0x76,
@@ -213,10 +217,10 @@ static const unsigned char dhtest_1024_160_yA[] = {
     0x8F, 0x9D, 0x45, 0x96, 0x5F, 0x75, 0xA5, 0xF3, 0xD1, 0xDF, 0x37, 0x01,
     0x16, 0x5F, 0xC9, 0xE5, 0x0C, 0x42, 0x79, 0xCE, 0xB0, 0x7F, 0x98, 0x95,
     0x40, 0xAE, 0x96, 0xD5, 0xD8, 0x8E, 0xD7, 0x76};
-static const unsigned char dhtest_1024_160_xB[] = {
+static const uint8_t kDHTest1024_160_xB[] = {
     0x93, 0x92, 0xC9, 0xF9, 0xEB, 0x6A, 0x7A, 0x6A, 0x90, 0x22,
     0xF7, 0xD8, 0x3E, 0x72, 0x23, 0xC6, 0x83, 0x5B, 0xBD, 0xDA};
-static const unsigned char dhtest_1024_160_yB[] = {
+static const uint8_t kDHTest1024_160_yB[] = {
     0x71, 0x7A, 0x6C, 0xB0, 0x53, 0x37, 0x1F, 0xF4, 0xA3, 0xB9, 0x32, 0x94,
     0x1C, 0x1E, 0x56, 0x63, 0xF8, 0x61, 0xA1, 0xD6, 0xAD, 0x34, 0xAE, 0x66,
     0x57, 0x6D, 0xFB, 0x98, 0xF6, 0xC6, 0xCB, 0xF9, 0xDD, 0xD5, 0xA5, 0x6C,
@@ -228,7 +232,7 @@ static const unsigned char dhtest_1024_160_yB[] = {
     0x31, 0x1E, 0x53, 0xFD, 0x2C, 0x14, 0xB5, 0x74, 0xE6, 0xA3, 0x10, 0x9A,
     0x3D, 0xA1, 0xBE, 0x41, 0xBD, 0xCE, 0xAA, 0x18, 0x6F, 0x5C, 0xE0, 0x67,
     0x16, 0xA2, 0xB6, 0xA0, 0x7B, 0x3C, 0x33, 0xFE};
-static const unsigned char dhtest_1024_160_Z[] = {
+static const uint8_t kDHTest1024_160_Z[] = {
     0x5C, 0x80, 0x4F, 0x45, 0x4D, 0x30, 0xD9, 0xC4, 0xDF, 0x85, 0x27, 0x1F,
     0x93, 0x52, 0x8C, 0x91, 0xDF, 0x6B, 0x48, 0xAB, 0x5F, 0x80, 0xB3, 0xB5,
     0x9C, 0xAA, 0xC1, 0xB2, 0x8F, 0x8A, 0xCB, 0xA9, 0xCD, 0x3E, 0x39, 0xF3,
@@ -240,11 +244,11 @@ static const unsigned char dhtest_1024_160_Z[] = {
     0x5B, 0xD8, 0x3A, 0x19, 0xFB, 0x0B, 0x5E, 0x96, 0xBF, 0x8F, 0xA4, 0xD0,
     0x9E, 0x34, 0x55, 0x25, 0x16, 0x7E, 0xCD, 0x91, 0x55, 0x41, 0x6F, 0x46,
     0xF4, 0x08, 0xED, 0x31, 0xB6, 0x3C, 0x6E, 0x6D};
-static const unsigned char dhtest_2048_224_xA[] = {
+static const uint8_t kDHTest2048_224_xA[] = {
     0x22, 0xE6, 0x26, 0x01, 0xDB, 0xFF, 0xD0, 0x67, 0x08, 0xA6,
     0x80, 0xF7, 0x47, 0xF3, 0x61, 0xF7, 0x6D, 0x8F, 0x4F, 0x72,
     0x1A, 0x05, 0x48, 0xE4, 0x83, 0x29, 0x4B, 0x0C};
-static const unsigned char dhtest_2048_224_yA[] = {
+static const uint8_t kDHTest2048_224_yA[] = {
     0x1B, 0x3A, 0x63, 0x45, 0x1B, 0xD8, 0x86, 0xE6, 0x99, 0xE6, 0x7B, 0x49,
     0x4E, 0x28, 0x8B, 0xD7, 0xF8, 0xE0, 0xD3, 0x70, 0xBA, 0xDD, 0xA7, 0xA0,
     0xEF, 0xD2, 0xFD, 0xE7, 0xD8, 0xF6, 0x61, 0x45, 0xCC, 0x9F, 0x28, 0x04,
@@ -267,11 +271,11 @@ static const unsigned char dhtest_2048_224_yA[] = {
     0xB7, 0x0E, 0x71, 0x03, 0x92, 0x0A, 0xA1, 0x6D, 0x85, 0xE5, 0x2B, 0xCB,
     0xAB, 0x8D, 0x78, 0x6A, 0x68, 0x17, 0x8F, 0xA8, 0xFF, 0x7C, 0x2F, 0x5C,
     0x71, 0x64, 0x8D, 0x6F};
-static const unsigned char dhtest_2048_224_xB[] = {
+static const uint8_t kDHTest2048_224_xB[] = {
     0x4F, 0xF3, 0xBC, 0x96, 0xC7, 0xFC, 0x6A, 0x6D, 0x71, 0xD3,
     0xB3, 0x63, 0x80, 0x0A, 0x7C, 0xDF, 0xEF, 0x6F, 0xC4, 0x1B,
     0x44, 0x17, 0xEA, 0x15, 0x35, 0x3B, 0x75, 0x90};
-static const unsigned char dhtest_2048_224_yB[] = {
+static const uint8_t kDHTest2048_224_yB[] = {
     0x4D, 0xCE, 0xE9, 0x92, 0xA9, 0x76, 0x2A, 0x13, 0xF2, 0xF8, 0x38, 0x44,
     0xAD, 0x3D, 0x77, 0xEE, 0x0E, 0x31, 0xC9, 0x71, 0x8B, 0x3D, 0xB6, 0xC2,
     0x03, 0x5D, 0x39, 0x61, 0x18, 0x2C, 0x3E, 0x0B, 0xA2, 0x47, 0xEC, 0x41,
@@ -294,7 +298,7 @@ static const unsigned char dhtest_2048_224_yB[] = {
     0xB8, 0x56, 0xF9, 0x68, 0x27, 0x73, 0x4C, 0x18, 0x41, 0x38, 0xE9, 0x15,
     0xD9, 0xC3, 0x00, 0x2E, 0xBC, 0xE5, 0x31, 0x20, 0x54, 0x6A, 0x7E, 0x20,
     0x02, 0x14, 0x2B, 0x6C};
-static const unsigned char dhtest_2048_224_Z[] = {
+static const uint8_t kDHTest2048_224_Z[] = {
     0x34, 0xD9, 0xBD, 0xDC, 0x1B, 0x42, 0x17, 0x6C, 0x31, 0x3F, 0xEA, 0x03,
     0x4C, 0x21, 0x03, 0x4D, 0x07, 0x4A, 0x63, 0x13, 0xBB, 0x4E, 0xCD, 0xB3,
     0x70, 0x3F, 0xFF, 0x42, 0x45, 0x67, 0xA4, 0x6B, 0xDF, 0x75, 0x53, 0x0E,
@@ -317,11 +321,11 @@ static const unsigned char dhtest_2048_224_Z[] = {
     0x03, 0xE1, 0x3F, 0x95, 0x29, 0x95, 0xFB, 0x03, 0xC6, 0x9D, 0x3C, 0xC4,
     0x7F, 0xCB, 0x51, 0x0B, 0x69, 0x98, 0xFF, 0xD3, 0xAA, 0x6D, 0xE7, 0x3C,
     0xF9, 0xF6, 0x38, 0x69};
-static const unsigned char dhtest_2048_256_xA[] = {
+static const uint8_t kDHTest2048_256_xA[] = {
     0x08, 0x81, 0x38, 0x2C, 0xDB, 0x87, 0x66, 0x0C, 0x6D, 0xC1, 0x3E,
     0x61, 0x49, 0x38, 0xD5, 0xB9, 0xC8, 0xB2, 0xF2, 0x48, 0x58, 0x1C,
     0xC5, 0xE3, 0x1B, 0x35, 0x45, 0x43, 0x97, 0xFC, 0xE5, 0x0E};
-static const unsigned char dhtest_2048_256_yA[] = {
+static const uint8_t kDHTest2048_256_yA[] = {
     0x2E, 0x93, 0x80, 0xC8, 0x32, 0x3A, 0xF9, 0x75, 0x45, 0xBC, 0x49, 0x41,
     0xDE, 0xB0, 0xEC, 0x37, 0x42, 0xC6, 0x2F, 0xE0, 0xEC, 0xE8, 0x24, 0xA6,
     0xAB, 0xDB, 0xE6, 0x6C, 0x59, 0xBE, 0xE0, 0x24, 0x29, 0x11, 0xBF, 0xB9,
@@ -344,11 +348,11 @@ static const unsigned char dhtest_2048_256_yA[] = {
     0x4E, 0x90, 0x52, 0x69, 0x34, 0x1D, 0xC0, 0x71, 0x14, 0x26, 0x68, 0x5F,
     0x4E, 0xF3, 0x7E, 0x86, 0x8A, 0x81, 0x26, 0xFF, 0x3F, 0x22, 0x79, 0xB5,
     0x7C, 0xA6, 0x7E, 0x29};
-static const unsigned char dhtest_2048_256_xB[] = {
+static const uint8_t kDHTest2048_256_xB[] = {
     0x7D, 0x62, 0xA7, 0xE3, 0xEF, 0x36, 0xDE, 0x61, 0x7B, 0x13, 0xD1,
     0xAF, 0xB8, 0x2C, 0x78, 0x0D, 0x83, 0xA2, 0x3B, 0xD4, 0xEE, 0x67,
     0x05, 0x64, 0x51, 0x21, 0xF3, 0x71, 0xF5, 0x46, 0xA5, 0x3D};
-static const unsigned char dhtest_2048_256_yB[] = {
+static const uint8_t kDHTest2048_256_yB[] = {
     0x57, 0x5F, 0x03, 0x51, 0xBD, 0x2B, 0x1B, 0x81, 0x74, 0x48, 0xBD, 0xF8,
     0x7A, 0x6C, 0x36, 0x2C, 0x1E, 0x28, 0x9D, 0x39, 0x03, 0xA3, 0x0B, 0x98,
     0x32, 0xC5, 0x74, 0x1F, 0xA2, 0x50, 0x36, 0x3E, 0x7A, 0xCB, 0xC7, 0xF7,
@@ -371,7 +375,7 @@ static const unsigned char dhtest_2048_256_yB[] = {
     0x90, 0xB8, 0x9D, 0x24, 0xF7, 0x1B, 0x0A, 0xB6, 0x97, 0x82, 0x3D, 0x7D,
     0xEB, 0x1A, 0xFF, 0x5B, 0x0E, 0x8E, 0x4A, 0x45, 0xD4, 0x9F, 0x7F, 0x53,
     0x75, 0x7E, 0x19, 0x13};
-static const unsigned char dhtest_2048_256_Z[] = {
+static const uint8_t kDHTest2048_256_Z[] = {
     0x86, 0xC7, 0x0B, 0xF8, 0xD0, 0xBB, 0x81, 0xBB, 0x01, 0x07, 0x8A, 0x17,
     0x21, 0x9C, 0xB7, 0xD2, 0x72, 0x03, 0xDB, 0x2A, 0x19, 0xC8, 0x77, 0xF1,
     0xD1, 0xF1, 0x9F, 0xD7, 0xD7, 0x7E, 0xF2, 0x25, 0x46, 0xA6, 0x8F, 0x00,
@@ -395,101 +399,82 @@ static const unsigned char dhtest_2048_256_Z[] = {
     0xEA, 0x87, 0xFE, 0xBE, 0x63, 0xB6, 0xC8, 0xF8, 0x46, 0xEC, 0x6D, 0xB0,
     0xC2, 0x6C, 0x5D, 0x7C};
 
-typedef struct {
+struct RFC5114TestData {
   DH *(*get_param)(const ENGINE *engine);
-  const unsigned char *xA;
+  const uint8_t *xA;
   size_t xA_len;
-  const unsigned char *yA;
+  const uint8_t *yA;
   size_t yA_len;
-  const unsigned char *xB;
+  const uint8_t *xB;
   size_t xB_len;
-  const unsigned char *yB;
+  const uint8_t *yB;
   size_t yB_len;
-  const unsigned char *Z;
+  const uint8_t *Z;
   size_t Z_len;
-} rfc5114_td;
+};
 
-#define make_rfc5114_td(pre)                                                  \
+#define MAKE_RFC5114_TEST_DATA(pre)                                           \
   {                                                                           \
-    DH_get_##pre, dhtest_##pre##_xA, sizeof(dhtest_##pre##_xA),               \
-        dhtest_##pre##_yA, sizeof(dhtest_##pre##_yA), dhtest_##pre##_xB,      \
-        sizeof(dhtest_##pre##_xB), dhtest_##pre##_yB,                         \
-        sizeof(dhtest_##pre##_yB), dhtest_##pre##_Z, sizeof(dhtest_##pre##_Z) \
+    DH_get_##pre, kDHTest##pre##_xA, sizeof(kDHTest##pre##_xA),               \
+        kDHTest##pre##_yA, sizeof(kDHTest##pre##_yA), kDHTest##pre##_xB,      \
+        sizeof(kDHTest##pre##_xB), kDHTest##pre##_yB,                         \
+        sizeof(kDHTest##pre##_yB), kDHTest##pre##_Z, sizeof(kDHTest##pre##_Z) \
   }
 
-static const rfc5114_td rfctd[] = {make_rfc5114_td(1024_160),
-                                   make_rfc5114_td(2048_224),
-                                   make_rfc5114_td(2048_256)};
+static const RFC5114TestData kRFCTestData[] = {
+    MAKE_RFC5114_TEST_DATA(1024_160),
+    MAKE_RFC5114_TEST_DATA(2048_224),
+    MAKE_RFC5114_TEST_DATA(2048_256),
+ };
 
-static int run_rfc5114_tests(void) {
-  int i;
-  DH *dhA = NULL, *dhB = NULL;
-  unsigned char *Z1 = NULL, *Z2 = NULL;
-
-  for (i = 0; i < (int)(sizeof(rfctd) / sizeof(rfc5114_td)); i++) {
-    const rfc5114_td *td = rfctd + i;
+static bool RunRFC5114Tests() {
+  for (unsigned i = 0; i < sizeof(kRFCTestData) / sizeof(RFC5114TestData); i++) {
+    const RFC5114TestData *td = kRFCTestData + i;
     /* Set up DH structures setting key components */
-    dhA = td->get_param(NULL);
-    dhB = td->get_param(NULL);
+    ScopedDH dhA(td->get_param(nullptr));
+    ScopedDH dhB(td->get_param(nullptr));
     if (!dhA || !dhB) {
-      goto bad_err;
+      fprintf(stderr, "Initialisation error RFC5114 set %u\n", i + 1);
+      return false;
     }
 
-    dhA->priv_key = BN_bin2bn(td->xA, td->xA_len, NULL);
-    dhA->pub_key = BN_bin2bn(td->yA, td->yA_len, NULL);
+    dhA->priv_key = BN_bin2bn(td->xA, td->xA_len, nullptr);
+    dhA->pub_key = BN_bin2bn(td->yA, td->yA_len, nullptr);
 
-    dhB->priv_key = BN_bin2bn(td->xB, td->xB_len, NULL);
-    dhB->pub_key = BN_bin2bn(td->yB, td->yB_len, NULL);
+    dhB->priv_key = BN_bin2bn(td->xB, td->xB_len, nullptr);
+    dhB->pub_key = BN_bin2bn(td->yB, td->yB_len, nullptr);
 
     if (!dhA->priv_key || !dhA->pub_key || !dhB->priv_key || !dhB->pub_key) {
-      goto bad_err;
+      fprintf(stderr, "BN_bin2bn error RFC5114 set %u\n", i + 1);
+      return false;
     }
 
-    if ((td->Z_len != (size_t)DH_size(dhA)) ||
-        (td->Z_len != (size_t)DH_size(dhB))) {
-      goto err;
+    if ((td->Z_len != (size_t)DH_size(dhA.get())) ||
+        (td->Z_len != (size_t)DH_size(dhB.get()))) {
+      return false;
     }
 
-    Z1 = OPENSSL_malloc(DH_size(dhA));
-    Z2 = OPENSSL_malloc(DH_size(dhB));
+    std::vector<uint8_t> Z1(DH_size(dhA.get()));
+    std::vector<uint8_t> Z2(DH_size(dhB.get()));
     /* Work out shared secrets using both sides and compare
-     * with expected values.
-     */
-    if (!DH_compute_key(Z1, dhB->pub_key, dhA) ||
-        !DH_compute_key(Z2, dhA->pub_key, dhB)) {
-      goto bad_err;
+     * with expected values. */
+    int ret1 = DH_compute_key(bssl::vector_data(&Z1), dhB->pub_key, dhA.get());
+    int ret2 = DH_compute_key(bssl::vector_data(&Z2), dhA->pub_key, dhB.get());
+    if (ret1 < 0 || ret2 < 0) {
+      fprintf(stderr, "DH_compute_key error RFC5114 set %u\n", i + 1);
+      return false;
     }
 
-    if (memcmp(Z1, td->Z, td->Z_len) ||
-        memcmp(Z2, td->Z, td->Z_len)) {
-      goto err;
+    if (static_cast<size_t>(ret1) != td->Z_len ||
+        memcmp(bssl::vector_data(&Z1), td->Z, td->Z_len) != 0 ||
+        static_cast<size_t>(ret2) != td->Z_len ||
+        memcmp(bssl::vector_data(&Z2), td->Z, td->Z_len) != 0) {
+      fprintf(stderr, "Test failed RFC5114 set %u\n", i + 1);
+      return false;
     }
 
-    printf("RFC5114 parameter test %d OK\n", i + 1);
-
-    DH_free(dhA);
-    dhA = NULL;
-    DH_free(dhB);
-    dhB = NULL;
-    OPENSSL_free(Z1);
-    Z1 = NULL;
-    OPENSSL_free(Z2);
-    Z2 = NULL;
+    printf("RFC5114 parameter test %u OK\n", i + 1);
   }
 
-  printf("PASS\n");
   return 1;
-
-bad_err:
-  fprintf(stderr, "Initalisation error RFC5114 set %d\n", i + 1);
-  ERR_print_errors_fp(stderr);
-
-err:
-  OPENSSL_free(Z1);
-  OPENSSL_free(Z2);
-  DH_free(dhA);
-  DH_free(dhB);
-
-  fprintf(stderr, "Test failed RFC5114 set %d\n", i + 1);
-  return 0;
 }

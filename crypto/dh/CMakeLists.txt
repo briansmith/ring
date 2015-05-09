@@ -15,7 +15,7 @@ add_library(
 add_executable(
   dh_test
 
-  dh_test.c
+  dh_test.cc
 )
 
 target_link_libraries(dh_test crypto)
