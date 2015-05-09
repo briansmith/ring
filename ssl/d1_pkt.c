@@ -446,11 +446,6 @@ int dtls1_read_bytes(SSL *s, int type, unsigned char *buf, int len, int peek) {
     }
   }
 
-  if (s->s3->rbuf.buf == NULL && !ssl3_setup_buffers(s)) {
-    /* TODO(davidben): Is this redundant with the calls in the handshake? */
-    return -1;
-  }
-
 start:
   s->rwstate = SSL_NOTHING;
 

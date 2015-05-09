@@ -176,8 +176,7 @@ int dtls1_connect(SSL *s) {
           buf = NULL;
         }
 
-        if (!ssl3_setup_buffers(s) ||
-            !ssl_init_wbio_buffer(s, 0)) {
+        if (!ssl_init_wbio_buffer(s, 0)) {
           ret = -1;
           goto end;
         }

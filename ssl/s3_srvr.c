@@ -227,11 +227,6 @@ int ssl3_accept(SSL *s) {
         }
         s->init_num = 0;
 
-        if (!ssl3_setup_buffers(s)) {
-          ret = -1;
-          goto end;
-        }
-
         if (!s->s3->send_connection_binding &&
             !(s->options & SSL_OP_ALLOW_UNSAFE_LEGACY_RENEGOTIATION)) {
           /* Server attempting to renegotiate with client that doesn't support
@@ -296,6 +291,13 @@ int ssl3_accept(SSL *s) {
         }
         s->init_num = 0;
 
+        /* Enable a write buffer. This groups handshake messages within a flight
+         * into a single write. */
+        if (!ssl_init_wbio_buffer(s, 1)) {
+          ret = -1;
+          goto end;
+        }
+
         if (!ssl3_init_finished_mac(s)) {
           OPENSSL_PUT_ERROR(SSL, ssl3_accept, ERR_R_INTERNAL_ERROR);
           ret = -1;
@@ -303,19 +305,8 @@ int ssl3_accept(SSL *s) {
         }
 
         if (!s->s3->have_version) {
-          /* This is the initial handshake. The record layer has not been
-           * initialized yet. Sniff for a V2ClientHello before reading a
-           * ClientHello normally. */
-          assert(s->s3->rbuf.buf == NULL);
-          assert(s->s3->wbuf.buf == NULL);
           s->state = SSL3_ST_SR_INITIAL_BYTES;
         } else {
-          /* Enable a write buffer. This groups handshake messages within a
-           * flight into a single write. */
-          if (!ssl3_setup_buffers(s) || !ssl_init_wbio_buffer(s, 1)) {
-            ret = -1;
-            goto end;
-          }
           s->state = SSL3_ST_SR_CLNT_HELLO_A;
         }
         break;
@@ -751,10 +742,12 @@ int ssl3_get_initial_bytes(SSL *s) {
       p[5] == SSL3_MT_CLIENT_HELLO) {
     /* This is a ClientHello. Initialize the record layer with the already
      * consumed data and continue the handshake. */
-    if (!ssl3_setup_buffers(s) || !ssl_init_wbio_buffer(s, 1)) {
+    if (!ssl3_setup_read_buffer(s)) {
       return -1;
     }
     assert(s->rstate == SSL_ST_READ_HEADER);
+    /* There cannot have already been data in the record layer. */
+    assert(s->s3->rbuf.left == 0);
     memcpy(s->s3->rbuf.buf, p, s->s3->sniff_buffer_len);
     s->s3->rbuf.offset = 0;
     s->s3->rbuf.left = s->s3->sniff_buffer_len;
@@ -896,11 +889,6 @@ int ssl3_get_v2_client_hello(SSL *s) {
   s->s3->tmp.message_type = SSL3_MT_CLIENT_HELLO;
   /* The handshake message header is 4 bytes. */
   s->s3->tmp.message_size = len - 4;
-
-  /* Initialize the record layer. */
-  if (!ssl3_setup_buffers(s) || !ssl_init_wbio_buffer(s, 1)) {
-    return -1;
-  }
 
   /* Drop the sniff buffer. */
   BUF_MEM_free(s->s3->sniff_buffer);

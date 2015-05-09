@@ -179,11 +179,6 @@ int dtls1_accept(SSL *s) {
           buf = NULL;
         }
 
-        if (!ssl3_setup_buffers(s)) {
-          ret = -1;
-          goto end;
-        }
-
         s->init_num = 0;
 
         if (s->state != SSL_ST_RENEGOTIATE) {

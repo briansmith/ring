@@ -654,15 +654,6 @@ err:
   return 0;
 }
 
-
-int ssl3_setup_buffers(SSL *s) {
-  if (!ssl3_setup_read_buffer(s) ||
-      !ssl3_setup_write_buffer(s)) {
-    return 0;
-  }
-  return 1;
-}
-
 int ssl3_release_write_buffer(SSL *s) {
   OPENSSL_free(s->s3->wbuf.buf);
   s->s3->wbuf.buf = NULL;

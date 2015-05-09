@@ -861,7 +861,6 @@ int ssl3_output_cert_chain(SSL *s, CERT_PKEY *cpk);
 const SSL_CIPHER *ssl3_choose_cipher(
     SSL *ssl, STACK_OF(SSL_CIPHER) *clnt,
     struct ssl_cipher_preference_list_st *srvr);
-int ssl3_setup_buffers(SSL *s);
 int ssl3_setup_read_buffer(SSL *s);
 int ssl3_setup_write_buffer(SSL *s);
 int ssl3_release_read_buffer(SSL *s);
