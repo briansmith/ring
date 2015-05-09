@@ -523,14 +523,11 @@ struct ssl_session_st {
 #define SSL_MODE_ACCEPT_MOVING_WRITE_BUFFER 0x00000002L
 /* Don't attempt to automatically build certificate chain */
 #define SSL_MODE_NO_AUTO_CHAIN 0x00000008L
-/* Save RAM by releasing read and write buffers when they're empty. (SSL3 and
- * TLS only.)  "Released" buffers are put onto a free-list in the context or
- * just freed (depending on the context's setting for freelist_max_len). */
-#define SSL_MODE_RELEASE_BUFFERS 0x00000010L
 
 /* The following flags do nothing and are included only to make it easier to
  * compile code with BoringSSL. */
 #define SSL_MODE_AUTO_RETRY 0
+#define SSL_MODE_RELEASE_BUFFERS 0
 
 /* Send the current time in the Random fields of the ClientHello and
  * ServerHello records for compatibility with hypothetical implementations that

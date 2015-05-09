@@ -232,8 +232,7 @@ int ssl3_read_n(SSL *s, int n, int max, int extend) {
 
     if (i <= 0) {
       rb->left = left;
-      if (s->mode & SSL_MODE_RELEASE_BUFFERS && !SSL_IS_DTLS(s) &&
-          len + left == 0) {
+      if (!SSL_IS_DTLS(s) && len + left == 0) {
         ssl3_release_read_buffer(s);
       }
       return i;
@@ -673,15 +672,15 @@ int ssl3_write_pending(SSL *s, int type, const uint8_t *buf, unsigned int len) {
     if (i == wb->left) {
       wb->left = 0;
       wb->offset += i;
-      if (s->mode & SSL_MODE_RELEASE_BUFFERS && !SSL_IS_DTLS(s)) {
+      if (!SSL_IS_DTLS(s)) {
         ssl3_release_write_buffer(s);
       }
       s->rwstate = SSL_NOTHING;
       return s->s3->wpend_ret;
     } else if (i <= 0) {
       if (SSL_IS_DTLS(s)) {
-        /* For DTLS, just drop it. That's kind of the whole
-           point in using a datagram service */
+        /* For DTLS, just drop it. That's kind of the whole point in
+         * using a datagram service */
         wb->left = 0;
       }
       return i;
@@ -868,7 +867,7 @@ start:
       if (rr->length == 0) {
         s->rstate = SSL_ST_READ_HEADER;
         rr->off = 0;
-        if (s->mode & SSL_MODE_RELEASE_BUFFERS && s->s3->rbuf.left == 0) {
+        if (s->s3->rbuf.left == 0) {
           ssl3_release_read_buffer(s);
         }
       }
