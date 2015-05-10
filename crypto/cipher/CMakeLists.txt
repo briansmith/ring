@@ -30,7 +30,8 @@ add_executable(
 add_executable(
   aead_test
 
-  aead_test.c
+  aead_test.cc
+  $<TARGET_OBJECTS:test_support>
 )
 
 target_link_libraries(cipher_test crypto)
