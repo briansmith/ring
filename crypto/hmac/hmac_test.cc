@@ -54,169 +54,118 @@
  * copied and put under another distribution licence
  * [including the GNU Public Licence.] */
 
-#include <assert.h>
 #include <stdio.h>
 #include <string.h>
 
 #include <string>
+#include <vector>
 
 #include <openssl/crypto.h>
 #include <openssl/digest.h>
 #include <openssl/hmac.h>
-#include <openssl/mem.h>
 
+#include "../test/file_test.h"
 #include "../test/scoped_types.h"
+#include "../test/stl_compat.h"
 
 
-struct Test {
-  uint8_t key[16];
-  size_t key_len;
-  uint8_t data[64];
-  size_t data_len;
-  const char *hex_digest;
-};
-
-static const Test kTests[] = {
-  {
-    "", 0, "More text test vectors to stuff up EBCDIC machines :-)", 54,
-    "e9139d1e6ee064ef8cf514fc7dc83e86",
-  },
-  {
-    {
-      0x0b, 0x0b, 0x0b, 0x0b, 0x0b, 0x0b, 0x0b, 0x0b, 0x0b, 0x0b, 0x0b, 0x0b,
-      0x0b, 0x0b, 0x0b, 0x0b,
-    },
-    16,
-    "Hi There",
-    8,
-    "9294727a3638bb1c13f48ef8158bfc9d",
-  },
-  {
-    "Jefe", 4, "what do ya want for nothing?", 28,
-    "750c783e6ab0b503eaa86e310a5db738",
-  },
-  {
-    {
-      0xaa, 0xaa, 0xaa, 0xaa, 0xaa, 0xaa, 0xaa, 0xaa, 0xaa, 0xaa, 0xaa, 0xaa,
-      0xaa, 0xaa, 0xaa, 0xaa,
-    },
-    16,
-    {
-      0xdd, 0xdd, 0xdd, 0xdd, 0xdd, 0xdd, 0xdd, 0xdd, 0xdd, 0xdd, 0xdd, 0xdd,
-      0xdd, 0xdd, 0xdd, 0xdd, 0xdd, 0xdd, 0xdd, 0xdd, 0xdd, 0xdd, 0xdd, 0xdd,
-      0xdd, 0xdd, 0xdd, 0xdd, 0xdd, 0xdd, 0xdd, 0xdd, 0xdd, 0xdd, 0xdd, 0xdd,
-      0xdd, 0xdd, 0xdd, 0xdd, 0xdd, 0xdd, 0xdd, 0xdd, 0xdd, 0xdd, 0xdd, 0xdd,
-      0xdd, 0xdd,
-    },
-    50,
-    "56be34521d144c88dbb8c733f0e8b3f6",
-  },
-};
-
-static std::string ToHex(const uint8_t *md, size_t md_len) {
-  std::string ret;
-  for (size_t i = 0; i < md_len; i++) {
-    char buf[2 + 1 /* NUL */];
-    BIO_snprintf(buf, sizeof(buf), "%02x", md[i]);
-    ret.append(buf, 2);
+static const EVP_MD *GetDigest(const std::string &name) {
+  if (name == "MD5") {
+    return EVP_md5();
+  } else if (name == "SHA1") {
+    return EVP_sha1();
+  } else if (name == "SHA224") {
+    return EVP_sha224();
+  } else if (name == "SHA256") {
+    return EVP_sha256();
+  } else if (name == "SHA384") {
+    return EVP_sha384();
+  } else if (name == "SHA512") {
+    return EVP_sha512();
   }
-  return ret;
+  return nullptr;
+}
+
+static bool TestHMAC(FileTest *t) {
+  std::string digest_str;
+  if (!t->GetAttribute(&digest_str, "HMAC")) {
+    return false;
+  }
+  const EVP_MD *digest = GetDigest(digest_str);
+  if (digest == nullptr) {
+    t->PrintLine("Unknown digest '%s'", digest_str.c_str());
+    return false;
+  }
+
+  std::vector<uint8_t> key, input, output;
+  if (!t->GetBytes(&key, "Key") ||
+      !t->GetBytes(&input, "Input") ||
+      !t->GetBytes(&output, "Output")) {
+    return false;
+  }
+
+  // Test using the one-shot API.
+  uint8_t mac[EVP_MAX_MD_SIZE];
+  unsigned mac_len;
+  if (nullptr == HMAC(digest, bssl::vector_data(&key), key.size(),
+                      bssl::vector_data(&input), input.size(), mac,
+                      &mac_len) ||
+      !t->ExpectBytesEqual(bssl::vector_data(&output), output.size(), mac,
+                           mac_len)) {
+    t->PrintLine("One-shot API failed.");
+    return false;
+  }
+
+  // Test using HMAC_CTX.
+  ScopedHMAC_CTX ctx;
+  if (!HMAC_Init_ex(ctx.get(), bssl::vector_data(&key), key.size(), digest,
+                    nullptr) ||
+      !HMAC_Update(ctx.get(), bssl::vector_data(&input), input.size()) ||
+      !HMAC_Final(ctx.get(), mac, &mac_len) ||
+      !t->ExpectBytesEqual(bssl::vector_data(&output), output.size(), mac,
+                           mac_len)) {
+    t->PrintLine("HMAC_CTX failed.");
+   return false;
+  }
+
+  // Test that an HMAC_CTX may be reset with the same key.
+  if (!HMAC_Init_ex(ctx.get(), nullptr, 0, digest, nullptr) ||
+      !HMAC_Update(ctx.get(), bssl::vector_data(&input), input.size()) ||
+      !HMAC_Final(ctx.get(), mac, &mac_len) ||
+      !t->ExpectBytesEqual(bssl::vector_data(&output), output.size(), mac,
+                           mac_len)) {
+    t->PrintLine("HMAC_CTX with reset failed.");
+   return false;
+  }
+
+  // Test feeding the input in byte by byte.
+  if (!HMAC_Init_ex(ctx.get(), nullptr, 0, nullptr, nullptr)) {
+   t->PrintLine("HMAC_CTX streaming failed.");
+   return false;
+  }
+  for (size_t i = 0; i < input.size(); i++) {
+    if (!HMAC_Update(ctx.get(), &input[i], 1)) {
+      t->PrintLine("HMAC_CTX streaming failed.");
+      return false;
+    }
+  }
+  if (!HMAC_Final(ctx.get(), mac, &mac_len) ||
+      !t->ExpectBytesEqual(bssl::vector_data(&output), output.size(), mac,
+                           mac_len)) {
+    t->PrintLine("HMAC_CTX streaming failed.");
+    return false;
+  }
+
+  return true;
 }
 
 int main(int argc, char *argv[]) {
-  int err = 0;
-  uint8_t out[EVP_MAX_MD_SIZE];
-  unsigned out_len;
-
   CRYPTO_library_init();
 
-  for (unsigned i = 0; i < sizeof(kTests) / sizeof(kTests[0]); i++) {
-    const Test *test = &kTests[i];
-
-    // Test using the one-shot API.
-    if (NULL == HMAC(EVP_md5(), test->key, test->key_len, test->data,
-                     test->data_len, out, &out_len)) {
-      fprintf(stderr, "%u: HMAC failed.\n", i);
-      err++;
-      continue;
-    }
-    std::string out_hex = ToHex(out, out_len);
-    if (out_hex != test->hex_digest) {
-      fprintf(stderr, "%u: got %s instead of %s\n", i, out_hex.c_str(),
-              test->hex_digest);
-      err++;
-    }
-
-    // Test using HMAC_CTX.
-    ScopedHMAC_CTX ctx;
-    if (!HMAC_Init_ex(ctx.get(), test->key, test->key_len, EVP_md5(), NULL) ||
-        !HMAC_Update(ctx.get(), test->data, test->data_len) ||
-        !HMAC_Final(ctx.get(), out, &out_len)) {
-      fprintf(stderr, "%u: HMAC failed.\n", i);
-      err++;
-      continue;
-    }
-    out_hex = ToHex(out, out_len);
-    if (out_hex != test->hex_digest) {
-      fprintf(stderr, "%u: got %s instead of %s\n", i, out_hex.c_str(),
-              test->hex_digest);
-      err++;
-    }
-
-    // Test that an HMAC_CTX may be reset with the same key.
-    if (!HMAC_Init_ex(ctx.get(), NULL, 0, EVP_md5(), NULL) ||
-        !HMAC_Update(ctx.get(), test->data, test->data_len) ||
-        !HMAC_Final(ctx.get(), out, &out_len)) {
-      fprintf(stderr, "%u: HMAC failed.\n", i);
-      err++;
-      continue;
-    }
-    out_hex = ToHex(out, out_len);
-    if (out_hex != test->hex_digest) {
-      fprintf(stderr, "%u: got %s instead of %s\n", i, out_hex.c_str(),
-              test->hex_digest);
-      err++;
-    }
-  }
-
-  // Test that HMAC() uses the empty key when called with key = NULL.
-  const Test *test = &kTests[0];
-  assert(test->key_len == 0);
-  if (NULL == HMAC(EVP_md5(), NULL, 0, test->data, test->data_len, out,
-                   &out_len)) {
-    fprintf(stderr, "HMAC failed.\n");
-    err++;
-  } else {
-    std::string out_hex = ToHex(out, out_len);
-    if (out_hex != test->hex_digest) {
-      fprintf(stderr, "got %s instead of %s\n", out_hex.c_str(),
-              test->hex_digest);
-      err++;
-    }
-  }
-
-  // Test that HMAC_Init, etc., uses the empty key when called initially with
-  // key = NULL.
-  assert(test->key_len == 0);
-  ScopedHMAC_CTX ctx;
-  if (!HMAC_Init_ex(ctx.get(), NULL, 0, EVP_md5(), NULL) ||
-      !HMAC_Update(ctx.get(), test->data, test->data_len) ||
-      !HMAC_Final(ctx.get(), out, &out_len)) {
-    fprintf(stderr, "HMAC failed.\n");
-    err++;
-  } else {
-    std::string out_hex = ToHex(out, out_len);
-    if (out_hex != test->hex_digest) {
-      fprintf(stderr, "got %s instead of %s\n", out_hex.c_str(),
-              test->hex_digest);
-      err++;
-    }
-  }
-
-  if (err) {
+  if (argc != 2) {
+    fprintf(stderr, "%s <test file.txt>\n", argv[0]);
     return 1;
   }
 
-  printf("PASS\n");
-  return 0;
+  return FileTestMain(TestHMAC, argv[1]);
 }

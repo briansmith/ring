@@ -138,6 +138,9 @@ add_subdirectory(x509v3)
 # Level 4
 add_subdirectory(pkcs8)
 
+# Test support code
+add_subdirectory(test)
+
 add_library(
   crypto
 
