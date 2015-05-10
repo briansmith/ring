@@ -23,9 +23,9 @@ add_library(
 
 
 add_executable(
-  evp_test
+  evp_extra_test
 
-  evp_test.cc
+  evp_extra_test.cc
 )
 
 add_executable(
@@ -34,5 +34,5 @@ add_executable(
   pbkdf_test.cc
 )
 
-target_link_libraries(evp_test crypto)
+target_link_libraries(evp_extra_test crypto)
 target_link_libraries(pbkdf_test crypto)
