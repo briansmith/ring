@@ -108,6 +108,9 @@ using ScopedX509_ALGOR = ScopedOpenSSLType<X509_ALGOR, X509_ALGOR_free>;
 
 using ScopedX509Stack = ScopedOpenSSLStack<STACK_OF(X509), X509, X509_free>;
 
+using ScopedEVP_CIPHER_CTX = ScopedOpenSSLContext<EVP_CIPHER_CTX, int,
+                                                  EVP_CIPHER_CTX_init,
+                                                  EVP_CIPHER_CTX_cleanup>;
 using ScopedEVP_MD_CTX = ScopedOpenSSLContext<EVP_MD_CTX, int, EVP_MD_CTX_init,
                                               EVP_MD_CTX_cleanup>;
 using ScopedHMAC_CTX = ScopedOpenSSLContext<HMAC_CTX, void, HMAC_CTX_init,

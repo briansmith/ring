@@ -24,7 +24,8 @@ add_library(
 add_executable(
   cipher_test
 
-  cipher_test.c
+  cipher_test.cc
+  $<TARGET_OBJECTS:test_support>
 )
 
 add_executable(
