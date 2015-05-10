@@ -299,7 +299,9 @@ static int aead_rc4_md5_tls_open(const EVP_AEAD_CTX *ctx, uint8_t *out,
     return 0;
   }
 
-  if (max_out_len < plaintext_len) {
+  if (max_out_len < in_len) {
+    /* This requires that the caller provide space for the MAC, even though it
+     * will always be removed on return. */
     OPENSSL_PUT_ERROR(CIPHER, aead_rc4_md5_tls_open, CIPHER_R_BUFFER_TOO_SMALL);
     return 0;
   }
