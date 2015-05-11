@@ -70,8 +70,6 @@ extern "C" {
 #define EVP_CIPH_MODE_MASK 0x3f
 
 
-struct evp_aead_ctx_st;
-
 /* EVP_AEAD represents a specific AEAD algorithm. */
 struct evp_aead_st {
   uint8_t key_len;
@@ -79,27 +77,25 @@ struct evp_aead_st {
   uint8_t overhead;
   uint8_t max_tag_len;
 
-  /* init initialises an |evp_aead_ctx_st|. If this call returns zero then
+  /* init initialises an |EVP_AEAD_CTX|. If this call returns zero then
    * |cleanup| will not be called for that context. */
-  int (*init)(struct evp_aead_ctx_st *, const uint8_t *key,
-              size_t key_len, size_t tag_len);
-  int (*init_with_direction)(struct evp_aead_ctx_st *, const uint8_t *key,
-                             size_t key_len, size_t tag_len,
-                             enum evp_aead_direction_t dir);
-  void (*cleanup)(struct evp_aead_ctx_st *);
+  int (*init)(EVP_AEAD_CTX *, const uint8_t *key, size_t key_len,
+              size_t tag_len);
+  int (*init_with_direction)(EVP_AEAD_CTX *, const uint8_t *key, size_t key_len,
+                             size_t tag_len, enum evp_aead_direction_t dir);
+  void (*cleanup)(EVP_AEAD_CTX *);
 
-  int (*seal)(const struct evp_aead_ctx_st *ctx, uint8_t *out,
-              size_t *out_len, size_t max_out_len, const uint8_t *nonce,
-              size_t nonce_len, const uint8_t *in, size_t in_len,
-              const uint8_t *ad, size_t ad_len);
+  int (*seal)(const EVP_AEAD_CTX *ctx, uint8_t *out, size_t *out_len,
+              size_t max_out_len, const uint8_t *nonce, size_t nonce_len,
+              const uint8_t *in, size_t in_len, const uint8_t *ad,
+              size_t ad_len);
 
-  int (*open)(const struct evp_aead_ctx_st *ctx, uint8_t *out,
-              size_t *out_len, size_t max_out_len, const uint8_t *nonce,
-              size_t nonce_len, const uint8_t *in, size_t in_len,
-              const uint8_t *ad, size_t ad_len);
+  int (*open)(const EVP_AEAD_CTX *ctx, uint8_t *out, size_t *out_len,
+              size_t max_out_len, const uint8_t *nonce, size_t nonce_len,
+              const uint8_t *in, size_t in_len, const uint8_t *ad,
+              size_t ad_len);
 
-  int (*get_rc4_state)(const struct evp_aead_ctx_st *ctx,
-                       const RC4_KEY **out_key);
+  int (*get_rc4_state)(const EVP_AEAD_CTX *ctx, const RC4_KEY **out_key);
 };
 
 
