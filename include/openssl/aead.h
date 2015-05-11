@@ -228,7 +228,10 @@ enum evp_aead_direction_t {
  * Authentication tags may be truncated by passing a size as |tag_len|. A
  * |tag_len| of zero indicates the default tag length and this is defined as
  * EVP_AEAD_DEFAULT_TAG_LENGTH for readability.
- * Returns 1 on success. Otherwise returns 0 and pushes to the error stack. */
+ *
+ * Returns 1 on success. Otherwise returns 0 and pushes to the error stack. In
+ * the error case, you do not need to call |EVP_AEAD_CTX_cleanup|, but it's
+ * harmless to do so. */
 OPENSSL_EXPORT int EVP_AEAD_CTX_init(EVP_AEAD_CTX *ctx, const EVP_AEAD *aead,
                                      const uint8_t *key, size_t key_len,
                                      size_t tag_len, ENGINE *impl);
@@ -240,7 +243,9 @@ OPENSSL_EXPORT int EVP_AEAD_CTX_init_with_direction(
     EVP_AEAD_CTX *ctx, const EVP_AEAD *aead, const uint8_t *key, size_t key_len,
     size_t tag_len, enum evp_aead_direction_t dir);
 
-/* EVP_AEAD_CTX_cleanup frees any data allocated by |ctx|. */
+/* EVP_AEAD_CTX_cleanup frees any data allocated by |ctx|. It is a no-op to
+ * call |EVP_AEAD_CTX_cleanup| on a |EVP_AEAD_CTX| that has been |memset| to
+ * all zeros. */
 OPENSSL_EXPORT void EVP_AEAD_CTX_cleanup(EVP_AEAD_CTX *ctx);
 
 /* EVP_AEAD_CTX_seal encrypts and authenticates |in_len| bytes from |in| and

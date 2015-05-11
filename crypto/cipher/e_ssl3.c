@@ -115,6 +115,7 @@ static int aead_ssl3_init(EVP_AEAD_CTX *ctx, const uint8_t *key, size_t key_len,
       !EVP_DigestInit_ex(&ssl3_ctx->md_ctx, md, NULL) ||
       !EVP_DigestUpdate(&ssl3_ctx->md_ctx, key, mac_key_len)) {
     aead_ssl3_cleanup(ctx);
+    ctx->aead_state = NULL;
     return 0;
   }
   EVP_CIPHER_CTX_set_padding(&ssl3_ctx->cipher_ctx, 0);

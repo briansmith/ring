@@ -91,6 +91,7 @@ static int aead_tls_init(EVP_AEAD_CTX *ctx, const uint8_t *key, size_t key_len,
                          dir == evp_aead_seal) ||
       !HMAC_Init_ex(&tls_ctx->hmac_ctx, key, mac_key_len, md, NULL)) {
     aead_tls_cleanup(ctx);
+    ctx->aead_state = NULL;
     return 0;
   }
   EVP_CIPHER_CTX_set_padding(&tls_ctx->cipher_ctx, 0);

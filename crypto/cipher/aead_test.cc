@@ -183,6 +183,38 @@ static bool TestAEAD(FileTest *t, void *arg) {
   return true;
 }
 
+static int TestCleanupAfterInitFailure(const EVP_AEAD *aead) {
+  EVP_AEAD_CTX ctx;
+  uint8_t key[128];
+
+  memset(key, 0, sizeof(key));
+  const size_t key_len = EVP_AEAD_key_length(aead);
+  if (key_len > sizeof(key)) {
+    fprintf(stderr, "Key length of AEAD too long.\n");
+    return 0;
+  }
+
+  if (EVP_AEAD_CTX_init(&ctx, aead, key, key_len,
+                        9999 /* a silly tag length to trigger an error */,
+                        NULL /* ENGINE */) != 0) {
+    fprintf(stderr, "A silly tag length didn't trigger an error!\n");
+    return 0;
+  }
+
+  /* Running a second, failed _init should not cause a memory leak. */
+  if (EVP_AEAD_CTX_init(&ctx, aead, key, key_len,
+                        9999 /* a silly tag length to trigger an error */,
+                        NULL /* ENGINE */) != 0) {
+    fprintf(stderr, "A silly tag length didn't trigger an error!\n");
+    return 0;
+  }
+
+  /* Calling _cleanup on an |EVP_AEAD_CTX| after a failed _init should be a
+   * no-op. */
+  EVP_AEAD_CTX_cleanup(&ctx);
+  return 1;
+}
+
 struct AEADName {
   const char name[40];
   const EVP_AEAD *(*func)(void);
@@ -234,6 +266,10 @@ int main(int argc, char **argv) {
       aead = aead_name.func();
       break;
     }
+  }
+
+  if (!TestCleanupAfterInitFailure(aead)) {
+    return 1;
   }
 
   return FileTestMain(TestAEAD, const_cast<EVP_AEAD*>(aead), argv[2]);
