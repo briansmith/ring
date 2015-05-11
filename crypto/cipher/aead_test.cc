@@ -183,6 +183,38 @@ static bool TestAEAD(FileTest *t, void *arg) {
   return true;
 }
 
+struct AEADName {
+  const char name[40];
+  const EVP_AEAD *(*func)(void);
+};
+
+static const struct AEADName kAEADs[] = {
+  { "aes-128-gcm", EVP_aead_aes_128_gcm },
+  { "aes-256-gcm", EVP_aead_aes_256_gcm },
+  { "chacha20-poly1305", EVP_aead_chacha20_poly1305 },
+  { "rc4-md5-tls", EVP_aead_rc4_md5_tls },
+  { "rc4-sha1-tls", EVP_aead_rc4_sha1_tls },
+  { "aes-128-cbc-sha1-tls", EVP_aead_aes_128_cbc_sha1_tls },
+  { "aes-128-cbc-sha1-tls-implicit-iv", EVP_aead_aes_128_cbc_sha1_tls_implicit_iv },
+  { "aes-128-cbc-sha256-tls", EVP_aead_aes_128_cbc_sha256_tls },
+  { "aes-256-cbc-sha1-tls", EVP_aead_aes_256_cbc_sha1_tls },
+  { "aes-256-cbc-sha1-tls-implicit-iv", EVP_aead_aes_256_cbc_sha1_tls_implicit_iv },
+  { "aes-256-cbc-sha256-tls", EVP_aead_aes_256_cbc_sha256_tls },
+  { "aes-256-cbc-sha384-tls", EVP_aead_aes_256_cbc_sha384_tls },
+  { "des-ede3-cbc-sha1-tls", EVP_aead_des_ede3_cbc_sha1_tls },
+  { "des-ede3-cbc-sha1-tls-implicit-iv", EVP_aead_des_ede3_cbc_sha1_tls_implicit_iv },
+  { "rc4-md5-ssl3", EVP_aead_rc4_md5_ssl3 },
+  { "rc4-sha1-ssl3", EVP_aead_rc4_sha1_ssl3 },
+  { "aes-128-cbc-sha1-ssl3", EVP_aead_aes_128_cbc_sha1_ssl3 },
+  { "aes-256-cbc-sha1-ssl3", EVP_aead_aes_256_cbc_sha1_ssl3 },
+  { "des-ede3-cbc-sha1-ssl3", EVP_aead_des_ede3_cbc_sha1_ssl3 },
+  { "aes-128-key-wrap", EVP_aead_aes_128_key_wrap },
+  { "aes-256-key-wrap", EVP_aead_aes_256_key_wrap },
+  { "aes-128-ctr-hmac-sha256", EVP_aead_aes_128_ctr_hmac_sha256 },
+  { "aes-256-ctr-hmac-sha256", EVP_aead_aes_256_ctr_hmac_sha256 },
+  { "", NULL },
+};
+
 int main(int argc, char **argv) {
   CRYPTO_library_init();
 
@@ -192,55 +224,16 @@ int main(int argc, char **argv) {
   }
 
   const EVP_AEAD *aead;
-  if (strcmp(argv[1], "aes-128-gcm") == 0) {
-    aead = EVP_aead_aes_128_gcm();
-  } else if (strcmp(argv[1], "aes-256-gcm") == 0) {
-    aead = EVP_aead_aes_256_gcm();
-  } else if (strcmp(argv[1], "chacha20-poly1305") == 0) {
-    aead = EVP_aead_chacha20_poly1305();
-  } else if (strcmp(argv[1], "rc4-md5-tls") == 0) {
-    aead = EVP_aead_rc4_md5_tls();
-  } else if (strcmp(argv[1], "rc4-sha1-tls") == 0) {
-    aead = EVP_aead_rc4_sha1_tls();
-  } else if (strcmp(argv[1], "aes-128-cbc-sha1-tls") == 0) {
-    aead = EVP_aead_aes_128_cbc_sha1_tls();
-  } else if (strcmp(argv[1], "aes-128-cbc-sha1-tls-implicit-iv") == 0) {
-    aead = EVP_aead_aes_128_cbc_sha1_tls_implicit_iv();
-  } else if (strcmp(argv[1], "aes-128-cbc-sha256-tls") == 0) {
-    aead = EVP_aead_aes_128_cbc_sha256_tls();
-  } else if (strcmp(argv[1], "aes-256-cbc-sha1-tls") == 0) {
-    aead = EVP_aead_aes_256_cbc_sha1_tls();
-  } else if (strcmp(argv[1], "aes-256-cbc-sha1-tls-implicit-iv") == 0) {
-    aead = EVP_aead_aes_256_cbc_sha1_tls_implicit_iv();
-  } else if (strcmp(argv[1], "aes-256-cbc-sha256-tls") == 0) {
-    aead = EVP_aead_aes_256_cbc_sha256_tls();
-  } else if (strcmp(argv[1], "aes-256-cbc-sha384-tls") == 0) {
-    aead = EVP_aead_aes_256_cbc_sha384_tls();
-  } else if (strcmp(argv[1], "des-ede3-cbc-sha1-tls") == 0) {
-    aead = EVP_aead_des_ede3_cbc_sha1_tls();
-  } else if (strcmp(argv[1], "des-ede3-cbc-sha1-tls-implicit-iv") == 0) {
-    aead = EVP_aead_des_ede3_cbc_sha1_tls_implicit_iv();
-  } else if (strcmp(argv[1], "rc4-md5-ssl3") == 0) {
-    aead = EVP_aead_rc4_md5_ssl3();
-  } else if (strcmp(argv[1], "rc4-sha1-ssl3") == 0) {
-    aead = EVP_aead_rc4_sha1_ssl3();
-  } else if (strcmp(argv[1], "aes-128-cbc-sha1-ssl3") == 0) {
-    aead = EVP_aead_aes_128_cbc_sha1_ssl3();
-  } else if (strcmp(argv[1], "aes-256-cbc-sha1-ssl3") == 0) {
-    aead = EVP_aead_aes_256_cbc_sha1_ssl3();
-  } else if (strcmp(argv[1], "des-ede3-cbc-sha1-ssl3") == 0) {
-    aead = EVP_aead_des_ede3_cbc_sha1_ssl3();
-  } else if (strcmp(argv[1], "aes-128-key-wrap") == 0) {
-    aead = EVP_aead_aes_128_key_wrap();
-  } else if (strcmp(argv[1], "aes-256-key-wrap") == 0) {
-    aead = EVP_aead_aes_256_key_wrap();
-  } else if (strcmp(argv[1], "aes-128-ctr-hmac-sha256") == 0) {
-    aead = EVP_aead_aes_128_ctr_hmac_sha256();
-  } else if (strcmp(argv[1], "aes-256-ctr-hmac-sha256") == 0) {
-    aead = EVP_aead_aes_256_ctr_hmac_sha256();
-  } else {
-    fprintf(stderr, "Unknown AEAD: %s\n", argv[1]);
-    return 2;
+  for (unsigned i = 0;; i++) {
+    const struct AEADName &aead_name = kAEADs[i];
+    if (aead_name.func == NULL) {
+      fprintf(stderr, "Unknown AEAD: %s\n", argv[1]);
+      return 2;
+    }
+    if (strcmp(aead_name.name, argv[1]) == 0) {
+      aead = aead_name.func();
+      break;
+    }
   }
 
   return FileTestMain(TestAEAD, const_cast<EVP_AEAD*>(aead), argv[2]);
