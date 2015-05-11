@@ -75,6 +75,8 @@ var tests = []test{
 	{"crypto/ecdsa/ecdsa_test"},
 	{"crypto/err/err_test"},
 	{"crypto/evp/evp_extra_test"},
+	{"crypto/evp/evp_test", "crypto/evp/evp_tests.txt"},
+	{"crypto/evp/evp_test", "crypto/hmac/hmac_tests.txt"},
 	{"crypto/evp/pbkdf_test"},
 	{"crypto/hkdf/hkdf_test"},
 	{"crypto/hmac/hmac_test", "crypto/hmac/hmac_tests.txt"},
@@ -184,13 +186,13 @@ func runTest(test test) (passed bool, err error) {
 	return false, nil
 }
 
-// shortTestName returns the short name of a test. It assumes that any argument
-// which ends in .txt is a path to a data file and not relevant to the test's
-// uniqueness.
+// shortTestName returns the short name of a test. Except for evp_test, it
+// assumes that any argument which ends in .txt is a path to a data file and not
+// relevant to the test's uniqueness.
 func shortTestName(test test) string {
 	var args []string
 	for _, arg := range test {
-		if !strings.HasSuffix(arg, ".txt") {
+		if test[0] == "crypto/evp/evp_test" || !strings.HasSuffix(arg, ".txt") {
 			args = append(args, arg)
 		}
 	}

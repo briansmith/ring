@@ -32,6 +32,11 @@ static T *vector_data(std::vector<T> *out) {
   return out->empty() ? nullptr : &(*out)[0];
 }
 
+template <class T>
+static const T *vector_data(const std::vector<T> *out) {
+  return out->empty() ? nullptr : &(*out)[0];
+}
+
 // remove_reference is a reimplementation of |std::remove_reference| from C++11.
 template <class T>
 struct remove_reference {

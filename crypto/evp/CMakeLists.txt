@@ -29,10 +29,18 @@ add_executable(
 )
 
 add_executable(
+  evp_test
+
+  evp_test.cc
+  $<TARGET_OBJECTS:test_support>
+)
+
+add_executable(
   pbkdf_test
 
   pbkdf_test.cc
 )
 
 target_link_libraries(evp_extra_test crypto)
+target_link_libraries(evp_test crypto)
 target_link_libraries(pbkdf_test crypto)

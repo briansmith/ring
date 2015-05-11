@@ -19,6 +19,8 @@
 #include <stdarg.h>
 #include <string.h>
 
+#include <openssl/err.h>
+
 #include "stl_compat.h"
 
 
@@ -184,6 +186,13 @@ bool FileTest::GetAttribute(std::string *out_value, const std::string &key) {
   return true;
 }
 
+const std::string &FileTest::GetAttributeOrDie(const std::string &key) {
+  if (!HasAttribute(key)) {
+    abort();
+  }
+  return attributes_[key];
+}
+
 static bool FromHexDigit(uint8_t *out, char c) {
   if ('0' <= c && c <= '9') {
     *out = c - '0';
@@ -266,7 +275,8 @@ void FileTest::OnKeyUsed(const std::string &key) {
   unused_attributes_.erase(key);
 }
 
-int FileTestMain(bool (*run_test)(FileTest *t), const char *path) {
+int FileTestMain(bool (*run_test)(FileTest *t, void *arg), void *arg,
+                 const char *path) {
   FileTest t(path);
   if (!t.is_open()) {
     return 1;
@@ -281,8 +291,29 @@ int FileTestMain(bool (*run_test)(FileTest *t), const char *path) {
       break;
     }
 
-    if (!run_test(&t)) {
+    bool result = run_test(&t, arg);
+    if (t.HasAttribute("Error")) {
+      if (result) {
+        t.PrintLine("Operation unexpectedly succeeded.");
+        failed = true;
+        continue;
+      }
+      uint32_t err = ERR_peek_error();
+      if (ERR_reason_error_string(err) != t.GetAttributeOrDie("Error")) {
+        t.PrintLine("Unexpected error; wanted '%s', got '%s'.",
+                     t.GetAttributeOrDie("Error").c_str(),
+                     ERR_reason_error_string(err));
+        failed = true;
+        continue;
+      }
+      ERR_clear_error();
+    } else if (!result) {
+      // In case the test itself doesn't print output, print something so the
+      // line number is reported.
+      t.PrintLine("Test failed");
+      ERR_print_errors_fp(stderr);
       failed = true;
+      continue;
     }
   }
 

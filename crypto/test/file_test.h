@@ -104,6 +104,10 @@ class FileTest {
   // |stderr| otherwise.
   bool GetAttribute(std::string *out_value, const std::string &key);
 
+  // GetAttributeOrDie looks up the attribute with key |key| and aborts if it is
+  // missing. It only be used after a |HasAttribute| call.
+  const std::string &GetAttributeOrDie(const std::string &key);
+
   // GetBytes looks up the attribute with key |key| and decodes it as a byte
   // string. On success, it writes the result to |*out| and returns
   // true. Otherwise it returns false with an error to |stderr|. The value may
@@ -146,14 +150,17 @@ class FileTest {
 
 // FileTestMain runs a file-based test out of |path| and returns an exit code
 // suitable to return out of |main|. |run_test| should return true on pass and
-// false on failure.
+// false on failure. FileTestMain also implements common handling of the 'Error'
+// attribute. A test with that attribute is expected to fail. The value of the
+// attribute is the reason string of the expected OpenSSL error code.
 //
 // Tests are guaranteed to run serially and may affect global state if need be.
 // It is legal to use "tests" which, for example, import a private key into a
 // list of keys. This may be used to initialize a shared set of keys for many
 // tests. However, if one test fails, the framework will continue to run
 // subsequent tests.
-int FileTestMain(bool (*run_test)(FileTest *t), const char *path);
+int FileTestMain(bool (*run_test)(FileTest *t, void *arg), void *arg,
+                 const char *path);
 
 
 #endif /* OPENSSL_HEADER_CRYPTO_TEST_FILE_TEST_H */
