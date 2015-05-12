@@ -141,37 +141,6 @@ void RC4(RC4_KEY *key, size_t len, const uint8_t *in, uint8_t *out) {
         in += sizeof(RC4_CHUNK);
         out += sizeof(RC4_CHUNK);
       }
-      if (len) {
-        RC4_CHUNK mask = (RC4_CHUNK) - 1, ochunk;
-
-        ichunk = *(RC4_CHUNK *)in;
-        ochunk = *(RC4_CHUNK *)out;
-        otp = 0;
-        i = BESHFT(0);
-        mask <<= (sizeof(RC4_CHUNK) - len) << 3;
-        switch (len & (sizeof(RC4_CHUNK) - 1)) {
-          case 7:
-            otp = RC4_STEP << i, i -= 8;
-          case 6:
-            otp |= RC4_STEP << i, i -= 8;
-          case 5:
-            otp |= RC4_STEP << i, i -= 8;
-          case 4:
-            otp |= RC4_STEP << i, i -= 8;
-          case 3:
-            otp |= RC4_STEP << i, i -= 8;
-          case 2:
-            otp |= RC4_STEP << i, i -= 8;
-          case 1:
-            otp |= RC4_STEP << i, i -= 8;
-        }
-        ochunk &= ~mask;
-        ochunk |= (otp ^ ichunk) & mask;
-        *(RC4_CHUNK *)out = ochunk;
-      }
-      key->x = x;
-      key->y = y;
-      return;
     } else { /* LITTLE-ENDIAN CASE */
 #define LESHFT(c) (((c) * 8) & (sizeof(RC4_CHUNK) * 8 - 1))
       for (; len & (0 - sizeof(RC4_CHUNK)); len -= sizeof(RC4_CHUNK)) {
@@ -190,37 +159,6 @@ void RC4(RC4_KEY *key, size_t len, const uint8_t *in, uint8_t *out) {
         in += sizeof(RC4_CHUNK);
         out += sizeof(RC4_CHUNK);
       }
-      if (len) {
-        RC4_CHUNK mask = (RC4_CHUNK) - 1, ochunk;
-
-        ichunk = *(RC4_CHUNK *)in;
-        ochunk = *(RC4_CHUNK *)out;
-        otp = 0;
-        i = 0;
-        mask >>= (sizeof(RC4_CHUNK) - len) << 3;
-        switch (len & (sizeof(RC4_CHUNK) - 1)) {
-          case 7:
-            otp = RC4_STEP, i += 8;
-          case 6:
-            otp |= RC4_STEP << i, i += 8;
-          case 5:
-            otp |= RC4_STEP << i, i += 8;
-          case 4:
-            otp |= RC4_STEP << i, i += 8;
-          case 3:
-            otp |= RC4_STEP << i, i += 8;
-          case 2:
-            otp |= RC4_STEP << i, i += 8;
-          case 1:
-            otp |= RC4_STEP << i, i += 8;
-        }
-        ochunk &= ~mask;
-        ochunk |= (otp ^ ichunk) & mask;
-        *(RC4_CHUNK *)out = ochunk;
-      }
-      key->x = x;
-      key->y = y;
-      return;
     }
   }
 #define LOOP(in, out)   \
