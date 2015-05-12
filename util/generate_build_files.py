@@ -90,6 +90,7 @@ class Chromium(object):
       ],
       'sources': [
         '%s',
+        '<@(boringssl_test_support_sources)',
       ],
       # TODO(davidben): Fix size_t truncations in BoringSSL.
       # https://crbug.com/429039
@@ -99,9 +100,12 @@ class Chromium(object):
 
       test_names.sort()
 
-      test_gypi.write("""  ],
-  'variables': {
-    'boringssl_test_targets': [\n""")
+      test_gypi.write('  ],\n  \'variables\': {\n')
+
+      self.PrintVariableSection(
+          test_gypi, 'boringssl_test_support_sources', files['test_support'])
+
+      test_gypi.write('    \'boringssl_test_targets\': [\n')
 
       for test in test_names:
         test_gypi.write("""      '%s',\n""" % test)
@@ -174,8 +178,14 @@ def OnlyTests(dent, is_dir):
   """Filter function that can be passed to FindCFiles in order to remove
   non-test sources."""
   if is_dir:
-    return True
+    return dent != 'test'
   return '_test.' in dent or dent.startswith('example_')
+
+
+def AllFiles(dent, is_dir):
+  """Filter function that can be passed to FindCFiles in order to include all
+  sources."""
+  return True
 
 
 def FindCFiles(directory, filter_func):
@@ -304,6 +314,9 @@ def main(platform):
                           stdout=err_data)
   crypto_c_files.append('err_data.c')
 
+  test_support_cc_files = FindCFiles(os.path.join('src', 'crypto', 'test'),
+                                     AllFiles)
+
   test_c_files = FindCFiles(os.path.join('src', 'crypto'), OnlyTests)
   test_c_files += FindCFiles(os.path.join('src', 'ssl'), OnlyTests)
 
@@ -312,6 +325,7 @@ def main(platform):
       'ssl': ssl_c_files,
       'tool': tool_cc_files,
       'test': test_c_files,
+      'test_support': test_support_cc_files,
   }
 
   asm_outputs = sorted(WriteAsmFiles(ReadPerlAsmOperations()).iteritems())
