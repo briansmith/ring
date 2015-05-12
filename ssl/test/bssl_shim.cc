@@ -660,8 +660,9 @@ static bool DoExchange(ScopedSSL_SESSION *out_session, SSL_CTX *ssl_ctx,
       !SSL_set_cipher_list(ssl.get(), config->cipher.c_str())) {
     return false;
   }
-  if (config->reject_peer_renegotiations) {
-    SSL_set_reject_peer_renegotiations(ssl.get(), 1);
+  if (!config->reject_peer_renegotiations) {
+    /* Renegotiations are disabled by default. */
+    SSL_set_reject_peer_renegotiations(ssl.get(), 0);
   }
 
   int sock = Connect(config->port);

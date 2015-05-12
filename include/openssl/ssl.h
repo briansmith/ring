@@ -1165,7 +1165,8 @@ OPENSSL_EXPORT void SSL_enable_fastradio_padding(SSL *ssl, char on_off);
 
 /* SSL_set_reject_peer_renegotiations controls whether renegotiation attempts by
  * the peer are rejected. It may be set at any point in a connection's lifetime
- * to disallow future renegotiations programmatically. */
+ * to control future renegotiations programmatically. By default, renegotiations
+ * are rejected. */
 OPENSSL_EXPORT void SSL_set_reject_peer_renegotiations(SSL *ssl, int reject);
 
 /* the maximum length of the buffer given to callbacks containing the resulting
@@ -1424,9 +1425,9 @@ struct ssl_st {
    * data rate) state in 3G networks. */
   char fastradio_padding;
 
-  /* reject_peer_renegotiations, if one, causes causes renegotiation attempts
-   * from the peer to be rejected with a fatal error. */
-  char reject_peer_renegotiations;
+  /* accept_peer_renegotiations, if one, accepts renegotiation attempts from the
+   * peer. Otherwise, they will be rejected with a fatal error. */
+  char accept_peer_renegotiations;
 
   /* These fields are always NULL and exist only to keep wpa_supplicant happy
    * about the change to EVP_AEAD. They are only needed for EAP-FAST, which we

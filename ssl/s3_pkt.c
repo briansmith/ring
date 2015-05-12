@@ -869,7 +869,7 @@ start:
   if (rr->type == SSL3_RT_HANDSHAKE) {
     /* If peer renegotiations are disabled, all out-of-order handshake records
      * are fatal. */
-    if (s->reject_peer_renegotiations) {
+    if (!s->accept_peer_renegotiations) {
       al = SSL_AD_NO_RENEGOTIATION;
       OPENSSL_PUT_ERROR(SSL, ssl3_read_bytes, SSL_R_NO_RENEGOTIATION);
       goto f_err;
