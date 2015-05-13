@@ -1805,6 +1805,8 @@ OPENSSL_EXPORT int SSL_clear(SSL *s);
 
 OPENSSL_EXPORT void SSL_CTX_flush_sessions(SSL_CTX *ctx, long tm);
 
+/* SSL_get_current_cipher returns the cipher used in the current outgoing
+ * connection state, or NULL if the null cipher is active. */
 OPENSSL_EXPORT const SSL_CIPHER *SSL_get_current_cipher(const SSL *s);
 
 OPENSSL_EXPORT int SSL_get_fd(const SSL *s);

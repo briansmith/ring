@@ -637,6 +637,7 @@ struct ssl3_enc_method {
 /* ssl_aead_ctx_st contains information about an AEAD that is being used to
  * encrypt an SSL connection. */
 struct ssl_aead_ctx_st {
+  const SSL_CIPHER *cipher;
   EVP_AEAD_CTX ctx;
   /* fixed_nonce contains any bytes of the nonce that are fixed for all
    * records. */

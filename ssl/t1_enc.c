@@ -354,6 +354,8 @@ static int tls1_change_cipher_state_aead(SSL *s, char is_read,
     aead_ctx = s->aead_write_ctx;
   }
 
+  aead_ctx->cipher = s->session->cipher;
+
   if (!EVP_AEAD_CTX_init_with_direction(
           &aead_ctx->ctx, aead, key, key_len, EVP_AEAD_DEFAULT_TAG_LENGTH,
           is_read ? evp_aead_open : evp_aead_seal)) {

@@ -704,6 +704,11 @@ static bool DoExchange(ScopedSSL_SESSION *out_session, SSL_CTX *ssl_ctx,
     }
   }
 
+  if (SSL_get_current_cipher(ssl.get()) != nullptr) {
+    fprintf(stderr, "non-null cipher before handshake\n");
+    return false;
+  }
+
   int ret;
   if (config->implicit_handshake) {
     if (config->is_server) {
@@ -720,6 +725,11 @@ static bool DoExchange(ScopedSSL_SESSION *out_session, SSL_CTX *ssl_ctx,
       }
     } while (config->async && RetryAsync(ssl.get(), ret));
     if (ret != 1) {
+      return false;
+    }
+
+    if (SSL_get_current_cipher(ssl.get()) == nullptr) {
+      fprintf(stderr, "null cipher after handshake\n");
       return false;
     }
 

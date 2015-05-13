@@ -2229,11 +2229,10 @@ EVP_PKEY *SSL_CTX_get0_privatekey(const SSL_CTX *ctx) {
 }
 
 const SSL_CIPHER *SSL_get_current_cipher(const SSL *s) {
-  if (s->session != NULL && s->session->cipher != NULL) {
-    return s->session->cipher;
+  if (s->aead_write_ctx == NULL) {
+    return NULL;
   }
-
-  return NULL;
+  return s->aead_write_ctx->cipher;
 }
 
 const void *SSL_get_current_compression(SSL *s) { return NULL; }
