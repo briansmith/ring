@@ -477,22 +477,13 @@ struct ssl_session_st {
 
 /* As server, disallow session resumption on renegotiation */
 #define SSL_OP_NO_SESSION_RESUMPTION_ON_RENEGOTIATION 0x00010000L
-/* Don't use compression even if supported */
-#define SSL_OP_NO_COMPRESSION 0x00020000L
 /* Permit unsafe legacy renegotiation */
 #define SSL_OP_ALLOW_UNSAFE_LEGACY_RENEGOTIATION 0x00040000L
-/* SSL_OP_SINGLE_ECDH_USE does nothing. */
-#define SSL_OP_SINGLE_ECDH_USE 0x00080000L
-/* SSL_OP_SINGLE_DH_USE does nothing. */
-#define SSL_OP_SINGLE_DH_USE 0x00100000L
 /* Set on servers to choose the cipher according to the server's preferences */
 #define SSL_OP_CIPHER_SERVER_PREFERENCE 0x00400000L
-/* SSL_OP_TLS_ROLLBACK_BUG does nothing. */
-#define SSL_OP_TLS_ROLLBACK_BUG 0x00800000L
 
 /* Deprecated: Use SSL_CTX_set_min_version and SSL_CTX_set_max_version
  * instead. */
-#define SSL_OP_NO_SSLv2 0x01000000L
 #define SSL_OP_NO_SSLv3 0x02000000L
 #define SSL_OP_NO_TLSv1 0x04000000L
 #define SSL_OP_NO_TLSv1_2 0x08000000L
@@ -510,8 +501,13 @@ struct ssl_session_st {
 #define SSL_OP_DONT_INSERT_EMPTY_FRAGMENTS 0
 #define SSL_OP_MICROSOFT_SESS_ID_BUG 0
 #define SSL_OP_NETSCAPE_CHALLENGE_BUG 0
+#define SSL_OP_NO_COMPRESSION 0
+#define SSL_OP_NO_SSLv2 0
+#define SSL_OP_SINGLE_DH_USE 0
+#define SSL_OP_SINGLE_ECDH_USE 0
 #define SSL_OP_SSLREF2_REUSE_CERT_TYPE_BUG 0
 #define SSL_OP_TLS_BLOCK_PADDING_BUG 0
+#define SSL_OP_TLS_ROLLBACK_BUG 0
 
 /* Allow SSL_write(..., n) to return r with 0 < r < n (i.e. report success when
  * just a single record has been written): */
