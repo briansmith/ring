@@ -265,8 +265,8 @@ EC_GROUP *ec_group_new(const EC_METHOD *meth) {
   return ret;
 }
 
-static EC_GROUP *ec_group_new_curve_GFp(const BIGNUM *p, const BIGNUM *a,
-                                        const BIGNUM *b, BN_CTX *ctx) {
+EC_GROUP *EC_GROUP_new_curve_GFp(const BIGNUM *p, const BIGNUM *a,
+                                 const BIGNUM *b, BN_CTX *ctx) {
   const EC_METHOD *meth = EC_GFp_mont_method();
   EC_GROUP *ret;
 
@@ -276,7 +276,7 @@ static EC_GROUP *ec_group_new_curve_GFp(const BIGNUM *p, const BIGNUM *a,
   }
 
   if (ret->meth->group_set_curve == 0) {
-    OPENSSL_PUT_ERROR(EC, ec_group_new_curve_GFp,
+    OPENSSL_PUT_ERROR(EC, EC_GROUP_new_curve_GFp,
                       ERR_R_SHOULD_NOT_HAVE_BEEN_CALLED);
     return 0;
   }
@@ -285,6 +285,44 @@ static EC_GROUP *ec_group_new_curve_GFp(const BIGNUM *p, const BIGNUM *a,
     return NULL;
   }
   return ret;
+}
+
+int EC_GROUP_set_generator(EC_GROUP *group, const EC_POINT *generator,
+                           const BIGNUM *order, const BIGNUM *cofactor) {
+  if (group->curve_name != NID_undef) {
+    /* |EC_GROUP_set_generator| should only be used with |EC_GROUP|s returned
+     * by |EC_GROUP_new_curve_GFp|. */
+    return 0;
+  }
+
+  if (group->generator == NULL) {
+    group->generator = EC_POINT_new(group);
+    if (group->generator == NULL) {
+      return 0;
+    }
+  }
+
+  if (!EC_POINT_copy(group->generator, generator)) {
+    return 0;
+  }
+
+  if (order != NULL) {
+    if (!BN_copy(&group->order, order)) {
+      return 0;
+    }
+  } else {
+    BN_zero(&group->order);
+  }
+
+  if (cofactor != NULL) {
+    if (!BN_copy(&group->cofactor, cofactor)) {
+      return 0;
+    }
+  } else {
+    BN_zero(&group->cofactor);
+  }
+
+  return 1;
 }
 
 static EC_GROUP *ec_group_new_from_data(const struct built_in_curve *curve) {
@@ -322,7 +360,7 @@ static EC_GROUP *ec_group_new_from_data(const struct built_in_curve *curve) {
       goto err;
     }
   } else {
-    if ((group = ec_group_new_curve_GFp(p, a, b, ctx)) == NULL) {
+    if ((group = EC_GROUP_new_curve_GFp(p, a, b, ctx)) == NULL) {
       OPENSSL_PUT_ERROR(EC, ec_group_new_from_data, ERR_R_EC_LIB);
       goto err;
     }

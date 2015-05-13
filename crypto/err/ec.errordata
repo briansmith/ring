@@ -3,9 +3,11 @@ EC,function,100,EC_GROUP_copy
 EC,function,101,EC_GROUP_get_curve_GFp
 EC,function,102,EC_GROUP_get_degree
 EC,function,103,EC_GROUP_new_by_curve_name
+EC,function,166,EC_GROUP_new_curve_GFp
 EC,function,104,EC_KEY_check_key
 EC,function,105,EC_KEY_copy
 EC,function,106,EC_KEY_generate_key
+EC,function,165,EC_KEY_new_by_curve_name
 EC,function,107,EC_KEY_new_method
 EC,function,108,EC_KEY_set_public_key_affine_coordinates
 EC,function,109,EC_POINT_add
