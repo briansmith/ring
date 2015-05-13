@@ -644,6 +644,7 @@ int ssl3_accept(SSL *s) {
           /* skipped if we just sent a HelloRequest */
           s->renegotiate = 0;
           s->new_session = 0;
+          s->s3->initial_handshake_complete = 1;
 
           ssl_update_cache(s, SSL_SESS_CACHE_SERVER);
 
@@ -1011,6 +1012,11 @@ int ssl3_get_client_hello(SSL *s) {
     }
   }
 
+  /* Note: This codepath may run twice if |ssl_get_prev_session| completes
+   * asynchronously.
+   *
+   * TODO(davidben): Clean up the order of events around ClientHello
+   * processing. */
   if (!s->s3->have_version) {
     /* Select version to use */
     uint16_t version = ssl3_get_mutual_version(s, client_version);

@@ -366,6 +366,10 @@ typedef struct ssl3_state_st {
    * the version has not been negotiated yet. */
   char have_version;
 
+  /* initial_handshake_complete is true if the initial handshake has
+   * completed. */
+  char initial_handshake_complete;
+
   /* sniff_buffer is used by the server in the initial handshake to read a
    * V2ClientHello before the record layer is initialized. */
   BUF_MEM *sniff_buffer;

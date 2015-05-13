@@ -871,7 +871,7 @@ uint8_t *ssl_add_clienthello_tlsext(SSL *s, uint8_t *buf, uint8_t *limit,
   }
 
   /* Add RI if renegotiating */
-  if (s->renegotiate) {
+  if (s->s3->initial_handshake_complete) {
     int el;
 
     if (!ssl_add_clienthello_renegotiate_ext(s, 0, &el, 0)) {
@@ -954,7 +954,7 @@ uint8_t *ssl_add_clienthello_tlsext(SSL *s, uint8_t *buf, uint8_t *limit,
     s2n(0, ret);
   }
 
-  if (s->ctx->next_proto_select_cb && !s->s3->tmp.finish_md_len &&
+  if (s->ctx->next_proto_select_cb && !s->s3->initial_handshake_complete &&
       !SSL_IS_DTLS(s)) {
     /* The client advertises an emtpy extension to indicate its support for
      * Next Protocol Negotiation */
@@ -965,7 +965,7 @@ uint8_t *ssl_add_clienthello_tlsext(SSL *s, uint8_t *buf, uint8_t *limit,
     s2n(0, ret);
   }
 
-  if (s->signed_cert_timestamps_enabled && !s->s3->tmp.finish_md_len) {
+  if (s->signed_cert_timestamps_enabled) {
     /* The client advertises an empty extension to indicate its support for
      * certificate timestamps. */
     if (limit - ret - 4 < 0) {
@@ -975,7 +975,7 @@ uint8_t *ssl_add_clienthello_tlsext(SSL *s, uint8_t *buf, uint8_t *limit,
     s2n(0, ret);
   }
 
-  if (s->alpn_client_proto_list && !s->s3->tmp.finish_md_len) {
+  if (s->alpn_client_proto_list && !s->s3->initial_handshake_complete) {
     if ((size_t)(limit - ret) < 6 + s->alpn_client_proto_list_len) {
       return NULL;
     }
@@ -1584,29 +1584,16 @@ static int ssl_scan_clienthello_tlsext(SSL *s, CBS *cbs, int *out_alert) {
         return 0;
       }
     } else if (type == TLSEXT_TYPE_next_proto_neg &&
-               s->s3->tmp.finish_md_len == 0 && s->s3->alpn_selected == NULL &&
-               !SSL_IS_DTLS(s)) {
+               !s->s3->initial_handshake_complete &&
+               s->s3->alpn_selected == NULL && !SSL_IS_DTLS(s)) {
       /* The extension must be empty. */
       if (CBS_len(&extension) != 0) {
         *out_alert = SSL_AD_DECODE_ERROR;
         return 0;
       }
-
-      /* We shouldn't accept this extension on a renegotiation.
-       *
-       * s->new_session will be set on renegotiation, but we probably shouldn't
-       * rely that it couldn't be set on the initial renegotation too in
-       * certain cases (when there's some other reason to disallow resuming an
-       * earlier session -- the current code won't be doing anything like that,
-       * but this might change).
-
-       * A valid sign that there's been a previous handshake in this connection
-       * is if s->s3->tmp.finish_md_len > 0.  (We are talking about a check
-       * that will happen in the Hello protocol round, well before a new
-       * Finished message could have been computed.) */
       s->s3->next_proto_neg_seen = 1;
     } else if (type == TLSEXT_TYPE_application_layer_protocol_negotiation &&
-               s->ctx->alpn_select_cb && s->s3->tmp.finish_md_len == 0) {
+               s->ctx->alpn_select_cb && !s->s3->initial_handshake_complete) {
       if (!tls1_alpn_handle_client_hello(s, &extension, out_alert)) {
         return 0;
       }
@@ -1788,8 +1775,7 @@ static int ssl_scan_serverhello_tlsext(SSL *s, CBS *cbs, int *out_alert) {
       /* Set a flag to expect a CertificateStatus message */
       s->s3->tmp.certificate_status_expected = 1;
     } else if (type == TLSEXT_TYPE_next_proto_neg &&
-               s->s3->tmp.finish_md_len == 0 &&
-               !SSL_IS_DTLS(s)) {
+               !s->s3->initial_handshake_complete && !SSL_IS_DTLS(s)) {
       uint8_t *selected;
       uint8_t selected_len;
 
@@ -1821,7 +1807,8 @@ static int ssl_scan_serverhello_tlsext(SSL *s, CBS *cbs, int *out_alert) {
 
       s->next_proto_negotiated_len = selected_len;
       s->s3->next_proto_neg_seen = 1;
-    } else if (type == TLSEXT_TYPE_application_layer_protocol_negotiation) {
+    } else if (type == TLSEXT_TYPE_application_layer_protocol_negotiation &&
+               !s->s3->initial_handshake_complete) {
       CBS protocol_name_list, protocol_name;
 
       /* We must have requested it. */

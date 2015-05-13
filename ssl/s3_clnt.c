@@ -457,7 +457,7 @@ int ssl3_connect(SSL *s) {
               ssl3_can_false_start(s) &&
               /* No False Start on renegotiation (would complicate the state
                * machine). */
-              s->s3->previous_server_finished_len == 0) {
+              !s->s3->initial_handshake_complete) {
             s->s3->tmp.next_state = SSL3_ST_FALSE_START;
           } else {
             /* Allow NewSessionTicket if ticket expected */
@@ -554,6 +554,7 @@ int ssl3_connect(SSL *s) {
         s->renegotiate = 0;
         s->new_session = 0;
         s->s3->tmp.in_false_start = 0;
+        s->s3->initial_handshake_complete = 1;
 
         ssl_update_cache(s, SSL_SESS_CACHE_CLIENT);
 
@@ -778,6 +779,7 @@ int ssl3_get_server_hello(SSL *s) {
     goto f_err;
   }
 
+  assert(s->s3->have_version == s->s3->initial_handshake_complete);
   if (!s->s3->have_version) {
     if (!ssl3_is_version_enabled(s, server_version)) {
       OPENSSL_PUT_ERROR(SSL, ssl3_get_server_hello, SSL_R_UNSUPPORTED_PROTOCOL);
