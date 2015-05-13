@@ -1,6 +1,6 @@
 #include <openssl/bn.h>
 
-#if defined(OPENSSL_X86_64) && !defined(OPENSSL_WINDOWS)
+#if !defined(OPENSSL_NO_ASM) && defined(OPENSSL_X86_64) && !defined(OPENSSL_WINDOWS)
 
 #include "../internal.h"
 
@@ -596,4 +596,4 @@ void bn_sqr_comba4(BN_ULONG *r, const BN_ULONG *a) {
   r[7] = c2;
 }
 
-#endif  /* defined(OPENSSL_X86_64) && !defined(OPENSSL_WINDOWS) */
+#endif  /* !NO_ASM && X86_64 && !WINDOWS */
