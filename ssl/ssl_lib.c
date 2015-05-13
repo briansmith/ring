@@ -955,7 +955,6 @@ int SSL_renegotiate(SSL *s) {
     s->renegotiate = 1;
   }
 
-  s->new_session = 1;
   return s->method->ssl_renegotiate(s);
 }
 

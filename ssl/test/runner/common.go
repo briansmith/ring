@@ -681,9 +681,9 @@ type ProtocolBugs struct {
 	// fragments in DTLS.
 	SendEmptyFragments bool
 
-	// NeverResumeOnRenego, if true, causes renegotiations to always be full
-	// handshakes.
-	NeverResumeOnRenego bool
+	// FailIfResumeOnRenego, if true, causes renegotiations to fail if the
+	// client offers a resumption or the server accepts one.
+	FailIfResumeOnRenego bool
 
 	// NoSignatureAlgorithmsOnRenego, if true, causes renegotiations to omit
 	// the signature_algorithms extension.

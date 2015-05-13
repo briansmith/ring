@@ -905,7 +905,12 @@ uint8_t *ssl_add_clienthello_tlsext(SSL *s, uint8_t *buf, uint8_t *limit,
 
   if (!(SSL_get_options(s) & SSL_OP_NO_TICKET)) {
     int ticklen = 0;
-    if (!s->new_session && s->session && s->session->tlsext_tick) {
+    /* Renegotiation does not participate in session resumption. However, still
+     * advertise the extension to avoid potentially breaking servers which carry
+     * over the state from the previous handshake, such as OpenSSL servers
+     * without upstream's 3c3f0259238594d77264a78944d409f2127642c4. */
+    if (!s->s3->initial_handshake_complete && s->session != NULL &&
+        s->session->tlsext_tick != NULL) {
       ticklen = s->session->tlsext_ticklen;
     }
 

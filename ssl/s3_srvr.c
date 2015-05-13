@@ -643,7 +643,6 @@ int ssl3_accept(SSL *s) {
         if (s->renegotiate == 2) {
           /* skipped if we just sent a HelloRequest */
           s->renegotiate = 0;
-          s->new_session = 0;
           s->s3->initial_handshake_complete = 1;
 
           ssl_update_cache(s, SSL_SESS_CACHE_SERVER);
@@ -1040,19 +1039,8 @@ int ssl3_get_client_hello(SSL *s) {
   }
 
   s->hit = 0;
-  /* Versions before 0.9.7 always allow clients to resume sessions in
-   * renegotiation. 0.9.7 and later allow this by default, but optionally
-   * ignore resumption requests with flag
-   * SSL_OP_NO_SESSION_RESUMPTION_ON_RENEGOTIATION (it's a new flag rather than
-   * a change to default behavior so that applications relying on this for
-   * security won't even compile against older library versions).
-   *
-   * 1.0.1 and later also have a function SSL_renegotiate_abbreviated() to
-   * request renegotiation but not a new session (s->new_session remains
-   * unset): for servers, this essentially just means that the
-   * SSL_OP_NO_SESSION_RESUMPTION_ON_RENEGOTIATION setting will be ignored. */
-  if (s->new_session &&
-      (s->options & SSL_OP_NO_SESSION_RESUMPTION_ON_RENEGOTIATION)) {
+  if (s->s3->initial_handshake_complete) {
+    /* Renegotiations do not participate in session resumption. */
     if (!ssl_get_new_session(s, 1)) {
       goto err;
     }

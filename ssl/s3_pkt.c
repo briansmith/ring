@@ -1048,7 +1048,6 @@ start:
     if ((s->state & SSL_ST_MASK) == SSL_ST_OK) {
       s->state = s->server ? SSL_ST_ACCEPT : SSL_ST_CONNECT;
       s->renegotiate = 1;
-      s->new_session = 1;
     }
     i = s->handshake_func(s);
     if (i < 0) {

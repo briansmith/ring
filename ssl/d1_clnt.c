@@ -473,7 +473,6 @@ int dtls1_connect(SSL *s) {
 
         s->init_num = 0;
         s->renegotiate = 0;
-        s->new_session = 0;
         s->s3->initial_handshake_complete = 1;
 
         ssl_update_cache(s, SSL_SESS_CACHE_CLIENT);

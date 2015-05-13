@@ -333,6 +333,12 @@ Curves:
 
 	_, hs.ecdsaOk = hs.cert.PrivateKey.(*ecdsa.PrivateKey)
 
+	// For test purposes, check that the peer never offers a session when
+	// renegotiating.
+	if c.cipherSuite != nil && len(hs.clientHello.sessionId) > 0 && c.config.Bugs.FailIfResumeOnRenego {
+		return false, errors.New("tls: offered resumption on renegotiation")
+	}
+
 	if hs.checkForResumption() {
 		return true, nil
 	}
@@ -381,10 +387,6 @@ Curves:
 // checkForResumption returns true if we should perform resumption on this connection.
 func (hs *serverHandshakeState) checkForResumption() bool {
 	c := hs.c
-
-	if c.config.Bugs.NeverResumeOnRenego && c.cipherSuite != nil {
-		return false
-	}
 
 	if len(hs.clientHello.sessionTicket) > 0 {
 		if c.config.SessionTicketsDisabled {

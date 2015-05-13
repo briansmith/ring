@@ -552,7 +552,6 @@ int ssl3_connect(SSL *s) {
 
         s->init_num = 0;
         s->renegotiate = 0;
-        s->new_session = 0;
         s->s3->tmp.in_false_start = 0;
         s->s3->initial_handshake_complete = 1;
 
@@ -667,7 +666,8 @@ int ssl3_send_client_hello(SSL *s) {
     p += SSL3_RANDOM_SIZE;
 
     /* Session ID */
-    if (s->new_session || s->session == NULL) {
+    if (s->s3->initial_handshake_complete || s->session == NULL) {
+      /* Renegotiations do not participate in session resumption. */
       i = 0;
     } else {
       i = s->session->session_id_length;
@@ -806,8 +806,9 @@ int ssl3_get_server_hello(SSL *s) {
   memcpy(s->s3->server_random, CBS_data(&server_random), SSL3_RANDOM_SIZE);
 
   assert(s->session == NULL || s->session->session_id_length > 0);
-  if (s->session != NULL && CBS_mem_equal(&session_id, s->session->session_id,
-                                          s->session->session_id_length)) {
+  if (!s->s3->initial_handshake_complete && s->session != NULL &&
+      CBS_mem_equal(&session_id, s->session->session_id,
+                    s->session->session_id_length)) {
     if (s->sid_ctx_length != s->session->sid_ctx_length ||
         memcmp(s->session->sid_ctx, s->sid_ctx, s->sid_ctx_length)) {
       /* actually a client application bug */

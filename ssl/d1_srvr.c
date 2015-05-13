@@ -474,7 +474,6 @@ int dtls1_accept(SSL *s) {
         if (s->renegotiate == 2) {
           /* skipped if we just sent a HelloRequest */
           s->renegotiate = 0;
-          s->new_session = 0;
           s->s3->initial_handshake_complete = 1;
 
           ssl_update_cache(s, SSL_SESS_CACHE_SERVER);

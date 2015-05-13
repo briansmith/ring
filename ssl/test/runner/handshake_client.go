@@ -140,9 +140,6 @@ NextCipherSuite:
 	var session *ClientSessionState
 	var cacheKey string
 	sessionCache := c.config.ClientSessionCache
-	if c.config.Bugs.NeverResumeOnRenego && c.cipherSuite != nil {
-		sessionCache = nil
-	}
 
 	if sessionCache != nil {
 		hello.ticketSupported = !c.config.SessionTicketsDisabled
@@ -727,6 +724,12 @@ func (hs *clientHandshakeState) processServerHello() (bool, error) {
 	}
 
 	if hs.serverResumedSession() {
+		// For test purposes, assert that the server never accepts the
+		// resumption offer on renegotiation.
+		if c.cipherSuite != nil && c.config.Bugs.FailIfResumeOnRenego {
+			return false, errors.New("tls: server resumed session on renegotiation")
+		}
+
 		// Restore masterSecret and peerCerts from previous state
 		hs.masterSecret = hs.session.masterSecret
 		c.peerCertificates = hs.session.serverCertificates

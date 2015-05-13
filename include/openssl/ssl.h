@@ -475,8 +475,6 @@ struct ssl_session_st {
 /* Don't use RFC4507 ticket extension */
 #define SSL_OP_NO_TICKET 0x00004000L
 
-/* As server, disallow session resumption on renegotiation */
-#define SSL_OP_NO_SESSION_RESUMPTION_ON_RENEGOTIATION 0x00010000L
 /* Permit unsafe legacy renegotiation */
 #define SSL_OP_ALLOW_UNSAFE_LEGACY_RENEGOTIATION 0x00040000L
 /* Set on servers to choose the cipher according to the server's preferences */
@@ -502,6 +500,7 @@ struct ssl_session_st {
 #define SSL_OP_MICROSOFT_SESS_ID_BUG 0
 #define SSL_OP_NETSCAPE_CHALLENGE_BUG 0
 #define SSL_OP_NO_COMPRESSION 0
+#define SSL_OP_NO_SESSION_RESUMPTION_ON_RENEGOTIATION 0
 #define SSL_OP_NO_SSLv2 0
 #define SSL_OP_SINGLE_DH_USE 0
 #define SSL_OP_SINGLE_ECDH_USE 0
@@ -1263,12 +1262,6 @@ struct ssl_st {
    * is initialized by either SSL_set_accept_state or SSL_set_connect_state,
    * the side is not determined. In this state, server is always false. */
   int server;
-
-
-  /* Generate a new session or reuse an old one. NB: For servers, the 'new'
-   * session may actually be a previously cached session or even the previous
-   * session unless SSL_OP_NO_SESSION_RESUMPTION_ON_RENEGOTIATION is set */
-  int new_session;
 
   /* quiet_shutdown is true if the connection should not send a close_notify on
    * shutdown. */
