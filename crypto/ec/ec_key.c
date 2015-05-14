@@ -201,6 +201,11 @@ EC_KEY *EC_KEY_copy(EC_KEY *dest, const EC_KEY *src) {
     }
   }
   /* copy method/extra data */
+  if (src->ecdsa_meth) {
+      METHOD_unref(dest->ecdsa_meth);
+      dest->ecdsa_meth = src->ecdsa_meth;
+      METHOD_ref(dest->ecdsa_meth);
+  }
   CRYPTO_free_ex_data(&g_ex_data_class, dest, &dest->ex_data);
   if (!CRYPTO_dup_ex_data(&g_ex_data_class, &dest->ex_data,
                           &src->ex_data)) {
