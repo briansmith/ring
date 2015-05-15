@@ -184,6 +184,7 @@ struct x509_store_st
 	/* The following is a cache of trusted certs */
 	int cache; 	/* if true, stash any hits */
 	STACK_OF(X509_OBJECT) *objs;	/* Cache of all objects */
+	CRYPTO_MUTEX objs_lock;
 
 	/* These are external lookup methods */
 	STACK_OF(X509_LOOKUP) *get_cert_methods;

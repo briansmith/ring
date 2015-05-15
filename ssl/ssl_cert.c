@@ -132,30 +132,18 @@
 #include "internal.h"
 
 
+static CRYPTO_once_t g_x509_store_ex_data_index_once;
+static int g_x509_store_ex_data_index;
+
+static void ssl_x509_store_ex_data_index_init(void) {
+  g_x509_store_ex_data_index = X509_STORE_CTX_get_ex_new_index(
+      0, "SSL for verify callback", NULL, NULL, NULL);
+}
+
 int SSL_get_ex_data_X509_STORE_CTX_idx(void) {
-  static int ssl_x509_store_ctx_idx = -1;
-  int got_write_lock = 0;
-
-  CRYPTO_r_lock(CRYPTO_LOCK_SSL_CTX);
-
-  if (ssl_x509_store_ctx_idx < 0) {
-    CRYPTO_r_unlock(CRYPTO_LOCK_SSL_CTX);
-    CRYPTO_w_lock(CRYPTO_LOCK_SSL_CTX);
-    got_write_lock = 1;
-
-    if (ssl_x509_store_ctx_idx < 0) {
-      ssl_x509_store_ctx_idx = X509_STORE_CTX_get_ex_new_index(
-          0, "SSL for verify callback", NULL, NULL, NULL);
-    }
-  }
-
-  if (got_write_lock) {
-    CRYPTO_w_unlock(CRYPTO_LOCK_SSL_CTX);
-  } else {
-    CRYPTO_r_unlock(CRYPTO_LOCK_SSL_CTX);
-  }
-
-  return ssl_x509_store_ctx_idx;
+  CRYPTO_once(&g_x509_store_ex_data_index_once,
+              ssl_x509_store_ex_data_index_init);
+  return g_x509_store_ex_data_index;
 }
 
 CERT *ssl_cert_new(void) {
@@ -732,8 +720,6 @@ int SSL_add_dir_cert_subjects_to_stack(STACK_OF(X509_NAME) *stack,
   const char *filename;
   int ret = 0;
 
-  CRYPTO_w_lock(CRYPTO_LOCK_READDIR);
-
   /* Note that a side effect is that the CAs will be sorted by name */
   while ((filename = OPENSSL_DIR_read(&d, dir))) {
     char buf[1024];
@@ -764,7 +750,6 @@ err:
   if (d) {
     OPENSSL_DIR_end(&d);
   }
-  CRYPTO_w_unlock(CRYPTO_LOCK_READDIR);
   return ret;
 }
 

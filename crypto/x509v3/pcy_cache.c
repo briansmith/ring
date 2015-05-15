@@ -60,6 +60,7 @@
 #include <openssl/x509v3.h>
 
 #include "pcy_int.h"
+#include "../internal.h"
 
 
 static int policy_data_cmp(const X509_POLICY_DATA **a,
@@ -243,18 +244,30 @@ void policy_cache_free(X509_POLICY_CACHE *cache)
 	OPENSSL_free(cache);
 	}
 
+/* g_x509_policy_cache_lock is used to protect against concurrent calls to
+ * |policy_cache_new|. Ideally this would be done with a |CRYPTO_once_t|
+ * in the |X509| structure, but |CRYPTO_once_t| isn't public. */
+static struct CRYPTO_STATIC_MUTEX g_x509_policy_cache_lock =
+    CRYPTO_STATIC_MUTEX_INIT;
+
 const X509_POLICY_CACHE *policy_cache_set(X509 *x)
 	{
+	X509_POLICY_CACHE *cache;
 
+	CRYPTO_STATIC_MUTEX_lock_read(&g_x509_policy_cache_lock);
+	cache = x->policy_cache;
+	CRYPTO_STATIC_MUTEX_unlock(&g_x509_policy_cache_lock);
+
+	if (cache != NULL)
+		return cache;
+
+	CRYPTO_STATIC_MUTEX_lock_write(&g_x509_policy_cache_lock);
 	if (x->policy_cache == NULL)
-		{
-		CRYPTO_w_lock(CRYPTO_LOCK_X509);
-			policy_cache_new(x);
-		CRYPTO_w_unlock(CRYPTO_LOCK_X509);
-		}
+		policy_cache_new(x);
+	cache = x->policy_cache;
+	CRYPTO_STATIC_MUTEX_unlock(&g_x509_policy_cache_lock);
 
-	return x->policy_cache;
-
+	return cache;
 	}
 
 X509_POLICY_DATA *policy_cache_find_data(const X509_POLICY_CACHE *cache,

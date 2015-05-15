@@ -796,6 +796,9 @@ struct ssl_cipher_preference_list_st {
 struct ssl_ctx_st {
   const SSL_PROTOCOL_METHOD *method;
 
+  /* lock is used to protect various operations on this object. */
+  CRYPTO_MUTEX lock;
+
   /* max_version is the maximum acceptable protocol version. If zero, the
    * maximum supported version, currently (D)TLS 1.2, is used. */
   uint16_t max_version;

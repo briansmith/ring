@@ -396,9 +396,7 @@ int SSL_set_session_id_context(SSL *ssl, const uint8_t *sid_ctx,
 }
 
 int SSL_CTX_set_generate_session_id(SSL_CTX *ctx, GEN_SESSION_CB cb) {
-  CRYPTO_w_lock(CRYPTO_LOCK_SSL_CTX);
   ctx->generate_session_id = cb;
-  CRYPTO_w_unlock(CRYPTO_LOCK_SSL_CTX);
   return 1;
 }
 
@@ -424,9 +422,9 @@ int SSL_has_matching_session_id(const SSL *ssl, const uint8_t *id,
   r.session_id_length = id_len;
   memcpy(r.session_id, id, id_len);
 
-  CRYPTO_r_lock(CRYPTO_LOCK_SSL_CTX);
+  CRYPTO_MUTEX_lock_read(&ssl->ctx->lock);
   p = lh_SSL_SESSION_retrieve(ssl->ctx->sessions, &r);
-  CRYPTO_r_unlock(CRYPTO_LOCK_SSL_CTX);
+  CRYPTO_MUTEX_unlock(&ssl->ctx->lock);
   return p != NULL;
 }
 
@@ -1650,6 +1648,8 @@ SSL_CTX *SSL_CTX_new(const SSL_METHOD *meth) {
 
   ret->method = meth->method;
 
+  CRYPTO_MUTEX_init(&ret->lock);
+
   ret->cert_store = NULL;
   ret->session_cache_mode = SSL_SESS_CACHE_SERVER;
   ret->session_cache_size = SSL_SESSION_CACHE_MAX_SIZE_DEFAULT;
@@ -1774,6 +1774,7 @@ void SSL_CTX_free(SSL_CTX *ctx) {
 
   CRYPTO_free_ex_data(&g_ex_data_class_ssl_ctx, ctx, &ctx->ex_data);
 
+  CRYPTO_MUTEX_cleanup(&ctx->lock);
   lh_SSL_SESSION_free(ctx->sessions);
   X509_STORE_free(ctx->cert_store);
   ssl_cipher_preference_list_free(ctx->cipher_list);
@@ -1996,13 +1997,13 @@ void ssl_update_cache(SSL *s, int mode) {
       (ctx->session_cache_mode & mode) == mode) {
     /* Automatically flush the internal session cache every 255 connections. */
     int flush_cache = 0;
-    CRYPTO_w_lock(CRYPTO_LOCK_SSL_CTX);
+    CRYPTO_MUTEX_lock_write(&ctx->lock);
     ctx->handshakes_since_cache_flush++;
     if (ctx->handshakes_since_cache_flush >= 255) {
       flush_cache = 1;
       ctx->handshakes_since_cache_flush = 0;
     }
-    CRYPTO_w_unlock(CRYPTO_LOCK_SSL_CTX);
+    CRYPTO_MUTEX_unlock(&ctx->lock);
 
     if (flush_cache) {
       SSL_CTX_flush_sessions(ctx, (unsigned long)time(NULL));
@@ -2624,9 +2625,9 @@ int ssl_ctx_log_rsa_client_key_exchange(SSL_CTX *ctx,
     return 0;
   }
 
-  CRYPTO_w_lock(CRYPTO_LOCK_SSL_CTX);
+  CRYPTO_MUTEX_lock_write(&ctx->lock);
   ret = BIO_write(bio, out, out_len) >= 0 && BIO_flush(bio);
-  CRYPTO_w_unlock(CRYPTO_LOCK_SSL_CTX);
+  CRYPTO_MUTEX_unlock(&ctx->lock);
 
   OPENSSL_free(out);
   return ret;
@@ -2664,9 +2665,9 @@ int ssl_ctx_log_master_secret(SSL_CTX *ctx, const uint8_t *client_random,
     return 0;
   }
 
-  CRYPTO_w_lock(CRYPTO_LOCK_SSL_CTX);
+  CRYPTO_MUTEX_lock_write(&ctx->lock);
   ret = BIO_write(bio, out, out_len) >= 0 && BIO_flush(bio);
-  CRYPTO_w_unlock(CRYPTO_LOCK_SSL_CTX);
+  CRYPTO_MUTEX_unlock(&ctx->lock);
 
   OPENSSL_free(out);
   return ret;

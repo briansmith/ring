@@ -65,6 +65,9 @@
 #include <openssl/x509.h>
 #include <openssl/x509v3.h>
 
+#include "../internal.h"
+
+
 /* Method to handle CRL access.
  * In general a CRL could be very large (several Mb) and can consume large
  * amounts of resources if stored in memory by multiple processes.
@@ -463,6 +466,8 @@ static int crl_revoked_issuer_match(X509_CRL *crl, X509_NAME *nm,
 
 	}
 
+static struct CRYPTO_STATIC_MUTEX g_crl_sort_lock = CRYPTO_STATIC_MUTEX_INIT;
+
 static int def_crl_lookup(X509_CRL *crl,
 		X509_REVOKED **ret, ASN1_INTEGER *serial, X509_NAME *issuer)
 	{
@@ -471,13 +476,22 @@ static int def_crl_lookup(X509_CRL *crl,
 	rtmp.serialNumber = serial;
 	/* Sort revoked into serial number order if not already sorted.
 	 * Do this under a lock to avoid race condition.
- 	 */
-	if (!sk_X509_REVOKED_is_sorted(crl->crl->revoked))
+	 */
+
+	CRYPTO_STATIC_MUTEX_lock_read(&g_crl_sort_lock);
+	const int is_sorted = sk_X509_REVOKED_is_sorted(crl->crl->revoked);
+	CRYPTO_STATIC_MUTEX_unlock(&g_crl_sort_lock);
+
+	if (!is_sorted)
 		{
-		CRYPTO_w_lock(CRYPTO_LOCK_X509_CRL);
-		sk_X509_REVOKED_sort(crl->crl->revoked);
-		CRYPTO_w_unlock(CRYPTO_LOCK_X509_CRL);
+		CRYPTO_STATIC_MUTEX_lock_write(&g_crl_sort_lock);
+		if (!sk_X509_REVOKED_is_sorted(crl->crl->revoked))
+			{
+			sk_X509_REVOKED_sort(crl->crl->revoked);
+			}
+		CRYPTO_STATIC_MUTEX_unlock(&g_crl_sort_lock);
 		}
+
 	if (!sk_X509_REVOKED_find(crl->crl->revoked, &idx, &rtmp))
 		return 0;
 	/* Need to look for matching name */
