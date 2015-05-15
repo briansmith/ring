@@ -607,14 +607,14 @@ static int remove_session_lock(SSL_CTX *ctx, SSL_SESSION *c, int lock) {
 
 SSL_SESSION *SSL_SESSION_up_ref(SSL_SESSION *session) {
   if (session) {
-    CRYPTO_add(&session->references, 1, CRYPTO_LOCK_SSL_SESSION);
+    CRYPTO_refcount_inc(&session->references);
   }
   return session;
 }
 
 void SSL_SESSION_free(SSL_SESSION *session) {
   if (session == NULL ||
-      CRYPTO_add(&session->references, -1, CRYPTO_LOCK_SSL_SESSION) > 0) {
+      !CRYPTO_refcount_dec_and_test_zero(&session->references)) {
     return;
   }
 

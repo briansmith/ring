@@ -293,10 +293,10 @@ SSL *SSL_new(SSL_CTX *ctx) {
   s->quiet_shutdown = ctx->quiet_shutdown;
   s->max_send_fragment = ctx->max_send_fragment;
 
-  CRYPTO_add(&ctx->references, 1, CRYPTO_LOCK_SSL_CTX);
+  CRYPTO_refcount_inc(&ctx->references);
   s->ctx = ctx;
   s->tlsext_ticket_expected = 0;
-  CRYPTO_add(&ctx->references, 1, CRYPTO_LOCK_SSL_CTX);
+  CRYPTO_refcount_inc(&ctx->references);
   s->initial_ctx = ctx;
   if (ctx->tlsext_ecpointformatlist) {
     s->tlsext_ecpointformatlist = BUF_memdup(
@@ -1758,7 +1758,7 @@ err2:
 
 void SSL_CTX_free(SSL_CTX *ctx) {
   if (ctx == NULL ||
-      CRYPTO_add(&ctx->references, -1, CRYPTO_LOCK_SSL_CTX) > 0) {
+      !CRYPTO_refcount_dec_and_test_zero(&ctx->references)) {
     return;
   }
 
@@ -2320,7 +2320,7 @@ SSL_CTX *SSL_set_SSL_CTX(SSL *ssl, SSL_CTX *ctx) {
   ssl_cert_free(ssl->cert);
   ssl->cert = ssl_cert_dup(ctx->cert);
 
-  CRYPTO_add(&ctx->references, 1, CRYPTO_LOCK_SSL_CTX);
+  CRYPTO_refcount_inc(&ctx->references);
   SSL_CTX_free(ssl->ctx); /* decrement reference count */
   ssl->ctx = ctx;
 

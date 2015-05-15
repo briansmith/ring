@@ -150,14 +150,12 @@
 #include <openssl/hmac.h>
 #include <openssl/lhash.h>
 #include <openssl/pem.h>
+#include <openssl/thread.h>
 #include <openssl/x509.h>
 
 #if !defined(OPENSSL_WINDOWS)
 #include <sys/time.h>
 #endif
-
-/* Some code expected to get the threading functions by including ssl.h. */
-#include <openssl/thread.h>
 
 /* wpa_supplicant expects to get the version functions from ssl.h */
 #include <openssl/crypto.h>
@@ -414,7 +412,7 @@ struct ssl_session_st {
    * not ok, we must remember the error for session reuse: */
   long verify_result; /* only for servers */
 
-  int references;
+  CRYPTO_refcount_t references;
   long timeout;
   long time;
 
@@ -849,7 +847,7 @@ struct ssl_ctx_st {
   SSL_SESSION *(*get_session_cb)(struct ssl_st *ssl, uint8_t *data, int len,
                                  int *copy);
 
-  int references;
+  CRYPTO_refcount_t references;
 
   /* if defined, these override the X509_verify_cert() calls */
   int (*app_verify_callback)(X509_STORE_CTX *, void *);
