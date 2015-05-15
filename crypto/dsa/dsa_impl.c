@@ -501,12 +501,16 @@ static int paramgen(DSA *ret, unsigned bits, const uint8_t *seed_in,
   }
 
   ctx = BN_CTX_new();
+  if (ctx == NULL) {
+    goto err;
+  }
+  BN_CTX_start(ctx);
+
   mont = BN_MONT_CTX_new();
-  if (ctx == NULL || mont == NULL) {
+  if (mont == NULL) {
     goto err;
   }
 
-  BN_CTX_start(ctx);
   r0 = BN_CTX_get(ctx);
   g = BN_CTX_get(ctx);
   W = BN_CTX_get(ctx);
@@ -516,7 +520,7 @@ static int paramgen(DSA *ret, unsigned bits, const uint8_t *seed_in,
   p = BN_CTX_get(ctx);
   test = BN_CTX_get(ctx);
 
-  if (!BN_lshift(test, BN_value_one(), bits - 1)) {
+  if (test == NULL || !BN_lshift(test, BN_value_one(), bits - 1)) {
     goto err;
   }
 

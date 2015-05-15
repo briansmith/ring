@@ -51,7 +51,7 @@ int bio_ip_and_port_to_socket_and_addr(int *out_sock,
   ret = getaddrinfo(hostname, port_str, &hint, &result);
   if (ret != 0) {
     OPENSSL_PUT_ERROR(SYS, getaddrinfo, 0);
-    ERR_add_error_data(2, gai_strerror(ret));
+    ERR_add_error_data(1, gai_strerror(ret));
     return 0;
   }
 

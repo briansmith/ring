@@ -431,6 +431,9 @@ static bool CipherGetRFCName(std::string *out, uint16_t value) {
     return false;
   }
   ScopedOpenSSLString rfc_name(SSL_CIPHER_get_rfc_name(cipher));
+  if (!rfc_name) {
+    return false;
+  }
   out->assign(rfc_name.get());
   return true;
 }

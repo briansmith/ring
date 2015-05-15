@@ -72,7 +72,7 @@ static int fixed_random(void) {
   for (i = 0; i < NUM_ITEMS; i++) {
     priority[7] = ordering[i];
     item = pitem_new(priority, &ordering[i]);
-    if (pqueue_insert(q, item) != item) {
+    if (item == NULL || pqueue_insert(q, item) != item) {
       return 0;
     }
   }
@@ -82,7 +82,7 @@ static int fixed_random(void) {
   for (i = 0; i < NUM_ITEMS; i++) {
     priority[7] = ordering[i];
     item = pitem_new(priority, &ordering[i]);
-    if (pqueue_insert(q, item) != NULL) {
+    if (item == NULL || pqueue_insert(q, item) != NULL) {
       return 0;
     }
     pitem_free(item);

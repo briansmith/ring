@@ -873,6 +873,7 @@ struct bio_st {
 #define BIO_F_file_ctrl 115
 #define BIO_F_file_read 116
 #define BIO_F_mem_write 117
+#define BIO_F_BIO_printf 118
 #define BIO_R_BAD_FOPEN_MODE 100
 #define BIO_R_BROKEN_PIPE 101
 #define BIO_R_CONNECT_ERROR 102

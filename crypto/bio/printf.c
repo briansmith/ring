@@ -64,6 +64,7 @@
 #include <stdarg.h>
 #include <stdio.h>
 
+#include <openssl/err.h>
 #include <openssl/mem.h>
 
 int BIO_printf(BIO *bio, const char *format, ...) {
@@ -94,9 +95,8 @@ int BIO_printf(BIO *bio, const char *format, ...) {
     out = OPENSSL_malloc(requested_len + 1);
     out_malloced = 1;
     if (out == NULL) {
-      /* Unclear what can be done in this situation. OpenSSL has historically
-       * crashed and that seems better than producing the wrong output. */
-      abort();
+      OPENSSL_PUT_ERROR(BIO, BIO_printf, ERR_R_MALLOC_FAILURE);
+      return -1;
     }
     va_start(args, format);
     out_len = vsnprintf(out, requested_len + 1, format, args);

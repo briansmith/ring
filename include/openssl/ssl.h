@@ -239,8 +239,9 @@ OPENSSL_EXPORT const char *SSL_CIPHER_get_name(const SSL_CIPHER *cipher);
 OPENSSL_EXPORT const char *SSL_CIPHER_get_kx_name(const SSL_CIPHER *cipher);
 
 /* SSL_CIPHER_get_rfc_name returns a newly-allocated string with the standard
- * name for |cipher|. For example, "TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256". The
- * caller is responsible for calling |OPENSSL_free| on the result. */
+ * name for |cipher| or NULL on error. For example,
+ * "TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256". The caller is responsible for
+ * calling |OPENSSL_free| on the result. */
 OPENSSL_EXPORT char *SSL_CIPHER_get_rfc_name(const SSL_CIPHER *cipher);
 
 /* SSL_CIPHER_get_bits returns the strength, in bits, of |cipher|. If

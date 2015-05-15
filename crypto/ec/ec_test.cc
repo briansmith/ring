@@ -125,6 +125,9 @@ bool Testd2i_ECPrivateKey() {
   }
   ScopedOpenSSLString x_hex(BN_bn2hex(x.get()));
   ScopedOpenSSLString y_hex(BN_bn2hex(y.get()));
+  if (!x_hex || !y_hex) {
+    return false;
+  }
   if (0 != strcmp(
           x_hex.get(),
           "c81561ecf2e54edefe6617db1c7a34a70744ddb261f269b83dacfcd2ade5a681") ||

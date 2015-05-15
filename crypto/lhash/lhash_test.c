@@ -123,6 +123,9 @@ int main(int argc, char **argv) {
   CRYPTO_library_init();
 
   lh = lh_new(NULL, NULL);
+  if (lh == NULL) {
+    return 1;
+  }
 
   for (i = 0; i < 100000; i++) {
     unsigned action;

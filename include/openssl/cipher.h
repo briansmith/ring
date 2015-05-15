@@ -520,6 +520,9 @@ struct evp_cipher_st {
   int (*cipher)(EVP_CIPHER_CTX *ctx, uint8_t *out, const uint8_t *in,
                 size_t inl);
 
+  /* cleanup, if non-NULL, releases memory associated with the context. It is
+   * called if |EVP_CTRL_INIT| succeeds. Note that |init| may not have been
+   * called at this point. */
   void (*cleanup)(EVP_CIPHER_CTX *);
 
   int (*ctrl)(EVP_CIPHER_CTX *, int type, int arg, void *ptr);
