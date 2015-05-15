@@ -762,3 +762,11 @@ void DES_ede3_cbc_encrypt(const uint8_t *in, uint8_t *out, size_t len,
 
   tin[0] = tin[1] = 0;
 }
+
+void DES_ede2_cbc_encrypt(const uint8_t *in, uint8_t *out, size_t len,
+                          const DES_key_schedule *ks1,
+                          const DES_key_schedule *ks2,
+                          DES_cblock *ivec,
+                          int enc) {
+  DES_ede3_cbc_encrypt(in, out, len, ks1, ks2, ks1, ivec, enc);
+}
