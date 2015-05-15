@@ -14,6 +14,8 @@ add_executable(
   bytestring_test
 
   bytestring_test.cc
+
+  $<TARGET_OBJECTS:test_support>
 )
 
 target_link_libraries(bytestring_test crypto)

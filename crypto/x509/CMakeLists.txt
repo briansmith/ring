@@ -59,6 +59,8 @@ add_executable(
   pkcs7_test
 
   pkcs7_test.c
+
+  $<TARGET_OBJECTS:test_support>
 )
 
 target_link_libraries(pkcs7_test crypto)

@@ -70,6 +70,8 @@ add_executable(
   bn_test
 
   bn_test.cc
+
+  $<TARGET_OBJECTS:test_support>
 )
 
 target_link_libraries(bn_test crypto)

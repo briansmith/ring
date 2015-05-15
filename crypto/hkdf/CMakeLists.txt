@@ -12,6 +12,8 @@ add_executable(
   hkdf_test
 
   hkdf_test.c
+
+  $<TARGET_OBJECTS:test_support>
 )
 
 target_link_libraries(hkdf_test crypto)

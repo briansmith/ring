@@ -5,9 +5,10 @@ add_executable(
 
   async_bio.cc
   bssl_shim.cc
-  malloc.cc
   packeted_bio.cc
   test_config.cc
+
+  $<TARGET_OBJECTS:test_support>
 )
 
 target_link_libraries(bssl_shim ssl crypto)

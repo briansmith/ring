@@ -16,6 +16,8 @@ add_executable(
   rsa_test
 
   rsa_test.c
+
+  $<TARGET_OBJECTS:test_support>
 )
 
 target_link_libraries(rsa_test crypto)

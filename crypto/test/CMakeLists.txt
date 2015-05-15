@@ -4,4 +4,5 @@ add_library(
   OBJECT
 
   file_test.cc
+  malloc.cc
 )

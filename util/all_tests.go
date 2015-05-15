@@ -22,16 +22,21 @@ import (
 	"os"
 	"os/exec"
 	"path"
+	"strconv"
 	"strings"
+	"syscall"
 	"time"
 )
 
 // TODO(davidben): Link tests with the malloc shim and port -malloc-test to this runner.
 
 var (
-	useValgrind = flag.Bool("valgrind", false, "If true, run code under valgrind")
-	buildDir    = flag.String("build-dir", "build", "The build directory to run the tests from.")
-	jsonOutput  = flag.String("json-output", "", "The file to output JSON results to.")
+	useValgrind     = flag.Bool("valgrind", false, "If true, run code under valgrind")
+	useGDB          = flag.Bool("gdb", false, "If true, run BoringSSL code under gdb")
+	buildDir        = flag.String("build-dir", "build", "The build directory to run the tests from.")
+	jsonOutput      = flag.String("json-output", "", "The file to output JSON results to.")
+	mallocTest      = flag.Int64("malloc-test", -1, "If non-negative, run each test with each malloc in turn failing from the given number onwards.")
+	mallocTestDebug = flag.Bool("malloc-test-debug", false, "If true, ask each test to abort rather than fail a malloc. This can be used with a specific value for --malloc-test to identity the malloc failing that is causing problems.")
 )
 
 type test []string
@@ -157,25 +162,59 @@ func valgrindOf(dbAttach bool, path string, args ...string) *exec.Cmd {
 	return exec.Command("valgrind", valgrindArgs...)
 }
 
-func runTest(test test) (passed bool, err error) {
+func gdbOf(path string, args ...string) *exec.Cmd {
+	xtermArgs := []string{"-e", "gdb", "--args"}
+	xtermArgs = append(xtermArgs, path)
+	xtermArgs = append(xtermArgs, args...)
+
+	return exec.Command("xterm", xtermArgs...)
+}
+
+type moreMallocsError struct{}
+
+func (moreMallocsError) Error() string {
+	return "child process did not exhaust all allocation calls"
+}
+
+var errMoreMallocs = moreMallocsError{}
+
+func runTestOnce(test test, mallocNumToFail int64) (passed bool, err error) {
 	prog := path.Join(*buildDir, test[0])
 	args := test[1:]
 	var cmd *exec.Cmd
 	if *useValgrind {
 		cmd = valgrindOf(false, prog, args...)
+	} else if *useGDB {
+		cmd = gdbOf(prog, args...)
 	} else {
 		cmd = exec.Command(prog, args...)
 	}
 	var stdoutBuf bytes.Buffer
+	var stderrBuf bytes.Buffer
 	cmd.Stdout = &stdoutBuf
-	cmd.Stderr = os.Stderr
+	cmd.Stderr = &stderrBuf
+	if mallocNumToFail >= 0 {
+		cmd.Env = os.Environ()
+		cmd.Env = append(cmd.Env, "MALLOC_NUMBER_TO_FAIL="+strconv.FormatInt(mallocNumToFail, 10))
+		if *mallocTestDebug {
+			cmd.Env = append(cmd.Env, "MALLOC_ABORT_ON_FAIL=1")
+		}
+		cmd.Env = append(cmd.Env, "_MALLOC_CHECK=1")
+	}
 
 	if err := cmd.Start(); err != nil {
 		return false, err
 	}
 	if err := cmd.Wait(); err != nil {
+		if exitError, ok := err.(*exec.ExitError); ok {
+			if exitError.Sys().(syscall.WaitStatus).ExitStatus() == 88 {
+				return false, errMoreMallocs
+			}
+		}
+		fmt.Print(string(stderrBuf.Bytes()))
 		return false, err
 	}
+	fmt.Print(string(stderrBuf.Bytes()))
 
 	// Account for Windows line-endings.
 	stdout := bytes.Replace(stdoutBuf.Bytes(), []byte("\r\n"), []byte("\n"), -1)
@@ -185,6 +224,21 @@ func runTest(test test) (passed bool, err error) {
 		return true, nil
 	}
 	return false, nil
+}
+
+func runTest(test test) (bool, error) {
+	if *mallocTest < 0 {
+		return runTestOnce(test, -1)
+	}
+
+	for mallocNumToFail := int64(*mallocTest); ; mallocNumToFail++ {
+		if passed, err := runTestOnce(test, mallocNumToFail); err != errMoreMallocs {
+			if err != nil {
+				err = fmt.Errorf("at malloc %d: %s", mallocNumToFail, err)
+			}
+			return passed, err
+		}
+	}
 }
 
 // shortTestName returns the short name of a test. Except for evp_test, it

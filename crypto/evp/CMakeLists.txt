@@ -26,12 +26,15 @@ add_executable(
   evp_extra_test
 
   evp_extra_test.cc
+
+  $<TARGET_OBJECTS:test_support>
 )
 
 add_executable(
   evp_test
 
   evp_test.cc
+
   $<TARGET_OBJECTS:test_support>
 )
 
@@ -39,6 +42,8 @@ add_executable(
   pbkdf_test
 
   pbkdf_test.cc
+
+  $<TARGET_OBJECTS:test_support>
 )
 
 target_link_libraries(evp_extra_test crypto)

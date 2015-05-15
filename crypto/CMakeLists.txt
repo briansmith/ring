@@ -207,6 +207,8 @@ add_executable(
   constant_time_test
 
   constant_time_test.c
+
+  $<TARGET_OBJECTS:test_support>
 )
 
 target_link_libraries(constant_time_test crypto)
@@ -215,6 +217,8 @@ add_executable(
   thread_test
 
   thread_test.c
+
+  $<TARGET_OBJECTS:test_support>
 )
 
 target_link_libraries(thread_test crypto)

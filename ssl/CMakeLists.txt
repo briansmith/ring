@@ -40,6 +40,8 @@ add_executable(
   ssl_test
 
   ssl_test.cc
+
+  $<TARGET_OBJECTS:test_support>
 )
 
 target_link_libraries(ssl_test ssl crypto)

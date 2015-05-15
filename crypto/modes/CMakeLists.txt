@@ -58,6 +58,8 @@ add_executable(
   gcm_test
 
   gcm_test.c
+
+  $<TARGET_OBJECTS:test_support>
 )
 
 target_link_libraries(gcm_test crypto)

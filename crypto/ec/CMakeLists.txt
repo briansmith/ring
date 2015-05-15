@@ -20,12 +20,16 @@ add_executable(
   example_mul
 
   example_mul.c
+
+  $<TARGET_OBJECTS:test_support>
 )
 
 add_executable(
   ec_test
 
   ec_test.cc
+
+  $<TARGET_OBJECTS:test_support>
 )
 
 target_link_libraries(example_mul crypto)
