@@ -100,55 +100,25 @@ typedef union crypto_mutex_st {
 typedef uint32_t CRYPTO_refcount_t;
 
 
-/* Functions to support multithreading.
- *
- * OpenSSL can safely be used in multi-threaded applications provided that at
- * least |CRYPTO_set_locking_callback| is set.
- *
- * The locking callback performs mutual exclusion. Rather than using a single
- * lock for all, shared data-structures, OpenSSL requires that the locking
- * callback support a fixed (at run-time) number of different locks, given by
- * |CRYPTO_num_locks|. */
+/* Deprecated functions */
 
-
-/* CRYPTO_num_locks returns the number of static locks that the callback
- * function passed to |CRYPTO_set_locking_callback| must be able to handle. */
+/* CRYPTO_num_locks returns one. (This is non-zero that callers who allocate
+ * sizeof(lock) times this value don't get zero and then fail because malloc(0)
+ * returned NULL.) */
 OPENSSL_EXPORT int CRYPTO_num_locks(void);
 
-/* CRYPTO_set_locking_callback sets a callback function that implements locking
- * on behalf of OpenSSL. The callback is called whenever OpenSSL needs to lock
- * or unlock a lock, and locks are specified as a number between zero and
- * |CRYPTO_num_locks()-1|.
- *
- * The mode argument to the callback is a bitwise-OR of either CRYPTO_LOCK or
- * CRYPTO_UNLOCK, to denote the action, and CRYPTO_READ or CRYPTO_WRITE, to
- * indicate the type of lock. The |file| and |line| arguments give the location
- * in the OpenSSL source where the locking action originated. */
+/* CRYPTO_set_locking_callback does nothing. */
 OPENSSL_EXPORT void CRYPTO_set_locking_callback(
     void (*func)(int mode, int lock_num, const char *file, int line));
 
-/* CRYPTO_set_add_lock_callback sets an optional callback which is used when
- * OpenSSL needs to add a fixed amount to an integer. For example, this is used
- * when maintaining reference counts. Normally the reference counts are
- * maintained by performing the addition under a lock but, if this callback
- * has been set, the application is free to implement the operation using
- * faster methods (i.e. atomic operations).
- *
- * The callback is given a pointer to the integer to be altered (|num|), the
- * amount to add to the integer (|amount|, which may be negative), the number
- * of the lock which would have been taken to protect the operation and the
- * position in the OpenSSL code where the operation originated. */
+/* CRYPTO_set_add_lock_callback does nothing. */
 OPENSSL_EXPORT void CRYPTO_set_add_lock_callback(int (*func)(
     int *num, int amount, int lock_num, const char *file, int line));
 
-/* CRYPTO_get_lock_name returns the name of the lock given by |lock_num|. This
- * can be used in a locking callback for debugging purposes. */
+/* CRYPTO_get_lock_name returns a fixed, dummy string. */
 OPENSSL_EXPORT const char *CRYPTO_get_lock_name(int lock_num);
 
-
-/* Deprecated functions */
-
-/* CRYPTO_THREADID_set_callback does nothing. */
+/* CRYPTO_THREADID_set_callback returns one. */
 OPENSSL_EXPORT int CRYPTO_THREADID_set_callback(
     void (*threadid_func)(CRYPTO_THREADID *threadid));
 
@@ -161,73 +131,6 @@ OPENSSL_EXPORT void CRYPTO_THREADID_set_pointer(CRYPTO_THREADID *id, void *ptr);
 
 /* CRYPTO_THREADID_current does nothing. */
 OPENSSL_EXPORT void CRYPTO_THREADID_current(CRYPTO_THREADID *id);
-
-
-/* Private functions: */
-
-/* CRYPTO_get_locking_callback returns the callback, if any, that was most
- * recently set using |CRYPTO_set_locking_callback|. */
-void (*CRYPTO_get_locking_callback(void))(int mode, int lock_num,
-                                          const char *file, int line);
-
-/* CRYPTO_get_add_lock_callback returns the callback, if any, that was most
- * recently set using |CRYPTO_set_add_lock_callback|. */
-int (*CRYPTO_get_add_lock_callback(void))(int *num, int amount, int lock_num,
-                                          const char *file, int line);
-
-/* CRYPTO_lock locks or unlocks the lock specified by |lock_num| (one of
- * |CRYPTO_LOCK_*|). Don't call this directly, rather use one of the
- * CRYPTO_[rw]_(un)lock macros. */
-OPENSSL_EXPORT void CRYPTO_lock(int mode, int lock_num, const char *file,
-                                int line);
-
-/* Lock IDs start from 1. CRYPTO_LOCK_INVALID_LOCK is an unused placeholder
- * used to ensure no lock has ID 0. */
-#define CRYPTO_LOCK_LIST \
-  CRYPTO_LOCK_ITEM(CRYPTO_LOCK_INVALID_LOCK), \
-  CRYPTO_LOCK_ITEM(CRYPTO_LOCK_BIO), \
-  CRYPTO_LOCK_ITEM(CRYPTO_LOCK_DH), \
-  CRYPTO_LOCK_ITEM(CRYPTO_LOCK_DSA), \
-  CRYPTO_LOCK_ITEM(CRYPTO_LOCK_EC), \
-  CRYPTO_LOCK_ITEM(CRYPTO_LOCK_EC_PRE_COMP), \
-  CRYPTO_LOCK_ITEM(CRYPTO_LOCK_ERR), \
-  CRYPTO_LOCK_ITEM(CRYPTO_LOCK_EVP_PKEY), \
-  CRYPTO_LOCK_ITEM(CRYPTO_LOCK_EX_DATA), \
-  CRYPTO_LOCK_ITEM(CRYPTO_LOCK_OBJ), \
-  CRYPTO_LOCK_ITEM(CRYPTO_LOCK_RAND), \
-  CRYPTO_LOCK_ITEM(CRYPTO_LOCK_READDIR), \
-  CRYPTO_LOCK_ITEM(CRYPTO_LOCK_RSA), \
-  CRYPTO_LOCK_ITEM(CRYPTO_LOCK_RSA_BLINDING), \
-  CRYPTO_LOCK_ITEM(CRYPTO_LOCK_SSL_CTX), \
-  CRYPTO_LOCK_ITEM(CRYPTO_LOCK_SSL_SESSION), \
-  CRYPTO_LOCK_ITEM(CRYPTO_LOCK_X509), \
-  CRYPTO_LOCK_ITEM(CRYPTO_LOCK_X509_INFO), \
-  CRYPTO_LOCK_ITEM(CRYPTO_LOCK_X509_PKEY), \
-  CRYPTO_LOCK_ITEM(CRYPTO_LOCK_X509_CRL), \
-  CRYPTO_LOCK_ITEM(CRYPTO_LOCK_X509_REQ), \
-  CRYPTO_LOCK_ITEM(CRYPTO_LOCK_X509_STORE), \
-
-#define CRYPTO_LOCK_ITEM(x) x
-
-enum {
-  CRYPTO_LOCK_LIST
-};
-
-#undef CRYPTO_LOCK_ITEM
-
-#define CRYPTO_LOCK 1
-#define CRYPTO_UNLOCK 2
-#define CRYPTO_READ 4
-#define CRYPTO_WRITE 8
-
-#define CRYPTO_w_lock(lock_num) \
-  CRYPTO_lock(CRYPTO_LOCK | CRYPTO_WRITE, lock_num, __FILE__, __LINE__)
-#define CRYPTO_w_unlock(lock_num) \
-  CRYPTO_lock(CRYPTO_UNLOCK | CRYPTO_WRITE, lock_num, __FILE__, __LINE__)
-#define CRYPTO_r_lock(lock_num) \
-  CRYPTO_lock(CRYPTO_LOCK | CRYPTO_READ, lock_num, __FILE__, __LINE__)
-#define CRYPTO_r_unlock(lock_num) \
-  CRYPTO_lock(CRYPTO_UNLOCK | CRYPTO_READ, lock_num, __FILE__, __LINE__)
 
 
 /* Private functions.

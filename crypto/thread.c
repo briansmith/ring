@@ -69,40 +69,16 @@
 #include <openssl/mem.h>
 
 
-#define CRYPTO_LOCK_ITEM(x) #x
-
-/* lock_names contains the names of all the locks defined in thread.h. */
-static const char *const lock_names[] = {
-  CRYPTO_LOCK_LIST
-};
-
-#undef CRYPTO_LOCK_ITEM
-
-#define CRYPTO_NUM_LOCKS (sizeof(lock_names) / sizeof(lock_names[0]))
-
-static void (*locking_callback)(int mode, int lock_num, const char *file,
-                                int line) = 0;
-static int (*add_lock_callback)(int *pointer, int amount, int lock_num,
-                                const char *file, int line) = 0;
-
-int CRYPTO_num_locks(void) { return CRYPTO_NUM_LOCKS; }
+int CRYPTO_num_locks(void) { return 1; }
 
 void CRYPTO_set_locking_callback(void (*func)(int mode, int lock_num,
-                                              const char *file, int line)) {
-  locking_callback = func;
-}
+                                              const char *file, int line)) {}
 
 void CRYPTO_set_add_lock_callback(int (*func)(int *num, int mount, int lock_num,
-                                              const char *file, int line)) {
-  add_lock_callback = func;
-}
+                                              const char *file, int line)) {}
 
 const char *CRYPTO_get_lock_name(int lock_num) {
-  if (lock_num >= 0 && lock_num < CRYPTO_NUM_LOCKS) {
-    return lock_names[lock_num];
-  } else {
-    return "ERROR";
-  }
+  return "No old-style OpenSSL locks anymore";
 }
 
 int CRYPTO_THREADID_set_callback(void (*func)(CRYPTO_THREADID *)) { return 1; }
@@ -112,22 +88,6 @@ void CRYPTO_THREADID_set_numeric(CRYPTO_THREADID *id, unsigned long val) {}
 void CRYPTO_THREADID_set_pointer(CRYPTO_THREADID *id, void *ptr) {}
 
 void CRYPTO_THREADID_current(CRYPTO_THREADID *id) {}
-
-void (*CRYPTO_get_locking_callback(void))(int mode, int lock_num,
-                                          const char *file, int line) {
-  return locking_callback;
-}
-
-int (*CRYPTO_get_add_lock_callback(void))(int *num, int mount, int lock_num,
-                                          const char *file, int line) {
-  return add_lock_callback;
-}
-
-void CRYPTO_lock(int mode, int lock_num, const char *file, int line) {
-  if (locking_callback != NULL) {
-    locking_callback(mode, lock_num, file, line);
-  }
-}
 
 void CRYPTO_set_id_callback(unsigned long (*func)(void)) {}
 
