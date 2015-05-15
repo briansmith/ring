@@ -96,6 +96,7 @@ int RAND_bytes(uint8_t *buf, size_t len) {
       return 1;
     }
 
+    memset(state->partial_block, 0, sizeof(state->partial_block));
     state->calls_used = kMaxCallsPerRefresh;
   }
 

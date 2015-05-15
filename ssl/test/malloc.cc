@@ -15,7 +15,7 @@
 #include <openssl/base.h>
 
 #if defined(__has_feature)
-#if __has_feature(address_sanitizer)
+#if __has_feature(address_sanitizer) || __has_feature(memory_sanitizer)
 #define OPENSSL_ASAN
 #endif
 #endif
@@ -24,7 +24,8 @@
 // builds and trying to override malloc in a static link doesn't work. It's also
 // disabled on ASan builds as this interferes with ASan's malloc interceptor.
 //
-// TODO(davidben): See if this and ASan's interceptors can be made to coexist.
+// TODO(davidben): See if this and ASan's and MSan's interceptors can be made to
+// coexist.
 #if defined(__linux__) && !defined(OPENSSL_ARM) && \
     !defined(OPENSSL_AARCH64) && !defined(OPENSSL_ASAN)
 
