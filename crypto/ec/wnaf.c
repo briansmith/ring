@@ -75,6 +75,7 @@
 #include <openssl/thread.h>
 
 #include "internal.h"
+#include "../internal.h"
 
 
 /* This file implements the wNAF-based interleaving multi-exponentation method
@@ -91,7 +92,7 @@ typedef struct ec_pre_comp_st {
   EC_POINT **points; /* array with pre-calculated multiples of generator:
                       * 'num' pointers to EC_POINT objects followed by a NULL */
   size_t num; /* numblocks * 2^(w-1) */
-  int references;
+  CRYPTO_refcount_t references;
 } EC_PRE_COMP;
 
 static EC_PRE_COMP *ec_pre_comp_new(void) {
@@ -116,13 +117,13 @@ void *ec_pre_comp_dup(EC_PRE_COMP *pre_comp) {
     return NULL;
   }
 
-  CRYPTO_add(&pre_comp->references, 1, CRYPTO_LOCK_EC_PRE_COMP);
+  CRYPTO_refcount_inc(&pre_comp->references);
   return pre_comp;
 }
 
 void ec_pre_comp_free(EC_PRE_COMP *pre_comp) {
   if (pre_comp == NULL ||
-      CRYPTO_add(&pre_comp->references, -1, CRYPTO_LOCK_EC_PRE_COMP) > 0) {
+      !CRYPTO_refcount_dec_and_test_zero(&pre_comp->references)) {
     return;
   }
 

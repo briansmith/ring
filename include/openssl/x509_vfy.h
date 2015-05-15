@@ -67,6 +67,7 @@
 
 #include <openssl/bio.h>
 #include <openssl/lhash.h>
+#include <openssl/thread.h>
 
 #ifdef  __cplusplus
 extern "C" {
@@ -202,7 +203,7 @@ struct x509_store_st
 	STACK_OF(X509_CRL) * (*lookup_crls)(X509_STORE_CTX *ctx, X509_NAME *nm);
 	int (*cleanup)(X509_STORE_CTX *ctx);
 
-	int references;
+	CRYPTO_refcount_t references;
 	} /* X509_STORE */;
 
 OPENSSL_EXPORT int X509_STORE_set_depth(X509_STORE *store, int depth);

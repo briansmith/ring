@@ -59,6 +59,8 @@
 
 #include <openssl/base.h>
 
+#include <openssl/thread.h>
+
 /* OpenSSL included digest and cipher functions in this header so we include
  * them for users that still expect that.
  *
@@ -678,7 +680,7 @@ OPENSSL_EXPORT const EVP_PKEY_ASN1_METHOD *EVP_PKEY_asn1_find_str(
     ENGINE **pengine, const char *name, size_t len);
 
 struct evp_pkey_st {
-  int references;
+  CRYPTO_refcount_t references;
 
   /* type contains one of the EVP_PKEY_* values or NID_undef and determines
    * which element (if any) of the |pkey| union is valid. */

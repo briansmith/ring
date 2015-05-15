@@ -64,6 +64,8 @@
 #include <openssl/x509.h>
 #include <openssl/x509v3.h>
 
+#include "../internal.h"
+
 
 X509_LOOKUP *X509_LOOKUP_new(X509_LOOKUP_METHOD *method)
 	{
@@ -228,7 +230,6 @@ static void cleanup(X509_OBJECT *a)
 
 void X509_STORE_free(X509_STORE *vfy)
 	{
-	int i;
 	size_t j;
 	STACK_OF(X509_LOOKUP) *sk;
 	X509_LOOKUP *lu;
@@ -236,17 +237,11 @@ void X509_STORE_free(X509_STORE *vfy)
 	if (vfy == NULL)
 	    return;
 
-	i=CRYPTO_add(&vfy->references,-1,CRYPTO_LOCK_X509_STORE);
+	if (!CRYPTO_refcount_dec_and_test_zero(&vfy->references)) {
+	  return;
+	}
 #ifdef REF_PRINT
 	REF_PRINT("X509_STORE",vfy);
-#endif
-	if (i > 0) return;
-#ifdef REF_CHECK
-	if (i < 0)
-		{
-		fprintf(stderr,"X509_STORE_free, bad reference count\n");
-		abort(); /* ok */
-		}
 #endif
 
 	sk=vfy->get_cert_methods;
@@ -415,7 +410,7 @@ void X509_OBJECT_up_ref_count(X509_OBJECT *a)
 		X509_up_ref(a->data.x509);
 		break;
 	case X509_LU_CRL:
-		CRYPTO_add(&a->data.crl->references,1,CRYPTO_LOCK_X509_CRL);
+		CRYPTO_refcount_inc(&a->data.crl->references);
 		break;
 		}
 	}
@@ -577,7 +572,7 @@ STACK_OF(X509_CRL)* X509_STORE_get1_crls(X509_STORE_CTX *ctx, X509_NAME *nm)
 		{
 		obj = sk_X509_OBJECT_value(ctx->ctx->objs, idx);
 		x = obj->data.crl;
-		CRYPTO_add(&x->references, 1, CRYPTO_LOCK_X509_CRL);
+		CRYPTO_refcount_inc(&x->references);
 		if (!sk_X509_CRL_push(sk, x))
 			{
 			CRYPTO_w_unlock(CRYPTO_LOCK_X509_STORE);

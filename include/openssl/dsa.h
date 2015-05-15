@@ -354,7 +354,7 @@ struct dsa_st {
   /* Normally used to cache montgomery values */
   CRYPTO_MUTEX method_mont_p_lock;
   BN_MONT_CTX *method_mont_p;
-  int references;
+  CRYPTO_refcount_t references;
   CRYPTO_EX_DATA ex_data;
   DSA_METHOD *meth;
   /* functional reference if 'meth' is ENGINE-provided */

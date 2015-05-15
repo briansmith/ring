@@ -142,7 +142,7 @@ IMPLEMENT_ASN1_DUP_FUNCTION(X509)
 
 X509 *X509_up_ref(X509 *x)
 	{
-	CRYPTO_add(&x->references, 1, CRYPTO_LOCK_X509);
+	CRYPTO_refcount_inc(&x->references);
 	return x;
 	}
 

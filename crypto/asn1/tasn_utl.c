@@ -64,6 +64,8 @@
 #include <openssl/err.h>
 #include <openssl/thread.h>
 
+#include "../internal.h"
+
 
 /* Utility functions for manipulating fields and offsets */
 
@@ -86,28 +88,32 @@ int asn1_set_choice_selector(ASN1_VALUE **pval, int value,
   return ret;
 }
 
-/* Do reference counting. The value 'op' decides what to do. if it is +1 then
- * the count is incremented. If op is 0 count is set to 1. If op is -1 count is
- * decremented and the return value is the current refrence count or 0 if no
- * reference count exists. */
-int asn1_do_lock(ASN1_VALUE **pval, int op, const ASN1_ITEM *it) {
-  const ASN1_AUX *aux;
-  int *lck, ret;
+static CRYPTO_refcount_t *asn1_get_references(ASN1_VALUE **pval,
+                                              const ASN1_ITEM *it) {
   if (it->itype != ASN1_ITYPE_SEQUENCE &&
       it->itype != ASN1_ITYPE_NDEF_SEQUENCE) {
-    return 0;
+    return NULL;
   }
-  aux = it->funcs;
+  const ASN1_AUX *aux = it->funcs;
   if (!aux || !(aux->flags & ASN1_AFLG_REFCOUNT)) {
-    return 0;
+    return NULL;
   }
-  lck = offset2ptr(*pval, aux->ref_offset);
-  if (op == 0) {
-    *lck = 1;
-    return 1;
+  return offset2ptr(*pval, aux->ref_offset);
+}
+
+void asn1_refcount_set_one(ASN1_VALUE **pval, const ASN1_ITEM *it) {
+  CRYPTO_refcount_t *references = asn1_get_references(pval, it);
+  if (references != NULL) {
+    *references = 1;
   }
-  ret = CRYPTO_add(lck, op, aux->ref_lock);
-  return ret;
+}
+
+int asn1_refcount_dec_and_test_zero(ASN1_VALUE **pval, const ASN1_ITEM *it) {
+  CRYPTO_refcount_t *references = asn1_get_references(pval, it);
+  if (references != NULL) {
+    return CRYPTO_refcount_dec_and_test_zero(references);
+  }
+  return 1;
 }
 
 static ASN1_ENCODING *asn1_get_enc_ptr(ASN1_VALUE **pval, const ASN1_ITEM *it) {

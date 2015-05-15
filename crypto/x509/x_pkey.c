@@ -73,7 +73,6 @@ X509_PKEY *X509_PKEY_new(void)
 		goto err;
 		}
 	memset(ret, 0, sizeof(X509_PKEY));
-	ret->references=1;
 
 	ret->enc_algor = X509_ALGOR_new();
 	if (ret->enc_algor == NULL)
@@ -91,12 +90,7 @@ err:
 
 void X509_PKEY_free(X509_PKEY *x)
 	{
-	int i;
-
 	if (x == NULL) return;
-
-	i=CRYPTO_add(&x->references,-1,CRYPTO_LOCK_X509_PKEY);
-	if (i > 0) return;
 
 	if (x->enc_algor != NULL) X509_ALGOR_free(x->enc_algor);
 	if (x->enc_pkey != NULL) M_ASN1_OCTET_STRING_free(x->enc_pkey);

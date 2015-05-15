@@ -64,6 +64,7 @@
 #include <openssl/err.h> /* for ERR_print_errors_fp */
 #include <openssl/ex_data.h>
 #include <openssl/stack.h>
+#include <openssl/thread.h>
 
 #if defined(__cplusplus)
 extern "C" {
@@ -784,7 +785,7 @@ struct bio_st {
   /* num is a BIO-specific value. For example, in fd BIOs it's used to store a
    * file descriptor. */
   int num;
-  int references;
+  CRYPTO_refcount_t references;
   void *ptr;
   /* next_bio points to the next |BIO| in a chain. This |BIO| owns a reference
    * to |next_bio|. */

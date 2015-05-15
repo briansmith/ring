@@ -1601,7 +1601,6 @@ static void batch_mul(felem x_out, felem y_out, felem z_out,
 /* Precomputation for the group generator. */
 typedef struct {
   smallfelem g_pre_comp[2][16][3];
-  int references;
 } NISTP256_PRE_COMP;
 
 /******************************************************************************/

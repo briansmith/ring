@@ -121,7 +121,7 @@ void RSA_free(RSA *rsa) {
     return;
   }
 
-  if (CRYPTO_add(&rsa->references, -1, CRYPTO_LOCK_RSA) > 0) {
+  if (!CRYPTO_refcount_dec_and_test_zero(&rsa->references)) {
     return;
   }
 
@@ -150,7 +150,7 @@ void RSA_free(RSA *rsa) {
 }
 
 int RSA_up_ref(RSA *rsa) {
-  CRYPTO_add(&rsa->references, 1, CRYPTO_LOCK_RSA);
+  CRYPTO_refcount_inc(&rsa->references);
   return 1;
 }
 

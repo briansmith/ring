@@ -93,7 +93,7 @@ void METHOD_unref(void *method);
 /* openssl_method_common_st contains the common part of all method structures.
  * This must be the first member of all method structures. */
 struct openssl_method_common_st {
-  int references;
+  int references;  /* dummy – not used. */
   char is_static;
 };
 

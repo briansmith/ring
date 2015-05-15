@@ -894,7 +894,8 @@ ASN1_VALUE ** asn1_get_field_ptr(ASN1_VALUE **pval, const ASN1_TEMPLATE *tt);
 
 const ASN1_TEMPLATE *asn1_do_adb(ASN1_VALUE **pval, const ASN1_TEMPLATE *tt, int nullerr);
 
-int asn1_do_lock(ASN1_VALUE **pval, int op, const ASN1_ITEM *it);
+void asn1_refcount_set_one(ASN1_VALUE **pval, const ASN1_ITEM *it);
+int asn1_refcount_dec_and_test_zero(ASN1_VALUE **pval, const ASN1_ITEM *it);
 
 void asn1_enc_init(ASN1_VALUE **pval, const ASN1_ITEM *it);
 void asn1_enc_free(ASN1_VALUE **pval, const ASN1_ITEM *it);

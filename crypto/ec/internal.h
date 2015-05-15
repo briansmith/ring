@@ -72,6 +72,7 @@
 
 #include <openssl/bn.h>
 #include <openssl/ex_data.h>
+#include <openssl/thread.h>
 
 #if defined(__cplusplus)
 extern "C" {
@@ -331,7 +332,7 @@ struct ec_key_st {
   unsigned int enc_flag;
   point_conversion_form_t conv_form;
 
-  int references;
+  CRYPTO_refcount_t references;
   int flags;
 
   ECDSA_METHOD *ecdsa_meth;

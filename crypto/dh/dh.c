@@ -116,7 +116,7 @@ void DH_free(DH *dh) {
     return;
   }
 
-  if (CRYPTO_add(&dh->references, -1, CRYPTO_LOCK_DH) > 0) {
+  if (!CRYPTO_refcount_dec_and_test_zero(&dh->references)) {
     return;
   }
 
@@ -166,8 +166,8 @@ int DH_size(const DH *dh) { return BN_num_bytes(dh->p); }
 
 unsigned DH_num_bits(const DH *dh) { return BN_num_bits(dh->p); }
 
-int DH_up_ref(DH *r) {
-  CRYPTO_add(&r->references, 1, CRYPTO_LOCK_DH);
+int DH_up_ref(DH *dh) {
+  CRYPTO_refcount_inc(&dh->references);
   return 1;
 }
 

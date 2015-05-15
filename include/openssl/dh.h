@@ -253,7 +253,7 @@ struct dh_st {
   BIGNUM *counter;
 
   int flags;
-  int references;
+  CRYPTO_refcount_t references;
   CRYPTO_EX_DATA ex_data;
 };
 

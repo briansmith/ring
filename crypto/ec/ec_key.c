@@ -143,7 +143,7 @@ void EC_KEY_free(EC_KEY *r) {
     return;
   }
 
-  if (CRYPTO_add(&r->references, -1, CRYPTO_LOCK_EC)) {
+  if (!CRYPTO_refcount_dec_and_test_zero(&r->references)) {
     return;
   }
 
@@ -234,7 +234,8 @@ EC_KEY *EC_KEY_dup(const EC_KEY *ec_key) {
 }
 
 int EC_KEY_up_ref(EC_KEY *r) {
-  return CRYPTO_add(&r->references, 1, CRYPTO_LOCK_EC) > 1;
+  CRYPTO_refcount_inc(&r->references);
+  return 1;
 }
 
 int EC_KEY_is_opaque(const EC_KEY *key) {

@@ -475,7 +475,7 @@ struct rsa_st {
   BIGNUM *iqmp;
   /* be careful using this if the RSA structure is shared */
   CRYPTO_EX_DATA ex_data;
-  int references;
+  CRYPTO_refcount_t references;
   int flags;
 
   CRYPTO_MUTEX lock;

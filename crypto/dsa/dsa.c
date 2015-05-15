@@ -123,7 +123,7 @@ void DSA_free(DSA *dsa) {
     return;
   }
 
-  if (CRYPTO_add(&dsa->references, -1, CRYPTO_LOCK_DSA) > 0) {
+  if (!CRYPTO_refcount_dec_and_test_zero(&dsa->references)) {
     return;
   }
 
@@ -146,7 +146,7 @@ void DSA_free(DSA *dsa) {
 }
 
 int DSA_up_ref(DSA *dsa) {
-  CRYPTO_add(&dsa->references, 1, CRYPTO_LOCK_DSA);
+  CRYPTO_refcount_inc(&dsa->references);
   return 1;
 }
 

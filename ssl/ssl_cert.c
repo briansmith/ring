@@ -128,6 +128,7 @@
 
 #include "../crypto/dh/internal.h"
 #include "../crypto/directory.h"
+#include "../crypto/internal.h"
 #include "internal.h"
 
 
@@ -269,12 +270,12 @@ CERT *ssl_cert_dup(CERT *cert) {
   ret->cert_cb_arg = cert->cert_cb_arg;
 
   if (cert->verify_store) {
-    CRYPTO_add(&cert->verify_store->references, 1, CRYPTO_LOCK_X509_STORE);
+    CRYPTO_refcount_inc(&cert->verify_store->references);
     ret->verify_store = cert->verify_store;
   }
 
   if (cert->chain_store) {
-    CRYPTO_add(&cert->chain_store->references, 1, CRYPTO_LOCK_X509_STORE);
+    CRYPTO_refcount_inc(&cert->chain_store->references);
     ret->chain_store = cert->chain_store;
   }
 
@@ -977,7 +978,7 @@ int ssl_cert_set_cert_store(CERT *c, X509_STORE *store, int chain, int ref) {
   *pstore = store;
 
   if (ref && store) {
-    CRYPTO_add(&store->references, 1, CRYPTO_LOCK_X509_STORE);
+    CRYPTO_refcount_inc(&store->references);
   }
   return 1;
 }
