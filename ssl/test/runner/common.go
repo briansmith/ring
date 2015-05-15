@@ -707,6 +707,10 @@ type ProtocolBugs struct {
 
 	// BadFinished, if true, causes the Finished hash to be broken.
 	BadFinished bool
+
+	// DHGroupPrime, if not nil, is used to define the (finite field)
+	// Diffie-Hellman group. The generator used is always two.
+	DHGroupPrime *big.Int
 }
 
 func (c *Config) serverInit() {

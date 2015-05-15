@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"math/big"
 	"net"
 	"os"
 	"os/exec"
@@ -1569,6 +1570,14 @@ func isDTLSCipher(suiteName string) bool {
 	return !hasComponent(suiteName, "RC4")
 }
 
+func bigFromHex(hex string) *big.Int {
+	ret, ok := new(big.Int).SetString(hex, 16)
+	if !ok {
+		panic("failed to parse hex number 0x" + hex)
+	}
+	return ret
+}
+
 func addCipherSuiteTests() {
 	for _, suite := range testCipherSuites {
 		const psk = "12345"
@@ -1667,6 +1676,21 @@ func addCipherSuiteTests() {
 			}
 		}
 	}
+
+	testCases = append(testCases, testCase{
+		name: "WeakDH",
+		config: Config{
+			CipherSuites: []uint16{TLS_DHE_RSA_WITH_AES_128_GCM_SHA256},
+			Bugs: ProtocolBugs{
+				// This is a 1023-bit prime number, generated
+				// with:
+				// openssl gendh 1023 | openssl asn1parse -i
+				DHGroupPrime: bigFromHex("518E9B7930CE61C6E445C8360584E5FC78D9137C0FFDC880B495D5338ADF7689951A6821C17A76B3ACB8E0156AEA607B7EC406EBEDBB84D8376EB8FE8F8BA1433488BEE0C3EDDFD3A32DBB9481980A7AF6C96BFCF490A094CFFB2B8192C1BB5510B77B658436E27C2D4D023FE3718222AB0CA1273995B51F6D625A4944D0DD4B"),
+			},
+		},
+		shouldFail:    true,
+		expectedError: "BAD_DH_P_LENGTH",
+	})
 }
 
 func addBadECDSASignatureTests() {

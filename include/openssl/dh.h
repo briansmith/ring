@@ -137,6 +137,10 @@ OPENSSL_EXPORT int DH_compute_key(uint8_t *out, const BIGNUM *peers_key,
 /* DH_size returns the number of bytes in the DH group's prime. */
 OPENSSL_EXPORT int DH_size(const DH *dh);
 
+/* DH_num_bits returns the minimum number of bits needed to represent the
+ * absolute value of the DH group's prime. */
+OPENSSL_EXPORT unsigned DH_num_bits(const DH *dh);
+
 #define DH_CHECK_P_NOT_PRIME 0x01
 #define DH_CHECK_P_NOT_SAFE_PRIME 0x02
 #define DH_CHECK_UNABLE_TO_CHECK_GENERATOR 0x04

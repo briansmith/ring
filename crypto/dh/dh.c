@@ -164,6 +164,8 @@ int DH_compute_key(unsigned char *out, const BIGNUM *peers_key, DH *dh) {
 
 int DH_size(const DH *dh) { return BN_num_bytes(dh->p); }
 
+unsigned DH_num_bits(const DH *dh) { return BN_num_bits(dh->p); }
+
 int DH_up_ref(DH *r) {
   CRYPTO_add(&r->references, 1, CRYPTO_LOCK_DH);
   return 1;
