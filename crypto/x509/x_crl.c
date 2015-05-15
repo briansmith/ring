@@ -373,7 +373,7 @@ static void setup_idp(X509_CRL *crl, ISSUING_DIST_POINT *idp)
 	DIST_POINT_set_dpname(idp->distpoint, X509_CRL_get_issuer(crl));
 	}
 
-ASN1_SEQUENCE_ref(X509_CRL, crl_cb, CRYPTO_LOCK_X509_CRL) = {
+ASN1_SEQUENCE_ref(X509_CRL, crl_cb) = {
 	ASN1_SIMPLE(X509_CRL, crl, X509_CRL_INFO),
 	ASN1_SIMPLE(X509_CRL, sig_alg, X509_ALGOR),
 	ASN1_SIMPLE(X509_CRL, signature, ASN1_BIT_STRING)
