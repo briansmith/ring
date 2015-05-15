@@ -129,22 +129,6 @@ void CRYPTO_lock(int mode, int lock_num, const char *file, int line) {
   }
 }
 
-int CRYPTO_add_lock(int *pointer, int amount, int lock_num, const char *file,
-                    int line) {
-  int ret = 0;
-
-  if (add_lock_callback != NULL) {
-    ret = add_lock_callback(pointer, amount, lock_num, file, line);
-  } else {
-    CRYPTO_lock(CRYPTO_LOCK | CRYPTO_WRITE, lock_num, file, line);
-    ret = *pointer + amount;
-    *pointer = ret;
-    CRYPTO_lock(CRYPTO_UNLOCK | CRYPTO_WRITE, lock_num, file, line);
-  }
-
-  return ret;
-}
-
 void CRYPTO_set_id_callback(unsigned long (*func)(void)) {}
 
 void CRYPTO_set_dynlock_create_callback(struct CRYPTO_dynlock_value *(

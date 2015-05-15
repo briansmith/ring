@@ -181,12 +181,6 @@ int (*CRYPTO_get_add_lock_callback(void))(int *num, int amount, int lock_num,
 OPENSSL_EXPORT void CRYPTO_lock(int mode, int lock_num, const char *file,
                                 int line);
 
-/* CRYPTO_add_lock adds |amount| to |*pointer|, protected by the lock specified
- * by |lock_num|. It returns the new value of |*pointer|. Don't call this
- * function directly, rather use the |CRYPTO_add| macro. */
-OPENSSL_EXPORT int CRYPTO_add_lock(int *pointer, int amount, int lock_num,
-                                   const char *file, int line);
-
 /* Lock IDs start from 1. CRYPTO_LOCK_INVALID_LOCK is an unused placeholder
  * used to ensure no lock has ID 0. */
 #define CRYPTO_LOCK_LIST \
@@ -234,8 +228,6 @@ enum {
   CRYPTO_lock(CRYPTO_LOCK | CRYPTO_READ, lock_num, __FILE__, __LINE__)
 #define CRYPTO_r_unlock(lock_num) \
   CRYPTO_lock(CRYPTO_UNLOCK | CRYPTO_READ, lock_num, __FILE__, __LINE__)
-#define CRYPTO_add(addr, amount, lock_num) \
-  CRYPTO_add_lock(addr, amount, lock_num, __FILE__, __LINE__)
 
 
 /* Private functions.
