@@ -83,6 +83,7 @@ var tests = []test{
 	{"crypto/lhash/lhash_test"},
 	{"crypto/modes/gcm_test"},
 	{"crypto/pkcs8/pkcs12_test"},
+	{"crypto/refcount_test"},
 	{"crypto/rsa/rsa_test"},
 	{"crypto/thread_test"},
 	{"crypto/x509/pkcs7_test"},

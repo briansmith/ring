@@ -145,15 +145,17 @@ add_library(
   crypto
 
   crypto.c
+  directory_posix.c
+  directory_win.c
+  ex_data.c
   mem.c
+  refcount_c11.c
+  refcount_lock.c
   thread.c
   thread_none.c
   thread_pthread.c
   thread_win.c
-  ex_data.c
   time_support.c
-  directory_posix.c
-  directory_win.c
 
   ${CRYPTO_ARCH_SOURCES}
 
@@ -216,6 +218,14 @@ add_executable(
 )
 
 target_link_libraries(thread_test crypto)
+
+add_executable(
+  refcount_test
+
+  refcount_test.c
+)
+
+target_link_libraries(refcount_test crypto)
 
 perlasm(cpu-x86_64-asm.${ASM_EXT} cpu-x86_64-asm.pl)
 perlasm(cpu-x86-asm.${ASM_EXT} cpu-x86-asm.pl)
