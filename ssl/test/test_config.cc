@@ -81,6 +81,7 @@ const Flag<bool> kBoolFlags[] = {
   { "-handshake-never-done", &TestConfig::handshake_never_done },
   { "-use-export-context", &TestConfig::use_export_context },
   { "-reject-peer-renegotiations", &TestConfig::reject_peer_renegotiations },
+  { "-no-legacy-server-connect", &TestConfig::no_legacy_server_connect },
 };
 
 const Flag<std::string> kStringFlags[] = {

@@ -599,6 +599,9 @@ static bool DoExchange(ScopedSSL_SESSION *out_session, SSL_CTX *ssl_ctx,
   if (config->allow_unsafe_legacy_renegotiation) {
     SSL_set_options(ssl.get(), SSL_OP_ALLOW_UNSAFE_LEGACY_RENEGOTIATION);
   }
+  if (config->no_legacy_server_connect) {
+    SSL_clear_options(ssl.get(), SSL_OP_LEGACY_SERVER_CONNECT);
+  }
   if (!config->expected_channel_id.empty()) {
     SSL_enable_tls_channel_id(ssl.get());
   }

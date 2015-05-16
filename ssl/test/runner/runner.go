@@ -3000,6 +3000,27 @@ func addRenegotiationTests() {
 		expectedError: ":RENEGOTIATION_MISMATCH:",
 	})
 	testCases = append(testCases, testCase{
+		name:        "Renegotiate-Client-NoExt",
+		renegotiate: true,
+		config: Config{
+			Bugs: ProtocolBugs{
+				NoRenegotiationInfo: true,
+			},
+		},
+		shouldFail:    true,
+		expectedError: ":UNSAFE_LEGACY_RENEGOTIATION_DISABLED:",
+		flags:         []string{"-no-legacy-server-connect"},
+	})
+	testCases = append(testCases, testCase{
+		name:        "Renegotiate-Client-NoExt-Allowed",
+		renegotiate: true,
+		config: Config{
+			Bugs: ProtocolBugs{
+				NoRenegotiationInfo: true,
+			},
+		},
+	})
+	testCases = append(testCases, testCase{
 		name:        "Renegotiate-Client-SwitchCiphers",
 		renegotiate: true,
 		config: Config{
