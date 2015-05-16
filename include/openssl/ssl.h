@@ -422,7 +422,7 @@ struct ssl_session_st {
 
   /* These are used to make removal of session-ids more efficient and to
    * implement a maximum cache size. */
-  struct ssl_session_st *prev, *next;
+  SSL_SESSION *prev, *next;
   char *tlsext_hostname;
   /* RFC4507 info */
   uint8_t *tlsext_tick;               /* Session ticket */
@@ -815,13 +815,13 @@ struct ssl_ctx_st {
    * number is known at connect time and so the cipher list can be set then. */
   struct ssl_cipher_preference_list_st *cipher_list_tls11;
 
-  struct x509_store_st /* X509_STORE */ *cert_store;
+  X509_STORE *cert_store;
   LHASH_OF(SSL_SESSION) *sessions;
   /* Most session-ids that will be cached, default is
    * SSL_SESSION_CACHE_MAX_SIZE_DEFAULT. 0 is unlimited. */
   unsigned long session_cache_size;
-  struct ssl_session_st *session_cache_head;
-  struct ssl_session_st *session_cache_tail;
+  SSL_SESSION *session_cache_head;
+  SSL_SESSION *session_cache_tail;
 
   /* handshakes_since_cache_flush is the number of successful handshakes since
    * the last cache flush. */
@@ -845,9 +845,9 @@ struct ssl_ctx_st {
    * remove_session_cb is not null, it will be called when a session-id is
    * removed from the cache.  After the call, OpenSSL will SSL_SESSION_free()
    * it. */
-  int (*new_session_cb)(struct ssl_st *ssl, SSL_SESSION *sess);
-  void (*remove_session_cb)(struct ssl_ctx_st *ctx, SSL_SESSION *sess);
-  SSL_SESSION *(*get_session_cb)(struct ssl_st *ssl, uint8_t *data, int len,
+  int (*new_session_cb)(SSL *ssl, SSL_SESSION *sess);
+  void (*remove_session_cb)(SSL_CTX *ctx, SSL_SESSION *sess);
+  SSL_SESSION *(*get_session_cb)(SSL *ssl, uint8_t *data, int len,
                                  int *copy);
 
   CRYPTO_refcount_t references;
@@ -1034,20 +1034,20 @@ OPENSSL_EXPORT LHASH_OF(SSL_SESSION) *SSL_CTX_sessions(SSL_CTX *ctx);
 OPENSSL_EXPORT size_t SSL_CTX_sess_number(const SSL_CTX *ctx);
 
 OPENSSL_EXPORT void SSL_CTX_sess_set_new_cb(
-    SSL_CTX *ctx, int (*new_session_cb)(struct ssl_st *ssl, SSL_SESSION *sess));
-OPENSSL_EXPORT int (*SSL_CTX_sess_get_new_cb(SSL_CTX *ctx))(struct ssl_st *ssl,
+    SSL_CTX *ctx, int (*new_session_cb)(SSL *ssl, SSL_SESSION *sess));
+OPENSSL_EXPORT int (*SSL_CTX_sess_get_new_cb(SSL_CTX *ctx))(SSL *ssl,
                                                             SSL_SESSION *sess);
 OPENSSL_EXPORT void SSL_CTX_sess_set_remove_cb(
     SSL_CTX *ctx,
-    void (*remove_session_cb)(struct ssl_ctx_st *ctx, SSL_SESSION *sess));
+    void (*remove_session_cb)(SSL_CTX *ctx, SSL_SESSION *sess));
 OPENSSL_EXPORT void (*SSL_CTX_sess_get_remove_cb(SSL_CTX *ctx))(
-    struct ssl_ctx_st *ctx, SSL_SESSION *sess);
+    SSL_CTX *ctx, SSL_SESSION *sess);
 OPENSSL_EXPORT void SSL_CTX_sess_set_get_cb(
     SSL_CTX *ctx,
-    SSL_SESSION *(*get_session_cb)(struct ssl_st *ssl, uint8_t *data, int len,
+    SSL_SESSION *(*get_session_cb)(SSL *ssl, uint8_t *data, int len,
                                    int *copy));
 OPENSSL_EXPORT SSL_SESSION *(*SSL_CTX_sess_get_get_cb(SSL_CTX *ctx))(
-    struct ssl_st *ssl, uint8_t *Data, int len, int *copy);
+    SSL *ssl, uint8_t *data, int len, int *copy);
 /* SSL_magic_pending_session_ptr returns a magic SSL_SESSION* which indicates
  * that the session isn't currently unavailable. SSL_get_error will then return
  * SSL_ERROR_PENDING_SESSION and the handshake can be retried later when the
@@ -2046,8 +2046,7 @@ OPENSSL_EXPORT long SSL_get_default_timeout(const SSL *s);
 OPENSSL_EXPORT STACK_OF(X509_NAME) *SSL_dup_CA_list(STACK_OF(X509_NAME) *sk);
 
 OPENSSL_EXPORT X509 *SSL_get_certificate(const SSL *ssl);
-OPENSSL_EXPORT /* EVP_PKEY */ struct evp_pkey_st *SSL_get_privatekey(
-    const SSL *ssl);
+OPENSSL_EXPORT EVP_PKEY *SSL_get_privatekey(const SSL *ssl);
 
 OPENSSL_EXPORT X509 *SSL_CTX_get0_certificate(const SSL_CTX *ctx);
 OPENSSL_EXPORT EVP_PKEY *SSL_CTX_get0_privatekey(const SSL_CTX *ctx);
