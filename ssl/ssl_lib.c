@@ -181,11 +181,6 @@ int SSL_clear(SSL *ssl) {
   ssl->hit = 0;
   ssl->shutdown = 0;
 
-  if (ssl->renegotiate) {
-    OPENSSL_PUT_ERROR(SSL, SSL_clear, ERR_R_INTERNAL_ERROR);
-    return 0;
-  }
-
   /* SSL_clear may be called before or after the |ssl| is initialized in either
    * accept or connect state. In the latter case, SSL_clear should preserve the
    * half and reset |ssl->state| accordingly. */
@@ -199,7 +194,7 @@ int SSL_clear(SSL *ssl) {
     assert(ssl->state == 0);
   }
 
-  /* TODO(davidben): Some state on |s| is reset both in |SSL_new| and
+  /* TODO(davidben): Some state on |ssl| is reset both in |SSL_new| and
    * |SSL_clear| because it is per-connection state rather than configuration
    * state. Per-connection state should be on |ssl->s3| and |ssl->d1| so it is
    * naturally reset at the right points between |SSL_new|, |SSL_clear|, and
