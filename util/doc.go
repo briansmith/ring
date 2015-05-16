@@ -209,7 +209,7 @@ func skipLine(s string) string {
 }
 
 func getNameFromDecl(decl string) (string, bool) {
-	for strings.HasPrefix(decl, "#if") {
+	for strings.HasPrefix(decl, "#if") || strings.HasPrefix(decl, "#elif") {
 		decl = skipLine(decl)
 	}
 	if strings.HasPrefix(decl, "struct ") {
