@@ -1908,6 +1908,268 @@ func addExtendedMasterSecretTests() {
 // various conditions. Some of these are redundant with other tests, but they
 // only cover the synchronous case.
 func addStateMachineCoverageTests(async, splitHandshake bool, protocol protocol) {
+	var tests []testCase
+
+	// Basic handshake, with resumption. Client and server,
+	// session ID and session ticket.
+	tests = append(tests, testCase{
+		name:          "Basic-Client",
+		resumeSession: true,
+	})
+	tests = append(tests, testCase{
+		name: "Basic-Client-RenewTicket",
+		config: Config{
+			Bugs: ProtocolBugs{
+				RenewTicketOnResume: true,
+			},
+		},
+		resumeSession: true,
+	})
+	tests = append(tests, testCase{
+		name: "Basic-Client-NoTicket",
+		config: Config{
+			SessionTicketsDisabled: true,
+		},
+		resumeSession: true,
+	})
+	tests = append(tests, testCase{
+		name:          "Basic-Client-Implicit",
+		flags:         []string{"-implicit-handshake"},
+		resumeSession: true,
+	})
+	tests = append(tests, testCase{
+		testType:      serverTest,
+		name:          "Basic-Server",
+		resumeSession: true,
+	})
+	tests = append(tests, testCase{
+		testType: serverTest,
+		name:     "Basic-Server-NoTickets",
+		config: Config{
+			SessionTicketsDisabled: true,
+		},
+		resumeSession: true,
+	})
+	tests = append(tests, testCase{
+		testType:      serverTest,
+		name:          "Basic-Server-Implicit",
+		flags:         []string{"-implicit-handshake"},
+		resumeSession: true,
+	})
+	tests = append(tests, testCase{
+		testType:      serverTest,
+		name:          "Basic-Server-EarlyCallback",
+		flags:         []string{"-use-early-callback"},
+		resumeSession: true,
+	})
+
+	// TLS client auth.
+	tests = append(tests, testCase{
+		testType: clientTest,
+		name:     "ClientAuth-Client",
+		config: Config{
+			ClientAuth: RequireAnyClientCert,
+		},
+		flags: []string{
+			"-cert-file", rsaCertificateFile,
+			"-key-file", rsaKeyFile,
+		},
+	})
+	tests = append(tests, testCase{
+		testType: serverTest,
+		name:     "ClientAuth-Server",
+		config: Config{
+			Certificates: []Certificate{rsaCertificate},
+		},
+		flags: []string{"-require-any-client-certificate"},
+	})
+
+	// No session ticket support; server doesn't send NewSessionTicket.
+	tests = append(tests, testCase{
+		name: "SessionTicketsDisabled-Client",
+		config: Config{
+			SessionTicketsDisabled: true,
+		},
+	})
+	tests = append(tests, testCase{
+		testType: serverTest,
+		name:     "SessionTicketsDisabled-Server",
+		config: Config{
+			SessionTicketsDisabled: true,
+		},
+	})
+
+	// Skip ServerKeyExchange in PSK key exchange if there's no
+	// identity hint.
+	tests = append(tests, testCase{
+		name: "EmptyPSKHint-Client",
+		config: Config{
+			CipherSuites: []uint16{TLS_PSK_WITH_AES_128_CBC_SHA},
+			PreSharedKey: []byte("secret"),
+		},
+		flags: []string{"-psk", "secret"},
+	})
+	tests = append(tests, testCase{
+		testType: serverTest,
+		name:     "EmptyPSKHint-Server",
+		config: Config{
+			CipherSuites: []uint16{TLS_PSK_WITH_AES_128_CBC_SHA},
+			PreSharedKey: []byte("secret"),
+		},
+		flags: []string{"-psk", "secret"},
+	})
+
+	if protocol == tls {
+		tests = append(tests, testCase{
+			name:        "Renegotiate-Client",
+			renegotiate: true,
+		})
+		// NPN on client and server; results in post-handshake message.
+		tests = append(tests, testCase{
+			name: "NPN-Client",
+			config: Config{
+				NextProtos: []string{"foo"},
+			},
+			flags:                 []string{"-select-next-proto", "foo"},
+			expectedNextProto:     "foo",
+			expectedNextProtoType: npn,
+		})
+		tests = append(tests, testCase{
+			testType: serverTest,
+			name:     "NPN-Server",
+			config: Config{
+				NextProtos: []string{"bar"},
+			},
+			flags: []string{
+				"-advertise-npn", "\x03foo\x03bar\x03baz",
+				"-expect-next-proto", "bar",
+			},
+			expectedNextProto:     "bar",
+			expectedNextProtoType: npn,
+		})
+
+		// TODO(davidben): Add tests for when False Start doesn't trigger.
+
+		// Client does False Start and negotiates NPN.
+		tests = append(tests, testCase{
+			name: "FalseStart",
+			config: Config{
+				CipherSuites: []uint16{TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256},
+				NextProtos:   []string{"foo"},
+				Bugs: ProtocolBugs{
+					ExpectFalseStart: true,
+				},
+			},
+			flags: []string{
+				"-false-start",
+				"-select-next-proto", "foo",
+			},
+			shimWritesFirst: true,
+			resumeSession:   true,
+		})
+
+		// Client does False Start and negotiates ALPN.
+		tests = append(tests, testCase{
+			name: "FalseStart-ALPN",
+			config: Config{
+				CipherSuites: []uint16{TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256},
+				NextProtos:   []string{"foo"},
+				Bugs: ProtocolBugs{
+					ExpectFalseStart: true,
+				},
+			},
+			flags: []string{
+				"-false-start",
+				"-advertise-alpn", "\x03foo",
+			},
+			shimWritesFirst: true,
+			resumeSession:   true,
+		})
+
+		// Client does False Start but doesn't explicitly call
+		// SSL_connect.
+		tests = append(tests, testCase{
+			name: "FalseStart-Implicit",
+			config: Config{
+				CipherSuites: []uint16{TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256},
+				NextProtos:   []string{"foo"},
+			},
+			flags: []string{
+				"-implicit-handshake",
+				"-false-start",
+				"-advertise-alpn", "\x03foo",
+			},
+		})
+
+		// False Start without session tickets.
+		tests = append(tests, testCase{
+			name: "FalseStart-SessionTicketsDisabled",
+			config: Config{
+				CipherSuites:           []uint16{TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256},
+				NextProtos:             []string{"foo"},
+				SessionTicketsDisabled: true,
+				Bugs: ProtocolBugs{
+					ExpectFalseStart: true,
+				},
+			},
+			flags: []string{
+				"-false-start",
+				"-select-next-proto", "foo",
+			},
+			shimWritesFirst: true,
+		})
+
+		// Server parses a V2ClientHello.
+		tests = append(tests, testCase{
+			testType: serverTest,
+			name:     "SendV2ClientHello",
+			config: Config{
+				// Choose a cipher suite that does not involve
+				// elliptic curves, so no extensions are
+				// involved.
+				CipherSuites: []uint16{TLS_RSA_WITH_RC4_128_SHA},
+				Bugs: ProtocolBugs{
+					SendV2ClientHello: true,
+				},
+			},
+		})
+
+		// Client sends a Channel ID.
+		tests = append(tests, testCase{
+			name: "ChannelID-Client",
+			config: Config{
+				RequestChannelID: true,
+			},
+			flags:           []string{"-send-channel-id", channelIDKeyFile},
+			resumeSession:   true,
+			expectChannelID: true,
+		})
+
+		// Server accepts a Channel ID.
+		tests = append(tests, testCase{
+			testType: serverTest,
+			name:     "ChannelID-Server",
+			config: Config{
+				ChannelID: channelIDKey,
+			},
+			flags: []string{
+				"-expect-channel-id",
+				base64.StdEncoding.EncodeToString(channelIDBytes),
+			},
+			resumeSession:   true,
+			expectChannelID: true,
+		})
+	} else {
+		tests = append(tests, testCase{
+			name: "SkipHelloVerifyRequest",
+			config: Config{
+				Bugs: ProtocolBugs{
+					SkipHelloVerifyRequest: true,
+				},
+			},
+		})
+	}
+
 	var suffix string
 	var flags []string
 	var maxHandshakeRecordLength int
@@ -1924,368 +2186,12 @@ func addStateMachineCoverageTests(async, splitHandshake bool, protocol protocol)
 		suffix += "-SplitHandshakeRecords"
 		maxHandshakeRecordLength = 1
 	}
-
-	// Basic handshake, with resumption. Client and server,
-	// session ID and session ticket.
-	testCases = append(testCases, testCase{
-		protocol: protocol,
-		name:     "Basic-Client" + suffix,
-		config: Config{
-			Bugs: ProtocolBugs{
-				MaxHandshakeRecordLength: maxHandshakeRecordLength,
-			},
-		},
-		flags:         flags,
-		resumeSession: true,
-	})
-	testCases = append(testCases, testCase{
-		protocol: protocol,
-		name:     "Basic-Client-RenewTicket" + suffix,
-		config: Config{
-			Bugs: ProtocolBugs{
-				MaxHandshakeRecordLength: maxHandshakeRecordLength,
-				RenewTicketOnResume:      true,
-			},
-		},
-		flags:         flags,
-		resumeSession: true,
-	})
-	testCases = append(testCases, testCase{
-		protocol: protocol,
-		name:     "Basic-Client-NoTicket" + suffix,
-		config: Config{
-			SessionTicketsDisabled: true,
-			Bugs: ProtocolBugs{
-				MaxHandshakeRecordLength: maxHandshakeRecordLength,
-			},
-		},
-		flags:         flags,
-		resumeSession: true,
-	})
-	testCases = append(testCases, testCase{
-		protocol: protocol,
-		name:     "Basic-Client-Implicit" + suffix,
-		config: Config{
-			Bugs: ProtocolBugs{
-				MaxHandshakeRecordLength: maxHandshakeRecordLength,
-			},
-		},
-		flags:         append(flags, "-implicit-handshake"),
-		resumeSession: true,
-	})
-	testCases = append(testCases, testCase{
-		protocol: protocol,
-		testType: serverTest,
-		name:     "Basic-Server" + suffix,
-		config: Config{
-			Bugs: ProtocolBugs{
-				MaxHandshakeRecordLength: maxHandshakeRecordLength,
-			},
-		},
-		flags:         flags,
-		resumeSession: true,
-	})
-	testCases = append(testCases, testCase{
-		protocol: protocol,
-		testType: serverTest,
-		name:     "Basic-Server-NoTickets" + suffix,
-		config: Config{
-			SessionTicketsDisabled: true,
-			Bugs: ProtocolBugs{
-				MaxHandshakeRecordLength: maxHandshakeRecordLength,
-			},
-		},
-		flags:         flags,
-		resumeSession: true,
-	})
-	testCases = append(testCases, testCase{
-		protocol: protocol,
-		testType: serverTest,
-		name:     "Basic-Server-Implicit" + suffix,
-		config: Config{
-			Bugs: ProtocolBugs{
-				MaxHandshakeRecordLength: maxHandshakeRecordLength,
-			},
-		},
-		flags:         append(flags, "-implicit-handshake"),
-		resumeSession: true,
-	})
-	testCases = append(testCases, testCase{
-		protocol: protocol,
-		testType: serverTest,
-		name:     "Basic-Server-EarlyCallback" + suffix,
-		config: Config{
-			Bugs: ProtocolBugs{
-				MaxHandshakeRecordLength: maxHandshakeRecordLength,
-			},
-		},
-		flags:         append(flags, "-use-early-callback"),
-		resumeSession: true,
-	})
-
-	// TLS client auth.
-	testCases = append(testCases, testCase{
-		protocol: protocol,
-		testType: clientTest,
-		name:     "ClientAuth-Client" + suffix,
-		config: Config{
-			ClientAuth: RequireAnyClientCert,
-			Bugs: ProtocolBugs{
-				MaxHandshakeRecordLength: maxHandshakeRecordLength,
-			},
-		},
-		flags: append(flags,
-			"-cert-file", rsaCertificateFile,
-			"-key-file", rsaKeyFile),
-	})
-	testCases = append(testCases, testCase{
-		protocol: protocol,
-		testType: serverTest,
-		name:     "ClientAuth-Server" + suffix,
-		config: Config{
-			Certificates: []Certificate{rsaCertificate},
-		},
-		flags: append(flags, "-require-any-client-certificate"),
-	})
-
-	// No session ticket support; server doesn't send NewSessionTicket.
-	testCases = append(testCases, testCase{
-		protocol: protocol,
-		name:     "SessionTicketsDisabled-Client" + suffix,
-		config: Config{
-			SessionTicketsDisabled: true,
-			Bugs: ProtocolBugs{
-				MaxHandshakeRecordLength: maxHandshakeRecordLength,
-			},
-		},
-		flags: flags,
-	})
-	testCases = append(testCases, testCase{
-		protocol: protocol,
-		testType: serverTest,
-		name:     "SessionTicketsDisabled-Server" + suffix,
-		config: Config{
-			SessionTicketsDisabled: true,
-			Bugs: ProtocolBugs{
-				MaxHandshakeRecordLength: maxHandshakeRecordLength,
-			},
-		},
-		flags: flags,
-	})
-
-	// Skip ServerKeyExchange in PSK key exchange if there's no
-	// identity hint.
-	testCases = append(testCases, testCase{
-		protocol: protocol,
-		name:     "EmptyPSKHint-Client" + suffix,
-		config: Config{
-			CipherSuites: []uint16{TLS_PSK_WITH_AES_128_CBC_SHA},
-			PreSharedKey: []byte("secret"),
-			Bugs: ProtocolBugs{
-				MaxHandshakeRecordLength: maxHandshakeRecordLength,
-			},
-		},
-		flags: append(flags, "-psk", "secret"),
-	})
-	testCases = append(testCases, testCase{
-		protocol: protocol,
-		testType: serverTest,
-		name:     "EmptyPSKHint-Server" + suffix,
-		config: Config{
-			CipherSuites: []uint16{TLS_PSK_WITH_AES_128_CBC_SHA},
-			PreSharedKey: []byte("secret"),
-			Bugs: ProtocolBugs{
-				MaxHandshakeRecordLength: maxHandshakeRecordLength,
-			},
-		},
-		flags: append(flags, "-psk", "secret"),
-	})
-
-	if protocol == tls {
-		testCases = append(testCases, testCase{
-			protocol: protocol,
-			name:     "Renegotiate-Client" + suffix,
-			config: Config{
-				Bugs: ProtocolBugs{
-					MaxHandshakeRecordLength: maxHandshakeRecordLength,
-				},
-			},
-			flags:       flags,
-			renegotiate: true,
-		})
-		// NPN on client and server; results in post-handshake message.
-		testCases = append(testCases, testCase{
-			protocol: protocol,
-			name:     "NPN-Client" + suffix,
-			config: Config{
-				NextProtos: []string{"foo"},
-				Bugs: ProtocolBugs{
-					MaxHandshakeRecordLength: maxHandshakeRecordLength,
-				},
-			},
-			flags:                 append(flags, "-select-next-proto", "foo"),
-			expectedNextProto:     "foo",
-			expectedNextProtoType: npn,
-		})
-		testCases = append(testCases, testCase{
-			protocol: protocol,
-			testType: serverTest,
-			name:     "NPN-Server" + suffix,
-			config: Config{
-				NextProtos: []string{"bar"},
-				Bugs: ProtocolBugs{
-					MaxHandshakeRecordLength: maxHandshakeRecordLength,
-				},
-			},
-			flags: append(flags,
-				"-advertise-npn", "\x03foo\x03bar\x03baz",
-				"-expect-next-proto", "bar"),
-			expectedNextProto:     "bar",
-			expectedNextProtoType: npn,
-		})
-
-		// TODO(davidben): Add tests for when False Start doesn't trigger.
-
-		// Client does False Start and negotiates NPN.
-		testCases = append(testCases, testCase{
-			protocol: protocol,
-			name:     "FalseStart" + suffix,
-			config: Config{
-				CipherSuites: []uint16{TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256},
-				NextProtos:   []string{"foo"},
-				Bugs: ProtocolBugs{
-					ExpectFalseStart:         true,
-					MaxHandshakeRecordLength: maxHandshakeRecordLength,
-				},
-			},
-			flags: append(flags,
-				"-false-start",
-				"-select-next-proto", "foo"),
-			shimWritesFirst: true,
-			resumeSession:   true,
-		})
-
-		// Client does False Start and negotiates ALPN.
-		testCases = append(testCases, testCase{
-			protocol: protocol,
-			name:     "FalseStart-ALPN" + suffix,
-			config: Config{
-				CipherSuites: []uint16{TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256},
-				NextProtos:   []string{"foo"},
-				Bugs: ProtocolBugs{
-					ExpectFalseStart:         true,
-					MaxHandshakeRecordLength: maxHandshakeRecordLength,
-				},
-			},
-			flags: append(flags,
-				"-false-start",
-				"-advertise-alpn", "\x03foo"),
-			shimWritesFirst: true,
-			resumeSession:   true,
-		})
-
-		// Client does False Start but doesn't explicitly call
-		// SSL_connect.
-		testCases = append(testCases, testCase{
-			protocol: protocol,
-			name:     "FalseStart-Implicit" + suffix,
-			config: Config{
-				CipherSuites: []uint16{TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256},
-				NextProtos:   []string{"foo"},
-				Bugs: ProtocolBugs{
-					MaxHandshakeRecordLength: maxHandshakeRecordLength,
-				},
-			},
-			flags: append(flags,
-				"-implicit-handshake",
-				"-false-start",
-				"-advertise-alpn", "\x03foo"),
-		})
-
-		// False Start without session tickets.
-		testCases = append(testCases, testCase{
-			name: "FalseStart-SessionTicketsDisabled" + suffix,
-			config: Config{
-				CipherSuites:           []uint16{TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256},
-				NextProtos:             []string{"foo"},
-				SessionTicketsDisabled: true,
-				Bugs: ProtocolBugs{
-					ExpectFalseStart:         true,
-					MaxHandshakeRecordLength: maxHandshakeRecordLength,
-				},
-			},
-			flags: append(flags,
-				"-false-start",
-				"-select-next-proto", "foo",
-			),
-			shimWritesFirst: true,
-		})
-
-		// Server parses a V2ClientHello.
-		testCases = append(testCases, testCase{
-			protocol: protocol,
-			testType: serverTest,
-			name:     "SendV2ClientHello" + suffix,
-			config: Config{
-				// Choose a cipher suite that does not involve
-				// elliptic curves, so no extensions are
-				// involved.
-				CipherSuites: []uint16{TLS_RSA_WITH_RC4_128_SHA},
-				Bugs: ProtocolBugs{
-					MaxHandshakeRecordLength: maxHandshakeRecordLength,
-					SendV2ClientHello:        true,
-				},
-			},
-			flags: flags,
-		})
-
-		// Client sends a Channel ID.
-		testCases = append(testCases, testCase{
-			protocol: protocol,
-			name:     "ChannelID-Client" + suffix,
-			config: Config{
-				RequestChannelID: true,
-				Bugs: ProtocolBugs{
-					MaxHandshakeRecordLength: maxHandshakeRecordLength,
-				},
-			},
-			flags: append(flags,
-				"-send-channel-id", channelIDKeyFile,
-			),
-			resumeSession:   true,
-			expectChannelID: true,
-		})
-
-		// Server accepts a Channel ID.
-		testCases = append(testCases, testCase{
-			protocol: protocol,
-			testType: serverTest,
-			name:     "ChannelID-Server" + suffix,
-			config: Config{
-				ChannelID: channelIDKey,
-				Bugs: ProtocolBugs{
-					MaxHandshakeRecordLength: maxHandshakeRecordLength,
-				},
-			},
-			flags: append(flags,
-				"-expect-channel-id",
-				base64.StdEncoding.EncodeToString(channelIDBytes),
-			),
-			resumeSession:   true,
-			expectChannelID: true,
-		})
-	} else {
-		testCases = append(testCases, testCase{
-			protocol: protocol,
-			name:     "SkipHelloVerifyRequest" + suffix,
-			config: Config{
-				Bugs: ProtocolBugs{
-					MaxHandshakeRecordLength: maxHandshakeRecordLength,
-					SkipHelloVerifyRequest:   true,
-				},
-			},
-			flags: flags,
-		})
+	for _, test := range tests {
+		test.protocol = protocol
+		test.name += suffix
+		test.config.Bugs.MaxHandshakeRecordLength = maxHandshakeRecordLength
+		test.flags = append(test.flags, flags...)
+		testCases = append(testCases, test)
 	}
 }
 
