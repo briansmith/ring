@@ -167,80 +167,80 @@ static const size_t kMaxHandshakeSize = (1u << 24) - 1;
 static CRYPTO_EX_DATA_CLASS g_ex_data_class_ssl = CRYPTO_EX_DATA_CLASS_INIT;
 static CRYPTO_EX_DATA_CLASS g_ex_data_class_ssl_ctx = CRYPTO_EX_DATA_CLASS_INIT;
 
-int SSL_clear(SSL *s) {
-  if (s->method == NULL) {
+int SSL_clear(SSL *ssl) {
+  if (ssl->method == NULL) {
     OPENSSL_PUT_ERROR(SSL, SSL_clear, SSL_R_NO_METHOD_SPECIFIED);
     return 0;
   }
 
-  if (ssl_clear_bad_session(s)) {
-    SSL_SESSION_free(s->session);
-    s->session = NULL;
+  if (ssl_clear_bad_session(ssl)) {
+    SSL_SESSION_free(ssl->session);
+    ssl->session = NULL;
   }
 
-  s->hit = 0;
-  s->shutdown = 0;
+  ssl->hit = 0;
+  ssl->shutdown = 0;
 
-  if (s->renegotiate) {
+  if (ssl->renegotiate) {
     OPENSSL_PUT_ERROR(SSL, SSL_clear, ERR_R_INTERNAL_ERROR);
     return 0;
   }
 
-  /* SSL_clear may be called before or after the |s| is initialized in either
+  /* SSL_clear may be called before or after the |ssl| is initialized in either
    * accept or connect state. In the latter case, SSL_clear should preserve the
-   * half and reset |s->state| accordingly. */
-  if (s->handshake_func != NULL) {
-    if (s->server) {
-      SSL_set_accept_state(s);
+   * half and reset |ssl->state| accordingly. */
+  if (ssl->handshake_func != NULL) {
+    if (ssl->server) {
+      SSL_set_accept_state(ssl);
     } else {
-      SSL_set_connect_state(s);
+      SSL_set_connect_state(ssl);
     }
   } else {
-    assert(s->state == 0);
+    assert(ssl->state == 0);
   }
 
   /* TODO(davidben): Some state on |s| is reset both in |SSL_new| and
    * |SSL_clear| because it is per-connection state rather than configuration
-   * state. Per-connection state should be on |s->s3| and |s->d1| so it is
+   * state. Per-connection state should be on |ssl->s3| and |ssl->d1| so it is
    * naturally reset at the right points between |SSL_new|, |SSL_clear|, and
    * |ssl3_new|. */
 
-  s->rwstate = SSL_NOTHING;
-  s->rstate = SSL_ST_READ_HEADER;
+  ssl->rwstate = SSL_NOTHING;
+  ssl->rstate = SSL_ST_READ_HEADER;
 
-  BUF_MEM_free(s->init_buf);
-  s->init_buf = NULL;
+  BUF_MEM_free(ssl->init_buf);
+  ssl->init_buf = NULL;
 
-  s->packet = NULL;
-  s->packet_length = 0;
+  ssl->packet = NULL;
+  ssl->packet_length = 0;
 
-  ssl_clear_cipher_ctx(s);
+  ssl_clear_cipher_ctx(ssl);
 
-  OPENSSL_free(s->next_proto_negotiated);
-  s->next_proto_negotiated = NULL;
-  s->next_proto_negotiated_len = 0;
+  OPENSSL_free(ssl->next_proto_negotiated);
+  ssl->next_proto_negotiated = NULL;
+  ssl->next_proto_negotiated_len = 0;
 
-  /* The s->d1->mtu is simultaneously configuration (preserved across
+  /* The ssl->d1->mtu is simultaneously configuration (preserved across
    * clear) and connection-specific state (gets reset).
    *
    * TODO(davidben): Avoid this. */
   unsigned mtu = 0;
-  if (s->d1 != NULL) {
-    mtu = s->d1->mtu;
+  if (ssl->d1 != NULL) {
+    mtu = ssl->d1->mtu;
   }
 
-  s->method->ssl_free(s);
-  if (!s->method->ssl_new(s)) {
+  ssl->method->ssl_free(ssl);
+  if (!ssl->method->ssl_new(ssl)) {
     return 0;
   }
-  s->enc_method = ssl3_get_enc_method(s->version);
-  assert(s->enc_method != NULL);
+  ssl->enc_method = ssl3_get_enc_method(ssl->version);
+  assert(ssl->enc_method != NULL);
 
-  if (SSL_IS_DTLS(s) && (SSL_get_options(s) & SSL_OP_NO_QUERY_MTU)) {
-    s->d1->mtu = mtu;
+  if (SSL_IS_DTLS(ssl) && (SSL_get_options(ssl) & SSL_OP_NO_QUERY_MTU)) {
+    ssl->d1->mtu = mtu;
   }
 
-  s->client_version = s->version;
+  ssl->client_version = ssl->version;
 
   return 1;
 }
@@ -523,60 +523,60 @@ X509_VERIFY_PARAM *SSL_get0_param(SSL *ssl) { return ssl->param; }
 
 void SSL_certs_clear(SSL *s) { ssl_cert_clear_certs(s->cert); }
 
-void SSL_free(SSL *s) {
-  if (s == NULL) {
+void SSL_free(SSL *ssl) {
+  if (ssl == NULL) {
     return;
   }
 
-  X509_VERIFY_PARAM_free(s->param);
+  X509_VERIFY_PARAM_free(ssl->param);
 
-  CRYPTO_free_ex_data(&g_ex_data_class_ssl, s, &s->ex_data);
+  CRYPTO_free_ex_data(&g_ex_data_class_ssl, ssl, &ssl->ex_data);
 
-  if (s->bbio != NULL) {
+  if (ssl->bbio != NULL) {
     /* If the buffering BIO is in place, pop it off */
-    if (s->bbio == s->wbio) {
-      s->wbio = BIO_pop(s->wbio);
+    if (ssl->bbio == ssl->wbio) {
+      ssl->wbio = BIO_pop(ssl->wbio);
     }
-    BIO_free(s->bbio);
-    s->bbio = NULL;
+    BIO_free(ssl->bbio);
+    ssl->bbio = NULL;
   }
 
-  int free_wbio = s->wbio != s->rbio;
-  BIO_free_all(s->rbio);
+  int free_wbio = ssl->wbio != ssl->rbio;
+  BIO_free_all(ssl->rbio);
   if (free_wbio) {
-    BIO_free_all(s->wbio);
+    BIO_free_all(ssl->wbio);
   }
 
-  BUF_MEM_free(s->init_buf);
+  BUF_MEM_free(ssl->init_buf);
 
   /* add extra stuff */
-  ssl_cipher_preference_list_free(s->cipher_list);
-  sk_SSL_CIPHER_free(s->cipher_list_by_id);
+  ssl_cipher_preference_list_free(ssl->cipher_list);
+  sk_SSL_CIPHER_free(ssl->cipher_list_by_id);
 
-  ssl_clear_bad_session(s);
-  SSL_SESSION_free(s->session);
+  ssl_clear_bad_session(ssl);
+  SSL_SESSION_free(ssl->session);
 
-  ssl_clear_cipher_ctx(s);
+  ssl_clear_cipher_ctx(ssl);
 
-  ssl_cert_free(s->cert);
+  ssl_cert_free(ssl->cert);
 
-  OPENSSL_free(s->tlsext_hostname);
-  SSL_CTX_free(s->initial_ctx);
-  OPENSSL_free(s->tlsext_ecpointformatlist);
-  OPENSSL_free(s->tlsext_ellipticcurvelist);
-  OPENSSL_free(s->alpn_client_proto_list);
-  EVP_PKEY_free(s->tlsext_channel_id_private);
-  OPENSSL_free(s->psk_identity_hint);
-  sk_X509_NAME_pop_free(s->client_CA, X509_NAME_free);
-  OPENSSL_free(s->next_proto_negotiated);
-  sk_SRTP_PROTECTION_PROFILE_free(s->srtp_profiles);
+  OPENSSL_free(ssl->tlsext_hostname);
+  SSL_CTX_free(ssl->initial_ctx);
+  OPENSSL_free(ssl->tlsext_ecpointformatlist);
+  OPENSSL_free(ssl->tlsext_ellipticcurvelist);
+  OPENSSL_free(ssl->alpn_client_proto_list);
+  EVP_PKEY_free(ssl->tlsext_channel_id_private);
+  OPENSSL_free(ssl->psk_identity_hint);
+  sk_X509_NAME_pop_free(ssl->client_CA, X509_NAME_free);
+  OPENSSL_free(ssl->next_proto_negotiated);
+  sk_SRTP_PROTECTION_PROFILE_free(ssl->srtp_profiles);
 
-  if (s->method != NULL) {
-    s->method->ssl_free(s);
+  if (ssl->method != NULL) {
+    ssl->method->ssl_free(ssl);
   }
-  SSL_CTX_free(s->ctx);
+  SSL_CTX_free(ssl->ctx);
 
-  OPENSSL_free(s);
+  OPENSSL_free(ssl);
 }
 
 void SSL_set_bio(SSL *s, BIO *rbio, BIO *wbio) {
@@ -1626,10 +1626,10 @@ static int ssl_session_cmp(const SSL_SESSION *a, const SSL_SESSION *b) {
   return memcmp(a->session_id, b->session_id, a->session_id_length);
 }
 
-SSL_CTX *SSL_CTX_new(const SSL_METHOD *meth) {
+SSL_CTX *SSL_CTX_new(const SSL_METHOD *method) {
   SSL_CTX *ret = NULL;
 
-  if (meth == NULL) {
+  if (method == NULL) {
     OPENSSL_PUT_ERROR(SSL, SSL_CTX_new, SSL_R_NULL_SSL_METHOD_PASSED);
     return NULL;
   }
@@ -1646,7 +1646,7 @@ SSL_CTX *SSL_CTX_new(const SSL_METHOD *meth) {
 
   memset(ret, 0, sizeof(SSL_CTX));
 
-  ret->method = meth->method;
+  ret->method = method->method;
 
   CRYPTO_MUTEX_init(&ret->lock);
 
@@ -1742,9 +1742,9 @@ SSL_CTX *SSL_CTX_new(const SSL_METHOD *meth) {
 
   /* Lock the SSL_CTX to the specified version, for compatibility with legacy
    * uses of SSL_METHOD. */
-  if (meth->version != 0) {
-    SSL_CTX_set_max_version(ret, meth->version);
-    SSL_CTX_set_min_version(ret, meth->version);
+  if (method->version != 0) {
+    SSL_CTX_set_max_version(ret, method->version);
+    SSL_CTX_set_min_version(ret, method->version);
   }
 
   return ret;
@@ -2132,22 +2132,22 @@ int SSL_do_handshake(SSL *s) {
   return ret;
 }
 
-void SSL_set_accept_state(SSL *s) {
-  s->server = 1;
-  s->shutdown = 0;
-  s->state = SSL_ST_ACCEPT | SSL_ST_BEFORE;
-  s->handshake_func = s->method->ssl_accept;
+void SSL_set_accept_state(SSL *ssl) {
+  ssl->server = 1;
+  ssl->shutdown = 0;
+  ssl->state = SSL_ST_ACCEPT | SSL_ST_BEFORE;
+  ssl->handshake_func = ssl->method->ssl_accept;
   /* clear the current cipher */
-  ssl_clear_cipher_ctx(s);
+  ssl_clear_cipher_ctx(ssl);
 }
 
-void SSL_set_connect_state(SSL *s) {
-  s->server = 0;
-  s->shutdown = 0;
-  s->state = SSL_ST_CONNECT | SSL_ST_BEFORE;
-  s->handshake_func = s->method->ssl_connect;
+void SSL_set_connect_state(SSL *ssl) {
+  ssl->server = 0;
+  ssl->shutdown = 0;
+  ssl->state = SSL_ST_CONNECT | SSL_ST_BEFORE;
+  ssl->handshake_func = ssl->method->ssl_connect;
   /* clear the current cipher */
-  ssl_clear_cipher_ctx(s);
+  ssl_clear_cipher_ctx(ssl);
 }
 
 static const char *ssl_get_version(int version) {
