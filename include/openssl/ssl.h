@@ -723,7 +723,7 @@ OPENSSL_EXPORT void SSL_set_msg_callback(
     SSL *ssl, void (*cb)(int write_p, int version, int content_type,
                          const void *buf, size_t len, SSL *ssl, void *arg));
 
-/* set_msg_callback_arg sets the |arg| parameter of the message callback. */
+/* SSL_set_msg_callback_arg sets the |arg| parameter of the message callback. */
 OPENSSL_EXPORT void SSL_set_msg_callback_arg(SSL *ssl, void *arg);
 
 /* SSL_CTX_set_keylog_bio sets configures all SSL objects attached to |ctx| to
@@ -1112,16 +1112,16 @@ OPENSSL_EXPORT void (*SSL_CTX_get_channel_id_cb(SSL_CTX *ctx))(SSL *ssl,
 
 /* SSL_enable_signed_cert_timestamps causes |ssl| (which must be the client end
  * of a connection) to request SCTs from the server. See
- * https://tools.ietf.org/html/rfc6962. Returns 1 on success. */
+ * https://tools.ietf.org/html/rfc6962. It returns one. */
 OPENSSL_EXPORT int SSL_enable_signed_cert_timestamps(SSL *ssl);
 
 /* SSL_CTX_enable_signed_cert_timestamps enables SCT requests on all client SSL
  * objects created from |ctx|. */
 OPENSSL_EXPORT void SSL_CTX_enable_signed_cert_timestamps(SSL_CTX *ctx);
 
-/* SSL_enable_signed_cert_timestamps causes |ssl| (which must be the client end
- * of a connection) to request a stapled OCSP response from the server. Returns
- * 1 on success. */
+/* SSL_enable_ocsp_stapling causes |ssl| (which must be the client end of a
+ * connection) to request a stapled OCSP response from the server. It returns
+ * one. */
 OPENSSL_EXPORT int SSL_enable_ocsp_stapling(SSL *ssl);
 
 /* SSL_CTX_enable_ocsp_stapling enables OCSP stapling on all client SSL objects
@@ -2134,7 +2134,7 @@ OPENSSL_EXPORT int SSL_get_ex_data_X509_STORE_CTX_idx(void);
 OPENSSL_EXPORT unsigned long SSL_CTX_sess_set_cache_size(SSL_CTX *ctx,
                                                          unsigned long size);
 
-/* SSL_CTX_sess_set_cache_size returns the maximum size of |ctx|'s session
+/* SSL_CTX_sess_get_cache_size returns the maximum size of |ctx|'s session
  * cache. */
 OPENSSL_EXPORT unsigned long SSL_CTX_sess_get_cache_size(const SSL_CTX *ctx);
 
