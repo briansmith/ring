@@ -159,10 +159,6 @@ int dtls1_accept(SSL *s) {
     state = s->state;
 
     switch (s->state) {
-      case SSL_ST_RENEGOTIATE:
-        s->renegotiate = 1;
-        /* s->state=SSL_ST_ACCEPT; */
-
       case SSL_ST_ACCEPT:
       case SSL_ST_BEFORE | SSL_ST_ACCEPT:
         if (cb != NULL) {
@@ -181,49 +177,18 @@ int dtls1_accept(SSL *s) {
 
         s->init_num = 0;
 
-        if (s->state != SSL_ST_RENEGOTIATE) {
-          if (!ssl_init_wbio_buffer(s, 1)) {
-            ret = -1;
-            goto end;
-          }
-
-          if (!ssl3_init_finished_mac(s)) {
-            OPENSSL_PUT_ERROR(SSL, dtls1_accept, ERR_R_INTERNAL_ERROR);
-            ret = -1;
-            goto end;
-          }
-
-          s->state = SSL3_ST_SR_CLNT_HELLO_A;
-        } else {
-          /* s->state == SSL_ST_RENEGOTIATE, * we will just send a
-           * HelloRequest */
-          s->state = SSL3_ST_SW_HELLO_REQ_A;
-        }
-
-        break;
-
-      case SSL3_ST_SW_HELLO_REQ_A:
-      case SSL3_ST_SW_HELLO_REQ_B:
-        s->shutdown = 0;
-        dtls1_clear_record_buffer(s);
-        dtls1_start_timer(s);
-        ret = ssl3_send_hello_request(s);
-        if (ret <= 0) {
+        if (!ssl_init_wbio_buffer(s, 1)) {
+          ret = -1;
           goto end;
         }
-        s->s3->tmp.next_state = SSL3_ST_SR_CLNT_HELLO_A;
-        s->state = SSL3_ST_SW_FLUSH;
-        s->init_num = 0;
 
         if (!ssl3_init_finished_mac(s)) {
           OPENSSL_PUT_ERROR(SSL, dtls1_accept, ERR_R_INTERNAL_ERROR);
           ret = -1;
           goto end;
         }
-        break;
 
-      case SSL3_ST_SW_HELLO_REQ_C:
-        s->state = SSL_ST_OK;
+        s->state = SSL3_ST_SR_CLNT_HELLO_A;
         break;
 
       case SSL3_ST_SR_CLNT_HELLO_A:
@@ -470,17 +435,13 @@ int dtls1_accept(SSL *s) {
         ssl_free_wbio_buffer(s);
 
         s->init_num = 0;
+        s->renegotiate = 0;
+        s->s3->initial_handshake_complete = 1;
 
-        if (s->renegotiate == 2) {
-          /* skipped if we just sent a HelloRequest */
-          s->renegotiate = 0;
-          s->s3->initial_handshake_complete = 1;
+        ssl_update_cache(s, SSL_SESS_CACHE_SERVER);
 
-          ssl_update_cache(s, SSL_SESS_CACHE_SERVER);
-
-          if (cb != NULL) {
-            cb(s, SSL_CB_HANDSHAKE_DONE, 1);
-          }
+        if (cb != NULL) {
+          cb(s, SSL_CB_HANDSHAKE_DONE, 1);
         }
 
         ret = 1;

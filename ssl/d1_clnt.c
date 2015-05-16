@@ -155,10 +155,6 @@ int dtls1_connect(SSL *s) {
     state = s->state;
 
     switch (s->state) {
-      case SSL_ST_RENEGOTIATE:
-        s->renegotiate = 1;
-        s->state = SSL_ST_CONNECT;
-      /* break */
       case SSL_ST_CONNECT:
       case SSL_ST_BEFORE | SSL_ST_CONNECT:
         if (cb != NULL) {
