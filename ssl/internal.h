@@ -774,6 +774,7 @@ void ssl_cert_free(CERT *c);
 SESS_CERT *ssl_sess_cert_new(void);
 void ssl_sess_cert_free(SESS_CERT *sc);
 int ssl_set_peer_cert_type(SESS_CERT *c, int type);
+int ssl_get_new_session(SSL *s, int session);
 int ssl_get_prev_session(SSL *s, const struct ssl_early_callback_ctx *ctx);
 int ssl_cipher_id_cmp(const void *in_a, const void *in_b);
 int ssl_cipher_ptr_id_cmp(const SSL_CIPHER **ap, const SSL_CIPHER **bp);
@@ -800,6 +801,7 @@ int ssl_build_cert_chain(CERT *c, X509_STORE *chain_store, int flags);
 int ssl_cert_set_cert_store(CERT *c, X509_STORE *store, int chain, int ref);
 CERT_PKEY *ssl_get_server_send_pkey(const SSL *s);
 EVP_PKEY *ssl_get_sign_pkey(SSL *s, const SSL_CIPHER *c);
+void ssl_update_cache(SSL *s, int mode);
 int ssl_cert_type(EVP_PKEY *pkey);
 
 /* ssl_get_compatible_server_ciphers determines the key exchange and

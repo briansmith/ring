@@ -1235,8 +1235,6 @@ OPENSSL_EXPORT int SSL_CTX_use_psk_identity_hint(SSL_CTX *ctx,
 OPENSSL_EXPORT int SSL_use_psk_identity_hint(SSL *s, const char *identity_hint);
 OPENSSL_EXPORT const char *SSL_get_psk_identity_hint(const SSL *s);
 OPENSSL_EXPORT const char *SSL_get_psk_identity(const SSL *s);
-OPENSSL_EXPORT void ssl_update_cache(SSL *s, int mode);
-OPENSSL_EXPORT int ssl_get_new_session(SSL *s, int session);
 
 #define SSL_NOTHING 1
 #define SSL_WRITING 2
