@@ -2102,6 +2102,17 @@ func addStateMachineCoverageTests(async, splitHandshake bool, protocol protocol)
 	})
 
 	if protocol == tls {
+		testCases = append(testCases, testCase{
+			protocol: protocol,
+			name:     "Renegotiate-Client" + suffix,
+			config: Config{
+				Bugs: ProtocolBugs{
+					MaxHandshakeRecordLength: maxHandshakeRecordLength,
+				},
+			},
+			flags:       flags,
+			renegotiate: true,
+		})
 		// NPN on client and server; results in post-handshake message.
 		testCases = append(testCases, testCase{
 			protocol: protocol,
