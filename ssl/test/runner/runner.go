@@ -1086,6 +1086,25 @@ var testCases = []testCase{
 		},
 		expectedCipher: TLS_DHE_RSA_WITH_AES_128_GCM_SHA256,
 	},
+	{
+		protocol: dtls,
+		name:     "SendSplitAlert-Sync",
+		config: Config{
+			Bugs: ProtocolBugs{
+				SendSplitAlert: true,
+			},
+		},
+	},
+	{
+		protocol: dtls,
+		name:     "SendSplitAlert-Async",
+		config: Config{
+			Bugs: ProtocolBugs{
+				SendSplitAlert: true,
+			},
+		},
+		flags: []string{"-async"},
+	},
 }
 
 func doExchange(test *testCase, config *Config, conn net.Conn, messageLen int, isResume bool) error {

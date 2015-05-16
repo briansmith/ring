@@ -406,14 +406,6 @@ static ScopedSSL_CTX SetupCtx(const TestConfig *config) {
     return nullptr;
   }
 
-  if (config->is_dtls) {
-    // DTLS needs read-ahead to function on a datagram BIO.
-    //
-    // TODO(davidben): this should not be necessary. DTLS code should only
-    // expect a datagram BIO.
-    SSL_CTX_set_read_ahead(ssl_ctx.get(), 1);
-  }
-
   if (!SSL_CTX_set_cipher_list(ssl_ctx.get(), "ALL")) {
     return nullptr;
   }

@@ -942,7 +942,6 @@ struct ssl_ctx_st {
   uint32_t max_cert_list;
 
   struct cert_st /* CERT */ *cert;
-  int read_ahead;
 
   /* callback that allows applications to peek at protocol messages */
   void (*msg_callback)(int write_p, int version, int content_type,
@@ -1333,9 +1332,6 @@ struct ssl_st {
 
   struct ssl3_state_st *s3;  /* SSLv3 variables */
   struct dtls1_state_st *d1; /* DTLSv1 variables */
-
-  int read_ahead; /* Read as many input bytes as possible
-                   * (for non-blocking reads) */
 
   /* callback that allows applications to peek at protocol messages */
   void (*msg_callback)(int write_p, int version, int content_type,
@@ -1859,7 +1855,6 @@ OPENSSL_EXPORT int SSL_get_fd(const SSL *s);
 OPENSSL_EXPORT int SSL_get_rfd(const SSL *s);
 OPENSSL_EXPORT int SSL_get_wfd(const SSL *s);
 OPENSSL_EXPORT const char *SSL_get_cipher_list(const SSL *s, int n);
-OPENSSL_EXPORT int SSL_get_read_ahead(const SSL *s);
 OPENSSL_EXPORT int SSL_pending(const SSL *s);
 OPENSSL_EXPORT int SSL_set_fd(SSL *s, int fd);
 OPENSSL_EXPORT int SSL_set_rfd(SSL *s, int fd);
@@ -1868,7 +1863,6 @@ OPENSSL_EXPORT void SSL_set_bio(SSL *s, BIO *rbio, BIO *wbio);
 OPENSSL_EXPORT BIO *SSL_get_rbio(const SSL *s);
 OPENSSL_EXPORT BIO *SSL_get_wbio(const SSL *s);
 OPENSSL_EXPORT int SSL_set_cipher_list(SSL *s, const char *str);
-OPENSSL_EXPORT void SSL_set_read_ahead(SSL *s, int yes);
 OPENSSL_EXPORT int SSL_get_verify_mode(const SSL *s);
 OPENSSL_EXPORT int SSL_get_verify_depth(const SSL *s);
 OPENSSL_EXPORT int (*SSL_get_verify_callback(const SSL *s))(int,
@@ -2166,11 +2160,6 @@ OPENSSL_EXPORT int SSL_CTX_set_session_cache_mode(SSL_CTX *ctx, int mode);
  * |ctx| */
 OPENSSL_EXPORT int SSL_CTX_get_session_cache_mode(const SSL_CTX *ctx);
 
-/* TODO(davidben): Deprecate read_ahead functions after https://crbug.com/447431
- * is resolved. */
-OPENSSL_EXPORT int SSL_CTX_get_read_ahead(const SSL_CTX *ctx);
-OPENSSL_EXPORT void SSL_CTX_set_read_ahead(SSL_CTX *ctx, int yes);
-
 /* SSL_CTX_get_max_cert_list returns the maximum length, in bytes, of a peer
  * certificate chain accepted by |ctx|. */
 OPENSSL_EXPORT size_t SSL_CTX_get_max_cert_list(const SSL_CTX *ctx);
@@ -2402,6 +2391,18 @@ OPENSSL_EXPORT int SSL_CTX_set_tmp_rsa(SSL_CTX *ctx, const RSA *rsa);
 
 /* SSL_set_tmp_rsa returns one. */
 OPENSSL_EXPORT int SSL_set_tmp_rsa(SSL *ssl, const RSA *rsa);
+
+/* SSL_CTX_get_read_head returns zero. */
+OPENSSL_EXPORT int SSL_CTX_get_read_ahead(const SSL_CTX *ctx);
+
+/* SSL_CTX_set_read_ahead does nothing. */
+OPENSSL_EXPORT void SSL_CTX_set_read_ahead(SSL_CTX *ctx, int yes);
+
+/* SSL_get_read_head returns zero. */
+OPENSSL_EXPORT int SSL_get_read_ahead(const SSL *s);
+
+/* SSL_set_read_ahead does nothing. */
+OPENSSL_EXPORT void SSL_set_read_ahead(SSL *s, int yes);
 
 
 /* Android compatibility section.

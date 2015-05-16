@@ -275,7 +275,6 @@ SSL *SSL_new(SSL_CTX *ctx) {
     goto err;
   }
 
-  s->read_ahead = ctx->read_ahead;
   s->msg_callback = ctx->msg_callback;
   s->msg_callback_arg = ctx->msg_callback_arg;
   s->verify_mode = ctx->verify_mode;
@@ -756,20 +755,15 @@ void SSL_set_verify_depth(SSL *s, int depth) {
   X509_VERIFY_PARAM_set_depth(s->param, depth);
 }
 
-int SSL_CTX_get_read_ahead(const SSL_CTX *ctx) { return ctx->read_ahead; }
+int SSL_CTX_get_read_ahead(const SSL_CTX *ctx) { return 0; }
 
-int SSL_get_read_ahead(const SSL *s) { return s->read_ahead; }
+int SSL_get_read_ahead(const SSL *s) { return 0; }
 
-void SSL_CTX_set_read_ahead(SSL_CTX *ctx, int yes) { ctx->read_ahead = !!yes; }
+void SSL_CTX_set_read_ahead(SSL_CTX *ctx, int yes) { }
 
-void SSL_set_read_ahead(SSL *s, int yes) { s->read_ahead = !!yes; }
+void SSL_set_read_ahead(SSL *s, int yes) { }
 
 int SSL_pending(const SSL *s) {
-  /* SSL_pending cannot work properly if read-ahead is enabled
-   * (SSL_[CTX_]ctrl(..., SSL_CTRL_SET_READ_AHEAD, 1, NULL)), and it is
-   * impossible to fix since SSL_pending cannot report errors that may be
-   * observed while scanning the new data. (Note that SSL_pending() is often
-   * used as a boolean value, so we'd better not return -1.). */
   return s->method->ssl_pending(s);
 }
 
@@ -1673,7 +1667,6 @@ SSL_CTX *SSL_CTX_new(const SSL_METHOD *method) {
   ret->app_verify_arg = NULL;
 
   ret->max_cert_list = SSL_MAX_CERT_LIST_DEFAULT;
-  ret->read_ahead = 0;
   ret->msg_callback = 0;
   ret->msg_callback_arg = NULL;
   ret->verify_mode = SSL_VERIFY_NONE;

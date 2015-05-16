@@ -681,6 +681,11 @@ type ProtocolBugs struct {
 	// fragments in DTLS.
 	SendEmptyFragments bool
 
+	// SendSplitAlert, if true, causes an alert to be sent with the header
+	// and record body split across multiple packets. The peer should
+	// discard these packets rather than process it.
+	SendSplitAlert bool
+
 	// FailIfResumeOnRenego, if true, causes renegotiations to fail if the
 	// client offers a resumption or the server accepts one.
 	FailIfResumeOnRenego bool

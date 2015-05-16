@@ -1260,6 +1260,15 @@ func (c *Conn) Handshake() error {
 		return nil
 	}
 
+	if c.isDTLS && c.config.Bugs.SendSplitAlert {
+		c.conn.Write([]byte{
+			byte(recordTypeAlert), // type
+			0xfe, 0xff, // version
+			0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, // sequence
+			0x0, 0x2, // length
+		})
+		c.conn.Write([]byte{alertLevelError, byte(alertInternalError)})
+	}
 	if c.isClient {
 		c.handshakeErr = c.clientHandshake()
 	} else {

@@ -129,9 +129,13 @@ int ssl3_read_n(SSL *s, int n, int extend) {
    * if |extend| is 1, increase packet by another n bytes.
    *
    * The packet will be in the sub-array of |s->s3->rbuf.buf| specified by
-   * |s->packet| and |s->packet_length|. (If |s->read_ahead| is set and |extend|
-   * is 0, additional bytes may be read into |rbuf|, up to the size of the
-   * buffer.) */
+   * |s->packet| and |s->packet_length|. (If DTLS and |extend| is 0, additional
+   * bytes will be read into |rbuf|, up to the size of the buffer.)
+   *
+   * TODO(davidben): |dtls1_get_record| and |ssl3_get_record| have very
+   * different needs. Separate the two record layers. In DTLS, |BIO_read| is
+   * called at most once, and only when |extend| is 0. In TLS, the buffer never
+   * contains more than one record. */
   int i, len, left;
   uintptr_t align = 0;
   uint8_t *pkt;
@@ -175,8 +179,9 @@ int ssl3_read_n(SSL *s, int n, int extend) {
 
   /* For DTLS/UDP reads should not span multiple packets because the read
    * operation returns the whole packet at once (as long as it fits into the
-   * buffer). */
-  if (SSL_IS_DTLS(s) && left > 0 && n > left) {
+   * buffer). Moreover, if |extend| is true, we must not read another packet,
+   * even if the entire packet was consumed. */
+  if (SSL_IS_DTLS(s) && ((left > 0 && n > left) || extend)) {
     n = left;
   }
 
@@ -207,7 +212,7 @@ int ssl3_read_n(SSL *s, int n, int extend) {
   }
 
   int max = n;
-  if (s->read_ahead && !extend) {
+  if (SSL_IS_DTLS(s) && !extend) {
     max = rb->len - rb->offset;
   }
 

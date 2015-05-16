@@ -261,7 +261,7 @@ err:
  * used only by dtls1_read_bytes */
 int dtls1_get_record(SSL *s) {
   uint8_t ssl_major, ssl_minor;
-  int i, n;
+  int n;
   SSL3_RECORD *rr;
   uint8_t *p = NULL;
   uint16_t version;
@@ -344,14 +344,9 @@ again:
 
   if (rr->length > s->packet_length - DTLS1_RT_HEADER_LENGTH) {
     /* now s->packet_length == DTLS1_RT_HEADER_LENGTH */
-    i = rr->length;
-    n = ssl3_read_n(s, i, 1);
-    if (n <= 0) {
-      return n; /* error or non-blocking io */
-    }
-
-    /* this packet contained a partial record, dump it */
-    if (n != i) {
+    n = ssl3_read_n(s, rr->length, 1);
+    /* This packet contained a partial record, dump it. */
+    if (n != rr->length) {
       rr->length = 0;
       s->packet_length = 0;
       goto again;
