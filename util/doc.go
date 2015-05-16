@@ -215,6 +215,18 @@ func getNameFromDecl(decl string) (string, bool) {
 	if strings.HasPrefix(decl, "struct ") {
 		return "", false
 	}
+	if strings.HasPrefix(decl, "#define ") {
+		// This is a preprocessor #define. The name is the next symbol.
+		decl = strings.TrimPrefix(decl, "#define ")
+		for len(decl) > 0 && decl[0] == ' ' {
+			decl = decl[1:]
+		}
+		i := strings.IndexAny(decl, "( ")
+		if i < 0 {
+			return "", false
+		}
+		return decl[:i], true
+	}
 	decl = skipPast(decl, "STACK_OF(")
 	decl = skipPast(decl, "LHASH_OF(")
 	i := strings.Index(decl, "(")
