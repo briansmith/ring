@@ -179,19 +179,6 @@ extern "C" {
 OPENSSL_EXPORT int SSL_library_init(void);
 
 
-/* Protocol version constants */
-
-#define SSL3_VERSION_MAJOR 0x03
-
-#define SSL3_VERSION 0x0300
-#define TLS1_VERSION 0x0301
-#define TLS1_1_VERSION 0x0302
-#define TLS1_2_VERSION 0x0303
-
-#define DTLS1_VERSION 0xFEFF
-#define DTLS1_2_VERSION 0xFEFD
-
-
 /* Cipher suites. */
 
 /* An SSL_CIPHER represents a cipher suite. */
@@ -302,6 +289,214 @@ OPENSSL_EXPORT void SSL_set_connect_state(SSL *ssl);
 
 /* SSL_set_accept_state configures |ssl| to be a server. */
 OPENSSL_EXPORT void SSL_set_accept_state(SSL *ssl);
+
+
+/* Protocol versions. */
+
+#define SSL3_VERSION_MAJOR 0x03
+
+#define SSL3_VERSION 0x0300
+#define TLS1_VERSION 0x0301
+#define TLS1_1_VERSION 0x0302
+#define TLS1_2_VERSION 0x0303
+
+#define DTLS1_VERSION 0xfeff
+#define DTLS1_2_VERSION 0xfefd
+
+/* SSL_CTX_set_min_version sets the minimum protocol version for |ctx| to
+ * |version|. */
+OPENSSL_EXPORT void SSL_CTX_set_min_version(SSL_CTX *ctx, uint16_t version);
+
+/* SSL_CTX_set_max_version sets the maximum protocol version for |ctx| to
+ * |version|. */
+OPENSSL_EXPORT void SSL_CTX_set_max_version(SSL_CTX *ctx, uint16_t version);
+
+/* SSL_set_min_version sets the minimum protocol version for |ssl| to
+ * |version|. */
+OPENSSL_EXPORT void SSL_set_min_version(SSL *ssl, uint16_t version);
+
+/* SSL_set_max_version sets the maximum protocol version for |ssl| to
+ * |version|. */
+OPENSSL_EXPORT void SSL_set_max_version(SSL *ssl, uint16_t version);
+
+
+/* Options.
+ *
+ * Options configure protocol behavior. */
+
+/* SSL_OP_LEGACY_SERVER_CONNECT allows initial connections to servers that don't
+ * support the renegotiation_info extension (RFC 5746). It is on by default. */
+#define SSL_OP_LEGACY_SERVER_CONNECT 0x00000004L
+
+/* SSL_OP_MICROSOFT_BIG_SSLV3_BUFFER allows for record sizes |SSL3_RT_MAX_EXTRA|
+ * bytes above the maximum record size. */
+#define SSL_OP_MICROSOFT_BIG_SSLV3_BUFFER 0x00000020L
+
+/* SSL_OP_TLS_D5_BUG accepts an RSAClientKeyExchange in TLS encoded as in SSL3
+ * (i.e. without a length prefix). */
+#define SSL_OP_TLS_D5_BUG 0x00000100L
+
+/* SSL_OP_ALL enables the above bug workarounds that are enabled by many
+ * consumers.
+ * TODO(davidben): Determine which of the remaining may be removed now. */
+#define SSL_OP_ALL 0x00000BFFL
+
+/* SSL_OP_NO_QUERY_MTU, in DTLS, disables querying the MTU from the underlying
+ * |BIO|. Instead, the MTU is configured with |SSL_set_mtu|. */
+#define SSL_OP_NO_QUERY_MTU 0x00001000L
+
+/* SSL_OP_NO_TICKET disables session ticket support (RFC 4507). */
+#define SSL_OP_NO_TICKET 0x00004000L
+
+/* SSL_OP_ALLOW_UNSAFE_LEGACY_RENEGOTIATION permits unsafe legacy renegotiation
+ * without renegotiation_info (RFC 5746) support. */
+#define SSL_OP_ALLOW_UNSAFE_LEGACY_RENEGOTIATION 0x00040000L
+
+/* SSL_OP_CIPHER_SERVER_PREFERENCE configures servers to select ciphers and
+ * ECDHE curves according to the server's preferences instead of the
+ * client's. */
+#define SSL_OP_CIPHER_SERVER_PREFERENCE 0x00400000L
+
+/* The following flags toggle individual protocol versions. This is deprecated.
+ * Use |SSL_CTX_set_min_version| and |SSL_CTX_set_max_version| instead. */
+#define SSL_OP_NO_SSLv3 0x02000000L
+#define SSL_OP_NO_TLSv1 0x04000000L
+#define SSL_OP_NO_TLSv1_2 0x08000000L
+#define SSL_OP_NO_TLSv1_1 0x10000000L
+#define SSL_OP_NO_DTLSv1 SSL_OP_NO_TLSv1
+#define SSL_OP_NO_DTLSv1_2 SSL_OP_NO_TLSv1_2
+
+/* The following flags do nothing and are included only to make it easier to
+ * compile code with BoringSSL. */
+#define SSL_OP_DONT_INSERT_EMPTY_FRAGMENTS 0
+#define SSL_OP_MICROSOFT_SESS_ID_BUG 0
+#define SSL_OP_NETSCAPE_CHALLENGE_BUG 0
+#define SSL_OP_NO_COMPRESSION 0
+#define SSL_OP_NO_SESSION_RESUMPTION_ON_RENEGOTIATION 0
+#define SSL_OP_NO_SSLv2 0
+#define SSL_OP_SINGLE_DH_USE 0
+#define SSL_OP_SINGLE_ECDH_USE 0
+#define SSL_OP_SSLREF2_REUSE_CERT_TYPE_BUG 0
+#define SSL_OP_TLS_BLOCK_PADDING_BUG 0
+#define SSL_OP_TLS_ROLLBACK_BUG 0
+
+/* SSL_CTX_set_options enables all options set in |options| (which should be one
+ * or more of the |SSL_OP_*| values, ORed together) in |ctx|. It returns a
+ * bitmask representing the resulting enabled options. */
+OPENSSL_EXPORT uint32_t SSL_CTX_set_options(SSL_CTX *ctx, uint32_t options);
+
+/* SSL_CTX_clear_options disables all options set in |options| (which should be
+ * one or more of the |SSL_OP_*| values, ORed together) in |ctx|. It returns a
+ * bitmask representing the resulting enabled options. */
+OPENSSL_EXPORT uint32_t SSL_CTX_clear_options(SSL_CTX *ctx, uint32_t options);
+
+/* SSL_CTX_get_options returns a bitmask of |SSL_OP_*| values that represent all
+ * the options enabled for |ctx|. */
+OPENSSL_EXPORT uint32_t SSL_CTX_get_options(const SSL_CTX *ctx);
+
+/* SSL_set_options enables all options set in |options| (which should be one or
+ * more of the |SSL_OP_*| values, ORed together) in |ssl|. It returns a bitmask
+ * representing the resulting enabled options. */
+OPENSSL_EXPORT uint32_t SSL_set_options(SSL *ssl, uint32_t options);
+
+/* SSL_clear_options disables all options set in |options| (which should be one
+ * or more of the |SSL_OP_*| values, ORed together) in |ssl|. It returns a
+ * bitmask representing the resulting enabled options. */
+OPENSSL_EXPORT uint32_t SSL_clear_options(SSL *ssl, uint32_t options);
+
+/* SSL_get_options returns a bitmask of |SSL_OP_*| values that represent all the
+ * options enabled for |ssl|. */
+OPENSSL_EXPORT uint32_t SSL_get_options(const SSL *ssl);
+
+
+/* Modes.
+ *
+ * Modes configure API behavior. */
+
+/* SSL_MODE_ENABLE_PARTIAL_WRITE allows |SSL_write| to complete with a partial
+ * result when the only part of the input was written in a single record. */
+#define SSL_MODE_ENABLE_PARTIAL_WRITE 0x00000001L
+
+/* SSL_MODE_ACCEPT_MOVING_WRITE_BUFFER allows retrying an incomplete |SSL_write|
+ * with a different buffer. However, |SSL_write| still assumes the buffer
+ * contents are unchanged. This is not the default to avoid the misconception
+ * that non-blocking |SSL_write| behaves like non-blocking |write|. */
+#define SSL_MODE_ACCEPT_MOVING_WRITE_BUFFER 0x00000002L
+
+/* SSL_MODE_NO_AUTO_CHAIN disables automatically building a certificate chain
+ * before sending certificates to the peer.
+ * TODO(davidben): Remove this behavior. https://crbug.com/486295. */
+#define SSL_MODE_NO_AUTO_CHAIN 0x00000008L
+
+/* SSL_MODE_SEND_CLIENTHELLO_TIME and SSL_MODE_SEND_SERVERHELLO_TIME send the
+ * current time in the random fields of the ClientHello and ServerHello records,
+ * respectively, for compatibility with hypothetical implementations that
+ * require it. */
+#define SSL_MODE_SEND_CLIENTHELLO_TIME 0x00000020L
+#define SSL_MODE_SEND_SERVERHELLO_TIME 0x00000040L
+
+/* SSL_MODE_ENABLE_FALSE_START allows clients to send application data before
+ * receipt of CCS and Finished. This mode enables full-handshakes to 'complete'
+ * in one RTT. See draft-bmoeller-tls-falsestart-01. */
+#define SSL_MODE_ENABLE_FALSE_START 0x00000080L
+
+/* Deprecated: SSL_MODE_HANDSHAKE_CUTTHROUGH is the same as
+ * SSL_MODE_ENABLE_FALSE_START. */
+#define SSL_MODE_HANDSHAKE_CUTTHROUGH SSL_MODE_ENABLE_FALSE_START
+
+/* SSL_MODE_CBC_RECORD_SPLITTING causes multi-byte CBC records in SSL 3.0 and
+ * TLS 1.0 to be split in two: the first record will contain a single byte and
+ * the second will contain the remainder. This effectively randomises the IV and
+ * prevents BEAST attacks. */
+#define SSL_MODE_CBC_RECORD_SPLITTING 0x00000100L
+
+/* SSL_MODE_NO_SESSION_CREATION will cause any attempts to create a session to
+ * fail with SSL_R_SESSION_MAY_NOT_BE_CREATED. This can be used to enforce that
+ * session resumption is used for a given SSL*. */
+#define SSL_MODE_NO_SESSION_CREATION 0x00000200L
+
+/* SSL_MODE_SEND_FALLBACK_SCSV sends TLS_FALLBACK_SCSV in the ClientHello.
+ * To be set only by applications that reconnect with a downgraded protocol
+ * version; see https://tools.ietf.org/html/draft-ietf-tls-downgrade-scsv-05
+ * for details.
+ *
+ * DO NOT ENABLE THIS if your application attempts a normal handshake. Only use
+ * this in explicit fallback retries, following the guidance in
+ * draft-ietf-tls-downgrade-scsv-05. */
+#define SSL_MODE_SEND_FALLBACK_SCSV 0x00000400L
+
+/* The following flags do nothing and are included only to make it easier to
+ * compile code with BoringSSL. */
+#define SSL_MODE_AUTO_RETRY 0
+#define SSL_MODE_RELEASE_BUFFERS 0
+
+/* SSL_CTX_set_mode enables all modes set in |mode| (which should be one or more
+ * of the |SSL_MODE_*| values, ORed together) in |ctx|. It returns a bitmask
+ * representing the resulting enabled modes. */
+OPENSSL_EXPORT uint32_t SSL_CTX_set_mode(SSL_CTX *ctx, uint32_t mode);
+
+/* SSL_CTX_clear_mode disables all modes set in |mode| (which should be one or
+ * more of the |SSL_MODE_*| values, ORed together) in |ctx|. It returns a
+ * bitmask representing the resulting enabled modes. */
+OPENSSL_EXPORT uint32_t SSL_CTX_clear_mode(SSL_CTX *ctx, uint32_t mode);
+
+/* SSL_CTX_get_mode returns a bitmask of |SSL_MODE_*| values that represent all
+ * the modes enabled for |ssl|. */
+OPENSSL_EXPORT uint32_t SSL_CTX_get_mode(const SSL_CTX *ctx);
+
+/* SSL_set_mode enables all modes set in |mode| (which should be one or more of
+ * the |SSL_MODE_*| values, ORed together) in |ssl|. It returns a bitmask
+ * representing the resulting enabled modes. */
+OPENSSL_EXPORT uint32_t SSL_set_mode(SSL *ssl, uint32_t mode);
+
+/* SSL_clear_mode disables all modes set in |mode| (which should be one or more
+ * of the |SSL_MODE_*| values, ORed together) in |ssl|. It returns a bitmask
+ * representing the resulting enabled modes. */
+OPENSSL_EXPORT uint32_t SSL_clear_mode(SSL *ssl, uint32_t mode);
+
+/* SSL_get_mode returns a bitmask of |SSL_MODE_*| values that represent all the
+ * modes enabled for |ssl|. */
+OPENSSL_EXPORT uint32_t SSL_get_mode(const SSL *ssl);
 
 
 /* Underdocumented functions.
@@ -483,81 +678,6 @@ struct ssl_session_st {
   char extended_master_secret;
 };
 
-/* SSL_OP_LEGACY_SERVER_CONNECT allows initial connection to servers that don't
- * support RI */
-#define SSL_OP_LEGACY_SERVER_CONNECT 0x00000004L
-
-/* SSL_OP_MICROSOFT_BIG_SSLV3_BUFFER allows for record sizes SSL3_RT_MAX_EXTRA
- * bytes above the maximum record size. */
-#define SSL_OP_MICROSOFT_BIG_SSLV3_BUFFER 0x00000020L
-
-/* SSL_OP_TLS_D5_BUG accepts an RSAClientKeyExchange in TLS encoded as SSL3,
- * without a length prefix. */
-#define SSL_OP_TLS_D5_BUG 0x00000100L
-
-/* SSL_OP_ALL enables the above bug workarounds that should be rather harmless.
- * */
-#define SSL_OP_ALL 0x00000BFFL
-
-/* DTLS options */
-#define SSL_OP_NO_QUERY_MTU 0x00001000L
-/* Don't use RFC4507 ticket extension */
-#define SSL_OP_NO_TICKET 0x00004000L
-
-/* Permit unsafe legacy renegotiation */
-#define SSL_OP_ALLOW_UNSAFE_LEGACY_RENEGOTIATION 0x00040000L
-/* Set on servers to choose the cipher according to the server's preferences */
-#define SSL_OP_CIPHER_SERVER_PREFERENCE 0x00400000L
-
-/* Deprecated: Use SSL_CTX_set_min_version and SSL_CTX_set_max_version
- * instead. */
-#define SSL_OP_NO_SSLv3 0x02000000L
-#define SSL_OP_NO_TLSv1 0x04000000L
-#define SSL_OP_NO_TLSv1_2 0x08000000L
-#define SSL_OP_NO_TLSv1_1 0x10000000L
-
-#define SSL_OP_NO_DTLSv1 SSL_OP_NO_TLSv1
-#define SSL_OP_NO_DTLSv1_2 SSL_OP_NO_TLSv1_2
-
-#define SSL_OP_NO_SSL_MASK                                                   \
-  (SSL_OP_NO_SSLv2 | SSL_OP_NO_SSLv3 | SSL_OP_NO_TLSv1 | SSL_OP_NO_TLSv1_1 | \
-   SSL_OP_NO_TLSv1_2)
-
-/* The following flags do nothing and are included only to make it easier to
- * compile code with BoringSSL. */
-#define SSL_OP_DONT_INSERT_EMPTY_FRAGMENTS 0
-#define SSL_OP_MICROSOFT_SESS_ID_BUG 0
-#define SSL_OP_NETSCAPE_CHALLENGE_BUG 0
-#define SSL_OP_NO_COMPRESSION 0
-#define SSL_OP_NO_SESSION_RESUMPTION_ON_RENEGOTIATION 0
-#define SSL_OP_NO_SSLv2 0
-#define SSL_OP_SINGLE_DH_USE 0
-#define SSL_OP_SINGLE_ECDH_USE 0
-#define SSL_OP_SSLREF2_REUSE_CERT_TYPE_BUG 0
-#define SSL_OP_TLS_BLOCK_PADDING_BUG 0
-#define SSL_OP_TLS_ROLLBACK_BUG 0
-
-/* Allow SSL_write(..., n) to return r with 0 < r < n (i.e. report success when
- * just a single record has been written): */
-#define SSL_MODE_ENABLE_PARTIAL_WRITE 0x00000001L
-/* Make it possible to retry SSL_write() with changed buffer location (buffer
- * contents must stay the same!); this is not the default to avoid the
- * misconception that non-blocking SSL_write() behaves like non-blocking
- * write(): */
-#define SSL_MODE_ACCEPT_MOVING_WRITE_BUFFER 0x00000002L
-/* Don't attempt to automatically build certificate chain */
-#define SSL_MODE_NO_AUTO_CHAIN 0x00000008L
-
-/* The following flags do nothing and are included only to make it easier to
- * compile code with BoringSSL. */
-#define SSL_MODE_AUTO_RETRY 0
-#define SSL_MODE_RELEASE_BUFFERS 0
-
-/* Send the current time in the Random fields of the ClientHello and
- * ServerHello records for compatibility with hypothetical implementations that
- * require it. */
-#define SSL_MODE_SEND_CLIENTHELLO_TIME 0x00000020L
-#define SSL_MODE_SEND_SERVERHELLO_TIME 0x00000040L
 
 /* Cert related flags */
 /* Many implementations ignore some aspects of the TLS standards such as
@@ -576,92 +696,6 @@ struct ssl_session_st {
 /* Clear verification errors from queue */
 #define SSL_BUILD_CHAIN_FLAG_CLEAR_ERROR 0x10
 
-/* SSL_MODE_ENABLE_FALSE_START allows clients to send application data before
- * receipt of CCS and Finished. This mode enables full-handshakes to 'complete'
- * in one RTT. See draft-bmoeller-tls-falsestart-01. */
-#define SSL_MODE_ENABLE_FALSE_START 0x00000080L
-
-/* Deprecated: SSL_MODE_HANDSHAKE_CUTTHROUGH is the same as
- * SSL_MODE_ENABLE_FALSE_START. */
-#define SSL_MODE_HANDSHAKE_CUTTHROUGH SSL_MODE_ENABLE_FALSE_START
-
-/* When set, TLS 1.0 and SSLv3, multi-byte, CBC records will be split in two:
- * the first record will contain a single byte and the second will contain the
- * rest of the bytes. This effectively randomises the IV and prevents BEAST
- * attacks. */
-#define SSL_MODE_CBC_RECORD_SPLITTING 0x00000100L
-
-/* SSL_MODE_NO_SESSION_CREATION will cause any attempts to create a session to
- * fail with SSL_R_SESSION_MAY_NOT_BE_CREATED. This can be used to enforce that
- * session resumption is used for a given SSL*. */
-#define SSL_MODE_NO_SESSION_CREATION 0x00000200L
-
-/* SSL_MODE_SEND_FALLBACK_SCSV sends TLS_FALLBACK_SCSV in the ClientHello.
- * To be set only by applications that reconnect with a downgraded protocol
- * version; see https://tools.ietf.org/html/draft-ietf-tls-downgrade-scsv-05
- * for details.
- *
- * DO NOT ENABLE THIS if your application attempts a normal handshake. Only use
- * this in explicit fallback retries, following the guidance in
- * draft-ietf-tls-downgrade-scsv-05. */
-#define SSL_MODE_SEND_FALLBACK_SCSV 0x00000400L
-
-/* SSL_CTX_set_options enables all options set in |options| (which should be one
- * or more of the |SSL_OP_*| values, ORed together) in |ctx|. It returns a
- * bitmask representing the resulting enabled options. */
-OPENSSL_EXPORT uint32_t SSL_CTX_set_options(SSL_CTX *ctx, uint32_t options);
-
-/* SSL_CTX_clear_options disables all options set in |options| (which should be
- * one or more of the |SSL_OP_*| values, ORed together) in |ctx|. It returns a
- * bitmask representing the resulting enabled options. */
-OPENSSL_EXPORT uint32_t SSL_CTX_clear_options(SSL_CTX *ctx, uint32_t options);
-
-/* SSL_CTX_get_options returns a bitmask of |SSL_OP_*| values that represent all
- * the options enabled for |ctx|. */
-OPENSSL_EXPORT uint32_t SSL_CTX_get_options(const SSL_CTX *ctx);
-
-/* SSL_set_options enables all options set in |options| (which should be one or
- * more of the |SSL_OP_*| values, ORed together) in |ssl|. It returns a bitmask
- * representing the resulting enabled options. */
-OPENSSL_EXPORT uint32_t SSL_set_options(SSL *ssl, uint32_t options);
-
-/* SSL_clear_options disables all options set in |options| (which should be one
- * or more of the |SSL_OP_*| values, ORed together) in |ssl|. It returns a
- * bitmask representing the resulting enabled options. */
-OPENSSL_EXPORT uint32_t SSL_clear_options(SSL *ssl, uint32_t options);
-
-/* SSL_get_options returns a bitmask of |SSL_OP_*| values that represent all the
- * options enabled for |ssl|. */
-OPENSSL_EXPORT uint32_t SSL_get_options(const SSL *ssl);
-
-/* SSL_CTX_set_mode enables all modes set in |mode| (which should be one or more
- * of the |SSL_MODE_*| values, ORed together) in |ctx|. It returns a bitmask
- * representing the resulting enabled modes. */
-OPENSSL_EXPORT uint32_t SSL_CTX_set_mode(SSL_CTX *ctx, uint32_t mode);
-
-/* SSL_CTX_clear_mode disables all modes set in |mode| (which should be one or
- * more of the |SSL_MODE_*| values, ORed together) in |ctx|. It returns a
- * bitmask representing the resulting enabled modes. */
-OPENSSL_EXPORT uint32_t SSL_CTX_clear_mode(SSL_CTX *ctx, uint32_t mode);
-
-/* SSL_CTX_get_mode returns a bitmask of |SSL_MODE_*| values that represent all
- * the modes enabled for |ssl|. */
-OPENSSL_EXPORT uint32_t SSL_CTX_get_mode(const SSL_CTX *ctx);
-
-/* SSL_set_mode enables all modes set in |mode| (which should be one or more of
- * the |SSL_MODE_*| values, ORed together) in |ssl|. It returns a bitmask
- * representing the resulting enabled modes. */
-OPENSSL_EXPORT uint32_t SSL_set_mode(SSL *ssl, uint32_t mode);
-
-/* SSL_clear_mode disables all modes set in |mode| (which should be one or more
- * of the |SSL_MODE_*| values, ORed together) in |ssl|. It returns a bitmask
- * representing the resulting enabled modes. */
-OPENSSL_EXPORT uint32_t SSL_clear_mode(SSL *ssl, uint32_t mode);
-
-/* SSL_get_mode returns a bitmask of |SSL_MODE_*| values that represent all the
- * modes enabled for |ssl|. */
-OPENSSL_EXPORT uint32_t SSL_get_mode(const SSL *ssl);
-
 /* SSL_set_mtu sets the |ssl|'s MTU in DTLS to |mtu|. It returns one on success
  * and zero on failure. */
 OPENSSL_EXPORT int SSL_set_mtu(SSL *ssl, unsigned mtu);
@@ -669,22 +703,6 @@ OPENSSL_EXPORT int SSL_set_mtu(SSL *ssl, unsigned mtu);
 /* SSL_get_secure_renegotiation_support returns one if the peer supports secure
  * renegotiation (RFC 5746) and zero otherwise. */
 OPENSSL_EXPORT int SSL_get_secure_renegotiation_support(const SSL *ssl);
-
-/* SSL_CTX_set_min_version sets the minimum protocol version for |ctx| to
- * |version|. */
-OPENSSL_EXPORT void SSL_CTX_set_min_version(SSL_CTX *ctx, uint16_t version);
-
-/* SSL_CTX_set_max_version sets the maximum protocol version for |ctx| to
- * |version|. */
-OPENSSL_EXPORT void SSL_CTX_set_max_version(SSL_CTX *ctx, uint16_t version);
-
-/* SSL_set_min_version sets the minimum protocol version for |ssl| to
- * |version|. */
-OPENSSL_EXPORT void SSL_set_min_version(SSL *ssl, uint16_t version);
-
-/* SSL_set_max_version sets the maximum protocol version for |ssl| to
- * |version|. */
-OPENSSL_EXPORT void SSL_set_max_version(SSL *ssl, uint16_t version);
 
 /* SSL_CTX_set_msg_callback installs |cb| as the message callback for |ctx|.
  * This callback will be called when sending or receiving low-level record
