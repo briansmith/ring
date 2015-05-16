@@ -1486,7 +1486,6 @@ struct ssl_st {
 #define SSL_ST_ACCEPT 0x2000
 #define SSL_ST_MASK 0x0FFF
 #define SSL_ST_INIT (SSL_ST_CONNECT | SSL_ST_ACCEPT)
-#define SSL_ST_BEFORE 0x4000
 #define SSL_ST_OK 0x03
 #define SSL_ST_RENEGOTIATE (0x04 | SSL_ST_INIT)
 
@@ -1508,7 +1507,6 @@ struct ssl_st {
 #define SSL_get_state(a) SSL_state(a)
 #define SSL_is_init_finished(a) (SSL_state(a) == SSL_ST_OK)
 #define SSL_in_init(a) (SSL_state(a) & SSL_ST_INIT)
-#define SSL_in_before(a) (SSL_state(a) & SSL_ST_BEFORE)
 #define SSL_in_connect_init(a) (SSL_state(a) & SSL_ST_CONNECT)
 #define SSL_in_accept_init(a) (SSL_state(a) & SSL_ST_ACCEPT)
 

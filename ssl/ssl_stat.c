@@ -105,14 +105,6 @@ const char *SSL_state_string_long(const SSL *s) {
       str = "SSL renegotiate ciphers";
       break;
 
-    case SSL_ST_BEFORE | SSL_ST_CONNECT:
-      str = "before/connect initialization";
-      break;
-
-    case SSL_ST_BEFORE | SSL_ST_ACCEPT:
-      str = "before/accept initialization";
-      break;
-
     /* SSLv3 additions */
     case SSL3_ST_CW_CLNT_HELLO_A:
       str = "SSLv3 write client hello A";

@@ -156,7 +156,6 @@ int dtls1_connect(SSL *s) {
 
     switch (s->state) {
       case SSL_ST_CONNECT:
-      case SSL_ST_BEFORE | SSL_ST_CONNECT:
         if (cb != NULL) {
           cb(s, SSL_CB_HANDSHAKE_START, 1);
         }

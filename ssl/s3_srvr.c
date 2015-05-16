@@ -208,7 +208,6 @@ int ssl3_accept(SSL *s) {
 
     switch (s->state) {
       case SSL_ST_ACCEPT:
-      case SSL_ST_BEFORE | SSL_ST_ACCEPT:
         if (cb != NULL) {
           cb(s, SSL_CB_HANDSHAKE_START, 1);
         }
