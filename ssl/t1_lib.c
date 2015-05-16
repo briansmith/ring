@@ -1638,7 +1638,7 @@ static int ssl_scan_clienthello_tlsext(SSL *s, CBS *cbs, int *out_alert) {
 ri_check:
   /* Need RI if renegotiating */
 
-  if (!renegotiate_seen && s->renegotiate &&
+  if (!renegotiate_seen && s->s3->initial_handshake_complete &&
       !(s->options & SSL_OP_ALLOW_UNSAFE_LEGACY_RENEGOTIATION)) {
     *out_alert = SSL_AD_HANDSHAKE_FAILURE;
     OPENSSL_PUT_ERROR(SSL, ssl_scan_clienthello_tlsext,

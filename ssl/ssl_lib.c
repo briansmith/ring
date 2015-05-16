@@ -1267,7 +1267,7 @@ int ssl_cipher_list_to_bytes(SSL *s, STACK_OF(SSL_CIPHER) *sk, uint8_t *p) {
   }
 
   /* Add SCSVs. */
-  if (!s->renegotiate) {
+  if (!s->s3->initial_handshake_complete) {
     s2n(SSL3_CK_SCSV & 0xffff, p);
   }
 
@@ -1310,7 +1310,7 @@ STACK_OF(SSL_CIPHER) *ssl_bytes_to_cipher_list(SSL *s, const CBS *cbs) {
     /* Check for SCSV. */
     if (s->s3 && cipher_suite == (SSL3_CK_SCSV & 0xffff)) {
       /* SCSV is fatal if renegotiating. */
-      if (s->renegotiate) {
+      if (s->s3->initial_handshake_complete) {
         OPENSSL_PUT_ERROR(SSL, ssl_bytes_to_cipher_list,
                           SSL_R_SCSV_RECEIVED_WHEN_RENEGOTIATING);
         ssl3_send_alert(s, SSL3_AL_FATAL, SSL_AD_HANDSHAKE_FAILURE);
