@@ -2322,7 +2322,7 @@ void (*SSL_get_info_callback(const SSL *ssl))(const SSL * /*ssl*/, int /*type*/,
 
 int SSL_state(const SSL *ssl) { return ssl->state; }
 
-void SSL_set_state(SSL *ssl, int state) { ssl->state = state; }
+void SSL_set_state(SSL *ssl, int state) { }
 
 void SSL_set_verify_result(SSL *ssl, long arg) { ssl->verify_result = arg; }
 

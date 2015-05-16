@@ -2099,7 +2099,6 @@ OPENSSL_EXPORT void SSL_set_info_callback(SSL *ssl,
 OPENSSL_EXPORT void (*SSL_get_info_callback(const SSL *ssl))(const SSL *ssl,
                                                              int type, int val);
 OPENSSL_EXPORT int SSL_state(const SSL *ssl);
-OPENSSL_EXPORT void SSL_set_state(SSL *ssl, int state);
 
 OPENSSL_EXPORT void SSL_set_verify_result(SSL *ssl, long v);
 OPENSSL_EXPORT long SSL_get_verify_result(const SSL *ssl);
@@ -2403,6 +2402,9 @@ OPENSSL_EXPORT void SSL_set_read_ahead(SSL *s, int yes);
 
 /* SSL_renegotiate put an error on the error queue and returns zero. */
 OPENSSL_EXPORT int SSL_renegotiate(SSL *ssl);
+
+/* SSL_set_state does nothing. */
+OPENSSL_EXPORT void SSL_set_state(SSL *ssl, int state);
 
 
 /* Android compatibility section.
