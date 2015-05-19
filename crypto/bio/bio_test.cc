@@ -329,6 +329,87 @@ static bool TestPrintf() {
   return true;
 }
 
+static bool ReadASN1(bool should_succeed, const uint8_t *data, size_t data_len,
+                     size_t expected_len, size_t max_len) {
+  ScopedBIO bio(BIO_new_mem_buf(const_cast<uint8_t*>(data), data_len));
+
+  uint8_t *out;
+  size_t out_len;
+  int ok = BIO_read_asn1(bio.get(), &out, &out_len, max_len);
+  if (!ok) {
+    out = nullptr;
+  }
+  ScopedOpenSSLBytes out_storage(out);
+
+  if (should_succeed != (ok == 1)) {
+    return false;
+  }
+
+  if (should_succeed &&
+      (out_len != expected_len || memcmp(data, out, expected_len) != 0)) {
+    return false;
+  }
+
+  return true;
+}
+
+static bool TestASN1() {
+  static const uint8_t kData1[] = {0x30, 2, 1, 2, 0, 0};
+  static const uint8_t kData2[] = {0x30, 3, 1, 2};  /* truncated */
+  static const uint8_t kData3[] = {0x30, 0x81, 1, 1};  /* should be short len */
+  static const uint8_t kData4[] = {0x30, 0x82, 0, 1, 1};  /* zero padded. */
+
+  if (!ReadASN1(true, kData1, sizeof(kData1), 4, 100) ||
+      !ReadASN1(false, kData2, sizeof(kData2), 0, 100) ||
+      !ReadASN1(false, kData3, sizeof(kData3), 0, 100) ||
+      !ReadASN1(false, kData4, sizeof(kData4), 0, 100)) {
+    return false;
+  }
+
+  static const size_t kLargePayloadLen = 8000;
+  static const uint8_t kLargePrefix[] = {0x30, 0x82, kLargePayloadLen >> 8,
+                                         kLargePayloadLen & 0xff};
+  ScopedOpenSSLBytes large(reinterpret_cast<uint8_t *>(
+      OPENSSL_malloc(sizeof(kLargePrefix) + kLargePayloadLen)));
+  if (!large) {
+    return false;
+  }
+  memset(large.get() + sizeof(kLargePrefix), 0, kLargePayloadLen);
+  memcpy(large.get(), kLargePrefix, sizeof(kLargePrefix));
+
+  if (!ReadASN1(true, large.get(), sizeof(kLargePrefix) + kLargePayloadLen,
+                sizeof(kLargePrefix) + kLargePayloadLen,
+                kLargePayloadLen * 2)) {
+    fprintf(stderr, "Large payload test failed.\n");
+    return false;
+  }
+
+  if (!ReadASN1(false, large.get(), sizeof(kLargePrefix) + kLargePayloadLen,
+                sizeof(kLargePrefix) + kLargePayloadLen,
+                kLargePayloadLen - 1)) {
+    fprintf(stderr, "max_len test failed.\n");
+    return false;
+  }
+
+  static const uint8_t kIndefPrefix[] = {0x30, 0x80};
+  memcpy(large.get(), kIndefPrefix, sizeof(kIndefPrefix));
+  if (!ReadASN1(true, large.get(), sizeof(kLargePrefix) + kLargePayloadLen,
+                sizeof(kLargePrefix) + kLargePayloadLen,
+                kLargePayloadLen*2)) {
+    fprintf(stderr, "indefinite length test failed.\n");
+    return false;
+  }
+
+  if (!ReadASN1(false, large.get(), sizeof(kLargePrefix) + kLargePayloadLen,
+                sizeof(kLargePrefix) + kLargePayloadLen,
+                kLargePayloadLen-1)) {
+    fprintf(stderr, "indefinite length, max_len test failed.\n");
+    return false;
+  }
+
+  return true;
+}
+
 int main(void) {
   CRYPTO_library_init();
   ERR_load_crypto_strings();
@@ -350,7 +431,8 @@ int main(void) {
 
   if (!TestSocketConnect() ||
       !TestPrintf() ||
-      !TestZeroCopyBioPairs()) {
+      !TestZeroCopyBioPairs() ||
+      !TestASN1()) {
     return 1;
   }
 

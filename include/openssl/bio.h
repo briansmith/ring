@@ -339,6 +339,21 @@ OPENSSL_EXPORT int BIO_hexdump(BIO *bio, const uint8_t *data, size_t len,
  * using human readable strings where possible. */
 OPENSSL_EXPORT void BIO_print_errors(BIO *bio);
 
+/* BIO_read_asn1 reads a single ASN.1 object from |bio|. If successful it sets
+ * |*out| to be an allocated buffer (that should be freed with |OPENSSL_free|),
+ * |*out_size| to the length, in bytes, of that buffer and returns one.
+ * Otherwise it returns zero.
+ *
+ * If the length of the object is greater than |max_len| or 2^32 then the
+ * function will fail. Long-form tags are not supported. If the length of the
+ * object is indefinite the full contents of |bio| are read, unless it would be
+ * greater than |max_len|, in which case the function fails.
+ *
+ * If the function fails then some unknown amount of data may have been read
+ * from |bio|. */
+OPENSSL_EXPORT int BIO_read_asn1(BIO *bio, uint8_t **out, size_t *out_len,
+                                 size_t max_len);
+
 
 /* Memory BIOs.
  *
