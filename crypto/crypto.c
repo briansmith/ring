@@ -104,9 +104,9 @@ void CRYPTO_library_init(void) {
 }
 
 const char *SSLeay_version(int unused) {
-  return SSLeay();
+  return "BoringSSL";
 }
 
-const char *SSLeay(void) {
-  return "BoringSSL";
+unsigned long SSLeay(void) {
+  return OPENSSL_VERSION_NUMBER;
 }

@@ -46,8 +46,9 @@ OPENSSL_EXPORT void CRYPTO_library_init(void);
  * "BoringSSL". */
 OPENSSL_EXPORT const char *SSLeay_version(int unused);
 
-/* SSLeay is a compatibility function that returns the string "BoringSSL". */
-OPENSSL_EXPORT const char *SSLeay(void);
+/* SSLeay is a compatibility function that returns OPENSSL_VERSION_NUMBER from
+ * base.h. */
+OPENSSL_EXPORT unsigned long SSLeay(void);
 
 
 #if defined(__cplusplus)
