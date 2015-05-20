@@ -356,7 +356,8 @@ OPENSSL_EXPORT void CRYPTO_once(CRYPTO_once_t *once, void (*init)(void));
 
 /* Reference counting. */
 
-#if __STDC_VERSION__ >= 201112L && !defined(__STDC_NO_ATOMICS__)
+#if defined(__STDC_VERSION__) && __STDC_VERSION__ >= 201112L && \
+    !defined(__STDC_NO_ATOMICS__)
 #define OPENSSL_C11_ATOMIC
 #endif
 
