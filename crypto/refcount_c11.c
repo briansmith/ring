@@ -35,7 +35,8 @@ static_assert((CRYPTO_refcount_t)-1 == CRYPTO_REFCOUNT_MAX,
               "CRYPTO_REFCOUNT_MAX is incorrect");
 
 void CRYPTO_refcount_inc(CRYPTO_refcount_t *count) {
-  uint32_t expected = atomic_load(count);
+  uint32_t expected =
+      atomic_load(static_cast<_Atomic CRYPTO_refcount_t>(count));
 
   while (expected != CRYPTO_REFCOUNT_MAX) {
     uint32_t new_value = expected + 1;
