@@ -414,37 +414,40 @@ struct CRYPTO_STATIC_MUTEX {
 
 /* CRYPTO_MUTEX_init initialises |lock|. If |lock| is a static variable, use a
  * |CRYPTO_STATIC_MUTEX|. */
-void CRYPTO_MUTEX_init(CRYPTO_MUTEX *lock);
+OPENSSL_EXPORT void CRYPTO_MUTEX_init(CRYPTO_MUTEX *lock);
 
 /* CRYPTO_MUTEX_lock_read locks |lock| such that other threads may also have a
  * read lock, but none may have a write lock. (On Windows, read locks are
  * actually fully exclusive.) */
-void CRYPTO_MUTEX_lock_read(CRYPTO_MUTEX *lock);
+OPENSSL_EXPORT void CRYPTO_MUTEX_lock_read(CRYPTO_MUTEX *lock);
 
 /* CRYPTO_MUTEX_lock_write locks |lock| such that no other thread has any type
  * of lock on it. */
-void CRYPTO_MUTEX_lock_write(CRYPTO_MUTEX *lock);
+OPENSSL_EXPORT void CRYPTO_MUTEX_lock_write(CRYPTO_MUTEX *lock);
 
 /* CRYPTO_MUTEX_unlock unlocks |lock|. */
-void CRYPTO_MUTEX_unlock(CRYPTO_MUTEX *lock);
+OPENSSL_EXPORT void CRYPTO_MUTEX_unlock(CRYPTO_MUTEX *lock);
 
 /* CRYPTO_MUTEX_cleanup releases all resources held by |lock|. */
-void CRYPTO_MUTEX_cleanup(CRYPTO_MUTEX *lock);
+OPENSSL_EXPORT void CRYPTO_MUTEX_cleanup(CRYPTO_MUTEX *lock);
 
 /* CRYPTO_STATIC_MUTEX_lock_read locks |lock| such that other threads may also
  * have a read lock, but none may have a write lock. The |lock| variable does
  * not need to be initialised by any function, but must have been statically
  * initialised with |CRYPTO_STATIC_MUTEX_INIT|. */
-void CRYPTO_STATIC_MUTEX_lock_read(struct CRYPTO_STATIC_MUTEX *lock);
+OPENSSL_EXPORT void CRYPTO_STATIC_MUTEX_lock_read(
+    struct CRYPTO_STATIC_MUTEX *lock);
 
 /* CRYPTO_STATIC_MUTEX_lock_write locks |lock| such that no other thread has
  * any type of lock on it.  The |lock| variable does not need to be initialised
  * by any function, but must have been statically initialised with
  * |CRYPTO_STATIC_MUTEX_INIT|. */
-void CRYPTO_STATIC_MUTEX_lock_write(struct CRYPTO_STATIC_MUTEX *lock);
+OPENSSL_EXPORT void CRYPTO_STATIC_MUTEX_lock_write(
+    struct CRYPTO_STATIC_MUTEX *lock);
 
 /* CRYPTO_STATIC_MUTEX_unlock unlocks |lock|. */
-void CRYPTO_STATIC_MUTEX_unlock(struct CRYPTO_STATIC_MUTEX *lock);
+OPENSSL_EXPORT void CRYPTO_STATIC_MUTEX_unlock(
+    struct CRYPTO_STATIC_MUTEX *lock);
 
 
 /* Thread local storage. */
