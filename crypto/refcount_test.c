@@ -19,7 +19,7 @@
 #include <openssl/type_check.h>
 
 
-int main() {
+int main(int argc, char **argv) {
   CRYPTO_refcount_t count = 0;
 
   CRYPTO_refcount_inc(&count);
