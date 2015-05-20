@@ -34,9 +34,9 @@ static_assert(sizeof(CRYPTO_refcount_t) == sizeof(_Atomic CRYPTO_refcount_t),
 static_assert((CRYPTO_refcount_t)-1 == CRYPTO_REFCOUNT_MAX,
               "CRYPTO_REFCOUNT_MAX is incorrect");
 
-void CRYPTO_refcount_inc(CRYPTO_refcount_t *count) {
-  uint32_t expected =
-      atomic_load(static_cast<_Atomic CRYPTO_refcount_t>(count));
+void CRYPTO_refcount_inc(CRYPTO_refcount_t *in_count) {
+  _Atomic CRYPTO_refcount_t *count = (_Atomic CRYPTO_refcount_t *) in_count;
+  uint32_t expected = atomic_load(count);
 
   while (expected != CRYPTO_REFCOUNT_MAX) {
     uint32_t new_value = expected + 1;
@@ -46,7 +46,8 @@ void CRYPTO_refcount_inc(CRYPTO_refcount_t *count) {
   }
 }
 
-int CRYPTO_refcount_dec_and_test_zero(CRYPTO_refcount_t *count) {
+int CRYPTO_refcount_dec_and_test_zero(CRYPTO_refcount_t *in_count) {
+  _Atomic CRYPTO_refcount_t *count = (_Atomic CRYPTO_refcount_t *)in_count;
   uint32_t expected = atomic_load(count);
 
   for (;;) {
