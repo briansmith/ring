@@ -76,7 +76,7 @@ extern "C" {
  * was a pointer to |type|. */
 #define CHECKED_PTR_OF(type, p) CHECKED_CAST(void*, type*, (p))
 
-#if __STDC_VERSION__ >= 201112L
+#if defined(__STDC_VERSION__) && __STDC_VERSION__ >= 201112L
 #define OPENSSL_COMPILE_ASSERT(cond, msg) _Static_assert(cond, #msg)
 #else
 #define OPENSSL_COMPILE_ASSERT(cond, msg) \
