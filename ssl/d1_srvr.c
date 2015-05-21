@@ -207,7 +207,6 @@ int dtls1_accept(SSL *s) {
 
       case SSL3_ST_SW_SRVR_HELLO_A:
       case SSL3_ST_SW_SRVR_HELLO_B:
-        s->renegotiate = 2;
         dtls1_start_timer(s);
         ret = ssl3_send_server_hello(s);
         if (ret <= 0) {
@@ -435,7 +434,6 @@ int dtls1_accept(SSL *s) {
         ssl_free_wbio_buffer(s);
 
         s->init_num = 0;
-        s->renegotiate = 0;
         s->s3->initial_handshake_complete = 1;
 
         ssl_update_cache(s, SSL_SESS_CACHE_SERVER);

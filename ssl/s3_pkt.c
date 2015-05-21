@@ -831,22 +831,18 @@ start:
     return n;
   }
 
-
-  /* If we get here, then type != rr->type; if we have a handshake message,
-   * then it was unexpected (Hello Request or Client Hello). */
-
-  /* In case of record types for which we have 'fragment' storage, fill that so
-   * that we can process the data at a fixed place. */
+  /* Process unexpected records. */
 
   if (rr->type == SSL3_RT_HANDSHAKE) {
     /* If peer renegotiations are disabled, all out-of-order handshake records
-     * are fatal. */
-    if (!s->accept_peer_renegotiations) {
+     * are fatal. Renegotiations as a server are never supported. */
+    if (!s->accept_peer_renegotiations || s->server) {
       al = SSL_AD_NO_RENEGOTIATION;
       OPENSSL_PUT_ERROR(SSL, ssl3_read_bytes, SSL_R_NO_RENEGOTIATION);
       goto f_err;
     }
 
+    /* HelloRequests may be fragmented across multiple records. */
     const size_t size = sizeof(s->s3->handshake_fragment);
     const size_t avail = size - s->s3->handshake_fragment_len;
     const size_t todo = (rr->length < avail) ? rr->length : avail;
@@ -858,24 +854,17 @@ start:
     if (s->s3->handshake_fragment_len < size) {
       goto start; /* fragment was too small */
     }
-  }
 
-  /* s->s3->handshake_fragment_len == 4  iff  rr->type == SSL3_RT_HANDSHAKE;
-   * (Possibly rr is 'empty' now, i.e. rr->length may be 0.) */
-
-  /* If we are a client, check for an incoming 'Hello Request': */
-  if (!s->server && s->s3->handshake_fragment_len >= 4 &&
-      s->s3->handshake_fragment[0] == SSL3_MT_HELLO_REQUEST &&
-      s->session != NULL && s->session->cipher != NULL) {
-    s->s3->handshake_fragment_len = 0;
-
-    if (s->s3->handshake_fragment[1] != 0 ||
+    /* Parse out and consume a HelloRequest. */
+    if (s->s3->handshake_fragment[0] != SSL3_MT_HELLO_REQUEST ||
+        s->s3->handshake_fragment[1] != 0 ||
         s->s3->handshake_fragment[2] != 0 ||
         s->s3->handshake_fragment[3] != 0) {
       al = SSL_AD_DECODE_ERROR;
       OPENSSL_PUT_ERROR(SSL, ssl3_read_bytes, SSL_R_BAD_HELLO_REQUEST);
       goto f_err;
     }
+    s->s3->handshake_fragment_len = 0;
 
     if (s->msg_callback) {
       s->msg_callback(0, s->version, SSL3_RT_HANDSHAKE,
@@ -1013,24 +1002,6 @@ start:
     } else {
       goto start;
     }
-  }
-
-  /* Unexpected handshake message (Client Hello, or protocol violation) */
-  if (s->s3->handshake_fragment_len >= 4 && !s->in_handshake) {
-    if ((s->state & SSL_ST_MASK) == SSL_ST_OK) {
-      s->state = s->server ? SSL_ST_ACCEPT : SSL_ST_CONNECT;
-      s->renegotiate = 1;
-    }
-    i = s->handshake_func(s);
-    if (i < 0) {
-      return i;
-    }
-    if (i == 0) {
-      OPENSSL_PUT_ERROR(SSL, ssl3_read_bytes, SSL_R_SSL_HANDSHAKE_FAILURE);
-      return -1;
-    }
-
-    goto start;
   }
 
   /* We already handled these. */

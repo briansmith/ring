@@ -840,30 +840,6 @@ static bool DoExchange(ScopedSSL_SESSION *out_session, SSL_CTX *ssl_ctx,
     }
   }
 
-  if (config->renegotiate) {
-    if (config->async) {
-      fprintf(stderr, "-renegotiate is not supported with -async.\n");
-      return false;
-    }
-    if (config->implicit_handshake) {
-      fprintf(stderr, "-renegotiate is not supported with -implicit-handshake.\n");
-      return false;
-    }
-
-    SSL_renegotiate(ssl.get());
-
-    ret = SSL_do_handshake(ssl.get());
-    if (ret != 1) {
-      return false;
-    }
-
-    SSL_set_state(ssl.get(), SSL_ST_ACCEPT);
-    ret = SSL_do_handshake(ssl.get());
-    if (ret != 1) {
-      return false;
-    }
-  }
-
   if (config->export_keying_material > 0) {
     std::vector<uint8_t> result(
         static_cast<size_t>(config->export_keying_material));

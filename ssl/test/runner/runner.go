@@ -2817,91 +2817,15 @@ func addResumptionVersionTests() {
 }
 
 func addRenegotiationTests() {
-	testCases = append(testCases, testCase{
-		testType: serverTest,
-		name:     "Renegotiate-Server",
-		config: Config{
-			Bugs: ProtocolBugs{
-				FailIfResumeOnRenego: true,
-			},
-		},
-		flags:           []string{"-renegotiate"},
-		shimWritesFirst: true,
-	})
-	testCases = append(testCases, testCase{
-		testType: serverTest,
-		name:     "Renegotiate-Server-EmptyExt",
-		config: Config{
-			Bugs: ProtocolBugs{
-				EmptyRenegotiationInfo: true,
-			},
-		},
-		flags:           []string{"-renegotiate"},
-		shimWritesFirst: true,
-		shouldFail:      true,
-		expectedError:   ":RENEGOTIATION_MISMATCH:",
-	})
-	testCases = append(testCases, testCase{
-		testType: serverTest,
-		name:     "Renegotiate-Server-BadExt",
-		config: Config{
-			Bugs: ProtocolBugs{
-				BadRenegotiationInfo: true,
-			},
-		},
-		flags:           []string{"-renegotiate"},
-		shimWritesFirst: true,
-		shouldFail:      true,
-		expectedError:   ":RENEGOTIATION_MISMATCH:",
-	})
-	testCases = append(testCases, testCase{
-		testType:    serverTest,
-		name:        "Renegotiate-Server-ClientInitiated",
-		renegotiate: true,
-	})
-	testCases = append(testCases, testCase{
-		testType:    serverTest,
-		name:        "Renegotiate-Server-ClientInitiated-NoExt",
-		renegotiate: true,
-		config: Config{
-			Bugs: ProtocolBugs{
-				NoRenegotiationInfo: true,
-			},
-		},
-		shouldFail:    true,
-		expectedError: ":UNSAFE_LEGACY_RENEGOTIATION_DISABLED:",
-	})
-	testCases = append(testCases, testCase{
-		testType:    serverTest,
-		name:        "Renegotiate-Server-ClientInitiated-NoExt-Allowed",
-		renegotiate: true,
-		config: Config{
-			Bugs: ProtocolBugs{
-				NoRenegotiationInfo: true,
-			},
-		},
-		flags: []string{"-allow-unsafe-legacy-renegotiation"},
-	})
+	// Servers cannot renegotiate.
 	testCases = append(testCases, testCase{
 		testType:           serverTest,
-		name:               "Renegotiate-Server-ClientInitiated-Forbidden",
+		name:               "Renegotiate-Server-Forbidden",
 		renegotiate:        true,
 		flags:              []string{"-reject-peer-renegotiations"},
 		shouldFail:         true,
 		expectedError:      ":NO_RENEGOTIATION:",
 		expectedLocalError: "remote error: no renegotiation",
-	})
-	// Regression test for CVE-2015-0291.
-	testCases = append(testCases, testCase{
-		testType: serverTest,
-		name:     "Renegotiate-Server-NoSignatureAlgorithms",
-		config: Config{
-			Bugs: ProtocolBugs{
-				NoSignatureAlgorithmsOnRenego: true,
-			},
-		},
-		flags:           []string{"-renegotiate"},
-		shimWritesFirst: true,
 	})
 	// TODO(agl): test the renegotiation info SCSV.
 	testCases = append(testCases, testCase{

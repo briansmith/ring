@@ -54,7 +54,6 @@ struct TestConfig {
   bool expect_extended_master_secret = false;
   std::string psk;
   std::string psk_identity;
-  bool renegotiate = false;
   bool allow_unsafe_legacy_renegotiation = false;
   std::string srtp_profiles;
   bool enable_ocsp_stapling = false;

@@ -67,8 +67,6 @@ static const SSL_PROTOCOL_METHOD TLS_protocol_method = {
     ssl3_peek,
     ssl3_write,
     ssl3_shutdown,
-    ssl3_renegotiate,
-    ssl3_renegotiate_check,
     ssl3_get_message,
     ssl3_read_bytes,
     ssl3_write_bytes,

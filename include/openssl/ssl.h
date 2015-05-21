@@ -1211,7 +1211,7 @@ OPENSSL_EXPORT void SSL_enable_fastradio_padding(SSL *ssl, char on_off);
 /* SSL_set_reject_peer_renegotiations controls whether renegotiation attempts by
  * the peer are rejected. It may be set at any point in a connection's lifetime
  * to control future renegotiations programmatically. By default, renegotiations
- * are rejected. */
+ * are rejected. (Renegotiations requested by a client are always rejected.) */
 OPENSSL_EXPORT void SSL_set_reject_peer_renegotiations(SSL *ssl, int reject);
 
 /* the maximum length of the buffer given to callbacks containing the resulting
@@ -1449,10 +1449,6 @@ struct ssl_st {
    * format. */
   uint8_t *alpn_client_proto_list;
   unsigned alpn_client_proto_list_len;
-
-  int renegotiate; /* 1 if we are renegotiating.
-                    * 2 if we are a server and are inside a handshake
-                    * (i.e. not just sending a HelloRequest) */
 
   /* fastradio_padding, if true, causes ClientHellos to be padded to 1024
    * bytes. This ensures that the cellular radio is fast forwarded to DCH (high
@@ -2050,8 +2046,11 @@ OPENSSL_EXPORT const char *SSL_SESSION_get_version(const SSL_SESSION *sess);
 OPENSSL_EXPORT STACK_OF(SSL_CIPHER) *SSL_get_ciphers(const SSL *s);
 
 OPENSSL_EXPORT int SSL_do_handshake(SSL *s);
-OPENSSL_EXPORT int SSL_renegotiate(SSL *s);
-OPENSSL_EXPORT int SSL_renegotiate_pending(SSL *s);
+
+/* SSL_renegotiate_pending returns one if |ssl| is in the middle of a
+ * renegotiation. */
+OPENSSL_EXPORT int SSL_renegotiate_pending(SSL *ssl);
+
 OPENSSL_EXPORT int SSL_shutdown(SSL *s);
 
 OPENSSL_EXPORT const char *SSL_alert_type_string_long(int value);
@@ -2403,6 +2402,9 @@ OPENSSL_EXPORT int SSL_get_read_ahead(const SSL *s);
 
 /* SSL_set_read_ahead does nothing. */
 OPENSSL_EXPORT void SSL_set_read_ahead(SSL *s, int yes);
+
+/* SSL_renegotiate put an error on the error queue and returns zero. */
+OPENSSL_EXPORT int SSL_renegotiate(SSL *ssl);
 
 
 /* Android compatibility section.

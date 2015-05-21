@@ -690,10 +690,6 @@ type ProtocolBugs struct {
 	// client offers a resumption or the server accepts one.
 	FailIfResumeOnRenego bool
 
-	// NoSignatureAlgorithmsOnRenego, if true, causes renegotiations to omit
-	// the signature_algorithms extension.
-	NoSignatureAlgorithmsOnRenego bool
-
 	// IgnorePeerCipherPreferences, if true, causes the peer's cipher
 	// preferences to be ignored.
 	IgnorePeerCipherPreferences bool

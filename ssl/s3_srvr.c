@@ -207,66 +207,8 @@ int ssl3_accept(SSL *s) {
     state = s->state;
 
     switch (s->state) {
-      case SSL_ST_RENEGOTIATE:
-        /* This state is the renegotiate entry point. It sends a HelloRequest
-         * and nothing else. */
-        s->renegotiate = 1;
-
-        if (cb != NULL) {
-          cb(s, SSL_CB_HANDSHAKE_START, 1);
-        }
-
-        if (s->init_buf == NULL) {
-          buf = BUF_MEM_new();
-          if (!buf || !BUF_MEM_grow(buf, SSL3_RT_MAX_PLAIN_LENGTH)) {
-            ret = -1;
-            goto end;
-          }
-          s->init_buf = buf;
-          buf = NULL;
-        }
-        s->init_num = 0;
-
-        if (!s->s3->send_connection_binding &&
-            !(s->options & SSL_OP_ALLOW_UNSAFE_LEGACY_RENEGOTIATION)) {
-          /* Server attempting to renegotiate with client that doesn't support
-           * secure renegotiation. */
-          OPENSSL_PUT_ERROR(SSL, ssl3_accept,
-                            SSL_R_UNSAFE_LEGACY_RENEGOTIATION_DISABLED);
-          ssl3_send_alert(s, SSL3_AL_FATAL, SSL_AD_HANDSHAKE_FAILURE);
-          ret = -1;
-          goto end;
-        }
-
-        s->state = SSL3_ST_SW_HELLO_REQ_A;
-        break;
-
-      case SSL3_ST_SW_HELLO_REQ_A:
-      case SSL3_ST_SW_HELLO_REQ_B:
-        s->shutdown = 0;
-        ret = ssl3_send_hello_request(s);
-        if (ret <= 0) {
-          goto end;
-        }
-        s->s3->tmp.next_state = SSL3_ST_SW_HELLO_REQ_C;
-        s->state = SSL3_ST_SW_FLUSH;
-        s->init_num = 0;
-
-        if (!ssl3_init_finished_mac(s)) {
-          OPENSSL_PUT_ERROR(SSL, ssl3_accept, ERR_R_INTERNAL_ERROR);
-          ret = -1;
-          goto end;
-        }
-        break;
-
-      case SSL3_ST_SW_HELLO_REQ_C:
-        s->state = SSL_ST_OK;
-        break;
-
       case SSL_ST_ACCEPT:
       case SSL_ST_BEFORE | SSL_ST_ACCEPT:
-        /* This state is the entry point for the handshake itself (initial and
-         * renegotiation).  */
         if (cb != NULL) {
           cb(s, SSL_CB_HANDSHAKE_START, 1);
         }
@@ -337,7 +279,6 @@ int ssl3_accept(SSL *s) {
         if (ret <= 0) {
           goto end;
         }
-        s->renegotiate = 2;
         s->state = SSL3_ST_SW_SRVR_HELLO_A;
         s->init_num = 0;
         break;
@@ -640,16 +581,12 @@ int ssl3_accept(SSL *s) {
           s->session->peer = NULL;
         }
 
-        if (s->renegotiate == 2) {
-          /* skipped if we just sent a HelloRequest */
-          s->renegotiate = 0;
-          s->s3->initial_handshake_complete = 1;
+        s->s3->initial_handshake_complete = 1;
 
-          ssl_update_cache(s, SSL_SESS_CACHE_SERVER);
+        ssl_update_cache(s, SSL_SESS_CACHE_SERVER);
 
-          if (cb != NULL) {
-            cb(s, SSL_CB_HANDSHAKE_DONE, 1);
-          }
+        if (cb != NULL) {
+          cb(s, SSL_CB_HANDSHAKE_DONE, 1);
         }
 
         ret = 1;
@@ -896,18 +833,6 @@ int ssl3_get_v2_client_hello(SSL *s) {
   s->s3->sniff_buffer_len = 0;
 
   return 1;
-}
-
-int ssl3_send_hello_request(SSL *s) {
-  if (s->state == SSL3_ST_SW_HELLO_REQ_A) {
-    if (!ssl_set_handshake_header(s, SSL3_MT_HELLO_REQUEST, 0)) {
-      return -1;
-    }
-    s->state = SSL3_ST_SW_HELLO_REQ_B;
-  }
-
-  /* SSL3_ST_SW_HELLO_REQ_B */
-  return ssl_do_write(s);
 }
 
 int ssl3_get_client_hello(SSL *s) {

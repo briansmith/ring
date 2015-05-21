@@ -194,7 +194,6 @@ int ssl3_connect(SSL *s) {
 
     switch (s->state) {
       case SSL_ST_RENEGOTIATE:
-        s->renegotiate = 1;
         s->state = SSL_ST_CONNECT;
         /* fallthrough */
       case SSL_ST_CONNECT:
@@ -551,7 +550,6 @@ int ssl3_connect(SSL *s) {
         ssl_free_wbio_buffer(s);
 
         s->init_num = 0;
-        s->renegotiate = 0;
         s->s3->tmp.in_false_start = 0;
         s->s3->initial_handshake_complete = 1;
 

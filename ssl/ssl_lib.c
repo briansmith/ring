@@ -931,24 +931,14 @@ int SSL_shutdown(SSL *s) {
   return 1;
 }
 
-int SSL_renegotiate(SSL *s) {
-  if (SSL_IS_DTLS(s)) {
-    /* Renegotiation is not supported for DTLS. */
-    OPENSSL_PUT_ERROR(SSL, SSL_renegotiate, ERR_R_SHOULD_NOT_HAVE_BEEN_CALLED);
-    return 0;
-  }
-
-  if (s->renegotiate == 0) {
-    s->renegotiate = 1;
-  }
-
-  return s->method->ssl_renegotiate(s);
+int SSL_renegotiate(SSL *ssl) {
+  /* Caller-initiated renegotiation is not supported. */
+  OPENSSL_PUT_ERROR(SSL, SSL_renegotiate, ERR_R_SHOULD_NOT_HAVE_BEEN_CALLED);
+  return 0;
 }
 
-int SSL_renegotiate_pending(SSL *s) {
-  /* becomes true when negotiation is requested; false again once a handshake
-   * has finished */
-  return s->renegotiate != 0;
+int SSL_renegotiate_pending(SSL *ssl) {
+  return SSL_in_init(ssl) && ssl->s3->initial_handshake_complete;
 }
 
 uint32_t SSL_CTX_set_options(SSL_CTX *ctx, uint32_t options) {
@@ -2111,8 +2101,6 @@ int SSL_do_handshake(SSL *s) {
     OPENSSL_PUT_ERROR(SSL, SSL_do_handshake, SSL_R_CONNECTION_TYPE_NOT_SET);
     return -1;
   }
-
-  s->method->ssl_renegotiate_check(s);
 
   if (SSL_in_init(s)) {
     ret = s->handshake_func(s);

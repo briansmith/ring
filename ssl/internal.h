@@ -641,8 +641,6 @@ struct ssl_protocol_method_st {
   int (*ssl_peek)(SSL *s, void *buf, int len);
   int (*ssl_write)(SSL *s, const void *buf, int len);
   int (*ssl_shutdown)(SSL *s);
-  int (*ssl_renegotiate)(SSL *s);
-  int (*ssl_renegotiate_check)(SSL *s);
   long (*ssl_get_message)(SSL *s, int header_state, int body_state,
                           int msg_type, long max,
                           enum ssl_hash_message_t hash_message, int *ok);
@@ -1002,7 +1000,6 @@ int ssl3_get_initial_bytes(SSL *s);
 int ssl3_get_v2_client_hello(SSL *s);
 int ssl3_get_client_hello(SSL *s);
 int ssl3_send_server_hello(SSL *s);
-int ssl3_send_hello_request(SSL *s);
 int ssl3_send_server_key_exchange(SSL *s);
 int ssl3_send_certificate_request(SSL *s);
 int ssl3_send_server_done(SSL *s);

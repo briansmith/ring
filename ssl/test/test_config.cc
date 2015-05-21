@@ -65,7 +65,6 @@ const Flag<bool> kBoolFlags[] = {
   { "-expect-session-miss", &TestConfig::expect_session_miss },
   { "-expect-extended-master-secret",
     &TestConfig::expect_extended_master_secret },
-  { "-renegotiate", &TestConfig::renegotiate },
   { "-allow-unsafe-legacy-renegotiation",
     &TestConfig::allow_unsafe_legacy_renegotiation },
   { "-enable-ocsp-stapling", &TestConfig::enable_ocsp_stapling },

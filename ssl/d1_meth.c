@@ -68,8 +68,6 @@ static const SSL_PROTOCOL_METHOD DTLS_protocol_method = {
     ssl3_peek,
     ssl3_write,
     dtls1_shutdown,
-    ssl3_renegotiate,
-    ssl3_renegotiate_check,
     dtls1_get_message,
     dtls1_read_bytes,
     dtls1_write_app_data_bytes,
