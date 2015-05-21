@@ -429,13 +429,6 @@ OPENSSL_EXPORT uint32_t SSL_get_options(const SSL *ssl);
  * TODO(davidben): Remove this behavior. https://crbug.com/486295. */
 #define SSL_MODE_NO_AUTO_CHAIN 0x00000008L
 
-/* SSL_MODE_SEND_CLIENTHELLO_TIME and SSL_MODE_SEND_SERVERHELLO_TIME send the
- * current time in the random fields of the ClientHello and ServerHello records,
- * respectively, for compatibility with hypothetical implementations that
- * require it. */
-#define SSL_MODE_SEND_CLIENTHELLO_TIME 0x00000020L
-#define SSL_MODE_SEND_SERVERHELLO_TIME 0x00000040L
-
 /* SSL_MODE_ENABLE_FALSE_START allows clients to send application data before
  * receipt of CCS and Finished. This mode enables full-handshakes to 'complete'
  * in one RTT. See draft-bmoeller-tls-falsestart-01. */
@@ -470,6 +463,8 @@ OPENSSL_EXPORT uint32_t SSL_get_options(const SSL *ssl);
  * compile code with BoringSSL. */
 #define SSL_MODE_AUTO_RETRY 0
 #define SSL_MODE_RELEASE_BUFFERS 0
+#define SSL_MODE_SEND_CLIENTHELLO_TIME 0
+#define SSL_MODE_SEND_SERVERHELLO_TIME 0
 
 /* SSL_CTX_set_mode enables all modes set in |mode| (which should be one or more
  * of the |SSL_MODE_*| values, ORed together) in |ctx|. It returns a bitmask

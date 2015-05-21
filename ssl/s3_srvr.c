@@ -1144,7 +1144,8 @@ int ssl3_send_server_hello(SSL *s) {
     *(p++) = s->version & 0xff;
 
     /* Random stuff */
-    if (!ssl_fill_hello_random(s, 1, s->s3->server_random, SSL3_RANDOM_SIZE)) {
+    if (!ssl_fill_hello_random(s->s3->server_random, SSL3_RANDOM_SIZE,
+                               1 /* server */)) {
       OPENSSL_PUT_ERROR(SSL, ssl3_send_server_hello, ERR_R_INTERNAL_ERROR);
       return -1;
     }

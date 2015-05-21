@@ -610,7 +610,8 @@ int ssl3_send_client_hello(SSL *s) {
     /* If resending the ClientHello in DTLS after a HelloVerifyRequest, don't
      * renegerate the client_random. The random must be reused. */
     if ((!SSL_IS_DTLS(s) || !s->d1->send_cookie) &&
-        !ssl_fill_hello_random(s, 0, p, sizeof(s->s3->client_random))) {
+        !ssl_fill_hello_random(p, sizeof(s->s3->client_random),
+                               0 /* client */)) {
       goto err;
     }
 

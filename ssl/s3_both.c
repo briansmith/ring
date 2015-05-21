@@ -667,20 +667,10 @@ int ssl3_release_read_buffer(SSL *s) {
   return 1;
 }
 
-/* ssl_fill_hello_random fills a client_random or server_random field of length
- * |len|. Returns 0 on failure or 1 on success. */
-int ssl_fill_hello_random(SSL *s, int server, uint8_t *result, size_t len) {
-  int send_time = 0;
-
-  if (server) {
-    send_time = (s->mode & SSL_MODE_SEND_SERVERHELLO_TIME) != 0;
-  } else {
-    send_time = (s->mode & SSL_MODE_SEND_CLIENTHELLO_TIME) != 0;
-  }
-
-  if (send_time) {
+int ssl_fill_hello_random(uint8_t *out, size_t len, int is_server) {
+  if (is_server) {
     const uint32_t current_time = time(NULL);
-    uint8_t *p = result;
+    uint8_t *p = out;
 
     if (len < 4) {
       return 0;
@@ -691,6 +681,6 @@ int ssl_fill_hello_random(SSL *s, int server, uint8_t *result, size_t len) {
     p[3] = current_time;
     return RAND_bytes(p + 4, len - 4);
   } else {
-    return RAND_bytes(result, len);
+    return RAND_bytes(out, len);
   }
 }
