@@ -892,8 +892,6 @@ int ssl3_cert_verify_hash(SSL *s, uint8_t *out, size_t *out_len,
 int ssl3_send_finished(SSL *s, int a, int b, const char *sender, int slen);
 size_t ssl3_num_ciphers(void);
 const SSL_CIPHER *ssl3_get_cipher(size_t i);
-int ssl3_renegotiate(SSL *ssl);
-int ssl3_renegotiate_check(SSL *ssl);
 int ssl3_dispatch_alert(SSL *s);
 int ssl3_expect_change_cipher_spec(SSL *s);
 int ssl3_read_bytes(SSL *s, int type, uint8_t *buf, int len, int peek);

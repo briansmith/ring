@@ -1162,18 +1162,12 @@ int ssl3_shutdown(SSL *s) {
 
 int ssl3_write(SSL *s, const void *buf, int len) {
   ERR_clear_system_error();
-  if (s->s3->renegotiate) {
-    ssl3_renegotiate_check(s);
-  }
 
   return s->method->ssl_write_bytes(s, SSL3_RT_APPLICATION_DATA, buf, len);
 }
 
 static int ssl3_read_internal(SSL *s, void *buf, int len, int peek) {
   ERR_clear_system_error();
-  if (s->s3->renegotiate) {
-    ssl3_renegotiate_check(s);
-  }
 
   return s->method->ssl_read_bytes(s, SSL3_RT_APPLICATION_DATA, buf, len, peek);
 }
@@ -1184,29 +1178,6 @@ int ssl3_read(SSL *s, void *buf, int len) {
 
 int ssl3_peek(SSL *s, void *buf, int len) {
   return ssl3_read_internal(s, buf, len, 1);
-}
-
-int ssl3_renegotiate(SSL *s) {
-  if (s->handshake_func == NULL) {
-    return 1;
-  }
-
-  s->s3->renegotiate = 1;
-  return 1;
-}
-
-int ssl3_renegotiate_check(SSL *s) {
-  if (s->s3->renegotiate && s->s3->rbuf.left == 0 && s->s3->wbuf.left == 0 &&
-      !SSL_in_init(s)) {
-    /* if we are the server, and we have sent a 'RENEGOTIATE' message, we
-     * need to go to SSL_ST_ACCEPT. */
-    s->state = SSL_ST_RENEGOTIATE;
-    s->s3->renegotiate = 0;
-    s->s3->total_renegotiations++;
-    return 1;
-  }
-
-  return 0;
 }
 
 /* If we are using default SHA1+MD5 algorithms switch to new SHA256 PRF and

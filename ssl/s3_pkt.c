@@ -871,21 +871,36 @@ start:
                       s->s3->handshake_fragment, 4, s, s->msg_callback_arg);
     }
 
-    if (SSL_is_init_finished(s) && !s->s3->renegotiate) {
-      ssl3_renegotiate(s);
-      if (ssl3_renegotiate_check(s)) {
-        i = s->handshake_func(s);
-        if (i < 0) {
-          return i;
-        }
-        if (i == 0) {
-          OPENSSL_PUT_ERROR(SSL, ssl3_read_bytes, SSL_R_SSL_HANDSHAKE_FAILURE);
-          return -1;
-        }
-      }
+    if (!SSL_is_init_finished(s) || !s->s3->initial_handshake_complete) {
+      /* This cannot happen. If a handshake is in progress, |type| must be
+       * |SSL3_RT_HANDSHAKE|. */
+      assert(0);
+      OPENSSL_PUT_ERROR(SSL, ssl3_read_bytes, ERR_R_INTERNAL_ERROR);
+      goto err;
     }
-    /* we either finished a handshake or ignored the request, now try again to
-     * obtain the (application) data we were asked for */
+
+    /* Renegotiation is only supported at quiescent points in the application
+     * protocol, namely in HTTPS, just before reading the HTTP response. Require
+     * the record-layer be idle and avoid complexities of sending a handshake
+     * record while an application_data record is being written. */
+    if (s->s3->wbuf.left != 0 || s->s3->rbuf.left != 0) {
+      al = SSL_AD_NO_RENEGOTIATION;
+      OPENSSL_PUT_ERROR(SSL, ssl3_read_bytes, SSL_R_NO_RENEGOTIATION);
+      goto f_err;
+    }
+
+    /* Begin a new handshake. */
+    s->state = SSL_ST_CONNECT;
+    i = s->handshake_func(s);
+    if (i < 0) {
+      return i;
+    }
+    if (i == 0) {
+      OPENSSL_PUT_ERROR(SSL, ssl3_read_bytes, SSL_R_SSL_HANDSHAKE_FAILURE);
+      return -1;
+    }
+
+    /* The handshake completed synchronously. Continue reading records. */
     goto start;
   }
 

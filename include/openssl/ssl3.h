@@ -418,9 +418,6 @@ typedef struct ssl3_state_st {
   int alert_dispatch;
   uint8_t send_alert[2];
 
-  /* This flag is set when we should renegotiate ASAP, basically when there is
-   * no more data in the read or write buffers */
-  int renegotiate;
   int total_renegotiations;
 
   /* State pertaining to the pending handshake.
