@@ -63,7 +63,8 @@ void CRYPTO_cbc128_encrypt(const uint8_t *in, uint8_t *out, size_t len,
   size_t n;
   const uint8_t *iv = ivec;
 
-  assert(in && out && key && ivec);
+  assert(key != NULL && ivec != NULL);
+  assert(len == 0 || (in != NULL && out != NULL));
 
   if (STRICT_ALIGNMENT &&
       ((size_t)in | (size_t)out | (size_t)ivec) % sizeof(size_t) != 0) {
@@ -119,12 +120,17 @@ void CRYPTO_cbc128_decrypt(const uint8_t *in, uint8_t *out, size_t len,
     uint8_t c[16];
   } tmp;
 
-  assert(in && out && key && ivec);
+  assert(key != NULL && ivec != NULL);
+  assert(len == 0 || (in != NULL && out != NULL));
 
   const uintptr_t inptr = (uintptr_t) in;
   const uintptr_t outptr = (uintptr_t) out;
+  /* If |in| and |out| alias, |in| must be ahead. */
+  assert(inptr >= outptr || inptr + len <= outptr);
 
   if ((inptr >= 32 && outptr <= inptr - 32) || inptr < outptr) {
+    /* If |out| is at least two blocks behind |in| or completely disjoint, there
+     * is no need to decrypt to a temporary block. */
     const uint8_t *iv = ivec;
 
     if (STRICT_ALIGNMENT &&
@@ -155,6 +161,9 @@ void CRYPTO_cbc128_decrypt(const uint8_t *in, uint8_t *out, size_t len,
     }
     memcpy(ivec, iv, 16);
   } else {
+    /* |out| is less than two blocks behind |in|. Decrypting an input block
+     * directly to |out| would overwrite a ciphertext block before it is used as
+     * the next block's IV. Decrypt to a temporary block instead. */
     if (STRICT_ALIGNMENT &&
         ((size_t)in | (size_t)out | (size_t)ivec) % sizeof(size_t) != 0) {
       uint8_t c;
