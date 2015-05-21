@@ -798,7 +798,7 @@ static int do_dtls1_write(SSL *s, int type, const uint8_t *buf,
 
   /* Align the output so the ciphertext is aligned to |SSL3_ALIGN_PAYLOAD|. */
   uintptr_t align = (uintptr_t)wb->buf + DTLS1_RT_HEADER_LENGTH;
-  align = (-align) & (SSL3_ALIGN_PAYLOAD - 1);
+  align = (0 - align) & (SSL3_ALIGN_PAYLOAD - 1);
   uint8_t *out = wb->buf + align;
   wb->offset = align;
   size_t max_out = wb->len - wb->offset;
