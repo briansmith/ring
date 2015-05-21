@@ -121,7 +121,10 @@ void CRYPTO_cbc128_decrypt(const uint8_t *in, uint8_t *out, size_t len,
 
   assert(in && out && key && ivec);
 
-  if (in != out) {
+  const uintptr_t inptr = (uintptr_t) in;
+  const uintptr_t outptr = (uintptr_t) out;
+
+  if ((inptr >= 32 && outptr <= inptr - 32) || inptr < outptr) {
     const uint8_t *iv = ivec;
 
     if (STRICT_ALIGNMENT &&
