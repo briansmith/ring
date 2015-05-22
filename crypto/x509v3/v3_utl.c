@@ -70,6 +70,8 @@
 #include <openssl/obj.h>
 #include <openssl/x509v3.h>
 
+#include "../conf/internal.h"
+
 
 static char *strip_spaces(char *name);
 static int sk_strcmp(const OPENSSL_STRING *a, const OPENSSL_STRING *b);
@@ -91,7 +93,7 @@ int X509V3_add_value(const char *name, const char *value,
 	char *tname = NULL, *tvalue = NULL;
 	if(name && !(tname = BUF_strdup(name))) goto err;
 	if(value && !(tvalue = BUF_strdup(value))) goto err;
-	if(!(vtmp = (CONF_VALUE *)OPENSSL_malloc(sizeof(CONF_VALUE)))) goto err;
+	if(!(vtmp = CONF_VALUE_new())) goto err;
 	if(!*extlist && !(*extlist = sk_CONF_VALUE_new_null())) goto err;
 	vtmp->section = NULL;
 	vtmp->name = tname;

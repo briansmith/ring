@@ -111,6 +111,16 @@ CONF *NCONF_new(void *method) {
   return conf;
 }
 
+CONF_VALUE *CONF_VALUE_new(void) {
+  CONF_VALUE *v = OPENSSL_malloc(sizeof(CONF_VALUE));
+  if (!v) {
+    OPENSSL_PUT_ERROR(CONF, ERR_R_MALLOC_FAILURE);
+    return NULL;
+  }
+  memset(v, 0, sizeof(CONF_VALUE));
+  return v;
+}
+
 static void value_free_contents(CONF_VALUE *value) {
   if (value->section) {
     OPENSSL_free(value->section);
@@ -148,7 +158,7 @@ CONF_VALUE *NCONF_new_section(const CONF *conf, const char *section) {
   CONF_VALUE *v = NULL, *old_value;
 
   sk = sk_CONF_VALUE_new_null();
-  v = OPENSSL_malloc(sizeof(CONF_VALUE));
+  v = CONF_VALUE_new();
   if (sk == NULL || v == NULL) {
     goto err;
   }
@@ -369,11 +379,12 @@ const char *NCONF_get_string(const CONF *conf, const char *section,
   return value->value;
 }
 
-int add_string(const CONF *conf, CONF_VALUE *section, CONF_VALUE *value) {
+static int add_string(const CONF *conf, CONF_VALUE *section,
+                      CONF_VALUE *value) {
   STACK_OF(CONF_VALUE) *section_stack = (STACK_OF(CONF_VALUE)*) section->value;
   CONF_VALUE *old_value;
 
-  value->section = section->section;
+  value->section = OPENSSL_strdup(section->section);
   if (!sk_CONF_VALUE_push(section_stack, value)) {
     return 0;
   }
@@ -635,14 +646,12 @@ static int def_load_bio(CONF *conf, BIO *in, long *out_error_line) {
       p++;
       *p = '\0';
 
-      if (!(v = (CONF_VALUE *)OPENSSL_malloc(sizeof(CONF_VALUE)))) {
-        OPENSSL_PUT_ERROR(CONF, ERR_R_MALLOC_FAILURE);
+      if (!(v = CONF_VALUE_new())) {
         goto err;
       }
       if (psection == NULL) {
         psection = section;
       }
-      v->value = NULL;
       v->name = OPENSSL_strdup(pname);
       if (v->name == NULL) {
         OPENSSL_PUT_ERROR(CONF, ERR_R_MALLOC_FAILURE);
