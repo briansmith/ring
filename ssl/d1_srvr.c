@@ -273,25 +273,17 @@ int dtls1_accept(SSL *s) {
 
       case SSL3_ST_SW_CERT_REQ_A:
       case SSL3_ST_SW_CERT_REQ_B:
-        if (/* don't request cert unless asked for it: */
-            !(s->verify_mode & SSL_VERIFY_PEER) ||
-            /* With normal PSK Certificates and
-             * Certificate Requests are omitted */
-            (s->s3->tmp.new_cipher->algorithm_mkey & SSL_kPSK)) {
-          /* no cert request */
-          skip = 1;
-          s->s3->tmp.cert_request = 0;
-          s->state = SSL3_ST_SW_SRVR_DONE_A;
-        } else {
-          s->s3->tmp.cert_request = 1;
+        if (s->s3->tmp.cert_request) {
           dtls1_start_timer(s);
           ret = ssl3_send_certificate_request(s);
           if (ret <= 0) {
             goto end;
           }
-          s->state = SSL3_ST_SW_SRVR_DONE_A;
-          s->init_num = 0;
+        } else {
+          skip = 1;
         }
+        s->state = SSL3_ST_SW_SRVR_DONE_A;
+        s->init_num = 0;
         break;
 
       case SSL3_ST_SW_SRVR_DONE_A:

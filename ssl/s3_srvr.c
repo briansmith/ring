@@ -337,31 +337,16 @@ int ssl3_accept(SSL *s) {
 
       case SSL3_ST_SW_CERT_REQ_A:
       case SSL3_ST_SW_CERT_REQ_B:
-        if (/* don't request cert unless asked for it: */
-            !(s->verify_mode & SSL_VERIFY_PEER) ||
-            /* Don't request a certificate if an obc was presented */
-            ((s->verify_mode & SSL_VERIFY_PEER_IF_NO_OBC) &&
-             s->s3->tlsext_channel_id_valid) ||
-            /* With normal PSK Certificates and
-             * Certificate Requests are omitted */
-            (s->s3->tmp.new_cipher->algorithm_mkey & SSL_kPSK)) {
-          /* no cert request */
-          skip = 1;
-          s->s3->tmp.cert_request = 0;
-          s->state = SSL3_ST_SW_SRVR_DONE_A;
-          if (s->s3->handshake_buffer &&
-              !ssl3_digest_cached_records(s, free_handshake_buffer)) {
-            return -1;
-          }
-        } else {
-          s->s3->tmp.cert_request = 1;
+        if (s->s3->tmp.cert_request) {
           ret = ssl3_send_certificate_request(s);
           if (ret <= 0) {
             goto end;
           }
-          s->state = SSL3_ST_SW_SRVR_DONE_A;
-          s->init_num = 0;
+        } else {
+          skip = 1;
         }
+        s->state = SSL3_ST_SW_SRVR_DONE_A;
+        s->init_num = 0;
         break;
 
       case SSL3_ST_SW_SRVR_DONE_A:
@@ -1069,12 +1054,27 @@ int ssl3_get_client_hello(SSL *s) {
       goto f_err;
     }
     s->s3->tmp.new_cipher = c;
+
+    /* Determine whether to request a client certificate. */
+    s->s3->tmp.cert_request = !!(s->verify_mode & SSL_VERIFY_PEER);
+    /* Only request a certificate if Channel ID isn't negotiated. */
+    if ((s->verify_mode & SSL_VERIFY_PEER_IF_NO_OBC) &&
+        s->s3->tlsext_channel_id_valid) {
+      s->s3->tmp.cert_request = 0;
+    }
+    /* Plain PSK forbids Certificate and CertificateRequest. */
+    if (s->s3->tmp.new_cipher->algorithm_mkey & SSL_kPSK) {
+      s->s3->tmp.cert_request = 0;
+    }
   } else {
     /* Session-id reuse */
     s->s3->tmp.new_cipher = s->session->cipher;
+    s->s3->tmp.cert_request = 0;
   }
 
-  if ((!SSL_USE_SIGALGS(s) || !(s->verify_mode & SSL_VERIFY_PEER)) &&
+  /* In TLS 1.2, client authentication requires hashing the handshake transcript
+   * under a different hash. Otherwise, release the handshake buffer. */
+  if ((!SSL_USE_SIGALGS(s) || !s->s3->tmp.cert_request) &&
       !ssl3_digest_cached_records(s, free_handshake_buffer)) {
     goto f_err;
   }
