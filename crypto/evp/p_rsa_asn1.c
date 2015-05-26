@@ -198,6 +198,19 @@ static int do_rsa_print(BIO *out, const RSA *rsa, int off,
     update_buflen(rsa->dmp1, &buf_len);
     update_buflen(rsa->dmq1, &buf_len);
     update_buflen(rsa->iqmp, &buf_len);
+
+    if (rsa->additional_primes != NULL) {
+      size_t i;
+
+      for (i = 0; i < sk_RSA_additional_prime_num(rsa->additional_primes);
+           i++) {
+        const RSA_additional_prime *ap =
+            sk_RSA_additional_prime_value(rsa->additional_primes, i);
+        update_buflen(ap->prime, &buf_len);
+        update_buflen(ap->exp, &buf_len);
+        update_buflen(ap->coeff, &buf_len);
+      }
+    }
   }
 
   m = (uint8_t *)OPENSSL_malloc(buf_len + 10);
@@ -215,7 +228,8 @@ static int do_rsa_print(BIO *out, const RSA *rsa, int off,
   }
 
   if (include_private && rsa->d) {
-    if (BIO_printf(out, "Private-Key: (%d bit)\n", mod_len) <= 0) {
+    if (BIO_printf(out, "Private-Key: (%d bit)\nversion: %ld\n", mod_len,
+                   rsa->version) <= 0) {
       goto err;
     }
     str = "modulus:";
@@ -240,6 +254,28 @@ static int do_rsa_print(BIO *out, const RSA *rsa, int off,
         !ASN1_bn_print(out, "exponent2:", rsa->dmq1, m, off) ||
         !ASN1_bn_print(out, "coefficient:", rsa->iqmp, m, off)) {
       goto err;
+    }
+
+    if (rsa->additional_primes != NULL &&
+        sk_RSA_additional_prime_num(rsa->additional_primes) > 0) {
+      size_t i;
+
+      if (BIO_printf(out, "otherPrimeInfos:\n") <= 0) {
+        goto err;
+      }
+      for (i = 0; i < sk_RSA_additional_prime_num(rsa->additional_primes);
+           i++) {
+        const RSA_additional_prime *ap =
+            sk_RSA_additional_prime_value(rsa->additional_primes, i);
+
+        if (BIO_printf(out, "otherPrimeInfo (prime %u):\n",
+                       (unsigned)(i + 3)) <= 0 ||
+            !ASN1_bn_print(out, "prime:", ap->prime, m, off) ||
+            !ASN1_bn_print(out, "exponent:", ap->exp, m, off) ||
+            !ASN1_bn_print(out, "coeff:", ap->coeff, m, off)) {
+          goto err;
+        }
+      }
     }
   }
   ret = 1;

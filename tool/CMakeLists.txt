@@ -7,6 +7,7 @@ add_executable(
   client.cc
   const.cc
   digest.cc
+  genrsa.cc
   pkcs12.cc
   rand.cc
   server.cc

@@ -21,6 +21,7 @@ RSA,function,119,RSA_verify_PKCS1_PSS_mgf1
 RSA,function,120,decrypt
 RSA,function,121,encrypt
 RSA,function,122,keygen
+RSA,function,128,keygen_multiprime
 RSA,function,123,pkcs1_prefixed_msg
 RSA,function,124,private_transform
 RSA,function,125,rsa_setup_blinding
@@ -33,6 +34,7 @@ RSA,reason,103,BAD_RSA_PARAMETERS
 RSA,reason,104,BAD_SIGNATURE
 RSA,reason,105,BLOCK_TYPE_IS_NOT_01
 RSA,reason,106,BN_NOT_INITIALIZED
+RSA,reason,142,CANNOT_RECOVER_MULTI_PRIME_KEY
 RSA,reason,107,CRT_PARAMS_ALREADY_GIVEN
 RSA,reason,108,CRT_VALUES_INCORRECT
 RSA,reason,109,DATA_LEN_NOT_EQUAL_TO_MOD_LEN
@@ -51,6 +53,7 @@ RSA,reason,121,INVALID_MESSAGE_LENGTH
 RSA,reason,122,KEY_SIZE_TOO_SMALL
 RSA,reason,123,LAST_OCTET_INVALID
 RSA,reason,124,MODULUS_TOO_LARGE
+RSA,reason,141,MUST_HAVE_AT_LEAST_TWO_PRIMES
 RSA,reason,125,NO_PUBLIC_EXPONENT
 RSA,reason,126,NULL_BEFORE_BLOCK_MISSING
 RSA,reason,127,N_NOT_EQUAL_P_Q

@@ -49,5 +49,9 @@ bool ParseKeyValueArguments(std::map<std::string, std::string> *out_args, const
 
 void PrintUsage(const struct argument *templates);
 
+bool GetUnsigned(unsigned *out, const std::string &arg_name,
+                 unsigned default_value,
+                 const std::map<std::string, std::string> &args);
+
 
 #endif /* !OPENSSL_HEADER_TOOL_INTERNAL_H */

@@ -114,6 +114,18 @@ RSA *RSA_new_method(const ENGINE *engine) {
   return rsa;
 }
 
+void RSA_additional_prime_free(RSA_additional_prime *ap) {
+  if (ap == NULL) {
+    return;
+  }
+
+  BN_clear_free(ap->prime);
+  BN_clear_free(ap->exp);
+  BN_clear_free(ap->coeff);
+  BN_clear_free(ap->r);
+  OPENSSL_free(ap);
+}
+
 void RSA_free(RSA *rsa) {
   unsigned u;
 
@@ -145,6 +157,10 @@ void RSA_free(RSA *rsa) {
   }
   OPENSSL_free(rsa->blindings);
   OPENSSL_free(rsa->blindings_inuse);
+  if (rsa->additional_primes != NULL) {
+    sk_RSA_additional_prime_pop_free(rsa->additional_primes,
+                                     RSA_additional_prime_free);
+  }
   CRYPTO_MUTEX_cleanup(&rsa->lock);
   OPENSSL_free(rsa);
 }
@@ -160,6 +176,16 @@ int RSA_generate_key_ex(RSA *rsa, int bits, BIGNUM *e_value, BN_GENCB *cb) {
   }
 
   return RSA_default_method.keygen(rsa, bits, e_value, cb);
+}
+
+int RSA_generate_multi_prime_key(RSA *rsa, int bits, int num_primes,
+                                 BIGNUM *e_value, BN_GENCB *cb) {
+  if (rsa->meth->multi_prime_keygen) {
+    return rsa->meth->multi_prime_keygen(rsa, bits, num_primes, e_value, cb);
+  }
+
+  return RSA_default_method.multi_prime_keygen(rsa, bits, num_primes, e_value,
+                                               cb);
 }
 
 int RSA_encrypt(RSA *rsa, size_t *out_len, uint8_t *out, size_t max_out,
@@ -540,15 +566,37 @@ int RSA_check_key(const RSA *key) {
   BN_init(&dmq1);
   BN_init(&iqmp);
 
-  if (/* n = pq */
-      !BN_mul(&n, key->p, key->q, ctx) ||
-      /* lcm = lcm(p-1, q-1) */
+  if (!BN_mul(&n, key->p, key->q, ctx) ||
+      /* lcm = lcm(prime-1, for all primes) */
       !BN_sub(&pm1, key->p, BN_value_one()) ||
       !BN_sub(&qm1, key->q, BN_value_one()) ||
       !BN_mul(&lcm, &pm1, &qm1, ctx) ||
+      !BN_gcd(&gcd, &pm1, &qm1, ctx)) {
+    OPENSSL_PUT_ERROR(RSA, RSA_check_key, ERR_LIB_BN);
+    goto out;
+  }
+
+  size_t num_additional_primes = 0;
+  if (key->additional_primes != NULL) {
+    num_additional_primes = sk_RSA_additional_prime_num(key->additional_primes);
+  }
+
+  size_t i;
+  for (i = 0; i < num_additional_primes; i++) {
+    const RSA_additional_prime *ap =
+        sk_RSA_additional_prime_value(key->additional_primes, i);
+    if (!BN_mul(&n, &n, ap->prime, ctx) ||
+        !BN_sub(&pm1, ap->prime, BN_value_one()) ||
+        !BN_mul(&lcm, &lcm, &pm1, ctx) ||
+        !BN_gcd(&gcd, &gcd, &pm1, ctx)) {
+      OPENSSL_PUT_ERROR(RSA, RSA_check_key, ERR_LIB_BN);
+      goto out;
+    }
+  }
+
+  if (!BN_div(&lcm, NULL, &lcm, &gcd, ctx) ||
       !BN_gcd(&gcd, &pm1, &qm1, ctx) ||
-      !BN_div(&lcm, NULL, &lcm, &gcd, ctx) ||
-      /* de = d*e mod lcm(p-1, q-1) */
+      /* de = d*e mod lcm(prime-1, for all primes). */
       !BN_mod_mul(&de, key->d, key->e, &lcm, ctx)) {
     OPENSSL_PUT_ERROR(RSA, RSA_check_key, ERR_LIB_BN);
     goto out;
@@ -571,7 +619,7 @@ int RSA_check_key(const RSA *key) {
     goto out;
   }
 
-  if (has_crt_values) {
+  if (has_crt_values && num_additional_primes == 0) {
     if (/* dmp1 = d mod (p-1) */
         !BN_mod(&dmp1, key->d, &pm1, ctx) ||
         /* dmq1 = d mod (q-1) */
@@ -620,6 +668,12 @@ int RSA_recover_crt_params(RSA *rsa) {
   if (rsa->p || rsa->q || rsa->dmp1 || rsa->dmq1 || rsa->iqmp) {
     OPENSSL_PUT_ERROR(RSA, RSA_recover_crt_params,
                       RSA_R_CRT_PARAMS_ALREADY_GIVEN);
+    return 0;
+  }
+
+  if (rsa->additional_primes != NULL) {
+    OPENSSL_PUT_ERROR(RSA, RSA_recover_crt_params,
+                      RSA_R_CANNOT_RECOVER_MULTI_PRIME_KEY);
     return 0;
   }
 

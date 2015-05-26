@@ -44,6 +44,8 @@ extern const uint8_t kDERRSAPrivate2048[];
 extern size_t kDERRSAPrivate2048Len;
 extern const uint8_t kDERRSAPrivate4096[];
 extern size_t kDERRSAPrivate4096Len;
+extern const uint8_t kDERRSAPrivate3Prime2048[];
+extern size_t kDERRSAPrivate3Prime2048Len;
 }
 
 // TimeResults represents the results of benchmarking a function.
@@ -423,6 +425,20 @@ bool Speed(const std::vector<std::string> &args) {
   }
 
   if (!SpeedRSA("RSA 2048", key, selected)) {
+    return false;
+  }
+
+  RSA_free(key);
+  key = NULL;
+
+  inp = kDERRSAPrivate3Prime2048;
+  if (NULL == d2i_RSAPrivateKey(&key, &inp, kDERRSAPrivate3Prime2048Len)) {
+    fprintf(stderr, "Failed to parse RSA key.\n");
+    ERR_print_errors_fp(stderr);
+    return false;
+  }
+
+  if (!SpeedRSA("RSA 2048 (3 prime, e=3)", key, selected)) {
     return false;
   }
 

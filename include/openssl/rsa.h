@@ -100,6 +100,12 @@ OPENSSL_EXPORT int RSA_up_ref(RSA *rsa);
 OPENSSL_EXPORT int RSA_generate_key_ex(RSA *rsa, int bits, BIGNUM *e,
                                        BN_GENCB *cb);
 
+/* RSA_generate_multi_prime_key acts like |RSA_generate_key_ex| but can
+ * generate an RSA private key with more than two primes. */
+OPENSSL_EXPORT int RSA_generate_multi_prime_key(RSA *rsa, int bits,
+                                                int num_primes, BIGNUM *e,
+                                                BN_GENCB *cb);
+
 
 /* Encryption / Decryption */
 
@@ -450,6 +456,9 @@ struct rsa_meth_st {
 
   int (*keygen)(RSA *rsa, int bits, BIGNUM *e, BN_GENCB *cb);
 
+  int (*multi_prime_keygen)(RSA *rsa, int bits, int num_primes, BIGNUM *e,
+                            BN_GENCB *cb);
+
   /* supports_digest returns one if |rsa| supports digests of type
    * |md|. If null, it is assumed that all digests are supported. */
   int (*supports_digest)(const RSA *rsa, const EVP_MD *md);
@@ -473,6 +482,9 @@ struct rsa_st {
   BIGNUM *dmp1;
   BIGNUM *dmq1;
   BIGNUM *iqmp;
+
+  STACK_OF(RSA_additional_prime) *additional_primes;
+
   /* be careful using this if the RSA structure is shared */
   CRYPTO_EX_DATA ex_data;
   CRYPTO_refcount_t references;
@@ -530,6 +542,7 @@ struct rsa_st {
 #define RSA_F_rsa_setup_blinding 125
 #define RSA_F_sign_raw 126
 #define RSA_F_verify_raw 127
+#define RSA_F_keygen_multiprime 128
 #define RSA_R_BAD_E_VALUE 100
 #define RSA_R_BAD_FIXED_HEADER_DECRYPT 101
 #define RSA_R_BAD_PAD_BYTE_COUNT 102
@@ -571,5 +584,7 @@ struct rsa_st {
 #define RSA_R_UNKNOWN_PADDING_TYPE 138
 #define RSA_R_VALUE_MISSING 139
 #define RSA_R_WRONG_SIGNATURE_LENGTH 140
+#define RSA_R_MUST_HAVE_AT_LEAST_TWO_PRIMES 141
+#define RSA_R_CANNOT_RECOVER_MULTI_PRIME_KEY 142
 
 #endif  /* OPENSSL_HEADER_RSA_H */
