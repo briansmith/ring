@@ -342,10 +342,6 @@ int ssl3_accept(SSL *s) {
             /* Don't request a certificate if an obc was presented */
             ((s->verify_mode & SSL_VERIFY_PEER_IF_NO_OBC) &&
              s->s3->tlsext_channel_id_valid) ||
-            /* if SSL_VERIFY_CLIENT_ONCE is set,
-             * don't request cert during re-negotiation: */
-            ((s->session->peer != NULL) &&
-             (s->verify_mode & SSL_VERIFY_CLIENT_ONCE)) ||
             /* With normal PSK Certificates and
              * Certificate Requests are omitted */
             (s->s3->tmp.new_cipher->algorithm_mkey & SSL_kPSK)) {

@@ -275,10 +275,6 @@ int dtls1_accept(SSL *s) {
       case SSL3_ST_SW_CERT_REQ_B:
         if (/* don't request cert unless asked for it: */
             !(s->verify_mode & SSL_VERIFY_PEER) ||
-            /* if SSL_VERIFY_CLIENT_ONCE is set,
-             * don't request cert during re-negotiation: */
-            ((s->session->peer != NULL) &&
-             (s->verify_mode & SSL_VERIFY_CLIENT_ONCE)) ||
             /* With normal PSK Certificates and
              * Certificate Requests are omitted */
             (s->s3->tmp.new_cipher->algorithm_mkey & SSL_kPSK)) {

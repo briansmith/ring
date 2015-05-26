@@ -1528,6 +1528,7 @@ OPENSSL_EXPORT size_t SSL_get_peer_finished(const SSL *s, void *buf, size_t coun
 #define SSL_VERIFY_NONE 0x00
 #define SSL_VERIFY_PEER 0x01
 #define SSL_VERIFY_FAIL_IF_NO_PEER_CERT 0x02
+/* SSL_VERIFY_CLIENT_ONCE does nothing. */
 #define SSL_VERIFY_CLIENT_ONCE 0x04
 #define SSL_VERIFY_PEER_IF_NO_OBC 0x08
 
