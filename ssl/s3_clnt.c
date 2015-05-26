@@ -865,9 +865,10 @@ int ssl3_get_server_hello(SSL *s) {
   }
   s->s3->tmp.new_cipher = c;
 
-  /* Don't digest cached records if no sigalgs: we may need them for client
-   * authentication. */
-  if (!SSL_USE_SIGALGS(s) &&
+  /* If doing a full handshake with TLS 1.2, the server may request a client
+   * certificate which requires hashing the handshake transcript under a
+   * different hash. Otherwise, release the handshake buffer. */
+  if ((!SSL_USE_SIGALGS(s) || s->hit) &&
       !ssl3_digest_cached_records(s, free_handshake_buffer)) {
     goto f_err;
   }
