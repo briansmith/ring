@@ -114,6 +114,7 @@ static bool test_bn2bin_padded(FILE *fp, BN_CTX *ctx);
 static bool test_dec2bn(FILE *fp, BN_CTX *ctx);
 static bool test_hex2bn(FILE *fp, BN_CTX *ctx);
 static bool test_asc2bn(FILE *fp, BN_CTX *ctx);
+static bool test_rand();
 
 // g_results can be set to true to cause the result of each computation to be
 // printed.
@@ -304,6 +305,12 @@ int main(int argc, char *argv[]) {
 
   message(stdout, "BN_asc2bn");
   if (!test_asc2bn(stdout, ctx.get())) {
+    return 1;
+  }
+  fflush(stdout);
+
+  message(stdout, "BN_rand");
+  if (!test_rand()) {
     return 1;
   }
   fflush(stdout);
@@ -1612,6 +1619,50 @@ static bool test_asc2bn(FILE *fp, BN_CTX *ctx) {
   bn = ASCIIToBIGNUM("123trailing garbage is ignored");
   if (!bn || !BN_is_word(bn.get(), 123) || BN_is_negative(bn.get())) {
     fprintf(stderr, "BN_asc2bn gave a bad result.\n");
+    return false;
+  }
+
+  return true;
+}
+
+static bool test_rand() {
+  ScopedBIGNUM bn(BN_new());
+  if (!bn) {
+    return false;
+  }
+
+  // Test BN_rand accounts for degenerate cases with |top| and |bottom|
+  // parameters.
+  if (!BN_rand(bn.get(), 0, 0 /* top */, 0 /* bottom */) ||
+      !BN_is_zero(bn.get())) {
+    fprintf(stderr, "BN_rand gave a bad result.\n");
+    return false;
+  }
+  if (!BN_rand(bn.get(), 0, 1 /* top */, 1 /* bottom */) ||
+      !BN_is_zero(bn.get())) {
+    fprintf(stderr, "BN_rand gave a bad result.\n");
+    return false;
+  }
+
+  if (!BN_rand(bn.get(), 1, 0 /* top */, 0 /* bottom */) ||
+      !BN_is_word(bn.get(), 1)) {
+    fprintf(stderr, "BN_rand gave a bad result.\n");
+    return false;
+  }
+  if (!BN_rand(bn.get(), 1, 1 /* top */, 0 /* bottom */) ||
+      !BN_is_word(bn.get(), 1)) {
+    fprintf(stderr, "BN_rand gave a bad result.\n");
+    return false;
+  }
+  if (!BN_rand(bn.get(), 1, -1 /* top */, 1 /* bottom */) ||
+      !BN_is_word(bn.get(), 1)) {
+    fprintf(stderr, "BN_rand gave a bad result.\n");
+    return false;
+  }
+
+  if (!BN_rand(bn.get(), 2, 1 /* top */, 0 /* bottom */) ||
+      !BN_is_word(bn.get(), 3)) {
+    fprintf(stderr, "BN_rand gave a bad result.\n");
     return false;
   }
 

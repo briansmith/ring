@@ -144,7 +144,7 @@ int BN_rand(BIGNUM *rnd, int bits, int top, int bottom) {
   }
 
   if (top != -1) {
-    if (top) {
+    if (top && bits > 1) {
       if (bit == 0) {
         buf[0] = 1;
         buf[1] |= 0x80;

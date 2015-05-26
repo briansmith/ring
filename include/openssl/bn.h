@@ -548,15 +548,15 @@ OPENSSL_EXPORT BIGNUM *BN_mod_sqrt(BIGNUM *in, const BIGNUM *a, const BIGNUM *p,
 
 /* Random and prime number generation. */
 
-/* BN_rand sets |rnd| to a random number of length |bits|. If |top| is zero,
- * the most-significant bit will be set. If |top| is one, the two most
- * significant bits will be set.
+/* BN_rand sets |rnd| to a random number of length |bits|. If |top| is zero, the
+ * most-significant bit, if any, will be set. If |top| is one, the two most
+ * significant bits, if any, will be set.
  *
  * If |top| is -1 then no extra action will be taken and |BN_num_bits(rnd)| may
  * not equal |bits| if the most significant bits randomly ended up as zeros.
  *
- * If |bottom| is non-zero, the least-significant bit will be set. The function
- * returns one on success or zero otherwise. */
+ * If |bottom| is non-zero, the least-significant bit, if any, will be set. The
+ * function returns one on success or zero otherwise. */
 OPENSSL_EXPORT int BN_rand(BIGNUM *rnd, int bits, int top, int bottom);
 
 /* BN_pseudo_rand is an alias for |BN_rand|. */
