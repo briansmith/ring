@@ -356,15 +356,6 @@ OPENSSL_EXPORT void CRYPTO_once(CRYPTO_once_t *once, void (*init)(void));
 
 /* Reference counting. */
 
-#if defined(__STDC_VERSION__) && __STDC_VERSION__ >= 201112L && \
-    !defined(__STDC_NO_ATOMICS__)
-/* OSX's atomic support is broken: the compiler sets the right macros but
- * stdatomic.h is missing. */
-#if !defined(OPENSSL_APPLE)
-#define OPENSSL_C11_ATOMIC
-#endif
-#endif
-
 /* CRYPTO_REFCOUNT_MAX is the value at which the reference count saturates. */
 #define CRYPTO_REFCOUNT_MAX 0xffffffff
 
