@@ -58,6 +58,8 @@
 
 #include <string.h>
 
+#include <openssl/err.h>
+
 #include "internal.h"
 
 
@@ -65,6 +67,11 @@ int BN_lshift(BIGNUM *r, const BIGNUM *a, int n) {
   int i, nw, lb, rb;
   BN_ULONG *t, *f;
   BN_ULONG l;
+
+  if (n < 0) {
+    OPENSSL_PUT_ERROR(BN, BN_lshift, BN_R_NEGATIVE_NUMBER);
+    return 0;
+  }
 
   r->neg = a->neg;
   nw = n / BN_BITS2;
@@ -129,6 +136,11 @@ int BN_rshift(BIGNUM *r, const BIGNUM *a, int n) {
   int i, j, nw, lb, rb;
   BN_ULONG *t, *f;
   BN_ULONG l, tmp;
+
+  if (n < 0) {
+    OPENSSL_PUT_ERROR(BN, BN_rshift, BN_R_NEGATIVE_NUMBER);
+    return 0;
+  }
 
   nw = n / BN_BITS2;
   rb = n % BN_BITS2;

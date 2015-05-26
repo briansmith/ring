@@ -8,6 +8,7 @@ BN,function,106,BN_div_recp
 BN,function,107,BN_exp
 BN,function,108,BN_generate_dsa_nonce
 BN,function,109,BN_generate_prime_ex
+BN,function,125,BN_lshift
 BN,function,110,BN_mod_exp2_mont
 BN,function,111,BN_mod_exp_mont
 BN,function,112,BN_mod_exp_mont_consttime
@@ -19,6 +20,7 @@ BN,function,117,BN_mod_sqrt
 BN,function,118,BN_new
 BN,function,119,BN_rand
 BN,function,120,BN_rand_range
+BN,function,126,BN_rshift
 BN,function,121,BN_sqrt
 BN,function,122,BN_usub
 BN,function,123,bn_wexpand

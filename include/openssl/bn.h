@@ -852,6 +852,8 @@ OPENSSL_EXPORT BIGNUM *get_rfc3526_prime_1536(BIGNUM *bn);
 #define BN_F_BN_usub 122
 #define BN_F_bn_wexpand 123
 #define BN_F_mod_exp_recp 124
+#define BN_F_BN_lshift 125
+#define BN_F_BN_rshift 126
 #define BN_R_ARG2_LT_ARG3 100
 #define BN_R_BAD_RECIPROCAL 101
 #define BN_R_BIGNUM_TOO_LONG 102
