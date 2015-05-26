@@ -167,18 +167,18 @@ int OBJ_cmp(const ASN1_OBJECT *a, const ASN1_OBJECT *b) {
   return memcmp(a->data, b->data, a->length);
 }
 
-/* nids_cmp is called to search the kNIDsInOIDOrder array. The |key| argument
- * is an |ASN1_OBJECT|* that we're looking for and |element| is a pointer to an
+/* obj_cmp is called to search the kNIDsInOIDOrder array. The |key| argument is
+ * an |ASN1_OBJECT|* that we're looking for and |element| is a pointer to an
  * unsigned int in the array. */
 static int obj_cmp(const void *key, const void *element) {
-  int j;
-  unsigned nid = *((unsigned*) element);
+  unsigned nid = *((const unsigned*) element);
   const ASN1_OBJECT *a = key;
   const ASN1_OBJECT *b = &kObjects[nid];
 
-  j = a->length - b->length;
-  if (j) {
-    return j;
+  if (a->length < b->length) {
+    return -1;
+  } else if (a->length > b->length) {
+    return 1;
   }
   return memcmp(a->data, b->data, a->length);
 }
