@@ -822,7 +822,7 @@ int ssl3_get_v2_client_hello(SSL *s) {
 }
 
 int ssl3_get_client_hello(SSL *s) {
-  int i, ok, al = SSL_AD_INTERNAL_ERROR, ret = -1;
+  int ok, al = SSL_AD_INTERNAL_ERROR, ret = -1;
   long n;
   const SSL_CIPHER *c;
   STACK_OF(SSL_CIPHER) *ciphers = NULL;
@@ -950,29 +950,22 @@ int ssl3_get_client_hello(SSL *s) {
   }
 
   s->hit = 0;
-  if (s->s3->initial_handshake_complete) {
-    /* Renegotiations do not participate in session resumption. */
+  int session_ret = ssl_get_prev_session(s, &early_ctx);
+  if (session_ret == PENDING_SESSION) {
+    s->rwstate = SSL_PENDING_SESSION;
+    goto err;
+  } else if (session_ret == -1) {
+    goto err;
+  }
+
+  /* Only resume if the session's version matches the negotiated version:
+   * most clients do not accept a mismatch. */
+  if (session_ret == 1 && s->version == s->session->ssl_version) {
+    s->hit = 1;
+  } else {
+    /* No session was found or it was unacceptable. */
     if (!ssl_get_new_session(s, 1)) {
       goto err;
-    }
-  } else {
-    i = ssl_get_prev_session(s, &early_ctx);
-    if (i == PENDING_SESSION) {
-      s->rwstate = SSL_PENDING_SESSION;
-      goto err;
-    } else if (i == -1) {
-      goto err;
-    }
-
-    /* Only resume if the session's version matches the negotiated version:
-     * most clients do not accept a mismatch. */
-    if (i == 1 && s->version == s->session->ssl_version) {
-      s->hit = 1;
-    } else {
-      /* No session was found or it was unacceptable. */
-      if (!ssl_get_new_session(s, 1)) {
-        goto err;
-      }
     }
   }
 
