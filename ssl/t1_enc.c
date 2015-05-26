@@ -554,6 +554,11 @@ int tls1_final_finish_mac(SSL *s, const char *str, int slen, uint8_t *out) {
   int err = 0;
   int digests_len;
 
+  /* At this point, the handshake should have released the handshake buffer on
+   * its own.
+   * TODO(davidben): Apart from initialization, the handshake buffer should be
+   * orthogonal to the handshake digest. https://crbug.com/492371 */
+  assert(s->s3->handshake_buffer == NULL);
   if (s->s3->handshake_buffer &&
       !ssl3_digest_cached_records(s, free_handshake_buffer)) {
     return 0;

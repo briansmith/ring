@@ -2118,6 +2118,13 @@ int ssl3_send_client_certificate(SSL *s) {
         return 1;
       } else {
         s->s3->tmp.cert_req = 2;
+        /* There is no client certificate, so the handshake buffer may be
+         * released. */
+        if (s->s3->handshake_buffer &&
+            !ssl3_digest_cached_records(s, free_handshake_buffer)) {
+          ssl3_send_alert(s, SSL3_AL_FATAL, SSL_AD_INTERNAL_ERROR);
+          return -1;
+        }
       }
     }
 
