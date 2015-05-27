@@ -102,6 +102,13 @@ typedef uint32_t CRYPTO_refcount_t;
 
 /* Deprecated functions */
 
+/* These defines do nothing but are provided to make old code easier to
+ * compile. */
+#define CRYPTO_LOCK 1
+#define CRYPTO_UNLOCK 2
+#define CRYPTO_READ 4
+#define CRYPTO_WRITE 8
+
 /* CRYPTO_num_locks returns one. (This is non-zero that callers who allocate
  * sizeof(lock) times this value don't get zero and then fail because malloc(0)
  * returned NULL.) */
