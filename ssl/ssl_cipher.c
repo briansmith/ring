@@ -1120,7 +1120,8 @@ static const char *ssl_cipher_get_enc_name(const SSL_CIPHER *cipher) {
 }
 
 static const char *ssl_cipher_get_prf_name(const SSL_CIPHER *cipher) {
-  if ((cipher->algorithm2 & TLS1_PRF) == TLS1_PRF) {
+  if ((cipher->algorithm2 & SSL_HANDSHAKE_MAC_DEFAULT) ==
+      SSL_HANDSHAKE_MAC_DEFAULT) {
     /* Before TLS 1.2, the PRF component is the hash used in the HMAC, which is
      * only ever MD5 or SHA-1. */
     switch (cipher->algorithm_mac) {
@@ -1132,9 +1133,9 @@ static const char *ssl_cipher_get_prf_name(const SSL_CIPHER *cipher) {
         assert(0);
         return "UNKNOWN";
     }
-  } else if (cipher->algorithm2 & TLS1_PRF_SHA256) {
+  } else if (cipher->algorithm2 & SSL_HANDSHAKE_MAC_SHA256) {
     return "SHA256";
-  } else if (cipher->algorithm2 & TLS1_PRF_SHA384) {
+  } else if (cipher->algorithm2 & SSL_HANDSHAKE_MAC_SHA384) {
     return "SHA384";
   } else {
     assert(0);

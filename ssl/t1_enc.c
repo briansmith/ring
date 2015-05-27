@@ -245,7 +245,7 @@ int tls1_prf(SSL *s, uint8_t *out, size_t out_len, const uint8_t *secret,
   /* Count number of digests and partition |secret| evenly. */
   count = 0;
   for (idx = 0; ssl_get_handshake_digest(&m, &md, idx); idx++) {
-    if ((m << TLS1_PRF_DGST_SHIFT) & ssl_get_algorithm2(s)) {
+    if (m & ssl_get_algorithm2(s)) {
       count++;
     }
   }
@@ -260,7 +260,7 @@ int tls1_prf(SSL *s, uint8_t *out, size_t out_len, const uint8_t *secret,
   S1 = secret;
   memset(out, 0, out_len);
   for (idx = 0; ssl_get_handshake_digest(&m, &md, idx); idx++) {
-    if ((m << TLS1_PRF_DGST_SHIFT) & ssl_get_algorithm2(s)) {
+    if (m & ssl_get_algorithm2(s)) {
       /* If |count| is 2 and |secret_len| is odd, |secret| is partitioned into
        * two halves with an overlapping byte. */
       if (!tls1_P_hash(tmp, out_len, md, S1, len + (secret_len & 1),
