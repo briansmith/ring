@@ -224,10 +224,6 @@
 #define TLS1_PRF_SHA384 (SSL_HANDSHAKE_MAC_SHA384 << TLS1_PRF_DGST_SHIFT)
 #define TLS1_PRF (TLS1_PRF_MD5 | TLS1_PRF_SHA1)
 
-/* SSL_CIPHER_ALGORITHM2_AEAD is a flag in SSL_CIPHER.algorithm2 which
- * indicates that the cipher is implemented via an EVP_AEAD. */
-#define SSL_CIPHER_ALGORITHM2_AEAD (1 << 23)
-
 /* SSL_CIPHER_ALGORITHM2_VARIABLE_NONCE_INCLUDED_IN_RECORD is a flag in
  * SSL_CIPHER.algorithm2 which indicates that the variable part of the nonce is
  * included as a prefix of the record. (AES-GCM, for example, does with with an
