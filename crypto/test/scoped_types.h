@@ -16,6 +16,7 @@
 #define OPENSSL_HEADER_CRYPTO_TEST_SCOPED_TYPES_H
 
 #include <stdint.h>
+#include <stdio.h>
 
 #include <openssl/bio.h>
 #include <openssl/bn.h>
@@ -54,6 +55,12 @@ template<typename T>
 struct OpenSSLFree {
   void operator()(T *buf) {
     OPENSSL_free(buf);
+  }
+};
+
+struct FileCloser {
+  void operator()(FILE *file) {
+    fclose(file);
   }
 };
 
@@ -119,5 +126,6 @@ using ScopedHMAC_CTX = ScopedOpenSSLContext<HMAC_CTX, void, HMAC_CTX_init,
 using ScopedOpenSSLBytes = bssl::unique_ptr<uint8_t, OpenSSLFree<uint8_t>>;
 using ScopedOpenSSLString = bssl::unique_ptr<char, OpenSSLFree<char>>;
 
+using ScopedFILE = bssl::unique_ptr<FILE, FileCloser>;
 
 #endif  // OPENSSL_HEADER_CRYPTO_TEST_SCOPED_TYPES_H

@@ -72,6 +72,7 @@
 #define __STDC_FORMAT_MACROS
 #endif
 
+#include <errno.h>
 #include <stdio.h>
 #include <string.h>
 
@@ -82,6 +83,12 @@
 
 #include "../crypto/test/scoped_types.h"
 
+
+// This program tests the BIGNUM implementation. It takes an optional -bc
+// argument to write a transcript compatible with the UNIX bc utility.
+//
+// TODO(davidben): Rather than generate random inputs and depend on bc to check
+// the results, most of these tests should use known answers.
 
 static const int num0 = 100; // number of tests
 static const int num1 = 50;  // additional tests for some functions
@@ -116,10 +123,6 @@ static bool test_hex2bn(FILE *fp, BN_CTX *ctx);
 static bool test_asc2bn(FILE *fp, BN_CTX *ctx);
 static bool test_rand();
 
-// g_results can be set to true to cause the result of each computation to be
-// printed.
-static bool g_results = false;
-
 static const uint8_t kSample[] =
     "\xC6\x4F\x43\x04\x2A\xEA\xCA\x6E\x58\x36\x80\x5B\xE8\xC9"
     "\x9B\x04\x5D\x48\x36\xC2\xFD\x16\xC9\x64\xF0";
@@ -127,7 +130,15 @@ static const uint8_t kSample[] =
 // A wrapper around puts that takes its arguments in the same order as our *_fp
 // functions.
 static void puts_fp(FILE *out, const char *m) {
-  fputs(m, out);
+  if (out != nullptr) {
+    fputs(m, out);
+  }
+}
+
+static void flush_fp(FILE *out) {
+  if (out != nullptr) {
+    fflush(out);
+  }
 }
 
 static void message(FILE *out, const char *m) {
@@ -139,11 +150,24 @@ static void message(FILE *out, const char *m) {
 int main(int argc, char *argv[]) {
   CRYPTO_library_init();
 
+  ScopedFILE bc_file;
   argc--;
   argv++;
   while (argc >= 1) {
-    if (strcmp(*argv, "-results") == 0) {
-      g_results = true;
+    if (strcmp(*argv, "-bc") == 0) {
+      if (argc < 2) {
+        fprintf(stderr, "Missing parameter to -bc\n");
+        return 1;
+      }
+      bc_file.reset(fopen(argv[1], "w+"));
+      if (!bc_file) {
+        fprintf(stderr, "Failed to open %s: %s\n", argv[1], strerror(errno));
+      }
+      argc--;
+      argv++;
+    } else {
+      fprintf(stderr, "Unknown option: %s\n", argv[0]);
+      return 1;
     }
     argc--;
     argv++;
@@ -155,165 +179,167 @@ int main(int argc, char *argv[]) {
     return 1;
   }
 
-  if (!g_results) {
-    puts_fp(stdout, "obase=16\nibase=16\n");
-  }
+  puts_fp(bc_file.get(), "/* This script, when run through the UNIX bc utility, "
+                         "should produce a sequence of zeros. */\n");
+  puts_fp(bc_file.get(), "/* tr a-f A-F < bn_test.out | sed s/BAsE/base/ | bc "
+                         "| grep -v 0 */\n");
+  puts_fp(bc_file.get(), "obase=16\nibase=16\n");
 
-  message(stdout, "BN_add");
-  if (!test_add(stdout)) {
+  message(bc_file.get(), "BN_add");
+  if (!test_add(bc_file.get())) {
     return 1;
   }
-  fflush(stdout);
+  flush_fp(bc_file.get());
 
-  message(stdout, "BN_sub");
-  if (!test_sub(stdout)) {
+  message(bc_file.get(), "BN_sub");
+  if (!test_sub(bc_file.get())) {
     return 1;
   }
-  fflush(stdout);
+  flush_fp(bc_file.get());
 
-  message(stdout, "BN_lshift1");
-  if (!test_lshift1(stdout)) {
+  message(bc_file.get(), "BN_lshift1");
+  if (!test_lshift1(bc_file.get())) {
     return 1;
   }
-  fflush(stdout);
+  flush_fp(bc_file.get());
 
-  message(stdout, "BN_lshift (fixed)");
+  message(bc_file.get(), "BN_lshift (fixed)");
   ScopedBIGNUM sample(BN_bin2bn(kSample, sizeof(kSample) - 1, NULL));
   if (!sample) {
     return 1;
   }
-  if (!test_lshift(stdout, ctx.get(), bssl::move(sample))) {
+  if (!test_lshift(bc_file.get(), ctx.get(), bssl::move(sample))) {
     return 1;
   }
-  fflush(stdout);
+  flush_fp(bc_file.get());
 
-  message(stdout, "BN_lshift");
-  if (!test_lshift(stdout, ctx.get(), nullptr)) {
+  message(bc_file.get(), "BN_lshift");
+  if (!test_lshift(bc_file.get(), ctx.get(), nullptr)) {
     return 1;
   }
-  fflush(stdout);
+  flush_fp(bc_file.get());
 
-  message(stdout, "BN_rshift1");
-  if (!test_rshift1(stdout)) {
+  message(bc_file.get(), "BN_rshift1");
+  if (!test_rshift1(bc_file.get())) {
     return 1;
   }
-  fflush(stdout);
+  flush_fp(bc_file.get());
 
-  message(stdout, "BN_rshift");
-  if (!test_rshift(stdout, ctx.get())) {
+  message(bc_file.get(), "BN_rshift");
+  if (!test_rshift(bc_file.get(), ctx.get())) {
     return 1;
   }
-  fflush(stdout);
+  flush_fp(bc_file.get());
 
-  message(stdout, "BN_sqr");
-  if (!test_sqr(stdout, ctx.get())) {
+  message(bc_file.get(), "BN_sqr");
+  if (!test_sqr(bc_file.get(), ctx.get())) {
     return 1;
   }
-  fflush(stdout);
+  flush_fp(bc_file.get());
 
-  message(stdout, "BN_mul");
-  if (!test_mul(stdout)) {
+  message(bc_file.get(), "BN_mul");
+  if (!test_mul(bc_file.get())) {
     return 1;
   }
-  fflush(stdout);
+  flush_fp(bc_file.get());
 
-  message(stdout, "BN_div");
-  if (!test_div(stdout, ctx.get())) {
+  message(bc_file.get(), "BN_div");
+  if (!test_div(bc_file.get(), ctx.get())) {
     return 1;
   }
-  fflush(stdout);
+  flush_fp(bc_file.get());
 
-  message(stdout, "BN_div_word");
-  if (!test_div_word(stdout)) {
+  message(bc_file.get(), "BN_div_word");
+  if (!test_div_word(bc_file.get())) {
     return 1;
   }
-  fflush(stdout);
+  flush_fp(bc_file.get());
 
-  message(stdout, "BN_mod");
-  if (!test_mod(stdout, ctx.get())) {
+  message(bc_file.get(), "BN_mod");
+  if (!test_mod(bc_file.get(), ctx.get())) {
     return 1;
   }
-  fflush(stdout);
+  flush_fp(bc_file.get());
 
-  message(stdout, "BN_mod_mul");
-  if (!test_mod_mul(stdout, ctx.get())) {
+  message(bc_file.get(), "BN_mod_mul");
+  if (!test_mod_mul(bc_file.get(), ctx.get())) {
     return 1;
   }
-  fflush(stdout);
+  flush_fp(bc_file.get());
 
-  message(stdout, "BN_mont");
-  if (!test_mont(stdout, ctx.get())) {
+  message(bc_file.get(), "BN_mont");
+  if (!test_mont(bc_file.get(), ctx.get())) {
     return 1;
   }
-  fflush(stdout);
+  flush_fp(bc_file.get());
 
-  message(stdout, "BN_mod_exp");
-  if (!test_mod_exp(stdout, ctx.get())) {
+  message(bc_file.get(), "BN_mod_exp");
+  if (!test_mod_exp(bc_file.get(), ctx.get())) {
     return 1;
   }
-  fflush(stdout);
+  flush_fp(bc_file.get());
 
-  message(stdout, "BN_mod_exp_mont_consttime");
-  if (!test_mod_exp_mont_consttime(stdout, ctx.get()) ||
-      !test_mod_exp_mont5(stdout, ctx.get())) {
+  message(bc_file.get(), "BN_mod_exp_mont_consttime");
+  if (!test_mod_exp_mont_consttime(bc_file.get(), ctx.get()) ||
+      !test_mod_exp_mont5(bc_file.get(), ctx.get())) {
     return 1;
   }
-  fflush(stdout);
+  flush_fp(bc_file.get());
 
-  message(stdout, "BN_exp");
-  if (!test_exp(stdout, ctx.get()) ||
+  message(bc_file.get(), "BN_exp");
+  if (!test_exp(bc_file.get(), ctx.get()) ||
       !test_exp_mod_zero()) {
     return 1;
   }
-  fflush(stdout);
+  flush_fp(bc_file.get());
 
-  message(stdout, "BN_mod_sqrt");
-  if (!test_mod_sqrt(stdout, ctx.get())) {
+  message(bc_file.get(), "BN_mod_sqrt");
+  if (!test_mod_sqrt(bc_file.get(), ctx.get())) {
     return 1;
   }
-  fflush(stdout);
+  flush_fp(bc_file.get());
 
-  message(stdout, "Small prime generation");
-  if (!test_small_prime(stdout, ctx.get())) {
+  message(bc_file.get(), "Small prime generation");
+  if (!test_small_prime(bc_file.get(), ctx.get())) {
     return 1;
   }
-  fflush(stdout);
+  flush_fp(bc_file.get());
 
-  message(stdout, "BN_sqrt");
-  if (!test_sqrt(stdout, ctx.get())) {
+  message(bc_file.get(), "BN_sqrt");
+  if (!test_sqrt(bc_file.get(), ctx.get())) {
     return 1;
   }
-  fflush(stdout);
+  flush_fp(bc_file.get());
 
-  message(stdout, "BN_bn2bin_padded");
-  if (!test_bn2bin_padded(stdout, ctx.get())) {
+  message(bc_file.get(), "BN_bn2bin_padded");
+  if (!test_bn2bin_padded(bc_file.get(), ctx.get())) {
     return 1;
   }
-  fflush(stdout);
+  flush_fp(bc_file.get());
 
-  message(stdout, "BN_dec2bn");
-  if (!test_dec2bn(stdout, ctx.get())) {
+  message(bc_file.get(), "BN_dec2bn");
+  if (!test_dec2bn(bc_file.get(), ctx.get())) {
     return 1;
   }
-  fflush(stdout);
+  flush_fp(bc_file.get());
 
-  message(stdout, "BN_hex2bn");
-  if (!test_hex2bn(stdout, ctx.get())) {
+  message(bc_file.get(), "BN_hex2bn");
+  if (!test_hex2bn(bc_file.get(), ctx.get())) {
     return 1;
   }
-  fflush(stdout);
+  flush_fp(bc_file.get());
 
-  message(stdout, "BN_asc2bn");
-  if (!test_asc2bn(stdout, ctx.get())) {
+  message(bc_file.get(), "BN_asc2bn");
+  if (!test_asc2bn(bc_file.get(), ctx.get())) {
     return 1;
   }
-  fflush(stdout);
+  flush_fp(bc_file.get());
 
-  message(stdout, "BN_rand");
+  message(bc_file.get(), "BN_rand");
   if (!test_rand()) {
     return 1;
   }
-  fflush(stdout);
+  flush_fp(bc_file.get());
 
   printf("PASS\n");
   return 0;
@@ -337,12 +363,10 @@ static bool test_add(FILE *fp) {
       return false;
     }
     if (fp != NULL) {
-      if (!g_results) {
-        BN_print_fp(fp, a.get());
-        puts_fp(fp, " + ");
-        BN_print_fp(fp, b.get());
-        puts_fp(fp, " - ");
-      }
+      BN_print_fp(fp, a.get());
+      puts_fp(fp, " + ");
+      BN_print_fp(fp, b.get());
+      puts_fp(fp, " - ");
       BN_print_fp(fp, c.get());
       puts_fp(fp, "\n");
     }
@@ -387,12 +411,10 @@ static bool test_sub(FILE *fp) {
       return false;
     }
     if (fp != NULL) {
-      if (!g_results) {
-        BN_print_fp(fp, a.get());
-        puts_fp(fp, " - ");
-        BN_print_fp(fp, b.get());
-        puts_fp(fp, " - ");
-      }
+      BN_print_fp(fp, a.get());
+      puts_fp(fp, " - ");
+      BN_print_fp(fp, b.get());
+      puts_fp(fp, " - ");
       BN_print_fp(fp, c.get());
       puts_fp(fp, "\n");
     }
@@ -435,21 +457,17 @@ static bool test_div(FILE *fp, BN_CTX *ctx) {
       return false;
     }
     if (fp != NULL) {
-      if (!g_results) {
-        BN_print_fp(fp, a.get());
-        puts_fp(fp, " / ");
-        BN_print_fp(fp, b.get());
-        puts_fp(fp, " - ");
-      }
+      BN_print_fp(fp, a.get());
+      puts_fp(fp, " / ");
+      BN_print_fp(fp, b.get());
+      puts_fp(fp, " - ");
       BN_print_fp(fp, d.get());
       puts_fp(fp, "\n");
 
-      if (!g_results) {
-        BN_print_fp(fp, a.get());
-        puts_fp(fp, " % ");
-        BN_print_fp(fp, b.get());
-        puts_fp(fp, " - ");
-      }
+      BN_print_fp(fp, a.get());
+      puts_fp(fp, " % ");
+      BN_print_fp(fp, b.get());
+      puts_fp(fp, " - ");
       BN_print_fp(fp, c.get());
       puts_fp(fp, "\n");
     }
@@ -506,11 +524,9 @@ static bool test_lshift1(FILE *fp) {
       return false;
     }
     if (fp != NULL) {
-      if (!g_results) {
-        BN_print_fp(fp, a.get());
-        puts_fp(fp, " * 2");
-        puts_fp(fp, " - ");
-      }
+      BN_print_fp(fp, a.get());
+      puts_fp(fp, " * 2");
+      puts_fp(fp, " - ");
       BN_print_fp(fp, b.get());
       puts_fp(fp, "\n");
     }
@@ -547,12 +563,10 @@ static bool test_rshift(FILE *fp, BN_CTX *ctx) {
       return false;
     }
     if (fp != NULL) {
-      if (!g_results) {
-        BN_print_fp(fp, a.get());
-        puts_fp(fp, " / ");
-        BN_print_fp(fp, c.get());
-        puts_fp(fp, " - ");
-      }
+      BN_print_fp(fp, a.get());
+      puts_fp(fp, " / ");
+      BN_print_fp(fp, c.get());
+      puts_fp(fp, " - ");
       BN_print_fp(fp, b.get());
       puts_fp(fp, "\n");
     }
@@ -582,11 +596,9 @@ static bool test_rshift1(FILE *fp) {
       return false;
     }
     if (fp != NULL) {
-      if (!g_results) {
-        BN_print_fp(fp, a.get());
-        puts_fp(fp, " / 2");
-        puts_fp(fp, " - ");
-      }
+      BN_print_fp(fp, a.get());
+      puts_fp(fp, " / 2");
+      puts_fp(fp, " - ");
       BN_print_fp(fp, b.get());
       puts_fp(fp, "\n");
     }
@@ -627,12 +639,10 @@ static bool test_lshift(FILE *fp, BN_CTX *ctx, ScopedBIGNUM a) {
       return false;
     }
     if (fp != NULL) {
-      if (!g_results) {
-        BN_print_fp(fp, a.get());
-        puts_fp(fp, " * ");
-        BN_print_fp(fp, c.get());
-        puts_fp(fp, " - ");
-      }
+      BN_print_fp(fp, a.get());
+      puts_fp(fp, " * ");
+      BN_print_fp(fp, c.get());
+      puts_fp(fp, " - ");
       BN_print_fp(fp, b.get());
       puts_fp(fp, "\n");
     }
@@ -683,12 +693,10 @@ static bool test_mul(FILE *fp) {
       return false;
     }
     if (fp != NULL) {
-      if (!g_results) {
-        BN_print_fp(fp, a.get());
-        puts_fp(fp, " * ");
-        BN_print_fp(fp, b.get());
-        puts_fp(fp, " - ");
-      }
+      BN_print_fp(fp, a.get());
+      puts_fp(fp, " * ");
+      BN_print_fp(fp, b.get());
+      puts_fp(fp, " - ");
       BN_print_fp(fp, c.get());
       puts_fp(fp, "\n");
     }
@@ -737,12 +745,10 @@ static bool test_sqr(FILE *fp, BN_CTX *ctx) {
       return false;
     }
     if (fp != NULL) {
-      if (!g_results) {
-        BN_print_fp(fp, a.get());
-        puts_fp(fp, " * ");
-        BN_print_fp(fp, a.get());
-        puts_fp(fp, " - ");
-      }
+      BN_print_fp(fp, a.get());
+      puts_fp(fp, " * ");
+      BN_print_fp(fp, a.get());
+      puts_fp(fp, " - ");
       BN_print_fp(fp, c.get());
       puts_fp(fp, "\n");
     }
@@ -765,12 +771,10 @@ static bool test_sqr(FILE *fp, BN_CTX *ctx) {
     return false;
   }
   if (fp != NULL) {
-    if (!g_results) {
-      BN_print_fp(fp, a.get());
-      puts_fp(fp, " * ");
-      BN_print_fp(fp, a.get());
-      puts_fp(fp, " - ");
-    }
+    BN_print_fp(fp, a.get());
+    puts_fp(fp, " * ");
+    BN_print_fp(fp, a.get());
+    puts_fp(fp, " - ");
     BN_print_fp(fp, c.get());
     puts_fp(fp, "\n");
   }
@@ -793,12 +797,10 @@ static bool test_sqr(FILE *fp, BN_CTX *ctx) {
     return false;
   }
   if (fp != NULL) {
-    if (!g_results) {
-      BN_print_fp(fp, a.get());
-      puts_fp(fp, " * ");
-      BN_print_fp(fp, a.get());
-      puts_fp(fp, " - ");
-    }
+    BN_print_fp(fp, a.get());
+    puts_fp(fp, " * ");
+    BN_print_fp(fp, a.get());
+    puts_fp(fp, " - ");
     BN_print_fp(fp, c.get());
     puts_fp(fp, "\n");
   }
@@ -853,21 +855,17 @@ static bool test_div_word(FILE *fp) {
     }
 
     if (fp != NULL) {
-      if (!g_results) {
-        BN_print_fp(fp, a.get());
-        puts_fp(fp, " / ");
-        print_word(fp, s);
-        puts_fp(fp, " - ");
-      }
+      BN_print_fp(fp, a.get());
+      puts_fp(fp, " / ");
+      print_word(fp, s);
+      puts_fp(fp, " - ");
       BN_print_fp(fp, b.get());
       puts_fp(fp, "\n");
 
-      if (!g_results) {
-        BN_print_fp(fp, a.get());
-        puts_fp(fp, " % ");
-        print_word(fp, s);
-        puts_fp(fp, " - ");
-      }
+      BN_print_fp(fp, a.get());
+      puts_fp(fp, " % ");
+      print_word(fp, s);
+      puts_fp(fp, " - ");
       print_word(fp, r);
       puts_fp(fp, "\n");
     }
@@ -916,14 +914,12 @@ static bool test_mont(FILE *fp, BN_CTX *ctx) {
       return false;
     }
     if (fp != NULL) {
-      if (!g_results) {
-        BN_print_fp(fp, a.get());
-        puts_fp(fp, " * ");
-        BN_print_fp(fp, b.get());
-        puts_fp(fp, " % ");
-        BN_print_fp(fp, &mont->N);
-        puts_fp(fp, " - ");
-      }
+      BN_print_fp(fp, a.get());
+      puts_fp(fp, " * ");
+      BN_print_fp(fp, b.get());
+      puts_fp(fp, " % ");
+      BN_print_fp(fp, &mont->N);
+      puts_fp(fp, " - ");
       BN_print_fp(fp, A.get());
       puts_fp(fp, "\n");
     }
@@ -960,12 +956,10 @@ static bool test_mod(FILE *fp, BN_CTX *ctx) {
       return false;
     }
     if (fp != NULL) {
-      if (!g_results) {
-        BN_print_fp(fp, a.get());
-        puts_fp(fp, " % ");
-        BN_print_fp(fp, b.get());
-        puts_fp(fp, " - ");
-      }
+      BN_print_fp(fp, a.get());
+      puts_fp(fp, " % ");
+      BN_print_fp(fp, b.get());
+      puts_fp(fp, " - ");
       BN_print_fp(fp, c.get());
       puts_fp(fp, "\n");
     }
@@ -1007,22 +1001,20 @@ static bool test_mod_mul(FILE *fp, BN_CTX *ctx) {
         return false;
       }
       if (fp != NULL) {
-        if (!g_results) {
-          BN_print_fp(fp, a.get());
-          puts_fp(fp, " * ");
-          BN_print_fp(fp, b.get());
-          puts_fp(fp, " % ");
+        BN_print_fp(fp, a.get());
+        puts_fp(fp, " * ");
+        BN_print_fp(fp, b.get());
+        puts_fp(fp, " % ");
+        BN_print_fp(fp, c.get());
+        if (a->neg != b->neg && !BN_is_zero(e.get())) {
+          // If  (a*b) % c  is negative,  c  must be added
+          // in order to obtain the normalized remainder
+          // (new with OpenSSL 0.9.7, previous versions of
+          // BN_mod_mul could generate negative results)
+          puts_fp(fp, " + ");
           BN_print_fp(fp, c.get());
-          if (a->neg != b->neg && !BN_is_zero(e.get())) {
-            // If  (a*b) % c  is negative,  c  must be added
-            // in order to obtain the normalized remainder
-            // (new with OpenSSL 0.9.7, previous versions of
-            // BN_mod_mul could generate negative results)
-            puts_fp(fp, " + ");
-            BN_print_fp(fp, c.get());
-          }
-          puts_fp(fp, " - ");
         }
+        puts_fp(fp, " - ");
         BN_print_fp(fp, e.get());
         puts_fp(fp, "\n");
       }
@@ -1059,14 +1051,12 @@ static bool test_mod_exp(FILE *fp, BN_CTX *ctx) {
     }
 
     if (fp != NULL) {
-      if (!g_results) {
-        BN_print_fp(fp, a.get());
-        puts_fp(fp, " ^ ");
-        BN_print_fp(fp, b.get());
-        puts_fp(fp, " % ");
-        BN_print_fp(fp, c.get());
-        puts_fp(fp, " - ");
-      }
+      BN_print_fp(fp, a.get());
+      puts_fp(fp, " ^ ");
+      BN_print_fp(fp, b.get());
+      puts_fp(fp, " % ");
+      BN_print_fp(fp, c.get());
+      puts_fp(fp, " - ");
       BN_print_fp(fp, d.get());
       puts_fp(fp, "\n");
     }
@@ -1102,14 +1092,12 @@ static bool test_mod_exp_mont_consttime(FILE *fp, BN_CTX *ctx) {
     }
 
     if (fp != NULL) {
-      if (!g_results) {
-        BN_print_fp(fp, a.get());
-        puts_fp(fp, " ^ ");
-        BN_print_fp(fp, b.get());
-        puts_fp(fp, " % ");
-        BN_print_fp(fp, c.get());
-        puts_fp(fp, " - ");
-      }
+      BN_print_fp(fp, a.get());
+      puts_fp(fp, " ^ ");
+      BN_print_fp(fp, b.get());
+      puts_fp(fp, " % ");
+      BN_print_fp(fp, c.get());
+      puts_fp(fp, " - ");
       BN_print_fp(fp, d.get());
       puts_fp(fp, "\n");
     }
@@ -1210,12 +1198,10 @@ static bool test_exp(FILE *fp, BN_CTX *ctx) {
     }
 
     if (fp != NULL) {
-      if (!g_results) {
-        BN_print_fp(fp, a.get());
-        puts_fp(fp, " ^ ");
-        BN_print_fp(fp, b.get());
-        puts_fp(fp, " - ");
-      }
+      BN_print_fp(fp, a.get());
+      puts_fp(fp, " ^ ");
+      BN_print_fp(fp, b.get());
+      puts_fp(fp, " - ");
       BN_print_fp(fp, d.get());
       puts_fp(fp, "\n");
     }
@@ -1254,30 +1240,13 @@ static bool test_exp_mod_zero(void) {
   }
 
   if (!BN_is_zero(r.get())) {
-    printf("1**0 mod 1 = ");
-    BN_print_fp(stdout, r.get());
-    printf(", should be 0\n");
+    fprintf(stderr, "1**0 mod 1 = ");
+    BN_print_fp(stderr, r.get());
+    fprintf(stderr, ", should be 0\n");
     return false;
   }
 
   return true;
-}
-
-static int genprime_cb(int p, int n, BN_GENCB *arg) {
-  char c = '*';
-
-  if (p == 0) {
-    c = '.';
-  } else if (p == 1) {
-    c = '+';
-  } else if (p == 2) {
-    c = '*';
-  } else if (p == 3) {
-    c = '\n';
-  }
-  putc(c, stdout);
-  fflush(stdout);
-  return 1;
 }
 
 static bool test_mod_sqrt(FILE *fp, BN_CTX *ctx) {
@@ -1288,9 +1257,6 @@ static bool test_mod_sqrt(FILE *fp, BN_CTX *ctx) {
     return false;
   }
 
-  BN_GENCB cb;
-  BN_GENCB_set(&cb, genprime_cb, NULL);
-
   for (int i = 0; i < 16; i++) {
     if (i < 8) {
       const unsigned kPrimes[8] = {2, 3, 5, 7, 11, 13, 17, 19};
@@ -1300,10 +1266,9 @@ static bool test_mod_sqrt(FILE *fp, BN_CTX *ctx) {
     } else {
       if (!BN_set_word(a.get(), 32) ||
           !BN_set_word(r.get(), 2 * i + 1) ||
-          !BN_generate_prime_ex(p.get(), 256, 0, a.get(), r.get(), &cb)) {
+          !BN_generate_prime_ex(p.get(), 256, 0, a.get(), r.get(), nullptr)) {
         return false;
       }
-      putc('\n', stdout);
     }
     p->neg = rand_neg();
 
@@ -1339,13 +1304,7 @@ static bool test_mod_sqrt(FILE *fp, BN_CTX *ctx) {
         fprintf(stderr, "\n");
         return false;
       }
-
-      putc('.', stdout);
-      fflush(stdout);
     }
-
-    putc('\n', stdout);
-    fflush(stderr);
   }
   return true;
 }
