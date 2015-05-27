@@ -276,7 +276,9 @@ int SHA512_Final(uint8_t *md, SHA512_CTX *sha) {
 
   sha512_block_data_order(sha, p, 1);
 
-  if (md == 0) {
+  if (md == NULL) {
+    /* TODO(davidben): This NULL check is absent in other low-level hash 'final'
+     * functions and is one of the few places one can fail. */
     return 0;
   }
 
@@ -312,6 +314,8 @@ int SHA512_Final(uint8_t *md, SHA512_CTX *sha) {
       break;
     /* ... as well as make sure md_len is not abused. */
     default:
+      /* TODO(davidben): This bad |md_len| case is one of the few places a
+       * low-level hash 'final' function can fail. This should never happen. */
       return 0;
   }
 

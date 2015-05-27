@@ -144,7 +144,10 @@ int SHA224_Final(uint8_t *md, SHA256_CTX *ctx) {
  * to truncate to amount of bytes not divisible by 4. I bet not, but if it is,
  * then default: case shall be extended. For reference. Idea behind separate
  * cases for pre-defined lenghts is to let the compiler decide if it's
- * appropriate to unroll small loops. */
+ * appropriate to unroll small loops.
+ *
+ * TODO(davidben): The small |md_len| case is one of the few places a low-level
+ * hash 'final' function can fail. This should never happen. */
 #define HASH_MAKE_STRING(c, s)                              \
   do {                                                      \
     uint32_t ll;                                            \
