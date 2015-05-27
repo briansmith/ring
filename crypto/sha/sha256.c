@@ -147,7 +147,7 @@ int SHA224_Final(uint8_t *md, SHA256_CTX *ctx) {
  * appropriate to unroll small loops. */
 #define HASH_MAKE_STRING(c, s)                              \
   do {                                                      \
-    unsigned long ll;                                       \
+    uint32_t ll;                                            \
     unsigned int nn;                                        \
     switch ((c)->md_len) {                                  \
       case SHA224_DIGEST_LENGTH:                            \
@@ -163,8 +163,9 @@ int SHA224_Final(uint8_t *md, SHA256_CTX *ctx) {
         }                                                   \
         break;                                              \
       default:                                              \
-        if ((c)->md_len > SHA256_DIGEST_LENGTH)             \
+        if ((c)->md_len > SHA256_DIGEST_LENGTH) {           \
           return 0;                                         \
+        }                                                   \
         for (nn = 0; nn < (c)->md_len / 4; nn++) {          \
           ll = (c)->h[nn];                                  \
           (void) HOST_l2c(ll, (s));                         \
@@ -232,7 +233,7 @@ static const HASH_LONG K256[64] = {
 
 static void sha256_block_data_order(SHA256_CTX *ctx, const void *in,
                                     size_t num) {
-  unsigned MD32_REG_T a, b, c, d, e, f, g, h, s0, s1, T1;
+  uint32_t a, b, c, d, e, f, g, h, s0, s1, T1;
   HASH_LONG X[16];
   int i;
   const uint8_t *data = in;

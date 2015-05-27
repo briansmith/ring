@@ -101,7 +101,7 @@ uint8_t *SHA1(const uint8_t *data, size_t len, uint8_t *out) {
 #define HASH_CBLOCK             64
 #define HASH_MAKE_STRING(c, s) \
   do {                         \
-    unsigned long ll;          \
+    uint32_t ll;               \
     ll = (c)->h0;              \
     (void) HOST_l2c(ll, (s));  \
     ll = (c)->h1;              \
@@ -188,8 +188,8 @@ void sha1_block_data_order(SHA_CTX *c, const void *p, size_t num);
 #if !defined(SHA1_ASM)
 static void HASH_BLOCK_DATA_ORDER(SHA_CTX *c, const void *p, size_t num) {
   const uint8_t *data = p;
-  register unsigned MD32_REG_T A, B, C, D, E, T, l;
-  unsigned MD32_REG_T XX0, XX1, XX2, XX3, XX4, XX5, XX6, XX7, XX8, XX9, XX10,
+  register uint32_t A, B, C, D, E, T, l;
+  uint32_t XX0, XX1, XX2, XX3, XX4, XX5, XX6, XX7, XX8, XX9, XX10,
       XX11, XX12, XX13, XX14, XX15;
 
   A = c->h0;

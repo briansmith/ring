@@ -70,7 +70,7 @@ static int md4_update(EVP_MD_CTX *ctx, const void *data, size_t count) {
   return MD4_Update(ctx->md_data, data, count);
 }
 
-static int md4_final(EVP_MD_CTX *ctx, unsigned char *out) {
+static int md4_final(EVP_MD_CTX *ctx, uint8_t *out) {
   return MD4_Final(out, ctx->md_data);
 }
 
@@ -88,7 +88,7 @@ static int md5_update(EVP_MD_CTX *ctx, const void *data, size_t count) {
   return MD5_Update(ctx->md_data, data, count);
 }
 
-static int md5_final(EVP_MD_CTX *ctx, unsigned char *out) {
+static int md5_final(EVP_MD_CTX *ctx, uint8_t *out) {
   return MD5_Final(out, ctx->md_data);
 }
 
@@ -106,7 +106,7 @@ static int sha1_update(EVP_MD_CTX *ctx, const void *data, size_t count) {
   return SHA1_Update(ctx->md_data, data, count);
 }
 
-static int sha1_final(EVP_MD_CTX *ctx, unsigned char *md) {
+static int sha1_final(EVP_MD_CTX *ctx, uint8_t *md) {
   return SHA1_Final(md, ctx->md_data);
 }
 
@@ -124,7 +124,7 @@ static int sha224_update(EVP_MD_CTX *ctx, const void *data, size_t count) {
   return SHA224_Update(ctx->md_data, data, count);
 }
 
-static int sha224_final(EVP_MD_CTX *ctx, unsigned char *md) {
+static int sha224_final(EVP_MD_CTX *ctx, uint8_t *md) {
   return SHA224_Final(md, ctx->md_data);
 }
 
@@ -143,7 +143,7 @@ static int sha256_update(EVP_MD_CTX *ctx, const void *data, size_t count) {
   return SHA256_Update(ctx->md_data, data, count);
 }
 
-static int sha256_final(EVP_MD_CTX *ctx, unsigned char *md) {
+static int sha256_final(EVP_MD_CTX *ctx, uint8_t *md) {
   return SHA256_Final(md, ctx->md_data);
 }
 
@@ -162,7 +162,7 @@ static int sha384_update(EVP_MD_CTX *ctx, const void *data, size_t count) {
   return SHA384_Update(ctx->md_data, data, count);
 }
 
-static int sha384_final(EVP_MD_CTX *ctx, unsigned char *md) {
+static int sha384_final(EVP_MD_CTX *ctx, uint8_t *md) {
   return SHA384_Final(md, ctx->md_data);
 }
 
@@ -181,7 +181,7 @@ static int sha512_update(EVP_MD_CTX *ctx, const void *data, size_t count) {
   return SHA512_Update(ctx->md_data, data, count);
 }
 
-static int sha512_final(EVP_MD_CTX *ctx, unsigned char *md) {
+static int sha512_final(EVP_MD_CTX *ctx, uint8_t *md) {
   return SHA512_Final(md, ctx->md_data);
 }
 
@@ -209,7 +209,7 @@ static int md5_sha1_update(EVP_MD_CTX *md_ctx, const void *data, size_t count) {
   return MD5_Update(&ctx->md5, data, count) && SHA1_Update(&ctx->sha1, data, count);
 }
 
-static int md5_sha1_final(EVP_MD_CTX *md_ctx, unsigned char *out) {
+static int md5_sha1_final(EVP_MD_CTX *md_ctx, uint8_t *out) {
   MD5_SHA1_CTX *ctx = md_ctx->md_data;
   if (!MD5_Final(out, &ctx->md5) ||
       !SHA1_Final(out + MD5_DIGEST_LENGTH, &ctx->sha1)) {

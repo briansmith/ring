@@ -83,7 +83,7 @@ void md4_block_data_order (MD4_CTX *md4, const void *p, size_t num);
 #define HASH_FINAL MD4_Final
 #define HASH_MAKE_STRING(c, s) \
   do {                         \
-    unsigned long ll;          \
+    uint32_t ll;               \
     ll = (c)->A;               \
     (void) HOST_l2c(ll, (s));  \
     ll = (c)->B;               \

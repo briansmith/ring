@@ -166,7 +166,7 @@ static
 void sha512_block_data_order(SHA512_CTX *ctx, const void *in, size_t num);
 
 
-int SHA384_Final(unsigned char *md, SHA512_CTX *sha) {
+int SHA384_Final(uint8_t *md, SHA512_CTX *sha) {
   return SHA512_Final(md, sha);
 }
 
@@ -174,7 +174,7 @@ int SHA384_Update(SHA512_CTX *sha, const void *data, size_t len) {
   return SHA512_Update(sha, data, len);
 }
 
-void SHA512_Transform(SHA512_CTX *c, const unsigned char *data) {
+void SHA512_Transform(SHA512_CTX *c, const uint8_t *data) {
 #ifndef SHA512_BLOCK_CAN_MANAGE_UNALIGNED_DATA
   if ((size_t)data % sizeof(c->u.d[0]) != 0) {
     memcpy(c->u.p, data, sizeof(c->u.p));
@@ -244,7 +244,7 @@ int SHA512_Update(SHA512_CTX *c, const void *in_data, size_t len) {
   return 1;
 }
 
-int SHA512_Final(unsigned char *md, SHA512_CTX *sha) {
+int SHA512_Final(uint8_t *md, SHA512_CTX *sha) {
   uint8_t *p = (uint8_t *)sha->u.p;
   size_t n = sha->num;
 
@@ -415,7 +415,7 @@ static uint64_t __fastcall __pull64be(const void *x) {
 
 #ifndef PULL64
 #define B(x, j) \
-  (((uint64_t)(*(((const unsigned char *)(&x)) + j))) << ((7 - j) * 8))
+  (((uint64_t)(*(((const uint8_t *)(&x)) + j))) << ((7 - j) * 8))
 #define PULL64(x)                                                        \
   (B(x, 0) | B(x, 1) | B(x, 2) | B(x, 3) | B(x, 4) | B(x, 5) | B(x, 6) | \
    B(x, 7))
