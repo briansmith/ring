@@ -142,9 +142,9 @@ static int pkey_hmac_keygen(EVP_PKEY_CTX *ctx, EVP_PKEY *pkey) {
   return 1;
 }
 
-static int int_update(EVP_MD_CTX *ctx, const void *data, size_t count) {
+static void int_update(EVP_MD_CTX *ctx, const void *data, size_t count) {
   HMAC_PKEY_CTX *hctx = ctx->pctx->data;
-  return HMAC_Update(&hctx->ctx, data, count);
+  HMAC_Update(&hctx->ctx, data, count);
 }
 
 static int hmac_signctx_init(EVP_PKEY_CTX *ctx, EVP_MD_CTX *mctx) {

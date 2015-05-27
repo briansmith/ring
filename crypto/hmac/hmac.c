@@ -172,6 +172,8 @@ int HMAC_Final(HMAC_CTX *ctx, uint8_t *out, unsigned int *out_len) {
   unsigned int i;
   uint8_t buf[EVP_MAX_MD_SIZE];
 
+  /* TODO(davidben): The only thing that can officially fail here is
+   * |EVP_MD_CTX_copy_ex|, but even that should be impossible in this case. */
   if (!EVP_DigestFinal_ex(&ctx->md_ctx, buf, &i) ||
       !EVP_MD_CTX_copy_ex(&ctx->md_ctx, &ctx->o_ctx) ||
       !EVP_DigestUpdate(&ctx->md_ctx, buf, i) ||

@@ -134,7 +134,7 @@ OPENSSL_EXPORT int EVP_DigestInit_ex(EVP_MD_CTX *ctx, const EVP_MD *type,
 OPENSSL_EXPORT int EVP_DigestInit(EVP_MD_CTX *ctx, const EVP_MD *type);
 
 /* EVP_DigestUpdate hashes |len| bytes from |data| into the hashing operation
- * in |ctx|. It returns one on success and zero otherwise. */
+ * in |ctx|. It returns one. */
 OPENSSL_EXPORT int EVP_DigestUpdate(EVP_MD_CTX *ctx, const void *data,
                                     size_t len);
 
@@ -144,10 +144,9 @@ OPENSSL_EXPORT int EVP_DigestUpdate(EVP_MD_CTX *ctx, const void *data,
 
 /* EVP_DigestFinal_ex finishes the digest in |ctx| and writes the output to
  * |md_out|. At most |EVP_MAX_MD_SIZE| bytes are written. If |out_size| is not
- * NULL then |*out_size| is set to the number of bytes written. It returns one
- * on success and zero otherwise. After this call, the hash cannot be updated
- * or finished again until |EVP_DigestInit_ex| is called to start another
- * hashing operation. */
+ * NULL then |*out_size| is set to the number of bytes written. It returns one.
+ * After this call, the hash cannot be updated or finished again until
+ * |EVP_DigestInit_ex| is called to start another hashing operation. */
 OPENSSL_EXPORT int EVP_DigestFinal_ex(EVP_MD_CTX *ctx, uint8_t *md_out,
                                       unsigned int *out_size);
 
@@ -251,7 +250,7 @@ struct env_md_ctx_st {
   /* update is usually copied from |digest->update| but can differ in some
    * cases, i.e. HMAC.
    * TODO(davidben): Remove this hook once |EVP_PKEY_HMAC| is gone. */
-  int (*update)(EVP_MD_CTX *ctx, const void *data, size_t count);
+  void (*update)(EVP_MD_CTX *ctx, const void *data, size_t count);
 
   /* pctx is an opaque (at this layer) pointer to additional context that
    * EVP_PKEY functions may store in this object. */

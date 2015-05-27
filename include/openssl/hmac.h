@@ -106,7 +106,7 @@ OPENSSL_EXPORT int HMAC_Init_ex(HMAC_CTX *ctx, const void *key, size_t key_len,
                                 const EVP_MD *md, ENGINE *impl);
 
 /* HMAC_Update hashes |data_len| bytes from |data| into the current HMAC
- * operation in |ctx|. It returns one on success and zero on error. */
+ * operation in |ctx|. It returns one. */
 OPENSSL_EXPORT int HMAC_Update(HMAC_CTX *ctx, const uint8_t *data,
                                size_t data_len);
 

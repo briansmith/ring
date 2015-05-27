@@ -241,8 +241,7 @@ OPENSSL_EXPORT int EVP_DigestSignInit(EVP_MD_CTX *ctx, EVP_PKEY_CTX **pctx,
                                       EVP_PKEY *pkey);
 
 /* EVP_DigestSignUpdate appends |len| bytes from |data| to the data which will
- * be signed in |EVP_DigestSignFinal|. It returns one on success and zero
- * otherwise. */
+ * be signed in |EVP_DigestSignFinal|. It returns one. */
 OPENSSL_EXPORT int EVP_DigestSignUpdate(EVP_MD_CTX *ctx, const void *data,
                                         size_t len);
 
@@ -293,8 +292,7 @@ OPENSSL_EXPORT int EVP_DigestVerifyInitFromAlgorithm(EVP_MD_CTX *ctx,
                                                      EVP_PKEY *pkey);
 
 /* EVP_DigestVerifyUpdate appends |len| bytes from |data| to the data which
- * will be verified by |EVP_DigestVerifyFinal|. It returns one on success and
- * zero otherwise. */
+ * will be verified by |EVP_DigestVerifyFinal|. It returns one. */
 OPENSSL_EXPORT int EVP_DigestVerifyUpdate(EVP_MD_CTX *ctx, const void *data,
                                           size_t len);
 

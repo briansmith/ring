@@ -75,15 +75,14 @@ struct env_md_st {
   /* flags contains the OR of |EVP_MD_FLAG_*| values. */
   uint32_t flags;
 
-  /* init initialises the state in |ctx->md_data|. It returns one on success
-   * and zero otherwise. */
-  int (*init)(EVP_MD_CTX *ctx);
+  /* init initialises the state in |ctx->md_data|. */
+  void (*init)(EVP_MD_CTX *ctx);
 
   /* update hashes |len| bytes of |data| into the state in |ctx->md_data|. */
-  int (*update)(EVP_MD_CTX *ctx, const void *data, size_t count);
+  void (*update)(EVP_MD_CTX *ctx, const void *data, size_t count);
 
   /* final completes the hash and writes |md_size| bytes of digest to |out|. */
-  int (*final)(EVP_MD_CTX *ctx, uint8_t *out);
+  void (*final)(EVP_MD_CTX *ctx, uint8_t *out);
 
   /* block_size contains the hash's native block size. */
   unsigned block_size;
