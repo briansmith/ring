@@ -477,7 +477,8 @@ SSL_SESSION *d2i_SSL_SESSION(SSL_SESSION **a, const uint8_t **pp, long length) {
   }
   if (!CBS_get_optional_asn1_bool(&session, &extended_master_secret,
                                   kExtendedMasterSecretTag,
-                                  0 /* default to false */)) {
+                                  0 /* default to false */) ||
+      CBS_len(&session) != 0) {
     OPENSSL_PUT_ERROR(SSL, d2i_SSL_SESSION, SSL_R_INVALID_SSL_SESSION);
     goto err;
   }
