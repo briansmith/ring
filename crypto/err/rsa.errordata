@@ -3,6 +3,7 @@ RSA,function,101,BN_BLINDING_create_param
 RSA,function,102,BN_BLINDING_invert_ex
 RSA,function,103,BN_BLINDING_new
 RSA,function,104,BN_BLINDING_update
+RSA,function,123,RSA_add_pkcs1_prefix
 RSA,function,105,RSA_check_key
 RSA,function,106,RSA_new_method
 RSA,function,107,RSA_padding_add_PKCS1_OAEP_mgf1
@@ -22,7 +23,6 @@ RSA,function,120,decrypt
 RSA,function,121,encrypt
 RSA,function,122,keygen
 RSA,function,128,keygen_multiprime
-RSA,function,123,pkcs1_prefixed_msg
 RSA,function,124,private_transform
 RSA,function,125,rsa_setup_blinding
 RSA,function,126,sign_raw

@@ -321,6 +321,14 @@ OPENSSL_EXPORT int RSA_padding_add_PKCS1_PSS_mgf1(RSA *rsa, uint8_t *EM,
                                                   const EVP_MD *mgf1Hash,
                                                   int sLen);
 
+/* RSA_add_pkcs1_prefix builds a version of |msg| prefixed with the DigestInfo
+ * header for the given hash function and sets |out_msg| to point to it. On
+ * successful return, |*out_msg| may be allocated memory and, if so,
+ * |*is_alloced| will be 1. */
+OPENSSL_EXPORT int RSA_add_pkcs1_prefix(uint8_t **out_msg, size_t *out_msg_len,
+                                        int *is_alloced, int hash_nid,
+                                        const uint8_t *msg, size_t msg_len);
+
 
 /* ASN.1 functions. */
 
@@ -537,7 +545,7 @@ struct rsa_st {
 #define RSA_F_decrypt 120
 #define RSA_F_encrypt 121
 #define RSA_F_keygen 122
-#define RSA_F_pkcs1_prefixed_msg 123
+#define RSA_F_RSA_add_pkcs1_prefix 123
 #define RSA_F_private_transform 124
 #define RSA_F_rsa_setup_blinding 125
 #define RSA_F_sign_raw 126

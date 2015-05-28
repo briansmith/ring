@@ -368,20 +368,16 @@ static const struct pkcs1_sig_prefix kPKCS1SigPrefixes[] = {
     },
 };
 
-/* TODO(fork): mostly new code, needs careful review. */
-
-/* pkcs1_prefixed_msg builds a PKCS#1, prefixed version of |msg| for the given
- * hash function and sets |out_msg| to point to it. On successful return,
- * |*out_msg| may be allocated memory and, if so, |*is_alloced| will be 1. */
-static int pkcs1_prefixed_msg(uint8_t **out_msg, size_t *out_msg_len,
-                              int *is_alloced, int hash_nid, const uint8_t *msg,
-                              size_t msg_len) {
+int RSA_add_pkcs1_prefix(uint8_t **out_msg, size_t *out_msg_len,
+                         int *is_alloced, int hash_nid, const uint8_t *msg,
+                         size_t msg_len) {
   unsigned i;
 
   if (hash_nid == NID_md5_sha1) {
     /* Special case: SSL signature, just check the length. */
     if (msg_len != SSL_SIG_LENGTH) {
-      OPENSSL_PUT_ERROR(RSA, pkcs1_prefixed_msg, RSA_R_INVALID_MESSAGE_LENGTH);
+      OPENSSL_PUT_ERROR(RSA, RSA_add_pkcs1_prefix,
+                        RSA_R_INVALID_MESSAGE_LENGTH);
       return 0;
     }
 
@@ -404,13 +400,13 @@ static int pkcs1_prefixed_msg(uint8_t **out_msg, size_t *out_msg_len,
 
     signed_msg_len = prefix_len + msg_len;
     if (signed_msg_len < prefix_len) {
-      OPENSSL_PUT_ERROR(RSA, pkcs1_prefixed_msg, RSA_R_TOO_LONG);
+      OPENSSL_PUT_ERROR(RSA, RSA_add_pkcs1_prefix, RSA_R_TOO_LONG);
       return 0;
     }
 
     signed_msg = OPENSSL_malloc(signed_msg_len);
     if (!signed_msg) {
-      OPENSSL_PUT_ERROR(RSA, pkcs1_prefixed_msg, ERR_R_MALLOC_FAILURE);
+      OPENSSL_PUT_ERROR(RSA, RSA_add_pkcs1_prefix, ERR_R_MALLOC_FAILURE);
       return 0;
     }
 
@@ -424,7 +420,7 @@ static int pkcs1_prefixed_msg(uint8_t **out_msg, size_t *out_msg_len,
     return 1;
   }
 
-  OPENSSL_PUT_ERROR(RSA, pkcs1_prefixed_msg, RSA_R_UNKNOWN_ALGORITHM_TYPE);
+  OPENSSL_PUT_ERROR(RSA, RSA_add_pkcs1_prefix, RSA_R_UNKNOWN_ALGORITHM_TYPE);
   return 0;
 }
 
@@ -441,8 +437,8 @@ int RSA_sign(int hash_nid, const uint8_t *in, unsigned in_len, uint8_t *out,
     return rsa->meth->sign(hash_nid, in, in_len, out, out_len, rsa);
   }
 
-  if (!pkcs1_prefixed_msg(&signed_msg, &signed_msg_len, &signed_msg_is_alloced,
-                          hash_nid, in, in_len)) {
+  if (!RSA_add_pkcs1_prefix(&signed_msg, &signed_msg_len,
+                            &signed_msg_is_alloced, hash_nid, in, in_len)) {
     return 0;
   }
 
@@ -499,8 +495,8 @@ int RSA_verify(int hash_nid, const uint8_t *msg, size_t msg_len,
     goto out;
   }
 
-  if (!pkcs1_prefixed_msg(&signed_msg, &signed_msg_len, &signed_msg_is_alloced,
-                          hash_nid, msg, msg_len)) {
+  if (!RSA_add_pkcs1_prefix(&signed_msg, &signed_msg_len,
+                            &signed_msg_is_alloced, hash_nid, msg, msg_len)) {
     goto out;
   }
 
