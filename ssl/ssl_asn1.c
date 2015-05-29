@@ -484,7 +484,10 @@ SSL_SESSION *d2i_SSL_SESSION(SSL_SESSION **a, const uint8_t **pp, long length) {
   }
   ret->extended_master_secret = extended_master_secret;
 
-  /* Ignore |version|. The structure version number is ignored. */
+  if (version != SSL_SESSION_ASN1_VERSION) {
+    OPENSSL_PUT_ERROR(SSL, d2i_SSL_SESSION, SSL_R_INVALID_SSL_SESSION);
+    goto err;
+  }
 
   /* Only support SSLv3/TLS and DTLS. */
   if ((ssl_version >> 8) != SSL3_VERSION_MAJOR &&
