@@ -196,6 +196,8 @@ func (c *Conn) dtlsFlushHandshake() error {
 		return nil
 	}
 
+	// This is a test-only DTLS implementation, so there is no need to
+	// retain |c.pendingFragments| for a future retransmit.
 	var fragments [][]byte
 	fragments, c.pendingFragments = c.pendingFragments, fragments
 
@@ -208,38 +210,66 @@ func (c *Conn) dtlsFlushHandshake() error {
 		fragments = tmp
 	}
 
-	// Send them all.
+	maxRecordLen := c.config.Bugs.PackHandshakeFragments
+	maxPacketLen := c.config.Bugs.PackHandshakeRecords
+
+	// Pack handshake fragments into records.
+	var records [][]byte
 	for _, fragment := range fragments {
 		if c.config.Bugs.SplitFragmentHeader {
-			if _, err := c.dtlsWriteRawRecord(recordTypeHandshake, fragment[:2]); err != nil {
-				return err
+			records = append(records, fragment[:2])
+			records = append(records, fragment[2:])
+		} else if c.config.Bugs.SplitFragmentBody {
+			if len(fragment) > 12 {
+				records = append(records, fragment[:13])
+				records = append(records, fragment[13:])
+			} else {
+				records = append(records, fragment)
 			}
-			fragment = fragment[2:]
-		} else if c.config.Bugs.SplitFragmentBody && len(fragment) > 12 {
-			if _, err := c.dtlsWriteRawRecord(recordTypeHandshake, fragment[:13]); err != nil {
-				return err
-			}
-			fragment = fragment[13:]
+		} else if i := len(records) - 1; len(records) > 0 && len(records[i])+len(fragment) <= maxRecordLen {
+			records[i] = append(records[i], fragment...)
+		} else {
+			// The fragment will be appended to, so copy it.
+			records = append(records, append([]byte{}, fragment...))
+		}
+	}
+
+	// Format them into packets.
+	var packets [][]byte
+	for _, record := range records {
+		b, err := c.dtlsSealRecord(recordTypeHandshake, record)
+		if err != nil {
+			return err
 		}
 
-		// TODO(davidben): A real DTLS implementation needs to
-		// retransmit handshake messages. For testing purposes, we don't
-		// actually care.
-		if _, err := c.dtlsWriteRawRecord(recordTypeHandshake, fragment); err != nil {
+		if i := len(packets) - 1; len(packets) > 0 && len(packets[i])+len(b.data) <= maxPacketLen {
+			packets[i] = append(packets[i], b.data...)
+		} else {
+			// The sealed record will be appended to and reused by
+			// |c.out|, so copy it.
+			packets = append(packets, append([]byte{}, b.data...))
+		}
+		c.out.freeBlock(b)
+	}
+
+	// Send all the packets.
+	for _, packet := range packets {
+		if _, err := c.conn.Write(packet); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-func (c *Conn) dtlsWriteRawRecord(typ recordType, data []byte) (n int, err error) {
+// dtlsSealRecord seals a record into a block from |c.out|'s pool.
+func (c *Conn) dtlsSealRecord(typ recordType, data []byte) (b *block, err error) {
 	recordHeaderLen := dtlsRecordHeaderLen
 	maxLen := c.config.Bugs.MaxHandshakeRecordLength
 	if maxLen <= 0 {
 		maxLen = 1024
 	}
 
-	b := c.out.newBlock()
+	b = c.out.newBlock()
 
 	explicitIVLen := 0
 	explicitIVIsSeq := false
@@ -286,6 +316,14 @@ func (c *Conn) dtlsWriteRawRecord(typ recordType, data []byte) (n int, err error
 	}
 	copy(b.data[recordHeaderLen+explicitIVLen:], data)
 	c.out.encrypt(b, explicitIVLen)
+	return
+}
+
+func (c *Conn) dtlsWriteRawRecord(typ recordType, data []byte) (n int, err error) {
+	b, err := c.dtlsSealRecord(typ, data)
+	if err != nil {
+		return
+	}
 
 	_, err = c.conn.Write(b.data)
 	if err != nil {

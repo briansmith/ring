@@ -478,7 +478,9 @@ type ProtocolBugs struct {
 	// MaxHandshakeRecordLength, if non-zero, is the maximum size of a
 	// handshake record. Handshake messages will be split into multiple
 	// records at the specified size, except that the client_version will
-	// never be fragmented.
+	// never be fragmented. For DTLS, it is the maximum handshake fragment
+	// size, not record size; DTLS allows multiple handshake fragments in a
+	// single handshake record. See |PackHandshakeFragments|.
 	MaxHandshakeRecordLength int
 
 	// FragmentClientVersion will allow MaxHandshakeRecordLength to apply to
@@ -712,6 +714,15 @@ type ProtocolBugs struct {
 	// DHGroupPrime, if not nil, is used to define the (finite field)
 	// Diffie-Hellman group. The generator used is always two.
 	DHGroupPrime *big.Int
+
+	// PackHandshakeFragments, if true, causes handshake fragments to be
+	// packed into individual handshake records, up to the specified record
+	// size.
+	PackHandshakeFragments int
+
+	// PackHandshakeRecords, if true, causes handshake records to be packed
+	// into individual packets, up to the specified packet size.
+	PackHandshakeRecords int
 }
 
 func (c *Config) serverInit() {

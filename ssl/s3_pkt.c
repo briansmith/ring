@@ -177,11 +177,10 @@ int ssl3_read_n(SSL *s, int n, int extend) {
     /* ... now we can act as if 'extend' was set */
   }
 
-  /* For DTLS/UDP reads should not span multiple packets because the read
-   * operation returns the whole packet at once (as long as it fits into the
-   * buffer). Moreover, if |extend| is true, we must not read another packet,
-   * even if the entire packet was consumed. */
-  if (SSL_IS_DTLS(s) && ((left > 0 && n > left) || extend)) {
+  /* In DTLS, if there is leftover data from the previous packet or |extend| is
+   * true, clamp to the previous read. DTLS records may not span packet
+   * boundaries. */
+  if (SSL_IS_DTLS(s) && n > left && (left > 0 || extend)) {
     n = left;
   }
 

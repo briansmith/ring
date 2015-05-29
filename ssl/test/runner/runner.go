@@ -1105,6 +1105,17 @@ var testCases = []testCase{
 		},
 		flags: []string{"-async"},
 	},
+	{
+		protocol: dtls,
+		name:     "PackDTLSHandshake",
+		config: Config{
+			Bugs: ProtocolBugs{
+				MaxHandshakeRecordLength: 2,
+				PackHandshakeFragments:   20,
+				PackHandshakeRecords:     200,
+			},
+		},
+	},
 }
 
 func doExchange(test *testCase, config *Config, conn net.Conn, messageLen int, isResume bool) error {
