@@ -109,6 +109,8 @@ elseif (${CMAKE_SYSTEM_PROCESSOR} STREQUAL "i686")
   set(ARCH "x86")
 elseif (${CMAKE_SYSTEM_PROCESSOR} STREQUAL "arm")
   set(ARCH "arm")
+elseif (${CMAKE_SYSTEM_PROCESSOR} STREQUAL "armv6")
+  set(ARCH "arm")
 elseif (${CMAKE_SYSTEM_PROCESSOR} STREQUAL "armv7-a")
   set(ARCH "arm")
 elseif (${CMAKE_SYSTEM_PROCESSOR} STREQUAL "aarch64")
@@ -121,7 +123,7 @@ if (ANDROID AND ${ARCH} STREQUAL "arm")
   # The Android-NDK CMake files somehow fail to set the -march flag for
   # assembly files. Without this flag, the compiler believes that it's
   # building for ARMv5.
-  set(CMAKE_ASM_FLAGS "${CMAKE_ASM_FLAGS} -march=armv7-a")
+  set(CMAKE_ASM_FLAGS "${CMAKE_ASM_FLAGS} -march=${CMAKE_SYSTEM_PROCESSOR}")
 endif()
 
 if (${ARCH} STREQUAL "x86" AND APPLE)
