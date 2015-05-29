@@ -350,6 +350,7 @@ int ssl3_connect(SSL *s) {
 
       case SSL3_ST_CW_CERT_VRFY_A:
       case SSL3_ST_CW_CERT_VRFY_B:
+      case SSL3_ST_CW_CERT_VRFY_C:
         ret = ssl3_send_cert_verify(s);
         if (ret <= 0) {
           goto end;
@@ -2009,87 +2010,92 @@ err:
 }
 
 int ssl3_send_cert_verify(SSL *s) {
-  uint8_t *buf, *p;
-  const EVP_MD *md = NULL;
-  uint8_t digest[EVP_MAX_MD_SIZE];
-  size_t digest_length;
-  EVP_PKEY *pkey;
-  EVP_PKEY_CTX *pctx = NULL;
-  size_t signature_length = 0;
-  unsigned long n = 0;
+  if (s->state == SSL3_ST_CW_CERT_VRFY_A ||
+      s->state == SSL3_ST_CW_CERT_VRFY_B) {
+    enum ssl_private_key_result_t sign_result;
+    uint8_t *p = ssl_handshake_start(s);
+    size_t signature_length = 0;
+    unsigned long n = 0;
+    EVP_PKEY *pkey = s->cert->key->privatekey;
+    assert(pkey != NULL || s->cert->key_method != NULL);
 
-  buf = (uint8_t *)s->init_buf->data;
+    if (s->state == SSL3_ST_CW_CERT_VRFY_A) {
+      uint8_t *buf = (uint8_t *)s->init_buf->data;
+      const EVP_MD *md = NULL;
+      uint8_t digest[EVP_MAX_MD_SIZE];
+      size_t digest_length;
 
-  if (s->state == SSL3_ST_CW_CERT_VRFY_A) {
-    p = ssl_handshake_start(s);
-    pkey = s->cert->key->privatekey;
-
-    /* Write out the digest type if needbe. */
-    if (SSL_USE_SIGALGS(s)) {
-      md = tls1_choose_signing_digest(s, pkey);
-      if (!tls12_get_sigandhash(p, pkey, md)) {
-        OPENSSL_PUT_ERROR(SSL, ssl3_send_cert_verify, ERR_R_INTERNAL_ERROR);
-        goto err;
+      /* Write out the digest type if need be. */
+      if (SSL_USE_SIGALGS(s)) {
+        md = tls1_choose_signing_digest(s, pkey);
+        if (!tls12_get_sigandhash(s, p, pkey, md)) {
+          OPENSSL_PUT_ERROR(SSL, ssl3_send_cert_verify, ERR_R_INTERNAL_ERROR);
+          return -1;
+        }
+        p += 2;
+        n += 2;
       }
-      p += 2;
-      n += 2;
+
+      /* Compute the digest. */
+      if (!ssl3_cert_verify_hash(s, digest, &digest_length, &md, pkey)) {
+        return -1;
+      }
+
+      /* The handshake buffer is no longer necessary. */
+      if (s->s3->handshake_buffer &&
+          !ssl3_digest_cached_records(s, free_handshake_buffer)) {
+        return -1;
+      }
+
+      /* Sign the digest. */
+      signature_length = ssl_private_key_max_signature_len(s, pkey);
+      if (p + 2 + signature_length > buf + SSL3_RT_MAX_PLAIN_LENGTH) {
+        OPENSSL_PUT_ERROR(SSL, ssl3_send_cert_verify,
+                          SSL_R_DATA_LENGTH_TOO_LONG);
+        return -1;
+      }
+
+      s->rwstate = SSL_PRIVATE_KEY_OPERATION;
+      sign_result = ssl_private_key_sign(s, pkey, &p[2], &signature_length,
+                                         signature_length, md, digest,
+                                         digest_length);
+    } else {
+      if (SSL_USE_SIGALGS(s)) {
+        /* The digest has already been selected and written. */
+        p += 2;
+        n += 2;
+      }
+      signature_length = ssl_private_key_max_signature_len(s, pkey);
+      s->rwstate = SSL_PRIVATE_KEY_OPERATION;
+      sign_result = ssl_private_key_sign_complete(s, &p[2], &signature_length,
+                                                  signature_length);
     }
 
-    /* Compute the digest. */
-    if (!ssl3_cert_verify_hash(s, digest, &digest_length, &md, pkey)) {
-      goto err;
+    if (sign_result == ssl_private_key_retry) {
+      s->state = SSL3_ST_CW_CERT_VRFY_B;
+      return -1;
     }
-
-    /* The handshake buffer is no longer necessary. */
-    if (s->s3->handshake_buffer &&
-        !ssl3_digest_cached_records(s, free_handshake_buffer)) {
-      goto err;
-    }
-
-    /* Sign the digest. */
-    pctx = EVP_PKEY_CTX_new(pkey, NULL);
-    if (pctx == NULL) {
-      goto err;
-    }
-
-    /* Initialize the EVP_PKEY_CTX and determine the size of the signature. */
-    if (!EVP_PKEY_sign_init(pctx) || !EVP_PKEY_CTX_set_signature_md(pctx, md) ||
-        !EVP_PKEY_sign(pctx, NULL, &signature_length, digest, digest_length)) {
-      OPENSSL_PUT_ERROR(SSL, ssl3_send_cert_verify, ERR_R_EVP_LIB);
-      goto err;
-    }
-
-    if (p + 2 + signature_length > buf + SSL3_RT_MAX_PLAIN_LENGTH) {
-      OPENSSL_PUT_ERROR(SSL, ssl3_send_cert_verify, SSL_R_DATA_LENGTH_TOO_LONG);
-      goto err;
-    }
-
-    if (!EVP_PKEY_sign(pctx, &p[2], &signature_length, digest, digest_length)) {
-      OPENSSL_PUT_ERROR(SSL, ssl3_send_cert_verify, ERR_R_EVP_LIB);
-      goto err;
+    s->rwstate = SSL_NOTHING;
+    if (sign_result != ssl_private_key_success) {
+      return -1;
     }
 
     s2n(signature_length, p);
     n += signature_length + 2;
-
     if (!ssl_set_handshake_header(s, SSL3_MT_CERTIFICATE_VERIFY, n)) {
-      goto err;
+      return -1;
     }
-    s->state = SSL3_ST_CW_CERT_VRFY_B;
+    s->state = SSL3_ST_CW_CERT_VRFY_C;
   }
 
-  EVP_PKEY_CTX_free(pctx);
   return ssl_do_write(s);
-
-err:
-  EVP_PKEY_CTX_free(pctx);
-  return -1;
 }
 
 /* ssl3_has_client_certificate returns true if a client certificate is
  * configured. */
 static int ssl3_has_client_certificate(SSL *s) {
-  return s->cert && s->cert->key->x509 && s->cert->key->privatekey;
+  return s->cert && s->cert->key->x509 && (s->cert->key->privatekey ||
+                                           s->cert->key_method);
 }
 
 int ssl3_send_client_certificate(SSL *s) {

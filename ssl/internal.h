@@ -350,6 +350,30 @@ int SSL_AEAD_CTX_seal(SSL_AEAD_CTX *ctx, uint8_t *out, size_t *out_len,
                       size_t in_len);
 
 
+/* Private key operations. */
+
+/* ssl_private_key_* call the corresponding function on the
+ * |SSL_PRIVATE_KEY_METHOD| for |ssl|, if configured. Otherwise, they implement
+ * the operation on |pkey|.
+ *
+ * TODO(davidben): The |EVP_PKEY| must be passed in to due to the multiple
+ * certificate slots feature. Remove it. */
+
+int ssl_private_key_type(SSL *ssl, const EVP_PKEY *pkey);
+
+int ssl_private_key_supports_digest(SSL *ssl, const EVP_PKEY *pkey,
+                                    const EVP_MD *md);
+
+size_t ssl_private_key_max_signature_len(SSL *ssl, const EVP_PKEY *pkey);
+
+enum ssl_private_key_result_t ssl_private_key_sign(
+    SSL *ssl, EVP_PKEY *pkey, uint8_t *out, size_t *out_len, size_t max_out,
+    const EVP_MD *md, const uint8_t *in, size_t in_len);
+
+enum ssl_private_key_result_t ssl_private_key_sign_complete(
+    SSL *ssl, uint8_t *out, size_t *out_len, size_t max_out);
+
+
 /* Underdocumented functions.
  *
  * Functions below here haven't been touched up and may be underdocumented. */
@@ -507,6 +531,10 @@ typedef struct cert_st {
   CERT_PKEY *key; /* ALWAYS points to an element of the pkeys array
                    * Probably it would make more sense to store
                    * an index, not a pointer. */
+
+  /* key_method, if non-NULL, is a set of callbacks to call for private key
+   * operations. */
+  const SSL_PRIVATE_KEY_METHOD *key_method;
 
   /* For clients the following masks are of *disabled* key and auth algorithms
    * based on the current session.
@@ -1069,8 +1097,9 @@ int ssl_prepare_serverhello_tlsext(SSL *s);
 int tls1_process_ticket(SSL *s, const struct ssl_early_callback_ctx *ctx,
                         SSL_SESSION **ret);
 
-int tls12_get_sigandhash(uint8_t *p, const EVP_PKEY *pk, const EVP_MD *md);
-int tls12_get_sigid(const EVP_PKEY *pk);
+int tls12_get_sigandhash(SSL *ssl, uint8_t *p, const EVP_PKEY *pk,
+                         const EVP_MD *md);
+int tls12_get_sigid(int pkey_type);
 const EVP_MD *tls12_get_hash(uint8_t hash_alg);
 
 int tls1_channel_id_hash(EVP_MD_CTX *ctx, SSL *s);

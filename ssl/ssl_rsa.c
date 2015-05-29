@@ -644,3 +644,64 @@ end:
   BIO_free(in);
   return ret;
 }
+
+void SSL_set_private_key_method(SSL *ssl,
+                                const SSL_PRIVATE_KEY_METHOD *key_method) {
+  ssl->cert->key_method = key_method;
+}
+
+int ssl_private_key_type(SSL *ssl, const EVP_PKEY *pkey) {
+  if (ssl->cert->key_method != NULL) {
+    return ssl->cert->key_method->type(ssl);
+  }
+  return EVP_PKEY_id(pkey);
+}
+
+int ssl_private_key_supports_digest(SSL *ssl, const EVP_PKEY *pkey,
+                                    const EVP_MD *md) {
+  if (ssl->cert->key_method != NULL) {
+    return ssl->cert->key_method->supports_digest(ssl, md);
+  }
+  return EVP_PKEY_supports_digest(pkey, md);
+}
+
+size_t ssl_private_key_max_signature_len(SSL *ssl, const EVP_PKEY *pkey) {
+  if (ssl->cert->key_method != NULL) {
+    return ssl->cert->key_method->max_signature_len(ssl);
+  }
+  return EVP_PKEY_size(pkey);
+}
+
+enum ssl_private_key_result_t ssl_private_key_sign(
+    SSL *ssl, EVP_PKEY *pkey, uint8_t *out, size_t *out_len, size_t max_out,
+    const EVP_MD *md, const uint8_t *in, size_t in_len) {
+  if (ssl->cert->key_method != NULL) {
+    return ssl->cert->key_method->sign(ssl, out, out_len, max_out, md, in,
+                                       in_len);
+  }
+
+  enum ssl_private_key_result_t ret = ssl_private_key_failure;
+  EVP_PKEY_CTX *ctx = EVP_PKEY_CTX_new(pkey, NULL);
+  if (ctx == NULL) {
+    goto end;
+  }
+
+  size_t len = max_out;
+  if (!EVP_PKEY_sign_init(ctx) ||
+      !EVP_PKEY_CTX_set_signature_md(ctx, md) ||
+      !EVP_PKEY_sign(ctx, out, &len, in, in_len)) {
+    goto end;
+  }
+  *out_len = len;
+  ret = ssl_private_key_success;
+
+end:
+  EVP_PKEY_CTX_free(ctx);
+  return ret;
+}
+
+enum ssl_private_key_result_t ssl_private_key_sign_complete(
+    SSL *ssl, uint8_t *out, size_t *out_len, size_t max_out) {
+  /* Only custom keys may be asynchronous. */
+  return ssl->cert->key_method->sign_complete(ssl, out, out_len, max_out);
+}

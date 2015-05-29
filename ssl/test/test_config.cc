@@ -82,6 +82,7 @@ const Flag<bool> kBoolFlags[] = {
   { "-reject-peer-renegotiations", &TestConfig::reject_peer_renegotiations },
   { "-no-legacy-server-connect", &TestConfig::no_legacy_server_connect },
   { "-tls-unique", &TestConfig::tls_unique },
+  { "-use-async-private-key", &TestConfig::use_async_private_key },
 };
 
 const Flag<std::string> kStringFlags[] = {

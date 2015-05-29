@@ -79,6 +79,7 @@ struct TestConfig {
   bool reject_peer_renegotiations = false;
   bool no_legacy_server_connect = false;
   bool tls_unique = false;
+  bool use_async_private_key = false;
 };
 
 bool ParseConfig(int argc, char **argv, TestConfig *out_config);

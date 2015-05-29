@@ -2089,6 +2089,10 @@ int SSL_get_error(const SSL *s, int ret_code) {
     return SSL_ERROR_WANT_CHANNEL_ID_LOOKUP;
   }
 
+  if (SSL_want_private_key_operation(s)) {
+    return SSL_ERROR_WANT_PRIVATE_KEY_OPERATION;
+  }
+
   return SSL_ERROR_SYSCALL;
 }
 

@@ -495,6 +495,72 @@ OPENSSL_EXPORT uint32_t SSL_clear_mode(SSL *ssl, uint32_t mode);
 OPENSSL_EXPORT uint32_t SSL_get_mode(const SSL *ssl);
 
 
+/* Configuring certificates and private keys.
+ *
+ * TODO(davidben): Move the other, more conventional, certificate and key
+ * configuration functions here, possibly after simplifying the multiple slots
+ * machinery first. https://crbug.com/486295. */
+
+enum ssl_private_key_result_t {
+  ssl_private_key_success,
+  ssl_private_key_retry,
+  ssl_private_key_failure,
+};
+
+/* SSL_PRIVATE_KEY_METHOD describes private key hooks. This is used to off-load
+ * signing operations to a custom, potentially asynchronous, backend. */
+typedef struct ssl_private_key_method_st {
+  /* type returns either |EVP_PKEY_RSA| or |EVP_PKEY_EC| to denote the type of
+   * key used by |ssl|. */
+  int (*type)(SSL *ssl);
+
+  /* supports_digest returns one if the key used by |ssl| supports signing
+   * digests of type |md| and zero otherwise. */
+  int (*supports_digest)(SSL *ssl, const EVP_MD *md);
+
+  /* max_signature_len returns the maximum length of a signature signed by the
+   * key used by |ssl|. This must be a constant value for a given |ssl|. */
+  size_t (*max_signature_len)(SSL *ssl);
+
+  /* sign signs |in_len| bytes of digest from |in|. |md| is the hash function
+   * used to calculate |in|. On success, it returns |ssl_private_key_success|
+   * and writes at most |max_out| bytes of signature data to |out|. On failure,
+   * it returns |ssl_private_key_failure|. If the operation has not completed,
+   * it returns |ssl_private_key_retry|. |sign| should arrange for the
+   * high-level operation on |ssl| to be retried when the operation is
+   * completed. This will result in a call to |sign_complete|.
+   *
+   * If the key is an RSA key, implementations must use PKCS#1 padding. |in| is
+   * the digest itself, so the DigestInfo prefix, if any, must be prepended by
+   * |sign|. If |md| is |EVP_md5_sha1|, there is no prefix.
+   *
+   * It is an error to call |sign| while another private key operation is in
+   * progress on |ssl|. */
+  enum ssl_private_key_result_t (*sign)(SSL *ssl, uint8_t *out, size_t *out_len,
+                                        size_t max_out, const EVP_MD *md,
+                                        const uint8_t *in, size_t in_len);
+
+  /* sign_complete completes a pending |sign| operation. If the operation has
+   * completed, it returns |ssl_private_key_success| and writes the result to
+   * |out| as in |sign|. Otherwise, it returns |ssl_private_key_failure| on
+   * failure and |ssl_private_key_retry| if the operation is still in progress.
+   *
+   * |sign_complete| may be called arbitrarily many times before completion, but
+   * it is an error to call |sign_complete| if there is no pending |sign|
+   * operation in progress on |ssl|. */
+  enum ssl_private_key_result_t (*sign_complete)(SSL *ssl, uint8_t *out,
+                                                 size_t *out_len, size_t max_out);
+} SSL_PRIVATE_KEY_METHOD;
+
+/* SSL_use_private_key_method configures a custom private key on
+ * |ssl|. |key_method| must remain valid for the lifetime of |ssl|. Using custom
+ * keys with the multiple certificate slots feature is not supported.
+ *
+ * TODO(davidben): Remove the multiple certificate slots feature. */
+OPENSSL_EXPORT void SSL_set_private_key_method(
+    SSL *ssl, const SSL_PRIVATE_KEY_METHOD *key_method);
+
+
 /* Connection information. */
 
 /* SSL_get_tls_unique writes at most |max_out| bytes of the tls-unique value
@@ -1279,6 +1345,7 @@ OPENSSL_EXPORT const char *SSL_get_psk_identity(const SSL *s);
 #define SSL_CHANNEL_ID_LOOKUP 5
 #define SSL_PENDING_SESSION 7
 #define SSL_CERTIFICATE_SELECTION_PENDING 8
+#define SSL_PRIVATE_KEY_OPERATION 9
 
 /* These will only be used when doing non-blocking IO */
 #define SSL_want_nothing(s) (SSL_want(s) == SSL_NOTHING)
@@ -1289,6 +1356,8 @@ OPENSSL_EXPORT const char *SSL_get_psk_identity(const SSL *s);
 #define SSL_want_session(s) (SSL_want(s) == SSL_PENDING_SESSION)
 #define SSL_want_certificate(s) \
   (SSL_want(s) == SSL_CERTIFICATE_SELECTION_PENDING)
+#define SSL_want_private_key_operation(s) \
+  (SSL_want(s) == SSL_PRIVATE_KEY_OPERATION)
 
 struct ssl_st {
   /* version is the protocol version. */
@@ -1637,6 +1706,7 @@ DECLARE_PEM_rw(SSL_SESSION, SSL_SESSION)
 #define SSL_ERROR_WANT_CHANNEL_ID_LOOKUP 9
 #define SSL_ERROR_PENDING_SESSION 11
 #define SSL_ERROR_PENDING_CERTIFICATE 12
+#define SSL_ERROR_WANT_PRIVATE_KEY_OPERATION 13
 
 #define SSL_CTRL_EXTRA_CHAIN_CERT 14
 

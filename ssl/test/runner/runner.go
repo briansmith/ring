@@ -2202,6 +2202,20 @@ func addStateMachineCoverageTests(async, splitHandshake bool, protocol protocol)
 			"-key-file", path.Join(*resourceDir, rsaKeyFile),
 		},
 	})
+	if async {
+		tests = append(tests, testCase{
+			testType: clientTest,
+			name:     "ClientAuth-Client-AsyncKey",
+			config: Config{
+				ClientAuth: RequireAnyClientCert,
+			},
+			flags: []string{
+				"-cert-file", rsaCertificateFile,
+				"-key-file", rsaKeyFile,
+				"-use-async-private-key",
+			},
+		})
+	}
 	tests = append(tests, testCase{
 		testType: serverTest,
 		name:     "ClientAuth-Server",

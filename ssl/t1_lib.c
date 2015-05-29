@@ -681,7 +681,7 @@ int tls12_check_peer_sigalg(const EVP_MD **out_md, int *out_alert, SSL *s,
                             CBS *cbs, EVP_PKEY *pkey) {
   const uint8_t *sent_sigs;
   size_t sent_sigslen, i;
-  int sigalg = tls12_get_sigid(pkey);
+  int sigalg = tls12_get_sigid(pkey->type);
   uint8_t hash, signature;
 
   /* Should never happen */
@@ -2241,7 +2241,13 @@ static int tls12_find_nid(int id, const tls12_lookup *table, size_t tlen) {
   return NID_undef;
 }
 
-int tls12_get_sigandhash(uint8_t *p, const EVP_PKEY *pk, const EVP_MD *md) {
+int tls12_get_sigid(int pkey_type) {
+  return tls12_find_id(pkey_type, tls12_sig,
+                       sizeof(tls12_sig) / sizeof(tls12_lookup));
+}
+
+int tls12_get_sigandhash(SSL *ssl, uint8_t *p, const EVP_PKEY *pk,
+                         const EVP_MD *md) {
   int sig_id, md_id;
 
   if (!md) {
@@ -2254,7 +2260,7 @@ int tls12_get_sigandhash(uint8_t *p, const EVP_PKEY *pk, const EVP_MD *md) {
     return 0;
   }
 
-  sig_id = tls12_get_sigid(pk);
+  sig_id = tls12_get_sigid(ssl_private_key_type(ssl, pk));
   if (sig_id == -1) {
     return 0;
   }
@@ -2262,11 +2268,6 @@ int tls12_get_sigandhash(uint8_t *p, const EVP_PKEY *pk, const EVP_MD *md) {
   p[0] = (uint8_t)md_id;
   p[1] = (uint8_t)sig_id;
   return 1;
-}
-
-int tls12_get_sigid(const EVP_PKEY *pk) {
-  return tls12_find_id(pk->type, tls12_sig,
-                       sizeof(tls12_sig) / sizeof(tls12_lookup));
 }
 
 const EVP_MD *tls12_get_hash(uint8_t hash_alg) {
@@ -2446,7 +2447,7 @@ int tls1_process_sigalgs(SSL *s, const CBS *sigalgs) {
 
 const EVP_MD *tls1_choose_signing_digest(SSL *s, EVP_PKEY *pkey) {
   CERT *c = s->cert;
-  int type = EVP_PKEY_id(pkey);
+  int type = ssl_private_key_type(s, pkey);
   size_t i;
 
   /* Select the first shared digest supported by our key. */
@@ -2454,7 +2455,7 @@ const EVP_MD *tls1_choose_signing_digest(SSL *s, EVP_PKEY *pkey) {
     const EVP_MD *md = tls12_get_hash(c->shared_sigalgs[i].rhash);
     if (md == NULL ||
         tls12_get_pkey_type(c->shared_sigalgs[i].rsign) != type ||
-        !EVP_PKEY_supports_digest(pkey, md)) {
+        !ssl_private_key_supports_digest(s, pkey, md)) {
       continue;
     }
     return md;

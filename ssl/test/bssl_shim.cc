@@ -90,6 +90,12 @@ struct TestState {
   ScopedSSL_SESSION pending_session;
   bool early_callback_called = false;
   bool handshake_done = false;
+  // private_key is the underlying private key used when testing custom keys.
+  ScopedEVP_PKEY private_key;
+  std::vector<uint8_t> signature;
+  // signature_retries is the number of times an asynchronous sign operation has
+  // been retried.
+  unsigned signature_retries = 0;
 };
 
 static void TestStateExFree(void *parent, void *ptr, CRYPTO_EX_DATA *ad,
@@ -129,12 +135,100 @@ static ScopedEVP_PKEY LoadPrivateKey(const std::string &file) {
   return pkey;
 }
 
+static int AsyncPrivateKeyType(SSL *ssl) {
+  return EVP_PKEY_id(GetTestState(ssl)->private_key.get());
+}
+
+static int AsyncPrivateKeySupportsDigest(SSL *ssl, const EVP_MD *md) {
+  return EVP_PKEY_supports_digest(GetTestState(ssl)->private_key.get(), md);
+}
+
+static size_t AsyncPrivateKeyMaxSignatureLen(SSL *ssl) {
+  return EVP_PKEY_size(GetTestState(ssl)->private_key.get());
+}
+
+static ssl_private_key_result_t AsyncPrivateKeySign(
+    SSL *ssl, uint8_t *out, size_t *out_len, size_t max_out,
+    const EVP_MD *md, const uint8_t *in, size_t in_len) {
+  TestState *test_state = GetTestState(ssl);
+  if (!test_state->signature.empty()) {
+    fprintf(stderr, "AsyncPrivateKeySign called with operation pending.\n");
+    abort();
+  }
+
+  ScopedEVP_PKEY_CTX ctx(EVP_PKEY_CTX_new(test_state->private_key.get(),
+                                          nullptr));
+  if (!ctx) {
+    return ssl_private_key_failure;
+  }
+
+  // Write the signature into |test_state|.
+  size_t len = 0;
+  if (!EVP_PKEY_sign_init(ctx.get()) ||
+      !EVP_PKEY_CTX_set_signature_md(ctx.get(), md) ||
+      !EVP_PKEY_sign(ctx.get(), nullptr, &len, in, in_len)) {
+    return ssl_private_key_failure;
+  }
+  test_state->signature.resize(len);
+  if (!EVP_PKEY_sign(ctx.get(), bssl::vector_data(&test_state->signature), &len,
+                     in, in_len)) {
+    return ssl_private_key_failure;
+  }
+  test_state->signature.resize(len);
+
+  // The signature will be released asynchronously in |AsyncPrivateKeySignComplete|.
+  return ssl_private_key_retry;
+}
+
+static ssl_private_key_result_t AsyncPrivateKeySignComplete(
+    SSL *ssl, uint8_t *out, size_t *out_len, size_t max_out) {
+  TestState *test_state = GetTestState(ssl);
+  if (test_state->signature.empty()) {
+    fprintf(stderr,
+            "AsyncPrivateKeySignComplete called without operation pending.\n");
+    abort();
+  }
+
+  if (test_state->signature_retries < 2) {
+    // Only return the signature on the second attempt, to test both incomplete
+    // |sign| and |sign_complete|.
+    return ssl_private_key_retry;
+  }
+
+  if (max_out < test_state->signature.size()) {
+    fprintf(stderr, "Output buffer too small.\n");
+    return ssl_private_key_failure;
+  }
+  memcpy(out, bssl::vector_data(&test_state->signature),
+         test_state->signature.size());
+
+  test_state->signature.clear();
+  test_state->signature_retries = 0;
+  return ssl_private_key_success;
+}
+
+static const SSL_PRIVATE_KEY_METHOD g_async_private_key_method = {
+    AsyncPrivateKeyType,
+    AsyncPrivateKeySupportsDigest,
+    AsyncPrivateKeyMaxSignatureLen,
+    AsyncPrivateKeySign,
+    AsyncPrivateKeySignComplete,
+};
+
 static bool InstallCertificate(SSL *ssl) {
   const TestConfig *config = GetConfigPtr(ssl);
-  if (!config->key_file.empty() &&
-      !SSL_use_PrivateKey_file(ssl, config->key_file.c_str(),
-                               SSL_FILETYPE_PEM)) {
-    return false;
+  TestState *test_state = GetTestState(ssl);
+  if (!config->key_file.empty()) {
+    if (config->use_async_private_key) {
+      test_state->private_key = LoadPrivateKey(config->key_file.c_str());
+      if (!test_state->private_key) {
+        return false;
+      }
+      SSL_set_private_key_method(ssl, &g_async_private_key_method);
+    } else if (!SSL_use_PrivateKey_file(ssl, config->key_file.c_str(),
+                                        SSL_FILETYPE_PEM)) {
+      return false;
+    }
   }
   if (!config->cert_file.empty() &&
       !SSL_use_certificate_file(ssl, config->cert_file.c_str(),
@@ -500,6 +594,9 @@ static bool RetryAsync(SSL *ssl, int ret) {
     case SSL_ERROR_PENDING_CERTIFICATE:
       // The handshake will resume without a second call to the early callback.
       return InstallCertificate(ssl);
+    case SSL_ERROR_WANT_PRIVATE_KEY_OPERATION:
+      test_state->signature_retries++;
+      return true;
     default:
       return false;
   }

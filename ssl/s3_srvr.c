@@ -1468,7 +1468,7 @@ int ssl3_send_server_key_exchange(SSL *s) {
       /* Determine signature algorithm. */
       if (SSL_USE_SIGALGS(s)) {
         md = tls1_choose_signing_digest(s, pkey);
-        if (!tls12_get_sigandhash(p, pkey, md)) {
+        if (!tls12_get_sigandhash(s, p, pkey, md)) {
           /* Should never happen */
           al = SSL_AD_INTERNAL_ERROR;
           OPENSSL_PUT_ERROR(SSL, ssl3_send_server_key_exchange,
