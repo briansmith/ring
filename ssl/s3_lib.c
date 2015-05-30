@@ -1163,7 +1163,7 @@ int ssl3_shutdown(SSL *s) {
 int ssl3_write(SSL *s, const void *buf, int len) {
   ERR_clear_system_error();
 
-  return s->method->ssl_write_bytes(s, SSL3_RT_APPLICATION_DATA, buf, len);
+  return s->method->ssl_write_app_data(s, buf, len);
 }
 
 static int ssl3_read_internal(SSL *s, void *buf, int len, int peek) {

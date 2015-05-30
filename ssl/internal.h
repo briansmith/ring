@@ -645,7 +645,7 @@ struct ssl_protocol_method_st {
                           int msg_type, long max,
                           enum ssl_hash_message_t hash_message, int *ok);
   int (*ssl_read_bytes)(SSL *s, int type, uint8_t *buf, int len, int peek);
-  int (*ssl_write_bytes)(SSL *s, int type, const void *buf_, int len);
+  int (*ssl_write_app_data)(SSL *s, const void *buf_, int len);
   int (*ssl_dispatch_alert)(SSL *s);
   long (*ssl_ctrl)(SSL *s, int cmd, long larg, void *parg);
   long (*ssl_ctx_ctrl)(SSL_CTX *ctx, int cmd, long larg, void *parg);
@@ -898,6 +898,7 @@ const SSL_CIPHER *ssl3_get_cipher(size_t i);
 int ssl3_dispatch_alert(SSL *s);
 int ssl3_expect_change_cipher_spec(SSL *s);
 int ssl3_read_bytes(SSL *s, int type, uint8_t *buf, int len, int peek);
+int ssl3_write_app_data(SSL *ssl, const void *buf, int len);
 int ssl3_write_bytes(SSL *s, int type, const void *buf, int len);
 int ssl3_final_finish_mac(SSL *s, const char *sender, int slen, uint8_t *p);
 int ssl3_cert_verify_mac(SSL *s, int md_nid, uint8_t *p);
@@ -952,7 +953,7 @@ void dtls1_set_message_header(SSL *s, uint8_t mt, unsigned long len,
                               unsigned short seq_num, unsigned long frag_off,
                               unsigned long frag_len);
 
-int dtls1_write_app_data_bytes(SSL *s, int type, const void *buf, int len);
+int dtls1_write_app_data(SSL *s, const void *buf, int len);
 int dtls1_write_bytes(SSL *s, int type, const void *buf, int len,
                       enum dtls1_use_epoch_t use_epoch);
 

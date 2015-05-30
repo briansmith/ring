@@ -398,6 +398,10 @@ err:
   return ret;
 }
 
+int ssl3_write_app_data(SSL *ssl, const void *buf, int len) {
+  return ssl3_write_bytes(ssl, SSL3_RT_APPLICATION_DATA, buf, len);
+}
+
 /* Call this to write data in records of type |type|. It will return <= 0 if
  * not all data has been sent or non-blocking IO. */
 int ssl3_write_bytes(SSL *s, int type, const void *buf_, int len) {

@@ -669,7 +669,7 @@ err:
   return -1;
 }
 
-int dtls1_write_app_data_bytes(SSL *s, int type, const void *buf_, int len) {
+int dtls1_write_app_data(SSL *s, const void *buf_, int len) {
   int i;
 
   if (SSL_in_init(s) && !s->in_handshake) {
@@ -678,19 +678,18 @@ int dtls1_write_app_data_bytes(SSL *s, int type, const void *buf_, int len) {
       return i;
     }
     if (i == 0) {
-      OPENSSL_PUT_ERROR(SSL, dtls1_write_app_data_bytes,
-                        SSL_R_SSL_HANDSHAKE_FAILURE);
+      OPENSSL_PUT_ERROR(SSL, dtls1_write_app_data, SSL_R_SSL_HANDSHAKE_FAILURE);
       return -1;
     }
   }
 
   if (len > SSL3_RT_MAX_PLAIN_LENGTH) {
-    OPENSSL_PUT_ERROR(SSL, dtls1_write_app_data_bytes,
-                      SSL_R_DTLS_MESSAGE_TOO_BIG);
+    OPENSSL_PUT_ERROR(SSL, dtls1_write_app_data, SSL_R_DTLS_MESSAGE_TOO_BIG);
     return -1;
   }
 
-  i = dtls1_write_bytes(s, type, buf_, len, dtls1_use_current_epoch);
+  i = dtls1_write_bytes(s, SSL3_RT_APPLICATION_DATA, buf_, len,
+                        dtls1_use_current_epoch);
   return i;
 }
 

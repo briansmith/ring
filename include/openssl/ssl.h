@@ -2613,7 +2613,7 @@ OPENSSL_EXPORT const char *SSLeay_version(int unused);
 #define SSL_F_dtls1_process_record 162
 #define SSL_F_dtls1_read_bytes 163
 #define SSL_F_dtls1_send_hello_verify_request 164
-#define SSL_F_dtls1_write_app_data_bytes 165
+#define SSL_F_dtls1_write_app_data 165
 #define SSL_F_i2d_SSL_SESSION 166
 #define SSL_F_ssl3_accept 167
 #define SSL_F_ssl3_cert_verify_hash 169
