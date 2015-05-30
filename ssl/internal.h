@@ -644,7 +644,8 @@ struct ssl_protocol_method_st {
   long (*ssl_get_message)(SSL *s, int header_state, int body_state,
                           int msg_type, long max,
                           enum ssl_hash_message_t hash_message, int *ok);
-  int (*ssl_read_bytes)(SSL *s, int type, uint8_t *buf, int len, int peek);
+  int (*ssl_read_app_data)(SSL *s, uint8_t *buf, int len, int peek);
+  void (*ssl_read_close_notify)(SSL *s);
   int (*ssl_write_app_data)(SSL *s, const void *buf_, int len);
   int (*ssl_dispatch_alert)(SSL *s);
   long (*ssl_ctrl)(SSL *s, int cmd, long larg, void *parg);
@@ -897,6 +898,8 @@ size_t ssl3_num_ciphers(void);
 const SSL_CIPHER *ssl3_get_cipher(size_t i);
 int ssl3_dispatch_alert(SSL *s);
 int ssl3_expect_change_cipher_spec(SSL *s);
+int ssl3_read_app_data(SSL *ssl, uint8_t *buf, int len, int peek);
+void ssl3_read_close_notify(SSL *ssl);
 int ssl3_read_bytes(SSL *s, int type, uint8_t *buf, int len, int peek);
 int ssl3_write_app_data(SSL *ssl, const void *buf, int len);
 int ssl3_write_bytes(SSL *s, int type, const void *buf, int len);
@@ -947,6 +950,8 @@ enum dtls1_use_epoch_t {
 
 int dtls1_do_write(SSL *s, int type, enum dtls1_use_epoch_t use_epoch);
 int ssl3_read_n(SSL *s, int n, int extend);
+int dtls1_read_app_data(SSL *ssl, uint8_t *buf, int len, int peek);
+void dtls1_read_close_notify(SSL *ssl);
 int dtls1_read_bytes(SSL *s, int type, uint8_t *buf, int len, int peek);
 int ssl3_write_pending(SSL *s, int type, const uint8_t *buf, unsigned int len);
 void dtls1_set_message_header(SSL *s, uint8_t mt, unsigned long len,

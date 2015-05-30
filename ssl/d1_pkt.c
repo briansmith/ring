@@ -388,6 +388,14 @@ again:
   return 1;
 }
 
+int dtls1_read_app_data(SSL *ssl, uint8_t *buf, int len, int peek) {
+  return dtls1_read_bytes(ssl, SSL3_RT_APPLICATION_DATA, buf, len, peek);
+}
+
+void dtls1_read_close_notify(SSL *ssl) {
+  dtls1_read_bytes(ssl, 0, NULL, 0, 0);
+}
+
 /* Return up to 'len' payload bytes received in 'type' records.
  * 'type' is one of the following:
  *

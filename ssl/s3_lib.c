@@ -1146,7 +1146,7 @@ int ssl3_shutdown(SSL *s) {
     }
   } else if (!(s->shutdown & SSL_RECEIVED_SHUTDOWN)) {
     /* If we are waiting for a close from our peer, we are closed */
-    s->method->ssl_read_bytes(s, 0, NULL, 0, 0);
+    s->method->ssl_read_close_notify(s);
     if (!(s->shutdown & SSL_RECEIVED_SHUTDOWN)) {
       return -1; /* return WANT_READ */
     }
@@ -1169,7 +1169,7 @@ int ssl3_write(SSL *s, const void *buf, int len) {
 static int ssl3_read_internal(SSL *s, void *buf, int len, int peek) {
   ERR_clear_system_error();
 
-  return s->method->ssl_read_bytes(s, SSL3_RT_APPLICATION_DATA, buf, len, peek);
+  return s->method->ssl_read_app_data(s, buf, len, peek);
 }
 
 int ssl3_read(SSL *s, void *buf, int len) {

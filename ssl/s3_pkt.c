@@ -671,6 +671,14 @@ int ssl3_expect_change_cipher_spec(SSL *s) {
   return 1;
 }
 
+int ssl3_read_app_data(SSL *ssl, uint8_t *buf, int len, int peek) {
+  return ssl3_read_bytes(ssl, SSL3_RT_APPLICATION_DATA, buf, len, peek);
+}
+
+void ssl3_read_close_notify(SSL *ssl) {
+  ssl3_read_bytes(ssl, 0, NULL, 0, 0);
+}
+
 /* Return up to 'len' payload bytes received in 'type' records.
  * 'type' is one of the following:
  *

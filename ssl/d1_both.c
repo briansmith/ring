@@ -404,8 +404,7 @@ static int dtls1_discard_fragment_body(SSL *s, size_t frag_len) {
   uint8_t discard[256];
   while (frag_len > 0) {
     size_t chunk = frag_len < sizeof(discard) ? frag_len : sizeof(discard);
-    int ret = s->method->ssl_read_bytes(s, SSL3_RT_HANDSHAKE, discard, chunk,
-                                        0);
+    int ret = dtls1_read_bytes(s, SSL3_RT_HANDSHAKE, discard, chunk, 0);
     if (ret != chunk) {
       return 0;
     }
@@ -480,8 +479,8 @@ static int dtls1_process_fragment(SSL *s) {
    * body across two records. Change this interface to consume the fragment in
    * one pass. */
   uint8_t header[DTLS1_HM_HEADER_LENGTH];
-  int ret = s->method->ssl_read_bytes(s, SSL3_RT_HANDSHAKE, header,
-                                      DTLS1_HM_HEADER_LENGTH, 0);
+  int ret = dtls1_read_bytes(s, SSL3_RT_HANDSHAKE, header,
+                             DTLS1_HM_HEADER_LENGTH, 0);
   if (ret <= 0) {
     return ret;
   }
@@ -533,8 +532,8 @@ static int dtls1_process_fragment(SSL *s) {
   assert(msg_len > 0);
 
   /* Read the body of the fragment. */
-  ret = s->method->ssl_read_bytes(
-      s, SSL3_RT_HANDSHAKE, frag->fragment + frag_off, frag_len, 0);
+  ret = dtls1_read_bytes(s, SSL3_RT_HANDSHAKE, frag->fragment + frag_off,
+                         frag_len, 0);
   if (ret != frag_len) {
     OPENSSL_PUT_ERROR(SSL, dtls1_process_fragment, SSL_R_UNEXPECTED_MESSAGE);
     ssl3_send_alert(s, SSL3_AL_FATAL, SSL_AD_UNEXPECTED_MESSAGE);
