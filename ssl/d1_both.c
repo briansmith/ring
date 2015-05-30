@@ -883,9 +883,3 @@ void dtls1_get_message_header(uint8_t *data,
   n2l3(data, msg_hdr->frag_off);
   n2l3(data, msg_hdr->frag_len);
 }
-
-int dtls1_shutdown(SSL *s) {
-  int ret;
-  ret = ssl3_shutdown(s);
-  return ret;
-}

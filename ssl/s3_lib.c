@@ -501,15 +501,6 @@ const SSL_CIPHER *ssl3_get_cipher(size_t i) {
   return &ssl3_ciphers[SSL3_NUM_CIPHERS - 1 - i];
 }
 
-int ssl3_pending(const SSL *s) {
-  if (s->rstate == SSL_ST_READ_BODY) {
-    return 0;
-  }
-
-  return (s->s3->rrec.type == SSL3_RT_APPLICATION_DATA) ? s->s3->rrec.length
-                                                        : 0;
-}
-
 int ssl3_set_handshake_header(SSL *s, int htype, unsigned long len) {
   uint8_t *p = (uint8_t *)s->init_buf->data;
   *(p++) = htype;
@@ -1115,69 +1106,6 @@ static int ssl3_set_req_cert_type(CERT *c, const uint8_t *p, size_t len) {
 
   c->num_client_certificate_types = len;
   return 1;
-}
-
-int ssl3_shutdown(SSL *s) {
-  int ret;
-
-  /* Do nothing if configured not to send a close_notify. */
-  if (s->quiet_shutdown) {
-    s->shutdown = SSL_SENT_SHUTDOWN | SSL_RECEIVED_SHUTDOWN;
-    return 1;
-  }
-
-  if (!(s->shutdown & SSL_SENT_SHUTDOWN)) {
-    s->shutdown |= SSL_SENT_SHUTDOWN;
-    ssl3_send_alert(s, SSL3_AL_WARNING, SSL_AD_CLOSE_NOTIFY);
-
-    /* our shutdown alert has been sent now, and if it still needs to be
-     * written, s->s3->alert_dispatch will be true */
-    if (s->s3->alert_dispatch) {
-      return -1; /* return WANT_WRITE */
-    }
-  } else if (s->s3->alert_dispatch) {
-    /* resend it if not sent */
-    ret = s->method->ssl_dispatch_alert(s);
-    if (ret == -1) {
-      /* we only get to return -1 here the 2nd/Nth invocation, we must  have
-       * already signalled return 0 upon a previous invoation, return
-       * WANT_WRITE */
-      return ret;
-    }
-  } else if (!(s->shutdown & SSL_RECEIVED_SHUTDOWN)) {
-    /* If we are waiting for a close from our peer, we are closed */
-    s->method->ssl_read_close_notify(s);
-    if (!(s->shutdown & SSL_RECEIVED_SHUTDOWN)) {
-      return -1; /* return WANT_READ */
-    }
-  }
-
-  if (s->shutdown == (SSL_SENT_SHUTDOWN | SSL_RECEIVED_SHUTDOWN) &&
-      !s->s3->alert_dispatch) {
-    return 1;
-  } else {
-    return 0;
-  }
-}
-
-int ssl3_write(SSL *s, const void *buf, int len) {
-  ERR_clear_system_error();
-
-  return s->method->ssl_write_app_data(s, buf, len);
-}
-
-static int ssl3_read_internal(SSL *s, void *buf, int len, int peek) {
-  ERR_clear_system_error();
-
-  return s->method->ssl_read_app_data(s, buf, len, peek);
-}
-
-int ssl3_read(SSL *s, void *buf, int len) {
-  return ssl3_read_internal(s, buf, len, 0);
-}
-
-int ssl3_peek(SSL *s, void *buf, int len) {
-  return ssl3_read_internal(s, buf, len, 1);
 }
 
 /* If we are using default SHA1+MD5 algorithms switch to new SHA256 PRF and

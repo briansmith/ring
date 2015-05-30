@@ -637,10 +637,6 @@ struct ssl_protocol_method_st {
   void (*ssl_free)(SSL *s);
   int (*ssl_accept)(SSL *s);
   int (*ssl_connect)(SSL *s);
-  int (*ssl_read)(SSL *s, void *buf, int len);
-  int (*ssl_peek)(SSL *s, void *buf, int len);
-  int (*ssl_write)(SSL *s, const void *buf, int len);
-  int (*ssl_shutdown)(SSL *s);
   long (*ssl_get_message)(SSL *s, int header_state, int body_state,
                           int msg_type, long max,
                           enum ssl_hash_message_t hash_message, int *ok);
@@ -650,7 +646,6 @@ struct ssl_protocol_method_st {
   int (*ssl_dispatch_alert)(SSL *s);
   long (*ssl_ctrl)(SSL *s, int cmd, long larg, void *parg);
   long (*ssl_ctx_ctrl)(SSL_CTX *ctx, int cmd, long larg, void *parg);
-  int (*ssl_pending)(const SSL *s);
   size_t (*num_ciphers)(void);
   const SSL_CIPHER *(*get_cipher)(size_t i);
   /* Handshake header length */
@@ -926,13 +921,8 @@ int ssl3_new(SSL *s);
 void ssl3_free(SSL *s);
 int ssl3_accept(SSL *s);
 int ssl3_connect(SSL *s);
-int ssl3_read(SSL *s, void *buf, int len);
-int ssl3_peek(SSL *s, void *buf, int len);
-int ssl3_write(SSL *s, const void *buf, int len);
-int ssl3_shutdown(SSL *s);
 long ssl3_ctrl(SSL *s, int cmd, long larg, void *parg);
 long ssl3_ctx_ctrl(SSL_CTX *s, int cmd, long larg, void *parg);
-int ssl3_pending(const SSL *s);
 
 /* ssl3_record_sequence_update increments the sequence number in |seq|. It
  * returns one on success and zero on wraparound. */
@@ -1020,7 +1010,6 @@ int dtls1_new(SSL *s);
 int dtls1_accept(SSL *s);
 int dtls1_connect(SSL *s);
 void dtls1_free(SSL *s);
-int dtls1_shutdown(SSL *s);
 
 long dtls1_get_message(SSL *s, int st1, int stn, int mt, long max,
                        enum ssl_hash_message_t hash_message, int *ok);
