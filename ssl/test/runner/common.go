@@ -723,6 +723,9 @@ type ProtocolBugs struct {
 	// PackHandshakeRecords, if true, causes handshake records to be packed
 	// into individual packets, up to the specified packet size.
 	PackHandshakeRecords int
+
+	// EnableAllCiphersInDTLS, if true, causes RC4 to be enabled in DTLS.
+	EnableAllCiphersInDTLS bool
 }
 
 func (c *Config) serverInit() {

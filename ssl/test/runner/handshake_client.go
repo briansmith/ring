@@ -115,7 +115,7 @@ NextCipherSuite:
 				continue
 			}
 			// Don't advertise non-DTLS cipher suites on DTLS.
-			if c.isDTLS && suite.flags&suiteNoDTLS != 0 {
+			if c.isDTLS && suite.flags&suiteNoDTLS != 0 && !c.config.Bugs.EnableAllCiphersInDTLS {
 				continue
 			}
 			hello.cipherSuites = append(hello.cipherSuites, suiteId)

@@ -1116,6 +1116,19 @@ var testCases = []testCase{
 			},
 		},
 	},
+	{
+		testType: serverTest,
+		protocol: dtls,
+		name:     "NoRC4-DTLS",
+		config: Config{
+			CipherSuites: []uint16{TLS_ECDHE_RSA_WITH_RC4_128_SHA},
+			Bugs: ProtocolBugs{
+				EnableAllCiphersInDTLS: true,
+			},
+		},
+		shouldFail:    true,
+		expectedError: ":NO_SHARED_CIPHER:",
+	},
 }
 
 func doExchange(test *testCase, config *Config, conn net.Conn, messageLen int, isResume bool) error {
