@@ -151,14 +151,9 @@ void dtls1_free(SSL *s) {
   s->d1 = NULL;
 }
 
-const SSL_CIPHER *dtls1_get_cipher(size_t i) {
-  const SSL_CIPHER *ciph = ssl3_get_cipher(i);
+int dtls1_supports_cipher(const SSL_CIPHER *cipher) {
   /* DTLS does not support stream ciphers. */
-  if (ciph == NULL || ciph->algorithm_enc == SSL_RC4) {
-    return NULL;
-  }
-
-  return ciph;
+  return cipher->algorithm_enc != SSL_RC4;
 }
 
 void dtls1_start_timer(SSL *s) {

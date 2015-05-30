@@ -816,7 +816,7 @@ int ssl3_get_server_hello(SSL *s) {
     memcpy(s->session->session_id, CBS_data(&session_id), CBS_len(&session_id));
   }
 
-  c = ssl3_get_cipher_by_value(cipher_suite);
+  c = SSL_get_cipher_by_value(cipher_suite);
   if (c == NULL) {
     /* unknown cipher */
     al = SSL_AD_ILLEGAL_PARAMETER;

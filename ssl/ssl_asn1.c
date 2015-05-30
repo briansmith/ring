@@ -502,7 +502,7 @@ SSL_SESSION *d2i_SSL_SESSION(SSL_SESSION **a, const uint8_t **pp, long length) {
     OPENSSL_PUT_ERROR(SSL, d2i_SSL_SESSION, SSL_R_CIPHER_CODE_WRONG_LENGTH);
     goto err;
   }
-  ret->cipher = ssl3_get_cipher_by_value(cipher_value);
+  ret->cipher = SSL_get_cipher_by_value(cipher_value);
   if (ret->cipher == NULL) {
     OPENSSL_PUT_ERROR(SSL, d2i_SSL_SESSION, SSL_R_UNSUPPORTED_CIPHER);
     goto err;

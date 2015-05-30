@@ -260,6 +260,9 @@ ssl_create_cipher_list(const SSL_PROTOCOL_METHOD *ssl_method,
 #define SSL_PKEY_ECC 2
 #define SSL_PKEY_NUM 3
 
+/* ssl_cipher_get_value returns the cipher suite id of |cipher|. */
+uint16_t ssl_cipher_get_value(const SSL_CIPHER *cipher);
+
 /* ssl_cipher_get_cert_index returns the |SSL_PKEY_*| value corresponding to the
  * certificate type of |cipher| or -1 if there is none. */
 int ssl_cipher_get_cert_index(const SSL_CIPHER *cipher);
@@ -633,8 +636,9 @@ struct ssl_protocol_method_st {
   int (*ssl_dispatch_alert)(SSL *s);
   long (*ssl_ctrl)(SSL *s, int cmd, long larg, void *parg);
   long (*ssl_ctx_ctrl)(SSL_CTX *ctx, int cmd, long larg, void *parg);
-  size_t (*num_ciphers)(void);
-  const SSL_CIPHER *(*get_cipher)(size_t i);
+  /* supports_cipher returns one if |cipher| is supported by this protocol and
+   * zero otherwise. */
+  int (*supports_cipher)(const SSL_CIPHER *cipher);
   /* Handshake header length */
   unsigned int hhlen;
   /* Set the handshake header */
@@ -783,8 +787,6 @@ typedef struct dtls1_state_st {
   unsigned int change_cipher_spec_ok;
 } DTLS1_STATE;
 
-extern const SSL_CIPHER ssl3_ciphers[];
-
 extern const SSL3_ENC_METHOD TLSv1_enc_data;
 extern const SSL3_ENC_METHOD TLSv1_1_enc_data;
 extern const SSL3_ENC_METHOD TLSv1_2_enc_data;
@@ -801,8 +803,6 @@ void ssl_sess_cert_free(SESS_CERT *sc);
 int ssl_set_peer_cert_type(SESS_CERT *c, int type);
 int ssl_get_new_session(SSL *s, int session);
 int ssl_get_prev_session(SSL *s, const struct ssl_early_callback_ctx *ctx);
-int ssl_cipher_id_cmp(const void *in_a, const void *in_b);
-int ssl_cipher_ptr_id_cmp(const SSL_CIPHER **ap, const SSL_CIPHER **bp);
 STACK_OF(SSL_CIPHER) *ssl_bytes_to_cipher_list(SSL *s, const CBS *cbs);
 int ssl_cipher_list_to_bytes(SSL *s, STACK_OF(SSL_CIPHER) *sk, uint8_t *p);
 struct ssl_cipher_preference_list_st *ssl_cipher_preference_list_dup(
@@ -843,8 +843,6 @@ int ssl_verify_alarm_type(long type);
  * |len|. It returns one on success and zero on failure. */
 int ssl_fill_hello_random(uint8_t *out, size_t len, int is_server);
 
-const SSL_CIPHER *ssl3_get_cipher_by_value(uint16_t value);
-uint16_t ssl3_get_cipher_value(const SSL_CIPHER *c);
 int ssl3_init_finished_mac(SSL *s);
 int ssl3_send_server_certificate(SSL *s);
 int ssl3_send_new_session_ticket(SSL *s);
@@ -876,8 +874,7 @@ int ssl3_cert_verify_hash(SSL *s, uint8_t *out, size_t *out_len,
                           const EVP_MD **out_md, EVP_PKEY *pkey);
 
 int ssl3_send_finished(SSL *s, int a, int b, const char *sender, int slen);
-size_t ssl3_num_ciphers(void);
-const SSL_CIPHER *ssl3_get_cipher(size_t i);
+int ssl3_supports_cipher(const SSL_CIPHER *cipher);
 int ssl3_dispatch_alert(SSL *s);
 int ssl3_expect_change_cipher_spec(SSL *s);
 int ssl3_read_app_data(SSL *ssl, uint8_t *buf, int len, int peek);
@@ -952,7 +949,7 @@ int dtls1_check_timeout_num(SSL *s);
 int dtls1_set_handshake_header(SSL *s, int type, unsigned long len);
 int dtls1_handshake_write(SSL *s);
 
-const SSL_CIPHER *dtls1_get_cipher(size_t i);
+int dtls1_supports_cipher(const SSL_CIPHER *cipher);
 void dtls1_start_timer(SSL *s);
 void dtls1_stop_timer(SSL *s);
 int dtls1_is_timer_expired(SSL *s);

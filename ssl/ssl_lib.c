@@ -1122,34 +1122,6 @@ long SSL_CTX_ctrl(SSL_CTX *ctx, int cmd, long larg, void *parg) {
   return ctx->method->ssl_ctx_ctrl(ctx, cmd, larg, parg);
 }
 
-int ssl_cipher_id_cmp(const void *in_a, const void *in_b) {
-  long l;
-  const SSL_CIPHER *a = in_a;
-  const SSL_CIPHER *b = in_b;
-  const long a_id = a->id;
-  const long b_id = b->id;
-
-  l = a_id - b_id;
-  if (l == 0L) {
-    return 0;
-  } else {
-    return (l > 0) ? 1 : -1;
-  }
-}
-
-int ssl_cipher_ptr_id_cmp(const SSL_CIPHER **ap, const SSL_CIPHER **bp) {
-  long l;
-  const long a_id = (*ap)->id;
-  const long b_id = (*bp)->id;
-
-  l = a_id - b_id;
-  if (l == 0) {
-    return 0;
-  } else {
-    return (l > 0) ? 1 : -1;
-  }
-}
-
 /* return a STACK of the ciphers available for the SSL and in order of
  * preference */
 STACK_OF(SSL_CIPHER) *SSL_get_ciphers(const SSL *s) {
@@ -1288,7 +1260,7 @@ int ssl_cipher_list_to_bytes(SSL *s, STACK_OF(SSL_CIPHER) *sk, uint8_t *p) {
         c->algorithm_auth & ct->mask_a) {
       continue;
     }
-    s2n(ssl3_get_cipher_value(c), p);
+    s2n(ssl_cipher_get_value(c), p);
   }
 
   /* If all ciphers were disabled, return the error to the caller. */
@@ -1363,7 +1335,7 @@ STACK_OF(SSL_CIPHER) *ssl_bytes_to_cipher_list(SSL *s, const CBS *cbs) {
       continue;
     }
 
-    c = ssl3_get_cipher_by_value(cipher_suite);
+    c = SSL_get_cipher_by_value(cipher_suite);
     if (c != NULL && !sk_SSL_CIPHER_push(sk, c)) {
       OPENSSL_PUT_ERROR(SSL, ssl_bytes_to_cipher_list, ERR_R_MALLOC_FAILURE);
       goto err;
@@ -2941,10 +2913,6 @@ void SSL_enable_fastradio_padding(SSL *s, char on_off) {
 
 void SSL_set_reject_peer_renegotiations(SSL *s, int reject) {
   s->accept_peer_renegotiations = !reject;
-}
-
-const SSL_CIPHER *SSL_get_cipher_by_value(uint16_t value) {
-  return ssl3_get_cipher_by_value(value);
 }
 
 int SSL_get_rc4_state(const SSL *ssl, const RC4_KEY **read_key,

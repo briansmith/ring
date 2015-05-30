@@ -1167,7 +1167,7 @@ int ssl3_send_server_hello(SSL *s) {
     p += sl;
 
     /* put the cipher */
-    s2n(ssl3_get_cipher_value(s->s3->tmp.new_cipher), p);
+    s2n(ssl_cipher_get_value(s->s3->tmp.new_cipher), p);
 
     /* put the compression method */
     *(p++) = 0;
