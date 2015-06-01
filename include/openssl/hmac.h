@@ -129,13 +129,6 @@ OPENSSL_EXPORT size_t HMAC_size(const HMAC_CTX *ctx);
  * on error. */
 OPENSSL_EXPORT int HMAC_CTX_copy_ex(HMAC_CTX *dest, const HMAC_CTX *src);
 
-/* HMAC_CTX_set_flags ORs |flags| into the flags of the underlying digests of
- * |ctx|, which must have been setup by a call to |HMAC_Init_ex|. See
- * |EVP_MD_CTX_set_flags|.
- *
- * TODO(fork): remove? */
-OPENSSL_EXPORT void HMAC_CTX_set_flags(HMAC_CTX *ctx, unsigned long flags);
-
 
 /* Deprecated functions. */
 

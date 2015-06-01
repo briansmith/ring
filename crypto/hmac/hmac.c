@@ -200,12 +200,6 @@ int HMAC_CTX_copy_ex(HMAC_CTX *dest, const HMAC_CTX *src) {
   return 1;
 }
 
-void HMAC_CTX_set_flags(HMAC_CTX *ctx, unsigned long flags) {
-  EVP_MD_CTX_set_flags(&ctx->i_ctx, flags);
-  EVP_MD_CTX_set_flags(&ctx->o_ctx, flags);
-  EVP_MD_CTX_set_flags(&ctx->md_ctx, flags);
-}
-
 int HMAC_Init(HMAC_CTX *ctx, const void *key, int key_len, const EVP_MD *md) {
   if (key && md) {
     HMAC_CTX_init(ctx);

@@ -148,9 +148,8 @@ static void int_update(EVP_MD_CTX *ctx, const void *data, size_t count) {
 }
 
 static int hmac_signctx_init(EVP_PKEY_CTX *ctx, EVP_MD_CTX *mctx) {
-  HMAC_PKEY_CTX *hctx = ctx->data;
-
-  HMAC_CTX_set_flags(&hctx->ctx, mctx->flags & ~EVP_MD_CTX_FLAG_NO_INIT);
+  /* |mctx| gets repurposed as a hook to call |HMAC_Update|. Suppress the
+   * automatic setting of |mctx->update| and the rest of its initialization. */
   EVP_MD_CTX_set_flags(mctx, EVP_MD_CTX_FLAG_NO_INIT);
   mctx->update = int_update;
   return 1;
