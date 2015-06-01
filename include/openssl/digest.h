@@ -224,18 +224,6 @@ OPENSSL_EXPORT unsigned EVP_MD_CTX_block_size(const EVP_MD_CTX *ctx);
  * |ctx|. */
 OPENSSL_EXPORT int EVP_MD_CTX_type(const EVP_MD_CTX *ctx);
 
-/* EVP_MD_CTX_set_flags ORs |flags| into the flags member of |ctx|. */
-OPENSSL_EXPORT void EVP_MD_CTX_set_flags(EVP_MD_CTX *ctx, uint32_t flags);
-
-/* EVP_MD_CTX_clear_flags clears any bits from the flags member of |ctx| that
- * are set in |flags|. */
-OPENSSL_EXPORT void EVP_MD_CTX_clear_flags(EVP_MD_CTX *ctx, uint32_t flags);
-
-/* EVP_MD_CTX_test_flags returns the AND of |flags| and the flags member of
- * |ctx|. */
-OPENSSL_EXPORT uint32_t EVP_MD_CTX_test_flags(const EVP_MD_CTX *ctx,
-                                              uint32_t flags);
-
 
 struct evp_md_pctx_ops;
 
@@ -260,11 +248,6 @@ struct env_md_ctx_st {
    * manipulate |pctx|. */
   const struct evp_md_pctx_ops *pctx_ops;
 } /* EVP_MD_CTX */;
-
-/* EVP_MD_CTX_FLAG_NO_INIT causes the |EVP_MD|'s |init| function not to be
- * called, the |update| member not to be copied from the |EVP_MD| in
- * |EVP_DigestInit_ex| and for |md_data| not to be initialised. */
-#define EVP_MD_CTX_FLAG_NO_INIT 1
 
 
 #if defined(__cplusplus)

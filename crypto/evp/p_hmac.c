@@ -64,6 +64,7 @@
 #include <openssl/obj.h>
 
 #include "internal.h"
+#include "../digest/internal.h"
 
 
 typedef struct {

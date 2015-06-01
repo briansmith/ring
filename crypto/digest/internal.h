@@ -108,6 +108,17 @@ struct evp_md_pctx_ops {
   int (*begin_digest) (EVP_MD_CTX *ctx);
 };
 
+/* EVP_MD_CTX_set_flags ORs |flags| into the flags member of |ctx|. */
+OPENSSL_EXPORT void EVP_MD_CTX_set_flags(EVP_MD_CTX *ctx, uint32_t flags);
+
+/* EVP_MD_CTX_FLAG_NO_INIT causes the |EVP_MD|'s |init| function not to be
+ * called, the |update| member not to be copied from the |EVP_MD| in
+ * |EVP_DigestInit_ex| and for |md_data| not to be initialised.
+ *
+ * TODO(davidben): This is an implementation detail of |EVP_PKEY_HMAC| and can
+ * be removed when it is gone. */
+#define EVP_MD_CTX_FLAG_NO_INIT 1
+
 
 #if defined(__cplusplus)
 }  /* extern C */
