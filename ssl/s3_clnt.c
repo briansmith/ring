@@ -895,6 +895,19 @@ int ssl3_get_server_hello(SSL *s) {
     goto f_err;
   }
 
+  if (s->hit &&
+      s->s3->tmp.extended_master_secret != s->session->extended_master_secret) {
+    al = SSL_AD_HANDSHAKE_FAILURE;
+    if (s->session->extended_master_secret) {
+      OPENSSL_PUT_ERROR(SSL, ssl3_get_server_hello,
+                        SSL_R_RESUMED_EMS_SESSION_WITHOUT_EMS_EXTENSION);
+    } else {
+      OPENSSL_PUT_ERROR(SSL, ssl3_get_server_hello,
+                        SSL_R_RESUMED_NON_EMS_SESSION_WITH_EMS_EXTENSION);
+    }
+    goto f_err;
+  }
+
   return 1;
 
 f_err:

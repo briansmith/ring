@@ -1948,18 +1948,93 @@ func addExtendedMasterSecretTests() {
 		}
 	}
 
-	// When a session is resumed, it should still be aware that its master
-	// secret was generated via EMS and thus it's safe to use tls-unique.
-	testCases = append(testCases, testCase{
-		name: "ExtendedMasterSecret-Resume",
-		config: Config{
-			Bugs: ProtocolBugs{
-				RequireExtendedMasterSecret: true,
-			},
-		},
-		flags:         []string{expectEMSFlag},
-		resumeSession: true,
-	})
+	for _, isClient := range []bool{false, true} {
+		for _, supportedInFirstConnection := range []bool{false, true} {
+			for _, supportedInResumeConnection := range []bool{false, true} {
+				boolToWord := func(b bool) string {
+					if b {
+						return "Yes"
+					}
+					return "No"
+				}
+				suffix := boolToWord(supportedInFirstConnection) + "To" + boolToWord(supportedInResumeConnection) + "-"
+				if isClient {
+					suffix += "Client"
+				} else {
+					suffix += "Server"
+				}
+
+				supportedConfig := Config{
+					Bugs: ProtocolBugs{
+						RequireExtendedMasterSecret: true,
+					},
+				}
+
+				noSupportConfig := Config{
+					Bugs: ProtocolBugs{
+						NoExtendedMasterSecret: true,
+					},
+				}
+
+				test := testCase{
+					name:          "ExtendedMasterSecret-" + suffix,
+					resumeSession: true,
+				}
+
+				if !isClient {
+					test.testType = serverTest
+				}
+
+				if supportedInFirstConnection {
+					test.config = supportedConfig
+				} else {
+					test.config = noSupportConfig
+				}
+
+				if supportedInResumeConnection {
+					test.resumeConfig = &supportedConfig
+				} else {
+					test.resumeConfig = &noSupportConfig
+				}
+
+				switch suffix {
+				case "YesToYes-Client", "YesToYes-Server":
+					// When a session is resumed, it should
+					// still be aware that its master
+					// secret was generated via EMS and
+					// thus it's safe to use tls-unique.
+					test.flags = []string{expectEMSFlag}
+				case "NoToYes-Server":
+					// If an original connection did not
+					// contain EMS, but a resumption
+					// handshake does, then a server should
+					// not resume the session.
+					test.expectResumeRejected = true
+				case "YesToNo-Server":
+					// Resuming an EMS session without the
+					// EMS extension should cause the
+					// server to abort the connection.
+					test.shouldFail = true
+					test.expectedError = ":RESUMED_EMS_SESSION_WITHOUT_EMS_EXTENSION:"
+				case "NoToYes-Client":
+					// A client should abort a connection
+					// where the server resumed a non-EMS
+					// session but echoed the EMS
+					// extension.
+					test.shouldFail = true
+					test.expectedError = ":RESUMED_NON_EMS_SESSION_WITH_EMS_EXTENSION:"
+				case "YesToNo-Client":
+					// A client should abort a connection
+					// where the server didn't echo EMS
+					// when the session used it.
+					test.shouldFail = true
+					test.expectedError = ":RESUMED_EMS_SESSION_WITHOUT_EMS_EXTENSION:"
+				}
+
+				testCases = append(testCases, test)
+			}
+		}
+	}
 }
 
 // Adds tests that try to cover the range of the handshake state machine, under

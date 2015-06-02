@@ -943,15 +943,41 @@ int ssl3_get_client_hello(SSL *s) {
     goto err;
   }
 
-  /* Only resume if the session's version matches the negotiated version:
-   * most clients do not accept a mismatch. */
-  if (session_ret == 1 && s->version == s->session->ssl_version) {
-    s->hit = 1;
-  } else {
-    /* No session was found or it was unacceptable. */
-    if (!ssl_get_new_session(s, 1)) {
-      goto err;
+  /* The EMS state is needed when making the resumption decision, but
+   * extensions are not normally parsed until later. This detects the EMS
+   * extension for the resumption decision and it's checked against the result
+   * of the normal parse later in this function. */
+  const uint8_t *ems_data;
+  size_t ems_len;
+  int have_extended_master_secret =
+      s->version != SSL3_VERSION &&
+      SSL_early_callback_ctx_extension_get(&early_ctx,
+                                           TLSEXT_TYPE_extended_master_secret,
+                                           &ems_data, &ems_len) &&
+      ems_len == 0;
+
+  if (session_ret == 1) {
+    if (s->session->extended_master_secret &&
+        !have_extended_master_secret) {
+      /* A ClientHello without EMS that attempts to resume a session with EMS
+       * is fatal to the connection. */
+      al = SSL_AD_HANDSHAKE_FAILURE;
+      OPENSSL_PUT_ERROR(SSL, ssl3_get_client_hello,
+                        SSL_R_RESUMED_EMS_SESSION_WITHOUT_EMS_EXTENSION);
+      goto f_err;
     }
+
+    s->hit =
+        /* Only resume if the session's version matches the negotiated version:
+         * most clients do not accept a mismatch. */
+        s->version == s->session->ssl_version &&
+        /* If the client offers the EMS extension, but the previous session
+         * didn't use it, then negotiate a new session. */
+        have_extended_master_secret == s->session->extended_master_secret;
+  }
+
+  if (!s->hit && !ssl_get_new_session(s, 1)) {
+    goto err;
   }
 
   if (s->ctx->dos_protection_cb != NULL && s->ctx->dos_protection_cb(&early_ctx) == 0) {
@@ -1021,6 +1047,12 @@ int ssl3_get_client_hello(SSL *s) {
     /* wrong packet length */
     al = SSL_AD_DECODE_ERROR;
     OPENSSL_PUT_ERROR(SSL, ssl3_get_client_hello, SSL_R_BAD_PACKET_LENGTH);
+    goto f_err;
+  }
+
+  if (have_extended_master_secret != s->s3->tmp.extended_master_secret) {
+    al = SSL_AD_INTERNAL_ERROR;
+    OPENSSL_PUT_ERROR(SSL, ssl3_get_client_hello, SSL_R_EMS_STATE_INCONSISTENT);
     goto f_err;
   }
 
