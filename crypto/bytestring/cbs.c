@@ -195,7 +195,9 @@ int CBS_get_any_asn1_element(CBS *cbs, CBS *out, unsigned *out_tag,
 
     if ((tag & CBS_ASN1_CONSTRUCTED) != 0 && num_bytes == 0) {
       /* indefinite length */
-      *out_header_len = 2;
+      if (out_header_len != NULL) {
+        *out_header_len = 2;
+      }
       return CBS_get_bytes(cbs, out, 2);
     }
 
