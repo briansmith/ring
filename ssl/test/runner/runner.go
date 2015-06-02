@@ -161,6 +161,10 @@ type testCase struct {
 	// resumeSession controls whether a second connection should be tested
 	// which attempts to resume the first session.
 	resumeSession bool
+	// expectResumeRejected, if true, specifies that the attempted
+	// resumption must be rejected by the client. This is only valid for a
+	// serverTest.
+	expectResumeRejected bool
 	// resumeConfig, if not nil, points to a Config to be used on
 	// resumption. Unless newSessionsOnResume is set,
 	// SessionTicketKey, ServerSessionCache, and
@@ -1188,16 +1192,20 @@ func doExchange(test *testCase, config *Config, conn net.Conn, messageLen int, i
 	if isResume && test.expectedResumeVersion != 0 {
 		expectedVersion = test.expectedResumeVersion
 	}
-	if vers := tlsConn.ConnectionState().Version; expectedVersion != 0 && vers != expectedVersion {
+	connState := tlsConn.ConnectionState()
+	if vers := connState.Version; expectedVersion != 0 && vers != expectedVersion {
 		return fmt.Errorf("got version %x, expected %x", vers, expectedVersion)
 	}
 
-	if cipher := tlsConn.ConnectionState().CipherSuite; test.expectedCipher != 0 && cipher != test.expectedCipher {
+	if cipher := connState.CipherSuite; test.expectedCipher != 0 && cipher != test.expectedCipher {
 		return fmt.Errorf("got cipher %x, expected %x", cipher, test.expectedCipher)
+	}
+	if didResume := connState.DidResume; isResume && didResume == test.expectResumeRejected {
+		return fmt.Errorf("didResume is %t, but we expected the opposite", didResume)
 	}
 
 	if test.expectChannelID {
-		channelID := tlsConn.ConnectionState().ChannelID
+		channelID := connState.ChannelID
 		if channelID == nil {
 			return fmt.Errorf("no channel ID negotiated")
 		}
@@ -1209,18 +1217,18 @@ func doExchange(test *testCase, config *Config, conn net.Conn, messageLen int, i
 	}
 
 	if expected := test.expectedNextProto; expected != "" {
-		if actual := tlsConn.ConnectionState().NegotiatedProtocol; actual != expected {
+		if actual := connState.NegotiatedProtocol; actual != expected {
 			return fmt.Errorf("next proto mismatch: got %s, wanted %s", actual, expected)
 		}
 	}
 
 	if test.expectedNextProtoType != 0 {
-		if (test.expectedNextProtoType == alpn) != tlsConn.ConnectionState().NegotiatedProtocolFromALPN {
+		if (test.expectedNextProtoType == alpn) != connState.NegotiatedProtocolFromALPN {
 			return fmt.Errorf("next proto type mismatch")
 		}
 	}
 
-	if p := tlsConn.ConnectionState().SRTPProtectionProfile; p != test.expectedSRTPProtectionProfile {
+	if p := connState.SRTPProtectionProfile; p != test.expectedSRTPProtectionProfile {
 		return fmt.Errorf("SRTP profile mismatch: got %d, wanted %d", p, test.expectedSRTPProtectionProfile)
 	}
 
@@ -1365,6 +1373,10 @@ func runTest(test *testCase, buildDir string, mallocNumToFail int64) error {
 		panic("Error expected without shouldFail in " + test.name)
 	}
 
+	if test.expectResumeRejected && !test.resumeSession {
+		panic("expectResumeRejected without resumeSession in " + test.name)
+	}
+
 	listener, err := net.ListenTCP("tcp4", &net.TCPAddr{IP: net.IP{127, 0, 0, 1}})
 	if err != nil {
 		panic(err)
@@ -1414,6 +1426,9 @@ func runTest(test *testCase, buildDir string, mallocNumToFail int64) error {
 		if test.useExportContext {
 			flags = append(flags, "-use-export-context")
 		}
+	}
+	if test.expectResumeRejected {
+		flags = append(flags, "-expect-session-miss")
 	}
 
 	flags = append(flags, test.flags...)
@@ -2621,8 +2636,8 @@ func addExtensionTests() {
 				CorruptTicket: true,
 			},
 		},
-		resumeSession: true,
-		flags:         []string{"-expect-session-miss"},
+		resumeSession:        true,
+		expectResumeRejected: true,
 	})
 	// Resume with an oversized session id.
 	testCases = append(testCases, testCase{
@@ -2783,7 +2798,6 @@ func addResumptionVersionTests() {
 				testCases = append(testCases, testCase{
 					protocol:      protocol,
 					name:          "Resume-Client-NoResume" + suffix,
-					flags:         []string{"-expect-session-miss"},
 					resumeSession: true,
 					config: Config{
 						MaxVersion:   sessionVers.version,
@@ -2795,24 +2809,21 @@ func addResumptionVersionTests() {
 						CipherSuites: []uint16{TLS_RSA_WITH_AES_128_CBC_SHA},
 					},
 					newSessionsOnResume:   true,
+					expectResumeRejected:  true,
 					expectedResumeVersion: resumeVers.version,
 				})
 
-				var flags []string
-				if sessionVers.version != resumeVers.version {
-					flags = append(flags, "-expect-session-miss")
-				}
 				testCases = append(testCases, testCase{
 					protocol:      protocol,
 					testType:      serverTest,
 					name:          "Resume-Server" + suffix,
-					flags:         flags,
 					resumeSession: true,
 					config: Config{
 						MaxVersion:   sessionVers.version,
 						CipherSuites: []uint16{TLS_RSA_WITH_AES_128_CBC_SHA},
 					},
-					expectedVersion: sessionVers.version,
+					expectedVersion:      sessionVers.version,
+					expectResumeRejected: sessionVers.version != resumeVers.version,
 					resumeConfig: &Config{
 						MaxVersion:   resumeVers.version,
 						CipherSuites: []uint16{TLS_RSA_WITH_AES_128_CBC_SHA},
