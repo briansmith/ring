@@ -34,8 +34,9 @@ def SetEnvironmentAndGetRuntimeDllDirs():
 
     toolchain = toolchain_data['path']
     version = toolchain_data['version']
-    version_is_pro = version[-1] != 'e'
-    win8sdk = toolchain_data['win8sdk']
+    win_sdk = toolchain_data.get('win_sdk')
+    if not win_sdk:
+      win_sdk = toolchain_data['win8sdk']
     wdk = toolchain_data['wdk']
     # TODO(scottmg): The order unfortunately matters in these. They should be
     # split into separate keys for x86 and x64. (See CopyVsRuntimeDlls call
@@ -49,10 +50,10 @@ def SetEnvironmentAndGetRuntimeDllDirs():
     # otheroptions.express
     # values there.
     gyp_defines_dict = gyp.NameValueListToDict(gyp.ShlexEnv('GYP_DEFINES'))
-    gyp_defines_dict['windows_sdk_path'] = win8sdk
+    gyp_defines_dict['windows_sdk_path'] = win_sdk
     os.environ['GYP_DEFINES'] = ' '.join('%s=%s' % (k, pipes.quote(str(v)))
         for k, v in gyp_defines_dict.iteritems())
-    os.environ['WINDOWSSDKDIR'] = win8sdk
+    os.environ['WINDOWSSDKDIR'] = win_sdk
     os.environ['WDK_DIR'] = wdk
     # Include the VS runtime in the PATH in case it's not machine-installed.
     runtime_path = ';'.join(vs2013_runtime_dll_dirs)
@@ -63,9 +64,8 @@ def SetEnvironmentAndGetRuntimeDllDirs():
 def _GetDesiredVsToolchainHashes():
   """Load a list of SHA1s corresponding to the toolchains that we want installed
   to build with."""
-  sha1path = os.path.join(script_dir, 'toolchain_vs2013.hash')
-  with open(sha1path, 'rb') as f:
-    return f.read().strip().splitlines()
+  # Use Chromium's VS2013.
+  return ['ee7d718ec60c2dc5d255bbe325909c2021a7efef']
 
 
 def FindDepotTools():
@@ -85,7 +85,6 @@ def Update():
       bool(int(os.environ.get('DEPOT_TOOLS_WIN_TOOLCHAIN', '1')))
   if sys.platform in ('win32', 'cygwin') and depot_tools_win_toolchain:
     depot_tools_path = FindDepotTools()
-    json_data_file = os.path.join(script_dir, 'win_toolchain.json')
     get_toolchain_args = [
         sys.executable,
         os.path.join(depot_tools_path,
