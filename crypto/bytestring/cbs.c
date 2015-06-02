@@ -157,8 +157,8 @@ int CBS_get_u24_length_prefixed(CBS *cbs, CBS *out) {
   return cbs_get_length_prefixed(cbs, out, 3);
 }
 
-int CBS_get_any_asn1_element(CBS *cbs, CBS *out, unsigned *out_tag,
-                             size_t *out_header_len) {
+static int cbs_get_any_asn1_element(CBS *cbs, CBS *out, unsigned *out_tag,
+                                    size_t *out_header_len, int ber_ok) {
   uint8_t tag, length_byte;
   CBS header = *cbs;
   CBS throwaway;
@@ -193,7 +193,7 @@ int CBS_get_any_asn1_element(CBS *cbs, CBS *out, unsigned *out_tag,
     const size_t num_bytes = length_byte & 0x7f;
     uint32_t len32;
 
-    if ((tag & CBS_ASN1_CONSTRUCTED) != 0 && num_bytes == 0) {
+    if (ber_ok && (tag & CBS_ASN1_CONSTRUCTED) != 0 && num_bytes == 0) {
       /* indefinite length */
       if (out_header_len != NULL) {
         *out_header_len = 2;
@@ -229,6 +229,18 @@ int CBS_get_any_asn1_element(CBS *cbs, CBS *out, unsigned *out_tag,
   return CBS_get_bytes(cbs, out, len);
 }
 
+int CBS_get_any_asn1_element(CBS *cbs, CBS *out, unsigned *out_tag,
+                                    size_t *out_header_len) {
+  return cbs_get_any_asn1_element(cbs, out, out_tag, out_header_len,
+                                  0 /* DER only */);
+}
+
+int CBS_get_any_ber_asn1_element(CBS *cbs, CBS *out, unsigned *out_tag,
+                                 size_t *out_header_len) {
+  return cbs_get_any_asn1_element(cbs, out, out_tag, out_header_len,
+                                  1 /* BER allowed */);
+}
+
 static int cbs_get_asn1(CBS *cbs, CBS *out, unsigned tag_value,
                         int skip_header) {
   size_t header_len;
@@ -240,12 +252,7 @@ static int cbs_get_asn1(CBS *cbs, CBS *out, unsigned tag_value,
   }
 
   if (!CBS_get_any_asn1_element(cbs, out, &tag, &header_len) ||
-      tag != tag_value ||
-      (header_len > 0 &&
-       /* This ensures that the tag is either zero length or
-        * indefinite-length. */
-       CBS_len(out) == header_len &&
-       CBS_data(out)[header_len - 1] == 0x80)) {
+      tag != tag_value) {
     return 0;
   }
 

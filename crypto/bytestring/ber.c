@@ -43,7 +43,7 @@ static int cbs_find_ber(CBS *orig_in, char *ber_found, unsigned depth) {
     unsigned tag;
     size_t header_len;
 
-    if (!CBS_get_any_asn1_element(&in, &contents, &tag, &header_len)) {
+    if (!CBS_get_any_ber_asn1_element(&in, &contents, &tag, &header_len)) {
       return 0;
     }
     if (CBS_len(&contents) == header_len &&
@@ -74,7 +74,7 @@ static char is_primitive_type(unsigned tag) {
 }
 
 /* is_eoc returns true if |header_len| and |contents|, as returned by
- * |CBS_get_any_asn1_element|, indicate an "end of contents" (EOC) value. */
+ * |CBS_get_any_ber_asn1_element|, indicate an "end of contents" (EOC) value. */
 static char is_eoc(size_t header_len, CBS *contents) {
   return header_len == 2 && CBS_len(contents) == 2 &&
          memcmp(CBS_data(contents), "\x00\x00", 2) == 0;
@@ -98,7 +98,7 @@ static int cbs_convert_ber(CBS *in, CBB *out, char squash_header,
     size_t header_len;
     CBB *out_contents, out_contents_storage;
 
-    if (!CBS_get_any_asn1_element(in, &contents, &tag, &header_len)) {
+    if (!CBS_get_any_ber_asn1_element(in, &contents, &tag, &header_len)) {
       return 0;
     }
     out_contents = out;
@@ -129,8 +129,8 @@ static int cbs_convert_ber(CBS *in, CBB *out, char squash_header,
           size_t inner_header_len;
 
           CBS_init(&in_copy, CBS_data(in), CBS_len(in));
-          if (!CBS_get_any_asn1_element(&in_copy, &inner_contents, &inner_tag,
-                                        &inner_header_len)) {
+          if (!CBS_get_any_ber_asn1_element(&in_copy, &inner_contents,
+                                            &inner_tag, &inner_header_len)) {
             return 0;
           }
           if (CBS_len(&inner_contents) > inner_header_len &&

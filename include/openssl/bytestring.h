@@ -150,10 +150,8 @@ OPENSSL_EXPORT int CBS_peek_asn1_tag(const CBS *cbs, unsigned tag_value);
 
 /* CBS_get_any_asn1_element sets |*out| to contain the next ASN.1 element from
  * |*cbs| (including header bytes) and advances |*cbs|. It sets |*out_tag| to
- * the tag number and |*out_header_len| to the length of the ASN.1 header. If
- * the element has indefinite length then |*out| will only contain the
- * header. Each of |out|, |out_tag|, and |out_header_len| may be NULL to ignore
- * the value.
+ * the tag number and |*out_header_len| to the length of the ASN.1 header. Each
+ * of |out|, |out_tag|, and |out_header_len| may be NULL to ignore the value.
  *
  * Tag numbers greater than 30 are not supported (i.e. short form only). */
 OPENSSL_EXPORT int CBS_get_any_asn1_element(CBS *cbs, CBS *out,
