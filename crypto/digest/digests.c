@@ -65,20 +65,23 @@
 
 #include "internal.h"
 
+#if defined(NDEBUG)
+#define CHECK(x) x
+#else
+#define CHECK(x) assert(x)
+#endif
+
 
 static void md4_init(EVP_MD_CTX *ctx) {
-  int ret = MD4_Init(ctx->md_data);
-  assert(ret);
+  CHECK(MD4_Init(ctx->md_data));
 }
 
 static void md4_update(EVP_MD_CTX *ctx, const void *data, size_t count) {
-  int ret = MD4_Update(ctx->md_data, data, count);
-  assert(ret);
+  CHECK(MD4_Update(ctx->md_data, data, count));
 }
 
 static void md4_final(EVP_MD_CTX *ctx, uint8_t *out) {
-  int ret = MD4_Final(out, ctx->md_data);
-  assert(ret);
+  CHECK(MD4_Final(out, ctx->md_data));
 }
 
 static const EVP_MD md4_md = {
@@ -90,18 +93,15 @@ const EVP_MD *EVP_md4(void) { return &md4_md; }
 
 
 static void md5_init(EVP_MD_CTX *ctx) {
-  int ret = MD5_Init(ctx->md_data);
-  assert(ret);
+  CHECK(MD5_Init(ctx->md_data));
 }
 
 static void md5_update(EVP_MD_CTX *ctx, const void *data, size_t count) {
-  int ret = MD5_Update(ctx->md_data, data, count);
-  assert(ret);
+  CHECK(MD5_Update(ctx->md_data, data, count));
 }
 
 static void md5_final(EVP_MD_CTX *ctx, uint8_t *out) {
-  int ret = MD5_Final(out, ctx->md_data);
-  assert(ret);
+  CHECK(MD5_Final(out, ctx->md_data));
 }
 
 static const EVP_MD md5_md = {
@@ -113,18 +113,15 @@ const EVP_MD *EVP_md5(void) { return &md5_md; }
 
 
 static void sha1_init(EVP_MD_CTX *ctx) {
-  int ret = SHA1_Init(ctx->md_data);
-  assert(ret);
+  CHECK(SHA1_Init(ctx->md_data));
 }
 
 static void sha1_update(EVP_MD_CTX *ctx, const void *data, size_t count) {
-  int ret = SHA1_Update(ctx->md_data, data, count);
-  assert(ret);
+  CHECK(SHA1_Update(ctx->md_data, data, count));
 }
 
 static void sha1_final(EVP_MD_CTX *ctx, uint8_t *md) {
-  int ret = SHA1_Final(md, ctx->md_data);
-  assert(ret);
+  CHECK(SHA1_Final(md, ctx->md_data));
 }
 
 static const EVP_MD sha1_md = {
@@ -136,18 +133,15 @@ const EVP_MD *EVP_sha1(void) { return &sha1_md; }
 
 
 static void sha224_init(EVP_MD_CTX *ctx) {
-  int ret = SHA224_Init(ctx->md_data);
-  assert(ret);
+  CHECK(SHA224_Init(ctx->md_data));
 }
 
 static void sha224_update(EVP_MD_CTX *ctx, const void *data, size_t count) {
-  int ret = SHA224_Update(ctx->md_data, data, count);
-  assert(ret);
+  CHECK(SHA224_Update(ctx->md_data, data, count));
 }
 
 static void sha224_final(EVP_MD_CTX *ctx, uint8_t *md) {
-  int ret = SHA224_Final(md, ctx->md_data);
-  assert(ret);
+  CHECK(SHA224_Final(md, ctx->md_data));
 }
 
 static const EVP_MD sha224_md = {
@@ -160,18 +154,15 @@ const EVP_MD *EVP_sha224(void) { return &sha224_md; }
 
 
 static void sha256_init(EVP_MD_CTX *ctx) {
-  int ret = SHA256_Init(ctx->md_data);
-  assert(ret);
+  CHECK(SHA256_Init(ctx->md_data));
 }
 
 static void sha256_update(EVP_MD_CTX *ctx, const void *data, size_t count) {
-  int ret = SHA256_Update(ctx->md_data, data, count);
-  assert(ret);
+  CHECK(SHA256_Update(ctx->md_data, data, count));
 }
 
 static void sha256_final(EVP_MD_CTX *ctx, uint8_t *md) {
-  int ret = SHA256_Final(md, ctx->md_data);
-  assert(ret);
+  CHECK(SHA256_Final(md, ctx->md_data));
 }
 
 static const EVP_MD sha256_md = {
@@ -184,18 +175,15 @@ const EVP_MD *EVP_sha256(void) { return &sha256_md; }
 
 
 static void sha384_init(EVP_MD_CTX *ctx) {
-  int ret = SHA384_Init(ctx->md_data);
-  assert(ret);
+  CHECK(SHA384_Init(ctx->md_data));
 }
 
 static void sha384_update(EVP_MD_CTX *ctx, const void *data, size_t count) {
-  int ret = SHA384_Update(ctx->md_data, data, count);
-  assert(ret);
+  CHECK(SHA384_Update(ctx->md_data, data, count));
 }
 
 static void sha384_final(EVP_MD_CTX *ctx, uint8_t *md) {
-  int ret = SHA384_Final(md, ctx->md_data);
-  assert(ret);
+  CHECK(SHA384_Final(md, ctx->md_data));
 }
 
 static const EVP_MD sha384_md = {
@@ -208,18 +196,15 @@ const EVP_MD *EVP_sha384(void) { return &sha384_md; }
 
 
 static void sha512_init(EVP_MD_CTX *ctx) {
-  int ret = SHA512_Init(ctx->md_data);
-  assert(ret);
+  CHECK(SHA512_Init(ctx->md_data));
 }
 
 static void sha512_update(EVP_MD_CTX *ctx, const void *data, size_t count) {
-  int ret = SHA512_Update(ctx->md_data, data, count);
-  assert(ret);
+  CHECK(SHA512_Update(ctx->md_data, data, count));
 }
 
 static void sha512_final(EVP_MD_CTX *ctx, uint8_t *md) {
-  int ret = SHA512_Final(md, ctx->md_data);
-  assert(ret);
+  CHECK(SHA512_Final(md, ctx->md_data));
 }
 
 static const EVP_MD sha512_md = {
@@ -238,23 +223,20 @@ typedef struct {
 
 static void md5_sha1_init(EVP_MD_CTX *md_ctx) {
   MD5_SHA1_CTX *ctx = md_ctx->md_data;
-  int ret = MD5_Init(&ctx->md5) && SHA1_Init(&ctx->sha1);
-  assert(ret);
+  CHECK(MD5_Init(&ctx->md5) && SHA1_Init(&ctx->sha1));
 }
 
 static void md5_sha1_update(EVP_MD_CTX *md_ctx, const void *data,
                             size_t count) {
   MD5_SHA1_CTX *ctx = md_ctx->md_data;
-  int ret = MD5_Update(&ctx->md5, data, count) &&
-            SHA1_Update(&ctx->sha1, data, count);
-  assert(ret);
+  CHECK(MD5_Update(&ctx->md5, data, count) &&
+        SHA1_Update(&ctx->sha1, data, count));
 }
 
 static void md5_sha1_final(EVP_MD_CTX *md_ctx, uint8_t *out) {
   MD5_SHA1_CTX *ctx = md_ctx->md_data;
-  int ret = MD5_Final(out, &ctx->md5) &&
-            SHA1_Final(out + MD5_DIGEST_LENGTH, &ctx->sha1);
-  assert(ret);
+  CHECK(MD5_Final(out, &ctx->md5) &&
+        SHA1_Final(out + MD5_DIGEST_LENGTH, &ctx->sha1));
 }
 
 static const EVP_MD md5_sha1_md = {
