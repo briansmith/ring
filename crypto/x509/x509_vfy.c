@@ -1191,7 +1191,7 @@ static void crl_akid_check(X509_STORE_CTX *ctx, X509_CRL *crl,
 	int cidx = ctx->error_depth;
 	size_t i;
 
-	if (cidx != sk_X509_num(ctx->chain) - 1)
+	if ((size_t) cidx != sk_X509_num(ctx->chain) - 1)
 		cidx++;
 
 	crl_issuer = sk_X509_value(ctx->chain, cidx);

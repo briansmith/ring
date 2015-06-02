@@ -367,7 +367,7 @@ static int PKCS5_v2_PBKDF2_keyivgen(EVP_CIPHER_CTX *ctx,
   }
 
   const size_t iv_len = EVP_CIPHER_CTX_iv_length(ctx);
-  if (iv->value.octet_string->length != iv_len) {
+  if ((size_t) iv->value.octet_string->length != iv_len) {
     OPENSSL_PUT_ERROR(PKCS8, PKCS8_R_ERROR_SETTING_CIPHER_PARAMS);
     goto err;
   }

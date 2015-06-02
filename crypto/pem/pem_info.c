@@ -292,7 +292,7 @@ err:
 	if (xi != NULL) X509_INFO_free(xi);
 	if (!ok)
 		{
-		for (i=0; ((int)i)<sk_X509_INFO_num(ret); i++)
+		for (i=0; i<sk_X509_INFO_num(ret); i++)
 			{
 			xi=sk_X509_INFO_value(ret,i);
 			X509_INFO_free(xi);

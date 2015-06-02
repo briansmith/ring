@@ -176,7 +176,7 @@ static int mem_write(BIO *bio, const char *in, int inl) {
   if (INT_MAX - blen < inl) {
     goto err;
   }
-  if (BUF_MEM_grow_clean(b, blen + inl) != (blen + inl)) {
+  if (BUF_MEM_grow_clean(b, blen + inl) != ((size_t) blen) + inl) {
     goto err;
   }
   memcpy(&b->data[blen], in, inl);

@@ -73,7 +73,8 @@
 int main(void)
 {
 #if !defined(BORINGSSL_SHARED_LIBRARY)
-	int i, prev = -1, bad = 0;
+	unsigned i;
+	int prev = -1, bad = 0;
 	const X509V3_EXT_METHOD *const *tmp;
         CRYPTO_library_init();
 	i = sizeof(standard_exts) / sizeof(X509V3_EXT_METHOD *);
@@ -89,7 +90,7 @@ int main(void)
 		tmp = standard_exts;
 		fprintf(stderr, "Extensions out of order!\n");
 		for(i = 0; i < STANDARD_EXTENSION_COUNT; i++, tmp++)
-		printf("%d : %s\n", (*tmp)->ext_nid, OBJ_nid2sn((*tmp)->ext_nid));
+			printf("%d : %s\n", (*tmp)->ext_nid, OBJ_nid2sn((*tmp)->ext_nid));
 		return 1;
 	} else {
 		printf("PASS\n");

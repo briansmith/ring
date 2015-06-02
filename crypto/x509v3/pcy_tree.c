@@ -426,7 +426,7 @@ static int tree_link_unmatched(X509_POLICY_LEVEL *curr,
 		{
 		/* If mapping: matched if one child per expected policy set */
 		STACK_OF(ASN1_OBJECT) *expset = node->data->expected_policy_set;
-		if (node->nchild == sk_ASN1_OBJECT_num(expset))
+		if ((size_t) node->nchild == sk_ASN1_OBJECT_num(expset))
 			return 1;
 		/* Locate unmatched nodes */
 		for (i = 0; i < sk_ASN1_OBJECT_num(expset); i++)

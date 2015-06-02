@@ -30,7 +30,7 @@ static bool TestOverflow() {
     /* Errors are returned in order they were pushed, with the least recent ones
      * removed, up to |ERR_NUM_ERRORS - 1| errors. So the errors returned are
      * |ERR_NUM_ERRORS + 2| through |ERR_NUM_ERRORS * 2|, inclusive. */
-    if (err == 0 || ERR_GET_REASON(err) != i + ERR_NUM_ERRORS + 2) {
+    if (err == 0 || ((unsigned)ERR_GET_REASON(err)) != i + ERR_NUM_ERRORS + 2) {
       fprintf(stderr, "ERR_get_error failed at %u\n", i);
       return false;
     }

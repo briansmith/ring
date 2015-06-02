@@ -295,7 +295,7 @@ DH *DH_get_2048_256(const ENGINE *engine) {
 }
 
 void DH_check_standard_parameters(DH *dh) {
-  int i;
+  unsigned i;
 
   if (dh->p == NULL ||
       dh->g == NULL ||

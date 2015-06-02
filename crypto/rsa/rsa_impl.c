@@ -1010,7 +1010,7 @@ static int keygen_multiprime(RSA *rsa, int bits, int num_primes,
       if (!BN_mul(r1, rsa->n, ap->prime, ctx)) {
         goto err;
       }
-      if (BN_num_bits(r1) == bits) {
+      if (BN_num_bits(r1) == (unsigned) bits) {
         break;
       }
 

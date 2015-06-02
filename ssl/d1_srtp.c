@@ -171,7 +171,8 @@ static int ssl_ctx_make_profiles(const char *profiles_string,
     const SRTP_PROTECTION_PROFILE *p;
 
     col = strchr(ptr, ':');
-    if (find_profile_by_name(ptr, &p, col ? col - ptr : strlen(ptr))) {
+    if (find_profile_by_name(ptr, &p,
+                             col ? (size_t)(col - ptr) : strlen(ptr))) {
       sk_SRTP_PROTECTION_PROFILE_push(profiles, p);
     } else {
       OPENSSL_PUT_ERROR(SSL, SSL_R_SRTP_UNKNOWN_PROTECTION_PROFILE);

@@ -130,7 +130,7 @@
  *     compressionMethod       [11] OCTET STRING OPTIONAL,
  *     srpUsername             [12] OCTET STRING OPTIONAL, */
 
-static const int kVersion = 1;
+static const unsigned kVersion = 1;
 
 static const int kTimeTag =
     CBS_ASN1_CONSTRUCTED | CBS_ASN1_CONTEXT_SPECIFIC | 1;

@@ -529,7 +529,7 @@ int BIO_read_asn1(BIO *bio, uint8_t **out, size_t *out_len, size_t max_len) {
   uint8_t header[6];
 
   static const size_t kInitialHeaderLen = 2;
-  if (BIO_read(bio, header, kInitialHeaderLen) != kInitialHeaderLen) {
+  if (BIO_read(bio, header, kInitialHeaderLen) != (int) kInitialHeaderLen) {
     return 0;
   }
 
@@ -559,7 +559,8 @@ int BIO_read_asn1(BIO *bio, uint8_t **out, size_t *out_len, size_t max_len) {
       return 0;
     }
 
-    if (BIO_read(bio, header + kInitialHeaderLen, num_bytes) != num_bytes) {
+    if (BIO_read(bio, header + kInitialHeaderLen, num_bytes) !=
+        (int)num_bytes) {
       return 0;
     }
     header_len = kInitialHeaderLen + num_bytes;
@@ -585,7 +586,8 @@ int BIO_read_asn1(BIO *bio, uint8_t **out, size_t *out_len, size_t max_len) {
   }
 
   if (len + header_len < len ||
-      len + header_len > max_len) {
+      len + header_len > max_len ||
+      len > INT_MAX) {
     return 0;
   }
   len += header_len;
@@ -597,7 +599,7 @@ int BIO_read_asn1(BIO *bio, uint8_t **out, size_t *out_len, size_t max_len) {
   }
   memcpy(*out, header, header_len);
   if (BIO_read(bio, (*out) + header_len, len - header_len) !=
-      len - header_len) {
+      (int) (len - header_len)) {
     OPENSSL_free(*out);
     return 0;
   }

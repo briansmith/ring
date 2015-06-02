@@ -399,7 +399,7 @@ static int dtls1_discard_fragment_body(SSL *s, size_t frag_len) {
   while (frag_len > 0) {
     size_t chunk = frag_len < sizeof(discard) ? frag_len : sizeof(discard);
     int ret = dtls1_read_bytes(s, SSL3_RT_HANDSHAKE, discard, chunk, 0);
-    if (ret != chunk) {
+    if (ret != (int) chunk) {
       return 0;
     }
     frag_len -= chunk;
@@ -525,7 +525,7 @@ static int dtls1_process_fragment(SSL *s) {
   /* Read the body of the fragment. */
   ret = dtls1_read_bytes(s, SSL3_RT_HANDSHAKE, frag->fragment + frag_off,
                          frag_len, 0);
-  if (ret != frag_len) {
+  if (ret != (int) frag_len) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
     ssl3_send_alert(s, SSL3_AL_FATAL, SSL_AD_INTERNAL_ERROR);
     return -1;
