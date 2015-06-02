@@ -381,13 +381,8 @@ OPENSSL_EXPORT int PEM_write_bio_##name(BIO *bp, type *x, const EVP_CIPHER *enc,
 	DECLARE_PEM_read(name, type) \
 	DECLARE_PEM_write_cb(name, type)
 
-#if 1
 /* "userdata": new with OpenSSL 0.9.4 */
 typedef int pem_password_cb(char *buf, int size, int rwflag, void *userdata);
-#else
-/* OpenSSL 0.9.3, 0.9.3a */
-typedef int pem_password_cb(char *buf, int size, int rwflag);
-#endif
 
 OPENSSL_EXPORT int	PEM_get_EVP_CIPHER_INFO(char *header, EVP_CIPHER_INFO *cipher);
 OPENSSL_EXPORT int	PEM_do_header (EVP_CIPHER_INFO *cipher, unsigned char *data,long *len, pem_password_cb *callback,void *u);
@@ -415,7 +410,12 @@ OPENSSL_EXPORT void    PEM_SignInit(EVP_MD_CTX *ctx, EVP_MD *type);
 OPENSSL_EXPORT void    PEM_SignUpdate(EVP_MD_CTX *ctx,unsigned char *d,unsigned int cnt);
 OPENSSL_EXPORT int	PEM_SignFinal(EVP_MD_CTX *ctx, unsigned char *sigret, unsigned int *siglen, EVP_PKEY *pkey);
 
-OPENSSL_EXPORT int	PEM_def_callback(char *buf, int num, int w, void *key);
+/* |PEM_def_callback| treats |userdata| as a string and copies it into |buf|,
+ * assuming its |size| is sufficient. Returns the length of the string, or 0
+ * if there is not enough room. If either |buf| or |userdata| is NULL, 0 is
+ * returned. Note that this is different from OpenSSL, which prompts for a
+ * password. */
+OPENSSL_EXPORT int	PEM_def_callback(char *buf, int size, int rwflag, void *userdata);
 OPENSSL_EXPORT void	PEM_proc_type(char *buf, int type);
 OPENSSL_EXPORT void	PEM_dek_info(char *buf, const char *type, int len, char *str);
 
