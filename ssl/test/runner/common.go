@@ -188,6 +188,7 @@ type ConnectionState struct {
 	VerifiedChains             [][]*x509.Certificate // verified chains built from PeerCertificates
 	ChannelID                  *ecdsa.PublicKey      // the channel ID for this connection
 	SRTPProtectionProfile      uint16                // the negotiated DTLS-SRTP protection profile
+	TLSUnique                  []byte
 }
 
 // ClientAuthType declares the policy the server will follow for

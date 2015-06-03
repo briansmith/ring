@@ -44,7 +44,11 @@ type Conn struct {
 	// opposed to the ones presented by the server.
 	verifiedChains [][]*x509.Certificate
 	// serverName contains the server name indicated by the client, if any.
-	serverName                 string
+	serverName string
+	// firstFinished contains the first Finished hash sent during the
+	// handshake. This is the "tls-unique" channel binding value.
+	firstFinished [12]byte
+
 	clientRandom, serverRandom [32]byte
 	masterSecret               [48]byte
 
@@ -1299,6 +1303,7 @@ func (c *Conn) ConnectionState() ConnectionState {
 		state.ServerName = c.serverName
 		state.ChannelID = c.channelID
 		state.SRTPProtectionProfile = c.srtpProtectionProfile
+		state.TLSUnique = c.firstFinished[:]
 	}
 
 	return state

@@ -81,6 +81,7 @@ const Flag<bool> kBoolFlags[] = {
   { "-use-export-context", &TestConfig::use_export_context },
   { "-reject-peer-renegotiations", &TestConfig::reject_peer_renegotiations },
   { "-no-legacy-server-connect", &TestConfig::no_legacy_server_connect },
+  { "-tls-unique", &TestConfig::tls_unique },
 };
 
 const Flag<std::string> kStringFlags[] = {

@@ -2925,6 +2925,41 @@ int SSL_get_rc4_state(const SSL *ssl, const RC4_KEY **read_key,
          EVP_AEAD_CTX_get_rc4_state(&ssl->aead_write_ctx->ctx, write_key);
 }
 
+int SSL_get_tls_unique(const SSL *ssl, uint8_t *out, size_t *out_len,
+                       size_t max_out) {
+  /* The tls-unique value is the first Finished message in the handshake, which
+   * is the client's in a full handshake and the server's for a resumption. See
+   * https://tools.ietf.org/html/rfc5929#section-3.1. */
+  const uint8_t *finished = ssl->s3->previous_client_finished;
+  size_t finished_len = ssl->s3->previous_client_finished_len;
+  if (ssl->hit) {
+    /* tls-unique is broken for resumed sessions unless EMS is used. */
+    if (!ssl->session->extended_master_secret) {
+      goto err;
+    }
+    finished = ssl->s3->previous_server_finished;
+    finished_len = ssl->s3->previous_server_finished_len;
+  }
+
+  if (!ssl->s3->initial_handshake_complete ||
+      ssl->version < TLS1_VERSION) {
+    goto err;
+  }
+
+  *out_len = finished_len;
+  if (finished_len > max_out) {
+    *out_len = max_out;
+  }
+
+  memcpy(out, finished, *out_len);
+  return 1;
+
+err:
+  *out_len = 0;
+  memset(out, 0, max_out);
+  return 0;
+}
+
 int SSL_CTX_sess_connect(const SSL_CTX *ctx) { return 0; }
 int SSL_CTX_sess_connect_good(const SSL_CTX *ctx) { return 0; }
 int SSL_CTX_sess_connect_renegotiate(const SSL_CTX *ctx) { return 0; }

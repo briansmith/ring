@@ -856,6 +856,26 @@ static bool DoExchange(ScopedSSL_SESSION *out_session, SSL_CTX *ssl_ctx,
     }
   }
 
+  if (config->tls_unique) {
+    uint8_t tls_unique[16];
+    size_t tls_unique_len;
+    if (!SSL_get_tls_unique(ssl.get(), tls_unique, &tls_unique_len,
+                            sizeof(tls_unique))) {
+      fprintf(stderr, "failed to get tls-unique\n");
+      return false;
+    }
+
+    if (tls_unique_len != 12) {
+      fprintf(stderr, "expected 12 bytes of tls-unique but got %u",
+              static_cast<unsigned>(tls_unique_len));
+      return false;
+    }
+
+    if (WriteAll(ssl.get(), tls_unique, tls_unique_len) < 0) {
+      return false;
+    }
+  }
+
   if (config->write_different_record_sizes) {
     if (config->is_dtls) {
       fprintf(stderr, "write_different_record_sizes not supported for DTLS\n");

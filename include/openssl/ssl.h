@@ -495,6 +495,29 @@ OPENSSL_EXPORT uint32_t SSL_clear_mode(SSL *ssl, uint32_t mode);
 OPENSSL_EXPORT uint32_t SSL_get_mode(const SSL *ssl);
 
 
+/* Connection information. */
+
+/* SSL_get_tls_unique writes at most |max_out| bytes of the tls-unique value
+ * for |ssl| to |out| and sets |*out_len| to the number of bytes written. It
+ * returns one on success or zero on error. In general |max_out| should be at
+ * least 12.
+ *
+ * This function will always fail if the initial handshake has not completed.
+ * The tls-unique value will change after a renegotiation but, since
+ * renegotiations can be initiated by the server at any point, the higher-level
+ * protocol must either leave them disabled or define states in which the
+ * tls-unique value can be read.
+ *
+ * The tls-unique value is defined by
+ * https://tools.ietf.org/html/rfc5929#section-3.1. Due to a weakness in the
+ * TLS protocol, tls-unique is broken for resumed connections unless the
+ * Extended Master Secret extension is negotiated. Thus this function will
+ * return zero if |ssl| performed session resumption unless EMS was used when
+ * negotiating the original session. */
+OPENSSL_EXPORT int SSL_get_tls_unique(const SSL *ssl, uint8_t *out,
+                                      size_t *out_len, size_t max_out);
+
+
 /* Underdocumented functions.
  *
  * Functions below here haven't been touched up and may be underdocumented. */

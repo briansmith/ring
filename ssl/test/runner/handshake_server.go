@@ -69,7 +69,7 @@ func (c *Conn) serverHandshake() error {
 				return err
 			}
 		}
-		if err := hs.sendFinished(); err != nil {
+		if err := hs.sendFinished(c.firstFinished[:]); err != nil {
 			return err
 		}
 		// Most retransmits are triggered by a timeout, but the final
@@ -81,7 +81,7 @@ func (c *Conn) serverHandshake() error {
 		}); err != nil {
 			return err
 		}
-		if err := hs.readFinished(isResume); err != nil {
+		if err := hs.readFinished(nil, isResume); err != nil {
 			return err
 		}
 		c.didResume = true
@@ -94,7 +94,7 @@ func (c *Conn) serverHandshake() error {
 		if err := hs.establishKeys(); err != nil {
 			return err
 		}
-		if err := hs.readFinished(isResume); err != nil {
+		if err := hs.readFinished(c.firstFinished[:], isResume); err != nil {
 			return err
 		}
 		if c.config.Bugs.AlertBeforeFalseStartTest != 0 {
@@ -108,7 +108,7 @@ func (c *Conn) serverHandshake() error {
 		if err := hs.sendSessionTicket(); err != nil {
 			return err
 		}
-		if err := hs.sendFinished(); err != nil {
+		if err := hs.sendFinished(nil); err != nil {
 			return err
 		}
 	}
@@ -754,7 +754,7 @@ func (hs *serverHandshakeState) establishKeys() error {
 	return nil
 }
 
-func (hs *serverHandshakeState) readFinished(isResume bool) error {
+func (hs *serverHandshakeState) readFinished(out []byte, isResume bool) error {
 	c := hs.c
 
 	c.readRecord(recordTypeChangeCipherSpec)
@@ -823,6 +823,7 @@ func (hs *serverHandshakeState) readFinished(isResume bool) error {
 		return errors.New("tls: client's Finished message is incorrect")
 	}
 	c.clientVerify = append(c.clientVerify[:0], clientFinished.verifyData...)
+	copy(out, clientFinished.verifyData)
 
 	hs.writeClientHash(clientFinished.marshal())
 	return nil
@@ -859,11 +860,12 @@ func (hs *serverHandshakeState) sendSessionTicket() error {
 	return nil
 }
 
-func (hs *serverHandshakeState) sendFinished() error {
+func (hs *serverHandshakeState) sendFinished(out []byte) error {
 	c := hs.c
 
 	finished := new(finishedMsg)
 	finished.verifyData = hs.finishedHash.serverSum(hs.masterSecret)
+	copy(out, finished.verifyData)
 	if c.config.Bugs.BadFinished {
 		finished.verifyData[0]++
 	}

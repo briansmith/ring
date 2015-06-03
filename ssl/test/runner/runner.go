@@ -201,6 +201,9 @@ type testCase struct {
 	// flags, if not empty, contains a list of command-line flags that will
 	// be passed to the shim program.
 	flags []string
+	// testTLSUnique, if true, causes the shim to send the tls-unique value
+	// which will be compared against the expected value.
+	testTLSUnique bool
 }
 
 var testCases = []testCase{
@@ -1246,6 +1249,17 @@ func doExchange(test *testCase, config *Config, conn net.Conn, messageLen int, i
 		}
 	}
 
+	if test.testTLSUnique {
+		var peersValue [12]byte
+		if _, err := io.ReadFull(tlsConn, peersValue[:]); err != nil {
+			return err
+		}
+		expected := tlsConn.ConnectionState().TLSUnique
+		if !bytes.Equal(peersValue[:], expected) {
+			return fmt.Errorf("tls-unique mismatch: peer sent %x, but %x was expected", peersValue[:], expected)
+		}
+	}
+
 	if test.shimWritesFirst {
 		var buf [5]byte
 		_, err := io.ReadFull(tlsConn, buf[:])
@@ -1429,6 +1443,10 @@ func runTest(test *testCase, buildDir string, mallocNumToFail int64) error {
 	}
 	if test.expectResumeRejected {
 		flags = append(flags, "-expect-session-miss")
+	}
+
+	if test.testTLSUnique {
+		flags = append(flags, "-tls-unique")
 	}
 
 	flags = append(flags, test.flags...)
@@ -3369,6 +3387,59 @@ func addExportKeyingMaterialTests() {
 	})
 }
 
+func addTLSUniqueTests() {
+	for _, isClient := range []bool{false, true} {
+		for _, isResumption := range []bool{false, true} {
+			for _, hasEMS := range []bool{false, true} {
+				var suffix string
+				if isResumption {
+					suffix = "Resume-"
+				} else {
+					suffix = "Full-"
+				}
+
+				if hasEMS {
+					suffix += "EMS-"
+				} else {
+					suffix += "NoEMS-"
+				}
+
+				if isClient {
+					suffix += "Client"
+				} else {
+					suffix += "Server"
+				}
+
+				test := testCase{
+					name:          "TLSUnique-" + suffix,
+					testTLSUnique: true,
+					config: Config{
+						Bugs: ProtocolBugs{
+							NoExtendedMasterSecret: !hasEMS,
+						},
+					},
+				}
+
+				if isResumption {
+					test.resumeSession = true
+					test.resumeConfig = &Config{
+						Bugs: ProtocolBugs{
+							NoExtendedMasterSecret: !hasEMS,
+						},
+					}
+				}
+
+				if isResumption && !hasEMS {
+					test.shouldFail = true
+					test.expectedError = "failed to get tls-unique"
+				}
+
+				testCases = append(testCases, test)
+			}
+		}
+	}
+}
+
 func worker(statusChan chan statusMsg, c chan *testCase, buildDir string, wg *sync.WaitGroup) {
 	defer wg.Done()
 
@@ -3467,6 +3538,7 @@ func main() {
 	addFastRadioPaddingTests()
 	addDTLSRetransmitTests()
 	addExportKeyingMaterialTests()
+	addTLSUniqueTests()
 	for _, async := range []bool{false, true} {
 		for _, splitHandshake := range []bool{false, true} {
 			for _, protocol := range []protocol{tls, dtls} {

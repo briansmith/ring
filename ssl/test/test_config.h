@@ -78,6 +78,7 @@ struct TestConfig {
   bool use_export_context = false;
   bool reject_peer_renegotiations = false;
   bool no_legacy_server_connect = false;
+  bool tls_unique = false;
 };
 
 bool ParseConfig(int argc, char **argv, TestConfig *out_config);
