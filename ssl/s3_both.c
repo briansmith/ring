@@ -195,8 +195,8 @@ int ssl3_send_finished(SSL *s, int a, int b, const char *sender, int slen) {
   return ssl_do_write(s);
 }
 
-/* ssl3_take_mac calculates the Finished MAC for the handshakes messages seen to
- * far. */
+/* ssl3_take_mac calculates the Finished MAC for the handshakes messages seen
+ * so far. */
 static void ssl3_take_mac(SSL *s) {
   const char *sender;
   int slen;
