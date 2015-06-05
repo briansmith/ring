@@ -67,7 +67,7 @@
 #include "internal.h"
 
 #if defined(NDEBUG)
-#define CHECK(x) x
+#define CHECK(x) (void) (x)
 #else
 #define CHECK(x) assert(x)
 #endif
