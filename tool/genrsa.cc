@@ -44,7 +44,7 @@ bool GenerateRSAKey(const std::vector<std::string> &args) {
     return false;
   }
 
-  unsigned bits, nprimes;
+  unsigned bits, nprimes = 0;
   if (!GetUnsigned(&bits, "-bits", 2048, args_map) ||
       !GetUnsigned(&nprimes, "-nprimes", 2, args_map)) {
     PrintUsage(kArguments);
