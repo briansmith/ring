@@ -563,20 +563,19 @@ static int test_multi_prime_key(int nprimes, const uint8_t *der,
   return 1;
 }
 
-static int test_multi_prime_keygen() {
+static int test_multi_prime_keygen(void) {
   RSA *rsa = RSA_new();
   BIGNUM e;
 
   BN_init(&e);
 
   static const char kMessage[] = "Hello world.";
-  static const size_t kBits = 1024;
-  uint8_t encrypted[kBits / 8], decrypted[kBits / 8];
+  uint8_t encrypted[1024 / 8], decrypted[1024 / 8];
   size_t encrypted_len, decrypted_len;
 
   if (rsa == NULL ||
       !BN_set_word(&e, RSA_F4) ||
-      !RSA_generate_multi_prime_key(rsa, kBits, 3, &e, NULL) ||
+      !RSA_generate_multi_prime_key(rsa, 1024, 3, &e, NULL) ||
       !RSA_check_key(rsa) ||
       !RSA_encrypt(rsa, &encrypted_len, encrypted, sizeof(encrypted),
                    (const uint8_t *)kMessage, sizeof(kMessage),
