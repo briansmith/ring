@@ -38,14 +38,6 @@ extern "C" {
  * It returns one on success and zero otherwise. */
 OPENSSL_EXPORT int CBS_asn1_ber_to_der(CBS *in, uint8_t **out, size_t *out_len);
 
-/* CBS_get_any_ber_asn1_element acts the same as |CBS_get_any_asn1_element| but
- * also allows indefinite-length elements to be returned. In that case,
- * |*out_header_len| and |CBS_len(out)| will both be two as only the header is
- * returned. */
-OPENSSL_EXPORT int CBS_get_any_ber_asn1_element(CBS *cbs, CBS *out,
-                                                unsigned *out_tag,
-                                                size_t *out_header_len);
-
 
 #if defined(__cplusplus)
 }  /* extern C */
