@@ -258,6 +258,10 @@ int ssl3_read_n(SSL *s, int n, int extend) {
  * forever. */
 static const uint8_t kMaxEmptyRecords = 32;
 
+/* kMaxWarningAlerts is the number of consecutive warning alerts that will be
+ * processed. */
+static const uint8_t kMaxWarningAlerts = 4;
+
 /* Call this to get a new input record. It will return <= 0 if more data is
  * needed, normally due to an error or non-blocking IO. When it finishes, one
  * packet has been decoded and can be found in
@@ -804,6 +808,8 @@ start:
   }
 
   if (type == rr->type) {
+    s->s3->warning_alert_count = 0;
+
     /* SSL3_RT_APPLICATION_DATA or SSL3_RT_HANDSHAKE */
     /* make sure that we are not getting application data when we are doing a
      * handshake for the first time */
@@ -961,6 +967,13 @@ start:
       else if (alert_descr == SSL_AD_NO_RENEGOTIATION) {
         al = SSL_AD_HANDSHAKE_FAILURE;
         OPENSSL_PUT_ERROR(SSL, ssl3_read_bytes, SSL_R_NO_RENEGOTIATION);
+        goto f_err;
+      }
+
+      s->s3->warning_alert_count++;
+      if (s->s3->warning_alert_count > kMaxWarningAlerts) {
+        al = SSL_AD_UNEXPECTED_MESSAGE;
+        OPENSSL_PUT_ERROR(SSL, ssl3_read_bytes, SSL_R_TOO_MANY_WARNING_ALERTS);
         goto f_err;
       }
     } else if (alert_level == SSL3_AL_FATAL) {

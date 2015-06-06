@@ -705,10 +705,6 @@ type ProtocolBugs struct {
 	// preferences to be ignored.
 	IgnorePeerCurvePreferences bool
 
-	// SendWarningAlerts, if non-zero, causes every record to be prefaced by
-	// a warning alert.
-	SendWarningAlerts alert
-
 	// BadFinished, if true, causes the Finished hash to be broken.
 	BadFinished bool
 

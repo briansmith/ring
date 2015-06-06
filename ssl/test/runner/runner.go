@@ -207,6 +207,9 @@ type testCase struct {
 	// sendEmptyRecords is the number of consecutive empty records to send
 	// before and after the test message.
 	sendEmptyRecords int
+	// sendWarningAlerts is the number of consecutive warning alerts to send
+	// before and after the test message.
+	sendWarningAlerts int
 }
 
 var testCases = []testCase{
@@ -955,23 +958,6 @@ var testCases = []testCase{
 		expectedError: ":WRONG_CURVE:",
 	},
 	{
-		name: "SendWarningAlerts",
-		config: Config{
-			Bugs: ProtocolBugs{
-				SendWarningAlerts: alertAccessDenied,
-			},
-		},
-	},
-	{
-		protocol: dtls,
-		name:     "SendWarningAlerts-DTLS",
-		config: Config{
-			Bugs: ProtocolBugs{
-				SendWarningAlerts: alertAccessDenied,
-			},
-		},
-	},
-	{
 		name: "BadFinished",
 		config: Config{
 			Bugs: ProtocolBugs{
@@ -1156,6 +1142,28 @@ var testCases = []testCase{
 		shouldFail:       true,
 		expectedError:    ":TOO_MANY_EMPTY_FRAGMENTS:",
 	},
+	{
+		name:              "SendWarningAlerts-Pass",
+		sendWarningAlerts: 4,
+	},
+	{
+		protocol:          dtls,
+		name:              "SendWarningAlerts-DTLS-Pass",
+		sendWarningAlerts: 4,
+	},
+	{
+		name:              "SendWarningAlerts",
+		sendWarningAlerts: 5,
+		shouldFail:        true,
+		expectedError:     ":TOO_MANY_WARNING_ALERTS:",
+	},
+	{
+		name:              "SendWarningAlerts-Async",
+		sendWarningAlerts: 5,
+		flags:             []string{"-async"},
+		shouldFail:        true,
+		expectedError:     ":TOO_MANY_WARNING_ALERTS:",
+	},
 }
 
 func doExchange(test *testCase, config *Config, conn net.Conn, messageLen int, isResume bool) error {
@@ -1295,6 +1303,10 @@ func doExchange(test *testCase, config *Config, conn net.Conn, messageLen int, i
 		tlsConn.Write(nil)
 	}
 
+	for i := 0; i < test.sendWarningAlerts; i++ {
+		tlsConn.SendAlert(alertLevelWarning, alertUnexpectedMessage)
+	}
+
 	if test.renegotiate {
 		if test.renegotiateCiphers != nil {
 			config.CipherSuites = test.renegotiateCiphers
@@ -1332,6 +1344,10 @@ func doExchange(test *testCase, config *Config, conn net.Conn, messageLen int, i
 
 	for i := 0; i < test.sendEmptyRecords; i++ {
 		tlsConn.Write(nil)
+	}
+
+	for i := 0; i < test.sendWarningAlerts; i++ {
+		tlsConn.SendAlert(alertLevelWarning, alertUnexpectedMessage)
 	}
 
 	buf := make([]byte, len(testMessage))

@@ -423,6 +423,10 @@ typedef struct ssl3_state_st {
   /* empty_record_count is the number of consecutive empty records received. */
   uint8_t empty_record_count;
 
+  /* warning_alert_count is the number of consecutive warning alerts
+   * received. */
+  uint8_t warning_alert_count;
+
   /* State pertaining to the pending handshake.
    *
    * TODO(davidben): State is current spread all over the place. Move

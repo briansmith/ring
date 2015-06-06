@@ -799,13 +799,8 @@ Again:
 
 // sendAlert sends a TLS alert message.
 // c.out.Mutex <= L.
-func (c *Conn) sendAlertLocked(err alert) error {
-	switch err {
-	case alertNoRenegotiation, alertCloseNotify:
-		c.tmp[0] = alertLevelWarning
-	default:
-		c.tmp[0] = alertLevelError
-	}
+func (c *Conn) sendAlertLocked(level byte, err alert) error {
+	c.tmp[0] = level
 	c.tmp[1] = byte(err)
 	if c.config.Bugs.FragmentAlert {
 		c.writeRecord(recordTypeAlert, c.tmp[0:1])
@@ -813,8 +808,8 @@ func (c *Conn) sendAlertLocked(err alert) error {
 	} else {
 		c.writeRecord(recordTypeAlert, c.tmp[0:2])
 	}
-	// closeNotify is a special case in that it isn't an error:
-	if err != alertCloseNotify {
+	// Error alerts are fatal to the connection.
+	if level == alertLevelError {
 		return c.out.setErrorLocked(&net.OpError{Op: "local error", Err: err})
 	}
 	return nil
@@ -823,9 +818,17 @@ func (c *Conn) sendAlertLocked(err alert) error {
 // sendAlert sends a TLS alert message.
 // L < c.out.Mutex.
 func (c *Conn) sendAlert(err alert) error {
+	level := byte(alertLevelError)
+	if err == alertNoRenegotiation || err == alertCloseNotify {
+		level = alertLevelWarning
+	}
+	return c.SendAlert(level, err)
+}
+
+func (c *Conn) SendAlert(level byte, err alert) error {
 	c.out.Lock()
 	defer c.out.Unlock()
-	return c.sendAlertLocked(err)
+	return c.sendAlertLocked(level, err)
 }
 
 // writeV2Record writes a record for a V2ClientHello.
@@ -841,13 +844,6 @@ func (c *Conn) writeV2Record(data []byte) (n int, err error) {
 // to the connection and updates the record layer state.
 // c.out.Mutex <= L.
 func (c *Conn) writeRecord(typ recordType, data []byte) (n int, err error) {
-	if typ != recordTypeAlert && c.config.Bugs.SendWarningAlerts != 0 {
-		alert := make([]byte, 2)
-		alert[0] = alertLevelWarning
-		alert[1] = byte(c.config.Bugs.SendWarningAlerts)
-		c.writeRecord(recordTypeAlert, alert)
-	}
-
 	if c.isDTLS {
 		return c.dtlsWriteRecord(typ, data)
 	}
@@ -1113,7 +1109,7 @@ func (c *Conn) Write(b []byte) (int, error) {
 	}
 
 	if c.config.Bugs.SendSpuriousAlert != 0 {
-		c.sendAlertLocked(c.config.Bugs.SendSpuriousAlert)
+		c.sendAlertLocked(alertLevelError, c.config.Bugs.SendSpuriousAlert)
 	}
 
 	// SSL 3.0 and TLS 1.0 are susceptible to a chosen-plaintext
