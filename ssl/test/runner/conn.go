@@ -856,7 +856,7 @@ func (c *Conn) writeRecord(typ recordType, data []byte) (n int, err error) {
 	b := c.out.newBlock()
 	first := true
 	isClientHello := typ == recordTypeHandshake && len(data) > 0 && data[0] == typeClientHello
-	for len(data) > 0 {
+	for len(data) > 0 || first {
 		m := len(data)
 		if m > maxPlaintext {
 			m = maxPlaintext

@@ -252,11 +252,11 @@ int ssl3_read_n(SSL *s, int n, int extend) {
   return n;
 }
 
-/* MAX_EMPTY_RECORDS defines the number of consecutive, empty records that will
- * be processed per call to ssl3_get_record. Without this limit an attacker
- * could send empty records at a faster rate than we can process and cause
- * ssl3_get_record to loop forever. */
-#define MAX_EMPTY_RECORDS 32
+/* kMaxEmptyRecords is the number of consecutive, empty records that will be
+ * processed. Without this limit an attacker could send empty records at a
+ * faster rate than we can process and cause |ssl3_get_record| to loop
+ * forever. */
+static const uint8_t kMaxEmptyRecords = 32;
 
 /* Call this to get a new input record. It will return <= 0 if more data is
  * needed, normally due to an error or non-blocking IO. When it finishes, one
@@ -272,7 +272,6 @@ static int ssl3_get_record(SSL *s) {
   uint8_t *p;
   uint16_t version;
   size_t extra;
-  unsigned empty_record_count = 0;
 
 again:
   /* check if we have the header */
@@ -381,14 +380,15 @@ again:
 
   /* just read a 0 length packet */
   if (rr->length == 0) {
-    empty_record_count++;
-    if (empty_record_count > MAX_EMPTY_RECORDS) {
+    s->s3->empty_record_count++;
+    if (s->s3->empty_record_count > kMaxEmptyRecords) {
       al = SSL_AD_UNEXPECTED_MESSAGE;
       OPENSSL_PUT_ERROR(SSL, ssl3_get_record, SSL_R_TOO_MANY_EMPTY_FRAGMENTS);
       goto f_err;
     }
     goto again;
   }
+  s->s3->empty_record_count = 0;
 
   return 1;
 

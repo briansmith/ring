@@ -204,6 +204,9 @@ type testCase struct {
 	// testTLSUnique, if true, causes the shim to send the tls-unique value
 	// which will be compared against the expected value.
 	testTLSUnique bool
+	// sendEmptyRecords is the number of consecutive empty records to send
+	// before and after the test message.
+	sendEmptyRecords int
 }
 
 var testCases = []testCase{
@@ -1136,6 +1139,23 @@ var testCases = []testCase{
 		shouldFail:    true,
 		expectedError: ":NO_SHARED_CIPHER:",
 	},
+	{
+		name:             "SendEmptyRecords-Pass",
+		sendEmptyRecords: 32,
+	},
+	{
+		name:             "SendEmptyRecords",
+		sendEmptyRecords: 33,
+		shouldFail:       true,
+		expectedError:    ":TOO_MANY_EMPTY_FRAGMENTS:",
+	},
+	{
+		name:             "SendEmptyRecords-Async",
+		sendEmptyRecords: 33,
+		flags:            []string{"-async"},
+		shouldFail:       true,
+		expectedError:    ":TOO_MANY_EMPTY_FRAGMENTS:",
+	},
 }
 
 func doExchange(test *testCase, config *Config, conn net.Conn, messageLen int, isResume bool) error {
@@ -1271,6 +1291,10 @@ func doExchange(test *testCase, config *Config, conn net.Conn, messageLen int, i
 		}
 	}
 
+	for i := 0; i < test.sendEmptyRecords; i++ {
+		tlsConn.Write(nil)
+	}
+
 	if test.renegotiate {
 		if test.renegotiateCiphers != nil {
 			config.CipherSuites = test.renegotiateCiphers
@@ -1305,6 +1329,10 @@ func doExchange(test *testCase, config *Config, conn net.Conn, messageLen int, i
 		testMessage[i] = 0x42
 	}
 	tlsConn.Write(testMessage)
+
+	for i := 0; i < test.sendEmptyRecords; i++ {
+		tlsConn.Write(nil)
+	}
 
 	buf := make([]byte, len(testMessage))
 	if test.protocol == dtls {

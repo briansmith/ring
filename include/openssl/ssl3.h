@@ -420,6 +420,9 @@ typedef struct ssl3_state_st {
 
   int total_renegotiations;
 
+  /* empty_record_count is the number of consecutive empty records received. */
+  uint8_t empty_record_count;
+
   /* State pertaining to the pending handshake.
    *
    * TODO(davidben): State is current spread all over the place. Move
