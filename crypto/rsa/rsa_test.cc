@@ -64,183 +64,118 @@
 #include <openssl/err.h>
 #include <openssl/obj.h>
 
+#include "../test/scoped_types.h"
 
-#define SetKey                                              \
-  key->n = BN_bin2bn(n, sizeof(n) - 1, key->n);             \
-  key->e = BN_bin2bn(e, sizeof(e) - 1, key->e);             \
-  key->d = BN_bin2bn(d, sizeof(d) - 1, key->d);             \
-  key->p = BN_bin2bn(p, sizeof(p) - 1, key->p);             \
-  key->q = BN_bin2bn(q, sizeof(q) - 1, key->q);             \
-  key->dmp1 = BN_bin2bn(dmp1, sizeof(dmp1) - 1, key->dmp1); \
-  key->dmq1 = BN_bin2bn(dmq1, sizeof(dmq1) - 1, key->dmq1); \
-  key->iqmp = BN_bin2bn(iqmp, sizeof(iqmp) - 1, key->iqmp); \
-  memcpy(c, ctext_ex, sizeof(ctext_ex) - 1);                \
-  return (sizeof(ctext_ex) - 1);
 
-static int key1(RSA *key, unsigned char *c) {
-  static unsigned char n[] =
-      "\x00\xAA\x36\xAB\xCE\x88\xAC\xFD\xFF\x55\x52\x3C\x7F\xC4\x52\x3F"
-      "\x90\xEF\xA0\x0D\xF3\x77\x4A\x25\x9F\x2E\x62\xB4\xC5\xD9\x9C\xB5"
-      "\xAD\xB3\x00\xA0\x28\x5E\x53\x01\x93\x0E\x0C\x70\xFB\x68\x76\x93"
-      "\x9C\xE6\x16\xCE\x62\x4A\x11\xE0\x08\x6D\x34\x1E\xBC\xAC\xA0\xA1"
-      "\xF5";
+// kPlaintext is a sample plaintext.
+static const uint8_t kPlaintext[] = "\x54\x85\x9b\x34\x2c\x49\xea\x2a";
+static const size_t kPlaintextLen = sizeof(kPlaintext) - 1;
 
-  static unsigned char e[] = "\x11";
+// kKey1 is a DER-encoded RSAPrivateKey.
+static const uint8_t kKey1[] =
+    "\x30\x82\x01\x38\x02\x01\x00\x02\x41\x00\xaa\x36\xab\xce\x88\xac\xfd\xff"
+    "\x55\x52\x3c\x7f\xc4\x52\x3f\x90\xef\xa0\x0d\xf3\x77\x4a\x25\x9f\x2e\x62"
+    "\xb4\xc5\xd9\x9c\xb5\xad\xb3\x00\xa0\x28\x5e\x53\x01\x93\x0e\x0c\x70\xfb"
+    "\x68\x76\x93\x9c\xe6\x16\xce\x62\x4a\x11\xe0\x08\x6d\x34\x1e\xbc\xac\xa0"
+    "\xa1\xf5\x02\x01\x11\x02\x40\x0a\x03\x37\x48\x62\x64\x87\x69\x5f\x5f\x30"
+    "\xbc\x38\xb9\x8b\x44\xc2\xcd\x2d\xff\x43\x40\x98\xcd\x20\xd8\xa1\x38\xd0"
+    "\x90\xbf\x64\x79\x7c\x3f\xa7\xa2\xcd\xcb\x3c\xd1\xe0\xbd\xba\x26\x54\xb4"
+    "\xf9\xdf\x8e\x8a\xe5\x9d\x73\x3d\x9f\x33\xb3\x01\x62\x4a\xfd\x1d\x51\x02"
+    "\x21\x00\xd8\x40\xb4\x16\x66\xb4\x2e\x92\xea\x0d\xa3\xb4\x32\x04\xb5\xcf"
+    "\xce\x33\x52\x52\x4d\x04\x16\xa5\xa4\x41\xe7\x00\xaf\x46\x12\x0d\x02\x21"
+    "\x00\xc9\x7f\xb1\xf0\x27\xf4\x53\xf6\x34\x12\x33\xea\xaa\xd1\xd9\x35\x3f"
+    "\x6c\x42\xd0\x88\x66\xb1\xd0\x5a\x0f\x20\x35\x02\x8b\x9d\x89\x02\x20\x59"
+    "\x0b\x95\x72\xa2\xc2\xa9\xc4\x06\x05\x9d\xc2\xab\x2f\x1d\xaf\xeb\x7e\x8b"
+    "\x4f\x10\xa7\x54\x9e\x8e\xed\xf5\xb4\xfc\xe0\x9e\x05\x02\x21\x00\x8e\x3c"
+    "\x05\x21\xfe\x15\xe0\xea\x06\xa3\x6f\xf0\xf1\x0c\x99\x52\xc3\x5b\x7a\x75"
+    "\x14\xfd\x32\x38\xb8\x0a\xad\x52\x98\x62\x8d\x51\x02\x20\x36\x3f\xf7\x18"
+    "\x9d\xa8\xe9\x0b\x1d\x34\x1f\x71\xd0\x9b\x76\xa8\xa9\x43\xe1\x1d\x10\xb2"
+    "\x4d\x24\x9f\x2d\xea\xfe\xf8\x0c\x18\x26";
 
-  static unsigned char d[] =
-      "\x0A\x03\x37\x48\x62\x64\x87\x69\x5F\x5F\x30\xBC\x38\xB9\x8B\x44"
-      "\xC2\xCD\x2D\xFF\x43\x40\x98\xCD\x20\xD8\xA1\x38\xD0\x90\xBF\x64"
-      "\x79\x7C\x3F\xA7\xA2\xCD\xCB\x3C\xD1\xE0\xBD\xBA\x26\x54\xB4\xF9"
-      "\xDF\x8E\x8A\xE5\x9D\x73\x3D\x9F\x33\xB3\x01\x62\x4A\xFD\x1D\x51";
+// kOAEPCiphertext1 is a sample encryption of |kPlaintext| with |kKey1| using
+// RSA OAEP.
+static const uint8_t kOAEPCiphertext1[] =
+    "\x1b\x8f\x05\xf9\xca\x1a\x79\x52\x6e\x53\xf3\xcc\x51\x4f\xdb\x89"
+    "\x2b\xfb\x91\x93\x23\x1e\x78\xb9\x92\xe6\x8d\x50\xa4\x80\xcb\x52"
+    "\x33\x89\x5c\x74\x95\x8d\x5d\x02\xab\x8c\x0f\xd0\x40\xeb\x58\x44"
+    "\xb0\x05\xc3\x9e\xd8\x27\x4a\x9d\xbf\xa8\x06\x71\x40\x94\x39\xd2";
 
-  static unsigned char p[] =
-      "\x00\xD8\x40\xB4\x16\x66\xB4\x2E\x92\xEA\x0D\xA3\xB4\x32\x04\xB5"
-      "\xCF\xCE\x33\x52\x52\x4D\x04\x16\xA5\xA4\x41\xE7\x00\xAF\x46\x12"
-      "\x0D";
+// kKey2 is a DER-encoded RSAPrivateKey.
+static const uint8_t kKey2[] =
+    "\x30\x81\xfb\x02\x01\x00\x02\x33\x00\xa3\x07\x9a\x90\xdf\x0d\xfd\x72\xac"
+    "\x09\x0c\xcc\x2a\x78\xb8\x74\x13\x13\x3e\x40\x75\x9c\x98\xfa\xf8\x20\x4f"
+    "\x35\x8a\x0b\x26\x3c\x67\x70\xe7\x83\xa9\x3b\x69\x71\xb7\x37\x79\xd2\x71"
+    "\x7b\xe8\x34\x77\xcf\x02\x01\x03\x02\x32\x6c\xaf\xbc\x60\x94\xb3\xfe\x4c"
+    "\x72\xb0\xb3\x32\xc6\xfb\x25\xa2\xb7\x62\x29\x80\x4e\x68\x65\xfc\xa4\x5a"
+    "\x74\xdf\x0f\x8f\xb8\x41\x3b\x52\xc0\xd0\xe5\x3d\x9b\x59\x0f\xf1\x9b\xe7"
+    "\x9f\x49\xdd\x21\xe5\xeb\x02\x1a\x00\xcf\x20\x35\x02\x8b\x9d\x86\x98\x40"
+    "\xb4\x16\x66\xb4\x2e\x92\xea\x0d\xa3\xb4\x32\x04\xb5\xcf\xce\x91\x02\x1a"
+    "\x00\xc9\x7f\xb1\xf0\x27\xf4\x53\xf6\x34\x12\x33\xea\xaa\xd1\xd9\x35\x3f"
+    "\x6c\x42\xd0\x88\x66\xb1\xd0\x5f\x02\x1a\x00\x8a\x15\x78\xac\x5d\x13\xaf"
+    "\x10\x2b\x22\xb9\x99\xcd\x74\x61\xf1\x5e\x6d\x22\xcc\x03\x23\xdf\xdf\x0b"
+    "\x02\x1a\x00\x86\x55\x21\x4a\xc5\x4d\x8d\x4e\xcd\x61\x77\xf1\xc7\x36\x90"
+    "\xce\x2a\x48\x2c\x8b\x05\x99\xcb\xe0\x3f\x02\x1a\x00\x83\xef\xef\xb8\xa9"
+    "\xa4\x0d\x1d\xb6\xed\x98\xad\x84\xed\x13\x35\xdc\xc1\x08\xf3\x22\xd0\x57"
+    "\xcf\x8d";
 
-  static unsigned char q[] =
-      "\x00\xC9\x7F\xB1\xF0\x27\xF4\x53\xF6\x34\x12\x33\xEA\xAA\xD1\xD9"
-      "\x35\x3F\x6C\x42\xD0\x88\x66\xB1\xD0\x5A\x0F\x20\x35\x02\x8B\x9D"
-      "\x89";
+// kOAEPCiphertext2 is a sample encryption of |kPlaintext| with |kKey2| using
+// RSA OAEP.
+static const uint8_t kOAEPCiphertext2[] =
+    "\x14\xbd\xdd\x28\xc9\x83\x35\x19\x23\x80\xe8\xe5\x49\xb1\x58\x2a"
+    "\x8b\x40\xb4\x48\x6d\x03\xa6\xa5\x31\x1f\x1f\xd5\xf0\xa1\x80\xe4"
+    "\x17\x53\x03\x29\xa9\x34\x90\x74\xb1\x52\x13\x54\x29\x08\x24\x52"
+    "\x62\x51";
 
-  static unsigned char dmp1[] =
-      "\x59\x0B\x95\x72\xA2\xC2\xA9\xC4\x06\x05\x9D\xC2\xAB\x2F\x1D\xAF"
-      "\xEB\x7E\x8B\x4F\x10\xA7\x54\x9E\x8E\xED\xF5\xB4\xFC\xE0\x9E\x05";
+// kKey3 is a DER-encoded RSAPrivateKey.
+static const uint8_t kKey3[] =
+    "\x30\x82\x02\x5b\x02\x01\x00\x02\x81\x81\x00\xbb\xf8\x2f\x09\x06\x82\xce"
+    "\x9c\x23\x38\xac\x2b\x9d\xa8\x71\xf7\x36\x8d\x07\xee\xd4\x10\x43\xa4\x40"
+    "\xd6\xb6\xf0\x74\x54\xf5\x1f\xb8\xdf\xba\xaf\x03\x5c\x02\xab\x61\xea\x48"
+    "\xce\xeb\x6f\xcd\x48\x76\xed\x52\x0d\x60\xe1\xec\x46\x19\x71\x9d\x8a\x5b"
+    "\x8b\x80\x7f\xaf\xb8\xe0\xa3\xdf\xc7\x37\x72\x3e\xe6\xb4\xb7\xd9\x3a\x25"
+    "\x84\xee\x6a\x64\x9d\x06\x09\x53\x74\x88\x34\xb2\x45\x45\x98\x39\x4e\xe0"
+    "\xaa\xb1\x2d\x7b\x61\xa5\x1f\x52\x7a\x9a\x41\xf6\xc1\x68\x7f\xe2\x53\x72"
+    "\x98\xca\x2a\x8f\x59\x46\xf8\xe5\xfd\x09\x1d\xbd\xcb\x02\x01\x11\x02\x81"
+    "\x81\x00\xa5\xda\xfc\x53\x41\xfa\xf2\x89\xc4\xb9\x88\xdb\x30\xc1\xcd\xf8"
+    "\x3f\x31\x25\x1e\x06\x68\xb4\x27\x84\x81\x38\x01\x57\x96\x41\xb2\x94\x10"
+    "\xb3\xc7\x99\x8d\x6b\xc4\x65\x74\x5e\x5c\x39\x26\x69\xd6\x87\x0d\xa2\xc0"
+    "\x82\xa9\x39\xe3\x7f\xdc\xb8\x2e\xc9\x3e\xda\xc9\x7f\xf3\xad\x59\x50\xac"
+    "\xcf\xbc\x11\x1c\x76\xf1\xa9\x52\x94\x44\xe5\x6a\xaf\x68\xc5\x6c\x09\x2c"
+    "\xd3\x8d\xc3\xbe\xf5\xd2\x0a\x93\x99\x26\xed\x4f\x74\xa1\x3e\xdd\xfb\xe1"
+    "\xa1\xce\xcc\x48\x94\xaf\x94\x28\xc2\xb7\xb8\x88\x3f\xe4\x46\x3a\x4b\xc8"
+    "\x5b\x1c\xb3\xc1\x02\x41\x00\xee\xcf\xae\x81\xb1\xb9\xb3\xc9\x08\x81\x0b"
+    "\x10\xa1\xb5\x60\x01\x99\xeb\x9f\x44\xae\xf4\xfd\xa4\x93\xb8\x1a\x9e\x3d"
+    "\x84\xf6\x32\x12\x4e\xf0\x23\x6e\x5d\x1e\x3b\x7e\x28\xfa\xe7\xaa\x04\x0a"
+    "\x2d\x5b\x25\x21\x76\x45\x9d\x1f\x39\x75\x41\xba\x2a\x58\xfb\x65\x99\x02"
+    "\x41\x00\xc9\x7f\xb1\xf0\x27\xf4\x53\xf6\x34\x12\x33\xea\xaa\xd1\xd9\x35"
+    "\x3f\x6c\x42\xd0\x88\x66\xb1\xd0\x5a\x0f\x20\x35\x02\x8b\x9d\x86\x98\x40"
+    "\xb4\x16\x66\xb4\x2e\x92\xea\x0d\xa3\xb4\x32\x04\xb5\xcf\xce\x33\x52\x52"
+    "\x4d\x04\x16\xa5\xa4\x41\xe7\x00\xaf\x46\x15\x03\x02\x40\x54\x49\x4c\xa6"
+    "\x3e\xba\x03\x37\xe4\xe2\x40\x23\xfc\xd6\x9a\x5a\xeb\x07\xdd\xdc\x01\x83"
+    "\xa4\xd0\xac\x9b\x54\xb0\x51\xf2\xb1\x3e\xd9\x49\x09\x75\xea\xb7\x74\x14"
+    "\xff\x59\xc1\xf7\x69\x2e\x9a\x2e\x20\x2b\x38\xfc\x91\x0a\x47\x41\x74\xad"
+    "\xc9\x3c\x1f\x67\xc9\x81\x02\x40\x47\x1e\x02\x90\xff\x0a\xf0\x75\x03\x51"
+    "\xb7\xf8\x78\x86\x4c\xa9\x61\xad\xbd\x3a\x8a\x7e\x99\x1c\x5c\x05\x56\xa9"
+    "\x4c\x31\x46\xa7\xf9\x80\x3f\x8f\x6f\x8a\xe3\x42\xe9\x31\xfd\x8a\xe4\x7a"
+    "\x22\x0d\x1b\x99\xa4\x95\x84\x98\x07\xfe\x39\xf9\x24\x5a\x98\x36\xda\x3d"
+    "\x02\x41\x00\xb0\x6c\x4f\xda\xbb\x63\x01\x19\x8d\x26\x5b\xdb\xae\x94\x23"
+    "\xb3\x80\xf2\x71\xf7\x34\x53\x88\x50\x93\x07\x7f\xcd\x39\xe2\x11\x9f\xc9"
+    "\x86\x32\x15\x4f\x58\x83\xb1\x67\xa9\x67\xbf\x40\x2b\x4e\x9e\x2e\x0f\x96"
+    "\x56\xe6\x98\xea\x36\x66\xed\xfb\x25\x79\x80\x39\xf7";
 
-  static unsigned char dmq1[] =
-      "\x00\x8E\x3C\x05\x21\xFE\x15\xE0\xEA\x06\xA3\x6F\xF0\xF1\x0C\x99"
-      "\x52\xC3\x5B\x7A\x75\x14\xFD\x32\x38\xB8\x0A\xAD\x52\x98\x62\x8D"
-      "\x51";
+// kOAEPCiphertext3 is a sample encryption of |kPlaintext| with |kKey3| using
+// RSA OAEP.
+static const uint8_t kOAEPCiphertext3[] =
+    "\xb8\x24\x6b\x56\xa6\xed\x58\x81\xae\xb5\x85\xd9\xa2\x5b\x2a\xd7"
+    "\x90\xc4\x17\xe0\x80\x68\x1b\xf1\xac\x2b\xc3\xde\xb6\x9d\x8b\xce"
+    "\xf0\xc4\x36\x6f\xec\x40\x0a\xf0\x52\xa7\x2e\x9b\x0e\xff\xb5\xb3"
+    "\xf2\xf1\x92\xdb\xea\xca\x03\xc1\x27\x40\x05\x71\x13\xbf\x1f\x06"
+    "\x69\xac\x22\xe9\xf3\xa7\x85\x2e\x3c\x15\xd9\x13\xca\xb0\xb8\x86"
+    "\x3a\x95\xc9\x92\x94\xce\x86\x74\x21\x49\x54\x61\x03\x46\xf4\xd4"
+    "\x74\xb2\x6f\x7c\x48\xb4\x2e\xe6\x8e\x1f\x57\x2a\x1f\xc4\x02\x6a"
+    "\xc4\x56\xb4\xf5\x9f\x7b\x62\x1e\xa1\xb9\xd8\x8f\x64\x20\x2f\xb1";
 
-  static unsigned char iqmp[] =
-      "\x36\x3F\xF7\x18\x9D\xA8\xE9\x0B\x1D\x34\x1F\x71\xD0\x9B\x76\xA8"
-      "\xA9\x43\xE1\x1D\x10\xB2\x4D\x24\x9F\x2D\xEA\xFE\xF8\x0C\x18\x26";
-
-  static unsigned char ctext_ex[] =
-      "\x1b\x8f\x05\xf9\xca\x1a\x79\x52\x6e\x53\xf3\xcc\x51\x4f\xdb\x89"
-      "\x2b\xfb\x91\x93\x23\x1e\x78\xb9\x92\xe6\x8d\x50\xa4\x80\xcb\x52"
-      "\x33\x89\x5c\x74\x95\x8d\x5d\x02\xab\x8c\x0f\xd0\x40\xeb\x58\x44"
-      "\xb0\x05\xc3\x9e\xd8\x27\x4a\x9d\xbf\xa8\x06\x71\x40\x94\x39\xd2";
-
-  SetKey;
-}
-
-static int key2(RSA *key, unsigned char *c) {
-  static unsigned char n[] =
-      "\x00\xA3\x07\x9A\x90\xDF\x0D\xFD\x72\xAC\x09\x0C\xCC\x2A\x78\xB8"
-      "\x74\x13\x13\x3E\x40\x75\x9C\x98\xFA\xF8\x20\x4F\x35\x8A\x0B\x26"
-      "\x3C\x67\x70\xE7\x83\xA9\x3B\x69\x71\xB7\x37\x79\xD2\x71\x7B\xE8"
-      "\x34\x77\xCF";
-
-  static unsigned char e[] = "\x3";
-
-  static unsigned char d[] =
-      "\x6C\xAF\xBC\x60\x94\xB3\xFE\x4C\x72\xB0\xB3\x32\xC6\xFB\x25\xA2"
-      "\xB7\x62\x29\x80\x4E\x68\x65\xFC\xA4\x5A\x74\xDF\x0F\x8F\xB8\x41"
-      "\x3B\x52\xC0\xD0\xE5\x3D\x9B\x59\x0F\xF1\x9B\xE7\x9F\x49\xDD\x21"
-      "\xE5\xEB";
-
-  static unsigned char p[] =
-      "\x00\xCF\x20\x35\x02\x8B\x9D\x86\x98\x40\xB4\x16\x66\xB4\x2E\x92"
-      "\xEA\x0D\xA3\xB4\x32\x04\xB5\xCF\xCE\x91";
-
-  static unsigned char q[] =
-      "\x00\xC9\x7F\xB1\xF0\x27\xF4\x53\xF6\x34\x12\x33\xEA\xAA\xD1\xD9"
-      "\x35\x3F\x6C\x42\xD0\x88\x66\xB1\xD0\x5F";
-
-  static unsigned char dmp1[] =
-      "\x00\x8A\x15\x78\xAC\x5D\x13\xAF\x10\x2B\x22\xB9\x99\xCD\x74\x61"
-      "\xF1\x5E\x6D\x22\xCC\x03\x23\xDF\xDF\x0B";
-
-  static unsigned char dmq1[] =
-      "\x00\x86\x55\x21\x4A\xC5\x4D\x8D\x4E\xCD\x61\x77\xF1\xC7\x36\x90"
-      "\xCE\x2A\x48\x2C\x8B\x05\x99\xCB\xE0\x3F";
-
-  static unsigned char iqmp[] =
-      "\x00\x83\xEF\xEF\xB8\xA9\xA4\x0D\x1D\xB6\xED\x98\xAD\x84\xED\x13"
-      "\x35\xDC\xC1\x08\xF3\x22\xD0\x57\xCF\x8D";
-
-  static unsigned char ctext_ex[] =
-      "\x14\xbd\xdd\x28\xc9\x83\x35\x19\x23\x80\xe8\xe5\x49\xb1\x58\x2a"
-      "\x8b\x40\xb4\x48\x6d\x03\xa6\xa5\x31\x1f\x1f\xd5\xf0\xa1\x80\xe4"
-      "\x17\x53\x03\x29\xa9\x34\x90\x74\xb1\x52\x13\x54\x29\x08\x24\x52"
-      "\x62\x51";
-
-  SetKey;
-}
-
-static int key3(RSA *key, unsigned char *c) {
-  static unsigned char n[] =
-      "\x00\xBB\xF8\x2F\x09\x06\x82\xCE\x9C\x23\x38\xAC\x2B\x9D\xA8\x71"
-      "\xF7\x36\x8D\x07\xEE\xD4\x10\x43\xA4\x40\xD6\xB6\xF0\x74\x54\xF5"
-      "\x1F\xB8\xDF\xBA\xAF\x03\x5C\x02\xAB\x61\xEA\x48\xCE\xEB\x6F\xCD"
-      "\x48\x76\xED\x52\x0D\x60\xE1\xEC\x46\x19\x71\x9D\x8A\x5B\x8B\x80"
-      "\x7F\xAF\xB8\xE0\xA3\xDF\xC7\x37\x72\x3E\xE6\xB4\xB7\xD9\x3A\x25"
-      "\x84\xEE\x6A\x64\x9D\x06\x09\x53\x74\x88\x34\xB2\x45\x45\x98\x39"
-      "\x4E\xE0\xAA\xB1\x2D\x7B\x61\xA5\x1F\x52\x7A\x9A\x41\xF6\xC1\x68"
-      "\x7F\xE2\x53\x72\x98\xCA\x2A\x8F\x59\x46\xF8\xE5\xFD\x09\x1D\xBD"
-      "\xCB";
-
-  static unsigned char e[] = "\x11";
-
-  static unsigned char d[] =
-      "\x00\xA5\xDA\xFC\x53\x41\xFA\xF2\x89\xC4\xB9\x88\xDB\x30\xC1\xCD"
-      "\xF8\x3F\x31\x25\x1E\x06\x68\xB4\x27\x84\x81\x38\x01\x57\x96\x41"
-      "\xB2\x94\x10\xB3\xC7\x99\x8D\x6B\xC4\x65\x74\x5E\x5C\x39\x26\x69"
-      "\xD6\x87\x0D\xA2\xC0\x82\xA9\x39\xE3\x7F\xDC\xB8\x2E\xC9\x3E\xDA"
-      "\xC9\x7F\xF3\xAD\x59\x50\xAC\xCF\xBC\x11\x1C\x76\xF1\xA9\x52\x94"
-      "\x44\xE5\x6A\xAF\x68\xC5\x6C\x09\x2C\xD3\x8D\xC3\xBE\xF5\xD2\x0A"
-      "\x93\x99\x26\xED\x4F\x74\xA1\x3E\xDD\xFB\xE1\xA1\xCE\xCC\x48\x94"
-      "\xAF\x94\x28\xC2\xB7\xB8\x88\x3F\xE4\x46\x3A\x4B\xC8\x5B\x1C\xB3"
-      "\xC1";
-
-  static unsigned char p[] =
-      "\x00\xEE\xCF\xAE\x81\xB1\xB9\xB3\xC9\x08\x81\x0B\x10\xA1\xB5\x60"
-      "\x01\x99\xEB\x9F\x44\xAE\xF4\xFD\xA4\x93\xB8\x1A\x9E\x3D\x84\xF6"
-      "\x32\x12\x4E\xF0\x23\x6E\x5D\x1E\x3B\x7E\x28\xFA\xE7\xAA\x04\x0A"
-      "\x2D\x5B\x25\x21\x76\x45\x9D\x1F\x39\x75\x41\xBA\x2A\x58\xFB\x65"
-      "\x99";
-
-  static unsigned char q[] =
-      "\x00\xC9\x7F\xB1\xF0\x27\xF4\x53\xF6\x34\x12\x33\xEA\xAA\xD1\xD9"
-      "\x35\x3F\x6C\x42\xD0\x88\x66\xB1\xD0\x5A\x0F\x20\x35\x02\x8B\x9D"
-      "\x86\x98\x40\xB4\x16\x66\xB4\x2E\x92\xEA\x0D\xA3\xB4\x32\x04\xB5"
-      "\xCF\xCE\x33\x52\x52\x4D\x04\x16\xA5\xA4\x41\xE7\x00\xAF\x46\x15"
-      "\x03";
-
-  static unsigned char dmp1[] =
-      "\x54\x49\x4C\xA6\x3E\xBA\x03\x37\xE4\xE2\x40\x23\xFC\xD6\x9A\x5A"
-      "\xEB\x07\xDD\xDC\x01\x83\xA4\xD0\xAC\x9B\x54\xB0\x51\xF2\xB1\x3E"
-      "\xD9\x49\x09\x75\xEA\xB7\x74\x14\xFF\x59\xC1\xF7\x69\x2E\x9A\x2E"
-      "\x20\x2B\x38\xFC\x91\x0A\x47\x41\x74\xAD\xC9\x3C\x1F\x67\xC9\x81";
-
-  static unsigned char dmq1[] =
-      "\x47\x1E\x02\x90\xFF\x0A\xF0\x75\x03\x51\xB7\xF8\x78\x86\x4C\xA9"
-      "\x61\xAD\xBD\x3A\x8A\x7E\x99\x1C\x5C\x05\x56\xA9\x4C\x31\x46\xA7"
-      "\xF9\x80\x3F\x8F\x6F\x8A\xE3\x42\xE9\x31\xFD\x8A\xE4\x7A\x22\x0D"
-      "\x1B\x99\xA4\x95\x84\x98\x07\xFE\x39\xF9\x24\x5A\x98\x36\xDA\x3D";
-
-  static unsigned char iqmp[] =
-      "\x00\xB0\x6C\x4F\xDA\xBB\x63\x01\x19\x8D\x26\x5B\xDB\xAE\x94\x23"
-      "\xB3\x80\xF2\x71\xF7\x34\x53\x88\x50\x93\x07\x7F\xCD\x39\xE2\x11"
-      "\x9F\xC9\x86\x32\x15\x4F\x58\x83\xB1\x67\xA9\x67\xBF\x40\x2B\x4E"
-      "\x9E\x2E\x0F\x96\x56\xE6\x98\xEA\x36\x66\xED\xFB\x25\x79\x80\x39"
-      "\xF7";
-
-  static unsigned char ctext_ex[] =
-      "\xb8\x24\x6b\x56\xa6\xed\x58\x81\xae\xb5\x85\xd9\xa2\x5b\x2a\xd7"
-      "\x90\xc4\x17\xe0\x80\x68\x1b\xf1\xac\x2b\xc3\xde\xb6\x9d\x8b\xce"
-      "\xf0\xc4\x36\x6f\xec\x40\x0a\xf0\x52\xa7\x2e\x9b\x0e\xff\xb5\xb3"
-      "\xf2\xf1\x92\xdb\xea\xca\x03\xc1\x27\x40\x05\x71\x13\xbf\x1f\x06"
-      "\x69\xac\x22\xe9\xf3\xa7\x85\x2e\x3c\x15\xd9\x13\xca\xb0\xb8\x86"
-      "\x3a\x95\xc9\x92\x94\xce\x86\x74\x21\x49\x54\x61\x03\x46\xf4\xd4"
-      "\x74\xb2\x6f\x7c\x48\xb4\x2e\xe6\x8e\x1f\x57\x2a\x1f\xc4\x02\x6a"
-      "\xc4\x56\xb4\xf5\x9f\x7b\x62\x1e\xa1\xb9\xd8\x8f\x64\x20\x2f\xb1";
-
-  SetKey;
-}
-
-static const char two_prime_key[] =
+static const uint8_t kTwoPrimeKey[] =
     "\x30\x82\x04\xa6\x02\x01\x00\x02\x82\x01\x01\x00\x93\x3a\x4f\xc9\x6a\x0a"
     "\x6b\x28\x04\xfa\xb7\x05\x56\xdf\xa0\xaa\x4f\xaa\xab\x94\xa0\xa9\x25\xef"
     "\xc5\x96\xd2\xd4\x66\x16\x62\x2c\x13\x7b\x91\xd0\x36\x0a\x10\x11\x6d\x7a"
@@ -309,7 +244,7 @@ static const char two_prime_key[] =
     "\x08\x5b\x92\x8e\x6b\xea\xa5\x63\x5f\xc0\xfb\xe4\xe1\xb2\x7d\xb7\x40\xe9"
     "\x55\x06\xbf\x58\x25\x6f";
 
-static const uint8_t two_prime_encrypted_msg[] = {
+static const uint8_t kTwoPrimeEncryptedMessage[] = {
     0x63, 0x0a, 0x30, 0x45, 0x43, 0x11, 0x45, 0xb7, 0x99, 0x67, 0x90, 0x35,
     0x37, 0x27, 0xff, 0xbc, 0xe0, 0xbf, 0xa6, 0xd1, 0x47, 0x50, 0xbb, 0x6c,
     0x1c, 0xaa, 0x66, 0xf2, 0xff, 0x9d, 0x9a, 0xa6, 0xb4, 0x16, 0x63, 0xb0,
@@ -334,7 +269,7 @@ static const uint8_t two_prime_encrypted_msg[] = {
     0x6a, 0xce, 0x9f, 0xc8,
 };
 
-static const char three_prime_key[] =
+static const uint8_t kThreePrimeKey[] =
     "\x30\x82\x04\xd7\x02\x01\x01\x02\x82\x01\x00\x62\x91\xe9\xea\xb3\x5d\x6c"
     "\x29\xae\x21\x83\xbb\xb5\x82\xb1\x9e\xea\xe0\x64\x5b\x1e\x2f\x5e\x2c\x0a"
     "\x80\x3d\x29\xd4\xfa\x9a\xe7\x44\xe6\x21\xbd\x98\xc0\x3d\xe0\x53\x59\xae"
@@ -406,7 +341,7 @@ static const char three_prime_key[] =
     "\xab\x0e\xe0\x1b\x6f\xcb\x4b\x14\xdd\xdc\xdc\x8b\xe8\x9f\xd0\x62\x96\xca"
     "\xcf";
 
-static const uint8_t three_prime_encrypted_msg[] = {
+static const uint8_t kThreePrimeEncryptedMessage[] = {
     0x58, 0xd9, 0xea, 0x8a, 0xf6, 0x3d, 0xb4, 0xd9, 0xf7, 0xbb, 0x02, 0xc5,
     0x58, 0xd2, 0xa9, 0x46, 0x80, 0x70, 0x70, 0x16, 0x07, 0x64, 0x32, 0x4c,
     0x4e, 0x92, 0x61, 0xb7, 0xff, 0x92, 0xdc, 0xfc, 0xf8, 0xf0, 0x2c, 0x84,
@@ -431,7 +366,7 @@ static const uint8_t three_prime_encrypted_msg[] = {
     0x98, 0x10, 0x2c, 0x82,
 };
 
-static const char six_prime_key[] =
+static const uint8_t kSixPrimeKey[] =
     "\x30\x82\x05\x24\x02\x01\x01\x02\x82\x01\x00\x1c\x04\x39\x44\xb9\xb8\x71"
     "\x1c\x1c\xf7\xdc\x11\x1b\x85\x3b\x2b\xe8\xa6\xeb\xeb\xe9\xb6\x86\x97\x73"
     "\x5d\x75\x46\xd1\x35\x25\xf8\x30\x9a\xc3\x57\x44\x89\xa6\x44\x59\xe3\x3a"
@@ -507,7 +442,7 @@ static const char six_prime_key[] =
     "\x19\x41\xc9\x8a\xb2\x2f\xa8\x0a\xb1\x4e\x12\x39\x2e\xc0\x94\x9a\xc6\xa3"
     "\xe4\xaf\x8a\x16\x06\xb8";
 
-static const uint8_t six_prime_encrypted_msg[] = {
+static const uint8_t kSixPrimeEncryptedMessage[] = {
     0x0a, 0xcb, 0x6c, 0x02, 0x9d, 0x1a, 0x7c, 0xf3, 0x4e, 0xff, 0x16, 0x88,
     0xee, 0x22, 0x1d, 0x8d, 0xd2, 0xfd, 0xde, 0x83, 0xb3, 0xd9, 0x35, 0x2c,
     0x82, 0xe0, 0xff, 0xe6, 0x79, 0x6d, 0x06, 0x21, 0x74, 0xa8, 0x04, 0x0c,
@@ -532,106 +467,174 @@ static const uint8_t six_prime_encrypted_msg[] = {
     0x34, 0x25, 0x11, 0x14,
 };
 
-static int test_multi_prime_key(int nprimes, const uint8_t *der,
-                                size_t der_size, const uint8_t *enc,
-                                size_t enc_size) {
-  RSA *rsa = d2i_RSAPrivateKey(NULL, &der, der_size);
-  if (!rsa) {
-    printf("%d-prime key failed to parse.\n", nprimes);
-    ERR_print_errors_fp(stderr);
-    return 0;
+static bool TestRSA(const uint8_t *der, size_t der_len,
+                    const uint8_t *oaep_ciphertext,
+                    size_t oaep_ciphertext_len) {
+  ScopedRSA key(d2i_RSAPrivateKey(nullptr, &der, der_len));
+  if (!key) {
+    return false;
   }
 
-  if (!RSA_check_key(rsa)) {
-    printf("RSA_check_key failed for %d-prime key.\n", nprimes);
+  if (!RSA_check_key(key.get())) {
+    fprintf(stderr, "RSA_check_key failed\n");
+    return false;
+  }
+
+  uint8_t ciphertext[256];
+
+  int num = RSA_public_encrypt(kPlaintextLen, kPlaintext, ciphertext, key.get(),
+                               RSA_PKCS1_PADDING);
+  if (num < 0 || (size_t)num != RSA_size(key.get())) {
+    fprintf(stderr, "PKCS#1 v1.5 encryption failed!\n");
+    return false;
+  }
+
+  uint8_t plaintext[256];
+  num = RSA_private_decrypt(num, ciphertext, plaintext, key.get(),
+                            RSA_PKCS1_PADDING);
+  if (num < 0 ||
+      (size_t)num != kPlaintextLen || memcmp(plaintext, kPlaintext, num) != 0) {
+    fprintf(stderr, "PKCS#1 v1.5 decryption failed!\n");
+    return false;
+  }
+
+  num = RSA_public_encrypt(kPlaintextLen, kPlaintext, ciphertext, key.get(),
+                           RSA_PKCS1_OAEP_PADDING);
+  if (num < 0 || (size_t)num != RSA_size(key.get())) {
+    fprintf(stderr, "OAEP encryption failed!\n");
+    return false;
+  }
+
+  num = RSA_private_decrypt(num, ciphertext, plaintext, key.get(),
+                            RSA_PKCS1_OAEP_PADDING);
+  if (num < 0 ||
+      (size_t)num != kPlaintextLen || memcmp(plaintext, kPlaintext, num) != 0) {
+    fprintf(stderr, "OAEP decryption (encrypted data) failed!\n");
+    return false;
+  }
+
+  // |oaep_ciphertext| should decrypt to |kPlaintext|.
+  num = RSA_private_decrypt(oaep_ciphertext_len, oaep_ciphertext, plaintext,
+                            key.get(), RSA_PKCS1_OAEP_PADDING);
+
+  if (num < 0 ||
+      (size_t)num != kPlaintextLen || memcmp(plaintext, kPlaintext, num) != 0) {
+    fprintf(stderr, "OAEP decryption (test vector data) failed!\n");
+    return false;
+  }
+
+  // Try decrypting corrupted ciphertexts.
+  memcpy(ciphertext, oaep_ciphertext, oaep_ciphertext_len);
+  for (size_t i = 0; i < oaep_ciphertext_len; i++) {
+    uint8_t saved = ciphertext[i];
+    for (unsigned b = 0; b < 256; b++) {
+      if (b == saved) {
+        continue;
+      }
+      ciphertext[i] = b;
+      num = RSA_private_decrypt(num, ciphertext, plaintext, key.get(),
+                                RSA_PKCS1_OAEP_PADDING);
+      if (num > 0) {
+        fprintf(stderr, "Corrupt data decrypted!\n");
+        return false;
+      }
+    }
+    ciphertext[i] = saved;
+  }
+
+  return true;
+}
+
+static bool TestMultiPrimeKey(int nprimes, const uint8_t *der, size_t der_size,
+                              const uint8_t *enc, size_t enc_size) {
+  ScopedRSA rsa(d2i_RSAPrivateKey(nullptr, &der, der_size));
+  if (!rsa) {
+    fprintf(stderr, "%d-prime key failed to parse.\n", nprimes);
     ERR_print_errors_fp(stderr);
-    return 0;
+    return false;
+  }
+
+  if (!RSA_check_key(rsa.get())) {
+    fprintf(stderr, "RSA_check_key failed for %d-prime key.\n", nprimes);
+    ERR_print_errors_fp(stderr);
+    return false;
   }
 
   uint8_t out[256];
   size_t out_len;
-  if (!RSA_decrypt(rsa, &out_len, out, sizeof(out), enc, enc_size,
+  if (!RSA_decrypt(rsa.get(), &out_len, out, sizeof(out), enc, enc_size,
                    RSA_PKCS1_PADDING) ||
       out_len != 11 ||
       memcmp(out, "hello world", 11) != 0) {
-    printf("%d-prime key failed to decrypt.\n", nprimes);
+    fprintf(stderr, "%d-prime key failed to decrypt.\n", nprimes);
     ERR_print_errors_fp(stderr);
-    return 0;
+    return false;
   }
 
-  RSA_free(rsa);
-  return 1;
+  return true;
 }
 
-static int test_multi_prime_keygen(void) {
-  RSA *rsa = RSA_new();
-  BIGNUM e;
-
-  BN_init(&e);
-
+static bool TestMultiPrimeKeygen() {
   static const char kMessage[] = "Hello world.";
-  uint8_t encrypted[1024 / 8], decrypted[1024 / 8];
+  static const size_t kBits = 1024;
+  uint8_t encrypted[kBits / 8], decrypted[kBits / 8];
   size_t encrypted_len, decrypted_len;
 
-  if (rsa == NULL ||
-      !BN_set_word(&e, RSA_F4) ||
-      !RSA_generate_multi_prime_key(rsa, 1024, 3, &e, NULL) ||
-      !RSA_check_key(rsa) ||
-      !RSA_encrypt(rsa, &encrypted_len, encrypted, sizeof(encrypted),
+  ScopedRSA rsa(RSA_new());
+  ScopedBIGNUM e(BN_new());
+  if (!rsa || !e ||
+      !BN_set_word(e.get(), RSA_F4) ||
+      !RSA_generate_multi_prime_key(rsa.get(), kBits, 3, e.get(), nullptr) ||
+      !RSA_check_key(rsa.get()) ||
+      !RSA_encrypt(rsa.get(), &encrypted_len, encrypted, sizeof(encrypted),
                    (const uint8_t *)kMessage, sizeof(kMessage),
                    RSA_PKCS1_PADDING) ||
-      !RSA_decrypt(rsa, &decrypted_len, decrypted, sizeof(decrypted), encrypted,
-                   encrypted_len, RSA_PKCS1_PADDING) ||
+      !RSA_decrypt(rsa.get(), &decrypted_len, decrypted, sizeof(decrypted),
+                   encrypted, encrypted_len, RSA_PKCS1_PADDING) ||
       decrypted_len != sizeof(kMessage) ||
       memcmp(decrypted, kMessage, sizeof(kMessage)) != 0) {
     ERR_print_errors_fp(stderr);
-    return 0;
+    return false;
   }
 
-  BN_free(&e);
-  RSA_free(rsa);
-
-  return 1;
+  return true;
 }
 
-static int test_bad_key(void) {
-  RSA *key = RSA_new();
-  BIGNUM e;
+static bool TestBadKey() {
+  ScopedRSA key(RSA_new());
+  ScopedBIGNUM e(BN_new());
 
-  BN_init(&e);
-  BN_set_word(&e, RSA_F4);
+  if (!key || !e || !BN_set_word(e.get(), RSA_F4)) {
+    return false;
+  }
 
-  if (!RSA_generate_key_ex(key, 512, &e, NULL)) {
+  if (!RSA_generate_key_ex(key.get(), 512, e.get(), nullptr)) {
     fprintf(stderr, "RSA_generate_key_ex failed.\n");
     ERR_print_errors_fp(stderr);
-    return 0;
+    return false;
   }
 
   if (!BN_add(key->p, key->p, BN_value_one())) {
     fprintf(stderr, "BN error.\n");
     ERR_print_errors_fp(stderr);
-    return 0;
+    return false;
   }
 
-  if (RSA_check_key(key)) {
+  if (RSA_check_key(key.get())) {
     fprintf(stderr, "RSA_check_key passed with invalid key!\n");
-    return 0;
+    return false;
   }
 
   ERR_clear_error();
-  BN_free(&e);
-  RSA_free(key);
-  return 1;
+  return true;
 }
 
-static int test_only_d_given(void) {
-  RSA *key = RSA_new();
+static bool TestOnlyDGiven() {
   uint8_t buf[64];
   unsigned buf_len = sizeof(buf);
-  const uint8_t kDummyHash[16] = {0};
-  int ret = 0;
-
-  if (!BN_hex2bn(&key->n,
+  ScopedRSA key(RSA_new());
+  if (!key ||
+      !BN_hex2bn(&key->n,
                  "00e77bbf3889d4ef36a9a25d4d69f3f632eb4362214c74517da6d6aeaa9bd"
                  "09ac42b26621cd88f3a6eb013772fc3bf9f83914b6467231c630202c35b3e"
                  "5808c659") ||
@@ -640,236 +643,131 @@ static int test_only_d_given(void) {
                  "0365db9eb6d73b53b015c40cd8db4de7dd7035c68b5ac1bf786d7a4ee2cea"
                  "316eaeca21a73ac365e58713195f2ae9849348525ca855386b6d028e437a9"
                  "495a01") ||
-      RSA_size(key) > sizeof(buf)) {
-    goto err;
+      RSA_size(key.get()) > sizeof(buf)) {
+    return false;
   }
 
-  if (!RSA_check_key(key)) {
+  if (!RSA_check_key(key.get())) {
     fprintf(stderr, "RSA_check_key failed with only d given.\n");
     ERR_print_errors_fp(stderr);
-    goto err;
+    return false;
   }
 
+  const uint8_t kDummyHash[16] = {0};
+
   if (!RSA_sign(NID_sha256, kDummyHash, sizeof(kDummyHash), buf, &buf_len,
-                key)) {
+                key.get())) {
     fprintf(stderr, "RSA_sign failed with only d given.\n");
     ERR_print_errors_fp(stderr);
-    goto err;
+    return false;
   }
 
   if (!RSA_verify(NID_sha256, kDummyHash, sizeof(kDummyHash), buf, buf_len,
-                  key)) {
+                  key.get())) {
     fprintf(stderr, "RSA_verify failed with only d given.\n");
     ERR_print_errors_fp(stderr);
-    goto err;
+    return false;
   }
 
-  ret = 1;
-
-err:
-  RSA_free(key);
-  return ret;
+  return true;
 }
 
-static int test_recover_crt_params(void) {
-  RSA *key1, *key2;
-  BIGNUM *e = BN_new();
-  uint8_t buf[128];
-  unsigned buf_len = sizeof(buf);
-  const uint8_t kDummyHash[16] = {0};
-  unsigned i;
-
-  BN_set_word(e, RSA_F4);
+static bool TestRecoverCRTParams() {
+  ScopedBIGNUM e(BN_new());
+  if (!e || !BN_set_word(e.get(), RSA_F4)) {
+    return false;
+  }
 
   ERR_clear_error();
 
-  for (i = 0; i < 1; i++) {
-    key1 = RSA_new();
-    if (!RSA_generate_key_ex(key1, 512, e, NULL)) {
+  for (unsigned i = 0; i < 1; i++) {
+    ScopedRSA key1(RSA_new());
+    if (!key1 ||
+        !RSA_generate_key_ex(key1.get(), 512, e.get(), nullptr)) {
       fprintf(stderr, "RSA_generate_key_ex failed.\n");
       ERR_print_errors_fp(stderr);
-      return 0;
+      return false;
     }
 
-    if (!RSA_check_key(key1)) {
+    if (!RSA_check_key(key1.get())) {
       fprintf(stderr, "RSA_check_key failed with original key.\n");
       ERR_print_errors_fp(stderr);
-      return 0;
+      return false;
     }
 
-    key2 = RSA_new();
+    ScopedRSA key2(RSA_new());
+    if (!key2) {
+      return false;
+    }
     key2->n = BN_dup(key1->n);
     key2->e = BN_dup(key1->e);
     key2->d = BN_dup(key1->d);
-    RSA_free(key1);
+    if (key2->n == nullptr || key2->e == nullptr || key2->d == nullptr) {
+      return false;
+    }
 
-    if (!RSA_recover_crt_params(key2)) {
+    if (!RSA_recover_crt_params(key2.get())) {
       fprintf(stderr, "RSA_recover_crt_params failed.\n");
       ERR_print_errors_fp(stderr);
-      return 0;
+      return false;
     }
 
-    if (RSA_size(key2) > buf_len) {
-      return 0;
+    uint8_t buf[128];
+    unsigned buf_len = sizeof(buf);
+    if (RSA_size(key2.get()) > buf_len) {
+      return false;
     }
 
-    if (!RSA_check_key(key2)) {
+    if (!RSA_check_key(key2.get())) {
       fprintf(stderr, "RSA_check_key failed with recovered key.\n");
       ERR_print_errors_fp(stderr);
-      return 0;
+      return false;
     }
 
+    const uint8_t kDummyHash[16] = {0};
     if (!RSA_sign(NID_sha256, kDummyHash, sizeof(kDummyHash), buf, &buf_len,
-                  key2)) {
+                  key2.get())) {
       fprintf(stderr, "RSA_sign failed with recovered key.\n");
       ERR_print_errors_fp(stderr);
-      return 0;
+      return false;
     }
 
     if (!RSA_verify(NID_sha256, kDummyHash, sizeof(kDummyHash), buf, buf_len,
-                    key2)) {
+                    key2.get())) {
       fprintf(stderr, "RSA_verify failed with recovered key.\n");
       ERR_print_errors_fp(stderr);
-      return 0;
+      return false;
     }
-
-    RSA_free(key2);
   }
 
-  BN_free(e);
-  return 1;
+  return true;
 }
 
 int main(int argc, char *argv[]) {
-  int err = 0;
-  int v;
-  RSA *key;
-  unsigned char ptext[256];
-  unsigned char ctext[256];
-  static unsigned char ptext_ex[] = "\x54\x85\x9b\x34\x2c\x49\xea\x2a";
-  unsigned char ctext_ex[256];
-  int plen;
-  int clen = 0;
-  int num;
-  int n;
-
   CRYPTO_library_init();
 
-  plen = sizeof(ptext_ex) - 1;
-
-  for (v = 0; v < 3; v++) {
-    key = RSA_new();
-    switch (v) {
-      case 0:
-        clen = key1(key, ctext_ex);
-        break;
-      case 1:
-        clen = key2(key, ctext_ex);
-        break;
-      case 2:
-        clen = key3(key, ctext_ex);
-        break;
-      default:
-        abort();
-    }
-
-    if (!RSA_check_key(key)) {
-      printf("%d: RSA_check_key failed\n", v);
-      err = 1;
-      goto oaep;
-    }
-
-    num = RSA_public_encrypt(plen, ptext_ex, ctext, key, RSA_PKCS1_PADDING);
-    if (num != clen) {
-      printf("PKCS#1 v1.5 encryption failed!\n");
-      err = 1;
-      goto oaep;
-    }
-
-    num = RSA_private_decrypt(num, ctext, ptext, key, RSA_PKCS1_PADDING);
-    if (num != plen || memcmp(ptext, ptext_ex, num) != 0) {
-      printf("PKCS#1 v1.5 decryption failed!\n");
-      err = 1;
-    } else {
-      printf("PKCS #1 v1.5 encryption/decryption ok\n");
-    }
-
-  oaep:
-    ERR_clear_error();
-    num =
-        RSA_public_encrypt(plen, ptext_ex, ctext, key, RSA_PKCS1_OAEP_PADDING);
-    if (num == -1) {
-      printf("No OAEP support\n");
-      goto next;
-    }
-    if (num != clen) {
-      printf("OAEP encryption failed!\n");
-      err = 1;
-      goto next;
-    }
-
-    num = RSA_private_decrypt(num, ctext, ptext, key, RSA_PKCS1_OAEP_PADDING);
-    if (num != plen || memcmp(ptext, ptext_ex, num) != 0) {
-      printf("OAEP decryption (encrypted data) failed!\n");
-      err = 1;
-    } else if (memcmp(ctext, ctext_ex, num) == 0) {
-      printf("OAEP test vector %d passed!\n", v);
-    }
-
-    /* Different ciphertexts (rsa_oaep.c without -DPKCS_TESTVECT).
-       Try decrypting ctext_ex */
-
-    num =
-        RSA_private_decrypt(clen, ctext_ex, ptext, key, RSA_PKCS1_OAEP_PADDING);
-
-    if (num != plen || memcmp(ptext, ptext_ex, num) != 0) {
-      printf("OAEP decryption (test vector data) failed!\n");
-      err = 1;
-    } else {
-      printf("OAEP encryption/decryption ok\n");
-    }
-
-    /* Try decrypting corrupted ciphertexts */
-    for (n = 0; n < clen; ++n) {
-      int b;
-      unsigned char saved = ctext[n];
-      for (b = 0; b < 256; ++b) {
-        if (b == saved) {
-          continue;
-        }
-        ctext[n] = b;
-        num =
-            RSA_private_decrypt(num, ctext, ptext, key, RSA_PKCS1_OAEP_PADDING);
-        if (num > 0) {
-          printf("Corrupt data decrypted!\n");
-          err = 1;
-        }
-      }
-    }
-
-  next:
-    RSA_free(key);
+  if (!TestRSA(kKey1, sizeof(kKey1) - 1, kOAEPCiphertext1,
+               sizeof(kOAEPCiphertext1) - 1) ||
+      !TestRSA(kKey2, sizeof(kKey2) - 1, kOAEPCiphertext2,
+               sizeof(kOAEPCiphertext2) - 1) ||
+      !TestRSA(kKey3, sizeof(kKey3) - 1, kOAEPCiphertext3,
+               sizeof(kOAEPCiphertext3) - 1) ||
+      !TestOnlyDGiven() ||
+      !TestRecoverCRTParams() ||
+      !TestBadKey() ||
+      !TestMultiPrimeKey(2, kTwoPrimeKey, sizeof(kTwoPrimeKey) - 1,
+                            kTwoPrimeEncryptedMessage,
+                            sizeof(kTwoPrimeEncryptedMessage)) ||
+      !TestMultiPrimeKey(3, kThreePrimeKey, sizeof(kThreePrimeKey) - 1,
+                            kThreePrimeEncryptedMessage,
+                            sizeof(kThreePrimeEncryptedMessage)) ||
+      !TestMultiPrimeKey(6, kSixPrimeKey, sizeof(kSixPrimeKey) - 1,
+                            kSixPrimeEncryptedMessage,
+                            sizeof(kSixPrimeEncryptedMessage)) ||
+      !TestMultiPrimeKeygen()) {
+    return 1;
   }
 
-  if (err != 0 ||
-      !test_only_d_given() ||
-      !test_recover_crt_params() ||
-      !test_bad_key() ||
-      !test_multi_prime_key(2, (const uint8_t *)two_prime_key,
-                            sizeof(two_prime_key) - 1, two_prime_encrypted_msg,
-                            sizeof(two_prime_encrypted_msg)) ||
-      !test_multi_prime_key(
-          3, (const uint8_t *)three_prime_key, sizeof(three_prime_key) - 1,
-          three_prime_encrypted_msg, sizeof(three_prime_encrypted_msg)) ||
-      !test_multi_prime_key(6, (const uint8_t *)six_prime_key,
-                            sizeof(six_prime_key) - 1, six_prime_encrypted_msg,
-                            sizeof(six_prime_encrypted_msg)) ||
-      !test_multi_prime_keygen()) {
-    err = 1;
-  }
-
-  if (err == 0) {
-    printf("PASS\n");
-  }
-  return err;
+  printf("PASS\n");
+  return 0;
 }

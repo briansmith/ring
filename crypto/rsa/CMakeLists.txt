@@ -15,7 +15,7 @@ add_library(
 add_executable(
   rsa_test
 
-  rsa_test.c
+  rsa_test.cc
 
   $<TARGET_OBJECTS:test_support>
 )
