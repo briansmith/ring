@@ -723,6 +723,10 @@ type ProtocolBugs struct {
 
 	// EnableAllCiphersInDTLS, if true, causes RC4 to be enabled in DTLS.
 	EnableAllCiphersInDTLS bool
+
+	// EmptyCertificateList, if true, causes the server to send an empty
+	// certificate list in the Certificate message.
+	EmptyCertificateList bool
 }
 
 func (c *Config) serverInit() {

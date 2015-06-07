@@ -943,9 +943,10 @@ int ssl3_get_server_certificate(SSL *s) {
   }
 
   if (!CBS_get_u24_length_prefixed(&cbs, &certificate_list) ||
+      CBS_len(&certificate_list) == 0 ||
       CBS_len(&cbs) != 0) {
     al = SSL_AD_DECODE_ERROR;
-    OPENSSL_PUT_ERROR(SSL, ssl3_get_server_certificate, SSL_R_LENGTH_MISMATCH);
+    OPENSSL_PUT_ERROR(SSL, ssl3_get_server_certificate, SSL_R_DECODE_ERROR);
     goto f_err;
   }
 

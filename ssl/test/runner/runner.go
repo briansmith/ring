@@ -690,6 +690,17 @@ var testCases = []testCase{
 		expectedError: ":WRONG_CERTIFICATE_TYPE:",
 	},
 	{
+		name: "EmptyCertificateList",
+		config: Config{
+			CipherSuites: []uint16{TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256},
+			Bugs: ProtocolBugs{
+				EmptyCertificateList: true,
+			},
+		},
+		shouldFail:    true,
+		expectedError: ":DECODE_ERROR:",
+	},
+	{
 		name:             "TLSFatalBadPackets",
 		damageFirstWrite: true,
 		shouldFail:       true,

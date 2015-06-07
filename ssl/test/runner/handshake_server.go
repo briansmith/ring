@@ -516,7 +516,9 @@ func (hs *serverHandshakeState) doFullHandshake() error {
 
 	if !isPSK {
 		certMsg := new(certificateMsg)
-		certMsg.certificates = hs.cert.Certificate
+		if !config.Bugs.EmptyCertificateList {
+			certMsg.certificates = hs.cert.Certificate
+		}
 		if !config.Bugs.UnauthenticatedECDH {
 			certMsgBytes := certMsg.marshal()
 			if config.Bugs.WrongCertificateMessageType {
