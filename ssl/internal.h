@@ -581,15 +581,13 @@ typedef struct cert_st {
 } CERT;
 
 typedef struct sess_cert_st {
-  STACK_OF(X509) *cert_chain; /* as received from peer (not for SSL2) */
+  /* cert_chain is the certificate chain sent by the peer. NOTE: for a client,
+   * this does includes the server's leaf certificate, but, for a server, this
+   * does NOT include the client's leaf. */
+  STACK_OF(X509) *cert_chain;
 
-  /* The 'peer_...' members are used only by clients. */
-  int peer_cert_type;
-
-  CERT_PKEY *peer_key; /* points to an element of peer_pkeys (never NULL!) */
-  CERT_PKEY peer_pkeys[SSL_PKEY_NUM];
-  /* Obviously we don't have the private keys of these,
-   * so maybe we shouldn't even use the CERT_PKEY type here. */
+  /* peer_cert, on a client, is the leaf certificate of the peer. */
+  X509 *peer_cert;
 
   DH *peer_dh_tmp;
   EC_KEY *peer_ecdh_tmp;
@@ -800,7 +798,6 @@ void ssl_cert_clear_certs(CERT *c);
 void ssl_cert_free(CERT *c);
 SESS_CERT *ssl_sess_cert_new(void);
 void ssl_sess_cert_free(SESS_CERT *sc);
-int ssl_set_peer_cert_type(SESS_CERT *c, int type);
 int ssl_get_new_session(SSL *s, int session);
 int ssl_get_prev_session(SSL *s, const struct ssl_early_callback_ctx *ctx);
 STACK_OF(SSL_CIPHER) *ssl_bytes_to_cipher_list(SSL *s, const CBS *cbs);
