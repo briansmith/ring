@@ -1191,12 +1191,6 @@ int ssl3_get_server_key_exchange(SSL *s) {
                         SSL_R_BAD_DH_P_LENGTH);
       goto err;
     }
-
-    if (alg_a & SSL_aRSA) {
-      pkey = X509_get_pubkey(s->session->sess_cert->peer_cert);
-    }
-    /* else anonymous DH, so no certificate or pkey. */
-
     s->session->sess_cert->peer_dh_tmp = dh;
     dh = NULL;
   } else if (alg_k & SSL_kECDHE) {
@@ -1251,16 +1245,6 @@ int ssl3_get_server_key_exchange(SSL *s) {
       OPENSSL_PUT_ERROR(SSL, ssl3_get_server_key_exchange, SSL_R_BAD_ECPOINT);
       goto f_err;
     }
-
-    /* The ECC/TLS specification does not mention the use of DSA to sign
-     * ECParameters in the server key exchange message. We do support RSA and
-     * ECDSA. */
-    if (alg_a & (SSL_aRSA|SSL_aECDSA)) {
-      pkey = X509_get_pubkey(s->session->sess_cert->peer_cert);
-    } else {
-      /* Otherwise this is ECDHE_PSK, so no public key. */
-      assert(alg_a == SSL_aPSK);
-    }
     EC_KEY_set_public_key(ecdh, srvr_ecpoint);
     s->session->sess_cert->peer_ecdh_tmp = ecdh;
     ecdh = NULL;
@@ -1281,9 +1265,12 @@ int ssl3_get_server_key_exchange(SSL *s) {
   CBS_init(&parameter, CBS_data(&server_key_exchange_orig),
            CBS_len(&server_key_exchange_orig) - CBS_len(&server_key_exchange));
 
-  /* if it was signed, check the signature */
-  if (pkey != NULL) {
-    CBS signature;
+  /* ServerKeyExchange should be signed by the server's public key. */
+  if (ssl_cipher_has_server_public_key(s->s3->tmp.new_cipher)) {
+    pkey = X509_get_pubkey(s->session->sess_cert->peer_cert);
+    if (pkey == NULL) {
+      goto err;
+    }
 
     if (SSL_USE_SIGALGS(s)) {
       if (!tls12_check_peer_sigalg(&md, &al, s, &server_key_exchange, pkey)) {
@@ -1296,6 +1283,7 @@ int ssl3_get_server_key_exchange(SSL *s) {
     }
 
     /* The last field in |server_key_exchange| is the signature. */
+    CBS signature;
     if (!CBS_get_u16_length_prefixed(&server_key_exchange, &signature) ||
         CBS_len(&server_key_exchange) != 0) {
       al = SSL_AD_DECODE_ERROR;
@@ -1318,16 +1306,9 @@ int ssl3_get_server_key_exchange(SSL *s) {
       goto f_err;
     }
   } else {
-    if (ssl_cipher_has_server_public_key(s->s3->tmp.new_cipher)) {
-      /* Might be wrong key type, check it */
-      if (ssl3_check_cert_and_algorithm(s)) {
-        /* Otherwise this shouldn't happen */
-        OPENSSL_PUT_ERROR(SSL, ssl3_get_server_key_exchange,
-                          ERR_R_INTERNAL_ERROR);
-      }
-      goto err;
-    }
-    /* still data left over */
+    /* PSK ciphers are the only supported certificate-less ciphers. */
+    assert(alg_a == SSL_aPSK);
+
     if (CBS_len(&server_key_exchange) > 0) {
       al = SSL_AD_DECODE_ERROR;
       OPENSSL_PUT_ERROR(SSL, ssl3_get_server_key_exchange,
