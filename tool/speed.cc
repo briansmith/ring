@@ -36,17 +36,8 @@
 #endif
 
 #include "../crypto/test/scoped_types.h"
+#include "internal.h"
 
-
-extern "C" {
-// These values are DER encoded, RSA private keys.
-extern const uint8_t kDERRSAPrivate2048[];
-extern size_t kDERRSAPrivate2048Len;
-extern const uint8_t kDERRSAPrivate4096[];
-extern size_t kDERRSAPrivate4096Len;
-extern const uint8_t kDERRSAPrivate3Prime2048[];
-extern size_t kDERRSAPrivate3Prime2048Len;
-}
 
 // TimeResults represents the results of benchmarking a function.
 struct TimeResults {
