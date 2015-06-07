@@ -1894,33 +1894,6 @@ void ssl_get_compatible_server_ciphers(SSL *s, uint32_t *out_mask_k,
   *out_mask_a = mask_a;
 }
 
-/* This handy macro borrowed from crypto/x509v3/v3_purp.c */
-#define ku_reject(x, usage) \
-  (((x)->ex_flags & EXFLAG_KUSAGE) && !((x)->ex_kusage & (usage)))
-
-int ssl_check_srvr_ecc_cert_and_alg(X509 *x, SSL *s) {
-  const SSL_CIPHER *cs = s->s3->tmp.new_cipher;
-  uint32_t alg_a = cs->algorithm_auth;
-  int signature_nid = 0, md_nid = 0, pk_nid = 0;
-
-  /* This call populates the ex_flags field correctly */
-  X509_check_purpose(x, -1, 0);
-  if (x->sig_alg && x->sig_alg->algorithm) {
-    signature_nid = OBJ_obj2nid(x->sig_alg->algorithm);
-    OBJ_find_sigid_algs(signature_nid, &md_nid, &pk_nid);
-  }
-  if (alg_a & SSL_aECDSA) {
-    /* key usage, if present, must allow signing */
-    if (ku_reject(x, X509v3_KU_DIGITAL_SIGNATURE)) {
-      OPENSSL_PUT_ERROR(SSL, ssl_check_srvr_ecc_cert_and_alg,
-                        SSL_R_ECC_CERT_NOT_FOR_SIGNING);
-      return 0;
-    }
-  }
-
-  return 1; /* all checks are ok */
-}
-
 static int ssl_get_server_cert_index(const SSL *s) {
   int idx;
   idx = ssl_cipher_get_cert_index(s->s3->tmp.new_cipher);

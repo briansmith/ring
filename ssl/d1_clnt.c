@@ -278,13 +278,6 @@ int dtls1_connect(SSL *s) {
         }
         s->state = SSL3_ST_CR_CERT_REQ_A;
         s->init_num = 0;
-
-        /* at this point we check that we have the
-         * required stuff from the server */
-        if (!ssl3_check_cert_and_algorithm(s)) {
-          ret = -1;
-          goto end;
-        }
         break;
 
       case SSL3_ST_CR_CERT_REQ_A:

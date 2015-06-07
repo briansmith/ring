@@ -967,7 +967,6 @@ int ssl_do_client_cert_cb(SSL *s, X509 **px509, EVP_PKEY **ppkey);
 int ssl3_send_client_key_exchange(SSL *s);
 int ssl3_get_server_key_exchange(SSL *s);
 int ssl3_get_server_certificate(SSL *s);
-int ssl3_check_cert_and_algorithm(SSL *s);
 int ssl3_send_next_proto(SSL *s);
 int ssl3_send_channel_id(SSL *s);
 
@@ -1023,8 +1022,6 @@ int tls1_export_keying_material(SSL *s, uint8_t *out, size_t out_len,
                                 int use_context);
 int tls1_alert_code(int code);
 int ssl3_alert_code(int code);
-
-int ssl_check_srvr_ecc_cert_and_alg(X509 *x, SSL *s);
 
 char ssl_early_callback_init(struct ssl_early_callback_ctx *ctx);
 int tls1_ec_curve_id2nid(uint16_t curve_id);

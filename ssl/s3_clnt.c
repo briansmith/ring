@@ -163,6 +163,7 @@
 #include <openssl/dh.h>
 #include <openssl/bn.h>
 #include <openssl/x509.h>
+#include <openssl/x509v3.h>
 
 #include "internal.h"
 #include "../crypto/dh/internal.h"
@@ -290,13 +291,6 @@ int ssl3_connect(SSL *s) {
         }
         s->state = SSL3_ST_CR_CERT_REQ_A;
         s->init_num = 0;
-
-        /* at this point we check that we have the
-         * required stuff from the server */
-        if (!ssl3_check_cert_and_algorithm(s)) {
-          ret = -1;
-          goto end;
-        }
         break;
 
       case SSL3_ST_CR_CERT_REQ_A:
@@ -916,6 +910,54 @@ err:
   return -1;
 }
 
+/* ssl3_check_certificate_for_cipher returns one if |leaf| is a suitable server
+ * certificate type for |cipher|. Otherwise, it returns zero and pushes an error
+ * on the error queue. */
+static int ssl3_check_certificate_for_cipher(X509 *leaf,
+                                             const SSL_CIPHER *cipher) {
+  int ret = 0;
+  EVP_PKEY *pkey = X509_get_pubkey(leaf);
+  if (pkey == NULL || EVP_PKEY_missing_parameters(pkey)) {
+    OPENSSL_PUT_ERROR(SSL, ssl3_get_server_certificate,
+                      SSL_R_UNABLE_TO_FIND_PUBLIC_KEY_PARAMETERS);
+    goto err;
+  }
+
+  /* Check the certificate's type matches the cipher. */
+  int cert_type = ssl_cert_type(pkey);
+  if (cert_type < 0) {
+    OPENSSL_PUT_ERROR(SSL, ssl3_get_server_certificate,
+                      SSL_R_UNKNOWN_CERTIFICATE_TYPE);
+    goto err;
+  }
+  int expected_type = ssl_cipher_get_cert_index(cipher);
+  assert(expected_type >= 0);
+  if (cert_type != expected_type) {
+    OPENSSL_PUT_ERROR(SSL, ssl3_get_server_certificate,
+                      SSL_R_WRONG_CERTIFICATE_TYPE);
+    goto err;
+  }
+
+  /* TODO(davidben): This behavior is preserved from upstream. Should key usages
+   * be checked in other cases as well? */
+  if (cipher->algorithm_auth & SSL_aECDSA) {
+    /* This call populates the ex_flags field correctly */
+    X509_check_purpose(leaf, -1, 0);
+    if ((leaf->ex_flags & EXFLAG_KUSAGE) &&
+        !(leaf->ex_kusage & X509v3_KU_DIGITAL_SIGNATURE)) {
+      OPENSSL_PUT_ERROR(SSL, ssl_check_srvr_ecc_cert_and_alg,
+                        SSL_R_ECC_CERT_NOT_FOR_SIGNING);
+      goto err;
+    }
+  }
+
+  ret = 1;
+
+err:
+  EVP_PKEY_free(pkey);
+  return ret;
+}
+
 int ssl3_get_server_certificate(SSL *s) {
   int al, i, ok, ret = -1;
   unsigned long n;
@@ -987,6 +1029,12 @@ int ssl3_get_server_certificate(SSL *s) {
   }
   ERR_clear_error(); /* but we keep s->verify_result */
 
+  X509 *leaf = sk_X509_value(sk, 0);
+  if (!ssl3_check_certificate_for_cipher(leaf, s->s3->tmp.new_cipher)) {
+    al = SSL_AD_ILLEGAL_PARAMETER;
+    goto f_err;
+  }
+
   sc = ssl_sess_cert_new();
   if (sc == NULL) {
     goto err;
@@ -995,49 +1043,19 @@ int ssl3_get_server_certificate(SSL *s) {
   ssl_sess_cert_free(s->session->sess_cert);
   s->session->sess_cert = sc;
 
+  /* NOTE: Unlike the server half, the client's copy of |cert_chain| includes
+   * the leaf. */
   sc->cert_chain = sk;
-  /* Inconsistency alert: cert_chain does include the peer's certificate, which
-   * we don't include in s3_srvr.c */
-  x = sk_X509_value(sk, 0);
   sk = NULL;
-  /* VRS 19990621: possible memory leak; sk=null ==> !sk_pop_free() @end*/
 
-  pkey = X509_get_pubkey(x);
-
-  if (pkey == NULL || EVP_PKEY_missing_parameters(pkey)) {
-    x = NULL;
-    al = SSL3_AL_FATAL;
-    OPENSSL_PUT_ERROR(SSL, ssl3_get_server_certificate,
-                      SSL_R_UNABLE_TO_FIND_PUBLIC_KEY_PARAMETERS);
-    goto f_err;
-  }
-
-  i = ssl_cert_type(pkey);
-  if (i < 0) {
-    x = NULL;
-    al = SSL3_AL_FATAL;
-    OPENSSL_PUT_ERROR(SSL, ssl3_get_server_certificate,
-                      SSL_R_UNKNOWN_CERTIFICATE_TYPE);
-    goto f_err;
-  }
-
-  int exp_idx = ssl_cipher_get_cert_index(s->s3->tmp.new_cipher);
-  if (exp_idx >= 0 && i != exp_idx) {
-    x = NULL;
-    al = SSL_AD_ILLEGAL_PARAMETER;
-    OPENSSL_PUT_ERROR(SSL, ssl3_get_server_certificate,
-                      SSL_R_WRONG_CERTIFICATE_TYPE);
-    goto f_err;
-  }
   X509_free(sc->peer_cert);
-  sc->peer_cert = X509_up_ref(x);
+  sc->peer_cert = X509_up_ref(leaf);
 
   X509_free(s->session->peer);
-  s->session->peer = X509_up_ref(x);
+  s->session->peer = X509_up_ref(leaf);
 
   s->session->verify_result = s->verify_result;
 
-  x = NULL;
   ret = 1;
 
   if (0) {
@@ -2130,70 +2148,6 @@ int ssl3_send_client_certificate(SSL *s) {
 
   /* SSL3_ST_CW_CERT_D */
   return ssl_do_write(s);
-}
-
-#define has_bits(i, m) (((i) & (m)) == (m))
-
-int ssl3_check_cert_and_algorithm(SSL *s) {
-  long alg_k, alg_a;
-  SESS_CERT *sc;
-  DH *dh;
-
-  /* we don't have a certificate */
-  if (!ssl_cipher_has_server_public_key(s->s3->tmp.new_cipher)) {
-    return 1;
-  }
-
-  alg_k = s->s3->tmp.new_cipher->algorithm_mkey;
-  alg_a = s->s3->tmp.new_cipher->algorithm_auth;
-
-  sc = s->session->sess_cert;
-  if (sc == NULL) {
-    OPENSSL_PUT_ERROR(SSL, ssl3_check_cert_and_algorithm, ERR_R_INTERNAL_ERROR);
-    goto err;
-  }
-
-  dh = s->session->sess_cert->peer_dh_tmp;
-
-  int cert_type = X509_certificate_type(sc->peer_cert, NULL);
-  if (cert_type & EVP_PK_EC) {
-    if (ssl_check_srvr_ecc_cert_and_alg(sc->peer_cert, s) == 0) {
-      /* check failed */
-      OPENSSL_PUT_ERROR(SSL, ssl3_check_cert_and_algorithm, SSL_R_BAD_ECC_CERT);
-      goto f_err;
-    } else {
-      return 1;
-    }
-  } else if (alg_a & SSL_aECDSA) {
-    OPENSSL_PUT_ERROR(SSL, ssl3_check_cert_and_algorithm,
-                      SSL_R_MISSING_ECDSA_SIGNING_CERT);
-    goto f_err;
-  }
-
-  /* Check that we have a certificate if we require one */
-  if ((alg_a & SSL_aRSA) && !has_bits(cert_type, EVP_PK_RSA | EVP_PKT_SIGN)) {
-    OPENSSL_PUT_ERROR(SSL, ssl3_check_cert_and_algorithm,
-                      SSL_R_MISSING_RSA_SIGNING_CERT);
-    goto f_err;
-  }
-
-  if ((alg_k & SSL_kRSA) && !has_bits(cert_type, EVP_PK_RSA | EVP_PKT_ENC)) {
-    OPENSSL_PUT_ERROR(SSL, ssl3_check_cert_and_algorithm,
-                      SSL_R_MISSING_RSA_ENCRYPTING_CERT);
-    goto f_err;
-  }
-
-  if ((alg_k & SSL_kDHE) && dh == NULL) {
-    OPENSSL_PUT_ERROR(SSL, ssl3_check_cert_and_algorithm, SSL_R_MISSING_DH_KEY);
-    goto f_err;
-  }
-
-  return 1;
-
-f_err:
-  ssl3_send_alert(s, SSL3_AL_FATAL, SSL_AD_HANDSHAKE_FAILURE);
-err:
-  return 0;
 }
 
 int ssl3_send_next_proto(SSL *s) {
