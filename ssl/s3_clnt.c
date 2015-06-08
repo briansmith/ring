@@ -917,9 +917,7 @@ static int ssl3_check_certificate_for_cipher(X509 *leaf,
                                              const SSL_CIPHER *cipher) {
   int ret = 0;
   EVP_PKEY *pkey = X509_get_pubkey(leaf);
-  if (pkey == NULL || EVP_PKEY_missing_parameters(pkey)) {
-    OPENSSL_PUT_ERROR(SSL, ssl3_get_server_certificate,
-                      SSL_R_UNABLE_TO_FIND_PUBLIC_KEY_PARAMETERS);
+  if (pkey == NULL) {
     goto err;
   }
 
