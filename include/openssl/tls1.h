@@ -512,9 +512,6 @@ OPENSSL_EXPORT int SSL_CTX_set_tlsext_ticket_key_cb(
 #define TLS1_CK_ECDHE_ECDSA_CHACHA20_POLY1305 0x0300CC14
 #define TLS1_CK_DHE_RSA_CHACHA20_POLY1305 0x0300CC15
 
-/* Non-standard ECDHE PSK ciphersuites */
-#define TLS1_CK_ECDHE_PSK_WITH_AES_128_GCM_SHA256 0x0300CAFE
-
 /* XXX
  * Inconsistency alert:
  * The OpenSSL names of ciphers with ephemeral DH here include the string
@@ -675,10 +672,6 @@ OPENSSL_EXPORT int SSL_CTX_set_tlsext_ticket_key_cb(
 #define TLS1_TXT_ECDHE_ECDSA_WITH_CHACHA20_POLY1305 \
   "ECDHE-ECDSA-CHACHA20-POLY1305"
 #define TLS1_TXT_DHE_RSA_WITH_CHACHA20_POLY1305 "DHE-RSA-CHACHA20-POLY1305"
-
-/* Non-standard ECDHE PSK ciphersuites */
-#define TLS1_TXT_ECDHE_PSK_WITH_AES_128_GCM_SHA256 \
-  "ECDHE-PSK-AES128-GCM-SHA256"
 
 #define TLS_CT_RSA_SIGN 1
 #define TLS_CT_DSS_SIGN 2
