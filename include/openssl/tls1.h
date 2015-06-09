@@ -361,6 +361,10 @@ OPENSSL_EXPORT int SSL_CTX_set_tlsext_ticket_key_cb(
 #define TLS1_CK_PSK_WITH_AES_128_CBC_SHA                0x0300008C
 #define TLS1_CK_PSK_WITH_AES_256_CBC_SHA                0x0300008D
 
+/* PSK ciphersuites from RFC 5489 */
+#define TLS1_CK_ECDHE_PSK_WITH_AES_128_CBC_SHA          0x0300C035
+#define TLS1_CK_ECDHE_PSK_WITH_AES_256_CBC_SHA          0x0300C036
+
 /* Additional TLS ciphersuites from expired Internet Draft
  * draft-ietf-tls-56-bit-ciphersuites-01.txt
  * (available if TLS1_ALLOW_EXPERIMENTAL_CIPHERSUITES is defined, see
@@ -579,6 +583,10 @@ OPENSSL_EXPORT int SSL_CTX_set_tlsext_ticket_key_cb(
 #define TLS1_TXT_PSK_WITH_3DES_EDE_CBC_SHA "PSK-3DES-EDE-CBC-SHA"
 #define TLS1_TXT_PSK_WITH_AES_128_CBC_SHA "PSK-AES128-CBC-SHA"
 #define TLS1_TXT_PSK_WITH_AES_256_CBC_SHA "PSK-AES256-CBC-SHA"
+
+/* PSK ciphersuites from RFC 5489 */
+#define TLS1_TXT_ECDHE_PSK_WITH_AES_128_CBC_SHA "ECDHE-PSK-AES128-CBC-SHA"
+#define TLS1_TXT_ECDHE_PSK_WITH_AES_256_CBC_SHA "ECDHE-PSK-AES256-CBC-SHA"
 
 /* SRP ciphersuite from RFC 5054 */
 #define TLS1_TXT_SRP_SHA_WITH_3DES_EDE_CBC_SHA "SRP-3DES-EDE-CBC-SHA"

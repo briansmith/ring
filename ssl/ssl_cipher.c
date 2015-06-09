@@ -240,6 +240,8 @@ const SSL_CIPHER kCiphers[] = {
      SSL_HANDSHAKE_MAC_SHA256, 256, 256,
     },
 
+    /* PSK cipher suites. */
+
     /* Cipher 8A */
     {
      TLS1_TXT_PSK_WITH_RC4_128_SHA, TLS1_CK_PSK_WITH_RC4_128_SHA, SSL_kPSK,
@@ -260,7 +262,6 @@ const SSL_CIPHER kCiphers[] = {
      SSL_kPSK, SSL_aPSK, SSL_AES256, SSL_SHA1, SSL_TLSV1, SSL_HIGH | SSL_FIPS,
      SSL_HANDSHAKE_MAC_DEFAULT, 256, 256,
     },
-
 
     /* GCM ciphersuites from RFC5288 */
 
@@ -428,6 +429,26 @@ const SSL_CIPHER kCiphers[] = {
          SSL_CIPHER_ALGORITHM2_VARIABLE_NONCE_INCLUDED_IN_RECORD,
      256, 256,
     },
+
+    /* ECDHE-PSK cipher suites. */
+
+    /* Cipher C035 */
+    {
+     TLS1_TXT_ECDHE_PSK_WITH_AES_128_CBC_SHA,
+     TLS1_CK_ECDHE_PSK_WITH_AES_128_CBC_SHA,
+     SSL_kECDHE, SSL_aPSK, SSL_AES128, SSL_SHA1, SSL_TLSV1, SSL_HIGH | SSL_FIPS,
+     SSL_HANDSHAKE_MAC_DEFAULT, 128, 128,
+    },
+
+    /* Cipher C036 */
+    {
+     TLS1_TXT_ECDHE_PSK_WITH_AES_256_CBC_SHA,
+     TLS1_CK_ECDHE_PSK_WITH_AES_256_CBC_SHA,
+     SSL_kECDHE, SSL_aPSK, SSL_AES256, SSL_SHA1, SSL_TLSV1, SSL_HIGH | SSL_FIPS,
+     SSL_HANDSHAKE_MAC_DEFAULT, 256, 256,
+    },
+
+    /* ChaCha20-Poly1305 cipher suites. */
 
     {
      TLS1_TXT_ECDHE_RSA_WITH_CHACHA20_POLY1305,
