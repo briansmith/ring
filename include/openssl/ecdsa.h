@@ -163,6 +163,11 @@ OPENSSL_EXPORT ECDSA_SIG *d2i_ECDSA_SIG(ECDSA_SIG **out, const uint8_t **inp,
  * the result, whether written or not, or a negative value on error. */
 OPENSSL_EXPORT int i2d_ECDSA_SIG(const ECDSA_SIG *sig, uint8_t **outp);
 
+/* ECDSA_SIG_max_len returns the maximum length of a DER-encoded ECDSA-Sig-Value
+ * structure for a group whose order is represented in |order_len| bytes, or
+ * zero on overflow. */
+OPENSSL_EXPORT size_t ECDSA_SIG_max_len(size_t order_len);
+
 
 #if defined(__cplusplus)
 }  /* extern C */

@@ -325,11 +325,50 @@ static bool TestBuiltin(FILE *out) {
   return true;
 }
 
+static bool TestECDSA_SIG_max_len(size_t order_len) {
+  /* Create the largest possible |ECDSA_SIG| of the given constraints. */
+  ScopedECDSA_SIG sig(ECDSA_SIG_new());
+  if (!sig) {
+    return false;
+  }
+  std::vector<uint8_t> bytes(order_len, 0xff);
+  if (!BN_bin2bn(bssl::vector_data(&bytes), bytes.size(), sig->r) ||
+      !BN_bin2bn(bssl::vector_data(&bytes), bytes.size(), sig->s)) {
+    return false;
+  }
+  /* Serialize it. */
+  int len = i2d_ECDSA_SIG(sig.get(), nullptr);
+  if (len < 0) {
+    return false;
+  }
+  std::vector<uint8_t> der(len);
+  uint8_t *ptr = bssl::vector_data(&der);
+  len = i2d_ECDSA_SIG(sig.get(), &ptr);
+  if (len < 0) {
+    return false;
+  }
+  der.resize(len);
+
+  size_t max_len = ECDSA_SIG_max_len(order_len);
+  if (max_len != static_cast<size_t>(len)) {
+    fprintf(stderr, "ECDSA_SIG_max_len(%u) returned %u, wanted %d\n",
+            static_cast<unsigned>(order_len), static_cast<unsigned>(max_len),
+            len);
+    return false;
+  }
+  return true;
+}
+
 int main(void) {
   CRYPTO_library_init();
   ERR_load_crypto_strings();
 
-  if (!TestBuiltin(stdout)) {
+  if (!TestBuiltin(stdout) ||
+      !TestECDSA_SIG_max_len(224/8) ||
+      !TestECDSA_SIG_max_len(256/8) ||
+      !TestECDSA_SIG_max_len(384/8) ||
+      !TestECDSA_SIG_max_len(512/8) ||
+      !TestECDSA_SIG_max_len(10000)) {
     printf("\nECDSA test failed\n");
     ERR_print_errors_fp(stdout);
     return 1;
