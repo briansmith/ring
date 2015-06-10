@@ -71,7 +71,7 @@ extern "C" {
 /* MD4_DIGEST_LENGTH is the length of an MD4 digest. */
 #define MD4_DIGEST_LENGTH 16
 
-/* MD41_Init initialises |md4| and returns one. */
+/* MD4_Init initialises |md4| and returns one. */
 OPENSSL_EXPORT int MD4_Init(MD4_CTX *md4);
 
 /* MD4_Update adds |len| bytes from |data| to |md4| and returns one. */

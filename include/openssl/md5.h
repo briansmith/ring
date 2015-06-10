@@ -72,7 +72,7 @@ extern "C" {
 /* MD5_DIGEST_LENGTH is the length of an MD5 digest. */
 #define MD5_DIGEST_LENGTH 16
 
-/* MD51_Init initialises |md5| and returns one. */
+/* MD5_Init initialises |md5| and returns one. */
 OPENSSL_EXPORT int MD5_Init(MD5_CTX *md5);
 
 /* MD5_Update adds |len| bytes from |data| to |md5| and returns one. */

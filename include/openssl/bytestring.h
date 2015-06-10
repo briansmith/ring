@@ -293,7 +293,7 @@ OPENSSL_EXPORT int CBB_add_u16_length_prefixed(CBB *cbb, CBB *out_contents);
  * big-endian length. It returns one on success or zero on error. */
 OPENSSL_EXPORT int CBB_add_u24_length_prefixed(CBB *cbb, CBB *out_contents);
 
-/* CBB_add_asn sets |*out_contents| to a |CBB| into which the contents of an
+/* CBB_add_asn1 sets |*out_contents| to a |CBB| into which the contents of an
  * ASN.1 object can be written. The |tag| argument will be used as the tag for
  * the object. Passing in |tag| number 31 will return in an error since only
  * single octet identifiers are supported. It returns one on success or zero
@@ -314,7 +314,7 @@ OPENSSL_EXPORT int CBB_add_space(CBB *cbb, uint8_t **out_data, size_t len);
  * success and zero otherwise. */
 OPENSSL_EXPORT int CBB_add_u8(CBB *cbb, uint8_t value);
 
-/* CBB_add_u8 appends a 16-bit, big-endian number from |value| to |cbb|. It
+/* CBB_add_u16 appends a 16-bit, big-endian number from |value| to |cbb|. It
  * returns one on success and zero otherwise. */
 OPENSSL_EXPORT int CBB_add_u16(CBB *cbb, uint16_t value);
 

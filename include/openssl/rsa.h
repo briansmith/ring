@@ -246,7 +246,7 @@ OPENSSL_EXPORT int RSA_verify_raw(RSA *rsa, size_t *out_len, uint8_t *out,
 OPENSSL_EXPORT int RSA_private_encrypt(int flen, const uint8_t *from,
                                        uint8_t *to, RSA *rsa, int padding);
 
-/* RSA_private_encrypt verifies |flen| bytes of signature from |from| using the
+/* RSA_public_decrypt verifies |flen| bytes of signature from |from| using the
  * public key in |rsa| and writes the plaintext to |to|. The |to| buffer must
  * have at least |RSA_size| bytes of space. It returns the number of bytes
  * written, or -1 on error. The |padding| argument must be one of the

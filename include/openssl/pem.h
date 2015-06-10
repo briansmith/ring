@@ -410,7 +410,7 @@ OPENSSL_EXPORT void    PEM_SignInit(EVP_MD_CTX *ctx, EVP_MD *type);
 OPENSSL_EXPORT void    PEM_SignUpdate(EVP_MD_CTX *ctx,unsigned char *d,unsigned int cnt);
 OPENSSL_EXPORT int	PEM_SignFinal(EVP_MD_CTX *ctx, unsigned char *sigret, unsigned int *siglen, EVP_PKEY *pkey);
 
-/* |PEM_def_callback| treats |userdata| as a string and copies it into |buf|,
+/* PEM_def_callback treats |userdata| as a string and copies it into |buf|,
  * assuming its |size| is sufficient. Returns the length of the string, or 0
  * if there is not enough room. If either |buf| or |userdata| is NULL, 0 is
  * returned. Note that this is different from OpenSSL, which prompts for a

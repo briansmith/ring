@@ -192,7 +192,7 @@ OPENSSL_EXPORT int EC_KEY_generate_key(EC_KEY *key);
 OPENSSL_EXPORT EC_KEY *d2i_ECPrivateKey(EC_KEY **out_key, const uint8_t **inp,
                                         long len);
 
-/* i2d_ECParameters marshals an EC private key from |key| to an ASN.1, DER
+/* i2d_ECPrivateKey marshals an EC private key from |key| to an ASN.1, DER
  * structure. If |outp| is not NULL then the result is written to |*outp| and
  * |*outp| is advanced just past the output. It returns the number of bytes in
  * the result, whether written or not, or a negative value on error. */

@@ -287,7 +287,7 @@ OPENSSL_EXPORT int ERR_get_next_error_library(void);
 
 /* Deprecated functions. */
 
-/* |ERR_remove_state| calls |ERR_clear_error|. */
+/* ERR_remove_state calls |ERR_clear_error|. */
 OPENSSL_EXPORT void ERR_remove_state(unsigned long pid);
 
 

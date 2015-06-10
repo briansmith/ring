@@ -220,7 +220,7 @@ OPENSSL_EXPORT int EC_POINT_get_affine_coordinates_GFp(const EC_GROUP *group,
                                                        BIGNUM *x, BIGNUM *y,
                                                        BN_CTX *ctx);
 
-/* EC_POINT_set_affine_coordinates sets the value of |p| to be (|x|, |y|). The
+/* EC_POINT_set_affine_coordinates_GFp sets the value of |p| to be (|x|, |y|). The
  * |ctx| argument may be used if not NULL. */
 OPENSSL_EXPORT int EC_POINT_set_affine_coordinates_GFp(const EC_GROUP *group,
                                                        EC_POINT *point,
@@ -265,7 +265,7 @@ OPENSSL_EXPORT int EC_POINT_add(const EC_GROUP *group, EC_POINT *r,
 OPENSSL_EXPORT int EC_POINT_dbl(const EC_GROUP *group, EC_POINT *r,
                                 const EC_POINT *a, BN_CTX *ctx);
 
-/* EC_POINT_dbl sets |a| equal to minus |a|. It returns one on success and zero
+/* EC_POINT_invert sets |a| equal to minus |a|. It returns one on success and zero
  * otherwise. If |ctx| is not NULL, it may be used. */
 OPENSSL_EXPORT int EC_POINT_invert(const EC_GROUP *group, EC_POINT *a,
                                    BN_CTX *ctx);

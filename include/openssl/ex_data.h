@@ -134,7 +134,7 @@ typedef struct crypto_ex_data_st CRYPTO_EX_DATA;
 
 #if 0 /* Sample */
 
-/* |TYPE_get_ex_new_index| allocates a new index for |TYPE|. See the
+/* TYPE_get_ex_new_index allocates a new index for |TYPE|. See the
  * descriptions of the callback typedefs for details of when they are
  * called. Any of the callback arguments may be NULL. The |argl| and |argp|
  * arguments are opaque values that are passed to the callbacks. It returns the
@@ -146,11 +146,11 @@ OPENSSL_EXPORT int TYPE_get_ex_new_index(long argl, void *argp,
                                          CRYPTO_EX_dup *dup_func,
                                          CRYPTO_EX_free *free_func);
 
-/* |TYPE_set_ex_data| sets an extra data pointer on |t|. The |index| argument
+/* TYPE_set_ex_data sets an extra data pointer on |t|. The |index| argument
  * should have been returned from a previous call to |TYPE_get_ex_new_index|. */
 OPENSSL_EXPORT int TYPE_set_ex_data(TYPE *t, int index, void *arg);
 
-/* |TYPE_get_ex_data| returns an extra data pointer for |t|, or NULL if no such
+/* TYPE_get_ex_data returns an extra data pointer for |t|, or NULL if no such
  * pointer exists. The |index| argument should have been returned from a
  * previous call to |TYPE_get_ex_new_index|. */
 OPENSSL_EXPORT void *TYPE_get_ex_data(const TYPE *t, int index);

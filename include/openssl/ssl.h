@@ -2407,13 +2407,13 @@ OPENSSL_EXPORT int SSL_CTX_set_tmp_rsa(SSL_CTX *ctx, const RSA *rsa);
 /* SSL_set_tmp_rsa returns one. */
 OPENSSL_EXPORT int SSL_set_tmp_rsa(SSL *ssl, const RSA *rsa);
 
-/* SSL_CTX_get_read_head returns zero. */
+/* SSL_CTX_get_read_ahead returns zero. */
 OPENSSL_EXPORT int SSL_CTX_get_read_ahead(const SSL_CTX *ctx);
 
 /* SSL_CTX_set_read_ahead does nothing. */
 OPENSSL_EXPORT void SSL_CTX_set_read_ahead(SSL_CTX *ctx, int yes);
 
-/* SSL_get_read_head returns zero. */
+/* SSL_get_read_ahead returns zero. */
 OPENSSL_EXPORT int SSL_get_read_ahead(const SSL *s);
 
 /* SSL_set_read_ahead does nothing. */

@@ -377,12 +377,12 @@ OPENSSL_EXPORT int EVP_VerifyFinal(EVP_MD_CTX *ctx, const uint8_t *sig,
 OPENSSL_EXPORT int EVP_PKEY_print_public(BIO *out, const EVP_PKEY *pkey,
                                          int indent, ASN1_PCTX *pctx);
 
-/* EVP_PKEY_print_public prints a textual representation of the private key in
+/* EVP_PKEY_print_private prints a textual representation of the private key in
  * |pkey| to |out|. Returns one on success or zero otherwise. */
 OPENSSL_EXPORT int EVP_PKEY_print_private(BIO *out, const EVP_PKEY *pkey,
                                           int indent, ASN1_PCTX *pctx);
 
-/* EVP_PKEY_print_public prints a textual representation of the parameters in
+/* EVP_PKEY_print_params prints a textual representation of the parameters in
  * |pkey| to |out|. Returns one on success or zero otherwise. */
 OPENSSL_EXPORT int EVP_PKEY_print_params(BIO *out, const EVP_PKEY *pkey,
                                          int indent, ASN1_PCTX *pctx);
@@ -419,13 +419,13 @@ OPENSSL_EXPORT int PKCS5_PBKDF2_HMAC_SHA1(const char *password,
  * returns the context or NULL on error. */
 OPENSSL_EXPORT EVP_PKEY_CTX *EVP_PKEY_CTX_new(EVP_PKEY *pkey, ENGINE *e);
 
-/* EVP_PKEY_CTX_new allocates a fresh |EVP_PKEY_CTX| for a key of type |id|
+/* EVP_PKEY_CTX_new_id allocates a fresh |EVP_PKEY_CTX| for a key of type |id|
  * (e.g. |EVP_PKEY_HMAC|). This can be used for key generation where
  * |EVP_PKEY_CTX_new| can't be used because there isn't an |EVP_PKEY| to pass
  * it. It returns the context or NULL on error. */
 OPENSSL_EXPORT EVP_PKEY_CTX *EVP_PKEY_CTX_new_id(int id, ENGINE *e);
 
-/* EVP_KEY_CTX_free frees |ctx| and the data it owns. */
+/* EVP_PKEY_CTX_free frees |ctx| and the data it owns. */
 OPENSSL_EXPORT void EVP_PKEY_CTX_free(EVP_PKEY_CTX *ctx);
 
 /* EVP_PKEY_CTX_dup allocates a fresh |EVP_PKEY_CTX| and sets it equal to the
