@@ -41,63 +41,6 @@ var (
 
 type test []string
 
-var tests = []test{
-	{"crypto/base64/base64_test"},
-	{"crypto/bio/bio_test"},
-	{"crypto/bn/bn_test"},
-	{"crypto/bytestring/bytestring_test"},
-	{"crypto/cipher/aead_test", "aes-128-gcm", "crypto/cipher/test/aes_128_gcm_tests.txt"},
-	{"crypto/cipher/aead_test", "aes-128-key-wrap", "crypto/cipher/test/aes_128_key_wrap_tests.txt"},
-	{"crypto/cipher/aead_test", "aes-256-gcm", "crypto/cipher/test/aes_256_gcm_tests.txt"},
-	{"crypto/cipher/aead_test", "aes-256-key-wrap", "crypto/cipher/test/aes_256_key_wrap_tests.txt"},
-	{"crypto/cipher/aead_test", "chacha20-poly1305", "crypto/cipher/test/chacha20_poly1305_tests.txt"},
-	{"crypto/cipher/aead_test", "rc4-md5-tls", "crypto/cipher/test/rc4_md5_tls_tests.txt"},
-	{"crypto/cipher/aead_test", "rc4-sha1-tls", "crypto/cipher/test/rc4_sha1_tls_tests.txt"},
-	{"crypto/cipher/aead_test", "aes-128-cbc-sha1-tls", "crypto/cipher/test/aes_128_cbc_sha1_tls_tests.txt"},
-	{"crypto/cipher/aead_test", "aes-128-cbc-sha1-tls-implicit-iv", "crypto/cipher/test/aes_128_cbc_sha1_tls_implicit_iv_tests.txt"},
-	{"crypto/cipher/aead_test", "aes-128-cbc-sha256-tls", "crypto/cipher/test/aes_128_cbc_sha256_tls_tests.txt"},
-	{"crypto/cipher/aead_test", "aes-256-cbc-sha1-tls", "crypto/cipher/test/aes_256_cbc_sha1_tls_tests.txt"},
-	{"crypto/cipher/aead_test", "aes-256-cbc-sha1-tls-implicit-iv", "crypto/cipher/test/aes_256_cbc_sha1_tls_implicit_iv_tests.txt"},
-	{"crypto/cipher/aead_test", "aes-256-cbc-sha256-tls", "crypto/cipher/test/aes_256_cbc_sha256_tls_tests.txt"},
-	{"crypto/cipher/aead_test", "aes-256-cbc-sha384-tls", "crypto/cipher/test/aes_256_cbc_sha384_tls_tests.txt"},
-	{"crypto/cipher/aead_test", "des-ede3-cbc-sha1-tls", "crypto/cipher/test/des_ede3_cbc_sha1_tls_tests.txt"},
-	{"crypto/cipher/aead_test", "des-ede3-cbc-sha1-tls-implicit-iv", "crypto/cipher/test/des_ede3_cbc_sha1_tls_implicit_iv_tests.txt"},
-	{"crypto/cipher/aead_test", "rc4-md5-ssl3", "crypto/cipher/test/rc4_md5_ssl3_tests.txt"},
-	{"crypto/cipher/aead_test", "rc4-sha1-ssl3", "crypto/cipher/test/rc4_sha1_ssl3_tests.txt"},
-	{"crypto/cipher/aead_test", "aes-128-cbc-sha1-ssl3", "crypto/cipher/test/aes_128_cbc_sha1_ssl3_tests.txt"},
-	{"crypto/cipher/aead_test", "aes-256-cbc-sha1-ssl3", "crypto/cipher/test/aes_256_cbc_sha1_ssl3_tests.txt"},
-	{"crypto/cipher/aead_test", "des-ede3-cbc-sha1-ssl3", "crypto/cipher/test/des_ede3_cbc_sha1_ssl3_tests.txt"},
-	{"crypto/cipher/aead_test", "aes-128-ctr-hmac-sha256", "crypto/cipher/test/aes_128_ctr_hmac_sha256.txt"},
-	{"crypto/cipher/aead_test", "aes-256-ctr-hmac-sha256", "crypto/cipher/test/aes_256_ctr_hmac_sha256.txt"},
-	{"crypto/cipher/cipher_test", "crypto/cipher/test/cipher_test.txt"},
-	{"crypto/cmac/cmac_test"},
-	{"crypto/constant_time_test"},
-	{"crypto/dh/dh_test"},
-	{"crypto/digest/digest_test"},
-	{"crypto/dsa/dsa_test"},
-	{"crypto/ec/ec_test"},
-	{"crypto/ec/example_mul"},
-	{"crypto/ecdsa/ecdsa_test"},
-	{"crypto/err/err_test"},
-	{"crypto/evp/evp_extra_test"},
-	{"crypto/evp/evp_test", "crypto/evp/evp_tests.txt"},
-	{"crypto/evp/evp_test", "crypto/hmac/hmac_tests.txt"},
-	{"crypto/evp/pbkdf_test"},
-	{"crypto/hkdf/hkdf_test"},
-	{"crypto/hmac/hmac_test", "crypto/hmac/hmac_tests.txt"},
-	{"crypto/lhash/lhash_test"},
-	{"crypto/modes/gcm_test"},
-	{"crypto/pkcs8/pkcs12_test"},
-	{"crypto/refcount_test"},
-	{"crypto/rsa/rsa_test"},
-	{"crypto/thread_test"},
-	{"crypto/x509/pkcs7_test"},
-	{"crypto/x509v3/tab_test"},
-	{"crypto/x509v3/v3name_test"},
-	{"ssl/pqueue/pqueue_test"},
-	{"ssl/ssl_test"},
-}
-
 // testOutput is a representation of Chromium's JSON test result format. See
 // https://www.chromium.org/developers/the-json-test-results-format
 type testOutput struct {
@@ -254,8 +197,43 @@ func shortTestName(test test) string {
 	return strings.Join(args, " ")
 }
 
+// setWorkingDirectory walks up directories as needed until the current working
+// directory is the top of a BoringSSL checkout.
+func setWorkingDirectory() {
+	for i := 0; i < 64; i++ {
+		if _, err := os.Stat("BUILDING"); err == nil {
+			return
+		}
+		os.Chdir("..")
+	}
+
+	panic("Couldn't find BUILDING in a parent directory!")
+}
+
+func parseTestConfig(filename string) ([]test, error) {
+	in, err := os.Open(filename)
+	if err != nil {
+		return nil, err
+	}
+	defer in.Close()
+
+	decoder := json.NewDecoder(in)
+	var result []test
+	if err := decoder.Decode(&result); err != nil {
+		return nil, err
+	}
+	return result, nil
+}
+
 func main() {
 	flag.Parse()
+	setWorkingDirectory()
+
+	tests, err := parseTestConfig("util/all_tests.json")
+	if err != nil {
+		fmt.Printf("Failed to parse input: %s\n", err)
+		os.Exit(1)
+	}
 
 	testOutput := newTestOutput()
 	var failed []test
