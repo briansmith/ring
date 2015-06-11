@@ -46,7 +46,7 @@ add_library(
 add_executable(
   v3name_test
 
-  v3nametest.c
+  v3name_test.c
 
   $<TARGET_OBJECTS:test_support>
 )
@@ -56,7 +56,7 @@ target_link_libraries(v3name_test crypto)
 add_executable(
   tab_test
 
-  tabtest.c
+  tab_test.c
 
   $<TARGET_OBJECTS:test_support>
 )
