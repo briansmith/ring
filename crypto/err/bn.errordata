@@ -1,8 +1,10 @@
 BN,function,100,BN_CTX_get
 BN,function,101,BN_CTX_new
 BN,function,102,BN_CTX_start
+BN,function,127,BN_bn2cbb
 BN,function,103,BN_bn2dec
 BN,function,104,BN_bn2hex
+BN,function,128,BN_cbs2unsigned
 BN,function,105,BN_div
 BN,function,106,BN_div_recp
 BN,function,107,BN_exp
@@ -26,11 +28,13 @@ BN,function,122,BN_usub
 BN,function,123,bn_wexpand
 BN,function,124,mod_exp_recp
 BN,reason,100,ARG2_LT_ARG3
+BN,reason,117,BAD_ENCODING
 BN,reason,101,BAD_RECIPROCAL
 BN,reason,102,BIGNUM_TOO_LONG
 BN,reason,103,BITS_TOO_SMALL
 BN,reason,104,CALLED_WITH_EVEN_MODULUS
 BN,reason,105,DIV_BY_ZERO
+BN,reason,118,ENCODE_ERROR
 BN,reason,106,EXPAND_ON_STATIC_BIGNUM_DATA
 BN,reason,107,INPUT_NOT_REDUCED
 BN,reason,108,INVALID_RANGE

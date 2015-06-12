@@ -298,6 +298,17 @@ OPENSSL_EXPORT int BN_print_fp(FILE *fp, const BIGNUM *a);
 OPENSSL_EXPORT BN_ULONG BN_get_word(const BIGNUM *bn);
 
 
+/* ASN.1 functions. */
+
+/* BN_cbs2unsigned parses a non-negative DER INTEGER from |cbs| writes the
+ * result to |ret|. It returns one on success and zero on failure. */
+OPENSSL_EXPORT int BN_cbs2unsigned(CBS *cbs, BIGNUM *ret);
+
+/* BN_bn2cbb marshals |bn| as a non-negative DER INTEGER and appends the result
+ * to |cbb|. It returns one on success and zero on failure. */
+OPENSSL_EXPORT int BN_bn2cbb(CBB *cbb, const BIGNUM *bn);
+
+
 /* Internal functions.
  *
  * These functions are useful for code that is doing low-level manipulations of
@@ -855,6 +866,8 @@ OPENSSL_EXPORT BIGNUM *get_rfc3526_prime_1536(BIGNUM *bn);
 #define BN_F_mod_exp_recp 124
 #define BN_F_BN_lshift 125
 #define BN_F_BN_rshift 126
+#define BN_F_BN_bn2cbb 127
+#define BN_F_BN_cbs2unsigned 128
 #define BN_R_ARG2_LT_ARG3 100
 #define BN_R_BAD_RECIPROCAL 101
 #define BN_R_BIGNUM_TOO_LONG 102
@@ -872,5 +885,7 @@ OPENSSL_EXPORT BIGNUM *get_rfc3526_prime_1536(BIGNUM *bn);
 #define BN_R_P_IS_NOT_PRIME 114
 #define BN_R_TOO_MANY_ITERATIONS 115
 #define BN_R_TOO_MANY_TEMPORARY_VARIABLES 116
+#define BN_R_BAD_ENCODING 117
+#define BN_R_ENCODE_ERROR 118
 
 #endif  /* OPENSSL_HEADER_BN_H */
