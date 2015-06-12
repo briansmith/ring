@@ -78,18 +78,13 @@ static bool VerifyECDSASig(Api api, const uint8_t *digest,
 
   switch (api) {
     case kEncodedApi: {
-      int sig_len = i2d_ECDSA_SIG(ecdsa_sig, NULL);
-      if (sig_len <= 0) {
+      uint8_t *der;
+      size_t der_len;
+      if (!ECDSA_SIG_to_bytes(&der, &der_len, ecdsa_sig)) {
         return false;
       }
-      std::vector<uint8_t> signature(static_cast<size_t>(sig_len));
-      uint8_t *sig_ptr = bssl::vector_data(&signature);
-      sig_len = i2d_ECDSA_SIG(ecdsa_sig, &sig_ptr);
-      if (sig_len <= 0) {
-        return false;
-      }
-      actual_result = ECDSA_verify(0, digest, digest_len, bssl::vector_data(&signature),
-                                   signature.size(), eckey);
+      ScopedOpenSSLBytes delete_der(der);
+      actual_result = ECDSA_verify(0, digest, digest_len, der, der_len, eckey);
       break;
     }
 
@@ -267,8 +262,8 @@ static bool TestBuiltin(FILE *out) {
     fprintf(out, ".");
     fflush(out);
     // Verify a tampered signature.
-    const uint8_t *sig_ptr = bssl::vector_data(&signature);
-    ScopedECDSA_SIG ecdsa_sig(d2i_ECDSA_SIG(NULL, &sig_ptr, signature.size()));
+    ScopedECDSA_SIG ecdsa_sig(ECDSA_SIG_from_bytes(
+        bssl::vector_data(&signature), signature.size()));
     if (!ecdsa_sig ||
         !TestTamperedSig(out, kEncodedApi, digest, 20, ecdsa_sig.get(),
                          eckey.get(), order.get())) {
@@ -337,23 +332,18 @@ static bool TestECDSA_SIG_max_len(size_t order_len) {
     return false;
   }
   /* Serialize it. */
-  int len = i2d_ECDSA_SIG(sig.get(), nullptr);
-  if (len < 0) {
+  uint8_t *der;
+  size_t der_len;
+  if (!ECDSA_SIG_to_bytes(&der, &der_len, sig.get())) {
     return false;
   }
-  std::vector<uint8_t> der(len);
-  uint8_t *ptr = bssl::vector_data(&der);
-  len = i2d_ECDSA_SIG(sig.get(), &ptr);
-  if (len < 0) {
-    return false;
-  }
-  der.resize(len);
+  ScopedOpenSSLBytes delete_der(der);
 
   size_t max_len = ECDSA_SIG_max_len(order_len);
-  if (max_len != static_cast<size_t>(len)) {
-    fprintf(stderr, "ECDSA_SIG_max_len(%u) returned %u, wanted %d\n",
+  if (max_len != der_len) {
+    fprintf(stderr, "ECDSA_SIG_max_len(%u) returned %u, wanted %u\n",
             static_cast<unsigned>(order_len), static_cast<unsigned>(max_len),
-            len);
+            static_cast<unsigned>(der_len));
     return false;
   }
   return true;
