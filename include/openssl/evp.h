@@ -681,10 +681,10 @@ struct evp_pkey_st {
 
   union {
     char *ptr;
-    struct rsa_st *rsa; /* RSA */
-    struct dsa_st *dsa; /* DSA */
-    struct dh_st *dh; /* DH */
-    struct ec_key_st *ec; /* ECC */
+    RSA *rsa;
+    DSA *dsa;
+    DH *dh;
+    EC_KEY *ec;
   } pkey;
 
   /* ameth contains a pointer to a method table that contains many ASN.1
