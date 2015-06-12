@@ -152,16 +152,18 @@
 #include <stdio.h>
 #include <string.h>
 
+#include <openssl/bn.h>
 #include <openssl/buf.h>
 #include <openssl/bytestring.h>
-#include <openssl/rand.h>
-#include <openssl/obj.h>
+#include <openssl/dh.h>
+#include <openssl/ec_key.h>
+#include <openssl/ecdsa.h>
 #include <openssl/err.h>
 #include <openssl/evp.h>
-#include <openssl/mem.h>
 #include <openssl/md5.h>
-#include <openssl/dh.h>
-#include <openssl/bn.h>
+#include <openssl/mem.h>
+#include <openssl/obj.h>
+#include <openssl/rand.h>
 #include <openssl/x509.h>
 #include <openssl/x509v3.h>
 
@@ -2218,7 +2220,6 @@ int ssl3_send_channel_id(SSL *s) {
   uint8_t *d;
   int ret = -1, public_key_len;
   EVP_MD_CTX md_ctx;
-  size_t sig_len;
   ECDSA_SIG *sig = NULL;
   uint8_t *public_key = NULL, *derp, *der_sig = NULL;
 
@@ -2240,6 +2241,12 @@ int ssl3_send_channel_id(SSL *s) {
   }
   s->rwstate = SSL_NOTHING;
 
+  if (EVP_PKEY_id(s->tlsext_channel_id_private) != EVP_PKEY_EC) {
+    OPENSSL_PUT_ERROR(SSL, ssl3_send_channel_id, ERR_R_INTERNAL_ERROR);
+    return -1;
+  }
+  EC_KEY *ec_key = s->tlsext_channel_id_private->pkey.ec;
+
   d = ssl_handshake_start(s);
   if (s->s3->tlsext_channel_id_new) {
     s2n(TLSEXT_TYPE_channel_id_new, d);
@@ -2250,14 +2257,14 @@ int ssl3_send_channel_id(SSL *s) {
 
   EVP_MD_CTX_init(&md_ctx);
 
-  public_key_len = i2d_PublicKey(s->tlsext_channel_id_private, NULL);
+  public_key_len = i2o_ECPublicKey(ec_key, NULL);
   if (public_key_len <= 0) {
     OPENSSL_PUT_ERROR(SSL, ssl3_send_channel_id,
                       SSL_R_CANNOT_SERIALIZE_PUBLIC_KEY);
     goto err;
   }
 
-  /* i2d_PublicKey will produce an ANSI X9.62 public key which, for a
+  /* i2o_ECPublicKey will produce an ANSI X9.62 public key which, for a
    * P-256 key, is 0x04 (meaning uncompressed) followed by the x and y
    * field elements as 32-byte, big-endian numbers. */
   if (public_key_len != 65) {
@@ -2271,41 +2278,18 @@ int ssl3_send_channel_id(SSL *s) {
   }
 
   derp = public_key;
-  i2d_PublicKey(s->tlsext_channel_id_private, &derp);
+  i2o_ECPublicKey(ec_key, &derp);
 
-  if (EVP_DigestSignInit(&md_ctx, NULL, EVP_sha256(), NULL,
-                         s->tlsext_channel_id_private) != 1) {
-    OPENSSL_PUT_ERROR(SSL, ssl3_send_channel_id,
-                      SSL_R_EVP_DIGESTSIGNINIT_FAILED);
+  uint8_t digest[EVP_MAX_MD_SIZE];
+  unsigned digest_len;
+  if (!EVP_DigestInit_ex(&md_ctx, EVP_sha256(), NULL) ||
+      !tls1_channel_id_hash(&md_ctx, s) ||
+      !EVP_DigestFinal_ex(&md_ctx, digest, &digest_len)) {
     goto err;
   }
 
-  if (!tls1_channel_id_hash(&md_ctx, s)) {
-    goto err;
-  }
-
-  if (!EVP_DigestSignFinal(&md_ctx, NULL, &sig_len)) {
-    OPENSSL_PUT_ERROR(SSL, ssl3_send_channel_id,
-                      SSL_R_EVP_DIGESTSIGNFINAL_FAILED);
-    goto err;
-  }
-
-  der_sig = OPENSSL_malloc(sig_len);
-  if (!der_sig) {
-    OPENSSL_PUT_ERROR(SSL, ssl3_send_channel_id, ERR_R_MALLOC_FAILURE);
-    goto err;
-  }
-
-  if (!EVP_DigestSignFinal(&md_ctx, der_sig, &sig_len)) {
-    OPENSSL_PUT_ERROR(SSL, ssl3_send_channel_id,
-                      SSL_R_EVP_DIGESTSIGNFINAL_FAILED);
-    goto err;
-  }
-
-  derp = der_sig;
-  sig = d2i_ECDSA_SIG(NULL, (const uint8_t **)&derp, sig_len);
+  sig = ECDSA_do_sign(digest, digest_len, ec_key);
   if (sig == NULL) {
-    OPENSSL_PUT_ERROR(SSL, ssl3_send_channel_id, SSL_R_D2I_ECDSA_SIG);
     goto err;
   }
 
