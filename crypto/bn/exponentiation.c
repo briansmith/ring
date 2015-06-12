@@ -173,8 +173,8 @@ int BN_exp(BIGNUM *r, const BIGNUM *a, const BIGNUM *p, BN_CTX *ctx) {
     }
   }
 
-  if (r != rr) {
-    BN_copy(r, rr);
+  if (r != rr && !BN_copy(r, rr)) {
+    goto err;
   }
   ret = 1;
 

@@ -497,8 +497,8 @@ int BN_sqrt(BIGNUM *out_sqrt, const BIGNUM *in, BN_CTX *ctx) {
   ok = 1;
 
 err:
-  if (ok && out_sqrt == in) {
-    BN_copy(out_sqrt, estimate);
+  if (ok && out_sqrt == in && !BN_copy(out_sqrt, estimate)) {
+    ok = 0;
   }
   BN_CTX_end(ctx);
   return ok;

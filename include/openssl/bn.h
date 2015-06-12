@@ -182,7 +182,8 @@ OPENSSL_EXPORT void BN_clear_free(BIGNUM *bn);
  * allocated BIGNUM on success or NULL otherwise. */
 OPENSSL_EXPORT BIGNUM *BN_dup(const BIGNUM *src);
 
-/* BN_copy sets |dest| equal to |src| and returns |dest|. */
+/* BN_copy sets |dest| equal to |src| and returns |dest| or NULL on allocation
+ * failure. */
 OPENSSL_EXPORT BIGNUM *BN_copy(BIGNUM *dest, const BIGNUM *src);
 
 /* BN_clear sets |bn| to zero and erases the old data. */

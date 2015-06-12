@@ -897,7 +897,9 @@ static int keygen_multiprime(RSA *rsa, int bits, int num_primes,
     goto err;
   }
 
-  BN_copy(rsa->e, e_value);
+  if (!BN_copy(rsa->e, e_value)) {
+    goto err;
+  }
 
   /* generate p and q */
   prime_bits = (bits + (num_primes - 1)) / num_primes;

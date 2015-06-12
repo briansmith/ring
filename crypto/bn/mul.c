@@ -666,8 +666,8 @@ int BN_mul(BIGNUM *r, const BIGNUM *a, const BIGNUM *b, BN_CTX *ctx) {
 
 end:
   bn_correct_top(rr);
-  if (r != rr) {
-    BN_copy(r, rr);
+  if (r != rr && !BN_copy(r, rr)) {
+    goto err;
   }
   ret = 1;
 
@@ -877,8 +877,8 @@ int BN_sqr(BIGNUM *r, const BIGNUM *a, BN_CTX *ctx) {
     rr->top = max;
   }
 
-  if (rr != r) {
-    BN_copy(r, rr);
+  if (rr != r && !BN_copy(r, rr)) {
+    goto err;
   }
   ret = 1;
 

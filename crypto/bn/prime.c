@@ -515,11 +515,10 @@ int BN_is_prime_fasttest_ex(const BIGNUM *a, int checks, BN_CTX *ctx_passed,
 
   /* A := abs(a) */
   if (a->neg) {
-    BIGNUM *t;
-    if ((t = BN_CTX_get(ctx)) == NULL) {
+    BIGNUM *t = BN_CTX_get(ctx);
+    if (t == NULL || !BN_copy(t, a)) {
       goto err;
     }
-    BN_copy(t, a);
     t->neg = 0;
     A = t;
   } else {
