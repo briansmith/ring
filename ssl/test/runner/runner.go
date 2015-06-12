@@ -562,7 +562,7 @@ func runTest(test *testCase, shimPath string, mallocNumToFail int64) error {
 		shim.Env = os.Environ()
 		shim.Env = append(shim.Env, "MALLOC_NUMBER_TO_FAIL="+strconv.FormatInt(mallocNumToFail, 10))
 		if *mallocTestDebug {
-			shim.Env = append(shim.Env, "MALLOC_ABORT_ON_FAIL=1")
+			shim.Env = append(shim.Env, "MALLOC_BREAK_ON_FAIL=1")
 		}
 		shim.Env = append(shim.Env, "_MALLOC_CHECK=1")
 	}
