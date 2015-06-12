@@ -243,6 +243,12 @@ int CBB_flush(CBB *cbb) {
   return 1;
 }
 
+size_t CBB_len(const CBB *cbb) {
+  assert(cbb->child == NULL);
+  assert(!cbb->base->can_resize);
+
+  return cbb->base->cap - cbb->base->len;
+}
 
 static int cbb_add_length_prefixed(CBB *cbb, CBB *out_contents,
                                    size_t len_len) {

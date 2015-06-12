@@ -453,6 +453,24 @@ typedef struct ssl3_state_st {
 
     int reuse_message;
 
+    union {
+      /* sent is a bitset where the bits correspond to elements of kExtensions
+       * in t1_lib.c. Each bit is set if that extension was sent in a
+       * ClientHello. It's not used by servers. */
+      uint32_t sent;
+      /* received is a bitset, like |sent|, but is used by servers to record
+       * which extensions were received from a client. */
+      uint32_t received;
+    } extensions;
+
+
+    /* SNI extension */
+
+    /* should_ack_sni is used by a server and indicates that the SNI extension
+     * should be echoed in the ServerHello. */
+    unsigned should_ack_sni:1;
+
+
     /* Client-only: cert_req determines if a client certificate is to be sent.
      * This is 0 if no client Certificate message is to be sent, 1 if there is
      * a client certificate, and 2 to send an empty client Certificate

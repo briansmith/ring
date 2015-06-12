@@ -796,11 +796,218 @@ void ssl_set_client_disabled(SSL *s) {
   }
 }
 
+/* tls_extension represents a TLS extension that is handled internally. The
+ * |init| function is called for each handshake, before any other functions of
+ * the extension. Then the add and parse callbacks are called as needed.
+ *
+ * The parse callbacks receive a |CBS| that contains the contents of the
+ * extension (i.e. not including the type and length bytes). If an extension is
+ * not received then the parse callbacks will be called with a NULL CBS so that
+ * they can do any processing needed to handle the absence of an extension.
+ *
+ * The add callbacks receive a |CBB| to which the extension can be appended but
+ * the function is responsible for appending the type and length bytes too.
+ *
+ * All callbacks return one for success and zero for error. If a parse function
+ * returns zero then a fatal alert with value |*out_alert| will be sent. If
+ * |*out_alert| isn't set, then a |decode_error| alert will be sent. */
+struct tls_extension {
+  uint16_t value;
+  void (*init)(SSL *ssl);
+
+  int (*add_clienthello)(SSL *ssl, CBB *out);
+  int (*parse_serverhello)(SSL *ssl, uint8_t *out_alert, CBS *contents);
+
+  int (*parse_clienthello)(SSL *ssl, uint8_t *out_alert, CBS *contents);
+  int (*add_serverhello)(SSL *ssl, CBB *out);
+};
+
+
+/* Server name indication (SNI).
+ *
+ * https://tools.ietf.org/html/rfc6066#section-3. */
+
+static void ext_sni_init(SSL *ssl) {
+  ssl->s3->tmp.should_ack_sni = 0;
+}
+
+static int ext_sni_add_clienthello(SSL *ssl, CBB *out) {
+  if (ssl->tlsext_hostname == NULL) {
+    return 1;
+  }
+
+  CBB contents, server_name_list, name;
+  if (!CBB_add_u16(out, TLSEXT_TYPE_server_name) ||
+      !CBB_add_u16_length_prefixed(out, &contents) ||
+      !CBB_add_u16_length_prefixed(&contents, &server_name_list) ||
+      !CBB_add_u8(&server_name_list, TLSEXT_NAMETYPE_host_name) ||
+      !CBB_add_u16_length_prefixed(&server_name_list, &name) ||
+      !CBB_add_bytes(&name, (const uint8_t *)ssl->tlsext_hostname,
+                     strlen(ssl->tlsext_hostname)) ||
+      !CBB_flush(out)) {
+    return 0;
+  }
+
+  return 1;
+}
+
+static int ext_sni_parse_serverhello(SSL *ssl, uint8_t *out_alert, CBS *contents) {
+  if (contents == NULL) {
+    return 1;
+  }
+
+  if (CBS_len(contents) != 0) {
+    return 0;
+  }
+
+  assert(ssl->tlsext_hostname != NULL);
+
+  if (!ssl->hit) {
+    assert(ssl->session->tlsext_hostname == NULL);
+    ssl->session->tlsext_hostname = BUF_strdup(ssl->tlsext_hostname);
+    if (!ssl->session->tlsext_hostname) {
+      *out_alert = SSL_AD_INTERNAL_ERROR;
+      return 0;
+    }
+  }
+
+  return 1;
+}
+
+static int ext_sni_parse_clienthello(SSL *ssl, uint8_t *out_alert, CBS *contents) {
+  if (contents == NULL) {
+    return 1;
+  }
+
+  /* The servername extension is treated as follows:
+   *
+   * - Only the hostname type is supported with a maximum length of 255.
+   * - The servername is rejected if too long or if it contains zeros, in
+   *   which case an fatal alert is generated.
+   * - The servername field is maintained together with the session cache.
+   * - When a session is resumed, the servername callback is invoked in order
+   *   to allow the application to position itself to the right context.
+   * - The servername is acknowledged if it is new for a session or when
+   *   it is identical to a previously used for the same session.
+   *   Applications can control the behaviour.  They can at any time
+   *   set a 'desirable' servername for a new SSL object. This can be the
+   *   case for example with HTTPS when a Host: header field is received and
+   *   a renegotiation is requested. In this case, a possible servername
+   *   presented in the new client hello is only acknowledged if it matches
+   *   the value of the Host: field.
+   * - Applications must  use SSL_OP_NO_SESSION_RESUMPTION_ON_RENEGOTIATION
+   *   if they provide for changing an explicit servername context for the
+   *   session,
+   *   i.e. when the session has been established with a servername extension.
+   */
+
+  CBS server_name_list;
+  char have_seen_host_name = 0;
+
+  if (!CBS_get_u16_length_prefixed(contents, &server_name_list) ||
+      CBS_len(&server_name_list) == 0 ||
+      CBS_len(contents) != 0) {
+    return 0;
+  }
+
+  /* Decode each ServerName in the extension. */
+  while (CBS_len(&server_name_list) > 0) {
+    uint8_t name_type;
+    CBS host_name;
+
+    if (!CBS_get_u8(&server_name_list, &name_type) ||
+        !CBS_get_u16_length_prefixed(&server_name_list, &host_name)) {
+      return 0;
+    }
+
+    /* Only host_name is supported. */
+    if (name_type != TLSEXT_NAMETYPE_host_name) {
+      continue;
+    }
+
+    if (have_seen_host_name) {
+      /* The ServerNameList MUST NOT contain more than one name of the same
+       * name_type. */
+      return 0;
+    }
+
+    have_seen_host_name = 1;
+
+    if (CBS_len(&host_name) == 0 ||
+        CBS_len(&host_name) > TLSEXT_MAXLEN_host_name ||
+        CBS_contains_zero_byte(&host_name)) {
+      *out_alert = SSL_AD_UNRECOGNIZED_NAME;
+      return 0;
+    }
+
+    if (!ssl->hit) {
+      assert(ssl->session->tlsext_hostname == NULL);
+      if (ssl->session->tlsext_hostname) {
+        /* This should be impossible. */
+        return 0;
+      }
+
+      /* Copy the hostname as a string. */
+      if (!CBS_strdup(&host_name, &ssl->session->tlsext_hostname)) {
+        *out_alert = SSL_AD_INTERNAL_ERROR;
+        return 0;
+      }
+
+      ssl->s3->tmp.should_ack_sni = 1;
+    }
+  }
+
+  return 1;
+}
+
+static int ext_sni_add_serverhello(SSL *ssl, CBB *out) {
+  if (ssl->hit ||
+      !ssl->s3->tmp.should_ack_sni ||
+      ssl->session->tlsext_hostname == NULL) {
+    return 1;
+  }
+
+  if (!CBB_add_u16(out, TLSEXT_TYPE_server_name) ||
+      !CBB_add_u16(out, 0 /* length */)) {
+    return 0;
+  }
+
+  return 1;
+}
+
+
+/* kExtensions contains all the supported extensions. */
+static const struct tls_extension kExtensions[] = {
+  {
+    TLSEXT_TYPE_server_name,
+    ext_sni_init,
+    ext_sni_add_clienthello,
+    ext_sni_parse_serverhello,
+    ext_sni_parse_clienthello,
+    ext_sni_add_serverhello,
+  },
+};
+
+#define kNumExtensions (sizeof(kExtensions) / sizeof(struct tls_extension))
+
+static const struct tls_extension *tls_extension_find(uint32_t *out_index,
+                                                      uint16_t value) {
+  unsigned i;
+  for (i = 0; i < kNumExtensions; i++) {
+    if (kExtensions[i].value == value) {
+      *out_index = i;
+      return &kExtensions[i];
+    }
+  }
+
+  return NULL;
+}
+
 /* header_len is the length of the ClientHello header written so far, used to
  * compute padding. It does not include the record header. Pass 0 if no padding
  * is to be done. */
-uint8_t *ssl_add_clienthello_tlsext(SSL *s, uint8_t *buf, uint8_t *limit,
-                                    size_t header_len) {
+uint8_t *ssl_add_clienthello_tlsext(SSL *s, uint8_t *const buf,
+                                    uint8_t *const limit, size_t header_len) {
   int extdatalen = 0;
   uint8_t *ret = buf;
   uint8_t *orig = buf;
@@ -835,37 +1042,40 @@ uint8_t *ssl_add_clienthello_tlsext(SSL *s, uint8_t *buf, uint8_t *limit,
     return NULL; /* should never occur. */
   }
 
-  if (s->tlsext_hostname != NULL) {
-    /* Add TLS extension servername to the Client Hello message */
-    unsigned long size_str;
-    long lenmax;
+  OPENSSL_COMPILE_ASSERT(
+      kNumExtensions <= sizeof(s->s3->tmp.extensions.sent) * 8,
+      too_many_extensions_for_bitset);
+  s->s3->tmp.extensions.sent = 0;
 
-    /* check for enough space.
-       4 for the servername type and entension length
-       2 for servernamelist length
-       1 for the hostname type
-       2 for hostname length
-       + hostname length */
+  size_t i;
+  for (i = 0; i < kNumExtensions; i++) {
+    if (kExtensions[i].init != NULL) {
+      kExtensions[i].init(s);
+    }
+  }
 
-    lenmax = limit - ret - 9;
-    size_str = strlen(s->tlsext_hostname);
-    if (lenmax < 0 || size_str > (unsigned long)lenmax) {
+  CBB cbb;
+  if (!CBB_init_fixed(&cbb, ret, limit - ret)) {
+    OPENSSL_PUT_ERROR(SSL, ssl_add_clienthello_tlsext, ERR_R_INTERNAL_ERROR);
+    return NULL;
+  }
+
+  for (i = 0; i < kNumExtensions; i++) {
+    const size_t space_before = CBB_len(&cbb);
+    if (!kExtensions[i].add_clienthello(s, &cbb)) {
+      CBB_cleanup(&cbb);
+      OPENSSL_PUT_ERROR(SSL, ssl_add_clienthello_tlsext, ERR_R_INTERNAL_ERROR);
       return NULL;
     }
+    const size_t space_after = CBB_len(&cbb);
 
-    /* extension type and length */
-    s2n(TLSEXT_TYPE_server_name, ret);
-    s2n(size_str + 5, ret);
-
-    /* length of servername list */
-    s2n(size_str + 3, ret);
-
-    /* hostname type, length and hostname */
-    *(ret++) = (uint8_t)TLSEXT_NAMETYPE_host_name;
-    s2n(size_str, ret);
-    memcpy(ret, s->tlsext_hostname, size_str);
-    ret += size_str;
+    if (space_after != space_before) {
+      s->s3->tmp.extensions.sent |= (1u << i);
+    }
   }
+
+  ret = limit - CBB_len(&cbb);
+  CBB_cleanup(&cbb);
 
   /* Add RI if renegotiating */
   if (s->s3->initial_handshake_complete) {
@@ -1026,7 +1236,7 @@ uint8_t *ssl_add_clienthello_tlsext(SSL *s, uint8_t *buf, uint8_t *limit,
     long lenmax;
     const uint8_t *formats;
     const uint16_t *curves;
-    size_t formats_len, curves_len, i;
+    size_t formats_len, curves_len;
 
     tls1_get_formatlist(s, &formats, &formats_len);
 
@@ -1123,7 +1333,8 @@ uint8_t *ssl_add_clienthello_tlsext(SSL *s, uint8_t *buf, uint8_t *limit,
   return ret;
 }
 
-uint8_t *ssl_add_serverhello_tlsext(SSL *s, uint8_t *buf, uint8_t *limit) {
+uint8_t *ssl_add_serverhello_tlsext(SSL *s, uint8_t *const buf,
+                                    uint8_t *const limit) {
   int extdatalen = 0;
   uint8_t *orig = buf;
   uint8_t *ret = buf;
@@ -1143,14 +1354,28 @@ uint8_t *ssl_add_serverhello_tlsext(SSL *s, uint8_t *buf, uint8_t *limit) {
     return NULL; /* should never happen. */
   }
 
-  if (!s->hit && s->should_ack_sni && s->session->tlsext_hostname != NULL) {
-    if ((long)(limit - ret - 4) < 0) {
-      return NULL;
+  CBB cbb;
+  if (!CBB_init_fixed(&cbb, ret, limit - ret)) {
+    OPENSSL_PUT_ERROR(SSL, ssl_add_serverhello_tlsext, ERR_R_INTERNAL_ERROR);
+    return NULL;
+  }
+
+  unsigned i;
+  for (i = 0; i < kNumExtensions; i++) {
+    if (!(s->s3->tmp.extensions.received & (1u << i))) {
+      /* Don't send extensions that were not received. */
+      continue;
     }
 
-    s2n(TLSEXT_TYPE_server_name, ret);
-    s2n(0, ret);
+    if (!kExtensions[i].add_serverhello(s, &cbb)) {
+      CBB_cleanup(&cbb);
+      OPENSSL_PUT_ERROR(SSL, ssl_add_serverhello_tlsext, ERR_R_INTERNAL_ERROR);
+      return NULL;
+    }
   }
+
+  ret = limit - CBB_len(&cbb);
+  CBB_cleanup(&cbb);
 
   if (s->s3->send_connection_binding) {
     int el;
@@ -1362,7 +1587,6 @@ static int ssl_scan_clienthello_tlsext(SSL *s, CBS *cbs, int *out_alert) {
   int renegotiate_seen = 0;
   CBS extensions;
 
-  s->should_ack_sni = 0;
   s->srtp_profile = NULL;
   s->s3->next_proto_neg_seen = 0;
   s->s3->tmp.certificate_status_expected = 0;
@@ -1390,9 +1614,18 @@ static int ssl_scan_clienthello_tlsext(SSL *s, CBS *cbs, int *out_alert) {
   s->s3->tmp.peer_ellipticcurvelist = NULL;
   s->s3->tmp.peer_ellipticcurvelist_length = 0;
 
+  size_t i;
+  for (i = 0; i < kNumExtensions; i++) {
+    if (kExtensions[i].init != NULL) {
+      kExtensions[i].init(s);
+    }
+  }
+
+  s->s3->tmp.extensions.received = 0;
+
   /* There may be no extensions. */
   if (CBS_len(cbs) == 0) {
-    goto ri_check;
+    goto no_extensions;
   }
 
   /* Decode the extensions block and check it is valid. */
@@ -1413,93 +1646,26 @@ static int ssl_scan_clienthello_tlsext(SSL *s, CBS *cbs, int *out_alert) {
       return 0;
     }
 
-    /* The servername extension is treated as follows:
+    OPENSSL_COMPILE_ASSERT(
+        kNumExtensions <= sizeof(s->s3->tmp.extensions.received) * 8,
+        too_many_extensions_for_bitset);
 
-       - Only the hostname type is supported with a maximum length of 255.
-       - The servername is rejected if too long or if it contains zeros, in
-         which case an fatal alert is generated.
-       - The servername field is maintained together with the session cache.
-       - When a session is resumed, the servername call back invoked in order
-         to allow the application to position itself to the right context.
-       - The servername is acknowledged if it is new for a session or when
-         it is identical to a previously used for the same session.
-         Applications can control the behaviour.  They can at any time
-         set a 'desirable' servername for a new SSL object. This can be the
-         case for example with HTTPS when a Host: header field is received and
-         a renegotiation is requested. In this case, a possible servername
-         presented in the new client hello is only acknowledged if it matches
-         the value of the Host: field.
-       - Applications must  use SSL_OP_NO_SESSION_RESUMPTION_ON_RENEGOTIATION
-         if they provide for changing an explicit servername context for the
-       session,
-         i.e. when the session has been established with a servername extension.
-       - On session reconnect, the servername extension may be absent. */
+    unsigned ext_index;
+    const struct tls_extension *const ext =
+        tls_extension_find(&ext_index, type);
 
-    if (type == TLSEXT_TYPE_server_name) {
-      CBS server_name_list;
-      char have_seen_host_name = 0;
-
-      if (!CBS_get_u16_length_prefixed(&extension, &server_name_list) ||
-          CBS_len(&server_name_list) < 1 || CBS_len(&extension) != 0) {
-        *out_alert = SSL_AD_DECODE_ERROR;
+    if (ext != NULL) {
+      s->s3->tmp.extensions.received |= (1u << ext_index);
+      uint8_t alert = SSL_AD_DECODE_ERROR;
+      if (!ext->parse_clienthello(s, &alert, &extension)) {
+        *out_alert = alert;
         return 0;
       }
 
-      /* Decode each ServerName in the extension. */
-      while (CBS_len(&server_name_list) > 0) {
-        uint8_t name_type;
-        CBS host_name;
+      continue;
+    }
 
-        /* Decode the NameType. */
-        if (!CBS_get_u8(&server_name_list, &name_type)) {
-          *out_alert = SSL_AD_DECODE_ERROR;
-          return 0;
-        }
-
-        /* Only host_name is supported. */
-        if (name_type != TLSEXT_NAMETYPE_host_name) {
-          continue;
-        }
-
-        if (have_seen_host_name) {
-          /* The ServerNameList MUST NOT contain more than one name of the same
-           * name_type. */
-          *out_alert = SSL_AD_DECODE_ERROR;
-          return 0;
-        }
-
-        have_seen_host_name = 1;
-
-        if (!CBS_get_u16_length_prefixed(&server_name_list, &host_name) ||
-            CBS_len(&host_name) < 1) {
-          *out_alert = SSL_AD_DECODE_ERROR;
-          return 0;
-        }
-
-        if (CBS_len(&host_name) > TLSEXT_MAXLEN_host_name ||
-            CBS_contains_zero_byte(&host_name)) {
-          *out_alert = SSL_AD_UNRECOGNIZED_NAME;
-          return 0;
-        }
-
-        if (!s->hit) {
-          assert(s->session->tlsext_hostname == NULL);
-          if (s->session->tlsext_hostname) {
-            /* This should be impossible. */
-            *out_alert = SSL_AD_DECODE_ERROR;
-            return 0;
-          }
-
-          /* Copy the hostname as a string. */
-          if (!CBS_strdup(&host_name, &s->session->tlsext_hostname)) {
-            *out_alert = SSL_AD_INTERNAL_ERROR;
-            return 0;
-          }
-
-          s->should_ack_sni = 1;
-        }
-      }
-    } else if (type == TLSEXT_TYPE_ec_point_formats) {
+    if (type == TLSEXT_TYPE_ec_point_formats) {
       CBS ec_point_format_list;
 
       if (!CBS_get_u8_length_prefixed(&extension, &ec_point_format_list) ||
@@ -1515,7 +1681,7 @@ static int ssl_scan_clienthello_tlsext(SSL *s, CBS *cbs, int *out_alert) {
       }
     } else if (type == TLSEXT_TYPE_elliptic_curves) {
       CBS elliptic_curve_list;
-      size_t i, num_curves;
+      size_t num_curves;
 
       if (!CBS_get_u16_length_prefixed(&extension, &elliptic_curve_list) ||
           CBS_len(&elliptic_curve_list) == 0 ||
@@ -1635,7 +1801,19 @@ static int ssl_scan_clienthello_tlsext(SSL *s, CBS *cbs, int *out_alert) {
     }
   }
 
-ri_check:
+no_extensions:
+  for (i = 0; i < kNumExtensions; i++) {
+    if (!(s->s3->tmp.extensions.received & (1u << i))) {
+      /* Extension wasn't observed so call the callback with a NULL
+       * parameter. */
+      uint8_t alert = SSL_AD_DECODE_ERROR;
+      if (!kExtensions[i].parse_clienthello(s, &alert, NULL)) {
+        *out_alert = alert;
+        return 0;
+      }
+    }
+  }
+
   /* Need RI if renegotiating */
 
   if (!renegotiate_seen && s->s3->initial_handshake_complete &&
@@ -1682,7 +1860,6 @@ static char ssl_next_proto_validate(const CBS *cbs) {
 }
 
 static int ssl_scan_serverhello_tlsext(SSL *s, CBS *cbs, int *out_alert) {
-  int tlsext_servername = 0;
   int renegotiate_seen = 0;
   CBS extensions;
 
@@ -1703,9 +1880,16 @@ static int ssl_scan_serverhello_tlsext(SSL *s, CBS *cbs, int *out_alert) {
   s->s3->tmp.peer_ecpointformatlist = NULL;
   s->s3->tmp.peer_ecpointformatlist_length = 0;
 
+  uint32_t received = 0;
+  size_t i;
+
+  OPENSSL_COMPILE_ASSERT(
+      kNumExtensions <= sizeof(received) * 8,
+      too_many_extensions_for_bitset);
+
   /* There may be no extensions. */
   if (CBS_len(cbs) == 0) {
-    goto ri_check;
+    goto no_extensions;
   }
 
   /* Decode the extensions block and check it is valid. */
@@ -1726,21 +1910,35 @@ static int ssl_scan_serverhello_tlsext(SSL *s, CBS *cbs, int *out_alert) {
       return 0;
     }
 
-    if (type == TLSEXT_TYPE_server_name) {
-      /* The extension must be empty. */
-      if (CBS_len(&extension) != 0) {
+    unsigned ext_index;
+    const struct tls_extension *const ext =
+        tls_extension_find(&ext_index, type);
+
+    /* While we have extensions that don't use tls_extension this conditional
+     * needs to be guarded on |ext != NULL|. In the future, ext being NULL will
+     * be fatal. */
+    if (ext != NULL) {
+      if (!(s->s3->tmp.extensions.sent & (1u << ext_index))) {
+        /* Received an extension that was never sent. */
+        OPENSSL_PUT_ERROR(SSL, ssl_scan_serverhello_tlsext,
+                          SSL_R_UNEXPECTED_EXTENSION);
+        ERR_add_error_dataf("ext:%u", (unsigned) type);
         *out_alert = SSL_AD_DECODE_ERROR;
         return 0;
       }
 
-      /* We must have sent it in ClientHello. */
-      if (s->tlsext_hostname == NULL) {
-        *out_alert = SSL_AD_UNSUPPORTED_EXTENSION;
+      received |= (1u << ext_index);
+
+      uint8_t alert = SSL_AD_DECODE_ERROR;
+      if (!ext->parse_serverhello(s, &alert, &extension)) {
+        *out_alert = alert;
         return 0;
       }
 
-      tlsext_servername = 1;
-    } else if (type == TLSEXT_TYPE_ec_point_formats) {
+      continue;
+    }
+
+    if (type == TLSEXT_TYPE_ec_point_formats) {
       CBS ec_point_format_list;
 
       if (!CBS_get_u8_length_prefixed(&extension, &ec_point_format_list) ||
@@ -1884,20 +2082,19 @@ static int ssl_scan_serverhello_tlsext(SSL *s, CBS *cbs, int *out_alert) {
     }
   }
 
-  if (!s->hit && tlsext_servername == 1 && s->tlsext_hostname) {
-    if (s->session->tlsext_hostname == NULL) {
-      s->session->tlsext_hostname = BUF_strdup(s->tlsext_hostname);
-      if (!s->session->tlsext_hostname) {
-        *out_alert = SSL_AD_UNRECOGNIZED_NAME;
+no_extensions:
+  for (i = 0; i < kNumExtensions; i++) {
+    if (!(received & (1u << i))) {
+      /* Extension wasn't observed so call the callback with a NULL
+       * parameter. */
+      uint8_t alert = SSL_AD_DECODE_ERROR;
+      if (!kExtensions[i].parse_serverhello(s, &alert, NULL)) {
+        *out_alert = alert;
         return 0;
       }
-    } else {
-      *out_alert = SSL_AD_DECODE_ERROR;
-      return 0;
     }
   }
 
-ri_check:
   /* Determine if we need to see RI. Strictly speaking if we want to avoid an
    * attack we should *always* see RI even on initial server hello because the
    * client doesn't see any renegotiation during an attack. However this would
@@ -1944,7 +2141,7 @@ static int ssl_check_clienthello_tlsext(SSL *s) {
       return 1;
 
     case SSL_TLSEXT_ERR_NOACK:
-      s->should_ack_sni = 0;
+      s->s3->tmp.should_ack_sni = 0;
       return 1;
 
     default:

@@ -278,6 +278,11 @@ OPENSSL_EXPORT int CBB_finish(CBB *cbb, uint8_t **out_data, size_t *out_len);
  * on error. */
 OPENSSL_EXPORT int CBB_flush(CBB *cbb);
 
+/* CBB_len returns the number of bytes remaining in a fixed CBB. It is a fatal
+ * error to call this on a non-fixed CBB or one with any active children. This
+ * does not flush |cbb|. */
+OPENSSL_EXPORT size_t CBB_len(const CBB *cbb);
+
 /* CBB_add_u8_length_prefixed sets |*out_contents| to a new child of |cbb|. The
  * data written to |*out_contents| will be prefixed in |cbb| with an 8-bit
  * length. It returns one on success or zero on error. */

@@ -1537,9 +1537,6 @@ struct ssl_st {
                        * SSLv3/TLS rollback check */
   uint16_t max_send_fragment;
   char *tlsext_hostname;
-  /* should_ack_sni is true if the SNI extension should be acked. This is
-   * only used by a server. */
-  char should_ack_sni;
   /* RFC4507 session ticket expected to be received or sent */
   int tlsext_ticket_expected;
   size_t tlsext_ecpointformatlist_length;
@@ -3056,6 +3053,7 @@ OPENSSL_EXPORT const char *SSLeay_version(int unused);
 #define SSL_R_EMS_STATE_INCONSISTENT 276
 #define SSL_R_RESUMED_NON_EMS_SESSION_WITH_EMS_EXTENSION 277
 #define SSL_R_TOO_MANY_WARNING_ALERTS 278
+#define SSL_R_UNEXPECTED_EXTENSION 279
 #define SSL_R_SSLV3_ALERT_CLOSE_NOTIFY 1000
 #define SSL_R_SSLV3_ALERT_UNEXPECTED_MESSAGE 1010
 #define SSL_R_SSLV3_ALERT_BAD_RECORD_MAC 1020
