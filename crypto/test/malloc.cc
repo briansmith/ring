@@ -34,6 +34,7 @@
 #if defined(__linux__) && defined(OPENSSL_GLIBC) && !defined(OPENSSL_ARM) && \
     !defined(OPENSSL_AARCH64) && !defined(OPENSSL_ASAN)
 
+#include <errno.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -118,6 +119,7 @@ extern "C" {
 
 void *malloc(size_t size) {
   if (should_fail_allocation()) {
+    errno = ENOMEM;
     return NULL;
   }
 
@@ -126,6 +128,7 @@ void *malloc(size_t size) {
 
 void *calloc(size_t num_elems, size_t size) {
   if (should_fail_allocation()) {
+    errno = ENOMEM;
     return NULL;
   }
 
@@ -134,6 +137,7 @@ void *calloc(size_t num_elems, size_t size) {
 
 void *realloc(void *ptr, size_t size) {
   if (should_fail_allocation()) {
+    errno = ENOMEM;
     return NULL;
   }
 
