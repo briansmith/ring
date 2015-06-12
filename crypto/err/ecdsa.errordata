@@ -1,9 +1,17 @@
+ECDSA,function,106,ECDSA_SIG_from_bytes
+ECDSA,function,107,ECDSA_SIG_marshal
+ECDSA,function,108,ECDSA_SIG_parse
+ECDSA,function,109,ECDSA_SIG_to_bytes
 ECDSA,function,100,ECDSA_do_sign_ex
 ECDSA,function,101,ECDSA_do_verify
 ECDSA,function,102,ECDSA_sign_ex
+ECDSA,function,110,ECDSA_verify
+ECDSA,function,105,d2i_ECDSA_SIG
 ECDSA,function,103,digest_to_bn
 ECDSA,function,104,ecdsa_sign_setup
+ECDSA,function,112,i2d_ECDSA_SIG
 ECDSA,reason,100,BAD_SIGNATURE
+ECDSA,reason,105,ENCODE_ERROR
 ECDSA,reason,101,MISSING_PARAMETERS
 ECDSA,reason,102,NEED_NEW_SETUP_VALUES
 ECDSA,reason,103,NOT_IMPLEMENTED
