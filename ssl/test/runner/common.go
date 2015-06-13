@@ -476,6 +476,10 @@ type ProtocolBugs struct {
 	// TLS_FALLBACK_SCSV in the ClientHello.
 	SendFallbackSCSV bool
 
+	// SendRenegotiationSCSV causes the client to include the renegotiation
+	// SCSV in the ClientHello.
+	SendRenegotiationSCSV bool
+
 	// MaxHandshakeRecordLength, if non-zero, is the maximum size of a
 	// handshake record. Handshake messages will be split into multiple
 	// records at the specified size, except that the client_version will
@@ -571,6 +575,10 @@ type ProtocolBugs struct {
 	// NoRenegotiationInfo causes the client to behave as if it
 	// didn't support the renegotiation info extension.
 	NoRenegotiationInfo bool
+
+	// RequireRenegotiationInfo, if true, causes the client to return an
+	// error if the server doesn't reply with the renegotiation extension.
+	RequireRenegotiationInfo bool
 
 	// SequenceNumberIncrement, if non-zero, causes outgoing sequence
 	// numbers in DTLS to increment by that value rather by 1. This is to

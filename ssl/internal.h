@@ -1160,12 +1160,6 @@ int ssl3_is_version_enabled(SSL *s, uint16_t version);
  * the wire version except at API boundaries. */
 uint16_t ssl3_version_from_wire(SSL *s, uint16_t wire_version);
 
-int ssl_add_serverhello_renegotiate_ext(SSL *s, uint8_t *p, int *len,
-                                        int maxlen);
-int ssl_parse_serverhello_renegotiate_ext(SSL *s, CBS *cbs, int *out_alert);
-int ssl_add_clienthello_renegotiate_ext(SSL *s, uint8_t *p, int *len,
-                                        int maxlen);
-int ssl_parse_clienthello_renegotiate_ext(SSL *s, CBS *cbs, int *out_alert);
 uint32_t ssl_get_algorithm2(SSL *s);
 int tls1_process_sigalgs(SSL *s, const CBS *sigalgs);
 

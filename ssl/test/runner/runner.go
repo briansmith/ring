@@ -3082,7 +3082,33 @@ func addRenegotiationTests() {
 		expectedError:      ":NO_RENEGOTIATION:",
 		expectedLocalError: "remote error: no renegotiation",
 	})
-	// TODO(agl): test the renegotiation info SCSV.
+	// The server shouldn't echo the renegotiation extension unless
+	// requested by the client.
+	testCases = append(testCases, testCase{
+		testType: serverTest,
+		name:     "Renegotiate-Server-NoExt",
+		config: Config{
+			Bugs: ProtocolBugs{
+				NoRenegotiationInfo:      true,
+				RequireRenegotiationInfo: true,
+			},
+		},
+		shouldFail:         true,
+		expectedLocalError: "renegotiation extension missing",
+	})
+	// The renegotiation SCSV should be sufficient for the server to echo
+	// the extension.
+	testCases = append(testCases, testCase{
+		testType: serverTest,
+		name:     "Renegotiate-Server-NoExt-SCSV",
+		config: Config{
+			Bugs: ProtocolBugs{
+				NoRenegotiationInfo:      true,
+				SendRenegotiationSCSV:    true,
+				RequireRenegotiationInfo: true,
+			},
+		},
+	})
 	testCases = append(testCases, testCase{
 		name: "Renegotiate-Client",
 		config: Config{

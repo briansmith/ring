@@ -31,7 +31,6 @@ add_library(
   ssl_txt.c
   t1_enc.c
   t1_lib.c
-  t1_reneg.c
 
   $<TARGET_OBJECTS:pqueue>
 )

@@ -349,10 +349,6 @@ OPENSSL_EXPORT void SSL_set_max_version(SSL *ssl, uint16_t version);
 /* SSL_OP_NO_TICKET disables session ticket support (RFC 4507). */
 #define SSL_OP_NO_TICKET 0x00004000L
 
-/* SSL_OP_ALLOW_UNSAFE_LEGACY_RENEGOTIATION permits unsafe legacy renegotiation
- * without renegotiation_info (RFC 5746) support. */
-#define SSL_OP_ALLOW_UNSAFE_LEGACY_RENEGOTIATION 0x00040000L
-
 /* SSL_OP_CIPHER_SERVER_PREFERENCE configures servers to select ciphers and
  * ECDHE curves according to the server's preferences instead of the
  * client's. */
@@ -380,6 +376,7 @@ OPENSSL_EXPORT void SSL_set_max_version(SSL *ssl, uint16_t version);
 #define SSL_OP_SSLREF2_REUSE_CERT_TYPE_BUG 0
 #define SSL_OP_TLS_BLOCK_PADDING_BUG 0
 #define SSL_OP_TLS_ROLLBACK_BUG 0
+#define SSL_OP_ALLOW_UNSAFE_LEGACY_RENEGOTIATION 0
 
 /* SSL_CTX_set_options enables all options set in |options| (which should be one
  * or more of the |SSL_OP_*| values, ORed together) in |ctx|. It returns a
@@ -2874,6 +2871,8 @@ OPENSSL_EXPORT const char *SSLeay_version(int unused);
 #define SSL_F_ssl3_check_certificate_for_cipher 282
 #define SSL_F_SSL_CTX_get_tlsext_ticket_keys 283
 #define SSL_F_SSL_CTX_set_tlsext_ticket_keys 284
+#define SSL_F_ext_ri_parse_clienthello 285
+#define SSL_F_ext_ri_parse_serverhello 286
 #define SSL_R_APP_DATA_IN_HANDSHAKE 100
 #define SSL_R_ATTEMPT_TO_REUSE_SESSION_IN_DIFFERENT_CONTEXT 101
 #define SSL_R_BAD_ALERT 102

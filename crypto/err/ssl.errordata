@@ -82,6 +82,8 @@ SSL,function,163,dtls1_read_bytes
 SSL,function,279,dtls1_seal_record
 SSL,function,164,dtls1_send_hello_verify_request
 SSL,function,165,dtls1_write_app_data
+SSL,function,285,ext_ri_parse_clienthello
+SSL,function,286,ext_ri_parse_serverhello
 SSL,function,166,i2d_SSL_SESSION
 SSL,function,167,ssl3_accept
 SSL,function,169,ssl3_cert_verify_hash

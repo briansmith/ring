@@ -123,6 +123,10 @@ NextCipherSuite:
 		}
 	}
 
+	if c.config.Bugs.SendRenegotiationSCSV {
+		hello.cipherSuites = append(hello.cipherSuites, renegotiationSCSV)
+	}
+
 	if c.config.Bugs.SendFallbackSCSV {
 		hello.cipherSuites = append(hello.cipherSuites, fallbackSCSV)
 	}
@@ -270,6 +274,10 @@ NextCipherSuite:
 	if suite == nil {
 		c.sendAlert(alertHandshakeFailure)
 		return fmt.Errorf("tls: server selected an unsupported cipher suite")
+	}
+
+	if c.config.Bugs.RequireRenegotiationInfo && serverHello.secureRenegotiation == nil {
+		return errors.New("tls: renegotiation extension missing")
 	}
 
 	if len(c.clientVerify) > 0 && !c.config.Bugs.NoRenegotiationInfo {

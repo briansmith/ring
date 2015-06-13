@@ -406,6 +406,7 @@ const (
 	TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384   uint16 = 0xc030
 	TLS_ECDHE_PSK_WITH_AES_128_CBC_SHA      uint16 = 0xc035
 	TLS_ECDHE_PSK_WITH_AES_256_CBC_SHA      uint16 = 0xc036
+	renegotiationSCSV                       uint16 = 0x00ff
 	fallbackSCSV                            uint16 = 0x5600
 )
 

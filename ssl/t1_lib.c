@@ -976,8 +976,168 @@ static int ext_sni_add_serverhello(SSL *ssl, CBB *out) {
 }
 
 
+/* Renegotiation indication.
+ *
+ * https://tools.ietf.org/html/rfc5746 */
+
+static int ext_ri_add_clienthello(SSL *ssl, CBB *out) {
+  CBB contents, prev_finished;
+  if (!CBB_add_u16(out, TLSEXT_TYPE_renegotiate) ||
+      !CBB_add_u16_length_prefixed(out, &contents) ||
+      !CBB_add_u8_length_prefixed(&contents, &prev_finished) ||
+      !CBB_add_bytes(&prev_finished, ssl->s3->previous_client_finished,
+                     ssl->s3->previous_client_finished_len) ||
+      !CBB_flush(out)) {
+    return 0;
+  }
+
+  return 1;
+}
+
+static int ext_ri_parse_serverhello(SSL *ssl, uint8_t *out_alert,
+                                    CBS *contents) {
+  if (contents == NULL) {
+    /* No renegotiation extension received.
+     *
+     * Strictly speaking if we want to avoid an attack we should *always* see
+     * RI even on initial ServerHello because the client doesn't see any
+     * renegotiation during an attack. However this would mean we could not
+     * connect to any server which doesn't support RI.
+     *
+     * A lack of the extension is allowed if SSL_OP_LEGACY_SERVER_CONNECT is
+     * defined. */
+    if (ssl->options & SSL_OP_LEGACY_SERVER_CONNECT) {
+      return 1;
+    }
+
+    *out_alert = SSL_AD_HANDSHAKE_FAILURE;
+    OPENSSL_PUT_ERROR(SSL, ext_ri_parse_serverhello,
+                      SSL_R_UNSAFE_LEGACY_RENEGOTIATION_DISABLED);
+    return 0;
+  }
+
+  const size_t expected_len = ssl->s3->previous_client_finished_len +
+                              ssl->s3->previous_server_finished_len;
+
+  /* Check for logic errors */
+  assert(!expected_len || ssl->s3->previous_client_finished_len);
+  assert(!expected_len || ssl->s3->previous_server_finished_len);
+
+  /* Parse out the extension contents. */
+  CBS renegotiated_connection;
+  if (!CBS_get_u8_length_prefixed(contents, &renegotiated_connection) ||
+      CBS_len(contents) != 0) {
+    OPENSSL_PUT_ERROR(SSL, ext_ri_parse_serverhello,
+        SSL_R_RENEGOTIATION_ENCODING_ERR);
+    *out_alert = SSL_AD_ILLEGAL_PARAMETER;
+    return 0;
+  }
+
+  /* Check that the extension matches. */
+  if (CBS_len(&renegotiated_connection) != expected_len) {
+    OPENSSL_PUT_ERROR(SSL, ext_ri_parse_serverhello,
+        SSL_R_RENEGOTIATION_MISMATCH);
+    *out_alert = SSL_AD_HANDSHAKE_FAILURE;
+    return 0;
+  }
+
+  const uint8_t *d = CBS_data(&renegotiated_connection);
+  if (CRYPTO_memcmp(d, ssl->s3->previous_client_finished,
+        ssl->s3->previous_client_finished_len)) {
+    OPENSSL_PUT_ERROR(SSL, ext_ri_parse_serverhello,
+        SSL_R_RENEGOTIATION_MISMATCH);
+    *out_alert = SSL_AD_HANDSHAKE_FAILURE;
+    return 0;
+  }
+  d += ssl->s3->previous_client_finished_len;
+
+  if (CRYPTO_memcmp(d, ssl->s3->previous_server_finished,
+        ssl->s3->previous_server_finished_len)) {
+    OPENSSL_PUT_ERROR(SSL, ext_ri_parse_serverhello,
+        SSL_R_RENEGOTIATION_MISMATCH);
+    *out_alert = SSL_AD_ILLEGAL_PARAMETER;
+    return 0;
+  }
+  ssl->s3->send_connection_binding = 1;
+
+  return 1;
+}
+
+static int ext_ri_parse_clienthello(SSL *ssl, uint8_t *out_alert,
+                                    CBS *contents) {
+  /* Renegotiation isn't supported as a server so this function should never be
+   * called after the initial handshake. */
+  assert(!ssl->s3->initial_handshake_complete);
+
+  CBS fake_contents;
+  static const uint8_t kFakeExtension[] = {0};
+
+  if (contents == NULL) {
+    if (ssl->s3->send_connection_binding) {
+      /* The renegotiation SCSV was received so pretend that we received a
+       * renegotiation extension. */
+      CBS_init(&fake_contents, kFakeExtension, sizeof(kFakeExtension));
+      contents = &fake_contents;
+      /* We require that the renegotiation extension is at index zero of
+       * kExtensions. */
+      ssl->s3->tmp.extensions.received |= (1u << 0);
+    } else {
+      return 1;
+    }
+  }
+
+  CBS renegotiated_connection;
+
+  if (!CBS_get_u8_length_prefixed(contents, &renegotiated_connection) ||
+      CBS_len(contents) != 0) {
+    OPENSSL_PUT_ERROR(SSL, ext_ri_parse_clienthello,
+                      SSL_R_RENEGOTIATION_ENCODING_ERR);
+    return 0;
+  }
+
+  /* Check that the extension matches */
+  if (!CBS_mem_equal(&renegotiated_connection, ssl->s3->previous_client_finished,
+                     ssl->s3->previous_client_finished_len)) {
+    OPENSSL_PUT_ERROR(SSL, ext_ri_parse_clienthello,
+                      SSL_R_RENEGOTIATION_MISMATCH);
+    *out_alert = SSL_AD_HANDSHAKE_FAILURE;
+    return 0;
+  }
+
+  ssl->s3->send_connection_binding = 1;
+
+  return 1;
+}
+
+static int ext_ri_add_serverhello(SSL *ssl, CBB *out) {
+  CBB contents, prev_finished;
+  if (!CBB_add_u16(out, TLSEXT_TYPE_renegotiate) ||
+      !CBB_add_u16_length_prefixed(out, &contents) ||
+      !CBB_add_u8_length_prefixed(&contents, &prev_finished) ||
+      !CBB_add_bytes(&prev_finished, ssl->s3->previous_client_finished,
+                     ssl->s3->previous_client_finished_len) ||
+      !CBB_add_bytes(&prev_finished, ssl->s3->previous_server_finished,
+                     ssl->s3->previous_server_finished_len) ||
+      !CBB_flush(out)) {
+    return 0;
+  }
+
+  return 1;
+}
+
 /* kExtensions contains all the supported extensions. */
 static const struct tls_extension kExtensions[] = {
+  {
+    /* The renegotiation extension must always be at index zero because the
+     * |received| and |sent| bitsets need to be tweaked when the "extension" is
+     * sent as an SCSV. */
+    TLSEXT_TYPE_renegotiate,
+    NULL,
+    ext_ri_add_clienthello,
+    ext_ri_parse_serverhello,
+    ext_ri_parse_clienthello,
+    ext_ri_add_serverhello,
+  },
   {
     TLSEXT_TYPE_server_name,
     ext_sni_init,
@@ -1081,30 +1241,6 @@ uint8_t *ssl_add_clienthello_tlsext(SSL *s, uint8_t *const buf,
 
   ret = limit - CBB_len(&cbb);
   CBB_cleanup(&cbb);
-
-  /* Add RI if renegotiating */
-  if (s->s3->initial_handshake_complete) {
-    int el;
-
-    if (!ssl_add_clienthello_renegotiate_ext(s, 0, &el, 0)) {
-      OPENSSL_PUT_ERROR(SSL, ssl_add_clienthello_tlsext, ERR_R_INTERNAL_ERROR);
-      return NULL;
-    }
-
-    if ((limit - ret - 4 - el) < 0) {
-      return NULL;
-    }
-
-    s2n(TLSEXT_TYPE_renegotiate, ret);
-    s2n(el, ret);
-
-    if (!ssl_add_clienthello_renegotiate_ext(s, ret, &el, el)) {
-      OPENSSL_PUT_ERROR(SSL, ssl_add_clienthello_tlsext, ERR_R_INTERNAL_ERROR);
-      return NULL;
-    }
-
-    ret += el;
-  }
 
   /* Add extended master secret. */
   if (s->version != SSL3_VERSION) {
@@ -1382,29 +1518,6 @@ uint8_t *ssl_add_serverhello_tlsext(SSL *s, uint8_t *const buf,
   ret = limit - CBB_len(&cbb);
   CBB_cleanup(&cbb);
 
-  if (s->s3->send_connection_binding) {
-    int el;
-
-    if (!ssl_add_serverhello_renegotiate_ext(s, 0, &el, 0)) {
-      OPENSSL_PUT_ERROR(SSL, ssl_add_serverhello_tlsext, ERR_R_INTERNAL_ERROR);
-      return NULL;
-    }
-
-    if ((limit - ret - 4 - el) < 0) {
-      return NULL;
-    }
-
-    s2n(TLSEXT_TYPE_renegotiate, ret);
-    s2n(el, ret);
-
-    if (!ssl_add_serverhello_renegotiate_ext(s, ret, &el, el)) {
-      OPENSSL_PUT_ERROR(SSL, ssl_add_serverhello_tlsext, ERR_R_INTERNAL_ERROR);
-      return NULL;
-    }
-
-    ret += el;
-  }
-
   if (s->s3->tmp.extended_master_secret) {
     if ((long)(limit - ret - 4) < 0) {
       return NULL;
@@ -1589,7 +1702,6 @@ parse_error:
 }
 
 static int ssl_scan_clienthello_tlsext(SSL *s, CBS *cbs, int *out_alert) {
-  int renegotiate_seen = 0;
   CBS extensions;
 
   s->srtp_profile = NULL;
@@ -1627,6 +1739,10 @@ static int ssl_scan_clienthello_tlsext(SSL *s, CBS *cbs, int *out_alert) {
   }
 
   s->s3->tmp.extensions.received = 0;
+  /* The renegotiation extension must always be at index zero because the
+   * |received| and |sent| bitsets need to be tweaked when the "extension" is
+   * sent as an SCSV. */
+  assert(kExtensions[0].value == TLSEXT_TYPE_renegotiate);
 
   /* There may be no extensions. */
   if (CBS_len(cbs) == 0) {
@@ -1718,11 +1834,6 @@ static int ssl_scan_clienthello_tlsext(SSL *s, CBS *cbs, int *out_alert) {
       }
 
       s->s3->tmp.peer_ellipticcurvelist_length = num_curves;
-    } else if (type == TLSEXT_TYPE_renegotiate) {
-      if (!ssl_parse_clienthello_renegotiate_ext(s, &extension, out_alert)) {
-        return 0;
-      }
-      renegotiate_seen = 1;
     } else if (type == TLSEXT_TYPE_signature_algorithms) {
       CBS supported_signature_algorithms;
 
@@ -1815,16 +1926,6 @@ no_extensions:
     }
   }
 
-  /* Need RI if renegotiating */
-
-  if (!renegotiate_seen && s->s3->initial_handshake_complete &&
-      !(s->options & SSL_OP_ALLOW_UNSAFE_LEGACY_RENEGOTIATION)) {
-    *out_alert = SSL_AD_HANDSHAKE_FAILURE;
-    OPENSSL_PUT_ERROR(SSL, ssl_scan_clienthello_tlsext,
-                      SSL_R_UNSAFE_LEGACY_RENEGOTIATION_DISABLED);
-    return 0;
-  }
-
   return 1;
 }
 
@@ -1861,7 +1962,6 @@ static char ssl_next_proto_validate(const CBS *cbs) {
 }
 
 static int ssl_scan_serverhello_tlsext(SSL *s, CBS *cbs, int *out_alert) {
-  int renegotiate_seen = 0;
   CBS extensions;
 
   /* TODO(davidben): Move all of these to some per-handshake state that gets
@@ -2058,12 +2158,6 @@ static int ssl_scan_serverhello_tlsext(SSL *s, CBS *cbs, int *out_alert) {
         *out_alert = SSL_AD_INTERNAL_ERROR;
         return 0;
       }
-    } else if (type == TLSEXT_TYPE_renegotiate) {
-      if (!ssl_parse_serverhello_renegotiate_ext(s, &extension, out_alert)) {
-        return 0;
-      }
-
-      renegotiate_seen = 1;
     } else if (type == TLSEXT_TYPE_use_srtp) {
       if (!ssl_parse_serverhello_use_srtp_ext(s, &extension, out_alert)) {
         return 0;
@@ -2091,19 +2185,6 @@ no_extensions:
         return 0;
       }
     }
-  }
-
-  /* Determine if we need to see RI. Strictly speaking if we want to avoid an
-   * attack we should *always* see RI even on initial server hello because the
-   * client doesn't see any renegotiation during an attack. However this would
-   * mean we could not connect to any server which doesn't support RI so for
-   * the immediate future tolerate RI absence on initial connect only. */
-  if (!renegotiate_seen && !(s->options & SSL_OP_LEGACY_SERVER_CONNECT) &&
-      !(s->options & SSL_OP_ALLOW_UNSAFE_LEGACY_RENEGOTIATION)) {
-    *out_alert = SSL_AD_HANDSHAKE_FAILURE;
-    OPENSSL_PUT_ERROR(SSL, ssl_scan_serverhello_tlsext,
-                      SSL_R_UNSAFE_LEGACY_RENEGOTIATION_DISABLED);
-    return 0;
   }
 
   return 1;
