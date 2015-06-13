@@ -3115,8 +3115,7 @@ func addRenegotiationTests() {
 		expectedError: ":RENEGOTIATION_MISMATCH:",
 	})
 	testCases = append(testCases, testCase{
-		name:        "Renegotiate-Client-NoExt",
-		renegotiate: true,
+		name: "Renegotiate-Client-NoExt",
 		config: Config{
 			Bugs: ProtocolBugs{
 				NoRenegotiationInfo: true,
