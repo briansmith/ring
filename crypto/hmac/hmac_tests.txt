@@ -1,6 +1,3 @@
-# This test file is shared between evp_test and hmac_test, to test the legacy
-# EVP_PKEY_HMAC API.
-
 HMAC = MD5
 # Note: The empty key results in passing NULL to HMAC_Init_ex, so this tests
 # that HMAC_CTX and HMAC treat NULL as the empty key initially.

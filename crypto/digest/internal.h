@@ -92,7 +92,7 @@ struct env_md_st {
 };
 
 /* evp_md_pctx_ops contains function pointers to allow the |pctx| member of
- * |EVP_MD_CTX| to be manipulated without breaking laying by calling EVP
+ * |EVP_MD_CTX| to be manipulated without breaking layering by calling EVP
  * functions. */
 struct evp_md_pctx_ops {
   /* free is called when an |EVP_MD_CTX| is being freed and the |pctx| also
@@ -102,22 +102,7 @@ struct evp_md_pctx_ops {
   /* dup is called when an |EVP_MD_CTX| is copied and so the |pctx| also needs
    * to be copied. */
   EVP_PKEY_CTX* (*dup) (EVP_PKEY_CTX *pctx);
-
-  /* begin_digest is called when a new digest operation is started. It returns
-   * one on success and zero otherwise. */
-  int (*begin_digest) (EVP_MD_CTX *ctx);
 };
-
-/* EVP_MD_CTX_set_flags ORs |flags| into the flags member of |ctx|. */
-OPENSSL_EXPORT void EVP_MD_CTX_set_flags(EVP_MD_CTX *ctx, uint32_t flags);
-
-/* EVP_MD_CTX_FLAG_NO_INIT causes the |EVP_MD|'s |init| function not to be
- * called, the |update| member not to be copied from the |EVP_MD| in
- * |EVP_DigestInit_ex| and for |md_data| not to be initialised.
- *
- * TODO(davidben): This is an implementation detail of |EVP_PKEY_HMAC| and can
- * be removed when it is gone. */
-#define EVP_MD_CTX_FLAG_NO_INIT 1
 
 
 #if defined(__cplusplus)

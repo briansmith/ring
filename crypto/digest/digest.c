@@ -164,12 +164,11 @@ int EVP_MD_CTX_copy(EVP_MD_CTX *out, const EVP_MD_CTX *in) {
 
 int EVP_DigestInit_ex(EVP_MD_CTX *ctx, const EVP_MD *type, ENGINE *engine) {
   if (ctx->digest != type) {
-    if (ctx->digest && ctx->digest->ctx_size) {
+    if (ctx->digest && ctx->digest->ctx_size > 0) {
       OPENSSL_free(ctx->md_data);
     }
     ctx->digest = type;
-    if (!(ctx->flags & EVP_MD_CTX_FLAG_NO_INIT) && type->ctx_size) {
-      ctx->update = type->update;
+    if (type->ctx_size > 0) {
       ctx->md_data = OPENSSL_malloc(type->ctx_size);
       if (ctx->md_data == NULL) {
         OPENSSL_PUT_ERROR(DIGEST, EVP_DigestInit_ex, ERR_R_MALLOC_FAILURE);
@@ -179,15 +178,6 @@ int EVP_DigestInit_ex(EVP_MD_CTX *ctx, const EVP_MD *type, ENGINE *engine) {
   }
 
   assert(ctx->pctx == NULL || ctx->pctx_ops != NULL);
-  if (ctx->pctx_ops) {
-    if (!ctx->pctx_ops->begin_digest(ctx)) {
-      return 0;
-    }
-  }
-
-  if (ctx->flags & EVP_MD_CTX_FLAG_NO_INIT) {
-    return 1;
-  }
 
   ctx->digest->init(ctx);
   return 1;
@@ -199,7 +189,7 @@ int EVP_DigestInit(EVP_MD_CTX *ctx, const EVP_MD *type) {
 }
 
 int EVP_DigestUpdate(EVP_MD_CTX *ctx, const void *data, size_t len) {
-  ctx->update(ctx, data, len);
+  ctx->digest->update(ctx, data, len);
   return 1;
 }
 
@@ -251,10 +241,6 @@ unsigned EVP_MD_CTX_block_size(const EVP_MD_CTX *ctx) {
 
 int EVP_MD_CTX_type(const EVP_MD_CTX *ctx) {
   return EVP_MD_type(EVP_MD_CTX_md(ctx));
-}
-
-void EVP_MD_CTX_set_flags(EVP_MD_CTX *ctx, uint32_t flags) {
-  ctx->flags |= flags;
 }
 
 int EVP_add_digest(const EVP_MD *digest) {

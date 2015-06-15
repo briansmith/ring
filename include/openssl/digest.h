@@ -234,15 +234,9 @@ struct evp_md_pctx_ops;
 struct env_md_ctx_st {
   /* digest is the underlying digest function, or NULL if not set. */
   const EVP_MD *digest;
-  /* flags is the OR of a number of |EVP_MD_CTX_FLAG_*| values. */
-  uint32_t flags;
   /* md_data points to a block of memory that contains the hash-specific
    * context. */
   void *md_data;
-  /* update is usually copied from |digest->update| but can differ in some
-   * cases, i.e. HMAC.
-   * TODO(davidben): Remove this hook once |EVP_PKEY_HMAC| is gone. */
-  void (*update)(EVP_MD_CTX *ctx, const void *data, size_t count);
 
   /* pctx is an opaque (at this layer) pointer to additional context that
    * EVP_PKEY functions may store in this object. */

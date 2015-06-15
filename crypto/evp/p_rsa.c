@@ -475,9 +475,6 @@ static int pkey_rsa_ctrl(EVP_PKEY_CTX *ctx, int type, int p1, void *p2) {
       CBS_init((CBS *)p2, rctx->oaep_label, rctx->oaep_labellen);
       return 1;
 
-    case EVP_PKEY_CTRL_DIGESTINIT:
-      return 1;
-
     default:
       OPENSSL_PUT_ERROR(EVP, pkey_rsa_ctrl, EVP_R_COMMAND_NOT_SUPPORTED);
       return 0;
@@ -509,14 +506,13 @@ static int pkey_rsa_keygen(EVP_PKEY_CTX *ctx, EVP_PKEY *pkey) {
 }
 
 const EVP_PKEY_METHOD rsa_pkey_meth = {
-    EVP_PKEY_RSA,           0 /* flags */,        pkey_rsa_init,
-    pkey_rsa_copy,          pkey_rsa_cleanup,     0 /* paramgen_init */,
-    0 /* paramgen */,       0 /* keygen_init */,  pkey_rsa_keygen,
-    0 /* sign_init */,      pkey_rsa_sign,        0 /* verify_init */,
-    pkey_rsa_verify,        0 /* signctx_init */, 0 /* signctx */,
-    0 /* verifyctx_init */, 0 /* verifyctx */,    0 /* encrypt_init */,
-    pkey_rsa_encrypt,       0 /* decrypt_init */, pkey_rsa_decrypt,
-    0 /* derive_init */,    0 /* derive */,       pkey_rsa_ctrl,
+    EVP_PKEY_RSA,         0 /* flags */,        pkey_rsa_init,
+    pkey_rsa_copy,        pkey_rsa_cleanup,     0 /* paramgen_init */,
+    0 /* paramgen */,     0 /* keygen_init */,  pkey_rsa_keygen,
+    0 /* sign_init */,    pkey_rsa_sign,        0 /* verify_init */,
+    pkey_rsa_verify,      0 /* encrypt_init */, pkey_rsa_encrypt,
+    0 /* decrypt_init */, pkey_rsa_decrypt,     0 /* derive_init */,
+    0 /* derive */,       pkey_rsa_ctrl,
 };
 
 int EVP_PKEY_CTX_set_rsa_padding(EVP_PKEY_CTX *ctx, int padding) {

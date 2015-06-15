@@ -75,7 +75,6 @@
 
 extern const EVP_PKEY_ASN1_METHOD dsa_asn1_meth;
 extern const EVP_PKEY_ASN1_METHOD ec_asn1_meth;
-extern const EVP_PKEY_ASN1_METHOD hmac_asn1_meth;
 extern const EVP_PKEY_ASN1_METHOD rsa_asn1_meth;
 
 EVP_PKEY *EVP_PKEY_new(void) {
@@ -207,8 +206,6 @@ const EVP_PKEY_ASN1_METHOD *EVP_PKEY_asn1_find(ENGINE **pengine, int nid) {
     case EVP_PKEY_RSA:
     case EVP_PKEY_RSA2:
       return &rsa_asn1_meth;
-    case EVP_PKEY_HMAC:
-      return &hmac_asn1_meth;
     case EVP_PKEY_EC:
       return &ec_asn1_meth;
     case EVP_PKEY_DSA:
@@ -224,32 +221,6 @@ int EVP_PKEY_type(int nid) {
     return NID_undef;
   }
   return meth->pkey_id;
-}
-
-EVP_PKEY *EVP_PKEY_new_mac_key(int type, ENGINE *e, const uint8_t *mac_key,
-                               size_t mac_key_len) {
-  EVP_PKEY_CTX *mac_ctx = NULL;
-  EVP_PKEY *ret = NULL;
-
-  mac_ctx = EVP_PKEY_CTX_new_id(type, e);
-  if (!mac_ctx) {
-    return NULL;
-  }
-
-  if (!EVP_PKEY_keygen_init(mac_ctx) ||
-      !EVP_PKEY_CTX_ctrl(mac_ctx, -1, EVP_PKEY_OP_KEYGEN,
-                         EVP_PKEY_CTRL_SET_MAC_KEY, mac_key_len,
-                         (uint8_t *)mac_key) ||
-      !EVP_PKEY_keygen(mac_ctx, &ret)) {
-    ret = NULL;
-    goto merr;
-  }
-
-merr:
-  if (mac_ctx) {
-    EVP_PKEY_CTX_free(mac_ctx);
-  }
-  return ret;
 }
 
 int EVP_PKEY_set1_RSA(EVP_PKEY *pkey, RSA *key) {
@@ -349,8 +320,6 @@ const EVP_PKEY_ASN1_METHOD *EVP_PKEY_asn1_find_str(ENGINE **pengine,
                                                    size_t len) {
   if (len == 3 && memcmp(name, "RSA", 3) == 0) {
     return &rsa_asn1_meth;
-  } else if (len == 4 && memcmp(name, "HMAC", 4) == 0) {
-    return &hmac_asn1_meth;
   } if (len == 2 && memcmp(name, "EC", 2) == 0) {
     return &ec_asn1_meth;
   }

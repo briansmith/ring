@@ -153,15 +153,12 @@ typedef int EVP_PKEY_gen_cb(EVP_PKEY_CTX *ctx);
 #define EVP_PKEY_OP_SIGN (1 << 3)
 #define EVP_PKEY_OP_VERIFY (1 << 4)
 #define EVP_PKEY_OP_VERIFYRECOVER (1 << 5)
-#define EVP_PKEY_OP_SIGNCTX (1 << 6)
-#define EVP_PKEY_OP_VERIFYCTX (1 << 7)
-#define EVP_PKEY_OP_ENCRYPT (1 << 8)
-#define EVP_PKEY_OP_DECRYPT (1 << 9)
-#define EVP_PKEY_OP_DERIVE (1 << 10)
+#define EVP_PKEY_OP_ENCRYPT (1 << 6)
+#define EVP_PKEY_OP_DECRYPT (1 << 7)
+#define EVP_PKEY_OP_DERIVE (1 << 8)
 
 #define EVP_PKEY_OP_TYPE_SIG                                           \
-  (EVP_PKEY_OP_SIGN | EVP_PKEY_OP_VERIFY | EVP_PKEY_OP_VERIFYRECOVER | \
-   EVP_PKEY_OP_SIGNCTX | EVP_PKEY_OP_VERIFYCTX)
+  (EVP_PKEY_OP_SIGN | EVP_PKEY_OP_VERIFY | EVP_PKEY_OP_VERIFYRECOVER)
 
 #define EVP_PKEY_OP_TYPE_CRYPT (EVP_PKEY_OP_ENCRYPT | EVP_PKEY_OP_DECRYPT)
 
@@ -181,13 +178,8 @@ typedef int EVP_PKEY_gen_cb(EVP_PKEY_CTX *ctx);
 OPENSSL_EXPORT int EVP_PKEY_CTX_ctrl(EVP_PKEY_CTX *ctx, int keytype, int optype,
                                      int cmd, int p1, void *p2);
 
-/* EVP_PKEY_CTRL_DIGESTINIT is an internal value. It's called by
- * EVP_DigestInit_ex to signal the |EVP_PKEY| that a digest operation is
- * starting.
- *
- * TODO(davidben): This is only needed to support the deprecated HMAC |EVP_PKEY|
- * types. */
-#define EVP_PKEY_CTRL_DIGESTINIT 3
+#define EVP_PKEY_CTRL_MD 1
+#define EVP_PKEY_CTRL_GET_MD 2
 
 /* EVP_PKEY_CTRL_PEER_KEY is called with different values of |p1|:
  *   0: Is called from |EVP_PKEY_derive_set_peer| and |p2| contains a peer key.
@@ -198,20 +190,11 @@ OPENSSL_EXPORT int EVP_PKEY_CTX_ctrl(EVP_PKEY_CTX *ctx, int keytype, int optype,
  *      (EC)DH always return one in this case.
  *   3: Is called with |p2| == NULL to set whether the peer's key was used.
  *      (EC)DH always return one in this case. This was only used for GOST. */
-#define EVP_PKEY_CTRL_PEER_KEY 4
-
-/* EVP_PKEY_CTRL_SET_MAC_KEY sets a MAC key. For example, this can be done an
- * |EVP_PKEY_CTX| prior to calling |EVP_PKEY_keygen| in order to generate an
- * HMAC |EVP_PKEY| with the given key. It returns one on success and zero on
- * error. */
-#define EVP_PKEY_CTRL_SET_MAC_KEY 5
+#define EVP_PKEY_CTRL_PEER_KEY 3
 
 /* EVP_PKEY_ALG_CTRL is the base value from which key-type specific ctrl
  * commands are numbered. */
 #define EVP_PKEY_ALG_CTRL 0x1000
-
-#define EVP_PKEY_CTRL_MD 1
-#define EVP_PKEY_CTRL_GET_MD 2
 
 #define EVP_PKEY_CTRL_RSA_PADDING (EVP_PKEY_ALG_CTRL + 1)
 #define EVP_PKEY_CTRL_GET_RSA_PADDING (EVP_PKEY_ALG_CTRL + 2)
@@ -266,14 +249,6 @@ struct evp_pkey_method_st {
   int (*verify_init)(EVP_PKEY_CTX *ctx);
   int (*verify)(EVP_PKEY_CTX *ctx, const unsigned char *sig, size_t siglen,
                 const unsigned char *tbs, size_t tbslen);
-
-  int (*signctx_init)(EVP_PKEY_CTX *ctx, EVP_MD_CTX *mctx);
-  int (*signctx)(EVP_PKEY_CTX *ctx, unsigned char *sig, size_t *siglen,
-                 EVP_MD_CTX *mctx);
-
-  int (*verifyctx_init)(EVP_PKEY_CTX *ctx, EVP_MD_CTX *mctx);
-  int (*verifyctx)(EVP_PKEY_CTX *ctx, const unsigned char *sig, int siglen,
-                   EVP_MD_CTX *mctx);
 
   int (*encrypt_init)(EVP_PKEY_CTX *ctx);
   int (*encrypt)(EVP_PKEY_CTX *ctx, unsigned char *out, size_t *outlen,

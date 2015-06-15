@@ -72,11 +72,10 @@
 #include "../test/stl_compat.h"
 
 
-// evp_test dispatches between multiple test types. HMAC tests test the legacy
-// EVP_PKEY_HMAC API. PrivateKey tests take a key name parameter and single
-// block, decode it as a PEM private key, and save it under that key name.
-// Decrypt, Sign, and Verify tests take a previously imported key name as
-// parameter and test their respective operations.
+// evp_test dispatches between multiple test types. PrivateKey tests take a key
+// name parameter and single block, decode it as a PEM private key, and save it
+// under that key name. Decrypt, Sign, and Verify tests take a previously
+// imported key name as parameter and test their respective operations.
 
 static const EVP_MD *GetDigest(FileTest *t, const std::string &name) {
   if (name == "MD5") {
@@ -120,54 +119,10 @@ static bool ImportPrivateKey(FileTest *t, KeyMap *key_map) {
   return true;
 }
 
-static bool TestHMAC(FileTest *t) {
-  std::string digest_str;
-  if (!t->GetAttribute(&digest_str, "HMAC")) {
-    return false;
-  }
-  const EVP_MD *digest = GetDigest(t, digest_str);
-  if (digest == nullptr) {
-    return false;
-  }
-
-  std::vector<uint8_t> key, input, output;
-  if (!t->GetBytes(&key, "Key") ||
-      !t->GetBytes(&input, "Input") ||
-      !t->GetBytes(&output, "Output")) {
-    return false;
-  }
-
-  ScopedEVP_PKEY pkey(EVP_PKEY_new_mac_key(EVP_PKEY_HMAC, nullptr,
-                                           bssl::vector_data(&key),
-                                           key.size()));
-  ScopedEVP_MD_CTX mctx;
-  if (!pkey ||
-      !EVP_DigestSignInit(mctx.get(), nullptr, digest, nullptr, pkey.get()) ||
-      !EVP_DigestSignUpdate(mctx.get(), bssl::vector_data(&input),
-                            input.size())) {
-    return false;
-  }
-
-  size_t len;
-  std::vector<uint8_t> actual;
-  if (!EVP_DigestSignFinal(mctx.get(), nullptr, &len)) {
-    return false;
-  }
-  actual.resize(len);
-  if (!EVP_DigestSignFinal(mctx.get(), bssl::vector_data(&actual), &len)) {
-    return false;
-  }
-  actual.resize(len);
-  return t->ExpectBytesEqual(bssl::vector_data(&output), output.size(),
-                             bssl::vector_data(&actual), actual.size());
-}
-
 static bool TestEVP(FileTest *t, void *arg) {
   KeyMap *key_map = reinterpret_cast<KeyMap*>(arg);
   if (t->GetType() == "PrivateKey") {
     return ImportPrivateKey(t, key_map);
-  } else if (t->GetType() == "HMAC") {
-    return TestHMAC(t);
   }
 
   int (*key_op_init)(EVP_PKEY_CTX *ctx);

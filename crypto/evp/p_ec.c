@@ -232,8 +232,7 @@ static int pkey_ec_ctrl(EVP_PKEY_CTX *ctx, int type, int p1, void *p2) {
       return 1;
 
     case EVP_PKEY_CTRL_PEER_KEY:
-    /* Default behaviour is OK */
-    case EVP_PKEY_CTRL_DIGESTINIT:
+      /* Default behaviour is OK */
       return 1;
 
     default:
@@ -290,12 +289,11 @@ static int pkey_ec_keygen(EVP_PKEY_CTX *ctx, EVP_PKEY *pkey) {
 }
 
 const EVP_PKEY_METHOD ec_pkey_meth = {
-    EVP_PKEY_EC,            0 /* flags */,        pkey_ec_init,
-    pkey_ec_copy,           pkey_ec_cleanup,      0 /* paramgen_init */,
-    pkey_ec_paramgen,       0 /* keygen_init */,  pkey_ec_keygen,
-    0 /* sign_init */,      pkey_ec_sign,         0 /* verify_init */,
-    pkey_ec_verify,         0 /* signctx_init */, 0 /* signctx */,
-    0 /* verifyctx_init */, 0 /* verifyctx */,    0 /* encrypt_init */,
-    0 /* encrypt */,        0 /* decrypt_init */, 0 /* decrypt */,
-    0 /* derive_init */,    pkey_ec_derive,       pkey_ec_ctrl,
+    EVP_PKEY_EC,          0 /* flags */,        pkey_ec_init,
+    pkey_ec_copy,         pkey_ec_cleanup,      0 /* paramgen_init */,
+    pkey_ec_paramgen,     0 /* keygen_init */,  pkey_ec_keygen,
+    0 /* sign_init */,    pkey_ec_sign,         0 /* verify_init */,
+    pkey_ec_verify,       0 /* encrypt_init */, 0 /* encrypt */,
+    0 /* decrypt_init */, 0 /* decrypt */,      0 /* derive_init */,
+    pkey_ec_derive,       pkey_ec_ctrl,
 };
