@@ -261,7 +261,7 @@ static int SSL_SESSION_to_bytes_full(SSL_SESSION *in, uint8_t **out_data,
     }
   }
 
-  if (in->tlsext_tick) {
+  if (in->tlsext_tick && !for_ticket) {
     if (!CBB_add_asn1(&session, &child, kTicketTag) ||
         !CBB_add_asn1(&child, &child2, CBS_ASN1_OCTETSTRING) ||
         !CBB_add_bytes(&child2, in->tlsext_tick, in->tlsext_ticklen)) {

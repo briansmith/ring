@@ -1501,6 +1501,27 @@ int ssl3_get_new_session_ticket(SSL *s) {
     return n;
   }
 
+  if (s->hit) {
+    /* The server is sending a new ticket for an existing session. Sessions are
+     * immutable once established, so duplicate all but the ticket of the
+     * existing session. */
+    uint8_t *bytes;
+    size_t bytes_len;
+    if (!SSL_SESSION_to_bytes_for_ticket(s->session, &bytes, &bytes_len)) {
+      goto err;
+    }
+    SSL_SESSION *new_session = SSL_SESSION_from_bytes(bytes, bytes_len);
+    OPENSSL_free(bytes);
+    if (new_session == NULL) {
+      /* This should never happen. */
+      OPENSSL_PUT_ERROR(SSL, ssl3_get_new_session_ticket, ERR_R_INTERNAL_ERROR);
+      goto err;
+    }
+
+    SSL_SESSION_free(s->session);
+    s->session = new_session;
+  }
+
   CBS_init(&new_session_ticket, s->init_msg, n);
 
   if (!CBS_get_u32(&new_session_ticket,

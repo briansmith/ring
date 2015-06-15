@@ -1963,8 +1963,8 @@ OPENSSL_EXPORT int SSL_has_matching_session_id(const SSL *ssl,
 OPENSSL_EXPORT int SSL_SESSION_to_bytes(SSL_SESSION *in, uint8_t **out_data,
                                         size_t *out_len);
 
-/* SSL_SESSION_to_bytes_for_ticket serializes |in|, but excludes the session ID
- * which is not necessary in a session ticket. */
+/* SSL_SESSION_to_bytes_for_ticket serializes |in|, but excludes the session
+ * identification information, namely the session ID and ticket. */
 OPENSSL_EXPORT int SSL_SESSION_to_bytes_for_ticket(SSL_SESSION *in,
                                                    uint8_t **out_data,
                                                    size_t *out_len);
