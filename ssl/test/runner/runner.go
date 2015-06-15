@@ -32,6 +32,10 @@ var (
 	mallocTestDebug = flag.Bool("malloc-test-debug", false, "If true, ask bssl_shim to abort rather than fail a malloc. This can be used with a specific value for --malloc-test to identity the malloc failing that is causing problems.")
 	jsonOutput      = flag.String("json-output", "", "The file to output JSON results to.")
 	pipe            = flag.Bool("pipe", false, "If true, print status output suitable for piping into another program.")
+	testToRun       = flag.String("test", "", "The name of a test to run, or empty to run all tests")
+	numWorkers      = flag.Int("num-workers", runtime.NumCPU(), "The number of workers to run in parallel.")
+	shimPath        = flag.String("shim-path", "../../../build/ssl/test/bssl_shim", "The location of the shim binary.")
+	resourceDir     = flag.String("resource-dir", ".", "The directory in which to find certificate and key files.")
 )
 
 const (
@@ -54,21 +58,21 @@ var testSCTList = []byte{5, 6, 7, 8}
 
 func initCertificates() {
 	var err error
-	rsaCertificate, err = LoadX509KeyPair(rsaCertificateFile, rsaKeyFile)
+	rsaCertificate, err = LoadX509KeyPair(path.Join(*resourceDir, rsaCertificateFile), path.Join(*resourceDir, rsaKeyFile))
 	if err != nil {
 		panic(err)
 	}
 	rsaCertificate.OCSPStaple = testOCSPResponse
 	rsaCertificate.SignedCertificateTimestampList = testSCTList
 
-	ecdsaCertificate, err = LoadX509KeyPair(ecdsaCertificateFile, ecdsaKeyFile)
+	ecdsaCertificate, err = LoadX509KeyPair(path.Join(*resourceDir, ecdsaCertificateFile), path.Join(*resourceDir, ecdsaKeyFile))
 	if err != nil {
 		panic(err)
 	}
 	ecdsaCertificate.OCSPStaple = testOCSPResponse
 	ecdsaCertificate.SignedCertificateTimestampList = testSCTList
 
-	channelIDPEMBlock, err := ioutil.ReadFile(channelIDKeyFile)
+	channelIDPEMBlock, err := ioutil.ReadFile(path.Join(*resourceDir, channelIDKeyFile))
 	if err != nil {
 		panic(err)
 	}
@@ -212,981 +216,7 @@ type testCase struct {
 	sendWarningAlerts int
 }
 
-var testCases = []testCase{
-	{
-		name: "BadRSASignature",
-		config: Config{
-			CipherSuites: []uint16{TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256},
-			Bugs: ProtocolBugs{
-				InvalidSKXSignature: true,
-			},
-		},
-		shouldFail:    true,
-		expectedError: ":BAD_SIGNATURE:",
-	},
-	{
-		name: "BadECDSASignature",
-		config: Config{
-			CipherSuites: []uint16{TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256},
-			Bugs: ProtocolBugs{
-				InvalidSKXSignature: true,
-			},
-			Certificates: []Certificate{getECDSACertificate()},
-		},
-		shouldFail:    true,
-		expectedError: ":BAD_SIGNATURE:",
-	},
-	{
-		name: "BadECDSACurve",
-		config: Config{
-			CipherSuites: []uint16{TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256},
-			Bugs: ProtocolBugs{
-				InvalidSKXCurve: true,
-			},
-			Certificates: []Certificate{getECDSACertificate()},
-		},
-		shouldFail:    true,
-		expectedError: ":WRONG_CURVE:",
-	},
-	{
-		testType: serverTest,
-		name:     "BadRSAVersion",
-		config: Config{
-			CipherSuites: []uint16{TLS_RSA_WITH_RC4_128_SHA},
-			Bugs: ProtocolBugs{
-				RsaClientKeyExchangeVersion: VersionTLS11,
-			},
-		},
-		shouldFail:    true,
-		expectedError: ":DECRYPTION_FAILED_OR_BAD_RECORD_MAC:",
-	},
-	{
-		name: "NoFallbackSCSV",
-		config: Config{
-			Bugs: ProtocolBugs{
-				FailIfNotFallbackSCSV: true,
-			},
-		},
-		shouldFail:         true,
-		expectedLocalError: "no fallback SCSV found",
-	},
-	{
-		name: "SendFallbackSCSV",
-		config: Config{
-			Bugs: ProtocolBugs{
-				FailIfNotFallbackSCSV: true,
-			},
-		},
-		flags: []string{"-fallback-scsv"},
-	},
-	{
-		name: "ClientCertificateTypes",
-		config: Config{
-			ClientAuth: RequestClientCert,
-			ClientCertificateTypes: []byte{
-				CertTypeDSSSign,
-				CertTypeRSASign,
-				CertTypeECDSASign,
-			},
-		},
-		flags: []string{
-			"-expect-certificate-types",
-			base64.StdEncoding.EncodeToString([]byte{
-				CertTypeDSSSign,
-				CertTypeRSASign,
-				CertTypeECDSASign,
-			}),
-		},
-	},
-	{
-		name: "NoClientCertificate",
-		config: Config{
-			ClientAuth: RequireAnyClientCert,
-		},
-		shouldFail:         true,
-		expectedLocalError: "client didn't provide a certificate",
-	},
-	{
-		name: "UnauthenticatedECDH",
-		config: Config{
-			CipherSuites: []uint16{TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256},
-			Bugs: ProtocolBugs{
-				UnauthenticatedECDH: true,
-			},
-		},
-		shouldFail:    true,
-		expectedError: ":UNEXPECTED_MESSAGE:",
-	},
-	{
-		name: "SkipCertificateStatus",
-		config: Config{
-			CipherSuites: []uint16{TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256},
-			Bugs: ProtocolBugs{
-				SkipCertificateStatus: true,
-			},
-		},
-		flags: []string{
-			"-enable-ocsp-stapling",
-		},
-	},
-	{
-		name: "SkipServerKeyExchange",
-		config: Config{
-			CipherSuites: []uint16{TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256},
-			Bugs: ProtocolBugs{
-				SkipServerKeyExchange: true,
-			},
-		},
-		shouldFail:    true,
-		expectedError: ":UNEXPECTED_MESSAGE:",
-	},
-	{
-		name: "SkipChangeCipherSpec-Client",
-		config: Config{
-			Bugs: ProtocolBugs{
-				SkipChangeCipherSpec: true,
-			},
-		},
-		shouldFail:    true,
-		expectedError: ":HANDSHAKE_RECORD_BEFORE_CCS:",
-	},
-	{
-		testType: serverTest,
-		name:     "SkipChangeCipherSpec-Server",
-		config: Config{
-			Bugs: ProtocolBugs{
-				SkipChangeCipherSpec: true,
-			},
-		},
-		shouldFail:    true,
-		expectedError: ":HANDSHAKE_RECORD_BEFORE_CCS:",
-	},
-	{
-		testType: serverTest,
-		name:     "SkipChangeCipherSpec-Server-NPN",
-		config: Config{
-			NextProtos: []string{"bar"},
-			Bugs: ProtocolBugs{
-				SkipChangeCipherSpec: true,
-			},
-		},
-		flags: []string{
-			"-advertise-npn", "\x03foo\x03bar\x03baz",
-		},
-		shouldFail:    true,
-		expectedError: ":HANDSHAKE_RECORD_BEFORE_CCS:",
-	},
-	{
-		name: "FragmentAcrossChangeCipherSpec-Client",
-		config: Config{
-			Bugs: ProtocolBugs{
-				FragmentAcrossChangeCipherSpec: true,
-			},
-		},
-		shouldFail:    true,
-		expectedError: ":HANDSHAKE_RECORD_BEFORE_CCS:",
-	},
-	{
-		testType: serverTest,
-		name:     "FragmentAcrossChangeCipherSpec-Server",
-		config: Config{
-			Bugs: ProtocolBugs{
-				FragmentAcrossChangeCipherSpec: true,
-			},
-		},
-		shouldFail:    true,
-		expectedError: ":HANDSHAKE_RECORD_BEFORE_CCS:",
-	},
-	{
-		testType: serverTest,
-		name:     "FragmentAcrossChangeCipherSpec-Server-NPN",
-		config: Config{
-			NextProtos: []string{"bar"},
-			Bugs: ProtocolBugs{
-				FragmentAcrossChangeCipherSpec: true,
-			},
-		},
-		flags: []string{
-			"-advertise-npn", "\x03foo\x03bar\x03baz",
-		},
-		shouldFail:    true,
-		expectedError: ":HANDSHAKE_RECORD_BEFORE_CCS:",
-	},
-	{
-		testType: serverTest,
-		name:     "Alert",
-		config: Config{
-			Bugs: ProtocolBugs{
-				SendSpuriousAlert: alertRecordOverflow,
-			},
-		},
-		shouldFail:    true,
-		expectedError: ":TLSV1_ALERT_RECORD_OVERFLOW:",
-	},
-	{
-		protocol: dtls,
-		testType: serverTest,
-		name:     "Alert-DTLS",
-		config: Config{
-			Bugs: ProtocolBugs{
-				SendSpuriousAlert: alertRecordOverflow,
-			},
-		},
-		shouldFail:    true,
-		expectedError: ":TLSV1_ALERT_RECORD_OVERFLOW:",
-	},
-	{
-		testType: serverTest,
-		name:     "FragmentAlert",
-		config: Config{
-			Bugs: ProtocolBugs{
-				FragmentAlert:     true,
-				SendSpuriousAlert: alertRecordOverflow,
-			},
-		},
-		shouldFail:    true,
-		expectedError: ":BAD_ALERT:",
-	},
-	{
-		protocol: dtls,
-		testType: serverTest,
-		name:     "FragmentAlert-DTLS",
-		config: Config{
-			Bugs: ProtocolBugs{
-				FragmentAlert:     true,
-				SendSpuriousAlert: alertRecordOverflow,
-			},
-		},
-		shouldFail:    true,
-		expectedError: ":BAD_ALERT:",
-	},
-	{
-		testType: serverTest,
-		name:     "EarlyChangeCipherSpec-server-1",
-		config: Config{
-			Bugs: ProtocolBugs{
-				EarlyChangeCipherSpec: 1,
-			},
-		},
-		shouldFail:    true,
-		expectedError: ":CCS_RECEIVED_EARLY:",
-	},
-	{
-		testType: serverTest,
-		name:     "EarlyChangeCipherSpec-server-2",
-		config: Config{
-			Bugs: ProtocolBugs{
-				EarlyChangeCipherSpec: 2,
-			},
-		},
-		shouldFail:    true,
-		expectedError: ":CCS_RECEIVED_EARLY:",
-	},
-	{
-		name: "SkipNewSessionTicket",
-		config: Config{
-			Bugs: ProtocolBugs{
-				SkipNewSessionTicket: true,
-			},
-		},
-		shouldFail:    true,
-		expectedError: ":CCS_RECEIVED_EARLY:",
-	},
-	{
-		testType: serverTest,
-		name:     "FallbackSCSV",
-		config: Config{
-			MaxVersion: VersionTLS11,
-			Bugs: ProtocolBugs{
-				SendFallbackSCSV: true,
-			},
-		},
-		shouldFail:    true,
-		expectedError: ":INAPPROPRIATE_FALLBACK:",
-	},
-	{
-		testType: serverTest,
-		name:     "FallbackSCSV-VersionMatch",
-		config: Config{
-			Bugs: ProtocolBugs{
-				SendFallbackSCSV: true,
-			},
-		},
-	},
-	{
-		testType: serverTest,
-		name:     "FragmentedClientVersion",
-		config: Config{
-			Bugs: ProtocolBugs{
-				MaxHandshakeRecordLength: 1,
-				FragmentClientVersion:    true,
-			},
-		},
-		expectedVersion: VersionTLS12,
-	},
-	{
-		testType: serverTest,
-		name:     "MinorVersionTolerance",
-		config: Config{
-			Bugs: ProtocolBugs{
-				SendClientVersion: 0x03ff,
-			},
-		},
-		expectedVersion: VersionTLS12,
-	},
-	{
-		testType: serverTest,
-		name:     "MajorVersionTolerance",
-		config: Config{
-			Bugs: ProtocolBugs{
-				SendClientVersion: 0x0400,
-			},
-		},
-		expectedVersion: VersionTLS12,
-	},
-	{
-		testType: serverTest,
-		name:     "VersionTooLow",
-		config: Config{
-			Bugs: ProtocolBugs{
-				SendClientVersion: 0x0200,
-			},
-		},
-		shouldFail:    true,
-		expectedError: ":UNSUPPORTED_PROTOCOL:",
-	},
-	{
-		testType:      serverTest,
-		name:          "HttpGET",
-		sendPrefix:    "GET / HTTP/1.0\n",
-		shouldFail:    true,
-		expectedError: ":HTTP_REQUEST:",
-	},
-	{
-		testType:      serverTest,
-		name:          "HttpPOST",
-		sendPrefix:    "POST / HTTP/1.0\n",
-		shouldFail:    true,
-		expectedError: ":HTTP_REQUEST:",
-	},
-	{
-		testType:      serverTest,
-		name:          "HttpHEAD",
-		sendPrefix:    "HEAD / HTTP/1.0\n",
-		shouldFail:    true,
-		expectedError: ":HTTP_REQUEST:",
-	},
-	{
-		testType:      serverTest,
-		name:          "HttpPUT",
-		sendPrefix:    "PUT / HTTP/1.0\n",
-		shouldFail:    true,
-		expectedError: ":HTTP_REQUEST:",
-	},
-	{
-		testType:      serverTest,
-		name:          "HttpCONNECT",
-		sendPrefix:    "CONNECT www.google.com:443 HTTP/1.0\n",
-		shouldFail:    true,
-		expectedError: ":HTTPS_PROXY_REQUEST:",
-	},
-	{
-		testType:      serverTest,
-		name:          "Garbage",
-		sendPrefix:    "blah",
-		shouldFail:    true,
-		expectedError: ":UNKNOWN_PROTOCOL:",
-	},
-	{
-		name: "SkipCipherVersionCheck",
-		config: Config{
-			CipherSuites: []uint16{TLS_RSA_WITH_AES_128_GCM_SHA256},
-			MaxVersion:   VersionTLS11,
-			Bugs: ProtocolBugs{
-				SkipCipherVersionCheck: true,
-			},
-		},
-		shouldFail:    true,
-		expectedError: ":WRONG_CIPHER_RETURNED:",
-	},
-	{
-		name: "RSAEphemeralKey",
-		config: Config{
-			CipherSuites: []uint16{TLS_RSA_WITH_AES_128_CBC_SHA},
-			Bugs: ProtocolBugs{
-				RSAEphemeralKey: true,
-			},
-		},
-		shouldFail:    true,
-		expectedError: ":UNEXPECTED_MESSAGE:",
-	},
-	{
-		name:          "DisableEverything",
-		flags:         []string{"-no-tls12", "-no-tls11", "-no-tls1", "-no-ssl3"},
-		shouldFail:    true,
-		expectedError: ":WRONG_SSL_VERSION:",
-	},
-	{
-		protocol:      dtls,
-		name:          "DisableEverything-DTLS",
-		flags:         []string{"-no-tls12", "-no-tls1"},
-		shouldFail:    true,
-		expectedError: ":WRONG_SSL_VERSION:",
-	},
-	{
-		name: "NoSharedCipher",
-		config: Config{
-			CipherSuites: []uint16{},
-		},
-		shouldFail:    true,
-		expectedError: ":HANDSHAKE_FAILURE_ON_CLIENT_HELLO:",
-	},
-	{
-		protocol: dtls,
-		testType: serverTest,
-		name:     "MTU",
-		config: Config{
-			Bugs: ProtocolBugs{
-				MaxPacketLength: 256,
-			},
-		},
-		flags: []string{"-mtu", "256"},
-	},
-	{
-		protocol: dtls,
-		testType: serverTest,
-		name:     "MTUExceeded",
-		config: Config{
-			Bugs: ProtocolBugs{
-				MaxPacketLength: 255,
-			},
-		},
-		flags:              []string{"-mtu", "256"},
-		shouldFail:         true,
-		expectedLocalError: "dtls: exceeded maximum packet length",
-	},
-	{
-		name: "CertMismatchRSA",
-		config: Config{
-			CipherSuites: []uint16{TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256},
-			Certificates: []Certificate{getECDSACertificate()},
-			Bugs: ProtocolBugs{
-				SendCipherSuite: TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,
-			},
-		},
-		shouldFail:    true,
-		expectedError: ":WRONG_CERTIFICATE_TYPE:",
-	},
-	{
-		name: "CertMismatchECDSA",
-		config: Config{
-			CipherSuites: []uint16{TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256},
-			Certificates: []Certificate{getRSACertificate()},
-			Bugs: ProtocolBugs{
-				SendCipherSuite: TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256,
-			},
-		},
-		shouldFail:    true,
-		expectedError: ":WRONG_CERTIFICATE_TYPE:",
-	},
-	{
-		name: "EmptyCertificateList",
-		config: Config{
-			CipherSuites: []uint16{TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256},
-			Bugs: ProtocolBugs{
-				EmptyCertificateList: true,
-			},
-		},
-		shouldFail:    true,
-		expectedError: ":DECODE_ERROR:",
-	},
-	{
-		name:             "TLSFatalBadPackets",
-		damageFirstWrite: true,
-		shouldFail:       true,
-		expectedError:    ":DECRYPTION_FAILED_OR_BAD_RECORD_MAC:",
-	},
-	{
-		protocol:         dtls,
-		name:             "DTLSIgnoreBadPackets",
-		damageFirstWrite: true,
-	},
-	{
-		protocol:         dtls,
-		name:             "DTLSIgnoreBadPackets-Async",
-		damageFirstWrite: true,
-		flags:            []string{"-async"},
-	},
-	{
-		name: "AppDataAfterChangeCipherSpec",
-		config: Config{
-			Bugs: ProtocolBugs{
-				AppDataAfterChangeCipherSpec: []byte("TEST MESSAGE"),
-			},
-		},
-		shouldFail:    true,
-		expectedError: ":DATA_BETWEEN_CCS_AND_FINISHED:",
-	},
-	{
-		protocol: dtls,
-		name:     "AppDataAfterChangeCipherSpec-DTLS",
-		config: Config{
-			Bugs: ProtocolBugs{
-				AppDataAfterChangeCipherSpec: []byte("TEST MESSAGE"),
-			},
-		},
-		// BoringSSL's DTLS implementation will drop the out-of-order
-		// application data.
-	},
-	{
-		name: "AlertAfterChangeCipherSpec",
-		config: Config{
-			Bugs: ProtocolBugs{
-				AlertAfterChangeCipherSpec: alertRecordOverflow,
-			},
-		},
-		shouldFail:    true,
-		expectedError: ":TLSV1_ALERT_RECORD_OVERFLOW:",
-	},
-	{
-		protocol: dtls,
-		name:     "AlertAfterChangeCipherSpec-DTLS",
-		config: Config{
-			Bugs: ProtocolBugs{
-				AlertAfterChangeCipherSpec: alertRecordOverflow,
-			},
-		},
-		shouldFail:    true,
-		expectedError: ":TLSV1_ALERT_RECORD_OVERFLOW:",
-	},
-	{
-		protocol: dtls,
-		name:     "ReorderHandshakeFragments-Small-DTLS",
-		config: Config{
-			Bugs: ProtocolBugs{
-				ReorderHandshakeFragments: true,
-				// Small enough that every handshake message is
-				// fragmented.
-				MaxHandshakeRecordLength: 2,
-			},
-		},
-	},
-	{
-		protocol: dtls,
-		name:     "ReorderHandshakeFragments-Large-DTLS",
-		config: Config{
-			Bugs: ProtocolBugs{
-				ReorderHandshakeFragments: true,
-				// Large enough that no handshake message is
-				// fragmented.
-				MaxHandshakeRecordLength: 2048,
-			},
-		},
-	},
-	{
-		protocol: dtls,
-		name:     "MixCompleteMessageWithFragments-DTLS",
-		config: Config{
-			Bugs: ProtocolBugs{
-				ReorderHandshakeFragments:       true,
-				MixCompleteMessageWithFragments: true,
-				MaxHandshakeRecordLength:        2,
-			},
-		},
-	},
-	{
-		name: "SendInvalidRecordType",
-		config: Config{
-			Bugs: ProtocolBugs{
-				SendInvalidRecordType: true,
-			},
-		},
-		shouldFail:    true,
-		expectedError: ":UNEXPECTED_RECORD:",
-	},
-	{
-		protocol: dtls,
-		name:     "SendInvalidRecordType-DTLS",
-		config: Config{
-			Bugs: ProtocolBugs{
-				SendInvalidRecordType: true,
-			},
-		},
-		shouldFail:    true,
-		expectedError: ":UNEXPECTED_RECORD:",
-	},
-	{
-		name: "FalseStart-SkipServerSecondLeg",
-		config: Config{
-			CipherSuites: []uint16{TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256},
-			NextProtos:   []string{"foo"},
-			Bugs: ProtocolBugs{
-				SkipNewSessionTicket: true,
-				SkipChangeCipherSpec: true,
-				SkipFinished:         true,
-				ExpectFalseStart:     true,
-			},
-		},
-		flags: []string{
-			"-false-start",
-			"-handshake-never-done",
-			"-advertise-alpn", "\x03foo",
-		},
-		shimWritesFirst: true,
-		shouldFail:      true,
-		expectedError:   ":UNEXPECTED_RECORD:",
-	},
-	{
-		name: "FalseStart-SkipServerSecondLeg-Implicit",
-		config: Config{
-			CipherSuites: []uint16{TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256},
-			NextProtos:   []string{"foo"},
-			Bugs: ProtocolBugs{
-				SkipNewSessionTicket: true,
-				SkipChangeCipherSpec: true,
-				SkipFinished:         true,
-			},
-		},
-		flags: []string{
-			"-implicit-handshake",
-			"-false-start",
-			"-handshake-never-done",
-			"-advertise-alpn", "\x03foo",
-		},
-		shouldFail:    true,
-		expectedError: ":UNEXPECTED_RECORD:",
-	},
-	{
-		testType:           serverTest,
-		name:               "FailEarlyCallback",
-		flags:              []string{"-fail-early-callback"},
-		shouldFail:         true,
-		expectedError:      ":CONNECTION_REJECTED:",
-		expectedLocalError: "remote error: access denied",
-	},
-	{
-		name: "WrongMessageType",
-		config: Config{
-			Bugs: ProtocolBugs{
-				WrongCertificateMessageType: true,
-			},
-		},
-		shouldFail:         true,
-		expectedError:      ":UNEXPECTED_MESSAGE:",
-		expectedLocalError: "remote error: unexpected message",
-	},
-	{
-		protocol: dtls,
-		name:     "WrongMessageType-DTLS",
-		config: Config{
-			Bugs: ProtocolBugs{
-				WrongCertificateMessageType: true,
-			},
-		},
-		shouldFail:         true,
-		expectedError:      ":UNEXPECTED_MESSAGE:",
-		expectedLocalError: "remote error: unexpected message",
-	},
-	{
-		protocol: dtls,
-		name:     "FragmentMessageTypeMismatch-DTLS",
-		config: Config{
-			Bugs: ProtocolBugs{
-				MaxHandshakeRecordLength:    2,
-				FragmentMessageTypeMismatch: true,
-			},
-		},
-		shouldFail:    true,
-		expectedError: ":FRAGMENT_MISMATCH:",
-	},
-	{
-		protocol: dtls,
-		name:     "FragmentMessageLengthMismatch-DTLS",
-		config: Config{
-			Bugs: ProtocolBugs{
-				MaxHandshakeRecordLength:      2,
-				FragmentMessageLengthMismatch: true,
-			},
-		},
-		shouldFail:    true,
-		expectedError: ":FRAGMENT_MISMATCH:",
-	},
-	{
-		protocol: dtls,
-		name:     "SplitFragments-Header-DTLS",
-		config: Config{
-			Bugs: ProtocolBugs{
-				SplitFragments: 2,
-			},
-		},
-		shouldFail:    true,
-		expectedError: ":UNEXPECTED_MESSAGE:",
-	},
-	{
-		protocol: dtls,
-		name:     "SplitFragments-Boundary-DTLS",
-		config: Config{
-			Bugs: ProtocolBugs{
-				SplitFragments: dtlsRecordHeaderLen,
-			},
-		},
-		shouldFail:    true,
-		expectedError: ":EXCESSIVE_MESSAGE_SIZE:",
-	},
-	{
-		protocol: dtls,
-		name:     "SplitFragments-Body-DTLS",
-		config: Config{
-			Bugs: ProtocolBugs{
-				SplitFragments: dtlsRecordHeaderLen + 1,
-			},
-		},
-		shouldFail:    true,
-		expectedError: ":EXCESSIVE_MESSAGE_SIZE:",
-	},
-	{
-		protocol: dtls,
-		name:     "SendEmptyFragments-DTLS",
-		config: Config{
-			Bugs: ProtocolBugs{
-				SendEmptyFragments: true,
-			},
-		},
-	},
-	{
-		name: "UnsupportedCipherSuite",
-		config: Config{
-			CipherSuites: []uint16{TLS_RSA_WITH_RC4_128_SHA},
-			Bugs: ProtocolBugs{
-				IgnorePeerCipherPreferences: true,
-			},
-		},
-		flags:         []string{"-cipher", "DEFAULT:!RC4"},
-		shouldFail:    true,
-		expectedError: ":WRONG_CIPHER_RETURNED:",
-	},
-	{
-		name: "UnsupportedCurve",
-		config: Config{
-			CipherSuites: []uint16{TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256},
-			// BoringSSL implements P-224 but doesn't enable it by
-			// default.
-			CurvePreferences: []CurveID{CurveP224},
-			Bugs: ProtocolBugs{
-				IgnorePeerCurvePreferences: true,
-			},
-		},
-		shouldFail:    true,
-		expectedError: ":WRONG_CURVE:",
-	},
-	{
-		name: "BadFinished",
-		config: Config{
-			Bugs: ProtocolBugs{
-				BadFinished: true,
-			},
-		},
-		shouldFail:    true,
-		expectedError: ":DIGEST_CHECK_FAILED:",
-	},
-	{
-		name: "FalseStart-BadFinished",
-		config: Config{
-			CipherSuites: []uint16{TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256},
-			NextProtos:   []string{"foo"},
-			Bugs: ProtocolBugs{
-				BadFinished:      true,
-				ExpectFalseStart: true,
-			},
-		},
-		flags: []string{
-			"-false-start",
-			"-handshake-never-done",
-			"-advertise-alpn", "\x03foo",
-		},
-		shimWritesFirst: true,
-		shouldFail:      true,
-		expectedError:   ":DIGEST_CHECK_FAILED:",
-	},
-	{
-		name: "NoFalseStart-NoALPN",
-		config: Config{
-			CipherSuites: []uint16{TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256},
-			Bugs: ProtocolBugs{
-				ExpectFalseStart:          true,
-				AlertBeforeFalseStartTest: alertAccessDenied,
-			},
-		},
-		flags: []string{
-			"-false-start",
-		},
-		shimWritesFirst:    true,
-		shouldFail:         true,
-		expectedError:      ":TLSV1_ALERT_ACCESS_DENIED:",
-		expectedLocalError: "tls: peer did not false start: EOF",
-	},
-	{
-		name: "NoFalseStart-NoAEAD",
-		config: Config{
-			CipherSuites: []uint16{TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA},
-			NextProtos:   []string{"foo"},
-			Bugs: ProtocolBugs{
-				ExpectFalseStart:          true,
-				AlertBeforeFalseStartTest: alertAccessDenied,
-			},
-		},
-		flags: []string{
-			"-false-start",
-			"-advertise-alpn", "\x03foo",
-		},
-		shimWritesFirst:    true,
-		shouldFail:         true,
-		expectedError:      ":TLSV1_ALERT_ACCESS_DENIED:",
-		expectedLocalError: "tls: peer did not false start: EOF",
-	},
-	{
-		name: "NoFalseStart-RSA",
-		config: Config{
-			CipherSuites: []uint16{TLS_RSA_WITH_AES_128_GCM_SHA256},
-			NextProtos:   []string{"foo"},
-			Bugs: ProtocolBugs{
-				ExpectFalseStart:          true,
-				AlertBeforeFalseStartTest: alertAccessDenied,
-			},
-		},
-		flags: []string{
-			"-false-start",
-			"-advertise-alpn", "\x03foo",
-		},
-		shimWritesFirst:    true,
-		shouldFail:         true,
-		expectedError:      ":TLSV1_ALERT_ACCESS_DENIED:",
-		expectedLocalError: "tls: peer did not false start: EOF",
-	},
-	{
-		name: "NoFalseStart-DHE_RSA",
-		config: Config{
-			CipherSuites: []uint16{TLS_DHE_RSA_WITH_AES_128_GCM_SHA256},
-			NextProtos:   []string{"foo"},
-			Bugs: ProtocolBugs{
-				ExpectFalseStart:          true,
-				AlertBeforeFalseStartTest: alertAccessDenied,
-			},
-		},
-		flags: []string{
-			"-false-start",
-			"-advertise-alpn", "\x03foo",
-		},
-		shimWritesFirst:    true,
-		shouldFail:         true,
-		expectedError:      ":TLSV1_ALERT_ACCESS_DENIED:",
-		expectedLocalError: "tls: peer did not false start: EOF",
-	},
-	{
-		testType: serverTest,
-		name:     "NoSupportedCurves",
-		config: Config{
-			CipherSuites: []uint16{TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256},
-			Bugs: ProtocolBugs{
-				NoSupportedCurves: true,
-			},
-		},
-	},
-	{
-		testType: serverTest,
-		name:     "NoCommonCurves",
-		config: Config{
-			CipherSuites: []uint16{
-				TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,
-				TLS_DHE_RSA_WITH_AES_128_GCM_SHA256,
-			},
-			CurvePreferences: []CurveID{CurveP224},
-		},
-		expectedCipher: TLS_DHE_RSA_WITH_AES_128_GCM_SHA256,
-	},
-	{
-		protocol: dtls,
-		name:     "SendSplitAlert-Sync",
-		config: Config{
-			Bugs: ProtocolBugs{
-				SendSplitAlert: true,
-			},
-		},
-	},
-	{
-		protocol: dtls,
-		name:     "SendSplitAlert-Async",
-		config: Config{
-			Bugs: ProtocolBugs{
-				SendSplitAlert: true,
-			},
-		},
-		flags: []string{"-async"},
-	},
-	{
-		protocol: dtls,
-		name:     "PackDTLSHandshake",
-		config: Config{
-			Bugs: ProtocolBugs{
-				MaxHandshakeRecordLength: 2,
-				PackHandshakeFragments:   20,
-				PackHandshakeRecords:     200,
-			},
-		},
-	},
-	{
-		testType: serverTest,
-		protocol: dtls,
-		name:     "NoRC4-DTLS",
-		config: Config{
-			CipherSuites: []uint16{TLS_ECDHE_RSA_WITH_RC4_128_SHA},
-			Bugs: ProtocolBugs{
-				EnableAllCiphersInDTLS: true,
-			},
-		},
-		shouldFail:    true,
-		expectedError: ":NO_SHARED_CIPHER:",
-	},
-	{
-		name:             "SendEmptyRecords-Pass",
-		sendEmptyRecords: 32,
-	},
-	{
-		name:             "SendEmptyRecords",
-		sendEmptyRecords: 33,
-		shouldFail:       true,
-		expectedError:    ":TOO_MANY_EMPTY_FRAGMENTS:",
-	},
-	{
-		name:             "SendEmptyRecords-Async",
-		sendEmptyRecords: 33,
-		flags:            []string{"-async"},
-		shouldFail:       true,
-		expectedError:    ":TOO_MANY_EMPTY_FRAGMENTS:",
-	},
-	{
-		name:              "SendWarningAlerts-Pass",
-		sendWarningAlerts: 4,
-	},
-	{
-		protocol:          dtls,
-		name:              "SendWarningAlerts-DTLS-Pass",
-		sendWarningAlerts: 4,
-	},
-	{
-		name:              "SendWarningAlerts",
-		sendWarningAlerts: 5,
-		shouldFail:        true,
-		expectedError:     ":TOO_MANY_WARNING_ALERTS:",
-	},
-	{
-		name:              "SendWarningAlerts-Async",
-		sendWarningAlerts: 5,
-		flags:             []string{"-async"},
-		shouldFail:        true,
-		expectedError:     ":TOO_MANY_WARNING_ALERTS:",
-	},
-}
+var testCases []testCase
 
 func doExchange(test *testCase, config *Config, conn net.Conn, messageLen int, isResume bool) error {
 	var connDebug *recordingConn
@@ -1448,7 +478,7 @@ func acceptOrWait(listener net.Listener, waitChan chan error) (net.Conn, error) 
 	}
 }
 
-func runTest(test *testCase, buildDir string, mallocNumToFail int64) error {
+func runTest(test *testCase, shimPath string, mallocNumToFail int64) error {
 	if !test.shouldFail && (len(test.expectedError) > 0 || len(test.expectedLocalError) > 0) {
 		panic("Error expected without shouldFail in " + test.name)
 	}
@@ -1467,23 +497,22 @@ func runTest(test *testCase, buildDir string, mallocNumToFail int64) error {
 		}
 	}()
 
-	shim_path := path.Join(buildDir, "ssl/test/bssl_shim")
 	flags := []string{"-port", strconv.Itoa(listener.Addr().(*net.TCPAddr).Port)}
 	if test.testType == serverTest {
 		flags = append(flags, "-server")
 
 		flags = append(flags, "-key-file")
 		if test.keyFile == "" {
-			flags = append(flags, rsaKeyFile)
+			flags = append(flags, path.Join(*resourceDir, rsaKeyFile))
 		} else {
-			flags = append(flags, test.keyFile)
+			flags = append(flags, path.Join(*resourceDir, test.keyFile))
 		}
 
 		flags = append(flags, "-cert-file")
 		if test.certFile == "" {
-			flags = append(flags, rsaCertificateFile)
+			flags = append(flags, path.Join(*resourceDir, rsaCertificateFile))
 		} else {
-			flags = append(flags, test.certFile)
+			flags = append(flags, path.Join(*resourceDir, test.certFile))
 		}
 	}
 
@@ -1519,11 +548,11 @@ func runTest(test *testCase, buildDir string, mallocNumToFail int64) error {
 
 	var shim *exec.Cmd
 	if *useValgrind {
-		shim = valgrindOf(false, shim_path, flags...)
+		shim = valgrindOf(false, shimPath, flags...)
 	} else if *useGDB {
-		shim = gdbOf(shim_path, flags...)
+		shim = gdbOf(shimPath, flags...)
 	} else {
-		shim = exec.Command(shim_path, flags...)
+		shim = exec.Command(shimPath, flags...)
 	}
 	shim.Stdin = os.Stdin
 	var stdoutBuf, stderrBuf bytes.Buffer
@@ -1719,6 +748,986 @@ func bigFromHex(hex string) *big.Int {
 		panic("failed to parse hex number 0x" + hex)
 	}
 	return ret
+}
+
+func addBasicTests() {
+	basicTests := []testCase{
+		{
+			name: "BadRSASignature",
+			config: Config{
+				CipherSuites: []uint16{TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256},
+				Bugs: ProtocolBugs{
+					InvalidSKXSignature: true,
+				},
+			},
+			shouldFail:    true,
+			expectedError: ":BAD_SIGNATURE:",
+		},
+		{
+			name: "BadECDSASignature",
+			config: Config{
+				CipherSuites: []uint16{TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256},
+				Bugs: ProtocolBugs{
+					InvalidSKXSignature: true,
+				},
+				Certificates: []Certificate{getECDSACertificate()},
+			},
+			shouldFail:    true,
+			expectedError: ":BAD_SIGNATURE:",
+		},
+		{
+			name: "BadECDSACurve",
+			config: Config{
+				CipherSuites: []uint16{TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256},
+				Bugs: ProtocolBugs{
+					InvalidSKXCurve: true,
+				},
+				Certificates: []Certificate{getECDSACertificate()},
+			},
+			shouldFail:    true,
+			expectedError: ":WRONG_CURVE:",
+		},
+		{
+			testType: serverTest,
+			name:     "BadRSAVersion",
+			config: Config{
+				CipherSuites: []uint16{TLS_RSA_WITH_RC4_128_SHA},
+				Bugs: ProtocolBugs{
+					RsaClientKeyExchangeVersion: VersionTLS11,
+				},
+			},
+			shouldFail:    true,
+			expectedError: ":DECRYPTION_FAILED_OR_BAD_RECORD_MAC:",
+		},
+		{
+			name: "NoFallbackSCSV",
+			config: Config{
+				Bugs: ProtocolBugs{
+					FailIfNotFallbackSCSV: true,
+				},
+			},
+			shouldFail:         true,
+			expectedLocalError: "no fallback SCSV found",
+		},
+		{
+			name: "SendFallbackSCSV",
+			config: Config{
+				Bugs: ProtocolBugs{
+					FailIfNotFallbackSCSV: true,
+				},
+			},
+			flags: []string{"-fallback-scsv"},
+		},
+		{
+			name: "ClientCertificateTypes",
+			config: Config{
+				ClientAuth: RequestClientCert,
+				ClientCertificateTypes: []byte{
+					CertTypeDSSSign,
+					CertTypeRSASign,
+					CertTypeECDSASign,
+				},
+			},
+			flags: []string{
+				"-expect-certificate-types",
+				base64.StdEncoding.EncodeToString([]byte{
+					CertTypeDSSSign,
+					CertTypeRSASign,
+					CertTypeECDSASign,
+				}),
+			},
+		},
+		{
+			name: "NoClientCertificate",
+			config: Config{
+				ClientAuth: RequireAnyClientCert,
+			},
+			shouldFail:         true,
+			expectedLocalError: "client didn't provide a certificate",
+		},
+		{
+			name: "UnauthenticatedECDH",
+			config: Config{
+				CipherSuites: []uint16{TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256},
+				Bugs: ProtocolBugs{
+					UnauthenticatedECDH: true,
+				},
+			},
+			shouldFail:    true,
+			expectedError: ":UNEXPECTED_MESSAGE:",
+		},
+		{
+			name: "SkipCertificateStatus",
+			config: Config{
+				CipherSuites: []uint16{TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256},
+				Bugs: ProtocolBugs{
+					SkipCertificateStatus: true,
+				},
+			},
+			flags: []string{
+				"-enable-ocsp-stapling",
+			},
+		},
+		{
+			name: "SkipServerKeyExchange",
+			config: Config{
+				CipherSuites: []uint16{TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256},
+				Bugs: ProtocolBugs{
+					SkipServerKeyExchange: true,
+				},
+			},
+			shouldFail:    true,
+			expectedError: ":UNEXPECTED_MESSAGE:",
+		},
+		{
+			name: "SkipChangeCipherSpec-Client",
+			config: Config{
+				Bugs: ProtocolBugs{
+					SkipChangeCipherSpec: true,
+				},
+			},
+			shouldFail:    true,
+			expectedError: ":HANDSHAKE_RECORD_BEFORE_CCS:",
+		},
+		{
+			testType: serverTest,
+			name:     "SkipChangeCipherSpec-Server",
+			config: Config{
+				Bugs: ProtocolBugs{
+					SkipChangeCipherSpec: true,
+				},
+			},
+			shouldFail:    true,
+			expectedError: ":HANDSHAKE_RECORD_BEFORE_CCS:",
+		},
+		{
+			testType: serverTest,
+			name:     "SkipChangeCipherSpec-Server-NPN",
+			config: Config{
+				NextProtos: []string{"bar"},
+				Bugs: ProtocolBugs{
+					SkipChangeCipherSpec: true,
+				},
+			},
+			flags: []string{
+				"-advertise-npn", "\x03foo\x03bar\x03baz",
+			},
+			shouldFail:    true,
+			expectedError: ":HANDSHAKE_RECORD_BEFORE_CCS:",
+		},
+		{
+			name: "FragmentAcrossChangeCipherSpec-Client",
+			config: Config{
+				Bugs: ProtocolBugs{
+					FragmentAcrossChangeCipherSpec: true,
+				},
+			},
+			shouldFail:    true,
+			expectedError: ":HANDSHAKE_RECORD_BEFORE_CCS:",
+		},
+		{
+			testType: serverTest,
+			name:     "FragmentAcrossChangeCipherSpec-Server",
+			config: Config{
+				Bugs: ProtocolBugs{
+					FragmentAcrossChangeCipherSpec: true,
+				},
+			},
+			shouldFail:    true,
+			expectedError: ":HANDSHAKE_RECORD_BEFORE_CCS:",
+		},
+		{
+			testType: serverTest,
+			name:     "FragmentAcrossChangeCipherSpec-Server-NPN",
+			config: Config{
+				NextProtos: []string{"bar"},
+				Bugs: ProtocolBugs{
+					FragmentAcrossChangeCipherSpec: true,
+				},
+			},
+			flags: []string{
+				"-advertise-npn", "\x03foo\x03bar\x03baz",
+			},
+			shouldFail:    true,
+			expectedError: ":HANDSHAKE_RECORD_BEFORE_CCS:",
+		},
+		{
+			testType: serverTest,
+			name:     "Alert",
+			config: Config{
+				Bugs: ProtocolBugs{
+					SendSpuriousAlert: alertRecordOverflow,
+				},
+			},
+			shouldFail:    true,
+			expectedError: ":TLSV1_ALERT_RECORD_OVERFLOW:",
+		},
+		{
+			protocol: dtls,
+			testType: serverTest,
+			name:     "Alert-DTLS",
+			config: Config{
+				Bugs: ProtocolBugs{
+					SendSpuriousAlert: alertRecordOverflow,
+				},
+			},
+			shouldFail:    true,
+			expectedError: ":TLSV1_ALERT_RECORD_OVERFLOW:",
+		},
+		{
+			testType: serverTest,
+			name:     "FragmentAlert",
+			config: Config{
+				Bugs: ProtocolBugs{
+					FragmentAlert:     true,
+					SendSpuriousAlert: alertRecordOverflow,
+				},
+			},
+			shouldFail:    true,
+			expectedError: ":BAD_ALERT:",
+		},
+		{
+			protocol: dtls,
+			testType: serverTest,
+			name:     "FragmentAlert-DTLS",
+			config: Config{
+				Bugs: ProtocolBugs{
+					FragmentAlert:     true,
+					SendSpuriousAlert: alertRecordOverflow,
+				},
+			},
+			shouldFail:    true,
+			expectedError: ":BAD_ALERT:",
+		},
+		{
+			testType: serverTest,
+			name:     "EarlyChangeCipherSpec-server-1",
+			config: Config{
+				Bugs: ProtocolBugs{
+					EarlyChangeCipherSpec: 1,
+				},
+			},
+			shouldFail:    true,
+			expectedError: ":CCS_RECEIVED_EARLY:",
+		},
+		{
+			testType: serverTest,
+			name:     "EarlyChangeCipherSpec-server-2",
+			config: Config{
+				Bugs: ProtocolBugs{
+					EarlyChangeCipherSpec: 2,
+				},
+			},
+			shouldFail:    true,
+			expectedError: ":CCS_RECEIVED_EARLY:",
+		},
+		{
+			name: "SkipNewSessionTicket",
+			config: Config{
+				Bugs: ProtocolBugs{
+					SkipNewSessionTicket: true,
+				},
+			},
+			shouldFail:    true,
+			expectedError: ":CCS_RECEIVED_EARLY:",
+		},
+		{
+			testType: serverTest,
+			name:     "FallbackSCSV",
+			config: Config{
+				MaxVersion: VersionTLS11,
+				Bugs: ProtocolBugs{
+					SendFallbackSCSV: true,
+				},
+			},
+			shouldFail:    true,
+			expectedError: ":INAPPROPRIATE_FALLBACK:",
+		},
+		{
+			testType: serverTest,
+			name:     "FallbackSCSV-VersionMatch",
+			config: Config{
+				Bugs: ProtocolBugs{
+					SendFallbackSCSV: true,
+				},
+			},
+		},
+		{
+			testType: serverTest,
+			name:     "FragmentedClientVersion",
+			config: Config{
+				Bugs: ProtocolBugs{
+					MaxHandshakeRecordLength: 1,
+					FragmentClientVersion:    true,
+				},
+			},
+			expectedVersion: VersionTLS12,
+		},
+		{
+			testType: serverTest,
+			name:     "MinorVersionTolerance",
+			config: Config{
+				Bugs: ProtocolBugs{
+					SendClientVersion: 0x03ff,
+				},
+			},
+			expectedVersion: VersionTLS12,
+		},
+		{
+			testType: serverTest,
+			name:     "MajorVersionTolerance",
+			config: Config{
+				Bugs: ProtocolBugs{
+					SendClientVersion: 0x0400,
+				},
+			},
+			expectedVersion: VersionTLS12,
+		},
+		{
+			testType: serverTest,
+			name:     "VersionTooLow",
+			config: Config{
+				Bugs: ProtocolBugs{
+					SendClientVersion: 0x0200,
+				},
+			},
+			shouldFail:    true,
+			expectedError: ":UNSUPPORTED_PROTOCOL:",
+		},
+		{
+			testType:      serverTest,
+			name:          "HttpGET",
+			sendPrefix:    "GET / HTTP/1.0\n",
+			shouldFail:    true,
+			expectedError: ":HTTP_REQUEST:",
+		},
+		{
+			testType:      serverTest,
+			name:          "HttpPOST",
+			sendPrefix:    "POST / HTTP/1.0\n",
+			shouldFail:    true,
+			expectedError: ":HTTP_REQUEST:",
+		},
+		{
+			testType:      serverTest,
+			name:          "HttpHEAD",
+			sendPrefix:    "HEAD / HTTP/1.0\n",
+			shouldFail:    true,
+			expectedError: ":HTTP_REQUEST:",
+		},
+		{
+			testType:      serverTest,
+			name:          "HttpPUT",
+			sendPrefix:    "PUT / HTTP/1.0\n",
+			shouldFail:    true,
+			expectedError: ":HTTP_REQUEST:",
+		},
+		{
+			testType:      serverTest,
+			name:          "HttpCONNECT",
+			sendPrefix:    "CONNECT www.google.com:443 HTTP/1.0\n",
+			shouldFail:    true,
+			expectedError: ":HTTPS_PROXY_REQUEST:",
+		},
+		{
+			testType:      serverTest,
+			name:          "Garbage",
+			sendPrefix:    "blah",
+			shouldFail:    true,
+			expectedError: ":UNKNOWN_PROTOCOL:",
+		},
+		{
+			name: "SkipCipherVersionCheck",
+			config: Config{
+				CipherSuites: []uint16{TLS_RSA_WITH_AES_128_GCM_SHA256},
+				MaxVersion:   VersionTLS11,
+				Bugs: ProtocolBugs{
+					SkipCipherVersionCheck: true,
+				},
+			},
+			shouldFail:    true,
+			expectedError: ":WRONG_CIPHER_RETURNED:",
+		},
+		{
+			name: "RSAEphemeralKey",
+			config: Config{
+				CipherSuites: []uint16{TLS_RSA_WITH_AES_128_CBC_SHA},
+				Bugs: ProtocolBugs{
+					RSAEphemeralKey: true,
+				},
+			},
+			shouldFail:    true,
+			expectedError: ":UNEXPECTED_MESSAGE:",
+		},
+		{
+			name:          "DisableEverything",
+			flags:         []string{"-no-tls12", "-no-tls11", "-no-tls1", "-no-ssl3"},
+			shouldFail:    true,
+			expectedError: ":WRONG_SSL_VERSION:",
+		},
+		{
+			protocol:      dtls,
+			name:          "DisableEverything-DTLS",
+			flags:         []string{"-no-tls12", "-no-tls1"},
+			shouldFail:    true,
+			expectedError: ":WRONG_SSL_VERSION:",
+		},
+		{
+			name: "NoSharedCipher",
+			config: Config{
+				CipherSuites: []uint16{},
+			},
+			shouldFail:    true,
+			expectedError: ":HANDSHAKE_FAILURE_ON_CLIENT_HELLO:",
+		},
+		{
+			protocol: dtls,
+			testType: serverTest,
+			name:     "MTU",
+			config: Config{
+				Bugs: ProtocolBugs{
+					MaxPacketLength: 256,
+				},
+			},
+			flags: []string{"-mtu", "256"},
+		},
+		{
+			protocol: dtls,
+			testType: serverTest,
+			name:     "MTUExceeded",
+			config: Config{
+				Bugs: ProtocolBugs{
+					MaxPacketLength: 255,
+				},
+			},
+			flags:              []string{"-mtu", "256"},
+			shouldFail:         true,
+			expectedLocalError: "dtls: exceeded maximum packet length",
+		},
+		{
+			name: "CertMismatchRSA",
+			config: Config{
+				CipherSuites: []uint16{TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256},
+				Certificates: []Certificate{getECDSACertificate()},
+				Bugs: ProtocolBugs{
+					SendCipherSuite: TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,
+				},
+			},
+			shouldFail:    true,
+			expectedError: ":WRONG_CERTIFICATE_TYPE:",
+		},
+		{
+			name: "CertMismatchECDSA",
+			config: Config{
+				CipherSuites: []uint16{TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256},
+				Certificates: []Certificate{getRSACertificate()},
+				Bugs: ProtocolBugs{
+					SendCipherSuite: TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256,
+				},
+			},
+			shouldFail:    true,
+			expectedError: ":WRONG_CERTIFICATE_TYPE:",
+		},
+		{
+			name: "EmptyCertificateList",
+			config: Config{
+				CipherSuites: []uint16{TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256},
+				Bugs: ProtocolBugs{
+					EmptyCertificateList: true,
+				},
+			},
+			shouldFail:    true,
+			expectedError: ":DECODE_ERROR:",
+		},
+		{
+			name:             "TLSFatalBadPackets",
+			damageFirstWrite: true,
+			shouldFail:       true,
+			expectedError:    ":DECRYPTION_FAILED_OR_BAD_RECORD_MAC:",
+		},
+		{
+			protocol:         dtls,
+			name:             "DTLSIgnoreBadPackets",
+			damageFirstWrite: true,
+		},
+		{
+			protocol:         dtls,
+			name:             "DTLSIgnoreBadPackets-Async",
+			damageFirstWrite: true,
+			flags:            []string{"-async"},
+		},
+		{
+			name: "AppDataAfterChangeCipherSpec",
+			config: Config{
+				Bugs: ProtocolBugs{
+					AppDataAfterChangeCipherSpec: []byte("TEST MESSAGE"),
+				},
+			},
+			shouldFail:    true,
+			expectedError: ":DATA_BETWEEN_CCS_AND_FINISHED:",
+		},
+		{
+			protocol: dtls,
+			name:     "AppDataAfterChangeCipherSpec-DTLS",
+			config: Config{
+				Bugs: ProtocolBugs{
+					AppDataAfterChangeCipherSpec: []byte("TEST MESSAGE"),
+				},
+			},
+			// BoringSSL's DTLS implementation will drop the out-of-order
+			// application data.
+		},
+		{
+			name: "AlertAfterChangeCipherSpec",
+			config: Config{
+				Bugs: ProtocolBugs{
+					AlertAfterChangeCipherSpec: alertRecordOverflow,
+				},
+			},
+			shouldFail:    true,
+			expectedError: ":TLSV1_ALERT_RECORD_OVERFLOW:",
+		},
+		{
+			protocol: dtls,
+			name:     "AlertAfterChangeCipherSpec-DTLS",
+			config: Config{
+				Bugs: ProtocolBugs{
+					AlertAfterChangeCipherSpec: alertRecordOverflow,
+				},
+			},
+			shouldFail:    true,
+			expectedError: ":TLSV1_ALERT_RECORD_OVERFLOW:",
+		},
+		{
+			protocol: dtls,
+			name:     "ReorderHandshakeFragments-Small-DTLS",
+			config: Config{
+				Bugs: ProtocolBugs{
+					ReorderHandshakeFragments: true,
+					// Small enough that every handshake message is
+					// fragmented.
+					MaxHandshakeRecordLength: 2,
+				},
+			},
+		},
+		{
+			protocol: dtls,
+			name:     "ReorderHandshakeFragments-Large-DTLS",
+			config: Config{
+				Bugs: ProtocolBugs{
+					ReorderHandshakeFragments: true,
+					// Large enough that no handshake message is
+					// fragmented.
+					MaxHandshakeRecordLength: 2048,
+				},
+			},
+		},
+		{
+			protocol: dtls,
+			name:     "MixCompleteMessageWithFragments-DTLS",
+			config: Config{
+				Bugs: ProtocolBugs{
+					ReorderHandshakeFragments:       true,
+					MixCompleteMessageWithFragments: true,
+					MaxHandshakeRecordLength:        2,
+				},
+			},
+		},
+		{
+			name: "SendInvalidRecordType",
+			config: Config{
+				Bugs: ProtocolBugs{
+					SendInvalidRecordType: true,
+				},
+			},
+			shouldFail:    true,
+			expectedError: ":UNEXPECTED_RECORD:",
+		},
+		{
+			protocol: dtls,
+			name:     "SendInvalidRecordType-DTLS",
+			config: Config{
+				Bugs: ProtocolBugs{
+					SendInvalidRecordType: true,
+				},
+			},
+			shouldFail:    true,
+			expectedError: ":UNEXPECTED_RECORD:",
+		},
+		{
+			name: "FalseStart-SkipServerSecondLeg",
+			config: Config{
+				CipherSuites: []uint16{TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256},
+				NextProtos:   []string{"foo"},
+				Bugs: ProtocolBugs{
+					SkipNewSessionTicket: true,
+					SkipChangeCipherSpec: true,
+					SkipFinished:         true,
+					ExpectFalseStart:     true,
+				},
+			},
+			flags: []string{
+				"-false-start",
+				"-handshake-never-done",
+				"-advertise-alpn", "\x03foo",
+			},
+			shimWritesFirst: true,
+			shouldFail:      true,
+			expectedError:   ":UNEXPECTED_RECORD:",
+		},
+		{
+			name: "FalseStart-SkipServerSecondLeg-Implicit",
+			config: Config{
+				CipherSuites: []uint16{TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256},
+				NextProtos:   []string{"foo"},
+				Bugs: ProtocolBugs{
+					SkipNewSessionTicket: true,
+					SkipChangeCipherSpec: true,
+					SkipFinished:         true,
+				},
+			},
+			flags: []string{
+				"-implicit-handshake",
+				"-false-start",
+				"-handshake-never-done",
+				"-advertise-alpn", "\x03foo",
+			},
+			shouldFail:    true,
+			expectedError: ":UNEXPECTED_RECORD:",
+		},
+		{
+			testType:           serverTest,
+			name:               "FailEarlyCallback",
+			flags:              []string{"-fail-early-callback"},
+			shouldFail:         true,
+			expectedError:      ":CONNECTION_REJECTED:",
+			expectedLocalError: "remote error: access denied",
+		},
+		{
+			name: "WrongMessageType",
+			config: Config{
+				Bugs: ProtocolBugs{
+					WrongCertificateMessageType: true,
+				},
+			},
+			shouldFail:         true,
+			expectedError:      ":UNEXPECTED_MESSAGE:",
+			expectedLocalError: "remote error: unexpected message",
+		},
+		{
+			protocol: dtls,
+			name:     "WrongMessageType-DTLS",
+			config: Config{
+				Bugs: ProtocolBugs{
+					WrongCertificateMessageType: true,
+				},
+			},
+			shouldFail:         true,
+			expectedError:      ":UNEXPECTED_MESSAGE:",
+			expectedLocalError: "remote error: unexpected message",
+		},
+		{
+			protocol: dtls,
+			name:     "FragmentMessageTypeMismatch-DTLS",
+			config: Config{
+				Bugs: ProtocolBugs{
+					MaxHandshakeRecordLength:    2,
+					FragmentMessageTypeMismatch: true,
+				},
+			},
+			shouldFail:    true,
+			expectedError: ":FRAGMENT_MISMATCH:",
+		},
+		{
+			protocol: dtls,
+			name:     "FragmentMessageLengthMismatch-DTLS",
+			config: Config{
+				Bugs: ProtocolBugs{
+					MaxHandshakeRecordLength:      2,
+					FragmentMessageLengthMismatch: true,
+				},
+			},
+			shouldFail:    true,
+			expectedError: ":FRAGMENT_MISMATCH:",
+		},
+		{
+			protocol: dtls,
+			name:     "SplitFragments-Header-DTLS",
+			config: Config{
+				Bugs: ProtocolBugs{
+					SplitFragments: 2,
+				},
+			},
+			shouldFail:    true,
+			expectedError: ":UNEXPECTED_MESSAGE:",
+		},
+		{
+			protocol: dtls,
+			name:     "SplitFragments-Boundary-DTLS",
+			config: Config{
+				Bugs: ProtocolBugs{
+					SplitFragments: dtlsRecordHeaderLen,
+				},
+			},
+			shouldFail:    true,
+			expectedError: ":EXCESSIVE_MESSAGE_SIZE:",
+		},
+		{
+			protocol: dtls,
+			name:     "SplitFragments-Body-DTLS",
+			config: Config{
+				Bugs: ProtocolBugs{
+					SplitFragments: dtlsRecordHeaderLen + 1,
+				},
+			},
+			shouldFail:    true,
+			expectedError: ":EXCESSIVE_MESSAGE_SIZE:",
+		},
+		{
+			protocol: dtls,
+			name:     "SendEmptyFragments-DTLS",
+			config: Config{
+				Bugs: ProtocolBugs{
+					SendEmptyFragments: true,
+				},
+			},
+		},
+		{
+			name: "UnsupportedCipherSuite",
+			config: Config{
+				CipherSuites: []uint16{TLS_RSA_WITH_RC4_128_SHA},
+				Bugs: ProtocolBugs{
+					IgnorePeerCipherPreferences: true,
+				},
+			},
+			flags:         []string{"-cipher", "DEFAULT:!RC4"},
+			shouldFail:    true,
+			expectedError: ":WRONG_CIPHER_RETURNED:",
+		},
+		{
+			name: "UnsupportedCurve",
+			config: Config{
+				CipherSuites: []uint16{TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256},
+				// BoringSSL implements P-224 but doesn't enable it by
+				// default.
+				CurvePreferences: []CurveID{CurveP224},
+				Bugs: ProtocolBugs{
+					IgnorePeerCurvePreferences: true,
+				},
+			},
+			shouldFail:    true,
+			expectedError: ":WRONG_CURVE:",
+		},
+		{
+			name: "BadFinished",
+			config: Config{
+				Bugs: ProtocolBugs{
+					BadFinished: true,
+				},
+			},
+			shouldFail:    true,
+			expectedError: ":DIGEST_CHECK_FAILED:",
+		},
+		{
+			name: "FalseStart-BadFinished",
+			config: Config{
+				CipherSuites: []uint16{TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256},
+				NextProtos:   []string{"foo"},
+				Bugs: ProtocolBugs{
+					BadFinished:      true,
+					ExpectFalseStart: true,
+				},
+			},
+			flags: []string{
+				"-false-start",
+				"-handshake-never-done",
+				"-advertise-alpn", "\x03foo",
+			},
+			shimWritesFirst: true,
+			shouldFail:      true,
+			expectedError:   ":DIGEST_CHECK_FAILED:",
+		},
+		{
+			name: "NoFalseStart-NoALPN",
+			config: Config{
+				CipherSuites: []uint16{TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256},
+				Bugs: ProtocolBugs{
+					ExpectFalseStart:          true,
+					AlertBeforeFalseStartTest: alertAccessDenied,
+				},
+			},
+			flags: []string{
+				"-false-start",
+			},
+			shimWritesFirst:    true,
+			shouldFail:         true,
+			expectedError:      ":TLSV1_ALERT_ACCESS_DENIED:",
+			expectedLocalError: "tls: peer did not false start: EOF",
+		},
+		{
+			name: "NoFalseStart-NoAEAD",
+			config: Config{
+				CipherSuites: []uint16{TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA},
+				NextProtos:   []string{"foo"},
+				Bugs: ProtocolBugs{
+					ExpectFalseStart:          true,
+					AlertBeforeFalseStartTest: alertAccessDenied,
+				},
+			},
+			flags: []string{
+				"-false-start",
+				"-advertise-alpn", "\x03foo",
+			},
+			shimWritesFirst:    true,
+			shouldFail:         true,
+			expectedError:      ":TLSV1_ALERT_ACCESS_DENIED:",
+			expectedLocalError: "tls: peer did not false start: EOF",
+		},
+		{
+			name: "NoFalseStart-RSA",
+			config: Config{
+				CipherSuites: []uint16{TLS_RSA_WITH_AES_128_GCM_SHA256},
+				NextProtos:   []string{"foo"},
+				Bugs: ProtocolBugs{
+					ExpectFalseStart:          true,
+					AlertBeforeFalseStartTest: alertAccessDenied,
+				},
+			},
+			flags: []string{
+				"-false-start",
+				"-advertise-alpn", "\x03foo",
+			},
+			shimWritesFirst:    true,
+			shouldFail:         true,
+			expectedError:      ":TLSV1_ALERT_ACCESS_DENIED:",
+			expectedLocalError: "tls: peer did not false start: EOF",
+		},
+		{
+			name: "NoFalseStart-DHE_RSA",
+			config: Config{
+				CipherSuites: []uint16{TLS_DHE_RSA_WITH_AES_128_GCM_SHA256},
+				NextProtos:   []string{"foo"},
+				Bugs: ProtocolBugs{
+					ExpectFalseStart:          true,
+					AlertBeforeFalseStartTest: alertAccessDenied,
+				},
+			},
+			flags: []string{
+				"-false-start",
+				"-advertise-alpn", "\x03foo",
+			},
+			shimWritesFirst:    true,
+			shouldFail:         true,
+			expectedError:      ":TLSV1_ALERT_ACCESS_DENIED:",
+			expectedLocalError: "tls: peer did not false start: EOF",
+		},
+		{
+			testType: serverTest,
+			name:     "NoSupportedCurves",
+			config: Config{
+				CipherSuites: []uint16{TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256},
+				Bugs: ProtocolBugs{
+					NoSupportedCurves: true,
+				},
+			},
+		},
+		{
+			testType: serverTest,
+			name:     "NoCommonCurves",
+			config: Config{
+				CipherSuites: []uint16{
+					TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,
+					TLS_DHE_RSA_WITH_AES_128_GCM_SHA256,
+				},
+				CurvePreferences: []CurveID{CurveP224},
+			},
+			expectedCipher: TLS_DHE_RSA_WITH_AES_128_GCM_SHA256,
+		},
+		{
+			protocol: dtls,
+			name:     "SendSplitAlert-Sync",
+			config: Config{
+				Bugs: ProtocolBugs{
+					SendSplitAlert: true,
+				},
+			},
+		},
+		{
+			protocol: dtls,
+			name:     "SendSplitAlert-Async",
+			config: Config{
+				Bugs: ProtocolBugs{
+					SendSplitAlert: true,
+				},
+			},
+			flags: []string{"-async"},
+		},
+		{
+			protocol: dtls,
+			name:     "PackDTLSHandshake",
+			config: Config{
+				Bugs: ProtocolBugs{
+					MaxHandshakeRecordLength: 2,
+					PackHandshakeFragments:   20,
+					PackHandshakeRecords:     200,
+				},
+			},
+		},
+		{
+			testType: serverTest,
+			protocol: dtls,
+			name:     "NoRC4-DTLS",
+			config: Config{
+				CipherSuites: []uint16{TLS_ECDHE_RSA_WITH_RC4_128_SHA},
+				Bugs: ProtocolBugs{
+					EnableAllCiphersInDTLS: true,
+				},
+			},
+			shouldFail:    true,
+			expectedError: ":NO_SHARED_CIPHER:",
+		},
+		{
+			name:             "SendEmptyRecords-Pass",
+			sendEmptyRecords: 32,
+		},
+		{
+			name:             "SendEmptyRecords",
+			sendEmptyRecords: 33,
+			shouldFail:       true,
+			expectedError:    ":TOO_MANY_EMPTY_FRAGMENTS:",
+		},
+		{
+			name:             "SendEmptyRecords-Async",
+			sendEmptyRecords: 33,
+			flags:            []string{"-async"},
+			shouldFail:       true,
+			expectedError:    ":TOO_MANY_EMPTY_FRAGMENTS:",
+		},
+		{
+			name:              "SendWarningAlerts-Pass",
+			sendWarningAlerts: 4,
+		},
+		{
+			protocol:          dtls,
+			name:              "SendWarningAlerts-DTLS-Pass",
+			sendWarningAlerts: 4,
+		},
+		{
+			name:              "SendWarningAlerts",
+			sendWarningAlerts: 5,
+			shouldFail:        true,
+			expectedError:     ":TOO_MANY_WARNING_ALERTS:",
+		},
+		{
+			name:              "SendWarningAlerts-Async",
+			sendWarningAlerts: 5,
+			flags:             []string{"-async"},
+			shouldFail:        true,
+			expectedError:     ":TOO_MANY_WARNING_ALERTS:",
+		},
+	}
+
+	testCases = append(testCases, basicTests...)
 }
 
 func addCipherSuiteTests() {
@@ -1948,8 +1957,8 @@ func addClientAuthTests() {
 				ClientCAs:  certPool,
 			},
 			flags: []string{
-				"-cert-file", rsaCertificateFile,
-				"-key-file", rsaKeyFile,
+				"-cert-file", path.Join(*resourceDir, rsaCertificateFile),
+				"-key-file", path.Join(*resourceDir, rsaKeyFile),
 			},
 		})
 		testCases = append(testCases, testCase{
@@ -1983,8 +1992,8 @@ func addClientAuthTests() {
 					ClientCAs:  certPool,
 				},
 				flags: []string{
-					"-cert-file", ecdsaCertificateFile,
-					"-key-file", ecdsaKeyFile,
+					"-cert-file", path.Join(*resourceDir, ecdsaCertificateFile),
+					"-key-file", path.Join(*resourceDir, ecdsaKeyFile),
 				},
 			})
 		}
@@ -2189,8 +2198,8 @@ func addStateMachineCoverageTests(async, splitHandshake bool, protocol protocol)
 			ClientAuth: RequireAnyClientCert,
 		},
 		flags: []string{
-			"-cert-file", rsaCertificateFile,
-			"-key-file", rsaKeyFile,
+			"-cert-file", path.Join(*resourceDir, rsaCertificateFile),
+			"-key-file", path.Join(*resourceDir, rsaKeyFile),
 		},
 	})
 	tests = append(tests, testCase{
@@ -2358,7 +2367,7 @@ func addStateMachineCoverageTests(async, splitHandshake bool, protocol protocol)
 			config: Config{
 				RequestChannelID: true,
 			},
-			flags:           []string{"-send-channel-id", channelIDKeyFile},
+			flags:           []string{"-send-channel-id", path.Join(*resourceDir, channelIDKeyFile)},
 			resumeSession:   true,
 			expectChannelID: true,
 		})
@@ -3182,8 +3191,8 @@ func addSigningHashTests() {
 				},
 			},
 			flags: []string{
-				"-cert-file", rsaCertificateFile,
-				"-key-file", rsaKeyFile,
+				"-cert-file", path.Join(*resourceDir, rsaCertificateFile),
+				"-key-file", path.Join(*resourceDir, rsaKeyFile),
 			},
 		})
 
@@ -3213,8 +3222,8 @@ func addSigningHashTests() {
 			},
 		},
 		flags: []string{
-			"-cert-file", rsaCertificateFile,
-			"-key-file", rsaKeyFile,
+			"-cert-file", path.Join(*resourceDir, rsaCertificateFile),
+			"-key-file", path.Join(*resourceDir, rsaKeyFile),
 		},
 	})
 
@@ -3244,8 +3253,8 @@ func addSigningHashTests() {
 			},
 		},
 		flags: []string{
-			"-cert-file", rsaCertificateFile,
-			"-key-file", rsaKeyFile,
+			"-cert-file", path.Join(*resourceDir, rsaCertificateFile),
+			"-key-file", path.Join(*resourceDir, rsaKeyFile),
 		},
 	})
 
@@ -3507,7 +3516,7 @@ func addTLSUniqueTests() {
 	}
 }
 
-func worker(statusChan chan statusMsg, c chan *testCase, buildDir string, wg *sync.WaitGroup) {
+func worker(statusChan chan statusMsg, c chan *testCase, shimPath string, wg *sync.WaitGroup) {
 	defer wg.Done()
 
 	for test := range c {
@@ -3515,11 +3524,11 @@ func worker(statusChan chan statusMsg, c chan *testCase, buildDir string, wg *sy
 
 		if *mallocTest < 0 {
 			statusChan <- statusMsg{test: test, started: true}
-			err = runTest(test, buildDir, -1)
+			err = runTest(test, shimPath, -1)
 		} else {
 			for mallocNumToFail := int64(*mallocTest); ; mallocNumToFail++ {
 				statusChan <- statusMsg{test: test, started: true}
-				if err = runTest(test, buildDir, mallocNumToFail); err != errMoreMallocs {
+				if err = runTest(test, shimPath, mallocNumToFail); err != errMoreMallocs {
 					if err != nil {
 						fmt.Printf("\n\nmalloc test failed at %d: %s\n", mallocNumToFail, err)
 					}
@@ -3581,12 +3590,10 @@ func statusPrinter(doneChan chan *testOutput, statusChan chan statusMsg, total i
 }
 
 func main() {
-	var flagTest *string = flag.String("test", "", "The name of a test to run, or empty to run all tests")
-	var flagNumWorkers *int = flag.Int("num-workers", runtime.NumCPU(), "The number of workers to run in parallel.")
-	var flagBuildDir *string = flag.String("build-dir", "../../../build", "The build directory to run the shim from.")
-
 	flag.Parse()
+	*resourceDir = path.Clean(*resourceDir)
 
+	addBasicTests()
 	addCipherSuiteTests()
 	addBadECDSASignatureTests()
 	addCBCPaddingTests()
@@ -3616,21 +3623,19 @@ func main() {
 
 	var wg sync.WaitGroup
 
-	numWorkers := *flagNumWorkers
-
-	statusChan := make(chan statusMsg, numWorkers)
-	testChan := make(chan *testCase, numWorkers)
+	statusChan := make(chan statusMsg, *numWorkers)
+	testChan := make(chan *testCase, *numWorkers)
 	doneChan := make(chan *testOutput)
 
 	go statusPrinter(doneChan, statusChan, len(testCases))
 
-	for i := 0; i < numWorkers; i++ {
+	for i := 0; i < *numWorkers; i++ {
 		wg.Add(1)
-		go worker(statusChan, testChan, *flagBuildDir, &wg)
+		go worker(statusChan, testChan, *shimPath, &wg)
 	}
 
 	for i := range testCases {
-		if len(*flagTest) == 0 || *flagTest == testCases[i].name {
+		if len(*testToRun) == 0 || *testToRun == testCases[i].name {
 			testChan <- &testCases[i]
 		}
 	}
