@@ -359,6 +359,18 @@ static const char kBadSessionVersion[] =
     "q+Topyzvx9USFgRvyuoxn0Hgb+R0A3j6SLRuyOdAi4gv7Y5oliynrSIEIAYGBgYG"
     "BgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGrgMEAQevAwQBBLADBAEF";
 
+// kBadSessionTrailingData is a custom serialized SSL_SESSION with trailing data
+// appended.
+static const char kBadSessionTrailingData[] =
+    "MIIBdgIBAQICAwMEAsAvBCAG5Q1ndq4Yfmbeo1zwLkNRKmCXGdNgWvGT3cskV0yQ"
+    "kAQwJlrlzkAWBOWiLj/jJ76D7l+UXoizP2KI2C7I2FccqMmIfFmmkUy32nIJ0mZH"
+    "IWoJoQYCBFRDO46iBAICASykAwQBAqUDAgEUphAEDnd3dy5nb29nbGUuY29tqAcE"
+    "BXdvcmxkqQUCAwGJwKqBpwSBpBwUQvoeOk0Kg36SYTcLEkXqKwOBfF9vE4KX0Nxe"
+    "LwjcDTpsuh3qXEaZ992r1N38VDcyS6P7I6HBYN9BsNHM362zZnY27GpTw+Kwd751"
+    "CLoXFPoaMOe57dbBpXoro6Pd3BTbf/Tzr88K06yEOTDKPNj3+inbMaVigtK4PLyP"
+    "q+Topyzvx9USFgRvyuoxn0Hgb+R0A3j6SLRuyOdAi4gv7Y5oliynrSIEIAYGBgYG"
+    "BgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGrgMEAQevAwQBBLADBAEFAAAA";
+
 static bool DecodeBase64(std::vector<uint8_t> *out, const char *in) {
   size_t len;
   if (!EVP_DecodedLength(&len, strlen(in))) {
@@ -387,10 +399,10 @@ static bool TestSSL_SESSIONEncoding(const char *input_b64) {
   }
 
   // Verify the SSL_SESSION decodes.
-  cptr = bssl::vector_data(&input);
-  ScopedSSL_SESSION session(d2i_SSL_SESSION(NULL, &cptr, input.size()));
-  if (!session || cptr != bssl::vector_data(&input) + input.size()) {
-    fprintf(stderr, "d2i_SSL_SESSION failed\n");
+  ScopedSSL_SESSION session(SSL_SESSION_from_bytes(bssl::vector_data(&input),
+                                                   input.size()));
+  if (!session) {
+    fprintf(stderr, "SSL_SESSION_from_bytes failed\n");
     return false;
   }
 
@@ -406,6 +418,14 @@ static bool TestSSL_SESSIONEncoding(const char *input_b64) {
   if (encoded_len != input.size() ||
       memcmp(bssl::vector_data(&input), encoded.get(), input.size()) != 0) {
     fprintf(stderr, "SSL_SESSION_to_bytes did not round-trip\n");
+    return false;
+  }
+
+  // Verify the SSL_SESSION also decodes with the legacy API.
+  cptr = bssl::vector_data(&input);
+  session.reset(d2i_SSL_SESSION(NULL, &cptr, input.size()));
+  if (!session || cptr != bssl::vector_data(&input) + input.size()) {
+    fprintf(stderr, "d2i_SSL_SESSION failed\n");
     return false;
   }
 
@@ -447,10 +467,10 @@ static bool TestBadSSL_SESSIONEncoding(const char *input_b64) {
   }
 
   // Verify that the SSL_SESSION fails to decode.
-  const uint8_t *ptr = bssl::vector_data(&input);
-  ScopedSSL_SESSION session(d2i_SSL_SESSION(NULL, &ptr, input.size()));
+  ScopedSSL_SESSION session(SSL_SESSION_from_bytes(bssl::vector_data(&input),
+                                                   input.size()));
   if (session) {
-    fprintf(stderr, "d2i_SSL_SESSION unexpectedly succeeded\n");
+    fprintf(stderr, "SSL_SESSION_from_bytes unexpectedly succeeded\n");
     return false;
   }
   ERR_clear_error();
@@ -537,6 +557,7 @@ int main(void) {
       !TestSSL_SESSIONEncoding(kCustomSession) ||
       !TestBadSSL_SESSIONEncoding(kBadSessionExtraField) ||
       !TestBadSSL_SESSIONEncoding(kBadSessionVersion) ||
+      !TestBadSSL_SESSIONEncoding(kBadSessionTrailingData) ||
       !TestDefaultVersion(0, &TLS_method) ||
       !TestDefaultVersion(SSL3_VERSION, &SSLv3_method) ||
       !TestDefaultVersion(TLS1_VERSION, &TLSv1_method) ||

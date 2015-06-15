@@ -2181,7 +2181,7 @@ static int tls_decrypt_ticket(SSL *s, const uint8_t *etick, int eticklen,
   EVP_CIPHER_CTX_cleanup(&ctx);
   p = sdec;
 
-  sess = d2i_SSL_SESSION(NULL, &p, slen);
+  sess = SSL_SESSION_from_bytes(sdec, slen);
   OPENSSL_free(sdec);
   if (sess) {
     /* The session ID, if non-empty, is used by some clients to detect that the

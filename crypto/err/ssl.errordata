@@ -20,7 +20,11 @@ SSL,function,112,SSL_CTX_use_certificate_ASN1
 SSL,function,113,SSL_CTX_use_certificate_chain_file
 SSL,function,114,SSL_CTX_use_certificate_file
 SSL,function,115,SSL_CTX_use_psk_identity_hint
+SSL,function,280,SSL_SESSION_from_bytes
 SSL,function,116,SSL_SESSION_new
+SSL,function,281,SSL_SESSION_parse
+SSL,function,150,SSL_SESSION_parse_octet_string
+SSL,function,151,SSL_SESSION_parse_string
 SSL,function,117,SSL_SESSION_print_fp
 SSL,function,118,SSL_SESSION_set1_id_context
 SSL,function,119,SSL_SESSION_to_bytes_full
@@ -58,8 +62,6 @@ SSL,function,146,SSL_use_certificate_file
 SSL,function,147,SSL_use_psk_identity_hint
 SSL,function,148,SSL_write
 SSL,function,149,d2i_SSL_SESSION
-SSL,function,150,d2i_SSL_SESSION_get_octet_string
-SSL,function,151,d2i_SSL_SESSION_get_string
 SSL,function,152,do_ssl3_write
 SSL,function,153,dtls1_accept
 SSL,function,154,dtls1_buffer_record
@@ -82,6 +84,7 @@ SSL,function,166,i2d_SSL_SESSION
 SSL,function,167,ssl3_accept
 SSL,function,169,ssl3_cert_verify_hash
 SSL,function,170,ssl3_check_cert_and_algorithm
+SSL,function,282,ssl3_check_certificate_for_cipher
 SSL,function,171,ssl3_connect
 SSL,function,172,ssl3_ctrl
 SSL,function,173,ssl3_ctx_ctrl

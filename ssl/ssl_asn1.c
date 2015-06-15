@@ -360,26 +360,27 @@ int i2d_SSL_SESSION(SSL_SESSION *in, uint8_t **pp) {
   return len;
 }
 
-/* d2i_SSL_SESSION_get_string gets an optional ASN.1 OCTET STRING
+/* SSL_SESSION_parse_string gets an optional ASN.1 OCTET STRING
  * explicitly tagged with |tag| from |cbs| and saves it in |*out|. On
  * entry, if |*out| is not NULL, it frees the existing contents. If
  * the element was not found, it sets |*out| to NULL. It returns one
  * on success, whether or not the element was found, and zero on
  * decode error. */
-static int d2i_SSL_SESSION_get_string(CBS *cbs, char **out, unsigned tag) {
+static int SSL_SESSION_parse_string(CBS *cbs, char **out, unsigned tag) {
   CBS value;
   int present;
   if (!CBS_get_optional_asn1_octet_string(cbs, &value, &present, tag)) {
-    OPENSSL_PUT_ERROR(SSL, d2i_SSL_SESSION, SSL_R_INVALID_SSL_SESSION);
+    OPENSSL_PUT_ERROR(SSL, SSL_SESSION_parse_string, SSL_R_INVALID_SSL_SESSION);
     return 0;
   }
   if (present) {
     if (CBS_contains_zero_byte(&value)) {
-      OPENSSL_PUT_ERROR(SSL, d2i_SSL_SESSION, SSL_R_INVALID_SSL_SESSION);
+      OPENSSL_PUT_ERROR(SSL, SSL_SESSION_parse_string,
+                        SSL_R_INVALID_SSL_SESSION);
       return 0;
     }
     if (!CBS_strdup(&value, out)) {
-      OPENSSL_PUT_ERROR(SSL, d2i_SSL_SESSION, ERR_R_MALLOC_FAILURE);
+      OPENSSL_PUT_ERROR(SSL, SSL_SESSION_parse_string, ERR_R_MALLOC_FAILURE);
       return 0;
     }
   } else {
@@ -389,45 +390,42 @@ static int d2i_SSL_SESSION_get_string(CBS *cbs, char **out, unsigned tag) {
   return 1;
 }
 
-/* d2i_SSL_SESSION_get_string gets an optional ASN.1 OCTET STRING
+/* SSL_SESSION_parse_string gets an optional ASN.1 OCTET STRING
  * explicitly tagged with |tag| from |cbs| and stows it in |*out_ptr|
  * and |*out_len|. If |*out_ptr| is not NULL, it frees the existing
  * contents. On entry, if the element was not found, it sets
  * |*out_ptr| to NULL. It returns one on success, whether or not the
  * element was found, and zero on decode error. */
-static int d2i_SSL_SESSION_get_octet_string(CBS *cbs, uint8_t **out_ptr,
+static int SSL_SESSION_parse_octet_string(CBS *cbs, uint8_t **out_ptr,
                                             size_t *out_len, unsigned tag) {
   CBS value;
   if (!CBS_get_optional_asn1_octet_string(cbs, &value, NULL, tag)) {
-    OPENSSL_PUT_ERROR(SSL, d2i_SSL_SESSION, SSL_R_INVALID_SSL_SESSION);
+    OPENSSL_PUT_ERROR(SSL, SSL_SESSION_parse_octet_string,
+                      SSL_R_INVALID_SSL_SESSION);
     return 0;
   }
   if (!CBS_stow(&value, out_ptr, out_len)) {
-    OPENSSL_PUT_ERROR(SSL, d2i_SSL_SESSION, ERR_R_MALLOC_FAILURE);
+    OPENSSL_PUT_ERROR(SSL, SSL_SESSION_parse_octet_string,
+                      ERR_R_MALLOC_FAILURE);
     return 0;
   }
   return 1;
 }
 
-SSL_SESSION *d2i_SSL_SESSION(SSL_SESSION **a, const uint8_t **pp, long length) {
-  SSL_SESSION *ret, *allocated = NULL;
-  CBS cbs, session, cipher, session_id, master_key;
+static SSL_SESSION *SSL_SESSION_parse(CBS *cbs) {
+  SSL_SESSION *ret = NULL;
+  CBS session, cipher, session_id, master_key;
   CBS peer, sid_ctx, peer_sha256, original_handshake_hash;
   int has_peer, has_peer_sha256, extended_master_secret;
   uint64_t version, ssl_version;
   uint64_t session_time, timeout, verify_result, ticket_lifetime_hint;
 
-  if (a && *a) {
-    ret = *a;
-  } else {
-    ret = allocated = SSL_SESSION_new();
-    if (allocated == NULL) {
-      goto err;
-    }
+  ret = SSL_SESSION_new();
+  if (ret == NULL) {
+    goto err;
   }
 
-  CBS_init(&cbs, *pp, length);
-  if (!CBS_get_asn1(&cbs, &session, CBS_ASN1_SEQUENCE) ||
+  if (!CBS_get_asn1(cbs, &session, CBS_ASN1_SEQUENCE) ||
       !CBS_get_asn1_uint64(&session, &version) ||
       !CBS_get_asn1_uint64(&session, &ssl_version) ||
       !CBS_get_asn1(&session, &cipher, CBS_ASN1_OCTETSTRING) ||
@@ -441,21 +439,21 @@ SSL_SESSION *d2i_SSL_SESSION(SSL_SESSION **a, const uint8_t **pp, long length) {
                                           kSessionIDContextTag) ||
       !CBS_get_optional_asn1_uint64(&session, &verify_result, kVerifyResultTag,
                                     X509_V_OK)) {
-    OPENSSL_PUT_ERROR(SSL, d2i_SSL_SESSION, SSL_R_INVALID_SSL_SESSION);
+    OPENSSL_PUT_ERROR(SSL, SSL_SESSION_parse, SSL_R_INVALID_SSL_SESSION);
     goto err;
   }
-  if (!d2i_SSL_SESSION_get_string(&session, &ret->tlsext_hostname,
-                                  kHostNameTag) ||
-      !d2i_SSL_SESSION_get_string(&session, &ret->psk_identity,
-                                  kPSKIdentityTag)) {
+  if (!SSL_SESSION_parse_string(&session, &ret->tlsext_hostname,
+                                kHostNameTag) ||
+      !SSL_SESSION_parse_string(&session, &ret->psk_identity,
+                                kPSKIdentityTag)) {
     goto err;
   }
   if (!CBS_get_optional_asn1_uint64(&session, &ticket_lifetime_hint,
                                     kTicketLifetimeHintTag, 0)) {
-    OPENSSL_PUT_ERROR(SSL, d2i_SSL_SESSION, SSL_R_INVALID_SSL_SESSION);
+    OPENSSL_PUT_ERROR(SSL, SSL_SESSION_parse, SSL_R_INVALID_SSL_SESSION);
     goto err;
   }
-  if (!d2i_SSL_SESSION_get_octet_string(&session, &ret->tlsext_tick,
+  if (!SSL_SESSION_parse_octet_string(&session, &ret->tlsext_tick,
                                         &ret->tlsext_ticklen, kTicketTag)) {
     goto err;
   }
@@ -463,14 +461,14 @@ SSL_SESSION *d2i_SSL_SESSION(SSL_SESSION **a, const uint8_t **pp, long length) {
                                           &has_peer_sha256, kPeerSHA256Tag) ||
       !CBS_get_optional_asn1_octet_string(&session, &original_handshake_hash,
                                           NULL, kOriginalHandshakeHashTag)) {
-    OPENSSL_PUT_ERROR(SSL, d2i_SSL_SESSION, SSL_R_INVALID_SSL_SESSION);
+    OPENSSL_PUT_ERROR(SSL, SSL_SESSION_parse, SSL_R_INVALID_SSL_SESSION);
     goto err;
   }
-  if (!d2i_SSL_SESSION_get_octet_string(
+  if (!SSL_SESSION_parse_octet_string(
           &session, &ret->tlsext_signed_cert_timestamp_list,
           &ret->tlsext_signed_cert_timestamp_list_length,
           kSignedCertTimestampListTag) ||
-      !d2i_SSL_SESSION_get_octet_string(
+      !SSL_SESSION_parse_octet_string(
           &session, &ret->ocsp_response, &ret->ocsp_response_length,
           kOCSPResponseTag)) {
     goto err;
@@ -479,44 +477,44 @@ SSL_SESSION *d2i_SSL_SESSION(SSL_SESSION **a, const uint8_t **pp, long length) {
                                   kExtendedMasterSecretTag,
                                   0 /* default to false */) ||
       CBS_len(&session) != 0) {
-    OPENSSL_PUT_ERROR(SSL, d2i_SSL_SESSION, SSL_R_INVALID_SSL_SESSION);
+    OPENSSL_PUT_ERROR(SSL, SSL_SESSION_parse, SSL_R_INVALID_SSL_SESSION);
     goto err;
   }
   ret->extended_master_secret = extended_master_secret;
 
   if (version != SSL_SESSION_ASN1_VERSION) {
-    OPENSSL_PUT_ERROR(SSL, d2i_SSL_SESSION, SSL_R_INVALID_SSL_SESSION);
+    OPENSSL_PUT_ERROR(SSL, SSL_SESSION_parse, SSL_R_INVALID_SSL_SESSION);
     goto err;
   }
 
   /* Only support SSLv3/TLS and DTLS. */
   if ((ssl_version >> 8) != SSL3_VERSION_MAJOR &&
       (ssl_version >> 8) != (DTLS1_VERSION >> 8)) {
-    OPENSSL_PUT_ERROR(SSL, d2i_SSL_SESSION, SSL_R_UNKNOWN_SSL_VERSION);
+    OPENSSL_PUT_ERROR(SSL, SSL_SESSION_parse, SSL_R_UNKNOWN_SSL_VERSION);
     goto err;
   }
   ret->ssl_version = ssl_version;
 
   uint16_t cipher_value;
   if (!CBS_get_u16(&cipher, &cipher_value) || CBS_len(&cipher) != 0) {
-    OPENSSL_PUT_ERROR(SSL, d2i_SSL_SESSION, SSL_R_CIPHER_CODE_WRONG_LENGTH);
+    OPENSSL_PUT_ERROR(SSL, SSL_SESSION_parse, SSL_R_CIPHER_CODE_WRONG_LENGTH);
     goto err;
   }
   ret->cipher = SSL_get_cipher_by_value(cipher_value);
   if (ret->cipher == NULL) {
-    OPENSSL_PUT_ERROR(SSL, d2i_SSL_SESSION, SSL_R_UNSUPPORTED_CIPHER);
+    OPENSSL_PUT_ERROR(SSL, SSL_SESSION_parse, SSL_R_UNSUPPORTED_CIPHER);
     goto err;
   }
 
   if (CBS_len(&session_id) > SSL3_MAX_SSL_SESSION_ID_LENGTH) {
-    OPENSSL_PUT_ERROR(SSL, d2i_SSL_SESSION, SSL_R_INVALID_SSL_SESSION);
+    OPENSSL_PUT_ERROR(SSL, SSL_SESSION_parse, SSL_R_INVALID_SSL_SESSION);
     goto err;
   }
   memcpy(ret->session_id, CBS_data(&session_id), CBS_len(&session_id));
   ret->session_id_length = CBS_len(&session_id);
 
   if (CBS_len(&master_key) > SSL_MAX_MASTER_KEY_LENGTH) {
-    OPENSSL_PUT_ERROR(SSL, d2i_SSL_SESSION, SSL_R_INVALID_SSL_SESSION);
+    OPENSSL_PUT_ERROR(SSL, SSL_SESSION_parse, SSL_R_INVALID_SSL_SESSION);
     goto err;
   }
   memcpy(ret->master_key, CBS_data(&master_key), CBS_len(&master_key));
@@ -524,7 +522,7 @@ SSL_SESSION *d2i_SSL_SESSION(SSL_SESSION **a, const uint8_t **pp, long length) {
 
   if (session_time > LONG_MAX ||
       timeout > LONG_MAX) {
-    OPENSSL_PUT_ERROR(SSL, d2i_SSL_SESSION, SSL_R_INVALID_SSL_SESSION);
+    OPENSSL_PUT_ERROR(SSL, SSL_SESSION_parse, SSL_R_INVALID_SSL_SESSION);
     goto err;
   }
   ret->time = session_time;
@@ -540,13 +538,13 @@ SSL_SESSION *d2i_SSL_SESSION(SSL_SESSION **a, const uint8_t **pp, long length) {
       goto err;
     }
     if (ptr != CBS_data(&peer) + CBS_len(&peer)) {
-      OPENSSL_PUT_ERROR(SSL, d2i_SSL_SESSION, SSL_R_INVALID_SSL_SESSION);
+      OPENSSL_PUT_ERROR(SSL, SSL_SESSION_parse, SSL_R_INVALID_SSL_SESSION);
       goto err;
     }
   }
 
   if (CBS_len(&sid_ctx) > sizeof(ret->sid_ctx)) {
-    OPENSSL_PUT_ERROR(SSL, d2i_SSL_SESSION, SSL_R_INVALID_SSL_SESSION);
+    OPENSSL_PUT_ERROR(SSL, SSL_SESSION_parse, SSL_R_INVALID_SSL_SESSION);
     goto err;
   }
   memcpy(ret->sid_ctx, CBS_data(&sid_ctx), CBS_len(&sid_ctx));
@@ -554,7 +552,7 @@ SSL_SESSION *d2i_SSL_SESSION(SSL_SESSION **a, const uint8_t **pp, long length) {
 
   if (verify_result > LONG_MAX ||
       ticket_lifetime_hint > 0xffffffff) {
-    OPENSSL_PUT_ERROR(SSL, d2i_SSL_SESSION, SSL_R_INVALID_SSL_SESSION);
+    OPENSSL_PUT_ERROR(SSL, SSL_SESSION_parse, SSL_R_INVALID_SSL_SESSION);
     goto err;
   }
   ret->verify_result = verify_result;
@@ -562,7 +560,7 @@ SSL_SESSION *d2i_SSL_SESSION(SSL_SESSION **a, const uint8_t **pp, long length) {
 
   if (has_peer_sha256) {
     if (CBS_len(&peer_sha256) != sizeof(ret->peer_sha256)) {
-      OPENSSL_PUT_ERROR(SSL, d2i_SSL_SESSION, SSL_R_INVALID_SSL_SESSION);
+      OPENSSL_PUT_ERROR(SSL, SSL_SESSION_parse, SSL_R_INVALID_SSL_SESSION);
       goto err;
     }
     memcpy(ret->peer_sha256, CBS_data(&peer_sha256), sizeof(ret->peer_sha256));
@@ -573,20 +571,53 @@ SSL_SESSION *d2i_SSL_SESSION(SSL_SESSION **a, const uint8_t **pp, long length) {
 
   if (CBS_len(&original_handshake_hash) >
       sizeof(ret->original_handshake_hash)) {
-    OPENSSL_PUT_ERROR(SSL, d2i_SSL_SESSION, SSL_R_INVALID_SSL_SESSION);
+    OPENSSL_PUT_ERROR(SSL, SSL_SESSION_parse, SSL_R_INVALID_SSL_SESSION);
     goto err;
   }
   memcpy(ret->original_handshake_hash, CBS_data(&original_handshake_hash),
          CBS_len(&original_handshake_hash));
   ret->original_handshake_hash_len = CBS_len(&original_handshake_hash);
 
+  return ret;
+
+err:
+  SSL_SESSION_free(ret);
+  return NULL;
+}
+
+SSL_SESSION *SSL_SESSION_from_bytes(const uint8_t *in, size_t in_len) {
+  CBS cbs;
+  CBS_init(&cbs, in, in_len);
+  SSL_SESSION *ret = SSL_SESSION_parse(&cbs);
+  if (ret == NULL) {
+    return NULL;
+  }
+  if (CBS_len(&cbs) != 0) {
+    OPENSSL_PUT_ERROR(SSL, SSL_SESSION_from_bytes, SSL_R_INVALID_SSL_SESSION);
+    SSL_SESSION_free(ret);
+    return NULL;
+  }
+  return ret;
+}
+
+SSL_SESSION *d2i_SSL_SESSION(SSL_SESSION **a, const uint8_t **pp, long length) {
+  if (length < 0) {
+    OPENSSL_PUT_ERROR(SSL, d2i_SSL_SESSION, ERR_R_INTERNAL_ERROR);
+    return NULL;
+  }
+
+  CBS cbs;
+  CBS_init(&cbs, *pp, length);
+
+  SSL_SESSION *ret = SSL_SESSION_parse(&cbs);
+  if (ret == NULL) {
+    return NULL;
+  }
+
   if (a) {
+    SSL_SESSION_free(*a);
     *a = ret;
   }
   *pp = CBS_data(&cbs);
   return ret;
-
-err:
-  SSL_SESSION_free(allocated);
-  return NULL;
 }

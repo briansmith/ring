@@ -1969,25 +1969,28 @@ OPENSSL_EXPORT int SSL_SESSION_to_bytes_for_ticket(SSL_SESSION *in,
                                                    uint8_t **out_data,
                                                    size_t *out_len);
 
+/* SSL_SESSION_from_bytes parses |in_len| bytes from |in| as an SSL_SESSION. It
+ * returns a newly-allocated |SSL_SESSION| on success or NULL on error. */
+OPENSSL_EXPORT SSL_SESSION *SSL_SESSION_from_bytes(const uint8_t *in,
+                                                   size_t in_len);
+
 /* Deprecated: i2d_SSL_SESSION serializes |in| to the bytes pointed to by
  * |*pp|. On success, it returns the number of bytes written and advances |*pp|
  * by that many bytes. On failure, it returns -1. If |pp| is NULL, no bytes are
  * written and only the length is returned.
  *
- * Use SSL_SESSION_to_bytes instead. */
+ * Use |SSL_SESSION_to_bytes| instead. */
 OPENSSL_EXPORT int i2d_SSL_SESSION(SSL_SESSION *in, uint8_t **pp);
 
-/* d2i_SSL_SESSION deserializes a serialized buffer contained in the |length|
- * bytes pointed to by |*pp|. It returns the new SSL_SESSION and advances |*pp|
- * by the number of bytes consumed on success and NULL on failure. If |a| is
- * NULL, the caller takes ownership of the new session and must call
- * |SSL_SESSION_free| when done.
+/* Deprecated: d2i_SSL_SESSION parses a serialized session from the |length|
+ * bytes pointed to by |*pp|. It returns the new |SSL_SESSION| and advances
+ * |*pp| by the number of bytes consumed on success and NULL on failure. The
+ * caller takes ownership of the new session and must call |SSL_SESSION_free|
+ * when done.
  *
- * If |a| and |*a| are not NULL, the SSL_SESSION at |*a| is overridden with the
- * deserialized session rather than allocating a new one. In addition, |a| is
- * not NULL, but |*a| is, |*a| is set to the new SSL_SESSION.
+ * If |a| is non-NULL, |*a| is released and set the new |SSL_SESSION|.
  *
- * Passing a value other than NULL to |a| is deprecated. */
+ * Use |SSL_SESSION_from_bytes| instead. */
 OPENSSL_EXPORT SSL_SESSION *d2i_SSL_SESSION(SSL_SESSION **a, const uint8_t **pp,
                                             long length);
 
@@ -2621,8 +2624,8 @@ OPENSSL_EXPORT const char *SSLeay_version(int unused);
 #define SSL_F_SSL_use_psk_identity_hint 147
 #define SSL_F_SSL_write 148
 #define SSL_F_d2i_SSL_SESSION 149
-#define SSL_F_d2i_SSL_SESSION_get_octet_string 150
-#define SSL_F_d2i_SSL_SESSION_get_string 151
+#define SSL_F_SSL_SESSION_parse_octet_string 150
+#define SSL_F_SSL_SESSION_parse_string 151
 #define SSL_F_do_ssl3_write 152
 #define SSL_F_dtls1_accept 153
 #define SSL_F_dtls1_buffer_record 154
@@ -2747,6 +2750,9 @@ OPENSSL_EXPORT const char *SSLeay_version(int unused);
 #define SSL_F_SSL_AEAD_CTX_open 277
 #define SSL_F_SSL_AEAD_CTX_seal 278
 #define SSL_F_dtls1_seal_record 279
+#define SSL_F_SSL_SESSION_from_bytes 280
+#define SSL_F_SSL_SESSION_parse 281
+#define SSL_F_ssl3_check_certificate_for_cipher 282
 #define SSL_R_APP_DATA_IN_HANDSHAKE 100
 #define SSL_R_ATTEMPT_TO_REUSE_SESSION_IN_DIFFERENT_CONTEXT 101
 #define SSL_R_BAD_ALERT 102

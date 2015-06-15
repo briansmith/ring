@@ -924,14 +924,14 @@ static int ssl3_check_certificate_for_cipher(X509 *leaf,
   /* Check the certificate's type matches the cipher. */
   int cert_type = ssl_cert_type(pkey);
   if (cert_type < 0) {
-    OPENSSL_PUT_ERROR(SSL, ssl3_get_server_certificate,
+    OPENSSL_PUT_ERROR(SSL, ssl3_check_certificate_for_cipher,
                       SSL_R_UNKNOWN_CERTIFICATE_TYPE);
     goto err;
   }
   int expected_type = ssl_cipher_get_cert_index(cipher);
   assert(expected_type >= 0);
   if (cert_type != expected_type) {
-    OPENSSL_PUT_ERROR(SSL, ssl3_get_server_certificate,
+    OPENSSL_PUT_ERROR(SSL, ssl3_check_certificate_for_cipher,
                       SSL_R_WRONG_CERTIFICATE_TYPE);
     goto err;
   }
@@ -943,7 +943,7 @@ static int ssl3_check_certificate_for_cipher(X509 *leaf,
     X509_check_purpose(leaf, -1, 0);
     if ((leaf->ex_flags & EXFLAG_KUSAGE) &&
         !(leaf->ex_kusage & X509v3_KU_DIGITAL_SIGNATURE)) {
-      OPENSSL_PUT_ERROR(SSL, ssl_check_srvr_ecc_cert_and_alg,
+      OPENSSL_PUT_ERROR(SSL, ssl3_check_certificate_for_cipher,
                         SSL_R_ECC_CERT_NOT_FOR_SIGNING);
       goto err;
     }
