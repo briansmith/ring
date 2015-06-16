@@ -79,9 +79,8 @@ extern "C" {
 #elif defined(__arm) || defined(__arm__) || defined(_M_ARM)
 #define OPENSSL_32_BIT
 #define OPENSSL_ARM
-#elif defined(__aarch64__)
+#elif defined(__PPC64__) || defined(__powerpc64__)
 #define OPENSSL_64_BIT
-#define OPENSSL_AARCH64
 #elif defined(__mips__) && !defined(__LP64__)
 #define OPENSSL_32_BIT
 #define OPENSSL_MIPS
