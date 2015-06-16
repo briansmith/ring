@@ -2531,99 +2531,103 @@ OPENSSL_EXPORT const char *SSLeay_version(int unused);
  *
  * Historically, a number of APIs were implemented in OpenSSL as macros and
  * constants to 'ctrl' functions. To avoid breaking #ifdefs in consumers, this
- * section defines a number of legacy macros. */
+ * section defines a number of legacy macros.
+ *
+ * Although using either the CTRL values or their wrapper macros in #ifdefs is
+ * still supported, the CTRL values may not be passed to |SSL_ctrl| and
+ * |SSL_CTX_ctrl|. Call the functions (previously wrapper macros) instead. */
 
-#define SSL_CTRL_NEED_TMP_RSA doesnt_exist
-#define SSL_CTRL_SET_TMP_RSA doesnt_exist
-#define SSL_CTRL_SET_TMP_DH doesnt_exist
-#define SSL_CTRL_SET_TMP_ECDH doesnt_exist
-#define SSL_CTRL_SET_TMP_RSA_CB doesnt_exist
-#define SSL_CTRL_SET_TMP_DH_CB doesnt_exist
-#define SSL_CTRL_SET_TMP_ECDH_CB doesnt_exist
-#define SSL_CTRL_GET_SESSION_REUSED doesnt_exist
+#define DTLS_CTRL_GET_TIMEOUT doesnt_exist
+#define DTLS_CTRL_HANDLE_TIMEOUT doesnt_exist
+#define SSL_CTRL_CHANNEL_ID doesnt_exist
+#define SSL_CTRL_CLEAR_MODE doesnt_exist
+#define SSL_CTRL_CLEAR_OPTIONS doesnt_exist
+#define SSL_CTRL_GET_CHANNEL_ID doesnt_exist
+#define SSL_CTRL_GET_MAX_CERT_LIST doesnt_exist
 #define SSL_CTRL_GET_NUM_RENEGOTIATIONS doesnt_exist
+#define SSL_CTRL_GET_READ_AHEAD doesnt_exist
+#define SSL_CTRL_GET_RI_SUPPORT doesnt_exist
+#define SSL_CTRL_GET_SESSION_REUSED doesnt_exist
+#define SSL_CTRL_GET_SESS_CACHE_MODE doesnt_exist
+#define SSL_CTRL_GET_SESS_CACHE_SIZE doesnt_exist
 #define SSL_CTRL_GET_TOTAL_RENEGOTIATIONS doesnt_exist
+#define SSL_CTRL_MODE doesnt_exist
+#define SSL_CTRL_NEED_TMP_RSA doesnt_exist
+#define SSL_CTRL_OPTIONS doesnt_exist
+#define SSL_CTRL_SESS_NUMBER doesnt_exist
+#define SSL_CTRL_SET_CHANNEL_ID doesnt_exist
+#define SSL_CTRL_SET_MAX_CERT_LIST doesnt_exist
+#define SSL_CTRL_SET_MAX_SEND_FRAGMENT doesnt_exist
 #define SSL_CTRL_SET_MSG_CALLBACK doesnt_exist
 #define SSL_CTRL_SET_MSG_CALLBACK_ARG doesnt_exist
 #define SSL_CTRL_SET_MTU doesnt_exist
-#define SSL_CTRL_SESS_NUMBER doesnt_exist
-#define SSL_CTRL_OPTIONS doesnt_exist
-#define SSL_CTRL_MODE doesnt_exist
-#define SSL_CTRL_GET_READ_AHEAD doesnt_exist
 #define SSL_CTRL_SET_READ_AHEAD doesnt_exist
-#define SSL_CTRL_SET_SESS_CACHE_SIZE doesnt_exist
-#define SSL_CTRL_GET_SESS_CACHE_SIZE doesnt_exist
 #define SSL_CTRL_SET_SESS_CACHE_MODE doesnt_exist
-#define SSL_CTRL_GET_SESS_CACHE_MODE doesnt_exist
-#define SSL_CTRL_GET_MAX_CERT_LIST doesnt_exist
-#define SSL_CTRL_SET_MAX_CERT_LIST doesnt_exist
-#define SSL_CTRL_SET_MAX_SEND_FRAGMENT doesnt_exist
-#define SSL_CTRL_SET_TLSEXT_SERVERNAME_CB doesnt_exist
-#define SSL_CTRL_SET_TLSEXT_SERVERNAME_ARG doesnt_exist
+#define SSL_CTRL_SET_SESS_CACHE_SIZE doesnt_exist
 #define SSL_CTRL_SET_TLSEXT_HOSTNAME doesnt_exist
+#define SSL_CTRL_SET_TLSEXT_SERVERNAME_ARG doesnt_exist
+#define SSL_CTRL_SET_TLSEXT_SERVERNAME_CB doesnt_exist
 #define SSL_CTRL_SET_TLSEXT_TICKET_KEY_CB doesnt_exist
-#define DTLS_CTRL_GET_TIMEOUT doesnt_exist
-#define DTLS_CTRL_HANDLE_TIMEOUT doesnt_exist
-#define SSL_CTRL_GET_RI_SUPPORT doesnt_exist
-#define SSL_CTRL_CLEAR_OPTIONS doesnt_exist
-#define SSL_CTRL_CLEAR_MODE doesnt_exist
-#define SSL_CTRL_CHANNEL_ID doesnt_exist
-#define SSL_CTRL_GET_CHANNEL_ID doesnt_exist
-#define SSL_CTRL_SET_CHANNEL_ID doesnt_exist
+#define SSL_CTRL_SET_TMP_DH doesnt_exist
+#define SSL_CTRL_SET_TMP_DH_CB doesnt_exist
+#define SSL_CTRL_SET_TMP_ECDH doesnt_exist
+#define SSL_CTRL_SET_TMP_ECDH_CB doesnt_exist
+#define SSL_CTRL_SET_TMP_RSA doesnt_exist
+#define SSL_CTRL_SET_TMP_RSA_CB doesnt_exist
 
-#define SSL_CTX_need_tmp_RSA SSL_CTX_need_tmp_RSA
-#define SSL_need_tmp_RSA SSL_need_tmp_RSA
-#define SSL_CTX_set_tmp_rsa SSL_CTX_set_tmp_rsa
-#define SSL_set_tmp_rsa SSL_set_tmp_rsa
-#define SSL_CTX_set_tmp_dh SSL_CTX_set_tmp_dh
-#define SSL_set_tmp_dh SSL_set_tmp_dh
-#define SSL_CTX_set_tmp_ecdh SSL_CTX_set_tmp_ecdh
-#define SSL_set_tmp_ecdh SSL_set_tmp_ecdh
-#define SSL_session_reused SSL_session_reused
-#define SSL_num_renegotiations SSL_num_renegotiations
-#define SSL_total_renegotiations SSL_total_renegotiations
-#define SSL_CTX_set_msg_callback_arg SSL_CTX_set_msg_callback_arg
-#define SSL_set_msg_callback_arg SSL_set_msg_callback_arg
-#define SSL_set_mtu SSL_set_mtu
-#define SSL_CTX_sess_number SSL_CTX_sess_number
-#define SSL_CTX_get_options SSL_CTX_get_options
-#define SSL_CTX_set_options SSL_CTX_set_options
-#define SSL_get_options SSL_get_options
-#define SSL_set_options SSL_set_options
-#define SSL_CTX_get_mode SSL_CTX_get_mode
-#define SSL_CTX_set_mode SSL_CTX_set_mode
-#define SSL_get_mode SSL_get_mode
-#define SSL_set_mode SSL_set_mode
-#define SSL_CTX_get_read_ahead SSL_CTX_get_read_ahead
-#define SSL_CTX_set_read_ahead SSL_CTX_set_read_ahead
-#define SSL_CTX_sess_set_cache_size SSL_CTX_sess_set_cache_size
-#define SSL_CTX_sess_get_cache_size SSL_CTX_sess_get_cache_size
-#define SSL_CTX_set_session_cache_mode SSL_CTX_set_session_cache_mode
-#define SSL_CTX_get_session_cache_mode SSL_CTX_get_session_cache_mode
-#define SSL_CTX_get_max_cert_list SSL_CTX_get_max_cert_list
-#define SSL_get_max_cert_list SSL_get_max_cert_list
-#define SSL_CTX_set_max_cert_list SSL_CTX_set_max_cert_list
-#define SSL_set_max_cert_list SSL_set_max_cert_list
-#define SSL_CTX_set_max_send_fragment SSL_CTX_set_max_send_fragment
-#define SSL_set_max_send_fragment SSL_set_max_send_fragment
-#define SSL_CTX_set_tlsext_servername_callback \
-    SSL_CTX_set_tlsext_servername_callback
-#define SSL_CTX_set_tlsext_servername_arg SSL_CTX_set_tlsext_servername_arg
-#define SSL_set_tlsext_host_name SSL_set_tlsext_host_name
-#define SSL_CTX_set_tlsext_ticket_key_cb SSL_CTX_set_tlsext_ticket_key_cb
 #define DTLSv1_get_timeout DTLSv1_get_timeout
 #define DTLSv1_handle_timeout DTLSv1_handle_timeout
+#define SSL_CTX_clear_mode SSL_CTX_clear_mode
+#define SSL_CTX_clear_options SSL_CTX_clear_options
+#define SSL_CTX_enable_tls_channel_id SSL_CTX_enable_tls_channel_id
+#define SSL_CTX_get_max_cert_list SSL_CTX_get_max_cert_list
+#define SSL_CTX_get_mode SSL_CTX_get_mode
+#define SSL_CTX_get_options SSL_CTX_get_options
+#define SSL_CTX_get_read_ahead SSL_CTX_get_read_ahead
+#define SSL_CTX_get_session_cache_mode SSL_CTX_get_session_cache_mode
+#define SSL_CTX_need_tmp_RSA SSL_CTX_need_tmp_RSA
+#define SSL_CTX_sess_get_cache_size SSL_CTX_sess_get_cache_size
+#define SSL_CTX_sess_number SSL_CTX_sess_number
+#define SSL_CTX_sess_set_cache_size SSL_CTX_sess_set_cache_size
+#define SSL_CTX_set1_tls_channel_id SSL_CTX_set1_tls_channel_id
+#define SSL_CTX_set_max_cert_list SSL_CTX_set_max_cert_list
+#define SSL_CTX_set_max_send_fragment SSL_CTX_set_max_send_fragment
+#define SSL_CTX_set_mode SSL_CTX_set_mode
+#define SSL_CTX_set_msg_callback_arg SSL_CTX_set_msg_callback_arg
+#define SSL_CTX_set_options SSL_CTX_set_options
+#define SSL_CTX_set_read_ahead SSL_CTX_set_read_ahead
+#define SSL_CTX_set_session_cache_mode SSL_CTX_set_session_cache_mode
+#define SSL_CTX_set_tlsext_servername_arg SSL_CTX_set_tlsext_servername_arg
+#define SSL_CTX_set_tlsext_servername_callback \
+    SSL_CTX_set_tlsext_servername_callback
+#define SSL_CTX_set_tlsext_ticket_key_cb SSL_CTX_set_tlsext_ticket_key_cb
+#define SSL_CTX_set_tmp_dh SSL_CTX_set_tmp_dh
+#define SSL_CTX_set_tmp_ecdh SSL_CTX_set_tmp_ecdh
+#define SSL_CTX_set_tmp_rsa SSL_CTX_set_tmp_rsa
+#define SSL_clear_mode SSL_clear_mode
+#define SSL_clear_options SSL_clear_options
+#define SSL_enable_tls_channel_id SSL_enable_tls_channel_id
+#define SSL_get_max_cert_list SSL_get_max_cert_list
+#define SSL_get_mode SSL_get_mode
+#define SSL_get_options SSL_get_options
 #define SSL_get_secure_renegotiation_support \
     SSL_get_secure_renegotiation_support
-#define SSL_CTX_clear_options SSL_CTX_clear_options
-#define SSL_clear_options SSL_clear_options
-#define SSL_CTX_clear_mode SSL_CTX_clear_mode
-#define SSL_clear_mode SSL_clear_mode
-#define SSL_CTX_enable_tls_channel_id SSL_CTX_enable_tls_channel_id
-#define SSL_enable_tls_channel_id SSL_enable_tls_channel_id
-#define SSL_set1_tls_channel_id SSL_set1_tls_channel_id
-#define SSL_CTX_set1_tls_channel_id SSL_CTX_set1_tls_channel_id
 #define SSL_get_tls_channel_id SSL_get_tls_channel_id
+#define SSL_need_tmp_RSA SSL_need_tmp_RSA
+#define SSL_num_renegotiations SSL_num_renegotiations
+#define SSL_session_reused SSL_session_reused
+#define SSL_set1_tls_channel_id SSL_set1_tls_channel_id
+#define SSL_set_max_cert_list SSL_set_max_cert_list
+#define SSL_set_max_send_fragment SSL_set_max_send_fragment
+#define SSL_set_mode SSL_set_mode
+#define SSL_set_msg_callback_arg SSL_set_msg_callback_arg
+#define SSL_set_mtu SSL_set_mtu
+#define SSL_set_options SSL_set_options
+#define SSL_set_tlsext_host_name SSL_set_tlsext_host_name
+#define SSL_set_tmp_dh SSL_set_tmp_dh
+#define SSL_set_tmp_ecdh SSL_set_tmp_ecdh
+#define SSL_set_tmp_rsa SSL_set_tmp_rsa
+#define SSL_total_renegotiations SSL_total_renegotiations
 
 
 #if defined(__cplusplus)
