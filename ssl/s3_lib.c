@@ -498,28 +498,6 @@ long ssl3_ctrl(SSL *s, int cmd, long larg, void *parg) {
 
 long ssl3_ctx_ctrl(SSL_CTX *ctx, int cmd, long larg, void *parg) {
   switch (cmd) {
-    case SSL_CTRL_SET_TLSEXT_TICKET_KEYS:
-    case SSL_CTRL_GET_TLSEXT_TICKET_KEYS: {
-      uint8_t *keys = parg;
-      if (!keys) {
-        return 48;
-      }
-      if (larg != 48) {
-        OPENSSL_PUT_ERROR(SSL, ssl3_ctx_ctrl, SSL_R_INVALID_TICKET_KEYS_LENGTH);
-        return 0;
-      }
-      if (cmd == SSL_CTRL_SET_TLSEXT_TICKET_KEYS) {
-        memcpy(ctx->tlsext_tick_key_name, keys, 16);
-        memcpy(ctx->tlsext_tick_hmac_key, keys + 16, 16);
-        memcpy(ctx->tlsext_tick_aes_key, keys + 32, 16);
-      } else {
-        memcpy(keys, ctx->tlsext_tick_key_name, 16);
-        memcpy(keys + 16, ctx->tlsext_tick_hmac_key, 16);
-        memcpy(keys + 32, ctx->tlsext_tick_aes_key, 16);
-      }
-      return 1;
-    }
-
     case SSL_CTRL_SET_CURVES:
       return tls1_set_curves(&ctx->tlsext_ellipticcurvelist,
                              &ctx->tlsext_ellipticcurvelist_length, parg, larg);
@@ -601,6 +579,38 @@ int SSL_CTX_set_tlsext_servername_callback(
 
 int SSL_CTX_set_tlsext_servername_arg(SSL_CTX *ctx, void *arg) {
   ctx->tlsext_servername_arg = arg;
+  return 1;
+}
+
+int SSL_CTX_get_tlsext_ticket_keys(SSL_CTX *ctx, void *out, size_t len) {
+  if (out == NULL) {
+    return 48;
+  }
+  if (len != 48) {
+    OPENSSL_PUT_ERROR(SSL, SSL_CTX_get_tlsext_ticket_keys,
+                      SSL_R_INVALID_TICKET_KEYS_LENGTH);
+    return 0;
+  }
+  uint8_t *out_bytes = out;
+  memcpy(out_bytes, ctx->tlsext_tick_key_name, 16);
+  memcpy(out_bytes + 16, ctx->tlsext_tick_hmac_key, 16);
+  memcpy(out_bytes + 32, ctx->tlsext_tick_aes_key, 16);
+  return 1;
+}
+
+int SSL_CTX_set_tlsext_ticket_keys(SSL_CTX *ctx, const void *in, size_t len) {
+  if (in == NULL) {
+    return 48;
+  }
+  if (len != 48) {
+    OPENSSL_PUT_ERROR(SSL, SSL_CTX_set_tlsext_ticket_keys,
+                      SSL_R_INVALID_TICKET_KEYS_LENGTH);
+    return 0;
+  }
+  const uint8_t *in_bytes = in;
+  memcpy(ctx->tlsext_tick_key_name, in_bytes, 16);
+  memcpy(ctx->tlsext_tick_hmac_key, in_bytes + 16, 16);
+  memcpy(ctx->tlsext_tick_aes_key, in_bytes + 32, 16);
   return 1;
 }
 

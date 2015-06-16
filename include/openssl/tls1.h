@@ -322,10 +322,17 @@ OPENSSL_EXPORT int SSL_CTX_set_tlsext_servername_callback(
  * callback and returns one. See |SSL_CTX_set_tlsext_servername_callback|. */
 OPENSSL_EXPORT int SSL_CTX_set_tlsext_servername_arg(SSL_CTX *ctx, void *arg);
 
-#define SSL_CTX_get_tlsext_ticket_keys(ctx, keys, keylen) \
-  SSL_CTX_ctrl((ctx), SSL_CTRL_GET_TLSEXT_TICKET_KEYS, (keylen), (keys))
-#define SSL_CTX_set_tlsext_ticket_keys(ctx, keys, keylen) \
-  SSL_CTX_ctrl((ctx), SSL_CTRL_SET_TLSEXT_TICKET_KEYS, (keylen), (keys))
+/* SSL_CTX_get_tlsext_ticket_keys writes |ctx|'s session ticket key material to
+ * |len| bytes of |out|. It returns one on success and zero if |len| is not
+ * 48. If |out| is NULL, it returns 48 instead. */
+OPENSSL_EXPORT int SSL_CTX_get_tlsext_ticket_keys(SSL_CTX *ctx, void *out,
+                                                  size_t len);
+
+/* SSL_CTX_set_tlsext_ticket_keys sets |ctx|'s session ticket key material to
+ * |len| bytes of |in|. It returns one on success and zero if |len| is not
+ * 48. If |in| is NULL, it returns 48 instead. */
+OPENSSL_EXPORT int SSL_CTX_set_tlsext_ticket_keys(SSL_CTX *ctx, const void *in,
+                                                  size_t len);
 
 /* SSL_CTX_set_tlsext_ticket_key_cb sets the ticket callback to |callback| and
  * returns one. |callback| will be called when encrypting a new ticket and when

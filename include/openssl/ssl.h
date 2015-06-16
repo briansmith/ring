@@ -1706,10 +1706,6 @@ DECLARE_PEM_rw(SSL_SESSION, SSL_SESSION)
 
 #define SSL_CTRL_EXTRA_CHAIN_CERT 14
 
-/* see tls1.h for macros based on these */
-#define SSL_CTRL_GET_TLSEXT_TICKET_KEYS 58
-#define SSL_CTRL_SET_TLSEXT_TICKET_KEYS 59
-
 #define SSL_CTRL_SET_SRP_ARG 78
 #define SSL_CTRL_SET_TLS_EXT_SRP_USERNAME 79
 #define SSL_CTRL_SET_TLS_EXT_SRP_STRENGTH 80
@@ -2550,6 +2546,7 @@ OPENSSL_EXPORT const char *SSLeay_version(int unused);
 #define SSL_CTRL_GET_SESSION_REUSED doesnt_exist
 #define SSL_CTRL_GET_SESS_CACHE_MODE doesnt_exist
 #define SSL_CTRL_GET_SESS_CACHE_SIZE doesnt_exist
+#define SSL_CTRL_GET_TLSEXT_TICKET_KEYS doesnt_exist
 #define SSL_CTRL_GET_TOTAL_RENEGOTIATIONS doesnt_exist
 #define SSL_CTRL_MODE doesnt_exist
 #define SSL_CTRL_NEED_TMP_RSA doesnt_exist
@@ -2567,6 +2564,7 @@ OPENSSL_EXPORT const char *SSLeay_version(int unused);
 #define SSL_CTRL_SET_TLSEXT_HOSTNAME doesnt_exist
 #define SSL_CTRL_SET_TLSEXT_SERVERNAME_ARG doesnt_exist
 #define SSL_CTRL_SET_TLSEXT_SERVERNAME_CB doesnt_exist
+#define SSL_CTRL_SET_TLSEXT_TICKET_KEYS doesnt_exist
 #define SSL_CTRL_SET_TLSEXT_TICKET_KEY_CB doesnt_exist
 #define SSL_CTRL_SET_TMP_DH doesnt_exist
 #define SSL_CTRL_SET_TMP_DH_CB doesnt_exist
@@ -2585,6 +2583,7 @@ OPENSSL_EXPORT const char *SSLeay_version(int unused);
 #define SSL_CTX_get_options SSL_CTX_get_options
 #define SSL_CTX_get_read_ahead SSL_CTX_get_read_ahead
 #define SSL_CTX_get_session_cache_mode SSL_CTX_get_session_cache_mode
+#define SSL_CTX_get_tlsext_ticket_keys SSL_CTX_get_tlsext_ticket_keys
 #define SSL_CTX_need_tmp_RSA SSL_CTX_need_tmp_RSA
 #define SSL_CTX_sess_get_cache_size SSL_CTX_sess_get_cache_size
 #define SSL_CTX_sess_number SSL_CTX_sess_number
@@ -2601,6 +2600,7 @@ OPENSSL_EXPORT const char *SSLeay_version(int unused);
 #define SSL_CTX_set_tlsext_servername_callback \
     SSL_CTX_set_tlsext_servername_callback
 #define SSL_CTX_set_tlsext_ticket_key_cb SSL_CTX_set_tlsext_ticket_key_cb
+#define SSL_CTX_set_tlsext_ticket_keys SSL_CTX_set_tlsext_ticket_keys
 #define SSL_CTX_set_tmp_dh SSL_CTX_set_tmp_dh
 #define SSL_CTX_set_tmp_ecdh SSL_CTX_set_tmp_ecdh
 #define SSL_CTX_set_tmp_rsa SSL_CTX_set_tmp_rsa
@@ -2832,6 +2832,8 @@ OPENSSL_EXPORT const char *SSLeay_version(int unused);
 #define SSL_F_SSL_SESSION_from_bytes 280
 #define SSL_F_SSL_SESSION_parse 281
 #define SSL_F_ssl3_check_certificate_for_cipher 282
+#define SSL_F_SSL_CTX_get_tlsext_ticket_keys 283
+#define SSL_F_SSL_CTX_set_tlsext_ticket_keys 284
 #define SSL_R_APP_DATA_IN_HANDSHAKE 100
 #define SSL_R_ATTEMPT_TO_REUSE_SESSION_IN_DIFFERENT_CONTEXT 101
 #define SSL_R_BAD_ALERT 102
