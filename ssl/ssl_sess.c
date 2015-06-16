@@ -420,11 +420,10 @@ int ssl_get_prev_session(SSL *s, const struct ssl_early_callback_ctx *ctx) {
 
     CRYPTO_MUTEX_lock_read(&s->initial_ctx->lock);
     ret = lh_SSL_SESSION_retrieve(s->initial_ctx->sessions, &data);
-    CRYPTO_MUTEX_unlock(&s->initial_ctx->lock);
-
     if (ret != NULL) {
       SSL_SESSION_up_ref(ret);
     }
+    CRYPTO_MUTEX_unlock(&s->initial_ctx->lock);
   }
 
   if (try_session_cache && ret == NULL &&
