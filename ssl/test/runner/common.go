@@ -720,6 +720,10 @@ type ProtocolBugs struct {
 	// EmptyCertificateList, if true, causes the server to send an empty
 	// certificate list in the Certificate message.
 	EmptyCertificateList bool
+
+	// ExpectNewTicket, if true, causes the client to abort if it does not
+	// receive a new ticket.
+	ExpectNewTicket bool
 }
 
 func (c *Config) serverInit() {

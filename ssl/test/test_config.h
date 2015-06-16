@@ -82,6 +82,8 @@ struct TestConfig {
   bool use_async_private_key = false;
   bool expect_ticket_renewal = false;
   bool expect_no_session = false;
+  bool use_ticket_callback = false;
+  bool renew_ticket = false;
 };
 
 bool ParseConfig(int argc, char **argv, TestConfig *out_config);

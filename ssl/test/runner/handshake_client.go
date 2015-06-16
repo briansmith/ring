@@ -786,6 +786,9 @@ func (hs *clientHandshakeState) readSessionTicket() error {
 	}
 
 	if !hs.serverHello.ticketSupported {
+		if c.config.Bugs.ExpectNewTicket {
+			return errors.New("tls: expected new ticket")
+		}
 		if hs.session == nil && len(hs.serverHello.sessionId) > 0 {
 			session.sessionId = hs.serverHello.sessionId
 			hs.session = session

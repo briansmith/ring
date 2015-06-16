@@ -85,6 +85,8 @@ const Flag<bool> kBoolFlags[] = {
   { "-use-async-private-key", &TestConfig::use_async_private_key },
   { "-expect-ticket-renewal", &TestConfig::expect_ticket_renewal },
   { "-expect-no-session", &TestConfig::expect_no_session },
+  { "-use-ticket-callback", &TestConfig::use_ticket_callback },
+  { "-renew-ticket", &TestConfig::renew_ticket },
 };
 
 const Flag<std::string> kStringFlags[] = {

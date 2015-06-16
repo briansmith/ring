@@ -2841,6 +2841,24 @@ func addExtensionTests() {
 		resumeSession:        true,
 		expectResumeRejected: true,
 	})
+	// Test the ticket callback, with and without renewal.
+	testCases = append(testCases, testCase{
+		testType:      serverTest,
+		name:          "TicketCallback",
+		resumeSession: true,
+		flags:         []string{"-use-ticket-callback"},
+	})
+	testCases = append(testCases, testCase{
+		testType: serverTest,
+		name:     "TicketCallback-Renew",
+		config: Config{
+			Bugs: ProtocolBugs{
+				ExpectNewTicket: true,
+			},
+		},
+		flags:         []string{"-use-ticket-callback", "-renew-ticket"},
+		resumeSession: true,
+	})
 	// Resume with an oversized session id.
 	testCases = append(testCases, testCase{
 		testType: serverTest,

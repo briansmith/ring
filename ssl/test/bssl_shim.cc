@@ -38,7 +38,10 @@
 #include <openssl/bio.h>
 #include <openssl/buf.h>
 #include <openssl/bytestring.h>
+#include <openssl/cipher.h>
 #include <openssl/err.h>
+#include <openssl/hmac.h>
+#include <openssl/rand.h>
 #include <openssl/ssl.h>
 
 #include <memory>
@@ -443,6 +446,30 @@ static int NewSessionCallback(SSL *ssl, SSL_SESSION *session) {
   return 1;
 }
 
+static int TicketKeyCallback(SSL *ssl, uint8_t *key_name, uint8_t *iv,
+                             EVP_CIPHER_CTX *ctx, HMAC_CTX *hmac_ctx,
+                             int encrypt) {
+  // This is just test code, so use the all-zeros key.
+  static const uint8_t kZeros[16] = {0};
+
+  if (encrypt) {
+    memcpy(key_name, kZeros, sizeof(kZeros));
+    RAND_bytes(iv, 16);
+  } else if (memcmp(key_name, kZeros, 16) != 0) {
+    return 0;
+  }
+
+  if (!HMAC_Init_ex(hmac_ctx, kZeros, sizeof(kZeros), EVP_sha256(), NULL) ||
+      !EVP_CipherInit_ex(ctx, EVP_aes_128_cbc(), NULL, kZeros, iv, encrypt)) {
+    return -1;
+  }
+
+  if (!encrypt) {
+    return GetConfigPtr(ssl)->renew_ticket ? 2 : 1;
+  }
+  return 1;
+}
+
 // Connect returns a new socket connected to localhost on |port| or -1 on
 // error.
 static int Connect(uint16_t port) {
@@ -547,6 +574,10 @@ static ScopedSSL_CTX SetupCtx(const TestConfig *config) {
 
   SSL_CTX_set_info_callback(ssl_ctx.get(), InfoCallback);
   SSL_CTX_sess_set_new_cb(ssl_ctx.get(), NewSessionCallback);
+
+  if (config->use_ticket_callback) {
+    SSL_CTX_set_tlsext_ticket_key_cb(ssl_ctx.get(), TicketKeyCallback);
+  }
 
   return ssl_ctx;
 }
