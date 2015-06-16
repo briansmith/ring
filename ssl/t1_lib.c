@@ -107,6 +107,7 @@
  * Hudson (tjh@cryptsoft.com). */
 
 #include <assert.h>
+#include <limits.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -122,9 +123,6 @@
 #include "internal.h"
 
 
-static int tls_decrypt_ticket(SSL *s, const uint8_t *tick, int ticklen,
-                              const uint8_t *sess_id, int sesslen,
-                              SSL_SESSION **psess);
 static int ssl_check_clienthello_tlsext(SSL *s);
 static int ssl_check_serverhello_tlsext(SSL *s);
 
@@ -2288,195 +2286,124 @@ int ssl_parse_serverhello_tlsext(SSL *s, CBS *cbs) {
   return 1;
 }
 
-/* Since the server cache lookup is done early on in the processing of the
- * ClientHello, and other operations depend on the result, we need to handle
- * any TLS session ticket extension at the same time.
- *
- *   ctx: contains the early callback context, which is the result of a
- *       shallow parse of the ClientHello.
- *   ret: (output) on return, if a ticket was decrypted, then this is set to
- *       point to the resulting session.
- *
- * Returns:
- *   -1: fatal error, either from parsing or decrypting the ticket.
- *    0: no ticket was found (or was ignored, based on settings).
- *    1: a zero length extension was found, indicating that the client supports
- *       session tickets but doesn't currently have one to offer.
- *    2: a ticket was offered but couldn't be decrypted because of a non-fatal
- *       error.
- *    3: a ticket was successfully decrypted and *ret was set.
- *
- * Side effects:
- *   Sets s->tlsext_ticket_expected to 1 if the server will have to issue
- *   a new session ticket to the client because the client indicated support
- *   but the client either doesn't have a session ticket or we couldn't use
- *   the one it gave us, or if s->ctx->tlsext_ticket_key_cb asked to renew
- *   the client's ticket.  Otherwise, s->tlsext_ticket_expected is set to 0.
- */
-int tls1_process_ticket(SSL *s, const struct ssl_early_callback_ctx *ctx,
-                        SSL_SESSION **ret) {
-  *ret = NULL;
-  s->tlsext_ticket_expected = 0;
-  const uint8_t *data;
-  size_t len;
-  int r;
+int tls_process_ticket(SSL *ssl, SSL_SESSION **out_session,
+                       int *out_send_ticket, const uint8_t *ticket,
+                       size_t ticket_len, const uint8_t *session_id,
+                       size_t session_id_len) {
+  int ret = 1; /* Most errors are non-fatal. */
+  SSL_CTX *ssl_ctx = ssl->initial_ctx;
+  uint8_t *plaintext = NULL;
 
-  /* If tickets disabled behave as if no ticket present to permit stateful
-   * resumption. */
-  if ((SSL_get_options(s) & SSL_OP_NO_TICKET) ||
-      (s->version <= SSL3_VERSION && !ctx->extensions) ||
-      !SSL_early_callback_ctx_extension_get(ctx, TLSEXT_TYPE_session_ticket,
-                                            &data, &len)) {
-    return 0;
+  HMAC_CTX hmac_ctx;
+  HMAC_CTX_init(&hmac_ctx);
+  EVP_CIPHER_CTX cipher_ctx;
+  EVP_CIPHER_CTX_init(&cipher_ctx);
+
+  *out_send_ticket = 0;
+  *out_session = NULL;
+
+  if (session_id_len > SSL_MAX_SSL_SESSION_ID_LENGTH) {
+    goto done;
   }
 
-  if (len == 0) {
+  if (ticket_len == 0) {
     /* The client will accept a ticket but doesn't currently have one. */
-    s->tlsext_ticket_expected = 1;
-    return 1;
+    *out_send_ticket = 1;
+    goto done;
   }
-
-  r = tls_decrypt_ticket(s, data, len, ctx->session_id, ctx->session_id_len,
-                         ret);
-  switch (r) {
-    case 2: /* ticket couldn't be decrypted */
-      s->tlsext_ticket_expected = 1;
-      return 2;
-
-    case 3: /* ticket was decrypted */
-      return r;
-
-    case 4: /* ticket decrypted but need to renew */
-      s->tlsext_ticket_expected = 1;
-      return 3;
-
-    default: /* fatal error */
-      return -1;
-  }
-}
-
-/* tls_decrypt_ticket attempts to decrypt a session ticket.
- *
- *   etick: points to the body of the session ticket extension.
- *   eticklen: the length of the session tickets extenion.
- *   sess_id: points at the session ID.
- *   sesslen: the length of the session ID.
- *   psess: (output) on return, if a ticket was decrypted, then this is set to
- *       point to the resulting session.
- *
- * Returns:
- *   -1: fatal error, either from parsing or decrypting the ticket.
- *    2: the ticket couldn't be decrypted.
- *    3: a ticket was successfully decrypted and *psess was set.
- *    4: same as 3, but the ticket needs to be renewed. */
-static int tls_decrypt_ticket(SSL *s, const uint8_t *etick, int eticklen,
-                              const uint8_t *sess_id, int sesslen,
-                              SSL_SESSION **psess) {
-  SSL_SESSION *sess;
-  uint8_t *sdec;
-  const uint8_t *p;
-  int slen, mlen, renew_ticket = 0;
-  uint8_t tick_hmac[EVP_MAX_MD_SIZE];
-  HMAC_CTX hctx;
-  EVP_CIPHER_CTX ctx;
-  SSL_CTX *tctx = s->initial_ctx;
 
   /* Ensure there is room for the key name and the largest IV
    * |tlsext_ticket_key_cb| may try to consume. The real limit may be lower, but
    * the maximum IV length should be well under the minimum size for the
    * session material and HMAC. */
-  if (eticklen < 16 + EVP_MAX_IV_LENGTH) {
-    return 2;
+  if (ticket_len < SSL_TICKET_KEY_NAME_LEN + EVP_MAX_IV_LENGTH) {
+    goto done;
   }
+  const uint8_t *iv = ticket + SSL_TICKET_KEY_NAME_LEN;
 
-  /* Initialize session ticket encryption and HMAC contexts */
-  HMAC_CTX_init(&hctx);
-  EVP_CIPHER_CTX_init(&ctx);
-  if (tctx->tlsext_ticket_key_cb) {
-    uint8_t *nctick = (uint8_t *)etick;
-    int rv = tctx->tlsext_ticket_key_cb(s, nctick, nctick + 16, &ctx, &hctx,
-                                        0 /* decrypt */);
-    if (rv < 0) {
-      return -1;
+  if (ssl_ctx->tlsext_ticket_key_cb != NULL) {
+    int cb_ret = ssl_ctx->tlsext_ticket_key_cb(ssl, (uint8_t*)ticket /* name */,
+                                               (uint8_t*)iv, &cipher_ctx, &hmac_ctx,
+                                               0 /* decrypt */);
+    if (cb_ret < 0) {
+      ret = 0;
+      goto done;
     }
-    if (rv == 0) {
-      return 2;
+    if (cb_ret == 0) {
+      goto done;
     }
-    if (rv == 2) {
-      renew_ticket = 1;
+    if (cb_ret == 2) {
+      *out_send_ticket = 1;
     }
   } else {
-    /* Check key name matches */
-    if (memcmp(etick, tctx->tlsext_tick_key_name, 16)) {
-      return 2;
+    /* Check the key name matches. */
+    if (memcmp(ticket, ssl_ctx->tlsext_tick_key_name,
+               SSL_TICKET_KEY_NAME_LEN) != 0) {
+      goto done;
     }
-    if (!HMAC_Init_ex(&hctx, tctx->tlsext_tick_hmac_key, 16, tlsext_tick_md(),
+    if (!HMAC_Init_ex(&hmac_ctx, ssl_ctx->tlsext_tick_hmac_key,
+                      sizeof(ssl_ctx->tlsext_tick_hmac_key), tlsext_tick_md(),
                       NULL) ||
-        !EVP_DecryptInit_ex(&ctx, EVP_aes_128_cbc(), NULL,
-                            tctx->tlsext_tick_aes_key, etick + 16)) {
-      HMAC_CTX_cleanup(&hctx);
-      EVP_CIPHER_CTX_cleanup(&ctx);
-      return -1;
+        !EVP_DecryptInit_ex(&cipher_ctx, EVP_aes_128_cbc(), NULL,
+                            ssl_ctx->tlsext_tick_aes_key, iv)) {
+      ret = 0;
+      goto done;
     }
   }
+  size_t iv_len = EVP_CIPHER_CTX_iv_length(&cipher_ctx);
 
-  /* First, check the MAC. The MAC is at the end of the ticket. */
-  mlen = HMAC_size(&hctx);
-  if ((size_t) eticklen < 16 + EVP_CIPHER_CTX_iv_length(&ctx) + 1 + mlen) {
+  /* Check the MAC at the end of the ticket. */
+  uint8_t mac[EVP_MAX_MD_SIZE];
+  size_t mac_len = HMAC_size(&hmac_ctx);
+  if (ticket_len < SSL_TICKET_KEY_NAME_LEN + iv_len + 1 + mac_len) {
     /* The ticket must be large enough for key name, IV, data, and MAC. */
-    HMAC_CTX_cleanup(&hctx);
-    EVP_CIPHER_CTX_cleanup(&ctx);
-    return 2;
+    goto done;
   }
-  eticklen -= mlen;
-  /* Check HMAC of encrypted ticket */
-  HMAC_Update(&hctx, etick, eticklen);
-  HMAC_Final(&hctx, tick_hmac, NULL);
-  HMAC_CTX_cleanup(&hctx);
-  if (CRYPTO_memcmp(tick_hmac, etick + eticklen, mlen)) {
-    EVP_CIPHER_CTX_cleanup(&ctx);
-    return 2;
+  HMAC_Update(&hmac_ctx, ticket, ticket_len - mac_len);
+  HMAC_Final(&hmac_ctx, mac, NULL);
+  if (CRYPTO_memcmp(mac, ticket + (ticket_len - mac_len), mac_len) != 0) {
+    goto done;
   }
 
-  /* Attempt to decrypt session data */
-  /* Move p after IV to start of encrypted ticket, update length */
-  p = etick + 16 + EVP_CIPHER_CTX_iv_length(&ctx);
-  eticklen -= 16 + EVP_CIPHER_CTX_iv_length(&ctx);
-  sdec = OPENSSL_malloc(eticklen);
-  if (!sdec) {
-    EVP_CIPHER_CTX_cleanup(&ctx);
-    return -1;
+  /* Decrypt the session data. */
+  const uint8_t *ciphertext = ticket + SSL_TICKET_KEY_NAME_LEN + iv_len;
+  size_t ciphertext_len = ticket_len - SSL_TICKET_KEY_NAME_LEN - iv_len -
+                          mac_len;
+  plaintext = OPENSSL_malloc(ciphertext_len);
+  if (plaintext == NULL) {
+    ret = 0;
+    goto done;
   }
-  EVP_DecryptUpdate(&ctx, sdec, &slen, p, eticklen);
-  if (EVP_DecryptFinal_ex(&ctx, sdec + slen, &mlen) <= 0) {
-    EVP_CIPHER_CTX_cleanup(&ctx);
-    OPENSSL_free(sdec);
-    return 2;
+  if (ciphertext_len >= INT_MAX) {
+    goto done;
   }
-  slen += mlen;
-  EVP_CIPHER_CTX_cleanup(&ctx);
-  p = sdec;
-
-  sess = SSL_SESSION_from_bytes(sdec, slen);
-  OPENSSL_free(sdec);
-  if (sess) {
-    /* The session ID, if non-empty, is used by some clients to detect that the
-     * ticket has been accepted. So we copy it to the session structure. If it
-     * is empty set length to zero as required by standard. */
-    if (sesslen) {
-      memcpy(sess->session_id, sess_id, sesslen);
-    }
-    sess->session_id_length = sesslen;
-    *psess = sess;
-    if (renew_ticket) {
-      return 4;
-    }
-    return 3;
+  int len1, len2;
+  if (!EVP_DecryptUpdate(&cipher_ctx, plaintext, &len1, ciphertext,
+                         (int)ciphertext_len) ||
+      !EVP_DecryptFinal_ex(&cipher_ctx, plaintext + len1, &len2)) {
+    ERR_clear_error(); /* Don't leave an error on the queue. */
+    goto done;
   }
 
-  ERR_clear_error();
-  /* For session parse failure, indicate that we need to send a new ticket. */
-  return 2;
+  /* Decode the session. */
+  SSL_SESSION *session = SSL_SESSION_from_bytes(plaintext, len1 + len2);
+  if (session == NULL) {
+    ERR_clear_error(); /* Don't leave an error on the queue. */
+    goto done;
+  }
+
+  /* Copy the client's session ID into the new session, to denote the ticket has
+   * been accepted. */
+  memcpy(session->session_id, session_id, session_id_len);
+  session->session_id_length = session_id_len;
+
+  *out_session = session;
+
+done:
+  OPENSSL_free(plaintext);
+  HMAC_CTX_cleanup(&hmac_ctx);
+  EVP_CIPHER_CTX_cleanup(&cipher_ctx);
+  return ret;
 }
 
 /* Tables to translate from NIDs to TLS v1.2 ids */

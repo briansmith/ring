@@ -595,6 +595,10 @@ OPENSSL_EXPORT int SSL_CTX_get_tlsext_ticket_keys(SSL_CTX *ctx, void *out,
 OPENSSL_EXPORT int SSL_CTX_set_tlsext_ticket_keys(SSL_CTX *ctx, const void *in,
                                                   size_t len);
 
+/* SSL_TICKET_KEY_NAME_LEN is the length of the key name prefix of a session
+ * ticket. */
+#define SSL_TICKET_KEY_NAME_LEN 16
+
 /* SSL_CTX_set_tlsext_ticket_key_cb sets the ticket callback to |callback| and
  * returns one. |callback| will be called when encrypting a new ticket and when
  * decrypting a ticket from the client.
@@ -1113,7 +1117,7 @@ struct ssl_ctx_st {
   int (*tlsext_servername_callback)(SSL *, int *, void *);
   void *tlsext_servername_arg;
   /* RFC 4507 session ticket keys */
-  uint8_t tlsext_tick_key_name[16];
+  uint8_t tlsext_tick_key_name[SSL_TICKET_KEY_NAME_LEN];
   uint8_t tlsext_tick_hmac_key[16];
   uint8_t tlsext_tick_aes_key[16];
   /* Callback to support customisation of ticket key setting */

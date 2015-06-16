@@ -507,8 +507,6 @@ enum ssl_private_key_result_t ssl_private_key_sign_complete(
  * SSL_aRSA <- RSA_ENC | RSA_SIGN
  * SSL_aDSS <- DSA_SIGN */
 
-#define PENDING_SESSION -10000
-
 /* From RFC4492, used in encoding the curve type in ECParameters */
 #define EXPLICIT_PRIME_CURVE_TYPE 1
 #define EXPLICIT_CHAR2_CURVE_TYPE 2
@@ -828,7 +826,23 @@ SESS_CERT *ssl_sess_cert_new(void);
 SESS_CERT *ssl_sess_cert_dup(const SESS_CERT *sess_cert);
 void ssl_sess_cert_free(SESS_CERT *sess_cert);
 int ssl_get_new_session(SSL *s, int session);
-int ssl_get_prev_session(SSL *s, const struct ssl_early_callback_ctx *ctx);
+
+enum ssl_session_result_t {
+  ssl_session_success,
+  ssl_session_error,
+  ssl_session_retry,
+};
+
+/* ssl_get_prev_session looks up the previous session based on |ctx|. On
+ * success, it sets |*out_session| to the session or NULL if none was found. It
+ * sets |*out_send_ticket| to whether a ticket should be sent at the end of the
+ * handshake. If the session could not be looked up synchronously, it returns
+ * |ssl_session_retry| and should be called again. Otherwise, it returns
+ * |ssl_session_error|.  */
+enum ssl_session_result_t ssl_get_prev_session(
+    SSL *ssl, SSL_SESSION **out_session, int *out_send_ticket,
+    const struct ssl_early_callback_ctx *ctx);
+
 STACK_OF(SSL_CIPHER) *ssl_bytes_to_cipher_list(SSL *s, const CBS *cbs);
 int ssl_cipher_list_to_bytes(SSL *s, STACK_OF(SSL_CIPHER) *sk, uint8_t *p);
 struct ssl_cipher_preference_list_st *ssl_cipher_preference_list_dup(
@@ -1094,8 +1108,16 @@ int ssl_prepare_clienthello_tlsext(SSL *s);
 int ssl_prepare_serverhello_tlsext(SSL *s);
 
 #define tlsext_tick_md EVP_sha256
-int tls1_process_ticket(SSL *s, const struct ssl_early_callback_ctx *ctx,
-                        SSL_SESSION **ret);
+
+/* tls_process_ticket processes the session ticket extension. On success, it
+ * sets |*out_session| to the decrypted session or NULL if the ticket was
+ * rejected. It sets |*out_send_ticket| to whether a new ticket should be sent
+ * at the end of the handshake. It returns one on success and zero on fatal
+ * error. */
+int tls_process_ticket(SSL *ssl, SSL_SESSION **out_session,
+                       int *out_send_ticket, const uint8_t *ticket,
+                       size_t ticket_len, const uint8_t *session_id,
+                       size_t session_id_len);
 
 int tls12_get_sigandhash(SSL *ssl, uint8_t *p, const EVP_PKEY *pk,
                          const EVP_MD *md);

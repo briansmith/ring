@@ -815,6 +815,7 @@ int ssl3_get_client_hello(SSL *s) {
   CBS client_hello;
   uint16_t client_version;
   CBS client_random, session_id, cipher_suites, compression_methods;
+  SSL_SESSION *session = NULL;
 
   /* We do this so that we will respond with our native type. If we are TLSv1
    * and we get SSLv3, we will respond with TLSv1, This down switching should
@@ -935,13 +936,17 @@ int ssl3_get_client_hello(SSL *s) {
   }
 
   s->hit = 0;
-  int session_ret = ssl_get_prev_session(s, &early_ctx);
-  if (session_ret == PENDING_SESSION) {
-    s->rwstate = SSL_PENDING_SESSION;
-    goto err;
-  } else if (session_ret == -1) {
-    goto err;
+  int send_new_ticket = 0;
+  switch (ssl_get_prev_session(s, &session, &send_new_ticket, &early_ctx)) {
+    case ssl_session_success:
+      break;
+    case ssl_session_error:
+      goto err;
+    case ssl_session_retry:
+      s->rwstate = SSL_PENDING_SESSION;
+      goto err;
   }
+  s->tlsext_ticket_expected = send_new_ticket;
 
   /* The EMS state is needed when making the resumption decision, but
    * extensions are not normally parsed until later. This detects the EMS
@@ -956,8 +961,8 @@ int ssl3_get_client_hello(SSL *s) {
                                            &ems_data, &ems_len) &&
       ems_len == 0;
 
-  if (session_ret == 1) {
-    if (s->session->extended_master_secret &&
+  if (session != NULL) {
+    if (session->extended_master_secret &&
         !have_extended_master_secret) {
       /* A ClientHello without EMS that attempts to resume a session with EMS
        * is fatal to the connection. */
@@ -970,13 +975,20 @@ int ssl3_get_client_hello(SSL *s) {
     s->hit =
         /* Only resume if the session's version matches the negotiated version:
          * most clients do not accept a mismatch. */
-        s->version == s->session->ssl_version &&
+        s->version == session->ssl_version &&
         /* If the client offers the EMS extension, but the previous session
          * didn't use it, then negotiate a new session. */
-        have_extended_master_secret == s->session->extended_master_secret;
+        have_extended_master_secret == session->extended_master_secret;
   }
 
-  if (!s->hit && !ssl_get_new_session(s, 1)) {
+  if (s->hit) {
+    /* Use the new session. */
+    SSL_SESSION_free(s->session);
+    s->session = session;
+    session = NULL;
+
+    s->verify_result = s->session->verify_result;
+  } else if (!ssl_get_new_session(s, 1)) {
     goto err;
   }
 
@@ -1132,6 +1144,7 @@ int ssl3_get_client_hello(SSL *s) {
 
 err:
   sk_SSL_CIPHER_free(ciphers);
+  SSL_SESSION_free(session);
   return ret;
 }
 
