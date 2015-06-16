@@ -913,10 +913,10 @@ var testCases = []testCase{
 	},
 	{
 		protocol: dtls,
-		name:     "SplitFragmentHeader-DTLS",
+		name:     "SplitFragments-Header-DTLS",
 		config: Config{
 			Bugs: ProtocolBugs{
-				SplitFragmentHeader: true,
+				SplitFragments: 2,
 			},
 		},
 		shouldFail:    true,
@@ -924,14 +924,25 @@ var testCases = []testCase{
 	},
 	{
 		protocol: dtls,
-		name:     "SplitFragmentBody-DTLS",
+		name:     "SplitFragments-Boundary-DTLS",
 		config: Config{
 			Bugs: ProtocolBugs{
-				SplitFragmentBody: true,
+				SplitFragments: dtlsRecordHeaderLen,
 			},
 		},
 		shouldFail:    true,
-		expectedError: ":UNEXPECTED_MESSAGE:",
+		expectedError: ":EXCESSIVE_MESSAGE_SIZE:",
+	},
+	{
+		protocol: dtls,
+		name:     "SplitFragments-Body-DTLS",
+		config: Config{
+			Bugs: ProtocolBugs{
+				SplitFragments: dtlsRecordHeaderLen + 1,
+			},
+		},
+		shouldFail:    true,
+		expectedError: ":EXCESSIVE_MESSAGE_SIZE:",
 	},
 	{
 		protocol: dtls,

@@ -668,17 +668,10 @@ type ProtocolBugs struct {
 	// handshake fragments in DTLS to have the wrong message length.
 	FragmentMessageLengthMismatch bool
 
-	// SplitFragmentHeader, if true, causes the handshake fragments in DTLS
-	// to be split across two records.
-	SplitFragmentHeader bool
-
-	// SplitFragmentBody, if true, causes the handshake bodies in DTLS to be
-	// split across two records.
-	//
-	// TODO(davidben): There's one final split to test: when the header and
-	// body are split across two records. But those are (incorrectly)
-	// accepted right now.
-	SplitFragmentBody bool
+	// SplitFragments, if non-zero, causes the handshake fragments in DTLS
+	// to be split across two records. The value of |SplitFragments| is the
+	// number of bytes in the first fragment.
+	SplitFragments int
 
 	// SendEmptyFragments, if true, causes handshakes to include empty
 	// fragments in DTLS.

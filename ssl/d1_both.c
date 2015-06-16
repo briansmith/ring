@@ -473,11 +473,7 @@ static size_t dtls1_max_handshake_message_len(const SSL *s) {
 /* dtls1_process_fragment reads a handshake fragment and processes it. It
  * returns one if a fragment was successfully processed and 0 or -1 on error. */
 static int dtls1_process_fragment(SSL *s) {
-  /* Read handshake message header.
-   *
-   * TODO(davidben): ssl_read_bytes allows splitting the fragment header and
-   * body across two records. Change this interface to consume the fragment in
-   * one pass. */
+  /* Read handshake message header. */
   uint8_t header[DTLS1_HM_HEADER_LENGTH];
   int ret = dtls1_read_bytes(s, SSL3_RT_HANDSHAKE, header,
                              DTLS1_HM_HEADER_LENGTH, 0);
@@ -494,12 +490,15 @@ static int dtls1_process_fragment(SSL *s) {
   struct hm_header_st msg_hdr;
   dtls1_get_message_header(header, &msg_hdr);
 
+  /* TODO(davidben): dtls1_read_bytes is the wrong abstraction for DTLS. There
+   * should be no need to reach into |s->s3->rrec.length|. */
   const size_t frag_off = msg_hdr.frag_off;
   const size_t frag_len = msg_hdr.frag_len;
   const size_t msg_len = msg_hdr.msg_len;
   if (frag_off > msg_len || frag_off + frag_len < frag_off ||
       frag_off + frag_len > msg_len ||
-      msg_len > dtls1_max_handshake_message_len(s)) {
+      msg_len > dtls1_max_handshake_message_len(s) ||
+      frag_len > s->s3->rrec.length) {
     OPENSSL_PUT_ERROR(SSL, dtls1_process_fragment,
                       SSL_R_EXCESSIVE_MESSAGE_SIZE);
     ssl3_send_alert(s, SSL3_AL_FATAL, SSL_AD_ILLEGAL_PARAMETER);
@@ -535,8 +534,8 @@ static int dtls1_process_fragment(SSL *s) {
   ret = dtls1_read_bytes(s, SSL3_RT_HANDSHAKE, frag->fragment + frag_off,
                          frag_len, 0);
   if (ret != frag_len) {
-    OPENSSL_PUT_ERROR(SSL, dtls1_process_fragment, SSL_R_UNEXPECTED_MESSAGE);
-    ssl3_send_alert(s, SSL3_AL_FATAL, SSL_AD_UNEXPECTED_MESSAGE);
+    OPENSSL_PUT_ERROR(SSL, dtls1_process_fragment, ERR_R_INTERNAL_ERROR);
+    ssl3_send_alert(s, SSL3_AL_FATAL, SSL_AD_INTERNAL_ERROR);
     return -1;
   }
   dtls1_hm_fragment_mark(frag, frag_off, frag_off + frag_len);

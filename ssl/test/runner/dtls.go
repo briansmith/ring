@@ -216,13 +216,10 @@ func (c *Conn) dtlsFlushHandshake() error {
 	// Pack handshake fragments into records.
 	var records [][]byte
 	for _, fragment := range fragments {
-		if c.config.Bugs.SplitFragmentHeader {
-			records = append(records, fragment[:2])
-			records = append(records, fragment[2:])
-		} else if c.config.Bugs.SplitFragmentBody {
-			if len(fragment) > 12 {
-				records = append(records, fragment[:13])
-				records = append(records, fragment[13:])
+		if n := c.config.Bugs.SplitFragments; n > 0 {
+			if len(fragment) > n {
+				records = append(records, fragment[:n])
+				records = append(records, fragment[n:])
 			} else {
 				records = append(records, fragment)
 			}
