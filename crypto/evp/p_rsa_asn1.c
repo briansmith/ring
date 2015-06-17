@@ -122,6 +122,7 @@ static int rsa_priv_encode(PKCS8_PRIV_KEY_INFO *p8, const EVP_PKEY *pkey) {
   /* TODO(fork): const correctness in next line. */
   if (!PKCS8_pkey_set0(p8, (ASN1_OBJECT *)OBJ_nid2obj(NID_rsaEncryption), 0,
                        V_ASN1_NULL, NULL, rk, rklen)) {
+    OPENSSL_free(rk);
     OPENSSL_PUT_ERROR(EVP, rsa_priv_encode, ERR_R_MALLOC_FAILURE);
     return 0;
   }
