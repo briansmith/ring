@@ -144,6 +144,12 @@ int NETSCAPE_SPKI_sign(NETSCAPE_SPKI *x, EVP_PKEY *pkey, const EVP_MD *md)
 		x->signature, x->spkac,pkey,md));
 	}
 
+int NETSCAPE_SPKI_verify(NETSCAPE_SPKI *x, EVP_PKEY *pkey)
+	{
+	return (ASN1_item_verify(ASN1_ITEM_rptr(NETSCAPE_SPKAC), x->sig_algor,
+		x->signature, x->spkac, pkey));
+	}
+
 #ifndef OPENSSL_NO_FP_API
 X509 *d2i_X509_fp(FILE *fp, X509 **x509)
 	{
