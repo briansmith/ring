@@ -727,6 +727,15 @@ OPENSSL_EXPORT int BIO_zero_copy_get_write_buf_done(BIO* bio,
 #define BIO_print_errors_fp ERR_print_errors_fp
 
 
+/* Deprecated functions. */
+
+/* Returns a filter |BIO| that base64-encodes data written into it, and decodes
+ * data read from it. |BIO_gets| is not supported. Call |BIO_flush| when done
+ * writing, to signal that no more data are to be encoded. The flag
+ * |BIO_FLAGS_BASE64_NO_NL| may be set to encode all the data on one line. */
+OPENSSL_EXPORT const BIO_METHOD *BIO_f_base64(void);
+
+
 /* Private functions */
 
 #define BIO_FLAGS_READ 0x01
