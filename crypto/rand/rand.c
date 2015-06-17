@@ -17,6 +17,7 @@
 #include <limits.h>
 #include <string.h>
 
+#include <openssl/chacha.h>
 #include <openssl/mem.h>
 
 #include "internal.h"
@@ -68,10 +69,6 @@ static void rand_thread_state_free(void *state) {
   OPENSSL_cleanse(state, sizeof(struct rand_thread_state));
   OPENSSL_free(state);
 }
-
-extern void CRYPTO_chacha_20(uint8_t *out, const uint8_t *in, size_t in_len,
-                             const uint8_t key[32], const uint8_t nonce[8],
-                             size_t counter);
 
 int RAND_bytes(uint8_t *buf, size_t len) {
   if (len == 0) {
