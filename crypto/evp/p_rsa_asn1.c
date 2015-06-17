@@ -69,16 +69,14 @@
 
 
 static int rsa_pub_encode(X509_PUBKEY *pk, const EVP_PKEY *pkey) {
-  uint8_t *encoded = NULL;
-  int len;
-  len = i2d_RSAPublicKey(pkey->pkey.rsa, &encoded);
-
-  if (len <= 0) {
+  uint8_t *encoded;
+  size_t encoded_len;
+  if (!RSA_public_key_to_bytes(&encoded, &encoded_len, pkey->pkey.rsa)) {
     return 0;
   }
 
   if (!X509_PUBKEY_set0_param(pk, OBJ_nid2obj(EVP_PKEY_RSA), V_ASN1_NULL, NULL,
-                              encoded, len)) {
+                              encoded, encoded_len)) {
     OPENSSL_free(encoded);
     return 0;
   }
@@ -94,7 +92,7 @@ static int rsa_pub_decode(EVP_PKEY *pkey, X509_PUBKEY *pubkey) {
   if (!X509_PUBKEY_get0_param(NULL, &p, &pklen, NULL, pubkey)) {
     return 0;
   }
-  rsa = d2i_RSAPublicKey(NULL, &p, pklen);
+  rsa = RSA_public_key_from_bytes(p, pklen);
   if (rsa == NULL) {
     OPENSSL_PUT_ERROR(EVP, rsa_pub_decode, ERR_R_RSA_LIB);
     return 0;

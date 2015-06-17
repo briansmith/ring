@@ -272,7 +272,7 @@ OPENSSL_EXPORT int RSA_is_opaque(const RSA *rsa);
  * of type |md|. Otherwise it returns zero. */
 OPENSSL_EXPORT int RSA_supports_digest(const RSA *rsa, const EVP_MD *md);
 
-/* RSAPublicKey_dup allocates a fresh |RSA| and copies the private key from
+/* RSAPublicKey_dup allocates a fresh |RSA| and copies the public key from
  * |rsa| into it. It returns the fresh |RSA| object, or NULL on error. */
 OPENSSL_EXPORT RSA *RSAPublicKey_dup(const RSA *rsa);
 
@@ -332,19 +332,26 @@ OPENSSL_EXPORT int RSA_add_pkcs1_prefix(uint8_t **out_msg, size_t *out_msg_len,
 
 /* ASN.1 functions. */
 
-/* d2i_RSAPublicKey parses an ASN.1, DER-encoded, RSA public key from |len|
- * bytes at |*inp|. If |out| is not NULL then, on exit, a pointer to the result
- * is in |*out|. If |*out| is already non-NULL on entry then the result is
- * written directly into |*out|, otherwise a fresh |RSA| is allocated. On
- * successful exit, |*inp| is advanced past the DER structure. It returns the
- * result or NULL on error. */
-OPENSSL_EXPORT RSA *d2i_RSAPublicKey(RSA **out, const uint8_t **inp, long len);
+/* RSA_parse_public_key parses a DER-encoded RSAPublicKey structure (RFC 3447)
+ * from |cbs| and advances |cbs|. It returns a newly-allocated |RSA| or NULL on
+ * error. */
+OPENSSL_EXPORT RSA *RSA_parse_public_key(CBS *cbs);
 
-/* i2d_RSAPublicKey marshals |in| to an ASN.1, DER structure. If |outp| is not
- * NULL then the result is written to |*outp| and |*outp| is advanced just past
- * the output. It returns the number of bytes in the result, whether written or
- * not, or a negative value on error. */
-OPENSSL_EXPORT int i2d_RSAPublicKey(const RSA *in, uint8_t **outp);
+/* RSA_public_key_from_bytes parses |in| as a DER-encoded RSAPublicKey structure
+ * (RFC 3447). It returns a newly-allocated |RSA| or NULL on error. */
+OPENSSL_EXPORT RSA *RSA_public_key_from_bytes(const uint8_t *in, size_t in_len);
+
+/* RSA_marshal_public_key marshals |rsa| as a DER-encoded RSAPublicKey structure
+ * (RFC 3447) and appends the result to |cbb|. It returns one on success and
+ * zero on failure. */
+OPENSSL_EXPORT int RSA_marshal_public_key(CBB *cbb, const RSA *rsa);
+
+/* RSA_public_key_to_bytes marshals |rsa| as a DER-encoded RSAPublicKey
+ * structure (RFC 3447) and, on success, sets |*out_bytes| to a newly allocated
+ * buffer containing the result and returns one. Otherwise, it returns zero. The
+ * result should be freed with |OPENSSL_free|. */
+OPENSSL_EXPORT int RSA_public_key_to_bytes(uint8_t **out_bytes, size_t *out_len,
+                                           const RSA *rsa);
 
 /* d2i_RSAPrivateKey parses an ASN.1, DER-encoded, RSA private key from |len|
  * bytes at |*inp|. If |out| is not NULL then, on exit, a pointer to the result
@@ -359,6 +366,23 @@ OPENSSL_EXPORT RSA *d2i_RSAPrivateKey(RSA **out, const uint8_t **inp, long len);
  * the output. It returns the number of bytes in the result, whether written or
  * not, or a negative value on error. */
 OPENSSL_EXPORT int i2d_RSAPrivateKey(const RSA *in, uint8_t **outp);
+
+
+/* Deprecated functions. */
+
+/* d2i_RSAPublicKey parses an ASN.1, DER-encoded, RSA public key from |len|
+ * bytes at |*inp|. If |out| is not NULL then, on exit, a pointer to the result
+ * is in |*out|. If |*out| is already non-NULL on entry then the result is
+ * written directly into |*out|, otherwise a fresh |RSA| is allocated. On
+ * successful exit, |*inp| is advanced past the DER structure. It returns the
+ * result or NULL on error. */
+OPENSSL_EXPORT RSA *d2i_RSAPublicKey(RSA **out, const uint8_t **inp, long len);
+
+/* i2d_RSAPublicKey marshals |in| to an ASN.1, DER structure. If |outp| is not
+ * NULL then the result is written to |*outp| and |*outp| is advanced just past
+ * the output. It returns the number of bytes in the result, whether written or
+ * not, or a negative value on error. */
+OPENSSL_EXPORT int i2d_RSAPublicKey(const RSA *in, uint8_t **outp);
 
 
 /* ex_data functions.
@@ -558,6 +582,12 @@ struct rsa_st {
 #define RSA_F_sign_raw 126
 #define RSA_F_verify_raw 127
 #define RSA_F_keygen_multiprime 128
+#define RSA_F_RSA_marshal_public_key 129
+#define RSA_F_RSA_parse_public_key 130
+#define RSA_F_RSA_public_key_from_bytes 131
+#define RSA_F_RSA_public_key_to_bytes 132
+#define RSA_F_i2d_RSAPublicKey 133
+#define RSA_F_marshal_integer 134
 #define RSA_R_BAD_E_VALUE 100
 #define RSA_R_BAD_FIXED_HEADER_DECRYPT 101
 #define RSA_R_BAD_PAD_BYTE_COUNT 102
@@ -601,5 +631,7 @@ struct rsa_st {
 #define RSA_R_WRONG_SIGNATURE_LENGTH 140
 #define RSA_R_MUST_HAVE_AT_LEAST_TWO_PRIMES 141
 #define RSA_R_CANNOT_RECOVER_MULTI_PRIME_KEY 142
+#define RSA_R_BAD_ENCODING 143
+#define RSA_R_ENCODE_ERROR 144
 
 #endif  /* OPENSSL_HEADER_RSA_H */
