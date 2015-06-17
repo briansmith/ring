@@ -437,11 +437,18 @@ int PEM_do_header(EVP_CIPHER_INFO *cipher, unsigned char *data, long *plen,
 	}
 
 static const EVP_CIPHER* cipher_by_name(const char *name) {
-  if (strcmp(name, "DES-CBC") == 0) {
+  /* This is similar to the (deprecated) function |EVP_get_cipherbyname|. */
+  if (0 == strcmp(name, SN_rc4)) {
+    return EVP_rc4();
+  } else if (0 == strcmp(name, SN_des_cbc)) {
     return EVP_des_cbc();
-  } else if (strcmp(name, "AES-128-CBC") == 0) {
+  } else if (0 == strcmp(name, SN_des_ede3_cbc)) {
+    return EVP_des_ede3_cbc();
+  } else if (0 == strcmp(name, SN_aes_128_cbc)) {
     return EVP_aes_128_cbc();
-  } else if (strcmp(name,  "AES-256-CBC") == 0) {
+  } else if (0 == strcmp(name, SN_aes_192_cbc)) {
+    return EVP_aes_192_cbc();
+  } else if (0 == strcmp(name, SN_aes_256_cbc)) {
     return EVP_aes_256_cbc();
   } else {
     return NULL;
