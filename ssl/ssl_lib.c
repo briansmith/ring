@@ -2941,6 +2941,10 @@ err:
   return 0;
 }
 
+int SSL_initial_handshake_complete(const SSL *ssl) {
+  return ssl->s3->initial_handshake_complete;
+}
+
 int SSL_CTX_sess_connect(const SSL_CTX *ctx) { return 0; }
 int SSL_CTX_sess_connect_good(const SSL_CTX *ctx) { return 0; }
 int SSL_CTX_sess_connect_renegotiate(const SSL_CTX *ctx) { return 0; }

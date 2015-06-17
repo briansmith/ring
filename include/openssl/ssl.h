@@ -517,6 +517,10 @@ OPENSSL_EXPORT uint32_t SSL_get_mode(const SSL *ssl);
 OPENSSL_EXPORT int SSL_get_tls_unique(const SSL *ssl, uint8_t *out,
                                       size_t *out_len, size_t max_out);
 
+/* SSL_initial_handshake_complete returns one if the initial handshake has
+ * completed and zero otherwise. */
+OPENSSL_EXPORT int SSL_initial_handshake_complete(const SSL *ssl);
+
 
 /* Underdocumented functions.
  *
