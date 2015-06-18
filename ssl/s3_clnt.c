@@ -1517,6 +1517,15 @@ int ssl3_get_new_session_ticket(SSL *s) {
       OPENSSL_PUT_ERROR(SSL, ssl3_get_new_session_ticket, ERR_R_INTERNAL_ERROR);
       goto err;
     }
+    if (s->session->sess_cert != NULL) {
+      /* |sess_cert| is not serialized and must be duplicated explicitly. */
+      assert(new_session->sess_cert == NULL);
+      new_session->sess_cert = ssl_sess_cert_dup(s->session->sess_cert);
+      if (new_session->sess_cert == NULL) {
+        SSL_SESSION_free(new_session);
+        goto err;
+      }
+    }
 
     SSL_SESSION_free(s->session);
     s->session = new_session;

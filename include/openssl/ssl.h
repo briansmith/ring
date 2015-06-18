@@ -650,7 +650,12 @@ struct ssl_session_st {
    * disable session caching and tickets. */
   int not_resumable;
 
-  /* The cert is the certificate used to establish this connection */
+  /* The cert is the certificate used to establish this connection
+   *
+   * TODO(davidben): Remove this field. It is not serialized as part of the
+   * session, but some APIs access it. Certificate-related fields, where not
+   * redundant with |peer|, should be added to the session. Others should
+   * probably not be retained across resumptions. */
   struct sess_cert_st /* SESS_CERT */ *sess_cert;
 
   /* This is the cert for the other end. On clients, it will be the same as

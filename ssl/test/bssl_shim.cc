@@ -838,6 +838,20 @@ static bool DoExchange(ScopedSSL_SESSION *out_session, SSL_CTX *ssl_ctx,
         return false;
       }
     }
+
+    if (!config->is_server) {
+      /* Clients should expect a peer certificate chain iff this was not a PSK
+       * cipher suite. */
+      if (config->psk.empty()) {
+        if (SSL_get_peer_cert_chain(ssl.get()) == nullptr) {
+          fprintf(stderr, "Missing peer certificate chain!\n");
+          return false;
+        }
+      } else if (SSL_get_peer_cert_chain(ssl.get()) != nullptr) {
+        fprintf(stderr, "Unexpected peer certificate chain!\n");
+        return false;
+      }
+    }
   }
 
   if (config->export_keying_material > 0) {

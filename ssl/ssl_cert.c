@@ -119,11 +119,13 @@
 #include <openssl/bio.h>
 #include <openssl/bn.h>
 #include <openssl/buf.h>
+#include <openssl/ec_key.h>
 #include <openssl/dh.h>
 #include <openssl/err.h>
 #include <openssl/mem.h>
 #include <openssl/obj.h>
 #include <openssl/pem.h>
+#include <openssl/x509.h>
 #include <openssl/x509v3.h>
 
 #include "../crypto/dh/internal.h"
@@ -413,17 +415,44 @@ SESS_CERT *ssl_sess_cert_new(void) {
   return ret;
 }
 
-void ssl_sess_cert_free(SESS_CERT *sc) {
-  if (sc == NULL) {
+SESS_CERT *ssl_sess_cert_dup(const SESS_CERT *sess_cert) {
+  SESS_CERT *ret = ssl_sess_cert_new();
+  if (ret == NULL) {
+    return NULL;
+  }
+
+  if (sess_cert->cert_chain != NULL) {
+    ret->cert_chain = X509_chain_up_ref(sess_cert->cert_chain);
+    if (ret->cert_chain == NULL) {
+      ssl_sess_cert_free(ret);
+      return NULL;
+    }
+  }
+  if (sess_cert->peer_cert != NULL) {
+    ret->peer_cert = X509_up_ref(sess_cert->peer_cert);
+  }
+  if (sess_cert->peer_dh_tmp != NULL) {
+    ret->peer_dh_tmp = sess_cert->peer_dh_tmp;
+    DH_up_ref(ret->peer_dh_tmp);
+  }
+  if (sess_cert->peer_ecdh_tmp != NULL) {
+    ret->peer_ecdh_tmp = sess_cert->peer_ecdh_tmp;
+    EC_KEY_up_ref(ret->peer_ecdh_tmp);
+  }
+  return ret;
+}
+
+void ssl_sess_cert_free(SESS_CERT *sess_cert) {
+  if (sess_cert == NULL) {
     return;
   }
 
-  sk_X509_pop_free(sc->cert_chain, X509_free);
-  X509_free(sc->peer_cert);
-  DH_free(sc->peer_dh_tmp);
-  EC_KEY_free(sc->peer_ecdh_tmp);
+  sk_X509_pop_free(sess_cert->cert_chain, X509_free);
+  X509_free(sess_cert->peer_cert);
+  DH_free(sess_cert->peer_dh_tmp);
+  EC_KEY_free(sess_cert->peer_ecdh_tmp);
 
-  OPENSSL_free(sc);
+  OPENSSL_free(sess_cert);
 }
 
 int ssl_verify_cert_chain(SSL *s, STACK_OF(X509) *sk) {
