@@ -2210,8 +2210,8 @@ func addStateMachineCoverageTests(async, splitHandshake bool, protocol protocol)
 				ClientAuth: RequireAnyClientCert,
 			},
 			flags: []string{
-				"-cert-file", rsaCertificateFile,
-				"-key-file", rsaKeyFile,
+				"-cert-file", path.Join(*resourceDir, rsaCertificateFile),
+				"-key-file", path.Join(*resourceDir, rsaKeyFile),
 				"-use-async-private-key",
 			},
 		})
