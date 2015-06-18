@@ -409,6 +409,13 @@ OPENSSL_EXPORT void *RSA_get_ex_data(const RSA *r, int idx);
 /* RSA_blinding_on returns one. */
 OPENSSL_EXPORT int RSA_blinding_on(RSA *rsa, BN_CTX *ctx);
 
+/* RSA_generate_key behaves like |RSA_generate_key_ex|, which is what you
+ * should use instead. It returns NULL on error, or a newly-allocated |RSA| on
+ * success. This function is provided for compatibility only. The |callback|
+ * and |cb_arg| parameters must be NULL. */
+OPENSSL_EXPORT RSA *RSA_generate_key(int bits, unsigned long e, void *callback,
+                                     void *cb_arg);
+
 
 struct rsa_meth_st {
   struct openssl_method_common_st common;
