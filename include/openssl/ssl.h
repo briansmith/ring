@@ -583,10 +583,6 @@ OPENSSL_EXPORT void SSL_set_private_key_method(
 OPENSSL_EXPORT int SSL_get_tls_unique(const SSL *ssl, uint8_t *out,
                                       size_t *out_len, size_t max_out);
 
-/* SSL_initial_handshake_complete returns one if the initial handshake has
- * completed and zero otherwise. */
-OPENSSL_EXPORT int SSL_initial_handshake_complete(const SSL *ssl);
-
 
 /* Underdocumented functions.
  *

@@ -531,11 +531,16 @@ int ssl3_connect(SSL *s) {
         /* Remove write buffering now. */
         ssl_free_wbio_buffer(s);
 
+        const int is_initial_handshake = !s->s3->initial_handshake_complete;
+
         s->init_num = 0;
         s->s3->tmp.in_false_start = 0;
         s->s3->initial_handshake_complete = 1;
 
-        ssl_update_cache(s, SSL_SESS_CACHE_CLIENT);
+        if (is_initial_handshake) {
+          /* Renegotiations do not participate in session resumption. */
+          ssl_update_cache(s, SSL_SESS_CACHE_CLIENT);
+        }
 
         ret = 1;
         /* s->server=0; */

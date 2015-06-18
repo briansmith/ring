@@ -178,6 +178,9 @@ type testCase struct {
 	// newSessionsOnResume, if true, will cause resumeConfig to
 	// use a different session resumption context.
 	newSessionsOnResume bool
+	// noSessionCache, if true, will cause the server to run without a
+	// session cache.
+	noSessionCache bool
 	// sendPrefix sends a prefix on the socket before actually performing a
 	// handshake.
 	sendPrefix string
@@ -574,8 +577,10 @@ func runTest(test *testCase, shimPath string, mallocNumToFail int64) error {
 	go func() { waitChan <- shim.Wait() }()
 
 	config := test.config
-	config.ClientSessionCache = NewLRUClientSessionCache(1)
-	config.ServerSessionCache = NewLRUServerSessionCache(1)
+	if !test.noSessionCache {
+		config.ClientSessionCache = NewLRUClientSessionCache(1)
+		config.ServerSessionCache = NewLRUServerSessionCache(1)
+	}
 	if test.testType == clientTest {
 		if len(config.Certificates) == 0 {
 			config.Certificates = []Certificate{getRSACertificate()}
@@ -604,7 +609,12 @@ func runTest(test *testCase, shimPath string, mallocNumToFail int64) error {
 			if len(resumeConfig.Certificates) == 0 {
 				resumeConfig.Certificates = []Certificate{getRSACertificate()}
 			}
-			if !test.newSessionsOnResume {
+			if test.newSessionsOnResume {
+				if !test.noSessionCache {
+					resumeConfig.ClientSessionCache = NewLRUClientSessionCache(1)
+					resumeConfig.ServerSessionCache = NewLRUServerSessionCache(1)
+				}
+			} else {
 				resumeConfig.SessionTicketKey = config.SessionTicketKey
 				resumeConfig.ClientSessionCache = config.ClientSessionCache
 				resumeConfig.ServerSessionCache = config.ServerSessionCache
@@ -1725,6 +1735,14 @@ func addBasicTests() {
 			shouldFail:        true,
 			expectedError:     ":TOO_MANY_WARNING_ALERTS:",
 		},
+		{
+			name: "EmptySessionID",
+			config: Config{
+				SessionTicketsDisabled: true,
+			},
+			noSessionCache: true,
+			flags:          []string{"-expect-no-session"},
+		},
 	}
 
 	testCases = append(testCases, basicTests...)
@@ -2150,6 +2168,7 @@ func addStateMachineCoverageTests(async, splitHandshake bool, protocol protocol)
 				RenewTicketOnResume: true,
 			},
 		},
+		flags:         []string{"-expect-ticket-renewal"},
 		resumeSession: true,
 	})
 	tests = append(tests, testCase{
