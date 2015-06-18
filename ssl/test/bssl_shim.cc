@@ -628,6 +628,144 @@ static int WriteAll(SSL *ssl, const uint8_t *in, size_t in_len) {
   return ret;
 }
 
+// CheckHandshakeProperties checks, immediately after |ssl| completes its
+// initial handshake (or False Starts), whether all the properties are
+// consistent with the test configuration and invariants.
+static bool CheckHandshakeProperties(SSL *ssl, bool is_resume) {
+  const TestConfig *config = GetConfigPtr(ssl);
+
+  if (SSL_get_current_cipher(ssl) == nullptr) {
+    fprintf(stderr, "null cipher after handshake\n");
+    return false;
+  }
+
+  if (is_resume &&
+      (!!SSL_session_reused(ssl) == config->expect_session_miss)) {
+    fprintf(stderr, "session was%s reused\n",
+            SSL_session_reused(ssl) ? "" : " not");
+    return false;
+  }
+
+  bool expect_handshake_done = is_resume || !config->false_start;
+  if (expect_handshake_done != GetTestState(ssl)->handshake_done) {
+    fprintf(stderr, "handshake was%s completed\n",
+            GetTestState(ssl)->handshake_done ? "" : " not");
+    return false;
+  }
+
+  if (config->is_server && !GetTestState(ssl)->early_callback_called) {
+    fprintf(stderr, "early callback not called\n");
+    return false;
+  }
+
+  if (!config->expected_server_name.empty()) {
+    const char *server_name =
+        SSL_get_servername(ssl, TLSEXT_NAMETYPE_host_name);
+    if (server_name != config->expected_server_name) {
+      fprintf(stderr, "servername mismatch (got %s; want %s)\n",
+              server_name, config->expected_server_name.c_str());
+      return false;
+    }
+  }
+
+  if (!config->expected_certificate_types.empty()) {
+    uint8_t *certificate_types;
+    int num_certificate_types =
+        SSL_get0_certificate_types(ssl, &certificate_types);
+    if (num_certificate_types !=
+        (int)config->expected_certificate_types.size() ||
+        memcmp(certificate_types,
+               config->expected_certificate_types.data(),
+               num_certificate_types) != 0) {
+      fprintf(stderr, "certificate types mismatch\n");
+      return false;
+    }
+  }
+
+  if (!config->expected_next_proto.empty()) {
+    const uint8_t *next_proto;
+    unsigned next_proto_len;
+    SSL_get0_next_proto_negotiated(ssl, &next_proto, &next_proto_len);
+    if (next_proto_len != config->expected_next_proto.size() ||
+        memcmp(next_proto, config->expected_next_proto.data(),
+               next_proto_len) != 0) {
+      fprintf(stderr, "negotiated next proto mismatch\n");
+      return false;
+    }
+  }
+
+  if (!config->expected_alpn.empty()) {
+    const uint8_t *alpn_proto;
+    unsigned alpn_proto_len;
+    SSL_get0_alpn_selected(ssl, &alpn_proto, &alpn_proto_len);
+    if (alpn_proto_len != config->expected_alpn.size() ||
+        memcmp(alpn_proto, config->expected_alpn.data(),
+               alpn_proto_len) != 0) {
+      fprintf(stderr, "negotiated alpn proto mismatch\n");
+      return false;
+    }
+  }
+
+  if (!config->expected_channel_id.empty()) {
+    uint8_t channel_id[64];
+    if (!SSL_get_tls_channel_id(ssl, channel_id, sizeof(channel_id))) {
+      fprintf(stderr, "no channel id negotiated\n");
+      return false;
+    }
+    if (config->expected_channel_id.size() != 64 ||
+        memcmp(config->expected_channel_id.data(),
+               channel_id, 64) != 0) {
+      fprintf(stderr, "channel id mismatch\n");
+      return false;
+    }
+  }
+
+  if (config->expect_extended_master_secret) {
+    if (!ssl->session->extended_master_secret) {
+      fprintf(stderr, "No EMS for session when expected");
+      return false;
+    }
+  }
+
+  if (!config->expected_ocsp_response.empty()) {
+    const uint8_t *data;
+    size_t len;
+    SSL_get0_ocsp_response(ssl, &data, &len);
+    if (config->expected_ocsp_response.size() != len ||
+        memcmp(config->expected_ocsp_response.data(), data, len) != 0) {
+      fprintf(stderr, "OCSP response mismatch\n");
+      return false;
+    }
+  }
+
+  if (!config->expected_signed_cert_timestamps.empty()) {
+    const uint8_t *data;
+    size_t len;
+    SSL_get0_signed_cert_timestamp_list(ssl, &data, &len);
+    if (config->expected_signed_cert_timestamps.size() != len ||
+        memcmp(config->expected_signed_cert_timestamps.data(),
+               data, len) != 0) {
+      fprintf(stderr, "SCT list mismatch\n");
+      return false;
+    }
+  }
+
+  if (!config->is_server) {
+    /* Clients should expect a peer certificate chain iff this was not a PSK
+     * cipher suite. */
+    if (config->psk.empty()) {
+      if (SSL_get_peer_cert_chain(ssl) == nullptr) {
+        fprintf(stderr, "Missing peer certificate chain!\n");
+        return false;
+      }
+    } else if (SSL_get_peer_cert_chain(ssl) != nullptr) {
+      fprintf(stderr, "Unexpected peer certificate chain!\n");
+      return false;
+    }
+  }
+  return true;
+}
+
 // DoExchange runs a test SSL exchange against the peer. On success, it returns
 // true and sets |*out_session| to the negotiated SSL session. If the test is a
 // resumption attempt, |is_resume| is true and |session| is the session from the
@@ -816,139 +954,11 @@ static bool DoExchange(ScopedSSL_SESSION *out_session, SSL_CTX *ssl_ctx,
         ret = SSL_connect(ssl.get());
       }
     } while (config->async && RetryAsync(ssl.get(), ret));
-    if (ret != 1) {
+    if (ret != 1 ||
+        !CheckHandshakeProperties(ssl.get(), is_resume)) {
       return false;
     }
 
-    if (SSL_get_current_cipher(ssl.get()) == nullptr) {
-      fprintf(stderr, "null cipher after handshake\n");
-      return false;
-    }
-
-    if (is_resume &&
-        (!!SSL_session_reused(ssl.get()) == config->expect_session_miss)) {
-      fprintf(stderr, "session was%s reused\n",
-              SSL_session_reused(ssl.get()) ? "" : " not");
-      return false;
-    }
-
-    bool expect_handshake_done = is_resume || !config->false_start;
-    if (expect_handshake_done != GetTestState(ssl.get())->handshake_done) {
-      fprintf(stderr, "handshake was%s completed\n",
-              GetTestState(ssl.get())->handshake_done ? "" : " not");
-      return false;
-    }
-
-    if (config->is_server && !GetTestState(ssl.get())->early_callback_called) {
-      fprintf(stderr, "early callback not called\n");
-      return false;
-    }
-
-    if (!config->expected_server_name.empty()) {
-      const char *server_name =
-        SSL_get_servername(ssl.get(), TLSEXT_NAMETYPE_host_name);
-      if (server_name != config->expected_server_name) {
-        fprintf(stderr, "servername mismatch (got %s; want %s)\n",
-                server_name, config->expected_server_name.c_str());
-        return false;
-      }
-    }
-
-    if (!config->expected_certificate_types.empty()) {
-      uint8_t *certificate_types;
-      int num_certificate_types =
-        SSL_get0_certificate_types(ssl.get(), &certificate_types);
-      if (num_certificate_types !=
-          (int)config->expected_certificate_types.size() ||
-          memcmp(certificate_types,
-                 config->expected_certificate_types.data(),
-                 num_certificate_types) != 0) {
-        fprintf(stderr, "certificate types mismatch\n");
-        return false;
-      }
-    }
-
-    if (!config->expected_next_proto.empty()) {
-      const uint8_t *next_proto;
-      unsigned next_proto_len;
-      SSL_get0_next_proto_negotiated(ssl.get(), &next_proto, &next_proto_len);
-      if (next_proto_len != config->expected_next_proto.size() ||
-          memcmp(next_proto, config->expected_next_proto.data(),
-                 next_proto_len) != 0) {
-        fprintf(stderr, "negotiated next proto mismatch\n");
-        return false;
-      }
-    }
-
-    if (!config->expected_alpn.empty()) {
-      const uint8_t *alpn_proto;
-      unsigned alpn_proto_len;
-      SSL_get0_alpn_selected(ssl.get(), &alpn_proto, &alpn_proto_len);
-      if (alpn_proto_len != config->expected_alpn.size() ||
-          memcmp(alpn_proto, config->expected_alpn.data(),
-                 alpn_proto_len) != 0) {
-        fprintf(stderr, "negotiated alpn proto mismatch\n");
-        return false;
-      }
-    }
-
-    if (!config->expected_channel_id.empty()) {
-      uint8_t channel_id[64];
-      if (!SSL_get_tls_channel_id(ssl.get(), channel_id, sizeof(channel_id))) {
-        fprintf(stderr, "no channel id negotiated\n");
-        return false;
-      }
-      if (config->expected_channel_id.size() != 64 ||
-          memcmp(config->expected_channel_id.data(),
-                 channel_id, 64) != 0) {
-        fprintf(stderr, "channel id mismatch\n");
-        return false;
-      }
-    }
-
-    if (config->expect_extended_master_secret) {
-      if (!ssl->session->extended_master_secret) {
-        fprintf(stderr, "No EMS for session when expected");
-        return false;
-      }
-    }
-
-    if (!config->expected_ocsp_response.empty()) {
-      const uint8_t *data;
-      size_t len;
-      SSL_get0_ocsp_response(ssl.get(), &data, &len);
-      if (config->expected_ocsp_response.size() != len ||
-          memcmp(config->expected_ocsp_response.data(), data, len) != 0) {
-        fprintf(stderr, "OCSP response mismatch\n");
-        return false;
-      }
-    }
-
-    if (!config->expected_signed_cert_timestamps.empty()) {
-      const uint8_t *data;
-      size_t len;
-      SSL_get0_signed_cert_timestamp_list(ssl.get(), &data, &len);
-      if (config->expected_signed_cert_timestamps.size() != len ||
-          memcmp(config->expected_signed_cert_timestamps.data(),
-                 data, len) != 0) {
-        fprintf(stderr, "SCT list mismatch\n");
-        return false;
-      }
-    }
-
-    if (!config->is_server) {
-      /* Clients should expect a peer certificate chain iff this was not a PSK
-       * cipher suite. */
-      if (config->psk.empty()) {
-        if (SSL_get_peer_cert_chain(ssl.get()) == nullptr) {
-          fprintf(stderr, "Missing peer certificate chain!\n");
-          return false;
-        }
-      } else if (SSL_get_peer_cert_chain(ssl.get()) != nullptr) {
-        fprintf(stderr, "Unexpected peer certificate chain!\n");
-        return false;
-      }
-    }
   }
 
   if (config->export_keying_material > 0) {
