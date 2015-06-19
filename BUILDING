@@ -67,6 +67,7 @@ Then make a build directory as above and run CMake *twice* like this:
   cmake -DANDROID_NATIVE_API_LEVEL=android-9 \
         -DANDROID_ABI=armeabi-v7a \
         -DCMAKE_TOOLCHAIN_FILE=../util/android-cmake/android.toolchain.cmake \
+        -DANDROID_NATIVE_API_LEVEL=16 \
         -GNinja ..
 
 Once you've run that twice, ninja should produce Android-compatible binaries.
