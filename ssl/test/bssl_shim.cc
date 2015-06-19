@@ -1028,18 +1028,19 @@ static bool DoExchange(ScopedSSL_SESSION *out_session, SSL_CTX *ssl_ctx,
     }
     // This mode writes a number of different record sizes in an attempt to
     // trip up the CBC record splitting code.
-    uint8_t buf[32769];
-    memset(buf, 0x42, sizeof(buf));
+    static const size_t kBufLen = 32769;
+    std::unique_ptr<uint8_t[]> buf(new uint8_t[kBufLen]);
+    memset(buf.get(), 0x42, kBufLen);
     static const size_t kRecordSizes[] = {
         0, 1, 255, 256, 257, 16383, 16384, 16385, 32767, 32768, 32769};
     for (size_t i = 0; i < sizeof(kRecordSizes) / sizeof(kRecordSizes[0]);
          i++) {
       const size_t len = kRecordSizes[i];
-      if (len > sizeof(buf)) {
+      if (len > kBufLen) {
         fprintf(stderr, "Bad kRecordSizes value.\n");
         return false;
       }
-      if (WriteAll(ssl.get(), buf, len) < 0) {
+      if (WriteAll(ssl.get(), buf.get(), len) < 0) {
         return false;
       }
     }
