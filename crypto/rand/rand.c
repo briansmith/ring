@@ -78,7 +78,8 @@ int RAND_bytes(uint8_t *buf, size_t len) {
     return 1;
   }
 
-  if (!CRYPTO_have_hwrand()) {
+  if (!CRYPTO_have_hwrand() ||
+      !CRYPTO_hwrand(buf, len)) {
     /* Without a hardware RNG to save us from address-space duplication, the OS
      * entropy is used directly. */
     CRYPTO_sysrand(buf, len);
@@ -107,8 +108,6 @@ int RAND_bytes(uint8_t *buf, size_t len) {
     state->bytes_used = 0;
     state->partial_block_used = sizeof(state->partial_block);
   }
-
-  CRYPTO_hwrand(buf, len);
 
   if (len >= sizeof(state->partial_block)) {
     size_t remaining = len;

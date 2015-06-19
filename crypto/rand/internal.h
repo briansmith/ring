@@ -29,8 +29,9 @@ void CRYPTO_sysrand(uint8_t *buf, size_t len);
 int CRYPTO_have_hwrand(void);
 
 /* CRYPTO_hwrand fills |len| bytes at |buf| with entropy from the hardware.
- * This function can only be called if |CRYPTO_have_hwrand| returns one. */
-void CRYPTO_hwrand(uint8_t *buf, size_t len);
+ * This function can only be called if |CRYPTO_have_hwrand| returns one.
+ * It returns one on success or zero on hardware failure. */
+int CRYPTO_hwrand(uint8_t *buf, size_t len);
 
 
 #if defined(__cplusplus)
