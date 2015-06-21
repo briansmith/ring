@@ -83,9 +83,10 @@ SSL_AEAD_CTX *SSL_AEAD_CTX_new(enum evp_aead_direction_t direction,
 
     memcpy(aead_ctx->fixed_nonce, fixed_iv, fixed_iv_len);
     aead_ctx->fixed_nonce_len = fixed_iv_len;
-    aead_ctx->variable_nonce_included_in_record =
-        (cipher->algorithm2 &
-         SSL_CIPHER_ALGORITHM2_VARIABLE_NONCE_INCLUDED_IN_RECORD) != 0;
+    /* AES-GCM uses an explicit nonce. */
+    if (cipher->algorithm_enc & (SSL_AES128GCM | SSL_AES256GCM)) {
+      aead_ctx->variable_nonce_included_in_record = 1;
+    }
   } else {
     aead_ctx->variable_nonce_included_in_record = 1;
     aead_ctx->random_variable_nonce = 1;

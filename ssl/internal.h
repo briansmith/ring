@@ -215,12 +215,6 @@
  * one, update the table in ssl_cipher.c. */
 #define SSL_MAX_DIGEST 4
 
-/* SSL_CIPHER_ALGORITHM2_VARIABLE_NONCE_INCLUDED_IN_RECORD is a flag in
- * SSL_CIPHER.algorithm2 which indicates that the variable part of the nonce is
- * included as a prefix of the record. (AES-GCM, for example, does with with an
- * 8-byte variable nonce.) */
-#define SSL_CIPHER_ALGORITHM2_VARIABLE_NONCE_INCLUDED_IN_RECORD (1<<22)
-
 /* Bits for |algo_strength|, cipher strength information. */
 #define SSL_MEDIUM 0x00000001L
 #define SSL_HIGH 0x00000002L
