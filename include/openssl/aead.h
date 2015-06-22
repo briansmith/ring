@@ -223,11 +223,11 @@ enum evp_aead_direction_t {
   evp_aead_seal,
 };
 
-/* EVP_AEAD_CTX_init initializes |ctx| for the given AEAD algorithm from |impl|.
- * The |impl| argument may be NULL to choose the default implementation.
- * Authentication tags may be truncated by passing a size as |tag_len|. A
- * |tag_len| of zero indicates the default tag length and this is defined as
- * EVP_AEAD_DEFAULT_TAG_LENGTH for readability.
+/* EVP_AEAD_CTX_init initializes |ctx| for the given AEAD algorithm. The |impl|
+ * argument is ignored and should be NULL. Authentication tags may be truncated
+ * by passing a size as |tag_len|. A |tag_len| of zero indicates the default
+ * tag length and this is defined as EVP_AEAD_DEFAULT_TAG_LENGTH for
+ * readability.
  *
  * Returns 1 on success. Otherwise returns 0 and pushes to the error stack. In
  * the error case, you do not need to call |EVP_AEAD_CTX_cleanup|, but it's
