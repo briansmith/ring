@@ -52,7 +52,8 @@ func main() {
 	output.WriteString(compiler)
 	output.WriteString(" ")
 	output.WriteString(strings.Join(args, " "))
-	output.WriteString("\n\n#if !defined(OPENSSL_NO_ASM)\n\n")
+	output.WriteString("\n\n#if !defined(OPENSSL_NO_ASM)\n")
+	output.WriteString("#if defined(__arm__) || defined(__aarch64__)\n\n")
 
 	cmd := exec.Command(compiler, args...)
 	cmd.Stderr = os.Stderr
@@ -144,5 +145,6 @@ const attr28Block = `
 `
 
 const trailer = `
+#endif  /* __arm__ || __aarch64__ */
 #endif  /* !OPENSSL_NO_ASM */
 `

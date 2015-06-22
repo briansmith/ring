@@ -23,6 +23,7 @@
 #     /opt/gcc-linaro-4.9-2014.11-x86_64_arm-linux-gnueabihf/bin/arm-linux-gnueabihf-gcc -O3 -mcpu=cortex-a8 -mfpu=neon -fpic -DASM_GEN -I ../../include -S chacha_vec.c -o -
 
 #if !defined(OPENSSL_NO_ASM)
+#if defined(__arm__) || defined(__aarch64__)
 
 	.syntax unified
 	.cpu cortex-a8
@@ -1423,4 +1424,5 @@ CRYPTO_chacha_20_neon:
 	.ident	"GCC: (Linaro GCC 2014.11) 4.9.3 20141031 (prerelease)"
 	.section	.note.GNU-stack,"",%progbits
 
+#endif  /* __arm__ || __aarch64__ */
 #endif  /* !OPENSSL_NO_ASM */
