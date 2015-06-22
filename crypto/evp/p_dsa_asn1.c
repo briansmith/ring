@@ -129,21 +129,37 @@ err:
 
 static int dsa_pub_encode(X509_PUBKEY *pk, const EVP_PKEY *pkey) {
   DSA *dsa;
-  void *pval = NULL;
+  ASN1_STRING *pval = NULL;
   uint8_t *penc = NULL;
   int penclen;
 
   dsa = pkey->pkey.dsa;
   dsa->write_params = 0;
 
-  penclen = i2d_DSAPublicKey(dsa, &penc);
+  int ptype;
+  if (dsa->p && dsa->q && dsa->g) {
+    pval = ASN1_STRING_new();
+    if (!pval) {
+      OPENSSL_PUT_ERROR(EVP, dsa_pub_encode, ERR_R_MALLOC_FAILURE);
+      goto err;
+    }
+    pval->length = i2d_DSAparams(dsa, &pval->data);
+    if (pval->length <= 0) {
+      OPENSSL_PUT_ERROR(EVP, dsa_pub_encode, ERR_R_MALLOC_FAILURE);
+      goto err;
+    }
+    ptype = V_ASN1_SEQUENCE;
+  } else {
+    ptype = V_ASN1_UNDEF;
+  }
 
+  penclen = i2d_DSAPublicKey(dsa, &penc);
   if (penclen <= 0) {
     OPENSSL_PUT_ERROR(EVP, dsa_pub_encode, ERR_R_MALLOC_FAILURE);
     goto err;
   }
 
-  if (X509_PUBKEY_set0_param(pk, OBJ_nid2obj(EVP_PKEY_DSA), V_ASN1_UNDEF, pval,
+  if (X509_PUBKEY_set0_param(pk, OBJ_nid2obj(EVP_PKEY_DSA), ptype, pval,
                              penc, penclen)) {
     return 1;
   }
