@@ -434,6 +434,9 @@ def WriteAsmFiles(perlasms):
       if not output.startswith('src'):
         raise ValueError('output missing src: %s' % output)
       output = os.path.join(outDir, output[4:])
+      if output.endswith('-armx.${ASM_EXT}'):
+        output = output.replace('-armx',
+                                '-armx64' if arch == 'aarch64' else '-armx32')
       output = output.replace('${ASM_EXT}', asm_ext)
 
       if arch in ArchForAsmFilename(filename):
