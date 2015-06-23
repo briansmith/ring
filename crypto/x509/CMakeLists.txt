@@ -15,6 +15,7 @@ add_library(
   i2d_pr.c
   pkcs7.c
   t_crl.c
+  t_req.c
   t_x509.c
   t_x509a.c
   x509.c

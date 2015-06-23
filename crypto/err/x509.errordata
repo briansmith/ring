@@ -26,6 +26,8 @@ X509,function,123,X509_PKEY_new
 X509,function,124,X509_PUBKEY_get
 X509,function,125,X509_PUBKEY_set
 X509,function,126,X509_REQ_check_private_key
+X509,function,159,X509_REQ_print_ex
+X509,function,160,X509_REQ_print_fp
 X509,function,127,X509_REQ_to_X509
 X509,function,128,X509_STORE_CTX_get1_issuer
 X509,function,129,X509_STORE_CTX_init
