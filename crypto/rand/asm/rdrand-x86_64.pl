@@ -49,7 +49,7 @@ CRYPTO_rdrand:
 # one on success and zero on hardware failure.
 # int CRYPTO_rdrand_multiple8_buf(uint8_t *buf, size_t len);
 .globl CRYPTO_rdrand_multiple8_buf
-.type CRYPTO_rdrand_multiple8_buf\@function,1
+.type CRYPTO_rdrand_multiple8_buf,\@function,2
 .align 16
 CRYPTO_rdrand_multiple8_buf:
 	test %rsi, %rsi
