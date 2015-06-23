@@ -144,7 +144,7 @@ int X509_REQ_print_ex(BIO *bio, X509_REQ *x, unsigned long nmflags,
         goto err;
       }
     } else {
-      int i;
+      size_t i;
       for (i = 0; i < sk_X509_ATTRIBUTE_num(sk); i++) {
         X509_ATTRIBUTE *a = sk_X509_ATTRIBUTE_value(sk, i);
         ASN1_OBJECT *aobj = X509_ATTRIBUTE_get0_object(a);
@@ -205,7 +205,7 @@ int X509_REQ_print_ex(BIO *bio, X509_REQ *x, unsigned long nmflags,
     if (exts) {
       BIO_printf(bio, "%8sRequested Extensions:\n", "");
 
-      int i;
+      size_t i;
       for (i = 0; i < sk_X509_EXTENSION_num(exts); i++) {
         X509_EXTENSION *ex = sk_X509_EXTENSION_value(exts, i);
         if (BIO_printf(bio, "%12s", "") <= 0) {
