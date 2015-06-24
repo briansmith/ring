@@ -47,11 +47,32 @@ OPENSSL_EXPORT int RAND_load_file(const char *path, long num);
 /* RAND_add does nothing. */
 OPENSSL_EXPORT void RAND_add(const void *buf, int num, double entropy);
 
+/* RAND_egd returns 255. */
+OPENSSL_EXPORT int RAND_egd(const char *);
+
 /* RAND_poll returns one. */
 OPENSSL_EXPORT int RAND_poll(void);
 
 /* RAND_status returns one. */
 OPENSSL_EXPORT int RAND_status(void);
+
+/* rand_meth_st is typedefed to |RAND_METHOD| in base.h. It isn't used; it
+ * exists only to be the return type of |RAND_SSLeay|. It's
+ * external so that variables of this type can be initialized. */
+struct rand_meth_st {
+  void (*seed) (const void *buf, int num);
+  int (*bytes) (unsigned char *buf, int num);
+  void (*cleanup) (void);
+  void (*add) (const void *buf, int num, double entropy);
+  int (*pseudorand) (unsigned char *buf, int num);
+  int (*status) (void);
+};
+
+/* RAND_SSLeay returns a pointer to a dummy |RAND_METHOD|. */
+OPENSSL_EXPORT RAND_METHOD *RAND_SSLeay(void);
+
+/* RAND_set_rand_method does nothing. */
+OPENSSL_EXPORT void RAND_set_rand_method(RAND_METHOD *);
 
 
 #if defined(__cplusplus)

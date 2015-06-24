@@ -162,6 +162,10 @@ int RAND_load_file(const char *path, long num) {
 
 void RAND_add(const void *buf, int num, double entropy) {}
 
+int RAND_egd(const char *path) {
+  return 255;
+}
+
 int RAND_poll(void) {
   return 1;
 }
@@ -169,3 +173,12 @@ int RAND_poll(void) {
 int RAND_status(void) {
   return 1;
 }
+
+static const struct rand_meth_st kSSLeayMethod = {NULL, NULL, NULL,
+                                                  NULL, NULL, NULL};
+
+RAND_METHOD *RAND_SSLeay(void) {
+  return (RAND_METHOD*) &kSSLeayMethod;
+}
+
+void RAND_set_rand_method(RAND_METHOD *method) {}
