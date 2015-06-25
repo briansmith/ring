@@ -72,7 +72,7 @@ struct rand_meth_st {
 OPENSSL_EXPORT RAND_METHOD *RAND_SSLeay(void);
 
 /* RAND_set_rand_method does nothing. */
-OPENSSL_EXPORT void RAND_set_rand_method(RAND_METHOD *);
+OPENSSL_EXPORT void RAND_set_rand_method(const RAND_METHOD *);
 
 
 #if defined(__cplusplus)

@@ -181,4 +181,4 @@ RAND_METHOD *RAND_SSLeay(void) {
   return (RAND_METHOD*) &kSSLeayMethod;
 }
 
-void RAND_set_rand_method(RAND_METHOD *method) {}
+void RAND_set_rand_method(const RAND_METHOD *method) {}
