@@ -322,46 +322,6 @@ OPENSSL_EXPORT int SSL_CTX_set_tlsext_servername_callback(
  * callback and returns one. See |SSL_CTX_set_tlsext_servername_callback|. */
 OPENSSL_EXPORT int SSL_CTX_set_tlsext_servername_arg(SSL_CTX *ctx, void *arg);
 
-/* SSL_CTX_get_tlsext_ticket_keys writes |ctx|'s session ticket key material to
- * |len| bytes of |out|. It returns one on success and zero if |len| is not
- * 48. If |out| is NULL, it returns 48 instead. */
-OPENSSL_EXPORT int SSL_CTX_get_tlsext_ticket_keys(SSL_CTX *ctx, void *out,
-                                                  size_t len);
-
-/* SSL_CTX_set_tlsext_ticket_keys sets |ctx|'s session ticket key material to
- * |len| bytes of |in|. It returns one on success and zero if |len| is not
- * 48. If |in| is NULL, it returns 48 instead. */
-OPENSSL_EXPORT int SSL_CTX_set_tlsext_ticket_keys(SSL_CTX *ctx, const void *in,
-                                                  size_t len);
-
-/* SSL_CTX_set_tlsext_ticket_key_cb sets the ticket callback to |callback| and
- * returns one. |callback| will be called when encrypting a new ticket and when
- * decrypting a ticket from the client.
- *
- * In both modes, |ctx| and |hmac_ctx| will already have been initialized with
- * |EVP_CIPHER_CTX_init| and |HMAC_CTX_init|, respectively. |callback|
- * configures |hmac_ctx| with an HMAC digest and key, and configures |ctx|
- * for encryption or decryption, based on the mode.
- *
- * When encrypting a new ticket, |encrypt| will be one. It writes a public
- * 16-byte key name to |key_name| and a fresh IV to |iv|. The output IV length
- * must match |EVP_CIPHER_CTX_iv_length| of the cipher selected. In this mode,
- * |callback| returns 1 on success and -1 on error.
- *
- * When decrypting a ticket, |encrypt| will be zero. |key_name| will point to a
- * 16-byte key name and |iv| points to an IV. The length of the IV consumed must
- * match |EVP_CIPHER_CTX_iv_length| of the cipher selected. In this mode,
- * |callback| returns -1 to abort the handshake, 0 if decrypting the ticket
- * failed, and 1 or 2 on success. If it returns 2, the ticket will be renewed.
- * This may be used to re-key the ticket.
- *
- * WARNING: |callback| wildly breaks the usual return value convention and is
- * called in two different modes. */
-OPENSSL_EXPORT int SSL_CTX_set_tlsext_ticket_key_cb(
-    SSL_CTX *ctx, int (*callback)(SSL *ssl, uint8_t *key_name, uint8_t *iv,
-                                  EVP_CIPHER_CTX *ctx, HMAC_CTX *hmac_ctx,
-                                  int encrypt));
-
 /* PSK ciphersuites from 4279 */
 #define TLS1_CK_PSK_WITH_RC4_128_SHA                    0x0300008A
 #define TLS1_CK_PSK_WITH_3DES_EDE_CBC_SHA               0x0300008B
