@@ -2370,8 +2370,13 @@ OPENSSL_EXPORT void SSL_CTX_set_tmp_ecdh_callback(
 OPENSSL_EXPORT void SSL_set_tmp_ecdh_callback(
     SSL *ssl, EC_KEY *(*callback)(SSL *ssl, int is_export, int keylength));
 
-OPENSSL_EXPORT const void *SSL_get_current_compression(SSL *s);
-OPENSSL_EXPORT const void *SSL_get_current_expansion(SSL *s);
+typedef void COMP_METHOD;
+
+/* SSL_get_current_compression returns NULL. */
+OPENSSL_EXPORT const COMP_METHOD *SSL_get_current_compression(SSL *s);
+
+/* SSL_get_current_expansion returns NULL. */
+OPENSSL_EXPORT const COMP_METHOD *SSL_get_current_expansion(SSL *s);
 
 OPENSSL_EXPORT int SSL_cache_hit(SSL *s);
 OPENSSL_EXPORT int SSL_is_server(SSL *s);
@@ -2415,13 +2420,13 @@ OPENSSL_EXPORT const char *SSL_CIPHER_description(const SSL_CIPHER *cipher,
 OPENSSL_EXPORT const char *SSL_CIPHER_get_version(const SSL_CIPHER *cipher);
 
 /* SSL_COMP_get_compression_methods returns NULL. */
-OPENSSL_EXPORT void *SSL_COMP_get_compression_methods(void);
+OPENSSL_EXPORT COMP_METHOD *SSL_COMP_get_compression_methods(void);
 
 /* SSL_COMP_add_compression_method returns one. */
-OPENSSL_EXPORT int SSL_COMP_add_compression_method(int id, void *cm);
+OPENSSL_EXPORT int SSL_COMP_add_compression_method(int id, COMP_METHOD *cm);
 
 /* SSL_COMP_get_name returns NULL. */
-OPENSSL_EXPORT const char *SSL_COMP_get_name(const void *comp);
+OPENSSL_EXPORT const char *SSL_COMP_get_name(const COMP_METHOD *comp);
 
 /* SSLv23_method calls |TLS_method|. */
 OPENSSL_EXPORT const SSL_METHOD *SSLv23_method(void);

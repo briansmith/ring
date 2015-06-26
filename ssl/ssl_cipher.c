@@ -1670,11 +1670,11 @@ const char *SSL_CIPHER_get_version(const SSL_CIPHER *cipher) {
   return "TLSv1/SSLv3";
 }
 
-void *SSL_COMP_get_compression_methods(void) { return NULL; }
+COMP_METHOD *SSL_COMP_get_compression_methods(void) { return NULL; }
 
-int SSL_COMP_add_compression_method(int id, void *cm) { return 1; }
+int SSL_COMP_add_compression_method(int id, COMP_METHOD *cm) { return 1; }
 
-const char *SSL_COMP_get_name(const void *comp) { return NULL; }
+const char *SSL_COMP_get_name(const COMP_METHOD *comp) { return NULL; }
 
 int ssl_cipher_get_cert_index(const SSL_CIPHER *cipher) {
   uint32_t alg_a = cipher->algorithm_auth;

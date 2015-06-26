@@ -2211,9 +2211,9 @@ const SSL_CIPHER *SSL_get_current_cipher(const SSL *s) {
   return s->aead_write_ctx->cipher;
 }
 
-const void *SSL_get_current_compression(SSL *s) { return NULL; }
+const COMP_METHOD *SSL_get_current_compression(SSL *s) { return NULL; }
 
-const void *SSL_get_current_expansion(SSL *s) { return NULL; }
+const COMP_METHOD *SSL_get_current_expansion(SSL *s) { return NULL; }
 
 int ssl_init_wbio_buffer(SSL *s, int push) {
   BIO *bbio;
