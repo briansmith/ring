@@ -109,7 +109,7 @@ static bool TestGetASN1() {
   static const uint8_t kData2[] = {0x30, 3, 1, 2};
   static const uint8_t kData3[] = {0x30, 0x80};
   static const uint8_t kData4[] = {0x30, 0x81, 1, 1};
-  static const uint8_t kData5[] = {0x30, 0x82, 0, 1, 1};
+  static const uint8_t kData5[4 + 0x80] = {0x30, 0x82, 0, 0x80};
   static const uint8_t kData6[] = {0xa1, 3, 0x4, 1, 1};
   static const uint8_t kData7[] = {0xa1, 3, 0x4, 2, 1};
   static const uint8_t kData8[] = {0xa1, 3, 0x2, 1, 1};
