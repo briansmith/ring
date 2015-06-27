@@ -227,19 +227,14 @@ end:
   return ret;
 }
 
-int SSL_use_RSAPrivateKey_ASN1(SSL *ssl, uint8_t *d, long len) {
-  int ret;
-  const uint8_t *p;
-  RSA *rsa;
-
-  p = d;
-  rsa = d2i_RSAPrivateKey(NULL, &p, (long)len);
+int SSL_use_RSAPrivateKey_ASN1(SSL *ssl, const uint8_t *der, size_t der_len) {
+  RSA *rsa = RSA_private_key_from_bytes(der, der_len);
   if (rsa == NULL) {
     OPENSSL_PUT_ERROR(SSL, SSL_use_RSAPrivateKey_ASN1, ERR_R_ASN1_LIB);
     return 0;
   }
 
-  ret = SSL_use_RSAPrivateKey(ssl, rsa);
+  int ret = SSL_use_RSAPrivateKey(ssl, rsa);
   RSA_free(rsa);
   return ret;
 }
@@ -482,19 +477,15 @@ end:
   return ret;
 }
 
-int SSL_CTX_use_RSAPrivateKey_ASN1(SSL_CTX *ctx, const uint8_t *d, long len) {
-  int ret;
-  const uint8_t *p;
-  RSA *rsa;
-
-  p = d;
-  rsa = d2i_RSAPrivateKey(NULL, &p, (long)len);
+int SSL_CTX_use_RSAPrivateKey_ASN1(SSL_CTX *ctx, const uint8_t *der,
+                                   size_t der_len) {
+  RSA *rsa = RSA_private_key_from_bytes(der, der_len);
   if (rsa == NULL) {
     OPENSSL_PUT_ERROR(SSL, SSL_CTX_use_RSAPrivateKey_ASN1, ERR_R_ASN1_LIB);
     return 0;
   }
 
-  ret = SSL_CTX_use_RSAPrivateKey(ctx, rsa);
+  int ret = SSL_CTX_use_RSAPrivateKey(ctx, rsa);
   RSA_free(rsa);
   return ret;
 }

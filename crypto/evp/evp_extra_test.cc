@@ -322,8 +322,8 @@ static const uint8_t kExampleBadECKeyDER[] = {
 };
 
 static ScopedEVP_PKEY LoadExampleRSAKey() {
-  const uint8_t *derp = kExampleRSAKeyDER;
-  ScopedRSA rsa(d2i_RSAPrivateKey(nullptr, &derp, sizeof(kExampleRSAKeyDER)));
+  ScopedRSA rsa(RSA_private_key_from_bytes(kExampleRSAKeyDER,
+                                           sizeof(kExampleRSAKeyDER)));
   if (!rsa) {
     return nullptr;
   }

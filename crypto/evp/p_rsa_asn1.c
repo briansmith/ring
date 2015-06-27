@@ -107,20 +107,16 @@ static int rsa_pub_cmp(const EVP_PKEY *a, const EVP_PKEY *b) {
 }
 
 static int rsa_priv_encode(PKCS8_PRIV_KEY_INFO *p8, const EVP_PKEY *pkey) {
-  uint8_t *rk = NULL;
-  int rklen;
-
-  rklen = i2d_RSAPrivateKey(pkey->pkey.rsa, &rk);
-
-  if (rklen <= 0) {
-    OPENSSL_PUT_ERROR(EVP, rsa_priv_encode, ERR_R_MALLOC_FAILURE);
+  uint8_t *encoded;
+  size_t encoded_len;
+  if (!RSA_private_key_to_bytes(&encoded, &encoded_len, pkey->pkey.rsa)) {
     return 0;
   }
 
   /* TODO(fork): const correctness in next line. */
   if (!PKCS8_pkey_set0(p8, (ASN1_OBJECT *)OBJ_nid2obj(NID_rsaEncryption), 0,
-                       V_ASN1_NULL, NULL, rk, rklen)) {
-    OPENSSL_free(rk);
+                       V_ASN1_NULL, NULL, encoded, encoded_len)) {
+    OPENSSL_free(encoded);
     OPENSSL_PUT_ERROR(EVP, rsa_priv_encode, ERR_R_MALLOC_FAILURE);
     return 0;
   }
@@ -131,14 +127,12 @@ static int rsa_priv_encode(PKCS8_PRIV_KEY_INFO *p8, const EVP_PKEY *pkey) {
 static int rsa_priv_decode(EVP_PKEY *pkey, PKCS8_PRIV_KEY_INFO *p8) {
   const uint8_t *p;
   int pklen;
-  RSA *rsa;
-
   if (!PKCS8_pkey_get0(NULL, &p, &pklen, NULL, p8)) {
     OPENSSL_PUT_ERROR(EVP, rsa_priv_decode, ERR_R_MALLOC_FAILURE);
     return 0;
   }
 
-  rsa = d2i_RSAPrivateKey(NULL, &p, pklen);
+  RSA *rsa = RSA_private_key_from_bytes(p, pklen);
   if (rsa == NULL) {
     OPENSSL_PUT_ERROR(EVP, rsa_priv_decode, ERR_R_RSA_LIB);
     return 0;
@@ -227,8 +221,7 @@ static int do_rsa_print(BIO *out, const RSA *rsa, int off,
   }
 
   if (include_private && rsa->d) {
-    if (BIO_printf(out, "Private-Key: (%d bit)\nversion: %ld\n", mod_len,
-                   rsa->version) <= 0) {
+    if (BIO_printf(out, "Private-Key: (%d bit)\n", mod_len) <= 0) {
       goto err;
     }
     str = "modulus:";
@@ -442,7 +435,7 @@ static int rsa_sig_print(BIO *bp, const X509_ALGOR *sigalg,
   return 1;
 }
 
-static int old_rsa_priv_decode(EVP_PKEY *pkey, const unsigned char **pder,
+static int old_rsa_priv_decode(EVP_PKEY *pkey, const uint8_t **pder,
                                int derlen) {
   RSA *rsa = d2i_RSAPrivateKey(NULL, pder, derlen);
   if (rsa == NULL) {
@@ -453,7 +446,7 @@ static int old_rsa_priv_decode(EVP_PKEY *pkey, const unsigned char **pder,
   return 1;
 }
 
-static int old_rsa_priv_encode(const EVP_PKEY *pkey, unsigned char **pder) {
+static int old_rsa_priv_encode(const EVP_PKEY *pkey, uint8_t **pder) {
   return i2d_RSAPrivateKey(pkey->pkey.rsa, pder);
 }
 

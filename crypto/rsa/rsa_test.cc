@@ -742,6 +742,57 @@ static bool TestRecoverCRTParams() {
   return true;
 }
 
+static bool TestASN1() {
+  // Test that private keys may be decoded.
+  ScopedRSA rsa(RSA_private_key_from_bytes(kKey1, sizeof(kKey1) - 1));
+  if (!rsa) {
+    return false;
+  }
+
+  // Test that the serialization round-trips.
+  uint8_t *der;
+  size_t der_len;
+  if (!RSA_private_key_to_bytes(&der, &der_len, rsa.get())) {
+    return false;
+  }
+  ScopedOpenSSLBytes delete_der(der);
+  if (der_len != sizeof(kKey1) - 1 || memcmp(der, kKey1, der_len) != 0) {
+    return false;
+  }
+
+  // Test that serializing public keys works.
+  if (!RSA_public_key_to_bytes(&der, &der_len, rsa.get())) {
+    return false;
+  }
+  delete_der.reset(der);
+
+  // Public keys may be parsed back out.
+  rsa.reset(RSA_public_key_from_bytes(der, der_len));
+  if (!rsa || rsa->p != NULL || rsa->q != NULL) {
+    return false;
+  }
+
+  // Serializing the result round-trips.
+  uint8_t *der2;
+  size_t der2_len;
+  if (!RSA_public_key_to_bytes(&der2, &der2_len, rsa.get())) {
+    return false;
+  }
+  ScopedOpenSSLBytes delete_der2(der2);
+  if (der_len != der2_len || memcmp(der, der2, der_len) != 0) {
+    return false;
+  }
+
+  // Public keys cannot be serialized as private keys.
+  if (RSA_private_key_to_bytes(&der, &der_len, rsa.get())) {
+    OPENSSL_free(der);
+    return false;
+  }
+  ERR_clear_error();
+
+  return true;
+}
+
 int main(int argc, char *argv[]) {
   CRYPTO_library_init();
 
@@ -763,7 +814,8 @@ int main(int argc, char *argv[]) {
       !TestMultiPrimeKey(6, kSixPrimeKey, sizeof(kSixPrimeKey) - 1,
                             kSixPrimeEncryptedMessage,
                             sizeof(kSixPrimeEncryptedMessage)) ||
-      !TestMultiPrimeKeygen()) {
+      !TestMultiPrimeKeygen() ||
+      !TestASN1()) {
     return 1;
   }
 

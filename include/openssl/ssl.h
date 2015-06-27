@@ -649,9 +649,10 @@ OPENSSL_EXPORT int SSL_use_PrivateKey_ASN1(int type, SSL *ssl,
                                            const uint8_t *d, long len);
 
 OPENSSL_EXPORT int SSL_CTX_use_RSAPrivateKey_ASN1(SSL_CTX *ctx,
-                                                  const uint8_t *d,
-                                                  long len);
-OPENSSL_EXPORT int SSL_use_RSAPrivateKey_ASN1(SSL *ssl, uint8_t *d, long len);
+                                                  const uint8_t *der,
+                                                  size_t der_len);
+OPENSSL_EXPORT int SSL_use_RSAPrivateKey_ASN1(SSL *ssl, const uint8_t *der,
+                                              size_t der_len);
 
 /* The following functions configure certificates or private keys but take as
  * input files to read from. They return one on success and zero on failure. The

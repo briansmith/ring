@@ -114,8 +114,8 @@ struct evp_pkey_asn1_method_st {
   int (*pkey_size)(const EVP_PKEY *pk);
   int (*pkey_bits)(const EVP_PKEY *pk);
 
-  int (*param_decode)(EVP_PKEY *pkey, const unsigned char **pder, int derlen);
-  int (*param_encode)(const EVP_PKEY *pkey, unsigned char **pder);
+  int (*param_decode)(EVP_PKEY *pkey, const uint8_t **pder, int derlen);
+  int (*param_encode)(const EVP_PKEY *pkey, uint8_t **pder);
   int (*param_missing)(const EVP_PKEY *pk);
   int (*param_copy)(EVP_PKEY *to, const EVP_PKEY *from);
   int (*param_cmp)(const EVP_PKEY *a, const EVP_PKEY *b);
@@ -129,9 +129,9 @@ struct evp_pkey_asn1_method_st {
 
   /* Legacy functions for old PEM */
 
-  int (*old_priv_decode)(EVP_PKEY *pkey, const unsigned char **pder,
+  int (*old_priv_decode)(EVP_PKEY *pkey, const uint8_t **pder,
                          int derlen);
-  int (*old_priv_encode)(const EVP_PKEY *pkey, unsigned char **pder);
+  int (*old_priv_encode)(const EVP_PKEY *pkey, uint8_t **pder);
 
   /* Converting parameters to/from AlgorithmIdentifier (X509_ALGOR). */
   int (*digest_verify_init_from_algorithm)(EVP_MD_CTX *ctx,
@@ -242,23 +242,23 @@ struct evp_pkey_method_st {
   int (*keygen)(EVP_PKEY_CTX *ctx, EVP_PKEY *pkey);
 
   int (*sign_init)(EVP_PKEY_CTX *ctx);
-  int (*sign)(EVP_PKEY_CTX *ctx, unsigned char *sig, size_t *siglen,
-              const unsigned char *tbs, size_t tbslen);
+  int (*sign)(EVP_PKEY_CTX *ctx, uint8_t *sig, size_t *siglen,
+              const uint8_t *tbs, size_t tbslen);
 
   int (*verify_init)(EVP_PKEY_CTX *ctx);
-  int (*verify)(EVP_PKEY_CTX *ctx, const unsigned char *sig, size_t siglen,
-                const unsigned char *tbs, size_t tbslen);
+  int (*verify)(EVP_PKEY_CTX *ctx, const uint8_t *sig, size_t siglen,
+                const uint8_t *tbs, size_t tbslen);
 
   int (*encrypt_init)(EVP_PKEY_CTX *ctx);
-  int (*encrypt)(EVP_PKEY_CTX *ctx, unsigned char *out, size_t *outlen,
-                 const unsigned char *in, size_t inlen);
+  int (*encrypt)(EVP_PKEY_CTX *ctx, uint8_t *out, size_t *outlen,
+                 const uint8_t *in, size_t inlen);
 
   int (*decrypt_init)(EVP_PKEY_CTX *ctx);
-  int (*decrypt)(EVP_PKEY_CTX *ctx, unsigned char *out, size_t *outlen,
-                 const unsigned char *in, size_t inlen);
+  int (*decrypt)(EVP_PKEY_CTX *ctx, uint8_t *out, size_t *outlen,
+                 const uint8_t *in, size_t inlen);
 
   int (*derive_init)(EVP_PKEY_CTX *ctx);
-  int (*derive)(EVP_PKEY_CTX *ctx, unsigned char *key, size_t *keylen);
+  int (*derive)(EVP_PKEY_CTX *ctx, uint8_t *key, size_t *keylen);
 
   int (*ctrl)(EVP_PKEY_CTX *ctx, int type, int p1, void *p2);
   int (*ctrl_str)(EVP_PKEY_CTX *ctx, const char *type, const char *value);

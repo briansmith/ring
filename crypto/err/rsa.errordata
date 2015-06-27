@@ -5,6 +5,7 @@ RSA,function,103,BN_BLINDING_new
 RSA,function,104,BN_BLINDING_update
 RSA,function,123,RSA_add_pkcs1_prefix
 RSA,function,105,RSA_check_key
+RSA,function,135,RSA_marshal_private_key
 RSA,function,129,RSA_marshal_public_key
 RSA,function,106,RSA_new_method
 RSA,function,107,RSA_padding_add_PKCS1_OAEP_mgf1
@@ -16,7 +17,10 @@ RSA,function,112,RSA_padding_check_PKCS1_OAEP_mgf1
 RSA,function,113,RSA_padding_check_PKCS1_type_1
 RSA,function,114,RSA_padding_check_PKCS1_type_2
 RSA,function,115,RSA_padding_check_none
+RSA,function,136,RSA_parse_private_key
 RSA,function,130,RSA_parse_public_key
+RSA,function,137,RSA_private_key_from_bytes
+RSA,function,138,RSA_private_key_to_bytes
 RSA,function,131,RSA_public_key_from_bytes
 RSA,function,132,RSA_public_key_to_bytes
 RSA,function,116,RSA_recover_crt_params
@@ -25,11 +29,13 @@ RSA,function,118,RSA_verify
 RSA,function,119,RSA_verify_PKCS1_PSS_mgf1
 RSA,function,120,decrypt
 RSA,function,121,encrypt
+RSA,function,139,i2d_RSAPrivateKey
 RSA,function,133,i2d_RSAPublicKey
 RSA,function,122,keygen
 RSA,function,128,keygen_multiprime
 RSA,function,134,marshal_integer
 RSA,function,124,private_transform
+RSA,function,140,rsa_parse_additional_prime
 RSA,function,125,rsa_setup_blinding
 RSA,function,126,sign_raw
 RSA,function,127,verify_raw
@@ -39,6 +45,7 @@ RSA,reason,101,BAD_FIXED_HEADER_DECRYPT
 RSA,reason,102,BAD_PAD_BYTE_COUNT
 RSA,reason,103,BAD_RSA_PARAMETERS
 RSA,reason,104,BAD_SIGNATURE
+RSA,reason,145,BAD_VERSION
 RSA,reason,105,BLOCK_TYPE_IS_NOT_01
 RSA,reason,106,BN_NOT_INITIALIZED
 RSA,reason,142,CANNOT_RECOVER_MULTI_PRIME_KEY

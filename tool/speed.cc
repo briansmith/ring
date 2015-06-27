@@ -407,9 +407,9 @@ bool Speed(const std::vector<std::string> &args) {
     selected = args[0];
   }
 
-  RSA *key = NULL;
-  const uint8_t *inp = kDERRSAPrivate2048;
-  if (NULL == d2i_RSAPrivateKey(&key, &inp, kDERRSAPrivate2048Len)) {
+  RSA *key = RSA_private_key_from_bytes(kDERRSAPrivate2048,
+                                        kDERRSAPrivate2048Len);
+  if (key == NULL) {
     fprintf(stderr, "Failed to parse RSA key.\n");
     ERR_print_errors_fp(stderr);
     return false;
@@ -420,10 +420,9 @@ bool Speed(const std::vector<std::string> &args) {
   }
 
   RSA_free(key);
-  key = NULL;
-
-  inp = kDERRSAPrivate3Prime2048;
-  if (NULL == d2i_RSAPrivateKey(&key, &inp, kDERRSAPrivate3Prime2048Len)) {
+  key = RSA_private_key_from_bytes(kDERRSAPrivate3Prime2048,
+                                   kDERRSAPrivate3Prime2048Len);
+  if (key == NULL) {
     fprintf(stderr, "Failed to parse RSA key.\n");
     ERR_print_errors_fp(stderr);
     return false;
@@ -434,10 +433,9 @@ bool Speed(const std::vector<std::string> &args) {
   }
 
   RSA_free(key);
-  key = NULL;
-
-  inp = kDERRSAPrivate4096;
-  if (NULL == d2i_RSAPrivateKey(&key, &inp, kDERRSAPrivate4096Len)) {
+  key = RSA_private_key_from_bytes(kDERRSAPrivate4096,
+                                   kDERRSAPrivate4096Len);
+  if (key == NULL) {
     fprintf(stderr, "Failed to parse 4096-bit RSA key.\n");
     ERR_print_errors_fp(stderr);
     return 1;

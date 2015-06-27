@@ -64,8 +64,6 @@
 #include <openssl/x509.h>
 
 
-extern const ASN1_ITEM RSAPrivateKey_it;
-
 int X509_verify(X509 *a, EVP_PKEY *r)
 	{
 	if (X509_ALGOR_cmp(a->sig_alg, a->cert_info->signature))
@@ -244,12 +242,12 @@ int i2d_X509_REQ_bio(BIO *bp, X509_REQ *req)
 #ifndef OPENSSL_NO_FP_API
 RSA *d2i_RSAPrivateKey_fp(FILE *fp, RSA **rsa)
 	{
-	return ASN1_item_d2i_fp(ASN1_ITEM_rptr(RSAPrivateKey), fp, rsa);
+	return ASN1_d2i_fp_of(RSA, RSA_new, d2i_RSAPrivateKey, fp, rsa);
 	}
 
 int i2d_RSAPrivateKey_fp(FILE *fp, RSA *rsa)
 	{
-	return ASN1_item_i2d_fp(ASN1_ITEM_rptr(RSAPrivateKey), fp, rsa);
+	return ASN1_i2d_fp_of_const(RSA, i2d_RSAPrivateKey, fp, rsa);
 	}
 
 RSA *d2i_RSAPublicKey_fp(FILE *fp, RSA **rsa)
@@ -277,12 +275,12 @@ int i2d_RSA_PUBKEY_fp(FILE *fp, RSA *rsa)
 
 RSA *d2i_RSAPrivateKey_bio(BIO *bp, RSA **rsa)
 	{
-	return ASN1_item_d2i_bio(ASN1_ITEM_rptr(RSAPrivateKey), bp, rsa);
+	return ASN1_d2i_bio_of(RSA, RSA_new, d2i_RSAPrivateKey, bp, rsa);
 	}
 
 int i2d_RSAPrivateKey_bio(BIO *bp, RSA *rsa)
 	{
-	return ASN1_item_i2d_bio(ASN1_ITEM_rptr(RSAPrivateKey), bp, rsa);
+	return ASN1_i2d_bio_of_const(RSA, i2d_RSAPrivateKey, bp, rsa);
 	}
 
 RSA *d2i_RSAPublicKey_bio(BIO *bp, RSA **rsa)
