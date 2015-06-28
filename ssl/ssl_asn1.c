@@ -163,11 +163,9 @@ static int SSL_SESSION_to_bytes_full(SSL_SESSION *in, uint8_t **out_data,
     return 0;
   }
 
-  if (!CBB_init(&cbb, 0)) {
-    return 0;
-  }
-
-  if (!CBB_add_asn1(&cbb, &session, CBS_ASN1_SEQUENCE) ||
+  CBB_zero(&cbb);
+  if (!CBB_init(&cbb, 0) ||
+      !CBB_add_asn1(&cbb, &session, CBS_ASN1_SEQUENCE) ||
       !CBB_add_asn1_uint64(&session, SSL_SESSION_ASN1_VERSION) ||
       !CBB_add_asn1_uint64(&session, in->ssl_version) ||
       !CBB_add_asn1(&session, &child, CBS_ASN1_OCTETSTRING) ||

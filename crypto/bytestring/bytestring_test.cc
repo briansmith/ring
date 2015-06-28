@@ -649,6 +649,14 @@ static bool TestASN1Uint64() {
   return true;
 }
 
+static int TestZero() {
+  CBB cbb;
+  CBB_zero(&cbb);
+  // Calling |CBB_cleanup| on a zero-state |CBB| must not crash.
+  CBB_cleanup(&cbb);
+  return 1;
+}
+
 int main(void) {
   CRYPTO_library_init();
 
@@ -665,7 +673,8 @@ int main(void) {
       !TestCBBASN1() ||
       !TestBerConvert() ||
       !TestASN1Uint64() ||
-      !TestGetOptionalASN1Bool()) {
+      !TestGetOptionalASN1Bool() ||
+      !TestZero()) {
     return 1;
   }
 

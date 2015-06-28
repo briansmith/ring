@@ -592,18 +592,15 @@ long dtls1_get_message(SSL *s, int st1, int stn, int msg_type, long max,
     goto err;
   }
 
+  /* Reconstruct the assembled message. */
+  size_t len;
   CBB cbb;
+  CBB_zero(&cbb);
   if (!BUF_MEM_grow(s->init_buf,
                     (size_t)frag->msg_header.msg_len +
                     DTLS1_HM_HEADER_LENGTH) ||
-      !CBB_init_fixed(&cbb, (uint8_t *)s->init_buf->data, s->init_buf->max)) {
-    OPENSSL_PUT_ERROR(SSL, dtls1_get_message, ERR_R_MALLOC_FAILURE);
-    goto err;
-  }
-
-  /* Reconstruct the assembled message. */
-  size_t len;
-  if (!CBB_add_u8(&cbb, frag->msg_header.type) ||
+      !CBB_init_fixed(&cbb, (uint8_t *)s->init_buf->data, s->init_buf->max) ||
+      !CBB_add_u8(&cbb, frag->msg_header.type) ||
       !CBB_add_u24(&cbb, frag->msg_header.msg_len) ||
       !CBB_add_u16(&cbb, frag->msg_header.seq) ||
       !CBB_add_u24(&cbb, 0 /* frag_off */) ||
@@ -611,7 +608,7 @@ long dtls1_get_message(SSL *s, int st1, int stn, int msg_type, long max,
       !CBB_add_bytes(&cbb, frag->fragment, frag->msg_header.msg_len) ||
       !CBB_finish(&cbb, NULL, &len)) {
     CBB_cleanup(&cbb);
-    OPENSSL_PUT_ERROR(SSL, dtls1_get_message, ERR_R_INTERNAL_ERROR);
+    OPENSSL_PUT_ERROR(SSL, dtls1_get_message, ERR_R_MALLOC_FAILURE);
     goto err;
   }
   assert(len == (size_t)frag->msg_header.msg_len + DTLS1_HM_HEADER_LENGTH);

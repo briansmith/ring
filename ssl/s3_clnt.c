@@ -1963,19 +1963,16 @@ int ssl3_send_client_key_exchange(SSL *s) {
       uint8_t *new_pms;
       size_t new_pms_len;
 
-      if (!CBB_init(&cbb, 2 + psk_len + 2 + pms_len)) {
-        OPENSSL_PUT_ERROR(SSL, ssl3_send_client_key_exchange,
-                          ERR_R_MALLOC_FAILURE);
-        goto err;
-      }
-      if (!CBB_add_u16_length_prefixed(&cbb, &child) ||
+      CBB_zero(&cbb);
+      if (!CBB_init(&cbb, 2 + psk_len + 2 + pms_len) ||
+          !CBB_add_u16_length_prefixed(&cbb, &child) ||
           !CBB_add_bytes(&child, pms, pms_len) ||
           !CBB_add_u16_length_prefixed(&cbb, &child) ||
           !CBB_add_bytes(&child, psk, psk_len) ||
           !CBB_finish(&cbb, &new_pms, &new_pms_len)) {
         CBB_cleanup(&cbb);
         OPENSSL_PUT_ERROR(SSL, ssl3_send_client_key_exchange,
-                          ERR_R_INTERNAL_ERROR);
+                          ERR_R_MALLOC_FAILURE);
         goto err;
       }
       OPENSSL_cleanse(pms, pms_len);

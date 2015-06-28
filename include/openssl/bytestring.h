@@ -248,6 +248,12 @@ struct cbb_st {
   char is_top_level;
 };
 
+/* CBB_zero sets an uninitialised |cbb| to the zero state. It must be
+ * initialised with |CBB_init| or |CBB_init_fixed| before use, but it is safe to
+ * call |CBB_cleanup| without a successful |CBB_init|. This may be used for more
+ * uniform cleanup of a |CBB|. */
+OPENSSL_EXPORT void CBB_zero(CBB *cbb);
+
 /* CBB_init initialises |cbb| with |initial_capacity|. Since a |CBB| grows as
  * needed, the |initial_capacity| is just a hint. It returns one on success or
  * zero on error. */

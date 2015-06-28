@@ -2582,11 +2582,9 @@ int ssl_ctx_log_rsa_client_key_exchange(SSL_CTX *ctx,
     return 0;
   }
 
-  if (!CBB_init(&cbb, 4 + 16 + 1 + premaster_len * 2 + 1)) {
-    return 0;
-  }
-
-  if (!CBB_add_bytes(&cbb, (const uint8_t *)"RSA ", 4) ||
+  CBB_zero(&cbb);
+  if (!CBB_init(&cbb, 4 + 16 + 1 + premaster_len * 2 + 1) ||
+      !CBB_add_bytes(&cbb, (const uint8_t *)"RSA ", 4) ||
       /* Only the first 8 bytes of the encrypted premaster secret are
        * logged. */
       !cbb_add_hex(&cbb, encrypted_premaster, 8) ||
@@ -2624,11 +2622,9 @@ int ssl_ctx_log_master_secret(SSL_CTX *ctx, const uint8_t *client_random,
     return 0;
   }
 
-  if (!CBB_init(&cbb, 14 + 64 + 1 + master_len * 2 + 1)) {
-    return 0;
-  }
-
-  if (!CBB_add_bytes(&cbb, (const uint8_t *)"CLIENT_RANDOM ", 14) ||
+  CBB_zero(&cbb);
+  if (!CBB_init(&cbb, 14 + 64 + 1 + master_len * 2 + 1) ||
+      !CBB_add_bytes(&cbb, (const uint8_t *)"CLIENT_RANDOM ", 14) ||
       !cbb_add_hex(&cbb, client_random, 32) ||
       !CBB_add_bytes(&cbb, (const uint8_t *)" ", 1) ||
       !cbb_add_hex(&cbb, master, master_len) ||

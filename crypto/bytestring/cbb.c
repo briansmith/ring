@@ -20,6 +20,10 @@
 #include <openssl/mem.h>
 
 
+void CBB_zero(CBB *cbb) {
+  memset(cbb, 0, sizeof(CBB));
+}
+
 static int cbb_init(CBB *cbb, uint8_t *buf, size_t cap) {
   struct cbb_buffer_st *base;
 

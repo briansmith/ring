@@ -747,12 +747,10 @@ int ssl3_get_v2_client_hello(SSL *s) {
          rand_len);
 
   /* Write out an equivalent SSLv3 ClientHello. */
+  CBB_zero(&client_hello);
   if (!CBB_init_fixed(&client_hello, (uint8_t *)s->init_buf->data,
-                      s->init_buf->max)) {
-    OPENSSL_PUT_ERROR(SSL, ssl3_get_v2_client_hello, ERR_R_MALLOC_FAILURE);
-    return -1;
-  }
-  if (!CBB_add_u8(&client_hello, SSL3_MT_CLIENT_HELLO) ||
+                      s->init_buf->max) ||
+      !CBB_add_u8(&client_hello, SSL3_MT_CLIENT_HELLO) ||
       !CBB_add_u24_length_prefixed(&client_hello, &hello_body) ||
       !CBB_add_u16(&hello_body, version) ||
       !CBB_add_bytes(&hello_body, random, SSL3_RANDOM_SIZE) ||
@@ -760,7 +758,7 @@ int ssl3_get_v2_client_hello(SSL *s) {
       !CBB_add_u8(&hello_body, 0) ||
       !CBB_add_u16_length_prefixed(&hello_body, &cipher_suites)) {
     CBB_cleanup(&client_hello);
-    OPENSSL_PUT_ERROR(SSL, ssl3_get_v2_client_hello, ERR_R_INTERNAL_ERROR);
+    OPENSSL_PUT_ERROR(SSL, ssl3_get_v2_client_hello, ERR_R_MALLOC_FAILURE);
     return -1;
   }
 
@@ -1977,18 +1975,15 @@ int ssl3_get_client_key_exchange(SSL *s) {
     uint8_t *new_data;
     size_t new_len;
 
-    if (!CBB_init(&new_premaster, 2 + psk_len + 2 + premaster_secret_len)) {
-      OPENSSL_PUT_ERROR(SSL, ssl3_get_client_key_exchange,
-                        ERR_R_MALLOC_FAILURE);
-      goto err;
-    }
-    if (!CBB_add_u16_length_prefixed(&new_premaster, &child) ||
+    CBB_zero(&new_premaster);
+    if (!CBB_init(&new_premaster, 2 + psk_len + 2 + premaster_secret_len) ||
+        !CBB_add_u16_length_prefixed(&new_premaster, &child) ||
         !CBB_add_bytes(&child, premaster_secret, premaster_secret_len) ||
         !CBB_add_u16_length_prefixed(&new_premaster, &child) ||
         !CBB_add_bytes(&child, psk, psk_len) ||
         !CBB_finish(&new_premaster, &new_data, &new_len)) {
       OPENSSL_PUT_ERROR(SSL, ssl3_get_client_key_exchange,
-                        ERR_R_INTERNAL_ERROR);
+                        ERR_R_MALLOC_FAILURE);
       CBB_cleanup(&new_premaster);
       goto err;
     }
