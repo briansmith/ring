@@ -115,9 +115,4 @@ OPENSSL_EXPORT size_t BUF_strlcat(char *dst, const char *src, size_t size);
 }  /* extern C */
 #endif
 
-#define BUF_F_BUF_MEM_new 100
-#define BUF_F_BUF_memdup 101
-#define BUF_F_BUF_strndup 102
-#define BUF_F_buf_mem_grow 103
-
 #endif  /* OPENSSL_HEADER_BUFFER_H */

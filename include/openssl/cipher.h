@@ -533,41 +533,6 @@ struct evp_cipher_st {
 }  /* extern C */
 #endif
 
-#define CIPHER_F_EVP_AEAD_CTX_init 100
-#define CIPHER_F_EVP_AEAD_CTX_open 101
-#define CIPHER_F_EVP_AEAD_CTX_seal 102
-#define CIPHER_F_EVP_CIPHER_CTX_copy 103
-#define CIPHER_F_EVP_CIPHER_CTX_ctrl 104
-#define CIPHER_F_EVP_CIPHER_CTX_set_key_length 105
-#define CIPHER_F_EVP_CipherInit_ex 106
-#define CIPHER_F_EVP_DecryptFinal_ex 107
-#define CIPHER_F_EVP_EncryptFinal_ex 108
-#define CIPHER_F_aead_aes_gcm_init 109
-#define CIPHER_F_aead_aes_gcm_open 110
-#define CIPHER_F_aead_aes_gcm_seal 111
-#define CIPHER_F_aead_aes_key_wrap_init 112
-#define CIPHER_F_aead_aes_key_wrap_open 113
-#define CIPHER_F_aead_aes_key_wrap_seal 114
-#define CIPHER_F_aead_chacha20_poly1305_init 115
-#define CIPHER_F_aead_chacha20_poly1305_open 116
-#define CIPHER_F_aead_chacha20_poly1305_seal 117
-#define CIPHER_F_aead_rc4_md5_tls_init 118
-#define CIPHER_F_aead_rc4_md5_tls_open 119
-#define CIPHER_F_aead_rc4_md5_tls_seal 120
-#define CIPHER_F_aead_ssl3_ensure_cipher_init 121
-#define CIPHER_F_aead_ssl3_init 122
-#define CIPHER_F_aead_ssl3_open 123
-#define CIPHER_F_aead_ssl3_seal 124
-#define CIPHER_F_aead_tls_ensure_cipher_init 125
-#define CIPHER_F_aead_tls_init 126
-#define CIPHER_F_aead_tls_open 127
-#define CIPHER_F_aead_tls_seal 128
-#define CIPHER_F_aes_init_key 129
-#define CIPHER_F_aesni_init_key 130
-#define CIPHER_F_EVP_AEAD_CTX_init_with_direction 131
-#define CIPHER_F_aead_aes_ctr_hmac_sha256_init 132
-#define CIPHER_F_aead_aes_ctr_hmac_sha256_open 133
-#define CIPHER_F_aead_aes_ctr_hmac_sha256_seal 134
 #define CIPHER_R_AES_KEY_SETUP_FAILED 100
 #define CIPHER_R_BAD_DECRYPT 101
 #define CIPHER_R_BAD_KEY_LENGTH 102

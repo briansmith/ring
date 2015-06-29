@@ -885,25 +885,6 @@ struct bio_st {
 }  /* extern C */
 #endif
 
-#define BIO_F_BIO_callback_ctrl 100
-#define BIO_F_BIO_ctrl 101
-#define BIO_F_BIO_new 102
-#define BIO_F_BIO_new_file 103
-#define BIO_F_BIO_new_mem_buf 104
-#define BIO_F_BIO_zero_copy_get_read_buf 105
-#define BIO_F_BIO_zero_copy_get_read_buf_done 106
-#define BIO_F_BIO_zero_copy_get_write_buf 107
-#define BIO_F_BIO_zero_copy_get_write_buf_done 108
-#define BIO_F_bio_io 109
-#define BIO_F_bio_make_pair 110
-#define BIO_F_bio_write 111
-#define BIO_F_buffer_ctrl 112
-#define BIO_F_conn_ctrl 113
-#define BIO_F_conn_state 114
-#define BIO_F_file_ctrl 115
-#define BIO_F_file_read 116
-#define BIO_F_mem_write 117
-#define BIO_F_BIO_printf 118
 #define BIO_R_BAD_FOPEN_MODE 100
 #define BIO_R_BROKEN_PIPE 101
 #define BIO_R_CONNECT_ERROR 102

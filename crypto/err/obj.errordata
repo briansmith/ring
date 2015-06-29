@@ -1,5 +1,1 @@
-OBJ,function,100,OBJ_create
-OBJ,function,101,OBJ_dup
-OBJ,function,102,OBJ_nid2obj
-OBJ,function,103,OBJ_txt2obj
-OBJ,reason,100,UNKNOWN_NID
+OBJ,100,UNKNOWN_NID

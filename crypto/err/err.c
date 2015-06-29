@@ -125,10 +125,6 @@
 #include "../internal.h"
 
 
-extern const uint32_t kOpenSSLFunctionValues[];
-extern const size_t kOpenSSLFunctionValuesLen;
-extern const char kOpenSSLFunctionStringData[];
-
 extern const uint32_t kOpenSSLReasonValues[];
 extern const size_t kOpenSSLReasonValuesLen;
 extern const char kOpenSSLReasonStringData[];
@@ -259,42 +255,51 @@ static uint32_t get_error_values(int inc, int top, const char **file, int *line,
 }
 
 uint32_t ERR_get_error(void) {
-  return get_error_values(1, 0, NULL, NULL, NULL, NULL);
+  return get_error_values(1 /* inc */, 0 /* bottom */, NULL, NULL, NULL, NULL);
 }
 
 uint32_t ERR_get_error_line(const char **file, int *line) {
-  return get_error_values(1, 0, file, line, NULL, NULL);
+  return get_error_values(1 /* inc */, 0 /* bottom */, file, line, NULL, NULL);
 }
 
 uint32_t ERR_get_error_line_data(const char **file, int *line,
                                  const char **data, int *flags) {
-  return get_error_values(1, 0, file, line, data, flags);
+  return get_error_values(1 /* inc */, 0 /* bottom */, file, line, data, flags);
 }
 
 uint32_t ERR_peek_error(void) {
-  return get_error_values(0, 0, NULL, NULL, NULL, NULL);
+  return get_error_values(0 /* peek */, 0 /* bottom */, NULL, NULL, NULL, NULL);
 }
 
 uint32_t ERR_peek_error_line(const char **file, int *line) {
-  return get_error_values(0, 0, file, line, NULL, NULL);
+  return get_error_values(0 /* peek */, 0 /* bottom */, file, line, NULL, NULL);
 }
 
 uint32_t ERR_peek_error_line_data(const char **file, int *line,
                                   const char **data, int *flags) {
-  return get_error_values(0, 0, file, line, data, flags);
+  return get_error_values(0 /* peek */, 0 /* bottom */, file, line, data,
+                          flags);
+}
+
+const char *ERR_peek_function(void) {
+  ERR_STATE *state = err_get_state();
+  if (state == NULL || state->bottom == state->top) {
+    return NULL;
+  }
+  return state->errors[(state->bottom + 1) % ERR_NUM_ERRORS].function;
 }
 
 uint32_t ERR_peek_last_error(void) {
-  return get_error_values(0, 1, NULL, NULL, NULL, NULL);
+  return get_error_values(0 /* peek */, 1 /* top */, NULL, NULL, NULL, NULL);
 }
 
 uint32_t ERR_peek_last_error_line(const char **file, int *line) {
-  return get_error_values(0, 1, file, line, NULL, NULL);
+  return get_error_values(0 /* peek */, 1 /* top */, file, line, NULL, NULL);
 }
 
 uint32_t ERR_peek_last_error_line_data(const char **file, int *line,
                                        const char **data, int *flags) {
-  return get_error_values(0, 1, file, line, data, flags);
+  return get_error_values(0 /* peek */, 1 /* top */, file, line, data, flags);
 }
 
 void ERR_clear_error(void) {
@@ -341,40 +346,20 @@ void ERR_clear_system_error(void) {
   errno = 0;
 }
 
-char *ERR_error_string(uint32_t packed_error, char *ret) {
-  static char buf[ERR_ERROR_STRING_BUF_LEN];
-
-  if (ret == NULL) {
-    /* TODO(fork): remove this. */
-    ret = buf;
-  }
-
-#if !defined(NDEBUG)
-  /* This is aimed to help catch callers who don't provide
-   * |ERR_ERROR_STRING_BUF_LEN| bytes of space. */
-  memset(ret, 0, ERR_ERROR_STRING_BUF_LEN);
-#endif
-
-  ERR_error_string_n(packed_error, ret, ERR_ERROR_STRING_BUF_LEN);
-
-  return ret;
-}
-
-void ERR_error_string_n(uint32_t packed_error, char *buf, size_t len) {
-  char lib_buf[64], func_buf[64], reason_buf[64];
-  const char *lib_str, *func_str, *reason_str;
-  unsigned lib, func, reason;
+static void err_error_string(uint32_t packed_error, const char *func_str,
+                             char *buf, size_t len) {
+  char lib_buf[64], reason_buf[64];
+  const char *lib_str, *reason_str;
+  unsigned lib, reason;
 
   if (len == 0) {
     return;
   }
 
   lib = ERR_GET_LIB(packed_error);
-  func = ERR_GET_FUNC(packed_error);
   reason = ERR_GET_REASON(packed_error);
 
   lib_str = ERR_lib_error_string(packed_error);
-  func_str = ERR_func_error_string(packed_error);
   reason_str = ERR_reason_error_string(packed_error);
 
   if (lib_str == NULL) {
@@ -383,8 +368,7 @@ void ERR_error_string_n(uint32_t packed_error, char *buf, size_t len) {
   }
 
   if (func_str == NULL) {
-    BIO_snprintf(func_buf, sizeof(func_buf), "func(%u)", func);
-    func_str = func_buf;
+    func_str = "OPENSSL_internal";
   }
 
   if (reason_str == NULL) {
@@ -424,6 +408,29 @@ void ERR_error_string_n(uint32_t packed_error, char *buf, size_t len) {
       s = colon + 1;
     }
   }
+}
+
+char *ERR_error_string(uint32_t packed_error, char *ret) {
+  static char buf[ERR_ERROR_STRING_BUF_LEN];
+
+  if (ret == NULL) {
+    /* TODO(fork): remove this. */
+    ret = buf;
+  }
+
+#if !defined(NDEBUG)
+  /* This is aimed to help catch callers who don't provide
+   * |ERR_ERROR_STRING_BUF_LEN| bytes of space. */
+  memset(ret, 0, ERR_ERROR_STRING_BUF_LEN);
+#endif
+
+  ERR_error_string_n(packed_error, ret, ERR_ERROR_STRING_BUF_LEN);
+
+  return ret;
+}
+
+void ERR_error_string_n(uint32_t packed_error, char *buf, size_t len) {
+  err_error_string(packed_error, NULL, buf, len);
 }
 
 // err_string_cmp is a compare function for searching error values with
@@ -519,36 +526,7 @@ const char *ERR_lib_error_string(uint32_t packed_error) {
 }
 
 const char *ERR_func_error_string(uint32_t packed_error) {
-  const uint32_t lib = ERR_GET_LIB(packed_error);
-  const uint32_t func = ERR_GET_FUNC(packed_error);
-
-  if (lib == ERR_LIB_SYS) {
-    switch (func) {
-      case SYS_F_fopen:
-        return "fopen";
-      case SYS_F_fclose:
-        return "fclose";
-      case SYS_F_fread:
-        return "fread";
-      case SYS_F_fwrite:
-        return "fwrite";
-      case SYS_F_socket:
-        return "socket";
-      case SYS_F_setsockopt:
-        return "setsockopt";
-      case SYS_F_connect:
-        return "connect";
-      case SYS_F_getaddrinfo:
-        return "getaddrinfo";
-      default:
-        return NULL;
-    }
-  }
-
-  return err_string_lookup(ERR_GET_LIB(packed_error),
-                           ERR_GET_FUNC(packed_error), kOpenSSLFunctionValues,
-                           kOpenSSLFunctionValuesLen,
-                           kOpenSSLFunctionStringData);
+  return "OPENSSL_internal";
 }
 
 const char *ERR_reason_error_string(uint32_t packed_error) {
@@ -599,12 +577,13 @@ void ERR_print_errors_cb(ERR_print_errors_callback_t callback, void *ctx) {
   const unsigned long thread_hash = (uintptr_t) err_get_state();
 
   for (;;) {
+    const char *function = ERR_peek_function();
     packed_error = ERR_get_error_line_data(&file, &line, &data, &flags);
     if (packed_error == 0) {
       break;
     }
 
-    ERR_error_string_n(packed_error, buf, sizeof(buf));
+    err_error_string(packed_error, function, buf, sizeof(buf));
     BIO_snprintf(buf2, sizeof(buf2), "%lu:%s:%s:%d:%s\n", thread_hash, buf,
                  file, line, (flags & ERR_FLAG_STRING) ? data : "");
     if (callback(buf2, strlen(buf2), ctx) <= 0) {
@@ -644,8 +623,8 @@ static void err_set_error_data(char *data, int flags) {
   error->flags = flags;
 }
 
-void ERR_put_error(int library, int func, int reason, const char *file,
-                   unsigned line) {
+void ERR_put_error(int library, int reason, const char *function,
+                   const char *file, unsigned line) {
   ERR_STATE *const state = err_get_state();
   struct err_error_st *error;
 
@@ -668,9 +647,10 @@ void ERR_put_error(int library, int func, int reason, const char *file,
 
   error = &state->errors[state->top];
   err_clear(error);
+  error->function = function;
   error->file = file;
   error->line = line;
-  error->packed = ERR_PACK(library, func, reason);
+  error->packed = ERR_PACK(library, reason);
 }
 
 /* ERR_add_error_data_vdata takes a variable number of const char* pointers,

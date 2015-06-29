@@ -1,4 +1,0 @@
-CRYPTO,function,100,CRYPTO_get_ex_new_index
-CRYPTO,function,101,CRYPTO_set_ex_data
-CRYPTO,function,102,get_class
-CRYPTO,function,103,get_func_pointers

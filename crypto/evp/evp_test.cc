@@ -174,7 +174,7 @@ static bool TestEVP(FileTest *t, void *arg) {
                          bssl::vector_data(&input), input.size())) {
       // ECDSA sometimes doesn't push an error code. Push one on the error queue
       // so it's distinguishable from other errors.
-      ERR_put_error(ERR_LIB_USER, 0, ERR_R_EVP_LIB, __FILE__, __LINE__);
+      OPENSSL_PUT_ERROR(USER, TestEVP, ERR_R_EVP_LIB);
       return false;
     }
     return true;

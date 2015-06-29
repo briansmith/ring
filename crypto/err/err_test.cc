@@ -22,7 +22,7 @@
 
 static bool TestOverflow() {
   for (unsigned i = 0; i < ERR_NUM_ERRORS*2; i++) {
-    ERR_put_error(1, 2, i+1, "test", 1);
+    ERR_put_error(1, i+1, "function", "test", 1);
   }
 
   for (unsigned i = 0; i < ERR_NUM_ERRORS - 1; i++) {
@@ -50,7 +50,7 @@ static bool TestPutError() {
     return false;
   }
 
-  ERR_put_error(1, 2, 3, "test", 4);
+  ERR_put_error(1, 2, "function", "test", 4);
   ERR_add_error_data(1, "testing");
 
   int peeked_line, line, peeked_flags, flags;
@@ -58,6 +58,7 @@ static bool TestPutError() {
   uint32_t peeked_packed_error =
       ERR_peek_error_line_data(&peeked_file, &peeked_line, &peeked_data,
                                &peeked_flags);
+  const char *function = ERR_peek_function();
   uint32_t packed_error = ERR_get_error_line_data(&file, &line, &data, &flags);
 
   if (peeked_packed_error != packed_error ||
@@ -68,12 +69,12 @@ static bool TestPutError() {
     return false;
   }
 
-  if (strcmp(file, "test") != 0 ||
+  if (strcmp(function, "function") != 0 ||
+      strcmp(file, "test") != 0 ||
       line != 4 ||
       (flags & ERR_FLAG_STRING) == 0 ||
       ERR_GET_LIB(packed_error) != 1 ||
-      ERR_GET_FUNC(packed_error) != 2 ||
-      ERR_GET_REASON(packed_error) != 3 ||
+      ERR_GET_REASON(packed_error) != 2 ||
       strcmp(data, "testing") != 0) {
     fprintf(stderr, "Bad error data returned.\n");
     return false;
@@ -88,7 +89,7 @@ static bool TestClearError() {
     return false;
   }
 
-  ERR_put_error(1, 2, 3, "test", 4);
+  ERR_put_error(1, 2, "function", "test", 4);
   ERR_clear_error();
 
   if (ERR_get_error() != 0) {
@@ -100,7 +101,7 @@ static bool TestClearError() {
 }
 
 static bool TestPrint() {
-  ERR_put_error(1, 2, 3, "test", 4);
+  ERR_put_error(1, 2, "function", "test", 4);
   ERR_add_error_data(1, "testing");
   uint32_t packed_error = ERR_get_error();
 
@@ -113,8 +114,38 @@ static bool TestPrint() {
 }
 
 static bool TestRelease() {
-  ERR_put_error(1, 2, 3, "test", 4);
+  ERR_put_error(1, 2, "function", "test", 4);
   ERR_remove_thread_state(NULL);
+  return true;
+}
+
+static bool HasSuffix(const char *str, const char *suffix) {
+  size_t suffix_len = strlen(suffix);
+  size_t str_len = strlen(str);
+  if (str_len < suffix_len) {
+    return false;
+  }
+  return strcmp(str + str_len - suffix_len, suffix) == 0;
+}
+
+static bool TestPutMacro() {
+  int expected_line = __LINE__ + 1;
+  OPENSSL_PUT_ERROR(USER, TestPutMacro, ERR_R_INTERNAL_ERROR);
+
+  int line;
+  const char *file;
+  const char *function = ERR_peek_function();
+  uint32_t error = ERR_get_error_line(&file, &line);
+
+  if (strcmp(function, "TestPutMacro") != 0 ||
+      !HasSuffix(file, "err_test.cc") ||
+      line != expected_line ||
+      ERR_GET_LIB(error) != ERR_LIB_USER ||
+      ERR_GET_REASON(error) != ERR_R_INTERNAL_ERROR) {
+    fprintf(stderr, "Bad error data returned.\n");
+    return false;
+  }
+
   return true;
 }
 
@@ -125,7 +156,8 @@ int main() {
       !TestPutError() ||
       !TestClearError() ||
       !TestPrint() ||
-      !TestRelease()) {
+      !TestRelease() ||
+      !TestPutMacro()) {
     return 1;
   }
 

@@ -1,4 +1,0 @@
-BUF,function,100,BUF_MEM_new
-BUF,function,101,BUF_memdup
-BUF,function,102,BUF_strndup
-BUF,function,103,buf_mem_grow

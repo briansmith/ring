@@ -25,7 +25,6 @@ import (
 	"sort"
 	"strconv"
 	"strings"
-	"unicode"
 )
 
 // ssl.h reserves values 1000 and above for error codes corresponding to
@@ -61,12 +60,11 @@ func makeErrors(reset bool) error {
 	}
 
 	prefix := strings.ToUpper(lib)
-	functions, reasons, err := parseHeader(prefix, headerFile)
+	reasons, err := parseHeader(prefix, headerFile)
 	headerFile.Close()
 
 	if reset {
 		err = nil
-		functions = make(map[string]int)
 		// Retain any reason codes above reservedReasonCode.
 		newReasons := make(map[string]int)
 		for key, value := range reasons {
@@ -97,12 +95,11 @@ func makeErrors(reset bool) error {
 			continue
 		}
 
-		if err := addFunctionsAndReasons(functions, reasons, name, prefix); err != nil {
+		if err := addReasons(reasons, name, prefix); err != nil {
 			return err
 		}
 	}
 
-	assignNewValues(functions, -1)
 	assignNewValues(reasons, reservedReasonCode)
 
 	headerFile, err = os.Open(headerPath)
@@ -117,7 +114,7 @@ func makeErrors(reset bool) error {
 	}
 	defer newHeaderFile.Close()
 
-	if err := writeHeaderFile(newHeaderFile, headerFile, prefix, functions, reasons); err != nil {
+	if err := writeHeaderFile(newHeaderFile, headerFile, prefix, reasons); err != nil {
 		return err
 	}
 	os.Rename(headerPath+".tmp", headerPath)
@@ -127,8 +124,7 @@ func makeErrors(reset bool) error {
 		return err
 	}
 
-	outputStrings(dataFile, lib, typeFunctions, functions)
-	outputStrings(dataFile, lib, typeReasons, reasons)
+	outputStrings(dataFile, lib, reasons)
 	dataFile.Close()
 
 	return nil
@@ -183,7 +179,7 @@ func outputAssignments(w io.Writer, assignments map[string]int) {
 	}
 }
 
-func parseDefineLine(line, lib string) (typ int, key string, value int, ok bool) {
+func parseDefineLine(line, lib string) (key string, value int, ok bool) {
 	if !strings.HasPrefix(line, "#define ") {
 		return
 	}
@@ -193,16 +189,8 @@ func parseDefineLine(line, lib string) (typ int, key string, value int, ok bool)
 		return
 	}
 
-	funcPrefix := lib + "_F_"
-	reasonPrefix := lib + "_R_"
-
 	key = fields[1]
-	switch {
-	case strings.HasPrefix(key, funcPrefix):
-		typ = typeFunctions
-	case strings.HasPrefix(key, reasonPrefix):
-		typ = typeReasons
-	default:
+	if !strings.HasPrefix(key, lib+"_R_") {
 		return
 	}
 
@@ -215,7 +203,7 @@ func parseDefineLine(line, lib string) (typ int, key string, value int, ok bool)
 	return
 }
 
-func writeHeaderFile(w io.Writer, headerFile io.Reader, lib string, functions, reasons map[string]int) error {
+func writeHeaderFile(w io.Writer, headerFile io.Reader, lib string, reasons map[string]int) error {
 	var last []byte
 	var haveLast, sawDefine bool
 	newLine := []byte("\n")
@@ -223,7 +211,7 @@ func writeHeaderFile(w io.Writer, headerFile io.Reader, lib string, functions, r
 	scanner := bufio.NewScanner(headerFile)
 	for scanner.Scan() {
 		line := scanner.Text()
-		_, _, _, ok := parseDefineLine(line, lib)
+		_, _, ok := parseDefineLine(line, lib)
 		if ok {
 			sawDefine = true
 			continue
@@ -247,7 +235,6 @@ func writeHeaderFile(w io.Writer, headerFile io.Reader, lib string, functions, r
 		return err
 	}
 
-	outputAssignments(w, functions)
 	outputAssignments(w, reasons)
 	w.Write(newLine)
 
@@ -259,14 +246,9 @@ func writeHeaderFile(w io.Writer, headerFile io.Reader, lib string, functions, r
 	return nil
 }
 
-const (
-	typeFunctions = iota
-	typeReasons
-)
-
-func outputStrings(w io.Writer, lib string, ty int, assignments map[string]int) {
+func outputStrings(w io.Writer, lib string, assignments map[string]int) {
 	lib = strings.ToUpper(lib)
-	prefixLen := len(lib + "_F_")
+	prefixLen := len(lib + "_R_")
 
 	keys := make([]string, 0, len(assignments))
 	for key := range assignments {
@@ -275,11 +257,7 @@ func outputStrings(w io.Writer, lib string, ty int, assignments map[string]int) 
 	sort.Strings(keys)
 
 	for _, key := range keys {
-		typeString := "function"
-		if ty == typeReasons {
-			typeString = "reason"
-		}
-		fmt.Fprintf(w, "%s,%s,%d,%s\n", lib, typeString, assignments[key], key[prefixLen:])
+		fmt.Fprintf(w, "%s,%d,%s\n", lib, assignments[key], key[prefixLen:])
 	}
 }
 
@@ -339,7 +317,7 @@ func handleDeclareMacro(line, join, macroName string, m map[string]int) {
 	}
 }
 
-func addFunctionsAndReasons(functions, reasons map[string]int, filename, prefix string) error {
+func addReasons(reasons map[string]int, filename, prefix string) error {
 	file, err := os.Open(filename)
 	if err != nil {
 		return err
@@ -347,45 +325,15 @@ func addFunctionsAndReasons(functions, reasons map[string]int, filename, prefix 
 	defer file.Close()
 
 	reasonPrefix := prefix + "_R_"
-	var currentFunction string
 
 	scanner := bufio.NewScanner(file)
 	for scanner.Scan() {
 		line := scanner.Text()
 
-		if len(line) > 0 && unicode.IsLetter(rune(line[0])) {
-			/* Function start */
-			fields := strings.Fields(line)
-			for _, field := range fields {
-				if i := strings.Index(field, "("); i != -1 {
-					f := field[:i]
-					// The return type of some functions is
-					// a macro that contains a "(".
-					if f == "STACK_OF" {
-						continue
-					}
-					currentFunction = f
-					for len(currentFunction) > 0 && currentFunction[0] == '*' {
-						currentFunction = currentFunction[1:]
-					}
-					break
-				}
-			}
-		}
-
-		// Do not include cross-module error lines.
-		if strings.Contains(line, "OPENSSL_PUT_ERROR(" + prefix + ",") {
-			functionToken := prefix + "_F_" + currentFunction
-			if _, ok := functions[functionToken]; !ok {
-				functions[functionToken] = -1
-			}
-		}
-
 		handleDeclareMacro(line, "_R_", "OPENSSL_DECLARE_ERROR_REASON(", reasons)
-		handleDeclareMacro(line, "_F_", "OPENSSL_DECLARE_ERROR_FUNCTION(", functions)
 
 		for len(line) > 0 {
-			i := strings.Index(line, prefix + "_")
+			i := strings.Index(line, prefix+"_")
 			if i == -1 {
 				break
 			}
@@ -413,25 +361,17 @@ func addFunctionsAndReasons(functions, reasons map[string]int, filename, prefix 
 	return scanner.Err()
 }
 
-func parseHeader(lib string, file io.Reader) (functions, reasons map[string]int, err error) {
-	functions = make(map[string]int)
+func parseHeader(lib string, file io.Reader) (reasons map[string]int, err error) {
 	reasons = make(map[string]int)
 
 	scanner := bufio.NewScanner(file)
 	for scanner.Scan() {
-		typ, key, value, ok := parseDefineLine(scanner.Text(), lib)
+		key, value, ok := parseDefineLine(scanner.Text(), lib)
 		if !ok {
 			continue
 		}
 
-		switch typ {
-		case typeFunctions:
-			functions[key] = value
-		case typeReasons:
-			reasons[key] = value
-		default:
-			panic("internal error")
-		}
+		reasons[key] = value
 	}
 
 	err = scanner.Err()

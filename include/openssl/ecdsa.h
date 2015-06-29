@@ -196,18 +196,6 @@ OPENSSL_EXPORT int i2d_ECDSA_SIG(const ECDSA_SIG *sig, uint8_t **outp);
 }  /* extern C */
 #endif
 
-#define ECDSA_F_ECDSA_do_sign_ex 100
-#define ECDSA_F_ECDSA_do_verify 101
-#define ECDSA_F_ECDSA_sign_ex 102
-#define ECDSA_F_digest_to_bn 103
-#define ECDSA_F_ecdsa_sign_setup 104
-#define ECDSA_F_d2i_ECDSA_SIG 105
-#define ECDSA_F_ECDSA_SIG_from_bytes 106
-#define ECDSA_F_ECDSA_SIG_marshal 107
-#define ECDSA_F_ECDSA_SIG_parse 108
-#define ECDSA_F_ECDSA_SIG_to_bytes 109
-#define ECDSA_F_ECDSA_verify 110
-#define ECDSA_F_i2d_ECDSA_SIG 112
 #define ECDSA_R_BAD_SIGNATURE 100
 #define ECDSA_R_MISSING_PARAMETERS 101
 #define ECDSA_R_NEED_NEW_SETUP_VALUES 102

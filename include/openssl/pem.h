@@ -502,30 +502,6 @@ void ERR_load_PEM_strings(void);
 }
 #endif
 
-#define PEM_F_PEM_ASN1_read 100
-#define PEM_F_PEM_ASN1_read_bio 101
-#define PEM_F_PEM_ASN1_write 102
-#define PEM_F_PEM_ASN1_write_bio 103
-#define PEM_F_PEM_X509_INFO_read 104
-#define PEM_F_PEM_X509_INFO_read_bio 105
-#define PEM_F_PEM_X509_INFO_write_bio 106
-#define PEM_F_PEM_do_header 107
-#define PEM_F_PEM_get_EVP_CIPHER_INFO 108
-#define PEM_F_PEM_read 109
-#define PEM_F_PEM_read_DHparams 110
-#define PEM_F_PEM_read_PrivateKey 111
-#define PEM_F_PEM_read_bio 112
-#define PEM_F_PEM_read_bio_DHparams 113
-#define PEM_F_PEM_read_bio_Parameters 114
-#define PEM_F_PEM_read_bio_PrivateKey 115
-#define PEM_F_PEM_write 116
-#define PEM_F_PEM_write_PrivateKey 117
-#define PEM_F_PEM_write_bio 118
-#define PEM_F_d2i_PKCS8PrivateKey_bio 119
-#define PEM_F_d2i_PKCS8PrivateKey_fp 120
-#define PEM_F_do_pk8pkey 121
-#define PEM_F_do_pk8pkey_fp 122
-#define PEM_F_load_iv 123
 #define PEM_R_BAD_BASE64_DECODE 100
 #define PEM_R_BAD_DECRYPT 101
 #define PEM_R_BAD_END_LINE 102

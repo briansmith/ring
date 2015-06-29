@@ -839,35 +839,6 @@ OPENSSL_EXPORT BIGNUM *get_rfc3526_prime_1536(BIGNUM *bn);
 }  /* extern C */
 #endif
 
-#define BN_F_BN_CTX_get 100
-#define BN_F_BN_CTX_new 101
-#define BN_F_BN_CTX_start 102
-#define BN_F_BN_bn2dec 103
-#define BN_F_BN_bn2hex 104
-#define BN_F_BN_div 105
-#define BN_F_BN_div_recp 106
-#define BN_F_BN_exp 107
-#define BN_F_BN_generate_dsa_nonce 108
-#define BN_F_BN_generate_prime_ex 109
-#define BN_F_BN_mod_exp2_mont 110
-#define BN_F_BN_mod_exp_mont 111
-#define BN_F_BN_mod_exp_mont_consttime 112
-#define BN_F_BN_mod_exp_mont_word 113
-#define BN_F_BN_mod_inverse 114
-#define BN_F_BN_mod_inverse_no_branch 115
-#define BN_F_BN_mod_lshift_quick 116
-#define BN_F_BN_mod_sqrt 117
-#define BN_F_BN_new 118
-#define BN_F_BN_rand 119
-#define BN_F_BN_rand_range 120
-#define BN_F_BN_sqrt 121
-#define BN_F_BN_usub 122
-#define BN_F_bn_wexpand 123
-#define BN_F_mod_exp_recp 124
-#define BN_F_BN_lshift 125
-#define BN_F_BN_rshift 126
-#define BN_F_BN_bn2cbb 127
-#define BN_F_BN_cbs2unsigned 128
 #define BN_R_ARG2_LT_ARG3 100
 #define BN_R_BAD_RECIPROCAL 101
 #define BN_R_BIGNUM_TOO_LONG 102

@@ -135,10 +135,6 @@ int CONF_parse_list(const char *list, char sep, int remove_whitespace,
 }  /* extern C */
 #endif
 
-#define CONF_F_CONF_parse_list 100
-#define CONF_F_NCONF_load 101
-#define CONF_F_def_load_bio 102
-#define CONF_F_str_copy 103
 #define CONF_R_LIST_CANNOT_BE_NULL 100
 #define CONF_R_MISSING_CLOSE_SQUARE_BRACKET 101
 #define CONF_R_MISSING_EQUAL_SIGN 102

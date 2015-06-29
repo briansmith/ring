@@ -170,24 +170,6 @@ OPENSSL_EXPORT void PKCS12_free(PKCS12 *p12);
 }  /* extern C */
 #endif
 
-#define PKCS8_F_EVP_PKCS82PKEY 100
-#define PKCS8_F_EVP_PKEY2PKCS8 101
-#define PKCS8_F_PKCS12_get_key_and_certs 102
-#define PKCS8_F_PKCS12_handle_content_info 103
-#define PKCS8_F_PKCS12_handle_content_infos 104
-#define PKCS8_F_PKCS5_pbe2_set_iv 105
-#define PKCS8_F_PKCS5_pbe_set 106
-#define PKCS8_F_PKCS5_pbe_set0_algor 107
-#define PKCS8_F_PKCS5_pbkdf2_set 108
-#define PKCS8_F_PKCS8_decrypt 109
-#define PKCS8_F_PKCS8_encrypt 110
-#define PKCS8_F_PKCS8_encrypt_pbe 111
-#define PKCS8_F_pbe_cipher_init 112
-#define PKCS8_F_pbe_crypt 113
-#define PKCS8_F_pkcs12_item_decrypt_d2i 114
-#define PKCS8_F_pkcs12_item_i2d_encrypt 115
-#define PKCS8_F_pkcs12_key_gen_raw 116
-#define PKCS8_F_pkcs12_pbe_keyivgen 117
 #define PKCS8_R_BAD_PKCS12_DATA 100
 #define PKCS8_R_BAD_PKCS12_VERSION 101
 #define PKCS8_R_CIPHER_HAS_NO_OBJECT_IDENTIFIER 102

@@ -1,8 +1,4 @@
-DH,function,100,DH_new_method
-DH,function,101,compute_key
-DH,function,102,generate_key
-DH,function,103,generate_parameters
-DH,reason,100,BAD_GENERATOR
-DH,reason,101,INVALID_PUBKEY
-DH,reason,102,MODULUS_TOO_LARGE
-DH,reason,103,NO_PRIVATE_VALUE
+DH,100,BAD_GENERATOR
+DH,101,INVALID_PUBKEY
+DH,102,MODULUS_TOO_LARGE
+DH,103,NO_PRIVATE_VALUE

@@ -252,8 +252,6 @@ struct env_md_ctx_st {
 }  /* extern C */
 #endif
 
-#define DIGEST_F_EVP_DigestInit_ex 100
-#define DIGEST_F_EVP_MD_CTX_copy_ex 101
 #define DIGEST_R_INPUT_NOT_INITIALIZED 100
 
 #endif  /* OPENSSL_HEADER_DIGEST_H */

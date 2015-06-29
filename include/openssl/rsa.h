@@ -573,47 +573,6 @@ struct rsa_st {
 }  /* extern C */
 #endif
 
-#define RSA_F_BN_BLINDING_convert_ex 100
-#define RSA_F_BN_BLINDING_create_param 101
-#define RSA_F_BN_BLINDING_invert_ex 102
-#define RSA_F_BN_BLINDING_new 103
-#define RSA_F_BN_BLINDING_update 104
-#define RSA_F_RSA_check_key 105
-#define RSA_F_RSA_new_method 106
-#define RSA_F_RSA_padding_add_PKCS1_OAEP_mgf1 107
-#define RSA_F_RSA_padding_add_PKCS1_PSS_mgf1 108
-#define RSA_F_RSA_padding_add_PKCS1_type_1 109
-#define RSA_F_RSA_padding_add_PKCS1_type_2 110
-#define RSA_F_RSA_padding_add_none 111
-#define RSA_F_RSA_padding_check_PKCS1_OAEP_mgf1 112
-#define RSA_F_RSA_padding_check_PKCS1_type_1 113
-#define RSA_F_RSA_padding_check_PKCS1_type_2 114
-#define RSA_F_RSA_padding_check_none 115
-#define RSA_F_RSA_recover_crt_params 116
-#define RSA_F_RSA_sign 117
-#define RSA_F_RSA_verify 118
-#define RSA_F_RSA_verify_PKCS1_PSS_mgf1 119
-#define RSA_F_decrypt 120
-#define RSA_F_encrypt 121
-#define RSA_F_keygen 122
-#define RSA_F_RSA_add_pkcs1_prefix 123
-#define RSA_F_private_transform 124
-#define RSA_F_rsa_setup_blinding 125
-#define RSA_F_sign_raw 126
-#define RSA_F_verify_raw 127
-#define RSA_F_keygen_multiprime 128
-#define RSA_F_RSA_marshal_public_key 129
-#define RSA_F_RSA_parse_public_key 130
-#define RSA_F_RSA_public_key_from_bytes 131
-#define RSA_F_RSA_public_key_to_bytes 132
-#define RSA_F_i2d_RSAPublicKey 133
-#define RSA_F_marshal_integer 134
-#define RSA_F_RSA_marshal_private_key 135
-#define RSA_F_RSA_parse_private_key 136
-#define RSA_F_RSA_private_key_from_bytes 137
-#define RSA_F_RSA_private_key_to_bytes 138
-#define RSA_F_i2d_RSAPrivateKey 139
-#define RSA_F_rsa_parse_additional_prime 140
 #define RSA_R_BAD_E_VALUE 100
 #define RSA_R_BAD_FIXED_HEADER_DECRYPT 101
 #define RSA_R_BAD_PAD_BYTE_COUNT 102

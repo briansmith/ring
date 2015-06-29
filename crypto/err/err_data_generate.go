@@ -69,7 +69,7 @@ type stringList struct {
 	// entries is an array of keys and offsets into |stringData|. The
 	// offsets are in the bottom 15 bits of each uint32 and the key is the
 	// top 17 bits.
-	entries         []uint32
+	entries []uint32
 	// internedStrings contains the same strings as are in |stringData|,
 	// but allows for easy deduplication. It maps a string to its offset in
 	// |stringData|.
@@ -146,7 +146,7 @@ func (st *stringList) WriteTo(out stringWriter, name string) {
 		fmt.Fprintf(out, "    0x%x,\n", v)
 	}
 	out.WriteString("};\n\n")
-	out.WriteString("const size_t " + values + "Len = sizeof(" + values + ") / sizeof(" + values + "[0]);\n\n");
+	out.WriteString("const size_t " + values + "Len = sizeof(" + values + ") / sizeof(" + values + "[0]);\n\n")
 
 	stringData := "kOpenSSL" + name + "StringData"
 	out.WriteString("const char " + stringData + "[] =\n    \"")
@@ -161,8 +161,8 @@ func (st *stringList) WriteTo(out stringWriter, name string) {
 }
 
 type errorData struct {
-	functions, reasons *stringList
-	libraryMap         map[string]uint32
+	reasons    *stringList
+	libraryMap map[string]uint32
 }
 
 func (e *errorData) readErrorDataFile(filename string) error {
@@ -184,8 +184,8 @@ func (e *errorData) readErrorDataFile(filename string) error {
 			continue
 		}
 		parts := bytes.Split(line, comma)
-		if len(parts) != 4 {
-			return fmt.Errorf("bad line %d in %s: found %d values but want 4", lineNo, filename, len(parts))
+		if len(parts) != 3 {
+			return fmt.Errorf("bad line %d in %s: found %d values but want 3", lineNo, filename, len(parts))
 		}
 		libNum, ok := e.libraryMap[string(parts[0])]
 		if !ok {
@@ -194,26 +194,18 @@ func (e *errorData) readErrorDataFile(filename string) error {
 		if libNum >= 64 {
 			return fmt.Errorf("bad line %d in %s: library value too large", lineNo, filename)
 		}
-		key, err := strconv.ParseUint(string(parts[2]), 10 /* base */, 32 /* bit size */)
+		key, err := strconv.ParseUint(string(parts[1]), 10 /* base */, 32 /* bit size */)
 		if err != nil {
 			return fmt.Errorf("bad line %d in %s: %s", lineNo, filename, err)
 		}
 		if key >= 2048 {
 			return fmt.Errorf("bad line %d in %s: key too large", lineNo, filename)
 		}
-		value := string(parts[3])
+		value := string(parts[2])
 
 		listKey := libNum<<26 | uint32(key)<<15
 
-		switch string(parts[1]) {
-		case "function":
-			err = e.functions.Add(listKey, value)
-		case "reason":
-			err = e.reasons.Add(listKey, value)
-		default:
-			return fmt.Errorf("bad line %d in %s: bad value type", lineNo, filename)
-		}
-
+		err = e.reasons.Add(listKey, value)
 		if err != nil {
 			return err
 		}
@@ -224,7 +216,6 @@ func (e *errorData) readErrorDataFile(filename string) error {
 
 func main() {
 	e := &errorData{
-		functions:  newStringList(),
 		reasons:    newStringList(),
 		libraryMap: make(map[string]uint32),
 	}
@@ -279,9 +270,8 @@ func main() {
 	for i, name := range libraryNames {
 		fmt.Fprintf(out, "OPENSSL_COMPILE_ASSERT(ERR_LIB_%s == %d, library_values_changed_%d);\n", name, i+1, i+1)
 	}
-	fmt.Fprintf(out, "OPENSSL_COMPILE_ASSERT(ERR_NUM_LIBS == %d, library_values_changed_num);\n", len(libraryNames) + 1)
+	fmt.Fprintf(out, "OPENSSL_COMPILE_ASSERT(ERR_NUM_LIBS == %d, library_values_changed_num);\n", len(libraryNames)+1)
 	out.WriteString("\n")
 
-	e.functions.WriteTo(out, "Function")
 	e.reasons.WriteTo(out, "Reason")
 }

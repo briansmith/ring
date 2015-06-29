@@ -39,7 +39,6 @@ OPENSSL_EXPORT int HKDF(uint8_t *out_key, size_t out_len, const EVP_MD *digest,
 }  /* extern C */
 #endif
 
-#define HKDF_F_HKDF 100
 #define HKDF_R_OUTPUT_TOO_LARGE 100
 
 #endif  /* OPENSSL_HEADER_HKDF_H */
