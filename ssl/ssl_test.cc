@@ -24,6 +24,8 @@
 #include <openssl/ssl.h>
 
 #include "test/scoped_types.h"
+#include "../crypto/test/test_util.h"
+
 
 struct ExpectedCipher {
   unsigned long id;
@@ -418,6 +420,8 @@ static bool TestSSL_SESSIONEncoding(const char *input_b64) {
   if (encoded_len != input.size() ||
       memcmp(bssl::vector_data(&input), encoded.get(), input.size()) != 0) {
     fprintf(stderr, "SSL_SESSION_to_bytes did not round-trip\n");
+    hexdump(stderr, "Before: ", input.data(), input.size());
+    hexdump(stderr, "After:  ", encoded_raw, encoded_len);
     return false;
   }
 

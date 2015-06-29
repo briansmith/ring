@@ -116,6 +116,7 @@
  *     ocspResponse            [16] OCTET STRING OPTIONAL,
  *                                   -- stapled OCSP response from the server
  *     extendedMasterSecret    [17] BOOLEAN OPTIONAL,
+ *     keyExchangeInfo         [18] INTEGER OPTIONAL,
  * }
  *
  * Note: historically this serialization has included other optional
@@ -154,6 +155,8 @@ static const int kOCSPResponseTag =
     CBS_ASN1_CONSTRUCTED | CBS_ASN1_CONTEXT_SPECIFIC | 16;
 static const int kExtendedMasterSecretTag =
     CBS_ASN1_CONSTRUCTED | CBS_ASN1_CONTEXT_SPECIFIC | 17;
+static const int kKeyExchangeInfoTag =
+    CBS_ASN1_CONSTRUCTED | CBS_ASN1_CONTEXT_SPECIFIC | 18;
 
 static int SSL_SESSION_to_bytes_full(SSL_SESSION *in, uint8_t **out_data,
                                      size_t *out_len, int for_ticket) {
@@ -315,6 +318,13 @@ static int SSL_SESSION_to_bytes_full(SSL_SESSION *in, uint8_t **out_data,
     }
   }
 
+  if (in->key_exchange_info > 0 &&
+      (!CBB_add_asn1(&session, &child, kKeyExchangeInfoTag) ||
+       !CBB_add_asn1_uint64(&child, in->key_exchange_info))) {
+    OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
+    goto err;
+  }
+
   if (!CBB_finish(&cbb, out_data, out_len)) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
     goto err;
@@ -413,7 +423,8 @@ static SSL_SESSION *SSL_SESSION_parse(CBS *cbs) {
   CBS peer, sid_ctx, peer_sha256, original_handshake_hash;
   int has_peer, has_peer_sha256, extended_master_secret;
   uint64_t version, ssl_version;
-  uint64_t session_time, timeout, verify_result, ticket_lifetime_hint;
+  uint64_t session_time, timeout, verify_result, ticket_lifetime_hint,
+      key_exchange_info;
 
   ret = SSL_SESSION_new();
   if (ret == NULL) {
@@ -470,12 +481,21 @@ static SSL_SESSION *SSL_SESSION_parse(CBS *cbs) {
   }
   if (!CBS_get_optional_asn1_bool(&session, &extended_master_secret,
                                   kExtendedMasterSecretTag,
-                                  0 /* default to false */) ||
-      CBS_len(&session) != 0) {
+                                  0 /* default to false */)) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_INVALID_SSL_SESSION);
     goto err;
   }
   ret->extended_master_secret = extended_master_secret;
+
+  if (!CBS_get_optional_asn1_uint64(&session, &key_exchange_info,
+                                    kKeyExchangeInfoTag, 0) ||
+      CBS_len(&session) != 0) {
+    OPENSSL_PUT_ERROR(SSL, SSL_R_INVALID_SSL_SESSION);
+    goto err;
+  }
+  if (key_exchange_info <= 0xffffffff) {
+    ret->key_exchange_info = key_exchange_info;
+  }
 
   if (version != SSL_SESSION_ASN1_VERSION) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_INVALID_SSL_SESSION);

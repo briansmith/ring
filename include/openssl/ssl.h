@@ -1051,6 +1051,18 @@ struct ssl_session_st {
 
   const SSL_CIPHER *cipher;
 
+  /* key_exchange_info contains an indication of the size of the asymmetric
+   * primitive used in the handshake that created this session. In the event
+   * that two asymmetric operations are used, this value applies to the one
+   * that controls the confidentiality of the connection. Its interpretation
+   * depends on the primitive that was used; as specified by the cipher suite:
+   *   DHE: the size, in bits, of the multiplicative group.
+   *   RSA: the size, in bits, of the modulus.
+   *   ECDHE: the TLS id for the curve.
+   *
+   * A zero indicates that the value is unknown. */
+  uint32_t key_exchange_info;
+
   CRYPTO_EX_DATA ex_data; /* application specific data */
 
   /* These are used to make removal of session-ids more efficient and to
@@ -2152,6 +2164,13 @@ OPENSSL_EXPORT long SSL_SESSION_get_time(const SSL_SESSION *s);
 OPENSSL_EXPORT long SSL_SESSION_set_time(SSL_SESSION *s, long t);
 OPENSSL_EXPORT long SSL_SESSION_get_timeout(const SSL_SESSION *s);
 OPENSSL_EXPORT long SSL_SESSION_set_timeout(SSL_SESSION *s, long t);
+
+/* SSL_SESSION_get_key_exchange_info returns a value that describes the
+ * strength of the asymmetric operation that provides confidentiality to
+ * |session|. Its interpretation depends on the operation used. See the
+ * documentation for this value in the |SSL_SESSION| structure. */
+OPENSSL_EXPORT uint32_t SSL_SESSION_get_key_exchange_info(SSL_SESSION *session);
+
 OPENSSL_EXPORT X509 *SSL_SESSION_get0_peer(SSL_SESSION *s);
 OPENSSL_EXPORT int SSL_SESSION_set1_id_context(SSL_SESSION *s,
                                                const uint8_t *sid_ctx,
@@ -2270,6 +2289,10 @@ OPENSSL_EXPORT const char *SSL_get_version(const SSL *s);
 /* SSL_SESSION_get_version returns a string describing the TLS version used by
  * |sess|. For example, "TLSv1.2" or "SSLv3". */
 OPENSSL_EXPORT const char *SSL_SESSION_get_version(const SSL_SESSION *sess);
+
+/* SSL_get_curve_name returns a human-readable name for the elliptic curve
+ * specified by the given TLS curve id, or NULL if the curve if unknown. */
+OPENSSL_EXPORT const char* SSL_get_curve_name(uint16_t curve_id);
 
 OPENSSL_EXPORT STACK_OF(SSL_CIPHER) *SSL_get_ciphers(const SSL *s);
 

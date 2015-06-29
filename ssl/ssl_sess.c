@@ -639,20 +639,12 @@ long SSL_SESSION_set_timeout(SSL_SESSION *s, long t) {
   return 1;
 }
 
-long SSL_SESSION_get_timeout(const SSL_SESSION *s) {
-  if (s == NULL) {
-    return 0;
-  }
-
-  return s->timeout;
+long SSL_SESSION_get_timeout(const SSL_SESSION *session) {
+  return session->timeout;
 }
 
-long SSL_SESSION_get_time(const SSL_SESSION *s) {
-  if (s == NULL) {
-    return 0;
-  }
-
-  return s->time;
+long SSL_SESSION_get_time(const SSL_SESSION *session) {
+  return session->time;
 }
 
 long SSL_SESSION_set_time(SSL_SESSION *s, long t) {
@@ -662,6 +654,10 @@ long SSL_SESSION_set_time(SSL_SESSION *s, long t) {
 
   s->time = t;
   return t;
+}
+
+uint32_t SSL_SESSION_get_key_exchange_info(SSL_SESSION *session) {
+  return session->key_exchange_info;
 }
 
 X509 *SSL_SESSION_get0_peer(SSL_SESSION *s) { return s->peer; }

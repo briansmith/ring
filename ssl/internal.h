@@ -1072,6 +1072,11 @@ char ssl_early_callback_init(struct ssl_early_callback_ctx *ctx);
 int tls1_ec_curve_id2nid(uint16_t curve_id);
 int tls1_ec_nid2curve_id(uint16_t *out_curve_id, int nid);
 
+/* tls1_ec_curve_id2name returns a human-readable name for the
+ * curve specified by the TLS curve id in |curve_id|. If the
+ * curve is unknown, it returns NULL. */
+const char* tls1_ec_curve_id2name(uint16_t curve_id);
+
 /* tls1_check_curve parses ECParameters out of |cbs|, modifying it. It
  * checks the curve is one of our preferences and writes the
  * NamedCurve value to |*out_curve_id|. It returns one on success and

@@ -2099,6 +2099,10 @@ const char *SSL_SESSION_get_version(const SSL_SESSION *sess) {
   return ssl_get_version(sess->ssl_version);
 }
 
+const char* SSL_get_curve_name(uint16_t curve_id) {
+  return tls1_ec_curve_id2name(curve_id);
+}
+
 void ssl_clear_cipher_ctx(SSL *s) {
   SSL_AEAD_CTX_free(s->aead_read_ctx);
   s->aead_read_ctx = NULL;
