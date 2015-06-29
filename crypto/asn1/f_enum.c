@@ -144,7 +144,7 @@ int a2i_ASN1_ENUMERATED(BIO *bp, ASN1_ENUMERATED *bs, char *buf, int size)
 		i-=again;
 		if (i%2 != 0)
 			{
-			OPENSSL_PUT_ERROR(ASN1, a2i_ASN1_ENUMERATED, ASN1_R_ODD_NUMBER_OF_CHARS);
+			OPENSSL_PUT_ERROR(ASN1, ASN1_R_ODD_NUMBER_OF_CHARS);
 			goto err;
 			}
 		i/=2;
@@ -158,7 +158,7 @@ int a2i_ASN1_ENUMERATED(BIO *bp, ASN1_ENUMERATED *bs, char *buf, int size)
 					(unsigned int)num+i*2);
 			if (sp == NULL)
 				{
-				OPENSSL_PUT_ERROR(ASN1, a2i_ASN1_ENUMERATED, ERR_R_MALLOC_FAILURE);
+				OPENSSL_PUT_ERROR(ASN1, ERR_R_MALLOC_FAILURE);
 				goto err;
 				}
 			s=sp;
@@ -177,7 +177,7 @@ int a2i_ASN1_ENUMERATED(BIO *bp, ASN1_ENUMERATED *bs, char *buf, int size)
 					m=m-'A'+10;
 				else
 					{
-					OPENSSL_PUT_ERROR(ASN1, a2i_ASN1_ENUMERATED, ASN1_R_NON_HEX_CHARACTERS);
+					OPENSSL_PUT_ERROR(ASN1, ASN1_R_NON_HEX_CHARACTERS);
 					goto err;
 					}
 				s[num+j]<<=4;
@@ -197,7 +197,7 @@ err:
 	if (0)
 		{
 err_sl:
-		OPENSSL_PUT_ERROR(ASN1, a2i_ASN1_ENUMERATED, ASN1_R_SHORT_LINE);
+		OPENSSL_PUT_ERROR(ASN1, ASN1_R_SHORT_LINE);
 		}
 	if (s != NULL)
 		OPENSSL_free(s);

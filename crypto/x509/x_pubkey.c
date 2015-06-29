@@ -100,19 +100,19 @@ int X509_PUBKEY_set(X509_PUBKEY **x, EVP_PKEY *pkey)
 			{
 			if (!pkey->ameth->pub_encode(pk, pkey))
 				{
-				OPENSSL_PUT_ERROR(X509, X509_PUBKEY_set, X509_R_PUBLIC_KEY_ENCODE_ERROR);
+				OPENSSL_PUT_ERROR(X509, X509_R_PUBLIC_KEY_ENCODE_ERROR);
 				goto error;
 				}
 			}
 		else
 			{
-			OPENSSL_PUT_ERROR(X509, X509_PUBKEY_set, X509_R_METHOD_NOT_SUPPORTED);
+			OPENSSL_PUT_ERROR(X509, X509_R_METHOD_NOT_SUPPORTED);
 			goto error;
 			}
 		}
 	else
 		{
-		OPENSSL_PUT_ERROR(X509, X509_PUBKEY_set, X509_R_UNSUPPORTED_ALGORITHM);
+		OPENSSL_PUT_ERROR(X509, X509_R_UNSUPPORTED_ALGORITHM);
 		goto error;
 		}
 
@@ -151,13 +151,13 @@ EVP_PKEY *X509_PUBKEY_get(X509_PUBKEY *key)
 
 	if ((ret = EVP_PKEY_new()) == NULL)
 		{
-		OPENSSL_PUT_ERROR(X509, X509_PUBKEY_get, ERR_R_MALLOC_FAILURE);
+		OPENSSL_PUT_ERROR(X509, ERR_R_MALLOC_FAILURE);
 		goto error;
 		}
 
 	if (!EVP_PKEY_set_type(ret, OBJ_obj2nid(key->algor->algorithm)))
 		{
-		OPENSSL_PUT_ERROR(X509, X509_PUBKEY_get, X509_R_UNSUPPORTED_ALGORITHM);
+		OPENSSL_PUT_ERROR(X509, X509_R_UNSUPPORTED_ALGORITHM);
 		goto error;
 		}
 
@@ -165,13 +165,13 @@ EVP_PKEY *X509_PUBKEY_get(X509_PUBKEY *key)
 		{
 		if (!ret->ameth->pub_decode(ret, key))
 			{
-			OPENSSL_PUT_ERROR(X509, X509_PUBKEY_get, X509_R_PUBLIC_KEY_DECODE_ERROR);
+			OPENSSL_PUT_ERROR(X509, X509_R_PUBLIC_KEY_DECODE_ERROR);
 			goto error;
 			}
 		}
 	else
 		{
-		OPENSSL_PUT_ERROR(X509, X509_PUBKEY_get, X509_R_METHOD_NOT_SUPPORTED);
+		OPENSSL_PUT_ERROR(X509, X509_R_METHOD_NOT_SUPPORTED);
 		goto error;
 		}
 
@@ -262,7 +262,7 @@ int i2d_RSA_PUBKEY(const RSA *a, unsigned char **pp)
 	pktmp = EVP_PKEY_new();
 	if (!pktmp)
 		{
-		OPENSSL_PUT_ERROR(X509, i2d_RSA_PUBKEY, ERR_R_MALLOC_FAILURE);
+		OPENSSL_PUT_ERROR(X509, ERR_R_MALLOC_FAILURE);
 		return 0;
 		}
 	EVP_PKEY_set1_RSA(pktmp, (RSA*) a);
@@ -301,7 +301,7 @@ int i2d_DSA_PUBKEY(const DSA *a, unsigned char **pp)
 	pktmp = EVP_PKEY_new();
 	if(!pktmp)
 		{
-		OPENSSL_PUT_ERROR(X509, i2d_DSA_PUBKEY,  ERR_R_MALLOC_FAILURE);
+		OPENSSL_PUT_ERROR(X509, ERR_R_MALLOC_FAILURE);
 		return 0;
 		}
 	EVP_PKEY_set1_DSA(pktmp, (DSA*) a);
@@ -338,7 +338,7 @@ int i2d_EC_PUBKEY(const EC_KEY *a, unsigned char **pp)
 	if (!a)	return(0);
 	if ((pktmp = EVP_PKEY_new()) == NULL)
 		{
-		OPENSSL_PUT_ERROR(X509, i2d_EC_PUBKEY,  ERR_R_MALLOC_FAILURE);
+		OPENSSL_PUT_ERROR(X509, ERR_R_MALLOC_FAILURE);
 		return(0);
 		}
 	EVP_PKEY_set1_EC_KEY(pktmp, (EC_KEY*) a);

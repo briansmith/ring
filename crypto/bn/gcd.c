@@ -522,7 +522,7 @@ BIGNUM *BN_mod_inverse(BIGNUM *out, const BIGNUM *a, const BIGNUM *n,
       }
     }
   } else {
-    OPENSSL_PUT_ERROR(BN, BN_mod_inverse, BN_R_NO_INVERSE);
+    OPENSSL_PUT_ERROR(BN, BN_R_NO_INVERSE);
     goto err;
   }
   ret = R;
@@ -682,7 +682,7 @@ static BIGNUM *BN_mod_inverse_no_branch(BIGNUM *out, const BIGNUM *a,
       }
     }
   } else {
-    OPENSSL_PUT_ERROR(BN, BN_mod_inverse_no_branch, BN_R_NO_INVERSE);
+    OPENSSL_PUT_ERROR(BN, BN_R_NO_INVERSE);
     goto err;
   }
   ret = R;

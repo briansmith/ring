@@ -128,7 +128,7 @@ ECDSA_SIG *ECDSA_SIG_parse(CBS *cbs) {
       !BN_cbs2unsigned(&child, ret->r) ||
       !BN_cbs2unsigned(&child, ret->s) ||
       CBS_len(&child) != 0) {
-    OPENSSL_PUT_ERROR(ECDSA, ECDSA_SIG_parse, ECDSA_R_BAD_SIGNATURE);
+    OPENSSL_PUT_ERROR(ECDSA, ECDSA_R_BAD_SIGNATURE);
     ECDSA_SIG_free(ret);
     return NULL;
   }
@@ -140,7 +140,7 @@ ECDSA_SIG *ECDSA_SIG_from_bytes(const uint8_t *in, size_t in_len) {
   CBS_init(&cbs, in, in_len);
   ECDSA_SIG *ret = ECDSA_SIG_parse(&cbs);
   if (ret == NULL || CBS_len(&cbs) != 0) {
-    OPENSSL_PUT_ERROR(ECDSA, ECDSA_SIG_from_bytes, ECDSA_R_BAD_SIGNATURE);
+    OPENSSL_PUT_ERROR(ECDSA, ECDSA_R_BAD_SIGNATURE);
     ECDSA_SIG_free(ret);
     return NULL;
   }
@@ -153,7 +153,7 @@ int ECDSA_SIG_marshal(CBB *cbb, const ECDSA_SIG *sig) {
       !BN_bn2cbb(&child, sig->r) ||
       !BN_bn2cbb(&child, sig->s) ||
       !CBB_flush(cbb)) {
-    OPENSSL_PUT_ERROR(ECDSA, ECDSA_SIG_marshal, ECDSA_R_ENCODE_ERROR);
+    OPENSSL_PUT_ERROR(ECDSA, ECDSA_R_ENCODE_ERROR);
     return 0;
   }
   return 1;
@@ -166,7 +166,7 @@ int ECDSA_SIG_to_bytes(uint8_t **out_bytes, size_t *out_len,
   if (!CBB_init(&cbb, 0) ||
       !ECDSA_SIG_marshal(&cbb, sig) ||
       !CBB_finish(&cbb, out_bytes, out_len)) {
-    OPENSSL_PUT_ERROR(ECDSA, ECDSA_SIG_to_bytes, ECDSA_R_ENCODE_ERROR);
+    OPENSSL_PUT_ERROR(ECDSA, ECDSA_R_ENCODE_ERROR);
     CBB_cleanup(&cbb);
     return 0;
   }
@@ -232,7 +232,7 @@ int i2d_ECDSA_SIG(const ECDSA_SIG *sig, uint8_t **outp) {
     return -1;
   }
   if (der_len > INT_MAX) {
-    OPENSSL_PUT_ERROR(ECDSA, i2d_ECDSA_SIG, ERR_R_OVERFLOW);
+    OPENSSL_PUT_ERROR(ECDSA, ERR_R_OVERFLOW);
     OPENSSL_free(der);
     return -1;
   }

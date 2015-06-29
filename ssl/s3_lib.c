@@ -274,7 +274,7 @@ int SSL_CTX_set_tmp_dh(SSL_CTX *ctx, const DH *dh) {
   DH_free(ctx->cert->dh_tmp);
   ctx->cert->dh_tmp = DHparams_dup(dh);
   if (ctx->cert->dh_tmp == NULL) {
-    OPENSSL_PUT_ERROR(SSL, SSL_CTX_set_tmp_dh, ERR_R_DH_LIB);
+    OPENSSL_PUT_ERROR(SSL, ERR_R_DH_LIB);
     return 0;
   }
   return 1;
@@ -284,7 +284,7 @@ int SSL_set_tmp_dh(SSL *ssl, const DH *dh) {
   DH_free(ssl->cert->dh_tmp);
   ssl->cert->dh_tmp = DHparams_dup(dh);
   if (ssl->cert->dh_tmp == NULL) {
-    OPENSSL_PUT_ERROR(SSL, SSL_set_tmp_dh, ERR_R_DH_LIB);
+    OPENSSL_PUT_ERROR(SSL, ERR_R_DH_LIB);
     return 0;
   }
   return 1;
@@ -292,7 +292,7 @@ int SSL_set_tmp_dh(SSL *ssl, const DH *dh) {
 
 int SSL_CTX_set_tmp_ecdh(SSL_CTX *ctx, const EC_KEY *ec_key) {
   if (ec_key == NULL || EC_KEY_get0_group(ec_key) == NULL) {
-    OPENSSL_PUT_ERROR(SSL, SSL_CTX_set_tmp_ecdh, ERR_R_PASSED_NULL_PARAMETER);
+    OPENSSL_PUT_ERROR(SSL, ERR_R_PASSED_NULL_PARAMETER);
     return 0;
   }
   ctx->cert->ecdh_nid = EC_GROUP_get_curve_name(EC_KEY_get0_group(ec_key));
@@ -301,7 +301,7 @@ int SSL_CTX_set_tmp_ecdh(SSL_CTX *ctx, const EC_KEY *ec_key) {
 
 int SSL_set_tmp_ecdh(SSL *ssl, const EC_KEY *ec_key) {
   if (ec_key == NULL || EC_KEY_get0_group(ec_key) == NULL) {
-    OPENSSL_PUT_ERROR(SSL, SSL_set_tmp_ecdh, ERR_R_PASSED_NULL_PARAMETER);
+    OPENSSL_PUT_ERROR(SSL, ERR_R_PASSED_NULL_PARAMETER);
     return 0;
   }
   ssl->cert->ecdh_nid = EC_GROUP_get_curve_name(EC_KEY_get0_group(ec_key));
@@ -322,8 +322,7 @@ int SSL_CTX_set1_tls_channel_id(SSL_CTX *ctx, EVP_PKEY *private_key) {
   ctx->tlsext_channel_id_enabled = 1;
   if (EVP_PKEY_id(private_key) != EVP_PKEY_EC ||
       EVP_PKEY_bits(private_key) != 256) {
-    OPENSSL_PUT_ERROR(SSL, SSL_CTX_set1_tls_channel_id,
-                      SSL_R_CHANNEL_ID_NOT_P256);
+    OPENSSL_PUT_ERROR(SSL, SSL_R_CHANNEL_ID_NOT_P256);
     return 0;
   }
   EVP_PKEY_free(ctx->tlsext_channel_id_private);
@@ -335,7 +334,7 @@ int SSL_set1_tls_channel_id(SSL *ssl, EVP_PKEY *private_key) {
   ssl->tlsext_channel_id_enabled = 1;
   if (EVP_PKEY_id(private_key) != EVP_PKEY_EC ||
       EVP_PKEY_bits(private_key) != 256) {
-    OPENSSL_PUT_ERROR(SSL, SSL_set1_tls_channel_id, SSL_R_CHANNEL_ID_NOT_P256);
+    OPENSSL_PUT_ERROR(SSL, SSL_R_CHANNEL_ID_NOT_P256);
     return 0;
   }
   EVP_PKEY_free(ssl->tlsext_channel_id_private);
@@ -359,13 +358,12 @@ int SSL_set_tlsext_host_name(SSL *ssl, const char *name) {
     return 1;
   }
   if (strlen(name) > TLSEXT_MAXLEN_host_name) {
-    OPENSSL_PUT_ERROR(SSL, SSL_set_tlsext_host_name,
-                      SSL_R_SSL3_EXT_INVALID_SERVERNAME);
+    OPENSSL_PUT_ERROR(SSL, SSL_R_SSL3_EXT_INVALID_SERVERNAME);
     return 0;
   }
   ssl->tlsext_hostname = BUF_strdup(name);
   if (ssl->tlsext_hostname == NULL) {
-    OPENSSL_PUT_ERROR(SSL, SSL_set_tlsext_host_name, ERR_R_MALLOC_FAILURE);
+    OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
     return 0;
   }
   return 1;
@@ -485,8 +483,7 @@ int SSL_CTX_get_tlsext_ticket_keys(SSL_CTX *ctx, void *out, size_t len) {
     return 48;
   }
   if (len != 48) {
-    OPENSSL_PUT_ERROR(SSL, SSL_CTX_get_tlsext_ticket_keys,
-                      SSL_R_INVALID_TICKET_KEYS_LENGTH);
+    OPENSSL_PUT_ERROR(SSL, SSL_R_INVALID_TICKET_KEYS_LENGTH);
     return 0;
   }
   uint8_t *out_bytes = out;
@@ -501,8 +498,7 @@ int SSL_CTX_set_tlsext_ticket_keys(SSL_CTX *ctx, const void *in, size_t len) {
     return 48;
   }
   if (len != 48) {
-    OPENSSL_PUT_ERROR(SSL, SSL_CTX_set_tlsext_ticket_keys,
-                      SSL_R_INVALID_TICKET_KEYS_LENGTH);
+    OPENSSL_PUT_ERROR(SSL, SSL_R_INVALID_TICKET_KEYS_LENGTH);
     return 0;
   }
   const uint8_t *in_bytes = in;

@@ -184,7 +184,7 @@ char *X509_NAME_oneline(X509_NAME *a, char *buf, int len)
 		*p = '\0';
 	return(p);
 err:
-	OPENSSL_PUT_ERROR(X509, X509_NAME_oneline, ERR_R_MALLOC_FAILURE);
+	OPENSSL_PUT_ERROR(X509, ERR_R_MALLOC_FAILURE);
 	if (b != NULL) BUF_MEM_free(b);
 	return(NULL);
 	}

@@ -96,7 +96,7 @@ int SSL_SESSION_print_fp(FILE *fp, const SSL_SESSION *x) {
 
   b = BIO_new(BIO_s_file());
   if (b == NULL) {
-    OPENSSL_PUT_ERROR(SSL, SSL_SESSION_print_fp, ERR_R_BUF_LIB);
+    OPENSSL_PUT_ERROR(SSL, ERR_R_BUF_LIB);
     return 0;
   }
 

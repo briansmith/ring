@@ -84,7 +84,7 @@ int ASN1_ENUMERATED_set(ASN1_ENUMERATED *a, long v)
 		}
 	if (a->data == NULL)
 		{
-		OPENSSL_PUT_ERROR(ASN1, ASN1_ENUMERATED_set, ERR_R_MALLOC_FAILURE);
+		OPENSSL_PUT_ERROR(ASN1, ERR_R_MALLOC_FAILURE);
 		return(0);
 		}
 	d=v;
@@ -147,7 +147,7 @@ ASN1_ENUMERATED *BN_to_ASN1_ENUMERATED(BIGNUM *bn, ASN1_ENUMERATED *ai)
 		ret=ai;
 	if (ret == NULL)
 		{
-		OPENSSL_PUT_ERROR(ASN1, BN_to_ASN1_ENUMERATED, ASN1_R_NESTED_ASN1_ERROR);
+		OPENSSL_PUT_ERROR(ASN1, ASN1_R_NESTED_ASN1_ERROR);
 		goto err;
 		}
 	if(BN_is_negative(bn)) ret->type = V_ASN1_NEG_ENUMERATED;
@@ -159,7 +159,7 @@ ASN1_ENUMERATED *BN_to_ASN1_ENUMERATED(BIGNUM *bn, ASN1_ENUMERATED *ai)
 		unsigned char *new_data=OPENSSL_realloc(ret->data, len+4);
 		if (!new_data)
 			{
-			OPENSSL_PUT_ERROR(ASN1, BN_to_ASN1_ENUMERATED, ERR_R_MALLOC_FAILURE);
+			OPENSSL_PUT_ERROR(ASN1, ERR_R_MALLOC_FAILURE);
 			goto err;
 			}
 		ret->data=new_data;
@@ -177,7 +177,7 @@ BIGNUM *ASN1_ENUMERATED_to_BN(ASN1_ENUMERATED *ai, BIGNUM *bn)
 	BIGNUM *ret;
 
 	if ((ret=BN_bin2bn(ai->data,ai->length,bn)) == NULL)
-		OPENSSL_PUT_ERROR(ASN1, ASN1_ENUMERATED_to_BN, ASN1_R_BN_LIB);
+		OPENSSL_PUT_ERROR(ASN1, ASN1_R_BN_LIB);
 	else if(ai->type == V_ASN1_NEG_ENUMERATED) BN_set_negative(ret,1);
 	return(ret);
 	}

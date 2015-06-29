@@ -406,7 +406,7 @@ static long buffer_ctrl(BIO *b, int cmd, long num, void *ptr) {
   return ret;
 
 malloc_error:
-  OPENSSL_PUT_ERROR(BIO, buffer_ctrl, ERR_R_MALLOC_FAILURE);
+  OPENSSL_PUT_ERROR(BIO, ERR_R_MALLOC_FAILURE);
   return 0;
 }
 

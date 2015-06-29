@@ -267,7 +267,7 @@ int BN_usub(BIGNUM *r, const BIGNUM *a, const BIGNUM *b) {
 
   if (dif < 0) /* hmm... should not be happening */
   {
-    OPENSSL_PUT_ERROR(BN, BN_usub, BN_R_ARG2_LT_ARG3);
+    OPENSSL_PUT_ERROR(BN, BN_R_ARG2_LT_ARG3);
     return 0;
   }
 

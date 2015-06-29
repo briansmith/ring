@@ -260,8 +260,7 @@ const ASN1_TEMPLATE *asn1_do_adb(ASN1_VALUE **pval, const ASN1_TEMPLATE *tt,
 err:
   /* FIXME: should log the value or OID of unsupported type */
   if (nullerr) {
-    OPENSSL_PUT_ERROR(ASN1, asn1_do_adb,
-                      ASN1_R_UNSUPPORTED_ANY_DEFINED_BY_TYPE);
+    OPENSSL_PUT_ERROR(ASN1, ASN1_R_UNSUPPORTED_ANY_DEFINED_BY_TYPE);
   }
   return NULL;
 }

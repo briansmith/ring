@@ -201,7 +201,7 @@ int X509_verify_cert(X509_STORE_CTX *ctx)
 	STACK_OF(X509) *sktmp=NULL;
 	if (ctx->cert == NULL)
 		{
-		OPENSSL_PUT_ERROR(X509, X509_verify_cert, X509_R_NO_CERT_SET_FOR_US_TO_VERIFY);
+		OPENSSL_PUT_ERROR(X509, X509_R_NO_CERT_SET_FOR_US_TO_VERIFY);
 		return -1;
 		}
 
@@ -214,7 +214,7 @@ int X509_verify_cert(X509_STORE_CTX *ctx)
 		if (	((ctx->chain=sk_X509_new_null()) == NULL) ||
 			(!sk_X509_push(ctx->chain,ctx->cert)))
 			{
-			OPENSSL_PUT_ERROR(X509, X509_verify_cert, ERR_R_MALLOC_FAILURE);
+			OPENSSL_PUT_ERROR(X509, ERR_R_MALLOC_FAILURE);
 			goto end;
 			}
 		X509_up_ref(ctx->cert);
@@ -225,7 +225,7 @@ int X509_verify_cert(X509_STORE_CTX *ctx)
 	if (ctx->untrusted != NULL
 	    && (sktmp=sk_X509_dup(ctx->untrusted)) == NULL)
 		{
-		OPENSSL_PUT_ERROR(X509, X509_verify_cert, ERR_R_MALLOC_FAILURE);
+		OPENSSL_PUT_ERROR(X509, ERR_R_MALLOC_FAILURE);
 		goto end;
 		}
 
@@ -270,7 +270,7 @@ int X509_verify_cert(X509_STORE_CTX *ctx)
 				{
 				if (!sk_X509_push(ctx->chain,xtmp))
 					{
-					OPENSSL_PUT_ERROR(X509, X509_verify_cert, ERR_R_MALLOC_FAILURE);
+					OPENSSL_PUT_ERROR(X509, ERR_R_MALLOC_FAILURE);
 					goto end;
 					}
 				CRYPTO_refcount_inc(&xtmp->references);
@@ -356,7 +356,7 @@ int X509_verify_cert(X509_STORE_CTX *ctx)
 		if (!sk_X509_push(ctx->chain,x))
 			{
 			X509_free(xtmp);
-			OPENSSL_PUT_ERROR(X509, X509_verify_cert, ERR_R_MALLOC_FAILURE);
+			OPENSSL_PUT_ERROR(X509, ERR_R_MALLOC_FAILURE);
 			return 0;
 			}
 		num++;
@@ -1634,7 +1634,7 @@ static int check_policy(X509_STORE_CTX *ctx)
 				ctx->param->policies, ctx->param->flags);
 	if (ret == 0)
 		{
-		OPENSSL_PUT_ERROR(X509, check_policy, ERR_R_MALLOC_FAILURE);
+		OPENSSL_PUT_ERROR(X509, ERR_R_MALLOC_FAILURE);
 		return 0;
 		}
 	/* Invalid or inconsistent extensions */
@@ -1983,44 +1983,44 @@ X509_CRL *X509_CRL_diff(X509_CRL *base, X509_CRL *newer,
 	/* CRLs can't be delta already */
 	if (base->base_crl_number || newer->base_crl_number)
 			{
-			OPENSSL_PUT_ERROR(X509, X509_CRL_diff, X509_R_CRL_ALREADY_DELTA);
+			OPENSSL_PUT_ERROR(X509, X509_R_CRL_ALREADY_DELTA);
 			return NULL;
 			}
 	/* Base and new CRL must have a CRL number */
 	if (!base->crl_number || !newer->crl_number)
 			{
-			OPENSSL_PUT_ERROR(X509, X509_CRL_diff, X509_R_NO_CRL_NUMBER);
+			OPENSSL_PUT_ERROR(X509, X509_R_NO_CRL_NUMBER);
 			return NULL;
 			}
 	/* Issuer names must match */
 	if (X509_NAME_cmp(X509_CRL_get_issuer(base),
 				X509_CRL_get_issuer(newer)))
 			{
-			OPENSSL_PUT_ERROR(X509, X509_CRL_diff, X509_R_ISSUER_MISMATCH);
+			OPENSSL_PUT_ERROR(X509, X509_R_ISSUER_MISMATCH);
 			return NULL;
 			}
 	/* AKID and IDP must match */
 	if (!crl_extension_match(base, newer, NID_authority_key_identifier))
 			{
-			OPENSSL_PUT_ERROR(X509, X509_CRL_diff, X509_R_AKID_MISMATCH);
+			OPENSSL_PUT_ERROR(X509, X509_R_AKID_MISMATCH);
 			return NULL;
 			}
 	if (!crl_extension_match(base, newer, NID_issuing_distribution_point))
 			{
-			OPENSSL_PUT_ERROR(X509, X509_CRL_diff, X509_R_IDP_MISMATCH);
+			OPENSSL_PUT_ERROR(X509, X509_R_IDP_MISMATCH);
 			return NULL;
 			}
 	/* Newer CRL number must exceed full CRL number */
 	if (ASN1_INTEGER_cmp(newer->crl_number, base->crl_number) <= 0)
 			{
-			OPENSSL_PUT_ERROR(X509, X509_CRL_diff, X509_R_NEWER_CRL_NOT_NEWER);
+			OPENSSL_PUT_ERROR(X509, X509_R_NEWER_CRL_NOT_NEWER);
 			return NULL;
 			}
 	/* CRLs must verify */
 	if (skey && (X509_CRL_verify(base, skey) <= 0 ||
 			X509_CRL_verify(newer, skey) <= 0))
 		{
-		OPENSSL_PUT_ERROR(X509, X509_CRL_diff, X509_R_CRL_VERIFY_FAILURE);
+		OPENSSL_PUT_ERROR(X509, X509_R_CRL_VERIFY_FAILURE);
 		return NULL;
 		}
 	/* Create new CRL */
@@ -2085,7 +2085,7 @@ X509_CRL *X509_CRL_diff(X509_CRL *base, X509_CRL *newer,
 	return crl;
 
 	memerr:
-	OPENSSL_PUT_ERROR(X509, X509_CRL_diff, ERR_R_MALLOC_FAILURE);
+	OPENSSL_PUT_ERROR(X509, ERR_R_MALLOC_FAILURE);
 	if (crl)
 		X509_CRL_free(crl);
 	return NULL;
@@ -2210,7 +2210,7 @@ int X509_STORE_CTX_purpose_inherit(X509_STORE_CTX *ctx, int def_purpose,
 		idx = X509_PURPOSE_get_by_id(purpose);
 		if (idx == -1)
 			{
-			OPENSSL_PUT_ERROR(X509, X509_STORE_CTX_purpose_inherit, X509_R_UNKNOWN_PURPOSE_ID);
+			OPENSSL_PUT_ERROR(X509, X509_R_UNKNOWN_PURPOSE_ID);
 			return 0;
 			}
 		ptmp = X509_PURPOSE_get0(idx);
@@ -2219,7 +2219,7 @@ int X509_STORE_CTX_purpose_inherit(X509_STORE_CTX *ctx, int def_purpose,
 			idx = X509_PURPOSE_get_by_id(def_purpose);
 			if (idx == -1)
 				{
-				OPENSSL_PUT_ERROR(X509, X509_STORE_CTX_purpose_inherit, X509_R_UNKNOWN_PURPOSE_ID);
+				OPENSSL_PUT_ERROR(X509, X509_R_UNKNOWN_PURPOSE_ID);
 				return 0;
 				}
 			ptmp = X509_PURPOSE_get0(idx);
@@ -2232,7 +2232,7 @@ int X509_STORE_CTX_purpose_inherit(X509_STORE_CTX *ctx, int def_purpose,
 		idx = X509_TRUST_get_by_id(trust);
 		if (idx == -1)
 			{
-			OPENSSL_PUT_ERROR(X509, X509_STORE_CTX_purpose_inherit, X509_R_UNKNOWN_TRUST_ID);
+			OPENSSL_PUT_ERROR(X509, X509_R_UNKNOWN_TRUST_ID);
 			return 0;
 			}
 		}
@@ -2248,7 +2248,7 @@ X509_STORE_CTX *X509_STORE_CTX_new(void)
 	ctx = (X509_STORE_CTX *)OPENSSL_malloc(sizeof(X509_STORE_CTX));
 	if (!ctx)
 		{
-		OPENSSL_PUT_ERROR(X509, X509_STORE_CTX_new, ERR_R_MALLOC_FAILURE);
+		OPENSSL_PUT_ERROR(X509, ERR_R_MALLOC_FAILURE);
 		return NULL;
 		}
 	memset(ctx, 0, sizeof(X509_STORE_CTX));
@@ -2371,7 +2371,7 @@ err:
 		}
 
 	memset(ctx, 0, sizeof(X509_STORE_CTX));
-	OPENSSL_PUT_ERROR(X509, X509_STORE_CTX_init, ERR_R_MALLOC_FAILURE);
+	OPENSSL_PUT_ERROR(X509, ERR_R_MALLOC_FAILURE);
 	return 0;
 	}
 

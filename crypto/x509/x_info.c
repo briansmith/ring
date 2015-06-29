@@ -69,7 +69,7 @@ X509_INFO *X509_INFO_new(void)
 	ret=(X509_INFO *)OPENSSL_malloc(sizeof(X509_INFO));
 	if (ret == NULL)
 		{
-		OPENSSL_PUT_ERROR(X509, X509_INFO_new, ERR_R_MALLOC_FAILURE);
+		OPENSSL_PUT_ERROR(X509, ERR_R_MALLOC_FAILURE);
 		return(NULL);
 		}
  

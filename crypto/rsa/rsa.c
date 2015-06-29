@@ -79,7 +79,7 @@ RSA *RSA_new(void) { return RSA_new_method(NULL); }
 RSA *RSA_new_method(const ENGINE *engine) {
   RSA *rsa = (RSA *)OPENSSL_malloc(sizeof(RSA));
   if (rsa == NULL) {
-    OPENSSL_PUT_ERROR(RSA, RSA_new_method, ERR_R_MALLOC_FAILURE);
+    OPENSSL_PUT_ERROR(RSA, ERR_R_MALLOC_FAILURE);
     return NULL;
   }
 
@@ -376,8 +376,7 @@ int RSA_add_pkcs1_prefix(uint8_t **out_msg, size_t *out_msg_len,
   if (hash_nid == NID_md5_sha1) {
     /* Special case: SSL signature, just check the length. */
     if (msg_len != SSL_SIG_LENGTH) {
-      OPENSSL_PUT_ERROR(RSA, RSA_add_pkcs1_prefix,
-                        RSA_R_INVALID_MESSAGE_LENGTH);
+      OPENSSL_PUT_ERROR(RSA, RSA_R_INVALID_MESSAGE_LENGTH);
       return 0;
     }
 
@@ -400,13 +399,13 @@ int RSA_add_pkcs1_prefix(uint8_t **out_msg, size_t *out_msg_len,
 
     signed_msg_len = prefix_len + msg_len;
     if (signed_msg_len < prefix_len) {
-      OPENSSL_PUT_ERROR(RSA, RSA_add_pkcs1_prefix, RSA_R_TOO_LONG);
+      OPENSSL_PUT_ERROR(RSA, RSA_R_TOO_LONG);
       return 0;
     }
 
     signed_msg = OPENSSL_malloc(signed_msg_len);
     if (!signed_msg) {
-      OPENSSL_PUT_ERROR(RSA, RSA_add_pkcs1_prefix, ERR_R_MALLOC_FAILURE);
+      OPENSSL_PUT_ERROR(RSA, ERR_R_MALLOC_FAILURE);
       return 0;
     }
 
@@ -420,7 +419,7 @@ int RSA_add_pkcs1_prefix(uint8_t **out_msg, size_t *out_msg_len,
     return 1;
   }
 
-  OPENSSL_PUT_ERROR(RSA, RSA_add_pkcs1_prefix, RSA_R_UNKNOWN_ALGORITHM_TYPE);
+  OPENSSL_PUT_ERROR(RSA, RSA_R_UNKNOWN_ALGORITHM_TYPE);
   return 0;
 }
 
@@ -444,7 +443,7 @@ int RSA_sign(int hash_nid, const uint8_t *in, unsigned in_len, uint8_t *out,
 
   if (rsa_size < RSA_PKCS1_PADDING_SIZE ||
       signed_msg_len > rsa_size - RSA_PKCS1_PADDING_SIZE) {
-    OPENSSL_PUT_ERROR(RSA, RSA_sign, RSA_R_DIGEST_TOO_BIG_FOR_RSA_KEY);
+    OPENSSL_PUT_ERROR(RSA, RSA_R_DIGEST_TOO_BIG_FOR_RSA_KEY);
     goto finish;
   }
 
@@ -475,18 +474,18 @@ int RSA_verify(int hash_nid, const uint8_t *msg, size_t msg_len,
   }
 
   if (sig_len != rsa_size) {
-    OPENSSL_PUT_ERROR(RSA, RSA_verify, RSA_R_WRONG_SIGNATURE_LENGTH);
+    OPENSSL_PUT_ERROR(RSA, RSA_R_WRONG_SIGNATURE_LENGTH);
     return 0;
   }
 
   if (hash_nid == NID_md5_sha1 && msg_len != SSL_SIG_LENGTH) {
-    OPENSSL_PUT_ERROR(RSA, RSA_verify, RSA_R_INVALID_MESSAGE_LENGTH);
+    OPENSSL_PUT_ERROR(RSA, RSA_R_INVALID_MESSAGE_LENGTH);
     return 0;
   }
 
   buf = OPENSSL_malloc(rsa_size);
   if (!buf) {
-    OPENSSL_PUT_ERROR(RSA, RSA_verify, ERR_R_MALLOC_FAILURE);
+    OPENSSL_PUT_ERROR(RSA, ERR_R_MALLOC_FAILURE);
     return 0;
   }
 
@@ -501,7 +500,7 @@ int RSA_verify(int hash_nid, const uint8_t *msg, size_t msg_len,
   }
 
   if (len != signed_msg_len || CRYPTO_memcmp(buf, signed_msg, len) != 0) {
-    OPENSSL_PUT_ERROR(RSA, RSA_verify, RSA_R_BAD_SIGNATURE);
+    OPENSSL_PUT_ERROR(RSA, RSA_R_BAD_SIGNATURE);
     goto out;
   }
 
@@ -531,12 +530,12 @@ int RSA_check_key(const RSA *key) {
   }
 
   if ((key->p != NULL) != (key->q != NULL)) {
-    OPENSSL_PUT_ERROR(RSA, RSA_check_key, RSA_R_ONLY_ONE_OF_P_Q_GIVEN);
+    OPENSSL_PUT_ERROR(RSA, RSA_R_ONLY_ONE_OF_P_Q_GIVEN);
     return 0;
   }
 
   if (!key->n || !key->e) {
-    OPENSSL_PUT_ERROR(RSA, RSA_check_key, RSA_R_VALUE_MISSING);
+    OPENSSL_PUT_ERROR(RSA, RSA_R_VALUE_MISSING);
     return 0;
   }
 
@@ -548,7 +547,7 @@ int RSA_check_key(const RSA *key) {
 
   ctx = BN_CTX_new();
   if (ctx == NULL) {
-    OPENSSL_PUT_ERROR(RSA, RSA_check_key, ERR_R_MALLOC_FAILURE);
+    OPENSSL_PUT_ERROR(RSA, ERR_R_MALLOC_FAILURE);
     return 0;
   }
 
@@ -568,7 +567,7 @@ int RSA_check_key(const RSA *key) {
       !BN_sub(&qm1, key->q, BN_value_one()) ||
       !BN_mul(&lcm, &pm1, &qm1, ctx) ||
       !BN_gcd(&gcd, &pm1, &qm1, ctx)) {
-    OPENSSL_PUT_ERROR(RSA, RSA_check_key, ERR_LIB_BN);
+    OPENSSL_PUT_ERROR(RSA, ERR_LIB_BN);
     goto out;
   }
 
@@ -585,7 +584,7 @@ int RSA_check_key(const RSA *key) {
         !BN_sub(&pm1, ap->prime, BN_value_one()) ||
         !BN_mul(&lcm, &lcm, &pm1, ctx) ||
         !BN_gcd(&gcd, &gcd, &pm1, ctx)) {
-      OPENSSL_PUT_ERROR(RSA, RSA_check_key, ERR_LIB_BN);
+      OPENSSL_PUT_ERROR(RSA, ERR_LIB_BN);
       goto out;
     }
   }
@@ -594,24 +593,24 @@ int RSA_check_key(const RSA *key) {
       !BN_gcd(&gcd, &pm1, &qm1, ctx) ||
       /* de = d*e mod lcm(prime-1, for all primes). */
       !BN_mod_mul(&de, key->d, key->e, &lcm, ctx)) {
-    OPENSSL_PUT_ERROR(RSA, RSA_check_key, ERR_LIB_BN);
+    OPENSSL_PUT_ERROR(RSA, ERR_LIB_BN);
     goto out;
   }
 
   if (BN_cmp(&n, key->n) != 0) {
-    OPENSSL_PUT_ERROR(RSA, RSA_check_key, RSA_R_N_NOT_EQUAL_P_Q);
+    OPENSSL_PUT_ERROR(RSA, RSA_R_N_NOT_EQUAL_P_Q);
     goto out;
   }
 
   if (!BN_is_one(&de)) {
-    OPENSSL_PUT_ERROR(RSA, RSA_check_key, RSA_R_D_E_NOT_CONGRUENT_TO_1);
+    OPENSSL_PUT_ERROR(RSA, RSA_R_D_E_NOT_CONGRUENT_TO_1);
     goto out;
   }
 
   has_crt_values = key->dmp1 != NULL;
   if (has_crt_values != (key->dmq1 != NULL) ||
       has_crt_values != (key->iqmp != NULL)) {
-    OPENSSL_PUT_ERROR(RSA, RSA_check_key, RSA_R_INCONSISTENT_SET_OF_CRT_VALUES);
+    OPENSSL_PUT_ERROR(RSA, RSA_R_INCONSISTENT_SET_OF_CRT_VALUES);
     goto out;
   }
 
@@ -622,14 +621,14 @@ int RSA_check_key(const RSA *key) {
         !BN_mod(&dmq1, key->d, &qm1, ctx) ||
         /* iqmp = q^-1 mod p */
         !BN_mod_inverse(&iqmp, key->q, key->p, ctx)) {
-      OPENSSL_PUT_ERROR(RSA, RSA_check_key, ERR_LIB_BN);
+      OPENSSL_PUT_ERROR(RSA, ERR_LIB_BN);
       goto out;
     }
 
     if (BN_cmp(&dmp1, key->dmp1) != 0 ||
         BN_cmp(&dmq1, key->dmq1) != 0 ||
         BN_cmp(&iqmp, key->iqmp) != 0) {
-      OPENSSL_PUT_ERROR(RSA, RSA_check_key, RSA_R_CRT_VALUES_INCORRECT);
+      OPENSSL_PUT_ERROR(RSA, RSA_R_CRT_VALUES_INCORRECT);
       goto out;
     }
   }
@@ -657,19 +656,17 @@ int RSA_recover_crt_params(RSA *rsa) {
   int ok = 0;
 
   if (rsa->n == NULL || rsa->e == NULL || rsa->d == NULL) {
-    OPENSSL_PUT_ERROR(RSA, RSA_recover_crt_params, RSA_R_EMPTY_PUBLIC_KEY);
+    OPENSSL_PUT_ERROR(RSA, RSA_R_EMPTY_PUBLIC_KEY);
     return 0;
   }
 
   if (rsa->p || rsa->q || rsa->dmp1 || rsa->dmq1 || rsa->iqmp) {
-    OPENSSL_PUT_ERROR(RSA, RSA_recover_crt_params,
-                      RSA_R_CRT_PARAMS_ALREADY_GIVEN);
+    OPENSSL_PUT_ERROR(RSA, RSA_R_CRT_PARAMS_ALREADY_GIVEN);
     return 0;
   }
 
   if (rsa->additional_primes != NULL) {
-    OPENSSL_PUT_ERROR(RSA, RSA_recover_crt_params,
-                      RSA_R_CANNOT_RECOVER_MULTI_PRIME_KEY);
+    OPENSSL_PUT_ERROR(RSA, RSA_R_CANNOT_RECOVER_MULTI_PRIME_KEY);
     return 0;
   }
 
@@ -678,7 +675,7 @@ int RSA_recover_crt_params(RSA *rsa) {
 
   ctx = BN_CTX_new();
   if (ctx == NULL) {
-    OPENSSL_PUT_ERROR(RSA, RSA_recover_crt_params, ERR_R_MALLOC_FAILURE);
+    OPENSSL_PUT_ERROR(RSA, ERR_R_MALLOC_FAILURE);
     return 0;
   }
 
@@ -691,7 +688,7 @@ int RSA_recover_crt_params(RSA *rsa) {
 
   if (totient == NULL || rem == NULL || multiple == NULL || p_plus_q == NULL ||
       p_minus_q == NULL) {
-    OPENSSL_PUT_ERROR(RSA, RSA_recover_crt_params, ERR_R_MALLOC_FAILURE);
+    OPENSSL_PUT_ERROR(RSA, ERR_R_MALLOC_FAILURE);
     goto err;
   }
 
@@ -719,12 +716,12 @@ int RSA_recover_crt_params(RSA *rsa) {
       !BN_div(multiple, NULL, totient, rsa->n, ctx) ||
       !BN_add_word(multiple, 1) ||
       !BN_div(totient, rem, totient, multiple, ctx)) {
-    OPENSSL_PUT_ERROR(RSA, RSA_recover_crt_params, ERR_R_BN_LIB);
+    OPENSSL_PUT_ERROR(RSA, ERR_R_BN_LIB);
     goto err;
   }
 
   if (!BN_is_zero(rem)) {
-    OPENSSL_PUT_ERROR(RSA, RSA_recover_crt_params, RSA_R_BAD_RSA_PARAMETERS);
+    OPENSSL_PUT_ERROR(RSA, RSA_R_BAD_RSA_PARAMETERS);
     goto err;
   }
 
@@ -735,7 +732,7 @@ int RSA_recover_crt_params(RSA *rsa) {
   rsa->iqmp = BN_new();
   if (rsa->p == NULL || rsa->q == NULL || rsa->dmp1 == NULL || rsa->dmq1 ==
       NULL || rsa->iqmp == NULL) {
-    OPENSSL_PUT_ERROR(RSA, RSA_recover_crt_params, ERR_R_MALLOC_FAILURE);
+    OPENSSL_PUT_ERROR(RSA, ERR_R_MALLOC_FAILURE);
     goto err;
   }
 
@@ -753,12 +750,12 @@ int RSA_recover_crt_params(RSA *rsa) {
       !BN_rshift1(rsa->q, rsa->q) ||
       !BN_div(rsa->p, NULL, rsa->n, rsa->q, ctx) ||
       !BN_mul(multiple, rsa->p, rsa->q, ctx)) {
-    OPENSSL_PUT_ERROR(RSA, RSA_recover_crt_params, ERR_R_BN_LIB);
+    OPENSSL_PUT_ERROR(RSA, ERR_R_BN_LIB);
     goto err;
   }
 
   if (BN_cmp(multiple, rsa->n) != 0) {
-    OPENSSL_PUT_ERROR(RSA, RSA_recover_crt_params, RSA_R_INTERNAL_ERROR);
+    OPENSSL_PUT_ERROR(RSA, RSA_R_INTERNAL_ERROR);
     goto err;
   }
 
@@ -767,7 +764,7 @@ int RSA_recover_crt_params(RSA *rsa) {
       !BN_sub(rem, rsa->q, BN_value_one()) ||
       !BN_mod(rsa->dmq1, rsa->d, rem, ctx) ||
       !BN_mod_inverse(rsa->iqmp, rsa->q, rsa->p, ctx)) {
-    OPENSSL_PUT_ERROR(RSA, RSA_recover_crt_params, ERR_R_BN_LIB);
+    OPENSSL_PUT_ERROR(RSA, ERR_R_BN_LIB);
     goto err;
   }
 

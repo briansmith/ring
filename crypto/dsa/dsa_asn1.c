@@ -73,7 +73,7 @@ static int dsa_sig_cb(int operation, ASN1_VALUE **pval, const ASN1_ITEM *it,
   DSA_SIG *sig;
   sig = OPENSSL_malloc(sizeof(DSA_SIG));
   if (!sig) {
-    OPENSSL_PUT_ERROR(DSA, dsa_sig_cb, ERR_R_MALLOC_FAILURE);
+    OPENSSL_PUT_ERROR(DSA, ERR_R_MALLOC_FAILURE);
     return 0;
   }
 

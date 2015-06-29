@@ -68,7 +68,7 @@ ASN1_STRING *ASN1_item_pack(void *obj, const ASN1_ITEM *it, ASN1_STRING **oct)
 
 	if (!oct || !*oct) {
 		if (!(octmp = ASN1_STRING_new ())) {
-			OPENSSL_PUT_ERROR(ASN1, ASN1_item_pack, ERR_R_MALLOC_FAILURE);
+			OPENSSL_PUT_ERROR(ASN1, ERR_R_MALLOC_FAILURE);
 			return NULL;
 		}
 		if (oct) *oct = octmp;
@@ -80,11 +80,11 @@ ASN1_STRING *ASN1_item_pack(void *obj, const ASN1_ITEM *it, ASN1_STRING **oct)
 	}
 		
 	if (!(octmp->length = ASN1_item_i2d(obj, &octmp->data, it))) {
-		OPENSSL_PUT_ERROR(ASN1, ASN1_item_pack, ASN1_R_ENCODE_ERROR);
+		OPENSSL_PUT_ERROR(ASN1, ASN1_R_ENCODE_ERROR);
 		return NULL;
 	}
 	if (!octmp->data) {
-		OPENSSL_PUT_ERROR(ASN1, ASN1_item_pack, ERR_R_MALLOC_FAILURE);
+		OPENSSL_PUT_ERROR(ASN1, ERR_R_MALLOC_FAILURE);
 		return NULL;
 	}
 	return octmp;
@@ -99,6 +99,6 @@ void *ASN1_item_unpack(ASN1_STRING *oct, const ASN1_ITEM *it)
 
 	p = oct->data;
 	if(!(ret = ASN1_item_d2i(NULL, &p, oct->length, it)))
-		OPENSSL_PUT_ERROR(ASN1, ASN1_item_unpack, ASN1_R_DECODE_ERROR);
+		OPENSSL_PUT_ERROR(ASN1, ASN1_R_DECODE_ERROR);
 	return ret;
 }

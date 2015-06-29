@@ -91,29 +91,29 @@ static int dsa_pub_decode(EVP_PKEY *pkey, X509_PUBKEY *pubkey) {
 
     dsa = d2i_DSAparams(NULL, &pm, pmlen);
     if (dsa == NULL) {
-      OPENSSL_PUT_ERROR(EVP, dsa_pub_decode, EVP_R_DECODE_ERROR);
+      OPENSSL_PUT_ERROR(EVP, EVP_R_DECODE_ERROR);
       goto err;
     }
   } else if (ptype == V_ASN1_NULL || ptype == V_ASN1_UNDEF) {
     dsa = DSA_new();
     if (dsa == NULL) {
-      OPENSSL_PUT_ERROR(EVP, dsa_pub_decode, ERR_R_MALLOC_FAILURE);
+      OPENSSL_PUT_ERROR(EVP, ERR_R_MALLOC_FAILURE);
       goto err;
     }
   } else {
-    OPENSSL_PUT_ERROR(EVP, dsa_pub_decode, EVP_R_PARAMETER_ENCODING_ERROR);
+    OPENSSL_PUT_ERROR(EVP, EVP_R_PARAMETER_ENCODING_ERROR);
     goto err;
   }
 
   public_key = d2i_ASN1_INTEGER(NULL, &p, pklen);
   if (public_key == NULL) {
-    OPENSSL_PUT_ERROR(EVP, dsa_pub_decode, EVP_R_DECODE_ERROR);
+    OPENSSL_PUT_ERROR(EVP, EVP_R_DECODE_ERROR);
     goto err;
   }
 
   dsa->pub_key = ASN1_INTEGER_to_BN(public_key, NULL);
   if (dsa->pub_key == NULL) {
-    OPENSSL_PUT_ERROR(EVP, dsa_pub_decode, EVP_R_BN_DECODE_ERROR);
+    OPENSSL_PUT_ERROR(EVP, EVP_R_BN_DECODE_ERROR);
     goto err;
   }
 
@@ -140,12 +140,12 @@ static int dsa_pub_encode(X509_PUBKEY *pk, const EVP_PKEY *pkey) {
   if (dsa->p && dsa->q && dsa->g) {
     pval = ASN1_STRING_new();
     if (!pval) {
-      OPENSSL_PUT_ERROR(EVP, dsa_pub_encode, ERR_R_MALLOC_FAILURE);
+      OPENSSL_PUT_ERROR(EVP, ERR_R_MALLOC_FAILURE);
       goto err;
     }
     pval->length = i2d_DSAparams(dsa, &pval->data);
     if (pval->length <= 0) {
-      OPENSSL_PUT_ERROR(EVP, dsa_pub_encode, ERR_R_MALLOC_FAILURE);
+      OPENSSL_PUT_ERROR(EVP, ERR_R_MALLOC_FAILURE);
       goto err;
     }
     ptype = V_ASN1_SEQUENCE;
@@ -155,7 +155,7 @@ static int dsa_pub_encode(X509_PUBKEY *pk, const EVP_PKEY *pkey) {
 
   penclen = i2d_DSAPublicKey(dsa, &penc);
   if (penclen <= 0) {
-    OPENSSL_PUT_ERROR(EVP, dsa_pub_encode, ERR_R_MALLOC_FAILURE);
+    OPENSSL_PUT_ERROR(EVP, ERR_R_MALLOC_FAILURE);
     goto err;
   }
 
@@ -252,23 +252,23 @@ static int dsa_priv_decode(EVP_PKEY *pkey, PKCS8_PRIV_KEY_INFO *p8) {
   /* We have parameters. Now set private key */
   dsa->priv_key = ASN1_INTEGER_to_BN(privkey, NULL);
   if (dsa->priv_key == NULL) {
-    OPENSSL_PUT_ERROR(EVP, dsa_priv_decode, ERR_LIB_BN);
+    OPENSSL_PUT_ERROR(EVP, ERR_LIB_BN);
     goto dsaerr;
   }
   /* Calculate public key. */
   dsa->pub_key = BN_new();
   if (dsa->pub_key == NULL) {
-    OPENSSL_PUT_ERROR(EVP, dsa_priv_decode, ERR_R_MALLOC_FAILURE);
+    OPENSSL_PUT_ERROR(EVP, ERR_R_MALLOC_FAILURE);
     goto dsaerr;
   }
   ctx = BN_CTX_new();
   if (ctx == NULL) {
-    OPENSSL_PUT_ERROR(EVP, dsa_priv_decode, ERR_R_MALLOC_FAILURE);
+    OPENSSL_PUT_ERROR(EVP, ERR_R_MALLOC_FAILURE);
     goto dsaerr;
   }
 
   if (!BN_mod_exp(dsa->pub_key, dsa->g, dsa->priv_key, dsa->p, ctx)) {
-    OPENSSL_PUT_ERROR(EVP, dsa_priv_decode, ERR_LIB_BN);
+    OPENSSL_PUT_ERROR(EVP, ERR_LIB_BN);
     goto dsaerr;
   }
 
@@ -280,7 +280,7 @@ static int dsa_priv_decode(EVP_PKEY *pkey, PKCS8_PRIV_KEY_INFO *p8) {
   return 1;
 
 decerr:
-  OPENSSL_PUT_ERROR(EVP, dsa_priv_decode, EVP_R_DECODE_ERROR);
+  OPENSSL_PUT_ERROR(EVP, EVP_R_DECODE_ERROR);
 
 dsaerr:
   BN_CTX_free(ctx);
@@ -297,19 +297,19 @@ static int dsa_priv_encode(PKCS8_PRIV_KEY_INFO *p8, const EVP_PKEY *pkey) {
   int dplen;
 
   if (!pkey->pkey.dsa || !pkey->pkey.dsa->priv_key) {
-    OPENSSL_PUT_ERROR(EVP, dsa_priv_encode, EVP_R_MISSING_PARAMETERS);
+    OPENSSL_PUT_ERROR(EVP, EVP_R_MISSING_PARAMETERS);
     goto err;
   }
 
   params = ASN1_STRING_new();
   if (!params) {
-    OPENSSL_PUT_ERROR(EVP, dsa_priv_encode, ERR_R_MALLOC_FAILURE);
+    OPENSSL_PUT_ERROR(EVP, ERR_R_MALLOC_FAILURE);
     goto err;
   }
 
   params->length = i2d_DSAparams(pkey->pkey.dsa, &params->data);
   if (params->length <= 0) {
-    OPENSSL_PUT_ERROR(EVP, dsa_priv_encode, ERR_R_MALLOC_FAILURE);
+    OPENSSL_PUT_ERROR(EVP, ERR_R_MALLOC_FAILURE);
     goto err;
   }
   params->type = V_ASN1_SEQUENCE;
@@ -318,7 +318,7 @@ static int dsa_priv_encode(PKCS8_PRIV_KEY_INFO *p8, const EVP_PKEY *pkey) {
   prkey = BN_to_ASN1_INTEGER(pkey->pkey.dsa->priv_key, NULL);
 
   if (!prkey) {
-    OPENSSL_PUT_ERROR(EVP, dsa_priv_encode, ERR_LIB_BN);
+    OPENSSL_PUT_ERROR(EVP, ERR_LIB_BN);
     goto err;
   }
 
@@ -437,7 +437,7 @@ static int do_dsa_print(BIO *bp, const DSA *x, int off, int ptype) {
 
   m = (uint8_t *)OPENSSL_malloc(buf_len + 10);
   if (m == NULL) {
-    OPENSSL_PUT_ERROR(EVP, do_dsa_print, ERR_R_MALLOC_FAILURE);
+    OPENSSL_PUT_ERROR(EVP, ERR_R_MALLOC_FAILURE);
     goto err;
   }
 
@@ -466,7 +466,7 @@ static int dsa_param_decode(EVP_PKEY *pkey, const uint8_t **pder, int derlen) {
   DSA *dsa;
   dsa = d2i_DSAparams(NULL, pder, derlen);
   if (dsa == NULL) {
-    OPENSSL_PUT_ERROR(EVP, dsa_param_decode, ERR_R_DSA_LIB);
+    OPENSSL_PUT_ERROR(EVP, ERR_R_DSA_LIB);
     return 0;
   }
   EVP_PKEY_assign_DSA(pkey, dsa);
@@ -497,7 +497,7 @@ static int old_dsa_priv_decode(EVP_PKEY *pkey, const uint8_t **pder,
   DSA *dsa;
   dsa = d2i_DSAPrivateKey(NULL, pder, derlen);
   if (dsa == NULL) {
-    OPENSSL_PUT_ERROR(EVP, old_dsa_priv_decode, ERR_R_DSA_LIB);
+    OPENSSL_PUT_ERROR(EVP, ERR_R_DSA_LIB);
     return 0;
   }
   EVP_PKEY_assign_DSA(pkey, dsa);
@@ -531,7 +531,7 @@ static int dsa_sig_print(BIO *bp, const X509_ALGOR *sigalg,
   update_buflen(dsa_sig->s, &buf_len);
   m = OPENSSL_malloc(buf_len + 10);
   if (m == NULL) {
-    OPENSSL_PUT_ERROR(EVP, dsa_sig_print, ERR_R_MALLOC_FAILURE);
+    OPENSSL_PUT_ERROR(EVP, ERR_R_MALLOC_FAILURE);
     goto err;
   }
 

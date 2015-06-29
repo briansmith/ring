@@ -107,6 +107,6 @@ int d2i_ASN1_BOOLEAN(int *a, const unsigned char **pp, long length)
 	*pp=p;
 	return(ret);
 err:
-	OPENSSL_PUT_ERROR(ASN1, d2i_ASN1_BOOLEAN, i);
+	OPENSSL_PUT_ERROR(ASN1, i);
 	return(ret);
 	}

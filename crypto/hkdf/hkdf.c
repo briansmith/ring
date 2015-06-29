@@ -40,7 +40,7 @@ int HKDF(uint8_t *out_key, size_t out_len,
   /* Expand key material to desired length. */
   n = (out_len + digest_len - 1) / digest_len;
   if (out_len + digest_len < out_len || n > 255) {
-    OPENSSL_PUT_ERROR(HKDF, HKDF, HKDF_R_OUTPUT_TOO_LARGE);
+    OPENSSL_PUT_ERROR(HKDF, HKDF_R_OUTPUT_TOO_LARGE);
     return 0;
   }
 
@@ -83,7 +83,7 @@ int HKDF(uint8_t *out_key, size_t out_len,
 out:
   HMAC_CTX_cleanup(&hmac);
   if (ret != 1) {
-    OPENSSL_PUT_ERROR(HKDF, HKDF, ERR_R_HMAC_LIB);
+    OPENSSL_PUT_ERROR(HKDF, ERR_R_HMAC_LIB);
   }
   return ret;
 }

@@ -134,7 +134,7 @@ static int pkey_ec_sign(EVP_PKEY_CTX *ctx, uint8_t *sig, size_t *siglen,
     *siglen = ECDSA_size(ec);
     return 1;
   } else if (*siglen < (size_t)ECDSA_size(ec)) {
-    OPENSSL_PUT_ERROR(EVP, pkey_ec_sign, EVP_R_BUFFER_TOO_SMALL);
+    OPENSSL_PUT_ERROR(EVP, EVP_R_BUFFER_TOO_SMALL);
     return 0;
   }
 
@@ -172,7 +172,7 @@ static int pkey_ec_derive(EVP_PKEY_CTX *ctx, uint8_t *key,
   EC_KEY *eckey;
 
   if (!ctx->pkey || !ctx->peerkey) {
-    OPENSSL_PUT_ERROR(EVP, pkey_ec_derive, EVP_R_KEYS_NOT_SET);
+    OPENSSL_PUT_ERROR(EVP, EVP_R_KEYS_NOT_SET);
     return 0;
   }
 
@@ -207,7 +207,7 @@ static int pkey_ec_ctrl(EVP_PKEY_CTX *ctx, int type, int p1, void *p2) {
     case EVP_PKEY_CTRL_EC_PARAMGEN_CURVE_NID:
       group = EC_GROUP_new_by_curve_name(p1);
       if (group == NULL) {
-        OPENSSL_PUT_ERROR(EVP, pkey_ec_ctrl, EVP_R_INVALID_CURVE);
+        OPENSSL_PUT_ERROR(EVP, EVP_R_INVALID_CURVE);
         return 0;
       }
       EC_GROUP_free(dctx->gen_group);
@@ -221,7 +221,7 @@ static int pkey_ec_ctrl(EVP_PKEY_CTX *ctx, int type, int p1, void *p2) {
           EVP_MD_type((const EVP_MD *)p2) != NID_sha256 &&
           EVP_MD_type((const EVP_MD *)p2) != NID_sha384 &&
           EVP_MD_type((const EVP_MD *)p2) != NID_sha512) {
-        OPENSSL_PUT_ERROR(EVP, pkey_ec_ctrl, EVP_R_INVALID_DIGEST_TYPE);
+        OPENSSL_PUT_ERROR(EVP, EVP_R_INVALID_DIGEST_TYPE);
         return 0;
       }
       dctx->md = p2;
@@ -236,7 +236,7 @@ static int pkey_ec_ctrl(EVP_PKEY_CTX *ctx, int type, int p1, void *p2) {
       return 1;
 
     default:
-      OPENSSL_PUT_ERROR(EVP, pkey_ec_ctrl, EVP_R_COMMAND_NOT_SUPPORTED);
+      OPENSSL_PUT_ERROR(EVP, EVP_R_COMMAND_NOT_SUPPORTED);
       return 0;
   }
 }
@@ -247,7 +247,7 @@ static int pkey_ec_paramgen(EVP_PKEY_CTX *ctx, EVP_PKEY *pkey) {
   int ret = 0;
 
   if (dctx->gen_group == NULL) {
-    OPENSSL_PUT_ERROR(EVP, pkey_ec_paramgen, EVP_R_NO_PARAMETERS_SET);
+    OPENSSL_PUT_ERROR(EVP, EVP_R_NO_PARAMETERS_SET);
     return 0;
   }
   ec = EC_KEY_new();
@@ -267,7 +267,7 @@ static int pkey_ec_keygen(EVP_PKEY_CTX *ctx, EVP_PKEY *pkey) {
   EC_KEY *ec = NULL;
   EC_PKEY_CTX *dctx = ctx->data;
   if (ctx->pkey == NULL && dctx->gen_group == NULL) {
-    OPENSSL_PUT_ERROR(EVP, pkey_ec_keygen, EVP_R_NO_PARAMETERS_SET);
+    OPENSSL_PUT_ERROR(EVP, EVP_R_NO_PARAMETERS_SET);
     return 0;
   }
   ec = EC_KEY_new();

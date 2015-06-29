@@ -81,7 +81,7 @@ static int parse_integer(CBS *cbs, BIGNUM **out) {
 static int marshal_integer(CBB *cbb, BIGNUM *bn) {
   if (bn == NULL) {
     /* An RSA object may be missing some components. */
-    OPENSSL_PUT_ERROR(RSA, marshal_integer, RSA_R_VALUE_MISSING);
+    OPENSSL_PUT_ERROR(RSA, RSA_R_VALUE_MISSING);
     return 0;
   }
   return BN_bn2cbb(cbb, bn);
@@ -97,7 +97,7 @@ RSA *RSA_parse_public_key(CBS *cbs) {
       !parse_integer(&child, &ret->n) ||
       !parse_integer(&child, &ret->e) ||
       CBS_len(&child) != 0) {
-    OPENSSL_PUT_ERROR(RSA, RSA_parse_public_key, RSA_R_BAD_ENCODING);
+    OPENSSL_PUT_ERROR(RSA, RSA_R_BAD_ENCODING);
     RSA_free(ret);
     return NULL;
   }
@@ -109,7 +109,7 @@ RSA *RSA_public_key_from_bytes(const uint8_t *in, size_t in_len) {
   CBS_init(&cbs, in, in_len);
   RSA *ret = RSA_parse_public_key(&cbs);
   if (ret == NULL || CBS_len(&cbs) != 0) {
-    OPENSSL_PUT_ERROR(RSA, RSA_public_key_from_bytes, RSA_R_BAD_ENCODING);
+    OPENSSL_PUT_ERROR(RSA, RSA_R_BAD_ENCODING);
     RSA_free(ret);
     return NULL;
   }
@@ -122,7 +122,7 @@ int RSA_marshal_public_key(CBB *cbb, const RSA *rsa) {
       !marshal_integer(&child, rsa->n) ||
       !marshal_integer(&child, rsa->e) ||
       !CBB_flush(cbb)) {
-    OPENSSL_PUT_ERROR(RSA, RSA_marshal_public_key, RSA_R_ENCODE_ERROR);
+    OPENSSL_PUT_ERROR(RSA, RSA_R_ENCODE_ERROR);
     return 0;
   }
   return 1;
@@ -135,7 +135,7 @@ int RSA_public_key_to_bytes(uint8_t **out_bytes, size_t *out_len,
   if (!CBB_init(&cbb, 0) ||
       !RSA_marshal_public_key(&cbb, rsa) ||
       !CBB_finish(&cbb, out_bytes, out_len)) {
-    OPENSSL_PUT_ERROR(RSA, RSA_public_key_to_bytes, RSA_R_ENCODE_ERROR);
+    OPENSSL_PUT_ERROR(RSA, RSA_R_ENCODE_ERROR);
     CBB_cleanup(&cbb);
     return 0;
   }
@@ -154,7 +154,7 @@ static const uint64_t kVersionMulti = 1;
 static RSA_additional_prime *rsa_parse_additional_prime(CBS *cbs) {
   RSA_additional_prime *ret = OPENSSL_malloc(sizeof(RSA_additional_prime));
   if (ret == NULL) {
-    OPENSSL_PUT_ERROR(RSA, rsa_parse_additional_prime, ERR_R_MALLOC_FAILURE);
+    OPENSSL_PUT_ERROR(RSA, ERR_R_MALLOC_FAILURE);
     return 0;
   }
   memset(ret, 0, sizeof(RSA_additional_prime));
@@ -165,7 +165,7 @@ static RSA_additional_prime *rsa_parse_additional_prime(CBS *cbs) {
       !parse_integer(&child, &ret->exp) ||
       !parse_integer(&child, &ret->coeff) ||
       CBS_len(&child) != 0) {
-    OPENSSL_PUT_ERROR(RSA, rsa_parse_additional_prime, RSA_R_BAD_ENCODING);
+    OPENSSL_PUT_ERROR(RSA, RSA_R_BAD_ENCODING);
     RSA_additional_prime_free(ret);
     return NULL;
   }
@@ -194,7 +194,7 @@ RSA *RSA_parse_private_key(CBS *cbs) {
       !parse_integer(&child, &ret->dmp1) ||
       !parse_integer(&child, &ret->dmq1) ||
       !parse_integer(&child, &ret->iqmp)) {
-    OPENSSL_PUT_ERROR(RSA, RSA_parse_private_key, RSA_R_BAD_VERSION);
+    OPENSSL_PUT_ERROR(RSA, RSA_R_BAD_VERSION);
     goto err;
   }
 
@@ -204,12 +204,12 @@ RSA *RSA_parse_private_key(CBS *cbs) {
     CBS other_prime_infos;
     if (!CBS_get_asn1(&child, &other_prime_infos, CBS_ASN1_SEQUENCE) ||
         CBS_len(&other_prime_infos) == 0) {
-      OPENSSL_PUT_ERROR(RSA, RSA_parse_private_key, RSA_R_BAD_ENCODING);
+      OPENSSL_PUT_ERROR(RSA, RSA_R_BAD_ENCODING);
       goto err;
     }
     ret->additional_primes = sk_RSA_additional_prime_new_null();
     if (ret->additional_primes == NULL) {
-      OPENSSL_PUT_ERROR(RSA, RSA_parse_private_key, ERR_R_MALLOC_FAILURE);
+      OPENSSL_PUT_ERROR(RSA, ERR_R_MALLOC_FAILURE);
       goto err;
     }
 
@@ -227,7 +227,7 @@ RSA *RSA_parse_private_key(CBS *cbs) {
         goto err;
       }
       if (!sk_RSA_additional_prime_push(ret->additional_primes, ap)) {
-        OPENSSL_PUT_ERROR(RSA, RSA_parse_private_key, ERR_R_MALLOC_FAILURE);
+        OPENSSL_PUT_ERROR(RSA, ERR_R_MALLOC_FAILURE);
         RSA_additional_prime_free(ap);
         goto err;
       }
@@ -241,7 +241,7 @@ RSA *RSA_parse_private_key(CBS *cbs) {
   }
 
   if (CBS_len(&child) != 0) {
-    OPENSSL_PUT_ERROR(RSA, RSA_parse_private_key, RSA_R_BAD_ENCODING);
+    OPENSSL_PUT_ERROR(RSA, RSA_R_BAD_ENCODING);
     goto err;
   }
 
@@ -261,7 +261,7 @@ RSA *RSA_private_key_from_bytes(const uint8_t *in, size_t in_len) {
   CBS_init(&cbs, in, in_len);
   RSA *ret = RSA_parse_private_key(&cbs);
   if (ret == NULL || CBS_len(&cbs) != 0) {
-    OPENSSL_PUT_ERROR(RSA, RSA_private_key_from_bytes, RSA_R_BAD_ENCODING);
+    OPENSSL_PUT_ERROR(RSA, RSA_R_BAD_ENCODING);
     RSA_free(ret);
     return NULL;
   }
@@ -284,14 +284,14 @@ int RSA_marshal_private_key(CBB *cbb, const RSA *rsa) {
       !marshal_integer(&child, rsa->dmp1) ||
       !marshal_integer(&child, rsa->dmq1) ||
       !marshal_integer(&child, rsa->iqmp)) {
-    OPENSSL_PUT_ERROR(RSA, RSA_marshal_private_key, RSA_R_ENCODE_ERROR);
+    OPENSSL_PUT_ERROR(RSA, RSA_R_ENCODE_ERROR);
     return 0;
   }
 
   if (is_multiprime) {
     CBB other_prime_infos;
     if (!CBB_add_asn1(&child, &other_prime_infos, CBS_ASN1_SEQUENCE)) {
-      OPENSSL_PUT_ERROR(RSA, RSA_marshal_private_key, RSA_R_ENCODE_ERROR);
+      OPENSSL_PUT_ERROR(RSA, RSA_R_ENCODE_ERROR);
       return 0;
     }
     size_t i;
@@ -304,14 +304,14 @@ int RSA_marshal_private_key(CBB *cbb, const RSA *rsa) {
           !marshal_integer(&other_prime_info, ap->prime) ||
           !marshal_integer(&other_prime_info, ap->exp) ||
           !marshal_integer(&other_prime_info, ap->coeff)) {
-        OPENSSL_PUT_ERROR(RSA, RSA_marshal_private_key, RSA_R_ENCODE_ERROR);
+        OPENSSL_PUT_ERROR(RSA, RSA_R_ENCODE_ERROR);
         return 0;
       }
     }
   }
 
   if (!CBB_flush(cbb)) {
-    OPENSSL_PUT_ERROR(RSA, RSA_marshal_private_key, RSA_R_ENCODE_ERROR);
+    OPENSSL_PUT_ERROR(RSA, RSA_R_ENCODE_ERROR);
     return 0;
   }
   return 1;
@@ -324,7 +324,7 @@ int RSA_private_key_to_bytes(uint8_t **out_bytes, size_t *out_len,
   if (!CBB_init(&cbb, 0) ||
       !RSA_marshal_private_key(&cbb, rsa) ||
       !CBB_finish(&cbb, out_bytes, out_len)) {
-    OPENSSL_PUT_ERROR(RSA, RSA_private_key_to_bytes, RSA_R_ENCODE_ERROR);
+    OPENSSL_PUT_ERROR(RSA, RSA_R_ENCODE_ERROR);
     CBB_cleanup(&cbb);
     return 0;
   }
@@ -356,7 +356,7 @@ int i2d_RSAPublicKey(const RSA *in, uint8_t **outp) {
     return -1;
   }
   if (der_len > INT_MAX) {
-    OPENSSL_PUT_ERROR(RSA, i2d_RSAPublicKey, ERR_R_OVERFLOW);
+    OPENSSL_PUT_ERROR(RSA, ERR_R_OVERFLOW);
     OPENSSL_free(der);
     return -1;
   }
@@ -398,7 +398,7 @@ int i2d_RSAPrivateKey(const RSA *in, uint8_t **outp) {
     return -1;
   }
   if (der_len > INT_MAX) {
-    OPENSSL_PUT_ERROR(RSA, i2d_RSAPrivateKey, ERR_R_OVERFLOW);
+    OPENSSL_PUT_ERROR(RSA, ERR_R_OVERFLOW);
     OPENSSL_free(der);
     return -1;
   }

@@ -112,7 +112,7 @@ static void *v2i_POLICY_CONSTRAINTS(const X509V3_EXT_METHOD *method,
 	CONF_VALUE *val;
 	size_t i;
 	if(!(pcons = POLICY_CONSTRAINTS_new())) {
-		OPENSSL_PUT_ERROR(X509V3, v2i_POLICY_CONSTRAINTS, ERR_R_MALLOC_FAILURE);
+		OPENSSL_PUT_ERROR(X509V3, ERR_R_MALLOC_FAILURE);
 		return NULL;
 	}
 	for(i = 0; i < sk_CONF_VALUE_num(values); i++) {
@@ -124,13 +124,13 @@ static void *v2i_POLICY_CONSTRAINTS(const X509V3_EXT_METHOD *method,
 			if(!X509V3_get_value_int(val,
 				&pcons->inhibitPolicyMapping)) goto err;
 		} else {
-			OPENSSL_PUT_ERROR(X509V3, v2i_POLICY_CONSTRAINTS, X509V3_R_INVALID_NAME);
+			OPENSSL_PUT_ERROR(X509V3, X509V3_R_INVALID_NAME);
 			X509V3_conf_err(val);
 			goto err;
 		}
 	}
 	if (!pcons->inhibitPolicyMapping && !pcons->requireExplicitPolicy) {
-		OPENSSL_PUT_ERROR(X509V3, v2i_POLICY_CONSTRAINTS, X509V3_R_ILLEGAL_EMPTY_EXTENSION);
+		OPENSSL_PUT_ERROR(X509V3, X509V3_R_ILLEGAL_EMPTY_EXTENSION);
 		goto err;
 	}
 

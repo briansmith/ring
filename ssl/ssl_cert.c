@@ -151,7 +151,7 @@ int SSL_get_ex_data_X509_STORE_CTX_idx(void) {
 CERT *ssl_cert_new(void) {
   CERT *ret = (CERT *)OPENSSL_malloc(sizeof(CERT));
   if (ret == NULL) {
-    OPENSSL_PUT_ERROR(SSL, ssl_cert_new, ERR_R_MALLOC_FAILURE);
+    OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
     return NULL;
   }
   memset(ret, 0, sizeof(CERT));
@@ -162,7 +162,7 @@ CERT *ssl_cert_new(void) {
 CERT *ssl_cert_dup(CERT *cert) {
   CERT *ret = (CERT *)OPENSSL_malloc(sizeof(CERT));
   if (ret == NULL) {
-    OPENSSL_PUT_ERROR(SSL, ssl_cert_dup, ERR_R_MALLOC_FAILURE);
+    OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
     return NULL;
   }
   memset(ret, 0, sizeof(CERT));
@@ -173,13 +173,13 @@ CERT *ssl_cert_dup(CERT *cert) {
   if (cert->dh_tmp != NULL) {
     ret->dh_tmp = DHparams_dup(cert->dh_tmp);
     if (ret->dh_tmp == NULL) {
-      OPENSSL_PUT_ERROR(SSL, ssl_cert_dup, ERR_R_DH_LIB);
+      OPENSSL_PUT_ERROR(SSL, ERR_R_DH_LIB);
       goto err;
     }
     if (cert->dh_tmp->priv_key) {
       BIGNUM *b = BN_dup(cert->dh_tmp->priv_key);
       if (!b) {
-        OPENSSL_PUT_ERROR(SSL, ssl_cert_dup, ERR_R_BN_LIB);
+        OPENSSL_PUT_ERROR(SSL, ERR_R_BN_LIB);
         goto err;
       }
       ret->dh_tmp->priv_key = b;
@@ -187,7 +187,7 @@ CERT *ssl_cert_dup(CERT *cert) {
     if (cert->dh_tmp->pub_key) {
       BIGNUM *b = BN_dup(cert->dh_tmp->pub_key);
       if (!b) {
-        OPENSSL_PUT_ERROR(SSL, ssl_cert_dup, ERR_R_BN_LIB);
+        OPENSSL_PUT_ERROR(SSL, ERR_R_BN_LIB);
         goto err;
       }
       ret->dh_tmp->pub_key = b;
@@ -209,7 +209,7 @@ CERT *ssl_cert_dup(CERT *cert) {
   if (cert->chain) {
     ret->chain = X509_chain_up_ref(cert->chain);
     if (!ret->chain) {
-      OPENSSL_PUT_ERROR(SSL, ssl_cert_dup, ERR_R_MALLOC_FAILURE);
+      OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
       goto err;
     }
   }
@@ -351,7 +351,7 @@ SESS_CERT *ssl_sess_cert_new(void) {
 
   ret = OPENSSL_malloc(sizeof *ret);
   if (ret == NULL) {
-    OPENSSL_PUT_ERROR(SSL, ssl_sess_cert_new, ERR_R_MALLOC_FAILURE);
+    OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
     return NULL;
   }
 
@@ -418,7 +418,7 @@ int ssl_verify_cert_chain(SSL *s, STACK_OF(X509) *sk) {
 
   x = sk_X509_value(sk, 0);
   if (!X509_STORE_CTX_init(&ctx, verify_store, x, sk)) {
-    OPENSSL_PUT_ERROR(SSL, ssl_verify_cert_chain, ERR_R_X509_LIB);
+    OPENSSL_PUT_ERROR(SSL, ERR_R_X509_LIB);
     return 0;
   }
   X509_STORE_CTX_set_ex_data(&ctx, SSL_get_ex_data_X509_STORE_CTX_idx(), s);
@@ -553,7 +553,7 @@ STACK_OF(X509_NAME) *SSL_load_client_CA_file(const char *file) {
   in = BIO_new(BIO_s_file());
 
   if (sk == NULL || in == NULL) {
-    OPENSSL_PUT_ERROR(SSL, SSL_load_client_CA_file, ERR_R_MALLOC_FAILURE);
+    OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
     goto err;
   }
 
@@ -568,7 +568,7 @@ STACK_OF(X509_NAME) *SSL_load_client_CA_file(const char *file) {
     if (ret == NULL) {
       ret = sk_X509_NAME_new_null();
       if (ret == NULL) {
-        OPENSSL_PUT_ERROR(SSL, SSL_load_client_CA_file, ERR_R_MALLOC_FAILURE);
+        OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
         goto err;
       }
     }
@@ -624,8 +624,7 @@ int SSL_add_file_cert_subjects_to_stack(STACK_OF(X509_NAME) *stack,
   in = BIO_new(BIO_s_file());
 
   if (in == NULL) {
-    OPENSSL_PUT_ERROR(SSL, SSL_add_file_cert_subjects_to_stack,
-                      ERR_R_MALLOC_FAILURE);
+    OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
     goto err;
   }
 
@@ -688,8 +687,7 @@ int SSL_add_dir_cert_subjects_to_stack(STACK_OF(X509_NAME) *stack,
     int r;
 
     if (strlen(dir) + strlen(filename) + 2 > sizeof(buf)) {
-      OPENSSL_PUT_ERROR(SSL, SSL_add_dir_cert_subjects_to_stack,
-                        SSL_R_PATH_TOO_LONG);
+      OPENSSL_PUT_ERROR(SSL, SSL_R_PATH_TOO_LONG);
       goto err;
     }
 
@@ -701,7 +699,7 @@ int SSL_add_dir_cert_subjects_to_stack(STACK_OF(X509_NAME) *stack,
   }
 
   if (errno) {
-    OPENSSL_PUT_ERROR(SSL, SSL_add_dir_cert_subjects_to_stack, ERR_R_SYS_LIB);
+    OPENSSL_PUT_ERROR(SSL, ERR_R_SYS_LIB);
     ERR_add_error_data(3, "OPENSSL_DIR_read(&ctx, '", dir, "')");
     goto err;
   }
@@ -722,7 +720,7 @@ static int ssl_add_cert_to_buf(BUF_MEM *buf, unsigned long *l, X509 *x) {
 
   n = i2d_X509(x, NULL);
   if (!BUF_MEM_grow_clean(buf, (int)(n + (*l) + 3))) {
-    OPENSSL_PUT_ERROR(SSL, ssl_add_cert_to_buf, ERR_R_BUF_LIB);
+    OPENSSL_PUT_ERROR(SSL, ERR_R_BUF_LIB);
     return 0;
   }
   p = (uint8_t *)&(buf->data[*l]);
@@ -745,7 +743,7 @@ int ssl_add_cert_chain(SSL *ssl, unsigned long *l) {
   X509_STORE *chain_store;
 
   if (x == NULL) {
-    OPENSSL_PUT_ERROR(SSL, ssl_add_cert_chain, SSL_R_NO_CERTIFICATE_SET);
+    OPENSSL_PUT_ERROR(SSL, SSL_R_NO_CERTIFICATE_SET);
     return 0;
   }
 
@@ -774,7 +772,7 @@ int ssl_add_cert_chain(SSL *ssl, unsigned long *l) {
     X509_STORE_CTX xs_ctx;
 
     if (!X509_STORE_CTX_init(&xs_ctx, chain_store, x, NULL)) {
-      OPENSSL_PUT_ERROR(SSL, ssl_add_cert_chain, ERR_R_X509_LIB);
+      OPENSSL_PUT_ERROR(SSL, ERR_R_X509_LIB);
       return 0;
     }
     X509_verify_cert(&xs_ctx);

@@ -975,7 +975,7 @@ static int ssl_cipher_strength_sort(CIPHER_ORDER **head_p,
 
   number_uses = OPENSSL_malloc((max_strength_bits + 1) * sizeof(int));
   if (!number_uses) {
-    OPENSSL_PUT_ERROR(SSL, ssl_cipher_strength_sort, ERR_R_MALLOC_FAILURE);
+    OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
     return 0;
   }
   memset(number_uses, 0, (max_strength_bits + 1) * sizeof(int));
@@ -1037,8 +1037,7 @@ static int ssl_cipher_process_rulestr(const SSL_PROTOCOL_METHOD *ssl_method,
         continue;
       } else if (!(ch >= 'a' && ch <= 'z') && !(ch >= 'A' && ch <= 'Z') &&
                  !(ch >= '0' && ch <= '9')) {
-        OPENSSL_PUT_ERROR(SSL, ssl_cipher_process_rulestr,
-                          SSL_R_UNEXPECTED_OPERATOR_IN_GROUP);
+        OPENSSL_PUT_ERROR(SSL, SSL_R_UNEXPECTED_OPERATOR_IN_GROUP);
         retval = in_group = 0;
         break;
       } else {
@@ -1058,7 +1057,7 @@ static int ssl_cipher_process_rulestr(const SSL_PROTOCOL_METHOD *ssl_method,
       l++;
     } else if (ch == '[') {
       if (in_group) {
-        OPENSSL_PUT_ERROR(SSL, ssl_cipher_process_rulestr, SSL_R_NESTED_GROUP);
+        OPENSSL_PUT_ERROR(SSL, SSL_R_NESTED_GROUP);
         retval = in_group = 0;
         break;
       }
@@ -1073,8 +1072,7 @@ static int ssl_cipher_process_rulestr(const SSL_PROTOCOL_METHOD *ssl_method,
     /* If preference groups are enabled, the only legal operator is +.
      * Otherwise the in_group bits will get mixed up. */
     if (has_group && rule != CIPHER_ADD) {
-      OPENSSL_PUT_ERROR(SSL, ssl_cipher_process_rulestr,
-                        SSL_R_MIXED_SPECIAL_OPERATOR_WITH_GROUPS);
+      OPENSSL_PUT_ERROR(SSL, SSL_R_MIXED_SPECIAL_OPERATOR_WITH_GROUPS);
       retval = in_group = 0;
       break;
     }
@@ -1106,8 +1104,7 @@ static int ssl_cipher_process_rulestr(const SSL_PROTOCOL_METHOD *ssl_method,
       if (buf_len == 0) {
         /* We hit something we cannot deal with, it is no command or separator
          * nor alphanumeric, so we call this an error. */
-        OPENSSL_PUT_ERROR(SSL, ssl_cipher_process_rulestr,
-                          SSL_R_INVALID_COMMAND);
+        OPENSSL_PUT_ERROR(SSL, SSL_R_INVALID_COMMAND);
         retval = in_group = 0;
         l++;
         break;
@@ -1161,8 +1158,7 @@ static int ssl_cipher_process_rulestr(const SSL_PROTOCOL_METHOD *ssl_method,
       if (buf_len == 8 && !strncmp(buf, "STRENGTH", 8)) {
         ok = ssl_cipher_strength_sort(head_p, tail_p);
       } else {
-        OPENSSL_PUT_ERROR(SSL, ssl_cipher_process_rulestr,
-                          SSL_R_INVALID_COMMAND);
+        OPENSSL_PUT_ERROR(SSL, SSL_R_INVALID_COMMAND);
       }
 
       if (ok == 0) {
@@ -1182,7 +1178,7 @@ static int ssl_cipher_process_rulestr(const SSL_PROTOCOL_METHOD *ssl_method,
   }
 
   if (in_group) {
-    OPENSSL_PUT_ERROR(SSL, ssl_cipher_process_rulestr, SSL_R_INVALID_COMMAND);
+    OPENSSL_PUT_ERROR(SSL, SSL_R_INVALID_COMMAND);
     retval = 0;
   }
 
@@ -1212,7 +1208,7 @@ ssl_create_cipher_list(const SSL_PROTOCOL_METHOD *ssl_method,
    * allocation. */
   co_list = (CIPHER_ORDER *)OPENSSL_malloc(sizeof(CIPHER_ORDER) * kCiphersLen);
   if (co_list == NULL) {
-    OPENSSL_PUT_ERROR(SSL, ssl_create_cipher_list, ERR_R_MALLOC_FAILURE);
+    OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
     return NULL;
   }
 

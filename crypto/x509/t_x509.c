@@ -74,7 +74,7 @@ int X509_print_ex_fp(FILE *fp, X509 *x, unsigned long nmflag, unsigned long cfla
 
         if ((b=BIO_new(BIO_s_file())) == NULL)
 		{
-		OPENSSL_PUT_ERROR(X509, X509_print_ex_fp, ERR_R_BUF_LIB);
+		OPENSSL_PUT_ERROR(X509, ERR_R_BUF_LIB);
                 return(0);
 		}
         BIO_set_fp(b,fp,BIO_NOCLOSE);
@@ -493,7 +493,7 @@ int X509_NAME_print(BIO *bp, X509_NAME *name, int obase)
 	if (0)
 		{
 err:
-		OPENSSL_PUT_ERROR(X509, X509_NAME_print, ERR_R_BUF_LIB);
+		OPENSSL_PUT_ERROR(X509, ERR_R_BUF_LIB);
 		}
 	OPENSSL_free(b);
 	return(ret);

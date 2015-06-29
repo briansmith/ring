@@ -78,7 +78,7 @@ int i2d_PrivateKey(const EVP_PKEY *a, unsigned char **pp)
 	}
 	/* Although this file is in crypto/x509 for layering reasons, it emits
 	 * an error code from ASN1 for OpenSSL compatibility. */
-	OPENSSL_PUT_ERROR(ASN1, i2d_PrivateKey, ASN1_R_UNSUPPORTED_PUBLIC_KEY_TYPE);
+	OPENSSL_PUT_ERROR(ASN1, ASN1_R_UNSUPPORTED_PUBLIC_KEY_TYPE);
 	return -1;
 	}
 

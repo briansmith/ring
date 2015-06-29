@@ -95,7 +95,7 @@ int BIO_printf(BIO *bio, const char *format, ...) {
     out = OPENSSL_malloc(requested_len + 1);
     out_malloced = 1;
     if (out == NULL) {
-      OPENSSL_PUT_ERROR(BIO, BIO_printf, ERR_R_MALLOC_FAILURE);
+      OPENSSL_PUT_ERROR(BIO, ERR_R_MALLOC_FAILURE);
       return -1;
     }
     va_start(args, format);

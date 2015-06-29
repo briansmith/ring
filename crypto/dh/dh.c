@@ -78,7 +78,7 @@ DH *DH_new(void) { return DH_new_method(NULL); }
 DH *DH_new_method(const ENGINE *engine) {
   DH *dh = (DH *)OPENSSL_malloc(sizeof(DH));
   if (dh == NULL) {
-    OPENSSL_PUT_ERROR(DH, DH_new_method, ERR_R_MALLOC_FAILURE);
+    OPENSSL_PUT_ERROR(DH, ERR_R_MALLOC_FAILURE);
     return NULL;
   }
 

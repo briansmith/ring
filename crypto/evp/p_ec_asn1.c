@@ -71,13 +71,13 @@ static int eckey_param2type(int *pptype, void **ppval, EC_KEY *ec_key) {
   int nid;
 
   if (ec_key == NULL || (group = EC_KEY_get0_group(ec_key)) == NULL) {
-    OPENSSL_PUT_ERROR(EVP, eckey_param2type, EVP_R_MISSING_PARAMETERS);
+    OPENSSL_PUT_ERROR(EVP, EVP_R_MISSING_PARAMETERS);
     return 0;
   }
 
   nid = EC_GROUP_get_curve_name(group);
   if (nid == NID_undef) {
-    OPENSSL_PUT_ERROR(EVP, eckey_param2type, EVP_R_NO_NID_FOR_CURVE);
+    OPENSSL_PUT_ERROR(EVP, EVP_R_NO_NID_FOR_CURVE);
     return 0;
   }
 
@@ -94,7 +94,7 @@ static int eckey_pub_encode(X509_PUBKEY *pk, const EVP_PKEY *pkey) {
   int penclen;
 
   if (!eckey_param2type(&ptype, &pval, ec_key)) {
-    OPENSSL_PUT_ERROR(EVP, eckey_pub_encode, ERR_R_EC_LIB);
+    OPENSSL_PUT_ERROR(EVP, ERR_R_EC_LIB);
     return 0;
   }
   penclen = i2o_ECPublicKey(ec_key, NULL);
@@ -137,7 +137,7 @@ static EC_KEY *eckey_type2param(int ptype, void *pval) {
 
     eckey = d2i_ECParameters(NULL, &pm, pmlen);
     if (eckey == NULL) {
-      OPENSSL_PUT_ERROR(EVP, eckey_type2param, EVP_R_DECODE_ERROR);
+      OPENSSL_PUT_ERROR(EVP, EVP_R_DECODE_ERROR);
       goto err;
     }
   } else if (ptype == V_ASN1_OBJECT) {
@@ -150,7 +150,7 @@ static EC_KEY *eckey_type2param(int ptype, void *pval) {
       goto err;
     }
   } else {
-    OPENSSL_PUT_ERROR(EVP, eckey_type2param, EVP_R_DECODE_ERROR);
+    OPENSSL_PUT_ERROR(EVP, EVP_R_DECODE_ERROR);
     goto err;
   }
 
@@ -177,13 +177,13 @@ static int eckey_pub_decode(EVP_PKEY *pkey, X509_PUBKEY *pubkey) {
 
   eckey = eckey_type2param(ptype, pval);
   if (!eckey) {
-    OPENSSL_PUT_ERROR(EVP, eckey_pub_decode, ERR_R_EC_LIB);
+    OPENSSL_PUT_ERROR(EVP, ERR_R_EC_LIB);
     return 0;
   }
 
   /* We have parameters now set public key */
   if (!o2i_ECPublicKey(&eckey, &p, pklen)) {
-    OPENSSL_PUT_ERROR(EVP, eckey_pub_decode, EVP_R_DECODE_ERROR);
+    OPENSSL_PUT_ERROR(EVP, EVP_R_DECODE_ERROR);
     goto err;
   }
 
@@ -232,7 +232,7 @@ static int eckey_priv_decode(EVP_PKEY *pkey, PKCS8_PRIV_KEY_INFO *p8) {
 
   /* We have parameters now set private key */
   if (!d2i_ECPrivateKey(&eckey, &p, pklen)) {
-    OPENSSL_PUT_ERROR(EVP, eckey_priv_decode, EVP_R_DECODE_ERROR);
+    OPENSSL_PUT_ERROR(EVP, EVP_R_DECODE_ERROR);
     goto ecerr;
   }
 
@@ -246,23 +246,23 @@ static int eckey_priv_decode(EVP_PKEY *pkey, PKCS8_PRIV_KEY_INFO *p8) {
     group = EC_KEY_get0_group(eckey);
     pub_key = EC_POINT_new(group);
     if (pub_key == NULL) {
-      OPENSSL_PUT_ERROR(EVP, eckey_priv_decode, ERR_R_EC_LIB);
+      OPENSSL_PUT_ERROR(EVP, ERR_R_EC_LIB);
       goto ecliberr;
     }
     if (!EC_POINT_copy(pub_key, EC_GROUP_get0_generator(group))) {
       EC_POINT_free(pub_key);
-      OPENSSL_PUT_ERROR(EVP, eckey_priv_decode, ERR_R_EC_LIB);
+      OPENSSL_PUT_ERROR(EVP, ERR_R_EC_LIB);
       goto ecliberr;
     }
     priv_key = EC_KEY_get0_private_key(eckey);
     if (!EC_POINT_mul(group, pub_key, priv_key, NULL, NULL, NULL)) {
       EC_POINT_free(pub_key);
-      OPENSSL_PUT_ERROR(EVP, eckey_priv_decode, ERR_R_EC_LIB);
+      OPENSSL_PUT_ERROR(EVP, ERR_R_EC_LIB);
       goto ecliberr;
     }
     if (EC_KEY_set_public_key(eckey, pub_key) == 0) {
       EC_POINT_free(pub_key);
-      OPENSSL_PUT_ERROR(EVP, eckey_priv_decode, ERR_R_EC_LIB);
+      OPENSSL_PUT_ERROR(EVP, ERR_R_EC_LIB);
       goto ecliberr;
     }
     EC_POINT_free(pub_key);
@@ -272,7 +272,7 @@ static int eckey_priv_decode(EVP_PKEY *pkey, PKCS8_PRIV_KEY_INFO *p8) {
   return 1;
 
 ecliberr:
-  OPENSSL_PUT_ERROR(EVP, eckey_priv_decode, ERR_R_EC_LIB);
+  OPENSSL_PUT_ERROR(EVP, ERR_R_EC_LIB);
 ecerr:
   if (eckey) {
     EC_KEY_free(eckey);
@@ -290,7 +290,7 @@ static int eckey_priv_encode(PKCS8_PRIV_KEY_INFO *p8, const EVP_PKEY *pkey) {
   ec_key = pkey->pkey.ec;
 
   if (!eckey_param2type(&ptype, &pval, ec_key)) {
-    OPENSSL_PUT_ERROR(EVP, eckey_priv_encode, EVP_R_DECODE_ERROR);
+    OPENSSL_PUT_ERROR(EVP, EVP_R_DECODE_ERROR);
     return 0;
   }
 
@@ -304,20 +304,20 @@ static int eckey_priv_encode(PKCS8_PRIV_KEY_INFO *p8, const EVP_PKEY *pkey) {
   eplen = i2d_ECPrivateKey(ec_key, NULL);
   if (!eplen) {
     EC_KEY_set_enc_flags(ec_key, old_flags);
-    OPENSSL_PUT_ERROR(EVP, eckey_priv_encode, ERR_R_EC_LIB);
+    OPENSSL_PUT_ERROR(EVP, ERR_R_EC_LIB);
     return 0;
   }
   ep = (uint8_t *)OPENSSL_malloc(eplen);
   if (!ep) {
     EC_KEY_set_enc_flags(ec_key, old_flags);
-    OPENSSL_PUT_ERROR(EVP, eckey_priv_encode, ERR_R_MALLOC_FAILURE);
+    OPENSSL_PUT_ERROR(EVP, ERR_R_MALLOC_FAILURE);
     return 0;
   }
   p = ep;
   if (!i2d_ECPrivateKey(ec_key, &p)) {
     EC_KEY_set_enc_flags(ec_key, old_flags);
     OPENSSL_free(ep);
-    OPENSSL_PUT_ERROR(EVP, eckey_priv_encode, ERR_R_EC_LIB);
+    OPENSSL_PUT_ERROR(EVP, ERR_R_EC_LIB);
     return 0;
   }
   /* restore old encoding flags */
@@ -479,7 +479,7 @@ static int do_EC_KEY_print(BIO *bp, const EC_KEY *x, int off, int ktype) {
 
 err:
   if (!ret) {
-    OPENSSL_PUT_ERROR(EVP, do_EC_KEY_print, reason);
+    OPENSSL_PUT_ERROR(EVP, reason);
   }
   OPENSSL_free(pub_key_bytes);
   BN_free(order);
@@ -492,7 +492,7 @@ static int eckey_param_decode(EVP_PKEY *pkey, const uint8_t **pder,
                               int derlen) {
   EC_KEY *eckey;
   if (!(eckey = d2i_ECParameters(NULL, pder, derlen))) {
-    OPENSSL_PUT_ERROR(EVP, eckey_param_decode, ERR_R_EC_LIB);
+    OPENSSL_PUT_ERROR(EVP, ERR_R_EC_LIB);
     return 0;
   }
   EVP_PKEY_assign_EC_KEY(pkey, eckey);
@@ -527,7 +527,7 @@ static int old_ec_priv_decode(EVP_PKEY *pkey, const uint8_t **pder,
                               int derlen) {
   EC_KEY *ec;
   if (!(ec = d2i_ECPrivateKey(NULL, pder, derlen))) {
-    OPENSSL_PUT_ERROR(EVP, old_ec_priv_decode, EVP_R_DECODE_ERROR);
+    OPENSSL_PUT_ERROR(EVP, EVP_R_DECODE_ERROR);
     return 0;
   }
   EVP_PKEY_assign_EC_KEY(pkey, ec);

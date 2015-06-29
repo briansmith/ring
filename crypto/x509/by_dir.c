@@ -139,7 +139,7 @@ static int dir_ctrl(X509_LOOKUP *ctx, int cmd, const char *argp, long argl,
 					X509_FILETYPE_PEM);
 			if (!ret)
 				{
-				OPENSSL_PUT_ERROR(X509, dir_ctrl, X509_R_LOADING_CERT_DIR);
+				OPENSSL_PUT_ERROR(X509, X509_R_LOADING_CERT_DIR);
 				}
 			}
 		else
@@ -208,7 +208,7 @@ static int add_cert_dir(BY_DIR *ctx, const char *dir, int type)
 
 	if (dir == NULL || !*dir)
 	    {
-	    OPENSSL_PUT_ERROR(X509, add_cert_dir, X509_R_INVALID_DIRECTORY);
+	    OPENSSL_PUT_ERROR(X509, X509_R_INVALID_DIRECTORY);
 	    return 0;
 	    }
 
@@ -237,7 +237,7 @@ static int add_cert_dir(BY_DIR *ctx, const char *dir, int type)
 				ctx->dirs = sk_BY_DIR_ENTRY_new_null();
 				if (!ctx->dirs)
 					{
-					OPENSSL_PUT_ERROR(X509, add_cert_dir, ERR_R_MALLOC_FAILURE);
+					OPENSSL_PUT_ERROR(X509, ERR_R_MALLOC_FAILURE);
 					return 0;
 					}
 				}
@@ -311,13 +311,13 @@ static int get_cert_by_subject(X509_LOOKUP *xl, int type, X509_NAME *name,
 		}
 	else
 		{
-		OPENSSL_PUT_ERROR(X509, get_cert_by_subject, X509_R_WRONG_LOOKUP_TYPE);
+		OPENSSL_PUT_ERROR(X509, X509_R_WRONG_LOOKUP_TYPE);
 		goto finish;
 		}
 
 	if ((b=BUF_MEM_new()) == NULL)
 		{
-		OPENSSL_PUT_ERROR(X509, get_cert_by_subject, ERR_R_BUF_LIB);
+		OPENSSL_PUT_ERROR(X509, ERR_R_BUF_LIB);
 		goto finish;
 		}
 	
@@ -337,7 +337,7 @@ static int get_cert_by_subject(X509_LOOKUP *xl, int type, X509_NAME *name,
 			j=strlen(ent->dir)+1+8+6+1+1;
 			if (!BUF_MEM_grow(b,j))
 				{
-				OPENSSL_PUT_ERROR(X509, get_cert_by_subject, ERR_R_MALLOC_FAILURE);
+				OPENSSL_PUT_ERROR(X509, ERR_R_MALLOC_FAILURE);
 				goto finish;
 				}
 			if (type == X509_LU_CRL && ent->hashes)

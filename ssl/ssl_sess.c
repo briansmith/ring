@@ -196,7 +196,7 @@ SSL_SESSION *SSL_SESSION_new(void) {
 
   ss = (SSL_SESSION *)OPENSSL_malloc(sizeof(SSL_SESSION));
   if (ss == NULL) {
-    OPENSSL_PUT_ERROR(SSL, SSL_SESSION_new, ERR_R_MALLOC_FAILURE);
+    OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
     return 0;
   }
   memset(ss, 0, sizeof(SSL_SESSION));
@@ -258,8 +258,7 @@ int ssl_get_new_session(SSL *s, int session) {
   GEN_SESSION_CB cb = def_generate_session_id;
 
   if (s->mode & SSL_MODE_NO_SESSION_CREATION) {
-    OPENSSL_PUT_ERROR(SSL, ssl_get_new_session,
-                      SSL_R_SESSION_MAY_NOT_BE_CREATED);
+    OPENSSL_PUT_ERROR(SSL, SSL_R_SESSION_MAY_NOT_BE_CREATED);
     return 0;
   }
 
@@ -283,8 +282,7 @@ int ssl_get_new_session(SSL *s, int session) {
       ss->ssl_version = s->version;
       ss->session_id_length = SSL3_SSL_SESSION_ID_LENGTH;
     } else {
-      OPENSSL_PUT_ERROR(SSL, ssl_get_new_session,
-                        SSL_R_UNSUPPORTED_SSL_VERSION);
+      OPENSSL_PUT_ERROR(SSL, SSL_R_UNSUPPORTED_SSL_VERSION);
       SSL_SESSION_free(ss);
       return 0;
     }
@@ -306,8 +304,7 @@ int ssl_get_new_session(SSL *s, int session) {
     tmp = ss->session_id_length;
     if (!cb(s, ss->session_id, &tmp)) {
       /* The callback failed */
-      OPENSSL_PUT_ERROR(SSL, ssl_get_new_session,
-                        SSL_R_SSL_SESSION_ID_CALLBACK_FAILED);
+      OPENSSL_PUT_ERROR(SSL, SSL_R_SSL_SESSION_ID_CALLBACK_FAILED);
       SSL_SESSION_free(ss);
       return 0;
     }
@@ -316,8 +313,7 @@ int ssl_get_new_session(SSL *s, int session) {
      * higher than it was. */
     if (!tmp || tmp > ss->session_id_length) {
       /* The callback set an illegal length */
-      OPENSSL_PUT_ERROR(SSL, ssl_get_new_session,
-                        SSL_R_SSL_SESSION_ID_HAS_BAD_LENGTH);
+      OPENSSL_PUT_ERROR(SSL, SSL_R_SSL_SESSION_ID_HAS_BAD_LENGTH);
       SSL_SESSION_free(ss);
       return 0;
     }
@@ -325,8 +321,7 @@ int ssl_get_new_session(SSL *s, int session) {
     ss->session_id_length = tmp;
     /* Finally, check for a conflict */
     if (SSL_has_matching_session_id(s, ss->session_id, ss->session_id_length)) {
-      OPENSSL_PUT_ERROR(SSL, ssl_get_new_session,
-                        SSL_R_SSL_SESSION_ID_CONFLICT);
+      OPENSSL_PUT_ERROR(SSL, SSL_R_SSL_SESSION_ID_CONFLICT);
       SSL_SESSION_free(ss);
       return 0;
     }
@@ -335,7 +330,7 @@ int ssl_get_new_session(SSL *s, int session) {
     if (s->tlsext_hostname) {
       ss->tlsext_hostname = BUF_strdup(s->tlsext_hostname);
       if (ss->tlsext_hostname == NULL) {
-        OPENSSL_PUT_ERROR(SSL, ssl_get_new_session, ERR_R_INTERNAL_ERROR);
+        OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
         SSL_SESSION_free(ss);
         return 0;
       }
@@ -345,7 +340,7 @@ int ssl_get_new_session(SSL *s, int session) {
   }
 
   if (s->sid_ctx_length > sizeof(ss->sid_ctx)) {
-    OPENSSL_PUT_ERROR(SSL, ssl_get_new_session, ERR_R_INTERNAL_ERROR);
+    OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
     SSL_SESSION_free(ss);
     return 0;
   }
@@ -471,8 +466,7 @@ enum ssl_session_result_t ssl_get_prev_session(
      * like a cache miss (otherwise it would be easy for applications to
      * effectively disable the session cache by accident without anyone
      * noticing). */
-    OPENSSL_PUT_ERROR(SSL, ssl_get_prev_session,
-                      SSL_R_SESSION_ID_CONTEXT_UNINITIALIZED);
+    OPENSSL_PUT_ERROR(SSL, SSL_R_SESSION_ID_CONTEXT_UNINITIALIZED);
     goto fatal_error;
   }
 
@@ -674,8 +668,7 @@ X509 *SSL_SESSION_get0_peer(SSL_SESSION *s) { return s->peer; }
 int SSL_SESSION_set1_id_context(SSL_SESSION *s, const uint8_t *sid_ctx,
                                 unsigned int sid_ctx_len) {
   if (sid_ctx_len > SSL_MAX_SID_CTX_LENGTH) {
-    OPENSSL_PUT_ERROR(SSL, SSL_SESSION_set1_id_context,
-                      SSL_R_SSL_SESSION_ID_CONTEXT_TOO_LONG);
+    OPENSSL_PUT_ERROR(SSL, SSL_R_SSL_SESSION_ID_CONTEXT_TOO_LONG);
     return 0;
   }
 

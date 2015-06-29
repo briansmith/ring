@@ -125,7 +125,7 @@ ASN1_STRING *d2i_ASN1_type_bytes(ASN1_STRING **a, const unsigned char **pp,
 	*pp=p;
 	return(ret);
 err:
-	OPENSSL_PUT_ERROR(ASN1, d2i_ASN1_type_bytes, i);
+	OPENSSL_PUT_ERROR(ASN1, i);
 	if ((ret != NULL) && ((a == NULL) || (*a != ret)))
 		ASN1_STRING_free(ret);
 	return(NULL);
@@ -243,7 +243,7 @@ ASN1_STRING *d2i_ASN1_bytes(ASN1_STRING **a, const unsigned char **pp,
 err:
 	if ((ret != NULL) && ((a == NULL) || (*a != ret)))
 		ASN1_STRING_free(ret);
-	OPENSSL_PUT_ERROR(ASN1, d2i_ASN1_bytes, i);
+	OPENSSL_PUT_ERROR(ASN1, i);
 	return(NULL);
 	}
 
@@ -309,7 +309,7 @@ static int asn1_collate_primitive(ASN1_STRING *a, ASN1_const_CTX *c)
 	if (os != NULL) ASN1_STRING_free(os);
 	return(1);
 err:
-	OPENSSL_PUT_ERROR(ASN1, asn1_collate_primitive, c->error);
+	OPENSSL_PUT_ERROR(ASN1, c->error);
 	if (os != NULL) ASN1_STRING_free(os);
 	if (b.data != NULL) OPENSSL_free(b.data);
 	return(0);

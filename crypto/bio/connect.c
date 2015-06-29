@@ -142,7 +142,7 @@ static int conn_state(BIO *bio, BIO_CONNECT *c) {
       case BIO_CONN_S_BEFORE:
         p = c->param_hostname;
         if (p == NULL) {
-          OPENSSL_PUT_ERROR(BIO, conn_state, BIO_R_NO_HOSTNAME_SPECIFIED);
+          OPENSSL_PUT_ERROR(BIO, BIO_R_NO_HOSTNAME_SPECIFIED);
           goto exit_loop;
         }
         for (; *p != 0; p++) {
@@ -167,7 +167,7 @@ static int conn_state(BIO *bio, BIO_CONNECT *c) {
         }
 
         if (c->param_port == NULL) {
-          OPENSSL_PUT_ERROR(BIO, conn_state, BIO_R_NO_PORT_SPECIFIED);
+          OPENSSL_PUT_ERROR(BIO, BIO_R_NO_PORT_SPECIFIED);
           ERR_add_error_data(2, "host=", c->param_hostname);
           goto exit_loop;
         }
@@ -175,7 +175,7 @@ static int conn_state(BIO *bio, BIO_CONNECT *c) {
         if (!bio_ip_and_port_to_socket_and_addr(
                 &bio->num, &c->them, &c->them_length, c->param_hostname,
                 c->param_port)) {
-          OPENSSL_PUT_ERROR(BIO, conn_state, BIO_R_UNABLE_TO_CREATE_SOCKET);
+          OPENSSL_PUT_ERROR(BIO, BIO_R_UNABLE_TO_CREATE_SOCKET);
           ERR_add_error_data(4, "host=", c->param_hostname, ":", c->param_port);
           goto exit_loop;
         }
@@ -185,7 +185,7 @@ static int conn_state(BIO *bio, BIO_CONNECT *c) {
 
         if (c->nbio) {
           if (!bio_socket_nbio(bio->num, 1)) {
-            OPENSSL_PUT_ERROR(BIO, conn_state, BIO_R_ERROR_SETTING_NBIO);
+            OPENSSL_PUT_ERROR(BIO, BIO_R_ERROR_SETTING_NBIO);
             ERR_add_error_data(4, "host=", c->param_hostname, ":",
                                c->param_port);
             goto exit_loop;
@@ -197,7 +197,7 @@ static int conn_state(BIO *bio, BIO_CONNECT *c) {
                          sizeof(i));
         if (ret < 0) {
           OPENSSL_PUT_SYSTEM_ERROR(setsockopt);
-          OPENSSL_PUT_ERROR(BIO, conn_state, BIO_R_KEEPALIVE);
+          OPENSSL_PUT_ERROR(BIO, BIO_R_KEEPALIVE);
           ERR_add_error_data(4, "host=", c->param_hostname, ":", c->param_port);
           goto exit_loop;
         }
@@ -211,7 +211,7 @@ static int conn_state(BIO *bio, BIO_CONNECT *c) {
             bio->retry_reason = BIO_RR_CONNECT;
           } else {
             OPENSSL_PUT_SYSTEM_ERROR(connect);
-            OPENSSL_PUT_ERROR(BIO, conn_state, BIO_R_CONNECT_ERROR);
+            OPENSSL_PUT_ERROR(BIO, BIO_R_CONNECT_ERROR);
             ERR_add_error_data(4, "host=", c->param_hostname, ":",
                                c->param_port);
           }
@@ -232,7 +232,7 @@ static int conn_state(BIO *bio, BIO_CONNECT *c) {
           } else {
             BIO_clear_retry_flags(bio);
             OPENSSL_PUT_SYSTEM_ERROR(connect);
-            OPENSSL_PUT_ERROR(BIO, conn_state, BIO_R_NBIO_CONNECT_ERROR);
+            OPENSSL_PUT_ERROR(BIO, BIO_R_NBIO_CONNECT_ERROR);
             ERR_add_error_data(4, "host=", c->param_hostname, ":", c->param_port);
             ret = 0;
           }
@@ -464,7 +464,7 @@ static long conn_ctrl(BIO *bio, int cmd, long num, void *ptr) {
       break;
     case BIO_CTRL_SET_CALLBACK: {
 #if 0 /* FIXME: Should this be used?  -- Richard Levitte */
-		OPENSSL_PUT_ERROR(BIO, XXX, ERR_R_SHOULD_NOT_HAVE_BEEN_CALLED);
+		OPENSSL_PUT_ERROR(BIO, ERR_R_SHOULD_NOT_HAVE_BEEN_CALLED);
 		ret = -1;
 #else
       ret = 0;

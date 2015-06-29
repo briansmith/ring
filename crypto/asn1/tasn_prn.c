@@ -88,7 +88,7 @@ ASN1_PCTX *ASN1_PCTX_new(void)
 	ret = OPENSSL_malloc(sizeof(ASN1_PCTX));
 	if (ret == NULL)
 		{
-		OPENSSL_PUT_ERROR(ASN1, ASN1_PCTX_new, ERR_R_MALLOC_FAILURE);
+		OPENSSL_PUT_ERROR(ASN1, ERR_R_MALLOC_FAILURE);
 		return NULL;
 		}
 	ret->flags = 0;

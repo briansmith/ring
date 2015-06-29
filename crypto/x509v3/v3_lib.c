@@ -78,12 +78,12 @@ static int ext_stack_cmp(const X509V3_EXT_METHOD **a, const X509V3_EXT_METHOD **
 int X509V3_EXT_add(X509V3_EXT_METHOD *ext)
 {
 	if(!ext_list && !(ext_list = sk_X509V3_EXT_METHOD_new(ext_stack_cmp))) {
-		OPENSSL_PUT_ERROR(X509V3, X509V3_EXT_add, ERR_R_MALLOC_FAILURE);
+		OPENSSL_PUT_ERROR(X509V3, ERR_R_MALLOC_FAILURE);
 		ext_list_free(ext);
 		return 0;
 	}
 	if(!sk_X509V3_EXT_METHOD_push(ext_list, ext)) {
-		OPENSSL_PUT_ERROR(X509V3, X509V3_EXT_add, ERR_R_MALLOC_FAILURE);
+		OPENSSL_PUT_ERROR(X509V3, ERR_R_MALLOC_FAILURE);
 		ext_list_free(ext);
 		return 0;
 	}
@@ -127,7 +127,7 @@ int X509V3_EXT_free(int nid, void *ext_data)
 	    const X509V3_EXT_METHOD *ext_method = X509V3_EXT_get_nid(nid);
 	    if (ext_method == NULL)
 	    {
-		    OPENSSL_PUT_ERROR(X509V3, X509V3_EXT_free, X509V3_R_CANNOT_FIND_FREE_FUNCTION);
+		    OPENSSL_PUT_ERROR(X509V3, X509V3_R_CANNOT_FIND_FREE_FUNCTION);
 		    return 0;
 	    }
 
@@ -137,7 +137,7 @@ int X509V3_EXT_free(int nid, void *ext_data)
 		    ext_method->ext_free(ext_data);
 	    else
 	    {
-		    OPENSSL_PUT_ERROR(X509V3, X509V3_EXT_free, X509V3_R_CANNOT_FIND_FREE_FUNCTION);
+		    OPENSSL_PUT_ERROR(X509V3, X509V3_R_CANNOT_FIND_FREE_FUNCTION);
 		    return 0;
 	    }
 
@@ -157,11 +157,11 @@ int X509V3_EXT_add_alias(int nid_to, int nid_from)
 	X509V3_EXT_METHOD *tmpext;
 
 	if(!(ext = X509V3_EXT_get_nid(nid_from))) {
-		OPENSSL_PUT_ERROR(X509V3, X509V3_EXT_add_alias, X509V3_R_EXTENSION_NOT_FOUND);
+		OPENSSL_PUT_ERROR(X509V3, X509V3_R_EXTENSION_NOT_FOUND);
 		return 0;
 	}
 	if(!(tmpext = (X509V3_EXT_METHOD *)OPENSSL_malloc(sizeof(X509V3_EXT_METHOD)))) {
-		OPENSSL_PUT_ERROR(X509V3, X509V3_EXT_add_alias, ERR_R_MALLOC_FAILURE);
+		OPENSSL_PUT_ERROR(X509V3, ERR_R_MALLOC_FAILURE);
 		return 0;
 	}
 	*tmpext = *ext;
@@ -311,7 +311,7 @@ int X509V3_add1_i2d(STACK_OF(X509_EXTENSION) **x, int nid, void *value,
 	ext = X509V3_EXT_i2d(nid, crit, value);
 
 	if(!ext) {
-		OPENSSL_PUT_ERROR(X509V3, X509V3_add1_i2d, X509V3_R_ERROR_CREATING_EXTENSION);
+		OPENSSL_PUT_ERROR(X509V3, X509V3_R_ERROR_CREATING_EXTENSION);
 		return 0;
 	}
 
@@ -330,6 +330,6 @@ int X509V3_add1_i2d(STACK_OF(X509_EXTENSION) **x, int nid, void *value,
 
 	err:
 	if(!(flags & X509V3_ADD_SILENT))
-		OPENSSL_PUT_ERROR(X509V3, X509V3_add1_i2d, errcode);
+		OPENSSL_PUT_ERROR(X509V3, errcode);
 	return 0;
 }

@@ -400,7 +400,7 @@ int X509_CRL_add0_revoked(X509_CRL *crl, X509_REVOKED *rev)
 	if(!inf->revoked)
 		inf->revoked = sk_X509_REVOKED_new(X509_REVOKED_cmp);
 	if(!inf->revoked || !sk_X509_REVOKED_push(inf->revoked, rev)) {
-		OPENSSL_PUT_ERROR(X509, X509_CRL_add0_revoked, ERR_R_MALLOC_FAILURE);
+		OPENSSL_PUT_ERROR(X509, ERR_R_MALLOC_FAILURE);
 		return 0;
 	}
 	inf->enc.modified = 1;

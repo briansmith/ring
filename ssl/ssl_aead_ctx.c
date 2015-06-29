@@ -34,7 +34,7 @@ SSL_AEAD_CTX *SSL_AEAD_CTX_new(enum evp_aead_direction_t direction,
   const EVP_AEAD *aead;
   size_t discard;
   if (!ssl_cipher_get_evp_aead(&aead, &discard, &discard, cipher, version)) {
-    OPENSSL_PUT_ERROR(SSL, SSL_AEAD_CTX_new, ERR_R_INTERNAL_ERROR);
+    OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
     return 0;
   }
 
@@ -43,7 +43,7 @@ SSL_AEAD_CTX *SSL_AEAD_CTX_new(enum evp_aead_direction_t direction,
     /* This is a "stateful" AEAD (for compatibility with pre-AEAD cipher
      * suites). */
     if (mac_key_len + enc_key_len + fixed_iv_len > sizeof(merged_key)) {
-      OPENSSL_PUT_ERROR(SSL, SSL_AEAD_CTX_new, ERR_R_INTERNAL_ERROR);
+      OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
       return 0;
     }
     memcpy(merged_key, mac_key, mac_key_len);
@@ -56,7 +56,7 @@ SSL_AEAD_CTX *SSL_AEAD_CTX_new(enum evp_aead_direction_t direction,
 
   SSL_AEAD_CTX *aead_ctx = (SSL_AEAD_CTX *)OPENSSL_malloc(sizeof(SSL_AEAD_CTX));
   if (aead_ctx == NULL) {
-    OPENSSL_PUT_ERROR(SSL, SSL_AEAD_CTX_new, ERR_R_MALLOC_FAILURE);
+    OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
     return NULL;
   }
   memset(aead_ctx, 0, sizeof(SSL_AEAD_CTX));
@@ -76,7 +76,7 @@ SSL_AEAD_CTX *SSL_AEAD_CTX_new(enum evp_aead_direction_t direction,
     if (fixed_iv_len > sizeof(aead_ctx->fixed_nonce) ||
         fixed_iv_len > aead_ctx->variable_nonce_len) {
       SSL_AEAD_CTX_free(aead_ctx);
-      OPENSSL_PUT_ERROR(SSL, SSL_AEAD_CTX_new, ERR_R_INTERNAL_ERROR);
+      OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
       return 0;
     }
     aead_ctx->variable_nonce_len -= fixed_iv_len;
@@ -146,7 +146,7 @@ int SSL_AEAD_CTX_open(SSL_AEAD_CTX *aead, uint8_t *out, size_t *out_len,
   if (aead == NULL) {
     /* Handle the initial NULL cipher. */
     if (in_len > max_out) {
-      OPENSSL_PUT_ERROR(SSL, SSL_AEAD_CTX_open, SSL_R_BUFFER_TOO_SMALL);
+      OPENSSL_PUT_ERROR(SSL, SSL_R_BUFFER_TOO_SMALL);
       return 0;
     }
     memmove(out, in, in_len);
@@ -161,7 +161,7 @@ int SSL_AEAD_CTX_open(SSL_AEAD_CTX *aead, uint8_t *out, size_t *out_len,
     size_t overhead = SSL_AEAD_CTX_max_overhead(aead);
     if (in_len < overhead) {
       /* Publicly invalid. */
-      OPENSSL_PUT_ERROR(SSL, SSL_AEAD_CTX_open, SSL_R_BAD_PACKET_LENGTH);
+      OPENSSL_PUT_ERROR(SSL, SSL_R_BAD_PACKET_LENGTH);
       return 0;
     }
     plaintext_len = in_len - overhead;
@@ -178,7 +178,7 @@ int SSL_AEAD_CTX_open(SSL_AEAD_CTX *aead, uint8_t *out, size_t *out_len,
   if (aead->variable_nonce_included_in_record) {
     if (in_len < aead->variable_nonce_len) {
       /* Publicly invalid. */
-      OPENSSL_PUT_ERROR(SSL, SSL_AEAD_CTX_open, SSL_R_BAD_PACKET_LENGTH);
+      OPENSSL_PUT_ERROR(SSL, SSL_R_BAD_PACKET_LENGTH);
       return 0;
     }
     memcpy(nonce + nonce_len, in, aead->variable_nonce_len);
@@ -201,7 +201,7 @@ int SSL_AEAD_CTX_seal(SSL_AEAD_CTX *aead, uint8_t *out, size_t *out_len,
   if (aead == NULL) {
     /* Handle the initial NULL cipher. */
     if (in_len > max_out) {
-      OPENSSL_PUT_ERROR(SSL, SSL_AEAD_CTX_seal, SSL_R_BUFFER_TOO_SMALL);
+      OPENSSL_PUT_ERROR(SSL, SSL_R_BUFFER_TOO_SMALL);
       return 0;
     }
     memmove(out, in, in_len);
@@ -235,11 +235,11 @@ int SSL_AEAD_CTX_seal(SSL_AEAD_CTX *aead, uint8_t *out, size_t *out_len,
   size_t extra_len = 0;
   if (aead->variable_nonce_included_in_record) {
     if (max_out < aead->variable_nonce_len) {
-      OPENSSL_PUT_ERROR(SSL, SSL_AEAD_CTX_seal, SSL_R_BUFFER_TOO_SMALL);
+      OPENSSL_PUT_ERROR(SSL, SSL_R_BUFFER_TOO_SMALL);
       return 0;
     }
     if (out < in + in_len && in < out + aead->variable_nonce_len) {
-      OPENSSL_PUT_ERROR(SSL, SSL_AEAD_CTX_seal, SSL_R_OUTPUT_ALIASES_INPUT);
+      OPENSSL_PUT_ERROR(SSL, SSL_R_OUTPUT_ALIASES_INPUT);
       return 0;
     }
     memcpy(out, nonce + aead->fixed_nonce_len, aead->variable_nonce_len);

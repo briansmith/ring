@@ -117,7 +117,7 @@ static int generate_parameters(DH *ret, int prime_bits, int generator, BN_GENCB 
   }
 
   if (generator <= 1) {
-    OPENSSL_PUT_ERROR(DH, generate_parameters, DH_R_BAD_GENERATOR);
+    OPENSSL_PUT_ERROR(DH, DH_R_BAD_GENERATOR);
     goto err;
   }
   if (generator == DH_GENERATOR_2) {
@@ -165,7 +165,7 @@ static int generate_parameters(DH *ret, int prime_bits, int generator, BN_GENCB 
 
 err:
   if (!ok) {
-    OPENSSL_PUT_ERROR(DH, generate_parameters, ERR_R_BN_LIB);
+    OPENSSL_PUT_ERROR(DH, ERR_R_BN_LIB);
   }
 
   if (ctx != NULL) {
@@ -242,7 +242,7 @@ static int generate_key(DH *dh) {
 
 err:
   if (ok != 1) {
-    OPENSSL_PUT_ERROR(DH, generate_key, ERR_R_BN_LIB);
+    OPENSSL_PUT_ERROR(DH, ERR_R_BN_LIB);
   }
 
   if (dh->pub_key == NULL) {
@@ -264,7 +264,7 @@ static int compute_key(DH *dh, unsigned char *out, const BIGNUM *pub_key) {
   BIGNUM local_priv;
 
   if (BN_num_bits(dh->p) > OPENSSL_DH_MAX_MODULUS_BITS) {
-    OPENSSL_PUT_ERROR(DH, compute_key, DH_R_MODULUS_TOO_LARGE);
+    OPENSSL_PUT_ERROR(DH, DH_R_MODULUS_TOO_LARGE);
     goto err;
   }
 
@@ -279,7 +279,7 @@ static int compute_key(DH *dh, unsigned char *out, const BIGNUM *pub_key) {
   }
 
   if (dh->priv_key == NULL) {
-    OPENSSL_PUT_ERROR(DH, compute_key, DH_R_NO_PRIVATE_VALUE);
+    OPENSSL_PUT_ERROR(DH, DH_R_NO_PRIVATE_VALUE);
     goto err;
   }
 
@@ -290,14 +290,14 @@ static int compute_key(DH *dh, unsigned char *out, const BIGNUM *pub_key) {
   }
 
   if (!DH_check_pub_key(dh, pub_key, &check_result) || check_result) {
-    OPENSSL_PUT_ERROR(DH, compute_key, DH_R_INVALID_PUBKEY);
+    OPENSSL_PUT_ERROR(DH, DH_R_INVALID_PUBKEY);
     goto err;
   }
 
   BN_with_flags(&local_priv, dh->priv_key, BN_FLG_CONSTTIME);
   if (!BN_mod_exp_mont(shared_key, pub_key, &local_priv, dh->p, ctx,
                        mont)) {
-    OPENSSL_PUT_ERROR(DH, compute_key, ERR_R_BN_LIB);
+    OPENSSL_PUT_ERROR(DH, ERR_R_BN_LIB);
     goto err;
   }
 

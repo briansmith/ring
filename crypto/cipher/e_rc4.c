@@ -115,20 +115,20 @@ aead_rc4_md5_tls_init(EVP_AEAD_CTX *ctx, const uint8_t *key, size_t key_len,
   }
 
   if (tag_len > MD5_DIGEST_LENGTH) {
-    OPENSSL_PUT_ERROR(CIPHER, aead_rc4_md5_tls_init, CIPHER_R_TOO_LARGE);
+    OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_TOO_LARGE);
     return 0;
   }
 
   /* The keys consists of |MD5_DIGEST_LENGTH| bytes of HMAC(MD5) key followed
    * by some number of bytes of RC4 key. */
   if (key_len <= MD5_DIGEST_LENGTH) {
-    OPENSSL_PUT_ERROR(CIPHER, aead_rc4_md5_tls_init, CIPHER_R_BAD_KEY_LENGTH);
+    OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_BAD_KEY_LENGTH);
     return 0;
   }
 
   rc4_ctx = OPENSSL_malloc(sizeof(struct aead_rc4_md5_tls_ctx));
   if (rc4_ctx == NULL) {
-    OPENSSL_PUT_ERROR(CIPHER, aead_rc4_md5_tls_init, ERR_R_MALLOC_FAILURE);
+    OPENSSL_PUT_ERROR(CIPHER, ERR_R_MALLOC_FAILURE);
     return 0;
   }
   memset(rc4_ctx, 0, sizeof(struct aead_rc4_md5_tls_ctx));
@@ -185,22 +185,22 @@ static int aead_rc4_md5_tls_seal(const EVP_AEAD_CTX *ctx, uint8_t *out,
   uint8_t digest[MD5_DIGEST_LENGTH];
 
   if (in_len + rc4_ctx->tag_len < in_len) {
-    OPENSSL_PUT_ERROR(CIPHER, aead_rc4_md5_tls_seal, CIPHER_R_TOO_LARGE);
+    OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_TOO_LARGE);
     return 0;
   }
 
   if (nonce_len != 0) {
-    OPENSSL_PUT_ERROR(CIPHER, aead_rc4_md5_tls_seal, CIPHER_R_IV_TOO_LARGE);
+    OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_IV_TOO_LARGE);
     return 0;
   }
 
   if (max_out_len < in_len + rc4_ctx->tag_len) {
-    OPENSSL_PUT_ERROR(CIPHER, aead_rc4_md5_tls_seal, CIPHER_R_BUFFER_TOO_SMALL);
+    OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_BUFFER_TOO_SMALL);
     return 0;
   }
 
   if (nonce_len != 0) {
-    OPENSSL_PUT_ERROR(CIPHER, aead_rc4_md5_tls_seal, CIPHER_R_TOO_LARGE);
+    OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_TOO_LARGE);
     return 0;
   }
 
@@ -288,21 +288,21 @@ static int aead_rc4_md5_tls_open(const EVP_AEAD_CTX *ctx, uint8_t *out,
   uint8_t digest[MD5_DIGEST_LENGTH];
 
   if (in_len < rc4_ctx->tag_len) {
-    OPENSSL_PUT_ERROR(CIPHER, aead_rc4_md5_tls_open, CIPHER_R_BAD_DECRYPT);
+    OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_BAD_DECRYPT);
     return 0;
   }
 
   plaintext_len = in_len - rc4_ctx->tag_len;
 
   if (nonce_len != 0) {
-    OPENSSL_PUT_ERROR(CIPHER, aead_rc4_md5_tls_open, CIPHER_R_TOO_LARGE);
+    OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_TOO_LARGE);
     return 0;
   }
 
   if (max_out_len < in_len) {
     /* This requires that the caller provide space for the MAC, even though it
      * will always be removed on return. */
-    OPENSSL_PUT_ERROR(CIPHER, aead_rc4_md5_tls_open, CIPHER_R_BUFFER_TOO_SMALL);
+    OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_BUFFER_TOO_SMALL);
     return 0;
   }
 
@@ -366,7 +366,7 @@ static int aead_rc4_md5_tls_open(const EVP_AEAD_CTX *ctx, uint8_t *out,
   MD5_Final(digest, &md);
 
   if (CRYPTO_memcmp(out + plaintext_len, digest, rc4_ctx->tag_len)) {
-    OPENSSL_PUT_ERROR(CIPHER, aead_rc4_md5_tls_open, CIPHER_R_BAD_DECRYPT);
+    OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_BAD_DECRYPT);
     return 0;
   }
 

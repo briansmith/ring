@@ -125,7 +125,7 @@ static void *v2i_EXTENDED_KEY_USAGE(const X509V3_EXT_METHOD *method,
 	size_t i;
 
 	if(!(extku = sk_ASN1_OBJECT_new_null())) {
-		OPENSSL_PUT_ERROR(X509V3, v2i_EXTENDED_KEY_USAGE, ERR_R_MALLOC_FAILURE);
+		OPENSSL_PUT_ERROR(X509V3, ERR_R_MALLOC_FAILURE);
 		return NULL;
 	}
 
@@ -135,7 +135,7 @@ static void *v2i_EXTENDED_KEY_USAGE(const X509V3_EXT_METHOD *method,
 		else extval = val->name;
 		if(!(objtmp = OBJ_txt2obj(extval, 0))) {
 			sk_ASN1_OBJECT_pop_free(extku, ASN1_OBJECT_free);
-			OPENSSL_PUT_ERROR(X509V3, v2i_EXTENDED_KEY_USAGE, X509V3_R_INVALID_OBJECT_IDENTIFIER);
+			OPENSSL_PUT_ERROR(X509V3, X509V3_R_INVALID_OBJECT_IDENTIFIER);
 			X509V3_conf_err(val);
 			return NULL;
 		}

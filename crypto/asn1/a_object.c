@@ -106,13 +106,13 @@ int a2d_ASN1_OBJECT(unsigned char *out, int olen, const char *buf, int num)
 		}
 	else
 		{
-		OPENSSL_PUT_ERROR(ASN1, a2d_ASN1_OBJECT, ASN1_R_FIRST_NUM_TOO_LARGE);
+		OPENSSL_PUT_ERROR(ASN1, ASN1_R_FIRST_NUM_TOO_LARGE);
 		goto err;
 		}
 
 	if (num <= 0)
 		{
-		OPENSSL_PUT_ERROR(ASN1, a2d_ASN1_OBJECT, ASN1_R_MISSING_SECOND_NUMBER);
+		OPENSSL_PUT_ERROR(ASN1, ASN1_R_MISSING_SECOND_NUMBER);
 		goto err;
 		}
 	c= *(p++);
@@ -122,7 +122,7 @@ int a2d_ASN1_OBJECT(unsigned char *out, int olen, const char *buf, int num)
 		if (num <= 0) break;
 		if ((c != '.') && (c != ' '))
 			{
-			OPENSSL_PUT_ERROR(ASN1, a2d_ASN1_OBJECT, ASN1_R_INVALID_SEPARATOR);
+			OPENSSL_PUT_ERROR(ASN1, ASN1_R_INVALID_SEPARATOR);
 			goto err;
 			}
 		l=0;
@@ -136,7 +136,7 @@ int a2d_ASN1_OBJECT(unsigned char *out, int olen, const char *buf, int num)
 				break;
 			if ((c < '0') || (c > '9'))
 				{
-				OPENSSL_PUT_ERROR(ASN1, a2d_ASN1_OBJECT, ASN1_R_INVALID_DIGIT);
+				OPENSSL_PUT_ERROR(ASN1, ASN1_R_INVALID_DIGIT);
 				goto err;
 				}
 			if (!use_bn && l >= ((ULONG_MAX - 80) / 10L))
@@ -160,7 +160,7 @@ int a2d_ASN1_OBJECT(unsigned char *out, int olen, const char *buf, int num)
 			{
 			if ((first < 2) && (l >= 40))
 				{
-				OPENSSL_PUT_ERROR(ASN1, a2d_ASN1_OBJECT, ASN1_R_SECOND_NUMBER_TOO_LARGE);
+				OPENSSL_PUT_ERROR(ASN1, ASN1_R_SECOND_NUMBER_TOO_LARGE);
 				goto err;
 				}
 			if (use_bn)
@@ -204,7 +204,7 @@ int a2d_ASN1_OBJECT(unsigned char *out, int olen, const char *buf, int num)
 			{
 			if (len+i > olen)
 				{
-				OPENSSL_PUT_ERROR(ASN1, a2d_ASN1_OBJECT, ASN1_R_BUFFER_TOO_SMALL);
+				OPENSSL_PUT_ERROR(ASN1, ASN1_R_BUFFER_TOO_SMALL);
 				goto err;
 				}
 			while (--i > 0)
@@ -280,7 +280,7 @@ ASN1_OBJECT *d2i_ASN1_OBJECT(ASN1_OBJECT **a, const unsigned char **pp,
 	if(ret) *pp = p;
 	return ret;
 err:
-	OPENSSL_PUT_ERROR(ASN1, d2i_ASN1_OBJECT, i);
+	OPENSSL_PUT_ERROR(ASN1, i);
 	return(NULL);
 }
 
@@ -300,7 +300,7 @@ ASN1_OBJECT *c2i_ASN1_OBJECT(ASN1_OBJECT **a, const unsigned char **pp,
 	if (len <= 0 || len > INT_MAX || pp == NULL || (p = *pp) == NULL ||
 	    p[len - 1] & 0x80)
 		{
-		OPENSSL_PUT_ERROR(ASN1, c2i_ASN1_OBJECT, ASN1_R_INVALID_OBJECT_ENCODING);
+		OPENSSL_PUT_ERROR(ASN1, ASN1_R_INVALID_OBJECT_ENCODING);
 		return NULL;
 		}
 	/* Now 0 < len <= INT_MAX, so the cast is safe. */
@@ -309,7 +309,7 @@ ASN1_OBJECT *c2i_ASN1_OBJECT(ASN1_OBJECT **a, const unsigned char **pp,
 		{
 		if (*p == 0x80 && (!i || !(p[-1] & 0x80)))
 			{
-			OPENSSL_PUT_ERROR(ASN1, c2i_ASN1_OBJECT, ASN1_R_INVALID_OBJECT_ENCODING);
+			OPENSSL_PUT_ERROR(ASN1, ASN1_R_INVALID_OBJECT_ENCODING);
 			return NULL;
 			}
 		}
@@ -350,7 +350,7 @@ ASN1_OBJECT *c2i_ASN1_OBJECT(ASN1_OBJECT **a, const unsigned char **pp,
 	*pp=p;
 	return(ret);
 err:
-	OPENSSL_PUT_ERROR(ASN1, c2i_ASN1_OBJECT, i);
+	OPENSSL_PUT_ERROR(ASN1, i);
 	if ((ret != NULL) && ((a == NULL) || (*a != ret)))
 		ASN1_OBJECT_free(ret);
 	return(NULL);
@@ -363,7 +363,7 @@ ASN1_OBJECT *ASN1_OBJECT_new(void)
 	ret=(ASN1_OBJECT *)OPENSSL_malloc(sizeof(ASN1_OBJECT));
 	if (ret == NULL)
 		{
-		OPENSSL_PUT_ERROR(ASN1, ASN1_OBJECT_new, ERR_R_MALLOC_FAILURE);
+		OPENSSL_PUT_ERROR(ASN1, ERR_R_MALLOC_FAILURE);
 		return(NULL);
 		}
 	ret->length=0;

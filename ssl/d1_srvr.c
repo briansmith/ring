@@ -151,7 +151,7 @@ int dtls1_accept(SSL *s) {
   s->in_handshake++;
 
   if (s->cert == NULL) {
-    OPENSSL_PUT_ERROR(SSL, dtls1_accept, SSL_R_NO_CERTIFICATE_SET);
+    OPENSSL_PUT_ERROR(SSL, SSL_R_NO_CERTIFICATE_SET);
     return -1;
   }
 
@@ -182,7 +182,7 @@ int dtls1_accept(SSL *s) {
         }
 
         if (!ssl3_init_finished_mac(s)) {
-          OPENSSL_PUT_ERROR(SSL, dtls1_accept, ERR_R_INTERNAL_ERROR);
+          OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
           ret = -1;
           goto end;
         }
@@ -439,7 +439,7 @@ int dtls1_accept(SSL *s) {
         goto end;
 
       default:
-        OPENSSL_PUT_ERROR(SSL, dtls1_accept, SSL_R_UNKNOWN_STATE);
+        OPENSSL_PUT_ERROR(SSL, SSL_R_UNKNOWN_STATE);
         ret = -1;
         goto end;
     }

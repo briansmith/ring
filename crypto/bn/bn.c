@@ -69,7 +69,7 @@ BIGNUM *BN_new(void) {
   BIGNUM *bn = OPENSSL_malloc(sizeof(BIGNUM));
 
   if (bn == NULL) {
-    OPENSSL_PUT_ERROR(BN, BN_new, ERR_R_MALLOC_FAILURE);
+    OPENSSL_PUT_ERROR(BN, ERR_R_MALLOC_FAILURE);
     return NULL;
   }
 
@@ -287,18 +287,18 @@ BIGNUM *bn_wexpand(BIGNUM *bn, unsigned words) {
   }
 
   if (words > (INT_MAX / (4 * BN_BITS2))) {
-    OPENSSL_PUT_ERROR(BN, bn_wexpand, BN_R_BIGNUM_TOO_LONG);
+    OPENSSL_PUT_ERROR(BN, BN_R_BIGNUM_TOO_LONG);
     return NULL;
   }
 
   if (bn->flags & BN_FLG_STATIC_DATA) {
-    OPENSSL_PUT_ERROR(BN, bn_wexpand, BN_R_EXPAND_ON_STATIC_BIGNUM_DATA);
+    OPENSSL_PUT_ERROR(BN, BN_R_EXPAND_ON_STATIC_BIGNUM_DATA);
     return NULL;
   }
 
   a = (BN_ULONG *)OPENSSL_malloc(sizeof(BN_ULONG) * words);
   if (a == NULL) {
-    OPENSSL_PUT_ERROR(BN, bn_wexpand, ERR_R_MALLOC_FAILURE);
+    OPENSSL_PUT_ERROR(BN, ERR_R_MALLOC_FAILURE);
     return NULL;
   }
 

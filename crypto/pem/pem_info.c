@@ -80,7 +80,7 @@ STACK_OF(X509_INFO) *PEM_X509_INFO_read(FILE *fp, STACK_OF(X509_INFO) *sk, pem_p
 
         if ((b=BIO_new(BIO_s_file())) == NULL)
 		{
-		OPENSSL_PUT_ERROR(PEM, PEM_X509_INFO_read, ERR_R_BUF_LIB);
+		OPENSSL_PUT_ERROR(PEM, ERR_R_BUF_LIB);
                 return(0);
 		}
         BIO_set_fp(b,fp,BIO_NOCLOSE);
@@ -107,7 +107,7 @@ STACK_OF(X509_INFO) *PEM_X509_INFO_read_bio(BIO *bp, STACK_OF(X509_INFO) *sk, pe
 		{
 		if ((ret=sk_X509_INFO_new_null()) == NULL)
 			{
-			OPENSSL_PUT_ERROR(PEM, PEM_X509_INFO_read_bio, ERR_R_MALLOC_FAILURE);
+			OPENSSL_PUT_ERROR(PEM, ERR_R_MALLOC_FAILURE);
 			goto err;
 			}
 		}
@@ -248,13 +248,13 @@ start:
 					{
 					if (!d2i_PrivateKey(ptype, pp, &p, len))
 						{
-						OPENSSL_PUT_ERROR(PEM, PEM_X509_INFO_read_bio, ERR_R_ASN1_LIB);
+						OPENSSL_PUT_ERROR(PEM, ERR_R_ASN1_LIB);
 						goto err;
 						}
 					}
 				else if (d2i(pp,&p,len) == NULL)
 					{
-					OPENSSL_PUT_ERROR(PEM, PEM_X509_INFO_read_bio, ERR_R_ASN1_LIB);
+					OPENSSL_PUT_ERROR(PEM, ERR_R_ASN1_LIB);
 					goto err;
 					}
 				}
@@ -326,7 +326,7 @@ int PEM_X509_INFO_write_bio(BIO *bp, X509_INFO *xi, EVP_CIPHER *enc,
 		objstr=OBJ_nid2sn(EVP_CIPHER_nid(enc));
 		if (objstr == NULL)
 			{
-			OPENSSL_PUT_ERROR(PEM, PEM_X509_INFO_write_bio, PEM_R_UNSUPPORTED_CIPHER);
+			OPENSSL_PUT_ERROR(PEM, PEM_R_UNSUPPORTED_CIPHER);
 			goto err;
 			}
 		}
@@ -342,7 +342,7 @@ int PEM_X509_INFO_write_bio(BIO *bp, X509_INFO *xi, EVP_CIPHER *enc,
 			{
 			if (enc == NULL)
 				{
-				OPENSSL_PUT_ERROR(PEM, PEM_X509_INFO_write_bio, PEM_R_CIPHER_IS_NULL);
+				OPENSSL_PUT_ERROR(PEM, PEM_R_CIPHER_IS_NULL);
 				goto err;
 				}
 
@@ -360,7 +360,7 @@ int PEM_X509_INFO_write_bio(BIO *bp, X509_INFO *xi, EVP_CIPHER *enc,
 				EVP_CIPHER_nid(xi->enc_cipher.cipher));
 			if (objstr == NULL)
 				{
-				OPENSSL_PUT_ERROR(PEM, PEM_X509_INFO_write_bio, PEM_R_UNSUPPORTED_CIPHER);
+				OPENSSL_PUT_ERROR(PEM, PEM_R_UNSUPPORTED_CIPHER);
 				goto err;
 				}
 

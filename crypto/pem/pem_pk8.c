@@ -118,7 +118,7 @@ static int do_pk8pkey(BIO *bp, EVP_PKEY *x, int isder, int nid, const EVP_CIPHER
 	char buf[PEM_BUFSIZE];
 	int ret;
 	if(!(p8inf = EVP_PKEY2PKCS8(x))) {
-		OPENSSL_PUT_ERROR(PEM, do_pk8pkey, PEM_R_ERROR_CONVERTING_PRIVATE_KEY);
+		OPENSSL_PUT_ERROR(PEM, PEM_R_ERROR_CONVERTING_PRIVATE_KEY);
 		return 0;
 	}
 	if(enc || (nid != -1)) {
@@ -127,7 +127,7 @@ static int do_pk8pkey(BIO *bp, EVP_PKEY *x, int isder, int nid, const EVP_CIPHER
 			if (!cb) cb = PEM_def_callback;
 			klen = cb(buf, PEM_BUFSIZE, 1, u);
 			if(klen <= 0) {
-				OPENSSL_PUT_ERROR(PEM, do_pk8pkey, PEM_R_READ_KEY);
+				OPENSSL_PUT_ERROR(PEM, PEM_R_READ_KEY);
 				PKCS8_PRIV_KEY_INFO_free(p8inf);
 				return 0;
 			}
@@ -163,7 +163,7 @@ EVP_PKEY *d2i_PKCS8PrivateKey_bio(BIO *bp, EVP_PKEY **x, pem_password_cb *cb, vo
 	if (!cb) cb = PEM_def_callback;
 	klen=cb(psbuf,PEM_BUFSIZE,0,u);
 	if (klen <= 0) {
-		OPENSSL_PUT_ERROR(PEM, d2i_PKCS8PrivateKey_bio, PEM_R_BAD_PASSWORD_READ);
+		OPENSSL_PUT_ERROR(PEM, PEM_R_BAD_PASSWORD_READ);
 		X509_SIG_free(p8);
 		return NULL;	
 	}
@@ -216,7 +216,7 @@ static int do_pk8pkey_fp(FILE *fp, EVP_PKEY *x, int isder, int nid, const EVP_CI
 	BIO *bp;
 	int ret;
 	if(!(bp = BIO_new_fp(fp, BIO_NOCLOSE))) {
-		OPENSSL_PUT_ERROR(PEM, do_pk8pkey_fp, ERR_R_BUF_LIB);
+		OPENSSL_PUT_ERROR(PEM, ERR_R_BUF_LIB);
                 return(0);
 	}
 	ret = do_pk8pkey(bp, x, isder, nid, enc, kstr, klen, cb, u);
@@ -229,7 +229,7 @@ EVP_PKEY *d2i_PKCS8PrivateKey_fp(FILE *fp, EVP_PKEY **x, pem_password_cb *cb, vo
 	BIO *bp;
 	EVP_PKEY *ret;
 	if(!(bp = BIO_new_fp(fp, BIO_NOCLOSE))) {
-		OPENSSL_PUT_ERROR(PEM, d2i_PKCS8PrivateKey_fp, ERR_R_BUF_LIB);
+		OPENSSL_PUT_ERROR(PEM, ERR_R_BUF_LIB);
                 return NULL;
 	}
 	ret = d2i_PKCS8PrivateKey_bio(bp, x, cb, u);

@@ -83,7 +83,7 @@ static int do_sigver_init(EVP_MD_CTX *ctx, EVP_PKEY_CTX **pctx,
   }
 
   if (type == NULL) {
-    OPENSSL_PUT_ERROR(EVP, do_sigver_init, EVP_R_NO_DEFAULT_DIGEST);
+    OPENSSL_PUT_ERROR(EVP, EVP_R_NO_DEFAULT_DIGEST);
     return 0;
   }
 

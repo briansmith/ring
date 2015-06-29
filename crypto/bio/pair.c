@@ -181,27 +181,25 @@ int BIO_zero_copy_get_read_buf(BIO* bio, uint8_t** out_read_buf,
   BIO_clear_retry_flags(bio);
 
   if (!bio->init) {
-    OPENSSL_PUT_ERROR(BIO, BIO_zero_copy_get_read_buf, BIO_R_UNINITIALIZED);
+    OPENSSL_PUT_ERROR(BIO, BIO_R_UNINITIALIZED);
     return 0;
   }
 
   b = bio->ptr;
 
   if (!b || !b->peer) {
-    OPENSSL_PUT_ERROR(BIO, BIO_zero_copy_get_read_buf,
-                      BIO_R_UNSUPPORTED_METHOD);
+    OPENSSL_PUT_ERROR(BIO, BIO_R_UNSUPPORTED_METHOD);
     return 0;
   }
 
   peer_b = b->peer->ptr;
   if (!peer_b || !peer_b->peer || peer_b->peer->ptr != b) {
-    OPENSSL_PUT_ERROR(BIO, BIO_zero_copy_get_read_buf,
-                      BIO_R_UNSUPPORTED_METHOD);
+    OPENSSL_PUT_ERROR(BIO, BIO_R_UNSUPPORTED_METHOD);
     return 0;
   }
 
   if (peer_b->zero_copy_read_lock) {
-    OPENSSL_PUT_ERROR(BIO, BIO_zero_copy_get_read_buf, BIO_R_INVALID_ARGUMENT);
+    OPENSSL_PUT_ERROR(BIO, BIO_R_INVALID_ARGUMENT);
     return 0;
   }
 
@@ -229,37 +227,32 @@ int BIO_zero_copy_get_read_buf_done(BIO* bio, size_t bytes_read) {
   assert(BIO_get_retry_flags(bio) == 0);
 
   if (!bio->init) {
-    OPENSSL_PUT_ERROR(BIO, BIO_zero_copy_get_read_buf_done,
-                      BIO_R_UNINITIALIZED);
+    OPENSSL_PUT_ERROR(BIO, BIO_R_UNINITIALIZED);
     return 0;
   }
 
   b = bio->ptr;
 
   if (!b || !b->peer) {
-    OPENSSL_PUT_ERROR(BIO, BIO_zero_copy_get_read_buf_done,
-                      BIO_R_UNSUPPORTED_METHOD);
+    OPENSSL_PUT_ERROR(BIO, BIO_R_UNSUPPORTED_METHOD);
     return 0;
   }
 
   peer_b = b->peer->ptr;
   if (!peer_b || !peer_b->peer || peer_b->peer->ptr != b) {
-    OPENSSL_PUT_ERROR(BIO, BIO_zero_copy_get_read_buf_done,
-                      BIO_R_UNSUPPORTED_METHOD);
+    OPENSSL_PUT_ERROR(BIO, BIO_R_UNSUPPORTED_METHOD);
     return 0;
   }
 
   if (!peer_b->zero_copy_read_lock) {
-    OPENSSL_PUT_ERROR(BIO, BIO_zero_copy_get_read_buf_done,
-                      BIO_R_INVALID_ARGUMENT);
+    OPENSSL_PUT_ERROR(BIO, BIO_R_INVALID_ARGUMENT);
     return 0;
   }
 
   max_available =
       bio_zero_copy_get_read_buf(peer_b, &dummy_read_buf, &dummy_read_offset);
   if (bytes_read > max_available) {
-    OPENSSL_PUT_ERROR(BIO, BIO_zero_copy_get_read_buf_done,
-                      BIO_R_INVALID_ARGUMENT);
+    OPENSSL_PUT_ERROR(BIO, BIO_R_INVALID_ARGUMENT);
     return 0;
   }
 
@@ -318,35 +311,33 @@ int BIO_zero_copy_get_write_buf(BIO* bio, uint8_t** out_write_buf,
   BIO_clear_retry_flags(bio);
 
   if (!bio->init) {
-    OPENSSL_PUT_ERROR(BIO, BIO_zero_copy_get_write_buf, BIO_R_UNINITIALIZED);
+    OPENSSL_PUT_ERROR(BIO, BIO_R_UNINITIALIZED);
     return 0;
   }
 
   b = bio->ptr;
 
   if (!b || !b->buf || !b->peer) {
-    OPENSSL_PUT_ERROR(BIO, BIO_zero_copy_get_write_buf,
-                      BIO_R_UNSUPPORTED_METHOD);
+    OPENSSL_PUT_ERROR(BIO, BIO_R_UNSUPPORTED_METHOD);
     return 0;
   }
   peer_b = b->peer->ptr;
   if (!peer_b || !peer_b->peer || peer_b->peer->ptr != b) {
-    OPENSSL_PUT_ERROR(BIO, BIO_zero_copy_get_write_buf,
-                      BIO_R_UNSUPPORTED_METHOD);
+    OPENSSL_PUT_ERROR(BIO, BIO_R_UNSUPPORTED_METHOD);
     return 0;
   }
 
   assert(b->buf != NULL);
 
   if (b->zero_copy_write_lock) {
-    OPENSSL_PUT_ERROR(BIO, BIO_zero_copy_get_write_buf, BIO_R_INVALID_ARGUMENT);
+    OPENSSL_PUT_ERROR(BIO, BIO_R_INVALID_ARGUMENT);
     return 0;
   }
 
   b->request = 0;
   if (b->closed) {
     /* Bio is already closed. */
-    OPENSSL_PUT_ERROR(BIO, BIO_zero_copy_get_write_buf, BIO_R_BROKEN_PIPE);
+    OPENSSL_PUT_ERROR(BIO, BIO_R_BROKEN_PIPE);
     return 0;
   }
 
@@ -369,43 +360,38 @@ int BIO_zero_copy_get_write_buf_done(BIO* bio, size_t bytes_written) {
   uint8_t* dummy_write_buf;
 
   if (!bio->init) {
-    OPENSSL_PUT_ERROR(BIO, BIO_zero_copy_get_write_buf_done,
-                      BIO_R_UNINITIALIZED);
+    OPENSSL_PUT_ERROR(BIO, BIO_R_UNINITIALIZED);
     return 0;
   }
 
   b = bio->ptr;
 
   if (!b || !b->buf || !b->peer) {
-    OPENSSL_PUT_ERROR(BIO, BIO_zero_copy_get_write_buf_done,
-                      BIO_R_UNSUPPORTED_METHOD);
+    OPENSSL_PUT_ERROR(BIO, BIO_R_UNSUPPORTED_METHOD);
     return 0;
   }
   peer_b = b->peer->ptr;
   if (!peer_b || !peer_b->peer || peer_b->peer->ptr != b) {
-    OPENSSL_PUT_ERROR(BIO, BIO_zero_copy_get_write_buf_done,
-                      BIO_R_UNSUPPORTED_METHOD);
+    OPENSSL_PUT_ERROR(BIO, BIO_R_UNSUPPORTED_METHOD);
     return 0;
   }
 
   b->request = 0;
   if (b->closed) {
     /* BIO is already closed. */
-    OPENSSL_PUT_ERROR(BIO, BIO_zero_copy_get_write_buf_done, BIO_R_BROKEN_PIPE);
+    OPENSSL_PUT_ERROR(BIO, BIO_R_BROKEN_PIPE);
     return 0;
   }
 
   if (!b->zero_copy_write_lock) {
-    OPENSSL_PUT_ERROR(BIO, BIO_zero_copy_get_write_buf_done,
-                      BIO_R_INVALID_ARGUMENT);
+    OPENSSL_PUT_ERROR(BIO, BIO_R_INVALID_ARGUMENT);
     return 0;
   }
 
   rest = bio_zero_copy_get_write_buf(b, &dummy_write_buf, &dummy_write_offset);
 
   if (bytes_written > rest) {
-    OPENSSL_PUT_ERROR(BIO, BIO_zero_copy_get_write_buf_done,
-                      BIO_R_INVALID_ARGUMENT);
+    OPENSSL_PUT_ERROR(BIO, BIO_R_INVALID_ARGUMENT);
     return 0;
   }
 
@@ -525,7 +511,7 @@ static int bio_write(BIO *bio, const char *buf, int num_) {
   b->request = 0;
   if (b->closed) {
     /* we already closed */
-    OPENSSL_PUT_ERROR(BIO, bio_write, BIO_R_BROKEN_PIPE);
+    OPENSSL_PUT_ERROR(BIO, BIO_R_BROKEN_PIPE);
     return -1;
   }
 
@@ -590,7 +576,7 @@ static int bio_make_pair(BIO* bio1, BIO* bio2,
   b2 = bio2->ptr;
 
   if (b1->peer != NULL || b2->peer != NULL) {
-    OPENSSL_PUT_ERROR(BIO, bio_make_pair, BIO_R_IN_USE);
+    OPENSSL_PUT_ERROR(BIO, BIO_R_IN_USE);
     return 0;
   }
 
@@ -605,7 +591,7 @@ static int bio_make_pair(BIO* bio1, BIO* bio2,
       b1->buf_externally_allocated = 0;
       b1->buf = OPENSSL_malloc(b1->size);
       if (b1->buf == NULL) {
-        OPENSSL_PUT_ERROR(BIO, bio_make_pair, ERR_R_MALLOC_FAILURE);
+        OPENSSL_PUT_ERROR(BIO, ERR_R_MALLOC_FAILURE);
         return 0;
       }
     } else {
@@ -624,7 +610,7 @@ static int bio_make_pair(BIO* bio1, BIO* bio2,
       b2->buf_externally_allocated = 0;
       b2->buf = OPENSSL_malloc(b2->size);
       if (b2->buf == NULL) {
-        OPENSSL_PUT_ERROR(BIO, bio_make_pair, ERR_R_MALLOC_FAILURE);
+        OPENSSL_PUT_ERROR(BIO, ERR_R_MALLOC_FAILURE);
         return 0;
       }
     } else {

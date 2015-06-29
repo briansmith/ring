@@ -87,13 +87,13 @@ static int process_pci_value(CONF_VALUE *val,
 		{
 		if (*language)
 			{
-			OPENSSL_PUT_ERROR(X509V3, process_pci_value, X509V3_R_POLICY_LANGUAGE_ALREADY_DEFINED);
+			OPENSSL_PUT_ERROR(X509V3, X509V3_R_POLICY_LANGUAGE_ALREADY_DEFINED);
 			X509V3_conf_err(val);
 			return 0;
 			}
 		if (!(*language = OBJ_txt2obj(val->value, 0)))
 			{
-			OPENSSL_PUT_ERROR(X509V3, process_pci_value, X509V3_R_INVALID_OBJECT_IDENTIFIER);
+			OPENSSL_PUT_ERROR(X509V3, X509V3_R_INVALID_OBJECT_IDENTIFIER);
 			X509V3_conf_err(val);
 			return 0;
 			}
@@ -102,13 +102,13 @@ static int process_pci_value(CONF_VALUE *val,
 		{
 		if (*pathlen)
 			{
-			OPENSSL_PUT_ERROR(X509V3, process_pci_value, X509V3_R_POLICY_PATH_LENGTH_ALREADY_DEFINED);
+			OPENSSL_PUT_ERROR(X509V3, X509V3_R_POLICY_PATH_LENGTH_ALREADY_DEFINED);
 			X509V3_conf_err(val);
 			return 0;
 			}
 		if (!X509V3_get_value_int(val, pathlen))
 			{
-			OPENSSL_PUT_ERROR(X509V3, process_pci_value, X509V3_R_POLICY_PATH_LENGTH);
+			OPENSSL_PUT_ERROR(X509V3, X509V3_R_POLICY_PATH_LENGTH);
 			X509V3_conf_err(val);
 			return 0;
 			}
@@ -122,7 +122,7 @@ static int process_pci_value(CONF_VALUE *val,
 			*policy = ASN1_OCTET_STRING_new();
 			if (!*policy)
 				{
-				OPENSSL_PUT_ERROR(X509V3, process_pci_value, ERR_R_MALLOC_FAILURE);
+				OPENSSL_PUT_ERROR(X509V3, ERR_R_MALLOC_FAILURE);
 				X509V3_conf_err(val);
 				return 0;
 				}
@@ -135,7 +135,7 @@ static int process_pci_value(CONF_VALUE *val,
 
 			if (!tmp_data2) 
 				{
-				OPENSSL_PUT_ERROR(X509V3, process_pci_value, X509V3_R_ILLEGAL_HEX_DIGIT);
+				OPENSSL_PUT_ERROR(X509V3, X509V3_R_ILLEGAL_HEX_DIGIT);
 				X509V3_conf_err(val);
 				goto err;
 				}
@@ -156,7 +156,7 @@ static int process_pci_value(CONF_VALUE *val,
 				/* realloc failure implies the original data space is b0rked too! */
 				(*policy)->data = NULL;
 				(*policy)->length = 0;
-				OPENSSL_PUT_ERROR(X509V3, process_pci_value, ERR_R_MALLOC_FAILURE);
+				OPENSSL_PUT_ERROR(X509V3, ERR_R_MALLOC_FAILURE);
 				X509V3_conf_err(val);
 				goto err;
 				}
@@ -169,7 +169,7 @@ static int process_pci_value(CONF_VALUE *val,
 			BIO *b = BIO_new_file(val->value + 5, "r");
 			if (!b)
 				{
-				OPENSSL_PUT_ERROR(X509V3, process_pci_value, ERR_R_BIO_LIB);
+				OPENSSL_PUT_ERROR(X509V3, ERR_R_BIO_LIB);
 				X509V3_conf_err(val);
 				goto err;
 				}
@@ -194,7 +194,7 @@ static int process_pci_value(CONF_VALUE *val,
 
 			if (n < 0)
 				{
-				OPENSSL_PUT_ERROR(X509V3, process_pci_value, ERR_R_BIO_LIB);
+				OPENSSL_PUT_ERROR(X509V3, ERR_R_BIO_LIB);
 				X509V3_conf_err(val);
 				goto err;
 				}
@@ -217,20 +217,20 @@ static int process_pci_value(CONF_VALUE *val,
 				/* realloc failure implies the original data space is b0rked too! */
 				(*policy)->data = NULL;
 				(*policy)->length = 0;
-				OPENSSL_PUT_ERROR(X509V3, process_pci_value, ERR_R_MALLOC_FAILURE);
+				OPENSSL_PUT_ERROR(X509V3, ERR_R_MALLOC_FAILURE);
 				X509V3_conf_err(val);
 				goto err;
 				}
 			}
 		else
 			{
-			OPENSSL_PUT_ERROR(X509V3, process_pci_value, X509V3_R_INCORRECT_POLICY_SYNTAX_TAG);
+			OPENSSL_PUT_ERROR(X509V3, X509V3_R_INCORRECT_POLICY_SYNTAX_TAG);
 			X509V3_conf_err(val);
 			goto err;
 			}
 		if (!tmp_data)
 			{
-			OPENSSL_PUT_ERROR(X509V3, process_pci_value, ERR_R_MALLOC_FAILURE);
+			OPENSSL_PUT_ERROR(X509V3, ERR_R_MALLOC_FAILURE);
 			X509V3_conf_err(val);
 			goto err;
 			}
@@ -262,7 +262,7 @@ static PROXY_CERT_INFO_EXTENSION *r2i_pci(X509V3_EXT_METHOD *method,
 		CONF_VALUE *cnf = sk_CONF_VALUE_value(vals, i);
 		if (!cnf->name || (*cnf->name != '@' && !cnf->value))
 			{
-			OPENSSL_PUT_ERROR(X509V3, r2i_pci, X509V3_R_INVALID_PROXY_POLICY_SETTING);
+			OPENSSL_PUT_ERROR(X509V3, X509V3_R_INVALID_PROXY_POLICY_SETTING);
 			X509V3_conf_err(cnf);
 			goto err;
 			}
@@ -274,7 +274,7 @@ static PROXY_CERT_INFO_EXTENSION *r2i_pci(X509V3_EXT_METHOD *method,
 			sect = X509V3_get_section(ctx, cnf->name + 1);
 			if (!sect)
 				{
-				OPENSSL_PUT_ERROR(X509V3, r2i_pci, X509V3_R_INVALID_SECTION);
+				OPENSSL_PUT_ERROR(X509V3, X509V3_R_INVALID_SECTION);
 				X509V3_conf_err(cnf);
 				goto err;
 				}
@@ -302,20 +302,21 @@ static PROXY_CERT_INFO_EXTENSION *r2i_pci(X509V3_EXT_METHOD *method,
 	/* Language is mandatory */
 	if (!language)
 		{
-		OPENSSL_PUT_ERROR(X509V3, r2i_pci, X509V3_R_NO_PROXY_CERT_POLICY_LANGUAGE_DEFINED);
+		OPENSSL_PUT_ERROR(X509V3, X509V3_R_NO_PROXY_CERT_POLICY_LANGUAGE_DEFINED);
 		goto err;
 		}
 	nid = OBJ_obj2nid(language);
 	if ((nid == NID_Independent || nid == NID_id_ppl_inheritAll) && policy)
 		{
-		OPENSSL_PUT_ERROR(X509V3, r2i_pci, X509V3_R_POLICY_WHEN_PROXY_LANGUAGE_REQUIRES_NO_POLICY);
+		OPENSSL_PUT_ERROR(X509V3,
+			X509V3_R_POLICY_WHEN_PROXY_LANGUAGE_REQUIRES_NO_POLICY);
 		goto err;
 		}
 
 	pci = PROXY_CERT_INFO_EXTENSION_new();
 	if (!pci)
 		{
-		OPENSSL_PUT_ERROR(X509V3, r2i_pci, ERR_R_MALLOC_FAILURE);
+		OPENSSL_PUT_ERROR(X509V3, ERR_R_MALLOC_FAILURE);
 		goto err;
 		}
 

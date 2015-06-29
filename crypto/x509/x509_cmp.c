@@ -333,13 +333,13 @@ int X509_check_private_key(X509 *x, EVP_PKEY *k)
 	case 1:
 		break;
 	case 0:
-		OPENSSL_PUT_ERROR(X509, X509_check_private_key, X509_R_KEY_VALUES_MISMATCH);
+		OPENSSL_PUT_ERROR(X509, X509_R_KEY_VALUES_MISMATCH);
 		break;
 	case -1:
-		OPENSSL_PUT_ERROR(X509, X509_check_private_key, X509_R_KEY_TYPE_MISMATCH);
+		OPENSSL_PUT_ERROR(X509, X509_R_KEY_TYPE_MISMATCH);
 		break;
 	case -2:
-	        OPENSSL_PUT_ERROR(X509, X509_check_private_key, X509_R_UNKNOWN_KEY_TYPE);
+	        OPENSSL_PUT_ERROR(X509, X509_R_UNKNOWN_KEY_TYPE);
 		}
 	if (xk)
 		EVP_PKEY_free(xk);

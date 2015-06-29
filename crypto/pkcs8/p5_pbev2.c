@@ -124,7 +124,7 @@ X509_ALGOR *PKCS5_pbe2_set_iv(const EVP_CIPHER *cipher, int iter,
 
 	alg_nid = EVP_CIPHER_nid(cipher);
 	if(alg_nid == NID_undef) {
-		OPENSSL_PUT_ERROR(PKCS8, PKCS5_pbe2_set_iv, PKCS8_R_CIPHER_HAS_NO_OBJECT_IDENTIFIER);
+		OPENSSL_PUT_ERROR(PKCS8, PKCS8_R_CIPHER_HAS_NO_OBJECT_IDENTIFIER);
 		goto err;
 	}
 	obj = OBJ_nid2obj(alg_nid);
@@ -152,7 +152,7 @@ X509_ALGOR *PKCS5_pbe2_set_iv(const EVP_CIPHER *cipher, int iter,
 	if (!EVP_CipherInit_ex(&ctx, cipher, NULL, NULL, iv, 0))
 		goto err;
 	if(param_to_asn1(&ctx, scheme->parameter) < 0) {
-		OPENSSL_PUT_ERROR(PKCS8, PKCS5_pbe2_set_iv, PKCS8_R_ERROR_SETTING_CIPHER_PARAMS);
+		OPENSSL_PUT_ERROR(PKCS8, PKCS8_R_ERROR_SETTING_CIPHER_PARAMS);
 		EVP_CIPHER_CTX_cleanup(&ctx);
 		goto err;
 	}
@@ -202,7 +202,7 @@ X509_ALGOR *PKCS5_pbe2_set_iv(const EVP_CIPHER *cipher, int iter,
 	return ret;
 
 	merr:
-	OPENSSL_PUT_ERROR(PKCS8, PKCS5_pbe2_set_iv, ERR_R_MALLOC_FAILURE);
+	OPENSSL_PUT_ERROR(PKCS8, ERR_R_MALLOC_FAILURE);
 
 	err:
 	PBE2PARAM_free(pbe2);
@@ -295,7 +295,7 @@ X509_ALGOR *PKCS5_pbkdf2_set(int iter, unsigned char *salt, int saltlen,
 	return keyfunc;
 
 	merr:
-	OPENSSL_PUT_ERROR(PKCS8, PKCS5_pbkdf2_set, ERR_R_MALLOC_FAILURE);
+	OPENSSL_PUT_ERROR(PKCS8, ERR_R_MALLOC_FAILURE);
 	PBKDF2PARAM_free(kdf);
 	X509_ALGOR_free(keyfunc);
 	return NULL;

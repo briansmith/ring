@@ -86,7 +86,7 @@ ASN1_OCTET_STRING *s2i_ASN1_OCTET_STRING(X509V3_EXT_METHOD *method,
 	long length;
 
 	if(!(oct = M_ASN1_OCTET_STRING_new())) {
-		OPENSSL_PUT_ERROR(X509V3, s2i_ASN1_OCTET_STRING, ERR_R_MALLOC_FAILURE);
+		OPENSSL_PUT_ERROR(X509V3, ERR_R_MALLOC_FAILURE);
 		return NULL;
 	}
 
@@ -112,14 +112,14 @@ static ASN1_OCTET_STRING *s2i_skey_id(X509V3_EXT_METHOD *method,
 	if(strcmp(str, "hash")) return s2i_ASN1_OCTET_STRING(method, ctx, str);
 
 	if(!(oct = M_ASN1_OCTET_STRING_new())) {
-		OPENSSL_PUT_ERROR(X509V3, s2i_skey_id, ERR_R_MALLOC_FAILURE);
+		OPENSSL_PUT_ERROR(X509V3, ERR_R_MALLOC_FAILURE);
 		return NULL;
 	}
 
 	if(ctx && (ctx->flags == CTX_TEST)) return oct;
 
 	if(!ctx || (!ctx->subject_req && !ctx->subject_cert)) {
-		OPENSSL_PUT_ERROR(X509V3, s2i_skey_id, X509V3_R_NO_PUBLIC_KEY);
+		OPENSSL_PUT_ERROR(X509V3, X509V3_R_NO_PUBLIC_KEY);
 		goto err;
 	}
 
@@ -128,7 +128,7 @@ static ASN1_OCTET_STRING *s2i_skey_id(X509V3_EXT_METHOD *method,
 	else pk = ctx->subject_cert->cert_info->key->public_key;
 
 	if(!pk) {
-		OPENSSL_PUT_ERROR(X509V3, s2i_skey_id, X509V3_R_NO_PUBLIC_KEY);
+		OPENSSL_PUT_ERROR(X509V3, X509V3_R_NO_PUBLIC_KEY);
 		goto err;
 	}
 
@@ -136,7 +136,7 @@ static ASN1_OCTET_STRING *s2i_skey_id(X509V3_EXT_METHOD *method,
 		goto err;
 
 	if(!M_ASN1_OCTET_STRING_set(oct, pkey_dig, diglen)) {
-		OPENSSL_PUT_ERROR(X509V3, s2i_skey_id, ERR_R_MALLOC_FAILURE);
+		OPENSSL_PUT_ERROR(X509V3, ERR_R_MALLOC_FAILURE);
 		goto err;
 	}
 

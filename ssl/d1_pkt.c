@@ -194,8 +194,7 @@ static int dtls1_process_record(SSL *s) {
   /* check is not needed I believe */
   if (rr->length > SSL3_RT_MAX_ENCRYPTED_LENGTH) {
     al = SSL_AD_RECORD_OVERFLOW;
-    OPENSSL_PUT_ERROR(SSL, dtls1_process_record,
-                      SSL_R_ENCRYPTED_LENGTH_TOO_LONG);
+    OPENSSL_PUT_ERROR(SSL, SSL_R_ENCRYPTED_LENGTH_TOO_LONG);
     goto f_err;
   }
 
@@ -226,7 +225,7 @@ static int dtls1_process_record(SSL *s) {
 
   if (plaintext_len > SSL3_RT_MAX_PLAIN_LENGTH) {
     al = SSL_AD_RECORD_OVERFLOW;
-    OPENSSL_PUT_ERROR(SSL, dtls1_process_record, SSL_R_DATA_LENGTH_TOO_LONG);
+    OPENSSL_PUT_ERROR(SSL, SSL_R_DATA_LENGTH_TOO_LONG);
     goto f_err;
   }
   assert(plaintext_len < (1u << 16));
@@ -433,7 +432,7 @@ int dtls1_read_bytes(SSL *s, int type, unsigned char *buf, int len, int peek) {
   if ((type && (type != SSL3_RT_APPLICATION_DATA) &&
        (type != SSL3_RT_HANDSHAKE) && type) ||
       (peek && (type != SSL3_RT_APPLICATION_DATA))) {
-    OPENSSL_PUT_ERROR(SSL, dtls1_read_bytes, ERR_R_INTERNAL_ERROR);
+    OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
     return -1;
   }
 
@@ -444,7 +443,7 @@ int dtls1_read_bytes(SSL *s, int type, unsigned char *buf, int len, int peek) {
       return i;
     }
     if (i == 0) {
-      OPENSSL_PUT_ERROR(SSL, dtls1_read_bytes, SSL_R_SSL_HANDSHAKE_FAILURE);
+      OPENSSL_PUT_ERROR(SSL, SSL_R_SSL_HANDSHAKE_FAILURE);
       return -1;
     }
   }
@@ -507,7 +506,7 @@ start:
       /* TODO(davidben): Is this check redundant with the handshake_func
        * check? */
       al = SSL_AD_UNEXPECTED_MESSAGE;
-      OPENSSL_PUT_ERROR(SSL, dtls1_read_bytes, SSL_R_APP_DATA_IN_HANDSHAKE);
+      OPENSSL_PUT_ERROR(SSL, SSL_R_APP_DATA_IN_HANDSHAKE);
       goto f_err;
     }
 
@@ -542,7 +541,7 @@ start:
     /* Alerts may not be fragmented. */
     if (rr->length < 2) {
       al = SSL_AD_DECODE_ERROR;
-      OPENSSL_PUT_ERROR(SSL, dtls1_read_bytes, SSL_R_BAD_ALERT);
+      OPENSSL_PUT_ERROR(SSL, SSL_R_BAD_ALERT);
       goto f_err;
     }
 
@@ -576,8 +575,7 @@ start:
 
       s->rwstate = SSL_NOTHING;
       s->s3->fatal_alert = alert_descr;
-      OPENSSL_PUT_ERROR(SSL, dtls1_read_bytes,
-                        SSL_AD_REASON_OFFSET + alert_descr);
+      OPENSSL_PUT_ERROR(SSL, SSL_AD_REASON_OFFSET + alert_descr);
       BIO_snprintf(tmp, sizeof tmp, "%d", alert_descr);
       ERR_add_error_data(2, "SSL alert number ", tmp);
       s->shutdown |= SSL_RECEIVED_SHUTDOWN;
@@ -585,7 +583,7 @@ start:
       return 0;
     } else {
       al = SSL_AD_ILLEGAL_PARAMETER;
-      OPENSSL_PUT_ERROR(SSL, dtls1_read_bytes, SSL_R_UNKNOWN_ALERT_TYPE);
+      OPENSSL_PUT_ERROR(SSL, SSL_R_UNKNOWN_ALERT_TYPE);
       goto f_err;
     }
 
@@ -604,7 +602,7 @@ start:
      * record payload has to look like */
     if (rr->length != 1 || rr->off != 0 || rr->data[0] != SSL3_MT_CCS) {
       al = SSL_AD_ILLEGAL_PARAMETER;
-      OPENSSL_PUT_ERROR(SSL, dtls1_read_bytes, SSL_R_BAD_CHANGE_CIPHER_SPEC);
+      OPENSSL_PUT_ERROR(SSL, SSL_R_BAD_CHANGE_CIPHER_SPEC);
       goto f_err;
     }
 
@@ -641,7 +639,7 @@ start:
   if (rr->type == SSL3_RT_HANDSHAKE && !s->in_handshake) {
     if (rr->length < DTLS1_HM_HEADER_LENGTH) {
       al = SSL_AD_DECODE_ERROR;
-      OPENSSL_PUT_ERROR(SSL, dtls1_read_bytes, SSL_R_BAD_HANDSHAKE_RECORD);
+      OPENSSL_PUT_ERROR(SSL, SSL_R_BAD_HANDSHAKE_RECORD);
       goto f_err;
     }
     struct hm_header_st msg_hdr;
@@ -669,7 +667,7 @@ start:
   assert(rr->type != SSL3_RT_CHANGE_CIPHER_SPEC && rr->type != SSL3_RT_ALERT);
 
   al = SSL_AD_UNEXPECTED_MESSAGE;
-  OPENSSL_PUT_ERROR(SSL, dtls1_read_bytes, SSL_R_UNEXPECTED_RECORD);
+  OPENSSL_PUT_ERROR(SSL, SSL_R_UNEXPECTED_RECORD);
 
 f_err:
   ssl3_send_alert(s, SSL3_AL_FATAL, al);
@@ -686,13 +684,13 @@ int dtls1_write_app_data(SSL *s, const void *buf_, int len) {
       return i;
     }
     if (i == 0) {
-      OPENSSL_PUT_ERROR(SSL, dtls1_write_app_data, SSL_R_SSL_HANDSHAKE_FAILURE);
+      OPENSSL_PUT_ERROR(SSL, SSL_R_SSL_HANDSHAKE_FAILURE);
       return -1;
     }
   }
 
   if (len > SSL3_RT_MAX_PLAIN_LENGTH) {
-    OPENSSL_PUT_ERROR(SSL, dtls1_write_app_data, SSL_R_DTLS_MESSAGE_TOO_BIG);
+    OPENSSL_PUT_ERROR(SSL, SSL_R_DTLS_MESSAGE_TOO_BIG);
     return -1;
   }
 
@@ -721,7 +719,7 @@ static int dtls1_seal_record(SSL *s, uint8_t *out, size_t *out_len,
                              size_t max_out, uint8_t type, const uint8_t *in,
                              size_t in_len, enum dtls1_use_epoch_t use_epoch) {
   if (max_out < DTLS1_RT_HEADER_LENGTH) {
-    OPENSSL_PUT_ERROR(SSL, dtls1_seal_record, SSL_R_BUFFER_TOO_SMALL);
+    OPENSSL_PUT_ERROR(SSL, SSL_R_BUFFER_TOO_SMALL);
     return 0;
   }
 
@@ -757,7 +755,7 @@ static int dtls1_seal_record(SSL *s, uint8_t *out, size_t *out_len,
   }
 
   if (ciphertext_len >= 1 << 16) {
-    OPENSSL_PUT_ERROR(SSL, dtls1_seal_record, ERR_R_OVERFLOW);
+    OPENSSL_PUT_ERROR(SSL, ERR_R_OVERFLOW);
     return 0;
   }
   out[11] = ciphertext_len >> 8;

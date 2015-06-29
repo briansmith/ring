@@ -74,8 +74,7 @@ int EVP_DigestSignAlgorithm(EVP_MD_CTX *ctx, X509_ALGOR *algor) {
   digest = EVP_MD_CTX_md(ctx);
   pkey = EVP_PKEY_CTX_get0_pkey(ctx->pctx);
   if (!digest || !pkey) {
-    OPENSSL_PUT_ERROR(EVP, EVP_DigestSignAlgorithm,
-                      EVP_R_CONTEXT_NOT_INITIALISED);
+    OPENSSL_PUT_ERROR(EVP, EVP_R_CONTEXT_NOT_INITIALISED);
     return 0;
   }
 
@@ -97,8 +96,7 @@ int EVP_DigestSignAlgorithm(EVP_MD_CTX *ctx, X509_ALGOR *algor) {
    * that. */
   if (!OBJ_find_sigid_by_algs(&sign_nid, EVP_MD_type(digest),
                               pkey->ameth->pkey_id)) {
-    OPENSSL_PUT_ERROR(EVP, EVP_DigestSignAlgorithm,
-                      EVP_R_DIGEST_AND_KEY_TYPE_NOT_SUPPORTED);
+    OPENSSL_PUT_ERROR(EVP, EVP_R_DIGEST_AND_KEY_TYPE_NOT_SUPPORTED);
     return 0;
   }
 
@@ -122,24 +120,21 @@ int EVP_DigestVerifyInitFromAlgorithm(EVP_MD_CTX *ctx,
   /* Convert signature OID into digest and public key OIDs */
   if (!OBJ_find_sigid_algs(OBJ_obj2nid(algor->algorithm), &digest_nid,
                            &pkey_nid)) {
-    OPENSSL_PUT_ERROR(EVP, EVP_DigestVerifyInitFromAlgorithm,
-                      EVP_R_UNKNOWN_SIGNATURE_ALGORITHM);
+    OPENSSL_PUT_ERROR(EVP, EVP_R_UNKNOWN_SIGNATURE_ALGORITHM);
     return 0;
   }
 
   /* Check public key OID matches public key type */
   ameth = EVP_PKEY_asn1_find(NULL, pkey_nid);
   if (ameth == NULL || ameth->pkey_id != pkey->ameth->pkey_id) {
-    OPENSSL_PUT_ERROR(EVP, EVP_DigestVerifyInitFromAlgorithm,
-                      EVP_R_WRONG_PUBLIC_KEY_TYPE);
+    OPENSSL_PUT_ERROR(EVP, EVP_R_WRONG_PUBLIC_KEY_TYPE);
     return 0;
   }
 
   /* NID_undef signals that there are custom parameters to set. */
   if (digest_nid == NID_undef) {
     if (!pkey->ameth || !pkey->ameth->digest_verify_init_from_algorithm) {
-      OPENSSL_PUT_ERROR(EVP, EVP_DigestVerifyInitFromAlgorithm,
-                        EVP_R_UNKNOWN_SIGNATURE_ALGORITHM);
+      OPENSSL_PUT_ERROR(EVP, EVP_R_UNKNOWN_SIGNATURE_ALGORITHM);
       return 0;
     }
 
@@ -149,8 +144,7 @@ int EVP_DigestVerifyInitFromAlgorithm(EVP_MD_CTX *ctx,
   /* Otherwise, initialize with the digest from the OID. */
   digest = EVP_get_digestbynid(digest_nid);
   if (digest == NULL) {
-    OPENSSL_PUT_ERROR(EVP, EVP_DigestVerifyInitFromAlgorithm,
-                      EVP_R_UNKNOWN_MESSAGE_DIGEST_ALGORITHM);
+    OPENSSL_PUT_ERROR(EVP, EVP_R_UNKNOWN_MESSAGE_DIGEST_ALGORITHM);
     return 0;
   }
 

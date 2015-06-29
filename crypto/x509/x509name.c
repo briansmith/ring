@@ -254,7 +254,7 @@ int X509_NAME_add_entry(X509_NAME *name, X509_NAME_ENTRY *ne, int loc,
 	new_name->set=set;
 	if (!sk_X509_NAME_ENTRY_insert(sk,new_name,loc))
 		{
-		OPENSSL_PUT_ERROR(X509, X509_NAME_add_entry, ERR_R_MALLOC_FAILURE);
+		OPENSSL_PUT_ERROR(X509, ERR_R_MALLOC_FAILURE);
 		goto err;
 		}
 	if (inc)
@@ -279,7 +279,7 @@ X509_NAME_ENTRY *X509_NAME_ENTRY_create_by_txt(X509_NAME_ENTRY **ne,
 	obj=OBJ_txt2obj(field, 0);
 	if (obj == NULL)
 		{
-		OPENSSL_PUT_ERROR(X509, X509_NAME_ENTRY_create_by_txt, X509_R_INVALID_FIELD_NAME);
+		OPENSSL_PUT_ERROR(X509, X509_R_INVALID_FIELD_NAME);
 		ERR_add_error_data(2, "name=", field);
 		return(NULL);
 		}
@@ -297,7 +297,7 @@ X509_NAME_ENTRY *X509_NAME_ENTRY_create_by_NID(X509_NAME_ENTRY **ne, int nid,
 	obj=OBJ_nid2obj(nid);
 	if (obj == NULL)
 		{
-		OPENSSL_PUT_ERROR(X509, X509_NAME_ENTRY_create_by_NID, X509_R_UNKNOWN_NID);
+		OPENSSL_PUT_ERROR(X509, X509_R_UNKNOWN_NID);
 		return(NULL);
 		}
 	nentry = X509_NAME_ENTRY_create_by_OBJ(ne,obj,type,bytes,len);
@@ -336,7 +336,7 @@ int X509_NAME_ENTRY_set_object(X509_NAME_ENTRY *ne, const ASN1_OBJECT *obj)
 	{
 	if ((ne == NULL) || (obj == NULL))
 		{
-		OPENSSL_PUT_ERROR(X509, X509_NAME_ENTRY_set_object, ERR_R_PASSED_NULL_PARAMETER);
+		OPENSSL_PUT_ERROR(X509, ERR_R_PASSED_NULL_PARAMETER);
 		return(0);
 		}
 	ASN1_OBJECT_free(ne->object);

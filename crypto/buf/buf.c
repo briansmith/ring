@@ -67,7 +67,7 @@ BUF_MEM *BUF_MEM_new(void) {
 
   ret = OPENSSL_malloc(sizeof(BUF_MEM));
   if (ret == NULL) {
-    OPENSSL_PUT_ERROR(BUF, BUF_MEM_new, ERR_R_MALLOC_FAILURE);
+    OPENSSL_PUT_ERROR(BUF, ERR_R_MALLOC_FAILURE);
     return NULL;
   }
 
@@ -105,14 +105,14 @@ static size_t buf_mem_grow(BUF_MEM *buf, size_t len, char clean) {
   n = len + 3;
   if (n < len) {
     /* overflow */
-    OPENSSL_PUT_ERROR(BUF, buf_mem_grow, ERR_R_MALLOC_FAILURE);
+    OPENSSL_PUT_ERROR(BUF, ERR_R_MALLOC_FAILURE);
     return 0;
   }
   n = n / 3;
   alloc_size = n * 4;
   if (alloc_size / 4 != n) {
     /* overflow */
-    OPENSSL_PUT_ERROR(BUF, buf_mem_grow, ERR_R_MALLOC_FAILURE);
+    OPENSSL_PUT_ERROR(BUF, ERR_R_MALLOC_FAILURE);
     return 0;
   }
 
@@ -127,7 +127,7 @@ static size_t buf_mem_grow(BUF_MEM *buf, size_t len, char clean) {
   }
 
   if (new_buf == NULL) {
-    OPENSSL_PUT_ERROR(BUF, buf_mem_grow, ERR_R_MALLOC_FAILURE);
+    OPENSSL_PUT_ERROR(BUF, ERR_R_MALLOC_FAILURE);
     len = 0;
   } else {
     buf->data = new_buf;
@@ -180,12 +180,12 @@ char *BUF_strndup(const char *buf, size_t size) {
   alloc_size = size + 1;
   if (alloc_size < size) {
     /* overflow */
-    OPENSSL_PUT_ERROR(BUF, BUF_strndup, ERR_R_MALLOC_FAILURE);
+    OPENSSL_PUT_ERROR(BUF, ERR_R_MALLOC_FAILURE);
     return NULL;
   }
   ret = OPENSSL_malloc(alloc_size);
   if (ret == NULL) {
-    OPENSSL_PUT_ERROR(BUF, BUF_strndup, ERR_R_MALLOC_FAILURE);
+    OPENSSL_PUT_ERROR(BUF, ERR_R_MALLOC_FAILURE);
     return NULL;
   }
 
@@ -226,7 +226,7 @@ void *BUF_memdup(const void *data, size_t dst_size) {
 
   ret = OPENSSL_malloc(dst_size);
   if (ret == NULL) {
-    OPENSSL_PUT_ERROR(BUF, BUF_memdup, ERR_R_MALLOC_FAILURE);
+    OPENSSL_PUT_ERROR(BUF, ERR_R_MALLOC_FAILURE);
     return NULL;
   }
 

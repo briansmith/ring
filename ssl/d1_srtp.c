@@ -178,8 +178,7 @@ static int ssl_ctx_make_profiles(const char *profiles_string,
 
   profiles = sk_SRTP_PROTECTION_PROFILE_new_null();
   if (profiles == NULL) {
-    OPENSSL_PUT_ERROR(SSL, ssl_ctx_make_profiles,
-                      SSL_R_SRTP_COULD_NOT_ALLOCATE_PROFILES);
+    OPENSSL_PUT_ERROR(SSL, SSL_R_SRTP_COULD_NOT_ALLOCATE_PROFILES);
     return 0;
   }
 
@@ -190,8 +189,7 @@ static int ssl_ctx_make_profiles(const char *profiles_string,
     if (find_profile_by_name(ptr, &p, col ? col - ptr : strlen(ptr))) {
       sk_SRTP_PROTECTION_PROFILE_push(profiles, p);
     } else {
-      OPENSSL_PUT_ERROR(SSL, ssl_ctx_make_profiles,
-                        SSL_R_SRTP_UNKNOWN_PROTECTION_PROFILE);
+      OPENSSL_PUT_ERROR(SSL, SSL_R_SRTP_UNKNOWN_PROTECTION_PROFILE);
       return 0;
     }
 
@@ -255,14 +253,12 @@ int ssl_add_clienthello_use_srtp_ext(SSL *s, uint8_t *p, int *len, int maxlen) {
 
   if (p) {
     if (ct == 0) {
-      OPENSSL_PUT_ERROR(SSL, ssl_add_clienthello_use_srtp_ext,
-                        SSL_R_EMPTY_SRTP_PROTECTION_PROFILE_LIST);
+      OPENSSL_PUT_ERROR(SSL, SSL_R_EMPTY_SRTP_PROTECTION_PROFILE_LIST);
       return 0;
     }
 
     if (2 + ct * 2 + 1 > maxlen) {
-      OPENSSL_PUT_ERROR(SSL, ssl_add_clienthello_use_srtp_ext,
-                        SSL_R_SRTP_PROTECTION_PROFILE_LIST_TOO_LONG);
+      OPENSSL_PUT_ERROR(SSL, SSL_R_SRTP_PROTECTION_PROFILE_LIST_TOO_LONG);
       return 0;
     }
 
@@ -293,16 +289,14 @@ int ssl_parse_clienthello_use_srtp_ext(SSL *s, CBS *cbs, int *out_alert) {
       CBS_len(&profile_ids) < 2 ||
       !CBS_get_u8_length_prefixed(cbs, &srtp_mki) ||
       CBS_len(cbs) != 0) {
-    OPENSSL_PUT_ERROR(SSL, ssl_parse_clienthello_use_srtp_ext,
-                      SSL_R_BAD_SRTP_PROTECTION_PROFILE_LIST);
+    OPENSSL_PUT_ERROR(SSL, SSL_R_BAD_SRTP_PROTECTION_PROFILE_LIST);
     *out_alert = SSL_AD_DECODE_ERROR;
     goto done;
   }
 
   client_profiles = sk_SRTP_PROTECTION_PROFILE_new_null();
   if (client_profiles == NULL) {
-    OPENSSL_PUT_ERROR(SSL, ssl_parse_clienthello_use_srtp_ext,
-                      ERR_R_MALLOC_FAILURE);
+    OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
     *out_alert = SSL_AD_INTERNAL_ERROR;
     goto done;
   }
@@ -353,14 +347,12 @@ int ssl_add_serverhello_use_srtp_ext(SSL *s, unsigned char *p, int *len,
                                      int maxlen) {
   if (p) {
     if (maxlen < 5) {
-      OPENSSL_PUT_ERROR(SSL, ssl_add_serverhello_use_srtp_ext,
-                        SSL_R_SRTP_PROTECTION_PROFILE_LIST_TOO_LONG);
+      OPENSSL_PUT_ERROR(SSL, SSL_R_SRTP_PROTECTION_PROFILE_LIST_TOO_LONG);
       return 0;
     }
 
     if (s->srtp_profile == 0) {
-      OPENSSL_PUT_ERROR(SSL, ssl_add_serverhello_use_srtp_ext,
-                        SSL_R_USE_SRTP_NOT_NEGOTIATED);
+      OPENSSL_PUT_ERROR(SSL, SSL_R_USE_SRTP_NOT_NEGOTIATED);
       return 0;
     }
 
@@ -389,16 +381,14 @@ int ssl_parse_serverhello_use_srtp_ext(SSL *s, CBS *cbs, int *out_alert) {
   if (!CBS_get_u16_length_prefixed(cbs, &profile_ids) ||
       !CBS_get_u16(&profile_ids, &profile_id) || CBS_len(&profile_ids) != 0 ||
       !CBS_get_u8_length_prefixed(cbs, &srtp_mki) || CBS_len(cbs) != 0) {
-    OPENSSL_PUT_ERROR(SSL, ssl_parse_serverhello_use_srtp_ext,
-                      SSL_R_BAD_SRTP_PROTECTION_PROFILE_LIST);
+    OPENSSL_PUT_ERROR(SSL, SSL_R_BAD_SRTP_PROTECTION_PROFILE_LIST);
     *out_alert = SSL_AD_DECODE_ERROR;
     return 0;
   }
 
   if (CBS_len(&srtp_mki) != 0) {
     /* Must be no MKI, since we never offer one. */
-    OPENSSL_PUT_ERROR(SSL, ssl_parse_serverhello_use_srtp_ext,
-                      SSL_R_BAD_SRTP_MKI_VALUE);
+    OPENSSL_PUT_ERROR(SSL, SSL_R_BAD_SRTP_MKI_VALUE);
     *out_alert = SSL_AD_ILLEGAL_PARAMETER;
     return 0;
   }
@@ -407,8 +397,7 @@ int ssl_parse_serverhello_use_srtp_ext(SSL *s, CBS *cbs, int *out_alert) {
 
   /* Throw an error if the server gave us an unsolicited extension */
   if (client_profiles == NULL) {
-    OPENSSL_PUT_ERROR(SSL, ssl_parse_serverhello_use_srtp_ext,
-                      SSL_R_NO_SRTP_PROFILES);
+    OPENSSL_PUT_ERROR(SSL, SSL_R_NO_SRTP_PROFILES);
     *out_alert = SSL_AD_DECODE_ERROR;
     return 0;
   }
@@ -425,8 +414,7 @@ int ssl_parse_serverhello_use_srtp_ext(SSL *s, CBS *cbs, int *out_alert) {
     }
   }
 
-  OPENSSL_PUT_ERROR(SSL, ssl_parse_serverhello_use_srtp_ext,
-                    SSL_R_BAD_SRTP_PROTECTION_PROFILE_LIST);
+  OPENSSL_PUT_ERROR(SSL, SSL_R_BAD_SRTP_PROTECTION_PROFILE_LIST);
   *out_alert = SSL_AD_ILLEGAL_PARAMETER;
   return 0;
 }

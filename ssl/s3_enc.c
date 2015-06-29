@@ -180,7 +180,7 @@ int ssl3_prf(SSL *s, uint8_t *out, size_t out_len, const uint8_t *secret,
     k++;
     if (k > sizeof(buf)) {
       /* bug: 'buf' is too small for this ciphersuite */
-      OPENSSL_PUT_ERROR(SSL, ssl3_prf, ERR_R_INTERNAL_ERROR);
+      OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
       return 0;
     }
 
@@ -189,7 +189,7 @@ int ssl3_prf(SSL *s, uint8_t *out, size_t out_len, const uint8_t *secret,
     }
     c++;
     if (!EVP_DigestInit_ex(&sha1, EVP_sha1(), NULL)) {
-      OPENSSL_PUT_ERROR(SSL, ssl3_prf, ERR_LIB_EVP);
+      OPENSSL_PUT_ERROR(SSL, ERR_LIB_EVP);
       return 0;
     }
     EVP_DigestUpdate(&sha1, buf, k);
@@ -204,7 +204,7 @@ int ssl3_prf(SSL *s, uint8_t *out, size_t out_len, const uint8_t *secret,
     EVP_DigestFinal_ex(&sha1, smd, NULL);
 
     if (!EVP_DigestInit_ex(&md5, EVP_md5(), NULL)) {
-      OPENSSL_PUT_ERROR(SSL, ssl3_prf, ERR_LIB_EVP);
+      OPENSSL_PUT_ERROR(SSL, ERR_LIB_EVP);
       return 0;
     }
     EVP_DigestUpdate(&md5, secret, secret_len);
@@ -288,14 +288,13 @@ int ssl3_digest_cached_records(
   ssl3_free_digest_list(s);
   s->s3->handshake_dgst = OPENSSL_malloc(SSL_MAX_DIGEST * sizeof(EVP_MD_CTX *));
   if (s->s3->handshake_dgst == NULL) {
-    OPENSSL_PUT_ERROR(SSL, ssl3_digest_cached_records, ERR_R_MALLOC_FAILURE);
+    OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
     return 0;
   }
 
   memset(s->s3->handshake_dgst, 0, SSL_MAX_DIGEST * sizeof(EVP_MD_CTX *));
   if (!BIO_mem_contents(s->s3->handshake_buffer, &hdata, &hdatalen)) {
-    OPENSSL_PUT_ERROR(SSL, ssl3_digest_cached_records,
-                      SSL_R_BAD_HANDSHAKE_LENGTH);
+    OPENSSL_PUT_ERROR(SSL, SSL_R_BAD_HANDSHAKE_LENGTH);
     return 0;
   }
 
@@ -304,13 +303,13 @@ int ssl3_digest_cached_records(
     if ((mask & ssl_get_algorithm2(s)) && md) {
       s->s3->handshake_dgst[i] = EVP_MD_CTX_create();
       if (s->s3->handshake_dgst[i] == NULL) {
-        OPENSSL_PUT_ERROR(SSL, ssl3_digest_cached_records, ERR_LIB_EVP);
+        OPENSSL_PUT_ERROR(SSL, ERR_LIB_EVP);
         return 0;
       }
       if (!EVP_DigestInit_ex(s->s3->handshake_dgst[i], md, NULL)) {
         EVP_MD_CTX_destroy(s->s3->handshake_dgst[i]);
         s->s3->handshake_dgst[i] = NULL;
-        OPENSSL_PUT_ERROR(SSL, ssl3_digest_cached_records, ERR_LIB_EVP);
+        OPENSSL_PUT_ERROR(SSL, ERR_LIB_EVP);
         return 0;
       }
       EVP_DigestUpdate(s->s3->handshake_dgst[i], hdata, hdatalen);
@@ -373,14 +372,14 @@ static int ssl3_handshake_mac(SSL *s, int md_nid, const char *sender, int len,
   }
 
   if (!d) {
-    OPENSSL_PUT_ERROR(SSL, ssl3_handshake_mac, SSL_R_NO_REQUIRED_DIGEST);
+    OPENSSL_PUT_ERROR(SSL, SSL_R_NO_REQUIRED_DIGEST);
     return 0;
   }
 
   EVP_MD_CTX_init(&ctx);
   if (!EVP_MD_CTX_copy_ex(&ctx, d)) {
     EVP_MD_CTX_cleanup(&ctx);
-    OPENSSL_PUT_ERROR(SSL, ssl3_handshake_mac, ERR_LIB_EVP);
+    OPENSSL_PUT_ERROR(SSL, ERR_LIB_EVP);
     return 0;
   }
 
@@ -399,7 +398,7 @@ static int ssl3_handshake_mac(SSL *s, int md_nid, const char *sender, int len,
 
   if (!EVP_DigestInit_ex(&ctx, EVP_MD_CTX_md(&ctx), NULL)) {
     EVP_MD_CTX_cleanup(&ctx);
-    OPENSSL_PUT_ERROR(SSL, ssl3_handshake_mac, ERR_LIB_EVP);
+    OPENSSL_PUT_ERROR(SSL, ERR_LIB_EVP);
     return 0;
   }
   EVP_DigestUpdate(&ctx, s->session->master_key, s->session->master_key_length);
@@ -420,7 +419,7 @@ int ssl3_record_sequence_update(uint8_t *seq, size_t seq_len) {
       return 1;
     }
   }
-  OPENSSL_PUT_ERROR(SSL, ssl3_record_sequence_update, ERR_R_OVERFLOW);
+  OPENSSL_PUT_ERROR(SSL, ERR_R_OVERFLOW);
   return 0;
 }
 

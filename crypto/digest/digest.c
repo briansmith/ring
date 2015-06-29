@@ -116,8 +116,7 @@ int EVP_MD_CTX_copy_ex(EVP_MD_CTX *out, const EVP_MD_CTX *in) {
   uint8_t *tmp_buf = NULL;
 
   if (in == NULL || in->digest == NULL) {
-    OPENSSL_PUT_ERROR(DIGEST, EVP_MD_CTX_copy_ex,
-                      DIGEST_R_INPUT_NOT_INITIALIZED);
+    OPENSSL_PUT_ERROR(DIGEST, DIGEST_R_INPUT_NOT_INITIALIZED);
     return 0;
   }
 
@@ -138,7 +137,7 @@ int EVP_MD_CTX_copy_ex(EVP_MD_CTX *out, const EVP_MD_CTX *in) {
     } else {
       out->md_data = OPENSSL_malloc(in->digest->ctx_size);
       if (!out->md_data) {
-        OPENSSL_PUT_ERROR(DIGEST, EVP_MD_CTX_copy_ex, ERR_R_MALLOC_FAILURE);
+        OPENSSL_PUT_ERROR(DIGEST, ERR_R_MALLOC_FAILURE);
         return 0;
       }
     }
@@ -171,7 +170,7 @@ int EVP_DigestInit_ex(EVP_MD_CTX *ctx, const EVP_MD *type, ENGINE *engine) {
     if (type->ctx_size > 0) {
       ctx->md_data = OPENSSL_malloc(type->ctx_size);
       if (ctx->md_data == NULL) {
-        OPENSSL_PUT_ERROR(DIGEST, EVP_DigestInit_ex, ERR_R_MALLOC_FAILURE);
+        OPENSSL_PUT_ERROR(DIGEST, ERR_R_MALLOC_FAILURE);
         return 0;
       }
     }

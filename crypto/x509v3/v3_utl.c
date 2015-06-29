@@ -99,7 +99,7 @@ int X509V3_add_value(const char *name, const char *value,
 	if(!sk_CONF_VALUE_push(*extlist, vtmp)) goto err;
 	return 1;
 	err:
-	OPENSSL_PUT_ERROR(X509V3, X509V3_add_value, ERR_R_MALLOC_FAILURE);
+	OPENSSL_PUT_ERROR(X509V3, ERR_R_MALLOC_FAILURE);
 	if(vtmp) OPENSSL_free(vtmp);
 	if(tname) OPENSSL_free(tname);
 	if(tvalue) OPENSSL_free(tvalue);
@@ -145,7 +145,7 @@ char *i2s_ASN1_ENUMERATED(X509V3_EXT_METHOD *method, ASN1_ENUMERATED *a)
 	if(!a) return NULL;
 	if(!(bntmp = ASN1_ENUMERATED_to_BN(a, NULL)) ||
 	    !(strtmp = BN_bn2dec(bntmp)) )
-		OPENSSL_PUT_ERROR(X509V3, i2s_ASN1_ENUMERATED, ERR_R_MALLOC_FAILURE);
+		OPENSSL_PUT_ERROR(X509V3, ERR_R_MALLOC_FAILURE);
 	BN_free(bntmp);
 	return strtmp;
 }
@@ -157,7 +157,7 @@ char *i2s_ASN1_INTEGER(X509V3_EXT_METHOD *method, ASN1_INTEGER *a)
 	if(!a) return NULL;
 	if(!(bntmp = ASN1_INTEGER_to_BN(a, NULL)) ||
 	    !(strtmp = BN_bn2dec(bntmp)) )
-		OPENSSL_PUT_ERROR(X509V3, i2s_ASN1_INTEGER, ERR_R_MALLOC_FAILURE);
+		OPENSSL_PUT_ERROR(X509V3, ERR_R_MALLOC_FAILURE);
 	BN_free(bntmp);
 	return strtmp;
 }
@@ -169,7 +169,7 @@ ASN1_INTEGER *s2i_ASN1_INTEGER(X509V3_EXT_METHOD *method, char *value)
 	int isneg, ishex;
 	int ret;
 	if (!value) {
-		OPENSSL_PUT_ERROR(X509V3, s2i_ASN1_INTEGER, X509V3_R_INVALID_NULL_VALUE);
+		OPENSSL_PUT_ERROR(X509V3, X509V3_R_INVALID_NULL_VALUE);
 		return 0;
 	}
 	bn = BN_new();
@@ -188,7 +188,7 @@ ASN1_INTEGER *s2i_ASN1_INTEGER(X509V3_EXT_METHOD *method, char *value)
 
 	if (!ret || value[ret]) {
 		BN_free(bn);
-		OPENSSL_PUT_ERROR(X509V3, s2i_ASN1_INTEGER, X509V3_R_BN_DEC2BN_ERROR);
+		OPENSSL_PUT_ERROR(X509V3, X509V3_R_BN_DEC2BN_ERROR);
 		return 0;
 	}
 
@@ -197,7 +197,7 @@ ASN1_INTEGER *s2i_ASN1_INTEGER(X509V3_EXT_METHOD *method, char *value)
 	aint = BN_to_ASN1_INTEGER(bn, NULL);
 	BN_free(bn);
 	if (!aint) {
-		OPENSSL_PUT_ERROR(X509V3, s2i_ASN1_INTEGER, X509V3_R_BN_TO_ASN1_INTEGER_ERROR);
+		OPENSSL_PUT_ERROR(X509V3, X509V3_R_BN_TO_ASN1_INTEGER_ERROR);
 		return 0;
 	}
 	if (isneg) aint->type |= V_ASN1_NEG;
@@ -232,7 +232,7 @@ int X509V3_get_value_bool(CONF_VALUE *value, int *asn1_bool)
 		return 1;
 	}
 	err:
-	OPENSSL_PUT_ERROR(X509V3, X509V3_get_value_bool, X509V3_R_INVALID_BOOLEAN_STRING);
+	OPENSSL_PUT_ERROR(X509V3, X509V3_R_INVALID_BOOLEAN_STRING);
 	X509V3_conf_err(value);
 	return 0;
 }
@@ -264,7 +264,7 @@ STACK_OF(CONF_VALUE) *X509V3_parse_list(const char *line)
 	linebuf = BUF_strdup(line);
 	if (linebuf == NULL)
 		{
-		OPENSSL_PUT_ERROR(X509V3, X509V3_parse_list, ERR_R_MALLOC_FAILURE);
+		OPENSSL_PUT_ERROR(X509V3, ERR_R_MALLOC_FAILURE);
 		goto err;
 		}
 	state = HDR_NAME;
@@ -279,7 +279,7 @@ STACK_OF(CONF_VALUE) *X509V3_parse_list(const char *line)
 				*p = 0;
 				ntmp = strip_spaces(q);
 				if(!ntmp) {
-					OPENSSL_PUT_ERROR(X509V3, X509V3_parse_list, X509V3_R_INVALID_NULL_NAME);
+					OPENSSL_PUT_ERROR(X509V3, X509V3_R_INVALID_NULL_NAME);
 					goto err;
 				}
 				q = p + 1;
@@ -291,7 +291,7 @@ STACK_OF(CONF_VALUE) *X509V3_parse_list(const char *line)
 				printf("%s\n", ntmp);
 #endif
 				if(!ntmp) {
-					OPENSSL_PUT_ERROR(X509V3, X509V3_parse_list, X509V3_R_INVALID_NULL_NAME);
+					OPENSSL_PUT_ERROR(X509V3, X509V3_R_INVALID_NULL_NAME);
 					goto err;
 				}
 				X509V3_add_value(ntmp, NULL, &values);
@@ -307,7 +307,7 @@ STACK_OF(CONF_VALUE) *X509V3_parse_list(const char *line)
 				printf("%s\n", ntmp);
 #endif
 				if(!vtmp) {
-					OPENSSL_PUT_ERROR(X509V3, X509V3_parse_list, X509V3_R_INVALID_NULL_VALUE);
+					OPENSSL_PUT_ERROR(X509V3, X509V3_R_INVALID_NULL_VALUE);
 					goto err;
 				}
 				X509V3_add_value(ntmp, vtmp, &values);
@@ -324,7 +324,7 @@ STACK_OF(CONF_VALUE) *X509V3_parse_list(const char *line)
 		printf("%s=%s\n", ntmp, vtmp);
 #endif
 		if(!vtmp) {
-			OPENSSL_PUT_ERROR(X509V3, X509V3_parse_list, X509V3_R_INVALID_NULL_VALUE);
+			OPENSSL_PUT_ERROR(X509V3, X509V3_R_INVALID_NULL_VALUE);
 			goto err;
 		}
 		X509V3_add_value(ntmp, vtmp, &values);
@@ -334,7 +334,7 @@ STACK_OF(CONF_VALUE) *X509V3_parse_list(const char *line)
 		printf("%s\n", ntmp);
 #endif
 		if(!ntmp) {
-			OPENSSL_PUT_ERROR(X509V3, X509V3_parse_list, X509V3_R_INVALID_NULL_NAME);
+			OPENSSL_PUT_ERROR(X509V3, X509V3_R_INVALID_NULL_NAME);
 			goto err;
 		}
 		X509V3_add_value(ntmp, NULL, &values);
@@ -379,7 +379,7 @@ char *hex_to_string(const unsigned char *buffer, long len)
 	static const char hexdig[] = "0123456789ABCDEF";
 	if(!buffer || !len) return NULL;
 	if(!(tmp = OPENSSL_malloc(len * 3 + 1))) {
-		OPENSSL_PUT_ERROR(X509V3, hex_to_string, ERR_R_MALLOC_FAILURE);
+		OPENSSL_PUT_ERROR(X509V3, ERR_R_MALLOC_FAILURE);
 		return NULL;
 	}
 	q = tmp;
@@ -402,7 +402,7 @@ unsigned char *string_to_hex(const char *str, long *len)
 	unsigned char *hexbuf, *q;
 	unsigned char ch, cl, *p;
 	if(!str) {
-		OPENSSL_PUT_ERROR(X509V3, string_to_hex, X509V3_R_INVALID_NULL_ARGUMENT);
+		OPENSSL_PUT_ERROR(X509V3, X509V3_R_INVALID_NULL_ARGUMENT);
 		return NULL;
 	}
 	if(!(hexbuf = OPENSSL_malloc(strlen(str) >> 1))) goto err;
@@ -411,7 +411,7 @@ unsigned char *string_to_hex(const char *str, long *len)
 		if(ch == ':') continue;
 		cl = *p++;
 		if(!cl) {
-			OPENSSL_PUT_ERROR(X509V3, string_to_hex, X509V3_R_ODD_NUMBER_OF_DIGITS);
+			OPENSSL_PUT_ERROR(X509V3, X509V3_R_ODD_NUMBER_OF_DIGITS);
 			OPENSSL_free(hexbuf);
 			return NULL;
 		}
@@ -435,12 +435,12 @@ unsigned char *string_to_hex(const char *str, long *len)
 
 	err:
 	if(hexbuf) OPENSSL_free(hexbuf);
-	OPENSSL_PUT_ERROR(X509V3, string_to_hex, ERR_R_MALLOC_FAILURE);
+	OPENSSL_PUT_ERROR(X509V3, ERR_R_MALLOC_FAILURE);
 	return NULL;
 
 	badhex:
 	OPENSSL_free(hexbuf);
-	OPENSSL_PUT_ERROR(X509V3, string_to_hex, X509V3_R_ILLEGAL_HEX_DIGIT);
+	OPENSSL_PUT_ERROR(X509V3, X509V3_R_ILLEGAL_HEX_DIGIT);
 	return NULL;
 
 }

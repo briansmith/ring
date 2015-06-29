@@ -85,7 +85,7 @@ int i2d_ASN1_TIME(ASN1_TIME *a, unsigned char **pp)
 	if(a->type == V_ASN1_UTCTIME || a->type == V_ASN1_GENERALIZEDTIME)
 				return(i2d_ASN1_bytes((ASN1_STRING *)a,pp,
 				     a->type ,V_ASN1_UNIVERSAL));
-	OPENSSL_PUT_ERROR(ASN1, XXX, ASN1_R_EXPECTING_A_TIME);
+	OPENSSL_PUT_ERROR(ASN1, ASN1_R_EXPECTING_A_TIME);
 	return -1;
 	}
 #endif
@@ -105,7 +105,7 @@ ASN1_TIME *ASN1_TIME_adj(ASN1_TIME *s, time_t t,
 	ts=OPENSSL_gmtime(&t,&data);
 	if (ts == NULL)
 		{
-		OPENSSL_PUT_ERROR(ASN1, ASN1_TIME_adj,  ASN1_R_ERROR_GETTING_TIME);
+		OPENSSL_PUT_ERROR(ASN1, ASN1_R_ERROR_GETTING_TIME);
 		return NULL;
 		}
 	if (offset_day || offset_sec)

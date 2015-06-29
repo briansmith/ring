@@ -238,7 +238,7 @@ int tls1_prf(SSL *s, uint8_t *out, size_t out_len, const uint8_t *secret,
   /* Allocate a temporary buffer. */
   tmp = OPENSSL_malloc(out_len);
   if (tmp == NULL) {
-    OPENSSL_PUT_ERROR(SSL, tls1_prf, ERR_R_MALLOC_FAILURE);
+    OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
     return 0;
   }
 
@@ -317,7 +317,7 @@ int tls1_change_cipher_state(SSL *s, int which) {
   iv_len = s->s3->tmp.new_fixed_iv_len;
 
   if (aead == NULL) {
-    OPENSSL_PUT_ERROR(SSL, tls1_change_cipher_state, ERR_R_INTERNAL_ERROR);
+    OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
     return 0;
   }
 
@@ -327,7 +327,7 @@ int tls1_change_cipher_state(SSL *s, int which) {
      * suites) the key length reported by |EVP_AEAD_key_length| will
      * include the MAC and IV key bytes. */
     if (key_len < mac_secret_len + iv_len) {
-      OPENSSL_PUT_ERROR(SSL, tls1_change_cipher_state, ERR_R_INTERNAL_ERROR);
+      OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
       return 0;
     }
     key_len -= mac_secret_len + iv_len;
@@ -358,7 +358,7 @@ int tls1_change_cipher_state(SSL *s, int which) {
   }
 
   if (key_data - s->s3->tmp.key_block != s->s3->tmp.key_block_length) {
-    OPENSSL_PUT_ERROR(SSL, tls1_change_cipher_state, ERR_R_INTERNAL_ERROR);
+    OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
     return 0;
   }
 
@@ -406,14 +406,14 @@ int tls1_setup_key_block(SSL *s) {
      * key length reported by |EVP_AEAD_key_length| will include the MAC key
      * bytes and initial implicit IV. */
     if (key_len < mac_secret_len + fixed_iv_len) {
-      OPENSSL_PUT_ERROR(SSL, tls1_setup_key_block, ERR_R_INTERNAL_ERROR);
+      OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
       return 0;
     }
     key_len -= mac_secret_len + fixed_iv_len;
   } else {
     /* The nonce is split into a fixed portion and a variable portion. */
     if (variable_iv_len < fixed_iv_len) {
-      OPENSSL_PUT_ERROR(SSL, tls1_setup_key_block, ERR_R_INTERNAL_ERROR);
+      OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
       return 0;
     }
     variable_iv_len -= fixed_iv_len;
@@ -435,7 +435,7 @@ int tls1_setup_key_block(SSL *s) {
 
   p = (uint8_t *)OPENSSL_malloc(key_block_len);
   if (p == NULL) {
-    OPENSSL_PUT_ERROR(SSL, tls1_setup_key_block, ERR_R_MALLOC_FAILURE);
+    OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
     goto err;
   }
 
@@ -464,8 +464,7 @@ err:
   return ret;
 
 cipher_unavailable_err:
-  OPENSSL_PUT_ERROR(SSL, tls1_setup_key_block,
-                    SSL_R_CIPHER_OR_HASH_UNAVAILABLE);
+  OPENSSL_PUT_ERROR(SSL, SSL_R_CIPHER_OR_HASH_UNAVAILABLE);
   return 0;
 }
 
@@ -488,7 +487,7 @@ int tls1_cert_verify_mac(SSL *s, int md_nid, uint8_t *out) {
   }
 
   if (!d) {
-    OPENSSL_PUT_ERROR(SSL, tls1_cert_verify_mac, SSL_R_NO_REQUIRED_DIGEST);
+    OPENSSL_PUT_ERROR(SSL, SSL_R_NO_REQUIRED_DIGEST);
     return 0;
   }
 
@@ -630,22 +629,21 @@ int tls1_export_keying_material(SSL *s, uint8_t *out, size_t out_len,
                                 const uint8_t *context, size_t context_len,
                                 int use_context) {
   if (!s->s3->have_version || s->version == SSL3_VERSION) {
-    OPENSSL_PUT_ERROR(SSL, tls1_export_keying_material,
-                      ERR_R_SHOULD_NOT_HAVE_BEEN_CALLED);
+    OPENSSL_PUT_ERROR(SSL, ERR_R_SHOULD_NOT_HAVE_BEEN_CALLED);
     return 0;
   }
 
   size_t seed_len = 2 * SSL3_RANDOM_SIZE;
   if (use_context) {
     if (context_len >= 1u << 16) {
-      OPENSSL_PUT_ERROR(SSL, tls1_export_keying_material, ERR_R_OVERFLOW);
+      OPENSSL_PUT_ERROR(SSL, ERR_R_OVERFLOW);
       return 0;
     }
     seed_len += 2 + context_len;
   }
   uint8_t *seed = OPENSSL_malloc(seed_len);
   if (seed == NULL) {
-    OPENSSL_PUT_ERROR(SSL, tls1_export_keying_material, ERR_R_MALLOC_FAILURE);
+    OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
     return 0;
   }
 

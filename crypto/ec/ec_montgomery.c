@@ -200,7 +200,7 @@ int ec_GFp_mont_group_set_curve(EC_GROUP *group, const BIGNUM *p,
     goto err;
   }
   if (!BN_MONT_CTX_set(mont, p, ctx)) {
-    OPENSSL_PUT_ERROR(EC, ec_GFp_mont_group_set_curve, ERR_R_BN_LIB);
+    OPENSSL_PUT_ERROR(EC, ERR_R_BN_LIB);
     goto err;
   }
   one = BN_new();
@@ -232,7 +232,7 @@ err:
 int ec_GFp_mont_field_mul(const EC_GROUP *group, BIGNUM *r, const BIGNUM *a,
                           const BIGNUM *b, BN_CTX *ctx) {
   if (group->mont == NULL) {
-    OPENSSL_PUT_ERROR(EC, ec_GFp_mont_field_mul, EC_R_NOT_INITIALIZED);
+    OPENSSL_PUT_ERROR(EC, EC_R_NOT_INITIALIZED);
     return 0;
   }
 
@@ -242,7 +242,7 @@ int ec_GFp_mont_field_mul(const EC_GROUP *group, BIGNUM *r, const BIGNUM *a,
 int ec_GFp_mont_field_sqr(const EC_GROUP *group, BIGNUM *r, const BIGNUM *a,
                           BN_CTX *ctx) {
   if (group->mont == NULL) {
-    OPENSSL_PUT_ERROR(EC, ec_GFp_mont_field_sqr, EC_R_NOT_INITIALIZED);
+    OPENSSL_PUT_ERROR(EC, EC_R_NOT_INITIALIZED);
     return 0;
   }
 
@@ -252,7 +252,7 @@ int ec_GFp_mont_field_sqr(const EC_GROUP *group, BIGNUM *r, const BIGNUM *a,
 int ec_GFp_mont_field_encode(const EC_GROUP *group, BIGNUM *r, const BIGNUM *a,
                              BN_CTX *ctx) {
   if (group->mont == NULL) {
-    OPENSSL_PUT_ERROR(EC, ec_GFp_mont_field_encode, EC_R_NOT_INITIALIZED);
+    OPENSSL_PUT_ERROR(EC, EC_R_NOT_INITIALIZED);
     return 0;
   }
 
@@ -262,7 +262,7 @@ int ec_GFp_mont_field_encode(const EC_GROUP *group, BIGNUM *r, const BIGNUM *a,
 int ec_GFp_mont_field_decode(const EC_GROUP *group, BIGNUM *r, const BIGNUM *a,
                              BN_CTX *ctx) {
   if (group->mont == NULL) {
-    OPENSSL_PUT_ERROR(EC, ec_GFp_mont_field_decode, EC_R_NOT_INITIALIZED);
+    OPENSSL_PUT_ERROR(EC, EC_R_NOT_INITIALIZED);
     return 0;
   }
 
@@ -272,7 +272,7 @@ int ec_GFp_mont_field_decode(const EC_GROUP *group, BIGNUM *r, const BIGNUM *a,
 int ec_GFp_mont_field_set_to_one(const EC_GROUP *group, BIGNUM *r,
                                  BN_CTX *ctx) {
   if (group->one == NULL) {
-    OPENSSL_PUT_ERROR(EC, ec_GFp_mont_field_set_to_one, EC_R_NOT_INITIALIZED);
+    OPENSSL_PUT_ERROR(EC, EC_R_NOT_INITIALIZED);
     return 0;
   }
 

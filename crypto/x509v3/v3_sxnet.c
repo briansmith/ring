@@ -159,7 +159,7 @@ int SXNET_add_id_asc(SXNET **psx, char *zone, char *user,
 {
 	ASN1_INTEGER *izone = NULL;
 	if(!(izone = s2i_ASN1_INTEGER(NULL, zone))) {
-		OPENSSL_PUT_ERROR(X509V3, SXNET_add_id_asc, X509V3_R_ERROR_CONVERTING_ZONE);
+		OPENSSL_PUT_ERROR(X509V3, X509V3_R_ERROR_CONVERTING_ZONE);
 		return 0;
 	}
 	return SXNET_add_id_INTEGER(psx, izone, user, userlen);
@@ -172,7 +172,7 @@ int SXNET_add_id_ulong(SXNET **psx, unsigned long lzone, char *user,
 {
 	ASN1_INTEGER *izone = NULL;
 	if(!(izone = M_ASN1_INTEGER_new()) || !ASN1_INTEGER_set(izone, lzone)) {
-		OPENSSL_PUT_ERROR(X509V3, SXNET_add_id_ulong, ERR_R_MALLOC_FAILURE);
+		OPENSSL_PUT_ERROR(X509V3, ERR_R_MALLOC_FAILURE);
 		M_ASN1_INTEGER_free(izone);
 		return 0;
 	}
@@ -191,12 +191,12 @@ int SXNET_add_id_INTEGER(SXNET **psx, ASN1_INTEGER *zone, char *user,
 	SXNET *sx = NULL;
 	SXNETID *id = NULL;
 	if(!psx || !zone || !user) {
-		OPENSSL_PUT_ERROR(X509V3, SXNET_add_id_INTEGER, X509V3_R_INVALID_NULL_ARGUMENT);
+		OPENSSL_PUT_ERROR(X509V3, X509V3_R_INVALID_NULL_ARGUMENT);
 		return 0;
 	}
 	if(userlen == -1) userlen = strlen(user);
 	if(userlen > 64) {
-		OPENSSL_PUT_ERROR(X509V3, SXNET_add_id_INTEGER, X509V3_R_USER_TOO_LONG);
+		OPENSSL_PUT_ERROR(X509V3, X509V3_R_USER_TOO_LONG);
 		return 0;
 	}
 	if(!*psx) {
@@ -205,7 +205,7 @@ int SXNET_add_id_INTEGER(SXNET **psx, ASN1_INTEGER *zone, char *user,
 		*psx = sx;
 	} else sx = *psx;
 	if(SXNET_get_id_INTEGER(sx, zone)) {
-		OPENSSL_PUT_ERROR(X509V3, SXNET_add_id_INTEGER, X509V3_R_DUPLICATE_ZONE_ID);
+		OPENSSL_PUT_ERROR(X509V3, X509V3_R_DUPLICATE_ZONE_ID);
 		return 0;
 	}
 
@@ -218,7 +218,7 @@ int SXNET_add_id_INTEGER(SXNET **psx, ASN1_INTEGER *zone, char *user,
 	return 1;
 	
 	err:
-	OPENSSL_PUT_ERROR(X509V3, SXNET_add_id_INTEGER, ERR_R_MALLOC_FAILURE);
+	OPENSSL_PUT_ERROR(X509V3, ERR_R_MALLOC_FAILURE);
 	SXNETID_free(id);
 	SXNET_free(sx);
 	*psx = NULL;
@@ -230,7 +230,7 @@ ASN1_OCTET_STRING *SXNET_get_id_asc(SXNET *sx, char *zone)
 	ASN1_INTEGER *izone = NULL;
 	ASN1_OCTET_STRING *oct;
 	if(!(izone = s2i_ASN1_INTEGER(NULL, zone))) {
-		OPENSSL_PUT_ERROR(X509V3, SXNET_get_id_asc, X509V3_R_ERROR_CONVERTING_ZONE);
+		OPENSSL_PUT_ERROR(X509V3, X509V3_R_ERROR_CONVERTING_ZONE);
 		return NULL;
 	}
 	oct = SXNET_get_id_INTEGER(sx, izone);
@@ -243,7 +243,7 @@ ASN1_OCTET_STRING *SXNET_get_id_ulong(SXNET *sx, unsigned long lzone)
 	ASN1_INTEGER *izone = NULL;
 	ASN1_OCTET_STRING *oct;
 	if(!(izone = M_ASN1_INTEGER_new()) || !ASN1_INTEGER_set(izone, lzone)) {
-		OPENSSL_PUT_ERROR(X509V3, SXNET_get_id_ulong, ERR_R_MALLOC_FAILURE);
+		OPENSSL_PUT_ERROR(X509V3, ERR_R_MALLOC_FAILURE);
 		M_ASN1_INTEGER_free(izone);
 		return NULL;
 	}

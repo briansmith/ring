@@ -250,7 +250,7 @@ static GENERAL_NAMES *v2i_issuer_alt(X509V3_EXT_METHOD *method,
 	CONF_VALUE *cnf;
 	size_t i;
 	if(!(gens = sk_GENERAL_NAME_new_null())) {
-		OPENSSL_PUT_ERROR(X509V3, v2i_issuer_alt, ERR_R_MALLOC_FAILURE);
+		OPENSSL_PUT_ERROR(X509V3, ERR_R_MALLOC_FAILURE);
 		return NULL;
 	}
 	for(i = 0; i < sk_CONF_VALUE_num(nval); i++) {
@@ -282,21 +282,21 @@ static int copy_issuer(X509V3_CTX *ctx, GENERAL_NAMES *gens)
 	size_t j;
 	if(ctx && (ctx->flags == CTX_TEST)) return 1;
 	if(!ctx || !ctx->issuer_cert) {
-		OPENSSL_PUT_ERROR(X509V3, copy_issuer, X509V3_R_NO_ISSUER_DETAILS);
+		OPENSSL_PUT_ERROR(X509V3, X509V3_R_NO_ISSUER_DETAILS);
 		goto err;
 	}
         i = X509_get_ext_by_NID(ctx->issuer_cert, NID_subject_alt_name, -1);
 	if(i < 0) return 1;
         if(!(ext = X509_get_ext(ctx->issuer_cert, i)) ||
                         !(ialt = X509V3_EXT_d2i(ext)) ) {
-		OPENSSL_PUT_ERROR(X509V3, copy_issuer, X509V3_R_ISSUER_DECODE_ERROR);
+		OPENSSL_PUT_ERROR(X509V3, X509V3_R_ISSUER_DECODE_ERROR);
 		goto err;
 	}
 
 	for(j = 0; j < sk_GENERAL_NAME_num(ialt); j++) {
 		gen = sk_GENERAL_NAME_value(ialt, j);
 		if(!sk_GENERAL_NAME_push(gens, gen)) {
-			OPENSSL_PUT_ERROR(X509V3, copy_issuer, ERR_R_MALLOC_FAILURE);
+			OPENSSL_PUT_ERROR(X509V3, ERR_R_MALLOC_FAILURE);
 			goto err;
 		}
 	}
@@ -316,7 +316,7 @@ static GENERAL_NAMES *v2i_subject_alt(X509V3_EXT_METHOD *method,
 	CONF_VALUE *cnf;
 	size_t i;
 	if(!(gens = sk_GENERAL_NAME_new_null())) {
-		OPENSSL_PUT_ERROR(X509V3, v2i_subject_alt, ERR_R_MALLOC_FAILURE);
+		OPENSSL_PUT_ERROR(X509V3, ERR_R_MALLOC_FAILURE);
 		return NULL;
 	}
 	for(i = 0; i < sk_CONF_VALUE_num(nval); i++) {
@@ -354,7 +354,7 @@ static int copy_email(X509V3_CTX *ctx, GENERAL_NAMES *gens, int move_p)
 	if(ctx != NULL && ctx->flags == CTX_TEST)
 		return 1;
 	if(!ctx || (!ctx->subject_cert && !ctx->subject_req)) {
-		OPENSSL_PUT_ERROR(X509V3, copy_email, X509V3_R_NO_SUBJECT_DETAILS);
+		OPENSSL_PUT_ERROR(X509V3, X509V3_R_NO_SUBJECT_DETAILS);
 		goto err;
 	}
 	/* Find the subject name */
@@ -374,14 +374,14 @@ static int copy_email(X509V3_CTX *ctx, GENERAL_NAMES *gens, int move_p)
                         i--;
                         }
 		if(!email || !(gen = GENERAL_NAME_new())) {
-			OPENSSL_PUT_ERROR(X509V3, copy_email, ERR_R_MALLOC_FAILURE);
+			OPENSSL_PUT_ERROR(X509V3, ERR_R_MALLOC_FAILURE);
 			goto err;
 		}
 		gen->d.ia5 = email;
 		email = NULL;
 		gen->type = GEN_EMAIL;
 		if(!sk_GENERAL_NAME_push(gens, gen)) {
-			OPENSSL_PUT_ERROR(X509V3, copy_email, ERR_R_MALLOC_FAILURE);
+			OPENSSL_PUT_ERROR(X509V3, ERR_R_MALLOC_FAILURE);
 			goto err;
 		}
 		gen = NULL;
@@ -405,7 +405,7 @@ GENERAL_NAMES *v2i_GENERAL_NAMES(const X509V3_EXT_METHOD *method,
 	CONF_VALUE *cnf;
 	size_t i;
 	if(!(gens = sk_GENERAL_NAME_new_null())) {
-		OPENSSL_PUT_ERROR(X509V3, v2i_GENERAL_NAMES, ERR_R_MALLOC_FAILURE);
+		OPENSSL_PUT_ERROR(X509V3, ERR_R_MALLOC_FAILURE);
 		return NULL;
 	}
 	for(i = 0; i < sk_CONF_VALUE_num(nval); i++) {
@@ -434,7 +434,7 @@ GENERAL_NAME *a2i_GENERAL_NAME(GENERAL_NAME *out,
 
 	if(!value)
 		{
-		OPENSSL_PUT_ERROR(X509V3, a2i_GENERAL_NAME, X509V3_R_MISSING_VALUE);
+		OPENSSL_PUT_ERROR(X509V3, X509V3_R_MISSING_VALUE);
 		return NULL;
 		}
 
@@ -445,7 +445,7 @@ GENERAL_NAME *a2i_GENERAL_NAME(GENERAL_NAME *out,
 		gen = GENERAL_NAME_new();
 		if(gen == NULL)
 			{
-			OPENSSL_PUT_ERROR(X509V3, a2i_GENERAL_NAME, ERR_R_MALLOC_FAILURE);
+			OPENSSL_PUT_ERROR(X509V3, ERR_R_MALLOC_FAILURE);
 			return NULL;
 			}
 		}
@@ -463,7 +463,7 @@ GENERAL_NAME *a2i_GENERAL_NAME(GENERAL_NAME *out,
 		ASN1_OBJECT *obj;
 		if(!(obj = OBJ_txt2obj(value,0)))
 			{
-			OPENSSL_PUT_ERROR(X509V3, a2i_GENERAL_NAME, X509V3_R_BAD_OBJECT);
+			OPENSSL_PUT_ERROR(X509V3, X509V3_R_BAD_OBJECT);
 			ERR_add_error_data(2, "value=", value);
 			goto err;
 			}
@@ -478,7 +478,7 @@ GENERAL_NAME *a2i_GENERAL_NAME(GENERAL_NAME *out,
 			gen->d.ip = a2i_IPADDRESS(value);
 		if(gen->d.ip == NULL)
 			{
-			OPENSSL_PUT_ERROR(X509V3, a2i_GENERAL_NAME, X509V3_R_BAD_IP_ADDRESS);
+			OPENSSL_PUT_ERROR(X509V3, X509V3_R_BAD_IP_ADDRESS);
 			ERR_add_error_data(2, "value=", value);
 			goto err;
 			}
@@ -487,7 +487,7 @@ GENERAL_NAME *a2i_GENERAL_NAME(GENERAL_NAME *out,
 		case GEN_DIRNAME:
 		if (!do_dirname(gen, value, ctx))
 			{
-			OPENSSL_PUT_ERROR(X509V3, a2i_GENERAL_NAME, X509V3_R_DIRNAME_ERROR);
+			OPENSSL_PUT_ERROR(X509V3, X509V3_R_DIRNAME_ERROR);
 			goto err;
 			}
 		break;
@@ -495,12 +495,12 @@ GENERAL_NAME *a2i_GENERAL_NAME(GENERAL_NAME *out,
 		case GEN_OTHERNAME:
 		if (!do_othername(gen, value, ctx))
 			{
-			OPENSSL_PUT_ERROR(X509V3, a2i_GENERAL_NAME, X509V3_R_OTHERNAME_ERROR);
+			OPENSSL_PUT_ERROR(X509V3, X509V3_R_OTHERNAME_ERROR);
 			goto err;
 			}
 		break;
 		default:
-		OPENSSL_PUT_ERROR(X509V3, a2i_GENERAL_NAME, X509V3_R_UNSUPPORTED_TYPE);
+		OPENSSL_PUT_ERROR(X509V3, X509V3_R_UNSUPPORTED_TYPE);
 		goto err;
 		}
 
@@ -510,7 +510,7 @@ GENERAL_NAME *a2i_GENERAL_NAME(GENERAL_NAME *out,
 			      !ASN1_STRING_set(gen->d.ia5, (unsigned char*)value,
 					       strlen(value)))
 			{
-			OPENSSL_PUT_ERROR(X509V3, a2i_GENERAL_NAME, ERR_R_MALLOC_FAILURE);
+			OPENSSL_PUT_ERROR(X509V3, ERR_R_MALLOC_FAILURE);
 			goto err;
 			}
 		}
@@ -538,7 +538,7 @@ GENERAL_NAME *v2i_GENERAL_NAME_ex(GENERAL_NAME *out,
 
 	if(!value)
 		{
-		OPENSSL_PUT_ERROR(X509V3, v2i_GENERAL_NAME_ex, X509V3_R_MISSING_VALUE);
+		OPENSSL_PUT_ERROR(X509V3, X509V3_R_MISSING_VALUE);
 		return NULL;
 		}
 
@@ -558,7 +558,7 @@ GENERAL_NAME *v2i_GENERAL_NAME_ex(GENERAL_NAME *out,
 		type = GEN_OTHERNAME;
 	else
 		{
-		OPENSSL_PUT_ERROR(X509V3, v2i_GENERAL_NAME_ex, X509V3_R_UNSUPPORTED_OPTION);
+		OPENSSL_PUT_ERROR(X509V3, X509V3_R_UNSUPPORTED_OPTION);
 		ERR_add_error_data(2, "name=", name);
 		return NULL;
 		}
@@ -604,7 +604,7 @@ static int do_dirname(GENERAL_NAME *gen, char *value, X509V3_CTX *ctx)
 	sk = X509V3_get_section(ctx, value);
 	if (!sk)
 		{
-		OPENSSL_PUT_ERROR(X509V3, do_dirname, X509V3_R_SECTION_NOT_FOUND);
+		OPENSSL_PUT_ERROR(X509V3, X509V3_R_SECTION_NOT_FOUND);
 		ERR_add_error_data(2, "section=", value);
 		X509_NAME_free(nm);
 		return 0;

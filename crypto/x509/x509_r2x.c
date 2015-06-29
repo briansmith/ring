@@ -72,7 +72,7 @@ X509 *X509_REQ_to_X509(X509_REQ *r, int days, EVP_PKEY *pkey)
 
 	if ((ret=X509_new()) == NULL)
 		{
-		OPENSSL_PUT_ERROR(X509, X509_REQ_to_X509, ERR_R_MALLOC_FAILURE);
+		OPENSSL_PUT_ERROR(X509, ERR_R_MALLOC_FAILURE);
 		goto err;
 		}
 

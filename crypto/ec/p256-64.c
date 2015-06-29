@@ -125,7 +125,7 @@ static void flip_endian(u8 *out, const u8 *in, unsigned len) {
 /* BN_to_felem converts an OpenSSL BIGNUM into an felem. */
 static int BN_to_felem(felem out, const BIGNUM *bn) {
   if (BN_is_negative(bn)) {
-    OPENSSL_PUT_ERROR(EC, BN_to_felem, EC_R_BIGNUM_OUT_OF_RANGE);
+    OPENSSL_PUT_ERROR(EC, EC_R_BIGNUM_OUT_OF_RANGE);
     return 0;
   }
 
@@ -134,7 +134,7 @@ static int BN_to_felem(felem out, const BIGNUM *bn) {
   memset(b_out, 0, sizeof(b_out));
   unsigned num_bytes = BN_num_bytes(bn);
   if (num_bytes > sizeof(b_out)) {
-    OPENSSL_PUT_ERROR(EC, BN_to_felem, EC_R_BIGNUM_OUT_OF_RANGE);
+    OPENSSL_PUT_ERROR(EC, EC_R_BIGNUM_OUT_OF_RANGE);
     return 0;
   }
 
@@ -1638,8 +1638,7 @@ int ec_GFp_nistp256_group_set_curve(EC_GROUP *group, const BIGNUM *p,
   if (BN_cmp(curve_p, p) ||
       BN_cmp(curve_a, a) ||
       BN_cmp(curve_b, b)) {
-    OPENSSL_PUT_ERROR(EC, ec_GFp_nistp256_group_set_curve,
-                      EC_R_WRONG_CURVE_PARAMETERS);
+    OPENSSL_PUT_ERROR(EC, EC_R_WRONG_CURVE_PARAMETERS);
     goto err;
   }
   ret = ec_GFp_simple_group_set_curve(group, p, a, b, ctx);
@@ -1661,8 +1660,7 @@ int ec_GFp_nistp256_point_get_affine_coordinates(const EC_GROUP *group,
   longfelem tmp;
 
   if (EC_POINT_is_at_infinity(group, point)) {
-    OPENSSL_PUT_ERROR(EC, ec_GFp_nistp256_point_get_affine_coordinates,
-                      EC_R_POINT_AT_INFINITY);
+    OPENSSL_PUT_ERROR(EC, EC_R_POINT_AT_INFINITY);
     return 0;
   }
   if (!BN_to_felem(x_in, &point->X) ||
@@ -1677,8 +1675,7 @@ int ec_GFp_nistp256_point_get_affine_coordinates(const EC_GROUP *group,
   felem_reduce(x_in, tmp);
   felem_contract(x_out, x_in);
   if (x != NULL && !smallfelem_to_BN(x, x_out)) {
-    OPENSSL_PUT_ERROR(EC, ec_GFp_nistp256_point_get_affine_coordinates,
-                      ERR_R_BN_LIB);
+    OPENSSL_PUT_ERROR(EC, ERR_R_BN_LIB);
     return 0;
   }
   felem_mul(tmp, z1, z2);
@@ -1687,8 +1684,7 @@ int ec_GFp_nistp256_point_get_affine_coordinates(const EC_GROUP *group,
   felem_reduce(y_in, tmp);
   felem_contract(y_out, y_in);
   if (y != NULL && !smallfelem_to_BN(y, y_out)) {
-    OPENSSL_PUT_ERROR(EC, ec_GFp_nistp256_point_get_affine_coordinates,
-                      ERR_R_BN_LIB);
+    OPENSSL_PUT_ERROR(EC, ERR_R_BN_LIB);
     return 0;
   }
   return 1;
@@ -1763,7 +1759,7 @@ int ec_GFp_nistp256_points_mul(const EC_GROUP *group, EC_POINT *r,
     if (!smallfelem_to_BN(x, g_pre_comp[0][1][0]) ||
         !smallfelem_to_BN(y, g_pre_comp[0][1][1]) ||
         !smallfelem_to_BN(z, g_pre_comp[0][1][2])) {
-      OPENSSL_PUT_ERROR(EC, ec_GFp_nistp256_points_mul, ERR_R_BN_LIB);
+      OPENSSL_PUT_ERROR(EC, ERR_R_BN_LIB);
       goto err;
     }
     if (!ec_point_set_Jprojective_coordinates_GFp(group, generator, x, y, z,
@@ -1794,7 +1790,7 @@ int ec_GFp_nistp256_points_mul(const EC_GROUP *group, EC_POINT *r,
     }
     if (secrets == NULL || pre_comp == NULL ||
         (mixed && tmp_smallfelems == NULL)) {
-      OPENSSL_PUT_ERROR(EC, ec_GFp_nistp256_points_mul, ERR_R_MALLOC_FAILURE);
+      OPENSSL_PUT_ERROR(EC, ERR_R_MALLOC_FAILURE);
       goto err;
     }
 
@@ -1818,7 +1814,7 @@ int ec_GFp_nistp256_points_mul(const EC_GROUP *group, EC_POINT *r,
           /* this is an unusual input, and we don't guarantee
            * constant-timeness. */
           if (!BN_nnmod(tmp_scalar, p_scalar, &group->order, ctx)) {
-            OPENSSL_PUT_ERROR(EC, ec_GFp_nistp256_points_mul, ERR_R_BN_LIB);
+            OPENSSL_PUT_ERROR(EC, ERR_R_BN_LIB);
             goto err;
           }
           num_bytes = BN_bn2bin(tmp_scalar, tmp);
@@ -1863,7 +1859,7 @@ int ec_GFp_nistp256_points_mul(const EC_GROUP *group, EC_POINT *r,
       /* this is an unusual input, and we don't guarantee
        * constant-timeness. */
       if (!BN_nnmod(tmp_scalar, scalar, &group->order, ctx)) {
-        OPENSSL_PUT_ERROR(EC, ec_GFp_nistp256_points_mul, ERR_R_BN_LIB);
+        OPENSSL_PUT_ERROR(EC, ERR_R_BN_LIB);
         goto err;
       }
       num_bytes = BN_bn2bin(tmp_scalar, tmp);
@@ -1889,7 +1885,7 @@ int ec_GFp_nistp256_points_mul(const EC_GROUP *group, EC_POINT *r,
   if (!smallfelem_to_BN(x, x_in) ||
       !smallfelem_to_BN(y, y_in) ||
       !smallfelem_to_BN(z, z_in)) {
-    OPENSSL_PUT_ERROR(EC, ec_GFp_nistp256_points_mul, ERR_R_BN_LIB);
+    OPENSSL_PUT_ERROR(EC, ERR_R_BN_LIB);
     goto err;
   }
   ret = ec_point_set_Jprojective_coordinates_GFp(group, r, x, y, z, ctx);

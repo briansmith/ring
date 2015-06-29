@@ -156,7 +156,7 @@ int X509_TRUST_get_by_id(int id)
 int X509_TRUST_set(int *t, int trust)
 {
 	if(X509_TRUST_get_by_id(trust) == -1) {
-		OPENSSL_PUT_ERROR(X509, X509_TRUST_set, X509_R_INVALID_TRUST);
+		OPENSSL_PUT_ERROR(X509, X509_R_INVALID_TRUST);
 		return 0;
 	}
 	*t = trust;
@@ -179,7 +179,7 @@ int X509_TRUST_add(int id, int flags, int (*ck)(X509_TRUST *, X509 *, int),
 	/* Need a new entry */
 	if(idx == -1) {
 		if(!(trtmp = OPENSSL_malloc(sizeof(X509_TRUST)))) {
-			OPENSSL_PUT_ERROR(X509, X509_TRUST_add, ERR_R_MALLOC_FAILURE);
+			OPENSSL_PUT_ERROR(X509, ERR_R_MALLOC_FAILURE);
 			return 0;
 		}
 		trtmp->flags = X509_TRUST_DYNAMIC;
@@ -188,7 +188,7 @@ int X509_TRUST_add(int id, int flags, int (*ck)(X509_TRUST *, X509 *, int),
 	/* Duplicate the supplied name. */
 	name_dup = BUF_strdup(name);
 	if (name_dup == NULL) {
-		OPENSSL_PUT_ERROR(X509, X509_TRUST_add, ERR_R_MALLOC_FAILURE);
+		OPENSSL_PUT_ERROR(X509, ERR_R_MALLOC_FAILURE);
 		if (idx == -1)
 			OPENSSL_free(trtmp);
 		return 0;
@@ -210,12 +210,12 @@ int X509_TRUST_add(int id, int flags, int (*ck)(X509_TRUST *, X509 *, int),
 	/* If its a new entry manage the dynamic table */
 	if(idx == -1) {
 		if(!trtable && !(trtable = sk_X509_TRUST_new(tr_cmp))) {
-			OPENSSL_PUT_ERROR(X509, X509_TRUST_add, ERR_R_MALLOC_FAILURE);
+			OPENSSL_PUT_ERROR(X509, ERR_R_MALLOC_FAILURE);
 			trtable_free(trtmp);
 			return 0;
 		}
 		if (!sk_X509_TRUST_push(trtable, trtmp)) {
-			OPENSSL_PUT_ERROR(X509, X509_TRUST_add, ERR_R_MALLOC_FAILURE);
+			OPENSSL_PUT_ERROR(X509, ERR_R_MALLOC_FAILURE);
 			trtable_free(trtmp);
 			return 0;
 		}

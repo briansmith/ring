@@ -106,7 +106,7 @@ int ASN1_item_sign_ctx(const ASN1_ITEM *it,
 	if ((buf_in == NULL) || (buf_out == NULL))
 		{
 		outl=0;
-		OPENSSL_PUT_ERROR(X509, ASN1_item_sign_ctx, ERR_R_MALLOC_FAILURE);
+		OPENSSL_PUT_ERROR(X509, ERR_R_MALLOC_FAILURE);
 		goto err;
 		}
 
@@ -114,7 +114,7 @@ int ASN1_item_sign_ctx(const ASN1_ITEM *it,
 		|| !EVP_DigestSignFinal(ctx, buf_out, &outl))
 		{
 		outl=0;
-		OPENSSL_PUT_ERROR(X509, ASN1_item_sign_ctx, ERR_R_EVP_LIB);
+		OPENSSL_PUT_ERROR(X509, ERR_R_EVP_LIB);
 		goto err;
 		}
 	if (signature->data != NULL) OPENSSL_free(signature->data);

@@ -176,7 +176,7 @@ int ASN1_get_object(const unsigned char **pp, long *plength, int *ptag,
 #endif
 	if (*plength > (omax - (p - *pp)))
 		{
-		OPENSSL_PUT_ERROR(ASN1, ASN1_get_object, ASN1_R_TOO_LONG);
+		OPENSSL_PUT_ERROR(ASN1, ASN1_R_TOO_LONG);
 		/* Set this so that even if things are not long enough
 		 * the values are set correctly */
 		ret|=0x80;
@@ -184,7 +184,7 @@ int ASN1_get_object(const unsigned char **pp, long *plength, int *ptag,
 	*pp=p;
 	return(ret|inf);
 err:
-	OPENSSL_PUT_ERROR(ASN1, ASN1_get_object, ASN1_R_HEADER_TOO_LONG);
+	OPENSSL_PUT_ERROR(ASN1, ASN1_R_HEADER_TOO_LONG);
 	return(0x80);
 	}
 
@@ -426,7 +426,7 @@ int ASN1_STRING_set(ASN1_STRING *str, const void *_data, int len)
 
 		if (str->data == NULL)
 			{
-			OPENSSL_PUT_ERROR(ASN1, ASN1_STRING_set, ERR_R_MALLOC_FAILURE);
+			OPENSSL_PUT_ERROR(ASN1, ERR_R_MALLOC_FAILURE);
 			str->data=c;
 			return(0);
 			}
@@ -462,7 +462,7 @@ ASN1_STRING *ASN1_STRING_type_new(int type)
 	ret=(ASN1_STRING *)OPENSSL_malloc(sizeof(ASN1_STRING));
 	if (ret == NULL)
 		{
-		OPENSSL_PUT_ERROR(ASN1, ASN1_STRING_type_new, ERR_R_MALLOC_FAILURE);
+		OPENSSL_PUT_ERROR(ASN1, ERR_R_MALLOC_FAILURE);
 		return(NULL);
 		}
 	ret->length=0;

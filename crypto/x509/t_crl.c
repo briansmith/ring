@@ -70,7 +70,7 @@ int X509_CRL_print_fp(FILE *fp, X509_CRL *x)
 
         if ((b=BIO_new(BIO_s_file())) == NULL)
 		{
-		OPENSSL_PUT_ERROR(X509, X509_CRL_print_fp, ERR_R_BUF_LIB);
+		OPENSSL_PUT_ERROR(X509, ERR_R_BUF_LIB);
                 return(0);
 		}
         BIO_set_fp(b,fp,BIO_NOCLOSE);

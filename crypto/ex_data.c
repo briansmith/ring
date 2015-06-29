@@ -138,7 +138,7 @@ int CRYPTO_get_ex_new_index(CRYPTO_EX_DATA_CLASS *ex_data_class, int *out_index,
 
   funcs = OPENSSL_malloc(sizeof(CRYPTO_EX_DATA_FUNCS));
   if (funcs == NULL) {
-    OPENSSL_PUT_ERROR(CRYPTO, CRYPTO_get_ex_new_index, ERR_R_MALLOC_FAILURE);
+    OPENSSL_PUT_ERROR(CRYPTO, ERR_R_MALLOC_FAILURE);
     return 0;
   }
 
@@ -156,7 +156,7 @@ int CRYPTO_get_ex_new_index(CRYPTO_EX_DATA_CLASS *ex_data_class, int *out_index,
 
   if (ex_data_class->meth == NULL ||
       !sk_CRYPTO_EX_DATA_FUNCS_push(ex_data_class->meth, funcs)) {
-    OPENSSL_PUT_ERROR(CRYPTO, CRYPTO_get_ex_new_index, ERR_R_MALLOC_FAILURE);
+    OPENSSL_PUT_ERROR(CRYPTO, ERR_R_MALLOC_FAILURE);
     OPENSSL_free(funcs);
     goto err;
   }
@@ -175,7 +175,7 @@ int CRYPTO_set_ex_data(CRYPTO_EX_DATA *ad, int index, void *val) {
   if (ad->sk == NULL) {
     ad->sk = sk_void_new_null();
     if (ad->sk == NULL) {
-      OPENSSL_PUT_ERROR(CRYPTO, CRYPTO_set_ex_data, ERR_R_MALLOC_FAILURE);
+      OPENSSL_PUT_ERROR(CRYPTO, ERR_R_MALLOC_FAILURE);
       return 0;
     }
   }
@@ -185,7 +185,7 @@ int CRYPTO_set_ex_data(CRYPTO_EX_DATA *ad, int index, void *val) {
   /* Add NULL values until the stack is long enough. */
   for (i = n; i <= index; i++) {
     if (!sk_void_push(ad->sk, NULL)) {
-      OPENSSL_PUT_ERROR(CRYPTO, CRYPTO_set_ex_data, ERR_R_MALLOC_FAILURE);
+      OPENSSL_PUT_ERROR(CRYPTO, ERR_R_MALLOC_FAILURE);
       return 0;
     }
   }
@@ -222,7 +222,7 @@ static int get_func_pointers(STACK_OF(CRYPTO_EX_DATA_FUNCS) **out,
   CRYPTO_STATIC_MUTEX_unlock(&ex_data_class->lock);
 
   if (n > 0 && *out == NULL) {
-    OPENSSL_PUT_ERROR(CRYPTO, get_func_pointers, ERR_R_MALLOC_FAILURE);
+    OPENSSL_PUT_ERROR(CRYPTO, ERR_R_MALLOC_FAILURE);
     return 0;
   }
 

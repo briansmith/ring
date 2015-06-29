@@ -69,7 +69,7 @@ int BN_lshift(BIGNUM *r, const BIGNUM *a, int n) {
   BN_ULONG l;
 
   if (n < 0) {
-    OPENSSL_PUT_ERROR(BN, BN_lshift, BN_R_NEGATIVE_NUMBER);
+    OPENSSL_PUT_ERROR(BN, BN_R_NEGATIVE_NUMBER);
     return 0;
   }
 
@@ -138,7 +138,7 @@ int BN_rshift(BIGNUM *r, const BIGNUM *a, int n) {
   BN_ULONG l, tmp;
 
   if (n < 0) {
-    OPENSSL_PUT_ERROR(BN, BN_rshift, BN_R_NEGATIVE_NUMBER);
+    OPENSSL_PUT_ERROR(BN, BN_R_NEGATIVE_NUMBER);
     return 0;
   }
 

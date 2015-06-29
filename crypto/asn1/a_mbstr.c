@@ -108,7 +108,7 @@ int ASN1_mbstring_ncopy(ASN1_STRING **out, const unsigned char *in, int len,
 
 		case MBSTRING_BMP:
 		if(len & 1) {
-			OPENSSL_PUT_ERROR(ASN1, ASN1_mbstring_ncopy,  ASN1_R_INVALID_BMPSTRING_LENGTH);
+			OPENSSL_PUT_ERROR(ASN1, ASN1_R_INVALID_BMPSTRING_LENGTH);
 			return -1;
 		}
 		nchar = len >> 1;
@@ -116,7 +116,7 @@ int ASN1_mbstring_ncopy(ASN1_STRING **out, const unsigned char *in, int len,
 
 		case MBSTRING_UNIV:
 		if(len & 3) {
-			OPENSSL_PUT_ERROR(ASN1, ASN1_mbstring_ncopy,  ASN1_R_INVALID_UNIVERSALSTRING_LENGTH);
+			OPENSSL_PUT_ERROR(ASN1, ASN1_R_INVALID_UNIVERSALSTRING_LENGTH);
 			return -1;
 		}
 		nchar = len >> 2;
@@ -127,7 +127,7 @@ int ASN1_mbstring_ncopy(ASN1_STRING **out, const unsigned char *in, int len,
 		/* This counts the characters and does utf8 syntax checking */
 		ret = traverse_string(in, len, MBSTRING_UTF8, in_utf8, &nchar);
 		if(ret < 0) {
-			OPENSSL_PUT_ERROR(ASN1, ASN1_mbstring_ncopy,  ASN1_R_INVALID_UTF8STRING);
+			OPENSSL_PUT_ERROR(ASN1, ASN1_R_INVALID_UTF8STRING);
 			return -1;
 		}
 		break;
@@ -137,19 +137,19 @@ int ASN1_mbstring_ncopy(ASN1_STRING **out, const unsigned char *in, int len,
 		break;
 
 		default:
-		OPENSSL_PUT_ERROR(ASN1, ASN1_mbstring_ncopy,  ASN1_R_UNKNOWN_FORMAT);
+		OPENSSL_PUT_ERROR(ASN1, ASN1_R_UNKNOWN_FORMAT);
 		return -1;
 	}
 
 	if((minsize > 0) && (nchar < minsize)) {
-		OPENSSL_PUT_ERROR(ASN1, ASN1_mbstring_ncopy,  ASN1_R_STRING_TOO_SHORT);
+		OPENSSL_PUT_ERROR(ASN1, ASN1_R_STRING_TOO_SHORT);
 		BIO_snprintf(strbuf, sizeof strbuf, "%ld", minsize);
 		ERR_add_error_data(2, "minsize=", strbuf);
 		return -1;
 	}
 
 	if((maxsize > 0) && (nchar > maxsize)) {
-		OPENSSL_PUT_ERROR(ASN1, ASN1_mbstring_ncopy,  ASN1_R_STRING_TOO_LONG);
+		OPENSSL_PUT_ERROR(ASN1, ASN1_R_STRING_TOO_LONG);
 		BIO_snprintf(strbuf, sizeof strbuf, "%ld", maxsize);
 		ERR_add_error_data(2, "maxsize=", strbuf);
 		return -1;
@@ -157,7 +157,7 @@ int ASN1_mbstring_ncopy(ASN1_STRING **out, const unsigned char *in, int len,
 
 	/* Now work out minimal type (if any) */
 	if(traverse_string(in, len, inform, type_str, &mask) < 0) {
-		OPENSSL_PUT_ERROR(ASN1, ASN1_mbstring_ncopy,  ASN1_R_ILLEGAL_CHARACTERS);
+		OPENSSL_PUT_ERROR(ASN1, ASN1_R_ILLEGAL_CHARACTERS);
 		return -1;
 	}
 
@@ -191,7 +191,7 @@ int ASN1_mbstring_ncopy(ASN1_STRING **out, const unsigned char *in, int len,
 		free_out = 1;
 		dest = ASN1_STRING_type_new(str_type);
 		if(!dest) {
-			OPENSSL_PUT_ERROR(ASN1, ASN1_mbstring_ncopy,  ERR_R_MALLOC_FAILURE);
+			OPENSSL_PUT_ERROR(ASN1, ERR_R_MALLOC_FAILURE);
 			return -1;
 		}
 		*out = dest;
@@ -199,7 +199,7 @@ int ASN1_mbstring_ncopy(ASN1_STRING **out, const unsigned char *in, int len,
 	/* If both the same type just copy across */
 	if(inform == outform) {
 		if(!ASN1_STRING_set(dest, in, len)) {
-			OPENSSL_PUT_ERROR(ASN1, ASN1_mbstring_ncopy, ERR_R_MALLOC_FAILURE);
+			OPENSSL_PUT_ERROR(ASN1, ERR_R_MALLOC_FAILURE);
 			return -1;
 		}
 		return str_type;
@@ -230,7 +230,7 @@ int ASN1_mbstring_ncopy(ASN1_STRING **out, const unsigned char *in, int len,
 	}
 	if(!(p = OPENSSL_malloc(outlen + 1))) {
 		if(free_out) ASN1_STRING_free(dest);
-		OPENSSL_PUT_ERROR(ASN1, ASN1_mbstring_ncopy, ERR_R_MALLOC_FAILURE);
+		OPENSSL_PUT_ERROR(ASN1, ERR_R_MALLOC_FAILURE);
 		return -1;
 	}
 	dest->length = outlen;

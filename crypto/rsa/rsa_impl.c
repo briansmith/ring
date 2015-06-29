@@ -103,24 +103,24 @@ static int encrypt(RSA *rsa, size_t *out_len, uint8_t *out, size_t max_out,
   int i, ret = 0;
 
   if (rsa_size > OPENSSL_RSA_MAX_MODULUS_BITS) {
-    OPENSSL_PUT_ERROR(RSA, encrypt, RSA_R_MODULUS_TOO_LARGE);
+    OPENSSL_PUT_ERROR(RSA, RSA_R_MODULUS_TOO_LARGE);
     return 0;
   }
 
   if (max_out < rsa_size) {
-    OPENSSL_PUT_ERROR(RSA, encrypt, RSA_R_OUTPUT_BUFFER_TOO_SMALL);
+    OPENSSL_PUT_ERROR(RSA, RSA_R_OUTPUT_BUFFER_TOO_SMALL);
     return 0;
   }
 
   if (BN_ucmp(rsa->n, rsa->e) <= 0) {
-    OPENSSL_PUT_ERROR(RSA, encrypt, RSA_R_BAD_E_VALUE);
+    OPENSSL_PUT_ERROR(RSA, RSA_R_BAD_E_VALUE);
     return 0;
   }
 
   /* for large moduli, enforce exponent limit */
   if (BN_num_bits(rsa->n) > OPENSSL_RSA_SMALL_MODULUS_BITS &&
       BN_num_bits(rsa->e) > OPENSSL_RSA_MAX_PUBEXP_BITS) {
-    OPENSSL_PUT_ERROR(RSA, encrypt, RSA_R_BAD_E_VALUE);
+    OPENSSL_PUT_ERROR(RSA, RSA_R_BAD_E_VALUE);
     return 0;
   }
 
@@ -134,7 +134,7 @@ static int encrypt(RSA *rsa, size_t *out_len, uint8_t *out, size_t max_out,
   result = BN_CTX_get(ctx);
   buf = OPENSSL_malloc(rsa_size);
   if (!f || !result || !buf) {
-    OPENSSL_PUT_ERROR(RSA, encrypt, ERR_R_MALLOC_FAILURE);
+    OPENSSL_PUT_ERROR(RSA, ERR_R_MALLOC_FAILURE);
     goto err;
   }
 
@@ -151,7 +151,7 @@ static int encrypt(RSA *rsa, size_t *out_len, uint8_t *out, size_t max_out,
       i = RSA_padding_add_none(buf, rsa_size, in, in_len);
       break;
     default:
-      OPENSSL_PUT_ERROR(RSA, encrypt, RSA_R_UNKNOWN_PADDING_TYPE);
+      OPENSSL_PUT_ERROR(RSA, RSA_R_UNKNOWN_PADDING_TYPE);
       goto err;
   }
 
@@ -165,7 +165,7 @@ static int encrypt(RSA *rsa, size_t *out_len, uint8_t *out, size_t max_out,
 
   if (BN_ucmp(f, rsa->n) >= 0) {
     /* usually the padding functions would catch this */
-    OPENSSL_PUT_ERROR(RSA, encrypt, RSA_R_DATA_TOO_LARGE_FOR_MODULUS);
+    OPENSSL_PUT_ERROR(RSA, RSA_R_DATA_TOO_LARGE_FOR_MODULUS);
     goto err;
   }
 
@@ -184,7 +184,7 @@ static int encrypt(RSA *rsa, size_t *out_len, uint8_t *out, size_t max_out,
   /* put in leading 0 bytes if the number is less than the length of the
    * modulus */
   if (!BN_bn2bin_padded(out, rsa_size, result)) {
-    OPENSSL_PUT_ERROR(RSA, encrypt, ERR_R_INTERNAL_ERROR);
+    OPENSSL_PUT_ERROR(RSA, ERR_R_INTERNAL_ERROR);
     goto err;
   }
 
@@ -318,13 +318,13 @@ static int sign_raw(RSA *rsa, size_t *out_len, uint8_t *out, size_t max_out,
   int i, ret = 0;
 
   if (max_out < rsa_size) {
-    OPENSSL_PUT_ERROR(RSA, sign_raw, RSA_R_OUTPUT_BUFFER_TOO_SMALL);
+    OPENSSL_PUT_ERROR(RSA, RSA_R_OUTPUT_BUFFER_TOO_SMALL);
     return 0;
   }
 
   buf = OPENSSL_malloc(rsa_size);
   if (buf == NULL) {
-    OPENSSL_PUT_ERROR(RSA, sign_raw, ERR_R_MALLOC_FAILURE);
+    OPENSSL_PUT_ERROR(RSA, ERR_R_MALLOC_FAILURE);
     goto err;
   }
 
@@ -336,7 +336,7 @@ static int sign_raw(RSA *rsa, size_t *out_len, uint8_t *out, size_t max_out,
       i = RSA_padding_add_none(buf, rsa_size, in, in_len);
       break;
     default:
-      OPENSSL_PUT_ERROR(RSA, sign_raw, RSA_R_UNKNOWN_PADDING_TYPE);
+      OPENSSL_PUT_ERROR(RSA, RSA_R_UNKNOWN_PADDING_TYPE);
       goto err;
   }
 
@@ -368,18 +368,18 @@ static int decrypt(RSA *rsa, size_t *out_len, uint8_t *out, size_t max_out,
   int ret = 0;
 
   if (max_out < rsa_size) {
-    OPENSSL_PUT_ERROR(RSA, decrypt, RSA_R_OUTPUT_BUFFER_TOO_SMALL);
+    OPENSSL_PUT_ERROR(RSA, RSA_R_OUTPUT_BUFFER_TOO_SMALL);
     return 0;
   }
 
   buf = OPENSSL_malloc(rsa_size);
   if (buf == NULL) {
-    OPENSSL_PUT_ERROR(RSA, decrypt, ERR_R_MALLOC_FAILURE);
+    OPENSSL_PUT_ERROR(RSA, ERR_R_MALLOC_FAILURE);
     goto err;
   }
 
   if (in_len != rsa_size) {
-    OPENSSL_PUT_ERROR(RSA, decrypt, RSA_R_DATA_LEN_NOT_EQUAL_TO_MOD_LEN);
+    OPENSSL_PUT_ERROR(RSA, RSA_R_DATA_LEN_NOT_EQUAL_TO_MOD_LEN);
     goto err;
   }
 
@@ -400,12 +400,12 @@ static int decrypt(RSA *rsa, size_t *out_len, uint8_t *out, size_t max_out,
       r = RSA_padding_check_none(out, rsa_size, buf, rsa_size);
       break;
     default:
-      OPENSSL_PUT_ERROR(RSA, decrypt, RSA_R_UNKNOWN_PADDING_TYPE);
+      OPENSSL_PUT_ERROR(RSA, RSA_R_UNKNOWN_PADDING_TYPE);
       goto err;
   }
 
   if (r < 0) {
-    OPENSSL_PUT_ERROR(RSA, decrypt, RSA_R_PADDING_CHECK_FAILED);
+    OPENSSL_PUT_ERROR(RSA, RSA_R_PADDING_CHECK_FAILED);
   } else {
     *out_len = r;
     ret = 1;
@@ -430,24 +430,24 @@ static int verify_raw(RSA *rsa, size_t *out_len, uint8_t *out, size_t max_out,
   BN_CTX *ctx = NULL;
 
   if (BN_num_bits(rsa->n) > OPENSSL_RSA_MAX_MODULUS_BITS) {
-    OPENSSL_PUT_ERROR(RSA, verify_raw, RSA_R_MODULUS_TOO_LARGE);
+    OPENSSL_PUT_ERROR(RSA, RSA_R_MODULUS_TOO_LARGE);
     return 0;
   }
 
   if (BN_ucmp(rsa->n, rsa->e) <= 0) {
-    OPENSSL_PUT_ERROR(RSA, verify_raw, RSA_R_BAD_E_VALUE);
+    OPENSSL_PUT_ERROR(RSA, RSA_R_BAD_E_VALUE);
     return 0;
   }
 
   if (max_out < rsa_size) {
-    OPENSSL_PUT_ERROR(RSA, verify_raw, RSA_R_OUTPUT_BUFFER_TOO_SMALL);
+    OPENSSL_PUT_ERROR(RSA, RSA_R_OUTPUT_BUFFER_TOO_SMALL);
     return 0;
   }
 
   /* for large moduli, enforce exponent limit */
   if (BN_num_bits(rsa->n) > OPENSSL_RSA_SMALL_MODULUS_BITS &&
       BN_num_bits(rsa->e) > OPENSSL_RSA_MAX_PUBEXP_BITS) {
-    OPENSSL_PUT_ERROR(RSA, verify_raw, RSA_R_BAD_E_VALUE);
+    OPENSSL_PUT_ERROR(RSA, RSA_R_BAD_E_VALUE);
     return 0;
   }
 
@@ -461,12 +461,12 @@ static int verify_raw(RSA *rsa, size_t *out_len, uint8_t *out, size_t max_out,
   result = BN_CTX_get(ctx);
   buf = OPENSSL_malloc(rsa_size);
   if (!f || !result || !buf) {
-    OPENSSL_PUT_ERROR(RSA, verify_raw, ERR_R_MALLOC_FAILURE);
+    OPENSSL_PUT_ERROR(RSA, ERR_R_MALLOC_FAILURE);
     goto err;
   }
 
   if (in_len != rsa_size) {
-    OPENSSL_PUT_ERROR(RSA, verify_raw, RSA_R_DATA_LEN_NOT_EQUAL_TO_MOD_LEN);
+    OPENSSL_PUT_ERROR(RSA, RSA_R_DATA_LEN_NOT_EQUAL_TO_MOD_LEN);
     goto err;
   }
 
@@ -475,7 +475,7 @@ static int verify_raw(RSA *rsa, size_t *out_len, uint8_t *out, size_t max_out,
   }
 
   if (BN_ucmp(f, rsa->n) >= 0) {
-    OPENSSL_PUT_ERROR(RSA, verify_raw, RSA_R_DATA_TOO_LARGE_FOR_MODULUS);
+    OPENSSL_PUT_ERROR(RSA, RSA_R_DATA_TOO_LARGE_FOR_MODULUS);
     goto err;
   }
 
@@ -492,7 +492,7 @@ static int verify_raw(RSA *rsa, size_t *out_len, uint8_t *out, size_t max_out,
   }
 
   if (!BN_bn2bin_padded(buf, rsa_size, result)) {
-    OPENSSL_PUT_ERROR(RSA, verify_raw, ERR_R_INTERNAL_ERROR);
+    OPENSSL_PUT_ERROR(RSA, ERR_R_INTERNAL_ERROR);
     goto err;
   }
 
@@ -504,12 +504,12 @@ static int verify_raw(RSA *rsa, size_t *out_len, uint8_t *out, size_t max_out,
       r = RSA_padding_check_none(out, rsa_size, buf, rsa_size);
       break;
     default:
-      OPENSSL_PUT_ERROR(RSA, verify_raw, RSA_R_UNKNOWN_PADDING_TYPE);
+      OPENSSL_PUT_ERROR(RSA, RSA_R_UNKNOWN_PADDING_TYPE);
       goto err;
   }
 
   if (r < 0) {
-    OPENSSL_PUT_ERROR(RSA, verify_raw, RSA_R_PADDING_CHECK_FAILED);
+    OPENSSL_PUT_ERROR(RSA, RSA_R_PADDING_CHECK_FAILED);
   } else {
     *out_len = r;
     ret = 1;
@@ -544,7 +544,7 @@ static int private_transform(RSA *rsa, uint8_t *out, const uint8_t *in,
   result = BN_CTX_get(ctx);
 
   if (f == NULL || result == NULL) {
-    OPENSSL_PUT_ERROR(RSA, private_transform, ERR_R_MALLOC_FAILURE);
+    OPENSSL_PUT_ERROR(RSA, ERR_R_MALLOC_FAILURE);
     goto err;
   }
 
@@ -554,14 +554,14 @@ static int private_transform(RSA *rsa, uint8_t *out, const uint8_t *in,
 
   if (BN_ucmp(f, rsa->n) >= 0) {
     /* Usually the padding functions would catch this. */
-    OPENSSL_PUT_ERROR(RSA, private_transform, RSA_R_DATA_TOO_LARGE_FOR_MODULUS);
+    OPENSSL_PUT_ERROR(RSA, RSA_R_DATA_TOO_LARGE_FOR_MODULUS);
     goto err;
   }
 
   if (!(rsa->flags & RSA_FLAG_NO_BLINDING)) {
     blinding = rsa_blinding_get(rsa, &blinding_index, ctx);
     if (blinding == NULL) {
-      OPENSSL_PUT_ERROR(RSA, private_transform, ERR_R_INTERNAL_ERROR);
+      OPENSSL_PUT_ERROR(RSA, ERR_R_INTERNAL_ERROR);
       goto err;
     }
     if (!BN_BLINDING_convert_ex(f, NULL, blinding, ctx)) {
@@ -602,7 +602,7 @@ static int private_transform(RSA *rsa, uint8_t *out, const uint8_t *in,
   }
 
   if (!BN_bn2bin_padded(out, len, result)) {
-    OPENSSL_PUT_ERROR(RSA, private_transform, ERR_R_INTERNAL_ERROR);
+    OPENSSL_PUT_ERROR(RSA, ERR_R_INTERNAL_ERROR);
     goto err;
   }
 
@@ -827,7 +827,7 @@ static int keygen_multiprime(RSA *rsa, int bits, int num_primes,
 
   if (num_primes < 2) {
     ok = 0; /* we set our own err */
-    OPENSSL_PUT_ERROR(RSA, keygen_multiprime, RSA_R_MUST_HAVE_AT_LEAST_TWO_PRIMES);
+    OPENSSL_PUT_ERROR(RSA, RSA_R_MUST_HAVE_AT_LEAST_TWO_PRIMES);
     goto err;
   }
 
@@ -932,7 +932,7 @@ static int keygen_multiprime(RSA *rsa, int bits, int num_primes,
     } while ((BN_cmp(rsa->p, rsa->q) == 0) && (++degenerate < 3));
     if (degenerate == 3) {
       ok = 0; /* we set our own err */
-      OPENSSL_PUT_ERROR(RSA, keygen_multiprime, RSA_R_KEY_SIZE_TOO_SMALL);
+      OPENSSL_PUT_ERROR(RSA, RSA_R_KEY_SIZE_TOO_SMALL);
       goto err;
     }
     if (!BN_sub(r2, rsa->q, BN_value_one()) ||
@@ -1093,7 +1093,7 @@ static int keygen_multiprime(RSA *rsa, int bits, int num_primes,
 
 err:
   if (ok == -1) {
-    OPENSSL_PUT_ERROR(RSA, keygen_multiprime, ERR_LIB_BN);
+    OPENSSL_PUT_ERROR(RSA, ERR_LIB_BN);
     ok = 0;
   }
   if (ctx != NULL) {

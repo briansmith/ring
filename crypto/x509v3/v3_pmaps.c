@@ -122,7 +122,7 @@ static void *v2i_POLICY_MAPPINGS(const X509V3_EXT_METHOD *method,
 	size_t i;
 
 	if(!(pmaps = sk_POLICY_MAPPING_new_null())) {
-		OPENSSL_PUT_ERROR(X509V3, v2i_POLICY_MAPPINGS, ERR_R_MALLOC_FAILURE);
+		OPENSSL_PUT_ERROR(X509V3, ERR_R_MALLOC_FAILURE);
 		return NULL;
 	}
 
@@ -130,7 +130,7 @@ static void *v2i_POLICY_MAPPINGS(const X509V3_EXT_METHOD *method,
 		val = sk_CONF_VALUE_value(nval, i);
 		if(!val->value || !val->name) {
 			sk_POLICY_MAPPING_pop_free(pmaps, POLICY_MAPPING_free);
-			OPENSSL_PUT_ERROR(X509V3, v2i_POLICY_MAPPINGS, X509V3_R_INVALID_OBJECT_IDENTIFIER);
+			OPENSSL_PUT_ERROR(X509V3, X509V3_R_INVALID_OBJECT_IDENTIFIER);
 			X509V3_conf_err(val);
 			return NULL;
 		}
@@ -138,14 +138,14 @@ static void *v2i_POLICY_MAPPINGS(const X509V3_EXT_METHOD *method,
 		obj2 = OBJ_txt2obj(val->value, 0);
 		if(!obj1 || !obj2) {
 			sk_POLICY_MAPPING_pop_free(pmaps, POLICY_MAPPING_free);
-			OPENSSL_PUT_ERROR(X509V3, v2i_POLICY_MAPPINGS, X509V3_R_INVALID_OBJECT_IDENTIFIER);
+			OPENSSL_PUT_ERROR(X509V3, X509V3_R_INVALID_OBJECT_IDENTIFIER);
 			X509V3_conf_err(val);
 			return NULL;
 		}
 		pmap = POLICY_MAPPING_new();
 		if (!pmap) {
 			sk_POLICY_MAPPING_pop_free(pmaps, POLICY_MAPPING_free);
-			OPENSSL_PUT_ERROR(X509V3, v2i_POLICY_MAPPINGS, ERR_R_MALLOC_FAILURE);
+			OPENSSL_PUT_ERROR(X509V3, ERR_R_MALLOC_FAILURE);
 			return NULL;
 		}
 		pmap->issuerDomainPolicy = obj1;

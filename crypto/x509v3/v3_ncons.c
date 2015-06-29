@@ -135,7 +135,7 @@ static void *v2i_NAME_CONSTRAINTS(const X509V3_EXT_METHOD *method,
 			}
 		else
 			{
-			OPENSSL_PUT_ERROR(X509V3, v2i_NAME_CONSTRAINTS, X509V3_R_INVALID_SYNTAX);
+			OPENSSL_PUT_ERROR(X509V3, X509V3_R_INVALID_SYNTAX);
 			goto err;
 			}
 		tval.value = val->value;
@@ -152,7 +152,7 @@ static void *v2i_NAME_CONSTRAINTS(const X509V3_EXT_METHOD *method,
 	return ncons;
 
 	memerr:
-	OPENSSL_PUT_ERROR(X509V3, v2i_NAME_CONSTRAINTS, ERR_R_MALLOC_FAILURE);
+	OPENSSL_PUT_ERROR(X509V3, ERR_R_MALLOC_FAILURE);
 	err:
 	if (ncons)
 		NAME_CONSTRAINTS_free(ncons);

@@ -71,7 +71,7 @@ EVP_PKEY *d2i_PrivateKey(int type, EVP_PKEY **out, const uint8_t **inp,
   if (out == NULL || *out == NULL) {
     ret = EVP_PKEY_new();
     if (ret == NULL) {
-      OPENSSL_PUT_ERROR(EVP, d2i_PrivateKey, ERR_R_EVP_LIB);
+      OPENSSL_PUT_ERROR(EVP, ERR_R_EVP_LIB);
       return NULL;
     }
   } else {
@@ -79,7 +79,7 @@ EVP_PKEY *d2i_PrivateKey(int type, EVP_PKEY **out, const uint8_t **inp,
   }
 
   if (!EVP_PKEY_set_type(ret, type)) {
-    OPENSSL_PUT_ERROR(EVP, d2i_PrivateKey, EVP_R_UNKNOWN_PUBLIC_KEY_TYPE);
+    OPENSSL_PUT_ERROR(EVP, EVP_R_UNKNOWN_PUBLIC_KEY_TYPE);
     goto err;
   }
 
@@ -94,7 +94,7 @@ EVP_PKEY *d2i_PrivateKey(int type, EVP_PKEY **out, const uint8_t **inp,
       ret = EVP_PKCS82PKEY(p8);
       PKCS8_PRIV_KEY_INFO_free(p8);
     } else {
-      OPENSSL_PUT_ERROR(EVP, d2i_PrivateKey, ERR_R_ASN1_LIB);
+      OPENSSL_PUT_ERROR(EVP, ERR_R_ASN1_LIB);
       goto err;
     }
   }
@@ -134,8 +134,7 @@ EVP_PKEY *d2i_AutoPrivateKey(EVP_PKEY **out, const uint8_t **inp, long len) {
 
     sk_ASN1_TYPE_pop_free(inkey, ASN1_TYPE_free);
     if (!p8) {
-      OPENSSL_PUT_ERROR(EVP, d2i_AutoPrivateKey,
-                        EVP_R_UNSUPPORTED_PUBLIC_KEY_TYPE);
+      OPENSSL_PUT_ERROR(EVP, EVP_R_UNSUPPORTED_PUBLIC_KEY_TYPE);
       return NULL;
     }
     ret = EVP_PKCS82PKEY(p8);
@@ -161,7 +160,7 @@ int i2d_PublicKey(EVP_PKEY *key, uint8_t **outp) {
     case EVP_PKEY_EC:
       return i2o_ECPublicKey(key->pkey.ec, outp);
     default:
-      OPENSSL_PUT_ERROR(EVP, i2d_PublicKey, EVP_R_UNSUPPORTED_PUBLIC_KEY_TYPE);
+      OPENSSL_PUT_ERROR(EVP, EVP_R_UNSUPPORTED_PUBLIC_KEY_TYPE);
       return -1;
   }
 }

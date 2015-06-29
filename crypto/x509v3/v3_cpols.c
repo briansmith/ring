@@ -146,19 +146,19 @@ static STACK_OF(POLICYINFO) *r2i_certpol(X509V3_EXT_METHOD *method,
 	int ia5org;
 	pols = sk_POLICYINFO_new_null();
 	if (pols == NULL) {
-		OPENSSL_PUT_ERROR(X509V3, r2i_certpol, ERR_R_MALLOC_FAILURE);
+		OPENSSL_PUT_ERROR(X509V3, ERR_R_MALLOC_FAILURE);
 		return NULL;
 	}
 	vals =  X509V3_parse_list(value);
 	if (vals == NULL) {
-		OPENSSL_PUT_ERROR(X509V3, r2i_certpol, ERR_R_X509V3_LIB);
+		OPENSSL_PUT_ERROR(X509V3, ERR_R_X509V3_LIB);
 		goto err;
 	}
 	ia5org = 0;
 	for(i = 0; i < sk_CONF_VALUE_num(vals); i++) {
 		cnf = sk_CONF_VALUE_value(vals, i);
 		if(cnf->value || !cnf->name ) {
-			OPENSSL_PUT_ERROR(X509V3, r2i_certpol, X509V3_R_INVALID_POLICY_IDENTIFIER);
+			OPENSSL_PUT_ERROR(X509V3, X509V3_R_INVALID_POLICY_IDENTIFIER);
 			X509V3_conf_err(cnf);
 			goto err;
 		}
@@ -170,7 +170,7 @@ static STACK_OF(POLICYINFO) *r2i_certpol(X509V3_EXT_METHOD *method,
 			STACK_OF(CONF_VALUE) *polsect;
 			polsect = X509V3_get_section(ctx, pstr + 1);
 			if(!polsect) {
-				OPENSSL_PUT_ERROR(X509V3, r2i_certpol, X509V3_R_INVALID_SECTION);
+				OPENSSL_PUT_ERROR(X509V3, X509V3_R_INVALID_SECTION);
 
 				X509V3_conf_err(cnf);
 				goto err;
@@ -180,7 +180,7 @@ static STACK_OF(POLICYINFO) *r2i_certpol(X509V3_EXT_METHOD *method,
 			if(!pol) goto err;
 		} else {
 			if(!(pobj = OBJ_txt2obj(cnf->name, 0))) {
-				OPENSSL_PUT_ERROR(X509V3, r2i_certpol, X509V3_R_INVALID_OBJECT_IDENTIFIER);
+				OPENSSL_PUT_ERROR(X509V3, X509V3_R_INVALID_OBJECT_IDENTIFIER);
 				X509V3_conf_err(cnf);
 				goto err;
 			}
@@ -189,7 +189,7 @@ static STACK_OF(POLICYINFO) *r2i_certpol(X509V3_EXT_METHOD *method,
 		}
 		if (!sk_POLICYINFO_push(pols, pol)){
 			POLICYINFO_free(pol);
-			OPENSSL_PUT_ERROR(X509V3, r2i_certpol, ERR_R_MALLOC_FAILURE);
+			OPENSSL_PUT_ERROR(X509V3, ERR_R_MALLOC_FAILURE);
 			goto err;
 		}
 	}
@@ -214,7 +214,7 @@ static POLICYINFO *policy_section(X509V3_CTX *ctx,
 		if(!strcmp(cnf->name, "policyIdentifier")) {
 			ASN1_OBJECT *pobj;
 			if(!(pobj = OBJ_txt2obj(cnf->value, 0))) {
-				OPENSSL_PUT_ERROR(X509V3, policy_section, X509V3_R_INVALID_OBJECT_IDENTIFIER);
+				OPENSSL_PUT_ERROR(X509V3, X509V3_R_INVALID_OBJECT_IDENTIFIER);
 				X509V3_conf_err(cnf);
 				goto err;
 			}
@@ -229,7 +229,7 @@ static POLICYINFO *policy_section(X509V3_CTX *ctx,
                         /* TODO(fork): const correctness */
 			qual->pqualid = (ASN1_OBJECT*) OBJ_nid2obj(NID_id_qt_cps);
 			if (qual->pqualid == NULL) {
-				OPENSSL_PUT_ERROR(X509V3, policy_section, ERR_R_INTERNAL_ERROR);
+				OPENSSL_PUT_ERROR(X509V3, ERR_R_INTERNAL_ERROR);
 				goto err;
 			}
 			qual->d.cpsuri = M_ASN1_IA5STRING_new();
@@ -241,13 +241,13 @@ static POLICYINFO *policy_section(X509V3_CTX *ctx,
 		} else if(!name_cmp(cnf->name, "userNotice")) {
 			STACK_OF(CONF_VALUE) *unot;
 			if(*cnf->value != '@') {
-				OPENSSL_PUT_ERROR(X509V3, policy_section, X509V3_R_EXPECTED_A_SECTION_NAME);
+				OPENSSL_PUT_ERROR(X509V3, X509V3_R_EXPECTED_A_SECTION_NAME);
 				X509V3_conf_err(cnf);
 				goto err;
 			}
 			unot = X509V3_get_section(ctx, cnf->value + 1);
 			if(!unot) {
-				OPENSSL_PUT_ERROR(X509V3, policy_section, X509V3_R_INVALID_SECTION);
+				OPENSSL_PUT_ERROR(X509V3, X509V3_R_INVALID_SECTION);
 
 				X509V3_conf_err(cnf);
 				goto err;
@@ -260,21 +260,21 @@ static POLICYINFO *policy_section(X509V3_CTX *ctx,
 			if(!sk_POLICYQUALINFO_push(pol->qualifiers, qual))
 								 goto merr;
 		} else {
-			OPENSSL_PUT_ERROR(X509V3, policy_section, X509V3_R_INVALID_OPTION);
+			OPENSSL_PUT_ERROR(X509V3, X509V3_R_INVALID_OPTION);
 
 			X509V3_conf_err(cnf);
 			goto err;
 		}
 	}
 	if(!pol->policyid) {
-		OPENSSL_PUT_ERROR(X509V3, policy_section, X509V3_R_NO_POLICY_IDENTIFIER);
+		OPENSSL_PUT_ERROR(X509V3, X509V3_R_NO_POLICY_IDENTIFIER);
 		goto err;
 	}
 
 	return pol;
 
 	merr:
-	OPENSSL_PUT_ERROR(X509V3, policy_section, ERR_R_MALLOC_FAILURE);
+	OPENSSL_PUT_ERROR(X509V3, ERR_R_MALLOC_FAILURE);
 
 	err:
 	POLICYINFO_free(pol);
@@ -296,7 +296,7 @@ static POLICYQUALINFO *notice_section(X509V3_CTX *ctx,
 	qual->pqualid = (ASN1_OBJECT *) OBJ_nid2obj(NID_id_qt_unotice);
 	if (qual->pqualid == NULL)
 		{
-		OPENSSL_PUT_ERROR(X509V3, notice_section, ERR_R_INTERNAL_ERROR);
+		OPENSSL_PUT_ERROR(X509V3, ERR_R_INTERNAL_ERROR);
 		goto err;
 		}
 	if(!(not = USERNOTICE_new())) goto merr;
@@ -328,7 +328,7 @@ static POLICYQUALINFO *notice_section(X509V3_CTX *ctx,
 			} else nref = not->noticeref;
 			nos = X509V3_parse_list(cnf->value);
 			if(!nos || !sk_CONF_VALUE_num(nos)) {
-				OPENSSL_PUT_ERROR(X509V3, notice_section, X509V3_R_INVALID_NUMBERS);
+				OPENSSL_PUT_ERROR(X509V3, X509V3_R_INVALID_NUMBERS);
 				X509V3_conf_err(cnf);
 				goto err;
 			}
@@ -337,7 +337,7 @@ static POLICYQUALINFO *notice_section(X509V3_CTX *ctx,
 			if (!ret)
 				goto err;
 		} else {
-			OPENSSL_PUT_ERROR(X509V3, notice_section, X509V3_R_INVALID_OPTION);
+			OPENSSL_PUT_ERROR(X509V3, X509V3_R_INVALID_OPTION);
 			X509V3_conf_err(cnf);
 			goto err;
 		}
@@ -345,14 +345,14 @@ static POLICYQUALINFO *notice_section(X509V3_CTX *ctx,
 
 	if(not->noticeref && 
 	      (!not->noticeref->noticenos || !not->noticeref->organization)) {
-			OPENSSL_PUT_ERROR(X509V3, notice_section, X509V3_R_NEED_ORGANIZATION_AND_NUMBERS);
+			OPENSSL_PUT_ERROR(X509V3, X509V3_R_NEED_ORGANIZATION_AND_NUMBERS);
 			goto err;
 	}
 
 	return qual;
 
 	merr:
-	OPENSSL_PUT_ERROR(X509V3, notice_section, ERR_R_MALLOC_FAILURE);
+	OPENSSL_PUT_ERROR(X509V3, ERR_R_MALLOC_FAILURE);
 
 	err:
 	POLICYQUALINFO_free(qual);
@@ -369,7 +369,7 @@ static int nref_nos(STACK_OF(ASN1_INTEGER) *nnums, STACK_OF(CONF_VALUE) *nos)
 	for(i = 0; i < sk_CONF_VALUE_num(nos); i++) {
 		cnf = sk_CONF_VALUE_value(nos, i);
 		if(!(aint = s2i_ASN1_INTEGER(NULL, cnf->name))) {
-			OPENSSL_PUT_ERROR(X509V3, nref_nos, X509V3_R_INVALID_NUMBER);
+			OPENSSL_PUT_ERROR(X509V3, X509V3_R_INVALID_NUMBER);
 			goto err;
 		}
 		if(!sk_ASN1_INTEGER_push(nnums, aint)) goto merr;
@@ -377,7 +377,7 @@ static int nref_nos(STACK_OF(ASN1_INTEGER) *nnums, STACK_OF(CONF_VALUE) *nos)
 	return 1;
 
 	merr:
-	OPENSSL_PUT_ERROR(X509V3, nref_nos, ERR_R_MALLOC_FAILURE);
+	OPENSSL_PUT_ERROR(X509V3, ERR_R_MALLOC_FAILURE);
 
 	err:
 	sk_ASN1_INTEGER_pop_free(nnums, ASN1_STRING_free);

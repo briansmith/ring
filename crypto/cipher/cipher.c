@@ -115,7 +115,7 @@ void EVP_CIPHER_CTX_free(EVP_CIPHER_CTX *ctx) {
 
 int EVP_CIPHER_CTX_copy(EVP_CIPHER_CTX *out, const EVP_CIPHER_CTX *in) {
   if (in == NULL || in->cipher == NULL) {
-    OPENSSL_PUT_ERROR(CIPHER, EVP_CIPHER_CTX_copy, CIPHER_R_INPUT_NOT_INITIALIZED);
+    OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_INPUT_NOT_INITIALIZED);
     return 0;
   }
 
@@ -125,7 +125,7 @@ int EVP_CIPHER_CTX_copy(EVP_CIPHER_CTX *out, const EVP_CIPHER_CTX *in) {
   if (in->cipher_data && in->cipher->ctx_size) {
     out->cipher_data = OPENSSL_malloc(in->cipher->ctx_size);
     if (!out->cipher_data) {
-      OPENSSL_PUT_ERROR(CIPHER, EVP_CIPHER_CTX_copy, ERR_R_MALLOC_FAILURE);
+      OPENSSL_PUT_ERROR(CIPHER, ERR_R_MALLOC_FAILURE);
       return 0;
     }
     memcpy(out->cipher_data, in->cipher_data, in->cipher->ctx_size);
@@ -165,7 +165,7 @@ int EVP_CipherInit_ex(EVP_CIPHER_CTX *ctx, const EVP_CIPHER *cipher,
       ctx->cipher_data = OPENSSL_malloc(ctx->cipher->ctx_size);
       if (!ctx->cipher_data) {
         ctx->cipher = NULL;
-        OPENSSL_PUT_ERROR(CIPHER, EVP_CipherInit_ex, ERR_R_MALLOC_FAILURE);
+        OPENSSL_PUT_ERROR(CIPHER, ERR_R_MALLOC_FAILURE);
         return 0;
       }
     } else {
@@ -178,12 +178,12 @@ int EVP_CipherInit_ex(EVP_CIPHER_CTX *ctx, const EVP_CIPHER *cipher,
     if (ctx->cipher->flags & EVP_CIPH_CTRL_INIT) {
       if (!EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_INIT, 0, NULL)) {
         ctx->cipher = NULL;
-        OPENSSL_PUT_ERROR(CIPHER, EVP_CipherInit_ex, CIPHER_R_INITIALIZATION_ERROR);
+        OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_INITIALIZATION_ERROR);
         return 0;
       }
     }
   } else if (!ctx->cipher) {
-    OPENSSL_PUT_ERROR(CIPHER, EVP_CipherInit_ex, CIPHER_R_NO_CIPHER_SET);
+    OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_NO_CIPHER_SET);
     return 0;
   }
 
@@ -338,8 +338,7 @@ int EVP_EncryptFinal_ex(EVP_CIPHER_CTX *ctx, uint8_t *out, int *out_len) {
   bl = ctx->buf_len;
   if (ctx->flags & EVP_CIPH_NO_PADDING) {
     if (bl) {
-      OPENSSL_PUT_ERROR(CIPHER, EVP_EncryptFinal_ex,
-                        CIPHER_R_DATA_NOT_MULTIPLE_OF_BLOCK_LENGTH);
+      OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_DATA_NOT_MULTIPLE_OF_BLOCK_LENGTH);
       return 0;
     }
     *out_len = 0;
@@ -434,8 +433,7 @@ int EVP_DecryptFinal_ex(EVP_CIPHER_CTX *ctx, unsigned char *out, int *out_len) {
   b = ctx->cipher->block_size;
   if (ctx->flags & EVP_CIPH_NO_PADDING) {
     if (ctx->buf_len) {
-      OPENSSL_PUT_ERROR(CIPHER, EVP_DecryptFinal_ex,
-                        CIPHER_R_DATA_NOT_MULTIPLE_OF_BLOCK_LENGTH);
+      OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_DATA_NOT_MULTIPLE_OF_BLOCK_LENGTH);
       return 0;
     }
     *out_len = 0;
@@ -444,8 +442,7 @@ int EVP_DecryptFinal_ex(EVP_CIPHER_CTX *ctx, unsigned char *out, int *out_len) {
 
   if (b > 1) {
     if (ctx->buf_len || !ctx->final_used) {
-      OPENSSL_PUT_ERROR(CIPHER, EVP_DecryptFinal_ex,
-                        CIPHER_R_WRONG_FINAL_BLOCK_LENGTH);
+      OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_WRONG_FINAL_BLOCK_LENGTH);
       return 0;
     }
     assert(b <= sizeof(ctx->final));
@@ -454,13 +451,13 @@ int EVP_DecryptFinal_ex(EVP_CIPHER_CTX *ctx, unsigned char *out, int *out_len) {
      * Otherwise it provides a padding oracle. */
     n = ctx->final[b - 1];
     if (n == 0 || n > (int)b) {
-      OPENSSL_PUT_ERROR(CIPHER, EVP_DecryptFinal_ex, CIPHER_R_BAD_DECRYPT);
+      OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_BAD_DECRYPT);
       return 0;
     }
 
     for (i = 0; i < n; i++) {
       if (ctx->final[--b] != n) {
-        OPENSSL_PUT_ERROR(CIPHER, EVP_DecryptFinal_ex, CIPHER_R_BAD_DECRYPT);
+        OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_BAD_DECRYPT);
         return 0;
       }
     }
@@ -538,19 +535,18 @@ uint32_t EVP_CIPHER_CTX_mode(const EVP_CIPHER_CTX *ctx) {
 int EVP_CIPHER_CTX_ctrl(EVP_CIPHER_CTX *ctx, int command, int arg, void *ptr) {
   int ret;
   if (!ctx->cipher) {
-    OPENSSL_PUT_ERROR(CIPHER, EVP_CIPHER_CTX_ctrl, CIPHER_R_NO_CIPHER_SET);
+    OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_NO_CIPHER_SET);
     return 0;
   }
 
   if (!ctx->cipher->ctrl) {
-    OPENSSL_PUT_ERROR(CIPHER, EVP_CIPHER_CTX_ctrl, CIPHER_R_CTRL_NOT_IMPLEMENTED);
+    OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_CTRL_NOT_IMPLEMENTED);
     return 0;
   }
 
   ret = ctx->cipher->ctrl(ctx, command, arg, ptr);
   if (ret == -1) {
-    OPENSSL_PUT_ERROR(CIPHER, EVP_CIPHER_CTX_ctrl,
-                      CIPHER_R_CTRL_OPERATION_NOT_IMPLEMENTED);
+    OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_CTRL_OPERATION_NOT_IMPLEMENTED);
     return 0;
   }
 
@@ -572,8 +568,7 @@ int EVP_CIPHER_CTX_set_key_length(EVP_CIPHER_CTX *c, unsigned key_len) {
   }
 
   if (key_len == 0 || !(c->cipher->flags & EVP_CIPH_VARIABLE_LENGTH)) {
-    OPENSSL_PUT_ERROR(CIPHER, EVP_CIPHER_CTX_set_key_length,
-                      CIPHER_R_INVALID_KEY_LENGTH);
+    OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_INVALID_KEY_LENGTH);
     return 0;
   }
 

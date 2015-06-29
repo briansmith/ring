@@ -67,7 +67,7 @@ int ASN1_i2d_fp(i2d_of_void *i2d, FILE *out, void *x)
 
         if ((b=BIO_new(BIO_s_file())) == NULL)
 		{
-		OPENSSL_PUT_ERROR(ASN1, ASN1_i2d_fp, ERR_R_BUF_LIB);
+		OPENSSL_PUT_ERROR(ASN1, ERR_R_BUF_LIB);
                 return(0);
 		}
         BIO_set_fp(b,out,BIO_NOCLOSE);
@@ -86,7 +86,7 @@ int ASN1_i2d_bio(i2d_of_void *i2d, BIO *out, unsigned char *x)
 	b=(char *)OPENSSL_malloc(n);
 	if (b == NULL)
 		{
-		OPENSSL_PUT_ERROR(ASN1, ASN1_i2d_bio, ERR_R_MALLOC_FAILURE);
+		OPENSSL_PUT_ERROR(ASN1, ERR_R_MALLOC_FAILURE);
 		return(0);
 		}
 
@@ -116,7 +116,7 @@ int ASN1_item_i2d_fp(const ASN1_ITEM *it, FILE *out, void *x)
 
         if ((b=BIO_new(BIO_s_file())) == NULL)
 		{
-		OPENSSL_PUT_ERROR(ASN1, ASN1_item_i2d_fp, ERR_R_BUF_LIB);
+		OPENSSL_PUT_ERROR(ASN1, ERR_R_BUF_LIB);
                 return(0);
 		}
         BIO_set_fp(b,out,BIO_NOCLOSE);
@@ -133,7 +133,7 @@ int ASN1_item_i2d_bio(const ASN1_ITEM *it, BIO *out, void *x)
 	n = ASN1_item_i2d(x, &b, it);
 	if (b == NULL)
 		{
-		OPENSSL_PUT_ERROR(ASN1, ASN1_item_i2d_bio, ERR_R_MALLOC_FAILURE);
+		OPENSSL_PUT_ERROR(ASN1, ERR_R_MALLOC_FAILURE);
 		return(0);
 		}
 

@@ -338,7 +338,7 @@ static int aes_init_key(EVP_CIPHER_CTX *ctx, const uint8_t *key,
   }
 
   if (ret < 0) {
-    OPENSSL_PUT_ERROR(CIPHER, aes_init_key, CIPHER_R_AES_KEY_SETUP_FAILED);
+    OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_AES_KEY_SETUP_FAILED);
     return 0;
   }
 
@@ -853,7 +853,7 @@ static int aesni_init_key(EVP_CIPHER_CTX *ctx, const uint8_t *key,
   }
 
   if (ret < 0) {
-    OPENSSL_PUT_ERROR(CIPHER, aesni_init_key, CIPHER_R_AES_KEY_SETUP_FAILED);
+    OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_AES_KEY_SETUP_FAILED);
     return 0;
   }
 
@@ -1066,7 +1066,7 @@ static int aead_aes_gcm_init(EVP_AEAD_CTX *ctx, const uint8_t *key,
   const size_t key_bits = key_len * 8;
 
   if (key_bits != 128 && key_bits != 256) {
-    OPENSSL_PUT_ERROR(CIPHER, aead_aes_gcm_init, CIPHER_R_BAD_KEY_LENGTH);
+    OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_BAD_KEY_LENGTH);
     return 0; /* EVP_AEAD_CTX_init should catch this. */
   }
 
@@ -1075,7 +1075,7 @@ static int aead_aes_gcm_init(EVP_AEAD_CTX *ctx, const uint8_t *key,
   }
 
   if (tag_len > EVP_AEAD_AES_GCM_TAG_LEN) {
-    OPENSSL_PUT_ERROR(CIPHER, aead_aes_gcm_init, CIPHER_R_TAG_TOO_LARGE);
+    OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_TAG_TOO_LARGE);
     return 0;
   }
 
@@ -1108,12 +1108,12 @@ static int aead_aes_gcm_seal(const EVP_AEAD_CTX *ctx, uint8_t *out,
   GCM128_CONTEXT gcm;
 
   if (in_len + gcm_ctx->tag_len < in_len) {
-    OPENSSL_PUT_ERROR(CIPHER, aead_aes_gcm_seal, CIPHER_R_TOO_LARGE);
+    OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_TOO_LARGE);
     return 0;
   }
 
   if (max_out_len < in_len + gcm_ctx->tag_len) {
-    OPENSSL_PUT_ERROR(CIPHER, aead_aes_gcm_seal, CIPHER_R_BUFFER_TOO_SMALL);
+    OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_BUFFER_TOO_SMALL);
     return 0;
   }
 
@@ -1152,14 +1152,14 @@ static int aead_aes_gcm_open(const EVP_AEAD_CTX *ctx, uint8_t *out,
   GCM128_CONTEXT gcm;
 
   if (in_len < gcm_ctx->tag_len) {
-    OPENSSL_PUT_ERROR(CIPHER, aead_aes_gcm_open, CIPHER_R_BAD_DECRYPT);
+    OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_BAD_DECRYPT);
     return 0;
   }
 
   plaintext_len = in_len - gcm_ctx->tag_len;
 
   if (max_out_len < plaintext_len) {
-    OPENSSL_PUT_ERROR(CIPHER, aead_aes_gcm_open, CIPHER_R_BUFFER_TOO_SMALL);
+    OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_BUFFER_TOO_SMALL);
     return 0;
   }
 
@@ -1185,7 +1185,7 @@ static int aead_aes_gcm_open(const EVP_AEAD_CTX *ctx, uint8_t *out,
 
   CRYPTO_gcm128_tag(&gcm, tag, gcm_ctx->tag_len);
   if (CRYPTO_memcmp(tag, in + plaintext_len, gcm_ctx->tag_len) != 0) {
-    OPENSSL_PUT_ERROR(CIPHER, aead_aes_gcm_open, CIPHER_R_BAD_DECRYPT);
+    OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_BAD_DECRYPT);
     return 0;
   }
 
@@ -1239,7 +1239,7 @@ static int aead_aes_key_wrap_init(EVP_AEAD_CTX *ctx, const uint8_t *key,
   const size_t key_bits = key_len * 8;
 
   if (key_bits != 128 && key_bits != 256) {
-    OPENSSL_PUT_ERROR(CIPHER, aead_aes_key_wrap_init, CIPHER_R_BAD_KEY_LENGTH);
+    OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_BAD_KEY_LENGTH);
     return 0; /* EVP_AEAD_CTX_init should catch this. */
   }
 
@@ -1248,14 +1248,13 @@ static int aead_aes_key_wrap_init(EVP_AEAD_CTX *ctx, const uint8_t *key,
   }
 
   if (tag_len != 8) {
-    OPENSSL_PUT_ERROR(CIPHER, aead_aes_key_wrap_init,
-                      CIPHER_R_UNSUPPORTED_TAG_SIZE);
+    OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_UNSUPPORTED_TAG_SIZE);
     return 0;
   }
 
   kw_ctx = OPENSSL_malloc(sizeof(struct aead_aes_key_wrap_ctx));
   if (kw_ctx == NULL) {
-    OPENSSL_PUT_ERROR(CIPHER, aead_aes_key_wrap_init, ERR_R_MALLOC_FAILURE);
+    OPENSSL_PUT_ERROR(CIPHER, ERR_R_MALLOC_FAILURE);
     return 0;
   }
 
@@ -1293,8 +1292,7 @@ static int aead_aes_key_wrap_seal(const EVP_AEAD_CTX *ctx, uint8_t *out,
   uint8_t A[AES_BLOCK_SIZE];
 
   if (ad_len != 0) {
-    OPENSSL_PUT_ERROR(CIPHER, aead_aes_key_wrap_seal,
-                      CIPHER_R_UNSUPPORTED_AD_SIZE);
+    OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_UNSUPPORTED_AD_SIZE);
     return 0;
   }
 
@@ -1304,14 +1302,12 @@ static int aead_aes_key_wrap_seal(const EVP_AEAD_CTX *ctx, uint8_t *out,
   }
 
   if (nonce_len != 8) {
-    OPENSSL_PUT_ERROR(CIPHER, aead_aes_key_wrap_seal,
-                      CIPHER_R_UNSUPPORTED_NONCE_SIZE);
+    OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_UNSUPPORTED_NONCE_SIZE);
     return 0;
   }
 
   if (in_len % 8 != 0) {
-    OPENSSL_PUT_ERROR(CIPHER, aead_aes_key_wrap_seal,
-                      CIPHER_R_UNSUPPORTED_INPUT_SIZE);
+    OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_UNSUPPORTED_INPUT_SIZE);
     return 0;
   }
 
@@ -1320,32 +1316,29 @@ static int aead_aes_key_wrap_seal(const EVP_AEAD_CTX *ctx, uint8_t *out,
    * conservatively cap it to 2^32-16 to stop 32-bit platforms complaining that
    * a comparison is always true. */
   if (in_len > 0xfffffff0) {
-    OPENSSL_PUT_ERROR(CIPHER, aead_aes_key_wrap_seal, CIPHER_R_TOO_LARGE);
+    OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_TOO_LARGE);
     return 0;
   }
 
   n = in_len / 8;
 
   if (n < 2) {
-    OPENSSL_PUT_ERROR(CIPHER, aead_aes_key_wrap_seal,
-                      CIPHER_R_UNSUPPORTED_INPUT_SIZE);
+    OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_UNSUPPORTED_INPUT_SIZE);
     return 0;
   }
 
   if (in_len + 8 < in_len) {
-    OPENSSL_PUT_ERROR(CIPHER, aead_aes_key_wrap_seal, CIPHER_R_TOO_LARGE);
+    OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_TOO_LARGE);
     return 0;
   }
 
   if (max_out_len < in_len + 8) {
-    OPENSSL_PUT_ERROR(CIPHER, aead_aes_key_wrap_seal,
-                      CIPHER_R_BUFFER_TOO_SMALL);
+    OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_BUFFER_TOO_SMALL);
     return 0;
   }
 
   if (AES_set_encrypt_key(kw_ctx->key, kw_ctx->key_bits, &ks.ks) < 0) {
-    OPENSSL_PUT_ERROR(CIPHER, aead_aes_key_wrap_seal,
-                      CIPHER_R_AES_KEY_SETUP_FAILED);
+    OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_AES_KEY_SETUP_FAILED);
     return 0;
   }
 
@@ -1388,8 +1381,7 @@ static int aead_aes_key_wrap_open(const EVP_AEAD_CTX *ctx, uint8_t *out,
   uint8_t A[AES_BLOCK_SIZE];
 
   if (ad_len != 0) {
-    OPENSSL_PUT_ERROR(CIPHER, aead_aes_key_wrap_open,
-                      CIPHER_R_UNSUPPORTED_AD_SIZE);
+    OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_UNSUPPORTED_AD_SIZE);
     return 0;
   }
 
@@ -1399,14 +1391,12 @@ static int aead_aes_key_wrap_open(const EVP_AEAD_CTX *ctx, uint8_t *out,
   }
 
   if (nonce_len != 8) {
-    OPENSSL_PUT_ERROR(CIPHER, aead_aes_key_wrap_open,
-                      CIPHER_R_UNSUPPORTED_NONCE_SIZE);
+    OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_UNSUPPORTED_NONCE_SIZE);
     return 0;
   }
 
   if (in_len % 8 != 0) {
-    OPENSSL_PUT_ERROR(CIPHER, aead_aes_key_wrap_open,
-                      CIPHER_R_UNSUPPORTED_INPUT_SIZE);
+    OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_UNSUPPORTED_INPUT_SIZE);
     return 0;
   }
 
@@ -1415,26 +1405,24 @@ static int aead_aes_key_wrap_open(const EVP_AEAD_CTX *ctx, uint8_t *out,
    * conservatively cap it to 2^32-8 to stop 32-bit platforms complaining that
    * a comparison is always true. */
   if (in_len > 0xfffffff8) {
-    OPENSSL_PUT_ERROR(CIPHER, aead_aes_key_wrap_open, CIPHER_R_TOO_LARGE);
+    OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_TOO_LARGE);
     return 0;
   }
 
   if (in_len < 24) {
-    OPENSSL_PUT_ERROR(CIPHER, aead_aes_key_wrap_open, CIPHER_R_BAD_DECRYPT);
+    OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_BAD_DECRYPT);
     return 0;
   }
 
   n = (in_len / 8) - 1;
 
   if (max_out_len < in_len - 8) {
-    OPENSSL_PUT_ERROR(CIPHER, aead_aes_key_wrap_open,
-                      CIPHER_R_BUFFER_TOO_SMALL);
+    OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_BUFFER_TOO_SMALL);
     return 0;
   }
 
   if (AES_set_decrypt_key(kw_ctx->key, kw_ctx->key_bits, &ks.ks) < 0) {
-    OPENSSL_PUT_ERROR(CIPHER, aead_aes_key_wrap_open,
-                      CIPHER_R_AES_KEY_SETUP_FAILED);
+    OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_AES_KEY_SETUP_FAILED);
     return 0;
   }
 
@@ -1457,7 +1445,7 @@ static int aead_aes_key_wrap_open(const EVP_AEAD_CTX *ctx, uint8_t *out,
   }
 
   if (CRYPTO_memcmp(A, nonce, 8) != 0) {
-    OPENSSL_PUT_ERROR(CIPHER, aead_aes_key_wrap_open, CIPHER_R_BAD_DECRYPT);
+    OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_BAD_DECRYPT);
     return 0;
   }
 
@@ -1541,15 +1529,13 @@ static int aead_aes_ctr_hmac_sha256_init(EVP_AEAD_CTX *ctx, const uint8_t *key,
   static const size_t hmac_key_len = 32;
 
   if (key_len < hmac_key_len) {
-    OPENSSL_PUT_ERROR(CIPHER, aead_aes_ctr_hmac_sha256_init,
-                      CIPHER_R_BAD_KEY_LENGTH);
+    OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_BAD_KEY_LENGTH);
     return 0; /* EVP_AEAD_CTX_init should catch this. */
   }
 
   const size_t aes_key_len = key_len - hmac_key_len;
   if (aes_key_len != 16 && aes_key_len != 32) {
-    OPENSSL_PUT_ERROR(CIPHER, aead_aes_ctr_hmac_sha256_init,
-                      CIPHER_R_BAD_KEY_LENGTH);
+    OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_BAD_KEY_LENGTH);
     return 0; /* EVP_AEAD_CTX_init should catch this. */
   }
 
@@ -1558,15 +1544,13 @@ static int aead_aes_ctr_hmac_sha256_init(EVP_AEAD_CTX *ctx, const uint8_t *key,
   }
 
   if (tag_len > EVP_AEAD_AES_CTR_HMAC_SHA256_TAG_LEN) {
-    OPENSSL_PUT_ERROR(CIPHER, aead_aes_ctr_hmac_sha256_init,
-                      CIPHER_R_TAG_TOO_LARGE);
+    OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_TAG_TOO_LARGE);
     return 0;
   }
 
   aes_ctx = OPENSSL_malloc(sizeof(struct aead_aes_ctr_hmac_sha256_ctx));
   if (aes_ctx == NULL) {
-    OPENSSL_PUT_ERROR(CIPHER, aead_aes_ctr_hmac_sha256_init,
-                      ERR_R_MALLOC_FAILURE);
+    OPENSSL_PUT_ERROR(CIPHER, ERR_R_MALLOC_FAILURE);
     return 0;
   }
 
@@ -1666,20 +1650,17 @@ static int aead_aes_ctr_hmac_sha256_seal(const EVP_AEAD_CTX *ctx, uint8_t *out,
   if (in_len + aes_ctx->tag_len < in_len ||
       /* This input is so large it would overflow the 32-bit block counter. */
       in_len_64 >= (OPENSSL_U64(1) << 32) * AES_BLOCK_SIZE) {
-    OPENSSL_PUT_ERROR(CIPHER, aead_aes_ctr_hmac_sha256_seal,
-                      CIPHER_R_TOO_LARGE);
+    OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_TOO_LARGE);
     return 0;
   }
 
   if (max_out_len < in_len + aes_ctx->tag_len) {
-    OPENSSL_PUT_ERROR(CIPHER, aead_aes_ctr_hmac_sha256_seal,
-                      CIPHER_R_BUFFER_TOO_SMALL);
+    OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_BUFFER_TOO_SMALL);
     return 0;
   }
 
   if (nonce_len != EVP_AEAD_AES_CTR_HMAC_SHA256_NONCE_LEN) {
-    OPENSSL_PUT_ERROR(CIPHER, aead_aes_ctr_hmac_sha256_seal,
-                      CIPHER_R_UNSUPPORTED_NONCE_SIZE);
+    OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_UNSUPPORTED_NONCE_SIZE);
     return 0;
   }
 
@@ -1703,22 +1684,19 @@ static int aead_aes_ctr_hmac_sha256_open(const EVP_AEAD_CTX *ctx, uint8_t *out,
   size_t plaintext_len;
 
   if (in_len < aes_ctx->tag_len) {
-    OPENSSL_PUT_ERROR(CIPHER, aead_aes_ctr_hmac_sha256_open,
-                      CIPHER_R_BAD_DECRYPT);
+    OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_BAD_DECRYPT);
     return 0;
   }
 
   plaintext_len = in_len - aes_ctx->tag_len;
 
   if (max_out_len < plaintext_len) {
-    OPENSSL_PUT_ERROR(CIPHER, aead_aes_ctr_hmac_sha256_open,
-                      CIPHER_R_BUFFER_TOO_SMALL);
+    OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_BUFFER_TOO_SMALL);
     return 0;
   }
 
   if (nonce_len != EVP_AEAD_AES_CTR_HMAC_SHA256_NONCE_LEN) {
-    OPENSSL_PUT_ERROR(CIPHER, aead_aes_ctr_hmac_sha256_open,
-                      CIPHER_R_UNSUPPORTED_NONCE_SIZE);
+    OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_UNSUPPORTED_NONCE_SIZE);
     return 0;
   }
 
@@ -1727,8 +1705,7 @@ static int aead_aes_ctr_hmac_sha256_open(const EVP_AEAD_CTX *ctx, uint8_t *out,
                  &aes_ctx->outer_init_state, ad, ad_len, nonce, in,
                  plaintext_len);
   if (CRYPTO_memcmp(hmac_result, in + plaintext_len, aes_ctx->tag_len) != 0) {
-    OPENSSL_PUT_ERROR(CIPHER, aead_aes_ctr_hmac_sha256_open,
-                      CIPHER_R_BAD_DECRYPT);
+    OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_BAD_DECRYPT);
     return 0;
   }
 

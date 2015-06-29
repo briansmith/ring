@@ -125,7 +125,7 @@ int BN_div(BIGNUM *dv, BIGNUM *rm, const BIGNUM *num, const BIGNUM *divisor,
    * so don't just rely on bn_check_top() here */
   if ((num->top > 0 && num->d[num->top - 1] == 0) ||
       (divisor->top > 0 && divisor->d[divisor->top - 1] == 0)) {
-    OPENSSL_PUT_ERROR(BN, BN_div, BN_R_NOT_INITIALIZED);
+    OPENSSL_PUT_ERROR(BN, BN_R_NOT_INITIALIZED);
     return 0;
   }
 
@@ -135,7 +135,7 @@ int BN_div(BIGNUM *dv, BIGNUM *rm, const BIGNUM *num, const BIGNUM *divisor,
   }
 
   if (BN_is_zero(divisor)) {
-    OPENSSL_PUT_ERROR(BN, BN_div, BN_R_DIV_BY_ZERO);
+    OPENSSL_PUT_ERROR(BN, BN_R_DIV_BY_ZERO);
     return 0;
   }
 
@@ -511,7 +511,7 @@ int BN_mod_lshift_quick(BIGNUM *r, const BIGNUM *a, int n, const BIGNUM *m) {
     /* max_shift >= 0 */
 
     if (max_shift < 0) {
-      OPENSSL_PUT_ERROR(BN, BN_mod_lshift_quick, BN_R_INPUT_NOT_REDUCED);
+      OPENSSL_PUT_ERROR(BN, BN_R_INPUT_NOT_REDUCED);
       return 0;
     }
 

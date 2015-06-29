@@ -77,7 +77,7 @@ X509_REQ *X509_to_X509_REQ(X509 *x, EVP_PKEY *pkey, const EVP_MD *md)
 	ret=X509_REQ_new();
 	if (ret == NULL)
 		{
-		OPENSSL_PUT_ERROR(X509, X509_to_X509_REQ, ERR_R_MALLOC_FAILURE);
+		OPENSSL_PUT_ERROR(X509, ERR_R_MALLOC_FAILURE);
 		goto err;
 		}
 
@@ -128,24 +128,24 @@ int X509_REQ_check_private_key(X509_REQ *x, EVP_PKEY *k)
 		ok=1;
 		break;
 	case 0:
-		OPENSSL_PUT_ERROR(X509, X509_REQ_check_private_key, X509_R_KEY_VALUES_MISMATCH);
+		OPENSSL_PUT_ERROR(X509, X509_R_KEY_VALUES_MISMATCH);
 		break;
 	case -1:
-		OPENSSL_PUT_ERROR(X509, X509_REQ_check_private_key, X509_R_KEY_TYPE_MISMATCH);
+		OPENSSL_PUT_ERROR(X509, X509_R_KEY_TYPE_MISMATCH);
 		break;
 	case -2:
 		if (k->type == EVP_PKEY_EC)
 			{
-			OPENSSL_PUT_ERROR(X509, X509_REQ_check_private_key, ERR_R_EC_LIB);
+			OPENSSL_PUT_ERROR(X509, ERR_R_EC_LIB);
 			break;
 			}
 		if (k->type == EVP_PKEY_DH)
 			{
 			/* No idea */
-			OPENSSL_PUT_ERROR(X509, X509_REQ_check_private_key, X509_R_CANT_CHECK_DH_KEY);
+			OPENSSL_PUT_ERROR(X509, X509_R_CANT_CHECK_DH_KEY);
 			break;
 			}
-	        OPENSSL_PUT_ERROR(X509, X509_REQ_check_private_key, X509_R_UNKNOWN_KEY_TYPE);
+	        OPENSSL_PUT_ERROR(X509, X509_R_UNKNOWN_KEY_TYPE);
 		}
 
 	EVP_PKEY_free(xk);

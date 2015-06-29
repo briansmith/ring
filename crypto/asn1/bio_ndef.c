@@ -112,7 +112,7 @@ BIO *BIO_new_NDEF(BIO *out, ASN1_VALUE *val, const ASN1_ITEM *it)
 
 	if (!aux || !aux->asn1_cb)
 		{
-		OPENSSL_PUT_ERROR(ASN1, BIO_new_NDEF, ASN1_R_STREAMING_NOT_SUPPORTED);
+		OPENSSL_PUT_ERROR(ASN1, ASN1_R_STREAMING_NOT_SUPPORTED);
 		return NULL;
 		}
 	ndef_aux = OPENSSL_malloc(sizeof(NDEF_SUPPORT));

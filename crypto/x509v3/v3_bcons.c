@@ -103,7 +103,7 @@ static BASIC_CONSTRAINTS *v2i_BASIC_CONSTRAINTS(X509V3_EXT_METHOD *method,
 	CONF_VALUE *val;
 	size_t i;
 	if(!(bcons = BASIC_CONSTRAINTS_new())) {
-		OPENSSL_PUT_ERROR(X509V3, v2i_BASIC_CONSTRAINTS, ERR_R_MALLOC_FAILURE);
+		OPENSSL_PUT_ERROR(X509V3, ERR_R_MALLOC_FAILURE);
 		return NULL;
 	}
 	for(i = 0; i < sk_CONF_VALUE_num(values); i++) {
@@ -113,7 +113,7 @@ static BASIC_CONSTRAINTS *v2i_BASIC_CONSTRAINTS(X509V3_EXT_METHOD *method,
 		} else if(!strcmp(val->name, "pathlen")) {
 			if(!X509V3_get_value_int(val, &bcons->pathlen)) goto err;
 		} else {
-			OPENSSL_PUT_ERROR(X509V3, v2i_BASIC_CONSTRAINTS, X509V3_R_INVALID_NAME);
+			OPENSSL_PUT_ERROR(X509V3, X509V3_R_INVALID_NAME);
 			X509V3_conf_err(val);
 			goto err;
 		}

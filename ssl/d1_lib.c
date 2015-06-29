@@ -262,7 +262,7 @@ int dtls1_check_timeout_num(SSL *s) {
 
   if (s->d1->num_timeouts > DTLS1_MAX_TIMEOUTS) {
     /* fail the connection, enough alerts have been sent */
-    OPENSSL_PUT_ERROR(SSL, dtls1_check_timeout_num, SSL_R_READ_TIMEOUT_EXPIRED);
+    OPENSSL_PUT_ERROR(SSL, SSL_R_READ_TIMEOUT_EXPIRED);
     return -1;
   }
 

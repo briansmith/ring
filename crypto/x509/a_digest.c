@@ -71,7 +71,7 @@ int ASN1_digest(i2d_of_void *i2d, const EVP_MD *type, char *data,
 	i=i2d(data,NULL);
 	if ((str=(unsigned char *)OPENSSL_malloc(i)) == NULL)
 		{
-		OPENSSL_PUT_ERROR(X509, ASN1_digest, ERR_R_MALLOC_FAILURE);
+		OPENSSL_PUT_ERROR(X509, ERR_R_MALLOC_FAILURE);
 		return(0);
 		}
 	p=str;

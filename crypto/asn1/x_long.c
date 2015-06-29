@@ -150,7 +150,7 @@ static int long_c2i(ASN1_VALUE **pval, const unsigned char *cont, int len,
 	unsigned long utmp = 0;
 	char *cp = (char *)pval;
 	if(len > (int)sizeof(long)) {
-		OPENSSL_PUT_ERROR(ASN1, long_c2i,  ASN1_R_INTEGER_TOO_LARGE_FOR_LONG);
+		OPENSSL_PUT_ERROR(ASN1, ASN1_R_INTEGER_TOO_LARGE_FOR_LONG);
 		return 0;
 	}
 	/* Is it negative? */
@@ -168,7 +168,7 @@ static int long_c2i(ASN1_VALUE **pval, const unsigned char *cont, int len,
 		ltmp = -ltmp;
 	}
 	if(ltmp == it->size) {
-		OPENSSL_PUT_ERROR(ASN1, long_c2i,  ASN1_R_INTEGER_TOO_LARGE_FOR_LONG);
+		OPENSSL_PUT_ERROR(ASN1, ASN1_R_INTEGER_TOO_LARGE_FOR_LONG);
 		return 0;
 	}
 	memcpy(cp, &ltmp, sizeof(long));

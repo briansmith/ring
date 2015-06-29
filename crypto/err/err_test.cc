@@ -130,7 +130,7 @@ static bool HasSuffix(const char *str, const char *suffix) {
 
 static bool TestPutMacro() {
   int expected_line = __LINE__ + 1;
-  OPENSSL_PUT_ERROR(USER, TestPutMacro, ERR_R_INTERNAL_ERROR);
+  OPENSSL_PUT_ERROR(USER, ERR_R_INTERNAL_ERROR);
 
   int line;
   const char *file;

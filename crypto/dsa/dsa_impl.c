@@ -83,7 +83,7 @@ static int sign_setup(const DSA *dsa, BN_CTX *ctx_in, BIGNUM **kinvp,
   int ret = 0;
 
   if (!dsa->p || !dsa->q || !dsa->g) {
-    OPENSSL_PUT_ERROR(DSA, sign_setup, DSA_R_MISSING_PARAMETERS);
+    OPENSSL_PUT_ERROR(DSA, DSA_R_MISSING_PARAMETERS);
     return 0;
   }
 
@@ -171,7 +171,7 @@ static int sign_setup(const DSA *dsa, BN_CTX *ctx_in, BIGNUM **kinvp,
 
 err:
   if (!ret) {
-    OPENSSL_PUT_ERROR(DSA, sign_setup, ERR_R_BN_LIB);
+    OPENSSL_PUT_ERROR(DSA, ERR_R_BN_LIB);
     if (r != NULL) {
       BN_clear_free(r);
     }
@@ -269,7 +269,7 @@ redo:
 
 err:
   if (!ret) {
-    OPENSSL_PUT_ERROR(DSA, sign, reason);
+    OPENSSL_PUT_ERROR(DSA, reason);
     BN_free(r);
     BN_free(s);
   }
@@ -292,19 +292,19 @@ static int verify(int *out_valid, const uint8_t *dgst, size_t digest_len,
   *out_valid = 0;
 
   if (!dsa->p || !dsa->q || !dsa->g) {
-    OPENSSL_PUT_ERROR(DSA, verify, DSA_R_MISSING_PARAMETERS);
+    OPENSSL_PUT_ERROR(DSA, DSA_R_MISSING_PARAMETERS);
     return 0;
   }
 
   i = BN_num_bits(dsa->q);
   /* fips 186-3 allows only different sizes for q */
   if (i != 160 && i != 224 && i != 256) {
-    OPENSSL_PUT_ERROR(DSA, verify, DSA_R_BAD_Q_VALUE);
+    OPENSSL_PUT_ERROR(DSA, DSA_R_BAD_Q_VALUE);
     return 0;
   }
 
   if (BN_num_bits(dsa->p) > OPENSSL_DSA_MAX_MODULUS_BITS) {
-    OPENSSL_PUT_ERROR(DSA, verify, DSA_R_MODULUS_TOO_LARGE);
+    OPENSSL_PUT_ERROR(DSA, DSA_R_MODULUS_TOO_LARGE);
     return 0;
   }
 
@@ -381,7 +381,7 @@ static int verify(int *out_valid, const uint8_t *dgst, size_t digest_len,
 
 err:
   if (ret != 1) {
-    OPENSSL_PUT_ERROR(DSA, verify, ERR_R_BN_LIB);
+    OPENSSL_PUT_ERROR(DSA, ERR_R_BN_LIB);
   }
   BN_CTX_free(ctx);
   BN_free(&u1);

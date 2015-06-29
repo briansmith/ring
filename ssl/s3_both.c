@@ -242,7 +242,7 @@ int ssl3_get_finished(SSL *s, int a, int b) {
    * TODO(davidben): Is this check now redundant with SSL3_FLAGS_EXPECT_CCS? */
   if (!s->s3->change_cipher_spec) {
     al = SSL_AD_UNEXPECTED_MESSAGE;
-    OPENSSL_PUT_ERROR(SSL, ssl3_get_finished, SSL_R_GOT_A_FIN_BEFORE_A_CCS);
+    OPENSSL_PUT_ERROR(SSL, SSL_R_GOT_A_FIN_BEFORE_A_CCS);
     goto f_err;
   }
   s->s3->change_cipher_spec = 0;
@@ -252,13 +252,13 @@ int ssl3_get_finished(SSL *s, int a, int b) {
 
   if (finished_len != message_len) {
     al = SSL_AD_DECODE_ERROR;
-    OPENSSL_PUT_ERROR(SSL, ssl3_get_finished, SSL_R_BAD_DIGEST_LENGTH);
+    OPENSSL_PUT_ERROR(SSL, SSL_R_BAD_DIGEST_LENGTH);
     goto f_err;
   }
 
   if (CRYPTO_memcmp(p, s->s3->tmp.peer_finish_md, finished_len) != 0) {
     al = SSL_AD_DECRYPT_ERROR;
-    OPENSSL_PUT_ERROR(SSL, ssl3_get_finished, SSL_R_DIGEST_CHECK_FAILED);
+    OPENSSL_PUT_ERROR(SSL, SSL_R_DIGEST_CHECK_FAILED);
     goto f_err;
   }
 
@@ -334,7 +334,7 @@ long ssl3_get_message(SSL *s, int header_state, int body_state, int msg_type,
     s->s3->tmp.reuse_message = 0;
     if (msg_type >= 0 && s->s3->tmp.message_type != msg_type) {
       al = SSL_AD_UNEXPECTED_MESSAGE;
-      OPENSSL_PUT_ERROR(SSL, ssl3_get_message, SSL_R_UNEXPECTED_MESSAGE);
+      OPENSSL_PUT_ERROR(SSL, SSL_R_UNEXPECTED_MESSAGE);
       goto f_err;
     }
     *ok = 1;
@@ -380,7 +380,7 @@ long ssl3_get_message(SSL *s, int header_state, int body_state, int msg_type,
 
     if (msg_type >= 0 && *p != msg_type) {
       al = SSL_AD_UNEXPECTED_MESSAGE;
-      OPENSSL_PUT_ERROR(SSL, ssl3_get_message, SSL_R_UNEXPECTED_MESSAGE);
+      OPENSSL_PUT_ERROR(SSL, SSL_R_UNEXPECTED_MESSAGE);
       goto f_err;
     }
     s->s3->tmp.message_type = *(p++);
@@ -388,12 +388,12 @@ long ssl3_get_message(SSL *s, int header_state, int body_state, int msg_type,
     n2l3(p, l);
     if (l > (unsigned long)max) {
       al = SSL_AD_ILLEGAL_PARAMETER;
-      OPENSSL_PUT_ERROR(SSL, ssl3_get_message, SSL_R_EXCESSIVE_MESSAGE_SIZE);
+      OPENSSL_PUT_ERROR(SSL, SSL_R_EXCESSIVE_MESSAGE_SIZE);
       goto f_err;
     }
 
     if (l && !BUF_MEM_grow_clean(s->init_buf, l + 4)) {
-      OPENSSL_PUT_ERROR(SSL, ssl3_get_message, ERR_R_BUF_LIB);
+      OPENSSL_PUT_ERROR(SSL, ERR_R_BUF_LIB);
       goto err;
     }
     s->s3->tmp.message_size = l;
@@ -462,14 +462,14 @@ int ssl3_cert_verify_hash(SSL *s, uint8_t *out, size_t *out_len,
     unsigned len;
 
     if (!BIO_mem_contents(s->s3->handshake_buffer, &hdata, &hdatalen)) {
-      OPENSSL_PUT_ERROR(SSL, ssl3_cert_verify_hash, ERR_R_INTERNAL_ERROR);
+      OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
       return 0;
     }
     EVP_MD_CTX_init(&mctx);
     if (!EVP_DigestInit_ex(&mctx, *out_md, NULL) ||
         !EVP_DigestUpdate(&mctx, hdata, hdatalen) ||
         !EVP_DigestFinal(&mctx, out, &len)) {
-      OPENSSL_PUT_ERROR(SSL, ssl3_cert_verify_hash, ERR_R_EVP_LIB);
+      OPENSSL_PUT_ERROR(SSL, ERR_R_EVP_LIB);
       EVP_MD_CTX_cleanup(&mctx);
       return 0;
     }
@@ -489,7 +489,7 @@ int ssl3_cert_verify_hash(SSL *s, uint8_t *out, size_t *out_len,
     *out_len = SHA_DIGEST_LENGTH;
     *out_md = EVP_sha1();
   } else {
-    OPENSSL_PUT_ERROR(SSL, ssl3_cert_verify_hash, ERR_R_INTERNAL_ERROR);
+    OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
     return 0;
   }
 
@@ -596,7 +596,7 @@ int ssl3_setup_read_buffer(SSL *s) {
   return 1;
 
 err:
-  OPENSSL_PUT_ERROR(SSL, ssl3_setup_read_buffer, ERR_R_MALLOC_FAILURE);
+  OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
   return 0;
 }
 
@@ -633,7 +633,7 @@ int ssl3_setup_write_buffer(SSL *s) {
   return 1;
 
 err:
-  OPENSSL_PUT_ERROR(SSL, ssl3_setup_write_buffer, ERR_R_MALLOC_FAILURE);
+  OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
   return 0;
 }
 

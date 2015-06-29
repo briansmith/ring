@@ -215,13 +215,13 @@ int ASN1_STRING_TABLE_add(int nid,
 	flags &= ~STABLE_FLAGS_MALLOC;
 	if(!stable) stable = sk_ASN1_STRING_TABLE_new(sk_table_cmp);
 	if(!stable) {
-		OPENSSL_PUT_ERROR(ASN1, ASN1_STRING_TABLE_add,  ERR_R_MALLOC_FAILURE);
+		OPENSSL_PUT_ERROR(ASN1, ERR_R_MALLOC_FAILURE);
 		return 0;
 	}
 	if(!(tmp = ASN1_STRING_TABLE_get(nid))) {
 		tmp = OPENSSL_malloc(sizeof(ASN1_STRING_TABLE));
 		if(!tmp) {
-			OPENSSL_PUT_ERROR(ASN1, ASN1_STRING_TABLE_add,  ERR_R_MALLOC_FAILURE);
+			OPENSSL_PUT_ERROR(ASN1, ERR_R_MALLOC_FAILURE);
 			return 0;
 		}
 		tmp->flags = flags | STABLE_FLAGS_MALLOC;

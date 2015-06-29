@@ -82,7 +82,7 @@ DSA *DSA_new(void) { return DSA_new_method(NULL); }
 DSA *DSA_new_method(const ENGINE *engine) {
   DSA *dsa = (DSA *)OPENSSL_malloc(sizeof(DSA));
   if (dsa == NULL) {
-    OPENSSL_PUT_ERROR(DSA, DSA_new_method, ERR_R_MALLOC_FAILURE);
+    OPENSSL_PUT_ERROR(DSA, ERR_R_MALLOC_FAILURE);
     return NULL;
   }
 

@@ -95,7 +95,7 @@ int ECDH_compute_key(void *out, size_t outlen, const EC_POINT *pub_key,
 
   priv = EC_KEY_get0_private_key(priv_key);
   if (priv == NULL) {
-    OPENSSL_PUT_ERROR(ECDH, ECDH_compute_key, ECDH_R_NO_PRIVATE_VALUE);
+    OPENSSL_PUT_ERROR(ECDH, ECDH_R_NO_PRIVATE_VALUE);
     goto err;
   }
 
@@ -103,35 +103,35 @@ int ECDH_compute_key(void *out, size_t outlen, const EC_POINT *pub_key,
 
   tmp = EC_POINT_new(group);
   if (tmp == NULL) {
-    OPENSSL_PUT_ERROR(ECDH, ECDH_compute_key, ERR_R_MALLOC_FAILURE);
+    OPENSSL_PUT_ERROR(ECDH, ERR_R_MALLOC_FAILURE);
     goto err;
   }
 
   if (!EC_POINT_mul(group, tmp, NULL, pub_key, priv, ctx)) {
-    OPENSSL_PUT_ERROR(ECDH, ECDH_compute_key, ECDH_R_POINT_ARITHMETIC_FAILURE);
+    OPENSSL_PUT_ERROR(ECDH, ECDH_R_POINT_ARITHMETIC_FAILURE);
     goto err;
   }
 
   if (!EC_POINT_get_affine_coordinates_GFp(group, tmp, x, y, ctx)) {
-    OPENSSL_PUT_ERROR(ECDH, ECDH_compute_key, ECDH_R_POINT_ARITHMETIC_FAILURE);
+    OPENSSL_PUT_ERROR(ECDH, ECDH_R_POINT_ARITHMETIC_FAILURE);
     goto err;
   }
 
   buflen = (EC_GROUP_get_degree(group) + 7) / 8;
   buf = OPENSSL_malloc(buflen);
   if (buf == NULL) {
-    OPENSSL_PUT_ERROR(ECDH, ECDH_compute_key, ERR_R_MALLOC_FAILURE);
+    OPENSSL_PUT_ERROR(ECDH, ERR_R_MALLOC_FAILURE);
     goto err;
   }
 
   if (!BN_bn2bin_padded(buf, buflen, x)) {
-    OPENSSL_PUT_ERROR(ECDH, ECDH_compute_key, ERR_R_INTERNAL_ERROR);
+    OPENSSL_PUT_ERROR(ECDH, ERR_R_INTERNAL_ERROR);
     goto err;
   }
 
   if (KDF != 0) {
     if (KDF(buf, buflen, out, &outlen) == NULL) {
-      OPENSSL_PUT_ERROR(ECDH, ECDH_compute_key, ECDH_R_KDF_FAILED);
+      OPENSSL_PUT_ERROR(ECDH, ECDH_R_KDF_FAILED);
       goto err;
     }
     ret = outlen;

@@ -22,18 +22,18 @@ int BN_cbs2unsigned(CBS *cbs, BIGNUM *ret) {
   CBS child;
   if (!CBS_get_asn1(cbs, &child, CBS_ASN1_INTEGER) ||
       CBS_len(&child) == 0) {
-    OPENSSL_PUT_ERROR(BN, BN_cbs2unsigned, BN_R_BAD_ENCODING);
+    OPENSSL_PUT_ERROR(BN, BN_R_BAD_ENCODING);
     return 0;
   }
   if (CBS_data(&child)[0] & 0x80) {
-    OPENSSL_PUT_ERROR(BN, BN_cbs2unsigned, BN_R_NEGATIVE_NUMBER);
+    OPENSSL_PUT_ERROR(BN, BN_R_NEGATIVE_NUMBER);
     return 0;
   }
   /* INTEGERs must be minimal. */
   if (CBS_data(&child)[0] == 0x00 &&
       CBS_len(&child) > 1 &&
       !(CBS_data(&child)[1] & 0x80)) {
-    OPENSSL_PUT_ERROR(BN, BN_cbs2unsigned, BN_R_BAD_ENCODING);
+    OPENSSL_PUT_ERROR(BN, BN_R_BAD_ENCODING);
     return 0;
   }
   return BN_bin2bn(CBS_data(&child), CBS_len(&child), ret) != NULL;
@@ -42,13 +42,13 @@ int BN_cbs2unsigned(CBS *cbs, BIGNUM *ret) {
 int BN_bn2cbb(CBB *cbb, const BIGNUM *bn) {
   /* Negative numbers are unsupported. */
   if (BN_is_negative(bn)) {
-    OPENSSL_PUT_ERROR(BN, BN_bn2cbb, BN_R_NEGATIVE_NUMBER);
+    OPENSSL_PUT_ERROR(BN, BN_R_NEGATIVE_NUMBER);
     return 0;
   }
 
   CBB child;
   if (!CBB_add_asn1(cbb, &child, CBS_ASN1_INTEGER)) {
-    OPENSSL_PUT_ERROR(BN, BN_bn2cbb, BN_R_ENCODE_ERROR);
+    OPENSSL_PUT_ERROR(BN, BN_R_ENCODE_ERROR);
     return 0;
   }
 
@@ -56,18 +56,18 @@ int BN_bn2cbb(CBB *cbb, const BIGNUM *bn) {
    * otherwise be set (or |bn| is zero). */
   if (BN_num_bits(bn) % 8 == 0 &&
       !CBB_add_u8(&child, 0x00)) {
-    OPENSSL_PUT_ERROR(BN, BN_bn2cbb, BN_R_ENCODE_ERROR);
+    OPENSSL_PUT_ERROR(BN, BN_R_ENCODE_ERROR);
     return 0;
   }
 
   uint8_t *out;
   if (!CBB_add_space(&child, &out, BN_num_bytes(bn))) {
-    OPENSSL_PUT_ERROR(BN, BN_bn2cbb, BN_R_ENCODE_ERROR);
+    OPENSSL_PUT_ERROR(BN, BN_R_ENCODE_ERROR);
     return 0;
   }
   BN_bn2bin(bn, out);
   if (!CBB_flush(cbb)) {
-    OPENSSL_PUT_ERROR(BN, BN_bn2cbb, BN_R_ENCODE_ERROR);
+    OPENSSL_PUT_ERROR(BN, BN_R_ENCODE_ERROR);
     return 0;
   }
   return 1;

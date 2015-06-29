@@ -67,7 +67,7 @@
 int X509_REQ_print_fp(FILE *fp, X509_REQ *x) {
   BIO *bio = BIO_new(BIO_s_file());
   if (bio == NULL) {
-    OPENSSL_PUT_ERROR(X509, X509_REQ_print_fp, ERR_R_BUF_LIB);
+    OPENSSL_PUT_ERROR(X509, ERR_R_BUF_LIB);
     return 0;
   }
 
@@ -237,7 +237,7 @@ int X509_REQ_print_ex(BIO *bio, X509_REQ *x, unsigned long nmflags,
   return 1;
 
 err:
-  OPENSSL_PUT_ERROR(X509, X509_REQ_print_ex, ERR_R_BUF_LIB);
+  OPENSSL_PUT_ERROR(X509, ERR_R_BUF_LIB);
   return 0;
 }
 

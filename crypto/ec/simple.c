@@ -172,7 +172,7 @@ int ec_GFp_simple_group_set_curve(EC_GROUP *group, const BIGNUM *p,
 
   /* p must be a prime > 3 */
   if (BN_num_bits(p) <= 2 || !BN_is_odd(p)) {
-    OPENSSL_PUT_ERROR(EC, ec_GFp_simple_group_set_curve, EC_R_INVALID_FIELD);
+    OPENSSL_PUT_ERROR(EC, EC_R_INVALID_FIELD);
     return 0;
   }
 
@@ -283,8 +283,7 @@ int ec_GFp_simple_group_check_discriminant(const EC_GROUP *group, BN_CTX *ctx) {
   if (ctx == NULL) {
     ctx = new_ctx = BN_CTX_new();
     if (ctx == NULL) {
-      OPENSSL_PUT_ERROR(EC, ec_GFp_simple_group_check_discriminant,
-                        ERR_R_MALLOC_FAILURE);
+      OPENSSL_PUT_ERROR(EC, ERR_R_MALLOC_FAILURE);
       goto err;
     }
   }
@@ -492,8 +491,7 @@ int ec_GFp_simple_point_set_affine_coordinates(const EC_GROUP *group,
                                                const BIGNUM *y, BN_CTX *ctx) {
   if (x == NULL || y == NULL) {
     /* unlike for projective coordinates, we do not tolerate this */
-    OPENSSL_PUT_ERROR(EC, ec_GFp_simple_point_set_affine_coordinates,
-                      ERR_R_PASSED_NULL_PARAMETER);
+    OPENSSL_PUT_ERROR(EC, ERR_R_PASSED_NULL_PARAMETER);
     return 0;
   }
 
@@ -510,8 +508,7 @@ int ec_GFp_simple_point_get_affine_coordinates(const EC_GROUP *group,
   int ret = 0;
 
   if (EC_POINT_is_at_infinity(group, point)) {
-    OPENSSL_PUT_ERROR(EC, ec_GFp_simple_point_get_affine_coordinates,
-                      EC_R_POINT_AT_INFINITY);
+    OPENSSL_PUT_ERROR(EC, EC_R_POINT_AT_INFINITY);
     return 0;
   }
 
@@ -560,8 +557,7 @@ int ec_GFp_simple_point_get_affine_coordinates(const EC_GROUP *group,
     }
   } else {
     if (!BN_mod_inverse(Z_1, Z_, &group->field, ctx)) {
-      OPENSSL_PUT_ERROR(EC, ec_GFp_simple_point_get_affine_coordinates,
-                        ERR_R_BN_LIB);
+      OPENSSL_PUT_ERROR(EC, ERR_R_BN_LIB);
       goto err;
     }
 
@@ -1183,7 +1179,7 @@ int ec_GFp_simple_make_affine(const EC_GROUP *group, EC_POINT *point,
     goto err;
   }
   if (!point->Z_is_one) {
-    OPENSSL_PUT_ERROR(EC, ec_GFp_simple_make_affine, ERR_R_INTERNAL_ERROR);
+    OPENSSL_PUT_ERROR(EC, ERR_R_INTERNAL_ERROR);
     goto err;
   }
 
@@ -1269,7 +1265,7 @@ int ec_GFp_simple_points_make_affine(const EC_GROUP *group, size_t num,
    * non-zero points[i]->Z by its inverse. */
 
   if (!BN_mod_inverse(tmp, prod_Z[num - 1], &group->field, ctx)) {
-    OPENSSL_PUT_ERROR(EC, ec_GFp_simple_points_make_affine, ERR_R_BN_LIB);
+    OPENSSL_PUT_ERROR(EC, ERR_R_BN_LIB);
     goto err;
   }
 

@@ -134,7 +134,7 @@ int BN_rand(BIGNUM *rnd, int bits, int top, int bottom) {
 
   buf = OPENSSL_malloc(bytes);
   if (buf == NULL) {
-    OPENSSL_PUT_ERROR(BN, BN_rand, ERR_R_MALLOC_FAILURE);
+    OPENSSL_PUT_ERROR(BN, ERR_R_MALLOC_FAILURE);
     goto err;
   }
 
@@ -186,7 +186,7 @@ int BN_rand_range(BIGNUM *r, const BIGNUM *range) {
   unsigned count = 100;
 
   if (range->neg || BN_is_zero(range)) {
-    OPENSSL_PUT_ERROR(BN, BN_rand_range, BN_R_INVALID_RANGE);
+    OPENSSL_PUT_ERROR(BN, BN_R_INVALID_RANGE);
     return 0;
   }
 
@@ -219,7 +219,7 @@ int BN_rand_range(BIGNUM *r, const BIGNUM *range) {
       }
 
       if (!--count) {
-        OPENSSL_PUT_ERROR(BN, BN_rand_range, BN_R_TOO_MANY_ITERATIONS);
+        OPENSSL_PUT_ERROR(BN, BN_R_TOO_MANY_ITERATIONS);
         return 0;
       }
     } while (BN_cmp(r, range) >= 0);
@@ -231,7 +231,7 @@ int BN_rand_range(BIGNUM *r, const BIGNUM *range) {
       }
 
       if (!--count) {
-        OPENSSL_PUT_ERROR(BN, BN_rand_range, BN_R_TOO_MANY_ITERATIONS);
+        OPENSSL_PUT_ERROR(BN, BN_R_TOO_MANY_ITERATIONS);
         return 0;
       }
     } while (BN_cmp(r, range) >= 0);
@@ -264,13 +264,13 @@ int BN_generate_dsa_nonce(BIGNUM *out, const BIGNUM *range, const BIGNUM *priv,
   }
 
   if (BN_is_zero(range)) {
-    OPENSSL_PUT_ERROR(BN, BN_generate_dsa_nonce, BN_R_DIV_BY_ZERO);
+    OPENSSL_PUT_ERROR(BN, BN_R_DIV_BY_ZERO);
     goto err;
   }
 
   k_bytes = OPENSSL_malloc(num_k_bytes);
   if (!k_bytes) {
-    OPENSSL_PUT_ERROR(BN, BN_generate_dsa_nonce, ERR_R_MALLOC_FAILURE);
+    OPENSSL_PUT_ERROR(BN, ERR_R_MALLOC_FAILURE);
     goto err;
   }
 
@@ -281,7 +281,7 @@ int BN_generate_dsa_nonce(BIGNUM *out, const BIGNUM *range, const BIGNUM *priv,
     /* No reasonable DSA or ECDSA key should have a private key
      * this large and we don't handle this case in order to avoid
      * leaking the length of the private key. */
-    OPENSSL_PUT_ERROR(BN, BN_generate_dsa_nonce, BN_R_PRIVATE_KEY_TOO_LARGE);
+    OPENSSL_PUT_ERROR(BN, BN_R_PRIVATE_KEY_TOO_LARGE);
     goto err;
   }
   memcpy(private_bytes, priv->d, todo);

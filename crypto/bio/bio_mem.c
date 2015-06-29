@@ -70,7 +70,7 @@ BIO *BIO_new_mem_buf(void *buf, int len) {
   const size_t size = len < 0 ? strlen((char *)buf) : (size_t)len;
 
   if (!buf && len != 0) {
-    OPENSSL_PUT_ERROR(BIO, BIO_new_mem_buf, BIO_R_NULL_PARAMETER);
+    OPENSSL_PUT_ERROR(BIO, BIO_R_NULL_PARAMETER);
     return NULL;
   }
 
@@ -167,7 +167,7 @@ static int mem_write(BIO *bio, const char *in, int inl) {
   b = (BUF_MEM *)bio->ptr;
 
   if (bio->flags & BIO_FLAGS_MEM_RDONLY) {
-    OPENSSL_PUT_ERROR(BIO, mem_write, BIO_R_WRITE_TO_READ_ONLY_BIO);
+    OPENSSL_PUT_ERROR(BIO, BIO_R_WRITE_TO_READ_ONLY_BIO);
     goto err;
   }
 

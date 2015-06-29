@@ -257,7 +257,7 @@ ASN1_INTEGER *c2i_ASN1_INTEGER(ASN1_INTEGER **a, const unsigned char **pp,
 	*pp=pend;
 	return(ret);
 err:
-	OPENSSL_PUT_ERROR(ASN1, c2i_ASN1_INTEGER, i);
+	OPENSSL_PUT_ERROR(ASN1, i);
 	if ((ret != NULL) && ((a == NULL) || (*a != ret)))
 		M_ASN1_INTEGER_free(ret);
 	return(NULL);
@@ -327,7 +327,7 @@ ASN1_INTEGER *d2i_ASN1_UINTEGER(ASN1_INTEGER **a, const unsigned char **pp,
 	*pp=p;
 	return(ret);
 err:
-	OPENSSL_PUT_ERROR(ASN1, d2i_ASN1_UINTEGER, i);
+	OPENSSL_PUT_ERROR(ASN1, i);
 	if ((ret != NULL) && ((a == NULL) || (*a != ret)))
 		M_ASN1_INTEGER_free(ret);
 	return(NULL);
@@ -350,7 +350,7 @@ int ASN1_INTEGER_set(ASN1_INTEGER *a, long v)
 		}
 	if (a->data == NULL)
 		{
-		OPENSSL_PUT_ERROR(ASN1, ASN1_INTEGER_set, ERR_R_MALLOC_FAILURE);
+		OPENSSL_PUT_ERROR(ASN1, ERR_R_MALLOC_FAILURE);
 		return(0);
 		}
 	d=v;
@@ -413,7 +413,7 @@ ASN1_INTEGER *BN_to_ASN1_INTEGER(const BIGNUM *bn, ASN1_INTEGER *ai)
 		ret=ai;
 	if (ret == NULL)
 		{
-		OPENSSL_PUT_ERROR(ASN1, BN_to_ASN1_INTEGER, ASN1_R_NESTED_ASN1_ERROR);
+		OPENSSL_PUT_ERROR(ASN1, ASN1_R_NESTED_ASN1_ERROR);
 		goto err;
 		}
 	if (BN_is_negative(bn) && !BN_is_zero(bn))
@@ -426,7 +426,7 @@ ASN1_INTEGER *BN_to_ASN1_INTEGER(const BIGNUM *bn, ASN1_INTEGER *ai)
 		unsigned char *new_data=OPENSSL_realloc(ret->data, len+4);
 		if (!new_data)
 			{
-			OPENSSL_PUT_ERROR(ASN1, BN_to_ASN1_INTEGER, ERR_R_MALLOC_FAILURE);
+			OPENSSL_PUT_ERROR(ASN1, ERR_R_MALLOC_FAILURE);
 			goto err;
 			}
 		ret->data=new_data;
@@ -449,7 +449,7 @@ BIGNUM *ASN1_INTEGER_to_BN(const ASN1_INTEGER *ai, BIGNUM *bn)
 	BIGNUM *ret;
 
 	if ((ret=BN_bin2bn(ai->data,ai->length,bn)) == NULL)
-		OPENSSL_PUT_ERROR(ASN1, ASN1_INTEGER_to_BN, ASN1_R_BN_LIB);
+		OPENSSL_PUT_ERROR(ASN1, ASN1_R_BN_LIB);
 	else if(ai->type == V_ASN1_NEG_INTEGER)
 		BN_set_negative(ret, 1);
 	return(ret);

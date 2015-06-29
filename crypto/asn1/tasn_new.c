@@ -209,7 +209,7 @@ static int asn1_item_ex_combine_new(ASN1_VALUE **pval, const ASN1_ITEM *it,
 	return 1;
 
 	memerr:
-	OPENSSL_PUT_ERROR(ASN1, asn1_item_ex_combine_new,  ERR_R_MALLOC_FAILURE);
+	OPENSSL_PUT_ERROR(ASN1, ERR_R_MALLOC_FAILURE);
 	ASN1_item_ex_free(pval, it);
 #ifdef CRYPTO_MDEBUG
 	if (it->sname) CRYPTO_pop_info();
@@ -217,7 +217,7 @@ static int asn1_item_ex_combine_new(ASN1_VALUE **pval, const ASN1_ITEM *it,
 	return 0;
 
 	auxerr:
-	OPENSSL_PUT_ERROR(ASN1, asn1_item_ex_combine_new,  ASN1_R_AUX_ERROR);
+	OPENSSL_PUT_ERROR(ASN1, ASN1_R_AUX_ERROR);
 	ASN1_item_ex_free(pval, it);
 #ifdef CRYPTO_MDEBUG
 	if (it->sname) CRYPTO_pop_info();
@@ -289,7 +289,7 @@ int ASN1_template_new(ASN1_VALUE **pval, const ASN1_TEMPLATE *tt)
 		skval = sk_ASN1_VALUE_new_null();
 		if (!skval)
 			{
-			OPENSSL_PUT_ERROR(ASN1, ASN1_template_new,  ERR_R_MALLOC_FAILURE);
+			OPENSSL_PUT_ERROR(ASN1, ERR_R_MALLOC_FAILURE);
 			ret = 0;
 			goto done;
 			}

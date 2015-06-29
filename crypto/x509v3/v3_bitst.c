@@ -112,7 +112,7 @@ ASN1_BIT_STRING *v2i_ASN1_BIT_STRING(X509V3_EXT_METHOD *method,
 	size_t i;
 	const BIT_STRING_BITNAME *bnam;
 	if(!(bs = M_ASN1_BIT_STRING_new())) {
-		OPENSSL_PUT_ERROR(X509V3, v2i_ASN1_BIT_STRING, ERR_R_MALLOC_FAILURE);
+		OPENSSL_PUT_ERROR(X509V3, ERR_R_MALLOC_FAILURE);
 		return NULL;
 	}
 	for(i = 0; i < sk_CONF_VALUE_num(nval); i++) {
@@ -121,7 +121,7 @@ ASN1_BIT_STRING *v2i_ASN1_BIT_STRING(X509V3_EXT_METHOD *method,
 			if(!strcmp(bnam->sname, val->name) ||
 				!strcmp(bnam->lname, val->name) ) {
 				if(!ASN1_BIT_STRING_set_bit(bs, bnam->bitnum, 1)) {
-					OPENSSL_PUT_ERROR(X509V3, v2i_ASN1_BIT_STRING, ERR_R_MALLOC_FAILURE);
+					OPENSSL_PUT_ERROR(X509V3, ERR_R_MALLOC_FAILURE);
 					M_ASN1_BIT_STRING_free(bs);
 					return NULL;
 				}
@@ -129,7 +129,7 @@ ASN1_BIT_STRING *v2i_ASN1_BIT_STRING(X509V3_EXT_METHOD *method,
 			}
 		}
 		if(!bnam->lname) {
-			OPENSSL_PUT_ERROR(X509V3, v2i_ASN1_BIT_STRING, X509V3_R_UNKNOWN_BIT_STRING_ARGUMENT);
+			OPENSSL_PUT_ERROR(X509V3, X509V3_R_UNKNOWN_BIT_STRING_ARGUMENT);
 			X509V3_conf_err(val);
 			M_ASN1_BIT_STRING_free(bs);
 			return NULL;

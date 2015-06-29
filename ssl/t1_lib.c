@@ -211,8 +211,7 @@ static int tls1_check_duplicate_extensions(const CBS *cbs) {
   extension_types =
       (uint16_t *)OPENSSL_malloc(sizeof(uint16_t) * num_extensions);
   if (extension_types == NULL) {
-    OPENSSL_PUT_ERROR(SSL, tls1_check_duplicate_extensions,
-                      ERR_R_MALLOC_FAILURE);
+    OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
     goto done;
   }
 
@@ -684,21 +683,21 @@ int tls12_check_peer_sigalg(const EVP_MD **out_md, int *out_alert, SSL *s,
 
   /* Should never happen */
   if (sigalg == -1) {
-    OPENSSL_PUT_ERROR(SSL, tls12_check_peer_sigalg, ERR_R_INTERNAL_ERROR);
+    OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
     *out_alert = SSL_AD_INTERNAL_ERROR;
     return 0;
   }
 
   if (!CBS_get_u8(cbs, &hash) ||
       !CBS_get_u8(cbs, &signature)) {
-    OPENSSL_PUT_ERROR(SSL, tls12_check_peer_sigalg, SSL_R_DECODE_ERROR);
+    OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
     *out_alert = SSL_AD_DECODE_ERROR;
     return 0;
   }
 
   /* Check key type is consistent with signature */
   if (sigalg != signature) {
-    OPENSSL_PUT_ERROR(SSL, tls12_check_peer_sigalg, SSL_R_WRONG_SIGNATURE_TYPE);
+    OPENSSL_PUT_ERROR(SSL, SSL_R_WRONG_SIGNATURE_TYPE);
     *out_alert = SSL_AD_ILLEGAL_PARAMETER;
     return 0;
   }
@@ -714,7 +713,7 @@ int tls12_check_peer_sigalg(const EVP_MD **out_md, int *out_alert, SSL *s,
 
     if (s->server && (!tls1_check_curve_id(s, curve_id) ||
                       !tls1_check_point_format(s, comp_id))) {
-      OPENSSL_PUT_ERROR(SSL, tls12_check_peer_sigalg, SSL_R_WRONG_CURVE);
+      OPENSSL_PUT_ERROR(SSL, SSL_R_WRONG_CURVE);
       *out_alert = SSL_AD_ILLEGAL_PARAMETER;
       return 0;
     }
@@ -730,14 +729,14 @@ int tls12_check_peer_sigalg(const EVP_MD **out_md, int *out_alert, SSL *s,
 
   /* Allow fallback to SHA-1. */
   if (i == sent_sigslen && hash != TLSEXT_hash_sha1) {
-    OPENSSL_PUT_ERROR(SSL, tls12_check_peer_sigalg, SSL_R_WRONG_SIGNATURE_TYPE);
+    OPENSSL_PUT_ERROR(SSL, SSL_R_WRONG_SIGNATURE_TYPE);
     *out_alert = SSL_AD_ILLEGAL_PARAMETER;
     return 0;
   }
 
   *out_md = tls12_get_hash(hash);
   if (*out_md == NULL) {
-    OPENSSL_PUT_ERROR(SSL, tls12_check_peer_sigalg, SSL_R_UNKNOWN_DIGEST);
+    OPENSSL_PUT_ERROR(SSL, SSL_R_UNKNOWN_DIGEST);
     *out_alert = SSL_AD_ILLEGAL_PARAMETER;
     return 0;
   }
@@ -1009,8 +1008,7 @@ static int ext_ri_parse_serverhello(SSL *ssl, uint8_t *out_alert,
     }
 
     *out_alert = SSL_AD_HANDSHAKE_FAILURE;
-    OPENSSL_PUT_ERROR(SSL, ext_ri_parse_serverhello,
-                      SSL_R_UNSAFE_LEGACY_RENEGOTIATION_DISABLED);
+    OPENSSL_PUT_ERROR(SSL, SSL_R_UNSAFE_LEGACY_RENEGOTIATION_DISABLED);
     return 0;
   }
 
@@ -1025,16 +1023,14 @@ static int ext_ri_parse_serverhello(SSL *ssl, uint8_t *out_alert,
   CBS renegotiated_connection;
   if (!CBS_get_u8_length_prefixed(contents, &renegotiated_connection) ||
       CBS_len(contents) != 0) {
-    OPENSSL_PUT_ERROR(SSL, ext_ri_parse_serverhello,
-        SSL_R_RENEGOTIATION_ENCODING_ERR);
+    OPENSSL_PUT_ERROR(SSL, SSL_R_RENEGOTIATION_ENCODING_ERR);
     *out_alert = SSL_AD_ILLEGAL_PARAMETER;
     return 0;
   }
 
   /* Check that the extension matches. */
   if (CBS_len(&renegotiated_connection) != expected_len) {
-    OPENSSL_PUT_ERROR(SSL, ext_ri_parse_serverhello,
-        SSL_R_RENEGOTIATION_MISMATCH);
+    OPENSSL_PUT_ERROR(SSL, SSL_R_RENEGOTIATION_MISMATCH);
     *out_alert = SSL_AD_HANDSHAKE_FAILURE;
     return 0;
   }
@@ -1042,8 +1038,7 @@ static int ext_ri_parse_serverhello(SSL *ssl, uint8_t *out_alert,
   const uint8_t *d = CBS_data(&renegotiated_connection);
   if (CRYPTO_memcmp(d, ssl->s3->previous_client_finished,
         ssl->s3->previous_client_finished_len)) {
-    OPENSSL_PUT_ERROR(SSL, ext_ri_parse_serverhello,
-        SSL_R_RENEGOTIATION_MISMATCH);
+    OPENSSL_PUT_ERROR(SSL, SSL_R_RENEGOTIATION_MISMATCH);
     *out_alert = SSL_AD_HANDSHAKE_FAILURE;
     return 0;
   }
@@ -1051,8 +1046,7 @@ static int ext_ri_parse_serverhello(SSL *ssl, uint8_t *out_alert,
 
   if (CRYPTO_memcmp(d, ssl->s3->previous_server_finished,
         ssl->s3->previous_server_finished_len)) {
-    OPENSSL_PUT_ERROR(SSL, ext_ri_parse_serverhello,
-        SSL_R_RENEGOTIATION_MISMATCH);
+    OPENSSL_PUT_ERROR(SSL, SSL_R_RENEGOTIATION_MISMATCH);
     *out_alert = SSL_AD_ILLEGAL_PARAMETER;
     return 0;
   }
@@ -1088,16 +1082,14 @@ static int ext_ri_parse_clienthello(SSL *ssl, uint8_t *out_alert,
 
   if (!CBS_get_u8_length_prefixed(contents, &renegotiated_connection) ||
       CBS_len(contents) != 0) {
-    OPENSSL_PUT_ERROR(SSL, ext_ri_parse_clienthello,
-                      SSL_R_RENEGOTIATION_ENCODING_ERR);
+    OPENSSL_PUT_ERROR(SSL, SSL_R_RENEGOTIATION_ENCODING_ERR);
     return 0;
   }
 
   /* Check that the extension matches */
   if (!CBS_mem_equal(&renegotiated_connection, ssl->s3->previous_client_finished,
                      ssl->s3->previous_client_finished_len)) {
-    OPENSSL_PUT_ERROR(SSL, ext_ri_parse_clienthello,
-                      SSL_R_RENEGOTIATION_MISMATCH);
+    OPENSSL_PUT_ERROR(SSL, SSL_R_RENEGOTIATION_MISMATCH);
     *out_alert = SSL_AD_HANDSHAKE_FAILURE;
     return 0;
   }
@@ -1294,8 +1286,7 @@ static int ext_sigalgs_parse_serverhello(SSL *ssl, uint8_t *out_alert,
   if (contents != NULL) {
     /* Servers MUST NOT send this extension. */
     *out_alert = SSL_AD_UNSUPPORTED_EXTENSION;
-    OPENSSL_PUT_ERROR(SSL, ext_sigalgs_parse_serverhello,
-                      SSL_R_SIGNATURE_ALGORITHMS_EXTENSION_SENT_BY_SERVER);
+    OPENSSL_PUT_ERROR(SSL, SSL_R_SIGNATURE_ALGORITHMS_EXTENSION_SENT_BY_SERVER);
     return 0;
   }
 
@@ -1333,8 +1324,7 @@ static int ext_sigalgs_parse_clienthello(SSL *ssl, uint8_t *out_alert,
   /* It's a fatal error if the signature_algorithms extension is received and
    * there are no shared algorithms. */
   if (ssl->cert->peer_sigalgs && !ssl->cert->shared_sigalgs) {
-    OPENSSL_PUT_ERROR(SSL, ext_sigalgs_parse_clienthello,
-                      SSL_R_NO_SHARED_SIGATURE_ALGORITHMS);
+    OPENSSL_PUT_ERROR(SSL, SSL_R_NO_SHARED_SIGATURE_ALGORITHMS);
     *out_alert = SSL_AD_ILLEGAL_PARAMETER;
     return 0;
   }
@@ -1655,7 +1645,7 @@ uint8_t *ssl_add_clienthello_tlsext(SSL *s, uint8_t *const buf,
 
   CBB cbb;
   if (!CBB_init_fixed(&cbb, ret, limit - ret)) {
-    OPENSSL_PUT_ERROR(SSL, ssl_add_clienthello_tlsext, ERR_R_INTERNAL_ERROR);
+    OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
     return NULL;
   }
 
@@ -1663,7 +1653,7 @@ uint8_t *ssl_add_clienthello_tlsext(SSL *s, uint8_t *const buf,
     const size_t len_before = CBB_len(&cbb);
     if (!kExtensions[i].add_clienthello(s, &cbb)) {
       CBB_cleanup(&cbb);
-      OPENSSL_PUT_ERROR(SSL, ssl_add_clienthello_tlsext, ERR_R_INTERNAL_ERROR);
+      OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
       return NULL;
     }
     const size_t len_after = CBB_len(&cbb);
@@ -1724,7 +1714,7 @@ uint8_t *ssl_add_clienthello_tlsext(SSL *s, uint8_t *const buf,
     s2n(el, ret);
 
     if (!ssl_add_clienthello_use_srtp_ext(s, ret, &el, el)) {
-      OPENSSL_PUT_ERROR(SSL, ssl_add_clienthello_tlsext, ERR_R_INTERNAL_ERROR);
+      OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
       return NULL;
     }
     ret += el;
@@ -1747,7 +1737,7 @@ uint8_t *ssl_add_clienthello_tlsext(SSL *s, uint8_t *const buf,
       return NULL;
     }
     if (formats_len > 255) {
-      OPENSSL_PUT_ERROR(SSL, ssl_add_clienthello_tlsext, ERR_R_INTERNAL_ERROR);
+      OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
       return NULL;
     }
 
@@ -1768,7 +1758,7 @@ uint8_t *ssl_add_clienthello_tlsext(SSL *s, uint8_t *const buf,
       return NULL;
     }
     if (curves_len * 2 > 65532) {
-      OPENSSL_PUT_ERROR(SSL, ssl_add_clienthello_tlsext, ERR_R_INTERNAL_ERROR);
+      OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
       return NULL;
     }
 
@@ -1854,7 +1844,7 @@ uint8_t *ssl_add_serverhello_tlsext(SSL *s, uint8_t *const buf,
 
   CBB cbb;
   if (!CBB_init_fixed(&cbb, ret, limit - ret)) {
-    OPENSSL_PUT_ERROR(SSL, ssl_add_serverhello_tlsext, ERR_R_INTERNAL_ERROR);
+    OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
     return NULL;
   }
 
@@ -1867,7 +1857,7 @@ uint8_t *ssl_add_serverhello_tlsext(SSL *s, uint8_t *const buf,
 
     if (!kExtensions[i].add_serverhello(s, &cbb)) {
       CBB_cleanup(&cbb);
-      OPENSSL_PUT_ERROR(SSL, ssl_add_serverhello_tlsext, ERR_R_INTERNAL_ERROR);
+      OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
       return NULL;
     }
   }
@@ -1891,7 +1881,7 @@ uint8_t *ssl_add_serverhello_tlsext(SSL *s, uint8_t *const buf,
       return NULL;
     }
     if (plistlen > 255) {
-      OPENSSL_PUT_ERROR(SSL, ssl_add_serverhello_tlsext, ERR_R_INTERNAL_ERROR);
+      OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
       return NULL;
     }
 
@@ -1916,7 +1906,7 @@ uint8_t *ssl_add_serverhello_tlsext(SSL *s, uint8_t *const buf,
     s2n(el, ret);
 
     if (!ssl_add_serverhello_use_srtp_ext(s, ret, &el, el)) {
-      OPENSSL_PUT_ERROR(SSL, ssl_add_serverhello_tlsext, ERR_R_INTERNAL_ERROR);
+      OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
       return NULL;
     }
     ret += el;
@@ -2191,8 +2181,7 @@ int ssl_parse_clienthello_tlsext(SSL *s, CBS *cbs) {
   }
 
   if (ssl_check_clienthello_tlsext(s) <= 0) {
-    OPENSSL_PUT_ERROR(SSL, ssl_parse_clienthello_tlsext,
-                      SSL_R_CLIENTHELLO_TLSEXT);
+    OPENSSL_PUT_ERROR(SSL, SSL_R_CLIENTHELLO_TLSEXT);
     return 0;
   }
 
@@ -2252,8 +2241,7 @@ static int ssl_scan_serverhello_tlsext(SSL *s, CBS *cbs, int *out_alert) {
     if (ext != NULL) {
       if (!(s->s3->tmp.extensions.sent & (1u << ext_index))) {
         /* Received an extension that was never sent. */
-        OPENSSL_PUT_ERROR(SSL, ssl_scan_serverhello_tlsext,
-                          SSL_R_UNEXPECTED_EXTENSION);
+        OPENSSL_PUT_ERROR(SSL, SSL_R_UNEXPECTED_EXTENSION);
         ERR_add_error_dataf("ext:%u", (unsigned) type);
         *out_alert = SSL_AD_DECODE_ERROR;
         return 0;
@@ -2411,8 +2399,7 @@ static int ssl_check_serverhello_tlsext(SSL *s) {
   uint32_t alg_a = s->s3->tmp.new_cipher->algorithm_auth;
   if (((alg_k & SSL_kECDHE) || (alg_a & SSL_aECDSA)) &&
       !tls1_check_point_format(s, TLSEXT_ECPOINTFORMAT_uncompressed)) {
-    OPENSSL_PUT_ERROR(SSL, ssl_check_serverhello_tlsext,
-                      SSL_R_TLS_INVALID_ECPOINTFORMAT_LIST);
+    OPENSSL_PUT_ERROR(SSL, SSL_R_TLS_INVALID_ECPOINTFORMAT_LIST);
     return -1;
   }
   ret = SSL_TLSEXT_ERR_OK;
@@ -2452,8 +2439,7 @@ int ssl_parse_serverhello_tlsext(SSL *s, CBS *cbs) {
   }
 
   if (ssl_check_serverhello_tlsext(s) <= 0) {
-    OPENSSL_PUT_ERROR(SSL, ssl_parse_serverhello_tlsext,
-                      SSL_R_SERVERHELLO_TLSEXT);
+    OPENSSL_PUT_ERROR(SSL, SSL_R_SERVERHELLO_TLSEXT);
     return 0;
   }
 

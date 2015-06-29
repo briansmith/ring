@@ -75,7 +75,7 @@ void *ASN1_d2i_fp(void *(*xnew)(void), d2i_of_void *d2i, FILE *in, void **x)
 
         if ((b=BIO_new(BIO_s_file())) == NULL)
 		{
-		OPENSSL_PUT_ERROR(ASN1, ASN1_d2i_fp, ERR_R_BUF_LIB);
+		OPENSSL_PUT_ERROR(ASN1, ERR_R_BUF_LIB);
                 return(NULL);
 		}
         BIO_set_fp(b,in,BIO_NOCLOSE);
@@ -129,7 +129,7 @@ void *ASN1_item_d2i_fp(const ASN1_ITEM *it, FILE *in, void *x)
 
         if ((b=BIO_new(BIO_s_file())) == NULL)
 		{
-		OPENSSL_PUT_ERROR(ASN1, ASN1_item_d2i_fp, ERR_R_BUF_LIB);
+		OPENSSL_PUT_ERROR(ASN1, ERR_R_BUF_LIB);
                 return(NULL);
 		}
         BIO_set_fp(b,in,BIO_NOCLOSE);
@@ -154,7 +154,7 @@ static int asn1_d2i_read_bio(BIO *in, BUF_MEM **pb)
 	b=BUF_MEM_new();
 	if (b == NULL)
 		{
-		OPENSSL_PUT_ERROR(ASN1, asn1_d2i_read_bio, ERR_R_MALLOC_FAILURE);
+		OPENSSL_PUT_ERROR(ASN1, ERR_R_MALLOC_FAILURE);
 		return -1;
 		}
 
@@ -167,20 +167,20 @@ static int asn1_d2i_read_bio(BIO *in, BUF_MEM **pb)
 
 			if (len + want < len || !BUF_MEM_grow_clean(b,len+want))
 				{
-				OPENSSL_PUT_ERROR(ASN1, asn1_d2i_read_bio, ERR_R_MALLOC_FAILURE);
+				OPENSSL_PUT_ERROR(ASN1, ERR_R_MALLOC_FAILURE);
 				goto err;
 				}
 			i=BIO_read(in,&(b->data[len]),want);
 			if ((i < 0) && ((len-off) == 0))
 				{
-				OPENSSL_PUT_ERROR(ASN1, asn1_d2i_read_bio, ASN1_R_NOT_ENOUGH_DATA);
+				OPENSSL_PUT_ERROR(ASN1, ASN1_R_NOT_ENOUGH_DATA);
 				goto err;
 				}
 			if (i > 0)
 				{
 				if (len+i < len)
 					{
-					OPENSSL_PUT_ERROR(ASN1, asn1_d2i_read_bio, ASN1_R_TOO_LONG);
+					OPENSSL_PUT_ERROR(ASN1, ASN1_R_TOO_LONG);
 					goto err;
 					}
 				len+=i;
@@ -211,7 +211,7 @@ static int asn1_d2i_read_bio(BIO *in, BUF_MEM **pb)
 			eos++;
 			if (eos < 0)
 				{
-				OPENSSL_PUT_ERROR(ASN1, asn1_d2i_read_bio, ASN1_R_HEADER_TOO_LONG);
+				OPENSSL_PUT_ERROR(ASN1, ASN1_R_HEADER_TOO_LONG);
 				goto err;
 				}
 			want=HEADER_SIZE;
@@ -235,12 +235,12 @@ static int asn1_d2i_read_bio(BIO *in, BUF_MEM **pb)
 				if (want > INT_MAX /* BIO_read takes an int length */ ||
 					len+want < len)
 						{
-						OPENSSL_PUT_ERROR(ASN1, asn1_d2i_read_bio, ASN1_R_TOO_LONG);
+						OPENSSL_PUT_ERROR(ASN1, ASN1_R_TOO_LONG);
 						goto err;
 						}
 				if (!BUF_MEM_grow_clean(b,len+want))
 					{
-					OPENSSL_PUT_ERROR(ASN1, asn1_d2i_read_bio, ERR_R_MALLOC_FAILURE);
+					OPENSSL_PUT_ERROR(ASN1, ERR_R_MALLOC_FAILURE);
 					goto err;
 					}
 				while (want > 0)
@@ -248,7 +248,7 @@ static int asn1_d2i_read_bio(BIO *in, BUF_MEM **pb)
 					i=BIO_read(in,&(b->data[len]),want);
 					if (i <= 0)
 						{
-						OPENSSL_PUT_ERROR(ASN1, asn1_d2i_read_bio, ASN1_R_NOT_ENOUGH_DATA);
+						OPENSSL_PUT_ERROR(ASN1, ASN1_R_NOT_ENOUGH_DATA);
 						goto err;
 						}
 					/* This can't overflow because
@@ -259,7 +259,7 @@ static int asn1_d2i_read_bio(BIO *in, BUF_MEM **pb)
 				}
 			if (off + c.slen < off)
 				{
-				OPENSSL_PUT_ERROR(ASN1, asn1_d2i_read_bio, ASN1_R_TOO_LONG);
+				OPENSSL_PUT_ERROR(ASN1, ASN1_R_TOO_LONG);
 				goto err;
 				}
 			off+=c.slen;
@@ -274,7 +274,7 @@ static int asn1_d2i_read_bio(BIO *in, BUF_MEM **pb)
 
 	if (off > INT_MAX)
 		{
-		OPENSSL_PUT_ERROR(ASN1, asn1_d2i_read_bio, ASN1_R_TOO_LONG);
+		OPENSSL_PUT_ERROR(ASN1, ASN1_R_TOO_LONG);
 		goto err;
 		}
 

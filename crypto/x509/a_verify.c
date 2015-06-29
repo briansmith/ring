@@ -80,13 +80,13 @@ int ASN1_item_verify(const ASN1_ITEM *it, X509_ALGOR *a,
 
 	if (!pkey)
 		{
-		OPENSSL_PUT_ERROR(X509, ASN1_item_verify, ERR_R_PASSED_NULL_PARAMETER);
+		OPENSSL_PUT_ERROR(X509, ERR_R_PASSED_NULL_PARAMETER);
 		return 0;
 		}
 
 	if (signature->type == V_ASN1_BIT_STRING && signature->flags & 0x7)
 		{
-		OPENSSL_PUT_ERROR(X509, ASN1_item_verify, X509_R_INVALID_BIT_STRING_BITS_LEFT);
+		OPENSSL_PUT_ERROR(X509, X509_R_INVALID_BIT_STRING_BITS_LEFT);
 		return 0;
 		}
 
@@ -101,7 +101,7 @@ int ASN1_item_verify(const ASN1_ITEM *it, X509_ALGOR *a,
 	
 	if (buf_in == NULL)
 		{
-		OPENSSL_PUT_ERROR(X509, ASN1_item_verify, ERR_R_MALLOC_FAILURE);
+		OPENSSL_PUT_ERROR(X509, ERR_R_MALLOC_FAILURE);
 		goto err;
 		}
 
@@ -109,7 +109,7 @@ int ASN1_item_verify(const ASN1_ITEM *it, X509_ALGOR *a,
 		{
 		OPENSSL_cleanse(buf_in,(unsigned int)inl);
 		OPENSSL_free(buf_in);
-		OPENSSL_PUT_ERROR(X509, ASN1_item_verify, ERR_R_EVP_LIB);
+		OPENSSL_PUT_ERROR(X509, ERR_R_EVP_LIB);
 		goto err;
 		}
 
@@ -119,7 +119,7 @@ int ASN1_item_verify(const ASN1_ITEM *it, X509_ALGOR *a,
 	if (EVP_DigestVerifyFinal(&ctx,signature->data,
 			(size_t)signature->length) <= 0)
 		{
-		OPENSSL_PUT_ERROR(X509, ASN1_item_verify, ERR_R_EVP_LIB);
+		OPENSSL_PUT_ERROR(X509, ERR_R_EVP_LIB);
 		goto err;
 		}
 	/* we don't need to zero the 'ctx' because we just checked

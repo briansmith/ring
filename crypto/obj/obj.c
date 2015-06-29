@@ -108,7 +108,7 @@ ASN1_OBJECT *OBJ_dup(const ASN1_OBJECT *o) {
 
   r = ASN1_OBJECT_new();
   if (r == NULL) {
-    OPENSSL_PUT_ERROR(OBJ, OBJ_dup, ERR_R_ASN1_LIB);
+    OPENSSL_PUT_ERROR(OBJ, ERR_R_ASN1_LIB);
     return NULL;
   }
   r->ln = r->sn = NULL;
@@ -149,7 +149,7 @@ ASN1_OBJECT *OBJ_dup(const ASN1_OBJECT *o) {
   return r;
 
 err:
-  OPENSSL_PUT_ERROR(OBJ, OBJ_dup, ERR_R_MALLOC_FAILURE);
+  OPENSSL_PUT_ERROR(OBJ, ERR_R_MALLOC_FAILURE);
   OPENSSL_free(ln);
   OPENSSL_free(sn);
   OPENSSL_free(data);
@@ -337,7 +337,7 @@ const ASN1_OBJECT *OBJ_nid2obj(int nid) {
   CRYPTO_STATIC_MUTEX_unlock(&global_added_lock);
 
 err:
-  OPENSSL_PUT_ERROR(OBJ, OBJ_nid2obj, OBJ_R_UNKNOWN_NID);
+  OPENSSL_PUT_ERROR(OBJ, OBJ_R_UNKNOWN_NID);
   return NULL;
 }
 
@@ -388,7 +388,7 @@ ASN1_OBJECT *OBJ_txt2obj(const char *s, int dont_search_names) {
 
   buf = OPENSSL_malloc(total_len);
   if (buf == NULL) {
-    OPENSSL_PUT_ERROR(OBJ, OBJ_txt2obj, ERR_R_MALLOC_FAILURE);
+    OPENSSL_PUT_ERROR(OBJ, ERR_R_MALLOC_FAILURE);
     return NULL;
   }
 
@@ -636,7 +636,7 @@ int OBJ_create(const char *oid, const char *short_name, const char *long_name) {
 
   buf = OPENSSL_malloc(len);
   if (buf == NULL) {
-    OPENSSL_PUT_ERROR(OBJ, OBJ_create, ERR_R_MALLOC_FAILURE);
+    OPENSSL_PUT_ERROR(OBJ, ERR_R_MALLOC_FAILURE);
     goto err;
   }
 

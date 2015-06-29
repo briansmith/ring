@@ -131,7 +131,7 @@ int BN_exp(BIGNUM *r, const BIGNUM *a, const BIGNUM *p, BN_CTX *ctx) {
 
   if ((p->flags & BN_FLG_CONSTTIME) != 0) {
     /* BN_FLG_CONSTTIME only supported by BN_mod_exp_mont() */
-    OPENSSL_PUT_ERROR(BN, BN_exp, ERR_R_SHOULD_NOT_HAVE_BEEN_CALLED);
+    OPENSSL_PUT_ERROR(BN, ERR_R_SHOULD_NOT_HAVE_BEEN_CALLED);
     return 0;
   }
 
@@ -333,7 +333,7 @@ static int BN_div_recp(BIGNUM *dv, BIGNUM *rem, const BIGNUM *m,
   j = 0;
   while (BN_ucmp(r, &(recp->N)) >= 0) {
     if (j++ > 2) {
-      OPENSSL_PUT_ERROR(BN, BN_div_recp, BN_R_BAD_RECIPROCAL);
+      OPENSSL_PUT_ERROR(BN, BN_R_BAD_RECIPROCAL);
       goto err;
     }
     if (!BN_usub(r, r, &(recp->N))) {
@@ -427,7 +427,7 @@ static int mod_exp_recp(BIGNUM *r, const BIGNUM *a, const BIGNUM *p,
 
   if (BN_get_flags(p, BN_FLG_CONSTTIME) != 0) {
     /* BN_FLG_CONSTTIME only supported by BN_mod_exp_mont() */
-    OPENSSL_PUT_ERROR(BN, mod_exp_recp, ERR_R_SHOULD_NOT_HAVE_BEEN_CALLED);
+    OPENSSL_PUT_ERROR(BN, ERR_R_SHOULD_NOT_HAVE_BEEN_CALLED);
     return 0;
   }
 
@@ -616,7 +616,7 @@ int BN_mod_exp_mont(BIGNUM *rr, const BIGNUM *a, const BIGNUM *p,
   }
 
   if (!BN_is_odd(m)) {
-    OPENSSL_PUT_ERROR(BN, BN_mod_exp_mont, BN_R_CALLED_WITH_EVEN_MODULUS);
+    OPENSSL_PUT_ERROR(BN, BN_R_CALLED_WITH_EVEN_MODULUS);
     return 0;
   }
   bits = BN_num_bits(p);
@@ -865,8 +865,7 @@ int BN_mod_exp_mont_consttime(BIGNUM *rr, const BIGNUM *a, const BIGNUM *p,
   top = m->top;
 
   if (!(m->d[0] & 1)) {
-    OPENSSL_PUT_ERROR(BN, BN_mod_exp_mont_consttime,
-                      BN_R_CALLED_WITH_EVEN_MODULUS);
+    OPENSSL_PUT_ERROR(BN, BN_R_CALLED_WITH_EVEN_MODULUS);
     return 0;
   }
   bits = BN_num_bits(p);
@@ -1223,13 +1222,12 @@ int BN_mod_exp_mont_word(BIGNUM *rr, BN_ULONG a, const BIGNUM *p,
 
   if (BN_get_flags(p, BN_FLG_CONSTTIME) != 0) {
     /* BN_FLG_CONSTTIME only supported by BN_mod_exp_mont() */
-    OPENSSL_PUT_ERROR(BN, BN_mod_exp_mont_word,
-        ERR_R_SHOULD_NOT_HAVE_BEEN_CALLED);
+    OPENSSL_PUT_ERROR(BN, ERR_R_SHOULD_NOT_HAVE_BEEN_CALLED);
     return 0;
   }
 
   if (!BN_is_odd(m)) {
-    OPENSSL_PUT_ERROR(BN, BN_mod_exp_mont_word, BN_R_CALLED_WITH_EVEN_MODULUS);
+    OPENSSL_PUT_ERROR(BN, BN_R_CALLED_WITH_EVEN_MODULUS);
     return 0;
   }
 
@@ -1372,7 +1370,7 @@ int BN_mod_exp2_mont(BIGNUM *rr, const BIGNUM *a1, const BIGNUM *p1,
   BN_MONT_CTX *mont = NULL;
 
   if (!(m->d[0] & 1)) {
-    OPENSSL_PUT_ERROR(BN, BN_mod_exp2_mont, BN_R_CALLED_WITH_EVEN_MODULUS);
+    OPENSSL_PUT_ERROR(BN, BN_R_CALLED_WITH_EVEN_MODULUS);
     return 0;
   }
   bits1 = BN_num_bits(p1);

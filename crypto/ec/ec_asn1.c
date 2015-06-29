@@ -168,7 +168,7 @@ ECPKPARAMETERS *ec_asn1_group2pkparameters(const EC_GROUP *group,
   if (ret == NULL) {
     ret = ECPKPARAMETERS_new();
     if (ret == NULL) {
-      OPENSSL_PUT_ERROR(EC, ec_asn1_group2pkparameters, ERR_R_MALLOC_FAILURE);
+      OPENSSL_PUT_ERROR(EC, ERR_R_MALLOC_FAILURE);
       return NULL;
     }
   } else {
@@ -196,7 +196,7 @@ EC_GROUP *ec_asn1_pkparameters2group(const ECPKPARAMETERS *params) {
   int nid = NID_undef;
 
   if (params == NULL) {
-    OPENSSL_PUT_ERROR(EC, ec_asn1_pkparameters2group, EC_R_MISSING_PARAMETERS);
+    OPENSSL_PUT_ERROR(EC, EC_R_MISSING_PARAMETERS);
     return NULL;
   }
 
@@ -222,14 +222,13 @@ EC_GROUP *ec_asn1_pkparameters2group(const ECPKPARAMETERS *params) {
   }
 
   if (nid == NID_undef) {
-    OPENSSL_PUT_ERROR(EC, ec_asn1_pkparameters2group, EC_R_NON_NAMED_CURVE);
+    OPENSSL_PUT_ERROR(EC, EC_R_NON_NAMED_CURVE);
     return NULL;
   }
 
   ret = EC_GROUP_new_by_curve_name(nid);
   if (ret == NULL) {
-    OPENSSL_PUT_ERROR(EC, ec_asn1_pkparameters2group,
-                      EC_R_EC_GROUP_NEW_BY_NAME_FAILURE);
+    OPENSSL_PUT_ERROR(EC, EC_R_EC_GROUP_NEW_BY_NAME_FAILURE);
     return NULL;
   }
 
@@ -243,14 +242,14 @@ static EC_GROUP *d2i_ECPKParameters(EC_GROUP **groupp, const uint8_t **inp,
 
   params = d2i_ECPKPARAMETERS(NULL, inp, len);
   if (params == NULL) {
-    OPENSSL_PUT_ERROR(EC, d2i_ECPKParameters, EC_R_D2I_ECPKPARAMETERS_FAILURE);
+    OPENSSL_PUT_ERROR(EC, EC_R_D2I_ECPKPARAMETERS_FAILURE);
     ECPKPARAMETERS_free(params);
     return NULL;
   }
 
   group = ec_asn1_pkparameters2group(params);
   if (group == NULL) {
-    OPENSSL_PUT_ERROR(EC, d2i_ECPKParameters, EC_R_PKPARAMETERS2GROUP_FAILURE);
+    OPENSSL_PUT_ERROR(EC, EC_R_PKPARAMETERS2GROUP_FAILURE);
     ECPKPARAMETERS_free(params);
     return NULL;
   }
@@ -268,12 +267,12 @@ static int i2d_ECPKParameters(const EC_GROUP *group, uint8_t **outp) {
   int ret = 0;
   ECPKPARAMETERS *tmp = ec_asn1_group2pkparameters(group, NULL);
   if (tmp == NULL) {
-    OPENSSL_PUT_ERROR(EC, i2d_ECPKParameters, EC_R_GROUP2PKPARAMETERS_FAILURE);
+    OPENSSL_PUT_ERROR(EC, EC_R_GROUP2PKPARAMETERS_FAILURE);
     return 0;
   }
   ret = i2d_ECPKPARAMETERS(tmp, outp);
   if (ret == 0) {
-    OPENSSL_PUT_ERROR(EC, i2d_ECPKParameters, EC_R_I2D_ECPKPARAMETERS_FAILURE);
+    OPENSSL_PUT_ERROR(EC, EC_R_I2D_ECPKPARAMETERS_FAILURE);
     ECPKPARAMETERS_free(tmp);
     return 0;
   }
@@ -288,14 +287,14 @@ EC_KEY *d2i_ECPrivateKey(EC_KEY **a, const uint8_t **in, long len) {
 
   priv_key = d2i_EC_PRIVATEKEY(NULL, in, len);
   if (priv_key == NULL) {
-    OPENSSL_PUT_ERROR(EC, d2i_ECPrivateKey, ERR_R_EC_LIB);
+    OPENSSL_PUT_ERROR(EC, ERR_R_EC_LIB);
     return NULL;
   }
 
   if (a == NULL || *a == NULL) {
     ret = EC_KEY_new();
     if (ret == NULL) {
-      OPENSSL_PUT_ERROR(EC, d2i_ECPrivateKey, ERR_R_MALLOC_FAILURE);
+      OPENSSL_PUT_ERROR(EC, ERR_R_MALLOC_FAILURE);
       goto err;
     }
   } else {
@@ -308,7 +307,7 @@ EC_KEY *d2i_ECPrivateKey(EC_KEY **a, const uint8_t **in, long len) {
   }
 
   if (ret->group == NULL) {
-    OPENSSL_PUT_ERROR(EC, d2i_ECPrivateKey, ERR_R_EC_LIB);
+    OPENSSL_PUT_ERROR(EC, ERR_R_EC_LIB);
     goto err;
   }
 
@@ -319,18 +318,18 @@ EC_KEY *d2i_ECPrivateKey(EC_KEY **a, const uint8_t **in, long len) {
         BN_bin2bn(M_ASN1_STRING_data(priv_key->privateKey),
                   M_ASN1_STRING_length(priv_key->privateKey), ret->priv_key);
     if (ret->priv_key == NULL) {
-      OPENSSL_PUT_ERROR(EC, d2i_ECPrivateKey, ERR_R_BN_LIB);
+      OPENSSL_PUT_ERROR(EC, ERR_R_BN_LIB);
       goto err;
     }
   } else {
-    OPENSSL_PUT_ERROR(EC, d2i_ECPrivateKey, EC_R_MISSING_PRIVATE_KEY);
+    OPENSSL_PUT_ERROR(EC, EC_R_MISSING_PRIVATE_KEY);
     goto err;
   }
 
   EC_POINT_free(ret->pub_key);
   ret->pub_key = EC_POINT_new(ret->group);
   if (ret->pub_key == NULL) {
-    OPENSSL_PUT_ERROR(EC, d2i_ECPrivateKey, ERR_R_EC_LIB);
+    OPENSSL_PUT_ERROR(EC, ERR_R_EC_LIB);
     goto err;
   }
 
@@ -342,20 +341,20 @@ EC_KEY *d2i_ECPrivateKey(EC_KEY **a, const uint8_t **in, long len) {
     pub_oct_len = M_ASN1_STRING_length(priv_key->publicKey);
     /* The first byte (the point conversion form) must be present. */
     if (pub_oct_len <= 0) {
-      OPENSSL_PUT_ERROR(EC, d2i_ECPrivateKey, EC_R_BUFFER_TOO_SMALL);
+      OPENSSL_PUT_ERROR(EC, EC_R_BUFFER_TOO_SMALL);
       goto err;
     }
     /* Save the point conversion form. */
     ret->conv_form = (point_conversion_form_t)(pub_oct[0] & ~0x01);
     if (!EC_POINT_oct2point(ret->group, ret->pub_key, pub_oct, pub_oct_len,
                             NULL)) {
-      OPENSSL_PUT_ERROR(EC, d2i_ECPrivateKey, ERR_R_EC_LIB);
+      OPENSSL_PUT_ERROR(EC, ERR_R_EC_LIB);
       goto err;
     }
   } else {
     if (!EC_POINT_mul(ret->group, ret->pub_key, ret->priv_key, NULL, NULL,
                       NULL)) {
-      OPENSSL_PUT_ERROR(EC, d2i_ECPrivateKey, ERR_R_EC_LIB);
+      OPENSSL_PUT_ERROR(EC, ERR_R_EC_LIB);
       goto err;
     }
     /* Remember the original private-key-only encoding. */
@@ -387,13 +386,13 @@ int i2d_ECPrivateKey(const EC_KEY *key, uint8_t **outp) {
   EC_PRIVATEKEY *priv_key = NULL;
 
   if (key == NULL || key->group == NULL || key->priv_key == NULL) {
-    OPENSSL_PUT_ERROR(EC, i2d_ECPrivateKey, ERR_R_PASSED_NULL_PARAMETER);
+    OPENSSL_PUT_ERROR(EC, ERR_R_PASSED_NULL_PARAMETER);
     goto err;
   }
 
   priv_key = EC_PRIVATEKEY_new();
   if (priv_key == NULL) {
-    OPENSSL_PUT_ERROR(EC, i2d_ECPrivateKey, ERR_R_MALLOC_FAILURE);
+    OPENSSL_PUT_ERROR(EC, ERR_R_MALLOC_FAILURE);
     goto err;
   }
 
@@ -402,17 +401,17 @@ int i2d_ECPrivateKey(const EC_KEY *key, uint8_t **outp) {
   buf_len = BN_num_bytes(&key->group->order);
   buffer = OPENSSL_malloc(buf_len);
   if (buffer == NULL) {
-    OPENSSL_PUT_ERROR(EC, i2d_ECPrivateKey, ERR_R_MALLOC_FAILURE);
+    OPENSSL_PUT_ERROR(EC, ERR_R_MALLOC_FAILURE);
     goto err;
   }
 
   if (!BN_bn2bin_padded(buffer, buf_len, key->priv_key)) {
-    OPENSSL_PUT_ERROR(EC, i2d_ECPrivateKey, ERR_R_BN_LIB);
+    OPENSSL_PUT_ERROR(EC, ERR_R_BN_LIB);
     goto err;
   }
 
   if (!M_ASN1_OCTET_STRING_set(priv_key->privateKey, buffer, buf_len)) {
-    OPENSSL_PUT_ERROR(EC, i2d_ECPrivateKey, ERR_R_ASN1_LIB);
+    OPENSSL_PUT_ERROR(EC, ERR_R_ASN1_LIB);
     goto err;
   }
 
@@ -420,7 +419,7 @@ int i2d_ECPrivateKey(const EC_KEY *key, uint8_t **outp) {
   if (!(key->enc_flag & EC_PKEY_NO_PARAMETERS)) {
     if ((priv_key->parameters = ec_asn1_group2pkparameters(
              key->group, priv_key->parameters)) == NULL) {
-      OPENSSL_PUT_ERROR(EC, i2d_ECPrivateKey, ERR_R_EC_LIB);
+      OPENSSL_PUT_ERROR(EC, ERR_R_EC_LIB);
       goto err;
     }
   }
@@ -429,7 +428,7 @@ int i2d_ECPrivateKey(const EC_KEY *key, uint8_t **outp) {
   if (!(key->enc_flag & EC_PKEY_NO_PUBKEY) && key->pub_key != NULL) {
     priv_key->publicKey = M_ASN1_BIT_STRING_new();
     if (priv_key->publicKey == NULL) {
-      OPENSSL_PUT_ERROR(EC, i2d_ECPrivateKey, ERR_R_MALLOC_FAILURE);
+      OPENSSL_PUT_ERROR(EC, ERR_R_MALLOC_FAILURE);
       goto err;
     }
 
@@ -439,7 +438,7 @@ int i2d_ECPrivateKey(const EC_KEY *key, uint8_t **outp) {
     if (tmp_len > buf_len) {
       uint8_t *tmp_buffer = OPENSSL_realloc(buffer, tmp_len);
       if (!tmp_buffer) {
-        OPENSSL_PUT_ERROR(EC, i2d_ECPrivateKey, ERR_R_MALLOC_FAILURE);
+        OPENSSL_PUT_ERROR(EC, ERR_R_MALLOC_FAILURE);
         goto err;
       }
       buffer = tmp_buffer;
@@ -448,21 +447,21 @@ int i2d_ECPrivateKey(const EC_KEY *key, uint8_t **outp) {
 
     if (!EC_POINT_point2oct(key->group, key->pub_key, key->conv_form, buffer,
                             buf_len, NULL)) {
-      OPENSSL_PUT_ERROR(EC, i2d_ECPrivateKey, ERR_R_EC_LIB);
+      OPENSSL_PUT_ERROR(EC, ERR_R_EC_LIB);
       goto err;
     }
 
     priv_key->publicKey->flags &= ~(ASN1_STRING_FLAG_BITS_LEFT | 0x07);
     priv_key->publicKey->flags |= ASN1_STRING_FLAG_BITS_LEFT;
     if (!M_ASN1_BIT_STRING_set(priv_key->publicKey, buffer, buf_len)) {
-      OPENSSL_PUT_ERROR(EC, i2d_ECPrivateKey, ERR_R_ASN1_LIB);
+      OPENSSL_PUT_ERROR(EC, ERR_R_ASN1_LIB);
       goto err;
     }
   }
 
   ret = i2d_EC_PRIVATEKEY(priv_key, outp);
   if (ret == 0) {
-    OPENSSL_PUT_ERROR(EC, i2d_ECPrivateKey, ERR_R_EC_LIB);
+    OPENSSL_PUT_ERROR(EC, ERR_R_EC_LIB);
     goto err;
   }
   ok = 1;
@@ -475,7 +474,7 @@ err:
 
 int i2d_ECParameters(const EC_KEY *key, uint8_t **outp) {
   if (key == NULL) {
-    OPENSSL_PUT_ERROR(EC, i2d_ECParameters, ERR_R_PASSED_NULL_PARAMETER);
+    OPENSSL_PUT_ERROR(EC, ERR_R_PASSED_NULL_PARAMETER);
     return 0;
   }
   return i2d_ECPKParameters(key->group, outp);
@@ -485,14 +484,14 @@ EC_KEY *d2i_ECParameters(EC_KEY **key, const uint8_t **inp, long len) {
   EC_KEY *ret;
 
   if (inp == NULL || *inp == NULL) {
-    OPENSSL_PUT_ERROR(EC, d2i_ECParameters, ERR_R_PASSED_NULL_PARAMETER);
+    OPENSSL_PUT_ERROR(EC, ERR_R_PASSED_NULL_PARAMETER);
     return NULL;
   }
 
   if (key == NULL || *key == NULL) {
     ret = EC_KEY_new();
     if (ret == NULL) {
-      OPENSSL_PUT_ERROR(EC, d2i_ECParameters, ERR_R_MALLOC_FAILURE);
+      OPENSSL_PUT_ERROR(EC, ERR_R_MALLOC_FAILURE);
       return NULL;
     }
   } else {
@@ -500,7 +499,7 @@ EC_KEY *d2i_ECParameters(EC_KEY **key, const uint8_t **inp, long len) {
   }
 
   if (!d2i_ECPKParameters(&ret->group, inp, len)) {
-    OPENSSL_PUT_ERROR(EC, d2i_ECParameters, ERR_R_EC_LIB);
+    OPENSSL_PUT_ERROR(EC, ERR_R_EC_LIB);
     if (key == NULL || *key == NULL) {
       EC_KEY_free(ret);
     }
@@ -517,17 +516,17 @@ EC_KEY *o2i_ECPublicKey(EC_KEY **keyp, const uint8_t **inp, long len) {
   EC_KEY *ret = NULL;
 
   if (keyp == NULL || *keyp == NULL || (*keyp)->group == NULL) {
-    OPENSSL_PUT_ERROR(EC, o2i_ECPublicKey, ERR_R_PASSED_NULL_PARAMETER);
+    OPENSSL_PUT_ERROR(EC, ERR_R_PASSED_NULL_PARAMETER);
     return 0;
   }
   ret = *keyp;
   if (ret->pub_key == NULL &&
       (ret->pub_key = EC_POINT_new(ret->group)) == NULL) {
-    OPENSSL_PUT_ERROR(EC, o2i_ECPublicKey, ERR_R_MALLOC_FAILURE);
+    OPENSSL_PUT_ERROR(EC, ERR_R_MALLOC_FAILURE);
     return 0;
   }
   if (!EC_POINT_oct2point(ret->group, ret->pub_key, *inp, len, NULL)) {
-    OPENSSL_PUT_ERROR(EC, o2i_ECPublicKey, ERR_R_EC_LIB);
+    OPENSSL_PUT_ERROR(EC, ERR_R_EC_LIB);
     return 0;
   }
   /* save the point conversion form */
@@ -541,7 +540,7 @@ int i2o_ECPublicKey(const EC_KEY *key, uint8_t **outp) {
   int new_buffer = 0;
 
   if (key == NULL) {
-    OPENSSL_PUT_ERROR(EC, i2o_ECPublicKey, ERR_R_PASSED_NULL_PARAMETER);
+    OPENSSL_PUT_ERROR(EC, ERR_R_PASSED_NULL_PARAMETER);
     return 0;
   }
 
@@ -556,14 +555,14 @@ int i2o_ECPublicKey(const EC_KEY *key, uint8_t **outp) {
   if (*outp == NULL) {
     *outp = OPENSSL_malloc(buf_len);
     if (*outp == NULL) {
-      OPENSSL_PUT_ERROR(EC, i2o_ECPublicKey, ERR_R_MALLOC_FAILURE);
+      OPENSSL_PUT_ERROR(EC, ERR_R_MALLOC_FAILURE);
       return 0;
     }
     new_buffer = 1;
   }
   if (!EC_POINT_point2oct(key->group, key->pub_key, key->conv_form, *outp,
                           buf_len, NULL)) {
-    OPENSSL_PUT_ERROR(EC, i2o_ECPublicKey, ERR_R_EC_LIB);
+    OPENSSL_PUT_ERROR(EC, ERR_R_EC_LIB);
     if (new_buffer) {
       OPENSSL_free(*outp);
       *outp = NULL;

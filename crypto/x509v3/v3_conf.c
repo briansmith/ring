@@ -92,7 +92,7 @@ X509_EXTENSION *X509V3_EXT_nconf(CONF *conf, X509V3_CTX *ctx, char *name,
 	ret = do_ext_nconf(conf, ctx, OBJ_sn2nid(name), crit, value);
 	if (!ret)
 		{
-		OPENSSL_PUT_ERROR(X509V3, X509V3_EXT_nconf, X509V3_R_ERROR_IN_EXTENSION);
+		OPENSSL_PUT_ERROR(X509V3, X509V3_R_ERROR_IN_EXTENSION);
 		ERR_add_error_data(4,"name=", name, ", value=", value);
 		}
 	return ret;
@@ -123,12 +123,12 @@ static X509_EXTENSION *do_ext_nconf(CONF *conf, X509V3_CTX *ctx, int ext_nid,
 	void *ext_struc;
 	if (ext_nid == NID_undef)
 		{
-		OPENSSL_PUT_ERROR(X509V3, do_ext_nconf, X509V3_R_UNKNOWN_EXTENSION_NAME);
+		OPENSSL_PUT_ERROR(X509V3, X509V3_R_UNKNOWN_EXTENSION_NAME);
 		return NULL;
 		}
 	if (!(method = X509V3_EXT_get_nid(ext_nid)))
 		{
-		OPENSSL_PUT_ERROR(X509V3, do_ext_nconf, X509V3_R_UNKNOWN_EXTENSION);
+		OPENSSL_PUT_ERROR(X509V3, X509V3_R_UNKNOWN_EXTENSION);
 		return NULL;
 		}
 	/* Now get internal extension representation based on type */
@@ -138,7 +138,7 @@ static X509_EXTENSION *do_ext_nconf(CONF *conf, X509V3_CTX *ctx, int ext_nid,
 		else nval = X509V3_parse_list(value);
 		if(sk_CONF_VALUE_num(nval) <= 0)
 			{
-			OPENSSL_PUT_ERROR(X509V3, do_ext_nconf, X509V3_R_INVALID_EXTENSION_STRING);
+			OPENSSL_PUT_ERROR(X509V3, X509V3_R_INVALID_EXTENSION_STRING);
 			ERR_add_error_data(4, "name=", OBJ_nid2sn(ext_nid), ",section=", value);
 			return NULL;
 			}
@@ -155,14 +155,14 @@ static X509_EXTENSION *do_ext_nconf(CONF *conf, X509V3_CTX *ctx, int ext_nid,
 		{
 		if(!ctx->db || !ctx->db_meth)
 			{
-			OPENSSL_PUT_ERROR(X509V3, do_ext_nconf, X509V3_R_NO_CONFIG_DATABASE);
+			OPENSSL_PUT_ERROR(X509V3, X509V3_R_NO_CONFIG_DATABASE);
 			return NULL;
 			}
 		if(!(ext_struc = method->r2i(method, ctx, value))) return NULL;
 		}
 	else
 		{
-		OPENSSL_PUT_ERROR(X509V3, do_ext_nconf, X509V3_R_EXTENSION_SETTING_NOT_SUPPORTED);
+		OPENSSL_PUT_ERROR(X509V3, X509V3_R_EXTENSION_SETTING_NOT_SUPPORTED);
 		ERR_add_error_data(2, "name=", OBJ_nid2sn(ext_nid));
 		return NULL;
 		}
@@ -207,7 +207,7 @@ static X509_EXTENSION *do_ext_i2d(const X509V3_EXT_METHOD *method, int ext_nid,
 	return ext;
 
 	merr:
-	OPENSSL_PUT_ERROR(X509V3, do_ext_i2d, ERR_R_MALLOC_FAILURE);
+	OPENSSL_PUT_ERROR(X509V3, ERR_R_MALLOC_FAILURE);
 	return NULL;
 
 	}
@@ -218,7 +218,7 @@ X509_EXTENSION *X509V3_EXT_i2d(int ext_nid, int crit, void *ext_struc)
 	{
 	const X509V3_EXT_METHOD *method;
 	if (!(method = X509V3_EXT_get_nid(ext_nid))) {
-		OPENSSL_PUT_ERROR(X509V3, X509V3_EXT_i2d, X509V3_R_UNKNOWN_EXTENSION);
+		OPENSSL_PUT_ERROR(X509V3, X509V3_R_UNKNOWN_EXTENSION);
 		return NULL;
 	}
 	return do_ext_i2d(method, ext_nid, crit, ext_struc);
@@ -271,7 +271,7 @@ static X509_EXTENSION *v3_generic_extension(const char *ext, char *value,
 	X509_EXTENSION *extension=NULL;
 	if (!(obj = OBJ_txt2obj(ext, 0)))
 		{
-		OPENSSL_PUT_ERROR(X509V3, v3_generic_extension, X509V3_R_EXTENSION_NAME_ERROR);
+		OPENSSL_PUT_ERROR(X509V3, X509V3_R_EXTENSION_NAME_ERROR);
 		ERR_add_error_data(2, "name=", ext);
 		goto err;
 		}
@@ -283,14 +283,14 @@ static X509_EXTENSION *v3_generic_extension(const char *ext, char *value,
 
 	if (ext_der == NULL)
 		{
-		OPENSSL_PUT_ERROR(X509V3, v3_generic_extension, X509V3_R_EXTENSION_VALUE_ERROR);
+		OPENSSL_PUT_ERROR(X509V3, X509V3_R_EXTENSION_VALUE_ERROR);
 		ERR_add_error_data(2, "value=", value);
 		goto err;
 		}
 
 	if (!(oct = M_ASN1_OCTET_STRING_new()))
 		{
-		OPENSSL_PUT_ERROR(X509V3, v3_generic_extension, ERR_R_MALLOC_FAILURE);
+		OPENSSL_PUT_ERROR(X509V3, ERR_R_MALLOC_FAILURE);
 		goto err;
 		}
 
@@ -389,7 +389,7 @@ char * X509V3_get_string(X509V3_CTX *ctx, char *name, char *section)
 	{
 	if(!ctx->db || !ctx->db_meth || !ctx->db_meth->get_string)
 		{
-		OPENSSL_PUT_ERROR(X509V3, X509V3_get_string, X509V3_R_OPERATION_NOT_DEFINED);
+		OPENSSL_PUT_ERROR(X509V3, X509V3_R_OPERATION_NOT_DEFINED);
 		return NULL;
 		}
 	if (ctx->db_meth->get_string)
@@ -401,7 +401,7 @@ STACK_OF(CONF_VALUE) * X509V3_get_section(X509V3_CTX *ctx, char *section)
 	{
 	if(!ctx->db || !ctx->db_meth || !ctx->db_meth->get_section)
 		{
-		OPENSSL_PUT_ERROR(X509V3, X509V3_get_section, X509V3_R_OPERATION_NOT_DEFINED);
+		OPENSSL_PUT_ERROR(X509V3, X509V3_R_OPERATION_NOT_DEFINED);
 		return NULL;
 		}
 	if (ctx->db_meth->get_section)

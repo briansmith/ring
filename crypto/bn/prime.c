@@ -362,11 +362,11 @@ int BN_generate_prime_ex(BIGNUM *ret, int bits, int safe, const BIGNUM *add,
 
   if (bits < 2) {
     /* There are no prime numbers this small. */
-    OPENSSL_PUT_ERROR(BN, BN_generate_prime_ex, BN_R_BITS_TOO_SMALL);
+    OPENSSL_PUT_ERROR(BN, BN_R_BITS_TOO_SMALL);
     return 0;
   } else if (bits == 2 && safe) {
     /* The smallest safe prime (7) is three bits. */
-    OPENSSL_PUT_ERROR(BN, BN_generate_prime_ex, BN_R_BITS_TOO_SMALL);
+    OPENSSL_PUT_ERROR(BN, BN_R_BITS_TOO_SMALL);
     return 0;
   }
 
