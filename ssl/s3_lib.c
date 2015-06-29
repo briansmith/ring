@@ -452,34 +452,6 @@ long ssl3_ctrl(SSL *s, int cmd, long larg, void *parg) {
     case SSL_CTRL_SET_CHAIN_CERT_STORE:
       return ssl_cert_set_cert_store(s->cert, parg, 1, larg);
 
-    case SSL_CTRL_GET_SERVER_TMP_KEY:
-      if (s->server || !s->session || !s->session->sess_cert) {
-        return 0;
-      } else {
-        SESS_CERT *sc;
-        EVP_PKEY *ptmp;
-        int rv = 0;
-        sc = s->session->sess_cert;
-        if (!sc->peer_dh_tmp && !sc->peer_ecdh_tmp) {
-          return 0;
-        }
-        ptmp = EVP_PKEY_new();
-        if (!ptmp) {
-          return 0;
-        }
-        if (sc->peer_dh_tmp) {
-          rv = EVP_PKEY_set1_DH(ptmp, sc->peer_dh_tmp);
-        } else if (sc->peer_ecdh_tmp) {
-          rv = EVP_PKEY_set1_EC_KEY(ptmp, sc->peer_ecdh_tmp);
-        }
-        if (rv) {
-          *(EVP_PKEY **)parg = ptmp;
-          return 1;
-        }
-        EVP_PKEY_free(ptmp);
-        return 0;
-      }
-
     case SSL_CTRL_GET_EC_POINT_FORMATS: {
       const uint8_t **pformat = parg;
       if (!s->s3->tmp.peer_ecpointformatlist) {
