@@ -59,8 +59,8 @@ var libraryNames = []string{
 	"HMAC",
 	"DIGEST",
 	"CIPHER",
-	"USER",
 	"HKDF",
+	"USER",
 }
 
 // stringList is a map from uint32 -> string which can output data for a sorted

@@ -512,8 +512,8 @@ static const char *const kLibraryNames[ERR_NUM_LIBS] = {
     "HMAC routines",                              /* ERR_LIB_HMAC */
     "Digest functions",                           /* ERR_LIB_DIGEST */
     "Cipher functions",                           /* ERR_LIB_CIPHER */
-    "User defined functions",                     /* ERR_LIB_USER */
     "HKDF functions",                             /* ERR_LIB_HKDF */
+    "User defined functions",                     /* ERR_LIB_USER */
 };
 
 const char *ERR_lib_error_string(uint32_t packed_error) {
