@@ -161,7 +161,8 @@ int CRYPTO_get_ex_new_index(CRYPTO_EX_DATA_CLASS *ex_data_class, int *out_index,
     goto err;
   }
 
-  *out_index = sk_CRYPTO_EX_DATA_FUNCS_num(ex_data_class->meth) - 1;
+  *out_index = sk_CRYPTO_EX_DATA_FUNCS_num(ex_data_class->meth) - 1 +
+               ex_data_class->num_reserved;
   ret = 1;
 
 err:
@@ -244,8 +245,8 @@ int CRYPTO_new_ex_data(CRYPTO_EX_DATA_CLASS *ex_data_class, void *obj,
     CRYPTO_EX_DATA_FUNCS *func_pointer =
         sk_CRYPTO_EX_DATA_FUNCS_value(func_pointers, i);
     if (func_pointer->new_func) {
-      func_pointer->new_func(obj, NULL, ad, i, func_pointer->argl,
-                             func_pointer->argp);
+      func_pointer->new_func(obj, NULL, ad, i + ex_data_class->num_reserved,
+                             func_pointer->argl, func_pointer->argp);
     }
   }
 
@@ -272,12 +273,12 @@ int CRYPTO_dup_ex_data(CRYPTO_EX_DATA_CLASS *ex_data_class, CRYPTO_EX_DATA *to,
   for (i = 0; i < sk_CRYPTO_EX_DATA_FUNCS_num(func_pointers); i++) {
     CRYPTO_EX_DATA_FUNCS *func_pointer =
         sk_CRYPTO_EX_DATA_FUNCS_value(func_pointers, i);
-    void *ptr = CRYPTO_get_ex_data(from, i);
+    void *ptr = CRYPTO_get_ex_data(from, i + ex_data_class->num_reserved);
     if (func_pointer->dup_func) {
-      func_pointer->dup_func(to, from, &ptr, i, func_pointer->argl,
-                             func_pointer->argp);
+      func_pointer->dup_func(to, from, &ptr, i + ex_data_class->num_reserved,
+                             func_pointer->argl, func_pointer->argp);
     }
-    CRYPTO_set_ex_data(to, i, ptr);
+    CRYPTO_set_ex_data(to, i + ex_data_class->num_reserved, ptr);
   }
 
   sk_CRYPTO_EX_DATA_FUNCS_free(func_pointers);
@@ -298,9 +299,9 @@ void CRYPTO_free_ex_data(CRYPTO_EX_DATA_CLASS *ex_data_class, void *obj,
     CRYPTO_EX_DATA_FUNCS *func_pointer =
         sk_CRYPTO_EX_DATA_FUNCS_value(func_pointers, i);
     if (func_pointer->free_func) {
-      void *ptr = CRYPTO_get_ex_data(ad, i);
-      func_pointer->free_func(obj, ptr, ad, i, func_pointer->argl,
-                              func_pointer->argp);
+      void *ptr = CRYPTO_get_ex_data(ad, i + ex_data_class->num_reserved);
+      func_pointer->free_func(obj, ptr, ad, i + ex_data_class->num_reserved,
+                              func_pointer->argl, func_pointer->argp);
     }
   }
 

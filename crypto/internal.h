@@ -493,9 +493,14 @@ typedef struct crypto_ex_data_func_st CRYPTO_EX_DATA_FUNCS;
 typedef struct {
   struct CRYPTO_STATIC_MUTEX lock;
   STACK_OF(CRYPTO_EX_DATA_FUNCS) *meth;
+  /* num_reserved is one if the ex_data index zero is reserved for legacy
+   * |TYPE_get_app_data| functions. */
+  uint8_t num_reserved;
 } CRYPTO_EX_DATA_CLASS;
 
-#define CRYPTO_EX_DATA_CLASS_INIT {CRYPTO_STATIC_MUTEX_INIT, NULL}
+#define CRYPTO_EX_DATA_CLASS_INIT {CRYPTO_STATIC_MUTEX_INIT, NULL, 0}
+#define CRYPTO_EX_DATA_CLASS_INIT_WITH_APP_DATA \
+    {CRYPTO_STATIC_MUTEX_INIT, NULL, 1}
 
 /* CRYPTO_get_ex_new_index allocates a new index for |ex_data_class| and writes
  * it to |*out_index|. Each class of object should provide a wrapper function

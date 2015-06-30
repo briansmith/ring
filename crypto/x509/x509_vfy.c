@@ -72,7 +72,8 @@
 #include "../internal.h"
 
 
-static CRYPTO_EX_DATA_CLASS g_ex_data_class = CRYPTO_EX_DATA_CLASS_INIT;
+static CRYPTO_EX_DATA_CLASS g_ex_data_class =
+	CRYPTO_EX_DATA_CLASS_INIT_WITH_APP_DATA;
 
 /* CRL score values */
 

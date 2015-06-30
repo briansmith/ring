@@ -134,18 +134,12 @@
 #include "internal.h"
 
 
-static CRYPTO_once_t g_x509_store_ex_data_index_once;
-static int g_x509_store_ex_data_index;
-
-static void ssl_x509_store_ex_data_index_init(void) {
-  g_x509_store_ex_data_index = X509_STORE_CTX_get_ex_new_index(
-      0, "SSL for verify callback", NULL, NULL, NULL);
-}
-
 int SSL_get_ex_data_X509_STORE_CTX_idx(void) {
-  CRYPTO_once(&g_x509_store_ex_data_index_once,
-              ssl_x509_store_ex_data_index_init);
-  return g_x509_store_ex_data_index;
+  /* The ex_data index to go from |X509_STORE_CTX| to |SSL| always uses the
+   * reserved app_data slot. Before ex_data was introduced, app_data was used.
+   * Avoid breaking any software which assumes |X509_STORE_CTX_get_app_data|
+   * works. */
+  return 0;
 }
 
 CERT *ssl_cert_new(void) {

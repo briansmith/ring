@@ -164,8 +164,10 @@ OPENSSL_COMPILE_ASSERT(SSL_R_TLSV1_ALERT_NO_RENEGOTIATION ==
 /* kMaxHandshakeSize is the maximum size, in bytes, of a handshake message. */
 static const size_t kMaxHandshakeSize = (1u << 24) - 1;
 
-static CRYPTO_EX_DATA_CLASS g_ex_data_class_ssl = CRYPTO_EX_DATA_CLASS_INIT;
-static CRYPTO_EX_DATA_CLASS g_ex_data_class_ssl_ctx = CRYPTO_EX_DATA_CLASS_INIT;
+static CRYPTO_EX_DATA_CLASS g_ex_data_class_ssl =
+    CRYPTO_EX_DATA_CLASS_INIT_WITH_APP_DATA;
+static CRYPTO_EX_DATA_CLASS g_ex_data_class_ssl_ctx =
+    CRYPTO_EX_DATA_CLASS_INIT_WITH_APP_DATA;
 
 int SSL_clear(SSL *ssl) {
   if (ssl->method == NULL) {
