@@ -405,10 +405,6 @@ int EVP_PKEY_CTX_get_signature_md(EVP_PKEY_CTX *ctx, const EVP_MD **out_md) {
                            0, (void *)out_md);
 }
 
-EVP_PKEY *EVP_PKEY_dup(EVP_PKEY *pkey) {
-  return EVP_PKEY_up_ref(pkey);
-}
-
 void OpenSSL_add_all_algorithms(void) {}
 
 void OpenSSL_add_all_ciphers(void) {}

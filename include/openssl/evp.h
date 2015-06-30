@@ -642,17 +642,6 @@ OPENSSL_EXPORT int EVP_PKEY_CTX_get0_rsa_oaep_label(EVP_PKEY_CTX *ctx,
 
 /* Deprecated functions. */
 
-/* EVP_PKEY_dup adds one to the reference count of |pkey| and returns
- * |pkey|.
- *
- * WARNING: this is a |_dup| function that doesn't actually duplicate! Use
- * |EVP_PKEY_up_ref| if you want to increment the reference count without
- * confusion. */
-OPENSSL_EXPORT EVP_PKEY *EVP_PKEY_dup(EVP_PKEY *pkey);
-
-
-/* Private functions */
-
 /* OpenSSL_add_all_algorithms does nothing. */
 OPENSSL_EXPORT void OpenSSL_add_all_algorithms(void);
 
@@ -664,6 +653,9 @@ OPENSSL_EXPORT void OpenSSL_add_all_digests(void);
 
 /* EVP_cleanup does nothing. */
 OPENSSL_EXPORT void EVP_cleanup(void);
+
+
+/* Private functions */
 
 /* EVP_PKEY_asn1_find returns the ASN.1 method table for the given |nid|, which
  * should be one of the |EVP_PKEY_*| values. It returns NULL if |nid| is
