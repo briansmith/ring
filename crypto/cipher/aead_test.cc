@@ -200,6 +200,7 @@ static int TestCleanupAfterInitFailure(const EVP_AEAD *aead) {
     fprintf(stderr, "A silly tag length didn't trigger an error!\n");
     return 0;
   }
+  ERR_clear_error();
 
   /* Running a second, failed _init should not cause a memory leak. */
   if (EVP_AEAD_CTX_init(&ctx, aead, key, key_len,
@@ -208,6 +209,7 @@ static int TestCleanupAfterInitFailure(const EVP_AEAD *aead) {
     fprintf(stderr, "A silly tag length didn't trigger an error!\n");
     return 0;
   }
+  ERR_clear_error();
 
   /* Calling _cleanup on an |EVP_AEAD_CTX| after a failed _init should be a
    * no-op. */
