@@ -104,6 +104,7 @@ static const EVP_CIPHER *GetCipher(const std::string &name) {
 static bool TestOperation(FileTest *t,
                           const EVP_CIPHER *cipher,
                           bool encrypt,
+                          bool streaming,
                           const std::vector<uint8_t> &key,
                           const std::vector<uint8_t> &iv,
                           const std::vector<uint8_t> &plaintext,
@@ -160,11 +161,29 @@ static bool TestOperation(FileTest *t,
       (!aad.empty() &&
        !EVP_CipherUpdate(ctx.get(), nullptr, &unused, bssl::vector_data(&aad),
                          aad.size())) ||
-      !EVP_CIPHER_CTX_set_padding(ctx.get(), 0) ||
-      (!in->empty() &&
-       !EVP_CipherUpdate(ctx.get(), bssl::vector_data(&result), &result_len1,
-                         bssl::vector_data(in), in->size())) ||
-      !EVP_CipherFinal_ex(ctx.get(), bssl::vector_data(&result) + result_len1,
+      !EVP_CIPHER_CTX_set_padding(ctx.get(), 0)) {
+    t->PrintLine("Operation failed.");
+    return false;
+  }
+  if (streaming) {
+    for (size_t i = 0; i < in->size(); i++) {
+      uint8_t c = (*in)[i];
+      int len;
+      if (!EVP_CipherUpdate(ctx.get(), bssl::vector_data(&result) + result_len1,
+                            &len, &c, 1)) {
+        t->PrintLine("Operation failed.");
+        return false;
+      }
+      result_len1 += len;
+    }
+  } else if (!in->empty() &&
+             !EVP_CipherUpdate(ctx.get(), bssl::vector_data(&result),
+                               &result_len1, bssl::vector_data(in),
+                               in->size())) {
+    t->PrintLine("Operation failed.");
+    return false;
+  }
+  if (!EVP_CipherFinal_ex(ctx.get(), bssl::vector_data(&result) + result_len1,
                           &result_len2)) {
     t->PrintLine("Operation failed.");
     return false;
@@ -236,15 +255,21 @@ static bool TestCipher(FileTest *t, void *arg) {
   }
 
   // By default, both directions are run, unless overridden by the operation.
-  if (operation != kDecrypt &&
-      !TestOperation(t, cipher, true /* encrypt */, key, iv, plaintext,
-                     ciphertext, aad, tag)) {
-    return false;
+  if (operation != kDecrypt) {
+    if (!TestOperation(t, cipher, true /* encrypt */, false /* single-shot */,
+                       key, iv, plaintext, ciphertext, aad, tag) ||
+        !TestOperation(t, cipher, true /* encrypt */, true /* streaming */, key,
+                       iv, plaintext, ciphertext, aad, tag)) {
+      return false;
+    }
   }
-  if (operation != kEncrypt &&
-      !TestOperation(t, cipher, false /* decrypt */, key, iv, plaintext,
-                     ciphertext, aad, tag)) {
-    return false;
+  if (operation != kEncrypt) {
+    if (!TestOperation(t, cipher, false /* decrypt */, false /* single-shot */,
+                       key, iv, plaintext, ciphertext, aad, tag) ||
+        !TestOperation(t, cipher, false /* decrypt */, true /* streaming */,
+                       key, iv, plaintext, ciphertext, aad, tag)) {
+      return false;
+    }
   }
 
   return true;
