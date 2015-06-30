@@ -124,7 +124,7 @@ OPENSSL_EXPORT void AES_cbc_encrypt(const uint8_t *in, uint8_t *out, size_t len,
                                     const AES_KEY *key, uint8_t *ivec,
                                     const int enc);
 
-/* AES_ofb128_encrypt encrypts (or decrypts, it's the same in CTR mode) |len|
+/* AES_ofb128_encrypt encrypts (or decrypts, it's the same in OFB mode) |len|
  * bytes from |in| to |out|. The |num| parameter must be set to zero on the
  * first call. */
 OPENSSL_EXPORT void AES_ofb128_encrypt(const uint8_t *in, uint8_t *out,
