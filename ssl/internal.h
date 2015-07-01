@@ -1101,7 +1101,8 @@ int tls1_shared_list(SSL *s, const uint8_t *l1, size_t l1len, const uint8_t *l2,
                      size_t l2len, int nmatch);
 uint8_t *ssl_add_clienthello_tlsext(SSL *s, uint8_t *const buf,
                                     uint8_t *const limit, size_t header_len);
-uint8_t *ssl_add_serverhello_tlsext(SSL *s, uint8_t *buf, uint8_t *limit);
+uint8_t *ssl_add_serverhello_tlsext(SSL *s, uint8_t *const buf,
+                                    uint8_t *const limit);
 int ssl_parse_clienthello_tlsext(SSL *s, CBS *cbs);
 int ssl_parse_serverhello_tlsext(SSL *s, CBS *cbs);
 int ssl_prepare_clienthello_tlsext(SSL *s);
