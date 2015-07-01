@@ -1185,6 +1185,86 @@ static int ext_ems_add_serverhello(SSL *ssl, CBB *out) {
   return 1;
 }
 
+
+/* Session tickets.
+ *
+ * https://tools.ietf.org/html/rfc5077 */
+
+static int ext_ticket_add_clienthello(SSL *ssl, CBB *out) {
+  if (SSL_get_options(ssl) & SSL_OP_NO_TICKET) {
+    return 1;
+  }
+
+  const uint8_t *ticket_data = NULL;
+  int ticket_len = 0;
+
+  /* Renegotiation does not participate in session resumption. However, still
+   * advertise the extension to avoid potentially breaking servers which carry
+   * over the state from the previous handshake, such as OpenSSL servers
+   * without upstream's 3c3f0259238594d77264a78944d409f2127642c4. */
+  if (!ssl->s3->initial_handshake_complete &&
+      ssl->session != NULL &&
+      ssl->session->tlsext_tick != NULL) {
+    ticket_data = ssl->session->tlsext_tick;
+    ticket_len = ssl->session->tlsext_ticklen;
+  }
+
+  CBB ticket;
+  if (!CBB_add_u16(out, TLSEXT_TYPE_session_ticket) ||
+      !CBB_add_u16_length_prefixed(out, &ticket) ||
+      !CBB_add_bytes(&ticket, ticket_data, ticket_len) ||
+      !CBB_flush(out)) {
+    return 0;
+  }
+
+  return 1;
+}
+
+static int ext_ticket_parse_serverhello(SSL *ssl, uint8_t *out_alert,
+                                        CBS *contents) {
+  ssl->tlsext_ticket_expected = 0;
+
+  if (contents == NULL) {
+    return 1;
+  }
+
+  /* If |SSL_OP_NO_TICKET| is set then no extension will have been sent and
+   * this function should never be called, even if the server tries to send the
+   * extension. */
+  assert((SSL_get_options(ssl) & SSL_OP_NO_TICKET) == 0);
+
+  if (CBS_len(contents) != 0) {
+    return 0;
+  }
+
+  ssl->tlsext_ticket_expected = 1;
+  return 1;
+}
+
+static int ext_ticket_parse_clienthello(SSL *ssl, uint8_t *out_alert, CBS *contents) {
+  /* This function isn't used because the ticket extension from the client is
+   * handled in ssl_sess.c. */
+  return 1;
+}
+
+static int ext_ticket_add_serverhello(SSL *ssl, CBB *out) {
+  if (!ssl->tlsext_ticket_expected) {
+    return 1;
+  }
+
+  /* If |SSL_OP_NO_TICKET| is set, |tlsext_ticket_expected| should never be
+   * true. */
+  assert((SSL_get_options(ssl) & SSL_OP_NO_TICKET) == 0);
+
+  if (!CBB_add_u16(out, TLSEXT_TYPE_session_ticket) ||
+      !CBB_add_u16(out, 0 /* length */)) {
+    return 0;
+  }
+
+  return 1;
+}
+
+
 /* kExtensions contains all the supported extensions. */
 static const struct tls_extension kExtensions[] = {
   {
@@ -1213,6 +1293,14 @@ static const struct tls_extension kExtensions[] = {
     ext_ems_parse_serverhello,
     ext_ems_parse_clienthello,
     ext_ems_add_serverhello,
+  },
+  {
+    TLSEXT_TYPE_session_ticket,
+    NULL,
+    ext_ticket_add_clienthello,
+    ext_ticket_parse_serverhello,
+    ext_ticket_parse_clienthello,
+    ext_ticket_add_serverhello,
   },
 };
 
@@ -1309,30 +1397,6 @@ uint8_t *ssl_add_clienthello_tlsext(SSL *s, uint8_t *const buf,
 
   ret += CBB_len(&cbb);
   CBB_cleanup(&cbb);
-
-  if (!(SSL_get_options(s) & SSL_OP_NO_TICKET)) {
-    int ticklen = 0;
-    /* Renegotiation does not participate in session resumption. However, still
-     * advertise the extension to avoid potentially breaking servers which carry
-     * over the state from the previous handshake, such as OpenSSL servers
-     * without upstream's 3c3f0259238594d77264a78944d409f2127642c4. */
-    if (!s->s3->initial_handshake_complete && s->session != NULL &&
-        s->session->tlsext_tick != NULL) {
-      ticklen = s->session->tlsext_ticklen;
-    }
-
-    /* Check for enough room 2 for extension type, 2 for len rest for
-     * ticket. */
-    if ((long)(limit - ret - 4 - ticklen) < 0) {
-      return NULL;
-    }
-    s2n(TLSEXT_TYPE_session_ticket, ret);
-    s2n(ticklen, ret);
-    if (ticklen) {
-      memcpy(ret, s->session->tlsext_tick, ticklen);
-      ret += ticklen;
-    }
-  }
 
   if (ssl3_version_from_wire(s, s->client_version) >= TLS1_2_VERSION) {
     size_t salglen;
@@ -1604,14 +1668,6 @@ uint8_t *ssl_add_serverhello_tlsext(SSL *s, uint8_t *const buf,
     ret += plistlen;
   }
   /* Currently the server should not respond with a SupportedCurves extension */
-
-  if (s->tlsext_ticket_expected && !(SSL_get_options(s) & SSL_OP_NO_TICKET)) {
-    if ((long)(limit - ret - 4) < 0) {
-      return NULL;
-    }
-    s2n(TLSEXT_TYPE_session_ticket, ret);
-    s2n(0, ret);
-  }
 
   if (s->s3->tmp.certificate_status_expected) {
     if ((long)(limit - ret - 4) < 0) {
@@ -2011,7 +2067,6 @@ static int ssl_scan_serverhello_tlsext(SSL *s, CBS *cbs, int *out_alert) {
    * systematically reset on a new handshake; perhaps allocate it fresh each
    * time so it's not even kept around post-handshake. */
   s->s3->next_proto_neg_seen = 0;
-  s->tlsext_ticket_expected = 0;
   s->s3->tmp.certificate_status_expected = 0;
   s->srtp_profile = NULL;
 
@@ -2092,13 +2147,6 @@ static int ssl_scan_serverhello_tlsext(SSL *s, CBS *cbs, int *out_alert) {
         *out_alert = SSL_AD_INTERNAL_ERROR;
         return 0;
       }
-    } else if (type == TLSEXT_TYPE_session_ticket) {
-      if ((SSL_get_options(s) & SSL_OP_NO_TICKET) || CBS_len(&extension) > 0) {
-        *out_alert = SSL_AD_UNSUPPORTED_EXTENSION;
-        return 0;
-      }
-
-      s->tlsext_ticket_expected = 1;
     } else if (type == TLSEXT_TYPE_status_request) {
       /* The extension MUST be empty and may only sent if we've requested a
        * status request message. */
