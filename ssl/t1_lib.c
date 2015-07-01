@@ -1265,6 +1265,89 @@ static int ext_ticket_add_serverhello(SSL *ssl, CBB *out) {
 }
 
 
+/* Signature Algorithms.
+ *
+ * https://tools.ietf.org/html/rfc5246#section-7.4.1.4.1 */
+
+static int ext_sigalgs_add_clienthello(SSL *ssl, CBB *out) {
+  if (ssl3_version_from_wire(ssl, ssl->client_version) < TLS1_2_VERSION) {
+    return 1;
+  }
+
+  const uint8_t *sigalgs_data;
+  const size_t sigalgs_len = tls12_get_psigalgs(ssl, &sigalgs_data);
+
+  CBB contents, sigalgs;
+  if (!CBB_add_u16(out, TLSEXT_TYPE_signature_algorithms) ||
+      !CBB_add_u16_length_prefixed(out, &contents) ||
+      !CBB_add_u16_length_prefixed(&contents, &sigalgs) ||
+      !CBB_add_bytes(&sigalgs, sigalgs_data, sigalgs_len) ||
+      !CBB_flush(out)) {
+    return 0;
+  }
+
+  return 1;
+}
+
+static int ext_sigalgs_parse_serverhello(SSL *ssl, uint8_t *out_alert,
+                                         CBS *contents) {
+  if (contents != NULL) {
+    /* Servers MUST NOT send this extension. */
+    *out_alert = SSL_AD_UNSUPPORTED_EXTENSION;
+    OPENSSL_PUT_ERROR(SSL, ext_sigalgs_parse_serverhello,
+                      SSL_R_SIGNATURE_ALGORITHMS_EXTENSION_SENT_BY_SERVER);
+    return 0;
+  }
+
+  return 1;
+}
+
+static int ext_sigalgs_parse_clienthello(SSL *ssl, uint8_t *out_alert,
+                                         CBS *contents) {
+  OPENSSL_free(ssl->cert->peer_sigalgs);
+  ssl->cert->peer_sigalgs = NULL;
+  ssl->cert->peer_sigalgslen = 0;
+
+  OPENSSL_free(ssl->cert->shared_sigalgs);
+  ssl->cert->shared_sigalgs = NULL;
+  ssl->cert->shared_sigalgslen = 0;
+
+  if (contents == NULL) {
+    return 1;
+  }
+
+  CBS supported_signature_algorithms;
+  if (!CBS_get_u16_length_prefixed(contents, &supported_signature_algorithms) ||
+      CBS_len(contents) != 0) {
+    return 0;
+  }
+
+  /* Ensure the signature algorithms are non-empty. It contains a list of
+   * SignatureAndHashAlgorithms which are two bytes each. */
+  if (CBS_len(&supported_signature_algorithms) == 0 ||
+      (CBS_len(&supported_signature_algorithms) % 2) != 0 ||
+      !tls1_process_sigalgs(ssl, &supported_signature_algorithms)) {
+    return 0;
+  }
+
+  /* It's a fatal error if the signature_algorithms extension is received and
+   * there are no shared algorithms. */
+  if (ssl->cert->peer_sigalgs && !ssl->cert->shared_sigalgs) {
+    OPENSSL_PUT_ERROR(SSL, ext_sigalgs_parse_clienthello,
+                      SSL_R_NO_SHARED_SIGATURE_ALGORITHMS);
+    *out_alert = SSL_AD_ILLEGAL_PARAMETER;
+    return 0;
+  }
+
+  return 1;
+}
+
+static int ext_sigalgs_add_serverhello(SSL *ssl, CBB *out) {
+  /* Servers MUST NOT send this extension. */
+  return 1;
+}
+
+
 /* kExtensions contains all the supported extensions. */
 static const struct tls_extension kExtensions[] = {
   {
@@ -1301,6 +1384,14 @@ static const struct tls_extension kExtensions[] = {
     ext_ticket_parse_serverhello,
     ext_ticket_parse_clienthello,
     ext_ticket_add_serverhello,
+  },
+  {
+    TLSEXT_TYPE_signature_algorithms,
+    NULL,
+    ext_sigalgs_add_clienthello,
+    ext_sigalgs_parse_serverhello,
+    ext_sigalgs_parse_clienthello,
+    ext_sigalgs_add_serverhello,
   },
 };
 
@@ -1397,20 +1488,6 @@ uint8_t *ssl_add_clienthello_tlsext(SSL *s, uint8_t *const buf,
 
   ret += CBB_len(&cbb);
   CBB_cleanup(&cbb);
-
-  if (ssl3_version_from_wire(s, s->client_version) >= TLS1_2_VERSION) {
-    size_t salglen;
-    const uint8_t *salg;
-    salglen = tls12_get_psigalgs(s, &salg);
-    if ((size_t)(limit - ret) < salglen + 6) {
-      return NULL;
-    }
-    s2n(TLSEXT_TYPE_signature_algorithms, ret);
-    s2n(salglen + 2, ret);
-    s2n(salglen, ret);
-    memcpy(ret, salg, salglen);
-    ret += salglen;
-  }
 
   if (s->ocsp_stapling_enabled) {
     /* The status_request extension is excessively extensible at every layer.
@@ -1819,16 +1896,6 @@ static int ssl_scan_clienthello_tlsext(SSL *s, CBS *cbs, int *out_alert) {
   OPENSSL_free(s->s3->alpn_selected);
   s->s3->alpn_selected = NULL;
 
-  /* Clear any signature algorithms extension received */
-  OPENSSL_free(s->cert->peer_sigalgs);
-  s->cert->peer_sigalgs = NULL;
-  s->cert->peer_sigalgslen = 0;
-
-  /* Clear any shared signature algorithms */
-  OPENSSL_free(s->cert->shared_sigalgs);
-  s->cert->shared_sigalgs = NULL;
-  s->cert->shared_sigalgslen = 0;
-
   /* Clear ECC extensions */
   OPENSSL_free(s->s3->tmp.peer_ecpointformatlist);
   s->s3->tmp.peer_ecpointformatlist = NULL;
@@ -1941,35 +2008,6 @@ static int ssl_scan_clienthello_tlsext(SSL *s, CBS *cbs, int *out_alert) {
       }
 
       s->s3->tmp.peer_ellipticcurvelist_length = num_curves;
-    } else if (type == TLSEXT_TYPE_signature_algorithms) {
-      CBS supported_signature_algorithms;
-
-      if (!CBS_get_u16_length_prefixed(&extension,
-                                       &supported_signature_algorithms) ||
-          CBS_len(&extension) != 0) {
-        *out_alert = SSL_AD_DECODE_ERROR;
-        return 0;
-      }
-
-      /* Ensure the signature algorithms are non-empty. It contains a list of
-       * SignatureAndHashAlgorithms which are two bytes each. */
-      if (CBS_len(&supported_signature_algorithms) == 0 ||
-          (CBS_len(&supported_signature_algorithms) % 2) != 0) {
-        *out_alert = SSL_AD_DECODE_ERROR;
-        return 0;
-      }
-
-      if (!tls1_process_sigalgs(s, &supported_signature_algorithms)) {
-        *out_alert = SSL_AD_DECODE_ERROR;
-        return 0;
-      }
-      /* If sigalgs received and no shared algorithms fatal error. */
-      if (s->cert->peer_sigalgs && !s->cert->shared_sigalgs) {
-        OPENSSL_PUT_ERROR(SSL, ssl_scan_clienthello_tlsext,
-                          SSL_R_NO_SHARED_SIGATURE_ALGORITHMS);
-        *out_alert = SSL_AD_ILLEGAL_PARAMETER;
-        return 0;
-      }
     } else if (type == TLSEXT_TYPE_next_proto_neg &&
                !s->s3->initial_handshake_complete &&
                s->s3->alpn_selected == NULL && !SSL_IS_DTLS(s)) {

@@ -84,6 +84,8 @@ SSL,function,164,dtls1_send_hello_verify_request
 SSL,function,165,dtls1_write_app_data
 SSL,function,285,ext_ri_parse_clienthello
 SSL,function,286,ext_ri_parse_serverhello
+SSL,function,287,ext_sigalgs_parse_clienthello
+SSL,function,288,ext_sigalgs_parse_serverhello
 SSL,function,166,i2d_SSL_SESSION
 SSL,function,167,ssl3_accept
 SSL,function,169,ssl3_cert_verify_hash
@@ -309,6 +311,7 @@ SSL,reason,217,SERVERHELLO_TLSEXT
 SSL,reason,218,SESSION_ID_CONTEXT_UNINITIALIZED
 SSL,reason,219,SESSION_MAY_NOT_BE_CREATED
 SSL,reason,220,SIGNATURE_ALGORITHMS_ERROR
+SSL,reason,280,SIGNATURE_ALGORITHMS_EXTENSION_SENT_BY_SERVER
 SSL,reason,221,SRTP_COULD_NOT_ALLOCATE_PROFILES
 SSL,reason,222,SRTP_PROTECTION_PROFILE_LIST_TOO_LONG
 SSL,reason,223,SRTP_UNKNOWN_PROTECTION_PROFILE
