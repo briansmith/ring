@@ -1123,6 +1123,68 @@ static int ext_ri_add_serverhello(SSL *ssl, CBB *out) {
   return 1;
 }
 
+
+/* Extended Master Secret.
+ *
+ * https://tools.ietf.org/html/draft-ietf-tls-session-hash-05 */
+
+static void ext_ems_init(SSL *ssl) {
+  ssl->s3->tmp.extended_master_secret = 0;
+}
+
+static int ext_ems_add_clienthello(SSL *ssl, CBB *out) {
+  if (ssl->version == SSL3_VERSION) {
+    return 1;
+  }
+
+  if (!CBB_add_u16(out, TLSEXT_TYPE_extended_master_secret) ||
+      !CBB_add_u16(out, 0 /* length */)) {
+    return 0;
+  }
+
+  return 1;
+}
+
+static int ext_ems_parse_serverhello(SSL *ssl, uint8_t *out_alert,
+                                     CBS *contents) {
+  if (contents == NULL) {
+    return 1;
+  }
+
+  if (ssl->version == SSL3_VERSION || CBS_len(contents) != 0) {
+    return 0;
+  }
+
+  ssl->s3->tmp.extended_master_secret = 1;
+  return 1;
+}
+
+static int ext_ems_parse_clienthello(SSL *ssl, uint8_t *out_alert, CBS *contents) {
+  if (ssl->version == SSL3_VERSION || contents == NULL) {
+    return 1;
+  }
+
+  if (CBS_len(contents) != 0) {
+    return 0;
+  }
+
+  ssl->s3->tmp.extended_master_secret = 1;
+  return 1;
+}
+
+static int ext_ems_add_serverhello(SSL *ssl, CBB *out) {
+  if (!ssl->s3->tmp.extended_master_secret) {
+    return 1;
+  }
+
+  if (!CBB_add_u16(out, TLSEXT_TYPE_extended_master_secret) ||
+      !CBB_add_u16(out, 0 /* length */)) {
+    return 0;
+  }
+
+  return 1;
+}
+
 /* kExtensions contains all the supported extensions. */
 static const struct tls_extension kExtensions[] = {
   {
@@ -1143,6 +1205,14 @@ static const struct tls_extension kExtensions[] = {
     ext_sni_parse_serverhello,
     ext_sni_parse_clienthello,
     ext_sni_add_serverhello,
+  },
+  {
+    TLSEXT_TYPE_extended_master_secret,
+    ext_ems_init,
+    ext_ems_add_clienthello,
+    ext_ems_parse_serverhello,
+    ext_ems_parse_clienthello,
+    ext_ems_add_serverhello,
   },
 };
 
@@ -1239,15 +1309,6 @@ uint8_t *ssl_add_clienthello_tlsext(SSL *s, uint8_t *const buf,
 
   ret += CBB_len(&cbb);
   CBB_cleanup(&cbb);
-
-  /* Add extended master secret. */
-  if (s->version != SSL3_VERSION) {
-    if (limit - ret - 4 < 0) {
-      return NULL;
-    }
-    s2n(TLSEXT_TYPE_extended_master_secret, ret);
-    s2n(0, ret);
-  }
 
   if (!(SSL_get_options(s) & SSL_OP_NO_TICKET)) {
     int ticklen = 0;
@@ -1516,15 +1577,6 @@ uint8_t *ssl_add_serverhello_tlsext(SSL *s, uint8_t *const buf,
   ret += CBB_len(&cbb);
   CBB_cleanup(&cbb);
 
-  if (s->s3->tmp.extended_master_secret) {
-    if ((long)(limit - ret - 4) < 0) {
-      return NULL;
-    }
-
-    s2n(TLSEXT_TYPE_extended_master_secret, ret);
-    s2n(0, ret);
-  }
-
   if (using_ecc) {
     const uint8_t *plist;
     size_t plistlen;
@@ -1707,7 +1759,6 @@ static int ssl_scan_clienthello_tlsext(SSL *s, CBS *cbs, int *out_alert) {
   s->srtp_profile = NULL;
   s->s3->next_proto_neg_seen = 0;
   s->s3->tmp.certificate_status_expected = 0;
-  s->s3->tmp.extended_master_secret = 0;
 
   OPENSSL_free(s->s3->alpn_selected);
   s->s3->alpn_selected = NULL;
@@ -1902,14 +1953,6 @@ static int ssl_scan_clienthello_tlsext(SSL *s, CBS *cbs, int *out_alert) {
       if (!ssl_parse_clienthello_use_srtp_ext(s, &extension, out_alert)) {
         return 0;
       }
-    } else if (type == TLSEXT_TYPE_extended_master_secret &&
-               s->version != SSL3_VERSION) {
-      if (CBS_len(&extension) != 0) {
-        *out_alert = SSL_AD_DECODE_ERROR;
-        return 0;
-      }
-
-      s->s3->tmp.extended_master_secret = 1;
     }
   }
 
@@ -1970,7 +2013,6 @@ static int ssl_scan_serverhello_tlsext(SSL *s, CBS *cbs, int *out_alert) {
   s->s3->next_proto_neg_seen = 0;
   s->tlsext_ticket_expected = 0;
   s->s3->tmp.certificate_status_expected = 0;
-  s->s3->tmp.extended_master_secret = 0;
   s->srtp_profile = NULL;
 
   OPENSSL_free(s->s3->alpn_selected);
@@ -2164,15 +2206,6 @@ static int ssl_scan_serverhello_tlsext(SSL *s, CBS *cbs, int *out_alert) {
       if (!ssl_parse_serverhello_use_srtp_ext(s, &extension, out_alert)) {
         return 0;
       }
-    } else if (type == TLSEXT_TYPE_extended_master_secret) {
-      if (/* It is invalid for the server to select EMS and
-             SSLv3. */
-          s->version == SSL3_VERSION || CBS_len(&extension) != 0) {
-        *out_alert = SSL_AD_DECODE_ERROR;
-        return 0;
-      }
-
-      s->s3->tmp.extended_master_secret = 1;
     }
   }
 
