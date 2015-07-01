@@ -1348,6 +1348,58 @@ static int ext_sigalgs_add_serverhello(SSL *ssl, CBB *out) {
 }
 
 
+/* OCSP Stapling.
+ *
+ * https://tools.ietf.org/html/rfc6066#section-8 */
+
+static void ext_ocsp_init(SSL *ssl) {
+  ssl->s3->tmp.certificate_status_expected = 0;
+}
+
+static int ext_ocsp_add_clienthello(SSL *ssl, CBB *out) {
+  if (!ssl->ocsp_stapling_enabled) {
+    return 1;
+  }
+
+  CBB contents;
+  if (!CBB_add_u16(out, TLSEXT_TYPE_status_request) ||
+      !CBB_add_u16_length_prefixed(out, &contents) ||
+      !CBB_add_u8(&contents, TLSEXT_STATUSTYPE_ocsp) ||
+      !CBB_add_u16(&contents, 0 /* empty responder ID list */) ||
+      !CBB_add_u16(&contents, 0 /* empty request extensions */) ||
+      !CBB_flush(out)) {
+    return 0;
+  }
+
+  return 1;
+}
+
+static int ext_ocsp_parse_serverhello(SSL *ssl, uint8_t *out_alert,
+                                         CBS *contents) {
+  if (contents == NULL) {
+    return 1;
+  }
+
+  if (CBS_len(contents) != 0) {
+    return 0;
+  }
+
+  ssl->s3->tmp.certificate_status_expected = 1;
+  return 1;
+}
+
+static int ext_ocsp_parse_clienthello(SSL *ssl, uint8_t *out_alert,
+                                      CBS *contents) {
+  /* OCSP stapling as a server is not supported. */
+  return 1;
+}
+
+static int ext_ocsp_add_serverhello(SSL *ssl, CBB *out) {
+  /* OCSP stapling as a server is not supported. */
+  return 1;
+}
+
+
 /* kExtensions contains all the supported extensions. */
 static const struct tls_extension kExtensions[] = {
   {
@@ -1392,6 +1444,14 @@ static const struct tls_extension kExtensions[] = {
     ext_sigalgs_parse_serverhello,
     ext_sigalgs_parse_clienthello,
     ext_sigalgs_add_serverhello,
+  },
+  {
+    TLSEXT_TYPE_status_request,
+    ext_ocsp_init,
+    ext_ocsp_add_clienthello,
+    ext_ocsp_parse_serverhello,
+    ext_ocsp_parse_clienthello,
+    ext_ocsp_add_serverhello,
   },
 };
 
@@ -1488,24 +1548,6 @@ uint8_t *ssl_add_clienthello_tlsext(SSL *s, uint8_t *const buf,
 
   ret += CBB_len(&cbb);
   CBB_cleanup(&cbb);
-
-  if (s->ocsp_stapling_enabled) {
-    /* The status_request extension is excessively extensible at every layer.
-     * On the client, only support requesting OCSP responses with an empty
-     * responder_id_list and no extensions. */
-    if (limit - ret - 4 - 1 - 2 - 2 < 0) {
-      return NULL;
-    }
-
-    s2n(TLSEXT_TYPE_status_request, ret);
-    s2n(1 + 2 + 2, ret);
-    /* status_type */
-    *(ret++) = TLSEXT_STATUSTYPE_ocsp;
-    /* responder_id_list - empty */
-    s2n(0, ret);
-    /* request_extensions - empty */
-    s2n(0, ret);
-  }
 
   if (s->ctx->next_proto_select_cb && !s->s3->initial_handshake_complete &&
       !SSL_IS_DTLS(s)) {
@@ -1746,14 +1788,6 @@ uint8_t *ssl_add_serverhello_tlsext(SSL *s, uint8_t *const buf,
   }
   /* Currently the server should not respond with a SupportedCurves extension */
 
-  if (s->s3->tmp.certificate_status_expected) {
-    if ((long)(limit - ret - 4) < 0) {
-      return NULL;
-    }
-    s2n(TLSEXT_TYPE_status_request, ret);
-    s2n(0, ret);
-  }
-
   if (s->srtp_profile) {
     int el;
 
@@ -1891,7 +1925,6 @@ static int ssl_scan_clienthello_tlsext(SSL *s, CBS *cbs, int *out_alert) {
 
   s->srtp_profile = NULL;
   s->s3->next_proto_neg_seen = 0;
-  s->s3->tmp.certificate_status_expected = 0;
 
   OPENSSL_free(s->s3->alpn_selected);
   s->s3->alpn_selected = NULL;
@@ -2105,7 +2138,6 @@ static int ssl_scan_serverhello_tlsext(SSL *s, CBS *cbs, int *out_alert) {
    * systematically reset on a new handshake; perhaps allocate it fresh each
    * time so it's not even kept around post-handshake. */
   s->s3->next_proto_neg_seen = 0;
-  s->s3->tmp.certificate_status_expected = 0;
   s->srtp_profile = NULL;
 
   OPENSSL_free(s->s3->alpn_selected);
@@ -2185,21 +2217,6 @@ static int ssl_scan_serverhello_tlsext(SSL *s, CBS *cbs, int *out_alert) {
         *out_alert = SSL_AD_INTERNAL_ERROR;
         return 0;
       }
-    } else if (type == TLSEXT_TYPE_status_request) {
-      /* The extension MUST be empty and may only sent if we've requested a
-       * status request message. */
-      if (CBS_len(&extension) != 0) {
-        *out_alert = SSL_AD_DECODE_ERROR;
-        return 0;
-      }
-
-      if (!s->ocsp_stapling_enabled) {
-        *out_alert = SSL_AD_UNSUPPORTED_EXTENSION;
-        return 0;
-      }
-
-      /* Set a flag to expect a CertificateStatus message */
-      s->s3->tmp.certificate_status_expected = 1;
     } else if (type == TLSEXT_TYPE_next_proto_neg &&
                !s->s3->initial_handshake_complete && !SSL_IS_DTLS(s)) {
       uint8_t *selected;
