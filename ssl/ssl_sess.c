@@ -434,8 +434,8 @@ enum ssl_session_result_t ssl_get_prev_session(
   int send_ticket = 0;
 
   /* If tickets are disabled, always behave as if no tickets are present. */
-  const uint8_t *ticket;
-  size_t ticket_len;
+  const uint8_t *ticket = NULL;
+  size_t ticket_len = 0;
   const int tickets_supported =
       !(SSL_get_options(ssl) & SSL_OP_NO_TICKET) &&
       (ssl->version > SSL3_VERSION || ctx->extensions != NULL) &&
