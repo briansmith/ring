@@ -990,6 +990,14 @@ static const struct tls_extension kExtensions[] = {
 
 #define kNumExtensions (sizeof(kExtensions) / sizeof(struct tls_extension))
 
+OPENSSL_COMPILE_ASSERT(kNumExtensions <=
+                           sizeof(((SSL *)NULL)->s3->tmp.extensions.sent) * 8,
+                       too_many_extensions_for_bitset);
+OPENSSL_COMPILE_ASSERT(kNumExtensions <=
+                           sizeof(((SSL *)NULL)->s3->tmp.extensions.received) *
+                               8,
+                       too_many_extensions_for_bitset);
+
 static const struct tls_extension *tls_extension_find(uint32_t *out_index,
                                                       uint16_t value) {
   unsigned i;
@@ -1042,9 +1050,6 @@ uint8_t *ssl_add_clienthello_tlsext(SSL *s, uint8_t *const buf,
     return NULL; /* should never occur. */
   }
 
-  OPENSSL_COMPILE_ASSERT(
-      kNumExtensions <= sizeof(s->s3->tmp.extensions.sent) * 8,
-      too_many_extensions_for_bitset);
   s->s3->tmp.extensions.sent = 0;
 
   size_t i;
@@ -1646,10 +1651,6 @@ static int ssl_scan_clienthello_tlsext(SSL *s, CBS *cbs, int *out_alert) {
       return 0;
     }
 
-    OPENSSL_COMPILE_ASSERT(
-        kNumExtensions <= sizeof(s->s3->tmp.extensions.received) * 8,
-        too_many_extensions_for_bitset);
-
     unsigned ext_index;
     const struct tls_extension *const ext =
         tls_extension_find(&ext_index, type);
@@ -1882,10 +1883,7 @@ static int ssl_scan_serverhello_tlsext(SSL *s, CBS *cbs, int *out_alert) {
 
   uint32_t received = 0;
   size_t i;
-
-  OPENSSL_COMPILE_ASSERT(
-      kNumExtensions <= sizeof(received) * 8,
-      too_many_extensions_for_bitset);
+  assert(kNumExtensions <= sizeof(received) * 8);
 
   /* There may be no extensions. */
   if (CBS_len(cbs) == 0) {
