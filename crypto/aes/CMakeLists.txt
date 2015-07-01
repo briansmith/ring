@@ -60,3 +60,12 @@ perlasm(aesni-x86.${ASM_EXT} asm/aesni-x86.pl)
 perlasm(aes-armv4.${ASM_EXT} asm/aes-armv4.pl)
 perlasm(bsaes-armv7.${ASM_EXT} asm/bsaes-armv7.pl)
 perlasm(aesv8-armx.${ASM_EXT} asm/aesv8-armx.pl)
+
+add_executable(
+  aes_test
+
+  aes_test.cc
+  $<TARGET_OBJECTS:test_support>
+)
+
+target_link_libraries(aes_test crypto)

@@ -1,4 +1,5 @@
 [
+	["crypto/aes/aes_test"],
 	["crypto/base64/base64_test"],
 	["crypto/bio/bio_test"],
 	["crypto/bn/bn_test"],
