@@ -1400,6 +1400,125 @@ static int ext_ocsp_add_serverhello(SSL *ssl, CBB *out) {
 }
 
 
+/* Next protocol negotiation.
+ *
+ * https://htmlpreview.github.io/?https://github.com/agl/technotes/blob/master/nextprotoneg.html */
+
+static void ext_npn_init(SSL *ssl) {
+  ssl->s3->next_proto_neg_seen = 0;
+}
+
+static int ext_npn_add_clienthello(SSL *ssl, CBB *out) {
+  if (ssl->s3->initial_handshake_complete ||
+      ssl->ctx->next_proto_select_cb == NULL ||
+      SSL_IS_DTLS(ssl)) {
+    return 1;
+  }
+
+  if (!CBB_add_u16(out, TLSEXT_TYPE_next_proto_neg) ||
+      !CBB_add_u16(out, 0 /* length */)) {
+    return 0;
+  }
+
+  return 1;
+}
+
+static int ext_npn_parse_serverhello(SSL *ssl, uint8_t *out_alert,
+                                     CBS *contents) {
+  if (contents == NULL) {
+    return 1;
+  }
+
+  /* If any of these are false then we should never have sent the NPN
+   * extension in the ClientHello and thus this function should never have been
+   * called. */
+  assert(!ssl->s3->initial_handshake_complete);
+  assert(!SSL_IS_DTLS(ssl));
+  assert(ssl->ctx->next_proto_select_cb != NULL);
+
+  const uint8_t *const orig_contents = CBS_data(contents);
+  const size_t orig_len = CBS_len(contents);
+
+  while (CBS_len(contents) != 0) {
+    CBS proto;
+    if (!CBS_get_u8_length_prefixed(contents, &proto) ||
+        CBS_len(&proto) == 0) {
+      return 0;
+    }
+  }
+
+  uint8_t *selected;
+  uint8_t selected_len;
+  if (ssl->ctx->next_proto_select_cb(
+          ssl, &selected, &selected_len, orig_contents, orig_len,
+          ssl->ctx->next_proto_select_cb_arg) != SSL_TLSEXT_ERR_OK) {
+    *out_alert = SSL_AD_INTERNAL_ERROR;
+    return 0;
+  }
+
+  OPENSSL_free(ssl->next_proto_negotiated);
+  ssl->next_proto_negotiated = BUF_memdup(selected, selected_len);
+  if (ssl->next_proto_negotiated == NULL) {
+    *out_alert = SSL_AD_INTERNAL_ERROR;
+    return 0;
+  }
+
+  ssl->next_proto_negotiated_len = selected_len;
+  ssl->s3->next_proto_neg_seen = 1;
+
+  return 1;
+}
+
+static int ext_npn_parse_clienthello(SSL *ssl, uint8_t *out_alert,
+                                     CBS *contents) {
+  if (contents != NULL && CBS_len(contents) != 0) {
+    return 0;
+  }
+
+  if (contents == NULL ||
+      ssl->s3->initial_handshake_complete ||
+      /* If the ALPN extension is seen before NPN, ignore it. (If ALPN is seen
+       * afterwards, parsing the ALPN extension will clear
+       * |next_proto_neg_seen|. */
+      ssl->s3->alpn_selected != NULL ||
+      ssl->ctx->next_protos_advertised_cb == NULL ||
+      SSL_IS_DTLS(ssl)) {
+    return 1;
+  }
+
+  ssl->s3->next_proto_neg_seen = 1;
+  return 1;
+}
+
+static int ext_npn_add_serverhello(SSL *ssl, CBB *out) {
+  /* |next_proto_neg_seen| might have been cleared when an ALPN extension was
+   * parsed. */
+  if (!ssl->s3->next_proto_neg_seen) {
+    return 1;
+  }
+
+  const uint8_t *npa;
+  unsigned npa_len;
+
+  if (ssl->ctx->next_protos_advertised_cb(
+          ssl, &npa, &npa_len, ssl->ctx->next_protos_advertised_cb_arg) !=
+      SSL_TLSEXT_ERR_OK) {
+    ssl->s3->next_proto_neg_seen = 0;
+    return 1;
+  }
+
+  CBB contents;
+  if (!CBB_add_u16(out, TLSEXT_TYPE_next_proto_neg) ||
+      !CBB_add_u16_length_prefixed(out, &contents) ||
+      !CBB_add_bytes(&contents, npa, npa_len) ||
+      !CBB_flush(out)) {
+    return 0;
+  }
+
+  return 1;
+}
+
+
 /* kExtensions contains all the supported extensions. */
 static const struct tls_extension kExtensions[] = {
   {
@@ -1452,6 +1571,14 @@ static const struct tls_extension kExtensions[] = {
     ext_ocsp_parse_serverhello,
     ext_ocsp_parse_clienthello,
     ext_ocsp_add_serverhello,
+  },
+  {
+    TLSEXT_TYPE_next_proto_neg,
+    ext_npn_init,
+    ext_npn_add_clienthello,
+    ext_npn_parse_serverhello,
+    ext_npn_parse_clienthello,
+    ext_npn_add_serverhello,
   },
 };
 
@@ -1548,17 +1675,6 @@ uint8_t *ssl_add_clienthello_tlsext(SSL *s, uint8_t *const buf,
 
   ret += CBB_len(&cbb);
   CBB_cleanup(&cbb);
-
-  if (s->ctx->next_proto_select_cb && !s->s3->initial_handshake_complete &&
-      !SSL_IS_DTLS(s)) {
-    /* The client advertises an emtpy extension to indicate its support for
-     * Next Protocol Negotiation */
-    if (limit - ret - 4 < 0) {
-      return NULL;
-    }
-    s2n(TLSEXT_TYPE_next_proto_neg, ret);
-    s2n(0, ret);
-  }
 
   if (s->signed_cert_timestamps_enabled) {
     /* The client advertises an empty extension to indicate its support for
@@ -1721,7 +1837,6 @@ uint8_t *ssl_add_serverhello_tlsext(SSL *s, uint8_t *const buf,
   int extdatalen = 0;
   uint8_t *orig = buf;
   uint8_t *ret = buf;
-  int next_proto_neg_seen;
   uint32_t alg_k = s->s3->tmp.new_cipher->algorithm_mkey;
   uint32_t alg_a = s->s3->tmp.new_cipher->algorithm_auth;
   int using_ecc = (alg_k & SSL_kECDHE) || (alg_a & SSL_aECDSA);
@@ -1805,27 +1920,6 @@ uint8_t *ssl_add_serverhello_tlsext(SSL *s, uint8_t *const buf,
       return NULL;
     }
     ret += el;
-  }
-
-  next_proto_neg_seen = s->s3->next_proto_neg_seen;
-  s->s3->next_proto_neg_seen = 0;
-  if (next_proto_neg_seen && s->ctx->next_protos_advertised_cb) {
-    const uint8_t *npa;
-    unsigned int npalen;
-    int r;
-
-    r = s->ctx->next_protos_advertised_cb(
-        s, &npa, &npalen, s->ctx->next_protos_advertised_cb_arg);
-    if (r == SSL_TLSEXT_ERR_OK) {
-      if ((long)(limit - ret - 4 - npalen) < 0) {
-        return NULL;
-      }
-      s2n(TLSEXT_TYPE_next_proto_neg, ret);
-      s2n(npalen, ret);
-      memcpy(ret, npa, npalen);
-      ret += npalen;
-      s->s3->next_proto_neg_seen = 1;
-    }
   }
 
   if (s->s3->alpn_selected) {
@@ -1924,7 +2018,6 @@ static int ssl_scan_clienthello_tlsext(SSL *s, CBS *cbs, int *out_alert) {
   CBS extensions;
 
   s->srtp_profile = NULL;
-  s->s3->next_proto_neg_seen = 0;
 
   OPENSSL_free(s->s3->alpn_selected);
   s->s3->alpn_selected = NULL;
@@ -2041,15 +2134,6 @@ static int ssl_scan_clienthello_tlsext(SSL *s, CBS *cbs, int *out_alert) {
       }
 
       s->s3->tmp.peer_ellipticcurvelist_length = num_curves;
-    } else if (type == TLSEXT_TYPE_next_proto_neg &&
-               !s->s3->initial_handshake_complete &&
-               s->s3->alpn_selected == NULL && !SSL_IS_DTLS(s)) {
-      /* The extension must be empty. */
-      if (CBS_len(&extension) != 0) {
-        *out_alert = SSL_AD_DECODE_ERROR;
-        return 0;
-      }
-      s->s3->next_proto_neg_seen = 1;
     } else if (type == TLSEXT_TYPE_application_layer_protocol_negotiation &&
                s->ctx->alpn_select_cb && !s->s3->initial_handshake_complete) {
       if (!tls1_alpn_handle_client_hello(s, &extension, out_alert)) {
@@ -2115,29 +2199,12 @@ int ssl_parse_clienthello_tlsext(SSL *s, CBS *cbs) {
   return 1;
 }
 
-/* ssl_next_proto_validate validates a Next Protocol Negotiation block. No
- * elements of zero length are allowed and the set of elements must exactly
- * fill the length of the block. */
-static char ssl_next_proto_validate(const CBS *cbs) {
-  CBS copy = *cbs;
-
-  while (CBS_len(&copy) != 0) {
-    CBS proto;
-    if (!CBS_get_u8_length_prefixed(&copy, &proto) || CBS_len(&proto) == 0) {
-      return 0;
-    }
-  }
-
-  return 1;
-}
-
 static int ssl_scan_serverhello_tlsext(SSL *s, CBS *cbs, int *out_alert) {
   CBS extensions;
 
   /* TODO(davidben): Move all of these to some per-handshake state that gets
    * systematically reset on a new handshake; perhaps allocate it fresh each
    * time so it's not even kept around post-handshake. */
-  s->s3->next_proto_neg_seen = 0;
   s->srtp_profile = NULL;
 
   OPENSSL_free(s->s3->alpn_selected);
@@ -2217,39 +2284,6 @@ static int ssl_scan_serverhello_tlsext(SSL *s, CBS *cbs, int *out_alert) {
         *out_alert = SSL_AD_INTERNAL_ERROR;
         return 0;
       }
-    } else if (type == TLSEXT_TYPE_next_proto_neg &&
-               !s->s3->initial_handshake_complete && !SSL_IS_DTLS(s)) {
-      uint8_t *selected;
-      uint8_t selected_len;
-
-      /* We must have requested it. */
-      if (s->ctx->next_proto_select_cb == NULL) {
-        *out_alert = SSL_AD_UNSUPPORTED_EXTENSION;
-        return 0;
-      }
-
-      /* The data must be valid. */
-      if (!ssl_next_proto_validate(&extension)) {
-        *out_alert = SSL_AD_DECODE_ERROR;
-        return 0;
-      }
-
-      if (s->ctx->next_proto_select_cb(
-              s, &selected, &selected_len, CBS_data(&extension),
-              CBS_len(&extension),
-              s->ctx->next_proto_select_cb_arg) != SSL_TLSEXT_ERR_OK) {
-        *out_alert = SSL_AD_INTERNAL_ERROR;
-        return 0;
-      }
-
-      s->next_proto_negotiated = BUF_memdup(selected, selected_len);
-      if (s->next_proto_negotiated == NULL) {
-        *out_alert = SSL_AD_INTERNAL_ERROR;
-        return 0;
-      }
-
-      s->next_proto_negotiated_len = selected_len;
-      s->s3->next_proto_neg_seen = 1;
     } else if (type == TLSEXT_TYPE_application_layer_protocol_negotiation &&
                !s->s3->initial_handshake_complete) {
       CBS protocol_name_list, protocol_name;
