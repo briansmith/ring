@@ -554,7 +554,6 @@ const EVP_PKEY_ASN1_METHOD dsa_asn1_meth = {
   0,
 
   "DSA",
-  "OpenSSL DSA method",
 
   dsa_pub_decode,
   dsa_pub_encode,

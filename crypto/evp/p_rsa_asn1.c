@@ -707,7 +707,6 @@ const EVP_PKEY_ASN1_METHOD rsa_asn1_meth = {
   ASN1_PKEY_SIGPARAM_NULL,
 
   "RSA",
-  "OpenSSL RSA method",
 
   rsa_pub_decode,
   rsa_pub_encode,

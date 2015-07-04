@@ -542,7 +542,6 @@ const EVP_PKEY_ASN1_METHOD ec_asn1_meth = {
   EVP_PKEY_EC,
   0,
   "EC",
-  "OpenSSL EC algorithm",
 
   eckey_pub_decode,
   eckey_pub_encode,
