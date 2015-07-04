@@ -291,14 +291,6 @@ OPENSSL_EXPORT int SSL_export_keying_material(
     SSL *s, uint8_t *out, size_t out_len, const char *label, size_t label_len,
     const uint8_t *context, size_t context_len, int use_context);
 
-OPENSSL_EXPORT int SSL_get_sigalgs(SSL *s, int idx, int *psign, int *phash,
-                                   int *psignandhash, uint8_t *rsig,
-                                   uint8_t *rhash);
-
-OPENSSL_EXPORT int SSL_get_shared_sigalgs(SSL *s, int idx, int *psign,
-                                          int *phash, int *psignandhash,
-                                          uint8_t *rsig, uint8_t *rhash);
-
 /* SSL_set_tlsext_host_name, for a client, configures |ssl| to advertise |name|
  * in the server_name extension. It returns one on success and zero on error. */
 OPENSSL_EXPORT int SSL_set_tlsext_host_name(SSL *ssl, const char *name);
