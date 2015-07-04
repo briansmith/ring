@@ -2433,17 +2433,6 @@ static int tls12_find_id(int nid, const tls12_lookup *table, size_t tlen) {
   return -1;
 }
 
-static int tls12_find_nid(int id, const tls12_lookup *table, size_t tlen) {
-  size_t i;
-  for (i = 0; i < tlen; i++) {
-    if (table[i].id == id) {
-      return table[i].nid;
-    }
-  }
-
-  return NID_undef;
-}
-
 int tls12_get_sigid(int pkey_type) {
   return tls12_find_id(pkey_type, tls12_sig,
                        sizeof(tls12_sig) / sizeof(tls12_lookup));
@@ -2513,39 +2502,6 @@ static int tls12_get_pkey_type(uint8_t sig_alg) {
   }
 }
 
-/* Convert TLS 1.2 signature algorithm extension values into NIDs */
-static void tls1_lookup_sigalg(int *phash_nid, int *psign_nid,
-                               int *psignhash_nid, const uint8_t *data) {
-  int sign_nid = 0, hash_nid = 0;
-  if (!phash_nid && !psign_nid && !psignhash_nid) {
-    return;
-  }
-
-  if (phash_nid || psignhash_nid) {
-    hash_nid = tls12_find_nid(data[0], tls12_md,
-                              sizeof(tls12_md) / sizeof(tls12_lookup));
-    if (phash_nid) {
-      *phash_nid = hash_nid;
-    }
-  }
-
-  if (psign_nid || psignhash_nid) {
-    sign_nid = tls12_find_nid(data[1], tls12_sig,
-                              sizeof(tls12_sig) / sizeof(tls12_lookup));
-    if (psign_nid) {
-      *psign_nid = sign_nid;
-    }
-  }
-
-  if (psignhash_nid) {
-    if (sign_nid && hash_nid) {
-      OBJ_find_sigid_by_algs(psignhash_nid, hash_nid, sign_nid);
-    } else {
-      *psignhash_nid = NID_undef;
-    }
-  }
-}
-
 /* Given preference and allowed sigalgs set shared sigalgs */
 static int tls12_do_shared_sigalgs(TLS_SIGALGS *shsig, const uint8_t *pref,
                                    size_t preflen, const uint8_t *allow,
@@ -2566,8 +2522,6 @@ static int tls12_do_shared_sigalgs(TLS_SIGALGS *shsig, const uint8_t *pref,
         if (shsig) {
           shsig->rhash = ptmp[0];
           shsig->rsign = ptmp[1];
-          tls1_lookup_sigalg(&shsig->hash_nid, &shsig->sign_nid,
-                             &shsig->signandhash_nid, ptmp);
           shsig++;
         }
 

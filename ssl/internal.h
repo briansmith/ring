@@ -524,6 +524,12 @@ typedef struct cert_pkey_st {
   STACK_OF(X509) *chain;
 } CERT_PKEY;
 
+/* Structure containing decoded values of signature algorithms extension */
+typedef struct tls_sigalgs_st {
+  uint8_t rsign;
+  uint8_t rhash;
+} TLS_SIGALGS;
+
 typedef struct cert_st {
   /* Current active set */
   CERT_PKEY *key; /* ALWAYS points to an element of the pkeys array
@@ -618,19 +624,6 @@ typedef struct sess_cert_st {
   DH *peer_dh_tmp;
   EC_KEY *peer_ecdh_tmp;
 } SESS_CERT;
-
-/* Structure containing decoded values of signature algorithms extension */
-struct tls_sigalgs_st {
-  /* NID of hash algorithm */
-  int hash_nid;
-  /* NID of signature algorithm */
-  int sign_nid;
-  /* Combined hash and signature NID */
-  int signandhash_nid;
-  /* Raw values used in extension */
-  uint8_t rsign;
-  uint8_t rhash;
-};
 
 /* SSL_METHOD is a compatibility structure to support the legacy version-locked
  * methods. */
