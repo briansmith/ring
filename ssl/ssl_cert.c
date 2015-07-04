@@ -158,7 +158,7 @@ CERT *ssl_cert_new(void) {
   }
   memset(ret, 0, sizeof(CERT));
 
-  ret->key = &ret->pkeys[SSL_PKEY_RSA_ENC];
+  ret->key = &ret->pkeys[SSL_PKEY_RSA];
   return ret;
 }
 

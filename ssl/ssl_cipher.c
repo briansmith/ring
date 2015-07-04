@@ -1682,7 +1682,7 @@ int ssl_cipher_get_cert_index(const SSL_CIPHER *cipher) {
   if (alg_a & SSL_aECDSA) {
     return SSL_PKEY_ECC;
   } else if (alg_a & SSL_aRSA) {
-    return SSL_PKEY_RSA_ENC;
+    return SSL_PKEY_RSA;
   }
 
   return -1;

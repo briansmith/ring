@@ -1692,7 +1692,7 @@ int ssl3_get_client_key_exchange(SSL *s) {
     uint8_t good;
     size_t rsa_size, decrypt_len, premaster_index, j;
 
-    pkey = s->cert->pkeys[SSL_PKEY_RSA_ENC].privatekey;
+    pkey = s->cert->pkeys[SSL_PKEY_RSA].privatekey;
     if (pkey == NULL || pkey->type != EVP_PKEY_RSA || pkey->pkey.rsa == NULL) {
       al = SSL_AD_HANDSHAKE_FAILURE;
       OPENSSL_PUT_ERROR(SSL, ssl3_get_client_key_exchange,

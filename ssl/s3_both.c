@@ -505,7 +505,7 @@ int ssl3_cert_verify_hash(SSL *s, uint8_t *out, size_t *out_len,
 int ssl_cert_type(EVP_PKEY *pkey) {
   switch (pkey->type) {
     case EVP_PKEY_RSA:
-      return SSL_PKEY_RSA_ENC;
+      return SSL_PKEY_RSA;
     case EVP_PKEY_EC:
       return SSL_PKEY_ECC;
     default:

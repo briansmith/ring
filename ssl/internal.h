@@ -255,10 +255,9 @@ ssl_create_cipher_list(const SSL_PROTOCOL_METHOD *ssl_method,
                        const char *rule_str);
 
 /* SSL_PKEY_* denote certificate types. */
-#define SSL_PKEY_RSA_ENC 0
-#define SSL_PKEY_RSA_SIGN 1
-#define SSL_PKEY_ECC 2
-#define SSL_PKEY_NUM 3
+#define SSL_PKEY_RSA 0
+#define SSL_PKEY_ECC 1
+#define SSL_PKEY_NUM 2
 
 /* ssl_cipher_get_value returns the cipher suite id of |cipher|. */
 uint16_t ssl_cipher_get_value(const SSL_CIPHER *cipher);

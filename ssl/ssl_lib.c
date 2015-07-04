@@ -1835,7 +1835,7 @@ static int ssl_has_key(SSL *s, size_t idx) {
 void ssl_get_compatible_server_ciphers(SSL *s, uint32_t *out_mask_k,
                                        uint32_t *out_mask_a) {
   CERT *c = s->cert;
-  int rsa_enc, rsa_sign, dh_tmp;
+  int have_rsa_cert, dh_tmp;
   uint32_t mask_k, mask_a;
   int have_ecc_cert, ecdsa_ok;
   X509 *x;
@@ -1849,19 +1849,16 @@ void ssl_get_compatible_server_ciphers(SSL *s, uint32_t *out_mask_k,
 
   dh_tmp = (c->dh_tmp != NULL || c->dh_tmp_cb != NULL);
 
-  rsa_enc = ssl_has_key(s, SSL_PKEY_RSA_ENC);
-  rsa_sign = ssl_has_key(s, SSL_PKEY_RSA_SIGN);
+  have_rsa_cert = ssl_has_key(s, SSL_PKEY_RSA);
   have_ecc_cert = ssl_has_key(s, SSL_PKEY_ECC);
   mask_k = 0;
   mask_a = 0;
 
-  if (rsa_enc) {
-    mask_k |= SSL_kRSA;
-  }
   if (dh_tmp) {
     mask_k |= SSL_kDHE;
   }
-  if (rsa_enc || rsa_sign) {
+  if (have_rsa_cert) {
+    mask_k |= SSL_kRSA;
     mask_a |= SSL_aRSA;
   }
 
@@ -1899,11 +1896,7 @@ void ssl_get_compatible_server_ciphers(SSL *s, uint32_t *out_mask_k,
 }
 
 static int ssl_get_server_cert_index(const SSL *s) {
-  int idx;
-  idx = ssl_cipher_get_cert_index(s->s3->tmp.new_cipher);
-  if (idx == SSL_PKEY_RSA_ENC && !s->cert->pkeys[SSL_PKEY_RSA_ENC].x509) {
-    idx = SSL_PKEY_RSA_SIGN;
-  }
+  int idx = ssl_cipher_get_cert_index(s->s3->tmp.new_cipher);
   if (idx == -1) {
     OPENSSL_PUT_ERROR(SSL, ssl_get_server_cert_index, ERR_R_INTERNAL_ERROR);
   }
@@ -1927,12 +1920,9 @@ EVP_PKEY *ssl_get_sign_pkey(SSL *s, const SSL_CIPHER *cipher) {
   CERT *c = s->cert;
   int idx = -1;
 
-  if (alg_a & SSL_aRSA) {
-    if (c->pkeys[SSL_PKEY_RSA_SIGN].privatekey != NULL) {
-      idx = SSL_PKEY_RSA_SIGN;
-    } else if (c->pkeys[SSL_PKEY_RSA_ENC].privatekey != NULL) {
-      idx = SSL_PKEY_RSA_ENC;
-    }
+  if ((alg_a & SSL_aRSA) &&
+      (c->pkeys[SSL_PKEY_RSA].privatekey != NULL)) {
+    idx = SSL_PKEY_RSA;
   } else if ((alg_a & SSL_aECDSA) &&
              (c->pkeys[SSL_PKEY_ECC].privatekey != NULL)) {
     idx = SSL_PKEY_ECC;
