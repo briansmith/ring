@@ -515,7 +515,7 @@ X509_VERIFY_PARAM *SSL_CTX_get0_param(SSL_CTX *ctx) { return ctx->param; }
 
 X509_VERIFY_PARAM *SSL_get0_param(SSL *ssl) { return ssl->param; }
 
-void SSL_certs_clear(SSL *s) { ssl_cert_clear_certs(s->cert); }
+void SSL_certs_clear(SSL *ssl) { ssl_cert_clear_certs(ssl->cert); }
 
 void SSL_free(SSL *ssl) {
   if (ssl == NULL) {
@@ -1813,13 +1813,13 @@ void SSL_CTX_set_verify_depth(SSL_CTX *ctx, int depth) {
   X509_VERIFY_PARAM_set_depth(ctx->param, depth);
 }
 
-void SSL_CTX_set_cert_cb(SSL_CTX *c, int (*cb)(SSL *ssl, void *arg),
+void SSL_CTX_set_cert_cb(SSL_CTX *ctx, int (*cb)(SSL *ssl, void *arg),
                          void *arg) {
-  ssl_cert_set_cert_cb(c->cert, cb, arg);
+  ssl_cert_set_cert_cb(ctx->cert, cb, arg);
 }
 
-void SSL_set_cert_cb(SSL *s, int (*cb)(SSL *ssl, void *arg), void *arg) {
-  ssl_cert_set_cert_cb(s->cert, cb, arg);
+void SSL_set_cert_cb(SSL *ssl, int (*cb)(SSL *ssl, void *arg), void *arg) {
+  ssl_cert_set_cert_cb(ssl->cert, cb, arg);
 }
 
 void ssl_get_compatible_server_ciphers(SSL *s, uint32_t *out_mask_k,

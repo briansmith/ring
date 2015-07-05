@@ -497,6 +497,119 @@ OPENSSL_EXPORT uint32_t SSL_get_mode(const SSL *ssl);
  * TODO(davidben): Move the other, more conventional, certificate and key
  * configuration functions here. */
 
+/* SSL_CTX_use_certificate sets |ctx|'s leaf certificate to |x509|. It returns
+ * one on success and zero on failure. */
+OPENSSL_EXPORT int SSL_CTX_use_certificate(SSL_CTX *ctx, X509 *x509);
+
+/* SSL_use_certificate sets |ssl|'s leaf certificate to |x509|. It returns one
+ * on success and zero on failure. */
+OPENSSL_EXPORT int SSL_use_certificate(SSL *ssl, X509 *x509);
+
+/* SSL_CTX_use_PrivateKey sets |ctx|'s private key to |pkey|. It returns one on
+ * success and zero on failure. */
+OPENSSL_EXPORT int SSL_CTX_use_PrivateKey(SSL_CTX *ctx, EVP_PKEY *pkey);
+
+/* SSL_use_PrivateKey sets |ssl|'s private key to |pkey|. It returns one on
+ * success and zero on failure. */
+OPENSSL_EXPORT int SSL_use_PrivateKey(SSL *ssl, EVP_PKEY *pkey);
+
+/* SSL_CTX_set_cert_cb sets a callback that is called to select a certificate.
+ * The callback returns one on success, zero on internal error, and a negative
+ * number on failure or to pause the handshake. If the handshake is paused,
+ * |SSL_get_error| will return |SSL_ERROR_WANT_X509_LOOKUP|. */
+OPENSSL_EXPORT void SSL_CTX_set_cert_cb(SSL_CTX *ctx,
+                                        int (*cb)(SSL *ssl, void *arg),
+                                        void *arg);
+
+/* SSL_set_cert_cb sets a callback that is called to select a certificate. The
+ * callback returns one on success, zero on internal error, and a negative
+ * number on failure or to pause the handshake. If the handshake is paused,
+ * |SSL_get_error| will return |SSL_ERROR_WANT_X509_LOOKUP|. */
+OPENSSL_EXPORT void SSL_set_cert_cb(SSL *ssl, int (*cb)(SSL *ssl, void *arg),
+                                    void *arg);
+
+/* SSL_certs_clear resets the private key, leaf certificate, and certificate
+ * chain of |ssl|. */
+OPENSSL_EXPORT void SSL_certs_clear(SSL *ssl);
+
+/* SSL_CTX_check_private_key returns one if the certificate and private key
+ * configured in |ctx| are consistent and zero otherwise. */
+OPENSSL_EXPORT int SSL_CTX_check_private_key(const SSL_CTX *ctx);
+
+/* SSL_check_private_key returns one if the certificate and private key
+ * configured in |ssl| are consistent and zero otherwise. */
+OPENSSL_EXPORT int SSL_check_private_key(const SSL *ssl);
+
+/* SSL_CTX_get0_certificate returns |ctx|'s leaf certificate. */
+OPENSSL_EXPORT X509 *SSL_CTX_get0_certificate(const SSL_CTX *ctx);
+
+/* SSL_get_certificate returns |ssl|'s leaf certificate. */
+OPENSSL_EXPORT X509 *SSL_get_certificate(const SSL *ssl);
+
+
+/* Certificate and private key convenience functions. */
+
+/* SSL_CTX_use_RSAPrivateKey sets |ctx|'s private key to |rsa|. It returns one
+ * on success and zero on failure. */
+OPENSSL_EXPORT int SSL_CTX_use_RSAPrivateKey(SSL_CTX *ctx, RSA *rsa);
+
+/* SSL_use_RSAPrivateKey sets |ctx|'s private key to |rsa|. It returns one on
+ * success and zero on failure. */
+OPENSSL_EXPORT int SSL_use_RSAPrivateKey(SSL *ssl, RSA *rsa);
+
+/* The following functions configure certificates or private keys but take as
+ * input DER-encoded structures. They return one on success and zero on
+ * failure. */
+
+OPENSSL_EXPORT int SSL_CTX_use_certificate_ASN1(SSL_CTX *ctx, int len,
+                                                const uint8_t *d);
+OPENSSL_EXPORT int SSL_use_certificate_ASN1(SSL *ssl, const uint8_t *der,
+                                            int len);
+
+OPENSSL_EXPORT int SSL_CTX_use_PrivateKey_ASN1(int pk, SSL_CTX *ctx,
+                                               const uint8_t *d, long len);
+OPENSSL_EXPORT int SSL_use_PrivateKey_ASN1(int type, SSL *ssl,
+                                           const uint8_t *d, long len);
+
+OPENSSL_EXPORT int SSL_CTX_use_RSAPrivateKey_ASN1(SSL_CTX *ctx,
+                                                  const uint8_t *d,
+                                                  long len);
+OPENSSL_EXPORT int SSL_use_RSAPrivateKey_ASN1(SSL *ssl, uint8_t *d, long len);
+
+/* The following functions configure certificates or private keys but take as
+ * input files to read from. They return one on success and zero on failure. The
+ * |type| parameter is one of the |SSL_FILETYPE_*| values and determines whether
+ * the file's contents are read as PEM or DER. */
+
+#define SSL_FILETYPE_ASN1 X509_FILETYPE_ASN1
+#define SSL_FILETYPE_PEM X509_FILETYPE_PEM
+
+OPENSSL_EXPORT int SSL_CTX_use_RSAPrivateKey_file(SSL_CTX *ctx,
+                                                  const char *file,
+                                                  int type);
+OPENSSL_EXPORT int SSL_use_RSAPrivateKey_file(SSL *ssl, const char *file,
+                                              int type);
+
+OPENSSL_EXPORT int SSL_CTX_use_certificate_file(SSL_CTX *ctx, const char *file,
+                                                int type);
+OPENSSL_EXPORT int SSL_use_certificate_file(SSL *ssl, const char *file,
+                                            int type);
+
+OPENSSL_EXPORT int SSL_CTX_use_PrivateKey_file(SSL_CTX *ctx, const char *file,
+                                               int type);
+OPENSSL_EXPORT int SSL_use_PrivateKey_file(SSL *ssl, const char *file,
+                                           int type);
+
+/* SSL_CTX_use_certificate_file configures certificates for |ctx|. It reads the
+ * contents of |file| as a PEM-encoded leaf certificate followed optionally by
+ * the certificate chain to send to the peer. It returns one on success and zero
+ * on failure. */
+OPENSSL_EXPORT int SSL_CTX_use_certificate_chain_file(SSL_CTX *ctx,
+                                                      const char *file);
+
+
+/* Custom private keys. */
+
 enum ssl_private_key_result_t {
   ssl_private_key_success,
   ssl_private_key_retry,
@@ -712,9 +825,6 @@ OPENSSL_EXPORT int SSL_CTX_set_tlsext_ticket_key_cb(
 /* Used in SSL_set_shutdown()/SSL_get_shutdown(); */
 #define SSL_SENT_SHUTDOWN 1
 #define SSL_RECEIVED_SHUTDOWN 2
-
-#define SSL_FILETYPE_ASN1 X509_FILETYPE_ASN1
-#define SSL_FILETYPE_PEM X509_FILETYPE_PEM
 
 typedef struct ssl_protocol_method_st SSL_PROTOCOL_METHOD;
 typedef struct ssl_session_st SSL_SESSION;
@@ -1956,31 +2066,6 @@ OPENSSL_EXPORT void SSL_set_verify(SSL *s, int mode,
                                    int (*callback)(int ok,
                                                    X509_STORE_CTX *ctx));
 OPENSSL_EXPORT void SSL_set_verify_depth(SSL *s, int depth);
-OPENSSL_EXPORT void SSL_set_cert_cb(SSL *s, int (*cb)(SSL *ssl, void *arg),
-                                    void *arg);
-OPENSSL_EXPORT int SSL_use_RSAPrivateKey(SSL *ssl, RSA *rsa);
-OPENSSL_EXPORT int SSL_use_RSAPrivateKey_ASN1(SSL *ssl, uint8_t *d, long len);
-OPENSSL_EXPORT int SSL_use_PrivateKey(SSL *ssl, EVP_PKEY *pkey);
-OPENSSL_EXPORT int SSL_use_PrivateKey_ASN1(int pk, SSL *ssl, const uint8_t *d,
-                                           long len);
-OPENSSL_EXPORT int SSL_use_certificate(SSL *ssl, X509 *x);
-OPENSSL_EXPORT int SSL_use_certificate_ASN1(SSL *ssl, const uint8_t *d,
-                                            int len);
-
-OPENSSL_EXPORT int SSL_use_RSAPrivateKey_file(SSL *ssl, const char *file,
-                                              int type);
-OPENSSL_EXPORT int SSL_use_PrivateKey_file(SSL *ssl, const char *file,
-                                           int type);
-OPENSSL_EXPORT int SSL_use_certificate_file(SSL *ssl, const char *file,
-                                            int type);
-OPENSSL_EXPORT int SSL_CTX_use_RSAPrivateKey_file(SSL_CTX *ctx,
-                                                  const char *file, int type);
-OPENSSL_EXPORT int SSL_CTX_use_PrivateKey_file(SSL_CTX *ctx, const char *file,
-                                               int type);
-OPENSSL_EXPORT int SSL_CTX_use_certificate_file(SSL_CTX *ctx, const char *file,
-                                                int type);
-OPENSSL_EXPORT int SSL_CTX_use_certificate_chain_file(
-    SSL_CTX *ctx, const char *file); /* PEM type */
 OPENSSL_EXPORT STACK_OF(X509_NAME) *SSL_load_client_CA_file(const char *file);
 OPENSSL_EXPORT int SSL_add_file_cert_subjects_to_stack(STACK_OF(X509_NAME) *
                                                            stackCAs,
@@ -2079,26 +2164,11 @@ OPENSSL_EXPORT void SSL_CTX_set_verify(SSL_CTX *ctx, int mode,
 OPENSSL_EXPORT void SSL_CTX_set_verify_depth(SSL_CTX *ctx, int depth);
 OPENSSL_EXPORT void SSL_CTX_set_cert_verify_callback(
     SSL_CTX *ctx, int (*cb)(X509_STORE_CTX *, void *), void *arg);
-OPENSSL_EXPORT void SSL_CTX_set_cert_cb(SSL_CTX *c,
-                                        int (*cb)(SSL *ssl, void *arg),
-                                        void *arg);
-OPENSSL_EXPORT int SSL_CTX_use_RSAPrivateKey(SSL_CTX *ctx, RSA *rsa);
-OPENSSL_EXPORT int SSL_CTX_use_RSAPrivateKey_ASN1(SSL_CTX *ctx,
-                                                  const uint8_t *d, long len);
-OPENSSL_EXPORT int SSL_CTX_use_PrivateKey(SSL_CTX *ctx, EVP_PKEY *pkey);
-OPENSSL_EXPORT int SSL_CTX_use_PrivateKey_ASN1(int pk, SSL_CTX *ctx,
-                                               const uint8_t *d, long len);
-OPENSSL_EXPORT int SSL_CTX_use_certificate(SSL_CTX *ctx, X509 *x);
-OPENSSL_EXPORT int SSL_CTX_use_certificate_ASN1(SSL_CTX *ctx, int len,
-                                                const uint8_t *d);
 
 OPENSSL_EXPORT void SSL_CTX_set_default_passwd_cb(SSL_CTX *ctx,
                                                   pem_password_cb *cb);
 OPENSSL_EXPORT void SSL_CTX_set_default_passwd_cb_userdata(SSL_CTX *ctx,
                                                            void *u);
-
-OPENSSL_EXPORT int SSL_CTX_check_private_key(const SSL_CTX *ctx);
-OPENSSL_EXPORT int SSL_check_private_key(const SSL *ctx);
 
 OPENSSL_EXPORT int SSL_CTX_set_session_id_context(SSL_CTX *ctx,
                                                   const uint8_t *sid_ctx,
@@ -2118,7 +2188,6 @@ OPENSSL_EXPORT int SSL_set1_param(SSL *ssl, X509_VERIFY_PARAM *vpm);
 OPENSSL_EXPORT X509_VERIFY_PARAM *SSL_CTX_get0_param(SSL_CTX *ctx);
 OPENSSL_EXPORT X509_VERIFY_PARAM *SSL_get0_param(SSL *ssl);
 
-OPENSSL_EXPORT void SSL_certs_clear(SSL *s);
 OPENSSL_EXPORT int SSL_accept(SSL *ssl);
 OPENSSL_EXPORT int SSL_connect(SSL *ssl);
 OPENSSL_EXPORT int SSL_read(SSL *ssl, void *buf, int num);
@@ -2163,12 +2232,6 @@ OPENSSL_EXPORT int SSL_CTX_add_client_CA(SSL_CTX *ctx, X509 *x);
 OPENSSL_EXPORT long SSL_get_default_timeout(const SSL *s);
 
 OPENSSL_EXPORT STACK_OF(X509_NAME) *SSL_dup_CA_list(STACK_OF(X509_NAME) *sk);
-
-OPENSSL_EXPORT X509 *SSL_get_certificate(const SSL *ssl);
-OPENSSL_EXPORT EVP_PKEY *SSL_get_privatekey(const SSL *ssl);
-
-OPENSSL_EXPORT X509 *SSL_CTX_get0_certificate(const SSL_CTX *ctx);
-OPENSSL_EXPORT EVP_PKEY *SSL_CTX_get0_privatekey(const SSL_CTX *ctx);
 
 OPENSSL_EXPORT void SSL_CTX_set_quiet_shutdown(SSL_CTX *ctx, int mode);
 OPENSSL_EXPORT int SSL_CTX_get_quiet_shutdown(const SSL_CTX *ctx);
