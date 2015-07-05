@@ -394,9 +394,6 @@ long ssl3_ctrl(SSL *s, int cmd, long larg, void *parg) {
       ret = 1;
       break;
 
-    case SSL_CTRL_SELECT_CURRENT_CERT:
-      return 1;
-
     case SSL_CTRL_GET_CURVES: {
       const uint16_t *clist = s->s3->tmp.peer_ellipticcurvelist;
       size_t clistlen = s->s3->tmp.peer_ellipticcurvelist_length;
@@ -518,9 +515,6 @@ long ssl3_ctx_ctrl(SSL_CTX *ctx, int cmd, long larg, void *parg) {
       } else {
         return ssl_cert_add0_chain_cert(ctx->cert, (X509 *)parg);
       }
-
-    case SSL_CTRL_SELECT_CURRENT_CERT:
-      return 1;
 
     default:
       return 0;

@@ -1761,7 +1761,6 @@ DECLARE_PEM_rw(SSL_SESSION, SSL_SESSION)
 #define SSL_CTRL_GET_EC_POINT_FORMATS 111
 
 #define SSL_CTRL_GET_CHAIN_CERTS 115
-#define SSL_CTRL_SELECT_CURRENT_CERT 116
 
 /* DTLSv1_get_timeout queries the next DTLS handshake timeout. If there is a
  * timeout in progress, it sets |*out| to the time remaining and returns one.
@@ -1870,8 +1869,6 @@ OPENSSL_EXPORT size_t SSL_get_tls_channel_id(SSL *ssl, uint8_t *out,
 #define SSL_CTX_clear_chain_certs(ctx) SSL_CTX_set0_chain(ctx, NULL)
 #define SSL_CTX_build_cert_chain(ctx, flags) \
   SSL_CTX_ctrl(ctx, SSL_CTRL_BUILD_CERT_CHAIN, flags, NULL)
-#define SSL_CTX_select_current_cert(ctx, x509) \
-  SSL_CTX_ctrl(ctx, SSL_CTRL_SELECT_CURRENT_CERT, 0, (char *)x509)
 
 #define SSL_CTX_set0_verify_cert_store(ctx, st) \
   SSL_CTX_ctrl(ctx, SSL_CTRL_SET_VERIFY_CERT_STORE, 0, (char *)st)
@@ -1893,8 +1890,6 @@ OPENSSL_EXPORT size_t SSL_get_tls_channel_id(SSL *ssl, uint8_t *out,
 #define SSL_clear_chain_certs(ctx) SSL_set0_chain(ctx, NULL)
 #define SSL_build_cert_chain(s, flags) \
   SSL_ctrl(s, SSL_CTRL_BUILD_CERT_CHAIN, flags, NULL)
-#define SSL_select_current_cert(ctx, x509) \
-  SSL_ctrl(ctx, SSL_CTRL_SELECT_CURRENT_CERT, 0, (char *)x509)
 
 #define SSL_set0_verify_cert_store(s, st) \
   SSL_ctrl(s, SSL_CTRL_SET_VERIFY_CERT_STORE, 0, (char *)st)
