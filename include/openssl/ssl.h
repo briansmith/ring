@@ -495,8 +495,7 @@ OPENSSL_EXPORT uint32_t SSL_get_mode(const SSL *ssl);
 /* Configuring certificates and private keys.
  *
  * TODO(davidben): Move the other, more conventional, certificate and key
- * configuration functions here, possibly after simplifying the multiple slots
- * machinery first. https://crbug.com/486295. */
+ * configuration functions here. */
 
 enum ssl_private_key_result_t {
   ssl_private_key_success,
@@ -549,11 +548,8 @@ typedef struct ssl_private_key_method_st {
                                                  size_t *out_len, size_t max_out);
 } SSL_PRIVATE_KEY_METHOD;
 
-/* SSL_use_private_key_method configures a custom private key on
- * |ssl|. |key_method| must remain valid for the lifetime of |ssl|. Using custom
- * keys with the multiple certificate slots feature is not supported.
- *
- * TODO(davidben): Remove the multiple certificate slots feature. */
+/* SSL_use_private_key_method configures a custom private key on |ssl|.
+ * |key_method| must remain valid for the lifetime of |ssl|. */
 OPENSSL_EXPORT void SSL_set_private_key_method(
     SSL *ssl, const SSL_PRIVATE_KEY_METHOD *key_method);
 
@@ -1053,8 +1049,6 @@ struct ssl_ctx_st {
   void (*channel_id_cb)(SSL *ssl, EVP_PKEY **pkey);
 
   CRYPTO_EX_DATA ex_data;
-
-  STACK_OF(X509) *extra_certs;
 
 
   /* Default values used when no per-SSL value is defined follow */

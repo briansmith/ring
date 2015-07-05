@@ -1676,16 +1676,16 @@ int SSL_COMP_add_compression_method(int id, COMP_METHOD *cm) { return 1; }
 
 const char *SSL_COMP_get_name(const COMP_METHOD *comp) { return NULL; }
 
-int ssl_cipher_get_cert_index(const SSL_CIPHER *cipher) {
+int ssl_cipher_get_key_type(const SSL_CIPHER *cipher) {
   uint32_t alg_a = cipher->algorithm_auth;
 
   if (alg_a & SSL_aECDSA) {
-    return SSL_PKEY_ECC;
+    return EVP_PKEY_EC;
   } else if (alg_a & SSL_aRSA) {
-    return SSL_PKEY_RSA;
+    return EVP_PKEY_RSA;
   }
 
-  return -1;
+  return EVP_PKEY_NONE;
 }
 
 int ssl_cipher_has_server_public_key(const SSL_CIPHER *cipher) {

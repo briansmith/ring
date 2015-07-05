@@ -2438,8 +2438,7 @@ int tls12_get_sigid(int pkey_type) {
                        sizeof(tls12_sig) / sizeof(tls12_lookup));
 }
 
-int tls12_get_sigandhash(SSL *ssl, uint8_t *p, const EVP_PKEY *pk,
-                         const EVP_MD *md) {
+int tls12_get_sigandhash(SSL *ssl, uint8_t *p, const EVP_MD *md) {
   int sig_id, md_id;
 
   if (!md) {
@@ -2452,7 +2451,7 @@ int tls12_get_sigandhash(SSL *ssl, uint8_t *p, const EVP_PKEY *pk,
     return 0;
   }
 
-  sig_id = tls12_get_sigid(ssl_private_key_type(ssl, pk));
+  sig_id = tls12_get_sigid(ssl_private_key_type(ssl));
   if (sig_id == -1) {
     return 0;
   }
@@ -2602,17 +2601,17 @@ int tls1_process_sigalgs(SSL *s, const CBS *sigalgs) {
   return 1;
 }
 
-const EVP_MD *tls1_choose_signing_digest(SSL *s, EVP_PKEY *pkey) {
-  CERT *c = s->cert;
-  int type = ssl_private_key_type(s, pkey);
+const EVP_MD *tls1_choose_signing_digest(SSL *ssl) {
+  CERT *cert = ssl->cert;
+  int type = ssl_private_key_type(ssl);
   size_t i;
 
   /* Select the first shared digest supported by our key. */
-  for (i = 0; i < c->shared_sigalgslen; i++) {
-    const EVP_MD *md = tls12_get_hash(c->shared_sigalgs[i].rhash);
+  for (i = 0; i < cert->shared_sigalgslen; i++) {
+    const EVP_MD *md = tls12_get_hash(cert->shared_sigalgs[i].rhash);
     if (md == NULL ||
-        tls12_get_pkey_type(c->shared_sigalgs[i].rsign) != type ||
-        !ssl_private_key_supports_digest(s, pkey, md)) {
+        tls12_get_pkey_type(cert->shared_sigalgs[i].rsign) != type ||
+        !ssl_private_key_supports_digest(ssl, md)) {
       continue;
     }
     return md;

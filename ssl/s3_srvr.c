@@ -1418,7 +1418,7 @@ int ssl3_send_server_key_exchange(SSL *s) {
     }
 
     if (ssl_cipher_has_server_public_key(s->s3->tmp.new_cipher)) {
-      pkey = ssl_get_sign_pkey(s, s->s3->tmp.new_cipher);
+      pkey = s->cert->privatekey;
       if (pkey == NULL) {
         al = SSL_AD_DECODE_ERROR;
         goto f_err;
@@ -1478,8 +1478,8 @@ int ssl3_send_server_key_exchange(SSL *s) {
 
       /* Determine signature algorithm. */
       if (SSL_USE_SIGALGS(s)) {
-        md = tls1_choose_signing_digest(s, pkey);
-        if (!tls12_get_sigandhash(s, p, pkey, md)) {
+        md = tls1_choose_signing_digest(s);
+        if (!tls12_get_sigandhash(s, p, md)) {
           /* Should never happen */
           al = SSL_AD_INTERNAL_ERROR;
           OPENSSL_PUT_ERROR(SSL, ssl3_send_server_key_exchange,
@@ -1692,7 +1692,7 @@ int ssl3_get_client_key_exchange(SSL *s) {
     uint8_t good;
     size_t rsa_size, decrypt_len, premaster_index, j;
 
-    pkey = s->cert->pkeys[SSL_PKEY_RSA].privatekey;
+    pkey = s->cert->privatekey;
     if (pkey == NULL || pkey->type != EVP_PKEY_RSA || pkey->pkey.rsa == NULL) {
       al = SSL_AD_HANDSHAKE_FAILURE;
       OPENSSL_PUT_ERROR(SSL, ssl3_get_client_key_exchange,
@@ -2291,17 +2291,8 @@ err:
 }
 
 int ssl3_send_server_certificate(SSL *s) {
-  CERT_PKEY *cpk;
-
   if (s->state == SSL3_ST_SW_CERT_A) {
-    cpk = ssl_get_server_send_pkey(s);
-    if (cpk == NULL) {
-      OPENSSL_PUT_ERROR(SSL, ssl3_send_server_certificate,
-                        ERR_R_INTERNAL_ERROR);
-      return 0;
-    }
-
-    if (!ssl3_output_cert_chain(s, cpk)) {
+    if (!ssl3_output_cert_chain(s)) {
       return 0;
     }
     s->state = SSL3_ST_SW_CERT_B;

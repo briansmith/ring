@@ -390,12 +390,12 @@ long ssl3_ctrl(SSL *s, int cmd, long larg, void *parg) {
       }
 
     case SSL_CTRL_GET_CHAIN_CERTS:
-      *(STACK_OF(X509) **)parg = s->cert->key->chain;
+      *(STACK_OF(X509) **)parg = s->cert->chain;
       ret = 1;
       break;
 
     case SSL_CTRL_SELECT_CURRENT_CERT:
-      return ssl_cert_select_current(s->cert, (X509 *)parg);
+      return 1;
 
     case SSL_CTRL_GET_CURVES: {
       const uint16_t *clist = s->s3->tmp.peer_ellipticcurvelist;
@@ -493,26 +493,16 @@ long ssl3_ctx_ctrl(SSL_CTX *ctx, int cmd, long larg, void *parg) {
       return ssl_cert_set_cert_store(ctx->cert, parg, 1, larg);
 
     case SSL_CTRL_EXTRA_CHAIN_CERT:
-      if (ctx->extra_certs == NULL) {
-        ctx->extra_certs = sk_X509_new_null();
-        if (ctx->extra_certs == NULL) {
-          return 0;
-        }
-      }
-      sk_X509_push(ctx->extra_certs, (X509 *)parg);
-      break;
+      return ssl_cert_add0_chain_cert(ctx->cert, (X509 *)parg);
 
     case SSL_CTRL_GET_EXTRA_CHAIN_CERTS:
-      if (ctx->extra_certs == NULL) {
-        *(STACK_OF(X509) **)parg = ctx->cert->key->chain;
-      } else {
-        *(STACK_OF(X509) **)parg = ctx->extra_certs;
-      }
+    case SSL_CTRL_GET_CHAIN_CERTS:
+      *(STACK_OF(X509) **)parg = ctx->cert->chain;
       break;
 
     case SSL_CTRL_CLEAR_EXTRA_CHAIN_CERTS:
-      sk_X509_pop_free(ctx->extra_certs, X509_free);
-      ctx->extra_certs = NULL;
+      sk_X509_pop_free(ctx->cert->chain, X509_free);
+      ctx->cert->chain = NULL;
       break;
 
     case SSL_CTRL_CHAIN:
@@ -529,12 +519,8 @@ long ssl3_ctx_ctrl(SSL_CTX *ctx, int cmd, long larg, void *parg) {
         return ssl_cert_add0_chain_cert(ctx->cert, (X509 *)parg);
       }
 
-    case SSL_CTRL_GET_CHAIN_CERTS:
-      *(STACK_OF(X509) **)parg = ctx->cert->key->chain;
-      break;
-
     case SSL_CTRL_SELECT_CURRENT_CERT:
-      return ssl_cert_select_current(ctx->cert, (X509 *)parg);
+      return 1;
 
     default:
       return 0;

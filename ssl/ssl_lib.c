@@ -799,20 +799,19 @@ STACK_OF(X509) *SSL_get_peer_cert_chain(const SSL *s) {
 
 /* Fix this so it checks all the valid key/cert options */
 int SSL_CTX_check_private_key(const SSL_CTX *ctx) {
-  if (ctx == NULL || ctx->cert == NULL || ctx->cert->key->x509 == NULL) {
+  if (ctx == NULL || ctx->cert == NULL || ctx->cert->x509 == NULL) {
     OPENSSL_PUT_ERROR(SSL, SSL_CTX_check_private_key,
                       SSL_R_NO_CERTIFICATE_ASSIGNED);
     return 0;
   }
 
-  if (ctx->cert->key->privatekey == NULL) {
+  if (ctx->cert->privatekey == NULL) {
     OPENSSL_PUT_ERROR(SSL, SSL_CTX_check_private_key,
                       SSL_R_NO_PRIVATE_KEY_ASSIGNED);
     return 0;
   }
 
-  return X509_check_private_key(ctx->cert->key->x509,
-                                ctx->cert->key->privatekey);
+  return X509_check_private_key(ctx->cert->x509, ctx->cert->privatekey);
 }
 
 /* Fix this function so that it takes an optional type parameter */
@@ -828,20 +827,19 @@ int SSL_check_private_key(const SSL *ssl) {
     return 0;
   }
 
-  if (ssl->cert->key->x509 == NULL) {
+  if (ssl->cert->x509 == NULL) {
     OPENSSL_PUT_ERROR(SSL, SSL_check_private_key,
                       SSL_R_NO_CERTIFICATE_ASSIGNED);
     return 0;
   }
 
-  if (ssl->cert->key->privatekey == NULL) {
+  if (ssl->cert->privatekey == NULL) {
     OPENSSL_PUT_ERROR(SSL, SSL_check_private_key,
                       SSL_R_NO_PRIVATE_KEY_ASSIGNED);
     return 0;
   }
 
-  return X509_check_private_key(ssl->cert->key->x509,
-                                ssl->cert->key->privatekey);
+  return X509_check_private_key(ssl->cert->x509, ssl->cert->privatekey);
 }
 
 int SSL_accept(SSL *s) {
@@ -1716,8 +1714,6 @@ SSL_CTX *SSL_CTX_new(const SSL_METHOD *method) {
 
   CRYPTO_new_ex_data(&g_ex_data_class_ssl_ctx, ret, &ret->ex_data);
 
-  ret->extra_certs = NULL;
-
   ret->max_send_fragment = SSL3_RT_MAX_PLAIN_LENGTH;
 
   ret->tlsext_servername_callback = 0;
@@ -1781,7 +1777,6 @@ void SSL_CTX_free(SSL_CTX *ctx) {
   ssl_cipher_preference_list_free(ctx->cipher_list_tls11);
   ssl_cert_free(ctx->cert);
   sk_X509_NAME_pop_free(ctx->client_CA, X509_NAME_free);
-  sk_X509_pop_free(ctx->extra_certs, X509_free);
   sk_SRTP_PROTECTION_PROFILE_free(ctx->srtp_profiles);
   OPENSSL_free(ctx->psk_identity_hint);
   OPENSSL_free(ctx->tlsext_ecpointformatlist);
@@ -1827,17 +1822,12 @@ void SSL_set_cert_cb(SSL *s, int (*cb)(SSL *ssl, void *arg), void *arg) {
   ssl_cert_set_cert_cb(s->cert, cb, arg);
 }
 
-static int ssl_has_key(SSL *s, size_t idx) {
-  CERT_PKEY *cpk = &s->cert->pkeys[idx];
-  return cpk->x509 && cpk->privatekey;
-}
-
 void ssl_get_compatible_server_ciphers(SSL *s, uint32_t *out_mask_k,
                                        uint32_t *out_mask_a) {
   CERT *c = s->cert;
-  int have_rsa_cert, dh_tmp;
+  int have_rsa_cert = 0, dh_tmp;
   uint32_t mask_k, mask_a;
-  int have_ecc_cert, ecdsa_ok;
+  int have_ecc_cert = 0, ecdsa_ok;
   X509 *x;
 
   if (c == NULL) {
@@ -1849,8 +1839,13 @@ void ssl_get_compatible_server_ciphers(SSL *s, uint32_t *out_mask_k,
 
   dh_tmp = (c->dh_tmp != NULL || c->dh_tmp_cb != NULL);
 
-  have_rsa_cert = ssl_has_key(s, SSL_PKEY_RSA);
-  have_ecc_cert = ssl_has_key(s, SSL_PKEY_ECC);
+  if (s->cert->x509 != NULL && s->cert->privatekey != NULL) {
+    if (s->cert->privatekey->type == EVP_PKEY_RSA) {
+      have_rsa_cert = 1;
+    } else if (s->cert->privatekey->type == EVP_PKEY_EC) {
+      have_ecc_cert = 1;
+    }
+  }
   mask_k = 0;
   mask_a = 0;
 
@@ -1865,7 +1860,7 @@ void ssl_get_compatible_server_ciphers(SSL *s, uint32_t *out_mask_k,
   /* An ECC certificate may be usable for ECDSA cipher suites depending on the
    * key usage extension and on the client's curve preferences. */
   if (have_ecc_cert) {
-    x = c->pkeys[SSL_PKEY_ECC].x509;
+    x = c->x509;
     /* This call populates extension flags (ex_flags). */
     X509_check_purpose(x, -1, 0);
     ecdsa_ok = (x->ex_flags & EXFLAG_KUSAGE)
@@ -1893,47 +1888,6 @@ void ssl_get_compatible_server_ciphers(SSL *s, uint32_t *out_mask_k,
 
   *out_mask_k = mask_k;
   *out_mask_a = mask_a;
-}
-
-static int ssl_get_server_cert_index(const SSL *s) {
-  int idx = ssl_cipher_get_cert_index(s->s3->tmp.new_cipher);
-  if (idx == -1) {
-    OPENSSL_PUT_ERROR(SSL, ssl_get_server_cert_index, ERR_R_INTERNAL_ERROR);
-  }
-  return idx;
-}
-
-CERT_PKEY *ssl_get_server_send_pkey(const SSL *s) {
-  int i = ssl_get_server_cert_index(s);
-
-  /* This may or may not be an error. */
-  if (i < 0) {
-    return NULL;
-  }
-
-  /* May be NULL. */
-  return &s->cert->pkeys[i];
-}
-
-EVP_PKEY *ssl_get_sign_pkey(SSL *s, const SSL_CIPHER *cipher) {
-  uint32_t alg_a = cipher->algorithm_auth;
-  CERT *c = s->cert;
-  int idx = -1;
-
-  if ((alg_a & SSL_aRSA) &&
-      (c->pkeys[SSL_PKEY_RSA].privatekey != NULL)) {
-    idx = SSL_PKEY_RSA;
-  } else if ((alg_a & SSL_aECDSA) &&
-             (c->pkeys[SSL_PKEY_ECC].privatekey != NULL)) {
-    idx = SSL_PKEY_ECC;
-  }
-
-  if (idx == -1) {
-    OPENSSL_PUT_ERROR(SSL, ssl_get_sign_pkey, ERR_R_INTERNAL_ERROR);
-    return NULL;
-  }
-
-  return c->pkeys[idx].privatekey;
 }
 
 void ssl_update_cache(SSL *s, int mode) {
@@ -2164,7 +2118,7 @@ void ssl_clear_cipher_ctx(SSL *s) {
 
 X509 *SSL_get_certificate(const SSL *s) {
   if (s->cert != NULL) {
-    return s->cert->key->x509;
+    return s->cert->x509;
   }
 
   return NULL;
@@ -2172,7 +2126,7 @@ X509 *SSL_get_certificate(const SSL *s) {
 
 EVP_PKEY *SSL_get_privatekey(const SSL *s) {
   if (s->cert != NULL) {
-    return s->cert->key->privatekey;
+    return s->cert->privatekey;
   }
 
   return NULL;
@@ -2180,7 +2134,7 @@ EVP_PKEY *SSL_get_privatekey(const SSL *s) {
 
 X509 *SSL_CTX_get0_certificate(const SSL_CTX *ctx) {
   if (ctx->cert != NULL) {
-    return ctx->cert->key->x509;
+    return ctx->cert->x509;
   }
 
   return NULL;
@@ -2188,7 +2142,7 @@ X509 *SSL_CTX_get0_certificate(const SSL_CTX *ctx) {
 
 EVP_PKEY *SSL_CTX_get0_privatekey(const SSL_CTX *ctx) {
   if (ctx->cert != NULL) {
-    return ctx->cert->key->privatekey;
+    return ctx->cert->privatekey;
   }
 
   return NULL;

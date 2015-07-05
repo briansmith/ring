@@ -930,15 +930,9 @@ static int ssl3_check_certificate_for_cipher(X509 *leaf,
   }
 
   /* Check the certificate's type matches the cipher. */
-  int cert_type = ssl_cert_type(pkey);
-  if (cert_type < 0) {
-    OPENSSL_PUT_ERROR(SSL, ssl3_check_certificate_for_cipher,
-                      SSL_R_UNKNOWN_CERTIFICATE_TYPE);
-    goto err;
-  }
-  int expected_type = ssl_cipher_get_cert_index(cipher);
-  assert(expected_type >= 0);
-  if (cert_type != expected_type) {
+  int expected_type = ssl_cipher_get_key_type(cipher);
+  assert(expected_type != EVP_PKEY_NONE);
+  if (pkey->type != expected_type) {
     OPENSSL_PUT_ERROR(SSL, ssl3_check_certificate_for_cipher,
                       SSL_R_WRONG_CERTIFICATE_TYPE);
     goto err;
@@ -2020,8 +2014,7 @@ int ssl3_send_cert_verify(SSL *s) {
     uint8_t *p = ssl_handshake_start(s);
     size_t signature_length = 0;
     unsigned long n = 0;
-    EVP_PKEY *pkey = s->cert->key->privatekey;
-    assert(pkey != NULL || s->cert->key_method != NULL);
+    assert(s->cert->privatekey != NULL || s->cert->key_method != NULL);
 
     if (s->state == SSL3_ST_CW_CERT_VRFY_A) {
       uint8_t *buf = (uint8_t *)s->init_buf->data;
@@ -2031,8 +2024,8 @@ int ssl3_send_cert_verify(SSL *s) {
 
       /* Write out the digest type if need be. */
       if (SSL_USE_SIGALGS(s)) {
-        md = tls1_choose_signing_digest(s, pkey);
-        if (!tls12_get_sigandhash(s, p, pkey, md)) {
+        md = tls1_choose_signing_digest(s);
+        if (!tls12_get_sigandhash(s, p, md)) {
           OPENSSL_PUT_ERROR(SSL, ssl3_send_cert_verify, ERR_R_INTERNAL_ERROR);
           return -1;
         }
@@ -2041,7 +2034,7 @@ int ssl3_send_cert_verify(SSL *s) {
       }
 
       /* Compute the digest. */
-      const int pkey_type = ssl_private_key_type(s, pkey);
+      const int pkey_type = ssl_private_key_type(s);
       if (!ssl3_cert_verify_hash(s, digest, &digest_length, &md, pkey_type)) {
         return -1;
       }
@@ -2053,7 +2046,7 @@ int ssl3_send_cert_verify(SSL *s) {
       }
 
       /* Sign the digest. */
-      signature_length = ssl_private_key_max_signature_len(s, pkey);
+      signature_length = ssl_private_key_max_signature_len(s);
       if (p + 2 + signature_length > buf + SSL3_RT_MAX_PLAIN_LENGTH) {
         OPENSSL_PUT_ERROR(SSL, ssl3_send_cert_verify,
                           SSL_R_DATA_LENGTH_TOO_LONG);
@@ -2061,7 +2054,7 @@ int ssl3_send_cert_verify(SSL *s) {
       }
 
       s->rwstate = SSL_PRIVATE_KEY_OPERATION;
-      sign_result = ssl_private_key_sign(s, pkey, &p[2], &signature_length,
+      sign_result = ssl_private_key_sign(s, &p[2], &signature_length,
                                          signature_length, md, digest,
                                          digest_length);
     } else {
@@ -2070,7 +2063,7 @@ int ssl3_send_cert_verify(SSL *s) {
         p += 2;
         n += 2;
       }
-      signature_length = ssl_private_key_max_signature_len(s, pkey);
+      signature_length = ssl_private_key_max_signature_len(s);
       s->rwstate = SSL_PRIVATE_KEY_OPERATION;
       sign_result = ssl_private_key_sign_complete(s, &p[2], &signature_length,
                                                   signature_length);
@@ -2098,9 +2091,9 @@ int ssl3_send_cert_verify(SSL *s) {
 
 /* ssl3_has_client_certificate returns true if a client certificate is
  * configured. */
-static int ssl3_has_client_certificate(SSL *s) {
-  return s->cert && s->cert->key->x509 && (s->cert->key->privatekey ||
-                                           s->cert->key_method);
+static int ssl3_has_client_certificate(SSL *ssl) {
+  return ssl->cert && ssl->cert->x509 && (ssl->cert->privatekey ||
+                                          ssl->cert->key_method);
 }
 
 int ssl3_send_client_certificate(SSL *s) {
@@ -2179,8 +2172,14 @@ int ssl3_send_client_certificate(SSL *s) {
   }
 
   if (s->state == SSL3_ST_CW_CERT_C) {
-    CERT_PKEY *cert_pkey = (s->s3->tmp.cert_req == 2) ? NULL : s->cert->key;
-    if (!ssl3_output_cert_chain(s, cert_pkey)) {
+    if (s->s3->tmp.cert_req == 2) {
+      /* Send an empty Certificate message. */
+      uint8_t *p = ssl_handshake_start(s);
+      l2n3(0, p);
+      if (!ssl_set_handshake_header(s, SSL3_MT_CERTIFICATE, 3)) {
+        return -1;
+      }
+    } else if (!ssl3_output_cert_chain(s)) {
       return -1;
     }
     s->state = SSL3_ST_CW_CERT_D;

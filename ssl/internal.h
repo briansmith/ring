@@ -254,17 +254,12 @@ ssl_create_cipher_list(const SSL_PROTOCOL_METHOD *ssl_method,
                        STACK_OF(SSL_CIPHER) **out_cipher_list_by_id,
                        const char *rule_str);
 
-/* SSL_PKEY_* denote certificate types. */
-#define SSL_PKEY_RSA 0
-#define SSL_PKEY_ECC 1
-#define SSL_PKEY_NUM 2
-
 /* ssl_cipher_get_value returns the cipher suite id of |cipher|. */
 uint16_t ssl_cipher_get_value(const SSL_CIPHER *cipher);
 
-/* ssl_cipher_get_cert_index returns the |SSL_PKEY_*| value corresponding to the
- * certificate type of |cipher| or -1 if there is none. */
-int ssl_cipher_get_cert_index(const SSL_CIPHER *cipher);
+/* ssl_cipher_get_key_type returns the |EVP_PKEY_*| value corresponding to the
+ * server key used in |cipher| or |EVP_PKEY_NONE| if there is none. */
+int ssl_cipher_get_key_type(const SSL_CIPHER *cipher);
 
 /* ssl_cipher_has_server_public_key returns 1 if |cipher| involves a server
  * public key in the key exchange, sent in a server Certificate message.
@@ -353,21 +348,17 @@ int SSL_AEAD_CTX_seal(SSL_AEAD_CTX *ctx, uint8_t *out, size_t *out_len,
 
 /* ssl_private_key_* call the corresponding function on the
  * |SSL_PRIVATE_KEY_METHOD| for |ssl|, if configured. Otherwise, they implement
- * the operation on |pkey|.
- *
- * TODO(davidben): The |EVP_PKEY| must be passed in to due to the multiple
- * certificate slots feature. Remove it. */
+ * the operation with |EVP_PKEY|. */
 
-int ssl_private_key_type(SSL *ssl, const EVP_PKEY *pkey);
+int ssl_private_key_type(SSL *ssl);
 
-int ssl_private_key_supports_digest(SSL *ssl, const EVP_PKEY *pkey,
-                                    const EVP_MD *md);
+int ssl_private_key_supports_digest(SSL *ssl, const EVP_MD *md);
 
-size_t ssl_private_key_max_signature_len(SSL *ssl, const EVP_PKEY *pkey);
+size_t ssl_private_key_max_signature_len(SSL *ssl);
 
 enum ssl_private_key_result_t ssl_private_key_sign(
-    SSL *ssl, EVP_PKEY *pkey, uint8_t *out, size_t *out_len, size_t max_out,
-    const EVP_MD *md, const uint8_t *in, size_t in_len);
+    SSL *ssl, uint8_t *out, size_t *out_len, size_t max_out, const EVP_MD *md,
+    const uint8_t *in, size_t in_len);
 
 enum ssl_private_key_result_t ssl_private_key_sign_complete(
     SSL *ssl, uint8_t *out, size_t *out_len, size_t max_out);
@@ -516,13 +507,6 @@ enum ssl_hash_message_t {
   ssl_hash_message,
 };
 
-typedef struct cert_pkey_st {
-  X509 *x509;
-  EVP_PKEY *privatekey;
-  /* Chain for this certificate */
-  STACK_OF(X509) *chain;
-} CERT_PKEY;
-
 /* Structure containing decoded values of signature algorithms extension */
 typedef struct tls_sigalgs_st {
   uint8_t rsign;
@@ -530,10 +514,10 @@ typedef struct tls_sigalgs_st {
 } TLS_SIGALGS;
 
 typedef struct cert_st {
-  /* Current active set */
-  CERT_PKEY *key; /* ALWAYS points to an element of the pkeys array
-                   * Probably it would make more sense to store
-                   * an index, not a pointer. */
+  X509 *x509;
+  EVP_PKEY *privatekey;
+  /* Chain for this certificate */
+  STACK_OF(X509) *chain;
 
   /* key_method, if non-NULL, is a set of callbacks to call for private key
    * operations. */
@@ -562,7 +546,6 @@ typedef struct cert_st {
    * keys. If NULL, a curve is selected automatically. See
    * |SSL_CTX_set_tmp_ecdh_callback|. */
   EC_KEY *(*ecdh_tmp_cb)(SSL *ssl, int is_export, int keysize);
-  CERT_PKEY pkeys[SSL_PKEY_NUM];
 
   /* Server-only: client_certificate_types is list of certificate types to
    * include in the CertificateRequest message.
@@ -845,21 +828,18 @@ struct ssl_cipher_preference_list_st *ssl_cipher_preference_list_from_ciphers(
     STACK_OF(SSL_CIPHER) *ciphers);
 struct ssl_cipher_preference_list_st *ssl_get_cipher_preferences(SSL *s);
 
-int ssl_cert_set0_chain(CERT *c, STACK_OF(X509) *chain);
-int ssl_cert_set1_chain(CERT *c, STACK_OF(X509) *chain);
-int ssl_cert_add0_chain_cert(CERT *c, X509 *x);
-int ssl_cert_add1_chain_cert(CERT *c, X509 *x);
-int ssl_cert_select_current(CERT *c, X509 *x);
-void ssl_cert_set_cert_cb(CERT *c, int (*cb)(SSL *ssl, void *arg), void *arg);
+int ssl_cert_set0_chain(CERT *cert, STACK_OF(X509) *chain);
+int ssl_cert_set1_chain(CERT *cert, STACK_OF(X509) *chain);
+int ssl_cert_add0_chain_cert(CERT *cert, X509 *x509);
+int ssl_cert_add1_chain_cert(CERT *cert, X509 *x509);
+void ssl_cert_set_cert_cb(CERT *cert,
+                          int (*cb)(SSL *ssl, void *arg), void *arg);
 
 int ssl_verify_cert_chain(SSL *s, STACK_OF(X509) *sk);
-int ssl_add_cert_chain(SSL *s, CERT_PKEY *cpk, unsigned long *l);
+int ssl_add_cert_chain(SSL *s, unsigned long *l);
 int ssl_build_cert_chain(CERT *c, X509_STORE *chain_store, int flags);
 int ssl_cert_set_cert_store(CERT *c, X509_STORE *store, int chain, int ref);
-CERT_PKEY *ssl_get_server_send_pkey(const SSL *s);
-EVP_PKEY *ssl_get_sign_pkey(SSL *s, const SSL_CIPHER *c);
 void ssl_update_cache(SSL *s, int mode);
-int ssl_cert_type(EVP_PKEY *pkey);
 
 /* ssl_get_compatible_server_ciphers determines the key exchange and
  * authentication cipher suite masks compatible with the server configuration
@@ -918,7 +898,7 @@ int ssl3_final_finish_mac(SSL *s, const char *sender, int slen, uint8_t *p);
 int ssl3_cert_verify_mac(SSL *s, int md_nid, uint8_t *p);
 int ssl3_finish_mac(SSL *s, const uint8_t *buf, int len);
 void ssl3_free_digest_list(SSL *s);
-int ssl3_output_cert_chain(SSL *s, CERT_PKEY *cpk);
+int ssl3_output_cert_chain(SSL *s);
 const SSL_CIPHER *ssl3_choose_cipher(
     SSL *ssl, STACK_OF(SSL_CIPHER) *clnt,
     struct ssl_cipher_preference_list_st *srvr);
@@ -1112,8 +1092,10 @@ int tls_process_ticket(SSL *ssl, SSL_SESSION **out_session,
                        size_t ticket_len, const uint8_t *session_id,
                        size_t session_id_len);
 
-int tls12_get_sigandhash(SSL *ssl, uint8_t *p, const EVP_PKEY *pk,
-                         const EVP_MD *md);
+/* tls12_get_sigandhash assembles the SignatureAndHashAlgorithm corresponding to
+ * |ssl|'s private key and |md|. The two-byte value is written to |p|. It
+ * returns one on success and zero on failure. */
+int tls12_get_sigandhash(SSL *ssl, uint8_t *p, const EVP_MD *md);
 int tls12_get_sigid(int pkey_type);
 const EVP_MD *tls12_get_hash(uint8_t hash_alg);
 
@@ -1178,9 +1160,9 @@ uint16_t ssl3_version_from_wire(SSL *s, uint16_t wire_version);
 uint32_t ssl_get_algorithm2(SSL *s);
 int tls1_process_sigalgs(SSL *s, const CBS *sigalgs);
 
-/* tls1_choose_signing_digest returns a digest for use with |pkey| based on the
- * peer's preferences recorded for |s| and the digests supported by |pkey|. */
-const EVP_MD *tls1_choose_signing_digest(SSL *s, EVP_PKEY *pkey);
+/* tls1_choose_signing_digest returns a digest for use with |ssl|'s private key
+ * based on the peer's preferences the digests supported. */
+const EVP_MD *tls1_choose_signing_digest(SSL *ssl);
 
 size_t tls12_get_psigalgs(SSL *s, const uint8_t **psigs);
 int tls12_check_peer_sigalg(const EVP_MD **out_md, int *out_alert, SSL *s,

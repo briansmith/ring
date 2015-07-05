@@ -301,17 +301,11 @@ int ssl3_send_change_cipher_spec(SSL *s, int a, int b) {
   return ssl3_do_write(s, SSL3_RT_CHANGE_CIPHER_SPEC);
 }
 
-int ssl3_output_cert_chain(SSL *s, CERT_PKEY *cpk) {
+int ssl3_output_cert_chain(SSL *s) {
   uint8_t *p;
   unsigned long l = 3 + SSL_HM_HEADER_LENGTH(s);
 
-  if (cpk == NULL) {
-    /* TLSv1 sends a chain with nothing in it, instead of an alert. */
-    if (!BUF_MEM_grow_clean(s->init_buf, l)) {
-      OPENSSL_PUT_ERROR(SSL, ssl3_output_cert_chain, ERR_R_BUF_LIB);
-      return 0;
-    }
-  } else if (!ssl_add_cert_chain(s, cpk, &l)) {
+  if (!ssl_add_cert_chain(s, &l)) {
     return 0;
   }
 
@@ -500,17 +494,6 @@ int ssl3_cert_verify_hash(SSL *s, uint8_t *out, size_t *out_len,
   }
 
   return 1;
-}
-
-int ssl_cert_type(EVP_PKEY *pkey) {
-  switch (pkey->type) {
-    case EVP_PKEY_RSA:
-      return SSL_PKEY_RSA;
-    case EVP_PKEY_EC:
-      return SSL_PKEY_ECC;
-    default:
-      return -1;
-  }
 }
 
 int ssl_verify_alarm_type(long type) {
