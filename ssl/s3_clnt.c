@@ -2182,6 +2182,7 @@ int ssl3_send_client_certificate(SSL *s) {
     if (!ssl3_output_cert_chain(s, cert_pkey)) {
       return -1;
     }
+    s->state = SSL3_ST_CW_CERT_D;
   }
 
   /* SSL3_ST_CW_CERT_D */
