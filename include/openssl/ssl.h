@@ -813,18 +813,6 @@ struct ssl_session_st {
  * enforcing certifcate chain algorithms. When this is set we enforce them. */
 #define SSL_CERT_FLAG_TLS_STRICT 0x00000001L
 
-/* Flags for building certificate chains */
-/* Treat any existing certificates as untrusted CAs */
-#define SSL_BUILD_CHAIN_FLAG_UNTRUSTED 0x1
-/* Don't include root CA in chain */
-#define SSL_BUILD_CHAIN_FLAG_NO_ROOT 0x2
-/* Just check certificates already there */
-#define SSL_BUILD_CHAIN_FLAG_CHECK 0x4
-/* Ignore verification errors */
-#define SSL_BUILD_CHAIN_FLAG_IGNORE_ERROR 0x8
-/* Clear verification errors from queue */
-#define SSL_BUILD_CHAIN_FLAG_CLEAR_ERROR 0x10
-
 /* SSL_set_mtu sets the |ssl|'s MTU in DTLS to |mtu|. It returns one on success
  * and zero on failure. */
 OPENSSL_EXPORT int SSL_set_mtu(SSL *ssl, unsigned mtu);
@@ -1755,7 +1743,6 @@ DECLARE_PEM_rw(SSL_SESSION, SSL_SESSION)
 #define SSL_CTRL_SET_CLIENT_SIGALGS_LIST 102
 #define SSL_CTRL_GET_CLIENT_CERT_TYPES 103
 #define SSL_CTRL_SET_CLIENT_CERT_TYPES 104
-#define SSL_CTRL_BUILD_CERT_CHAIN 105
 #define SSL_CTRL_SET_VERIFY_CERT_STORE 106
 #define SSL_CTRL_SET_CHAIN_CERT_STORE 107
 #define SSL_CTRL_GET_EC_POINT_FORMATS 111
@@ -1867,8 +1854,6 @@ OPENSSL_EXPORT size_t SSL_get_tls_channel_id(SSL *ssl, uint8_t *out,
 #define SSL_CTX_get0_chain_certs(ctx, px509) \
   SSL_CTX_ctrl(ctx, SSL_CTRL_GET_CHAIN_CERTS, 0, px509)
 #define SSL_CTX_clear_chain_certs(ctx) SSL_CTX_set0_chain(ctx, NULL)
-#define SSL_CTX_build_cert_chain(ctx, flags) \
-  SSL_CTX_ctrl(ctx, SSL_CTRL_BUILD_CERT_CHAIN, flags, NULL)
 
 #define SSL_CTX_set0_verify_cert_store(ctx, st) \
   SSL_CTX_ctrl(ctx, SSL_CTRL_SET_VERIFY_CERT_STORE, 0, (char *)st)
@@ -1888,8 +1873,6 @@ OPENSSL_EXPORT size_t SSL_get_tls_channel_id(SSL *ssl, uint8_t *out,
 #define SSL_get0_chain_certs(ctx, px509) \
   SSL_ctrl(ctx, SSL_CTRL_GET_CHAIN_CERTS, 0, px509)
 #define SSL_clear_chain_certs(ctx) SSL_set0_chain(ctx, NULL)
-#define SSL_build_cert_chain(s, flags) \
-  SSL_ctrl(s, SSL_CTRL_BUILD_CERT_CHAIN, flags, NULL)
 
 #define SSL_set0_verify_cert_store(s, st) \
   SSL_ctrl(s, SSL_CTRL_SET_VERIFY_CERT_STORE, 0, (char *)st)

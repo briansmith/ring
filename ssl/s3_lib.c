@@ -440,9 +440,6 @@ long ssl3_ctrl(SSL *s, int cmd, long larg, void *parg) {
       }
       return ssl3_set_req_cert_type(s->cert, parg, larg);
 
-    case SSL_CTRL_BUILD_CERT_CHAIN:
-      return ssl_build_cert_chain(s->cert, s->ctx->cert_store, larg);
-
     case SSL_CTRL_SET_VERIFY_CERT_STORE:
       return ssl_cert_set_cert_store(s->cert, parg, 0, larg);
 
@@ -479,9 +476,6 @@ long ssl3_ctx_ctrl(SSL_CTX *ctx, int cmd, long larg, void *parg) {
 
     case SSL_CTRL_SET_CLIENT_CERT_TYPES:
       return ssl3_set_req_cert_type(ctx->cert, parg, larg);
-
-    case SSL_CTRL_BUILD_CERT_CHAIN:
-      return ssl_build_cert_chain(ctx->cert, ctx->cert_store, larg);
 
     case SSL_CTRL_SET_VERIFY_CERT_STORE:
       return ssl_cert_set_cert_store(ctx->cert, parg, 0, larg);
