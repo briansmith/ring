@@ -2077,7 +2077,7 @@ int ssl3_get_cert_verify(SSL *s) {
   }
 
   /* Compute the digest. */
-  if (!ssl3_cert_verify_hash(s, digest, &digest_length, &md, pkey)) {
+  if (!ssl3_cert_verify_hash(s, digest, &digest_length, &md, pkey->type)) {
     goto err;
   }
 

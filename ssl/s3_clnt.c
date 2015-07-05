@@ -2041,7 +2041,8 @@ int ssl3_send_cert_verify(SSL *s) {
       }
 
       /* Compute the digest. */
-      if (!ssl3_cert_verify_hash(s, digest, &digest_length, &md, pkey)) {
+      const int pkey_type = ssl_private_key_type(s, pkey);
+      if (!ssl3_cert_verify_hash(s, digest, &digest_length, &md, pkey_type)) {
         return -1;
       }
 

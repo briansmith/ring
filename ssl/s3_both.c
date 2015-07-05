@@ -457,9 +457,7 @@ OPENSSL_COMPILE_ASSERT(EVP_MAX_MD_SIZE > MD5_DIGEST_LENGTH + SHA_DIGEST_LENGTH,
                        combined_tls_hash_fits_in_max);
 
 int ssl3_cert_verify_hash(SSL *s, uint8_t *out, size_t *out_len,
-                          const EVP_MD **out_md, EVP_PKEY *pkey) {
-  const int type = ssl_private_key_type(s, pkey);
-
+                          const EVP_MD **out_md, int pkey_type) {
   /* For TLS v1.2 send signature algorithm and signature using
    * agreed digest and cached handshake records. Otherwise, use
    * SHA1 or MD5 + SHA1 depending on key type.  */
@@ -482,7 +480,7 @@ int ssl3_cert_verify_hash(SSL *s, uint8_t *out, size_t *out_len,
       return 0;
     }
     *out_len = len;
-  } else if (type == EVP_PKEY_RSA) {
+  } else if (pkey_type == EVP_PKEY_RSA) {
     if (s->enc_method->cert_verify_mac(s, NID_md5, out) == 0 ||
         s->enc_method->cert_verify_mac(s, NID_sha1, out + MD5_DIGEST_LENGTH) ==
             0) {
@@ -490,7 +488,7 @@ int ssl3_cert_verify_hash(SSL *s, uint8_t *out, size_t *out_len,
     }
     *out_len = MD5_DIGEST_LENGTH + SHA_DIGEST_LENGTH;
     *out_md = EVP_md5_sha1();
-  } else if (type == EVP_PKEY_EC) {
+  } else if (pkey_type == EVP_PKEY_EC) {
     if (s->enc_method->cert_verify_mac(s, NID_sha1, out) == 0) {
       return 0;
     }
