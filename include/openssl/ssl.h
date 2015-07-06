@@ -995,11 +995,6 @@ struct ssl_session_st {
 };
 
 
-/* Cert related flags */
-/* Many implementations ignore some aspects of the TLS standards such as
- * enforcing certifcate chain algorithms. When this is set we enforce them. */
-#define SSL_CERT_FLAG_TLS_STRICT 0x00000001L
-
 /* SSL_set_mtu sets the |ssl|'s MTU in DTLS to |mtu|. It returns one on success
  * and zero on failure. */
 OPENSSL_EXPORT int SSL_set_mtu(SSL *ssl, unsigned mtu);
