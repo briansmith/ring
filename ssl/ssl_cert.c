@@ -809,3 +809,66 @@ int ssl_cert_set_cert_store(CERT *c, X509_STORE *store, int chain, int ref) {
   }
   return 1;
 }
+
+int SSL_CTX_set0_chain(SSL_CTX *ctx, STACK_OF(X509) *chain) {
+  return ssl_cert_set0_chain(ctx->cert, chain);
+}
+
+int SSL_CTX_set1_chain(SSL_CTX *ctx, STACK_OF(X509) *chain) {
+  return ssl_cert_set1_chain(ctx->cert, chain);
+}
+
+int SSL_set0_chain(SSL *ssl, STACK_OF(X509) *chain) {
+  return ssl_cert_set0_chain(ssl->cert, chain);
+}
+
+int SSL_set1_chain(SSL *ssl, STACK_OF(X509) *chain) {
+  return ssl_cert_set1_chain(ssl->cert, chain);
+}
+
+int SSL_CTX_add0_chain_cert(SSL_CTX *ctx, X509 *x509) {
+  return ssl_cert_add0_chain_cert(ctx->cert, x509);
+}
+
+int SSL_CTX_add1_chain_cert(SSL_CTX *ctx, X509 *x509) {
+  return ssl_cert_add1_chain_cert(ctx->cert, x509);
+}
+
+int SSL_CTX_add_extra_chain_cert(SSL_CTX *ctx, X509 *x509) {
+  return SSL_CTX_add0_chain_cert(ctx, x509);
+}
+
+int SSL_add0_chain_cert(SSL *ssl, X509 *x509) {
+  return ssl_cert_add0_chain_cert(ssl->cert, x509);
+}
+
+int SSL_add1_chain_cert(SSL *ssl, X509 *x509) {
+  return ssl_cert_add1_chain_cert(ssl->cert, x509);
+}
+
+int SSL_CTX_clear_chain_certs(SSL_CTX *ctx) {
+  return SSL_CTX_set0_chain(ctx, NULL);
+}
+
+int SSL_CTX_clear_extra_chain_certs(SSL_CTX *ctx) {
+  return SSL_CTX_clear_chain_certs(ctx);
+}
+
+int SSL_clear_chain_certs(SSL *ssl) {
+  return SSL_set0_chain(ssl, NULL);
+}
+
+int SSL_CTX_get0_chain_certs(const SSL_CTX *ctx, STACK_OF(X509) **out_chain) {
+  *out_chain = ctx->cert->chain;
+  return 1;
+}
+
+int SSL_CTX_get_extra_chain_certs(const SSL_CTX *ctx,
+                                  STACK_OF(X509) **out_chain) {
+  return SSL_CTX_get0_chain_certs(ctx, out_chain);
+}
+
+int SSL_get0_chain_certs(const SSL *ssl, STACK_OF(X509) **out_chain) {
+  *out_chain = ssl->cert->chain;
+  return 1;
+}

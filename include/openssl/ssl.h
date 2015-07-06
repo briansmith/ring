@@ -494,8 +494,13 @@ OPENSSL_EXPORT uint32_t SSL_get_mode(const SSL *ssl);
 
 /* Configuring certificates and private keys.
  *
- * TODO(davidben): Move the other, more conventional, certificate and key
- * configuration functions here. */
+ * These functions configure the connection's leaf certificate, private key, and
+ * certificate chain. The certificate chain is ordered leaf to root (as sent on
+ * the wire) but does not include the leaf. Both client and server certificates
+ * use these functions.
+ *
+ * Certificates and keys may be configured before the handshake or dynamically
+ * in the early callback and certificate callback. */
 
 /* SSL_CTX_use_certificate sets |ctx|'s leaf certificate to |x509|. It returns
  * one on success and zero on failure. */
@@ -512,6 +517,58 @@ OPENSSL_EXPORT int SSL_CTX_use_PrivateKey(SSL_CTX *ctx, EVP_PKEY *pkey);
 /* SSL_use_PrivateKey sets |ssl|'s private key to |pkey|. It returns one on
  * success and zero on failure. */
 OPENSSL_EXPORT int SSL_use_PrivateKey(SSL *ssl, EVP_PKEY *pkey);
+
+/* SSL_CTX_set0_chain sets |ctx|'s certificate chain, excluding the leaf, to
+ * |chain|. On success, it returns one and takes ownership of |chain|.
+ * Otherwise, it returns zero. */
+OPENSSL_EXPORT int SSL_CTX_set0_chain(SSL_CTX *ctx, STACK_OF(X509) *chain);
+
+/* SSL_CTX_set1_chain sets |ctx|'s certificate chain, excluding the leaf, to
+ * |chain|. It returns one on success and zero on failure. The caller retains
+ * ownership of |chain| and may release it freely. */
+OPENSSL_EXPORT int SSL_CTX_set1_chain(SSL_CTX *ctx, STACK_OF(X509) *chain);
+
+/* SSL_set0_chain sets |ssl|'s certificate chain, excluding the leaf, to
+ * |chain|. On success, it returns one and takes ownership of |chain|.
+ * Otherwise, it returns zero. */
+OPENSSL_EXPORT int SSL_set0_chain(SSL *ssl, STACK_OF(X509) *chain);
+
+/* SSL_set1_chain sets |ssl|'s certificate chain, excluding the leaf, to
+ * |chain|. It returns one on success and zero on failure. The caller retains
+ * ownership of |chain| and may release it freely. */
+OPENSSL_EXPORT int SSL_set1_chain(SSL *ssl, STACK_OF(X509) *chain);
+
+/* SSL_CTX_add0_chain_cert appends |x509| to |ctx|'s certificate chain. On
+ * success, it returns one and takes ownership of |x509|. Otherwise, it returns
+ * zero. */
+OPENSSL_EXPORT int SSL_CTX_add0_chain_cert(SSL_CTX *ctx, X509 *x509);
+
+/* SSL_CTX_add1_chain_cert appends |x509| to |ctx|'s certificate chain. It
+ * returns one on success and zero on failure. The caller retains ownership of
+ * |x509| and may release it freely. */
+OPENSSL_EXPORT int SSL_CTX_add1_chain_cert(SSL_CTX *ctx, X509 *x509);
+
+/* SSL_add0_chain_cert appends |x509| to |ctx|'s certificate chain. On success,
+ * it returns one and takes ownership of |x509|. Otherwise, it returns zero. */
+OPENSSL_EXPORT int SSL_add0_chain_cert(SSL *ssl, X509 *x509);
+
+/* SSL_CTX_add_extra_chain_cert calls |SSL_CTX_add0_chain_cert|. */
+OPENSSL_EXPORT int SSL_CTX_add_extra_chain_cert(SSL_CTX *ctx, X509 *x509);
+
+/* SSL_add1_chain_cert appends |x509| to |ctx|'s certificate chain. It returns
+ * one on success and zero on failure. The caller retains ownership of |x509|
+ * and may release it freely. */
+OPENSSL_EXPORT int SSL_add1_chain_cert(SSL *ssl, X509 *x509);
+
+/* SSL_CTX_clear_chain_certs clears |ctx|'s certificate chain and returns
+ * one. */
+OPENSSL_EXPORT int SSL_CTX_clear_chain_certs(SSL_CTX *ctx);
+
+/* SSL_CTX_clear_extra_chain_certs calls |SSL_CTX_clear_chain_certs|. */
+OPENSSL_EXPORT int SSL_CTX_clear_extra_chain_certs(SSL_CTX *ctx);
+
+/* SSL_clear_chain_certs clears |ssl|'s certificate chain and returns one. */
+OPENSSL_EXPORT int SSL_clear_chain_certs(SSL *ssl);
 
 /* SSL_CTX_set_cert_cb sets a callback that is called to select a certificate.
  * The callback returns one on success, zero on internal error, and a negative
@@ -545,6 +602,26 @@ OPENSSL_EXPORT X509 *SSL_CTX_get0_certificate(const SSL_CTX *ctx);
 
 /* SSL_get_certificate returns |ssl|'s leaf certificate. */
 OPENSSL_EXPORT X509 *SSL_get_certificate(const SSL *ssl);
+
+/* SSL_CTX_get0_privatekey returns |ctx|'s private key. */
+OPENSSL_EXPORT EVP_PKEY *SSL_CTX_get0_privatekey(const SSL_CTX *ctx);
+
+/* SSL_get_privatekey returns |ssl|'s private key. */
+OPENSSL_EXPORT EVP_PKEY *SSL_get_privatekey(const SSL *ssl);
+
+/* SSL_CTX_get0_chain_certs sets |*out_chain| to |ctx|'s certificate chain and
+ * returns one. */
+OPENSSL_EXPORT int SSL_CTX_get0_chain_certs(const SSL_CTX *ctx,
+                                            STACK_OF(X509) **out_chain);
+
+/* SSL_CTX_get_extra_chain_certs calls |SSL_CTX_get0_chain_certs|. */
+OPENSSL_EXPORT int SSL_CTX_get_extra_chain_certs(const SSL_CTX *ctx,
+                                                 STACK_OF(X509) **out_chain);
+
+/* SSL_get0_chain_certs sets |*out_chain| to |ssl|'s certificate chain and
+ * returns one. */
+OPENSSL_EXPORT int SSL_get0_chain_certs(const SSL *ssl,
+                                        STACK_OF(X509) **out_chain);
 
 
 /* Certificate and private key convenience functions. */
@@ -1836,14 +1913,6 @@ DECLARE_PEM_rw(SSL_SESSION, SSL_SESSION)
 #define SSL_ERROR_PENDING_CERTIFICATE 12
 #define SSL_ERROR_WANT_PRIVATE_KEY_OPERATION 13
 
-#define SSL_CTRL_EXTRA_CHAIN_CERT 14
-
-#define SSL_CTRL_GET_EXTRA_CHAIN_CERTS 82
-#define SSL_CTRL_CLEAR_EXTRA_CHAIN_CERTS 83
-
-#define SSL_CTRL_CHAIN 88
-#define SSL_CTRL_CHAIN_CERT 89
-
 #define SSL_CTRL_GET_CURVES 90
 #define SSL_CTRL_SET_CURVES 91
 #define SSL_CTRL_SET_CURVES_LIST 92
@@ -1856,8 +1925,6 @@ DECLARE_PEM_rw(SSL_SESSION, SSL_SESSION)
 #define SSL_CTRL_SET_VERIFY_CERT_STORE 106
 #define SSL_CTRL_SET_CHAIN_CERT_STORE 107
 #define SSL_CTRL_GET_EC_POINT_FORMATS 111
-
-#define SSL_CTRL_GET_CHAIN_CERTS 115
 
 /* DTLSv1_get_timeout queries the next DTLS handshake timeout. If there is a
  * timeout in progress, it sets |*out| to the time remaining and returns one.
@@ -1946,25 +2013,6 @@ OPENSSL_EXPORT int SSL_set1_tls_channel_id(SSL *ssl, EVP_PKEY *private_key);
 OPENSSL_EXPORT size_t SSL_get_tls_channel_id(SSL *ssl, uint8_t *out,
                                              size_t max_out);
 
-#define SSL_CTX_add_extra_chain_cert(ctx, x509) \
-  SSL_CTX_ctrl(ctx, SSL_CTRL_EXTRA_CHAIN_CERT, 0, (char *)x509)
-#define SSL_CTX_get_extra_chain_certs(ctx, px509) \
-  SSL_CTX_ctrl(ctx, SSL_CTRL_GET_EXTRA_CHAIN_CERTS, 0, px509)
-#define SSL_CTX_clear_extra_chain_certs(ctx) \
-  SSL_CTX_ctrl(ctx, SSL_CTRL_CLEAR_EXTRA_CHAIN_CERTS, 0, NULL)
-
-#define SSL_CTX_set0_chain(ctx, sk) \
-  SSL_CTX_ctrl(ctx, SSL_CTRL_CHAIN, 0, (char *)sk)
-#define SSL_CTX_set1_chain(ctx, sk) \
-  SSL_CTX_ctrl(ctx, SSL_CTRL_CHAIN, 1, (char *)sk)
-#define SSL_CTX_add0_chain_cert(ctx, x509) \
-  SSL_CTX_ctrl(ctx, SSL_CTRL_CHAIN_CERT, 0, (char *)x509)
-#define SSL_CTX_add1_chain_cert(ctx, x509) \
-  SSL_CTX_ctrl(ctx, SSL_CTRL_CHAIN_CERT, 1, (char *)x509)
-#define SSL_CTX_get0_chain_certs(ctx, px509) \
-  SSL_CTX_ctrl(ctx, SSL_CTRL_GET_CHAIN_CERTS, 0, px509)
-#define SSL_CTX_clear_chain_certs(ctx) SSL_CTX_set0_chain(ctx, NULL)
-
 #define SSL_CTX_set0_verify_cert_store(ctx, st) \
   SSL_CTX_ctrl(ctx, SSL_CTRL_SET_VERIFY_CERT_STORE, 0, (char *)st)
 #define SSL_CTX_set1_verify_cert_store(ctx, st) \
@@ -1973,16 +2021,6 @@ OPENSSL_EXPORT size_t SSL_get_tls_channel_id(SSL *ssl, uint8_t *out,
   SSL_CTX_ctrl(ctx, SSL_CTRL_SET_CHAIN_CERT_STORE, 0, (char *)st)
 #define SSL_CTX_set1_chain_cert_store(ctx, st) \
   SSL_CTX_ctrl(ctx, SSL_CTRL_SET_CHAIN_CERT_STORE, 1, (char *)st)
-
-#define SSL_set0_chain(ctx, sk) SSL_ctrl(ctx, SSL_CTRL_CHAIN, 0, (char *)sk)
-#define SSL_set1_chain(ctx, sk) SSL_ctrl(ctx, SSL_CTRL_CHAIN, 1, (char *)sk)
-#define SSL_add0_chain_cert(ctx, x509) \
-  SSL_ctrl(ctx, SSL_CTRL_CHAIN_CERT, 0, (char *)x509)
-#define SSL_add1_chain_cert(ctx, x509) \
-  SSL_ctrl(ctx, SSL_CTRL_CHAIN_CERT, 1, (char *)x509)
-#define SSL_get0_chain_certs(ctx, px509) \
-  SSL_ctrl(ctx, SSL_CTRL_GET_CHAIN_CERTS, 0, px509)
-#define SSL_clear_chain_certs(ctx) SSL_set0_chain(ctx, NULL)
 
 #define SSL_set0_verify_cert_store(s, st) \
   SSL_ctrl(s, SSL_CTRL_SET_VERIFY_CERT_STORE, 0, (char *)st)
@@ -2604,10 +2642,16 @@ OPENSSL_EXPORT const char *SSLeay_version(int unused);
 
 #define DTLS_CTRL_GET_TIMEOUT doesnt_exist
 #define DTLS_CTRL_HANDLE_TIMEOUT doesnt_exist
+#define SSL_CTRL_CHAIN doesnt_exist
+#define SSL_CTRL_CHAIN_CERT doesnt_exist
 #define SSL_CTRL_CHANNEL_ID doesnt_exist
+#define SSL_CTRL_CLEAR_EXTRA_CHAIN_CERTS doesnt_exist
 #define SSL_CTRL_CLEAR_MODE doesnt_exist
 #define SSL_CTRL_CLEAR_OPTIONS doesnt_exist
+#define SSL_CTRL_EXTRA_CHAIN_CERT doesnt_exist
+#define SSL_CTRL_GET_CHAIN_CERTS doesnt_exist
 #define SSL_CTRL_GET_CHANNEL_ID doesnt_exist
+#define SSL_CTRL_GET_EXTRA_CHAIN_CERTS doesnt_exist
 #define SSL_CTRL_GET_MAX_CERT_LIST doesnt_exist
 #define SSL_CTRL_GET_NUM_RENEGOTIATIONS doesnt_exist
 #define SSL_CTRL_GET_READ_AHEAD doesnt_exist
@@ -2644,9 +2688,16 @@ OPENSSL_EXPORT const char *SSLeay_version(int unused);
 
 #define DTLSv1_get_timeout DTLSv1_get_timeout
 #define DTLSv1_handle_timeout DTLSv1_handle_timeout
+#define SSL_CTX_add0_chain_cert SSL_CTX_add0_chain_cert
+#define SSL_CTX_add1_chain_cert SSL_CTX_add1_chain_cert
+#define SSL_CTX_add_extra_chain_cert SSL_CTX_add_extra_chain_cert
+#define SSL_CTX_clear_extra_chain_certs SSL_CTX_clear_extra_chain_certs
+#define SSL_CTX_clear_chain_certs SSL_CTX_clear_chain_certs
 #define SSL_CTX_clear_mode SSL_CTX_clear_mode
 #define SSL_CTX_clear_options SSL_CTX_clear_options
 #define SSL_CTX_enable_tls_channel_id SSL_CTX_enable_tls_channel_id
+#define SSL_CTX_get0_chain_certs SSL_CTX_get0_chain_certs
+#define SSL_CTX_get_extra_chain_certs SSL_CTX_get_extra_chain_certs
 #define SSL_CTX_get_max_cert_list SSL_CTX_get_max_cert_list
 #define SSL_CTX_get_mode SSL_CTX_get_mode
 #define SSL_CTX_get_options SSL_CTX_get_options
@@ -2657,6 +2708,8 @@ OPENSSL_EXPORT const char *SSLeay_version(int unused);
 #define SSL_CTX_sess_get_cache_size SSL_CTX_sess_get_cache_size
 #define SSL_CTX_sess_number SSL_CTX_sess_number
 #define SSL_CTX_sess_set_cache_size SSL_CTX_sess_set_cache_size
+#define SSL_CTX_set0_chain SSL_CTX_set0_chain
+#define SSL_CTX_set1_chain SSL_CTX_set1_chain
 #define SSL_CTX_set1_tls_channel_id SSL_CTX_set1_tls_channel_id
 #define SSL_CTX_set_max_cert_list SSL_CTX_set_max_cert_list
 #define SSL_CTX_set_max_send_fragment SSL_CTX_set_max_send_fragment
@@ -2673,9 +2726,13 @@ OPENSSL_EXPORT const char *SSLeay_version(int unused);
 #define SSL_CTX_set_tmp_dh SSL_CTX_set_tmp_dh
 #define SSL_CTX_set_tmp_ecdh SSL_CTX_set_tmp_ecdh
 #define SSL_CTX_set_tmp_rsa SSL_CTX_set_tmp_rsa
+#define SSL_add0_chain_cert SSL_add0_chain_cert
+#define SSL_add1_chain_cert SSL_add1_chain_cert
+#define SSL_clear_chain_certs SSL_clear_chain_certs
 #define SSL_clear_mode SSL_clear_mode
 #define SSL_clear_options SSL_clear_options
 #define SSL_enable_tls_channel_id SSL_enable_tls_channel_id
+#define SSL_get0_chain_certs SSL_get0_chain_certs
 #define SSL_get_max_cert_list SSL_get_max_cert_list
 #define SSL_get_mode SSL_get_mode
 #define SSL_get_options SSL_get_options
@@ -2685,6 +2742,8 @@ OPENSSL_EXPORT const char *SSLeay_version(int unused);
 #define SSL_need_tmp_RSA SSL_need_tmp_RSA
 #define SSL_num_renegotiations SSL_num_renegotiations
 #define SSL_session_reused SSL_session_reused
+#define SSL_set0_chain SSL_set0_chain
+#define SSL_set1_chain SSL_set1_chain
 #define SSL_set1_tls_channel_id SSL_set1_tls_channel_id
 #define SSL_set_max_cert_list SSL_set_max_cert_list
 #define SSL_set_max_send_fragment SSL_set_max_send_fragment
