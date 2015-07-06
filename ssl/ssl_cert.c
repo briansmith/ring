@@ -274,6 +274,7 @@ void ssl_cert_clear_certs(CERT *cert) {
   cert->privatekey = NULL;
   sk_X509_pop_free(cert->chain, X509_free);
   cert->chain = NULL;
+  cert->key_method = NULL;
 }
 
 void ssl_cert_free(CERT *c) {
