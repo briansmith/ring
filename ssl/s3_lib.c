@@ -467,8 +467,6 @@ long ssl3_ctx_ctrl(SSL_CTX *ctx, int cmd, long larg, void *parg) {
     default:
       return 0;
   }
-
-  return 1;
 }
 
 int SSL_CTX_set_tlsext_servername_callback(
