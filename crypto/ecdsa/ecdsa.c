@@ -78,7 +78,6 @@ int ECDSA_verify(int type, const uint8_t *digest, size_t digest_len,
   ECDSA_SIG *s;
   int ret = 0;
   uint8_t *der = NULL;
-  size_t der_len;
 
   if (eckey->ecdsa_meth && eckey->ecdsa_meth->verify) {
     return eckey->ecdsa_meth->verify(digest, digest_len, sig, sig_len, eckey);
