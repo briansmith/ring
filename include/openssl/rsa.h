@@ -59,6 +59,7 @@
 
 #include <openssl/base.h>
 
+#include <openssl/asn1.h>
 #include <openssl/engine.h>
 #include <openssl/ex_data.h>
 #include <openssl/thread.h>
@@ -461,6 +462,15 @@ OPENSSL_EXPORT int RSA_blinding_on(RSA *rsa, BN_CTX *ctx);
  * and |cb_arg| parameters must be NULL. */
 OPENSSL_EXPORT RSA *RSA_generate_key(int bits, unsigned long e, void *callback,
                                      void *cb_arg);
+
+typedef struct rsa_pss_params_st {
+  X509_ALGOR *hashAlgorithm;
+  X509_ALGOR *maskGenAlgorithm;
+  ASN1_INTEGER *saltLength;
+  ASN1_INTEGER *trailerField;
+} RSA_PSS_PARAMS;
+
+DECLARE_ASN1_FUNCTIONS(RSA_PSS_PARAMS)
 
 
 struct rsa_meth_st {
