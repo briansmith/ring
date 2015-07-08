@@ -3194,6 +3194,19 @@ func addRenegotiationTests() {
 			},
 		},
 	})
+	testCases = append(testCases, testCase{
+		name:        "Renegotiate-FalseStart",
+		renegotiate: true,
+		config: Config{
+			CipherSuites: []uint16{TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256},
+			NextProtos:   []string{"foo"},
+		},
+		flags: []string{
+			"-false-start",
+			"-select-next-proto", "foo",
+		},
+		shimWritesFirst: true,
+	})
 }
 
 func addDTLSReplayTests() {
