@@ -1674,7 +1674,9 @@ static int tls1_alpn_handle_client_hello(SSL *s, CBS *cbs, int *out_alert) {
   while (CBS_len(&protocol_name_list_copy) > 0) {
     CBS protocol_name;
 
-    if (!CBS_get_u8_length_prefixed(&protocol_name_list_copy, &protocol_name)) {
+    if (!CBS_get_u8_length_prefixed(&protocol_name_list_copy, &protocol_name) ||
+        /* Empty protocol names are forbidden. */
+        CBS_len(&protocol_name) == 0) {
       goto parse_error;
     }
   }
@@ -2118,6 +2120,8 @@ static int ssl_scan_serverhello_tlsext(SSL *s, CBS *cbs, int *out_alert) {
       if (!CBS_get_u16_length_prefixed(&extension, &protocol_name_list) ||
           CBS_len(&extension) != 0 ||
           !CBS_get_u8_length_prefixed(&protocol_name_list, &protocol_name) ||
+          /* Empty protocol names are forbidden. */
+          CBS_len(&protocol_name) == 0 ||
           CBS_len(&protocol_name_list) != 0) {
         *out_alert = SSL_AD_DECODE_ERROR;
         return 0;

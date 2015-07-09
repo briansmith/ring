@@ -45,7 +45,7 @@ func (c *Conn) clientHandshake() error {
 
 	nextProtosLength := 0
 	for _, proto := range c.config.NextProtos {
-		if l := len(proto); l == 0 || l > 255 {
+		if l := len(proto); l > 255 {
 			return errors.New("tls: invalid NextProtos value")
 		} else {
 			nextProtosLength += 1 + l

@@ -544,6 +544,10 @@ type ProtocolBugs struct {
 	// of ALPN works regardless of their relative order.
 	SwapNPNAndALPN bool
 
+	// ALPNProtocol, if not nil, sets the ALPN protocol that a server will
+	// return.
+	ALPNProtocol *string
+
 	// AllowSessionVersionMismatch causes the server to resume sessions
 	// regardless of the version associated with the session.
 	AllowSessionVersionMismatch bool

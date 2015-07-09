@@ -119,7 +119,7 @@ func (m *clientHelloMsg) marshal() []byte {
 	if len(m.alpnProtocols) > 0 {
 		extensionsLength += 2
 		for _, s := range m.alpnProtocols {
-			if l := len(s); l == 0 || l > 255 {
+			if l := len(s); l > 255 {
 				panic("invalid ALPN protocol")
 			}
 			extensionsLength++
@@ -625,6 +625,7 @@ type serverHelloMsg struct {
 	ticketSupported         bool
 	secureRenegotiation     []byte
 	alpnProtocol            string
+	alpnProtocolEmpty       bool
 	duplicateExtension      bool
 	channelIDRequested      bool
 	extendedMasterSecret    bool
@@ -653,6 +654,7 @@ func (m *serverHelloMsg) equal(i interface{}) bool {
 		bytes.Equal(m.secureRenegotiation, m1.secureRenegotiation) &&
 		(m.secureRenegotiation == nil) == (m1.secureRenegotiation == nil) &&
 		m.alpnProtocol == m1.alpnProtocol &&
+		m.alpnProtocolEmpty == m1.alpnProtocolEmpty &&
 		m.duplicateExtension == m1.duplicateExtension &&
 		m.channelIDRequested == m1.channelIDRequested &&
 		m.extendedMasterSecret == m1.extendedMasterSecret &&
@@ -695,7 +697,7 @@ func (m *serverHelloMsg) marshal() []byte {
 	if m.channelIDRequested {
 		numExtensions++
 	}
-	if alpnLen := len(m.alpnProtocol); alpnLen > 0 {
+	if alpnLen := len(m.alpnProtocol); alpnLen > 0 || m.alpnProtocolEmpty {
 		if alpnLen >= 256 {
 			panic("invalid ALPN protocol")
 		}
@@ -784,7 +786,7 @@ func (m *serverHelloMsg) marshal() []byte {
 		copy(z, m.secureRenegotiation)
 		z = z[len(m.secureRenegotiation):]
 	}
-	if alpnLen := len(m.alpnProtocol); alpnLen > 0 {
+	if alpnLen := len(m.alpnProtocol); alpnLen > 0 || m.alpnProtocolEmpty {
 		z[0] = byte(extensionALPN >> 8)
 		z[1] = byte(extensionALPN & 0xff)
 		l := 2 + 1 + alpnLen
@@ -869,6 +871,7 @@ func (m *serverHelloMsg) unmarshal(data []byte) bool {
 	m.ocspStapling = false
 	m.ticketSupported = false
 	m.alpnProtocol = ""
+	m.alpnProtocolEmpty = false
 	m.extendedMasterSecret = false
 
 	if len(data) == 0 {
@@ -940,6 +943,7 @@ func (m *serverHelloMsg) unmarshal(data []byte) bool {
 			}
 			d = d[1:]
 			m.alpnProtocol = string(d)
+			m.alpnProtocolEmpty = len(d) == 0
 		case extensionChannelID:
 			if length > 0 {
 				return false

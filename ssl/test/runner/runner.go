@@ -2829,6 +2829,38 @@ func addExtensionTests() {
 		expectedNextProtoType: alpn,
 		resumeSession:         true,
 	})
+	var emptyString string
+	testCases = append(testCases, testCase{
+		testType: clientTest,
+		name:     "ALPNClient-EmptyProtocolName",
+		config: Config{
+			NextProtos: []string{""},
+			Bugs: ProtocolBugs{
+				// A server returning an empty ALPN protocol
+				// should be rejected.
+				ALPNProtocol: &emptyString,
+			},
+		},
+		flags: []string{
+			"-advertise-alpn", "\x03foo",
+		},
+		shouldFail: true,
+		expectedError: ":PARSE_TLSEXT:",
+	})
+	testCases = append(testCases, testCase{
+		testType: serverTest,
+		name:     "ALPNServer-EmptyProtocolName",
+		config: Config{
+			// A ClientHello containing an empty ALPN protocol
+			// should be rejected.
+			NextProtos: []string{"foo", "", "baz"},
+		},
+		flags: []string{
+			"-select-alpn", "foo",
+		},
+		shouldFail: true,
+		expectedError: ":PARSE_TLSEXT:",
+	})
 	// Resume with a corrupt ticket.
 	testCases = append(testCases, testCase{
 		testType: serverTest,
