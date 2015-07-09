@@ -1224,20 +1224,20 @@ uint8_t *ssl_add_clienthello_tlsext(SSL *s, uint8_t *const buf,
   }
 
   for (i = 0; i < kNumExtensions; i++) {
-    const size_t space_before = CBB_len(&cbb);
+    const size_t len_before = CBB_len(&cbb);
     if (!kExtensions[i].add_clienthello(s, &cbb)) {
       CBB_cleanup(&cbb);
       OPENSSL_PUT_ERROR(SSL, ssl_add_clienthello_tlsext, ERR_R_INTERNAL_ERROR);
       return NULL;
     }
-    const size_t space_after = CBB_len(&cbb);
+    const size_t len_after = CBB_len(&cbb);
 
-    if (space_after != space_before) {
+    if (len_after != len_before) {
       s->s3->tmp.extensions.sent |= (1u << i);
     }
   }
 
-  ret = limit - CBB_len(&cbb);
+  ret += CBB_len(&cbb);
   CBB_cleanup(&cbb);
 
   /* Add extended master secret. */
@@ -1513,7 +1513,7 @@ uint8_t *ssl_add_serverhello_tlsext(SSL *s, uint8_t *const buf,
     }
   }
 
-  ret = limit - CBB_len(&cbb);
+  ret += CBB_len(&cbb);
   CBB_cleanup(&cbb);
 
   if (s->s3->tmp.extended_master_secret) {
