@@ -28,16 +28,19 @@ typedef uint8_t poly1305_state[512];
  * authentication tag with the one-time key |key|. Note that |key| is a
  * one-time key and therefore there is no `reset' method because that would
  * enable several messages to be authenticated with the same key. */
-extern void CRYPTO_poly1305_init(poly1305_state* state, const uint8_t key[32]);
+OPENSSL_EXPORT void CRYPTO_poly1305_init(poly1305_state* state,
+                                         const uint8_t key[32]);
 
 /* poly1305_update processes |in_len| bytes from |in|. It can be called zero or
  * more times after poly1305_init. */
-extern void CRYPTO_poly1305_update(poly1305_state* state, const uint8_t* in,
-                                   size_t in_len);
+OPENSSL_EXPORT void CRYPTO_poly1305_update(poly1305_state* state,
+                                           const uint8_t* in,
+                                           size_t in_len);
 
 /* poly1305_finish completes the poly1305 calculation and writes a 16 byte
  * authentication tag to |mac|. The |mac| address must be 16-byte aligned. */
-extern void CRYPTO_poly1305_finish(poly1305_state* state, uint8_t mac[16]);
+OPENSSL_EXPORT void CRYPTO_poly1305_finish(poly1305_state* state,
+                                           uint8_t mac[16]);
 
 
 #if defined(__cplusplus)

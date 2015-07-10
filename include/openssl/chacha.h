@@ -25,9 +25,9 @@ extern "C" {
 /* CRYPTO_chacha_20 encrypts |in_len| bytes from |in| with the given key and
  * nonce and writes the result to |out|, which may be equal to |in|. The
  * initial block counter is specified by |counter|. */
-void CRYPTO_chacha_20(uint8_t *out, const uint8_t *in,
-                      size_t in_len, const uint8_t key[32],
-                      const uint8_t nonce[8], size_t counter);
+OPENSSL_EXPORT void CRYPTO_chacha_20(uint8_t *out, const uint8_t *in,
+                                     size_t in_len, const uint8_t key[32],
+                                     const uint8_t nonce[8], size_t counter);
 
 
 #if defined(__cplusplus)
