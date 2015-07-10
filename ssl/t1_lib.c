@@ -1509,6 +1509,61 @@ static int ext_npn_add_serverhello(SSL *ssl, CBB *out) {
 }
 
 
+/* Signed certificate timestamps.
+ *
+ * https://tools.ietf.org/html/rfc6962#section-3.3.1 */
+
+static int ext_sct_add_clienthello(SSL *ssl, CBB *out) {
+  if (!ssl->signed_cert_timestamps_enabled) {
+    return 1;
+  }
+
+  if (!CBB_add_u16(out, TLSEXT_TYPE_certificate_timestamp) ||
+      !CBB_add_u16(out, 0 /* length */)) {
+    return 0;
+  }
+
+  return 1;
+}
+
+static int ext_sct_parse_serverhello(SSL *ssl, uint8_t *out_alert,
+                                     CBS *contents) {
+  if (contents == NULL) {
+    return 1;
+  }
+
+  /* If this is false then we should never have sent the SCT extension in the
+   * ClientHello and thus this function should never have been called. */
+  assert(ssl->signed_cert_timestamps_enabled);
+
+  if (CBS_len(contents) == 0) {
+    *out_alert = SSL_AD_DECODE_ERROR;
+    return 0;
+  }
+
+  /* Session resumption uses the original session information. */
+  if (!ssl->hit &&
+      !CBS_stow(contents, &ssl->session->tlsext_signed_cert_timestamp_list,
+                &ssl->session->tlsext_signed_cert_timestamp_list_length)) {
+    *out_alert = SSL_AD_INTERNAL_ERROR;
+    return 0;
+  }
+
+  return 1;
+}
+
+static int ext_sct_parse_clienthello(SSL *ssl, uint8_t *out_alert,
+                                     CBS *contents) {
+  /* The SCT extension is not supported as a server. */
+  return 1;
+}
+
+static int ext_sct_add_serverhello(SSL *ssl, CBB *out) {
+  /* The SCT extension is not supported as a server. */
+  return 1;
+}
+
+
 /* kExtensions contains all the supported extensions. */
 static const struct tls_extension kExtensions[] = {
   {
@@ -1569,6 +1624,14 @@ static const struct tls_extension kExtensions[] = {
     ext_npn_parse_serverhello,
     ext_npn_parse_clienthello,
     ext_npn_add_serverhello,
+  },
+  {
+    TLSEXT_TYPE_certificate_timestamp,
+    NULL,
+    ext_sct_add_clienthello,
+    ext_sct_parse_serverhello,
+    ext_sct_parse_clienthello,
+    ext_sct_add_serverhello,
   },
 };
 
@@ -1665,16 +1728,6 @@ uint8_t *ssl_add_clienthello_tlsext(SSL *s, uint8_t *const buf,
 
   ret += CBB_len(&cbb);
   CBB_cleanup(&cbb);
-
-  if (s->signed_cert_timestamps_enabled) {
-    /* The client advertises an empty extension to indicate its support for
-     * certificate timestamps. */
-    if (limit - ret - 4 < 0) {
-      return NULL;
-    }
-    s2n(TLSEXT_TYPE_certificate_timestamp, ret);
-    s2n(0, ret);
-  }
 
   if (s->alpn_client_proto_list && !s->s3->initial_handshake_complete) {
     if ((size_t)(limit - ret) < 6 + s->alpn_client_proto_list_len) {
@@ -2314,19 +2367,6 @@ static int ssl_scan_serverhello_tlsext(SSL *s, CBS *cbs, int *out_alert) {
 
       s->s3->tlsext_channel_id_valid = 1;
       s->s3->tlsext_channel_id_new = 1;
-    } else if (type == TLSEXT_TYPE_certificate_timestamp) {
-      if (CBS_len(&extension) == 0) {
-        *out_alert = SSL_AD_DECODE_ERROR;
-        return 0;
-      }
-
-      /* Session resumption uses the original session information. */
-      if (!s->hit &&
-          !CBS_stow(&extension, &s->session->tlsext_signed_cert_timestamp_list,
-                    &s->session->tlsext_signed_cert_timestamp_list_length)) {
-        *out_alert = SSL_AD_INTERNAL_ERROR;
-        return 0;
-      }
     } else if (type == TLSEXT_TYPE_use_srtp) {
       if (!ssl_parse_serverhello_use_srtp_ext(s, &extension, out_alert)) {
         return 0;
