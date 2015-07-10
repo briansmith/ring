@@ -1564,6 +1564,134 @@ static int ext_sct_add_serverhello(SSL *ssl, CBB *out) {
 }
 
 
+/* Application-level Protocol Negotiation.
+ *
+ * https://tools.ietf.org/html/rfc7301 */
+
+static void ext_alpn_init(SSL *ssl) {
+  OPENSSL_free(ssl->s3->alpn_selected);
+  ssl->s3->alpn_selected = NULL;
+}
+
+static int ext_alpn_add_clienthello(SSL *ssl, CBB *out) {
+  if (ssl->alpn_client_proto_list == NULL ||
+      ssl->s3->initial_handshake_complete) {
+    return 1;
+  }
+
+  CBB contents, proto_list;
+  if (!CBB_add_u16(out, TLSEXT_TYPE_application_layer_protocol_negotiation) ||
+      !CBB_add_u16_length_prefixed(out, &contents) ||
+      !CBB_add_u16_length_prefixed(&contents, &proto_list) ||
+      !CBB_add_bytes(&proto_list, ssl->alpn_client_proto_list,
+                     ssl->alpn_client_proto_list_len) ||
+      !CBB_flush(out)) {
+    return 0;
+  }
+
+  return 1;
+}
+
+static int ext_alpn_parse_serverhello(SSL *ssl, uint8_t *out_alert,
+                                      CBS *contents) {
+  if (contents == NULL) {
+    return 1;
+  }
+
+  assert(!ssl->s3->initial_handshake_complete);
+  assert(ssl->alpn_client_proto_list != NULL);
+
+  /* The extension data consists of a ProtocolNameList which must have
+   * exactly one ProtocolName. Each of these is length-prefixed. */
+  CBS protocol_name_list, protocol_name;
+  if (!CBS_get_u16_length_prefixed(contents, &protocol_name_list) ||
+      CBS_len(contents) != 0 ||
+      !CBS_get_u8_length_prefixed(&protocol_name_list, &protocol_name) ||
+      /* Empty protocol names are forbidden. */
+      CBS_len(&protocol_name) == 0 ||
+      CBS_len(&protocol_name_list) != 0) {
+    return 0;
+  }
+
+  if (!CBS_stow(&protocol_name, &ssl->s3->alpn_selected,
+                &ssl->s3->alpn_selected_len)) {
+    *out_alert = SSL_AD_INTERNAL_ERROR;
+    return 0;
+  }
+
+  return 1;
+}
+
+static int ext_alpn_parse_clienthello(SSL *ssl, uint8_t *out_alert,
+                                      CBS *contents) {
+  if (contents == NULL) {
+    return 1;
+  }
+
+  if (ssl->ctx->alpn_select_cb == NULL ||
+      ssl->s3->initial_handshake_complete) {
+    return 1;
+  }
+
+  /* ALPN takes precedence over NPN. */
+  ssl->s3->next_proto_neg_seen = 0;
+
+  CBS protocol_name_list;
+  if (!CBS_get_u16_length_prefixed(contents, &protocol_name_list) ||
+      CBS_len(contents) != 0 ||
+      CBS_len(&protocol_name_list) < 2) {
+    return 0;
+  }
+
+  /* Validate the protocol list. */
+  CBS protocol_name_list_copy = protocol_name_list;
+  while (CBS_len(&protocol_name_list_copy) > 0) {
+    CBS protocol_name;
+
+    if (!CBS_get_u8_length_prefixed(&protocol_name_list_copy, &protocol_name) ||
+        /* Empty protocol names are forbidden. */
+        CBS_len(&protocol_name) == 0) {
+      return 0;
+    }
+  }
+
+  const uint8_t *selected;
+  uint8_t selected_len;
+  if (ssl->ctx->alpn_select_cb(
+          ssl, &selected, &selected_len, CBS_data(&protocol_name_list),
+          CBS_len(&protocol_name_list),
+          ssl->ctx->alpn_select_cb_arg) == SSL_TLSEXT_ERR_OK) {
+    OPENSSL_free(ssl->s3->alpn_selected);
+    ssl->s3->alpn_selected = BUF_memdup(selected, selected_len);
+    if (ssl->s3->alpn_selected == NULL) {
+      *out_alert = SSL_AD_INTERNAL_ERROR;
+      return 0;
+    }
+    ssl->s3->alpn_selected_len = selected_len;
+  }
+
+  return 1;
+}
+
+static int ext_alpn_add_serverhello(SSL *ssl, CBB *out) {
+  if (ssl->s3->alpn_selected == NULL) {
+    return 1;
+  }
+
+  CBB contents, proto_list, proto;
+  if (!CBB_add_u16(out, TLSEXT_TYPE_application_layer_protocol_negotiation) ||
+      !CBB_add_u16_length_prefixed(out, &contents) ||
+      !CBB_add_u16_length_prefixed(&contents, &proto_list) ||
+      !CBB_add_u8_length_prefixed(&proto_list, &proto) ||
+      !CBB_add_bytes(&proto, ssl->s3->alpn_selected, ssl->s3->alpn_selected_len) ||
+      !CBB_flush(out)) {
+    return 0;
+  }
+
+  return 1;
+}
+
+
 /* kExtensions contains all the supported extensions. */
 static const struct tls_extension kExtensions[] = {
   {
@@ -1632,6 +1760,14 @@ static const struct tls_extension kExtensions[] = {
     ext_sct_parse_serverhello,
     ext_sct_parse_clienthello,
     ext_sct_add_serverhello,
+  },
+  {
+    TLSEXT_TYPE_application_layer_protocol_negotiation,
+    ext_alpn_init,
+    ext_alpn_add_clienthello,
+    ext_alpn_parse_serverhello,
+    ext_alpn_parse_clienthello,
+    ext_alpn_add_serverhello,
   },
 };
 
@@ -1728,17 +1864,6 @@ uint8_t *ssl_add_clienthello_tlsext(SSL *s, uint8_t *const buf,
 
   ret += CBB_len(&cbb);
   CBB_cleanup(&cbb);
-
-  if (s->alpn_client_proto_list && !s->s3->initial_handshake_complete) {
-    if ((size_t)(limit - ret) < 6 + s->alpn_client_proto_list_len) {
-      return NULL;
-    }
-    s2n(TLSEXT_TYPE_application_layer_protocol_negotiation, ret);
-    s2n(2 + s->alpn_client_proto_list_len, ret);
-    s2n(s->alpn_client_proto_list_len, ret);
-    memcpy(ret, s->alpn_client_proto_list, s->alpn_client_proto_list_len);
-    ret += s->alpn_client_proto_list_len;
-  }
 
   if (s->tlsext_channel_id_enabled && !SSL_IS_DTLS(s)) {
     /* The client advertises an emtpy extension to indicate its support for
@@ -1965,21 +2090,6 @@ uint8_t *ssl_add_serverhello_tlsext(SSL *s, uint8_t *const buf,
     ret += el;
   }
 
-  if (s->s3->alpn_selected) {
-    const uint8_t *selected = s->s3->alpn_selected;
-    size_t len = s->s3->alpn_selected_len;
-
-    if ((long)(limit - ret - 4 - 2 - 1 - len) < 0) {
-      return NULL;
-    }
-    s2n(TLSEXT_TYPE_application_layer_protocol_negotiation, ret);
-    s2n(3 + len, ret);
-    s2n(1 + len, ret);
-    *ret++ = len;
-    memcpy(ret, selected, len);
-    ret += len;
-  }
-
   /* If the client advertised support for Channel ID, and we have it
    * enabled, then we want to echo it back. */
   if (s->s3->tlsext_channel_id_valid) {
@@ -2003,67 +2113,10 @@ uint8_t *ssl_add_serverhello_tlsext(SSL *s, uint8_t *const buf,
   return ret;
 }
 
-/* tls1_alpn_handle_client_hello is called to process the ALPN extension in a
- * ClientHello.
- *   cbs: the contents of the extension, not including the type and length.
- *   out_alert: a pointer to the alert value to send in the event of a zero
- *       return.
- *
- *   returns: 1 on success. */
-static int tls1_alpn_handle_client_hello(SSL *s, CBS *cbs, int *out_alert) {
-  CBS protocol_name_list, protocol_name_list_copy;
-  const uint8_t *selected;
-  uint8_t selected_len;
-  int r;
-
-  if (s->ctx->alpn_select_cb == NULL) {
-    return 1;
-  }
-
-  if (!CBS_get_u16_length_prefixed(cbs, &protocol_name_list) ||
-      CBS_len(cbs) != 0 || CBS_len(&protocol_name_list) < 2) {
-    goto parse_error;
-  }
-
-  /* Validate the protocol list. */
-  protocol_name_list_copy = protocol_name_list;
-  while (CBS_len(&protocol_name_list_copy) > 0) {
-    CBS protocol_name;
-
-    if (!CBS_get_u8_length_prefixed(&protocol_name_list_copy, &protocol_name) ||
-        /* Empty protocol names are forbidden. */
-        CBS_len(&protocol_name) == 0) {
-      goto parse_error;
-    }
-  }
-
-  r = s->ctx->alpn_select_cb(
-      s, &selected, &selected_len, CBS_data(&protocol_name_list),
-      CBS_len(&protocol_name_list), s->ctx->alpn_select_cb_arg);
-  if (r == SSL_TLSEXT_ERR_OK) {
-    OPENSSL_free(s->s3->alpn_selected);
-    s->s3->alpn_selected = BUF_memdup(selected, selected_len);
-    if (!s->s3->alpn_selected) {
-      *out_alert = SSL_AD_INTERNAL_ERROR;
-      return 0;
-    }
-    s->s3->alpn_selected_len = selected_len;
-  }
-
-  return 1;
-
-parse_error:
-  *out_alert = SSL_AD_DECODE_ERROR;
-  return 0;
-}
-
 static int ssl_scan_clienthello_tlsext(SSL *s, CBS *cbs, int *out_alert) {
   CBS extensions;
 
   s->srtp_profile = NULL;
-
-  OPENSSL_free(s->s3->alpn_selected);
-  s->s3->alpn_selected = NULL;
 
   /* Clear ECC extensions */
   OPENSSL_free(s->s3->tmp.peer_ecpointformatlist);
@@ -2177,13 +2230,6 @@ static int ssl_scan_clienthello_tlsext(SSL *s, CBS *cbs, int *out_alert) {
       }
 
       s->s3->tmp.peer_ellipticcurvelist_length = num_curves;
-    } else if (type == TLSEXT_TYPE_application_layer_protocol_negotiation &&
-               s->ctx->alpn_select_cb && !s->s3->initial_handshake_complete) {
-      if (!tls1_alpn_handle_client_hello(s, &extension, out_alert)) {
-        return 0;
-      }
-      /* ALPN takes precedence over NPN. */
-      s->s3->next_proto_neg_seen = 0;
     } else if (type == TLSEXT_TYPE_channel_id && s->tlsext_channel_id_enabled &&
                !SSL_IS_DTLS(s)) {
       /* The extension must be empty. */
@@ -2248,9 +2294,6 @@ static int ssl_scan_serverhello_tlsext(SSL *s, CBS *cbs, int *out_alert) {
    * systematically reset on a new handshake; perhaps allocate it fresh each
    * time so it's not even kept around post-handshake. */
   s->srtp_profile = NULL;
-
-  OPENSSL_free(s->s3->alpn_selected);
-  s->s3->alpn_selected = NULL;
 
   /* Clear ECC extensions */
   OPENSSL_free(s->s3->tmp.peer_ecpointformatlist);
@@ -2322,33 +2365,6 @@ static int ssl_scan_serverhello_tlsext(SSL *s, CBS *cbs, int *out_alert) {
 
       if (!CBS_stow(&ec_point_format_list, &s->s3->tmp.peer_ecpointformatlist,
                     &s->s3->tmp.peer_ecpointformatlist_length)) {
-        *out_alert = SSL_AD_INTERNAL_ERROR;
-        return 0;
-      }
-    } else if (type == TLSEXT_TYPE_application_layer_protocol_negotiation &&
-               !s->s3->initial_handshake_complete) {
-      CBS protocol_name_list, protocol_name;
-
-      /* We must have requested it. */
-      if (s->alpn_client_proto_list == NULL) {
-        *out_alert = SSL_AD_UNSUPPORTED_EXTENSION;
-        return 0;
-      }
-
-      /* The extension data consists of a ProtocolNameList which must have
-       * exactly one ProtocolName. Each of these is length-prefixed. */
-      if (!CBS_get_u16_length_prefixed(&extension, &protocol_name_list) ||
-          CBS_len(&extension) != 0 ||
-          !CBS_get_u8_length_prefixed(&protocol_name_list, &protocol_name) ||
-          /* Empty protocol names are forbidden. */
-          CBS_len(&protocol_name) == 0 ||
-          CBS_len(&protocol_name_list) != 0) {
-        *out_alert = SSL_AD_DECODE_ERROR;
-        return 0;
-      }
-
-      if (!CBS_stow(&protocol_name, &s->s3->alpn_selected,
-                    &s->s3->alpn_selected_len)) {
         *out_alert = SSL_AD_INTERNAL_ERROR;
         return 0;
       }
