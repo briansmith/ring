@@ -1692,6 +1692,74 @@ static int ext_alpn_add_serverhello(SSL *ssl, CBB *out) {
 }
 
 
+/* Channel ID.
+ *
+ * https://tools.ietf.org/html/draft-balfanz-tls-channelid-01 */
+
+static void ext_channel_id_init(SSL *ssl) {
+  ssl->s3->tlsext_channel_id_valid = 0;
+}
+
+static int ext_channel_id_add_clienthello(SSL *ssl, CBB *out) {
+  if (!ssl->tlsext_channel_id_enabled ||
+      SSL_IS_DTLS(ssl)) {
+    return 1;
+  }
+
+  if (!CBB_add_u16(out, TLSEXT_TYPE_channel_id) ||
+      !CBB_add_u16(out, 0 /* length */)) {
+    return 0;
+  }
+
+  return 1;
+}
+
+static int ext_channel_id_parse_serverhello(SSL *ssl, uint8_t *out_alert,
+                                            CBS *contents) {
+  if (contents == NULL) {
+    return 1;
+  }
+
+  assert(!SSL_IS_DTLS(ssl));
+  assert(ssl->tlsext_channel_id_enabled);
+
+  if (CBS_len(contents) != 0) {
+    return 0;
+  }
+
+  ssl->s3->tlsext_channel_id_valid = 1;
+  return 1;
+}
+
+static int ext_channel_id_parse_clienthello(SSL *ssl, uint8_t *out_alert,
+                                            CBS *contents) {
+  if (contents == NULL ||
+      !ssl->tlsext_channel_id_enabled ||
+      SSL_IS_DTLS(ssl)) {
+    return 1;
+  }
+
+  if (CBS_len(contents) != 0) {
+    return 0;
+  }
+
+  ssl->s3->tlsext_channel_id_valid = 1;
+  return 1;
+}
+
+static int ext_channel_id_add_serverhello(SSL *ssl, CBB *out) {
+  if (!ssl->s3->tlsext_channel_id_valid) {
+    return 1;
+  }
+
+  if (!CBB_add_u16(out, TLSEXT_TYPE_channel_id) ||
+      !CBB_add_u16(out, 0 /* length */)) {
+    return 0;
+  }
+
+  return 1;
+}
+
 /* kExtensions contains all the supported extensions. */
 static const struct tls_extension kExtensions[] = {
   {
@@ -1768,6 +1836,14 @@ static const struct tls_extension kExtensions[] = {
     ext_alpn_parse_serverhello,
     ext_alpn_parse_clienthello,
     ext_alpn_add_serverhello,
+  },
+  {
+    TLSEXT_TYPE_channel_id,
+    ext_channel_id_init,
+    ext_channel_id_add_clienthello,
+    ext_channel_id_parse_serverhello,
+    ext_channel_id_parse_clienthello,
+    ext_channel_id_add_serverhello,
   },
 };
 
@@ -1864,20 +1940,6 @@ uint8_t *ssl_add_clienthello_tlsext(SSL *s, uint8_t *const buf,
 
   ret += CBB_len(&cbb);
   CBB_cleanup(&cbb);
-
-  if (s->tlsext_channel_id_enabled && !SSL_IS_DTLS(s)) {
-    /* The client advertises an emtpy extension to indicate its support for
-     * Channel ID. */
-    if (limit - ret - 4 < 0) {
-      return NULL;
-    }
-    if (s->ctx->tlsext_channel_id_enabled_new) {
-      s2n(TLSEXT_TYPE_channel_id_new, ret);
-    } else {
-      s2n(TLSEXT_TYPE_channel_id, ret);
-    }
-    s2n(0, ret);
-  }
 
   if (SSL_get_srtp_profiles(s)) {
     int el;
@@ -2090,20 +2152,6 @@ uint8_t *ssl_add_serverhello_tlsext(SSL *s, uint8_t *const buf,
     ret += el;
   }
 
-  /* If the client advertised support for Channel ID, and we have it
-   * enabled, then we want to echo it back. */
-  if (s->s3->tlsext_channel_id_valid) {
-    if (limit - ret - 4 < 0) {
-      return NULL;
-    }
-    if (s->s3->tlsext_channel_id_new) {
-      s2n(TLSEXT_TYPE_channel_id_new, ret);
-    } else {
-      s2n(TLSEXT_TYPE_channel_id, ret);
-    }
-    s2n(0, ret);
-  }
-
   extdatalen = ret - orig - 2;
   if (extdatalen == 0) {
     return orig;
@@ -2230,25 +2278,6 @@ static int ssl_scan_clienthello_tlsext(SSL *s, CBS *cbs, int *out_alert) {
       }
 
       s->s3->tmp.peer_ellipticcurvelist_length = num_curves;
-    } else if (type == TLSEXT_TYPE_channel_id && s->tlsext_channel_id_enabled &&
-               !SSL_IS_DTLS(s)) {
-      /* The extension must be empty. */
-      if (CBS_len(&extension) != 0) {
-        *out_alert = SSL_AD_DECODE_ERROR;
-        return 0;
-      }
-
-      s->s3->tlsext_channel_id_valid = 1;
-    } else if (type == TLSEXT_TYPE_channel_id_new &&
-               s->tlsext_channel_id_enabled && !SSL_IS_DTLS(s)) {
-      /* The extension must be empty. */
-      if (CBS_len(&extension) != 0) {
-        *out_alert = SSL_AD_DECODE_ERROR;
-        return 0;
-      }
-
-      s->s3->tlsext_channel_id_valid = 1;
-      s->s3->tlsext_channel_id_new = 1;
     } else if (type == TLSEXT_TYPE_use_srtp) {
       if (!ssl_parse_clienthello_use_srtp_ext(s, &extension, out_alert)) {
         return 0;
@@ -2368,21 +2397,6 @@ static int ssl_scan_serverhello_tlsext(SSL *s, CBS *cbs, int *out_alert) {
         *out_alert = SSL_AD_INTERNAL_ERROR;
         return 0;
       }
-    } else if (type == TLSEXT_TYPE_channel_id && !SSL_IS_DTLS(s)) {
-      if (CBS_len(&extension) != 0) {
-        *out_alert = SSL_AD_DECODE_ERROR;
-        return 0;
-      }
-
-      s->s3->tlsext_channel_id_valid = 1;
-    } else if (type == TLSEXT_TYPE_channel_id_new && !SSL_IS_DTLS(s)) {
-      if (CBS_len(&extension) != 0) {
-        *out_alert = SSL_AD_DECODE_ERROR;
-        return 0;
-      }
-
-      s->s3->tlsext_channel_id_valid = 1;
-      s->s3->tlsext_channel_id_new = 1;
     } else if (type == TLSEXT_TYPE_use_srtp) {
       if (!ssl_parse_serverhello_use_srtp_ext(s, &extension, out_alert)) {
         return 0;
@@ -2853,7 +2867,7 @@ int tls1_channel_id_hash(EVP_MD_CTX *md, SSL *s) {
 
   EVP_DigestUpdate(md, kClientIDMagic, sizeof(kClientIDMagic));
 
-  if (s->hit && s->s3->tlsext_channel_id_new) {
+  if (s->hit) {
     static const char kResumptionMagic[] = "Resumption";
     EVP_DigestUpdate(md, kResumptionMagic, sizeof(kResumptionMagic));
     if (s->session->original_handshake_hash_len == 0) {
@@ -2888,12 +2902,6 @@ int tls1_record_handshake_hashes_for_channel_id(SSL *s) {
    * handshake hashes that we wish to record are for the original, full
    * handshake. */
   if (s->hit) {
-    return -1;
-  }
-
-  /* It only makes sense to call this function if Channel IDs have been
-   * negotiated. */
-  if (!s->s3->tlsext_channel_id_new) {
     return -1;
   }
 

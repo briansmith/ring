@@ -548,11 +548,6 @@ typedef struct ssl3_state_st {
    * Channel IDs and that tlsext_channel_id will be valid after the
    * handshake. */
   char tlsext_channel_id_valid;
-  /* tlsext_channel_id_new means that the updated Channel ID extension was
-   * negotiated. This is a temporary hack in the code to support both forms of
-   * Channel ID extension while we transition to the new format, which fixed a
-   * security issue. */
-  char tlsext_channel_id_new;
   /* For a server:
    *     If |tlsext_channel_id_valid| is true, then this contains the
    *     verified Channel ID from the client: a P256 point, (x,y), where

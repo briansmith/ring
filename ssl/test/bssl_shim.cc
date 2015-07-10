@@ -567,7 +567,7 @@ static ScopedSSL_CTX SetupCtx(const TestConfig *config) {
     SSL_CTX_set_alpn_select_cb(ssl_ctx.get(), AlpnSelectCallback, NULL);
   }
 
-  ssl_ctx->tlsext_channel_id_enabled_new = 1;
+  SSL_CTX_enable_tls_channel_id(ssl_ctx.get());
   SSL_CTX_set_channel_id_cb(ssl_ctx.get(), ChannelIdCallback);
 
   ssl_ctx->current_time_cb = CurrentTimeCallback;

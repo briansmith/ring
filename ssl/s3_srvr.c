@@ -473,7 +473,7 @@ int ssl3_accept(SSL *s) {
         /* If this is a full handshake with ChannelID then record the hashshake
          * hashes in |s->session| in case we need them to verify a ChannelID
          * signature on a resumption of this session in the future. */
-        if (!s->hit && s->s3->tlsext_channel_id_new) {
+        if (!s->hit) {
           ret = tls1_record_handshake_hashes_for_channel_id(s);
           if (ret <= 0) {
             goto end;
@@ -1157,8 +1157,7 @@ int ssl3_send_server_hello(SSL *s) {
     /* If this is a resumption and the original handshake didn't support
      * ChannelID then we didn't record the original handshake hashes in the
      * session and so cannot resume with ChannelIDs. */
-    if (s->hit && s->s3->tlsext_channel_id_new &&
-        s->session->original_handshake_hash_len == 0) {
+    if (s->hit && s->session->original_handshake_hash_len == 0) {
       s->s3->tlsext_channel_id_valid = 0;
     }
 
@@ -2451,7 +2450,7 @@ int ssl3_get_channel_id(SSL *s) {
   uint8_t channel_id_hash[SHA256_DIGEST_LENGTH];
   unsigned int channel_id_hash_len;
   const uint8_t *p;
-  uint16_t extension_type, expected_extension_type;
+  uint16_t extension_type;
   EC_GROUP *p256 = NULL;
   EC_KEY *key = NULL;
   EC_POINT *point = NULL;
@@ -2508,15 +2507,11 @@ int ssl3_get_channel_id(SSL *s) {
    *   uint8 y[32];
    *   uint8 r[32];
    *   uint8 s[32]; */
-  expected_extension_type = TLSEXT_TYPE_channel_id;
-  if (s->s3->tlsext_channel_id_new) {
-    expected_extension_type = TLSEXT_TYPE_channel_id_new;
-  }
 
   if (!CBS_get_u16(&encrypted_extensions, &extension_type) ||
       !CBS_get_u16_length_prefixed(&encrypted_extensions, &extension) ||
       CBS_len(&encrypted_extensions) != 0 ||
-      extension_type != expected_extension_type ||
+      extension_type != TLSEXT_TYPE_channel_id ||
       CBS_len(&extension) != TLSEXT_CHANNEL_ID_SIZE) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_INVALID_MESSAGE);
     return -1;

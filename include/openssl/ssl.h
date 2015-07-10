@@ -1351,10 +1351,6 @@ struct ssl_ctx_st {
   /* If true, a client will advertise the Channel ID extension and a server
    * will echo it. */
   char tlsext_channel_id_enabled;
-  /* tlsext_channel_id_enabled_new is a hack to support both old and new
-   * ChannelID signatures. It indicates that a client should advertise the new
-   * ChannelID extension number. */
-  char tlsext_channel_id_enabled_new;
   /* The client's Channel ID private key. */
   EVP_PKEY *tlsext_channel_id_private;
 

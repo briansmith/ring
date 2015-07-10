@@ -430,11 +430,9 @@ int ssl3_connect(SSL *s) {
            * record the handshake hashes at this point in the session so that
            * any resumption of this session with ChannelID can sign those
            * hashes. */
-          if (s->s3->tlsext_channel_id_new) {
-            ret = tls1_record_handshake_hashes_for_channel_id(s);
-            if (ret <= 0) {
-              goto end;
-            }
+          ret = tls1_record_handshake_hashes_for_channel_id(s);
+          if (ret <= 0) {
+            goto end;
           }
           if ((SSL_get_mode(s) & SSL_MODE_ENABLE_FALSE_START) &&
               ssl3_can_false_start(s) &&
@@ -2196,11 +2194,7 @@ int ssl3_send_channel_id(SSL *s) {
   EC_KEY *ec_key = s->tlsext_channel_id_private->pkey.ec;
 
   d = ssl_handshake_start(s);
-  if (s->s3->tlsext_channel_id_new) {
-    s2n(TLSEXT_TYPE_channel_id_new, d);
-  } else {
-    s2n(TLSEXT_TYPE_channel_id, d);
-  }
+  s2n(TLSEXT_TYPE_channel_id, d);
   s2n(TLSEXT_CHANNEL_ID_SIZE, d);
 
   EVP_MD_CTX_init(&md_ctx);

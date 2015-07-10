@@ -215,7 +215,6 @@ bool Client(const std::vector<std::string> &args) {
     if (!pkey || !SSL_CTX_set1_tls_channel_id(ctx.get(), pkey.get())) {
       return false;
     }
-    ctx->tlsext_channel_id_enabled_new = 1;
   }
 
   if (args_map.count("-false-start") != 0) {
