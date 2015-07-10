@@ -2844,7 +2844,7 @@ func addExtensionTests() {
 		flags: []string{
 			"-advertise-alpn", "\x03foo",
 		},
-		shouldFail: true,
+		shouldFail:    true,
 		expectedError: ":PARSE_TLSEXT:",
 	})
 	testCases = append(testCases, testCase{
@@ -2858,7 +2858,7 @@ func addExtensionTests() {
 		flags: []string{
 			"-select-alpn", "foo",
 		},
-		shouldFail: true,
+		shouldFail:    true,
 		expectedError: ":PARSE_TLSEXT:",
 	})
 	// Resume with a corrupt ticket.
