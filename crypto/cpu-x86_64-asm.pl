@@ -70,7 +70,6 @@ OPENSSL_ia32_cpuid:
 	mov	\$0x80000001,%eax
 	cpuid
 	# Returns feature bits in ECX. See page 20 of [1].
-	# TODO(fork): I think this should be a MOV.
 	or	%ecx,%r9d
 	and	\$0x00000801,%r9d	# isolate AMD XOP bit, 1<<11
 
