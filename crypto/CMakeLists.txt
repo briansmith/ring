@@ -57,7 +57,6 @@ if (${ARCH} STREQUAL "x86_64")
   set(
     CRYPTO_ARCH_SOURCES
 
-    cpu-x86_64-asm.${ASM_EXT}
     cpu-intel.c
   )
 endif()
@@ -66,7 +65,6 @@ if (${ARCH} STREQUAL "x86")
   set(
     CRYPTO_ARCH_SOURCES
 
-    cpu-x86-asm.${ASM_EXT}
     cpu-intel.c
   )
 endif()
@@ -230,6 +228,3 @@ add_executable(
 )
 
 target_link_libraries(refcount_test crypto)
-
-perlasm(cpu-x86_64-asm.${ASM_EXT} cpu-x86_64-asm.pl)
-perlasm(cpu-x86-asm.${ASM_EXT} cpu-x86-asm.pl)

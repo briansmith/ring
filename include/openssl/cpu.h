@@ -89,8 +89,7 @@ extern "C" {
  *   Index 3 is set to zero.
  *
  * Note: the CPUID bits are pre-adjusted for the OSXSAVE bit and the YMM and XMM
- * bits in XCR0, so it is not necessary to check those. However, instructions
- * requiring XMM support are not preadjusted for the FXSR bit. */
+ * bits in XCR0, so it is not necessary to check those. */
 extern uint32_t OPENSSL_ia32cap_P[4];
 #endif
 
