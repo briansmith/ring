@@ -38,8 +38,8 @@ add_library(
 
   add.c
   asm/x86_64-gcc.c
-  asn1.c
   bn.c
+  bn_asn1.c
   cmp.c
   convert.c
   ctx.c

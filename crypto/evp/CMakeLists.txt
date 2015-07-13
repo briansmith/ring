@@ -6,9 +6,9 @@ add_library(
   OBJECT
 
   algorithm.c
-  asn1.c
   digestsign.c
   evp.c
+  evp_asn1.c
   evp_ctx.c
   p_dsa_asn1.c
   p_ec.c
