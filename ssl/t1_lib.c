@@ -1586,11 +1586,11 @@ static const struct tls_extension kExtensions[] = {
 
 OPENSSL_COMPILE_ASSERT(kNumExtensions <=
                            sizeof(((SSL *)NULL)->s3->tmp.extensions.sent) * 8,
-                       too_many_extensions_for_bitset);
+                       too_many_extensions_for_sent_bitset);
 OPENSSL_COMPILE_ASSERT(kNumExtensions <=
                            sizeof(((SSL *)NULL)->s3->tmp.extensions.received) *
                                8,
-                       too_many_extensions_for_bitset);
+                       too_many_extensions_for_received_bitset);
 
 static const struct tls_extension *tls_extension_find(uint32_t *out_index,
                                                       uint16_t value) {
