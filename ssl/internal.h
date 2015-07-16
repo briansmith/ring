@@ -1168,9 +1168,4 @@ int tls12_check_peer_sigalg(const EVP_MD **out_md, int *out_alert, SSL *s,
                             CBS *cbs, EVP_PKEY *pkey);
 void ssl_set_client_disabled(SSL *s);
 
-int ssl_add_clienthello_use_srtp_ext(SSL *s, uint8_t *p, int *len, int maxlen);
-int ssl_parse_clienthello_use_srtp_ext(SSL *s, CBS *cbs, int *out_alert);
-int ssl_add_serverhello_use_srtp_ext(SSL *s, uint8_t *p, int *len, int maxlen);
-int ssl_parse_serverhello_use_srtp_ext(SSL *s, CBS *cbs, int *out_alert);
-
 #endif /* OPENSSL_HEADER_SSL_INTERNAL_H */

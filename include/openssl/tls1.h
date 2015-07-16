@@ -209,7 +209,7 @@ extern "C" {
 #define TLSEXT_TYPE_signature_algorithms 13
 
 /* ExtensionType value from RFC5764 */
-#define TLSEXT_TYPE_use_srtp 14
+#define TLSEXT_TYPE_srtp 14
 
 /* ExtensionType value from RFC5620 */
 #define TLSEXT_TYPE_heartbeat 15

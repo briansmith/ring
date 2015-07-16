@@ -1760,6 +1760,160 @@ static int ext_channel_id_add_serverhello(SSL *ssl, CBB *out) {
   return 1;
 }
 
+
+/* Secure Real-time Transport Protocol (SRTP) extension.
+ *
+ * https://tools.ietf.org/html/rfc5764 */
+
+extern const SRTP_PROTECTION_PROFILE kSRTPProfiles[];
+
+static void ext_srtp_init(SSL *ssl) {
+  ssl->srtp_profile = NULL;
+}
+
+static int ext_srtp_add_clienthello(SSL *ssl, CBB *out) {
+  STACK_OF(SRTP_PROTECTION_PROFILE) *profiles = SSL_get_srtp_profiles(ssl);
+  if (profiles == NULL) {
+    return 1;
+  }
+  const size_t num_profiles = sk_SRTP_PROTECTION_PROFILE_num(profiles);
+  if (num_profiles == 0) {
+    return 1;
+  }
+
+  CBB contents, profile_ids;
+  if (!CBB_add_u16(out, TLSEXT_TYPE_srtp) ||
+      !CBB_add_u16_length_prefixed(out, &contents) ||
+      !CBB_add_u16_length_prefixed(&contents, &profile_ids)) {
+    return 0;
+  }
+
+  size_t i;
+  for (i = 0; i < num_profiles; i++) {
+    if (!CBB_add_u16(&profile_ids,
+                     sk_SRTP_PROTECTION_PROFILE_value(profiles, i)->id)) {
+      return 0;
+    }
+  }
+
+  if (!CBB_add_u8(&contents, 0 /* empty use_mki value */) ||
+      !CBB_flush(out)) {
+    return 0;
+  }
+
+  return 1;
+}
+
+static int ext_srtp_parse_serverhello(SSL *ssl, uint8_t *out_alert,
+                                      CBS *contents) {
+  if (contents == NULL) {
+    return 1;
+  }
+
+  /* The extension consists of a u16-prefixed profile ID list containing a
+   * single uint16_t profile ID, then followed by a u8-prefixed srtp_mki field.
+   *
+   * See https://tools.ietf.org/html/rfc5764#section-4.1.1 */
+  CBS profile_ids, srtp_mki;
+  uint16_t profile_id;
+  if (!CBS_get_u16_length_prefixed(contents, &profile_ids) ||
+      !CBS_get_u16(&profile_ids, &profile_id) ||
+      CBS_len(&profile_ids) != 0 ||
+      !CBS_get_u8_length_prefixed(contents, &srtp_mki) ||
+      CBS_len(contents) != 0) {
+    OPENSSL_PUT_ERROR(SSL, SSL_R_BAD_SRTP_PROTECTION_PROFILE_LIST);
+    return 0;
+  }
+
+  if (CBS_len(&srtp_mki) != 0) {
+    /* Must be no MKI, since we never offer one. */
+    OPENSSL_PUT_ERROR(SSL, SSL_R_BAD_SRTP_MKI_VALUE);
+    *out_alert = SSL_AD_ILLEGAL_PARAMETER;
+    return 0;
+  }
+
+  STACK_OF(SRTP_PROTECTION_PROFILE) *profiles = SSL_get_srtp_profiles(ssl);
+
+  /* Check to see if the server gave us something we support (and presumably
+   * offered). */
+  size_t i;
+  for (i = 0; i < sk_SRTP_PROTECTION_PROFILE_num(profiles); i++) {
+    const SRTP_PROTECTION_PROFILE *profile =
+        sk_SRTP_PROTECTION_PROFILE_value(profiles, i);
+
+    if (profile->id == profile_id) {
+      ssl->srtp_profile = profile;
+      return 1;
+    }
+  }
+
+  OPENSSL_PUT_ERROR(SSL, SSL_R_BAD_SRTP_PROTECTION_PROFILE_LIST);
+  *out_alert = SSL_AD_ILLEGAL_PARAMETER;
+  return 0;
+}
+
+static int ext_srtp_parse_clienthello(SSL *ssl, uint8_t *out_alert,
+                                      CBS *contents) {
+  if (contents == NULL) {
+    return 1;
+  }
+
+  CBS profile_ids, srtp_mki;
+  if (!CBS_get_u16_length_prefixed(contents, &profile_ids) ||
+      CBS_len(&profile_ids) < 2 ||
+      !CBS_get_u8_length_prefixed(contents, &srtp_mki) ||
+      CBS_len(contents) != 0) {
+    OPENSSL_PUT_ERROR(SSL, SSL_R_BAD_SRTP_PROTECTION_PROFILE_LIST);
+    return 0;
+  }
+  /* Discard the MKI value for now. */
+
+  const STACK_OF(SRTP_PROTECTION_PROFILE) *server_profiles =
+      SSL_get_srtp_profiles(ssl);
+
+  /* Pick the server's most preferred profile. */
+  size_t i;
+  for (i = 0; i < sk_SRTP_PROTECTION_PROFILE_num(server_profiles); i++) {
+    const SRTP_PROTECTION_PROFILE *server_profile =
+        sk_SRTP_PROTECTION_PROFILE_value(server_profiles, i);
+
+    CBS profile_ids_tmp;
+    CBS_init(&profile_ids_tmp, CBS_data(&profile_ids), CBS_len(&profile_ids));
+
+    while (CBS_len(&profile_ids_tmp) > 0) {
+      uint16_t profile_id;
+      if (!CBS_get_u16(&profile_ids_tmp, &profile_id)) {
+        return 0;
+      }
+
+      if (server_profile->id == profile_id) {
+        ssl->srtp_profile = server_profile;
+        return 1;
+      }
+    }
+  }
+
+  return 1;
+}
+
+static int ext_srtp_add_serverhello(SSL *ssl, CBB *out) {
+  if (ssl->srtp_profile == NULL) {
+    return 1;
+  }
+
+  CBB contents, profile_ids;
+  if (!CBB_add_u16(out, TLSEXT_TYPE_srtp) ||
+      !CBB_add_u16_length_prefixed(out, &contents) ||
+      !CBB_add_u16_length_prefixed(&contents, &profile_ids) ||
+      !CBB_add_u16(&profile_ids, ssl->srtp_profile->id) ||
+      !CBB_add_u8(&contents, 0 /* empty MKI */) ||
+      !CBB_flush(out)) {
+    return 0;
+  }
+
+  return 1;
+}
+
 /* kExtensions contains all the supported extensions. */
 static const struct tls_extension kExtensions[] = {
   {
@@ -1844,6 +1998,14 @@ static const struct tls_extension kExtensions[] = {
     ext_channel_id_parse_serverhello,
     ext_channel_id_parse_clienthello,
     ext_channel_id_add_serverhello,
+  },
+  {
+    TLSEXT_TYPE_srtp,
+    ext_srtp_init,
+    ext_srtp_add_clienthello,
+    ext_srtp_parse_serverhello,
+    ext_srtp_parse_clienthello,
+    ext_srtp_add_serverhello,
   },
 };
 
@@ -1940,25 +2102,6 @@ uint8_t *ssl_add_clienthello_tlsext(SSL *s, uint8_t *const buf,
 
   ret += CBB_len(&cbb);
   CBB_cleanup(&cbb);
-
-  if (SSL_get_srtp_profiles(s)) {
-    int el;
-
-    ssl_add_clienthello_use_srtp_ext(s, 0, &el, 0);
-
-    if ((limit - ret - 4 - el) < 0) {
-      return NULL;
-    }
-
-    s2n(TLSEXT_TYPE_use_srtp, ret);
-    s2n(el, ret);
-
-    if (!ssl_add_clienthello_use_srtp_ext(s, ret, &el, el)) {
-      OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
-      return NULL;
-    }
-    ret += el;
-  }
 
   if (using_ecc) {
     /* Add TLS extension ECPointFormats to the ClientHello message */
@@ -2133,25 +2276,6 @@ uint8_t *ssl_add_serverhello_tlsext(SSL *s, uint8_t *const buf,
   }
   /* Currently the server should not respond with a SupportedCurves extension */
 
-  if (s->srtp_profile) {
-    int el;
-
-    ssl_add_serverhello_use_srtp_ext(s, 0, &el, 0);
-
-    if ((limit - ret - 4 - el) < 0) {
-      return NULL;
-    }
-
-    s2n(TLSEXT_TYPE_use_srtp, ret);
-    s2n(el, ret);
-
-    if (!ssl_add_serverhello_use_srtp_ext(s, ret, &el, el)) {
-      OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
-      return NULL;
-    }
-    ret += el;
-  }
-
   extdatalen = ret - orig - 2;
   if (extdatalen == 0) {
     return orig;
@@ -2163,8 +2287,6 @@ uint8_t *ssl_add_serverhello_tlsext(SSL *s, uint8_t *const buf,
 
 static int ssl_scan_clienthello_tlsext(SSL *s, CBS *cbs, int *out_alert) {
   CBS extensions;
-
-  s->srtp_profile = NULL;
 
   /* Clear ECC extensions */
   OPENSSL_free(s->s3->tmp.peer_ecpointformatlist);
@@ -2278,10 +2400,6 @@ static int ssl_scan_clienthello_tlsext(SSL *s, CBS *cbs, int *out_alert) {
       }
 
       s->s3->tmp.peer_ellipticcurvelist_length = num_curves;
-    } else if (type == TLSEXT_TYPE_use_srtp) {
-      if (!ssl_parse_clienthello_use_srtp_ext(s, &extension, out_alert)) {
-        return 0;
-      }
     }
   }
 
@@ -2318,11 +2436,6 @@ int ssl_parse_clienthello_tlsext(SSL *s, CBS *cbs) {
 
 static int ssl_scan_serverhello_tlsext(SSL *s, CBS *cbs, int *out_alert) {
   CBS extensions;
-
-  /* TODO(davidben): Move all of these to some per-handshake state that gets
-   * systematically reset on a new handshake; perhaps allocate it fresh each
-   * time so it's not even kept around post-handshake. */
-  s->srtp_profile = NULL;
 
   /* Clear ECC extensions */
   OPENSSL_free(s->s3->tmp.peer_ecpointformatlist);
@@ -2395,10 +2508,6 @@ static int ssl_scan_serverhello_tlsext(SSL *s, CBS *cbs, int *out_alert) {
       if (!CBS_stow(&ec_point_format_list, &s->s3->tmp.peer_ecpointformatlist,
                     &s->s3->tmp.peer_ecpointformatlist_length)) {
         *out_alert = SSL_AD_INTERNAL_ERROR;
-        return 0;
-      }
-    } else if (type == TLSEXT_TYPE_use_srtp) {
-      if (!ssl_parse_serverhello_use_srtp_ext(s, &extension, out_alert)) {
         return 0;
       }
     }
