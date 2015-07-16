@@ -97,7 +97,7 @@ void HMAC_CTX_cleanup(HMAC_CTX *ctx) {
   EVP_MD_CTX_cleanup(&ctx->i_ctx);
   EVP_MD_CTX_cleanup(&ctx->o_ctx);
   EVP_MD_CTX_cleanup(&ctx->md_ctx);
-  OPENSSL_cleanse(ctx, sizeof(ctx));
+  OPENSSL_cleanse(ctx, sizeof(HMAC_CTX));
 }
 
 int HMAC_Init_ex(HMAC_CTX *ctx, const void *key, size_t key_len,
