@@ -2010,6 +2010,98 @@ static int ext_ec_point_add_serverhello(SSL *ssl, CBB *out) {
   return ext_ec_point_add_extension(ssl, out);
 }
 
+
+/* EC supported curves.
+ *
+ * https://tools.ietf.org/html/rfc4492#section-5.1.2 */
+
+static void ext_ec_curves_init(SSL *ssl) {
+  OPENSSL_free(ssl->s3->tmp.peer_ellipticcurvelist);
+  ssl->s3->tmp.peer_ellipticcurvelist = NULL;
+  ssl->s3->tmp.peer_ellipticcurvelist_length = 0;
+}
+
+static int ext_ec_curves_add_clienthello(SSL *ssl, CBB *out) {
+  if (!ssl_any_ec_cipher_suites_enabled(ssl)) {
+    return 1;
+  }
+
+  CBB contents, curves_bytes;
+  if (!CBB_add_u16(out, TLSEXT_TYPE_elliptic_curves) ||
+      !CBB_add_u16_length_prefixed(out, &contents) ||
+      !CBB_add_u16_length_prefixed(&contents, &curves_bytes)) {
+    return 0;
+  }
+
+  const uint16_t *curves;
+  size_t curves_len;
+  tls1_get_curvelist(ssl, 0, &curves, &curves_len);
+
+  size_t i;
+  for (i = 0; i < curves_len; i++) {
+    if (!CBB_add_u16(&curves_bytes, curves[i])) {
+      return 0;
+    }
+  }
+
+  return CBB_flush(out);
+}
+
+static int ext_ec_curves_parse_serverhello(SSL *ssl, uint8_t *out_alert,
+                                           CBS *contents) {
+  /* This extension is not expected to be echoed by servers and is ignored. */
+  return 1;
+}
+
+static int ext_ec_curves_parse_clienthello(SSL *ssl, uint8_t *out_alert,
+                                           CBS *contents) {
+  if (contents == NULL) {
+    return 1;
+  }
+
+  CBS elliptic_curve_list;
+  if (!CBS_get_u16_length_prefixed(contents, &elliptic_curve_list) ||
+      CBS_len(&elliptic_curve_list) == 0 ||
+      (CBS_len(&elliptic_curve_list) & 1) != 0 ||
+      CBS_len(contents) != 0) {
+    return 0;
+  }
+
+  ssl->s3->tmp.peer_ellipticcurvelist =
+      (uint16_t *)OPENSSL_malloc(CBS_len(&elliptic_curve_list));
+
+  if (ssl->s3->tmp.peer_ellipticcurvelist == NULL) {
+    *out_alert = SSL_AD_INTERNAL_ERROR;
+    return 0;
+  }
+
+  const size_t num_curves = CBS_len(&elliptic_curve_list) / 2;
+  size_t i;
+  for (i = 0; i < num_curves; i++) {
+    if (!CBS_get_u16(&elliptic_curve_list,
+                     &ssl->s3->tmp.peer_ellipticcurvelist[i])) {
+      goto err;
+    }
+  }
+
+  assert(CBS_len(&elliptic_curve_list) == 0);
+  ssl->s3->tmp.peer_ellipticcurvelist_length = num_curves;
+
+  return 1;
+
+err:
+  OPENSSL_free(ssl->s3->tmp.peer_ellipticcurvelist);
+  ssl->s3->tmp.peer_ellipticcurvelist = NULL;
+  *out_alert = SSL_AD_INTERNAL_ERROR;
+  return 0;
+}
+
+static int ext_ec_curves_add_serverhello(SSL *ssl, CBB *out) {
+  /* Servers don't echo this extension. */
+  return 1;
+}
+
+
 /* kExtensions contains all the supported extensions. */
 static const struct tls_extension kExtensions[] = {
   {
@@ -2111,6 +2203,14 @@ static const struct tls_extension kExtensions[] = {
     ext_ec_point_parse_clienthello,
     ext_ec_point_add_serverhello,
   },
+  {
+    TLSEXT_TYPE_elliptic_curves,
+    ext_ec_curves_init,
+    ext_ec_curves_add_clienthello,
+    ext_ec_curves_parse_serverhello,
+    ext_ec_curves_parse_clienthello,
+    ext_ec_curves_add_serverhello,
+  },
 };
 
 #define kNumExtensions (sizeof(kExtensions) / sizeof(struct tls_extension))
@@ -2144,25 +2244,6 @@ uint8_t *ssl_add_clienthello_tlsext(SSL *s, uint8_t *const buf,
   int extdatalen = 0;
   uint8_t *ret = buf;
   uint8_t *orig = buf;
-  /* See if we support any ECC ciphersuites */
-  int using_ecc = 0;
-
-  if (s->version >= TLS1_VERSION || SSL_IS_DTLS(s)) {
-    size_t i;
-    uint32_t alg_k, alg_a;
-    STACK_OF(SSL_CIPHER) *cipher_stack = SSL_get_ciphers(s);
-
-    for (i = 0; i < sk_SSL_CIPHER_num(cipher_stack); i++) {
-      const SSL_CIPHER *c = sk_SSL_CIPHER_value(cipher_stack, i);
-
-      alg_k = c->algorithm_mkey;
-      alg_a = c->algorithm_auth;
-      if ((alg_k & SSL_kECDHE) || (alg_a & SSL_aECDSA)) {
-        using_ecc = 1;
-        break;
-      }
-    }
-  }
 
   /* don't add extensions for SSLv3 unless doing secure renegotiation */
   if (s->client_version == SSL3_VERSION && !s->s3->send_connection_binding) {
@@ -2206,35 +2287,6 @@ uint8_t *ssl_add_clienthello_tlsext(SSL *s, uint8_t *const buf,
 
   ret += CBB_len(&cbb);
   CBB_cleanup(&cbb);
-
-  if (using_ecc) {
-    long lenmax;
-    const uint16_t *curves;
-    size_t curves_len;
-
-    /* Add TLS extension EllipticCurves to the ClientHello message */
-    tls1_get_curvelist(s, 0, &curves, &curves_len);
-
-    lenmax = limit - ret - 6;
-    if (lenmax < 0) {
-      return NULL;
-    }
-    if (curves_len * 2 > (size_t)lenmax) {
-      return NULL;
-    }
-    if (curves_len * 2 > 65532) {
-      OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
-      return NULL;
-    }
-
-    s2n(TLSEXT_TYPE_elliptic_curves, ret);
-    s2n((curves_len * 2) + 2, ret);
-
-    s2n(curves_len * 2, ret);
-    for (i = 0; i < curves_len; i++) {
-      s2n(curves[i], ret);
-    }
-  }
 
   if (header_len > 0) {
     size_t clienthello_minsize = 0;
@@ -2338,11 +2390,6 @@ uint8_t *ssl_add_serverhello_tlsext(SSL *s, uint8_t *const buf,
 static int ssl_scan_clienthello_tlsext(SSL *s, CBS *cbs, int *out_alert) {
   CBS extensions;
 
-  /* Clear ECC extensions */
-  OPENSSL_free(s->s3->tmp.peer_ellipticcurvelist);
-  s->s3->tmp.peer_ellipticcurvelist = NULL;
-  s->s3->tmp.peer_ellipticcurvelist_length = 0;
-
   size_t i;
   for (i = 0; i < kNumExtensions; i++) {
     if (kExtensions[i].init != NULL) {
@@ -2392,46 +2439,6 @@ static int ssl_scan_clienthello_tlsext(SSL *s, CBS *cbs, int *out_alert) {
       }
 
       continue;
-    }
-
-    if (type == TLSEXT_TYPE_elliptic_curves) {
-      CBS elliptic_curve_list;
-      size_t num_curves;
-
-      if (!CBS_get_u16_length_prefixed(&extension, &elliptic_curve_list) ||
-          CBS_len(&elliptic_curve_list) == 0 ||
-          (CBS_len(&elliptic_curve_list) & 1) != 0 ||
-          CBS_len(&extension) != 0) {
-        *out_alert = SSL_AD_DECODE_ERROR;
-        return 0;
-      }
-
-      OPENSSL_free(s->s3->tmp.peer_ellipticcurvelist);
-      s->s3->tmp.peer_ellipticcurvelist_length = 0;
-
-      s->s3->tmp.peer_ellipticcurvelist =
-          (uint16_t *)OPENSSL_malloc(CBS_len(&elliptic_curve_list));
-
-      if (s->s3->tmp.peer_ellipticcurvelist == NULL) {
-        *out_alert = SSL_AD_INTERNAL_ERROR;
-        return 0;
-      }
-
-      num_curves = CBS_len(&elliptic_curve_list) / 2;
-      for (i = 0; i < num_curves; i++) {
-        if (!CBS_get_u16(&elliptic_curve_list,
-                         &s->s3->tmp.peer_ellipticcurvelist[i])) {
-          *out_alert = SSL_AD_INTERNAL_ERROR;
-          return 0;
-        }
-      }
-
-      if (CBS_len(&elliptic_curve_list) != 0) {
-        *out_alert = SSL_AD_INTERNAL_ERROR;
-        return 0;
-      }
-
-      s->s3->tmp.peer_ellipticcurvelist_length = num_curves;
     }
   }
 
