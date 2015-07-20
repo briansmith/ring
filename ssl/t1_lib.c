@@ -1914,6 +1914,102 @@ static int ext_srtp_add_serverhello(SSL *ssl, CBB *out) {
   return 1;
 }
 
+
+/* EC point formats.
+ *
+ * https://tools.ietf.org/html/rfc4492#section-5.1.2 */
+
+static int ssl_any_ec_cipher_suites_enabled(const SSL *ssl) {
+  if (ssl->version < TLS1_VERSION && !SSL_IS_DTLS(ssl)) {
+    return 0;
+  }
+
+  const STACK_OF(SSL_CIPHER) *cipher_stack = SSL_get_ciphers(ssl);
+
+  size_t i;
+  for (i = 0; i < sk_SSL_CIPHER_num(cipher_stack); i++) {
+    const SSL_CIPHER *cipher = sk_SSL_CIPHER_value(cipher_stack, i);
+
+    const uint32_t alg_k = cipher->algorithm_mkey;
+    const uint32_t alg_a = cipher->algorithm_auth;
+    if ((alg_k & SSL_kECDHE) || (alg_a & SSL_aECDSA)) {
+      return 1;
+    }
+  }
+
+  return 0;
+}
+
+static void ext_ec_point_init(SSL *ssl) {
+  OPENSSL_free(ssl->s3->tmp.peer_ecpointformatlist);
+  ssl->s3->tmp.peer_ecpointformatlist = NULL;
+  ssl->s3->tmp.peer_ecpointformatlist_length = 0;
+}
+
+static int ext_ec_point_add_extension(SSL *ssl, CBB *out) {
+  const uint8_t *formats;
+  size_t formats_len;
+  tls1_get_formatlist(ssl, &formats, &formats_len);
+
+  CBB contents, format_bytes;
+  if (!CBB_add_u16(out, TLSEXT_TYPE_ec_point_formats) ||
+      !CBB_add_u16_length_prefixed(out, &contents) ||
+      !CBB_add_u8_length_prefixed(&contents, &format_bytes) ||
+      !CBB_add_bytes(&format_bytes, formats, formats_len) ||
+      !CBB_flush(out)) {
+    return 0;
+  }
+
+  return 1;
+}
+
+static int ext_ec_point_add_clienthello(SSL *ssl, CBB *out) {
+  if (!ssl_any_ec_cipher_suites_enabled(ssl)) {
+    return 1;
+  }
+
+  return ext_ec_point_add_extension(ssl, out);
+}
+
+static int ext_ec_point_parse_serverhello(SSL *ssl, uint8_t *out_alert,
+                                          CBS *contents) {
+  if (contents == NULL) {
+    return 1;
+  }
+
+  CBS ec_point_format_list;
+  if (!CBS_get_u8_length_prefixed(contents, &ec_point_format_list) ||
+      CBS_len(contents) != 0) {
+    return 0;
+  }
+
+  if (!CBS_stow(&ec_point_format_list, &ssl->s3->tmp.peer_ecpointformatlist,
+                &ssl->s3->tmp.peer_ecpointformatlist_length)) {
+    *out_alert = SSL_AD_INTERNAL_ERROR;
+    return 0;
+  }
+
+  return 1;
+}
+
+static int ext_ec_point_parse_clienthello(SSL *ssl, uint8_t *out_alert,
+                                          CBS *contents) {
+  return ext_ec_point_parse_serverhello(ssl, out_alert, contents);
+}
+
+static int ext_ec_point_add_serverhello(SSL *ssl, CBB *out) {
+  const uint32_t alg_k = ssl->s3->tmp.new_cipher->algorithm_mkey;
+  const uint32_t alg_a = ssl->s3->tmp.new_cipher->algorithm_auth;
+  const int using_ecc = ssl->s3->tmp.peer_ecpointformatlist_length != 0 &&
+                        ((alg_k & SSL_kECDHE) || (alg_a & SSL_aECDSA));
+
+  if (!using_ecc) {
+    return 1;
+  }
+
+  return ext_ec_point_add_extension(ssl, out);
+}
+
 /* kExtensions contains all the supported extensions. */
 static const struct tls_extension kExtensions[] = {
   {
@@ -2006,6 +2102,14 @@ static const struct tls_extension kExtensions[] = {
     ext_srtp_parse_serverhello,
     ext_srtp_parse_clienthello,
     ext_srtp_add_serverhello,
+  },
+  {
+    TLSEXT_TYPE_ec_point_formats,
+    ext_ec_point_init,
+    ext_ec_point_add_clienthello,
+    ext_ec_point_parse_serverhello,
+    ext_ec_point_parse_clienthello,
+    ext_ec_point_add_serverhello,
   },
 };
 
@@ -2104,31 +2208,9 @@ uint8_t *ssl_add_clienthello_tlsext(SSL *s, uint8_t *const buf,
   CBB_cleanup(&cbb);
 
   if (using_ecc) {
-    /* Add TLS extension ECPointFormats to the ClientHello message */
     long lenmax;
-    const uint8_t *formats;
     const uint16_t *curves;
-    size_t formats_len, curves_len;
-
-    tls1_get_formatlist(s, &formats, &formats_len);
-
-    lenmax = limit - ret - 5;
-    if (lenmax < 0) {
-      return NULL;
-    }
-    if (formats_len > (size_t)lenmax) {
-      return NULL;
-    }
-    if (formats_len > 255) {
-      OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
-      return NULL;
-    }
-
-    s2n(TLSEXT_TYPE_ec_point_formats, ret);
-    s2n(formats_len + 1, ret);
-    *(ret++) = (uint8_t)formats_len;
-    memcpy(ret, formats, formats_len);
-    ret += formats_len;
+    size_t curves_len;
 
     /* Add TLS extension EllipticCurves to the ClientHello message */
     tls1_get_curvelist(s, 0, &curves, &curves_len);
@@ -2210,10 +2292,6 @@ uint8_t *ssl_add_serverhello_tlsext(SSL *s, uint8_t *const buf,
   int extdatalen = 0;
   uint8_t *orig = buf;
   uint8_t *ret = buf;
-  uint32_t alg_k = s->s3->tmp.new_cipher->algorithm_mkey;
-  uint32_t alg_a = s->s3->tmp.new_cipher->algorithm_auth;
-  int using_ecc = (alg_k & SSL_kECDHE) || (alg_a & SSL_aECDSA);
-  using_ecc = using_ecc && (s->s3->tmp.peer_ecpointformatlist != NULL);
 
   /* don't add extensions for SSLv3, unless doing secure renegotiation */
   if (s->version == SSL3_VERSION && !s->s3->send_connection_binding) {
@@ -2248,34 +2326,6 @@ uint8_t *ssl_add_serverhello_tlsext(SSL *s, uint8_t *const buf,
   ret += CBB_len(&cbb);
   CBB_cleanup(&cbb);
 
-  if (using_ecc) {
-    const uint8_t *plist;
-    size_t plistlen;
-    /* Add TLS extension ECPointFormats to the ServerHello message */
-    long lenmax;
-
-    tls1_get_formatlist(s, &plist, &plistlen);
-
-    lenmax = limit - ret - 5;
-    if (lenmax < 0) {
-      return NULL;
-    }
-    if (plistlen > (size_t)lenmax) {
-      return NULL;
-    }
-    if (plistlen > 255) {
-      OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
-      return NULL;
-    }
-
-    s2n(TLSEXT_TYPE_ec_point_formats, ret);
-    s2n(plistlen + 1, ret);
-    *(ret++) = (uint8_t)plistlen;
-    memcpy(ret, plist, plistlen);
-    ret += plistlen;
-  }
-  /* Currently the server should not respond with a SupportedCurves extension */
-
   extdatalen = ret - orig - 2;
   if (extdatalen == 0) {
     return orig;
@@ -2289,10 +2339,6 @@ static int ssl_scan_clienthello_tlsext(SSL *s, CBS *cbs, int *out_alert) {
   CBS extensions;
 
   /* Clear ECC extensions */
-  OPENSSL_free(s->s3->tmp.peer_ecpointformatlist);
-  s->s3->tmp.peer_ecpointformatlist = NULL;
-  s->s3->tmp.peer_ecpointformatlist_length = 0;
-
   OPENSSL_free(s->s3->tmp.peer_ellipticcurvelist);
   s->s3->tmp.peer_ellipticcurvelist = NULL;
   s->s3->tmp.peer_ellipticcurvelist_length = 0;
@@ -2348,21 +2394,7 @@ static int ssl_scan_clienthello_tlsext(SSL *s, CBS *cbs, int *out_alert) {
       continue;
     }
 
-    if (type == TLSEXT_TYPE_ec_point_formats) {
-      CBS ec_point_format_list;
-
-      if (!CBS_get_u8_length_prefixed(&extension, &ec_point_format_list) ||
-          CBS_len(&extension) != 0) {
-        *out_alert = SSL_AD_DECODE_ERROR;
-        return 0;
-      }
-
-      if (!CBS_stow(&ec_point_format_list, &s->s3->tmp.peer_ecpointformatlist,
-                    &s->s3->tmp.peer_ecpointformatlist_length)) {
-        *out_alert = SSL_AD_INTERNAL_ERROR;
-        return 0;
-      }
-    } else if (type == TLSEXT_TYPE_elliptic_curves) {
+    if (type == TLSEXT_TYPE_elliptic_curves) {
       CBS elliptic_curve_list;
       size_t num_curves;
 
@@ -2437,11 +2469,6 @@ int ssl_parse_clienthello_tlsext(SSL *s, CBS *cbs) {
 static int ssl_scan_serverhello_tlsext(SSL *s, CBS *cbs, int *out_alert) {
   CBS extensions;
 
-  /* Clear ECC extensions */
-  OPENSSL_free(s->s3->tmp.peer_ecpointformatlist);
-  s->s3->tmp.peer_ecpointformatlist = NULL;
-  s->s3->tmp.peer_ecpointformatlist_length = 0;
-
   uint32_t received = 0;
   size_t i;
   assert(kNumExtensions <= sizeof(received) * 8);
@@ -2494,22 +2521,6 @@ static int ssl_scan_serverhello_tlsext(SSL *s, CBS *cbs, int *out_alert) {
       }
 
       continue;
-    }
-
-    if (type == TLSEXT_TYPE_ec_point_formats) {
-      CBS ec_point_format_list;
-
-      if (!CBS_get_u8_length_prefixed(&extension, &ec_point_format_list) ||
-          CBS_len(&extension) != 0) {
-        *out_alert = SSL_AD_DECODE_ERROR;
-        return 0;
-      }
-
-      if (!CBS_stow(&ec_point_format_list, &s->s3->tmp.peer_ecpointformatlist,
-                    &s->s3->tmp.peer_ecpointformatlist_length)) {
-        *out_alert = SSL_AD_INTERNAL_ERROR;
-        return 0;
-      }
     }
   }
 
