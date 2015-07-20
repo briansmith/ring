@@ -215,8 +215,8 @@ OPENSSL_EXPORT int i2d_ECParameters(const EC_KEY *key, uint8_t **outp);
 
 /* o2i_ECPublicKey parses an EC point from |len| bytes at |*inp| into
  * |*out_key|. Note that this differs from the d2i format in that |*out_key|
- * must be non-NULL. On successful exit, |*inp| is advanced past the DER
- * structure. It returns |*out_key| or NULL on error. */
+ * must be non-NULL with a group set. On successful exit, |*inp| is advanced by
+ * |len| bytes. It returns |*out_key| or NULL on error. */
 OPENSSL_EXPORT EC_KEY *o2i_ECPublicKey(EC_KEY **out_key, const uint8_t **inp,
                                        long len);
 
