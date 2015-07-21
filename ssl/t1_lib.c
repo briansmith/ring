@@ -1765,7 +1765,6 @@ static int ext_channel_id_add_serverhello(SSL *ssl, CBB *out) {
  *
  * https://tools.ietf.org/html/rfc5764 */
 
-extern const SRTP_PROTECTION_PROFILE kSRTPProfiles[];
 
 static void ext_srtp_init(SSL *ssl) {
   ssl->srtp_profile = NULL;
