@@ -2241,19 +2241,16 @@ static const struct tls_extension *tls_extension_find(uint32_t *out_index,
  * is to be done. */
 uint8_t *ssl_add_clienthello_tlsext(SSL *s, uint8_t *const buf,
                                     uint8_t *const limit, size_t header_len) {
-  int extdatalen = 0;
-  uint8_t *ret = buf;
-  uint8_t *orig = buf;
-
   /* don't add extensions for SSLv3 unless doing secure renegotiation */
   if (s->client_version == SSL3_VERSION && !s->s3->send_connection_binding) {
-    return orig;
+    return buf;
   }
 
-  ret += 2;
-
-  if (ret >= limit) {
-    return NULL; /* should never occur. */
+  CBB cbb, extensions;
+  CBB_zero(&cbb);
+  if (!CBB_init_fixed(&cbb, buf, limit - buf) ||
+      !CBB_add_u16_length_prefixed(&cbb, &extensions)) {
+    goto err;
   }
 
   s->s3->tmp.extensions.sent = 0;
@@ -2265,32 +2262,22 @@ uint8_t *ssl_add_clienthello_tlsext(SSL *s, uint8_t *const buf,
     }
   }
 
-  CBB cbb;
-  if (!CBB_init_fixed(&cbb, ret, limit - ret)) {
-    OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
-    return NULL;
-  }
-
   for (i = 0; i < kNumExtensions; i++) {
-    const size_t len_before = CBB_len(&cbb);
-    if (!kExtensions[i].add_clienthello(s, &cbb)) {
-      CBB_cleanup(&cbb);
-      OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
-      return NULL;
+    const size_t len_before = CBB_len(&extensions);
+    if (!kExtensions[i].add_clienthello(s, &extensions)) {
+      OPENSSL_PUT_ERROR(SSL, SSL_R_ERROR_ADDING_EXTENSION);
+      ERR_add_error_dataf("extension: %u", (unsigned)kExtensions[i].value);
+      goto err;
     }
-    const size_t len_after = CBB_len(&cbb);
 
-    if (len_after != len_before) {
+    if (CBB_len(&extensions) != len_before) {
       s->s3->tmp.extensions.sent |= (1u << i);
     }
   }
 
-  ret += CBB_len(&cbb);
-  CBB_cleanup(&cbb);
-
   if (header_len > 0) {
     size_t clienthello_minsize = 0;
-    header_len += ret - orig;
+    header_len += CBB_len(&extensions);
     if (header_len > 0xff && header_len < 0x200) {
       /* Add padding to workaround bugs in F5 terminators. See
        * https://tools.ietf.org/html/draft-agl-tls-padding-03
@@ -2298,15 +2285,6 @@ uint8_t *ssl_add_clienthello_tlsext(SSL *s, uint8_t *const buf,
        * NB: because this code works out the length of all existing extensions
        * it MUST always appear last. */
       clienthello_minsize = 0x200;
-    }
-    if (s->fastradio_padding) {
-      /* Pad the ClientHello record to 1024 bytes to fast forward the radio
-       * into DCH (high data rate) state in 3G networks. Note that when
-       * fastradio_padding is enabled, even if the header_len is less than 255
-       * bytes, the padding will be applied regardless. This is slightly
-       * different from the TLS padding extension suggested in
-       * https://tools.ietf.org/html/draft-agl-tls-padding-03 */
-      clienthello_minsize = 0x400;
     }
     if (header_len < clienthello_minsize) {
       size_t padding_len = clienthello_minsize - header_len;
@@ -2319,46 +2297,51 @@ uint8_t *ssl_add_clienthello_tlsext(SSL *s, uint8_t *const buf,
         padding_len = 1;
       }
 
-      if (limit - ret - 4 - (long)padding_len < 0) {
-        return NULL;
+      uint8_t *padding_bytes;
+      if (!CBB_add_u16(&extensions, TLSEXT_TYPE_padding) ||
+          !CBB_add_u16(&extensions, padding_len) ||
+          !CBB_add_space(&extensions, &padding_bytes, padding_len)) {
+        goto err;
       }
 
-      s2n(TLSEXT_TYPE_padding, ret);
-      s2n(padding_len, ret);
-      memset(ret, 0, padding_len);
-      ret += padding_len;
+      memset(padding_bytes, 0, padding_len);
     }
   }
 
-  extdatalen = ret - orig - 2;
-  if (extdatalen == 0) {
-    return orig;
+  if (!CBB_flush(&cbb)) {
+    goto err;
   }
 
-  s2n(extdatalen, orig);
+  uint8_t *ret = buf;
+  const size_t cbb_len = CBB_len(&cbb);
+  /* If only two bytes have been written then the extensions are actually empty
+   * and those two bytes are the zero length. In that case, we don't bother
+   * sending the extensions length. */
+  if (cbb_len > 2) {
+    ret += cbb_len;
+  }
+
+  CBB_cleanup(&cbb);
   return ret;
+
+err:
+  CBB_cleanup(&cbb);
+  OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
+  return NULL;
 }
 
 uint8_t *ssl_add_serverhello_tlsext(SSL *s, uint8_t *const buf,
                                     uint8_t *const limit) {
-  int extdatalen = 0;
-  uint8_t *orig = buf;
-  uint8_t *ret = buf;
-
   /* don't add extensions for SSLv3, unless doing secure renegotiation */
   if (s->version == SSL3_VERSION && !s->s3->send_connection_binding) {
-    return orig;
+    return buf;
   }
 
-  ret += 2;
-  if (ret >= limit) {
-    return NULL; /* should never happen. */
-  }
-
-  CBB cbb;
-  if (!CBB_init_fixed(&cbb, ret, limit - ret)) {
-    OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
-    return NULL;
+  CBB cbb, extensions;
+  CBB_zero(&cbb);
+  if (!CBB_init_fixed(&cbb, buf, limit - buf) ||
+      !CBB_add_u16_length_prefixed(&cbb, &extensions)) {
+    goto err;
   }
 
   unsigned i;
@@ -2368,28 +2351,36 @@ uint8_t *ssl_add_serverhello_tlsext(SSL *s, uint8_t *const buf,
       continue;
     }
 
-    if (!kExtensions[i].add_serverhello(s, &cbb)) {
-      CBB_cleanup(&cbb);
-      OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
-      return NULL;
+    if (!kExtensions[i].add_serverhello(s, &extensions)) {
+      OPENSSL_PUT_ERROR(SSL, SSL_R_ERROR_ADDING_EXTENSION);
+      ERR_add_error_dataf("extension: %u", (unsigned)kExtensions[i].value);
+      goto err;
     }
   }
 
-  ret += CBB_len(&cbb);
-  CBB_cleanup(&cbb);
-
-  extdatalen = ret - orig - 2;
-  if (extdatalen == 0) {
-    return orig;
+  if (!CBB_flush(&cbb)) {
+    goto err;
   }
 
-  s2n(extdatalen, orig);
+  uint8_t *ret = buf;
+  const size_t cbb_len = CBB_len(&cbb);
+  /* If only two bytes have been written then the extensions are actually empty
+   * and those two bytes are the zero length. In that case, we don't bother
+   * sending the extensions length. */
+  if (cbb_len > 2) {
+    ret += cbb_len;
+  }
+
+  CBB_cleanup(&cbb);
   return ret;
+
+err:
+  CBB_cleanup(&cbb);
+  OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
+  return NULL;
 }
 
 static int ssl_scan_clienthello_tlsext(SSL *s, CBS *cbs, int *out_alert) {
-  CBS extensions;
-
   size_t i;
   for (i = 0; i < kNumExtensions; i++) {
     if (kExtensions[i].init != NULL) {
@@ -2404,51 +2395,53 @@ static int ssl_scan_clienthello_tlsext(SSL *s, CBS *cbs, int *out_alert) {
   assert(kExtensions[0].value == TLSEXT_TYPE_renegotiate);
 
   /* There may be no extensions. */
-  if (CBS_len(cbs) == 0) {
-    goto no_extensions;
-  }
-
-  /* Decode the extensions block and check it is valid. */
-  if (!CBS_get_u16_length_prefixed(cbs, &extensions) ||
-      !tls1_check_duplicate_extensions(&extensions)) {
-    *out_alert = SSL_AD_DECODE_ERROR;
-    return 0;
-  }
-
-  while (CBS_len(&extensions) != 0) {
-    uint16_t type;
-    CBS extension;
-
-    /* Decode the next extension. */
-    if (!CBS_get_u16(&extensions, &type) ||
-        !CBS_get_u16_length_prefixed(&extensions, &extension)) {
+  if (CBS_len(cbs) != 0) {
+    /* Decode the extensions block and check it is valid. */
+    CBS extensions;
+    if (!CBS_get_u16_length_prefixed(cbs, &extensions) ||
+        !tls1_check_duplicate_extensions(&extensions)) {
       *out_alert = SSL_AD_DECODE_ERROR;
       return 0;
     }
 
-    unsigned ext_index;
-    const struct tls_extension *const ext =
-        tls_extension_find(&ext_index, type);
+    while (CBS_len(&extensions) != 0) {
+      uint16_t type;
+      CBS extension;
 
-    if (ext != NULL) {
+      /* Decode the next extension. */
+      if (!CBS_get_u16(&extensions, &type) ||
+          !CBS_get_u16_length_prefixed(&extensions, &extension)) {
+        *out_alert = SSL_AD_DECODE_ERROR;
+        return 0;
+      }
+
+      unsigned ext_index;
+      const struct tls_extension *const ext =
+          tls_extension_find(&ext_index, type);
+
+      if (ext == NULL) {
+        continue;
+      }
+
       s->s3->tmp.extensions.received |= (1u << ext_index);
       uint8_t alert = SSL_AD_DECODE_ERROR;
       if (!ext->parse_clienthello(s, &alert, &extension)) {
         *out_alert = alert;
+        OPENSSL_PUT_ERROR(SSL, SSL_R_ERROR_PARSING_EXTENSION);
+        ERR_add_error_dataf("extension: %u", (unsigned)type);
         return 0;
       }
-
-      continue;
     }
   }
 
-no_extensions:
   for (i = 0; i < kNumExtensions; i++) {
     if (!(s->s3->tmp.extensions.received & (1u << i))) {
       /* Extension wasn't observed so call the callback with a NULL
        * parameter. */
       uint8_t alert = SSL_AD_DECODE_ERROR;
       if (!kExtensions[i].parse_clienthello(s, &alert, NULL)) {
+        OPENSSL_PUT_ERROR(SSL, SSL_R_MISSING_EXTENSION);
+        ERR_add_error_dataf("extension: %u", (unsigned)kExtensions[i].value);
         *out_alert = alert;
         return 0;
       }
@@ -2474,47 +2467,41 @@ int ssl_parse_clienthello_tlsext(SSL *s, CBS *cbs) {
 }
 
 static int ssl_scan_serverhello_tlsext(SSL *s, CBS *cbs, int *out_alert) {
-  CBS extensions;
-
   uint32_t received = 0;
-  size_t i;
   assert(kNumExtensions <= sizeof(received) * 8);
 
-  /* There may be no extensions. */
-  if (CBS_len(cbs) == 0) {
-    goto no_extensions;
-  }
-
-  /* Decode the extensions block and check it is valid. */
-  if (!CBS_get_u16_length_prefixed(cbs, &extensions) ||
-      !tls1_check_duplicate_extensions(&extensions)) {
-    *out_alert = SSL_AD_DECODE_ERROR;
-    return 0;
-  }
-
-  while (CBS_len(&extensions) != 0) {
-    uint16_t type;
-    CBS extension;
-
-    /* Decode the next extension. */
-    if (!CBS_get_u16(&extensions, &type) ||
-        !CBS_get_u16_length_prefixed(&extensions, &extension)) {
+  if (CBS_len(cbs) != 0) {
+    /* Decode the extensions block and check it is valid. */
+    CBS extensions;
+    if (!CBS_get_u16_length_prefixed(cbs, &extensions) ||
+        !tls1_check_duplicate_extensions(&extensions)) {
       *out_alert = SSL_AD_DECODE_ERROR;
       return 0;
     }
 
-    unsigned ext_index;
-    const struct tls_extension *const ext =
-        tls_extension_find(&ext_index, type);
 
-    /* While we have extensions that don't use tls_extension this conditional
-     * needs to be guarded on |ext != NULL|. In the future, ext being NULL will
-     * be fatal. */
-    if (ext != NULL) {
-      if (!(s->s3->tmp.extensions.sent & (1u << ext_index))) {
-        /* Received an extension that was never sent. */
+    while (CBS_len(&extensions) != 0) {
+      uint16_t type;
+      CBS extension;
+
+      /* Decode the next extension. */
+      if (!CBS_get_u16(&extensions, &type) ||
+          !CBS_get_u16_length_prefixed(&extensions, &extension)) {
+        *out_alert = SSL_AD_DECODE_ERROR;
+        return 0;
+      }
+
+      unsigned ext_index;
+      const struct tls_extension *const ext =
+          tls_extension_find(&ext_index, type);
+
+      if (/* If ext == NULL then an unknown extension was received. Since we
+           * cannot have sent an unknown extension, this is illegal. */
+          ext == NULL ||
+          /* If the extension was never sent then it is also illegal. */
+          !(s->s3->tmp.extensions.sent & (1u << ext_index))) {
         OPENSSL_PUT_ERROR(SSL, SSL_R_UNEXPECTED_EXTENSION);
-        ERR_add_error_dataf("ext:%u", (unsigned) type);
+        ERR_add_error_dataf("extension :%u", (unsigned)type);
         *out_alert = SSL_AD_DECODE_ERROR;
         return 0;
       }
@@ -2523,21 +2510,23 @@ static int ssl_scan_serverhello_tlsext(SSL *s, CBS *cbs, int *out_alert) {
 
       uint8_t alert = SSL_AD_DECODE_ERROR;
       if (!ext->parse_serverhello(s, &alert, &extension)) {
+        OPENSSL_PUT_ERROR(SSL, SSL_R_ERROR_PARSING_EXTENSION);
+        ERR_add_error_dataf("extension: %u", (unsigned)type);
         *out_alert = alert;
         return 0;
       }
-
-      continue;
     }
   }
 
-no_extensions:
+  size_t i;
   for (i = 0; i < kNumExtensions; i++) {
     if (!(received & (1u << i))) {
       /* Extension wasn't observed so call the callback with a NULL
        * parameter. */
       uint8_t alert = SSL_AD_DECODE_ERROR;
       if (!kExtensions[i].parse_serverhello(s, &alert, NULL)) {
+        OPENSSL_PUT_ERROR(SSL, SSL_R_MISSING_EXTENSION);
+        ERR_add_error_dataf("extension: %u", (unsigned)kExtensions[i].value);
         *out_alert = alert;
         return 0;
       }

@@ -59,7 +59,6 @@ struct TestConfig {
   std::string expected_ocsp_response;
   bool enable_signed_cert_timestamps = false;
   std::string expected_signed_cert_timestamps;
-  bool fastradio_padding = false;
   int min_version = 0;
   int max_version = 0;
   int mtu = 0;

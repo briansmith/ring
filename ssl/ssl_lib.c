@@ -2824,10 +2824,6 @@ void SSL_CTX_set_dos_protection_cb(
   ctx->dos_protection_cb = cb;
 }
 
-void SSL_enable_fastradio_padding(SSL *s, char on_off) {
-  s->fastradio_padding = on_off;
-}
-
 void SSL_set_reject_peer_renegotiations(SSL *s, int reject) {
   s->accept_peer_renegotiations = !reject;
 }

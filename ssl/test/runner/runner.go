@@ -2997,6 +2997,19 @@ func addExtensionTests() {
 			base64.StdEncoding.EncodeToString(testSCTList),
 		},
 	})
+	testCases = append(testCases, testCase{
+		testType: clientTest,
+		name:     "ClientHelloPadding",
+		config: Config{
+			Bugs: ProtocolBugs{
+				RequireClientHelloSize: 512,
+			},
+		},
+		// This hostname just needs to be long enough to push the
+		// ClientHello into F5's danger zone between 256 and 511 bytes
+		// long.
+		flags: []string{"-host-name", "01234567890123456789012345678901234567890123456789012345678901234567890123456789.com"},
+	})
 }
 
 func addResumptionVersionTests() {
@@ -3260,29 +3273,6 @@ func addDTLSReplayTests() {
 			},
 		},
 		replayWrites: true,
-	})
-}
-
-func addFastRadioPaddingTests() {
-	testCases = append(testCases, testCase{
-		protocol: tls,
-		name:     "FastRadio-Padding",
-		config: Config{
-			Bugs: ProtocolBugs{
-				RequireFastradioPadding: true,
-			},
-		},
-		flags: []string{"-fastradio-padding"},
-	})
-	testCases = append(testCases, testCase{
-		protocol: dtls,
-		name:     "FastRadio-Padding-DTLS",
-		config: Config{
-			Bugs: ProtocolBugs{
-				RequireFastradioPadding: true,
-			},
-		},
-		flags: []string{"-fastradio-padding"},
 	})
 }
 
@@ -3730,7 +3720,6 @@ func main() {
 	addRenegotiationTests()
 	addDTLSReplayTests()
 	addSigningHashTests()
-	addFastRadioPaddingTests()
 	addDTLSRetransmitTests()
 	addExportKeyingMaterialTests()
 	addTLSUniqueTests()

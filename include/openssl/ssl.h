@@ -1496,11 +1496,6 @@ OPENSSL_EXPORT void SSL_CTX_set_alpn_select_cb(
 OPENSSL_EXPORT void SSL_get0_alpn_selected(const SSL *ssl, const uint8_t **data,
                                            unsigned *len);
 
-/* SSL_enable_fastradio_padding controls whether fastradio padding is enabled
- * on |ssl|. If it is, ClientHello messages are padded to 1024 bytes. This
- * causes 3G radios to switch to DCH mode (high data rate). */
-OPENSSL_EXPORT void SSL_enable_fastradio_padding(SSL *ssl, char on_off);
-
 /* SSL_set_reject_peer_renegotiations controls whether renegotiation attempts by
  * the peer are rejected. It may be set at any point in a connection's lifetime
  * to control future renegotiations programmatically. By default, renegotiations
@@ -1742,11 +1737,6 @@ struct ssl_st {
    * format. */
   uint8_t *alpn_client_proto_list;
   unsigned alpn_client_proto_list_len;
-
-  /* fastradio_padding, if true, causes ClientHellos to be padded to 1024
-   * bytes. This ensures that the cellular radio is fast forwarded to DCH (high
-   * data rate) state in 3G networks. */
-  char fastradio_padding;
 
   /* accept_peer_renegotiations, if one, accepts renegotiation attempts from the
    * peer. Otherwise, they will be rejected with a fatal error. */
@@ -2952,6 +2942,9 @@ OPENSSL_EXPORT const char *SSLeay_version(int unused);
 #define SSL_R_TOO_MANY_WARNING_ALERTS 278
 #define SSL_R_UNEXPECTED_EXTENSION 279
 #define SSL_R_SIGNATURE_ALGORITHMS_EXTENSION_SENT_BY_SERVER 280
+#define SSL_R_ERROR_ADDING_EXTENSION 281
+#define SSL_R_ERROR_PARSING_EXTENSION 282
+#define SSL_R_MISSING_EXTENSION 283
 #define SSL_R_SSLV3_ALERT_CLOSE_NOTIFY 1000
 #define SSL_R_SSLV3_ALERT_UNEXPECTED_MESSAGE 1010
 #define SSL_R_SSLV3_ALERT_BAD_RECORD_MAC 1020

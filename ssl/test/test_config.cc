@@ -68,7 +68,6 @@ const Flag<bool> kBoolFlags[] = {
   { "-enable-ocsp-stapling", &TestConfig::enable_ocsp_stapling },
   { "-enable-signed-cert-timestamps",
     &TestConfig::enable_signed_cert_timestamps },
-  { "-fastradio-padding", &TestConfig::fastradio_padding },
   { "-implicit-handshake", &TestConfig::implicit_handshake },
   { "-use-early-callback", &TestConfig::use_early_callback },
   { "-fail-early-callback", &TestConfig::fail_early_callback },

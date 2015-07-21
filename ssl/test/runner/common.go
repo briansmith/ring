@@ -621,10 +621,6 @@ type ProtocolBugs struct {
 	// across a renego.
 	RequireSameRenegoClientVersion bool
 
-	// RequireFastradioPadding, if true, requires that ClientHello messages
-	// be at least 1000 bytes long.
-	RequireFastradioPadding bool
-
 	// ExpectInitialRecordVersion, if non-zero, is the expected
 	// version of the records before the version is determined.
 	ExpectInitialRecordVersion uint16
@@ -736,6 +732,10 @@ type ProtocolBugs struct {
 	// ExpectNewTicket, if true, causes the client to abort if it does not
 	// receive a new ticket.
 	ExpectNewTicket bool
+
+	// RequireClientHelloSize, if not zero, is the required length in bytes
+	// of the ClientHello /record/. This is checked by the server.
+	RequireClientHelloSize int
 }
 
 func (c *Config) serverInit() {
