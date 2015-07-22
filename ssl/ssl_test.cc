@@ -549,6 +549,112 @@ static bool TestCipherGetRFCName(void) {
   return true;
 }
 
+// CreateSessionWithTicket returns a sample |SSL_SESSION| with the ticket
+// replaced for one of length |ticket_len| or nullptr on failure.
+static ScopedSSL_SESSION CreateSessionWithTicket(size_t ticket_len) {
+  std::vector<uint8_t> der;
+  if (!DecodeBase64(&der, kOpenSSLSession)) {
+    return nullptr;
+  }
+  ScopedSSL_SESSION session(SSL_SESSION_from_bytes(bssl::vector_data(&der),
+                                                   der.size()));
+  if (!session) {
+    return nullptr;
+  }
+
+  // Swap out the ticket for a garbage one.
+  OPENSSL_free(session->tlsext_tick);
+  session->tlsext_tick = reinterpret_cast<uint8_t*>(OPENSSL_malloc(ticket_len));
+  if (session->tlsext_tick == nullptr) {
+    return nullptr;
+  }
+  memset(session->tlsext_tick, 'a', ticket_len);
+  session->tlsext_ticklen = ticket_len;
+  return session;
+}
+
+// GetClientHelloLen creates a client SSL connection with a ticket of length
+// |ticket_len| and records the ClientHello. It returns the length of the
+// ClientHello, not including the record header, on success and zero on error.
+static size_t GetClientHelloLen(size_t ticket_len) {
+  ScopedSSL_CTX ctx(SSL_CTX_new(TLS_method()));
+  ScopedSSL_SESSION session = CreateSessionWithTicket(ticket_len);
+  if (!ctx || !session) {
+    return 0;
+  }
+  ScopedSSL ssl(SSL_new(ctx.get()));
+  ScopedBIO bio(BIO_new(BIO_s_mem()));
+  if (!ssl || !bio || !SSL_set_session(ssl.get(), session.get())) {
+    return 0;
+  }
+  // Do not configure a reading BIO, but record what's written to a memory BIO.
+  SSL_set_bio(ssl.get(), nullptr /* rbio */, BIO_up_ref(bio.get()));
+  int ret = SSL_connect(ssl.get());
+  if (ret > 0) {
+    // SSL_connect should fail without a BIO to write to.
+    return 0;
+  }
+  ERR_clear_error();
+
+  const uint8_t *unused;
+  size_t client_hello_len;
+  if (!BIO_mem_contents(bio.get(), &unused, &client_hello_len) ||
+      client_hello_len <= SSL3_RT_HEADER_LENGTH) {
+    return 0;
+  }
+  return client_hello_len - SSL3_RT_HEADER_LENGTH;
+}
+
+struct PaddingTest {
+  size_t input_len, padded_len;
+};
+
+static const PaddingTest kPaddingTests[] = {
+    // ClientHellos of length below 0x100 do not require padding.
+    {0xfe, 0xfe},
+    {0xff, 0xff},
+    // ClientHellos of length 0x100 through 0x1fb are padded up to 0x200.
+    {0x100, 0x200},
+    {0x123, 0x200},
+    {0x1fb, 0x200},
+    // ClientHellos of length 0x1fc through 0x1ff get padded beyond 0x200. The
+    // padding extension takes a minimum of four bytes plus one required content
+    // byte. (To work around yet more server bugs, we avoid empty final
+    // extensions.)
+    {0x1fc, 0x201},
+    {0x1fd, 0x202},
+    {0x1fe, 0x203},
+    {0x1ff, 0x204},
+    // Finally, larger ClientHellos need no padding.
+    {0x200, 0x200},
+    {0x201, 0x201},
+};
+
+static bool TestPaddingExtension() {
+  // Sample a baseline length.
+  size_t base_len = GetClientHelloLen(1);
+  if (base_len == 0) {
+    return false;
+  }
+
+  for (const PaddingTest &test : kPaddingTests) {
+    if (base_len > test.input_len) {
+      fprintf(stderr, "Baseline ClientHello too long.\n");
+      return false;
+    }
+
+    size_t padded_len = GetClientHelloLen(1 + test.input_len - base_len);
+    if (padded_len != test.padded_len) {
+      fprintf(stderr, "%u-byte ClientHello padded to %u bytes, not %u.\n",
+              static_cast<unsigned>(test.input_len),
+              static_cast<unsigned>(padded_len),
+              static_cast<unsigned>(test.padded_len));
+      return false;
+    }
+  }
+  return true;
+}
+
 int main(void) {
   SSL_library_init();
 
@@ -566,7 +672,8 @@ int main(void) {
       !TestDefaultVersion(0, &DTLS_method) ||
       !TestDefaultVersion(DTLS1_VERSION, &DTLSv1_method) ||
       !TestDefaultVersion(DTLS1_2_VERSION, &DTLSv1_2_method) ||
-      !TestCipherGetRFCName()) {
+      !TestCipherGetRFCName() ||
+      !TestPaddingExtension()) {
     ERR_print_errors_fp(stderr);
     return 1;
   }
