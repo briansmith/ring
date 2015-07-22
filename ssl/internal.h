@@ -1077,8 +1077,6 @@ uint8_t *ssl_add_serverhello_tlsext(SSL *s, uint8_t *const buf,
                                     uint8_t *const limit);
 int ssl_parse_clienthello_tlsext(SSL *s, CBS *cbs);
 int ssl_parse_serverhello_tlsext(SSL *s, CBS *cbs);
-int ssl_prepare_clienthello_tlsext(SSL *s);
-int ssl_prepare_serverhello_tlsext(SSL *s);
 
 #define tlsext_tick_md EVP_sha256
 

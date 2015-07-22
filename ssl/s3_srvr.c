@@ -1207,10 +1207,7 @@ int ssl3_send_server_hello(SSL *s) {
 
     /* put the compression method */
     *(p++) = 0;
-    if (ssl_prepare_serverhello_tlsext(s) <= 0) {
-      OPENSSL_PUT_ERROR(SSL, SSL_R_SERVERHELLO_TLSEXT);
-      return -1;
-    }
+
     p = ssl_add_serverhello_tlsext(s, p, buf + SSL3_RT_MAX_PLAIN_LENGTH);
     if (p == NULL) {
       OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);

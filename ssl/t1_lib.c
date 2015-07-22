@@ -2535,10 +2535,6 @@ static int ssl_scan_serverhello_tlsext(SSL *s, CBS *cbs, int *out_alert) {
   return 1;
 }
 
-int ssl_prepare_clienthello_tlsext(SSL *s) { return 1; }
-
-int ssl_prepare_serverhello_tlsext(SSL *s) { return 1; }
-
 static int ssl_check_clienthello_tlsext(SSL *s) {
   int ret = SSL_TLSEXT_ERR_NOACK;
   int al = SSL_AD_UNRECOGNIZED_NAME;

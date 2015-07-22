@@ -693,11 +693,6 @@ int ssl3_send_client_hello(SSL *s) {
     *(p++) = 0; /* Add the NULL method */
 
     /* TLS extensions*/
-    if (ssl_prepare_clienthello_tlsext(s) <= 0) {
-      OPENSSL_PUT_ERROR(SSL, SSL_R_CLIENTHELLO_TLSEXT);
-      goto err;
-    }
-
     p = ssl_add_clienthello_tlsext(s, p, buf + SSL3_RT_MAX_PLAIN_LENGTH,
                                    p - buf);
     if (p == NULL) {
