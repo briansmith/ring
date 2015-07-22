@@ -15,7 +15,6 @@
 #include <string>
 #include <vector>
 
-#include <limits.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -76,29 +75,4 @@ void PrintUsage(const struct argument *templates) {
     const struct argument *templ = &templates[i];
     fprintf(stderr, "%s\t%s\n", templ->name, templ->description);
   }
-}
-
-bool GetUnsigned(unsigned *out, const std::string &arg_name,
-                 unsigned default_value,
-                 const std::map<std::string, std::string> &args) {
-  const auto &it = args.find(arg_name);
-  if (it == args.end()) {
-    *out = default_value;
-    return true;
-  }
-
-  const std::string &value = it->second;
-  if (value.empty()) {
-    return false;
-  }
-
-  char *endptr;
-  unsigned long int num = strtoul(value.c_str(), &endptr, 10);
-  if (*endptr ||
-      num > UINT_MAX) {
-    return false;
-  }
-
-  *out = num;
-  return true;
 }

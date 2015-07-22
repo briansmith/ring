@@ -123,25 +123,6 @@ typedef struct rsa_pss_params_st {
   ASN1_INTEGER *trailerField;
 } RSA_PSS_PARAMS;
 
-/* RSA_additional_prime contains information about the third, forth etc prime
- * in a multi-prime RSA key. */
-typedef struct RSA_additional_prime_st {
-  BIGNUM *prime;
-  /* exp is d^{prime-1} mod prime */
-  BIGNUM *exp;
-  /* coeff is such that r×coeff ≡ 1 mod prime. */
-  BIGNUM *coeff;
-
-  /* Values below here are not in the ASN.1 serialisation. */
-
-  /* r is the product of all primes (including p and q) prior to this one. */
-  BIGNUM *r;
-  /* method_mod is managed by the |RSA_METHOD|. */
-  BN_MONT_CTX *method_mod;
-} RSA_additional_prime;
-
-void RSA_additional_prime_free(RSA_additional_prime *ap);
-
 
 #if defined(__cplusplus)
 } /* extern C */

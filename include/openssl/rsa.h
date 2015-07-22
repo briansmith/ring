@@ -100,12 +100,6 @@ OPENSSL_EXPORT int RSA_up_ref(RSA *rsa);
 OPENSSL_EXPORT int RSA_generate_key_ex(RSA *rsa, int bits, BIGNUM *e,
                                        BN_GENCB *cb);
 
-/* RSA_generate_multi_prime_key acts like |RSA_generate_key_ex| but can
- * generate an RSA private key with more than two primes. */
-OPENSSL_EXPORT int RSA_generate_multi_prime_key(RSA *rsa, int bits,
-                                                int num_primes, BIGNUM *e,
-                                                BN_GENCB *cb);
-
 
 /* Encryption / Decryption */
 
@@ -443,13 +437,6 @@ OPENSSL_EXPORT int i2d_RSAPrivateKey(const RSA *in, uint8_t **outp);
 /* RSA_blinding_on returns one. */
 OPENSSL_EXPORT int RSA_blinding_on(RSA *rsa, BN_CTX *ctx);
 
-/* RSA_generate_key behaves like |RSA_generate_key_ex|, which is what you
- * should use instead. It returns NULL on error, or a newly-allocated |RSA| on
- * success. This function is provided for compatibility only. The |callback|
- * and |cb_arg| parameters must be NULL. */
-OPENSSL_EXPORT RSA *RSA_generate_key(int bits, unsigned long e, void *callback,
-                                     void *cb_arg);
-
 
 struct rsa_meth_st {
   struct openssl_method_common_st common;
@@ -504,9 +491,6 @@ struct rsa_meth_st {
   int flags;
 
   int (*keygen)(RSA *rsa, int bits, BIGNUM *e, BN_GENCB *cb);
-
-  int (*multi_prime_keygen)(RSA *rsa, int bits, int num_primes, BIGNUM *e,
-                            BN_GENCB *cb);
 
   /* supports_digest returns one if |rsa| supports digests of type
    * |md|. If null, it is assumed that all digests are supported. */
@@ -600,8 +584,6 @@ struct rsa_st {
 #define RSA_R_UNKNOWN_PADDING_TYPE 138
 #define RSA_R_VALUE_MISSING 139
 #define RSA_R_WRONG_SIGNATURE_LENGTH 140
-#define RSA_R_MUST_HAVE_AT_LEAST_TWO_PRIMES 141
-#define RSA_R_CANNOT_RECOVER_MULTI_PRIME_KEY 142
 #define RSA_R_BAD_ENCODING 143
 #define RSA_R_ENCODE_ERROR 144
 #define RSA_R_BAD_VERSION 145
