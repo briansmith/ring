@@ -2275,7 +2275,6 @@ uint8_t *ssl_add_clienthello_tlsext(SSL *s, uint8_t *const buf,
   }
 
   if (header_len > 0) {
-    size_t clienthello_minsize = 0;
     header_len += CBB_len(&extensions);
     if (header_len > 0xff && header_len < 0x200) {
       /* Add padding to workaround bugs in F5 terminators. See
@@ -2283,10 +2282,7 @@ uint8_t *ssl_add_clienthello_tlsext(SSL *s, uint8_t *const buf,
        *
        * NB: because this code works out the length of all existing extensions
        * it MUST always appear last. */
-      clienthello_minsize = 0x200;
-    }
-    if (header_len < clienthello_minsize) {
-      size_t padding_len = clienthello_minsize - header_len;
+      size_t padding_len = 0x200 - header_len;
       /* Extensions take at least four bytes to encode. Always include least
        * one byte of data if including the extension. WebSphere Application
        * Server 7.0 is intolerant to the last extension being zero-length. */
