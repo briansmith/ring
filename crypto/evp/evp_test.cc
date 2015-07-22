@@ -56,9 +56,18 @@
 #include <stdlib.h>
 #include <string.h>
 
+#if defined(_MSC_VER)
+#pragma warning(push)
+#pragma warning(disable: 4702)
+#endif
+
 #include <map>
 #include <string>
 #include <vector>
+
+#if defined(_MSC_VER)
+#pragma warning(pop)
+#endif
 
 #include <openssl/bio.h>
 #include <openssl/crypto.h>

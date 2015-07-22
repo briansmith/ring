@@ -18,11 +18,19 @@
 #include <stdint.h>
 #include <stdio.h>
 
+#if defined(_MSC_VER)
+#pragma warning(push)
+#pragma warning(disable: 4702)
+#endif
+
 #include <string>
 #include <map>
 #include <set>
 #include <vector>
 
+#if defined(_MSC_VER)
+#pragma warning(pop)
+#endif
 
 // File-based test framework.
 //
