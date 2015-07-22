@@ -100,12 +100,6 @@ OPENSSL_EXPORT int RSA_up_ref(RSA *rsa);
 OPENSSL_EXPORT int RSA_generate_key_ex(RSA *rsa, int bits, BIGNUM *e,
                                        BN_GENCB *cb);
 
-/* RSA_generate_multi_prime_key acts like |RSA_generate_key_ex| but can
- * generate an RSA private key with more than two primes. */
-OPENSSL_EXPORT int RSA_generate_multi_prime_key(RSA *rsa, int bits,
-                                                int num_primes, BIGNUM *e,
-                                                BN_GENCB *cb);
-
 
 /* Encryption / Decryption */
 
@@ -406,6 +400,7 @@ OPENSSL_EXPORT RSA *d2i_RSAPrivateKey(RSA **out, const uint8_t **inp, long len);
  * not, or a negative value on error. */
 OPENSSL_EXPORT int i2d_RSAPrivateKey(const RSA *in, uint8_t **outp);
 
+
 /* RSA_FLAG_OPAQUE specifies that this RSA_METHOD does not expose its key
  * material. This may be set if, for instance, it is wrapping some other crypto
  * API, like a platform key store. */
@@ -442,13 +437,6 @@ OPENSSL_EXPORT int i2d_RSAPrivateKey(const RSA *in, uint8_t **outp);
 
 /* RSA_blinding_on returns one. */
 OPENSSL_EXPORT int RSA_blinding_on(RSA *rsa, BN_CTX *ctx);
-
-/* RSA_generate_key behaves like |RSA_generate_key_ex|, which is what you
- * should use instead. It returns NULL on error, or a newly-allocated |RSA| on
- * success. This function is provided for compatibility only. The |callback|
- * and |cb_arg| parameters must be NULL. */
-OPENSSL_EXPORT RSA *RSA_generate_key(int bits, unsigned long e, void *callback,
-                                     void *cb_arg);
 
 
 struct rsa_meth_st {
@@ -505,9 +493,6 @@ struct rsa_meth_st {
 
   int (*keygen)(RSA *rsa, int bits, BIGNUM *e, BN_GENCB *cb);
 
-  int (*multi_prime_keygen)(RSA *rsa, int bits, int num_primes, BIGNUM *e,
-                            BN_GENCB *cb);
-
   /* supports_digest returns one if |rsa| supports digests of type
    * |md|. If null, it is assumed that all digests are supported. */
   int (*supports_digest)(const RSA *rsa, const EVP_MD *md);
@@ -559,6 +544,34 @@ struct rsa_st {
 }  /* extern C */
 #endif
 
+#define RSA_F_BN_BLINDING_convert_ex 100
+#define RSA_F_BN_BLINDING_create_param 101
+#define RSA_F_BN_BLINDING_invert_ex 102
+#define RSA_F_BN_BLINDING_new 103
+#define RSA_F_BN_BLINDING_update 104
+#define RSA_F_RSA_check_key 105
+#define RSA_F_RSA_new_method 106
+#define RSA_F_RSA_padding_add_PKCS1_OAEP_mgf1 107
+#define RSA_F_RSA_padding_add_PKCS1_PSS_mgf1 108
+#define RSA_F_RSA_padding_add_PKCS1_type_1 109
+#define RSA_F_RSA_padding_add_PKCS1_type_2 110
+#define RSA_F_RSA_padding_add_none 111
+#define RSA_F_RSA_padding_check_PKCS1_OAEP_mgf1 112
+#define RSA_F_RSA_padding_check_PKCS1_type_1 113
+#define RSA_F_RSA_padding_check_PKCS1_type_2 114
+#define RSA_F_RSA_padding_check_none 115
+#define RSA_F_RSA_recover_crt_params 116
+#define RSA_F_RSA_sign 117
+#define RSA_F_RSA_verify 118
+#define RSA_F_RSA_verify_PKCS1_PSS_mgf1 119
+#define RSA_F_decrypt 120
+#define RSA_F_encrypt 121
+#define RSA_F_keygen 122
+#define RSA_F_pkcs1_prefixed_msg 123
+#define RSA_F_private_transform 124
+#define RSA_F_rsa_setup_blinding 125
+#define RSA_F_sign_raw 126
+#define RSA_F_verify_raw 127
 #define RSA_R_BAD_E_VALUE 100
 #define RSA_R_BAD_FIXED_HEADER_DECRYPT 101
 #define RSA_R_BAD_PAD_BYTE_COUNT 102
@@ -600,8 +613,6 @@ struct rsa_st {
 #define RSA_R_UNKNOWN_PADDING_TYPE 138
 #define RSA_R_VALUE_MISSING 139
 #define RSA_R_WRONG_SIGNATURE_LENGTH 140
-#define RSA_R_MUST_HAVE_AT_LEAST_TWO_PRIMES 141
-#define RSA_R_CANNOT_RECOVER_MULTI_PRIME_KEY 142
 #define RSA_R_BAD_ENCODING 143
 #define RSA_R_ENCODE_ERROR 144
 #define RSA_R_BAD_VERSION 145
