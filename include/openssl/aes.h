@@ -120,18 +120,6 @@ OPENSSL_EXPORT void AES_cbc_encrypt(const uint8_t *in, uint8_t *out, size_t len,
                                     const int enc);
 
 
-/* Android compatibility section.
- *
- * These functions are declared, temporarily, for Android because
- * wpa_supplicant will take a little time to sync with upstream. Outside of
- * Android they'll have no definition. */
-
-OPENSSL_EXPORT int AES_wrap_key(AES_KEY *key, const uint8_t *iv, uint8_t *out,
-                                const uint8_t *in, unsigned in_len);
-OPENSSL_EXPORT int AES_unwrap_key(AES_KEY *key, const uint8_t *iv, uint8_t *out,
-                                  const uint8_t *in, unsigned in_len);
-
-
 #if defined(__cplusplus)
 }  /* extern C */
 #endif
