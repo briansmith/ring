@@ -140,4 +140,3 @@ endif()
 
 add_subdirectory(crypto)
 add_subdirectory(tool)
-add_subdirectory(decrepit)
