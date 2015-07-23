@@ -76,10 +76,10 @@ OPENSSL_EXPORT int RAND_status(void);
  * external so that variables of this type can be initialized. */
 struct rand_meth_st {
   void (*seed) (const void *buf, int num);
-  int (*bytes) (unsigned char *buf, int num);
+  int (*bytes) (uint8_t *buf, size_t num);
   void (*cleanup) (void);
   void (*add) (const void *buf, int num, double entropy);
-  int (*pseudorand) (unsigned char *buf, int num);
+  int (*pseudorand) (uint8_t *buf, size_t num);
   int (*status) (void);
 };
 
