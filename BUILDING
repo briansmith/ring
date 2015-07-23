@@ -1,97 +1,30 @@
 Build Prerequisites:
 
-  * CMake[1] 2.8.8 or later is required.
-
   * Perl 5.6.1 or later is required. On Windows, Strawberry Perl and MSYS Perl
-    have both been reported to work. If not found by CMake, it may be configured
-    explicitly by setting PERL_EXECUTABLE.
+    have both been reported to work.
 
-  * On Windows you currently must use Ninja[2] to build; on other platforms,
-    it is not required, but recommended, because it makes builds faster.
+  * A C compiler is required:
+    * Visual Studio 2013 or later on Windows.
+    * GCC 4.8 or later, or Clang 3.4 or later on Linux.
 
-  * If you need to build Ninja from source, then a recent version of
-    Python[3] is required (Python 2.7.5 works).
+  * Go[1] is currently required for running the tests.
 
-  * On Windows only, Yasm[4] is required. If not found by CMake, it may be
-    configured explicitly by setting CMAKE_ASM_NASM_COMPILER.
+Upstream BoringSSL uses CMake. ring uses GNU Make instead:
 
-  * A C compiler is required. On Windows, MSVC 12 (Visual Studio 2013) or later
-    with Platform SDK 8.1 or later are supported. Recent versions of GCC and
-    Clang should work on non-Windows platforms, and maybe on Windows too.
+  make -j6 CC=clang-3.7 CXX=clang-3.7++ BITS=64
 
-  * Go[5] is required. If not found by CMake, the go executable may be
-    configured explicitly by setting GO_EXECUTABLE.
+The default build is a debug build. You can build a release build with:
 
-Using Ninja (note the 'N' is capitalized in the cmake invocation):
+  make -j6 CC=clang-3.7 CXX=clang-3.7++ BITS=64 CMAKE_BUILD_TYPE=RELWITHDEBINFO
 
-  mkdir build
-  cd build
-  cmake -GNinja ..
-  ninja
+There is no "./configure" step yet, though there probably should be one.
 
-Using makefiles (does not work on Windows):
+Upstream BoringSSL supports building shared libraries. ring (currently) does
+not build *any* libraries. Instead, it expects you to link the object files
+named in $(RING_OBJS) directly into your project. Of course, you can create a
+static library if you want.
 
-  mkdir build
-  cd build
-  cmake ..
-  make
+Currently Windows isn't supported. Later there will be a Visual Studio solution
+that can be built using msbuild or the IDE.
 
-You usually don't need to run cmake again after changing CMakeLists.txt files
-because the build scripts will detect changes to them and rebuild themselves
-automatically.
-
-Note that the default build flags in the top-level CMakeLists.txt are for
-debugging - optimisation isn't enabled.
-
-If you want to cross-compile then there is an example toolchain file for
-32-bit Intel in util/. Wipe out the build directory, recreate it and run cmake
-like this:
-
-  cmake -DCMAKE_TOOLCHAIN_FILE=../util/32-bit-toolchain.cmake -GNinja ..
-
-If you want to build as a shared library, pass -DBUILD_SHARED_LIBS=1. On
-Windows, where functions need to be tagged with "dllimport" when coming from a
-shared library, define BORINGSSL_SHARED_LIBRARY in any code which #includes the
-BoringSSL headers.
-
-
-Building for Android:
-
-It's possible to build BoringSSL with the Android NDK using CMake. This has
-been tested with version 10d of the NDK.
-
-Unpack the Android NDK somewhere and export ANDROID_NDK to point to the
-directory. Clone https://github.com/taka-no-me/android-cmake into util/.
-Then make a build directory as above and run CMake *twice* like this:
-
-  cmake -DANDROID_NATIVE_API_LEVEL=android-9 \
-        -DANDROID_ABI=armeabi-v7a \
-        -DCMAKE_TOOLCHAIN_FILE=../util/android-cmake/android.toolchain.cmake \
-        -DANDROID_NATIVE_API_LEVEL=16 \
-        -GNinja ..
-
-Once you've run that twice, ninja should produce Android-compatible binaries.
-You can replace "armeabi-v7a" in the above with "arm64-v8a" to build aarch64
-binaries.
-
-
-Known Limitations on Windows:
-
-  * Versions of cmake since 3.0.2 have a bug in its Ninja generator that causes
-    yasm to output warnings "yasm: warning: can open only one input file, only
-    the last file will be processed". These warnings can be safely ignored.
-    The cmake bug is http://www.cmake.org/Bug/view.php?id=15253.
-
-  * cmake can generate Visual Studio projects, but the generated project files
-    don't have steps for assembling the assembly language source files, so they
-    currently cannot be used to build BoringSSL.
-
-[1] http://www.cmake.org/download/
-
-[2] https://martine.github.io/ninja/
-
-[3] https://www.python.org/downloads/
-
-[4] http://yasm.tortall.net/
-
-[5] https://golang.org/dl/
+[1] https://golang.org/dl/
