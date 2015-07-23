@@ -261,7 +261,6 @@ struct evp_pkey_method_st {
   int (*derive)(EVP_PKEY_CTX *ctx, uint8_t *key, size_t *keylen);
 
   int (*ctrl)(EVP_PKEY_CTX *ctx, int type, int p1, void *p2);
-  int (*ctrl_str)(EVP_PKEY_CTX *ctx, const char *type, const char *value);
 } /* EVP_PKEY_METHOD */;
 
 
