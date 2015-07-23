@@ -4,3 +4,4 @@ ssl/test/runner/runner
 *.swo
 doc/*.html
 doc/doc.css
+*~
