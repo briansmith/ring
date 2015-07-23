@@ -55,6 +55,7 @@
 #include <openssl/modes.h>
 
 #include "internal.h"
+#include "../test/test_util.h"
 
 
 struct test_case {
@@ -298,17 +299,6 @@ err:
   return 0;
 }
 
-void hexdump(const char *msg, const void *in, size_t len) {
-  const uint8_t *data = in;
-  size_t i;
-
-  fprintf(stderr, "%s: ", msg);
-  for (i = 0; i < len; i++) {
-    fprintf(stderr, "%02x", data[i]);
-  }
-  fprintf(stderr, "\n");
-}
-
 static int run_test_case(unsigned test_num, const struct test_case *test) {
   size_t key_len, plaintext_len, additional_data_len, nonce_len, ciphertext_len,
       tag_len;
@@ -367,8 +357,8 @@ static int run_test_case(unsigned test_num, const struct test_case *test) {
   if (!CRYPTO_gcm128_finish(&ctx, tag, tag_len) ||
       (ciphertext && memcmp(out, ciphertext, plaintext_len) != 0)) {
     fprintf(stderr, "%u: encrypt failed.\n", test_num);
-    hexdump("got ", out, plaintext_len);
-    hexdump("want", ciphertext, plaintext_len);
+    hexdump(stderr, "got :", out, plaintext_len);
+    hexdump(stderr, "want:", ciphertext, plaintext_len);
     goto out;
   }
 

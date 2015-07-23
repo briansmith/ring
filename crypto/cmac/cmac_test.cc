@@ -19,16 +19,13 @@
 #include <openssl/cmac.h>
 
 #include "../test/scoped_types.h"
+#include "../test/test_util.h"
 
 
-static void dump(const uint8_t *got, const uint8_t *expected, size_t len) {
-  ScopedBIO bio(BIO_new_fp(stderr, 0 /* don't close */));
-
-  BIO_puts(bio.get(), "\nGot:\n");
-  BIO_hexdump(bio.get(), got, len, 2 /* indent */);
-  BIO_puts(bio.get(), "Expected:\n");
-  BIO_hexdump(bio.get(), expected, len, 2 /* indent */);
-  BIO_flush(bio.get());
+static void dump(const uint8_t *got, const uint8_t *want, size_t len) {
+  hexdump(stderr, "got :", got, len);
+  hexdump(stderr, "want:", want, len);
+  fflush(stderr);
 }
 
 static int test(const char *name, const uint8_t *key, size_t key_len,
