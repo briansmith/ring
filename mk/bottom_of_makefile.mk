@@ -27,6 +27,9 @@ $(GENERATED) : | $(GENERATED_DIRS)
 
 # Variants of the built-in GNU Make rules that support targets in $(OBJ_PREFIX)
 
+%.o: %.S
+	$(COMPILE.c) $(OUTPUT_OPTION) $<
+
 $(OBJ_PREFIX)%.o: %.c
 	$(COMPILE.c) $(OUTPUT_OPTION) $<
 $(OBJ_PREFIX)%.o: %.cpp
