@@ -14,6 +14,14 @@
 
 .DEFAULT_GOAL := all
 
+ifeq ($(ARCH),x86)
+ARCH_FLAGS = -m32
+else ifeq ($(ARCH),x86_64)
+ARCH_FLAGS = -m64
+else
+$(error You must specify ARCH as one of {x86,x86_64})
+endif
+
 BUILD_PREFIX ?= build/
 
 EXE_PREFIX ?= $(BUILD_PREFIX)bin/
@@ -100,13 +108,8 @@ CFLAGS += \
   -Wstrict-prototypes \
   $(NULL)
 
-# Allow cross-compiliing x86 on x64 and vice versa.
-ifeq ($(BITS),)
-$(error You must specify BITS=32 or BITS=64)
-endif
-
-CPPFLAGS += -m$(BITS)
-LDFLAGS += -m$(BITS)
+CPPFLAGS += $(ARCH_FLAGS)
+LDFLAGS += $(ARCH_FLAGS)
 
 CMAKE_BUILD_TYPE ?= DEBUG
 
