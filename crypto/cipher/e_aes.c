@@ -98,8 +98,6 @@ typedef struct {
 #if !defined(OPENSSL_NO_ASM) && \
     (defined(OPENSSL_X86_64) || defined(OPENSSL_X86))
 #define VPAES
-extern unsigned int OPENSSL_ia32cap_P[];
-
 static char vpaes_capable(void) {
   return (OPENSSL_ia32cap_P[1] & (1 << (41 - 32))) != 0;
 }
