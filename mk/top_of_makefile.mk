@@ -15,9 +15,9 @@
 .DEFAULT_GOAL := all
 
 ifeq ($(ARCH),x86)
-ARCH_FLAGS = -m32
+ARCH_FLAGS ?= -m32
 else ifeq ($(ARCH),x86_64)
-ARCH_FLAGS = -m64
+ARCH_FLAGS ?= -m64
 else
 $(error You must specify ARCH as one of {x86,x86_64})
 endif
