@@ -406,25 +406,6 @@ static void err_error_string(uint32_t packed_error, const char *func_str,
   }
 }
 
-char *ERR_error_string(uint32_t packed_error, char *ret) {
-  static char buf[ERR_ERROR_STRING_BUF_LEN];
-
-  if (ret == NULL) {
-    /* TODO(fork): remove this. */
-    ret = buf;
-  }
-
-#if !defined(NDEBUG)
-  /* This is aimed to help catch callers who don't provide
-   * |ERR_ERROR_STRING_BUF_LEN| bytes of space. */
-  memset(ret, 0, ERR_ERROR_STRING_BUF_LEN);
-#endif
-
-  ERR_error_string_n(packed_error, ret, ERR_ERROR_STRING_BUF_LEN);
-
-  return ret;
-}
-
 void ERR_error_string_n(uint32_t packed_error, char *buf, size_t len) {
   err_error_string(packed_error, NULL, buf, len);
 }

@@ -191,16 +191,13 @@ OPENSSL_EXPORT uint32_t ERR_peek_last_error_line_data(const char **file,
                                                       const char **data,
                                                       int *flags);
 
-/* TODO(ring): In OpenSSL and BoringSSL, ERR_error_string returned a more
- * information-packed string. That functionality has been removed so that
- * ring's build system does not need Go, but we should add back something.
- *
- * TODO(fork): remove in favour of |ERR_error_string_n|. */
-OPENSSL_EXPORT char *ERR_error_string(uint32_t packed_error, char *buf);
 #define ERR_ERROR_STRING_BUF_LEN 256
 
-/* TODO(ring): In OpenSSL and BoringSSL, ERR_error_string returned a more
- * information-packed string. That functionality has been removed so that
+/* ring: OpenSSL and BoringSSL also provide |ERR_error_string|, which is less
+ * safe alternative to this function. Use this function instead.
+ *
+ * TODO(ring): In OpenSSL and BoringSSL, |ERR_error_string_n| returned a useful
+ * description of the error. That functionality has been removed so that
  * ring's build system does not need Go, but we should add back something. */
 OPENSSL_EXPORT void ERR_error_string_n(uint32_t packed_error, char *buf,
                                        size_t len);
