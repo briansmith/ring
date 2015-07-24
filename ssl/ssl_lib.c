@@ -1834,13 +1834,14 @@ void ssl_get_compatible_server_ciphers(SSL *s, uint32_t *out_mask_k,
 
   dh_tmp = (c->dh_tmp != NULL || c->dh_tmp_cb != NULL);
 
-  if (s->cert->x509 != NULL && s->cert->privatekey != NULL) {
-    if (s->cert->privatekey->type == EVP_PKEY_RSA) {
+  if (s->cert->x509 != NULL && ssl_has_private_key(s)) {
+    if (ssl_private_key_type(s) == EVP_PKEY_RSA) {
       have_rsa_cert = 1;
-    } else if (s->cert->privatekey->type == EVP_PKEY_EC) {
+    } else if (ssl_private_key_type(s) == EVP_PKEY_EC) {
       have_ecc_cert = 1;
     }
   }
+
   mask_k = 0;
   mask_a = 0;
 

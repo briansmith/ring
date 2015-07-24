@@ -2234,6 +2234,24 @@ func addStateMachineCoverageTests(async, splitHandshake bool, protocol protocol)
 				"-use-async-private-key",
 			},
 		})
+		tests = append(tests, testCase{
+			testType: serverTest,
+			name:     "Basic-Server-RSAAsyncKey",
+			flags: []string{
+				"-cert-file", path.Join(*resourceDir, rsaCertificateFile),
+				"-key-file", path.Join(*resourceDir, rsaKeyFile),
+				"-use-async-private-key",
+			},
+		})
+		tests = append(tests, testCase{
+			testType: serverTest,
+			name:     "Basic-Server-ECDSAAsyncKey",
+			flags: []string{
+				"-cert-file", path.Join(*resourceDir, ecdsaCertificateFile),
+				"-key-file", path.Join(*resourceDir, ecdsaKeyFile),
+				"-use-async-private-key",
+			},
+		})
 	}
 	tests = append(tests, testCase{
 		testType: serverTest,

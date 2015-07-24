@@ -1959,7 +1959,7 @@ int ssl3_send_cert_verify(SSL *s) {
     uint8_t *p = ssl_handshake_start(s);
     size_t signature_length = 0;
     unsigned long n = 0;
-    assert(s->cert->privatekey != NULL || s->cert->key_method != NULL);
+    assert(ssl_has_private_key(s));
 
     if (s->state == SSL3_ST_CW_CERT_VRFY_A) {
       uint8_t *buf = (uint8_t *)s->init_buf->data;
@@ -2036,8 +2036,7 @@ int ssl3_send_cert_verify(SSL *s) {
 /* ssl3_has_client_certificate returns true if a client certificate is
  * configured. */
 static int ssl3_has_client_certificate(SSL *ssl) {
-  return ssl->cert && ssl->cert->x509 && (ssl->cert->privatekey ||
-                                          ssl->cert->key_method);
+  return ssl->cert && ssl->cert->x509 && ssl_has_private_key(ssl);
 }
 
 int ssl3_send_client_certificate(SSL *s) {

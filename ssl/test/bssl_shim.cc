@@ -205,6 +205,7 @@ static ssl_private_key_result_t AsyncPrivateKeySignComplete(
   }
   memcpy(out, bssl::vector_data(&test_state->signature),
          test_state->signature.size());
+  *out_len = test_state->signature.size();
 
   test_state->signature.clear();
   test_state->signature_retries = 0;

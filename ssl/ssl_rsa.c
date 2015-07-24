@@ -632,6 +632,10 @@ void SSL_set_private_key_method(SSL *ssl,
   ssl->cert->key_method = key_method;
 }
 
+int ssl_has_private_key(SSL *ssl) {
+  return ssl->cert->privatekey != NULL || ssl->cert->key_method != NULL;
+}
+
 int ssl_private_key_type(SSL *ssl) {
   if (ssl->cert->key_method != NULL) {
     return ssl->cert->key_method->type(ssl);
