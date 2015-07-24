@@ -41,22 +41,22 @@ modes = [
     "RELWITHDEBINFO"
 ]
 
-bits_choices = [
-    "64",
-    "32",
+archs = [
+    "x86",
+    "x86_64",
 ]
 
 def format_entries():
-    return "\n".join([format_entry(compiler, mode, bits)
+    return "\n".join([format_entry(compiler, mode, arch)
                       for mode in modes
-                      for bits in bits_choices
+                      for arch in archs
                       for compiler in compilers
                       # XXX: 32-bit GCC 4.9 does not work because Travis does
                       # not have g++-4.9-multilib whitelisted for use.
-                      if not (compiler == "gcc-4.9" and bits == "32")])
+                      if not (compiler == "gcc-4.9" and arch == "x86")])
 
 entry_template = """
-    - env: %(uppercase)s_VERSION=%(version)s CMAKE_BUILD_TYPE=%(mode)s BITS=%(bits)s
+    - env: %(uppercase)s_VERSION=%(version)s CMAKE_BUILD_TYPE=%(mode)s ARCH=%(arch)s
       os: linux
       addons:
         apt:
@@ -67,11 +67,11 @@ entry_sources_template = """
           sources:
             %(sources)s"""
 
-def format_entry(compiler, mode, bits):
+def format_entry(compiler, mode, arch):
     def prefix_all(prefix, xs):
         return [prefix + x for x in xs]
 
-    packages = sorted(get_packages_to_install(compiler, bits))
+    packages = sorted(get_packages_to_install(compiler, arch))
     sources_with_dups = sum([get_sources_for_package(p) for p in packages],[])
     sources = sorted(list(set(sources_with_dups)))
     (compiler_name, compiler_version) = compiler.split("-")
@@ -83,12 +83,12 @@ def format_entry(compiler, mode, bits):
             "uppercase" : compiler_name.upper(),
             "version" : compiler_version,
             "mode" : mode,
-            "bits" : bits,
+            "arch" : arch,
             "packages" : "\n            ".join(prefix_all("- ", packages)),
             "sources" : "\n            ".join(prefix_all("- ", sources)),
             }
 
-def get_packages_to_install(compiler, bits):
+def get_packages_to_install(compiler, arch):
     # clang 3.4 is already installed
     if compiler == "clang-3.4":
         packages = []
@@ -99,7 +99,7 @@ def get_packages_to_install(compiler, bits):
     else:
         raise ValueError("unexpected compiler: %s" % compiler)
 
-    if bits == "32":
+    if arch == "x86":
         if compiler.startswith("clang-"):
             packages += ["libc6-dev-i386",
                          "gcc-multilib",
@@ -110,6 +110,10 @@ def get_packages_to_install(compiler, bits):
                          "linux-libc-dev:i386"]
         else:
             raise ValueError("unexpected compiler: %s" % compiler)
+    elif arch == "x86_64":
+        pass
+    else:
+        raise ValueError("unexpected arch: %s" % arch)
 
     packages.append("yasm")
 
