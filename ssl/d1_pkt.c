@@ -122,67 +122,57 @@
 #include "internal.h"
 
 
-/* mod 128 saturating subtract of two 64-bit values in big-endian order */
-static int satsub64be(const uint8_t *v1, const uint8_t *v2) {
-  int ret, sat, brw, i;
+/* to_u64_be treats |in| as a 8-byte big-endian integer and returns the value as
+ * a |uint64_t|. */
+static uint64_t to_u64_be(const uint8_t in[8]) {
+  uint64_t ret = 0;
+  unsigned i;
+  for (i = 0; i < 8; i++) {
+    ret <<= 8;
+    ret |= in[i];
+  }
+  return ret;
+}
 
-  if (sizeof(long) == 8) {
-    do {
-      const union {
-        long one;
-        char little;
-      } is_endian = {1};
-      long l;
+/* dtls1_bitmap_should_discard returns one if |seq_num| has been seen in |bitmap|
+ * or is stale. Otherwise it returns zero. */
+static int dtls1_bitmap_should_discard(DTLS1_BITMAP *bitmap,
+                                       const uint8_t seq_num[8]) {
+  const unsigned kWindowSize = sizeof(bitmap->map) * 8;
 
-      if (is_endian.little) {
-        break;
-      }
-      /* not reached on little-endians */
-      /* following test is redundant, because input is
-       * always aligned, but I take no chances... */
-      if (((size_t)v1 | (size_t)v2) & 0x7) {
-        break;
-      }
+  uint64_t seq_num_u = to_u64_be(seq_num);
+  if (seq_num_u > bitmap->max_seq_num) {
+    return 0;
+  }
+  uint64_t idx = bitmap->max_seq_num - seq_num_u;
+  return idx >= kWindowSize || (bitmap->map & (((uint64_t)1) << idx));
+}
 
-      l = *((long *)v1);
-      l -= *((long *)v2);
-      if (l > 128) {
-        return 128;
-      } else if (l < -128) {
-        return -128;
-      } else {
-        return (int)l;
-      }
-    } while (0);
+/* dtls1_bitmap_record updates |bitmap| to record receipt of sequence number
+ * |seq_num|. It slides the window forward if needed. It is an error to call
+ * this function on a stale sequence number. */
+static void dtls1_bitmap_record(DTLS1_BITMAP *bitmap,
+                                const uint8_t seq_num[8]) {
+  const unsigned kWindowSize = sizeof(bitmap->map) * 8;
+
+  uint64_t seq_num_u = to_u64_be(seq_num);
+  /* Shift the window if necessary. */
+  if (seq_num_u > bitmap->max_seq_num) {
+    uint64_t shift = seq_num_u - bitmap->max_seq_num;
+    if (shift >= kWindowSize) {
+      bitmap->map = 0;
+    } else {
+      bitmap->map <<= shift;
+    }
+    bitmap->max_seq_num = seq_num_u;
   }
 
-  ret = (int)v1[7] - (int)v2[7];
-  sat = 0;
-  brw = ret >> 8; /* brw is either 0 or -1 */
-  if (ret & 0x80) {
-    for (i = 6; i >= 0; i--) {
-      brw += (int)v1[i] - (int)v2[i];
-      sat |= ~brw;
-      brw >>= 8;
-    }
-  } else {
-    for (i = 6; i >= 0; i--) {
-      brw += (int)v1[i] - (int)v2[i];
-      sat |= brw;
-      brw >>= 8;
-    }
-  }
-  brw <<= 8; /* brw is either 0 or -256 */
-
-  if (sat & 0xff) {
-    return brw | 0x80;
-  } else {
-    return brw + (ret & 0xFF);
+  uint64_t idx = bitmap->max_seq_num - seq_num_u;
+  if (idx < kWindowSize) {
+    bitmap->map |= ((uint64_t)1) << idx;
   }
 }
 
-static int dtls1_record_replay_check(SSL *s, DTLS1_BITMAP *bitmap);
-static void dtls1_record_bitmap_update(SSL *s, DTLS1_BITMAP *bitmap);
 static int do_dtls1_write(SSL *s, int type, const uint8_t *buf,
                           unsigned int len, enum dtls1_use_epoch_t use_epoch);
 
@@ -289,7 +279,7 @@ again:
   }
 
   /* Check whether this is a repeat, or aged record. */
-  if (!dtls1_record_replay_check(s, &s->d1->bitmap)) {
+  if (dtls1_bitmap_should_discard(&s->d1->bitmap, s->s3->read_sequence)) {
     rr->length = 0;
     s->packet_length = 0; /* dump this record */
     goto again;           /* get another record */
@@ -338,7 +328,7 @@ again:
   /* we have pulled in a full packet so zero things */
   s->packet_length = 0;
 
-  dtls1_record_bitmap_update(s, &s->d1->bitmap); /* Mark receipt of record. */
+  dtls1_bitmap_record(&s->d1->bitmap, s->s3->read_sequence);
 
   /* just read a 0 length packet
    * TODO(davidben): Reject excess 0-length packets? */
@@ -783,47 +773,6 @@ static int do_dtls1_write(SSL *s, int type, const uint8_t *buf,
 
   /* we now just need to write the buffer */
   return ssl3_write_pending(s, type, buf, len);
-}
-
-static int dtls1_record_replay_check(SSL *s, DTLS1_BITMAP *bitmap) {
-  int cmp;
-  unsigned int shift;
-  const uint8_t *seq = s->s3->read_sequence;
-
-  cmp = satsub64be(seq, bitmap->max_seq_num);
-  if (cmp > 0) {
-    return 1; /* this record in new */
-  }
-  shift = -cmp;
-  if (shift >= sizeof(bitmap->map) * 8) {
-    return 0; /* stale, outside the window */
-  } else if (bitmap->map & (((uint64_t)1) << shift)) {
-    return 0; /* record previously received */
-  }
-
-  return 1;
-}
-
-static void dtls1_record_bitmap_update(SSL *s, DTLS1_BITMAP *bitmap) {
-  int cmp;
-  unsigned int shift;
-  const uint8_t *seq = s->s3->read_sequence;
-
-  cmp = satsub64be(seq, bitmap->max_seq_num);
-  if (cmp > 0) {
-    shift = cmp;
-    if (shift < sizeof(bitmap->map) * 8) {
-      bitmap->map <<= shift, bitmap->map |= 1UL;
-    } else {
-      bitmap->map = 1UL;
-    }
-    memcpy(bitmap->max_seq_num, seq, 8);
-  } else {
-    shift = -cmp;
-    if (shift < sizeof(bitmap->map) * 8) {
-      bitmap->map |= ((uint64_t)1) << shift;
-    }
-  }
 }
 
 int dtls1_dispatch_alert(SSL *s) {

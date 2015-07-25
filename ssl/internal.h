@@ -344,6 +344,20 @@ int SSL_AEAD_CTX_seal(SSL_AEAD_CTX *ctx, uint8_t *out, size_t *out_len,
                       size_t in_len);
 
 
+/* DTLS replay bitmap. */
+
+/* DTLS1_BITMAP maintains a sliding window of 64 sequence numbers to detect
+ * replayed packets. It should be initialized by zeroing every field. */
+typedef struct dtls1_bitmap_st {
+  /* map is a bit mask of the last 64 sequence numbers. Bit
+   * |1<<i| corresponds to |max_seq_num - i|. */
+  uint64_t map;
+  /* max_seq_num is the largest sequence number seen so far as a 64-bit
+   * integer. */
+  uint64_t max_seq_num;
+} DTLS1_BITMAP;
+
+
 /* Private key operations. */
 
 /* ssl_has_private_key returns one if |ssl| has a private key
@@ -723,15 +737,6 @@ struct ssl3_enc_method {
 #define DTLS1_CCS_HEADER_LENGTH 1
 
 #define DTLS1_AL_HEADER_LENGTH 2
-
-typedef struct dtls1_bitmap_st {
-  /* map is a bit mask of the last 64 sequence numbers. Bit
-   * |1<<i| corresponds to |max_seq_num - i|. */
-  uint64_t map;
-  /* max_seq_num is the largest sequence number seen so far. It
-   * is a 64-bit value in big-endian encoding. */
-  uint8_t max_seq_num[8];
-} DTLS1_BITMAP;
 
 /* TODO(davidben): This structure is used for both incoming messages and
  * outgoing messages. |is_ccs| and |epoch| are only used in the latter and
