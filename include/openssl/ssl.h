@@ -448,12 +448,10 @@ OPENSSL_EXPORT uint32_t SSL_get_options(const SSL *ssl);
 
 /* SSL_MODE_SEND_FALLBACK_SCSV sends TLS_FALLBACK_SCSV in the ClientHello.
  * To be set only by applications that reconnect with a downgraded protocol
- * version; see https://tools.ietf.org/html/draft-ietf-tls-downgrade-scsv-05
- * for details.
+ * version; see RFC 7507 for details.
  *
  * DO NOT ENABLE THIS if your application attempts a normal handshake. Only use
- * this in explicit fallback retries, following the guidance in
- * draft-ietf-tls-downgrade-scsv-05. */
+ * this in explicit fallback retries, following the guidance in RFC 7507. */
 #define SSL_MODE_SEND_FALLBACK_SCSV 0x00000400L
 
 /* The following flags do nothing and are included only to make it easier to

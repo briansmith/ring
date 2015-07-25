@@ -132,10 +132,9 @@ extern "C" {
 #define SSL2_MT_CLIENT_HELLO 1
 #define SSL2_VERSION 0x0002
 
-/* Signalling cipher suite value: from RFC5746 */
+/* Signalling cipher suite value from RFC 5746. */
 #define SSL3_CK_SCSV 0x030000FF
-/* Fallback signalling cipher suite value: not IANA assigned.
- * See https://tools.ietf.org/html/draft-bmoeller-tls-downgrade-scsv-01 */
+/* Fallback signalling cipher suite value from RFC 7507. */
 #define SSL3_CK_FALLBACK_SCSV 0x03005600
 
 #define SSL3_CK_RSA_NULL_MD5 0x03000001
