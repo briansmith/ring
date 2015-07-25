@@ -172,10 +172,6 @@
 #include "../crypto/dh/internal.h"
 
 
-/* INITIAL_SNIFF_BUFFER_SIZE is the number of bytes read in the initial sniff
- * buffer. */
-#define INITIAL_SNIFF_BUFFER_SIZE 8
-
 int ssl3_accept(SSL *s) {
   BUF_MEM *buf = NULL;
   uint32_t alg_a;
@@ -590,13 +586,14 @@ end:
 }
 
 int ssl3_get_initial_bytes(SSL *s) {
-  /* Read the first 8 bytes. To recognize a V2ClientHello only needs the first 4
-   * bytes, but 8 is needed to recognize CONNECT below. */
-  int ret = ssl3_read_n(s, INITIAL_SNIFF_BUFFER_SIZE, 0 /* new packet */);
+  /* Read the first 5 bytes, the size of the TLS record header. This is
+   * sufficient to detect a V2ClientHello and ensures that we never read beyond
+   * the first record. */
+  int ret = ssl3_read_n(s, SSL3_RT_HEADER_LENGTH, 0 /* new packet */);
   if (ret <= 0) {
     return ret;
   }
-  assert(s->packet_length == INITIAL_SNIFF_BUFFER_SIZE);
+  assert(s->packet_length == SSL3_RT_HEADER_LENGTH);
   const uint8_t *p = s->packet;
 
   /* Some dedicated error codes for protocol mixups should the application wish
@@ -609,7 +606,7 @@ int ssl3_get_initial_bytes(SSL *s) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_HTTP_REQUEST);
     return -1;
   }
-  if (strncmp("CONNECT ", (const char *)p, 8) == 0) {
+  if (strncmp("CONNE", (const char *)p, 5) == 0) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_HTTPS_PROXY_REQUEST);
     return -1;
   }
@@ -625,9 +622,9 @@ int ssl3_get_initial_bytes(SSL *s) {
   /* Fall through to the standard logic. Unread what's been read to re-process
    * it. */
   assert(s->rstate == SSL_ST_READ_HEADER);
-  assert(s->s3->rbuf.offset >= INITIAL_SNIFF_BUFFER_SIZE);
-  s->s3->rbuf.offset -= INITIAL_SNIFF_BUFFER_SIZE;
-  s->s3->rbuf.left += INITIAL_SNIFF_BUFFER_SIZE;
+  assert(s->s3->rbuf.offset >= SSL3_RT_HEADER_LENGTH);
+  s->s3->rbuf.offset -= SSL3_RT_HEADER_LENGTH;
+  s->s3->rbuf.left += SSL3_RT_HEADER_LENGTH;
   s->packet = NULL;
   s->packet_length = 0;
 
@@ -646,24 +643,24 @@ int ssl3_get_v2_client_hello(SSL *s) {
   uint8_t random[SSL3_RANDOM_SIZE];
 
   /* Determine the length of the V2ClientHello. */
-  assert(s->packet_length >= INITIAL_SNIFF_BUFFER_SIZE);
+  assert(s->packet_length >= SSL3_RT_HEADER_LENGTH);
   p = (const uint8_t *)s->packet;
   msg_length = ((p[0] & 0x7f) << 8) | p[1];
   if (msg_length > (1024 * 4)) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_RECORD_TOO_LARGE);
     return -1;
   }
-  if (msg_length < INITIAL_SNIFF_BUFFER_SIZE - 2) {
+  if (msg_length < SSL3_RT_HEADER_LENGTH - 2) {
     /* Reject lengths that are too short early. We have already read
-     * |INITIAL_SNIFF_BUFFER_SIZE| bytes, so we should not attempt to process an
+     * |SSL3_RT_HEADER_LENGTH| bytes, so we should not attempt to process an
      * (invalid) V2ClientHello which would be shorter than that. */
     OPENSSL_PUT_ERROR(SSL, SSL_R_RECORD_LENGTH_MISMATCH);
     return -1;
   }
 
   /* Read the remainder of the V2ClientHello. We have previously read
-   * |INITIAL_SNIFF_BUFFER_SIZE| bytes in ssl3_get_initial_bytes. */
-  ret = ssl3_read_n(s, msg_length - (INITIAL_SNIFF_BUFFER_SIZE - 2),
+   * |SSL3_RT_HEADER_LENGTH| bytes in ssl3_get_initial_bytes. */
+  ret = ssl3_read_n(s, msg_length - (SSL3_RT_HEADER_LENGTH - 2),
                     1 /* extend */);
   if (ret <= 0) {
     return ret;
