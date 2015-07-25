@@ -199,7 +199,6 @@ int ssl3_new(SSL *s) {
     goto err;
   }
   memset(s3, 0, sizeof *s3);
-  memset(s3->rrec.seq_num, 0, sizeof(s3->rrec.seq_num));
 
   s->s3 = s3;
 

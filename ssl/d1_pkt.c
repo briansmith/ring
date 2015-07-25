@@ -183,71 +183,8 @@ static int satsub64be(const uint8_t *v1, const uint8_t *v2) {
 
 static int dtls1_record_replay_check(SSL *s, DTLS1_BITMAP *bitmap);
 static void dtls1_record_bitmap_update(SSL *s, DTLS1_BITMAP *bitmap);
-static int dtls1_process_record(SSL *s);
 static int do_dtls1_write(SSL *s, int type, const uint8_t *buf,
                           unsigned int len, enum dtls1_use_epoch_t use_epoch);
-
-static int dtls1_process_record(SSL *s) {
-  int al;
-  SSL3_RECORD *rr = &s->s3->rrec;
-
-  /* check is not needed I believe */
-  if (rr->length > SSL3_RT_MAX_ENCRYPTED_LENGTH) {
-    al = SSL_AD_RECORD_OVERFLOW;
-    OPENSSL_PUT_ERROR(SSL, SSL_R_ENCRYPTED_LENGTH_TOO_LONG);
-    goto f_err;
-  }
-
-  /* |rr->data| points to |rr->length| bytes of ciphertext in |s->packet|. */
-  rr->data = &s->packet[DTLS1_RT_HEADER_LENGTH];
-
-  uint8_t seq[8];
-  seq[0] = rr->epoch >> 8;
-  seq[1] = rr->epoch & 0xff;
-  memcpy(&seq[2], &rr->seq_num[2], 6);
-
-  /* Decrypt the packet in-place. Note it is important that |SSL_AEAD_CTX_open|
-   * not write beyond |rr->length|. There may be another record in the packet.
-   *
-   * TODO(davidben): This assumes |s->version| is the same as the record-layer
-   * version which isn't always true, but it only differs with the NULL cipher
-   * which ignores the parameter. */
-  size_t plaintext_len;
-  if (!SSL_AEAD_CTX_open(s->aead_read_ctx, rr->data, &plaintext_len, rr->length,
-                         rr->type, s->version, seq, rr->data, rr->length)) {
-    /* Bad packets are silently dropped in DTLS. Clear the error queue of any
-     * errors decryption may have added. */
-    ERR_clear_error();
-    rr->length = 0;
-    s->packet_length = 0;
-    goto err;
-  }
-
-  if (plaintext_len > SSL3_RT_MAX_PLAIN_LENGTH) {
-    al = SSL_AD_RECORD_OVERFLOW;
-    OPENSSL_PUT_ERROR(SSL, SSL_R_DATA_LENGTH_TOO_LONG);
-    goto f_err;
-  }
-  assert(plaintext_len < (1u << 16));
-  rr->length = plaintext_len;
-
-  rr->off = 0;
-  /* So at this point the following is true
-   * ssl->s3->rrec.type 	is the type of record
-   * ssl->s3->rrec.length	== number of bytes in record
-   * ssl->s3->rrec.off	== offset to first valid byte
-   * ssl->s3->rrec.data	== the first byte of the record body. */
-
-  /* we have pulled in a full packet so zero things */
-  s->packet_length = 0;
-  return 1;
-
-f_err:
-  ssl3_send_alert(s, SSL3_AL_FATAL, al);
-
-err:
-  return 0;
-}
 
 /* Call this to get a new input record.
  * It will return <= 0 if more data is needed, normally due to an error
@@ -307,30 +244,16 @@ again:
 
     n2s(p, rr->length);
 
-    /* Lets check version */
-    if (s->s3->have_version) {
-      if (version != s->version) {
-        /* The record's version doesn't match, so silently drop it.
-         *
-         * TODO(davidben): This doesn't work. The DTLS record layer is not
-         * packet-based, so the remainder of the packet isn't dropped and we
-         * get a framing error. It's also unclear what it means to silently
-         * drop a record in a packet containing two records. */
-        rr->length = 0;
-        s->packet_length = 0;
-        goto again;
-      }
-    }
-
-    if ((version & 0xff00) != (s->version & 0xff00)) {
-      /* wrong version, silently discard record */
-      rr->length = 0;
-      s->packet_length = 0;
-      goto again;
-    }
-
-    if (rr->length > SSL3_RT_MAX_ENCRYPTED_LENGTH) {
-      /* record too long, silently discard it */
+    /* Check the header. */
+    if ((s->s3->have_version && version != s->version) ||
+        (version & 0xff00) != (s->version & 0xff00) ||
+        rr->length > SSL3_RT_MAX_ENCRYPTED_LENGTH) {
+      /* The record's header is invalid, so silently drop it.
+       *
+       * TODO(davidben): This doesn't work. The DTLS record layer is not
+       * packet-based, so the remainder of the packet isn't dropped and we
+       * get a framing error. It's also unclear what it means to silently
+       * drop a record in a packet containing two records. */
       rr->length = 0;
       s->packet_length = 0;
       goto again;
@@ -372,17 +295,56 @@ again:
     goto again;           /* get another record */
   }
 
-  /* just read a 0 length packet */
-  if (rr->length == 0) {
+  /* |rr->data| points to |rr->length| bytes of ciphertext in |s->packet|. */
+  rr->data = &s->packet[DTLS1_RT_HEADER_LENGTH];
+
+  uint8_t seq[8];
+  seq[0] = rr->epoch >> 8;
+  seq[1] = rr->epoch & 0xff;
+  memcpy(&seq[2], &s->s3->read_sequence[2], 6);
+
+  /* Decrypt the packet in-place. Note it is important that |ssl_aead_ctx_open|
+   * not write beyond |rr->length|. There may be another record in the packet.
+   *
+   * TODO(davidben): This assumes |s->version| is the same as the record-layer
+   * version which isn't always true, but it only differs with the NULL cipher
+   * which ignores the parameter. */
+  size_t plaintext_len;
+  if (!SSL_AEAD_CTX_open(s->aead_read_ctx, rr->data, &plaintext_len, rr->length,
+                         rr->type, s->version, seq, rr->data, rr->length)) {
+    /* Bad packets are silently dropped in DTLS. Clear the error queue of any
+     * errors decryption may have added. */
+    ERR_clear_error();
+    rr->length = 0;
+    s->packet_length = 0;
     goto again;
   }
 
-  if (!dtls1_process_record(s)) {
-    rr->length = 0;
-    s->packet_length = 0; /* dump this record */
-    goto again;           /* get another record */
+  if (plaintext_len > SSL3_RT_MAX_PLAIN_LENGTH) {
+    OPENSSL_PUT_ERROR(SSL, SSL_R_DATA_LENGTH_TOO_LONG);
+    ssl3_send_alert(s, SSL3_AL_FATAL, SSL_AD_RECORD_OVERFLOW);
+    return -1;
   }
+  assert(plaintext_len < (1u << 16));
+  rr->length = plaintext_len;
+
+  rr->off = 0;
+  /* So at this point the following is true
+   * ssl->s3->rrec.type   is the type of record
+   * ssl->s3->rrec.length == number of bytes in record
+   * ssl->s3->rrec.off  == offset to first valid byte
+   * ssl->s3->rrec.data == the first byte of the record body. */
+
+  /* we have pulled in a full packet so zero things */
+  s->packet_length = 0;
+
   dtls1_record_bitmap_update(s, &s->d1->bitmap); /* Mark receipt of record. */
+
+  /* just read a 0 length packet
+   * TODO(davidben): Reject excess 0-length packets? */
+  if (rr->length == 0) {
+    goto again;
+  }
 
   return 1;
 }
@@ -830,7 +792,6 @@ static int dtls1_record_replay_check(SSL *s, DTLS1_BITMAP *bitmap) {
 
   cmp = satsub64be(seq, bitmap->max_seq_num);
   if (cmp > 0) {
-    memcpy(s->s3->rrec.seq_num, seq, 8);
     return 1; /* this record in new */
   }
   shift = -cmp;
@@ -840,7 +801,6 @@ static int dtls1_record_replay_check(SSL *s, DTLS1_BITMAP *bitmap) {
     return 0; /* record previously received */
   }
 
-  memcpy(s->s3->rrec.seq_num, seq, 8);
   return 1;
 }
 

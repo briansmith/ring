@@ -313,12 +313,6 @@ typedef struct ssl3_record_st {
   uint8_t *data;
   /* epoch, in DTLS, is the epoch number of the record. */
   uint16_t epoch;
-  /* seq_num, in DTLS, is the sequence number of the record. The top two bytes
-   * are always zero.
-   *
-   * TODO(davidben): This is confusing. They should include the epoch or the
-   * field should be six bytes. */
-  uint8_t seq_num[8];
 } SSL3_RECORD;
 
 typedef struct ssl3_buffer_st {
