@@ -23,11 +23,14 @@ compilers = [
     # Since Travis CI limits the number of concurrent builds, we put the
     # highest-signal (most likely to break) builds first, to reduce latency
     # in discovering broken builds.
-    latest_clang, # Newest clang first.
+    #
+    # XXX TODO: clang-3.7 was available and working using this setup, but for
+    # some reason it isn't working any more as of 2015-07-24, so it has been
+    # removed from the matrix for now.
+    "clang-3.6", # Newest clang first.
     "gcc-4.8",   # Oldest GCC next.
 
     # All other clang versions, newest to oldest.
-    "clang-3.6",
     "clang-3.5",
     "clang-3.4",
 
