@@ -158,6 +158,8 @@ type testCase struct {
 	// messageLen is the length, in bytes, of the test message that will be
 	// sent.
 	messageLen int
+	// messageCount is the number of test messages that will be sent.
+	messageCount int
 	// certFile is the path to the certificate to use for the server.
 	certFile string
 	// keyFile is the path to the private key to use for the server.
@@ -221,7 +223,7 @@ type testCase struct {
 
 var testCases []testCase
 
-func doExchange(test *testCase, config *Config, conn net.Conn, messageLen int, isResume bool) error {
+func doExchange(test *testCase, config *Config, conn net.Conn, isResume bool) error {
 	var connDebug *recordingConn
 	var connDamage *damageAdaptor
 	if *flagDebug {
@@ -379,6 +381,7 @@ func doExchange(test *testCase, config *Config, conn net.Conn, messageLen int, i
 		connDamage.setDamage(false)
 	}
 
+	messageLen := test.messageLen
 	if messageLen < 0 {
 		if test.protocol == dtls {
 			return fmt.Errorf("messageLen < 0 not supported for DTLS tests")
@@ -387,45 +390,52 @@ func doExchange(test *testCase, config *Config, conn net.Conn, messageLen int, i
 		_, err := io.Copy(ioutil.Discard, tlsConn)
 		return err
 	}
-
 	if messageLen == 0 {
 		messageLen = 32
 	}
-	testMessage := make([]byte, messageLen)
-	for i := range testMessage {
-		testMessage[i] = 0x42
-	}
-	tlsConn.Write(testMessage)
 
-	for i := 0; i < test.sendEmptyRecords; i++ {
-		tlsConn.Write(nil)
+	messageCount := test.messageCount
+	if messageCount == 0 {
+		messageCount = 1
 	}
 
-	for i := 0; i < test.sendWarningAlerts; i++ {
-		tlsConn.SendAlert(alertLevelWarning, alertUnexpectedMessage)
-	}
-
-	buf := make([]byte, len(testMessage))
-	if test.protocol == dtls {
-		bufTmp := make([]byte, len(buf)+1)
-		n, err := tlsConn.Read(bufTmp)
-		if err != nil {
-			return err
+	for j := 0; j < messageCount; j++ {
+		testMessage := make([]byte, messageLen)
+		for i := range testMessage {
+			testMessage[i] = 0x42 ^ byte(j)
 		}
-		if n != len(buf) {
-			return fmt.Errorf("bad reply; length mismatch (%d vs %d)", n, len(buf))
-		}
-		copy(buf, bufTmp)
-	} else {
-		_, err := io.ReadFull(tlsConn, buf)
-		if err != nil {
-			return err
-		}
-	}
+		tlsConn.Write(testMessage)
 
-	for i, v := range buf {
-		if v != testMessage[i]^0xff {
-			return fmt.Errorf("bad reply contents at byte %d", i)
+		for i := 0; i < test.sendEmptyRecords; i++ {
+			tlsConn.Write(nil)
+		}
+
+		for i := 0; i < test.sendWarningAlerts; i++ {
+			tlsConn.SendAlert(alertLevelWarning, alertUnexpectedMessage)
+		}
+
+		buf := make([]byte, len(testMessage))
+		if test.protocol == dtls {
+			bufTmp := make([]byte, len(buf)+1)
+			n, err := tlsConn.Read(bufTmp)
+			if err != nil {
+				return err
+			}
+			if n != len(buf) {
+				return fmt.Errorf("bad reply; length mismatch (%d vs %d)", n, len(buf))
+			}
+			copy(buf, bufTmp)
+		} else {
+			_, err := io.ReadFull(tlsConn, buf)
+			if err != nil {
+				return err
+			}
+		}
+
+		for i, v := range buf {
+			if v != testMessage[i]^0xff {
+				return fmt.Errorf("bad reply contents at byte %d", i)
+			}
 		}
 	}
 
@@ -595,7 +605,7 @@ func runTest(test *testCase, shimPath string, mallocNumToFail int64) error {
 
 	conn, err := acceptOrWait(listener, waitChan)
 	if err == nil {
-		err = doExchange(test, &config, conn, test.messageLen, false /* not a resumption */)
+		err = doExchange(test, &config, conn, false /* not a resumption */)
 		conn.Close()
 	}
 
@@ -625,7 +635,7 @@ func runTest(test *testCase, shimPath string, mallocNumToFail int64) error {
 		var connResume net.Conn
 		connResume, err = acceptOrWait(listener, waitChan)
 		if err == nil {
-			err = doExchange(test, &resumeConfig, connResume, test.messageLen, true /* resumption */)
+			err = doExchange(test, &resumeConfig, connResume, true /* resumption */)
 			connResume.Close()
 		}
 	}
@@ -3303,19 +3313,38 @@ func addDTLSReplayTests() {
 	testCases = append(testCases, testCase{
 		protocol:     dtls,
 		name:         "DTLS-Replay",
+		messageCount: 200,
 		replayWrites: true,
 	})
 
-	// Test the outgoing sequence number skipping by values larger
+	// Test the incoming sequence number skipping by values larger
 	// than the retransmit window.
 	testCases = append(testCases, testCase{
 		protocol: dtls,
 		name:     "DTLS-Replay-LargeGaps",
 		config: Config{
 			Bugs: ProtocolBugs{
-				SequenceNumberIncrement: 127,
+				SequenceNumberMapping: func(in uint64) uint64 {
+					return in * 127
+				},
 			},
 		},
+		messageCount: 200,
+		replayWrites: true,
+	})
+
+	// Test the incoming sequence number changing non-monotonically.
+	testCases = append(testCases, testCase{
+		protocol: dtls,
+		name:     "DTLS-Replay-NonMonotonic",
+		config: Config{
+			Bugs: ProtocolBugs{
+				SequenceNumberMapping: func(in uint64) uint64 {
+					return in ^ 31
+				},
+			},
+		},
+		messageCount: 200,
 		replayWrites: true,
 	})
 }

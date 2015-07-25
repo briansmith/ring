@@ -298,13 +298,13 @@ func (c *Conn) dtlsSealRecord(typ recordType, data []byte) (b *block, err error)
 	b.data[1] = byte(vers >> 8)
 	b.data[2] = byte(vers)
 	// DTLS records include an explicit sequence number.
-	copy(b.data[3:11], c.out.seq[0:])
+	copy(b.data[3:11], c.out.outSeq[0:])
 	b.data[11] = byte(len(data) >> 8)
 	b.data[12] = byte(len(data))
 	if explicitIVLen > 0 {
 		explicitIV := b.data[recordHeaderLen : recordHeaderLen+explicitIVLen]
 		if explicitIVIsSeq {
-			copy(explicitIV, c.out.seq[:])
+			copy(explicitIV, c.out.outSeq[:])
 		} else {
 			if _, err = io.ReadFull(c.config.rand(), explicitIV); err != nil {
 				return

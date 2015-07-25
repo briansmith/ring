@@ -12,6 +12,7 @@ import (
 	"crypto/ecdsa"
 	"crypto/subtle"
 	"crypto/x509"
+	"encoding/binary"
 	"errors"
 	"fmt"
 	"io"
@@ -87,6 +88,8 @@ func (c *Conn) init() {
 	c.out.isDTLS = c.isDTLS
 	c.in.config = c.config
 	c.out.config = c.config
+
+	c.out.updateOutSeq()
 }
 
 // Access to net.Conn methods.
@@ -134,6 +137,7 @@ type halfConn struct {
 	cipher  interface{} // cipher algorithm
 	mac     macFunction
 	seq     [8]byte // 64-bit sequence number
+	outSeq  [8]byte // Mapped sequence number
 	bfree   *block  // list of free blocks
 
 	nextCipher interface{} // next encryption state
@@ -189,10 +193,6 @@ func (hc *halfConn) incSeq(isOutgoing bool) {
 	if hc.isDTLS {
 		// Increment up to the epoch in DTLS.
 		limit = 2
-
-		if isOutgoing && hc.config.Bugs.SequenceNumberIncrement != 0 {
-			increment = hc.config.Bugs.SequenceNumberIncrement
-		}
 	}
 	for i := 7; i >= limit; i-- {
 		increment += uint64(hc.seq[i])
@@ -206,6 +206,8 @@ func (hc *halfConn) incSeq(isOutgoing bool) {
 	if increment != 0 {
 		panic("TLS: sequence number wraparound")
 	}
+
+	hc.updateOutSeq()
 }
 
 // incNextSeq increments the starting sequence number for the next epoch.
@@ -241,6 +243,22 @@ func (hc *halfConn) incEpoch() {
 			hc.seq[i] = 0
 		}
 	}
+
+	hc.updateOutSeq()
+}
+
+func (hc *halfConn) updateOutSeq() {
+	if hc.config.Bugs.SequenceNumberMapping != nil {
+		seqU64 := binary.BigEndian.Uint64(hc.seq[:])
+		seqU64 = hc.config.Bugs.SequenceNumberMapping(seqU64)
+		binary.BigEndian.PutUint64(hc.outSeq[:], seqU64)
+
+		// The DTLS epoch cannot be changed.
+		copy(hc.outSeq[:2], hc.seq[:2])
+		return
+	}
+
+	copy(hc.outSeq[:], hc.seq[:])
 }
 
 func (hc *halfConn) recordHeaderLen() int {
@@ -460,7 +478,7 @@ func (hc *halfConn) encrypt(b *block, explicitIVLen int) (bool, alert) {
 
 	// mac
 	if hc.mac != nil {
-		mac := hc.mac.MAC(hc.outDigestBuf, hc.seq[0:], b.data[:3], b.data[recordHeaderLen-2:recordHeaderLen], b.data[recordHeaderLen+explicitIVLen:])
+		mac := hc.mac.MAC(hc.outDigestBuf, hc.outSeq[0:], b.data[:3], b.data[recordHeaderLen-2:recordHeaderLen], b.data[recordHeaderLen+explicitIVLen:])
 
 		n := len(b.data)
 		b.resize(n + len(mac))
@@ -478,7 +496,7 @@ func (hc *halfConn) encrypt(b *block, explicitIVLen int) (bool, alert) {
 		case *tlsAead:
 			payloadLen := len(b.data) - recordHeaderLen - explicitIVLen
 			b.resize(len(b.data) + c.Overhead())
-			nonce := hc.seq[:]
+			nonce := hc.outSeq[:]
 			if c.explicitNonce {
 				nonce = b.data[recordHeaderLen : recordHeaderLen+explicitIVLen]
 			}
@@ -486,7 +504,7 @@ func (hc *halfConn) encrypt(b *block, explicitIVLen int) (bool, alert) {
 			payload = payload[:payloadLen]
 
 			var additionalData [13]byte
-			copy(additionalData[:], hc.seq[:])
+			copy(additionalData[:], hc.outSeq[:])
 			copy(additionalData[8:], b.data[:3])
 			additionalData[11] = byte(payloadLen >> 8)
 			additionalData[12] = byte(payloadLen)
