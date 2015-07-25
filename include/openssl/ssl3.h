@@ -363,11 +363,6 @@ typedef struct ssl3_state_st {
    * completed. */
   char initial_handshake_complete;
 
-  /* sniff_buffer is used by the server in the initial handshake to read a
-   * V2ClientHello before the record layer is initialized. */
-  BUF_MEM *sniff_buffer;
-  size_t sniff_buffer_len;
-
   SSL3_BUFFER rbuf; /* read IO goes into here */
   SSL3_BUFFER wbuf; /* write IO goes into here */
 

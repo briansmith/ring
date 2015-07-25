@@ -223,7 +223,6 @@ void ssl3_free(SSL *s) {
     return;
   }
 
-  BUF_MEM_free(s->s3->sniff_buffer);
   ssl3_cleanup_key_block(s);
   ssl3_release_read_buffer(s);
   ssl3_release_write_buffer(s);

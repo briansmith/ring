@@ -589,42 +589,15 @@ end:
   return ret;
 }
 
-static int ssl3_read_sniff_buffer(SSL *s, size_t n) {
-  if (s->s3->sniff_buffer == NULL) {
-    s->s3->sniff_buffer = BUF_MEM_new();
-  }
-  if (s->s3->sniff_buffer == NULL || !BUF_MEM_grow(s->s3->sniff_buffer, n)) {
-    return -1;
-  }
-
-  while (s->s3->sniff_buffer_len < n) {
-    int ret;
-
-    s->rwstate = SSL_READING;
-    ret = BIO_read(s->rbio, s->s3->sniff_buffer->data + s->s3->sniff_buffer_len,
-                   n - s->s3->sniff_buffer_len);
-    if (ret <= 0) {
-      return ret;
-    }
-    s->rwstate = SSL_NOTHING;
-    s->s3->sniff_buffer_len += ret;
-  }
-
-  return 1;
-}
-
 int ssl3_get_initial_bytes(SSL *s) {
-  int ret;
-  const uint8_t *p;
-
   /* Read the first 8 bytes. To recognize a V2ClientHello only needs the first 4
    * bytes, but 8 is needed to recognize CONNECT below. */
-  ret = ssl3_read_sniff_buffer(s, INITIAL_SNIFF_BUFFER_SIZE);
+  int ret = ssl3_read_n(s, INITIAL_SNIFF_BUFFER_SIZE, 0 /* new packet */);
   if (ret <= 0) {
     return ret;
   }
-  assert(s->s3->sniff_buffer_len >= INITIAL_SNIFF_BUFFER_SIZE);
-  p = (const uint8_t *)s->s3->sniff_buffer->data;
+  assert(s->packet_length == INITIAL_SNIFF_BUFFER_SIZE);
+  const uint8_t *p = s->packet;
 
   /* Some dedicated error codes for protocol mixups should the application wish
    * to interpret them differently. (These do not overlap with ClientHello or
@@ -649,22 +622,14 @@ int ssl3_get_initial_bytes(SSL *s) {
     return 1;
   }
 
-  /* Fall through to the standard logic. Initialize the record layer with the
-   * already consumed data and continue the handshake. */
-  if (!ssl3_setup_read_buffer(s)) {
-    return -1;
-  }
+  /* Fall through to the standard logic. Unread what's been read to re-process
+   * it. */
   assert(s->rstate == SSL_ST_READ_HEADER);
-  /* There cannot have already been data in the record layer. */
-  assert(s->s3->rbuf.left == 0);
-  memcpy(s->s3->rbuf.buf, p, s->s3->sniff_buffer_len);
-  s->s3->rbuf.offset = 0;
-  s->s3->rbuf.left = s->s3->sniff_buffer_len;
+  assert(s->s3->rbuf.offset >= INITIAL_SNIFF_BUFFER_SIZE);
+  s->s3->rbuf.offset -= INITIAL_SNIFF_BUFFER_SIZE;
+  s->s3->rbuf.left += INITIAL_SNIFF_BUFFER_SIZE;
+  s->packet = NULL;
   s->packet_length = 0;
-
-  BUF_MEM_free(s->s3->sniff_buffer);
-  s->s3->sniff_buffer = NULL;
-  s->s3->sniff_buffer_len = 0;
 
   s->state = SSL3_ST_SR_CLNT_HELLO_A;
   return 1;
@@ -680,29 +645,31 @@ int ssl3_get_v2_client_hello(SSL *s) {
   CBB client_hello, hello_body, cipher_suites;
   uint8_t random[SSL3_RANDOM_SIZE];
 
-  /* Read the remainder of the V2ClientHello. We have previously read 8 bytes
-   * in ssl3_get_initial_bytes. */
-  assert(s->s3->sniff_buffer_len >= INITIAL_SNIFF_BUFFER_SIZE);
-  p = (const uint8_t *)s->s3->sniff_buffer->data;
+  /* Determine the length of the V2ClientHello. */
+  assert(s->packet_length >= INITIAL_SNIFF_BUFFER_SIZE);
+  p = (const uint8_t *)s->packet;
   msg_length = ((p[0] & 0x7f) << 8) | p[1];
   if (msg_length > (1024 * 4)) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_RECORD_TOO_LARGE);
     return -1;
   }
   if (msg_length < INITIAL_SNIFF_BUFFER_SIZE - 2) {
-    /* Reject lengths that are too short early. We have already read 8 bytes,
-     * so we should not attempt to process an (invalid) V2ClientHello which
-     * would be shorter than that. */
+    /* Reject lengths that are too short early. We have already read
+     * |INITIAL_SNIFF_BUFFER_SIZE| bytes, so we should not attempt to process an
+     * (invalid) V2ClientHello which would be shorter than that. */
     OPENSSL_PUT_ERROR(SSL, SSL_R_RECORD_LENGTH_MISMATCH);
     return -1;
   }
 
-  ret = ssl3_read_sniff_buffer(s, msg_length + 2);
+  /* Read the remainder of the V2ClientHello. We have previously read
+   * |INITIAL_SNIFF_BUFFER_SIZE| bytes in ssl3_get_initial_bytes. */
+  ret = ssl3_read_n(s, msg_length - (INITIAL_SNIFF_BUFFER_SIZE - 2),
+                    1 /* extend */);
   if (ret <= 0) {
     return ret;
   }
-  assert(s->s3->sniff_buffer_len == msg_length + 2);
-  CBS_init(&v2_client_hello, (const uint8_t *)s->s3->sniff_buffer->data + 2,
+  assert(s->packet_length == msg_length + 2);
+  CBS_init(&v2_client_hello, (const uint8_t *)s->packet + 2,
            msg_length);
 
   /* The V2ClientHello without the length is incorporated into the handshake
@@ -792,10 +759,10 @@ int ssl3_get_v2_client_hello(SSL *s) {
   /* The handshake message header is 4 bytes. */
   s->s3->tmp.message_size = len - 4;
 
-  /* Drop the sniff buffer. */
-  BUF_MEM_free(s->s3->sniff_buffer);
-  s->s3->sniff_buffer = NULL;
-  s->s3->sniff_buffer_len = 0;
+  /* The V2ClientHello was processed, so it may be released now. */
+  if (s->s3->rbuf.left == 0) {
+    ssl3_release_read_buffer(s);
+  }
 
   return 1;
 }
