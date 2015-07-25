@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" ToolsVersion="12.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup Label="Globals">
+    <ProjectGuid>{C8E7CDAF-3953-48E8-95F2-97DAC472E2E0}</ProjectGuid>
+    <TargetName>constant_time_test</TargetName>
+  </PropertyGroup>
+  <PropertyGroup Label="Configuration">
+    <OutDir>$(SolutionDir)build\$(Platform)-$(Configuration)\test\ring\crypto\</OutDir>
+  </PropertyGroup>
+  <ImportGroup Label="PropertySheets">
+    <Import Project="..\mk\WindowsTest.props" />
+  </ImportGroup>
+  <ItemGroup>
+    <ClCompile Include="constant_time_test.c" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="libring.Windows.vcxproj">
+      <Project>{f4c0a1b6-5e09-41c8-8242-3e1f6762fb18}</Project>
+    </ProjectReference>
+    <ProjectReference Include="test\test.Windows.vcxproj">
+      <Project>{1dace503-6498-492d-b1ff-f9ee18624443}</Project>
+    </ProjectReference>
+  </ItemGroup>
+</Project>
