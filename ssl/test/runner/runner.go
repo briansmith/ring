@@ -1180,7 +1180,7 @@ func addBasicTests() {
 			name:          "Garbage",
 			sendPrefix:    "blah",
 			shouldFail:    true,
-			expectedError: ":UNKNOWN_PROTOCOL:",
+			expectedError: ":WRONG_VERSION_NUMBER:",
 		},
 		{
 			name: "SkipCipherVersionCheck",

@@ -617,8 +617,8 @@ int ssl3_get_initial_bytes(SSL *s) {
   int ret;
   const uint8_t *p;
 
-  /* Read the first 8 bytes. To recognize a ClientHello or V2ClientHello only
-   * needs the first 6 bytes, but 8 is needed to recognize CONNECT below. */
+  /* Read the first 8 bytes. To recognize a V2ClientHello only needs the first 4
+   * bytes, but 8 is needed to recognize CONNECT below. */
   ret = ssl3_read_sniff_buffer(s, INITIAL_SNIFF_BUFFER_SIZE);
   if (ret <= 0) {
     return ret;
@@ -641,38 +641,33 @@ int ssl3_get_initial_bytes(SSL *s) {
     return -1;
   }
 
-  /* Determine if this is a ClientHello or V2ClientHello. */
+  /* Determine if this is a V2ClientHello. */
   if ((p[0] & 0x80) && p[2] == SSL2_MT_CLIENT_HELLO &&
       p[3] >= SSL3_VERSION_MAJOR) {
     /* This is a V2ClientHello. */
     s->state = SSL3_ST_SR_V2_CLIENT_HELLO;
     return 1;
   }
-  if (p[0] == SSL3_RT_HANDSHAKE && p[1] >= SSL3_VERSION_MAJOR &&
-      p[5] == SSL3_MT_CLIENT_HELLO) {
-    /* This is a ClientHello. Initialize the record layer with the already
-     * consumed data and continue the handshake. */
-    if (!ssl3_setup_read_buffer(s)) {
-      return -1;
-    }
-    assert(s->rstate == SSL_ST_READ_HEADER);
-    /* There cannot have already been data in the record layer. */
-    assert(s->s3->rbuf.left == 0);
-    memcpy(s->s3->rbuf.buf, p, s->s3->sniff_buffer_len);
-    s->s3->rbuf.offset = 0;
-    s->s3->rbuf.left = s->s3->sniff_buffer_len;
-    s->packet_length = 0;
 
-    BUF_MEM_free(s->s3->sniff_buffer);
-    s->s3->sniff_buffer = NULL;
-    s->s3->sniff_buffer_len = 0;
-
-    s->state = SSL3_ST_SR_CLNT_HELLO_A;
-    return 1;
+  /* Fall through to the standard logic. Initialize the record layer with the
+   * already consumed data and continue the handshake. */
+  if (!ssl3_setup_read_buffer(s)) {
+    return -1;
   }
+  assert(s->rstate == SSL_ST_READ_HEADER);
+  /* There cannot have already been data in the record layer. */
+  assert(s->s3->rbuf.left == 0);
+  memcpy(s->s3->rbuf.buf, p, s->s3->sniff_buffer_len);
+  s->s3->rbuf.offset = 0;
+  s->s3->rbuf.left = s->s3->sniff_buffer_len;
+  s->packet_length = 0;
 
-  OPENSSL_PUT_ERROR(SSL, SSL_R_UNKNOWN_PROTOCOL);
-  return -1;
+  BUF_MEM_free(s->s3->sniff_buffer);
+  s->s3->sniff_buffer = NULL;
+  s->s3->sniff_buffer_len = 0;
+
+  s->state = SSL3_ST_SR_CLNT_HELLO_A;
+  return 1;
 }
 
 int ssl3_get_v2_client_hello(SSL *s) {
