@@ -4,3 +4,15 @@ ssl/test/runner/runner
 *.swo
 doc/*.html
 *~
+
+# Visual Studio Junk
+.vs/
+*.opensdf
+*.psess
+*.sdf
+*.sln.docstates
+*.suo
+*.user
+*.userosscache
+*.vsp
+*.vspx

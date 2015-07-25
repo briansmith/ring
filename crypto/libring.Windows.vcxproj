@@ -1,0 +1,147 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" ToolsVersion="12.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup Label="Globals">
+    <ProjectGuid>{F4C0A1B6-5E09-41C8-8242-3E1F6762FB18}</ProjectGuid>
+    <ProjectName>libring.Windows</ProjectName>
+    <TargetName>libring</TargetName>
+  </PropertyGroup>
+  <PropertyGroup Label="Configuration">
+    <OutDir>$(SolutionDir)build\$(Platform)-$(Configuration)\lib\</OutDir>
+    <ConfigurationType>StaticLibrary</ConfigurationType>
+  </PropertyGroup>
+  <ImportGroup Label="PropertySheets">
+    <Import Project="..\mk\Windows.props" />
+  </ImportGroup>
+  <ItemGroup>
+    <ClCompile Include="aes\aes.c" />
+    <ClCompile Include="aes\mode_wrappers.c" />
+    <ClCompile Include="bn\add.c" />
+    <ClCompile Include="bn\asm\x86_64-gcc.c" />
+    <ClCompile Include="bn\bn.c" />
+    <ClCompile Include="bn\bn_asn1.c" />
+    <ClCompile Include="bn\cmp.c" />
+    <ClCompile Include="bn\convert.c" />
+    <ClCompile Include="bn\ctx.c" />
+    <ClCompile Include="bn\div.c" />
+    <ClCompile Include="bn\exponentiation.c" />
+    <ClCompile Include="bn\gcd.c" />
+    <ClCompile Include="bn\generic.c" />
+    <ClCompile Include="bn\kronecker.c" />
+    <ClCompile Include="bn\montgomery.c" />
+    <ClCompile Include="bn\mul.c" />
+    <ClCompile Include="bn\prime.c" />
+    <ClCompile Include="bn\random.c" />
+    <ClCompile Include="bn\rsaz_exp.c" />
+    <ClCompile Include="bn\shift.c" />
+    <ClCompile Include="bn\sqrt.c" />
+    <ClCompile Include="buf\buf.c" />
+    <ClCompile Include="bytestring\ber.c" />
+    <ClCompile Include="bytestring\cbb.c" />
+    <ClCompile Include="bytestring\cbs.c" />
+    <ClCompile Include="chacha\chacha_generic.c" />
+    <ClCompile Include="chacha\chacha_vec.c" />
+    <ClCompile Include="cipher\aead.c" />
+    <ClCompile Include="cipher\cipher.c" />
+    <ClCompile Include="cipher\e_aes.c" />
+    <ClCompile Include="cipher\e_chacha20poly1305.c" />
+    <ClCompile Include="cipher\e_des.c" />
+    <ClCompile Include="cipher\e_null.c" />
+    <ClCompile Include="cipher\e_rc4.c" />
+    <ClCompile Include="cipher\e_ssl3.c" />
+    <ClCompile Include="cipher\e_tls.c" />
+    <ClCompile Include="cipher\tls_cbc.c" />
+    <ClCompile Include="cmac\cmac.c" />
+    <ClCompile Include="cpu-arm.c" />
+    <ClCompile Include="cpu-intel.c" />
+    <ClCompile Include="crypto.c" />
+    <ClCompile Include="des\des.c" />
+    <ClCompile Include="dh\check.c" />
+    <ClCompile Include="dh\dh.c" />
+    <ClCompile Include="dh\dh_impl.c" />
+    <ClCompile Include="dh\params.c" />
+    <ClCompile Include="digest\digest.c" />
+    <ClCompile Include="digest\digests.c" />
+    <ClCompile Include="ec\ec.c" />
+    <ClCompile Include="ec\ec_key.c" />
+    <ClCompile Include="ec\ec_montgomery.c" />
+    <ClCompile Include="ec\oct.c" />
+    <ClCompile Include="ec\p256-64.c" />
+    <ClCompile Include="ec\simple.c" />
+    <ClCompile Include="ec\util-64.c" />
+    <ClCompile Include="ec\wnaf.c" />
+    <ClCompile Include="ecdh\ecdh.c" />
+    <ClCompile Include="ecdsa\ecdsa.c" />
+    <ClCompile Include="ecdsa\ecdsa_asn1.c" />
+    <ClCompile Include="err\err.c" />
+    <ClCompile Include="evp\digestsign.c" />
+    <ClCompile Include="evp\evp.c" />
+    <ClCompile Include="evp\evp_ctx.c" />
+    <ClCompile Include="evp\pbkdf.c" />
+    <ClCompile Include="evp\p_ec.c" />
+    <ClCompile Include="evp\p_rsa.c" />
+    <ClCompile Include="evp\sign.c" />
+    <ClCompile Include="hkdf\hkdf.c" />
+    <ClCompile Include="hmac\hmac.c" />
+    <ClCompile Include="md4\md4.c" />
+    <ClCompile Include="md5\md5.c" />
+    <ClCompile Include="mem.c" />
+    <ClCompile Include="modes\cbc.c" />
+    <ClCompile Include="modes\ctr.c" />
+    <ClCompile Include="modes\gcm.c" />
+    <ClCompile Include="poly1305\poly1305.c" />
+    <ClCompile Include="poly1305\poly1305_arm.c" />
+    <ClCompile Include="poly1305\poly1305_vec.c" />
+    <ClCompile Include="rand\hwrand.c" />
+    <ClCompile Include="rand\rand.c" />
+    <ClCompile Include="rand\windows.c" />
+    <ClCompile Include="rc4\rc4.c" />
+    <ClCompile Include="refcount_c11.c" />
+    <ClCompile Include="refcount_lock.c" />
+    <ClCompile Include="rsa\blinding.c" />
+    <ClCompile Include="rsa\padding.c" />
+    <ClCompile Include="rsa\rsa.c" />
+    <ClCompile Include="rsa\rsa_asn1.c" />
+    <ClCompile Include="rsa\rsa_impl.c" />
+    <ClCompile Include="sha\sha1.c" />
+    <ClCompile Include="sha\sha256.c" />
+    <ClCompile Include="sha\sha512.c" />
+    <ClCompile Include="thread.c" />
+    <ClCompile Include="thread_win.c" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="aes\internal.h" />
+    <ClInclude Include="bn\internal.h" />
+    <ClInclude Include="bn\rsaz_exp.h" />
+    <ClInclude Include="bytestring\internal.h" />
+    <ClInclude Include="cipher\cipher.h" />
+    <ClInclude Include="cipher\internal.h" />
+    <ClInclude Include="des\internal.h" />
+    <ClInclude Include="dh\internal.h" />
+    <ClInclude Include="digest\internal.h" />
+    <ClInclude Include="digest\md32_common.h" />
+    <ClInclude Include="ec\internal.h" />
+    <ClInclude Include="evp\internal.h" />
+    <ClInclude Include="modes\internal.h" />
+    <ClInclude Include="rand\internal.h" />
+    <ClInclude Include="rsa\internal.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="err\bn.errordata" />
+    <None Include="err\cipher.errordata" />
+    <None Include="err\dh.errordata" />
+    <None Include="err\digest.errordata" />
+    <None Include="err\ec.errordata" />
+    <None Include="err\ecdh.errordata" />
+    <None Include="err\ecdsa.errordata" />
+    <None Include="err\evp.errordata" />
+    <None Include="err\hkdf.errordata" />
+    <None Include="err\rsa.errordata" />
+  </ItemGroup>
+  <ItemDefinitionGroup>
+    <ClCompile>
+      <AdditionalIncludeDirectories>%(AdditionalIncludeDirectories);..\include</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>OPENSSL_NO_ASM;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ClCompile>
+  </ItemDefinitionGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+</Project>

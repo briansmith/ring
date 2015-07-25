@@ -1,0 +1,35 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" ToolsVersion="12.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup Label="Globals">
+    <ProjectGuid>{1DACE503-6498-492D-B1FF-F9EE18624443}</ProjectGuid>
+    <ProjectName>libring.test.Windows</ProjectName>
+    <TargetName>libring-test</TargetName>
+  </PropertyGroup>
+  <PropertyGroup Label="Configuration">
+    <ConfigurationType>StaticLibrary</ConfigurationType>
+  </PropertyGroup>
+  <ImportGroup Label="PropertySheets">
+    <Import Project="..\..\mk\Windows.props" />
+  </ImportGroup>
+  <PropertyGroup Label="Configuration">
+    <OutDir>$(SolutionDir)build\obj\$(Platform)-$(Configuration)\</OutDir>
+  </PropertyGroup>
+  <ItemGroup>
+    <ClCompile Include="file_test.cc" />
+    <ClCompile Include="malloc.cc" />
+    <ClCompile Include="test_util.cc" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="file_test.h" />
+    <ClInclude Include="scoped_types.h" />
+    <ClInclude Include="stl_compat.h" />
+    <ClInclude Include="test_util.h" />
+  </ItemGroup>
+  <ItemDefinitionGroup>
+    <ClCompile>
+      <AdditionalIncludeDirectories>%(AdditionalIncludeDirectories);..\include</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>OPENSSL_NO_ASM;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ClCompile>
+  </ItemDefinitionGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+</Project>

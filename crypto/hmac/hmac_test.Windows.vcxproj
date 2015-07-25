@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" ToolsVersion="12.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup Label="Globals">
+    <ProjectGuid>{89985F80-7EA4-4205-A46D-AA32419E5BC2}</ProjectGuid>
+    <TargetName>hmac_test</TargetName>
+  </PropertyGroup>
+  <PropertyGroup Label="Configuration">
+    <OutDir>$(SolutionDir)build\$(Platform)-$(Configuration)\test\ring\crypto\hmac\</OutDir>
+  </PropertyGroup>
+  <ImportGroup Label="PropertySheets">
+    <Import Project="..\..\mk\WindowsTest.props" />
+  </ImportGroup>
+  <ItemGroup>
+    <ClCompile Include="hmac_test.cc" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\libring.Windows.vcxproj">
+      <Project>{f4c0a1b6-5e09-41c8-8242-3e1f6762fb18}</Project>
+    </ProjectReference>
+    <ProjectReference Include="..\test\test.Windows.vcxproj">
+      <Project>{1dace503-6498-492d-b1ff-f9ee18624443}</Project>
+    </ProjectReference>
+  </ItemGroup>
+</Project>
