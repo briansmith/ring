@@ -9,18 +9,18 @@ matrix:
     #
     # BEGIN GENERATED
 
-    - env: CLANG_VERSION=3.7 CMAKE_BUILD_TYPE=DEBUG ARCH=x86
+    - env: CLANG_VERSION=3.6 CMAKE_BUILD_TYPE=DEBUG ARCH=x86
       os: linux
       addons:
         apt:
           packages:
-            - clang-3.7
+            - clang-3.6
             - g++-multilib
             - gcc-multilib
             - libc6-dev-i386
             - yasm
           sources:
-            - llvm-toolchain-precise
+            - llvm-toolchain-precise-3.6
             - ubuntu-toolchain-r-test
 
     - env: GCC_VERSION=4.8 CMAKE_BUILD_TYPE=DEBUG ARCH=x86
@@ -35,20 +35,6 @@ matrix:
             - linux-libc-dev:i386
             - yasm
           sources:
-            - ubuntu-toolchain-r-test
-
-    - env: CLANG_VERSION=3.6 CMAKE_BUILD_TYPE=DEBUG ARCH=x86
-      os: linux
-      addons:
-        apt:
-          packages:
-            - clang-3.6
-            - g++-multilib
-            - gcc-multilib
-            - libc6-dev-i386
-            - yasm
-          sources:
-            - llvm-toolchain-precise-3.6
             - ubuntu-toolchain-r-test
 
     - env: CLANG_VERSION=3.5 CMAKE_BUILD_TYPE=DEBUG ARCH=x86
@@ -91,15 +77,15 @@ matrix:
           sources:
             - ubuntu-toolchain-r-test
 
-    - env: CLANG_VERSION=3.7 CMAKE_BUILD_TYPE=DEBUG ARCH=x86_64
+    - env: CLANG_VERSION=3.6 CMAKE_BUILD_TYPE=DEBUG ARCH=x86_64
       os: linux
       addons:
         apt:
           packages:
-            - clang-3.7
+            - clang-3.6
             - yasm
           sources:
-            - llvm-toolchain-precise
+            - llvm-toolchain-precise-3.6
             - ubuntu-toolchain-r-test
 
     - env: GCC_VERSION=4.8 CMAKE_BUILD_TYPE=DEBUG ARCH=x86_64
@@ -111,17 +97,6 @@ matrix:
             - gcc-4.8
             - yasm
           sources:
-            - ubuntu-toolchain-r-test
-
-    - env: CLANG_VERSION=3.6 CMAKE_BUILD_TYPE=DEBUG ARCH=x86_64
-      os: linux
-      addons:
-        apt:
-          packages:
-            - clang-3.6
-            - yasm
-          sources:
-            - llvm-toolchain-precise-3.6
             - ubuntu-toolchain-r-test
 
     - env: CLANG_VERSION=3.5 CMAKE_BUILD_TYPE=DEBUG ARCH=x86_64
@@ -164,18 +139,18 @@ matrix:
           sources:
             - ubuntu-toolchain-r-test
 
-    - env: CLANG_VERSION=3.7 CMAKE_BUILD_TYPE=RELWITHDEBINFO ARCH=x86
+    - env: CLANG_VERSION=3.6 CMAKE_BUILD_TYPE=RELWITHDEBINFO ARCH=x86
       os: linux
       addons:
         apt:
           packages:
-            - clang-3.7
+            - clang-3.6
             - g++-multilib
             - gcc-multilib
             - libc6-dev-i386
             - yasm
           sources:
-            - llvm-toolchain-precise
+            - llvm-toolchain-precise-3.6
             - ubuntu-toolchain-r-test
 
     - env: GCC_VERSION=4.8 CMAKE_BUILD_TYPE=RELWITHDEBINFO ARCH=x86
@@ -190,20 +165,6 @@ matrix:
             - linux-libc-dev:i386
             - yasm
           sources:
-            - ubuntu-toolchain-r-test
-
-    - env: CLANG_VERSION=3.6 CMAKE_BUILD_TYPE=RELWITHDEBINFO ARCH=x86
-      os: linux
-      addons:
-        apt:
-          packages:
-            - clang-3.6
-            - g++-multilib
-            - gcc-multilib
-            - libc6-dev-i386
-            - yasm
-          sources:
-            - llvm-toolchain-precise-3.6
             - ubuntu-toolchain-r-test
 
     - env: CLANG_VERSION=3.5 CMAKE_BUILD_TYPE=RELWITHDEBINFO ARCH=x86
@@ -246,15 +207,15 @@ matrix:
           sources:
             - ubuntu-toolchain-r-test
 
-    - env: CLANG_VERSION=3.7 CMAKE_BUILD_TYPE=RELWITHDEBINFO ARCH=x86_64
+    - env: CLANG_VERSION=3.6 CMAKE_BUILD_TYPE=RELWITHDEBINFO ARCH=x86_64
       os: linux
       addons:
         apt:
           packages:
-            - clang-3.7
+            - clang-3.6
             - yasm
           sources:
-            - llvm-toolchain-precise
+            - llvm-toolchain-precise-3.6
             - ubuntu-toolchain-r-test
 
     - env: GCC_VERSION=4.8 CMAKE_BUILD_TYPE=RELWITHDEBINFO ARCH=x86_64
@@ -266,17 +227,6 @@ matrix:
             - gcc-4.8
             - yasm
           sources:
-            - ubuntu-toolchain-r-test
-
-    - env: CLANG_VERSION=3.6 CMAKE_BUILD_TYPE=RELWITHDEBINFO ARCH=x86_64
-      os: linux
-      addons:
-        apt:
-          packages:
-            - clang-3.6
-            - yasm
-          sources:
-            - llvm-toolchain-precise-3.6
             - ubuntu-toolchain-r-test
 
     - env: CLANG_VERSION=3.5 CMAKE_BUILD_TYPE=RELWITHDEBINFO ARCH=x86_64
@@ -332,7 +282,6 @@ before_script:
   - $CXX --version
   - go version
   - make --version
-  - yasm --version
 
 script:
   - make -j2
