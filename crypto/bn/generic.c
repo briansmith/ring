@@ -1068,7 +1068,9 @@ int bn_mul_mont(BN_ULONG *rp, const BN_ULONG *ap, const BN_ULONG *bp,
   tp[num + 1] = 0;
   goto enter;
 
-  for (i = 0; i < num; i++) {
+  do {
+    ++i;
+
     c0 = 0;
     ml = bp[i];
 #ifdef mul64
@@ -1108,7 +1110,7 @@ int bn_mul_mont(BN_ULONG *rp, const BN_ULONG *ap, const BN_ULONG *bp,
     c1 = (tp[num] + c0) & BN_MASK2;
     tp[num - 1] = c1;
     tp[num] = tp[num + 1] + (c1 < c0 ? 1 : 0);
-  }
+  } while (i < num);
 
   if (tp[num] != 0 || tp[num - 1] >= np[num - 1]) {
     c0 = bn_sub_words(rp, tp, np, num);
