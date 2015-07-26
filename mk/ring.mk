@@ -155,11 +155,11 @@ RING_x86_64_SRCS = $(addprefix $(RING_PREFIX), \
   crypto/modes/asm/ghash-x86_64.pl \
   crypto/rand/asm/rdrand-x86_64.pl \
   crypto/sha/asm/sha1-x86_64.pl \
-  crypto/sha/asm/sha512-x86_64.pl \
   $(NULL))
 
 RING_x86_64_EXTRA_OBJS = \
   $(OBJ_PREFIX)crypto/sha/asm/sha256-x86_64.o \
+  $(OBJ_PREFIX)crypto/sha/asm/sha512-x86_64.o \
   $(NULL)
 
 RING_armv7_SRCS = $(addprefix $(RING_PREFIX), \
@@ -273,13 +273,14 @@ PERLASM_x86_ARGS = elf -fPIC -DOPENSSL_IA32_SSE2
 PERLASM_x86_64_ARGS = elf
 PERLASM_ARGS = $(PERLASM_$(ARCH)_ARGS)
 
-# sha256-x86_64.S is special in that it is generated from sha512-x86_64.S
-# instead of from a file named sha256-x86_64.pl.
+# sha256-x86_64.S and sha512-x86_64.S are special in that they are generated
+# from sha-x86_64.S instead of from a file with the same base name.
 $(OBJ_PREFIX)crypto/sha/asm/sha256-x86_64.S: \
-  $(RING_PREFIX)crypto/sha/asm/sha512-x86_64.pl
+  $(RING_PREFIX)crypto/sha/asm/sha-x86_64.pl
 	${PERL_EXECUTABLE} $< $(PERLASM_ARGS) sha256 > $@
-
-$(OBJ_PREFIX)crypto/sha/asm/sha512-x86_64.S: PERLASM_ARGS += sha512
+$(OBJ_PREFIX)crypto/sha/asm/sha512-x86_64.S: \
+  $(RING_PREFIX)crypto/sha/asm/sha-x86_64.pl
+	${PERL_EXECUTABLE} $< $(PERLASM_ARGS) sha512 > $@
 
 $(OBJ_PREFIX)%.S: %.pl $(PERLASM_LIB_SRCS)
 	${PERL_EXECUTABLE} $< $(PERLASM_ARGS) > $@
