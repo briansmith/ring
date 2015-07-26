@@ -35,7 +35,6 @@
     <ClCompile Include="bn\shift.c" />
     <ClCompile Include="bn\sqrt.c" />
     <ClCompile Include="buf\buf.c" />
-    <ClCompile Include="bytestring\ber.c" />
     <ClCompile Include="bytestring\cbb.c" />
     <ClCompile Include="bytestring\cbs.c" />
     <ClCompile Include="chacha\chacha_generic.c" />
