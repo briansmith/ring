@@ -36,6 +36,16 @@ were developed for *ring* have already been integrated upstream in BoringSSL.
 
 
 
+Warning: The ```wip``` Branch Gets Rebased Frequently
+=====================================================
+
+The default branch on GitHub for this project is the ```wip``` branch. This
+branch is getting rebased regularly as I clean up the initial set of patches
+for *ring*. Once that cleanup is done, I will create a ```master``` branch that
+I intend to never rebase, and then I will delete the ```wip``` branch.
+
+
+
 Building
 ========
 
