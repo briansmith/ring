@@ -77,68 +77,6 @@ matrix:
           sources:
             - ubuntu-toolchain-r-test
 
-    - env: CLANG_VERSION=3.6 CMAKE_BUILD_TYPE=DEBUG ARCH=x86_64
-      os: linux
-      addons:
-        apt:
-          packages:
-            - clang-3.6
-            - yasm
-          sources:
-            - llvm-toolchain-precise-3.6
-            - ubuntu-toolchain-r-test
-
-    - env: GCC_VERSION=4.8 CMAKE_BUILD_TYPE=DEBUG ARCH=x86_64
-      os: linux
-      addons:
-        apt:
-          packages:
-            - g++-4.8
-            - gcc-4.8
-            - yasm
-          sources:
-            - ubuntu-toolchain-r-test
-
-    - env: CLANG_VERSION=3.5 CMAKE_BUILD_TYPE=DEBUG ARCH=x86_64
-      os: linux
-      addons:
-        apt:
-          packages:
-            - clang-3.5
-            - yasm
-          sources:
-            - llvm-toolchain-precise-3.5
-            - ubuntu-toolchain-r-test
-
-    - env: CLANG_VERSION=3.4 CMAKE_BUILD_TYPE=DEBUG ARCH=x86_64
-      os: linux
-      addons:
-        apt:
-          packages:
-            - yasm
-
-    - env: GCC_VERSION=5 CMAKE_BUILD_TYPE=DEBUG ARCH=x86_64
-      os: linux
-      addons:
-        apt:
-          packages:
-            - g++-5
-            - gcc-5
-            - yasm
-          sources:
-            - ubuntu-toolchain-r-test
-
-    - env: GCC_VERSION=4.9 CMAKE_BUILD_TYPE=DEBUG ARCH=x86_64
-      os: linux
-      addons:
-        apt:
-          packages:
-            - g++-4.9
-            - gcc-4.9
-            - yasm
-          sources:
-            - ubuntu-toolchain-r-test
-
     - env: CLANG_VERSION=3.6 CMAKE_BUILD_TYPE=RELWITHDEBINFO ARCH=x86
       os: linux
       addons:
@@ -207,6 +145,68 @@ matrix:
           sources:
             - ubuntu-toolchain-r-test
 
+    - env: CLANG_VERSION=3.6 CMAKE_BUILD_TYPE=DEBUG ARCH=x86_64
+      os: linux
+      addons:
+        apt:
+          packages:
+            - clang-3.6
+            - yasm
+          sources:
+            - llvm-toolchain-precise-3.6
+            - ubuntu-toolchain-r-test
+
+    - env: GCC_VERSION=4.8 CMAKE_BUILD_TYPE=DEBUG ARCH=x86_64
+      os: linux
+      addons:
+        apt:
+          packages:
+            - g++-4.8
+            - gcc-4.8
+            - yasm
+          sources:
+            - ubuntu-toolchain-r-test
+
+    - env: CLANG_VERSION=3.5 CMAKE_BUILD_TYPE=DEBUG ARCH=x86_64
+      os: linux
+      addons:
+        apt:
+          packages:
+            - clang-3.5
+            - yasm
+          sources:
+            - llvm-toolchain-precise-3.5
+            - ubuntu-toolchain-r-test
+
+    - env: CLANG_VERSION=3.4 CMAKE_BUILD_TYPE=DEBUG ARCH=x86_64
+      os: linux
+      addons:
+        apt:
+          packages:
+            - yasm
+
+    - env: GCC_VERSION=5 CMAKE_BUILD_TYPE=DEBUG ARCH=x86_64
+      os: linux
+      addons:
+        apt:
+          packages:
+            - g++-5
+            - gcc-5
+            - yasm
+          sources:
+            - ubuntu-toolchain-r-test
+
+    - env: GCC_VERSION=4.9 CMAKE_BUILD_TYPE=DEBUG ARCH=x86_64
+      os: linux
+      addons:
+        apt:
+          packages:
+            - g++-4.9
+            - gcc-4.9
+            - yasm
+          sources:
+            - ubuntu-toolchain-r-test
+
     - env: CLANG_VERSION=3.6 CMAKE_BUILD_TYPE=RELWITHDEBINFO ARCH=x86_64
       os: linux
       addons:
@@ -259,6 +259,266 @@ matrix:
             - ubuntu-toolchain-r-test
 
     - env: GCC_VERSION=4.9 CMAKE_BUILD_TYPE=RELWITHDEBINFO ARCH=x86_64
+      os: linux
+      addons:
+        apt:
+          packages:
+            - g++-4.9
+            - gcc-4.9
+            - yasm
+          sources:
+            - ubuntu-toolchain-r-test
+
+    - env: CLANG_VERSION=3.6 CMAKE_BUILD_TYPE=DEBUG ARCH=x86 NO_ASM=1
+      os: linux
+      addons:
+        apt:
+          packages:
+            - clang-3.6
+            - g++-multilib
+            - gcc-multilib
+            - libc6-dev-i386
+            - yasm
+          sources:
+            - llvm-toolchain-precise-3.6
+            - ubuntu-toolchain-r-test
+
+    - env: GCC_VERSION=4.8 CMAKE_BUILD_TYPE=DEBUG ARCH=x86 NO_ASM=1
+      os: linux
+      addons:
+        apt:
+          packages:
+            - g++-4.8
+            - g++-4.8-multilib
+            - gcc-4.8
+            - gcc-4.8-multilib
+            - linux-libc-dev:i386
+            - yasm
+          sources:
+            - ubuntu-toolchain-r-test
+
+    - env: CLANG_VERSION=3.5 CMAKE_BUILD_TYPE=DEBUG ARCH=x86 NO_ASM=1
+      os: linux
+      addons:
+        apt:
+          packages:
+            - clang-3.5
+            - g++-multilib
+            - gcc-multilib
+            - libc6-dev-i386
+            - yasm
+          sources:
+            - llvm-toolchain-precise-3.5
+            - ubuntu-toolchain-r-test
+
+    - env: CLANG_VERSION=3.4 CMAKE_BUILD_TYPE=DEBUG ARCH=x86 NO_ASM=1
+      os: linux
+      addons:
+        apt:
+          packages:
+            - g++-multilib
+            - gcc-multilib
+            - libc6-dev-i386
+            - yasm
+          sources:
+            - ubuntu-toolchain-r-test
+
+    - env: GCC_VERSION=5 CMAKE_BUILD_TYPE=DEBUG ARCH=x86 NO_ASM=1
+      os: linux
+      addons:
+        apt:
+          packages:
+            - g++-5
+            - g++-5-multilib
+            - gcc-5
+            - gcc-5-multilib
+            - linux-libc-dev:i386
+            - yasm
+          sources:
+            - ubuntu-toolchain-r-test
+
+    - env: CLANG_VERSION=3.6 CMAKE_BUILD_TYPE=RELWITHDEBINFO ARCH=x86 NO_ASM=1
+      os: linux
+      addons:
+        apt:
+          packages:
+            - clang-3.6
+            - g++-multilib
+            - gcc-multilib
+            - libc6-dev-i386
+            - yasm
+          sources:
+            - llvm-toolchain-precise-3.6
+            - ubuntu-toolchain-r-test
+
+    - env: GCC_VERSION=4.8 CMAKE_BUILD_TYPE=RELWITHDEBINFO ARCH=x86 NO_ASM=1
+      os: linux
+      addons:
+        apt:
+          packages:
+            - g++-4.8
+            - g++-4.8-multilib
+            - gcc-4.8
+            - gcc-4.8-multilib
+            - linux-libc-dev:i386
+            - yasm
+          sources:
+            - ubuntu-toolchain-r-test
+
+    - env: CLANG_VERSION=3.5 CMAKE_BUILD_TYPE=RELWITHDEBINFO ARCH=x86 NO_ASM=1
+      os: linux
+      addons:
+        apt:
+          packages:
+            - clang-3.5
+            - g++-multilib
+            - gcc-multilib
+            - libc6-dev-i386
+            - yasm
+          sources:
+            - llvm-toolchain-precise-3.5
+            - ubuntu-toolchain-r-test
+
+    - env: CLANG_VERSION=3.4 CMAKE_BUILD_TYPE=RELWITHDEBINFO ARCH=x86 NO_ASM=1
+      os: linux
+      addons:
+        apt:
+          packages:
+            - g++-multilib
+            - gcc-multilib
+            - libc6-dev-i386
+            - yasm
+          sources:
+            - ubuntu-toolchain-r-test
+
+    - env: GCC_VERSION=5 CMAKE_BUILD_TYPE=RELWITHDEBINFO ARCH=x86 NO_ASM=1
+      os: linux
+      addons:
+        apt:
+          packages:
+            - g++-5
+            - g++-5-multilib
+            - gcc-5
+            - gcc-5-multilib
+            - linux-libc-dev:i386
+            - yasm
+          sources:
+            - ubuntu-toolchain-r-test
+
+    - env: CLANG_VERSION=3.6 CMAKE_BUILD_TYPE=DEBUG ARCH=x86_64 NO_ASM=1
+      os: linux
+      addons:
+        apt:
+          packages:
+            - clang-3.6
+            - yasm
+          sources:
+            - llvm-toolchain-precise-3.6
+            - ubuntu-toolchain-r-test
+
+    - env: GCC_VERSION=4.8 CMAKE_BUILD_TYPE=DEBUG ARCH=x86_64 NO_ASM=1
+      os: linux
+      addons:
+        apt:
+          packages:
+            - g++-4.8
+            - gcc-4.8
+            - yasm
+          sources:
+            - ubuntu-toolchain-r-test
+
+    - env: CLANG_VERSION=3.5 CMAKE_BUILD_TYPE=DEBUG ARCH=x86_64 NO_ASM=1
+      os: linux
+      addons:
+        apt:
+          packages:
+            - clang-3.5
+            - yasm
+          sources:
+            - llvm-toolchain-precise-3.5
+            - ubuntu-toolchain-r-test
+
+    - env: CLANG_VERSION=3.4 CMAKE_BUILD_TYPE=DEBUG ARCH=x86_64 NO_ASM=1
+      os: linux
+      addons:
+        apt:
+          packages:
+            - yasm
+
+    - env: GCC_VERSION=5 CMAKE_BUILD_TYPE=DEBUG ARCH=x86_64 NO_ASM=1
+      os: linux
+      addons:
+        apt:
+          packages:
+            - g++-5
+            - gcc-5
+            - yasm
+          sources:
+            - ubuntu-toolchain-r-test
+
+    - env: GCC_VERSION=4.9 CMAKE_BUILD_TYPE=DEBUG ARCH=x86_64 NO_ASM=1
+      os: linux
+      addons:
+        apt:
+          packages:
+            - g++-4.9
+            - gcc-4.9
+            - yasm
+          sources:
+            - ubuntu-toolchain-r-test
+
+    - env: CLANG_VERSION=3.6 CMAKE_BUILD_TYPE=RELWITHDEBINFO ARCH=x86_64 NO_ASM=1
+      os: linux
+      addons:
+        apt:
+          packages:
+            - clang-3.6
+            - yasm
+          sources:
+            - llvm-toolchain-precise-3.6
+            - ubuntu-toolchain-r-test
+
+    - env: GCC_VERSION=4.8 CMAKE_BUILD_TYPE=RELWITHDEBINFO ARCH=x86_64 NO_ASM=1
+      os: linux
+      addons:
+        apt:
+          packages:
+            - g++-4.8
+            - gcc-4.8
+            - yasm
+          sources:
+            - ubuntu-toolchain-r-test
+
+    - env: CLANG_VERSION=3.5 CMAKE_BUILD_TYPE=RELWITHDEBINFO ARCH=x86_64 NO_ASM=1
+      os: linux
+      addons:
+        apt:
+          packages:
+            - clang-3.5
+            - yasm
+          sources:
+            - llvm-toolchain-precise-3.5
+            - ubuntu-toolchain-r-test
+
+    - env: CLANG_VERSION=3.4 CMAKE_BUILD_TYPE=RELWITHDEBINFO ARCH=x86_64 NO_ASM=1
+      os: linux
+      addons:
+        apt:
+          packages:
+            - yasm
+
+    - env: GCC_VERSION=5 CMAKE_BUILD_TYPE=RELWITHDEBINFO ARCH=x86_64 NO_ASM=1
+      os: linux
+      addons:
+        apt:
+          packages:
+            - g++-5
+            - gcc-5
+            - yasm
+          sources:
+            - ubuntu-toolchain-r-test
+
+    - env: GCC_VERSION=4.9 CMAKE_BUILD_TYPE=RELWITHDEBINFO ARCH=x86_64 NO_ASM=1
       os: linux
       addons:
         apt:
