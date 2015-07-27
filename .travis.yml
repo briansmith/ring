@@ -285,4 +285,4 @@ before_script:
 
 script:
   - make -j2
-  - go run util/all_tests.go --build-dir=build/bin
+  - make -j2 check
