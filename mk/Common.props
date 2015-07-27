@@ -2,6 +2,8 @@
 <Project ToolsVersion="14.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <PropertyGroup>
     <_PropertySheetDisplayName>Common</_PropertySheetDisplayName>
+    <WarningsToDisable>4100;4127;4200;4242;4244;4245;4267;4296;4324;4350;4365;4389;4510;4512;4514;4610;4706;4710;4711;4820;4996</WarningsToDisable>
+    <WarningsToDisable Condition="$(VisualStudioVersion)=='14.0'">$(WarningsToDisable);4623;4626;5027</WarningsToDisable>
   </PropertyGroup>
   <PropertyGroup Label="Configuration">
     <IntDir>$(SolutionDir)build\obj\$(Platform)-$(Configuration)\$(TargetName)\</IntDir>
@@ -18,7 +20,7 @@
   <ItemDefinitionGroup>
     <ClCompile>
       <AdditionalIncludeDirectories>$(MSBuildThisFileDirectory)..\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-      <DisableSpecificWarnings>4100;4127;4200;4242;4244;4245;4267;4296;4324;4350;4365;4389;4510;4512;4514;4610;4706;4710;4711;4820;4996</DisableSpecificWarnings>
+      <DisableSpecificWarnings>$(WarningsToDisable)</DisableSpecificWarnings>
       <EnforceTypeConversionRules>true</EnforceTypeConversionRules>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
