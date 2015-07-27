@@ -43,12 +43,6 @@ $(OBJ_PREFIX)%.o: %.cc
 .PHONY: all
 all: $(GENERATED)
 
-.PHONY: check
-check:
-	$(foreach test, \
-	  $(patsubst \"%\", %, $(TESTS)), \
-	  "$(test)" &&) /bin/true
-
 .PHONY: clean
 clean:
 	$(RM) $(GENERATED)

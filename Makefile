@@ -29,6 +29,5 @@ LIBS += \
   $(NULL)
 
 EXES += $(RING_TEST_EXES)
-TESTS += $(RING_TESTS)
 
 include mk/bottom_of_makefile.mk
