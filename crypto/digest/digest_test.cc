@@ -46,12 +46,6 @@ static const MD sha512 = { "SHA512", &EVP_sha512, &SHA512 };
 static const MD md5_sha1 = { "MD5-SHA1", &EVP_md5_sha1, nullptr };
 
 struct TestVector {
-  // Explicitly delete these to avoid MSVC 2015 warnings.
-  TestVector() = delete;
-  TestVector(const TestVector &) = delete;
-  TestVector(TestVector &&) = delete;
-  void operator=(TestVector &) = delete;
-
   // md is the digest to test.
   const MD &md;
   // input is a NUL-terminated string to hash.

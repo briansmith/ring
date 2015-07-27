@@ -218,12 +218,6 @@ static int TestCleanupAfterInitFailure(const EVP_AEAD *aead) {
 }
 
 struct AEADName {
-  // Explicitly delete these to avoid MSVC 2015 warnings.
-  AEADName() = delete;
-  AEADName(const AEADName &) = delete;
-  AEADName(AEADName &&) = delete;
-  void operator=(const AEADName &) = delete;
-
   const char name[40];
   const EVP_AEAD *(*func)(void);
 };
