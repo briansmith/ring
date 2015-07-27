@@ -25,8 +25,8 @@ endif
 BUILD_PREFIX ?= build/
 
 EXE_PREFIX ?= $(BUILD_PREFIX)bin/
-
 OBJ_PREFIX ?= $(BUILD_PREFIX)obj/
+LIB_PREFIX ?= $(BUILD_PREFIX)lib/
 
 CFLAGS_STD ?= -std=c11
 CXXFLAGS_STD ?= -std=c++11

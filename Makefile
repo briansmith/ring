@@ -24,6 +24,10 @@ OBJS += \
   $(RING_TEST_MAIN_OBJS) \
   $(NULL)
 
+LIBS += \
+  $(RING_LIB) \
+  $(NULL)
+
 EXES += $(RING_TEST_EXES)
 TESTS += $(RING_TESTS)
 
