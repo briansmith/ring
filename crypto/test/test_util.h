@@ -18,6 +18,12 @@
 #include <stddef.h>
 #include <stdio.h>
 
+#if defined(_MSC_VER) && _MSC_VER < 1900
+#define OPENSSL_PR_SIZE_T "Iu" /* MSVC doesn't support %zu until MSVC 2015. */
+#else
+#define OPENSSL_PR_SIZE_T "zu" /* "%zu" is the C99 standard format specifier. */
+#endif
+
 #if defined(__cplusplus)
 extern "C" {
 #endif
