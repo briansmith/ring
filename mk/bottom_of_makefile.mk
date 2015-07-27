@@ -15,6 +15,8 @@
 GENERATED = \
   $(EXES) \
   $(OBJS) \
+  $(OBJS:.o=.d) \
+  $(LIBS) \
   $(OTHER_GENERATED) \
   $(NULL)
 
@@ -49,7 +51,7 @@ check:
 
 .PHONY: clean
 clean:
-	$(RM) $(EXES) $(OBJS) $(OBJS:.o=.d)
+	$(RM) $(GENERATED)
 
 # The C/C++ compiler generates dependency info for #includes.
 

@@ -187,6 +187,12 @@ RING_OBJS = $(addprefix $(OBJ_PREFIX), \
   $(RING_$(ARCH)_EXTRA_OBJS) \
   $(NULL)
 
+RING_LIB = $(LIB_PREFIX)libring.a
+$(RING_LIB): ARFLAGS = cDrs
+$(RING_LIB): $(RING_OBJS) $(PREFIX)mk/ring.mk
+	$(RM) $@
+	$(AR) $(ARFLAGS) $@ $(filter-out $(PREFIX)mk/ring.mk, $^)
+
 RING_TEST_LIB_SRCS = \
   crypto/test/file_test.cc \
   crypto/test/malloc.cc \
@@ -232,10 +238,11 @@ $(RING_TEST_EXES): LDLIBS += $(RING_LDLIBS)
 
 $(RING_TEST_EXES): $(EXE_PREFIX)% : \
   $(OBJ_PREFIX)%.o \
-  $(RING_OBJS) \
+  $(RING_LIB) \
   $(RING_TEST_LIB_OBJS) \
   $(NULL)
-	$(CXX) $^ $(LDFLAGS) $(LDLIBS) -o $@
+	$(CXX) $(filter-out $(RING_LIB),$^) \
+           -L$(LIB_PREFIX) -lring $(LDFLAGS) $(LDLIBS) -o $@
 
 # TODO: Have -DOPENSSL_NO_ASM controlled by a flag.
 # TODO: Fix the code so -Wno-error overrides are not needed.
