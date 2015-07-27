@@ -16,7 +16,7 @@ RING_PREFIX ?= ring/
 
 RING_CPPFLAGS = -I$(RING_PREFIX)include -D_XOPEN_SOURCE=700
 
-RING_LDLIBS = -pthread
+RING_LDLIBS = -pthread -L$(dir $(RING_LIB)) -lring
 
 # Everything, except:
 #   * Tests (e.g. *_test.*)
@@ -235,14 +235,12 @@ RING_TEST_MAIN_OBJS = $(addprefix $(OBJ_PREFIX), \
 RING_TEST_EXES = $(RING_TEST_MAIN_OBJS:$(OBJ_PREFIX)%.o=$(EXE_PREFIX)%)
 
 $(RING_TEST_EXES): LDLIBS += $(RING_LDLIBS)
-
 $(RING_TEST_EXES): $(EXE_PREFIX)% : \
   $(OBJ_PREFIX)%.o \
   $(RING_LIB) \
   $(RING_TEST_LIB_OBJS) \
   $(NULL)
-	$(CXX) $(filter-out $(RING_LIB),$^) \
-           -L$(LIB_PREFIX) -lring $(LDFLAGS) $(LDLIBS) -o $@
+	$(CXX) $(filter-out $(RING_LIB),$^) $(LDFLAGS) $(LDLIBS) -o $@
 
 # TODO: Have -DOPENSSL_NO_ASM controlled by a flag.
 # TODO: Fix the code so -Wno-error overrides are not needed.

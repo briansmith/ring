@@ -201,13 +201,13 @@ func shortTestName(test test) string {
 // directory is the top of a BoringSSL checkout.
 func setWorkingDirectory() {
 	for i := 0; i < 64; i++ {
-		if _, err := os.Stat("BUILDING"); err == nil {
+		if _, err := os.Stat("BUILDING.md"); err == nil {
 			return
 		}
 		os.Chdir("..")
 	}
 
-	panic("Couldn't find BUILDING in a parent directory!")
+	panic("Couldn't find BUILDING.md in a parent directory!")
 }
 
 func parseTestConfig(filename string) ([]test, error) {
