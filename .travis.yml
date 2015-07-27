@@ -286,3 +286,8 @@ before_script:
 script:
   - make -j2
   - make -j2 check
+  # Verify nothing was added to source directory during build.
+  - '! git clean --dry-run | grep ".*"'
+  - make -j2 clean
+  # Verify that |make clean| removed all files from the build directory.
+  - '! find build -type f | grep ".+"'
