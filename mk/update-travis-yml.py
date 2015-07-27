@@ -49,10 +49,16 @@ archs = [
     "x86_64",
 ]
 
+no_asms = [
+    "",
+    "1",
+]
+
 def format_entries():
-    return "\n".join([format_entry(compiler, mode, arch)
-                      for mode in modes
+    return "\n".join([format_entry(compiler, mode, arch, no_asm)
+                      for no_asm in no_asms
                       for arch in archs
+                      for mode in modes
                       for compiler in compilers
                       # XXX: 32-bit GCC 4.9 does not work because Travis does
                       # not have g++-4.9-multilib whitelisted for use.
@@ -70,7 +76,7 @@ entry_sources_template = """
           sources:
             %(sources)s"""
 
-def format_entry(compiler, mode, arch):
+def format_entry(compiler, mode, arch, no_asm):
     def prefix_all(prefix, xs):
         return [prefix + x for x in xs]
 
@@ -83,12 +89,12 @@ def format_entry(compiler, mode, arch):
         template += entry_sources_template
 
     return template % {
-            "uppercase" : compiler_name.upper(),
-            "version" : compiler_version,
+            "arch" : arch + ("" if not no_asm else (" NO_ASM=" + no_asm)),
             "mode" : mode,
-            "arch" : arch,
             "packages" : "\n            ".join(prefix_all("- ", packages)),
             "sources" : "\n            ".join(prefix_all("- ", sources)),
+            "uppercase" : compiler_name.upper(),
+            "version" : compiler_version,
             }
 
 def get_packages_to_install(compiler, arch):
