@@ -31,19 +31,16 @@ struct MD {
   const char* name;
   // md_func is the digest to test.
   const EVP_MD *(*func)(void);
-  // one_shot_func is the convenience one-shot version of the
-  // digest.
-  uint8_t *(*one_shot_func)(const uint8_t *, size_t, uint8_t *);
 };
 
-static const MD md4 = { "MD4", &EVP_md4, nullptr };
-static const MD md5 = { "MD5", &EVP_md5, &MD5 };
-static const MD sha1 = { "SHA1", &EVP_sha1, &SHA1 };
-static const MD sha224 = { "SHA224", &EVP_sha224, &SHA224 };
-static const MD sha256 = { "SHA256", &EVP_sha256, &SHA256 };
-static const MD sha384 = { "SHA384", &EVP_sha384, &SHA384 };
-static const MD sha512 = { "SHA512", &EVP_sha512, &SHA512 };
-static const MD md5_sha1 = { "MD5-SHA1", &EVP_md5_sha1, nullptr };
+static const MD md4 = { "MD4", &EVP_md4 };
+static const MD md5 = { "MD5", &EVP_md5 };
+static const MD sha1 = { "SHA1", &EVP_sha1 };
+static const MD sha224 = { "SHA224", &EVP_sha224 };
+static const MD sha256 = { "SHA256", &EVP_sha256 };
+static const MD sha384 = { "SHA384", &EVP_sha384 };
+static const MD sha512 = { "SHA512", &EVP_sha512 };
+static const MD md5_sha1 = { "MD5-SHA1", &EVP_md5_sha1 };
 
 struct TestVector {
   // md is the digest to test.
@@ -57,8 +54,7 @@ struct TestVector {
 };
 
 static const TestVector kTestVectors[] = {
-    // MD4 tests, from RFC 1320. (crypto/md4 does not provide a
-    // one-shot MD4 function.)
+    // MD4 tests, from RFC 1320.
     { md4, "", 1, "31d6cfe0d16ae931b73c59d7e0c089c0" },
     { md4, "a", 1, "bde52cb31de33e46245e05fbdbd6fb24" },
     { md4, "abc", 1, "a448017aaf21d8525fc10ae87aa6729d" },
@@ -208,26 +204,6 @@ static int TestDigest(const TestVector *test) {
   }
   if (!CompareDigest(test, digest, digest_len)) {
     return false;
-  }
-
-  // Test the one-shot function.
-  if (test->md.one_shot_func && test->repeat == 1) {
-    uint8_t *out = test->md.one_shot_func((const uint8_t *)test->input,
-                                          strlen(test->input), digest);
-    if (out != digest) {
-      fprintf(stderr, "one_shot_func gave incorrect return\n");
-      return false;
-    }
-    if (!CompareDigest(test, digest, EVP_MD_size(test->md.func()))) {
-      return false;
-    }
-
-    // Test the deprecated static buffer variant, until it's removed.
-    out = test->md.one_shot_func((const uint8_t *)test->input,
-                                 strlen(test->input), NULL);
-    if (!CompareDigest(test, out, EVP_MD_size(test->md.func()))) {
-      return false;
-    }
   }
 
   return true;

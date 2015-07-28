@@ -107,14 +107,6 @@ static bool TestHMAC(FileTest *t, void *arg) {
   // Test using the one-shot API.
   uint8_t mac[EVP_MAX_MD_SIZE];
   unsigned mac_len;
-  if (nullptr == HMAC(digest, bssl::vector_data(&key), key.size(),
-                      bssl::vector_data(&input), input.size(), mac,
-                      &mac_len) ||
-      !t->ExpectBytesEqual(bssl::vector_data(&output), output.size(), mac,
-                           mac_len)) {
-    t->PrintLine("One-shot API failed.");
-    return false;
-  }
 
   // Test using HMAC_CTX.
   ScopedHMAC_CTX ctx;

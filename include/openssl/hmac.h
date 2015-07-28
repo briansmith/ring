@@ -70,18 +70,6 @@ extern "C" {
  * functions using HMAC. */
 
 
-/* One-shot operation. */
-
-/* HMAC calculates the HMAC of |data_len| bytes of |data|, using the given key
- * and hash function, and writes the result to |out|. On entry, |out| must
- * contain |EVP_MAX_MD_SIZE| bytes of space. The actual length of the result is
- * written to |*out_len|. It returns |out| or NULL on error. */
-OPENSSL_EXPORT uint8_t *HMAC(const EVP_MD *evp_md, const void *key,
-                             size_t key_len, const uint8_t *data,
-                             size_t data_len, uint8_t *out,
-                             unsigned int *out_len);
-
-
 /* Incremental operation. */
 
 /* HMAC_CTX_init initialises |ctx| for use in an HMAC operation. It's assumed

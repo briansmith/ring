@@ -61,22 +61,6 @@
 #include <openssl/mem.h>
 
 
-uint8_t *MD5(const uint8_t *data, size_t len, uint8_t *out) {
-  MD5_CTX ctx;
-  static uint8_t digest[MD5_DIGEST_LENGTH];
-
-  /* TODO(fork): remove this static buffer. */
-  if (out == NULL) {
-    out = digest;
-  }
-
-  MD5_Init(&ctx);
-  MD5_Update(&ctx, data, len);
-  MD5_Final(out, &ctx);
-
-  return out;
-}
-
 int MD5_Init(MD5_CTX *md5) {
   memset(md5, 0, sizeof(MD5_CTX));
   md5->A = 0x67452301UL;
