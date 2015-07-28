@@ -178,7 +178,7 @@ RING_armv8_SRCS = $(addprefix $(RING_PREFIX), \
 RING_SRCS += $(RING_$(ARCH)_SRCS)
 
 # TODO: Allow the choice of crypto/thread_none.c instead.
-RING_SRCS += crypto/thread_pthread.c
+RING_SRCS += $(addprefix $(RING_PREFIX), crypto/thread_pthread.c)
 
 RING_OBJS = $(addprefix $(OBJ_PREFIX), \
   $(patsubst %.c, %.o, \
@@ -189,9 +189,9 @@ RING_OBJS = $(addprefix $(OBJ_PREFIX), \
 
 RING_LIB = $(LIB_PREFIX)libring.a
 $(RING_LIB): ARFLAGS = cDrs
-$(RING_LIB): $(RING_OBJS) $(PREFIX)mk/ring.mk
+$(RING_LIB): $(RING_OBJS) $(RING_PREFIX)mk/ring.mk
 	$(RM) $@
-	$(AR) $(ARFLAGS) $@ $(filter-out $(PREFIX)mk/ring.mk, $^)
+	$(AR) $(ARFLAGS) $@ $(filter-out $(RING_PREFIX)mk/ring.mk, $^)
 
 RING_TEST_LIB_SRCS = \
   crypto/test/file_test.cc \
