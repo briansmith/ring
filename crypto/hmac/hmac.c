@@ -62,30 +62,6 @@
 #include <openssl/mem.h>
 
 
-uint8_t *HMAC(const EVP_MD *evp_md, const void *key, size_t key_len,
-              const uint8_t *data, size_t data_len, uint8_t *out,
-              unsigned int *out_len) {
-  HMAC_CTX ctx;
-  static uint8_t static_out_buffer[EVP_MAX_MD_SIZE];
-
-  /* OpenSSL has traditionally supported using a static buffer if |out| is
-   * NULL. We maintain that but don't document it. This behaviour should be
-   * considered to be deprecated. */
-  if (out == NULL) {
-    out = static_out_buffer;
-  }
-
-  HMAC_CTX_init(&ctx);
-  if (!HMAC_Init_ex(&ctx, key, key_len, evp_md, NULL) ||
-      !HMAC_Update(&ctx, data, data_len) ||
-      !HMAC_Final(&ctx, out, out_len)) {
-    out = NULL;
-  }
-
-  HMAC_CTX_cleanup(&ctx);
-  return out;
-}
-
 void HMAC_CTX_init(HMAC_CTX *ctx) {
   ctx->md = NULL;
   EVP_MD_CTX_init(&ctx->i_ctx);
