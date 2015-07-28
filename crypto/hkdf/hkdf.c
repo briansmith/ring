@@ -47,7 +47,9 @@ int HKDF(uint8_t *out_key, size_t out_len,
   HMAC_CTX_init(&hmac);
 
   /* Extract input keying material into pseudorandom key |prk|. */
-  if (HMAC(digest, salt, salt_len, secret, secret_len, prk, &prk_len) == NULL) {
+  if (!HMAC_Init_ex(&hmac, salt, salt_len, digest, NULL) ||
+      !HMAC_Update(&hmac, secret, secret_len) ||
+      !HMAC_Final(&hmac, prk, &prk_len)) {
     goto out;
   }
   assert(prk_len == digest_len);
