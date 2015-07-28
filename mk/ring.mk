@@ -249,13 +249,16 @@ $(RING_TEST_LIB_OBJS) \
 $(RING_TEST_MAIN_OBJS) \
 $(NULL): CPPFLAGS += $(RING_CPPFLAGS) \
                      -DBORINGSSL_IMPLEMENTATION \
+                     -Wno-cast-qual \
+                     -Wno-pedantic \
+                     -Wno-sign-compare \
+                     -Wno-unused-parameter \
                      -Wno-error=bad-function-cast \
-		     -Wno-error=cast-align \
-		     -Wno-error=format-nonliteral \
-		     -Wno-error=nested-externs \
-		     -Wno-error=sign-compare \
-		     -Wno-error=type-limits \
-                     -Wno-error=unused-parameter \
+                     -Wno-error=cast-align \
+                     -Wno-error=format \
+                     -Wno-error=format-nonliteral \
+                     -Wno-error=nested-externs \
+                     -Wno-error=type-limits \
                      $(NULL)
 
 PERLASM_LIB_SRCS = $(addprefix $(RING_PREFIX), \

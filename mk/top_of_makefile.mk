@@ -78,9 +78,8 @@ LDFLAGS += -Wl,--gc-sections
 #   -Wconditionally-supported
 #   -Wdate-time
 
-# TODO: -pedantic -pedantic-errors
-
 CPPFLAGS += \
+  -pedantic -pedantic-errors \
   \
   -fstack-protector \
   \
@@ -88,6 +87,7 @@ CPPFLAGS += \
   -Wextra \
   \
   -Wcast-align \
+  -Wcast-qual \
   -Wenum-compare \
   -Wfloat-equal \
   -Wformat=2 \

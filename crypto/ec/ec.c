@@ -76,6 +76,9 @@
 
 #include "internal.h"
 
+#if defined(__clang__)
+#pragma GCC diagnostic ignored "-Wgnu-flexible-array-initializer"
+#endif
 
 static const struct curve_data P224 = {
     "NIST P-224",
