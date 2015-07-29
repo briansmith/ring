@@ -99,6 +99,10 @@ OPENSSL_EXPORT int CBS_get_u32(CBS *cbs, uint32_t *out);
  * |cbs|. It returns one on success and zero on error. */
 OPENSSL_EXPORT int CBS_get_bytes(CBS *cbs, CBS *out, size_t len);
 
+/* CBS_copy_bytes copies the next |len| bytes from |cbs| to |out| and advances
+ * |cbs|. It returns one on success and zero on error. */
+OPENSSL_EXPORT int CBS_copy_bytes(CBS *cbs, uint8_t *out, size_t len);
+
 /* CBS_get_u8_length_prefixed sets |*out| to the contents of an 8-bit,
  * length-prefixed value from |cbs| and advances |cbs| over it. It returns one
  * on success and zero on error. */

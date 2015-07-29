@@ -207,13 +207,9 @@ int SSL_clear(SSL *ssl) {
    * |ssl3_new|. */
 
   ssl->rwstate = SSL_NOTHING;
-  ssl->rstate = SSL_ST_READ_HEADER;
 
   BUF_MEM_free(ssl->init_buf);
   ssl->init_buf = NULL;
-
-  ssl->packet = NULL;
-  ssl->packet_length = 0;
 
   ssl_clear_cipher_ctx(ssl);
 
@@ -329,7 +325,6 @@ SSL *SSL_new(SSL_CTX *ctx) {
   assert(s->enc_method != NULL);
 
   s->rwstate = SSL_NOTHING;
-  s->rstate = SSL_ST_READ_HEADER;
 
   CRYPTO_new_ex_data(&g_ex_data_class_ssl, s, &s->ex_data);
 
@@ -754,10 +749,6 @@ void SSL_CTX_set_read_ahead(SSL_CTX *ctx, int yes) { }
 void SSL_set_read_ahead(SSL *s, int yes) { }
 
 int SSL_pending(const SSL *s) {
-  if (s->rstate == SSL_ST_READ_BODY) {
-    return 0;
-  }
-
   return (s->s3->rrec.type == SSL3_RT_APPLICATION_DATA) ? s->s3->rrec.length
                                                         : 0;
 }

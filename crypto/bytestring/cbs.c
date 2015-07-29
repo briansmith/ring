@@ -137,6 +137,15 @@ int CBS_get_bytes(CBS *cbs, CBS *out, size_t len) {
   return 1;
 }
 
+int CBS_copy_bytes(CBS *cbs, uint8_t *out, size_t len) {
+  const uint8_t *v;
+  if (!cbs_get(cbs, &v, len)) {
+    return 0;
+  }
+  memcpy(out, v, len);
+  return 1;
+}
+
 static int cbs_get_length_prefixed(CBS *cbs, CBS *out, size_t len_len) {
   uint32_t len;
   if (!cbs_get_u(cbs, &len, len_len)) {

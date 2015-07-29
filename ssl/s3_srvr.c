@@ -599,12 +599,12 @@ int ssl3_get_initial_bytes(SSL *s) {
   /* Read the first 5 bytes, the size of the TLS record header. This is
    * sufficient to detect a V2ClientHello and ensures that we never read beyond
    * the first record. */
-  int ret = ssl3_read_n(s, SSL3_RT_HEADER_LENGTH, 0 /* new packet */);
+  int ret = ssl_read_buffer_extend_to(s, SSL3_RT_HEADER_LENGTH);
   if (ret <= 0) {
     return ret;
   }
-  assert(s->packet_length == SSL3_RT_HEADER_LENGTH);
-  const uint8_t *p = s->packet;
+  assert(ssl_read_buffer_len(s) == SSL3_RT_HEADER_LENGTH);
+  const uint8_t *p = ssl_read_buffer(s);
 
   /* Some dedicated error codes for protocol mixups should the application wish
    * to interpret them differently. (These do not overlap with ClientHello or
@@ -629,15 +629,7 @@ int ssl3_get_initial_bytes(SSL *s) {
     return 1;
   }
 
-  /* Fall through to the standard logic. Unread what's been read to re-process
-   * it. */
-  assert(s->rstate == SSL_ST_READ_HEADER);
-  assert(s->s3->rbuf.offset >= SSL3_RT_HEADER_LENGTH);
-  s->s3->rbuf.offset -= SSL3_RT_HEADER_LENGTH;
-  s->s3->rbuf.left += SSL3_RT_HEADER_LENGTH;
-  s->packet = NULL;
-  s->packet_length = 0;
-
+  /* Fall through to the standard logic. */
   s->state = SSL3_ST_SR_CLNT_HELLO_A;
   return 1;
 }
@@ -653,8 +645,8 @@ int ssl3_get_v2_client_hello(SSL *s) {
   uint8_t random[SSL3_RANDOM_SIZE];
 
   /* Determine the length of the V2ClientHello. */
-  assert(s->packet_length >= SSL3_RT_HEADER_LENGTH);
-  p = (const uint8_t *)s->packet;
+  assert(ssl_read_buffer_len(s) >= SSL3_RT_HEADER_LENGTH);
+  p = ssl_read_buffer(s);
   msg_length = ((p[0] & 0x7f) << 8) | p[1];
   if (msg_length > (1024 * 4)) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_RECORD_TOO_LARGE);
@@ -668,16 +660,13 @@ int ssl3_get_v2_client_hello(SSL *s) {
     return -1;
   }
 
-  /* Read the remainder of the V2ClientHello. We have previously read
-   * |SSL3_RT_HEADER_LENGTH| bytes in ssl3_get_initial_bytes. */
-  ret = ssl3_read_n(s, msg_length - (SSL3_RT_HEADER_LENGTH - 2),
-                    1 /* extend */);
+  /* Read the remainder of the V2ClientHello. */
+  ret = ssl_read_buffer_extend_to(s, 2 + msg_length);
   if (ret <= 0) {
     return ret;
   }
-  assert(s->packet_length == msg_length + 2);
-  CBS_init(&v2_client_hello, (const uint8_t *)s->packet + 2,
-           msg_length);
+  assert(ssl_read_buffer_len(s) == msg_length + 2);
+  CBS_init(&v2_client_hello, ssl_read_buffer(s) + 2, msg_length);
 
   /* The V2ClientHello without the length is incorporated into the handshake
    * hash. */
@@ -766,10 +755,9 @@ int ssl3_get_v2_client_hello(SSL *s) {
   /* The handshake message header is 4 bytes. */
   s->s3->tmp.message_size = len - 4;
 
-  /* The V2ClientHello was processed, so it may be released now. */
-  if (s->s3->rbuf.left == 0) {
-    ssl3_release_read_buffer(s);
-  }
+  /* Consume and discard the V2ClientHello. */
+  ssl_read_buffer_consume(s, 2 + msg_length);
+  ssl_read_buffer_discard(s);
 
   return 1;
 }

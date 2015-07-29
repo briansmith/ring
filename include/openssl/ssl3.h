@@ -272,10 +272,6 @@ OPENSSL_COMPILE_ASSERT(
 #define SSL3_MD_CLIENT_FINISHED_CONST "\x43\x4C\x4E\x54"
 #define SSL3_MD_SERVER_FINISHED_CONST "\x53\x52\x56\x52"
 
-#define SSL3_VERSION 0x0300
-#define SSL3_VERSION_MAJOR 0x03
-#define SSL3_VERSION_MINOR 0x00
-
 #define SSL3_RT_CHANGE_CIPHER_SPEC 20
 #define SSL3_RT_ALERT 21
 #define SSL3_RT_HANDSHAKE 22
@@ -311,16 +307,17 @@ typedef struct ssl3_record_st {
   /* data is a non-owning pointer to the record contents. The total length of
    * the buffer is |off| + |length|. */
   uint8_t *data;
-  /* epoch, in DTLS, is the epoch number of the record. */
-  uint16_t epoch;
 } SSL3_RECORD;
 
 typedef struct ssl3_buffer_st {
-  uint8_t *buf;       /* at least SSL3_RT_MAX_PACKET_SIZE bytes, see
-                         ssl3_setup_buffers() */
-  size_t len;         /* buffer size */
-  int offset;         /* where to 'copy from' */
-  int left;           /* how many bytes left */
+  /* buf is the memory allocated for this buffer. */
+  uint8_t *buf;
+  /* offset is the offset into |buf| which the buffer contents start at. */
+  uint16_t offset;
+  /* len is the length of the buffer contents from |buf| + |offset|. */
+  uint16_t len;
+  /* cap is how much memory beyond |buf| + |offset| is available. */
+  uint16_t cap;
 } SSL3_BUFFER;
 
 #define SSL3_CT_RSA_SIGN 1
@@ -352,9 +349,6 @@ typedef struct ssl3_state_st {
   /* flags for countermeasure against known-IV weakness */
   int need_record_splitting;
 
-  /* The value of 'extra' when the buffers were initialized */
-  int init_extra;
-
   /* have_version is true if the connection's final version is known. Otherwise
    * the version has not been negotiated yet. */
   char have_version;
@@ -363,8 +357,10 @@ typedef struct ssl3_state_st {
    * completed. */
   char initial_handshake_complete;
 
-  SSL3_BUFFER rbuf; /* read IO goes into here */
-  SSL3_BUFFER wbuf; /* write IO goes into here */
+  /* read_buffer holds data from the transport to be processed. */
+  SSL3_BUFFER read_buffer;
+  /* write_buffer holds data to be written to the transport. */
+  SSL3_BUFFER write_buffer;
 
   SSL3_RECORD rrec; /* each decoded record goes in here */
 

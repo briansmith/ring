@@ -120,141 +120,11 @@
 #include "internal.h"
 
 
-static int do_ssl3_write(SSL *s, int type, const uint8_t *buf, unsigned int len,
-                         char fragment);
-static int ssl3_get_record(SSL *s);
-
-int ssl3_read_n(SSL *s, int n, int extend) {
-  /* If |extend| is 0, obtain new n-byte packet;
-   * if |extend| is 1, increase packet by another n bytes.
-   *
-   * The packet will be in the sub-array of |s->s3->rbuf.buf| specified by
-   * |s->packet| and |s->packet_length|. (If DTLS and |extend| is 0, additional
-   * bytes will be read into |rbuf|, up to the size of the buffer.)
-   *
-   * TODO(davidben): |dtls1_get_record| and |ssl3_get_record| have very
-   * different needs. Separate the two record layers. In DTLS, |BIO_read| is
-   * called at most once, and only when |extend| is 0. In TLS, the buffer never
-   * contains more than one record. */
-  int i, len, left;
-  uintptr_t align = 0;
-  uint8_t *pkt;
-  SSL3_BUFFER *rb;
-
-  if (n <= 0) {
-    return n;
-  }
-
-  rb = &s->s3->rbuf;
-  if (rb->buf == NULL && !ssl3_setup_read_buffer(s)) {
-    return -1;
-  }
-
-  left = rb->left;
-
-  align = (uintptr_t)rb->buf + SSL3_RT_HEADER_LENGTH;
-  align = (0 - align) & (SSL3_ALIGN_PAYLOAD - 1);
-
-  if (!extend) {
-    /* start with empty packet ... */
-    if (left == 0) {
-      rb->offset = align;
-    } else if (align != 0 && left >= SSL3_RT_HEADER_LENGTH) {
-      /* check if next packet length is large enough to justify payload
-       * alignment... */
-      pkt = rb->buf + rb->offset;
-      if (pkt[0] == SSL3_RT_APPLICATION_DATA && (pkt[3] << 8 | pkt[4]) >= 128) {
-        /* Note that even if packet is corrupted and its length field is
-         * insane, we can only be led to wrong decision about whether memmove
-         * will occur or not. Header values has no effect on memmove arguments
-         * and therefore no buffer overrun can be triggered. */
-        memmove(rb->buf + align, pkt, left);
-        rb->offset = align;
-      }
-    }
-    s->packet = rb->buf + rb->offset;
-    s->packet_length = 0;
-    /* ... now we can act as if 'extend' was set */
-  }
-
-  /* In DTLS, if there is leftover data from the previous packet or |extend| is
-   * true, clamp to the previous read. DTLS records may not span packet
-   * boundaries. */
-  if (SSL_IS_DTLS(s) && n > left && (left > 0 || extend)) {
-    n = left;
-  }
-
-  /* if there is enough in the buffer from a previous read, take some */
-  if (left >= n) {
-    s->packet_length += n;
-    rb->left = left - n;
-    rb->offset += n;
-    return n;
-  }
-
-  /* else we need to read more data */
-
-  len = s->packet_length;
-  pkt = rb->buf + align;
-  /* Move any available bytes to front of buffer: |len| bytes already pointed
-   * to by |packet|, |left| extra ones at the end. */
-  if (s->packet != pkt) {
-    /* len > 0 */
-    memmove(pkt, s->packet, len + left);
-    s->packet = pkt;
-    rb->offset = len + align;
-  }
-
-  if (n > (int)(rb->len - rb->offset)) {
-    OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
-    return -1;
-  }
-
-  int max = n;
-  if (SSL_IS_DTLS(s) && !extend) {
-    max = rb->len - rb->offset;
-  }
-
-  while (left < n) {
-    /* Now we have len+left bytes at the front of s->s3->rbuf.buf and need to
-     * read in more until we have len+n (up to len+max if possible). */
-    ERR_clear_system_error();
-    if (s->rbio != NULL) {
-      s->rwstate = SSL_READING;
-      i = BIO_read(s->rbio, pkt + len + left, max - left);
-    } else {
-      OPENSSL_PUT_ERROR(SSL, SSL_R_READ_BIO_NOT_SET);
-      i = -1;
-    }
-
-    if (i <= 0) {
-      rb->left = left;
-      if (len + left == 0) {
-        ssl3_release_read_buffer(s);
-      }
-      return i;
-    }
-    left += i;
-    /* reads should *never* span multiple packets for DTLS because the
-     * underlying transport protocol is message oriented as opposed to byte
-     * oriented as in the TLS case. */
-    if (SSL_IS_DTLS(s) && n > left) {
-      n = left; /* makes the while condition false */
-    }
-  }
-
-  /* done reading, now the book-keeping */
-  rb->offset += n;
-  rb->left = left - n;
-  s->packet_length += n;
-  s->rwstate = SSL_NOTHING;
-
-  return n;
-}
+static int do_ssl3_write(SSL *s, int type, const uint8_t *buf, unsigned len);
 
 /* kMaxEmptyRecords is the number of consecutive, empty records that will be
  * processed. Without this limit an attacker could send empty records at a
- * faster rate than we can process and cause |ssl3_get_record| to loop
+ * faster rate than we can process and cause record processing to loop
  * forever. */
 static const uint8_t kMaxEmptyRecords = 32;
 
@@ -262,143 +132,73 @@ static const uint8_t kMaxEmptyRecords = 32;
  * processed. */
 static const uint8_t kMaxWarningAlerts = 4;
 
-/* Call this to get a new input record. It will return <= 0 if more data is
- * needed, normally due to an error or non-blocking IO. When it finishes, one
- * packet has been decoded and can be found in
- * ssl->s3->rrec.type    - is the type of record
- * ssl->s3->rrec.data    - data
- * ssl->s3->rrec.length  - number of bytes */
-/* used only by ssl3_read_bytes */
-static int ssl3_get_record(SSL *s) {
-  uint8_t ssl_major, ssl_minor;
-  int al, n, i, ret = -1;
-  SSL3_RECORD *rr = &s->s3->rrec;
-  uint8_t *p;
-  uint16_t version;
-  size_t extra;
-
+/* ssl3_get_record reads a new input record. On success, it places it in
+ * |ssl->s3->rrec| and returns one. Otherwise it returns <= 0 on error or if
+ * more data is needed. */
+static int ssl3_get_record(SSL *ssl) {
+  int ret;
 again:
-  /* check if we have the header */
-  if (s->rstate != SSL_ST_READ_BODY ||
-      s->packet_length < SSL3_RT_HEADER_LENGTH) {
-    n = ssl3_read_n(s, SSL3_RT_HEADER_LENGTH, 0);
-    if (n <= 0) {
-      return n; /* error or non-blocking */
-    }
-    s->rstate = SSL_ST_READ_BODY;
+  /* Ensure the buffer is large enough to decrypt in-place. */
+  ret = ssl_read_buffer_extend_to(ssl, ssl_record_prefix_len(ssl));
+  if (ret <= 0) {
+    return ret;
+  }
+  assert(ssl_read_buffer_len(ssl) >= ssl_record_prefix_len(ssl));
 
-    /* Some bytes were read, so the read buffer must be existant and
-     * |s->s3->init_extra| is defined. */
-    assert(s->s3->rbuf.buf != NULL);
-    extra = s->s3->init_extra ? SSL3_RT_MAX_EXTRA : 0;
+  uint8_t *out = ssl_read_buffer(ssl) + ssl_record_prefix_len(ssl);
+  size_t max_out = ssl_read_buffer_len(ssl) - ssl_record_prefix_len(ssl);
+  uint8_t type, alert;
+  size_t len, consumed;
+  switch (tls_open_record(ssl, &type, out, &len, &consumed, &alert, max_out,
+                          ssl_read_buffer(ssl), ssl_read_buffer_len(ssl))) {
+    case ssl_open_record_success:
+      ssl_read_buffer_consume(ssl, consumed);
 
-    p = s->packet;
-    if (s->msg_callback) {
-      s->msg_callback(0, 0, SSL3_RT_HEADER, p, 5, s, s->msg_callback_arg);
-    }
+      /* Discard empty records.
+       * TODO(davidben): This logic should be moved to a higher level. See
+       * https://crbug.com/521840. */
+      if (len == 0) {
+        ssl->s3->empty_record_count++;
+        if (ssl->s3->empty_record_count > kMaxEmptyRecords) {
+          OPENSSL_PUT_ERROR(SSL, SSL_R_TOO_MANY_EMPTY_FRAGMENTS);
+          ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_UNEXPECTED_MESSAGE);
+          return -1;
+        }
+        goto again;
+      }
+      ssl->s3->empty_record_count = 0;
 
-    /* Pull apart the header into the SSL3_RECORD */
-    rr->type = *(p++);
-    ssl_major = *(p++);
-    ssl_minor = *(p++);
-    version = (((uint16_t)ssl_major) << 8) | ssl_minor;
-    n2s(p, rr->length);
+      if (len > 0xffff) {
+        OPENSSL_PUT_ERROR(SSL, ERR_R_OVERFLOW);
+        return -1;
+      }
 
-    if (s->s3->have_version && version != s->version) {
-      OPENSSL_PUT_ERROR(SSL, SSL_R_WRONG_VERSION_NUMBER);
-      al = SSL_AD_PROTOCOL_VERSION;
-      goto f_err;
-    }
+      SSL3_RECORD *rr = &ssl->s3->rrec;
+      rr->type = type;
+      rr->length = (uint16_t)len;
+      rr->off = 0;
+      rr->data = out;
+      return 1;
 
-    if ((version >> 8) != SSL3_VERSION_MAJOR) {
-      OPENSSL_PUT_ERROR(SSL, SSL_R_WRONG_VERSION_NUMBER);
-      goto err;
-    }
+    case ssl_open_record_partial:
+      ret = ssl_read_buffer_extend_to(ssl, consumed);
+      if (ret <= 0) {
+        return ret;
+      }
+      goto again;
 
-    if (rr->length > SSL3_RT_MAX_ENCRYPTED_LENGTH + extra) {
-      al = SSL_AD_RECORD_OVERFLOW;
-      OPENSSL_PUT_ERROR(SSL, SSL_R_ENCRYPTED_LENGTH_TOO_LONG);
-      goto f_err;
-    }
+    case ssl_open_record_discard:
+      ssl_read_buffer_consume(ssl, consumed);
+      goto again;
 
-    /* now s->rstate == SSL_ST_READ_BODY */
-  } else {
-    /* |packet_length| is non-zero and |s->rstate| is |SSL_ST_READ_BODY|. The
-     * read buffer must be existant and |s->s3->init_extra| is defined. */
-    assert(s->s3->rbuf.buf != NULL);
-    extra = s->s3->init_extra ? SSL3_RT_MAX_EXTRA : 0;
+    case ssl_open_record_error:
+      ssl3_send_alert(ssl, SSL3_AL_FATAL, alert);
+      return -1;
   }
 
-  /* s->rstate == SSL_ST_READ_BODY, get and decode the data */
-
-  if (rr->length > s->packet_length - SSL3_RT_HEADER_LENGTH) {
-    /* now s->packet_length == SSL3_RT_HEADER_LENGTH */
-    i = rr->length;
-    n = ssl3_read_n(s, i, 1);
-    if (n <= 0) {
-      /* Error or non-blocking IO. Now |n| == |rr->length|, and
-       * |s->packet_length| == |SSL3_RT_HEADER_LENGTH| + |rr->length|. */
-      return n;
-    }
-  }
-
-  s->rstate = SSL_ST_READ_HEADER; /* set state for later operations */
-
-  /* |rr->data| points to |rr->length| bytes of ciphertext in |s->packet|. */
-  rr->data = &s->packet[SSL3_RT_HEADER_LENGTH];
-
-  /* Decrypt the packet in-place.
-   *
-   * TODO(davidben): This assumes |s->version| is the same as the record-layer
-   * version which isn't always true, but it only differs with the NULL cipher
-   * which ignores the parameter. */
-  size_t plaintext_len;
-  if (!SSL_AEAD_CTX_open(s->aead_read_ctx, rr->data, &plaintext_len, rr->length,
-                         rr->type, s->version, s->s3->read_sequence, rr->data,
-                         rr->length)) {
-    al = SSL_AD_BAD_RECORD_MAC;
-    OPENSSL_PUT_ERROR(SSL, SSL_R_DECRYPTION_FAILED_OR_BAD_RECORD_MAC);
-    goto f_err;
-  }
-  if (!ssl3_record_sequence_update(s->s3->read_sequence, 8)) {
-    goto err;
-  }
-  if (plaintext_len > SSL3_RT_MAX_PLAIN_LENGTH + extra) {
-    al = SSL_AD_RECORD_OVERFLOW;
-    OPENSSL_PUT_ERROR(SSL, SSL_R_DATA_LENGTH_TOO_LONG);
-    goto f_err;
-  }
-  assert(plaintext_len <= (1u << 16));
-  rr->length = plaintext_len;
-
-  rr->off = 0;
-  /* So at this point the following is true:
-   * ssl->s3->rrec.type is the type of record;
-   * ssl->s3->rrec.length is the number of bytes in the record;
-   * ssl->s3->rrec.off is the offset to first valid byte;
-   * ssl->s3->rrec.data the first byte of the record body. */
-
-  /* we have pulled in a full packet so zero things */
-  s->packet_length = 0;
-
-  /* just read a 0 length packet */
-  if (rr->length == 0) {
-    s->s3->empty_record_count++;
-    if (s->s3->empty_record_count > kMaxEmptyRecords) {
-      al = SSL_AD_UNEXPECTED_MESSAGE;
-      OPENSSL_PUT_ERROR(SSL, SSL_R_TOO_MANY_EMPTY_FRAGMENTS);
-      goto f_err;
-    }
-    goto again;
-  }
-  s->s3->empty_record_count = 0;
-
-  return 1;
-
-f_err:
-  ssl3_send_alert(s, SSL3_AL_FATAL, al);
-err:
-  return ret;
+  assert(0);
+  OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
+  return -1;
 }
 
 int ssl3_write_app_data(SSL *ssl, const void *buf, int len) {
@@ -440,29 +240,18 @@ int ssl3_write_bytes(SSL *s, int type, const void *buf_, int len) {
     return -1;
   }
 
-  int record_split_done = 0;
   n = (len - tot);
   for (;;) {
     /* max contains the maximum number of bytes that we can put into a
      * record. */
     unsigned max = s->max_send_fragment;
-    /* fragment is true if do_ssl3_write should send the first byte in its own
-     * record in order to randomise a CBC IV. */
-    int fragment = 0;
-    if (!record_split_done && s->s3->need_record_splitting &&
-        type == SSL3_RT_APPLICATION_DATA) {
-      /* Only the the first record per write call needs to be split. The
-       * remaining plaintext was determined before the IV was randomized. */
-      fragment = 1;
-      record_split_done = 1;
-    }
     if (n > max) {
       nw = max;
     } else {
       nw = n;
     }
 
-    i = do_ssl3_write(s, type, &buf[tot], nw, fragment);
+    i = do_ssl3_write(s, type, &buf[tot], nw);
     if (i <= 0) {
       s->s3->wnum = tot;
       return i;
@@ -478,65 +267,10 @@ int ssl3_write_bytes(SSL *s, int type, const void *buf_, int len) {
   }
 }
 
-/* ssl3_seal_record seals a new record of type |type| and plaintext |in| and
- * writes it to |out|. At most |max_out| bytes will be written. It returns one
- * on success and zero on error. On success, it updates the write sequence
- * number. */
-static int ssl3_seal_record(SSL *s, uint8_t *out, size_t *out_len,
-                            size_t max_out, uint8_t type, const uint8_t *in,
-                            size_t in_len) {
-  if (max_out < SSL3_RT_HEADER_LENGTH) {
-    OPENSSL_PUT_ERROR(SSL, SSL_R_BUFFER_TOO_SMALL);
-    return 0;
-  }
-
-  out[0] = type;
-
-  /* Some servers hang if initial ClientHello is larger than 256 bytes and
-   * record version number > TLS 1.0. */
-  uint16_t wire_version = s->version;
-  if (!s->s3->have_version && s->version > SSL3_VERSION) {
-    wire_version = TLS1_VERSION;
-  }
-  out[1] = wire_version >> 8;
-  out[2] = wire_version & 0xff;
-
-  size_t ciphertext_len;
-  if (!SSL_AEAD_CTX_seal(s->aead_write_ctx, out + SSL3_RT_HEADER_LENGTH,
-                         &ciphertext_len, max_out - SSL3_RT_HEADER_LENGTH,
-                         type, wire_version, s->s3->write_sequence, in,
-                         in_len) ||
-      !ssl3_record_sequence_update(s->s3->write_sequence, 8)) {
-    return 0;
-  }
-
-  if (ciphertext_len >= 1 << 16) {
-    OPENSSL_PUT_ERROR(SSL, ERR_R_OVERFLOW);
-    return 0;
-  }
-  out[3] = ciphertext_len >> 8;
-  out[4] = ciphertext_len & 0xff;
-
-  *out_len = SSL3_RT_HEADER_LENGTH + ciphertext_len;
-
- if (s->msg_callback) {
-   s->msg_callback(1 /* write */, 0, SSL3_RT_HEADER, out, SSL3_RT_HEADER_LENGTH,
-                   s, s->msg_callback_arg);
- }
-
-  return 1;
-}
-
-/* do_ssl3_write writes an SSL record of the given type. If |fragment| is 1
- * then it splits the record into a one byte record and a record with the rest
- * of the data in order to randomise a CBC IV. */
-static int do_ssl3_write(SSL *s, int type, const uint8_t *buf, unsigned int len,
-                         char fragment) {
-  SSL3_BUFFER *wb = &s->s3->wbuf;
-
-  /* first check if there is a SSL3_BUFFER still being written out. This will
-   * happen with non blocking IO */
-  if (wb->left != 0) {
+/* do_ssl3_write writes an SSL record of the given type. */
+static int do_ssl3_write(SSL *s, int type, const uint8_t *buf, unsigned len) {
+  /* If there is still data from the previous record, flush it. */
+  if (ssl_write_buffer_is_pending(s)) {
     return ssl3_write_pending(s, type, buf, len);
   }
 
@@ -549,76 +283,40 @@ static int do_ssl3_write(SSL *s, int type, const uint8_t *buf, unsigned int len,
     /* if it went, fall through and send more stuff */
   }
 
-  if (wb->buf == NULL && !ssl3_setup_write_buffer(s)) {
+  if (len > SSL3_RT_MAX_PLAIN_LENGTH) {
+    OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
     return -1;
   }
 
   if (len == 0) {
     return 0;
   }
-  if (len == 1) {
-    /* No sense in fragmenting a one-byte record. */
-    fragment = 0;
-  }
 
-  /* Align the output so the ciphertext is aligned to |SSL3_ALIGN_PAYLOAD|. */
-  uintptr_t align;
-  if (fragment) {
-    /* Only CBC-mode ciphers require fragmenting. CBC-mode ciphertext is a
-     * multiple of the block size which we may assume is aligned. Thus we only
-     * need to account for a second copy of the record header. */
-    align = (uintptr_t)wb->buf + 2 * SSL3_RT_HEADER_LENGTH;
-  } else {
-    align = (uintptr_t)wb->buf + SSL3_RT_HEADER_LENGTH;
-  }
-  align = (0 - align) & (SSL3_ALIGN_PAYLOAD - 1);
-  uint8_t *out = wb->buf + align;
-  wb->offset = align;
-  size_t max_out = wb->len - wb->offset;
-
-  const uint8_t *orig_buf = buf;
-  unsigned int orig_len = len;
-  size_t fragment_len = 0;
-  if (fragment) {
-    /* Write the first byte in its own record as a countermeasure against
-     * known-IV weaknesses in CBC ciphersuites. (See
-     * http://www.openssl.org/~bodo/tls-cbc.txt.) */
-    if (!ssl3_seal_record(s, out, &fragment_len, max_out, type, buf, 1)) {
-      return -1;
-    }
-    out += fragment_len;
-    max_out -= fragment_len;
-    buf++;
-    len--;
-  }
-
-  assert((((uintptr_t)out + SSL3_RT_HEADER_LENGTH) & (SSL3_ALIGN_PAYLOAD - 1))
-         == 0);
-  size_t ciphertext_len;
-  if (!ssl3_seal_record(s, out, &ciphertext_len, max_out, type, buf, len)) {
+  size_t max_out = len + ssl_max_seal_overhead(s);
+  if (max_out < len) {
+    OPENSSL_PUT_ERROR(SSL, ERR_R_OVERFLOW);
     return -1;
   }
-  ciphertext_len += fragment_len;
-
-  /* now let's set up wb */
-  wb->left = ciphertext_len;
+  uint8_t *out;
+  size_t ciphertext_len;
+  if (!ssl_write_buffer_init(s, &out, max_out) ||
+      !tls_seal_record(s, out, &ciphertext_len, max_out, type, buf, len)) {
+    return -1;
+  }
+  ssl_write_buffer_set_len(s, ciphertext_len);
 
   /* memorize arguments so that ssl3_write_pending can detect bad write retries
    * later */
-  s->s3->wpend_tot = orig_len;
-  s->s3->wpend_buf = orig_buf;
+  s->s3->wpend_tot = len;
+  s->s3->wpend_buf = buf;
   s->s3->wpend_type = type;
-  s->s3->wpend_ret = orig_len;
+  s->s3->wpend_ret = len;
 
   /* we now just need to write the buffer */
-  return ssl3_write_pending(s, type, orig_buf, orig_len);
+  return ssl3_write_pending(s, type, buf, len);
 }
 
-/* if s->s3->wbuf.left != 0, we need to call this */
 int ssl3_write_pending(SSL *s, int type, const uint8_t *buf, unsigned int len) {
-  int i;
-  SSL3_BUFFER *wb = &(s->s3->wbuf);
-
   if (s->s3->wpend_tot > (int)len ||
       (s->s3->wpend_buf != buf &&
        !(s->mode & SSL_MODE_ACCEPT_MOVING_WRITE_BUFFER)) ||
@@ -627,35 +325,11 @@ int ssl3_write_pending(SSL *s, int type, const uint8_t *buf, unsigned int len) {
     return -1;
   }
 
-  for (;;) {
-    ERR_clear_system_error();
-    if (s->wbio != NULL) {
-      s->rwstate = SSL_WRITING;
-      i = BIO_write(s->wbio, (char *)&(wb->buf[wb->offset]),
-                    (unsigned int)wb->left);
-    } else {
-      OPENSSL_PUT_ERROR(SSL, SSL_R_BIO_NOT_SET);
-      i = -1;
-    }
-    if (i == wb->left) {
-      wb->left = 0;
-      wb->offset += i;
-      ssl3_release_write_buffer(s);
-      s->rwstate = SSL_NOTHING;
-      return s->s3->wpend_ret;
-    } else if (i <= 0) {
-      if (SSL_IS_DTLS(s)) {
-        /* For DTLS, just drop it. That's kind of the whole point in
-         * using a datagram service */
-        wb->left = 0;
-      }
-      return i;
-    }
-    /* TODO(davidben): This codepath is used in DTLS, but the write
-     * payload may not split across packets. */
-    wb->offset += i;
-    wb->left -= i;
+  int ret = ssl_write_buffer_flush(s);
+  if (ret <= 0) {
+    return ret;
   }
+  return s->s3->wpend_ret;
 }
 
 /* ssl3_expect_change_cipher_spec informs the record layer that a
@@ -770,7 +444,7 @@ start:
   rr = &s->s3->rrec;
 
   /* get new packet if necessary */
-  if (rr->length == 0 || s->rstate == SSL_ST_READ_BODY) {
+  if (rr->length == 0) {
     ret = ssl3_get_record(s);
     if (ret <= 0) {
       return ret;
@@ -834,11 +508,9 @@ start:
       rr->length -= n;
       rr->off += n;
       if (rr->length == 0) {
-        s->rstate = SSL_ST_READ_HEADER;
         rr->off = 0;
-        if (s->s3->rbuf.left == 0) {
-          ssl3_release_read_buffer(s);
-        }
+        /* The record has been consumed, so we may now clear the buffer. */
+        ssl_read_buffer_discard(s);
       }
     }
 
@@ -897,7 +569,7 @@ start:
      * protocol, namely in HTTPS, just before reading the HTTP response. Require
      * the record-layer be idle and avoid complexities of sending a handshake
      * record while an application_data record is being written. */
-    if (s->s3->wbuf.left != 0 || s->s3->rbuf.left != 0) {
+    if (ssl_write_buffer_is_pending(s)) {
       al = SSL_AD_NO_RENEGOTIATION;
       OPENSSL_PUT_ERROR(SSL, SSL_R_NO_RENEGOTIATION);
       goto f_err;
@@ -1100,8 +772,9 @@ int ssl3_send_alert(SSL *s, int level, int desc) {
   s->s3->alert_dispatch = 1;
   s->s3->send_alert[0] = level;
   s->s3->send_alert[1] = desc;
-  if (s->s3->wbuf.left == 0) {
-    /* data is still being written out. */
+  if (!ssl_write_buffer_is_pending(s)) {
+    /* Nothing is being written out, so the alert may be dispatched
+     * immediately. */
     return s->method->ssl_dispatch_alert(s);
   }
 
@@ -1115,7 +788,7 @@ int ssl3_dispatch_alert(SSL *s) {
   void (*cb)(const SSL *ssl, int type, int val) = NULL;
 
   s->s3->alert_dispatch = 0;
-  i = do_ssl3_write(s, SSL3_RT_ALERT, &s->s3->send_alert[0], 2, 0);
+  i = do_ssl3_write(s, SSL3_RT_ALERT, &s->s3->send_alert[0], 2);
   if (i <= 0) {
     s->s3->alert_dispatch = 1;
   } else {

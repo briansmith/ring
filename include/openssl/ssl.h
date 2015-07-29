@@ -292,6 +292,7 @@ OPENSSL_EXPORT void SSL_set_accept_state(SSL *ssl);
 
 /* Protocol versions. */
 
+#define DTLS1_VERSION_MAJOR 0xfe
 #define SSL3_VERSION_MAJOR 0x03
 
 #define SSL3_VERSION 0x0300
@@ -1724,17 +1725,12 @@ struct ssl_st {
   int shutdown; /* we have shut things down, 0x01 sent, 0x02
                  * for received */
   int state;    /* where we are */
-  int rstate;   /* where we are when reading */
 
   BUF_MEM *init_buf; /* buffer used during init */
   uint8_t *init_msg; /* pointer to handshake message body, set by
                         ssl3_get_message() */
   int init_num;      /* amount read/written */
   int init_off;      /* amount read/written */
-
-  /* used internally to point at a raw packet */
-  uint8_t *packet;
-  unsigned int packet_length;
 
   struct ssl3_state_st *s3;  /* SSLv3 variables */
   struct dtls1_state_st *d1; /* DTLSv1 variables */
@@ -1909,12 +1905,6 @@ struct ssl_st {
  * is in False Start. |SSL_write| may be called at this point without waiting
  * for the peer, but |SSL_read| will require the handshake to be completed. */
 OPENSSL_EXPORT int SSL_in_false_start(const SSL *s);
-
-/* The following 2 states are kept in ssl->rstate when reads fail,
- * you should not need these */
-#define SSL_ST_READ_HEADER 0xF0
-#define SSL_ST_READ_BODY 0xF1
-#define SSL_ST_READ_DONE 0xF2
 
 /* Obtain latest Finished message
  *   -- that we sent (SSL_get_finished)
@@ -2158,9 +2148,7 @@ OPENSSL_EXPORT int SSL_add_dir_cert_subjects_to_stack(STACK_OF(X509_NAME) *
 OPENSSL_EXPORT void SSL_load_error_strings(void);
 
 OPENSSL_EXPORT const char *SSL_state_string(const SSL *s);
-OPENSSL_EXPORT const char *SSL_rstate_string(const SSL *s);
 OPENSSL_EXPORT const char *SSL_state_string_long(const SSL *s);
-OPENSSL_EXPORT const char *SSL_rstate_string_long(const SSL *s);
 OPENSSL_EXPORT long SSL_SESSION_get_time(const SSL_SESSION *s);
 OPENSSL_EXPORT long SSL_SESSION_set_time(SSL_SESSION *s, long t);
 OPENSSL_EXPORT long SSL_SESSION_get_timeout(const SSL_SESSION *s);

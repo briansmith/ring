@@ -1677,3 +1677,34 @@ int ssl_cipher_requires_server_key_exchange(const SSL_CIPHER *cipher) {
   /* It is optional in all others. */
   return 0;
 }
+
+size_t ssl_cipher_get_record_split_len(const SSL_CIPHER *cipher) {
+  size_t block_size;
+  switch (cipher->algorithm_enc) {
+    case SSL_3DES:
+      block_size = 8;
+      break;
+    case SSL_AES128:
+    case SSL_AES256:
+      block_size = 16;
+      break;
+    default:
+      return 0;
+  }
+
+  size_t mac_len;
+  switch (cipher->algorithm_mac) {
+    case SSL_MD5:
+      mac_len = MD5_DIGEST_LENGTH;
+      break;
+    case SSL_SHA1:
+      mac_len = SHA_DIGEST_LENGTH;
+      break;
+    default:
+      return 0;
+  }
+
+  size_t ret = 1 + mac_len;
+  ret += block_size - (ret % block_size);
+  return ret;
+}

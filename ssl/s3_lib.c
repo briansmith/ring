@@ -224,8 +224,8 @@ void ssl3_free(SSL *s) {
   }
 
   ssl3_cleanup_key_block(s);
-  ssl3_release_read_buffer(s);
-  ssl3_release_write_buffer(s);
+  ssl_read_buffer_clear(s);
+  ssl_write_buffer_clear(s);
   DH_free(s->s3->tmp.dh);
   EC_KEY_free(s->s3->tmp.ecdh);
 
