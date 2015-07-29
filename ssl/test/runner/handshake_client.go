@@ -622,6 +622,9 @@ func (hs *clientHandshakeState) doFullHandshake() error {
 			c.sendAlert(alertInternalError)
 			return err
 		}
+		if c.config.Bugs.InvalidCertVerifySignature {
+			digest[0] ^= 0x80
+		}
 
 		switch key := c.config.Certificates[0].PrivateKey.(type) {
 		case *ecdsa.PrivateKey:

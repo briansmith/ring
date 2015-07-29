@@ -786,6 +786,32 @@ func addBasicTests() {
 			expectedError: ":BAD_SIGNATURE:",
 		},
 		{
+			testType: serverTest,
+			name:     "BadRSASignature-ClientAuth",
+			config: Config{
+				Bugs: ProtocolBugs{
+					InvalidCertVerifySignature: true,
+				},
+				Certificates: []Certificate{getRSACertificate()},
+			},
+			shouldFail:    true,
+			expectedError: ":BAD_SIGNATURE:",
+			flags:         []string{"-require-any-client-certificate"},
+		},
+		{
+			testType: serverTest,
+			name:     "BadECDSASignature-ClientAuth",
+			config: Config{
+				Bugs: ProtocolBugs{
+					InvalidCertVerifySignature: true,
+				},
+				Certificates: []Certificate{getECDSACertificate()},
+			},
+			shouldFail:    true,
+			expectedError: ":BAD_SIGNATURE:",
+			flags:         []string{"-require-any-client-certificate"},
+		},
+		{
 			name: "BadECDSACurve",
 			config: Config{
 				CipherSuites: []uint16{TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256},

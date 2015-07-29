@@ -400,6 +400,10 @@ type ProtocolBugs struct {
 	// ServerKeyExchange message should be invalid.
 	InvalidSKXSignature bool
 
+	// InvalidCertVerifySignature specifies that the signature in a
+	// CertificateVerify message should be invalid.
+	InvalidCertVerifySignature bool
+
 	// InvalidSKXCurve causes the curve ID in the ServerKeyExchange message
 	// to be wrong.
 	InvalidSKXCurve bool
