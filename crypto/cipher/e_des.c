@@ -127,7 +127,7 @@ static int des_ede3_cbc_cipher(EVP_CIPHER_CTX *ctx, uint8_t *out,
 }
 
 static const EVP_CIPHER des3_cbc = {
-    NID_des_cbc,         8 /* block_size */,  24 /* key_size */,
+    NID_des_ede3_cbc,    8 /* block_size */,  24 /* key_size */,
     8 /* iv_len */,      sizeof(DES_EDE_KEY), EVP_CIPH_CBC_MODE,
     NULL /* app_data */, des_ede3_init_key,   des_ede3_cbc_cipher,
     NULL /* cleanup */,  NULL /* ctrl */, };
