@@ -280,6 +280,6 @@ PERLASM_ARGS = $(PERLASM_$(ARCH)_ARGS)
 $(OBJ_PREFIX)%.S: %.pl $(PERLASM_LIB_SRCS)
 	${PERL_EXECUTABLE} $< $(PERLASM_ARGS) > $@
 
-.PHONY: check
-check::
+.PHONY: check-ring
+check-ring::
 	go run $(RING_PREFIX)util/all_tests.go --build-dir=$(EXE_PREFIX)
