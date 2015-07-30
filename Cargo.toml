@@ -1,0 +1,27 @@
+[package]
+authors = ["Brian Smith <brian@briansmith.org>"]
+build = "build.rs"
+description = "A Rust interface for a simplification of BoringSSL's libcrypto."
+license-file = "LICENSE"
+name = "rust-ring"
+readme = "README.md"
+repository = "https://github.com/briansmith/ring"
+version = "0.1.0"
+
+[lib]
+name = "rust_ring"
+crate-type = ["rlib"]
+
+[dependencies]
+libc = "0.1"
+
+# TODO: [dev-dependencies]
+rustc-serialize = "0.3.15"
+
+[profile.release]
+opt-level = 3
+debug = false
+rpath = false
+lto = true
+debug-assertions = false
+codegen-units = 1

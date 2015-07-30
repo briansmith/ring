@@ -92,6 +92,7 @@ OPENSSL_EXPORT uint8_t *MD5(const uint8_t *data, size_t len, uint8_t *out);
  * transformation using the state from |md5| and 64 bytes from |block|. */
 OPENSSL_EXPORT void MD5_Transform(MD5_CTX *md5, const uint8_t *block);
 
+/* ring: Keep this in sync with |md5_state_st| in digest.rs. */
 struct md5_state_st {
   uint32_t A, B, C, D;
   uint32_t Nl, Nh;

@@ -13,8 +13,23 @@ affect building:
 
 
 
-Building on Linux and Similar Platforms
-=======================================
+Building the Rust Library
+=========================
+
+*ring*'s Rust crate is named ```rust_ring```. You can build it
+using ```cargo build --release``` and you can run the tests
+with ```cargo test --release```. When you use ```cargo build```, you don't need
+to follow the instructions below to build the C code separately, because
+[build.rs](build.rs) does that automatically. Unlike a lot of Rust wrappers
+around C libraries, the build script for ```ring``` is implemented using the
+msbuild projects (on Windows) or the Makefile (on other platforms). Because
+this is a little unusual, I would be particularly grateful if you could report
+any problems building (or using) *ring*'s Rust crate.
+
+
+
+Building the C Library on Linux and Similar Platforms
+=====================================================
 
 There is no ./configure step.
 
@@ -62,8 +77,8 @@ be in ```$PATH```. Example:
 
 
 
-Building on Windows
-===================
+Building the C Library on Windows
+=================================
 
 Note that currently the assembly language optimizations are NOT built on
 Windows yet, only because the additions to the project files to support doing

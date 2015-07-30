@@ -11,12 +11,7 @@ OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 What is *ring*?
 ===============
 
-*ring* is a simplified version of BoringSSL that has the following features
-removed:
-
-* TLS (libssl)
-* X.509 (crypto/pem, crypto/x509, crypto/x509v3)
-* ASN.1 (crypto/asn1 and crypto/obj)
+*ring* is a simplified version of BoringSSL with C and Rust APIs.
 
 *ring* makes OpenSSL's high-quality, high-performance crypto primitives
 conveniently available to new crypto libraries written in safer (than C)
@@ -36,6 +31,32 @@ were developed for *ring* have already been integrated upstream in BoringSSL.
 
 
 
+The Rust API
+============
+The first part of the ```rust_ring``` Rust crate is now available.
+
+Currently only support for cryptographic digests is available. See the
+documentation at
+https://briansmith.github.io/ring/rust_ring/. Also take a look at the example
+program [checkdigest.rs](examples/checkdigest.rs).
+
+See [Building the Rust Library](BUILDING.md#building-the-rust-library) for
+instructions on how to build it (hint: it's just ```cargo build```).
+
+
+
+The C API
+=========
+The C API is the same as BoringSSL's, except that its SSL/TLS, X.509, and
+ASN.1 APIs have been removed. See
+[this](https://github.com/briansmith/ring/blob/wip/BUILDING.md#building-the-c-library-on-windows)
+(for Windows) and
+[this](https://github.com/briansmith/ring/blob/wip/BUILDING.md#building-the-c-library-on-linux-and-similar-platforms)
+(for other platforms) for instructions on how to build *ring* and incorporate
+it into your project.
+
+
+
 Warning: The ```wip``` Branch Gets Rebased Frequently
 =====================================================
 
@@ -43,14 +64,6 @@ The default branch on GitHub for this project is the ```wip``` branch. This
 branch is getting rebased regularly as I clean up the initial set of patches
 for *ring*. Once that cleanup is done, I will create a ```master``` branch that
 I intend to never rebase, and then I will delete the ```wip``` branch.
-
-
-
-Building
-========
-
-See [BUILDING.md](BUILDING.md) for instructions on how to build *ring* and
-incorporate it into your project.
 
 
 

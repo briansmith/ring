@@ -17,3 +17,7 @@ doc/doc.css
 *.userosscache
 *.vsp
 *.vspx
+
+# Cargo Junk
+Cargo.lock
+target/

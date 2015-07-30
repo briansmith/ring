@@ -92,6 +92,7 @@ OPENSSL_EXPORT int SHA1_Final(uint8_t *md, SHA_CTX *sha);
  * transformation using the state from |sha| and 64 bytes from |block|. */
 OPENSSL_EXPORT void SHA1_Transform(SHA_CTX *sha, const uint8_t *block);
 
+/* ring: Keep this in sync with |sha_state_st| in digest.rs. */
 struct sha_state_st {
   uint32_t h0, h1, h2, h3, h4;
   uint32_t Nl, Nh;
@@ -143,6 +144,7 @@ OPENSSL_EXPORT int SHA256_Final(uint8_t *md, SHA256_CTX *sha);
  * transformation using the state from |sha| and 64 bytes from |block|. */
 OPENSSL_EXPORT void SHA256_Transform(SHA256_CTX *sha, const uint8_t *data);
 
+/* ring: Keep this in sync with |sha256_state_st| in digest.rs. */
 struct sha256_state_st {
   uint32_t h[8];
   uint32_t Nl, Nh;
@@ -198,6 +200,7 @@ OPENSSL_EXPORT int SHA512_Final(uint8_t *md, SHA512_CTX *sha);
  * transformation using the state from |sha| and 64 bytes from |block|. */
 OPENSSL_EXPORT void SHA512_Transform(SHA512_CTX *sha, const uint8_t *data);
 
+/* ring: Keep this in sync with |sha512_state_st| in digest.rs. */
 struct sha512_state_st {
   uint64_t h[8];
   uint64_t Nl, Nh;
