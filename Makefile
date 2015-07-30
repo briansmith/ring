@@ -30,4 +30,6 @@ LIBS += \
 
 EXES += $(RING_TEST_EXES)
 
+check:: check-ring
+
 include mk/bottom_of_makefile.mk
