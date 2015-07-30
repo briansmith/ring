@@ -56,9 +56,6 @@
 
 #include <openssl/rc4.h>
 
-#if defined(OPENSSL_NO_ASM) || \
-    (!defined(OPENSSL_X86_64) && !defined(OPENSSL_X86))
-
 #if defined(OPENSSL_64_BIT)
 #define RC4_CHUNK uint64_t
 #elif defined(OPENSSL_32_BIT)
@@ -263,22 +260,3 @@ void RC4_set_key(RC4_KEY *rc4key, unsigned len, const uint8_t *key) {
     SK_LOOP(d, i + 3);
   }
 }
-
-#else
-
-/* In this case several functions are provided by asm code. However, one cannot
- * control asm symbol visibility with command line flags and such so they are
- * always hidden and wrapped by these C functions, which can be so
- * controlled. */
-
-void asm_RC4(RC4_KEY *key, size_t len, const uint8_t *in, uint8_t *out);
-void RC4(RC4_KEY *key, size_t len, const uint8_t *in, uint8_t *out) {
-  asm_RC4(key, len, in, out);
-}
-
-void asm_RC4_set_key(RC4_KEY *rc4key, unsigned len, const uint8_t *key);
-void RC4_set_key(RC4_KEY *rc4key, unsigned len, const uint8_t *key) {
-  asm_RC4_set_key(rc4key, len, key);
-}
-
-#endif  /* OPENSSL_NO_ASM || (!OPENSSL_X86_64 && !OPENSSL_X86) */
