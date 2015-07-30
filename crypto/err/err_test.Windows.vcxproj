@@ -4,12 +4,12 @@
     <ProjectGuid>{C4DE9A69-978C-4156-8F62-BFB81A22D758}</ProjectGuid>
     <TargetName>err_test</TargetName>
   </PropertyGroup>
-  <PropertyGroup Label="Configuration">
-    <OutDir>$(SolutionDir)build\$(Platform)-$(Configuration)\test\ring\crypto\err\</OutDir>
-  </PropertyGroup>
   <ImportGroup Label="PropertySheets">
     <Import Project="..\..\mk\WindowsTest.props" />
   </ImportGroup>
+  <PropertyGroup Label="Configuration">
+    <OutDir>$(OutRootDir)\test\ring\crypto\err\</OutDir>
+  </PropertyGroup>
   <ItemGroup>
     <ClCompile Include="err_test.cc" />
   </ItemGroup>

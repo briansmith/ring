@@ -4,12 +4,12 @@
     <ProjectGuid>{CF492FD2-AEA4-4AEE-962D-7B89887E06E5}</ProjectGuid>
     <TargetName>hkdf_test</TargetName>
   </PropertyGroup>
-  <PropertyGroup Label="Configuration">
-    <OutDir>$(SolutionDir)build\$(Platform)-$(Configuration)\test\ring\crypto\hkdf\</OutDir>
-  </PropertyGroup>
   <ImportGroup Label="PropertySheets">
     <Import Project="..\..\mk\WindowsTest.props" />
   </ImportGroup>
+  <PropertyGroup Label="Configuration">
+    <OutDir>$(OutRootDir)test\ring\crypto\hkdf\</OutDir>
+  </PropertyGroup>
   <ItemGroup>
     <ClCompile Include="hkdf_test.c" />
   </ItemGroup>

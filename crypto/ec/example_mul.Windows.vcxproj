@@ -4,12 +4,12 @@
     <ProjectGuid>{6216DD4F-2055-4D4E-9672-AF9154AC7B7B}</ProjectGuid>
     <TargetName>example_mul</TargetName>
   </PropertyGroup>
-  <PropertyGroup Label="Configuration">
-    <OutDir>$(SolutionDir)build\$(Platform)-$(Configuration)\test\ring\crypto\ec\</OutDir>
-  </PropertyGroup>
   <ImportGroup Label="PropertySheets">
     <Import Project="..\..\mk\WindowsTest.props" />
   </ImportGroup>
+  <PropertyGroup Label="Configuration">
+    <OutDir>$(OutRootDir)test\ring\crypto\ec\</OutDir>
+  </PropertyGroup>
   <ItemGroup>
     <ClCompile Include="example_mul.c" />
   </ItemGroup>

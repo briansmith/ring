@@ -4,12 +4,12 @@
     <ProjectGuid>{C8E7CDAF-3953-48E8-95F2-97DAC472E2E0}</ProjectGuid>
     <TargetName>constant_time_test</TargetName>
   </PropertyGroup>
-  <PropertyGroup Label="Configuration">
-    <OutDir>$(SolutionDir)build\$(Platform)-$(Configuration)\test\ring\crypto\</OutDir>
-  </PropertyGroup>
   <ImportGroup Label="PropertySheets">
     <Import Project="..\mk\WindowsTest.props" />
   </ImportGroup>
+  <PropertyGroup Label="Configuration">
+    <OutDir>$(OutRootDir)test\ring\crypto\</OutDir>
+  </PropertyGroup>
   <ItemGroup>
     <ClCompile Include="constant_time_test.c" />
   </ItemGroup>

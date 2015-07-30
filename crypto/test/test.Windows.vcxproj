@@ -12,7 +12,7 @@
     <Import Project="..\..\mk\Windows.props" />
   </ImportGroup>
   <PropertyGroup Label="Configuration">
-    <OutDir>$(SolutionDir)build\obj\$(Platform)-$(Configuration)\</OutDir>
+    <OutDir>$(IntRootDir)</OutDir>
   </PropertyGroup>
   <ItemGroup>
     <ClCompile Include="file_test.cc" />

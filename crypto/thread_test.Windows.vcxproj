@@ -4,12 +4,12 @@
     <ProjectGuid>{52C6E909-4E56-4329-8B99-E1B5C2E1FB19}</ProjectGuid>
     <TargetName>thread_test</TargetName>
   </PropertyGroup>
-  <PropertyGroup Label="Configuration">
-    <OutDir>$(SolutionDir)build\$(Platform)-$(Configuration)\test\ring\crypto\</OutDir>
-  </PropertyGroup>
   <ImportGroup Label="PropertySheets">
     <Import Project="..\mk\WindowsTest.props" />
   </ImportGroup>
+  <PropertyGroup Label="Configuration">
+    <OutDir>$(OutRootDir)\test\ring\crypto\</OutDir>
+  </PropertyGroup>
   <ItemGroup>
     <ClCompile Include="thread_test.c" />
   </ItemGroup>

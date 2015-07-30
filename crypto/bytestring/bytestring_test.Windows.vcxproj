@@ -4,12 +4,12 @@
     <ProjectGuid>{8B0DEF57-6FC5-404F-A1D0-A8FC0FCAD787}</ProjectGuid>
     <TargetName>bytestring_test</TargetName>
   </PropertyGroup>
-  <PropertyGroup Label="Configuration">
-    <OutDir>$(SolutionDir)build\$(Platform)-$(Configuration)\test\ring\crypto\bytestring\</OutDir>
-  </PropertyGroup>
   <ImportGroup Label="PropertySheets">
     <Import Project="..\..\mk\WindowsTest.props" />
   </ImportGroup>
+  <PropertyGroup Label="Configuration">
+    <OutDir>$(OutRootDir)test\ring\crypto\bytestring\</OutDir>
+  </PropertyGroup>
   <ItemGroup>
     <ClCompile Include="bytestring_test.cc" />
   </ItemGroup>
