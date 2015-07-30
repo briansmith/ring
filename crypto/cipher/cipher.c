@@ -625,7 +625,7 @@ const EVP_CIPHER *EVP_get_cipherbyname(const char *name) {
     return EVP_rc4();
   } else if (OPENSSL_strcasecmp(name, "des-cbc") == 0) {
     return EVP_des_cbc();
-  } else if (OPENSSL_strcasecmp(name, "3des-cbc") == 0 ||
+  } else if (OPENSSL_strcasecmp(name, "des-ede3-cbc") == 0 ||
              OPENSSL_strcasecmp(name, "3des") == 0) {
     return EVP_des_ede3_cbc();
   } else if (OPENSSL_strcasecmp(name, "aes-128-cbc") == 0) {
