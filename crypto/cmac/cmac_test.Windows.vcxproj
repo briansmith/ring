@@ -4,12 +4,12 @@
     <ProjectGuid>{A6E8C593-5CF7-4BB2-B8CE-54A8ECA06CF6}</ProjectGuid>
     <TargetName>cmac_test</TargetName>
   </PropertyGroup>
-  <PropertyGroup Label="Configuration">
-    <OutDir>$(SolutionDir)build\$(Platform)-$(Configuration)\test\ring\crypto\cmac\</OutDir>
-  </PropertyGroup>
   <ImportGroup Label="PropertySheets">
     <Import Project="..\..\mk\WindowsTest.props" />
   </ImportGroup>
+  <PropertyGroup Label="Configuration">
+    <OutDir>$(OutRootDir)test\ring\crypto\cmac\</OutDir>
+  </PropertyGroup>
   <ItemGroup>
     <ClCompile Include="cmac_test.cc" />
   </ItemGroup>

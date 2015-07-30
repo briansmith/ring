@@ -4,12 +4,12 @@
     <ProjectGuid>{06C8B12A-97C3-4326-B0AB-8C8004E94A76}</ProjectGuid>
     <TargetName>bn_test</TargetName>
   </PropertyGroup>
-  <PropertyGroup Label="Configuration">
-    <OutDir>$(SolutionDir)build\$(Platform)-$(Configuration)\test\ring\crypto\bn\</OutDir>
-  </PropertyGroup>
   <ImportGroup Label="PropertySheets">
     <Import Project="..\..\mk\WindowsTest.props" />
   </ImportGroup>
+  <PropertyGroup Label="Configuration">
+    <OutDir>$(OutRootDir)\test\ring\crypto\bn\</OutDir>
+  </PropertyGroup>
   <ItemGroup>
     <ClCompile Include="bn_test.cc" />
   </ItemGroup>

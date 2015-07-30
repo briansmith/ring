@@ -6,12 +6,14 @@
     <TargetName>libring</TargetName>
   </PropertyGroup>
   <PropertyGroup Label="Configuration">
-    <OutDir>$(SolutionDir)build\$(Platform)-$(Configuration)\lib\</OutDir>
     <ConfigurationType>StaticLibrary</ConfigurationType>
   </PropertyGroup>
   <ImportGroup Label="PropertySheets">
     <Import Project="..\mk\Windows.props" />
   </ImportGroup>
+  <PropertyGroup Label="Configuration">
+    <OutDir>$(OutRootDir)lib\</OutDir>
+  </PropertyGroup>
   <ItemGroup>
     <ClCompile Include="aes\aes.c" />
     <ClCompile Include="aes\mode_wrappers.c" />

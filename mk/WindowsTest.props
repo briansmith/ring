@@ -12,7 +12,7 @@
     </ClCompile>
     <Link>
       <AdditionalDependencies>libring.lib;libring-test.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <AdditionalLibraryDirectories>$(SolutionDir)build\$(Platform)-$(Configuration)\lib;$(SolutionDir)build\obj\$(Platform)-$(Configuration);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>$(OutRootDir)lib;$(IntRootDir);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
   </ItemDefinitionGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

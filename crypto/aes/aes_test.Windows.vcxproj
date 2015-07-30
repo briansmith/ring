@@ -4,12 +4,12 @@
     <ProjectGuid>{1C3071CC-26DA-4790-B48A-3936DDD0E7E7}</ProjectGuid>
     <TargetName>aes_test</TargetName>
   </PropertyGroup>
-  <PropertyGroup Label="Configuration">
-    <OutDir>$(SolutionDir)build\$(Platform)-$(Configuration)\test\ring\crypto\aes\</OutDir>
-  </PropertyGroup>
   <ImportGroup Label="PropertySheets">
     <Import Project="..\..\mk\WindowsTest.props" />
   </ImportGroup>
+  <PropertyGroup Label="Configuration">
+    <OutDir>$(OutRootDir)test\ring\crypto\aes\</OutDir>
+  </PropertyGroup>
   <ItemGroup>
     <ClCompile Include="aes_test.cc" />
   </ItemGroup>
