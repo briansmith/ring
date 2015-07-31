@@ -633,7 +633,7 @@ void ERR_put_error(int library, int reason, const char *function,
   }
 
   if (library == ERR_LIB_SYS && reason == 0) {
-#if defined(WIN32)
+#if defined(OPENSSL_WINDOWS)
     reason = GetLastError();
 #else
     reason = errno;
