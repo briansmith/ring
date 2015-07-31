@@ -473,7 +473,7 @@ static int TicketKeyCallback(SSL *ssl, uint8_t *key_name, uint8_t *iv,
 
 // kCustomExtensionValue is the extension value that the custom extension
 // callbacks will add.
-constexpr uint16_t kCustomExtensionValue = 1234;
+static const uint16_t kCustomExtensionValue = 1234;
 static void *const kCustomExtensionAddArg =
     reinterpret_cast<void *>(kCustomExtensionValue);
 static void *const kCustomExtensionParseArg =
