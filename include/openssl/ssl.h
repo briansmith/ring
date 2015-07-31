@@ -1996,7 +1996,6 @@ DECLARE_PEM_rw(SSL_SESSION, SSL_SESSION)
 #define SSL_CTRL_SET_CLIENT_CERT_TYPES 104
 #define SSL_CTRL_SET_VERIFY_CERT_STORE 106
 #define SSL_CTRL_SET_CHAIN_CERT_STORE 107
-#define SSL_CTRL_GET_EC_POINT_FORMATS 111
 
 /* DTLSv1_get_timeout queries the next DTLS handshake timeout. If there is a
  * timeout in progress, it sets |*out| to the time remaining and returns one.
@@ -2138,9 +2137,6 @@ OPENSSL_EXPORT size_t SSL_get_tls_channel_id(SSL *ssl, uint8_t *out,
   SSL_CTX_ctrl(ctx, SSL_CTRL_SET_CLIENT_CERT_TYPES, clistlen, (char *)clist)
 #define SSL_set1_client_certificate_types(s, clist, clistlen) \
   SSL_ctrl(s, SSL_CTRL_SET_CLIENT_CERT_TYPES, clistlen, (char *)clist)
-
-#define SSL_get0_ec_point_formats(s, plst) \
-  SSL_ctrl(s, SSL_CTRL_GET_EC_POINT_FORMATS, 0, (char *)plst)
 
 OPENSSL_EXPORT int SSL_CTX_set_cipher_list(SSL_CTX *, const char *str);
 OPENSSL_EXPORT int SSL_CTX_set_cipher_list_tls11(SSL_CTX *, const char *str);

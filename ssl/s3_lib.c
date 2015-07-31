@@ -425,15 +425,6 @@ long ssl3_ctrl(SSL *s, int cmd, long larg, void *parg) {
     case SSL_CTRL_SET_CHAIN_CERT_STORE:
       return ssl_cert_set_cert_store(s->cert, parg, 1, larg);
 
-    case SSL_CTRL_GET_EC_POINT_FORMATS: {
-      const uint8_t **pformat = parg;
-      if (!s->s3->tmp.peer_ecpointformatlist) {
-        return 0;
-      }
-      *pformat = s->s3->tmp.peer_ecpointformatlist;
-      return (int)s->s3->tmp.peer_ecpointformatlist_length;
-    }
-
     default:
       break;
   }
