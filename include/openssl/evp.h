@@ -740,4 +740,9 @@ struct evp_pkey_st {
 #define EVP_R_UNSUPPORTED_PUBLIC_KEY_TYPE 153
 #define EVP_R_UNSUPPORTED_SIGNATURE_TYPE 154
 
+
+/* Compatibility section. */
+
+#define EVP_R_BAD_DECRYPT CIPHER_R_BAD_DECRYPT
+
 #endif  /* OPENSSL_HEADER_EVP_H */
