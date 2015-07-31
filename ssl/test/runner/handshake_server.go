@@ -210,8 +210,8 @@ func (hs *serverHandshakeState) readClientHello() (isResume bool, err error) {
 	}
 	c.haveVers = true
 
-	hs.hello = &serverHelloMsg {
-		isDTLS: c.isDTLS,
+	hs.hello = &serverHelloMsg{
+		isDTLS:          c.isDTLS,
 		customExtension: config.Bugs.CustomExtension,
 	}
 

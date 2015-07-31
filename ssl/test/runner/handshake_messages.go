@@ -388,7 +388,7 @@ func (m *clientHelloMsg) marshal() []byte {
 		z[2] = byte(l >> 8)
 		z[3] = byte(l & 0xff)
 		copy(z[4:], []byte(m.customExtension))
-		z = z[4 + l:]
+		z = z[4+l:]
 	}
 
 	m.raw = x
@@ -839,7 +839,7 @@ func (m *serverHelloMsg) marshal() []byte {
 		z[2] = byte(l >> 8)
 		z[3] = byte(l & 0xff)
 		copy(z[4:], []byte(m.customExtension))
-		z = z[4 + l:]
+		z = z[4+l:]
 	}
 
 	m.raw = x

@@ -3661,10 +3661,10 @@ func addCustomExtensionTests() {
 
 		testCases = append(testCases, testCase{
 			testType: testType,
-			name: "CustomExtensions-" + suffix,
+			name:     "CustomExtensions-" + suffix,
 			config: Config{
-				Bugs: ProtocolBugs {
-					CustomExtension: expectedContents,
+				Bugs: ProtocolBugs{
+					CustomExtension:         expectedContents,
 					ExpectedCustomExtension: &expectedContents,
 				},
 			},
@@ -3674,30 +3674,30 @@ func addCustomExtensionTests() {
 		// If the parse callback fails, the handshake should also fail.
 		testCases = append(testCases, testCase{
 			testType: testType,
-			name: "CustomExtensions-ParseError-" + suffix,
+			name:     "CustomExtensions-ParseError-" + suffix,
 			config: Config{
-				Bugs: ProtocolBugs {
-					CustomExtension: expectedContents + "foo",
+				Bugs: ProtocolBugs{
+					CustomExtension:         expectedContents + "foo",
 					ExpectedCustomExtension: &expectedContents,
 				},
 			},
-			flags: []string{flag},
-			shouldFail: true,
+			flags:         []string{flag},
+			shouldFail:    true,
 			expectedError: ":CUSTOM_EXTENSION_ERROR:",
 		})
 
 		// If the add callback fails, the handshake should also fail.
 		testCases = append(testCases, testCase{
 			testType: testType,
-			name: "CustomExtensions-FailAdd-" + suffix,
+			name:     "CustomExtensions-FailAdd-" + suffix,
 			config: Config{
-				Bugs: ProtocolBugs {
-					CustomExtension: expectedContents,
+				Bugs: ProtocolBugs{
+					CustomExtension:         expectedContents,
 					ExpectedCustomExtension: &expectedContents,
 				},
 			},
-			flags: []string{flag, "-custom-extension-fail-add"},
-			shouldFail: true,
+			flags:         []string{flag, "-custom-extension-fail-add"},
+			shouldFail:    true,
 			expectedError: ":CUSTOM_EXTENSION_ERROR:",
 		})
 
@@ -3711,10 +3711,10 @@ func addCustomExtensionTests() {
 		}
 		testCases = append(testCases, testCase{
 			testType: testType,
-			name: "CustomExtensions-Skip-" + suffix,
+			name:     "CustomExtensions-Skip-" + suffix,
 			config: Config{
-				Bugs: ProtocolBugs {
-					CustomExtension: skipCustomExtension,
+				Bugs: ProtocolBugs{
+					CustomExtension:         skipCustomExtension,
 					ExpectedCustomExtension: &emptyString,
 				},
 			},
@@ -3726,9 +3726,9 @@ func addCustomExtensionTests() {
 	// doesn't send the extension.
 	testCases = append(testCases, testCase{
 		testType: serverTest,
-		name: "CustomExtensions-NotCalled-Server",
+		name:     "CustomExtensions-NotCalled-Server",
 		config: Config{
-			Bugs: ProtocolBugs {
+			Bugs: ProtocolBugs{
 				ExpectedCustomExtension: &emptyString,
 			},
 		},
