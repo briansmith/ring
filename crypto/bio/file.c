@@ -88,7 +88,7 @@
 #define BIO_FP_APPEND 0x08
 
 static FILE *open_file(const char *filename, const char *mode) {
-#if defined(_WIN32) && defined(CP_UTF8)
+#if defined(OPENSSL_WINDOWS) && defined(CP_UTF8)
   int sz, len_0 = (int)strlen(filename) + 1;
   DWORD flags;
 
