@@ -364,6 +364,29 @@ enum ssl_private_key_result_t ssl_private_key_sign_complete(
     SSL *ssl, uint8_t *out, size_t *out_len, size_t max_out);
 
 
+/* Custom extensions */
+
+/* ssl_custom_extension (a.k.a. SSL_CUSTOM_EXTENSION) is a structure that
+ * contains information about custom-extension callbacks. */
+struct ssl_custom_extension {
+  SSL_custom_ext_add_cb add_callback;
+  void *add_arg;
+  SSL_custom_ext_free_cb free_callback;
+  SSL_custom_ext_parse_cb parse_callback;
+  void *parse_arg;
+  uint16_t value;
+};
+
+void SSL_CUSTOM_EXTENSION_free(SSL_CUSTOM_EXTENSION *custom_extension);
+
+int custom_ext_add_clienthello(SSL *ssl, CBB *extensions);
+int custom_ext_parse_serverhello(SSL *ssl, int *out_alert, uint16_t value,
+                                 const CBS *extension);
+int custom_ext_parse_clienthello(SSL *ssl, int *out_alert, uint16_t value,
+                                 const CBS *extension);
+int custom_ext_add_serverhello(SSL *ssl, CBB *extensions);
+
+
 /* Underdocumented functions.
  *
  * Functions below here haven't been touched up and may be underdocumented. */

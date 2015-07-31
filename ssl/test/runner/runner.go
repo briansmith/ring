@@ -3627,6 +3627,97 @@ func addTLSUniqueTests() {
 	}
 }
 
+func addCustomExtensionTests() {
+	expectedContents := "custom extension"
+	emptyString := ""
+
+	for _, isClient := range []bool{false, true} {
+		suffix := "Server"
+		flag := "-enable-server-custom-extension"
+		testType := serverTest
+		if isClient {
+			suffix = "Client"
+			flag = "-enable-client-custom-extension"
+			testType = clientTest
+		}
+
+		testCases = append(testCases, testCase{
+			testType: testType,
+			name: "CustomExtensions-" + suffix,
+			config: Config{
+				Bugs: ProtocolBugs {
+					CustomExtension: expectedContents,
+					ExpectedCustomExtension: &expectedContents,
+				},
+			},
+			flags: []string{flag},
+		})
+
+		// If the parse callback fails, the handshake should also fail.
+		testCases = append(testCases, testCase{
+			testType: testType,
+			name: "CustomExtensions-ParseError-" + suffix,
+			config: Config{
+				Bugs: ProtocolBugs {
+					CustomExtension: expectedContents + "foo",
+					ExpectedCustomExtension: &expectedContents,
+				},
+			},
+			flags: []string{flag},
+			shouldFail: true,
+			expectedError: ":CUSTOM_EXTENSION_ERROR:",
+		})
+
+		// If the add callback fails, the handshake should also fail.
+		testCases = append(testCases, testCase{
+			testType: testType,
+			name: "CustomExtensions-FailAdd-" + suffix,
+			config: Config{
+				Bugs: ProtocolBugs {
+					CustomExtension: expectedContents,
+					ExpectedCustomExtension: &expectedContents,
+				},
+			},
+			flags: []string{flag, "-custom-extension-fail-add"},
+			shouldFail: true,
+			expectedError: ":CUSTOM_EXTENSION_ERROR:",
+		})
+
+		// If the add callback returns zero, no extension should be
+		// added.
+		skipCustomExtension := expectedContents
+		if isClient {
+			// For the case where the client skips sending the
+			// custom extension, the server must not “echo” it.
+			skipCustomExtension = ""
+		}
+		testCases = append(testCases, testCase{
+			testType: testType,
+			name: "CustomExtensions-Skip-" + suffix,
+			config: Config{
+				Bugs: ProtocolBugs {
+					CustomExtension: skipCustomExtension,
+					ExpectedCustomExtension: &emptyString,
+				},
+			},
+			flags: []string{flag, "-custom-extension-skip"},
+		})
+	}
+
+	// The custom extension add callback should not be called if the client
+	// doesn't send the extension.
+	testCases = append(testCases, testCase{
+		testType: serverTest,
+		name: "CustomExtensions-NotCalled-Server",
+		config: Config{
+			Bugs: ProtocolBugs {
+				ExpectedCustomExtension: &emptyString,
+			},
+		},
+		flags: []string{"-enable-server-custom-extension", "-custom-extension-fail-add"},
+	})
+}
+
 func worker(statusChan chan statusMsg, c chan *testCase, shimPath string, wg *sync.WaitGroup) {
 	defer wg.Done()
 
@@ -3723,6 +3814,7 @@ func main() {
 	addDTLSRetransmitTests()
 	addExportKeyingMaterialTests()
 	addTLSUniqueTests()
+	addCustomExtensionTests()
 	for _, async := range []bool{false, true} {
 		for _, splitHandshake := range []bool{false, true} {
 			for _, protocol := range []protocol{tls, dtls} {

@@ -453,6 +453,16 @@ typedef struct ssl3_state_st {
       uint32_t received;
     } extensions;
 
+    union {
+      /* sent is a bitset where the bits correspond to elements of
+       * |client_custom_extensions| in the |SSL_CTX|. Each bit is set if that
+       * extension was sent in a ClientHello. It's not used by servers. */
+      uint16_t sent;
+      /* received is a bitset, like |sent|, but is used by servers to record
+       * which custom extensions were received from a client. The bits here
+       * correspond to |server_custom_extensions|. */
+      uint16_t received;
+    } custom_extensions;
 
     /* SNI extension */
 

@@ -84,6 +84,12 @@ const Flag<bool> kBoolFlags[] = {
   { "-expect-no-session", &TestConfig::expect_no_session },
   { "-use-ticket-callback", &TestConfig::use_ticket_callback },
   { "-renew-ticket", &TestConfig::renew_ticket },
+  { "-enable-client-custom-extension",
+    &TestConfig::enable_client_custom_extension },
+  { "-enable-server-custom-extension",
+    &TestConfig::enable_server_custom_extension },
+  { "-custom-extension-skip", &TestConfig::custom_extension_skip },
+  { "-custom-extension-fail-add", &TestConfig::custom_extension_fail_add },
 };
 
 const Flag<std::string> kStringFlags[] = {

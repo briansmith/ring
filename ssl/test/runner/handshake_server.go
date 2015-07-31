@@ -210,8 +210,10 @@ func (hs *serverHandshakeState) readClientHello() (isResume bool, err error) {
 	}
 	c.haveVers = true
 
-	hs.hello = new(serverHelloMsg)
-	hs.hello.isDTLS = c.isDTLS
+	hs.hello = &serverHelloMsg {
+		isDTLS: c.isDTLS,
+		customExtension: config.Bugs.CustomExtension,
+	}
 
 	supportedCurve := false
 	preferredCurves := config.curvePreferences()
@@ -338,6 +340,12 @@ Curves:
 
 	if c.config.Bugs.SendSRTPProtectionProfile != 0 {
 		hs.hello.srtpProtectionProfile = c.config.Bugs.SendSRTPProtectionProfile
+	}
+
+	if expected := c.config.Bugs.ExpectedCustomExtension; expected != nil {
+		if hs.clientHello.customExtension != *expected {
+			return false, fmt.Errorf("tls: bad custom extension contents %q", hs.clientHello.customExtension)
+		}
 	}
 
 	_, hs.ecdsaOk = hs.cert.PrivateKey.(*ecdsa.PrivateKey)

@@ -2235,6 +2235,12 @@ static const struct tls_extension *tls_extension_find(uint32_t *out_index,
   return NULL;
 }
 
+int SSL_extension_supported(unsigned extension_value) {
+  uint32_t index;
+  return extension_value == TLSEXT_TYPE_padding ||
+         tls_extension_find(&index, extension_value) != NULL;
+}
+
 /* header_len is the length of the ClientHello header written so far, used to
  * compute padding. It does not include the record header. Pass 0 if no padding
  * is to be done. */
@@ -2253,6 +2259,7 @@ uint8_t *ssl_add_clienthello_tlsext(SSL *s, uint8_t *const buf,
   }
 
   s->s3->tmp.extensions.sent = 0;
+  s->s3->tmp.custom_extensions.sent = 0;
 
   size_t i;
   for (i = 0; i < kNumExtensions; i++) {
@@ -2272,6 +2279,10 @@ uint8_t *ssl_add_clienthello_tlsext(SSL *s, uint8_t *const buf,
     if (CBB_len(&extensions) != len_before) {
       s->s3->tmp.extensions.sent |= (1u << i);
     }
+  }
+
+  if (!custom_ext_add_clienthello(s, &extensions)) {
+    goto err;
   }
 
   if (header_len > 0) {
@@ -2353,6 +2364,10 @@ uint8_t *ssl_add_serverhello_tlsext(SSL *s, uint8_t *const buf,
     }
   }
 
+  if (!custom_ext_add_serverhello(s, &extensions)) {
+    goto err;
+  }
+
   if (!CBB_flush(&cbb)) {
     goto err;
   }
@@ -2384,6 +2399,7 @@ static int ssl_scan_clienthello_tlsext(SSL *s, CBS *cbs, int *out_alert) {
   }
 
   s->s3->tmp.extensions.received = 0;
+  s->s3->tmp.custom_extensions.received = 0;
   /* The renegotiation extension must always be at index zero because the
    * |received| and |sent| bitsets need to be tweaked when the "extension" is
    * sent as an SCSV. */
@@ -2415,6 +2431,10 @@ static int ssl_scan_clienthello_tlsext(SSL *s, CBS *cbs, int *out_alert) {
           tls_extension_find(&ext_index, type);
 
       if (ext == NULL) {
+        if (!custom_ext_parse_clienthello(s, out_alert, type, &extension)) {
+          OPENSSL_PUT_ERROR(SSL, SSL_R_ERROR_PARSING_EXTENSION);
+          return 0;
+        }
         continue;
       }
 
@@ -2490,11 +2510,15 @@ static int ssl_scan_serverhello_tlsext(SSL *s, CBS *cbs, int *out_alert) {
       const struct tls_extension *const ext =
           tls_extension_find(&ext_index, type);
 
-      if (/* If ext == NULL then an unknown extension was received. Since we
-           * cannot have sent an unknown extension, this is illegal. */
-          ext == NULL ||
-          /* If the extension was never sent then it is also illegal. */
-          !(s->s3->tmp.extensions.sent & (1u << ext_index))) {
+      if (ext == NULL) {
+        if (!custom_ext_parse_serverhello(s, out_alert, type, &extension)) {
+          return 0;
+        }
+        continue;
+      }
+
+      if (!(s->s3->tmp.extensions.sent & (1u << ext_index))) {
+        /* If the extension was never sent then it is illegal. */
         OPENSSL_PUT_ERROR(SSL, SSL_R_UNEXPECTED_EXTENSION);
         ERR_add_error_dataf("extension :%u", (unsigned)type);
         *out_alert = SSL_AD_DECODE_ERROR;

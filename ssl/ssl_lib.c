@@ -1767,6 +1767,10 @@ void SSL_CTX_free(SSL_CTX *ctx) {
   sk_SSL_CIPHER_free(ctx->cipher_list_by_id);
   ssl_cipher_preference_list_free(ctx->cipher_list_tls11);
   ssl_cert_free(ctx->cert);
+  sk_SSL_CUSTOM_EXTENSION_pop_free(ctx->client_custom_extensions,
+                                   SSL_CUSTOM_EXTENSION_free);
+  sk_SSL_CUSTOM_EXTENSION_pop_free(ctx->server_custom_extensions,
+                                   SSL_CUSTOM_EXTENSION_free);
   sk_X509_NAME_pop_free(ctx->client_CA, X509_NAME_free);
   sk_SRTP_PROTECTION_PROFILE_free(ctx->srtp_profiles);
   OPENSSL_free(ctx->psk_identity_hint);

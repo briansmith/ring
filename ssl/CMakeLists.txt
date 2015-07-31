@@ -5,6 +5,7 @@ add_subdirectory(pqueue)
 add_library(
   ssl
 
+  custom_extensions.c
   d1_both.c
   d1_clnt.c
   d1_lib.c

@@ -73,6 +73,7 @@ func (c *Conn) clientHandshake() error {
 		extendedMasterSecret:    c.config.maxVersion() >= VersionTLS10,
 		srtpProtectionProfiles:  c.config.SRTPProtectionProfiles,
 		srtpMasterKeyIdentifier: c.config.Bugs.SRTPMasterKeyIdentifer,
+		customExtension:         c.config.Bugs.CustomExtension,
 	}
 
 	if c.config.Bugs.SendClientVersion != 0 {
@@ -287,6 +288,12 @@ NextCipherSuite:
 		if !bytes.Equal(serverHello.secureRenegotiation, expectedRenegInfo) {
 			c.sendAlert(alertHandshakeFailure)
 			return fmt.Errorf("tls: renegotiation mismatch")
+		}
+	}
+
+	if expected := c.config.Bugs.ExpectedCustomExtension; expected != nil {
+		if serverHello.customExtension != *expected {
+			return fmt.Errorf("tls: bad custom extension contents %q", serverHello.customExtension)
 		}
 	}
 

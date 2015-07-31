@@ -32,6 +32,7 @@ type clientHelloMsg struct {
 	srtpProtectionProfiles  []uint16
 	srtpMasterKeyIdentifier string
 	sctListSupported        bool
+	customExtension         string
 }
 
 func (m *clientHelloMsg) equal(i interface{}) bool {
@@ -65,7 +66,8 @@ func (m *clientHelloMsg) equal(i interface{}) bool {
 		m.extendedMasterSecret == m1.extendedMasterSecret &&
 		eqUint16s(m.srtpProtectionProfiles, m1.srtpProtectionProfiles) &&
 		m.srtpMasterKeyIdentifier == m1.srtpMasterKeyIdentifier &&
-		m.sctListSupported == m1.sctListSupported
+		m.sctListSupported == m1.sctListSupported &&
+		m.customExtension == m1.customExtension
 }
 
 func (m *clientHelloMsg) marshal() []byte {
@@ -136,6 +138,10 @@ func (m *clientHelloMsg) marshal() []byte {
 		numExtensions++
 	}
 	if m.sctListSupported {
+		numExtensions++
+	}
+	if l := len(m.customExtension); l > 0 {
+		extensionsLength += l
 		numExtensions++
 	}
 	if numExtensions > 0 {
@@ -376,6 +382,14 @@ func (m *clientHelloMsg) marshal() []byte {
 		z[1] = byte(extensionSignedCertificateTimestamp & 0xff)
 		z = z[4:]
 	}
+	if l := len(m.customExtension); l > 0 {
+		z[0] = byte(extensionCustom >> 8)
+		z[1] = byte(extensionCustom & 0xff)
+		z[2] = byte(l >> 8)
+		z[3] = byte(l & 0xff)
+		copy(z[4:], []byte(m.customExtension))
+		z = z[4 + l:]
+	}
 
 	m.raw = x
 
@@ -443,6 +457,7 @@ func (m *clientHelloMsg) unmarshal(data []byte) bool {
 	m.signatureAndHashes = nil
 	m.alpnProtocols = nil
 	m.extendedMasterSecret = false
+	m.customExtension = ""
 
 	if len(data) == 0 {
 		// ClientHello is optionally followed by extension data
@@ -604,6 +619,8 @@ func (m *clientHelloMsg) unmarshal(data []byte) bool {
 				return false
 			}
 			m.sctListSupported = true
+		case extensionCustom:
+			m.customExtension = string(data[:length])
 		}
 		data = data[length:]
 	}
@@ -632,6 +649,7 @@ type serverHelloMsg struct {
 	srtpProtectionProfile   uint16
 	srtpMasterKeyIdentifier string
 	sctList                 []byte
+	customExtension         string
 }
 
 func (m *serverHelloMsg) marshal() []byte {
@@ -684,6 +702,10 @@ func (m *serverHelloMsg) marshal() []byte {
 	}
 	if m.sctList != nil {
 		extensionsLength += len(m.sctList)
+		numExtensions++
+	}
+	if l := len(m.customExtension); l > 0 {
+		extensionsLength += l
 		numExtensions++
 	}
 
@@ -811,6 +833,14 @@ func (m *serverHelloMsg) marshal() []byte {
 		copy(z[4:], m.sctList)
 		z = z[4+l:]
 	}
+	if l := len(m.customExtension); l > 0 {
+		z[0] = byte(extensionCustom >> 8)
+		z[1] = byte(extensionCustom & 0xff)
+		z[2] = byte(l >> 8)
+		z[3] = byte(l & 0xff)
+		copy(z[4:], []byte(m.customExtension))
+		z = z[4 + l:]
+	}
 
 	m.raw = x
 
@@ -844,6 +874,7 @@ func (m *serverHelloMsg) unmarshal(data []byte) bool {
 	m.alpnProtocol = ""
 	m.alpnProtocolEmpty = false
 	m.extendedMasterSecret = false
+	m.customExtension = ""
 
 	if len(data) == 0 {
 		// ServerHello is optionally followed by extension data
@@ -948,6 +979,8 @@ func (m *serverHelloMsg) unmarshal(data []byte) bool {
 				return false
 			}
 			m.sctList = data[2:length]
+		case extensionCustom:
+			m.customExtension = string(data[:length])
 		}
 		data = data[length:]
 	}

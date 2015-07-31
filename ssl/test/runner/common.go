@@ -82,6 +82,7 @@ const (
 	extensionSignedCertificateTimestamp uint16 = 18
 	extensionExtendedMasterSecret       uint16 = 23
 	extensionSessionTicket              uint16 = 35
+	extensionCustom                     uint16 = 1234 // not IANA assigned
 	extensionNextProtoNeg               uint16 = 13172 // not IANA assigned
 	extensionRenegotiationInfo          uint16 = 0xff01
 	extensionChannelID                  uint16 = 30032 // not IANA assigned
@@ -736,6 +737,14 @@ type ProtocolBugs struct {
 	// RequireClientHelloSize, if not zero, is the required length in bytes
 	// of the ClientHello /record/. This is checked by the server.
 	RequireClientHelloSize int
+
+	// CustomExtension, if not empty, contains the contents of an extension
+	// that will be added to client/server hellos.
+	CustomExtension string
+
+	// ExpectedCustomExtension, if not nil, contains the expected contents
+	// of a custom extension.
+	ExpectedCustomExtension *string
 }
 
 func (c *Config) serverInit() {

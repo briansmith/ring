@@ -768,6 +768,92 @@ OPENSSL_EXPORT int SSL_get_tls_unique(const SSL *ssl, uint8_t *out,
                                       size_t *out_len, size_t max_out);
 
 
+/* Custom extensions.
+ *
+ * The custom extension functions allow TLS extensions to be added to
+ * ClientHello and ServerHello messages. */
+
+/* SSL_custom_ext_add_cb is a callback function that is called when the
+ * ClientHello (for clients) or ServerHello (for servers) is constructed. In
+ * the case of a server, this callback will only be called for a given
+ * extension if the ClientHello contained that extension – it's not possible to
+ * inject extensions into a ServerHello that the client didn't request.
+ *
+ * When called, |extension_value| will contain the extension number that is
+ * being considered for addition (so that a single callback can handle multiple
+ * extensions). If the callback wishes to include the extension, it must set
+ * |*out| to point to |*out_len| bytes of extension contents and return one. In
+ * this case, the corresponding |SSL_custom_ext_free_cb| callback will later be
+ * called with the value of |*out| once that data has been copied.
+ *
+ * If the callback does not wish to add an extension it must return zero.
+ *
+ * Alternatively, the callback can abort the connection by setting
+ * |*out_alert_value| to a TLS alert number and returning -1. */
+typedef int (*SSL_custom_ext_add_cb)(SSL *ssl, unsigned extension_value,
+                                     const uint8_t **out, size_t *out_len,
+                                     int *out_alert_value, void *add_arg);
+
+/* SSL_custom_ext_free_cb is a callback function that is called by OpenSSL iff
+ * an |SSL_custom_ext_add_cb| callback previously returned one. In that case,
+ * this callback is called and passed the |out| pointer that was returned by
+ * the add callback. This is to free any dynamically allocated data created by
+ * the add callback. */
+typedef void (*SSL_custom_ext_free_cb)(SSL *ssl, unsigned extension_value,
+                                       const uint8_t *out, void *add_arg);
+
+/* SSL_custom_ext_parse_cb is a callback function that is called by OpenSSL to
+ * parse an extension from the peer: that is from the ServerHello for a client
+ * and from the ClientHello for a server.
+ *
+ * When called, |extension_value| will contain the extension number and the
+ * contents of the extension are |contents_len| bytes at |contents|.
+ *
+ * The callback must return one to continue the handshake. Otherwise, if it
+ * returns zero, a fatal alert with value |*out_alert_value| is sent and the
+ * handshake is aborted. */
+typedef int (*SSL_custom_ext_parse_cb)(SSL *ssl, unsigned extension_value,
+                                       const uint8_t *contents,
+                                       size_t contents_len,
+                                       int *out_alert_value, void *parse_arg);
+
+/* SSL_extension_supported returns one iff OpenSSL internally handles
+ * extensions of type |extension_value|. This can be used to avoid registering
+ * custom extension handlers for extensions that a future version of OpenSSL
+ * may handle internally. */
+OPENSSL_EXPORT int SSL_extension_supported(unsigned extension_value);
+
+/* SSL_CTX_add_client_custom_ext registers callback functions for handling
+ * custom TLS extensions for client connections.
+ *
+ * If |add_cb| is NULL then an empty extension will be added in each
+ * ClientHello. Otherwise, see the comment for |SSL_custom_ext_add_cb| about
+ * this callback.
+ *
+ * The |free_cb| may be NULL if |add_cb| doesn't dynamically allocate data that
+ * needs to be freed.
+ *
+ * It returns one on success or zero on error. It's always an error to register
+ * callbacks for the same extension twice, or to register callbacks for an
+ * extension that OpenSSL handles internally. See |SSL_extension_supported| to
+ * discover, at runtime, which extensions OpenSSL handles internally. */
+OPENSSL_EXPORT int SSL_CTX_add_client_custom_ext(
+    SSL_CTX *ctx, unsigned extension_value, SSL_custom_ext_add_cb add_cb,
+    SSL_custom_ext_free_cb free_cb, void *add_arg,
+    SSL_custom_ext_parse_cb parse_cb, void *parse_arg);
+
+/* SSL_CTX_add_server_custom_ext is the same as
+ * |SSL_CTX_add_client_custom_ext|, but for server connections.
+ *
+ * Unlike on the client side, if |add_cb| is NULL no extension will be added.
+ * The |add_cb|, if any, will only be called if the ClientHello contained a
+ * matching extension. */
+OPENSSL_EXPORT int SSL_CTX_add_server_custom_ext(
+    SSL_CTX *ctx, unsigned extension_value, SSL_custom_ext_add_cb add_cb,
+    SSL_custom_ext_free_cb free_cb, void *add_arg,
+    SSL_custom_ext_parse_cb parse_cb, void *parse_arg);
+
+
 /* Session tickets. */
 
 /* SSL_CTX_get_tlsext_ticket_keys writes |ctx|'s session ticket key material to
@@ -1221,6 +1307,10 @@ struct ssl_ctx_st {
 
   CRYPTO_EX_DATA ex_data;
 
+  /* custom_*_extensions stores any callback sets for custom extensions. Note
+   * that these pointers will be NULL if the stack would otherwise be empty. */
+  STACK_OF(SSL_CUSTOM_EXTENSION) *client_custom_extensions;
+  STACK_OF(SSL_CUSTOM_EXTENSION) *server_custom_extensions;
 
   /* Default values used when no per-SSL value is defined follow */
 
@@ -2945,6 +3035,8 @@ OPENSSL_EXPORT const char *SSLeay_version(int unused);
 #define SSL_R_ERROR_ADDING_EXTENSION 281
 #define SSL_R_ERROR_PARSING_EXTENSION 282
 #define SSL_R_MISSING_EXTENSION 283
+#define SSL_R_CUSTOM_EXTENSION_CONTENTS_TOO_LARGE 284
+#define SSL_R_CUSTOM_EXTENSION_ERROR 285
 #define SSL_R_SSLV3_ALERT_CLOSE_NOTIFY 1000
 #define SSL_R_SSLV3_ALERT_UNEXPECTED_MESSAGE 1010
 #define SSL_R_SSLV3_ALERT_BAD_RECORD_MAC 1020
