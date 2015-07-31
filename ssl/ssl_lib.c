@@ -294,14 +294,6 @@ SSL *SSL_new(SSL_CTX *ctx) {
   s->tlsext_ticket_expected = 0;
   CRYPTO_refcount_inc(&ctx->references);
   s->initial_ctx = ctx;
-  if (ctx->tlsext_ecpointformatlist) {
-    s->tlsext_ecpointformatlist = BUF_memdup(
-        ctx->tlsext_ecpointformatlist, ctx->tlsext_ecpointformatlist_length);
-    if (!s->tlsext_ecpointformatlist) {
-      goto err;
-    }
-    s->tlsext_ecpointformatlist_length = ctx->tlsext_ecpointformatlist_length;
-  }
 
   if (ctx->tlsext_ellipticcurvelist) {
     s->tlsext_ellipticcurvelist =
@@ -556,7 +548,6 @@ void SSL_free(SSL *ssl) {
 
   OPENSSL_free(ssl->tlsext_hostname);
   SSL_CTX_free(ssl->initial_ctx);
-  OPENSSL_free(ssl->tlsext_ecpointformatlist);
   OPENSSL_free(ssl->tlsext_ellipticcurvelist);
   OPENSSL_free(ssl->alpn_client_proto_list);
   EVP_PKEY_free(ssl->tlsext_channel_id_private);
@@ -1774,7 +1765,6 @@ void SSL_CTX_free(SSL_CTX *ctx) {
   sk_X509_NAME_pop_free(ctx->client_CA, X509_NAME_free);
   sk_SRTP_PROTECTION_PROFILE_free(ctx->srtp_profiles);
   OPENSSL_free(ctx->psk_identity_hint);
-  OPENSSL_free(ctx->tlsext_ecpointformatlist);
   OPENSSL_free(ctx->tlsext_ellipticcurvelist);
   OPENSSL_free(ctx->alpn_client_proto_list);
   EVP_PKEY_free(ctx->tlsext_channel_id_private);

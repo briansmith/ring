@@ -1433,8 +1433,6 @@ struct ssl_ctx_st {
   STACK_OF(SRTP_PROTECTION_PROFILE) *srtp_profiles;
 
   /* EC extension values inherited by SSL structure */
-  size_t tlsext_ecpointformatlist_length;
-  uint8_t *tlsext_ecpointformatlist;
   size_t tlsext_ellipticcurvelist_length;
   uint16_t *tlsext_ellipticcurvelist;
 
@@ -1785,8 +1783,6 @@ struct ssl_st {
   char *tlsext_hostname;
   /* RFC4507 session ticket expected to be received or sent */
   int tlsext_ticket_expected;
-  size_t tlsext_ecpointformatlist_length;
-  uint8_t *tlsext_ecpointformatlist; /* our list */
   size_t tlsext_ellipticcurvelist_length;
   uint16_t *tlsext_ellipticcurvelist; /* our list */
 

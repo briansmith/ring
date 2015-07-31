@@ -228,7 +228,6 @@ void ssl3_free(SSL *s) {
 
   sk_X509_NAME_pop_free(s->s3->tmp.ca_names, X509_NAME_free);
   OPENSSL_free(s->s3->tmp.certificate_types);
-  OPENSSL_free(s->s3->tmp.peer_ecpointformatlist);
   OPENSSL_free(s->s3->tmp.peer_ellipticcurvelist);
   OPENSSL_free(s->s3->tmp.peer_psk_identity_hint);
   BIO_free(s->s3->handshake_buffer);

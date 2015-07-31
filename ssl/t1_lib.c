@@ -345,10 +345,6 @@ static const struct tls_curve tls_curves[] = {
     {25, NID_secp521r1},
 };
 
-static const uint8_t ecformats_default[] = {
-    TLSEXT_ECPOINTFORMAT_uncompressed,
-};
-
 static const uint16_t eccurves_default[] = {
     23, /* X9_62_prime256v1 */
     24, /* secp384r1 */
@@ -529,28 +525,6 @@ static int tls1_curve_params_from_ec_key(uint16_t *out_curve_id,
   return 1;
 }
 
-/* tls1_check_point_format returns one if |comp_id| is consistent with the
- * peer's point format preferences. */
-static int tls1_check_point_format(SSL *s, uint8_t comp_id) {
-  uint8_t *p = s->s3->tmp.peer_ecpointformatlist;
-  size_t plen = s->s3->tmp.peer_ecpointformatlist_length;
-  size_t i;
-
-  /* If point formats extension present check it, otherwise everything is
-   * supported (see RFC4492). */
-  if (p == NULL) {
-    return 1;
-  }
-
-  for (i = 0; i < plen; i++) {
-    if (comp_id == p[i]) {
-      return 1;
-    }
-  }
-
-  return 0;
-}
-
 /* tls1_check_curve_id returns one if |curve_id| is consistent with both our
  * and the peer's curve preferences. Note: if called as the client, only our
  * preferences are checked; the peer (the server) does not send preferences. */
@@ -587,18 +561,6 @@ static int tls1_check_curve_id(SSL *s, uint16_t curve_id) {
   return 1;
 }
 
-static void tls1_get_formatlist(SSL *s, const uint8_t **pformats,
-                                size_t *pformatslen) {
-  /* If we have a custom point format list use it otherwise use default */
-  if (s->tlsext_ecpointformatlist) {
-    *pformats = s->tlsext_ecpointformatlist;
-    *pformatslen = s->tlsext_ecpointformatlist_length;
-  } else {
-    *pformats = ecformats_default;
-    *pformatslen = sizeof(ecformats_default);
-  }
-}
-
 int tls1_check_ec_cert(SSL *s, X509 *x) {
   int ret = 0;
   EVP_PKEY *pkey = X509_get_pubkey(x);
@@ -609,7 +571,7 @@ int tls1_check_ec_cert(SSL *s, X509 *x) {
       pkey->type != EVP_PKEY_EC ||
       !tls1_curve_params_from_ec_key(&curve_id, &comp_id, pkey->pkey.ec) ||
       !tls1_check_curve_id(s, curve_id) ||
-      !tls1_check_point_format(s, comp_id)) {
+      comp_id != TLSEXT_ECPOINTFORMAT_uncompressed) {
     goto done;
   }
 
@@ -712,7 +674,7 @@ int tls12_check_peer_sigalg(const EVP_MD **out_md, int *out_alert, SSL *s,
     }
 
     if (s->server && (!tls1_check_curve_id(s, curve_id) ||
-                      !tls1_check_point_format(s, comp_id))) {
+                      comp_id != TLSEXT_ECPOINTFORMAT_uncompressed)) {
       OPENSSL_PUT_ERROR(SSL, SSL_R_WRONG_CURVE);
       *out_alert = SSL_AD_ILLEGAL_PARAMETER;
       return 0;
@@ -1939,22 +1901,12 @@ static int ssl_any_ec_cipher_suites_enabled(const SSL *ssl) {
   return 0;
 }
 
-static void ext_ec_point_init(SSL *ssl) {
-  OPENSSL_free(ssl->s3->tmp.peer_ecpointformatlist);
-  ssl->s3->tmp.peer_ecpointformatlist = NULL;
-  ssl->s3->tmp.peer_ecpointformatlist_length = 0;
-}
-
 static int ext_ec_point_add_extension(SSL *ssl, CBB *out) {
-  const uint8_t *formats;
-  size_t formats_len;
-  tls1_get_formatlist(ssl, &formats, &formats_len);
-
-  CBB contents, format_bytes;
+  CBB contents, formats;
   if (!CBB_add_u16(out, TLSEXT_TYPE_ec_point_formats) ||
       !CBB_add_u16_length_prefixed(out, &contents) ||
-      !CBB_add_u8_length_prefixed(&contents, &format_bytes) ||
-      !CBB_add_bytes(&format_bytes, formats, formats_len) ||
+      !CBB_add_u8_length_prefixed(&contents, &formats) ||
+      !CBB_add_u8(&formats, TLSEXT_ECPOINTFORMAT_uncompressed) ||
       !CBB_flush(out)) {
     return 0;
   }
@@ -1982,9 +1934,11 @@ static int ext_ec_point_parse_serverhello(SSL *ssl, uint8_t *out_alert,
     return 0;
   }
 
-  if (!CBS_stow(&ec_point_format_list, &ssl->s3->tmp.peer_ecpointformatlist,
-                &ssl->s3->tmp.peer_ecpointformatlist_length)) {
-    *out_alert = SSL_AD_INTERNAL_ERROR;
+  /* Per RFC 4492, section 5.1.2, implementations MUST support the uncompressed
+   * point format. */
+  if (memchr(CBS_data(&ec_point_format_list), TLSEXT_ECPOINTFORMAT_uncompressed,
+             CBS_len(&ec_point_format_list)) == NULL) {
+    *out_alert = SSL_AD_ILLEGAL_PARAMETER;
     return 0;
   }
 
@@ -1999,8 +1953,7 @@ static int ext_ec_point_parse_clienthello(SSL *ssl, uint8_t *out_alert,
 static int ext_ec_point_add_serverhello(SSL *ssl, CBB *out) {
   const uint32_t alg_k = ssl->s3->tmp.new_cipher->algorithm_mkey;
   const uint32_t alg_a = ssl->s3->tmp.new_cipher->algorithm_auth;
-  const int using_ecc = ssl->s3->tmp.peer_ecpointformatlist_length != 0 &&
-                        ((alg_k & SSL_kECDHE) || (alg_a & SSL_aECDSA));
+  const int using_ecc = (alg_k & SSL_kECDHE) || (alg_a & SSL_aECDSA);
 
   if (!using_ecc) {
     return 1;
@@ -2196,7 +2149,7 @@ static const struct tls_extension kExtensions[] = {
   },
   {
     TLSEXT_TYPE_ec_point_formats,
-    ext_ec_point_init,
+    NULL,
     ext_ec_point_add_clienthello,
     ext_ec_point_parse_serverhello,
     ext_ec_point_parse_clienthello,
@@ -2590,20 +2543,8 @@ static int ssl_check_clienthello_tlsext(SSL *s) {
 }
 
 static int ssl_check_serverhello_tlsext(SSL *s) {
-  int ret = SSL_TLSEXT_ERR_NOACK;
+  int ret = SSL_TLSEXT_ERR_OK;
   int al = SSL_AD_UNRECOGNIZED_NAME;
-
-  /* If we are client and using an elliptic curve cryptography cipher suite,
-   * then if server returns an EC point formats lists extension it must contain
-   * uncompressed. */
-  uint32_t alg_k = s->s3->tmp.new_cipher->algorithm_mkey;
-  uint32_t alg_a = s->s3->tmp.new_cipher->algorithm_auth;
-  if (((alg_k & SSL_kECDHE) || (alg_a & SSL_aECDSA)) &&
-      !tls1_check_point_format(s, TLSEXT_ECPOINTFORMAT_uncompressed)) {
-    OPENSSL_PUT_ERROR(SSL, SSL_R_TLS_INVALID_ECPOINTFORMAT_LIST);
-    return -1;
-  }
-  ret = SSL_TLSEXT_ERR_OK;
 
   if (s->ctx != NULL && s->ctx->tlsext_servername_callback != 0) {
     ret = s->ctx->tlsext_servername_callback(s, &al,
