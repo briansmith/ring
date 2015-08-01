@@ -15,6 +15,7 @@ before_build:
     # This is the recommended way to choose the toolchain version, according to
     # Appveyor's documentation.
     - SET PATH=C:\Program Files (x86)\MSBuild\%TOOLCHAIN_VERSION%\Bin;%PATH%
+    - SET
 clone_depth: 1
 build:
   project: ring.sln
