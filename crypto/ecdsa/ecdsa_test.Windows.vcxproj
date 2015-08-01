@@ -21,4 +21,5 @@
       <Project>{1dace503-6498-492d-b1ff-f9ee18624443}</Project>
     </ProjectReference>
   </ItemGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
 </Project>

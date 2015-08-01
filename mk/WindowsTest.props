@@ -15,5 +15,4 @@
       <AdditionalLibraryDirectories>$(OutRootDir)lib;$(IntRootDir);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
   </ItemDefinitionGroup>
-  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
 </Project>
