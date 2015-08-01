@@ -86,9 +86,9 @@ agreement.
 Continuous Integration
 ======================
 
-*ring* uses Travis CI to test builds in a variety of configurations on Linux:
+Linux x86 and x64 (Travis CI): [![Build Status](https://travis-ci.org/briansmith/ring.svg?branch=wip)](https://travis-ci.org/briansmith/ring)
 
-[![Build Status](https://travis-ci.org/briansmith/ring.svg?branch=wip)](https://travis-ci.org/briansmith/ring)
+Windows x86 and x64 (Appveyor): [![Build status](https://ci.appveyor.com/api/projects/status/3wq9p54r9iym05rm/branch/wip?svg=true)](https://ci.appveyor.com/project/briansmith/ring/branch/wip)
 
 
 
