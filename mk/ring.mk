@@ -188,7 +188,12 @@ RING_OBJS = $(addprefix $(OBJ_PREFIX), \
   $(NULL)
 
 RING_LIB = $(LIB_PREFIX)libring.a
-$(RING_LIB): ARFLAGS = cDrs
+
+# Recent versions of Linux have the D flag for deterministic builds, but Darwin
+# (at least) doesn't. Accroding to Debian's documentation, binutils is built
+# with --enable-determnistic-archives by default and we shouldn't need to
+# worry about it.
+$(RING_LIB): ARFLAGS = crs
 $(RING_LIB): $(RING_OBJS) $(RING_PREFIX)mk/ring.mk
 	$(RM) $@
 	$(AR) $(ARFLAGS) $@ $(filter-out $(RING_PREFIX)mk/ring.mk, $^)
