@@ -282,8 +282,15 @@ PERLASM_LIB_SRCS = $(addprefix $(RING_PREFIX), \
 
 PERL_EXECUTABLE ?= perl
 
-PERLASM_x86_ARGS = elf -fPIC -DOPENSSL_IA32_SSE2
-PERLASM_x86_64_ARGS = elf
+# The British spelling "flavour" is used for consistency with perlasm's code.
+ifeq ($(TARGET_OS),darwin)
+PERLASM_FLAVOUR ?= macosx
+else
+PERLASM_FLAVOUR ?= elf
+endif
+
+PERLASM_x86_ARGS = $(PERLASM_FLAVOUR) -fPIC -DOPENSSL_IA32_SSE2
+PERLASM_x86_64_ARGS = $(PERLASM_FLAVOUR)
 PERLASM_ARGS = $(PERLASM_$(TARGET_ARCH_BASE)_ARGS)
 
 $(OBJ_PREFIX)%.S: %.pl $(PERLASM_LIB_SRCS)

@@ -36,12 +36,20 @@ CXXFLAGS_STD ?= -std=c++11
 CFLAGS += $(CFLAGS_STD)
 CXXFLAGS += $(CXXFLAGS_STD)
 
-# Always add full debug info.
+# Always add full debug info. |-gfull| is required for Darwin's |-dead_strip|.
+ifeq ($TARGET_OS,darwin)
+CPPFLAGS += -gfull
+else
 CPPFLAGS += -g3
+endif
 
 # Dead code elimination.
 CPPFLAGS += -fdata-sections -ffunction-sections
+ifeq ($(TARGET_OS),darwin)
+LDFLAGS += -Wl,-dead_strip
+else
 LDFLAGS += -Wl,--gc-sections
+endif
 
 # TODO: link-time optimization.
 
