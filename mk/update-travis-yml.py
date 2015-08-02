@@ -1,4 +1,4 @@
-# Run this as "python mk/update-travis-yml.py"
+﻿# Run this as "python mk/update-travis-yml.py"
 
 # Copyright 2015 Brian Smith.
 #
@@ -65,7 +65,7 @@ def format_entries():
                       if not (compiler == "gcc-4.9" and arch == "x86")])
 
 entry_template = """
-    - env: %(uppercase)s_VERSION=%(version)s CMAKE_BUILD_TYPE=%(mode)s ARCH=%(arch)s
+    - env: %(uppercase)s_VERSION=%(version)s CMAKE_BUILD_TYPE=%(mode)s TARGET_ARCH_BASE=%(arch)s
       os: linux
       addons:
         apt:

@@ -14,12 +14,14 @@
 
 .DEFAULT_GOAL := all
 
-ifeq ($(ARCH),x86)
-ARCH_FLAGS ?= -m32
-else ifeq ($(ARCH),x86_64)
-ARCH_FLAGS ?= -m64
+# Although it isn't documented, GNU Make passes $(TARGET_ARCH) in its implicit
+# rules.
+ifeq ($(TARGET_ARCH_BASE),x86)
+TARGET_ARCH ?= -m32
+else ifeq ($(TARGET_ARCH_BASE),x86_64)
+TARGET_ARCH ?= -m64
 else
-$(error You must specify ARCH as one of {x86,x86_64})
+$(error You must specify TARGET_ARCH_BASE as one of {x86,x86_64})
 endif
 
 BUILD_PREFIX ?= build/
@@ -107,9 +109,6 @@ CFLAGS += \
   -Wnested-externs \
   -Wstrict-prototypes \
   $(NULL)
-
-CPPFLAGS += $(ARCH_FLAGS)
-LDFLAGS += $(ARCH_FLAGS)
 
 CMAKE_BUILD_TYPE ?= DEBUG
 
