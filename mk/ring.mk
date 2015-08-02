@@ -243,7 +243,7 @@ $(RING_TEST_EXES): $(EXE_PREFIX)% : \
 	$(CXX) $(filter-out $(RING_LIB),$^) $(LDFLAGS) $(LDLIBS) -o $@
 
 # TODO: Have -DOPENSSL_NO_ASM controlled by a flag.
-# TODO: Fix the code so -Wno-error overrides are not needed.
+# TODO: Fix the code so -Wno- overrides are not needed.
 $(RING_OBJS) \
 $(RING_TEST_LIB_OBJS) \
 $(RING_TEST_MAIN_OBJS) \
@@ -253,12 +253,12 @@ $(NULL): CPPFLAGS += $(RING_CPPFLAGS) \
                      -Wno-pedantic \
                      -Wno-sign-compare \
                      -Wno-unused-parameter \
-                     -Wno-error=bad-function-cast \
-                     -Wno-error=cast-align \
-                     -Wno-error=format \
-                     -Wno-error=format-nonliteral \
-                     -Wno-error=nested-externs \
-                     -Wno-error=type-limits \
+                     -Wno-bad-function-cast \
+                     -Wno-cast-align \
+                     -Wno-format \
+                     -Wno-format-nonliteral \
+                     -Wno-nested-externs \
+                     -Wno-type-limits \
                      $(NULL)
 
 PERLASM_LIB_SRCS = $(addprefix $(RING_PREFIX), \
