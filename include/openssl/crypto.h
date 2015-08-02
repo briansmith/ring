@@ -54,6 +54,12 @@ OPENSSL_EXPORT const char *SSLeay_version(int unused);
  * base.h. */
 OPENSSL_EXPORT unsigned long SSLeay(void);
 
+/* CRYPTO_malloc_init returns one. */
+OPENSSL_EXPORT int CRYPTO_malloc_init(void);
+
+/* ENGINE_load_builtin_engines does nothing. */
+OPENSSL_EXPORT void ENGINE_load_builtin_engines(void);
+
 
 #if defined(__cplusplus)
 }  /* extern C */

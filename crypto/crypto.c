@@ -130,3 +130,9 @@ const char *SSLeay_version(int unused) {
 unsigned long SSLeay(void) {
   return OPENSSL_VERSION_NUMBER;
 }
+
+int CRYPTO_malloc_init(void) {
+  return 1;
+}
+
+void ENGINE_load_builtin_engines(void) {}
