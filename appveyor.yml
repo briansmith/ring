@@ -1,6 +1,7 @@
 version: 1.0.{build}
 os:
   - Visual Studio 2015
+clone_depth: 1
 configuration:
   - Debug
   - Release
@@ -15,9 +16,9 @@ before_build:
     # This is the recommended way to choose the toolchain version, according to
     # Appveyor's documentation.
     - SET PATH=C:\Program Files (x86)\MSBuild\%TOOLCHAIN_VERSION%\Bin;%PATH%
-    - SET
-clone_depth: 1
 build:
   project: ring.sln
   parallel: true
   verbosity: normal
+test_script:
+  - go run util/all_tests.go -build-dir=build/%Platform%-%Configuration%/test/ring
