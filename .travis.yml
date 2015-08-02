@@ -9,7 +9,10 @@ matrix:
     #
     # BEGIN GENERATED
 
-    - env: CLANG_VERSION=3.6 CMAKE_BUILD_TYPE=DEBUG TARGET_ARCH_BASE=x86
+    - env: USE_CC=clang USE_CXX=clang++ CMAKE_BUILD_TYPE=DEBUG TARGET_ARCH_BASE=x86 TARGET_OS=darwin
+      os: osx
+
+    - env: USE_CC=clang-3.6 USE_CXX=clang++-3.6 CMAKE_BUILD_TYPE=DEBUG TARGET_ARCH_BASE=x86 TARGET_OS=linux
       os: linux
       addons:
         apt:
@@ -23,7 +26,7 @@ matrix:
             - llvm-toolchain-precise-3.6
             - ubuntu-toolchain-r-test
 
-    - env: GCC_VERSION=4.8 CMAKE_BUILD_TYPE=DEBUG TARGET_ARCH_BASE=x86
+    - env: USE_CC=gcc-4.8 USE_CXX=g++-4.8 CMAKE_BUILD_TYPE=DEBUG TARGET_ARCH_BASE=x86 TARGET_OS=linux
       os: linux
       addons:
         apt:
@@ -37,7 +40,7 @@ matrix:
           sources:
             - ubuntu-toolchain-r-test
 
-    - env: CLANG_VERSION=3.5 CMAKE_BUILD_TYPE=DEBUG TARGET_ARCH_BASE=x86
+    - env: USE_CC=clang-3.5 USE_CXX=clang++-3.5 CMAKE_BUILD_TYPE=DEBUG TARGET_ARCH_BASE=x86 TARGET_OS=linux
       os: linux
       addons:
         apt:
@@ -51,7 +54,7 @@ matrix:
             - llvm-toolchain-precise-3.5
             - ubuntu-toolchain-r-test
 
-    - env: CLANG_VERSION=3.4 CMAKE_BUILD_TYPE=DEBUG TARGET_ARCH_BASE=x86
+    - env: USE_CC=clang USE_CXX=clang++ CMAKE_BUILD_TYPE=DEBUG TARGET_ARCH_BASE=x86 TARGET_OS=linux
       os: linux
       addons:
         apt:
@@ -63,7 +66,7 @@ matrix:
           sources:
             - ubuntu-toolchain-r-test
 
-    - env: GCC_VERSION=5 CMAKE_BUILD_TYPE=DEBUG TARGET_ARCH_BASE=x86
+    - env: USE_CC=gcc-5 USE_CXX=g++-5 CMAKE_BUILD_TYPE=DEBUG TARGET_ARCH_BASE=x86 TARGET_OS=linux
       os: linux
       addons:
         apt:
@@ -77,7 +80,10 @@ matrix:
           sources:
             - ubuntu-toolchain-r-test
 
-    - env: CLANG_VERSION=3.6 CMAKE_BUILD_TYPE=RELWITHDEBINFO TARGET_ARCH_BASE=x86
+    - env: USE_CC=clang USE_CXX=clang++ CMAKE_BUILD_TYPE=RELWITHDEBINFO TARGET_ARCH_BASE=x86 TARGET_OS=darwin
+      os: osx
+
+    - env: USE_CC=clang-3.6 USE_CXX=clang++-3.6 CMAKE_BUILD_TYPE=RELWITHDEBINFO TARGET_ARCH_BASE=x86 TARGET_OS=linux
       os: linux
       addons:
         apt:
@@ -91,7 +97,7 @@ matrix:
             - llvm-toolchain-precise-3.6
             - ubuntu-toolchain-r-test
 
-    - env: GCC_VERSION=4.8 CMAKE_BUILD_TYPE=RELWITHDEBINFO TARGET_ARCH_BASE=x86
+    - env: USE_CC=gcc-4.8 USE_CXX=g++-4.8 CMAKE_BUILD_TYPE=RELWITHDEBINFO TARGET_ARCH_BASE=x86 TARGET_OS=linux
       os: linux
       addons:
         apt:
@@ -105,7 +111,7 @@ matrix:
           sources:
             - ubuntu-toolchain-r-test
 
-    - env: CLANG_VERSION=3.5 CMAKE_BUILD_TYPE=RELWITHDEBINFO TARGET_ARCH_BASE=x86
+    - env: USE_CC=clang-3.5 USE_CXX=clang++-3.5 CMAKE_BUILD_TYPE=RELWITHDEBINFO TARGET_ARCH_BASE=x86 TARGET_OS=linux
       os: linux
       addons:
         apt:
@@ -119,7 +125,7 @@ matrix:
             - llvm-toolchain-precise-3.5
             - ubuntu-toolchain-r-test
 
-    - env: CLANG_VERSION=3.4 CMAKE_BUILD_TYPE=RELWITHDEBINFO TARGET_ARCH_BASE=x86
+    - env: USE_CC=clang USE_CXX=clang++ CMAKE_BUILD_TYPE=RELWITHDEBINFO TARGET_ARCH_BASE=x86 TARGET_OS=linux
       os: linux
       addons:
         apt:
@@ -131,7 +137,7 @@ matrix:
           sources:
             - ubuntu-toolchain-r-test
 
-    - env: GCC_VERSION=5 CMAKE_BUILD_TYPE=RELWITHDEBINFO TARGET_ARCH_BASE=x86
+    - env: USE_CC=gcc-5 USE_CXX=g++-5 CMAKE_BUILD_TYPE=RELWITHDEBINFO TARGET_ARCH_BASE=x86 TARGET_OS=linux
       os: linux
       addons:
         apt:
@@ -145,7 +151,10 @@ matrix:
           sources:
             - ubuntu-toolchain-r-test
 
-    - env: CLANG_VERSION=3.6 CMAKE_BUILD_TYPE=DEBUG TARGET_ARCH_BASE=x86_64
+    - env: USE_CC=clang USE_CXX=clang++ CMAKE_BUILD_TYPE=DEBUG TARGET_ARCH_BASE=x86_64 TARGET_OS=darwin
+      os: osx
+
+    - env: USE_CC=clang-3.6 USE_CXX=clang++-3.6 CMAKE_BUILD_TYPE=DEBUG TARGET_ARCH_BASE=x86_64 TARGET_OS=linux
       os: linux
       addons:
         apt:
@@ -156,7 +165,7 @@ matrix:
             - llvm-toolchain-precise-3.6
             - ubuntu-toolchain-r-test
 
-    - env: GCC_VERSION=4.8 CMAKE_BUILD_TYPE=DEBUG TARGET_ARCH_BASE=x86_64
+    - env: USE_CC=gcc-4.8 USE_CXX=g++-4.8 CMAKE_BUILD_TYPE=DEBUG TARGET_ARCH_BASE=x86_64 TARGET_OS=linux
       os: linux
       addons:
         apt:
@@ -167,7 +176,7 @@ matrix:
           sources:
             - ubuntu-toolchain-r-test
 
-    - env: CLANG_VERSION=3.5 CMAKE_BUILD_TYPE=DEBUG TARGET_ARCH_BASE=x86_64
+    - env: USE_CC=clang-3.5 USE_CXX=clang++-3.5 CMAKE_BUILD_TYPE=DEBUG TARGET_ARCH_BASE=x86_64 TARGET_OS=linux
       os: linux
       addons:
         apt:
@@ -178,14 +187,14 @@ matrix:
             - llvm-toolchain-precise-3.5
             - ubuntu-toolchain-r-test
 
-    - env: CLANG_VERSION=3.4 CMAKE_BUILD_TYPE=DEBUG TARGET_ARCH_BASE=x86_64
+    - env: USE_CC=clang USE_CXX=clang++ CMAKE_BUILD_TYPE=DEBUG TARGET_ARCH_BASE=x86_64 TARGET_OS=linux
       os: linux
       addons:
         apt:
           packages:
             - yasm
 
-    - env: GCC_VERSION=5 CMAKE_BUILD_TYPE=DEBUG TARGET_ARCH_BASE=x86_64
+    - env: USE_CC=gcc-5 USE_CXX=g++-5 CMAKE_BUILD_TYPE=DEBUG TARGET_ARCH_BASE=x86_64 TARGET_OS=linux
       os: linux
       addons:
         apt:
@@ -196,7 +205,7 @@ matrix:
           sources:
             - ubuntu-toolchain-r-test
 
-    - env: GCC_VERSION=4.9 CMAKE_BUILD_TYPE=DEBUG TARGET_ARCH_BASE=x86_64
+    - env: USE_CC=gcc-4.9 USE_CXX=g++-4.9 CMAKE_BUILD_TYPE=DEBUG TARGET_ARCH_BASE=x86_64 TARGET_OS=linux
       os: linux
       addons:
         apt:
@@ -207,7 +216,10 @@ matrix:
           sources:
             - ubuntu-toolchain-r-test
 
-    - env: CLANG_VERSION=3.6 CMAKE_BUILD_TYPE=RELWITHDEBINFO TARGET_ARCH_BASE=x86_64
+    - env: USE_CC=clang USE_CXX=clang++ CMAKE_BUILD_TYPE=RELWITHDEBINFO TARGET_ARCH_BASE=x86_64 TARGET_OS=darwin
+      os: osx
+
+    - env: USE_CC=clang-3.6 USE_CXX=clang++-3.6 CMAKE_BUILD_TYPE=RELWITHDEBINFO TARGET_ARCH_BASE=x86_64 TARGET_OS=linux
       os: linux
       addons:
         apt:
@@ -218,7 +230,7 @@ matrix:
             - llvm-toolchain-precise-3.6
             - ubuntu-toolchain-r-test
 
-    - env: GCC_VERSION=4.8 CMAKE_BUILD_TYPE=RELWITHDEBINFO TARGET_ARCH_BASE=x86_64
+    - env: USE_CC=gcc-4.8 USE_CXX=g++-4.8 CMAKE_BUILD_TYPE=RELWITHDEBINFO TARGET_ARCH_BASE=x86_64 TARGET_OS=linux
       os: linux
       addons:
         apt:
@@ -229,7 +241,7 @@ matrix:
           sources:
             - ubuntu-toolchain-r-test
 
-    - env: CLANG_VERSION=3.5 CMAKE_BUILD_TYPE=RELWITHDEBINFO TARGET_ARCH_BASE=x86_64
+    - env: USE_CC=clang-3.5 USE_CXX=clang++-3.5 CMAKE_BUILD_TYPE=RELWITHDEBINFO TARGET_ARCH_BASE=x86_64 TARGET_OS=linux
       os: linux
       addons:
         apt:
@@ -240,14 +252,14 @@ matrix:
             - llvm-toolchain-precise-3.5
             - ubuntu-toolchain-r-test
 
-    - env: CLANG_VERSION=3.4 CMAKE_BUILD_TYPE=RELWITHDEBINFO TARGET_ARCH_BASE=x86_64
+    - env: USE_CC=clang USE_CXX=clang++ CMAKE_BUILD_TYPE=RELWITHDEBINFO TARGET_ARCH_BASE=x86_64 TARGET_OS=linux
       os: linux
       addons:
         apt:
           packages:
             - yasm
 
-    - env: GCC_VERSION=5 CMAKE_BUILD_TYPE=RELWITHDEBINFO TARGET_ARCH_BASE=x86_64
+    - env: USE_CC=gcc-5 USE_CXX=g++-5 CMAKE_BUILD_TYPE=RELWITHDEBINFO TARGET_ARCH_BASE=x86_64 TARGET_OS=linux
       os: linux
       addons:
         apt:
@@ -258,7 +270,7 @@ matrix:
           sources:
             - ubuntu-toolchain-r-test
 
-    - env: GCC_VERSION=4.9 CMAKE_BUILD_TYPE=RELWITHDEBINFO TARGET_ARCH_BASE=x86_64
+    - env: USE_CC=gcc-4.9 USE_CXX=g++-4.9 CMAKE_BUILD_TYPE=RELWITHDEBINFO TARGET_ARCH_BASE=x86_64 TARGET_OS=linux
       os: linux
       addons:
         apt:
@@ -269,7 +281,10 @@ matrix:
           sources:
             - ubuntu-toolchain-r-test
 
-    - env: CLANG_VERSION=3.6 CMAKE_BUILD_TYPE=DEBUG TARGET_ARCH_BASE=x86 NO_ASM=1
+    - env: USE_CC=clang USE_CXX=clang++ CMAKE_BUILD_TYPE=DEBUG TARGET_ARCH_BASE=x86 NO_ASM=1 TARGET_OS=darwin
+      os: osx
+
+    - env: USE_CC=clang-3.6 USE_CXX=clang++-3.6 CMAKE_BUILD_TYPE=DEBUG TARGET_ARCH_BASE=x86 NO_ASM=1 TARGET_OS=linux
       os: linux
       addons:
         apt:
@@ -283,7 +298,7 @@ matrix:
             - llvm-toolchain-precise-3.6
             - ubuntu-toolchain-r-test
 
-    - env: GCC_VERSION=4.8 CMAKE_BUILD_TYPE=DEBUG TARGET_ARCH_BASE=x86 NO_ASM=1
+    - env: USE_CC=gcc-4.8 USE_CXX=g++-4.8 CMAKE_BUILD_TYPE=DEBUG TARGET_ARCH_BASE=x86 NO_ASM=1 TARGET_OS=linux
       os: linux
       addons:
         apt:
@@ -297,7 +312,7 @@ matrix:
           sources:
             - ubuntu-toolchain-r-test
 
-    - env: CLANG_VERSION=3.5 CMAKE_BUILD_TYPE=DEBUG TARGET_ARCH_BASE=x86 NO_ASM=1
+    - env: USE_CC=clang-3.5 USE_CXX=clang++-3.5 CMAKE_BUILD_TYPE=DEBUG TARGET_ARCH_BASE=x86 NO_ASM=1 TARGET_OS=linux
       os: linux
       addons:
         apt:
@@ -311,7 +326,7 @@ matrix:
             - llvm-toolchain-precise-3.5
             - ubuntu-toolchain-r-test
 
-    - env: CLANG_VERSION=3.4 CMAKE_BUILD_TYPE=DEBUG TARGET_ARCH_BASE=x86 NO_ASM=1
+    - env: USE_CC=clang USE_CXX=clang++ CMAKE_BUILD_TYPE=DEBUG TARGET_ARCH_BASE=x86 NO_ASM=1 TARGET_OS=linux
       os: linux
       addons:
         apt:
@@ -323,7 +338,7 @@ matrix:
           sources:
             - ubuntu-toolchain-r-test
 
-    - env: GCC_VERSION=5 CMAKE_BUILD_TYPE=DEBUG TARGET_ARCH_BASE=x86 NO_ASM=1
+    - env: USE_CC=gcc-5 USE_CXX=g++-5 CMAKE_BUILD_TYPE=DEBUG TARGET_ARCH_BASE=x86 NO_ASM=1 TARGET_OS=linux
       os: linux
       addons:
         apt:
@@ -337,7 +352,10 @@ matrix:
           sources:
             - ubuntu-toolchain-r-test
 
-    - env: CLANG_VERSION=3.6 CMAKE_BUILD_TYPE=RELWITHDEBINFO TARGET_ARCH_BASE=x86 NO_ASM=1
+    - env: USE_CC=clang USE_CXX=clang++ CMAKE_BUILD_TYPE=RELWITHDEBINFO TARGET_ARCH_BASE=x86 NO_ASM=1 TARGET_OS=darwin
+      os: osx
+
+    - env: USE_CC=clang-3.6 USE_CXX=clang++-3.6 CMAKE_BUILD_TYPE=RELWITHDEBINFO TARGET_ARCH_BASE=x86 NO_ASM=1 TARGET_OS=linux
       os: linux
       addons:
         apt:
@@ -351,7 +369,7 @@ matrix:
             - llvm-toolchain-precise-3.6
             - ubuntu-toolchain-r-test
 
-    - env: GCC_VERSION=4.8 CMAKE_BUILD_TYPE=RELWITHDEBINFO TARGET_ARCH_BASE=x86 NO_ASM=1
+    - env: USE_CC=gcc-4.8 USE_CXX=g++-4.8 CMAKE_BUILD_TYPE=RELWITHDEBINFO TARGET_ARCH_BASE=x86 NO_ASM=1 TARGET_OS=linux
       os: linux
       addons:
         apt:
@@ -365,7 +383,7 @@ matrix:
           sources:
             - ubuntu-toolchain-r-test
 
-    - env: CLANG_VERSION=3.5 CMAKE_BUILD_TYPE=RELWITHDEBINFO TARGET_ARCH_BASE=x86 NO_ASM=1
+    - env: USE_CC=clang-3.5 USE_CXX=clang++-3.5 CMAKE_BUILD_TYPE=RELWITHDEBINFO TARGET_ARCH_BASE=x86 NO_ASM=1 TARGET_OS=linux
       os: linux
       addons:
         apt:
@@ -379,7 +397,7 @@ matrix:
             - llvm-toolchain-precise-3.5
             - ubuntu-toolchain-r-test
 
-    - env: CLANG_VERSION=3.4 CMAKE_BUILD_TYPE=RELWITHDEBINFO TARGET_ARCH_BASE=x86 NO_ASM=1
+    - env: USE_CC=clang USE_CXX=clang++ CMAKE_BUILD_TYPE=RELWITHDEBINFO TARGET_ARCH_BASE=x86 NO_ASM=1 TARGET_OS=linux
       os: linux
       addons:
         apt:
@@ -391,7 +409,7 @@ matrix:
           sources:
             - ubuntu-toolchain-r-test
 
-    - env: GCC_VERSION=5 CMAKE_BUILD_TYPE=RELWITHDEBINFO TARGET_ARCH_BASE=x86 NO_ASM=1
+    - env: USE_CC=gcc-5 USE_CXX=g++-5 CMAKE_BUILD_TYPE=RELWITHDEBINFO TARGET_ARCH_BASE=x86 NO_ASM=1 TARGET_OS=linux
       os: linux
       addons:
         apt:
@@ -405,7 +423,10 @@ matrix:
           sources:
             - ubuntu-toolchain-r-test
 
-    - env: CLANG_VERSION=3.6 CMAKE_BUILD_TYPE=DEBUG TARGET_ARCH_BASE=x86_64 NO_ASM=1
+    - env: USE_CC=clang USE_CXX=clang++ CMAKE_BUILD_TYPE=DEBUG TARGET_ARCH_BASE=x86_64 NO_ASM=1 TARGET_OS=darwin
+      os: osx
+
+    - env: USE_CC=clang-3.6 USE_CXX=clang++-3.6 CMAKE_BUILD_TYPE=DEBUG TARGET_ARCH_BASE=x86_64 NO_ASM=1 TARGET_OS=linux
       os: linux
       addons:
         apt:
@@ -416,7 +437,7 @@ matrix:
             - llvm-toolchain-precise-3.6
             - ubuntu-toolchain-r-test
 
-    - env: GCC_VERSION=4.8 CMAKE_BUILD_TYPE=DEBUG TARGET_ARCH_BASE=x86_64 NO_ASM=1
+    - env: USE_CC=gcc-4.8 USE_CXX=g++-4.8 CMAKE_BUILD_TYPE=DEBUG TARGET_ARCH_BASE=x86_64 NO_ASM=1 TARGET_OS=linux
       os: linux
       addons:
         apt:
@@ -427,7 +448,7 @@ matrix:
           sources:
             - ubuntu-toolchain-r-test
 
-    - env: CLANG_VERSION=3.5 CMAKE_BUILD_TYPE=DEBUG TARGET_ARCH_BASE=x86_64 NO_ASM=1
+    - env: USE_CC=clang-3.5 USE_CXX=clang++-3.5 CMAKE_BUILD_TYPE=DEBUG TARGET_ARCH_BASE=x86_64 NO_ASM=1 TARGET_OS=linux
       os: linux
       addons:
         apt:
@@ -438,14 +459,14 @@ matrix:
             - llvm-toolchain-precise-3.5
             - ubuntu-toolchain-r-test
 
-    - env: CLANG_VERSION=3.4 CMAKE_BUILD_TYPE=DEBUG TARGET_ARCH_BASE=x86_64 NO_ASM=1
+    - env: USE_CC=clang USE_CXX=clang++ CMAKE_BUILD_TYPE=DEBUG TARGET_ARCH_BASE=x86_64 NO_ASM=1 TARGET_OS=linux
       os: linux
       addons:
         apt:
           packages:
             - yasm
 
-    - env: GCC_VERSION=5 CMAKE_BUILD_TYPE=DEBUG TARGET_ARCH_BASE=x86_64 NO_ASM=1
+    - env: USE_CC=gcc-5 USE_CXX=g++-5 CMAKE_BUILD_TYPE=DEBUG TARGET_ARCH_BASE=x86_64 NO_ASM=1 TARGET_OS=linux
       os: linux
       addons:
         apt:
@@ -456,7 +477,7 @@ matrix:
           sources:
             - ubuntu-toolchain-r-test
 
-    - env: GCC_VERSION=4.9 CMAKE_BUILD_TYPE=DEBUG TARGET_ARCH_BASE=x86_64 NO_ASM=1
+    - env: USE_CC=gcc-4.9 USE_CXX=g++-4.9 CMAKE_BUILD_TYPE=DEBUG TARGET_ARCH_BASE=x86_64 NO_ASM=1 TARGET_OS=linux
       os: linux
       addons:
         apt:
@@ -467,7 +488,10 @@ matrix:
           sources:
             - ubuntu-toolchain-r-test
 
-    - env: CLANG_VERSION=3.6 CMAKE_BUILD_TYPE=RELWITHDEBINFO TARGET_ARCH_BASE=x86_64 NO_ASM=1
+    - env: USE_CC=clang USE_CXX=clang++ CMAKE_BUILD_TYPE=RELWITHDEBINFO TARGET_ARCH_BASE=x86_64 NO_ASM=1 TARGET_OS=darwin
+      os: osx
+
+    - env: USE_CC=clang-3.6 USE_CXX=clang++-3.6 CMAKE_BUILD_TYPE=RELWITHDEBINFO TARGET_ARCH_BASE=x86_64 NO_ASM=1 TARGET_OS=linux
       os: linux
       addons:
         apt:
@@ -478,7 +502,7 @@ matrix:
             - llvm-toolchain-precise-3.6
             - ubuntu-toolchain-r-test
 
-    - env: GCC_VERSION=4.8 CMAKE_BUILD_TYPE=RELWITHDEBINFO TARGET_ARCH_BASE=x86_64 NO_ASM=1
+    - env: USE_CC=gcc-4.8 USE_CXX=g++-4.8 CMAKE_BUILD_TYPE=RELWITHDEBINFO TARGET_ARCH_BASE=x86_64 NO_ASM=1 TARGET_OS=linux
       os: linux
       addons:
         apt:
@@ -489,7 +513,7 @@ matrix:
           sources:
             - ubuntu-toolchain-r-test
 
-    - env: CLANG_VERSION=3.5 CMAKE_BUILD_TYPE=RELWITHDEBINFO TARGET_ARCH_BASE=x86_64 NO_ASM=1
+    - env: USE_CC=clang-3.5 USE_CXX=clang++-3.5 CMAKE_BUILD_TYPE=RELWITHDEBINFO TARGET_ARCH_BASE=x86_64 NO_ASM=1 TARGET_OS=linux
       os: linux
       addons:
         apt:
@@ -500,14 +524,14 @@ matrix:
             - llvm-toolchain-precise-3.5
             - ubuntu-toolchain-r-test
 
-    - env: CLANG_VERSION=3.4 CMAKE_BUILD_TYPE=RELWITHDEBINFO TARGET_ARCH_BASE=x86_64 NO_ASM=1
+    - env: USE_CC=clang USE_CXX=clang++ CMAKE_BUILD_TYPE=RELWITHDEBINFO TARGET_ARCH_BASE=x86_64 NO_ASM=1 TARGET_OS=linux
       os: linux
       addons:
         apt:
           packages:
             - yasm
 
-    - env: GCC_VERSION=5 CMAKE_BUILD_TYPE=RELWITHDEBINFO TARGET_ARCH_BASE=x86_64 NO_ASM=1
+    - env: USE_CC=gcc-5 USE_CXX=g++-5 CMAKE_BUILD_TYPE=RELWITHDEBINFO TARGET_ARCH_BASE=x86_64 NO_ASM=1 TARGET_OS=linux
       os: linux
       addons:
         apt:
@@ -518,7 +542,7 @@ matrix:
           sources:
             - ubuntu-toolchain-r-test
 
-    - env: GCC_VERSION=4.9 CMAKE_BUILD_TYPE=RELWITHDEBINFO TARGET_ARCH_BASE=x86_64 NO_ASM=1
+    - env: USE_CC=gcc-4.9 USE_CXX=g++-4.9 CMAKE_BUILD_TYPE=RELWITHDEBINFO TARGET_ARCH_BASE=x86_64 NO_ASM=1 TARGET_OS=linux
       os: linux
       addons:
         apt:
@@ -531,13 +555,8 @@ matrix:
 
     # END GENERATED
 
-install:
-  - if [[ "${GCC_VERSION-}" != "" ]]; then export CC="gcc-$GCC_VERSION" CXX="g++-$GCC_VERSION"; fi
-  - if [[ "${CLANG_VERSION-}" != "" ]]; then export CC="clang-$CLANG_VERSION" CXX="clang++-$CLANG_VERSION"; fi
-  - # clang 3.4 is the default version of clang in Travis CI.
-  - if [[ "${CLANG_VERSION-}" == "3.4" ]]; then export CC=clang CXX=clang++; fi
-
 before_script:
+  - export CC=$USE_CC CXX=$USE_CXX
   - $CC --version
   - $CXX --version
   - go version

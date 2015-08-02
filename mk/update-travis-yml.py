@@ -19,7 +19,7 @@ import shutil
 
 latest_clang = "clang-3.7"
 
-compilers = [
+linux_compilers = [
     # Since Travis CI limits the number of concurrent builds, we put the
     # highest-signal (most likely to break) builds first, to reduce latency
     # in discovering broken builds.
@@ -39,6 +39,20 @@ compilers = [
     "gcc-4.9",
 ]
 
+osx_compilers = [
+     "clang",
+]
+
+compilers = {
+    "darwin" : osx_compilers,
+    "linux" : linux_compilers,
+}
+
+oss = [
+    ("darwin", "osx"),
+    ("linux", "linux"),
+]
+
 modes = [
     "DEBUG",
     "RELWITHDEBINFO"
@@ -55,18 +69,24 @@ no_asms = [
 ]
 
 def format_entries():
-    return "\n".join([format_entry(compiler, mode, arch, no_asm)
+    return "\n".join([format_entry(os, compiler, mode, arch, no_asm)
                       for no_asm in no_asms
                       for arch in archs
                       for mode in modes
-                      for compiler in compilers
+                      for os in oss
+                      for compiler in compilers[os[0]]
                       # XXX: 32-bit GCC 4.9 does not work because Travis does
                       # not have g++-4.9-multilib whitelisted for use.
                       if not (compiler == "gcc-4.9" and arch == "x86")])
 
+# Set |USE_CC| and |USE_CXX| instead of |CC| and |CXX| since Travis sets |CC|
+# and |CXX| to its default values *after* processing the |env:| directive here.
+# The travis |before_script| section will then export CC=$USE_CC CXX=$USE_CXX.
 entry_template = """
-    - env: %(uppercase)s_VERSION=%(version)s CMAKE_BUILD_TYPE=%(mode)s TARGET_ARCH_BASE=%(arch)s
-      os: linux
+    - env: USE_CC=%(cc)s USE_CXX=%(cxx)s CMAKE_BUILD_TYPE=%(mode)s TARGET_ARCH_BASE=%(arch)s TARGET_OS=%(target_os)s
+      os: %(travis_os)s"""
+
+entry_packages_template = """
       addons:
         apt:
           packages:
@@ -76,35 +96,48 @@ entry_sources_template = """
           sources:
             %(sources)s"""
 
-def format_entry(compiler, mode, arch, no_asm):
+def format_entry(os, compiler, mode, arch, no_asm):
     def prefix_all(prefix, xs):
         return [prefix + x for x in xs]
 
-    packages = sorted(get_packages_to_install(compiler, arch))
-    sources_with_dups = sum([get_sources_for_package(p) for p in packages],[])
-    sources = sorted(list(set(sources_with_dups)))
-    (compiler_name, compiler_version) = compiler.split("-")
+    target_os, travis_os = os
+
     template = entry_template
-    if sources:
-        template += entry_sources_template
+
+    if target_os == "linux":
+        packages = sorted(get_linux_packages_to_install(compiler, arch))
+        sources_with_dups = sum([get_sources_for_package(p) for p in packages],[])
+        sources = sorted(list(set(sources_with_dups)))
+        if packages:
+            template += entry_packages_template
+        if sources:
+            template += entry_sources_template
+    else:
+        packages = []
+        sources = []
+
+    cc = get_cc(target_os, compiler)
+    cxx = replace_cc_with_cxx(target_os, compiler)
 
     return template % {
             "arch" : arch + ("" if not no_asm else (" NO_ASM=" + no_asm)),
+            "cc" : cc,
+            "cxx" : cxx,
             "mode" : mode,
             "packages" : "\n            ".join(prefix_all("- ", packages)),
             "sources" : "\n            ".join(prefix_all("- ", sources)),
-            "uppercase" : compiler_name.upper(),
-            "version" : compiler_version,
+            "target_os" : target_os,
+            "travis_os" : travis_os,
             }
 
-def get_packages_to_install(compiler, arch):
+def get_linux_packages_to_install(compiler, arch):
     # clang 3.4 is already installed
     if compiler == "clang-3.4":
         packages = []
     elif compiler.startswith("clang-"):
         packages = [compiler]
     elif compiler.startswith("gcc-"):
-        packages = [compiler, replace_cc_with_cxx(compiler)]
+        packages = [compiler, replace_cc_with_cxx("linux", compiler)]
     else:
         raise ValueError("unexpected compiler: %s" % compiler)
 
@@ -115,7 +148,7 @@ def get_packages_to_install(compiler, arch):
                          "g++-multilib"]
         elif compiler.startswith("gcc-"):
             packages += [compiler + "-multilib",
-                         replace_cc_with_cxx(compiler) + "-multilib",
+                         replace_cc_with_cxx("linux", compiler) + "-multilib",
                          "linux-libc-dev:i386"]
         else:
             raise ValueError("unexpected compiler: %s" % compiler)
@@ -147,11 +180,16 @@ def get_sources_for_package(package):
     else:
         return [ubuntu_toolchain]
 
-def get_cc(compiler):
-    return compiler if compiler != "clang-3.4" else "clang"
+def get_cc(target_os, compiler):
+    if target_os == "linux" and compiler == "clang-3.4":
+        return "clang"
 
-def replace_cc_with_cxx(compiler):
-    return get_cc(compiler).replace("gcc", "g++").replace("clang", "clang++")
+    return compiler
+
+def replace_cc_with_cxx(target_os, compiler):
+    return get_cc(target_os, compiler) \
+               .replace("gcc", "g++") \
+               .replace("clang", "clang++")
 
 def main():
     # Make a backup of the file we are about to update.
