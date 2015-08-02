@@ -175,7 +175,7 @@ RING_armv8_SRCS = $(addprefix $(RING_PREFIX), \
   crypto/sha/asm/sha512-armv8.pl \
   $(NULL))
 
-RING_SRCS += $(RING_$(ARCH)_SRCS)
+RING_SRCS += $(RING_$(TARGET_ARCH_BASE)_SRCS)
 
 # TODO: Allow the choice of crypto/thread_none.c instead.
 RING_SRCS += $(addprefix $(RING_PREFIX), crypto/thread_pthread.c)
@@ -184,7 +184,7 @@ RING_OBJS = $(addprefix $(OBJ_PREFIX), \
   $(patsubst %.c, %.o, \
   $(patsubst %.pl, %.o, \
   $(RING_SRCS)))) \
-  $(RING_$(ARCH)_EXTRA_OBJS) \
+  $(RING_$(TARGET_ARCH_BASE)_EXTRA_OBJS) \
   $(NULL)
 
 RING_LIB = $(LIB_PREFIX)libring.a
@@ -240,7 +240,7 @@ $(RING_TEST_EXES): $(EXE_PREFIX)% : \
   $(RING_LIB) \
   $(RING_TEST_LIB_OBJS) \
   $(NULL)
-	$(CXX) $(filter-out $(RING_LIB),$^) $(LDFLAGS) $(LDLIBS) -o $@
+	$(CXX) $(filter-out $(RING_LIB),$^) $(LDFLAGS) $(LDLIBS) $(TARGET_ARCH) -o $@
 
 # TODO: Fix the code so -Wno- overrides are not needed.
 $(RING_OBJS) \
@@ -279,7 +279,7 @@ PERL_EXECUTABLE ?= perl
 
 PERLASM_x86_ARGS = elf -fPIC -DOPENSSL_IA32_SSE2
 PERLASM_x86_64_ARGS = elf
-PERLASM_ARGS = $(PERLASM_$(ARCH)_ARGS)
+PERLASM_ARGS = $(PERLASM_$(TARGET_ARCH_BASE)_ARGS)
 
 $(OBJ_PREFIX)%.S: %.pl $(PERLASM_LIB_SRCS)
 	${PERL_EXECUTABLE} $< $(PERLASM_ARGS) > $@
