@@ -183,9 +183,8 @@ RING_SRCS += $(addprefix $(RING_PREFIX), crypto/thread_pthread.c)
 RING_OBJS = $(addprefix $(OBJ_PREFIX), \
   $(patsubst %.c, %.o, \
   $(patsubst %.pl, %.o, \
-  $(RING_SRCS)))) \
-  $(RING_$(TARGET_ARCH_BASE)_EXTRA_OBJS) \
-  $(NULL)
+  $(RING_SRCS))) \
+  $(NULL))
 
 RING_LIB = $(LIB_PREFIX)libring.a
 
