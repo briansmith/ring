@@ -66,6 +66,7 @@
  *
  * TODO(fork): clean up callers so that they include what they use. */
 #include <openssl/aead.h>
+#include <openssl/base64.h>
 #include <openssl/cipher.h>
 #include <openssl/digest.h>
 #include <openssl/obj.h>
