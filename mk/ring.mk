@@ -14,23 +14,10 @@
 
 RING_PREFIX ?= ring/
 
-RING_CPPFLAGS = -I$(RING_PREFIX)include -D_XOPEN_SOURCE=700
+RING_CPPFLAGS = $(RING_THREAD_FLAGS) -I$(RING_PREFIX)include -D_XOPEN_SOURCE=700
 
-RING_LDLIBS = -pthread -L$(dir $(RING_LIB)) -lring
+RING_LDLIBS = $(RING_THREAD_FLAGS) -L$(dir $(RING_LIB)) -lring
 
-# Everything, except:
-#   * Tests (e.g. *_test.*)
-#   * Assembly language sources (TODO: add these)
-#   * Directory stuff (TODO(ring): remove these):
-#     * crypto/directory_posix.c
-#     * crypto/directory_win.c
-#   * Platform-specific threading (merged in below)
-#     * crypto/thread_none.c
-#     * crypto/thread_pthread.c
-#     * crypto/thread_win.c
-#   * Other Windows-specific files:
-#     * crypto/rand/windows.c
-#   * crypto/test/*
 RING_SRCS = $(addprefix $(RING_PREFIX), \
   crypto/aes/aes.c \
   crypto/aes/mode_wrappers.c \
@@ -158,33 +145,60 @@ RING_x86_64_SRCS = $(addprefix $(RING_PREFIX), \
   crypto/sha/asm/sha512-x86_64.pl \
   $(NULL))
 
-RING_armv7_SRCS = $(addprefix $(RING_PREFIX), \
-  crypto/aes/asm/aes-armv4.pl \
+RING_ARM_SHARED_SRCS = \
   crypto/aes/asm/aesv8-armx.pl \
+  crypto/cpu-arm-asm.S \
+  $(NULL)
+
+RING_arm_SRCS = $(addprefix $(RING_PREFIX), \
+  crypto/aes/asm/aes-armv4.pl \
   crypto/aes/asm/bsaes-armv7.pl \
   crypto/bn/asm/armv4-mont.pl \
   crypto/modes/asm/ghash-armv4.pl \
-  crypto/modes/asm/ghashv8-armx.pl \
   crypto/sha/asm/sha1-armv4-large.pl \
   crypto/sha/asm/sha256-armv4.pl \
   crypto/sha/asm/sha512-armv4.pl \
+  $(RING_ARM_SHARED_SRCS) \
   $(NULL))
 
-RING_armv8_SRCS = $(addprefix $(RING_PREFIX), \
+# TODO
+RING_CPPFLAGS += -D__ARM_MAX_ARCH__=7
+
+RING_arm_SRCS += $(addprefix $(RING_PREFIX), \
+  crypto/chacha/chacha_vec_arm.S \
+  crypto/poly1305/poly1305_arm_asm.S \
+  $(NULL))
+
+RING_aarch64_SRCS = $(addprefix $(RING_PREFIX), \
+  crypto/modes/asm/ghashv8-armx.pl \
   crypto/sha/asm/sha1-armv8.pl \
+  crypto/sha/asm/sha256-armv8.pl \
   crypto/sha/asm/sha512-armv8.pl \
+  $(RING_ARM_SHARED_SRCS) \
   $(NULL))
 
-RING_SRCS += $(RING_$(TARGET_ARCH_BASE)_SRCS)
-
-# TODO: Allow the choice of crypto/thread_none.c instead.
+ifeq ($(TARGET_SYS),none)
+RING_THREAD_FLAGS += -DOPENSSL_TRUSTY=1 -DOPENSSL_NO_THREADS=1
+RING_SRCS += $(addprefix $(RING_PREFIX), crypto/thread_none.c)
+else
+RING_THREAD_FLAGS += -pthread
 RING_SRCS += $(addprefix $(RING_PREFIX), crypto/thread_pthread.c)
+endif
 
-RING_OBJS = $(addprefix $(OBJ_PREFIX), \
-  $(patsubst %.c, %.o, \
-  $(patsubst %.pl, %.o, \
-  $(RING_SRCS))) \
-  $(NULL))
+RING_ASM_OBJS = \
+  $(addprefix $(OBJ_PREFIX), \
+    $(patsubst %.pl, %.o, \
+      $(patsubst %.S, %.o, $(RING_$(TARGET_ARCH_NORMAL)_SRCS))))
+
+$(RING_ASM_OBJS): CPPFLAGS += -Icrypto
+
+RING_OBJS = $(addprefix $(OBJ_PREFIX), $(patsubst %.c, %.o, $(RING_SRCS)))
+
+ifeq ($(NO_ASM),)
+RING_OBJS += $(RING_ASM_OBJS)
+else
+RING_CPPFLAGS += -DOPENSSL_NO_ASM=1
+endif
 
 RING_LIB = $(LIB_PREFIX)libring.a
 
@@ -238,6 +252,9 @@ RING_TEST_MAIN_OBJS = $(addprefix $(OBJ_PREFIX), \
 
 RING_TEST_EXES = $(RING_TEST_MAIN_OBJS:$(OBJ_PREFIX)%.o=$(EXE_PREFIX)%)
 
+ifeq ($(TARGET_SYS),none)
+$(RING_TEST_EXES): LDLIBS += --specs=rdimon.specs
+endif
 $(RING_TEST_EXES): LDLIBS += $(RING_LDLIBS)
 $(RING_TEST_EXES): $(EXE_PREFIX)% : \
   $(OBJ_PREFIX)%.o \
@@ -290,7 +307,7 @@ endif
 
 PERLASM_x86_ARGS = $(PERLASM_FLAVOUR) -fPIC -DOPENSSL_IA32_SSE2
 PERLASM_x86_64_ARGS = $(PERLASM_FLAVOUR)
-PERLASM_ARGS = $(PERLASM_$(TARGET_ARCH_BASE)_ARGS)
+PERLASM_ARGS = $(PERLASM_$(TARGET_ARCH_NORMAL)_ARGS)
 
 $(OBJ_PREFIX)%.S: %.pl $(PERLASM_LIB_SRCS)
 	${PERL_EXECUTABLE} $< $(PERLASM_ARGS) > $@

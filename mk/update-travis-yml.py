@@ -64,13 +64,13 @@ oss = [
 targets = {
     "osx" : [
         ("x86_64-apple-darwin-macho", ""),
-        ("x86-apple-darwin-macho", ""),
+        ("i586-apple-darwin-macho", ""),
     ],
     "linux" : [
         ("x86_64-pc-linux-gnu", ""),
-        ("x86-pc-linux-gnu", ""),
-        ("x86_64-pc-linux-gnu", "1"),
-        ("x86-pc-linux-gnu", "1"),
+        ("i586-pc-linux-gnu", ""),
+        ("x86_64-pc-linux-gnu", "NO_ASM=1"),
+        ("i586-pc-linux-gnu", "NO_ASM=1"),
     ],
 }
 
@@ -88,7 +88,7 @@ def format_entries():
                       # XXX: 32-bit GCC 4.9 does not work because Travis does
                       # not have g++-4.9-multilib whitelisted for use.
                       if not (compiler == "gcc-4.9" and
-                              target == "x86-pc-linux-gnu")])
+                              target == "i586-pc-linux-gnu")])
 
 # Set |USE_CC| and |USE_CXX| instead of |CC| and |CXX| since Travis sets |CC|
 # and |CXX| to its default values *after* processing the |env:| directive here.
@@ -151,7 +151,7 @@ def get_linux_packages_to_install(compiler, arch):
     else:
         raise ValueError("unexpected compiler: %s" % compiler)
 
-    if arch == "x86":
+    if arch == "i586":
         if compiler.startswith("clang-"):
             packages += ["libc6-dev-i386",
                          "gcc-multilib",

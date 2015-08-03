@@ -25,14 +25,13 @@ expects variables ```CC```, ```CXX```, and ```TARGET``` to be passed
 to ```make```. For example, this will build a 32-bit x86 *ring* for Linux using
 GCC 4.8:
 
-    make -j6 CC=gcc-4.8 CXX=g++-4.8 TARGET=x86-pc-linux-gnu
+    make -j6 CC=gcc-4.8 CXX=g++-4.8 TARGET=i586-pc-linux-gnu
 
 As another example, this will build a 64-bit x86-64 *ring* for Mac OS X:
 
     make -j6 CC=clang CXX=clang++ TARGET=x86_64-apple-darwin-macho
 
-All four parts of the target are required. ```x86``` must be used instead
-of ```i386```, ```i586```, etc.
+All four parts of the target are required.
 
 GCC 4.8 and later are supported, as are clang 3.4 and later. Other compilers
 will also probably work without too much trouble. Note in particular that if

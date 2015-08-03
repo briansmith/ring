@@ -100,7 +100,9 @@
 
 /* Even when building for 32-bit ARM, support for aarch64 crypto instructions
  * will be included. */
+#if !defined(__ARM_MAX_ARCH__)
 #define __ARM_MAX_ARCH__ 8
+#endif
 
 #if !__ASSEMBLER__
 

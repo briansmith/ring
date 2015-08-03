@@ -24,26 +24,58 @@ endef
 $(error TARGET must be of the form \
         <arch>[<sub>]-<vendor>-<sys>-<abi>.$(NEWLINE)\
 \
-        Linux x86 example:    TARGET=x86-pc-linux-gnu $(NEWLINE)\
+        Linux x86 example:    TARGET=i586-pc-linux-gnu $(NEWLINE)\
         Mac OS X x64 example: TARGET=x86_64-apple-darwin-macho) $(NEWLINE)\
 \
-        NOTE: Use "x86" instead of "i386", "i586", "i686", etc.)
+        NOTE: Use "i586" instead of "x86", etc.)
 endif
 
 TARGET_ARCH_BASE = $(word 1,$(TARGET_WORDS))
+TARGET_ARCH_NORMAL = \
+  $(strip $(if $(findstring arm, $(TARGET_ARCH_BASE)),arm, \
+               $(if $(filter i386 i486 i586 i686, \
+                    $(TARGET_ARCH_BASE)),x86,$(TARGET_ARCH_BASE))))
+
 TARGET_VENDOR = $(word 2,$(TARGET_WORDS))
 TARGET_SYS = $(word 3,$(TARGET_WORDS))
 TARGET_ABI = $(word 4,$(TARGET_WORDS))
 
-# Although it isn't documented, GNU Make passes $(TARGET_ARCH) in its implicit
-# rules.
-ifeq ($(TARGET_ARCH_BASE),x86)
-TARGET_ARCH ?= -m32
-else ifeq ($(TARGET_ARCH_BASE),x86_64)
-TARGET_ARCH ?= -m64
-else
-$(error You must specify TARGET_ARCH_BASE as one of {x86,x86_64})
+# XXX: Apple's toolchain fails to link when the |-target| arch is "x86_64",
+# so just skip -target on Darwin for now.
+ifneq ($(TARGET_ARCH_NORMAL)-$(findstring darwin,$(TARGET_SYS)),x86_64-darwin)
+ifeq ($(findstring clang,$(CC)),clang)
+DEFAULT_TARGET_ARCH = -target "$(TARGET)"
 endif
+endif
+
+ifeq ($(TARGET_ARCH_NORMAL),x86)
+MARCH = pentium
+MINSTR = 32
+else ifeq ($(TARGET_ARCH_NORMAL),x86_64)
+MARCH = x86-64
+MINSTR = 64
+else
+MARCH = $(subst _,-,$(TARGET_ARCH_BASE))
+endif
+
+ifeq ($(TARGET_ABI),eabi)
+MABI = aapcs
+endif
+
+# Cortex-M0, Cortex-M0+, Cortex-M1: armv6_m
+# Cortex-M3: armv7_m
+# Cortex-M4, Cortex-M7: armv7e_m
+ifeq ($(filter-out armv6_m armv7_m armv7e_m,$(TARGET_ARCH_BASE)),)
+MINSTR = thumb
+endif
+
+# Although it isn't mentioned in the GNU Make manual, GNU Make passes
+# $(TARGET_ARCH) in its implicit rules.
+TARGET_ARCH += $(if $(MCPU),-mcpu=$(MCPU)) \
+               $(if $(MARCH),-march=$(MARCH)) \
+               $(if $(MABI),-mabi=$(MABI)) \
+               $(if $(MINSTR),-m$(MINSTR)) \
+               $(NULL)
 
 ifeq ($(CC),)
 $(error You must specify CC)
@@ -121,8 +153,6 @@ endif
 CPPFLAGS += \
   -pedantic -pedantic-errors \
   \
-  -fstack-protector \
-  \
   -Wall -Werror \
   -Wextra \
   \
@@ -137,6 +167,14 @@ CPPFLAGS += \
   -Wuninitialized \
   -Wwrite-strings \
   $(NULL)
+
+# XXX: Stack protector causes linking failures for armv7-*-none-eabi and
+# it's use seems questionable for that kind of target anyway.
+# The launchpad.net arm-none-eabi-gcc toolchain (at least) uses -fshort-enums.
+ifneq ($(TARGET_SYS),none)
+CPPFLAGS += -fstack-protector
+endif
+
 
 # TODO (not in clang):
 #   -Wjump-misses-init
