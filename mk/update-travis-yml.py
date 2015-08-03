@@ -44,24 +44,34 @@ osx_compilers = [
 ]
 
 compilers = {
-    "darwin" : osx_compilers,
     "linux" : linux_compilers,
+    "osx" : osx_compilers,
 }
-
-oss = [
-    ("darwin", "osx"),
-    ("linux", "linux"),
-]
 
 modes = [
     "DEBUG",
     "RELWITHDEBINFO"
 ]
 
-archs = [
-    "x86",
-    "x86_64",
+# Mac OS X is first because we don't want to have to wait until all the Linux
+# configurations have been built to find out that there is a failure on Mac.
+oss = [
+    "osx",
+    "linux",
 ]
+
+targets = {
+    "osx" : [
+        ("x86_64-apple-darwin-macho", ""),
+        ("x86-apple-darwin-macho", ""),
+    ],
+    "linux" : [
+        ("x86_64-pc-linux-gnu", ""),
+        ("x86-pc-linux-gnu", ""),
+        ("x86_64-pc-linux-gnu", "NO_ASM=1"),
+        ("x86-pc-linux-gnu", "NO_ASM=1"),
+    ],
+}
 
 no_asms = [
     "",
@@ -69,22 +79,22 @@ no_asms = [
 ]
 
 def format_entries():
-    return "\n".join([format_entry(os, compiler, mode, arch, no_asm)
-                      for no_asm in no_asms
-                      for arch in archs
-                      for mode in modes
+    return "\n".join([format_entry(os, target, compiler, no_asm, mode)
                       for os in oss
-                      for compiler in compilers[os[0]]
+                      for target, no_asm in targets[os]
+                      for compiler in compilers[os]
+                      for mode in modes
                       # XXX: 32-bit GCC 4.9 does not work because Travis does
                       # not have g++-4.9-multilib whitelisted for use.
-                      if not (compiler == "gcc-4.9" and arch == "x86")])
+                      if not (compiler == "gcc-4.9" and
+                              target == "x86-pc-linux-gnu")])
 
 # Set |USE_CC| and |USE_CXX| instead of |CC| and |CXX| since Travis sets |CC|
 # and |CXX| to its default values *after* processing the |env:| directive here.
-# The travis |before_script| section will then export CC=$USE_CC CXX=$USE_CXX.
+# The travis |before_script| section will then |export CC=$USE_CC CXX=$USE_CXX|.
 entry_template = """
-    - env: USE_CC=%(cc)s USE_CXX=%(cxx)s CMAKE_BUILD_TYPE=%(mode)s TARGET_ARCH_BASE=%(arch)s TARGET_OS=%(target_os)s
-      os: %(travis_os)s"""
+    - env: TARGET=%(target)s USE_CC=%(cc)s USE_CXX=%(cxx)s CMAKE_BUILD_TYPE=%(mode)s
+      os: %(os)s"""
 
 entry_packages_template = """
       addons:
@@ -96,15 +106,15 @@ entry_sources_template = """
           sources:
             %(sources)s"""
 
-def format_entry(os, compiler, mode, arch, no_asm):
+def format_entry(os, target, compiler, no_asm, mode):
+    arch, vendor, sys, abi = target.split("-")
+
     def prefix_all(prefix, xs):
         return [prefix + x for x in xs]
 
-    target_os, travis_os = os
-
     template = entry_template
 
-    if target_os == "linux":
+    if sys == "linux":
         packages = sorted(get_linux_packages_to_install(compiler, arch))
         sources_with_dups = sum([get_sources_for_package(p) for p in packages],[])
         sources = sorted(list(set(sources_with_dups)))
@@ -116,18 +126,17 @@ def format_entry(os, compiler, mode, arch, no_asm):
         packages = []
         sources = []
 
-    cc = get_cc(target_os, compiler)
-    cxx = replace_cc_with_cxx(target_os, compiler)
+    cc = get_cc(sys, compiler)
+    cxx = replace_cc_with_cxx(sys, compiler)
 
     return template % {
-            "arch" : arch + ("" if not no_asm else (" NO_ASM=" + no_asm)),
             "cc" : cc,
             "cxx" : cxx,
             "mode" : mode,
             "packages" : "\n            ".join(prefix_all("- ", packages)),
             "sources" : "\n            ".join(prefix_all("- ", sources)),
-            "target_os" : target_os,
-            "travis_os" : travis_os,
+            "target" : target + ("" if not no_asm else (" NO_ASM=" + no_asm)),
+            "os" : os,
             }
 
 def get_linux_packages_to_install(compiler, arch):
@@ -180,14 +189,14 @@ def get_sources_for_package(package):
     else:
         return [ubuntu_toolchain]
 
-def get_cc(target_os, compiler):
-    if target_os == "linux" and compiler == "clang-3.4":
+def get_cc(sys, compiler):
+    if sys == "linux" and compiler == "clang-3.4":
         return "clang"
 
     return compiler
 
-def replace_cc_with_cxx(target_os, compiler):
-    return get_cc(target_os, compiler) \
+def replace_cc_with_cxx(sys, compiler):
+    return get_cc(sys, compiler) \
                .replace("gcc", "g++") \
                .replace("clang", "clang++")
 
