@@ -14,6 +14,27 @@
 
 .DEFAULT_GOAL := all
 
+# $(TARGET) must be of the form <arch>-<vendor>-<sys>-<abi>.
+TARGET_WORDS = $(subst -, ,$(TARGET))
+ifneq ($(words $(TARGET_WORDS)),4)
+define NEWLINE
+
+
+endef
+$(error TARGET must be of the form \
+        <arch>[<sub>]-<vendor>-<sys>-<abi>.$(NEWLINE)\
+\
+        Linux x86 example:    TARGET=x86-pc-linux-gnu $(NEWLINE)\
+        Mac OS X x64 example: TARGET=x86_64-apple-darwin-macho) $(NEWLINE)\
+\
+        NOTE: Use "x86" instead of "i386", "i586", "i686", etc.)
+endif
+
+TARGET_ARCH_BASE = $(word 1,$(TARGET_WORDS))
+TARGET_VENDOR = $(word 2,$(TARGET_WORDS))
+TARGET_SYS = $(word 3,$(TARGET_WORDS))
+TARGET_ABI = $(word 4,$(TARGET_WORDS))
+
 # Although it isn't documented, GNU Make passes $(TARGET_ARCH) in its implicit
 # rules.
 ifeq ($(TARGET_ARCH_BASE),x86)
@@ -24,7 +45,20 @@ else
 $(error You must specify TARGET_ARCH_BASE as one of {x86,x86_64})
 endif
 
-BUILD_PREFIX ?= build/
+ifeq ($(CC),)
+$(error You must specify CC)
+endif
+ifeq ($(CXX),)
+$(error You must specify CXX)
+endif
+
+# e.g. "clang-3.6"
+COMPILER_NAME ?= $(notdir $(CC))
+
+# Generate output to a directory like build/x86_64-unknown-linux-elf-clang-3.6.
+BUILD_PREFIX_PRIMARY ?= build
+BUILD_PREFIX_SUB ?= $(TARGET)-$(COMPILER_NAME)
+BUILD_PREFIX ?= $(BUILD_PREFIX_PRIMARY)/$(BUILD_PREFIX_SUB)/
 
 EXE_PREFIX ?= $(BUILD_PREFIX)bin/
 OBJ_PREFIX ?= $(BUILD_PREFIX)obj/
@@ -36,18 +70,14 @@ CXXFLAGS_STD ?= -std=c++11
 CFLAGS += $(CFLAGS_STD)
 CXXFLAGS += $(CXXFLAGS_STD)
 
-# Always add full debug info. |-gfull| is required for Darwin's |-dead_strip|.
-ifeq ($TARGET_OS,darwin)
-CPPFLAGS += -gfull
-else
-CPPFLAGS += -g3
-endif
-
-# Dead code elimination.
+# Always add full debug info and strip dead code.
 CPPFLAGS += -fdata-sections -ffunction-sections
-ifeq ($(TARGET_OS),darwin)
+ifeq ($(findstring darwin,$(TARGET_SYS)),darwin)
+# |-gfull| is required for Darwin's |-dead_strip|.
+CPPFLAGS += -gfull
 LDFLAGS += -Wl,-dead_strip
 else
+CPPFLAGS += -g3
 LDFLAGS += -Wl,--gc-sections
 endif
 

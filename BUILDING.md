@@ -21,20 +21,24 @@ There is no ./configure step.
 GNU Make 3.81 or later is required. Perl 5.6.1 or later is also required
 (unless you disable all the assembly language optimizations by building
 with ```NO_ASM=1```). *ring* is designed with cross-compilation in mind so it
-expects variables ```CC```, ```CXX```, ```TARGET_ARCH_BASE```, and ```TARGET_OS```
-to be passed to ```make```. For example, this will build ring
+expects variables ```CC```, ```CXX```, and ```TARGET``` to be passed
+to ```make```. For example, this will build a 32-bit x86 *ring* for Linux using
+GCC 4.8:
 
-    make -j6 CC=clang-3.6 CXX=clang++-3.6 TARGET_ARCH_BASE=x86_64 TARGET_OS=linux
+    make -j6 CC=gcc-4.8 CXX=g++-4.8 TARGET=x86-pc-linux-gnu
+
+As another example, this will build a 64-bit x86-64 *ring* for Mac OS X:
+
+    make -j6 CC=clang CXX=clang++ TARGET=x86_64-apple-darwin-macho
+
+All four parts of the target are required. ```x86``` must be used instead
+of ```i386```, ```i586```, etc.
 
 GCC 4.8 and later are supported, as are clang 3.4 and later. Other compilers
-will also probably work without too much trouble. Set ```TARGET_ARCH_BASE``` to
-either ```x86``` or ```x86_64```. (ARM and MIPS support is just waiting on some
-tweaks of the build system and the test infrastructure.) Set ```TARGET_OS```
-to ```darwin``` for Mac OS X or ```linux``` for Linux.
-
-Note in particular that if you are cross-compiling an x86 build on a 64-bit
-version of Linux, then you need to have the proper gcc-multilibs and
-g++-multilibs packages, or equivalent, installed.
+will also probably work without too much trouble. Note in particular that if
+you are cross-compiling an x86 build on a 64-bit version of Linux, then you
+need to have the proper gcc-multilibs and g++-multilibs packages or equivalent
+installed.
 
 The default build is a debug build (```CMAKE_BUILD_TYPE=DEBUG```). You can
 build a release build by setting ```CMAKE_BUILD_TYPE``` to ```RELWITHDEBINFO```.
@@ -42,19 +46,19 @@ build a release build by setting ```CMAKE_BUILD_TYPE``` to ```RELWITHDEBINFO```.
 used.) For example, this will build *ring* in release mode with the default
 version of clang on Mac OS X:
 
-    make -j6 CC=clang CXX=clang++ TARGET_ARCH_BASE=x86_64 TARGET_OS=darwin CMAKE_BUILD_TYPE=RELWITHDEBINFO
+    make -j6 CC=clang-3.6 CXX=clang++-3.6 TARGET=x86_64-pc-linux-gnu CMAKE_BUILD_TYPE=RELWITHDEBINFO
 
 Then compile your applications with ```-Iring/include``` (assuming you put *ring*
 into the ```ring``` subdirectory of your project) and add ```$(RING_LDFLAGS)```
 to LDFLAGS in your linking step. ```RING_LDFLAGS``` expands by default
-to ```-pthread -Lbuild/lib/libring.a -lring```. (It should also be easy to
-build *ring* so that it doesn't depend on pthreads, but the build system hasn't
-been enhanced to fully support that yet.)
+to ```-pthread -Lbuild/$TARGET-$CC/lib/libring.a -lring```. (It should also be
+easy to build *ring* so that it doesn't depend on pthreads, but the build system
+hasn't been enhanced to fully support that yet.)
 
 Running the tests using ```make check``` requires Go (https://golang.org/) to
 be in ```$PATH```. Example:
 
-    make check -j6 CC=clang-3.6 CXX=clang-3.6++ TARGET_ARCH_BASE=x86 TARGET_OS=linux
+    make check -j6 CC=clang-3.6 CXX=clang++-3.6 TARGET=x86_64-pc-linux-gnu
 
 
 

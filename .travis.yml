@@ -9,10 +9,143 @@ matrix:
     #
     # BEGIN GENERATED
 
-    - env: USE_CC=clang USE_CXX=clang++ CMAKE_BUILD_TYPE=DEBUG TARGET_ARCH_BASE=x86 TARGET_OS=darwin
+    - env: TARGET=x86_64-apple-darwin-macho USE_CC=clang USE_CXX=clang++ CMAKE_BUILD_TYPE=DEBUG
       os: osx
 
-    - env: USE_CC=clang-3.6 USE_CXX=clang++-3.6 CMAKE_BUILD_TYPE=DEBUG TARGET_ARCH_BASE=x86 TARGET_OS=linux
+    - env: TARGET=x86_64-apple-darwin-macho USE_CC=clang USE_CXX=clang++ CMAKE_BUILD_TYPE=RELWITHDEBINFO
+      os: osx
+
+    - env: TARGET=x86-apple-darwin-macho USE_CC=clang USE_CXX=clang++ CMAKE_BUILD_TYPE=DEBUG
+      os: osx
+
+    - env: TARGET=x86-apple-darwin-macho USE_CC=clang USE_CXX=clang++ CMAKE_BUILD_TYPE=RELWITHDEBINFO
+      os: osx
+
+    - env: TARGET=x86_64-pc-linux-gnu USE_CC=clang-3.6 USE_CXX=clang++-3.6 CMAKE_BUILD_TYPE=DEBUG
+      os: linux
+      addons:
+        apt:
+          packages:
+            - clang-3.6
+            - yasm
+          sources:
+            - llvm-toolchain-precise-3.6
+            - ubuntu-toolchain-r-test
+
+    - env: TARGET=x86_64-pc-linux-gnu USE_CC=clang-3.6 USE_CXX=clang++-3.6 CMAKE_BUILD_TYPE=RELWITHDEBINFO
+      os: linux
+      addons:
+        apt:
+          packages:
+            - clang-3.6
+            - yasm
+          sources:
+            - llvm-toolchain-precise-3.6
+            - ubuntu-toolchain-r-test
+
+    - env: TARGET=x86_64-pc-linux-gnu USE_CC=gcc-4.8 USE_CXX=g++-4.8 CMAKE_BUILD_TYPE=DEBUG
+      os: linux
+      addons:
+        apt:
+          packages:
+            - g++-4.8
+            - gcc-4.8
+            - yasm
+          sources:
+            - ubuntu-toolchain-r-test
+
+    - env: TARGET=x86_64-pc-linux-gnu USE_CC=gcc-4.8 USE_CXX=g++-4.8 CMAKE_BUILD_TYPE=RELWITHDEBINFO
+      os: linux
+      addons:
+        apt:
+          packages:
+            - g++-4.8
+            - gcc-4.8
+            - yasm
+          sources:
+            - ubuntu-toolchain-r-test
+
+    - env: TARGET=x86_64-pc-linux-gnu USE_CC=clang-3.5 USE_CXX=clang++-3.5 CMAKE_BUILD_TYPE=DEBUG
+      os: linux
+      addons:
+        apt:
+          packages:
+            - clang-3.5
+            - yasm
+          sources:
+            - llvm-toolchain-precise-3.5
+            - ubuntu-toolchain-r-test
+
+    - env: TARGET=x86_64-pc-linux-gnu USE_CC=clang-3.5 USE_CXX=clang++-3.5 CMAKE_BUILD_TYPE=RELWITHDEBINFO
+      os: linux
+      addons:
+        apt:
+          packages:
+            - clang-3.5
+            - yasm
+          sources:
+            - llvm-toolchain-precise-3.5
+            - ubuntu-toolchain-r-test
+
+    - env: TARGET=x86_64-pc-linux-gnu USE_CC=clang USE_CXX=clang++ CMAKE_BUILD_TYPE=DEBUG
+      os: linux
+      addons:
+        apt:
+          packages:
+            - yasm
+
+    - env: TARGET=x86_64-pc-linux-gnu USE_CC=clang USE_CXX=clang++ CMAKE_BUILD_TYPE=RELWITHDEBINFO
+      os: linux
+      addons:
+        apt:
+          packages:
+            - yasm
+
+    - env: TARGET=x86_64-pc-linux-gnu USE_CC=gcc-5 USE_CXX=g++-5 CMAKE_BUILD_TYPE=DEBUG
+      os: linux
+      addons:
+        apt:
+          packages:
+            - g++-5
+            - gcc-5
+            - yasm
+          sources:
+            - ubuntu-toolchain-r-test
+
+    - env: TARGET=x86_64-pc-linux-gnu USE_CC=gcc-5 USE_CXX=g++-5 CMAKE_BUILD_TYPE=RELWITHDEBINFO
+      os: linux
+      addons:
+        apt:
+          packages:
+            - g++-5
+            - gcc-5
+            - yasm
+          sources:
+            - ubuntu-toolchain-r-test
+
+    - env: TARGET=x86_64-pc-linux-gnu USE_CC=gcc-4.9 USE_CXX=g++-4.9 CMAKE_BUILD_TYPE=DEBUG
+      os: linux
+      addons:
+        apt:
+          packages:
+            - g++-4.9
+            - gcc-4.9
+            - yasm
+          sources:
+            - ubuntu-toolchain-r-test
+
+    - env: TARGET=x86_64-pc-linux-gnu USE_CC=gcc-4.9 USE_CXX=g++-4.9 CMAKE_BUILD_TYPE=RELWITHDEBINFO
+      os: linux
+      addons:
+        apt:
+          packages:
+            - g++-4.9
+            - gcc-4.9
+            - yasm
+          sources:
+            - ubuntu-toolchain-r-test
+
+    - env: TARGET=x86-pc-linux-gnu USE_CC=clang-3.6 USE_CXX=clang++-3.6 CMAKE_BUILD_TYPE=DEBUG
       os: linux
       addons:
         apt:
@@ -26,7 +159,21 @@ matrix:
             - llvm-toolchain-precise-3.6
             - ubuntu-toolchain-r-test
 
-    - env: USE_CC=gcc-4.8 USE_CXX=g++-4.8 CMAKE_BUILD_TYPE=DEBUG TARGET_ARCH_BASE=x86 TARGET_OS=linux
+    - env: TARGET=x86-pc-linux-gnu USE_CC=clang-3.6 USE_CXX=clang++-3.6 CMAKE_BUILD_TYPE=RELWITHDEBINFO
+      os: linux
+      addons:
+        apt:
+          packages:
+            - clang-3.6
+            - g++-multilib
+            - gcc-multilib
+            - libc6-dev-i386
+            - yasm
+          sources:
+            - llvm-toolchain-precise-3.6
+            - ubuntu-toolchain-r-test
+
+    - env: TARGET=x86-pc-linux-gnu USE_CC=gcc-4.8 USE_CXX=g++-4.8 CMAKE_BUILD_TYPE=DEBUG
       os: linux
       addons:
         apt:
@@ -40,64 +187,7 @@ matrix:
           sources:
             - ubuntu-toolchain-r-test
 
-    - env: USE_CC=clang-3.5 USE_CXX=clang++-3.5 CMAKE_BUILD_TYPE=DEBUG TARGET_ARCH_BASE=x86 TARGET_OS=linux
-      os: linux
-      addons:
-        apt:
-          packages:
-            - clang-3.5
-            - g++-multilib
-            - gcc-multilib
-            - libc6-dev-i386
-            - yasm
-          sources:
-            - llvm-toolchain-precise-3.5
-            - ubuntu-toolchain-r-test
-
-    - env: USE_CC=clang USE_CXX=clang++ CMAKE_BUILD_TYPE=DEBUG TARGET_ARCH_BASE=x86 TARGET_OS=linux
-      os: linux
-      addons:
-        apt:
-          packages:
-            - g++-multilib
-            - gcc-multilib
-            - libc6-dev-i386
-            - yasm
-          sources:
-            - ubuntu-toolchain-r-test
-
-    - env: USE_CC=gcc-5 USE_CXX=g++-5 CMAKE_BUILD_TYPE=DEBUG TARGET_ARCH_BASE=x86 TARGET_OS=linux
-      os: linux
-      addons:
-        apt:
-          packages:
-            - g++-5
-            - g++-5-multilib
-            - gcc-5
-            - gcc-5-multilib
-            - linux-libc-dev:i386
-            - yasm
-          sources:
-            - ubuntu-toolchain-r-test
-
-    - env: USE_CC=clang USE_CXX=clang++ CMAKE_BUILD_TYPE=RELWITHDEBINFO TARGET_ARCH_BASE=x86 TARGET_OS=darwin
-      os: osx
-
-    - env: USE_CC=clang-3.6 USE_CXX=clang++-3.6 CMAKE_BUILD_TYPE=RELWITHDEBINFO TARGET_ARCH_BASE=x86 TARGET_OS=linux
-      os: linux
-      addons:
-        apt:
-          packages:
-            - clang-3.6
-            - g++-multilib
-            - gcc-multilib
-            - libc6-dev-i386
-            - yasm
-          sources:
-            - llvm-toolchain-precise-3.6
-            - ubuntu-toolchain-r-test
-
-    - env: USE_CC=gcc-4.8 USE_CXX=g++-4.8 CMAKE_BUILD_TYPE=RELWITHDEBINFO TARGET_ARCH_BASE=x86 TARGET_OS=linux
+    - env: TARGET=x86-pc-linux-gnu USE_CC=gcc-4.8 USE_CXX=g++-4.8 CMAKE_BUILD_TYPE=RELWITHDEBINFO
       os: linux
       addons:
         apt:
@@ -111,7 +201,7 @@ matrix:
           sources:
             - ubuntu-toolchain-r-test
 
-    - env: USE_CC=clang-3.5 USE_CXX=clang++-3.5 CMAKE_BUILD_TYPE=RELWITHDEBINFO TARGET_ARCH_BASE=x86 TARGET_OS=linux
+    - env: TARGET=x86-pc-linux-gnu USE_CC=clang-3.5 USE_CXX=clang++-3.5 CMAKE_BUILD_TYPE=DEBUG
       os: linux
       addons:
         apt:
@@ -125,7 +215,21 @@ matrix:
             - llvm-toolchain-precise-3.5
             - ubuntu-toolchain-r-test
 
-    - env: USE_CC=clang USE_CXX=clang++ CMAKE_BUILD_TYPE=RELWITHDEBINFO TARGET_ARCH_BASE=x86 TARGET_OS=linux
+    - env: TARGET=x86-pc-linux-gnu USE_CC=clang-3.5 USE_CXX=clang++-3.5 CMAKE_BUILD_TYPE=RELWITHDEBINFO
+      os: linux
+      addons:
+        apt:
+          packages:
+            - clang-3.5
+            - g++-multilib
+            - gcc-multilib
+            - libc6-dev-i386
+            - yasm
+          sources:
+            - llvm-toolchain-precise-3.5
+            - ubuntu-toolchain-r-test
+
+    - env: TARGET=x86-pc-linux-gnu USE_CC=clang USE_CXX=clang++ CMAKE_BUILD_TYPE=DEBUG
       os: linux
       addons:
         apt:
@@ -137,7 +241,19 @@ matrix:
           sources:
             - ubuntu-toolchain-r-test
 
-    - env: USE_CC=gcc-5 USE_CXX=g++-5 CMAKE_BUILD_TYPE=RELWITHDEBINFO TARGET_ARCH_BASE=x86 TARGET_OS=linux
+    - env: TARGET=x86-pc-linux-gnu USE_CC=clang USE_CXX=clang++ CMAKE_BUILD_TYPE=RELWITHDEBINFO
+      os: linux
+      addons:
+        apt:
+          packages:
+            - g++-multilib
+            - gcc-multilib
+            - libc6-dev-i386
+            - yasm
+          sources:
+            - ubuntu-toolchain-r-test
+
+    - env: TARGET=x86-pc-linux-gnu USE_CC=gcc-5 USE_CXX=g++-5 CMAKE_BUILD_TYPE=DEBUG
       os: linux
       addons:
         apt:
@@ -151,10 +267,21 @@ matrix:
           sources:
             - ubuntu-toolchain-r-test
 
-    - env: USE_CC=clang USE_CXX=clang++ CMAKE_BUILD_TYPE=DEBUG TARGET_ARCH_BASE=x86_64 TARGET_OS=darwin
-      os: osx
+    - env: TARGET=x86-pc-linux-gnu USE_CC=gcc-5 USE_CXX=g++-5 CMAKE_BUILD_TYPE=RELWITHDEBINFO
+      os: linux
+      addons:
+        apt:
+          packages:
+            - g++-5
+            - g++-5-multilib
+            - gcc-5
+            - gcc-5-multilib
+            - linux-libc-dev:i386
+            - yasm
+          sources:
+            - ubuntu-toolchain-r-test
 
-    - env: USE_CC=clang-3.6 USE_CXX=clang++-3.6 CMAKE_BUILD_TYPE=DEBUG TARGET_ARCH_BASE=x86_64 TARGET_OS=linux
+    - env: TARGET=x86_64-pc-linux-gnu NO_ASM=1 USE_CC=clang-3.6 USE_CXX=clang++-3.6 CMAKE_BUILD_TYPE=DEBUG
       os: linux
       addons:
         apt:
@@ -165,61 +292,7 @@ matrix:
             - llvm-toolchain-precise-3.6
             - ubuntu-toolchain-r-test
 
-    - env: USE_CC=gcc-4.8 USE_CXX=g++-4.8 CMAKE_BUILD_TYPE=DEBUG TARGET_ARCH_BASE=x86_64 TARGET_OS=linux
-      os: linux
-      addons:
-        apt:
-          packages:
-            - g++-4.8
-            - gcc-4.8
-            - yasm
-          sources:
-            - ubuntu-toolchain-r-test
-
-    - env: USE_CC=clang-3.5 USE_CXX=clang++-3.5 CMAKE_BUILD_TYPE=DEBUG TARGET_ARCH_BASE=x86_64 TARGET_OS=linux
-      os: linux
-      addons:
-        apt:
-          packages:
-            - clang-3.5
-            - yasm
-          sources:
-            - llvm-toolchain-precise-3.5
-            - ubuntu-toolchain-r-test
-
-    - env: USE_CC=clang USE_CXX=clang++ CMAKE_BUILD_TYPE=DEBUG TARGET_ARCH_BASE=x86_64 TARGET_OS=linux
-      os: linux
-      addons:
-        apt:
-          packages:
-            - yasm
-
-    - env: USE_CC=gcc-5 USE_CXX=g++-5 CMAKE_BUILD_TYPE=DEBUG TARGET_ARCH_BASE=x86_64 TARGET_OS=linux
-      os: linux
-      addons:
-        apt:
-          packages:
-            - g++-5
-            - gcc-5
-            - yasm
-          sources:
-            - ubuntu-toolchain-r-test
-
-    - env: USE_CC=gcc-4.9 USE_CXX=g++-4.9 CMAKE_BUILD_TYPE=DEBUG TARGET_ARCH_BASE=x86_64 TARGET_OS=linux
-      os: linux
-      addons:
-        apt:
-          packages:
-            - g++-4.9
-            - gcc-4.9
-            - yasm
-          sources:
-            - ubuntu-toolchain-r-test
-
-    - env: USE_CC=clang USE_CXX=clang++ CMAKE_BUILD_TYPE=RELWITHDEBINFO TARGET_ARCH_BASE=x86_64 TARGET_OS=darwin
-      os: osx
-
-    - env: USE_CC=clang-3.6 USE_CXX=clang++-3.6 CMAKE_BUILD_TYPE=RELWITHDEBINFO TARGET_ARCH_BASE=x86_64 TARGET_OS=linux
+    - env: TARGET=x86_64-pc-linux-gnu NO_ASM=1 USE_CC=clang-3.6 USE_CXX=clang++-3.6 CMAKE_BUILD_TYPE=RELWITHDEBINFO
       os: linux
       addons:
         apt:
@@ -230,7 +303,7 @@ matrix:
             - llvm-toolchain-precise-3.6
             - ubuntu-toolchain-r-test
 
-    - env: USE_CC=gcc-4.8 USE_CXX=g++-4.8 CMAKE_BUILD_TYPE=RELWITHDEBINFO TARGET_ARCH_BASE=x86_64 TARGET_OS=linux
+    - env: TARGET=x86_64-pc-linux-gnu NO_ASM=1 USE_CC=gcc-4.8 USE_CXX=g++-4.8 CMAKE_BUILD_TYPE=DEBUG
       os: linux
       addons:
         apt:
@@ -241,7 +314,18 @@ matrix:
           sources:
             - ubuntu-toolchain-r-test
 
-    - env: USE_CC=clang-3.5 USE_CXX=clang++-3.5 CMAKE_BUILD_TYPE=RELWITHDEBINFO TARGET_ARCH_BASE=x86_64 TARGET_OS=linux
+    - env: TARGET=x86_64-pc-linux-gnu NO_ASM=1 USE_CC=gcc-4.8 USE_CXX=g++-4.8 CMAKE_BUILD_TYPE=RELWITHDEBINFO
+      os: linux
+      addons:
+        apt:
+          packages:
+            - g++-4.8
+            - gcc-4.8
+            - yasm
+          sources:
+            - ubuntu-toolchain-r-test
+
+    - env: TARGET=x86_64-pc-linux-gnu NO_ASM=1 USE_CC=clang-3.5 USE_CXX=clang++-3.5 CMAKE_BUILD_TYPE=DEBUG
       os: linux
       addons:
         apt:
@@ -252,14 +336,32 @@ matrix:
             - llvm-toolchain-precise-3.5
             - ubuntu-toolchain-r-test
 
-    - env: USE_CC=clang USE_CXX=clang++ CMAKE_BUILD_TYPE=RELWITHDEBINFO TARGET_ARCH_BASE=x86_64 TARGET_OS=linux
+    - env: TARGET=x86_64-pc-linux-gnu NO_ASM=1 USE_CC=clang-3.5 USE_CXX=clang++-3.5 CMAKE_BUILD_TYPE=RELWITHDEBINFO
+      os: linux
+      addons:
+        apt:
+          packages:
+            - clang-3.5
+            - yasm
+          sources:
+            - llvm-toolchain-precise-3.5
+            - ubuntu-toolchain-r-test
+
+    - env: TARGET=x86_64-pc-linux-gnu NO_ASM=1 USE_CC=clang USE_CXX=clang++ CMAKE_BUILD_TYPE=DEBUG
       os: linux
       addons:
         apt:
           packages:
             - yasm
 
-    - env: USE_CC=gcc-5 USE_CXX=g++-5 CMAKE_BUILD_TYPE=RELWITHDEBINFO TARGET_ARCH_BASE=x86_64 TARGET_OS=linux
+    - env: TARGET=x86_64-pc-linux-gnu NO_ASM=1 USE_CC=clang USE_CXX=clang++ CMAKE_BUILD_TYPE=RELWITHDEBINFO
+      os: linux
+      addons:
+        apt:
+          packages:
+            - yasm
+
+    - env: TARGET=x86_64-pc-linux-gnu NO_ASM=1 USE_CC=gcc-5 USE_CXX=g++-5 CMAKE_BUILD_TYPE=DEBUG
       os: linux
       addons:
         apt:
@@ -270,7 +372,18 @@ matrix:
           sources:
             - ubuntu-toolchain-r-test
 
-    - env: USE_CC=gcc-4.9 USE_CXX=g++-4.9 CMAKE_BUILD_TYPE=RELWITHDEBINFO TARGET_ARCH_BASE=x86_64 TARGET_OS=linux
+    - env: TARGET=x86_64-pc-linux-gnu NO_ASM=1 USE_CC=gcc-5 USE_CXX=g++-5 CMAKE_BUILD_TYPE=RELWITHDEBINFO
+      os: linux
+      addons:
+        apt:
+          packages:
+            - g++-5
+            - gcc-5
+            - yasm
+          sources:
+            - ubuntu-toolchain-r-test
+
+    - env: TARGET=x86_64-pc-linux-gnu NO_ASM=1 USE_CC=gcc-4.9 USE_CXX=g++-4.9 CMAKE_BUILD_TYPE=DEBUG
       os: linux
       addons:
         apt:
@@ -281,10 +394,18 @@ matrix:
           sources:
             - ubuntu-toolchain-r-test
 
-    - env: USE_CC=clang USE_CXX=clang++ CMAKE_BUILD_TYPE=DEBUG TARGET_ARCH_BASE=x86 NO_ASM=1 TARGET_OS=darwin
-      os: osx
+    - env: TARGET=x86_64-pc-linux-gnu NO_ASM=1 USE_CC=gcc-4.9 USE_CXX=g++-4.9 CMAKE_BUILD_TYPE=RELWITHDEBINFO
+      os: linux
+      addons:
+        apt:
+          packages:
+            - g++-4.9
+            - gcc-4.9
+            - yasm
+          sources:
+            - ubuntu-toolchain-r-test
 
-    - env: USE_CC=clang-3.6 USE_CXX=clang++-3.6 CMAKE_BUILD_TYPE=DEBUG TARGET_ARCH_BASE=x86 NO_ASM=1 TARGET_OS=linux
+    - env: TARGET=x86-pc-linux-gnu NO_ASM=1 USE_CC=clang-3.6 USE_CXX=clang++-3.6 CMAKE_BUILD_TYPE=DEBUG
       os: linux
       addons:
         apt:
@@ -298,7 +419,21 @@ matrix:
             - llvm-toolchain-precise-3.6
             - ubuntu-toolchain-r-test
 
-    - env: USE_CC=gcc-4.8 USE_CXX=g++-4.8 CMAKE_BUILD_TYPE=DEBUG TARGET_ARCH_BASE=x86 NO_ASM=1 TARGET_OS=linux
+    - env: TARGET=x86-pc-linux-gnu NO_ASM=1 USE_CC=clang-3.6 USE_CXX=clang++-3.6 CMAKE_BUILD_TYPE=RELWITHDEBINFO
+      os: linux
+      addons:
+        apt:
+          packages:
+            - clang-3.6
+            - g++-multilib
+            - gcc-multilib
+            - libc6-dev-i386
+            - yasm
+          sources:
+            - llvm-toolchain-precise-3.6
+            - ubuntu-toolchain-r-test
+
+    - env: TARGET=x86-pc-linux-gnu NO_ASM=1 USE_CC=gcc-4.8 USE_CXX=g++-4.8 CMAKE_BUILD_TYPE=DEBUG
       os: linux
       addons:
         apt:
@@ -312,64 +447,7 @@ matrix:
           sources:
             - ubuntu-toolchain-r-test
 
-    - env: USE_CC=clang-3.5 USE_CXX=clang++-3.5 CMAKE_BUILD_TYPE=DEBUG TARGET_ARCH_BASE=x86 NO_ASM=1 TARGET_OS=linux
-      os: linux
-      addons:
-        apt:
-          packages:
-            - clang-3.5
-            - g++-multilib
-            - gcc-multilib
-            - libc6-dev-i386
-            - yasm
-          sources:
-            - llvm-toolchain-precise-3.5
-            - ubuntu-toolchain-r-test
-
-    - env: USE_CC=clang USE_CXX=clang++ CMAKE_BUILD_TYPE=DEBUG TARGET_ARCH_BASE=x86 NO_ASM=1 TARGET_OS=linux
-      os: linux
-      addons:
-        apt:
-          packages:
-            - g++-multilib
-            - gcc-multilib
-            - libc6-dev-i386
-            - yasm
-          sources:
-            - ubuntu-toolchain-r-test
-
-    - env: USE_CC=gcc-5 USE_CXX=g++-5 CMAKE_BUILD_TYPE=DEBUG TARGET_ARCH_BASE=x86 NO_ASM=1 TARGET_OS=linux
-      os: linux
-      addons:
-        apt:
-          packages:
-            - g++-5
-            - g++-5-multilib
-            - gcc-5
-            - gcc-5-multilib
-            - linux-libc-dev:i386
-            - yasm
-          sources:
-            - ubuntu-toolchain-r-test
-
-    - env: USE_CC=clang USE_CXX=clang++ CMAKE_BUILD_TYPE=RELWITHDEBINFO TARGET_ARCH_BASE=x86 NO_ASM=1 TARGET_OS=darwin
-      os: osx
-
-    - env: USE_CC=clang-3.6 USE_CXX=clang++-3.6 CMAKE_BUILD_TYPE=RELWITHDEBINFO TARGET_ARCH_BASE=x86 NO_ASM=1 TARGET_OS=linux
-      os: linux
-      addons:
-        apt:
-          packages:
-            - clang-3.6
-            - g++-multilib
-            - gcc-multilib
-            - libc6-dev-i386
-            - yasm
-          sources:
-            - llvm-toolchain-precise-3.6
-            - ubuntu-toolchain-r-test
-
-    - env: USE_CC=gcc-4.8 USE_CXX=g++-4.8 CMAKE_BUILD_TYPE=RELWITHDEBINFO TARGET_ARCH_BASE=x86 NO_ASM=1 TARGET_OS=linux
+    - env: TARGET=x86-pc-linux-gnu NO_ASM=1 USE_CC=gcc-4.8 USE_CXX=g++-4.8 CMAKE_BUILD_TYPE=RELWITHDEBINFO
       os: linux
       addons:
         apt:
@@ -383,7 +461,7 @@ matrix:
           sources:
             - ubuntu-toolchain-r-test
 
-    - env: USE_CC=clang-3.5 USE_CXX=clang++-3.5 CMAKE_BUILD_TYPE=RELWITHDEBINFO TARGET_ARCH_BASE=x86 NO_ASM=1 TARGET_OS=linux
+    - env: TARGET=x86-pc-linux-gnu NO_ASM=1 USE_CC=clang-3.5 USE_CXX=clang++-3.5 CMAKE_BUILD_TYPE=DEBUG
       os: linux
       addons:
         apt:
@@ -397,7 +475,21 @@ matrix:
             - llvm-toolchain-precise-3.5
             - ubuntu-toolchain-r-test
 
-    - env: USE_CC=clang USE_CXX=clang++ CMAKE_BUILD_TYPE=RELWITHDEBINFO TARGET_ARCH_BASE=x86 NO_ASM=1 TARGET_OS=linux
+    - env: TARGET=x86-pc-linux-gnu NO_ASM=1 USE_CC=clang-3.5 USE_CXX=clang++-3.5 CMAKE_BUILD_TYPE=RELWITHDEBINFO
+      os: linux
+      addons:
+        apt:
+          packages:
+            - clang-3.5
+            - g++-multilib
+            - gcc-multilib
+            - libc6-dev-i386
+            - yasm
+          sources:
+            - llvm-toolchain-precise-3.5
+            - ubuntu-toolchain-r-test
+
+    - env: TARGET=x86-pc-linux-gnu NO_ASM=1 USE_CC=clang USE_CXX=clang++ CMAKE_BUILD_TYPE=DEBUG
       os: linux
       addons:
         apt:
@@ -409,7 +501,19 @@ matrix:
           sources:
             - ubuntu-toolchain-r-test
 
-    - env: USE_CC=gcc-5 USE_CXX=g++-5 CMAKE_BUILD_TYPE=RELWITHDEBINFO TARGET_ARCH_BASE=x86 NO_ASM=1 TARGET_OS=linux
+    - env: TARGET=x86-pc-linux-gnu NO_ASM=1 USE_CC=clang USE_CXX=clang++ CMAKE_BUILD_TYPE=RELWITHDEBINFO
+      os: linux
+      addons:
+        apt:
+          packages:
+            - g++-multilib
+            - gcc-multilib
+            - libc6-dev-i386
+            - yasm
+          sources:
+            - ubuntu-toolchain-r-test
+
+    - env: TARGET=x86-pc-linux-gnu NO_ASM=1 USE_CC=gcc-5 USE_CXX=g++-5 CMAKE_BUILD_TYPE=DEBUG
       os: linux
       addons:
         apt:
@@ -423,132 +527,16 @@ matrix:
           sources:
             - ubuntu-toolchain-r-test
 
-    - env: USE_CC=clang USE_CXX=clang++ CMAKE_BUILD_TYPE=DEBUG TARGET_ARCH_BASE=x86_64 NO_ASM=1 TARGET_OS=darwin
-      os: osx
-
-    - env: USE_CC=clang-3.6 USE_CXX=clang++-3.6 CMAKE_BUILD_TYPE=DEBUG TARGET_ARCH_BASE=x86_64 NO_ASM=1 TARGET_OS=linux
-      os: linux
-      addons:
-        apt:
-          packages:
-            - clang-3.6
-            - yasm
-          sources:
-            - llvm-toolchain-precise-3.6
-            - ubuntu-toolchain-r-test
-
-    - env: USE_CC=gcc-4.8 USE_CXX=g++-4.8 CMAKE_BUILD_TYPE=DEBUG TARGET_ARCH_BASE=x86_64 NO_ASM=1 TARGET_OS=linux
-      os: linux
-      addons:
-        apt:
-          packages:
-            - g++-4.8
-            - gcc-4.8
-            - yasm
-          sources:
-            - ubuntu-toolchain-r-test
-
-    - env: USE_CC=clang-3.5 USE_CXX=clang++-3.5 CMAKE_BUILD_TYPE=DEBUG TARGET_ARCH_BASE=x86_64 NO_ASM=1 TARGET_OS=linux
-      os: linux
-      addons:
-        apt:
-          packages:
-            - clang-3.5
-            - yasm
-          sources:
-            - llvm-toolchain-precise-3.5
-            - ubuntu-toolchain-r-test
-
-    - env: USE_CC=clang USE_CXX=clang++ CMAKE_BUILD_TYPE=DEBUG TARGET_ARCH_BASE=x86_64 NO_ASM=1 TARGET_OS=linux
-      os: linux
-      addons:
-        apt:
-          packages:
-            - yasm
-
-    - env: USE_CC=gcc-5 USE_CXX=g++-5 CMAKE_BUILD_TYPE=DEBUG TARGET_ARCH_BASE=x86_64 NO_ASM=1 TARGET_OS=linux
+    - env: TARGET=x86-pc-linux-gnu NO_ASM=1 USE_CC=gcc-5 USE_CXX=g++-5 CMAKE_BUILD_TYPE=RELWITHDEBINFO
       os: linux
       addons:
         apt:
           packages:
             - g++-5
+            - g++-5-multilib
             - gcc-5
-            - yasm
-          sources:
-            - ubuntu-toolchain-r-test
-
-    - env: USE_CC=gcc-4.9 USE_CXX=g++-4.9 CMAKE_BUILD_TYPE=DEBUG TARGET_ARCH_BASE=x86_64 NO_ASM=1 TARGET_OS=linux
-      os: linux
-      addons:
-        apt:
-          packages:
-            - g++-4.9
-            - gcc-4.9
-            - yasm
-          sources:
-            - ubuntu-toolchain-r-test
-
-    - env: USE_CC=clang USE_CXX=clang++ CMAKE_BUILD_TYPE=RELWITHDEBINFO TARGET_ARCH_BASE=x86_64 NO_ASM=1 TARGET_OS=darwin
-      os: osx
-
-    - env: USE_CC=clang-3.6 USE_CXX=clang++-3.6 CMAKE_BUILD_TYPE=RELWITHDEBINFO TARGET_ARCH_BASE=x86_64 NO_ASM=1 TARGET_OS=linux
-      os: linux
-      addons:
-        apt:
-          packages:
-            - clang-3.6
-            - yasm
-          sources:
-            - llvm-toolchain-precise-3.6
-            - ubuntu-toolchain-r-test
-
-    - env: USE_CC=gcc-4.8 USE_CXX=g++-4.8 CMAKE_BUILD_TYPE=RELWITHDEBINFO TARGET_ARCH_BASE=x86_64 NO_ASM=1 TARGET_OS=linux
-      os: linux
-      addons:
-        apt:
-          packages:
-            - g++-4.8
-            - gcc-4.8
-            - yasm
-          sources:
-            - ubuntu-toolchain-r-test
-
-    - env: USE_CC=clang-3.5 USE_CXX=clang++-3.5 CMAKE_BUILD_TYPE=RELWITHDEBINFO TARGET_ARCH_BASE=x86_64 NO_ASM=1 TARGET_OS=linux
-      os: linux
-      addons:
-        apt:
-          packages:
-            - clang-3.5
-            - yasm
-          sources:
-            - llvm-toolchain-precise-3.5
-            - ubuntu-toolchain-r-test
-
-    - env: USE_CC=clang USE_CXX=clang++ CMAKE_BUILD_TYPE=RELWITHDEBINFO TARGET_ARCH_BASE=x86_64 NO_ASM=1 TARGET_OS=linux
-      os: linux
-      addons:
-        apt:
-          packages:
-            - yasm
-
-    - env: USE_CC=gcc-5 USE_CXX=g++-5 CMAKE_BUILD_TYPE=RELWITHDEBINFO TARGET_ARCH_BASE=x86_64 NO_ASM=1 TARGET_OS=linux
-      os: linux
-      addons:
-        apt:
-          packages:
-            - g++-5
-            - gcc-5
-            - yasm
-          sources:
-            - ubuntu-toolchain-r-test
-
-    - env: USE_CC=gcc-4.9 USE_CXX=g++-4.9 CMAKE_BUILD_TYPE=RELWITHDEBINFO TARGET_ARCH_BASE=x86_64 NO_ASM=1 TARGET_OS=linux
-      os: linux
-      addons:
-        apt:
-          packages:
-            - g++-4.9
-            - gcc-4.9
+            - gcc-5-multilib
+            - linux-libc-dev:i386
             - yasm
           sources:
             - ubuntu-toolchain-r-test

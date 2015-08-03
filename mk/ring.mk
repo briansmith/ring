@@ -283,7 +283,7 @@ PERLASM_LIB_SRCS = $(addprefix $(RING_PREFIX), \
 PERL_EXECUTABLE ?= perl
 
 # The British spelling "flavour" is used for consistency with perlasm's code.
-ifeq ($(TARGET_OS),darwin)
+ifeq ($(findstring darwin,$(TARGET_SYS)),darwin)
 PERLASM_FLAVOUR ?= macosx
 else
 PERLASM_FLAVOUR ?= elf
