@@ -148,7 +148,7 @@ CFLAGS += \
   -Wstrict-prototypes \
   $(NULL)
 
-CMAKE_BUILD_TYPE ?= DEBUG
+CMAKE_BUILD_TYPE ?= RELWITHDEBINFO
 
 # Although we don't use CMake, we use a variable CMAKE_BUILD_TYPE with similar
 # semantics to the CMake variable of that name.

@@ -40,13 +40,13 @@ you are cross-compiling an x86 build on a 64-bit version of Linux, then you
 need to have the proper gcc-multilibs and g++-multilibs packages or equivalent
 installed.
 
-The default build is a debug build (```CMAKE_BUILD_TYPE=DEBUG```). You can
-build a release build by setting ```CMAKE_BUILD_TYPE``` to ```RELWITHDEBINFO```.
+The default build is a release build (```CMAKE_BUILD_TYPE=RELWITHDEBINFO```).
+You can build a debug build by setting ```CMAKE_BUILD_TYPE``` to ```DEBUG```.
 (Note that the variable is named to be consistent with CMake, but CMake is not
 used.) For example, this will build *ring* in release mode with the default
 version of clang on Mac OS X:
 
-    make -j6 CC=clang-3.6 CXX=clang++-3.6 TARGET=x86_64-pc-linux-gnu CMAKE_BUILD_TYPE=RELWITHDEBINFO
+    make -j6 CC=clang-3.6 CXX=clang++-3.6 TARGET=x86_64-pc-linux-gnu CMAKE_BUILD_TYPE=DEBUG
 
 Then compile your applications with ```-Iring/include``` (assuming you put *ring*
 into the ```ring``` subdirectory of your project) and add ```$(RING_LDFLAGS)```
@@ -77,7 +77,7 @@ Alternatively, from a Visual Studio Native Tools Command Prompt:
 
 The built libring.lib will be put into a subdirectory of build/ depending on
 which configuration and which platform you choose to build for. For example,
-in a 32-bit debug build, the result is ```build\Win32-Debug\lib\libring.lib```.
+in a 32-bit release build, the result is ```build\Win32-Release\lib\libring.lib```.
 In your application's project, add *ring*'s ```include/``` subdirectory to the
 "Additional Include Directories", add the directory containing ```libring.lib```
 to the "Additional Library Directories", and add ```libring.lib``` to the
