@@ -202,8 +202,7 @@
 #define SSL_TLSV1 SSL_SSLV3
 #define SSL_TLSV1_2 0x00000004L
 
-/* Bits for |algorithm2| (handshake digests and other extra flags). */
-
+/* Bits for |algorithm_prf| (handshake digest). */
 #define SSL_HANDSHAKE_MAC_MD5 0x10
 #define SSL_HANDSHAKE_MAC_SHA 0x20
 #define SSL_HANDSHAKE_MAC_SHA256 0x40
@@ -1181,7 +1180,7 @@ int ssl3_is_version_enabled(SSL *s, uint16_t version);
  * the wire version except at API boundaries. */
 uint16_t ssl3_version_from_wire(SSL *s, uint16_t wire_version);
 
-uint32_t ssl_get_algorithm2(SSL *s);
+uint32_t ssl_get_algorithm_prf(SSL *s);
 int tls1_process_sigalgs(SSL *s, const CBS *sigalgs);
 
 /* tls1_choose_signing_digest returns a digest for use with |ssl|'s private key

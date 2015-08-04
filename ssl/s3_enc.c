@@ -298,9 +298,9 @@ int ssl3_digest_cached_records(
     return 0;
   }
 
-  /* Loop through bits of algorithm2 field and create MD_CTX-es */
+  /* Loop through bits of algorithm_prf field and create MD_CTX-es */
   for (i = 0; ssl_get_handshake_digest(&mask, &md, i); i++) {
-    if ((mask & ssl_get_algorithm2(s)) && md) {
+    if ((mask & ssl_get_algorithm_prf(s)) && md) {
       s->s3->handshake_dgst[i] = EVP_MD_CTX_create();
       if (s->s3->handshake_dgst[i] == NULL) {
         OPENSSL_PUT_ERROR(SSL, ERR_LIB_EVP);

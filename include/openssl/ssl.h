@@ -196,9 +196,7 @@ typedef struct ssl_cipher_st {
   uint32_t algorithm_mac;
   uint32_t algorithm_ssl;
   uint32_t algo_strength;
-
-  /* algorithm2 contains extra flags. See ssl/internal.h. */
-  uint32_t algorithm2;
+  uint32_t algorithm_prf;
 
   /* strength_bits is the strength of the cipher in bits. */
   int strength_bits;

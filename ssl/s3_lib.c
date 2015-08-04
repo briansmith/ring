@@ -659,9 +659,9 @@ static int ssl3_set_req_cert_type(CERT *c, const uint8_t *p, size_t len) {
 
 /* If we are using default SHA1+MD5 algorithms switch to new SHA256 PRF and
  * handshake macs if required. */
-uint32_t ssl_get_algorithm2(SSL *s) {
+uint32_t ssl_get_algorithm_prf(SSL *s) {
   static const uint32_t kMask = SSL_HANDSHAKE_MAC_DEFAULT;
-  uint32_t alg2 = s->s3->tmp.new_cipher->algorithm2;
+  uint32_t alg2 = s->s3->tmp.new_cipher->algorithm_prf;
   if (s->enc_method->enc_flags & SSL_ENC_FLAG_SHA256_PRF &&
       (alg2 & kMask) == kMask) {
     return SSL_HANDSHAKE_MAC_SHA256;
