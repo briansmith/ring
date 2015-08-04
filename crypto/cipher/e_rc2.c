@@ -395,13 +395,18 @@ static int rc2_ctrl(EVP_CIPHER_CTX *ctx, int type, int arg, void *ptr) {
     case EVP_CTRL_INIT:
       key->key_bits = EVP_CIPHER_CTX_key_length(ctx) * 8;
       return 1;
+    case EVP_CTRL_SET_RC2_KEY_BITS:
+      /* Should be overridden by later call to |EVP_CTRL_INIT|, but
+       * people call it, so it may as well work. */
+      key->key_bits = arg;
+      return 1;
 
     default:
       return -1;
   }
 }
 
-static const EVP_CIPHER rc2_40_cbc_cipher = {
+static const EVP_CIPHER rc2_40_cbc = {
     NID_rc2_40_cbc,
     8 /* block size */,
     5 /* 40 bit */,
@@ -416,5 +421,23 @@ static const EVP_CIPHER rc2_40_cbc_cipher = {
 };
 
 const EVP_CIPHER *EVP_rc2_40_cbc(void) {
-  return &rc2_40_cbc_cipher;
+  return &rc2_40_cbc;
+}
+
+static const EVP_CIPHER rc2_cbc = {
+    NID_rc2_cbc,
+    8 /* block size */,
+    16 /* 128 bit */,
+    8 /* iv len */,
+    sizeof(EVP_RC2_KEY),
+    EVP_CIPH_CBC_MODE | EVP_CIPH_VARIABLE_LENGTH | EVP_CIPH_CTRL_INIT,
+    NULL /* app_data */,
+    rc2_init_key,
+    rc2_cbc_cipher,
+    NULL,
+    rc2_ctrl,
+};
+
+const EVP_CIPHER *EVP_rc2_cbc(void) {
+  return &rc2_cbc;
 }

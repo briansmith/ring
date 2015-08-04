@@ -68,12 +68,18 @@
 
 const EVP_CIPHER *EVP_get_cipherbynid(int nid) {
   switch (nid) {
+    case NID_rc2_cbc:
+      return EVP_rc2_cbc();
+    case NID_rc2_40_cbc:
+      return EVP_rc2_40_cbc();
     case NID_des_ede3_cbc:
       return EVP_des_ede3_cbc();
     case NID_des_ede_cbc:
       return EVP_des_cbc();
     case NID_aes_128_cbc:
       return EVP_aes_128_cbc();
+    case NID_aes_192_cbc:
+      return EVP_aes_192_cbc();
     case NID_aes_256_cbc:
       return EVP_aes_256_cbc();
     default:

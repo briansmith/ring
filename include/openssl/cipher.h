@@ -102,6 +102,9 @@ OPENSSL_EXPORT const EVP_CIPHER *EVP_aes_192_gcm(void);
  * ciphertext. */
 OPENSSL_EXPORT const EVP_CIPHER *EVP_enc_null(void);
 
+/* EVP_rc2_cbc returns a cipher that implements 128-bit RC2 in CBC mode. */
+OPENSSL_EXPORT const EVP_CIPHER *EVP_rc2_cbc(void);
+
 /* EVP_rc2_40_cbc returns a cipher that implements 40-bit RC2 in CBC mode. This
  * is obviously very, very weak and is included only in order to read PKCS#12
  * files, which often encrypt the certificate chain using this cipher. It is
