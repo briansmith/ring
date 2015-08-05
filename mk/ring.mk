@@ -190,7 +190,7 @@ RING_ASM_OBJS = \
     $(patsubst %.pl, %.o, \
       $(patsubst %.S, %.o, $(RING_$(TARGET_ARCH_NORMAL)_SRCS))))
 
-$(RING_ASM_OBJS): CPPFLAGS += -Icrypto
+$(RING_ASM_OBJS): CPPFLAGS += -I$(RING_PREFIX)crypto
 
 RING_OBJS = $(addprefix $(OBJ_PREFIX), $(patsubst %.c, %.o, $(RING_SRCS)))
 
