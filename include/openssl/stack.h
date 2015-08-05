@@ -111,11 +111,6 @@ typedef struct stack_st {
 
 #define STACK_OF(type) struct stack_st_##type
 
-#define DEFINE_STACK_OF(type) \
-STACK_OF(type) {\
-  _STACK stack; \
-}
-
 #define DECLARE_STACK_OF(type) STACK_OF(type);
 
 /* The make_macros.sh script in this directory parses the following lines and
