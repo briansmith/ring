@@ -83,12 +83,27 @@ agreement.
 
 
 
-Continuous Integration
-======================
+Online Automated Testing
+========================
 
-Linux x86 and x64 (Travis CI): [![Build Status](https://travis-ci.org/briansmith/ring.svg?branch=wip)](https://travis-ci.org/briansmith/ring)
+Travis CI is used for Linux and Mac OS X. Appveyor is used for Windows.
 
-Windows x86 and x64 (Appveyor): [![Build status](https://ci.appveyor.com/api/projects/status/3wq9p54r9iym05rm/branch/wip?svg=true)](https://ci.appveyor.com/project/briansmith/ring/branch/wip)
+<table>
+<tr><th>OS</th><th>Arch.</th><th>Compilers</th><th>Status</th>
+<tr><td>Linux</td>
+    <td>x86, x64<td>GCC 4.8, 4.9, 5; Clang 3.4, 3.5, 3.6</td>
+    <td rowspan=2><a title="Build Status" href=https://travis-ci.org/briansmith/ring><img src=https://travis-ci.org/briansmith/ring.svg?branch=wip></a>
+</tr>
+<tr><td>Mac OS X x64</td>
+    <td>x86, x64</td>
+    <td>Apple Clang 6.0 (based on Clang 3.5)</td>
+</tr>
+<tr><td>Windows</td>
+    <td>x86, x64</td>
+    <td>MSVC 2013 (12.0), 2015 (14.0)</td>
+    <td><a title="Build Status" href=https://ci.appveyor.com/project/briansmith/ring/branch/wip><img src=https://ci.appveyor.com/api/projects/status/3wq9p54r9iym05rm/branch/wip?svg=true></a>
+</tr>
+</table>
 
 
 
