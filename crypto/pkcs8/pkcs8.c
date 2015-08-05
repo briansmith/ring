@@ -652,6 +652,7 @@ static int PKCS12_handle_content_infos(CBS *content_infos,
    * conversion cannot see through those wrappings. So each time we step
    * through one we need to convert to DER again. */
   if (!CBS_asn1_ber_to_der(content_infos, &der_bytes, &der_len)) {
+    OPENSSL_PUT_ERROR(PKCS8, PKCS8_R_BAD_PKCS12_DATA);
     return 0;
   }
 
@@ -858,6 +859,7 @@ int PKCS12_get_key_and_certs(EVP_PKEY **out_key, STACK_OF(X509) *out_certs,
 
   /* The input may be in BER format. */
   if (!CBS_asn1_ber_to_der(ber_in, &der_bytes, &der_len)) {
+    OPENSSL_PUT_ERROR(PKCS8, PKCS8_R_BAD_PKCS12_DATA);
     return 0;
   }
   if (der_bytes != NULL) {
@@ -1105,6 +1107,7 @@ int PKCS12_parse(const PKCS12 *p12, const char *password, EVP_PKEY **out_pkey,
   if (!ca_certs) {
     ca_certs = sk_X509_new_null();
     if (ca_certs == NULL) {
+      OPENSSL_PUT_ERROR(PKCS8, ERR_R_MALLOC_FAILURE);
       return 0;
     }
     ca_certs_alloced = 1;
