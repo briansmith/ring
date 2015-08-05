@@ -2932,11 +2932,6 @@ int tls1_channel_id_hash(EVP_MD_CTX *md, SSL *s) {
   int i;
   static const char kClientIDMagic[] = "TLS Channel ID signature";
 
-  if (s->s3->handshake_buffer &&
-      !ssl3_digest_cached_records(s, free_handshake_buffer)) {
-    return 0;
-  }
-
   EVP_DigestUpdate(md, kClientIDMagic, sizeof(kClientIDMagic));
 
   if (s->hit) {

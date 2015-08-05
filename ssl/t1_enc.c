@@ -473,11 +473,6 @@ int tls1_cert_verify_mac(SSL *s, int md_nid, uint8_t *out) {
   EVP_MD_CTX ctx, *d = NULL;
   int i;
 
-  if (s->s3->handshake_buffer &&
-      !ssl3_digest_cached_records(s, free_handshake_buffer)) {
-    return 0;
-  }
-
   for (i = 0; i < SSL_MAX_DIGEST; i++) {
     if (s->s3->handshake_dgst[i] &&
         EVP_MD_CTX_type(s->s3->handshake_dgst[i]) == md_nid) {
@@ -554,14 +549,8 @@ int tls1_final_finish_mac(SSL *s, const char *str, int slen, uint8_t *out) {
   int digests_len;
 
   /* At this point, the handshake should have released the handshake buffer on
-   * its own.
-   * TODO(davidben): Apart from initialization, the handshake buffer should be
-   * orthogonal to the handshake digest. https://crbug.com/492371 */
+   * its own. */
   assert(s->s3->handshake_buffer == NULL);
-  if (s->s3->handshake_buffer &&
-      !ssl3_digest_cached_records(s, free_handshake_buffer)) {
-    return 0;
-  }
 
   digests_len = tls1_handshake_digest(s, buf, sizeof(buf));
   if (digests_len < 0) {
@@ -586,21 +575,7 @@ int tls1_generate_master_secret(SSL *s, uint8_t *out, const uint8_t *premaster,
                                 size_t premaster_len) {
   if (s->s3->tmp.extended_master_secret) {
     uint8_t digests[2 * EVP_MAX_MD_SIZE];
-    int digests_len;
-
-    /* The master secret is based on the handshake hash just after sending the
-     * ClientKeyExchange. However, we might have a client certificate to send,
-     * in which case we might need different hashes for the verification and
-     * thus still need the handshake buffer around. Keeping both a handshake
-     * buffer *and* running hashes isn't yet supported so, when it comes to
-     * calculating the Finished hash, we'll have to hash the handshake buffer
-     * again. */
-    if (s->s3->handshake_buffer &&
-        !ssl3_digest_cached_records(s, dont_free_handshake_buffer)) {
-      return 0;
-    }
-
-    digests_len = tls1_handshake_digest(s, digests, sizeof(digests));
+    int digests_len = tls1_handshake_digest(s, digests, sizeof(digests));
     if (digests_len == -1) {
       return 0;
     }

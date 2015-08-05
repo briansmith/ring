@@ -181,7 +181,7 @@ int dtls1_accept(SSL *s) {
           goto end;
         }
 
-        if (!ssl3_init_finished_mac(s)) {
+        if (!ssl3_init_handshake_buffer(s)) {
           OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
           ret = -1;
           goto end;

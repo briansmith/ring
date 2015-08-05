@@ -186,7 +186,8 @@ int ssl3_set_handshake_header(SSL *s, int htype, unsigned long len) {
   s->init_off = 0;
 
   /* Add the message to the handshake hash. */
-  return ssl3_finish_mac(s, (uint8_t *)s->init_buf->data, s->init_num);
+  return ssl3_update_handshake_hash(s, (uint8_t *)s->init_buf->data,
+                                    s->init_num);
 }
 
 int ssl3_handshake_write(SSL *s) { return ssl3_do_write(s, SSL3_RT_HANDSHAKE); }
@@ -229,8 +230,8 @@ void ssl3_free(SSL *s) {
   OPENSSL_free(s->s3->tmp.certificate_types);
   OPENSSL_free(s->s3->tmp.peer_ellipticcurvelist);
   OPENSSL_free(s->s3->tmp.peer_psk_identity_hint);
-  BIO_free(s->s3->handshake_buffer);
-  ssl3_free_digest_list(s);
+  ssl3_free_handshake_buffer(s);
+  ssl3_free_handshake_hash(s);
   OPENSSL_free(s->s3->alpn_selected);
 
   OPENSSL_cleanse(s->s3, sizeof *s->s3);

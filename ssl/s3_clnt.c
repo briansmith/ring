@@ -220,7 +220,7 @@ int ssl3_connect(SSL *s) {
 
         /* don't push the buffering BIO quite yet */
 
-        if (!ssl3_init_finished_mac(s)) {
+        if (!ssl3_init_handshake_buffer(s)) {
           OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
           ret = -1;
           goto end;
@@ -855,12 +855,16 @@ int ssl3_get_server_hello(SSL *s) {
   }
   s->s3->tmp.new_cipher = c;
 
+  /* Now that the cipher is known, initialize the handshake hash. */
+  if (!ssl3_init_handshake_hash(s)) {
+    goto f_err;
+  }
+
   /* If doing a full handshake with TLS 1.2, the server may request a client
    * certificate which requires hashing the handshake transcript under a
-   * different hash. Otherwise, release the handshake buffer. */
-  if ((!SSL_USE_SIGALGS(s) || s->hit) &&
-      !ssl3_digest_cached_records(s, free_handshake_buffer)) {
-    goto f_err;
+   * different hash. Otherwise, the handshake buffer may be released. */
+  if (!SSL_USE_SIGALGS(s) || s->hit) {
+    ssl3_free_handshake_buffer(s);
   }
 
   /* Only the NULL compression algorithm is supported. */
@@ -1349,12 +1353,9 @@ int ssl3_get_certificate_request(SSL *s) {
 
   if (s->s3->tmp.message_type == SSL3_MT_SERVER_DONE) {
     s->s3->tmp.reuse_message = 1;
-    /* If we get here we don't need any cached handshake records as we wont be
-     * doing client auth. */
-    if (s->s3->handshake_buffer &&
-        !ssl3_digest_cached_records(s, free_handshake_buffer)) {
-      goto err;
-    }
+    /* If we get here we don't need the handshake buffer as we won't be doing
+     * client auth. */
+    ssl3_free_handshake_buffer(s);
     return 1;
   }
 
@@ -1985,10 +1986,7 @@ int ssl3_send_cert_verify(SSL *s) {
       }
 
       /* The handshake buffer is no longer necessary. */
-      if (s->s3->handshake_buffer &&
-          !ssl3_digest_cached_records(s, free_handshake_buffer)) {
-        return -1;
-      }
+      ssl3_free_handshake_buffer(s);
 
       /* Sign the digest. */
       signature_length = ssl_private_key_max_signature_len(s);
@@ -2101,11 +2099,7 @@ int ssl3_send_client_certificate(SSL *s) {
         s->s3->tmp.cert_req = 2;
         /* There is no client certificate, so the handshake buffer may be
          * released. */
-        if (s->s3->handshake_buffer &&
-            !ssl3_digest_cached_records(s, free_handshake_buffer)) {
-          ssl3_send_alert(s, SSL3_AL_FATAL, SSL_AD_INTERNAL_ERROR);
-          return -1;
-        }
+        ssl3_free_handshake_buffer(s);
       }
     }
 

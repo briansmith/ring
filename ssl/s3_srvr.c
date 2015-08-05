@@ -230,7 +230,7 @@ int ssl3_accept(SSL *s) {
           goto end;
         }
 
-        if (!ssl3_init_finished_mac(s)) {
+        if (!ssl3_init_handshake_buffer(s)) {
           OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
           ret = -1;
           goto end;
@@ -710,10 +710,10 @@ int ssl3_get_v2_client_hello(SSL *s) {
   CBS_init(&v2_client_hello, (const uint8_t *)s->s3->sniff_buffer->data + 2,
            msg_length);
 
-  /* The V2ClientHello without the length is incorporated into the Finished
+  /* The V2ClientHello without the length is incorporated into the handshake
    * hash. */
-  if (!ssl3_finish_mac(s, CBS_data(&v2_client_hello),
-                       CBS_len(&v2_client_hello))) {
+  if (!ssl3_update_handshake_hash(s, CBS_data(&v2_client_hello),
+                                  CBS_len(&v2_client_hello))) {
     return -1;
   }
   if (s->msg_callback) {
@@ -1110,11 +1110,15 @@ int ssl3_get_client_hello(SSL *s) {
     s->s3->tmp.cert_request = 0;
   }
 
+  /* Now that the cipher is known, initialize the handshake hash. */
+  if (!ssl3_init_handshake_hash(s)) {
+    goto f_err;
+  }
+
   /* In TLS 1.2, client authentication requires hashing the handshake transcript
    * under a different hash. Otherwise, release the handshake buffer. */
-  if ((!SSL_USE_SIGALGS(s) || !s->s3->tmp.cert_request) &&
-      !ssl3_digest_cached_records(s, free_handshake_buffer)) {
-    goto f_err;
+  if (!SSL_USE_SIGALGS(s) || !s->s3->tmp.cert_request) {
+    ssl3_free_handshake_buffer(s);
   }
 
   /* we now have the following setup;
@@ -2034,10 +2038,7 @@ int ssl3_get_cert_verify(SSL *s) {
    * CertificateVerify is required if and only if there's a client certificate.
    * */
   if (peer == NULL) {
-    if (s->s3->handshake_buffer &&
-        !ssl3_digest_cached_records(s, free_handshake_buffer)) {
-      return -1;
-    }
+    ssl3_free_handshake_buffer(s);
     return 1;
   }
 
@@ -2077,10 +2078,7 @@ int ssl3_get_cert_verify(SSL *s) {
 
   /* The handshake buffer is no longer necessary, and we may hash the current
    * message.*/
-  if (s->s3->handshake_buffer &&
-      !ssl3_digest_cached_records(s, free_handshake_buffer)) {
-    goto err;
-  }
+  ssl3_free_handshake_buffer(s);
   if (!ssl3_hash_current_message(s)) {
     goto err;
   }
@@ -2217,23 +2215,19 @@ int ssl3_get_client_certificate(SSL *s) {
   }
 
   if (sk_X509_num(sk) <= 0) {
+    /* No client certificate so the handshake buffer may be discarded. */
+    ssl3_free_handshake_buffer(s);
+
     /* TLS does not mind 0 certs returned */
     if (s->version == SSL3_VERSION) {
       al = SSL_AD_HANDSHAKE_FAILURE;
       OPENSSL_PUT_ERROR(SSL, SSL_R_NO_CERTIFICATES_RETURNED);
       goto f_err;
-    }
-    /* Fail for TLS only if we required a certificate */
-    else if ((s->verify_mode & SSL_VERIFY_PEER) &&
+    } else if ((s->verify_mode & SSL_VERIFY_PEER) &&
              (s->verify_mode & SSL_VERIFY_FAIL_IF_NO_PEER_CERT)) {
+      /* Fail for TLS only if we required a certificate */
       OPENSSL_PUT_ERROR(SSL, SSL_R_PEER_DID_NOT_RETURN_A_CERTIFICATE);
       al = SSL_AD_HANDSHAKE_FAILURE;
-      goto f_err;
-    }
-    /* No client certificate so digest cached records */
-    if (s->s3->handshake_buffer &&
-        !ssl3_digest_cached_records(s, free_handshake_buffer)) {
-      al = SSL_AD_INTERNAL_ERROR;
       goto f_err;
     }
   } else {

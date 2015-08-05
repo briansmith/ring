@@ -398,6 +398,35 @@ int custom_ext_parse_clienthello(SSL *ssl, int *out_alert, uint16_t value,
 int custom_ext_add_serverhello(SSL *ssl, CBB *extensions);
 
 
+/* Handshake hash.
+ *
+ * The TLS handshake maintains a transcript of all handshake messages. At
+ * various points in the protocol, this is either a handshake buffer, a rolling
+ * hash (selected by cipher suite) or both. */
+
+/* ssl3_init_handshake_buffer initializes the handshake buffer and resets the
+ * handshake hash. It returns one success and zero on failure. */
+int ssl3_init_handshake_buffer(SSL *ssl);
+
+/* ssl3_init_handshake_hash initializes the handshake hash based on the pending
+ * cipher and the contents of the handshake buffer. Subsequent calls to
+ * |ssl3_update_handshake_hash| will update the rolling hash. It returns one on
+ * success and zero on failure. It is an error to call this function after the
+ * handshake buffer is released. */
+int ssl3_init_handshake_hash(SSL *ssl);
+
+/* ssl3_free_handshake_buffer releases the handshake buffer. Subsequent calls
+ * to |ssl3_update_handshake_hash| will not update the handshake buffer. */
+void ssl3_free_handshake_buffer(SSL *ssl);
+
+/* ssl3_free_handshake_hash releases the handshake hash. */
+void ssl3_free_handshake_hash(SSL *s);
+
+/* ssl3_update_handshake_hash adds |in| to the handshake buffer and handshake
+ * hash, whichever is enabled. It returns one on success and zero on failure. */
+int ssl3_update_handshake_hash(SSL *ssl, const uint8_t *in, size_t in_len);
+
+
 /* Underdocumented functions.
  *
  * Functions below here haven't been touched up and may be underdocumented. */
@@ -880,7 +909,6 @@ int ssl_verify_alarm_type(long type);
  * |len|. It returns one on success and zero on failure. */
 int ssl_fill_hello_random(uint8_t *out, size_t len, int is_server);
 
-int ssl3_init_finished_mac(SSL *s);
 int ssl3_send_server_certificate(SSL *s);
 int ssl3_send_new_session_ticket(SSL *s);
 int ssl3_send_cert_status(SSL *s);
@@ -921,8 +949,6 @@ int ssl3_write_app_data(SSL *ssl, const void *buf, int len);
 int ssl3_write_bytes(SSL *s, int type, const void *buf, int len);
 int ssl3_final_finish_mac(SSL *s, const char *sender, int slen, uint8_t *p);
 int ssl3_cert_verify_mac(SSL *s, int md_nid, uint8_t *p);
-int ssl3_finish_mac(SSL *s, const uint8_t *buf, int len);
-void ssl3_free_digest_list(SSL *s);
 int ssl3_output_cert_chain(SSL *s);
 const SSL_CIPHER *ssl3_choose_cipher(
     SSL *ssl, STACK_OF(SSL_CIPHER) *clnt,
@@ -931,12 +957,6 @@ int ssl3_setup_read_buffer(SSL *s);
 int ssl3_setup_write_buffer(SSL *s);
 int ssl3_release_read_buffer(SSL *s);
 int ssl3_release_write_buffer(SSL *s);
-
-enum should_free_handshake_buffer_t {
-  free_handshake_buffer,
-  dont_free_handshake_buffer,
-};
-int ssl3_digest_cached_records(SSL *s, enum should_free_handshake_buffer_t);
 
 int ssl3_new(SSL *s);
 void ssl3_free(SSL *s);

@@ -188,8 +188,7 @@ int dtls1_connect(SSL *s) {
       case SSL3_ST_CW_CLNT_HELLO_B:
         s->shutdown = 0;
 
-        /* every DTLS ClientHello resets Finished MAC */
-        if (!ssl3_init_finished_mac(s)) {
+        if (!ssl3_init_handshake_buffer(s)) {
           OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
           ret = -1;
           goto end;

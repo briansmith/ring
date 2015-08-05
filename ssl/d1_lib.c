@@ -328,8 +328,9 @@ int dtls1_set_handshake_header(SSL *s, int htype, unsigned long len) {
   s2n(msg_hdr->seq, p);
   l2n3(0, p);
   l2n3(msg_hdr->msg_len, p);
-  return ssl3_finish_mac(s, serialised_header, sizeof(serialised_header)) &&
-         ssl3_finish_mac(s, message + DTLS1_HM_HEADER_LENGTH, len);
+  return ssl3_update_handshake_hash(s, serialised_header,
+                                    sizeof(serialised_header)) &&
+         ssl3_update_handshake_hash(s, message + DTLS1_HM_HEADER_LENGTH, len);
 }
 
 int dtls1_handshake_write(SSL *s) {

@@ -441,8 +441,8 @@ int ssl3_hash_current_message(SSL *s) {
   /* The handshake header (different size between DTLS and TLS) is included in
    * the hash. */
   size_t header_len = s->init_msg - (uint8_t *)s->init_buf->data;
-  return ssl3_finish_mac(s, (uint8_t *)s->init_buf->data,
-                         s->init_num + header_len);
+  return ssl3_update_handshake_hash(s, (uint8_t *)s->init_buf->data,
+                                    s->init_num + header_len);
 }
 
 /* ssl3_cert_verify_hash is documented as needing EVP_MAX_MD_SIZE because that
