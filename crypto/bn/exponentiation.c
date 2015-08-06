@@ -925,7 +925,6 @@ int BN_mod_exp_mont_consttime(BIGNUM *rr, const BIGNUM *a, const BIGNUM *p,
     }
   }
 #endif
-  (void)0;
 
   /* Allocate a buffer large enough to hold all of the pre-computed
    * powers of am, am itself and tmp.
