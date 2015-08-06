@@ -464,6 +464,7 @@ int ec_wNAF_mul(const EC_GROUP *group, EC_POINT *r, const BIGNUM *scalar,
           numblocks = (tmp_len + blocksize - 1) / blocksize;
           if (numblocks > pre_comp->numblocks) {
             OPENSSL_PUT_ERROR(EC, ERR_R_INTERNAL_ERROR);
+            OPENSSL_free(tmp_wNAF);
             goto err;
           }
           totalnum = num + numblocks;
@@ -478,6 +479,7 @@ int ec_wNAF_mul(const EC_GROUP *group, EC_POINT *r, const BIGNUM *scalar,
             wNAF_len[i] = blocksize;
             if (tmp_len < blocksize) {
               OPENSSL_PUT_ERROR(EC, ERR_R_INTERNAL_ERROR);
+              OPENSSL_free(tmp_wNAF);
               goto err;
             }
             tmp_len -= blocksize;
