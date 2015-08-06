@@ -298,10 +298,8 @@ void DES_set_key(const DES_cblock *key, DES_key_schedule *schedule) {
                                   0, 1, 1, 1, 1, 1, 1, 0};
   uint32_t c, d, t, s, t2;
   const uint8_t *in;
-  uint32_t *k;
   int i;
 
-  k = &schedule->ks->deslong[0];
   in = key->bytes;
 
   c2l(in, c);
@@ -344,10 +342,10 @@ void DES_set_key(const DES_cblock *key, DES_key_schedule *schedule) {
 
     /* table contained 0213 4657 */
     t2 = ((t << 16L) | (s & 0x0000ffffL)) & 0xffffffffL;
-    *(k++) = ROTATE(t2, 30) & 0xffffffffL;
+    schedule->subkeys[i][0] = ROTATE(t2, 30) & 0xffffffffL;
 
     t2 = ((s >> 16L) | (t & 0xffff0000L));
-    *(k++) = ROTATE(t2, 26) & 0xffffffffL;
+    schedule->subkeys[i][1] = ROTATE(t2, 26) & 0xffffffffL;
   }
 }
 
@@ -382,7 +380,6 @@ void DES_set_odd_parity(DES_cblock *key) {
 
 static void DES_encrypt1(uint32_t *data, const DES_key_schedule *ks, int enc) {
   uint32_t l, r, t, u;
-  const uint32_t *s;
 
   r = data[0];
   l = data[1];
@@ -398,43 +395,42 @@ static void DES_encrypt1(uint32_t *data, const DES_key_schedule *ks, int enc) {
   r = ROTATE(r, 29) & 0xffffffffL;
   l = ROTATE(l, 29) & 0xffffffffL;
 
-  s = ks->ks->deslong;
   /* I don't know if it is worth the effort of loop unrolling the
    * inner loop */
   if (enc) {
-    D_ENCRYPT(l, r, 0);  /*  1 */
-    D_ENCRYPT(r, l, 2);  /*  2 */
-    D_ENCRYPT(l, r, 4);  /*  3 */
-    D_ENCRYPT(r, l, 6);  /*  4 */
-    D_ENCRYPT(l, r, 8);  /*  5 */
-    D_ENCRYPT(r, l, 10); /*  6 */
-    D_ENCRYPT(l, r, 12); /*  7 */
-    D_ENCRYPT(r, l, 14); /*  8 */
-    D_ENCRYPT(l, r, 16); /*  9 */
-    D_ENCRYPT(r, l, 18); /*  10 */
-    D_ENCRYPT(l, r, 20); /*  11 */
-    D_ENCRYPT(r, l, 22); /*  12 */
-    D_ENCRYPT(l, r, 24); /*  13 */
-    D_ENCRYPT(r, l, 26); /*  14 */
-    D_ENCRYPT(l, r, 28); /*  15 */
-    D_ENCRYPT(r, l, 30); /*  16 */
+    D_ENCRYPT(ks, l, r, 0);
+    D_ENCRYPT(ks, r, l, 1);
+    D_ENCRYPT(ks, l, r, 2);
+    D_ENCRYPT(ks, r, l, 3);
+    D_ENCRYPT(ks, l, r, 4);
+    D_ENCRYPT(ks, r, l, 5);
+    D_ENCRYPT(ks, l, r, 6);
+    D_ENCRYPT(ks, r, l, 7);
+    D_ENCRYPT(ks, l, r, 8);
+    D_ENCRYPT(ks, r, l, 9);
+    D_ENCRYPT(ks, l, r, 10);
+    D_ENCRYPT(ks, r, l, 11);
+    D_ENCRYPT(ks, l, r, 12);
+    D_ENCRYPT(ks, r, l, 13);
+    D_ENCRYPT(ks, l, r, 14);
+    D_ENCRYPT(ks, r, l, 15);
   } else {
-    D_ENCRYPT(l, r, 30); /* 16 */
-    D_ENCRYPT(r, l, 28); /* 15 */
-    D_ENCRYPT(l, r, 26); /* 14 */
-    D_ENCRYPT(r, l, 24); /* 13 */
-    D_ENCRYPT(l, r, 22); /* 12 */
-    D_ENCRYPT(r, l, 20); /* 11 */
-    D_ENCRYPT(l, r, 18); /* 10 */
-    D_ENCRYPT(r, l, 16); /*  9 */
-    D_ENCRYPT(l, r, 14); /*  8 */
-    D_ENCRYPT(r, l, 12); /*  7 */
-    D_ENCRYPT(l, r, 10); /*  6 */
-    D_ENCRYPT(r, l, 8);  /*  5 */
-    D_ENCRYPT(l, r, 6);  /*  4 */
-    D_ENCRYPT(r, l, 4);  /*  3 */
-    D_ENCRYPT(l, r, 2);  /*  2 */
-    D_ENCRYPT(r, l, 0);  /*  1 */
+    D_ENCRYPT(ks, l, r, 15);
+    D_ENCRYPT(ks, r, l, 14);
+    D_ENCRYPT(ks, l, r, 13);
+    D_ENCRYPT(ks, r, l, 12);
+    D_ENCRYPT(ks, l, r, 11);
+    D_ENCRYPT(ks, r, l, 10);
+    D_ENCRYPT(ks, l, r, 9);
+    D_ENCRYPT(ks, r, l, 8);
+    D_ENCRYPT(ks, l, r, 7);
+    D_ENCRYPT(ks, r, l, 6);
+    D_ENCRYPT(ks, l, r, 5);
+    D_ENCRYPT(ks, r, l, 4);
+    D_ENCRYPT(ks, l, r, 3);
+    D_ENCRYPT(ks, r, l, 2);
+    D_ENCRYPT(ks, l, r, 1);
+    D_ENCRYPT(ks, r, l, 0);
   }
 
   /* rotate and clear the top bits on machines with 8byte longs */
@@ -448,7 +444,6 @@ static void DES_encrypt1(uint32_t *data, const DES_key_schedule *ks, int enc) {
 
 static void DES_encrypt2(uint32_t *data, const DES_key_schedule *ks, int enc) {
   uint32_t l, r, t, u;
-  const uint32_t *s;
 
   r = data[0];
   l = data[1];
@@ -462,43 +457,42 @@ static void DES_encrypt2(uint32_t *data, const DES_key_schedule *ks, int enc) {
   r = ROTATE(r, 29) & 0xffffffffL;
   l = ROTATE(l, 29) & 0xffffffffL;
 
-  s = ks->ks->deslong;
   /* I don't know if it is worth the effort of loop unrolling the
    * inner loop */
   if (enc) {
-    D_ENCRYPT(l, r, 0);  /*  1 */
-    D_ENCRYPT(r, l, 2);  /*  2 */
-    D_ENCRYPT(l, r, 4);  /*  3 */
-    D_ENCRYPT(r, l, 6);  /*  4 */
-    D_ENCRYPT(l, r, 8);  /*  5 */
-    D_ENCRYPT(r, l, 10); /*  6 */
-    D_ENCRYPT(l, r, 12); /*  7 */
-    D_ENCRYPT(r, l, 14); /*  8 */
-    D_ENCRYPT(l, r, 16); /*  9 */
-    D_ENCRYPT(r, l, 18); /*  10 */
-    D_ENCRYPT(l, r, 20); /*  11 */
-    D_ENCRYPT(r, l, 22); /*  12 */
-    D_ENCRYPT(l, r, 24); /*  13 */
-    D_ENCRYPT(r, l, 26); /*  14 */
-    D_ENCRYPT(l, r, 28); /*  15 */
-    D_ENCRYPT(r, l, 30); /*  16 */
+    D_ENCRYPT(ks, l, r, 0);
+    D_ENCRYPT(ks, r, l, 1);
+    D_ENCRYPT(ks, l, r, 2);
+    D_ENCRYPT(ks, r, l, 3);
+    D_ENCRYPT(ks, l, r, 4);
+    D_ENCRYPT(ks, r, l, 5);
+    D_ENCRYPT(ks, l, r, 6);
+    D_ENCRYPT(ks, r, l, 7);
+    D_ENCRYPT(ks, l, r, 8);
+    D_ENCRYPT(ks, r, l, 9);
+    D_ENCRYPT(ks, l, r, 10);
+    D_ENCRYPT(ks, r, l, 11);
+    D_ENCRYPT(ks, l, r, 12);
+    D_ENCRYPT(ks, r, l, 13);
+    D_ENCRYPT(ks, l, r, 14);
+    D_ENCRYPT(ks, r, l, 15);
   } else {
-    D_ENCRYPT(l, r, 30); /* 16 */
-    D_ENCRYPT(r, l, 28); /* 15 */
-    D_ENCRYPT(l, r, 26); /* 14 */
-    D_ENCRYPT(r, l, 24); /* 13 */
-    D_ENCRYPT(l, r, 22); /* 12 */
-    D_ENCRYPT(r, l, 20); /* 11 */
-    D_ENCRYPT(l, r, 18); /* 10 */
-    D_ENCRYPT(r, l, 16); /*  9 */
-    D_ENCRYPT(l, r, 14); /*  8 */
-    D_ENCRYPT(r, l, 12); /*  7 */
-    D_ENCRYPT(l, r, 10); /*  6 */
-    D_ENCRYPT(r, l, 8);  /*  5 */
-    D_ENCRYPT(l, r, 6);  /*  4 */
-    D_ENCRYPT(r, l, 4);  /*  3 */
-    D_ENCRYPT(l, r, 2);  /*  2 */
-    D_ENCRYPT(r, l, 0);  /*  1 */
+    D_ENCRYPT(ks, l, r, 15);
+    D_ENCRYPT(ks, r, l, 14);
+    D_ENCRYPT(ks, l, r, 13);
+    D_ENCRYPT(ks, r, l, 12);
+    D_ENCRYPT(ks, l, r, 11);
+    D_ENCRYPT(ks, r, l, 10);
+    D_ENCRYPT(ks, l, r, 9);
+    D_ENCRYPT(ks, r, l, 8);
+    D_ENCRYPT(ks, l, r, 7);
+    D_ENCRYPT(ks, r, l, 6);
+    D_ENCRYPT(ks, l, r, 5);
+    D_ENCRYPT(ks, r, l, 4);
+    D_ENCRYPT(ks, l, r, 3);
+    D_ENCRYPT(ks, r, l, 2);
+    D_ENCRYPT(ks, l, r, 1);
+    D_ENCRYPT(ks, r, l, 0);
   }
   /* rotate and clear the top bits on machines with 8byte longs */
   data[0] = ROTATE(l, 3) & 0xffffffffL;

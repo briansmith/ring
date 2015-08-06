@@ -183,13 +183,13 @@ how to use xors :-) I got it to its final state.
     PERM_OP(l, r, tt, 4, 0x0f0f0f0fL);  \
   }
 
-#define LOAD_DATA(R, S, u, t, E0, E1) \
-  u = R ^ s[S];                            \
-  t = R ^ s[S + 1]
+#define LOAD_DATA(ks, R, S, u, t, E0, E1) \
+  u = R ^ ks->subkeys[S][0];              \
+  t = R ^ ks->subkeys[S][1]
 
-#define D_ENCRYPT(LL, R, S)                                                    \
+#define D_ENCRYPT(ks, LL, R, S)                                                \
   {                                                                            \
-    LOAD_DATA(R, S, u, t, E0, E1);                                             \
+    LOAD_DATA(ks, R, S, u, t, E0, E1);                                         \
     t = ROTATE(t, 4);                                                          \
     LL ^=                                                                      \
         DES_SPtrans[0][(u >> 2L) & 0x3f] ^ DES_SPtrans[2][(u >> 10L) & 0x3f] ^ \

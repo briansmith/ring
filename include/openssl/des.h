@@ -72,12 +72,7 @@ typedef struct DES_cblock_st {
 } DES_cblock;
 
 typedef struct DES_ks {
-  union {
-    DES_cblock cblock;
-    /* make sure things are correct size on machines with
-     * 8 byte longs */
-    uint32_t deslong[2];
-  } ks[16];
+  uint32_t subkeys[16][2];
 } DES_key_schedule;
 
 
