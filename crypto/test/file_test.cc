@@ -128,6 +128,7 @@ FileTest::ReadResult FileTest::ReadNext() {
       const char *delimiter = FindDelimiter(buf);
       if (delimiter == nullptr) {
         fprintf(stderr, "Line %u: Could not parse attribute.\n", line_);
+        return kReadError;
       }
       std::string key = StripSpace(buf, delimiter - buf);
       std::string value = StripSpace(delimiter + 1,
