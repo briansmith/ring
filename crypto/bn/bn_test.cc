@@ -1188,8 +1188,9 @@ static bool test_exp(FILE *fp, BN_CTX *ctx) {
     if (!BN_one(e.get())) {
       return false;
     }
-    for (; !BN_is_zero(b.get()); BN_sub(b.get(), b.get(), BN_value_one())) {
-      if (!BN_mul(e.get(), e.get(), a.get(), ctx)) {
+    while (!BN_is_zero(b.get())) {
+      if (!BN_mul(e.get(), e.get(), a.get(), ctx) ||
+          !BN_sub(b.get(), b.get(), BN_value_one())) {
         return false;
       }
     }
