@@ -238,21 +238,14 @@ void ssl3_cleanup_key_block(SSL *s) {
 int ssl3_init_handshake_buffer(SSL *ssl) {
   ssl3_free_handshake_buffer(ssl);
   ssl3_free_handshake_hash(ssl);
-  ssl->s3->handshake_buffer = BIO_new(BIO_s_mem());
-  if (ssl->s3->handshake_buffer == NULL) {
-    return 0;
-  }
-  BIO_set_close(ssl->s3->handshake_buffer, BIO_CLOSE);
-
-  return 1;
+  ssl->s3->handshake_buffer = BUF_MEM_new();
+  return ssl->s3->handshake_buffer != NULL;
 }
 
 int ssl3_init_handshake_hash(SSL *ssl) {
   int i;
   uint32_t mask;
   const EVP_MD *md;
-  const uint8_t *hdata;
-  size_t hdatalen;
 
   /* Allocate handshake_dgst array */
   ssl3_free_handshake_hash(ssl);
@@ -262,12 +255,7 @@ int ssl3_init_handshake_hash(SSL *ssl) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
     return 0;
   }
-
   memset(ssl->s3->handshake_dgst, 0, SSL_MAX_DIGEST * sizeof(EVP_MD_CTX *));
-  if (!BIO_mem_contents(ssl->s3->handshake_buffer, &hdata, &hdatalen)) {
-    OPENSSL_PUT_ERROR(SSL, SSL_R_BAD_HANDSHAKE_LENGTH);
-    return 0;
-  }
 
   /* Loop through bits of algorithm_prf field and create MD_CTX-es */
   for (i = 0; ssl_get_handshake_digest(&mask, &md, i); i++) {
@@ -283,7 +271,9 @@ int ssl3_init_handshake_hash(SSL *ssl) {
         OPENSSL_PUT_ERROR(SSL, ERR_LIB_EVP);
         return 0;
       }
-      EVP_DigestUpdate(ssl->s3->handshake_dgst[i], hdata, hdatalen);
+      EVP_DigestUpdate(ssl->s3->handshake_dgst[i],
+                       ssl->s3->handshake_buffer->data,
+                       ssl->s3->handshake_buffer->length);
     } else {
       ssl->s3->handshake_dgst[i] = NULL;
     }
@@ -307,7 +297,7 @@ void ssl3_free_handshake_hash(SSL *ssl) {
 }
 
 void ssl3_free_handshake_buffer(SSL *ssl) {
-  BIO_free(ssl->s3->handshake_buffer);
+  BUF_MEM_free(ssl->s3->handshake_buffer);
   ssl->s3->handshake_buffer = NULL;
 }
 
@@ -315,11 +305,16 @@ int ssl3_update_handshake_hash(SSL *ssl, const uint8_t *in, size_t in_len) {
   /* Depending on the state of the handshake, either the handshake buffer may be
    * active, the rolling hash, or both. */
 
-  /* TODO(davidben): Replace |handshake_buffer| with a simpler type that doesn't
-   * require a cast. */
-  if (ssl->s3->handshake_buffer != NULL &&
-      BIO_write(ssl->s3->handshake_buffer, in, (int)in_len) < 0) {
-    return 0;
+  if (ssl->s3->handshake_buffer != NULL) {
+    size_t new_len = ssl->s3->handshake_buffer->length + in_len;
+    if (new_len < in_len) {
+      OPENSSL_PUT_ERROR(SSL, ERR_R_OVERFLOW);
+      return 0;
+    }
+    if (!BUF_MEM_grow(ssl->s3->handshake_buffer, new_len)) {
+      return 0;
+    }
+    memcpy(ssl->s3->handshake_buffer->data + new_len - in_len, in, in_len);
   }
 
   if (ssl->s3->handshake_dgst != NULL) {

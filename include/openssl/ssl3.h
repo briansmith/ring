@@ -385,8 +385,8 @@ typedef struct ssl3_state_st {
   int wpend_ret; /* number of bytes submitted */
   const uint8_t *wpend_buf;
 
-  /* used during startup, digest all incoming/outgoing packets */
-  BIO *handshake_buffer;
+  /* handshake_buffer, if non-NULL, contains the handshake transcript. */
+  BUF_MEM *handshake_buffer;
   /* When set of handshake digests is determined, buffer is hashed and freed
    * and MD_CTX-es for all required digests are stored in this array */
   EVP_MD_CTX **handshake_dgst;

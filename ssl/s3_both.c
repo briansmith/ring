@@ -456,18 +456,13 @@ int ssl3_cert_verify_hash(SSL *s, uint8_t *out, size_t *out_len,
    * agreed digest and cached handshake records. Otherwise, use
    * SHA1 or MD5 + SHA1 depending on key type.  */
   if (SSL_USE_SIGALGS(s)) {
-    const uint8_t *hdata;
-    size_t hdatalen;
     EVP_MD_CTX mctx;
     unsigned len;
 
-    if (!BIO_mem_contents(s->s3->handshake_buffer, &hdata, &hdatalen)) {
-      OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
-      return 0;
-    }
     EVP_MD_CTX_init(&mctx);
     if (!EVP_DigestInit_ex(&mctx, *out_md, NULL) ||
-        !EVP_DigestUpdate(&mctx, hdata, hdatalen) ||
+        !EVP_DigestUpdate(&mctx, s->s3->handshake_buffer->data,
+                          s->s3->handshake_buffer->length) ||
         !EVP_DigestFinal(&mctx, out, &len)) {
       OPENSSL_PUT_ERROR(SSL, ERR_R_EVP_LIB);
       EVP_MD_CTX_cleanup(&mctx);
