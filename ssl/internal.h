@@ -203,12 +203,9 @@
 #define SSL_TLSV1_2 0x00000004L
 
 /* Bits for |algorithm_prf| (handshake digest). */
-#define SSL_HANDSHAKE_MAC_MD5 0x10
-#define SSL_HANDSHAKE_MAC_SHA 0x20
-#define SSL_HANDSHAKE_MAC_SHA256 0x40
-#define SSL_HANDSHAKE_MAC_SHA384 0x80
-#define SSL_HANDSHAKE_MAC_DEFAULT \
-  (SSL_HANDSHAKE_MAC_MD5 | SSL_HANDSHAKE_MAC_SHA)
+#define SSL_HANDSHAKE_MAC_DEFAULT 0x1
+#define SSL_HANDSHAKE_MAC_SHA256 0x2
+#define SSL_HANDSHAKE_MAC_SHA384 0x4
 
 /* SSL_MAX_DIGEST is the number of digest types which exist. When adding a new
  * one, update the table in ssl_cipher.c. */
@@ -229,11 +226,11 @@ int ssl_cipher_get_evp_aead(const EVP_AEAD **out_aead,
                             size_t *out_fixed_iv_len,
                             const SSL_CIPHER *cipher, uint16_t version);
 
-/* ssl_get_handshake_digest looks up the |i|th handshake digest type and sets
- * |*out_mask| to the |SSL_HANDSHAKE_MAC_*| mask and |*out_md| to the
- * |EVP_MD|. It returns one on successs and zero if |i| >= |SSL_MAX_DIGEST|. */
-int ssl_get_handshake_digest(uint32_t *out_mask, const EVP_MD **out_md,
-                             size_t i);
+/* ssl_get_handshake_digest returns the |EVP_MD| corresponding to
+ * |algorithm_prf|. It returns SHA-1 for |SSL_HANDSHAKE_DEFAULT|. The caller is
+ * responsible for maintaining the additional MD5 digest and switching to
+ * SHA-256 in TLS 1.2. */
+const EVP_MD *ssl_get_handshake_digest(uint32_t algorithm_prf);
 
 /* ssl_create_cipher_list evaluates |rule_str| according to the ciphers in
  * |ssl_method|. It sets |*out_cipher_list| to a newly-allocated

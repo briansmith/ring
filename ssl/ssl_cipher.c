@@ -469,18 +469,6 @@ const SSL_CIPHER kCiphers[] = {
 
 static const size_t kCiphersLen = sizeof(kCiphers) / sizeof(kCiphers[0]);
 
-struct handshake_digest {
-  uint32_t mask;
-  const EVP_MD *(*md_func)(void);
-};
-
-static const struct handshake_digest ssl_handshake_digests[SSL_MAX_DIGEST] = {
-    {SSL_HANDSHAKE_MAC_MD5, EVP_md5},
-    {SSL_HANDSHAKE_MAC_SHA, EVP_sha1},
-    {SSL_HANDSHAKE_MAC_SHA256, EVP_sha256},
-    {SSL_HANDSHAKE_MAC_SHA384, EVP_sha384},
-};
-
 #define CIPHER_ADD 1
 #define CIPHER_KILL 2
 #define CIPHER_DEL 3
@@ -718,14 +706,17 @@ int ssl_cipher_get_evp_aead(const EVP_AEAD **out_aead,
   }
 }
 
-int ssl_get_handshake_digest(uint32_t *out_mask, const EVP_MD **out_md,
-                             size_t idx) {
-  if (idx >= SSL_MAX_DIGEST) {
-    return 0;
+const EVP_MD *ssl_get_handshake_digest(uint32_t algorithm_prf) {
+  switch (algorithm_prf) {
+    case SSL_HANDSHAKE_MAC_DEFAULT:
+      return EVP_sha1();
+    case SSL_HANDSHAKE_MAC_SHA256:
+      return EVP_sha256();
+    case SSL_HANDSHAKE_MAC_SHA384:
+      return EVP_sha384();
+    default:
+      return NULL;
   }
-  *out_mask = ssl_handshake_digests[idx].mask;
-  *out_md = ssl_handshake_digests[idx].md_func();
-  return 1;
 }
 
 #define ITEM_SEP(a) \
@@ -1456,27 +1447,24 @@ static const char *ssl_cipher_get_enc_name(const SSL_CIPHER *cipher) {
 }
 
 static const char *ssl_cipher_get_prf_name(const SSL_CIPHER *cipher) {
-  if ((cipher->algorithm_prf & SSL_HANDSHAKE_MAC_DEFAULT) ==
-      SSL_HANDSHAKE_MAC_DEFAULT) {
-    /* Before TLS 1.2, the PRF component is the hash used in the HMAC, which is
-     * only ever MD5 or SHA-1. */
-    switch (cipher->algorithm_mac) {
-      case SSL_MD5:
-        return "MD5";
-      case SSL_SHA1:
-        return "SHA";
-      default:
-        assert(0);
-        return "UNKNOWN";
-    }
-  } else if (cipher->algorithm_prf & SSL_HANDSHAKE_MAC_SHA256) {
-    return "SHA256";
-  } else if (cipher->algorithm_prf & SSL_HANDSHAKE_MAC_SHA384) {
-    return "SHA384";
-  } else {
-    assert(0);
-    return "UNKNOWN";
+  switch (cipher->algorithm_prf) {
+    case SSL_HANDSHAKE_MAC_DEFAULT:
+      /* Before TLS 1.2, the PRF component is the hash used in the HMAC, which is
+       * only ever MD5 or SHA-1. */
+      switch (cipher->algorithm_mac) {
+        case SSL_MD5:
+          return "MD5";
+        case SSL_SHA1:
+          return "SHA";
+      }
+      break;
+    case SSL_HANDSHAKE_MAC_SHA256:
+      return "SHA256";
+    case SSL_HANDSHAKE_MAC_SHA384:
+      return "SHA384";
   }
+  assert(0);
+  return "UNKNOWN";
 }
 
 char *SSL_CIPHER_get_rfc_name(const SSL_CIPHER *cipher) {

@@ -242,58 +242,39 @@ int ssl3_init_handshake_buffer(SSL *ssl) {
   return ssl->s3->handshake_buffer != NULL;
 }
 
-int ssl3_init_handshake_hash(SSL *ssl) {
-  int i;
-  uint32_t mask;
-  const EVP_MD *md;
-
-  /* Allocate handshake_dgst array */
-  ssl3_free_handshake_hash(ssl);
-  ssl->s3->handshake_dgst = OPENSSL_malloc(SSL_MAX_DIGEST *
-                                           sizeof(EVP_MD_CTX *));
-  if (ssl->s3->handshake_dgst == NULL) {
-    OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
+/* init_digest_with_data calls |EVP_DigestInit_ex| on |ctx| with |md| and then
+ * writes the data in |buf| to it. */
+static int init_digest_with_data(EVP_MD_CTX *ctx, const EVP_MD *md,
+                                 const BUF_MEM *buf) {
+  if (!EVP_DigestInit_ex(ctx, md, NULL)) {
     return 0;
   }
-  memset(ssl->s3->handshake_dgst, 0, SSL_MAX_DIGEST * sizeof(EVP_MD_CTX *));
+  EVP_DigestUpdate(ctx, buf->data, buf->length);
+  return 1;
+}
 
-  /* Loop through bits of algorithm_prf field and create MD_CTX-es */
-  for (i = 0; ssl_get_handshake_digest(&mask, &md, i); i++) {
-    if ((mask & ssl_get_algorithm_prf(ssl)) && md) {
-      ssl->s3->handshake_dgst[i] = EVP_MD_CTX_create();
-      if (ssl->s3->handshake_dgst[i] == NULL) {
-        OPENSSL_PUT_ERROR(SSL, ERR_LIB_EVP);
-        return 0;
-      }
-      if (!EVP_DigestInit_ex(ssl->s3->handshake_dgst[i], md, NULL)) {
-        EVP_MD_CTX_destroy(ssl->s3->handshake_dgst[i]);
-        ssl->s3->handshake_dgst[i] = NULL;
-        OPENSSL_PUT_ERROR(SSL, ERR_LIB_EVP);
-        return 0;
-      }
-      EVP_DigestUpdate(ssl->s3->handshake_dgst[i],
-                       ssl->s3->handshake_buffer->data,
-                       ssl->s3->handshake_buffer->length);
-    } else {
-      ssl->s3->handshake_dgst[i] = NULL;
-    }
+int ssl3_init_handshake_hash(SSL *ssl) {
+  ssl3_free_handshake_hash(ssl);
+
+  uint32_t algorithm_prf = ssl_get_algorithm_prf(ssl);
+  if (!init_digest_with_data(&ssl->s3->handshake_hash,
+                             ssl_get_handshake_digest(algorithm_prf),
+                             ssl->s3->handshake_buffer)) {
+    return 0;
+  }
+
+  if (algorithm_prf == SSL_HANDSHAKE_MAC_DEFAULT &&
+      !init_digest_with_data(&ssl->s3->handshake_md5, EVP_md5(),
+                             ssl->s3->handshake_buffer)) {
+    return 0;
   }
 
   return 1;
 }
 
 void ssl3_free_handshake_hash(SSL *ssl) {
-  int i;
-  if (!ssl->s3->handshake_dgst) {
-    return;
-  }
-  for (i = 0; i < SSL_MAX_DIGEST; i++) {
-    if (ssl->s3->handshake_dgst[i]) {
-      EVP_MD_CTX_destroy(ssl->s3->handshake_dgst[i]);
-    }
-  }
-  OPENSSL_free(ssl->s3->handshake_dgst);
-  ssl->s3->handshake_dgst = NULL;
+  EVP_MD_CTX_cleanup(&ssl->s3->handshake_hash);
+  EVP_MD_CTX_cleanup(&ssl->s3->handshake_md5);
 }
 
 void ssl3_free_handshake_buffer(SSL *ssl) {
@@ -317,13 +298,11 @@ int ssl3_update_handshake_hash(SSL *ssl, const uint8_t *in, size_t in_len) {
     memcpy(ssl->s3->handshake_buffer->data + new_len - in_len, in, in_len);
   }
 
-  if (ssl->s3->handshake_dgst != NULL) {
-    int i;
-    for (i = 0; i < SSL_MAX_DIGEST; i++) {
-      if (ssl->s3->handshake_dgst[i] != NULL) {
-        EVP_DigestUpdate(ssl->s3->handshake_dgst[i], in, in_len);
-      }
-    }
+  if (EVP_MD_CTX_md(&ssl->s3->handshake_hash) != NULL) {
+    EVP_DigestUpdate(&ssl->s3->handshake_hash, in, in_len);
+  }
+  if (EVP_MD_CTX_md(&ssl->s3->handshake_md5) != NULL) {
+    EVP_DigestUpdate(&ssl->s3->handshake_md5, in, in_len);
   }
   return 1;
 }
@@ -356,24 +335,20 @@ static int ssl3_handshake_mac(SSL *s, int md_nid, const char *sender, int len,
   int npad, n;
   unsigned int i;
   uint8_t md_buf[EVP_MAX_MD_SIZE];
-  EVP_MD_CTX ctx, *d = NULL;
+  EVP_MD_CTX ctx;
+  const EVP_MD_CTX *ctx_template;
 
-  /* Search for digest of specified type in the handshake_dgst array. */
-  for (i = 0; i < SSL_MAX_DIGEST; i++) {
-    if (s->s3->handshake_dgst[i] &&
-        EVP_MD_CTX_type(s->s3->handshake_dgst[i]) == md_nid) {
-      d = s->s3->handshake_dgst[i];
-      break;
-    }
-  }
-
-  if (!d) {
+  if (md_nid == NID_md5) {
+    ctx_template = &s->s3->handshake_md5;
+  } else if (md_nid == EVP_MD_CTX_type(&s->s3->handshake_hash)) {
+    ctx_template = &s->s3->handshake_hash;
+  } else {
     OPENSSL_PUT_ERROR(SSL, SSL_R_NO_REQUIRED_DIGEST);
     return 0;
   }
 
   EVP_MD_CTX_init(&ctx);
-  if (!EVP_MD_CTX_copy_ex(&ctx, d)) {
+  if (!EVP_MD_CTX_copy_ex(&ctx, ctx_template)) {
     EVP_MD_CTX_cleanup(&ctx);
     OPENSSL_PUT_ERROR(SSL, ERR_LIB_EVP);
     return 0;

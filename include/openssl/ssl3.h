@@ -387,9 +387,13 @@ typedef struct ssl3_state_st {
 
   /* handshake_buffer, if non-NULL, contains the handshake transcript. */
   BUF_MEM *handshake_buffer;
-  /* When set of handshake digests is determined, buffer is hashed and freed
-   * and MD_CTX-es for all required digests are stored in this array */
-  EVP_MD_CTX **handshake_dgst;
+  /* handshake_hash, if initialized with an |EVP_MD|, maintains the handshake
+   * hash. For TLS 1.1 and below, it is the SHA-1 half. */
+  EVP_MD_CTX handshake_hash;
+  /* handshake_md5, if initialized with an |EVP_MD|, maintains the MD5 half of
+   * the handshake hash for TLS 1.1 and below. */
+  EVP_MD_CTX handshake_md5;
+
   /* this is set whenerver we see a change_cipher_spec message come in when we
    * are not looking for one */
   int change_cipher_spec;
