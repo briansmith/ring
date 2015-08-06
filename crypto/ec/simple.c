@@ -524,7 +524,7 @@ int ec_GFp_simple_point_get_affine_coordinates(const EC_GROUP *group,
   Z_1 = BN_CTX_get(ctx);
   Z_2 = BN_CTX_get(ctx);
   Z_3 = BN_CTX_get(ctx);
-  if (Z_3 == NULL) {
+  if (Z == NULL || Z_1 == NULL || Z_2 == NULL || Z_3 == NULL) {
     goto err;
   }
 

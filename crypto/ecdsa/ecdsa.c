@@ -172,7 +172,7 @@ int ECDSA_do_verify(const uint8_t *digest, size_t digest_len,
   u2 = BN_CTX_get(ctx);
   m = BN_CTX_get(ctx);
   X = BN_CTX_get(ctx);
-  if (!X) {
+  if (order == NULL || u1 == NULL || u2 == NULL || m == NULL || X == NULL) {
     OPENSSL_PUT_ERROR(ECDSA, ERR_R_BN_LIB);
     goto err;
   }

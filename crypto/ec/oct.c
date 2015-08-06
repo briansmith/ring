@@ -231,7 +231,7 @@ static int ec_GFp_simple_oct2point(const EC_GROUP *group, EC_POINT *point,
   BN_CTX_start(ctx);
   x = BN_CTX_get(ctx);
   y = BN_CTX_get(ctx);
-  if (y == NULL) {
+  if (x == NULL || y == NULL) {
     goto err;
   }
 
