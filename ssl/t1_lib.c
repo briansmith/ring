@@ -113,6 +113,7 @@
 #include <string.h>
 
 #include <openssl/bytestring.h>
+#include <openssl/digest.h>
 #include <openssl/err.h>
 #include <openssl/evp.h>
 #include <openssl/hmac.h>
@@ -2923,42 +2924,45 @@ const EVP_MD *tls1_choose_signing_digest(SSL *ssl) {
   return EVP_sha1();
 }
 
-/* tls1_channel_id_hash calculates the signed data for a Channel ID on the
- * given SSL connection and writes it to |md|. */
-int tls1_channel_id_hash(EVP_MD_CTX *md, SSL *s) {
+int tls1_channel_id_hash(SSL *ssl, uint8_t *out, size_t *out_len) {
+  int ret = 0;
   EVP_MD_CTX ctx;
-  uint8_t temp_digest[EVP_MAX_MD_SIZE];
-  unsigned temp_digest_len;
-  int i;
-  static const char kClientIDMagic[] = "TLS Channel ID signature";
-
-  EVP_DigestUpdate(md, kClientIDMagic, sizeof(kClientIDMagic));
-
-  if (s->hit) {
-    static const char kResumptionMagic[] = "Resumption";
-    EVP_DigestUpdate(md, kResumptionMagic, sizeof(kResumptionMagic));
-    if (s->session->original_handshake_hash_len == 0) {
-      return 0;
-    }
-    EVP_DigestUpdate(md, s->session->original_handshake_hash,
-                     s->session->original_handshake_hash_len);
-  }
 
   EVP_MD_CTX_init(&ctx);
-  for (i = 0; i < SSL_MAX_DIGEST; i++) {
-    if (s->s3->handshake_dgst[i] == NULL) {
-      continue;
-    }
-    if (!EVP_MD_CTX_copy_ex(&ctx, s->s3->handshake_dgst[i])) {
-      EVP_MD_CTX_cleanup(&ctx);
-      return 0;
-    }
-    EVP_DigestFinal_ex(&ctx, temp_digest, &temp_digest_len);
-    EVP_DigestUpdate(md, temp_digest, temp_digest_len);
+  if (!EVP_DigestInit_ex(&ctx, EVP_sha256(), NULL)) {
+    goto err;
   }
-  EVP_MD_CTX_cleanup(&ctx);
 
-  return 1;
+  static const char kClientIDMagic[] = "TLS Channel ID signature";
+  EVP_DigestUpdate(&ctx, kClientIDMagic, sizeof(kClientIDMagic));
+
+  if (ssl->hit) {
+    static const char kResumptionMagic[] = "Resumption";
+    EVP_DigestUpdate(&ctx, kResumptionMagic, sizeof(kResumptionMagic));
+    if (ssl->session->original_handshake_hash_len == 0) {
+      OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
+      goto err;
+    }
+    EVP_DigestUpdate(&ctx, ssl->session->original_handshake_hash,
+                     ssl->session->original_handshake_hash_len);
+  }
+
+  uint8_t handshake_hash[EVP_MAX_MD_SIZE];
+  int handshake_hash_len = tls1_handshake_digest(ssl, handshake_hash,
+                                                 sizeof(handshake_hash));
+  if (handshake_hash_len < 0) {
+    goto err;
+  }
+  EVP_DigestUpdate(&ctx, handshake_hash, (size_t)handshake_hash_len);
+  unsigned len_u;
+  EVP_DigestFinal_ex(&ctx, out, &len_u);
+  *out_len = len_u;
+
+  ret = 1;
+
+err:
+  EVP_MD_CTX_cleanup(&ctx);
+  return ret;
 }
 
 /* tls1_record_handshake_hashes_for_channel_id records the current handshake

@@ -1142,7 +1142,11 @@ int tls12_get_sigandhash(SSL *ssl, uint8_t *p, const EVP_MD *md);
 int tls12_get_sigid(int pkey_type);
 const EVP_MD *tls12_get_hash(uint8_t hash_alg);
 
-int tls1_channel_id_hash(EVP_MD_CTX *ctx, SSL *s);
+/* tls1_channel_id_hash computes the hash to be signed by Channel ID and writes
+ * it to |out|, which must contain at least |EVP_MAX_MD_SIZE| bytes. It returns
+ * one on success and zero on failure. */
+int tls1_channel_id_hash(SSL *ssl, uint8_t *out, size_t *out_len);
+
 int tls1_record_handshake_hashes_for_channel_id(SSL *s);
 
 int tls1_set_sigalgs_list(CERT *c, const char *str, int client);

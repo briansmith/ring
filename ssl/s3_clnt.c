@@ -2210,10 +2210,8 @@ int ssl3_send_channel_id(SSL *s) {
   i2o_ECPublicKey(ec_key, &derp);
 
   uint8_t digest[EVP_MAX_MD_SIZE];
-  unsigned digest_len;
-  if (!EVP_DigestInit_ex(&md_ctx, EVP_sha256(), NULL) ||
-      !tls1_channel_id_hash(&md_ctx, s) ||
-      !EVP_DigestFinal_ex(&md_ctx, digest, &digest_len)) {
+  size_t digest_len;
+  if (!tls1_channel_id_hash(s, digest, &digest_len)) {
     goto err;
   }
 

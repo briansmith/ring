@@ -2471,9 +2471,8 @@ int ssl3_get_next_proto(SSL *s) {
 int ssl3_get_channel_id(SSL *s) {
   int ret = -1, ok;
   long n;
-  EVP_MD_CTX md_ctx;
-  uint8_t channel_id_hash[SHA256_DIGEST_LENGTH];
-  unsigned int channel_id_hash_len;
+  uint8_t channel_id_hash[EVP_MAX_MD_SIZE];
+  size_t channel_id_hash_len;
   const uint8_t *p;
   uint16_t extension_type;
   EC_GROUP *p256 = NULL;
@@ -2494,15 +2493,9 @@ int ssl3_get_channel_id(SSL *s) {
 
   /* Before incorporating the EncryptedExtensions message to the handshake
    * hash, compute the hash that should have been signed. */
-  channel_id_hash_len = sizeof(channel_id_hash);
-  EVP_MD_CTX_init(&md_ctx);
-  if (!EVP_DigestInit_ex(&md_ctx, EVP_sha256(), NULL) ||
-      !tls1_channel_id_hash(&md_ctx, s) ||
-      !EVP_DigestFinal(&md_ctx, channel_id_hash, &channel_id_hash_len)) {
-    EVP_MD_CTX_cleanup(&md_ctx);
+  if (!tls1_channel_id_hash(s, channel_id_hash, &channel_id_hash_len)) {
     return -1;
   }
-  EVP_MD_CTX_cleanup(&md_ctx);
   assert(channel_id_hash_len == SHA256_DIGEST_LENGTH);
 
   if (!ssl3_hash_current_message(s)) {
