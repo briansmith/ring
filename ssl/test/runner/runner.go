@@ -3789,6 +3789,19 @@ func addCustomExtensionTests() {
 		},
 		flags: []string{"-enable-server-custom-extension", "-custom-extension-fail-add"},
 	})
+
+	// Test an unknown extension from the server.
+	testCases = append(testCases, testCase{
+		testType: clientTest,
+		name:     "UnknownExtension-Client",
+		config: Config{
+			Bugs: ProtocolBugs{
+				CustomExtension: expectedContents,
+			},
+		},
+		shouldFail:    true,
+		expectedError: ":UNEXPECTED_EXTENSION:",
+	})
 }
 
 func worker(statusChan chan statusMsg, c chan *testCase, shimPath string, wg *sync.WaitGroup) {
