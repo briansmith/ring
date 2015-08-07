@@ -3,7 +3,7 @@
   <PropertyGroup Label="Globals">
     <ProjectGuid>{1DACE503-6498-492D-B1FF-F9EE18624443}</ProjectGuid>
     <ProjectName>libring.test.Windows</ProjectName>
-    <TargetName>libring-test</TargetName>
+    <TargetName>ring-test</TargetName>
   </PropertyGroup>
   <PropertyGroup Label="Configuration">
     <ConfigurationType>StaticLibrary</ConfigurationType>
