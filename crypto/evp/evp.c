@@ -59,7 +59,6 @@
 #include <assert.h>
 #include <string.h>
 
-#include <openssl/bio.h>
 #include <openssl/dh.h>
 #include <openssl/ec.h>
 #include <openssl/err.h>

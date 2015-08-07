@@ -108,7 +108,6 @@ add_subdirectory(poly1305)
 add_subdirectory(digest)
 add_subdirectory(cipher)
 add_subdirectory(rand)
-add_subdirectory(bio)
 add_subdirectory(bn)
 
 # Level 2
@@ -160,7 +159,6 @@ add_library(
   $<TARGET_OBJECTS:poly1305>
   $<TARGET_OBJECTS:buf>
   $<TARGET_OBJECTS:bn>
-  $<TARGET_OBJECTS:bio>
   $<TARGET_OBJECTS:rand>
   $<TARGET_OBJECTS:dh>
   $<TARGET_OBJECTS:rsa>

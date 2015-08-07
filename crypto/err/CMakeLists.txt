@@ -5,7 +5,6 @@ add_custom_command(
   COMMAND ${GO_EXECUTABLE} run err_data_generate.go > ${CMAKE_CURRENT_BINARY_DIR}/err_data.c
   DEPENDS
   err_data_generate.go
-  bio.errordata
   bn.errordata
   cipher.errordata
   dh.errordata

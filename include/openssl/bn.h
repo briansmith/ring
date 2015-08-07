@@ -285,11 +285,8 @@ OPENSSL_EXPORT int BN_dec2bn(BIGNUM **outp, const char *in);
  * returns one on success or zero on error. */
 OPENSSL_EXPORT int BN_asc2bn(BIGNUM **outp, const char *in);
 
-/* BN_print writes a hex encoding of |a| to |bio|. It returns one on success
+/* BN_print_fp writes a hex encoding of |a| to |fp|. It returns one on success
  * and zero on error. */
-OPENSSL_EXPORT int BN_print(BIO *bio, const BIGNUM *a);
-
-/* BN_print_fp acts like |BIO_print|, but wraps |fp| in a |BIO| first. */
 OPENSSL_EXPORT int BN_print_fp(FILE *fp, const BIGNUM *a);
 
 /* BN_get_word returns the absolute value of |bn| as a single word. If |bn| is
