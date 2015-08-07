@@ -24,8 +24,7 @@ extern "C" {
  * system. */
 void CRYPTO_sysrand(uint8_t *buf, size_t len);
 
-/* CRYPTO_hwrand fills |len| bytes at |buf| with entropy from the hardware.
- * This function can only be called if |CRYPTO_have_hwrand| returns one. It
+/* CRYPTO_hwrand fills |len| bytes at |buf| with entropy from the hardware. It
  * returns one on success or zero on hardware failure or if hardware support is
  * unavailable. */
 int CRYPTO_hwrand(uint8_t *buf, size_t len);
