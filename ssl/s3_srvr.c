@@ -399,6 +399,7 @@ int ssl3_accept(SSL *s) {
 
       case SSL3_ST_SR_KEY_EXCH_A:
       case SSL3_ST_SR_KEY_EXCH_B:
+      case SSL3_ST_SR_KEY_EXCH_C:
         ret = ssl3_get_client_key_exchange(s);
         if (ret <= 0) {
           goto end;
@@ -1586,16 +1587,13 @@ uint64_t OPENSSL_get_d5_bug_use_count(void) {
 }
 
 int ssl3_get_client_key_exchange(SSL *s) {
-  int al, ok;
-  long n;
+  int al;
   CBS client_key_exchange;
   uint32_t alg_k;
   uint32_t alg_a;
   uint8_t *premaster_secret = NULL;
   size_t premaster_secret_len = 0;
-  RSA *rsa = NULL;
   uint8_t *decrypt_buf = NULL;
-  EVP_PKEY *pkey = NULL;
   BIGNUM *pub = NULL;
   DH *dh_srvr;
 
@@ -1606,17 +1604,18 @@ int ssl3_get_client_key_exchange(SSL *s) {
   unsigned int psk_len = 0;
   uint8_t psk[PSK_MAX_PSK_LEN];
 
-  n = s->method->ssl_get_message(s, SSL3_ST_SR_KEY_EXCH_A,
-                                 SSL3_ST_SR_KEY_EXCH_B,
-                                 SSL3_MT_CLIENT_KEY_EXCHANGE, 2048, /* ??? */
-                                 ssl_hash_message, &ok);
-
-  if (!ok) {
-    return n;
+  if (s->state == SSL3_ST_SR_KEY_EXCH_A ||
+      s->state == SSL3_ST_SR_KEY_EXCH_B) {
+    int ok;
+    const long n = s->method->ssl_get_message(
+        s, SSL3_ST_SR_KEY_EXCH_A, SSL3_ST_SR_KEY_EXCH_B,
+        SSL3_MT_CLIENT_KEY_EXCHANGE, 2048 /* ??? */, ssl_hash_message, &ok);
+    if (!ok) {
+      return n;
+    }
   }
 
-  CBS_init(&client_key_exchange, s->init_msg, n);
-
+  CBS_init(&client_key_exchange, s->init_msg, s->init_num);
   alg_k = s->s3->tmp.new_cipher->algorithm_mkey;
   alg_a = s->s3->tmp.new_cipher->algorithm_auth;
 
@@ -1673,57 +1672,8 @@ int ssl3_get_client_key_exchange(SSL *s) {
     CBS encrypted_premaster_secret;
     uint8_t rand_premaster_secret[SSL_MAX_MASTER_KEY_LENGTH];
     uint8_t good;
-    size_t rsa_size, decrypt_len, premaster_index, j;
-
-    pkey = s->cert->privatekey;
-    if (pkey == NULL || pkey->type != EVP_PKEY_RSA || pkey->pkey.rsa == NULL) {
-      al = SSL_AD_HANDSHAKE_FAILURE;
-      OPENSSL_PUT_ERROR(SSL, SSL_R_MISSING_RSA_CERTIFICATE);
-      goto f_err;
-    }
-    rsa = pkey->pkey.rsa;
-
-    /* TLS and [incidentally] DTLS{0xFEFF} */
-    if (s->version > SSL3_VERSION) {
-      CBS copy = client_key_exchange;
-      if (!CBS_get_u16_length_prefixed(&client_key_exchange,
-                                       &encrypted_premaster_secret) ||
-          CBS_len(&client_key_exchange) != 0) {
-        if (!(s->options & SSL_OP_TLS_D5_BUG)) {
-          al = SSL_AD_DECODE_ERROR;
-          OPENSSL_PUT_ERROR(SSL, SSL_R_TLS_RSA_ENCRYPTED_VALUE_LENGTH_IS_WRONG);
-          goto f_err;
-        } else {
-          CRYPTO_STATIC_MUTEX_lock_write(&g_d5_bug_lock);
-          g_d5_bug_use_count++;
-          CRYPTO_STATIC_MUTEX_unlock(&g_d5_bug_lock);
-
-          encrypted_premaster_secret = copy;
-        }
-      }
-    } else {
-      encrypted_premaster_secret = client_key_exchange;
-    }
-
-    /* Reject overly short RSA keys because we want to be sure that the buffer
-     * size makes it safe to iterate over the entire size of a premaster secret
-     * (SSL_MAX_MASTER_KEY_LENGTH). The actual expected size is larger due to
-     * RSA padding, but the bound is sufficient to be safe. */
-    rsa_size = RSA_size(rsa);
-    if (rsa_size < SSL_MAX_MASTER_KEY_LENGTH) {
-      al = SSL_AD_DECRYPT_ERROR;
-      OPENSSL_PUT_ERROR(SSL, SSL_R_DECRYPTION_FAILED);
-      goto f_err;
-    }
-
-    /* We must not leak whether a decryption failure occurs because of
-     * Bleichenbacher's attack on PKCS #1 v1.5 RSA padding (see RFC 2246,
-     * section 7.4.7.1). The code follows that advice of the TLS RFC and
-     * generates a random premaster secret for the case that the decrypt fails.
-     * See https://tools.ietf.org/html/rfc5246#section-7.4.7.1 */
-    if (!RAND_bytes(rand_premaster_secret, sizeof(rand_premaster_secret))) {
-      goto err;
-    }
+    size_t decrypt_len, premaster_index, j;
+    const size_t rsa_size = ssl_private_key_max_signature_len(s);
 
     /* Allocate a buffer large enough for an RSA decryption. */
     decrypt_buf = OPENSSL_malloc(rsa_size);
@@ -1732,13 +1682,72 @@ int ssl3_get_client_key_exchange(SSL *s) {
       goto err;
     }
 
-    /* Decrypt with no padding. PKCS#1 padding will be removed as part of the
-     * timing-sensitive code below. */
-    if (!RSA_decrypt(rsa, &decrypt_len, decrypt_buf, rsa_size,
-                     CBS_data(&encrypted_premaster_secret),
-                     CBS_len(&encrypted_premaster_secret), RSA_NO_PADDING)) {
-      goto err;
+    enum ssl_private_key_result_t decrypt_result;
+    if (s->state == SSL3_ST_SR_KEY_EXCH_B) {
+      if (!ssl_has_private_key(s) || ssl_private_key_type(s) != EVP_PKEY_RSA) {
+        al = SSL_AD_HANDSHAKE_FAILURE;
+        OPENSSL_PUT_ERROR(SSL, SSL_R_MISSING_RSA_CERTIFICATE);
+        goto f_err;
+      }
+      /* TLS and [incidentally] DTLS{0xFEFF} */
+      if (s->version > SSL3_VERSION) {
+        CBS copy = client_key_exchange;
+        if (!CBS_get_u16_length_prefixed(&client_key_exchange,
+                                         &encrypted_premaster_secret) ||
+            CBS_len(&client_key_exchange) != 0) {
+          if (!(s->options & SSL_OP_TLS_D5_BUG)) {
+            al = SSL_AD_DECODE_ERROR;
+            OPENSSL_PUT_ERROR(SSL,
+                              SSL_R_TLS_RSA_ENCRYPTED_VALUE_LENGTH_IS_WRONG);
+            goto f_err;
+          } else {
+            CRYPTO_STATIC_MUTEX_lock_write(&g_d5_bug_lock);
+            g_d5_bug_use_count++;
+            CRYPTO_STATIC_MUTEX_unlock(&g_d5_bug_lock);
+
+            encrypted_premaster_secret = copy;
+          }
+        }
+      } else {
+        encrypted_premaster_secret = client_key_exchange;
+      }
+
+      /* Reject overly short RSA keys because we want to be sure that the buffer
+       * size makes it safe to iterate over the entire size of a premaster
+       * secret (SSL_MAX_MASTER_KEY_LENGTH). The actual expected size is larger
+       * due to RSA padding, but the bound is sufficient to be safe. */
+      if (rsa_size < SSL_MAX_MASTER_KEY_LENGTH) {
+        al = SSL_AD_DECRYPT_ERROR;
+        OPENSSL_PUT_ERROR(SSL, SSL_R_DECRYPTION_FAILED);
+        goto f_err;
+      }
+
+      /* Decrypt with no padding. PKCS#1 padding will be removed as part of the
+       * timing-sensitive code below. */
+      decrypt_result = ssl_private_key_decrypt(
+          s, decrypt_buf, &decrypt_len, rsa_size,
+          CBS_data(&encrypted_premaster_secret),
+          CBS_len(&encrypted_premaster_secret));
+    } else {
+      assert(s->state == SSL3_ST_SR_KEY_EXCH_C);
+      /* Complete async decrypt. */
+      decrypt_result = ssl_private_key_decrypt_complete(
+          s, decrypt_buf, &decrypt_len, rsa_size);
     }
+
+    switch (decrypt_result) {
+      case ssl_private_key_success:
+        s->rwstate = SSL_NOTHING;
+        break;
+      case ssl_private_key_failure:
+        s->rwstate = SSL_NOTHING;
+        goto err;
+      case ssl_private_key_retry:
+        s->rwstate = SSL_PRIVATE_KEY_OPERATION;
+        s->state = SSL3_ST_SR_KEY_EXCH_C;
+        goto err;
+    }
+
     if (decrypt_len != rsa_size) {
       /* This should never happen, but do a check so we do not read
        * uninitialized memory. */
@@ -1781,6 +1790,15 @@ int ssl3_get_client_key_exchange(SSL *s) {
                                (unsigned)(s->client_version >> 8));
     good &= constant_time_eq_8(premaster_secret[1],
                                (unsigned)(s->client_version & 0xff));
+
+    /* We must not leak whether a decryption failure occurs because of
+     * Bleichenbacher's attack on PKCS #1 v1.5 RSA padding (see RFC 2246,
+     * section 7.4.7.1). The code follows that advice of the TLS RFC and
+     * generates a random premaster secret for the case that the decrypt
+     * fails. See https://tools.ietf.org/html/rfc5246#section-7.4.7.1 */
+    if (!RAND_bytes(rand_premaster_secret, sizeof(rand_premaster_secret))) {
+      goto err;
+    }
 
     /* Now copy rand_premaster_secret over premaster_secret using
      * decrypt_good_mask. */

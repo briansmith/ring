@@ -79,7 +79,6 @@ struct TestConfig {
   bool use_export_context = false;
   bool no_legacy_server_connect = false;
   bool tls_unique = false;
-  bool use_async_private_key = false;
   bool expect_ticket_renewal = false;
   bool expect_no_session = false;
   bool use_ticket_callback = false;

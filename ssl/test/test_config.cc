@@ -78,7 +78,6 @@ const Flag<bool> kBoolFlags[] = {
   { "-use-export-context", &TestConfig::use_export_context },
   { "-no-legacy-server-connect", &TestConfig::no_legacy_server_connect },
   { "-tls-unique", &TestConfig::tls_unique },
-  { "-use-async-private-key", &TestConfig::use_async_private_key },
   { "-expect-ticket-renewal", &TestConfig::expect_ticket_renewal },
   { "-expect-no-session", &TestConfig::expect_no_session },
   { "-use-ticket-callback", &TestConfig::use_ticket_callback },

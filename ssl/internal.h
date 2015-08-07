@@ -464,6 +464,13 @@ enum ssl_private_key_result_t ssl_private_key_sign(
 enum ssl_private_key_result_t ssl_private_key_sign_complete(
     SSL *ssl, uint8_t *out, size_t *out_len, size_t max_out);
 
+enum ssl_private_key_result_t ssl_private_key_decrypt(
+    SSL *ssl, uint8_t *out, size_t *out_len, size_t max_out,
+    const uint8_t *in, size_t in_len);
+
+enum ssl_private_key_result_t ssl_private_key_decrypt_complete(
+    SSL *ssl, uint8_t *out, size_t *out_len, size_t max_out);
+
 
 /* Custom extensions */
 

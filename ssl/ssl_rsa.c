@@ -376,3 +376,33 @@ enum ssl_private_key_result_t ssl_private_key_sign_complete(
   /* Only custom keys may be asynchronous. */
   return ssl->cert->key_method->sign_complete(ssl, out, out_len, max_out);
 }
+
+enum ssl_private_key_result_t ssl_private_key_decrypt(
+    SSL *ssl, uint8_t *out, size_t *out_len, size_t max_out,
+    const uint8_t *in, size_t in_len) {
+  if (ssl->cert->key_method != NULL) {
+    return ssl->cert->key_method->decrypt(ssl, out, out_len, max_out, in,
+                                          in_len);
+  }
+
+  if (ssl_private_key_type(ssl) != EVP_PKEY_RSA) {
+    /* Decrypt operations are only supported for RSA keys. */
+    OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
+    return ssl_private_key_failure;
+  }
+
+  enum ssl_private_key_result_t ret = ssl_private_key_failure;
+  RSA *rsa = ssl->cert->privatekey->pkey.rsa;
+  /* Decrypt with no padding. PKCS#1 padding will be removed as part
+   * of the timing-sensitive code by the caller. */
+  if (RSA_decrypt(rsa, out_len, out, max_out, in, in_len, RSA_NO_PADDING)) {
+    ret = ssl_private_key_success;
+  }
+  return ret;
+}
+
+enum ssl_private_key_result_t ssl_private_key_decrypt_complete(
+    SSL *ssl, uint8_t *out, size_t *out_len, size_t max_out) {
+  /* Only custom keys may be asynchronous. */
+  return ssl->cert->key_method->decrypt_complete(ssl, out, out_len, max_out);
+}

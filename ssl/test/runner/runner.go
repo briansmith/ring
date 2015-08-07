@@ -2585,7 +2585,7 @@ func addStateMachineCoverageTests(async, splitHandshake bool, protocol protocol)
 	// TLS client auth.
 	tests = append(tests, testCase{
 		testType: clientTest,
-		name:     "ClientAuth-Client",
+		name:     "ClientAuth-RSA-Client",
 		config: Config{
 			ClientAuth: RequireAnyClientCert,
 		},
@@ -2594,35 +2594,50 @@ func addStateMachineCoverageTests(async, splitHandshake bool, protocol protocol)
 			"-key-file", path.Join(*resourceDir, rsaKeyFile),
 		},
 	})
+	tests = append(tests, testCase{
+		testType: clientTest,
+		name:     "ClientAuth-ECDSA-Client",
+		config: Config{
+			ClientAuth: RequireAnyClientCert,
+		},
+		flags: []string{
+			"-cert-file", path.Join(*resourceDir, ecdsaCertificateFile),
+			"-key-file", path.Join(*resourceDir, ecdsaKeyFile),
+		},
+	})
 	if async {
+		// Test async keys against each key exchange.
 		tests = append(tests, testCase{
-			testType: clientTest,
-			name:     "ClientAuth-Client-AsyncKey",
+			testType: serverTest,
+			name:     "Basic-Server-RSA",
 			config: Config{
-				ClientAuth: RequireAnyClientCert,
+				CipherSuites: []uint16{TLS_RSA_WITH_AES_128_GCM_SHA256},
 			},
 			flags: []string{
 				"-cert-file", path.Join(*resourceDir, rsaCertificateFile),
 				"-key-file", path.Join(*resourceDir, rsaKeyFile),
-				"-use-async-private-key",
 			},
 		})
 		tests = append(tests, testCase{
 			testType: serverTest,
-			name:     "Basic-Server-RSAAsyncKey",
+			name:     "Basic-Server-ECDHE-RSA",
+			config: Config{
+				CipherSuites: []uint16{TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256},
+			},
 			flags: []string{
 				"-cert-file", path.Join(*resourceDir, rsaCertificateFile),
 				"-key-file", path.Join(*resourceDir, rsaKeyFile),
-				"-use-async-private-key",
 			},
 		})
 		tests = append(tests, testCase{
 			testType: serverTest,
-			name:     "Basic-Server-ECDSAAsyncKey",
+			name:     "Basic-Server-ECDHE-ECDSA",
+			config: Config{
+				CipherSuites: []uint16{TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256},
+			},
 			flags: []string{
 				"-cert-file", path.Join(*resourceDir, ecdsaCertificateFile),
 				"-key-file", path.Join(*resourceDir, ecdsaKeyFile),
-				"-use-async-private-key",
 			},
 		})
 	}
