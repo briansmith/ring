@@ -55,14 +55,12 @@
 
 #include <openssl/evp.h>
 
-#include <openssl/asn1t.h>
 #include <openssl/bn.h>
 #include <openssl/bytestring.h>
 #include <openssl/ec.h>
 #include <openssl/ec_key.h>
 #include <openssl/ecdsa.h>
 #include <openssl/err.h>
-#include <openssl/mem.h>
 #include <openssl/obj.h>
 
 #include "internal.h"
@@ -236,125 +234,6 @@ static int ec_cmp_parameters(const EVP_PKEY *a, const EVP_PKEY *b) {
 
 static void int_ec_free(EVP_PKEY *pkey) { EC_KEY_free(pkey->pkey.ec); }
 
-static int do_EC_KEY_print(BIO *bp, const EC_KEY *x, int off, int ktype) {
-  uint8_t *buffer = NULL;
-  const char *ecstr;
-  size_t buf_len = 0, i;
-  int ret = 0, reason = ERR_R_BIO_LIB;
-  BN_CTX *ctx = NULL;
-  const EC_GROUP *group;
-  const EC_POINT *public_key;
-  const BIGNUM *priv_key;
-  uint8_t *pub_key_bytes = NULL;
-  size_t pub_key_bytes_len = 0;
-
-  if (x == NULL || (group = EC_KEY_get0_group(x)) == NULL) {
-    reason = ERR_R_PASSED_NULL_PARAMETER;
-    goto err;
-  }
-
-  ctx = BN_CTX_new();
-  if (ctx == NULL) {
-    reason = ERR_R_MALLOC_FAILURE;
-    goto err;
-  }
-
-  if (ktype > 0) {
-    public_key = EC_KEY_get0_public_key(x);
-    if (public_key != NULL) {
-      pub_key_bytes_len = EC_POINT_point2oct(
-          group, public_key, EC_KEY_get_conv_form(x), NULL, 0, ctx);
-      if (pub_key_bytes_len == 0) {
-        reason = ERR_R_MALLOC_FAILURE;
-        goto err;
-      }
-      pub_key_bytes = OPENSSL_malloc(pub_key_bytes_len);
-      if (pub_key_bytes == NULL) {
-        reason = ERR_R_MALLOC_FAILURE;
-        goto err;
-      }
-      pub_key_bytes_len =
-          EC_POINT_point2oct(group, public_key, EC_KEY_get_conv_form(x),
-                             pub_key_bytes, pub_key_bytes_len, ctx);
-      if (pub_key_bytes_len == 0) {
-        reason = ERR_R_MALLOC_FAILURE;
-        goto err;
-      }
-      buf_len = pub_key_bytes_len;
-    }
-  }
-
-  if (ktype == 2) {
-    priv_key = EC_KEY_get0_private_key(x);
-    if (priv_key && (i = (size_t)BN_num_bytes(priv_key)) > buf_len) {
-      buf_len = i;
-    }
-  } else {
-    priv_key = NULL;
-  }
-
-  if (ktype > 0) {
-    buf_len += 10;
-    if ((buffer = OPENSSL_malloc(buf_len)) == NULL) {
-      reason = ERR_R_MALLOC_FAILURE;
-      goto err;
-    }
-  }
-  if (ktype == 2) {
-    ecstr = "Private-Key";
-  } else if (ktype == 1) {
-    ecstr = "Public-Key";
-  } else {
-    ecstr = "ECDSA-Parameters";
-  }
-
-  if (!BIO_indent(bp, off, 128)) {
-    goto err;
-  }
-  const BIGNUM *order = EC_GROUP_get0_order(group);
-  if (BIO_printf(bp, "%s: (%d bit)\n", ecstr, BN_num_bits(order)) <= 0) {
-    goto err;
-  }
-
-  if ((priv_key != NULL) &&
-      !ASN1_bn_print(bp, "priv:", priv_key, buffer, off)) {
-    goto err;
-  }
-  if (pub_key_bytes != NULL) {
-    BIO_hexdump(bp, pub_key_bytes, pub_key_bytes_len, off);
-  }
-  /* TODO(fork): implement */
-  /*
-  if (!ECPKParameters_print(bp, group, off))
-    goto err; */
-  ret = 1;
-
-err:
-  if (!ret) {
-    OPENSSL_PUT_ERROR(EVP, reason);
-  }
-  OPENSSL_free(pub_key_bytes);
-  BN_CTX_free(ctx);
-  OPENSSL_free(buffer);
-  return ret;
-}
-
-static int eckey_param_print(BIO *bp, const EVP_PKEY *pkey, int indent,
-                             ASN1_PCTX *ctx) {
-  return do_EC_KEY_print(bp, pkey->pkey.ec, indent, 0);
-}
-
-static int eckey_pub_print(BIO *bp, const EVP_PKEY *pkey, int indent,
-                           ASN1_PCTX *ctx) {
-  return do_EC_KEY_print(bp, pkey->pkey.ec, indent, 1);
-}
-
-
-static int eckey_priv_print(BIO *bp, const EVP_PKEY *pkey, int indent,
-                            ASN1_PCTX *ctx) {
-  return do_EC_KEY_print(bp, pkey->pkey.ec, indent, 2);
-}
-
 static int eckey_opaque(const EVP_PKEY *pkey) {
   return EC_KEY_is_opaque(pkey->pkey.ec);
 }
@@ -377,11 +256,9 @@ const EVP_PKEY_ASN1_METHOD ec_asn1_meth = {
   eckey_pub_decode,
   eckey_pub_encode,
   eckey_pub_cmp,
-  eckey_pub_print,
 
   eckey_priv_decode,
   eckey_priv_encode,
-  eckey_priv_print,
 
   eckey_opaque,
   0 /* pkey_supports_digest */,
@@ -392,7 +269,6 @@ const EVP_PKEY_ASN1_METHOD ec_asn1_meth = {
   ec_missing_parameters,
   ec_copy_parameters,
   ec_cmp_parameters,
-  eckey_param_print,
 
   int_ec_free,
   old_ec_priv_decode,

@@ -55,14 +55,11 @@
 
 #include <openssl/evp.h>
 
-#include <openssl/asn1.h>
-#include <openssl/asn1t.h>
 #include <openssl/digest.h>
 #include <openssl/bn.h>
 #include <openssl/bytestring.h>
 #include <openssl/dsa.h>
 #include <openssl/err.h>
-#include <openssl/mem.h>
 #include <openssl/obj.h>
 
 #include "internal.h"
@@ -244,91 +241,6 @@ static int dsa_pub_cmp(const EVP_PKEY *a, const EVP_PKEY *b) {
 
 static void int_dsa_free(EVP_PKEY *pkey) { DSA_free(pkey->pkey.dsa); }
 
-static void update_buflen(const BIGNUM *b, size_t *pbuflen) {
-  size_t i;
-
-  if (!b) {
-    return;
-  }
-  i = BN_num_bytes(b);
-  if (*pbuflen < i) {
-    *pbuflen = i;
-  }
-}
-
-static int do_dsa_print(BIO *bp, const DSA *x, int off, int ptype) {
-  uint8_t *m = NULL;
-  int ret = 0;
-  size_t buf_len = 0;
-  const char *ktype = NULL;
-
-  const BIGNUM *priv_key, *pub_key;
-
-  priv_key = NULL;
-  if (ptype == 2) {
-    priv_key = x->priv_key;
-  }
-
-  pub_key = NULL;
-  if (ptype > 0) {
-    pub_key = x->pub_key;
-  }
-
-  ktype = "DSA-Parameters";
-  if (ptype == 2) {
-    ktype = "Private-Key";
-  } else if (ptype == 1) {
-    ktype = "Public-Key";
-  }
-
-  update_buflen(x->p, &buf_len);
-  update_buflen(x->q, &buf_len);
-  update_buflen(x->g, &buf_len);
-  update_buflen(priv_key, &buf_len);
-  update_buflen(pub_key, &buf_len);
-
-  m = OPENSSL_malloc(buf_len + 10);
-  if (m == NULL) {
-    OPENSSL_PUT_ERROR(EVP, ERR_R_MALLOC_FAILURE);
-    goto err;
-  }
-
-  if (priv_key) {
-    if (!BIO_indent(bp, off, 128) ||
-        BIO_printf(bp, "%s: (%d bit)\n", ktype, BN_num_bits(x->p)) <= 0) {
-      goto err;
-    }
-  }
-
-  if (!ASN1_bn_print(bp, "priv:", priv_key, m, off) ||
-      !ASN1_bn_print(bp, "pub: ", pub_key, m, off) ||
-      !ASN1_bn_print(bp, "P:   ", x->p, m, off) ||
-      !ASN1_bn_print(bp, "Q:   ", x->q, m, off) ||
-      !ASN1_bn_print(bp, "G:   ", x->g, m, off)) {
-    goto err;
-  }
-  ret = 1;
-
-err:
-  OPENSSL_free(m);
-  return ret;
-}
-
-static int dsa_param_print(BIO *bp, const EVP_PKEY *pkey, int indent,
-                           ASN1_PCTX *ctx) {
-  return do_dsa_print(bp, pkey->pkey.dsa, indent, 0);
-}
-
-static int dsa_pub_print(BIO *bp, const EVP_PKEY *pkey, int indent,
-                         ASN1_PCTX *ctx) {
-  return do_dsa_print(bp, pkey->pkey.dsa, indent, 1);
-}
-
-static int dsa_priv_print(BIO *bp, const EVP_PKEY *pkey, int indent,
-                          ASN1_PCTX *ctx) {
-  return do_dsa_print(bp, pkey->pkey.dsa, indent, 2);
-}
-
 static int old_dsa_priv_decode(EVP_PKEY *pkey, const uint8_t **pder,
                                int derlen) {
   DSA *dsa;
@@ -348,11 +260,9 @@ const EVP_PKEY_ASN1_METHOD dsa_asn1_meth = {
   dsa_pub_decode,
   dsa_pub_encode,
   dsa_pub_cmp,
-  dsa_pub_print,
 
   dsa_priv_decode,
   dsa_priv_encode,
-  dsa_priv_print,
 
   NULL /* pkey_opaque */,
   NULL /* pkey_supports_digest */,
@@ -363,7 +273,6 @@ const EVP_PKEY_ASN1_METHOD dsa_asn1_meth = {
   dsa_missing_parameters,
   dsa_copy_parameters,
   dsa_cmp_parameters,
-  dsa_param_print,
 
   int_dsa_free,
   old_dsa_priv_decode,

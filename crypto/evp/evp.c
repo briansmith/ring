@@ -59,7 +59,6 @@
 #include <assert.h>
 #include <string.h>
 
-#include <openssl/bio.h>
 #include <openssl/dsa.h>
 #include <openssl/ec.h>
 #include <openssl/err.h>
@@ -356,41 +355,6 @@ int EVP_PKEY_cmp_parameters(const EVP_PKEY *a, const EVP_PKEY *b) {
     return a->ameth->param_cmp(a, b);
   }
   return -2;
-}
-
-static int print_unsupported(BIO *out, const EVP_PKEY *pkey, int indent,
-                             const char *kstr) {
-  BIO_indent(out, indent, 128);
-  BIO_printf(out, "%s algorithm \"%s\" unsupported\n", kstr,
-             OBJ_nid2ln(pkey->type));
-  return 1;
-}
-
-int EVP_PKEY_print_public(BIO *out, const EVP_PKEY *pkey, int indent,
-                          ASN1_PCTX *pctx) {
-  if (pkey->ameth && pkey->ameth->pub_print) {
-    return pkey->ameth->pub_print(out, pkey, indent, pctx);
-  }
-
-  return print_unsupported(out, pkey, indent, "Public Key");
-}
-
-int EVP_PKEY_print_private(BIO *out, const EVP_PKEY *pkey, int indent,
-                           ASN1_PCTX *pctx) {
-  if (pkey->ameth && pkey->ameth->priv_print) {
-    return pkey->ameth->priv_print(out, pkey, indent, pctx);
-  }
-
-  return print_unsupported(out, pkey, indent, "Private Key");
-}
-
-int EVP_PKEY_print_params(BIO *out, const EVP_PKEY *pkey, int indent,
-                          ASN1_PCTX *pctx) {
-  if (pkey->ameth && pkey->ameth->param_print) {
-    return pkey->ameth->param_print(out, pkey, indent, pctx);
-  }
-
-  return print_unsupported(out, pkey, indent, "Parameters");
 }
 
 int EVP_PKEY_CTX_set_signature_md(EVP_PKEY_CTX *ctx, const EVP_MD *md) {
