@@ -103,11 +103,11 @@ CFLAGS += $(CFLAGS_STD)
 CXXFLAGS += $(CXXFLAGS_STD)
 
 # Always add full debug info and strip dead code.
-CPPFLAGS += -fdata-sections -ffunction-sections
+CPPFLAGS += -fpic -fdata-sections -ffunction-sections
 ifeq ($(findstring darwin,$(TARGET_SYS)),darwin)
 # |-gfull| is required for Darwin's |-dead_strip|.
 CPPFLAGS += -gfull
-LDFLAGS += -Wl,-dead_strip
+LDFLAGS += -fPIC -Wl,-dead_strip
 else
 CPPFLAGS += -g3
 LDFLAGS += -Wl,--gc-sections
