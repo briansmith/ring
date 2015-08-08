@@ -14,22 +14,9 @@
 
 .DEFAULT_GOAL := all
 
-# $(TARGET) must be of the form <arch>-<vendor>-<sys>-<abi>.
+# $(TARGET) must be of the form <arch>-<vendor>-<sys>-<abi>, except <abi> can
+# Mac OS X (Darwin).
 TARGET_WORDS = $(subst -, ,$(TARGET))
-ifneq ($(words $(TARGET_WORDS)),4)
-define NEWLINE
-
-
-endef
-$(error TARGET must be of the form \
-        <arch>[<sub>]-<vendor>-<sys>-<abi>.$(NEWLINE)\
-\
-        Linux x86 example:    TARGET=i586-pc-linux-gnu $(NEWLINE)\
-        Mac OS X x64 example: TARGET=x86_64-apple-darwin-macho) $(NEWLINE)\
-\
-        NOTE: Use "i586" instead of "x86", etc.)
-endif
-
 TARGET_ARCH_BASE = $(word 1,$(TARGET_WORDS))
 TARGET_ARCH_NORMAL = \
   $(strip $(if $(findstring arm, $(TARGET_ARCH_BASE)),arm, \
@@ -39,6 +26,27 @@ TARGET_ARCH_NORMAL = \
 TARGET_VENDOR = $(word 2,$(TARGET_WORDS))
 TARGET_SYS = $(word 3,$(TARGET_WORDS))
 TARGET_ABI = $(word 4,$(TARGET_WORDS))
+
+# Cargo doesn't pass the ABI as part of TARGET on Mac OS X.
+ifeq ($(TARGET_ABI),)
+ifeq ($(findstring apple-darwin,$(TARGET_VENDOR)-$(TARGET_SYS)),apple-darwin)
+TARGET_ABI = macho
+else
+define NEWLINE
+
+
+endef
+$(error TARGET must be of the form \
+        <arch>[<sub>]-<vendor>-<sys>-<abi>.$(NEWLINE)\
+\
+\       Exceptions: <abi> defaults to "macho" on Mac OS X.\
+\
+        Linux x86 example: TARGET=i586-pc-linux-gnu $(NEWLINE)\
+        Mac OS X x64 example: TARGET=x86_64-apple-darwin $(NEWLINE)\
+\
+        NOTE: Use "i586" instead of "x86".)
+endif
+endif
 
 # XXX: Apple's toolchain fails to link when the |-target| arch is "x86_64",
 # so just skip -target on Darwin for now.

@@ -27,9 +27,10 @@ GCC 4.8:
 
     make -j6 CC=gcc-4.8 CXX=g++-4.8 TARGET=i586-pc-linux-gnu
 
-As another example, this will build a 64-bit x86-64 *ring* for Mac OS X:
+You must include all four parts in ```TARGET```, except on Mac OS X you can
+omit the ABI. For example, this will build a 64-bit x86-64 *ring* for Mac OS X:
 
-    make -j6 CC=clang CXX=clang++ TARGET=x86_64-apple-darwin-macho
+    make -j6 CC=clang CXX=clang++ TARGET=x86_64-apple-darwin
 
 All four parts of the target are required.
 
