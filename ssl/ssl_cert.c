@@ -226,16 +226,6 @@ CERT *ssl_cert_dup(CERT *cert) {
     ret->client_sigalgslen = cert->client_sigalgslen;
   }
 
-  /* Copy any custom client certificate types */
-  if (cert->client_certificate_types) {
-    ret->client_certificate_types = BUF_memdup(
-        cert->client_certificate_types, cert->num_client_certificate_types);
-    if (!ret->client_certificate_types) {
-      goto err;
-    }
-    ret->num_client_certificate_types = cert->num_client_certificate_types;
-  }
-
   ret->cert_cb = cert->cert_cb;
   ret->cert_cb_arg = cert->cert_cb_arg;
 
@@ -273,7 +263,6 @@ void ssl_cert_free(CERT *c) {
   OPENSSL_free(c->conf_sigalgs);
   OPENSSL_free(c->client_sigalgs);
   OPENSSL_free(c->shared_sigalgs);
-  OPENSSL_free(c->client_certificate_types);
 
   OPENSSL_free(c);
 }

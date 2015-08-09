@@ -1989,7 +1989,6 @@ DECLARE_PEM_rw(SSL_SESSION, SSL_SESSION)
 #define SSL_CTRL_SET_CURVES 91
 #define SSL_CTRL_SET_SIGALGS 97
 #define SSL_CTRL_SET_CLIENT_SIGALGS 101
-#define SSL_CTRL_SET_CLIENT_CERT_TYPES 104
 
 /* DTLSv1_get_timeout queries the next DTLS handshake timeout. If there is a
  * timeout in progress, it sets |*out| to the time remaining and returns one.
@@ -2099,11 +2098,6 @@ OPENSSL_EXPORT size_t SSL_get0_certificate_types(SSL *ssl,
   SSL_CTX_ctrl(ctx, SSL_CTRL_SET_CLIENT_SIGALGS, slistlen, (int *)slist)
 #define SSL_set1_client_sigalgs(ctx, slist, slistlen) \
   SSL_ctrl(ctx, SSL_CTRL_SET_CLIENT_SIGALGS, clistlen, (int *)slist)
-
-#define SSL_CTX_set1_client_certificate_types(ctx, clist, clistlen) \
-  SSL_CTX_ctrl(ctx, SSL_CTRL_SET_CLIENT_CERT_TYPES, clistlen, (char *)clist)
-#define SSL_set1_client_certificate_types(s, clist, clistlen) \
-  SSL_ctrl(s, SSL_CTRL_SET_CLIENT_CERT_TYPES, clistlen, (char *)clist)
 
 OPENSSL_EXPORT int SSL_CTX_set_cipher_list(SSL_CTX *, const char *str);
 OPENSSL_EXPORT int SSL_CTX_set_cipher_list_tls11(SSL_CTX *, const char *str);

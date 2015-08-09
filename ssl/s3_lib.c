@@ -243,8 +243,6 @@ void ssl3_free(SSL *s) {
   s->s3 = NULL;
 }
 
-static int ssl3_set_req_cert_type(CERT *c, const uint8_t *p, size_t len);
-
 int SSL_session_reused(const SSL *ssl) {
   return ssl->hit;
 }
@@ -414,12 +412,6 @@ long ssl3_ctrl(SSL *s, int cmd, long larg, void *parg) {
     case SSL_CTRL_SET_CLIENT_SIGALGS:
       return tls1_set_sigalgs(s->cert, parg, larg, 1);
 
-    case SSL_CTRL_SET_CLIENT_CERT_TYPES:
-      if (!s->server) {
-        return 0;
-      }
-      return ssl3_set_req_cert_type(s->cert, parg, larg);
-
     default:
       break;
   }
@@ -438,9 +430,6 @@ long ssl3_ctx_ctrl(SSL_CTX *ctx, int cmd, long larg, void *parg) {
 
     case SSL_CTRL_SET_CLIENT_SIGALGS:
       return tls1_set_sigalgs(ctx->cert, parg, larg, 1);
-
-    case SSL_CTRL_SET_CLIENT_CERT_TYPES:
-      return ssl3_set_req_cert_type(ctx->cert, parg, larg);
 
     default:
       return 0;
@@ -592,13 +581,6 @@ int ssl3_get_req_cert_type(SSL *s, uint8_t *p) {
   int have_rsa_sign = 0;
   int have_ecdsa_sign = 0;
 
-  /* If we have custom certificate types set, use them */
-  if (s->cert->client_certificate_types) {
-    memcpy(p, s->cert->client_certificate_types,
-           s->cert->num_client_certificate_types);
-    return s->cert->num_client_certificate_types;
-  }
-
   /* get configured sigalgs */
   siglen = tls12_get_psigalgs(s, &sig);
   for (i = 0; i < siglen; i += 2, sig += 2) {
@@ -624,28 +606,6 @@ int ssl3_get_req_cert_type(SSL *s, uint8_t *p) {
   }
 
   return ret;
-}
-
-static int ssl3_set_req_cert_type(CERT *c, const uint8_t *p, size_t len) {
-  OPENSSL_free(c->client_certificate_types);
-  c->client_certificate_types = NULL;
-  c->num_client_certificate_types = 0;
-
-  if (!p || !len) {
-    return 1;
-  }
-
-  if (len > 0xff) {
-    return 0;
-  }
-
-  c->client_certificate_types = BUF_memdup(p, len);
-  if (!c->client_certificate_types) {
-    return 0;
-  }
-
-  c->num_client_certificate_types = len;
-  return 1;
 }
 
 /* If we are using default SHA1+MD5 algorithms switch to new SHA256 PRF and

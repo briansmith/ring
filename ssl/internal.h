@@ -607,12 +607,6 @@ typedef struct cert_st {
    * |SSL_CTX_set_tmp_ecdh_callback|. */
   EC_KEY *(*ecdh_tmp_cb)(SSL *ssl, int is_export, int keysize);
 
-  /* Server-only: client_certificate_types is list of certificate types to
-   * include in the CertificateRequest message.
-   */
-  uint8_t *client_certificate_types;
-  size_t num_client_certificate_types;
-
   /* signature algorithms peer reports: e.g. supported signature
    * algorithms extension for server or as part of a certificate
    * request for client. */
