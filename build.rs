@@ -44,13 +44,14 @@ fn main() {
         // Environment variables |CC|, |CXX|, etc. will be inherited from this
         // process.
         let cmake_build_type = "RELWITHDEBINFO"; // TODO: support DEBUG mode.
+        lib_path = Path::new(&out_dir).join("lib");
         args = vec![
             format!("-j{}", env::var("NUM_JOBS").unwrap()),
+            format!("{}/libring.a", lib_path.to_str().unwrap()),
             format!("TARGET={}", target_str),
             format!("CMAKE_BUILD_TYPE={}", cmake_build_type),
             format!("BUILD_PREFIX={}/", out_dir),
         ];
-        lib_path = Path::new(&out_dir).join("lib");
     } else {
         // TODO: This assumes that the package is being built under a
         // {VS2013,VS2015} {x86,x64} Native Tools Command Prompt. It would be
@@ -66,6 +67,7 @@ fn main() {
         args = vec![
             format!("ring.sln"),
             format!("/m:{}", env::var("NUM_JOBS").unwrap()),
+            format!("/target:libring_Windows"),
             format!("/p:Platform={}", platform),
             format!("/p:Configuration={}", configuration),
             format!("/p:OutRootDir={}/", out_dir),
