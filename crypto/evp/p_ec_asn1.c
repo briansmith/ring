@@ -57,7 +57,7 @@
 
 #include <openssl/asn1t.h>
 #include <openssl/bn.h>
-#include <openssl/ec.h>
+#include <openssl/ecdsa.h>
 #include <openssl/err.h>
 #include <openssl/mem.h>
 #include <openssl/obj.h>

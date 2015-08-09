@@ -57,13 +57,14 @@
 #ifndef OPENSSL_HEADER_PEM_H
 #define OPENSSL_HEADER_PEM_H
 
+#include <openssl/asn1.h>
 #include <openssl/base64.h>
 #include <openssl/bio.h>
 #include <openssl/cipher.h>
 #include <openssl/digest.h>
+#include <openssl/ec.h>
 #include <openssl/evp.h>
 #include <openssl/stack.h>
-#include <openssl/x509.h>
 
 #ifdef  __cplusplus
 extern "C" {
@@ -73,10 +74,6 @@ extern "C" {
 #define PEM_BUFSIZE		1024
 
 #define PEM_OBJ_UNDEF		0
-#define PEM_OBJ_X509		1
-#define PEM_OBJ_X509_REQ	2
-#define PEM_OBJ_CRL		3
-#define PEM_OBJ_SSL_SESSION	4
 #define PEM_OBJ_PRIV_KEY	10
 #define PEM_OBJ_PRIV_RSA	11
      /* PEM_OBJ_PRIV_DSA	12 */
@@ -107,13 +104,6 @@ extern "C" {
 #define PEM_MD_MD5_RSA		NID_md5WithRSAEncryption
 #define PEM_MD_SHA_RSA		NID_sha1WithRSAEncryption
 
-#define PEM_STRING_X509_OLD	"X509 CERTIFICATE"
-#define PEM_STRING_X509		"CERTIFICATE"
-#define PEM_STRING_X509_PAIR	"CERTIFICATE PAIR"
-#define PEM_STRING_X509_TRUSTED	"TRUSTED CERTIFICATE"
-#define PEM_STRING_X509_REQ_OLD	"NEW CERTIFICATE REQUEST"
-#define PEM_STRING_X509_REQ	"CERTIFICATE REQUEST"
-#define PEM_STRING_X509_CRL	"X509 CRL"
 #define PEM_STRING_EVP_PKEY	"ANY PRIVATE KEY"
 #define PEM_STRING_PUBLIC	"PUBLIC KEY"
 #define PEM_STRING_RSA		"RSA PRIVATE KEY"
@@ -146,16 +136,6 @@ typedef struct PEM_Encode_Seal_st
 #define PEM_TYPE_MIC_CLEAR      30
 #define PEM_TYPE_CLEAR		40
 
-typedef struct pem_recip_st
-	{
-	char *name;
-	X509_NAME *dn;
-
-	int cipher;
-	int key_enc;
-	/*	char iv[8]; unused and wrong size */
-	} PEM_USER;
-
 typedef struct pem_ctx_st
 	{
 	int type;		/* what type of object */
@@ -173,11 +153,6 @@ typedef struct pem_ctx_st
 	   unsigned char iv[8]; */
 		} DEK_info;
 		
-	PEM_USER *originator;
-
-	int num_recipient;
-	PEM_USER **recipient;
-
 	EVP_MD *md;		/* signature type */
 
 	int md_enc;		/* is the md encrypted or not? */
@@ -390,14 +365,10 @@ OPENSSL_EXPORT int PEM_bytes_read_bio(unsigned char **pdata, long *plen, char **
 OPENSSL_EXPORT void *	PEM_ASN1_read_bio(d2i_of_void *d2i, const char *name, BIO *bp, void **x, pem_password_cb *cb, void *u);
 OPENSSL_EXPORT int	PEM_ASN1_write_bio(i2d_of_void *i2d,const char *name,BIO *bp, void *x, const EVP_CIPHER *enc,unsigned char *kstr,int klen, pem_password_cb *cb, void *u);
 
-OPENSSL_EXPORT STACK_OF(X509_INFO) *	PEM_X509_INFO_read_bio(BIO *bp, STACK_OF(X509_INFO) *sk, pem_password_cb *cb, void *u);
-OPENSSL_EXPORT int	PEM_X509_INFO_write_bio(BIO *bp,X509_INFO *xi, EVP_CIPHER *enc, unsigned char *kstr, int klen, pem_password_cb *cd, void *u);
-
 OPENSSL_EXPORT int	PEM_read(FILE *fp, char **name, char **header, unsigned char **data,long *len);
 OPENSSL_EXPORT int	PEM_write(FILE *fp, const char *name, const char *hdr, const unsigned char *data, long len);
 OPENSSL_EXPORT void *  PEM_ASN1_read(d2i_of_void *d2i, const char *name, FILE *fp, void **x, pem_password_cb *cb, void *u);
 OPENSSL_EXPORT int	PEM_ASN1_write(i2d_of_void *i2d,const char *name,FILE *fp, void *x,const EVP_CIPHER *enc,unsigned char *kstr, int klen,pem_password_cb *callback, void *u);
-OPENSSL_EXPORT STACK_OF(X509_INFO) *	PEM_X509_INFO_read(FILE *fp, STACK_OF(X509_INFO) *sk, pem_password_cb *cb, void *u);
 
 OPENSSL_EXPORT int	PEM_SealInit(PEM_ENCODE_SEAL_CTX *ctx, EVP_CIPHER *type, EVP_MD *md_type, unsigned char **ek, int *ekl, unsigned char *iv, EVP_PKEY **pubk, int npubk);
 OPENSSL_EXPORT void	PEM_SealUpdate(PEM_ENCODE_SEAL_CTX *ctx, unsigned char *out, int *outl, unsigned char *in, int inl);
@@ -416,21 +387,6 @@ OPENSSL_EXPORT int	PEM_def_callback(char *buf, int size, int rwflag, void *userd
 OPENSSL_EXPORT void	PEM_proc_type(char *buf, int type);
 OPENSSL_EXPORT void	PEM_dek_info(char *buf, const char *type, int len, char *str);
 
-
-DECLARE_PEM_rw(X509, X509)
-
-DECLARE_PEM_rw(X509_AUX, X509)
-
-DECLARE_PEM_rw(X509_CERT_PAIR, X509_CERT_PAIR)
-
-DECLARE_PEM_rw(X509_REQ, X509_REQ)
-DECLARE_PEM_write(X509_REQ_NEW, X509_REQ)
-
-DECLARE_PEM_rw(X509_CRL, X509_CRL)
-
-/* DECLARE_PEM_rw(PKCS7, PKCS7) */
-
-DECLARE_PEM_rw(NETSCAPE_CERT_SEQUENCE, NETSCAPE_CERT_SEQUENCE)
 
 DECLARE_PEM_rw(PKCS8, X509_SIG)
 

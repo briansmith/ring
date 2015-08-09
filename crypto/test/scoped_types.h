@@ -109,12 +109,8 @@ using ScopedEVP_PKEY = ScopedOpenSSLType<EVP_PKEY, EVP_PKEY_free>;
 using ScopedEVP_PKEY_CTX = ScopedOpenSSLType<EVP_PKEY_CTX, EVP_PKEY_CTX_free>;
 using ScopedPKCS8_PRIV_KEY_INFO = ScopedOpenSSLType<PKCS8_PRIV_KEY_INFO,
                                                     PKCS8_PRIV_KEY_INFO_free>;
-using ScopedPKCS12 = ScopedOpenSSLType<PKCS12, PKCS12_free>;
 using ScopedRSA = ScopedOpenSSLType<RSA, RSA_free>;
-using ScopedX509 = ScopedOpenSSLType<X509, X509_free>;
 using ScopedX509_ALGOR = ScopedOpenSSLType<X509_ALGOR, X509_ALGOR_free>;
-
-using ScopedX509Stack = ScopedOpenSSLStack<STACK_OF(X509), X509, X509_free>;
 
 using ScopedEVP_AEAD_CTX = ScopedOpenSSLContext<EVP_AEAD_CTX, void,
                                                 EVP_AEAD_CTX_zero,

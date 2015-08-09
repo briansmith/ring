@@ -192,36 +192,6 @@ static int check_pem(const char *nm, const char *name)
 	if(!strcmp(nm,PEM_STRING_DHXPARAMS) &&
 		!strcmp(name,PEM_STRING_DHPARAMS)) return 1;
 
-	/* Permit older strings */
-
-	if(!strcmp(nm,PEM_STRING_X509_OLD) &&
-		!strcmp(name,PEM_STRING_X509)) return 1;
-
-	if(!strcmp(nm,PEM_STRING_X509_REQ_OLD) &&
-		!strcmp(name,PEM_STRING_X509_REQ)) return 1;
-
-	/* Allow normal certs to be read as trusted certs */
-	if(!strcmp(nm,PEM_STRING_X509) &&
-		!strcmp(name,PEM_STRING_X509_TRUSTED)) return 1;
-
-	if(!strcmp(nm,PEM_STRING_X509_OLD) &&
-		!strcmp(name,PEM_STRING_X509_TRUSTED)) return 1;
-
-	/* Some CAs use PKCS#7 with CERTIFICATE headers */
-	if(!strcmp(nm, PEM_STRING_X509) &&
-		!strcmp(name, PEM_STRING_PKCS7)) return 1;
-
-	if(!strcmp(nm, PEM_STRING_PKCS7_SIGNED) &&
-		!strcmp(name, PEM_STRING_PKCS7)) return 1;
-
-#ifndef OPENSSL_NO_CMS
-	if(!strcmp(nm, PEM_STRING_X509) &&
-		!strcmp(name, PEM_STRING_CMS)) return 1;
-	/* Allow CMS to be read from PKCS#7 headers */
-	if(!strcmp(nm, PEM_STRING_PKCS7) &&
-		!strcmp(name, PEM_STRING_CMS)) return 1;
-#endif
-
 	return 0;
 }
 

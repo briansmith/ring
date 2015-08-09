@@ -58,6 +58,7 @@
 
 #include <openssl/asn1t.h>
 #include <openssl/mem.h>
+#include <openssl/obj.h>
 #include <openssl/x509.h>
 
 /* Minor tweak to operation: zero private key data */

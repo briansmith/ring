@@ -57,8 +57,10 @@
 #include <openssl/evp.h>
 
 #include <openssl/asn1.h>
+#include <openssl/ec.h>
 #include <openssl/err.h>
 #include <openssl/obj.h>
+#include <openssl/rsa.h>
 #include <openssl/x509.h>
 
 #include "internal.h"

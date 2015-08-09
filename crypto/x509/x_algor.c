@@ -55,7 +55,6 @@
 #include <openssl/x509.h>
 
 #include <openssl/asn1.h>
-#include <openssl/asn1t.h>
 #include <openssl/digest.h>
 #include <openssl/obj.h>
 
@@ -70,7 +69,6 @@ ASN1_ITEM_TEMPLATE(X509_ALGORS) =
 ASN1_ITEM_TEMPLATE_END(X509_ALGORS)
 
 IMPLEMENT_ASN1_FUNCTIONS(X509_ALGOR)
-IMPLEMENT_ASN1_ENCODE_FUNCTIONS_fname(X509_ALGORS, X509_ALGORS, X509_ALGORS)
 IMPLEMENT_ASN1_DUP_FUNCTION(X509_ALGOR)
 
 IMPLEMENT_ASN1_SET_OF(X509_ALGOR)

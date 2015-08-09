@@ -43,12 +43,10 @@
 	["crypto/hmac/hmac_test", "crypto/hmac/hmac_tests.txt"],
 	["crypto/lhash/lhash_test"],
 	["crypto/modes/gcm_test"],
-	["crypto/pkcs8/pkcs12_test"],
 	["crypto/poly1305/poly1305_test", "crypto/poly1305/poly1305_test.txt"],
 	["crypto/refcount_test"],
 	["crypto/rsa/rsa_test"],
 	["crypto/thread_test"],
-	["crypto/x509/pkcs7_test"],
 	["crypto/x509v3/tab_test"],
 	["crypto/x509v3/v3name_test"]
 ]

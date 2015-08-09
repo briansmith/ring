@@ -56,9 +56,6 @@
 
 #include <openssl/x509.h>
 
-#include <openssl/bio.h>
-#include <openssl/mem.h>
-
 
 int PKCS8_pkey_set0(PKCS8_PRIV_KEY_INFO *priv, ASN1_OBJECT *aobj, int version,
                     int ptype, void *pval, uint8_t *penc, int penclen) {

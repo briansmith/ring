@@ -7,7 +7,6 @@ add_executable(
   const.cc
   digest.cc
   genrsa.cc
-  pkcs12.cc
   rand.cc
   speed.cc
   tool.cc

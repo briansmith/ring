@@ -121,14 +121,6 @@ static RSA *pkey_get_rsa(EVP_PKEY *key, RSA **rsa);
 static EC_KEY *pkey_get_eckey(EVP_PKEY *key, EC_KEY **eckey);
 
 
-IMPLEMENT_PEM_rw(X509_REQ, X509_REQ, PEM_STRING_X509_REQ, X509_REQ)
-
-IMPLEMENT_PEM_write(X509_REQ_NEW, X509_REQ, PEM_STRING_X509_REQ_OLD, X509_REQ)
-
-IMPLEMENT_PEM_rw(X509_CRL, X509_CRL, PEM_STRING_X509_CRL, X509_CRL)
-
-
-
 /* We treat RSA private keys as a special case.
  *
  * For private keys we read in an EVP_PKEY structure with

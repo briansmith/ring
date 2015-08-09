@@ -130,7 +130,6 @@ add_subdirectory(evp)
 add_subdirectory(hkdf)
 add_subdirectory(pem)
 add_subdirectory(x509)
-add_subdirectory(x509v3)
 
 # Level 4
 add_subdirectory(pkcs8)
@@ -191,7 +190,6 @@ add_library(
   $<TARGET_OBJECTS:hkdf>
   $<TARGET_OBJECTS:pem>
   $<TARGET_OBJECTS:x509>
-  $<TARGET_OBJECTS:x509v3>
   $<TARGET_OBJECTS:pkcs8>
 )
 
