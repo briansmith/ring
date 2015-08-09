@@ -150,11 +150,6 @@ int dtls1_accept(SSL *s) {
 
   s->in_handshake++;
 
-  if (s->cert == NULL) {
-    OPENSSL_PUT_ERROR(SSL, SSL_R_NO_CERTIFICATE_SET);
-    return -1;
-  }
-
   for (;;) {
     state = s->state;
 

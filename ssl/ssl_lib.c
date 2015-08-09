@@ -794,7 +794,7 @@ STACK_OF(X509) *SSL_get_peer_cert_chain(const SSL *s) {
 
 /* Fix this so it checks all the valid key/cert options */
 int SSL_CTX_check_private_key(const SSL_CTX *ctx) {
-  if (ctx == NULL || ctx->cert == NULL || ctx->cert->x509 == NULL) {
+  if (ctx->cert->x509 == NULL) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_NO_CERTIFICATE_ASSIGNED);
     return 0;
   }
@@ -809,16 +809,6 @@ int SSL_CTX_check_private_key(const SSL_CTX *ctx) {
 
 /* Fix this function so that it takes an optional type parameter */
 int SSL_check_private_key(const SSL *ssl) {
-  if (ssl == NULL) {
-    OPENSSL_PUT_ERROR(SSL, ERR_R_PASSED_NULL_PARAMETER);
-    return 0;
-  }
-
-  if (ssl->cert == NULL) {
-    OPENSSL_PUT_ERROR(SSL, SSL_R_NO_CERTIFICATE_ASSIGNED);
-    return 0;
-  }
-
   if (ssl->cert->x509 == NULL) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_NO_CERTIFICATE_ASSIGNED);
     return 0;
@@ -1810,13 +1800,6 @@ void ssl_get_compatible_server_ciphers(SSL *s, uint32_t *out_mask_k,
   uint32_t mask_k, mask_a;
   int have_ecc_cert = 0, ecdsa_ok;
   X509 *x;
-
-  if (c == NULL) {
-    /* TODO(davidben): Is this codepath possible? */
-    *out_mask_k = 0;
-    *out_mask_a = 0;
-    return;
-  }
 
   dh_tmp = (c->dh_tmp != NULL || c->dh_tmp_cb != NULL);
 
