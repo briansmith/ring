@@ -1997,8 +1997,6 @@ DECLARE_PEM_rw(SSL_SESSION, SSL_SESSION)
 #define SSL_ERROR_PENDING_CERTIFICATE 12
 #define SSL_ERROR_WANT_PRIVATE_KEY_OPERATION 13
 
-#define SSL_CTRL_GET_CURVES 90
-#define SSL_CTRL_SET_CURVES 91
 #define SSL_CTRL_SET_SIGALGS 97
 #define SSL_CTRL_SET_CLIENT_SIGALGS 101
 
@@ -2095,11 +2093,17 @@ OPENSSL_EXPORT size_t SSL_get_tls_channel_id(SSL *ssl, uint8_t *out,
 OPENSSL_EXPORT size_t SSL_get0_certificate_types(SSL *ssl,
                                                  const uint8_t **out_types);
 
-#define SSL_get1_curves(ctx, s) SSL_ctrl(ctx, SSL_CTRL_GET_CURVES, 0, (char *)s)
-#define SSL_CTX_set1_curves(ctx, clist, clistlen) \
-  SSL_CTX_ctrl(ctx, SSL_CTRL_SET_CURVES, clistlen, (char *)clist)
-#define SSL_set1_curves(ctx, clist, clistlen) \
-  SSL_ctrl(ctx, SSL_CTRL_SET_CURVES, clistlen, (char *)clist)
+/* SSL_CTX_set1_curves sets the preferred curves for |ctx| to be |curves|. Each
+ * element of |curves| should be a curve nid. It returns one on success and
+ * zero on failure. */
+OPENSSL_EXPORT int SSL_CTX_set1_curves(SSL_CTX *ctx, const int *curves,
+                                       size_t curves_len);
+
+/* SSL_set1_curves sets the preferred curves for |ssl| to be |curves|. Each
+ * element of |curves| should be a curve nid. It returns one on success and
+ * zero on failure. */
+OPENSSL_EXPORT int SSL_set1_curves(SSL *ssl, const int *curves,
+                                   size_t curves_len);
 
 #define SSL_CTX_set1_sigalgs(ctx, slist, slistlen) \
   SSL_CTX_ctrl(ctx, SSL_CTRL_SET_SIGALGS, slistlen, (int *)slist)
@@ -2719,6 +2723,7 @@ OPENSSL_EXPORT const char *SSLeay_version(int unused);
 #define SSL_CTRL_OPTIONS doesnt_exist
 #define SSL_CTRL_SESS_NUMBER doesnt_exist
 #define SSL_CTRL_SET_CHANNEL_ID doesnt_exist
+#define SSL_CTRL_SET_CURVES doesnt_exist
 #define SSL_CTRL_SET_MAX_CERT_LIST doesnt_exist
 #define SSL_CTRL_SET_MAX_SEND_FRAGMENT doesnt_exist
 #define SSL_CTRL_SET_MSG_CALLBACK doesnt_exist
@@ -2763,6 +2768,7 @@ OPENSSL_EXPORT const char *SSLeay_version(int unused);
 #define SSL_CTX_sess_set_cache_size SSL_CTX_sess_set_cache_size
 #define SSL_CTX_set0_chain SSL_CTX_set0_chain
 #define SSL_CTX_set1_chain SSL_CTX_set1_chain
+#define SSL_CTX_set1_curves SSL_CTX_set1_curves
 #define SSL_CTX_set1_tls_channel_id SSL_CTX_set1_tls_channel_id
 #define SSL_CTX_set_max_cert_list SSL_CTX_set_max_cert_list
 #define SSL_CTX_set_max_send_fragment SSL_CTX_set_max_send_fragment
@@ -2798,6 +2804,7 @@ OPENSSL_EXPORT const char *SSLeay_version(int unused);
 #define SSL_session_reused SSL_session_reused
 #define SSL_set0_chain SSL_set0_chain
 #define SSL_set1_chain SSL_set1_chain
+#define SSL_set1_curves SSL_set1_curves
 #define SSL_set1_tls_channel_id SSL_set1_tls_channel_id
 #define SSL_set_max_cert_list SSL_set_max_cert_list
 #define SSL_set_max_send_fragment SSL_set_max_send_fragment
