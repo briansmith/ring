@@ -1987,11 +1987,8 @@ DECLARE_PEM_rw(SSL_SESSION, SSL_SESSION)
 
 #define SSL_CTRL_GET_CURVES 90
 #define SSL_CTRL_SET_CURVES 91
-#define SSL_CTRL_SET_CURVES_LIST 92
 #define SSL_CTRL_SET_SIGALGS 97
-#define SSL_CTRL_SET_SIGALGS_LIST 98
 #define SSL_CTRL_SET_CLIENT_SIGALGS 101
-#define SSL_CTRL_SET_CLIENT_SIGALGS_LIST 102
 #define SSL_CTRL_GET_CLIENT_CERT_TYPES 103
 #define SSL_CTRL_SET_CLIENT_CERT_TYPES 104
 #define SSL_CTRL_SET_VERIFY_CERT_STORE 106
@@ -2105,30 +2102,18 @@ OPENSSL_EXPORT size_t SSL_get_tls_channel_id(SSL *ssl, uint8_t *out,
 #define SSL_get1_curves(ctx, s) SSL_ctrl(ctx, SSL_CTRL_GET_CURVES, 0, (char *)s)
 #define SSL_CTX_set1_curves(ctx, clist, clistlen) \
   SSL_CTX_ctrl(ctx, SSL_CTRL_SET_CURVES, clistlen, (char *)clist)
-#define SSL_CTX_set1_curves_list(ctx, s) \
-  SSL_CTX_ctrl(ctx, SSL_CTRL_SET_CURVES_LIST, 0, (char *)s)
 #define SSL_set1_curves(ctx, clist, clistlen) \
   SSL_ctrl(ctx, SSL_CTRL_SET_CURVES, clistlen, (char *)clist)
-#define SSL_set1_curves_list(ctx, s) \
-  SSL_ctrl(ctx, SSL_CTRL_SET_CURVES_LIST, 0, (char *)s)
 
 #define SSL_CTX_set1_sigalgs(ctx, slist, slistlen) \
   SSL_CTX_ctrl(ctx, SSL_CTRL_SET_SIGALGS, slistlen, (int *)slist)
-#define SSL_CTX_set1_sigalgs_list(ctx, s) \
-  SSL_CTX_ctrl(ctx, SSL_CTRL_SET_SIGALGS_LIST, 0, (char *)s)
 #define SSL_set1_sigalgs(ctx, slist, slistlen) \
   SSL_ctrl(ctx, SSL_CTRL_SET_SIGALGS, clistlen, (int *)slist)
-#define SSL_set1_sigalgs_list(ctx, s) \
-  SSL_ctrl(ctx, SSL_CTRL_SET_SIGALGS_LIST, 0, (char *)s)
 
 #define SSL_CTX_set1_client_sigalgs(ctx, slist, slistlen) \
   SSL_CTX_ctrl(ctx, SSL_CTRL_SET_CLIENT_SIGALGS, slistlen, (int *)slist)
-#define SSL_CTX_set1_client_sigalgs_list(ctx, s) \
-  SSL_CTX_ctrl(ctx, SSL_CTRL_SET_CLIENT_SIGALGS_LIST, 0, (char *)s)
 #define SSL_set1_client_sigalgs(ctx, slist, slistlen) \
   SSL_ctrl(ctx, SSL_CTRL_SET_CLIENT_SIGALGS, clistlen, (int *)slist)
-#define SSL_set1_client_sigalgs_list(ctx, s) \
-  SSL_ctrl(ctx, SSL_CTRL_SET_CLIENT_SIGALGS_LIST, 0, (char *)s)
 
 #define SSL_get0_certificate_types(s, clist) \
   SSL_ctrl(s, SSL_CTRL_GET_CLIENT_CERT_TYPES, 0, (char *)clist)
