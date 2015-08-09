@@ -795,14 +795,13 @@ static bool CheckHandshakeProperties(SSL *ssl, bool is_resume) {
   }
 
   if (!config->expected_certificate_types.empty()) {
-    uint8_t *certificate_types;
-    int num_certificate_types =
+    const uint8_t *certificate_types;
+    size_t certificate_types_len =
         SSL_get0_certificate_types(ssl, &certificate_types);
-    if (num_certificate_types !=
-        (int)config->expected_certificate_types.size() ||
+    if (certificate_types_len != config->expected_certificate_types.size() ||
         memcmp(certificate_types,
                config->expected_certificate_types.data(),
-               num_certificate_types) != 0) {
+               certificate_types_len) != 0) {
       fprintf(stderr, "certificate types mismatch\n");
       return false;
     }

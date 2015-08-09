@@ -372,6 +372,15 @@ int SSL_set_tlsext_host_name(SSL *ssl, const char *name) {
   return 1;
 }
 
+size_t SSL_get0_certificate_types(SSL *ssl, const uint8_t **out_types) {
+  if (ssl->server || !ssl->s3->tmp.cert_req) {
+    *out_types = NULL;
+    return 0;
+  }
+  *out_types = ssl->s3->tmp.certificate_types;
+  return ssl->s3->tmp.num_certificate_types;
+}
+
 long ssl3_ctrl(SSL *s, int cmd, long larg, void *parg) {
   int ret = 0;
 
@@ -404,17 +413,6 @@ long ssl3_ctrl(SSL *s, int cmd, long larg, void *parg) {
 
     case SSL_CTRL_SET_CLIENT_SIGALGS:
       return tls1_set_sigalgs(s->cert, parg, larg, 1);
-
-    case SSL_CTRL_GET_CLIENT_CERT_TYPES: {
-      const uint8_t **pctype = parg;
-      if (s->server || !s->s3->tmp.cert_req) {
-        return 0;
-      }
-      if (pctype) {
-        *pctype = s->s3->tmp.certificate_types;
-      }
-      return (int)s->s3->tmp.num_certificate_types;
-    }
 
     case SSL_CTRL_SET_CLIENT_CERT_TYPES:
       if (!s->server) {

@@ -1989,7 +1989,6 @@ DECLARE_PEM_rw(SSL_SESSION, SSL_SESSION)
 #define SSL_CTRL_SET_CURVES 91
 #define SSL_CTRL_SET_SIGALGS 97
 #define SSL_CTRL_SET_CLIENT_SIGALGS 101
-#define SSL_CTRL_GET_CLIENT_CERT_TYPES 103
 #define SSL_CTRL_SET_CLIENT_CERT_TYPES 104
 #define SSL_CTRL_SET_VERIFY_CERT_STORE 106
 #define SSL_CTRL_SET_CHAIN_CERT_STORE 107
@@ -2081,6 +2080,12 @@ OPENSSL_EXPORT int SSL_set1_tls_channel_id(SSL *ssl, EVP_PKEY *private_key);
 OPENSSL_EXPORT size_t SSL_get_tls_channel_id(SSL *ssl, uint8_t *out,
                                              size_t max_out);
 
+/* SSL_get0_certificate_types, for a client, sets |*out_types| to an array
+ * containing the client certificate types requested by a server. It returns the
+ * length of the array. */
+OPENSSL_EXPORT size_t SSL_get0_certificate_types(SSL *ssl,
+                                                 const uint8_t **out_types);
+
 #define SSL_CTX_set0_verify_cert_store(ctx, st) \
   SSL_CTX_ctrl(ctx, SSL_CTRL_SET_VERIFY_CERT_STORE, 0, (char *)st)
 #define SSL_CTX_set1_verify_cert_store(ctx, st) \
@@ -2114,9 +2119,6 @@ OPENSSL_EXPORT size_t SSL_get_tls_channel_id(SSL *ssl, uint8_t *out,
   SSL_CTX_ctrl(ctx, SSL_CTRL_SET_CLIENT_SIGALGS, slistlen, (int *)slist)
 #define SSL_set1_client_sigalgs(ctx, slist, slistlen) \
   SSL_ctrl(ctx, SSL_CTRL_SET_CLIENT_SIGALGS, clistlen, (int *)slist)
-
-#define SSL_get0_certificate_types(s, clist) \
-  SSL_ctrl(s, SSL_CTRL_GET_CLIENT_CERT_TYPES, 0, (char *)clist)
 
 #define SSL_CTX_set1_client_certificate_types(ctx, clist, clistlen) \
   SSL_CTX_ctrl(ctx, SSL_CTRL_SET_CLIENT_CERT_TYPES, clistlen, (char *)clist)
@@ -2704,6 +2706,7 @@ OPENSSL_EXPORT const char *SSLeay_version(int unused);
 #define SSL_CTRL_EXTRA_CHAIN_CERT doesnt_exist
 #define SSL_CTRL_GET_CHAIN_CERTS doesnt_exist
 #define SSL_CTRL_GET_CHANNEL_ID doesnt_exist
+#define SSL_CTRL_GET_CLIENT_CERT_TYPES doesnt_exist
 #define SSL_CTRL_GET_EXTRA_CHAIN_CERTS doesnt_exist
 #define SSL_CTRL_GET_MAX_CERT_LIST doesnt_exist
 #define SSL_CTRL_GET_NUM_RENEGOTIATIONS doesnt_exist
@@ -2785,6 +2788,7 @@ OPENSSL_EXPORT const char *SSLeay_version(int unused);
 #define SSL_clear_mode SSL_clear_mode
 #define SSL_clear_options SSL_clear_options
 #define SSL_enable_tls_channel_id SSL_enable_tls_channel_id
+#define SSL_get0_certificate_types SSL_get0_certificate_types
 #define SSL_get0_chain_certs SSL_get0_chain_certs
 #define SSL_get_max_cert_list SSL_get_max_cert_list
 #define SSL_get_mode SSL_get_mode
