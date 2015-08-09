@@ -1076,10 +1076,6 @@ int SSL_get_secure_renegotiation_support(const SSL *ssl) {
   return ssl->s3->send_connection_binding;
 }
 
-long SSL_ctrl(SSL *s, int cmd, long larg, void *parg) {
-  return s->method->ssl_ctrl(s, cmd, larg, parg);
-}
-
 LHASH_OF(SSL_SESSION) *SSL_CTX_sessions(SSL_CTX *ctx) { return ctx->sessions; }
 
 size_t SSL_CTX_sess_number(const SSL_CTX *ctx) {
@@ -1104,10 +1100,6 @@ int SSL_CTX_set_session_cache_mode(SSL_CTX *ctx, int mode) {
 
 int SSL_CTX_get_session_cache_mode(const SSL_CTX *ctx) {
   return ctx->session_cache_mode;
-}
-
-long SSL_CTX_ctrl(SSL_CTX *ctx, int cmd, long larg, void *parg) {
-  return ctx->method->ssl_ctx_ctrl(ctx, cmd, larg, parg);
 }
 
 /* return a STACK of the ciphers available for the SSL and in order of

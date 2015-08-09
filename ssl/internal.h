@@ -613,21 +613,7 @@ typedef struct cert_st {
   uint8_t *peer_sigalgs;
   /* Size of above array */
   size_t peer_sigalgslen;
-  /* suppported signature algorithms.
-   * When set on a client this is sent in the client hello as the
-   * supported signature algorithms extension. For servers
-   * it represents the signature algorithms we are willing to use. */
-  uint8_t *conf_sigalgs;
-  /* Size of above array */
-  size_t conf_sigalgslen;
-  /* Client authentication signature algorithms, if not set then
-   * uses conf_sigalgs. On servers these will be the signature
-   * algorithms sent to the client in a cerificate request for TLS 1.2.
-   * On a client this represents the signature algortithms we are
-   * willing to use for client authentication. */
-  uint8_t *client_sigalgs;
-  /* Size of above array */
-  size_t client_sigalgslen;
+
   /* Signature algorithms shared by client and server: cached
    * because these are used most often. */
   TLS_SIGALGS *shared_sigalgs;
@@ -682,8 +668,6 @@ struct ssl_protocol_method_st {
   void (*ssl_read_close_notify)(SSL *s);
   int (*ssl_write_app_data)(SSL *s, const void *buf_, int len);
   int (*ssl_dispatch_alert)(SSL *s);
-  long (*ssl_ctrl)(SSL *s, int cmd, long larg, void *parg);
-  long (*ssl_ctx_ctrl)(SSL_CTX *ctx, int cmd, long larg, void *parg);
   /* supports_cipher returns one if |cipher| is supported by this protocol and
    * zero otherwise. */
   int (*supports_cipher)(const SSL_CIPHER *cipher);
@@ -947,8 +931,6 @@ int ssl3_new(SSL *s);
 void ssl3_free(SSL *s);
 int ssl3_accept(SSL *s);
 int ssl3_connect(SSL *s);
-long ssl3_ctrl(SSL *s, int cmd, long larg, void *parg);
-long ssl3_ctx_ctrl(SSL_CTX *s, int cmd, long larg, void *parg);
 
 /* ssl3_record_sequence_update increments the sequence number in |seq|. It
  * returns one on success and zero on wraparound. */
@@ -1138,9 +1120,6 @@ const EVP_MD *tls12_get_hash(uint8_t hash_alg);
 int tls1_channel_id_hash(SSL *ssl, uint8_t *out, size_t *out_len);
 
 int tls1_record_handshake_hashes_for_channel_id(SSL *s);
-
-int tls1_set_sigalgs_list(CERT *c, const char *str, int client);
-int tls1_set_sigalgs(CERT *c, const int *salg, size_t salglen, int client);
 
 /* ssl_ctx_log_rsa_client_key_exchange logs |premaster| to |ctx|, if logging is
  * enabled. It returns one on success and zero on failure. The entry is

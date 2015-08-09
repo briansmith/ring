@@ -208,24 +208,6 @@ CERT *ssl_cert_dup(CERT *cert) {
     }
   }
 
-  /* Copy over signature algorithm configuration. */
-  if (cert->conf_sigalgs) {
-    ret->conf_sigalgs = BUF_memdup(cert->conf_sigalgs, cert->conf_sigalgslen);
-    if (!ret->conf_sigalgs) {
-      goto err;
-    }
-    ret->conf_sigalgslen = cert->conf_sigalgslen;
-  }
-
-  if (cert->client_sigalgs) {
-    ret->client_sigalgs = BUF_memdup(cert->client_sigalgs,
-                                     cert->client_sigalgslen);
-    if (!ret->client_sigalgs) {
-      goto err;
-    }
-    ret->client_sigalgslen = cert->client_sigalgslen;
-  }
-
   ret->cert_cb = cert->cert_cb;
   ret->cert_cb_arg = cert->cert_cb_arg;
 
@@ -260,8 +242,6 @@ void ssl_cert_free(CERT *c) {
 
   ssl_cert_clear_certs(c);
   OPENSSL_free(c->peer_sigalgs);
-  OPENSSL_free(c->conf_sigalgs);
-  OPENSSL_free(c->client_sigalgs);
   OPENSSL_free(c->shared_sigalgs);
 
   OPENSSL_free(c);

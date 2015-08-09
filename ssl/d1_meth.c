@@ -69,8 +69,6 @@ static const SSL_PROTOCOL_METHOD DTLS_protocol_method = {
     dtls1_read_close_notify,
     dtls1_write_app_data,
     dtls1_dispatch_alert,
-    ssl3_ctrl,
-    ssl3_ctx_ctrl,
     dtls1_supports_cipher,
     DTLS1_HM_HEADER_LENGTH,
     dtls1_set_handshake_header,

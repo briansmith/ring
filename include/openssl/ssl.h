@@ -1997,9 +1997,6 @@ DECLARE_PEM_rw(SSL_SESSION, SSL_SESSION)
 #define SSL_ERROR_PENDING_CERTIFICATE 12
 #define SSL_ERROR_WANT_PRIVATE_KEY_OPERATION 13
 
-#define SSL_CTRL_SET_SIGALGS 97
-#define SSL_CTRL_SET_CLIENT_SIGALGS 101
-
 /* DTLSv1_get_timeout queries the next DTLS handshake timeout. If there is a
  * timeout in progress, it sets |*out| to the time remaining and returns one.
  * Otherwise, it returns zero.
@@ -2104,16 +2101,6 @@ OPENSSL_EXPORT int SSL_CTX_set1_curves(SSL_CTX *ctx, const int *curves,
  * zero on failure. */
 OPENSSL_EXPORT int SSL_set1_curves(SSL *ssl, const int *curves,
                                    size_t curves_len);
-
-#define SSL_CTX_set1_sigalgs(ctx, slist, slistlen) \
-  SSL_CTX_ctrl(ctx, SSL_CTRL_SET_SIGALGS, slistlen, (int *)slist)
-#define SSL_set1_sigalgs(ctx, slist, slistlen) \
-  SSL_ctrl(ctx, SSL_CTRL_SET_SIGALGS, clistlen, (int *)slist)
-
-#define SSL_CTX_set1_client_sigalgs(ctx, slist, slistlen) \
-  SSL_CTX_ctrl(ctx, SSL_CTRL_SET_CLIENT_SIGALGS, slistlen, (int *)slist)
-#define SSL_set1_client_sigalgs(ctx, slist, slistlen) \
-  SSL_ctrl(ctx, SSL_CTRL_SET_CLIENT_SIGALGS, clistlen, (int *)slist)
 
 OPENSSL_EXPORT int SSL_CTX_set_cipher_list(SSL_CTX *, const char *str);
 OPENSSL_EXPORT int SSL_CTX_set_cipher_list_tls11(SSL_CTX *, const char *str);
@@ -2283,8 +2270,6 @@ OPENSSL_EXPORT int SSL_connect(SSL *ssl);
 OPENSSL_EXPORT int SSL_read(SSL *ssl, void *buf, int num);
 OPENSSL_EXPORT int SSL_peek(SSL *ssl, void *buf, int num);
 OPENSSL_EXPORT int SSL_write(SSL *ssl, const void *buf, int num);
-OPENSSL_EXPORT long SSL_ctrl(SSL *ssl, int cmd, long larg, void *parg);
-OPENSSL_EXPORT long SSL_CTX_ctrl(SSL_CTX *ctx, int cmd, long larg, void *parg);
 
 OPENSSL_EXPORT int SSL_get_error(const SSL *s, int ret_code);
 /* SSL_get_version returns a string describing the TLS version used by |s|. For
