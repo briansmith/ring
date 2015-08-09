@@ -1990,8 +1990,6 @@ DECLARE_PEM_rw(SSL_SESSION, SSL_SESSION)
 #define SSL_CTRL_SET_SIGALGS 97
 #define SSL_CTRL_SET_CLIENT_SIGALGS 101
 #define SSL_CTRL_SET_CLIENT_CERT_TYPES 104
-#define SSL_CTRL_SET_VERIFY_CERT_STORE 106
-#define SSL_CTRL_SET_CHAIN_CERT_STORE 107
 
 /* DTLSv1_get_timeout queries the next DTLS handshake timeout. If there is a
  * timeout in progress, it sets |*out| to the time remaining and returns one.
@@ -2085,24 +2083,6 @@ OPENSSL_EXPORT size_t SSL_get_tls_channel_id(SSL *ssl, uint8_t *out,
  * length of the array. */
 OPENSSL_EXPORT size_t SSL_get0_certificate_types(SSL *ssl,
                                                  const uint8_t **out_types);
-
-#define SSL_CTX_set0_verify_cert_store(ctx, st) \
-  SSL_CTX_ctrl(ctx, SSL_CTRL_SET_VERIFY_CERT_STORE, 0, (char *)st)
-#define SSL_CTX_set1_verify_cert_store(ctx, st) \
-  SSL_CTX_ctrl(ctx, SSL_CTRL_SET_VERIFY_CERT_STORE, 1, (char *)st)
-#define SSL_CTX_set0_chain_cert_store(ctx, st) \
-  SSL_CTX_ctrl(ctx, SSL_CTRL_SET_CHAIN_CERT_STORE, 0, (char *)st)
-#define SSL_CTX_set1_chain_cert_store(ctx, st) \
-  SSL_CTX_ctrl(ctx, SSL_CTRL_SET_CHAIN_CERT_STORE, 1, (char *)st)
-
-#define SSL_set0_verify_cert_store(s, st) \
-  SSL_ctrl(s, SSL_CTRL_SET_VERIFY_CERT_STORE, 0, (char *)st)
-#define SSL_set1_verify_cert_store(s, st) \
-  SSL_ctrl(s, SSL_CTRL_SET_VERIFY_CERT_STORE, 1, (char *)st)
-#define SSL_set0_chain_cert_store(s, st) \
-  SSL_ctrl(s, SSL_CTRL_SET_CHAIN_CERT_STORE, 0, (char *)st)
-#define SSL_set1_chain_cert_store(s, st) \
-  SSL_ctrl(s, SSL_CTRL_SET_CHAIN_CERT_STORE, 1, (char *)st)
 
 #define SSL_get1_curves(ctx, s) SSL_ctrl(ctx, SSL_CTRL_GET_CURVES, 0, (char *)s)
 #define SSL_CTX_set1_curves(ctx, clist, clistlen) \

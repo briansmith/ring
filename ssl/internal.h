@@ -647,11 +647,6 @@ typedef struct cert_st {
    * supported signature algorithms or curves. */
   int (*cert_cb)(SSL *ssl, void *arg);
   void *cert_cb_arg;
-
-  /* Optional X509_STORE for chain building or certificate validation
-   * If NULL the parent SSL_CTX store is used instead. */
-  X509_STORE *chain_store;
-  X509_STORE *verify_store;
 } CERT;
 
 typedef struct sess_cert_st {
@@ -889,7 +884,6 @@ void ssl_cert_set_cert_cb(CERT *cert,
 
 int ssl_verify_cert_chain(SSL *s, STACK_OF(X509) *sk);
 int ssl_add_cert_chain(SSL *s, unsigned long *l);
-int ssl_cert_set_cert_store(CERT *c, X509_STORE *store, int chain, int ref);
 void ssl_update_cache(SSL *s, int mode);
 
 /* ssl_get_compatible_server_ciphers determines the key exchange and

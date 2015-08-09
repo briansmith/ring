@@ -239,16 +239,6 @@ CERT *ssl_cert_dup(CERT *cert) {
   ret->cert_cb = cert->cert_cb;
   ret->cert_cb_arg = cert->cert_cb_arg;
 
-  if (cert->verify_store) {
-    CRYPTO_refcount_inc(&cert->verify_store->references);
-    ret->verify_store = cert->verify_store;
-  }
-
-  if (cert->chain_store) {
-    CRYPTO_refcount_inc(&cert->chain_store->references);
-    ret->chain_store = cert->chain_store;
-  }
-
   return ret;
 
 err:
@@ -284,8 +274,6 @@ void ssl_cert_free(CERT *c) {
   OPENSSL_free(c->client_sigalgs);
   OPENSSL_free(c->shared_sigalgs);
   OPENSSL_free(c->client_certificate_types);
-  X509_STORE_free(c->verify_store);
-  X509_STORE_free(c->chain_store);
 
   OPENSSL_free(c);
 }
@@ -397,21 +385,14 @@ void ssl_sess_cert_free(SESS_CERT *sess_cert) {
 int ssl_verify_cert_chain(SSL *s, STACK_OF(X509) *sk) {
   X509 *x;
   int i;
-  X509_STORE *verify_store;
   X509_STORE_CTX ctx;
-
-  if (s->cert->verify_store) {
-    verify_store = s->cert->verify_store;
-  } else {
-    verify_store = s->ctx->cert_store;
-  }
 
   if (sk == NULL || sk_X509_num(sk) == 0) {
     return 0;
   }
 
   x = sk_X509_value(sk, 0);
-  if (!X509_STORE_CTX_init(&ctx, verify_store, x, sk)) {
+  if (!X509_STORE_CTX_init(&ctx, s->ctx->cert_store, x, sk)) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_X509_LIB);
     return 0;
   }
@@ -734,17 +715,10 @@ int ssl_add_cert_chain(SSL *ssl, unsigned long *l) {
 
   X509 *x = cert->x509;
   STACK_OF(X509) *chain = cert->chain;
-  X509_STORE *chain_store;
 
   if (x == NULL) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_NO_CERTIFICATE_SET);
     return 0;
-  }
-
-  if (ssl->cert->chain_store) {
-    chain_store = ssl->cert->chain_store;
-  } else {
-    chain_store = ssl->ctx->cert_store;
   }
 
   if ((ssl->mode & SSL_MODE_NO_AUTO_CHAIN) || chain != NULL) {
@@ -765,7 +739,7 @@ int ssl_add_cert_chain(SSL *ssl, unsigned long *l) {
   } else {
     X509_STORE_CTX xs_ctx;
 
-    if (!X509_STORE_CTX_init(&xs_ctx, chain_store, x, NULL)) {
+    if (!X509_STORE_CTX_init(&xs_ctx, ssl->ctx->cert_store, x, NULL)) {
       OPENSSL_PUT_ERROR(SSL, ERR_R_X509_LIB);
       return 0;
     }
@@ -783,23 +757,6 @@ int ssl_add_cert_chain(SSL *ssl, unsigned long *l) {
     X509_STORE_CTX_cleanup(&xs_ctx);
   }
 
-  return 1;
-}
-
-int ssl_cert_set_cert_store(CERT *c, X509_STORE *store, int chain, int ref) {
-  X509_STORE **pstore;
-  if (chain) {
-    pstore = &c->chain_store;
-  } else {
-    pstore = &c->verify_store;
-  }
-
-  X509_STORE_free(*pstore);
-  *pstore = store;
-
-  if (ref && store) {
-    CRYPTO_refcount_inc(&store->references);
-  }
   return 1;
 }
 
