@@ -605,6 +605,14 @@ func generateIndex(outPath string, config *Config, headerDescriptions map[string
 	return nil
 }
 
+func copyFile(outPath string, inFilePath string) error {
+	bytes, err := ioutil.ReadFile(inFilePath)
+	if err != nil {
+		return err
+	}
+	return ioutil.WriteFile(filepath.Join(outPath, filepath.Base(inFilePath)), bytes, 0666)
+}
+
 func main() {
 	var (
 		configFlag *string = flag.String("config", "doc.config", "Location of config file")
@@ -643,6 +651,11 @@ func main() {
 
 	if err := generateIndex(*outputDir, &config, headerDescriptions); err != nil {
 		fmt.Printf("Failed to generate index: %s\n", err)
+		os.Exit(1)
+	}
+
+	if err := copyFile(*outputDir, "doc.css"); err != nil {
+		fmt.Printf("Failed to copy static file: %s\n", err)
 		os.Exit(1)
 	}
 }
