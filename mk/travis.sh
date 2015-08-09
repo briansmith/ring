@@ -31,6 +31,12 @@ if [[ "${TRAVIS_LANGUAGE}" == "cpp" ]]; then
   make -j2 check CC=$CC_X CXX=$CXX_X TARGET=$TARGET_X \
                  CMAKE_BUILD_TYPE=$MODE_X NO_ASM=${NO_ASM_X-}
 
+  # Build the documentation to make sure we didn't break it.
+  mkdir build/doc
+  cd util
+  go run doc.go --out=../build/doc
+  cd ..
+
   # Verify nothing was added to source directory during build.
   ! git clean --dry-run | grep ".*"
   if [[ $? != 0 ]]; then exit $?; fi
@@ -53,6 +59,8 @@ elif [[ "${TRAVIS_LANGUAGE}" == "rust" ]]; then
   CC=$CC_X CXX=$CXX_X cargo build -j2 ${mode-} --verbose
 
   CC=$CC_X CXX=$CXX_X cargo test -j2 ${mode-} --verbose
+
+  CC=$CC_X CXX=$CXX_X cargo doc --verbose
 
   CC=$CC_X CXX=$CXX_X cargo clean --verbose
 else
