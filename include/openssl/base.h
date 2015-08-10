@@ -108,6 +108,7 @@ extern "C" {
 #endif
 
 #define OPENSSL_IS_BORINGSSL
+#define OPENSSL_IS_RING
 #define OPENSSL_VERSION_NUMBER 0x10002000
 
 #if defined(BORINGSSL_SHARED_LIBRARY)
