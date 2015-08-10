@@ -35,8 +35,13 @@ The Rust API
 ============
 The first part of the ```rust_ring``` Rust crate is now available.
 
-Currently only support for cryptographic digests is available. See the
-documentation at
+Currently these features are supported through the Rust API:
+
+* Cryptographic digests (SHA-256, SHA-384, SHA-512, SHA-1, and MD5).
+* RSA PKCS#1 Signature Verification.
+* ECDSA Signature Verification for curves P-256, P-384, and P-521.
+
+See the documentation at
 https://briansmith.github.io/ring/rust_ring/. Also take a look at the example
 program [checkdigest.rs](examples/checkdigest.rs).
 

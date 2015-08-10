@@ -68,6 +68,26 @@
 #include "../internal.h"
 
 
+int RSA_verify_pkcs1_signed_digest(int hash_nid, const uint8_t *digest,
+                                   size_t digest_len, const uint8_t *sig,
+                                   size_t sig_len, const uint8_t *rsa_key,
+                                   const size_t rsa_key_len) {
+  /* TODO(perf): Avoid all the overhead of allocating an |RSA| on the heap and
+   * dealing with the mutex and whatnot. */
+
+  RSA *key = RSA_public_key_from_bytes(rsa_key, rsa_key_len);
+  if (key == NULL) {
+    return 0;
+  }
+  /* Don't cache the intermediate values since we're not reusing the key. */
+  key->flags &= ~RSA_FLAG_CACHE_PUBLIC;
+
+  int ret = RSA_verify(hash_nid, digest, digest_len, sig, sig_len, key);
+  RSA_free(key);
+
+  return ret;
+}
+
 RSA *RSA_new(void) { return RSA_new_method(NULL); }
 
 RSA *RSA_new_method(const ENGINE *engine) {

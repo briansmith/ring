@@ -63,6 +63,39 @@
 #include "../ec/internal.h"
 
 
+int ECDSA_verify_signed_digest(int hash_nid, const uint8_t *digest,
+                               size_t digest_len, const uint8_t *sig,
+                               size_t sig_len, int ec_curve_nid,
+                               const uint8_t *ec_key, const size_t ec_key_len) {
+  EC_GROUP *group = EC_GROUP_new_by_curve_name(ec_curve_nid);
+  if (!group) {
+    return 0;
+  }
+
+  EC_POINT *point = NULL;
+  EC_KEY *key = NULL;
+  int ret = 0;
+
+  point = EC_POINT_new(group);
+  key = EC_KEY_new();
+  if (!point ||
+      !key ||
+      !EC_KEY_set_group(key, group) ||
+      !EC_POINT_oct2point(group, point, ec_key, ec_key_len, NULL) ||
+      !EC_KEY_set_public_key(key, point)) {
+    goto err;
+  }
+
+  ret = ECDSA_verify(0, digest, digest_len, sig, sig_len, key);
+
+err:
+  EC_KEY_free(key);
+  EC_POINT_free(point);
+  EC_GROUP_free(group);
+
+  return ret;
+}
+
 int ECDSA_sign(int type, const uint8_t *digest, size_t digest_len, uint8_t *sig,
                unsigned int *sig_len, EC_KEY *eckey) {
   return ECDSA_sign_ex(type, digest, digest_len, sig, sig_len, NULL, NULL,

@@ -68,6 +68,14 @@ extern "C" {
 
 /* Signing and verifing. */
 
+OPENSSL_EXPORT int ECDSA_verify_signed_digest(int hash_nid,
+                                              const uint8_t *digest,
+                                              size_t digest_len,
+                                              const uint8_t *sig,
+                                              size_t sig_len, int ec_curve_nid,
+                                              const uint8_t *ec_key,
+                                              const size_t ec_key_len);
+
 /* ECDSA_sign signs |digest_len| bytes from |digest| with |key| and writes the
  * resulting signature to |sig|, which must have |ECDSA_size(key)| bytes of
  * space. On successful exit, |*sig_len| is set to the actual number of bytes
