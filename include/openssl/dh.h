@@ -235,7 +235,7 @@ struct dh_st {
 
   BIGNUM *p;
   BIGNUM *g;
-  BIGNUM *pub_key;  /* g^x */
+  BIGNUM *pub_key;  /* g^x mod p */
   BIGNUM *priv_key; /* x */
 
   /* priv_length contains the length, in bits, of the private value. If zero,
