@@ -81,11 +81,6 @@ targets = {
     ],
 }
 
-no_asms = [
-    "",
-    "1",
-]
-
 def format_entries():
     return "\n".join([format_entry(os, target, compiler, no_asm, language, mode)
                       for os in oss
@@ -93,10 +88,14 @@ def format_entries():
                       for compiler in compilers[os]
                       for language in languages
                       for mode in modes
+                      # NO_ASM is only relevant for "cpp" builds because the
+                      # Rust build ignores that option.
+                      #
                       # XXX: 32-bit GCC 4.9 does not work because Travis does
                       # not have g++-4.9-multilib whitelisted for use.
-                      if not (compiler == "gcc-4.9" and
-                              target == "i586-pc-linux-gnu")])
+                      if (not (language != "cpp" and  no_asm == "1")) and \
+                         (not (compiler == "gcc-4.9" and
+                               target == "i586-pc-linux-gnu"))])
 
 # We use alternative names (the "_X" suffix) so that, in mk/travis.sh, we can
 # enure that we set the specific variables we want and that no relevant
