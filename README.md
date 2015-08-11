@@ -33,7 +33,7 @@ were developed for *ring* have already been integrated upstream in BoringSSL.
 
 The Rust API
 ============
-The first part of the ```rust_ring``` Rust crate is now available.
+The first part of the ```ring``` Rust crate is now available.
 
 Currently these features are supported through the Rust API:
 
@@ -42,7 +42,7 @@ Currently these features are supported through the Rust API:
 * ECDSA Signature Verification for curves P-256, P-384, and P-521.
 
 See the documentation at
-https://briansmith.github.io/ring/rust_ring/. Also take a look at the example
+https://briansmith.github.io/ring/ring/. Also take a look at the example
 program [checkdigest.rs](examples/checkdigest.rs).
 
 See [Building the Rust Library](BUILDING.md#building-the-rust-library) for

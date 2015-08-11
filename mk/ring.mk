@@ -16,7 +16,7 @@ RING_PREFIX ?= ring/
 
 RING_CPPFLAGS = $(RING_THREAD_FLAGS) -I$(RING_PREFIX)include -D_XOPEN_SOURCE=700
 
-RING_LDLIBS = $(RING_THREAD_FLAGS) -L$(dir $(RING_LIB)) -lring
+RING_LDLIBS = $(RING_THREAD_FLAGS) -L$(dir $(RING_LIB)) -lring-core
 
 RING_SRCS = $(addprefix $(RING_PREFIX), \
   crypto/aes/aes.c \
@@ -200,7 +200,7 @@ else
 RING_CPPFLAGS += -DOPENSSL_NO_ASM=1
 endif
 
-RING_LIB = $(LIB_PREFIX)libring.a
+RING_LIB = $(LIB_PREFIX)libring-core.a
 
 # Recent versions of Linux have the D flag for deterministic builds, but Darwin
 # (at least) doesn't. Accroding to Debian's documentation, binutils is built

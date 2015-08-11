@@ -3,14 +3,13 @@ authors = ["Brian Smith <brian@briansmith.org>"]
 build = "build.rs"
 description = "A Rust interface for a simplification of BoringSSL's libcrypto."
 license-file = "LICENSE"
-name = "rust-ring"
+name = "ring"
 readme = "README.md"
 repository = "https://github.com/briansmith/ring"
 version = "0.1.0"
 
 [lib]
-name = "rust_ring"
-crate-type = ["rlib"]
+name = "ring"
 
 [dependencies]
 libc = "0.1"

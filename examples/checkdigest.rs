@@ -12,10 +12,10 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-extern crate rust_ring;
+extern crate ring;
 extern crate rustc_serialize;
 
-use rust_ring::{Digest, SHA256, SHA384, SHA512};
+use ring::{Digest, SHA256, SHA384, SHA512};
 use rustc_serialize::hex::FromHex;
 use std::error::Error;
 use std::io::{Read, Write};

@@ -53,7 +53,7 @@ fn main() {
         lib_path = Path::new(&out_dir).join("lib");
         args = vec![
             format!("-j{}", env::var("NUM_JOBS").unwrap()),
-            format!("{}/lib{}.a", lib_path.to_str().unwrap(), LIB_NAME),
+            format!("{}/lib{}-core.a", lib_path.to_str().unwrap(), LIB_NAME),
             format!("TARGET={}", target_str),
             format!("CMAKE_BUILD_TYPE={}", cmake_build_type),
             format!("BUILD_PREFIX={}/", out_dir),
@@ -91,5 +91,5 @@ fn main() {
     }
 
     println!("cargo:rustc-link-search=native={}", lib_path.to_str().unwrap());
-    println!("cargo:rustc-link-lib=static={}", LIB_NAME);
+    println!("cargo:rustc-link-lib=static={}-core", LIB_NAME);
 }

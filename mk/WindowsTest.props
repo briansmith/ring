@@ -11,7 +11,7 @@
       <PreprocessorDefinitions>_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
     <Link>
-      <AdditionalDependencies>ring.lib;ring-test.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>ring-core.lib;ring-test.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalLibraryDirectories>$(OutRootDir)lib;$(IntRootDir);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
   </ItemDefinitionGroup>
