@@ -110,6 +110,7 @@
 
 #include <string.h>
 
+#include <openssl/err.h>
 #include <openssl/mem.h>
 #include <openssl/thread.h>
 
@@ -175,6 +176,11 @@ int BN_MONT_CTX_set(BN_MONT_CTX *mont, const BIGNUM *mod, BN_CTX *ctx) {
   BIGNUM *Ri, *R;
   BIGNUM tmod;
   BN_ULONG buf[2];
+
+  if (BN_is_zero(mod)) {
+    OPENSSL_PUT_ERROR(BN, BN_R_DIV_BY_ZERO);
+    return 0;
+  }
 
   BN_CTX_start(ctx);
   Ri = BN_CTX_get(ctx);

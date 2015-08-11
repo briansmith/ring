@@ -488,6 +488,14 @@ static bool test_div(FILE *fp, BN_CTX *ctx) {
     return false;
   }
 
+  // Test the BN_div checks for division by zero.
+  BN_zero(b.get());
+  if (BN_div(d.get(), c.get(), a.get(), b.get(), ctx)) {
+    fprintf(stderr, "Divided by zero!\n");
+    return false;
+  }
+  ERR_clear_error();
+
   return true;
 }
 
@@ -912,6 +920,14 @@ static bool test_mont(FILE *fp, BN_CTX *ctx) {
       return false;
     }
   }
+
+  BN_zero(n.get());
+  if (BN_MONT_CTX_set(mont.get(), n.get(), ctx)) {
+    fprintf(stderr, "Division by zero!\n");
+    return false;
+  }
+  ERR_clear_error();
+
   return true;
 }
 
