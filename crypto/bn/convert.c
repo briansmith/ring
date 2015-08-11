@@ -56,7 +56,9 @@
 
 #include <openssl/bn.h>
 
+#include <assert.h>
 #include <ctype.h>
+#include <limits.h>
 #include <stdio.h>
 #include <string.h>
 
@@ -227,47 +229,59 @@ char *BN_bn2hex(const BIGNUM *bn) {
   return buf;
 }
 
-/* decode_hex decodes |i| bytes of hex data from |in| and updates |bn|. */
-static void decode_hex(BIGNUM *bn, const char *in, int i) {
-  int h, m, j, k, c;
-  BN_ULONG l=0;
-
-  j = i; /* least significant 'hex' */
-  h = 0;
-  while (j > 0) {
-    m = ((BN_BYTES * 2) <= j) ? (BN_BYTES * 2) : j;
-    l = 0;
-    for (;;) {
-      c = in[j - m];
-      if ((c >= '0') && (c <= '9')) {
-        k = c - '0';
-      } else if ((c >= 'a') && (c <= 'f')) {
-        k = c - 'a' + 10;
-      } else if ((c >= 'A') && (c <= 'F')) {
-        k = c - 'A' + 10;
-      } else {
-        k = 0; /* paranoia */
-      }
-
-      l = (l << 4) | k;
-
-      if (--m <= 0) {
-        bn->d[h++] = l;
-        break;
-      }
-    }
-
-    j -= (BN_BYTES * 2);
+/* decode_hex decodes |in_len| bytes of hex data from |in| and updates |bn|. */
+static int decode_hex(BIGNUM *bn, const char *in, int in_len) {
+  if (in_len > INT_MAX/4) {
+    OPENSSL_PUT_ERROR(BN, BN_R_BIGNUM_TOO_LONG);
+    return 0;
+  }
+  /* |in_len| is the number of hex digits. */
+  if (bn_expand(bn, in_len * 4) == NULL) {
+    return 0;
   }
 
-  bn->top = h;
+  int i = 0;
+  while (in_len > 0) {
+    /* Decode one |BN_ULONG| at a time. */
+    int todo = BN_BYTES * 2;
+    if (todo > in_len) {
+      todo = in_len;
+    }
+
+    BN_ULONG word = 0;
+    int j;
+    for (j = todo; j > 0; j--) {
+      char c = in[in_len - j];
+
+      BN_ULONG hex;
+      if (c >= '0' && c <= '9') {
+        hex = c - '0';
+      } else if (c >= 'a' && c <= 'f') {
+        hex = c - 'a' + 10;
+      } else if (c >= 'A' && c <= 'F') {
+        hex = c - 'A' + 10;
+      } else {
+        hex = 0;
+        /* This shouldn't happen. The caller checks |isxdigit|. */
+        assert(0);
+      }
+      word = (word << 4) | hex;
+    }
+
+    bn->d[i++] = word;
+    in_len -= todo;
+  }
+  assert(i <= bn->dmax);
+  bn->top = i;
+  return 1;
 }
 
 /* decode_dec decodes |in_len| bytes of decimal data from |in| and updates |bn|. */
-static void decode_dec(BIGNUM *bn, const char *in, int in_len) {
+static int decode_dec(BIGNUM *bn, const char *in, int in_len) {
   int i, j;
   BN_ULONG l = 0;
 
+  /* Decode |BN_DEC_NUM| digits at a time. */
   j = BN_DEC_NUM - (in_len % BN_DEC_NUM);
   if (j == BN_DEC_NUM) {
     j = 0;
@@ -277,15 +291,18 @@ static void decode_dec(BIGNUM *bn, const char *in, int in_len) {
     l *= 10;
     l += in[i] - '0';
     if (++j == BN_DEC_NUM) {
-      BN_mul_word(bn, BN_DEC_CONV);
-      BN_add_word(bn, l);
+      if (!BN_mul_word(bn, BN_DEC_CONV) ||
+          !BN_add_word(bn, l)) {
+        return 0;
+      }
       l = 0;
       j = 0;
     }
   }
+  return 1;
 }
 
-typedef void (*decode_func) (BIGNUM *bn, const char *in, int i);
+typedef int (*decode_func) (BIGNUM *bn, const char *in, int in_len);
 typedef int (*char_test_func) (int c);
 
 static int bn_x2bn(BIGNUM **outp, const char *in, decode_func decode, char_test_func want_char) {
@@ -302,7 +319,7 @@ static int bn_x2bn(BIGNUM **outp, const char *in, decode_func decode, char_test_
     in++;
   }
 
-  for (i = 0; want_char((unsigned char)in[i]); i++) {}
+  for (i = 0; want_char((unsigned char)in[i]) && i + neg < INT_MAX; i++) {}
 
   num = i + neg;
   if (outp == NULL) {
@@ -320,12 +337,9 @@ static int bn_x2bn(BIGNUM **outp, const char *in, decode_func decode, char_test_
     BN_zero(ret);
   }
 
-  /* i is the number of hex digests; */
-  if (bn_expand(ret, i * 4) == NULL) {
+  if (!decode(ret, in, i)) {
     goto err;
   }
-
-  decode(ret, in, i);
 
   bn_correct_top(ret);
   if (!BN_is_zero(ret)) {
