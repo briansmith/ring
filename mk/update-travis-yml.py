@@ -67,7 +67,7 @@ oss = [
     "linux",
 ]
 
-# The second vlaue in each tuple is the value of the NO_ASM paramter.
+# The second value in each tuple is the value of the NO_ASM paramter.
 targets = {
     "osx" : [
         ("x86_64-apple-darwin", ""),
