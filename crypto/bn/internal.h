@@ -136,9 +136,9 @@
 extern "C" {
 #endif
 
-/* bn_expand acts the same as |BN_wexpand|, but takes a number of bits rather
+/* bn_expand acts the same as |bn_wexpand|, but takes a number of bits rather
  * than a number of words. */
-BIGNUM *bn_expand(BIGNUM *bn, unsigned bits);
+BIGNUM *bn_expand(BIGNUM *bn, size_t bits);
 
 #if defined(OPENSSL_64_BIT)
 

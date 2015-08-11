@@ -322,7 +322,7 @@ OPENSSL_EXPORT void bn_correct_top(BIGNUM *bn);
 /* bn_wexpand ensures that |bn| has at least |words| works of space without
  * altering its value. It returns one on success or zero on allocation
  * failure. */
-OPENSSL_EXPORT BIGNUM *bn_wexpand(BIGNUM *bn, unsigned words);
+OPENSSL_EXPORT BIGNUM *bn_wexpand(BIGNUM *bn, size_t words);
 
 
 /* BIGNUM pools.

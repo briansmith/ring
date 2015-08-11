@@ -69,7 +69,8 @@
 #include "internal.h"
 
 BIGNUM *BN_bin2bn(const uint8_t *in, size_t len, BIGNUM *ret) {
-  unsigned num_words, m;
+  size_t num_words;
+  unsigned m;
   BN_ULONG word = 0;
   BIGNUM *bn = NULL;
 
@@ -95,7 +96,10 @@ BIGNUM *BN_bin2bn(const uint8_t *in, size_t len, BIGNUM *ret) {
     return NULL;
   }
 
-  ret->top = num_words;
+  /* |bn_wexpand| must check bounds on |num_words| to write it into
+   * |ret->dmax|. */
+  assert(num_words <= INT_MAX);
+  ret->top = (int)num_words;
   ret->neg = 0;
 
   while (len--) {
