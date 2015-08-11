@@ -42,7 +42,7 @@ Currently these features are supported through the Rust API:
 * ECDSA Signature Verification for curves P-256, P-384, and P-521.
 
 See the documentation at
-https://briansmith.github.io/ring/ring/. Also take a look at the example
+https://briansmith.org/rustdoc/ring/. Also take a look at the example
 program [checkdigest.rs](examples/checkdigest.rs).
 
 See [Building the Rust Library](BUILDING.md#building-the-rust-library) for

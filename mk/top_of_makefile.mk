@@ -15,7 +15,7 @@
 .DEFAULT_GOAL := all
 
 # $(TARGET) must be of the form <arch>-<vendor>-<sys>-<abi>, except <abi> can
-# Mac OS X (Darwin).
+# omitted on Mac OS X (Darwin).
 TARGET_WORDS = $(subst -, ,$(TARGET))
 TARGET_ARCH_BASE = $(word 1,$(TARGET_WORDS))
 TARGET_ARCH_NORMAL = \
