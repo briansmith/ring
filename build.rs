@@ -15,7 +15,13 @@
 use std::env;
 use std::path::Path;
 
+const LIB_NAME: &'static str = "ring";
+
 fn main() {
+    for (key, value) in env::vars() {
+        println!("{}: {}", key, value);
+    }
+
     let host_str = env::var("HOST").unwrap();
     let host_triple = host_str.split('-').collect::<Vec<&str>>();
 
@@ -47,7 +53,7 @@ fn main() {
         lib_path = Path::new(&out_dir).join("lib");
         args = vec![
             format!("-j{}", env::var("NUM_JOBS").unwrap()),
-            format!("{}/libring.a", lib_path.to_str().unwrap()),
+            format!("{}/lib{}.a", lib_path.to_str().unwrap(), LIB_NAME),
             format!("TARGET={}", target_str),
             format!("CMAKE_BUILD_TYPE={}", cmake_build_type),
             format!("BUILD_PREFIX={}/", out_dir),
@@ -65,9 +71,9 @@ fn main() {
         };
         let configuration = if is_debug { "Debug" } else { "Release" };
         args = vec![
-            format!("ring.sln"),
+            format!("{}.sln", LIB_NAME),
             format!("/m:{}", env::var("NUM_JOBS").unwrap()),
-            format!("/target:libring_Windows"),
+            format!("/target:lib{}_Windows", LIB_NAME),
             format!("/p:Platform={}", platform),
             format!("/p:Configuration={}", configuration),
             format!("/p:OutRootDir={}/", out_dir),
@@ -85,5 +91,5 @@ fn main() {
     }
 
     println!("cargo:rustc-link-search=native={}", lib_path.to_str().unwrap());
-    println!("cargo:rustc-link-lib=static=ring");
+    println!("cargo:rustc-link-lib=static={}", LIB_NAME);
 }
