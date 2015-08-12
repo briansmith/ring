@@ -11,14 +11,23 @@ platform:
 environment:
   matrix:
     - TOOLCHAIN_VERSION: 14.0
+      RUST: msbuild
+    - TOOLCHAIN_VERSION: 14.0
+      RUST: beta
+    - TOOLCHAIN_VERSION: 14.0
+      RUST: nightly
+      
     - TOOLCHAIN_VERSION: 12.0
-before_build:
-    # This is the recommended way to choose the toolchain version, according to
-    # Appveyor's documentation.
-    - SET PATH=C:\Program Files (x86)\MSBuild\%TOOLCHAIN_VERSION%\Bin;%PATH%
-build:
-  project: ring.sln
-  parallel: true
-  verbosity: normal
-test_script:
-  - go run util/all_tests.go -build-dir=build/%Platform%-%Configuration%/test/ring
+      RUST: msbuild
+    - TOOLCHAIN_VERSION: 12.0
+      RUST: 1.2.0
+    - TOOLCHAIN_VERSION: 12.0
+      RUST: beta
+    - TOOLCHAIN_VERSION: 12.0
+      RUST: nightly
+matrix:
+  allow_failures:
+    - RUST: 1.2.0
+      TOOLCHAIN_VERSION: 12.0
+      
+build_script: mk/appveyor.bat
