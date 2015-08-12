@@ -82,6 +82,7 @@
 #include <openssl/mem.h>
 
 #include "../crypto/test/scoped_types.h"
+#include "../crypto/test/test_util.h"
 
 
 // This program tests the BIGNUM implementation. It takes an optional -bc
@@ -121,6 +122,7 @@ static bool test_bn2bin_padded(BN_CTX *ctx);
 static bool test_dec2bn(BN_CTX *ctx);
 static bool test_hex2bn(BN_CTX *ctx);
 static bool test_asc2bn(BN_CTX *ctx);
+static bool test_mpi();
 static bool test_rand();
 static bool test_asn1();
 
@@ -316,6 +318,7 @@ int main(int argc, char *argv[]) {
       !test_dec2bn(ctx.get()) ||
       !test_hex2bn(ctx.get()) ||
       !test_asc2bn(ctx.get()) ||
+      !test_mpi() ||
       !test_rand() ||
       !test_asn1()) {
     return 1;
@@ -1577,6 +1580,63 @@ static bool test_asc2bn(BN_CTX *ctx) {
   if (!bn || !BN_is_word(bn.get(), 123) || BN_is_negative(bn.get())) {
     fprintf(stderr, "BN_asc2bn gave a bad result.\n");
     return false;
+  }
+
+  return true;
+}
+
+struct MPITest {
+  const char *base10;
+  const char *mpi;
+  size_t mpi_len;
+};
+
+static const MPITest kMPITests[] = {
+  { "0", "\x00\x00\x00\x00", 4 },
+  { "1", "\x00\x00\x00\x01\x01", 5 },
+  { "-1", "\x00\x00\x00\x01\x81", 5 },
+  { "128", "\x00\x00\x00\x02\x00\x80", 6 },
+  { "256", "\x00\x00\x00\x02\x01\x00", 6 },
+  { "-256", "\x00\x00\x00\x02\x81\x00", 6 },
+};
+
+static bool test_mpi() {
+  uint8_t scratch[8];
+
+  for (size_t i = 0; i < sizeof(kMPITests) / sizeof(kMPITests[0]); i++) {
+    const MPITest &test = kMPITests[i];
+    ScopedBIGNUM bn(ASCIIToBIGNUM(test.base10));
+    const size_t mpi_len = BN_bn2mpi(bn.get(), NULL);
+    if (mpi_len > sizeof(scratch)) {
+      fprintf(stderr, "MPI test #%u: MPI size is too large to test.\n",
+              (unsigned)i);
+      return false;
+    }
+
+    const size_t mpi_len2 = BN_bn2mpi(bn.get(), scratch);
+    if (mpi_len != mpi_len2) {
+      fprintf(stderr, "MPI test #%u: length changes.\n", (unsigned)i);
+      return false;
+    }
+
+    if (mpi_len != test.mpi_len ||
+        memcmp(test.mpi, scratch, mpi_len) != 0) {
+      fprintf(stderr, "MPI test #%u failed:\n", (unsigned)i);
+      hexdump(stderr, "Expected: ", test.mpi, test.mpi_len);
+      hexdump(stderr, "Got:      ", scratch, mpi_len);
+      return false;
+    }
+
+    ScopedBIGNUM bn2(BN_mpi2bn(scratch, mpi_len, NULL));
+    if (bn2.get() == nullptr) {
+      fprintf(stderr, "MPI test #%u: failed to parse\n", (unsigned)i);
+      return false;
+    }
+
+    if (BN_cmp(bn.get(), bn2.get()) != 0) {
+      fprintf(stderr, "MPI test #%u: wrong result\n", (unsigned)i);
+      return false;
+    }
   }
 
   return true;

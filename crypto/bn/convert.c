@@ -517,3 +517,81 @@ BN_ULONG BN_get_word(const BIGNUM *bn) {
       return BN_MASK2;
   }
 }
+
+size_t BN_bn2mpi(const BIGNUM *in, uint8_t *out) {
+  const size_t bits = BN_num_bits(in);
+  const size_t bytes = (bits + 7) / 8;
+  /* If the number of bits is a multiple of 8, i.e. if the MSB is set,
+   * prefix with a zero byte. */
+  int extend = 0;
+  if (bytes != 0 && (bits & 0x07) == 0) {
+    extend = 1;
+  }
+
+  const size_t len = bytes + extend;
+  if (len < bytes ||
+      4 + len < len ||
+      (len & 0xffffffff) != len) {
+    /* If we cannot represent the number then we emit zero as the interface
+     * doesn't allow an error to be signalled. */
+    if (out) {
+      memset(out, 0, 4);
+    }
+    return 4;
+  }
+
+  if (out == NULL) {
+    return 4 + len;
+  }
+
+  out[0] = len >> 24;
+  out[1] = len >> 16;
+  out[2] = len >> 8;
+  out[3] = len;
+  if (extend) {
+    out[4] = 0;
+  }
+  BN_bn2bin(in, out + 4 + extend);
+  if (in->neg && len > 0) {
+    out[4] |= 0x80;
+  }
+  return len + 4;
+}
+
+BIGNUM *BN_mpi2bn(const uint8_t *in, size_t len, BIGNUM *out) {
+  if (len < 4) {
+    OPENSSL_PUT_ERROR(BN, BN_R_BAD_ENCODING);
+    return NULL;
+  }
+  const size_t in_len = ((size_t)in[0] << 24) |
+                        ((size_t)in[1] << 16) |
+                        ((size_t)in[2] << 8) |
+                        ((size_t)in[3]);
+  if (in_len != len - 4) {
+    OPENSSL_PUT_ERROR(BN, BN_R_BAD_ENCODING);
+    return NULL;
+  }
+
+  if (out == NULL) {
+    out = BN_new();
+  }
+  if (out == NULL) {
+    OPENSSL_PUT_ERROR(BN, ERR_R_MALLOC_FAILURE);
+    return NULL;
+  }
+
+  if (in_len == 0) {
+    BN_zero(out);
+    return out;
+  }
+
+  in += 4;
+  if (BN_bin2bn(in, in_len, out) == NULL) {
+    return NULL;
+  }
+  out->neg = ((*in) & 0x80) != 0;
+  if (out->neg) {
+    BN_clear_bit(out, BN_num_bits(out) - 1);
+  }
+  return out;
+}
