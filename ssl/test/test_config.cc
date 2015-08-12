@@ -119,6 +119,7 @@ const Flag<std::string> kBase64Flags[] = {
   { "-expect-ocsp-response", &TestConfig::expected_ocsp_response },
   { "-expect-signed-cert-timestamps",
     &TestConfig::expected_signed_cert_timestamps },
+  { "-ocsp-response", &TestConfig::ocsp_response },
 };
 
 const Flag<int> kIntFlags[] = {

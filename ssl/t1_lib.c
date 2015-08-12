@@ -1330,7 +1330,7 @@ static int ext_ocsp_add_clienthello(SSL *ssl, CBB *out) {
 }
 
 static int ext_ocsp_parse_serverhello(SSL *ssl, uint8_t *out_alert,
-                                         CBS *contents) {
+                                      CBS *contents) {
   if (contents == NULL) {
     return 1;
   }
@@ -1345,13 +1345,32 @@ static int ext_ocsp_parse_serverhello(SSL *ssl, uint8_t *out_alert,
 
 static int ext_ocsp_parse_clienthello(SSL *ssl, uint8_t *out_alert,
                                       CBS *contents) {
-  /* OCSP stapling as a server is not supported. */
+  if (contents == NULL) {
+    return 1;
+  }
+
+  uint8_t status_type;
+  if (!CBS_get_u8(contents, &status_type)) {
+    return 0;
+  }
+
+  /* We cannot decide whether OCSP stapling will occur yet because the correct
+   * SSL_CTX might not have been selected. */
+  ssl->s3->tmp.ocsp_stapling_requested = status_type == TLSEXT_STATUSTYPE_ocsp;
+
   return 1;
 }
 
 static int ext_ocsp_add_serverhello(SSL *ssl, CBB *out) {
-  /* OCSP stapling as a server is not supported. */
-  return 1;
+  if (!ssl->s3->tmp.ocsp_stapling_requested ||
+      ssl->ctx->ocsp_response_length == 0) {
+    return 1;
+  }
+
+  ssl->s3->tmp.certificate_status_expected = 1;
+
+  return CBB_add_u16(out, TLSEXT_TYPE_status_request) &&
+         CBB_add_u16(out, 0 /* length */);
 }
 
 

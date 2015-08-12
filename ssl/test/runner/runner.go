@@ -155,6 +155,8 @@ type testCase struct {
 	// expectedSRTPProtectionProfile is the DTLS-SRTP profile that
 	// should be negotiated. If zero, none should be negotiated.
 	expectedSRTPProtectionProfile uint16
+	// expectedOCSPResponse, if not nil, is the expected OCSP response to be received.
+	expectedOCSPResponse []uint8
 	// messageLen is the length, in bytes, of the test message that will be
 	// sent.
 	messageLen int
@@ -318,6 +320,10 @@ func doExchange(test *testCase, config *Config, conn net.Conn, isResume bool) er
 
 	if p := connState.SRTPProtectionProfile; p != test.expectedSRTPProtectionProfile {
 		return fmt.Errorf("SRTP profile mismatch: got %d, wanted %d", p, test.expectedSRTPProtectionProfile)
+	}
+
+	if test.expectedOCSPResponse != nil && !bytes.Equal(test.expectedOCSPResponse, tlsConn.OCSPResponse()) {
+		return fmt.Errorf("OCSP Response mismatch")
 	}
 
 	if test.exportKeyingMaterial > 0 {
@@ -2333,6 +2339,26 @@ func addStateMachineCoverageTests(async, splitHandshake bool, protocol protocol)
 		flags: []string{"-psk", "secret"},
 	})
 
+	tests = append(tests, testCase{
+		testType: clientTest,
+		name:     "OCSPStapling-Client",
+		flags: []string{
+			"-enable-ocsp-stapling",
+			"-expect-ocsp-response",
+			base64.StdEncoding.EncodeToString(testOCSPResponse),
+		},
+	})
+
+	tests = append(tests, testCase{
+		testType: serverTest,
+		name:     "OCSPStapling-Server",
+		expectedOCSPResponse: testOCSPResponse,
+		flags: []string{
+			"-ocsp-response",
+			base64.StdEncoding.EncodeToString(testOCSPResponse),
+		},
+	})
+
 	if protocol == tls {
 		tests = append(tests, testCase{
 			name:        "Renegotiate-Client",
@@ -3034,15 +3060,7 @@ func addExtensionTests() {
 		shouldFail:    true,
 		expectedError: ":BAD_SRTP_PROTECTION_PROFILE_LIST:",
 	})
-	// Test OCSP stapling and SCT list.
-	testCases = append(testCases, testCase{
-		name: "OCSPStapling",
-		flags: []string{
-			"-enable-ocsp-stapling",
-			"-expect-ocsp-response",
-			base64.StdEncoding.EncodeToString(testOCSPResponse),
-		},
-	})
+	// Test SCT list.
 	testCases = append(testCases, testCase{
 		name: "SignedCertificateTimestampList",
 		flags: []string{

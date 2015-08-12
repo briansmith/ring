@@ -491,8 +491,12 @@ typedef struct ssl3_state_st {
     int cert_request;
 
     /* certificate_status_expected is true if OCSP stapling was negotiated and
-     * the server is expected to send a CertificateStatus message. */
-    char certificate_status_expected;
+     * the server is expected to send a CertificateStatus message. (This is
+     * used on both the client and server sides.) */
+    unsigned certificate_status_expected:1;
+
+    /* ocsp_stapling_requested is true if a client requested OCSP stapling. */
+    unsigned ocsp_stapling_requested:1;
 
     /* Server-only: peer_ellipticcurvelist contains the EC curve IDs advertised
      * by the peer. This is only set on the server's end. The server does not

@@ -880,7 +880,7 @@ int ssl_fill_hello_random(uint8_t *out, size_t len, int is_server);
 
 int ssl3_send_server_certificate(SSL *s);
 int ssl3_send_new_session_ticket(SSL *s);
-int ssl3_send_cert_status(SSL *s);
+int ssl3_send_certificate_status(SSL *s);
 int ssl3_get_finished(SSL *s, int state_a, int state_b);
 int ssl3_send_change_cipher_spec(SSL *s, int state_a, int state_b);
 int ssl3_prf(SSL *s, uint8_t *out, size_t out_len, const uint8_t *secret,

@@ -306,6 +306,16 @@ int ssl3_accept(SSL *s) {
         s->init_num = 0;
         break;
 
+      case SSL3_ST_SW_CERT_STATUS_A:
+      case SSL3_ST_SW_CERT_STATUS_B:
+        ret = ssl3_send_certificate_status(s);
+        if (ret <= 0) {
+          goto end;
+        }
+        s->state = SSL3_ST_SW_KEY_EXCH_A;
+        s->init_num = 0;
+        break;
+
       case SSL3_ST_SW_KEY_EXCH_A:
       case SSL3_ST_SW_KEY_EXCH_B:
       case SSL3_ST_SW_KEY_EXCH_C:
@@ -1189,6 +1199,32 @@ int ssl3_send_server_hello(SSL *s) {
 
   /* SSL3_ST_SW_SRVR_HELLO_B */
   return ssl_do_write(s);
+}
+
+int ssl3_send_certificate_status(SSL *ssl) {
+  if (ssl->state == SSL3_ST_SW_CERT_STATUS_A) {
+    CBB out, ocsp_response;
+    size_t length;
+
+    CBB_zero(&out);
+    if (!CBB_init_fixed(&out, ssl_handshake_start(ssl),
+                        ssl->init_buf->max - SSL_HM_HEADER_LENGTH(ssl)) ||
+        !CBB_add_u8(&out, TLSEXT_STATUSTYPE_ocsp) ||
+        !CBB_add_u24_length_prefixed(&out, &ocsp_response) ||
+        !CBB_add_bytes(&ocsp_response, ssl->ctx->ocsp_response,
+                       ssl->ctx->ocsp_response_length) ||
+        !CBB_finish(&out, NULL, &length) ||
+        !ssl_set_handshake_header(ssl, SSL3_MT_CERTIFICATE_STATUS, length)) {
+      OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
+      CBB_cleanup(&out);
+      return -1;
+    }
+
+    ssl->state = SSL3_ST_SW_CERT_STATUS_B;
+  }
+
+  /* SSL3_ST_SW_CERT_STATUS_B */
+  return ssl_do_write(ssl);
 }
 
 int ssl3_send_server_done(SSL *s) {

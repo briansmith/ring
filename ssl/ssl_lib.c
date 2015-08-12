@@ -1385,6 +1385,20 @@ void SSL_get0_ocsp_response(const SSL *ssl, const uint8_t **out,
   *out_len = session->ocsp_response_length;
 }
 
+int SSL_CTX_set_ocsp_response(SSL_CTX *ctx, const uint8_t *response,
+                              size_t response_len) {
+  OPENSSL_free(ctx->ocsp_response);
+  ctx->ocsp_response_length = 0;
+
+  ctx->ocsp_response = BUF_memdup(response, response_len);
+  if (ctx->ocsp_response == NULL) {
+    return 0;
+  }
+  ctx->ocsp_response_length = response_len;
+
+  return 1;
+}
+
 /* SSL_select_next_proto implements the standard protocol selection. It is
  * expected that this function is called from the callback set by
  * SSL_CTX_set_next_proto_select_cb.
@@ -1753,6 +1767,7 @@ void SSL_CTX_free(SSL_CTX *ctx) {
   OPENSSL_free(ctx->psk_identity_hint);
   OPENSSL_free(ctx->tlsext_ellipticcurvelist);
   OPENSSL_free(ctx->alpn_client_proto_list);
+  OPENSSL_free(ctx->ocsp_response);
   EVP_PKEY_free(ctx->tlsext_channel_id_private);
   BIO_free(ctx->keylog_bio);
 
