@@ -151,10 +151,31 @@ static int des_ede3_cbc_cipher(EVP_CIPHER_CTX *ctx, uint8_t *out,
   return 1;
 }
 
-static const EVP_CIPHER des3_cbc = {
+static const EVP_CIPHER des_ede3_cbc = {
     NID_des_ede3_cbc,    8 /* block_size */,  24 /* key_size */,
     8 /* iv_len */,      sizeof(DES_EDE_KEY), EVP_CIPH_CBC_MODE,
     NULL /* app_data */, des_ede3_init_key,   des_ede3_cbc_cipher,
     NULL /* cleanup */,  NULL /* ctrl */, };
 
-const EVP_CIPHER *EVP_des_ede3_cbc(void) { return &des3_cbc; }
+const EVP_CIPHER *EVP_des_ede3_cbc(void) { return &des_ede3_cbc; }
+
+
+static int des_ede_init_key(EVP_CIPHER_CTX *ctx, const uint8_t *key,
+                             const uint8_t *iv, int enc) {
+  DES_cblock *deskey = (DES_cblock *) key;
+  DES_EDE_KEY *dat = (DES_EDE_KEY *) ctx->cipher_data;
+
+  DES_set_key(&deskey[0], &dat->ks.ks[0]);
+  DES_set_key(&deskey[1], &dat->ks.ks[1]);
+  DES_set_key(&deskey[0], &dat->ks.ks[2]);
+
+  return 1;
+}
+
+static const EVP_CIPHER des_ede_cbc = {
+    NID_des_ede_cbc,     8 /* block_size */,  16 /* key_size */,
+    8 /* iv_len */,      sizeof(DES_EDE_KEY), EVP_CIPH_CBC_MODE,
+    NULL /* app_data */, des_ede_init_key ,   des_ede3_cbc_cipher,
+    NULL /* cleanup */,  NULL /* ctrl */, };
+
+const EVP_CIPHER *EVP_des_ede_cbc(void) { return &des_ede_cbc; }
