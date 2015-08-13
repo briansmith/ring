@@ -262,6 +262,7 @@ struct nid_to_digest {
 };
 
 static const struct nid_to_digest nid_to_digest_mapping[] = {
+  { NID_md4, EVP_md4, SN_md4, LN_md4 },
   { NID_md5, EVP_md5, SN_md5, LN_md5 },
   { NID_sha1, EVP_sha1, SN_sha1, LN_sha1 },
   { NID_sha224, EVP_sha224, SN_sha224, LN_sha224 },
