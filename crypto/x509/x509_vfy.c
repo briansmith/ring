@@ -252,7 +252,7 @@ int X509_verify_cert(X509_STORE_CTX *ctx)
 			{
 			ok = ctx->get_issuer(&xtmp, ctx, x);
 			if (ok < 0)
-				return ok;
+				goto end;
 			/* If successful for now free up cert so it
 			 * will be picked up again later.
 			 */
@@ -350,7 +350,7 @@ int X509_verify_cert(X509_STORE_CTX *ctx)
 
 		ok = ctx->get_issuer(&xtmp, ctx, x);
 
-		if (ok < 0) return ok;
+		if (ok < 0) goto end;
 		if (ok == 0) break;
 
 		x = xtmp;
