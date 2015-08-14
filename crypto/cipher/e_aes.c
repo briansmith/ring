@@ -709,7 +709,7 @@ static int aes_gcm_cipher(EVP_CIPHER_CTX *ctx, uint8_t *out, const uint8_t *in,
   } else {
     if (!ctx->encrypt) {
       if (gctx->taglen < 0 ||
-          !CRYPTO_gcm128_finish(&gctx->gcm, ctx->buf, gctx->taglen) != 0) {
+          !CRYPTO_gcm128_finish(&gctx->gcm, ctx->buf, gctx->taglen)) {
         return -1;
       }
       gctx->iv_set = 0;
