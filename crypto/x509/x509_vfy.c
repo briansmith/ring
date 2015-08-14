@@ -358,7 +358,8 @@ int X509_verify_cert(X509_STORE_CTX *ctx)
 			{
 			X509_free(xtmp);
 			OPENSSL_PUT_ERROR(X509, ERR_R_MALLOC_FAILURE);
-			return 0;
+			ok = 0;
+			goto end;
 			}
 		num++;
 		}
