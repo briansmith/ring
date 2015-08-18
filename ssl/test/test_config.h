@@ -92,6 +92,9 @@ struct TestConfig {
   bool check_close_notify = false;
   bool shim_shuts_down = false;
   bool microsoft_big_sslv3_buffer = false;
+  bool verify_fail = false;
+  bool verify_peer = false;
+  bool expect_verify_result = false;
 };
 
 bool ParseConfig(int argc, char **argv, TestConfig *out_config);

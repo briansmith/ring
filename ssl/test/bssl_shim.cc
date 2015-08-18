@@ -301,8 +301,27 @@ static int SelectCertificateCallback(const struct ssl_early_callback_ctx *ctx) {
   return 1;
 }
 
-static int SkipVerify(int preverify_ok, X509_STORE_CTX *store_ctx) {
+static int VerifySucceed(X509_STORE_CTX *store_ctx, void *arg) {
+  SSL* ssl = (SSL*)X509_STORE_CTX_get_ex_data(store_ctx,
+      SSL_get_ex_data_X509_STORE_CTX_idx());
+  const TestConfig *config = GetConfigPtr(ssl);
+
+  if (!config->expected_ocsp_response.empty()) {
+    const uint8_t *data;
+    size_t len;
+    SSL_get0_ocsp_response(ssl, &data, &len);
+    if (len == 0) {
+      fprintf(stderr, "OCSP response not available in verify callback\n");
+      return 0;
+    }
+  }
+
   return 1;
+}
+
+static int VerifyFail(X509_STORE_CTX *store_ctx, void *arg) {
+  store_ctx->error = X509_V_ERR_APPLICATION_VERIFICATION;
+  return 0;
 }
 
 static int NextProtosAdvertisedCallback(SSL *ssl, const uint8_t **out,
@@ -675,6 +694,12 @@ static ScopedSSL_CTX SetupCtx(const TestConfig *config) {
     return nullptr;
   }
 
+  if (config->verify_fail) {
+    SSL_CTX_set_cert_verify_callback(ssl_ctx.get(), VerifyFail, NULL);
+  } else {
+    SSL_CTX_set_cert_verify_callback(ssl_ctx.get(), VerifySucceed, NULL);
+  }
+
   return ssl_ctx;
 }
 
@@ -908,6 +933,17 @@ static bool CheckHandshakeProperties(SSL *ssl, bool is_resume) {
     }
   }
 
+  if (config->expect_verify_result) {
+    int expected_verify_result = config->verify_fail ?
+      X509_V_ERR_APPLICATION_VERIFICATION :
+      X509_V_OK;
+
+    if (SSL_get_verify_result(ssl) != expected_verify_result) {
+      fprintf(stderr, "Wrong certificate verification result\n");
+      return false;
+    }
+  }
+
   if (!config->is_server) {
     /* Clients should expect a peer certificate chain iff this was not a PSK
      * cipher suite. */
@@ -955,7 +991,10 @@ static bool DoExchange(ScopedSSL_SESSION *out_session, SSL_CTX *ssl_ctx,
   }
   if (config->require_any_client_certificate) {
     SSL_set_verify(ssl.get(), SSL_VERIFY_PEER|SSL_VERIFY_FAIL_IF_NO_PEER_CERT,
-                   SkipVerify);
+                   NULL);
+  }
+  if (config->verify_peer) {
+    SSL_set_verify(ssl.get(), SSL_VERIFY_PEER, NULL);
   }
   if (config->false_start) {
     SSL_set_mode(ssl.get(), SSL_MODE_ENABLE_FALSE_START);

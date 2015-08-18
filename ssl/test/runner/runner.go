@@ -2624,6 +2624,7 @@ func addStateMachineCoverageTests(async, splitHandshake bool, protocol protocol)
 			"-enable-ocsp-stapling",
 			"-expect-ocsp-response",
 			base64.StdEncoding.EncodeToString(testOCSPResponse),
+			"-verify-peer",
 		},
 	})
 
@@ -2634,6 +2635,34 @@ func addStateMachineCoverageTests(async, splitHandshake bool, protocol protocol)
 		flags: []string{
 			"-ocsp-response",
 			base64.StdEncoding.EncodeToString(testOCSPResponse),
+		},
+	})
+
+	tests = append(tests, testCase{
+		testType: clientTest,
+		name:     "CertificateVerificationSucceed",
+		flags: []string{
+			"-verify-peer",
+		},
+	})
+
+	tests = append(tests, testCase{
+		testType: clientTest,
+		name:     "CertificateVerificationFail",
+		flags: []string{
+			"-verify-fail",
+			"-verify-peer",
+		},
+		shouldFail:    true,
+		expectedError: ":CERTIFICATE_VERIFY_FAILED:",
+	})
+
+	tests = append(tests, testCase{
+		testType: clientTest,
+		name:     "CertificateVerificationSoftFail",
+		flags: []string{
+			"-verify-fail",
+			"-expect-verify-result",
 		},
 	})
 

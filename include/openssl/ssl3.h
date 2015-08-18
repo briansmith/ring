@@ -563,6 +563,7 @@ typedef struct ssl3_state_st {
 /* extra state */
 #define SSL3_ST_CW_FLUSH (0x100 | SSL_ST_CONNECT)
 #define SSL3_ST_FALSE_START (0x101 | SSL_ST_CONNECT)
+#define SSL3_ST_VERIFY_SERVER_CERT (0x102 | SSL_ST_CONNECT)
 /* write to server */
 #define SSL3_ST_CW_CLNT_HELLO_A (0x110 | SSL_ST_CONNECT)
 #define SSL3_ST_CW_CLNT_HELLO_B (0x111 | SSL_ST_CONNECT)
