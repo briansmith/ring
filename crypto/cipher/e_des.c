@@ -179,3 +179,29 @@ static const EVP_CIPHER des_ede_cbc = {
     NULL /* cleanup */,  NULL /* ctrl */, };
 
 const EVP_CIPHER *EVP_des_ede_cbc(void) { return &des_ede_cbc; }
+
+
+static int des_ede_ecb_cipher(EVP_CIPHER_CTX *ctx, uint8_t *out,
+                              const uint8_t *in, size_t in_len) {
+  if (in_len < ctx->cipher->block_size) {
+    return 1;
+  }
+  in_len -= ctx->cipher->block_size;
+
+  DES_EDE_KEY *dat = (DES_EDE_KEY *) ctx->cipher_data;
+  size_t i;
+  for (i = 0; i <= in_len; i += ctx->cipher->block_size) {
+    DES_ecb3_encrypt((DES_cblock *) (in + i), (DES_cblock *) (out + i),
+                     &dat->ks.ks[0], &dat->ks.ks[1], &dat->ks.ks[2],
+                     ctx->encrypt);
+  }
+  return 1;
+}
+
+static const EVP_CIPHER des_ede_ecb = {
+    NID_des_ede_cbc,     8 /* block_size */,  16 /* key_size */,
+    0 /* iv_len */,      sizeof(DES_EDE_KEY), EVP_CIPH_ECB_MODE,
+    NULL /* app_data */, des_ede_init_key ,   des_ede_ecb_cipher,
+    NULL /* cleanup */,  NULL /* ctrl */, };
+
+const EVP_CIPHER *EVP_des_ede(void) { return &des_ede_ecb; }
