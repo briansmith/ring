@@ -222,7 +222,11 @@ const struct built_in_curve OPENSSL_built_in_curves[] = {
     {NID_secp224r1, &P224, 0},
     {
         NID_X9_62_prime256v1, &P256,
-#if defined(OPENSSL_64_BIT) && !defined(OPENSSL_WINDOWS)
+    /* MSAN appears to have a bug that causes this P-256 code to be miscompiled
+     * in opt mode. While that is being looked at, don't run the uint128_t
+     * P-256 code under MSAN for now. */
+#if defined(OPENSSL_64_BIT) && !defined(OPENSSL_WINDOWS) && \
+    !defined(MEMORY_SANITIZER)
         EC_GFp_nistp256_method,
 #else
         0,
