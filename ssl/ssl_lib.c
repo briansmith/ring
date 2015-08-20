@@ -2877,3 +2877,4 @@ int SSL_CTX_sess_cb_hits(const SSL_CTX *ctx) { return 0; }
 int SSL_CTX_sess_misses(const SSL_CTX *ctx) { return 0; }
 int SSL_CTX_sess_timeouts(const SSL_CTX *ctx) { return 0; }
 int SSL_CTX_sess_cache_full(const SSL_CTX *ctx) { return 0; }
+void ERR_load_SSL_strings(void) {}

@@ -2506,6 +2506,7 @@ OPENSSL_EXPORT void SSL_get_structure_sizes(size_t *ssl_size,
                                             size_t *ssl_ctx_size,
                                             size_t *ssl_session_size);
 
+/* ERR_load_SSL_strings does nothing. */
 OPENSSL_EXPORT void ERR_load_SSL_strings(void);
 
 /* SSL_get_rc4_state sets |*read_key| and |*write_key| to the RC4 states for
