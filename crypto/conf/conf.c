@@ -144,7 +144,7 @@ void NCONF_free(CONF *conf) {
 
 CONF_VALUE *NCONF_new_section(const CONF *conf, const char *section) {
   STACK_OF(CONF_VALUE) *sk = NULL;
-  int ok = 0, i;
+  int ok = 0;
   CONF_VALUE *v = NULL, *old_value;
 
   sk = sk_CONF_VALUE_new_null();
@@ -152,14 +152,11 @@ CONF_VALUE *NCONF_new_section(const CONF *conf, const char *section) {
   if (sk == NULL || v == NULL) {
     goto err;
   }
-  i = strlen(section) + 1;
-  v->section = OPENSSL_malloc(i);
+  v->section = OPENSSL_strdup(section);
   if (v->section == NULL) {
     goto err;
   }
 
-  memcpy(v->section, section, i);
-  v->section[i-1] = 0;
   v->name = NULL;
   v->value = (char *)sk;
 
@@ -509,12 +506,11 @@ static int def_load_bio(CONF *conf, BIO *in, long *out_error_line) {
     goto err;
   }
 
-  section = (char *)OPENSSL_malloc(10);
+  section = OPENSSL_strdup("default");
   if (section == NULL) {
     OPENSSL_PUT_ERROR(CONF, ERR_R_MALLOC_FAILURE);
     goto err;
   }
-  BUF_strlcpy(section, "default", 10);
 
   sv = NCONF_new_section(conf, section);
   if (sv == NULL) {
@@ -646,13 +642,12 @@ static int def_load_bio(CONF *conf, BIO *in, long *out_error_line) {
       if (psection == NULL) {
         psection = section;
       }
-      v->name = (char *)OPENSSL_malloc(strlen(pname) + 1);
       v->value = NULL;
+      v->name = OPENSSL_strdup(pname);
       if (v->name == NULL) {
         OPENSSL_PUT_ERROR(CONF, ERR_R_MALLOC_FAILURE);
         goto err;
       }
-      BUF_strlcpy(v->name, pname, strlen(pname) + 1);
       if (!str_copy(conf, psection, &(v->value), start)) {
         goto err;
       }
