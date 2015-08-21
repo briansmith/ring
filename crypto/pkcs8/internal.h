@@ -66,6 +66,15 @@ extern "C" {
 #define PKCS5_DEFAULT_ITERATIONS 2048
 #define PKCS5_SALT_LEN 8
 
+/* PKCS5_v2_PBE_keyivgen intializes the supplied |ctx| for PBKDF v2, which must
+ * be specified by |param|. The password is specified by |pass_raw| and
+ * |pass_raw_len|. |cipher| and |md| are ignored.
+ *
+ * It returns one on success and zero on error. */
+int PKCS5_v2_PBE_keyivgen(EVP_CIPHER_CTX *ctx, const uint8_t *pass_raw,
+                          size_t pass_raw_len, ASN1_TYPE *param,
+                          const EVP_CIPHER *cipher, const EVP_MD *md, int enc);
+
 
 #if defined(__cplusplus)
 }  /* extern C */

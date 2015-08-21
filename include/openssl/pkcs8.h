@@ -66,13 +66,15 @@ extern "C" {
 #endif
 
 
-/* PKCS8_encrypt_pbe serializes and encrypts a PKCS8_PRIV_KEY_INFO with PBES1 as
- * defined in PKCS #5. Only pbeWithSHAAnd128BitRC4,
+/* PKCS8_encrypt_pbe serializes and encrypts a PKCS8_PRIV_KEY_INFO with PBES1 or
+ * PBES2 as defined in PKCS #5. Only pbeWithSHAAnd128BitRC4,
  * pbeWithSHAAnd3-KeyTripleDES-CBC and pbeWithSHA1And40BitRC2, defined in PKCS
- * #12, are supported. The |pass_raw_len| bytes pointed to by |pass_raw| are
- * used as the password. Note that any conversions from the password as
- * supplied in a text string (such as those specified in B.1 of PKCS #12) must
- * be performed by the caller.
+ * #12, and PBES2, are supported.  PBES2 is selected by setting |cipher| and
+ * passing -1 for |pbe_nid|.  Otherwise, PBES1 is used and |cipher| is ignored.
+ *
+ * The |pass_raw_len| bytes pointed to by |pass_raw| are used as the password.
+ * Note that any conversions from the password as supplied in a text string
+ * (such as those specified in B.1 of PKCS #12) must be performed by the caller.
  *
  * If |salt| is NULL, a random salt of |salt_len| bytes is generated. If
  * |salt_len| is zero, a default salt length is used instead.
@@ -83,19 +85,21 @@ extern "C" {
  * TODO(davidben): Really? An X509_SIG? OpenSSL probably did that because it has
  * the same structure as EncryptedPrivateKeyInfo. */
 OPENSSL_EXPORT X509_SIG *PKCS8_encrypt_pbe(int pbe_nid,
+                                           const EVP_CIPHER *cipher,
                                            const uint8_t *pass_raw,
                                            size_t pass_raw_len,
                                            uint8_t *salt, size_t salt_len,
                                            int iterations,
                                            PKCS8_PRIV_KEY_INFO *p8inf);
 
-/* PKCS8_decrypt_pbe decrypts and decodes a PKCS8_PRIV_KEY_INFO with PBES1 as
- * defined in PKCS #5. Only pbeWithSHAAnd128BitRC4,
- * pbeWithSHAAnd3-KeyTripleDES-CBC and pbeWithSHA1And40BitRC2, defined in PKCS
- * #12, are supported. The |pass_raw_len| bytes pointed to by |pass_raw| are
- * used as the password. Note that any conversions from the password as
- * supplied in a text string (such as those specified in B.1 of PKCS #12) must
- * be performed by the caller.
+/* PKCS8_decrypt_pbe decrypts and decodes a PKCS8_PRIV_KEY_INFO with PBES1 or
+ * PBES2 as defined in PKCS #5. Only pbeWithSHAAnd128BitRC4,
+ * pbeWithSHAAnd3-KeyTripleDES-CBC and pbeWithSHA1And40BitRC2, and PBES2,
+ * defined in PKCS #12, are supported.
+ *
+ * The |pass_raw_len| bytes pointed to by |pass_raw| are used as the password.
+ * Note that any conversions from the password as supplied in a text string
+ * (such as those specified in B.1 of PKCS #12) must be performed by the caller.
  *
  * The resulting structure must be freed by the caller. */
 OPENSSL_EXPORT PKCS8_PRIV_KEY_INFO *PKCS8_decrypt_pbe(X509_SIG *pkcs8,
@@ -105,18 +109,20 @@ OPENSSL_EXPORT PKCS8_PRIV_KEY_INFO *PKCS8_decrypt_pbe(X509_SIG *pkcs8,
 
 /* Deprecated functions. */
 
-/* PKCS8_encrypt calls PKCS8_encrypt_pbe after treating |pass| as an ASCII
- * string, appending U+0000, and converting to UCS-2. (So the empty password
- * encodes as two NUL bytes.) The |cipher| argument is ignored. */
+/* PKCS8_encrypt calls |PKCS8_encrypt_pbe| after (in the PKCS#12 case) treating
+ * |pass| as an ASCII string, appending U+0000, and converting to UCS-2. (So the
+ * empty password encodes as two NUL bytes.) In the PBES2 case, the password is
+ * unchanged.  */
 OPENSSL_EXPORT X509_SIG *PKCS8_encrypt(int pbe_nid, const EVP_CIPHER *cipher,
                                        const char *pass, int pass_len,
                                        uint8_t *salt, size_t salt_len,
                                        int iterations,
                                        PKCS8_PRIV_KEY_INFO *p8inf);
 
-/* PKCS8_decrypt calls PKCS8_decrypt_pbe after treating |pass| as an ASCII
- * string, appending U+0000, and converting to UCS-2. (So the empty password
- * encodes as two NUL bytes.) */
+/* PKCS8_decrypt calls PKCS8_decrypt_pbe after (in the PKCS#12 case) treating
+ * |pass| as an ASCII string, appending U+0000, and converting to UCS-2. (So the
+ *  empty password encodes as two NUL bytes.) In the PBES2 case, the password is
+ * unchanged. */
 OPENSSL_EXPORT PKCS8_PRIV_KEY_INFO *PKCS8_decrypt(X509_SIG *pkcs8,
                                                   const char *pass,
                                                   int pass_len);
@@ -195,5 +201,11 @@ OPENSSL_EXPORT void PKCS12_free(PKCS12 *p12);
 #define PKCS8_R_UNKNOWN_DIGEST 122
 #define PKCS8_R_UNKNOWN_HASH 123
 #define PKCS8_R_UNSUPPORTED_PRIVATE_KEY_ALGORITHM 124
+#define PKCS8_R_UNSUPPORTED_KEYLENGTH 125
+#define PKCS8_R_UNSUPPORTED_SALT_TYPE 126
+#define PKCS8_R_UNSUPPORTED_CIPHER 127
+#define PKCS8_R_UNSUPPORTED_KEY_DERIVATION_FUNCTION 128
+#define PKCS8_R_BAD_ITERATION_COUNT 129
+#define PKCS8_R_UNSUPPORTED_PRF 130
 
 #endif  /* OPENSSL_HEADER_PKCS8_H */

@@ -113,6 +113,7 @@ using ScopedPKCS12 = ScopedOpenSSLType<PKCS12, PKCS12_free>;
 using ScopedRSA = ScopedOpenSSLType<RSA, RSA_free>;
 using ScopedX509 = ScopedOpenSSLType<X509, X509_free>;
 using ScopedX509_ALGOR = ScopedOpenSSLType<X509_ALGOR, X509_ALGOR_free>;
+using ScopedX509_SIG = ScopedOpenSSLType<X509_SIG, X509_SIG_free>;
 
 using ScopedX509Stack = ScopedOpenSSLStack<STACK_OF(X509), X509, X509_free>;
 
