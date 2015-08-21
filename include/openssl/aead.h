@@ -223,6 +223,12 @@ enum evp_aead_direction_t {
   evp_aead_seal,
 };
 
+/* EVP_AEAD_CTX_zero sets an uninitialized |ctx| to the zero state. It must be
+ * initialized with |EVP_AEAD_CTX_init| before use. It is safe, but not
+ * necessary, to call |EVP_AEAD_CTX_cleanup| in this state. This may be used for
+ * more uniform cleanup of |EVP_AEAD_CTX|. */
+OPENSSL_EXPORT void EVP_AEAD_CTX_zero(EVP_AEAD_CTX *ctx);
+
 /* EVP_AEAD_CTX_init initializes |ctx| for the given AEAD algorithm. The |impl|
  * argument is ignored and should be NULL. Authentication tags may be truncated
  * by passing a size as |tag_len|. A |tag_len| of zero indicates the default

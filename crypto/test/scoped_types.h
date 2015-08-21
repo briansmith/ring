@@ -18,6 +18,7 @@
 #include <stdint.h>
 #include <stdio.h>
 
+#include <openssl/aead.h>
 #include <openssl/bio.h>
 #include <openssl/bn.h>
 #include <openssl/cmac.h>
@@ -115,6 +116,9 @@ using ScopedX509_ALGOR = ScopedOpenSSLType<X509_ALGOR, X509_ALGOR_free>;
 
 using ScopedX509Stack = ScopedOpenSSLStack<STACK_OF(X509), X509, X509_free>;
 
+using ScopedEVP_AEAD_CTX = ScopedOpenSSLContext<EVP_AEAD_CTX, void,
+                                                EVP_AEAD_CTX_zero,
+                                                EVP_AEAD_CTX_cleanup>;
 using ScopedEVP_CIPHER_CTX = ScopedOpenSSLContext<EVP_CIPHER_CTX, int,
                                                   EVP_CIPHER_CTX_init,
                                                   EVP_CIPHER_CTX_cleanup>;

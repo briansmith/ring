@@ -30,6 +30,10 @@ size_t EVP_AEAD_max_overhead(const EVP_AEAD *aead) { return aead->overhead; }
 
 size_t EVP_AEAD_max_tag_len(const EVP_AEAD *aead) { return aead->max_tag_len; }
 
+void EVP_AEAD_CTX_zero(EVP_AEAD_CTX *ctx) {
+  memset(ctx, 0, sizeof(EVP_AEAD_CTX));
+}
+
 int EVP_AEAD_CTX_init(EVP_AEAD_CTX *ctx, const EVP_AEAD *aead,
                       const uint8_t *key, size_t key_len, size_t tag_len,
                       ENGINE *impl) {
