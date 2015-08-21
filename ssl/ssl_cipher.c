@@ -457,14 +457,6 @@ const SSL_CIPHER kCiphers[] = {
      SSL_HANDSHAKE_MAC_SHA256,
      256, 0,
     },
-
-    {
-     TLS1_TXT_DHE_RSA_WITH_CHACHA20_POLY1305,
-     TLS1_CK_DHE_RSA_CHACHA20_POLY1305, SSL_kDHE, SSL_aRSA,
-     SSL_CHACHA20POLY1305, SSL_AEAD, SSL_TLSV1_2, SSL_HIGH,
-     SSL_HANDSHAKE_MAC_SHA256,
-     256, 0,
-    },
 };
 
 static const size_t kCiphersLen = sizeof(kCiphers) / sizeof(kCiphers[0]);
