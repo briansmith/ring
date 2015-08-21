@@ -137,7 +137,7 @@ void NCONF_free(CONF *conf) {
     return;
   }
 
-  lh_CONF_VALUE_doall(conf->data, value_free_contents);
+  lh_CONF_VALUE_doall(conf->data, value_free);
   lh_CONF_VALUE_free(conf->data);
   OPENSSL_free(conf);
 }
