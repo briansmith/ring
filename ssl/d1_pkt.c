@@ -189,7 +189,11 @@ int dtls1_read_app_data(SSL *ssl, uint8_t *buf, int len, int peek) {
 }
 
 void dtls1_read_close_notify(SSL *ssl) {
-  dtls1_read_bytes(ssl, 0, NULL, 0, 0);
+  /* Bidirectional shutdown doesn't make sense for an unordered transport. DTLS
+   * alerts also aren't delivered reliably, so we may even time out because the
+   * peer never received our close_notify. Report to the caller that the channel
+   * has fully shut down. */
+  ssl->shutdown |= SSL_RECEIVED_SHUTDOWN;
 }
 
 /* Return up to 'len' payload bytes received in 'type' records.
@@ -197,7 +201,6 @@ void dtls1_read_close_notify(SSL *ssl) {
  *
  *   -  SSL3_RT_HANDSHAKE (when ssl3_get_message calls us)
  *   -  SSL3_RT_APPLICATION_DATA (when ssl3_read calls us)
- *   -  0 (during a shutdown, no data has to be returned)
  *
  * If we don't have stored data to work from, read a SSL/TLS record first
  * (possibly multiple records if we still don't have anything to return).
@@ -225,10 +228,8 @@ int dtls1_read_bytes(SSL *s, int type, unsigned char *buf, int len, int peek) {
   SSL3_RECORD *rr;
   void (*cb)(const SSL *ssl, int type2, int val) = NULL;
 
-  /* XXX: check what the second '&& type' is about */
-  if ((type && (type != SSL3_RT_APPLICATION_DATA) &&
-       (type != SSL3_RT_HANDSHAKE) && type) ||
-      (peek && (type != SSL3_RT_APPLICATION_DATA))) {
+  if ((type != SSL3_RT_APPLICATION_DATA && type != SSL3_RT_HANDSHAKE) ||
+      (peek && type != SSL3_RT_APPLICATION_DATA)) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
     return -1;
   }
@@ -391,13 +392,6 @@ start:
     }
 
     goto start;
-  }
-
-  if (s->shutdown & SSL_SENT_SHUTDOWN) {
-    /* but we have not received a shutdown */
-    s->rwstate = SSL_NOTHING;
-    rr->length = 0;
-    return 0;
   }
 
   if (rr->type == SSL3_RT_CHANGE_CIPHER_SPEC) {
