@@ -458,7 +458,7 @@ start:
     return 0;
   }
 
-  if (type == rr->type) {
+  if (type != 0 && type == rr->type) {
     s->s3->warning_alert_count = 0;
 
     /* SSL3_RT_APPLICATION_DATA or SSL3_RT_HANDSHAKE */
