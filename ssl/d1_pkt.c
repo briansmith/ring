@@ -154,15 +154,6 @@ again:
     case ssl_open_record_success:
       ssl_read_buffer_consume(ssl, consumed);
 
-      /* Discard empty records.
-       * TODO(davidben): This logic should be moved to a higher level. See
-       * https://crbug.com/521840.
-       * TODO(davidben): Limit the number of empty records as in TLS? This is
-       * useful if we also limit discarded packets. */
-      if (len == 0) {
-        goto again;
-      }
-
       if (len > 0xffff) {
         OPENSSL_PUT_ERROR(SSL, ERR_R_OVERFLOW);
         return -1;
@@ -314,6 +305,11 @@ start:
       al = SSL_AD_UNEXPECTED_MESSAGE;
       OPENSSL_PUT_ERROR(SSL, SSL_R_APP_DATA_IN_HANDSHAKE);
       goto f_err;
+    }
+
+    /* Discard empty records. */
+    if (rr->length == 0) {
+      goto start;
     }
 
     if (len <= 0) {

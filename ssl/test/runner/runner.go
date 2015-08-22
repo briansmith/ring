@@ -1308,10 +1308,62 @@ func addBasicTests() {
 			flags:            []string{"-async"},
 		},
 		{
+			name: "AppDataBeforeHandshake",
+			config: Config{
+				Bugs: ProtocolBugs{
+					AppDataBeforeHandshake: []byte("TEST MESSAGE"),
+				},
+			},
+			shouldFail:    true,
+			expectedError: ":UNEXPECTED_RECORD:",
+		},
+		{
+			name: "AppDataBeforeHandshake-Empty",
+			config: Config{
+				Bugs: ProtocolBugs{
+					AppDataBeforeHandshake: []byte{},
+				},
+			},
+			shouldFail:    true,
+			expectedError: ":UNEXPECTED_RECORD:",
+		},
+		{
+			protocol: dtls,
+			name:     "AppDataBeforeHandshake-DTLS",
+			config: Config{
+				Bugs: ProtocolBugs{
+					AppDataBeforeHandshake: []byte("TEST MESSAGE"),
+				},
+			},
+			shouldFail:    true,
+			expectedError: ":UNEXPECTED_RECORD:",
+		},
+		{
+			protocol: dtls,
+			name:     "AppDataBeforeHandshake-DTLS-Empty",
+			config: Config{
+				Bugs: ProtocolBugs{
+					AppDataBeforeHandshake: []byte{},
+				},
+			},
+			shouldFail:    true,
+			expectedError: ":UNEXPECTED_RECORD:",
+		},
+		{
 			name: "AppDataAfterChangeCipherSpec",
 			config: Config{
 				Bugs: ProtocolBugs{
 					AppDataAfterChangeCipherSpec: []byte("TEST MESSAGE"),
+				},
+			},
+			shouldFail:    true,
+			expectedError: ":DATA_BETWEEN_CCS_AND_FINISHED:",
+		},
+		{
+			name: "AppDataAfterChangeCipherSpec-Empty",
+			config: Config{
+				Bugs: ProtocolBugs{
+					AppDataAfterChangeCipherSpec: []byte{},
 				},
 			},
 			shouldFail:    true,
@@ -1323,6 +1375,17 @@ func addBasicTests() {
 			config: Config{
 				Bugs: ProtocolBugs{
 					AppDataAfterChangeCipherSpec: []byte("TEST MESSAGE"),
+				},
+			},
+			// BoringSSL's DTLS implementation will drop the out-of-order
+			// application data.
+		},
+		{
+			protocol: dtls,
+			name:     "AppDataAfterChangeCipherSpec-DTLS-Empty",
+			config: Config{
+				Bugs: ProtocolBugs{
+					AppDataAfterChangeCipherSpec: []byte{},
 				},
 			},
 			// BoringSSL's DTLS implementation will drop the out-of-order

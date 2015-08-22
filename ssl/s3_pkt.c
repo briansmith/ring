@@ -122,12 +122,6 @@
 
 static int do_ssl3_write(SSL *s, int type, const uint8_t *buf, unsigned len);
 
-/* kMaxEmptyRecords is the number of consecutive, empty records that will be
- * processed. Without this limit an attacker could send empty records at a
- * faster rate than we can process and cause record processing to loop
- * forever. */
-static const uint8_t kMaxEmptyRecords = 32;
-
 /* kMaxWarningAlerts is the number of consecutive warning alerts that will be
  * processed. */
 static const uint8_t kMaxWarningAlerts = 4;
@@ -153,20 +147,6 @@ again:
                           ssl_read_buffer(ssl), ssl_read_buffer_len(ssl))) {
     case ssl_open_record_success:
       ssl_read_buffer_consume(ssl, consumed);
-
-      /* Discard empty records.
-       * TODO(davidben): This logic should be moved to a higher level. See
-       * https://crbug.com/521840. */
-      if (len == 0) {
-        ssl->s3->empty_record_count++;
-        if (ssl->s3->empty_record_count > kMaxEmptyRecords) {
-          OPENSSL_PUT_ERROR(SSL, SSL_R_TOO_MANY_EMPTY_FRAGMENTS);
-          ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_UNEXPECTED_MESSAGE);
-          return -1;
-        }
-        goto again;
-      }
-      ssl->s3->empty_record_count = 0;
 
       if (len > 0xffff) {
         OPENSSL_PUT_ERROR(SSL, ERR_R_OVERFLOW);
@@ -491,6 +471,11 @@ start:
       al = SSL_AD_UNEXPECTED_MESSAGE;
       OPENSSL_PUT_ERROR(SSL, SSL_R_APP_DATA_IN_HANDSHAKE);
       goto f_err;
+    }
+
+    /* Discard empty records. */
+    if (rr->length == 0) {
+      goto start;
     }
 
     if (len <= 0) {

@@ -236,6 +236,9 @@ enum ssl_open_record_t dtls_open_record(
 
   dtls1_bitmap_record(&ssl->d1->bitmap, sequence);
 
+  /* TODO(davidben): Limit the number of empty records as in TLS? This is only
+   * useful if we also limit discarded packets. */
+
   *out_type = type;
   *out_len = plaintext_len;
   *out_consumed = in_len - CBS_len(&cbs);

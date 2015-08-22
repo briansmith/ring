@@ -116,6 +116,12 @@
 #include "internal.h"
 
 
+/* kMaxEmptyRecords is the number of consecutive, empty records that will be
+ * processed. Without this limit an attacker could send empty records at a
+ * faster rate than we can process and cause record processing to loop
+ * forever. */
+static const uint8_t kMaxEmptyRecords = 32;
+
 size_t ssl_record_prefix_len(const SSL *ssl) {
   if (SSL_IS_DTLS(ssl)) {
     return DTLS1_RT_HEADER_LENGTH +
@@ -222,6 +228,20 @@ enum ssl_open_record_t tls_open_record(
     OPENSSL_PUT_ERROR(SSL, SSL_R_DATA_LENGTH_TOO_LONG);
     *out_alert = SSL_AD_RECORD_OVERFLOW;
     return ssl_open_record_error;
+  }
+
+  /* Limit the number of consecutive empty records. */
+  if (plaintext_len == 0) {
+    ssl->s3->empty_record_count++;
+    if (ssl->s3->empty_record_count > kMaxEmptyRecords) {
+      OPENSSL_PUT_ERROR(SSL, SSL_R_TOO_MANY_EMPTY_FRAGMENTS);
+      *out_alert = SSL_AD_UNEXPECTED_MESSAGE;
+      return ssl_open_record_error;
+    }
+    /* Apart from the limit, empty records are returned up to the caller. This
+     * allows the caller to reject records of the wrong type. */
+  } else {
+    ssl->s3->empty_record_count = 0;
   }
 
   *out_type = type;

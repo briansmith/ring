@@ -639,7 +639,11 @@ type ProtocolBugs struct {
 	// the server believes it has actually negotiated.
 	SendCipherSuite uint16
 
-	// AppDataAfterChangeCipherSpec, if not null, causes application data to
+	// AppDataBeforeHandshake, if not nil, causes application data to be
+	// sent immediately before the first handshake message.
+	AppDataBeforeHandshake []byte
+
+	// AppDataAfterChangeCipherSpec, if not nil, causes application data to
 	// be sent immediately after ChangeCipherSpec.
 	AppDataAfterChangeCipherSpec []byte
 

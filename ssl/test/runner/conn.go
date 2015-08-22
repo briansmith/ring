@@ -1287,6 +1287,9 @@ func (c *Conn) Handshake() error {
 		})
 		c.conn.Write([]byte{alertLevelError, byte(alertInternalError)})
 	}
+	if data := c.config.Bugs.AppDataBeforeHandshake; data != nil {
+		c.writeRecord(recordTypeApplicationData, data)
+	}
 	if c.isClient {
 		c.handshakeErr = c.clientHandshake()
 	} else {
