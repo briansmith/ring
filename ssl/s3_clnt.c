@@ -1032,9 +1032,6 @@ int ssl3_get_server_certificate(SSL *s) {
   sc->cert_chain = sk;
   sk = NULL;
 
-  X509_free(sc->peer_cert);
-  sc->peer_cert = X509_up_ref(leaf);
-
   X509_free(s->session->peer);
   s->session->peer = X509_up_ref(leaf);
 
@@ -1261,7 +1258,7 @@ int ssl3_get_server_key_exchange(SSL *s) {
 
   /* ServerKeyExchange should be signed by the server's public key. */
   if (ssl_cipher_has_server_public_key(s->s3->tmp.new_cipher)) {
-    pkey = X509_get_pubkey(s->session->sess_cert->peer_cert);
+    pkey = X509_get_pubkey(s->session->peer);
     if (pkey == NULL) {
       goto err;
     }
@@ -1686,7 +1683,7 @@ int ssl3_send_client_key_exchange(SSL *s) {
         goto err;
       }
 
-      pkey = X509_get_pubkey(s->session->sess_cert->peer_cert);
+      pkey = X509_get_pubkey(s->session->peer);
       if (pkey == NULL ||
           pkey->type != EVP_PKEY_RSA ||
           pkey->pkey.rsa == NULL) {

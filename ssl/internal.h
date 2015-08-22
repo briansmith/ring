@@ -783,9 +783,6 @@ typedef struct sess_cert_st {
    * this does includes the server's leaf certificate, but, for a server, this
    * does NOT include the client's leaf. */
   STACK_OF(X509) *cert_chain;
-
-  /* peer_cert, on a client, is the leaf certificate of the peer. */
-  X509 *peer_cert;
 } SESS_CERT;
 
 /* SSL_METHOD is a compatibility structure to support the legacy version-locked

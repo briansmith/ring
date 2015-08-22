@@ -1045,10 +1045,9 @@ struct ssl_session_st {
    * probably not be retained across resumptions. */
   struct sess_cert_st /* SESS_CERT */ *sess_cert;
 
-  /* This is the cert for the other end. On clients, it will be the same as
-   * sess_cert->peer_key->x509 (the latter is not enough as sess_cert is not
-   * retained in the external representation of sessions, see ssl_asn1.c). */
+  /* peer is the peer's certificate. */
   X509 *peer;
+
   /* when app_verify_callback accepts a session where the peer's certificate is
    * not ok, we must remember the error for session reuse: */
   long verify_result; /* only for servers */

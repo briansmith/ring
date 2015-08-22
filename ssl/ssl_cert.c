@@ -324,9 +324,6 @@ SESS_CERT *ssl_sess_cert_dup(const SESS_CERT *sess_cert) {
       return NULL;
     }
   }
-  if (sess_cert->peer_cert != NULL) {
-    ret->peer_cert = X509_up_ref(sess_cert->peer_cert);
-  }
   return ret;
 }
 
@@ -336,8 +333,6 @@ void ssl_sess_cert_free(SESS_CERT *sess_cert) {
   }
 
   sk_X509_pop_free(sess_cert->cert_chain, X509_free);
-  X509_free(sess_cert->peer_cert);
-
   OPENSSL_free(sess_cert);
 }
 
