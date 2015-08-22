@@ -558,6 +558,8 @@ int ssl3_accept(SSL *s) {
         if (s->ctx->retain_only_sha256_of_client_certs) {
           X509_free(s->session->peer);
           s->session->peer = NULL;
+          sk_X509_pop_free(s->session->cert_chain, X509_free);
+          s->session->cert_chain = NULL;
         }
 
         s->s3->initial_handshake_complete = 1;
@@ -2226,17 +2228,8 @@ int ssl3_get_client_certificate(SSL *s) {
   s->session->peer = sk_X509_shift(sk);
   s->session->verify_result = s->verify_result;
 
-  /* With the current implementation, sess_cert will always be NULL when we
-   * arrive here. */
-  if (s->session->sess_cert == NULL) {
-    s->session->sess_cert = ssl_sess_cert_new();
-    if (s->session->sess_cert == NULL) {
-      OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
-      goto err;
-    }
-  }
-  sk_X509_pop_free(s->session->sess_cert->cert_chain, X509_free);
-  s->session->sess_cert->cert_chain = sk;
+  sk_X509_pop_free(s->session->cert_chain, X509_free);
+  s->session->cert_chain = sk;
   /* Inconsistency alert: cert_chain does *not* include the peer's own
    * certificate, while we do include it in s3_clnt.c */
 

@@ -778,13 +778,6 @@ typedef struct cert_st {
   void *cert_cb_arg;
 } CERT;
 
-typedef struct sess_cert_st {
-  /* cert_chain is the certificate chain sent by the peer. NOTE: for a client,
-   * this does includes the server's leaf certificate, but, for a server, this
-   * does NOT include the client's leaf. */
-  STACK_OF(X509) *cert_chain;
-} SESS_CERT;
-
 /* SSL_METHOD is a compatibility structure to support the legacy version-locked
  * methods. */
 struct ssl_method_st {
@@ -965,9 +958,6 @@ CERT *ssl_cert_new(void);
 CERT *ssl_cert_dup(CERT *cert);
 void ssl_cert_clear_certs(CERT *c);
 void ssl_cert_free(CERT *c);
-SESS_CERT *ssl_sess_cert_new(void);
-SESS_CERT *ssl_sess_cert_dup(const SESS_CERT *sess_cert);
-void ssl_sess_cert_free(SESS_CERT *sess_cert);
 int ssl_get_new_session(SSL *s, int session);
 
 enum ssl_session_result_t {

@@ -950,7 +950,6 @@ int ssl3_get_server_certificate(SSL *s) {
   unsigned long n;
   X509 *x = NULL;
   STACK_OF(X509) *sk = NULL;
-  SESS_CERT *sc;
   EVP_PKEY *pkey = NULL;
   CBS cbs, certificate_list;
   const uint8_t *data;
@@ -1019,17 +1018,10 @@ int ssl3_get_server_certificate(SSL *s) {
     goto f_err;
   }
 
-  sc = ssl_sess_cert_new();
-  if (sc == NULL) {
-    goto err;
-  }
-
-  ssl_sess_cert_free(s->session->sess_cert);
-  s->session->sess_cert = sc;
-
   /* NOTE: Unlike the server half, the client's copy of |cert_chain| includes
    * the leaf. */
-  sc->cert_chain = sk;
+  sk_X509_pop_free(s->session->cert_chain, X509_free);
+  s->session->cert_chain = sk;
   sk = NULL;
 
   X509_free(s->session->peer);
@@ -1080,19 +1072,9 @@ int ssl3_get_server_key_exchange(SSL *s) {
       return -1;
     }
 
-    /* In plain PSK ciphersuite, ServerKeyExchange can be
-       omitted if no identity hint is sent. Set session->sess_cert anyway to
-       avoid problems later.*/
+    /* In plain PSK ciphersuite, ServerKeyExchange may be omitted to send no
+     * identity hint. */
     if (s->s3->tmp.new_cipher->algorithm_auth & SSL_aPSK) {
-      /* PSK ciphersuites that also send a Certificate would have already
-       * initialized |sess_cert|. */
-      if (s->session->sess_cert == NULL) {
-        s->session->sess_cert = ssl_sess_cert_new();
-        if (s->session->sess_cert == NULL) {
-          return -1;
-        }
-      }
-
       /* TODO(davidben): This should be reset in one place with the rest of the
        * handshake state. */
       OPENSSL_free(s->s3->tmp.peer_psk_identity_hint);
@@ -1105,13 +1087,6 @@ int ssl3_get_server_key_exchange(SSL *s) {
   /* Retain a copy of the original CBS to compute the signature over. */
   CBS_init(&server_key_exchange, s->init_msg, n);
   server_key_exchange_orig = server_key_exchange;
-
-  if (s->session->sess_cert == NULL) {
-    s->session->sess_cert = ssl_sess_cert_new();
-    if (s->session->sess_cert == NULL) {
-      return -1;
-    }
-  }
 
   alg_k = s->s3->tmp.new_cipher->algorithm_mkey;
   alg_a = s->s3->tmp.new_cipher->algorithm_auth;
@@ -1482,15 +1457,6 @@ int ssl3_get_new_session_ticket(SSL *s) {
       OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
       goto err;
     }
-    if (s->session->sess_cert != NULL) {
-      /* |sess_cert| is not serialized and must be duplicated explicitly. */
-      assert(new_session->sess_cert == NULL);
-      new_session->sess_cert = ssl_sess_cert_dup(s->session->sess_cert);
-      if (new_session->sess_cert == NULL) {
-        SSL_SESSION_free(new_session);
-        goto err;
-      }
-    }
 
     SSL_SESSION_free(s->session);
     s->session = new_session;
@@ -1674,12 +1640,6 @@ int ssl3_send_client_key_exchange(SSL *s) {
       pms = OPENSSL_malloc(pms_len);
       if (pms == NULL) {
         OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
-        goto err;
-      }
-
-      if (s->session->sess_cert == NULL) {
-        /* We should always have a server certificate with SSL_kRSA. */
-        OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
         goto err;
       }
 

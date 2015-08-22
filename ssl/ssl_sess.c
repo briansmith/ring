@@ -604,8 +604,8 @@ void SSL_SESSION_free(SSL_SESSION *session) {
 
   OPENSSL_cleanse(session->master_key, sizeof(session->master_key));
   OPENSSL_cleanse(session->session_id, sizeof(session->session_id));
-  ssl_sess_cert_free(session->sess_cert);
   X509_free(session->peer);
+  sk_X509_pop_free(session->cert_chain, X509_free);
   OPENSSL_free(session->tlsext_hostname);
   OPENSSL_free(session->tlsext_tick);
   OPENSSL_free(session->tlsext_signed_cert_timestamp_list);

@@ -114,9 +114,10 @@
  *     signedCertTimestampList [15] OCTET STRING OPTIONAL,
  *                                  -- contents of SCT extension
  *     ocspResponse            [16] OCTET STRING OPTIONAL,
- *                                   -- stapled OCSP response from the server
+ *                                  -- stapled OCSP response from the server
  *     extendedMasterSecret    [17] BOOLEAN OPTIONAL,
  *     keyExchangeInfo         [18] INTEGER OPTIONAL,
+ *     certChain               [19] SEQUENCE OF Certificate OPTIONAL,
  * }
  *
  * Note: historically this serialization has included other optional
@@ -157,6 +158,24 @@ static const int kExtendedMasterSecretTag =
     CBS_ASN1_CONSTRUCTED | CBS_ASN1_CONTEXT_SPECIFIC | 17;
 static const int kKeyExchangeInfoTag =
     CBS_ASN1_CONSTRUCTED | CBS_ASN1_CONTEXT_SPECIFIC | 18;
+static const int kCertChainTag =
+    CBS_ASN1_CONSTRUCTED | CBS_ASN1_CONTEXT_SPECIFIC | 19;
+
+static int add_X509(CBB *cbb, X509 *x509) {
+  int len = i2d_X509(x509, NULL);
+  if (len < 0) {
+    return 0;
+  }
+  uint8_t *buf;
+  if (!CBB_add_space(cbb, &buf, len)) {
+    OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
+    return 0;
+  }
+  if (buf != NULL && i2d_X509(x509, &buf) < 0) {
+    return 0;
+  }
+  return 1;
+}
 
 static int SSL_SESSION_to_bytes_full(SSL_SESSION *in, uint8_t **out_data,
                                      size_t *out_len, int for_ticket) {
@@ -202,17 +221,11 @@ static int SSL_SESSION_to_bytes_full(SSL_SESSION *in, uint8_t **out_data,
   /* The peer certificate is only serialized if the SHA-256 isn't
    * serialized instead. */
   if (in->peer && !in->peer_sha256_valid) {
-    uint8_t *buf;
-    int len = i2d_X509(in->peer, NULL);
-    if (len < 0) {
-      goto err;
-    }
-    if (!CBB_add_asn1(&session, &child, kPeerTag) ||
-        !CBB_add_space(&child, &buf, len)) {
+    if (!CBB_add_asn1(&session, &child, kPeerTag)) {
       OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
       goto err;
     }
-    if (buf != NULL && i2d_X509(in->peer, &buf) < 0) {
+    if (!add_X509(&child, in->peer)) {
       goto err;
     }
   }
@@ -323,6 +336,21 @@ static int SSL_SESSION_to_bytes_full(SSL_SESSION *in, uint8_t **out_data,
        !CBB_add_asn1_uint64(&child, in->key_exchange_info))) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
     goto err;
+  }
+
+  /* The certificate chain is only serialized if the leaf's SHA-256 isn't
+   * serialized instead. */
+  if (in->cert_chain != NULL && !in->peer_sha256_valid) {
+    if (!CBB_add_asn1(&session, &child, kCertChainTag)) {
+      OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
+      goto err;
+    }
+    size_t i;
+    for (i = 0; i < sk_X509_num(in->cert_chain); i++) {
+      if (!add_X509(&child, sk_X509_value(in->cert_chain, i))) {
+        goto err;
+      }
+    }
   }
 
   if (!CBB_finish(&cbb, out_data, out_len)) {
@@ -598,8 +626,40 @@ static SSL_SESSION *SSL_SESSION_parse(CBS *cbs) {
   ret->extended_master_secret = !!extended_master_secret;
 
   if (!SSL_SESSION_parse_u32(&session, &ret->key_exchange_info,
-                             kKeyExchangeInfoTag, 0) ||
-      CBS_len(&session) != 0) {
+                             kKeyExchangeInfoTag, 0)) {
+    OPENSSL_PUT_ERROR(SSL, SSL_R_INVALID_SSL_SESSION);
+    goto err;
+  }
+
+  CBS cert_chain;
+  int has_cert_chain;
+  if (!CBS_get_optional_asn1(&session, &cert_chain, &has_cert_chain,
+                             kCertChainTag)) {
+    OPENSSL_PUT_ERROR(SSL, SSL_R_INVALID_SSL_SESSION);
+    goto err;
+  }
+  sk_X509_pop_free(ret->cert_chain, X509_free);
+  ret->cert_chain = NULL;
+  if (has_cert_chain) {
+    ret->cert_chain = sk_X509_new_null();
+    if (ret->cert_chain == NULL) {
+      OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
+      goto err;
+    }
+    while (CBS_len(&cert_chain) > 0) {
+      X509 *x509 = parse_x509(&cert_chain);
+      if (x509 == NULL) {
+        goto err;
+      }
+      if (!sk_X509_push(ret->cert_chain, x509)) {
+        OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
+        X509_free(x509);
+        goto err;
+      }
+    }
+  }
+
+  if (CBS_len(&session) != 0) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_INVALID_SSL_SESSION);
     goto err;
   }

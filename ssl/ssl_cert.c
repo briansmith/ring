@@ -297,45 +297,6 @@ void ssl_cert_set_cert_cb(CERT *c, int (*cb)(SSL *ssl, void *arg), void *arg) {
   c->cert_cb_arg = arg;
 }
 
-SESS_CERT *ssl_sess_cert_new(void) {
-  SESS_CERT *ret;
-
-  ret = OPENSSL_malloc(sizeof *ret);
-  if (ret == NULL) {
-    OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
-    return NULL;
-  }
-
-  memset(ret, 0, sizeof *ret);
-
-  return ret;
-}
-
-SESS_CERT *ssl_sess_cert_dup(const SESS_CERT *sess_cert) {
-  SESS_CERT *ret = ssl_sess_cert_new();
-  if (ret == NULL) {
-    return NULL;
-  }
-
-  if (sess_cert->cert_chain != NULL) {
-    ret->cert_chain = X509_chain_up_ref(sess_cert->cert_chain);
-    if (ret->cert_chain == NULL) {
-      ssl_sess_cert_free(ret);
-      return NULL;
-    }
-  }
-  return ret;
-}
-
-void ssl_sess_cert_free(SESS_CERT *sess_cert) {
-  if (sess_cert == NULL) {
-    return;
-  }
-
-  sk_X509_pop_free(sess_cert->cert_chain, X509_free);
-  OPENSSL_free(sess_cert);
-}
-
 int ssl_verify_cert_chain(SSL *s, STACK_OF(X509) *sk) {
   X509 *x;
   int i;

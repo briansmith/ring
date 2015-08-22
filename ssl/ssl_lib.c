@@ -753,34 +753,18 @@ int SSL_pending(const SSL *s) {
                                                         : 0;
 }
 
-X509 *SSL_get_peer_certificate(const SSL *s) {
-  X509 *r;
-
-  if (s == NULL || s->session == NULL) {
-    r = NULL;
-  } else {
-    r = s->session->peer;
-  }
-
-  if (r == NULL) {
+X509 *SSL_get_peer_certificate(const SSL *ssl) {
+  if (ssl == NULL || ssl->session == NULL || ssl->session->peer == NULL) {
     return NULL;
   }
-
-  return X509_up_ref(r);
+  return X509_up_ref(ssl->session->peer);
 }
 
-STACK_OF(X509) *SSL_get_peer_cert_chain(const SSL *s) {
-  STACK_OF(X509) *r;
-
-  if (s == NULL || s->session == NULL || s->session->sess_cert == NULL) {
-    r = NULL;
-  } else {
-    r = s->session->sess_cert->cert_chain;
+STACK_OF(X509) *SSL_get_peer_cert_chain(const SSL *ssl) {
+  if (ssl == NULL || ssl->session == NULL) {
+    return NULL;
   }
-
-  /* If we are a client, cert_chain includes the peer's own certificate; if we
-   * are a server, it does not. */
-  return r;
+  return ssl->session->cert_chain;
 }
 
 /* Fix this so it checks all the valid key/cert options */

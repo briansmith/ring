@@ -1037,16 +1037,13 @@ struct ssl_session_st {
    * disable session caching and tickets. */
   int not_resumable;
 
-  /* The cert is the certificate used to establish this connection
-   *
-   * TODO(davidben): Remove this field. It is not serialized as part of the
-   * session, but some APIs access it. Certificate-related fields, where not
-   * redundant with |peer|, should be added to the session. Others should
-   * probably not be retained across resumptions. */
-  struct sess_cert_st /* SESS_CERT */ *sess_cert;
-
   /* peer is the peer's certificate. */
   X509 *peer;
+
+  /* cert_chain is the certificate chain sent by the peer. NOTE: for historical
+   * reasons, when a client (so the peer is a server), the chain includes
+   * |peer|, but when a server it does not. */
+  STACK_OF(X509) *cert_chain;
 
   /* when app_verify_callback accepts a session where the peer's certificate is
    * not ok, we must remember the error for session reuse: */
@@ -2225,9 +2222,20 @@ OPENSSL_EXPORT int i2d_SSL_SESSION(SSL_SESSION *in, uint8_t **pp);
 OPENSSL_EXPORT SSL_SESSION *d2i_SSL_SESSION(SSL_SESSION **a, const uint8_t **pp,
                                             long length);
 
-OPENSSL_EXPORT X509 *SSL_get_peer_certificate(const SSL *s);
+/* SSL_get_peer_certificate returns the peer's leaf certificate or NULL if the
+ * peer did not use certificates. The caller must call |X509_free| on the
+ * result to release it. */
+OPENSSL_EXPORT X509 *SSL_get_peer_certificate(const SSL *ssl);
 
-OPENSSL_EXPORT STACK_OF(X509) *SSL_get_peer_cert_chain(const SSL *s);
+/* SSL_get_peer_cert_chain returns the peer's certificate chain or NULL if
+ * unavailable or the peer did not use certificates. For historical reasons,
+ * this may not be available if resuming a serialized |SSL_SESSION|. The caller
+ * does not take ownership of the result.
+ *
+ * WARNING: This function behaves differently between client and server. If
+ * |ssl| is a server, the returned chain does not include the leaf certificate.
+ * If a client, it does. */
+OPENSSL_EXPORT STACK_OF(X509) *SSL_get_peer_cert_chain(const SSL *ssl);
 
 OPENSSL_EXPORT int SSL_CTX_get_verify_mode(const SSL_CTX *ctx);
 OPENSSL_EXPORT int SSL_CTX_get_verify_depth(const SSL_CTX *ctx);
