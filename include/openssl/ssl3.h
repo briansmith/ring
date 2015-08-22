@@ -519,6 +519,12 @@ typedef struct ssl3_state_st {
     /* Client-only: in_false_start is one if there is a pending handshake in
      * False Start. The client may write data at this point. */
     char in_false_start;
+
+    /* peer_dh_tmp, on a client, is the server's DHE public key. */
+    DH *peer_dh_tmp;
+
+    /* peer_ecdh_tmp, on a client, is the server's ECDHE public key. */
+    EC_KEY *peer_ecdh_tmp;
   } tmp;
 
   /* Connection binding to prevent renegotiation attacks */

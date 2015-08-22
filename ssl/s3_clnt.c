@@ -1109,12 +1109,7 @@ int ssl3_get_server_key_exchange(SSL *s) {
   CBS_init(&server_key_exchange, s->init_msg, n);
   server_key_exchange_orig = server_key_exchange;
 
-  if (s->session->sess_cert != NULL) {
-    DH_free(s->session->sess_cert->peer_dh_tmp);
-    s->session->sess_cert->peer_dh_tmp = NULL;
-    EC_KEY_free(s->session->sess_cert->peer_ecdh_tmp);
-    s->session->sess_cert->peer_ecdh_tmp = NULL;
-  } else {
+  if (s->session->sess_cert == NULL) {
     s->session->sess_cert = ssl_sess_cert_new();
     if (s->session->sess_cert == NULL) {
       return -1;
@@ -1191,7 +1186,8 @@ int ssl3_get_server_key_exchange(SSL *s) {
       OPENSSL_PUT_ERROR(SSL, SSL_R_BAD_DH_P_LENGTH);
       goto err;
     }
-    s->session->sess_cert->peer_dh_tmp = dh;
+    DH_free(s->s3->tmp.peer_dh_tmp);
+    s->s3->tmp.peer_dh_tmp = dh;
     dh = NULL;
   } else if (alg_k & SSL_kECDHE) {
     uint16_t curve_id;
@@ -1244,7 +1240,8 @@ int ssl3_get_server_key_exchange(SSL *s) {
       goto f_err;
     }
     EC_KEY_set_public_key(ecdh, srvr_ecpoint);
-    s->session->sess_cert->peer_ecdh_tmp = ecdh;
+    EC_KEY_free(s->s3->tmp.peer_ecdh_tmp);
+    s->s3->tmp.peer_ecdh_tmp = ecdh;
     ecdh = NULL;
     BN_CTX_free(bn_ctx);
     bn_ctx = NULL;
@@ -1735,21 +1732,14 @@ int ssl3_send_client_key_exchange(SSL *s) {
       }
     } else if (alg_k & SSL_kDHE) {
       DH *dh_srvr, *dh_clnt;
-      SESS_CERT *scert = s->session->sess_cert;
       int dh_len;
       size_t pub_len;
 
-      if (scert == NULL) {
-        ssl3_send_alert(s, SSL3_AL_FATAL, SSL_AD_UNEXPECTED_MESSAGE);
-        OPENSSL_PUT_ERROR(SSL, SSL_R_UNEXPECTED_MESSAGE);
-        goto err;
-      }
-
-      if (scert->peer_dh_tmp == NULL) {
+      if (s->s3->tmp.peer_dh_tmp == NULL) {
         OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
         goto err;
       }
-      dh_srvr = scert->peer_dh_tmp;
+      dh_srvr = s->s3->tmp.peer_dh_tmp;
 
       /* generate a new random key */
       dh_clnt = DHparams_dup(dh_srvr);
@@ -1791,18 +1781,12 @@ int ssl3_send_client_key_exchange(SSL *s) {
       EC_KEY *tkey;
       int field_size = 0, ecdh_len;
 
-      if (s->session->sess_cert == NULL) {
-        ssl3_send_alert(s, SSL3_AL_FATAL, SSL_AD_UNEXPECTED_MESSAGE);
-        OPENSSL_PUT_ERROR(SSL, SSL_R_UNEXPECTED_MESSAGE);
-        goto err;
-      }
-
-      if (s->session->sess_cert->peer_ecdh_tmp == NULL) {
+      if (s->s3->tmp.peer_ecdh_tmp == NULL) {
         OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
         goto err;
       }
 
-      tkey = s->session->sess_cert->peer_ecdh_tmp;
+      tkey = s->s3->tmp.peer_ecdh_tmp;
 
       srvr_group = EC_KEY_get0_group(tkey);
       srvr_ecpoint = EC_KEY_get0_public_key(tkey);

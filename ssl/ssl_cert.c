@@ -327,14 +327,6 @@ SESS_CERT *ssl_sess_cert_dup(const SESS_CERT *sess_cert) {
   if (sess_cert->peer_cert != NULL) {
     ret->peer_cert = X509_up_ref(sess_cert->peer_cert);
   }
-  if (sess_cert->peer_dh_tmp != NULL) {
-    ret->peer_dh_tmp = sess_cert->peer_dh_tmp;
-    DH_up_ref(ret->peer_dh_tmp);
-  }
-  if (sess_cert->peer_ecdh_tmp != NULL) {
-    ret->peer_ecdh_tmp = sess_cert->peer_ecdh_tmp;
-    EC_KEY_up_ref(ret->peer_ecdh_tmp);
-  }
   return ret;
 }
 
@@ -345,8 +337,6 @@ void ssl_sess_cert_free(SESS_CERT *sess_cert) {
 
   sk_X509_pop_free(sess_cert->cert_chain, X509_free);
   X509_free(sess_cert->peer_cert);
-  DH_free(sess_cert->peer_dh_tmp);
-  EC_KEY_free(sess_cert->peer_ecdh_tmp);
 
   OPENSSL_free(sess_cert);
 }

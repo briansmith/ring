@@ -786,9 +786,6 @@ typedef struct sess_cert_st {
 
   /* peer_cert, on a client, is the leaf certificate of the peer. */
   X509 *peer_cert;
-
-  DH *peer_dh_tmp;
-  EC_KEY *peer_ecdh_tmp;
 } SESS_CERT;
 
 /* SSL_METHOD is a compatibility structure to support the legacy version-locked

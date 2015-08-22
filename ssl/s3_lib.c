@@ -233,6 +233,8 @@ void ssl3_free(SSL *s) {
   OPENSSL_free(s->s3->tmp.certificate_types);
   OPENSSL_free(s->s3->tmp.peer_ellipticcurvelist);
   OPENSSL_free(s->s3->tmp.peer_psk_identity_hint);
+  DH_free(s->s3->tmp.peer_dh_tmp);
+  EC_KEY_free(s->s3->tmp.peer_ecdh_tmp);
   ssl3_free_handshake_buffer(s);
   ssl3_free_handshake_hash(s);
   OPENSSL_free(s->s3->alpn_selected);
