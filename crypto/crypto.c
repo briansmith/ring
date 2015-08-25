@@ -55,7 +55,7 @@
 uint32_t OPENSSL_ia32cap_P[4] = {0};
 #elif defined(OPENSSL_ARM) || defined(OPENSSL_AARCH64)
 
-#include "arm_arch.h"
+#include <openssl/arm_arch.h>
 
 #if defined(__ARM_NEON__)
 uint32_t OPENSSL_armcap_P = ARMV7_NEON | ARMV7_NEON_FUNCTIONAL;

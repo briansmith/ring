@@ -54,7 +54,7 @@ my ($Xl,$Xm,$Xh,$IN)=map("q$_",(0..3));
 my ($t0,$t1,$t2,$xC2,$H,$Hhl,$H2)=map("q$_",(8..14));
 
 $code=<<___;
-#include "arm_arch.h"
+#include <openssl/arm_arch.h>
 
 .text
 ___

@@ -1,4 +1,4 @@
-include_directories(. ../include)
+include_directories(../include)
 
 if(APPLE)
   if (${ARCH} STREQUAL "x86")

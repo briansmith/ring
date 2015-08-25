@@ -65,7 +65,7 @@ $rounds="r12";
 $code=<<___;
 #if defined(__arm__)
 #ifndef __KERNEL__
-# include "arm_arch.h"
+# include <openssl/arm_arch.h>
 #else
 # define __ARM_ARCH__ __LINUX_ARM_ARCH__
 #endif

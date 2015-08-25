@@ -133,4 +133,4 @@ extern uint32_t OPENSSL_armcap_P;
 #define ARMV8_PMULL (1 << 5)
 
 
-#endif  /* OPENSSL_HEADER_THREAD_H */
+#endif  /* OPENSSL_HEADER_ARM_ARCH_H */

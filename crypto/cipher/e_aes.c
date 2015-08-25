@@ -64,7 +64,7 @@
 #include "../modes/internal.h"
 
 #if defined(OPENSSL_ARM) || defined(OPENSSL_AARCH64)
-#include "../arm_arch.h"
+#include <openssl/arm_arch.h>
 #endif
 
 
@@ -111,7 +111,6 @@ static char bsaes_capable(void) {
 
 #elif !defined(OPENSSL_NO_ASM) && \
     (defined(OPENSSL_ARM) || defined(OPENSSL_AARCH64))
-#include "../arm_arch.h"
 
 #if defined(OPENSSL_ARM) && __ARM_MAX_ARCH__ >= 7
 #define BSAES

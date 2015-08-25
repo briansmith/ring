@@ -24,7 +24,7 @@
 #include <signal.h>
 #endif
 
-#include "arm_arch.h"
+#include <openssl/arm_arch.h>
 
 
 /* We can't include <sys/auxv.h> because the Android SDK version against which

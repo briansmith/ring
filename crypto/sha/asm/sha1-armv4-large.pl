@@ -178,7 +178,7 @@ ___
 }
 
 $code=<<___;
-#include "arm_arch.h"
+#include <openssl/arm_arch.h>
 
 .text
 .code	32
