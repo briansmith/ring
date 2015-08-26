@@ -59,6 +59,8 @@
 
 #include <openssl/base.h>
 
+#include <openssl/asn1.h>
+
 
 #if defined(__cplusplus)
 extern "C" {
@@ -114,6 +116,14 @@ int RSA_padding_add_none(uint8_t *to, unsigned to_len, const uint8_t *from,
 int RSA_private_transform(RSA *rsa, uint8_t *out, const uint8_t *in,
                           size_t len);
 
+typedef struct rsa_pss_params_st {
+  X509_ALGOR *hashAlgorithm;
+  X509_ALGOR *maskGenAlgorithm;
+  ASN1_INTEGER *saltLength;
+  ASN1_INTEGER *trailerField;
+} RSA_PSS_PARAMS;
+
+DECLARE_ASN1_FUNCTIONS(RSA_PSS_PARAMS)
 
 /* RSA_additional_prime contains information about the third, forth etc prime
  * in a multi-prime RSA key. */
