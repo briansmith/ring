@@ -21,10 +21,6 @@
  * mem.h. */
 #include <openssl/mem.h>
 
-/* Upstream OpenSSL defines |CRYPTO_LOCK|, etc., in crypto.h rather than
- * thread.h. */
-#include <openssl/thread.h>
-
 
 #if defined(__cplusplus)
 extern "C" {
