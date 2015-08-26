@@ -139,10 +139,6 @@ OPENSSL_EXPORT void DES_ede2_cbc_encrypt(const uint8_t *in, uint8_t *out,
 
 /* Deprecated functions. */
 
-/* DES_set_key_unchecked calls |DES_set_key|. */
-OPENSSL_EXPORT void DES_set_key_unchecked(const DES_cblock *key,
-                                          DES_key_schedule *schedule);
-
 OPENSSL_EXPORT void DES_ede3_cfb64_encrypt(const uint8_t *in, uint8_t *out,
                                            long length, DES_key_schedule *ks1,
                                            DES_key_schedule *ks2,
