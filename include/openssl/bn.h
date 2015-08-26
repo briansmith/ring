@@ -794,25 +794,6 @@ OPENSSL_EXPORT int BN_mod_exp2_mont(BIGNUM *r, const BIGNUM *a1,
                                     BN_CTX *ctx, BN_MONT_CTX *m_ctx);
 
 
-/* Deprecated functions */
-
-/* BN_bn2mpi serialises the value of |in| to |out|, using a format that consists
- * of the number's length in bytes represented as a 4-byte big-endian number,
- * and the number itself in big-endian format, where the most significant bit
- * signals a negative number. (The representation of numbers with the MSB set is
- * prefixed with null byte). |out| must have sufficient space available; to
- * find the needed amount of space, call the function with |out| set to NULL. */
-OPENSSL_EXPORT size_t BN_bn2mpi(const BIGNUM *in, uint8_t *out);
-
-/* BN_bin2bn parses |len| bytes from |in| and returns the resulting value. The
- * bytes at |in| are expected to be in the format emitted by |BN_bn2mpi|.
- *
- * If |out| is NULL then a fresh |BIGNUM| is allocated and returned, otherwise
- * |out| is reused and returned. On error, NULL is returned and the error queue
- * is updated. */
-OPENSSL_EXPORT BIGNUM *BN_mpi2bn(const uint8_t *in, size_t len, BIGNUM *out);
-
-
 /* Private functions */
 
 struct bignum_st {
