@@ -96,31 +96,6 @@ static const EVP_CIPHER des_cbc = {
 const EVP_CIPHER *EVP_des_cbc(void) { return &des_cbc; }
 
 
-static int des_ecb_cipher(EVP_CIPHER_CTX *ctx, uint8_t *out, const uint8_t *in,
-                          size_t in_len) {
-  if (in_len < ctx->cipher->block_size) {
-    return 1;
-  }
-  in_len -= ctx->cipher->block_size;
-
-  EVP_DES_KEY *dat = (EVP_DES_KEY *) ctx->cipher_data;
-  size_t i;
-  for (i = 0; i <= in_len; i += ctx->cipher->block_size) {
-    DES_ecb_encrypt((DES_cblock *) (in + i), (DES_cblock *) (out + i),
-                    &dat->ks.ks, ctx->encrypt);
-  }
-  return 1;
-}
-
-static const EVP_CIPHER des_ecb = {
-    NID_des_ecb,         8 /* block_size */,  8 /* key_size */,
-    0 /* iv_len */,      sizeof(EVP_DES_KEY), EVP_CIPH_ECB_MODE,
-    NULL /* app_data */, des_init_key,        des_ecb_cipher,
-    NULL /* cleanup */,  NULL /* ctrl */, };
-
-const EVP_CIPHER *EVP_des_ecb(void) { return &des_ecb; }
-
-
 typedef struct {
   union {
     double align;

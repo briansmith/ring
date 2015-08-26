@@ -75,7 +75,6 @@ extern "C" {
 OPENSSL_EXPORT const EVP_CIPHER *EVP_rc4(void);
 
 OPENSSL_EXPORT const EVP_CIPHER *EVP_des_cbc(void);
-OPENSSL_EXPORT const EVP_CIPHER *EVP_des_ecb(void);
 OPENSSL_EXPORT const EVP_CIPHER *EVP_des_ede3_cbc(void);
 
 OPENSSL_EXPORT const EVP_CIPHER *EVP_aes_128_ecb(void);
