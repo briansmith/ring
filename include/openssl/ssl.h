@@ -363,26 +363,18 @@ OPENSSL_EXPORT void SSL_set_max_version(SSL *ssl, uint16_t version);
 
 /* The following flags do nothing and are included only to make it easier to
  * compile code with BoringSSL. */
-#define SSL_OP_ALLOW_UNSAFE_LEGACY_RENEGOTIATION 0
 #define SSL_OP_DONT_INSERT_EMPTY_FRAGMENTS 0
-#define SSL_OP_EPHEMERAL_RSA 0
 #define SSL_OP_MICROSOFT_SESS_ID_BUG 0
-#define SSL_OP_MSIE_SSLV2_RSA_PADDING 0
-#define SSL_OP_NETSCAPE_CA_DN_BUG 0
 #define SSL_OP_NETSCAPE_CHALLENGE_BUG 0
-#define SSL_OP_NETSCAPE_DEMO_CIPHER_CHANGE_BUG 0
-#define SSL_OP_NETSCAPE_REUSE_CIPHER_CHANGE_BUG 0
 #define SSL_OP_NO_COMPRESSION 0
 #define SSL_OP_NO_SESSION_RESUMPTION_ON_RENEGOTIATION 0
 #define SSL_OP_NO_SSLv2 0
-#define SSL_OP_PKCS1_CHECK_1 0
-#define SSL_OP_PKCS1_CHECK_2 0
 #define SSL_OP_SINGLE_DH_USE 0
 #define SSL_OP_SINGLE_ECDH_USE 0
-#define SSL_OP_SSLEAY_080_CLIENT_DH_BUG 0
 #define SSL_OP_SSLREF2_REUSE_CERT_TYPE_BUG 0
 #define SSL_OP_TLS_BLOCK_PADDING_BUG 0
 #define SSL_OP_TLS_ROLLBACK_BUG 0
+#define SSL_OP_ALLOW_UNSAFE_LEGACY_RENEGOTIATION 0
 
 /* SSL_CTX_set_options enables all options set in |options| (which should be one
  * or more of the |SSL_OP_*| values, ORed together) in |ctx|. It returns a
