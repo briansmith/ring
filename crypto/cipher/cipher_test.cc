@@ -71,8 +71,6 @@ static const EVP_CIPHER *GetCipher(const std::string &name) {
     return EVP_des_cbc();
   } else if (name == "DES-ECB") {
     return EVP_des_ecb();
-  } else if (name == "DES-EDE") {
-    return EVP_des_ede();
   } else if (name == "DES-EDE-CBC") {
     return EVP_des_ede_cbc();
   } else if (name == "DES-EDE3-CBC") {
