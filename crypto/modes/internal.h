@@ -173,6 +173,11 @@ struct gcm128_context {
   void *key;
 };
 
+struct xts128_context {
+  void *key1, *key2;
+  block128_f block1, block2;
+};
+
 struct ccm128_context {
   union {
     uint64_t u[2];
