@@ -31,6 +31,9 @@ pub use digest::{
     SHA512, SHA512_DIGEST_LEN,
 };
 
+mod rand;
+pub use rand::append_secure_random;
+
 mod signature;
 pub use signature::{
     CURVE_P256, CURVE_P384, CURVE_P521,
