@@ -646,12 +646,6 @@ OPENSSL_EXPORT int EVP_PKEY_CTX_get0_rsa_oaep_label(EVP_PKEY_CTX *ctx,
 /* OpenSSL_add_all_algorithms does nothing. */
 OPENSSL_EXPORT void OpenSSL_add_all_algorithms(void);
 
-/* OpenSSL_add_all_ciphers does nothing. */
-OPENSSL_EXPORT void OpenSSL_add_all_ciphers(void);
-
-/* OpenSSL_add_all_digests does nothing. */
-OPENSSL_EXPORT void OpenSSL_add_all_digests(void);
-
 /* EVP_cleanup does nothing. */
 OPENSSL_EXPORT void EVP_cleanup(void);
 
