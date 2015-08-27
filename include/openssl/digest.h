@@ -204,10 +204,6 @@ OPENSSL_EXPORT int EVP_MD_CTX_copy(EVP_MD_CTX *out, const EVP_MD_CTX *in);
  * compatibility with OpenSSL. */
 OPENSSL_EXPORT int EVP_add_digest(const EVP_MD *digest);
 
-/* EVP_get_cipherbyname returns an |EVP_MD| given a human readable name in
- * |name|, or NULL if the name is unknown. */
-OPENSSL_EXPORT const EVP_MD *EVP_get_digestbyname(const char *);
-
 
 /* Digest operation accessors. */
 
