@@ -55,21 +55,11 @@ The C API
 =========
 The C API is the same as BoringSSL's, except that its SSL/TLS, X.509, and
 ASN.1 APIs have been removed. See
-[this](https://github.com/briansmith/ring/blob/wip/BUILDING.md#building-the-c-library-on-windows)
+[this](https://github.com/briansmith/ring/blob/master/BUILDING.md#building-the-c-library-on-windows)
 (for Windows) and
-[this](https://github.com/briansmith/ring/blob/wip/BUILDING.md#building-the-c-library-on-linux-and-similar-platforms)
+[this](https://github.com/briansmith/ring/blob/master/BUILDING.md#building-the-c-library-on-linux-and-similar-platforms)
 (for other platforms) for instructions on how to build *ring* and incorporate
 it into your project.
-
-
-
-Warning: The ```wip``` Branch Gets Rebased Frequently
-=====================================================
-
-The default branch on GitHub for this project is the ```wip``` branch. This
-branch is getting rebased regularly as I clean up the initial set of patches
-for *ring*. Once that cleanup is done, I will create a ```master``` branch that
-I intend to never rebase, and then I will delete the ```wip``` branch.
 
 
 
@@ -111,7 +101,7 @@ Travis CI is used for Linux and Mac OS X. Appveyor is used for Windows.
 <tr><th>OS</th><th>Arch.</th><th>Compilers</th><th>Status</th>
 <tr><td>Linux</td>
     <td>x86, x64<td>GCC 4.8, 4.9, 5; Clang 3.4, 3.5, 3.6</td>
-    <td rowspan=2><a title="Build Status" href=https://travis-ci.org/briansmith/ring><img src=https://travis-ci.org/briansmith/ring.svg?branch=wip></a>
+    <td rowspan=2><a title="Build Status" href=https://travis-ci.org/briansmith/ring><img src=https://travis-ci.org/briansmith/ring.svg?branch=master></a>
 </tr>
 <tr><td>Mac OS X x64</td>
     <td>x86, x64</td>
@@ -120,7 +110,7 @@ Travis CI is used for Linux and Mac OS X. Appveyor is used for Windows.
 <tr><td>Windows</td>
     <td>x86, x64</td>
     <td>MSVC 2013 (12.0), 2015 (14.0)</td>
-    <td><a title="Build Status" href=https://ci.appveyor.com/project/briansmith/ring/branch/wip><img src=https://ci.appveyor.com/api/projects/status/3wq9p54r9iym05rm/branch/wip?svg=true></a>
+    <td><a title="Build Status" href=https://ci.appveyor.com/project/briansmith/ring/branch/master><img src=https://ci.appveyor.com/api/projects/status/3wq9p54r9iym05rm/branch/master?svg=true></a>
 </tr>
 </table>
 
