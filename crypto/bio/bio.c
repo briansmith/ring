@@ -462,10 +462,6 @@ void BIO_print_errors(BIO *bio) {
   ERR_print_errors_cb(print_bio, bio);
 }
 
-void ERR_print_errors(BIO *bio) {
-  BIO_print_errors(bio);
-}
-
 /* bio_read_all reads everything from |bio| and prepends |prefix| to it. On
  * success, |*out| is set to an allocated buffer (which should be freed with
  * |OPENSSL_free|), |*out_len| is set to its length and one is returned. The
