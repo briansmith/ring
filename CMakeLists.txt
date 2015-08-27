@@ -61,6 +61,12 @@ elseif(MSVC)
       "C4996" # 'read': The POSIX name for this item is deprecated. Instead,
               # use the ISO C++ conformant name: _read.
      )
+  if(MSVC_VERSION GREATER 1800)
+    list(APPEND MSVC_DISABLED_WARNINGS_LIST
+         "C4623" # Default constructor was implicitly defined as deleted...
+         "C5027" # Move assignment operator was implicitly defined as deleted...
+        )
+  endif()
   string(REPLACE "C" " -wd" MSVC_DISABLED_WARNINGS_STR
                             ${MSVC_DISABLED_WARNINGS_LIST})
   set(CMAKE_C_FLAGS   "-Wall -WX ${MSVC_DISABLED_WARNINGS_STR}")

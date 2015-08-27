@@ -12,6 +12,12 @@
  * OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
  * CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE. */
 
+ // Work around warning C4265 "class has virtual functions, but destructor is
+ // not virtual" caused by code in <functional>.
+ #if defined(_MSC_VER) && _MSC_VER >= 1900
+ #pragma warning(disable: 4265)
+ #endif
+
 #include <string>
 #include <functional>
 #include <memory>
