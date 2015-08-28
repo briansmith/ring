@@ -1052,6 +1052,9 @@ func (c *Conn) readHandshake() (interface{}, error) {
 // sequence number expectations but otherwise ignores them.
 func (c *Conn) skipPacket(packet []byte) error {
 	for len(packet) > 0 {
+		if len(packet) < 13 {
+			return errors.New("tls: bad packet")
+		}
 		// Dropped packets are completely ignored save to update
 		// expected sequence numbers for this and the next epoch. (We
 		// don't assert on the contents of the packets both for
@@ -1070,6 +1073,9 @@ func (c *Conn) skipPacket(packet []byte) error {
 				return errors.New("tls: sequence mismatch")
 			}
 			c.in.incNextSeq()
+		}
+		if len(packet) < 13+int(length) {
+			return errors.New("tls: bad packet")
 		}
 		packet = packet[13+length:]
 	}
