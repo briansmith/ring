@@ -46,6 +46,7 @@ static const struct argument kArguments[] = {
 static bool LoadOCSPResponse(SSL_CTX *ctx, const char *filename) {
   void *data = NULL;
   bool ret = false;
+  size_t bytes_read;
   long length;
 
   FILE *f = fopen(filename, "rb");
@@ -66,9 +67,10 @@ static bool LoadOCSPResponse(SSL_CTX *ctx, const char *filename) {
   }
   rewind(f);
 
-  fread(data, 1, length, f);
+  bytes_read = fread(data, 1, length, f);
   if (ferror(f) != 0 ||
-      !SSL_CTX_set_ocsp_response(ctx, (uint8_t*)data, length)) {
+      bytes_read != (size_t)length ||
+      !SSL_CTX_set_ocsp_response(ctx, (uint8_t*)data, bytes_read)) {
     goto out;
   }
 
