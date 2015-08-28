@@ -169,6 +169,8 @@ void PrintConnectionInfo(const SSL *ssl) {
   const SSL_CIPHER *cipher = SSL_get_current_cipher(ssl);
 
   fprintf(stderr, "  Version: %s\n", SSL_get_version(ssl));
+  fprintf(stderr, "  Resumed session: %s\n",
+          SSL_session_reused(ssl) ? "yes" : "no");
   fprintf(stderr, "  Cipher: %s\n", SSL_CIPHER_get_name(cipher));
   fprintf(stderr, "  Secure renegotiation: %s\n",
           SSL_get_secure_renegotiation_support(ssl) ? "yes" : "no");

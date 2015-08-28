@@ -73,6 +73,12 @@ static const struct argument kArguments[] = {
      "-false-start", kBooleanArgument,
      "Enable False Start",
     },
+    { "-session-in", kOptionalArgument,
+      "A file containing a session to resume.",
+    },
+    { "-session-out", kOptionalArgument,
+      "A file to write the negotiated session to.",
+    },
     {
      "", kOptionalArgument, "",
     },
@@ -233,6 +239,23 @@ bool Client(const std::vector<std::string> &args) {
     SSL_set_tlsext_host_name(ssl.get(), args_map["-server-name"].c_str());
   }
 
+  if (args_map.count("-session-in") != 0) {
+    ScopedBIO in(BIO_new_file(args_map["-session-in"].c_str(), "rb"));
+    if (!in) {
+      fprintf(stderr, "Error reading session\n");
+      ERR_print_errors_cb(PrintErrorCallback, stderr);
+      return false;
+    }
+    ScopedSSL_SESSION session(PEM_read_bio_SSL_SESSION(in.get(), nullptr,
+                                                       nullptr, nullptr));
+    if (!session) {
+      fprintf(stderr, "Error reading session\n");
+      ERR_print_errors_cb(PrintErrorCallback, stderr);
+      return false;
+    }
+    SSL_set_session(ssl.get(), session.get());
+  }
+
   SSL_set_bio(ssl.get(), bio.get(), bio.get());
   bio.release();
 
@@ -246,6 +269,16 @@ bool Client(const std::vector<std::string> &args) {
 
   fprintf(stderr, "Connected.\n");
   PrintConnectionInfo(ssl.get());
+
+  if (args_map.count("-session-out") != 0) {
+    ScopedBIO out(BIO_new_file(args_map["-session-out"].c_str(), "wb"));
+    if (!out ||
+        !PEM_write_bio_SSL_SESSION(out.get(), SSL_get0_session(ssl.get()))) {
+      fprintf(stderr, "Error while saving session:\n");
+      ERR_print_errors_cb(PrintErrorCallback, stderr);
+      return false;
+    }
+  }
 
   bool ok = TransferData(ssl.get(), sock);
 
