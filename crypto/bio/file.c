@@ -182,20 +182,19 @@ static int file_free(BIO *bio) {
 }
 
 static int file_read(BIO *b, char *out, int outl) {
-  int ret = 0;
-
   if (!b->init) {
     return 0;
   }
 
-  ret = fread(out, 1, outl, (FILE *)b->ptr);
+  size_t ret = fread(out, 1, outl, (FILE *)b->ptr);
   if (ret == 0 && ferror((FILE *)b->ptr)) {
     OPENSSL_PUT_SYSTEM_ERROR(fread);
     OPENSSL_PUT_ERROR(BIO, ERR_R_SYS_LIB);
-    ret = -1;
+    return -1;
   }
 
-  return ret;
+  /* fread reads at most |outl| bytes, so |ret| fits in an int. */
+  return (int)ret;
 }
 
 static int file_write(BIO *b, const char *in, int inl) {
