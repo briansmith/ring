@@ -314,8 +314,8 @@ int tls_seal_record(SSL *ssl, uint8_t *out, size_t *out_len, size_t max_out,
     }
     /* Ensure |do_seal_record| does not write beyond |in[0]|. */
     size_t frag_max_out = max_out;
-    if (out <= in + 1 && (in + 1) - out < frag_max_out) {
-      frag_max_out = (in + 1) - out;
+    if (out <= in + 1 && in + 1 < out + frag_max_out) {
+      frag_max_out = (size_t)(in + 1 - out);
     }
     if (!do_seal_record(ssl, out, &frag_len, frag_max_out, type, in, 1)) {
       return 0;
