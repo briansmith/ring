@@ -76,7 +76,7 @@ int ASN1_i2d_fp(i2d_of_void *i2d, FILE *out, void *x)
         return(ret);
         }
 
-int ASN1_i2d_bio(i2d_of_void *i2d, BIO *out, unsigned char *x)
+int ASN1_i2d_bio(i2d_of_void *i2d, BIO *out, void *x)
 	{
 	char *b;
 	unsigned char *p;

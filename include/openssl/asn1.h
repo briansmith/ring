@@ -949,7 +949,7 @@ OPENSSL_EXPORT void *ASN1_d2i_bio(void *(*xnew)(void), d2i_of_void *d2i, BIO *in
 			  CHECKED_PPTR_OF(type, x)))
 
 OPENSSL_EXPORT void *ASN1_item_d2i_bio(const ASN1_ITEM *it, BIO *in, void *x);
-OPENSSL_EXPORT int ASN1_i2d_bio(i2d_of_void *i2d,BIO *out, unsigned char *x);
+OPENSSL_EXPORT int ASN1_i2d_bio(i2d_of_void *i2d,BIO *out, void *x);
 
 #define ASN1_i2d_bio_of(type,i2d,out,x) \
     (ASN1_i2d_bio(CHECKED_I2D_OF(type, i2d), \
