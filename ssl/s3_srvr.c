@@ -319,7 +319,6 @@ int ssl3_accept(SSL *s) {
       case SSL3_ST_SW_KEY_EXCH_A:
       case SSL3_ST_SW_KEY_EXCH_B:
       case SSL3_ST_SW_KEY_EXCH_C:
-      case SSL3_ST_SW_KEY_EXCH_D:
         alg_a = s->s3->tmp.new_cipher->algorithm_auth;
 
         /* Send a ServerKeyExchange message if:
@@ -1251,6 +1250,10 @@ int ssl3_send_server_key_exchange(SSL *s) {
   BUF_MEM *buf;
   EVP_MD_CTX md_ctx;
 
+  if (s->state == SSL3_ST_SW_KEY_EXCH_C) {
+    return ssl_do_write(s);
+  }
+
   if (ssl_cipher_has_server_public_key(s->s3->tmp.new_cipher)) {
     if (!ssl_has_private_key(s)) {
       al = SSL_AD_INTERNAL_ERROR;
@@ -1262,6 +1265,7 @@ int ssl3_send_server_key_exchange(SSL *s) {
   }
 
   EVP_MD_CTX_init(&md_ctx);
+  enum ssl_private_key_result_t sign_result;
   if (s->state == SSL3_ST_SW_KEY_EXCH_A) {
     alg_k = s->s3->tmp.new_cipher->algorithm_mkey;
     alg_a = s->s3->tmp.new_cipher->algorithm_auth;
@@ -1442,7 +1446,6 @@ int ssl3_send_server_key_exchange(SSL *s) {
       encodedPoint = NULL;
     }
 
-    /* not anonymous */
     if (ssl_cipher_has_server_public_key(s->s3->tmp.new_cipher)) {
       /* n is the length of the params, they start at d and p points to
        * the space at the end. */
@@ -1477,51 +1480,47 @@ int ssl3_send_server_key_exchange(SSL *s) {
         goto err;
       }
 
-      const enum ssl_private_key_result_t sign_result = ssl_private_key_sign(
-          s, &p[2], &sig_len, max_sig_len, EVP_MD_CTX_md(&md_ctx),
-          digest, digest_length);
-      if (sign_result == ssl_private_key_retry) {
-        s->rwstate = SSL_PRIVATE_KEY_OPERATION;
-        /* Stash away |p|. */
-        s->init_num = p - ssl_handshake_start(s) + SSL_HM_HEADER_LENGTH(s);
-        s->state = SSL3_ST_SW_KEY_EXCH_B;
-        goto err;
-      } else if (sign_result != ssl_private_key_success) {
-        goto err;
-      }
+      sign_result = ssl_private_key_sign(s, &p[2], &sig_len, max_sig_len,
+                                         EVP_MD_CTX_md(&md_ctx), digest,
+                                         digest_length);
+    } else {
+      /* This key exchange doesn't involve a signature. */
+      sign_result = ssl_private_key_success;
+      sig_len = 0;
     }
-
-    s->state = SSL3_ST_SW_KEY_EXCH_C;
-  } else if (s->state == SSL3_ST_SW_KEY_EXCH_B) {
-    /* Complete async sign. */
+  } else {
+    assert(s->state == SSL3_ST_SW_KEY_EXCH_B);
     /* Restore |p|. */
     p = ssl_handshake_start(s) + s->init_num - SSL_HM_HEADER_LENGTH(s);
-    const enum ssl_private_key_result_t sign_result =
-        ssl_private_key_sign_complete(s, &p[2], &sig_len, max_sig_len);
-    if (sign_result == ssl_private_key_retry) {
+    sign_result = ssl_private_key_sign_complete(s, &p[2], &sig_len,
+                                                max_sig_len);
+  }
+
+  switch (sign_result) {
+    case ssl_private_key_success:
+      s->rwstate = SSL_NOTHING;
+      break;
+    case ssl_private_key_failure:
+      s->rwstate = SSL_NOTHING;
+      goto err;
+    case ssl_private_key_retry:
       s->rwstate = SSL_PRIVATE_KEY_OPERATION;
+      /* Stash away |p|. */
+      s->init_num = p - ssl_handshake_start(s) + SSL_HM_HEADER_LENGTH(s);
+      s->state = SSL3_ST_SW_KEY_EXCH_B;
       goto err;
-    } else if (sign_result != ssl_private_key_success) {
-      goto err;
-    }
-
-    s->rwstate = SSL_NOTHING;
-    s->state = SSL3_ST_SW_KEY_EXCH_C;
   }
 
-  if (s->state == SSL3_ST_SW_KEY_EXCH_C) {
-    if (ssl_cipher_has_server_public_key(s->s3->tmp.new_cipher)) {
-      s2n(sig_len, p);
-      p += sig_len;
-    }
-    if (!ssl_set_handshake_header(s, SSL3_MT_SERVER_KEY_EXCHANGE,
-                                  p - ssl_handshake_start(s))) {
-      goto err;
-    }
-    s->state = SSL3_ST_SW_KEY_EXCH_D;
+  if (ssl_cipher_has_server_public_key(s->s3->tmp.new_cipher)) {
+    s2n(sig_len, p);
+    p += sig_len;
   }
+  if (!ssl_set_handshake_header(s, SSL3_MT_SERVER_KEY_EXCHANGE,
+                                p - ssl_handshake_start(s))) {
+    goto err;
+  }
+  s->state = SSL3_ST_SW_KEY_EXCH_C;
 
-  /* state SSL3_ST_SW_KEY_EXCH_D */
   EVP_MD_CTX_cleanup(&md_ctx);
   return ssl_do_write(s);
 
