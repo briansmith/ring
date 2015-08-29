@@ -133,24 +133,44 @@ unsigned char *X509_keyid_get0(X509 *x, int *len)
 
 int X509_add1_trust_object(X509 *x, ASN1_OBJECT *obj)
 {
-	X509_CERT_AUX *aux;
-	ASN1_OBJECT *objtmp;
-	if(!(objtmp = OBJ_dup(obj))) return 0;
-	if(!(aux = aux_get(x))) return 0;
-	if(!aux->trust
-		&& !(aux->trust = sk_ASN1_OBJECT_new_null())) return 0;
-	return sk_ASN1_OBJECT_push(aux->trust, objtmp);
+	ASN1_OBJECT *objtmp = OBJ_dup(obj);
+	if (objtmp == NULL)
+		goto err;
+	X509_CERT_AUX *aux = aux_get(x);
+	if (aux->trust == NULL)
+		{
+		aux->trust = sk_ASN1_OBJECT_new_null();
+		if (aux->trust == NULL)
+			goto err;
+		}
+	if (!sk_ASN1_OBJECT_push(aux->trust, objtmp))
+		goto err;
+	return 1;
+
+err:
+	ASN1_OBJECT_free(objtmp);
+	return 0;
 }
 
 int X509_add1_reject_object(X509 *x, ASN1_OBJECT *obj)
 {
-	X509_CERT_AUX *aux;
-	ASN1_OBJECT *objtmp;
-	if(!(objtmp = OBJ_dup(obj))) return 0;
-	if(!(aux = aux_get(x))) return 0;
-	if(!aux->reject
-		&& !(aux->reject = sk_ASN1_OBJECT_new_null())) return 0;
-	return sk_ASN1_OBJECT_push(aux->reject, objtmp);
+	ASN1_OBJECT *objtmp = OBJ_dup(obj);
+	if (objtmp == NULL)
+		goto err;
+	X509_CERT_AUX *aux = aux_get(x);
+	if (aux->reject == NULL)
+		{
+		aux->reject = sk_ASN1_OBJECT_new_null();
+		if (aux->reject == NULL)
+			goto err;
+		}
+	if (!sk_ASN1_OBJECT_push(aux->reject, objtmp))
+		goto err;
+	return 1;
+
+err:
+	ASN1_OBJECT_free(objtmp);
+	return 0;
 }
 
 void X509_trust_clear(X509 *x)
