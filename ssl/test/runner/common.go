@@ -753,6 +753,15 @@ type ProtocolBugs struct {
 	// ExpectedCustomExtension, if not nil, contains the expected contents
 	// of a custom extension.
 	ExpectedCustomExtension *string
+
+	// NoCloseNotify, if true, causes the close_notify alert to be skipped
+	// on connection shutdown.
+	NoCloseNotify bool
+
+	// ExpectCloseNotify, if true, requires a close_notify from the peer on
+	// shutdown. Records from the peer received after close_notify is sent
+	// are not discard.
+	ExpectCloseNotify bool
 }
 
 func (c *Config) serverInit() {

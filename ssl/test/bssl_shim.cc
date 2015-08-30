@@ -748,6 +748,17 @@ static int WriteAll(SSL *ssl, const uint8_t *in, size_t in_len) {
   return ret;
 }
 
+// DoShutdown calls |SSL_shutdown|, resolving any asynchronous operations. It
+// returns the result of the final |SSL_shutdown| call.
+static int DoShutdown(SSL *ssl) {
+  const TestConfig *config = GetConfigPtr(ssl);
+  int ret;
+  do {
+    ret = SSL_shutdown(ssl);
+  } while (config->async && RetryAsync(ssl, ret));
+  return ret;
+}
+
 // CheckHandshakeProperties checks, immediately after |ssl| completes its
 // initial handshake (or False Starts), whether all the properties are
 // consistent with the test configuration and invariants.
@@ -1021,6 +1032,9 @@ static bool DoExchange(ScopedSSL_SESSION *out_session, SSL_CTX *ssl_ctx,
     /* Renegotiations are disabled by default. */
     SSL_set_reject_peer_renegotiations(ssl.get(), 0);
   }
+  if (!config->check_close_notify) {
+    SSL_set_quiet_shutdown(ssl.get(), 1);
+  }
 
   int sock = Connect(config->port);
   if (sock == -1) {
@@ -1157,44 +1171,45 @@ static bool DoExchange(ScopedSSL_SESSION *out_session, SSL_CTX *ssl_ctx,
         return false;
       }
     }
-    for (;;) {
-      uint8_t buf[512];
-      int n = DoRead(ssl.get(), buf, sizeof(buf));
-      int err = SSL_get_error(ssl.get(), n);
-      if (err == SSL_ERROR_ZERO_RETURN ||
-          (n == 0 && err == SSL_ERROR_SYSCALL)) {
-        if (n != 0) {
+    if (!config->shim_shuts_down) {
+      for (;;) {
+        uint8_t buf[512];
+        int n = DoRead(ssl.get(), buf, sizeof(buf));
+        int err = SSL_get_error(ssl.get(), n);
+        if (err == SSL_ERROR_ZERO_RETURN ||
+            (n == 0 && err == SSL_ERROR_SYSCALL)) {
+          if (n != 0) {
+            fprintf(stderr, "Invalid SSL_get_error output\n");
+            return false;
+          }
+          // Stop on either clean or unclean shutdown.
+          break;
+        } else if (err != SSL_ERROR_NONE) {
+          if (n > 0) {
+            fprintf(stderr, "Invalid SSL_get_error output\n");
+            return false;
+          }
+          return false;
+        }
+        // Successfully read data.
+        if (n <= 0) {
           fprintf(stderr, "Invalid SSL_get_error output\n");
           return false;
         }
-        // Accept shutdowns with or without close_notify.
-        // TODO(davidben): Write tests which distinguish these two cases.
-        break;
-      } else if (err != SSL_ERROR_NONE) {
-        if (n > 0) {
-          fprintf(stderr, "Invalid SSL_get_error output\n");
+
+        // After a successful read, with or without False Start, the handshake
+        // must be complete.
+        if (!GetTestState(ssl.get())->handshake_done) {
+          fprintf(stderr, "handshake was not completed after SSL_read\n");
           return false;
         }
-        return false;
-      }
-      // Successfully read data.
-      if (n <= 0) {
-        fprintf(stderr, "Invalid SSL_get_error output\n");
-        return false;
-      }
 
-      // After a successful read, with or without False Start, the handshake
-      // must be complete.
-      if (!GetTestState(ssl.get())->handshake_done) {
-        fprintf(stderr, "handshake was not completed after SSL_read\n");
-        return false;
-      }
-
-      for (int i = 0; i < n; i++) {
-        buf[i] ^= 0xff;
-      }
-      if (WriteAll(ssl.get(), buf, n) < 0) {
-        return false;
+        for (int i = 0; i < n; i++) {
+          buf[i] ^= 0xff;
+        }
+        if (WriteAll(ssl.get(), buf, n) < 0) {
+          return false;
+        }
       }
     }
   }
@@ -1210,7 +1225,24 @@ static bool DoExchange(ScopedSSL_SESSION *out_session, SSL_CTX *ssl_ctx,
     out_session->reset(SSL_get1_session(ssl.get()));
   }
 
-  SSL_shutdown(ssl.get());
+  ret = DoShutdown(ssl.get());
+
+  if (config->shim_shuts_down && config->check_close_notify) {
+    // We initiate shutdown, so |SSL_shutdown| will return in two stages. First
+    // it returns zero when our close_notify is sent, then one when the peer's
+    // is received.
+    if (ret != 0) {
+      fprintf(stderr, "Unexpected SSL_shutdown result: %d != 0\n", ret);
+      return false;
+    }
+    ret = DoShutdown(ssl.get());
+  }
+
+  if (ret != 1) {
+    fprintf(stderr, "Unexpected SSL_shutdown result: %d != 1\n", ret);
+    return false;
+  }
+
   return true;
 }
 

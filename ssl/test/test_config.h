@@ -87,6 +87,8 @@ struct TestConfig {
   bool custom_extension_skip = false;
   bool custom_extension_fail_add = false;
   std::string ocsp_response;
+  bool check_close_notify = false;
+  bool shim_shuts_down = false;
 };
 
 bool ParseConfig(int argc, char **argv, TestConfig *out_config);

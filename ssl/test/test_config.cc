@@ -90,6 +90,8 @@ const Flag<bool> kBoolFlags[] = {
     &TestConfig::enable_server_custom_extension },
   { "-custom-extension-skip", &TestConfig::custom_extension_skip },
   { "-custom-extension-fail-add", &TestConfig::custom_extension_fail_add },
+  { "-check-close-notify", &TestConfig::check_close_notify },
+  { "-shim-shuts-down", &TestConfig::shim_shuts_down },
 };
 
 const Flag<std::string> kStringFlags[] = {

@@ -648,10 +648,10 @@ func (c *Conn) doReadRecord(want recordType) (recordType, *block, error) {
 	if err := b.readFromUntil(c.conn, recordHeaderLen); err != nil {
 		// RFC suggests that EOF without an alertCloseNotify is
 		// an error, but popular web sites seem to do this,
-		// so we can't make it an error.
-		// if err == io.EOF {
-		// 	err = io.ErrUnexpectedEOF
-		// }
+		// so we can't make it an error, outside of tests.
+		if err == io.EOF && c.config.Bugs.ExpectCloseNotify {
+			err = io.ErrUnexpectedEOF
+		}
 		if e, ok := err.(net.Error); !ok || !e.Temporary() {
 			c.in.setErrorLocked(err)
 		}
@@ -740,6 +740,10 @@ func (c *Conn) readRecord(want recordType) error {
 			c.sendAlert(alertInternalError)
 			return c.in.setErrorLocked(errors.New("tls: application data record requested before handshake complete"))
 		}
+	case recordTypeAlert:
+		// Looking for a close_notify. Note: unlike a real
+		// implementation, this is not tolerant of additional records.
+		// See the documentation for ExpectCloseNotify.
 	}
 
 Again:
@@ -802,7 +806,7 @@ Again:
 			// A client might need to process a HelloRequest from
 			// the server, thus receiving a handshake message when
 			// application data is expected is ok.
-			if !c.isClient {
+			if !c.isClient || want != recordTypeApplicationData {
 				return c.in.setErrorLocked(c.sendAlert(alertNoRenegotiation))
 			}
 		}
@@ -1260,8 +1264,20 @@ func (c *Conn) Close() error {
 
 	c.handshakeMutex.Lock()
 	defer c.handshakeMutex.Unlock()
-	if c.handshakeComplete {
+	if c.handshakeComplete && !c.config.Bugs.NoCloseNotify {
 		alertErr = c.sendAlert(alertCloseNotify)
+	}
+
+	// Consume a close_notify from the peer if one hasn't been received
+	// already. This avoids the peer from failing |SSL_shutdown| due to a
+	// write failing.
+	if c.handshakeComplete && alertErr == nil && c.config.Bugs.ExpectCloseNotify {
+		for c.in.error() == nil {
+			c.readRecord(recordTypeAlert)
+		}
+		if c.in.error() != io.EOF {
+			alertErr = c.in.error()
+		}
 	}
 
 	if err := c.conn.Close(); err != nil {

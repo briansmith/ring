@@ -191,6 +191,10 @@ type testCase struct {
 	// shimWritesFirst controls whether the shim sends an initial "hello"
 	// message before doing a roundtrip with the runner.
 	shimWritesFirst bool
+	// shimShutsDown, if true, runs a test where the shim shuts down the
+	// connection immediately after the handshake rather than echoing
+	// messages from the runner.
+	shimShutsDown bool
 	// renegotiate indicates the the connection should be renegotiated
 	// during the exchange.
 	renegotiate bool
@@ -270,6 +274,7 @@ func doExchange(test *testCase, config *Config, conn net.Conn, isResume bool) er
 			tlsConn = Client(conn, config)
 		}
 	}
+	defer tlsConn.Close()
 
 	if err := tlsConn.Handshake(); err != nil {
 		return err
@@ -420,6 +425,11 @@ func doExchange(test *testCase, config *Config, conn net.Conn, isResume bool) er
 			tlsConn.SendAlert(alertLevelWarning, alertUnexpectedMessage)
 		}
 
+		if test.shimShutsDown {
+			// The shim will not respond.
+			continue
+		}
+
 		buf := make([]byte, len(testMessage))
 		if test.protocol == dtls {
 			bufTmp := make([]byte, len(buf)+1)
@@ -545,6 +555,10 @@ func runTest(test *testCase, shimPath string, mallocNumToFail int64) error {
 
 	if test.shimWritesFirst {
 		flags = append(flags, "-shim-writes-first")
+	}
+
+	if test.shimShutsDown {
+		flags = append(flags, "-shim-shuts-down")
 	}
 
 	if test.exportKeyingMaterial > 0 {
@@ -1847,8 +1861,29 @@ func addBasicTests() {
 			noSessionCache: true,
 			flags:          []string{"-expect-no-session"},
 		},
+		{
+			name: "Unclean-Shutdown",
+			config: Config{
+				Bugs: ProtocolBugs{
+					NoCloseNotify:     true,
+					ExpectCloseNotify: true,
+				},
+			},
+			shimShutsDown: true,
+			flags:         []string{"-check-close-notify"},
+			shouldFail:    true,
+			expectedError: "Unexpected SSL_shutdown result: -1 != 1",
+		},
+		{
+			name: "Unclean-Shutdown-Ignored",
+			config: Config{
+				Bugs: ProtocolBugs{
+					NoCloseNotify: true,
+				},
+			},
+			shimShutsDown: true,
+		},
 	}
-
 	testCases = append(testCases, basicTests...)
 }
 
@@ -2560,6 +2595,33 @@ func addStateMachineCoverageTests(async, splitHandshake bool, protocol protocol)
 			},
 			resumeSession:   true,
 			expectChannelID: true,
+		})
+
+		// Bidirectional shutdown with the runner initiating.
+		tests = append(tests, testCase{
+			name: "Shutdown-Runner",
+			config: Config{
+				Bugs: ProtocolBugs{
+					ExpectCloseNotify: true,
+				},
+			},
+			flags: []string{"-check-close-notify"},
+		})
+
+		// Bidirectional shutdown with the shim initiating. The runner,
+		// in the meantime, sends garbage before the close_notify which
+		// the shim must ignore.
+		tests = append(tests, testCase{
+			name: "Shutdown-Shim",
+			config: Config{
+				Bugs: ProtocolBugs{
+					ExpectCloseNotify: true,
+				},
+			},
+			shimShutsDown:     true,
+			sendEmptyRecords:  1,
+			sendWarningAlerts: 1,
+			flags:             []string{"-check-close-notify"},
 		})
 	} else {
 		tests = append(tests, testCase{
