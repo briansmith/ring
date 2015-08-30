@@ -28,8 +28,8 @@ use std::mem;
 /// contiguous slice, then the `digest` function should be used. Otherwise, the
 /// digest can be calculated in parts.
 ///
-/// ```ignore
-/// use ring::{digest, SHA384};
+/// ```
+/// use ring::{digest, Digest, SHA384};
 ///
 /// let one_shot = digest::<SHA384>("hello, world".as_bytes());
 ///
@@ -69,8 +69,12 @@ pub trait Digest {
 ///
 /// # Examples:
 ///
-/// ```ignore
-/// use ring::{digest, SHA256};
+/// ```
+/// extern crate ring;
+/// extern crate rustc_serialize;
+///
+/// # fn main() {
+/// use ring::{digest, Digest, SHA256};
 /// use rustc_serialize::hex::FromHex;
 ///
 /// let expected_hex = "09ca7e4eaa6e8ae9c7d261167129184883644d07dfba7cbfbc4c8a2e08360d5b";
@@ -78,6 +82,7 @@ pub trait Digest {
 /// let actual = digest::<SHA256>("hello, world".as_bytes());
 ///
 /// assert_eq!(&expected[..], &actual[..]);
+/// # }
 /// ```
 ///
 /// C analog: `EVP_Digest`
