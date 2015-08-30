@@ -651,10 +651,9 @@ start:
   }
 
   if (s->shutdown & SSL_SENT_SHUTDOWN) {
-    /* but we have not received a shutdown */
-    s->rwstate = SSL_NOTHING;
+    /* close_notify has been sent, so discard all records other than alerts. */
     rr->length = 0;
-    return 0;
+    goto start;
   }
 
   if (rr->type == SSL3_RT_CHANGE_CIPHER_SPEC) {
