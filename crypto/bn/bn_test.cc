@@ -113,7 +113,6 @@ static bool test_mod_mul(FILE *fp, BN_CTX *ctx);
 static bool test_mod_exp(FILE *fp, BN_CTX *ctx);
 static bool test_mod_exp_mont_consttime(FILE *fp, BN_CTX *ctx);
 static bool test_exp(FILE *fp, BN_CTX *ctx);
-static bool test_mod_sqrt(FILE *fp, BN_CTX *ctx);
 static bool test_exp_mod_zero(void);
 static bool test_small_prime(FILE *fp, BN_CTX *ctx);
 static bool test_mod_exp_mont5(FILE *fp, BN_CTX *ctx);
@@ -290,12 +289,6 @@ int main(int argc, char *argv[]) {
   message(bc_file.get(), "BN_exp");
   if (!test_exp(bc_file.get(), ctx.get()) ||
       !test_exp_mod_zero()) {
-    return 1;
-  }
-  flush_fp(bc_file.get());
-
-  message(bc_file.get(), "BN_mod_sqrt");
-  if (!test_mod_sqrt(bc_file.get(), ctx.get())) {
     return 1;
   }
   flush_fp(bc_file.get());
@@ -1297,66 +1290,6 @@ static bool test_exp_mod_zero(void) {
     return false;
   }
 
-  return true;
-}
-
-static bool test_mod_sqrt(FILE *fp, BN_CTX *ctx) {
-  ScopedBIGNUM a(BN_new());
-  ScopedBIGNUM p(BN_new());
-  ScopedBIGNUM r(BN_new());
-  if (!a || !p || !r) {
-    return false;
-  }
-
-  for (int i = 0; i < 16; i++) {
-    if (i < 8) {
-      const unsigned kPrimes[8] = {2, 3, 5, 7, 11, 13, 17, 19};
-      if (!BN_set_word(p.get(), kPrimes[i])) {
-        return false;
-      }
-    } else {
-      if (!BN_set_word(a.get(), 32) ||
-          !BN_set_word(r.get(), 2 * i + 1) ||
-          !BN_generate_prime_ex(p.get(), 256, 0, a.get(), r.get(), nullptr)) {
-        return false;
-      }
-    }
-    p->neg = rand_neg();
-
-    for (int j = 0; j < num2; j++) {
-      // construct 'a' such that it is a square modulo p, but in general not a
-      // proper square and not reduced modulo p
-      if (!BN_rand(r.get(), 256, 0, 3) ||
-          !BN_nnmod(r.get(), r.get(), p.get(), ctx) ||
-          !BN_mod_sqr(r.get(), r.get(), p.get(), ctx) ||
-          !BN_rand(a.get(), 256, 0, 3) ||
-          !BN_nnmod(a.get(), a.get(), p.get(), ctx) ||
-          !BN_mod_sqr(a.get(), a.get(), p.get(), ctx) ||
-          !BN_mul(a.get(), a.get(), r.get(), ctx)) {
-        return false;
-      }
-      if (rand_neg() && !BN_sub(a.get(), a.get(), p.get())) {
-        return false;
-      }
-
-      if (!BN_mod_sqrt(r.get(), a.get(), p.get(), ctx) ||
-          !BN_mod_sqr(r.get(), r.get(), p.get(), ctx) ||
-          !BN_nnmod(a.get(), a.get(), p.get(), ctx)) {
-        return false;
-      }
-
-      if (BN_cmp(a.get(), r.get()) != 0) {
-        fprintf(stderr, "BN_mod_sqrt failed: a = ");
-        BN_print_fp(stderr, a.get());
-        fprintf(stderr, ", r = ");
-        BN_print_fp(stderr, r.get());
-        fprintf(stderr, ", p = ");
-        BN_print_fp(stderr, p.get());
-        fprintf(stderr, "\n");
-        return false;
-      }
-    }
-  }
   return true;
 }
 
