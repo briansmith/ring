@@ -155,9 +155,9 @@
 #include "../crypto/internal.h"
 
 
-/* |SSL_R_UKNOWN_PROTOCOL| is no longer emitted, but continue to define it
+/* |SSL_R_UNKNOWN_PROTOCOL| is no longer emitted, but continue to define it
  * to avoid downstream churn. */
-OPENSSL_DECLARE_ERROR_REASON(SSL, SSL_R_UKNOWN_PROTOCOL)
+OPENSSL_DECLARE_ERROR_REASON(SSL, UNKNOWN_PROTOCOL)
 
 /* Some error codes are special. Ensure the make_errors.go script never
  * regresses this. */

@@ -213,6 +213,7 @@ func (hs *serverHandshakeState) readClientHello() (isResume bool, err error) {
 	hs.hello = &serverHelloMsg{
 		isDTLS:          c.isDTLS,
 		customExtension: config.Bugs.CustomExtension,
+		npnLast:         config.Bugs.SwapNPNAndALPN,
 	}
 
 	supportedCurve := false
@@ -297,7 +298,8 @@ Curves:
 			c.clientProtocol = selectedProto
 			c.usedALPN = true
 		}
-	} else {
+	}
+	if len(hs.clientHello.alpnProtocols) == 0 || c.config.Bugs.NegotiateALPNAndNPN {
 		// Although sending an empty NPN extension is reasonable, Firefox has
 		// had a bug around this. Best to send nothing at all if
 		// config.NextProtos is empty. See

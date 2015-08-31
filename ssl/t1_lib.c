@@ -1410,6 +1410,13 @@ static int ext_npn_parse_serverhello(SSL *ssl, uint8_t *out_alert,
   assert(!SSL_IS_DTLS(ssl));
   assert(ssl->ctx->next_proto_select_cb != NULL);
 
+  if (ssl->s3->alpn_selected != NULL) {
+    /* NPN and ALPN may not be negotiated in the same connection. */
+    *out_alert = SSL_AD_ILLEGAL_PARAMETER;
+    OPENSSL_PUT_ERROR(SSL, SSL_R_NEGOTIATED_BOTH_NPN_AND_ALPN);
+    return 0;
+  }
+
   const uint8_t *const orig_contents = CBS_data(contents);
   const size_t orig_len = CBS_len(contents);
 
@@ -1584,6 +1591,13 @@ static int ext_alpn_parse_serverhello(SSL *ssl, uint8_t *out_alert,
 
   assert(!ssl->s3->initial_handshake_complete);
   assert(ssl->alpn_client_proto_list != NULL);
+
+  if (ssl->s3->next_proto_neg_seen) {
+    /* NPN and ALPN may not be negotiated in the same connection. */
+    *out_alert = SSL_AD_ILLEGAL_PARAMETER;
+    OPENSSL_PUT_ERROR(SSL, SSL_R_NEGOTIATED_BOTH_NPN_AND_ALPN);
+    return 0;
+  }
 
   /* The extension data consists of a ProtocolNameList which must have
    * exactly one ProtocolName. Each of these is length-prefixed. */

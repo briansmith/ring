@@ -650,6 +650,7 @@ type serverHelloMsg struct {
 	srtpMasterKeyIdentifier string
 	sctList                 []byte
 	customExtension         string
+	npnLast                 bool
 }
 
 func (m *serverHelloMsg) marshal() []byte {
@@ -742,7 +743,7 @@ func (m *serverHelloMsg) marshal() []byte {
 		z[1] = 0xff
 		z = z[4:]
 	}
-	if m.nextProtoNeg {
+	if m.nextProtoNeg && !m.npnLast {
 		z[0] = byte(extensionNextProtoNeg >> 8)
 		z[1] = byte(extensionNextProtoNeg & 0xff)
 		z[2] = byte(nextProtoLen >> 8)
@@ -840,6 +841,23 @@ func (m *serverHelloMsg) marshal() []byte {
 		z[3] = byte(l & 0xff)
 		copy(z[4:], []byte(m.customExtension))
 		z = z[4+l:]
+	}
+	if m.nextProtoNeg && m.npnLast {
+		z[0] = byte(extensionNextProtoNeg >> 8)
+		z[1] = byte(extensionNextProtoNeg & 0xff)
+		z[2] = byte(nextProtoLen >> 8)
+		z[3] = byte(nextProtoLen)
+		z = z[4:]
+
+		for _, v := range m.nextProtos {
+			l := len(v)
+			if l > 255 {
+				l = 255
+			}
+			z[0] = byte(l)
+			copy(z[1:], []byte(v[0:l]))
+			z = z[1+l:]
+		}
 	}
 
 	m.raw = x

@@ -3106,6 +3106,38 @@ func addExtensionTests() {
 		shouldFail:    true,
 		expectedError: ":PARSE_TLSEXT:",
 	})
+	// Test that negotiating both NPN and ALPN is forbidden.
+	testCases = append(testCases, testCase{
+		name: "NegotiateALPNAndNPN",
+		config: Config{
+			NextProtos: []string{"foo", "bar", "baz"},
+			Bugs: ProtocolBugs{
+				NegotiateALPNAndNPN: true,
+			},
+		},
+		flags: []string{
+			"-advertise-alpn", "\x03foo",
+			"-select-next-proto", "foo",
+		},
+		shouldFail:    true,
+		expectedError: ":NEGOTIATED_BOTH_NPN_AND_ALPN:",
+	})
+	testCases = append(testCases, testCase{
+		name: "NegotiateALPNAndNPN-Swapped",
+		config: Config{
+			NextProtos: []string{"foo", "bar", "baz"},
+			Bugs: ProtocolBugs{
+				NegotiateALPNAndNPN: true,
+				SwapNPNAndALPN:      true,
+			},
+		},
+		flags: []string{
+			"-advertise-alpn", "\x03foo",
+			"-select-next-proto", "foo",
+		},
+		shouldFail:    true,
+		expectedError: ":NEGOTIATED_BOTH_NPN_AND_ALPN:",
+	})
 	// Resume with a corrupt ticket.
 	testCases = append(testCases, testCase{
 		testType: serverTest,
