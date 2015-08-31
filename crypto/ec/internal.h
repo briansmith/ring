@@ -115,7 +115,6 @@ struct ec_method_st {
    * EC_POINT_get_Jprojective_coordinates_GFp,
    * EC_POINT_set_affine_coordinates_GFp,     ..._GF2m,
    * EC_POINT_get_affine_coordinates_GFp,     ..._GF2m,
-   * EC_POINT_set_compressed_coordinates_GFp, ..._GF2m:
    */
   int (*point_set_to_infinity)(const EC_GROUP *, EC_POINT *);
   int (*point_set_Jprojective_coordinates_GFp)(const EC_GROUP *, EC_POINT *,
@@ -129,8 +128,6 @@ struct ec_method_st {
                                       BN_CTX *);
   int (*point_get_affine_coordinates)(const EC_GROUP *, const EC_POINT *,
                                       BIGNUM *x, BIGNUM *y, BN_CTX *);
-  int (*point_set_compressed_coordinates)(const EC_GROUP *, EC_POINT *,
-                                          const BIGNUM *x, int y_bit, BN_CTX *);
 
   /* used by EC_POINT_point2oct, EC_POINT_oct2point: */
   size_t (*point2oct)(const EC_GROUP *, const EC_POINT *,
@@ -265,9 +262,6 @@ int ec_GFp_simple_point_set_affine_coordinates(const EC_GROUP *, EC_POINT *,
 int ec_GFp_simple_point_get_affine_coordinates(const EC_GROUP *,
                                                const EC_POINT *, BIGNUM *x,
                                                BIGNUM *y, BN_CTX *);
-int ec_GFp_simple_set_compressed_coordinates(const EC_GROUP *, EC_POINT *,
-                                             const BIGNUM *x, int y_bit,
-                                             BN_CTX *);
 int ec_GFp_simple_add(const EC_GROUP *, EC_POINT *r, const EC_POINT *a,
                       const EC_POINT *b, BN_CTX *);
 int ec_GFp_simple_dbl(const EC_GROUP *, EC_POINT *r, const EC_POINT *a,

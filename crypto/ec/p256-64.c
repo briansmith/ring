@@ -1915,7 +1915,7 @@ const EC_METHOD *EC_GFp_nistp256_method(void) {
       ec_GFp_simple_get_Jprojective_coordinates_GFp,
       ec_GFp_simple_point_set_affine_coordinates,
       ec_GFp_nistp256_point_get_affine_coordinates,
-      0 /* point_set_compressed_coordinates */, 0 /* point2oct */,
+      0 /* point2oct */,
       0 /* oct2point */, ec_GFp_simple_add, ec_GFp_simple_dbl,
       ec_GFp_simple_invert, ec_GFp_simple_is_at_infinity,
       ec_GFp_simple_is_on_curve, ec_GFp_simple_cmp, ec_GFp_simple_make_affine,

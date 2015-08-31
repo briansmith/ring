@@ -84,9 +84,6 @@ typedef struct ec_point_st EC_POINT;
 /** Enum for the point conversion form as defined in X9.62 (ECDSA)
  *  for the encoding of a elliptic curve point (x,y) */
 typedef enum {
-	/** the point is encoded as z||x, where the octet z specifies 
-	 *  which solution of the quadratic equation y is  */
-	POINT_CONVERSION_COMPRESSED = 2,
 	/** the point is encoded as z||x||y, where z is the octet 0x02  */
 	POINT_CONVERSION_UNCOMPRESSED = 4
 } point_conversion_form_t;
@@ -243,13 +240,6 @@ OPENSSL_EXPORT size_t EC_POINT_point2oct(const EC_GROUP *group,
 OPENSSL_EXPORT int EC_POINT_oct2point(const EC_GROUP *group, EC_POINT *point,
                                       const uint8_t *buf, size_t len,
                                       BN_CTX *ctx);
-
-/* EC_POINT_set_compressed_coordinates_GFp sets |point| to equal the point with
- * the given |x| coordinate and the y coordinate specified by |y_bit| (see
- * X9.62). It returns one on success and zero otherwise. */
-OPENSSL_EXPORT int EC_POINT_set_compressed_coordinates_GFp(
-    const EC_GROUP *group, EC_POINT *point, const BIGNUM *x, int y_bit,
-    BN_CTX *ctx);
 
 
 /* Group operations. */

@@ -95,7 +95,6 @@ const EC_METHOD *EC_GFp_mont_method(void) {
                                 ec_GFp_simple_point_get_affine_coordinates,
                                 0,
                                 0,
-                                0,
                                 ec_GFp_simple_add,
                                 ec_GFp_simple_dbl,
                                 ec_GFp_simple_invert,
