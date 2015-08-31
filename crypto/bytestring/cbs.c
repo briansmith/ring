@@ -12,7 +12,6 @@
  * OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
  * CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE. */
 
-#include <openssl/buf.h>
 #include <openssl/mem.h>
 #include <openssl/bytestring.h>
 
@@ -49,30 +48,6 @@ const uint8_t *CBS_data(const CBS *cbs) {
 
 size_t CBS_len(const CBS *cbs) {
   return cbs->len;
-}
-
-int CBS_stow(const CBS *cbs, uint8_t **out_ptr, size_t *out_len) {
-  OPENSSL_free(*out_ptr);
-  *out_ptr = NULL;
-  *out_len = 0;
-
-  if (cbs->len == 0) {
-    return 1;
-  }
-  *out_ptr = BUF_memdup(cbs->data, cbs->len);
-  if (*out_ptr == NULL) {
-    return 0;
-  }
-  *out_len = cbs->len;
-  return 1;
-}
-
-int CBS_strdup(const CBS *cbs, char **out_ptr) {
-  if (*out_ptr != NULL) {
-    OPENSSL_free(*out_ptr);
-  }
-  *out_ptr = BUF_strndup((const char*)cbs->data, cbs->len);
-  return (*out_ptr != NULL);
 }
 
 int CBS_contains_zero_byte(const CBS *cbs) {
