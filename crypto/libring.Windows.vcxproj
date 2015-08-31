@@ -28,7 +28,6 @@
     <ClCompile Include="bn\exponentiation.c" />
     <ClCompile Include="bn\gcd.c" />
     <ClCompile Include="bn\generic.c" />
-    <ClCompile Include="bn\kronecker.c" />
     <ClCompile Include="bn\montgomery.c" />
     <ClCompile Include="bn\mul.c" />
     <ClCompile Include="bn\prime.c" />
