@@ -84,7 +84,12 @@ static int setup_read_buffer(SSL *ssl) {
   }
 
   size_t header_len = ssl_record_prefix_len(ssl);
-  size_t cap = SSL3_RT_HEADER_LENGTH + SSL3_RT_MAX_PLAIN_LENGTH;
+  size_t cap = SSL3_RT_MAX_ENCRYPTED_LENGTH;
+  if (SSL_IS_DTLS(ssl)) {
+    cap += DTLS1_RT_HEADER_LENGTH;
+  } else {
+    cap += SSL3_RT_HEADER_LENGTH;
+  }
   if (ssl->options & SSL_OP_MICROSOFT_BIG_SSLV3_BUFFER) {
     cap += SSL3_RT_MAX_EXTRA;
   }
@@ -234,10 +239,14 @@ int ssl_write_buffer_init(SSL *ssl, uint8_t **out_ptr, size_t max_len) {
 
   /* TODO(davidben): This matches the original behavior in keeping the malloc
    * size consistent. Does this matter? |cap| could just be |max_len|. */
-  size_t cap = SSL3_RT_HEADER_LENGTH + SSL3_RT_MAX_PLAIN_LENGTH +
-               SSL3_RT_SEND_MAX_ENCRYPTED_OVERHEAD;
-  if (!SSL_IS_DTLS(ssl) && (ssl->mode & SSL_MODE_CBC_RECORD_SPLITTING)) {
-    cap += SSL3_RT_HEADER_LENGTH + SSL3_RT_SEND_MAX_ENCRYPTED_OVERHEAD;
+  size_t cap = SSL3_RT_MAX_PLAIN_LENGTH + SSL3_RT_SEND_MAX_ENCRYPTED_OVERHEAD;
+  if (SSL_IS_DTLS(ssl)) {
+    cap += DTLS1_RT_HEADER_LENGTH;
+  } else {
+    cap += SSL3_RT_HEADER_LENGTH;
+    if (ssl->mode & SSL_MODE_CBC_RECORD_SPLITTING) {
+      cap += SSL3_RT_HEADER_LENGTH + SSL3_RT_SEND_MAX_ENCRYPTED_OVERHEAD;
+    }
   }
 
   if (max_len > cap) {

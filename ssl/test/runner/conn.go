@@ -876,7 +876,7 @@ func (c *Conn) writeRecord(typ recordType, data []byte) (n int, err error) {
 	isClientHello := typ == recordTypeHandshake && len(data) > 0 && data[0] == typeClientHello
 	for len(data) > 0 || first {
 		m := len(data)
-		if m > maxPlaintext {
+		if m > maxPlaintext && !c.config.Bugs.SendLargeRecords {
 			m = maxPlaintext
 		}
 		if typ == recordTypeHandshake && c.config.Bugs.MaxHandshakeRecordLength > 0 && m > c.config.Bugs.MaxHandshakeRecordLength {

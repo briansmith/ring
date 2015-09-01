@@ -762,6 +762,10 @@ type ProtocolBugs struct {
 	// shutdown. Records from the peer received after close_notify is sent
 	// are not discard.
 	ExpectCloseNotify bool
+
+	// SendLargeRecords, if true, allows outgoing records to be sent
+	// arbitrarily large.
+	SendLargeRecords bool
 }
 
 func (c *Config) serverInit() {

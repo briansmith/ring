@@ -89,6 +89,7 @@ struct TestConfig {
   std::string ocsp_response;
   bool check_close_notify = false;
   bool shim_shuts_down = false;
+  bool microsoft_big_sslv3_buffer = false;
 };
 
 bool ParseConfig(int argc, char **argv, TestConfig *out_config);

@@ -965,6 +965,9 @@ static bool DoExchange(ScopedSSL_SESSION *out_session, SSL_CTX *ssl_ctx,
   if (config->tls_d5_bug) {
     SSL_set_options(ssl.get(), SSL_OP_TLS_D5_BUG);
   }
+  if (config->microsoft_big_sslv3_buffer) {
+    SSL_set_options(ssl.get(), SSL_OP_MICROSOFT_BIG_SSLV3_BUFFER);
+  }
   if (config->no_legacy_server_connect) {
     SSL_clear_options(ssl.get(), SSL_OP_LEGACY_SERVER_CONNECT);
   }
@@ -1173,8 +1176,10 @@ static bool DoExchange(ScopedSSL_SESSION *out_session, SSL_CTX *ssl_ctx,
     }
     if (!config->shim_shuts_down) {
       for (;;) {
-        uint8_t buf[512];
-        int n = DoRead(ssl.get(), buf, sizeof(buf));
+        uint8_t buf[16384];
+        // Read only 512 bytes at a time in TLS to ensure records may be
+        // returned in multiple reads.
+        int n = DoRead(ssl.get(), buf, config->is_dtls ? sizeof(buf) : 512);
         int err = SSL_get_error(ssl.get(), n);
         if (err == SSL_ERROR_ZERO_RETURN ||
             (n == 0 && err == SSL_ERROR_SYSCALL)) {

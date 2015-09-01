@@ -1984,6 +1984,47 @@ func addCipherSuiteTests() {
 				})
 			}
 		}
+
+		// Ensure both TLS and DTLS accept their maximum record sizes.
+		testCases = append(testCases, testCase{
+			name: suite.name + "-LargeRecord",
+			config: Config{
+				CipherSuites:         []uint16{suite.id},
+				Certificates:         []Certificate{cert},
+				PreSharedKey:         []byte(psk),
+				PreSharedKeyIdentity: pskIdentity,
+			},
+			flags:      flags,
+			messageLen: maxPlaintext,
+		})
+		testCases = append(testCases, testCase{
+			name: suite.name + "-LargeRecord-Extra",
+			config: Config{
+				CipherSuites:         []uint16{suite.id},
+				Certificates:         []Certificate{cert},
+				PreSharedKey:         []byte(psk),
+				PreSharedKeyIdentity: pskIdentity,
+				Bugs: ProtocolBugs{
+					SendLargeRecords: true,
+				},
+			},
+			flags:      append(flags, "-microsoft-big-sslv3-buffer"),
+			messageLen: maxPlaintext + 16384,
+		})
+		if isDTLSCipher(suite.name) {
+			testCases = append(testCases, testCase{
+				protocol: dtls,
+				name:     suite.name + "-LargeRecord-DTLS",
+				config: Config{
+					CipherSuites:         []uint16{suite.id},
+					Certificates:         []Certificate{cert},
+					PreSharedKey:         []byte(psk),
+					PreSharedKeyIdentity: pskIdentity,
+				},
+				flags:      flags,
+				messageLen: maxPlaintext,
+			})
+		}
 	}
 
 	testCases = append(testCases, testCase{
