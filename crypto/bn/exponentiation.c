@@ -862,12 +862,13 @@ int BN_mod_exp_mont_consttime(BIGNUM *rr, const BIGNUM *a, const BIGNUM *p,
   unsigned char *powerbuf = NULL;
   BIGNUM tmp, am;
 
-  top = m->top;
-
-  if (!(m->d[0] & 1)) {
+  if (!BN_is_odd(m)) {
     OPENSSL_PUT_ERROR(BN, BN_R_CALLED_WITH_EVEN_MODULUS);
     return 0;
   }
+
+  top = m->top;
+
   bits = BN_num_bits(p);
   if (bits == 0) {
     ret = BN_one(rr);
