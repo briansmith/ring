@@ -225,6 +225,9 @@ type testCase struct {
 	// sendWarningAlerts is the number of consecutive warning alerts to send
 	// before and after the test message.
 	sendWarningAlerts int
+	// expectMessageDropped, if true, means the test message is expected to
+	// be dropped by the client rather than echoed back.
+	expectMessageDropped bool
 }
 
 var testCases []testCase
@@ -425,7 +428,7 @@ func doExchange(test *testCase, config *Config, conn net.Conn, isResume bool) er
 			tlsConn.SendAlert(alertLevelWarning, alertUnexpectedMessage)
 		}
 
-		if test.shimShutsDown {
+		if test.shimShutsDown || test.expectMessageDropped {
 			// The shim will not respond.
 			continue
 		}
@@ -1882,6 +1885,54 @@ func addBasicTests() {
 				},
 			},
 			shimShutsDown: true,
+		},
+		{
+			name: "LargePlaintext",
+			config: Config{
+				Bugs: ProtocolBugs{
+					SendLargeRecords: true,
+				},
+			},
+			messageLen:    maxPlaintext + 1,
+			shouldFail:    true,
+			expectedError: ":DATA_LENGTH_TOO_LONG:",
+		},
+		{
+			protocol: dtls,
+			name:     "LargePlaintext-DTLS",
+			config: Config{
+				Bugs: ProtocolBugs{
+					SendLargeRecords: true,
+				},
+			},
+			messageLen:    maxPlaintext + 1,
+			shouldFail:    true,
+			expectedError: ":DATA_LENGTH_TOO_LONG:",
+		},
+		{
+			name: "LargeCiphertext",
+			config: Config{
+				Bugs: ProtocolBugs{
+					SendLargeRecords: true,
+				},
+			},
+			messageLen:    maxPlaintext * 2,
+			shouldFail:    true,
+			expectedError: ":ENCRYPTED_LENGTH_TOO_LONG:",
+		},
+		{
+			protocol: dtls,
+			name:     "LargeCiphertext-DTLS",
+			config: Config{
+				Bugs: ProtocolBugs{
+					SendLargeRecords: true,
+				},
+			},
+			messageLen: maxPlaintext * 2,
+			// Unlike the other four cases, DTLS drops records which
+			// are invalid before authentication, so the connection
+			// does not fail.
+			expectMessageDropped: true,
 		},
 	}
 	testCases = append(testCases, basicTests...)
