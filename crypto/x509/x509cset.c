@@ -57,6 +57,8 @@
 #include <openssl/obj.h>
 #include <openssl/x509.h>
 
+#include "../internal.h"
+
 
 int X509_CRL_set_version(X509_CRL *x, long version)
 	{
@@ -126,6 +128,11 @@ int X509_CRL_sort(X509_CRL *c)
 		}
 	c->crl->enc.modified = 1;
 	return 1;
+	}
+
+void X509_CRL_up_ref(X509_CRL *crl)
+	{
+	CRYPTO_refcount_inc(&crl->references);
 	}
 
 int X509_REVOKED_set_revocationDate(X509_REVOKED *x, ASN1_TIME *tm)

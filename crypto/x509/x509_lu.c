@@ -410,7 +410,7 @@ void X509_OBJECT_up_ref_count(X509_OBJECT *a)
 		X509_up_ref(a->data.x509);
 		break;
 	case X509_LU_CRL:
-		CRYPTO_refcount_inc(&a->data.crl->references);
+		X509_CRL_up_ref(a->data.crl);
 		break;
 		}
 	}
@@ -572,7 +572,7 @@ STACK_OF(X509_CRL)* X509_STORE_get1_crls(X509_STORE_CTX *ctx, X509_NAME *nm)
 		{
 		obj = sk_X509_OBJECT_value(ctx->ctx->objs, idx);
 		x = obj->data.crl;
-		CRYPTO_refcount_inc(&x->references);
+		X509_CRL_up_ref(x);
 		if (!sk_X509_CRL_push(sk, x))
 			{
 			CRYPTO_MUTEX_unlock(&ctx->ctx->objs_lock);

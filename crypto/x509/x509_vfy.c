@@ -274,7 +274,7 @@ int X509_verify_cert(X509_STORE_CTX *ctx)
 					OPENSSL_PUT_ERROR(X509, ERR_R_MALLOC_FAILURE);
 					goto end;
 					}
-				CRYPTO_refcount_inc(&xtmp->references);
+				X509_up_ref(xtmp);
 				(void)sk_X509_delete_ptr(sktmp,xtmp);
 				ctx->last_untrusted++;
 				x=xtmp;
@@ -992,7 +992,7 @@ static int get_crl_sk(X509_STORE_CTX *ctx, X509_CRL **pcrl, X509_CRL **pdcrl,
 		*pissuer = best_crl_issuer;
 		*pscore = best_score;
 		*preasons = best_reasons;
-		CRYPTO_refcount_inc(&best_crl->references);
+		X509_CRL_up_ref(best_crl);
 		if (*pdcrl)
 			{
 			X509_CRL_free(*pdcrl);
@@ -1099,7 +1099,7 @@ static void get_delta_sk(X509_STORE_CTX *ctx, X509_CRL **dcrl, int *pscore,
 			{
 			if (check_crl_time(ctx, delta, 0))
 				*pscore |= CRL_SCORE_TIME_DELTA;
-			CRYPTO_refcount_inc(&delta->references);
+			X509_CRL_up_ref(delta);
 			*dcrl = delta;
 			return;
 			}
