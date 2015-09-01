@@ -349,14 +349,26 @@ int tls1_change_cipher_state(SSL *s, int which) {
         s->s3->tmp.new_cipher, key, key_len, mac_secret, mac_secret_len, iv,
         iv_len);
     return s->aead_read_ctx != NULL;
-  } else {
-    SSL_AEAD_CTX_free(s->aead_write_ctx);
-    s->aead_write_ctx = SSL_AEAD_CTX_new(
-        evp_aead_seal, ssl3_version_from_wire(s, s->version),
-        s->s3->tmp.new_cipher, key, key_len, mac_secret, mac_secret_len, iv,
-        iv_len);
-    return s->aead_write_ctx != NULL;
   }
+
+  SSL_AEAD_CTX_free(s->aead_write_ctx);
+  s->aead_write_ctx = SSL_AEAD_CTX_new(
+      evp_aead_seal, ssl3_version_from_wire(s, s->version),
+      s->s3->tmp.new_cipher, key, key_len, mac_secret, mac_secret_len, iv,
+      iv_len);
+  if (s->aead_write_ctx == NULL) {
+    return 0;
+  }
+
+  s->s3->need_record_splitting = 0;
+  if (!SSL_USE_EXPLICIT_IV(s) &&
+      (s->mode & SSL_MODE_CBC_RECORD_SPLITTING) != 0 &&
+      s->s3->tmp.new_cipher->algorithm_enc != SSL_RC4) {
+    /* Enable 1/n-1 record-splitting to randomize the IV. See
+     * https://www.openssl.org/~bodo/tls-cbc.txt and the BEAST attack. */
+    s->s3->need_record_splitting = 1;
+  }
+  return 1;
 }
 
 int tls1_setup_key_block(SSL *s) {
@@ -424,18 +436,6 @@ int tls1_setup_key_block(SSL *s) {
 
   if (!tls1_generate_key_block(s, p, key_block_len)) {
     goto err;
-  }
-
-  if (!SSL_USE_EXPLICIT_IV(s) &&
-      (s->mode & SSL_MODE_CBC_RECORD_SPLITTING) != 0) {
-    /* enable vulnerability countermeasure for CBC ciphers with known-IV
-     * problem (http://www.openssl.org/~bodo/tls-cbc.txt). */
-    s->s3->need_record_splitting = 1;
-
-    if (s->session->cipher != NULL &&
-        s->session->cipher->algorithm_enc == SSL_RC4) {
-      s->s3->need_record_splitting = 0;
-    }
   }
 
   ret = 1;

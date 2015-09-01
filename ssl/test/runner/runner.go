@@ -2161,7 +2161,8 @@ func addCBCSplittingTests() {
 			MinVersion:   VersionTLS10,
 			CipherSuites: []uint16{TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA},
 		},
-		messageLen: -1, // read until EOF
+		messageLen:    -1, // read until EOF
+		resumeSession: true,
 		flags: []string{
 			"-async",
 			"-write-different-record-sizes",
