@@ -828,18 +828,17 @@ static bool test_div_word(FILE *fp) {
   }
 
   for (int i = 0; i < num0; i++) {
-    BN_ULONG s;
     do {
       if (!BN_rand(a.get(), 512, -1, 0) ||
           !BN_rand(b.get(), BN_BITS2, -1, 0)) {
         return false;
       }
-      s = b->d[0];
-    } while (!s);
+    } while (BN_is_zero(b.get()));
 
     if (!BN_copy(b.get(), a.get())) {
       return false;
     }
+    BN_ULONG s = b->d[0];
     BN_ULONG r = BN_div_word(b.get(), s);
     if (r == (BN_ULONG)-1) {
       return false;
