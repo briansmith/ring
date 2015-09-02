@@ -291,7 +291,6 @@ SSL *SSL_new(SSL_CTX *ctx) {
 
   CRYPTO_refcount_inc(&ctx->references);
   s->ctx = ctx;
-  s->tlsext_ticket_expected = 0;
   CRYPTO_refcount_inc(&ctx->references);
   s->initial_ctx = ctx;
 
@@ -304,7 +303,6 @@ SSL *SSL_new(SSL_CTX *ctx) {
     }
     s->tlsext_ellipticcurvelist_length = ctx->tlsext_ellipticcurvelist_length;
   }
-  s->next_proto_negotiated = NULL;
 
   if (s->ctx->alpn_client_proto_list) {
     s->alpn_client_proto_list = BUF_memdup(s->ctx->alpn_client_proto_list,
@@ -1605,42 +1603,20 @@ SSL_CTX *SSL_CTX_new(const SSL_METHOD *method) {
 
   CRYPTO_MUTEX_init(&ret->lock);
 
-  ret->cert_store = NULL;
   ret->session_cache_mode = SSL_SESS_CACHE_SERVER;
   ret->session_cache_size = SSL_SESSION_CACHE_MAX_SIZE_DEFAULT;
-  ret->session_cache_head = NULL;
-  ret->session_cache_tail = NULL;
 
   /* We take the system default */
   ret->session_timeout = SSL_DEFAULT_SESSION_TIMEOUT;
 
-  ret->new_session_cb = 0;
-  ret->remove_session_cb = 0;
-  ret->get_session_cb = 0;
-  ret->generate_session_id = 0;
-
   ret->references = 1;
-  ret->quiet_shutdown = 0;
-
-  ret->info_callback = NULL;
-
-  ret->app_verify_callback = 0;
-  ret->app_verify_arg = NULL;
 
   ret->max_cert_list = SSL_MAX_CERT_LIST_DEFAULT;
-  ret->msg_callback = 0;
-  ret->msg_callback_arg = NULL;
   ret->verify_mode = SSL_VERIFY_NONE;
-  ret->sid_ctx_length = 0;
-  ret->default_verify_callback = NULL;
   ret->cert = ssl_cert_new();
   if (ret->cert == NULL) {
     goto err;
   }
-
-  ret->default_passwd_callback = 0;
-  ret->default_passwd_callback_userdata = NULL;
-  ret->client_cert_cb = 0;
 
   ret->sessions = lh_SSL_SESSION_new(ssl_session_hash, ssl_session_cmp);
   if (ret->sessions == NULL) {
@@ -1673,20 +1649,12 @@ SSL_CTX *SSL_CTX_new(const SSL_METHOD *method) {
 
   ret->max_send_fragment = SSL3_RT_MAX_PLAIN_LENGTH;
 
-  ret->tlsext_servername_callback = 0;
-  ret->tlsext_servername_arg = NULL;
   /* Setup RFC4507 ticket keys */
   if (!RAND_bytes(ret->tlsext_tick_key_name, 16) ||
       !RAND_bytes(ret->tlsext_tick_hmac_key, 16) ||
       !RAND_bytes(ret->tlsext_tick_aes_key, 16)) {
     ret->options |= SSL_OP_NO_TICKET;
   }
-
-  ret->next_protos_advertised_cb = 0;
-  ret->next_proto_select_cb = 0;
-  ret->psk_identity_hint = NULL;
-  ret->psk_client_callback = NULL;
-  ret->psk_server_callback = NULL;
 
   /* Default is to connect to non-RI servers. When RI is more widely deployed
    * might change this. */
