@@ -214,6 +214,21 @@ static const char *kBadRules[] = {
   NULL,
 };
 
+static const char *kMustNotIncludeNull[] = {
+  "ALL",
+  "DEFAULT",
+  "ALL:!eNULL",
+  "ALL:!NULL",
+  "FIPS",
+  "SHA",
+  "SHA1",
+  "RSA",
+  "SSLv3",
+  "TLSv1",
+  "TLSv1.2",
+  NULL
+};
+
 static void PrintCipherPreferenceList(ssl_cipher_preference_list_st *list) {
   bool in_group = false;
   for (size_t i = 0; i < sk_SSL_CIPHER_num(list->ciphers); i++) {
@@ -267,6 +282,24 @@ static bool TestCipherRule(CipherTest *t) {
   return true;
 }
 
+static bool TestRuleDoesNotIncludeNull(const char *rule) {
+  ScopedSSL_CTX ctx(SSL_CTX_new(SSLv23_server_method()));
+  if (!ctx) {
+    return false;
+  }
+  if (!SSL_CTX_set_cipher_list(ctx.get(), rule)) {
+    fprintf(stderr, "Error: cipher rule '%s' failed\n", rule);
+    return false;
+  }
+  for (size_t i = 0; i < sk_SSL_CIPHER_num(ctx->cipher_list->ciphers); i++) {
+    if (SSL_CIPHER_is_NULL(sk_SSL_CIPHER_value(ctx->cipher_list->ciphers, i))) {
+      fprintf(stderr, "Error: cipher rule '%s' includes NULL\n",rule);
+      return false;
+    }
+  }
+  return true;
+}
+
 static bool TestCipherRules() {
   for (size_t i = 0; kCipherTests[i].rule != NULL; i++) {
     if (!TestCipherRule(&kCipherTests[i])) {
@@ -284,6 +317,12 @@ static bool TestCipherRules() {
       return false;
     }
     ERR_clear_error();
+  }
+
+  for (size_t i = 0; kMustNotIncludeNull[i] != NULL; i++) {
+    if (!TestRuleDoesNotIncludeNull(kMustNotIncludeNull[i])) {
+      return false;
+    }
   }
 
   return true;

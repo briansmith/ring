@@ -773,6 +773,7 @@ var testCipherSuites = []struct {
 	{"PSK-RC4-SHA", TLS_PSK_WITH_RC4_128_SHA},
 	{"RC4-MD5", TLS_RSA_WITH_RC4_128_MD5},
 	{"RC4-SHA", TLS_RSA_WITH_RC4_128_SHA},
+	{"NULL-SHA", TLS_RSA_WITH_NULL_SHA},
 }
 
 func hasComponent(suiteName, component string) bool {
@@ -787,7 +788,7 @@ func isTLS12Only(suiteName string) bool {
 }
 
 func isDTLSCipher(suiteName string) bool {
-	return !hasComponent(suiteName, "RC4")
+	return !hasComponent(suiteName, "RC4") && !hasComponent(suiteName, "NULL")
 }
 
 func bigFromHex(hex string) *big.Int {
@@ -1967,6 +1968,10 @@ func addCipherSuiteTests() {
 			flags = append(flags,
 				"-psk", psk,
 				"-psk-identity", pskIdentity)
+		}
+		if hasComponent(suite.name, "NULL") {
+			// NULL ciphers must be explicitly enabled.
+			flags = append(flags, "-cipher", "DEFAULT:NULL-SHA")
 		}
 
 		for _, ver := range tlsVersions {

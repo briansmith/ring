@@ -124,6 +124,13 @@ var cipherSuites = []*cipherSuite{
 	{TLS_PSK_WITH_AES_256_CBC_SHA, 32, 20, 16, pskKA, suitePSK, cipherAES, macSHA1, nil},
 	{TLS_ECDHE_PSK_WITH_AES_128_CBC_SHA, 16, 20, 16, ecdhePSKKA, suiteECDHE | suitePSK, cipherAES, macSHA1, nil},
 	{TLS_ECDHE_PSK_WITH_AES_256_CBC_SHA, 32, 20, 16, ecdhePSKKA, suiteECDHE | suitePSK, cipherAES, macSHA1, nil},
+	{TLS_RSA_WITH_NULL_SHA, 0, 20, 0, rsaKA, suiteNoDTLS, cipherNull, macSHA1, nil},
+}
+
+type nullCipher struct{}
+
+func cipherNull(key, iv []byte, isRead bool) interface{} {
+	return nullCipher{}
 }
 
 func cipherRC4(key, iv []byte, isRead bool) interface{} {
@@ -368,6 +375,7 @@ func mutualCipherSuite(have []uint16, want uint16) *cipherSuite {
 // A list of the possible cipher suite ids. Taken from
 // http://www.iana.org/assignments/tls-parameters/tls-parameters.xml
 const (
+	TLS_RSA_WITH_NULL_SHA                   uint16 = 0x0002
 	TLS_RSA_WITH_RC4_128_MD5                uint16 = 0x0004
 	TLS_RSA_WITH_RC4_128_SHA                uint16 = 0x0005
 	TLS_RSA_WITH_3DES_EDE_CBC_SHA           uint16 = 0x000a

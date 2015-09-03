@@ -155,6 +155,12 @@
 /* kCiphers is an array of all supported ciphers, sorted by id. */
 const SSL_CIPHER kCiphers[] = {
     /* The RSA ciphers */
+    /* Cipher 02 */
+    {
+     SSL3_TXT_RSA_NULL_SHA, SSL3_CK_RSA_NULL_SHA, SSL_kRSA, SSL_aRSA,
+     SSL_eNULL, SSL_SHA1, SSL_SSLV3, SSL_FIPS, SSL_HANDSHAKE_MAC_DEFAULT, 0, 0,
+    },
+
     /* Cipher 04 */
     {
      SSL3_TXT_RSA_RC4_128_MD5, SSL3_CK_RSA_RC4_128_MD5, SSL_kRSA, SSL_aRSA,
@@ -491,7 +497,8 @@ typedef struct cipher_alias_st {
 } CIPHER_ALIAS;
 
 static const CIPHER_ALIAS kCipherAliases[] = {
-    {SSL_TXT_ALL, ~0u, ~0u, ~0u, ~0u, ~0u, ~0u},
+    /* "ALL" doesn't include eNULL (must be specifically enabled) */
+    {SSL_TXT_ALL, ~0u, ~0u, ~SSL_eNULL, ~0u, ~0u, ~0u},
 
     /* The "COMPLEMENTOFDEFAULT" rule is omitted. It matches nothing. */
 
@@ -512,7 +519,7 @@ static const CIPHER_ALIAS kCipherAliases[] = {
     {SSL_TXT_kPSK, SSL_kPSK, ~0u, ~0u, ~0u, ~0u, ~0u},
 
     /* server authentication aliases */
-    {SSL_TXT_aRSA, ~0u, SSL_aRSA, ~0u, ~0u, ~0u, ~0u},
+    {SSL_TXT_aRSA, ~0u, SSL_aRSA, ~SSL_eNULL, ~0u, ~0u, ~0u},
     {SSL_TXT_aECDSA, ~0u, SSL_aECDSA, ~0u, ~0u, ~0u, ~0u},
     {SSL_TXT_ECDSA, ~0u, SSL_aECDSA, ~0u, ~0u, ~0u, ~0u},
     {SSL_TXT_aPSK, ~0u, SSL_aPSK, ~0u, ~0u, ~0u, ~0u},
@@ -522,7 +529,7 @@ static const CIPHER_ALIAS kCipherAliases[] = {
     {SSL_TXT_EDH, SSL_kDHE, ~0u, ~0u, ~0u, ~0u, ~0u},
     {SSL_TXT_ECDHE, SSL_kECDHE, ~0u, ~0u, ~0u, ~0u, ~0u},
     {SSL_TXT_EECDH, SSL_kECDHE, ~0u, ~0u, ~0u, ~0u, ~0u},
-    {SSL_TXT_RSA, SSL_kRSA, SSL_aRSA, ~0u, ~0u, ~0u, ~0u},
+    {SSL_TXT_RSA, SSL_kRSA, SSL_aRSA, ~SSL_eNULL, ~0u, ~0u, ~0u},
     {SSL_TXT_PSK, SSL_kPSK, SSL_aPSK, ~0u, ~0u, ~0u, ~0u},
 
     /* symmetric encryption aliases */
@@ -536,21 +543,21 @@ static const CIPHER_ALIAS kCipherAliases[] = {
 
     /* MAC aliases */
     {SSL_TXT_MD5, ~0u, ~0u, ~0u, SSL_MD5, ~0u, ~0u},
-    {SSL_TXT_SHA1, ~0u, ~0u, ~0u, SSL_SHA1, ~0u, ~0u},
-    {SSL_TXT_SHA, ~0u, ~0u, ~0u, SSL_SHA1, ~0u, ~0u},
+    {SSL_TXT_SHA1, ~0u, ~0u, ~SSL_eNULL, SSL_SHA1, ~0u, ~0u},
+    {SSL_TXT_SHA, ~0u, ~0u, ~SSL_eNULL, SSL_SHA1, ~0u, ~0u},
     {SSL_TXT_SHA256, ~0u, ~0u, ~0u, SSL_SHA256, ~0u, ~0u},
     {SSL_TXT_SHA384, ~0u, ~0u, ~0u, SSL_SHA384, ~0u, ~0u},
 
     /* protocol version aliases */
-    {SSL_TXT_SSLV3, ~0u, ~0u, ~0u, ~0u, SSL_SSLV3, ~0u},
-    {SSL_TXT_TLSV1, ~0u, ~0u, ~0u, ~0u, SSL_TLSV1, ~0u},
-    {SSL_TXT_TLSV1_2, ~0u, ~0u, ~0u, ~0u, SSL_TLSV1_2, ~0u},
+    {SSL_TXT_SSLV3, ~0u, ~0u, ~SSL_eNULL, ~0u, SSL_SSLV3, ~0u},
+    {SSL_TXT_TLSV1, ~0u, ~0u, ~SSL_eNULL, ~0u, SSL_TLSV1, ~0u},
+    {SSL_TXT_TLSV1_2, ~0u, ~0u, ~SSL_eNULL, ~0u, SSL_TLSV1_2, ~0u},
 
     /* strength classes */
     {SSL_TXT_MEDIUM, ~0u, ~0u, ~0u, ~0u, ~0u, SSL_MEDIUM},
     {SSL_TXT_HIGH, ~0u, ~0u, ~0u, ~0u, ~0u, SSL_HIGH},
     /* FIPS 140-2 approved ciphersuite */
-    {SSL_TXT_FIPS, ~0u, ~0u, ~0u, ~0u, ~0u, SSL_FIPS},
+    {SSL_TXT_FIPS, ~0u, ~0u, ~SSL_eNULL, ~0u, ~0u, SSL_FIPS},
 };
 
 static const size_t kCipherAliasesLen =
@@ -686,6 +693,20 @@ int ssl_cipher_get_evp_aead(const EVP_AEAD **out_aead,
             *out_fixed_iv_len = 8;
           } else {
             *out_aead = EVP_aead_des_ede3_cbc_sha1_tls();
+          }
+          *out_mac_secret_len = SHA_DIGEST_LENGTH;
+          return 1;
+        default:
+          return 0;
+      }
+
+    case SSL_eNULL:
+      switch (cipher->algorithm_mac) {
+        case SSL_SHA1:
+          if (version == SSL3_VERSION) {
+            *out_aead = EVP_aead_null_sha1_ssl3();
+          } else {
+            *out_aead = EVP_aead_null_sha1_tls();
           }
           *out_mac_secret_len = SHA_DIGEST_LENGTH;
           return 1;
@@ -1365,6 +1386,16 @@ int SSL_CIPHER_is_CHACHA20POLY1305(const SSL_CIPHER *cipher) {
   return (cipher->algorithm_enc & SSL_CHACHA20POLY1305) != 0;
 }
 
+int SSL_CIPHER_is_NULL(const SSL_CIPHER *cipher) {
+  return (cipher->algorithm_enc & SSL_eNULL) != 0;
+}
+
+int SSL_CIPHER_is_block_cipher(const SSL_CIPHER *cipher) {
+  /* Neither stream cipher nor AEAD. */
+  return (cipher->algorithm_enc & (SSL_RC4 | SSL_eNULL)) == 0 &&
+      cipher->algorithm_mac != SSL_AEAD;
+}
+
 /* return the actual cipher being used */
 const char *SSL_CIPHER_get_name(const SSL_CIPHER *cipher) {
   if (cipher != NULL) {
@@ -1587,6 +1618,10 @@ const char *SSL_CIPHER_description(const SSL_CIPHER *cipher, char *buf,
 
     case SSL_CHACHA20POLY1305:
       enc = "ChaCha20-Poly1305";
+      break;
+
+    case SSL_eNULL:
+      enc="None";
       break;
 
     default:

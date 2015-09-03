@@ -363,7 +363,7 @@ int tls1_change_cipher_state(SSL *s, int which) {
   s->s3->need_record_splitting = 0;
   if (!SSL_USE_EXPLICIT_IV(s) &&
       (s->mode & SSL_MODE_CBC_RECORD_SPLITTING) != 0 &&
-      s->s3->tmp.new_cipher->algorithm_enc != SSL_RC4) {
+      SSL_CIPHER_is_block_cipher(s->s3->tmp.new_cipher)) {
     /* Enable 1/n-1 record-splitting to randomize the IV. See
      * https://www.openssl.org/~bodo/tls-cbc.txt and the BEAST attack. */
     s->s3->need_record_splitting = 1;

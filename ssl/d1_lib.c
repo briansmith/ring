@@ -152,8 +152,9 @@ void dtls1_free(SSL *s) {
 }
 
 int dtls1_supports_cipher(const SSL_CIPHER *cipher) {
-  /* DTLS does not support stream ciphers. */
-  return cipher->algorithm_enc != SSL_RC4;
+  /* DTLS does not support stream ciphers. The NULL cipher is rejected because
+   * it's not needed. */
+  return cipher->algorithm_enc != SSL_RC4 && cipher->algorithm_enc != SSL_eNULL;
 }
 
 void dtls1_start_timer(SSL *s) {
