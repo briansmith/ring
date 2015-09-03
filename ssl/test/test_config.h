@@ -69,6 +69,8 @@ struct TestConfig {
   bool fail_ddos_callback = false;
   bool fail_second_ddos_callback = false;
   std::string cipher;
+  std::string cipher_tls10;
+  std::string cipher_tls11;
   bool handshake_never_done = false;
   int export_keying_material = 0;
   std::string export_label;

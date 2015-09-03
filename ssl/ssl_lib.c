@@ -1081,6 +1081,11 @@ STACK_OF(SSL_CIPHER) *SSL_get_ciphers(const SSL *s) {
     return s->ctx->cipher_list_tls11->ciphers;
   }
 
+  if (s->version >= TLS1_VERSION && s->ctx != NULL &&
+      s->ctx->cipher_list_tls10 != NULL) {
+    return s->ctx->cipher_list_tls10->ciphers;
+  }
+
   if (s->ctx != NULL && s->ctx->cipher_list != NULL) {
     return s->ctx->cipher_list->ciphers;
   }
@@ -1139,6 +1144,20 @@ int SSL_CTX_set_cipher_list(SSL_CTX *ctx, const char *str) {
    * specifies a cipher which has been disabled). This is not an error as far
    * as ssl_create_cipher_list is concerned, and hence ctx->cipher_list and
    * ctx->cipher_list_by_id has been updated. */
+  if (sk == NULL) {
+    return 0;
+  } else if (sk_SSL_CIPHER_num(sk) == 0) {
+    OPENSSL_PUT_ERROR(SSL, SSL_R_NO_CIPHER_MATCH);
+    return 0;
+  }
+
+  return 1;
+}
+
+int SSL_CTX_set_cipher_list_tls10(SSL_CTX *ctx, const char *str) {
+  STACK_OF(SSL_CIPHER) *sk;
+
+  sk = ssl_create_cipher_list(ctx->method, &ctx->cipher_list_tls10, NULL, str);
   if (sk == NULL) {
     return 0;
   } else if (sk_SSL_CIPHER_num(sk) == 0) {

@@ -1265,6 +1265,17 @@ struct ssl_ctx_st {
   struct ssl_cipher_preference_list_st *cipher_list;
   /* same as above but sorted for lookup */
   STACK_OF(SSL_CIPHER) *cipher_list_by_id;
+
+  /* cipher_list_tls10 is the list of ciphers when TLS 1.0 or greater is in
+   * use. This only applies to server connections as, for clients, the version
+   * number is known at connect time and so the cipher list can be set then. If
+   * |cipher_list_tls11| is non-NULL then this applies only to TLS 1.0
+   * connections.
+   *
+   * TODO(agl): this exists to assist in the death of SSLv3. It can hopefully
+   * be removed after that. */
+  struct ssl_cipher_preference_list_st *cipher_list_tls10;
+
   /* cipher_list_tls11 is the list of ciphers when TLS 1.1 or greater is in
    * use. This only applies to server connections as, for clients, the version
    * number is known at connect time and so the cipher list can be set then. */
@@ -2099,6 +2110,7 @@ OPENSSL_EXPORT int SSL_set1_curves(SSL *ssl, const int *curves,
                                    size_t curves_len);
 
 OPENSSL_EXPORT int SSL_CTX_set_cipher_list(SSL_CTX *, const char *str);
+OPENSSL_EXPORT int SSL_CTX_set_cipher_list_tls10(SSL_CTX *, const char *str);
 OPENSSL_EXPORT int SSL_CTX_set_cipher_list_tls11(SSL_CTX *, const char *str);
 OPENSSL_EXPORT long SSL_CTX_set_timeout(SSL_CTX *ctx, long t);
 OPENSSL_EXPORT long SSL_CTX_get_timeout(const SSL_CTX *ctx);

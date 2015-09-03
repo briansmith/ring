@@ -599,7 +599,23 @@ static ScopedSSL_CTX SetupCtx(const TestConfig *config) {
     return nullptr;
   }
 
-  if (!SSL_CTX_set_cipher_list(ssl_ctx.get(), "ALL")) {
+  std::string cipher_list = "ALL";
+  if (!config->cipher.empty()) {
+    cipher_list = config->cipher;
+    SSL_CTX_set_options(ssl_ctx.get(), SSL_OP_CIPHER_SERVER_PREFERENCE);
+  }
+  if (!SSL_CTX_set_cipher_list(ssl_ctx.get(), cipher_list.c_str())) {
+    return nullptr;
+  }
+
+  if (!config->cipher_tls10.empty() &&
+      !SSL_CTX_set_cipher_list_tls10(ssl_ctx.get(),
+                                     config->cipher_tls10.c_str())) {
+    return nullptr;
+  }
+  if (!config->cipher_tls11.empty() &&
+      !SSL_CTX_set_cipher_list_tls11(ssl_ctx.get(),
+                                     config->cipher_tls11.c_str())) {
     return nullptr;
   }
 
@@ -1026,10 +1042,6 @@ static bool DoExchange(ScopedSSL_SESSION *out_session, SSL_CTX *ssl_ctx,
   }
   if (config->install_ddos_callback) {
     SSL_CTX_set_dos_protection_cb(ssl_ctx, DDoSCallback);
-  }
-  if (!config->cipher.empty() &&
-      !SSL_set_cipher_list(ssl.get(), config->cipher.c_str())) {
-    return false;
   }
   if (!config->reject_peer_renegotiations) {
     /* Renegotiations are disabled by default. */

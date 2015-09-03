@@ -112,6 +112,8 @@ const Flag<std::string> kStringFlags[] = {
   { "-psk-identity", &TestConfig::psk_identity },
   { "-srtp-profiles", &TestConfig::srtp_profiles },
   { "-cipher", &TestConfig::cipher },
+  { "-cipher-tls10", &TestConfig::cipher_tls10 },
+  { "-cipher-tls11", &TestConfig::cipher_tls11 },
   { "-export-label", &TestConfig::export_label },
   { "-export-context", &TestConfig::export_context },
 };

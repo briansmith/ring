@@ -451,6 +451,11 @@ struct ssl_cipher_preference_list_st *ssl_get_cipher_preferences(SSL *s) {
     return s->ctx->cipher_list_tls11;
   }
 
+  if (s->version >= TLS1_VERSION && s->ctx != NULL &&
+      s->ctx->cipher_list_tls10 != NULL) {
+    return s->ctx->cipher_list_tls10;
+  }
+
   if (s->ctx != NULL && s->ctx->cipher_list != NULL) {
     return s->ctx->cipher_list;
   }
