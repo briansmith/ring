@@ -32,13 +32,6 @@ pub use digest::{
 };
 
 mod ffi;
+pub mod ecc;
 pub mod rand;
-
-mod signature;
-pub use signature::{
-    CURVE_P256, CURVE_P384, CURVE_P521,
-    EllipticCurve,
-    SignatureDigestAlgorithm,
-    verify_ecdsa_signed_digest_asn1,
-    verify_rsa_pkcs1_signed_digest_asn1,
-};
+mod rsa;

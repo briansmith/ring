@@ -90,6 +90,11 @@ OPENSSL_EXPORT int ECDH_compute_key(void *out, size_t outlen,
                                     void *(*KDF)(const void *in, size_t inlen,
                                                  void *out, size_t *outlen));
 
+int ECDH_ephemeral(uint8_t *pre_master_secret, size_t *pre_master_secret_len,
+                   uint8_t *my_pub_point_bytes, size_t *my_pub_point_bytes_len,
+                   int curve_nid, const uint8_t *peer_pub_point_bytes,
+                   size_t peer_pub_point_bytes_len);
+
 
 #if defined(__cplusplus)
 }  /* extern C */

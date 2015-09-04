@@ -73,6 +73,7 @@
 #include <openssl/err.h>
 #include <openssl/mem.h>
 
+/* TODO: zeroization? */
 
 int ECDH_compute_key(void *out, size_t outlen, const EC_POINT *pub_key,
                      EC_KEY *priv_key, void *(*KDF)(const void *in, size_t inlen,
@@ -157,5 +158,66 @@ err:
   if (buf) {
     OPENSSL_free(buf);
   }
+  return ret;
+}
+
+/* TODO: factor out the common logic between this and
+ * |ECDSA_verify_signed_digest|.
+ *
+ * TODO: check that we're validating the keys as fully as we should be.
+ */
+int ECDH_ephemeral(uint8_t *pre_master_secret, size_t *pre_master_secret_len,
+                   uint8_t *my_pub_point_bytes, size_t *my_pub_point_bytes_len,
+                   int ec_curve_nid, const uint8_t *peer_pub_point_bytes,
+                   size_t peer_pub_point_bytes_len) {
+  EC_GROUP *group = EC_GROUP_new_by_curve_name(ec_curve_nid);
+  if (!group) {
+    return 0;
+  }
+
+  EC_POINT *peer_pub_point = NULL;
+  EC_KEY *my_key = NULL;
+  int ret = 0;
+
+  peer_pub_point = EC_POINT_new(group);
+  if (!peer_pub_point ||
+      !EC_POINT_oct2point(group, peer_pub_point, peer_pub_point_bytes,
+                          peer_pub_point_bytes_len, NULL)) {
+    goto err;
+  }
+
+  my_key = EC_KEY_new();
+  if (!my_key ||
+      !EC_KEY_set_group(my_key, group) ||
+      !EC_KEY_generate_key(my_key)) {
+    goto err;
+  }
+
+  int len = ECDH_compute_key(pre_master_secret, *pre_master_secret_len,
+                             peer_pub_point, my_key, NULL);
+  if (len < 0) {
+    goto err;
+  }
+  if (len == 0) {
+    OPENSSL_PUT_ERROR(ECDH, ERR_R_INTERNAL_ERROR);
+    goto err;
+  }
+  *pre_master_secret_len = (size_t)len;
+
+  *my_pub_point_bytes_len =
+    EC_POINT_point2oct(group, EC_KEY_get0_public_key(my_key),
+                       POINT_CONVERSION_UNCOMPRESSED, my_pub_point_bytes,
+                       *my_pub_point_bytes_len, NULL);
+  if (*my_pub_point_bytes_len == 0) {
+    goto err;
+  }
+
+  ret = 1;
+
+err:
+  EC_KEY_free(my_key);
+  EC_POINT_free(peer_pub_point);
+  EC_GROUP_free(group);
+
   return ret;
 }
