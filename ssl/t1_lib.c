@@ -1266,33 +1266,15 @@ static int ext_sigalgs_parse_clienthello(SSL *ssl, uint8_t *out_alert,
   ssl->cert->peer_sigalgs = NULL;
   ssl->cert->peer_sigalgslen = 0;
 
-  OPENSSL_free(ssl->cert->shared_sigalgs);
-  ssl->cert->shared_sigalgs = NULL;
-  ssl->cert->shared_sigalgslen = 0;
-
   if (contents == NULL) {
     return 1;
   }
 
   CBS supported_signature_algorithms;
   if (!CBS_get_u16_length_prefixed(contents, &supported_signature_algorithms) ||
-      CBS_len(contents) != 0) {
-    return 0;
-  }
-
-  /* Ensure the signature algorithms are non-empty. It contains a list of
-   * SignatureAndHashAlgorithms which are two bytes each. */
-  if (CBS_len(&supported_signature_algorithms) == 0 ||
-      (CBS_len(&supported_signature_algorithms) % 2) != 0 ||
-      !tls1_process_sigalgs(ssl, &supported_signature_algorithms)) {
-    return 0;
-  }
-
-  /* It's a fatal error if the signature_algorithms extension is received and
-   * there are no shared algorithms. */
-  if (ssl->cert->peer_sigalgs && !ssl->cert->shared_sigalgs) {
-    OPENSSL_PUT_ERROR(SSL, SSL_R_NO_SHARED_SIGATURE_ALGORITHMS);
-    *out_alert = SSL_AD_ILLEGAL_PARAMETER;
+      CBS_len(contents) != 0 ||
+      CBS_len(&supported_signature_algorithms) == 0 ||
+      !tls1_parse_peer_sigalgs(ssl, &supported_signature_algorithms)) {
     return 0;
   }
 
@@ -2852,92 +2834,51 @@ static int tls12_get_pkey_type(uint8_t sig_alg) {
   }
 }
 
-/* Given preference and allowed sigalgs set shared sigalgs */
-static int tls12_do_shared_sigalgs(TLS_SIGALGS *shsig, const uint8_t *pref,
-                                   size_t preflen, const uint8_t *allow,
-                                   size_t allowlen) {
-  const uint8_t *ptmp, *atmp;
-  size_t i, j, nmatch = 0;
+OPENSSL_COMPILE_ASSERT(sizeof(TLS_SIGALGS) == 2,
+    sizeof_tls_sigalgs_is_not_two);
 
-  for (i = 0, ptmp = pref; i < preflen; i += 2, ptmp += 2) {
-    /* Skip disabled hashes or signature algorithms */
-    if (tls12_get_hash(ptmp[0]) == NULL ||
-        tls12_get_pkey_type(ptmp[1]) == -1) {
-      continue;
-    }
-
-    for (j = 0, atmp = allow; j < allowlen; j += 2, atmp += 2) {
-      if (ptmp[0] == atmp[0] && ptmp[1] == atmp[1]) {
-        nmatch++;
-        if (shsig) {
-          shsig->rhash = ptmp[0];
-          shsig->rsign = ptmp[1];
-          shsig++;
-        }
-
-        break;
-      }
-    }
-  }
-
-  return nmatch;
-}
-
-/* Set shared signature algorithms for SSL structures */
-static int tls1_set_shared_sigalgs(SSL *s) {
-  const uint8_t *pref, *allow, *conf;
-  size_t preflen, allowlen, conflen;
-  size_t nmatch;
-  TLS_SIGALGS *salgs = NULL;
-  CERT *c = s->cert;
-
-  OPENSSL_free(c->shared_sigalgs);
-  c->shared_sigalgs = NULL;
-  c->shared_sigalgslen = 0;
-
-  conflen = tls12_get_psigalgs(s, &conf);
-
-  if (s->options & SSL_OP_CIPHER_SERVER_PREFERENCE) {
-    pref = conf;
-    preflen = conflen;
-    allow = c->peer_sigalgs;
-    allowlen = c->peer_sigalgslen;
-  } else {
-    allow = conf;
-    allowlen = conflen;
-    pref = c->peer_sigalgs;
-    preflen = c->peer_sigalgslen;
-  }
-
-  nmatch = tls12_do_shared_sigalgs(NULL, pref, preflen, allow, allowlen);
-  if (!nmatch) {
-    return 1;
-  }
-
-  salgs = OPENSSL_malloc(nmatch * sizeof(TLS_SIGALGS));
-  if (!salgs) {
-    return 0;
-  }
-
-  nmatch = tls12_do_shared_sigalgs(salgs, pref, preflen, allow, allowlen);
-  c->shared_sigalgs = salgs;
-  c->shared_sigalgslen = nmatch;
-  return 1;
-}
-
-/* Set preferred digest for each key type */
-int tls1_process_sigalgs(SSL *s, const CBS *sigalgs) {
-  CERT *c = s->cert;
-
+int tls1_parse_peer_sigalgs(SSL *ssl, const CBS *in_sigalgs) {
   /* Extension ignored for inappropriate versions */
-  if (!SSL_USE_SIGALGS(s)) {
+  if (!SSL_USE_SIGALGS(ssl)) {
     return 1;
   }
 
-  if (CBS_len(sigalgs) % 2 != 0 ||
-      !CBS_stow(sigalgs, &c->peer_sigalgs, &c->peer_sigalgslen) ||
-      !tls1_set_shared_sigalgs(s)) {
+  CERT *const cert = ssl->cert;
+  OPENSSL_free(cert->peer_sigalgs);
+  cert->peer_sigalgs = NULL;
+  cert->peer_sigalgslen = 0;
+
+  size_t num_sigalgs = CBS_len(in_sigalgs);
+
+  if (num_sigalgs % 2 != 0) {
     return 0;
+  }
+  num_sigalgs /= 2;
+
+  /* supported_signature_algorithms in the certificate request is
+   * allowed to be empty. */
+  if (num_sigalgs == 0) {
+    return 1;
+  }
+
+  /* This multiplication doesn't overflow because sizeof(TLS_SIGALGS) is two
+   * (statically asserted above) and we just divided |num_sigalgs| by two. */
+  cert->peer_sigalgs = OPENSSL_malloc(num_sigalgs * sizeof(TLS_SIGALGS));
+  if (cert->peer_sigalgs == NULL) {
+    return 0;
+  }
+  cert->peer_sigalgslen = num_sigalgs;
+
+  CBS sigalgs;
+  CBS_init(&sigalgs, CBS_data(in_sigalgs), CBS_len(in_sigalgs));
+
+  size_t i;
+  for (i = 0; i < num_sigalgs; i++) {
+    TLS_SIGALGS *const sigalg = &cert->peer_sigalgs[i];
+    if (!CBS_get_u8(&sigalgs, &sigalg->rhash) ||
+        !CBS_get_u8(&sigalgs, &sigalg->rsign)) {
+      return 0;
+    }
   }
 
   return 1;
@@ -2946,17 +2887,31 @@ int tls1_process_sigalgs(SSL *s, const CBS *sigalgs) {
 const EVP_MD *tls1_choose_signing_digest(SSL *ssl) {
   CERT *cert = ssl->cert;
   int type = ssl_private_key_type(ssl);
-  size_t i;
+  size_t i, j;
 
-  /* Select the first shared digest supported by our key. */
-  for (i = 0; i < cert->shared_sigalgslen; i++) {
-    const EVP_MD *md = tls12_get_hash(cert->shared_sigalgs[i].rhash);
-    if (md == NULL ||
-        tls12_get_pkey_type(cert->shared_sigalgs[i].rsign) != type ||
-        !ssl_private_key_supports_digest(ssl, md)) {
-      continue;
+  static const int kDefaultDigestList[] = {NID_sha256, NID_sha384, NID_sha512,
+                                           NID_sha224, NID_sha1};
+
+  const int *digest_nids = kDefaultDigestList;
+  size_t num_digest_nids =
+      sizeof(kDefaultDigestList) / sizeof(kDefaultDigestList[0]);
+  if (cert->digest_nids != NULL) {
+    digest_nids = cert->digest_nids;
+    num_digest_nids = cert->num_digest_nids;
+  }
+
+  for (i = 0; i < num_digest_nids; i++) {
+    const int digest_nid = digest_nids[i];
+    for (j = 0; j < cert->peer_sigalgslen; j++) {
+      const EVP_MD *md = tls12_get_hash(cert->peer_sigalgs[j].rhash);
+      if (md == NULL ||
+          digest_nid != EVP_MD_type(md) ||
+          tls12_get_pkey_type(cert->peer_sigalgs[j].rsign) != type) {
+        continue;
+      }
+
+      return md;
     }
-    return md;
   }
 
   /* If no suitable digest may be found, default to SHA-1. */

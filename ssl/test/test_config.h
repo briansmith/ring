@@ -24,6 +24,7 @@ struct TestConfig {
   bool is_dtls = false;
   bool resume = false;
   bool fallback_scsv = false;
+  std::string digest_prefs;
   std::string key_file;
   std::string cert_file;
   std::string expected_server_name;

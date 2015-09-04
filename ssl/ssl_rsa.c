@@ -310,6 +310,21 @@ void SSL_set_private_key_method(SSL *ssl,
   ssl->cert->key_method = key_method;
 }
 
+int SSL_set_private_key_digest_prefs(SSL *ssl, const int *digest_nids,
+                                     size_t num_digests) {
+  OPENSSL_free(ssl->cert->digest_nids);
+
+  ssl->cert->num_digest_nids = 0;
+  ssl->cert->digest_nids = BUF_memdup(digest_nids, num_digests*sizeof(int));
+  if (ssl->cert->digest_nids == NULL) {
+    OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
+    return 0;
+  }
+
+  ssl->cert->num_digest_nids = num_digests;
+  return 1;
+}
+
 int ssl_has_private_key(SSL *ssl) {
   return ssl->cert->privatekey != NULL || ssl->cert->key_method != NULL;
 }
@@ -319,13 +334,6 @@ int ssl_private_key_type(SSL *ssl) {
     return ssl->cert->key_method->type(ssl);
   }
   return EVP_PKEY_id(ssl->cert->privatekey);
-}
-
-int ssl_private_key_supports_digest(SSL *ssl, const EVP_MD *md) {
-  if (ssl->cert->key_method != NULL) {
-    return ssl->cert->key_method->supports_digest(ssl, md);
-  }
-  return EVP_PKEY_supports_digest(ssl->cert->privatekey, md);
 }
 
 size_t ssl_private_key_max_signature_len(SSL *ssl) {

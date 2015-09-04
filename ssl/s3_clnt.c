@@ -1363,15 +1363,10 @@ int ssl3_get_certificate_request(SSL *s) {
 
   if (SSL_USE_SIGALGS(s)) {
     CBS supported_signature_algorithms;
-    if (!CBS_get_u16_length_prefixed(&cbs, &supported_signature_algorithms)) {
+    if (!CBS_get_u16_length_prefixed(&cbs, &supported_signature_algorithms) ||
+        !tls1_parse_peer_sigalgs(s, &supported_signature_algorithms)) {
       ssl3_send_alert(s, SSL3_AL_FATAL, SSL_AD_DECODE_ERROR);
       OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
-      goto err;
-    }
-
-    if (!tls1_process_sigalgs(s, &supported_signature_algorithms)) {
-      ssl3_send_alert(s, SSL3_AL_FATAL, SSL_AD_DECODE_ERROR);
-      OPENSSL_PUT_ERROR(SSL, SSL_R_SIGNATURE_ALGORITHMS_ERROR);
       goto err;
     }
   }

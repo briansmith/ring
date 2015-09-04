@@ -685,6 +685,7 @@ func (hs *serverHandshakeState) doFullHandshake() error {
 			if !isSupportedSignatureAndHash(signatureAndHash, config.signatureAndHashesForServer()) {
 				return errors.New("tls: unsupported hash function for client certificate")
 			}
+			c.clientCertSignatureHash = signatureAndHash.hash
 		} else {
 			// Before TLS 1.2 the signature algorithm was implicit
 			// from the key type, and only one hash per signature

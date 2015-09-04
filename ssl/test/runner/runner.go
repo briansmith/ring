@@ -159,11 +159,17 @@ type testCase struct {
 	expectedOCSPResponse []uint8
 	// expectedSCTList, if not nil, is the expected SCT list to be received.
 	expectedSCTList []uint8
+	// expectedClientCertSignatureHash, if not zero, is the TLS id of the
+	// hash function that the client should have used when signing the
+	// handshake with a client certificate.
+	expectedClientCertSignatureHash uint8
 	// messageLen is the length, in bytes, of the test message that will be
 	// sent.
 	messageLen int
 	// messageCount is the number of test messages that will be sent.
 	messageCount int
+	// digestPrefs is the list of digest preferences from the client.
+	digestPrefs string
 	// certFile is the path to the certificate to use for the server.
 	certFile string
 	// keyFile is the path to the private key to use for the server.
@@ -338,6 +344,10 @@ func doExchange(test *testCase, config *Config, conn net.Conn, isResume bool) er
 
 	if test.expectedSCTList != nil && !bytes.Equal(test.expectedSCTList, connState.SCTList) {
 		return fmt.Errorf("SCT list mismatch")
+	}
+
+	if expected := test.expectedClientCertSignatureHash; expected != 0 && expected != connState.ClientCertSignatureHash {
+		return fmt.Errorf("expected client to sign handshake with hash %d, but got %d", expected, connState.ClientCertSignatureHash)
 	}
 
 	if test.exportKeyingMaterial > 0 {
@@ -525,6 +535,10 @@ func runTest(test *testCase, shimPath string, mallocNumToFail int64) error {
 		panic("expectResumeRejected without resumeSession in " + test.name)
 	}
 
+	if test.testType != clientTest && test.expectedClientCertSignatureHash != 0 {
+		panic("expectedClientCertSignatureHash non-zero with serverTest in " + test.name)
+	}
+
 	listener, err := net.ListenTCP("tcp4", &net.TCPAddr{IP: net.IP{127, 0, 0, 1}})
 	if err != nil {
 		panic(err)
@@ -552,6 +566,11 @@ func runTest(test *testCase, shimPath string, mallocNumToFail int64) error {
 		} else {
 			flags = append(flags, path.Join(*resourceDir, test.certFile))
 		}
+	}
+
+	if test.digestPrefs != "" {
+		flags = append(flags, "-digest-prefs")
+		flags = append(flags, test.digestPrefs)
 	}
 
 	if test.protocol == dtls {
@@ -3902,6 +3921,73 @@ func addSigningHashTests() {
 		},
 		shouldFail:    true,
 		expectedError: ":WRONG_SIGNATURE_TYPE:",
+	})
+
+	// Test that the agreed upon digest respects the client preferences and
+	// the server digests.
+	testCases = append(testCases, testCase{
+		name: "Agree-Digest-Fallback",
+		config: Config{
+			ClientAuth: RequireAnyClientCert,
+			SignatureAndHashes: []signatureAndHash{
+				{signatureRSA, hashSHA512},
+				{signatureRSA, hashSHA1},
+			},
+		},
+		flags: []string{
+			"-cert-file", path.Join(*resourceDir, rsaCertificateFile),
+			"-key-file", path.Join(*resourceDir, rsaKeyFile),
+		},
+		digestPrefs:                     "SHA256",
+		expectedClientCertSignatureHash: hashSHA1,
+	})
+	testCases = append(testCases, testCase{
+		name: "Agree-Digest-SHA256",
+		config: Config{
+			ClientAuth: RequireAnyClientCert,
+			SignatureAndHashes: []signatureAndHash{
+				{signatureRSA, hashSHA1},
+				{signatureRSA, hashSHA256},
+			},
+		},
+		flags: []string{
+			"-cert-file", path.Join(*resourceDir, rsaCertificateFile),
+			"-key-file", path.Join(*resourceDir, rsaKeyFile),
+		},
+		digestPrefs:                     "SHA256,SHA1",
+		expectedClientCertSignatureHash: hashSHA256,
+	})
+	testCases = append(testCases, testCase{
+		name: "Agree-Digest-SHA1",
+		config: Config{
+			ClientAuth: RequireAnyClientCert,
+			SignatureAndHashes: []signatureAndHash{
+				{signatureRSA, hashSHA1},
+			},
+		},
+		flags: []string{
+			"-cert-file", path.Join(*resourceDir, rsaCertificateFile),
+			"-key-file", path.Join(*resourceDir, rsaKeyFile),
+		},
+		digestPrefs:                     "SHA512,SHA256,SHA1",
+		expectedClientCertSignatureHash: hashSHA1,
+	})
+	testCases = append(testCases, testCase{
+		name: "Agree-Digest-Default",
+		config: Config{
+			ClientAuth: RequireAnyClientCert,
+			SignatureAndHashes: []signatureAndHash{
+				{signatureRSA, hashSHA256},
+				{signatureECDSA, hashSHA256},
+				{signatureRSA, hashSHA1},
+				{signatureECDSA, hashSHA1},
+			},
+		},
+		flags: []string{
+			"-cert-file", path.Join(*resourceDir, rsaCertificateFile),
+			"-key-file", path.Join(*resourceDir, rsaKeyFile),
+		},
+		expectedClientCertSignatureHash: hashSHA256,
 	})
 }
 

@@ -50,6 +50,11 @@ type Conn struct {
 	// firstFinished contains the first Finished hash sent during the
 	// handshake. This is the "tls-unique" channel binding value.
 	firstFinished [12]byte
+	// clientCertSignatureHash contains the TLS hash id for the hash that
+	// was used by the client to sign the handshake with a client
+	// certificate. This is only set by a server and is zero if no client
+	// certificates were used.
+	clientCertSignatureHash uint8
 
 	clientRandom, serverRandom [32]byte
 	masterSecret               [48]byte
@@ -1349,6 +1354,7 @@ func (c *Conn) ConnectionState() ConnectionState {
 		state.SRTPProtectionProfile = c.srtpProtectionProfile
 		state.TLSUnique = c.firstFinished[:]
 		state.SCTList = c.sctList
+		state.ClientCertSignatureHash = c.clientCertSignatureHash
 	}
 
 	return state

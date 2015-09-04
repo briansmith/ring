@@ -191,6 +191,7 @@ type ConnectionState struct {
 	SRTPProtectionProfile      uint16                // the negotiated DTLS-SRTP protection profile
 	TLSUnique                  []byte                // the tls-unique channel binding
 	SCTList                    []byte                // signed certificate timestamp list
+	ClientCertSignatureHash    uint8                 // TLS id of the hash used by the client to sign the handshake
 }
 
 // ClientAuthType declares the policy the server will follow for
