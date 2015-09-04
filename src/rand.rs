@@ -12,28 +12,18 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
+//! Cryptographic psuedo-random number generation.
+
 use libc;
+use super::ffi;
 
-/// Appends `num_bytes` of cryptographically-secure random bytes to `out`.
-pub fn append_secure_random(out: &mut Vec<u8>, num_bytes: usize)
-                            -> Result<(), ()> {
-    // XXX: Why isn't usize the same as libc::size_t?
-
-    let old_len = out.len();
-    out.reserve(num_bytes);
-    unsafe {
-        out.set_len(old_len + num_bytes);
-        if RAND_bytes(out.get_unchecked_mut(old_len),
-                      num_bytes as libc::size_t) != 1 {
-            out.set_len(old_len);
-            return Err(());
-        }
-    }
-    return Ok(())
+/// Fills the given slice with random bytes generated from a PRNG.
+pub fn fill_secure_random(out: &mut [u8]) -> Result<(), ()> {
+    ffi::map_bssl_result(unsafe {
+        RAND_bytes(out.as_mut_ptr(), out.len() as libc::size_t)
+    })
 }
 
 extern {
-
-fn RAND_bytes(buf: *mut libc::uint8_t, len: libc::size_t) -> libc::c_int;
-
+    fn RAND_bytes(buf: *mut libc::uint8_t, len: libc::size_t) -> libc::c_int;
 }

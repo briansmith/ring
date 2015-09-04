@@ -32,8 +32,7 @@ pub use digest::{
 };
 
 mod ffi;
-mod rand;
-pub use rand::append_secure_random;
+pub mod rand;
 
 mod signature;
 pub use signature::{
