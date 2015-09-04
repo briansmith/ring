@@ -27,6 +27,7 @@ add_library(
   ssl_buffer.c
   ssl_cert.c
   ssl_cipher.c
+  ssl_file.c
   ssl_lib.c
   ssl_rsa.c
   ssl_sess.c

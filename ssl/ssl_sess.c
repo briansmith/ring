@@ -848,5 +848,3 @@ void SSL_CTX_set_channel_id_cb(SSL_CTX *ctx,
 void (*SSL_CTX_get_channel_id_cb(SSL_CTX *ctx))(SSL *ssl, EVP_PKEY **pkey) {
   return ctx->channel_id_cb;
 }
-
-IMPLEMENT_PEM_rw(SSL_SESSION, SSL_SESSION, PEM_STRING_SSL_SESSION, SSL_SESSION)

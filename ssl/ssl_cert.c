@@ -112,24 +112,20 @@
  * ECC cipher suite support in OpenSSL originally developed by
  * SUN MICROSYSTEMS, INC., and contributed to the OpenSSL project. */
 
-#include <errno.h>
-#include <stdio.h>
+#include <openssl/ssl.h>
+
 #include <string.h>
 
-#include <openssl/bio.h>
 #include <openssl/bn.h>
 #include <openssl/buf.h>
 #include <openssl/ec_key.h>
 #include <openssl/dh.h>
 #include <openssl/err.h>
 #include <openssl/mem.h>
-#include <openssl/obj.h>
-#include <openssl/pem.h>
 #include <openssl/x509.h>
 #include <openssl/x509v3.h>
 
 #include "../crypto/dh/internal.h"
-#include "../crypto/directory.h"
 #include "../crypto/internal.h"
 #include "internal.h"
 
@@ -420,187 +416,6 @@ int SSL_add_client_CA(SSL *ssl, X509 *x) {
 
 int SSL_CTX_add_client_CA(SSL_CTX *ctx, X509 *x) {
   return add_client_CA(&(ctx->client_CA), x);
-}
-
-static int xname_cmp(const X509_NAME **a, const X509_NAME **b) {
-  return X509_NAME_cmp(*a, *b);
-}
-
-/* Load CA certs from a file into a STACK. Note that it is somewhat misnamed;
- * it doesn't really have anything to do with clients (except that a common use
- * for a stack of CAs is to send it to the client). Actually, it doesn't have
- * much to do with CAs, either, since it will load any old cert.
- *
- * \param file the file containing one or more certs.
- * \return a ::STACK containing the certs. */
-STACK_OF(X509_NAME) *SSL_load_client_CA_file(const char *file) {
-  BIO *in;
-  X509 *x = NULL;
-  X509_NAME *xn = NULL;
-  STACK_OF(X509_NAME) *ret = NULL, *sk;
-
-  sk = sk_X509_NAME_new(xname_cmp);
-  in = BIO_new(BIO_s_file());
-
-  if (sk == NULL || in == NULL) {
-    OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
-    goto err;
-  }
-
-  if (!BIO_read_filename(in, file)) {
-    goto err;
-  }
-
-  for (;;) {
-    if (PEM_read_bio_X509(in, &x, NULL, NULL) == NULL) {
-      break;
-    }
-    if (ret == NULL) {
-      ret = sk_X509_NAME_new_null();
-      if (ret == NULL) {
-        OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
-        goto err;
-      }
-    }
-    xn = X509_get_subject_name(x);
-    if (xn == NULL) {
-      goto err;
-    }
-
-    /* check for duplicates */
-    xn = X509_NAME_dup(xn);
-    if (xn == NULL) {
-      goto err;
-    }
-    if (sk_X509_NAME_find(sk, NULL, xn)) {
-      X509_NAME_free(xn);
-    } else {
-      sk_X509_NAME_push(sk, xn);
-      sk_X509_NAME_push(ret, xn);
-    }
-  }
-
-  if (0) {
-  err:
-    sk_X509_NAME_pop_free(ret, X509_NAME_free);
-    ret = NULL;
-  }
-
-  sk_X509_NAME_free(sk);
-  BIO_free(in);
-  X509_free(x);
-  if (ret != NULL) {
-    ERR_clear_error();
-  }
-  return ret;
-}
-
-/* Add a file of certs to a stack.
- *
- * \param stack the stack to add to.
- * \param file the file to add from. All certs in this file that are not
- *     already in the stack will be added.
- * \return 1 for success, 0 for failure. Note that in the case of failure some
- *     certs may have been added to \c stack. */
-int SSL_add_file_cert_subjects_to_stack(STACK_OF(X509_NAME) *stack,
-                                        const char *file) {
-  BIO *in;
-  X509 *x = NULL;
-  X509_NAME *xn = NULL;
-  int ret = 1;
-  int (*oldcmp)(const X509_NAME **a, const X509_NAME **b);
-
-  oldcmp = sk_X509_NAME_set_cmp_func(stack, xname_cmp);
-  in = BIO_new(BIO_s_file());
-
-  if (in == NULL) {
-    OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
-    goto err;
-  }
-
-  if (!BIO_read_filename(in, file)) {
-    goto err;
-  }
-
-  for (;;) {
-    if (PEM_read_bio_X509(in, &x, NULL, NULL) == NULL) {
-      break;
-    }
-    xn = X509_get_subject_name(x);
-    if (xn == NULL) {
-      goto err;
-    }
-    xn = X509_NAME_dup(xn);
-    if (xn == NULL) {
-      goto err;
-    }
-    if (sk_X509_NAME_find(stack, NULL, xn)) {
-      X509_NAME_free(xn);
-    } else {
-      sk_X509_NAME_push(stack, xn);
-    }
-  }
-
-  ERR_clear_error();
-
-  if (0) {
-  err:
-    ret = 0;
-  }
-
-  BIO_free(in);
-  X509_free(x);
-
-  (void) sk_X509_NAME_set_cmp_func(stack, oldcmp);
-
-  return ret;
-}
-
-/* Add a directory of certs to a stack.
- *
- * \param stack the stack to append to.
- * \param dir the directory to append from. All files in this directory will be
- *     examined as potential certs. Any that are acceptable to
- *     SSL_add_dir_cert_subjects_to_stack() that are not already in the stack will
- *     be included.
- * \return 1 for success, 0 for failure. Note that in the case of failure some
- *     certs may have been added to \c stack. */
-int SSL_add_dir_cert_subjects_to_stack(STACK_OF(X509_NAME) *stack,
-                                       const char *dir) {
-  OPENSSL_DIR_CTX *d = NULL;
-  const char *filename;
-  int ret = 0;
-
-  /* Note that a side effect is that the CAs will be sorted by name */
-  while ((filename = OPENSSL_DIR_read(&d, dir))) {
-    char buf[1024];
-    int r;
-
-    if (strlen(dir) + strlen(filename) + 2 > sizeof(buf)) {
-      OPENSSL_PUT_ERROR(SSL, SSL_R_PATH_TOO_LONG);
-      goto err;
-    }
-
-    r = BIO_snprintf(buf, sizeof buf, "%s/%s", dir, filename);
-    if (r <= 0 || r >= (int)sizeof(buf) ||
-        !SSL_add_file_cert_subjects_to_stack(stack, buf)) {
-      goto err;
-    }
-  }
-
-  if (errno) {
-    OPENSSL_PUT_ERROR(SSL, ERR_R_SYS_LIB);
-    ERR_add_error_data(3, "OPENSSL_DIR_read(&ctx, '", dir, "')");
-    goto err;
-  }
-
-  ret = 1;
-
-err:
-  if (d) {
-    OPENSSL_DIR_end(&d);
-  }
-  return ret;
 }
 
 /* Add a certificate to a BUF_MEM structure */
