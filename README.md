@@ -35,6 +35,7 @@ The first part of the ```ring``` Rust crate is now available.
 
 Currently these features are supported through the Rust API:
 
+* AEAD (authenticated encryption) using AES-GCM (more algorithms to follow)
 * Cryptographic digests (SHA-256, SHA-384, SHA-512, SHA-1, and MD5)
 * HMAC, HKDF, and PBKDF2-HMAC
 * Ephemeral ECDH key agreement for curves P-256, P-384, and P-521

@@ -899,8 +899,8 @@ struct aead_aes_gcm_ctx {
   uint8_t tag_len;
 };
 
-static int aead_aes_gcm_init(EVP_AEAD_CTX *ctx, const uint8_t *key,
-                             size_t key_len, size_t tag_len) {
+int evp_aead_aes_gcm_init(EVP_AEAD_CTX *ctx, const uint8_t *key,
+                          size_t key_len, size_t tag_len) {
   struct aead_aes_gcm_ctx *gcm_ctx;
   const size_t key_bits = key_len * 8;
 
@@ -931,17 +931,17 @@ static int aead_aes_gcm_init(EVP_AEAD_CTX *ctx, const uint8_t *key,
   return 1;
 }
 
-static void aead_aes_gcm_cleanup(EVP_AEAD_CTX *ctx) {
+void evp_aead_aes_gcm_cleanup(EVP_AEAD_CTX *ctx) {
   struct aead_aes_gcm_ctx *gcm_ctx = ctx->aead_state;
   OPENSSL_cleanse(gcm_ctx, sizeof(struct aead_aes_gcm_ctx));
   OPENSSL_free(gcm_ctx);
 }
 
-static int aead_aes_gcm_seal(const EVP_AEAD_CTX *ctx, uint8_t *out,
-                             size_t *out_len, size_t max_out_len,
-                             const uint8_t *nonce, size_t nonce_len,
-                             const uint8_t *in, size_t in_len,
-                             const uint8_t *ad, size_t ad_len) {
+int evp_aead_aes_gcm_seal(const EVP_AEAD_CTX *ctx, uint8_t *out,
+                          size_t *out_len, size_t max_out_len,
+                          const uint8_t *nonce, size_t nonce_len,
+                          const uint8_t *in, size_t in_len,
+                          const uint8_t *ad, size_t ad_len) {
   size_t bulk = 0;
   const struct aead_aes_gcm_ctx *gcm_ctx = ctx->aead_state;
   GCM128_CONTEXT gcm;
@@ -979,11 +979,11 @@ static int aead_aes_gcm_seal(const EVP_AEAD_CTX *ctx, uint8_t *out,
   return 1;
 }
 
-static int aead_aes_gcm_open(const EVP_AEAD_CTX *ctx, uint8_t *out,
-                             size_t *out_len, size_t max_out_len,
-                             const uint8_t *nonce, size_t nonce_len,
-                             const uint8_t *in, size_t in_len,
-                             const uint8_t *ad, size_t ad_len) {
+int evp_aead_aes_gcm_open(const EVP_AEAD_CTX *ctx, uint8_t *out,
+                          size_t *out_len, size_t max_out_len,
+                          const uint8_t *nonce, size_t nonce_len,
+                          const uint8_t *in, size_t in_len,
+                          const uint8_t *ad, size_t ad_len) {
   size_t bulk = 0;
   const struct aead_aes_gcm_ctx *gcm_ctx = ctx->aead_state;
   uint8_t tag[EVP_AEAD_AES_GCM_TAG_LEN];
@@ -1032,28 +1032,30 @@ static int aead_aes_gcm_open(const EVP_AEAD_CTX *ctx, uint8_t *out,
   return 1;
 }
 
+/* TODO(ring): We currently duplicate these between Rust and C. Avoid doing that. */
 static const EVP_AEAD aead_aes_128_gcm = {
     16,                       /* key len */
     12,                       /* nonce len */
     EVP_AEAD_AES_GCM_TAG_LEN, /* overhead */
     EVP_AEAD_AES_GCM_TAG_LEN, /* max tag length */
-    aead_aes_gcm_init,
+    evp_aead_aes_gcm_init,
     NULL, /* init_with_direction */
-    aead_aes_gcm_cleanup,
-    aead_aes_gcm_seal,
-    aead_aes_gcm_open,
+    evp_aead_aes_gcm_cleanup,
+    evp_aead_aes_gcm_seal,
+    evp_aead_aes_gcm_open,
 };
 
+/* TODO(ring): We currently duplicate these between Rust and C. Avoid doing that. */
 static const EVP_AEAD aead_aes_256_gcm = {
     32,                       /* key len */
     12,                       /* nonce len */
     EVP_AEAD_AES_GCM_TAG_LEN, /* overhead */
     EVP_AEAD_AES_GCM_TAG_LEN, /* max tag length */
-    aead_aes_gcm_init,
+    evp_aead_aes_gcm_init,
     NULL, /* init_with_direction */
-    aead_aes_gcm_cleanup,
-    aead_aes_gcm_seal,
-    aead_aes_gcm_open,
+    evp_aead_aes_gcm_cleanup,
+    evp_aead_aes_gcm_seal,
+    evp_aead_aes_gcm_open,
 };
 
 const EVP_AEAD *EVP_aead_aes_128_gcm(void) { return &aead_aes_128_gcm; }

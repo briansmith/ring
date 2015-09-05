@@ -17,6 +17,7 @@ extern crate libc;
 #[cfg(test)]
 extern crate rustc_serialize;
 
+pub mod aead;
 pub mod digest;
 pub mod ecc;
 mod ffi;

@@ -72,6 +72,8 @@ extern "C" {
 
 /* EVP_AEAD represents a specific AEAD algorithm. */
 struct evp_aead_st {
+  /* ring: Keep the layout of this in sync with the layout of
+   * |ring::aead::Algorithm|. */
   uint8_t key_len;
   uint8_t nonce_len;
   uint8_t overhead;
