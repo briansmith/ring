@@ -143,6 +143,7 @@
 #include <string.h>
 
 #include <openssl/bytestring.h>
+#include <openssl/crypto.h>
 #include <openssl/dh.h>
 #include <openssl/err.h>
 #include <openssl/lhash.h>
@@ -172,6 +173,13 @@ static CRYPTO_EX_DATA_CLASS g_ex_data_class_ssl =
     CRYPTO_EX_DATA_CLASS_INIT_WITH_APP_DATA;
 static CRYPTO_EX_DATA_CLASS g_ex_data_class_ssl_ctx =
     CRYPTO_EX_DATA_CLASS_INIT_WITH_APP_DATA;
+
+int SSL_library_init(void) {
+  CRYPTO_library_init();
+  return 1;
+}
+
+void SSL_load_error_strings(void) {}
 
 int SSL_clear(SSL *ssl) {
   if (ssl->method == NULL) {
