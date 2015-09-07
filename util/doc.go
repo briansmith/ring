@@ -48,9 +48,8 @@ type HeaderSection struct {
 	// Preamble contains a comment for a group of functions.
 	Preamble []string
 	Decls    []HeaderDecl
-	// Num is just the index of the section. It's included in order to help
-	// text/template generate anchors.
-	Num int
+	// Anchor, if non-empty, is the URL fragment to use in anchor tags.
+	Anchor string
 	// IsPrivate is true if the section contains private functions (as
 	// indicated by its name).
 	IsPrivate bool
@@ -65,10 +64,8 @@ type HeaderDecl struct {
 	Name string
 	// Decl contains the preformatted C declaration itself.
 	Decl string
-	// Num is an index for the declaration, but the value is unique for all
-	// declarations in a HeaderFile. It's included in order to help
-	// text/template generate anchors.
-	Num int
+	// Anchor, if non-empty, is the URL fragment to use in anchor tags.
+	Anchor string
 }
 
 const (
@@ -243,6 +240,10 @@ func getNameFromDecl(decl string) (string, bool) {
 	return decl[j+1 : i], true
 }
 
+func sanitizeAnchor(name string) string {
+	return strings.Replace(name, " ", "-", -1)
+}
+
 func (config *Config) parseHeader(path string) (*HeaderFile, error) {
 	headerPath := filepath.Join(config.BaseDirectory, path)
 
@@ -314,7 +315,7 @@ func (config *Config) parseHeader(path string) (*HeaderFile, error) {
 		}
 	}
 
-	var sectionNumber, declNumber int
+	allAnchors := make(map[string]struct{})
 
 	for {
 		// Start of a section.
@@ -330,10 +331,7 @@ func (config *Config) parseHeader(path string) (*HeaderFile, error) {
 			return nil, fmt.Errorf("blank line at start of section on line %d", lineNo)
 		}
 
-		section := HeaderSection{
-			Num: sectionNumber,
-		}
-		sectionNumber++
+		var section HeaderSection
 
 		if strings.HasPrefix(line, commentStart) {
 			comment, rest, restLineNo, err := extractComment(lines, lineNo)
@@ -341,8 +339,17 @@ func (config *Config) parseHeader(path string) (*HeaderFile, error) {
 				return nil, err
 			}
 			if len(rest) > 0 && len(rest[0]) == 0 {
+				anchor := sanitizeAnchor(firstSentence(comment))
+				if len(anchor) > 0 {
+					if _, ok := allAnchors[anchor]; ok {
+						return nil, fmt.Errorf("duplicate anchor: %s", anchor)
+					}
+					allAnchors[anchor] = struct{}{}
+				}
+
 				section.Preamble = comment
 				section.IsPrivate = len(comment) > 0 && strings.HasPrefix(comment[0], "Private functions")
+				section.Anchor = anchor
 				lines = rest[1:]
 				lineNo = restLineNo + 1
 			}
@@ -381,13 +388,18 @@ func (config *Config) parseHeader(path string) (*HeaderFile, error) {
 			if last := len(section.Decls) - 1; len(name) == 0 && len(comment) == 0 && last >= 0 {
 				section.Decls[last].Decl += "\n" + decl
 			} else {
+				anchor := sanitizeAnchor(name)
+				// TODO(davidben): Enforce uniqueness. This is
+				// skipped because #ifdefs currently result in
+				// duplicate table-of-contents entries.
+				allAnchors[anchor] = struct{}{}
+
 				section.Decls = append(section.Decls, HeaderDecl{
 					Comment: comment,
 					Name:    name,
 					Decl:    decl,
-					Num:     declNumber,
+					Anchor:  anchor,
 				})
-				declNumber++
 			}
 
 			if len(lines) > 0 && len(lines[0]) == 0 {
@@ -495,9 +507,9 @@ func generate(outPath string, config *Config) (map[string]string, error) {
     <ol>
       {{range .Sections}}
         {{if not .IsPrivate}}
-          {{if .Preamble}}<li class="header"><a href="#section-{{.Num}}">{{.Preamble | firstSentence | html | markupPipeWords}}</a></li>{{end}}
+          {{if .Anchor}}<li class="header"><a href="#{{.Anchor}}">{{.Preamble | firstSentence | html | markupPipeWords}}</a></li>{{end}}
           {{range .Decls}}
-            {{if .Name}}<li><a href="#decl-{{.Num}}"><tt>{{.Name}}</tt></a></li>{{end}}
+            {{if .Anchor}}<li><a href="#{{.Anchor}}"><tt>{{.Name}}</tt></a></li>{{end}}
           {{end}}
         {{end}}
       {{end}}
@@ -508,7 +520,7 @@ func generate(outPath string, config *Config) (map[string]string, error) {
         <div class="section">
         {{if .Preamble}}
           <div class="sectionpreamble">
-          <a name="section-{{.Num}}">
+          <a{{if .Anchor}} name="{{.Anchor}}"{{end}}>
           {{range .Preamble}}<p>{{. | html | markupPipeWords}}</p>{{end}}
           </a>
           </div>
@@ -516,7 +528,7 @@ func generate(outPath string, config *Config) (map[string]string, error) {
 
         {{range .Decls}}
           <div class="decl">
-          <a name="decl-{{.Num}}">
+          <a{{if .Anchor}} name="{{.Anchor}}"{{end}}>
           {{range .Comment}}
             <p>{{. | html | markupPipeWords | newlinesToBR | markupFirstWord}}</p>
           {{end}}
