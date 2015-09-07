@@ -148,9 +148,11 @@ OPENSSL_EXPORT int EVP_DecodeUpdate(EVP_ENCODE_CTX *ctx, uint8_t *out,
 OPENSSL_EXPORT int EVP_DecodeFinal(EVP_ENCODE_CTX *ctx, uint8_t *out,
                                    int *out_len);
 
-/* Deprecated: EVP_DecodeBlock encodes |src_len| bytes from |src| and
- * writes the result to |dst|. It returns the number of bytes written
- * or -1 on error.
+
+/* Deprecated functions. */
+
+/* EVP_DecodeBlock encodes |src_len| bytes from |src| and writes the result to
+ * |dst|. It returns the number of bytes written or -1 on error.
  *
  * WARNING: EVP_DecodeBlock's return value does not take padding into
  * account. It also strips leading whitespace and trailing

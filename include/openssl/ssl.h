@@ -438,10 +438,6 @@ OPENSSL_EXPORT uint32_t SSL_get_options(const SSL *ssl);
  * in one RTT. See draft-bmoeller-tls-falsestart-01. */
 #define SSL_MODE_ENABLE_FALSE_START 0x00000080L
 
-/* Deprecated: SSL_MODE_HANDSHAKE_CUTTHROUGH is the same as
- * SSL_MODE_ENABLE_FALSE_START. */
-#define SSL_MODE_HANDSHAKE_CUTTHROUGH SSL_MODE_ENABLE_FALSE_START
-
 /* SSL_MODE_CBC_RECORD_SPLITTING causes multi-byte CBC records in SSL 3.0 and
  * TLS 1.0 to be split in two: the first record will contain a single byte and
  * the second will contain the remainder. This effectively randomises the IV and
@@ -2214,26 +2210,6 @@ OPENSSL_EXPORT int SSL_SESSION_to_bytes_for_ticket(SSL_SESSION *in,
 OPENSSL_EXPORT SSL_SESSION *SSL_SESSION_from_bytes(const uint8_t *in,
                                                    size_t in_len);
 
-/* Deprecated: i2d_SSL_SESSION serializes |in| to the bytes pointed to by
- * |*pp|. On success, it returns the number of bytes written and advances |*pp|
- * by that many bytes. On failure, it returns -1. If |pp| is NULL, no bytes are
- * written and only the length is returned.
- *
- * Use |SSL_SESSION_to_bytes| instead. */
-OPENSSL_EXPORT int i2d_SSL_SESSION(SSL_SESSION *in, uint8_t **pp);
-
-/* Deprecated: d2i_SSL_SESSION parses a serialized session from the |length|
- * bytes pointed to by |*pp|. It returns the new |SSL_SESSION| and advances
- * |*pp| by the number of bytes consumed on success and NULL on failure. The
- * caller takes ownership of the new session and must call |SSL_SESSION_free|
- * when done.
- *
- * If |a| is non-NULL, |*a| is released and set the new |SSL_SESSION|.
- *
- * Use |SSL_SESSION_from_bytes| instead. */
-OPENSSL_EXPORT SSL_SESSION *d2i_SSL_SESSION(SSL_SESSION **a, const uint8_t **pp,
-                                            long length);
-
 /* SSL_get_peer_certificate returns the peer's leaf certificate or NULL if the
  * peer did not use certificates. The caller must call |X509_free| on the
  * result to release it. */
@@ -2664,6 +2640,28 @@ OPENSSL_EXPORT int SSL_renegotiate(SSL *ssl);
 
 /* SSL_set_state does nothing. */
 OPENSSL_EXPORT void SSL_set_state(SSL *ssl, int state);
+
+/* SSL_MODE_HANDSHAKE_CUTTHROUGH is the same as SSL_MODE_ENABLE_FALSE_START. */
+#define SSL_MODE_HANDSHAKE_CUTTHROUGH SSL_MODE_ENABLE_FALSE_START
+
+/* i2d_SSL_SESSION serializes |in| to the bytes pointed to by |*pp|. On success,
+ * it returns the number of bytes written and advances |*pp| by that many bytes.
+ * On failure, it returns -1. If |pp| is NULL, no bytes are written and only the
+ * length is returned.
+ *
+ * Use |SSL_SESSION_to_bytes| instead. */
+OPENSSL_EXPORT int i2d_SSL_SESSION(SSL_SESSION *in, uint8_t **pp);
+
+/* d2i_SSL_SESSION parses a serialized session from the |length| bytes pointed
+ * to by |*pp|. It returns the new |SSL_SESSION| and advances |*pp| by the
+ * number of bytes consumed on success and NULL on failure. The caller takes
+ * ownership of the new session and must call |SSL_SESSION_free| when done.
+ *
+ * If |a| is non-NULL, |*a| is released and set the new |SSL_SESSION|.
+ *
+ * Use |SSL_SESSION_from_bytes| instead. */
+OPENSSL_EXPORT SSL_SESSION *d2i_SSL_SESSION(SSL_SESSION **a, const uint8_t **pp,
+                                            long length);
 
 
 /* Android compatibility section.
