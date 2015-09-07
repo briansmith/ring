@@ -683,12 +683,6 @@ OPENSSL_EXPORT int BIO_zero_copy_get_write_buf_done(BIO* bio,
                                                     size_t bytes_written);
 
 
-/* Deprecated functions. */
-
-/* ERR_print_errors is an alias for |BIO_print_errors|. */
-OPENSSL_EXPORT void ERR_print_errors(BIO *bio);
-
-
 /* BIO_NOCLOSE and |BIO_CLOSE| can be used as symbolic arguments when a "close
  * flag" is passed to a BIO function. */
 #define BIO_NOCLOSE 0
@@ -738,6 +732,9 @@ OPENSSL_EXPORT void ERR_print_errors(BIO *bio);
  * writing, to signal that no more data are to be encoded. The flag
  * |BIO_FLAGS_BASE64_NO_NL| may be set to encode all the data on one line. */
 OPENSSL_EXPORT const BIO_METHOD *BIO_f_base64(void);
+
+/* ERR_print_errors is an alias for |BIO_print_errors|. */
+OPENSSL_EXPORT void ERR_print_errors(BIO *bio);
 
 
 /* Private functions */

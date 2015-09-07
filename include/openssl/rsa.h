@@ -377,37 +377,6 @@ OPENSSL_EXPORT int RSA_private_key_to_bytes(uint8_t **out_bytes,
                                             size_t *out_len, const RSA *rsa);
 
 
-/* Deprecated functions. */
-
-/* d2i_RSAPublicKey parses an ASN.1, DER-encoded, RSA public key from |len|
- * bytes at |*inp|. If |out| is not NULL then, on exit, a pointer to the result
- * is in |*out|. If |*out| is already non-NULL on entry then the result is
- * written directly into |*out|, otherwise a fresh |RSA| is allocated. On
- * successful exit, |*inp| is advanced past the DER structure. It returns the
- * result or NULL on error. */
-OPENSSL_EXPORT RSA *d2i_RSAPublicKey(RSA **out, const uint8_t **inp, long len);
-
-/* i2d_RSAPublicKey marshals |in| to an ASN.1, DER structure. If |outp| is not
- * NULL then the result is written to |*outp| and |*outp| is advanced just past
- * the output. It returns the number of bytes in the result, whether written or
- * not, or a negative value on error. */
-OPENSSL_EXPORT int i2d_RSAPublicKey(const RSA *in, uint8_t **outp);
-
-/* d2i_RSAPrivateKey parses an ASN.1, DER-encoded, RSA private key from |len|
- * bytes at |*inp|. If |out| is not NULL then, on exit, a pointer to the result
- * is in |*out|. If |*out| is already non-NULL on entry then the result is
- * written directly into |*out|, otherwise a fresh |RSA| is allocated. On
- * successful exit, |*inp| is advanced past the DER structure. It returns the
- * result or NULL on error. */
-OPENSSL_EXPORT RSA *d2i_RSAPrivateKey(RSA **out, const uint8_t **inp, long len);
-
-/* i2d_RSAPrivateKey marshals |in| to an ASN.1, DER structure. If |outp| is not
- * NULL then the result is written to |*outp| and |*outp| is advanced just past
- * the output. It returns the number of bytes in the result, whether written or
- * not, or a negative value on error. */
-OPENSSL_EXPORT int i2d_RSAPrivateKey(const RSA *in, uint8_t **outp);
-
-
 /* ex_data functions.
  *
  * See |ex_data.h| for details. */
@@ -418,6 +387,9 @@ OPENSSL_EXPORT int RSA_get_ex_new_index(long argl, void *argp,
                                         CRYPTO_EX_free *free_func);
 OPENSSL_EXPORT int RSA_set_ex_data(RSA *r, int idx, void *arg);
 OPENSSL_EXPORT void *RSA_get_ex_data(const RSA *r, int idx);
+
+
+/* Flags. */
 
 /* RSA_FLAG_OPAQUE specifies that this RSA_METHOD does not expose its key
  * material. This may be set if, for instance, it is wrapping some other crypto
@@ -462,6 +434,34 @@ OPENSSL_EXPORT int RSA_blinding_on(RSA *rsa, BN_CTX *ctx);
  * and |cb_arg| parameters must be NULL. */
 OPENSSL_EXPORT RSA *RSA_generate_key(int bits, unsigned long e, void *callback,
                                      void *cb_arg);
+
+/* d2i_RSAPublicKey parses an ASN.1, DER-encoded, RSA public key from |len|
+ * bytes at |*inp|. If |out| is not NULL then, on exit, a pointer to the result
+ * is in |*out|. If |*out| is already non-NULL on entry then the result is
+ * written directly into |*out|, otherwise a fresh |RSA| is allocated. On
+ * successful exit, |*inp| is advanced past the DER structure. It returns the
+ * result or NULL on error. */
+OPENSSL_EXPORT RSA *d2i_RSAPublicKey(RSA **out, const uint8_t **inp, long len);
+
+/* i2d_RSAPublicKey marshals |in| to an ASN.1, DER structure. If |outp| is not
+ * NULL then the result is written to |*outp| and |*outp| is advanced just past
+ * the output. It returns the number of bytes in the result, whether written or
+ * not, or a negative value on error. */
+OPENSSL_EXPORT int i2d_RSAPublicKey(const RSA *in, uint8_t **outp);
+
+/* d2i_RSAPrivateKey parses an ASN.1, DER-encoded, RSA private key from |len|
+ * bytes at |*inp|. If |out| is not NULL then, on exit, a pointer to the result
+ * is in |*out|. If |*out| is already non-NULL on entry then the result is
+ * written directly into |*out|, otherwise a fresh |RSA| is allocated. On
+ * successful exit, |*inp| is advanced past the DER structure. It returns the
+ * result or NULL on error. */
+OPENSSL_EXPORT RSA *d2i_RSAPrivateKey(RSA **out, const uint8_t **inp, long len);
+
+/* i2d_RSAPrivateKey marshals |in| to an ASN.1, DER structure. If |outp| is not
+ * NULL then the result is written to |*outp| and |*outp| is advanced just past
+ * the output. It returns the number of bytes in the result, whether written or
+ * not, or a negative value on error. */
+OPENSSL_EXPORT int i2d_RSAPrivateKey(const RSA *in, uint8_t **outp);
 
 typedef struct rsa_pss_params_st {
   X509_ALGOR *hashAlgorithm;
