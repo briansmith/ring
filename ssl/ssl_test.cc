@@ -796,7 +796,29 @@ static bool TestPaddingExtension() {
   return true;
 }
 
-int main(void) {
+// Test that |SSL_get_client_CA_list| echoes back the configured parameter even
+// before configuring as a server.
+static bool TestClientCAList() {
+  ScopedSSL_CTX ctx(SSL_CTX_new(TLS_method()));
+  if (!ctx) {
+    return false;
+  }
+  ScopedSSL ssl(SSL_new(ctx.get()));
+  if (!ssl) {
+    return false;
+  }
+
+  STACK_OF(X509_NAME) *stack = sk_X509_NAME_new_null();
+  if (stack == nullptr) {
+    return false;
+  }
+  // |SSL_set_client_CA_list| takes ownership.
+  SSL_set_client_CA_list(ssl.get(), stack);
+
+  return SSL_get_client_CA_list(ssl.get()) == stack;
+}
+
+int main() {
   SSL_library_init();
 
   if (!TestCipherRules() ||
@@ -815,7 +837,8 @@ int main(void) {
       !TestDefaultVersion(DTLS1_VERSION, &DTLSv1_method) ||
       !TestDefaultVersion(DTLS1_2_VERSION, &DTLSv1_2_method) ||
       !TestCipherGetRFCName() ||
-      !TestPaddingExtension()) {
+      !TestPaddingExtension() ||
+      !TestClientCAList()) {
     ERR_print_errors_fp(stderr);
     return 1;
   }
