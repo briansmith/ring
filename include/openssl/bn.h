@@ -706,6 +706,14 @@ OPENSSL_EXPORT int BN_gcd(BIGNUM *r, const BIGNUM *a, const BIGNUM *b,
 OPENSSL_EXPORT BIGNUM *BN_mod_inverse(BIGNUM *out, const BIGNUM *a,
                                       const BIGNUM *n, BN_CTX *ctx);
 
+/* BN_mod_inverse_ex acts like |BN_mod_inverse| except that, when it returns
+ * zero, it will set |*out_no_inverse| to one if the failure was caused because
+ * |a| has no inverse mod |n|. Otherwise it will set |*out_no_inverse| to
+ * zero. */
+OPENSSL_EXPORT BIGNUM *BN_mod_inverse_ex(BIGNUM *out, int *out_no_inverse,
+                                         const BIGNUM *a, const BIGNUM *n,
+                                         BN_CTX *ctx);
+
 /* BN_kronecker returns the Kronecker symbol of |a| and |b| (which is -1, 0 or
  * 1), or -2 on error. */
 OPENSSL_EXPORT int BN_kronecker(const BIGNUM *a, const BIGNUM *b, BN_CTX *ctx);
