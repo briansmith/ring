@@ -190,6 +190,7 @@ type ConnectionState struct {
 	ChannelID                  *ecdsa.PublicKey      // the channel ID for this connection
 	SRTPProtectionProfile      uint16                // the negotiated DTLS-SRTP protection profile
 	TLSUnique                  []byte
+	SCTList                    []byte                // signed certificate timestamp list
 }
 
 // ClientAuthType declares the policy the server will follow for

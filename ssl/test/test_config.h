@@ -95,6 +95,7 @@ struct TestConfig {
   bool verify_fail = false;
   bool verify_peer = false;
   bool expect_verify_result = false;
+  std::string signed_cert_timestamps;
 };
 
 bool ParseConfig(int argc, char **argv, TestConfig *out_config);

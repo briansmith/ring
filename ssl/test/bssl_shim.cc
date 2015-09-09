@@ -700,6 +700,13 @@ static ScopedSSL_CTX SetupCtx(const TestConfig *config) {
     SSL_CTX_set_cert_verify_callback(ssl_ctx.get(), VerifySucceed, NULL);
   }
 
+  if (!config->signed_cert_timestamps.empty() &&
+      !SSL_CTX_set_signed_cert_timestamp_list(
+          ssl_ctx.get(), (const uint8_t *)config->signed_cert_timestamps.data(),
+          config->signed_cert_timestamps.size())) {
+    return nullptr;
+  }
+
   return ssl_ctx;
 }
 

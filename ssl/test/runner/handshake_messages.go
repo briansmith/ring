@@ -989,14 +989,7 @@ func (m *serverHelloMsg) unmarshal(data []byte) bool {
 			}
 			m.srtpMasterKeyIdentifier = string(d[1:])
 		case extensionSignedCertificateTimestamp:
-			if length < 2 {
-				return false
-			}
-			l := int(data[0])<<8 | int(data[1])
-			if l != len(data)-2 {
-				return false
-			}
-			m.sctList = data[2:length]
+			m.sctList = data[:length]
 		case extensionCustom:
 			m.customExtension = string(data[:length])
 		}

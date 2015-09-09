@@ -40,6 +40,7 @@ type Conn struct {
 	extendedMasterSecret bool // whether this session used an extended master secret
 	cipherSuite          *cipherSuite
 	ocspResponse         []byte // stapled OCSP response
+	sctList              []byte // signed certificate timestamp list
 	peerCertificates     []*x509.Certificate
 	// verifiedChains contains the certificate chains that we built, as
 	// opposed to the ones presented by the server.
@@ -1343,6 +1344,7 @@ func (c *Conn) ConnectionState() ConnectionState {
 		state.ChannelID = c.channelID
 		state.SRTPProtectionProfile = c.srtpProtectionProfile
 		state.TLSUnique = c.firstFinished[:]
+		state.SCTList = c.sctList
 	}
 
 	return state

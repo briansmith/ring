@@ -61,6 +61,7 @@ func (c *Conn) clientHandshake() error {
 		compressionMethods:      []uint8{compressionNone},
 		random:                  make([]byte, 32),
 		ocspStapling:            true,
+		sctListSupported:        true,
 		serverName:              c.config.ServerName,
 		supportedCurves:         c.config.curvePreferences(),
 		supportedPoints:         []uint8{pointFormatUncompressed},
@@ -371,6 +372,11 @@ NextCipherSuite:
 	copy(c.clientRandom[:], hs.hello.random)
 	copy(c.serverRandom[:], hs.serverHello.random)
 	copy(c.masterSecret[:], hs.masterSecret)
+
+	if len(hs.serverHello.sctList) > 0 {
+		c.sctList = hs.serverHello.sctList
+	}
+
 	return nil
 }
 

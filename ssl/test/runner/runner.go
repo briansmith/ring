@@ -157,6 +157,8 @@ type testCase struct {
 	expectedSRTPProtectionProfile uint16
 	// expectedOCSPResponse, if not nil, is the expected OCSP response to be received.
 	expectedOCSPResponse []uint8
+	// expectedSCTList, if not nil, is the expected SCT list to be received.
+	expectedSCTList []uint8
 	// messageLen is the length, in bytes, of the test message that will be
 	// sent.
 	messageLen int
@@ -332,6 +334,10 @@ func doExchange(test *testCase, config *Config, conn net.Conn, isResume bool) er
 
 	if test.expectedOCSPResponse != nil && !bytes.Equal(test.expectedOCSPResponse, tlsConn.OCSPResponse()) {
 		return fmt.Errorf("OCSP Response mismatch")
+	}
+
+	if test.expectedSCTList != nil && !bytes.Equal(test.expectedSCTList, connState.SCTList) {
+		return fmt.Errorf("SCT list mismatch")
 	}
 
 	if test.exportKeyingMaterial > 0 {
@@ -3428,12 +3434,22 @@ func addExtensionTests() {
 	})
 	// Test SCT list.
 	testCases = append(testCases, testCase{
-		name: "SignedCertificateTimestampList",
+		name: "SignedCertificateTimestampList-Client",
+		testType: clientTest,
 		flags: []string{
 			"-enable-signed-cert-timestamps",
 			"-expect-signed-cert-timestamps",
 			base64.StdEncoding.EncodeToString(testSCTList),
 		},
+	})
+	testCases = append(testCases, testCase{
+		name: "SignedCertificateTimestampList-Server",
+		testType: serverTest,
+		flags: []string{
+			"-signed-cert-timestamps",
+			base64.StdEncoding.EncodeToString(testSCTList),
+		},
+		expectedSCTList: testSCTList,
 	})
 	testCases = append(testCases, testCase{
 		testType: clientTest,
