@@ -22,12 +22,3 @@ add_library(
 )
 
 perlasm(rdrand-x86_64.${ASM_EXT} asm/rdrand-x86_64.pl)
-
-add_executable(
-  urandom_test
-
-  urandom_test.cc
-  $<TARGET_OBJECTS:test_support>
-)
-
-target_link_libraries(urandom_test crypto)
