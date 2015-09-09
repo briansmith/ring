@@ -1227,10 +1227,12 @@ static bool DoExchange(ScopedSSL_SESSION *out_session, SSL_CTX *ssl_ctx,
     }
     if (!config->shim_shuts_down) {
       for (;;) {
-        uint8_t buf[16384];
+        static const size_t kBufLen = 16384;
+        std::unique_ptr<uint8_t[]> buf(new uint8_t[kBufLen]);
+
         // Read only 512 bytes at a time in TLS to ensure records may be
         // returned in multiple reads.
-        int n = DoRead(ssl.get(), buf, config->is_dtls ? sizeof(buf) : 512);
+        int n = DoRead(ssl.get(), buf.get(), config->is_dtls ? kBufLen : 512);
         int err = SSL_get_error(ssl.get(), n);
         if (err == SSL_ERROR_ZERO_RETURN ||
             (n == 0 && err == SSL_ERROR_SYSCALL)) {
@@ -1263,7 +1265,7 @@ static bool DoExchange(ScopedSSL_SESSION *out_session, SSL_CTX *ssl_ctx,
         for (int i = 0; i < n; i++) {
           buf[i] ^= 0xff;
         }
-        if (WriteAll(ssl.get(), buf, n) < 0) {
+        if (WriteAll(ssl.get(), buf.get(), n) < 0) {
           return false;
         }
       }
