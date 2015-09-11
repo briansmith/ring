@@ -1152,4 +1152,6 @@ const struct rsa_meth_st RSA_default_method = {
 
   keygen,
   keygen_multiprime,
+
+  NULL /* supports_digest */,
 };
