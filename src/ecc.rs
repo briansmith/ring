@@ -15,7 +15,7 @@
 //! Elliptic curve cryptography.
 
 use libc;
-use super::ffi;
+use super::{digest, ffi};
 
 /// An elliptic curve. See `CURVE_P256`, `CURVE_P256`, and `CURVE_521`.
 ///
@@ -46,11 +46,11 @@ pub static CURVE_P521: EllipticCurve = EllipticCurve { nid: 716 };
 /// C analogs: `ECDSA_verify_pkcs1_signed_digest` (*ring* only),
 ///            `EC_POINT_oct2point` with `ECDSA_verify`.
 pub fn verify_ecdsa_signed_digest_asn1(curve: &EllipticCurve,
-                                       digest: &[u8], sig: &[u8], key: &[u8])
-                                       -> Result<(),()> {
+                                       digest: &digest::Digest, sig: &[u8],
+                                       key: &[u8]) -> Result<(),()> {
     ffi::map_bssl_result(unsafe {
-        ECDSA_verify_signed_digest(0, digest.as_ptr(),
-                                   digest.len() as libc::size_t,
+        ECDSA_verify_signed_digest(0, digest.as_ref().as_ptr(),
+                                   digest.as_ref().len() as libc::size_t,
                                    sig.as_ptr(), sig.len() as libc::size_t,
                                    curve.nid, key.as_ptr(),
                                    key.len() as libc::size_t)

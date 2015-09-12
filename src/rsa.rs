@@ -15,31 +15,7 @@
 //! RSA signing and verification.
 
 use libc;
-
-/// Identifies a digest algorithm used in a signature.
-#[derive(Clone, Copy, Debug, PartialEq)]
-#[repr(C)]
-pub enum SignatureDigestAlgorithm {
-    /// SHA-1.
-    ///
-    /// C analog: `NID_sha1`
-    SHA1 = 64,
-
-    /// SHA-256.
-    ///
-    /// C analog: `NID_sha256'
-    SHA256 = 672,
-
-    /// SHA-384.
-    ///
-    /// C analog: `NID_sha384'
-    SHA384 = 673,
-
-    /// SHA-512.
-    ///
-    /// C analog: `NID_sha512'
-    SHA512 = 674,
-}
+use super::digest;
 
 /// Verifies that the PKCS#1 1.5 RSA signature encoded in `sig` is valid for
 /// the data hashed to `digest` using the ASN.1-DER-encoded public key `key`.
@@ -47,14 +23,13 @@ pub enum SignatureDigestAlgorithm {
 /// C analogs: `RSA_verify_pkcs1_signed_digest` (*ring* only),
 ///            `RSA_public_key_from_bytes` + `RSA_verify` (*ring* and BoringSSL),
 ///            `d2i_RSAPublicKey` + `RSA_verify`.
-pub fn verify_rsa_pkcs1_signed_digest_asn1(
-         digest_alg: SignatureDigestAlgorithm, digest: &[u8], sig: &[u8],
-         key: &[u8]) -> Result<(),()> {
+pub fn verify_rsa_pkcs1_signed_digest_asn1(digest: &digest::Digest, sig: &[u8],
+                                           key: &[u8]) -> Result<(),()> {
     let x;
     unsafe {
-        x = RSA_verify_pkcs1_signed_digest(digest_alg as libc::c_int,
-                                           digest.as_ptr(),
-                                           digest.len() as libc::size_t,
+        x = RSA_verify_pkcs1_signed_digest(digest.algorithm().nid,
+                                           digest.as_ref().as_ptr(),
+                                           digest.as_ref().len() as libc::size_t,
                                            sig.as_ptr(),
                                            sig.len() as libc::size_t,
                                            key.as_ptr(),

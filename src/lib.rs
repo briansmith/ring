@@ -17,21 +17,8 @@ extern crate libc;
 #[cfg(test)]
 extern crate rustc_serialize;
 
-// All code belongs in submodules, not in lib.rs. The public interface of all
-// submodules is re-exported from this one, and users are expected to use this
-// module instead of the submodules.
-
-mod digest;
-pub use digest::{
-    Digest, digest,
-    MD5, MD5_DIGEST_LEN,
-    SHA1, SHA1_DIGEST_LEN,
-    SHA256, SHA256_DIGEST_LEN,
-    SHA384, SHA384_DIGEST_LEN,
-    SHA512, SHA512_DIGEST_LEN,
-};
-
-mod ffi;
+pub mod digest;
 pub mod ecc;
+mod ffi;
 pub mod rand;
-mod rsa;
+pub mod rsa;

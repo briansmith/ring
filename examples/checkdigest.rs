@@ -15,7 +15,7 @@
 extern crate ring;
 extern crate rustc_serialize;
 
-use ring::{Digest, SHA256, SHA384, SHA512};
+use ring::*;
 use rustc_serialize::hex::FromHex;
 use std::error::Error;
 use std::io::{Read, Write};
@@ -40,18 +40,14 @@ fn print_usage(program_name: &str) {
 
 fn run(digest_name: &str, expected_digest_hex: &str,
        file_path: &std::path::Path) -> Result<(), &'static str> {
-    enum D {
-        SHA256(SHA256),
-        SHA384(SHA384),
-        SHA512(SHA512),
-    }
+    let digest_alg = match digest_name {
+        "sha256" => &digest::SHA256,
+        "sha384" => &digest::SHA384,
+        "sha512" => &digest::SHA512,
+        _ => { return Err("unsupported digest algorithm"); }
+    };
 
-    let mut digest = try!(match digest_name {
-        "sha256" => Ok(D::SHA256(SHA256::new())),
-        "sha384" => Ok(D::SHA384(SHA384::new())),
-        "sha512" => Ok(D::SHA512(SHA512::new())),
-        _ => Err("unsupported digest algorithm")
-    });
+    let mut ctx = digest::Context::new(digest_alg);
 
     {
         let mut file = match std::fs::File::open(file_path) {
@@ -65,11 +61,7 @@ fn run(digest_name: &str, expected_digest_hex: &str,
         loop {
             match file.read(&mut chunk[..]) {
                 Ok(0) => break,
-                Ok(bytes_read) => match digest {
-                    D::SHA256(ref mut ctx) => ctx.update(&chunk[0..bytes_read]),
-                    D::SHA384(ref mut ctx) => ctx.update(&chunk[0..bytes_read]),
-                    D::SHA512(ref mut ctx) => ctx.update(&chunk[0..bytes_read]),
-                },
+                Ok(bytes_read) => ctx.update(&chunk[0..bytes_read]),
                 // TODO: don't use panic here
                 Err(why) => panic!("couldn't open {}: {}", file_path.display(),
                                why.description())
@@ -77,12 +69,10 @@ fn run(digest_name: &str, expected_digest_hex: &str,
         }
     }
 
+    let actual_digest = ctx.finish();
+
     let matched = match expected_digest_hex.from_hex() {
-        Ok(expected) => match digest {
-            D::SHA256(ref mut ctx) => &expected[..] == &ctx.finish()[..],
-            D::SHA384(ref mut ctx) => &expected[..] == &ctx.finish()[..],
-            D::SHA512(ref mut ctx) => &expected[..] == &ctx.finish()[..],
-        },
+        Ok(expected) => actual_digest.as_ref() == &expected[..],
         Err(_) => panic!("syntactically invalid digest")
     };
 
