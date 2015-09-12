@@ -125,18 +125,8 @@
 #include "../internal.h"
 
 
-/* err_clear_data frees the optional |data| member of the given error. */
-static void err_clear_data(struct err_error_st *error) {
-  if ((error->flags & ERR_FLAG_MALLOCED) != 0) {
-    OPENSSL_free(error->data);
-  }
-  error->data = NULL;
-  error->flags &= ~ERR_FLAG_MALLOCED;
-}
-
 /* err_clear clears the given queued error. */
 static void err_clear(struct err_error_st *error) {
-  err_clear_data(error);
   memset(error, 0, sizeof(struct err_error_st));
 }
 
@@ -215,30 +205,11 @@ static uint32_t get_error_values(int inc, int top, const char **file, int *line,
   }
 
   if (data != NULL) {
-    if (error->data == NULL) {
-      *data = "";
-      if (flags != NULL) {
-        *flags = 0;
-      }
-    } else {
-      *data = error->data;
-      if (flags != NULL) {
-        *flags = error->flags & ERR_FLAG_PUBLIC_MASK;
-      }
-      /* If this error is being removed, take ownership of data from
-       * the error. The semantics are such that the caller doesn't
-       * take ownership either. Instead the error system takes
-       * ownership and retains it until the next call that affects the
-       * error queue. */
-      if (inc) {
-        if (error->flags & ERR_FLAG_MALLOCED) {
-          OPENSSL_free(state->to_free);
-          state->to_free = error->data;
-        }
-        error->data = NULL;
-        error->flags = 0;
-      }
-    }
+    *data = "";
+  }
+
+  if (flags != NULL) {
+    *flags = 0;
   }
 
   if (inc) {
@@ -501,8 +472,8 @@ void ERR_print_errors_cb(ERR_print_errors_callback_t callback, void *ctx) {
     }
 
     err_error_string(packed_error, function, buf, sizeof(buf));
-    BIO_snprintf(buf2, sizeof(buf2), "%lu:%s:%s:%d:%s\n", thread_hash, buf,
-                 file, line, (flags & ERR_FLAG_STRING) ? data : "");
+    BIO_snprintf(buf2, sizeof(buf2), "%lu:%s:%s:%d:\n", thread_hash, buf,
+                 file, line);
     if (callback(buf2, strlen(buf2), ctx) <= 0) {
       break;
     }
@@ -518,26 +489,6 @@ static int print_errors_to_file(const char* msg, size_t msg_len, void* ctx) {
 
 void ERR_print_errors_fp(FILE *file) {
   ERR_print_errors_cb(print_errors_to_file, file);
-}
-
-/* err_set_error_data sets the data on the most recent error. The |flags|
- * argument is a combination of the |ERR_FLAG_*| values. */
-static void err_set_error_data(char *data, int flags) {
-  ERR_STATE *const state = err_get_state();
-  struct err_error_st *error;
-
-  if (state == NULL || state->top == state->bottom) {
-    if (flags & ERR_FLAG_MALLOCED) {
-      OPENSSL_free(data);
-    }
-    return;
-  }
-
-  error = &state->errors[state->top];
-
-  err_clear_data(error);
-  error->data = data;
-  error->flags = flags;
 }
 
 void ERR_put_error(int library, int reason, const char *function,
@@ -568,83 +519,6 @@ void ERR_put_error(int library, int reason, const char *function,
   error->file = file;
   error->line = line;
   error->packed = ERR_PACK(library, reason);
-}
-
-/* ERR_add_error_data_vdata takes a variable number of const char* pointers,
- * concatenates them and sets the result as the data on the most recent
- * error. */
-static void err_add_error_vdata(unsigned num, va_list args) {
-  size_t alloced, new_len, len = 0, substr_len;
-  char *buf;
-  const char *substr;
-  unsigned i;
-
-  alloced = 80;
-  buf = OPENSSL_malloc(alloced + 1);
-  if (buf == NULL) {
-    return;
-  }
-
-  for (i = 0; i < num; i++) {
-    substr = va_arg(args, const char *);
-    if (substr == NULL) {
-      continue;
-    }
-
-    substr_len = strlen(substr);
-    new_len = len + substr_len;
-    if (new_len > alloced) {
-      char *new_buf;
-
-      if (alloced + 20 + 1 < alloced) {
-        /* overflow. */
-        OPENSSL_free(buf);
-        return;
-      }
-
-      alloced = new_len + 20;
-      new_buf = OPENSSL_realloc(buf, alloced + 1);
-      if (new_buf == NULL) {
-        OPENSSL_free(buf);
-        return;
-      }
-      buf = new_buf;
-    }
-
-    memcpy(buf + len, substr, substr_len);
-    len = new_len;
-  }
-
-  buf[len] = 0;
-  err_set_error_data(buf, ERR_FLAG_MALLOCED | ERR_FLAG_STRING);
-}
-
-void ERR_add_error_data(unsigned count, ...) {
-  va_list args;
-  va_start(args, count);
-  err_add_error_vdata(count, args);
-  va_end(args);
-}
-
-void ERR_add_error_dataf(const char *format, ...) {
-  va_list ap;
-  char *buf;
-  static const unsigned buf_len = 256;
-
-  /* A fixed-size buffer is used because va_copy (which would be needed in
-   * order to call vsnprintf twice and measure the buffer) wasn't defined until
-   * C99. */
-  buf = OPENSSL_malloc(buf_len + 1);
-  if (buf == NULL) {
-    return;
-  }
-
-  va_start(ap, format);
-  BIO_vsnprintf(buf, buf_len, format, ap);
-  buf[buf_len] = 0;
-  va_end(ap);
-
-  err_set_error_data(buf, ERR_FLAG_MALLOCED | ERR_FLAG_STRING);
 }
 
 void ERR_load_crypto_strings(void) {}

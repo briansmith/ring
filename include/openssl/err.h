@@ -164,10 +164,8 @@ OPENSSL_EXPORT uint32_t ERR_get_error_line(const char **file, int *line);
 
 /* ERR_get_error_line_data acts like |ERR_get_error_line|, but also returns the
  * error-specific data pointer and flags. The flags are a bitwise-OR of
- * |ERR_FLAG_*| values. The error-specific data is owned by the error queue
- * and the pointer becomes invalid after the next call that affects the same
- * thread's error queue. If |*flags| contains |ERR_FLAG_STRING| then |*data| is
- * human-readable. */
+ * |ERR_FLAG_*| values. ring: There is never any error-specific data and the
+ * flags are always zero. */
 OPENSSL_EXPORT uint32_t ERR_get_error_line_data(const char **file, int *line,
                                                 const char **data, int *flags);
 
@@ -304,30 +302,17 @@ OPENSSL_EXPORT void ERR_clear_system_error(void);
 OPENSSL_EXPORT void ERR_put_error(int library, int reason, const char *function,
                                   const char *file, unsigned line);
 
-/* ERR_add_error_data takes a variable number (|count|) of const char*
- * pointers, concatenates them and sets the result as the data on the most
- * recent error. */
-OPENSSL_EXPORT void ERR_add_error_data(unsigned count, ...);
-
-/* ERR_add_error_dataf takes a printf-style format and arguments, and sets the
- * result as the data on the most recent error. */
-OPENSSL_EXPORT void ERR_add_error_dataf(const char *format, ...);
 
 struct err_error_st {
   /* function contains the name of the function where the error occured. */
   const char *function;
   /* file contains the filename where the error occured. */
   const char *file;
-  /* data contains optional data. It must be freed with |OPENSSL_free| if
-   * |flags&ERR_FLAG_MALLOCED|. */
-  char *data;
   /* packed contains the error library, function and reason, as packed by
    * ERR_PACK. */
   uint32_t packed;
   /* line contains the line number where the error occured. */
   uint16_t line;
-  /* flags contains a bitwise-OR of ERR_FLAG_* values. */
-  uint8_t flags;
 };
 
 /* ERR_FLAG_STRING means that the |data| member is a NUL-terminated string that

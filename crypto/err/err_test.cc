@@ -51,7 +51,6 @@ static bool TestPutError() {
   }
 
   ERR_put_error(1, 2, "function", "test", 4);
-  ERR_add_error_data(1, "testing");
 
   int peeked_line, line, peeked_flags, flags;
   const char *peeked_file, *file, *peeked_data, *data;
@@ -63,7 +62,8 @@ static bool TestPutError() {
 
   if (peeked_packed_error != packed_error ||
       peeked_file != file ||
-      peeked_data != data ||
+      peeked_data == NULL ||
+      peeked_data[0] != 0 ||
       peeked_flags != flags) {
     fprintf(stderr, "Bad peeked error data returned.\n");
     return false;
@@ -72,10 +72,11 @@ static bool TestPutError() {
   if (strcmp(function, "function") != 0 ||
       strcmp(file, "test") != 0 ||
       line != 4 ||
-      (flags & ERR_FLAG_STRING) == 0 ||
+      (flags & ERR_FLAG_STRING) != 0 ||
       ERR_GET_LIB(packed_error) != 1 ||
       ERR_GET_REASON(packed_error) != 2 ||
-      strcmp(data, "testing") != 0) {
+      data == NULL ||
+      data[0] != 0) {
     fprintf(stderr, "Bad error data returned.\n");
     return false;
   }
@@ -102,7 +103,6 @@ static bool TestClearError() {
 
 static bool TestPrint() {
   ERR_put_error(1, 2, "function", "test", 4);
-  ERR_add_error_data(1, "testing");
   uint32_t packed_error = ERR_get_error();
 
   char buf[256];
