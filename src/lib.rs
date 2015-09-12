@@ -20,6 +20,7 @@ extern crate rustc_serialize;
 pub mod digest;
 pub mod ecc;
 mod ffi;
+pub mod hmac;
 pub mod rand;
 pub mod rsa;
 

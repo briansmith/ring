@@ -38,6 +38,7 @@ The first part of the ```ring``` Rust crate is now available.
 Currently these features are supported through the Rust API:
 
 * Cryptographic digests (SHA-256, SHA-384, SHA-512, SHA-1, and MD5).
+* HMAC.
 * ECDSA Signature Verification for curves P-256, P-384, and P-521.
 * RSA PKCS#1 Signature Verification.
 * Random byte generation.

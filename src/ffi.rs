@@ -20,3 +20,24 @@ pub fn map_bssl_result(bssl_result: libc::c_int) -> Result<(), ()> {
         _ => Err(())
     }
 }
+
+/// Returns `Ok(())` of `a == b` and `Err(())` otherwise. The comparison of
+/// `a` and `b` is done in constant time with respect to the contents of each,
+/// but NOT in constant time with respect to the lengths of `a` and `b`.
+pub fn verify_slices_are_equal_ct(a: &[u8], b: &[u8]) -> Result<(), ()> {
+    if a.len() != b.len() {
+        return Err(());
+    }
+    let result = unsafe {
+        CRYPTO_memcmp(a.as_ptr(), b.as_ptr(), a.len() as libc::size_t)
+    };
+    match result {
+        0 => Ok(()),
+        _ => Err(())
+    }
+}
+
+extern {
+    fn CRYPTO_memcmp(a: *const libc::uint8_t, b: *const libc::uint8_t,
+                     len: libc::size_t) -> libc::c_int;
+}
