@@ -81,7 +81,6 @@
     <ClCompile Include="evp\sign.c" />
     <ClCompile Include="hkdf\hkdf.c" />
     <ClCompile Include="hmac\hmac.c" />
-    <ClCompile Include="md4\md4.c" />
     <ClCompile Include="md5\md5.c" />
     <ClCompile Include="mem.c" />
     <ClCompile Include="modes\cbc.c" />

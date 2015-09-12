@@ -76,7 +76,6 @@ extern "C" {
  * The following functions return |EVP_MD| objects that implement the named hash
  * function. */
 
-OPENSSL_EXPORT const EVP_MD *EVP_md4(void);
 OPENSSL_EXPORT const EVP_MD *EVP_md5(void);
 OPENSSL_EXPORT const EVP_MD *EVP_sha1(void);
 OPENSSL_EXPORT const EVP_MD *EVP_sha224(void);
