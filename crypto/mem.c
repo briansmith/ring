@@ -60,17 +60,12 @@
 
 #include <openssl/mem.h>
 
-#include <assert.h>
-#include <stdarg.h>
-#include <stdio.h>
-#include <string.h>
-
 #if defined(OPENSSL_WINDOWS)
 #pragma warning(push, 3)
 #include <windows.h>
 #pragma warning(pop)
 #else
-#include <strings.h>
+#include <string.h>
 #endif
 
 
@@ -100,20 +95,4 @@ int CRYPTO_memcmp(const void *in_a, const void *in_b, size_t len) {
   }
 
   return x;
-}
-
-int BIO_snprintf(char *buf, size_t n, const char *format, ...) {
-  va_list args;
-  int ret;
-
-  va_start(args, format);
-
-  ret = BIO_vsnprintf(buf, n, format, args);
-
-  va_end(args);
-  return ret;
-}
-
-int BIO_vsnprintf(char *buf, size_t n, const char *format, va_list args) {
-  return vsnprintf(buf, n, format, args);
 }

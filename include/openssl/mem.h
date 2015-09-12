@@ -60,7 +60,6 @@
 #include <openssl/base.h>
 
 #include <stdlib.h>
-#include <stdarg.h>
 
 #if defined(__cplusplus)
 extern "C" {
@@ -93,24 +92,6 @@ OPENSSL_EXPORT int CRYPTO_memcmp(const void *a, const void *b, size_t len);
 /* DECIMAL_SIZE returns an upper bound for the length of the decimal
  * representation of the given type. */
 #define DECIMAL_SIZE(type)	((sizeof(type)*8+2)/3+1)
-
-/* Printf functions.
- *
- * These functions are either OpenSSL wrappers for standard functions (i.e.
- * |BIO_snprintf| and |BIO_vsnprintf|) which don't exist in C89, or are
- * versions of printf functions that output to a BIO rather than a FILE. */
-#ifdef __GNUC__
-#define __bio_h__attr__ __attribute__
-#else
-#define __bio_h__attr__(x)
-#endif
-OPENSSL_EXPORT int BIO_snprintf(char *buf, size_t n, const char *format, ...)
-    __bio_h__attr__((__format__(__printf__, 3, 4)));
-
-OPENSSL_EXPORT int BIO_vsnprintf(char *buf, size_t n, const char *format,
-                                 va_list args)
-    __bio_h__attr__((__format__(__printf__, 3, 0)));
-#undef __bio_h__attr__
 
 
 #if defined(__cplusplus)
