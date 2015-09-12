@@ -130,18 +130,6 @@ int CRYPTO_memcmp(const void *in_a, const void *in_b, size_t len) {
   return x;
 }
 
-size_t OPENSSL_strnlen(const char *s, size_t len) {
-  size_t i;
-
-  for (i = 0; i < len; i++) {
-    if (s[i] == 0) {
-      return i;
-    }
-  }
-
-  return len;
-}
-
 int BIO_snprintf(char *buf, size_t n, const char *format, ...) {
   va_list args;
   int ret;
