@@ -176,10 +176,6 @@ OPENSSL_EXPORT uint32_t ERR_peek_error_line(const char **file, int *line);
 OPENSSL_EXPORT uint32_t ERR_peek_error_line_data(const char **file, int *line,
                                                  const char **data, int *flags);
 
-/* ERR_peek_function returns the name of the function which added the least
- * recent error or NULL if the queue is empty. */
-OPENSSL_EXPORT const char *ERR_peek_function(void);
-
 /* The "peek last" functions act like the "peek" functions, above, except that
  * they return the most recent error. */
 OPENSSL_EXPORT uint32_t ERR_peek_last_error(void);

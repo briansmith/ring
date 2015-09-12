@@ -248,14 +248,6 @@ uint32_t ERR_peek_error_line_data(const char **file, int *line,
                           flags);
 }
 
-const char *ERR_peek_function(void) {
-  ERR_STATE *state = err_get_state();
-  if (state == NULL || state->bottom == state->top) {
-    return NULL;
-  }
-  return state->errors[(state->bottom + 1) % ERR_NUM_ERRORS].function;
-}
-
 uint32_t ERR_peek_last_error(void) {
   return get_error_values(0 /* peek */, 1 /* top */, NULL, NULL, NULL, NULL);
 }
@@ -379,13 +371,6 @@ const char *ERR_reason_error_string(uint32_t packed_error) {
   /* TODO(ring): Maybe re-enable this in a way that doesn't depend on a
    * Go-based code generator. */
   return "ERR_reason_error_string not fully implemented.";
-}
-
-static int print_errors_to_file(const char* msg, size_t msg_len, void* ctx) {
-  assert(msg[msg_len] == '\0');
-  FILE* fp = ctx;
-  int res = fputs(msg, fp);
-  return res < 0 ? 0 : 1;
 }
 
 void ERR_put_error(int library, int reason, const char *function,

@@ -57,7 +57,6 @@ static bool TestPutError() {
   uint32_t peeked_packed_error =
       ERR_peek_error_line_data(&peeked_file, &peeked_line, &peeked_data,
                                &peeked_flags);
-  const char *function = ERR_peek_function();
   uint32_t packed_error = ERR_get_error_line_data(&file, &line, &data, &flags);
 
   if (peeked_packed_error != packed_error ||
@@ -69,8 +68,7 @@ static bool TestPutError() {
     return false;
   }
 
-  if (strcmp(function, "function") != 0 ||
-      strcmp(file, "test") != 0 ||
+  if (strcmp(file, "test") != 0 ||
       line != 4 ||
       (flags & ERR_FLAG_STRING) != 0 ||
       ERR_GET_LIB(packed_error) != 1 ||
@@ -122,11 +120,9 @@ static bool TestPutMacro() {
 
   int line;
   const char *file;
-  const char *function = ERR_peek_function();
   uint32_t error = ERR_get_error_line(&file, &line);
 
-  if (strcmp(function, "TestPutMacro") != 0 ||
-      !HasSuffix(file, "err_test.cc") ||
+  if (!HasSuffix(file, "err_test.cc") ||
       line != expected_line ||
       ERR_GET_LIB(error) != ERR_LIB_USER ||
       ERR_GET_REASON(error) != ERR_R_INTERNAL_ERROR) {
