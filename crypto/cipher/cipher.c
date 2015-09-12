@@ -588,28 +588,3 @@ int EVP_DecryptInit(EVP_CIPHER_CTX *ctx, const EVP_CIPHER *cipher,
                     const uint8_t *key, const uint8_t *iv) {
   return EVP_CipherInit(ctx, cipher, key, iv, 0);
 }
-
-int EVP_add_cipher_alias(const char *a, const char *b) {
-  return 1;
-}
-
-const EVP_CIPHER *EVP_get_cipherbyname(const char *name) {
-  if (OPENSSL_strcasecmp(name, "rc4") == 0) {
-    return EVP_rc4();
-  } else if (OPENSSL_strcasecmp(name, "des-cbc") == 0) {
-    return EVP_des_cbc();
-  } else if (OPENSSL_strcasecmp(name, "des-ede3-cbc") == 0 ||
-             OPENSSL_strcasecmp(name, "3des") == 0) {
-    return EVP_des_ede3_cbc();
-  } else if (OPENSSL_strcasecmp(name, "aes-128-cbc") == 0) {
-    return EVP_aes_128_cbc();
-  } else if (OPENSSL_strcasecmp(name, "aes-256-cbc") == 0) {
-    return EVP_aes_256_cbc();
-  } else if (OPENSSL_strcasecmp(name, "aes-128-ctr") == 0) {
-    return EVP_aes_128_ctr();
-  } else if (OPENSSL_strcasecmp(name, "aes-256-ctr") == 0) {
-    return EVP_aes_256_ctr();
-  }
-
-  return NULL;
-}

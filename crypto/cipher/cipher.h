@@ -349,13 +349,6 @@ OPENSSL_EXPORT int EVP_DecryptInit(EVP_CIPHER_CTX *ctx,
                                    const EVP_CIPHER *cipher, const uint8_t *key,
                                    const uint8_t *iv);
 
-/* EVP_add_cipher_alias does nothing and returns one. */
-OPENSSL_EXPORT int EVP_add_cipher_alias(const char *a, const char *b);
-
-/* EVP_get_cipherbyname returns an |EVP_CIPHER| given a human readable name in
- * |name|, or NULL if the name is unknown. */
-OPENSSL_EXPORT const EVP_CIPHER *EVP_get_cipherbyname(const char *name);
-
 
 /* Private functions. */
 
