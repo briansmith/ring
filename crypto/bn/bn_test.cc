@@ -1003,7 +1003,6 @@ static bool test_mod_mul(FILE *fp, BN_CTX *ctx) {
       a->neg = rand_neg();
       b->neg = rand_neg();
       if (!BN_mod_mul(e.get(), a.get(), b.get(), c.get(), ctx)) {
-        ERR_print_errors_fp(stderr);
         return false;
       }
       if (fp != NULL) {
@@ -1031,7 +1030,6 @@ static bool test_mod_mul(FILE *fp, BN_CTX *ctx) {
       }
       if (!BN_is_zero(b.get())) {
         fprintf(stderr, "Modulo multiply test failed!\n");
-        ERR_print_errors_fp(stderr);
         return false;
       }
     }
@@ -1337,7 +1335,6 @@ static bool test_bn2bin_padded(BN_CTX *ctx) {
   for (size_t bytes = 128 - 7; bytes <= 128; bytes++) {
     if (!BN_rand(n.get(), bytes * 8, 0 /* make sure top bit is 1 */,
                  0 /* don't modify bottom bit */)) {
-      ERR_print_errors_fp(stderr);
       return false;
     }
     if (BN_num_bytes(n.get()) != bytes ||

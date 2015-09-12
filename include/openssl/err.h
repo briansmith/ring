@@ -191,15 +191,6 @@ OPENSSL_EXPORT uint32_t ERR_peek_last_error_line_data(const char **file,
 
 #define ERR_ERROR_STRING_BUF_LEN 256
 
-/* ring: OpenSSL and BoringSSL also provide |ERR_error_string|, which is less
- * safe alternative to this function. Use this function instead.
- *
- * TODO(ring): In OpenSSL and BoringSSL, |ERR_error_string_n| returned a useful
- * description of the error. That functionality has been removed so that
- * ring's build system does not need Go, but we should add back something. */
-OPENSSL_EXPORT void ERR_error_string_n(uint32_t packed_error, char *buf,
-                                       size_t len);
-
 /* ERR_lib_error_string returns a string representation of the library that
  * generated |packed_error|. */
 OPENSSL_EXPORT const char *ERR_lib_error_string(uint32_t packed_error);
@@ -208,38 +199,6 @@ OPENSSL_EXPORT const char *ERR_lib_error_string(uint32_t packed_error);
  * |packed_error|. */
 OPENSSL_EXPORT const char *ERR_reason_error_string(uint32_t packed_error);
 
-/* ERR_print_errors_callback_t is the type of a function used by
- * |ERR_print_errors_cb|. It takes a pointer to a human readable string (and
- * its length) that describes an entry in the error queue. The |ctx| argument
- * is an opaque pointer given to |ERR_print_errors_cb|.
- *
- * It should return one on success or zero on error, which will stop the
- * iteration over the error queue. */
-typedef int (*ERR_print_errors_callback_t)(const char *str, size_t len,
-                                           void *ctx);
-
-/* ERR_print_errors_cb calls |callback| with a string representation of each
- * error in the current thread's error queue, from the least recent to the most
- * recent error.
- *
- * The string will have the following format (which differs from
- * |ERR_error_string|):
- *
- *   [thread id]:error:[error code]:[library name]:[function name]:
- *   [reason string]:[file]:[line number]:[optional string data]
- *
- * (All in one line.)
- *
- * The callback can return one to continue the iteration or zero to stop it.
- * The |ctx| argument is an opaque value that is passed through to the
- * callback. */
-OPENSSL_EXPORT void ERR_print_errors_cb(ERR_print_errors_callback_t callback,
-                                        void *ctx);
-
-
-/* ERR_print_errors_fp prints the current contents of the error stack to |file|
- * using human readable strings where possible. */
-OPENSSL_EXPORT void ERR_print_errors_fp(FILE *file);
 
 /* Clearing errors. */
 

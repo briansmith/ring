@@ -45,7 +45,6 @@ static bool TestPBKDF2(const void *password, size_t password_len,
                          (const uint8_t *)salt, salt_len, iterations, digest,
                          key_len, key)) {
     fprintf(stderr, "Call to PKCS5_PBKDF2_HMAC failed\n");
-    ERR_print_errors_fp(stderr);
     return false;
   }
 

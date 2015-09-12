@@ -79,7 +79,6 @@ int main(int argc, char *argv[]) {
 
   if (!RunBasicTests() ||
       !RunRFC5114Tests()) {
-    ERR_print_errors_fp(stderr);
     return 1;
   }
 

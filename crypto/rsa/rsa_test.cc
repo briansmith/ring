@@ -263,13 +263,11 @@ static bool TestBadKey() {
 
   if (!RSA_generate_key_ex(key.get(), 512, e.get(), nullptr)) {
     fprintf(stderr, "RSA_generate_key_ex failed.\n");
-    ERR_print_errors_fp(stderr);
     return false;
   }
 
   if (!BN_add(key->p, key->p, BN_value_one())) {
     fprintf(stderr, "BN error.\n");
-    ERR_print_errors_fp(stderr);
     return false;
   }
 
@@ -302,7 +300,6 @@ static bool TestOnlyDGiven() {
 
   if (!RSA_check_key(key.get())) {
     fprintf(stderr, "RSA_check_key failed with only d given.\n");
-    ERR_print_errors_fp(stderr);
     return false;
   }
 
@@ -311,14 +308,12 @@ static bool TestOnlyDGiven() {
   if (!RSA_sign(NID_sha256, kDummyHash, sizeof(kDummyHash), buf, &buf_len,
                 key.get())) {
     fprintf(stderr, "RSA_sign failed with only d given.\n");
-    ERR_print_errors_fp(stderr);
     return false;
   }
 
   if (!RSA_verify(NID_sha256, kDummyHash, sizeof(kDummyHash), buf, buf_len,
                   key.get())) {
     fprintf(stderr, "RSA_verify failed with only d given.\n");
-    ERR_print_errors_fp(stderr);
     return false;
   }
 
@@ -338,13 +333,11 @@ static bool TestRecoverCRTParams() {
     if (!key1 ||
         !RSA_generate_key_ex(key1.get(), 512, e.get(), nullptr)) {
       fprintf(stderr, "RSA_generate_key_ex failed.\n");
-      ERR_print_errors_fp(stderr);
       return false;
     }
 
     if (!RSA_check_key(key1.get())) {
       fprintf(stderr, "RSA_check_key failed with original key.\n");
-      ERR_print_errors_fp(stderr);
       return false;
     }
 

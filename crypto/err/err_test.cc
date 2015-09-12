@@ -101,18 +101,6 @@ static bool TestClearError() {
   return true;
 }
 
-static bool TestPrint() {
-  ERR_put_error(1, 2, "function", "test", 4);
-  uint32_t packed_error = ERR_get_error();
-
-  char buf[256];
-  for (size_t i = 0; i <= sizeof(buf); i++) {
-    ERR_error_string_n(packed_error, buf, i);
-  }
-
-  return true;
-}
-
 static bool TestRelease() {
   ERR_put_error(1, 2, "function", "test", 4);
   ERR_remove_thread_state(NULL);
@@ -155,7 +143,6 @@ int main() {
   if (!TestOverflow() ||
       !TestPutError() ||
       !TestClearError() ||
-      !TestPrint() ||
       !TestRelease() ||
       !TestPutMacro()) {
     return 1;

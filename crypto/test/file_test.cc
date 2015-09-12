@@ -313,7 +313,6 @@ int FileTestMain(bool (*run_test)(FileTest *t, void *arg), void *arg,
       // In case the test itself doesn't print output, print something so the
       // line number is reported.
       t.PrintLine("Test failed");
-      ERR_print_errors_fp(stderr);
       failed = true;
       continue;
     }

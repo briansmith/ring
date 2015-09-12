@@ -313,74 +313,6 @@ void ERR_clear_system_error(void) {
   errno = 0;
 }
 
-static void err_error_string(uint32_t packed_error, const char *func_str,
-                             char *buf, size_t len) {
-  char lib_buf[64], reason_buf[64];
-  const char *lib_str, *reason_str;
-  unsigned lib, reason;
-
-  if (len == 0) {
-    return;
-  }
-
-  lib = ERR_GET_LIB(packed_error);
-  reason = ERR_GET_REASON(packed_error);
-
-  lib_str = ERR_lib_error_string(packed_error);
-  reason_str = ERR_reason_error_string(packed_error);
-
-  if (lib_str == NULL) {
-    BIO_snprintf(lib_buf, sizeof(lib_buf), "lib(%u)", lib);
-    lib_str = lib_buf;
-  }
-
-  if (func_str == NULL) {
-    func_str = "OPENSSL_internal";
-  }
-
-  if (reason_str == NULL) {
-    BIO_snprintf(reason_buf, sizeof(reason_buf), "reason(%u)", reason);
-    reason_str = reason_buf;
-  }
-
-  BIO_snprintf(buf, len, "error:%08" PRIx32 ":%s:%s:%s",
-               packed_error, lib_str, func_str, reason_str);
-
-  if (strlen(buf) == len - 1) {
-    /* output may be truncated; make sure we always have 5 colon-separated
-     * fields, i.e. 4 colons. */
-    static const unsigned num_colons = 4;
-    unsigned i;
-    char *s = buf;
-
-    if (len <= num_colons) {
-      /* In this situation it's not possible to ensure that the correct number
-       * of colons are included in the output. */
-      return;
-    }
-
-    for (i = 0; i < num_colons; i++) {
-      char *colon = strchr(s, ':');
-      char *last_pos = &buf[len - 1] - num_colons + i;
-
-      if (colon == NULL || colon > last_pos) {
-        /* set colon |i| at last possible position (buf[len-1] is the
-         * terminating 0). If we're setting this colon, then all whole of the
-         * rest of the string must be colons in order to have the correct
-         * number. */
-        memset(last_pos, ':', num_colons - i);
-        break;
-      }
-
-      s = colon + 1;
-    }
-  }
-}
-
-void ERR_error_string_n(uint32_t packed_error, char *buf, size_t len) {
-  err_error_string(packed_error, NULL, buf, len);
-}
-
 static const char *const kLibraryNames[ERR_NUM_LIBS] = {
     "invalid library (0)",
     "unknown library",                            /* ERR_LIB_NONE */
@@ -453,42 +385,11 @@ const char *ERR_reason_error_string(uint32_t packed_error) {
   return "ERR_reason_error_string not fully implemented.";
 }
 
-void ERR_print_errors_cb(ERR_print_errors_callback_t callback, void *ctx) {
-  char buf[ERR_ERROR_STRING_BUF_LEN];
-  char buf2[1024];
-  const char *file, *data;
-  int line, flags;
-  uint32_t packed_error;
-
-  /* thread_hash is the least-significant bits of the |ERR_STATE| pointer value
-   * for this thread. */
-  const unsigned long thread_hash = (uintptr_t) err_get_state();
-
-  for (;;) {
-    const char *function = ERR_peek_function();
-    packed_error = ERR_get_error_line_data(&file, &line, &data, &flags);
-    if (packed_error == 0) {
-      break;
-    }
-
-    err_error_string(packed_error, function, buf, sizeof(buf));
-    BIO_snprintf(buf2, sizeof(buf2), "%lu:%s:%s:%d:\n", thread_hash, buf,
-                 file, line);
-    if (callback(buf2, strlen(buf2), ctx) <= 0) {
-      break;
-    }
-  }
-}
-
 static int print_errors_to_file(const char* msg, size_t msg_len, void* ctx) {
   assert(msg[msg_len] == '\0');
   FILE* fp = ctx;
   int res = fputs(msg, fp);
   return res < 0 ? 0 : 1;
-}
-
-void ERR_print_errors_fp(FILE *file) {
-  ERR_print_errors_cb(print_errors_to_file, file);
 }
 
 void ERR_put_error(int library, int reason, const char *function,

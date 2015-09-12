@@ -360,7 +360,6 @@ int main(void) {
       !TestECDSA_SIG_max_len(512/8) ||
       !TestECDSA_SIG_max_len(10000)) {
     printf("\nECDSA test failed\n");
-    ERR_print_errors_fp(stdout);
     return 1;
   }
 

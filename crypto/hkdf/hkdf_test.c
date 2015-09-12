@@ -225,7 +225,6 @@ int main(void) {
     if (!HKDF(buf, test->out_len, test->md_func(), test->ikm, test->ikm_len,
               test->salt, test->salt_len, test->info, test->info_len)) {
       fprintf(stderr, "Call to HKDF failed\n");
-      ERR_print_errors_fp(stderr);
       return 1;
     }
     if (memcmp(buf, test->out, test->out_len) != 0) {
