@@ -189,7 +189,7 @@ type ConnectionState struct {
 	VerifiedChains             [][]*x509.Certificate // verified chains built from PeerCertificates
 	ChannelID                  *ecdsa.PublicKey      // the channel ID for this connection
 	SRTPProtectionProfile      uint16                // the negotiated DTLS-SRTP protection profile
-	TLSUnique                  []byte
+	TLSUnique                  []byte                // the tls-unique channel binding
 	SCTList                    []byte                // signed certificate timestamp list
 }
 

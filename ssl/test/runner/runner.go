@@ -3439,7 +3439,7 @@ func addExtensionTests() {
 	})
 	// Test SCT list.
 	testCases = append(testCases, testCase{
-		name: "SignedCertificateTimestampList-Client",
+		name:     "SignedCertificateTimestampList-Client",
 		testType: clientTest,
 		flags: []string{
 			"-enable-signed-cert-timestamps",
@@ -3448,7 +3448,7 @@ func addExtensionTests() {
 		},
 	})
 	testCases = append(testCases, testCase{
-		name: "SignedCertificateTimestampList-Server",
+		name:     "SignedCertificateTimestampList-Server",
 		testType: serverTest,
 		flags: []string{
 			"-signed-cert-timestamps",
