@@ -130,8 +130,6 @@ int CRYPTO_memcmp(const void *in_a, const void *in_b, size_t len) {
   return x;
 }
 
-char *OPENSSL_strdup(const char *s) { return strdup(s); }
-
 size_t OPENSSL_strnlen(const char *s, size_t len) {
   size_t i;
 

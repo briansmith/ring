@@ -95,9 +95,6 @@ OPENSSL_EXPORT void OPENSSL_cleanse(void *ptr, size_t len);
  * non-zero. */
 OPENSSL_EXPORT int CRYPTO_memcmp(const void *a, const void *b, size_t len);
 
-/* OPENSSL_strdup has the same behaviour as strdup(3). */
-OPENSSL_EXPORT char *OPENSSL_strdup(const char *s);
-
 /* OPENSSL_strnlen has the same behaviour as strnlen(3). */
 OPENSSL_EXPORT size_t OPENSSL_strnlen(const char *s, size_t len);
 
