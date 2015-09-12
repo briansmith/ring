@@ -74,34 +74,6 @@
 #endif
 
 
-void *OPENSSL_realloc_clean(void *ptr, size_t old_size, size_t new_size) {
-  void *ret = NULL;
-
-  if (ptr == NULL) {
-    return OPENSSL_malloc(new_size);
-  }
-
-  if (new_size == 0) {
-    return NULL;
-  }
-
-  /* We don't support shrinking the buffer. Note the memcpy that copies
-   * |old_size| bytes to the new buffer, below. */
-  if (new_size < old_size) {
-    return NULL;
-  }
-
-  ret = OPENSSL_malloc(new_size);
-  if (ret == NULL) {
-    return NULL;
-  }
-
-  memcpy(ret, ptr, old_size);
-  OPENSSL_cleanse(ptr, old_size);
-  OPENSSL_free(ptr);
-  return ret;
-}
-
 void OPENSSL_cleanse(void *ptr, size_t len) {
 #if defined(OPENSSL_WINDOWS)
 	SecureZeroMemory(ptr, len);
