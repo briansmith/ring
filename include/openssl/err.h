@@ -313,16 +313,6 @@ OPENSSL_EXPORT void ERR_add_error_data(unsigned count, ...);
  * result as the data on the most recent error. */
 OPENSSL_EXPORT void ERR_add_error_dataf(const char *format, ...);
 
-/* ERR_set_mark "marks" the most recent error for use with |ERR_pop_to_mark|.
- * It returns one if an error was marked and zero if there are no errors. */
-OPENSSL_EXPORT int ERR_set_mark(void);
-
-/* ERR_pop_to_mark removes errors from the most recent to the least recent
- * until (and not including) a "marked" error. It returns zero if no marked
- * error was found (and thus all errors were removed) and one otherwise. Errors
- * are marked using |ERR_set_mark|. */
-OPENSSL_EXPORT int ERR_pop_to_mark(void);
-
 struct err_error_st {
   /* function contains the name of the function where the error occured. */
   const char *function;

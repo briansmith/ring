@@ -647,42 +647,6 @@ void ERR_add_error_dataf(const char *format, ...) {
   err_set_error_data(buf, ERR_FLAG_MALLOCED | ERR_FLAG_STRING);
 }
 
-int ERR_set_mark(void) {
-  ERR_STATE *const state = err_get_state();
-
-  if (state == NULL || state->bottom == state->top) {
-    return 0;
-  }
-  state->errors[state->top].flags |= ERR_FLAG_MARK;
-  return 1;
-}
-
-int ERR_pop_to_mark(void) {
-  ERR_STATE *const state = err_get_state();
-
-  if (state == NULL) {
-    return 0;
-  }
-
-  while (state->bottom != state->top) {
-    struct err_error_st *error = &state->errors[state->top];
-
-    if ((error->flags & ERR_FLAG_MARK) != 0) {
-      error->flags &= ~ERR_FLAG_MARK;
-      return 1;
-    }
-
-    err_clear(error);
-    if (state->top == 0) {
-      state->top = ERR_NUM_ERRORS - 1;
-    } else {
-      state->top--;
-    }
-  }
-
-  return 0;
-}
-
 void ERR_load_crypto_strings(void) {}
 
 void ERR_free_strings(void) {}
