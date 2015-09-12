@@ -130,23 +130,6 @@ int CRYPTO_memcmp(const void *in_a, const void *in_b, size_t len) {
   return x;
 }
 
-uint32_t OPENSSL_hash32(const void *ptr, size_t len) {
-  /* These are the FNV-1a parameters for 32 bits. */
-  static const uint32_t kPrime = 16777619u;
-  static const uint32_t kOffsetBasis = 2166136261u;
-
-  const uint8_t *in = ptr;
-  size_t i;
-  uint32_t h = kOffsetBasis;
-
-  for (i = 0; i < len; i++) {
-    h ^= in[i];
-    h *= kPrime;
-  }
-
-  return h;
-}
-
 char *OPENSSL_strdup(const char *s) { return strdup(s); }
 
 size_t OPENSSL_strnlen(const char *s, size_t len) {
