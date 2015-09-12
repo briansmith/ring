@@ -31,6 +31,7 @@ pub use digest::{
     SHA512, SHA512_DIGEST_LEN,
 };
 
+mod ffi;
 mod rand;
 pub use rand::append_secure_random;
 
