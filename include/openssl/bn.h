@@ -266,11 +266,6 @@ OPENSSL_EXPORT char *BN_bn2hex(const BIGNUM *bn);
  * error. */
 OPENSSL_EXPORT int BN_hex2bn(BIGNUM **outp, const char *in);
 
-/* BN_bn2dec returns an allocated string that contains a NUL-terminated,
- * decimal representation of |bn|. If |bn| is negative, the first char in the
- * resulting string will be '-'. Returns NULL on allocation failure. */
-OPENSSL_EXPORT char *BN_bn2dec(const BIGNUM *a);
-
 /* BN_dec2bn parses the leading decimal number from |in|, which may be
  * proceeded by a '-' to indicate a negative number and may contain trailing,
  * non-decimal data. If |outp| is not NULL, it constructs a BIGNUM equal to the
