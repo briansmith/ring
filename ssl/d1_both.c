@@ -147,52 +147,44 @@ static void dtls1_fix_message_header(SSL *s, unsigned long frag_off,
                                      unsigned long frag_len);
 static unsigned char *dtls1_write_message_header(SSL *s, unsigned char *p);
 
-static hm_fragment *dtls1_hm_fragment_new(unsigned long frag_len,
-                                          int reassembly) {
-  hm_fragment *frag = NULL;
-  uint8_t *buf = NULL;
-  uint8_t *bitmask = NULL;
-
-  frag = (hm_fragment *)OPENSSL_malloc(sizeof(hm_fragment));
+static hm_fragment *dtls1_hm_fragment_new(size_t frag_len, int reassembly) {
+  hm_fragment *frag = OPENSSL_malloc(sizeof(hm_fragment));
   if (frag == NULL) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
     return NULL;
   }
+  memset(frag, 0, sizeof(hm_fragment));
 
-  if (frag_len) {
-    buf = (uint8_t *)OPENSSL_malloc(frag_len);
-    if (buf == NULL) {
+  /* If the handshake message is empty, |frag->fragment| and |frag->reassembly|
+   * are NULL. */
+  if (frag_len > 0) {
+    frag->fragment = OPENSSL_malloc(frag_len);
+    if (frag->fragment == NULL) {
       OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
-      OPENSSL_free(frag);
-      return NULL;
+      goto err;
     }
-  }
 
-  /* zero length fragment gets zero frag->fragment */
-  frag->fragment = buf;
-
-  /* Initialize reassembly bitmask if necessary */
-  if (reassembly && frag_len > 0) {
-    if (frag_len + 7 < frag_len) {
-      OPENSSL_PUT_ERROR(SSL, ERR_R_OVERFLOW);
-      return NULL;
-    }
-    size_t bitmask_len = (frag_len + 7) / 8;
-    bitmask = (uint8_t *)OPENSSL_malloc(bitmask_len);
-    if (bitmask == NULL) {
-      OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
-      if (buf != NULL) {
-        OPENSSL_free(buf);
+    if (reassembly) {
+      /* Initialize reassembly bitmask. */
+      if (frag_len + 7 < frag_len) {
+        OPENSSL_PUT_ERROR(SSL, ERR_R_OVERFLOW);
+        goto err;
       }
-      OPENSSL_free(frag);
-      return NULL;
+      size_t bitmask_len = (frag_len + 7) / 8;
+      frag->reassembly = OPENSSL_malloc(bitmask_len);
+      if (frag->reassembly == NULL) {
+        OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
+        goto err;
+      }
+      memset(frag->reassembly, 0, bitmask_len);
     }
-    memset(bitmask, 0, bitmask_len);
   }
-
-  frag->reassembly = bitmask;
 
   return frag;
+
+err:
+  dtls1_hm_fragment_free(frag);
+  return NULL;
 }
 
 void dtls1_hm_fragment_free(hm_fragment *frag) {
