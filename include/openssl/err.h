@@ -233,9 +233,6 @@ OPENSSL_EXPORT const char *ERR_func_error_string(uint32_t packed_error);
 
 /* Private functions. */
 
-/* ERR_clear_system_error clears the system's error value (i.e. errno). */
-OPENSSL_EXPORT void ERR_clear_system_error(void);
-
 #if defined(OPENSSL_WINDOWS)
 /* TODO(davidben): Use |__func__| directly once the minimum MSVC version
  * supports it. */

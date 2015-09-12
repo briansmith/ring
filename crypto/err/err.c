@@ -309,10 +309,6 @@ void ERR_remove_state(unsigned long pid) {
   ERR_clear_error();
 }
 
-void ERR_clear_system_error(void) {
-  errno = 0;
-}
-
 static const char *const kLibraryNames[ERR_NUM_LIBS] = {
     "invalid library (0)",
     "unknown library",                            /* ERR_LIB_NONE */
