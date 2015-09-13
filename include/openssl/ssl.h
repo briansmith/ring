@@ -179,30 +179,9 @@ extern "C" {
 OPENSSL_EXPORT int SSL_library_init(void);
 
 
-/* Cipher suites. */
-
-/* An SSL_CIPHER represents a cipher suite. */
-typedef struct ssl_cipher_st {
-  /* name is the OpenSSL name for the cipher. */
-  const char *name;
-  /* id is the cipher suite value bitwise OR-d with 0x03000000. */
-  uint32_t id;
-
-  /* The following are internal fields. See ssl/internal.h for their values. */
-
-  uint32_t algorithm_mkey;
-  uint32_t algorithm_auth;
-  uint32_t algorithm_enc;
-  uint32_t algorithm_mac;
-  uint32_t algorithm_ssl;
-  uint32_t algo_strength;
-  uint32_t algorithm_prf;
-
-  /* strength_bits is the strength of the cipher in bits. */
-  int strength_bits;
-  /* alg_bits is the number of bits of key material used by the algorithm. */
-  int alg_bits;
-} SSL_CIPHER;
+/* Cipher suites.
+ *
+ * |SSL_CIPHER| objects represent cipher suites. */
 
 DECLARE_STACK_OF(SSL_CIPHER)
 
@@ -255,10 +234,15 @@ OPENSSL_EXPORT int SSL_CIPHER_get_bits(const SSL_CIPHER *cipher,
                                        int *out_alg_bits);
 
 
-/* SSL contexts. */
-
-/* An SSL_METHOD selects whether to use TLS or DTLS. */
-typedef struct ssl_method_st SSL_METHOD;
+/* SSL contexts.
+ *
+ * |SSL_CTX| objects manage shared state and configuration between multiple TLS
+ * or DTLS connections. Whether the connections are TLS or DTLS is selected by
+ * an |SSL_METHOD| on creation.
+ *
+ * |SSL_CTX| are reference-counted and may be shared by connections across
+ * multiple threads. Once shared, functions which change the |SSL_CTX|'s
+ * configuration may not be used. */
 
 /* TLS_method is the |SSL_METHOD| used for TLS (and SSLv3) connections. */
 OPENSSL_EXPORT const SSL_METHOD *TLS_method(void);
@@ -267,20 +251,22 @@ OPENSSL_EXPORT const SSL_METHOD *TLS_method(void);
 OPENSSL_EXPORT const SSL_METHOD *DTLS_method(void);
 
 /* SSL_CTX_new returns a newly-allocated |SSL_CTX| with default settings or NULL
- * on error. An |SSL_CTX| manages shared state and configuration between
- * multiple TLS or DTLS connections. */
+ * on error. */
 OPENSSL_EXPORT SSL_CTX *SSL_CTX_new(const SSL_METHOD *method);
 
 /* SSL_CTX_free releases memory associated with |ctx|. */
 OPENSSL_EXPORT void SSL_CTX_free(SSL_CTX *ctx);
 
 
-/* SSL connections. */
+/* SSL connections.
+ *
+ * An |SSL| object represents a single TLS or DTLS connection. Although the
+ * shared |SSL_CTX| is thread-safe, an |SSL| is not thread-safe and may only be
+ * used on one thread at a time. */
 
-/* SSL_new returns a newly-allocated |SSL| using |ctx| or NULL on error. An
- * |SSL| object represents a single TLS or DTLS connection. It inherits settings
- * from |ctx| at the time of creation. Settings may also be individually
- * configured on the connection.
+/* SSL_new returns a newly-allocated |SSL| using |ctx| or NULL on error. The new
+ * connection inherits settings from |ctx| at the time of creation. Settings may
+ * also be individually configured on the connection.
  *
  * On creation, an |SSL| is not configured to be either a client or server. Call
  * |SSL_set_connect_state| or |SSL_set_accept_state| to set this. */
@@ -1200,7 +1186,11 @@ OPENSSL_EXPORT int SSL_CTX_set_tlsext_ticket_key_cb(
 #define SSL_RECEIVED_SHUTDOWN 2
 
 typedef struct ssl_protocol_method_st SSL_PROTOCOL_METHOD;
+
+/* An SSL_SESSION represents an SSL session that may be resumed in an
+ * abbreviated handshake. */
 typedef struct ssl_session_st SSL_SESSION;
+
 typedef struct ssl_conf_ctx_st SSL_CONF_CTX;
 typedef struct ssl3_enc_method SSL3_ENC_METHOD;
 
@@ -1211,93 +1201,6 @@ typedef struct srtp_protection_profile_st {
 } SRTP_PROTECTION_PROFILE;
 
 DECLARE_STACK_OF(SRTP_PROTECTION_PROFILE)
-
-/* An SSL_SESSION represents an SSL session that may be resumed in an
- * abbreviated handshake. */
-struct ssl_session_st {
-  int ssl_version; /* what ssl version session info is being kept in here? */
-
-  int master_key_length;
-  uint8_t master_key[SSL_MAX_MASTER_KEY_LENGTH];
-  /* session_id - valid? */
-  unsigned int session_id_length;
-  uint8_t session_id[SSL_MAX_SSL_SESSION_ID_LENGTH];
-  /* this is used to determine whether the session is being reused in
-   * the appropriate context. It is up to the application to set this,
-   * via SSL_new */
-  unsigned int sid_ctx_length;
-  uint8_t sid_ctx[SSL_MAX_SID_CTX_LENGTH];
-
-  char *psk_identity;
-  /* Used to indicate that session resumption is not allowed. Applications can
-   * also set this bit for a new session via not_resumable_session_cb to
-   * disable session caching and tickets. */
-  int not_resumable;
-
-  /* peer is the peer's certificate. */
-  X509 *peer;
-
-  /* cert_chain is the certificate chain sent by the peer. NOTE: for historical
-   * reasons, when a client (so the peer is a server), the chain includes
-   * |peer|, but when a server it does not. */
-  STACK_OF(X509) *cert_chain;
-
-  /* when app_verify_callback accepts a session where the peer's certificate is
-   * not ok, we must remember the error for session reuse: */
-  long verify_result; /* only for servers */
-
-  CRYPTO_refcount_t references;
-  long timeout;
-  long time;
-
-  const SSL_CIPHER *cipher;
-
-  /* key_exchange_info contains an indication of the size of the asymmetric
-   * primitive used in the handshake that created this session. In the event
-   * that two asymmetric operations are used, this value applies to the one
-   * that controls the confidentiality of the connection. Its interpretation
-   * depends on the primitive that was used; as specified by the cipher suite:
-   *   DHE: the size, in bits, of the multiplicative group.
-   *   RSA: the size, in bits, of the modulus.
-   *   ECDHE: the TLS id for the curve.
-   *
-   * A zero indicates that the value is unknown. */
-  uint32_t key_exchange_info;
-
-  CRYPTO_EX_DATA ex_data; /* application specific data */
-
-  /* These are used to make removal of session-ids more efficient and to
-   * implement a maximum cache size. */
-  SSL_SESSION *prev, *next;
-  char *tlsext_hostname;
-  /* RFC4507 info */
-  uint8_t *tlsext_tick;               /* Session ticket */
-  size_t tlsext_ticklen;              /* Session ticket length */
-  uint32_t tlsext_tick_lifetime_hint; /* Session lifetime hint in seconds */
-
-  size_t tlsext_signed_cert_timestamp_list_length;
-  uint8_t *tlsext_signed_cert_timestamp_list; /* Server's list. */
-
-  /* The OCSP response that came with the session. */
-  size_t ocsp_response_length;
-  uint8_t *ocsp_response;
-
-  char peer_sha256_valid; /* Non-zero if peer_sha256 is valid */
-  uint8_t
-      peer_sha256[SHA256_DIGEST_LENGTH]; /* SHA256 of peer certificate */
-
-  /* original_handshake_hash contains the handshake hash (either SHA-1+MD5 or
-   * SHA-2, depending on TLS version) for the original, full handshake that
-   * created a session. This is used by Channel IDs during resumption. */
-  uint8_t original_handshake_hash[EVP_MAX_MD_SIZE];
-  unsigned int original_handshake_hash_len;
-
-  /* extended_master_secret is true if the master secret in this session was
-   * generated using EMS and thus isn't vulnerable to the Triple Handshake
-   * attack. */
-  char extended_master_secret;
-};
-
 
 /* SSL_set_mtu sets the |ssl|'s MTU in DTLS to |mtu|. It returns one on success
  * and zero on failure. */
@@ -1408,290 +1311,6 @@ struct ssl_comp_st {
 
 DECLARE_STACK_OF(SSL_COMP)
 DECLARE_LHASH_OF(SSL_SESSION)
-
-/* ssl_cipher_preference_list_st contains a list of SSL_CIPHERs with
- * equal-preference groups. For TLS clients, the groups are moot because the
- * server picks the cipher and groups cannot be expressed on the wire. However,
- * for servers, the equal-preference groups allow the client's preferences to
- * be partially respected. (This only has an effect with
- * SSL_OP_CIPHER_SERVER_PREFERENCE).
- *
- * The equal-preference groups are expressed by grouping SSL_CIPHERs together.
- * All elements of a group have the same priority: no ordering is expressed
- * within a group.
- *
- * The values in |ciphers| are in one-to-one correspondence with
- * |in_group_flags|. (That is, sk_SSL_CIPHER_num(ciphers) is the number of
- * bytes in |in_group_flags|.) The bytes in |in_group_flags| are either 1, to
- * indicate that the corresponding SSL_CIPHER is not the last element of a
- * group, or 0 to indicate that it is.
- *
- * For example, if |in_group_flags| contains all zeros then that indicates a
- * traditional, fully-ordered preference. Every SSL_CIPHER is the last element
- * of the group (i.e. they are all in a one-element group).
- *
- * For a more complex example, consider:
- *   ciphers:        A  B  C  D  E  F
- *   in_group_flags: 1  1  0  0  1  0
- *
- * That would express the following, order:
- *
- *    A         E
- *    B -> D -> F
- *    C
- */
-struct ssl_cipher_preference_list_st {
-  STACK_OF(SSL_CIPHER) *ciphers;
-  uint8_t *in_group_flags;
-};
-
-struct ssl_ctx_st {
-  const SSL_PROTOCOL_METHOD *method;
-
-  /* lock is used to protect various operations on this object. */
-  CRYPTO_MUTEX lock;
-
-  /* max_version is the maximum acceptable protocol version. If zero, the
-   * maximum supported version, currently (D)TLS 1.2, is used. */
-  uint16_t max_version;
-
-  /* min_version is the minimum acceptable protocl version. If zero, the
-   * minimum supported version, currently SSL 3.0 and DTLS 1.0, is used */
-  uint16_t min_version;
-
-  struct ssl_cipher_preference_list_st *cipher_list;
-  /* same as above but sorted for lookup */
-  STACK_OF(SSL_CIPHER) *cipher_list_by_id;
-
-  /* cipher_list_tls10 is the list of ciphers when TLS 1.0 or greater is in
-   * use. This only applies to server connections as, for clients, the version
-   * number is known at connect time and so the cipher list can be set then. If
-   * |cipher_list_tls11| is non-NULL then this applies only to TLS 1.0
-   * connections.
-   *
-   * TODO(agl): this exists to assist in the death of SSLv3. It can hopefully
-   * be removed after that. */
-  struct ssl_cipher_preference_list_st *cipher_list_tls10;
-
-  /* cipher_list_tls11 is the list of ciphers when TLS 1.1 or greater is in
-   * use. This only applies to server connections as, for clients, the version
-   * number is known at connect time and so the cipher list can be set then. */
-  struct ssl_cipher_preference_list_st *cipher_list_tls11;
-
-  X509_STORE *cert_store;
-  LHASH_OF(SSL_SESSION) *sessions;
-  /* Most session-ids that will be cached, default is
-   * SSL_SESSION_CACHE_MAX_SIZE_DEFAULT. 0 is unlimited. */
-  unsigned long session_cache_size;
-  SSL_SESSION *session_cache_head;
-  SSL_SESSION *session_cache_tail;
-
-  /* handshakes_since_cache_flush is the number of successful handshakes since
-   * the last cache flush. */
-  int handshakes_since_cache_flush;
-
-  /* This can have one of 2 values, ored together,
-   * SSL_SESS_CACHE_CLIENT,
-   * SSL_SESS_CACHE_SERVER,
-   * Default is SSL_SESSION_CACHE_SERVER, which means only
-   * SSL_accept which cache SSL_SESSIONS. */
-  int session_cache_mode;
-
-  /* If timeout is not 0, it is the default timeout value set when SSL_new() is
-   * called.  This has been put in to make life easier to set things up */
-  long session_timeout;
-
-  /* If this callback is not null, it will be called each time a session id is
-   * added to the cache.  If this function returns 1, it means that the
-   * callback will do a SSL_SESSION_free() when it has finished using it.
-   * Otherwise, on 0, it means the callback has finished with it. If
-   * remove_session_cb is not null, it will be called when a session-id is
-   * removed from the cache.  After the call, OpenSSL will SSL_SESSION_free()
-   * it. */
-  int (*new_session_cb)(SSL *ssl, SSL_SESSION *sess);
-  void (*remove_session_cb)(SSL_CTX *ctx, SSL_SESSION *sess);
-  SSL_SESSION *(*get_session_cb)(SSL *ssl, uint8_t *data, int len,
-                                 int *copy);
-
-  CRYPTO_refcount_t references;
-
-  /* if defined, these override the X509_verify_cert() calls */
-  int (*app_verify_callback)(X509_STORE_CTX *, void *);
-  void *app_verify_arg;
-  /* before OpenSSL 0.9.7, 'app_verify_arg' was ignored ('app_verify_callback'
-   * was called with just one argument) */
-
-  /* Default password callback. */
-  pem_password_cb *default_passwd_callback;
-
-  /* Default password callback user data. */
-  void *default_passwd_callback_userdata;
-
-  /* get client cert callback */
-  int (*client_cert_cb)(SSL *ssl, X509 **x509, EVP_PKEY **pkey);
-
-  /* get channel id callback */
-  void (*channel_id_cb)(SSL *ssl, EVP_PKEY **pkey);
-
-  CRYPTO_EX_DATA ex_data;
-
-  /* custom_*_extensions stores any callback sets for custom extensions. Note
-   * that these pointers will be NULL if the stack would otherwise be empty. */
-  STACK_OF(SSL_CUSTOM_EXTENSION) *client_custom_extensions;
-  STACK_OF(SSL_CUSTOM_EXTENSION) *server_custom_extensions;
-
-  /* Default values used when no per-SSL value is defined follow */
-
-  void (*info_callback)(const SSL *ssl, int type,
-                        int val); /* used if SSL's info_callback is NULL */
-
-  /* what we put in client cert requests */
-  STACK_OF(X509_NAME) *client_CA;
-
-
-  /* Default values to use in SSL structures follow (these are copied by
-   * SSL_new) */
-
-  uint32_t options;
-  uint32_t mode;
-  uint32_t max_cert_list;
-
-  struct cert_st /* CERT */ *cert;
-
-  /* callback that allows applications to peek at protocol messages */
-  void (*msg_callback)(int write_p, int version, int content_type,
-                       const void *buf, size_t len, SSL *ssl, void *arg);
-  void *msg_callback_arg;
-
-  int verify_mode;
-  unsigned int sid_ctx_length;
-  uint8_t sid_ctx[SSL_MAX_SID_CTX_LENGTH];
-  int (*default_verify_callback)(
-      int ok, X509_STORE_CTX *ctx); /* called 'verify_callback' in the SSL */
-
-  /* Default generate session ID callback. */
-  GEN_SESSION_CB generate_session_id;
-
-  X509_VERIFY_PARAM *param;
-
-  /* select_certificate_cb is called before most ClientHello processing and
-   * before the decision whether to resume a session is made. It may return one
-   * to continue the handshake or zero to cause the handshake loop to return
-   * with an error and cause SSL_get_error to return
-   * SSL_ERROR_PENDING_CERTIFICATE. Note: when the handshake loop is resumed, it
-   * will not call the callback a second time. */
-  int (*select_certificate_cb)(const struct ssl_early_callback_ctx *);
-
-  /* dos_protection_cb is called once the resumption decision for a ClientHello
-   * has been made. It returns one to continue the handshake or zero to
-   * abort. */
-  int (*dos_protection_cb) (const struct ssl_early_callback_ctx *);
-
-  /* quiet_shutdown is true if the connection should not send a close_notify on
-   * shutdown. */
-  int quiet_shutdown;
-
-  /* Maximum amount of data to send in one fragment. actual record size can be
-   * more than this due to padding and MAC overheads. */
-  uint16_t max_send_fragment;
-
-  /* TLS extensions servername callback */
-  int (*tlsext_servername_callback)(SSL *, int *, void *);
-  void *tlsext_servername_arg;
-  /* RFC 4507 session ticket keys */
-  uint8_t tlsext_tick_key_name[SSL_TICKET_KEY_NAME_LEN];
-  uint8_t tlsext_tick_hmac_key[16];
-  uint8_t tlsext_tick_aes_key[16];
-  /* Callback to support customisation of ticket key setting */
-  int (*tlsext_ticket_key_cb)(SSL *ssl, uint8_t *name, uint8_t *iv,
-                              EVP_CIPHER_CTX *ectx, HMAC_CTX *hctx, int enc);
-
-  /* Server-only: psk_identity_hint is the default identity hint to send in
-   * PSK-based key exchanges. */
-  char *psk_identity_hint;
-
-  unsigned int (*psk_client_callback)(SSL *ssl, const char *hint,
-                                      char *identity,
-                                      unsigned int max_identity_len,
-                                      uint8_t *psk, unsigned int max_psk_len);
-  unsigned int (*psk_server_callback)(SSL *ssl, const char *identity,
-                                      uint8_t *psk, unsigned int max_psk_len);
-
-
-  /* retain_only_sha256_of_client_certs is true if we should compute the SHA256
-   * hash of the peer's certifiate and then discard it to save memory and
-   * session space. Only effective on the server side. */
-  char retain_only_sha256_of_client_certs;
-
-  /* Next protocol negotiation information */
-  /* (for experimental NPN extension). */
-
-  /* For a server, this contains a callback function by which the set of
-   * advertised protocols can be provided. */
-  int (*next_protos_advertised_cb)(SSL *s, const uint8_t **buf,
-                                   unsigned int *len, void *arg);
-  void *next_protos_advertised_cb_arg;
-  /* For a client, this contains a callback function that selects the
-   * next protocol from the list provided by the server. */
-  int (*next_proto_select_cb)(SSL *s, uint8_t **out, uint8_t *outlen,
-                              const uint8_t *in, unsigned int inlen, void *arg);
-  void *next_proto_select_cb_arg;
-
-  /* ALPN information
-   * (we are in the process of transitioning from NPN to ALPN.) */
-
-  /* For a server, this contains a callback function that allows the
-   * server to select the protocol for the connection.
-   *   out: on successful return, this must point to the raw protocol
-   *        name (without the length prefix).
-   *   outlen: on successful return, this contains the length of |*out|.
-   *   in: points to the client's list of supported protocols in
-   *       wire-format.
-   *   inlen: the length of |in|. */
-  int (*alpn_select_cb)(SSL *s, const uint8_t **out, uint8_t *outlen,
-                        const uint8_t *in, unsigned int inlen, void *arg);
-  void *alpn_select_cb_arg;
-
-  /* For a client, this contains the list of supported protocols in wire
-   * format. */
-  uint8_t *alpn_client_proto_list;
-  unsigned alpn_client_proto_list_len;
-
-  /* SRTP profiles we are willing to do from RFC 5764 */
-  STACK_OF(SRTP_PROTECTION_PROFILE) *srtp_profiles;
-
-  /* EC extension values inherited by SSL structure */
-  size_t tlsext_ellipticcurvelist_length;
-  uint16_t *tlsext_ellipticcurvelist;
-
-  /* If true, a client will advertise the Channel ID extension and a server
-   * will echo it. */
-  char tlsext_channel_id_enabled;
-  /* The client's Channel ID private key. */
-  EVP_PKEY *tlsext_channel_id_private;
-
-  /* If true, a client will request certificate timestamps. */
-  char signed_cert_timestamps_enabled;
-
-  /* Signed certificate timestamp list to be sent to the client, if requested */
-  uint8_t *signed_cert_timestamp_list;
-  size_t signed_cert_timestamp_list_length;
-
-  /* If true, a client will request a stapled OCSP response. */
-  char ocsp_stapling_enabled;
-
-  /* OCSP response to be sent to the client, if requested. */
-  uint8_t *ocsp_response;
-  size_t ocsp_response_length;
-
-  /* If not NULL, session key material will be logged to this BIO for debugging
-   * purposes. The format matches NSS's and is readable by Wireshark. */
-  BIO *keylog_bio;
-
-  /* current_time_cb, if not NULL, is the function to use to get the current
-   * time. It sets |*out_clock| to the current time. */
-  void (*current_time_cb)(const SSL *ssl, struct timeval *out_clock);
-};
 
 OPENSSL_EXPORT LHASH_OF(SSL_SESSION) *SSL_CTX_sessions(SSL_CTX *ctx);
 
@@ -1877,193 +1496,6 @@ OPENSSL_EXPORT const char *SSL_get_psk_identity(const SSL *s);
   (SSL_want(s) == SSL_CERTIFICATE_SELECTION_PENDING)
 #define SSL_want_private_key_operation(s) \
   (SSL_want(s) == SSL_PRIVATE_KEY_OPERATION)
-
-struct ssl_st {
-  /* version is the protocol version. */
-  int version;
-
-  /* method is the method table corresponding to the current protocol (DTLS or
-   * TLS). */
-  const SSL_PROTOCOL_METHOD *method;
-
-  /* enc_method is the method table corresponding to the current protocol
-   * version. */
-  const SSL3_ENC_METHOD *enc_method;
-
-  /* max_version is the maximum acceptable protocol version. If zero, the
-   * maximum supported version, currently (D)TLS 1.2, is used. */
-  uint16_t max_version;
-
-  /* min_version is the minimum acceptable protocl version. If zero, the
-   * minimum supported version, currently SSL 3.0 and DTLS 1.0, is used */
-  uint16_t min_version;
-
-  /* There are 2 BIO's even though they are normally both the same. This is so
-   * data can be read and written to different handlers */
-
-  BIO *rbio; /* used by SSL_read */
-  BIO *wbio; /* used by SSL_write */
-  BIO *bbio; /* used during session-id reuse to concatenate
-              * messages */
-
-  /* This holds a variable that indicates what we were doing when a 0 or -1 is
-   * returned.  This is needed for non-blocking IO so we know what request
-   * needs re-doing when in SSL_accept or SSL_connect */
-  int rwstate;
-
-  /* true when we are actually in SSL_accept() or SSL_connect() */
-  int in_handshake;
-  int (*handshake_func)(SSL *);
-
-  /* Imagine that here's a boolean member "init" that is switched as soon as
-   * SSL_set_{accept/connect}_state is called for the first time, so that
-   * "state" and "handshake_func" are properly initialized.  But as
-   * handshake_func is == 0 until then, we use this test instead of an "init"
-   * member. */
-
-  /* server is true iff the this SSL* is the server half. Note: before the SSL*
-   * is initialized by either SSL_set_accept_state or SSL_set_connect_state,
-   * the side is not determined. In this state, server is always false. */
-  int server;
-
-  /* quiet_shutdown is true if the connection should not send a close_notify on
-   * shutdown. */
-  int quiet_shutdown;
-
-  int shutdown; /* we have shut things down, 0x01 sent, 0x02
-                 * for received */
-  int state;    /* where we are */
-
-  BUF_MEM *init_buf; /* buffer used during init */
-  uint8_t *init_msg; /* pointer to handshake message body, set by
-                        ssl3_get_message() */
-  int init_num;      /* amount read/written */
-  int init_off;      /* amount read/written */
-
-  struct ssl3_state_st *s3;  /* SSLv3 variables */
-  struct dtls1_state_st *d1; /* DTLSv1 variables */
-
-  /* callback that allows applications to peek at protocol messages */
-  void (*msg_callback)(int write_p, int version, int content_type,
-                       const void *buf, size_t len, SSL *ssl, void *arg);
-  void *msg_callback_arg;
-
-  int hit; /* reusing a previous session */
-
-  X509_VERIFY_PARAM *param;
-
-  /* crypto */
-  struct ssl_cipher_preference_list_st *cipher_list;
-  STACK_OF(SSL_CIPHER) *cipher_list_by_id;
-
-  SSL_AEAD_CTX *aead_read_ctx;
-  SSL_AEAD_CTX *aead_write_ctx;
-
-  /* session info */
-
-  /* client cert? */
-  /* This is used to hold the server certificate used */
-  struct cert_st /* CERT */ *cert;
-
-  /* the session_id_context is used to ensure sessions are only reused
-   * in the appropriate context */
-  unsigned int sid_ctx_length;
-  uint8_t sid_ctx[SSL_MAX_SID_CTX_LENGTH];
-
-  /* This can also be in the session once a session is established */
-  SSL_SESSION *session;
-
-  /* Default generate session ID callback. */
-  GEN_SESSION_CB generate_session_id;
-
-  /* Used in SSL2 and SSL3 */
-  int verify_mode; /* 0 don't care about verify failure.
-                    * 1 fail if verify fails */
-  int (*verify_callback)(int ok,
-                         X509_STORE_CTX *ctx); /* fail if callback returns 0 */
-
-  void (*info_callback)(const SSL *ssl, int type,
-                        int val); /* optional informational callback */
-
-  /* Server-only: psk_identity_hint is the identity hint to send in
-   * PSK-based key exchanges. */
-  char *psk_identity_hint;
-
-  unsigned int (*psk_client_callback)(SSL *ssl, const char *hint,
-                                      char *identity,
-                                      unsigned int max_identity_len,
-                                      uint8_t *psk, unsigned int max_psk_len);
-  unsigned int (*psk_server_callback)(SSL *ssl, const char *identity,
-                                      uint8_t *psk, unsigned int max_psk_len);
-
-  SSL_CTX *ctx;
-
-  /* extra application data */
-  long verify_result;
-  CRYPTO_EX_DATA ex_data;
-
-  /* for server side, keep the list of CA_dn we can use */
-  STACK_OF(X509_NAME) *client_CA;
-
-  uint32_t options; /* protocol behaviour */
-  uint32_t mode;    /* API behaviour */
-  uint32_t max_cert_list;
-  int client_version; /* what was passed, used for
-                       * SSLv3/TLS rollback check */
-  uint16_t max_send_fragment;
-  char *tlsext_hostname;
-  /* RFC4507 session ticket expected to be received or sent */
-  int tlsext_ticket_expected;
-  size_t tlsext_ellipticcurvelist_length;
-  uint16_t *tlsext_ellipticcurvelist; /* our list */
-
-  SSL_CTX *initial_ctx; /* initial ctx, used to store sessions */
-
-  /* Next protocol negotiation. For the client, this is the protocol that we
-   * sent in NextProtocol and is set when handling ServerHello extensions.
-   *
-   * For a server, this is the client's selected_protocol from NextProtocol and
-   * is set when handling the NextProtocol message, before the Finished
-   * message. */
-  uint8_t *next_proto_negotiated;
-  size_t next_proto_negotiated_len;
-
-  /* srtp_profiles is the list of configured SRTP protection profiles for
-   * DTLS-SRTP. */
-  STACK_OF(SRTP_PROTECTION_PROFILE) *srtp_profiles;
-
-  /* srtp_profile is the selected SRTP protection profile for
-   * DTLS-SRTP. */
-  const SRTP_PROTECTION_PROFILE *srtp_profile;
-
-  /* Copied from the SSL_CTX. For a server, means that we'll accept Channel IDs
-   * from clients. For a client, means that we'll advertise support. */
-  char tlsext_channel_id_enabled;
-  /* The client's Channel ID private key. */
-  EVP_PKEY *tlsext_channel_id_private;
-
-  /* Enable signed certificate time stamps. Currently client only. */
-  char signed_cert_timestamps_enabled;
-
-  /* ocsp_stapling_enabled is only used by client connections and indicates
-   * whether OCSP stapling will be requested. */
-  char ocsp_stapling_enabled;
-
-  /* For a client, this contains the list of supported protocols in wire
-   * format. */
-  uint8_t *alpn_client_proto_list;
-  unsigned alpn_client_proto_list_len;
-
-  /* accept_peer_renegotiations, if one, accepts renegotiation attempts from the
-   * peer. Otherwise, they will be rejected with a fatal error. */
-  char accept_peer_renegotiations;
-
-  /* These fields are always NULL and exist only to keep wpa_supplicant happy
-   * about the change to EVP_AEAD. They are only needed for EAP-FAST, which we
-   * don't support. */
-  EVP_CIPHER_CTX *enc_read_ctx;
-  EVP_MD_CTX *read_hash;
-};
 
 /* compatibility */
 #define SSL_set_app_data(s, arg) (SSL_set_ex_data(s, 0, (char *)arg))
@@ -2824,6 +2256,589 @@ OPENSSL_EXPORT void ERR_load_SSL_strings(void);
 
 /* SSL_load_error_strings does nothing. */
 OPENSSL_EXPORT void SSL_load_error_strings(void);
+
+
+/* Private structures.
+ *
+ * This structures are exposed for historical reasons, but access to them is
+ * deprecated. */
+
+struct ssl_cipher_st {
+  /* name is the OpenSSL name for the cipher. */
+  const char *name;
+  /* id is the cipher suite value bitwise OR-d with 0x03000000. */
+  uint32_t id;
+
+  /* The following are internal fields. See ssl/internal.h for their values. */
+
+  uint32_t algorithm_mkey;
+  uint32_t algorithm_auth;
+  uint32_t algorithm_enc;
+  uint32_t algorithm_mac;
+  uint32_t algorithm_ssl;
+  uint32_t algo_strength;
+  uint32_t algorithm_prf;
+
+  /* strength_bits is the strength of the cipher in bits. */
+  int strength_bits;
+  /* alg_bits is the number of bits of key material used by the algorithm. */
+  int alg_bits;
+};
+
+struct ssl_session_st {
+  int ssl_version; /* what ssl version session info is being kept in here? */
+
+  int master_key_length;
+  uint8_t master_key[SSL_MAX_MASTER_KEY_LENGTH];
+  /* session_id - valid? */
+  unsigned int session_id_length;
+  uint8_t session_id[SSL_MAX_SSL_SESSION_ID_LENGTH];
+  /* this is used to determine whether the session is being reused in
+   * the appropriate context. It is up to the application to set this,
+   * via SSL_new */
+  unsigned int sid_ctx_length;
+  uint8_t sid_ctx[SSL_MAX_SID_CTX_LENGTH];
+
+  char *psk_identity;
+  /* Used to indicate that session resumption is not allowed. Applications can
+   * also set this bit for a new session via not_resumable_session_cb to
+   * disable session caching and tickets. */
+  int not_resumable;
+
+  /* peer is the peer's certificate. */
+  X509 *peer;
+
+  /* cert_chain is the certificate chain sent by the peer. NOTE: for historical
+   * reasons, when a client (so the peer is a server), the chain includes
+   * |peer|, but when a server it does not. */
+  STACK_OF(X509) *cert_chain;
+
+  /* when app_verify_callback accepts a session where the peer's certificate is
+   * not ok, we must remember the error for session reuse: */
+  long verify_result; /* only for servers */
+
+  CRYPTO_refcount_t references;
+  long timeout;
+  long time;
+
+  const SSL_CIPHER *cipher;
+
+  /* key_exchange_info contains an indication of the size of the asymmetric
+   * primitive used in the handshake that created this session. In the event
+   * that two asymmetric operations are used, this value applies to the one
+   * that controls the confidentiality of the connection. Its interpretation
+   * depends on the primitive that was used; as specified by the cipher suite:
+   *   DHE: the size, in bits, of the multiplicative group.
+   *   RSA: the size, in bits, of the modulus.
+   *   ECDHE: the TLS id for the curve.
+   *
+   * A zero indicates that the value is unknown. */
+  uint32_t key_exchange_info;
+
+  CRYPTO_EX_DATA ex_data; /* application specific data */
+
+  /* These are used to make removal of session-ids more efficient and to
+   * implement a maximum cache size. */
+  SSL_SESSION *prev, *next;
+  char *tlsext_hostname;
+  /* RFC4507 info */
+  uint8_t *tlsext_tick;               /* Session ticket */
+  size_t tlsext_ticklen;              /* Session ticket length */
+  uint32_t tlsext_tick_lifetime_hint; /* Session lifetime hint in seconds */
+
+  size_t tlsext_signed_cert_timestamp_list_length;
+  uint8_t *tlsext_signed_cert_timestamp_list; /* Server's list. */
+
+  /* The OCSP response that came with the session. */
+  size_t ocsp_response_length;
+  uint8_t *ocsp_response;
+
+  char peer_sha256_valid; /* Non-zero if peer_sha256 is valid */
+  uint8_t
+      peer_sha256[SHA256_DIGEST_LENGTH]; /* SHA256 of peer certificate */
+
+  /* original_handshake_hash contains the handshake hash (either SHA-1+MD5 or
+   * SHA-2, depending on TLS version) for the original, full handshake that
+   * created a session. This is used by Channel IDs during resumption. */
+  uint8_t original_handshake_hash[EVP_MAX_MD_SIZE];
+  unsigned int original_handshake_hash_len;
+
+  /* extended_master_secret is true if the master secret in this session was
+   * generated using EMS and thus isn't vulnerable to the Triple Handshake
+   * attack. */
+  char extended_master_secret;
+};
+
+/* ssl_cipher_preference_list_st contains a list of SSL_CIPHERs with
+ * equal-preference groups. For TLS clients, the groups are moot because the
+ * server picks the cipher and groups cannot be expressed on the wire. However,
+ * for servers, the equal-preference groups allow the client's preferences to
+ * be partially respected. (This only has an effect with
+ * SSL_OP_CIPHER_SERVER_PREFERENCE).
+ *
+ * The equal-preference groups are expressed by grouping SSL_CIPHERs together.
+ * All elements of a group have the same priority: no ordering is expressed
+ * within a group.
+ *
+ * The values in |ciphers| are in one-to-one correspondence with
+ * |in_group_flags|. (That is, sk_SSL_CIPHER_num(ciphers) is the number of
+ * bytes in |in_group_flags|.) The bytes in |in_group_flags| are either 1, to
+ * indicate that the corresponding SSL_CIPHER is not the last element of a
+ * group, or 0 to indicate that it is.
+ *
+ * For example, if |in_group_flags| contains all zeros then that indicates a
+ * traditional, fully-ordered preference. Every SSL_CIPHER is the last element
+ * of the group (i.e. they are all in a one-element group).
+ *
+ * For a more complex example, consider:
+ *   ciphers:        A  B  C  D  E  F
+ *   in_group_flags: 1  1  0  0  1  0
+ *
+ * That would express the following, order:
+ *
+ *    A         E
+ *    B -> D -> F
+ *    C
+ */
+struct ssl_cipher_preference_list_st {
+  STACK_OF(SSL_CIPHER) *ciphers;
+  uint8_t *in_group_flags;
+};
+
+struct ssl_ctx_st {
+  const SSL_PROTOCOL_METHOD *method;
+
+  /* lock is used to protect various operations on this object. */
+  CRYPTO_MUTEX lock;
+
+  /* max_version is the maximum acceptable protocol version. If zero, the
+   * maximum supported version, currently (D)TLS 1.2, is used. */
+  uint16_t max_version;
+
+  /* min_version is the minimum acceptable protocl version. If zero, the
+   * minimum supported version, currently SSL 3.0 and DTLS 1.0, is used */
+  uint16_t min_version;
+
+  struct ssl_cipher_preference_list_st *cipher_list;
+  /* same as above but sorted for lookup */
+  STACK_OF(SSL_CIPHER) *cipher_list_by_id;
+
+  /* cipher_list_tls10 is the list of ciphers when TLS 1.0 or greater is in
+   * use. This only applies to server connections as, for clients, the version
+   * number is known at connect time and so the cipher list can be set then. If
+   * |cipher_list_tls11| is non-NULL then this applies only to TLS 1.0
+   * connections.
+   *
+   * TODO(agl): this exists to assist in the death of SSLv3. It can hopefully
+   * be removed after that. */
+  struct ssl_cipher_preference_list_st *cipher_list_tls10;
+
+  /* cipher_list_tls11 is the list of ciphers when TLS 1.1 or greater is in
+   * use. This only applies to server connections as, for clients, the version
+   * number is known at connect time and so the cipher list can be set then. */
+  struct ssl_cipher_preference_list_st *cipher_list_tls11;
+
+  X509_STORE *cert_store;
+  LHASH_OF(SSL_SESSION) *sessions;
+  /* Most session-ids that will be cached, default is
+   * SSL_SESSION_CACHE_MAX_SIZE_DEFAULT. 0 is unlimited. */
+  unsigned long session_cache_size;
+  SSL_SESSION *session_cache_head;
+  SSL_SESSION *session_cache_tail;
+
+  /* handshakes_since_cache_flush is the number of successful handshakes since
+   * the last cache flush. */
+  int handshakes_since_cache_flush;
+
+  /* This can have one of 2 values, ored together,
+   * SSL_SESS_CACHE_CLIENT,
+   * SSL_SESS_CACHE_SERVER,
+   * Default is SSL_SESSION_CACHE_SERVER, which means only
+   * SSL_accept which cache SSL_SESSIONS. */
+  int session_cache_mode;
+
+  /* If timeout is not 0, it is the default timeout value set when SSL_new() is
+   * called.  This has been put in to make life easier to set things up */
+  long session_timeout;
+
+  /* If this callback is not null, it will be called each time a session id is
+   * added to the cache.  If this function returns 1, it means that the
+   * callback will do a SSL_SESSION_free() when it has finished using it.
+   * Otherwise, on 0, it means the callback has finished with it. If
+   * remove_session_cb is not null, it will be called when a session-id is
+   * removed from the cache.  After the call, OpenSSL will SSL_SESSION_free()
+   * it. */
+  int (*new_session_cb)(SSL *ssl, SSL_SESSION *sess);
+  void (*remove_session_cb)(SSL_CTX *ctx, SSL_SESSION *sess);
+  SSL_SESSION *(*get_session_cb)(SSL *ssl, uint8_t *data, int len,
+                                 int *copy);
+
+  CRYPTO_refcount_t references;
+
+  /* if defined, these override the X509_verify_cert() calls */
+  int (*app_verify_callback)(X509_STORE_CTX *, void *);
+  void *app_verify_arg;
+  /* before OpenSSL 0.9.7, 'app_verify_arg' was ignored ('app_verify_callback'
+   * was called with just one argument) */
+
+  /* Default password callback. */
+  pem_password_cb *default_passwd_callback;
+
+  /* Default password callback user data. */
+  void *default_passwd_callback_userdata;
+
+  /* get client cert callback */
+  int (*client_cert_cb)(SSL *ssl, X509 **x509, EVP_PKEY **pkey);
+
+  /* get channel id callback */
+  void (*channel_id_cb)(SSL *ssl, EVP_PKEY **pkey);
+
+  CRYPTO_EX_DATA ex_data;
+
+  /* custom_*_extensions stores any callback sets for custom extensions. Note
+   * that these pointers will be NULL if the stack would otherwise be empty. */
+  STACK_OF(SSL_CUSTOM_EXTENSION) *client_custom_extensions;
+  STACK_OF(SSL_CUSTOM_EXTENSION) *server_custom_extensions;
+
+  /* Default values used when no per-SSL value is defined follow */
+
+  void (*info_callback)(const SSL *ssl, int type,
+                        int val); /* used if SSL's info_callback is NULL */
+
+  /* what we put in client cert requests */
+  STACK_OF(X509_NAME) *client_CA;
+
+
+  /* Default values to use in SSL structures follow (these are copied by
+   * SSL_new) */
+
+  uint32_t options;
+  uint32_t mode;
+  uint32_t max_cert_list;
+
+  struct cert_st /* CERT */ *cert;
+
+  /* callback that allows applications to peek at protocol messages */
+  void (*msg_callback)(int write_p, int version, int content_type,
+                       const void *buf, size_t len, SSL *ssl, void *arg);
+  void *msg_callback_arg;
+
+  int verify_mode;
+  unsigned int sid_ctx_length;
+  uint8_t sid_ctx[SSL_MAX_SID_CTX_LENGTH];
+  int (*default_verify_callback)(
+      int ok, X509_STORE_CTX *ctx); /* called 'verify_callback' in the SSL */
+
+  /* Default generate session ID callback. */
+  GEN_SESSION_CB generate_session_id;
+
+  X509_VERIFY_PARAM *param;
+
+  /* select_certificate_cb is called before most ClientHello processing and
+   * before the decision whether to resume a session is made. It may return one
+   * to continue the handshake or zero to cause the handshake loop to return
+   * with an error and cause SSL_get_error to return
+   * SSL_ERROR_PENDING_CERTIFICATE. Note: when the handshake loop is resumed, it
+   * will not call the callback a second time. */
+  int (*select_certificate_cb)(const struct ssl_early_callback_ctx *);
+
+  /* dos_protection_cb is called once the resumption decision for a ClientHello
+   * has been made. It returns one to continue the handshake or zero to
+   * abort. */
+  int (*dos_protection_cb) (const struct ssl_early_callback_ctx *);
+
+  /* quiet_shutdown is true if the connection should not send a close_notify on
+   * shutdown. */
+  int quiet_shutdown;
+
+  /* Maximum amount of data to send in one fragment. actual record size can be
+   * more than this due to padding and MAC overheads. */
+  uint16_t max_send_fragment;
+
+  /* TLS extensions servername callback */
+  int (*tlsext_servername_callback)(SSL *, int *, void *);
+  void *tlsext_servername_arg;
+  /* RFC 4507 session ticket keys */
+  uint8_t tlsext_tick_key_name[SSL_TICKET_KEY_NAME_LEN];
+  uint8_t tlsext_tick_hmac_key[16];
+  uint8_t tlsext_tick_aes_key[16];
+  /* Callback to support customisation of ticket key setting */
+  int (*tlsext_ticket_key_cb)(SSL *ssl, uint8_t *name, uint8_t *iv,
+                              EVP_CIPHER_CTX *ectx, HMAC_CTX *hctx, int enc);
+
+  /* Server-only: psk_identity_hint is the default identity hint to send in
+   * PSK-based key exchanges. */
+  char *psk_identity_hint;
+
+  unsigned int (*psk_client_callback)(SSL *ssl, const char *hint,
+                                      char *identity,
+                                      unsigned int max_identity_len,
+                                      uint8_t *psk, unsigned int max_psk_len);
+  unsigned int (*psk_server_callback)(SSL *ssl, const char *identity,
+                                      uint8_t *psk, unsigned int max_psk_len);
+
+
+  /* retain_only_sha256_of_client_certs is true if we should compute the SHA256
+   * hash of the peer's certifiate and then discard it to save memory and
+   * session space. Only effective on the server side. */
+  char retain_only_sha256_of_client_certs;
+
+  /* Next protocol negotiation information */
+  /* (for experimental NPN extension). */
+
+  /* For a server, this contains a callback function by which the set of
+   * advertised protocols can be provided. */
+  int (*next_protos_advertised_cb)(SSL *s, const uint8_t **buf,
+                                   unsigned int *len, void *arg);
+  void *next_protos_advertised_cb_arg;
+  /* For a client, this contains a callback function that selects the
+   * next protocol from the list provided by the server. */
+  int (*next_proto_select_cb)(SSL *s, uint8_t **out, uint8_t *outlen,
+                              const uint8_t *in, unsigned int inlen, void *arg);
+  void *next_proto_select_cb_arg;
+
+  /* ALPN information
+   * (we are in the process of transitioning from NPN to ALPN.) */
+
+  /* For a server, this contains a callback function that allows the
+   * server to select the protocol for the connection.
+   *   out: on successful return, this must point to the raw protocol
+   *        name (without the length prefix).
+   *   outlen: on successful return, this contains the length of |*out|.
+   *   in: points to the client's list of supported protocols in
+   *       wire-format.
+   *   inlen: the length of |in|. */
+  int (*alpn_select_cb)(SSL *s, const uint8_t **out, uint8_t *outlen,
+                        const uint8_t *in, unsigned int inlen, void *arg);
+  void *alpn_select_cb_arg;
+
+  /* For a client, this contains the list of supported protocols in wire
+   * format. */
+  uint8_t *alpn_client_proto_list;
+  unsigned alpn_client_proto_list_len;
+
+  /* SRTP profiles we are willing to do from RFC 5764 */
+  STACK_OF(SRTP_PROTECTION_PROFILE) *srtp_profiles;
+
+  /* EC extension values inherited by SSL structure */
+  size_t tlsext_ellipticcurvelist_length;
+  uint16_t *tlsext_ellipticcurvelist;
+
+  /* If true, a client will advertise the Channel ID extension and a server
+   * will echo it. */
+  char tlsext_channel_id_enabled;
+  /* The client's Channel ID private key. */
+  EVP_PKEY *tlsext_channel_id_private;
+
+  /* If true, a client will request certificate timestamps. */
+  char signed_cert_timestamps_enabled;
+
+  /* Signed certificate timestamp list to be sent to the client, if requested */
+  uint8_t *signed_cert_timestamp_list;
+  size_t signed_cert_timestamp_list_length;
+
+  /* If true, a client will request a stapled OCSP response. */
+  char ocsp_stapling_enabled;
+
+  /* OCSP response to be sent to the client, if requested. */
+  uint8_t *ocsp_response;
+  size_t ocsp_response_length;
+
+  /* If not NULL, session key material will be logged to this BIO for debugging
+   * purposes. The format matches NSS's and is readable by Wireshark. */
+  BIO *keylog_bio;
+
+  /* current_time_cb, if not NULL, is the function to use to get the current
+   * time. It sets |*out_clock| to the current time. */
+  void (*current_time_cb)(const SSL *ssl, struct timeval *out_clock);
+};
+
+struct ssl_st {
+  /* version is the protocol version. */
+  int version;
+
+  /* method is the method table corresponding to the current protocol (DTLS or
+   * TLS). */
+  const SSL_PROTOCOL_METHOD *method;
+
+  /* enc_method is the method table corresponding to the current protocol
+   * version. */
+  const SSL3_ENC_METHOD *enc_method;
+
+  /* max_version is the maximum acceptable protocol version. If zero, the
+   * maximum supported version, currently (D)TLS 1.2, is used. */
+  uint16_t max_version;
+
+  /* min_version is the minimum acceptable protocl version. If zero, the
+   * minimum supported version, currently SSL 3.0 and DTLS 1.0, is used */
+  uint16_t min_version;
+
+  /* There are 2 BIO's even though they are normally both the same. This is so
+   * data can be read and written to different handlers */
+
+  BIO *rbio; /* used by SSL_read */
+  BIO *wbio; /* used by SSL_write */
+  BIO *bbio; /* used during session-id reuse to concatenate
+              * messages */
+
+  /* This holds a variable that indicates what we were doing when a 0 or -1 is
+   * returned.  This is needed for non-blocking IO so we know what request
+   * needs re-doing when in SSL_accept or SSL_connect */
+  int rwstate;
+
+  /* true when we are actually in SSL_accept() or SSL_connect() */
+  int in_handshake;
+  int (*handshake_func)(SSL *);
+
+  /* Imagine that here's a boolean member "init" that is switched as soon as
+   * SSL_set_{accept/connect}_state is called for the first time, so that
+   * "state" and "handshake_func" are properly initialized.  But as
+   * handshake_func is == 0 until then, we use this test instead of an "init"
+   * member. */
+
+  /* server is true iff the this SSL* is the server half. Note: before the SSL*
+   * is initialized by either SSL_set_accept_state or SSL_set_connect_state,
+   * the side is not determined. In this state, server is always false. */
+  int server;
+
+  /* quiet_shutdown is true if the connection should not send a close_notify on
+   * shutdown. */
+  int quiet_shutdown;
+
+  int shutdown; /* we have shut things down, 0x01 sent, 0x02
+                 * for received */
+  int state;    /* where we are */
+
+  BUF_MEM *init_buf; /* buffer used during init */
+  uint8_t *init_msg; /* pointer to handshake message body, set by
+                        ssl3_get_message() */
+  int init_num;      /* amount read/written */
+  int init_off;      /* amount read/written */
+
+  struct ssl3_state_st *s3;  /* SSLv3 variables */
+  struct dtls1_state_st *d1; /* DTLSv1 variables */
+
+  /* callback that allows applications to peek at protocol messages */
+  void (*msg_callback)(int write_p, int version, int content_type,
+                       const void *buf, size_t len, SSL *ssl, void *arg);
+  void *msg_callback_arg;
+
+  int hit; /* reusing a previous session */
+
+  X509_VERIFY_PARAM *param;
+
+  /* crypto */
+  struct ssl_cipher_preference_list_st *cipher_list;
+  STACK_OF(SSL_CIPHER) *cipher_list_by_id;
+
+  SSL_AEAD_CTX *aead_read_ctx;
+  SSL_AEAD_CTX *aead_write_ctx;
+
+  /* session info */
+
+  /* client cert? */
+  /* This is used to hold the server certificate used */
+  struct cert_st /* CERT */ *cert;
+
+  /* the session_id_context is used to ensure sessions are only reused
+   * in the appropriate context */
+  unsigned int sid_ctx_length;
+  uint8_t sid_ctx[SSL_MAX_SID_CTX_LENGTH];
+
+  /* This can also be in the session once a session is established */
+  SSL_SESSION *session;
+
+  /* Default generate session ID callback. */
+  GEN_SESSION_CB generate_session_id;
+
+  /* Used in SSL2 and SSL3 */
+  int verify_mode; /* 0 don't care about verify failure.
+                    * 1 fail if verify fails */
+  int (*verify_callback)(int ok,
+                         X509_STORE_CTX *ctx); /* fail if callback returns 0 */
+
+  void (*info_callback)(const SSL *ssl, int type,
+                        int val); /* optional informational callback */
+
+  /* Server-only: psk_identity_hint is the identity hint to send in
+   * PSK-based key exchanges. */
+  char *psk_identity_hint;
+
+  unsigned int (*psk_client_callback)(SSL *ssl, const char *hint,
+                                      char *identity,
+                                      unsigned int max_identity_len,
+                                      uint8_t *psk, unsigned int max_psk_len);
+  unsigned int (*psk_server_callback)(SSL *ssl, const char *identity,
+                                      uint8_t *psk, unsigned int max_psk_len);
+
+  SSL_CTX *ctx;
+
+  /* extra application data */
+  long verify_result;
+  CRYPTO_EX_DATA ex_data;
+
+  /* for server side, keep the list of CA_dn we can use */
+  STACK_OF(X509_NAME) *client_CA;
+
+  uint32_t options; /* protocol behaviour */
+  uint32_t mode;    /* API behaviour */
+  uint32_t max_cert_list;
+  int client_version; /* what was passed, used for
+                       * SSLv3/TLS rollback check */
+  uint16_t max_send_fragment;
+  char *tlsext_hostname;
+  /* RFC4507 session ticket expected to be received or sent */
+  int tlsext_ticket_expected;
+  size_t tlsext_ellipticcurvelist_length;
+  uint16_t *tlsext_ellipticcurvelist; /* our list */
+
+  SSL_CTX *initial_ctx; /* initial ctx, used to store sessions */
+
+  /* Next protocol negotiation. For the client, this is the protocol that we
+   * sent in NextProtocol and is set when handling ServerHello extensions.
+   *
+   * For a server, this is the client's selected_protocol from NextProtocol and
+   * is set when handling the NextProtocol message, before the Finished
+   * message. */
+  uint8_t *next_proto_negotiated;
+  size_t next_proto_negotiated_len;
+
+  /* srtp_profiles is the list of configured SRTP protection profiles for
+   * DTLS-SRTP. */
+  STACK_OF(SRTP_PROTECTION_PROFILE) *srtp_profiles;
+
+  /* srtp_profile is the selected SRTP protection profile for
+   * DTLS-SRTP. */
+  const SRTP_PROTECTION_PROFILE *srtp_profile;
+
+  /* Copied from the SSL_CTX. For a server, means that we'll accept Channel IDs
+   * from clients. For a client, means that we'll advertise support. */
+  char tlsext_channel_id_enabled;
+  /* The client's Channel ID private key. */
+  EVP_PKEY *tlsext_channel_id_private;
+
+  /* Enable signed certificate time stamps. Currently client only. */
+  char signed_cert_timestamps_enabled;
+
+  /* ocsp_stapling_enabled is only used by client connections and indicates
+   * whether OCSP stapling will be requested. */
+  char ocsp_stapling_enabled;
+
+  /* For a client, this contains the list of supported protocols in wire
+   * format. */
+  uint8_t *alpn_client_proto_list;
+  unsigned alpn_client_proto_list_len;
+
+  /* accept_peer_renegotiations, if one, accepts renegotiation attempts from the
+   * peer. Otherwise, they will be rejected with a fatal error. */
+  char accept_peer_renegotiations;
+
+  /* These fields are always NULL and exist only to keep wpa_supplicant happy
+   * about the change to EVP_AEAD. They are only needed for EAP-FAST, which we
+   * don't support. */
+  EVP_CIPHER_CTX *enc_read_ctx;
+  EVP_MD_CTX *read_hash;
+};
 
 
 /* Android compatibility section.
