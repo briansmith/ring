@@ -1049,6 +1049,89 @@ OPENSSL_EXPORT int SSL_CTX_add_server_custom_ext(
     SSL_custom_ext_parse_cb parse_cb, void *parse_arg);
 
 
+/* Sessions.
+ *
+ * An |SSL_SESSION| represents an SSL session that may be resumed in an
+ * abbreviated handshake. It is reference-counted and immutable. Once
+ * established, an |SSL_SESSION| may be shared by multiple |SSL| objects on
+ * different threads and must not be modified. */
+
+/* SSL_SESSION_new returns a newly-allocated blank |SSL_SESSION| or NULL on
+ * error. This may be useful in writing tests but otherwise should not be
+ * used outside the library. */
+OPENSSL_EXPORT SSL_SESSION *SSL_SESSION_new(void);
+
+/* SSL_SESSION_up_ref, if |session| is not NULL, increments the reference count
+ * of |session|. It then returns |session|. */
+OPENSSL_EXPORT SSL_SESSION *SSL_SESSION_up_ref(SSL_SESSION *session);
+
+/* SSL_SESSION_free decrements the reference count of |session|. If it reaches
+ * zero, all data referenced by |session| and |session| itself are released. */
+OPENSSL_EXPORT void SSL_SESSION_free(SSL_SESSION *session);
+
+/* SSL_SESSION_to_bytes serializes |in| into a newly allocated buffer and sets
+ * |*out_data| to that buffer and |*out_len| to its length. The caller takes
+ * ownership of the buffer and must call |OPENSSL_free| when done. It returns
+ * one on success and zero on error. */
+OPENSSL_EXPORT int SSL_SESSION_to_bytes(SSL_SESSION *in, uint8_t **out_data,
+                                        size_t *out_len);
+
+/* SSL_SESSION_to_bytes_for_ticket serializes |in|, but excludes the session
+ * identification information, namely the session ID and ticket. */
+OPENSSL_EXPORT int SSL_SESSION_to_bytes_for_ticket(SSL_SESSION *in,
+                                                   uint8_t **out_data,
+                                                   size_t *out_len);
+
+/* SSL_SESSION_from_bytes parses |in_len| bytes from |in| as an SSL_SESSION. It
+ * returns a newly-allocated |SSL_SESSION| on success or NULL on error. */
+OPENSSL_EXPORT SSL_SESSION *SSL_SESSION_from_bytes(const uint8_t *in,
+                                                   size_t in_len);
+
+/* SSL_SESSION_get_version returns a string describing the TLS version |session|
+ * was established at. For example, "TLSv1.2" or "SSLv3". */
+OPENSSL_EXPORT const char *SSL_SESSION_get_version(const SSL_SESSION *session);
+
+/* SSL_SESSION_get_id returns a pointer to a buffer containg |session|'s session
+ * ID and sets |*out_len| to its length. */
+OPENSSL_EXPORT const uint8_t *SSL_SESSION_get_id(const SSL_SESSION *session,
+                                                 unsigned *out_len);
+
+/* SSL_SESSION_get_time returns the time at which |session| was established in
+ * seconds since the UNIX epoch. */
+OPENSSL_EXPORT long SSL_SESSION_get_time(const SSL_SESSION *session);
+
+/* SSL_SESSION_get_timeout returns the lifetime of |session| in seconds. */
+OPENSSL_EXPORT long SSL_SESSION_get_timeout(const SSL_SESSION *session);
+
+/* SSL_SESSION_get_key_exchange_info returns a value that describes the
+ * strength of the asymmetric operation that provides confidentiality to
+ * |session|. Its interpretation depends on the operation used. See the
+ * documentation for this value in the |SSL_SESSION| structure. */
+OPENSSL_EXPORT uint32_t SSL_SESSION_get_key_exchange_info(SSL_SESSION *session);
+
+/* SSL_SESSION_get0_peer return's the peer leaf certificate stored in
+ * |session|. */
+OPENSSL_EXPORT X509 *SSL_SESSION_get0_peer(SSL_SESSION *session);
+
+/* SSL_SESSION_set_time sets |session|'s creation time to |time| and returns
+ * |time|. This function may be useful in writing tests but otherwise should not
+ * be used. */
+OPENSSL_EXPORT long SSL_SESSION_set_time(SSL_SESSION *session, long time);
+
+/* SSL_SESSION_set_time sets |session|'s timeout to |timeout| and returns one.
+ * This function may be useful in writing tests but otherwise should not be
+ * used. */
+OPENSSL_EXPORT long SSL_SESSION_set_timeout(SSL_SESSION *session, long timeout);
+
+/* SSL_SESSION_set1_id_context sets |session|'s session ID context (see
+ * |SSL_CTX_set_session_id_context|) to |sid_ctx|. It returns one on success and
+ * zero on error. This function may be useful in writing tests but otherwise
+ * should not be used. */
+OPENSSL_EXPORT int SSL_SESSION_set1_id_context(SSL_SESSION *session,
+                                               const uint8_t *sid_ctx,
+                                               unsigned sid_ctx_len);
+
+
 /* Session tickets. */
 
 /* SSL_CTX_get_tlsext_ticket_keys writes |ctx|'s session ticket key material to
@@ -1186,11 +1269,6 @@ OPENSSL_EXPORT int SSL_CTX_set_tlsext_ticket_key_cb(
 #define SSL_RECEIVED_SHUTDOWN 2
 
 typedef struct ssl_protocol_method_st SSL_PROTOCOL_METHOD;
-
-/* An SSL_SESSION represents an SSL session that may be resumed in an
- * abbreviated handshake. */
-typedef struct ssl_session_st SSL_SESSION;
-
 typedef struct ssl_conf_ctx_st SSL_CONF_CTX;
 typedef struct ssl3_enc_method SSL3_ENC_METHOD;
 
@@ -1770,35 +1848,9 @@ OPENSSL_EXPORT int SSL_add_dir_cert_subjects_to_stack(STACK_OF(X509_NAME) *
 
 OPENSSL_EXPORT const char *SSL_state_string(const SSL *s);
 OPENSSL_EXPORT const char *SSL_state_string_long(const SSL *s);
-OPENSSL_EXPORT long SSL_SESSION_get_time(const SSL_SESSION *s);
-OPENSSL_EXPORT long SSL_SESSION_set_time(SSL_SESSION *s, long t);
-OPENSSL_EXPORT long SSL_SESSION_get_timeout(const SSL_SESSION *s);
-OPENSSL_EXPORT long SSL_SESSION_set_timeout(SSL_SESSION *s, long t);
 
-/* SSL_SESSION_get_key_exchange_info returns a value that describes the
- * strength of the asymmetric operation that provides confidentiality to
- * |session|. Its interpretation depends on the operation used. See the
- * documentation for this value in the |SSL_SESSION| structure. */
-OPENSSL_EXPORT uint32_t SSL_SESSION_get_key_exchange_info(SSL_SESSION *session);
-
-OPENSSL_EXPORT X509 *SSL_SESSION_get0_peer(SSL_SESSION *s);
-OPENSSL_EXPORT int SSL_SESSION_set1_id_context(SSL_SESSION *s,
-                                               const uint8_t *sid_ctx,
-                                               unsigned int sid_ctx_len);
-
-OPENSSL_EXPORT SSL_SESSION *SSL_SESSION_new(void);
-OPENSSL_EXPORT const uint8_t *SSL_SESSION_get_id(const SSL_SESSION *s,
-                                                 unsigned int *len);
 OPENSSL_EXPORT int SSL_SESSION_print_fp(FILE *fp, const SSL_SESSION *ses);
 OPENSSL_EXPORT int SSL_SESSION_print(BIO *fp, const SSL_SESSION *ses);
-
-/* SSL_SESSION_up_ref, if |session| is not NULL, increments the reference count
- * of |session|. It then returns |session|. */
-OPENSSL_EXPORT SSL_SESSION *SSL_SESSION_up_ref(SSL_SESSION *session);
-
-/* SSL_SESSION_free decrements the reference count of |session|. If it reaches
- * zero, all data referenced by |session| and |session| itself are released. */
-OPENSSL_EXPORT void SSL_SESSION_free(SSL_SESSION *session);
 
 OPENSSL_EXPORT int SSL_set_session(SSL *to, SSL_SESSION *session);
 OPENSSL_EXPORT int SSL_CTX_add_session(SSL_CTX *s, SSL_SESSION *c);
@@ -1808,24 +1860,6 @@ OPENSSL_EXPORT int SSL_set_generate_session_id(SSL *, GEN_SESSION_CB);
 OPENSSL_EXPORT int SSL_has_matching_session_id(const SSL *ssl,
                                                const uint8_t *id,
                                                unsigned int id_len);
-
-/* SSL_SESSION_to_bytes serializes |in| into a newly allocated buffer and sets
- * |*out_data| to that buffer and |*out_len| to its length. The caller takes
- * ownership of the buffer and must call |OPENSSL_free| when done. It returns
- * one on success and zero on error. */
-OPENSSL_EXPORT int SSL_SESSION_to_bytes(SSL_SESSION *in, uint8_t **out_data,
-                                        size_t *out_len);
-
-/* SSL_SESSION_to_bytes_for_ticket serializes |in|, but excludes the session
- * identification information, namely the session ID and ticket. */
-OPENSSL_EXPORT int SSL_SESSION_to_bytes_for_ticket(SSL_SESSION *in,
-                                                   uint8_t **out_data,
-                                                   size_t *out_len);
-
-/* SSL_SESSION_from_bytes parses |in_len| bytes from |in| as an SSL_SESSION. It
- * returns a newly-allocated |SSL_SESSION| on success or NULL on error. */
-OPENSSL_EXPORT SSL_SESSION *SSL_SESSION_from_bytes(const uint8_t *in,
-                                                   size_t in_len);
 
 OPENSSL_EXPORT int SSL_CTX_get_verify_mode(const SSL_CTX *ctx);
 OPENSSL_EXPORT int SSL_CTX_get_verify_depth(const SSL_CTX *ctx);
@@ -1863,9 +1897,6 @@ OPENSSL_EXPORT X509_VERIFY_PARAM *SSL_get0_param(SSL *ssl);
 /* SSL_get_version returns a string describing the TLS version used by |s|. For
  * example, "TLSv1.2" or "SSLv3". */
 OPENSSL_EXPORT const char *SSL_get_version(const SSL *s);
-/* SSL_SESSION_get_version returns a string describing the TLS version used by
- * |sess|. For example, "TLSv1.2" or "SSLv3". */
-OPENSSL_EXPORT const char *SSL_SESSION_get_version(const SSL_SESSION *sess);
 
 /* SSL_get_curve_name returns a human-readable name for the elliptic curve
  * specified by the given TLS curve id, or NULL if the curve if unknown. */

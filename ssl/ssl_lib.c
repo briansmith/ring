@@ -2050,8 +2050,8 @@ const char *SSL_get_version(const SSL *s) {
   return ssl_get_version(s->version);
 }
 
-const char *SSL_SESSION_get_version(const SSL_SESSION *sess) {
-  return ssl_get_version(sess->ssl_version);
+const char *SSL_SESSION_get_version(const SSL_SESSION *session) {
+  return ssl_get_version(session->ssl_version);
 }
 
 const char* SSL_get_curve_name(uint16_t curve_id) {

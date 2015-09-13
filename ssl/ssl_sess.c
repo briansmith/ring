@@ -210,11 +210,12 @@ SSL_SESSION *SSL_SESSION_new(void) {
   return ss;
 }
 
-const uint8_t *SSL_SESSION_get_id(const SSL_SESSION *s, unsigned int *len) {
-  if (len) {
-    *len = s->session_id_length;
+const uint8_t *SSL_SESSION_get_id(const SSL_SESSION *session,
+                                  unsigned *out_len) {
+  if (out_len != NULL) {
+    *out_len = session->session_id_length;
   }
-  return s->session_id;
+  return session->session_id;
 }
 
 /* Even with SSLv2, we have 16 bytes (128 bits) of session ID space.
@@ -630,12 +631,12 @@ int SSL_set_session(SSL *s, SSL_SESSION *session) {
   return 1;
 }
 
-long SSL_SESSION_set_timeout(SSL_SESSION *s, long t) {
-  if (s == NULL) {
+long SSL_SESSION_set_timeout(SSL_SESSION *session, long timeout) {
+  if (session == NULL) {
     return 0;
   }
 
-  s->timeout = t;
+  session->timeout = timeout;
   return 1;
 }
 
@@ -647,30 +648,30 @@ long SSL_SESSION_get_time(const SSL_SESSION *session) {
   return session->time;
 }
 
-long SSL_SESSION_set_time(SSL_SESSION *s, long t) {
-  if (s == NULL) {
+long SSL_SESSION_set_time(SSL_SESSION *session, long time) {
+  if (session == NULL) {
     return 0;
   }
 
-  s->time = t;
-  return t;
+  session->time = time;
+  return time;
 }
 
 uint32_t SSL_SESSION_get_key_exchange_info(SSL_SESSION *session) {
   return session->key_exchange_info;
 }
 
-X509 *SSL_SESSION_get0_peer(SSL_SESSION *s) { return s->peer; }
+X509 *SSL_SESSION_get0_peer(SSL_SESSION *session) { return session->peer; }
 
-int SSL_SESSION_set1_id_context(SSL_SESSION *s, const uint8_t *sid_ctx,
-                                unsigned int sid_ctx_len) {
+int SSL_SESSION_set1_id_context(SSL_SESSION *session, const uint8_t *sid_ctx,
+                                unsigned sid_ctx_len) {
   if (sid_ctx_len > SSL_MAX_SID_CTX_LENGTH) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_SSL_SESSION_ID_CONTEXT_TOO_LONG);
     return 0;
   }
 
-  s->sid_ctx_length = sid_ctx_len;
-  memcpy(s->sid_ctx, sid_ctx, sid_ctx_len);
+  session->sid_ctx_length = sid_ctx_len;
+  memcpy(session->sid_ctx, sid_ctx, sid_ctx_len);
 
   return 1;
 }
