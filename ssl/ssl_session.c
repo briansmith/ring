@@ -184,12 +184,12 @@ int SSL_SESSION_get_ex_new_index(long argl, void *argp, CRYPTO_EX_new *new_func,
   return index;
 }
 
-int SSL_SESSION_set_ex_data(SSL_SESSION *s, int idx, void *arg) {
-  return CRYPTO_set_ex_data(&s->ex_data, idx, arg);
+int SSL_SESSION_set_ex_data(SSL_SESSION *session, int idx, void *arg) {
+  return CRYPTO_set_ex_data(&session->ex_data, idx, arg);
 }
 
-void *SSL_SESSION_get_ex_data(const SSL_SESSION *s, int idx) {
-  return CRYPTO_get_ex_data(&s->ex_data, idx);
+void *SSL_SESSION_get_ex_data(const SSL_SESSION *session, int idx) {
+  return CRYPTO_get_ex_data(&session->ex_data, idx);
 }
 
 SSL_SESSION *SSL_SESSION_new(void) {

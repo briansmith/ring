@@ -1179,6 +1179,34 @@ OPENSSL_EXPORT int SSL_CTX_set_tlsext_ticket_key_cb(
                                   int encrypt));
 
 
+/* ex_data functions.
+ *
+ * See |ex_data.h| for details. */
+
+OPENSSL_EXPORT int SSL_set_ex_data(SSL *ssl, int idx, void *data);
+OPENSSL_EXPORT void *SSL_get_ex_data(const SSL *ssl, int idx);
+OPENSSL_EXPORT int SSL_get_ex_new_index(long argl, void *argp,
+                                        CRYPTO_EX_new *new_func,
+                                        CRYPTO_EX_dup *dup_func,
+                                        CRYPTO_EX_free *free_func);
+
+OPENSSL_EXPORT int SSL_SESSION_set_ex_data(SSL_SESSION *session, int idx,
+                                           void *data);
+OPENSSL_EXPORT void *SSL_SESSION_get_ex_data(const SSL_SESSION *session,
+                                             int idx);
+OPENSSL_EXPORT int SSL_SESSION_get_ex_new_index(long argl, void *argp,
+                                                CRYPTO_EX_new *new_func,
+                                                CRYPTO_EX_dup *dup_func,
+                                                CRYPTO_EX_free *free_func);
+
+OPENSSL_EXPORT int SSL_CTX_set_ex_data(SSL_CTX *ctx, int idx, void *data);
+OPENSSL_EXPORT void *SSL_CTX_get_ex_data(const SSL_CTX *ctx, int idx);
+OPENSSL_EXPORT int SSL_CTX_get_ex_new_index(long argl, void *argp,
+                                            CRYPTO_EX_new *new_func,
+                                            CRYPTO_EX_dup *dup_func,
+                                            CRYPTO_EX_free *free_func);
+
+
 /* Underdocumented functions.
  *
  * Functions below here haven't been touched up and may be underdocumented. */
@@ -1953,28 +1981,6 @@ OPENSSL_EXPORT int SSL_state(const SSL *ssl);
 
 OPENSSL_EXPORT void SSL_set_verify_result(SSL *ssl, long v);
 OPENSSL_EXPORT long SSL_get_verify_result(const SSL *ssl);
-
-OPENSSL_EXPORT int SSL_set_ex_data(SSL *ssl, int idx, void *data);
-OPENSSL_EXPORT void *SSL_get_ex_data(const SSL *ssl, int idx);
-OPENSSL_EXPORT int SSL_get_ex_new_index(long argl, void *argp,
-                                        CRYPTO_EX_new *new_func,
-                                        CRYPTO_EX_dup *dup_func,
-                                        CRYPTO_EX_free *free_func);
-
-OPENSSL_EXPORT int SSL_SESSION_set_ex_data(SSL_SESSION *ss, int idx,
-                                           void *data);
-OPENSSL_EXPORT void *SSL_SESSION_get_ex_data(const SSL_SESSION *ss, int idx);
-OPENSSL_EXPORT int SSL_SESSION_get_ex_new_index(long argl, void *argp,
-                                                CRYPTO_EX_new *new_func,
-                                                CRYPTO_EX_dup *dup_func,
-                                                CRYPTO_EX_free *free_func);
-
-OPENSSL_EXPORT int SSL_CTX_set_ex_data(SSL_CTX *ssl, int idx, void *data);
-OPENSSL_EXPORT void *SSL_CTX_get_ex_data(const SSL_CTX *ssl, int idx);
-OPENSSL_EXPORT int SSL_CTX_get_ex_new_index(long argl, void *argp,
-                                            CRYPTO_EX_new *new_func,
-                                            CRYPTO_EX_dup *dup_func,
-                                            CRYPTO_EX_free *free_func);
 
 OPENSSL_EXPORT int SSL_get_ex_data_X509_STORE_CTX_idx(void);
 
