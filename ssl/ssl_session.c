@@ -158,6 +158,103 @@ static void SSL_SESSION_list_remove(SSL_CTX *ctx, SSL_SESSION *s);
 static void SSL_SESSION_list_add(SSL_CTX *ctx, SSL_SESSION *s);
 static int remove_session_lock(SSL_CTX *ctx, SSL_SESSION *c, int lck);
 
+SSL_SESSION *SSL_SESSION_new(void) {
+  SSL_SESSION *session = (SSL_SESSION *)OPENSSL_malloc(sizeof(SSL_SESSION));
+  if (session == NULL) {
+    OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
+    return 0;
+  }
+  memset(session, 0, sizeof(SSL_SESSION));
+
+  session->verify_result = 1; /* avoid 0 (= X509_V_OK) just in case */
+  session->references = 1;
+  session->timeout = SSL_DEFAULT_SESSION_TIMEOUT;
+  session->time = (unsigned long)time(NULL);
+  CRYPTO_new_ex_data(&g_ex_data_class, session, &session->ex_data);
+  return session;
+}
+
+SSL_SESSION *SSL_SESSION_up_ref(SSL_SESSION *session) {
+  if (session != NULL) {
+    CRYPTO_refcount_inc(&session->references);
+  }
+  return session;
+}
+
+void SSL_SESSION_free(SSL_SESSION *session) {
+  if (session == NULL ||
+      !CRYPTO_refcount_dec_and_test_zero(&session->references)) {
+    return;
+  }
+
+  CRYPTO_free_ex_data(&g_ex_data_class, session, &session->ex_data);
+
+  OPENSSL_cleanse(session->master_key, sizeof(session->master_key));
+  OPENSSL_cleanse(session->session_id, sizeof(session->session_id));
+  X509_free(session->peer);
+  sk_X509_pop_free(session->cert_chain, X509_free);
+  OPENSSL_free(session->tlsext_hostname);
+  OPENSSL_free(session->tlsext_tick);
+  OPENSSL_free(session->tlsext_signed_cert_timestamp_list);
+  OPENSSL_free(session->ocsp_response);
+  OPENSSL_free(session->psk_identity);
+  OPENSSL_cleanse(session, sizeof(*session));
+  OPENSSL_free(session);
+}
+
+const uint8_t *SSL_SESSION_get_id(const SSL_SESSION *session,
+                                  unsigned *out_len) {
+  if (out_len != NULL) {
+    *out_len = session->session_id_length;
+  }
+  return session->session_id;
+}
+
+long SSL_SESSION_get_timeout(const SSL_SESSION *session) {
+  return session->timeout;
+}
+
+long SSL_SESSION_get_time(const SSL_SESSION *session) {
+  return session->time;
+}
+
+uint32_t SSL_SESSION_get_key_exchange_info(SSL_SESSION *session) {
+  return session->key_exchange_info;
+}
+
+X509 *SSL_SESSION_get0_peer(SSL_SESSION *session) { return session->peer; }
+
+long SSL_SESSION_set_time(SSL_SESSION *session, long time) {
+  if (session == NULL) {
+    return 0;
+  }
+
+  session->time = time;
+  return time;
+}
+
+long SSL_SESSION_set_timeout(SSL_SESSION *session, long timeout) {
+  if (session == NULL) {
+    return 0;
+  }
+
+  session->timeout = timeout;
+  return 1;
+}
+
+int SSL_SESSION_set1_id_context(SSL_SESSION *session, const uint8_t *sid_ctx,
+                                unsigned sid_ctx_len) {
+  if (sid_ctx_len > SSL_MAX_SID_CTX_LENGTH) {
+    OPENSSL_PUT_ERROR(SSL, SSL_R_SSL_SESSION_ID_CONTEXT_TOO_LONG);
+    return 0;
+  }
+
+  session->sid_ctx_length = sid_ctx_len;
+  memcpy(session->sid_ctx, sid_ctx, sid_ctx_len);
+
+  return 1;
+}
+
 SSL_SESSION *SSL_magic_pending_session_ptr(void) {
   return (SSL_SESSION *)&g_pending_session_magic;
 }
@@ -190,32 +287,6 @@ int SSL_SESSION_set_ex_data(SSL_SESSION *session, int idx, void *arg) {
 
 void *SSL_SESSION_get_ex_data(const SSL_SESSION *session, int idx) {
   return CRYPTO_get_ex_data(&session->ex_data, idx);
-}
-
-SSL_SESSION *SSL_SESSION_new(void) {
-  SSL_SESSION *ss;
-
-  ss = (SSL_SESSION *)OPENSSL_malloc(sizeof(SSL_SESSION));
-  if (ss == NULL) {
-    OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
-    return 0;
-  }
-  memset(ss, 0, sizeof(SSL_SESSION));
-
-  ss->verify_result = 1; /* avoid 0 (= X509_V_OK) just in case */
-  ss->references = 1;
-  ss->timeout = SSL_DEFAULT_SESSION_TIMEOUT;
-  ss->time = (unsigned long)time(NULL);
-  CRYPTO_new_ex_data(&g_ex_data_class, ss, &ss->ex_data);
-  return ss;
-}
-
-const uint8_t *SSL_SESSION_get_id(const SSL_SESSION *session,
-                                  unsigned *out_len) {
-  if (out_len != NULL) {
-    *out_len = session->session_id_length;
-  }
-  return session->session_id;
 }
 
 /* Even with SSLv2, we have 16 bytes (128 bits) of session ID space.
@@ -588,34 +659,6 @@ static int remove_session_lock(SSL_CTX *ctx, SSL_SESSION *c, int lock) {
   return ret;
 }
 
-SSL_SESSION *SSL_SESSION_up_ref(SSL_SESSION *session) {
-  if (session) {
-    CRYPTO_refcount_inc(&session->references);
-  }
-  return session;
-}
-
-void SSL_SESSION_free(SSL_SESSION *session) {
-  if (session == NULL ||
-      !CRYPTO_refcount_dec_and_test_zero(&session->references)) {
-    return;
-  }
-
-  CRYPTO_free_ex_data(&g_ex_data_class, session, &session->ex_data);
-
-  OPENSSL_cleanse(session->master_key, sizeof(session->master_key));
-  OPENSSL_cleanse(session->session_id, sizeof(session->session_id));
-  X509_free(session->peer);
-  sk_X509_pop_free(session->cert_chain, X509_free);
-  OPENSSL_free(session->tlsext_hostname);
-  OPENSSL_free(session->tlsext_tick);
-  OPENSSL_free(session->tlsext_signed_cert_timestamp_list);
-  OPENSSL_free(session->ocsp_response);
-  OPENSSL_free(session->psk_identity);
-  OPENSSL_cleanse(session, sizeof(*session));
-  OPENSSL_free(session);
-}
-
 int SSL_set_session(SSL *s, SSL_SESSION *session) {
   if (s->session == session) {
     return 1;
@@ -627,51 +670,6 @@ int SSL_set_session(SSL *s, SSL_SESSION *session) {
     SSL_SESSION_up_ref(session);
     s->verify_result = session->verify_result;
   }
-
-  return 1;
-}
-
-long SSL_SESSION_set_timeout(SSL_SESSION *session, long timeout) {
-  if (session == NULL) {
-    return 0;
-  }
-
-  session->timeout = timeout;
-  return 1;
-}
-
-long SSL_SESSION_get_timeout(const SSL_SESSION *session) {
-  return session->timeout;
-}
-
-long SSL_SESSION_get_time(const SSL_SESSION *session) {
-  return session->time;
-}
-
-long SSL_SESSION_set_time(SSL_SESSION *session, long time) {
-  if (session == NULL) {
-    return 0;
-  }
-
-  session->time = time;
-  return time;
-}
-
-uint32_t SSL_SESSION_get_key_exchange_info(SSL_SESSION *session) {
-  return session->key_exchange_info;
-}
-
-X509 *SSL_SESSION_get0_peer(SSL_SESSION *session) { return session->peer; }
-
-int SSL_SESSION_set1_id_context(SSL_SESSION *session, const uint8_t *sid_ctx,
-                                unsigned sid_ctx_len) {
-  if (sid_ctx_len > SSL_MAX_SID_CTX_LENGTH) {
-    OPENSSL_PUT_ERROR(SSL, SSL_R_SSL_SESSION_ID_CONTEXT_TOO_LONG);
-    return 0;
-  }
-
-  session->sid_ctx_length = sid_ctx_len;
-  memcpy(session->sid_ctx, sid_ctx, sid_ctx_len);
 
   return 1;
 }
