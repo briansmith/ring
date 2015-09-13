@@ -179,75 +179,171 @@ int SSL_library_init(void) {
   return 1;
 }
 
-void SSL_load_error_strings(void) {}
+static uint32_t ssl_session_hash(const SSL_SESSION *a) {
+  uint32_t hash =
+      ((uint32_t)a->session_id[0]) ||
+      ((uint32_t)a->session_id[1] << 8) ||
+      ((uint32_t)a->session_id[2] << 16) ||
+      ((uint32_t)a->session_id[3] << 24);
 
-int SSL_clear(SSL *ssl) {
-  if (ssl->method == NULL) {
-    OPENSSL_PUT_ERROR(SSL, SSL_R_NO_METHOD_SPECIFIED);
-    return 0;
+  return hash;
+}
+
+/* NB: If this function (or indeed the hash function which uses a sort of
+ * coarser function than this one) is changed, ensure
+ * SSL_CTX_has_matching_session_id() is checked accordingly. It relies on being
+ * able to construct an SSL_SESSION that will collide with any existing session
+ * with a matching session ID. */
+static int ssl_session_cmp(const SSL_SESSION *a, const SSL_SESSION *b) {
+  if (a->ssl_version != b->ssl_version) {
+    return 1;
   }
 
-  if (ssl_clear_bad_session(ssl)) {
-    SSL_SESSION_free(ssl->session);
-    ssl->session = NULL;
+  if (a->session_id_length != b->session_id_length) {
+    return 1;
   }
 
-  ssl->hit = 0;
-  ssl->shutdown = 0;
+  return memcmp(a->session_id, b->session_id, a->session_id_length);
+}
 
-  /* SSL_clear may be called before or after the |ssl| is initialized in either
-   * accept or connect state. In the latter case, SSL_clear should preserve the
-   * half and reset |ssl->state| accordingly. */
-  if (ssl->handshake_func != NULL) {
-    if (ssl->server) {
-      SSL_set_accept_state(ssl);
-    } else {
-      SSL_set_connect_state(ssl);
-    }
-  } else {
-    assert(ssl->state == 0);
+SSL_CTX *SSL_CTX_new(const SSL_METHOD *method) {
+  SSL_CTX *ret = NULL;
+
+  if (method == NULL) {
+    OPENSSL_PUT_ERROR(SSL, SSL_R_NULL_SSL_METHOD_PASSED);
+    return NULL;
   }
 
-  /* TODO(davidben): Some state on |ssl| is reset both in |SSL_new| and
-   * |SSL_clear| because it is per-connection state rather than configuration
-   * state. Per-connection state should be on |ssl->s3| and |ssl->d1| so it is
-   * naturally reset at the right points between |SSL_new|, |SSL_clear|, and
-   * |ssl3_new|. */
-
-  ssl->rwstate = SSL_NOTHING;
-
-  BUF_MEM_free(ssl->init_buf);
-  ssl->init_buf = NULL;
-
-  ssl_clear_cipher_ctx(ssl);
-
-  OPENSSL_free(ssl->next_proto_negotiated);
-  ssl->next_proto_negotiated = NULL;
-  ssl->next_proto_negotiated_len = 0;
-
-  /* The ssl->d1->mtu is simultaneously configuration (preserved across
-   * clear) and connection-specific state (gets reset).
-   *
-   * TODO(davidben): Avoid this. */
-  unsigned mtu = 0;
-  if (ssl->d1 != NULL) {
-    mtu = ssl->d1->mtu;
+  if (SSL_get_ex_data_X509_STORE_CTX_idx() < 0) {
+    OPENSSL_PUT_ERROR(SSL, SSL_R_X509_VERIFICATION_SETUP_PROBLEMS);
+    goto err;
   }
 
-  ssl->method->ssl_free(ssl);
-  if (!ssl->method->ssl_new(ssl)) {
-    return 0;
-  }
-  ssl->enc_method = ssl3_get_enc_method(ssl->version);
-  assert(ssl->enc_method != NULL);
-
-  if (SSL_IS_DTLS(ssl) && (SSL_get_options(ssl) & SSL_OP_NO_QUERY_MTU)) {
-    ssl->d1->mtu = mtu;
+  ret = (SSL_CTX *)OPENSSL_malloc(sizeof(SSL_CTX));
+  if (ret == NULL) {
+    goto err;
   }
 
-  ssl->client_version = ssl->version;
+  memset(ret, 0, sizeof(SSL_CTX));
 
-  return 1;
+  ret->method = method->method;
+
+  CRYPTO_MUTEX_init(&ret->lock);
+
+  ret->session_cache_mode = SSL_SESS_CACHE_SERVER;
+  ret->session_cache_size = SSL_SESSION_CACHE_MAX_SIZE_DEFAULT;
+
+  /* We take the system default */
+  ret->session_timeout = SSL_DEFAULT_SESSION_TIMEOUT;
+
+  ret->references = 1;
+
+  ret->max_cert_list = SSL_MAX_CERT_LIST_DEFAULT;
+  ret->verify_mode = SSL_VERIFY_NONE;
+  ret->cert = ssl_cert_new();
+  if (ret->cert == NULL) {
+    goto err;
+  }
+
+  ret->sessions = lh_SSL_SESSION_new(ssl_session_hash, ssl_session_cmp);
+  if (ret->sessions == NULL) {
+    goto err;
+  }
+  ret->cert_store = X509_STORE_new();
+  if (ret->cert_store == NULL) {
+    goto err;
+  }
+
+  ssl_create_cipher_list(ret->method, &ret->cipher_list,
+                         &ret->cipher_list_by_id, SSL_DEFAULT_CIPHER_LIST);
+  if (ret->cipher_list == NULL ||
+      sk_SSL_CIPHER_num(ret->cipher_list->ciphers) <= 0) {
+    OPENSSL_PUT_ERROR(SSL, SSL_R_LIBRARY_HAS_NO_CIPHERS);
+    goto err2;
+  }
+
+  ret->param = X509_VERIFY_PARAM_new();
+  if (!ret->param) {
+    goto err;
+  }
+
+  ret->client_CA = sk_X509_NAME_new_null();
+  if (ret->client_CA == NULL) {
+    goto err;
+  }
+
+  CRYPTO_new_ex_data(&g_ex_data_class_ssl_ctx, ret, &ret->ex_data);
+
+  ret->max_send_fragment = SSL3_RT_MAX_PLAIN_LENGTH;
+
+  /* Setup RFC4507 ticket keys */
+  if (!RAND_bytes(ret->tlsext_tick_key_name, 16) ||
+      !RAND_bytes(ret->tlsext_tick_hmac_key, 16) ||
+      !RAND_bytes(ret->tlsext_tick_aes_key, 16)) {
+    ret->options |= SSL_OP_NO_TICKET;
+  }
+
+  /* Default is to connect to non-RI servers. When RI is more widely deployed
+   * might change this. */
+  ret->options |= SSL_OP_LEGACY_SERVER_CONNECT;
+
+  /* Lock the SSL_CTX to the specified version, for compatibility with legacy
+   * uses of SSL_METHOD. */
+  if (method->version != 0) {
+    SSL_CTX_set_max_version(ret, method->version);
+    SSL_CTX_set_min_version(ret, method->version);
+  }
+
+  return ret;
+
+err:
+  OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
+err2:
+  SSL_CTX_free(ret);
+  return NULL;
+}
+
+void SSL_CTX_free(SSL_CTX *ctx) {
+  if (ctx == NULL ||
+      !CRYPTO_refcount_dec_and_test_zero(&ctx->references)) {
+    return;
+  }
+
+  X509_VERIFY_PARAM_free(ctx->param);
+
+  /* Free internal session cache. However: the remove_cb() may reference the
+   * ex_data of SSL_CTX, thus the ex_data store can only be removed after the
+   * sessions were flushed. As the ex_data handling routines might also touch
+   * the session cache, the most secure solution seems to be: empty (flush) the
+   * cache, then free ex_data, then finally free the cache. (See ticket
+   * [openssl.org #212].) */
+  SSL_CTX_flush_sessions(ctx, 0);
+
+  CRYPTO_free_ex_data(&g_ex_data_class_ssl_ctx, ctx, &ctx->ex_data);
+
+  CRYPTO_MUTEX_cleanup(&ctx->lock);
+  lh_SSL_SESSION_free(ctx->sessions);
+  X509_STORE_free(ctx->cert_store);
+  ssl_cipher_preference_list_free(ctx->cipher_list);
+  sk_SSL_CIPHER_free(ctx->cipher_list_by_id);
+  ssl_cipher_preference_list_free(ctx->cipher_list_tls10);
+  ssl_cipher_preference_list_free(ctx->cipher_list_tls11);
+  ssl_cert_free(ctx->cert);
+  sk_SSL_CUSTOM_EXTENSION_pop_free(ctx->client_custom_extensions,
+                                   SSL_CUSTOM_EXTENSION_free);
+  sk_SSL_CUSTOM_EXTENSION_pop_free(ctx->server_custom_extensions,
+                                   SSL_CUSTOM_EXTENSION_free);
+  sk_X509_NAME_pop_free(ctx->client_CA, X509_NAME_free);
+  sk_SRTP_PROTECTION_PROFILE_free(ctx->srtp_profiles);
+  OPENSSL_free(ctx->psk_identity_hint);
+  OPENSSL_free(ctx->tlsext_ellipticcurvelist);
+  OPENSSL_free(ctx->alpn_client_proto_list);
+  OPENSSL_free(ctx->ocsp_response);
+  OPENSSL_free(ctx->signed_cert_timestamp_list);
+  EVP_PKEY_free(ctx->tlsext_channel_id_private);
+  BIO_free(ctx->keylog_bio);
+
+  OPENSSL_free(ctx);
 }
 
 SSL *SSL_new(SSL_CTX *ctx) {
@@ -361,6 +457,416 @@ err:
 
   return NULL;
 }
+
+void SSL_free(SSL *ssl) {
+  if (ssl == NULL) {
+    return;
+  }
+
+  X509_VERIFY_PARAM_free(ssl->param);
+
+  CRYPTO_free_ex_data(&g_ex_data_class_ssl, ssl, &ssl->ex_data);
+
+  if (ssl->bbio != NULL) {
+    /* If the buffering BIO is in place, pop it off */
+    if (ssl->bbio == ssl->wbio) {
+      ssl->wbio = BIO_pop(ssl->wbio);
+    }
+    BIO_free(ssl->bbio);
+    ssl->bbio = NULL;
+  }
+
+  int free_wbio = ssl->wbio != ssl->rbio;
+  BIO_free_all(ssl->rbio);
+  if (free_wbio) {
+    BIO_free_all(ssl->wbio);
+  }
+
+  BUF_MEM_free(ssl->init_buf);
+
+  /* add extra stuff */
+  ssl_cipher_preference_list_free(ssl->cipher_list);
+  sk_SSL_CIPHER_free(ssl->cipher_list_by_id);
+
+  ssl_clear_bad_session(ssl);
+  SSL_SESSION_free(ssl->session);
+
+  ssl_clear_cipher_ctx(ssl);
+
+  ssl_cert_free(ssl->cert);
+
+  OPENSSL_free(ssl->tlsext_hostname);
+  SSL_CTX_free(ssl->initial_ctx);
+  OPENSSL_free(ssl->tlsext_ellipticcurvelist);
+  OPENSSL_free(ssl->alpn_client_proto_list);
+  EVP_PKEY_free(ssl->tlsext_channel_id_private);
+  OPENSSL_free(ssl->psk_identity_hint);
+  sk_X509_NAME_pop_free(ssl->client_CA, X509_NAME_free);
+  OPENSSL_free(ssl->next_proto_negotiated);
+  sk_SRTP_PROTECTION_PROFILE_free(ssl->srtp_profiles);
+
+  if (ssl->method != NULL) {
+    ssl->method->ssl_free(ssl);
+  }
+  SSL_CTX_free(ssl->ctx);
+
+  OPENSSL_free(ssl);
+}
+
+void SSL_set_connect_state(SSL *ssl) {
+  ssl->server = 0;
+  ssl->shutdown = 0;
+  ssl->state = SSL_ST_CONNECT;
+  ssl->handshake_func = ssl->method->ssl_connect;
+  /* clear the current cipher */
+  ssl_clear_cipher_ctx(ssl);
+}
+
+void SSL_set_accept_state(SSL *ssl) {
+  ssl->server = 1;
+  ssl->shutdown = 0;
+  ssl->state = SSL_ST_ACCEPT;
+  ssl->handshake_func = ssl->method->ssl_accept;
+  /* clear the current cipher */
+  ssl_clear_cipher_ctx(ssl);
+}
+
+void SSL_set_bio(SSL *ssl, BIO *rbio, BIO *wbio) {
+  /* If the output buffering BIO is still in place, remove it. */
+  if (ssl->bbio != NULL) {
+    if (ssl->wbio == ssl->bbio) {
+      ssl->wbio = ssl->wbio->next_bio;
+      ssl->bbio->next_bio = NULL;
+    }
+  }
+
+  if (ssl->rbio != rbio) {
+    BIO_free_all(ssl->rbio);
+  }
+  if (ssl->wbio != wbio && ssl->rbio != ssl->wbio) {
+    BIO_free_all(ssl->wbio);
+  }
+  ssl->rbio = rbio;
+  ssl->wbio = wbio;
+}
+
+BIO *SSL_get_rbio(const SSL *ssl) { return ssl->rbio; }
+
+BIO *SSL_get_wbio(const SSL *ssl) { return ssl->wbio; }
+
+int SSL_do_handshake(SSL *ssl) {
+  if (ssl->handshake_func == NULL) {
+    OPENSSL_PUT_ERROR(SSL, SSL_R_CONNECTION_TYPE_NOT_SET);
+    return -1;
+  }
+
+  if (!SSL_in_init(ssl)) {
+    return 1;
+  }
+
+  return ssl->handshake_func(ssl);
+}
+
+int SSL_connect(SSL *ssl) {
+  if (ssl->handshake_func == 0) {
+    /* Not properly initialized yet */
+    SSL_set_connect_state(ssl);
+  }
+
+  if (ssl->handshake_func != ssl->method->ssl_connect) {
+    OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
+    return -1;
+  }
+
+  return ssl->handshake_func(ssl);
+}
+
+int SSL_accept(SSL *ssl) {
+  if (ssl->handshake_func == 0) {
+    /* Not properly initialized yet */
+    SSL_set_accept_state(ssl);
+  }
+
+  if (ssl->handshake_func != ssl->method->ssl_accept) {
+    OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
+    return -1;
+  }
+
+  return ssl->handshake_func(ssl);
+}
+
+int SSL_read(SSL *ssl, void *buf, int num) {
+  if (ssl->handshake_func == 0) {
+    OPENSSL_PUT_ERROR(SSL, SSL_R_UNINITIALIZED);
+    return -1;
+  }
+
+  if (ssl->shutdown & SSL_RECEIVED_SHUTDOWN) {
+    ssl->rwstate = SSL_NOTHING;
+    return 0;
+  }
+
+  ERR_clear_system_error();
+  return ssl->method->ssl_read_app_data(ssl, buf, num, 0);
+}
+
+int SSL_peek(SSL *ssl, void *buf, int num) {
+  if (ssl->handshake_func == 0) {
+    OPENSSL_PUT_ERROR(SSL, SSL_R_UNINITIALIZED);
+    return -1;
+  }
+
+  if (ssl->shutdown & SSL_RECEIVED_SHUTDOWN) {
+    return 0;
+  }
+
+  ERR_clear_system_error();
+  return ssl->method->ssl_read_app_data(ssl, buf, num, 1);
+}
+
+int SSL_write(SSL *ssl, const void *buf, int num) {
+  if (ssl->handshake_func == 0) {
+    OPENSSL_PUT_ERROR(SSL, SSL_R_UNINITIALIZED);
+    return -1;
+  }
+
+  if (ssl->shutdown & SSL_SENT_SHUTDOWN) {
+    ssl->rwstate = SSL_NOTHING;
+    OPENSSL_PUT_ERROR(SSL, SSL_R_PROTOCOL_IS_SHUTDOWN);
+    return -1;
+  }
+
+  ERR_clear_system_error();
+  return ssl->method->ssl_write_app_data(ssl, buf, num);
+}
+
+int SSL_shutdown(SSL *ssl) {
+  /* Note that this function behaves differently from what one might expect.
+   * Return values are 0 for no success (yet), 1 for success; but calling it
+   * once is usually not enough, even if blocking I/O is used (see
+   * ssl3_shutdown). */
+
+  if (ssl->handshake_func == 0) {
+    OPENSSL_PUT_ERROR(SSL, SSL_R_UNINITIALIZED);
+    return -1;
+  }
+
+  if (SSL_in_init(ssl)) {
+    return 1;
+  }
+
+  /* Do nothing if configured not to send a close_notify. */
+  if (ssl->quiet_shutdown) {
+    ssl->shutdown = SSL_SENT_SHUTDOWN | SSL_RECEIVED_SHUTDOWN;
+    return 1;
+  }
+
+  if (!(ssl->shutdown & SSL_SENT_SHUTDOWN)) {
+    ssl->shutdown |= SSL_SENT_SHUTDOWN;
+    ssl3_send_alert(ssl, SSL3_AL_WARNING, SSL_AD_CLOSE_NOTIFY);
+
+    /* our shutdown alert has been sent now, and if it still needs to be
+     * written, ssl->s3->alert_dispatch will be true */
+    if (ssl->s3->alert_dispatch) {
+      return -1; /* return WANT_WRITE */
+    }
+  } else if (ssl->s3->alert_dispatch) {
+    /* resend it if not sent */
+    int ret = ssl->method->ssl_dispatch_alert(ssl);
+    if (ret == -1) {
+      /* we only get to return -1 here the 2nd/Nth invocation, we must  have
+       * already signalled return 0 upon a previous invoation, return
+       * WANT_WRITE */
+      return ret;
+    }
+  } else if (!(ssl->shutdown & SSL_RECEIVED_SHUTDOWN)) {
+    /* If we are waiting for a close from our peer, we are closed */
+    ssl->method->ssl_read_close_notify(ssl);
+    if (!(ssl->shutdown & SSL_RECEIVED_SHUTDOWN)) {
+      return -1; /* return WANT_READ */
+    }
+  }
+
+  if (ssl->shutdown == (SSL_SENT_SHUTDOWN | SSL_RECEIVED_SHUTDOWN) &&
+      !ssl->s3->alert_dispatch) {
+    return 1;
+  } else {
+    return 0;
+  }
+}
+
+int SSL_get_error(const SSL *ssl, int ret_code) {
+  int reason;
+  uint32_t err;
+  BIO *bio;
+
+  if (ret_code > 0) {
+    return SSL_ERROR_NONE;
+  }
+
+  /* Make things return SSL_ERROR_SYSCALL when doing SSL_do_handshake etc,
+   * where we do encode the error */
+  err = ERR_peek_error();
+  if (err != 0) {
+    if (ERR_GET_LIB(err) == ERR_LIB_SYS) {
+      return SSL_ERROR_SYSCALL;
+    }
+    return SSL_ERROR_SSL;
+  }
+
+  if (ret_code == 0) {
+    if ((ssl->shutdown & SSL_RECEIVED_SHUTDOWN) &&
+        (ssl->s3->warn_alert == SSL_AD_CLOSE_NOTIFY)) {
+      /* The socket was cleanly shut down with a close_notify. */
+      return SSL_ERROR_ZERO_RETURN;
+    }
+    /* An EOF was observed which violates the protocol, and the underlying
+     * transport does not participate in the error queue. Bubble up to the
+     * caller. */
+    return SSL_ERROR_SYSCALL;
+  }
+
+  if (SSL_want_session(ssl)) {
+    return SSL_ERROR_PENDING_SESSION;
+  }
+
+  if (SSL_want_certificate(ssl)) {
+    return SSL_ERROR_PENDING_CERTIFICATE;
+  }
+
+  if (SSL_want_read(ssl)) {
+    bio = SSL_get_rbio(ssl);
+    if (BIO_should_read(bio)) {
+      return SSL_ERROR_WANT_READ;
+    }
+
+    if (BIO_should_write(bio)) {
+      /* This one doesn't make too much sense ... We never try to write to the
+       * rbio, and an application program where rbio and wbio are separate
+       * couldn't even know what it should wait for. However if we ever set
+       * s->rwstate incorrectly (so that we have SSL_want_read(s) instead of
+       * SSL_want_write(s)) and rbio and wbio *are* the same, this test works
+       * around that bug; so it might be safer to keep it. */
+      return SSL_ERROR_WANT_WRITE;
+    }
+
+    if (BIO_should_io_special(bio)) {
+      reason = BIO_get_retry_reason(bio);
+      if (reason == BIO_RR_CONNECT) {
+        return SSL_ERROR_WANT_CONNECT;
+      }
+
+      if (reason == BIO_RR_ACCEPT) {
+        return SSL_ERROR_WANT_ACCEPT;
+      }
+
+      return SSL_ERROR_SYSCALL; /* unknown */
+    }
+  }
+
+  if (SSL_want_write(ssl)) {
+    bio = SSL_get_wbio(ssl);
+    if (BIO_should_write(bio)) {
+      return SSL_ERROR_WANT_WRITE;
+    }
+
+    if (BIO_should_read(bio)) {
+      /* See above (SSL_want_read(ssl) with BIO_should_write(bio)) */
+      return SSL_ERROR_WANT_READ;
+    }
+
+    if (BIO_should_io_special(bio)) {
+      reason = BIO_get_retry_reason(bio);
+      if (reason == BIO_RR_CONNECT) {
+        return SSL_ERROR_WANT_CONNECT;
+      }
+
+      if (reason == BIO_RR_ACCEPT) {
+        return SSL_ERROR_WANT_ACCEPT;
+      }
+
+      return SSL_ERROR_SYSCALL;
+    }
+  }
+
+  if (SSL_want_x509_lookup(ssl)) {
+    return SSL_ERROR_WANT_X509_LOOKUP;
+  }
+
+  if (SSL_want_channel_id_lookup(ssl)) {
+    return SSL_ERROR_WANT_CHANNEL_ID_LOOKUP;
+  }
+
+  if (SSL_want_private_key_operation(ssl)) {
+    return SSL_ERROR_WANT_PRIVATE_KEY_OPERATION;
+  }
+
+  return SSL_ERROR_SYSCALL;
+}
+
+void SSL_CTX_set_min_version(SSL_CTX *ctx, uint16_t version) {
+  ctx->min_version = version;
+}
+
+void SSL_CTX_set_max_version(SSL_CTX *ctx, uint16_t version) {
+  ctx->max_version = version;
+}
+
+void SSL_set_min_version(SSL *ssl, uint16_t version) {
+  ssl->min_version = version;
+}
+
+void SSL_set_max_version(SSL *ssl, uint16_t version) {
+  ssl->max_version = version;
+}
+
+uint32_t SSL_CTX_set_options(SSL_CTX *ctx, uint32_t options) {
+  ctx->options |= options;
+  return ctx->options;
+}
+
+uint32_t SSL_CTX_clear_options(SSL_CTX *ctx, uint32_t options) {
+  ctx->options &= ~options;
+  return ctx->options;
+}
+
+uint32_t SSL_CTX_get_options(const SSL_CTX *ctx) { return ctx->options; }
+
+uint32_t SSL_set_options(SSL *ssl, uint32_t options) {
+  ssl->options |= options;
+  return ssl->options;
+}
+
+uint32_t SSL_clear_options(SSL *ssl, uint32_t options) {
+  ssl->options &= ~options;
+  return ssl->options;
+}
+
+uint32_t SSL_get_options(const SSL *ssl) { return ssl->options; }
+
+uint32_t SSL_CTX_set_mode(SSL_CTX *ctx, uint32_t mode) {
+  ctx->mode |= mode;
+  return ctx->mode;
+}
+
+uint32_t SSL_CTX_clear_mode(SSL_CTX *ctx, uint32_t mode) {
+  ctx->mode &= ~mode;
+  return ctx->mode;
+}
+
+uint32_t SSL_CTX_get_mode(const SSL_CTX *ctx) { return ctx->mode; }
+
+uint32_t SSL_set_mode(SSL *ssl, uint32_t mode) {
+  ssl->mode |= mode;
+  return ssl->mode;
+}
+
+uint32_t SSL_clear_mode(SSL *ssl, uint32_t mode) {
+  ssl->mode &= ~mode;
+  return ssl->mode;
+}
+
+uint32_t SSL_get_mode(const SSL *ssl) { return ssl->mode; }
 
 int SSL_CTX_set_session_id_context(SSL_CTX *ctx, const uint8_t *sid_ctx,
                                    unsigned int sid_ctx_len) {
@@ -513,84 +1019,6 @@ X509_VERIFY_PARAM *SSL_CTX_get0_param(SSL_CTX *ctx) { return ctx->param; }
 X509_VERIFY_PARAM *SSL_get0_param(SSL *ssl) { return ssl->param; }
 
 void SSL_certs_clear(SSL *ssl) { ssl_cert_clear_certs(ssl->cert); }
-
-void SSL_free(SSL *ssl) {
-  if (ssl == NULL) {
-    return;
-  }
-
-  X509_VERIFY_PARAM_free(ssl->param);
-
-  CRYPTO_free_ex_data(&g_ex_data_class_ssl, ssl, &ssl->ex_data);
-
-  if (ssl->bbio != NULL) {
-    /* If the buffering BIO is in place, pop it off */
-    if (ssl->bbio == ssl->wbio) {
-      ssl->wbio = BIO_pop(ssl->wbio);
-    }
-    BIO_free(ssl->bbio);
-    ssl->bbio = NULL;
-  }
-
-  int free_wbio = ssl->wbio != ssl->rbio;
-  BIO_free_all(ssl->rbio);
-  if (free_wbio) {
-    BIO_free_all(ssl->wbio);
-  }
-
-  BUF_MEM_free(ssl->init_buf);
-
-  /* add extra stuff */
-  ssl_cipher_preference_list_free(ssl->cipher_list);
-  sk_SSL_CIPHER_free(ssl->cipher_list_by_id);
-
-  ssl_clear_bad_session(ssl);
-  SSL_SESSION_free(ssl->session);
-
-  ssl_clear_cipher_ctx(ssl);
-
-  ssl_cert_free(ssl->cert);
-
-  OPENSSL_free(ssl->tlsext_hostname);
-  SSL_CTX_free(ssl->initial_ctx);
-  OPENSSL_free(ssl->tlsext_ellipticcurvelist);
-  OPENSSL_free(ssl->alpn_client_proto_list);
-  EVP_PKEY_free(ssl->tlsext_channel_id_private);
-  OPENSSL_free(ssl->psk_identity_hint);
-  sk_X509_NAME_pop_free(ssl->client_CA, X509_NAME_free);
-  OPENSSL_free(ssl->next_proto_negotiated);
-  sk_SRTP_PROTECTION_PROFILE_free(ssl->srtp_profiles);
-
-  if (ssl->method != NULL) {
-    ssl->method->ssl_free(ssl);
-  }
-  SSL_CTX_free(ssl->ctx);
-
-  OPENSSL_free(ssl);
-}
-
-void SSL_set_bio(SSL *ssl, BIO *rbio, BIO *wbio) {
-  /* If the output buffering BIO is still in place, remove it. */
-  if (ssl->bbio != NULL) {
-    if (ssl->wbio == ssl->bbio) {
-      ssl->wbio = ssl->wbio->next_bio;
-      ssl->bbio->next_bio = NULL;
-    }
-  }
-
-  if (ssl->rbio != rbio) {
-    BIO_free_all(ssl->rbio);
-  }
-  if (ssl->wbio != wbio && ssl->rbio != ssl->wbio) {
-    BIO_free_all(ssl->wbio);
-  }
-  ssl->rbio = rbio;
-  ssl->wbio = wbio;
-}
-
-BIO *SSL_get_rbio(const SSL *ssl) { return ssl->rbio; }
-
-BIO *SSL_get_wbio(const SSL *ssl) { return ssl->wbio; }
 
 int SSL_get_fd(const SSL *s) { return SSL_get_rfd(s); }
 
@@ -803,136 +1231,8 @@ int SSL_check_private_key(const SSL *ssl) {
   return X509_check_private_key(ssl->cert->x509, ssl->cert->privatekey);
 }
 
-int SSL_accept(SSL *ssl) {
-  if (ssl->handshake_func == 0) {
-    /* Not properly initialized yet */
-    SSL_set_accept_state(ssl);
-  }
-
-  if (ssl->handshake_func != ssl->method->ssl_accept) {
-    OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
-    return -1;
-  }
-
-  return ssl->handshake_func(ssl);
-}
-
-int SSL_connect(SSL *ssl) {
-  if (ssl->handshake_func == 0) {
-    /* Not properly initialized yet */
-    SSL_set_connect_state(ssl);
-  }
-
-  if (ssl->handshake_func != ssl->method->ssl_connect) {
-    OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
-    return -1;
-  }
-
-  return ssl->handshake_func(ssl);
-}
-
 long SSL_get_default_timeout(const SSL *s) {
   return SSL_DEFAULT_SESSION_TIMEOUT;
-}
-
-int SSL_read(SSL *ssl, void *buf, int num) {
-  if (ssl->handshake_func == 0) {
-    OPENSSL_PUT_ERROR(SSL, SSL_R_UNINITIALIZED);
-    return -1;
-  }
-
-  if (ssl->shutdown & SSL_RECEIVED_SHUTDOWN) {
-    ssl->rwstate = SSL_NOTHING;
-    return 0;
-  }
-
-  ERR_clear_system_error();
-  return ssl->method->ssl_read_app_data(ssl, buf, num, 0);
-}
-
-int SSL_peek(SSL *ssl, void *buf, int num) {
-  if (ssl->handshake_func == 0) {
-    OPENSSL_PUT_ERROR(SSL, SSL_R_UNINITIALIZED);
-    return -1;
-  }
-
-  if (ssl->shutdown & SSL_RECEIVED_SHUTDOWN) {
-    return 0;
-  }
-
-  ERR_clear_system_error();
-  return ssl->method->ssl_read_app_data(ssl, buf, num, 1);
-}
-
-int SSL_write(SSL *ssl, const void *buf, int num) {
-  if (ssl->handshake_func == 0) {
-    OPENSSL_PUT_ERROR(SSL, SSL_R_UNINITIALIZED);
-    return -1;
-  }
-
-  if (ssl->shutdown & SSL_SENT_SHUTDOWN) {
-    ssl->rwstate = SSL_NOTHING;
-    OPENSSL_PUT_ERROR(SSL, SSL_R_PROTOCOL_IS_SHUTDOWN);
-    return -1;
-  }
-
-  ERR_clear_system_error();
-  return ssl->method->ssl_write_app_data(ssl, buf, num);
-}
-
-int SSL_shutdown(SSL *ssl) {
-  /* Note that this function behaves differently from what one might expect.
-   * Return values are 0 for no success (yet), 1 for success; but calling it
-   * once is usually not enough, even if blocking I/O is used (see
-   * ssl3_shutdown). */
-
-  if (ssl->handshake_func == 0) {
-    OPENSSL_PUT_ERROR(SSL, SSL_R_UNINITIALIZED);
-    return -1;
-  }
-
-  if (SSL_in_init(ssl)) {
-    return 1;
-  }
-
-  /* Do nothing if configured not to send a close_notify. */
-  if (ssl->quiet_shutdown) {
-    ssl->shutdown = SSL_SENT_SHUTDOWN | SSL_RECEIVED_SHUTDOWN;
-    return 1;
-  }
-
-  if (!(ssl->shutdown & SSL_SENT_SHUTDOWN)) {
-    ssl->shutdown |= SSL_SENT_SHUTDOWN;
-    ssl3_send_alert(ssl, SSL3_AL_WARNING, SSL_AD_CLOSE_NOTIFY);
-
-    /* our shutdown alert has been sent now, and if it still needs to be
-     * written, ssl->s3->alert_dispatch will be true */
-    if (ssl->s3->alert_dispatch) {
-      return -1; /* return WANT_WRITE */
-    }
-  } else if (ssl->s3->alert_dispatch) {
-    /* resend it if not sent */
-    int ret = ssl->method->ssl_dispatch_alert(ssl);
-    if (ret == -1) {
-      /* we only get to return -1 here the 2nd/Nth invocation, we must  have
-       * already signalled return 0 upon a previous invoation, return
-       * WANT_WRITE */
-      return ret;
-    }
-  } else if (!(ssl->shutdown & SSL_RECEIVED_SHUTDOWN)) {
-    /* If we are waiting for a close from our peer, we are closed */
-    ssl->method->ssl_read_close_notify(ssl);
-    if (!(ssl->shutdown & SSL_RECEIVED_SHUTDOWN)) {
-      return -1; /* return WANT_READ */
-    }
-  }
-
-  if (ssl->shutdown == (SSL_SENT_SHUTDOWN | SSL_RECEIVED_SHUTDOWN) &&
-      !ssl->s3->alert_dispatch) {
-    return 1;
-  } else {
-    return 0;
-  }
 }
 
 int SSL_renegotiate(SSL *ssl) {
@@ -944,54 +1244,6 @@ int SSL_renegotiate(SSL *ssl) {
 int SSL_renegotiate_pending(SSL *ssl) {
   return SSL_in_init(ssl) && ssl->s3->initial_handshake_complete;
 }
-
-uint32_t SSL_CTX_set_options(SSL_CTX *ctx, uint32_t options) {
-  ctx->options |= options;
-  return ctx->options;
-}
-
-uint32_t SSL_set_options(SSL *ssl, uint32_t options) {
-  ssl->options |= options;
-  return ssl->options;
-}
-
-uint32_t SSL_CTX_clear_options(SSL_CTX *ctx, uint32_t options) {
-  ctx->options &= ~options;
-  return ctx->options;
-}
-
-uint32_t SSL_clear_options(SSL *ssl, uint32_t options) {
-  ssl->options &= ~options;
-  return ssl->options;
-}
-
-uint32_t SSL_CTX_get_options(const SSL_CTX *ctx) { return ctx->options; }
-
-uint32_t SSL_get_options(const SSL *ssl) { return ssl->options; }
-
-uint32_t SSL_CTX_set_mode(SSL_CTX *ctx, uint32_t mode) {
-  ctx->mode |= mode;
-  return ctx->mode;
-}
-
-uint32_t SSL_set_mode(SSL *ssl, uint32_t mode) {
-  ssl->mode |= mode;
-  return ssl->mode;
-}
-
-uint32_t SSL_CTX_clear_mode(SSL_CTX *ctx, uint32_t mode) {
-  ctx->mode &= ~mode;
-  return ctx->mode;
-}
-
-uint32_t SSL_clear_mode(SSL *ssl, uint32_t mode) {
-  ssl->mode &= ~mode;
-  return ssl->mode;
-}
-
-uint32_t SSL_CTX_get_mode(const SSL_CTX *ctx) { return ctx->mode; }
-
-uint32_t SSL_get_mode(const SSL *ssl) { return ssl->mode; }
 
 size_t SSL_CTX_get_max_cert_list(const SSL_CTX *ctx) {
   return ctx->max_cert_list;
@@ -1593,173 +1845,6 @@ int SSL_export_keying_material(SSL *s, uint8_t *out, size_t out_len,
       s, out, out_len, label, label_len, context, context_len, use_context);
 }
 
-static uint32_t ssl_session_hash(const SSL_SESSION *a) {
-  uint32_t hash =
-      ((uint32_t)a->session_id[0]) ||
-      ((uint32_t)a->session_id[1] << 8) ||
-      ((uint32_t)a->session_id[2] << 16) ||
-      ((uint32_t)a->session_id[3] << 24);
-
-  return hash;
-}
-
-/* NB: If this function (or indeed the hash function which uses a sort of
- * coarser function than this one) is changed, ensure
- * SSL_CTX_has_matching_session_id() is checked accordingly. It relies on being
- * able to construct an SSL_SESSION that will collide with any existing session
- * with a matching session ID. */
-static int ssl_session_cmp(const SSL_SESSION *a, const SSL_SESSION *b) {
-  if (a->ssl_version != b->ssl_version) {
-    return 1;
-  }
-
-  if (a->session_id_length != b->session_id_length) {
-    return 1;
-  }
-
-  return memcmp(a->session_id, b->session_id, a->session_id_length);
-}
-
-SSL_CTX *SSL_CTX_new(const SSL_METHOD *method) {
-  SSL_CTX *ret = NULL;
-
-  if (method == NULL) {
-    OPENSSL_PUT_ERROR(SSL, SSL_R_NULL_SSL_METHOD_PASSED);
-    return NULL;
-  }
-
-  if (SSL_get_ex_data_X509_STORE_CTX_idx() < 0) {
-    OPENSSL_PUT_ERROR(SSL, SSL_R_X509_VERIFICATION_SETUP_PROBLEMS);
-    goto err;
-  }
-
-  ret = (SSL_CTX *)OPENSSL_malloc(sizeof(SSL_CTX));
-  if (ret == NULL) {
-    goto err;
-  }
-
-  memset(ret, 0, sizeof(SSL_CTX));
-
-  ret->method = method->method;
-
-  CRYPTO_MUTEX_init(&ret->lock);
-
-  ret->session_cache_mode = SSL_SESS_CACHE_SERVER;
-  ret->session_cache_size = SSL_SESSION_CACHE_MAX_SIZE_DEFAULT;
-
-  /* We take the system default */
-  ret->session_timeout = SSL_DEFAULT_SESSION_TIMEOUT;
-
-  ret->references = 1;
-
-  ret->max_cert_list = SSL_MAX_CERT_LIST_DEFAULT;
-  ret->verify_mode = SSL_VERIFY_NONE;
-  ret->cert = ssl_cert_new();
-  if (ret->cert == NULL) {
-    goto err;
-  }
-
-  ret->sessions = lh_SSL_SESSION_new(ssl_session_hash, ssl_session_cmp);
-  if (ret->sessions == NULL) {
-    goto err;
-  }
-  ret->cert_store = X509_STORE_new();
-  if (ret->cert_store == NULL) {
-    goto err;
-  }
-
-  ssl_create_cipher_list(ret->method, &ret->cipher_list,
-                         &ret->cipher_list_by_id, SSL_DEFAULT_CIPHER_LIST);
-  if (ret->cipher_list == NULL ||
-      sk_SSL_CIPHER_num(ret->cipher_list->ciphers) <= 0) {
-    OPENSSL_PUT_ERROR(SSL, SSL_R_LIBRARY_HAS_NO_CIPHERS);
-    goto err2;
-  }
-
-  ret->param = X509_VERIFY_PARAM_new();
-  if (!ret->param) {
-    goto err;
-  }
-
-  ret->client_CA = sk_X509_NAME_new_null();
-  if (ret->client_CA == NULL) {
-    goto err;
-  }
-
-  CRYPTO_new_ex_data(&g_ex_data_class_ssl_ctx, ret, &ret->ex_data);
-
-  ret->max_send_fragment = SSL3_RT_MAX_PLAIN_LENGTH;
-
-  /* Setup RFC4507 ticket keys */
-  if (!RAND_bytes(ret->tlsext_tick_key_name, 16) ||
-      !RAND_bytes(ret->tlsext_tick_hmac_key, 16) ||
-      !RAND_bytes(ret->tlsext_tick_aes_key, 16)) {
-    ret->options |= SSL_OP_NO_TICKET;
-  }
-
-  /* Default is to connect to non-RI servers. When RI is more widely deployed
-   * might change this. */
-  ret->options |= SSL_OP_LEGACY_SERVER_CONNECT;
-
-  /* Lock the SSL_CTX to the specified version, for compatibility with legacy
-   * uses of SSL_METHOD. */
-  if (method->version != 0) {
-    SSL_CTX_set_max_version(ret, method->version);
-    SSL_CTX_set_min_version(ret, method->version);
-  }
-
-  return ret;
-
-err:
-  OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
-err2:
-  SSL_CTX_free(ret);
-  return NULL;
-}
-
-void SSL_CTX_free(SSL_CTX *ctx) {
-  if (ctx == NULL ||
-      !CRYPTO_refcount_dec_and_test_zero(&ctx->references)) {
-    return;
-  }
-
-  X509_VERIFY_PARAM_free(ctx->param);
-
-  /* Free internal session cache. However: the remove_cb() may reference the
-   * ex_data of SSL_CTX, thus the ex_data store can only be removed after the
-   * sessions were flushed. As the ex_data handling routines might also touch
-   * the session cache, the most secure solution seems to be: empty (flush) the
-   * cache, then free ex_data, then finally free the cache. (See ticket
-   * [openssl.org #212].) */
-  SSL_CTX_flush_sessions(ctx, 0);
-
-  CRYPTO_free_ex_data(&g_ex_data_class_ssl_ctx, ctx, &ctx->ex_data);
-
-  CRYPTO_MUTEX_cleanup(&ctx->lock);
-  lh_SSL_SESSION_free(ctx->sessions);
-  X509_STORE_free(ctx->cert_store);
-  ssl_cipher_preference_list_free(ctx->cipher_list);
-  sk_SSL_CIPHER_free(ctx->cipher_list_by_id);
-  ssl_cipher_preference_list_free(ctx->cipher_list_tls10);
-  ssl_cipher_preference_list_free(ctx->cipher_list_tls11);
-  ssl_cert_free(ctx->cert);
-  sk_SSL_CUSTOM_EXTENSION_pop_free(ctx->client_custom_extensions,
-                                   SSL_CUSTOM_EXTENSION_free);
-  sk_SSL_CUSTOM_EXTENSION_pop_free(ctx->server_custom_extensions,
-                                   SSL_CUSTOM_EXTENSION_free);
-  sk_X509_NAME_pop_free(ctx->client_CA, X509_NAME_free);
-  sk_SRTP_PROTECTION_PROFILE_free(ctx->srtp_profiles);
-  OPENSSL_free(ctx->psk_identity_hint);
-  OPENSSL_free(ctx->tlsext_ellipticcurvelist);
-  OPENSSL_free(ctx->alpn_client_proto_list);
-  OPENSSL_free(ctx->ocsp_response);
-  OPENSSL_free(ctx->signed_cert_timestamp_list);
-  EVP_PKEY_free(ctx->tlsext_channel_id_private);
-  BIO_free(ctx->keylog_bio);
-
-  OPENSSL_free(ctx);
-}
-
 void SSL_CTX_set_default_passwd_cb(SSL_CTX *ctx, pem_password_cb *cb) {
   ctx->default_passwd_callback = cb;
 }
@@ -1899,146 +1984,6 @@ void ssl_update_cache(SSL *s, int mode) {
       SSL_CTX_flush_sessions(ctx, (unsigned long)time(NULL));
     }
   }
-}
-
-int SSL_get_error(const SSL *ssl, int ret_code) {
-  int reason;
-  uint32_t err;
-  BIO *bio;
-
-  if (ret_code > 0) {
-    return SSL_ERROR_NONE;
-  }
-
-  /* Make things return SSL_ERROR_SYSCALL when doing SSL_do_handshake etc,
-   * where we do encode the error */
-  err = ERR_peek_error();
-  if (err != 0) {
-    if (ERR_GET_LIB(err) == ERR_LIB_SYS) {
-      return SSL_ERROR_SYSCALL;
-    }
-    return SSL_ERROR_SSL;
-  }
-
-  if (ret_code == 0) {
-    if ((ssl->shutdown & SSL_RECEIVED_SHUTDOWN) &&
-        (ssl->s3->warn_alert == SSL_AD_CLOSE_NOTIFY)) {
-      /* The socket was cleanly shut down with a close_notify. */
-      return SSL_ERROR_ZERO_RETURN;
-    }
-    /* An EOF was observed which violates the protocol, and the underlying
-     * transport does not participate in the error queue. Bubble up to the
-     * caller. */
-    return SSL_ERROR_SYSCALL;
-  }
-
-  if (SSL_want_session(ssl)) {
-    return SSL_ERROR_PENDING_SESSION;
-  }
-
-  if (SSL_want_certificate(ssl)) {
-    return SSL_ERROR_PENDING_CERTIFICATE;
-  }
-
-  if (SSL_want_read(ssl)) {
-    bio = SSL_get_rbio(ssl);
-    if (BIO_should_read(bio)) {
-      return SSL_ERROR_WANT_READ;
-    }
-
-    if (BIO_should_write(bio)) {
-      /* This one doesn't make too much sense ... We never try to write to the
-       * rbio, and an application program where rbio and wbio are separate
-       * couldn't even know what it should wait for. However if we ever set
-       * s->rwstate incorrectly (so that we have SSL_want_read(s) instead of
-       * SSL_want_write(s)) and rbio and wbio *are* the same, this test works
-       * around that bug; so it might be safer to keep it. */
-      return SSL_ERROR_WANT_WRITE;
-    }
-
-    if (BIO_should_io_special(bio)) {
-      reason = BIO_get_retry_reason(bio);
-      if (reason == BIO_RR_CONNECT) {
-        return SSL_ERROR_WANT_CONNECT;
-      }
-
-      if (reason == BIO_RR_ACCEPT) {
-        return SSL_ERROR_WANT_ACCEPT;
-      }
-
-      return SSL_ERROR_SYSCALL; /* unknown */
-    }
-  }
-
-  if (SSL_want_write(ssl)) {
-    bio = SSL_get_wbio(ssl);
-    if (BIO_should_write(bio)) {
-      return SSL_ERROR_WANT_WRITE;
-    }
-
-    if (BIO_should_read(bio)) {
-      /* See above (SSL_want_read(ssl) with BIO_should_write(bio)) */
-      return SSL_ERROR_WANT_READ;
-    }
-
-    if (BIO_should_io_special(bio)) {
-      reason = BIO_get_retry_reason(bio);
-      if (reason == BIO_RR_CONNECT) {
-        return SSL_ERROR_WANT_CONNECT;
-      }
-
-      if (reason == BIO_RR_ACCEPT) {
-        return SSL_ERROR_WANT_ACCEPT;
-      }
-
-      return SSL_ERROR_SYSCALL;
-    }
-  }
-
-  if (SSL_want_x509_lookup(ssl)) {
-    return SSL_ERROR_WANT_X509_LOOKUP;
-  }
-
-  if (SSL_want_channel_id_lookup(ssl)) {
-    return SSL_ERROR_WANT_CHANNEL_ID_LOOKUP;
-  }
-
-  if (SSL_want_private_key_operation(ssl)) {
-    return SSL_ERROR_WANT_PRIVATE_KEY_OPERATION;
-  }
-
-  return SSL_ERROR_SYSCALL;
-}
-
-int SSL_do_handshake(SSL *ssl) {
-  if (ssl->handshake_func == NULL) {
-    OPENSSL_PUT_ERROR(SSL, SSL_R_CONNECTION_TYPE_NOT_SET);
-    return -1;
-  }
-
-  if (!SSL_in_init(ssl)) {
-    return 1;
-  }
-
-  return ssl->handshake_func(ssl);
-}
-
-void SSL_set_accept_state(SSL *ssl) {
-  ssl->server = 1;
-  ssl->shutdown = 0;
-  ssl->state = SSL_ST_ACCEPT;
-  ssl->handshake_func = ssl->method->ssl_accept;
-  /* clear the current cipher */
-  ssl_clear_cipher_ctx(ssl);
-}
-
-void SSL_set_connect_state(SSL *ssl) {
-  ssl->server = 0;
-  ssl->shutdown = 0;
-  ssl->state = SSL_ST_CONNECT;
-  ssl->handshake_func = ssl->method->ssl_connect;
-  /* clear the current cipher */
-  ssl_clear_cipher_ctx(ssl);
 }
 
 static const char *ssl_get_version(int version) {
@@ -2410,22 +2355,6 @@ void SSL_CTX_set_psk_server_callback(
     SSL_CTX *ctx, unsigned int (*cb)(SSL *ssl, const char *identity,
                                      uint8_t *psk, unsigned int max_psk_len)) {
   ctx->psk_server_callback = cb;
-}
-
-void SSL_CTX_set_min_version(SSL_CTX *ctx, uint16_t version) {
-  ctx->min_version = version;
-}
-
-void SSL_CTX_set_max_version(SSL_CTX *ctx, uint16_t version) {
-  ctx->max_version = version;
-}
-
-void SSL_set_min_version(SSL *ssl, uint16_t version) {
-  ssl->min_version = version;
-}
-
-void SSL_set_max_version(SSL *ssl, uint16_t version) {
-  ssl->max_version = version;
 }
 
 void SSL_CTX_set_msg_callback(SSL_CTX *ctx,
@@ -2851,6 +2780,75 @@ err:
   return 0;
 }
 
+int SSL_clear(SSL *ssl) {
+  if (ssl->method == NULL) {
+    OPENSSL_PUT_ERROR(SSL, SSL_R_NO_METHOD_SPECIFIED);
+    return 0;
+  }
+
+  if (ssl_clear_bad_session(ssl)) {
+    SSL_SESSION_free(ssl->session);
+    ssl->session = NULL;
+  }
+
+  ssl->hit = 0;
+  ssl->shutdown = 0;
+
+  /* SSL_clear may be called before or after the |ssl| is initialized in either
+   * accept or connect state. In the latter case, SSL_clear should preserve the
+   * half and reset |ssl->state| accordingly. */
+  if (ssl->handshake_func != NULL) {
+    if (ssl->server) {
+      SSL_set_accept_state(ssl);
+    } else {
+      SSL_set_connect_state(ssl);
+    }
+  } else {
+    assert(ssl->state == 0);
+  }
+
+  /* TODO(davidben): Some state on |ssl| is reset both in |SSL_new| and
+   * |SSL_clear| because it is per-connection state rather than configuration
+   * state. Per-connection state should be on |ssl->s3| and |ssl->d1| so it is
+   * naturally reset at the right points between |SSL_new|, |SSL_clear|, and
+   * |ssl3_new|. */
+
+  ssl->rwstate = SSL_NOTHING;
+
+  BUF_MEM_free(ssl->init_buf);
+  ssl->init_buf = NULL;
+
+  ssl_clear_cipher_ctx(ssl);
+
+  OPENSSL_free(ssl->next_proto_negotiated);
+  ssl->next_proto_negotiated = NULL;
+  ssl->next_proto_negotiated_len = 0;
+
+  /* The ssl->d1->mtu is simultaneously configuration (preserved across
+   * clear) and connection-specific state (gets reset).
+   *
+   * TODO(davidben): Avoid this. */
+  unsigned mtu = 0;
+  if (ssl->d1 != NULL) {
+    mtu = ssl->d1->mtu;
+  }
+
+  ssl->method->ssl_free(ssl);
+  if (!ssl->method->ssl_new(ssl)) {
+    return 0;
+  }
+  ssl->enc_method = ssl3_get_enc_method(ssl->version);
+  assert(ssl->enc_method != NULL);
+
+  if (SSL_IS_DTLS(ssl) && (SSL_get_options(ssl) & SSL_OP_NO_QUERY_MTU)) {
+    ssl->d1->mtu = mtu;
+  }
+
+  ssl->client_version = ssl->version;
+
+  return 1;
+}
+
 int SSL_CTX_sess_connect(const SSL_CTX *ctx) { return 0; }
 int SSL_CTX_sess_connect_good(const SSL_CTX *ctx) { return 0; }
 int SSL_CTX_sess_connect_renegotiate(const SSL_CTX *ctx) { return 0; }
@@ -2863,3 +2861,4 @@ int SSL_CTX_sess_misses(const SSL_CTX *ctx) { return 0; }
 int SSL_CTX_sess_timeouts(const SSL_CTX *ctx) { return 0; }
 int SSL_CTX_sess_cache_full(const SSL_CTX *ctx) { return 0; }
 void ERR_load_SSL_strings(void) {}
+void SSL_load_error_strings(void) {}

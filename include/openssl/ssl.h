@@ -2321,9 +2321,6 @@ OPENSSL_EXPORT int SSL_add_dir_cert_subjects_to_stack(STACK_OF(X509_NAME) *
                                                           stackCAs,
                                                       const char *dir);
 
-/* SSL_load_error_strings does nothing. */
-OPENSSL_EXPORT void SSL_load_error_strings(void);
-
 OPENSSL_EXPORT const char *SSL_state_string(const SSL *s);
 OPENSSL_EXPORT const char *SSL_state_string_long(const SSL *s);
 OPENSSL_EXPORT long SSL_SESSION_get_time(const SSL_SESSION *s);
@@ -2651,9 +2648,6 @@ OPENSSL_EXPORT void SSL_get_structure_sizes(size_t *ssl_size,
                                             size_t *ssl_ctx_size,
                                             size_t *ssl_session_size);
 
-/* ERR_load_SSL_strings does nothing. */
-OPENSSL_EXPORT void ERR_load_SSL_strings(void);
-
 /* SSL_get_rc4_state sets |*read_key| and |*write_key| to the RC4 states for
  * the read and write directions. It returns one on success or zero if |ssl|
  * isn't using an RC4-based cipher suite. */
@@ -2824,6 +2818,12 @@ OPENSSL_EXPORT int i2d_SSL_SESSION(SSL_SESSION *in, uint8_t **pp);
  * Use |SSL_SESSION_from_bytes| instead. */
 OPENSSL_EXPORT SSL_SESSION *d2i_SSL_SESSION(SSL_SESSION **a, const uint8_t **pp,
                                             long length);
+
+/* ERR_load_SSL_strings does nothing. */
+OPENSSL_EXPORT void ERR_load_SSL_strings(void);
+
+/* SSL_load_error_strings does nothing. */
+OPENSSL_EXPORT void SSL_load_error_strings(void);
 
 
 /* Android compatibility section.
