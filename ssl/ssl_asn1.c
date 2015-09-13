@@ -177,7 +177,7 @@ static int add_X509(CBB *cbb, X509 *x509) {
   return 1;
 }
 
-static int SSL_SESSION_to_bytes_full(SSL_SESSION *in, uint8_t **out_data,
+static int SSL_SESSION_to_bytes_full(const SSL_SESSION *in, uint8_t **out_data,
                                      size_t *out_len, int for_ticket) {
   CBB cbb, session, child, child2;
 
@@ -364,11 +364,12 @@ static int SSL_SESSION_to_bytes_full(SSL_SESSION *in, uint8_t **out_data,
   return 0;
 }
 
-int SSL_SESSION_to_bytes(SSL_SESSION *in, uint8_t **out_data, size_t *out_len) {
+int SSL_SESSION_to_bytes(const SSL_SESSION *in, uint8_t **out_data,
+                         size_t *out_len) {
   return SSL_SESSION_to_bytes_full(in, out_data, out_len, 0);
 }
 
-int SSL_SESSION_to_bytes_for_ticket(SSL_SESSION *in, uint8_t **out_data,
+int SSL_SESSION_to_bytes_for_ticket(const SSL_SESSION *in, uint8_t **out_data,
                                     size_t *out_len) {
   return SSL_SESSION_to_bytes_full(in, out_data, out_len, 1);
 }

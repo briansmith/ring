@@ -1073,12 +1073,12 @@ OPENSSL_EXPORT void SSL_SESSION_free(SSL_SESSION *session);
  * |*out_data| to that buffer and |*out_len| to its length. The caller takes
  * ownership of the buffer and must call |OPENSSL_free| when done. It returns
  * one on success and zero on error. */
-OPENSSL_EXPORT int SSL_SESSION_to_bytes(SSL_SESSION *in, uint8_t **out_data,
-                                        size_t *out_len);
+OPENSSL_EXPORT int SSL_SESSION_to_bytes(const SSL_SESSION *in,
+                                        uint8_t **out_data, size_t *out_len);
 
 /* SSL_SESSION_to_bytes_for_ticket serializes |in|, but excludes the session
  * identification information, namely the session ID and ticket. */
-OPENSSL_EXPORT int SSL_SESSION_to_bytes_for_ticket(SSL_SESSION *in,
+OPENSSL_EXPORT int SSL_SESSION_to_bytes_for_ticket(const SSL_SESSION *in,
                                                    uint8_t **out_data,
                                                    size_t *out_len);
 
@@ -1107,11 +1107,14 @@ OPENSSL_EXPORT long SSL_SESSION_get_timeout(const SSL_SESSION *session);
  * strength of the asymmetric operation that provides confidentiality to
  * |session|. Its interpretation depends on the operation used. See the
  * documentation for this value in the |SSL_SESSION| structure. */
-OPENSSL_EXPORT uint32_t SSL_SESSION_get_key_exchange_info(SSL_SESSION *session);
+OPENSSL_EXPORT uint32_t SSL_SESSION_get_key_exchange_info(
+    const SSL_SESSION *session);
 
 /* SSL_SESSION_get0_peer return's the peer leaf certificate stored in
- * |session|. */
-OPENSSL_EXPORT X509 *SSL_SESSION_get0_peer(SSL_SESSION *session);
+ * |session|.
+ *
+ * TODO(davidben): This should return a const X509 *. */
+OPENSSL_EXPORT X509 *SSL_SESSION_get0_peer(const SSL_SESSION *session);
 
 /* SSL_SESSION_set_time sets |session|'s creation time to |time| and returns
  * |time|. This function may be useful in writing tests but otherwise should not
