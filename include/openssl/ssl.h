@@ -941,6 +941,21 @@ OPENSSL_EXPORT void SSL_set_private_key_method(
 
 /* Connection information. */
 
+/* SSL_get_peer_certificate returns the peer's leaf certificate or NULL if the
+ * peer did not use certificates. The caller must call |X509_free| on the
+ * result to release it. */
+OPENSSL_EXPORT X509 *SSL_get_peer_certificate(const SSL *ssl);
+
+/* SSL_get_peer_cert_chain returns the peer's certificate chain or NULL if
+ * unavailable or the peer did not use certificates. For historical reasons,
+ * this may not be available if resuming a serialized |SSL_SESSION|. The caller
+ * does not take ownership of the result.
+ *
+ * WARNING: This function behaves differently between client and server. If
+ * |ssl| is a server, the returned chain does not include the leaf certificate.
+ * If a client, it does. */
+OPENSSL_EXPORT STACK_OF(X509) *SSL_get_peer_cert_chain(const SSL *ssl);
+
 /* SSL_get_tls_unique writes at most |max_out| bytes of the tls-unique value
  * for |ssl| to |out| and sets |*out_len| to the number of bytes written. It
  * returns one on success or zero on error. In general |max_out| should be at
@@ -2379,21 +2394,6 @@ OPENSSL_EXPORT int SSL_SESSION_to_bytes_for_ticket(SSL_SESSION *in,
  * returns a newly-allocated |SSL_SESSION| on success or NULL on error. */
 OPENSSL_EXPORT SSL_SESSION *SSL_SESSION_from_bytes(const uint8_t *in,
                                                    size_t in_len);
-
-/* SSL_get_peer_certificate returns the peer's leaf certificate or NULL if the
- * peer did not use certificates. The caller must call |X509_free| on the
- * result to release it. */
-OPENSSL_EXPORT X509 *SSL_get_peer_certificate(const SSL *ssl);
-
-/* SSL_get_peer_cert_chain returns the peer's certificate chain or NULL if
- * unavailable or the peer did not use certificates. For historical reasons,
- * this may not be available if resuming a serialized |SSL_SESSION|. The caller
- * does not take ownership of the result.
- *
- * WARNING: This function behaves differently between client and server. If
- * |ssl| is a server, the returned chain does not include the leaf certificate.
- * If a client, it does. */
-OPENSSL_EXPORT STACK_OF(X509) *SSL_get_peer_cert_chain(const SSL *ssl);
 
 OPENSSL_EXPORT int SSL_CTX_get_verify_mode(const SSL_CTX *ctx);
 OPENSSL_EXPORT int SSL_CTX_get_verify_depth(const SSL_CTX *ctx);

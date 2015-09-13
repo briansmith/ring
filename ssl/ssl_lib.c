@@ -868,6 +868,55 @@ uint32_t SSL_clear_mode(SSL *ssl, uint32_t mode) {
 
 uint32_t SSL_get_mode(const SSL *ssl) { return ssl->mode; }
 
+X509 *SSL_get_peer_certificate(const SSL *ssl) {
+  if (ssl == NULL || ssl->session == NULL || ssl->session->peer == NULL) {
+    return NULL;
+  }
+  return X509_up_ref(ssl->session->peer);
+}
+
+STACK_OF(X509) *SSL_get_peer_cert_chain(const SSL *ssl) {
+  if (ssl == NULL || ssl->session == NULL) {
+    return NULL;
+  }
+  return ssl->session->cert_chain;
+}
+
+int SSL_get_tls_unique(const SSL *ssl, uint8_t *out, size_t *out_len,
+                       size_t max_out) {
+  /* The tls-unique value is the first Finished message in the handshake, which
+   * is the client's in a full handshake and the server's for a resumption. See
+   * https://tools.ietf.org/html/rfc5929#section-3.1. */
+  const uint8_t *finished = ssl->s3->previous_client_finished;
+  size_t finished_len = ssl->s3->previous_client_finished_len;
+  if (ssl->hit) {
+    /* tls-unique is broken for resumed sessions unless EMS is used. */
+    if (!ssl->session->extended_master_secret) {
+      goto err;
+    }
+    finished = ssl->s3->previous_server_finished;
+    finished_len = ssl->s3->previous_server_finished_len;
+  }
+
+  if (!ssl->s3->initial_handshake_complete ||
+      ssl->version < TLS1_VERSION) {
+    goto err;
+  }
+
+  *out_len = finished_len;
+  if (finished_len > max_out) {
+    *out_len = max_out;
+  }
+
+  memcpy(out, finished, *out_len);
+  return 1;
+
+err:
+  *out_len = 0;
+  memset(out, 0, max_out);
+  return 0;
+}
+
 int SSL_CTX_set_session_id_context(SSL_CTX *ctx, const uint8_t *sid_ctx,
                                    unsigned int sid_ctx_len) {
   if (sid_ctx_len > sizeof ctx->sid_ctx) {
@@ -1185,20 +1234,6 @@ void SSL_set_read_ahead(SSL *s, int yes) { }
 int SSL_pending(const SSL *s) {
   return (s->s3->rrec.type == SSL3_RT_APPLICATION_DATA) ? s->s3->rrec.length
                                                         : 0;
-}
-
-X509 *SSL_get_peer_certificate(const SSL *ssl) {
-  if (ssl == NULL || ssl->session == NULL || ssl->session->peer == NULL) {
-    return NULL;
-  }
-  return X509_up_ref(ssl->session->peer);
-}
-
-STACK_OF(X509) *SSL_get_peer_cert_chain(const SSL *ssl) {
-  if (ssl == NULL || ssl->session == NULL) {
-    return NULL;
-  }
-  return ssl->session->cert_chain;
 }
 
 /* Fix this so it checks all the valid key/cert options */
@@ -2743,41 +2778,6 @@ int SSL_get_rc4_state(const SSL *ssl, const RC4_KEY **read_key,
 
   return EVP_AEAD_CTX_get_rc4_state(&ssl->aead_read_ctx->ctx, read_key) &&
          EVP_AEAD_CTX_get_rc4_state(&ssl->aead_write_ctx->ctx, write_key);
-}
-
-int SSL_get_tls_unique(const SSL *ssl, uint8_t *out, size_t *out_len,
-                       size_t max_out) {
-  /* The tls-unique value is the first Finished message in the handshake, which
-   * is the client's in a full handshake and the server's for a resumption. See
-   * https://tools.ietf.org/html/rfc5929#section-3.1. */
-  const uint8_t *finished = ssl->s3->previous_client_finished;
-  size_t finished_len = ssl->s3->previous_client_finished_len;
-  if (ssl->hit) {
-    /* tls-unique is broken for resumed sessions unless EMS is used. */
-    if (!ssl->session->extended_master_secret) {
-      goto err;
-    }
-    finished = ssl->s3->previous_server_finished;
-    finished_len = ssl->s3->previous_server_finished_len;
-  }
-
-  if (!ssl->s3->initial_handshake_complete ||
-      ssl->version < TLS1_VERSION) {
-    goto err;
-  }
-
-  *out_len = finished_len;
-  if (finished_len > max_out) {
-    *out_len = max_out;
-  }
-
-  memcpy(out, finished, *out_len);
-  return 1;
-
-err:
-  *out_len = 0;
-  memset(out, 0, max_out);
-  return 0;
 }
 
 int SSL_clear(SSL *ssl) {
