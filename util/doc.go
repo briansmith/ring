@@ -189,14 +189,6 @@ func extractDecl(lines []string, lineNo int) (decl string, rest []string, restLi
 	return
 }
 
-func skipPast(s, skip string) string {
-	i := strings.Index(s, skip)
-	if i > 0 {
-		return s[i:]
-	}
-	return s
-}
-
 func skipLine(s string) string {
 	i := strings.Index(s, "\n")
 	if i > 0 {
@@ -224,8 +216,9 @@ func getNameFromDecl(decl string) (string, bool) {
 		}
 		return decl[:i], true
 	}
-	decl = skipPast(decl, "STACK_OF(")
-	decl = skipPast(decl, "LHASH_OF(")
+	decl = strings.TrimPrefix(decl, "OPENSSL_EXPORT ")
+	decl = strings.TrimPrefix(decl, "STACK_OF(")
+	decl = strings.TrimPrefix(decl, "LHASH_OF(")
 	i := strings.Index(decl, "(")
 	if i < 0 {
 		return "", false
