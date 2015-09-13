@@ -295,6 +295,174 @@ OPENSSL_EXPORT void SSL_set_connect_state(SSL *ssl);
 /* SSL_set_accept_state configures |ssl| to be a server. */
 OPENSSL_EXPORT void SSL_set_accept_state(SSL *ssl);
 
+/* SSL_set_bio configures |ssl| to read from |rbio| and write to |wbio|. |ssl|
+ * takes ownership of the two |BIO|s. If |rbio| and |wbio| are the same, |ssl|
+ * only takes ownership of one reference.
+ *
+ * Calling this function on an already-configured |ssl| is deprecated. */
+OPENSSL_EXPORT void SSL_set_bio(SSL *ssl, BIO *rbio, BIO *wbio);
+
+/* SSL_get_rbio returns the |BIO| that |ssl| reads from. */
+OPENSSL_EXPORT BIO *SSL_get_rbio(const SSL *ssl);
+
+/* SSL_get_wbio returns the |BIO| that |ssl| writes to. */
+OPENSSL_EXPORT BIO *SSL_get_wbio(const SSL *ssl);
+
+/* SSL_do_handshake continues the current handshake. If there is none or the
+ * handshake has completed or False Started, it returns one. Otherwise, it
+ * returns <= 0. The caller should pass the value into |SSL_get_error| to
+ * determine how to proceed.
+ *
+ * TODO(davidben): Ensure 0 is only returned on transport EOF.
+ * https://crbug.com/466303. */
+OPENSSL_EXPORT int SSL_do_handshake(SSL *ssl);
+
+/* SSL_connect configures |ssl| as a client, if unconfigured, and calls
+ * |SSL_do_handshake|. */
+OPENSSL_EXPORT int SSL_connect(SSL *ssl);
+
+/* SSL_accept configures |ssl| as a server, if unconfigured, and calls
+ * |SSL_do_handshake|. */
+OPENSSL_EXPORT int SSL_accept(SSL *ssl);
+
+/* SSL_read reads up to |num| bytes from |ssl| into |buf|. It implicitly runs
+ * any pending handshakes, including renegotiations when enabled. On success, it
+ * returns the number of bytes read. Otherwise, it returns <= 0. The caller
+ * should pass the value into |SSL_get_error| to determine how to proceed.
+ *
+ * TODO(davidben): Ensure 0 is only returned on transport EOF.
+ * https://crbug.com/466303. */
+OPENSSL_EXPORT int SSL_read(SSL *ssl, void *buf, int num);
+
+/* SSL_peek behaves like |SSL_read| but does not consume any bytes returned. */
+OPENSSL_EXPORT int SSL_peek(SSL *ssl, void *buf, int num);
+
+/* SSL_write writes up to |num| bytes from |buf| into |ssl|. It implicitly runs
+ * any pending handshakes, including renegotiations when enabled. On success, it
+ * returns the number of bytes read. Otherwise, it returns <= 0. The caller
+ * should pass the value into |SSL_get_error| to determine how to proceed.
+ *
+ * A non-blocking |SSL_write| differs from non-blocking |write| in that a failed
+ * |SSL_write| still commits to the data passed in. When retrying, the caller
+ * must supply the original write buffer (or a larger one containing the
+ * original as a prefix). By default, retries will fail if they also do not
+ * reuse the same |buf| pointer. This may be relaxed with
+ * |SSL_MODE_ACCEPT_MOVING_WRITE_BUFFER|, but the buffer contents still must be
+ * unchanged.
+ *
+ * By default, |SSL_write| will not return success until all |num| bytes are
+ * written. This may be relaxed with |SSL_MODE_ENABLE_PARTIAL_WRITE|. It allows
+ * |SSL_write| to complete with a partial result when only part of the input was
+ * written in a single record.
+ *
+ * TODO(davidben): Ensure 0 is only returned on transport EOF.
+ * https://crbug.com/466303. */
+OPENSSL_EXPORT int SSL_write(SSL *ssl, const void *buf, int num);
+
+/* SSL_shutdown shuts down |ssl|. On success, it completes in two stages. First,
+ * it returns 0 if |ssl| completed uni-directional shutdown; close_notify has
+ * been sent, but the peer's close_notify has not been received. Most callers
+ * may stop at this point. For bi-directional shutdown, call |SSL_shutdown|
+ * again. It returns 1 if close_notify has been both sent and received.
+ *
+ * If the peer's close_notify arrived first, the first stage is skipped.
+ * |SSL_shutdown| will return 1 once close_notify is sent and skip 0. Callers
+ * only interested in uni-directional shutdown must therefore allow for the
+ * first stage returning either 0 or 1.
+ *
+ * |SSL_shutdown| returns -1 on failure. The caller should pass the return value
+ * into |SSL_get_error| to determine how to proceed. If the underlying |BIO| is
+ * non-blocking, both stages may require retry.
+ *
+ * |SSL_shutdown| must be called to retain |ssl|'s session in the session
+ * cache. Use |SSL_CTX_set_quiet_shutdown| to configure |SSL_shutdown| to
+ * neither send nor wait for close_notify but still retain the session.
+ *
+ * TODO(davidben): Is there any point in the session cache interaction? Remove
+ * it? */
+OPENSSL_EXPORT int SSL_shutdown(SSL *ssl);
+
+/* SSL_get_error returns a |SSL_ERROR_*| value for the most recent operation on
+ * |ssl|. It should be called after an operation failed to determine. */
+OPENSSL_EXPORT int SSL_get_error(const SSL *ssl, int ret_code);
+
+/* SSL_ERROR_NONE indicates the operation succeeded. */
+#define SSL_ERROR_NONE 0
+
+/* SSL_ERROR_SSL indicates the operation failed within the library. The caller
+ * may inspect the error queue for more information. */
+#define SSL_ERROR_SSL 1
+
+/* SSL_ERROR_WANT_READ indicates the operation failed attempting to read from
+ * the transport. The caller may retry the operation when the transport is ready
+ * for reading. */
+#define SSL_ERROR_WANT_READ 2
+
+/* SSL_ERROR_WANT_READ indicates the operation failed attempting to write to
+ * the transport. The caller may retry the operation when the transport is ready
+ * for writing. */
+#define SSL_ERROR_WANT_WRITE 3
+
+/* SSL_ERROR_WANT_X509_LOOKUP indicates the operation failed in calling the
+ * |cert_cb| or |client_cert_cb|. The caller may retry the operation when the
+ * callback is ready to return a certificate or one has been configured
+ * externally.
+ *
+ * See also |SSL_CTX_set_cert_cb| and |SSL_CTX_set_client_cert_cb|. */
+#define SSL_ERROR_WANT_X509_LOOKUP 4
+
+/* SSL_ERROR_WANT_SYSCALL indicates the operation failed externally to the
+ * library. The caller should consult the system-specific error mechanism. This
+ * is typically |errno| but may be something custom if using a custom |BIO|. It
+ * may also be signaled if the transport returned EOF, in which case the
+ * operation's return value will be zero. */
+#define SSL_ERROR_SYSCALL 5
+
+/* SSL_ERROR_ZERO_RETURN indicates the operation failed because the connection
+ * was cleanly shut down with a close_notify alert. */
+#define SSL_ERROR_ZERO_RETURN 6
+
+/* SSL_ERROR_WANT_CONNECT indicates the operation failed attempting to connect
+ * the transport (the |BIO| signaled |BIO_RR_CONNECT|). The caller may retry the
+ * operation when the transport is ready. */
+#define SSL_ERROR_WANT_CONNECT 7
+
+/* SSL_ERROR_WANT_ACCEPT indicates the operation failed attempting to accept a
+ * connection from the transport (the |BIO| signaled |BIO_RR_ACCEPT|). The
+ * caller may retry the operation when the transport is ready.
+ *
+ * TODO(davidben): Remove this. It's used by accept BIOs which are bizarre. */
+#define SSL_ERROR_WANT_ACCEPT 8
+
+/* SSL_ERROR_WANT_CHANNEL_ID_LOOKUP indicates the operation failed looking up
+ * the Channel ID key. The caller may retry the operation when |channel_id_cb|
+ * is ready to return a key or one has been configured externally.
+ *
+ * See also |SSL_CTX_set_channel_id_cb|. */
+#define SSL_ERROR_WANT_CHANNEL_ID_LOOKUP 9
+
+/* SSL_ERROR_PENDING_SESSION indicates the operation failed because the session
+ * lookup callback indicated the session was unavailable. The caller may retry
+ * the operation when lookup has completed.
+ *
+ * See also |SSL_CTX_sess_set_get_cb|. */
+#define SSL_ERROR_PENDING_SESSION 11
+
+/* SSL_ERROR_PENDING_CERTIFICATE indicates the operation failed because the
+ * early callback indicated certificate lookup was incomplete. The caller may
+ * retry the operation when lookup has completed. Note: when the operation is
+ * retried, the early callback will not be called a second time.
+ *
+ * See also |select_certificate_cb| on |SSL_CTX|. */
+#define SSL_ERROR_PENDING_CERTIFICATE 12
+
+/* SSL_ERROR_WANT_PRIVATE_KEY_OPERATION indicates the operation failed because
+ * a private key operation was unfinished. The caller may retry the operation
+ * when the private key operation is complete.
+ *
+ * See also |SSL_set_private_key_method|. */
+#define SSL_ERROR_WANT_PRIVATE_KEY_OPERATION 13
+
 
 /* Protocol versions. */
 
@@ -1531,10 +1699,10 @@ OPENSSL_EXPORT void SSL_CTX_sess_set_get_cb(
                                    int *copy));
 OPENSSL_EXPORT SSL_SESSION *(*SSL_CTX_sess_get_get_cb(SSL_CTX *ctx))(
     SSL *ssl, uint8_t *data, int len, int *copy);
-/* SSL_magic_pending_session_ptr returns a magic SSL_SESSION* which indicates
- * that the session isn't currently unavailable. SSL_get_error will then return
- * SSL_ERROR_PENDING_SESSION and the handshake can be retried later when the
- * lookup has completed. */
+/* SSL_magic_pending_session_ptr returns a magic |SSL_SESSION|* which indicates
+ * that the session isn't currently unavailable. |SSL_get_error| will then
+ * return |SSL_ERROR_PENDING_SESSION| and the handshake can be retried later
+ * when the lookup has completed. */
 OPENSSL_EXPORT SSL_SESSION *SSL_magic_pending_session_ptr(void);
 OPENSSL_EXPORT void SSL_CTX_set_info_callback(SSL_CTX *ctx,
                                               void (*cb)(const SSL *ssl,
@@ -2008,20 +2176,6 @@ DECLARE_PEM_rw(SSL_SESSION, SSL_SESSION)
 #define SSL_AD_UNKNOWN_PSK_IDENTITY TLS1_AD_UNKNOWN_PSK_IDENTITY     /* fatal */
 #define SSL_AD_INAPPROPRIATE_FALLBACK SSL3_AD_INAPPROPRIATE_FALLBACK /* fatal */
 
-#define SSL_ERROR_NONE 0
-#define SSL_ERROR_SSL 1
-#define SSL_ERROR_WANT_READ 2
-#define SSL_ERROR_WANT_WRITE 3
-#define SSL_ERROR_WANT_X509_LOOKUP 4
-#define SSL_ERROR_SYSCALL 5 /* look at error stack/return value/errno */
-#define SSL_ERROR_ZERO_RETURN 6
-#define SSL_ERROR_WANT_CONNECT 7
-#define SSL_ERROR_WANT_ACCEPT 8
-#define SSL_ERROR_WANT_CHANNEL_ID_LOOKUP 9
-#define SSL_ERROR_PENDING_SESSION 11
-#define SSL_ERROR_PENDING_CERTIFICATE 12
-#define SSL_ERROR_WANT_PRIVATE_KEY_OPERATION 13
-
 /* DTLSv1_get_timeout queries the next DTLS handshake timeout. If there is a
  * timeout in progress, it sets |*out| to the time remaining and returns one.
  * Otherwise, it returns zero.
@@ -2150,9 +2304,6 @@ OPENSSL_EXPORT int SSL_pending(const SSL *s);
 OPENSSL_EXPORT int SSL_set_fd(SSL *s, int fd);
 OPENSSL_EXPORT int SSL_set_rfd(SSL *s, int fd);
 OPENSSL_EXPORT int SSL_set_wfd(SSL *s, int fd);
-OPENSSL_EXPORT void SSL_set_bio(SSL *s, BIO *rbio, BIO *wbio);
-OPENSSL_EXPORT BIO *SSL_get_rbio(const SSL *s);
-OPENSSL_EXPORT BIO *SSL_get_wbio(const SSL *s);
 OPENSSL_EXPORT int SSL_set_cipher_list(SSL *s, const char *str);
 OPENSSL_EXPORT int SSL_get_verify_mode(const SSL *s);
 OPENSSL_EXPORT int SSL_get_verify_depth(const SSL *s);
@@ -2280,13 +2431,6 @@ OPENSSL_EXPORT int SSL_set1_param(SSL *ssl, X509_VERIFY_PARAM *vpm);
 OPENSSL_EXPORT X509_VERIFY_PARAM *SSL_CTX_get0_param(SSL_CTX *ctx);
 OPENSSL_EXPORT X509_VERIFY_PARAM *SSL_get0_param(SSL *ssl);
 
-OPENSSL_EXPORT int SSL_accept(SSL *ssl);
-OPENSSL_EXPORT int SSL_connect(SSL *ssl);
-OPENSSL_EXPORT int SSL_read(SSL *ssl, void *buf, int num);
-OPENSSL_EXPORT int SSL_peek(SSL *ssl, void *buf, int num);
-OPENSSL_EXPORT int SSL_write(SSL *ssl, const void *buf, int num);
-
-OPENSSL_EXPORT int SSL_get_error(const SSL *s, int ret_code);
 /* SSL_get_version returns a string describing the TLS version used by |s|. For
  * example, "TLSv1.2" or "SSLv3". */
 OPENSSL_EXPORT const char *SSL_get_version(const SSL *s);
@@ -2300,13 +2444,9 @@ OPENSSL_EXPORT const char* SSL_get_curve_name(uint16_t curve_id);
 
 OPENSSL_EXPORT STACK_OF(SSL_CIPHER) *SSL_get_ciphers(const SSL *s);
 
-OPENSSL_EXPORT int SSL_do_handshake(SSL *s);
-
 /* SSL_renegotiate_pending returns one if |ssl| is in the middle of a
  * renegotiation. */
 OPENSSL_EXPORT int SSL_renegotiate_pending(SSL *ssl);
-
-OPENSSL_EXPORT int SSL_shutdown(SSL *s);
 
 OPENSSL_EXPORT const char *SSL_alert_type_string_long(int value);
 OPENSSL_EXPORT const char *SSL_alert_type_string(int value);

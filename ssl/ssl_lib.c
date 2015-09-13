@@ -569,28 +569,28 @@ void SSL_free(SSL *ssl) {
   OPENSSL_free(ssl);
 }
 
-void SSL_set_bio(SSL *s, BIO *rbio, BIO *wbio) {
+void SSL_set_bio(SSL *ssl, BIO *rbio, BIO *wbio) {
   /* If the output buffering BIO is still in place, remove it. */
-  if (s->bbio != NULL) {
-    if (s->wbio == s->bbio) {
-      s->wbio = s->wbio->next_bio;
-      s->bbio->next_bio = NULL;
+  if (ssl->bbio != NULL) {
+    if (ssl->wbio == ssl->bbio) {
+      ssl->wbio = ssl->wbio->next_bio;
+      ssl->bbio->next_bio = NULL;
     }
   }
 
-  if (s->rbio != rbio) {
-    BIO_free_all(s->rbio);
+  if (ssl->rbio != rbio) {
+    BIO_free_all(ssl->rbio);
   }
-  if (s->wbio != wbio && s->rbio != s->wbio) {
-    BIO_free_all(s->wbio);
+  if (ssl->wbio != wbio && ssl->rbio != ssl->wbio) {
+    BIO_free_all(ssl->wbio);
   }
-  s->rbio = rbio;
-  s->wbio = wbio;
+  ssl->rbio = rbio;
+  ssl->wbio = wbio;
 }
 
-BIO *SSL_get_rbio(const SSL *s) { return s->rbio; }
+BIO *SSL_get_rbio(const SSL *ssl) { return ssl->rbio; }
 
-BIO *SSL_get_wbio(const SSL *s) { return s->wbio; }
+BIO *SSL_get_wbio(const SSL *ssl) { return ssl->wbio; }
 
 int SSL_get_fd(const SSL *s) { return SSL_get_rfd(s); }
 
@@ -803,132 +803,132 @@ int SSL_check_private_key(const SSL *ssl) {
   return X509_check_private_key(ssl->cert->x509, ssl->cert->privatekey);
 }
 
-int SSL_accept(SSL *s) {
-  if (s->handshake_func == 0) {
+int SSL_accept(SSL *ssl) {
+  if (ssl->handshake_func == 0) {
     /* Not properly initialized yet */
-    SSL_set_accept_state(s);
+    SSL_set_accept_state(ssl);
   }
 
-  if (s->handshake_func != s->method->ssl_accept) {
+  if (ssl->handshake_func != ssl->method->ssl_accept) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
     return -1;
   }
 
-  return s->handshake_func(s);
+  return ssl->handshake_func(ssl);
 }
 
-int SSL_connect(SSL *s) {
-  if (s->handshake_func == 0) {
+int SSL_connect(SSL *ssl) {
+  if (ssl->handshake_func == 0) {
     /* Not properly initialized yet */
-    SSL_set_connect_state(s);
+    SSL_set_connect_state(ssl);
   }
 
-  if (s->handshake_func != s->method->ssl_connect) {
+  if (ssl->handshake_func != ssl->method->ssl_connect) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
     return -1;
   }
 
-  return s->handshake_func(s);
+  return ssl->handshake_func(ssl);
 }
 
 long SSL_get_default_timeout(const SSL *s) {
   return SSL_DEFAULT_SESSION_TIMEOUT;
 }
 
-int SSL_read(SSL *s, void *buf, int num) {
-  if (s->handshake_func == 0) {
+int SSL_read(SSL *ssl, void *buf, int num) {
+  if (ssl->handshake_func == 0) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_UNINITIALIZED);
     return -1;
   }
 
-  if (s->shutdown & SSL_RECEIVED_SHUTDOWN) {
-    s->rwstate = SSL_NOTHING;
+  if (ssl->shutdown & SSL_RECEIVED_SHUTDOWN) {
+    ssl->rwstate = SSL_NOTHING;
     return 0;
   }
 
   ERR_clear_system_error();
-  return s->method->ssl_read_app_data(s, buf, num, 0);
+  return ssl->method->ssl_read_app_data(ssl, buf, num, 0);
 }
 
-int SSL_peek(SSL *s, void *buf, int num) {
-  if (s->handshake_func == 0) {
+int SSL_peek(SSL *ssl, void *buf, int num) {
+  if (ssl->handshake_func == 0) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_UNINITIALIZED);
     return -1;
   }
 
-  if (s->shutdown & SSL_RECEIVED_SHUTDOWN) {
+  if (ssl->shutdown & SSL_RECEIVED_SHUTDOWN) {
     return 0;
   }
 
   ERR_clear_system_error();
-  return s->method->ssl_read_app_data(s, buf, num, 1);
+  return ssl->method->ssl_read_app_data(ssl, buf, num, 1);
 }
 
-int SSL_write(SSL *s, const void *buf, int num) {
-  if (s->handshake_func == 0) {
+int SSL_write(SSL *ssl, const void *buf, int num) {
+  if (ssl->handshake_func == 0) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_UNINITIALIZED);
     return -1;
   }
 
-  if (s->shutdown & SSL_SENT_SHUTDOWN) {
-    s->rwstate = SSL_NOTHING;
+  if (ssl->shutdown & SSL_SENT_SHUTDOWN) {
+    ssl->rwstate = SSL_NOTHING;
     OPENSSL_PUT_ERROR(SSL, SSL_R_PROTOCOL_IS_SHUTDOWN);
     return -1;
   }
 
   ERR_clear_system_error();
-  return s->method->ssl_write_app_data(s, buf, num);
+  return ssl->method->ssl_write_app_data(ssl, buf, num);
 }
 
-int SSL_shutdown(SSL *s) {
+int SSL_shutdown(SSL *ssl) {
   /* Note that this function behaves differently from what one might expect.
    * Return values are 0 for no success (yet), 1 for success; but calling it
    * once is usually not enough, even if blocking I/O is used (see
    * ssl3_shutdown). */
 
-  if (s->handshake_func == 0) {
+  if (ssl->handshake_func == 0) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_UNINITIALIZED);
     return -1;
   }
 
-  if (SSL_in_init(s)) {
+  if (SSL_in_init(ssl)) {
     return 1;
   }
 
   /* Do nothing if configured not to send a close_notify. */
-  if (s->quiet_shutdown) {
-    s->shutdown = SSL_SENT_SHUTDOWN | SSL_RECEIVED_SHUTDOWN;
+  if (ssl->quiet_shutdown) {
+    ssl->shutdown = SSL_SENT_SHUTDOWN | SSL_RECEIVED_SHUTDOWN;
     return 1;
   }
 
-  if (!(s->shutdown & SSL_SENT_SHUTDOWN)) {
-    s->shutdown |= SSL_SENT_SHUTDOWN;
-    ssl3_send_alert(s, SSL3_AL_WARNING, SSL_AD_CLOSE_NOTIFY);
+  if (!(ssl->shutdown & SSL_SENT_SHUTDOWN)) {
+    ssl->shutdown |= SSL_SENT_SHUTDOWN;
+    ssl3_send_alert(ssl, SSL3_AL_WARNING, SSL_AD_CLOSE_NOTIFY);
 
     /* our shutdown alert has been sent now, and if it still needs to be
-     * written, s->s3->alert_dispatch will be true */
-    if (s->s3->alert_dispatch) {
+     * written, ssl->s3->alert_dispatch will be true */
+    if (ssl->s3->alert_dispatch) {
       return -1; /* return WANT_WRITE */
     }
-  } else if (s->s3->alert_dispatch) {
+  } else if (ssl->s3->alert_dispatch) {
     /* resend it if not sent */
-    int ret = s->method->ssl_dispatch_alert(s);
+    int ret = ssl->method->ssl_dispatch_alert(ssl);
     if (ret == -1) {
       /* we only get to return -1 here the 2nd/Nth invocation, we must  have
        * already signalled return 0 upon a previous invoation, return
        * WANT_WRITE */
       return ret;
     }
-  } else if (!(s->shutdown & SSL_RECEIVED_SHUTDOWN)) {
+  } else if (!(ssl->shutdown & SSL_RECEIVED_SHUTDOWN)) {
     /* If we are waiting for a close from our peer, we are closed */
-    s->method->ssl_read_close_notify(s);
-    if (!(s->shutdown & SSL_RECEIVED_SHUTDOWN)) {
+    ssl->method->ssl_read_close_notify(ssl);
+    if (!(ssl->shutdown & SSL_RECEIVED_SHUTDOWN)) {
       return -1; /* return WANT_READ */
     }
   }
 
-  if (s->shutdown == (SSL_SENT_SHUTDOWN | SSL_RECEIVED_SHUTDOWN) &&
-      !s->s3->alert_dispatch) {
+  if (ssl->shutdown == (SSL_SENT_SHUTDOWN | SSL_RECEIVED_SHUTDOWN) &&
+      !ssl->s3->alert_dispatch) {
     return 1;
   } else {
     return 0;
@@ -1901,7 +1901,7 @@ void ssl_update_cache(SSL *s, int mode) {
   }
 }
 
-int SSL_get_error(const SSL *s, int ret_code) {
+int SSL_get_error(const SSL *ssl, int ret_code) {
   int reason;
   uint32_t err;
   BIO *bio;
@@ -1921,8 +1921,8 @@ int SSL_get_error(const SSL *s, int ret_code) {
   }
 
   if (ret_code == 0) {
-    if ((s->shutdown & SSL_RECEIVED_SHUTDOWN) &&
-        (s->s3->warn_alert == SSL_AD_CLOSE_NOTIFY)) {
+    if ((ssl->shutdown & SSL_RECEIVED_SHUTDOWN) &&
+        (ssl->s3->warn_alert == SSL_AD_CLOSE_NOTIFY)) {
       /* The socket was cleanly shut down with a close_notify. */
       return SSL_ERROR_ZERO_RETURN;
     }
@@ -1932,16 +1932,16 @@ int SSL_get_error(const SSL *s, int ret_code) {
     return SSL_ERROR_SYSCALL;
   }
 
-  if (SSL_want_session(s)) {
+  if (SSL_want_session(ssl)) {
     return SSL_ERROR_PENDING_SESSION;
   }
 
-  if (SSL_want_certificate(s)) {
+  if (SSL_want_certificate(ssl)) {
     return SSL_ERROR_PENDING_CERTIFICATE;
   }
 
-  if (SSL_want_read(s)) {
-    bio = SSL_get_rbio(s);
+  if (SSL_want_read(ssl)) {
+    bio = SSL_get_rbio(ssl);
     if (BIO_should_read(bio)) {
       return SSL_ERROR_WANT_READ;
     }
@@ -1970,14 +1970,14 @@ int SSL_get_error(const SSL *s, int ret_code) {
     }
   }
 
-  if (SSL_want_write(s)) {
-    bio = SSL_get_wbio(s);
+  if (SSL_want_write(ssl)) {
+    bio = SSL_get_wbio(ssl);
     if (BIO_should_write(bio)) {
       return SSL_ERROR_WANT_WRITE;
     }
 
     if (BIO_should_read(bio)) {
-      /* See above (SSL_want_read(s) with BIO_should_write(bio)) */
+      /* See above (SSL_want_read(ssl) with BIO_should_write(bio)) */
       return SSL_ERROR_WANT_READ;
     }
 
@@ -1995,33 +1995,32 @@ int SSL_get_error(const SSL *s, int ret_code) {
     }
   }
 
-  if (SSL_want_x509_lookup(s)) {
+  if (SSL_want_x509_lookup(ssl)) {
     return SSL_ERROR_WANT_X509_LOOKUP;
   }
 
-  if (SSL_want_channel_id_lookup(s)) {
+  if (SSL_want_channel_id_lookup(ssl)) {
     return SSL_ERROR_WANT_CHANNEL_ID_LOOKUP;
   }
 
-  if (SSL_want_private_key_operation(s)) {
+  if (SSL_want_private_key_operation(ssl)) {
     return SSL_ERROR_WANT_PRIVATE_KEY_OPERATION;
   }
 
   return SSL_ERROR_SYSCALL;
 }
 
-int SSL_do_handshake(SSL *s) {
-  int ret = 1;
-
-  if (s->handshake_func == NULL) {
+int SSL_do_handshake(SSL *ssl) {
+  if (ssl->handshake_func == NULL) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_CONNECTION_TYPE_NOT_SET);
     return -1;
   }
 
-  if (SSL_in_init(s)) {
-    ret = s->handshake_func(s);
+  if (!SSL_in_init(ssl)) {
+    return 1;
   }
-  return ret;
+
+  return ssl->handshake_func(ssl);
 }
 
 void SSL_set_accept_state(SSL *ssl) {
