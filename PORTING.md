@@ -115,6 +115,9 @@ Things which do not work:
 
 * There is no support for renegotiation in DTLS.
 
+* There is no support for initiating renegotiation; `SSL_renegotiate` always
+  fails and `SSL_set_state` does nothing.
+
 * Interleaving application data with the new handshake is forbidden.
 
 * If a HelloRequest is received while `SSL_write` has unsent application data,
@@ -123,7 +126,7 @@ Things which do not work:
 
 ## Optional BoringSSL-specific simplifications
 
-BoringSSL makes some changes to OpenSSL which simplify the API but remain remain
+BoringSSL makes some changes to OpenSSL which simplify the API but remain
 compatible with OpenSSL consumers. In general, consult the BoringSSL
 documentation for any functions in new BoringSSL-only code.
 
