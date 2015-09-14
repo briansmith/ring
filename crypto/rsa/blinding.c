@@ -325,10 +325,11 @@ BN_BLINDING *BN_BLINDING_create_param(
     if (!BN_rand_range(ret->A, ret->mod)) {
       goto err;
     }
-    if (BN_mod_inverse(ret->Ai, ret->A, ret->mod, ctx) == NULL) {
+
+    int no_inverse;
+    if (BN_mod_inverse_ex(ret->Ai, &no_inverse, ret->A, ret->mod, ctx) == NULL) {
       /* this should almost never happen for good RSA keys */
-      uint32_t error = ERR_peek_last_error();
-      if (ERR_GET_REASON(error) == BN_R_NO_INVERSE) {
+      if (no_inverse) {
         if (retry_counter-- == 0) {
           OPENSSL_PUT_ERROR(RSA, RSA_R_TOO_MANY_ITERATIONS);
           goto err;
