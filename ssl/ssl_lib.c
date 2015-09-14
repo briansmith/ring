@@ -918,8 +918,8 @@ err:
 }
 
 int SSL_CTX_set_session_id_context(SSL_CTX *ctx, const uint8_t *sid_ctx,
-                                   unsigned int sid_ctx_len) {
-  if (sid_ctx_len > sizeof ctx->sid_ctx) {
+                                   unsigned sid_ctx_len) {
+  if (sid_ctx_len > sizeof(ctx->sid_ctx)) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_SSL_SESSION_ID_CONTEXT_TOO_LONG);
     return 0;
   }
@@ -930,7 +930,7 @@ int SSL_CTX_set_session_id_context(SSL_CTX *ctx, const uint8_t *sid_ctx,
 }
 
 int SSL_set_session_id_context(SSL *ssl, const uint8_t *sid_ctx,
-                               unsigned int sid_ctx_len) {
+                               unsigned sid_ctx_len) {
   if (sid_ctx_len > SSL_MAX_SID_CTX_LENGTH) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_SSL_SESSION_ID_CONTEXT_TOO_LONG);
     return 0;
@@ -952,7 +952,7 @@ int SSL_set_generate_session_id(SSL *ssl, GEN_SESSION_CB cb) {
 }
 
 int SSL_has_matching_session_id(const SSL *ssl, const uint8_t *id,
-                                unsigned int id_len) {
+                                unsigned id_len) {
   /* A quick examination of SSL_SESSION_hash and SSL_SESSION_cmp shows how we
    * can "construct" a session to give us the desired check - ie. to find if
    * there's a session in the hash table that would conflict with any new

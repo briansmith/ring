@@ -154,9 +154,9 @@ static const char g_pending_session_magic = 0;
 static CRYPTO_EX_DATA_CLASS g_ex_data_class =
     CRYPTO_EX_DATA_CLASS_INIT_WITH_APP_DATA;
 
-static void SSL_SESSION_list_remove(SSL_CTX *ctx, SSL_SESSION *s);
-static void SSL_SESSION_list_add(SSL_CTX *ctx, SSL_SESSION *s);
-static int remove_session_lock(SSL_CTX *ctx, SSL_SESSION *c, int lck);
+static void SSL_SESSION_list_remove(SSL_CTX *ctx, SSL_SESSION *session);
+static void SSL_SESSION_list_add(SSL_CTX *ctx, SSL_SESSION *session);
+static int remove_session_lock(SSL_CTX *ctx, SSL_SESSION *session, int lock);
 
 SSL_SESSION *SSL_SESSION_new(void) {
   SSL_SESSION *session = (SSL_SESSION *)OPENSSL_malloc(sizeof(SSL_SESSION));
@@ -301,9 +301,9 @@ void *SSL_SESSION_get_ex_data(const SSL_SESSION *session, int idx) {
  * server. How you might store that many sessions is perhaps a more interesting
  * question ... */
 static int def_generate_session_id(const SSL *ssl, uint8_t *id,
-                                   unsigned int *id_len) {
+                                   unsigned *id_len) {
   static const unsigned kMaxAttempts = 10;
-  unsigned int retry = 0;
+  unsigned retry = 0;
   do {
     if (!RAND_bytes(id, *id_len)) {
       return 0;
@@ -568,49 +568,49 @@ no_session:
   return ssl_session_success;
 }
 
-int SSL_CTX_add_session(SSL_CTX *ctx, SSL_SESSION *c) {
+int SSL_CTX_add_session(SSL_CTX *ctx, SSL_SESSION *session) {
   int ret = 0;
-  SSL_SESSION *s;
+  SSL_SESSION *old_session;
 
-  /* add just 1 reference count for the SSL_CTX's session cache even though it
+  /* Add just 1 reference count for the |SSL_CTX|'s session cache even though it
    * has two ways of access: each session is in a doubly linked list and an
-   * lhash */
-  SSL_SESSION_up_ref(c);
-  /* if session c is in already in cache, we take back the increment later */
+   * lhash. */
+  SSL_SESSION_up_ref(session);
+  /* If |session| is in already in cache, we take back the increment later. */
 
   CRYPTO_MUTEX_lock_write(&ctx->lock);
-  if (!lh_SSL_SESSION_insert(ctx->sessions, &s, c)) {
+  if (!lh_SSL_SESSION_insert(ctx->sessions, &old_session, session)) {
     CRYPTO_MUTEX_unlock(&ctx->lock);
-    SSL_SESSION_free(c);
+    SSL_SESSION_free(session);
     return 0;
   }
 
-  /* s != NULL iff we already had a session with the given session ID. In this
-   * case, s == c should hold (then we did not really modify ctx->sessions), or
-   * we're in trouble. */
-  if (s != NULL && s != c) {
+  /* |old_session| != NULL iff we already had a session with the given session
+   * ID. In this case, |old_session| == |session| should hold (then we did not
+   * really modify |ctx->sessions|), or we're in trouble. */
+  if (old_session != NULL && old_session != session) {
     /* We *are* in trouble ... */
-    SSL_SESSION_list_remove(ctx, s);
-    SSL_SESSION_free(s);
+    SSL_SESSION_list_remove(ctx, old_session);
+    SSL_SESSION_free(old_session);
     /* ... so pretend the other session did not exist in cache (we cannot
-     * handle two SSL_SESSION structures with identical session ID in the same
+     * handle two |SSL_SESSION| structures with identical session ID in the same
      * cache, which could happen e.g. when two threads concurrently obtain the
-     * same session from an external cache) */
-    s = NULL;
+     * same session from an external cache). */
+    old_session = NULL;
   }
 
-  /* Put at the head of the queue unless it is already in the cache */
-  if (s == NULL) {
-    SSL_SESSION_list_add(ctx, c);
+  /* Put at the head of the queue unless it is already in the cache. */
+  if (old_session == NULL) {
+    SSL_SESSION_list_add(ctx, session);
   }
 
-  if (s != NULL) {
-    /* existing cache entry -- decrement previously incremented reference count
-     * because it already takes into account the cache */
-    SSL_SESSION_free(s); /* s == c */
+  if (old_session != NULL) {
+    /* Existing cache entry -- decrement previously incremented reference count
+     * because it already takes into account the cache. */
+    SSL_SESSION_free(old_session); /* |old_session| == |session| */
     ret = 0;
   } else {
-    /* new cache entry -- remove old ones if cache has become too large */
+    /* New cache entry -- remove old ones if cache has become too large. */
     ret = 1;
 
     if (SSL_CTX_sess_get_cache_size(ctx) > 0) {
@@ -626,23 +626,23 @@ int SSL_CTX_add_session(SSL_CTX *ctx, SSL_SESSION *c) {
   return ret;
 }
 
-int SSL_CTX_remove_session(SSL_CTX *ctx, SSL_SESSION *c) {
-  return remove_session_lock(ctx, c, 1);
+int SSL_CTX_remove_session(SSL_CTX *ctx, SSL_SESSION *session) {
+  return remove_session_lock(ctx, session, 1);
 }
 
-static int remove_session_lock(SSL_CTX *ctx, SSL_SESSION *c, int lock) {
-  SSL_SESSION *r;
+static int remove_session_lock(SSL_CTX *ctx, SSL_SESSION *session, int lock) {
   int ret = 0;
 
-  if (c != NULL && c->session_id_length != 0) {
+  if (session != NULL && session->session_id_length != 0) {
     if (lock) {
       CRYPTO_MUTEX_lock_write(&ctx->lock);
     }
-    r = lh_SSL_SESSION_retrieve(ctx->sessions, c);
-    if (r == c) {
+    SSL_SESSION *found_session = lh_SSL_SESSION_retrieve(ctx->sessions,
+                                                         session);
+    if (found_session == session) {
       ret = 1;
-      r = lh_SSL_SESSION_delete(ctx->sessions, c);
-      SSL_SESSION_list_remove(ctx, c);
+      found_session = lh_SSL_SESSION_delete(ctx->sessions, session);
+      SSL_SESSION_list_remove(ctx, session);
     }
 
     if (lock) {
@@ -650,49 +650,48 @@ static int remove_session_lock(SSL_CTX *ctx, SSL_SESSION *c, int lock) {
     }
 
     if (ret) {
-      r->not_resumable = 1;
+      found_session->not_resumable = 1;
       if (ctx->remove_session_cb != NULL) {
-        ctx->remove_session_cb(ctx, r);
+        ctx->remove_session_cb(ctx, found_session);
       }
-      SSL_SESSION_free(r);
+      SSL_SESSION_free(found_session);
     }
   }
 
   return ret;
 }
 
-int SSL_set_session(SSL *s, SSL_SESSION *session) {
-  if (s->session == session) {
+int SSL_set_session(SSL *ssl, SSL_SESSION *session) {
+  if (ssl->session == session) {
     return 1;
   }
 
-  SSL_SESSION_free(s->session);
-  s->session = session;
+  SSL_SESSION_free(ssl->session);
+  ssl->session = session;
   if (session != NULL) {
     SSL_SESSION_up_ref(session);
-    s->verify_result = session->verify_result;
+    ssl->verify_result = session->verify_result;
   }
 
   return 1;
 }
 
-long SSL_CTX_set_timeout(SSL_CTX *s, long t) {
-  long l;
-  if (s == NULL) {
+long SSL_CTX_set_timeout(SSL_CTX *ctx, long timeout) {
+  if (ctx == NULL) {
     return 0;
   }
 
-  l = s->session_timeout;
-  s->session_timeout = t;
-  return l;
+  long old_timeout = ctx->session_timeout;
+  ctx->session_timeout = timeout;
+  return old_timeout;
 }
 
-long SSL_CTX_get_timeout(const SSL_CTX *s) {
-  if (s == NULL) {
+long SSL_CTX_get_timeout(const SSL_CTX *ctx) {
+  if (ctx == NULL) {
     return 0;
   }
 
-  return s->session_timeout;
+  return ctx->session_timeout;
 }
 
 typedef struct timeout_param_st {
@@ -701,25 +700,25 @@ typedef struct timeout_param_st {
   LHASH_OF(SSL_SESSION) *cache;
 } TIMEOUT_PARAM;
 
-static void timeout_doall_arg(SSL_SESSION *sess, void *void_param) {
+static void timeout_doall_arg(SSL_SESSION *session, void *void_param) {
   TIMEOUT_PARAM *param = void_param;
 
   if (param->time == 0 ||
-      param->time > (sess->time + sess->timeout)) {
+      param->time > (session->time + session->timeout)) {
     /* timeout */
     /* The reason we don't call SSL_CTX_remove_session() is to
      * save on locking overhead */
-    (void) lh_SSL_SESSION_delete(param->cache, sess);
-    SSL_SESSION_list_remove(param->ctx, sess);
-    sess->not_resumable = 1;
+    (void) lh_SSL_SESSION_delete(param->cache, session);
+    SSL_SESSION_list_remove(param->ctx, session);
+    session->not_resumable = 1;
     if (param->ctx->remove_session_cb != NULL) {
-      param->ctx->remove_session_cb(param->ctx, sess);
+      param->ctx->remove_session_cb(param->ctx, session);
     }
-    SSL_SESSION_free(sess);
+    SSL_SESSION_free(session);
   }
 }
 
-void SSL_CTX_flush_sessions(SSL_CTX *ctx, long t) {
+void SSL_CTX_flush_sessions(SSL_CTX *ctx, long time) {
   TIMEOUT_PARAM tp;
 
   tp.ctx = ctx;
@@ -727,7 +726,7 @@ void SSL_CTX_flush_sessions(SSL_CTX *ctx, long t) {
   if (tp.cache == NULL) {
     return;
   }
-  tp.time = t;
+  tp.time = time;
   CRYPTO_MUTEX_lock_write(&ctx->lock);
   lh_SSL_SESSION_doall_arg(tp.cache, timeout_doall_arg, &tp);
   CRYPTO_MUTEX_unlock(&ctx->lock);
@@ -744,80 +743,80 @@ int ssl_clear_bad_session(SSL *s) {
 }
 
 /* locked by SSL_CTX in the calling function */
-static void SSL_SESSION_list_remove(SSL_CTX *ctx, SSL_SESSION *s) {
-  if (s->next == NULL || s->prev == NULL) {
+static void SSL_SESSION_list_remove(SSL_CTX *ctx, SSL_SESSION *session) {
+  if (session->next == NULL || session->prev == NULL) {
     return;
   }
 
-  if (s->next == (SSL_SESSION *)&ctx->session_cache_tail) {
+  if (session->next == (SSL_SESSION *)&ctx->session_cache_tail) {
     /* last element in list */
-    if (s->prev == (SSL_SESSION *)&ctx->session_cache_head) {
+    if (session->prev == (SSL_SESSION *)&ctx->session_cache_head) {
       /* only one element in list */
       ctx->session_cache_head = NULL;
       ctx->session_cache_tail = NULL;
     } else {
-      ctx->session_cache_tail = s->prev;
-      s->prev->next = (SSL_SESSION *)&(ctx->session_cache_tail);
+      ctx->session_cache_tail = session->prev;
+      session->prev->next = (SSL_SESSION *)&(ctx->session_cache_tail);
     }
   } else {
-    if (s->prev == (SSL_SESSION *)&ctx->session_cache_head) {
+    if (session->prev == (SSL_SESSION *)&ctx->session_cache_head) {
       /* first element in list */
-      ctx->session_cache_head = s->next;
-      s->next->prev = (SSL_SESSION *)&(ctx->session_cache_head);
+      ctx->session_cache_head = session->next;
+      session->next->prev = (SSL_SESSION *)&(ctx->session_cache_head);
     } else { /* middle of list */
-      s->next->prev = s->prev;
-      s->prev->next = s->next;
+      session->next->prev = session->prev;
+      session->prev->next = session->next;
     }
   }
-  s->prev = s->next = NULL;
+  session->prev = session->next = NULL;
 }
 
-static void SSL_SESSION_list_add(SSL_CTX *ctx, SSL_SESSION *s) {
-  if (s->next != NULL && s->prev != NULL) {
-    SSL_SESSION_list_remove(ctx, s);
+static void SSL_SESSION_list_add(SSL_CTX *ctx, SSL_SESSION *session) {
+  if (session->next != NULL && session->prev != NULL) {
+    SSL_SESSION_list_remove(ctx, session);
   }
 
   if (ctx->session_cache_head == NULL) {
-    ctx->session_cache_head = s;
-    ctx->session_cache_tail = s;
-    s->prev = (SSL_SESSION *)&(ctx->session_cache_head);
-    s->next = (SSL_SESSION *)&(ctx->session_cache_tail);
+    ctx->session_cache_head = session;
+    ctx->session_cache_tail = session;
+    session->prev = (SSL_SESSION *)&(ctx->session_cache_head);
+    session->next = (SSL_SESSION *)&(ctx->session_cache_tail);
   } else {
-    s->next = ctx->session_cache_head;
-    s->next->prev = s;
-    s->prev = (SSL_SESSION *)&(ctx->session_cache_head);
-    ctx->session_cache_head = s;
+    session->next = ctx->session_cache_head;
+    session->next->prev = session;
+    session->prev = (SSL_SESSION *)&(ctx->session_cache_head);
+    ctx->session_cache_head = session;
   }
 }
 
 void SSL_CTX_sess_set_new_cb(SSL_CTX *ctx,
-                             int (*cb)(struct ssl_st *ssl, SSL_SESSION *sess)) {
+                             int (*cb)(SSL *ssl, SSL_SESSION *session)) {
   ctx->new_session_cb = cb;
 }
 
-int (*SSL_CTX_sess_get_new_cb(SSL_CTX *ctx))(SSL *ssl, SSL_SESSION *sess) {
+int (*SSL_CTX_sess_get_new_cb(SSL_CTX *ctx))(SSL *ssl, SSL_SESSION *session) {
   return ctx->new_session_cb;
 }
 
-void SSL_CTX_sess_set_remove_cb(SSL_CTX *ctx,
-                                void (*cb)(SSL_CTX *ctx, SSL_SESSION *sess)) {
+void SSL_CTX_sess_set_remove_cb(
+    SSL_CTX *ctx, void (*cb)(SSL_CTX *ctx, SSL_SESSION *session)) {
   ctx->remove_session_cb = cb;
 }
 
 void (*SSL_CTX_sess_get_remove_cb(SSL_CTX *ctx))(SSL_CTX *ctx,
-                                                 SSL_SESSION *sess) {
+                                                 SSL_SESSION *session) {
   return ctx->remove_session_cb;
 }
 
 void SSL_CTX_sess_set_get_cb(SSL_CTX *ctx,
-                             SSL_SESSION *(*cb)(struct ssl_st *ssl,
-                                                uint8_t *data, int len,
-                                                int *copy)) {
+                             SSL_SESSION *(*cb)(SSL *ssl,
+                                                uint8_t *id, int id_len,
+                                                int *out_copy)) {
   ctx->get_session_cb = cb;
 }
 
-SSL_SESSION *(*SSL_CTX_sess_get_get_cb(SSL_CTX *ctx))(SSL *ssl, uint8_t *data,
-                                                      int len, int *copy) {
+SSL_SESSION *(*SSL_CTX_sess_get_get_cb(SSL_CTX *ctx))(
+    SSL *ssl, uint8_t *id, int id_len, int *out_copy) {
   return ctx->get_session_cb;
 }
 

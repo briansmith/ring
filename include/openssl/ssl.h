@@ -431,7 +431,7 @@ OPENSSL_EXPORT int SSL_get_error(const SSL *ssl, int ret_code);
  * lookup callback indicated the session was unavailable. The caller may retry
  * the operation when lookup has completed.
  *
- * See also |SSL_CTX_sess_set_get_cb|. */
+ * See also |SSL_CTX_sess_set_get_cb| and |SSL_magic_pending_session_ptr|. */
 #define SSL_ERROR_PENDING_SESSION 11
 
 /* SSL_ERROR_PENDING_CERTIFICATE indicates the operation failed because the
@@ -505,7 +505,7 @@ OPENSSL_EXPORT void SSL_set_max_version(SSL *ssl, uint16_t version);
  * |BIO|. Instead, the MTU is configured with |SSL_set_mtu|. */
 #define SSL_OP_NO_QUERY_MTU 0x00001000L
 
-/* SSL_OP_NO_TICKET disables session ticket support (RFC 4507). */
+/* SSL_OP_NO_TICKET disables session ticket support (RFC 5077). */
 #define SSL_OP_NO_TICKET 0x00004000L
 
 /* SSL_OP_CIPHER_SERVER_PREFERENCE configures servers to select ciphers and
@@ -1135,7 +1135,260 @@ OPENSSL_EXPORT int SSL_SESSION_set1_id_context(SSL_SESSION *session,
                                                unsigned sid_ctx_len);
 
 
-/* Session tickets. */
+/* Session caching.
+ *
+ * Session caching allows clients to reconnect to a server based on saved
+ * parameters from a previous connection.
+ *
+ * For a server, the library implements a built-in internal session cache as an
+ * in-memory hash table. One may also register callbacks to implement a custom
+ * external session cache. An external cache may be used in addition to or
+ * instead of the internal one. Use |SSL_CTX_set_session_cache_mode| to toggle
+ * the internal cache.
+ *
+ * For a client, the only option is an external session cache. Prior to
+ * handshaking, the consumer should look up a session externally (keyed, for
+ * instance, by hostname) and use |SSL_set_session| to configure which session
+ * to offer. The callbacks may be used to determine when new sessions are
+ * available.
+ *
+ * Note that offering or accepting a session short-circuits most parameter
+ * negotiation. Resuming sessions across different configurations may result in
+ * surprising behavor. So, for instance, a client implementing a version
+ * fallback should shard its session cache by maximum protocol version. */
+
+/* SSL_SESS_CACHE_OFF disables all session caching. */
+#define SSL_SESS_CACHE_OFF 0x0000
+
+/* SSL_SESS_CACHE_CLIENT enables session caching for a client.
+ *
+ * TODO(davidben): The internal cache is useless on the client. Always act as if
+ * SSL_SESS_CACHE_NO_INTERNAL is set. https://crbug.com/531194. Also see TODO
+ * attached to |SSL_CTX_sess_set_new_cb|. */
+#define SSL_SESS_CACHE_CLIENT 0x0001
+
+/* SSL_SESS_CACHE_SERVER enables session caching for a server. */
+#define SSL_SESS_CACHE_SERVER 0x0002
+
+/* SSL_SESS_CACHE_SERVER enables session caching for both client and server. */
+#define SSL_SESS_CACHE_BOTH (SSL_SESS_CACHE_CLIENT | SSL_SESS_CACHE_SERVER)
+
+/* SSL_SESS_CACHE_NO_AUTO_CLEAR disables automatically calling
+ * |SSL_CTX_flush_sessions| every 255 connections. */
+#define SSL_SESS_CACHE_NO_AUTO_CLEAR 0x0080
+
+/* SSL_SESS_CACHE_NO_INTERNAL_LOOKUP disables looking up a session from the
+ * internal session cache. */
+#define SSL_SESS_CACHE_NO_INTERNAL_LOOKUP 0x0100
+
+/* SSL_SESS_CACHE_NO_INTERNAL_STORE disables storing sessions in the internal
+ * session cache. */
+#define SSL_SESS_CACHE_NO_INTERNAL_STORE 0x0200
+
+/* SSL_SESS_CACHE_NO_INTERNAL disables the internal session cache. */
+#define SSL_SESS_CACHE_NO_INTERNAL \
+    (SSL_SESS_CACHE_NO_INTERNAL_LOOKUP | SSL_SESS_CACHE_NO_INTERNAL_STORE)
+
+/* SSL_CTX_set_session_cache_mode sets the session cache mode bits for |ctx| to
+ * |mode|. It returns the previous value. */
+OPENSSL_EXPORT int SSL_CTX_set_session_cache_mode(SSL_CTX *ctx, int mode);
+
+/* SSL_CTX_get_session_cache_mode returns the session cache mode bits for
+ * |ctx| */
+OPENSSL_EXPORT int SSL_CTX_get_session_cache_mode(const SSL_CTX *ctx);
+
+ /* SSL_set_session, for a client, configures |ssl| to offer to resume |session|
+ * in the initial handshake. */
+OPENSSL_EXPORT int SSL_set_session(SSL *ssl, SSL_SESSION *session);
+
+/* SSL_get_session returns a non-owning pointer to |ssl|'s session. Prior to the
+ * initial handshake beginning, this is the session to be offered, set by
+ * |SSL_set_session|. After a handshake has finished, this is the currently
+ * active session. Its behavior is undefined while a handshake is progress. */
+OPENSSL_EXPORT SSL_SESSION *SSL_get_session(const SSL *ssl);
+
+/* SSL_get0_session is an alias for |SSL_get_session|. */
+#define SSL_get0_session SSL_get_session
+
+/* SSL_get1_session acts like |SSL_get_session| but returns a new reference to
+ * the session. */
+OPENSSL_EXPORT SSL_SESSION *SSL_get1_session(SSL *ssl);
+
+/* SSL_CTX_set_timeout sets the lifetime of sessions created in |ctx| to
+ * |timeout|. */
+OPENSSL_EXPORT long SSL_CTX_set_timeout(SSL_CTX *ctx, long timeout);
+
+/* SSL_CTX_get_timeout returns the lifetime of sessions created in |ctx|. */
+OPENSSL_EXPORT long SSL_CTX_get_timeout(const SSL_CTX *ctx);
+
+/* SSL_CTX_set_session_id_context sets |ctx|'s session ID context to |sid_ctx|.
+ * It returns one on success and zero on error. The session ID context is an
+ * application-defined opaque byte string. A session will not be used in a
+ * connection without a matching session ID context.
+ *
+ * For a server, if |SSL_VERIFY_PEER| is enabled, it is an error to not set a
+ * session ID context.
+ *
+ * TODO(davidben): Is that check needed? That seems a special case of taking
+ * care not to cross-resume across configuration changes, and this is only
+ * relevant if a server requires client auth. */
+OPENSSL_EXPORT int SSL_CTX_set_session_id_context(SSL_CTX *ctx,
+                                                  const uint8_t *sid_ctx,
+                                                  unsigned sid_ctx_len);
+
+/* SSL_set_session_id_context sets |ssl|'s session ID context to |sid_ctx|. It
+ * returns one on success and zero on error. See also
+ * |SSL_CTX_set_session_id_context|. */
+OPENSSL_EXPORT int SSL_set_session_id_context(SSL *ssl, const uint8_t *sid_ctx,
+                                              unsigned sid_ctx_len);
+
+/* SSL_CTX_sess_set_cache_size sets the maximum size of |ctx|'s internal session
+ * cache to |size|. It returns the previous value. */
+OPENSSL_EXPORT unsigned long SSL_CTX_sess_set_cache_size(SSL_CTX *ctx,
+                                                         unsigned long size);
+
+/* SSL_CTX_sess_get_cache_size returns the maximum size of |ctx|'s internal
+ * session cache. */
+OPENSSL_EXPORT unsigned long SSL_CTX_sess_get_cache_size(const SSL_CTX *ctx);
+
+/* SSL_CTX_sessions returns |ctx|'s internal session cache. */
+OPENSSL_EXPORT LHASH_OF(SSL_SESSION) *SSL_CTX_sessions(SSL_CTX *ctx);
+
+/* SSL_CTX_sess_number returns the number of sessions in |ctx|'s internal
+ * session cache. */
+OPENSSL_EXPORT size_t SSL_CTX_sess_number(const SSL_CTX *ctx);
+
+/* SSL_CTX_add_session inserts |session| into |ctx|'s internal session cache. It
+ * returns one on success and zero on error or if |ctx| already included a
+ * session with that session ID. The caller retains its reference to
+ * |session|. */
+OPENSSL_EXPORT int SSL_CTX_add_session(SSL_CTX *ctx, SSL_SESSION *session);
+
+/* SSL_CTX_remove_session removes |session| from |ctx|'s internal session cache.
+ * It returns one on success and zero on error or if no session with a matching
+ * ID was found. */
+OPENSSL_EXPORT int SSL_CTX_remove_session(SSL_CTX *ctx, SSL_SESSION *session);
+
+/* SSL_CTX_flush_sessions removes all sessions from |ctx| which have expired as
+ * of time |time|. If |time| is zero, all sessions are removed. */
+OPENSSL_EXPORT void SSL_CTX_flush_sessions(SSL_CTX *ctx, long time);
+
+/* SSL_CTX_sess_set_new_cb sets the callback to be called when a new session is
+ * established and ready to be cached. If the session cache is disabled (the
+ * appropriate one of |SSL_SESS_CACHE_CLIENT| or |SSL_SESS_CACHE_SERVER| is
+ * unset), the callback is not called.
+ *
+ * The callback is passed a reference to |session|. It returns one if it takes
+ * ownership and zero otherwise.
+ *
+ * Note: For a client, the callback may be called on abbreviated handshakes if a
+ * ticket is renewed. Further, it may not be called until some time after
+ * |SSL_do_handshake| or |SSL_connect| completes if False Start is enabled. Thus
+ * it's recommended to use this callback over checking |SSL_session_reused| on
+ * handshake completion.
+ *
+ * TODO(davidben): Conditioning callbacks on |SSL_SESS_CACHE_CLIENT| or
+ * |SSL_SESS_CACHE_SERVER| doesn't make any sense when one could just as easily
+ * not supply the callbacks. Removing that condition and the client internal
+ * cache would simplify things. */
+OPENSSL_EXPORT void SSL_CTX_sess_set_new_cb(
+    SSL_CTX *ctx, int (*new_session_cb)(SSL *ssl, SSL_SESSION *session));
+
+/* SSL_CTX_sess_get_new_cb returns the callback set by
+ * |SSL_CTX_sess_set_new_cb|. */
+OPENSSL_EXPORT int (*SSL_CTX_sess_get_new_cb(SSL_CTX *ctx))(
+    SSL *ssl, SSL_SESSION *session);
+
+/* SSL_CTX_sess_set_remove_cb sets a callback which is called when a session is
+ * removed from the internal session cache.
+ *
+ * TODO(davidben): What is the point of this callback? It seems useless since it
+ * only fires on sessions in the internal cache. */
+OPENSSL_EXPORT void SSL_CTX_sess_set_remove_cb(
+    SSL_CTX *ctx,
+    void (*remove_session_cb)(SSL_CTX *ctx, SSL_SESSION *session));
+
+/* SSL_CTX_sess_get_remove_cb returns the callback set by
+ * |SSL_CTX_sess_set_remove_cb|. */
+OPENSSL_EXPORT void (*SSL_CTX_sess_get_remove_cb(SSL_CTX *ctx))(
+    SSL_CTX *ctx, SSL_SESSION *session);
+
+/* SSL_CTX_sess_set_get_cb sets a callback to look up a session by ID for a
+ * server. The callback is passed the session ID and should return a matching
+ * |SSL_SESSION| or NULL if not found. It should set |*out_copy| to zero and
+ * return a new reference to the session. This callback is not used for a
+ * client.
+ *
+ * For historical reasons, if |*out_copy| is set to one (default), the SSL
+ * library will take a new reference to the returned |SSL_SESSION|, expecting
+ * the callback to return a non-owning pointer. This is not recommended. If
+ * |ctx| and thus the callback is used on multiple threads, the session may be
+ * removed and invalidated before the SSL library calls |SSL_SESSION_up_ref|,
+ * whereas the callback may synchronize internally.
+ *
+ * To look up a session asynchronously, the callback may return
+ * |SSL_magic_pending_session_ptr|. See the documentation for that function and
+ * |SSL_ERROR_PENDING_SESSION|.
+ *
+ * If the internal session cache is enabled, the callback is only consulted if
+ * the internal cache does not return a match. */
+OPENSSL_EXPORT void SSL_CTX_sess_set_get_cb(
+    SSL_CTX *ctx,
+    SSL_SESSION *(*get_session_cb)(SSL *ssl, uint8_t *id, int id_len,
+                                   int *out_copy));
+
+/* SSL_CTX_sess_get_get_cb returns the callback set by
+ * |SSL_CTX_sess_set_get_cb|. */
+OPENSSL_EXPORT SSL_SESSION *(*SSL_CTX_sess_get_get_cb(SSL_CTX *ctx))(
+    SSL *ssl, uint8_t *id, int id_len, int *out_copy);
+
+/* SSL_magic_pending_session_ptr returns a magic |SSL_SESSION|* which indicates
+ * that the session isn't currently unavailable. |SSL_get_error| will then
+ * return |SSL_ERROR_PENDING_SESSION| and the handshake can be retried later
+ * when the lookup has completed. */
+OPENSSL_EXPORT SSL_SESSION *SSL_magic_pending_session_ptr(void);
+
+/* GEN_SESSION_CB is a callback to generate session IDs for |ssl|. It returns
+ * one on success and zero on error. On success, the generated ID is written to
+ * |id| and |*id_len| set to the length. On entry, |*id_len| is the maximum
+ * length of the ID, but the callback may shorten it if desired. It is an error
+ * for the callback to set the size to zero.
+ *
+ * Callbacks may use |SSL_has_matching_session_id| to check that the generated
+ * ID is unique. */
+typedef int (*GEN_SESSION_CB)(const SSL *ssl, uint8_t *id, unsigned *id_len);
+
+/* SSL_CTX_set_generate_session_id sets the session ID callback of |ctx| to
+ * |cb| and returns one. It will be called on the server when establishing a new
+ * session. */
+OPENSSL_EXPORT int SSL_CTX_set_generate_session_id(SSL_CTX *ctx,
+                                                   GEN_SESSION_CB cb);
+
+/* SSL_set_generate_session_id sets the session ID callback of |ssl| to |cb| and
+ * returns one. It will be called on the server when establishing a new
+ * session. */
+OPENSSL_EXPORT int SSL_set_generate_session_id(SSL *ssl, GEN_SESSION_CB cb);
+
+/* SSL_has_matching_session_id returns one if |ssl|'s session cache has a
+ * session of value |id| and zero otherwise. */
+OPENSSL_EXPORT int SSL_has_matching_session_id(const SSL *ssl,
+                                               const uint8_t *id,
+                                               unsigned id_len);
+
+
+/* Session tickets.
+ *
+ * Session tickets, from RFC 5077, allow session resumption without server-side
+ * state. Session tickets are supported in by default but may be disabled with
+ * |SSL_OP_NO_TICKET|.
+ *
+ * On the client, ticket-based sessions use the same APIs as ID-based tickets.
+ * Callers do not need to handle them differently.
+ *
+ * On the server, tickets are encrypted and authenticated with a secret key. By
+ * default, an |SSL_CTX| generates a key on creation. Tickets are minted and
+ * processed transparently. The following functions may be used to configure a
+ * persistent key or implement more custom behavior. */
 
 /* SSL_CTX_get_tlsext_ticket_keys writes |ctx|'s session ticket key material to
  * |len| bytes of |out|. It returns one on success and zero if |len| is not
@@ -1368,22 +1621,6 @@ typedef struct ssl_aead_ctx_st SSL_AEAD_CTX;
 
 #define SSL_DEFAULT_SESSION_TIMEOUT (2 * 60 * 60)
 
-/* This callback type is used inside SSL_CTX, SSL, and in the functions that
- * set them. It is used to override the generation of SSL/TLS session IDs in a
- * server. Return value should be zero on an error, non-zero to proceed. Also,
- * callbacks should themselves check if the id they generate is unique
- * otherwise the SSL handshake will fail with an error - callbacks can do this
- * using the 'ssl' value they're passed by;
- *      SSL_has_matching_session_id(ssl, id, *id_len)
- * The length value passed in is set at the maximum size the session ID can be.
- * In SSLv2 this is 16 bytes, whereas SSLv3/TLSv1 it is 32 bytes. The callback
- * can alter this length to be less if desired, but under SSLv2 session IDs are
- * supposed to be fixed at 16 bytes so the id will be padded after the callback
- * returns in this case. It is also an error for the callback to set the size
- * to zero. */
-typedef int (*GEN_SESSION_CB)(const SSL *ssl, uint8_t *id,
-                              unsigned int *id_len);
-
 /* ssl_early_callback_ctx is passed to certain callbacks that are called very
  * early on during the server handshake. At this point, much of the SSL* hasn't
  * been filled out and only the ClientHello can be depended on. */
@@ -1421,32 +1658,6 @@ struct ssl_comp_st {
 DECLARE_STACK_OF(SSL_COMP)
 DECLARE_LHASH_OF(SSL_SESSION)
 
-OPENSSL_EXPORT LHASH_OF(SSL_SESSION) *SSL_CTX_sessions(SSL_CTX *ctx);
-
-/* SSL_CTX_sess_number returns the number of sessions in |ctx|'s internal
- * session cache. */
-OPENSSL_EXPORT size_t SSL_CTX_sess_number(const SSL_CTX *ctx);
-
-OPENSSL_EXPORT void SSL_CTX_sess_set_new_cb(
-    SSL_CTX *ctx, int (*new_session_cb)(SSL *ssl, SSL_SESSION *sess));
-OPENSSL_EXPORT int (*SSL_CTX_sess_get_new_cb(SSL_CTX *ctx))(SSL *ssl,
-                                                            SSL_SESSION *sess);
-OPENSSL_EXPORT void SSL_CTX_sess_set_remove_cb(
-    SSL_CTX *ctx,
-    void (*remove_session_cb)(SSL_CTX *ctx, SSL_SESSION *sess));
-OPENSSL_EXPORT void (*SSL_CTX_sess_get_remove_cb(SSL_CTX *ctx))(
-    SSL_CTX *ctx, SSL_SESSION *sess);
-OPENSSL_EXPORT void SSL_CTX_sess_set_get_cb(
-    SSL_CTX *ctx,
-    SSL_SESSION *(*get_session_cb)(SSL *ssl, uint8_t *data, int len,
-                                   int *copy));
-OPENSSL_EXPORT SSL_SESSION *(*SSL_CTX_sess_get_get_cb(SSL_CTX *ctx))(
-    SSL *ssl, uint8_t *data, int len, int *copy);
-/* SSL_magic_pending_session_ptr returns a magic |SSL_SESSION|* which indicates
- * that the session isn't currently unavailable. |SSL_get_error| will then
- * return |SSL_ERROR_PENDING_SESSION| and the handshake can be retried later
- * when the lookup has completed. */
-OPENSSL_EXPORT SSL_SESSION *SSL_magic_pending_session_ptr(void);
 OPENSSL_EXPORT void SSL_CTX_set_info_callback(SSL_CTX *ctx,
                                               void (*cb)(const SSL *ssl,
                                                          int type, int val));
@@ -1840,13 +2051,9 @@ OPENSSL_EXPORT int SSL_set1_curves(SSL *ssl, const int *curves,
 OPENSSL_EXPORT int SSL_CTX_set_cipher_list(SSL_CTX *, const char *str);
 OPENSSL_EXPORT int SSL_CTX_set_cipher_list_tls10(SSL_CTX *, const char *str);
 OPENSSL_EXPORT int SSL_CTX_set_cipher_list_tls11(SSL_CTX *, const char *str);
-OPENSSL_EXPORT long SSL_CTX_set_timeout(SSL_CTX *ctx, long t);
-OPENSSL_EXPORT long SSL_CTX_get_timeout(const SSL_CTX *ctx);
 OPENSSL_EXPORT X509_STORE *SSL_CTX_get_cert_store(const SSL_CTX *);
 OPENSSL_EXPORT void SSL_CTX_set_cert_store(SSL_CTX *, X509_STORE *);
 OPENSSL_EXPORT int SSL_want(const SSL *s);
-
-OPENSSL_EXPORT void SSL_CTX_flush_sessions(SSL_CTX *ctx, long tm);
 
 /* SSL_get_current_cipher returns the cipher used in the current outgoing
  * connection state, or NULL if the null cipher is active. */
@@ -1883,15 +2090,6 @@ OPENSSL_EXPORT const char *SSL_state_string_long(const SSL *s);
 OPENSSL_EXPORT int SSL_SESSION_print_fp(FILE *fp, const SSL_SESSION *ses);
 OPENSSL_EXPORT int SSL_SESSION_print(BIO *fp, const SSL_SESSION *ses);
 
-OPENSSL_EXPORT int SSL_set_session(SSL *to, SSL_SESSION *session);
-OPENSSL_EXPORT int SSL_CTX_add_session(SSL_CTX *s, SSL_SESSION *c);
-OPENSSL_EXPORT int SSL_CTX_remove_session(SSL_CTX *, SSL_SESSION *c);
-OPENSSL_EXPORT int SSL_CTX_set_generate_session_id(SSL_CTX *, GEN_SESSION_CB);
-OPENSSL_EXPORT int SSL_set_generate_session_id(SSL *, GEN_SESSION_CB);
-OPENSSL_EXPORT int SSL_has_matching_session_id(const SSL *ssl,
-                                               const uint8_t *id,
-                                               unsigned int id_len);
-
 OPENSSL_EXPORT int SSL_CTX_get_verify_mode(const SSL_CTX *ctx);
 OPENSSL_EXPORT int SSL_CTX_get_verify_depth(const SSL_CTX *ctx);
 OPENSSL_EXPORT int (*SSL_CTX_get_verify_callback(const SSL_CTX *ctx))(
@@ -1906,13 +2104,6 @@ OPENSSL_EXPORT void SSL_CTX_set_default_passwd_cb(SSL_CTX *ctx,
                                                   pem_password_cb *cb);
 OPENSSL_EXPORT void SSL_CTX_set_default_passwd_cb_userdata(SSL_CTX *ctx,
                                                            void *u);
-
-OPENSSL_EXPORT int SSL_CTX_set_session_id_context(SSL_CTX *ctx,
-                                                  const uint8_t *sid_ctx,
-                                                  unsigned int sid_ctx_len);
-
-OPENSSL_EXPORT int SSL_set_session_id_context(SSL *ssl, const uint8_t *sid_ctx,
-                                              unsigned int sid_ctx_len);
 
 OPENSSL_EXPORT int SSL_CTX_set_purpose(SSL_CTX *s, int purpose);
 OPENSSL_EXPORT int SSL_set_purpose(SSL *s, int purpose);
@@ -1969,10 +2160,6 @@ OPENSSL_EXPORT int SSL_CTX_set_default_verify_paths(SSL_CTX *ctx);
 OPENSSL_EXPORT int SSL_CTX_load_verify_locations(SSL_CTX *ctx,
                                                  const char *CAfile,
                                                  const char *CApath);
-#define SSL_get0_session SSL_get_session /* just peek at pointer */
-OPENSSL_EXPORT SSL_SESSION *SSL_get_session(const SSL *ssl);
-OPENSSL_EXPORT SSL_SESSION *SSL_get1_session(
-    SSL *ssl); /* obtain a reference count */
 OPENSSL_EXPORT SSL_CTX *SSL_get_SSL_CTX(const SSL *ssl);
 OPENSSL_EXPORT SSL_CTX *SSL_set_SSL_CTX(SSL *ssl, SSL_CTX *ctx);
 OPENSSL_EXPORT void SSL_set_info_callback(SSL *ssl,
@@ -1986,35 +2173,6 @@ OPENSSL_EXPORT void SSL_set_verify_result(SSL *ssl, long v);
 OPENSSL_EXPORT long SSL_get_verify_result(const SSL *ssl);
 
 OPENSSL_EXPORT int SSL_get_ex_data_X509_STORE_CTX_idx(void);
-
-/* SSL_CTX_sess_set_cache_size sets the maximum size of |ctx|'s session cache to
- * |size|. It returns the previous value. */
-OPENSSL_EXPORT unsigned long SSL_CTX_sess_set_cache_size(SSL_CTX *ctx,
-                                                         unsigned long size);
-
-/* SSL_CTX_sess_get_cache_size returns the maximum size of |ctx|'s session
- * cache. */
-OPENSSL_EXPORT unsigned long SSL_CTX_sess_get_cache_size(const SSL_CTX *ctx);
-
-/* SSL_SESS_CACHE_* are the possible session cache mode bits.
- * TODO(davidben): Document. */
-#define SSL_SESS_CACHE_OFF 0x0000
-#define SSL_SESS_CACHE_CLIENT 0x0001
-#define SSL_SESS_CACHE_SERVER 0x0002
-#define SSL_SESS_CACHE_BOTH (SSL_SESS_CACHE_CLIENT | SSL_SESS_CACHE_SERVER)
-#define SSL_SESS_CACHE_NO_AUTO_CLEAR 0x0080
-#define SSL_SESS_CACHE_NO_INTERNAL_LOOKUP 0x0100
-#define SSL_SESS_CACHE_NO_INTERNAL_STORE 0x0200
-#define SSL_SESS_CACHE_NO_INTERNAL \
-  (SSL_SESS_CACHE_NO_INTERNAL_LOOKUP | SSL_SESS_CACHE_NO_INTERNAL_STORE)
-
-/* SSL_CTX_set_session_cache_mode sets the session cache mode bits for |ctx| to
- * |mode|. It returns the previous value. */
-OPENSSL_EXPORT int SSL_CTX_set_session_cache_mode(SSL_CTX *ctx, int mode);
-
-/* SSL_CTX_get_session_cache_mode returns the session cache mode bits for
- * |ctx| */
-OPENSSL_EXPORT int SSL_CTX_get_session_cache_mode(const SSL_CTX *ctx);
 
 /* SSL_CTX_get_max_cert_list returns the maximum length, in bytes, of a peer
  * certificate chain accepted by |ctx|. */
