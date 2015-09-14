@@ -122,7 +122,6 @@
 #include <openssl/obj.h>
 
 #include "internal.h"
-#include <openssl/srtp.h>
 
 
 const SRTP_PROTECTION_PROFILE kSRTPProfiles[] = {
@@ -191,28 +190,28 @@ int SSL_CTX_set_srtp_profiles(SSL_CTX *ctx, const char *profiles) {
   return ssl_ctx_make_profiles(profiles, &ctx->srtp_profiles);
 }
 
-int SSL_set_srtp_profiles(SSL *s, const char *profiles) {
-  return ssl_ctx_make_profiles(profiles, &s->srtp_profiles);
+int SSL_set_srtp_profiles(SSL *ssl, const char *profiles) {
+  return ssl_ctx_make_profiles(profiles, &ssl->srtp_profiles);
 }
 
-STACK_OF(SRTP_PROTECTION_PROFILE) *SSL_get_srtp_profiles(SSL *s) {
-  if (s == NULL) {
+STACK_OF(SRTP_PROTECTION_PROFILE) *SSL_get_srtp_profiles(SSL *ssl) {
+  if (ssl == NULL) {
     return NULL;
   }
 
-  if (s->srtp_profiles != NULL) {
-    return s->srtp_profiles;
+  if (ssl->srtp_profiles != NULL) {
+    return ssl->srtp_profiles;
   }
 
-  if (s->ctx != NULL && s->ctx->srtp_profiles != NULL) {
-    return s->ctx->srtp_profiles;
+  if (ssl->ctx != NULL && ssl->ctx->srtp_profiles != NULL) {
+    return ssl->ctx->srtp_profiles;
   }
 
   return NULL;
 }
 
-const SRTP_PROTECTION_PROFILE *SSL_get_selected_srtp_profile(SSL *s) {
-  return s->srtp_profile;
+const SRTP_PROTECTION_PROFILE *SSL_get_selected_srtp_profile(SSL *ssl) {
+  return ssl->srtp_profile;
 }
 
 int SSL_CTX_set_tlsext_use_srtp(SSL_CTX *ctx, const char *profiles) {
@@ -220,7 +219,7 @@ int SSL_CTX_set_tlsext_use_srtp(SSL_CTX *ctx, const char *profiles) {
   return !SSL_CTX_set_srtp_profiles(ctx, profiles);
 }
 
-int SSL_set_tlsext_use_srtp(SSL *s, const char *profiles) {
+int SSL_set_tlsext_use_srtp(SSL *ssl, const char *profiles) {
   /* This API inverts its return value. */
-  return !SSL_set_srtp_profiles(s, profiles);
+  return !SSL_set_srtp_profiles(ssl, profiles);
 }

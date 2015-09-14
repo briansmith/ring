@@ -1435,6 +1435,48 @@ OPENSSL_EXPORT int SSL_CTX_set_tlsext_ticket_key_cb(
                                   int encrypt));
 
 
+/* DTLS-SRTP.
+ *
+ * See RFC 5764. */
+
+/* An SRTP_PROTECTION_PROFILE is an SRTP profile for use with the use_srtp
+ * extension. */
+struct srtp_protection_profile_st {
+  const char *name;
+  unsigned long id;
+} /* SRTP_PROTECTION_PROFILE */;
+
+DECLARE_STACK_OF(SRTP_PROTECTION_PROFILE)
+
+/* SRTP_* define constants for SRTP profiles. */
+#define SRTP_AES128_CM_SHA1_80 0x0001
+#define SRTP_AES128_CM_SHA1_32 0x0002
+#define SRTP_AES128_F8_SHA1_80 0x0003
+#define SRTP_AES128_F8_SHA1_32 0x0004
+#define SRTP_NULL_SHA1_80      0x0005
+#define SRTP_NULL_SHA1_32      0x0006
+
+/* SSL_CTX_set_srtp_profiles enables SRTP for all SSL objects created from
+ * |ctx|. |profile| contains a colon-separated list of profile names. It returns
+ * one on success and zero on failure. */
+OPENSSL_EXPORT int SSL_CTX_set_srtp_profiles(SSL_CTX *ctx,
+                                             const char *profiles);
+
+/* SSL_set_srtp_profiles enables SRTP for |ssl|.  |profile| contains a
+ * colon-separated list of profile names. It returns one on success and zero on
+ * failure. */
+OPENSSL_EXPORT int SSL_set_srtp_profiles(SSL *ssl, const char *profiles);
+
+/* SSL_get_srtp_profiles returns the SRTP profiles supported by |ssl|. */
+OPENSSL_EXPORT STACK_OF(SRTP_PROTECTION_PROFILE) *SSL_get_srtp_profiles(
+    SSL *ssl);
+
+/* SSL_get_selected_srtp_profile returns the selected SRTP profile, or NULL if
+ * SRTP was not negotiated. */
+OPENSSL_EXPORT const SRTP_PROTECTION_PROFILE *SSL_get_selected_srtp_profile(
+    SSL *ssl);
+
+
 /* ex_data functions.
  *
  * See |ex_data.h| for details. */
@@ -1555,14 +1597,6 @@ OPENSSL_EXPORT int SSL_CTX_get_ex_new_index(long argl, void *argp,
 typedef struct ssl_protocol_method_st SSL_PROTOCOL_METHOD;
 typedef struct ssl_conf_ctx_st SSL_CONF_CTX;
 typedef struct ssl3_enc_method SSL3_ENC_METHOD;
-
-/* SRTP protection profiles for use with the use_srtp extension (RFC 5764). */
-typedef struct srtp_protection_profile_st {
-  const char *name;
-  unsigned long id;
-} SRTP_PROTECTION_PROFILE;
-
-DECLARE_STACK_OF(SRTP_PROTECTION_PROFILE)
 
 /* SSL_set_mtu sets the |ssl|'s MTU in DTLS to |mtu|. It returns one on success
  * and zero on failure. */
@@ -2455,6 +2489,21 @@ OPENSSL_EXPORT void ERR_load_SSL_strings(void);
 /* SSL_load_error_strings does nothing. */
 OPENSSL_EXPORT void SSL_load_error_strings(void);
 
+/* SSL_CTX_set_tlsext_use_srtp calls |SSL_CTX_set_srtp_profiles|. It returns
+ * zero on success and one on failure.
+ *
+ * WARNING: this function is dangerous because it breaks the usual return value
+ * convention. Use |SSL_CTX_set_srtp_profiles| instead. */
+OPENSSL_EXPORT int SSL_CTX_set_tlsext_use_srtp(SSL_CTX *ctx,
+                                               const char *profiles);
+
+/* SSL_set_tlsext_use_srtp calls |SSL_set_srtp_profiles|. It returns zero on
+ * success and one on failure.
+ *
+ * WARNING: this function is dangerous because it breaks the usual return value
+ * convention. Use |SSL_set_srtp_profiles| instead. */
+OPENSSL_EXPORT int SSL_set_tlsext_use_srtp(SSL *ssl, const char *profiles);
+
 
 /* Private structures.
  *
@@ -3209,7 +3258,6 @@ OPENSSL_EXPORT const char *SSLeay_version(int unused);
  * pruned or unexported. */
 #include <openssl/ssl3.h>
 #include <openssl/tls1.h> /* This is mostly sslv3 with a few tweaks */
-#include <openssl/srtp.h>  /* Support for the use_srtp extension */
 
 
 /* BEGIN ERROR CODES */
