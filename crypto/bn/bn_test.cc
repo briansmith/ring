@@ -414,6 +414,16 @@ static bool test_div(FILE *fp, BN_CTX *ctx) {
     return false;
   }
 
+  if (!BN_one(a.get())) {
+    return false;
+  }
+  BN_zero(b.get());
+  if (BN_div(d.get(), c.get(), a.get(), b.get(), ctx)) {
+    fprintf(stderr, "Division by zero succeeded!\n");
+    return false;
+  }
+  ERR_clear_error();
+
   for (int i = 0; i < num0 + num1; i++) {
     if (i < num1) {
       if (!BN_rand(a.get(), 400, 0, 0) ||
@@ -481,14 +491,6 @@ static bool test_div(FILE *fp, BN_CTX *ctx) {
     fprintf(stderr, "Division test failed!\n");
     return false;
   }
-
-  // Test the BN_div checks for division by zero.
-  BN_zero(b.get());
-  if (BN_div(d.get(), c.get(), a.get(), b.get(), ctx)) {
-    fprintf(stderr, "Divided by zero!\n");
-    return false;
-  }
-  ERR_clear_error();
 
   return true;
 }
@@ -872,8 +874,27 @@ static bool test_mont(FILE *fp, BN_CTX *ctx) {
   ScopedBIGNUM B(BN_new());
   ScopedBIGNUM n(BN_new());
   ScopedBN_MONT_CTX mont(BN_MONT_CTX_new());
-  if (!a || !b || !c || !d || !A || !B || !n || !mont ||
-      !BN_rand(a.get(), 100, 0, 0) ||
+  if (!a || !b || !c || !d || !A || !B || !n || !mont) {
+    return false;
+  }
+
+  BN_zero(n.get());
+  if (BN_MONT_CTX_set(mont.get(), n.get(), ctx)) {
+    fprintf(stderr, "BN_MONT_CTX_set succeeded for zero modulus!\n");
+    return false;
+  }
+  ERR_clear_error();
+
+  if (!BN_set_word(n.get(), 16)) {
+    return false;
+  }
+  if (BN_MONT_CTX_set(mont.get(), n.get(), ctx)) {
+    fprintf(stderr, "BN_MONT_CTX_set succeeded for even modulus!\n");
+    return false;
+  }
+  ERR_clear_error();
+
+  if (!BN_rand(a.get(), 100, 0, 0) ||
       !BN_rand(b.get(), 100, 0, 0)) {
     return false;
   }
@@ -913,13 +934,6 @@ static bool test_mont(FILE *fp, BN_CTX *ctx) {
       return false;
     }
   }
-
-  BN_zero(n.get());
-  if (BN_MONT_CTX_set(mont.get(), n.get(), ctx)) {
-    fprintf(stderr, "Division by zero!\n");
-    return false;
-  }
-  ERR_clear_error();
 
   return true;
 }
@@ -973,6 +987,16 @@ static bool test_mod_mul(FILE *fp, BN_CTX *ctx) {
   if (!a || !b || !c || !d || !e) {
     return false;
   }
+
+  if (!BN_one(a.get()) || !BN_one(b.get())) {
+    return false;
+  }
+  BN_zero(c.get());
+  if (BN_mod_mul(e.get(), a.get(), b.get(), c.get(), ctx)) {
+    fprintf(stderr, "BN_mod_mul with zero modulus succeeded!\n");
+    return false;
+  }
+  ERR_clear_error();
 
   for (int j = 0; j < 3; j++) {
     if (!BN_rand(c.get(), 1024, 0, 0)) {
@@ -1028,8 +1052,21 @@ static bool test_mod_exp(FILE *fp, BN_CTX *ctx) {
   ScopedBIGNUM c(BN_new());
   ScopedBIGNUM d(BN_new());
   ScopedBIGNUM e(BN_new());
-  if (!a || !b || !c || !d || !e ||
-      !BN_rand(c.get(), 30, 0, 1)) {  // must be odd for montgomery
+  if (!a || !b || !c || !d || !e) {
+    return false;
+  }
+
+  if (!BN_one(a.get()) || !BN_one(b.get())) {
+    return false;
+  }
+  BN_zero(c.get());
+  if (BN_mod_exp(d.get(), a.get(), b.get(), c.get(), ctx)) {
+    fprintf(stderr, "BN_mod_exp with zero modulus succeeded!\n");
+    return 0;
+  }
+  ERR_clear_error();
+
+  if (!BN_rand(c.get(), 30, 0, 1)) {  // must be odd for montgomery
     return false;
   }
   for (int i = 0; i < num2; i++) {
@@ -1068,8 +1105,32 @@ static bool test_mod_exp_mont_consttime(FILE *fp, BN_CTX *ctx) {
   ScopedBIGNUM c(BN_new());
   ScopedBIGNUM d(BN_new());
   ScopedBIGNUM e(BN_new());
-  if (!a || !b || !c || !d || !e ||
-      !BN_rand(c.get(), 30, 0, 1)) {  // must be odd for montgomery
+  if (!a || !b || !c || !d || !e) {
+    return false;
+  }
+
+  if (!BN_one(a.get()) || !BN_one(b.get())) {
+    return false;
+  }
+  BN_zero(c.get());
+  if (BN_mod_exp_mont_consttime(d.get(), a.get(), b.get(), c.get(), ctx,
+                                nullptr)) {
+    fprintf(stderr, "BN_mod_exp_mont_consttime with zero modulus succeeded!\n");
+    return 0;
+  }
+  ERR_clear_error();
+
+  if (!BN_set_word(c.get(), 16)) {
+    return false;
+  }
+  if (BN_mod_exp_mont_consttime(d.get(), a.get(), b.get(), c.get(), ctx,
+                                nullptr)) {
+    fprintf(stderr, "BN_mod_exp_mont_consttime with even modulus succeeded!\n");
+    return 0;
+  }
+  ERR_clear_error();
+
+  if (!BN_rand(c.get(), 30, 0, 1)) {  // must be odd for montgomery
     return false;
   }
   for (int i = 0; i < num2; i++) {
