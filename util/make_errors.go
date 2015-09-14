@@ -132,16 +132,16 @@ func makeErrors(reset bool) error {
 
 func findToplevel() (path string, err error) {
 	path = ".."
-	buildingPath := filepath.Join(path, "BUILDING")
+	buildingPath := filepath.Join(path, "BUILDING.md")
 
 	_, err = os.Stat(buildingPath)
 	if err != nil && os.IsNotExist(err) {
 		path = filepath.Join("..", path)
-		buildingPath = filepath.Join(path, "BUILDING")
+		buildingPath = filepath.Join(path, "BUILDING.md")
 		_, err = os.Stat(buildingPath)
 	}
 	if err != nil {
-		return "", errors.New("Cannot find BUILDING file at the top-level")
+		return "", errors.New("Cannot find BUILDING.md file at the top-level")
 	}
 	return path, nil
 }
