@@ -2237,12 +2237,12 @@ int SSL_get_ex_new_index(long argl, void *argp, CRYPTO_EX_new *new_func,
   return index;
 }
 
-int SSL_set_ex_data(SSL *s, int idx, void *arg) {
-  return CRYPTO_set_ex_data(&s->ex_data, idx, arg);
+int SSL_set_ex_data(SSL *ssl, int idx, void *arg) {
+  return CRYPTO_set_ex_data(&ssl->ex_data, idx, arg);
 }
 
-void *SSL_get_ex_data(const SSL *s, int idx) {
-  return CRYPTO_get_ex_data(&s->ex_data, idx);
+void *SSL_get_ex_data(const SSL *ssl, int idx) {
+  return CRYPTO_get_ex_data(&ssl->ex_data, idx);
 }
 
 int SSL_CTX_get_ex_new_index(long argl, void *argp, CRYPTO_EX_new *new_func,
@@ -2256,12 +2256,12 @@ int SSL_CTX_get_ex_new_index(long argl, void *argp, CRYPTO_EX_new *new_func,
   return index;
 }
 
-int SSL_CTX_set_ex_data(SSL_CTX *s, int idx, void *arg) {
-  return CRYPTO_set_ex_data(&s->ex_data, idx, arg);
+int SSL_CTX_set_ex_data(SSL_CTX *ctx, int idx, void *arg) {
+  return CRYPTO_set_ex_data(&ctx->ex_data, idx, arg);
 }
 
-void *SSL_CTX_get_ex_data(const SSL_CTX *s, int idx) {
-  return CRYPTO_get_ex_data(&s->ex_data, idx);
+void *SSL_CTX_get_ex_data(const SSL_CTX *ctx, int idx) {
+  return CRYPTO_get_ex_data(&ctx->ex_data, idx);
 }
 
 X509_STORE *SSL_CTX_get_cert_store(const SSL_CTX *ctx) {
