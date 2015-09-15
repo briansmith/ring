@@ -368,7 +368,37 @@ OPENSSL_EXPORT int RSA_private_key_to_bytes(uint8_t **out_bytes,
                                             size_t *out_len, const RSA *rsa);
 
 
+/* Flags. */
+
+/* RSA_FLAG_CACHE_PUBLIC causes a precomputed Montgomery context to be created,
+ * on demand, for the public key operations. */
+#define RSA_FLAG_CACHE_PUBLIC 2
+
+/* RSA_FLAG_CACHE_PRIVATE causes a precomputed Montgomery context to be
+ * created, on demand, for the private key operations. */
+#define RSA_FLAG_CACHE_PRIVATE 4
+
+/* RSA_FLAG_NO_BLINDING disables blinding of private operations. */
+#define RSA_FLAG_NO_BLINDING 8
+
+
+/* RSA public exponent values. */
+
+#define RSA_3 0x3
+#define RSA_F4 0x10001
+
+
 /* Deprecated functions. */
+
+/* RSA_blinding_on returns one. */
+OPENSSL_EXPORT int RSA_blinding_on(RSA *rsa, BN_CTX *ctx);
+
+/* RSA_generate_key behaves like |RSA_generate_key_ex|, which is what you
+ * should use instead. It returns NULL on error, or a newly-allocated |RSA| on
+ * success. This function is provided for compatibility only. The |callback|
+ * and |cb_arg| parameters must be NULL. */
+OPENSSL_EXPORT RSA *RSA_generate_key(int bits, unsigned long e, void *callback,
+                                     void *cb_arg);
 
 /* d2i_RSAPublicKey parses an ASN.1, DER-encoded, RSA public key from |len|
  * bytes at |*inp|. If |out| is not NULL then, on exit, a pointer to the result
@@ -397,24 +427,6 @@ OPENSSL_EXPORT RSA *d2i_RSAPrivateKey(RSA **out, const uint8_t **inp, long len);
  * the output. It returns the number of bytes in the result, whether written or
  * not, or a negative value on error. */
 OPENSSL_EXPORT int i2d_RSAPrivateKey(const RSA *in, uint8_t **outp);
-
-/* RSA_FLAG_CACHE_PUBLIC causes a precomputed Montgomery context to be created,
- * on demand, for the public key operations. */
-#define RSA_FLAG_CACHE_PUBLIC 2
-
-/* RSA_FLAG_CACHE_PRIVATE causes a precomputed Montgomery context to be
- * created, on demand, for the private key operations. */
-#define RSA_FLAG_CACHE_PRIVATE 4
-
-/* RSA_FLAG_NO_BLINDING disables blinding of private operations. */
-#define RSA_FLAG_NO_BLINDING 8
-
-
-/* RSA public exponent values. */
-
-#define RSA_3 0x3
-#define RSA_F4 0x10001
-
 
 /* Private functions. */
 
