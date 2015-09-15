@@ -451,7 +451,7 @@ again:
 	if end > 0 {
 		end += start
 		w := strings.ToLower(string(s[start:end]))
-		if w == "a" || w == "an" || w == "deprecated:" {
+		if w == "a" || w == "an" {
 			start = end + 1
 			goto again
 		}
