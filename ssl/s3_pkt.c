@@ -106,6 +106,8 @@
  * (eay@cryptsoft.com).  This product includes software written by Tim
  * Hudson (tjh@cryptsoft.com). */
 
+#include <openssl/ssl.h>
+
 #include <assert.h>
 #include <limits.h>
 #include <stdio.h>

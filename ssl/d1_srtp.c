@@ -114,6 +114,8 @@
   Copyright (C) 2011, RTFM, Inc.
 */
 
+#include <openssl/ssl.h>
+
 #include <stdio.h>
 #include <string.h>
 

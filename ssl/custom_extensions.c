@@ -12,10 +12,15 @@
  * OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
  * CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE. */
 
+#include <openssl/ssl.h>
+
 #include <assert.h>
 #include <string.h>
 
-#include <openssl/ssl.h>
+#include <openssl/bytestring.h>
+#include <openssl/err.h>
+#include <openssl/mem.h>
+#include <openssl/stack.h>
 
 #include "internal.h"
 

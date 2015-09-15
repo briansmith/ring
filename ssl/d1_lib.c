@@ -54,11 +54,17 @@
  * (eay@cryptsoft.com).  This product includes software written by Tim
  * Hudson (tjh@cryptsoft.com). */
 
-#include <openssl/base.h>
+#include <openssl/ssl.h>
 
 #include <limits.h>
 #include <stdio.h>
 #include <string.h>
+
+#include <openssl/err.h>
+#include <openssl/mem.h>
+#include <openssl/obj.h>
+
+#include "internal.h"
 
 #if defined(OPENSSL_WINDOWS)
 #include <sys/timeb.h>
@@ -67,11 +73,6 @@
 #include <sys/time.h>
 #endif
 
-#include <openssl/err.h>
-#include <openssl/mem.h>
-#include <openssl/obj.h>
-
-#include "internal.h"
 
 /* DTLS1_MTU_TIMEOUTS is the maximum number of timeouts to expire
  * before starting to decrease the MTU. */

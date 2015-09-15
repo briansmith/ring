@@ -82,8 +82,10 @@
  * OTHERWISE.
  */
 
-#include <stdio.h>
+#include <openssl/ssl.h>
+
 #include "internal.h"
+
 
 const char *SSL_state_string_long(const SSL *s) {
   const char *str;

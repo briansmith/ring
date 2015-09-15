@@ -112,6 +112,8 @@
  * [including the GNU Public Licence.]
  */
 
+#include <openssl/ssl.h>
+
 #include <assert.h>
 #include <stdio.h>
 

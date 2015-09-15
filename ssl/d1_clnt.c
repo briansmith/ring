@@ -112,6 +112,8 @@
  * [including the GNU Public Licence.]
  */
 
+#include <openssl/ssl.h>
+
 #include <assert.h>
 #include <stdio.h>
 #include <string.h>
@@ -127,6 +129,7 @@
 #include <openssl/rand.h>
 
 #include "internal.h"
+
 
 static int dtls1_get_hello_verify(SSL *s);
 
