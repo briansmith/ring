@@ -1477,6 +1477,93 @@ OPENSSL_EXPORT const SRTP_PROTECTION_PROFILE *SSL_get_selected_srtp_profile(
     SSL *ssl);
 
 
+/* Pre-shared keys.
+ *
+ * Connections may be configured with PSK (Pre-Shared Key) cipher suites. These
+ * authenticate using out-of-band pre-shared keys rather than certificates. See
+ * RFC 4279.
+ *
+ * This implementation uses NUL-terminated C strings for identities and identity
+ * hints, so values with a NUL character are not supported. (RFC 4279 does not
+ * specify the format of an identity.) */
+
+/* PSK_MAX_IDENTITY_LEN is the maximum supported length of a PSK identity,
+ * excluding the NUL terminator. */
+#define PSK_MAX_IDENTITY_LEN 128
+
+/* PSK_MAX_PSK_LEN is the maximum supported length of a pre-shared key. */
+#define PSK_MAX_PSK_LEN 256
+
+/* SSL_CTX_set_psk_client_callback sets the callback to be called when PSK is
+ * negotiated on the client. This callback must be set to enable PSK cipher
+ * suites on the client.
+ *
+ * The callback is passed the identity hint in |hint| or NULL if none was
+ * provided. It should select a PSK identity and write the identity and the
+ * corresponding PSK to |identity| and |psk|, respectively. The identity is
+ * written as a NUL-terminated C string of length (excluding the NUL terminator)
+ * at most |max_identity_len|. The PSK's length must be at most |max_psk_len|.
+ * The callback returns the length of the PSK or 0 if no suitable identity was
+ * found. */
+OPENSSL_EXPORT void SSL_CTX_set_psk_client_callback(
+    SSL_CTX *ctx,
+    unsigned (*psk_client_callback)(
+        SSL *ssl, const char *hint, char *identity,
+        unsigned max_identity_len, uint8_t *psk, unsigned max_psk_len));
+
+/* SSL_set_psk_client_callback sets the callback to be called when PSK is
+ * negotiated on the client. This callback must be set to enable PSK cipher
+ * suites on the client. See also |SSL_CTX_set_psk_client_callback|. */
+OPENSSL_EXPORT void SSL_set_psk_client_callback(
+    SSL *ssl, unsigned (*psk_client_callback)(SSL *ssl, const char *hint,
+                                              char *identity,
+                                              unsigned max_identity_len,
+                                              uint8_t *psk,
+                                              unsigned max_psk_len));
+
+/* SSL_CTX_set_psk_server_callback sets the callback to be called when PSK is
+ * negotiated on the server. This callback must be set to enable PSK cipher
+ * suites on the server.
+ *
+ * The callback is passed the identity in |identity|. It should write a PSK of
+ * length at most |max_psk_len| to |psk| and return the number of bytes written
+ * or zero if the PSK identity is unknown. */
+OPENSSL_EXPORT void SSL_CTX_set_psk_server_callback(
+    SSL_CTX *ctx,
+    unsigned (*psk_server_callback)(SSL *ssl, const char *identity,
+                                    uint8_t *psk,
+                                    unsigned max_psk_len));
+
+/* SSL_set_psk_server_callback sets the callback to be called when PSK is
+ * negotiated on the server. This callback must be set to enable PSK cipher
+ * suites on the server. See also |SSL_CTX_set_psk_server_callback|. */
+OPENSSL_EXPORT void SSL_set_psk_server_callback(
+    SSL *ssl,
+    unsigned (*psk_server_callback)(SSL *ssl, const char *identity,
+                                    uint8_t *psk,
+                                    unsigned max_psk_len));
+
+/* SSL_CTX_use_psk_identity_hint configures server connections to advertise an
+ * identity hint of |identity_hint|. It returns one on success and zero on
+ * error. */
+OPENSSL_EXPORT int SSL_CTX_use_psk_identity_hint(SSL_CTX *ctx,
+                                                 const char *identity_hint);
+
+/* SSL_use_psk_identity_hint configures server connections to advertise an
+ * identity hint of |identity_hint|. It returns one on success and zero on
+ * error. */
+OPENSSL_EXPORT int SSL_use_psk_identity_hint(SSL *ssl,
+                                             const char *identity_hint);
+
+/* SSL_get_psk_identity_hint returns the PSK identity hint advertised for |ssl|
+ * or NULL if there is none. */
+OPENSSL_EXPORT const char *SSL_get_psk_identity_hint(const SSL *ssl);
+
+/* SSL_get_psk_identity, after the handshake completes, returns the PSK identity
+ * that was negotiated by |ssl| or NULL if PSK was not used. */
+OPENSSL_EXPORT const char *SSL_get_psk_identity(const SSL *ssl);
+
+
 /* ex_data functions.
  *
  * See |ex_data.h| for details. */
@@ -1798,37 +1885,6 @@ OPENSSL_EXPORT void SSL_get0_alpn_selected(const SSL *ssl, const uint8_t **data,
  * to control future renegotiations programmatically. By default, renegotiations
  * are rejected. (Renegotiations requested by a client are always rejected.) */
 OPENSSL_EXPORT void SSL_set_reject_peer_renegotiations(SSL *ssl, int reject);
-
-/* the maximum length of the buffer given to callbacks containing the resulting
- * identity/psk */
-#define PSK_MAX_IDENTITY_LEN 128
-#define PSK_MAX_PSK_LEN 256
-OPENSSL_EXPORT void SSL_CTX_set_psk_client_callback(
-    SSL_CTX *ctx,
-    unsigned int (*psk_client_callback)(
-        SSL *ssl, const char *hint, char *identity,
-        unsigned int max_identity_len, uint8_t *psk, unsigned int max_psk_len));
-OPENSSL_EXPORT void SSL_set_psk_client_callback(
-    SSL *ssl, unsigned int (*psk_client_callback)(SSL *ssl, const char *hint,
-                                                  char *identity,
-                                                  unsigned int max_identity_len,
-                                                  uint8_t *psk,
-                                                  unsigned int max_psk_len));
-OPENSSL_EXPORT void SSL_CTX_set_psk_server_callback(
-    SSL_CTX *ctx,
-    unsigned int (*psk_server_callback)(SSL *ssl, const char *identity,
-                                        uint8_t *psk,
-                                        unsigned int max_psk_len));
-OPENSSL_EXPORT void SSL_set_psk_server_callback(
-    SSL *ssl,
-    unsigned int (*psk_server_callback)(SSL *ssl, const char *identity,
-                                        uint8_t *psk,
-                                        unsigned int max_psk_len));
-OPENSSL_EXPORT int SSL_CTX_use_psk_identity_hint(SSL_CTX *ctx,
-                                                 const char *identity_hint);
-OPENSSL_EXPORT int SSL_use_psk_identity_hint(SSL *s, const char *identity_hint);
-OPENSSL_EXPORT const char *SSL_get_psk_identity_hint(const SSL *s);
-OPENSSL_EXPORT const char *SSL_get_psk_identity(const SSL *s);
 
 #define SSL_NOTHING 1
 #define SSL_WRITING 2
