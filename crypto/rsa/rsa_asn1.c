@@ -69,13 +69,20 @@
 #include "internal.h"
 
 
-static int parse_integer(CBS *cbs, BIGNUM **out) {
+static int parse_integer_buggy(CBS *cbs, BIGNUM **out, int buggy) {
   assert(*out == NULL);
   *out = BN_new();
   if (*out == NULL) {
     return 0;
   }
+  if (buggy) {
+    return BN_cbs2unsigned_buggy(cbs, *out);
+  }
   return BN_cbs2unsigned(cbs, *out);
+}
+
+static int parse_integer(CBS *cbs, BIGNUM **out) {
+  return parse_integer_buggy(cbs, out, 0 /* not buggy */);
 }
 
 static int marshal_integer(CBB *cbb, BIGNUM *bn) {
@@ -87,14 +94,14 @@ static int marshal_integer(CBB *cbb, BIGNUM *bn) {
   return BN_bn2cbb(cbb, bn);
 }
 
-RSA *RSA_parse_public_key(CBS *cbs) {
+static RSA *parse_public_key(CBS *cbs, int buggy) {
   RSA *ret = RSA_new();
   if (ret == NULL) {
     return NULL;
   }
   CBS child;
   if (!CBS_get_asn1(cbs, &child, CBS_ASN1_SEQUENCE) ||
-      !parse_integer(&child, &ret->n) ||
+      !parse_integer_buggy(&child, &ret->n, buggy) ||
       !parse_integer(&child, &ret->e) ||
       CBS_len(&child) != 0) {
     OPENSSL_PUT_ERROR(RSA, RSA_R_BAD_ENCODING);
@@ -102,6 +109,20 @@ RSA *RSA_parse_public_key(CBS *cbs) {
     return NULL;
   }
   return ret;
+}
+
+RSA *RSA_parse_public_key(CBS *cbs) {
+  return parse_public_key(cbs, 0 /* not buggy */);
+}
+
+RSA *RSA_parse_public_key_buggy(CBS *cbs) {
+  /* Estonian IDs issued between September 2014 to September 2015 are broken and
+   * use negative moduli. They last five years and are common enough that we
+   * need to work around this bug. See https://crbug.com/532048.
+   *
+   * TODO(davidben): Remove this code and callers in September 2019 when all the
+   * bad certificates have expired. */
+  return parse_public_key(cbs, 1 /* buggy */);
 }
 
 RSA *RSA_public_key_from_bytes(const uint8_t *in, size_t in_len) {

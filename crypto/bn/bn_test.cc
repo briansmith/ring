@@ -1774,10 +1774,15 @@ static const ASN1InvalidTest kASN1InvalidTests[] = {
     {"\x03\x01\x00", 3},
     // Empty contents.
     {"\x02\x00", 2},
-    // Negative number.
-    {"\x02\x01\x80", 3},
-    // Leading zeros.
+    // Unnecessary leading zeros.
     {"\x02\x02\x00\x01", 4},
+};
+
+// kASN1NegativeTests are encodings of negative numbers and how
+// |BN_cbs2unsigned_buggy| should interpret them.
+static const ASN1Test kASN1NegativeTests[] = {
+    {"128", "\x02\x01\x80", 3},
+    {"255", "\x02\x01\xff", 3},
 };
 
 static bool test_asn1() {
@@ -1820,6 +1825,17 @@ static bool test_asn1() {
       fprintf(stderr, "Bad serialization.\n");
       return false;
     }
+
+    // |BN_cbs2unsigned_buggy| parses all valid input.
+    CBS_init(&cbs, reinterpret_cast<const uint8_t*>(test.der), test.der_len);
+    if (!BN_cbs2unsigned_buggy(&cbs, bn2.get()) || CBS_len(&cbs) != 0) {
+      fprintf(stderr, "Parsing ASN.1 INTEGER failed.\n");
+      return false;
+    }
+    if (BN_cmp(bn.get(), bn2.get()) != 0) {
+      fprintf(stderr, "Bad parse.\n");
+      return false;
+    }
   }
 
   for (const ASN1InvalidTest &test : kASN1InvalidTests) {
@@ -1834,6 +1850,48 @@ static bool test_asn1() {
       return false;
     }
     ERR_clear_error();
+
+    // All tests in kASN1InvalidTests are also rejected by
+    // |BN_cbs2unsigned_buggy|.
+    CBS_init(&cbs, reinterpret_cast<const uint8_t*>(test.der), test.der_len);
+    if (BN_cbs2unsigned_buggy(&cbs, bn.get())) {
+      fprintf(stderr, "Parsed invalid input.\n");
+      return false;
+    }
+    ERR_clear_error();
+  }
+
+  for (const ASN1Test &test : kASN1NegativeTests) {
+    // Negative numbers are rejected by |BN_cbs2unsigned|.
+    ScopedBIGNUM bn(BN_new());
+    if (!bn) {
+      return false;
+    }
+
+    CBS cbs;
+    CBS_init(&cbs, reinterpret_cast<const uint8_t*>(test.der), test.der_len);
+    if (BN_cbs2unsigned(&cbs, bn.get())) {
+      fprintf(stderr, "Parsed invalid input.\n");
+      return false;
+    }
+    ERR_clear_error();
+
+    // However |BN_cbs2unsigned_buggy| accepts them.
+    ScopedBIGNUM bn2 = ASCIIToBIGNUM(test.value_ascii);
+    if (!bn2) {
+      return false;
+    }
+
+    CBS_init(&cbs, reinterpret_cast<const uint8_t*>(test.der), test.der_len);
+    if (!BN_cbs2unsigned_buggy(&cbs, bn.get()) || CBS_len(&cbs) != 0) {
+      fprintf(stderr, "Parsing (invalid) ASN.1 INTEGER failed.\n");
+      return false;
+    }
+
+    if (BN_cmp(bn.get(), bn2.get()) != 0) {
+      fprintf(stderr, "\"Bad\" parse.\n");
+      return false;
+    }
   }
 
   // Serializing negative numbers is not supported.

@@ -57,6 +57,7 @@
 
 #include <openssl/asn1.h>
 #include <openssl/asn1t.h>
+#include <openssl/bytestring.h>
 #include <openssl/digest.h>
 #include <openssl/err.h>
 #include <openssl/mem.h>
@@ -87,16 +88,26 @@ static int rsa_pub_encode(X509_PUBKEY *pk, const EVP_PKEY *pkey) {
 static int rsa_pub_decode(EVP_PKEY *pkey, X509_PUBKEY *pubkey) {
   const uint8_t *p;
   int pklen;
-  RSA *rsa;
-
   if (!X509_PUBKEY_get0_param(NULL, &p, &pklen, NULL, pubkey)) {
     return 0;
   }
-  rsa = RSA_public_key_from_bytes(p, pklen);
-  if (rsa == NULL) {
-    OPENSSL_PUT_ERROR(EVP, ERR_R_RSA_LIB);
+
+  /* Estonian IDs issued between September 2014 to September 2015 are broken and
+   * use negative moduli. They last five years and are common enough that we
+   * need to work around this bug. See https://crbug.com/532048.
+   *
+   * TODO(davidben): Switch this to the strict version in September 2019 or when
+   * Chromium can force client certificates down a different codepath, whichever
+   * comes first. */
+  CBS cbs;
+  CBS_init(&cbs, p, pklen);
+  RSA *rsa = RSA_parse_public_key_buggy(&cbs);
+  if (rsa == NULL || CBS_len(&cbs) != 0) {
+    OPENSSL_PUT_ERROR(EVP, EVP_R_DECODE_ERROR);
+    RSA_free(rsa);
     return 0;
   }
+
   EVP_PKEY_assign_RSA(pkey, rsa);
   return 1;
 }

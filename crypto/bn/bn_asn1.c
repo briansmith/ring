@@ -25,10 +25,12 @@ int BN_cbs2unsigned(CBS *cbs, BIGNUM *ret) {
     OPENSSL_PUT_ERROR(BN, BN_R_BAD_ENCODING);
     return 0;
   }
+
   if (CBS_data(&child)[0] & 0x80) {
     OPENSSL_PUT_ERROR(BN, BN_R_NEGATIVE_NUMBER);
     return 0;
   }
+
   /* INTEGERs must be minimal. */
   if (CBS_data(&child)[0] == 0x00 &&
       CBS_len(&child) > 1 &&
@@ -36,6 +38,33 @@ int BN_cbs2unsigned(CBS *cbs, BIGNUM *ret) {
     OPENSSL_PUT_ERROR(BN, BN_R_BAD_ENCODING);
     return 0;
   }
+
+  return BN_bin2bn(CBS_data(&child), CBS_len(&child), ret) != NULL;
+}
+
+int BN_cbs2unsigned_buggy(CBS *cbs, BIGNUM *ret) {
+  CBS child;
+  if (!CBS_get_asn1(cbs, &child, CBS_ASN1_INTEGER) ||
+      CBS_len(&child) == 0) {
+    OPENSSL_PUT_ERROR(BN, BN_R_BAD_ENCODING);
+    return 0;
+  }
+
+  /* INTEGERs must be minimal. */
+  if (CBS_data(&child)[0] == 0x00 &&
+      CBS_len(&child) > 1 &&
+      !(CBS_data(&child)[1] & 0x80)) {
+    OPENSSL_PUT_ERROR(BN, BN_R_BAD_ENCODING);
+    return 0;
+  }
+
+  /* This function intentionally does not reject negative numbers. Estonian IDs
+   * issued between September 2014 to September 2015 are broken and use negative
+   * moduli. They last five years and are common enough that we need to work
+   * around this bug. See https://crbug.com/532048.
+   *
+   * TODO(davidben): Remove this code and callers in September 2019 when all the
+   * bad certificates have expired. */
   return BN_bin2bn(CBS_data(&child), CBS_len(&child), ret) != NULL;
 }
 

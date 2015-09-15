@@ -304,6 +304,11 @@ OPENSSL_EXPORT BN_ULONG BN_get_word(const BIGNUM *bn);
  * result to |ret|. It returns one on success and zero on failure. */
 OPENSSL_EXPORT int BN_cbs2unsigned(CBS *cbs, BIGNUM *ret);
 
+/* BN_cbs2unsigned_buggy acts like |BN_cbs2unsigned| but tolerates negative
+ * INTEGERs. This is to work around buggy encoders which drop the 00 padding
+ * byte. Do not use this function. */
+OPENSSL_EXPORT int BN_cbs2unsigned_buggy(CBS *cbs, BIGNUM *ret);
+
 /* BN_bn2cbb marshals |bn| as a non-negative DER INTEGER and appends the result
  * to |cbb|. It returns one on success and zero on failure. */
 OPENSSL_EXPORT int BN_bn2cbb(CBB *cbb, const BIGNUM *bn);
