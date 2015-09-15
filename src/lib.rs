@@ -22,3 +22,6 @@ pub mod ecc;
 mod ffi;
 pub mod rand;
 pub mod rsa;
+
+#[cfg(test)]
+mod file_test;
