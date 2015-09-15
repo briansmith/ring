@@ -71,8 +71,6 @@ static const EVP_CIPHER *GetCipher(const std::string &name) {
     return EVP_des_cbc();
   } else if (name == "DES-EDE3-CBC") {
     return EVP_des_ede3_cbc();
-  } else if (name == "RC4") {
-    return EVP_rc4();
   } else if (name == "AES-128-CBC") {
     return EVP_aes_128_cbc();
   } else if (name == "AES-128-GCM") {

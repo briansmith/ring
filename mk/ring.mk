@@ -49,7 +49,6 @@ RING_SRCS = $(addprefix $(RING_PREFIX), \
   crypto/cipher/e_chacha20poly1305.c \
   crypto/cipher/e_des.c \
   crypto/cipher/e_null.c \
-  crypto/cipher/e_rc4.c \
   crypto/cipher/e_tls.c \
   crypto/cipher/tls_cbc.c \
   crypto/cmac/cmac.c \
@@ -95,7 +94,6 @@ RING_SRCS = $(addprefix $(RING_PREFIX), \
   crypto/rand/hwrand.c \
   crypto/rand/rand.c \
   crypto/rand/urandom.c \
-  crypto/rc4/rc4.c \
   crypto/refcount_c11.c \
   crypto/refcount_lock.c \
   crypto/rsa/blinding.c \

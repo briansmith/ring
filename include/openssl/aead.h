@@ -138,9 +138,6 @@ OPENSSL_EXPORT int EVP_has_aes_hardware(void);
  * unpredictable. They only accept an |ad| parameter of length 11 (the standard
  * TLS one with length omitted). */
 
-OPENSSL_EXPORT const EVP_AEAD *EVP_aead_rc4_md5_tls(void);
-OPENSSL_EXPORT const EVP_AEAD *EVP_aead_rc4_sha1_tls(void);
-
 OPENSSL_EXPORT const EVP_AEAD *EVP_aead_aes_128_cbc_sha1_tls(void);
 OPENSSL_EXPORT const EVP_AEAD *EVP_aead_aes_128_cbc_sha1_tls_implicit_iv(void);
 OPENSSL_EXPORT const EVP_AEAD *EVP_aead_aes_128_cbc_sha256_tls(void);

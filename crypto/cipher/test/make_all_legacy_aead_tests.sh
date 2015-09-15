@@ -2,9 +2,6 @@
 
 set -xe
 
-go run make_legacy_aead_tests.go -cipher rc4 -mac md5 > rc4_md5_tls_tests.txt
-go run make_legacy_aead_tests.go -cipher rc4 -mac sha1 > rc4_sha1_tls_tests.txt
-
 go run make_legacy_aead_tests.go -cipher aes128 -mac sha1 > aes_128_cbc_sha1_tls_tests.txt
 go run make_legacy_aead_tests.go -cipher aes128 -mac sha1 -implicit-iv > aes_128_cbc_sha1_tls_implicit_iv_tests.txt
 go run make_legacy_aead_tests.go -cipher aes128 -mac sha256 > aes_128_cbc_sha256_tls_tests.txt
