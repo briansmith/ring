@@ -154,21 +154,6 @@ OPENSSL_EXPORT const EVP_AEAD *EVP_aead_des_ede3_cbc_sha1_tls(void);
 OPENSSL_EXPORT const EVP_AEAD *EVP_aead_des_ede3_cbc_sha1_tls_implicit_iv(void);
 
 
-/* SSLv3-specific AEAD algorithms.
- *
- * These AEAD primitives do not meet the definition of generic AEADs. They are
- * all specific to SSLv3 and should not be used outside of that context. They
- * must be initialized with |EVP_AEAD_CTX_init_with_direction|, are stateful,
- * and may not be used concurrently. They only accept an |ad| parameter of
- * length 9 (the standard TLS one with length and version omitted). */
-
-OPENSSL_EXPORT const EVP_AEAD *EVP_aead_rc4_md5_ssl3(void);
-OPENSSL_EXPORT const EVP_AEAD *EVP_aead_rc4_sha1_ssl3(void);
-OPENSSL_EXPORT const EVP_AEAD *EVP_aead_aes_128_cbc_sha1_ssl3(void);
-OPENSSL_EXPORT const EVP_AEAD *EVP_aead_aes_256_cbc_sha1_ssl3(void);
-OPENSSL_EXPORT const EVP_AEAD *EVP_aead_des_ede3_cbc_sha1_ssl3(void);
-
-
 /* Utility functions. */
 
 /* EVP_AEAD_key_length returns the length, in bytes, of the keys used by
@@ -243,8 +228,7 @@ OPENSSL_EXPORT int EVP_AEAD_CTX_init(EVP_AEAD_CTX *ctx, const EVP_AEAD *aead,
                                      size_t tag_len, ENGINE *impl);
 
 /* EVP_AEAD_CTX_init_with_direction calls |EVP_AEAD_CTX_init| for normal
- * AEADs. For TLS-specific and SSL3-specific AEADs, it initializes |ctx| for a
- * given direction. */
+ * AEADs. For TLS-specific AEADs, it initializes |ctx| for a given direction. */
 OPENSSL_EXPORT int EVP_AEAD_CTX_init_with_direction(
     EVP_AEAD_CTX *ctx, const EVP_AEAD *aead, const uint8_t *key, size_t key_len,
     size_t tag_len, enum evp_aead_direction_t dir);

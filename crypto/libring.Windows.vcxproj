@@ -46,7 +46,6 @@
     <ClCompile Include="cipher\e_des.c" />
     <ClCompile Include="cipher\e_null.c" />
     <ClCompile Include="cipher\e_rc4.c" />
-    <ClCompile Include="cipher\e_ssl3.c" />
     <ClCompile Include="cipher\e_tls.c" />
     <ClCompile Include="cipher\tls_cbc.c" />
     <ClCompile Include="cmac\cmac.c" />
