@@ -19,9 +19,9 @@
 //! peer's messages or for signing its own messages, but usually not both. To
 //! better facilitate the use of separate keys for signing and verification,
 //! the API is split into groups: `SigningKey`, `SigningContext`, and `sign`;
-//! `VerificationKey`, `VerificationContext`, and `verify`. For cases where
-//! HMAC is being used for a purpose other than signing & authenticating
-//! messages, such as in PRFs like HKDF, the signing operations should be used.
+//! and `VerificationKey` and `verify`. When HMAC is being used for a purpose
+//! other than signing & authenticating messages, such as when implementing
+//! HMAC-based PRFs, the signing operations should be used.
 //!
 //! Usually an HMAC key is used for multiple signing operations or multiple
 //! verification operations. After a `SigningKey` or `VerificationKey` is
@@ -30,13 +30,17 @@
 //! allows the per-key precomputation to be done only once, instead of it being
 //! done in every HMAC operation.
 //!
-//! Frequently all the data to be signed or authenticated in a message is
-//! available in a single contiguous piece. In that case, the `sign` and
-//! `verify` functions can be used as a shortcut to using `SigningContext`
-//! and `VerificationContext`.
+//! Frequently all the data to be signed in a message is available in a single
+//! contiguous piece. In that case, the module-level `sign` function can be
+//! used. Otherwise, if the input is in multiple parts, `SigningContext` should
+//! be used.
 //!
-//! `verify` and `VerificationContext::verify` do comparisons in constant time
-//! to prevent timing attacks.
+//! The `verify` function should be used for verifying HMAC signatures.
+//! `verify` compares the computed HMAC signature to the expected HMAC
+//! signature in constant time to prevent timing attacks. There is no
+//! multi-step "`VerificationContext`" interface. Such a streaming interface
+//! would be dangerous as generally one must verify the HMAC signature of the
+//! entire input before processing any part of the input.
 //!
 //! # Examples:
 //!
@@ -81,11 +85,11 @@
 //! let signature = s_ctx.sign();
 //!
 //! let v_key = hmac::VerificationKey::new(&digest::SHA384, key_value.as_ref());
-//! let mut v_ctx = hmac::VerificationContext::with_key(&v_key);
+//! let mut msg = Vec::<u8>::new();
 //! for part in &parts {
-//!     v_ctx.update(part.as_bytes());
+//!     msg.extend(part.as_bytes());
 //! }
-//! try!(v_ctx.verify(signature.as_ref()));
+//! try!(hmac::verify(&v_key, &msg.as_ref(), signature.as_ref()));
 //! #
 //! # Ok(())
 //! # }
@@ -150,7 +154,7 @@ impl SigningKey {
 ///
 /// Use `sign` for single-step HMAC signing.
 ///
-/// C analogs: `HMAC_CTX`.
+/// C analog: `HMAC_CTX`.
 pub struct SigningContext {
     inner: digest::Context,
     outer: digest::Context,
@@ -181,8 +185,8 @@ impl SigningContext {
     /// called.
     ///
     /// It is generally not safe to implement HMAC verification by comparing
-    // the return value of `sign` to a signature. Use `verify` or
-    /// `VerificationContext` for verification instead.
+    // the return value of `sign` to a signature. Use `verify` for verification
+    // instead.
     ///
     /// C analog: `HMAC_Final`
     pub fn sign(mut self) -> digest::Digest {
@@ -197,8 +201,8 @@ impl SigningContext {
 /// parts.
 ///
 /// It is generally not safe to implement HMAC verification by comparing the
-/// return value of `sign` to a signature. Use `verify` or
-/// `VerificationContext` for verification instead.
+/// return value of `sign` to a signature. Use `verify` for verification
+/// instead.
 ///
 /// C analog: `HMAC_CTX_init` + `HMAC_Update` + HMAC_Final`.
 pub fn sign(key: &SigningKey, data: &[u8]) -> digest::Digest {
@@ -228,61 +232,19 @@ impl VerificationKey {
     }
 }
 
-/// A context for multi-step (Init-Update-Finish) HMAC verification.
-///
-/// Use `verify` for single-step HMAC verification.
-///
-/// HMAC is specified in [RFC 2104](https://tools.ietf.org/html/rfc2104).
-///
-/// C analogs: `HMAC_CTX`.
-pub struct VerificationContext {
-    wrapped: SigningContext
-}
-
-impl VerificationContext {
-    /// Constructs a new HMAC signing context using the given digest algorithm
-    /// and key.
-    #[inline(always)]
-    pub fn with_key(key: &VerificationKey) -> VerificationContext {
-        VerificationContext { wrapped: SigningContext::with_key(&key.wrapped) }
-    }
-
-    /// Updates the HMAC with all the data in `data`. `update` may be called
-    /// zero or more times until `finish` is called.
-    ///
-    /// C analog: `HMAC_Update`
-    #[inline(always)]
-    pub fn update(&mut self, data: &[u8]) {
-        self.wrapped.update(data);
-    }
-
-    /// Finalizes the HMAC calculation and verifies whether the computed HMAC
-    /// equals `expected_value`.
-    ///
-    /// The verification will be done in constant  time to prevent timing
-    /// attacks. `verify` consumes the context so it cannot be (mis-)used after
-    /// `verify` has been called.
-    ///
-    /// C analog: `HMAC_Final`
-    pub fn verify(self, expected_value: &[u8]) -> Result<(), ()> {
-        let actual_value = self.wrapped.sign();
-        ffi::verify_slices_are_equal_ct(actual_value.as_ref(), expected_value)
-    }
-}
-
 /// Calculates the HMAC of `data` using the key `key`, and verifies whether the
 /// resultant value equals `expected_value`, in one step.
 ///
 /// The verification will be done in constant time to prevent timing attacks.
 ///
-/// C analog: `HMAC_Final`
+/// C analog: `HMAC_Init` + `HMAC_Update` + `HMAC_Final` + `CRYPTO_memcmp`
 pub fn verify(key: &VerificationKey, data: &[u8], expected_value: &[u8])
               -> Result<(), ()> {
-    let mut ctx = VerificationContext::with_key(key);
+    let mut ctx = SigningContext::with_key(&key.wrapped);
     ctx.update(data);
-    ctx.verify(expected_value)
+    let actual_value = ctx.sign();
+    ffi::verify_slices_are_equal_ct(actual_value.as_ref(), expected_value)
 }
-
 
 #[cfg(test)]
 mod tests {
@@ -295,7 +257,6 @@ mod tests {
 
     fn hmac_test_case(test_case: &mut file_test::TestCase) {
         let digest_alg = test_case.consume_digest_alg("HMAC");
-
         let key_value = test_case.consume_bytes("Key");
         let mut input = test_case.consume_bytes("Input");
         let output = test_case.consume_bytes("Output");
@@ -339,23 +300,16 @@ mod tests {
             s_ctx.update(input);
             let signature = s_ctx.sign();
             assert_eq!(is_ok, signature.as_ref() == output);
-
-            let mut v_ctx = hmac::VerificationContext::with_key(&v_key);
-            v_ctx.update(input);
-            assert_eq!(is_ok, v_ctx.verify(output).is_ok());
         }
 
         // Multi-part API, byte by byte.
         {
             let mut s_ctx = hmac::SigningContext::with_key(&s_key);
-            let mut v_ctx = hmac::VerificationContext::with_key(&v_key);
             for b in input {
                 s_ctx.update(&[*b]);
-                v_ctx.update(&[*b]);
             }
             let signature = s_ctx.sign();
             assert_eq!(is_ok, signature.as_ref() == output);
-            assert_eq!(is_ok, v_ctx.verify(output).is_ok());
         }
     }
 }
