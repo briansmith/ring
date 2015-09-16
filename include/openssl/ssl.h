@@ -1601,6 +1601,91 @@ OPENSSL_EXPORT void SSL_get0_alpn_selected(const SSL *ssl,
                                            unsigned *out_len);
 
 
+/* Next protocol negotiation.
+ *
+ * The NPN extension (draft-agl-tls-nextprotoneg-03) is the predecessor to ALPN
+ * and deprecated in favor of it. */
+
+/* SSL_CTX_set_next_protos_advertised_cb sets a callback that is called when a
+ * TLS server needs a list of supported protocols for Next Protocol
+ * Negotiation. The returned list must be in wire format. The list is returned
+ * by setting |*out| to point to it and |*out_len| to its length. This memory
+ * will not be modified, but one should assume that |ssl| keeps a reference to
+ * it.
+ *
+ * The callback should return |SSL_TLSEXT_ERR_OK| if it wishes to advertise.
+ * Otherwise, no such extension will be included in the ServerHello. */
+OPENSSL_EXPORT void SSL_CTX_set_next_protos_advertised_cb(
+    SSL_CTX *ctx,
+    int (*cb)(SSL *ssl, const uint8_t **out, unsigned *out_len, void *arg),
+    void *arg);
+
+/* SSL_CTX_set_next_proto_select_cb sets a callback that is called when a client
+ * needs to select a protocol from the server's provided list. |*out| must be
+ * set to point to the selected protocol (which may be within |in|). The length
+ * of the protocol name must be written into |*out_len|. The server's advertised
+ * protocols are provided in |in| and |in_len|. The callback can assume that
+ * |in| is syntactically valid.
+ *
+ * The client must select a protocol. It is fatal to the connection if this
+ * callback returns a value other than |SSL_TLSEXT_ERR_OK|.
+ *
+ * Configuring this callback enables NPN on a client. */
+OPENSSL_EXPORT void SSL_CTX_set_next_proto_select_cb(
+    SSL_CTX *ctx, int (*cb)(SSL *ssl, uint8_t **out, uint8_t *out_len,
+                            const uint8_t *in, unsigned in_len, void *arg),
+    void *arg);
+
+/* SSL_get0_next_proto_negotiated sets |*out_data| and |*out_len| to point to
+ * the client's requested protocol for this connection. If the client didn't
+ * request any protocol, then |*out_data| is set to NULL.
+ *
+ * Note that the client can request any protocol it chooses. The value returned
+ * from this function need not be a member of the list of supported protocols
+ * provided by the server. */
+OPENSSL_EXPORT void SSL_get0_next_proto_negotiated(const SSL *ssl,
+                                                   const uint8_t **out_data,
+                                                   unsigned *out_len);
+
+/* SSL_select_next_proto implements the standard protocol selection. It is
+ * expected that this function is called from the callback set by
+ * |SSL_CTX_set_next_proto_select_cb|.
+ *
+ * The protocol data is assumed to be a vector of 8-bit, length prefixed byte
+ * strings. The length byte itself is not included in the length. A byte
+ * string of length 0 is invalid. No byte string may be truncated.
+ *
+ * The current, but experimental algorithm for selecting the protocol is:
+ *
+ * 1) If the server doesn't support NPN then this is indicated to the
+ * callback. In this case, the client application has to abort the connection
+ * or have a default application level protocol.
+ *
+ * 2) If the server supports NPN, but advertises an empty list then the
+ * client selects the first protcol in its list, but indicates via the
+ * API that this fallback case was enacted.
+ *
+ * 3) Otherwise, the client finds the first protocol in the server's list
+ * that it supports and selects this protocol. This is because it's
+ * assumed that the server has better information about which protocol
+ * a client should use.
+ *
+ * 4) If the client doesn't support any of the server's advertised
+ * protocols, then this is treated the same as case 2.
+ *
+ * It returns either |OPENSSL_NPN_NEGOTIATED| if a common protocol was found, or
+ * |OPENSSL_NPN_NO_OVERLAP| if the fallback case was reached. */
+OPENSSL_EXPORT int SSL_select_next_proto(uint8_t **out, uint8_t *out_len,
+                                         const uint8_t *server,
+                                         unsigned server_len,
+                                         const uint8_t *client,
+                                         unsigned client_len);
+
+#define OPENSSL_NPN_UNSUPPORTED 0
+#define OPENSSL_NPN_NEGOTIATED 1
+#define OPENSSL_NPN_NO_OVERLAP 2
+
+
 /* DTLS-SRTP.
  *
  * See RFC 5764. */
@@ -1999,27 +2084,6 @@ OPENSSL_EXPORT void SSL_get0_signed_cert_timestamp_list(const SSL *ssl,
  * WARNING: the returned data is not guaranteed to be well formed. */
 OPENSSL_EXPORT void SSL_get0_ocsp_response(const SSL *ssl, const uint8_t **out,
                                            size_t *out_len);
-
-OPENSSL_EXPORT void SSL_CTX_set_next_protos_advertised_cb(
-    SSL_CTX *s,
-    int (*cb)(SSL *ssl, const uint8_t **out, unsigned int *outlen, void *arg),
-    void *arg);
-OPENSSL_EXPORT void SSL_CTX_set_next_proto_select_cb(
-    SSL_CTX *s, int (*cb)(SSL *ssl, uint8_t **out, uint8_t *outlen,
-                          const uint8_t *in, unsigned int inlen, void *arg),
-    void *arg);
-OPENSSL_EXPORT void SSL_get0_next_proto_negotiated(const SSL *s,
-                                                   const uint8_t **data,
-                                                   unsigned *len);
-
-OPENSSL_EXPORT int SSL_select_next_proto(uint8_t **out, uint8_t *outlen,
-                                         const uint8_t *in, unsigned int inlen,
-                                         const uint8_t *client,
-                                         unsigned int client_len);
-
-#define OPENSSL_NPN_UNSUPPORTED 0
-#define OPENSSL_NPN_NEGOTIATED 1
-#define OPENSSL_NPN_NO_OVERLAP 2
 
 /* SSL_set_reject_peer_renegotiations controls whether renegotiation attempts by
  * the peer are rejected. It may be set at any point in a connection's lifetime
@@ -2943,13 +3007,13 @@ struct ssl_ctx_st {
 
   /* For a server, this contains a callback function by which the set of
    * advertised protocols can be provided. */
-  int (*next_protos_advertised_cb)(SSL *s, const uint8_t **buf,
-                                   unsigned int *len, void *arg);
+  int (*next_protos_advertised_cb)(SSL *ssl, const uint8_t **out,
+                                   unsigned *out_len, void *arg);
   void *next_protos_advertised_cb_arg;
   /* For a client, this contains a callback function that selects the
    * next protocol from the list provided by the server. */
-  int (*next_proto_select_cb)(SSL *s, uint8_t **out, uint8_t *outlen,
-                              const uint8_t *in, unsigned int inlen, void *arg);
+  int (*next_proto_select_cb)(SSL *ssl, uint8_t **out, uint8_t *out_len,
+                              const uint8_t *in, unsigned in_len, void *arg);
   void *next_proto_select_cb_arg;
 
   /* ALPN information
