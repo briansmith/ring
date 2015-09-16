@@ -1439,6 +1439,117 @@ OPENSSL_EXPORT int SSL_CTX_set_tlsext_ticket_key_cb(
                                   int encrypt));
 
 
+/* Elliptic curve Diffie-Hellman.
+ *
+ * Cipher suites using an ECDHE key exchange perform Diffie-Hellman over an
+ * elliptic curve negotiated by both endpoints. See RFC 4492. Only named curves
+ * are supported. ECDHE is always enabled, but the curve preferences may be
+ * configured with these functions.
+ *
+ * A client may use |SSL_SESSION_get_key_exchange_info| to determine the curve
+ * selected. */
+
+/* SSL_CTX_set1_curves sets the preferred curves for |ctx| to be |curves|. Each
+ * element of |curves| should be a curve nid. It returns one on success and
+ * zero on failure. */
+OPENSSL_EXPORT int SSL_CTX_set1_curves(SSL_CTX *ctx, const int *curves,
+                                       size_t curves_len);
+
+/* SSL_set1_curves sets the preferred curves for |ssl| to be |curves|. Each
+ * element of |curves| should be a curve nid. It returns one on success and
+ * zero on failure. */
+OPENSSL_EXPORT int SSL_set1_curves(SSL *ssl, const int *curves,
+                                   size_t curves_len);
+
+/* SSL_CTX_set_tmp_ecdh configures |ctx| to use the curve from |ecdh| as the
+ * curve for ephemeral ECDH keys. For historical reasons, this API expects an
+ * |EC_KEY|, but only the curve is used. It returns one on success and zero on
+ * error. If unset, an appropriate curve will be chosen based on curve
+ * preferences. (This is recommended.) */
+OPENSSL_EXPORT int SSL_CTX_set_tmp_ecdh(SSL_CTX *ctx, const EC_KEY *ec_key);
+
+/* SSL_set_tmp_ecdh configures |ssl| to use the curve from |ecdh| as the curve
+ * for ephemeral ECDH keys. For historical reasons, this API expects an
+ * |EC_KEY|, but only the curve is used. It returns one on success and zero on
+ * error. If unset, an appropriate curve will be chosen based on curve
+ * preferences. (This is recommended.) */
+OPENSSL_EXPORT int SSL_set_tmp_ecdh(SSL *ssl, const EC_KEY *ec_key);
+
+/* SSL_CTX_set_tmp_ecdh_callback configures |ctx| to use |callback| to determine
+ * the curve for ephemeral ECDH keys. |callback| should ignore |is_export| and
+ * |keylength| and return an |EC_KEY| of the selected curve or NULL on
+ * error. Only the curve is used, so the |EC_KEY| needn't have a generated
+ * keypair.
+ *
+ * If the callback is unset, an appropriate curve will be chosen based on curve
+ * preferences. (This is recommended.)
+ *
+ * WARNING: The caller does not take ownership of the resulting |EC_KEY|, so
+ * |callback| must save and release the object elsewhere. */
+OPENSSL_EXPORT void SSL_CTX_set_tmp_ecdh_callback(
+    SSL_CTX *ctx, EC_KEY *(*callback)(SSL *ssl, int is_export, int keylength));
+
+/* SSL_set_tmp_ecdh_callback configures |ssl| to use |callback| to determine the
+ * curve for ephemeral ECDH keys. |callback| should ignore |is_export| and
+ * |keylength| and return an |EC_KEY| of the selected curve or NULL on
+ * error. Only the curve is used, so the |EC_KEY| needn't have a generated
+ * keypair.
+ *
+ * If the callback is unset, an appropriate curve will be chosen based on curve
+ * preferences. (This is recommended.)
+ *
+ * WARNING: The caller does not take ownership of the resulting |EC_KEY|, so
+ * |callback| must save and release the object elsewhere. */
+OPENSSL_EXPORT void SSL_set_tmp_ecdh_callback(
+    SSL *ssl, EC_KEY *(*callback)(SSL *ssl, int is_export, int keylength));
+
+/* SSL_get_curve_name returns a human-readable name for the elliptic curve
+ * specified by the given TLS curve id, or NULL if the curve if unknown. */
+OPENSSL_EXPORT const char* SSL_get_curve_name(uint16_t curve_id);
+
+
+/* Multiplicative Diffie-Hellman.
+ *
+ * Cipher suites using a DHE key exchange perform Diffie-Hellman over a
+ * multiplicative group selected by the server. These ciphers are disabled for a
+ * server unless a group is chosen with one of these functions.
+ *
+ * A client may use |SSL_SESSION_get_key_exchange_info| to determine the size of
+ * the selected group's prime, but note that servers may select degenerate
+ * groups. */
+
+/* SSL_CTX_set_tmp_dh configures |ctx| to use the group from |dh| as the group
+ * for DHE. Only the group is used, so |dh| needn't have a keypair. It returns
+ * one on success and zero on error. */
+OPENSSL_EXPORT int SSL_CTX_set_tmp_dh(SSL_CTX *ctx, const DH *dh);
+
+/* SSL_set_tmp_dh configures |ssl| to use the group from |dh| as the group for
+ * DHE. Only the group is used, so |dh| needn't have a keypair. It returns one
+ * on success and zero on error. */
+OPENSSL_EXPORT int SSL_set_tmp_dh(SSL *ssl, const DH *dh);
+
+/* SSL_CTX_set_tmp_dh_callback configures |ctx| to use |callback| to determine
+ * the group for DHE ciphers. |callback| should ignore |is_export| and
+ * |keylength| and return a |DH| of the selected group or NULL on error. Only
+ * the parameters are used, so the |DH| needn't have a generated keypair.
+ *
+ * WARNING: The caller does not take ownership of the resulting |DH|, so
+ * |callback| must save and release the object elsewhere. */
+OPENSSL_EXPORT void SSL_CTX_set_tmp_dh_callback(
+    SSL_CTX *ctx, DH *(*callback)(SSL *ssl, int is_export, int keylength));
+
+/* SSL_set_tmp_dh_callback configures |ssl| to use |callback| to determine the
+ * group for DHE ciphers. |callback| should ignore |is_export| and |keylength|
+ * and return a |DH| of the selected group or NULL on error. Only the
+ * parameters are used, so the |DH| needn't have a generated keypair.
+ *
+ * WARNING: The caller does not take ownership of the resulting |DH|, so
+ * |callback| must save and release the object elsewhere. */
+OPENSSL_EXPORT void SSL_set_tmp_dh_callback(SSL *ssl,
+                                            DH *(*dh)(SSL *ssl, int is_export,
+                                                      int keylength));
+
+
 /* DTLS-SRTP.
  *
  * See RFC 5764. */
@@ -2071,30 +2182,6 @@ OPENSSL_EXPORT int SSL_session_reused(const SSL *ssl);
  * peformed by |ssl|. This includes the pending renegotiation, if any. */
 OPENSSL_EXPORT int SSL_total_renegotiations(const SSL *ssl);
 
-/* SSL_CTX_set_tmp_dh configures |ctx| to use the group from |dh| as the group
- * for DHE. Only the group is used, so |dh| needn't have a keypair. It returns
- * one on success and zero on error. */
-OPENSSL_EXPORT int SSL_CTX_set_tmp_dh(SSL_CTX *ctx, const DH *dh);
-
-/* SSL_set_tmp_dh configures |ssl| to use the group from |dh| as the group for
- * DHE. Only the group is used, so |dh| needn't have a keypair. It returns one
- * on success and zero on error. */
-OPENSSL_EXPORT int SSL_set_tmp_dh(SSL *ssl, const DH *dh);
-
-/* SSL_CTX_set_tmp_ecdh configures |ctx| to use the curve from |ecdh| as the
- * curve for ephemeral ECDH keys. For historical reasons, this API expects an
- * |EC_KEY|, but only the curve is used. It returns one on success and zero on
- * error. If unset, an appropriate curve will be chosen automatically. (This is
- * recommended.) */
-OPENSSL_EXPORT int SSL_CTX_set_tmp_ecdh(SSL_CTX *ctx, const EC_KEY *ec_key);
-
-/* SSL_set_tmp_ecdh configures |ssl| to use the curve from |ecdh| as the curve
- * for ephemeral ECDH keys. For historical reasons, this API expects an
- * |EC_KEY|, but only the curve is used. It returns one on success and zero on
- * error. If unset, an appropriate curve will be chosen automatically. (This is
- * recommended.) */
-OPENSSL_EXPORT int SSL_set_tmp_ecdh(SSL *ssl, const EC_KEY *ec_key);
-
 /* SSL_CTX_enable_tls_channel_id either configures a TLS server to accept TLS
  * client IDs from clients, or configures a client to send TLS client IDs to
  * a server. It returns one. */
@@ -2129,18 +2216,6 @@ OPENSSL_EXPORT size_t SSL_get_tls_channel_id(SSL *ssl, uint8_t *out,
  * length of the array. */
 OPENSSL_EXPORT size_t SSL_get0_certificate_types(SSL *ssl,
                                                  const uint8_t **out_types);
-
-/* SSL_CTX_set1_curves sets the preferred curves for |ctx| to be |curves|. Each
- * element of |curves| should be a curve nid. It returns one on success and
- * zero on failure. */
-OPENSSL_EXPORT int SSL_CTX_set1_curves(SSL_CTX *ctx, const int *curves,
-                                       size_t curves_len);
-
-/* SSL_set1_curves sets the preferred curves for |ssl| to be |curves|. Each
- * element of |curves| should be a curve nid. It returns one on success and
- * zero on failure. */
-OPENSSL_EXPORT int SSL_set1_curves(SSL *ssl, const int *curves,
-                                   size_t curves_len);
 
 OPENSSL_EXPORT int SSL_CTX_set_cipher_list(SSL_CTX *, const char *str);
 OPENSSL_EXPORT int SSL_CTX_set_cipher_list_tls10(SSL_CTX *, const char *str);
@@ -2213,10 +2288,6 @@ OPENSSL_EXPORT X509_VERIFY_PARAM *SSL_get0_param(SSL *ssl);
 /* SSL_get_version returns a string describing the TLS version used by |s|. For
  * example, "TLSv1.2" or "SSLv3". */
 OPENSSL_EXPORT const char *SSL_get_version(const SSL *s);
-
-/* SSL_get_curve_name returns a human-readable name for the elliptic curve
- * specified by the given TLS curve id, or NULL if the curve if unknown. */
-OPENSSL_EXPORT const char* SSL_get_curve_name(uint16_t curve_id);
 
 OPENSSL_EXPORT STACK_OF(SSL_CIPHER) *SSL_get_ciphers(const SSL *s);
 
@@ -2298,55 +2369,6 @@ OPENSSL_EXPORT void SSL_CTX_set_max_send_fragment(SSL_CTX *ctx,
  * will be split into multiple records. */
 OPENSSL_EXPORT void SSL_set_max_send_fragment(SSL *ssl,
                                               size_t max_send_fragment);
-
-/* SSL_CTX_set_tmp_dh_callback configures |ctx| to use |callback| to determine
- * the group for DHE ciphers. |callback| should ignore |is_export| and
- * |keylength| and return a |DH| of the selected group or NULL on error. Only
- * the parameters are used, so the |DH| needn't have a generated keypair.
- *
- * WARNING: The caller does not take ownership of the resulting |DH|, so
- * |callback| must save and release the object elsewhere. */
-OPENSSL_EXPORT void SSL_CTX_set_tmp_dh_callback(
-    SSL_CTX *ctx, DH *(*callback)(SSL *ssl, int is_export, int keylength));
-
-/* SSL_set_tmp_dh_callback configures |ssl| to use |callback| to determine the
- * group for DHE ciphers. |callback| should ignore |is_export| and |keylength|
- * and return a |DH| of the selected group or NULL on error. Only the
- * parameters are used, so the |DH| needn't have a generated keypair.
- *
- * WARNING: The caller does not take ownership of the resulting |DH|, so
- * |callback| must save and release the object elsewhere. */
-OPENSSL_EXPORT void SSL_set_tmp_dh_callback(SSL *ssl,
-                                            DH *(*dh)(SSL *ssl, int is_export,
-                                                      int keylength));
-
-/* SSL_CTX_set_tmp_ecdh_callback configures |ctx| to use |callback| to determine
- * the curve for ephemeral ECDH keys. |callback| should ignore |is_export| and
- * |keylength| and return an |EC_KEY| of the selected curve or NULL on
- * error. Only the curve is used, so the |EC_KEY| needn't have a generated
- * keypair.
- *
- * If the callback is unset, an appropriate curve will be chosen automatically.
- * (This is recommended.)
- *
- * WARNING: The caller does not take ownership of the resulting |EC_KEY|, so
- * |callback| must save and release the object elsewhere. */
-OPENSSL_EXPORT void SSL_CTX_set_tmp_ecdh_callback(
-    SSL_CTX *ctx, EC_KEY *(*callback)(SSL *ssl, int is_export, int keylength));
-
-/* SSL_set_tmp_ecdh_callback configures |ssl| to use |callback| to determine the
- * curve for ephemeral ECDH keys. |callback| should ignore |is_export| and
- * |keylength| and return an |EC_KEY| of the selected curve or NULL on
- * error. Only the curve is used, so the |EC_KEY| needn't have a generated
- * keypair.
- *
- * If the callback is unset, an appropriate curve will be chosen automatically.
- * (This is recommended.)
- *
- * WARNING: The caller does not take ownership of the resulting |EC_KEY|, so
- * |callback| must save and release the object elsewhere. */
-OPENSSL_EXPORT void SSL_set_tmp_ecdh_callback(
-    SSL *ssl, EC_KEY *(*callback)(SSL *ssl, int is_export, int keylength));
 
 typedef void COMP_METHOD;
 
