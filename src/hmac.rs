@@ -285,7 +285,7 @@ pub fn verify(key: &VerificationKey, data: &[u8], expected_value: &[u8])
 
 
 #[cfg(test)]
-mod test {
+mod tests {
     use super::super::{digest, file_test, hmac};
 
     #[test]

@@ -173,7 +173,7 @@ pub struct Algorithm {
 }
 
 #[cfg(test)]
-mod test {
+mod tests {
     use super::*;
 
     fn test_digest_alg(algorithm: &'static Algorithm,
