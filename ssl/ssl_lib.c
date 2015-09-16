@@ -1845,32 +1845,25 @@ int SSL_set_alpn_protos(SSL *ssl, const uint8_t *protos, unsigned protos_len) {
   return 0;
 }
 
-/* SSL_CTX_set_alpn_select_cb sets a callback function on |ctx| that is called
- * during ClientHello processing in order to select an ALPN protocol from the
- * client's list of offered protocols. */
 void SSL_CTX_set_alpn_select_cb(SSL_CTX *ctx,
                                 int (*cb)(SSL *ssl, const uint8_t **out,
-                                          uint8_t *outlen, const uint8_t *in,
-                                          unsigned int inlen, void *arg),
+                                          uint8_t *out_len, const uint8_t *in,
+                                          unsigned in_len, void *arg),
                                 void *arg) {
   ctx->alpn_select_cb = cb;
   ctx->alpn_select_cb_arg = arg;
 }
 
-/* SSL_get0_alpn_selected gets the selected ALPN protocol (if any) from |ssl|.
- * On return it sets |*data| to point to |*len| bytes of protocol name (not
- * including the leading length-prefix byte). If the server didn't respond with
- * a negotiated protocol then |*len| will be zero. */
-void SSL_get0_alpn_selected(const SSL *ssl, const uint8_t **data,
-                            unsigned *len) {
-  *data = NULL;
+void SSL_get0_alpn_selected(const SSL *ssl, const uint8_t **out_data,
+                            unsigned *out_len) {
+  *out_data = NULL;
   if (ssl->s3) {
-    *data = ssl->s3->alpn_selected;
+    *out_data = ssl->s3->alpn_selected;
   }
-  if (*data == NULL) {
-    *len = 0;
+  if (*out_data == NULL) {
+    *out_len = 0;
   } else {
-    *len = ssl->s3->alpn_selected_len;
+    *out_len = ssl->s3->alpn_selected_len;
   }
 }
 

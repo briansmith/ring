@@ -1550,6 +1550,57 @@ OPENSSL_EXPORT void SSL_set_tmp_dh_callback(SSL *ssl,
                                                       int keylength));
 
 
+/* Application-layer protocol negotation.
+ *
+ * The ALPN extension (RFC 7301) allows negotiating different application-layer
+ * protocols over a single port. This is used, for example, to negotiate
+ * HTTP/2. */
+
+/* SSL_CTX_set_alpn_protos sets the client ALPN protocol list on |ctx| to
+ * |protos|. |protos| must be in wire-format (i.e. a series of non-empty, 8-bit
+ * length-prefixed strings). It returns zero on success and one on failure.
+ * Configuring this list enables ALPN on a client.
+ *
+ * WARNING: this function is dangerous because it breaks the usual return value
+ * convention. */
+OPENSSL_EXPORT int SSL_CTX_set_alpn_protos(SSL_CTX *ctx, const uint8_t *protos,
+                                           unsigned protos_len);
+
+/* SSL_set_alpn_protos sets the client ALPN protocol list on |ssl| to |protos|.
+ * |protos| must be in wire-format (i.e. a series of non-empty, 8-bit
+ * length-prefixed strings). It returns zero on success and one on failure.
+ * Configuring this list enables ALPN on a client.
+ *
+ * WARNING: this function is dangerous because it breaks the usual return value
+ * convention. */
+OPENSSL_EXPORT int SSL_set_alpn_protos(SSL *ssl, const uint8_t *protos,
+                                       unsigned protos_len);
+
+/* SSL_CTX_set_alpn_select_cb sets a callback function on |ctx| that is called
+ * during ClientHello processing in order to select an ALPN protocol from the
+ * client's list of offered protocols. Configuring this callback enables ALPN on
+ * a server.
+ *
+ * The callback is passed a wire-format (i.e. a series of non-empty, 8-bit
+ * length-prefixed strings) ALPN protocol list in |in|. It should set |*out| and
+ * |*out_len| to the selected protocol and return |SSL_TLSEXT_ERR_OK| on
+ * success. It does not pass ownership of the buffer. Otherwise, it should
+ * return |SSL_TLSEXT_ERR_NOACK|. Other |SSL_TLSEXT_ERR_*| values are
+ * unimplemented and will be treated as |SSL_TLSEXT_ERR_NOACK|. */
+OPENSSL_EXPORT void SSL_CTX_set_alpn_select_cb(
+    SSL_CTX *ctx, int (*cb)(SSL *ssl, const uint8_t **out, uint8_t *out_len,
+                            const uint8_t *in, unsigned in_len, void *arg),
+    void *arg);
+
+/* SSL_get0_alpn_selected gets the selected ALPN protocol (if any) from |ssl|.
+ * On return it sets |*out_data| to point to |*out_len| bytes of protocol name
+ * (not including the leading length-prefix byte). If the server didn't respond
+ * with a negotiated protocol then |*out_len| will be zero. */
+OPENSSL_EXPORT void SSL_get0_alpn_selected(const SSL *ssl,
+                                           const uint8_t **out_data,
+                                           unsigned *out_len);
+
+
 /* DTLS-SRTP.
  *
  * See RFC 5764. */
@@ -1969,31 +2020,6 @@ OPENSSL_EXPORT int SSL_select_next_proto(uint8_t **out, uint8_t *outlen,
 #define OPENSSL_NPN_UNSUPPORTED 0
 #define OPENSSL_NPN_NEGOTIATED 1
 #define OPENSSL_NPN_NO_OVERLAP 2
-
-/* SSL_CTX_set_alpn_protos sets the ALPN protocol list on |ctx| to |protos|.
- * |protos| must be in wire-format (i.e. a series of non-empty, 8-bit
- * length-prefixed strings). It returns zero on success and one on failure.
- *
- * WARNING: this function is dangerous because it breaks the usual return value
- * convention. */
-OPENSSL_EXPORT int SSL_CTX_set_alpn_protos(SSL_CTX *ctx, const uint8_t *protos,
-                                           unsigned protos_len);
-
-/* SSL_set_alpn_protos sets the ALPN protocol list on |ssl| to |protos|.
- * |protos| must be in wire-format (i.e. a series of non-empty, 8-bit
- * length-prefixed strings). It returns zero on success and one on failure.
- *
- * WARNING: this function is dangerous because it breaks the usual return value
- * convention. */
-OPENSSL_EXPORT int SSL_set_alpn_protos(SSL *ssl, const uint8_t *protos,
-                                       unsigned protos_len);
-
-OPENSSL_EXPORT void SSL_CTX_set_alpn_select_cb(
-    SSL_CTX *ctx, int (*cb)(SSL *ssl, const uint8_t **out, uint8_t *outlen,
-                            const uint8_t *in, unsigned int inlen, void *arg),
-    void *arg);
-OPENSSL_EXPORT void SSL_get0_alpn_selected(const SSL *ssl, const uint8_t **data,
-                                           unsigned *len);
 
 /* SSL_set_reject_peer_renegotiations controls whether renegotiation attempts by
  * the peer are rejected. It may be set at any point in a connection's lifetime
@@ -2937,8 +2963,8 @@ struct ssl_ctx_st {
    *   in: points to the client's list of supported protocols in
    *       wire-format.
    *   inlen: the length of |in|. */
-  int (*alpn_select_cb)(SSL *s, const uint8_t **out, uint8_t *outlen,
-                        const uint8_t *in, unsigned int inlen, void *arg);
+  int (*alpn_select_cb)(SSL *s, const uint8_t **out, uint8_t *out_len,
+                        const uint8_t *in, unsigned in_len, void *arg);
   void *alpn_select_cb_arg;
 
   /* For a client, this contains the list of supported protocols in wire
