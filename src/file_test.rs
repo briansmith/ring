@@ -56,6 +56,11 @@ impl TestCase {
         }
     }
 
+    pub fn consume_usize(&mut self, key: &str) -> usize {
+        let s = self.consume_string(key);
+        s.parse::<usize>().unwrap()
+    }
+
     pub fn consume_string(&mut self, key: &str) -> String {
         self.attributes.remove(key)
                        .unwrap_or_else(
