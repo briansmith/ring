@@ -373,10 +373,6 @@ NextCipherSuite:
 	copy(c.serverRandom[:], hs.serverHello.random)
 	copy(c.masterSecret[:], hs.masterSecret)
 
-	if len(hs.serverHello.sctList) > 0 {
-		c.sctList = hs.serverHello.sctList
-	}
-
 	return nil
 }
 
@@ -754,13 +750,28 @@ func (hs *clientHandshakeState) processServerHello() (bool, error) {
 			return false, errors.New("tls: server resumed session on renegotiation")
 		}
 
+		if hs.serverHello.sctList != nil {
+			return false, errors.New("tls: server sent SCT extension on session resumption")
+		}
+
+		if hs.serverHello.ocspStapling {
+			return false, errors.New("tls: server sent OCSP extension on session resumption")
+		}
+
 		// Restore masterSecret and peerCerts from previous state
 		hs.masterSecret = hs.session.masterSecret
 		c.peerCertificates = hs.session.serverCertificates
 		c.extendedMasterSecret = hs.session.extendedMasterSecret
+		c.sctList = hs.session.sctList
+		c.ocspResponse = hs.session.ocspResponse
 		hs.finishedHash.discardHandshakeBuffer()
 		return true, nil
 	}
+
+	if hs.serverHello.sctList != nil {
+		c.sctList = hs.serverHello.sctList
+	}
+
 	return false, nil
 }
 
@@ -807,6 +818,8 @@ func (hs *clientHandshakeState) readSessionTicket() error {
 		masterSecret:       hs.masterSecret,
 		handshakeHash:      hs.finishedHash.server.Sum(nil),
 		serverCertificates: c.peerCertificates,
+		sctList:            c.sctList,
+		ocspResponse:       c.ocspResponse,
 	}
 
 	if !hs.serverHello.ticketSupported {

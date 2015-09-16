@@ -1364,7 +1364,9 @@ static int ext_ocsp_parse_clienthello(SSL *ssl, uint8_t *out_alert,
 }
 
 static int ext_ocsp_add_serverhello(SSL *ssl, CBB *out) {
-  if (!ssl->s3->tmp.ocsp_stapling_requested ||
+  /* The extension shouldn't be sent when resuming sessions. */
+  if (ssl->hit ||
+      !ssl->s3->tmp.ocsp_stapling_requested ||
       ssl->ctx->ocsp_response_length == 0) {
     return 1;
   }
@@ -1551,7 +1553,9 @@ static int ext_sct_parse_clienthello(SSL *ssl, uint8_t *out_alert,
 }
 
 static int ext_sct_add_serverhello(SSL *ssl, CBB *out) {
-  if (ssl->ctx->signed_cert_timestamp_list_length == 0) {
+  /* The extension shouldn't be sent when resuming sessions. */
+  if (ssl->hit ||
+      ssl->ctx->signed_cert_timestamp_list_length == 0) {
     return 1;
   }
 

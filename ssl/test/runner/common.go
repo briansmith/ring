@@ -216,6 +216,8 @@ type ClientSessionState struct {
 	handshakeHash        []byte              // Handshake hash for Channel ID purposes.
 	serverCertificates   []*x509.Certificate // Certificate chain presented by the server
 	extendedMasterSecret bool                // Whether an extended master secret was used to generate the session
+	sctList              []byte
+	ocspResponse         []byte
 }
 
 // ClientSessionCache is a cache of ClientSessionState objects that can be used

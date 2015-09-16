@@ -2637,6 +2637,7 @@ func addStateMachineCoverageTests(async, splitHandshake bool, protocol protocol)
 			base64.StdEncoding.EncodeToString(testOCSPResponse),
 			"-verify-peer",
 		},
+		resumeSession: true,
 	})
 
 	tests = append(tests, testCase{
@@ -2647,6 +2648,7 @@ func addStateMachineCoverageTests(async, splitHandshake bool, protocol protocol)
 			"-ocsp-response",
 			base64.StdEncoding.EncodeToString(testOCSPResponse),
 		},
+		resumeSession: true,
 	})
 
 	tests = append(tests, testCase{
@@ -3446,6 +3448,7 @@ func addExtensionTests() {
 			"-expect-signed-cert-timestamps",
 			base64.StdEncoding.EncodeToString(testSCTList),
 		},
+		resumeSession: true,
 	})
 	testCases = append(testCases, testCase{
 		name:     "SignedCertificateTimestampList-Server",
@@ -3455,6 +3458,7 @@ func addExtensionTests() {
 			base64.StdEncoding.EncodeToString(testSCTList),
 		},
 		expectedSCTList: testSCTList,
+		resumeSession:   true,
 	})
 	testCases = append(testCases, testCase{
 		testType: clientTest,
