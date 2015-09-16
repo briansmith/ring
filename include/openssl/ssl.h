@@ -513,38 +513,6 @@ OPENSSL_EXPORT void SSL_set_max_version(SSL *ssl, uint16_t version);
  * client's. */
 #define SSL_OP_CIPHER_SERVER_PREFERENCE 0x00400000L
 
-/* The following flags toggle individual protocol versions. This is deprecated.
- * Use |SSL_CTX_set_min_version| and |SSL_CTX_set_max_version| instead. */
-#define SSL_OP_NO_SSLv3 0x02000000L
-#define SSL_OP_NO_TLSv1 0x04000000L
-#define SSL_OP_NO_TLSv1_2 0x08000000L
-#define SSL_OP_NO_TLSv1_1 0x10000000L
-#define SSL_OP_NO_DTLSv1 SSL_OP_NO_TLSv1
-#define SSL_OP_NO_DTLSv1_2 SSL_OP_NO_TLSv1_2
-
-/* The following flags do nothing and are included only to make it easier to
- * compile code with BoringSSL. */
-#define SSL_OP_ALLOW_UNSAFE_LEGACY_RENEGOTIATION 0
-#define SSL_OP_DONT_INSERT_EMPTY_FRAGMENTS 0
-#define SSL_OP_EPHEMERAL_RSA 0
-#define SSL_OP_MICROSOFT_SESS_ID_BUG 0
-#define SSL_OP_MSIE_SSLV2_RSA_PADDING 0
-#define SSL_OP_NETSCAPE_CA_DN_BUG 0
-#define SSL_OP_NETSCAPE_CHALLENGE_BUG 0
-#define SSL_OP_NETSCAPE_DEMO_CIPHER_CHANGE_BUG 0
-#define SSL_OP_NETSCAPE_REUSE_CIPHER_CHANGE_BUG 0
-#define SSL_OP_NO_COMPRESSION 0
-#define SSL_OP_NO_SESSION_RESUMPTION_ON_RENEGOTIATION 0
-#define SSL_OP_NO_SSLv2 0
-#define SSL_OP_PKCS1_CHECK_1 0
-#define SSL_OP_PKCS1_CHECK_2 0
-#define SSL_OP_SINGLE_DH_USE 0
-#define SSL_OP_SINGLE_ECDH_USE 0
-#define SSL_OP_SSLEAY_080_CLIENT_DH_BUG 0
-#define SSL_OP_SSLREF2_REUSE_CERT_TYPE_BUG 0
-#define SSL_OP_TLS_BLOCK_PADDING_BUG 0
-#define SSL_OP_TLS_ROLLBACK_BUG 0
-
 /* SSL_CTX_set_options enables all options set in |options| (which should be one
  * or more of the |SSL_OP_*| values, ORed together) in |ctx|. It returns a
  * bitmask representing the resulting enabled options. */
@@ -1059,6 +1027,8 @@ OPENSSL_EXPORT int SSL_CTX_add_server_custom_ext(
  * abbreviated handshake. It is reference-counted and immutable. Once
  * established, an |SSL_SESSION| may be shared by multiple |SSL| objects on
  * different threads and must not be modified. */
+
+DECLARE_LHASH_OF(SSL_SESSION)
 
 /* SSL_SESSION_new returns a newly-allocated blank |SSL_SESSION| or NULL on
  * error. This may be useful in writing tests but otherwise should not be
@@ -2019,17 +1989,6 @@ OPENSSL_EXPORT char SSL_early_callback_ctx_extension_get(
     const struct ssl_early_callback_ctx *ctx, uint16_t extension_type,
     const uint8_t **out_data, size_t *out_len);
 
-typedef struct ssl_comp_st SSL_COMP;
-
-struct ssl_comp_st {
-  int id;
-  const char *name;
-  char *method;
-};
-
-DECLARE_STACK_OF(SSL_COMP)
-DECLARE_LHASH_OF(SSL_SESSION)
-
 OPENSSL_EXPORT void SSL_CTX_set_info_callback(SSL_CTX *ctx,
                                               void (*cb)(const SSL *ssl,
                                                          int type, int val));
@@ -2112,16 +2071,6 @@ OPENSSL_EXPORT void SSL_set_reject_peer_renegotiations(SSL *ssl, int reject);
 #define SSL_want_private_key_operation(s) \
   (SSL_want(s) == SSL_PRIVATE_KEY_OPERATION)
 
-/* compatibility */
-#define SSL_set_app_data(s, arg) (SSL_set_ex_data(s, 0, (char *)arg))
-#define SSL_get_app_data(s) (SSL_get_ex_data(s, 0))
-#define SSL_SESSION_set_app_data(s, a) \
-  (SSL_SESSION_set_ex_data(s, 0, (char *)a))
-#define SSL_SESSION_get_app_data(s) (SSL_SESSION_get_ex_data(s, 0))
-#define SSL_CTX_get_app_data(ctx) (SSL_CTX_get_ex_data(ctx, 0))
-#define SSL_CTX_set_app_data(ctx, arg) \
-  (SSL_CTX_set_ex_data(ctx, 0, (char *)arg))
-
 /* The following are the possible values for ssl->state are are used to
  * indicate where we are up to in the SSL connection establishment. The macros
  * that follow are about the only things you should need to use and even then,
@@ -2176,21 +2125,6 @@ OPENSSL_EXPORT size_t SSL_get_peer_finished(const SSL *s, void *buf, size_t coun
 /* SSL_VERIFY_CLIENT_ONCE does nothing. */
 #define SSL_VERIFY_CLIENT_ONCE 0x04
 #define SSL_VERIFY_PEER_IF_NO_OBC 0x08
-
-#define OpenSSL_add_ssl_algorithms() SSL_library_init()
-#define SSLeay_add_ssl_algorithms() SSL_library_init()
-
-/* For backward compatibility */
-#define SSL_get_cipher(s) SSL_CIPHER_get_name(SSL_get_current_cipher(s))
-#define SSL_get_cipher_bits(s, np) \
-  SSL_CIPHER_get_bits(SSL_get_current_cipher(s), np)
-#define SSL_get_cipher_version(s) \
-  SSL_CIPHER_get_version(SSL_get_current_cipher(s))
-#define SSL_get_cipher_name(s) SSL_CIPHER_get_name(SSL_get_current_cipher(s))
-#define SSL_get_time(a) SSL_SESSION_get_time(a)
-#define SSL_set_time(a, b) SSL_SESSION_set_time((a), (b))
-#define SSL_get_timeout(a) SSL_SESSION_get_timeout(a)
-#define SSL_set_timeout(a, b) SSL_SESSION_set_timeout((a), (b))
 
 #define d2i_SSL_SESSION_bio(bp, s_id) \
   ASN1_d2i_bio_of(SSL_SESSION, SSL_SESSION_new, d2i_SSL_SESSION, bp, s_id)
@@ -2460,14 +2394,6 @@ OPENSSL_EXPORT void SSL_CTX_set_max_send_fragment(SSL_CTX *ctx,
 OPENSSL_EXPORT void SSL_set_max_send_fragment(SSL *ssl,
                                               size_t max_send_fragment);
 
-typedef void COMP_METHOD;
-
-/* SSL_get_current_compression returns NULL. */
-OPENSSL_EXPORT const COMP_METHOD *SSL_get_current_compression(SSL *s);
-
-/* SSL_get_current_expansion returns NULL. */
-OPENSSL_EXPORT const COMP_METHOD *SSL_get_current_expansion(SSL *s);
-
 OPENSSL_EXPORT int SSL_cache_hit(SSL *s);
 OPENSSL_EXPORT int SSL_is_server(SSL *s);
 
@@ -2506,6 +2432,8 @@ OPENSSL_EXPORT const char *SSL_CIPHER_description(const SSL_CIPHER *cipher,
 
 /* SSL_CIPHER_get_version returns the string "TLSv1/SSLv3". */
 OPENSSL_EXPORT const char *SSL_CIPHER_get_version(const SSL_CIPHER *cipher);
+
+typedef void COMP_METHOD;
 
 /* SSL_COMP_get_compression_methods returns NULL. */
 OPENSSL_EXPORT COMP_METHOD *SSL_COMP_get_compression_methods(void);
@@ -2675,6 +2603,79 @@ OPENSSL_EXPORT int SSL_CTX_set_tlsext_use_srtp(SSL_CTX *ctx,
  * WARNING: this function is dangerous because it breaks the usual return value
  * convention. Use |SSL_set_srtp_profiles| instead. */
 OPENSSL_EXPORT int SSL_set_tlsext_use_srtp(SSL *ssl, const char *profiles);
+
+/* SSL_get_current_compression returns NULL. */
+OPENSSL_EXPORT const COMP_METHOD *SSL_get_current_compression(SSL *s);
+
+/* SSL_get_current_expansion returns NULL. */
+OPENSSL_EXPORT const COMP_METHOD *SSL_get_current_expansion(SSL *s);
+
+#define SSL_set_app_data(s, arg) (SSL_set_ex_data(s, 0, (char *)arg))
+#define SSL_get_app_data(s) (SSL_get_ex_data(s, 0))
+#define SSL_SESSION_set_app_data(s, a) \
+  (SSL_SESSION_set_ex_data(s, 0, (char *)a))
+#define SSL_SESSION_get_app_data(s) (SSL_SESSION_get_ex_data(s, 0))
+#define SSL_CTX_get_app_data(ctx) (SSL_CTX_get_ex_data(ctx, 0))
+#define SSL_CTX_set_app_data(ctx, arg) \
+  (SSL_CTX_set_ex_data(ctx, 0, (char *)arg))
+
+#define OpenSSL_add_ssl_algorithms() SSL_library_init()
+#define SSLeay_add_ssl_algorithms() SSL_library_init()
+
+#define SSL_get_cipher(ssl) SSL_CIPHER_get_name(SSL_get_current_cipher(ssl))
+#define SSL_get_cipher_bits(ssl, out_alg_bits) \
+	  SSL_CIPHER_get_bits(SSL_get_current_cipher(ssl), out_alg_bits)
+#define SSL_get_cipher_version(ssl) \
+	  SSL_CIPHER_get_version(SSL_get_current_cipher(ssl))
+#define SSL_get_cipher_name(ssl) \
+	  SSL_CIPHER_get_name(SSL_get_current_cipher(ssl))
+#define SSL_get_time(session) SSL_SESSION_get_time(session)
+#define SSL_set_time(session, time) SSL_SESSION_set_time((session), (time))
+#define SSL_get_timeout(session) SSL_SESSION_get_timeout(session)
+#define SSL_set_timeout(session, timeout) \
+		SSL_SESSION_set_timeout((session), (timeout))
+
+typedef struct ssl_comp_st SSL_COMP;
+
+struct ssl_comp_st {
+  int id;
+  const char *name;
+  char *method;
+};
+
+DECLARE_STACK_OF(SSL_COMP)
+
+/* The following flags toggle individual protocol versions. This is deprecated.
+ * Use |SSL_CTX_set_min_version| and |SSL_CTX_set_max_version| instead. */
+#define SSL_OP_NO_SSLv3 0x02000000L
+#define SSL_OP_NO_TLSv1 0x04000000L
+#define SSL_OP_NO_TLSv1_2 0x08000000L
+#define SSL_OP_NO_TLSv1_1 0x10000000L
+#define SSL_OP_NO_DTLSv1 SSL_OP_NO_TLSv1
+#define SSL_OP_NO_DTLSv1_2 SSL_OP_NO_TLSv1_2
+
+/* The following flags do nothing and are included only to make it easier to
+ * compile code with BoringSSL. */
+#define SSL_OP_ALLOW_UNSAFE_LEGACY_RENEGOTIATION 0
+#define SSL_OP_DONT_INSERT_EMPTY_FRAGMENTS 0
+#define SSL_OP_EPHEMERAL_RSA 0
+#define SSL_OP_MICROSOFT_SESS_ID_BUG 0
+#define SSL_OP_MSIE_SSLV2_RSA_PADDING 0
+#define SSL_OP_NETSCAPE_CA_DN_BUG 0
+#define SSL_OP_NETSCAPE_CHALLENGE_BUG 0
+#define SSL_OP_NETSCAPE_DEMO_CIPHER_CHANGE_BUG 0
+#define SSL_OP_NETSCAPE_REUSE_CIPHER_CHANGE_BUG 0
+#define SSL_OP_NO_COMPRESSION 0
+#define SSL_OP_NO_SESSION_RESUMPTION_ON_RENEGOTIATION 0
+#define SSL_OP_NO_SSLv2 0
+#define SSL_OP_PKCS1_CHECK_1 0
+#define SSL_OP_PKCS1_CHECK_2 0
+#define SSL_OP_SINGLE_DH_USE 0
+#define SSL_OP_SINGLE_ECDH_USE 0
+#define SSL_OP_SSLEAY_080_CLIENT_DH_BUG 0
+#define SSL_OP_SSLREF2_REUSE_CERT_TYPE_BUG 0
+#define SSL_OP_TLS_BLOCK_PADDING_BUG 0
+#define SSL_OP_TLS_ROLLBACK_BUG 0
 
 
 /* Private structures.
