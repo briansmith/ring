@@ -814,7 +814,16 @@ int EC_POINT_set_affine_coordinates_GFp(const EC_GROUP *group, EC_POINT *point,
     OPENSSL_PUT_ERROR(EC, EC_R_INCOMPATIBLE_OBJECTS);
     return 0;
   }
-  return ec_GFp_simple_point_set_affine_coordinates(group, point, x, y, ctx);
+  if (!ec_GFp_simple_point_set_affine_coordinates(group, point, x, y, ctx)) {
+    return 0;
+  }
+
+  if (!EC_POINT_is_on_curve(group, point, ctx)) {
+    OPENSSL_PUT_ERROR(EC, EC_R_POINT_IS_NOT_ON_CURVE);
+    return 0;
+  }
+
+  return 1;
 }
 
 int EC_POINT_add(const EC_GROUP *group, EC_POINT *r, const EC_POINT *a,

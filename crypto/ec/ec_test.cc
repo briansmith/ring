@@ -173,12 +173,84 @@ static bool TestZeroPadding() {
   return true;
 }
 
+bool TestSetAffine(const int nid) {
+  ScopedEC_KEY key(EC_KEY_new_by_curve_name(nid));
+  if (!key) {
+    return false;
+  }
+
+  const EC_GROUP *const group = EC_KEY_get0_group(key.get());
+
+  if (!EC_KEY_generate_key(key.get())) {
+    fprintf(stderr, "EC_KEY_generate_key failed with nid %d\n", nid);
+    ERR_print_errors_fp(stderr);
+    return false;
+  }
+
+  if (!EC_POINT_is_on_curve(group, EC_KEY_get0_public_key(key.get()),
+                            nullptr)) {
+    fprintf(stderr, "generated point is not on curve with nid %d", nid);
+    ERR_print_errors_fp(stderr);
+    return false;
+  }
+
+  ScopedBIGNUM x(BN_new());
+  ScopedBIGNUM y(BN_new());
+  if (!EC_POINT_get_affine_coordinates_GFp(group,
+                                           EC_KEY_get0_public_key(key.get()),
+                                           x.get(), y.get(), nullptr)) {
+    fprintf(stderr, "EC_POINT_get_affine_coordinates_GFp failed with nid %d\n",
+            nid);
+    ERR_print_errors_fp(stderr);
+    return false;
+  }
+
+  ScopedEC_POINT point(EC_POINT_new(group));
+  if (!point) {
+    return false;
+  }
+
+  if (!EC_POINT_set_affine_coordinates_GFp(group, point.get(), x.get(), y.get(),
+                                           nullptr)) {
+    fprintf(stderr, "EC_POINT_set_affine_coordinates_GFp failed with nid %d\n",
+            nid);
+    ERR_print_errors_fp(stderr);
+    return false;
+  }
+
+  // Subtract one from |y| to make the point no longer on the curve.
+  if (!BN_sub(y.get(), y.get(), BN_value_one())) {
+    return false;
+  }
+
+  ScopedEC_POINT invalid_point(EC_POINT_new(group));
+  if (!invalid_point) {
+    return false;
+  }
+
+  if (EC_POINT_set_affine_coordinates_GFp(group, invalid_point.get(), x.get(),
+                                          y.get(), nullptr)) {
+    fprintf(stderr,
+            "EC_POINT_set_affine_coordinates_GFp succeeded with invalid "
+            "coordinates with nid %d\n",
+            nid);
+    ERR_print_errors_fp(stderr);
+    return false;
+  }
+
+  return true;
+}
+
 int main(void) {
   CRYPTO_library_init();
   ERR_load_crypto_strings();
 
   if (!Testd2i_ECPrivateKey() ||
-      !TestZeroPadding()) {
+      !TestZeroPadding() ||
+      !TestSetAffine(NID_secp224r1) ||
+      !TestSetAffine(NID_X9_62_prime256v1) ||
+      !TestSetAffine(NID_secp384r1) ||
+      !TestSetAffine(NID_secp521r1)) {
     fprintf(stderr, "failed\n");
     return 1;
   }

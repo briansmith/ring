@@ -220,8 +220,10 @@ OPENSSL_EXPORT int EC_POINT_get_affine_coordinates_GFp(const EC_GROUP *group,
                                                        BIGNUM *x, BIGNUM *y,
                                                        BN_CTX *ctx);
 
-/* EC_POINT_set_affine_coordinates_GFp sets the value of |p| to be (|x|, |y|). The
- * |ctx| argument may be used if not NULL. */
+/* EC_POINT_set_affine_coordinates_GFp sets the value of |p| to be (|x|, |y|).
+ * The |ctx| argument may be used if not NULL. It returns one on success or
+ * zero on error. Note that, unlike with OpenSSL, it's considered an error if
+ * the point is not on the curve. */
 OPENSSL_EXPORT int EC_POINT_set_affine_coordinates_GFp(const EC_GROUP *group,
                                                        EC_POINT *point,
                                                        const BIGNUM *x,
