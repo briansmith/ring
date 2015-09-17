@@ -53,10 +53,6 @@ OPENSSL_EXPORT const uint8_t *CBS_data(const CBS *cbs);
 /* CBS_len returns the number of bytes remaining in |cbs|. */
 OPENSSL_EXPORT size_t CBS_len(const CBS *cbs);
 
-/* CBS_contains_zero_byte returns one if the current contents of |cbs| contains
- * a NUL byte and zero otherwise. */
-OPENSSL_EXPORT int CBS_contains_zero_byte(const CBS *cbs);
-
 /* CBS_get_u8 sets |*out| to the next uint8_t from |cbs| and advances |cbs|. It
  * returns one on success and zero on error. */
 OPENSSL_EXPORT int CBS_get_u8(CBS *cbs, uint8_t *out);

@@ -50,10 +50,6 @@ size_t CBS_len(const CBS *cbs) {
   return cbs->len;
 }
 
-int CBS_contains_zero_byte(const CBS *cbs) {
-  return memchr(cbs->data, 0, cbs->len) != NULL;
-}
-
 static int cbs_get_u(CBS *cbs, uint32_t *out, size_t len) {
   uint32_t result = 0;
   size_t i;
