@@ -73,7 +73,6 @@
     <ClCompile Include="evp\digestsign.c" />
     <ClCompile Include="evp\evp.c" />
     <ClCompile Include="evp\evp_ctx.c" />
-    <ClCompile Include="evp\pbkdf.c" />
     <ClCompile Include="evp\p_ec.c" />
     <ClCompile Include="evp\p_rsa.c" />
     <ClCompile Include="evp\sign.c" />

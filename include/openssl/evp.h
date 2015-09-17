@@ -335,28 +335,6 @@ OPENSSL_EXPORT int EVP_VerifyFinal(EVP_MD_CTX *ctx, const uint8_t *sig,
                                    size_t sig_len, EVP_PKEY *pkey);
 
 
-/* Password stretching.
- *
- * Password stretching functions take a low-entropy password and apply a slow
- * function that results in a key suitable for use in symmetric
- * cryptography. */
-
-/* PKCS5_PBKDF2_HMAC computes |iterations| iterations of PBKDF2 of |password|
- * and |salt|, using |digest|, and outputs |key_len| bytes to |out_key|. It
- * returns one on success and zero on error. */
-OPENSSL_EXPORT int PKCS5_PBKDF2_HMAC(const char *password, size_t password_len,
-                                     const uint8_t *salt, size_t salt_len,
-                                     unsigned iterations, const EVP_MD *digest,
-                                     size_t key_len, uint8_t *out_key);
-
-/* PKCS5_PBKDF2_HMAC_SHA1 is the same as PKCS5_PBKDF2_HMAC, but with |digest|
- * fixed to |EVP_sha1|. */
-OPENSSL_EXPORT int PKCS5_PBKDF2_HMAC_SHA1(const char *password,
-                                          size_t password_len, const uint8_t *salt,
-                                          size_t salt_len, unsigned iterations,
-                                          size_t key_len, uint8_t *out_key);
-
-
 /* Public key contexts.
  *
  * |EVP_PKEY_CTX| objects hold the context of an operation (e.g. signing or
