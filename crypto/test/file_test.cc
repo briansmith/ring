@@ -294,22 +294,7 @@ int FileTestMain(bool (*run_test)(FileTest *t, void *arg), void *arg,
     }
 
     bool result = run_test(&t, arg);
-    if (t.HasAttribute("Error")) {
-      if (result) {
-        t.PrintLine("Operation unexpectedly succeeded.");
-        failed = true;
-        continue;
-      }
-      uint32_t err = ERR_peek_error();
-      if (ERR_reason_error_string(err) != t.GetAttributeOrDie("Error")) {
-        t.PrintLine("Unexpected error; wanted '%s', got '%s'.",
-                     t.GetAttributeOrDie("Error").c_str(),
-                     ERR_reason_error_string(err));
-        failed = true;
-        continue;
-      }
-      ERR_clear_error();
-    } else if (!result) {
+    if (!result) {
       // In case the test itself doesn't print output, print something so the
       // line number is reported.
       t.PrintLine("Test failed");
