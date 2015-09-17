@@ -26,19 +26,6 @@
 #include "../test/scoped_types.h"
 
 
-static bool TestSkip() {
-  static const uint8_t kData[] = {1, 2, 3};
-  CBS data;
-
-  CBS_init(&data, kData, sizeof(kData));
-  return CBS_len(&data) == 3 &&
-      CBS_skip(&data, 1) &&
-      CBS_len(&data) == 2 &&
-      CBS_skip(&data, 2) &&
-      CBS_len(&data) == 0 &&
-      !CBS_skip(&data, 1);
-}
-
 static bool TestGetASN1() {
   static const uint8_t kData1[] = {0x30, 2, 1, 2};
   static const uint8_t kData2[] = {0x30, 3, 1, 2};
@@ -415,8 +402,7 @@ static int TestZero() {
 int main(void) {
   CRYPTO_library_init();
 
-  if (!TestSkip() ||
-      !TestGetASN1() ||
+  if (!TestGetASN1() ||
       !TestCBBBasic() ||
       !TestCBBFixed() ||
       !TestCBBFinishChild() ||

@@ -37,7 +37,7 @@ static int cbs_get(CBS *cbs, const uint8_t **p, size_t n) {
   return 1;
 }
 
-int CBS_skip(CBS *cbs, size_t len) {
+static int cbs_skip(CBS *cbs, size_t len) {
   const uint8_t *dummy;
   return cbs_get(cbs, &dummy, len);
 }
@@ -75,7 +75,7 @@ static int cbs_get_u8(CBS *cbs, uint8_t *out) {
   return 1;
 }
 
-int CBS_get_bytes(CBS *cbs, CBS *out, size_t len) {
+static int cbs_get_bytes(CBS *cbs, CBS *out, size_t len) {
   const uint8_t *v;
   if (!cbs_get(cbs, &v, len)) {
     return 0;
@@ -84,8 +84,8 @@ int CBS_get_bytes(CBS *cbs, CBS *out, size_t len) {
   return 1;
 }
 
-int CBS_get_any_asn1_element(CBS *cbs, CBS *out, unsigned *out_tag,
-                             size_t *out_header_len) {
+static int cbs_get_any_asn1_element(CBS *cbs, CBS *out, unsigned *out_tag,
+                                    size_t *out_header_len) {
   uint8_t tag, length_byte;
   CBS header = *cbs;
   CBS throwaway;
@@ -145,7 +145,7 @@ int CBS_get_any_asn1_element(CBS *cbs, CBS *out, unsigned *out_tag,
     }
   }
 
-  return CBS_get_bytes(cbs, out, len);
+  return cbs_get_bytes(cbs, out, len);
 }
 
 static int cbs_get_asn1(CBS *cbs, CBS *out, unsigned tag_value,
@@ -158,12 +158,12 @@ static int cbs_get_asn1(CBS *cbs, CBS *out, unsigned tag_value,
     out = &throwaway;
   }
 
-  if (!CBS_get_any_asn1_element(cbs, out, &tag, &header_len) ||
+  if (!cbs_get_any_asn1_element(cbs, out, &tag, &header_len) ||
       tag != tag_value) {
     return 0;
   }
 
-  if (skip_header && !CBS_skip(out, header_len)) {
+  if (skip_header && !cbs_skip(out, header_len)) {
     assert(0);
     return 0;
   }

@@ -43,19 +43,11 @@ struct cbs_st {
  * |data|. */
 OPENSSL_EXPORT void CBS_init(CBS *cbs, const uint8_t *data, size_t len);
 
-/* CBS_skip advances |cbs| by |len| bytes. It returns one on success and zero
- * otherwise. */
-OPENSSL_EXPORT int CBS_skip(CBS *cbs, size_t len);
-
 /* CBS_data returns a pointer to the contents of |cbs|. */
 OPENSSL_EXPORT const uint8_t *CBS_data(const CBS *cbs);
 
 /* CBS_len returns the number of bytes remaining in |cbs|. */
 OPENSSL_EXPORT size_t CBS_len(const CBS *cbs);
-
-/* CBS_get_bytes sets |*out| to the next |len| bytes from |cbs| and advances
- * |cbs|. It returns one on success and zero on error. */
-OPENSSL_EXPORT int CBS_get_bytes(CBS *cbs, CBS *out, size_t len);
 
 
 /* Parsing ASN.1 */
@@ -92,16 +84,6 @@ OPENSSL_EXPORT int CBS_get_asn1_element(CBS *cbs, CBS *out, unsigned tag_value);
  * it returns one, CBS_get_asn1 may still fail if the rest of the
  * element is malformed. */
 OPENSSL_EXPORT int CBS_peek_asn1_tag(const CBS *cbs, unsigned tag_value);
-
-/* CBS_get_any_asn1_element sets |*out| to contain the next ASN.1 element from
- * |*cbs| (including header bytes) and advances |*cbs|. It sets |*out_tag| to
- * the tag number and |*out_header_len| to the length of the ASN.1 header. Each
- * of |out|, |out_tag|, and |out_header_len| may be NULL to ignore the value.
- *
- * Tag numbers greater than 30 are not supported (i.e. short form only). */
-OPENSSL_EXPORT int CBS_get_any_asn1_element(CBS *cbs, CBS *out,
-                                            unsigned *out_tag,
-                                            size_t *out_header_len);
 
 /* CBS_get_asn1_uint64 gets an ASN.1 INTEGER from |cbs| using |CBS_get_asn1|
  * and sets |*out| to its value. It returns one on success and zero on error,
