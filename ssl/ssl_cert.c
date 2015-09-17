@@ -293,44 +293,46 @@ void ssl_cert_set_cert_cb(CERT *c, int (*cb)(SSL *ssl, void *arg), void *arg) {
   c->cert_cb_arg = arg;
 }
 
-int ssl_verify_cert_chain(SSL *s, STACK_OF(X509) *sk) {
-  X509 *x;
-  int i;
-  X509_STORE_CTX ctx;
-
-  if (sk == NULL || sk_X509_num(sk) == 0) {
+int ssl_verify_cert_chain(SSL *ssl, STACK_OF(X509) *cert_chain) {
+  if (cert_chain == NULL || sk_X509_num(cert_chain) == 0) {
     return 0;
   }
 
-  x = sk_X509_value(sk, 0);
-  if (!X509_STORE_CTX_init(&ctx, s->ctx->cert_store, x, sk)) {
+  X509 *leaf = sk_X509_value(cert_chain, 0);
+  int ret = 0;
+  X509_STORE_CTX ctx;
+  if (!X509_STORE_CTX_init(&ctx, ssl->ctx->cert_store, leaf, cert_chain)) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_X509_LIB);
     return 0;
   }
-  X509_STORE_CTX_set_ex_data(&ctx, SSL_get_ex_data_X509_STORE_CTX_idx(), s);
+  if (!X509_STORE_CTX_set_ex_data(&ctx, SSL_get_ex_data_X509_STORE_CTX_idx(),
+                                  ssl)) {
+    goto err;
+  }
 
   /* We need to inherit the verify parameters. These can be determined by the
    * context: if its a server it will verify SSL client certificates or vice
    * versa. */
-  X509_STORE_CTX_set_default(&ctx, s->server ? "ssl_client" : "ssl_server");
+  X509_STORE_CTX_set_default(&ctx, ssl->server ? "ssl_client" : "ssl_server");
 
   /* Anything non-default in "param" should overwrite anything in the ctx. */
-  X509_VERIFY_PARAM_set1(X509_STORE_CTX_get0_param(&ctx), s->param);
+  X509_VERIFY_PARAM_set1(X509_STORE_CTX_get0_param(&ctx), ssl->param);
 
-  if (s->verify_callback) {
-    X509_STORE_CTX_set_verify_cb(&ctx, s->verify_callback);
+  if (ssl->verify_callback) {
+    X509_STORE_CTX_set_verify_cb(&ctx, ssl->verify_callback);
   }
 
-  if (s->ctx->app_verify_callback != NULL) {
-    i = s->ctx->app_verify_callback(&ctx, s->ctx->app_verify_arg);
+  if (ssl->ctx->app_verify_callback != NULL) {
+    ret = ssl->ctx->app_verify_callback(&ctx, ssl->ctx->app_verify_arg);
   } else {
-    i = X509_verify_cert(&ctx);
+    ret = X509_verify_cert(&ctx);
   }
 
-  s->verify_result = ctx.error;
-  X509_STORE_CTX_cleanup(&ctx);
+  ssl->verify_result = ctx.error;
 
-  return i;
+err:
+  X509_STORE_CTX_cleanup(&ctx);
+  return ret;
 }
 
 static void set_client_CA_list(STACK_OF(X509_NAME) **ca_list,

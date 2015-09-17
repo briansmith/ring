@@ -129,8 +129,8 @@ int EVP_MD_CTX_copy_ex(EVP_MD_CTX *out, const EVP_MD_CTX *in) {
   }
 
   EVP_MD_CTX_cleanup(out);
-  memcpy(out, in, sizeof(EVP_MD_CTX));
 
+  out->digest = in->digest;
   if (in->md_data && in->digest->ctx_size) {
     if (tmp_buf) {
       out->md_data = tmp_buf;
@@ -145,6 +145,7 @@ int EVP_MD_CTX_copy_ex(EVP_MD_CTX *out, const EVP_MD_CTX *in) {
   }
 
   assert(in->pctx == NULL || in->pctx_ops != NULL);
+  out->pctx_ops = in->pctx_ops;
   if (in->pctx && in->pctx_ops) {
     out->pctx = in->pctx_ops->dup(in->pctx);
     if (!out->pctx) {

@@ -994,7 +994,7 @@ int ssl_cert_add1_chain_cert(CERT *cert, X509 *x509);
 void ssl_cert_set_cert_cb(CERT *cert,
                           int (*cb)(SSL *ssl, void *arg), void *arg);
 
-int ssl_verify_cert_chain(SSL *s, STACK_OF(X509) *sk);
+int ssl_verify_cert_chain(SSL *ssl, STACK_OF(X509) *cert_chain);
 int ssl_add_cert_chain(SSL *s, unsigned long *l);
 void ssl_update_cache(SSL *s, int mode);
 
