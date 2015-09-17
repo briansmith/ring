@@ -133,9 +133,12 @@ fn parse_test_case(lines: &mut FileLines) -> Option<TestCase> {
                 let key = parts[0].trim();
                 let value = parts[1].trim();
 
+                println!("insert");
+
                 // Checking is_none() ensures we don't accept duplicate keys.
                 assert!(attributes.insert(String::from(key),
                                           String::from(value)).is_none());
+                println!("after insert");
             }
         }
     }
