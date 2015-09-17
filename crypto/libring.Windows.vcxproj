@@ -76,7 +76,6 @@
     <ClCompile Include="evp\p_ec.c" />
     <ClCompile Include="evp\p_rsa.c" />
     <ClCompile Include="evp\sign.c" />
-    <ClCompile Include="hkdf\hkdf.c" />
     <ClCompile Include="hmac\hmac.c" />
     <ClCompile Include="md5\md5.c" />
     <ClCompile Include="mem.c" />
@@ -128,7 +127,6 @@
     <None Include="err\ecdh.errordata" />
     <None Include="err\ecdsa.errordata" />
     <None Include="err\evp.errordata" />
-    <None Include="err\hkdf.errordata" />
     <None Include="err\rsa.errordata" />
   </ItemGroup>
   <ItemDefinitionGroup>
