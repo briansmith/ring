@@ -39,71 +39,6 @@ static bool TestSkip() {
       !CBS_skip(&data, 1);
 }
 
-static bool TestGetUint() {
-  static const uint8_t kData[] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
-  uint8_t u8;
-  uint16_t u16;
-  uint32_t u32;
-  CBS data;
-
-  CBS_init(&data, kData, sizeof(kData));
-  return CBS_get_u8(&data, &u8) &&
-    u8 == 1 &&
-    CBS_get_u16(&data, &u16) &&
-    u16 == 0x203 &&
-    CBS_get_u24(&data, &u32) &&
-    u32 == 0x40506 &&
-    CBS_get_u32(&data, &u32) &&
-    u32 == 0x708090a &&
-    !CBS_get_u8(&data, &u8);
-}
-
-static bool TestGetPrefixed() {
-  static const uint8_t kData[] = {1, 2, 0, 2, 3, 4, 0, 0, 3, 3, 2, 1};
-  uint8_t u8;
-  uint16_t u16;
-  uint32_t u32;
-  CBS data, prefixed;
-
-  CBS_init(&data, kData, sizeof(kData));
-  return CBS_get_u8_length_prefixed(&data, &prefixed) &&
-    CBS_len(&prefixed) == 1 &&
-    CBS_get_u8(&prefixed, &u8) &&
-    u8 == 2 &&
-    CBS_get_u16_length_prefixed(&data, &prefixed) &&
-    CBS_len(&prefixed) == 2 &&
-    CBS_get_u16(&prefixed, &u16) &&
-    u16 == 0x304 &&
-    CBS_get_u24_length_prefixed(&data, &prefixed) &&
-    CBS_len(&prefixed) == 3 &&
-    CBS_get_u24(&prefixed, &u32) &&
-    u32 == 0x30201;
-}
-
-static bool TestGetPrefixedBad() {
-  static const uint8_t kData1[] = {2, 1};
-  static const uint8_t kData2[] = {0, 2, 1};
-  static const uint8_t kData3[] = {0, 0, 2, 1};
-  CBS data, prefixed;
-
-  CBS_init(&data, kData1, sizeof(kData1));
-  if (CBS_get_u8_length_prefixed(&data, &prefixed)) {
-    return false;
-  }
-
-  CBS_init(&data, kData2, sizeof(kData2));
-  if (CBS_get_u16_length_prefixed(&data, &prefixed)) {
-    return false;
-  }
-
-  CBS_init(&data, kData3, sizeof(kData3));
-  if (CBS_get_u24_length_prefixed(&data, &prefixed)) {
-    return false;
-  }
-
-  return true;
-}
-
 static bool TestGetASN1() {
   static const uint8_t kData1[] = {0x30, 2, 1, 2};
   static const uint8_t kData2[] = {0x30, 3, 1, 2};
@@ -580,9 +515,6 @@ int main(void) {
   CRYPTO_library_init();
 
   if (!TestSkip() ||
-      !TestGetUint() ||
-      !TestGetPrefixed() ||
-      !TestGetPrefixedBad() ||
       !TestGetASN1() ||
       !TestCBBBasic() ||
       !TestCBBFixed() ||

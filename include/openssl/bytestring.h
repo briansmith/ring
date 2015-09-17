@@ -53,40 +53,9 @@ OPENSSL_EXPORT const uint8_t *CBS_data(const CBS *cbs);
 /* CBS_len returns the number of bytes remaining in |cbs|. */
 OPENSSL_EXPORT size_t CBS_len(const CBS *cbs);
 
-/* CBS_get_u8 sets |*out| to the next uint8_t from |cbs| and advances |cbs|. It
- * returns one on success and zero on error. */
-OPENSSL_EXPORT int CBS_get_u8(CBS *cbs, uint8_t *out);
-
-/* CBS_get_u16 sets |*out| to the next, big-endian uint16_t from |cbs| and
- * advances |cbs|. It returns one on success and zero on error. */
-OPENSSL_EXPORT int CBS_get_u16(CBS *cbs, uint16_t *out);
-
-/* CBS_get_u24 sets |*out| to the next, big-endian 24-bit value from |cbs| and
- * advances |cbs|. It returns one on success and zero on error. */
-OPENSSL_EXPORT int CBS_get_u24(CBS *cbs, uint32_t *out);
-
-/* CBS_get_u32 sets |*out| to the next, big-endian uint32_t value from |cbs|
- * and advances |cbs|. It returns one on success and zero on error. */
-OPENSSL_EXPORT int CBS_get_u32(CBS *cbs, uint32_t *out);
-
 /* CBS_get_bytes sets |*out| to the next |len| bytes from |cbs| and advances
  * |cbs|. It returns one on success and zero on error. */
 OPENSSL_EXPORT int CBS_get_bytes(CBS *cbs, CBS *out, size_t len);
-
-/* CBS_get_u8_length_prefixed sets |*out| to the contents of an 8-bit,
- * length-prefixed value from |cbs| and advances |cbs| over it. It returns one
- * on success and zero on error. */
-OPENSSL_EXPORT int CBS_get_u8_length_prefixed(CBS *cbs, CBS *out);
-
-/* CBS_get_u16_length_prefixed sets |*out| to the contents of a 16-bit,
- * big-endian, length-prefixed value from |cbs| and advances |cbs| over it. It
- * returns one on success and zero on error. */
-OPENSSL_EXPORT int CBS_get_u16_length_prefixed(CBS *cbs, CBS *out);
-
-/* CBS_get_u24_length_prefixed sets |*out| to the contents of a 24-bit,
- * big-endian, length-prefixed value from |cbs| and advances |cbs| over it. It
- * returns one on success and zero on error. */
-OPENSSL_EXPORT int CBS_get_u24_length_prefixed(CBS *cbs, CBS *out);
 
 
 /* Parsing ASN.1 */
