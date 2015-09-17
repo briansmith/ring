@@ -109,41 +109,6 @@ OPENSSL_EXPORT int CBS_get_any_asn1_element(CBS *cbs, CBS *out,
  * in 64 bits. */
 OPENSSL_EXPORT int CBS_get_asn1_uint64(CBS *cbs, uint64_t *out);
 
-/* CBS_get_optional_asn1 gets an optional explicitly-tagged element from |cbs|
- * tagged with |tag| and sets |*out| to its contents. If present and if
- * |out_present| is not NULL, it sets |*out_present| to one, otherwise zero. It
- * returns one on success, whether or not the element was present, and zero on
- * decode failure. */
-OPENSSL_EXPORT int CBS_get_optional_asn1(CBS *cbs, CBS *out, int *out_present,
-                                         unsigned tag);
-
-/* CBS_get_optional_asn1_octet_string gets an optional
- * explicitly-tagged OCTET STRING from |cbs|. If present, it sets
- * |*out| to the string and |*out_present| to one. Otherwise, it sets
- * |*out| to empty and |*out_present| to zero. |out_present| may be
- * NULL. It returns one on success, whether or not the element was
- * present, and zero on decode failure. */
-OPENSSL_EXPORT int CBS_get_optional_asn1_octet_string(CBS *cbs, CBS *out,
-                                                      int *out_present,
-                                                      unsigned tag);
-
-/* CBS_get_optional_asn1_uint64 gets an optional explicitly-tagged
- * INTEGER from |cbs|. If present, it sets |*out| to the
- * value. Otherwise, it sets |*out| to |default_value|. It returns one
- * on success, whether or not the element was present, and zero on
- * decode failure. */
-OPENSSL_EXPORT int CBS_get_optional_asn1_uint64(CBS *cbs, uint64_t *out,
-                                                unsigned tag,
-                                                uint64_t default_value);
-
-/* CBS_get_optional_asn1_bool gets an optional, explicitly-tagged BOOLEAN from
- * |cbs|. If present, it sets |*out| to either zero or one, based on the
- * boolean. Otherwise, it sets |*out| to |default_value|. It returns one on
- * success, whether or not the element was present, and zero on decode
- * failure. */
-OPENSSL_EXPORT int CBS_get_optional_asn1_bool(CBS *cbs, int *out, unsigned tag,
-                                              int default_value);
-
 
 /* CRYPTO ByteBuilder.
  *

@@ -45,14 +45,8 @@ static bool TestGetASN1() {
   static const uint8_t kData3[] = {0x30, 0x80};
   static const uint8_t kData4[] = {0x30, 0x81, 1, 1};
   static const uint8_t kData5[4 + 0x80] = {0x30, 0x82, 0, 0x80};
-  static const uint8_t kData6[] = {0xa1, 3, 0x4, 1, 1};
-  static const uint8_t kData7[] = {0xa1, 3, 0x4, 2, 1};
-  static const uint8_t kData8[] = {0xa1, 3, 0x2, 1, 1};
-  static const uint8_t kData9[] = {0xa1, 3, 0x2, 1, 0xff};
 
   CBS data, contents;
-  int present;
-  uint64_t value;
 
   CBS_init(&data, kData1, sizeof(kData1));
   if (CBS_peek_asn1_tag(&data, 0x1) ||
@@ -98,99 +92,6 @@ static bool TestGetASN1() {
   CBS_init(&data, NULL, 0);
   // peek at empty data.
   if (CBS_peek_asn1_tag(&data, 0x30)) {
-    return false;
-  }
-
-  CBS_init(&data, NULL, 0);
-  // optional elements at empty data.
-  if (!CBS_get_optional_asn1(&data, &contents, &present, 0xa0) ||
-      present ||
-      !CBS_get_optional_asn1_octet_string(&data, &contents, &present, 0xa0) ||
-      present ||
-      CBS_len(&contents) != 0 ||
-      !CBS_get_optional_asn1_octet_string(&data, &contents, NULL, 0xa0) ||
-      CBS_len(&contents) != 0 ||
-      !CBS_get_optional_asn1_uint64(&data, &value, 0xa0, 42) ||
-      value != 42) {
-    return false;
-  }
-
-  CBS_init(&data, kData6, sizeof(kData6));
-  // optional element.
-  if (!CBS_get_optional_asn1(&data, &contents, &present, 0xa0) ||
-      present ||
-      !CBS_get_optional_asn1(&data, &contents, &present, 0xa1) ||
-      !present ||
-      CBS_len(&contents) != 3 ||
-      memcmp(CBS_data(&contents), "\x04\x01\x01", 3) != 0) {
-    return false;
-  }
-
-  CBS_init(&data, kData6, sizeof(kData6));
-  // optional octet string.
-  if (!CBS_get_optional_asn1_octet_string(&data, &contents, &present, 0xa0) ||
-      present ||
-      CBS_len(&contents) != 0 ||
-      !CBS_get_optional_asn1_octet_string(&data, &contents, &present, 0xa1) ||
-      !present ||
-      CBS_len(&contents) != 1 ||
-      CBS_data(&contents)[0] != 1) {
-    return false;
-  }
-
-  CBS_init(&data, kData7, sizeof(kData7));
-  // invalid optional octet string.
-  if (CBS_get_optional_asn1_octet_string(&data, &contents, &present, 0xa1)) {
-    return false;
-  }
-
-  CBS_init(&data, kData8, sizeof(kData8));
-  // optional octet string.
-  if (!CBS_get_optional_asn1_uint64(&data, &value, 0xa0, 42) ||
-      value != 42 ||
-      !CBS_get_optional_asn1_uint64(&data, &value, 0xa1, 42) ||
-      value != 1) {
-    return false;
-  }
-
-  CBS_init(&data, kData9, sizeof(kData9));
-  // invalid optional integer.
-  if (CBS_get_optional_asn1_uint64(&data, &value, 0xa1, 42)) {
-    return false;
-  }
-
-  return true;
-}
-
-static bool TestGetOptionalASN1Bool() {
-  static const uint8_t kTrue[] = {0x0a, 3, CBS_ASN1_BOOLEAN, 1, 0xff};
-  static const uint8_t kFalse[] = {0x0a, 3, CBS_ASN1_BOOLEAN, 1, 0x00};
-  static const uint8_t kInvalid[] = {0x0a, 3, CBS_ASN1_BOOLEAN, 1, 0x01};
-
-  CBS data;
-  CBS_init(&data, NULL, 0);
-  int val = 2;
-  if (!CBS_get_optional_asn1_bool(&data, &val, 0x0a, 0) ||
-      val != 0) {
-    return false;
-  }
-
-  CBS_init(&data, kTrue, sizeof(kTrue));
-  val = 2;
-  if (!CBS_get_optional_asn1_bool(&data, &val, 0x0a, 0) ||
-      val != 1) {
-    return false;
-  }
-
-  CBS_init(&data, kFalse, sizeof(kFalse));
-  val = 2;
-  if (!CBS_get_optional_asn1_bool(&data, &val, 0x0a, 1) ||
-      val != 0) {
-    return false;
-  }
-
-  CBS_init(&data, kInvalid, sizeof(kInvalid));
-  if (CBS_get_optional_asn1_bool(&data, &val, 0x0a, 1)) {
     return false;
   }
 
@@ -523,7 +424,6 @@ int main(void) {
       !TestCBBPrefixed() ||
       !TestCBBASN1() ||
       !TestASN1Uint64() ||
-      !TestGetOptionalASN1Bool() ||
       !TestZero()) {
     return 1;
   }
