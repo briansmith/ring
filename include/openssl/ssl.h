@@ -962,6 +962,10 @@ OPENSSL_EXPORT STACK_OF(X509) *SSL_get_peer_cert_chain(const SSL *ssl);
 OPENSSL_EXPORT int SSL_get_tls_unique(const SSL *ssl, uint8_t *out,
                                       size_t *out_len, size_t max_out);
 
+/* SSL_get_extms_support returns one if the Extended Master Secret
+ * extension was negotiated. Otherwise, it returns zero. */
+OPENSSL_EXPORT int SSL_get_extms_support(const SSL *ssl);
+
 
 /* Custom extensions.
  *

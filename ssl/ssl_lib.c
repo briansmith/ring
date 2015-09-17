@@ -1199,6 +1199,10 @@ int SSL_get_verify_depth(const SSL *s) {
   return X509_VERIFY_PARAM_get_depth(s->param);
 }
 
+int SSL_get_extms_support(const SSL *s) {
+  return s->s3->tmp.extended_master_secret == 1;
+}
+
 int (*SSL_get_verify_callback(const SSL *s))(int, X509_STORE_CTX *) {
   return s->verify_callback;
 }
