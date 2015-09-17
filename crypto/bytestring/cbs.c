@@ -54,13 +54,6 @@ int CBS_contains_zero_byte(const CBS *cbs) {
   return memchr(cbs->data, 0, cbs->len) != NULL;
 }
 
-int CBS_mem_equal(const CBS *cbs, const uint8_t *data, size_t len) {
-  if (len != cbs->len) {
-    return 0;
-  }
-  return CRYPTO_memcmp(cbs->data, data, len) == 0;
-}
-
 static int cbs_get_u(CBS *cbs, uint32_t *out, size_t len) {
   uint32_t result = 0;
   size_t i;
