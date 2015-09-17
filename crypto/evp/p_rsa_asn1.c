@@ -96,7 +96,7 @@ static int rsa_pub_decode(EVP_PKEY *pkey, X509_PUBKEY *pubkey) {
    * use negative moduli. They last five years and are common enough that we
    * need to work around this bug. See https://crbug.com/532048.
    *
-   * TODO(davidben): Switch this to the strict version in September 2019 or when
+   * TODO(davidben): Switch this to the strict version in March 2016 or when
    * Chromium can force client certificates down a different codepath, whichever
    * comes first. */
   CBS cbs;

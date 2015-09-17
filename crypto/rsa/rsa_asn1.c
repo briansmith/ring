@@ -120,8 +120,7 @@ RSA *RSA_parse_public_key_buggy(CBS *cbs) {
    * use negative moduli. They last five years and are common enough that we
    * need to work around this bug. See https://crbug.com/532048.
    *
-   * TODO(davidben): Remove this code and callers in September 2019 when all the
-   * bad certificates have expired. */
+   * TODO(davidben): Remove this code and callers in March 2016. */
   return parse_public_key(cbs, 1 /* buggy */);
 }
 

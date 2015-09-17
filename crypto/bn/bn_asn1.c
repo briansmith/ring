@@ -63,8 +63,7 @@ int BN_cbs2unsigned_buggy(CBS *cbs, BIGNUM *ret) {
    * moduli. They last five years and are common enough that we need to work
    * around this bug. See https://crbug.com/532048.
    *
-   * TODO(davidben): Remove this code and callers in September 2019 when all the
-   * bad certificates have expired. */
+   * TODO(davidben): Remove this code and callers in March 2016. */
   return BN_bin2bn(CBS_data(&child), CBS_len(&child), ret) != NULL;
 }
 
