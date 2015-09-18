@@ -15,6 +15,12 @@ msbuild projects (on Windows) or the Makefile (on other platforms). Because
 this is a little unusual, I would be particularly grateful if you could report
 any problems building (or using) *ring*'s Rust crate.
 
+Currently on Windows you must currently invoke cargo from a Visual Studio
+Native Tools Command Prompt. Otherwise the build will likely fail in confusing
+ways because either msbuild won't be found or there will be a version mismatch
+between the toolchain used to build the C parts of the library and the toolchain
+used by cargo/rustc for linking.
+
 
 
 Building the C Library on Linux and Similar Platforms
