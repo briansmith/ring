@@ -67,12 +67,6 @@
     <ClCompile Include="ecdh\ecdh.c" />
     <ClCompile Include="ecdsa\ecdsa.c" />
     <ClCompile Include="ecdsa\ecdsa_asn1.c" />
-    <ClCompile Include="evp\digestsign.c" />
-    <ClCompile Include="evp\evp.c" />
-    <ClCompile Include="evp\evp_ctx.c" />
-    <ClCompile Include="evp\p_ec.c" />
-    <ClCompile Include="evp\p_rsa.c" />
-    <ClCompile Include="evp\sign.c" />
     <ClCompile Include="md5\md5.c" />
     <ClCompile Include="mem.c" />
     <ClCompile Include="modes\cbc.c" />

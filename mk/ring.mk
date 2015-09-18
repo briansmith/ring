@@ -71,12 +71,6 @@ RING_SRCS = $(addprefix $(RING_PREFIX), \
   crypto/ecdh/ecdh.c \
   crypto/ecdsa/ecdsa.c \
   crypto/ecdsa/ecdsa_asn1.c \
-  crypto/evp/digestsign.c \
-  crypto/evp/evp.c \
-  crypto/evp/evp_ctx.c \
-  crypto/evp/p_ec.c \
-  crypto/evp/p_rsa.c \
-  crypto/evp/sign.c \
   crypto/md5/md5.c \
   crypto/mem.c \
   crypto/modes/cbc.c \

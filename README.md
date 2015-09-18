@@ -54,11 +54,11 @@ instructions on how to build it.
 The C API
 =========
 The C API is the same as BoringSSL's, except that its SSL/TLS, X.509,
-ASN.1 APIs, error stack mechanism, and many parts of the EVP interface have
-been permanently removed. Currently, the C API also does not expose HMAC, HKDF,
-and PBKDF2 because the C wrappers around the new Rust implementations have not
-been implemented yet. The currently plan is to support a C interface that is
-the same as or similar to BoringSSL's.
+ASN.1 APIs, and error stack mechanism, have been permanently removed.
+Currently, the C API also does not expose the EVP, HMAC, HKDF, and PBKDF2
+interfaces, but only because the C wrappers around the new Rust implementations
+have not been implemented yet. The currently plan is to support a C interface
+that is the same as or similar to BoringSSL's.
 
 See
 [this](https://github.com/briansmith/ring/blob/master/BUILDING.md#building-the-c-library-on-windows)
