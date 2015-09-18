@@ -225,8 +225,6 @@ static const struct AEADName kAEADs[] = {
   { "des-ede3-cbc-sha1-tls-implicit-iv", EVP_aead_des_ede3_cbc_sha1_tls_implicit_iv },
   { "aes-128-key-wrap", EVP_aead_aes_128_key_wrap },
   { "aes-256-key-wrap", EVP_aead_aes_256_key_wrap },
-  { "aes-128-ctr-hmac-sha256", EVP_aead_aes_128_ctr_hmac_sha256 },
-  { "aes-256-ctr-hmac-sha256", EVP_aead_aes_256_ctr_hmac_sha256 },
   { "", NULL },
 };
 
