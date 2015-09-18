@@ -1,7 +1,5 @@
 HMAC = MD5
-# Note: The empty key results in passing NULL to HMAC_Init_ex, so this tests
-# that HMAC_CTX and HMAC treat NULL as the empty key initially.
-Key =
+Key = ""
 Input = "More text test vectors to stuff up EBCDIC machines :-)"
 Output = e9139d1e6ee064ef8cf514fc7dc83e86
 

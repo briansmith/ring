@@ -73,7 +73,6 @@
     <ClCompile Include="evp\p_ec.c" />
     <ClCompile Include="evp\p_rsa.c" />
     <ClCompile Include="evp\sign.c" />
-    <ClCompile Include="hmac\hmac.c" />
     <ClCompile Include="md5\md5.c" />
     <ClCompile Include="mem.c" />
     <ClCompile Include="modes\cbc.c" />

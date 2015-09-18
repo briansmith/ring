@@ -77,7 +77,6 @@ RING_SRCS = $(addprefix $(RING_PREFIX), \
   crypto/evp/p_ec.c \
   crypto/evp/p_rsa.c \
   crypto/evp/sign.c \
-  crypto/hmac/hmac.c \
   crypto/md5/md5.c \
   crypto/mem.c \
   crypto/modes/cbc.c \
@@ -223,7 +222,6 @@ RING_TEST_MAIN_SRCS = $(addprefix $(RING_PREFIX), \
   crypto/digest/digest_test.cc \
   crypto/ec/example_mul.c \
   crypto/ecdsa/ecdsa_test.cc \
-  crypto/hmac/hmac_test.cc \
   crypto/modes/gcm_test.c \
   crypto/poly1305/poly1305_test.cc \
   crypto/refcount_test.c \

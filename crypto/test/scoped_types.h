@@ -26,7 +26,6 @@
 #include <openssl/ec_key.h>
 #include <openssl/ecdsa.h>
 #include <openssl/evp.h>
-#include <openssl/hmac.h>
 #include <openssl/mem.h>
 #include <openssl/rsa.h>
 
@@ -100,8 +99,6 @@ using ScopedEVP_CIPHER_CTX = ScopedOpenSSLContext<EVP_CIPHER_CTX, int,
                                                   EVP_CIPHER_CTX_cleanup>;
 using ScopedEVP_MD_CTX = ScopedOpenSSLContext<EVP_MD_CTX, int, EVP_MD_CTX_init,
                                               EVP_MD_CTX_cleanup>;
-using ScopedHMAC_CTX = ScopedOpenSSLContext<HMAC_CTX, void, HMAC_CTX_init,
-                                            HMAC_CTX_cleanup>;
 
 using ScopedOpenSSLBytes = bssl::unique_ptr<uint8_t, OpenSSLFree<uint8_t>>;
 using ScopedOpenSSLString = bssl::unique_ptr<char, OpenSSLFree<char>>;

@@ -252,7 +252,7 @@ mod tests {
 
     #[test]
     pub fn hmac_tests() {
-        file_test::run("crypto/hmac/hmac_tests.txt", hmac_test_case);
+        file_test::run("src/hmac_tests.txt", hmac_test_case);
     }
 
     fn hmac_test_case(test_case: &mut file_test::TestCase) {
