@@ -211,6 +211,9 @@ OPENSSL_EXPORT int SSL_CIPHER_is_CHACHA20POLY1305(const SSL_CIPHER *cipher);
 /* SSL_CIPHER_is_NULL returns one if |cipher| does not encrypt. */
 OPENSSL_EXPORT int SSL_CIPHER_is_NULL(const SSL_CIPHER *cipher);
 
+/* SSL_CIPHER_is_RC4 returns one if |cipher| uses RC4. */
+OPENSSL_EXPORT int SSL_CIPHER_is_RC4(const SSL_CIPHER *cipher);
+
 /* SSL_CIPHER_is_block_cipher returns one if |cipher| is a block cipher. */
 OPENSSL_EXPORT int SSL_CIPHER_is_block_cipher(const SSL_CIPHER *cipher);
 

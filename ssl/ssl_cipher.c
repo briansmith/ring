@@ -1392,6 +1392,10 @@ int SSL_CIPHER_is_NULL(const SSL_CIPHER *cipher) {
   return (cipher->algorithm_enc & SSL_eNULL) != 0;
 }
 
+int SSL_CIPHER_is_RC4(const SSL_CIPHER *cipher) {
+  return (cipher->algorithm_enc & SSL_RC4) != 0;
+}
+
 int SSL_CIPHER_is_block_cipher(const SSL_CIPHER *cipher) {
   /* Neither stream cipher nor AEAD. */
   return (cipher->algorithm_enc & (SSL_RC4 | SSL_eNULL)) == 0 &&
