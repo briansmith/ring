@@ -45,8 +45,6 @@
     <ClCompile Include="cipher\e_chacha20poly1305.c" />
     <ClCompile Include="cipher\e_des.c" />
     <ClCompile Include="cipher\e_null.c" />
-    <ClCompile Include="cipher\e_tls.c" />
-    <ClCompile Include="cipher\tls_cbc.c" />
     <ClCompile Include="cmac\cmac.c" />
     <ClCompile Include="cpu-arm.c" />
     <ClCompile Include="cpu-intel.c" />

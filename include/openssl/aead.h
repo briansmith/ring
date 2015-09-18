@@ -120,28 +120,6 @@ OPENSSL_EXPORT const EVP_AEAD *EVP_aead_aes_256_key_wrap(void);
 OPENSSL_EXPORT int EVP_has_aes_hardware(void);
 
 
-/* TLS-specific AEAD algorithms.
- *
- * These AEAD primitives do not meet the definition of generic AEADs. They are
- * all specific to TLS and should not be used outside of that context. They must
- * be initialized with |EVP_AEAD_CTX_init_with_direction|, are stateful, and may
- * not be used concurrently. Any nonces are used as IVs, so they must be
- * unpredictable. They only accept an |ad| parameter of length 11 (the standard
- * TLS one with length omitted). */
-
-OPENSSL_EXPORT const EVP_AEAD *EVP_aead_aes_128_cbc_sha1_tls(void);
-OPENSSL_EXPORT const EVP_AEAD *EVP_aead_aes_128_cbc_sha1_tls_implicit_iv(void);
-OPENSSL_EXPORT const EVP_AEAD *EVP_aead_aes_128_cbc_sha256_tls(void);
-
-OPENSSL_EXPORT const EVP_AEAD *EVP_aead_aes_256_cbc_sha1_tls(void);
-OPENSSL_EXPORT const EVP_AEAD *EVP_aead_aes_256_cbc_sha1_tls_implicit_iv(void);
-OPENSSL_EXPORT const EVP_AEAD *EVP_aead_aes_256_cbc_sha256_tls(void);
-OPENSSL_EXPORT const EVP_AEAD *EVP_aead_aes_256_cbc_sha384_tls(void);
-
-OPENSSL_EXPORT const EVP_AEAD *EVP_aead_des_ede3_cbc_sha1_tls(void);
-OPENSSL_EXPORT const EVP_AEAD *EVP_aead_des_ede3_cbc_sha1_tls_implicit_iv(void);
-
-
 /* Utility functions. */
 
 /* EVP_AEAD_key_length returns the length, in bytes, of the keys used by
