@@ -12,19 +12,29 @@
 // ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
 // OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-use super::{digest, hmac};
+//! PBKDF2-HMAC derivation and verification.
+//!
+//! Use `derive` to derive PBKDF2 outputs. Use `verify` to verify secret
+//! against previously-derived outputs.
+//!
+//! PBKDF2 is specified in
+//! [RFC 2898 Section 5.2](https://tools.ietf.org/html/rfc2898#section-5.2)
+//! with test vectors given in [RFC 6070](https://tools.ietf.org/html/rfc6070).
+//! See also [NIST Special Publication
+//! 800-132](http://csrc.nist.gov/publications/nistpubs/800-132/nist-sp800-132.pdf).
+
+use super::{digest, ffi, hmac};
 
 /// Fills `out` with the key derived using PBKDF2 with the given inputs,
 /// using HMAC with the given digest algorithm as the PRF.
+///
+/// Do not use `derive` as part of verifying a secret; use `verify` instead, to
+/// minimize the effectiveness of timing attacks.
 ///
 /// `out.len()` must be no larger than `digest_alg.digest_len`. This limit is
 /// more strict than what the specification requires. As noted at
 /// https://github.com/ctz/fastpbkdf2, "PBKDF2 is mis-designed and you should
 /// avoid asking for more than your hash function's output length."
-///
-/// PBKDF2 is specified in
-/// [RFC 2898 Section 5.2](https://tools.ietf.org/html/rfc2898#section-5.2)
-/// with test vectors given in [RFC 6070](https://tools.ietf.org/html/rfc6070).
 ///
 /// | Parameter   | RFC 2898 Section 5.2 Term
 /// |-------------|---------------------------------------
@@ -35,13 +45,15 @@ use super::{digest, hmac};
 /// | out         | dk (derived key)
 /// | out.len()   | dkLen (derived key length)
 ///
+/// C analog: `PKCS5_PBKDF2_HMAC`
+///
 /// # Panics
 ///
-/// `pbkdf2_hmac` panics if `iterations < 1`.
+/// `derive` panics if `iterations < 1`.
 ///
-/// `pbkdf2_hmac` panics if `out.len() > digest_alg.digest_len`.
-pub fn pbkdf2_hmac(digest_alg: &'static digest::Algorithm, iterations: usize,
-                   secret: &[u8], salt: &[u8], out: &mut [u8]) {
+/// `derive` panics if `out.len() > digest_alg.digest_len`.
+pub fn derive(digest_alg: &'static digest::Algorithm, iterations: usize,
+              secret: &[u8], salt: &[u8], out: &mut [u8]) {
     assert!(iterations >= 1);
     assert!(out.len() <= digest_alg.digest_len);
 
@@ -77,12 +89,39 @@ pub fn pbkdf2_hmac(digest_alg: &'static digest::Algorithm, iterations: usize,
     }
 }
 
+/// Verifies that a previously-derived (e.g., using `derive`) PBKDF2-HMAC
+/// value matches the PBKDF2-HMAC value derived from the other inputs.
+///
+/// The comparison is done in constant time to prevent timing attacks.
+///
+/// | Parameter                | RFC 2898 Section 5.2 Term
+/// |--------------------------|---------------------------------------
+/// | digest_alg               | PRF (HMAC using the digest algorithm).
+/// | secret                   | P (password)
+/// | salt                     | S (salt)
+/// | iterations               | c (iteration count)
+/// | previously_derived       | dk (derived key)
+/// | previously_derived.len() | dkLen (derived key length)
+///
+/// C analog: `PKCS5_PBKDF2_HMAC` + `CRYPTO_memcmp`
+pub fn verify(digest_alg: &'static digest::Algorithm, iterations: usize,
+              secret: &[u8], salt: &[u8], previously_derived: &[u8])
+              -> Result<(), ()> {
+    let mut derived_buf = [0u8; digest::MAX_DIGEST_LEN];
+    if previously_derived.len() > derived_buf.len() {
+        return Err(());
+    }
+    let derived = &mut derived_buf[0..previously_derived.len()];
+    derive(digest_alg, iterations, secret, salt, derived);
+    ffi::verify_slices_are_equal_ct(derived, previously_derived)
+}
+
 #[cfg(test)]
 mod tests {
     use super::super::{file_test, pbkdf2_hmac};
 
     #[test]
-    pub fn pkbdf2_hmac_tests() {
+    pub fn pkbdf2_tests() {
         fn test_case(test_case: &mut file_test::TestCase) {
             let digest_alg = test_case.consume_digest_alg("Hash").unwrap();
             let iterations = test_case.consume_usize("c");
@@ -91,9 +130,11 @@ mod tests {
             let dk = test_case.consume_bytes("DK");
 
             let mut out = vec![0u8; dk.len()];
-            pbkdf2_hmac(digest_alg, iterations, &secret[..], &salt[..],
-                        &mut out[..]);
+            pbkdf2_hmac::derive(digest_alg, iterations, &secret, &salt,
+                                &mut out);
             assert_eq!(dk, out);
+            assert!(pbkdf2_hmac::verify(digest_alg, iterations, &secret, &salt,
+                                        &out).is_ok());
         }
 
         file_test::run("src/pbkdf2_tests.txt", test_case);

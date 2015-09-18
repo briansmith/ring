@@ -239,7 +239,7 @@ impl_Digest!(SHA384, 384, 1024, SHA384_Init, SHA384_Update, SHA384_Final,
 impl_Digest!(SHA512, 512, 1024, SHA512_Init, SHA512_Update, SHA512_Final,
              674 /*NID_sha512*/);
 
-const MAX_DIGEST_LEN: usize = 512 / 8;
+pub const MAX_DIGEST_LEN: usize = 512 / 8;
 
 // The number of u64-sized words needed to store the largest digest context
 // state.

@@ -22,7 +22,7 @@ pub mod ecc;
 mod ffi;
 mod hkdf; pub use hkdf::hkdf;
 pub mod hmac;
-mod pbkdf2; pub use pbkdf2::pbkdf2_hmac;
+pub mod pbkdf2_hmac;
 pub mod rand;
 pub mod rsa;
 
