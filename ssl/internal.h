@@ -260,9 +260,9 @@ int ssl_cipher_has_server_public_key(const SSL_CIPHER *cipher);
 /* ssl_cipher_requires_server_key_exchange returns 1 if |cipher| requires a
  * ServerKeyExchange message. Otherwise it returns 0.
  *
- * Unlike ssl_cipher_has_server_public_key, some ciphers take optional
- * ServerKeyExchanges. PSK and RSA_PSK only use the ServerKeyExchange to
- * communicate a psk_identity_hint, so it is optional. */
+ * Unlike |ssl_cipher_has_server_public_key|, this function may return zero
+ * while still allowing |cipher| an optional ServerKeyExchange. This is the
+ * case for plain PSK ciphers. */
 int ssl_cipher_requires_server_key_exchange(const SSL_CIPHER *cipher);
 
 /* ssl_cipher_get_record_split_len, for TLS 1.0 CBC mode ciphers, returns the

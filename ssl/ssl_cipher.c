@@ -1698,10 +1698,9 @@ int ssl_cipher_get_key_type(const SSL_CIPHER *cipher) {
 }
 
 int ssl_cipher_has_server_public_key(const SSL_CIPHER *cipher) {
-  /* PSK-authenticated ciphers do not use a public key, except for
-   * RSA_PSK. */
-  if ((cipher->algorithm_auth & SSL_aPSK) &&
-      !(cipher->algorithm_mkey & SSL_kRSA)) {
+  /* PSK-authenticated ciphers do not use a certificate. (RSA_PSK is not
+   * supported.) */
+  if (cipher->algorithm_auth & SSL_aPSK) {
     return 0;
   }
 
