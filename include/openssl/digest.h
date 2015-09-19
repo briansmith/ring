@@ -87,10 +87,6 @@ OPENSSL_EXPORT const EVP_MD *EVP_sha512(void);
  * MD5 and SHA-1, as used in TLS 1.1 and below. */
 OPENSSL_EXPORT const EVP_MD *EVP_md5_sha1(void);
 
-/* EVP_get_digestbynid returns an |EVP_MD| for the given NID, or NULL if no
- * such digest is known. */
-OPENSSL_EXPORT const EVP_MD *EVP_get_digestbynid(int nid);
-
 
 /* Digest contexts.
  *

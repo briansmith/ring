@@ -230,39 +230,3 @@ static const EVP_MD md5_sha1_md = {
 };
 
 const EVP_MD *EVP_md5_sha1(void) { return &md5_sha1_md; }
-
-
-struct nid_to_digest {
-  int nid;
-  const EVP_MD* (*md_func)(void);
-};
-
-static const struct nid_to_digest nid_to_digest_mapping[] = {
-  { NID_md5, EVP_md5 },
-  { NID_sha1, EVP_sha1 },
-  { NID_sha224, EVP_sha224 },
-  { NID_sha256, EVP_sha256 },
-  { NID_sha384, EVP_sha384 },
-  { NID_sha512, EVP_sha512 },
-  { NID_md5_sha1, EVP_md5_sha1 },
-  { NID_ecdsa_with_SHA1, EVP_sha1 },
-  { NID_md5WithRSAEncryption, EVP_md5 },
-  { NID_sha1WithRSAEncryption, EVP_sha1 },
-  { NID_sha224WithRSAEncryption, EVP_sha224 },
-  { NID_sha256WithRSAEncryption, EVP_sha256 },
-  { NID_sha384WithRSAEncryption, EVP_sha384 },
-  { NID_sha512WithRSAEncryption, EVP_sha512 },
-};
-
-const EVP_MD* EVP_get_digestbynid(int nid) {
-  unsigned i;
-
-  for (i = 0; i < sizeof(nid_to_digest_mapping) / sizeof(struct nid_to_digest);
-       i++) {
-    if (nid_to_digest_mapping[i].nid == nid) {
-      return nid_to_digest_mapping[i].md_func();
-    }
-  }
-
-  return NULL;
-}
