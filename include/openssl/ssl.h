@@ -2162,6 +2162,51 @@ OPENSSL_EXPORT void SSL_get_structure_sizes(size_t *ssl_size,
                                             size_t *ssl_ctx_size,
                                             size_t *ssl_session_size);
 
+/* SSL_CTX_set_msg_callback installs |cb| as the message callback for |ctx|.
+ * This callback will be called when sending or receiving low-level record
+ * headers, complete handshake messages, ChangeCipherSpec, and alerts.
+ * |write_p| is one for outgoing messages and zero for incoming messages.
+ *
+ * For each record header, |cb| is called with |version| = 0 and |content_type|
+ * = |SSL3_RT_HEADER|. The |len| bytes from |buf| contain the header. Note that
+ * this does not include the record body. If the record is sealed, the length
+ * in the header is the length of the ciphertext.
+ *
+ * For each handshake message, ChangeCipherSpec, and alert, |version| is the
+ * protocol version and |content_type| is the corresponding record type. The
+ * |len| bytes from |buf| contain the handshake message, one-byte
+ * ChangeCipherSpec body, and two-byte alert, respectively. */
+OPENSSL_EXPORT void SSL_CTX_set_msg_callback(
+    SSL_CTX *ctx, void (*cb)(int write_p, int version, int content_type,
+                             const void *buf, size_t len, SSL *ssl, void *arg));
+
+/* SSL_CTX_set_msg_callback_arg sets the |arg| parameter of the message
+ * callback. */
+OPENSSL_EXPORT void SSL_CTX_set_msg_callback_arg(SSL_CTX *ctx, void *arg);
+
+/* SSL_set_msg_callback installs |cb| as the message callback of |ssl|. See
+ * |SSL_CTX_set_msg_callback| for when this callback is called. */
+OPENSSL_EXPORT void SSL_set_msg_callback(
+    SSL *ssl, void (*cb)(int write_p, int version, int content_type,
+                         const void *buf, size_t len, SSL *ssl, void *arg));
+
+/* SSL_set_msg_callback_arg sets the |arg| parameter of the message callback. */
+OPENSSL_EXPORT void SSL_set_msg_callback_arg(SSL *ssl, void *arg);
+
+/* SSL_CTX_set_keylog_bio sets configures all SSL objects attached to |ctx| to
+ * log session material to |keylog_bio|. This is intended for debugging use
+ * with tools like Wireshark. |ctx| takes ownership of |keylog_bio|.
+ *
+ * The format is described in
+ * https://developer.mozilla.org/en-US/docs/Mozilla/Projects/NSS/Key_Log_Format. */
+OPENSSL_EXPORT void SSL_CTX_set_keylog_bio(SSL_CTX *ctx, BIO *keylog_bio);
+
+/* SSL_set_reject_peer_renegotiations controls whether renegotiation attempts by
+ * the peer are rejected. It may be set at any point in a connection's lifetime
+ * to control future renegotiations programmatically. By default, renegotiations
+ * are rejected. (Renegotiations requested by a client are always rejected.) */
+OPENSSL_EXPORT void SSL_set_reject_peer_renegotiations(SSL *ssl, int reject);
+
 
 /* Underdocumented functions.
  *
@@ -2260,46 +2305,6 @@ typedef struct ssl3_enc_method SSL3_ENC_METHOD;
  * and zero on failure. */
 OPENSSL_EXPORT int SSL_set_mtu(SSL *ssl, unsigned mtu);
 
-/* SSL_CTX_set_msg_callback installs |cb| as the message callback for |ctx|.
- * This callback will be called when sending or receiving low-level record
- * headers, complete handshake messages, ChangeCipherSpec, and alerts.
- * |write_p| is one for outgoing messages and zero for incoming messages.
- *
- * For each record header, |cb| is called with |version| = 0 and |content_type|
- * = |SSL3_RT_HEADER|. The |len| bytes from |buf| contain the header. Note that
- * this does not include the record body. If the record is sealed, the length
- * in the header is the length of the ciphertext.
- *
- * For each handshake message, ChangeCipherSpec, and alert, |version| is the
- * protocol version and |content_type| is the corresponding record type. The
- * |len| bytes from |buf| contain the handshake message, one-byte
- * ChangeCipherSpec body, and two-byte alert, respectively. */
-OPENSSL_EXPORT void SSL_CTX_set_msg_callback(
-    SSL_CTX *ctx, void (*cb)(int write_p, int version, int content_type,
-                             const void *buf, size_t len, SSL *ssl, void *arg));
-
-/* SSL_CTX_set_msg_callback_arg sets the |arg| parameter of the message
- * callback. */
-OPENSSL_EXPORT void SSL_CTX_set_msg_callback_arg(SSL_CTX *ctx, void *arg);
-
-/* SSL_set_msg_callback installs |cb| as the message callback of |ssl|. See
- * |SSL_CTX_set_msg_callback| for when this callback is called. */
-OPENSSL_EXPORT void SSL_set_msg_callback(
-    SSL *ssl, void (*cb)(int write_p, int version, int content_type,
-                         const void *buf, size_t len, SSL *ssl, void *arg));
-
-/* SSL_set_msg_callback_arg sets the |arg| parameter of the message callback. */
-OPENSSL_EXPORT void SSL_set_msg_callback_arg(SSL *ssl, void *arg);
-
-/* SSL_CTX_set_keylog_bio sets configures all SSL objects attached to |ctx| to
- * log session material to |keylog_bio|. This is intended for debugging use
- * with tools like Wireshark. |ctx| takes ownership of |keylog_bio|.
- *
- * The format is described in
- * https://developer.mozilla.org/en-US/docs/Mozilla/Projects/NSS/Key_Log_Format. */
-OPENSSL_EXPORT void SSL_CTX_set_keylog_bio(SSL_CTX *ctx, BIO *keylog_bio);
-
-
 struct ssl_aead_ctx_st;
 typedef struct ssl_aead_ctx_st SSL_AEAD_CTX;
 
@@ -2380,12 +2385,6 @@ OPENSSL_EXPORT void SSL_get0_signed_cert_timestamp_list(const SSL *ssl,
  * WARNING: the returned data is not guaranteed to be well formed. */
 OPENSSL_EXPORT void SSL_get0_ocsp_response(const SSL *ssl, const uint8_t **out,
                                            size_t *out_len);
-
-/* SSL_set_reject_peer_renegotiations controls whether renegotiation attempts by
- * the peer are rejected. It may be set at any point in a connection's lifetime
- * to control future renegotiations programmatically. By default, renegotiations
- * are rejected. (Renegotiations requested by a client are always rejected.) */
-OPENSSL_EXPORT void SSL_set_reject_peer_renegotiations(SSL *ssl, int reject);
 
 #define SSL_NOTHING 1
 #define SSL_WRITING 2
