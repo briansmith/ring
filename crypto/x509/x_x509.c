@@ -178,22 +178,21 @@ void *X509_get_ex_data(X509 *r, int idx)
 
 X509 *d2i_X509_AUX(X509 **a, const unsigned char **pp, long length)
 {
-	const unsigned char *q;
+	const unsigned char *q = *pp;
 	X509 *ret;
 	int freeret = 0;
 
-	/* Save start position */
-	q = *pp;
-
 	if (!a || *a == NULL)
 		freeret = 1;
-	ret = d2i_X509(a, pp, length);
+	ret = d2i_X509(a, &q, length);
 	/* If certificate unreadable then forget it */
 	if(!ret) return NULL;
 	/* update length */
-	length -= *pp - q;
-	if(!length) return ret;
-	if(!d2i_X509_CERT_AUX(&ret->aux, pp, length)) goto err;
+	length -= q - *pp;
+	/* Parse auxiliary information if there is any. */
+	if (length > 0 && !d2i_X509_CERT_AUX(&ret->aux, &q, length))
+		goto err;
+	*pp = q;
 	return ret;
 	err:
 	if (freeret)

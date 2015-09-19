@@ -83,16 +83,20 @@ EVP_PKEY *d2i_PrivateKey(int type, EVP_PKEY **out, const uint8_t **inp,
     goto err;
   }
 
+  const uint8_t *in = *inp;
   if (!ret->ameth->old_priv_decode ||
-      !ret->ameth->old_priv_decode(ret, inp, len)) {
+      !ret->ameth->old_priv_decode(ret, &in, len)) {
     if (ret->ameth->priv_decode) {
-      PKCS8_PRIV_KEY_INFO *p8 = d2i_PKCS8_PRIV_KEY_INFO(NULL, inp, len);
+      PKCS8_PRIV_KEY_INFO *p8 = d2i_PKCS8_PRIV_KEY_INFO(NULL, &in, len);
       if (!p8) {
         goto err;
       }
       EVP_PKEY_free(ret);
       ret = EVP_PKCS82PKEY(p8);
       PKCS8_PRIV_KEY_INFO_free(p8);
+      if (ret == NULL) {
+        goto err;
+      }
     } else {
       OPENSSL_PUT_ERROR(EVP, ERR_R_ASN1_LIB);
       goto err;
@@ -102,6 +106,7 @@ EVP_PKEY *d2i_PrivateKey(int type, EVP_PKEY **out, const uint8_t **inp,
   if (out != NULL) {
     *out = ret;
   }
+  *inp = in;
   return ret;
 
 err:
@@ -129,7 +134,8 @@ EVP_PKEY *d2i_AutoPrivateKey(EVP_PKEY **out, const uint8_t **inp, long len) {
     keytype = EVP_PKEY_EC;
   } else if (sk_ASN1_TYPE_num(inkey) == 3) {
     /* This seems to be PKCS8, not traditional format */
-    PKCS8_PRIV_KEY_INFO *p8 = d2i_PKCS8_PRIV_KEY_INFO(NULL, inp, len);
+    p = *inp;
+    PKCS8_PRIV_KEY_INFO *p8 = d2i_PKCS8_PRIV_KEY_INFO(NULL, &p, len);
     EVP_PKEY *ret;
 
     sk_ASN1_TYPE_pop_free(inkey, ASN1_TYPE_free);
@@ -139,6 +145,11 @@ EVP_PKEY *d2i_AutoPrivateKey(EVP_PKEY **out, const uint8_t **inp, long len) {
     }
     ret = EVP_PKCS82PKEY(p8);
     PKCS8_PRIV_KEY_INFO_free(p8);
+    if (ret == NULL) {
+      return NULL;
+    }
+
+    *inp = p;
     if (out) {
       *out = ret;
     }

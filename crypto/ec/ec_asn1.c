@@ -239,8 +239,9 @@ static EC_GROUP *d2i_ECPKParameters(EC_GROUP **groupp, const uint8_t **inp,
                                     long len) {
   EC_GROUP *group = NULL;
   ECPKPARAMETERS *params = NULL;
+  const uint8_t *in = *inp;
 
-  params = d2i_ECPKPARAMETERS(NULL, inp, len);
+  params = d2i_ECPKPARAMETERS(NULL, &in, len);
   if (params == NULL) {
     OPENSSL_PUT_ERROR(EC, EC_R_D2I_ECPKPARAMETERS_FAILURE);
     ECPKPARAMETERS_free(params);
@@ -260,6 +261,7 @@ static EC_GROUP *d2i_ECPKParameters(EC_GROUP **groupp, const uint8_t **inp,
   }
 
   ECPKPARAMETERS_free(params);
+  *inp = in;
   return group;
 }
 
@@ -280,12 +282,13 @@ static int i2d_ECPKParameters(const EC_GROUP *group, uint8_t **outp) {
   return ret;
 }
 
-EC_KEY *d2i_ECPrivateKey(EC_KEY **a, const uint8_t **in, long len) {
+EC_KEY *d2i_ECPrivateKey(EC_KEY **a, const uint8_t **inp, long len) {
   int ok = 0;
   EC_KEY *ret = NULL;
   EC_PRIVATEKEY *priv_key = NULL;
 
-  priv_key = d2i_EC_PRIVATEKEY(NULL, in, len);
+  const uint8_t *in = *inp;
+  priv_key = d2i_EC_PRIVATEKEY(NULL, &in, len);
   if (priv_key == NULL) {
     OPENSSL_PUT_ERROR(EC, ERR_R_EC_LIB);
     return NULL;
@@ -364,6 +367,7 @@ EC_KEY *d2i_ECPrivateKey(EC_KEY **a, const uint8_t **in, long len) {
   if (a) {
     *a = ret;
   }
+  *inp = in;
   ok = 1;
 
 err:
