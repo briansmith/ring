@@ -598,13 +598,6 @@ OPENSSL_EXPORT uint32_t SSL_get_options(const SSL *ssl);
  * this in explicit fallback retries, following the guidance in RFC 7507. */
 #define SSL_MODE_SEND_FALLBACK_SCSV 0x00000400L
 
-/* The following flags do nothing and are included only to make it easier to
- * compile code with BoringSSL. */
-#define SSL_MODE_AUTO_RETRY 0
-#define SSL_MODE_RELEASE_BUFFERS 0
-#define SSL_MODE_SEND_CLIENTHELLO_TIME 0
-#define SSL_MODE_SEND_SERVERHELLO_TIME 0
-
 /* SSL_CTX_set_mode enables all modes set in |mode| (which should be one or more
  * of the |SSL_MODE_*| values, ORed together) in |ctx|. It returns a bitmask
  * representing the resulting enabled modes. */
@@ -2864,6 +2857,10 @@ DECLARE_STACK_OF(SSL_COMP)
 
 /* The following flags do nothing and are included only to make it easier to
  * compile code with BoringSSL. */
+#define SSL_MODE_AUTO_RETRY 0
+#define SSL_MODE_RELEASE_BUFFERS 0
+#define SSL_MODE_SEND_CLIENTHELLO_TIME 0
+#define SSL_MODE_SEND_SERVERHELLO_TIME 0
 #define SSL_OP_ALLOW_UNSAFE_LEGACY_RENEGOTIATION 0
 #define SSL_OP_DONT_INSERT_EMPTY_FRAGMENTS 0
 #define SSL_OP_EPHEMERAL_RSA 0
@@ -2885,7 +2882,6 @@ DECLARE_STACK_OF(SSL_COMP)
 #define SSL_OP_TLS_BLOCK_PADDING_BUG 0
 #define SSL_OP_TLS_ROLLBACK_BUG 0
 #define SSL_VERIFY_CLIENT_ONCE 0
-
 
 /* SSL_cache_hit calls |SSL_session_resumed|. */
 OPENSSL_EXPORT int SSL_cache_hit(SSL *ssl);
