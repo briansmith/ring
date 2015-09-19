@@ -341,15 +341,17 @@ static void set_client_CA_list(STACK_OF(X509_NAME) **ca_list,
   *ca_list = name_list;
 }
 
-STACK_OF(X509_NAME) *SSL_dup_CA_list(STACK_OF(X509_NAME) *sk) {
-  size_t i;
-  STACK_OF(X509_NAME) *ret;
-  X509_NAME *name;
+STACK_OF(X509_NAME) *SSL_dup_CA_list(STACK_OF(X509_NAME) *list) {
+  STACK_OF(X509_NAME) *ret = sk_X509_NAME_new_null();
+  if (ret == NULL) {
+    return NULL;
+  }
 
-  ret = sk_X509_NAME_new_null();
-  for (i = 0; i < sk_X509_NAME_num(sk); i++) {
-    name = X509_NAME_dup(sk_X509_NAME_value(sk, i));
+  size_t i;
+  for (i = 0; i < sk_X509_NAME_num(list); i++) {
+      X509_NAME *name = X509_NAME_dup(sk_X509_NAME_value(list, i));
     if (name == NULL || !sk_X509_NAME_push(ret, name)) {
+      X509_NAME_free(name);
       sk_X509_NAME_pop_free(ret, X509_NAME_free);
       return NULL;
     }
@@ -358,12 +360,12 @@ STACK_OF(X509_NAME) *SSL_dup_CA_list(STACK_OF(X509_NAME) *sk) {
   return ret;
 }
 
-void SSL_set_client_CA_list(SSL *s, STACK_OF(X509_NAME) *name_list) {
-  set_client_CA_list(&(s->client_CA), name_list);
+void SSL_set_client_CA_list(SSL *ssl, STACK_OF(X509_NAME) *name_list) {
+  set_client_CA_list(&ssl->client_CA, name_list);
 }
 
 void SSL_CTX_set_client_CA_list(SSL_CTX *ctx, STACK_OF(X509_NAME) *name_list) {
-  set_client_CA_list(&(ctx->client_CA), name_list);
+  set_client_CA_list(&ctx->client_CA, name_list);
 }
 
 STACK_OF(X509_NAME) *SSL_CTX_get_client_CA_list(const SSL_CTX *ctx) {
@@ -386,10 +388,10 @@ STACK_OF(X509_NAME) *SSL_get_client_CA_list(const SSL *ssl) {
   return ssl->ctx->client_CA;
 }
 
-static int add_client_CA(STACK_OF(X509_NAME) **sk, X509 *x) {
+static int add_client_CA(STACK_OF(X509_NAME) **sk, X509 *x509) {
   X509_NAME *name;
 
-  if (x == NULL) {
+  if (x509 == NULL) {
     return 0;
   }
   if (*sk == NULL) {
@@ -399,7 +401,7 @@ static int add_client_CA(STACK_OF(X509_NAME) **sk, X509 *x) {
     }
   }
 
-  name = X509_NAME_dup(X509_get_subject_name(x));
+  name = X509_NAME_dup(X509_get_subject_name(x509));
   if (name == NULL) {
     return 0;
   }
@@ -412,12 +414,12 @@ static int add_client_CA(STACK_OF(X509_NAME) **sk, X509 *x) {
   return 1;
 }
 
-int SSL_add_client_CA(SSL *ssl, X509 *x) {
-  return add_client_CA(&(ssl->client_CA), x);
+int SSL_add_client_CA(SSL *ssl, X509 *x509) {
+  return add_client_CA(&ssl->client_CA, x509);
 }
 
-int SSL_CTX_add_client_CA(SSL_CTX *ctx, X509 *x) {
-  return add_client_CA(&(ctx->client_CA), x);
+int SSL_CTX_add_client_CA(SSL_CTX *ctx, X509 *x509) {
+  return add_client_CA(&ctx->client_CA, x509);
 }
 
 /* Add a certificate to a BUF_MEM structure */

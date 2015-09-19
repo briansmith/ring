@@ -976,28 +976,28 @@ int SSL_has_matching_session_id(const SSL *ssl, const uint8_t *id,
   return p != NULL;
 }
 
-int SSL_CTX_set_purpose(SSL_CTX *s, int purpose) {
-  return X509_VERIFY_PARAM_set_purpose(s->param, purpose);
+int SSL_CTX_set_purpose(SSL_CTX *ctx, int purpose) {
+  return X509_VERIFY_PARAM_set_purpose(ctx->param, purpose);
 }
 
-int SSL_set_purpose(SSL *s, int purpose) {
-  return X509_VERIFY_PARAM_set_purpose(s->param, purpose);
+int SSL_set_purpose(SSL *ssl, int purpose) {
+  return X509_VERIFY_PARAM_set_purpose(ssl->param, purpose);
 }
 
-int SSL_CTX_set_trust(SSL_CTX *s, int trust) {
-  return X509_VERIFY_PARAM_set_trust(s->param, trust);
+int SSL_CTX_set_trust(SSL_CTX *ctx, int trust) {
+  return X509_VERIFY_PARAM_set_trust(ctx->param, trust);
 }
 
-int SSL_set_trust(SSL *s, int trust) {
-  return X509_VERIFY_PARAM_set_trust(s->param, trust);
+int SSL_set_trust(SSL *ssl, int trust) {
+  return X509_VERIFY_PARAM_set_trust(ssl->param, trust);
 }
 
-int SSL_CTX_set1_param(SSL_CTX *ctx, X509_VERIFY_PARAM *vpm) {
-  return X509_VERIFY_PARAM_set1(ctx->param, vpm);
+int SSL_CTX_set1_param(SSL_CTX *ctx, const X509_VERIFY_PARAM *param) {
+  return X509_VERIFY_PARAM_set1(ctx->param, param);
 }
 
-int SSL_set1_param(SSL *ssl, X509_VERIFY_PARAM *vpm) {
-  return X509_VERIFY_PARAM_set1(ssl->param, vpm);
+int SSL_set1_param(SSL *ssl, const X509_VERIFY_PARAM *param) {
+  return X509_VERIFY_PARAM_set1(ssl->param, param);
 }
 
 void ssl_cipher_preference_list_free(
@@ -1193,18 +1193,18 @@ size_t SSL_get_peer_finished(const SSL *s, void *buf, size_t count) {
   return ret;
 }
 
-int SSL_get_verify_mode(const SSL *s) { return s->verify_mode; }
+int SSL_get_verify_mode(const SSL *ssl) { return ssl->verify_mode; }
 
-int SSL_get_verify_depth(const SSL *s) {
-  return X509_VERIFY_PARAM_get_depth(s->param);
+int SSL_get_verify_depth(const SSL *ssl) {
+  return X509_VERIFY_PARAM_get_depth(ssl->param);
 }
 
 int SSL_get_extms_support(const SSL *ssl) {
   return ssl->s3->tmp.extended_master_secret == 1;
 }
 
-int (*SSL_get_verify_callback(const SSL *s))(int, X509_STORE_CTX *) {
-  return s->verify_callback;
+int (*SSL_get_verify_callback(const SSL *ssl))(int, X509_STORE_CTX *) {
+  return ssl->verify_callback;
 }
 
 int SSL_CTX_get_verify_mode(const SSL_CTX *ctx) { return ctx->verify_mode; }
@@ -1213,20 +1213,21 @@ int SSL_CTX_get_verify_depth(const SSL_CTX *ctx) {
   return X509_VERIFY_PARAM_get_depth(ctx->param);
 }
 
-int (*SSL_CTX_get_verify_callback(const SSL_CTX *ctx))(int, X509_STORE_CTX *) {
+int (*SSL_CTX_get_verify_callback(const SSL_CTX *ctx))(
+    int ok, X509_STORE_CTX *store_ctx) {
   return ctx->default_verify_callback;
 }
 
-void SSL_set_verify(SSL *s, int mode,
-                    int (*callback)(int ok, X509_STORE_CTX *ctx)) {
-  s->verify_mode = mode;
+void SSL_set_verify(SSL *ssl, int mode,
+                    int (*callback)(int ok, X509_STORE_CTX *store_ctx)) {
+  ssl->verify_mode = mode;
   if (callback != NULL) {
-    s->verify_callback = callback;
+    ssl->verify_callback = callback;
   }
 }
 
-void SSL_set_verify_depth(SSL *s, int depth) {
-  X509_VERIFY_PARAM_set_depth(s->param, depth);
+void SSL_set_verify_depth(SSL *ssl, int depth) {
+  X509_VERIFY_PARAM_set_depth(ssl->param, depth);
 }
 
 int SSL_CTX_get_read_ahead(const SSL_CTX *ctx) { return 0; }
@@ -1824,7 +1825,8 @@ int SSL_export_keying_material(SSL *s, uint8_t *out, size_t out_len,
 }
 
 void SSL_CTX_set_cert_verify_callback(SSL_CTX *ctx,
-                                      int (*cb)(X509_STORE_CTX *, void *),
+                                      int (*cb)(X509_STORE_CTX *store_ctx,
+                                                void *arg),
                                       void *arg) {
   ctx->app_verify_callback = cb;
   ctx->app_verify_arg = arg;
@@ -2139,9 +2141,9 @@ int SSL_CTX_set_default_verify_paths(SSL_CTX *ctx) {
   return X509_STORE_set_default_paths(ctx->cert_store);
 }
 
-int SSL_CTX_load_verify_locations(SSL_CTX *ctx, const char *CAfile,
-                                  const char *CApath) {
-  return X509_STORE_load_locations(ctx->cert_store, CAfile, CApath);
+int SSL_CTX_load_verify_locations(SSL_CTX *ctx, const char *ca_file,
+                                  const char *ca_dir) {
+  return X509_STORE_load_locations(ctx->cert_store, ca_file, ca_dir);
 }
 
 void SSL_set_info_callback(SSL *ssl,
@@ -2158,7 +2160,9 @@ int SSL_state(const SSL *ssl) { return ssl->state; }
 
 void SSL_set_state(SSL *ssl, int state) { }
 
-void SSL_set_verify_result(SSL *ssl, long arg) { ssl->verify_result = arg; }
+void SSL_set_verify_result(SSL *ssl, long result) {
+  ssl->verify_result = result;
+}
 
 long SSL_get_verify_result(const SSL *ssl) { return ssl->verify_result; }
 

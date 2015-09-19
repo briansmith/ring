@@ -1526,7 +1526,7 @@ OPENSSL_EXPORT void SSL_set_tmp_ecdh_callback(
 
 /* SSL_get_curve_name returns a human-readable name for the elliptic curve
  * specified by the given TLS curve id, or NULL if the curve if unknown. */
-OPENSSL_EXPORT const char* SSL_get_curve_name(uint16_t curve_id);
+OPENSSL_EXPORT const char *SSL_get_curve_name(uint16_t curve_id);
 
 
 /* Multiplicative Diffie-Hellman.
@@ -1569,6 +1569,248 @@ OPENSSL_EXPORT void SSL_CTX_set_tmp_dh_callback(
 OPENSSL_EXPORT void SSL_set_tmp_dh_callback(SSL *ssl,
                                             DH *(*dh)(SSL *ssl, int is_export,
                                                       int keylength));
+
+
+/* Certificate verification.
+ *
+ * SSL may authenticate either endpoint with an X.509 certificate. Typically
+ * this is used to authenticate the server to the client. These functions
+ * configure certificate verification.
+ *
+ * WARNING: By default, certificate verification errors on a client are not
+ * fatal. See |SSL_VERIFY_NONE| This may be configured with
+ * |SSL_CTX_set_verify|.
+ *
+ * By default clients are anonymous but a server may request a certificate from
+ * the client by setting |SSL_VERIFY_PEER|.
+ *
+ * Many of these functions use OpenSSL's legacy X.509 stack which is
+ * underdocumented and deprecated, but the replacement isn't ready yet. For
+ * now, consumers may use the existing stack or bypass it by performing
+ * certificate verification externally. This may be done with
+ * |SSL_CTX_set_cert_verify_callback| or by extracting the chain with
+ * |SSL_get_peer_cert_chain| after the handshake. In the future, functions will
+ * be added to use the SSL stack without depending on any part of the legacy
+ * X.509 and ASN.1 stack. */
+
+/* SSL_VERIFY_NONE, on a client, verifies the server certificate but does not
+ * make errors fatal. The result may be checked with |SSL_get_verify_result|. On
+ * a server it does not request a client certificate. This is the default. */
+#define SSL_VERIFY_NONE 0x00
+
+/* SSL_VERIFY_PEER, on a client, makes server certificate errors fatal. On a
+ * server it requests a client certificate and makes errors fatal. However,
+ * anonymous clients are still allowed. See
+ * |SSL_VERIFY_FAIL_IF_NO_PEER_CERT|. */
+#define SSL_VERIFY_PEER 0x01
+
+/* SSL_VERIFY_FAIL_IF_NO_PEER_CERT configures a server to reject connections if
+ * the client declines to send a certificate. Otherwise |SSL_VERIFY_PEER| still
+ * allows anonymous clients. */
+#define SSL_VERIFY_FAIL_IF_NO_PEER_CERT 0x02
+
+/* SSL_VERIFY_PEER_IF_NO_OBC configures a server to request a client certificate
+ * if and only if Channel ID is not negotiated. */
+#define SSL_VERIFY_PEER_IF_NO_OBC 0x04
+
+/* SSL_CTX_set_verify configures certificate verification behavior. |mode| is
+ * one of the |SSL_VERIFY_*| values defined above. |callback|, if not NULL, is
+ * used to customize certificate verification. See the behavior of
+ * |X509_STORE_CTX_set_verify_cb|.
+ *
+ * The callback may use |SSL_get_ex_data_X509_STORE_CTX_idx| with
+ * |X509_STORE_CTX_get_ex_data| to look up the |SSL| from |store_ctx|. */
+OPENSSL_EXPORT void SSL_CTX_set_verify(
+    SSL_CTX *ctx, int mode, int (*callback)(int ok, X509_STORE_CTX *store_ctx));
+
+/* SSL_set_verify configures certificate verification behavior. |mode| is one of
+ * the |SSL_VERIFY_*| values defined above. |callback|, if not NULL, is used to
+ * customize certificate verification. See the behavior of
+ * |X509_STORE_CTX_set_verify_cb|.
+ *
+ * The callback may use |SSL_get_ex_data_X509_STORE_CTX_idx| with
+ * |X509_STORE_CTX_get_ex_data| to look up the |SSL| from |store_ctx|. */
+OPENSSL_EXPORT void SSL_set_verify(SSL *ssl, int mode,
+                                   int (*callback)(int ok,
+                                                   X509_STORE_CTX *store_ctx));
+
+/* SSL_CTX_get_verify_mode returns |ctx|'s verify mode, set by
+ * |SSL_CTX_set_verify|. */
+OPENSSL_EXPORT int SSL_CTX_get_verify_mode(const SSL_CTX *ctx);
+
+/* SSL_get_verify_mode returns |ssl|'s verify mode, set by |SSL_CTX_set_verify|
+ * or |SSL_set_verify|. */
+OPENSSL_EXPORT int SSL_get_verify_mode(const SSL *ssl);
+
+/* SSL_CTX_get_verify_callback returns the callback set by
+ * |SSL_CTX_set_verify|. */
+OPENSSL_EXPORT int (*SSL_CTX_get_verify_callback(const SSL_CTX *ctx))(
+    int ok, X509_STORE_CTX *store_ctx);
+
+/* SSL_get_verify_callback returns the callback set by |SSL_CTX_set_verify| or
+ * |SSL_set_verify|. */
+OPENSSL_EXPORT int (*SSL_get_verify_callback(const SSL *ssl))(
+    int ok, X509_STORE_CTX *store_ctx);
+
+/* SSL_CTX_set_verify_depth sets the maximum depth of a certificate chain
+ * accepted in verification. This number does not include the leaf, so a depth
+ * of 1 allows the leaf and one CA certificate. */
+OPENSSL_EXPORT void SSL_CTX_set_verify_depth(SSL_CTX *ctx, int depth);
+
+/* SSL_set_verify_depth sets the maximum depth of a certificate chain accepted
+ * in verification. This number does not include the leaf, so a depth of 1
+ * allows the leaf and one CA certificate. */
+OPENSSL_EXPORT void SSL_set_verify_depth(SSL *ssl, int depth);
+
+/* SSL_CTX_get_verify_depth returns the maximum depth of a certificate accepted
+ * in verification. */
+OPENSSL_EXPORT int SSL_CTX_get_verify_depth(const SSL_CTX *ctx);
+
+/* SSL_get_verify_depth returns the maximum depth of a certificate accepted in
+ * verification. */
+OPENSSL_EXPORT int SSL_get_verify_depth(const SSL *ssl);
+
+/* SSL_CTX_set1_param sets verification parameters from |param|. It returns one
+ * on success and zero on failure. The caller retains ownership of |param|. */
+OPENSSL_EXPORT int SSL_CTX_set1_param(SSL_CTX *ctx,
+                                      const X509_VERIFY_PARAM *param);
+
+/* SSL_set1_param sets verification parameters from |param|. It returns one on
+ * success and zero on failure. The caller retains ownership of |param|. */
+OPENSSL_EXPORT int SSL_set1_param(SSL *ssl,
+                                  const X509_VERIFY_PARAM *param);
+
+/* SSL_CTX_get0_param returns |ctx|'s |X509_VERIFY_PARAM| for certificate
+ * verification. The caller must not release the returned pointer but may call
+ * functions on it to configure it. */
+OPENSSL_EXPORT X509_VERIFY_PARAM *SSL_CTX_get0_param(SSL_CTX *ctx);
+
+/* SSL_get0_param returns |ssl|'s |X509_VERIFY_PARAM| for certificate
+ * verification. The caller must not release the returned pointer but may call
+ * functions on it to configure it. */
+OPENSSL_EXPORT X509_VERIFY_PARAM *SSL_get0_param(SSL *ssl);
+
+/* SSL_CTX_set_purpose sets |ctx|'s |X509_VERIFY_PARAM|'s 'purpose' parameter to
+ * |purpose|. It returns one on success and zero on error. */
+OPENSSL_EXPORT int SSL_CTX_set_purpose(SSL_CTX *ctx, int purpose);
+
+/* SSL_set_purpose sets |ssl|'s |X509_VERIFY_PARAM|'s 'purpose' parameter to
+ * |purpose|. It returns one on success and zero on error. */
+OPENSSL_EXPORT int SSL_set_purpose(SSL *ssl, int purpose);
+
+/* SSL_CTX_set_trust sets |ctx|'s |X509_VERIFY_PARAM|'s 'trust' parameter to
+ * |trust|. It returns one on success and zero on error. */
+OPENSSL_EXPORT int SSL_CTX_set_trust(SSL_CTX *ctx, int trust);
+
+/* SSL_set_trust sets |ssl|'s |X509_VERIFY_PARAM|'s 'trust' parameter to
+ * |trust|. It returns one on success and zero on error. */
+OPENSSL_EXPORT int SSL_set_trust(SSL *ssl, int trust);
+
+/* SSL_CTX_set_cert_store sets |ctx|'s certificate store to |store|. It takes
+ * ownership of |store|. The store is used for certificate verification.
+ *
+ * The store is also used for the auto-chaining feature, but this is deprecated.
+ * See also |SSL_MODE_NO_AUTO_CHAIN|. */
+OPENSSL_EXPORT void SSL_CTX_set_cert_store(SSL_CTX *ctx, X509_STORE *store);
+
+/* SSL_CTX_get_cert_store returns |ctx|'s certificate store. */
+OPENSSL_EXPORT X509_STORE *SSL_CTX_get_cert_store(const SSL_CTX *ctx);
+
+/* SSL_CTX_set_default_verify_paths loads the OpenSSL system-default trust
+ * anchors into |ctx|'s store. It returns one on success and zero on failure. */
+OPENSSL_EXPORT int SSL_CTX_set_default_verify_paths(SSL_CTX *ctx);
+
+/* SSL_CTX_load_verify_locations loads trust anchors into |ctx|'s store from
+ * |ca_file| and |ca_dir|, either of which may be NULL. If |ca_file| is passed,
+ * it is opened and PEM-encoded CA certificates are read. If |ca_dir| is passed,
+ * it is treated as a directory in OpenSSL's hashed directory format. It returns
+ * one on success and zero on failure.
+ *
+ * See
+ * https://www.openssl.org/docs/manmaster/ssl/SSL_CTX_load_verify_locations.html
+ * for documentation on the directory format. */
+OPENSSL_EXPORT int SSL_CTX_load_verify_locations(SSL_CTX *ctx,
+                                                 const char *ca_file,
+                                                 const char *ca_dir);
+
+/* SSL_get_verify_result returns the result of certificate verification. It is
+ * either |X509_V_OK| or a |X509_V_ERR_*| value. */
+OPENSSL_EXPORT long SSL_get_verify_result(const SSL *ssl);
+
+/* SSL_set_verify_result overrides the result of certificate verification. */
+OPENSSL_EXPORT void SSL_set_verify_result(SSL *ssl, long result);
+
+/* SSL_get_ex_data_X509_STORE_CTX_idx returns the ex_data index used to look up
+ * the |SSL| associated with an |X509_STORE_CTX| in the verify callback. */
+OPENSSL_EXPORT int SSL_get_ex_data_X509_STORE_CTX_idx(void);
+
+/* SSL_CTX_set_cert_verify_callback sets a custom callback to be called on
+ * certificate verification rather than |X509_verify_cert|. |store_ctx| contains
+ * the verification parameters. The callback should return one on success and
+ * zero on fatal error. It may use |X509_STORE_CTX_set_error| to set a
+ * verification result.
+ *
+ * The callback may use either the |arg| parameter or
+ * |SSL_get_ex_data_X509_STORE_CTX_idx| to recover the associated |SSL|
+ * object. */
+OPENSSL_EXPORT void SSL_CTX_set_cert_verify_callback(
+    SSL_CTX *ctx, int (*callback)(X509_STORE_CTX *store_ctx, void *arg),
+    void *arg);
+
+
+/* Client certificate CA list.
+ *
+ * When requesting a client certificate, a server may advertise a list of
+ * certificate authorities which are accepted. These functions may be used to
+ * configure this list. */
+
+/* SSL_set_client_CA_list sets |ssl|'s client certificate CA list to
+ * |name_list|. It takes ownership of |name_list|. */
+OPENSSL_EXPORT void SSL_set_client_CA_list(SSL *ssl,
+                                           STACK_OF(X509_NAME) *name_list);
+
+/* SSL_CTX_set_client_CA_list sets |ctx|'s client certificate CA list to
+ * |name_list|. It takes ownership of |name_list|. */
+OPENSSL_EXPORT void SSL_CTX_set_client_CA_list(SSL_CTX *ctx,
+                                               STACK_OF(X509_NAME) *name_list);
+
+/* SSL_get_client_CA_list returns |ssl|'s client certificate CA list. */
+OPENSSL_EXPORT STACK_OF(X509_NAME) *SSL_get_client_CA_list(const SSL *ssl);
+
+/* SSL_CTX_get_client_CA_list returns |ctx|'s client certificate CA list. */
+OPENSSL_EXPORT STACK_OF(X509_NAME) *
+    SSL_CTX_get_client_CA_list(const SSL_CTX *ctx);
+
+/* SSL_add_client_CA appends |x509|'s subject to the client certificate CA list.
+ * It returns one on success or zero on error. The caller retains ownership of
+ * |x509|. */
+OPENSSL_EXPORT int SSL_add_client_CA(SSL *ssl, X509 *x509);
+
+/* SSL_CTX_add_client_CA appends |x509|'s subject to the client certificate CA
+ * list. It returns one on success or zero on error. The caller retains
+ * ownership of |x509|. */
+OPENSSL_EXPORT int SSL_CTX_add_client_CA(SSL_CTX *ctx, X509 *x509);
+
+/* SSL_load_client_CA_file opens |file| and reads PEM-encoded certificates from
+ * it. It returns a newly-allocated stack of the certificate subjects or NULL
+ * on error. */
+OPENSSL_EXPORT STACK_OF(X509_NAME) *SSL_load_client_CA_file(const char *file);
+
+/* SSL_dup_CA_list makes a deep copy of |list|. It returns the new list on
+ * success or NULL on allocation error. */
+OPENSSL_EXPORT STACK_OF(X509_NAME) *SSL_dup_CA_list(STACK_OF(X509_NAME) *list);
+
+/* SSL_add_file_cert_subjects_to_stack behaves like |SSL_load_client_CA_file|
+ * but appends the result to |out|. It returns one on success or zero on
+ * error. */
+OPENSSL_EXPORT int SSL_add_file_cert_subjects_to_stack(STACK_OF(X509_NAME) *out,
+                                                       const char *file);
+
+/* SSL_add_dir_cert_subjects_to_stack lists files in directory |dir|. It calls
+ * |SSL_add_file_cert_subjects_to_stack| on each file and returns one on success
+ * or zero on error. */
+OPENSSL_EXPORT int SSL_add_dir_cert_subjects_to_stack(STACK_OF(X509_NAME) *out,
+                                                      const char *dir);
 
 
 /* Application-layer protocol negotation.
@@ -2219,15 +2461,6 @@ OPENSSL_EXPORT int SSL_in_false_start(const SSL *s);
 OPENSSL_EXPORT size_t SSL_get_finished(const SSL *s, void *buf, size_t count);
 OPENSSL_EXPORT size_t SSL_get_peer_finished(const SSL *s, void *buf, size_t count);
 
-/* use either SSL_VERIFY_NONE or SSL_VERIFY_PEER, the last 3 options
- * are 'ored' with SSL_VERIFY_PEER if they are desired */
-#define SSL_VERIFY_NONE 0x00
-#define SSL_VERIFY_PEER 0x01
-#define SSL_VERIFY_FAIL_IF_NO_PEER_CERT 0x02
-/* SSL_VERIFY_CLIENT_ONCE does nothing. */
-#define SSL_VERIFY_CLIENT_ONCE 0x04
-#define SSL_VERIFY_PEER_IF_NO_OBC 0x08
-
 #define d2i_SSL_SESSION_bio(bp, s_id) \
   ASN1_d2i_bio_of(SSL_SESSION, SSL_SESSION_new, d2i_SSL_SESSION, bp, s_id)
 #define i2d_SSL_SESSION_bio(bp, s_id) \
@@ -2310,8 +2543,6 @@ OPENSSL_EXPORT size_t SSL_get0_certificate_types(SSL *ssl,
 OPENSSL_EXPORT int SSL_CTX_set_cipher_list(SSL_CTX *, const char *str);
 OPENSSL_EXPORT int SSL_CTX_set_cipher_list_tls10(SSL_CTX *, const char *str);
 OPENSSL_EXPORT int SSL_CTX_set_cipher_list_tls11(SSL_CTX *, const char *str);
-OPENSSL_EXPORT X509_STORE *SSL_CTX_get_cert_store(const SSL_CTX *);
-OPENSSL_EXPORT void SSL_CTX_set_cert_store(SSL_CTX *, X509_STORE *);
 OPENSSL_EXPORT int SSL_want(const SSL *s);
 
 OPENSSL_EXPORT int SSL_get_fd(const SSL *s);
@@ -2323,48 +2554,12 @@ OPENSSL_EXPORT int SSL_set_fd(SSL *s, int fd);
 OPENSSL_EXPORT int SSL_set_rfd(SSL *s, int fd);
 OPENSSL_EXPORT int SSL_set_wfd(SSL *s, int fd);
 OPENSSL_EXPORT int SSL_set_cipher_list(SSL *s, const char *str);
-OPENSSL_EXPORT int SSL_get_verify_mode(const SSL *s);
-OPENSSL_EXPORT int SSL_get_verify_depth(const SSL *s);
-OPENSSL_EXPORT int (*SSL_get_verify_callback(const SSL *s))(int,
-                                                            X509_STORE_CTX *);
-OPENSSL_EXPORT void SSL_set_verify(SSL *s, int mode,
-                                   int (*callback)(int ok,
-                                                   X509_STORE_CTX *ctx));
-OPENSSL_EXPORT void SSL_set_verify_depth(SSL *s, int depth);
-OPENSSL_EXPORT STACK_OF(X509_NAME) *SSL_load_client_CA_file(const char *file);
-OPENSSL_EXPORT int SSL_add_file_cert_subjects_to_stack(STACK_OF(X509_NAME) *
-                                                           stackCAs,
-                                                       const char *file);
-OPENSSL_EXPORT int SSL_add_dir_cert_subjects_to_stack(STACK_OF(X509_NAME) *
-                                                          stackCAs,
-                                                      const char *dir);
 
 OPENSSL_EXPORT const char *SSL_state_string(const SSL *s);
 OPENSSL_EXPORT const char *SSL_state_string_long(const SSL *s);
 
 OPENSSL_EXPORT int SSL_SESSION_print_fp(FILE *fp, const SSL_SESSION *ses);
 OPENSSL_EXPORT int SSL_SESSION_print(BIO *fp, const SSL_SESSION *ses);
-
-OPENSSL_EXPORT int SSL_CTX_get_verify_mode(const SSL_CTX *ctx);
-OPENSSL_EXPORT int SSL_CTX_get_verify_depth(const SSL_CTX *ctx);
-OPENSSL_EXPORT int (*SSL_CTX_get_verify_callback(const SSL_CTX *ctx))(
-    int, X509_STORE_CTX *);
-OPENSSL_EXPORT void SSL_CTX_set_verify(SSL_CTX *ctx, int mode,
-                                       int (*callback)(int, X509_STORE_CTX *));
-OPENSSL_EXPORT void SSL_CTX_set_verify_depth(SSL_CTX *ctx, int depth);
-OPENSSL_EXPORT void SSL_CTX_set_cert_verify_callback(
-    SSL_CTX *ctx, int (*cb)(X509_STORE_CTX *, void *), void *arg);
-
-OPENSSL_EXPORT int SSL_CTX_set_purpose(SSL_CTX *s, int purpose);
-OPENSSL_EXPORT int SSL_set_purpose(SSL *s, int purpose);
-OPENSSL_EXPORT int SSL_CTX_set_trust(SSL_CTX *s, int trust);
-OPENSSL_EXPORT int SSL_set_trust(SSL *s, int trust);
-
-OPENSSL_EXPORT int SSL_CTX_set1_param(SSL_CTX *ctx, X509_VERIFY_PARAM *vpm);
-OPENSSL_EXPORT int SSL_set1_param(SSL *ssl, X509_VERIFY_PARAM *vpm);
-
-OPENSSL_EXPORT X509_VERIFY_PARAM *SSL_CTX_get0_param(SSL_CTX *ctx);
-OPENSSL_EXPORT X509_VERIFY_PARAM *SSL_get0_param(SSL *ssl);
 
 OPENSSL_EXPORT STACK_OF(SSL_CIPHER) *SSL_get_ciphers(const SSL *s);
 
@@ -2377,28 +2572,12 @@ OPENSSL_EXPORT const char *SSL_alert_type_string(int value);
 OPENSSL_EXPORT const char *SSL_alert_desc_string_long(int value);
 OPENSSL_EXPORT const char *SSL_alert_desc_string(int value);
 
-OPENSSL_EXPORT void SSL_set_client_CA_list(SSL *s,
-                                           STACK_OF(X509_NAME) *name_list);
-OPENSSL_EXPORT void SSL_CTX_set_client_CA_list(SSL_CTX *ctx,
-                                               STACK_OF(X509_NAME) *name_list);
-OPENSSL_EXPORT STACK_OF(X509_NAME) *SSL_get_client_CA_list(const SSL *s);
-OPENSSL_EXPORT STACK_OF(X509_NAME) *
-    SSL_CTX_get_client_CA_list(const SSL_CTX *s);
-OPENSSL_EXPORT int SSL_add_client_CA(SSL *ssl, X509 *x);
-OPENSSL_EXPORT int SSL_CTX_add_client_CA(SSL_CTX *ctx, X509 *x);
-
-OPENSSL_EXPORT STACK_OF(X509_NAME) *SSL_dup_CA_list(STACK_OF(X509_NAME) *sk);
-
 OPENSSL_EXPORT void SSL_CTX_set_quiet_shutdown(SSL_CTX *ctx, int mode);
 OPENSSL_EXPORT int SSL_CTX_get_quiet_shutdown(const SSL_CTX *ctx);
 OPENSSL_EXPORT void SSL_set_quiet_shutdown(SSL *ssl, int mode);
 OPENSSL_EXPORT int SSL_get_quiet_shutdown(const SSL *ssl);
 OPENSSL_EXPORT void SSL_set_shutdown(SSL *ssl, int mode);
 OPENSSL_EXPORT int SSL_get_shutdown(const SSL *ssl);
-OPENSSL_EXPORT int SSL_CTX_set_default_verify_paths(SSL_CTX *ctx);
-OPENSSL_EXPORT int SSL_CTX_load_verify_locations(SSL_CTX *ctx,
-                                                 const char *CAfile,
-                                                 const char *CApath);
 OPENSSL_EXPORT SSL_CTX *SSL_get_SSL_CTX(const SSL *ssl);
 OPENSSL_EXPORT SSL_CTX *SSL_set_SSL_CTX(SSL *ssl, SSL_CTX *ctx);
 OPENSSL_EXPORT void SSL_set_info_callback(SSL *ssl,
@@ -2407,11 +2586,6 @@ OPENSSL_EXPORT void SSL_set_info_callback(SSL *ssl,
 OPENSSL_EXPORT void (*SSL_get_info_callback(const SSL *ssl))(const SSL *ssl,
                                                              int type, int val);
 OPENSSL_EXPORT int SSL_state(const SSL *ssl);
-
-OPENSSL_EXPORT void SSL_set_verify_result(SSL *ssl, long v);
-OPENSSL_EXPORT long SSL_get_verify_result(const SSL *ssl);
-
-OPENSSL_EXPORT int SSL_get_ex_data_X509_STORE_CTX_idx(void);
 
 /* SSL_CTX_get_max_cert_list returns the maximum length, in bytes, of a peer
  * certificate chain accepted by |ctx|. */
@@ -2710,6 +2884,8 @@ DECLARE_STACK_OF(SSL_COMP)
 #define SSL_OP_SSLREF2_REUSE_CERT_TYPE_BUG 0
 #define SSL_OP_TLS_BLOCK_PADDING_BUG 0
 #define SSL_OP_TLS_ROLLBACK_BUG 0
+#define SSL_VERIFY_CLIENT_ONCE 0
+
 
 /* SSL_cache_hit calls |SSL_session_resumed|. */
 OPENSSL_EXPORT int SSL_cache_hit(SSL *ssl);
@@ -2940,10 +3116,8 @@ struct ssl_ctx_st {
   CRYPTO_refcount_t references;
 
   /* if defined, these override the X509_verify_cert() calls */
-  int (*app_verify_callback)(X509_STORE_CTX *, void *);
+  int (*app_verify_callback)(X509_STORE_CTX *store_ctx, void *arg);
   void *app_verify_arg;
-  /* before OpenSSL 0.9.7, 'app_verify_arg' was ignored ('app_verify_callback'
-   * was called with just one argument) */
 
   /* Default password callback. */
   pem_password_cb *default_passwd_callback;

@@ -128,13 +128,8 @@ static int xname_cmp(const X509_NAME **a, const X509_NAME **b) {
   return X509_NAME_cmp(*a, *b);
 }
 
-/* Load CA certs from a file into a STACK. Note that it is somewhat misnamed;
- * it doesn't really have anything to do with clients (except that a common use
- * for a stack of CAs is to send it to the client). Actually, it doesn't have
- * much to do with CAs, either, since it will load any old cert.
- *
- * \param file the file containing one or more certs.
- * \return a ::STACK containing the certs. */
+/* TODO(davidben): Is there any reason this doesn't call
+ * |SSL_add_file_cert_subjects_to_stack|? */
 STACK_OF(X509_NAME) *SSL_load_client_CA_file(const char *file) {
   BIO *in;
   X509 *x = NULL;
@@ -197,13 +192,6 @@ STACK_OF(X509_NAME) *SSL_load_client_CA_file(const char *file) {
   return ret;
 }
 
-/* Add a file of certs to a stack.
- *
- * \param stack the stack to add to.
- * \param file the file to add from. All certs in this file that are not
- *     already in the stack will be added.
- * \return 1 for success, 0 for failure. Note that in the case of failure some
- *     certs may have been added to \c stack. */
 int SSL_add_file_cert_subjects_to_stack(STACK_OF(X509_NAME) *stack,
                                         const char *file) {
   BIO *in;
