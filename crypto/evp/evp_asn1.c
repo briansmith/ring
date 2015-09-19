@@ -87,6 +87,8 @@ EVP_PKEY *d2i_PrivateKey(int type, EVP_PKEY **out, const uint8_t **inp,
   if (!ret->ameth->old_priv_decode ||
       !ret->ameth->old_priv_decode(ret, &in, len)) {
     if (ret->ameth->priv_decode) {
+      /* Reset |in| in case |old_priv_decode| advanced it on error. */
+      in = *inp;
       PKCS8_PRIV_KEY_INFO *p8 = d2i_PKCS8_PRIV_KEY_INFO(NULL, &in, len);
       if (!p8) {
         goto err;
