@@ -38,7 +38,6 @@ static const MD sha224 = { "SHA224", &EVP_sha224 };
 static const MD sha256 = { "SHA256", &EVP_sha256 };
 static const MD sha384 = { "SHA384", &EVP_sha384 };
 static const MD sha512 = { "SHA512", &EVP_sha512 };
-static const MD md5_sha1 = { "MD5-SHA1", &EVP_md5_sha1 };
 
 struct TestVector {
   // md is the digest to test.
@@ -110,10 +109,6 @@ static const TestVector kTestVectors[] = {
       "hijklmnoijklmnopjklmnopqklmnopqrlmnopqrsmnopqrstnopqrstu", 1,
       "8e959b75dae313da8cf4f72814fc143f8f7779c6eb9f7fa17299aeadb6889018"
       "501d289e4900f7e4331b99dec4b5433ac7d329eeb6dd26545e96e55b874be909" },
-
-    // MD5-SHA1 tests.
-    { md5_sha1, "abc", 1,
-      "900150983cd24fb0d6963f7d28e17f72a9993e364706816aba3e25717850c26c9cd0d89d" },
 };
 
 static bool CompareDigest(const TestVector *test,
