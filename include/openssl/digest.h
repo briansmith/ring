@@ -103,10 +103,6 @@ OPENSSL_EXPORT int EVP_MD_CTX_cleanup(EVP_MD_CTX *ctx);
 /* EVP_MD_CTX_destroy calls |EVP_MD_CTX_cleanup| and then frees |ctx| itself. */
 OPENSSL_EXPORT void EVP_MD_CTX_destroy(EVP_MD_CTX *ctx);
 
-/* EVP_MD_CTX_copy_ex sets |out|, which must already be initialised, to be a
- * copy of |in|. It returns one on success and zero on error. */
-OPENSSL_EXPORT int EVP_MD_CTX_copy_ex(EVP_MD_CTX *out, const EVP_MD_CTX *in);
-
 
 /* Digest operations. */
 
@@ -182,10 +178,6 @@ OPENSSL_EXPORT size_t EVP_MD_block_size(const EVP_MD *md);
 
 
 /* Deprecated functions. */
-
-/* EVP_MD_CTX_copy sets |out|, which must /not/ be initialised, to be a copy of
- * |in|. It returns one on success and zero on error. */
-OPENSSL_EXPORT int EVP_MD_CTX_copy(EVP_MD_CTX *out, const EVP_MD_CTX *in);
 
 /* EVP_add_digest does nothing and returns one. It exists only for
  * compatibility with OpenSSL. */

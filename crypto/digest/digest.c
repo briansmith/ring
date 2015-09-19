@@ -112,56 +112,6 @@ void EVP_MD_CTX_destroy(EVP_MD_CTX *ctx) {
   OPENSSL_free(ctx);
 }
 
-int EVP_MD_CTX_copy_ex(EVP_MD_CTX *out, const EVP_MD_CTX *in) {
-  uint8_t *tmp_buf = NULL;
-
-  if (in == NULL || in->digest == NULL) {
-    OPENSSL_PUT_ERROR(DIGEST, DIGEST_R_INPUT_NOT_INITIALIZED);
-    return 0;
-  }
-
-  if (out->digest == in->digest) {
-    /* |md_data| will be the correct size in this case so it's removed from
-     * |out| at this point so that |EVP_MD_CTX_cleanup| doesn't free it and
-     * then it's reused. */
-    tmp_buf = out->md_data;
-    out->md_data = NULL;
-  }
-
-  EVP_MD_CTX_cleanup(out);
-
-  out->digest = in->digest;
-  if (in->md_data && in->digest->ctx_size) {
-    if (tmp_buf) {
-      out->md_data = tmp_buf;
-    } else {
-      out->md_data = OPENSSL_malloc(in->digest->ctx_size);
-      if (!out->md_data) {
-        OPENSSL_PUT_ERROR(DIGEST, ERR_R_MALLOC_FAILURE);
-        return 0;
-      }
-    }
-    memcpy(out->md_data, in->md_data, in->digest->ctx_size);
-  }
-
-  assert(in->pctx == NULL || in->pctx_ops != NULL);
-  out->pctx_ops = in->pctx_ops;
-  if (in->pctx && in->pctx_ops) {
-    out->pctx = in->pctx_ops->dup(in->pctx);
-    if (!out->pctx) {
-      EVP_MD_CTX_cleanup(out);
-      return 0;
-    }
-  }
-
-  return 1;
-}
-
-int EVP_MD_CTX_copy(EVP_MD_CTX *out, const EVP_MD_CTX *in) {
-  EVP_MD_CTX_init(out);
-  return EVP_MD_CTX_copy_ex(out, in);
-}
-
 int EVP_DigestInit_ex(EVP_MD_CTX *ctx, const EVP_MD *type, ENGINE *engine) {
   if (ctx->digest != type) {
     if (ctx->digest && ctx->digest->ctx_size > 0) {
