@@ -321,6 +321,27 @@ static const uint8_t kExampleBadECKeyDER[] = {
     0xF3, 0xB9, 0xCA, 0xC2, 0xFC, 0x63, 0x25, 0x51
 };
 
+// kExampleBadECKeyDER2 is a sample EC private key encoded as an ECPrivateKey
+// structure, but with the curve OID swapped out for 1.1.1.1.1.1.1.1.1. It is
+// then concatenated with an ECPrivateKey wrapped in a PrivateKeyInfo,
+// optional public key omitted, and with the private key chopped off.
+static const uint8_t kExampleBadECKeyDER2[] = {
+    0x30, 0x77, 0x02, 0x01, 0x01, 0x04, 0x20, 0x07, 0x0f, 0x08, 0x72, 0x7a,
+    0xd4, 0xa0, 0x4a, 0x9c, 0xdd, 0x59, 0xc9, 0x4d, 0x89, 0x68, 0x77, 0x08,
+    0xb5, 0x6f, 0xc9, 0x5d, 0x30, 0x77, 0x0e, 0xe8, 0xd1, 0xc9, 0xce, 0x0a,
+    0x8b, 0xb4, 0x6a, 0xa0, 0x0a, 0x06, 0x08, 0x29, 0x01, 0x01, 0x01, 0x01,
+    0x01, 0x01, 0x01, 0xa1, 0x44, 0x03, 0x42, 0x00, 0x04, 0xe6, 0x2b, 0x69,
+    0xe2, 0xbf, 0x65, 0x9f, 0x97, 0xbe, 0x2f, 0x1e, 0x0d, 0x94, 0x8a, 0x4c,
+    0xd5, 0x97, 0x6b, 0xb7, 0xa9, 0x1e, 0x0d, 0x46, 0xfb, 0xdd, 0xa9, 0xa9,
+    0x1e, 0x9d, 0xdc, 0xba, 0x5a, 0x01, 0xe7, 0xd6, 0x97, 0xa8, 0x0a, 0x18,
+    0xf9, 0xc3, 0xc4, 0xa3, 0x1e, 0x56, 0xe2, 0x7c, 0x83, 0x48, 0xdb, 0x16,
+    0x1a, 0x1c, 0xf5, 0x1d, 0x7e, 0xf1, 0x94, 0x2d, 0x4b, 0xcf, 0x72, 0x22,
+    0xc1, 0x30, 0x41, 0x02, 0x01, 0x00, 0x30, 0x13, 0x06, 0x07, 0x2a, 0x86,
+    0x48, 0xce, 0x3d, 0x02, 0x01, 0x06, 0x08, 0x2a, 0x86, 0x48, 0xce, 0x3d,
+    0x03, 0x01, 0x07, 0x04, 0x27, 0x30, 0x25, 0x02, 0x01, 0x01, 0x04, 0x20,
+    0x07,
+};
+
 static ScopedEVP_PKEY LoadExampleRSAKey() {
   ScopedRSA rsa(RSA_private_key_from_bytes(kExampleRSAKeyDER,
                                            sizeof(kExampleRSAKeyDER)));
@@ -530,6 +551,64 @@ static bool TestEVP_PKCS82PKEY(void) {
     fprintf(stderr, "Imported invalid EC key\n");
     return false;
   }
+  ERR_clear_error();
+
+  return true;
+}
+
+// Testd2i_PrivateKey tests |d2i_PrivateKey|.
+static bool Testd2i_PrivateKey(void) {
+  const uint8_t *derp = kExampleRSAKeyDER;
+  ScopedEVP_PKEY pkey(d2i_PrivateKey(EVP_PKEY_RSA, nullptr, &derp,
+                                     sizeof(kExampleRSAKeyDER)));
+  if (!pkey || derp != kExampleRSAKeyDER + sizeof(kExampleRSAKeyDER)) {
+    fprintf(stderr, "Failed to import raw RSA key.\n");
+    return false;
+  }
+
+  derp = kExampleDSAKeyDER;
+  pkey.reset(d2i_PrivateKey(EVP_PKEY_DSA, nullptr, &derp,
+             sizeof(kExampleDSAKeyDER)));
+  if (!pkey || derp != kExampleDSAKeyDER + sizeof(kExampleDSAKeyDER)) {
+    fprintf(stderr, "Failed to import raw DSA key.\n");
+    return false;
+  }
+
+  derp = kExampleRSAKeyPKCS8;
+  pkey.reset(d2i_PrivateKey(EVP_PKEY_RSA, nullptr, &derp,
+             sizeof(kExampleRSAKeyPKCS8)));
+  if (!pkey || derp != kExampleRSAKeyPKCS8 + sizeof(kExampleRSAKeyPKCS8)) {
+    fprintf(stderr, "Failed to import PKCS#8 RSA key.\n");
+    return false;
+  }
+
+  derp = kExampleECKeyDER;
+  pkey.reset(d2i_PrivateKey(EVP_PKEY_EC, nullptr, &derp,
+             sizeof(kExampleECKeyDER)));
+  if (!pkey || derp != kExampleECKeyDER + sizeof(kExampleECKeyDER)) {
+    fprintf(stderr, "Failed to import raw EC key.\n");
+    return false;
+  }
+
+  derp = kExampleBadECKeyDER;
+  pkey.reset(d2i_PrivateKey(EVP_PKEY_EC, nullptr, &derp,
+             sizeof(kExampleBadECKeyDER)));
+  if (pkey) {
+    fprintf(stderr, "Imported invalid EC key.\n");
+    return false;
+  }
+  ERR_clear_error();
+
+  // Copy the input into a |malloc|'d vector to flag memory errors.
+  std::vector<uint8_t> copy(kExampleBadECKeyDER2, kExampleBadECKeyDER2 +
+                                                  sizeof(kExampleBadECKeyDER2));
+  derp = bssl::vector_data(&copy);
+  pkey.reset(d2i_PrivateKey(EVP_PKEY_EC, nullptr, &derp, copy.size()));
+  if (pkey) {
+    fprintf(stderr, "Imported invalid EC key #2.\n");
+    return false;
+  }
+  ERR_clear_error();
 
   return true;
 }
@@ -592,6 +671,12 @@ int main(void) {
 
   if (!TestEVP_PKCS82PKEY()) {
     fprintf(stderr, "TestEVP_PKCS82PKEY failed\n");
+    ERR_print_errors_fp(stderr);
+    return 1;
+  }
+
+  if (!Testd2i_PrivateKey()) {
+    fprintf(stderr, "Testd2i_PrivateKey failed\n");
     ERR_print_errors_fp(stderr);
     return 1;
   }
