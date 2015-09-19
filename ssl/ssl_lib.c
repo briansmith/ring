@@ -1199,8 +1199,8 @@ int SSL_get_verify_depth(const SSL *s) {
   return X509_VERIFY_PARAM_get_depth(s->param);
 }
 
-int SSL_get_extms_support(const SSL *s) {
-  return s->s3->tmp.extended_master_secret == 1;
+int SSL_get_extms_support(const SSL *ssl) {
+  return ssl->s3->tmp.extended_master_secret == 1;
 }
 
 int (*SSL_get_verify_callback(const SSL *s))(int, X509_STORE_CTX *) {
@@ -1272,7 +1272,7 @@ int SSL_check_private_key(const SSL *ssl) {
   return X509_check_private_key(ssl->cert->x509, ssl->cert->privatekey);
 }
 
-long SSL_get_default_timeout(const SSL *s) {
+long SSL_get_default_timeout(const SSL *ssl) {
   return SSL_DEFAULT_SESSION_TIMEOUT;
 }
 
@@ -1823,14 +1823,6 @@ int SSL_export_keying_material(SSL *s, uint8_t *out, size_t out_len,
       s, out, out_len, label, label_len, context, context_len, use_context);
 }
 
-void SSL_CTX_set_default_passwd_cb(SSL_CTX *ctx, pem_password_cb *cb) {
-  ctx->default_passwd_callback = cb;
-}
-
-void SSL_CTX_set_default_passwd_cb_userdata(SSL_CTX *ctx, void *u) {
-  ctx->default_passwd_callback_userdata = u;
-}
-
 void SSL_CTX_set_cert_verify_callback(SSL_CTX *ctx,
                                       int (*cb)(X509_STORE_CTX *, void *),
                                       void *arg) {
@@ -1989,8 +1981,8 @@ static const char *ssl_get_version(int version) {
   }
 }
 
-const char *SSL_get_version(const SSL *s) {
-  return ssl_get_version(s->version);
+const char *SSL_get_version(const SSL *ssl) {
+  return ssl_get_version(ssl->version);
 }
 
 const char *SSL_SESSION_get_version(const SSL_SESSION *session) {
@@ -2040,11 +2032,11 @@ EVP_PKEY *SSL_CTX_get0_privatekey(const SSL_CTX *ctx) {
   return NULL;
 }
 
-const SSL_CIPHER *SSL_get_current_cipher(const SSL *s) {
-  if (s->aead_write_ctx == NULL) {
+const SSL_CIPHER *SSL_get_current_cipher(const SSL *ssl) {
+  if (ssl->aead_write_ctx == NULL) {
     return NULL;
   }
-  return s->aead_write_ctx->cipher;
+  return ssl->aead_write_ctx->cipher;
 }
 
 const COMP_METHOD *SSL_get_current_compression(SSL *s) { return NULL; }
@@ -2700,9 +2692,9 @@ uint16_t ssl3_version_from_wire(SSL *s, uint16_t wire_version) {
   return version;
 }
 
-int SSL_cache_hit(SSL *s) { return s->hit; }
+int SSL_cache_hit(SSL *ssl) { return SSL_session_reused(ssl); }
 
-int SSL_is_server(SSL *s) { return s->server; }
+int SSL_is_server(SSL *ssl) { return ssl->server; }
 
 void SSL_CTX_set_dos_protection_cb(
     SSL_CTX *ctx, int (*cb)(const struct ssl_early_callback_ctx *)) {

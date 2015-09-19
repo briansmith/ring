@@ -624,4 +624,12 @@ end:
   return ret;
 }
 
+void SSL_CTX_set_default_passwd_cb(SSL_CTX *ctx, pem_password_cb *cb) {
+  ctx->default_passwd_callback = cb;
+}
+
+void SSL_CTX_set_default_passwd_cb_userdata(SSL_CTX *ctx, void *data) {
+  ctx->default_passwd_callback_userdata = data;
+}
+
 IMPLEMENT_PEM_rw(SSL_SESSION, SSL_SESSION, PEM_STRING_SSL_SESSION, SSL_SESSION)

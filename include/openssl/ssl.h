@@ -284,6 +284,10 @@ OPENSSL_EXPORT void SSL_set_connect_state(SSL *ssl);
 /* SSL_set_accept_state configures |ssl| to be a server. */
 OPENSSL_EXPORT void SSL_set_accept_state(SSL *ssl);
 
+/* SSL_is_server returns one if |ssl| is configured as a server and zero
+ * otherwise. */
+OPENSSL_EXPORT int SSL_is_server(SSL *ssl);
+
 /* SSL_set_bio configures |ssl| to read from |rbio| and write to |wbio|. |ssl|
  * takes ownership of the two |BIO|s. If |rbio| and |wbio| are the same, |ssl|
  * only takes ownership of one reference.
@@ -425,7 +429,8 @@ OPENSSL_EXPORT int SSL_get_error(const SSL *ssl, int ret_code);
 
 /* SSL_ERROR_WANT_CHANNEL_ID_LOOKUP indicates the operation failed looking up
  * the Channel ID key. The caller may retry the operation when |channel_id_cb|
- * is ready to return a key or one has been configured externally.
+ * is ready to return a key or one has been configured with
+ * |SSL_set1_tls_channel_id|.
  *
  * See also |SSL_CTX_set_channel_id_cb|. */
 #define SSL_ERROR_WANT_CHANNEL_ID_LOOKUP 9
@@ -481,6 +486,11 @@ OPENSSL_EXPORT void SSL_set_min_version(SSL *ssl, uint16_t version);
 /* SSL_set_max_version sets the maximum protocol version for |ssl| to
  * |version|. */
 OPENSSL_EXPORT void SSL_set_max_version(SSL *ssl, uint16_t version);
+
+/* SSL_version returns the TLS or DTLS protocol version used by |ssl|, which is
+ * one of the |*_VERSION| values. (E.g. |TLS1_2_VERSION|.) Before the version
+ * is negotiated, the result is undefined. */
+OPENSSL_EXPORT int SSL_version(const SSL *ssl);
 
 
 /* Options.
@@ -844,6 +854,16 @@ OPENSSL_EXPORT int SSL_use_PrivateKey_file(SSL *ssl, const char *file,
 OPENSSL_EXPORT int SSL_CTX_use_certificate_chain_file(SSL_CTX *ctx,
                                                       const char *file);
 
+/* SSL_CTX_set_default_passwd_cb sets the password callback for PEM-based
+ * convenience functions called on |ctx|. */
+OPENSSL_EXPORT void SSL_CTX_set_default_passwd_cb(SSL_CTX *ctx,
+                                                  pem_password_cb *cb);
+
+/* SSL_CTX_set_default_passwd_cb_userdata sets the userdata parameter for
+ * |ctx|'s password callback. */
+OPENSSL_EXPORT void SSL_CTX_set_default_passwd_cb_userdata(SSL_CTX *ctx,
+                                                           void *data);
+
 
 /* Custom private keys. */
 
@@ -940,6 +960,21 @@ OPENSSL_EXPORT int SSL_get_tls_unique(const SSL *ssl, uint8_t *out,
 /* SSL_get_extms_support returns one if the Extended Master Secret
  * extension was negotiated. Otherwise, it returns zero. */
 OPENSSL_EXPORT int SSL_get_extms_support(const SSL *ssl);
+
+/* SSL_get_current_cipher returns the cipher used in the current outgoing
+ * connection state, or NULL if the null cipher is active. */
+OPENSSL_EXPORT const SSL_CIPHER *SSL_get_current_cipher(const SSL *ssl);
+
+/* SSL_session_reused returns one if |ssl| performed an abbreviated handshake
+ * and zero otherwise.
+ *
+ * TODO(davidben): Hammer down the semantics of this API while a handshake,
+ * initial or renego, is in progress. */
+OPENSSL_EXPORT int SSL_session_reused(const SSL *ssl);
+
+/* SSL_get_secure_renegotiation_support returns one if the peer supports secure
+ * renegotiation (RFC 5746) and zero otherwise. */
+OPENSSL_EXPORT int SSL_get_secure_renegotiation_support(const SSL *ssl);
 
 
 /* Custom extensions.
@@ -1195,11 +1230,16 @@ OPENSSL_EXPORT SSL_SESSION *SSL_get_session(const SSL *ssl);
  * the session. */
 OPENSSL_EXPORT SSL_SESSION *SSL_get1_session(SSL *ssl);
 
-/* SSL_CTX_set_timeout sets the lifetime of sessions created in |ctx| to
- * |timeout|. */
+/* SSL_DEFAULT_SESSION_TIMEOUT is the default lifetime, in seconds, of a
+ * session. */
+#define SSL_DEFAULT_SESSION_TIMEOUT (2 * 60 * 60)
+
+/* SSL_CTX_set_timeout sets the lifetime, in seconds, of sessions created in
+ * |ctx| to |timeout|. */
 OPENSSL_EXPORT long SSL_CTX_set_timeout(SSL_CTX *ctx, long timeout);
 
-/* SSL_CTX_get_timeout returns the lifetime of sessions created in |ctx|. */
+/* SSL_CTX_get_timeout returns the lifetime, in seconds, of sessions created in
+ * |ctx|. */
 OPENSSL_EXPORT long SSL_CTX_get_timeout(const SSL_CTX *ctx);
 
 /* SSL_CTX_set_session_id_context sets |ctx|'s session ID context to |sid_ctx|.
@@ -1222,6 +1262,10 @@ OPENSSL_EXPORT int SSL_CTX_set_session_id_context(SSL_CTX *ctx,
  * |SSL_CTX_set_session_id_context|. */
 OPENSSL_EXPORT int SSL_set_session_id_context(SSL *ssl, const uint8_t *sid_ctx,
                                               unsigned sid_ctx_len);
+
+/* SSL_SESSION_CACHE_MAX_SIZE_DEFAULT is the default maximum size of a session
+ * cache. */
+#define SSL_SESSION_CACHE_MAX_SIZE_DEFAULT (1024 * 20)
 
 /* SSL_CTX_sess_set_cache_size sets the maximum size of |ctx|'s internal session
  * cache to |size|. It returns the previous value. */
@@ -1663,6 +1707,54 @@ OPENSSL_EXPORT int SSL_select_next_proto(uint8_t **out, uint8_t *out_len,
 #define OPENSSL_NPN_NO_OVERLAP 2
 
 
+/* Channel ID.
+ *
+ * See draft-balfanz-tls-channelid-01. */
+
+/* SSL_CTX_enable_tls_channel_id either configures a TLS server to accept TLS
+ * Channel IDs from clients, or configures a client to send TLS Channel IDs to
+ * a server. It returns one. */
+OPENSSL_EXPORT int SSL_CTX_enable_tls_channel_id(SSL_CTX *ctx);
+
+/* SSL_enable_tls_channel_id either configures a TLS server to accept TLS
+ * Channel IDs from clients, or configures a client to send TLS Channel IDs to
+ * server. It returns one. */
+OPENSSL_EXPORT int SSL_enable_tls_channel_id(SSL *ssl);
+
+/* SSL_CTX_set1_tls_channel_id configures a TLS client to send a TLS Channel ID
+ * to compatible servers. |private_key| must be a P-256 EC key. It returns one
+ * on success and zero on error. */
+OPENSSL_EXPORT int SSL_CTX_set1_tls_channel_id(SSL_CTX *ctx,
+                                               EVP_PKEY *private_key);
+
+/* SSL_set1_tls_channel_id configures a TLS client to send a TLS Channel ID to
+ * compatible servers. |private_key| must be a P-256 EC key. It returns one on
+ * success and zero on error. */
+OPENSSL_EXPORT int SSL_set1_tls_channel_id(SSL *ssl, EVP_PKEY *private_key);
+
+/* SSL_get_tls_channel_id gets the client's TLS Channel ID from a server |SSL*|
+ * and copies up to the first |max_out| bytes into |out|. The Channel ID
+ * consists of the client's P-256 public key as an (x,y) pair where each is a
+ * 32-byte, big-endian field element. It returns 0 if the client didn't offer a
+ * Channel ID and the length of the complete Channel ID otherwise. */
+OPENSSL_EXPORT size_t SSL_get_tls_channel_id(SSL *ssl, uint8_t *out,
+                                             size_t max_out);
+
+/* SSL_CTX_set_channel_id_cb sets a callback to be called when a TLS Channel ID
+ * is requested. The callback may set |*out_pkey| to a key, passing a reference
+ * to the caller. If none is returned, the handshake will pause and
+ * |SSL_get_error| will return |SSL_ERROR_WANT_CHANNEL_ID_LOOKUP|.
+ *
+ * See also |SSL_ERROR_WANT_CHANNEL_ID_LOOKUP|. */
+OPENSSL_EXPORT void SSL_CTX_set_channel_id_cb(
+    SSL_CTX *ctx, void (*channel_id_cb)(SSL *ssl, EVP_PKEY **out_pkey));
+
+/* SSL_CTX_get_channel_id_cb returns the callback set by
+ * |SSL_CTX_set_channel_id_cb|. */
+OPENSSL_EXPORT void (*SSL_CTX_get_channel_id_cb(SSL_CTX *ctx))(
+    SSL *ssl, EVP_PKEY **out_pkey);
+
+
 /* DTLS-SRTP.
  *
  * See RFC 5764. */
@@ -1820,6 +1912,22 @@ OPENSSL_EXPORT int SSL_CTX_get_ex_new_index(long argl, void *argp,
                                             CRYPTO_EX_free *free_func);
 
 
+/* Obscure functions. */
+
+/* SSL_get_rc4_state sets |*read_key| and |*write_key| to the RC4 states for
+ * the read and write directions. It returns one on success or zero if |ssl|
+ * isn't using an RC4-based cipher suite. */
+OPENSSL_EXPORT int SSL_get_rc4_state(const SSL *ssl, const RC4_KEY **read_key,
+                                     const RC4_KEY **write_key);
+
+/* SSL_get_structure_sizes returns the sizes of the SSL, SSL_CTX and
+ * SSL_SESSION structures so that a test can ensure that outside code agrees on
+ * these values. */
+OPENSSL_EXPORT void SSL_get_structure_sizes(size_t *ssl_size,
+                                            size_t *ssl_ctx_size,
+                                            size_t *ssl_session_size);
+
+
 /* Underdocumented functions.
  *
  * Functions below here haven't been touched up and may be underdocumented. */
@@ -1917,10 +2025,6 @@ typedef struct ssl3_enc_method SSL3_ENC_METHOD;
  * and zero on failure. */
 OPENSSL_EXPORT int SSL_set_mtu(SSL *ssl, unsigned mtu);
 
-/* SSL_get_secure_renegotiation_support returns one if the peer supports secure
- * renegotiation (RFC 5746) and zero otherwise. */
-OPENSSL_EXPORT int SSL_get_secure_renegotiation_support(const SSL *ssl);
-
 /* SSL_CTX_set_msg_callback installs |cb| as the message callback for |ctx|.
  * This callback will be called when sending or receiving low-level record
  * headers, complete handshake messages, ChangeCipherSpec, and alerts.
@@ -1966,10 +2070,6 @@ typedef struct ssl_aead_ctx_st SSL_AEAD_CTX;
 
 #define SSL_MAX_CERT_LIST_DEFAULT 1024 * 100 /* 100k max cert list */
 
-#define SSL_SESSION_CACHE_MAX_SIZE_DEFAULT (1024 * 20)
-
-#define SSL_DEFAULT_SESSION_TIMEOUT (2 * 60 * 60)
-
 /* ssl_early_callback_ctx is passed to certain callbacks that are called very
  * early on during the server handshake. At this point, much of the SSL* hasn't
  * been filled out and only the ClientHello can be depended on. */
@@ -2008,11 +2108,6 @@ OPENSSL_EXPORT void SSL_CTX_set_client_cert_cb(
 OPENSSL_EXPORT int (*SSL_CTX_get_client_cert_cb(SSL_CTX *ctx))(SSL *ssl,
                                                                X509 **x509,
                                                                EVP_PKEY **pkey);
-OPENSSL_EXPORT void SSL_CTX_set_channel_id_cb(
-    SSL_CTX *ctx, void (*channel_id_cb)(SSL *ssl, EVP_PKEY **pkey));
-OPENSSL_EXPORT void (*SSL_CTX_get_channel_id_cb(SSL_CTX *ctx))(SSL *ssl,
-                                                               EVP_PKEY **pkey);
-
 /* SSL_enable_signed_cert_timestamps causes |ssl| (which must be the client end
  * of a connection) to request SCTs from the server. See
  * https://tools.ietf.org/html/rfc6962. It returns one. */
@@ -2202,45 +2297,9 @@ OPENSSL_EXPORT int DTLSv1_get_timeout(const SSL *ssl, struct timeval *out);
  * WARNING: This function breaks the usual return value convention. */
 OPENSSL_EXPORT int DTLSv1_handle_timeout(SSL *ssl);
 
-/* SSL_session_reused returns one if |ssl| performed an abbreviated handshake
- * and zero otherwise.
- *
- * TODO(davidben): Hammer down the semantics of this API while a handshake,
- * initial or renego, is in progress. */
-OPENSSL_EXPORT int SSL_session_reused(const SSL *ssl);
-
 /* SSL_total_renegotiations returns the total number of renegotiation handshakes
  * peformed by |ssl|. This includes the pending renegotiation, if any. */
 OPENSSL_EXPORT int SSL_total_renegotiations(const SSL *ssl);
-
-/* SSL_CTX_enable_tls_channel_id either configures a TLS server to accept TLS
- * client IDs from clients, or configures a client to send TLS client IDs to
- * a server. It returns one. */
-OPENSSL_EXPORT int SSL_CTX_enable_tls_channel_id(SSL_CTX *ctx);
-
-/* SSL_enable_tls_channel_id either configures a TLS server to accept TLS
- * client IDs from clients, or configure a client to send TLS client IDs to
- * server. It returns one. */
-OPENSSL_EXPORT int SSL_enable_tls_channel_id(SSL *ssl);
-
-/* SSL_CTX_set1_tls_channel_id configures a TLS client to send a TLS Channel ID
- * to compatible servers. |private_key| must be a P-256 EC key. It returns one
- * on success and zero on error. */
-OPENSSL_EXPORT int SSL_CTX_set1_tls_channel_id(SSL_CTX *ctx,
-                                               EVP_PKEY *private_key);
-
-/* SSL_set1_tls_channel_id configures a TLS client to send a TLS Channel ID to
- * compatible servers. |private_key| must be a P-256 EC key. It returns one on
- * success and zero on error. */
-OPENSSL_EXPORT int SSL_set1_tls_channel_id(SSL *ssl, EVP_PKEY *private_key);
-
-/* SSL_get_tls_channel_id gets the client's TLS Channel ID from a server SSL*
- * and copies up to the first |max_out| bytes into |out|. The Channel ID
- * consists of the client's P-256 public key as an (x,y) pair where each is a
- * 32-byte, big-endian field element. It returns 0 if the client didn't offer a
- * Channel ID and the length of the complete Channel ID otherwise. */
-OPENSSL_EXPORT size_t SSL_get_tls_channel_id(SSL *ssl, uint8_t *out,
-                                             size_t max_out);
 
 /* SSL_get0_certificate_types, for a client, sets |*out_types| to an array
  * containing the client certificate types requested by a server. It returns the
@@ -2254,10 +2313,6 @@ OPENSSL_EXPORT int SSL_CTX_set_cipher_list_tls11(SSL_CTX *, const char *str);
 OPENSSL_EXPORT X509_STORE *SSL_CTX_get_cert_store(const SSL_CTX *);
 OPENSSL_EXPORT void SSL_CTX_set_cert_store(SSL_CTX *, X509_STORE *);
 OPENSSL_EXPORT int SSL_want(const SSL *s);
-
-/* SSL_get_current_cipher returns the cipher used in the current outgoing
- * connection state, or NULL if the null cipher is active. */
-OPENSSL_EXPORT const SSL_CIPHER *SSL_get_current_cipher(const SSL *s);
 
 OPENSSL_EXPORT int SSL_get_fd(const SSL *s);
 OPENSSL_EXPORT int SSL_get_rfd(const SSL *s);
@@ -2300,11 +2355,6 @@ OPENSSL_EXPORT void SSL_CTX_set_verify_depth(SSL_CTX *ctx, int depth);
 OPENSSL_EXPORT void SSL_CTX_set_cert_verify_callback(
     SSL_CTX *ctx, int (*cb)(X509_STORE_CTX *, void *), void *arg);
 
-OPENSSL_EXPORT void SSL_CTX_set_default_passwd_cb(SSL_CTX *ctx,
-                                                  pem_password_cb *cb);
-OPENSSL_EXPORT void SSL_CTX_set_default_passwd_cb_userdata(SSL_CTX *ctx,
-                                                           void *u);
-
 OPENSSL_EXPORT int SSL_CTX_set_purpose(SSL_CTX *s, int purpose);
 OPENSSL_EXPORT int SSL_set_purpose(SSL *s, int purpose);
 OPENSSL_EXPORT int SSL_CTX_set_trust(SSL_CTX *s, int trust);
@@ -2315,10 +2365,6 @@ OPENSSL_EXPORT int SSL_set1_param(SSL *ssl, X509_VERIFY_PARAM *vpm);
 
 OPENSSL_EXPORT X509_VERIFY_PARAM *SSL_CTX_get0_param(SSL_CTX *ctx);
 OPENSSL_EXPORT X509_VERIFY_PARAM *SSL_get0_param(SSL *ssl);
-
-/* SSL_get_version returns a string describing the TLS version used by |s|. For
- * example, "TLSv1.2" or "SSLv3". */
-OPENSSL_EXPORT const char *SSL_get_version(const SSL *s);
 
 OPENSSL_EXPORT STACK_OF(SSL_CIPHER) *SSL_get_ciphers(const SSL *s);
 
@@ -2341,8 +2387,6 @@ OPENSSL_EXPORT STACK_OF(X509_NAME) *
 OPENSSL_EXPORT int SSL_add_client_CA(SSL *ssl, X509 *x);
 OPENSSL_EXPORT int SSL_CTX_add_client_CA(SSL_CTX *ctx, X509 *x);
 
-OPENSSL_EXPORT long SSL_get_default_timeout(const SSL *s);
-
 OPENSSL_EXPORT STACK_OF(X509_NAME) *SSL_dup_CA_list(STACK_OF(X509_NAME) *sk);
 
 OPENSSL_EXPORT void SSL_CTX_set_quiet_shutdown(SSL_CTX *ctx, int mode);
@@ -2351,7 +2395,6 @@ OPENSSL_EXPORT void SSL_set_quiet_shutdown(SSL *ssl, int mode);
 OPENSSL_EXPORT int SSL_get_quiet_shutdown(const SSL *ssl);
 OPENSSL_EXPORT void SSL_set_shutdown(SSL *ssl, int mode);
 OPENSSL_EXPORT int SSL_get_shutdown(const SSL *ssl);
-OPENSSL_EXPORT int SSL_version(const SSL *ssl);
 OPENSSL_EXPORT int SSL_CTX_set_default_verify_paths(SSL_CTX *ctx);
 OPENSSL_EXPORT int SSL_CTX_load_verify_locations(SSL_CTX *ctx,
                                                  const char *CAfile,
@@ -2401,27 +2444,11 @@ OPENSSL_EXPORT void SSL_CTX_set_max_send_fragment(SSL_CTX *ctx,
 OPENSSL_EXPORT void SSL_set_max_send_fragment(SSL *ssl,
                                               size_t max_send_fragment);
 
-OPENSSL_EXPORT int SSL_cache_hit(SSL *s);
-OPENSSL_EXPORT int SSL_is_server(SSL *s);
-
 /* SSL_CTX_set_dos_protection_cb sets a callback that is called once the
  * resumption decision for a ClientHello has been made. It can return 1 to
  * allow the handshake to continue or zero to cause the handshake to abort. */
 OPENSSL_EXPORT void SSL_CTX_set_dos_protection_cb(
     SSL_CTX *ctx, int (*cb)(const struct ssl_early_callback_ctx *));
-
-/* SSL_get_structure_sizes returns the sizes of the SSL, SSL_CTX and
- * SSL_SESSION structures so that a test can ensure that outside code agrees on
- * these values. */
-OPENSSL_EXPORT void SSL_get_structure_sizes(size_t *ssl_size,
-                                            size_t *ssl_ctx_size,
-                                            size_t *ssl_session_size);
-
-/* SSL_get_rc4_state sets |*read_key| and |*write_key| to the RC4 states for
- * the read and write directions. It returns one on success or zero if |ssl|
- * isn't using an RC4-based cipher suite. */
-OPENSSL_EXPORT int SSL_get_rc4_state(const SSL *ssl, const RC4_KEY **read_key,
-                                     const RC4_KEY **write_key);
 
 
 /* Deprecated functions. */
@@ -2684,6 +2711,16 @@ DECLARE_STACK_OF(SSL_COMP)
 #define SSL_OP_TLS_BLOCK_PADDING_BUG 0
 #define SSL_OP_TLS_ROLLBACK_BUG 0
 
+/* SSL_cache_hit calls |SSL_session_resumed|. */
+OPENSSL_EXPORT int SSL_cache_hit(SSL *ssl);
+
+/* SSL_get_default_timeout returns |SSL_DEFAULT_SESSION_TIMEOUT|. */
+OPENSSL_EXPORT long SSL_get_default_timeout(const SSL *ssl);
+
+/* SSL_get_version returns a string describing the TLS version used by |ssl|.
+ * For example, "TLSv1.2" or "SSLv3". */
+OPENSSL_EXPORT const char *SSL_get_version(const SSL *ssl);
+
 
 /* Private structures.
  *
@@ -2918,7 +2955,7 @@ struct ssl_ctx_st {
   int (*client_cert_cb)(SSL *ssl, X509 **x509, EVP_PKEY **pkey);
 
   /* get channel id callback */
-  void (*channel_id_cb)(SSL *ssl, EVP_PKEY **pkey);
+  void (*channel_id_cb)(SSL *ssl, EVP_PKEY **out_pkey);
 
   CRYPTO_EX_DATA ex_data;
 
