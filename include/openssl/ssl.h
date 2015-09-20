@@ -179,64 +179,6 @@ extern "C" {
 OPENSSL_EXPORT int SSL_library_init(void);
 
 
-/* Cipher suites.
- *
- * |SSL_CIPHER| objects represent cipher suites. */
-
-DECLARE_STACK_OF(SSL_CIPHER)
-
-/* SSL_get_cipher_by_value returns the structure representing a TLS cipher
- * suite based on its assigned number, or NULL if unknown. See
- * https://www.iana.org/assignments/tls-parameters/tls-parameters.xhtml#tls-parameters-4. */
-OPENSSL_EXPORT const SSL_CIPHER *SSL_get_cipher_by_value(uint16_t value);
-
-/* SSL_CIPHER_get_id returns |cipher|'s id. It may be cast to a |uint16_t| to
- * get the cipher suite value. */
-OPENSSL_EXPORT uint32_t SSL_CIPHER_get_id(const SSL_CIPHER *cipher);
-
-/* SSL_CIPHER_is_AES returns one if |cipher| uses AES (either GCM or CBC
- * mode). */
-OPENSSL_EXPORT int SSL_CIPHER_is_AES(const SSL_CIPHER *cipher);
-
-/* SSL_CIPHER_has_MD5_HMAC returns one if |cipher| uses HMAC-MD5. */
-OPENSSL_EXPORT int SSL_CIPHER_has_MD5_HMAC(const SSL_CIPHER *cipher);
-
-/* SSL_CIPHER_is_AESGCM returns one if |cipher| uses AES-GCM. */
-OPENSSL_EXPORT int SSL_CIPHER_is_AESGCM(const SSL_CIPHER *cipher);
-
-/* SSL_CIPHER_is_CHACHA20POLY1305 returns one if |cipher| uses
- * CHACHA20_POLY1305. */
-OPENSSL_EXPORT int SSL_CIPHER_is_CHACHA20POLY1305(const SSL_CIPHER *cipher);
-
-/* SSL_CIPHER_is_NULL returns one if |cipher| does not encrypt. */
-OPENSSL_EXPORT int SSL_CIPHER_is_NULL(const SSL_CIPHER *cipher);
-
-/* SSL_CIPHER_is_RC4 returns one if |cipher| uses RC4. */
-OPENSSL_EXPORT int SSL_CIPHER_is_RC4(const SSL_CIPHER *cipher);
-
-/* SSL_CIPHER_is_block_cipher returns one if |cipher| is a block cipher. */
-OPENSSL_EXPORT int SSL_CIPHER_is_block_cipher(const SSL_CIPHER *cipher);
-
-/* SSL_CIPHER_get_name returns the OpenSSL name of |cipher|. */
-OPENSSL_EXPORT const char *SSL_CIPHER_get_name(const SSL_CIPHER *cipher);
-
-/* SSL_CIPHER_get_kx_name returns a string that describes the key-exchange
- * method used by |cipher|. For example, "ECDHE_ECDSA". */
-OPENSSL_EXPORT const char *SSL_CIPHER_get_kx_name(const SSL_CIPHER *cipher);
-
-/* SSL_CIPHER_get_rfc_name returns a newly-allocated string with the standard
- * name for |cipher| or NULL on error. For example,
- * "TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256". The caller is responsible for
- * calling |OPENSSL_free| on the result. */
-OPENSSL_EXPORT char *SSL_CIPHER_get_rfc_name(const SSL_CIPHER *cipher);
-
-/* SSL_CIPHER_get_bits returns the strength, in bits, of |cipher|. If
- * |out_alg_bits| is not NULL, it writes the number of bits consumed by the
- * symmetric algorithm to |*out_alg_bits|. */
-OPENSSL_EXPORT int SSL_CIPHER_get_bits(const SSL_CIPHER *cipher,
-                                       int *out_alg_bits);
-
-
 /* SSL contexts.
  *
  * |SSL_CTX| objects manage shared state and configuration between multiple TLS
@@ -911,6 +853,64 @@ typedef struct ssl_private_key_method_st {
  * |key_method| must remain valid for the lifetime of |ssl|. */
 OPENSSL_EXPORT void SSL_set_private_key_method(
     SSL *ssl, const SSL_PRIVATE_KEY_METHOD *key_method);
+
+
+/* Cipher suites.
+ *
+ * |SSL_CIPHER| objects represent cipher suites. */
+
+DECLARE_STACK_OF(SSL_CIPHER)
+
+/* SSL_get_cipher_by_value returns the structure representing a TLS cipher
+ * suite based on its assigned number, or NULL if unknown. See
+ * https://www.iana.org/assignments/tls-parameters/tls-parameters.xhtml#tls-parameters-4. */
+OPENSSL_EXPORT const SSL_CIPHER *SSL_get_cipher_by_value(uint16_t value);
+
+/* SSL_CIPHER_get_id returns |cipher|'s id. It may be cast to a |uint16_t| to
+ * get the cipher suite value. */
+OPENSSL_EXPORT uint32_t SSL_CIPHER_get_id(const SSL_CIPHER *cipher);
+
+/* SSL_CIPHER_is_AES returns one if |cipher| uses AES (either GCM or CBC
+ * mode). */
+OPENSSL_EXPORT int SSL_CIPHER_is_AES(const SSL_CIPHER *cipher);
+
+/* SSL_CIPHER_has_MD5_HMAC returns one if |cipher| uses HMAC-MD5. */
+OPENSSL_EXPORT int SSL_CIPHER_has_MD5_HMAC(const SSL_CIPHER *cipher);
+
+/* SSL_CIPHER_is_AESGCM returns one if |cipher| uses AES-GCM. */
+OPENSSL_EXPORT int SSL_CIPHER_is_AESGCM(const SSL_CIPHER *cipher);
+
+/* SSL_CIPHER_is_CHACHA20POLY1305 returns one if |cipher| uses
+ * CHACHA20_POLY1305. */
+OPENSSL_EXPORT int SSL_CIPHER_is_CHACHA20POLY1305(const SSL_CIPHER *cipher);
+
+/* SSL_CIPHER_is_NULL returns one if |cipher| does not encrypt. */
+OPENSSL_EXPORT int SSL_CIPHER_is_NULL(const SSL_CIPHER *cipher);
+
+/* SSL_CIPHER_is_RC4 returns one if |cipher| uses RC4. */
+OPENSSL_EXPORT int SSL_CIPHER_is_RC4(const SSL_CIPHER *cipher);
+
+/* SSL_CIPHER_is_block_cipher returns one if |cipher| is a block cipher. */
+OPENSSL_EXPORT int SSL_CIPHER_is_block_cipher(const SSL_CIPHER *cipher);
+
+/* SSL_CIPHER_get_name returns the OpenSSL name of |cipher|. */
+OPENSSL_EXPORT const char *SSL_CIPHER_get_name(const SSL_CIPHER *cipher);
+
+/* SSL_CIPHER_get_kx_name returns a string that describes the key-exchange
+ * method used by |cipher|. For example, "ECDHE_ECDSA". */
+OPENSSL_EXPORT const char *SSL_CIPHER_get_kx_name(const SSL_CIPHER *cipher);
+
+/* SSL_CIPHER_get_rfc_name returns a newly-allocated string with the standard
+ * name for |cipher| or NULL on error. For example,
+ * "TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256". The caller is responsible for
+ * calling |OPENSSL_free| on the result. */
+OPENSSL_EXPORT char *SSL_CIPHER_get_rfc_name(const SSL_CIPHER *cipher);
+
+/* SSL_CIPHER_get_bits returns the strength, in bits, of |cipher|. If
+ * |out_alg_bits| is not NULL, it writes the number of bits consumed by the
+ * symmetric algorithm to |*out_alg_bits|. */
+OPENSSL_EXPORT int SSL_CIPHER_get_bits(const SSL_CIPHER *cipher,
+                                       int *out_alg_bits);
 
 
 /* Cipher suite configuration.
