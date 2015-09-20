@@ -20,14 +20,10 @@ environment:
     - TOOLCHAIN_VERSION: 12.0
       RUST: msbuild
     - TOOLCHAIN_VERSION: 12.0
-      RUST: 1.2.0
+      RUST: 1.3.0
     - TOOLCHAIN_VERSION: 12.0
       RUST: beta
     - TOOLCHAIN_VERSION: 12.0
       RUST: nightly
-matrix:
-  allow_failures:
-    - RUST: 1.2.0
-      TOOLCHAIN_VERSION: 12.0
       
 build_script: mk/appveyor.bat
