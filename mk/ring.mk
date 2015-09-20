@@ -47,13 +47,11 @@ RING_SRCS = $(addprefix $(RING_PREFIX), \
   crypto/cipher/cipher.c \
   crypto/cipher/e_aes.c \
   crypto/cipher/e_chacha20poly1305.c \
-  crypto/cipher/e_des.c \
   crypto/cipher/e_null.c \
   crypto/cmac/cmac.c \
   crypto/cpu-arm.c \
   crypto/cpu-intel.c \
   crypto/crypto.c \
-  crypto/des/des.c \
   crypto/dh/check.c \
   crypto/dh/dh.c \
   crypto/dh/dh_impl.c \

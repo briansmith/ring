@@ -43,13 +43,11 @@
     <ClCompile Include="cipher\cipher.c" />
     <ClCompile Include="cipher\e_aes.c" />
     <ClCompile Include="cipher\e_chacha20poly1305.c" />
-    <ClCompile Include="cipher\e_des.c" />
     <ClCompile Include="cipher\e_null.c" />
     <ClCompile Include="cmac\cmac.c" />
     <ClCompile Include="cpu-arm.c" />
     <ClCompile Include="cpu-intel.c" />
     <ClCompile Include="crypto.c" />
-    <ClCompile Include="des\des.c" />
     <ClCompile Include="dh\check.c" />
     <ClCompile Include="dh\dh.c" />
     <ClCompile Include="dh\dh_impl.c" />

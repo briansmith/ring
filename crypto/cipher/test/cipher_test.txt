@@ -1,11 +1,3 @@
-# DES EDE3 CBC tests (from destest)
-Cipher = DES-EDE3-CBC
-Key = 0123456789abcdeff1e0d3c2b5a49786fedcba9876543210
-IV = fedcba9876543210
-Plaintext = 37363534333231204E6F77206973207468652074696D6520666F722000000000
-Ciphertext = 3FE301C962AC01D02213763C1CBD4CDC799657C064ECF5D41C673812CFDE9675
-
-
 # For all CBC encrypts and decrypts, the transformed sequence is
 #   AES-bits-CBC:key:IV/ciphertext':plaintext:ciphertext:encdec
 # CBC-AES128.Encrypt and CBC-AES128.Decrypt
