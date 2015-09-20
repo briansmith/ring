@@ -1367,29 +1367,27 @@ int SSL_CTX_get_session_cache_mode(const SSL_CTX *ctx) {
   return ctx->session_cache_mode;
 }
 
-/* return a STACK of the ciphers available for the SSL and in order of
- * preference */
-STACK_OF(SSL_CIPHER) *SSL_get_ciphers(const SSL *s) {
-  if (s == NULL) {
+STACK_OF(SSL_CIPHER) *SSL_get_ciphers(const SSL *ssl) {
+  if (ssl == NULL) {
     return NULL;
   }
 
-  if (s->cipher_list != NULL) {
-    return s->cipher_list->ciphers;
+  if (ssl->cipher_list != NULL) {
+    return ssl->cipher_list->ciphers;
   }
 
-  if (s->version >= TLS1_1_VERSION && s->ctx != NULL &&
-      s->ctx->cipher_list_tls11 != NULL) {
-    return s->ctx->cipher_list_tls11->ciphers;
+  if (ssl->version >= TLS1_1_VERSION && ssl->ctx != NULL &&
+      ssl->ctx->cipher_list_tls11 != NULL) {
+    return ssl->ctx->cipher_list_tls11->ciphers;
   }
 
-  if (s->version >= TLS1_VERSION && s->ctx != NULL &&
-      s->ctx->cipher_list_tls10 != NULL) {
-    return s->ctx->cipher_list_tls10->ciphers;
+  if (ssl->version >= TLS1_VERSION && ssl->ctx != NULL &&
+      ssl->ctx->cipher_list_tls10 != NULL) {
+    return ssl->ctx->cipher_list_tls10->ciphers;
   }
 
-  if (s->ctx != NULL && s->ctx->cipher_list != NULL) {
-    return s->ctx->cipher_list->ciphers;
+  if (ssl->ctx != NULL && ssl->ctx->cipher_list != NULL) {
+    return ssl->ctx->cipher_list->ciphers;
   }
 
   return NULL;
@@ -1413,16 +1411,15 @@ STACK_OF(SSL_CIPHER) *ssl_get_ciphers_by_id(SSL *s) {
   return NULL;
 }
 
-/* The old interface to get the same thing as SSL_get_ciphers() */
-const char *SSL_get_cipher_list(const SSL *s, int n) {
+const char *SSL_get_cipher_list(const SSL *ssl, int n) {
   const SSL_CIPHER *c;
   STACK_OF(SSL_CIPHER) *sk;
 
-  if (s == NULL) {
+  if (ssl == NULL) {
     return NULL;
   }
 
-  sk = SSL_get_ciphers(s);
+  sk = SSL_get_ciphers(ssl);
   if (sk == NULL || n < 0 || (size_t)n >= sk_SSL_CIPHER_num(sk)) {
     return NULL;
   }
@@ -1435,20 +1432,15 @@ const char *SSL_get_cipher_list(const SSL *s, int n) {
   return c->name;
 }
 
-/* specify the ciphers to be used by default by the SSL_CTX */
 int SSL_CTX_set_cipher_list(SSL_CTX *ctx, const char *str) {
-  STACK_OF(SSL_CIPHER) *sk;
-
-  sk = ssl_create_cipher_list(ctx->method, &ctx->cipher_list,
-                              &ctx->cipher_list_by_id, str);
-  /* ssl_create_cipher_list may return an empty stack if it was unable to find
-   * a cipher matching the given rule string (for example if the rule string
-   * specifies a cipher which has been disabled). This is not an error as far
-   * as ssl_create_cipher_list is concerned, and hence ctx->cipher_list and
-   * ctx->cipher_list_by_id has been updated. */
-  if (sk == NULL) {
+  STACK_OF(SSL_CIPHER) *cipher_list = ssl_create_cipher_list(
+      ctx->method, &ctx->cipher_list, &ctx->cipher_list_by_id, str);
+  if (cipher_list == NULL) {
     return 0;
-  } else if (sk_SSL_CIPHER_num(sk) == 0) {
+  }
+
+  /* |ssl_create_cipher_list| may succeed but return an empty cipher list. */
+  if (sk_SSL_CIPHER_num(cipher_list) == 0) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_NO_CIPHER_MATCH);
     return 0;
   }
@@ -1457,12 +1449,14 @@ int SSL_CTX_set_cipher_list(SSL_CTX *ctx, const char *str) {
 }
 
 int SSL_CTX_set_cipher_list_tls10(SSL_CTX *ctx, const char *str) {
-  STACK_OF(SSL_CIPHER) *sk;
-
-  sk = ssl_create_cipher_list(ctx->method, &ctx->cipher_list_tls10, NULL, str);
-  if (sk == NULL) {
+  STACK_OF(SSL_CIPHER) *cipher_list = ssl_create_cipher_list(
+      ctx->method, &ctx->cipher_list_tls10, NULL, str);
+  if (cipher_list == NULL) {
     return 0;
-  } else if (sk_SSL_CIPHER_num(sk) == 0) {
+  }
+
+  /* |ssl_create_cipher_list| may succeed but return an empty cipher list. */
+  if (sk_SSL_CIPHER_num(cipher_list) == 0) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_NO_CIPHER_MATCH);
     return 0;
   }
@@ -1471,12 +1465,14 @@ int SSL_CTX_set_cipher_list_tls10(SSL_CTX *ctx, const char *str) {
 }
 
 int SSL_CTX_set_cipher_list_tls11(SSL_CTX *ctx, const char *str) {
-  STACK_OF(SSL_CIPHER) *sk;
-
-  sk = ssl_create_cipher_list(ctx->method, &ctx->cipher_list_tls11, NULL, str);
-  if (sk == NULL) {
+  STACK_OF(SSL_CIPHER) *cipher_list = ssl_create_cipher_list(
+      ctx->method, &ctx->cipher_list_tls11, NULL, str);
+  if (cipher_list == NULL) {
     return 0;
-  } else if (sk_SSL_CIPHER_num(sk) == 0) {
+  }
+
+  /* |ssl_create_cipher_list| may succeed but return an empty cipher list. */
+  if (sk_SSL_CIPHER_num(cipher_list) == 0) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_NO_CIPHER_MATCH);
     return 0;
   }
@@ -1484,17 +1480,15 @@ int SSL_CTX_set_cipher_list_tls11(SSL_CTX *ctx, const char *str) {
   return 1;
 }
 
-/* specify the ciphers to be used by the SSL */
-int SSL_set_cipher_list(SSL *s, const char *str) {
-  STACK_OF(SSL_CIPHER) *sk;
-
-  sk = ssl_create_cipher_list(s->ctx->method, &s->cipher_list,
-                              &s->cipher_list_by_id, str);
-
-  /* see comment in SSL_CTX_set_cipher_list */
-  if (sk == NULL) {
+int SSL_set_cipher_list(SSL *ssl, const char *str) {
+  STACK_OF(SSL_CIPHER) *cipher_list = ssl_create_cipher_list(
+      ssl->ctx->method, &ssl->cipher_list, &ssl->cipher_list_by_id, str);
+  if (cipher_list == NULL) {
     return 0;
-  } else if (sk_SSL_CIPHER_num(sk) == 0) {
+  }
+
+  /* |ssl_create_cipher_list| may succeed but return an empty cipher list. */
+  if (sk_SSL_CIPHER_num(cipher_list) == 0) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_NO_CIPHER_MATCH);
     return 0;
   }

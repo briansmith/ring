@@ -913,6 +913,131 @@ OPENSSL_EXPORT void SSL_set_private_key_method(
     SSL *ssl, const SSL_PRIVATE_KEY_METHOD *key_method);
 
 
+/* Cipher suite configuration.
+ *
+ * OpenSSL uses a mini-language to configure cipher suites. The language
+ * maintains an ordered list of enabled ciphers, along with an ordered list of
+ * disabled but available ciphers. Initially, all ciphers are disabled with a
+ * default ordering. The cipher string is then interpreted as a sequence of
+ * directives, separated by colons, each of which modifies this state.
+ *
+ * Most directives consist of a one character or empty opcode followed by a
+ * selector which matches a subset of available ciphers.
+ *
+ * Available opcodes are:
+ *
+ *   The empty opcode enables and appends all matching disabled ciphers to the
+ *   end of the enabled list. The newly appended ciphers are ordered relative to
+ *   each other matching their order in the disabled list.
+ *
+ *   |-| disables all matching enabled ciphers and prepends them to the disabled
+ *   list, with relative order from the enabled list preserved. This means the
+ *   most recently disabled ciphers get highest preference relative to other
+ *   disabled ciphers if re-enabled.
+ *
+ *   |+| moves all matching enabled ciphers to the end of the enabled list, with
+ *   relative order preserved.
+ *
+ *   |!| deletes all matching ciphers, enabled or not, from either list. Deleted
+ *   ciphers will not matched by future operations.
+ *
+ * A selector may be a specific cipher (using the OpenSSL name for the cipher)
+ * or one or more rules separated by |+|. The final selector matches the
+ * intersection of each rule. For instance, |AESGCM+aECDSA| matches
+ * ECDSA-authenticated AES-GCM ciphers.
+ *
+ * Available cipher rules are:
+ *
+ *   |ALL| matches all ciphers.
+ *
+ *   |kRSA|, |kDHE|, |kECDHE|, and |kPSK| match ciphers using plain RSA, DHE,
+ *   ECDHE, and plain PSK key exchanges, respectively. Note that ECDHE_PSK is
+ *   matched by |kECDHE| and not |kPSK|.
+ *
+ *   |aRSA|, |aECDSA|, and |aPSK| match ciphers authenticated by RSA, ECDSA, and
+ *   a pre-shared key, respectively.
+ *
+ *   |RSA|, |DHE|, |ECDHE|, |PSK|, |ECDSA|, and |PSK| are aliases for the
+ *   corresponding |k*| or |a*| cipher rule. |RSA| is an alias for |kRSA|, not
+ *   |aRSA|.
+ *
+ *   |3DES|, |RC4|, |AES128|, |AES256|, |AES|, |AESGCM|, |CHACHA20| match
+ *   ciphers whose bulk cipher use the corresponding encryption scheme. Note
+ *   that |AES|, |AES128|, and |AES256| match both CBC and GCM ciphers.
+ *
+ *   |MD5|, |SHA1|, |SHA256|, and |SHA384| match legacy cipher suites using the
+ *   corresponding hash function in their MAC. AEADs are matched by none of
+ *   these.
+ *
+ *   |SHA| is an alias for |SHA1|.
+ *
+ * Although implemented, authentication-only ciphers match no rules and must be
+ * explicitly selected by name.
+ *
+ * Deprecated cipher rules:
+ *
+ *   |kEDH|, |EDH|, |kEECDH|, and |EECDH| are legacy aliases for |kDHE|, |DHE|,
+ *   |kECDHE|, and |ECDHE|, respectively.
+ *
+ *   |MEDIUM| and |HIGH| match ciphers historically labeled by OpenSSL as
+ *   'medium' and 'high', respectively.
+ *
+ *   |FIPS| matches ciphers historically FIPS-approved in OpenSSL.
+ *
+ *   |SSLv3| and |TLSv1| match ciphers available in TLS 1.1 or earlier.
+ *   |TLSv1_2| matches ciphers new in TLS 1.2. This is confusing and should not
+ *   be used.
+ *
+ * Unknown rules silently match nothing.
+ *
+ * The special |@STRENGTH| directive will sort all enabled ciphers by strength.
+ *
+ * The |DEFAULT| directive, when appearing at the front of the string, expands
+ * to the default ordering of available ciphers.
+ *
+ * If configuring a server, one may also configure equal-preference groups to
+ * partially respect the client's preferences when
+ * |SSL_OP_CIPHER_SERVER_PREFERENCE| is enabled. Ciphers in an equal-preference
+ * group have equal priority and use the client order. This may be used to
+ * enforce that AEADs are preferred but select AES-GCM vs. ChaCha20-Poly1305
+ * based on client preferences. An equal-preference is specified with square
+ * brackets, combining multiple selectors separated by |. For example:
+ *
+ *   [ECDHE-ECDSA-CHACHA20-POLY1305|ECDHE-ECDSA-AES128-GCM-SHA256]
+ *
+ * Once an equal-preference group is used, future directives must be
+ * opcode-less. */
+
+/* SSL_DEFAULT_CIPHER_LIST is the default cipher suite configuration. It is
+ * substituted when a cipher string starts with 'DEFAULT'. */
+#define SSL_DEFAULT_CIPHER_LIST "ALL"
+
+/* SSL_CTX_set_cipher_list configures the cipher list for |ctx|, evaluating
+ * |str| as a cipher string. It returns one on success and zero on failure. */
+OPENSSL_EXPORT int SSL_CTX_set_cipher_list(SSL_CTX *ctx, const char *str);
+
+/* SSL_CTX_set_cipher_list configures the TLS 1.0+ cipher list for |ctx|,
+ * evaluating |str| as a cipher string. It returns one on success and zero on
+ * failure. If set, servers will use this cipher suite list for TLS 1.0 or
+ * higher. */
+OPENSSL_EXPORT int SSL_CTX_set_cipher_list_tls10(SSL_CTX *ctx, const char *str);
+
+/* SSL_CTX_set_cipher_list configures the TLS 1.1+ cipher list for |ctx|,
+ * evaluating |str| as a cipher string. It returns one on success and zero on
+ * failure. If set, servers will use this cipher suite list for TLS 1.1 or
+ * higher. */
+OPENSSL_EXPORT int SSL_CTX_set_cipher_list_tls11(SSL_CTX *ctx, const char *str);
+
+/* SSL_set_cipher_list configures the cipher list for |ssl|, evaluating |str| as
+ * a cipher string. It returns one on success and zero on failure. */
+OPENSSL_EXPORT int SSL_set_cipher_list(SSL *ssl, const char *str);
+
+/* SSL_get_ciphers returns the cipher list for |ssl|, in order of preference. If
+ * |SSL_CTX_set_cipher_list_tls10| or |SSL_CTX_set_cipher_list_tls11| has been
+ * used, the corresponding list for the current version is returned. */
+OPENSSL_EXPORT STACK_OF(SSL_CIPHER) *SSL_get_ciphers(const SSL *ssl);
+
+
 /* Connection information. */
 
 /* SSL_get_peer_certificate returns the peer's leaf certificate or NULL if the
@@ -2310,29 +2435,7 @@ OPENSSL_EXPORT void SSL_set_reject_peer_renegotiations(SSL *ssl, int reject);
 
 #define SSL_TXT_ALL "ALL"
 
-/* COMPLEMENTOF* definitions. These identifiers are used to (de-select) ciphers
- * normally not being used.
- *
- * Example: "RC4" will activate all ciphers using RC4 including ciphers without
- * authentication, which would normally disabled by DEFAULT (due the "!ADH"
- * being part of default). Therefore "RC4:!COMPLEMENTOFDEFAULT" will make sure
- * that it is also disabled in the specific selection. COMPLEMENTOF*
- * identifiers are portable between version, as adjustments to the default
- * cipher setup will also be included here.
- *
- * COMPLEMENTOFDEFAULT does not experience the same special treatment that
- * DEFAULT gets, as only selection is being done and no sorting as needed for
- * DEFAULT. */
 #define SSL_TXT_CMPDEF "COMPLEMENTOFDEFAULT"
-
-/* The following cipher list is used by default. It also is substituted when an
- * application-defined cipher list string starts with 'DEFAULT'. */
-#define SSL_DEFAULT_CIPHER_LIST "ALL"
-
-/* As of OpenSSL 1.0.0, ssl_create_cipher_list() in ssl/ssl_ciph.c always
- * starts with a reasonable order, and all we have to do for DEFAULT is
- * throwing out anonymous and unencrypted ciphersuites! (The latter are not
- * actually enabled by ALL, but "ALL:RSA" would enable some of them.) */
 
 /* Used in SSL_set_shutdown()/SSL_get_shutdown(); */
 #define SSL_SENT_SHUTDOWN 1
@@ -2536,28 +2639,21 @@ OPENSSL_EXPORT int SSL_total_renegotiations(const SSL *ssl);
 OPENSSL_EXPORT size_t SSL_get0_certificate_types(SSL *ssl,
                                                  const uint8_t **out_types);
 
-OPENSSL_EXPORT int SSL_CTX_set_cipher_list(SSL_CTX *, const char *str);
-OPENSSL_EXPORT int SSL_CTX_set_cipher_list_tls10(SSL_CTX *, const char *str);
-OPENSSL_EXPORT int SSL_CTX_set_cipher_list_tls11(SSL_CTX *, const char *str);
 OPENSSL_EXPORT int SSL_want(const SSL *s);
 
 OPENSSL_EXPORT int SSL_get_fd(const SSL *s);
 OPENSSL_EXPORT int SSL_get_rfd(const SSL *s);
 OPENSSL_EXPORT int SSL_get_wfd(const SSL *s);
-OPENSSL_EXPORT const char *SSL_get_cipher_list(const SSL *s, int n);
 OPENSSL_EXPORT int SSL_pending(const SSL *s);
 OPENSSL_EXPORT int SSL_set_fd(SSL *s, int fd);
 OPENSSL_EXPORT int SSL_set_rfd(SSL *s, int fd);
 OPENSSL_EXPORT int SSL_set_wfd(SSL *s, int fd);
-OPENSSL_EXPORT int SSL_set_cipher_list(SSL *s, const char *str);
 
 OPENSSL_EXPORT const char *SSL_state_string(const SSL *s);
 OPENSSL_EXPORT const char *SSL_state_string_long(const SSL *s);
 
 OPENSSL_EXPORT int SSL_SESSION_print_fp(FILE *fp, const SSL_SESSION *ses);
 OPENSSL_EXPORT int SSL_SESSION_print(BIO *fp, const SSL_SESSION *ses);
-
-OPENSSL_EXPORT STACK_OF(SSL_CIPHER) *SSL_get_ciphers(const SSL *s);
 
 /* SSL_renegotiate_pending returns one if |ssl| is in the middle of a
  * renegotiation. */
@@ -2895,6 +2991,10 @@ OPENSSL_EXPORT long SSL_get_default_timeout(const SSL *ssl);
 /* SSL_get_version returns a string describing the TLS version used by |ssl|.
  * For example, "TLSv1.2" or "SSLv3". */
 OPENSSL_EXPORT const char *SSL_get_version(const SSL *ssl);
+
+/* SSL_get_cipher_list returns the name of the |n|th cipher in the output of
+ * |SSL_get_ciphers| or NULL if out of range. Use |SSL_get_ciphers| insteads. */
+OPENSSL_EXPORT const char *SSL_get_cipher_list(const SSL *ssl, int n);
 
 
 /* Private structures.
