@@ -48,6 +48,8 @@ if [%Configuration%] == [Release] set CARGO_MODE=--release
 
 set
 
+link /?
+cl /?
 rustc --version
 cargo --version
 
