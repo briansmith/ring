@@ -83,10 +83,6 @@ OPENSSL_EXPORT const EVP_CIPHER *EVP_aes_256_ctr(void);
 OPENSSL_EXPORT const EVP_CIPHER *EVP_aes_128_gcm(void);
 OPENSSL_EXPORT const EVP_CIPHER *EVP_aes_256_gcm(void);
 
-/* EVP_enc_null returns a 'cipher' that passes plaintext through as
- * ciphertext. */
-OPENSSL_EXPORT const EVP_CIPHER *EVP_enc_null(void);
-
 /* Cipher context allocation.
  *
  * An |EVP_CIPHER_CTX| represents the state of an encryption or decryption in
