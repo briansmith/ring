@@ -26,7 +26,6 @@ impl TestCase {
                               -> Option<&'static digest::Algorithm> {
         let name = self.consume_string(key);
         match name.as_ref() {
-            "MD5" => Some(&digest::MD5),
             "SHA1" => Some(&digest::SHA1),
             "SHA224" => None, // We actively skip SHA-224 support.
             "SHA256" => Some(&digest::SHA256),

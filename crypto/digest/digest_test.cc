@@ -19,7 +19,6 @@
 #include <openssl/crypto.h>
 #include <openssl/digest.h>
 #include <openssl/err.h>
-#include <openssl/md5.h>
 #include <openssl/sha.h>
 
 #include "../test/scoped_types.h"
@@ -32,7 +31,6 @@ struct MD {
   const EVP_MD *(*func)(void);
 };
 
-static const MD md5 = { "MD5", &EVP_md5 };
 static const MD sha1 = { "SHA1", &EVP_sha1 };
 static const MD sha224 = { "SHA224", &EVP_sha224 };
 static const MD sha256 = { "SHA256", &EVP_sha256 };
@@ -51,18 +49,6 @@ struct TestVector {
 };
 
 static const TestVector kTestVectors[] = {
-    // MD5 tests, from RFC 1321.
-    { md5, "", 1, "d41d8cd98f00b204e9800998ecf8427e" },
-    { md5, "a", 1, "0cc175b9c0f1b6a831c399e269772661" },
-    { md5, "abc", 1, "900150983cd24fb0d6963f7d28e17f72" },
-    { md5, "message digest", 1, "f96b697d7cb7938d525a2f31aaf161d0" },
-    { md5, "abcdefghijklmnopqrstuvwxyz", 1,
-      "c3fcd3d76192e4007dfb496cca67e13b" },
-    { md5,
-      "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789", 1,
-      "d174ab98d277d9f5a5611c2c9f419d9f" },
-    { md5, "1234567890", 8, "57edf4a22be3c955ac49da2e2107b67a" },
-
     // SHA-1 tests, from RFC 3174.
     { sha1, "abc", 1, "a9993e364706816aba3e25717850c26c9cd0d89d" },
     { sha1,

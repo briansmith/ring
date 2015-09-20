@@ -58,7 +58,6 @@
 
 #include <assert.h>
 
-#include <openssl/md5.h>
 #include <openssl/obj.h>
 #include <openssl/sha.h>
 
@@ -69,26 +68,6 @@
 #else
 #define CHECK(x) assert(x)
 #endif
-
-
-static void md5_init(EVP_MD_CTX *ctx) {
-  CHECK(MD5_Init(ctx->md_data));
-}
-
-static void md5_update(EVP_MD_CTX *ctx, const void *data, size_t count) {
-  CHECK(MD5_Update(ctx->md_data, data, count));
-}
-
-static void md5_final(EVP_MD_CTX *ctx, uint8_t *out) {
-  CHECK(MD5_Final(out, ctx->md_data));
-}
-
-static const EVP_MD md5_md = {
-    NID_md5,    MD5_DIGEST_LENGTH, 0 /* flags */,       md5_init,
-    md5_update, md5_final,         64 /* block size */, sizeof(MD5_CTX),
-};
-
-const EVP_MD *EVP_md5(void) { return &md5_md; }
 
 
 static void sha1_init(EVP_MD_CTX *ctx) {

@@ -68,7 +68,6 @@ RING_SRCS = $(addprefix $(RING_PREFIX), \
   crypto/ecdh/ecdh.c \
   crypto/ecdsa/ecdsa.c \
   crypto/ecdsa/ecdsa_asn1.c \
-  crypto/md5/md5.c \
   crypto/mem.c \
   crypto/modes/cbc.c \
   crypto/modes/ctr.c \
@@ -100,7 +99,6 @@ RING_x86_SRCS = $(addprefix $(RING_PREFIX), \
   crypto/bn/asm/bn-586.pl \
   crypto/bn/asm/co-586.pl \
   crypto/bn/asm/x86-mont.pl \
-  crypto/md5/asm/md5-586.pl \
   crypto/modes/asm/ghash-x86.pl \
   crypto/sha/asm/sha1-586.pl \
   crypto/sha/asm/sha256-586.pl \
@@ -115,7 +113,6 @@ RING_x86_64_SRCS = $(addprefix $(RING_PREFIX), \
   crypto/bn/asm/rsaz-avx2.pl \
   crypto/bn/asm/x86_64-mont.pl \
   crypto/bn/asm/x86_64-mont5.pl \
-  crypto/md5/asm/md5-x86_64.pl \
   crypto/modes/asm/aesni-gcm-x86_64.pl \
   crypto/modes/asm/ghash-x86_64.pl \
   crypto/rand/asm/rdrand-x86_64.pl \

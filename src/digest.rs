@@ -12,7 +12,7 @@
 // ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
 // OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-//! SHA-2 and legacy SHA-1 and MD5 digest algorithms.
+//! SHA-2 and the legacy SHA-1 digest algorithm.
 //!
 //! If all the data is available in a single contiguous slice then the `digest`
 //! function should be used. Otherwise, the digest can be calculated in
@@ -229,7 +229,6 @@ macro_rules! impl_Digest {
     }
 }
 
-impl_Digest!(MD5, 128, 512, MD5_Init, MD5_Update, MD5_Final, 4 /*NID_md5*/);
 impl_Digest!(SHA1, 160, 512, SHA1_Init, SHA1_Update, SHA1_Final,
              64 /*NID_sha1*/);
 impl_Digest!(SHA256, 256, 512, SHA256_Init, SHA256_Update, SHA256_Final,

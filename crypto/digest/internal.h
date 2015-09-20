@@ -66,7 +66,7 @@ extern "C" {
 
 struct env_md_st {
   /* type contains a NID identifing the digest function. (For example,
-   * NID_md5.) */
+   * NID_sha512.) */
   int type;
 
   /* md_size contains the size, in bytes, of the resulting digest. */
