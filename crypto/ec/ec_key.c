@@ -447,3 +447,20 @@ err:
   BN_CTX_free(ctx);
   return ok;
 }
+
+EC_KEY *EC_KEY_generate_key_ex(EC_GROUP_new_fn ec_group_new) {
+  EC_KEY *key = EC_KEY_new_ex(ec_group_new);
+  if (!key) {
+    return NULL;
+  }
+  if (!EC_KEY_generate_key(key)) {
+    EC_KEY_free(key);
+    return NULL;
+  }
+  return key;
+}
+
+size_t EC_KEY_public_key_to_oct(const EC_KEY *key, uint8_t *out, size_t out_len) {
+  return EC_POINT_point2oct(EC_KEY_get0_group(key), EC_KEY_get0_public_key(key),
+                            POINT_CONVERSION_UNCOMPRESSED, out, out_len, NULL);
+}

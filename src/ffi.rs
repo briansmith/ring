@@ -21,6 +21,14 @@ pub fn map_bssl_result(bssl_result: libc::c_int) -> Result<(), ()> {
     }
 }
 
+pub fn map_bssl_ptr_result<T>(bssl_result: *mut T) -> Result<*mut T, ()> {
+    if bssl_result.is_null() {
+        return Err(());
+    }
+    Ok(bssl_result)
+}
+
+
 /// Returns `Ok(())` of `a == b` and `Err(())` otherwise. The comparison of
 /// `a` and `b` is done in constant time with respect to the contents of each,
 /// but NOT in constant time with respect to the lengths of `a` and `b`.

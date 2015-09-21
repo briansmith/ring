@@ -90,10 +90,20 @@ OPENSSL_EXPORT int ECDH_compute_key(void *out, size_t outlen,
                                     void *(*KDF)(const void *in, size_t inlen,
                                                  void *out, size_t *outlen));
 
-int ECDH_ephemeral(uint8_t *pre_master_secret, size_t *pre_master_secret_len,
-                   uint8_t *my_pub_point_bytes, size_t *my_pub_point_bytes_len,
-                   int curve_nid, const uint8_t *peer_pub_point_bytes,
-                   size_t peer_pub_point_bytes_len);
+/* ECDH_compute_key_ex calculates the shared key between |priv_key| and
+ * and the given peer encoded public key. ECDH_compute_key_ex verifies that
+ * the peer public point curve, identified by |peer_pub_point_curve_nid| is the
+ * same as |priv_key|'s curve. It also verifies that the encoded peer public
+ * point in |peer_pub_point_bytes| with length |peer_pub_point_bytes_len| is on
+ * the curve. |max_out_len| must be at least
+ * |(EC_GROUP_get_degree(group) + 7) / 8|, and at most that many bytes of the
+ * computed shared key are copied directly to |out|. The number of bytes
+ * written to |out| is returned in |out_len|. It returns 1 on success and 0 on
+ * error. */
+int ECDH_compute_key_ex(uint8_t *out, size_t *out_len, size_t max_out_len,
+                        EC_KEY *priv_key, int peer_pub_point_curve_nid,
+                        const uint8_t *peer_pub_point_bytes,
+                        size_t peer_pub_point_bytes_len);
 
 
 #if defined(__cplusplus)

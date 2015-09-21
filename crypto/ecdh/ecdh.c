@@ -161,40 +161,38 @@ err:
   return ret;
 }
 
-/* TODO: factor out the common logic between this and
- * |ECDSA_verify_signed_digest|.
- *
- * TODO: check that we're validating the keys as fully as we should be.
- */
-int ECDH_ephemeral(uint8_t *pre_master_secret, size_t *pre_master_secret_len,
-                   uint8_t *my_pub_point_bytes, size_t *my_pub_point_bytes_len,
-                   int ec_curve_nid, const uint8_t *peer_pub_point_bytes,
-                   size_t peer_pub_point_bytes_len) {
-  EC_GROUP *group = EC_GROUP_new_by_curve_name(ec_curve_nid);
-  if (!group) {
+/* TODO: check that we're validating the keys as fully as we should be. */
+int ECDH_compute_key_ex(uint8_t *out, size_t *out_len, size_t max_out_len,
+                        EC_KEY *priv_key, int peer_curve_nid,
+                        const uint8_t *peer_pub_point_bytes,
+                        size_t peer_pub_point_bytes_len) {
+  const EC_GROUP *group = EC_KEY_get0_group(priv_key);
+  if (peer_curve_nid != EC_GROUP_get_curve_name(group)) {
+    OPENSSL_PUT_ERROR(EC, EC_R_INCOMPATIBLE_OBJECTS);
     return 0;
   }
 
-  EC_POINT *peer_pub_point = NULL;
-  EC_KEY *my_key = NULL;
+  /* Avoid the case where |ECDH_compute_key| truncates the output. */
+  int degree = EC_GROUP_get_degree(group);
+  if (degree <= 0) {
+    OPENSSL_PUT_ERROR(EC, ERR_R_INTERNAL_ERROR);
+    return 0;
+  }
+  if (max_out_len < (((size_t)degree + 7) / 8)) {
+    OPENSSL_PUT_ERROR(EC, EC_R_BUFFER_TOO_SMALL);
+    return 0;
+  }
+
   int ret = 0;
 
-  peer_pub_point = EC_POINT_new(group);
+  EC_POINT *peer_pub_point = EC_POINT_new(group);
   if (!peer_pub_point ||
       !EC_POINT_oct2point(group, peer_pub_point, peer_pub_point_bytes,
                           peer_pub_point_bytes_len, NULL)) {
     goto err;
   }
 
-  my_key = EC_KEY_new();
-  if (!my_key ||
-      !EC_KEY_set_group(my_key, group) ||
-      !EC_KEY_generate_key(my_key)) {
-    goto err;
-  }
-
-  int len = ECDH_compute_key(pre_master_secret, *pre_master_secret_len,
-                             peer_pub_point, my_key, NULL);
+  int len = ECDH_compute_key(out, max_out_len, peer_pub_point, priv_key, NULL);
   if (len < 0) {
     goto err;
   }
@@ -202,22 +200,12 @@ int ECDH_ephemeral(uint8_t *pre_master_secret, size_t *pre_master_secret_len,
     OPENSSL_PUT_ERROR(ECDH, ERR_R_INTERNAL_ERROR);
     goto err;
   }
-  *pre_master_secret_len = (size_t)len;
-
-  *my_pub_point_bytes_len =
-    EC_POINT_point2oct(group, EC_KEY_get0_public_key(my_key),
-                       POINT_CONVERSION_UNCOMPRESSED, my_pub_point_bytes,
-                       *my_pub_point_bytes_len, NULL);
-  if (*my_pub_point_bytes_len == 0) {
-    goto err;
-  }
+  *out_len = (size_t)len;
 
   ret = 1;
 
 err:
-  EC_KEY_free(my_key);
   EC_POINT_free(peer_pub_point);
-  EC_GROUP_free(group);
 
   return ret;
 }

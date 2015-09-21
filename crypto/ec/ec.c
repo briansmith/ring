@@ -88,7 +88,7 @@
 #define EC_GROUP_new_curve_p256 EC_GROUP_new_curve_p256_impl
 static EC_GROUP *EC_GROUP_new_curve_p256_impl(const BIGNUM *p, const BIGNUM *a,
                                               const BIGNUM *b, BN_CTX *ctx) {
-  EC_GROUP *group = ec_group_new(EC_GFp_nistp256_method);
+  EC_GROUP *group = ec_group_new(EC_GFp_nistp256_method());
   if (!group) {
     return NULL;
   }
