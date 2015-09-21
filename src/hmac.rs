@@ -148,6 +148,10 @@ impl SigningKey {
 
         key
     }
+    
+    pub fn digest_algorithm(&self) -> &'static digest::Algorithm {
+        self.ctx_prototype.inner.algorithm()
+    }
 }
 
 /// A context for multi-step (Init-Update-Finish) HMAC signing.

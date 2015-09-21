@@ -12,7 +12,7 @@
 // ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
 // OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-use super::{digest, hmac};
+use super::hmac;
 
 /// Fills `out` with the output of the HKDF Extract-and-Expand operation for
 /// the given inputs.
@@ -20,22 +20,33 @@ use super::{digest, hmac};
 /// HKDF is the HMAC-based Extract-and-Expand Key Derivation Function
 /// specified in [RFC 5869](https://tools.ietf.org/html/rfc5869).
 ///
-/// | Parameter    | RFC 5869 Term
-/// |--------------|--------------
-/// | digest_alg   | Hash
-/// | secret       | IKM (Input Keying Material)
-/// | salt         | salt
-/// | info         | info
-/// | out          | OKM (Output Keying Material)
-/// | out.len()    | L (Length of output keying material in octets)
+/// | Parameter               | RFC 5869 Term
+/// |-------------------------|--------------
+/// | salt.digest_algorithm() | Hash
+/// | secret                  | IKM (Input Keying Material)
+/// | salt                    | salt
+/// | info                    | info
+/// | out                     | OKM (Output Keying Material)
+/// | out.len()               | L (Length of output keying material in bytes)
+///
+/// The salt is a `hmac::SigningKey` instead of a `&[u8]` because it is
+/// frequently the case that a fixed salt is used for multiple HKDF operations,
+/// so it is more efficient to construct the signing key once and reuse it.
+/// Given a digest algorithm `digest_alg` and a salt `salt: &[u8]`, the
+/// `SigningKey` should be constructed as
+/// `hmac::SigningKey::new(digest_alg, salt)`.
 ///
 /// # Panics
 ///
-/// `hkdf` panics if `out.len() > 255 * digest_alg.digest_len`. This is the
-/// maximum output size allowed by the HKDF specification. This limit is to
-/// prevent overflow of the 8-bit iteration counter in the expansion step.
-pub fn hkdf(digest_alg: &'static digest::Algorithm, secret: &[u8], salt: &[u8],
-            info: &[u8], out: &mut [u8]) {
+/// `hkdf` panics if the requested output length is larger than 255 times the
+// size of the digest algorithm, i.e. if
+/// `out.len() > 255 * salt.digest_algorithm().digest_len`. This is the limit
+/// imposed by the HKDF specification, and is necessary to prevent overflow of
+/// the 8-bit iteration counter in the expansion step.
+pub fn hkdf(secret: &[u8], salt: &hmac::SigningKey, info: &[u8],
+            out: &mut [u8]) {
+    let digest_alg = salt.digest_algorithm();
+
     assert!(out.len() <= 255 * digest_alg.digest_len);
 
     // The spec says that if no salt is provided then a key of
@@ -45,7 +56,6 @@ pub fn hkdf(digest_alg: &'static digest::Algorithm, secret: &[u8], salt: &[u8],
     // `SigningKey` constructor will automatically do the right thing for a
     // zero-length string.
     assert!(digest_alg.block_len >= digest_alg.digest_len);
-    let salt = hmac::SigningKey::new(digest_alg, salt);
 
     let prk = hmac::sign(&salt, secret);
     let prk = hmac::SigningKey::new(digest_alg, prk.as_ref());
@@ -83,7 +93,7 @@ pub fn hkdf(digest_alg: &'static digest::Algorithm, secret: &[u8], salt: &[u8],
 
 #[cfg(test)]
 mod tests {
-    use super::super::{file_test, hkdf};
+    use super::super::{file_test, hkdf, hmac};
 
     #[test]
     pub fn hkdf_tests() {
@@ -99,9 +109,10 @@ mod tests {
 
             let out = test_case.consume_bytes("OKM");
 
+            let salt = hmac::SigningKey::new(digest_alg, &salt);
+
             let mut out = vec![0u8; out.len()];
-            hkdf::hkdf(digest_alg, &secret[..], &salt[..], &info[..],
-                       &mut out[..]);
+            hkdf::hkdf(&secret, &salt, &info, &mut out);
             assert_eq!(out, out);
         }
 
