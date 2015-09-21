@@ -20,7 +20,7 @@ extern crate rustc_serialize;
 pub mod digest;
 pub mod ecc;
 mod ffi;
-mod hkdf; pub use hkdf::hkdf;
+pub mod hkdf;
 pub mod hmac;
 pub mod pbkdf2_hmac;
 pub mod rand;

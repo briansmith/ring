@@ -12,54 +12,87 @@
 // ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
 // OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
+//! HMAC-based Extract-and-Expand Key Derivation Function.
+//!
+//! HKDF is specified in [RFC 5869](https://tools.ietf.org/html/rfc5869).
+//!
+//! In most situations, it is best to use `extract_and_expand` to do both the
+//! HKDF-Extract and HKDF-Expand as one atomic operation. It is only necessary
+//! to use the separate `expand` and `extract` functions if a single derived
+//! `PRK` (defined in RFC 5869) is used more than once.
+//!
+//! Salts have type `hmac::SigningKey` instead of `&[u8]` because they are
+//! frequently used for multiple HKDF operations, and it is more efficient to
+//! construct the `SigningKey` once and reuse it. Given a digest algorithm
+//! `digest_alg` and a salt `salt: &[u8]`, the `SigningKey` should be
+//! constructed as `hmac::SigningKey::new(digest_alg, salt)`.
+
+
 use super::hmac;
 
 /// Fills `out` with the output of the HKDF Extract-and-Expand operation for
 /// the given inputs.
 ///
-/// HKDF is the HMAC-based Extract-and-Expand Key Derivation Function
-/// specified in [RFC 5869](https://tools.ietf.org/html/rfc5869).
+/// `extract_and_expand` is exactly equivalent to:
+///
+/// ```ignore
+/// let prk = extract(salt, secret);
+/// expand(&prk, info, out)
+/// ```
+///
+/// See the documentation for `extract` and `expand` for details.
+///
+/// # Panics
+///
+/// `extract_and_expand` panics if `expand` panics.
+pub fn extract_and_expand(salt: &hmac::SigningKey, secret: &[u8], info: &[u8],
+                          out: &mut [u8]) {
+    let prk = extract(salt, secret);
+    expand(&prk, info, out)
+}
+
+/// The HKDF-Extract operation.
 ///
 /// | Parameter               | RFC 5869 Term
 /// |-------------------------|--------------
 /// | salt.digest_algorithm() | Hash
 /// | secret                  | IKM (Input Keying Material)
-/// | salt                    | salt
-/// | info                    | info
-/// | out                     | OKM (Output Keying Material)
-/// | out.len()               | L (Length of output keying material in bytes)
-///
-/// The salt is a `hmac::SigningKey` instead of a `&[u8]` because it is
-/// frequently the case that a fixed salt is used for multiple HKDF operations,
-/// so it is more efficient to construct the signing key once and reuse it.
-/// Given a digest algorithm `digest_alg` and a salt `salt: &[u8]`, the
-/// `SigningKey` should be constructed as
-/// `hmac::SigningKey::new(digest_alg, salt)`.
-///
-/// # Panics
-///
-/// `hkdf` panics if the requested output length is larger than 255 times the
-// size of the digest algorithm, i.e. if
-/// `out.len() > 255 * salt.digest_algorithm().digest_len`. This is the limit
-/// imposed by the HKDF specification, and is necessary to prevent overflow of
-/// the 8-bit iteration counter in the expansion step.
-pub fn hkdf(secret: &[u8], salt: &hmac::SigningKey, info: &[u8],
-            out: &mut [u8]) {
-    let digest_alg = salt.digest_algorithm();
-
-    assert!(out.len() <= 255 * digest_alg.digest_len);
-
+/// | [return value]          | PRK
+pub fn extract(salt: &hmac::SigningKey, secret: &[u8]) -> hmac::SigningKey {
     // The spec says that if no salt is provided then a key of
     // `digest_alg.digest_len` bytes of zeros is used. But, HMAC keys are
     // already zero-padded to the block length, which is larger than the output
     // length of the extract step (the length of the digest). Consequently, the
     // `SigningKey` constructor will automatically do the right thing for a
     // zero-length string.
-    assert!(digest_alg.block_len >= digest_alg.digest_len);
-
     let prk = hmac::sign(&salt, secret);
-    let prk = hmac::SigningKey::new(digest_alg, prk.as_ref());
+    hmac::SigningKey::new(salt.digest_algorithm(), prk.as_ref())
+}
 
+/// Fills `out` with the output of the HKDF-Expand operation for the given
+/// inputs.
+///
+/// `prk` should be the return value of an earlier call to `extract`.
+///
+/// | Parameter  | RFC 5869 Term
+/// |------------|--------------
+/// | prk        | PRK
+/// | info       | info
+/// | out        | OKM (Output Keying Material)
+/// | out.len()  | L (Length of output keying material in bytes)
+///
+/// # Panics
+///
+/// `expand` panics if the requested output length is larger than 255 times the
+/// size of the digest algorithm, i.e. if
+/// `out.len() > 255 * salt.digest_algorithm().digest_len`. This is the limit
+/// imposed by the HKDF specification, and is necessary to prevent overflow of
+/// the 8-bit iteration counter in the expansion step.
+pub fn expand(prk: &hmac::SigningKey, info: &[u8], out: &mut [u8]) {
+    let digest_alg = prk.digest_algorithm();
+    assert!(out.len() <= 255 * digest_alg.digest_len);
+    assert!(digest_alg.block_len >= digest_alg.digest_len);
+    
     let mut ctx = hmac::SigningContext::with_key(&prk);
 
     let mut n = 1u8;
@@ -112,7 +145,7 @@ mod tests {
             let salt = hmac::SigningKey::new(digest_alg, &salt);
 
             let mut out = vec![0u8; out.len()];
-            hkdf::hkdf(&secret, &salt, &info, &mut out);
+            hkdf::extract_and_expand(&salt, &secret, &info, &mut out);
             assert_eq!(out, out);
         }
 
