@@ -83,15 +83,41 @@ extern "C" {
 
 /* EC key objects. */
 
-/* EC_KEY_new returns a fresh |EC_KEY| object or NULL on error. */
+/* EC_KEY_new_ex returns a fresh |EC_KEY| object for the group that is created
+ * by the function |ec_group_new|. |ec_group_new| should be
+ * |EC_GROUP_new_p256|, |EC_GROUP_new_p384|, etc.
+ *
+ * It is better to use |EC_KEY_new_ex| instead of |EC_KEY_new| +
+ * |EC_KEY_set_group| because |EC_KEY_new_ex| avoids the expensive
+ * |EC_GROUP_dup| in |EC_KEY_set_group|.
+ *
+ * It is better to use |EC_KEY_new_ex| instead of |EC_KEY_new_by_curve_name|
+ * because |EC_KEY_new_by_curve_name| forces the implementation of every curve
+ * to be linked in, whereas exclusive use of |EC_KEY_new_ex| allows the linker
+ * to link in only the implementations of the curves actually used. */
+EC_KEY *EC_KEY_new_ex(EC_GROUP_new_fn ec_group_new);
+
+/* EC_KEY_new returns a fresh |EC_KEY| object or NULL on error. Often it will
+ * be better to use |EC_KEY_new_ex| instead. */
 OPENSSL_EXPORT EC_KEY *EC_KEY_new(void);
 
 /* EC_KEY_new_method acts the same as |EC_KEY_new|, but takes an explicit
- * |ENGINE|. ring: |engine| must be NULL. */
+ * |ENGINE|. ring: |engine| must be NULL. It is often better to use
+ * |EC_KEY_new_ex| instead. */
 OPENSSL_EXPORT EC_KEY *EC_KEY_new_method(const ENGINE *engine);
 
 /* EC_KEY_new_by_curve_name returns a fresh EC_KEY for group specified by |nid|
- * or NULL on error. */
+ * or NULL on error.
+ *
+ * The supported NIDs are:
+ *   NID_secp224r1,
+ *   NID_X9_62_prime256v1,
+ *   NID_secp384r1,
+ *   NID_secp521r1.
+ *
+ * Using this function will force the linker to include the
+ * implementations for all of the aforementioned curves, so often it will be
+ * better to use |EC_KEY_new_ex| instead. */
 OPENSSL_EXPORT EC_KEY *EC_KEY_new_by_curve_name(int nid);
 
 /* EC_KEY_free frees all the data owned by |key| and |key| itself. */

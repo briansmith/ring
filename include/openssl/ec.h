@@ -91,6 +91,21 @@ typedef enum {
 
 /* Elliptic curve groups. */
 
+/* A pointer to a function that creates a new |EC_GROUP| instance. */
+typedef EC_GROUP *(*EC_GROUP_new_fn)(void);
+
+/* EC_group_new_p224 returns a fresh EC_GROUP object for the NIST P-224 curve. */
+EC_GROUP *EC_GROUP_new_p224(void);
+
+/* EC_group_new_p256 returns a fresh EC_GROUP object for the NIST P-256 curve. */
+EC_GROUP *EC_GROUP_new_p256(void);
+
+/* EC_group_new_p384 returns a fresh EC_GROUP object for the NIST P-384 curve. */
+EC_GROUP *EC_GROUP_new_p384(void);
+
+/* EC_group_new_p521 returns a fresh EC_GROUP object for the NIST P-521 curve. */
+EC_GROUP *EC_GROUP_new_p521(void);
+
 /* EC_GROUP_new_by_curve_name returns a fresh EC_GROUP object for the elliptic
  * curve specified by |nid|, or NULL on error.
  *
@@ -98,7 +113,10 @@ typedef enum {
  *   NID_secp224r1,
  *   NID_X9_62_prime256v1,
  *   NID_secp384r1,
- *   NID_secp521r1 */
+ *   NID_secp521r1.
+ *
+ * Using this function will force the linker to include the implementations for
+ * all of the aforementioned curves. */
 OPENSSL_EXPORT EC_GROUP *EC_GROUP_new_by_curve_name(int nid);
 
 /* EC_GROUP_free frees |group| and the data that it points to. */

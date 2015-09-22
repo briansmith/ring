@@ -80,7 +80,31 @@
 #pragma GCC diagnostic ignored "-Wgnu-flexible-array-initializer"
 #endif
 
+/* MSAN appears to have a bug that causes this P-256 code to be miscompiled
+ * in opt mode. While that is being looked at, don't run the uint128_t
+ * P-256 code under MSAN for now. */
+#if defined(OPENSSL_64_BIT) && !defined(OPENSSL_WINDOWS) && \
+    !defined(MEMORY_SANITIZER)
+#define EC_GROUP_new_curve_p256 EC_GROUP_new_curve_p256_impl
+static EC_GROUP *EC_GROUP_new_curve_p256_impl(const BIGNUM *p, const BIGNUM *a,
+                                              const BIGNUM *b, BN_CTX *ctx) {
+  EC_GROUP *group = ec_group_new(EC_GFp_nistp256_method);
+  if (!group) {
+    return NULL;
+  }
+  if (!group->meth->group_set_curve(group, p, a, b, ctx)) {
+    EC_GROUP_free(group);
+    return NULL;
+  }
+  return group;
+}
+#else
+#define EC_GROUP_new_curve_p256 EC_GROUP_new_curve_GFp
+#endif
+
 static const struct curve_data P224 = {
+    NID_secp224r1,
+    EC_GROUP_new_curve_GFp,
     "NIST P-224",
     28,
     1,
@@ -111,6 +135,8 @@ static const struct curve_data P224 = {
     }};
 
 static const struct curve_data P256 = {
+    NID_X9_62_prime256v1,
+    EC_GROUP_new_curve_p256,
     "NIST P-256",
     32,
     1,
@@ -140,6 +166,8 @@ static const struct curve_data P256 = {
      0xF3, 0xB9, 0xCA, 0xC2, 0xFC, 0x63, 0x25, 0x51}};
 
 static const struct curve_data P384 = {
+    NID_secp384r1,
+    EC_GROUP_new_curve_GFp,
     "NIST P-384",
     48,
     1,
@@ -175,6 +203,8 @@ static const struct curve_data P384 = {
      0x48, 0xB0, 0xA7, 0x7A, 0xEC, 0xEC, 0x19, 0x6A, 0xCC, 0xC5, 0x29, 0x73}};
 
 static const struct curve_data P521 = {
+    NID_secp521r1,
+    EC_GROUP_new_curve_GFp,
     "NIST P-521",
     66,
     1,
@@ -220,25 +250,6 @@ static const struct curve_data P521 = {
      0x87, 0x83, 0xBF, 0x2F, 0x96, 0x6B, 0x7F, 0xCC, 0x01, 0x48, 0xF7, 0x09,
      0xA5, 0xD0, 0x3B, 0xB5, 0xC9, 0xB8, 0x89, 0x9C, 0x47, 0xAE, 0xBB, 0x6F,
      0xB7, 0x1E, 0x91, 0x38, 0x64, 0x09}};
-
-const struct built_in_curve OPENSSL_built_in_curves[] = {
-    {NID_secp224r1, &P224, 0},
-    {
-        NID_X9_62_prime256v1, &P256,
-    /* MSAN appears to have a bug that causes this P-256 code to be miscompiled
-     * in opt mode. While that is being looked at, don't run the uint128_t
-     * P-256 code under MSAN for now. */
-#if defined(OPENSSL_64_BIT) && !defined(OPENSSL_WINDOWS) && \
-    !defined(MEMORY_SANITIZER)
-        EC_GFp_nistp256_method,
-#else
-        0,
-#endif
-    },
-    {NID_secp384r1, &P384, 0},
-    {NID_secp521r1, &P521, 0},
-    {NID_undef, 0, 0},
-};
 
 EC_GROUP *ec_group_new(const EC_METHOD *meth) {
   EC_GROUP *ret;
@@ -331,15 +342,13 @@ int EC_GROUP_set_generator(EC_GROUP *group, const EC_POINT *generator,
   return 1;
 }
 
-static EC_GROUP *ec_group_new_from_data(const struct built_in_curve *curve) {
+static EC_GROUP *ec_group_new_from_data(const struct curve_data *data) {
   EC_GROUP *group = NULL;
   EC_POINT *P = NULL;
   BN_CTX *ctx = NULL;
   BIGNUM *p = NULL, *a = NULL, *b = NULL, *x = NULL, *y = NULL;
   int ok = 0;
   unsigned param_len;
-  const EC_METHOD *meth;
-  const struct curve_data *data;
   const uint8_t *params;
 
   if ((ctx = BN_CTX_new()) == NULL) {
@@ -347,7 +356,6 @@ static EC_GROUP *ec_group_new_from_data(const struct built_in_curve *curve) {
     goto err;
   }
 
-  data = curve->data;
   param_len = data->param_len;
   params = data->data;
 
@@ -358,18 +366,10 @@ static EC_GROUP *ec_group_new_from_data(const struct built_in_curve *curve) {
     goto err;
   }
 
-  if (curve->method != 0) {
-    meth = curve->method();
-    if (((group = ec_group_new(meth)) == NULL) ||
-        (!(group->meth->group_set_curve(group, p, a, b, ctx)))) {
-      OPENSSL_PUT_ERROR(EC, ERR_R_EC_LIB);
-      goto err;
-    }
-  } else {
-    if ((group = EC_GROUP_new_curve_GFp(p, a, b, ctx)) == NULL) {
-      OPENSSL_PUT_ERROR(EC, ERR_R_EC_LIB);
-      goto err;
-    }
+  group = data->ec_group_new_curve(p, a, b, ctx);
+  if (group == NULL) {
+    OPENSSL_PUT_ERROR(EC, ERR_R_EC_LIB);
+    goto err;
   }
 
   if ((P = EC_POINT_new(group)) == NULL) {
@@ -394,6 +394,7 @@ static EC_GROUP *ec_group_new_from_data(const struct built_in_curve *curve) {
   }
 
   group->generator = P;
+  group->curve_name = data->nid;
   P = NULL;
   ok = 1;
 
@@ -412,26 +413,21 @@ err:
   return group;
 }
 
+EC_GROUP *EC_GROUP_new_p224(void) { return ec_group_new_from_data(&P224); }
+EC_GROUP *EC_GROUP_new_p256(void) { return ec_group_new_from_data(&P256); }
+EC_GROUP *EC_GROUP_new_p384(void) { return ec_group_new_from_data(&P384); }
+EC_GROUP *EC_GROUP_new_p521(void) { return ec_group_new_from_data(&P521); }
+
 EC_GROUP *EC_GROUP_new_by_curve_name(int nid) {
-  unsigned i;
-  const struct built_in_curve *curve;
-  EC_GROUP *ret = NULL;
-
-  for (i = 0; OPENSSL_built_in_curves[i].nid != NID_undef; i++) {
-    curve = &OPENSSL_built_in_curves[i];
-    if (curve->nid == nid) {
-      ret = ec_group_new_from_data(curve);
-      break;
-    }
+  switch (nid) {
+    case NID_secp224r1: return EC_GROUP_new_p224();
+    case NID_X9_62_prime256v1: return EC_GROUP_new_p256();
+    case NID_secp384r1: return EC_GROUP_new_p384();
+    case NID_secp521r1: return EC_GROUP_new_p521();
+    default:
+      OPENSSL_PUT_ERROR(EC, EC_R_UNKNOWN_GROUP);
+      return NULL;
   }
-
-  if (ret == NULL) {
-    OPENSSL_PUT_ERROR(EC, EC_R_UNKNOWN_GROUP);
-    return NULL;
-  }
-
-  ret->curve_name = nid;
-  return ret;
 }
 
 void EC_GROUP_free(EC_GROUP *group) {

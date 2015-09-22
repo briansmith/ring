@@ -101,6 +101,20 @@ EC_KEY *EC_KEY_new_method(const ENGINE *engine) {
   return ret;
 }
 
+EC_KEY *EC_KEY_new_ex(EC_GROUP_new_fn ec_group_new) {
+  EC_KEY *ret = EC_KEY_new();
+  if (ret == NULL) {
+    OPENSSL_PUT_ERROR(EC, ERR_R_MALLOC_FAILURE);
+    return NULL;
+  }
+  ret->group = ec_group_new();
+  if (ret->group == NULL) {
+    EC_KEY_free(ret);
+    return NULL;
+  }
+  return ret;
+}
+
 EC_KEY *EC_KEY_new_by_curve_name(int nid) {
   EC_KEY *ret = EC_KEY_new();
   if (ret == NULL) {

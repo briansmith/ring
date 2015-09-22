@@ -331,6 +331,9 @@ struct ec_key_st {
 
 /* curve_data contains data about a built-in elliptic curve. */
 struct curve_data {
+  int nid;
+  EC_GROUP *(*ec_group_new_curve)(const BIGNUM *p, const BIGNUM *a,
+                                  const BIGNUM *b, BN_CTX *ctx);
   /* comment is a human-readable string describing the curve. */
   const char *comment;
   /* param_len is the number of bytes needed to store a field element. */
@@ -343,16 +346,6 @@ struct curve_data {
    * generator y, order. */
   const uint8_t data[];
 };
-
-struct built_in_curve {
-  int nid;
-  const struct curve_data *data;
-  const EC_METHOD *(*method)(void);
-};
-
-/* OPENSSL_built_in_curves is terminated with an entry where |nid| is
- * |NID_undef|. */
-extern const struct built_in_curve OPENSSL_built_in_curves[];
 
 #if defined(__cplusplus)
 }  /* extern C */
