@@ -138,8 +138,9 @@ OPENSSL_EXPORT int EVP_DigestInit(EVP_MD_CTX *ctx, const EVP_MD *type);
 OPENSSL_EXPORT int EVP_DigestUpdate(EVP_MD_CTX *ctx, const void *data,
                                     size_t len);
 
-/* EVP_MAX_MD_SIZE is the largest digest size supported. Functions that output
- * a digest generally require the buffer have at least this much space. */
+/* EVP_MAX_MD_SIZE is the largest digest size supported, in bytes.
+ * Functions that output a digest generally require the buffer have
+ * at least this much space. */
 #define EVP_MAX_MD_SIZE 64 /* SHA-512 is the longest so far. */
 
 /* EVP_DigestFinal_ex finishes the digest in |ctx| and writes the output to
@@ -180,7 +181,7 @@ OPENSSL_EXPORT uint32_t EVP_MD_flags(const EVP_MD *md);
 /* EVP_MD_size returns the digest size of |md|, in bytes. */
 OPENSSL_EXPORT size_t EVP_MD_size(const EVP_MD *md);
 
-/* EVP_MD_block_size returns the native block-size of |md|. */
+/* EVP_MD_block_size returns the native block-size of |md|, in bytes. */
 OPENSSL_EXPORT size_t EVP_MD_block_size(const EVP_MD *md);
 
 /* EVP_MD_FLAG_PKEY_DIGEST indicates the the digest function is used with a
@@ -215,12 +216,12 @@ OPENSSL_EXPORT const EVP_MD *EVP_get_digestbyname(const char *);
  * been set. */
 OPENSSL_EXPORT const EVP_MD *EVP_MD_CTX_md(const EVP_MD_CTX *ctx);
 
-/* EVP_MD_CTX_size returns the digest size of |ctx|. It will crash if a digest
- * hasn't been set on |ctx|. */
+/* EVP_MD_CTX_size returns the digest size of |ctx|, in bytes. It
+ * will crash if a digest hasn't been set on |ctx|. */
 OPENSSL_EXPORT unsigned EVP_MD_CTX_size(const EVP_MD_CTX *ctx);
 
 /* EVP_MD_CTX_block_size returns the block size of the digest function used by
- * |ctx|. It will crash if a digest hasn't been set on |ctx|. */
+ * |ctx|, in bytes. It will crash if a digest hasn't been set on |ctx|. */
 OPENSSL_EXPORT unsigned EVP_MD_CTX_block_size(const EVP_MD_CTX *ctx);
 
 /* EVP_MD_CTX_type returns a NID describing the digest function used by |ctx|.
