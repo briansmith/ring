@@ -104,6 +104,13 @@ pub fn derive(digest_alg: &'static digest::Algorithm, iterations: usize,
 /// | previously_derived.len() | dkLen (derived key length)
 ///
 /// C analog: `PKCS5_PBKDF2_HMAC` + `CRYPTO_memcmp`
+///
+/// # Panics
+///
+/// `verify` panics if `iterations < 1`.
+///
+/// `verify` panics if `previously_derived.len() > digest_alg.digest_len`.
+
 pub fn verify(digest_alg: &'static digest::Algorithm, iterations: usize,
               secret: &[u8], salt: &[u8], previously_derived: &[u8])
               -> Result<(), ()> {
