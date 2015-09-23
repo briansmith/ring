@@ -146,7 +146,7 @@ pub fn verify_ecdsa_signed_digest_asn1(curve: &EllipticCurve,
         ECDSA_verify_signed_digest(0, digest.as_ref().as_ptr(),
                                    digest.as_ref().len() as libc::size_t,
                                    sig.as_ptr(), sig.len() as libc::size_t,
-                                   curve.nid, key.as_ptr(),
+                                   curve.ec_group_new, key.as_ptr(),
                                    key.len() as libc::size_t)
     })
 }
@@ -205,6 +205,7 @@ extern {
     fn ECDSA_verify_signed_digest(hash_nid: libc::c_int, digest: *const u8,
                                   digest_len: libc::size_t, sig_der: *const u8,
                                   sig_der_len: libc::size_t,
-                                  curve_nid: libc::c_int, key_octets: *const u8,
+                                  ec_group_new: ECGroupNewFn,
+                                  key_octets: *const u8,
                                   key_octets_len: libc::size_t) -> libc::c_int;
 }

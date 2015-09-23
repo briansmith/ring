@@ -65,9 +65,9 @@
 
 int ECDSA_verify_signed_digest(int hash_nid, const uint8_t *digest,
                                size_t digest_len, const uint8_t *sig,
-                               size_t sig_len, int ec_curve_nid,
+                               size_t sig_len, EC_GROUP_new_fn ec_group_new,
                                const uint8_t *ec_key, const size_t ec_key_len) {
-  EC_GROUP *group = EC_GROUP_new_by_curve_name(ec_curve_nid);
+  EC_GROUP *group = ec_group_new();
   if (!group) {
     return 0;
   }
