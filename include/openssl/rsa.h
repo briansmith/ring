@@ -339,7 +339,7 @@ OPENSSL_EXPORT int RSA_add_pkcs1_prefix(uint8_t **out_msg, size_t *out_msg_len,
 OPENSSL_EXPORT RSA *RSA_parse_public_key(CBS *cbs);
 
 /* RSA_parse_public_key_buggy behaves like |RSA_parse_public_key|, but it
- * tolerates negative moduli. Do not use this function. */
+ * tolerates some invalid encodings. Do not use this function. */
 OPENSSL_EXPORT RSA *RSA_parse_public_key_buggy(CBS *cbs);
 
 /* RSA_public_key_from_bytes parses |in| as a DER-encoded RSAPublicKey structure

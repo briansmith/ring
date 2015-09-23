@@ -50,18 +50,9 @@ int BN_cbs2unsigned_buggy(CBS *cbs, BIGNUM *ret) {
     return 0;
   }
 
-  /* INTEGERs must be minimal. */
-  if (CBS_data(&child)[0] == 0x00 &&
-      CBS_len(&child) > 1 &&
-      !(CBS_data(&child)[1] & 0x80)) {
-    OPENSSL_PUT_ERROR(BN, BN_R_BAD_ENCODING);
-    return 0;
-  }
-
-  /* This function intentionally does not reject negative numbers. Estonian IDs
-   * issued between September 2014 to September 2015 are broken and use negative
-   * moduli. They last five years and are common enough that we need to work
-   * around this bug. See https://crbug.com/532048.
+  /* This function intentionally does not reject negative numbers or non-minimal
+   * encodings. Estonian IDs issued between September 2014 to September 2015 are
+   * broken. See https://crbug.com/532048 and https://crbug.com/534766.
    *
    * TODO(davidben): Remove this code and callers in March 2016. */
   return BN_bin2bn(CBS_data(&child), CBS_len(&child), ret) != NULL;

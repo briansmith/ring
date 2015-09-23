@@ -1774,15 +1774,16 @@ static const ASN1InvalidTest kASN1InvalidTests[] = {
     {"\x03\x01\x00", 3},
     // Empty contents.
     {"\x02\x00", 2},
-    // Unnecessary leading zeros.
-    {"\x02\x02\x00\x01", 4},
 };
 
-// kASN1NegativeTests are encodings of negative numbers and how
-// |BN_cbs2unsigned_buggy| should interpret them.
-static const ASN1Test kASN1NegativeTests[] = {
+// kASN1BuggyTests are incorrect encodings and how |BN_cbs2unsigned_buggy|
+// should interpret them.
+static const ASN1Test kASN1BuggyTests[] = {
+    // Negative numbers.
     {"128", "\x02\x01\x80", 3},
     {"255", "\x02\x01\xff", 3},
+    // Unnecessary leading zeros.
+    {"1", "\x02\x02\x00\x01", 4},
 };
 
 static bool test_asn1() {
@@ -1861,8 +1862,8 @@ static bool test_asn1() {
     ERR_clear_error();
   }
 
-  for (const ASN1Test &test : kASN1NegativeTests) {
-    // Negative numbers are rejected by |BN_cbs2unsigned|.
+  for (const ASN1Test &test : kASN1BuggyTests) {
+    // These broken encodings are rejected by |BN_cbs2unsigned|.
     ScopedBIGNUM bn(BN_new());
     if (!bn) {
       return false;

@@ -92,9 +92,8 @@ static int rsa_pub_decode(EVP_PKEY *pkey, X509_PUBKEY *pubkey) {
     return 0;
   }
 
-  /* Estonian IDs issued between September 2014 to September 2015 are broken and
-   * use negative moduli. They last five years and are common enough that we
-   * need to work around this bug. See https://crbug.com/532048.
+  /* Estonian IDs issued between September 2014 to September 2015 are
+   * broken. See https://crbug.com/532048 and https://crbug.com/534766.
    *
    * TODO(davidben): Switch this to the strict version in March 2016 or when
    * Chromium can force client certificates down a different codepath, whichever
