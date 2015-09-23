@@ -230,12 +230,11 @@ static bool InstallCertificate(SSL *ssl) {
   if (!config->digest_prefs.empty()) {
     std::unique_ptr<char, Free<char>> digest_prefs(
         strdup(config->digest_prefs.c_str()));
-    char *tokptr = nullptr;
     std::vector<int> digest_list;
 
     for (;;) {
-      char *token = strtok_r(digest_list.empty() ? digest_prefs.get() : nullptr,
-                             ",", &tokptr);
+      char *token =
+          strtok(digest_list.empty() ? digest_prefs.get() : nullptr, ",");
       if (token == nullptr) {
         break;
       }
