@@ -40,13 +40,24 @@ static bool TestAEAD(FileTest *t, void *arg) {
   const EVP_AEAD *aead = reinterpret_cast<const EVP_AEAD*>(arg);
 
   std::vector<uint8_t> key, nonce, in, ad, ct, tag;
+  bool nonce_is_default = false;
   if (!t->GetBytes(&key, "KEY") ||
-      !t->GetBytes(&nonce, "NONCE") ||
+      !t->GetBytesOrDefault(&nonce, &nonce_is_default, "NONCE") ||
       !t->GetBytes(&in, "IN") ||
       !t->GetBytes(&ad, "AD") ||
       !t->GetBytes(&ct, "CT") ||
       !t->GetBytes(&tag, "TAG")) {
     return false;
+  }
+
+  bool nonce_bad = false;
+  if (t->HasAttribute("FAILS")) {
+    const std::string &error_name = t->GetAttributeOrDie("FAILS");
+    if (error_name != "WRONG_NONCE_LENGTH") {
+      t->PrintLine("Unrecognized error: %s", error_name.c_str());
+      return false;
+    }
+    nonce_bad = true;
   }
 
   ScopedEVP_AEAD_CTX ctx;
@@ -57,39 +68,50 @@ static bool TestAEAD(FileTest *t, void *arg) {
     return false;
   }
 
-  std::vector<uint8_t> out(in.size() + EVP_AEAD_max_overhead(aead));
-  if (!t->HasAttribute("NO_SEAL")) {
-    size_t out_len;
-    if (!EVP_AEAD_CTX_seal(ctx.get(), bssl::vector_data(&out), &out_len,
-                           out.size(), bssl::vector_data(&nonce), nonce.size(),
-                           bssl::vector_data(&in), in.size(),
-                           bssl::vector_data(&ad), ad.size())) {
-      t->PrintLine("Failed to run AEAD.");
-      return false;
-    }
-    out.resize(out_len);
-
-    if (out.size() != ct.size() + tag.size()) {
-      t->PrintLine("Bad output length: %u vs %u.", (unsigned)out_len,
-                   (unsigned)(ct.size() + tag.size()));
-      return false;
-    }
-    if (!t->ExpectBytesEqual(bssl::vector_data(&ct), ct.size(),
-                             bssl::vector_data(&out), ct.size()) ||
-        !t->ExpectBytesEqual(bssl::vector_data(&tag), tag.size(),
-                             bssl::vector_data(&out) + ct.size(), tag.size())) {
-      return false;
-    }
+  const uint8_t *nonce_ptr;
+  size_t nonce_len;
+  if (nonce_is_default) {
+    nonce_ptr = EVP_aead_aes_key_wrap_default_iv();
+    nonce_len = 8;
   } else {
-    out.resize(ct.size() + tag.size());
-    memcpy(bssl::vector_data(&out), bssl::vector_data(&ct), ct.size());
-    memcpy(bssl::vector_data(&out) + ct.size(), bssl::vector_data(&tag),
-           tag.size());
+    nonce_ptr = bssl::vector_data(&nonce);
+    nonce_len = nonce.size();
   }
 
-  // The "stateful" AEADs for implementing pre-AEAD cipher suites need to be
-  // reset after each operation.
-  ctx.Reset();
+  std::vector<uint8_t> ct_and_tag(ct);
+  ct_and_tag.insert(ct_and_tag.end(), tag.begin(), tag.end());
+
+  {
+    std::vector<uint8_t> out(in.size() + EVP_AEAD_max_overhead(aead));
+    size_t out_len;
+    int ret = EVP_AEAD_CTX_seal(ctx.get(), bssl::vector_data(&out), &out_len,
+                                out.size(), nonce_ptr, nonce_len,
+                                bssl::vector_data(&in), in.size(),
+                                bssl::vector_data(&ad), ad.size());
+    if (nonce_bad) {
+      if (ret) {
+        t->PrintLine("Failed to detect bad nonce.");
+        return false;
+      }
+      ERR_clear_error();
+    } else if (!ret) {
+      t->PrintLine("Failed to run AEAD.");
+      return false;
+    } else {
+      out.resize(out_len);
+      if (out.size() != ct_and_tag.size()) {
+        t->PrintLine("Bad output length: %u vs %u.", (unsigned)out_len,
+                     (unsigned)(ct.size() + tag.size()));
+        return false;
+      }
+      if (!t->ExpectBytesEqual(bssl::vector_data(&ct_and_tag), ct_and_tag.size(),
+                               bssl::vector_data(&out), ct_and_tag.size())) {
+        t->PrintLine("failed to encrypt correctly");
+        return false;
+      }
+    }
+  }
+
   if (!EVP_AEAD_CTX_init_with_direction(ctx.get(), aead,
                                         bssl::vector_data(&key), key.size(),
                                         tag.size(), evp_aead_open)) {
@@ -97,20 +119,22 @@ static bool TestAEAD(FileTest *t, void *arg) {
     return false;
   }
 
-  std::vector<uint8_t> out2(out.size());
+  std::vector<uint8_t> out2(ct_and_tag.size());
   size_t out2_len;
-  int ret = EVP_AEAD_CTX_open(ctx.get(),
-                              bssl::vector_data(&out2), &out2_len, out2.size(),
-                              bssl::vector_data(&nonce), nonce.size(),
-                              bssl::vector_data(&out), out.size(),
+  int ret = EVP_AEAD_CTX_open(ctx.get(), bssl::vector_data(&out2), &out2_len,
+                              out2.size(), nonce_ptr, nonce_len,
+                              bssl::vector_data(&ct_and_tag), ct_and_tag.size(),
                               bssl::vector_data(&ad), ad.size());
-  if (t->HasAttribute("FAILS")) {
+  if (nonce_bad) {
     if (ret) {
-      t->PrintLine("Decrypted bad data.");
+      t->PrintLine("Failed to detect bad nonce.");
       return false;
     }
     ERR_clear_error();
     return true;
+  } else if (!ret) {
+    t->PrintLine("Failed to decrypt.");
+    return false;
   }
 
   if (!ret) {
@@ -120,12 +144,10 @@ static bool TestAEAD(FileTest *t, void *arg) {
   out2.resize(out2_len);
   if (!t->ExpectBytesEqual(bssl::vector_data(&in), in.size(),
                            bssl::vector_data(&out2), out2.size())) {
+    t->PrintLine("failed to decrypt correctly.");
     return false;
   }
 
-  // The "stateful" AEADs for implementing pre-AEAD cipher suites need to be
-  // reset after each operation.
-  ctx.Reset();
   if (!EVP_AEAD_CTX_init_with_direction(ctx.get(), aead,
                                         bssl::vector_data(&key), key.size(),
                                         tag.size(), evp_aead_open)) {
@@ -134,20 +156,19 @@ static bool TestAEAD(FileTest *t, void *arg) {
   }
 
   // Garbage at the end isn't ignored.
-  out.push_back(0);
-  out2.resize(out.size());
+  std::vector<uint8_t> ct_and_tag_and_garbage(ct_and_tag);
+  ct_and_tag_and_garbage.push_back(0);
+  out2.resize(ct_and_tag_and_garbage.size());
   if (EVP_AEAD_CTX_open(ctx.get(), bssl::vector_data(&out2), &out2_len,
-                        out2.size(), bssl::vector_data(&nonce), nonce.size(),
-                        bssl::vector_data(&out), out.size(),
+                        out2.size(), nonce_ptr, nonce_len,
+                        bssl::vector_data(&ct_and_tag_and_garbage),
+                        ct_and_tag_and_garbage.size(),
                         bssl::vector_data(&ad), ad.size())) {
     t->PrintLine("Decrypted bad data with trailing garbage.");
     return false;
   }
   ERR_clear_error();
 
-  // The "stateful" AEADs for implementing pre-AEAD cipher suites need to be
-  // reset after each operation.
-  ctx.Reset();
   if (!EVP_AEAD_CTX_init_with_direction(ctx.get(), aead,
                                         bssl::vector_data(&key), key.size(),
                                         tag.size(), evp_aead_open)) {
@@ -156,12 +177,13 @@ static bool TestAEAD(FileTest *t, void *arg) {
   }
 
   // Verify integrity is checked.
-  out[0] ^= 0x80;
-  out.resize(out.size() - 1);
-  out2.resize(out.size());
+  std::vector<uint8_t> tampered_ct_and_tag(ct_and_tag);
+  tampered_ct_and_tag[0] ^= 0x80;
+  out2.resize(tampered_ct_and_tag.size());
   if (EVP_AEAD_CTX_open(ctx.get(), bssl::vector_data(&out2), &out2_len,
-                        out2.size(), bssl::vector_data(&nonce), nonce.size(),
-                        bssl::vector_data(&out), out.size(),
+                        out2.size(), nonce_ptr, nonce_len,
+                        bssl::vector_data(&tampered_ct_and_tag),
+                        tampered_ct_and_tag.size(),
                         bssl::vector_data(&ad), ad.size())) {
     t->PrintLine("Decrypted bad data with corrupted byte.");
     return false;

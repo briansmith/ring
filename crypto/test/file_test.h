@@ -123,6 +123,13 @@ class FileTest {
   // success and returns false with an error to |stderr| on failure.
   bool GetBytes(std::vector<uint8_t> *out, const std::string &key);
 
+  // GetBytesOrDefault looks up the attribute with key |key|. If the value is
+  // encoded as "DEFAULT", without the quotes, then it sets |*is_default| to
+  // true and returns true, leaving |out| untouched. Otherwise it sets
+  // |*is_default| to false and works identically to |GetBytes|.
+  bool GetBytesOrDefault(std::vector<uint8_t> *out, bool *is_default,
+                         const std::string &key);
+
   // ExpectBytesEqual returns true if |expected| and |actual| are equal.
   // Otherwise, it returns false and prints a message to |stderr|.
   bool ExpectBytesEqual(const uint8_t *expected, size_t expected_len,

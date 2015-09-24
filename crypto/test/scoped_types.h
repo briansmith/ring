@@ -70,11 +70,6 @@ class ScopedOpenSSLContext {
   T *get() { return &ctx_; }
   const T *get() const { return &ctx_; }
 
-  void Reset() {
-    cleanup_func(&ctx_);
-    init_func(&ctx_);
-  }
-
  private:
   T ctx_;
 };

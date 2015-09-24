@@ -88,14 +88,12 @@ struct evp_aead_st {
   void (*cleanup)(EVP_AEAD_CTX *);
 
   int (*seal)(const EVP_AEAD_CTX *ctx, uint8_t *out, size_t *out_len,
-              size_t max_out_len, const uint8_t *nonce, size_t nonce_len,
-              const uint8_t *in, size_t in_len, const uint8_t *ad,
-              size_t ad_len);
+              size_t max_out_len, const uint8_t *nonce, const uint8_t *in,
+              size_t in_len, const uint8_t *ad, size_t ad_len);
 
   int (*open)(const EVP_AEAD_CTX *ctx, uint8_t *out, size_t *out_len,
-              size_t max_out_len, const uint8_t *nonce, size_t nonce_len,
-              const uint8_t *in, size_t in_len, const uint8_t *ad,
-              size_t ad_len);
+              size_t max_out_len, const uint8_t *nonce, const uint8_t *in,
+              size_t in_len, const uint8_t *ad, size_t ad_len);
 };
 
 

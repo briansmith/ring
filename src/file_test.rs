@@ -61,9 +61,12 @@ impl TestCase {
     }
 
     pub fn consume_string(&mut self, key: &str) -> String {
+        self.consume_optional_string(key)
+            .unwrap_or_else(|| panic!("No attribute named \"{}\"", key))
+    }
+
+    pub fn consume_optional_string(&mut self, key: &str) -> Option<String> {
         self.attributes.remove(key)
-                       .unwrap_or_else(
-                            || panic!("No attribute named \"{}\"", key))
     }
 }
 

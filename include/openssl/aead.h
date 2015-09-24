@@ -104,9 +104,12 @@ OPENSSL_EXPORT const EVP_AEAD *EVP_aead_chacha20_poly1305(void);
 /* EVP_aead_aes_128_key_wrap is AES-128 Key Wrap mode. This should never be
  * used except to interoperate with existing systems that use this mode.
  *
- * If the nonce is empty then the default nonce will be used, otherwise it must
- * be eight bytes long. The input must be a multiple of eight bytes long. No
- * additional data can be given to this mode. */
+ * The input must be a multiple of eight bytes long. No additional data can be
+ * given to this mode.
+ *
+ * ring: |EVP_aead_aes_key_wrap_default_iv| returns the default nonce.
+ * BoringSSL's mechanism for passing 0 as the nonce length to use the default
+ * nonce is not supported. */
 OPENSSL_EXPORT const EVP_AEAD *EVP_aead_aes_128_key_wrap(void);
 
 /* EVP_aead_aes_256_key_wrap is AES-256 in Key Wrap mode. This should never be
@@ -114,6 +117,11 @@ OPENSSL_EXPORT const EVP_AEAD *EVP_aead_aes_128_key_wrap(void);
  *
  * See |EVP_aead_aes_128_key_wrap| for details. */
 OPENSSL_EXPORT const EVP_AEAD *EVP_aead_aes_256_key_wrap(void);
+
+/* EVP_aead_aes_key_wrap_default_iv returns the default IV for the AES key
+ * wrap AEADs. The IV's length is 8 bytes, which is what |EVP_AEAD_nonce_length|
+ * returns for the AES key wrap AEADs. */
+const uint8_t *EVP_aead_aes_key_wrap_default_iv(void);
 
 /* EVP_has_aes_hardware returns one if we enable hardware support for fast and
  * constant-time AES-GCM. */

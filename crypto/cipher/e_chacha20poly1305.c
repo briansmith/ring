@@ -91,7 +91,7 @@ static void poly1305_update_with_length(poly1305_state *poly1305,
 
 static int aead_chacha20_poly1305_seal(const EVP_AEAD_CTX *ctx, uint8_t *out,
                                        size_t *out_len, size_t max_out_len,
-                                       const uint8_t *nonce, size_t nonce_len,
+                                       const uint8_t *nonce,
                                        const uint8_t *in, size_t in_len,
                                        const uint8_t *ad, size_t ad_len) {
   const struct aead_chacha20_poly1305_ctx *c20_ctx = ctx->aead_state;
@@ -121,11 +121,6 @@ static int aead_chacha20_poly1305_seal(const EVP_AEAD_CTX *ctx, uint8_t *out,
     return 0;
   }
 
-  if (nonce_len != CHACHA20_NONCE_LEN) {
-    OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_IV_TOO_LARGE);
-    return 0;
-  }
-
   memset(poly1305_key, 0, sizeof(poly1305_key));
   CRYPTO_chacha_20(poly1305_key, poly1305_key, sizeof(poly1305_key),
                    c20_ctx->key, nonce, 0);
@@ -144,7 +139,7 @@ static int aead_chacha20_poly1305_seal(const EVP_AEAD_CTX *ctx, uint8_t *out,
 
 static int aead_chacha20_poly1305_open(const EVP_AEAD_CTX *ctx, uint8_t *out,
                                        size_t *out_len, size_t max_out_len,
-                                       const uint8_t *nonce, size_t nonce_len,
+                                       const uint8_t *nonce,
                                        const uint8_t *in, size_t in_len,
                                        const uint8_t *ad, size_t ad_len) {
   const struct aead_chacha20_poly1305_ctx *c20_ctx = ctx->aead_state;
@@ -168,11 +163,6 @@ static int aead_chacha20_poly1305_open(const EVP_AEAD_CTX *ctx, uint8_t *out,
    * the warning. */
   if (in_len_64 >= (1ull << 32) * 64 - 64) {
     OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_TOO_LARGE);
-    return 0;
-  }
-
-  if (nonce_len != CHACHA20_NONCE_LEN) {
-    OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_IV_TOO_LARGE);
     return 0;
   }
 

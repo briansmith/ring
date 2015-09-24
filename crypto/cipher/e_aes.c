@@ -67,6 +67,9 @@
 #endif
 
 
+#define EVP_AEAD_AES_GCM_NONCE_LEN 12
+#define EVP_AEAD_AES_GCM_TAG_LEN 16
+
 typedef struct {
   union {
     double align;
@@ -703,7 +706,7 @@ static const EVP_CIPHER aes_128_ctr = {
     NULL /* cleanup */,  NULL /* ctrl */};
 
 static const EVP_CIPHER aes_128_gcm = {
-    1 /* block_size */, 16 /* key_size */, 12 /* iv_len */,
+    1 /* block_size */, 16 /* key_size */, EVP_AEAD_AES_GCM_NONCE_LEN,
     sizeof(EVP_AES_GCM_CTX),
     EVP_CIPH_GCM_MODE | EVP_CIPH_CUSTOM_IV | EVP_CIPH_FLAG_CUSTOM_CIPHER |
         EVP_CIPH_ALWAYS_CALL_INIT | EVP_CIPH_CTRL_INIT |
@@ -725,7 +728,7 @@ static const EVP_CIPHER aes_256_ctr = {
     NULL /* cleanup */,  NULL /* ctrl */};
 
 static const EVP_CIPHER aes_256_gcm = {
-    1 /* block_size */, 32 /* key_size */, 12 /* iv_len */,
+    1 /* block_size */, 32 /* key_size */, EVP_AEAD_AES_GCM_NONCE_LEN,
     sizeof(EVP_AES_GCM_CTX),
     EVP_CIPH_GCM_MODE | EVP_CIPH_CUSTOM_IV | EVP_CIPH_FLAG_CUSTOM_CIPHER |
         EVP_CIPH_ALWAYS_CALL_INIT | EVP_CIPH_CTRL_INIT |
@@ -826,7 +829,7 @@ static const EVP_CIPHER aesni_128_ctr = {
     NULL /* cleanup */,  NULL /* ctrl */};
 
 static const EVP_CIPHER aesni_128_gcm = {
-    1 /* block_size */, 16 /* key_size */, 12 /* iv_len */,
+    1 /* block_size */, 16 /* key_size */, EVP_AEAD_AES_GCM_NONCE_LEN,
     sizeof(EVP_AES_GCM_CTX),
     EVP_CIPH_GCM_MODE | EVP_CIPH_CUSTOM_IV | EVP_CIPH_FLAG_CUSTOM_CIPHER |
         EVP_CIPH_ALWAYS_CALL_INIT | EVP_CIPH_CTRL_INIT |
@@ -848,7 +851,7 @@ static const EVP_CIPHER aesni_256_ctr = {
     NULL /* cleanup */,  NULL /* ctrl */};
 
 static const EVP_CIPHER aesni_256_gcm = {
-    1 /* block_size */, 32 /* key_size */, 12 /* iv_len */,
+    1 /* block_size */, 32 /* key_size */, EVP_AEAD_AES_GCM_NONCE_LEN,
     sizeof(EVP_AES_GCM_CTX),
     EVP_CIPH_GCM_MODE | EVP_CIPH_CUSTOM_IV | EVP_CIPH_FLAG_CUSTOM_CIPHER |
         EVP_CIPH_ALWAYS_CALL_INIT | EVP_CIPH_CTRL_INIT | EVP_CIPH_CUSTOM_COPY |
@@ -886,8 +889,6 @@ EVP_CIPHER_FUNCTION(256, cbc)
 EVP_CIPHER_FUNCTION(256, ctr)
 EVP_CIPHER_FUNCTION(256, gcm)
 
-
-#define EVP_AEAD_AES_GCM_TAG_LEN 16
 
 struct aead_aes_gcm_ctx {
   union {
@@ -939,9 +940,8 @@ void evp_aead_aes_gcm_cleanup(EVP_AEAD_CTX *ctx) {
 
 int evp_aead_aes_gcm_seal(const EVP_AEAD_CTX *ctx, uint8_t *out,
                           size_t *out_len, size_t max_out_len,
-                          const uint8_t *nonce, size_t nonce_len,
-                          const uint8_t *in, size_t in_len,
-                          const uint8_t *ad, size_t ad_len) {
+                          const uint8_t *nonce, const uint8_t *in,
+                          size_t in_len, const uint8_t *ad, size_t ad_len) {
   size_t bulk = 0;
   const struct aead_aes_gcm_ctx *gcm_ctx = ctx->aead_state;
   GCM128_CONTEXT gcm;
@@ -957,7 +957,7 @@ int evp_aead_aes_gcm_seal(const EVP_AEAD_CTX *ctx, uint8_t *out,
   }
 
   memcpy(&gcm, &gcm_ctx->gcm, sizeof(gcm));
-  CRYPTO_gcm128_setiv(&gcm, nonce, nonce_len);
+  CRYPTO_gcm128_setiv(&gcm, nonce, EVP_AEAD_AES_GCM_NONCE_LEN);
 
   if (ad_len > 0 && !CRYPTO_gcm128_aad(&gcm, ad, ad_len)) {
     return 0;
@@ -981,9 +981,8 @@ int evp_aead_aes_gcm_seal(const EVP_AEAD_CTX *ctx, uint8_t *out,
 
 int evp_aead_aes_gcm_open(const EVP_AEAD_CTX *ctx, uint8_t *out,
                           size_t *out_len, size_t max_out_len,
-                          const uint8_t *nonce, size_t nonce_len,
-                          const uint8_t *in, size_t in_len,
-                          const uint8_t *ad, size_t ad_len) {
+                          const uint8_t *nonce, const uint8_t *in,
+                          size_t in_len, const uint8_t *ad, size_t ad_len) {
   size_t bulk = 0;
   const struct aead_aes_gcm_ctx *gcm_ctx = ctx->aead_state;
   uint8_t tag[EVP_AEAD_AES_GCM_TAG_LEN];
@@ -1003,7 +1002,7 @@ int evp_aead_aes_gcm_open(const EVP_AEAD_CTX *ctx, uint8_t *out,
   }
 
   memcpy(&gcm, &gcm_ctx->gcm, sizeof(gcm));
-  CRYPTO_gcm128_setiv(&gcm, nonce, nonce_len);
+  CRYPTO_gcm128_setiv(&gcm, nonce, EVP_AEAD_AES_GCM_NONCE_LEN);
 
   if (!CRYPTO_gcm128_aad(&gcm, ad, ad_len)) {
     return 0;
@@ -1035,7 +1034,7 @@ int evp_aead_aes_gcm_open(const EVP_AEAD_CTX *ctx, uint8_t *out,
 /* TODO(ring): We currently duplicate these between Rust and C. Avoid doing that. */
 static const EVP_AEAD aead_aes_128_gcm = {
     16,                       /* key len */
-    12,                       /* nonce len */
+    EVP_AEAD_AES_GCM_NONCE_LEN, /* nonce len */
     EVP_AEAD_AES_GCM_TAG_LEN, /* overhead */
     EVP_AEAD_AES_GCM_TAG_LEN, /* max tag length */
     evp_aead_aes_gcm_init,
@@ -1048,7 +1047,7 @@ static const EVP_AEAD aead_aes_128_gcm = {
 /* TODO(ring): We currently duplicate these between Rust and C. Avoid doing that. */
 static const EVP_AEAD aead_aes_256_gcm = {
     32,                       /* key len */
-    12,                       /* nonce len */
+    EVP_AEAD_AES_GCM_NONCE_LEN, /* nonce len */
     EVP_AEAD_AES_GCM_TAG_LEN, /* overhead */
     EVP_AEAD_AES_GCM_TAG_LEN, /* max tag length */
     evp_aead_aes_gcm_init,
@@ -1110,16 +1109,11 @@ static void aead_aes_key_wrap_cleanup(EVP_AEAD_CTX *ctx) {
   OPENSSL_free(kw_ctx);
 }
 
-/* kDefaultAESKeyWrapNonce is the default nonce value given in 2.2.3.1. */
-static const uint8_t kDefaultAESKeyWrapNonce[8] = {0xa6, 0xa6, 0xa6, 0xa6,
-                                                   0xa6, 0xa6, 0xa6, 0xa6};
-
-
 static int aead_aes_key_wrap_seal(const EVP_AEAD_CTX *ctx, uint8_t *out,
                                   size_t *out_len, size_t max_out_len,
-                                  const uint8_t *nonce, size_t nonce_len,
-                                  const uint8_t *in, size_t in_len,
-                                  const uint8_t *ad, size_t ad_len) {
+                                  const uint8_t *nonce, const uint8_t *in,
+                                  size_t in_len, const uint8_t *ad,
+                                  size_t ad_len) {
   const struct aead_aes_key_wrap_ctx *kw_ctx = ctx->aead_state;
   union {
     double align;
@@ -1132,16 +1126,6 @@ static int aead_aes_key_wrap_seal(const EVP_AEAD_CTX *ctx, uint8_t *out,
 
   if (ad_len != 0) {
     OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_UNSUPPORTED_AD_SIZE);
-    return 0;
-  }
-
-  if (nonce_len == 0) {
-    nonce = kDefaultAESKeyWrapNonce;
-    nonce_len = sizeof(kDefaultAESKeyWrapNonce);
-  }
-
-  if (nonce_len != 8) {
-    OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_UNSUPPORTED_NONCE_SIZE);
     return 0;
   }
 
@@ -1206,7 +1190,7 @@ static int aead_aes_key_wrap_seal(const EVP_AEAD_CTX *ctx, uint8_t *out,
 
 static int aead_aes_key_wrap_open(const EVP_AEAD_CTX *ctx, uint8_t *out,
                                   size_t *out_len, size_t max_out_len,
-                                  const uint8_t *nonce, size_t nonce_len,
+                                  const uint8_t *nonce,
                                   const uint8_t *in, size_t in_len,
                                   const uint8_t *ad, size_t ad_len) {
   const struct aead_aes_key_wrap_ctx *kw_ctx = ctx->aead_state;
@@ -1221,16 +1205,6 @@ static int aead_aes_key_wrap_open(const EVP_AEAD_CTX *ctx, uint8_t *out,
 
   if (ad_len != 0) {
     OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_UNSUPPORTED_AD_SIZE);
-    return 0;
-  }
-
-  if (nonce_len == 0) {
-    nonce = kDefaultAESKeyWrapNonce;
-    nonce_len = sizeof(kDefaultAESKeyWrapNonce);
-  }
-
-  if (nonce_len != 8) {
-    OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_UNSUPPORTED_NONCE_SIZE);
     return 0;
   }
 
@@ -1319,6 +1293,14 @@ static const EVP_AEAD aead_aes_256_key_wrap = {
 const EVP_AEAD *EVP_aead_aes_128_key_wrap(void) { return &aead_aes_128_key_wrap; }
 
 const EVP_AEAD *EVP_aead_aes_256_key_wrap(void) { return &aead_aes_256_key_wrap; }
+
+const uint8_t *EVP_aead_aes_key_wrap_default_iv(void) {
+  /* kDefaultAESKeyWrapNonce is the default nonce value given in 2.2.3.1. */
+  static const uint8_t kDefaultAESKeyWrapNonce[8] = {
+    0xa6, 0xa6, 0xa6, 0xa6, 0xa6, 0xa6, 0xa6, 0xa6
+  };
+  return kDefaultAESKeyWrapNonce;
+}
 
 int EVP_has_aes_hardware(void) {
 #if defined(OPENSSL_X86) || defined(OPENSSL_X86_64)

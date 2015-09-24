@@ -211,10 +211,16 @@ static bool FromHexDigit(uint8_t *out, char c) {
   return false;
 }
 
-bool FileTest::GetBytes(std::vector<uint8_t> *out, const std::string &key) {
+bool FileTest::GetBytesOrDefault(std::vector<uint8_t> *out, bool *is_default,
+                                 const std::string &key) {
   std::string value;
   if (!GetAttribute(&value, key)) {
     return false;
+  }
+
+  *is_default = value == "DEFAULT";
+  if (*is_default) {
+    return true;
   }
 
   if (value.size() >= 2 && value[0] == '"' && value[value.size() - 1] == '"') {
@@ -234,6 +240,17 @@ bool FileTest::GetBytes(std::vector<uint8_t> *out, const std::string &key) {
       return false;
     }
     out->push_back((hi << 4) | lo);
+  }
+  return true;
+}
+
+bool FileTest::GetBytes(std::vector<uint8_t> *out, const std::string &key) {
+  bool is_default;
+  if (!GetBytesOrDefault(out, &is_default, key)) {
+    return false;
+  }
+  if (is_default) {
+    return false;
   }
   return true;
 }
