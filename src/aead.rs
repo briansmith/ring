@@ -41,7 +41,7 @@ impl OpeningKey {
     /// C analogs: `EVP_AEAD_CTX_init_with_direction` with direction
     ///            `evp_aead_open`, `EVP_AEAD_CTX_init`.
     ///
-    /// Go analog: [`crypto.aes.NewCipher`](https://golang.org/pkg/crypto/aes/#NewCipher) 
+    /// Go analog: [`crypto.aes.NewCipher`](https://golang.org/pkg/crypto/aes/#NewCipher)
     /// + [`crypto.cipher.NewGCM`](https://golang.org/pkg/crypto/cipher/#NewGCM)
     #[inline]
     pub fn new(algorithm: &'static Algorithm, key_bytes: &[u8])
@@ -187,7 +187,7 @@ impl Key {
     /// The key's AEAD algorithm.
     #[inline(always)]
     fn algorithm(&self) -> &'static Algorithm { self.ctx.aead }
-    
+
     unsafe fn open_or_seal_in_place(&self, open_or_seal_fn: OpenOrSealFn,
                                     nonce: &[u8], in_ptr: *const u8,
                                     in_len: usize, ad: &[u8], out: &mut [u8])
@@ -202,7 +202,6 @@ impl Key {
             _ => Err(())
         }
     }
-    
 }
 
 impl Drop for Key {
@@ -243,14 +242,14 @@ pub struct Algorithm {
   ///
   /// C analog: `EVP_AEAD_key_length`
   pub key_len: libc::uint8_t,
-  
+
   /// The length of the nonces.
   ///
   /// C analog: `EVP_AEAD_nonce_length`
   ///
   /// Go analog: [`crypto.cipher.AEAD.NonceSize`](https://golang.org/pkg/crypto/cipher/#AEAD)
   pub nonce_len: libc::uint8_t,
-  
+
   /// The maximum number of bytes that sealing operations may add to plaintexts.
   /// See also `MAX_OVERHEAD_LEN`.
   ///
@@ -258,7 +257,7 @@ pub struct Algorithm {
   ///
   /// Go analog: [`crypto.cipher.AEAD.Overhead`](https://golang.org/pkg/crypto/cipher/#AEAD)
   pub max_overhead_len: libc::uint8_t,
-  
+
   /// The length of the authentication tags or MACs.
   ///
   /// Use `max_overhead_len` or `MAX_OVERHEAD_LEN` when sizing buffers for
@@ -309,7 +308,7 @@ pub const MAX_OVERHEAD_LEN: usize = AES_GCM_TAG_LEN as usize;
 ///
 /// C analog: `EVP_aead_aes_128_gcm`
 ///
-/// Go analog: [`crypto.aes`](https://golang.org/pkg/crypto/aes/) 
+/// Go analog: [`crypto.aes`](https://golang.org/pkg/crypto/aes/)
 pub static AES_128_GCM: Algorithm = Algorithm {
     key_len: AES_128_KEY_LEN,
     nonce_len: AES_GCM_NONCE_LEN,
@@ -326,7 +325,7 @@ pub static AES_128_GCM: Algorithm = Algorithm {
 ///
 /// C analog: `EVP_aead_aes_256_gcm`
 ///
-/// Go analog: [`crypto.aes`](https://golang.org/pkg/crypto/aes/) 
+/// Go analog: [`crypto.aes`](https://golang.org/pkg/crypto/aes/)
 pub static AES_256_GCM: Algorithm = Algorithm {
     key_len: AES_256_KEY_LEN,
     nonce_len: AES_GCM_NONCE_LEN,
