@@ -270,7 +270,11 @@ OPENSSL_EXPORT int CBB_init_fixed(CBB *cbb, uint8_t *buf, size_t len);
 
 /* CBB_cleanup frees all resources owned by |cbb| and other |CBB| objects
  * writing to the same buffer. This should be used in an error case where a
- * serialisation is abandoned. */
+ * serialisation is abandoned.
+ *
+ * This function can only be called on a "top level" |CBB|, i.e. one initialised
+ * with |CBB_init| or |CBB_init_fixed|, or a |CBB| set to the zero state with
+ * |CBB_zero|. */
 OPENSSL_EXPORT void CBB_cleanup(CBB *cbb);
 
 /* CBB_finish completes any pending length prefix and sets |*out_data| to a
