@@ -840,10 +840,10 @@ OPENSSL_EXPORT int SSL_CTX_use_PrivateKey_file(SSL_CTX *ctx, const char *file,
 OPENSSL_EXPORT int SSL_use_PrivateKey_file(SSL *ssl, const char *file,
                                            int type);
 
-/* SSL_CTX_use_certificate_file configures certificates for |ctx|. It reads the
- * contents of |file| as a PEM-encoded leaf certificate followed optionally by
- * the certificate chain to send to the peer. It returns one on success and zero
- * on failure. */
+/* SSL_CTX_use_certificate_chain_file configures certificates for |ctx|. It
+ * reads the contents of |file| as a PEM-encoded leaf certificate followed
+ * optionally by the certificate chain to send to the peer. It returns one on
+ * success and zero on failure. */
 OPENSSL_EXPORT int SSL_CTX_use_certificate_chain_file(SSL_CTX *ctx,
                                                       const char *file);
 
@@ -1130,9 +1130,9 @@ OPENSSL_EXPORT X509 *SSL_SESSION_get0_peer(const SSL_SESSION *session);
  * be used. */
 OPENSSL_EXPORT long SSL_SESSION_set_time(SSL_SESSION *session, long time);
 
-/* SSL_SESSION_set_time sets |session|'s timeout to |timeout| and returns one.
- * This function may be useful in writing tests but otherwise should not be
- * used. */
+/* SSL_SESSION_set_timeout sets |session|'s timeout to |timeout| and returns
+ * one. This function may be useful in writing tests but otherwise should not
+ * be used. */
 OPENSSL_EXPORT long SSL_SESSION_set_timeout(SSL_SESSION *session, long timeout);
 
 /* SSL_SESSION_set1_id_context sets |session|'s session ID context (see

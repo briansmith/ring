@@ -161,7 +161,7 @@ OPENSSL_EXPORT ECDSA_SIG *ECDSA_SIG_from_bytes(const uint8_t *in,
  * the result to |cbb|. It returns one on success and zero on error. */
 OPENSSL_EXPORT int ECDSA_SIG_marshal(CBB *cbb, const ECDSA_SIG *sig);
 
-/* ECDSA_SIG_to_asn1 marshals |sig| as a DER-encoded ECDSA-Sig-Value and, on
+/* ECDSA_SIG_to_bytes marshals |sig| as a DER-encoded ECDSA-Sig-Value and, on
  * success, sets |*out_bytes| to a newly allocated buffer containing the result
  * and returns one. Otherwise, it returns zero. The result should be freed with
  * |OPENSSL_free|. */
