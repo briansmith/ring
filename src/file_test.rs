@@ -128,16 +128,17 @@ fn parse_test_case(lines: &mut FileLines) -> Option<TestCase> {
 
                 println!("Line: {}", line);
 
-                let parts: Vec<&str> = line.splitn(2, '=').collect();
+                let parts: Vec<&str> = line.splitn(2, ':').collect();
                 let key = parts[0].trim();
                 let value = parts[1].trim();
 
-                println!("insert");
+                // Don't allow the value to be ommitted. An empty value can be
+                // represented as an empty quoted string.
+                assert!(value.len() != 0);
 
                 // Checking is_none() ensures we don't accept duplicate keys.
                 assert!(attributes.insert(String::from(key),
                                           String::from(value)).is_none());
-                println!("after insert");
             }
         }
     }
