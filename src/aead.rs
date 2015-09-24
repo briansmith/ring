@@ -443,4 +443,47 @@ mod tests {
             assert_eq!(&plaintext[..], &in_out[0..plaintext.len()]);
         });
     }
+
+    fn test_aead_key_sizes(aead_alg: &'static aead::Algorithm) {
+        let key_len = aead_alg.key_len as usize;
+        let key_data = vec![0u8; key_len * 2];
+
+        // Key is the right size.
+        assert!(aead::OpeningKey::new(aead_alg, &key_data[0..key_len])
+                    .is_ok());
+        assert!(aead::SealingKey::new(aead_alg, &key_data[0..key_len])
+                    .is_ok());
+
+        // Key is one byte too small.
+        assert!(aead::OpeningKey::new(aead_alg, &key_data[0..(key_len - 1)])
+                    .is_err());
+        assert!(aead::SealingKey::new(aead_alg, &key_data[0..(key_len - 1)])
+                    .is_err());
+
+        // Key is one byte too large.
+        assert!(aead::OpeningKey::new(aead_alg, &key_data[0..(key_len + 1)])
+                    .is_err());
+        assert!(aead::SealingKey::new(aead_alg, &key_data[0..(key_len + 1)])
+                    .is_err());
+
+        // Key is half the required size.
+        assert!(aead::OpeningKey::new(aead_alg, &key_data[0..(key_len / 2)])
+                    .is_err());
+        assert!(aead::SealingKey::new(aead_alg, &key_data[0..(key_len / 2)])
+                    .is_err());
+
+        // Key is twice the required size.
+        assert!(aead::OpeningKey::new(aead_alg, &key_data[0..(key_len * 2)])
+                    .is_err());
+        assert!(aead::SealingKey::new(aead_alg, &key_data[0..(key_len * 2)])
+                    .is_err());
+
+        // Key is empty.
+        assert!(aead::OpeningKey::new(aead_alg, &[]).is_err());
+        assert!(aead::SealingKey::new(aead_alg, &[]).is_err());
+
+        // Key is one byte.
+        assert!(aead::OpeningKey::new(aead_alg, &[0]).is_err());
+        assert!(aead::SealingKey::new(aead_alg, &[0]).is_err());
+    }
 }
