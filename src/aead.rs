@@ -394,3 +394,53 @@ extern {
 
     fn EVP_AEAD_CTX_cleanup(ctx: &mut EVP_AEAD_CTX);
 }
+
+#[cfg(test)]
+mod tests {
+
+    use super::super::{aead, file_test};
+
+    #[test]
+    pub fn test_aes_gcm_128() {
+        test_aead(&aead::AES_128_GCM,
+                  "crypto/cipher/test/aes_128_gcm_tests.txt");
+    }
+
+    #[test]
+    pub fn test_aes_gcm_256() {
+        test_aead(&aead::AES_256_GCM,
+                  "crypto/cipher/test/aes_256_gcm_tests.txt");
+    }
+
+    fn test_aead(aead_alg: &'static aead::Algorithm, file_path: &str) {
+        file_test::run(file_path, |test_case| {
+            let key_bytes = test_case.consume_bytes("KEY");
+            let nonce = test_case.consume_bytes("NONCE");
+            let plaintext = test_case.consume_bytes("IN");
+            let ad = test_case.consume_bytes("AD");
+            let mut ct = test_case.consume_bytes("CT");
+            let tag = test_case.consume_bytes("TAG");
+
+            ct.extend(tag);
+
+            // TODO: test shifting.
+
+            let mut in_out = plaintext.clone();
+            for _ in 0..aead_alg.max_overhead_len {
+                in_out.push(0);
+            }
+            let s_key = aead::SealingKey::new(aead_alg, &key_bytes).unwrap();
+            assert_eq!(ct.len(),
+                       aead::seal_in_place(&s_key, &nonce, &mut in_out[..],
+                                           aead_alg.max_overhead_len as usize,
+                                           &ad).unwrap());
+            assert_eq!(&ct, &in_out);
+
+            let o_key = aead::OpeningKey::new(aead_alg, &key_bytes).unwrap();
+            assert_eq!(plaintext.len(),
+                       aead::open_in_place(&o_key, &nonce, 0, &mut in_out[..],
+                                           &ad).unwrap());
+            assert_eq!(&plaintext[..], &in_out[0..plaintext.len()]);
+        });
+    }
+}
