@@ -297,6 +297,8 @@ const AES_256_KEY_LEN: libc::uint8_t = (256 as usize / 8) as libc::uint8_t;
 const AES_GCM_NONCE_LEN: libc::uint8_t = 96 / 8;
 const AES_GCM_TAG_LEN: libc::uint8_t = 128 / 8;
 
+const CHACHA20_KEY_LEN: libc::uint8_t = (256 as usize / 8) as libc::uint8_t;
+const POLY1305_TAG_LEN: libc::uint8_t = 128 / 8;
 /// The maximum value of `Algorithm.max_overhead_len` for the algorithms in
 /// this module.
 pub const MAX_OVERHEAD_LEN: usize = AES_GCM_TAG_LEN as usize;
@@ -335,6 +337,40 @@ pub static AES_256_GCM: Algorithm = Algorithm {
     open: evp_aead_aes_gcm_open,
 };
 
+/// ChaCha20-Poly1305 as described in
+/// [RFC 7539](https://tools.ietf.org/html/rfc7539).
+///
+/// The keys are 256 bits long and the nonces are 96 bits long.
+pub static CHACHA20_POLY1305: Algorithm = Algorithm {
+    key_len: CHACHA20_KEY_LEN,
+    nonce_len: 96 / 8,
+    max_overhead_len: POLY1305_TAG_LEN,
+    tag_len: POLY1305_TAG_LEN,
+    init: Some(evp_aead_chacha20_poly1305_init),
+    init_with_direction: None,
+    cleanup: evp_aead_chacha20_poly1305_cleanup,
+    seal: evp_aead_chacha20_poly1305_rfc7539_seal,
+    open: evp_aead_chacha20_poly1305_rfc7539_open,
+};
+
+/// Deprecated ChaCha20-Poly13065 used in the experimental TLS cipher suites
+/// with IDs `0xCC13` (ECDHE-RSA) and `0xCC14` (ECDHE-ECDSA).
+///
+/// The keys are 256 bits long and the nonces are 96 bits. The first four bytes
+/// of the nonce must be `[0, 0, 0, 0]` in order to interoperate with other
+/// implementations.
+pub static CHACHA20_POLY1305_DEPRECATED: Algorithm = Algorithm {
+    key_len: CHACHA20_KEY_LEN,
+    nonce_len: 96 / 8,
+    max_overhead_len: POLY1305_TAG_LEN,
+    tag_len: POLY1305_TAG_LEN,
+    init: Some(evp_aead_chacha20_poly1305_init),
+    init_with_direction: None,
+    cleanup: evp_aead_chacha20_poly1305_cleanup,
+    seal: evp_aead_chacha20_poly1305_deprecated_seal,
+    open: evp_aead_chacha20_poly1305_deprecated_open,
+};
+
 type OpenOrSealFn =
     unsafe extern fn(ctx: &EVP_AEAD_CTX, out: *mut libc::uint8_t,
                      out_len: &mut libc::size_t, max_out_len: libc::size_t,
@@ -367,6 +403,57 @@ extern {
                              in_: *const libc::uint8_t, in_len: libc::size_t,
                              ad: *const libc::uint8_t, ad_len: libc::size_t)
                              -> libc::c_int;
+
+    fn evp_aead_chacha20_poly1305_init(ctx: &mut EVP_AEAD_CTX,
+                                       key: *const libc::uint8_t,
+                                       key_len: libc::size_t)
+                                       -> libc::c_int;
+
+    fn evp_aead_chacha20_poly1305_cleanup(ctx: &mut EVP_AEAD_CTX);
+
+    fn evp_aead_chacha20_poly1305_rfc7539_seal(ctx: &EVP_AEAD_CTX,
+                                               out: *mut libc::uint8_t,
+                                               out_len: &mut libc::size_t,
+                                               max_out_len: libc::size_t,
+                                               nonce: *const libc::uint8_t,
+                                               in_: *const libc::uint8_t,
+                                               in_len: libc::size_t,
+                                               ad: *const libc::uint8_t,
+                                               ad_len: libc::size_t)
+                                               -> libc::c_int;
+
+    fn evp_aead_chacha20_poly1305_rfc7539_open(ctx: &EVP_AEAD_CTX,
+                                               out: *mut libc::uint8_t,
+                                               out_len: &mut libc::size_t,
+                                               max_out_len: libc::size_t,
+                                               nonce: *const libc::uint8_t,
+                                               in_: *const libc::uint8_t,
+                                               in_len: libc::size_t,
+                                               ad: *const libc::uint8_t,
+                                               ad_len: libc::size_t)
+                                               -> libc::c_int;
+
+    fn evp_aead_chacha20_poly1305_deprecated_seal(ctx: &EVP_AEAD_CTX,
+                                                  out: *mut libc::uint8_t,
+                                                  out_len: &mut libc::size_t,
+                                                  max_out_len: libc::size_t,
+                                                  nonce: *const libc::uint8_t,
+                                                  in_: *const libc::uint8_t,
+                                                  in_len: libc::size_t,
+                                                  ad: *const libc::uint8_t,
+                                                  ad_len: libc::size_t)
+                                                  -> libc::c_int;
+
+    fn evp_aead_chacha20_poly1305_deprecated_open(ctx: &EVP_AEAD_CTX,
+                                                  out: *mut libc::uint8_t,
+                                                  out_len: &mut libc::size_t,
+                                                  max_out_len: libc::size_t,
+                                                  nonce: *const libc::uint8_t,
+                                                  in_: *const libc::uint8_t,
+                                                  in_len: libc::size_t,
+                                                  ad: *const libc::uint8_t,
+                                                  ad_len: libc::size_t)
+                                                  -> libc::c_int;
 
     fn EVP_AEAD_CTX_init_with_direction(ctx: &mut EVP_AEAD_CTX,
                                         aead: &Algorithm, key: *const u8,
@@ -406,6 +493,18 @@ mod tests {
     pub fn test_aes_gcm_256() {
         test_aead(&aead::AES_256_GCM,
                   "crypto/cipher/test/aes_256_gcm_tests.txt");
+    }
+
+    #[test]
+    pub fn test_chacha20_poly1305() {
+        test_aead(&aead::CHACHA20_POLY1305,
+                  "crypto/cipher/test/chacha20_poly1305_rfc7539_tests.txt");
+    }
+
+    #[test]
+    pub fn test_chacha20_poly1305_deprecated() {
+        test_aead(&aead::CHACHA20_POLY1305_DEPRECATED,
+                  "crypto/cipher/test/chacha20_poly1305_deprecated_tests.txt");
     }
 
     fn test_aead(aead_alg: &'static aead::Algorithm, file_path: &str) {
