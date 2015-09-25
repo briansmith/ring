@@ -513,7 +513,7 @@ mod tests {
     // because it tried to process the input with the wrong nonce. But at least
     // we're verifying that `open_in_place` won't crash or access out-of-bounds
     // memory (when run under valgrind or similar). The AES-128-GCM tests have
-    // one WRONG_NONCE_LENGTH test case that tests this more correctly.
+    // some WRONG_NONCE_LENGTH test cases that tests this more correctly.
     fn test_aead_nonce_sizes(aead_alg: &'static aead::Algorithm) {
         let key_len = aead_alg.key_len as usize;
         let key_data = vec![0u8; key_len];
