@@ -78,11 +78,6 @@ OPENSSL_EXPORT const EVP_CIPHER *EVP_aes_128_ctr(void);
 OPENSSL_EXPORT const EVP_CIPHER *EVP_aes_256_cbc(void);
 OPENSSL_EXPORT const EVP_CIPHER *EVP_aes_256_ctr(void);
 
-/* Deprecated AES-GCM implementations that set |EVP_CIPH_FLAG_CUSTOM_CIPHER|.
- * Use |EVP_aead_aes_128_gcm| and |EVP_aead_aes_256_gcm| instead. */
-OPENSSL_EXPORT const EVP_CIPHER *EVP_aes_128_gcm(void);
-OPENSSL_EXPORT const EVP_CIPHER *EVP_aes_256_gcm(void);
-
 /* Cipher context allocation.
  *
  * An |EVP_CIPHER_CTX| represents the state of an encryption or decryption in
@@ -285,7 +280,6 @@ OPENSSL_EXPORT uint32_t EVP_CIPHER_mode(const EVP_CIPHER *cipher);
      /* EVP_CIPH_CFB_MODE 0x3 */
      /* EVP_CIPH_OFB_MODE 0x4 */
 #define EVP_CIPH_CTR_MODE 0x5
-#define EVP_CIPH_GCM_MODE 0x6
 
 
 /* Cipher flags (for |EVP_CIPHER_flags|). */
@@ -356,22 +350,7 @@ OPENSSL_EXPORT int EVP_DecryptInit(EVP_CIPHER_CTX *ctx,
 #define EVP_CTRL_RAND_KEY 0x6
 #define EVP_CTRL_PBE_PRF_NID 0x7
 #define EVP_CTRL_COPY 0x8
-#define EVP_CTRL_GCM_SET_IVLEN 0x9
-#define EVP_CTRL_GCM_GET_TAG 0x10
-#define EVP_CTRL_GCM_SET_TAG 0x11
-#define EVP_CTRL_GCM_SET_IV_FIXED 0x12
-#define EVP_CTRL_GCM_IV_GEN 0x13
 #define EVP_CTRL_AEAD_SET_MAC_KEY 0x17
-/* Set the GCM invocation field, decrypt only */
-#define EVP_CTRL_GCM_SET_IV_INV 0x18
-
-/* GCM TLS constants */
-/* Length of fixed part of IV derived from PRF */
-#define EVP_GCM_TLS_FIXED_IV_LEN 4
-/* Length of explicit part of IV part of TLS records */
-#define EVP_GCM_TLS_EXPLICIT_IV_LEN 8
-/* Length of tag for TLS */
-#define EVP_GCM_TLS_TAG_LEN 16
 
 #define EVP_MAX_KEY_LENGTH 64
 #define EVP_MAX_IV_LENGTH 16

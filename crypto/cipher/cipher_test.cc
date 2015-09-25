@@ -69,16 +69,12 @@
 static const EVP_CIPHER *GetCipher(const std::string &name) {
   if (name == "AES-128-CBC") {
     return EVP_aes_128_cbc();
-  } else if (name == "AES-128-GCM") {
-    return EVP_aes_128_gcm();
   } else if (name == "AES-256-CBC") {
     return EVP_aes_256_cbc();
   } else if (name == "AES-128-CTR") {
     return EVP_aes_128_ctr();
   } else if (name == "AES-256-CTR") {
     return EVP_aes_256_ctr();
-  } else if (name == "AES-256-GCM") {
-    return EVP_aes_256_gcm();
   }
   return nullptr;
 }
@@ -102,28 +98,16 @@ static bool TestOperation(FileTest *t,
     out = &plaintext;
   }
 
-  bool is_aead = EVP_CIPHER_mode(cipher) == EVP_CIPH_GCM_MODE;
-
   ScopedEVP_CIPHER_CTX ctx;
   if (!EVP_CipherInit_ex(ctx.get(), cipher, nullptr, nullptr, nullptr,
                          encrypt ? 1 : 0)) {
     return false;
   }
   if (t->HasAttribute("IV")) {
-    if (is_aead) {
-      if (!EVP_CIPHER_CTX_ctrl(ctx.get(), EVP_CTRL_GCM_SET_IVLEN,
-                               iv.size(), 0)) {
-        return false;
-      }
-    } else if (iv.size() != (size_t)EVP_CIPHER_CTX_iv_length(ctx.get())) {
+    if (iv.size() != (size_t)EVP_CIPHER_CTX_iv_length(ctx.get())) {
       t->PrintLine("Bad IV length.");
       return false;
     }
-  }
-  if (is_aead && !encrypt &&
-      !EVP_CIPHER_CTX_ctrl(ctx.get(), EVP_CTRL_GCM_SET_TAG, tag.size(),
-                           const_cast<uint8_t*>(bssl::vector_data(&tag)))) {
-    return false;
   }
   // The ciphers are run with no padding. For each of the ciphers we test, the
   // output size matches the input size.
@@ -175,19 +159,6 @@ static bool TestOperation(FileTest *t,
                            bssl::vector_data(&result), result.size())) {
     return false;
   }
-  if (encrypt && is_aead) {
-    uint8_t rtag[16];
-    if (tag.size() > sizeof(rtag)) {
-      t->PrintLine("Bad tag length.");
-      return false;
-    }
-    if (!EVP_CIPHER_CTX_ctrl(ctx.get(), EVP_CTRL_GCM_GET_TAG, tag.size(),
-                             rtag) ||
-        !t->ExpectBytesEqual(bssl::vector_data(&tag), tag.size(), rtag,
-                             tag.size())) {
-      return false;
-    }
-  }
   return true;
 }
 
@@ -211,12 +182,6 @@ static bool TestCipher(FileTest *t, void *arg) {
   if (EVP_CIPHER_iv_length(cipher) > 0 &&
       !t->GetBytes(&iv, "IV")) {
     return false;
-  }
-  if (EVP_CIPHER_mode(cipher) == EVP_CIPH_GCM_MODE) {
-    if (!t->GetBytes(&aad, "AAD") ||
-        !t->GetBytes(&tag, "Tag")) {
-      return false;
-    }
   }
 
   enum {
