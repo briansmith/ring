@@ -120,7 +120,7 @@ static char bsaes_capable(void) {
 #endif
 
 #define HWAES
-static char hwaes_capable(void) {
+static int hwaes_capable(void) {
   return (OPENSSL_armcap_P & ARMV8_AES) != 0;
 }
 
@@ -151,13 +151,14 @@ static char bsaes_capable(void) {
 
 /* On other platforms, bsaes_capable() will always return false and so the
  * following will never be called. */
-void bsaes_cbc_encrypt(const uint8_t *in, uint8_t *out, size_t length,
-                       const AES_KEY *key, uint8_t ivec[16], int enc) {
+static void bsaes_cbc_encrypt(const uint8_t *in, uint8_t *out, size_t length,
+                              const AES_KEY *key, uint8_t ivec[16], int enc) {
   abort();
 }
 
-void bsaes_ctr32_encrypt_blocks(const uint8_t *in, uint8_t *out, size_t len,
-                                const AES_KEY *key, const uint8_t ivec[16]) {
+static void bsaes_ctr32_encrypt_blocks(const uint8_t *in, uint8_t *out,
+                                       size_t len, const AES_KEY *key,
+                                       const uint8_t ivec[16]) {
   abort();
 }
 #endif
@@ -180,20 +181,22 @@ static char vpaes_capable(void) {
 
 /* On other platforms, vpaes_capable() will always return false and so the
  * following will never be called. */
-int vpaes_set_encrypt_key(const uint8_t *userKey, int bits, AES_KEY *key) {
+static int vpaes_set_encrypt_key(const uint8_t *userKey, int bits,
+                                 AES_KEY *key) {
   abort();
 }
-int vpaes_set_decrypt_key(const uint8_t *userKey, int bits, AES_KEY *key) {
+static int vpaes_set_decrypt_key(const uint8_t *userKey, int bits,
+                                 AES_KEY *key) {
   abort();
 }
-void vpaes_encrypt(const uint8_t *in, uint8_t *out, const AES_KEY *key) {
+static void vpaes_encrypt(const uint8_t *in, uint8_t *out, const AES_KEY *key) {
   abort();
 }
-void vpaes_decrypt(const uint8_t *in, uint8_t *out, const AES_KEY *key) {
+static void vpaes_decrypt(const uint8_t *in, uint8_t *out, const AES_KEY *key) {
   abort();
 }
-void vpaes_cbc_encrypt(const uint8_t *in, uint8_t *out, size_t length,
-                       const AES_KEY *key, uint8_t *ivec, int enc) {
+static void vpaes_cbc_encrypt(const uint8_t *in, uint8_t *out, size_t length,
+                              const AES_KEY *key, uint8_t *ivec, int enc) {
   abort();
 }
 #endif
@@ -201,34 +204,38 @@ void vpaes_cbc_encrypt(const uint8_t *in, uint8_t *out, size_t length,
 #if !defined(HWAES)
 /* If HWAES isn't defined then we provide dummy functions for each of the hwaes
  * functions. */
-int hwaes_capable(void) {
+static int hwaes_capable(void) {
   return 0;
 }
 
-int aes_v8_set_encrypt_key(const uint8_t *user_key, int bits,
-                           AES_KEY *key) {
+static int aes_v8_set_encrypt_key(const uint8_t *user_key, int bits,
+                                  AES_KEY *key) {
   abort();
 }
 
-int aes_v8_set_decrypt_key(const uint8_t *user_key, int bits, AES_KEY *key) {
+static int aes_v8_set_decrypt_key(const uint8_t *user_key, int bits,
+                                  AES_KEY *key) {
   abort();
 }
 
-void aes_v8_encrypt(const uint8_t *in, uint8_t *out, const AES_KEY *key) {
+static void aes_v8_encrypt(const uint8_t *in, uint8_t *out,
+                           const AES_KEY *key) {
   abort();
 }
 
-void aes_v8_decrypt(const uint8_t *in, uint8_t *out, const AES_KEY *key) {
+static void aes_v8_decrypt(const uint8_t *in, uint8_t *out,
+                           const AES_KEY *key) {
   abort();
 }
 
-void aes_v8_cbc_encrypt(const uint8_t *in, uint8_t *out, size_t length,
-                        const AES_KEY *key, uint8_t *ivec, int enc) {
+static void aes_v8_cbc_encrypt(const uint8_t *in, uint8_t *out, size_t length,
+                               const AES_KEY *key, uint8_t *ivec, int enc) {
   abort();
 }
 
-void aes_v8_ctr32_encrypt_blocks(const uint8_t *in, uint8_t *out, size_t len,
-                                 const AES_KEY *key, const uint8_t ivec[16]) {
+static void aes_v8_ctr32_encrypt_blocks(const uint8_t *in, uint8_t *out,
+                                        size_t len, const AES_KEY *key,
+                                        const uint8_t ivec[16]) {
   abort();
 }
 #endif
@@ -266,14 +273,16 @@ void gcm_ghash_avx(uint64_t Xi[2], const u128 Htable[16], const uint8_t *in,
 
 /* On other platforms, aesni_capable() will always return false and so the
  * following will never be called. */
-void aesni_encrypt(const uint8_t *in, uint8_t *out, const AES_KEY *key) {
+static void aesni_encrypt(const uint8_t *in, uint8_t *out, const AES_KEY *key) {
   abort();
 }
-int aesni_set_encrypt_key(const uint8_t *userKey, int bits, AES_KEY *key) {
+static int aesni_set_encrypt_key(const uint8_t *userKey, int bits,
+                                 AES_KEY *key) {
   abort();
 }
-void aesni_ctr32_encrypt_blocks(const uint8_t *in, uint8_t *out, size_t blocks,
-                                const void *key, const uint8_t *ivec) {
+static void aesni_ctr32_encrypt_blocks(const uint8_t *in, uint8_t *out,
+                                       size_t blocks, const void *key,
+                                       const uint8_t *ivec) {
   abort();
 }
 
