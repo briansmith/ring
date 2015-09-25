@@ -1331,8 +1331,9 @@ OPENSSL_EXPORT int SSL_CTX_set_session_cache_mode(SSL_CTX *ctx, int mode);
  * |ctx| */
 OPENSSL_EXPORT int SSL_CTX_get_session_cache_mode(const SSL_CTX *ctx);
 
- /* SSL_set_session, for a client, configures |ssl| to offer to resume |session|
- * in the initial handshake. */
+/* SSL_set_session, for a client, configures |ssl| to offer to resume |session|
+ * in the initial handshake and returns one. The caller retains ownership of
+ * |session|. */
 OPENSSL_EXPORT int SSL_set_session(SSL *ssl, SSL_SESSION *session);
 
 /* SSL_get_session returns a non-owning pointer to |ssl|'s session. Prior to the
