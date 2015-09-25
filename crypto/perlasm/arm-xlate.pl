@@ -18,6 +18,14 @@ my $arch = sub {
     if ($flavour =~ /linux/)	{ ".arch\t".join(',',@_); }
     else			{ ""; }
 };
+my $pushsection = sub {
+    if ($flavour !~ /ios/)	{ ".pushsection\t".join(',',@_); }
+    else			{ ""; }
+};
+my $popsection = sub {
+    if ($flavour !~ /ios/)	{ ".popsection"; }
+    else			{ ""; }
+};
 my $fpu = sub {
     if ($flavour =~ /linux/)	{ ".fpu\t".join(',',@_); }
     else			{ ""; }
@@ -44,7 +52,8 @@ my $comm = sub {
     $$global = $name;
     $ret;
 };
-my $globl = sub {
+my $in_section = 0;
+my $raw_globl = sub {
     my $name = shift;
     my $global = \$GLOBALS{$name};
     my $ret;
@@ -59,7 +68,39 @@ my $globl = sub {
     $$global = $name;
     $ret;
 };
+my $globl = sub {
+    my $name = shift;
+
+    if ($flavour !~ /ios/) {
+	if ($in_section == 1) {
+	  printf ".popsection\n";
+	}
+	$in_section = 1;
+
+	printf ".pushsection .text.$name,\"ax\",%%progbits\n";
+    }
+    return $raw_globl->($name);
+
+};
 my $global = $globl;
+my $global_with_section = sub {
+    my $arg = shift;
+
+    if ($arg =~ m/^([^,]*), *(.*)/) {
+	if ($flavour !~ /ios/) {
+	    if ($in_section == 1) {
+	      printf ".popsection\n";
+	    }
+	    $in_section = 1;
+
+	    printf ".pushsection .text.$2,\"ax\",%%progbits\n";
+	}
+	return $raw_globl->($1);
+    } else {
+	printf STDERR "Expected two arguments to global_with_section\n";
+	exit(1);
+    }
+};
 my $extern = sub {
     &$globl(@_);
     return;	# return nothing

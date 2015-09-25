@@ -187,6 +187,7 @@ $code=<<___;
 # endif
 #endif
 
+.pushsection .text.sha256_block_data_order,"ax",%progbits
 .type	K256,%object
 .align	5
 K256:
@@ -212,6 +213,7 @@ K256:
 .LOPENSSL_armcap:
 .word	OPENSSL_armcap_P-.Lsha256_block_data_order
 #endif
+.popsection
 .align	5
 
 .global	sha256_block_data_order
@@ -471,7 +473,7 @@ $code.=<<___;
 .arch	armv7-a
 .fpu	neon
 
-.global	sha256_block_data_order_neon
+.global_with_section	sha256_block_data_order_neon, sha256_block_data_order
 .type	sha256_block_data_order_neon,%function
 .align	4
 sha256_block_data_order_neon:

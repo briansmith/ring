@@ -224,6 +224,7 @@ $code=<<___;
 # endif
 #endif
 
+.pushsection .text.sha512_block_data_order,"ax",%progbits
 .type	K512,%object
 .align	5
 K512:
@@ -275,6 +276,7 @@ WORD64(0x5fcb6fab,0x3ad6faec, 0x6c44198c,0x4a475817)
 #else
 .skip	32
 #endif
+.popsection
 
 .global	sha512_block_data_order
 .type	sha512_block_data_order,%function
@@ -602,7 +604,7 @@ $code.=<<___;
 .arch	armv7-a
 .fpu	neon
 
-.global	sha512_block_data_order_neon
+.global_with_section	sha512_block_data_order_neon, sha512_block_data_order
 .type	sha512_block_data_order_neon,%function
 .align	4
 sha512_block_data_order_neon:

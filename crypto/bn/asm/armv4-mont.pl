@@ -86,8 +86,10 @@ $code=<<___;
 
 #if __ARM_MAX_ARCH__>=7
 .align	5
+.pushsection .text.bn_mul_mont,"ax",%progbits
 .LOPENSSL_armcap:
 .word	OPENSSL_armcap_P-.Lbn_mul_mont
+.popsection
 #endif
 
 .global	bn_mul_mont
