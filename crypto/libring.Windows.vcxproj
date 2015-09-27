@@ -40,7 +40,6 @@
     <ClCompile Include="chacha\chacha_generic.c" />
     <ClCompile Include="chacha\chacha_vec.c" />
     <ClCompile Include="cipher\aead.c" />
-    <ClCompile Include="cipher\cipher.c" />
     <ClCompile Include="cipher\e_aes.c" />
     <ClCompile Include="cipher\e_chacha20poly1305.c" />
     <ClCompile Include="cpu-arm.c" />
@@ -90,7 +89,6 @@
     <ClInclude Include="bn\internal.h" />
     <ClInclude Include="bn\rsaz_exp.h" />
     <ClInclude Include="bytestring\internal.h" />
-    <ClInclude Include="cipher\cipher.h" />
     <ClInclude Include="cipher\internal.h" />
     <ClInclude Include="des\internal.h" />
     <ClInclude Include="dh\internal.h" />

@@ -21,7 +21,6 @@
 #include <openssl/mem.h>
 #include <openssl/poly1305.h>
 
-#include "cipher.h"
 #include "internal.h"
 
 

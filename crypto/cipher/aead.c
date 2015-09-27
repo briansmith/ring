@@ -18,7 +18,6 @@
 
 #include <openssl/err.h>
 
-#include "cipher.h"
 #include "internal.h"
 
 

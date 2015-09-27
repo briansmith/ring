@@ -57,7 +57,6 @@
 #include <openssl/obj.h>
 #include <openssl/rand.h>
 
-#include "cipher.h"
 #include "internal.h"
 #include "../internal.h"
 #include "../modes/internal.h"
@@ -69,18 +68,6 @@
 
 #define EVP_AEAD_AES_GCM_NONCE_LEN 12
 #define EVP_AEAD_AES_GCM_TAG_LEN 16
-
-typedef struct {
-  union {
-    double align;
-    AES_KEY ks;
-  } ks;
-  block128_f block;
-  union {
-    cbc128_f cbc;
-    ctr128_f ctr;
-  } stream;
-} EVP_AES_KEY;
 
 #if !defined(OPENSSL_NO_ASM) && \
     (defined(OPENSSL_X86_64) || defined(OPENSSL_X86))
@@ -113,12 +100,7 @@ static int hwaes_capable(void) {
 
 int aes_v8_set_encrypt_key(const uint8_t *user_key, const int bits,
                            AES_KEY *key);
-int aes_v8_set_decrypt_key(const uint8_t *user_key, const int bits,
-                           AES_KEY *key);
 void aes_v8_encrypt(const uint8_t *in, uint8_t *out, const AES_KEY *key);
-void aes_v8_decrypt(const uint8_t *in, uint8_t *out, const AES_KEY *key);
-void aes_v8_cbc_encrypt(const uint8_t *in, uint8_t *out, size_t length,
-                        const AES_KEY *key, uint8_t *ivec, const int enc);
 void aes_v8_ctr32_encrypt_blocks(const uint8_t *in, uint8_t *out, size_t len,
                                  const AES_KEY *key, const uint8_t ivec[16]);
 
@@ -127,8 +109,6 @@ void aes_v8_ctr32_encrypt_blocks(const uint8_t *in, uint8_t *out, size_t len,
 #if defined(BSAES)
 /* On platforms where BSAES gets defined (just above), then these functions are
  * provided by asm. */
-void bsaes_cbc_encrypt(const uint8_t *in, uint8_t *out, size_t length,
-                       const AES_KEY *key, uint8_t ivec[16], int enc);
 void bsaes_ctr32_encrypt_blocks(const uint8_t *in, uint8_t *out, size_t len,
                                 const AES_KEY *key, const uint8_t ivec[16]);
 #else
@@ -138,14 +118,8 @@ static char bsaes_capable(void) {
 
 /* On other platforms, bsaes_capable() will always return false and so the
  * following will never be called. */
-static void bsaes_cbc_encrypt(const uint8_t *in, uint8_t *out, size_t length,
-                              const AES_KEY *key, uint8_t ivec[16], int enc) {
-  abort();
-}
-
-static void bsaes_ctr32_encrypt_blocks(const uint8_t *in, uint8_t *out,
-                                       size_t len, const AES_KEY *key,
-                                       const uint8_t ivec[16]) {
+void bsaes_ctr32_encrypt_blocks(const uint8_t *in, uint8_t *out, size_t len,
+                                const AES_KEY *key, const uint8_t ivec[16]) {
   abort();
 }
 #endif
@@ -154,13 +128,8 @@ static void bsaes_ctr32_encrypt_blocks(const uint8_t *in, uint8_t *out,
 /* On platforms where VPAES gets defined (just above), then these functions are
  * provided by asm. */
 int vpaes_set_encrypt_key(const uint8_t *userKey, int bits, AES_KEY *key);
-int vpaes_set_decrypt_key(const uint8_t *userKey, int bits, AES_KEY *key);
 
 void vpaes_encrypt(const uint8_t *in, uint8_t *out, const AES_KEY *key);
-void vpaes_decrypt(const uint8_t *in, uint8_t *out, const AES_KEY *key);
-
-void vpaes_cbc_encrypt(const uint8_t *in, uint8_t *out, size_t length,
-                       const AES_KEY *key, uint8_t *ivec, int enc);
 #else
 static char vpaes_capable(void) {
   return 0;
@@ -172,18 +141,7 @@ static int vpaes_set_encrypt_key(const uint8_t *userKey, int bits,
                                  AES_KEY *key) {
   abort();
 }
-static int vpaes_set_decrypt_key(const uint8_t *userKey, int bits,
-                                 AES_KEY *key) {
-  abort();
-}
 static void vpaes_encrypt(const uint8_t *in, uint8_t *out, const AES_KEY *key) {
-  abort();
-}
-static void vpaes_decrypt(const uint8_t *in, uint8_t *out, const AES_KEY *key) {
-  abort();
-}
-static void vpaes_cbc_encrypt(const uint8_t *in, uint8_t *out, size_t length,
-                              const AES_KEY *key, uint8_t *ivec, int enc) {
   abort();
 }
 #endif
@@ -200,23 +158,8 @@ static int aes_v8_set_encrypt_key(const uint8_t *user_key, int bits,
   abort();
 }
 
-static int aes_v8_set_decrypt_key(const uint8_t *user_key, int bits,
-                                  AES_KEY *key) {
-  abort();
-}
-
 static void aes_v8_encrypt(const uint8_t *in, uint8_t *out,
                            const AES_KEY *key) {
-  abort();
-}
-
-static void aes_v8_decrypt(const uint8_t *in, uint8_t *out,
-                           const AES_KEY *key) {
-  abort();
-}
-
-static void aes_v8_cbc_encrypt(const uint8_t *in, uint8_t *out, size_t length,
-                               const AES_KEY *key, uint8_t *ivec, int enc) {
   abort();
 }
 
@@ -230,13 +173,8 @@ static void aes_v8_ctr32_encrypt_blocks(const uint8_t *in, uint8_t *out,
 #if !defined(OPENSSL_NO_ASM) && \
     (defined(OPENSSL_X86_64) || defined(OPENSSL_X86))
 int aesni_set_encrypt_key(const uint8_t *userKey, int bits, AES_KEY *key);
-int aesni_set_decrypt_key(const uint8_t *userKey, int bits, AES_KEY *key);
 
 void aesni_encrypt(const uint8_t *in, uint8_t *out, const AES_KEY *key);
-void aesni_decrypt(const uint8_t *in, uint8_t *out, const AES_KEY *key);
-
-void aesni_cbc_encrypt(const uint8_t *in, uint8_t *out, size_t length,
-                       const AES_KEY *key, uint8_t *ivec, int enc);
 
 void aesni_ctr32_encrypt_blocks(const uint8_t *in, uint8_t *out, size_t blocks,
                                 const void *key, const uint8_t *ivec);
@@ -259,96 +197,6 @@ static void aesni_ctr32_encrypt_blocks(const uint8_t *in, uint8_t *out,
 }
 
 #endif
-
-static int aes_init_key(EVP_CIPHER_CTX *ctx, const uint8_t *key,
-                        const uint8_t *iv, int enc)
-                        OPENSSL_SUPPRESS_UNREACHABLE_CODE_WARNINGS {
-  int ret, mode;
-  EVP_AES_KEY *dat = (EVP_AES_KEY *)ctx->cipher_data;
-
-  mode = ctx->cipher->flags & EVP_CIPH_MODE_MASK;
-  if (mode == EVP_CIPH_CBC_MODE && !enc) {
-    if (hwaes_capable()) {
-      ret = aes_v8_set_decrypt_key(key, ctx->key_len * 8, &dat->ks.ks);
-      dat->block = (block128_f)aes_v8_decrypt;
-      dat->stream.cbc = NULL;
-      dat->stream.cbc = (cbc128_f)aes_v8_cbc_encrypt;
-    } else if (bsaes_capable()) {
-      ret = AES_set_decrypt_key(key, ctx->key_len * 8, &dat->ks.ks);
-      dat->block = (block128_f)AES_decrypt;
-      dat->stream.cbc = (cbc128_f)bsaes_cbc_encrypt;
-    } else if (vpaes_capable()) {
-      ret = vpaes_set_decrypt_key(key, ctx->key_len * 8, &dat->ks.ks);
-      dat->block = (block128_f)vpaes_decrypt;
-      dat->stream.cbc = (cbc128_f)vpaes_cbc_encrypt;
-    } else {
-      ret = AES_set_decrypt_key(key, ctx->key_len * 8, &dat->ks.ks);
-      dat->block = (block128_f)AES_decrypt;
-      dat->stream.cbc = (cbc128_f)AES_cbc_encrypt;
-    }
-  } else if (hwaes_capable()) {
-    ret = aes_v8_set_encrypt_key(key, ctx->key_len * 8, &dat->ks.ks);
-    dat->block = (block128_f)aes_v8_encrypt;
-    dat->stream.cbc = NULL;
-    if (mode == EVP_CIPH_CBC_MODE) {
-      dat->stream.cbc = (cbc128_f)aes_v8_cbc_encrypt;
-    } else if (mode == EVP_CIPH_CTR_MODE) {
-      dat->stream.ctr = (ctr128_f)aes_v8_ctr32_encrypt_blocks;
-    }
-  } else if (bsaes_capable() && mode == EVP_CIPH_CTR_MODE) {
-    ret = AES_set_encrypt_key(key, ctx->key_len * 8, &dat->ks.ks);
-    dat->block = (block128_f)AES_encrypt;
-    dat->stream.ctr = (ctr128_f)bsaes_ctr32_encrypt_blocks;
-  } else if (vpaes_capable()) {
-    ret = vpaes_set_encrypt_key(key, ctx->key_len * 8, &dat->ks.ks);
-    dat->block = (block128_f)vpaes_encrypt;
-    dat->stream.cbc =
-        mode == EVP_CIPH_CBC_MODE ? (cbc128_f)vpaes_cbc_encrypt : NULL;
-  } else {
-    ret = AES_set_encrypt_key(key, ctx->key_len * 8, &dat->ks.ks);
-    dat->block = (block128_f)AES_encrypt;
-    dat->stream.cbc =
-        mode == EVP_CIPH_CBC_MODE ? (cbc128_f)AES_cbc_encrypt : NULL;
-  }
-
-  if (ret < 0) {
-    OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_AES_KEY_SETUP_FAILED);
-    return 0;
-  }
-
-  return 1;
-}
-
-static int aes_cbc_cipher(EVP_CIPHER_CTX *ctx, uint8_t *out, const uint8_t *in,
-                          size_t len) {
-  EVP_AES_KEY *dat = (EVP_AES_KEY *)ctx->cipher_data;
-
-  if (dat->stream.cbc) {
-    (*dat->stream.cbc)(in, out, len, &dat->ks, ctx->iv, ctx->encrypt);
-  } else if (ctx->encrypt) {
-    CRYPTO_cbc128_encrypt(in, out, len, &dat->ks, ctx->iv, dat->block);
-  } else {
-    CRYPTO_cbc128_decrypt(in, out, len, &dat->ks, ctx->iv, dat->block);
-  }
-
-  return 1;
-}
-
-static int aes_ctr_cipher(EVP_CIPHER_CTX *ctx, uint8_t *out, const uint8_t *in,
-                          size_t len) {
-  unsigned int num = ctx->num;
-  EVP_AES_KEY *dat = (EVP_AES_KEY *)ctx->cipher_data;
-
-  if (dat->stream.ctr) {
-    CRYPTO_ctr128_encrypt_ctr32(in, out, len, &dat->ks, ctx->iv, ctx->buf, &num,
-                                dat->stream.ctr);
-  } else {
-    CRYPTO_ctr128_encrypt(in, out, len, &dat->ks, ctx->iv, ctx->buf, &num,
-                          dat->block);
-  }
-  ctx->num = (size_t)num;
-  return 1;
-}
 
 static char aesni_capable(void);
 
@@ -410,146 +258,9 @@ static ctr128_f aes_ctr_set_key(AES_KEY *aes_key, GCM128_CONTEXT *gcm_ctx,
   return NULL;
 }
 
-/* increment counter (64-bit int) by 1 */
-static void ctr64_inc(uint8_t *counter) {
-  int n = 8;
-  uint8_t c;
-
-  do {
-    --n;
-    c = counter[n];
-    ++c;
-    counter[n] = c;
-    if (c) {
-      return;
-    }
-  } while (n);
-}
-
-static const EVP_CIPHER aes_128_cbc = {
-    16 /* block_size */, 16 /* key_size */,
-    16 /* iv_len */,     sizeof(EVP_AES_KEY), EVP_CIPH_CBC_MODE,
-    NULL /* app_data */, aes_init_key,        aes_cbc_cipher,
-    NULL /* cleanup */,  NULL /* ctrl */};
-
-static const EVP_CIPHER aes_128_ctr = {
-    1 /* block_size */,  16 /* key_size */,
-    16 /* iv_len */,     sizeof(EVP_AES_KEY), EVP_CIPH_CTR_MODE,
-    NULL /* app_data */, aes_init_key,        aes_ctr_cipher,
-    NULL /* cleanup */,  NULL /* ctrl */};
-
-
-static const EVP_CIPHER aes_256_cbc = {
-    16 /* block_size */, 32 /* key_size */,
-    16 /* iv_len */,     sizeof(EVP_AES_KEY), EVP_CIPH_CBC_MODE,
-    NULL /* app_data */, aes_init_key,        aes_cbc_cipher,
-    NULL /* cleanup */,  NULL /* ctrl */};
-
-static const EVP_CIPHER aes_256_ctr = {
-    1 /* block_size */,  32 /* key_size */,
-    16 /* iv_len */,     sizeof(EVP_AES_KEY), EVP_CIPH_CTR_MODE,
-    NULL /* app_data */, aes_init_key,        aes_ctr_cipher,
-    NULL /* cleanup */,  NULL /* ctrl */};
-
-#if !defined(OPENSSL_NO_ASM) && \
-    (defined(OPENSSL_X86_64) || defined(OPENSSL_X86))
-
-/* AES-NI section. */
-
 static char aesni_capable(void) {
   return (OPENSSL_ia32cap_P[1] & (1 << (57 - 32))) != 0;
 }
-
-static int aesni_init_key(EVP_CIPHER_CTX *ctx, const uint8_t *key,
-                          const uint8_t *iv, int enc) {
-  int ret, mode;
-  EVP_AES_KEY *dat = (EVP_AES_KEY *)ctx->cipher_data;
-
-  mode = ctx->cipher->flags & EVP_CIPH_MODE_MASK;
-  if (mode == EVP_CIPH_CBC_MODE && !enc) {
-    ret = aesni_set_decrypt_key(key, ctx->key_len * 8, ctx->cipher_data);
-    dat->block = (block128_f)aesni_decrypt;
-    dat->stream.cbc =
-        mode == EVP_CIPH_CBC_MODE ? (cbc128_f)aesni_cbc_encrypt : NULL;
-  } else {
-    ret = aesni_set_encrypt_key(key, ctx->key_len * 8, ctx->cipher_data);
-    dat->block = (block128_f)aesni_encrypt;
-    if (mode == EVP_CIPH_CBC_MODE) {
-      dat->stream.cbc = (cbc128_f)aesni_cbc_encrypt;
-    } else if (mode == EVP_CIPH_CTR_MODE) {
-      dat->stream.ctr = (ctr128_f)aesni_ctr32_encrypt_blocks;
-    } else {
-      dat->stream.cbc = NULL;
-    }
-  }
-
-  if (ret < 0) {
-    OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_AES_KEY_SETUP_FAILED);
-    return 0;
-  }
-
-  return 1;
-}
-
-static int aesni_cbc_cipher(EVP_CIPHER_CTX *ctx, uint8_t *out,
-                            const uint8_t *in, size_t len) {
-  aesni_cbc_encrypt(in, out, len, ctx->cipher_data, ctx->iv, ctx->encrypt);
-
-  return 1;
-}
-
-static const EVP_CIPHER aesni_128_cbc = {
-    16 /* block_size */, 16 /* key_size */,
-    16 /* iv_len */,     sizeof(EVP_AES_KEY), EVP_CIPH_CBC_MODE,
-    NULL /* app_data */, aesni_init_key,      aesni_cbc_cipher,
-    NULL /* cleanup */,  NULL /* ctrl */};
-
-static const EVP_CIPHER aesni_128_ctr = {
-    1 /* block_size */,  16 /* key_size */,
-    16 /* iv_len */,     sizeof(EVP_AES_KEY), EVP_CIPH_CTR_MODE,
-    NULL /* app_data */, aesni_init_key,      aes_ctr_cipher,
-    NULL /* cleanup */,  NULL /* ctrl */};
-
-
-static const EVP_CIPHER aesni_256_cbc = {
-    16 /* block_size */, 32 /* key_size */,
-    16 /* iv_len */,     sizeof(EVP_AES_KEY), EVP_CIPH_CBC_MODE,
-    NULL /* app_data */, aesni_init_key,      aesni_cbc_cipher,
-    NULL /* cleanup */,  NULL /* ctrl */};
-
-static const EVP_CIPHER aesni_256_ctr = {
-    1 /* block_size */,  32 /* key_size */,
-    16 /* iv_len */,     sizeof(EVP_AES_KEY), EVP_CIPH_CTR_MODE,
-    NULL /* app_data */, aesni_init_key,      aes_ctr_cipher,
-    NULL /* cleanup */,  NULL /* ctrl */};
-
-#define EVP_CIPHER_FUNCTION(keybits, mode)             \
-  const EVP_CIPHER *EVP_aes_##keybits##_##mode(void) { \
-    if (aesni_capable()) {                             \
-      return &aesni_##keybits##_##mode;                \
-    } else {                                           \
-      return &aes_##keybits##_##mode;                  \
-    }                                                  \
-  }
-
-#else  /* ^^^  OPENSSL_X86_64 || OPENSSL_X86 */
-
-static char aesni_capable(void) {
-  return 0;
-}
-
-#define EVP_CIPHER_FUNCTION(keybits, mode)             \
-  const EVP_CIPHER *EVP_aes_##keybits##_##mode(void) { \
-    return &aes_##keybits##_##mode;                    \
-  }
-
-#endif
-
-EVP_CIPHER_FUNCTION(128, cbc)
-EVP_CIPHER_FUNCTION(128, ctr)
-
-EVP_CIPHER_FUNCTION(256, cbc)
-EVP_CIPHER_FUNCTION(256, ctr)
 
 
 struct aead_aes_gcm_ctx {

@@ -66,10 +66,6 @@ extern "C" {
 #endif
 
 
-/* EVP_CIPH_MODE_MASK contains the bits of |flags| that represent the mode. */
-#define EVP_CIPH_MODE_MASK 0x3f
-
-
 /* EVP_AEAD represents a specific AEAD algorithm. */
 struct evp_aead_st {
   /* ring: Keep the layout of this in sync with the layout of

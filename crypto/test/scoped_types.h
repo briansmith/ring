@@ -29,7 +29,6 @@
 #include <openssl/mem.h>
 #include <openssl/rsa.h>
 
-#include "../cipher/cipher.h"
 #include "stl_compat.h"
 
 
@@ -87,9 +86,6 @@ using ScopedRSA = ScopedOpenSSLType<RSA, RSA_free>;
 using ScopedEVP_AEAD_CTX = ScopedOpenSSLContext<EVP_AEAD_CTX, void,
                                                 EVP_AEAD_CTX_zero,
                                                 EVP_AEAD_CTX_cleanup>;
-using ScopedEVP_CIPHER_CTX = ScopedOpenSSLContext<EVP_CIPHER_CTX, int,
-                                                  EVP_CIPHER_CTX_init,
-                                                  EVP_CIPHER_CTX_cleanup>;
 using ScopedEVP_MD_CTX = ScopedOpenSSLContext<EVP_MD_CTX, int, EVP_MD_CTX_init,
                                               EVP_MD_CTX_cleanup>;
 
