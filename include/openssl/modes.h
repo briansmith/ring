@@ -104,9 +104,10 @@ OPENSSL_EXPORT GCM128_CONTEXT *CRYPTO_gcm128_new(void *key, block128_f block);
 OPENSSL_EXPORT void CRYPTO_gcm128_init(GCM128_CONTEXT *ctx, void *key,
                                        block128_f block);
 
-/* CRYPTO_gcm128_setiv sets the IV (nonce) for |ctx|. */
-OPENSSL_EXPORT void CRYPTO_gcm128_setiv(GCM128_CONTEXT *ctx, const uint8_t *iv,
-                                        size_t len);
+/* CRYPTO_gcm128_set_96_bit_iv sets the IV (nonce) for |ctx|. |iv| must be 12
+ * bytes (96 bits) long. */
+OPENSSL_EXPORT void CRYPTO_gcm128_set_96_bit_iv(GCM128_CONTEXT *ctx,
+                                                const uint8_t *iv);
 
 /* CRYPTO_gcm128_aad sets the authenticated data for an instance of GCM. This
  * must be called before and data is encrypted. It returns one on success and

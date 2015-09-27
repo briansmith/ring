@@ -488,15 +488,12 @@ void CRYPTO_gcm128_init(GCM128_CONTEXT *ctx, void *key, block128_f block) {
 #endif
 }
 
-void CRYPTO_gcm128_setiv(GCM128_CONTEXT *ctx, const uint8_t *iv, size_t len) {
+void CRYPTO_gcm128_set_96_bit_iv(GCM128_CONTEXT *ctx, const uint8_t *iv) {
   const union {
     long one;
     char little;
   } is_endian = {1};
   unsigned int ctr;
-#ifdef GCM_FUNCREF_4BIT
-  void (*gcm_gmult_p)(uint64_t Xi[2], const u128 Htable[16]) = ctx->gmult;
-#endif
 
   ctx->Yi.u[0] = 0;
   ctx->Yi.u[1] = 0;
@@ -507,54 +504,9 @@ void CRYPTO_gcm128_setiv(GCM128_CONTEXT *ctx, const uint8_t *iv, size_t len) {
   ctx->ares = 0;
   ctx->mres = 0;
 
-  if (len == 12) {
-    memcpy(ctx->Yi.c, iv, 12);
-    ctx->Yi.c[15] = 1;
-    ctr = 1;
-  } else {
-    size_t i;
-    uint64_t len0 = len;
-
-    while (len >= 16) {
-      for (i = 0; i < 16; ++i) {
-        ctx->Yi.c[i] ^= iv[i];
-      }
-      GCM_MUL(ctx, Yi);
-      iv += 16;
-      len -= 16;
-    }
-    if (len) {
-      for (i = 0; i < len; ++i) {
-        ctx->Yi.c[i] ^= iv[i];
-      }
-      GCM_MUL(ctx, Yi);
-    }
-    len0 <<= 3;
-    if (is_endian.little) {
-#ifdef BSWAP8
-      ctx->Yi.u[1] ^= BSWAP8(len0);
-#else
-      ctx->Yi.c[8] ^= (uint8_t)(len0 >> 56);
-      ctx->Yi.c[9] ^= (uint8_t)(len0 >> 48);
-      ctx->Yi.c[10] ^= (uint8_t)(len0 >> 40);
-      ctx->Yi.c[11] ^= (uint8_t)(len0 >> 32);
-      ctx->Yi.c[12] ^= (uint8_t)(len0 >> 24);
-      ctx->Yi.c[13] ^= (uint8_t)(len0 >> 16);
-      ctx->Yi.c[14] ^= (uint8_t)(len0 >> 8);
-      ctx->Yi.c[15] ^= (uint8_t)(len0);
-#endif
-    } else {
-      ctx->Yi.u[1] ^= len0;
-    }
-
-    GCM_MUL(ctx, Yi);
-
-    if (is_endian.little) {
-      ctr = GETU32(ctx->Yi.c + 12);
-    } else {
-      ctr = ctx->Yi.d[3];
-    }
-  }
+  memcpy(ctx->Yi.c, iv, 12);
+  ctx->Yi.c[15] = 1;
+  ctr = 1;
 
   (*ctx->block)(ctx->Yi.c, ctx->EK0.c, ctx->key);
   ++ctr;
