@@ -152,6 +152,9 @@ __inline uint32_t _bswap4(uint32_t val) {
 /* GCM definitions */
 typedef struct { uint64_t hi,lo; } u128;
 
+/* This differs from upstream's |gcm128_context| in that it does not have the
+ * |key| pointer, in order to make it |memcpy|-friendly. Rather the key is
+ * passed into each call that needs it. */
 struct gcm128_context {
   /* Following 6 names follow names in GCM specification */
   union {
@@ -170,7 +173,6 @@ struct gcm128_context {
 
   unsigned int mres, ares;
   block128_f block;
-  const void *key;
 };
 
 struct ccm128_context {

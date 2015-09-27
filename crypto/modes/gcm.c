@@ -426,7 +426,6 @@ void CRYPTO_gcm128_init(GCM128_CONTEXT *ctx, const void *key,
 
   memset(ctx, 0, sizeof(*ctx));
   ctx->block = block;
-  ctx->key = key;
 
   (*block)(ctx->H.c, ctx->H.c, key);
 
@@ -492,7 +491,8 @@ void CRYPTO_gcm128_init(GCM128_CONTEXT *ctx, const void *key,
 #endif
 }
 
-void CRYPTO_gcm128_setiv(GCM128_CONTEXT *ctx, const uint8_t *iv, size_t len) {
+void CRYPTO_gcm128_setiv(GCM128_CONTEXT *ctx, const void *key,
+                         const uint8_t *iv, size_t len) {
   const union {
     long one;
     char little;
@@ -560,7 +560,7 @@ void CRYPTO_gcm128_setiv(GCM128_CONTEXT *ctx, const uint8_t *iv, size_t len) {
     }
   }
 
-  (*ctx->block)(ctx->Yi.c, ctx->EK0.c, ctx->key);
+  (*ctx->block)(ctx->Yi.c, ctx->EK0.c, key);
   ++ctr;
   if (is_endian.little) {
     PUTU32(ctx->Yi.c + 12, ctr);
@@ -633,8 +633,9 @@ int CRYPTO_gcm128_aad(GCM128_CONTEXT *ctx, const uint8_t *aad, size_t len) {
   return 1;
 }
 
-int CRYPTO_gcm128_encrypt(GCM128_CONTEXT *ctx, const unsigned char *in,
-                          unsigned char *out, size_t len) {
+int CRYPTO_gcm128_encrypt(GCM128_CONTEXT *ctx, const void *key,
+                          const unsigned char *in, unsigned char *out,
+                          size_t len) {
   const union {
     long one;
     char little;
@@ -643,7 +644,6 @@ int CRYPTO_gcm128_encrypt(GCM128_CONTEXT *ctx, const unsigned char *in,
   size_t i;
   uint64_t mlen = ctx->len.u[1];
   block128_f block = ctx->block;
-  const void *key = ctx->key;
 #ifdef GCM_FUNCREF_4BIT
   void (*gcm_gmult_p)(uint64_t Xi[2], const u128 Htable[16]) = ctx->gmult;
 #ifdef GHASH
@@ -793,8 +793,9 @@ int CRYPTO_gcm128_encrypt(GCM128_CONTEXT *ctx, const unsigned char *in,
   return 1;
 }
 
-int CRYPTO_gcm128_decrypt(GCM128_CONTEXT *ctx, const unsigned char *in,
-                          unsigned char *out, size_t len) {
+int CRYPTO_gcm128_decrypt(GCM128_CONTEXT *ctx, const void *key,
+                          const unsigned char *in, unsigned char *out,
+                          size_t len) {
   const union {
     long one;
     char little;
@@ -803,7 +804,6 @@ int CRYPTO_gcm128_decrypt(GCM128_CONTEXT *ctx, const unsigned char *in,
   size_t i;
   uint64_t mlen = ctx->len.u[1];
   block128_f block = ctx->block;
-  const void *key = ctx->key;
 #ifdef GCM_FUNCREF_4BIT
   void (*gcm_gmult_p)(uint64_t Xi[2], const u128 Htable[16]) = ctx->gmult;
 #ifdef GHASH
@@ -960,15 +960,15 @@ int CRYPTO_gcm128_decrypt(GCM128_CONTEXT *ctx, const unsigned char *in,
   return 1;
 }
 
-int CRYPTO_gcm128_encrypt_ctr32(GCM128_CONTEXT *ctx, const uint8_t *in,
-                                uint8_t *out, size_t len, ctr128_f stream) {
+int CRYPTO_gcm128_encrypt_ctr32(GCM128_CONTEXT *ctx, const void *key,
+                                const uint8_t *in, uint8_t *out, size_t len,
+                                ctr128_f stream) {
   const union {
     long one;
     char little;
   } is_endian = {1};
   unsigned int n, ctr;
   uint64_t mlen = ctx->len.u[1];
-  const void *key = ctx->key;
 #ifdef GCM_FUNCREF_4BIT
   void (*gcm_gmult_p)(uint64_t Xi[2], const u128 Htable[16]) = ctx->gmult;
 #ifdef GHASH
@@ -1069,8 +1069,8 @@ int CRYPTO_gcm128_encrypt_ctr32(GCM128_CONTEXT *ctx, const uint8_t *in,
   return 1;
 }
 
-int CRYPTO_gcm128_decrypt_ctr32(GCM128_CONTEXT *ctx, const uint8_t *in,
-                                uint8_t *out, size_t len,
+int CRYPTO_gcm128_decrypt_ctr32(GCM128_CONTEXT *ctx, const void *key,
+                                const uint8_t *in, uint8_t *out, size_t len,
                                 ctr128_f stream) {
   const union {
     long one;
@@ -1078,7 +1078,6 @@ int CRYPTO_gcm128_decrypt_ctr32(GCM128_CONTEXT *ctx, const uint8_t *in,
   } is_endian = {1};
   unsigned int n, ctr;
   uint64_t mlen = ctx->len.u[1];
-  const void *key = ctx->key;
 #ifdef GCM_FUNCREF_4BIT
   void (*gcm_gmult_p)(uint64_t Xi[2], const u128 Htable[16]) = ctx->gmult;
 #ifdef GHASH
