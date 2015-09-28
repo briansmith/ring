@@ -106,6 +106,14 @@ OPENSSL_EXPORT PKCS8_PRIV_KEY_INFO *PKCS8_decrypt_pbe(X509_SIG *pkcs8,
                                                       const uint8_t *pass_raw,
                                                       size_t pass_raw_len);
 
+/* PKCS12_get_key_and_certs parses a PKCS#12 structure from |in|, authenticates
+ * and decrypts it using |password|, sets |*out_key| to the included private
+ * key and appends the included certificates to |out_certs|. It returns one on
+ * success and zero on error. The caller takes ownership of the outputs. */
+OPENSSL_EXPORT int PKCS12_get_key_and_certs(EVP_PKEY **out_key,
+                                            STACK_OF(X509) *out_certs,
+                                            CBS *in, const char *password);
+
 
 /* Deprecated functions. */
 
@@ -126,17 +134,6 @@ OPENSSL_EXPORT X509_SIG *PKCS8_encrypt(int pbe_nid, const EVP_CIPHER *cipher,
 OPENSSL_EXPORT PKCS8_PRIV_KEY_INFO *PKCS8_decrypt(X509_SIG *pkcs8,
                                                   const char *pass,
                                                   int pass_len);
-
-/* PKCS12_get_key_and_certs parses a PKCS#12 structure from |in|, authenticates
- * and decrypts it using |password|, sets |*out_key| to the included private
- * key and appends the included certificates to |out_certs|. It returns one on
- * success and zero on error. The caller takes ownership of the outputs. */
-OPENSSL_EXPORT int PKCS12_get_key_and_certs(EVP_PKEY **out_key,
-                                            STACK_OF(X509) *out_certs,
-                                            CBS *in, const char *password);
-
-
-/* Deprecated functions. */
 
 /* PKCS12_PBE_add does nothing. It exists for compatibility with OpenSSL. */
 OPENSSL_EXPORT void PKCS12_PBE_add(void);
