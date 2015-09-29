@@ -4,7 +4,7 @@
 
 // TLS low level connection and record layer
 
-package main
+package runner
 
 import (
 	"bytes"

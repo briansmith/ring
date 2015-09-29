@@ -91,6 +91,13 @@ binaries.
     don't have steps for assembling the assembly language source files, so they
     currently cannot be used to build BoringSSL.
 
+# Running tests
+
+There are two sets of tests: the C/C++ tests and the blackbox tests. For former
+are built by Ninja and can be run from the top-level directory with `go run
+util/all_tests.go`. The latter have to be run separately by running `go test`
+from within `ssl/test/runner`.
+
 
  [1]: http://www.cmake.org/download/
  [2]: http://strawberryperl.com/

@@ -3,7 +3,7 @@
 // license that can be found in the LICENSE file.
 
 // Package tls partially implements TLS 1.2, as specified in RFC 5246.
-package main
+package runner
 
 import (
 	"crypto"

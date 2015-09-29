@@ -12,7 +12,7 @@
 // with simulated loss, but there is no point in forcing the test
 // driver to.
 
-package main
+package runner
 
 import (
 	"bytes"
