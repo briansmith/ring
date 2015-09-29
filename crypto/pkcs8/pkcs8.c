@@ -1176,6 +1176,31 @@ int PKCS12_parse(const PKCS12 *p12, const char *password, EVP_PKEY **out_pkey,
   return 1;
 }
 
+int PKCS12_verify_mac(const PKCS12 *p12, const char *password,
+                      int password_len) {
+  if (password == NULL) {
+    if (password_len != 0) {
+      return 0;
+    }
+  } else if (password_len != -1 &&
+             (password[password_len] != 0 ||
+              memchr(password, 0, password_len) != NULL)) {
+    return 0;
+  }
+
+  EVP_PKEY *pkey = NULL;
+  X509 *cert = NULL;
+  if (!PKCS12_parse(p12, password, &pkey, &cert, NULL)) {
+    ERR_clear_error();
+    return 0;
+  }
+
+  EVP_PKEY_free(pkey);
+  X509_free(cert);
+
+  return 1;
+}
+
 void PKCS12_free(PKCS12 *p12) {
   OPENSSL_free(p12->ber_bytes);
   OPENSSL_free(p12);

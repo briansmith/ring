@@ -166,8 +166,20 @@ OPENSSL_EXPORT int PKCS12_parse(const PKCS12 *p12, const char *password,
                                 EVP_PKEY **out_pkey, X509 **out_cert,
                                 STACK_OF(X509) **out_ca_certs);
 
+/* PKCS12_verify_mac returns one if |password| is a valid password for |p12|
+ * and zero otherwise. Since |PKCS12_parse| doesn't take a length parameter,
+ * it's not actually possible to use a non-NUL-terminated password to actually
+ * get anything from a |PKCS12|. Thus |password| and |password_len| may be
+ * |NULL| and zero, respectively, or else |password_len| may be -1, or else
+ * |password[password_len]| must be zero and no other NUL bytes may appear in
+ * |password|. If the |password_len| checks fail, zero is returned
+ * immediately. */
+OPENSSL_EXPORT int PKCS12_verify_mac(const PKCS12 *p12, const char *password,
+                                     int password_len);
+
 /* PKCS12_free frees |p12| and its contents. */
 OPENSSL_EXPORT void PKCS12_free(PKCS12 *p12);
+
 
 #if defined(__cplusplus)
 }  /* extern C */

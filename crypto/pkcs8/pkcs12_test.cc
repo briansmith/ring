@@ -681,6 +681,8 @@ static const uint8_t kWindows[] = {
     0xfe, 0x3a, 0x66, 0x47, 0x40, 0x49, 0x02, 0x02, 0x07, 0xd0,
 };
 
+static const char kPassword[] = "foo";
+
 static bool Test(const char *name, const uint8_t *der, size_t der_len) {
   ScopedX509Stack certs(sk_X509_new_null());
   if (!certs) {
@@ -690,7 +692,7 @@ static bool Test(const char *name, const uint8_t *der, size_t der_len) {
   CBS pkcs12;
   EVP_PKEY *key = nullptr;
   CBS_init(&pkcs12, der, der_len);
-  if (!PKCS12_get_key_and_certs(&key, certs.get(), &pkcs12, "foo")) {
+  if (!PKCS12_get_key_and_certs(&key, certs.get(), &pkcs12, kPassword)) {
     fprintf(stderr, "PKCS12 failed on %s data.\n", name);
     ERR_print_errors_fp(stderr);
     return false;
@@ -718,10 +720,20 @@ static bool TestCompat(const uint8_t *der, size_t der_len) {
     return false;
   }
 
+  if (PKCS12_verify_mac(p12.get(), "badpass", 7)) {
+    fprintf(stderr, "PKCS12_verify_mac accepted bad password.\n");
+    return false;
+  }
+
+  if (!PKCS12_verify_mac(p12.get(), kPassword, sizeof(kPassword) - 1)) {
+    fprintf(stderr, "PKCS12_verify_mac rejected good password.\n");
+    return false;
+  }
+
   EVP_PKEY *key = nullptr;
   X509 *cert = nullptr;
   STACK_OF(X509) *ca_certs = nullptr;
-  if (!PKCS12_parse(p12.get(), "foo", &key, &cert, &ca_certs)) {
+  if (!PKCS12_parse(p12.get(), kPassword, &key, &cert, &ca_certs)) {
     fprintf(stderr, "PKCS12_parse failed.\n");
     ERR_print_errors_fp(stderr);
     return false;
