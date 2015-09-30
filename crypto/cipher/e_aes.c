@@ -315,7 +315,6 @@ int evp_aead_aes_gcm_seal(const EVP_AEAD_CTX *ctx, uint8_t *out,
                           size_t *out_len, size_t max_out_len,
                           const uint8_t *nonce, const uint8_t *in,
                           size_t in_len, const uint8_t *ad, size_t ad_len) {
-  size_t bulk = 0;
   const struct aead_aes_gcm_ctx *gcm_ctx = ctx->aead_state;
   GCM128_CONTEXT gcm;
 
@@ -337,12 +336,11 @@ int evp_aead_aes_gcm_seal(const EVP_AEAD_CTX *ctx, uint8_t *out,
   }
 
   if (gcm_ctx->ctr) {
-    if (!CRYPTO_gcm128_encrypt_ctr32(&gcm, in + bulk, out + bulk, in_len - bulk,
-                                     gcm_ctx->ctr)) {
+    if (!CRYPTO_gcm128_encrypt_ctr32(&gcm, in, out, in_len, gcm_ctx->ctr)) {
       return 0;
     }
   } else {
-    if (!CRYPTO_gcm128_encrypt(&gcm, in + bulk, out + bulk, in_len - bulk)) {
+    if (!CRYPTO_gcm128_encrypt(&gcm, in, out, in_len)) {
       return 0;
     }
   }
@@ -356,7 +354,6 @@ int evp_aead_aes_gcm_open(const EVP_AEAD_CTX *ctx, uint8_t *out,
                           size_t *out_len, size_t max_out_len,
                           const uint8_t *nonce, const uint8_t *in,
                           size_t in_len, const uint8_t *ad, size_t ad_len) {
-  size_t bulk = 0;
   const struct aead_aes_gcm_ctx *gcm_ctx = ctx->aead_state;
   uint8_t tag[EVP_AEAD_AES_GCM_TAG_LEN];
   size_t plaintext_len;
@@ -382,14 +379,12 @@ int evp_aead_aes_gcm_open(const EVP_AEAD_CTX *ctx, uint8_t *out,
   }
 
   if (gcm_ctx->ctr) {
-    if (!CRYPTO_gcm128_decrypt_ctr32(&gcm, in + bulk, out + bulk,
-                                     in_len - bulk - gcm_ctx->tag_len,
+    if (!CRYPTO_gcm128_decrypt_ctr32(&gcm, in, out, in_len - gcm_ctx->tag_len,
                                      gcm_ctx->ctr)) {
       return 0;
     }
   } else {
-    if (!CRYPTO_gcm128_decrypt(&gcm, in + bulk, out + bulk,
-                               in_len - bulk - gcm_ctx->tag_len)) {
+    if (!CRYPTO_gcm128_decrypt(&gcm, in, out, in_len - gcm_ctx->tag_len)) {
       return 0;
     }
   }
