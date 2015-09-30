@@ -494,7 +494,7 @@ static const EVP_AEAD aead_aes_128_cbc_sha256_tls = {
     SHA256_DIGEST_LENGTH + 16, /* key len (SHA256 + AES128) */
     16,                        /* nonce len (IV) */
     16 + SHA256_DIGEST_LENGTH, /* overhead (padding + SHA256) */
-    SHA_DIGEST_LENGTH,         /* max tag length */
+    SHA256_DIGEST_LENGTH,      /* max tag length */
     NULL, /* init */
     aead_aes_128_cbc_sha256_tls_init,
     aead_tls_cleanup,
@@ -533,7 +533,7 @@ static const EVP_AEAD aead_aes_256_cbc_sha256_tls = {
     SHA256_DIGEST_LENGTH + 32, /* key len (SHA256 + AES256) */
     16,                        /* nonce len (IV) */
     16 + SHA256_DIGEST_LENGTH, /* overhead (padding + SHA256) */
-    SHA_DIGEST_LENGTH,         /* max tag length */
+    SHA256_DIGEST_LENGTH,      /* max tag length */
     NULL, /* init */
     aead_aes_256_cbc_sha256_tls_init,
     aead_tls_cleanup,
@@ -546,7 +546,7 @@ static const EVP_AEAD aead_aes_256_cbc_sha384_tls = {
     SHA384_DIGEST_LENGTH + 32, /* key len (SHA384 + AES256) */
     16,                        /* nonce len (IV) */
     16 + SHA384_DIGEST_LENGTH, /* overhead (padding + SHA384) */
-    SHA_DIGEST_LENGTH,         /* max tag length */
+    SHA384_DIGEST_LENGTH,      /* max tag length */
     NULL, /* init */
     aead_aes_256_cbc_sha384_tls_init,
     aead_tls_cleanup,
