@@ -49,8 +49,7 @@ TOOLSET_VERSION = 'go1.5.1'
 
 # Platform dependent portion of a download URL. See http://golang.org/dl/.
 TOOLSET_VARIANTS = {
-  ('darwin', 'x86-32'): 'darwin-386-osx10.8.tar.gz',
-  ('darwin', 'x86-64'): 'darwin-amd64-osx10.8.tar.gz',
+  ('darwin', 'x86-64'): 'darwin-amd64.tar.gz',
   ('linux2', 'x86-32'): 'linux-386.tar.gz',
   ('linux2', 'x86-64'): 'linux-amd64.tar.gz',
   ('win32', 'x86-32'): 'windows-386.zip',
