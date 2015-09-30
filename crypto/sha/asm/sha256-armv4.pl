@@ -214,10 +214,10 @@ K256:
 .word	OPENSSL_armcap_P-.Lsha256_block_data_order
 #endif
 .popsection
-.align	5
 
 .global	sha256_block_data_order
 .type	sha256_block_data_order,%function
+.align	5
 sha256_block_data_order:
 .Lsha256_block_data_order:
 #if __ARM_ARCH__<7

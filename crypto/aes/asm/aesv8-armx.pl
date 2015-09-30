@@ -71,8 +71,8 @@ my ($zero,$rcon,$mask,$in0,$in1,$tmp,$key)=
 
 
 $code.=<<___;
-.align	5
 .pushsection .text.${prefix}_set_encrypt_key,"ax",%progbits
+.align	5
 .Lrcon:
 .long	0x01,0x01,0x01,0x01
 .long	0x0c0f0e0d,0x0c0f0e0d,0x0c0f0e0d,0x0c0f0e0d	// rotate-n-splat
