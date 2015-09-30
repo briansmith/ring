@@ -57,9 +57,19 @@
 #ifndef OPENSSL_HEADER_CIPHER_INTERNAL_H
 #define OPENSSL_HEADER_CIPHER_INTERNAL_H
 
+#if !defined(__STDC_CONSTANT_MACROS)
+#define __STDC_CONSTANT_MACROS
+#endif
+
 #include <openssl/base.h>
 
+#include <assert.h>
+#include <stdint.h>
+
 #include <openssl/aead.h>
+#include <openssl/err.h>
+
+#include "../internal.h"
 
 #if defined(__cplusplus)
 extern "C" {
@@ -92,6 +102,102 @@ struct evp_aead_st {
               size_t in_len, const uint8_t *ad, size_t ad_len);
 };
 
+
+/* Preconditions for AEAD implementation methods. */
+
+/* aead_check_alias returns 0 if |out| points within the buffer determined by
+ * |in| and |in_len| and 1 otherwise.
+ *
+ * When processing, there's only an issue if |out| points within in[:in_len]
+ * and isn't equal to |in|. If that's the case then writing the output will
+ * stomp input that hasn't been read yet.
+ *
+ * This function checks for that case. */
+inline int aead_check_alias(const uint8_t *in, size_t in_len,
+                            const uint8_t *out) {
+  if (out <= in) {
+    return 1;
+  } else if (in + in_len <= out) {
+    return 1;
+  }
+  return 0;
+}
+
+/* The underlying ChaCha implementation may not support inputs larger than
+ * 256GB at a time so we disallow even more huge inputs for all AEADs.
+ * |in_len_64| is needed because, on 32-bit platforms, size_t is only
+ * 32-bits and this produces a warning because it's always false.
+ * Casting to uint64_t inside the conditional is not sufficient to stop
+ * the warning. */
+inline int aead_check_in_len(size_t in_len) {
+  const uint64_t in_len_64 = in_len;
+  return in_len_64 < (1ull << 32) * 64 - 64;
+}
+
+inline int aead_seal_out_max_out_in_tag_len(size_t *out_len, size_t max_out_len,
+                                            size_t in_len, size_t tag_len) {
+  if (SIZE_MAX - tag_len < in_len) {
+    OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_TOO_LARGE);
+    return 0;
+  }
+  size_t ciphertext_len = in_len + tag_len;
+  if (max_out_len < ciphertext_len) {
+    OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_BUFFER_TOO_SMALL);
+    return 0;
+  }
+  *out_len = ciphertext_len;
+  return 1;
+}
+
+inline int aead_open_out_max_out_in_tag_len(size_t *out_len, size_t max_out_len,
+                                            size_t in_len, size_t tag_len) {
+  if (in_len < tag_len) {
+    OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_BAD_DECRYPT);
+    return 0;
+  }
+  size_t plaintext_len = in_len - tag_len;
+  if (max_out_len < plaintext_len) {
+    OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_BUFFER_TOO_SMALL);
+    return 0;
+  }
+  *out_len = plaintext_len;
+  return 1;
+}
+
+inline void aead_assert_init_preconditions(const EVP_AEAD_CTX *ctx,
+                                           const uint8_t *key, size_t key_len,
+                                           size_t tag_len) {
+  assert(ctx != NULL);
+  assert(ctx->aead != NULL);
+  assert(ctx->aead->overhead >= ctx->aead->max_tag_len);
+
+  /* ctx->aead_state may be NULL. */
+
+  assert(key != NULL);
+  assert(key_len == ctx->aead->key_len);
+
+  /* A tag length of 0 means "use the default," and the caller must have
+  * already substituted the default in. */
+  assert(tag_len > 0);
+  assert(tag_len <= ctx->aead->max_tag_len);
+}
+
+inline void aead_assert_open_seal_preconditions(const EVP_AEAD_CTX *ctx,
+                                                uint8_t *out, size_t *out_len,
+                                                const uint8_t *in,
+                                                size_t in_len,
+                                                const uint8_t *ad,
+                                                size_t ad_len) {
+  assert(ctx != NULL);
+  assert(ctx->aead != NULL);
+  assert(ctx->aead_state != NULL);
+  assert(out != NULL);
+  assert(out_len != NULL);
+  assert(in != NULL || in_len == 0);
+  assert(aead_check_in_len(in_len));
+  assert(aead_check_alias(in, in_len, out));
+  assert(ad != NULL || ad_len == 0);
+}
 
 #if defined(__cplusplus)
 } /* extern C */

@@ -55,6 +55,14 @@ int EVP_AEAD_CTX_init_with_direction(EVP_AEAD_CTX *ctx, const EVP_AEAD *aead,
     return 0;
   }
 
+  if (tag_len == EVP_AEAD_DEFAULT_TAG_LENGTH) {
+    tag_len = aead->max_tag_len;
+  } else if (tag_len > aead->max_tag_len) {
+    OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_TOO_LARGE);
+    ctx->aead = NULL;
+    return 0;
+  }
+
   ctx->aead = aead;
 
   int ok;
@@ -79,41 +87,30 @@ void EVP_AEAD_CTX_cleanup(EVP_AEAD_CTX *ctx) {
   ctx->aead = NULL;
 }
 
-/* check_alias returns 0 if |out| points within the buffer determined by |in|
- * and |in_len| and 1 otherwise.
- *
- * When processing, there's only an issue if |out| points within in[:in_len]
- * and isn't equal to |in|. If that's the case then writing the output will
- * stomp input that hasn't been read yet.
- *
- * This function checks for that case. */
-static int check_alias(const uint8_t *in, size_t in_len, const uint8_t *out) {
-  if (out <= in) {
-    return 1;
-  } else if (in + in_len <= out) {
-    return 1;
+static int aead_check_open_seal_preconditions(const EVP_AEAD_CTX *ctx,
+                                              uint8_t *out, size_t nonce_len,
+                                              const uint8_t *in, size_t in_len) {
+  if (nonce_len != ctx->aead->nonce_len) {
+    OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_UNSUPPORTED_NONCE_SIZE);
+    return 0;
   }
-  return 0;
+  if (!aead_check_in_len(in_len)) {
+    OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_TOO_LARGE);
+    return 0;
+  }
+  if (!aead_check_alias(in, in_len, out)) {
+    OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_OUTPUT_ALIASES_INPUT);
+    return 0;
+  }
+  return 1;
 }
 
 int EVP_AEAD_CTX_seal(const EVP_AEAD_CTX *ctx, uint8_t *out, size_t *out_len,
                       size_t max_out_len, const uint8_t *nonce,
                       size_t nonce_len, const uint8_t *in, size_t in_len,
                       const uint8_t *ad, size_t ad_len) {
-  size_t possible_out_len = in_len + ctx->aead->overhead;
-
-  if (nonce_len != ctx->aead->nonce_len) {
-    OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_INVALID_NONCE_SIZE);
-    return 0;
-  }
-
-  if (possible_out_len < in_len /* overflow */) {
-    OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_TOO_LARGE);
-    goto error;
-  }
-
-  if (!check_alias(in, in_len, out)) {
-    OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_OUTPUT_ALIASES_INPUT);
+  if (!aead_check_open_seal_preconditions(ctx, out, nonce_len, in, in_len)) {
+    /* |aead_check_open_seal_preconditions| already called |OPENSSL_PUT_ERROR|. */
     goto error;
   }
 
@@ -134,13 +131,8 @@ int EVP_AEAD_CTX_open(const EVP_AEAD_CTX *ctx, uint8_t *out, size_t *out_len,
                       size_t max_out_len, const uint8_t *nonce,
                       size_t nonce_len, const uint8_t *in, size_t in_len,
                       const uint8_t *ad, size_t ad_len) {
-  if (nonce_len != ctx->aead->nonce_len) {
-    OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_UNSUPPORTED_NONCE_SIZE);
-    return 0;
-  }
-
-  if (!check_alias(in, in_len, out)) {
-    OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_OUTPUT_ALIASES_INPUT);
+  if (!aead_check_open_seal_preconditions(ctx, out, nonce_len, in, in_len)) {
+    /* |aead_check_open_seal_preconditions| already called |OPENSSL_PUT_ERROR|. */
     goto error;
   }
 
