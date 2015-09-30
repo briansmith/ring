@@ -170,7 +170,7 @@ struct gcm128_context {
 
   unsigned int mres, ares;
   block128_f block;
-  void *key;
+  const void *key;
 };
 
 struct xts128_context {
