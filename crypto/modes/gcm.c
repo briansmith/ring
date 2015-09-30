@@ -406,7 +406,7 @@ void gcm_ghash_neon(uint64_t Xi[2], const u128 Htable[16], const uint8_t *inp,
 #endif
 #endif
 
-GCM128_CONTEXT *CRYPTO_gcm128_new(void *key, block128_f block) {
+GCM128_CONTEXT *CRYPTO_gcm128_new(const void *key, block128_f block) {
   GCM128_CONTEXT *ret;
 
   ret = (GCM128_CONTEXT *)OPENSSL_malloc(sizeof(GCM128_CONTEXT));
@@ -417,7 +417,8 @@ GCM128_CONTEXT *CRYPTO_gcm128_new(void *key, block128_f block) {
   return ret;
 }
 
-void CRYPTO_gcm128_init(GCM128_CONTEXT *ctx, void *key, block128_f block) {
+void CRYPTO_gcm128_init(GCM128_CONTEXT *ctx, const void *key,
+                        block128_f block) {
   const union {
     long one;
     char little;
@@ -642,7 +643,7 @@ int CRYPTO_gcm128_encrypt(GCM128_CONTEXT *ctx, const unsigned char *in,
   size_t i;
   uint64_t mlen = ctx->len.u[1];
   block128_f block = ctx->block;
-  void *key = ctx->key;
+  const void *key = ctx->key;
 #ifdef GCM_FUNCREF_4BIT
   void (*gcm_gmult_p)(uint64_t Xi[2], const u128 Htable[16]) = ctx->gmult;
 #ifdef GHASH
@@ -802,7 +803,7 @@ int CRYPTO_gcm128_decrypt(GCM128_CONTEXT *ctx, const unsigned char *in,
   size_t i;
   uint64_t mlen = ctx->len.u[1];
   block128_f block = ctx->block;
-  void *key = ctx->key;
+  const void *key = ctx->key;
 #ifdef GCM_FUNCREF_4BIT
   void (*gcm_gmult_p)(uint64_t Xi[2], const u128 Htable[16]) = ctx->gmult;
 #ifdef GHASH
@@ -967,7 +968,7 @@ int CRYPTO_gcm128_encrypt_ctr32(GCM128_CONTEXT *ctx, const uint8_t *in,
   } is_endian = {1};
   unsigned int n, ctr;
   uint64_t mlen = ctx->len.u[1];
-  void *key = ctx->key;
+  const void *key = ctx->key;
 #ifdef GCM_FUNCREF_4BIT
   void (*gcm_gmult_p)(uint64_t Xi[2], const u128 Htable[16]) = ctx->gmult;
 #ifdef GHASH
@@ -1077,7 +1078,7 @@ int CRYPTO_gcm128_decrypt_ctr32(GCM128_CONTEXT *ctx, const uint8_t *in,
   } is_endian = {1};
   unsigned int n, ctr;
   uint64_t mlen = ctx->len.u[1];
-  void *key = ctx->key;
+  const void *key = ctx->key;
 #ifdef GCM_FUNCREF_4BIT
   void (*gcm_gmult_p)(uint64_t Xi[2], const u128 Htable[16]) = ctx->gmult;
 #ifdef GHASH
