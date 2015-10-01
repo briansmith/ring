@@ -56,6 +56,7 @@
 
 #include <openssl/rsa.h>
 
+#include <limits.h>
 #include <string.h>
 
 #include <openssl/bn.h>
@@ -176,7 +177,7 @@ int RSA_private_encrypt(int flen, const uint8_t *from, uint8_t *to, RSA *rsa,
   return out_len;
 }
 
-int RSA_private_decrypt(int flen, const uint8_t *from, uint8_t *to, RSA *rsa,
+int RSA_private_decrypt(size_t flen, const uint8_t *from, uint8_t *to, RSA *rsa,
                         int padding) {
   size_t out_len;
 
@@ -184,6 +185,10 @@ int RSA_private_decrypt(int flen, const uint8_t *from, uint8_t *to, RSA *rsa,
     return -1;
   }
 
+  if (out_len > INT_MAX) {
+    OPENSSL_PUT_ERROR(RSA, ERR_R_OVERFLOW);
+    return -1;
+  }
   return out_len;
 }
 

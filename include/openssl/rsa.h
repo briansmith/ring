@@ -166,7 +166,7 @@ OPENSSL_EXPORT int RSA_public_encrypt(int flen, const uint8_t *from,
  *
  * WARNING: this function is dangerous because it breaks the usual return value
  * convention. Use |RSA_decrypt| instead. */
-OPENSSL_EXPORT int RSA_private_decrypt(int flen, const uint8_t *from,
+OPENSSL_EXPORT int RSA_private_decrypt(size_t flen, const uint8_t *from,
                                        uint8_t *to, RSA *rsa, int padding);
 
 /* RSA_message_index_PKCS1_type_2 performs the first step of a PKCS #1 padding
