@@ -54,44 +54,6 @@
 #include "internal.h"
 
 
-#if defined(OPENSSL_ARM) || defined(OPENSSL_AARCH64)
-#include <openssl/arm_arch.h>
-
-static int hwaes_capable(void) {
-  return (OPENSSL_armcap_P & ARMV8_AES) != 0;
-}
-
-int aes_v8_set_encrypt_key(const uint8_t *user_key, const int bits,
-                           AES_KEY *key);
-int aes_v8_set_decrypt_key(const uint8_t *user_key, const int bits,
-                           AES_KEY *key);
-void aes_v8_encrypt(const uint8_t *in, uint8_t *out, const AES_KEY *key);
-void aes_v8_decrypt(const uint8_t *in, uint8_t *out, const AES_KEY *key);
-
-#else
-
-static int hwaes_capable(void) {
-  return 0;
-}
-
-static int aes_v8_set_encrypt_key(const uint8_t *user_key, int bits, AES_KEY *key) {
-  abort();
-}
-
-static int aes_v8_set_decrypt_key(const uint8_t *user_key, int bits, AES_KEY *key) {
-  abort();
-}
-
-static void aes_v8_encrypt(const uint8_t *in, uint8_t *out, const AES_KEY *key) {
-  abort();
-}
-
-static void aes_v8_decrypt(const uint8_t *in, uint8_t *out, const AES_KEY *key) {
-  abort();
-}
-
-#endif
-
 #if defined(OPENSSL_NO_ASM) || \
     (!defined(OPENSSL_X86) && !defined(OPENSSL_X86_64) && !defined(OPENSSL_ARM))
 
@@ -1095,6 +1057,45 @@ void AES_decrypt(const uint8_t *in, uint8_t *out, const AES_KEY *key) {
 }
 
 #else
+
+#if defined(OPENSSL_ARM) || defined(OPENSSL_AARCH64)
+#include <openssl/arm_arch.h>
+
+static int hwaes_capable(void) {
+  return (OPENSSL_armcap_P & ARMV8_AES) != 0;
+}
+
+int aes_v8_set_encrypt_key(const uint8_t *user_key, const int bits,
+                           AES_KEY *key);
+int aes_v8_set_decrypt_key(const uint8_t *user_key, const int bits,
+                           AES_KEY *key);
+void aes_v8_encrypt(const uint8_t *in, uint8_t *out, const AES_KEY *key);
+void aes_v8_decrypt(const uint8_t *in, uint8_t *out, const AES_KEY *key);
+
+#else
+
+static int hwaes_capable(void) {
+  return 0;
+}
+
+static int aes_v8_set_encrypt_key(const uint8_t *user_key, int bits, AES_KEY *key) {
+  abort();
+}
+
+static int aes_v8_set_decrypt_key(const uint8_t *user_key, int bits, AES_KEY *key) {
+  abort();
+}
+
+static void aes_v8_encrypt(const uint8_t *in, uint8_t *out, const AES_KEY *key) {
+  abort();
+}
+
+static void aes_v8_decrypt(const uint8_t *in, uint8_t *out, const AES_KEY *key) {
+  abort();
+}
+
+#endif
+
 
 /* In this case several functions are provided by asm code. However, one cannot
  * control asm symbol visibility with command line flags and such so they are
