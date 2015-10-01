@@ -70,6 +70,10 @@ int CBB_init_fixed(CBB *cbb, uint8_t *buf, size_t len) {
 
 void CBB_cleanup(CBB *cbb) {
   if (cbb->base) {
+    /* Only top-level |CBB|s are cleaned up. Child |CBB|s are non-owning. They
+     * are implicitly discarded when the parent is flushed or cleaned up. */
+    assert(cbb->is_top_level);
+
     if (cbb->base->can_resize) {
       OPENSSL_free(cbb->base->buf);
     }
