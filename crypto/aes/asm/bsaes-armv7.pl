@@ -2049,7 +2049,7 @@ $code.=<<___;
 
 .size	bsaes_xts_encrypt,.-bsaes_xts_encrypt
 
-.globl	bsaes_xts_decrypt
+.global_with_section	bsaes_xts_decrypt, bsaes_xts_encrypt
 .hidden	bsaes_xts_decrypt
 .type	bsaes_xts_decrypt,%function
 .align	4
