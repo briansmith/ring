@@ -217,6 +217,10 @@ long SSL_SESSION_get_timeout(const SSL_SESSION *session) {
 }
 
 long SSL_SESSION_get_time(const SSL_SESSION *session) {
+  if (session == NULL) {
+    /* NULL should crash, but silently accept it here for compatibility. */
+    return 0;
+  }
   return session->time;
 }
 
