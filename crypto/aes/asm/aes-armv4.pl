@@ -82,7 +82,6 @@ $code=<<___;
 # endif
 #endif
 
-.pushsection .text.asm_AES_encrypt,"ax",%progbits
 .type	AES_Te,%object
 .align	5
 AES_Te:
@@ -188,7 +187,6 @@ AES_Te:
 .word	0x10000000, 0x20000000, 0x40000000, 0x80000000
 .word	0x1B000000, 0x36000000, 0, 0, 0, 0, 0, 0
 .size	AES_Te,.-AES_Te
-.popsection
 
 @ void asm_AES_encrypt(const unsigned char *in, unsigned char *out,
 @ 		       const AES_KEY *key) {
@@ -442,7 +440,7 @@ _armv4_AES_encrypt:
 	ldr	pc,[sp],#4		@ pop and return
 .size	_armv4_AES_encrypt,.-_armv4_AES_encrypt
 
-.global_with_section asm_AES_set_encrypt_key, asm_AES_encrypt
+.global asm_AES_set_encrypt_key
 .hidden asm_AES_set_encrypt_key
 .type   asm_AES_set_encrypt_key,%function
 .align	5
@@ -868,7 +866,6 @@ $code.=<<___;
 #endif
 .size	AES_set_enc2dec_key,.-AES_set_enc2dec_key
 
-.pushsection .text.asm_AES_decrypt,"ax",%progbits
 .type	AES_Td,%object
 .align	5
 AES_Td:
@@ -970,7 +967,6 @@ AES_Td:
 .byte	0x17, 0x2b, 0x04, 0x7e, 0xba, 0x77, 0xd6, 0x26
 .byte	0xe1, 0x69, 0x14, 0x63, 0x55, 0x21, 0x0c, 0x7d
 .size	AES_Td,.-AES_Td
-.popsection
 
 @ void asm_AES_decrypt(const unsigned char *in, unsigned char *out,
 @ 		       const AES_KEY *key) {

@@ -36,7 +36,6 @@ func main() {
 		"-mcpu=cortex-a8",
 		"-mfpu=neon",
 		"-fpic",
-		"-ffunction-sections",
 		"-DASM_GEN",
 		"-I", "../../include",
 		"-S", "chacha_vec.c",

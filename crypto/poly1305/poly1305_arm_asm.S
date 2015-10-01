@@ -153,7 +153,6 @@
 
 # qhasm: qpushenter crypto_onetimeauth_poly1305_neon2_blocks
 .align 4
-.pushsection .text.openssl_poly1305_neon2_blocks,"ax",%progbits
 .global openssl_poly1305_neon2_blocks
 .hidden openssl_poly1305_neon2_blocks
 .type openssl_poly1305_neon2_blocks STT_FUNC
@@ -1520,7 +1519,6 @@ mov r0,r3
 mov sp,r12
 vpop {q4,q5,q6,q7}
 bx lr
-.popsection
 
 # qhasm: int32 input_0
 
@@ -1614,7 +1612,6 @@ bx lr
 
 # qhasm: enter crypto_onetimeauth_poly1305_neon2_addmulmod
 .align 2
-.pushsection .text.openssl_poly1305_neon2_addmulmod,"ax",%progbits
 .global openssl_poly1305_neon2_addmulmod
 .hidden openssl_poly1305_neon2_addmulmod
 .type openssl_poly1305_neon2_addmulmod STT_FUNC
@@ -2014,6 +2011,5 @@ vst1.8 d4,[r0,: 64]
 # qhasm: return
 add sp,sp,#0
 bx lr
-.popsection
 
 #endif  /* __arm__ && !OPENSSL_NO_ASM */
