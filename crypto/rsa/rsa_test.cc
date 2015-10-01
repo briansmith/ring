@@ -234,20 +234,24 @@ static bool TestRSA(const uint8_t *der, size_t der_len,
   // Try decrypting corrupted ciphertexts.
   memcpy(ciphertext, oaep_ciphertext, oaep_ciphertext_len);
   for (size_t i = 0; i < oaep_ciphertext_len; i++) {
-    uint8_t saved = ciphertext[i];
-    for (unsigned b = 0; b < 256; b++) {
-      if (b == saved) {
-        continue;
-      }
-      ciphertext[i] = b;
-      num = RSA_private_decrypt(num, ciphertext, plaintext, key.get(),
-                                RSA_PKCS1_OAEP_PADDING);
-      if (num > 0) {
-        fprintf(stderr, "Corrupt data decrypted!\n");
-        return false;
-      }
+    ciphertext[i] ^= 1;
+    num = RSA_private_decrypt(oaep_ciphertext_len, ciphertext, plaintext,
+                              key.get(), RSA_PKCS1_OAEP_PADDING);
+    if (num > 0) {
+      fprintf(stderr, "Corrupt data decrypted!\n");
+      return false;
     }
-    ciphertext[i] = saved;
+    ciphertext[i] ^= 1;
+  }
+
+  // Test truncated ciphertexts.
+  for (size_t len = 0; len < oaep_ciphertext_len; len++) {
+    num = RSA_private_decrypt(len, ciphertext, plaintext, key.get(),
+                              RSA_PKCS1_OAEP_PADDING);
+    if (num > 0) {
+      fprintf(stderr, "Corrupt data decrypted!\n");
+      return false;
+    }
   }
 
   return true;
