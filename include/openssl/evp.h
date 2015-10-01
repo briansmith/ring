@@ -181,38 +181,6 @@ OPENSSL_EXPORT int EVP_PKEY_cmp_parameters(const EVP_PKEY *a,
                                            const EVP_PKEY *b);
 
 
-/* ASN.1 functions */
-
-/* d2i_PrivateKey parses an ASN.1, DER-encoded, private key from |len| bytes at
- * |*inp|. If |out| is not NULL then, on exit, a pointer to the result is in
- * |*out|. If |*out| is already non-NULL on entry then the result is written
- * directly into |*out|, otherwise a fresh |EVP_PKEY| is allocated. On
- * successful exit, |*inp| is advanced past the DER structure. It returns the
- * result or NULL on error. */
-OPENSSL_EXPORT EVP_PKEY *d2i_PrivateKey(int type, EVP_PKEY **out,
-                                        const uint8_t **inp, long len);
-
-/* d2i_AutoPrivateKey acts the same as |d2i_PrivateKey|, but detects the type
- * of the private key. */
-OPENSSL_EXPORT EVP_PKEY *d2i_AutoPrivateKey(EVP_PKEY **out, const uint8_t **inp,
-                                            long len);
-
-/* i2d_PrivateKey marshals a private key from |key| to an ASN.1, DER
- * structure. If |outp| is not NULL then the result is written to |*outp| and
- * |*outp| is advanced just past the output. It returns the number of bytes in
- * the result, whether written or not, or a negative value on error. */
-OPENSSL_EXPORT int i2d_PrivateKey(const EVP_PKEY *key, uint8_t **outp);
-
-/* i2d_PublicKey marshals a public key from |key| to a type-specific format.
- * If |outp| is not NULL then the result is written to |*outp| and
- * |*outp| is advanced just past the output. It returns the number of bytes in
- * the result, whether written or not, or a negative value on error.
- *
- * RSA keys are serialized as a DER-encoded RSAPublicKey (RFC 3447) structure.
- * EC keys are serialized as an EC point per SEC 1. */
-OPENSSL_EXPORT int i2d_PublicKey(EVP_PKEY *key, uint8_t **outp);
-
-
 /* Signing */
 
 /* EVP_DigestSignInit sets up |ctx| for a signing operation with |type| and
