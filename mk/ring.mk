@@ -75,7 +75,6 @@ RING_SRCS = $(addprefix $(RING_PREFIX), \
   crypto/poly1305/poly1305.c \
   crypto/poly1305/poly1305_arm.c \
   crypto/poly1305/poly1305_vec.c \
-  crypto/rand/hwrand.c \
   crypto/rand/rand.c \
   crypto/rand/urandom.c \
   crypto/refcount_c11.c \
