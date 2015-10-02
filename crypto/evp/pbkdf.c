@@ -123,6 +123,22 @@ int PKCS5_PBKDF2_HMAC(const char *password, size_t password_len,
     p += cplen;
   }
   HMAC_CTX_cleanup(&hctx_tpl);
+
+  // RFC 2898 describes iterations (c) as being a "positive integer", so a
+  // value of 0 is an error.
+  //
+  // Unfortunatley not all consumers of PKCS5_PBKDF2_HMAC() check their return
+  // value, expecting it to succeed and unconditonally using |out_key|.
+  // As a precaution for such callsites in external code, the old behavior
+  // of iterations < 1 being treated as iterations == 1 is preserved, but
+  // additionally an error result is returned.
+  //
+  // TODO(eroman): Figure out how to remove this compatibility hack, or change
+  // the default to something more sensible like 2048.
+  if (iterations == 0) {
+    return 0;
+  }
+
   return 1;
 }
 
