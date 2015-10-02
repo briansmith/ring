@@ -445,9 +445,9 @@ static long conn_ctrl(BIO *bio, int cmd, long num, void *ptr) {
         if (ip != NULL) {
           *ip = bio->num;
         }
-        ret = 1;
+        ret = bio->num;
       } else {
-        ret = 0;
+        ret = -1;
       }
       break;
     case BIO_CTRL_GET_CLOSE:
