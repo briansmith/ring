@@ -234,6 +234,9 @@ OPENSSL_EXPORT int SSL_is_server(SSL *ssl);
  * takes ownership of the two |BIO|s. If |rbio| and |wbio| are the same, |ssl|
  * only takes ownership of one reference.
  *
+ * In DTLS, if |rbio| is blocking, it must handle
+ * |BIO_CTRL_DGRAM_SET_NEXT_TIMEOUT| control requests to set read timeouts.
+ *
  * Calling this function on an already-configured |ssl| is deprecated. */
 OPENSSL_EXPORT void SSL_set_bio(SSL *ssl, BIO *rbio, BIO *wbio);
 
@@ -247,6 +250,13 @@ OPENSSL_EXPORT BIO *SSL_get_wbio(const SSL *ssl);
  * handshake has completed or False Started, it returns one. Otherwise, it
  * returns <= 0. The caller should pass the value into |SSL_get_error| to
  * determine how to proceed.
+ *
+ * In DTLS, if the read |BIO| is non-blocking, the caller must drive
+ * retransmissions. Whenever |SSL_get_error| signals |SSL_ERROR_WANT_READ|, use
+ * |DTLSv1_get_timeout| to determine the current timeout. If it expires before
+ * the next retry, call |DTLSv1_handle_timeout|. Note that DTLS handshake
+ * retransmissions use fresh sequence numbers, so it is not sufficient to replay
+ * packets at the transport.
  *
  * TODO(davidben): Ensure 0 is only returned on transport EOF.
  * https://crbug.com/466303. */
@@ -352,7 +362,11 @@ OPENSSL_EXPORT int SSL_get_error(const SSL *ssl, int ret_code);
 
 /* SSL_ERROR_WANT_READ indicates the operation failed attempting to read from
  * the transport. The caller may retry the operation when the transport is ready
- * for reading. */
+ * for reading.
+ *
+ * If signaled by a DTLS handshake, the caller must also call
+ * |DTLSv1_get_timeout| and |DTLSv1_handle_timeout| as appropriate. See
+ * |SSL_do_handshake|. */
 #define SSL_ERROR_WANT_READ 2
 
 /* SSL_ERROR_WANT_READ indicates the operation failed attempting to write to
@@ -420,6 +434,33 @@ OPENSSL_EXPORT int SSL_get_error(const SSL *ssl, int ret_code);
  *
  * See also |SSL_set_private_key_method|. */
 #define SSL_ERROR_WANT_PRIVATE_KEY_OPERATION 13
+
+/* SSL_set_mtu sets the |ssl|'s MTU in DTLS to |mtu|. It returns one on success
+ * and zero on failure. */
+OPENSSL_EXPORT int SSL_set_mtu(SSL *ssl, unsigned mtu);
+
+/* DTLSv1_get_timeout queries the next DTLS handshake timeout. If there is a
+ * timeout in progress, it sets |*out| to the time remaining and returns one.
+ * Otherwise, it returns zero.
+ *
+ * When the timeout expires, call |DTLSv1_handle_timeout| to handle the
+ * retransmit behavior.
+ *
+ * NOTE: This function must be queried again whenever the handshake state
+ * machine changes, including when |DTLSv1_handle_timeout| is called. */
+OPENSSL_EXPORT int DTLSv1_get_timeout(const SSL *ssl, struct timeval *out);
+
+/* DTLSv1_handle_timeout is called when a DTLS handshake timeout expires. If no
+ * timeout had expired, it returns 0. Otherwise, it retransmits the previous
+ * flight of handshake messages and returns 1. If too many timeouts had expired
+ * without progress or an error occurs, it returns -1.
+ *
+ * NOTE: The caller's external timer should be compatible with the one |ssl|
+ * queries within some fudge factor. Otherwise, the call will be a no-op, but
+ * |DTLSv1_get_timeout| will return an updated timeout.
+ *
+ * WARNING: This function breaks the usual return value convention. */
+OPENSSL_EXPORT int DTLSv1_handle_timeout(SSL *ssl);
 
 
 /* Protocol versions. */
@@ -2542,10 +2583,6 @@ typedef struct ssl_protocol_method_st SSL_PROTOCOL_METHOD;
 typedef struct ssl_conf_ctx_st SSL_CONF_CTX;
 typedef struct ssl3_enc_method SSL3_ENC_METHOD;
 
-/* SSL_set_mtu sets the |ssl|'s MTU in DTLS to |mtu|. It returns one on success
- * and zero on failure. */
-OPENSSL_EXPORT int SSL_set_mtu(SSL *ssl, unsigned mtu);
-
 struct ssl_aead_ctx_st;
 typedef struct ssl_aead_ctx_st SSL_AEAD_CTX;
 
@@ -2694,29 +2731,6 @@ DECLARE_PEM_rw(SSL_SESSION, SSL_SESSION)
 #define SSL_AD_BAD_CERTIFICATE_HASH_VALUE TLS1_AD_BAD_CERTIFICATE_HASH_VALUE
 #define SSL_AD_UNKNOWN_PSK_IDENTITY TLS1_AD_UNKNOWN_PSK_IDENTITY     /* fatal */
 #define SSL_AD_INAPPROPRIATE_FALLBACK SSL3_AD_INAPPROPRIATE_FALLBACK /* fatal */
-
-/* DTLSv1_get_timeout queries the next DTLS handshake timeout. If there is a
- * timeout in progress, it sets |*out| to the time remaining and returns one.
- * Otherwise, it returns zero.
- *
- * When the timeout expires, call |DTLSv1_handle_timeout| to handle the
- * retransmit behavior.
- *
- * NOTE: This function must be queried again whenever the handshake state
- * machine changes, including when |DTLSv1_handle_timeout| is called. */
-OPENSSL_EXPORT int DTLSv1_get_timeout(const SSL *ssl, struct timeval *out);
-
-/* DTLSv1_handle_timeout is called when a DTLS handshake timeout expires. If no
- * timeout had expired, it returns 0. Otherwise, it retransmits the previous
- * flight of handshake messages and returns 1. If too many timeouts had expired
- * without progress or an error occurs, it returns -1.
- *
- * NOTE: The caller's external timer should be compatible with the one |ssl|
- * queries within some fudge factor. Otherwise, the call will be a no-op, but
- * |DTLSv1_get_timeout| will return an updated timeout.
- *
- * WARNING: This function breaks the usual return value convention. */
-OPENSSL_EXPORT int DTLSv1_handle_timeout(SSL *ssl);
 
 /* SSL_total_renegotiations returns the total number of renegotiation handshakes
  * peformed by |ssl|. This includes the pending renegotiation, if any. */
