@@ -73,7 +73,13 @@ SSL_AEAD_CTX *SSL_AEAD_CTX_new(enum evp_aead_direction_t direction,
 
   assert(EVP_AEAD_nonce_length(aead) <= EVP_AEAD_MAX_NONCE_LENGTH);
   aead_ctx->variable_nonce_len = (uint8_t)EVP_AEAD_nonce_length(aead);
-  if (mac_key_len == 0) {
+  if (cipher->algorithm_enc & SSL_CHACHA20POLY1305_OLD) {
+    /* The experimental ChaCha20-Poly1305 cipher suites use a fixed part of
+     * all zeros. */
+    aead_ctx->fixed_nonce_len = 4;
+    memset(aead_ctx->fixed_nonce, 0, aead_ctx->fixed_nonce_len);
+    aead_ctx->variable_nonce_len = 8;
+  } else if (mac_key_len == 0) {
     /* For a real AEAD, the IV is the fixed part of the nonce. */
     if (fixed_iv_len > sizeof(aead_ctx->fixed_nonce) ||
         fixed_iv_len > aead_ctx->variable_nonce_len) {
