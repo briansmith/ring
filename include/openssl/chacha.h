@@ -27,7 +27,7 @@ extern "C" {
  * initial block counter is specified by |counter|. */
 OPENSSL_EXPORT void CRYPTO_chacha_20(uint8_t *out, const uint8_t *in,
                                      size_t in_len, const uint8_t key[32],
-                                     const uint8_t nonce[8], size_t counter);
+                                     const uint8_t nonce[12], uint32_t counter);
 
 
 #if defined(__cplusplus)
