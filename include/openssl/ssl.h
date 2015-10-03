@@ -272,6 +272,10 @@ OPENSSL_EXPORT int SSL_read(SSL *ssl, void *buf, int num);
 /* SSL_peek behaves like |SSL_read| but does not consume any bytes returned. */
 OPENSSL_EXPORT int SSL_peek(SSL *ssl, void *buf, int num);
 
+/* SSL_pending returns the number of bytes available in |ssl|. It does not read
+ * from the transport. */
+OPENSSL_EXPORT int SSL_pending(const SSL *ssl);
+
 /* SSL_write writes up to |num| bytes from |buf| into |ssl|. It implicitly runs
  * any pending handshakes, including renegotiations when enabled. On success, it
  * returns the number of bytes read. Otherwise, it returns <= 0. The caller
@@ -316,6 +320,24 @@ OPENSSL_EXPORT int SSL_write(SSL *ssl, const void *buf, int num);
  * TODO(davidben): Is there any point in the session cache interaction? Remove
  * it? */
 OPENSSL_EXPORT int SSL_shutdown(SSL *ssl);
+
+/* SSL_CTX_set_quiet_shutdown sets quiet shutdown on |ctx| to |mode|. If
+ * enabled, |SSL_shutdown| will not send a close_notify alert or wait for one
+ * from the peer. It will instead synchronously return one. */
+OPENSSL_EXPORT void SSL_CTX_set_quiet_shutdown(SSL_CTX *ctx, int mode);
+
+/* SSL_CTX_get_quiet_shutdown returns whether quiet shutdown is enabled for
+ * |ctx|. */
+OPENSSL_EXPORT int SSL_CTX_get_quiet_shutdown(const SSL_CTX *ctx);
+
+/* SSL_set_quiet_shutdown sets quiet shutdown on |ssl| to |mode|. If enabled,
+ * |SSL_shutdown| will not send a close_notify alert or wait for one from the
+ * peer. It will instead synchronously return one. */
+OPENSSL_EXPORT void SSL_set_quiet_shutdown(SSL *ssl, int mode);
+
+/* SSL_get_quiet_shutdown returns whether quiet shutdown is enabled for
+ * |ssl|. */
+OPENSSL_EXPORT int SSL_get_quiet_shutdown(const SSL *ssl);
 
 /* SSL_get_error returns a |SSL_ERROR_*| value for the most recent operation on
  * |ssl|. It should be called after an operation failed to determine. */
@@ -2388,6 +2410,41 @@ enum ssl_renegotiate_mode_t {
 OPENSSL_EXPORT void SSL_set_renegotiate_mode(SSL *ssl,
                                              enum ssl_renegotiate_mode_t mode);
 
+/* SSL_MAX_CERT_LIST_DEFAULT is the default maximum length, in bytes, of a peer
+ * certificate chain. */
+#define SSL_MAX_CERT_LIST_DEFAULT 1024 * 100
+
+/* SSL_CTX_get_max_cert_list returns the maximum length, in bytes, of a peer
+ * certificate chain accepted by |ctx|. */
+OPENSSL_EXPORT size_t SSL_CTX_get_max_cert_list(const SSL_CTX *ctx);
+
+/* SSL_CTX_set_max_cert_list sets the maximum length, in bytes, of a peer
+ * certificate chain to |max_cert_list|. This affects how much memory may be
+ * consumed during the handshake. */
+OPENSSL_EXPORT void SSL_CTX_set_max_cert_list(SSL_CTX *ctx,
+                                              size_t max_cert_list);
+
+/* SSL_get_max_cert_list returns the maximum length, in bytes, of a peer
+ * certificate chain accepted by |ssl|. */
+OPENSSL_EXPORT size_t SSL_get_max_cert_list(const SSL *ssl);
+
+/* SSL_set_max_cert_list sets the maximum length, in bytes, of a peer
+ * certificate chain to |max_cert_list|. This affects how much memory may be
+ * consumed during the handshake. */
+OPENSSL_EXPORT void SSL_set_max_cert_list(SSL *ssl, size_t max_cert_list);
+
+/* SSL_CTX_set_max_send_fragment sets the maximum length, in bytes, of records
+ * sent by |ctx|. Beyond this length, handshake messages and application data
+ * will be split into multiple records. */
+OPENSSL_EXPORT void SSL_CTX_set_max_send_fragment(SSL_CTX *ctx,
+                                                  size_t max_send_fragment);
+
+/* SSL_set_max_send_fragment sets the maximum length, in bytes, of records
+ * sent by |ssl|. Beyond this length, handshake messages and application data
+ * will be split into multiple records. */
+OPENSSL_EXPORT void SSL_set_max_send_fragment(SSL *ssl,
+                                              size_t max_send_fragment);
+
 
 /* Underdocumented functions.
  *
@@ -2466,8 +2523,6 @@ OPENSSL_EXPORT int SSL_set_mtu(SSL *ssl, unsigned mtu);
 
 struct ssl_aead_ctx_st;
 typedef struct ssl_aead_ctx_st SSL_AEAD_CTX;
-
-#define SSL_MAX_CERT_LIST_DEFAULT 1024 * 100 /* 100k max cert list */
 
 /* ssl_early_callback_ctx is passed to certain callbacks that are called very
  * early on during the server handshake. At this point, much of the SSL* hasn't
@@ -2659,7 +2714,6 @@ OPENSSL_EXPORT int SSL_want(const SSL *s);
 OPENSSL_EXPORT int SSL_get_fd(const SSL *s);
 OPENSSL_EXPORT int SSL_get_rfd(const SSL *s);
 OPENSSL_EXPORT int SSL_get_wfd(const SSL *s);
-OPENSSL_EXPORT int SSL_pending(const SSL *s);
 OPENSSL_EXPORT int SSL_set_fd(SSL *s, int fd);
 OPENSSL_EXPORT int SSL_set_rfd(SSL *s, int fd);
 OPENSSL_EXPORT int SSL_set_wfd(SSL *s, int fd);
@@ -2679,10 +2733,6 @@ OPENSSL_EXPORT const char *SSL_alert_type_string(int value);
 OPENSSL_EXPORT const char *SSL_alert_desc_string_long(int value);
 OPENSSL_EXPORT const char *SSL_alert_desc_string(int value);
 
-OPENSSL_EXPORT void SSL_CTX_set_quiet_shutdown(SSL_CTX *ctx, int mode);
-OPENSSL_EXPORT int SSL_CTX_get_quiet_shutdown(const SSL_CTX *ctx);
-OPENSSL_EXPORT void SSL_set_quiet_shutdown(SSL *ssl, int mode);
-OPENSSL_EXPORT int SSL_get_quiet_shutdown(const SSL *ssl);
 OPENSSL_EXPORT void SSL_set_shutdown(SSL *ssl, int mode);
 OPENSSL_EXPORT int SSL_get_shutdown(const SSL *ssl);
 OPENSSL_EXPORT SSL_CTX *SSL_get_SSL_CTX(const SSL *ssl);
@@ -2693,37 +2743,6 @@ OPENSSL_EXPORT void SSL_set_info_callback(SSL *ssl,
 OPENSSL_EXPORT void (*SSL_get_info_callback(const SSL *ssl))(const SSL *ssl,
                                                              int type, int val);
 OPENSSL_EXPORT int SSL_state(const SSL *ssl);
-
-/* SSL_CTX_get_max_cert_list returns the maximum length, in bytes, of a peer
- * certificate chain accepted by |ctx|. */
-OPENSSL_EXPORT size_t SSL_CTX_get_max_cert_list(const SSL_CTX *ctx);
-
-/* SSL_CTX_set_max_cert_list sets the maximum length, in bytes, of a peer
- * certificate chain to |max_cert_list|. This affects how much memory may be
- * consumed during the handshake. */
-OPENSSL_EXPORT void SSL_CTX_set_max_cert_list(SSL_CTX *ctx,
-                                              size_t max_cert_list);
-
-/* SSL_get_max_cert_list returns the maximum length, in bytes, of a peer
- * certificate chain accepted by |ssl|. */
-OPENSSL_EXPORT size_t SSL_get_max_cert_list(const SSL *ssl);
-
-/* SSL_set_max_cert_list sets the maximum length, in bytes, of a peer
- * certificate chain to |max_cert_list|. This affects how much memory may be
- * consumed during the handshake. */
-OPENSSL_EXPORT void SSL_set_max_cert_list(SSL *ssl, size_t max_cert_list);
-
-/* SSL_CTX_set_max_send_fragment sets the maximum length, in bytes, of records
- * sent by |ctx|. Beyond this length, handshake messages and application data
- * will be split into multiple records. */
-OPENSSL_EXPORT void SSL_CTX_set_max_send_fragment(SSL_CTX *ctx,
-                                                  size_t max_send_fragment);
-
-/* SSL_set_max_send_fragment sets the maximum length, in bytes, of records
- * sent by |ssl|. Beyond this length, handshake messages and application data
- * will be split into multiple records. */
-OPENSSL_EXPORT void SSL_set_max_send_fragment(SSL *ssl,
-                                              size_t max_send_fragment);
 
 /* SSL_CTX_set_dos_protection_cb sets a callback that is called once the
  * resumption decision for a ClientHello has been made. It can return 1 to

@@ -1238,9 +1238,11 @@ void SSL_CTX_set_read_ahead(SSL_CTX *ctx, int yes) { }
 
 void SSL_set_read_ahead(SSL *s, int yes) { }
 
-int SSL_pending(const SSL *s) {
-  return (s->s3->rrec.type == SSL3_RT_APPLICATION_DATA) ? s->s3->rrec.length
-                                                        : 0;
+int SSL_pending(const SSL *ssl) {
+  if (ssl->s3->rrec.type != SSL3_RT_APPLICATION_DATA) {
+    return 0;
+  }
+  return ssl->s3->rrec.length;
 }
 
 /* Fix this so it checks all the valid key/cert options */
@@ -2096,15 +2098,15 @@ int SSL_CTX_get_quiet_shutdown(const SSL_CTX *ctx) {
   return ctx->quiet_shutdown;
 }
 
-void SSL_set_quiet_shutdown(SSL *s, int mode) { s->quiet_shutdown = mode; }
+void SSL_set_quiet_shutdown(SSL *ssl, int mode) { ssl->quiet_shutdown = mode; }
 
-int SSL_get_quiet_shutdown(const SSL *s) { return s->quiet_shutdown; }
+int SSL_get_quiet_shutdown(const SSL *ssl) { return ssl->quiet_shutdown; }
 
-void SSL_set_shutdown(SSL *s, int mode) { s->shutdown = mode; }
+void SSL_set_shutdown(SSL *ssl, int mode) { ssl->shutdown = mode; }
 
-int SSL_get_shutdown(const SSL *s) { return s->shutdown; }
+int SSL_get_shutdown(const SSL *ssl) { return ssl->shutdown; }
 
-int SSL_version(const SSL *s) { return s->version; }
+int SSL_version(const SSL *ssl) { return ssl->version; }
 
 SSL_CTX *SSL_get_SSL_CTX(const SSL *ssl) { return ssl->ctx; }
 
