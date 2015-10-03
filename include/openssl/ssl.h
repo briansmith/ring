@@ -672,7 +672,11 @@ OPENSSL_EXPORT int SSL_clear_chain_certs(SSL *ssl);
 /* SSL_CTX_set_cert_cb sets a callback that is called to select a certificate.
  * The callback returns one on success, zero on internal error, and a negative
  * number on failure or to pause the handshake. If the handshake is paused,
- * |SSL_get_error| will return |SSL_ERROR_WANT_X509_LOOKUP|. */
+ * |SSL_get_error| will return |SSL_ERROR_WANT_X509_LOOKUP|.
+ *
+ * On the client, the callback may call |SSL_get0_certificate_types| and
+ * |SSL_get_client_CA_list| for information on the server's certificate
+ * request. */
 OPENSSL_EXPORT void SSL_CTX_set_cert_cb(SSL_CTX *ctx,
                                         int (*cb)(SSL *ssl, void *arg),
                                         void *arg);
@@ -680,9 +684,23 @@ OPENSSL_EXPORT void SSL_CTX_set_cert_cb(SSL_CTX *ctx,
 /* SSL_set_cert_cb sets a callback that is called to select a certificate. The
  * callback returns one on success, zero on internal error, and a negative
  * number on failure or to pause the handshake. If the handshake is paused,
- * |SSL_get_error| will return |SSL_ERROR_WANT_X509_LOOKUP|. */
+ * |SSL_get_error| will return |SSL_ERROR_WANT_X509_LOOKUP|.
+ *
+ * On the client, the callback may call |SSL_get0_certificate_types| and
+ * |SSL_get_client_CA_list| for information on the server's certificate
+ * request. */
 OPENSSL_EXPORT void SSL_set_cert_cb(SSL *ssl, int (*cb)(SSL *ssl, void *arg),
                                     void *arg);
+
+/* SSL_get0_certificate_types, for a client, sets |*out_types| to an array
+ * containing the client certificate types requested by a server. It returns the
+ * length of the array.
+ *
+ * The behavior of this function is undefined except during the callbacks set by
+ * by |SSL_CTX_set_cert_cb| and |SSL_CTX_set_client_cert_cb| or when the
+ * handshake is paused because of them. */
+OPENSSL_EXPORT size_t SSL_get0_certificate_types(SSL *ssl,
+                                                 const uint8_t **out_types);
 
 /* SSL_certs_clear resets the private key, leaf certificate, and certificate
  * chain of |ssl|. */
@@ -1956,7 +1974,14 @@ OPENSSL_EXPORT void SSL_set_client_CA_list(SSL *ssl,
 OPENSSL_EXPORT void SSL_CTX_set_client_CA_list(SSL_CTX *ctx,
                                                STACK_OF(X509_NAME) *name_list);
 
-/* SSL_get_client_CA_list returns |ssl|'s client certificate CA list. */
+/* SSL_get_client_CA_list returns |ssl|'s client certificate CA list. If |ssl|
+ * has not been configured as a client, this is the list configured by
+ * |SSL_CTX_set_client_CA_list|.
+ *
+ * If configured as a client, it returns the client certificate CA list sent by
+ * the server. In this mode, the behavior is undefined except during the
+ * callbacks set by |SSL_CTX_set_cert_cb| and |SSL_CTX_set_client_cert_cb| or
+ * when the handshake is paused because of them. */
 OPENSSL_EXPORT STACK_OF(X509_NAME) *SSL_get_client_CA_list(const SSL *ssl);
 
 /* SSL_CTX_get_client_CA_list returns |ctx|'s client certificate CA list. */
@@ -2556,12 +2581,6 @@ OPENSSL_EXPORT void SSL_CTX_set_info_callback(SSL_CTX *ctx,
 OPENSSL_EXPORT void (*SSL_CTX_get_info_callback(SSL_CTX *ctx))(const SSL *ssl,
                                                                int type,
                                                                int val);
-OPENSSL_EXPORT void SSL_CTX_set_client_cert_cb(
-    SSL_CTX *ctx,
-    int (*client_cert_cb)(SSL *ssl, X509 **x509, EVP_PKEY **pkey));
-OPENSSL_EXPORT int (*SSL_CTX_get_client_cert_cb(SSL_CTX *ctx))(SSL *ssl,
-                                                               X509 **x509,
-                                                               EVP_PKEY **pkey);
 
 #define SSL_NOTHING 1
 #define SSL_WRITING 2
@@ -2702,12 +2721,6 @@ OPENSSL_EXPORT int DTLSv1_handle_timeout(SSL *ssl);
 /* SSL_total_renegotiations returns the total number of renegotiation handshakes
  * peformed by |ssl|. This includes the pending renegotiation, if any. */
 OPENSSL_EXPORT int SSL_total_renegotiations(const SSL *ssl);
-
-/* SSL_get0_certificate_types, for a client, sets |*out_types| to an array
- * containing the client certificate types requested by a server. It returns the
- * length of the array. */
-OPENSSL_EXPORT size_t SSL_get0_certificate_types(SSL *ssl,
-                                                 const uint8_t **out_types);
 
 OPENSSL_EXPORT int SSL_want(const SSL *s);
 
@@ -3035,6 +3048,28 @@ OPENSSL_EXPORT const char *SSL_get_version(const SSL *ssl);
  * |SSL_get_ciphers| or NULL if out of range. Use |SSL_get_ciphers| insteads. */
 OPENSSL_EXPORT const char *SSL_get_cipher_list(const SSL *ssl, int n);
 
+/* SSL_CTX_set_client_cert_cb sets a callback which is called on the client if
+ * the server requests a client certificate and none is configured. On success,
+ * the callback should return one and set |*out_x509| to |*out_pkey| to a leaf
+ * certificate and private key, respectively, passing ownership. It should
+ * return zero to send no certificate and -1 to fail or pause the handshake. If
+ * the handshake is paused, |SSL_get_error| will return
+ * |SSL_ERROR_WANT_X509_LOOKUP|.
+ *
+ * The callback may call |SSL_get0_certificate_types| and
+ * |SSL_get_client_CA_list| for information on the server's certificate request.
+ *
+ * Use |SSL_CTX_set_cert_cb| instead. Configuring intermediate certificates with
+ * this function is confusing. */
+OPENSSL_EXPORT void SSL_CTX_set_client_cert_cb(
+    SSL_CTX *ctx,
+    int (*client_cert_cb)(SSL *ssl, X509 **out_x509, EVP_PKEY **out_pkey));
+
+/* SSL_CTX_get_client_cert_cb returns the callback set by
+ * |SSL_CTX_set_client_cert_cb|. */
+OPENSSL_EXPORT int (*SSL_CTX_get_client_cert_cb(SSL_CTX *ctx))(
+      SSL *ssl, X509 **out_x509, EVP_PKEY **out_pkey);
+
 
 /* Private structures.
  *
@@ -3264,7 +3299,7 @@ struct ssl_ctx_st {
   void *default_passwd_callback_userdata;
 
   /* get client cert callback */
-  int (*client_cert_cb)(SSL *ssl, X509 **x509, EVP_PKEY **pkey);
+  int (*client_cert_cb)(SSL *ssl, X509 **out_x509, EVP_PKEY **out_pkey);
 
   /* get channel id callback */
   void (*channel_id_cb)(SSL *ssl, EVP_PKEY **out_pkey);

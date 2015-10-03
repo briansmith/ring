@@ -2189,12 +2189,11 @@ err:
   return ret;
 }
 
-int ssl_do_client_cert_cb(SSL *s, X509 **px509, EVP_PKEY **ppkey) {
-  int i = 0;
-  if (s->ctx->client_cert_cb) {
-    i = s->ctx->client_cert_cb(s, px509, ppkey);
+int ssl_do_client_cert_cb(SSL *ssl, X509 **out_x509, EVP_PKEY **out_pkey) {
+  if (ssl->ctx->client_cert_cb == NULL) {
+    return 0;
   }
-  return i;
+  return ssl->ctx->client_cert_cb(ssl, out_x509, out_pkey);
 }
 
 int ssl3_verify_server_cert(SSL *s) {
