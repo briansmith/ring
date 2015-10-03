@@ -26,6 +26,7 @@
 
 
 #define POLY1305_TAG_LEN 16
+#define CHACHA20_NONCE_LEN 12
 
 struct aead_chacha20_poly1305_ctx {
   unsigned char key[32];
@@ -96,9 +97,9 @@ typedef void (*aead_poly1305_update)(poly1305_state *ctx, const uint8_t *ad,
 static void aead_poly1305(aead_poly1305_update update,
                           uint8_t tag[POLY1305_TAG_LEN],
                           const struct aead_chacha20_poly1305_ctx *c20_ctx,
-                          const uint8_t nonce[12], const uint8_t *ad,
-                          size_t ad_len, const uint8_t *ciphertext,
-                          size_t ciphertext_len) {
+                          const uint8_t nonce[CHACHA20_NONCE_LEN],
+                          const uint8_t *ad, size_t ad_len,
+                          const uint8_t *ciphertext, size_t ciphertext_len) {
   uint8_t poly1305_key[32] ALIGNED;
   memset(poly1305_key, 0, sizeof(poly1305_key));
   CRYPTO_chacha_20(poly1305_key, poly1305_key, sizeof(poly1305_key),
@@ -231,7 +232,7 @@ static int aead_chacha20_poly1305_rfc7539_open(const EVP_AEAD_CTX *ctx,
 
 static const EVP_AEAD aead_chacha20_poly1305_rfc7539 = {
     32,                 /* key len */
-    12,                 /* nonce len */
+    CHACHA20_NONCE_LEN, /* nonce len */
     POLY1305_TAG_LEN,   /* overhead */
     POLY1305_TAG_LEN,   /* max tag length */
     aead_chacha20_poly1305_init,
@@ -262,11 +263,9 @@ static int aead_chacha20_poly1305_deprecated_seal(const EVP_AEAD_CTX *ctx,
                                                   size_t in_len,
                                                   const uint8_t *ad,
                                                   size_t ad_len) {
-  uint8_t nonce_96[12];
-  CRYPTO_chacha_96_bit_nonce_from_64_bit_nonce(nonce_96, nonce);
   return aead_chacha20_poly1305_seal(poly1305_update_deprecated, ctx, out,
-                                     out_len, max_out_len, nonce_96, in,
-                                     in_len, ad, ad_len);
+                                     out_len, max_out_len, nonce, in, in_len,
+                                     ad, ad_len);
 }
 
 static int aead_chacha20_poly1305_deprecated_open(const EVP_AEAD_CTX *ctx,
@@ -277,16 +276,14 @@ static int aead_chacha20_poly1305_deprecated_open(const EVP_AEAD_CTX *ctx,
                                                   size_t in_len,
                                                   const uint8_t *ad,
                                                   size_t ad_len) {
-  uint8_t nonce_96[12];
-  CRYPTO_chacha_96_bit_nonce_from_64_bit_nonce(nonce_96, nonce);
   return aead_chacha20_poly1305_open(poly1305_update_deprecated, ctx, out,
-                                     out_len, max_out_len, nonce_96, in, in_len,
+                                     out_len, max_out_len, nonce, in, in_len,
                                      ad, ad_len);
 }
 
 static const EVP_AEAD aead_chacha20_poly1305_deprecated = {
     32,                 /* key len */
-    8,                  /* nonce len */
+    CHACHA20_NONCE_LEN, /* nonce len */
     POLY1305_TAG_LEN,   /* overhead */
     POLY1305_TAG_LEN,   /* max tag length */
     aead_chacha20_poly1305_init,
