@@ -154,12 +154,12 @@ void CRYPTO_chacha_20(
 	const uint8_t *in,
 	size_t inlen,
 	const uint8_t key[32],
-	const uint8_t nonce[8],
-	size_t counter)
+	const uint8_t nonce[12],
+	uint32_t counter)
 	{
 	unsigned iters, i, *op=(unsigned *)out, *ip=(unsigned *)in, *kp;
 #if defined(__ARM_NEON__)
-	uint32_t np[2];
+	uint32_t np[3];
 	uint8_t alignment_buffer[16] __attribute__((aligned(16)));
 #endif
 	vec s0, s1, s2, s3;
@@ -167,20 +167,16 @@ void CRYPTO_chacha_20(
 		{0x61707865,0x3320646E,0x79622D32,0x6B206574};
 	kp = (unsigned *)key;
 #if defined(__ARM_NEON__)
-	memcpy(np, nonce, 8);
+	memcpy(np, nonce, 12);
 #endif
 	s0 = LOAD_ALIGNED(chacha_const);
 	s1 = LOAD(&((vec*)kp)[0]);
 	s2 = LOAD(&((vec*)kp)[1]);
 	s3 = (vec){
-		counter & 0xffffffff,
-#if __ARM_NEON__ || defined(OPENSSL_X86)
-		0,  /* can't right-shift 32 bits on a 32-bit system. */
-#else
-		counter >> 32,
-#endif
+		counter,
 		((uint32_t*)nonce)[0],
-		((uint32_t*)nonce)[1]
+		((uint32_t*)nonce)[1],
+		((uint32_t*)nonce)[2]
 	};
 
 	for (iters = 0; iters < inlen/(BPI*64); iters++)
@@ -212,8 +208,8 @@ void CRYPTO_chacha_20(
 		x2 = chacha_const[2]; x3 = chacha_const[3];
 		x4 = kp[0]; x5 = kp[1]; x6  = kp[2]; x7  = kp[3];
 		x8 = kp[4]; x9 = kp[5]; x10 = kp[6]; x11 = kp[7];
-		x12 = counter+BPI*iters+(BPI-1); x13 = 0;
-		x14 = np[0]; x15 = np[1];
+		x12 = counter+BPI*iters+(BPI-1); x13 = np[0];
+		x14 = np[1]; x15 = np[2];
 #endif
 		for (i = CHACHA_RNDS/2; i; i--)
 			{
@@ -265,9 +261,9 @@ void CRYPTO_chacha_20(
 		op[10] = REVW_BE(REVW_BE(ip[10]) ^ (x10 + kp[6]));
 		op[11] = REVW_BE(REVW_BE(ip[11]) ^ (x11 + kp[7]));
 		op[12] = REVW_BE(REVW_BE(ip[12]) ^ (x12 + counter+BPI*iters+(BPI-1)));
-		op[13] = REVW_BE(REVW_BE(ip[13]) ^ (x13));
-		op[14] = REVW_BE(REVW_BE(ip[14]) ^ (x14 + np[0]));
-		op[15] = REVW_BE(REVW_BE(ip[15]) ^ (x15 + np[1]));
+		op[13] = REVW_BE(REVW_BE(ip[13]) ^ (x13 + np[0]));
+		op[14] = REVW_BE(REVW_BE(ip[14]) ^ (x14 + np[1]));
+		op[15] = REVW_BE(REVW_BE(ip[15]) ^ (x15 + np[2]));
 		s3 += ONE;
 		ip += 16;
 		op += 16;

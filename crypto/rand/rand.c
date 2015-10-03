@@ -159,17 +159,21 @@ int RAND_bytes(uint8_t *buf, size_t len) {
       if (todo > kMaxBytesPerCall) {
         todo = kMaxBytesPerCall;
       }
-      CRYPTO_chacha_20(buf, buf, todo, state->key,
-                       (uint8_t *)&state->calls_used, 0);
+      uint8_t nonce[12];
+      memset(nonce, 0, 4);
+      memcpy(nonce + 4, &state->calls_used, sizeof(state->calls_used));
+      CRYPTO_chacha_20(buf, buf, todo, state->key, nonce, 0);
       buf += todo;
       remaining -= todo;
       state->calls_used++;
     }
   } else {
     if (sizeof(state->partial_block) - state->partial_block_used < len) {
+      uint8_t nonce[12];
+      memset(nonce, 0, 4);
+      memcpy(nonce + 4, &state->calls_used, sizeof(state->calls_used));
       CRYPTO_chacha_20(state->partial_block, state->partial_block,
-                       sizeof(state->partial_block), state->key,
-                       (uint8_t *)&state->calls_used, 0);
+                       sizeof(state->partial_block), state->key, nonce, 0);
       state->partial_block_used = 0;
     }
 

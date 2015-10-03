@@ -54,8 +54,8 @@ static const uint8_t sigma[16] = { 'e', 'x', 'p', 'a', 'n', 'd', ' ', '3',
 #if defined(OPENSSL_ARM) && !defined(OPENSSL_NO_ASM)
 /* Defined in chacha_vec.c */
 void CRYPTO_chacha_20_neon(uint8_t *out, const uint8_t *in, size_t in_len,
-                           const uint8_t key[32], const uint8_t nonce[8],
-                           size_t counter);
+                           const uint8_t key[32], const uint8_t nonce[12],
+                           uint32_t counter);
 #endif
 
 /* chacha_core performs 20 rounds of ChaCha on the input words in
@@ -85,8 +85,8 @@ static void chacha_core(uint8_t output[64], const uint32_t input[16]) {
 }
 
 void CRYPTO_chacha_20(uint8_t *out, const uint8_t *in, size_t in_len,
-                      const uint8_t key[32], const uint8_t nonce[8],
-                      size_t counter) {
+                      const uint8_t key[32], const uint8_t nonce[12],
+                      uint32_t counter) {
   uint32_t input[16];
   uint8_t buf[64];
   size_t todo, i;
@@ -114,9 +114,9 @@ void CRYPTO_chacha_20(uint8_t *out, const uint8_t *in, size_t in_len,
   input[11] = U8TO32_LITTLE(key + 28);
 
   input[12] = counter;
-  input[13] = ((uint64_t)counter) >> 32;
-  input[14] = U8TO32_LITTLE(nonce + 0);
-  input[15] = U8TO32_LITTLE(nonce + 4);
+  input[13] = U8TO32_LITTLE(nonce + 0);
+  input[14] = U8TO32_LITTLE(nonce + 4);
+  input[15] = U8TO32_LITTLE(nonce + 8);
 
   while (in_len > 0) {
     todo = sizeof(buf);
@@ -134,9 +134,6 @@ void CRYPTO_chacha_20(uint8_t *out, const uint8_t *in, size_t in_len,
     in_len -= todo;
 
     input[12]++;
-    if (input[12] == 0) {
-      input[13]++;
-    }
   }
 }
 
