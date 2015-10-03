@@ -453,8 +453,10 @@ bool Speed(const std::vector<std::string> &args) {
 
   if (!SpeedAEAD(EVP_aead_aes_128_gcm(), "AES-128-GCM", kTLSADLen, selected) ||
       !SpeedAEAD(EVP_aead_aes_256_gcm(), "AES-256-GCM", kTLSADLen, selected) ||
-      !SpeedAEAD(EVP_aead_chacha20_poly1305(), "ChaCha20-Poly1305", kTLSADLen,
-                 selected) ||
+      !SpeedAEAD(EVP_aead_chacha20_poly1305_rfc7539(),
+                 "ChaCha20-Poly1305-RFC7539", kTLSADLen, selected) ||
+      !SpeedAEAD(EVP_aead_chacha20_poly1305_deprecated(),
+                 "ChaCha20-Poly1305-Deprecated", kTLSADLen, selected) ||
       !SpeedHash(EVP_sha1(), "SHA-1", selected) ||
       !SpeedHash(EVP_sha256(), "SHA-256", selected) ||
       !SpeedHash(EVP_sha512(), "SHA-512", selected) ||
