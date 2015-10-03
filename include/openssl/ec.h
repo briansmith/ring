@@ -325,9 +325,7 @@ OPENSSL_EXPORT void EC_GROUP_set_point_conversion_form(
 
 
 /* Old code expects to get EC_KEY from ec.h. */
-#if !defined(OPENSSL_HEADER_EC_KEY_H)
 #include <openssl/ec_key.h>
-#endif
 
 
 #if defined(__cplusplus)
