@@ -98,8 +98,14 @@ OPENSSL_EXPORT const EVP_AEAD *EVP_aead_aes_128_gcm(void);
 /* EVP_aead_aes_256_gcm is AES-256 in Galois Counter Mode. */
 OPENSSL_EXPORT const EVP_AEAD *EVP_aead_aes_256_gcm(void);
 
-/* EVP_aead_chacha20_poly1305 is an AEAD built from ChaCha20 and Poly1305. */
+/* EVP_aead_chacha20_poly1305 is the AEAD built from ChaCha20 and
+ * Poly1305 as described in RFC 7539. */
 OPENSSL_EXPORT const EVP_AEAD *EVP_aead_chacha20_poly1305(void);
+
+/* EVP_aead_chacha20_poly1305_old is an AEAD built from ChaCha20 and
+ * Poly1305 that is used in the experimental ChaCha20-Poly1305 TLS cipher
+ * suites. Use |EVP_aead_chacha20_poly1305| for everything else. */
+OPENSSL_EXPORT const EVP_AEAD *EVP_aead_chacha20_poly1305_old(void);
 
 /* EVP_aead_aes_128_key_wrap is AES-128 Key Wrap mode. This should never be
  * used except to interoperate with existing systems that use this mode.

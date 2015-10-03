@@ -613,7 +613,7 @@ int ssl_cipher_get_evp_aead(const EVP_AEAD **out_aead,
 
 #if !defined(BORINGSSL_ANDROID_SYSTEM)
     case SSL_CHACHA20POLY1305:
-      *out_aead = EVP_aead_chacha20_poly1305();
+      *out_aead = EVP_aead_chacha20_poly1305_old();
       *out_fixed_iv_len = 0;
       return 1;
 #endif
