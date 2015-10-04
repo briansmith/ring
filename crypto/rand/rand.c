@@ -23,7 +23,6 @@
 #include <openssl/mem.h>
 
 #include "internal.h"
-#include "../chacha/internal.h"
 #include "../internal.h"
 
 
@@ -160,21 +159,26 @@ int RAND_bytes(uint8_t *buf, size_t len) {
       if (todo > kMaxBytesPerCall) {
         todo = kMaxBytesPerCall;
       }
-      uint8_t nonce[12];
-      CRYPTO_chacha_96_bit_nonce_from_64_bit_nonce(
-        nonce, (const uint8_t *)&state->calls_used);
-      CRYPTO_chacha_20(buf, buf, todo, state->key, nonce, 0);
+      /* Extend the 64-bit counter to 128 bits, of which the first 96 bits will
+       * be used as the ChaCha20 nonce. */
+      uint64_t nonce[2];
+      nonce[0] = state->calls_used;
+      nonce[1] = 0;
+      CRYPTO_chacha_20(buf, buf, todo, state->key, (const uint8_t *)nonce, 0);
       buf += todo;
       remaining -= todo;
       state->calls_used++;
     }
   } else {
     if (sizeof(state->partial_block) - state->partial_block_used < len) {
-      uint8_t nonce[12];
-      CRYPTO_chacha_96_bit_nonce_from_64_bit_nonce(
-        nonce, (const uint8_t *)&state->calls_used);
+      /* Extend the 64-bit counter to 128 bits, of which the first 96 bits will
+       * be used as the ChaCha20 nonce. */
+      uint64_t nonce[2];
+      nonce[0] = state->calls_used;
+      nonce[1] = 0;
       CRYPTO_chacha_20(state->partial_block, state->partial_block,
-                       sizeof(state->partial_block), state->key, nonce, 0);
+                       sizeof(state->partial_block), state->key,
+                       (const uint8_t *)nonce, 0);
       state->partial_block_used = 0;
     }
 

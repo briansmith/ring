@@ -22,7 +22,6 @@
 #include <openssl/poly1305.h>
 
 #include "internal.h"
-#include "../chacha/internal.h"
 
 
 #define POLY1305_TAG_LEN 16
