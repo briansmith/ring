@@ -179,7 +179,6 @@ impl Key {
             EVP_AEAD_CTX_init_with_direction(&mut self.ctx, self.ctx.aead,
                                              key_bytes.as_ptr(),
                                              key_bytes.len() as libc::size_t,
-                                             0, // EVP_AEAD_DEFAULT_TAG_LENGTH
                                              direction)
         })
     }
@@ -263,18 +262,16 @@ pub struct Algorithm {
   /// Use `max_overhead_len` or `MAX_OVERHEAD_LEN` when sizing buffers for
   /// sealing operations.
   ///
-  /// C analog: `EVP_AEAD_max_tag_len`
+  /// C analog: `EVP_AEAD_tag_len`
   pub tag_len: libc::uint8_t,
 
   init: Option<unsafe extern fn(ctx: &mut EVP_AEAD_CTX,
                                 key: *const libc::uint8_t,
-                                key_len: libc::size_t, tag_len: libc::size_t)
-                                -> libc::c_int>,
+                                key_len: libc::size_t) -> libc::c_int>,
 
   init_with_direction: Option<unsafe extern fn(ctx: &mut EVP_AEAD_CTX,
                                                key: *const libc::uint8_t,
                                                key_len: libc::size_t,
-                                               tag_len: libc::size_t,
                                                direction: Direction)
                                                -> libc::c_int>,
 
@@ -351,7 +348,7 @@ extern {
     // TODO: C analog documentation
 
     fn evp_aead_aes_gcm_init(ctx: &mut EVP_AEAD_CTX, key: *const libc::uint8_t,
-                             key_len: libc::size_t, tag_len: libc::size_t) -> libc::c_int;
+                             key_len: libc::size_t) -> libc::c_int;
 
     fn evp_aead_aes_gcm_cleanup(ctx: &mut EVP_AEAD_CTX);
 
@@ -374,7 +371,6 @@ extern {
     fn EVP_AEAD_CTX_init_with_direction(ctx: &mut EVP_AEAD_CTX,
                                         aead: &Algorithm, key: *const u8,
                                         key_len: libc::size_t,
-                                        tag_len: libc::size_t,
                                         direction: Direction) -> libc::c_int;
 
     fn EVP_AEAD_CTX_seal(ctx: &EVP_AEAD_CTX, out: *mut libc::uint8_t,

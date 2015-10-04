@@ -33,14 +33,6 @@ extern "C" {
  * performs any precomputation needed to use |aead| with |key|. The length of
  * the key, |key_len|, is given in bytes.
  *
- * The |tag_len| argument contains the length of the tags, in bytes, and allows
- * for the processing of truncated authenticators. A zero value indicates that
- * the default tag length should be used and this is defined as
- * |EVP_AEAD_DEFAULT_TAG_LENGTH| in order to make the code clear. Using
- * truncated tags increases an attacker's chance of creating a valid forgery.
- * Be aware that the attacker's chance may increase more than exponentially as
- * would naively be expected.
- *
  * When no longer needed, the initialised |EVP_AEAD_CTX| structure must be
  * passed to |EVP_AEAD_CTX_cleanup|, which will deallocate any memory used.
  *
@@ -148,10 +140,8 @@ OPENSSL_EXPORT size_t EVP_AEAD_nonce_length(const EVP_AEAD *aead);
  * by the act of sealing data with |aead|. */
 OPENSSL_EXPORT size_t EVP_AEAD_max_overhead(const EVP_AEAD *aead);
 
-/* EVP_AEAD_max_tag_len returns the maximum tag length when using |aead|. This
- * is the largest value that can be passed as |tag_len| to
- * |EVP_AEAD_CTX_init|. */
-OPENSSL_EXPORT size_t EVP_AEAD_max_tag_len(const EVP_AEAD *aead);
+/* EVP_AEAD_tag_len returns the tag length when using |aead|. */
+OPENSSL_EXPORT size_t EVP_AEAD_tag_len(const EVP_AEAD *aead);
 
 
 /* AEAD operations. */
@@ -177,11 +167,6 @@ typedef struct evp_aead_ctx_st {
  * defined in this header. */
 #define EVP_AEAD_MAX_OVERHEAD 64
 
-/* EVP_AEAD_DEFAULT_TAG_LENGTH is a magic value that can be passed to
- * EVP_AEAD_CTX_init to indicate that the default tag length for an AEAD should
- * be used. */
-#define EVP_AEAD_DEFAULT_TAG_LENGTH 0
-
 /* evp_aead_direction_t denotes the direction of an AEAD operation. */
 enum evp_aead_direction_t {
   evp_aead_open,
@@ -195,23 +180,20 @@ enum evp_aead_direction_t {
 OPENSSL_EXPORT void EVP_AEAD_CTX_zero(EVP_AEAD_CTX *ctx);
 
 /* EVP_AEAD_CTX_init initializes |ctx| for the given AEAD algorithm. The |impl|
- * argument is ignored and should be NULL. Authentication tags may be truncated
- * by passing a size as |tag_len|. A |tag_len| of zero indicates the default
- * tag length and this is defined as EVP_AEAD_DEFAULT_TAG_LENGTH for
- * readability.
+ * argument is ignored and should be NULL.
  *
  * Returns 1 on success. Otherwise returns 0 and pushes to the error stack. In
  * the error case, you do not need to call |EVP_AEAD_CTX_cleanup|, but it's
  * harmless to do so. */
 OPENSSL_EXPORT int EVP_AEAD_CTX_init(EVP_AEAD_CTX *ctx, const EVP_AEAD *aead,
                                      const uint8_t *key, size_t key_len,
-                                     size_t tag_len, ENGINE *impl);
+                                     ENGINE *impl);
 
 /* EVP_AEAD_CTX_init_with_direction calls |EVP_AEAD_CTX_init| for normal
  * AEADs. For TLS-specific AEADs, it initializes |ctx| for a given direction. */
 OPENSSL_EXPORT int EVP_AEAD_CTX_init_with_direction(
     EVP_AEAD_CTX *ctx, const EVP_AEAD *aead, const uint8_t *key, size_t key_len,
-    size_t tag_len, enum evp_aead_direction_t dir);
+    enum evp_aead_direction_t dir);
 
 /* EVP_AEAD_CTX_cleanup frees any data allocated by |ctx|. It is a no-op to
  * call |EVP_AEAD_CTX_cleanup| on a |EVP_AEAD_CTX| that has been |memset| to

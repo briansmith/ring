@@ -29,12 +29,11 @@
 
 struct aead_chacha20_poly1305_ctx {
   unsigned char key[32];
-  unsigned char tag_len;
 };
 
 static int aead_chacha20_poly1305_init(EVP_AEAD_CTX *ctx, const uint8_t *key,
-                                       size_t key_len, size_t tag_len) {
-  aead_assert_init_preconditions(ctx, key, key_len, tag_len);
+                                       size_t key_len) {
+  aead_assert_init_preconditions(ctx, key, key_len);
 
   struct aead_chacha20_poly1305_ctx *c20_ctx;
 
@@ -44,7 +43,6 @@ static int aead_chacha20_poly1305_init(EVP_AEAD_CTX *ctx, const uint8_t *key,
   }
 
   memcpy(c20_ctx->key, key, key_len);
-  c20_ctx->tag_len = tag_len;
   ctx->aead_state = c20_ctx;
 
   return 1;
@@ -109,7 +107,7 @@ static int aead_chacha20_poly1305_seal(aead_poly1305_update poly1305_update,
   const struct aead_chacha20_poly1305_ctx *c20_ctx = ctx->aead_state;
 
   if (!aead_seal_out_max_out_in_tag_len(out_len, max_out_len, in_len,
-                                        c20_ctx->tag_len)) {
+                                        POLY1305_TAG_LEN)) {
     /* |aead_seal_out_max_out_in_tag_len| already called |OPENSSL_PUT_ERROR|. */
     return 0;
   }
@@ -119,7 +117,10 @@ static int aead_chacha20_poly1305_seal(aead_poly1305_update poly1305_update,
   uint8_t tag[POLY1305_TAG_LEN] ALIGNED;
   aead_poly1305(poly1305_update, tag, c20_ctx, nonce, ad, ad_len, out, in_len);
 
-  memcpy(out + in_len, tag, c20_ctx->tag_len);
+  /* TODO: Does |tag| really need to be |ALIGNED|? If not, we can avoid this
+   * call to |memcpy|. */
+  memcpy(out + in_len, tag, POLY1305_TAG_LEN);
+
   return 1;
 }
 
@@ -134,7 +135,7 @@ static int aead_chacha20_poly1305_open(aead_poly1305_update poly1305_update,
   const struct aead_chacha20_poly1305_ctx *c20_ctx = ctx->aead_state;
 
   if (!aead_open_out_max_out_in_tag_len(out_len, max_out_len, in_len,
-                                        c20_ctx->tag_len)) {
+                                        POLY1305_TAG_LEN)) {
     /* |aead_open_out_max_out_in_tag_len| already called
      * |OPENSSL_PUT_ERROR|. */
     return 0;
@@ -142,11 +143,11 @@ static int aead_chacha20_poly1305_open(aead_poly1305_update poly1305_update,
 
   size_t plaintext_len;
 
-  plaintext_len = in_len - c20_ctx->tag_len;
+  plaintext_len = in_len - POLY1305_TAG_LEN;
   uint8_t tag[POLY1305_TAG_LEN] ALIGNED;
   aead_poly1305(poly1305_update, tag, c20_ctx, nonce, ad, ad_len, in,
                 plaintext_len);
-  if (CRYPTO_memcmp(tag, in + plaintext_len, c20_ctx->tag_len) != 0) {
+  if (CRYPTO_memcmp(tag, in + plaintext_len, POLY1305_TAG_LEN) != 0) {
     OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_BAD_DECRYPT);
     return 0;
   }

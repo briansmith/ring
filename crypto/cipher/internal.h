@@ -80,17 +80,23 @@ extern "C" {
 struct evp_aead_st {
   /* ring: Keep the layout of this in sync with the layout of
    * |ring::aead::Algorithm|. */
+
   uint8_t key_len;
   uint8_t nonce_len;
   uint8_t overhead;
-  uint8_t max_tag_len;
+
+  /* ring: The length of the tags. In BoringSSL, this is the maximum tag length,
+   * and the caller of |EVP_AEAD_CTX_init| can ask for the tag length to be
+   * less than the maximum. In *ring*, this is the exact tag length for all
+   * contexts. *ring* could support truncated tags by having a separate
+   * |EVP_AEAD| for each supported tag length. */
+  uint8_t tag_len;
 
   /* init initialises an |EVP_AEAD_CTX|. If this call returns zero then
    * |cleanup| will not be called for that context. */
-  int (*init)(EVP_AEAD_CTX *, const uint8_t *key, size_t key_len,
-              size_t tag_len);
+  int (*init)(EVP_AEAD_CTX *, const uint8_t *key, size_t key_len);
   int (*init_with_direction)(EVP_AEAD_CTX *, const uint8_t *key, size_t key_len,
-                             size_t tag_len, enum evp_aead_direction_t dir);
+                             enum evp_aead_direction_t dir);
   void (*cleanup)(EVP_AEAD_CTX *);
 
   int (*seal)(const EVP_AEAD_CTX *ctx, uint8_t *out, size_t *out_len,
@@ -165,21 +171,15 @@ inline int aead_open_out_max_out_in_tag_len(size_t *out_len, size_t max_out_len,
 }
 
 inline void aead_assert_init_preconditions(const EVP_AEAD_CTX *ctx,
-                                           const uint8_t *key, size_t key_len,
-                                           size_t tag_len) {
+                                           const uint8_t *key, size_t key_len) {
   assert(ctx != NULL);
   assert(ctx->aead != NULL);
-  assert(ctx->aead->overhead >= ctx->aead->max_tag_len);
+  assert(ctx->aead->overhead >= ctx->aead->tag_len);
 
   /* ctx->aead_state may be NULL. */
 
   assert(key != NULL);
   assert(key_len == ctx->aead->key_len);
-
-  /* A tag length of 0 means "use the default," and the caller must have
-  * already substituted the default in. */
-  assert(tag_len > 0);
-  assert(tag_len <= ctx->aead->max_tag_len);
 }
 
 inline void aead_assert_open_seal_preconditions(const EVP_AEAD_CTX *ctx,

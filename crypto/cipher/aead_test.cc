@@ -63,7 +63,7 @@ static bool TestAEAD(FileTest *t, void *arg) {
   ScopedEVP_AEAD_CTX ctx;
   if (!EVP_AEAD_CTX_init_with_direction(ctx.get(), aead,
                                         bssl::vector_data(&key), key.size(),
-                                        tag.size(), evp_aead_seal)) {
+                                        evp_aead_seal)) {
     t->PrintLine("Failed to init AEAD.");
     return false;
   }
@@ -114,7 +114,7 @@ static bool TestAEAD(FileTest *t, void *arg) {
 
   if (!EVP_AEAD_CTX_init_with_direction(ctx.get(), aead,
                                         bssl::vector_data(&key), key.size(),
-                                        tag.size(), evp_aead_open)) {
+                                        evp_aead_open)) {
     t->PrintLine("Failed to init AEAD.");
     return false;
   }
@@ -150,7 +150,7 @@ static bool TestAEAD(FileTest *t, void *arg) {
 
   if (!EVP_AEAD_CTX_init_with_direction(ctx.get(), aead,
                                         bssl::vector_data(&key), key.size(),
-                                        tag.size(), evp_aead_open)) {
+                                        evp_aead_open)) {
     t->PrintLine("Failed to init AEAD.");
     return false;
   }
@@ -171,7 +171,7 @@ static bool TestAEAD(FileTest *t, void *arg) {
 
   if (!EVP_AEAD_CTX_init_with_direction(ctx.get(), aead,
                                         bssl::vector_data(&key), key.size(),
-                                        tag.size(), evp_aead_open)) {
+                                        evp_aead_open)) {
     t->PrintLine("Failed to init AEAD.");
     return false;
   }
@@ -204,8 +204,8 @@ static int TestCleanupAfterInitFailure(const EVP_AEAD *aead) {
     return 0;
   }
 
-  if (EVP_AEAD_CTX_init(&ctx, aead, key, key_len,
-                        9999 /* a silly tag length to trigger an error */,
+  if (EVP_AEAD_CTX_init(&ctx, aead, key,
+                        9999 /* a silly key length to trigger an error */,
                         NULL /* ENGINE */) != 0) {
     fprintf(stderr, "A silly tag length didn't trigger an error!\n");
     return 0;
@@ -213,8 +213,8 @@ static int TestCleanupAfterInitFailure(const EVP_AEAD *aead) {
   ERR_clear_error();
 
   /* Running a second, failed _init should not cause a memory leak. */
-  if (EVP_AEAD_CTX_init(&ctx, aead, key, key_len,
-                        9999 /* a silly tag length to trigger an error */,
+  if (EVP_AEAD_CTX_init(&ctx, aead, key,
+                        9999 /* a silly key length to trigger an error */,
                         NULL /* ENGINE */) != 0) {
     fprintf(stderr, "A silly tag length didn't trigger an error!\n");
     return 0;

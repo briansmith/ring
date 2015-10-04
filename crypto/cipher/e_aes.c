@@ -270,12 +270,11 @@ struct aead_aes_gcm_ctx {
   } ks;
   GCM128_CONTEXT_SK gcm;
   ctr128_f ctr;
-  uint8_t tag_len;
 };
 
 int evp_aead_aes_gcm_init(EVP_AEAD_CTX *ctx, const uint8_t *key,
-                          size_t key_len, size_t tag_len) {
-  aead_assert_init_preconditions(ctx, key, key_len, tag_len);
+                          size_t key_len) {
+  aead_assert_init_preconditions(ctx, key, key_len);
 
   struct aead_aes_gcm_ctx *gcm_ctx;
 
@@ -286,7 +285,6 @@ int evp_aead_aes_gcm_init(EVP_AEAD_CTX *ctx, const uint8_t *key,
 
   gcm_ctx->ctr =
       aes_ctr_set_key(&gcm_ctx->ks.ks, &gcm_ctx->gcm, NULL, key, key_len);
-  gcm_ctx->tag_len = tag_len;
   ctx->aead_state = gcm_ctx;
 
   return 1;
@@ -307,7 +305,7 @@ int evp_aead_aes_gcm_seal(const EVP_AEAD_CTX *ctx, uint8_t *out,
   const struct aead_aes_gcm_ctx *gcm_ctx = ctx->aead_state;
 
   if (!aead_seal_out_max_out_in_tag_len(out_len, max_out_len, in_len,
-                                        gcm_ctx->tag_len)) {
+                                        EVP_AEAD_AES_GCM_TAG_LEN)) {
     /* |aead_seal_out_max_out_in_tag_len| already called |OPENSSL_PUT_ERROR|. */
     return 0;
   }
@@ -334,7 +332,7 @@ int evp_aead_aes_gcm_seal(const EVP_AEAD_CTX *ctx, uint8_t *out,
     }
   }
 
-  CRYPTO_gcm128_tag_sk(&gcm, out + in_len, gcm_ctx->tag_len);
+  CRYPTO_gcm128_tag_sk(&gcm, out + in_len, EVP_AEAD_AES_GCM_TAG_LEN);
   return 1;
 }
 
@@ -347,7 +345,7 @@ int evp_aead_aes_gcm_open(const EVP_AEAD_CTX *ctx, uint8_t *out,
   const struct aead_aes_gcm_ctx *gcm_ctx = ctx->aead_state;
 
   if (!aead_open_out_max_out_in_tag_len(out_len, max_out_len, in_len,
-                                        gcm_ctx->tag_len)) {
+                                        EVP_AEAD_AES_GCM_TAG_LEN)) {
     /* |aead_open_out_max_out_in_tag_len| already called |OPENSSL_PUT_ERROR|. */
     return 0;
   }
@@ -356,7 +354,7 @@ int evp_aead_aes_gcm_open(const EVP_AEAD_CTX *ctx, uint8_t *out,
   size_t plaintext_len;
   GCM128_CONTEXT_SK gcm;
 
-  plaintext_len = in_len - gcm_ctx->tag_len;
+  plaintext_len = in_len - EVP_AEAD_AES_GCM_TAG_LEN;
 
   const AES_KEY *key = &gcm_ctx->ks.ks;
 
@@ -369,19 +367,19 @@ int evp_aead_aes_gcm_open(const EVP_AEAD_CTX *ctx, uint8_t *out,
 
   if (gcm_ctx->ctr) {
     if (!CRYPTO_gcm128_decrypt_ctr32_sk(&gcm, key, in, out,
-                                        in_len - gcm_ctx->tag_len,
+                                        in_len - EVP_AEAD_AES_GCM_TAG_LEN,
                                         gcm_ctx->ctr)) {
       return 0;
     }
   } else {
     if (!CRYPTO_gcm128_decrypt_sk(&gcm, key, in, out,
-                                  in_len - gcm_ctx->tag_len)) {
+                                  in_len - EVP_AEAD_AES_GCM_TAG_LEN)) {
       return 0;
     }
   }
 
-  CRYPTO_gcm128_tag_sk(&gcm, tag, gcm_ctx->tag_len);
-  if (CRYPTO_memcmp(tag, in + plaintext_len, gcm_ctx->tag_len) != 0) {
+  CRYPTO_gcm128_tag_sk(&gcm, tag, EVP_AEAD_AES_GCM_TAG_LEN);
+  if (CRYPTO_memcmp(tag, in + plaintext_len, EVP_AEAD_AES_GCM_TAG_LEN) != 0) {
     OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_BAD_DECRYPT);
     return 0;
   }
@@ -430,16 +428,11 @@ struct aead_aes_key_wrap_ctx {
 };
 
 static int aead_aes_key_wrap_init(EVP_AEAD_CTX *ctx, const uint8_t *key,
-                                  size_t key_len, size_t tag_len) {
-  aead_assert_init_preconditions(ctx, key, key_len, tag_len);
+                                  size_t key_len) {
+  aead_assert_init_preconditions(ctx, key, key_len);
 
   struct aead_aes_key_wrap_ctx *kw_ctx;
   const size_t key_bits = key_len * 8;
-
-  if (tag_len != 8) {
-    OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_UNSUPPORTED_TAG_SIZE);
-    return 0;
-  }
 
   kw_ctx = OPENSSL_malloc(sizeof(struct aead_aes_key_wrap_ctx));
   if (kw_ctx == NULL) {

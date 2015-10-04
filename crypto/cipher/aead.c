@@ -27,38 +27,28 @@ size_t EVP_AEAD_nonce_length(const EVP_AEAD *aead) { return aead->nonce_len; }
 
 size_t EVP_AEAD_max_overhead(const EVP_AEAD *aead) { return aead->overhead; }
 
-size_t EVP_AEAD_max_tag_len(const EVP_AEAD *aead) { return aead->max_tag_len; }
+size_t EVP_AEAD_tag_len(const EVP_AEAD *aead) { return aead->tag_len; }
 
 void EVP_AEAD_CTX_zero(EVP_AEAD_CTX *ctx) {
   memset(ctx, 0, sizeof(EVP_AEAD_CTX));
 }
 
 int EVP_AEAD_CTX_init(EVP_AEAD_CTX *ctx, const EVP_AEAD *aead,
-                      const uint8_t *key, size_t key_len, size_t tag_len,
-                      ENGINE *impl) {
+                      const uint8_t *key, size_t key_len, ENGINE *impl) {
   if (!aead->init) {
     OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_NO_DIRECTION_SET);
     ctx->aead = NULL;
     return 0;
   }
-  return EVP_AEAD_CTX_init_with_direction(ctx, aead, key, key_len, tag_len,
+  return EVP_AEAD_CTX_init_with_direction(ctx, aead, key, key_len,
                                           evp_aead_open);
 }
 
 int EVP_AEAD_CTX_init_with_direction(EVP_AEAD_CTX *ctx, const EVP_AEAD *aead,
                                      const uint8_t *key, size_t key_len,
-                                     size_t tag_len,
                                      enum evp_aead_direction_t dir) {
   if (key_len != aead->key_len) {
     OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_UNSUPPORTED_KEY_SIZE);
-    ctx->aead = NULL;
-    return 0;
-  }
-
-  if (tag_len == EVP_AEAD_DEFAULT_TAG_LENGTH) {
-    tag_len = aead->max_tag_len;
-  } else if (tag_len > aead->max_tag_len) {
-    OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_TOO_LARGE);
     ctx->aead = NULL;
     return 0;
   }
@@ -67,9 +57,9 @@ int EVP_AEAD_CTX_init_with_direction(EVP_AEAD_CTX *ctx, const EVP_AEAD *aead,
 
   int ok;
   if (aead->init) {
-    ok = aead->init(ctx, key, key_len, tag_len);
+    ok = aead->init(ctx, key, key_len);
   } else {
-    ok = aead->init_with_direction(ctx, key, key_len, tag_len, dir);
+    ok = aead->init_with_direction(ctx, key, key_len, dir);
   }
 
   if (!ok) {
