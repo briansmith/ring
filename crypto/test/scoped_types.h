@@ -18,7 +18,6 @@
 #include <stdint.h>
 #include <stdio.h>
 
-#include <openssl/aead.h>
 #include <openssl/bn.h>
 #include <openssl/cmac.h>
 #include <openssl/dh.h>
@@ -83,9 +82,6 @@ using ScopedEC_GROUP = ScopedOpenSSLType<EC_GROUP, EC_GROUP_free>;
 using ScopedEC_KEY = ScopedOpenSSLType<EC_KEY, EC_KEY_free>;
 using ScopedEC_POINT = ScopedOpenSSLType<EC_POINT, EC_POINT_free>;
 using ScopedRSA = ScopedOpenSSLType<RSA, RSA_free>;
-using ScopedEVP_AEAD_CTX = ScopedOpenSSLContext<EVP_AEAD_CTX, void,
-                                                EVP_AEAD_CTX_zero,
-                                                EVP_AEAD_CTX_cleanup>;
 using ScopedEVP_MD_CTX = ScopedOpenSSLContext<EVP_MD_CTX, int, EVP_MD_CTX_init,
                                               EVP_MD_CTX_cleanup>;
 

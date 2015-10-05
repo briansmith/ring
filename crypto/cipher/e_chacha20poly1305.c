@@ -31,27 +31,14 @@ struct aead_chacha20_poly1305_ctx {
   unsigned char key[32];
 };
 
-int evp_aead_chacha20_poly1305_init(EVP_AEAD_CTX *ctx, const uint8_t *key,
-                                    size_t key_len) {
-  aead_assert_init_preconditions(ctx, key, key_len);
-
-  struct aead_chacha20_poly1305_ctx *c20_ctx;
-
-  c20_ctx = OPENSSL_malloc(sizeof(struct aead_chacha20_poly1305_ctx));
-  if (c20_ctx == NULL) {
-    return 0;
-  }
-
+int evp_aead_chacha20_poly1305_init(void *ctx_buf, size_t ctx_buf_len,
+                                    const uint8_t *key, size_t key_len) {
+  aead_assert_init_preconditions(alignof(struct aead_chacha20_poly1305_ctx),
+                                 sizeof(struct aead_chacha20_poly1305_ctx),
+                                 ctx_buf, ctx_buf_len, key);
+  struct aead_chacha20_poly1305_ctx *c20_ctx = ctx_buf;
   memcpy(c20_ctx->key, key, key_len);
-  ctx->aead_state = c20_ctx;
-
   return 1;
-}
-
-void evp_aead_chacha20_poly1305_cleanup(EVP_AEAD_CTX *ctx) {
-  struct aead_chacha20_poly1305_ctx *c20_ctx = ctx->aead_state;
-  OPENSSL_cleanse(c20_ctx->key, sizeof(c20_ctx->key));
-  OPENSSL_free(c20_ctx);
 }
 
 static void poly1305_update_length(poly1305_state *poly1305, size_t data_len) {
@@ -97,14 +84,16 @@ static void aead_poly1305(aead_poly1305_update update,
 }
 
 static int aead_chacha20_poly1305_seal(aead_poly1305_update poly1305_update,
-                                       const EVP_AEAD_CTX *ctx, uint8_t *out,
+                                       const void *ctx_buf, uint8_t *out,
                                        size_t *out_len, size_t max_out_len,
                                        const uint8_t nonce[12],
                                        const uint8_t *in, size_t in_len,
                                        const uint8_t *ad, size_t ad_len) {
-  aead_assert_open_seal_preconditions(ctx, out, out_len, in, in_len, ad, ad_len);
+  aead_assert_open_seal_preconditions(alignof(struct aead_chacha20_poly1305_ctx),
+                                      ctx_buf, out, out_len, nonce, in, in_len,
+                                      ad, ad_len);
 
-  const struct aead_chacha20_poly1305_ctx *c20_ctx = ctx->aead_state;
+  const struct aead_chacha20_poly1305_ctx *c20_ctx = ctx_buf;
 
   if (!aead_seal_out_max_out_in_tag_len(out_len, max_out_len, in_len,
                                         POLY1305_TAG_LEN)) {
@@ -125,14 +114,16 @@ static int aead_chacha20_poly1305_seal(aead_poly1305_update poly1305_update,
 }
 
 static int aead_chacha20_poly1305_open(aead_poly1305_update poly1305_update,
-                                       const EVP_AEAD_CTX *ctx, uint8_t *out,
+                                       const void *ctx_buf, uint8_t *out,
                                        size_t *out_len, size_t max_out_len,
                                        const uint8_t nonce[12],
                                        const uint8_t *in, size_t in_len,
                                        const uint8_t *ad, size_t ad_len) {
-  aead_assert_open_seal_preconditions(ctx, out, out_len, in, in_len, ad, ad_len);
+  aead_assert_open_seal_preconditions(alignof(struct aead_chacha20_poly1305_ctx),
+                                      ctx_buf, out, out_len, nonce, in, in_len,
+                                      ad, ad_len);
 
-  const struct aead_chacha20_poly1305_ctx *c20_ctx = ctx->aead_state;
+  const struct aead_chacha20_poly1305_ctx *c20_ctx = ctx_buf;
 
   if (!aead_open_out_max_out_in_tag_len(out_len, max_out_len, in_len,
                                         POLY1305_TAG_LEN)) {
@@ -176,41 +167,27 @@ static void poly1305_update_rfc7539(poly1305_state *ctx, const uint8_t *ad,
   poly1305_update_length(ctx, ciphertext_len);
 }
 
-int evp_aead_chacha20_poly1305_rfc7539_seal(const EVP_AEAD_CTX *ctx,
+int evp_aead_chacha20_poly1305_rfc7539_seal(const void *ctx_buf,
                                             uint8_t *out, size_t *out_len,
                                             size_t max_out_len,
                                             const uint8_t *nonce,
                                             const uint8_t *in, size_t in_len,
                                             const uint8_t *ad,
                                             size_t ad_len) {
-  return aead_chacha20_poly1305_seal(poly1305_update_rfc7539, ctx, out, out_len,
-                                     max_out_len, nonce, in, in_len, ad, ad_len);
+  return aead_chacha20_poly1305_seal(poly1305_update_rfc7539, ctx_buf, out,
+                                     out_len, max_out_len, nonce, in, in_len,
+                                     ad, ad_len);
 }
 
-int evp_aead_chacha20_poly1305_rfc7539_open(const EVP_AEAD_CTX *ctx,
+int evp_aead_chacha20_poly1305_rfc7539_open(const void *ctx_buf,
                                             uint8_t *out, size_t *out_len,
                                             size_t max_out_len,
                                             const uint8_t *nonce,
                                             const uint8_t *in, size_t in_len,
                                             const uint8_t *ad, size_t ad_len) {
-  return aead_chacha20_poly1305_open(poly1305_update_rfc7539, ctx, out, out_len,
-                                     max_out_len, nonce, in, in_len, ad, ad_len);
-}
-
-static const EVP_AEAD aead_chacha20_poly1305_rfc7539 = {
-    32,                 /* key len */
-    CHACHA20_NONCE_LEN, /* nonce len */
-    POLY1305_TAG_LEN,   /* overhead */
-    POLY1305_TAG_LEN,   /* max tag length */
-    evp_aead_chacha20_poly1305_init,
-    NULL, /* init_with_direction */
-    evp_aead_chacha20_poly1305_cleanup,
-    evp_aead_chacha20_poly1305_rfc7539_seal,
-    evp_aead_chacha20_poly1305_rfc7539_open,
-};
-
-const EVP_AEAD *EVP_aead_chacha20_poly1305_rfc7539(void) {
-  return &aead_chacha20_poly1305_rfc7539;
+  return aead_chacha20_poly1305_open(poly1305_update_rfc7539, ctx_buf, out,
+                                     out_len, max_out_len, nonce, in, in_len,
+                                     ad, ad_len);
 }
 
 static void poly1305_update_deprecated(poly1305_state *ctx, const uint8_t *ad,
@@ -222,7 +199,7 @@ static void poly1305_update_deprecated(poly1305_state *ctx, const uint8_t *ad,
   poly1305_update_length(ctx, ciphertext_len);
 }
 
-int evp_aead_chacha20_poly1305_deprecated_seal(const EVP_AEAD_CTX *ctx,
+int evp_aead_chacha20_poly1305_deprecated_seal(const void *ctx_buf,
                                                uint8_t *out, size_t *out_len,
                                                size_t max_out_len,
                                                const uint8_t *nonce,
@@ -230,12 +207,12 @@ int evp_aead_chacha20_poly1305_deprecated_seal(const EVP_AEAD_CTX *ctx,
                                                size_t in_len,
                                                const uint8_t *ad,
                                                size_t ad_len) {
-  return aead_chacha20_poly1305_seal(poly1305_update_deprecated, ctx, out,
+  return aead_chacha20_poly1305_seal(poly1305_update_deprecated, ctx_buf, out,
                                      out_len, max_out_len, nonce, in, in_len,
                                      ad, ad_len);
 }
 
-int evp_aead_chacha20_poly1305_deprecated_open(const EVP_AEAD_CTX *ctx,
+int evp_aead_chacha20_poly1305_deprecated_open(const void *ctx_buf,
                                                uint8_t *out, size_t *out_len,
                                                size_t max_out_len,
                                                const uint8_t *nonce,
@@ -243,23 +220,7 @@ int evp_aead_chacha20_poly1305_deprecated_open(const EVP_AEAD_CTX *ctx,
                                                size_t in_len,
                                                const uint8_t *ad,
                                                size_t ad_len) {
-  return aead_chacha20_poly1305_open(poly1305_update_deprecated, ctx, out,
+  return aead_chacha20_poly1305_open(poly1305_update_deprecated, ctx_buf, out,
                                      out_len, max_out_len, nonce, in, in_len,
                                      ad, ad_len);
-}
-
-static const EVP_AEAD aead_chacha20_poly1305_deprecated = {
-    32,                 /* key len */
-    CHACHA20_NONCE_LEN, /* nonce len */
-    POLY1305_TAG_LEN,   /* overhead */
-    POLY1305_TAG_LEN,   /* max tag length */
-    evp_aead_chacha20_poly1305_init,
-    NULL, /* init_with_direction */
-    evp_aead_chacha20_poly1305_cleanup,
-    evp_aead_chacha20_poly1305_deprecated_seal,
-    evp_aead_chacha20_poly1305_deprecated_open,
-};
-
-const EVP_AEAD *EVP_aead_chacha20_poly1305_deprecated(void) {
-  return &aead_chacha20_poly1305_deprecated;
 }

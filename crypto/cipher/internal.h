@@ -76,39 +76,6 @@ extern "C" {
 #endif
 
 
-/* EVP_AEAD represents a specific AEAD algorithm. */
-struct evp_aead_st {
-  /* ring: Keep the layout of this in sync with the layout of
-   * |ring::aead::Algorithm|. */
-
-  uint8_t key_len;
-  uint8_t nonce_len;
-  uint8_t overhead;
-
-  /* ring: The length of the tags. In BoringSSL, this is the maximum tag length,
-   * and the caller of |EVP_AEAD_CTX_init| can ask for the tag length to be
-   * less than the maximum. In *ring*, this is the exact tag length for all
-   * contexts. *ring* could support truncated tags by having a separate
-   * |EVP_AEAD| for each supported tag length. */
-  uint8_t tag_len;
-
-  /* init initialises an |EVP_AEAD_CTX|. If this call returns zero then
-   * |cleanup| will not be called for that context. */
-  int (*init)(EVP_AEAD_CTX *, const uint8_t *key, size_t key_len);
-  int (*init_with_direction)(EVP_AEAD_CTX *, const uint8_t *key, size_t key_len,
-                             enum evp_aead_direction_t dir);
-  void (*cleanup)(EVP_AEAD_CTX *);
-
-  int (*seal)(const EVP_AEAD_CTX *ctx, uint8_t *out, size_t *out_len,
-              size_t max_out_len, const uint8_t *nonce, const uint8_t *in,
-              size_t in_len, const uint8_t *ad, size_t ad_len);
-
-  int (*open)(const EVP_AEAD_CTX *ctx, uint8_t *out, size_t *out_len,
-              size_t max_out_len, const uint8_t *nonce, const uint8_t *in,
-              size_t in_len, const uint8_t *ad, size_t ad_len);
-};
-
-
 /* Preconditions for AEAD implementation methods. */
 
 /* aead_check_alias returns 0 if |out| points within the buffer determined by
@@ -170,29 +137,30 @@ inline int aead_open_out_max_out_in_tag_len(size_t *out_len, size_t max_out_len,
   return 1;
 }
 
-inline void aead_assert_init_preconditions(const EVP_AEAD_CTX *ctx,
-                                           const uint8_t *key, size_t key_len) {
-  assert(ctx != NULL);
-  assert(ctx->aead != NULL);
-  assert(ctx->aead->overhead >= ctx->aead->tag_len);
-
-  /* ctx->aead_state may be NULL. */
-
+static inline void aead_assert_init_preconditions(size_t ctx_struct_alignment,
+                                                  size_t ctx_struct_size,
+                                                  const void *ctx_buf,
+                                                  size_t ctx_buf_len,
+                                                  const uint8_t *key) {
+  assert(ctx_buf != NULL);
+  assert(((uintptr_t)ctx_buf) % ctx_struct_alignment == 0);
+  assert(ctx_buf_len >= ctx_struct_size);
   assert(key != NULL);
-  assert(key_len == ctx->aead->key_len);
 }
 
-inline void aead_assert_open_seal_preconditions(const EVP_AEAD_CTX *ctx,
+inline void aead_assert_open_seal_preconditions(size_t ctx_struct_alignment,
+                                                const void *ctx_buf,
                                                 uint8_t *out, size_t *out_len,
+                                                const uint8_t *nonce,
                                                 const uint8_t *in,
                                                 size_t in_len,
                                                 const uint8_t *ad,
                                                 size_t ad_len) {
-  assert(ctx != NULL);
-  assert(ctx->aead != NULL);
-  assert(ctx->aead_state != NULL);
+  assert(ctx_buf != NULL);
+  assert(((uintptr_t)ctx_buf) % ctx_struct_alignment == 0);
   assert(out != NULL);
   assert(out_len != NULL);
+  assert(nonce != NULL);
   assert(in != NULL || in_len == 0);
   assert(aead_check_in_len(in_len));
   assert(aead_check_alias(in, in_len, out));

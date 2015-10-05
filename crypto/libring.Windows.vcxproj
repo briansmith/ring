@@ -38,7 +38,6 @@
     <ClCompile Include="bytestring\cbs.c" />
     <ClCompile Include="chacha\chacha_generic.c" />
     <ClCompile Include="chacha\chacha_vec.c" />
-    <ClCompile Include="cipher\aead.c" />
     <ClCompile Include="cipher\e_aes.c" />
     <ClCompile Include="cipher\e_chacha20poly1305.c" />
     <ClCompile Include="cpu-arm.c" />

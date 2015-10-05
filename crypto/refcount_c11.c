@@ -18,7 +18,6 @@
 #if defined(OPENSSL_C11_ATOMIC)
 
 #include <assert.h>
-#include <stdalign.h>
 #include <stdatomic.h>
 #include <stdlib.h>
 

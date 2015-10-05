@@ -26,7 +26,6 @@
 #include <stdint.h>
 #include <string.h>
 
-#include <openssl/aead.h>
 #include <openssl/digest.h>
 #include <openssl/ecdh.h>
 #include <openssl/ec_key.h>
@@ -169,72 +168,6 @@ static bool SpeedRSA(const std::string &key_name, RSA *key,
   results.Print(key_name + " verify");
 
   return true;
-}
-
-static uint8_t *align(uint8_t *in, unsigned alignment) {
-  return reinterpret_cast<uint8_t *>(
-      (reinterpret_cast<uintptr_t>(in) + alignment) &
-      ~static_cast<size_t>(alignment - 1));
-}
-
-static bool SpeedAEADChunk(const EVP_AEAD *aead, const std::string &name,
-                           size_t chunk_len, size_t ad_len) {
-  static const unsigned kAlignment = 16;
-
-  EVP_AEAD_CTX ctx;
-  const size_t key_len = EVP_AEAD_key_length(aead);
-  const size_t nonce_len = EVP_AEAD_nonce_length(aead);
-  const size_t overhead_len = EVP_AEAD_max_overhead(aead);
-
-  std::unique_ptr<uint8_t[]> key(new uint8_t[key_len]);
-  memset(key.get(), 0, key_len);
-  std::unique_ptr<uint8_t[]> nonce(new uint8_t[nonce_len]);
-  memset(nonce.get(), 0, nonce_len);
-  std::unique_ptr<uint8_t[]> in_storage(new uint8_t[chunk_len + kAlignment]);
-  std::unique_ptr<uint8_t[]> out_storage(new uint8_t[chunk_len + overhead_len + kAlignment]);
-  std::unique_ptr<uint8_t[]> ad(new uint8_t[ad_len]);
-  memset(ad.get(), 0, ad_len);
-
-  uint8_t *const in = align(in_storage.get(), kAlignment);
-  memset(in, 0, chunk_len);
-  uint8_t *const out = align(out_storage.get(), kAlignment);
-  memset(out, 0, chunk_len + overhead_len);
-
-  if (!EVP_AEAD_CTX_init_with_direction(&ctx, aead, key.get(), key_len,
-                                        evp_aead_seal)) {
-    fprintf(stderr, "Failed to create EVP_AEAD_CTX.\n");
-    return false;
-  }
-
-  TimeResults results;
-  if (!TimeFunction(&results, [chunk_len, overhead_len, nonce_len, ad_len, in,
-                               out, &ctx, &nonce, &ad]() -> bool {
-        size_t out_len;
-
-        return EVP_AEAD_CTX_seal(
-            &ctx, out, &out_len, chunk_len + overhead_len, nonce.get(),
-            nonce_len, in, chunk_len, ad.get(), ad_len);
-      })) {
-    fprintf(stderr, "EVP_AEAD_CTX_seal failed.\n");
-    return false;
-  }
-
-  results.PrintWithBytes(name + " seal", chunk_len);
-
-  EVP_AEAD_CTX_cleanup(&ctx);
-
-  return true;
-}
-
-static bool SpeedAEAD(const EVP_AEAD *aead, const std::string &name,
-                      size_t ad_len, const std::string &selected) {
-  if (!selected.empty() && name.find(selected) == std::string::npos) {
-    return true;
-  }
-
-  return SpeedAEADChunk(aead, name + " (16 bytes)", 16, ad_len) &&
-         SpeedAEADChunk(aead, name + " (1350 bytes)", 1350, ad_len) &&
-         SpeedAEADChunk(aead, name + " (8192 bytes)", 8192, ad_len);
 }
 
 static bool SpeedHashChunk(const EVP_MD *md, const std::string &name,
@@ -450,13 +383,7 @@ bool Speed(const std::vector<std::string> &args) {
   // AEADs.
   static const size_t kTLSADLen = 13;
 
-  if (!SpeedAEAD(EVP_aead_aes_128_gcm(), "AES-128-GCM", kTLSADLen, selected) ||
-      !SpeedAEAD(EVP_aead_aes_256_gcm(), "AES-256-GCM", kTLSADLen, selected) ||
-      !SpeedAEAD(EVP_aead_chacha20_poly1305_rfc7539(),
-                 "ChaCha20-Poly1305-RFC7539", kTLSADLen, selected) ||
-      !SpeedAEAD(EVP_aead_chacha20_poly1305_deprecated(),
-                 "ChaCha20-Poly1305-Deprecated", kTLSADLen, selected) ||
-      !SpeedHash(EVP_sha1(), "SHA-1", selected) ||
+  if (!SpeedHash(EVP_sha1(), "SHA-1", selected) ||
       !SpeedHash(EVP_sha256(), "SHA-256", selected) ||
       !SpeedHash(EVP_sha512(), "SHA-512", selected) ||
       !SpeedRandom(selected) ||

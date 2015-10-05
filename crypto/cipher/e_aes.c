@@ -272,37 +272,27 @@ struct aead_aes_gcm_ctx {
   ctr128_f ctr;
 };
 
-int evp_aead_aes_gcm_init(EVP_AEAD_CTX *ctx, const uint8_t *key,
+int evp_aead_aes_gcm_init(void *ctx_buf, size_t ctx_buf_len, const uint8_t *key,
                           size_t key_len) {
-  aead_assert_init_preconditions(ctx, key, key_len);
+  aead_assert_init_preconditions(alignof(struct aead_aes_gcm_ctx),
+                                 sizeof(struct aead_aes_gcm_ctx), ctx_buf,
+                                 ctx_buf_len, key);
 
-  struct aead_aes_gcm_ctx *gcm_ctx;
-
-  gcm_ctx = OPENSSL_malloc(sizeof(struct aead_aes_gcm_ctx));
-  if (gcm_ctx == NULL) {
-    return 0;
-  }
-
+  struct aead_aes_gcm_ctx *gcm_ctx = ctx_buf;
   gcm_ctx->ctr =
       aes_ctr_set_key(&gcm_ctx->ks.ks, &gcm_ctx->gcm, NULL, key, key_len);
-  ctx->aead_state = gcm_ctx;
-
   return 1;
 }
 
-void evp_aead_aes_gcm_cleanup(EVP_AEAD_CTX *ctx) {
-  struct aead_aes_gcm_ctx *gcm_ctx = ctx->aead_state;
-  OPENSSL_cleanse(gcm_ctx, sizeof(struct aead_aes_gcm_ctx));
-  OPENSSL_free(gcm_ctx);
-}
+int evp_aead_aes_gcm_seal(const void *ctx_buf, uint8_t *out, size_t *out_len,
+                          size_t max_out_len, const uint8_t *nonce,
+                          const uint8_t *in, size_t in_len, const uint8_t *ad,
+                          size_t ad_len) {
+  aead_assert_open_seal_preconditions(alignof(struct aead_aes_gcm_ctx), ctx_buf,
+                                      out, out_len, nonce, in, in_len, ad,
+                                      ad_len);
 
-int evp_aead_aes_gcm_seal(const EVP_AEAD_CTX *ctx, uint8_t *out,
-                          size_t *out_len, size_t max_out_len,
-                          const uint8_t *nonce, const uint8_t *in,
-                          size_t in_len, const uint8_t *ad, size_t ad_len) {
-  aead_assert_open_seal_preconditions(ctx, out, out_len, in, in_len, ad, ad_len);
-
-  const struct aead_aes_gcm_ctx *gcm_ctx = ctx->aead_state;
+  const struct aead_aes_gcm_ctx *gcm_ctx = ctx_buf;
 
   if (!aead_seal_out_max_out_in_tag_len(out_len, max_out_len, in_len,
                                         EVP_AEAD_AES_GCM_TAG_LEN)) {
@@ -336,13 +326,15 @@ int evp_aead_aes_gcm_seal(const EVP_AEAD_CTX *ctx, uint8_t *out,
   return 1;
 }
 
-int evp_aead_aes_gcm_open(const EVP_AEAD_CTX *ctx, uint8_t *out,
-                          size_t *out_len, size_t max_out_len,
-                          const uint8_t *nonce, const uint8_t *in,
-                          size_t in_len, const uint8_t *ad, size_t ad_len) {
-  aead_assert_open_seal_preconditions(ctx, out, out_len, in, in_len, ad, ad_len);
+int evp_aead_aes_gcm_open(const void *ctx_buf, uint8_t *out, size_t *out_len,
+                          size_t max_out_len, const uint8_t *nonce,
+                          const uint8_t *in, size_t in_len, const uint8_t *ad,
+                          size_t ad_len) {
+  aead_assert_open_seal_preconditions(alignof(struct aead_aes_gcm_ctx), ctx_buf,
+                                      out, out_len, nonce, in, in_len, ad,
+                                      ad_len);
 
-  const struct aead_aes_gcm_ctx *gcm_ctx = ctx->aead_state;
+  const struct aead_aes_gcm_ctx *gcm_ctx = ctx_buf;
 
   if (!aead_open_out_max_out_in_tag_len(out_len, max_out_len, in_len,
                                         EVP_AEAD_AES_GCM_TAG_LEN)) {
@@ -386,36 +378,6 @@ int evp_aead_aes_gcm_open(const EVP_AEAD_CTX *ctx, uint8_t *out,
 
   return 1;
 }
-
-/* TODO(ring): We currently duplicate these between Rust and C. Avoid doing that. */
-static const EVP_AEAD aead_aes_128_gcm = {
-    16,                       /* key len */
-    EVP_AEAD_AES_GCM_NONCE_LEN, /* nonce len */
-    EVP_AEAD_AES_GCM_TAG_LEN, /* overhead */
-    EVP_AEAD_AES_GCM_TAG_LEN, /* max tag length */
-    evp_aead_aes_gcm_init,
-    NULL, /* init_with_direction */
-    evp_aead_aes_gcm_cleanup,
-    evp_aead_aes_gcm_seal,
-    evp_aead_aes_gcm_open,
-};
-
-/* TODO(ring): We currently duplicate these between Rust and C. Avoid doing that. */
-static const EVP_AEAD aead_aes_256_gcm = {
-    32,                       /* key len */
-    EVP_AEAD_AES_GCM_NONCE_LEN, /* nonce len */
-    EVP_AEAD_AES_GCM_TAG_LEN, /* overhead */
-    EVP_AEAD_AES_GCM_TAG_LEN, /* max tag length */
-    evp_aead_aes_gcm_init,
-    NULL, /* init_with_direction */
-    evp_aead_aes_gcm_cleanup,
-    evp_aead_aes_gcm_seal,
-    evp_aead_aes_gcm_open,
-};
-
-const EVP_AEAD *EVP_aead_aes_128_gcm(void) { return &aead_aes_128_gcm; }
-
-const EVP_AEAD *EVP_aead_aes_256_gcm(void) { return &aead_aes_256_gcm; }
 
 
 int EVP_has_aes_hardware(void) {

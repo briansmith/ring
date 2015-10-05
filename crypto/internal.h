@@ -112,6 +112,12 @@
 #include <openssl/base.h>
 #include <openssl/thread.h>
 
+#if defined(_MSC_VER)
+#define alignof __alignof
+#else
+#include <stdalign.h>
+#endif
+
 #if defined(OPENSSL_NO_THREADS)
 #elif defined(OPENSSL_WINDOWS)
 #pragma warning(push, 3)

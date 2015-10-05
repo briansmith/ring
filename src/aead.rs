@@ -38,6 +38,10 @@ pub struct OpeningKey {
 }
 
 impl OpeningKey {
+    /// Create a new opening key.
+    ///
+    /// `key_bytes` must be exactly `algorithm.key_len` bytes long.
+    ///
     /// C analogs: `EVP_AEAD_CTX_init_with_direction` with direction
     ///            `evp_aead_open`, `EVP_AEAD_CTX_init`.
     ///
@@ -48,13 +52,11 @@ impl OpeningKey {
                -> Result<OpeningKey, ()> {
         let mut key = OpeningKey {
             key: Key {
-                ctx: EVP_AEAD_CTX {
-                    aead: algorithm,
-                    aead_state: std::ptr::null_mut()
-                }
+                algorithm: algorithm,
+                ctx_buf: [0; KEY_CTX_BUF_ELEMS]
             }
         };
-        try!(key.key.init(Direction::Open, key_bytes));
+        try!(key.key.init(key_bytes));
         Ok(key)
     }
 
@@ -85,8 +87,16 @@ pub fn open_in_place(key: &OpeningKey, nonce: &[u8], in_prefix_len: usize,
     if in_out.len() < in_prefix_len {
         return Err(());
     }
+    let ciphertext_len = in_out.len() - in_prefix_len;
+    // For AEADs where `max_overhead_len` == `tag_len`, this is the only check
+    // of plaintext_len that is needed. For AEADs where
+    // `max_overhead_len > tag_len`, this check isn't precise enough and the
+    // AEAD's `open` function will have to do an additional check.
+    if ciphertext_len < (key.key.algorithm.tag_len as usize) {
+        return Err(());
+    }
     unsafe {
-        key.key.open_or_seal_in_place(EVP_AEAD_CTX_open, nonce,
+        key.key.open_or_seal_in_place(key.key.algorithm.open, nonce,
                                       in_out[in_prefix_len..].as_ptr(),
                                       in_out.len() - in_prefix_len, ad, in_out)
     }
@@ -112,13 +122,11 @@ impl SealingKey {
                -> Result<SealingKey, ()> {
         let mut key = SealingKey {
             key: Key {
-                ctx: EVP_AEAD_CTX {
-                    aead: algorithm,
-                    aead_state: std::ptr::null_mut()
-                }
+                algorithm: algorithm,
+                ctx_buf: [0; KEY_CTX_BUF_ELEMS],
             }
         };
-        try!(key.key.init(Direction::Seal, key_bytes));
+        try!(key.key.init(key_bytes));
         Ok(key)
     }
 
@@ -141,7 +149,7 @@ impl SealingKey {
 /// expressed this way because Rust's type system does not allow us to have two
 /// slices, one mutable and one immutable, that reference overlapping memory.)
 ///
-/// `out_suffix_capacity` should be at least `key.algorithm.max_overhead_len`.
+/// `out_suffix_capacity` must be at least `key.algorithm.max_overhead_len`.
 /// See also `MAX_OVERHEAD_LEN`.
 ///
 /// `ad` is the additional authenticated data, if any.
@@ -152,11 +160,13 @@ impl SealingKey {
 pub fn seal_in_place(key: &SealingKey, nonce: &[u8], in_out: &mut [u8],
                      out_suffix_capacity: usize, ad: &[u8])
                      -> Result<usize, ()> {
-    if in_out.len() < out_suffix_capacity {
+    if in_out.len() < out_suffix_capacity ||
+       out_suffix_capacity < (key.key.algorithm.max_overhead_len as usize) {
         return Err(());
     }
     unsafe {
-        key.key.open_or_seal_in_place(EVP_AEAD_CTX_seal, nonce, in_out.as_ptr(),
+        key.key.open_or_seal_in_place(key.key.algorithm.seal, nonce,
+                                      in_out.as_ptr(),
                                       in_out.len() - out_suffix_capacity, ad,
                                       in_out)
     }
@@ -167,65 +177,73 @@ pub fn seal_in_place(key: &SealingKey, nonce: &[u8], in_out: &mut [u8],
 ///
 /// C analog: `EVP_AEAD_CTX`
 struct Key {
-    ctx: EVP_AEAD_CTX
+    ctx_buf: [u64; KEY_CTX_BUF_ELEMS],
+    algorithm: &'static Algorithm,
 }
 
+// TODO: Implement Drop for Key that zeroizes the key data?
+
+const KEY_CTX_BUF_ELEMS: usize = (KEY_CTX_BUF_LEN + 7) / 8;
+
+// Keep this in sync with `aead_aes_gcm_ctx` in e_aes.c.
+const KEY_CTX_BUF_LEN: usize = AES_KEY_BUF_LEN + GCM128_CONTEXT_BUF_LEN + 8;
+
+// Keep this in sync with `AES_KEY` in aes.h.
+const AES_KEY_BUF_LEN: usize = (4 * 4 * (AES_MAX_ROUNDS + 1)) + 8;
+
+// Keep this in sync with `AES_MAXNR` in aes.h.
+const AES_MAX_ROUNDS: usize = 14;
+
+// Keep this in sync with `gcm128_context` in gcm.h.
+const GCM128_CONTEXT_BUF_LEN: usize = (16 * 6) + (16 * 16) + (6 * 8);
+
 impl Key {
-    /// XXX: Assumes self.ctx.aead is already filled in.
+    /// XXX: Assumes self.algorithm is already filled in.
     ///
-    /// C analogs: `EVP_AEAD_CTX_init` or `EVP_AEAD_CTX_init_with_direction`
-    fn init(&mut self, direction: Direction, key_bytes: &[u8]) -> Result<(), ()> {
+    /// C analogs: `EVP_AEAD_CTX_init`, `EVP_AEAD_CTX_init_with_direction`
+    fn init(&mut self, key_bytes: &[u8]) -> Result<(), ()> {
+        if key_bytes.len() != (self.algorithm.key_len as usize) {
+            return Err(());
+        }
+
         ffi::map_bssl_result(unsafe {
-            EVP_AEAD_CTX_init_with_direction(&mut self.ctx, self.ctx.aead,
-                                             key_bytes.as_ptr(),
-                                             key_bytes.len() as libc::size_t,
-                                             direction)
+            (self.algorithm.init)(self.ctx_buf.as_mut_ptr(),
+                                  std::mem::size_of::<[u64; KEY_CTX_BUF_ELEMS]>()
+                                    as libc::size_t,
+                                  key_bytes.as_ptr(),
+                                  key_bytes.len() as libc::size_t)
         })
     }
 
     /// The key's AEAD algorithm.
     #[inline(always)]
-    fn algorithm(&self) -> &'static Algorithm { self.ctx.aead }
+    fn algorithm(&self) -> &'static Algorithm { self.algorithm }
 
     unsafe fn open_or_seal_in_place(&self, open_or_seal_fn: OpenOrSealFn,
                                     nonce: &[u8], in_ptr: *const u8,
                                     in_len: usize, ad: &[u8], out: &mut [u8])
                                     -> Result<usize, ()> {
+        debug_assert!(self.algorithm.max_overhead_len >= self.algorithm.tag_len);
+        if nonce.len() != (self.algorithm.nonce_len as usize) {
+            return Err(()) // CIPHER_R_INVALID_NONCE_SIZE
+        }
         let mut out_len: libc::size_t = 0;
-        match (open_or_seal_fn)(&self.ctx, out.as_mut_ptr(), &mut out_len,
-                                out.len() as libc::size_t, nonce.as_ptr(),
-                                nonce.len() as libc::size_t, in_ptr,
-                                in_len as libc::size_t, ad.as_ptr(),
-                                ad.len() as libc::size_t) {
+        match (open_or_seal_fn)(self.ctx_buf.as_ptr(), out.as_mut_ptr(),
+                                &mut out_len, out.len() as libc::size_t,
+                                nonce.as_ptr(), in_ptr, in_len as libc::size_t,
+                                ad.as_ptr(), ad.len() as libc::size_t) {
             1 => Ok(out_len as usize),
-            _ => Err(())
+            _ => {
+                // Follow BoringSSL's lead in zeroizing the output buffer on
+                // error just in case an application accidentally and wrongly
+                // fails to check whether an open or seal operation failed.
+                for b in out {
+                    *b = 0;
+                }
+                Err(())
+            }
         }
     }
-}
-
-impl Drop for Key {
-    #[inline(always)]
-    fn drop(&mut self) {
-        unsafe {
-            EVP_AEAD_CTX_cleanup(&mut self.ctx);
-        }
-    }
-}
-
-#[repr(C)]
-struct EVP_AEAD_CTX {
-    aead: &'static Algorithm,
-    aead_state: *mut libc::c_void
-}
-
-/// C analog: `evp_aead_direction_t`
-#[repr(C)]
-enum Direction {
-  /// C analog: `evp_aead_open`
-  Open,
-
-  /// C analog: `evp_aead_seal`
-  Seal,
 }
 
 /// An AEAD Algorithm.
@@ -265,31 +283,12 @@ pub struct Algorithm {
   /// C analog: `EVP_AEAD_tag_len`
   pub tag_len: libc::uint8_t,
 
-  init: Option<unsafe extern fn(ctx: &mut EVP_AEAD_CTX,
-                                key: *const libc::uint8_t,
-                                key_len: libc::size_t) -> libc::c_int>,
-
-  init_with_direction: Option<unsafe extern fn(ctx: &mut EVP_AEAD_CTX,
-                                               key: *const libc::uint8_t,
-                                               key_len: libc::size_t,
-                                               direction: Direction)
-                                               -> libc::c_int>,
-
-  cleanup: unsafe extern fn(ctx: &mut EVP_AEAD_CTX),
-
-  seal: unsafe extern fn(ctx: &EVP_AEAD_CTX, out: *mut libc::uint8_t,
-                         out_len: &mut libc::size_t, max_out_len: libc::size_t,
-                         nonce: *const libc::uint8_t,
-                         in_: *const libc::uint8_t, in_len: libc::size_t,
-                         ad: *const libc::uint8_t, ad_len: libc::size_t)
+  init: unsafe extern fn(ctx_buf: *mut u64, ctx_buf_len: libc::size_t,
+                         key: *const libc::uint8_t, key_len: libc::size_t)
                          -> libc::c_int,
 
-  open: unsafe extern fn(ctx: &EVP_AEAD_CTX, out: *mut libc::uint8_t,
-                         out_len: &mut libc::size_t, max_out_len: libc::size_t,
-                         nonce: *const libc::uint8_t,
-                         in_: *const libc::uint8_t, in_len: libc::size_t,
-                         ad: *const libc::uint8_t, ad_len: libc::size_t)
-                         -> libc::c_int,
+  seal: OpenOrSealFn,
+  open: OpenOrSealFn,
 }
 
 const AES_128_KEY_LEN: libc::uint8_t = 128 / 8;
@@ -313,9 +312,7 @@ pub static AES_128_GCM: Algorithm = Algorithm {
     nonce_len: AES_GCM_NONCE_LEN,
     max_overhead_len: AES_GCM_TAG_LEN,
     tag_len: AES_GCM_TAG_LEN,
-    init: Some(evp_aead_aes_gcm_init),
-    init_with_direction: None,
-    cleanup: evp_aead_aes_gcm_cleanup,
+    init: evp_aead_aes_gcm_init,
     seal: evp_aead_aes_gcm_seal,
     open: evp_aead_aes_gcm_open,
 };
@@ -330,9 +327,7 @@ pub static AES_256_GCM: Algorithm = Algorithm {
     nonce_len: AES_GCM_NONCE_LEN,
     max_overhead_len: AES_GCM_TAG_LEN,
     tag_len: AES_GCM_TAG_LEN,
-    init: Some(evp_aead_aes_gcm_init),
-    init_with_direction: None,
-    cleanup: evp_aead_aes_gcm_cleanup,
+    init: evp_aead_aes_gcm_init,
     seal: evp_aead_aes_gcm_seal,
     open: evp_aead_aes_gcm_open,
 };
@@ -346,9 +341,7 @@ pub static CHACHA20_POLY1305: Algorithm = Algorithm {
     nonce_len: 96 / 8,
     max_overhead_len: POLY1305_TAG_LEN,
     tag_len: POLY1305_TAG_LEN,
-    init: Some(evp_aead_chacha20_poly1305_init),
-    init_with_direction: None,
-    cleanup: evp_aead_chacha20_poly1305_cleanup,
+    init: evp_aead_chacha20_poly1305_init,
     seal: evp_aead_chacha20_poly1305_rfc7539_seal,
     open: evp_aead_chacha20_poly1305_rfc7539_open,
 };
@@ -364,31 +357,25 @@ pub static CHACHA20_POLY1305_DEPRECATED: Algorithm = Algorithm {
     nonce_len: 96 / 8,
     max_overhead_len: POLY1305_TAG_LEN,
     tag_len: POLY1305_TAG_LEN,
-    init: Some(evp_aead_chacha20_poly1305_init),
-    init_with_direction: None,
-    cleanup: evp_aead_chacha20_poly1305_cleanup,
+    init: evp_aead_chacha20_poly1305_init,
     seal: evp_aead_chacha20_poly1305_deprecated_seal,
     open: evp_aead_chacha20_poly1305_deprecated_open,
 };
 
 type OpenOrSealFn =
-    unsafe extern fn(ctx: &EVP_AEAD_CTX, out: *mut libc::uint8_t,
+    unsafe extern fn(ctx: *const u64, out: *mut libc::uint8_t,
                      out_len: &mut libc::size_t, max_out_len: libc::size_t,
-                     nonce: *const libc::uint8_t, nonce_len: libc::size_t,
+                     nonce: *const libc::uint8_t,
                      in_: *const libc::uint8_t, in_len: libc::size_t,
                      ad: *const libc::uint8_t, ad_len: libc::size_t)
                      -> libc::c_int;
 
-
 extern {
-    // TODO: C analog documentation
+    fn evp_aead_aes_gcm_init(ctx_buf: *mut u64, ctx_buf_len: libc::size_t,
+                             key: *const libc::uint8_t, key_len: libc::size_t)
+                             -> libc::c_int;
 
-    fn evp_aead_aes_gcm_init(ctx: &mut EVP_AEAD_CTX, key: *const libc::uint8_t,
-                             key_len: libc::size_t) -> libc::c_int;
-
-    fn evp_aead_aes_gcm_cleanup(ctx: &mut EVP_AEAD_CTX);
-
-    fn evp_aead_aes_gcm_seal(ctx: &EVP_AEAD_CTX, out: *mut libc::uint8_t,
+    fn evp_aead_aes_gcm_seal(ctx_buf: *const u64, out: *mut libc::uint8_t,
                              out_len: &mut libc::size_t,
                              max_out_len: libc::size_t,
                              nonce: *const libc::uint8_t,
@@ -396,7 +383,7 @@ extern {
                              ad: *const libc::uint8_t, ad_len: libc::size_t)
                              -> libc::c_int;
 
-    fn evp_aead_aes_gcm_open(ctx: &EVP_AEAD_CTX, out: *mut libc::uint8_t,
+    fn evp_aead_aes_gcm_open(ctx_buf: *const u64, out: *mut libc::uint8_t,
                              out_len: &mut libc::size_t,
                              max_out_len: libc::size_t,
                              nonce: *const libc::uint8_t,
@@ -404,14 +391,13 @@ extern {
                              ad: *const libc::uint8_t, ad_len: libc::size_t)
                              -> libc::c_int;
 
-    fn evp_aead_chacha20_poly1305_init(ctx: &mut EVP_AEAD_CTX,
+    fn evp_aead_chacha20_poly1305_init(ctx_buf: *mut u64,
+                                       ctx_buf_len: libc::size_t,
                                        key: *const libc::uint8_t,
                                        key_len: libc::size_t)
                                        -> libc::c_int;
 
-    fn evp_aead_chacha20_poly1305_cleanup(ctx: &mut EVP_AEAD_CTX);
-
-    fn evp_aead_chacha20_poly1305_rfc7539_seal(ctx: &EVP_AEAD_CTX,
+    fn evp_aead_chacha20_poly1305_rfc7539_seal(ctx_buf: *const u64,
                                                out: *mut libc::uint8_t,
                                                out_len: &mut libc::size_t,
                                                max_out_len: libc::size_t,
@@ -422,7 +408,7 @@ extern {
                                                ad_len: libc::size_t)
                                                -> libc::c_int;
 
-    fn evp_aead_chacha20_poly1305_rfc7539_open(ctx: &EVP_AEAD_CTX,
+    fn evp_aead_chacha20_poly1305_rfc7539_open(ctx_buf: *const u64,
                                                out: *mut libc::uint8_t,
                                                out_len: &mut libc::size_t,
                                                max_out_len: libc::size_t,
@@ -433,7 +419,7 @@ extern {
                                                ad_len: libc::size_t)
                                                -> libc::c_int;
 
-    fn evp_aead_chacha20_poly1305_deprecated_seal(ctx: &EVP_AEAD_CTX,
+    fn evp_aead_chacha20_poly1305_deprecated_seal(ctx_buf: *const u64,
                                                   out: *mut libc::uint8_t,
                                                   out_len: &mut libc::size_t,
                                                   max_out_len: libc::size_t,
@@ -444,7 +430,7 @@ extern {
                                                   ad_len: libc::size_t)
                                                   -> libc::c_int;
 
-    fn evp_aead_chacha20_poly1305_deprecated_open(ctx: &EVP_AEAD_CTX,
+    fn evp_aead_chacha20_poly1305_deprecated_open(ctx_buf: *const u64,
                                                   out: *mut libc::uint8_t,
                                                   out_len: &mut libc::size_t,
                                                   max_out_len: libc::size_t,
@@ -454,27 +440,6 @@ extern {
                                                   ad: *const libc::uint8_t,
                                                   ad_len: libc::size_t)
                                                   -> libc::c_int;
-
-    fn EVP_AEAD_CTX_init_with_direction(ctx: &mut EVP_AEAD_CTX,
-                                        aead: &Algorithm, key: *const u8,
-                                        key_len: libc::size_t,
-                                        direction: Direction) -> libc::c_int;
-
-    fn EVP_AEAD_CTX_seal(ctx: &EVP_AEAD_CTX, out: *mut libc::uint8_t,
-                         out_len: &mut libc::size_t, max_out_len: libc::size_t,
-                         nonce: *const libc::uint8_t, nonce_len: libc::size_t,
-                         in_: *const libc::uint8_t, in_len: libc::size_t,
-                         ad: *const libc::uint8_t, ad_len: libc::size_t)
-                         -> libc::c_int;
-
-    fn EVP_AEAD_CTX_open(ctx: &EVP_AEAD_CTX, out: *mut libc::uint8_t,
-                         out_len: &mut libc::size_t, max_out_len: libc::size_t,
-                         nonce: *const libc::uint8_t, nonce_len: libc::size_t,
-                         in_: *const libc::uint8_t, in_len: libc::size_t,
-                         ad: *const libc::uint8_t, ad_len: libc::size_t)
-                         -> libc::c_int;
-
-    fn EVP_AEAD_CTX_cleanup(ctx: &mut EVP_AEAD_CTX);
 }
 
 #[cfg(test)]
