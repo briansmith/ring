@@ -266,29 +266,29 @@ pub struct Algorithm {
   /// C analog: `EVP_AEAD_max_tag_len`
   pub tag_len: libc::uint8_t,
 
-  init: Option<unsafe extern fn(ctx: *mut EVP_AEAD_CTX,
+  init: Option<unsafe extern fn(ctx: &mut EVP_AEAD_CTX,
                                 key: *const libc::uint8_t,
                                 key_len: libc::size_t, tag_len: libc::size_t)
                                 -> libc::c_int>,
 
-  init_with_direction: Option<unsafe extern fn(ctx: *mut EVP_AEAD_CTX,
+  init_with_direction: Option<unsafe extern fn(ctx: &mut EVP_AEAD_CTX,
                                                key: *const libc::uint8_t,
                                                key_len: libc::size_t,
                                                tag_len: libc::size_t,
                                                direction: Direction)
                                                -> libc::c_int>,
 
-  cleanup: unsafe extern fn(ctx: *mut EVP_AEAD_CTX),
+  cleanup: unsafe extern fn(ctx: &mut EVP_AEAD_CTX),
 
-  seal: unsafe extern fn(ctx: *mut EVP_AEAD_CTX, out: *mut libc::uint8_t,
-                         out_len: libc::size_t, max_out_len: libc::size_t,
+  seal: unsafe extern fn(ctx: &EVP_AEAD_CTX, out: *mut libc::uint8_t,
+                         out_len: &mut libc::size_t, max_out_len: libc::size_t,
                          nonce: *const libc::uint8_t,
                          in_: *const libc::uint8_t, in_len: libc::size_t,
                          ad: *const libc::uint8_t, ad_len: libc::size_t)
                          -> libc::c_int,
 
-  open: unsafe extern fn(ctx: *mut EVP_AEAD_CTX, out: *mut libc::uint8_t,
-                         out_len: libc::size_t, max_out_len: libc::size_t,
+  open: unsafe extern fn(ctx: &EVP_AEAD_CTX, out: *mut libc::uint8_t,
+                         out_len: &mut libc::size_t, max_out_len: libc::size_t,
                          nonce: *const libc::uint8_t,
                          in_: *const libc::uint8_t, in_len: libc::size_t,
                          ad: *const libc::uint8_t, ad_len: libc::size_t)
@@ -350,21 +350,22 @@ type OpenOrSealFn =
 extern {
     // TODO: C analog documentation
 
-    fn evp_aead_aes_gcm_init(ctx: *mut EVP_AEAD_CTX, key: *const libc::uint8_t,
-                             key_len: libc::size_t, tag_len: libc::size_t)
-                             -> libc::c_int;
+    fn evp_aead_aes_gcm_init(ctx: &mut EVP_AEAD_CTX, key: *const libc::uint8_t,
+                             key_len: libc::size_t, tag_len: libc::size_t) -> libc::c_int;
 
-    fn evp_aead_aes_gcm_cleanup(ctx: *mut EVP_AEAD_CTX);
+    fn evp_aead_aes_gcm_cleanup(ctx: &mut EVP_AEAD_CTX);
 
-    fn evp_aead_aes_gcm_seal(ctx: *mut EVP_AEAD_CTX, out: *mut libc::uint8_t,
-                             out_len: libc::size_t, max_out_len: libc::size_t,
+    fn evp_aead_aes_gcm_seal(ctx: &EVP_AEAD_CTX, out: *mut libc::uint8_t,
+                             out_len: &mut libc::size_t,
+                             max_out_len: libc::size_t,
                              nonce: *const libc::uint8_t,
                              in_: *const libc::uint8_t, in_len: libc::size_t,
                              ad: *const libc::uint8_t, ad_len: libc::size_t)
                              -> libc::c_int;
 
-    fn evp_aead_aes_gcm_open(ctx: *mut EVP_AEAD_CTX, out: *mut libc::uint8_t,
-                             out_len: libc::size_t, max_out_len: libc::size_t,
+    fn evp_aead_aes_gcm_open(ctx: &EVP_AEAD_CTX, out: *mut libc::uint8_t,
+                             out_len: &mut libc::size_t,
+                             max_out_len: libc::size_t,
                              nonce: *const libc::uint8_t,
                              in_: *const libc::uint8_t, in_len: libc::size_t,
                              ad: *const libc::uint8_t, ad_len: libc::size_t)
