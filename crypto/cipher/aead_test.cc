@@ -40,9 +40,8 @@ static bool TestAEAD(FileTest *t, void *arg) {
   const EVP_AEAD *aead = reinterpret_cast<const EVP_AEAD*>(arg);
 
   std::vector<uint8_t> key, nonce, in, ad, ct, tag;
-  bool nonce_is_default = false;
   if (!t->GetBytes(&key, "KEY") ||
-      !t->GetBytesOrDefault(&nonce, &nonce_is_default, "NONCE") ||
+      !t->GetBytes(&nonce, "NONCE") ||
       !t->GetBytes(&in, "IN") ||
       !t->GetBytes(&ad, "AD") ||
       !t->GetBytes(&ct, "CT") ||
@@ -70,13 +69,8 @@ static bool TestAEAD(FileTest *t, void *arg) {
 
   const uint8_t *nonce_ptr;
   size_t nonce_len;
-  if (nonce_is_default) {
-    nonce_ptr = EVP_aead_aes_key_wrap_default_iv();
-    nonce_len = 8;
-  } else {
-    nonce_ptr = bssl::vector_data(&nonce);
-    nonce_len = nonce.size();
-  }
+  nonce_ptr = bssl::vector_data(&nonce);
+  nonce_len = nonce.size();
 
   std::vector<uint8_t> ct_and_tag(ct);
   ct_and_tag.insert(ct_and_tag.end(), tag.begin(), tag.end());
@@ -237,8 +231,6 @@ static const struct AEADName kAEADs[] = {
   { "aes-256-gcm", EVP_aead_aes_256_gcm },
   { "chacha20-poly1305-deprecated", EVP_aead_chacha20_poly1305_deprecated },
   { "chacha20-poly1305-rfc7539", EVP_aead_chacha20_poly1305_rfc7539 },
-  { "aes-128-key-wrap", EVP_aead_aes_128_key_wrap },
-  { "aes-256-key-wrap", EVP_aead_aes_256_key_wrap },
   { "", NULL },
 };
 
