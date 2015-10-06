@@ -15,3 +15,5 @@ add_library(
   $<TARGET_OBJECTS:rsa_decrepit>
   $<TARGET_OBJECTS:xts>
 )
+
+target_link_libraries(decrepit crypto)

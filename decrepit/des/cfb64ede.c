@@ -61,12 +61,6 @@
 #include "../crypto/des/internal.h"
 
 
-/* defined in des.c */
-void DES_decrypt3(uint32_t *data, const DES_key_schedule *ks1,
-                  const DES_key_schedule *ks2, const DES_key_schedule *ks3);
-void DES_encrypt3(uint32_t *data, const DES_key_schedule *ks1,
-                  const DES_key_schedule *ks2, const DES_key_schedule *ks3);
-
 /* The input and output encrypted as though 64bit cfb mode is being used. The
  * extra state information to record how much of the 64bit block we have used
  * is contained in *num; */
