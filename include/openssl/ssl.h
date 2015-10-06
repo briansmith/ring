@@ -1136,6 +1136,26 @@ OPENSSL_EXPORT X509 *SSL_get_peer_certificate(const SSL *ssl);
  * If a client, it does. */
 OPENSSL_EXPORT STACK_OF(X509) *SSL_get_peer_cert_chain(const SSL *ssl);
 
+/* SSL_get0_signed_cert_timestamp_list sets |*out| and |*out_len| to point to
+ * |*out_len| bytes of SCT information from the server. This is only valid if
+ * |ssl| is a client. The SCT information is a SignedCertificateTimestampList
+ * (including the two leading length bytes).
+ * See https://tools.ietf.org/html/rfc6962#section-3.3
+ * If no SCT was received then |*out_len| will be zero on return.
+ *
+ * WARNING: the returned data is not guaranteed to be well formed. */
+OPENSSL_EXPORT void SSL_get0_signed_cert_timestamp_list(const SSL *ssl,
+                                                        const uint8_t **out,
+                                                        size_t *out_len);
+
+/* SSL_get0_ocsp_response sets |*out| and |*out_len| to point to |*out_len|
+ * bytes of an OCSP response from the server. This is the DER encoding of an
+ * OCSPResponse type as defined in RFC 2560.
+ *
+ * WARNING: the returned data is not guaranteed to be well formed. */
+OPENSSL_EXPORT void SSL_get0_ocsp_response(const SSL *ssl, const uint8_t **out,
+                                           size_t *out_len);
+
 /* SSL_get_tls_unique writes at most |max_out| bytes of the tls-unique value
  * for |ssl| to |out| and sets |*out_len| to the number of bytes written. It
  * returns one on success or zero on error. In general |max_out| should be at
@@ -1962,41 +1982,33 @@ OPENSSL_EXPORT void SSL_CTX_set_cert_verify_callback(
 
 /* SSL_enable_signed_cert_timestamps causes |ssl| (which must be the client end
  * of a connection) to request SCTs from the server. See
- * https://tools.ietf.org/html/rfc6962. It returns one. */
+ * https://tools.ietf.org/html/rfc6962. It returns one.
+ *
+ * Call |SSL_get0_signed_cert_timestamp_list| to recover the SCT after the
+ * handshake. */
 OPENSSL_EXPORT int SSL_enable_signed_cert_timestamps(SSL *ssl);
 
 /* SSL_CTX_enable_signed_cert_timestamps enables SCT requests on all client SSL
- * objects created from |ctx|. */
-OPENSSL_EXPORT void SSL_CTX_enable_signed_cert_timestamps(SSL_CTX *ctx);
-
-/* SSL_get0_signed_cert_timestamp_list sets |*out| and |*out_len| to point to
- * |*out_len| bytes of SCT information from the server. This is only valid if
- * |ssl| is a client. The SCT information is a SignedCertificateTimestampList
- * (including the two leading length bytes).
- * See https://tools.ietf.org/html/rfc6962#section-3.3
- * If no SCT was received then |*out_len| will be zero on return.
+ * objects created from |ctx|.
  *
- * WARNING: the returned data is not guaranteed to be well formed. */
-OPENSSL_EXPORT void SSL_get0_signed_cert_timestamp_list(const SSL *ssl,
-                                                        const uint8_t **out,
-                                                        size_t *out_len);
+ * Call |SSL_get0_signed_cert_timestamp_list| to recover the SCT after the
+ * handshake. */
+OPENSSL_EXPORT void SSL_CTX_enable_signed_cert_timestamps(SSL_CTX *ctx);
 
 /* SSL_enable_ocsp_stapling causes |ssl| (which must be the client end of a
  * connection) to request a stapled OCSP response from the server. It returns
- * one. */
+ * one.
+ *
+ * Call |SSL_get0_ocsp_response| to recover the OCSP response after the
+ * handshake. */
 OPENSSL_EXPORT int SSL_enable_ocsp_stapling(SSL *ssl);
 
 /* SSL_CTX_enable_ocsp_stapling enables OCSP stapling on all client SSL objects
- * created from |ctx|. */
-OPENSSL_EXPORT void SSL_CTX_enable_ocsp_stapling(SSL_CTX *ctx);
-
-/* SSL_get0_ocsp_response sets |*out| and |*out_len| to point to |*out_len|
- * bytes of an OCSP response from the server. This is the DER encoding of an
- * OCSPResponse type as defined in RFC 2560.
+ * created from |ctx|.
  *
- * WARNING: the returned data is not guaranteed to be well formed. */
-OPENSSL_EXPORT void SSL_get0_ocsp_response(const SSL *ssl, const uint8_t **out,
-                                           size_t *out_len);
+ * Call |SSL_get0_ocsp_response| to recover the OCSP response after the
+ * handshake. */
+OPENSSL_EXPORT void SSL_CTX_enable_ocsp_stapling(SSL_CTX *ctx);
 
 
 /* Client certificate CA list.
