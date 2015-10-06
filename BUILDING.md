@@ -2,27 +2,40 @@
 
 ## Build Prerequisites
 
-  * [CMake] [1] 2.8.8 or later is required.
+  * [CMake](http://www.cmake.org/download/) 2.8.8 or later is required.
 
-  * Perl 5.6.1 or later is required. On Windows, [Strawberry Perl] [2] and MSYS
-    Perl have both been reported to work. If not found by CMake, it may be
-    configured explicitly by setting `PERL_EXECUTABLE`.
+  * Perl 5.6.1 or later is required. On Windows,
+    [Strawberry Perl](http://strawberryperl.com/) and MSYS Perl have both been
+    reported to work. If not found by CMake, it may be configured explicitly by
+    setting `PERL_EXECUTABLE`.
 
-  * On Windows you currently must use [Ninja] [3] to build; on other platforms,
-    it is not required, but recommended, because it makes builds faster.
+  * On Windows you currently must use [Ninja](https://martine.github.io/ninja/)
+    to build; on other platforms, it is not required, but recommended, because
+    it makes builds faster.
 
   * If you need to build Ninja from source, then a recent version of
-    [Python] [4] is required (Python 2.7.5 works).
+    [Python](https://www.python.org/downloads/) is required (Python 2.7.5 works).
 
-  * On Windows only, [Yasm] [5] is required. If not found by CMake, it may be
-    configured explicitly by setting `CMAKE_ASM_NASM_COMPILER`.
+  * On Windows only, [Yasm](http://yasm.tortall.net/) is required. If not found
+    by CMake, it may be configured explicitly by setting
+    `CMAKE_ASM_NASM_COMPILER`.
 
   * A C compiler is required. On Windows, MSVC 12 (Visual Studio 2013) or later
     with Platform SDK 8.1 or later are supported. Recent versions of GCC and
     Clang should work on non-Windows platforms, and maybe on Windows too.
 
-  * [Go] [6] is required. If not found by CMake, the go executable may be
-    configured explicitly by setting `GO_EXECUTABLE`.
+  * [Go](https://golang.org/dl/) is required. If not found by CMake, the go
+    executable may be configured explicitly by setting `GO_EXECUTABLE`.
+
+  * If you change crypto/chacha/chacha_vec.c, you will need the
+    arm-linux-gnueabihf-gcc compiler:
+
+    ```
+    $ wget https://releases.linaro.org/14.11/components/toolchain/binaries/arm-linux-gnueabihf/gcc-linaro-4.9-2014.11-x86_64_arm-linux-gnueabihf.tar.xz
+    $ echo bc4ca2ced084d2dc12424815a4442e19cb1422db87068830305d90075feb1a3b  gcc-linaro-4.9-2014.11-x86_64_arm-linux-gnueabihf.tar.xz | sha256sum -c
+    $ tar xf gcc-linaro-4.9-2014.11-x86_64_arm-linux-gnueabihf.tar.xz
+    $ sudo mv gcc-linaro-4.9-2014.11-x86_64_arm-linux-gnueabihf /opt/
+    ```
 
 ## Building
 
@@ -124,11 +137,3 @@ from within `ssl/test/runner`.
 
 Both sets of tests may also be run with `ninja -C build run_tests`, but CMake
 3.2 or later is required to avoid Ninja's output buffering.
-
-
- [1]: http://www.cmake.org/download/
- [2]: http://strawberryperl.com/
- [3]: https://martine.github.io/ninja/
- [4]: https://www.python.org/downloads/
- [5]: http://yasm.tortall.net/
- [6]: https://golang.org/dl/
