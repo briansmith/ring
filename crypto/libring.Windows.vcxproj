@@ -34,7 +34,6 @@
     <ClCompile Include="bn\random.c" />
     <ClCompile Include="bn\rsaz_exp.c" />
     <ClCompile Include="bn\shift.c" />
-    <ClCompile Include="buf\buf.c" />
     <ClCompile Include="bytestring\cbb.c" />
     <ClCompile Include="bytestring\cbs.c" />
     <ClCompile Include="chacha\chacha_generic.c" />

@@ -38,7 +38,6 @@ RING_SRCS = $(addprefix $(RING_PREFIX), \
   crypto/bn/random.c \
   crypto/bn/rsaz_exp.c \
   crypto/bn/shift.c \
-  crypto/buf/buf.c \
   crypto/bytestring/cbb.c \
   crypto/bytestring/cbs.c \
   crypto/chacha/chacha_generic.c \
