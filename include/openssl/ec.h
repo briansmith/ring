@@ -140,15 +140,6 @@ OPENSSL_EXPORT const EC_POINT *EC_GROUP_get0_generator(const EC_GROUP *group);
 OPENSSL_EXPORT int EC_GROUP_get_order(const EC_GROUP *group, BIGNUM *order,
                                       BN_CTX *ctx);
 
-/* EC_GROUP_get_curve_GFp gets various parameters about a group. It sets
- * |*out_p| to the order of the coordinate field and |*out_a| and |*out_b| to
- * the parameters of the curve when expressed as y² = x³ + ax + b. Any of the
- * output parameters can be NULL. It returns one on success and zero on
- * error. */
-OPENSSL_EXPORT int EC_GROUP_get_curve_GFp(const EC_GROUP *group, BIGNUM *out_p,
-                                          BIGNUM *out_a, BIGNUM *out_b,
-                                          BN_CTX *ctx);
-
 /* EC_GROUP_get_curve_name returns a NID that identifies |group|. */
 OPENSSL_EXPORT int EC_GROUP_get_curve_name(const EC_GROUP *group);
 

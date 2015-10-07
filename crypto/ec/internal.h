@@ -91,12 +91,9 @@ typedef struct ec_method_st {
   void (*group_clear_finish)(EC_GROUP *);
   int (*group_copy)(EC_GROUP *, const EC_GROUP *);
 
-  /* used by EC_GROUP_set_curve_GFp, EC_GROUP_get_curve_GFp, */
-  /* EC_GROUP_set_curve_GF2m, and EC_GROUP_get_curve_GF2m: */
+  /* used by EC_GROUP_set_curve_GFp: */
   int (*group_set_curve)(EC_GROUP *, const BIGNUM *p, const BIGNUM *a,
                          const BIGNUM *b, BN_CTX *);
-  int (*group_get_curve)(const EC_GROUP *, BIGNUM *p, BIGNUM *a, BIGNUM *b,
-                         BN_CTX *);
 
   /* used by EC_GROUP_get_degree: */
   int (*group_get_degree)(const EC_GROUP *);
@@ -236,8 +233,6 @@ void ec_GFp_simple_group_clear_finish(EC_GROUP *);
 int ec_GFp_simple_group_copy(EC_GROUP *, const EC_GROUP *);
 int ec_GFp_simple_group_set_curve(EC_GROUP *, const BIGNUM *p, const BIGNUM *a,
                                   const BIGNUM *b, BN_CTX *);
-int ec_GFp_simple_group_get_curve(const EC_GROUP *, BIGNUM *p, BIGNUM *a,
-                                  BIGNUM *b, BN_CTX *);
 int ec_GFp_simple_group_get_degree(const EC_GROUP *);
 int ec_GFp_simple_point_init(EC_POINT *);
 void ec_GFp_simple_point_finish(EC_POINT *);
