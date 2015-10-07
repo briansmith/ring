@@ -110,7 +110,6 @@ static const struct curve_data P224 = {
     ec_group_new_curve_GFp,
     "NIST P-224",
     28,
-    1,
     {/* p */
      0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
      0xFF, 0xFF, 0xFF, 0xFF, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
@@ -142,7 +141,6 @@ static const struct curve_data P256 = {
     EC_GROUP_new_curve_p256,
     "NIST P-256",
     32,
-    1,
     {/* p */
      0xFF, 0xFF, 0xFF, 0xFF, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00,
      0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xFF, 0xFF, 0xFF, 0xFF,
@@ -173,7 +171,6 @@ static const struct curve_data P384 = {
     ec_group_new_curve_GFp,
     "NIST P-384",
     48,
-    1,
     {/* p */
      0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
      0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
@@ -210,7 +207,6 @@ static const struct curve_data P521 = {
     ec_group_new_curve_GFp,
     "NIST P-521",
     66,
-    1,
     {/* p */
      0x01, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
      0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
@@ -276,7 +272,6 @@ EC_GROUP *ec_group_new(const EC_METHOD *meth) {
 
   ret->meth = meth;
   BN_init(&ret->order);
-  BN_init(&ret->cofactor);
 
   if (!meth->group_init(ret)) {
     OPENSSL_free(ret);
@@ -352,8 +347,7 @@ static EC_GROUP *ec_group_new_from_data(const struct curve_data *data) {
     OPENSSL_PUT_ERROR(EC, ERR_R_EC_LIB);
     goto err;
   }
-  if (!BN_bin2bn(params + 5 * param_len, param_len, &group->order) ||
-      !BN_set_word(&group->cofactor, (BN_ULONG)data->cofactor)) {
+  if (!BN_bin2bn(params + 5 * param_len, param_len, &group->order)) {
     OPENSSL_PUT_ERROR(EC, ERR_R_BN_LIB);
     goto err;
   }
@@ -408,7 +402,6 @@ void EC_GROUP_free(EC_GROUP *group) {
 
   EC_POINT_free(group->generator);
   BN_free(&group->order);
-  BN_free(&group->cofactor);
 
   OPENSSL_free(group);
 }
@@ -447,8 +440,7 @@ int ec_group_copy(EC_GROUP *dest, const EC_GROUP *src) {
     }
   }
 
-  if (!BN_copy(&dest->order, &src->order) ||
-      !BN_copy(&dest->cofactor, &src->cofactor)) {
+  if (!BN_copy(&dest->order, &src->order)) {
     return 0;
   }
 
@@ -500,15 +492,6 @@ int EC_GROUP_get_order(const EC_GROUP *group, BIGNUM *order, BN_CTX *ctx) {
   }
 
   return !BN_is_zero(order);
-}
-
-int EC_GROUP_get_cofactor(const EC_GROUP *group, BIGNUM *cofactor,
-                          BN_CTX *ctx) {
-  if (!BN_copy(cofactor, &group->cofactor)) {
-    return 0;
-  }
-
-  return !BN_is_zero(&group->cofactor);
 }
 
 int EC_GROUP_get_curve_GFp(const EC_GROUP *group, BIGNUM *out_p, BIGNUM *out_a,

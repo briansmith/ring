@@ -191,7 +191,7 @@ struct ec_group_st {
   const EC_METHOD *meth;
 
   EC_POINT *generator; /* optional */
-  BIGNUM order, cofactor;
+  BIGNUM order;
 
   int curve_name; /* optional NID for named curve */
 
@@ -338,9 +338,6 @@ struct curve_data {
   const char *comment;
   /* param_len is the number of bytes needed to store a field element. */
   uint8_t param_len;
-  /* cofactor is the cofactor of the group (i.e. the number of elements in the
-   * group divided by the size of the main subgroup. */
-  uint8_t cofactor; /* promoted to BN_ULONG */
   /* data points to an array of 6*|param_len| bytes which hold the field
    * elements of the following (in big-endian order): prime, a, b, generator x,
    * generator y, order. */
