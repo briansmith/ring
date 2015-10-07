@@ -319,6 +319,7 @@ void ec_GFp_nistp_points_make_affine_internal(
 
 void ec_GFp_nistp_recode_scalar_bits(uint8_t *sign, uint8_t *digit, uint8_t in);
 
+const EC_METHOD *EC_GFp_nistp224_method(void);
 const EC_METHOD *EC_GFp_nistp256_method(void);
 
 struct ec_key_st {

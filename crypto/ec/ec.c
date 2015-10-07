@@ -218,15 +218,25 @@ static const struct curve_data P521 = {
      0xA5, 0xD0, 0x3B, 0xB5, 0xC9, 0xB8, 0x89, 0x9C, 0x47, 0xAE, 0xBB, 0x6F,
      0xB7, 0x1E, 0x91, 0x38, 0x64, 0x09}};
 
-const struct built_in_curve OPENSSL_built_in_curves[] = {
-    {NID_secp224r1, &P224, 0},
-    {
-        NID_X9_62_prime256v1, &P256,
-    /* MSAN appears to have a bug that causes this P-256 code to be miscompiled
-     * in opt mode. While that is being looked at, don't run the uint128_t
-     * P-256 code under MSAN for now. */
+/* MSan appears to have a bug that causes code to be miscompiled in opt mode.
+ * While that is being looked at, don't run the uint128_t code under MSan. */
 #if defined(OPENSSL_64_BIT) && !defined(OPENSSL_WINDOWS) && \
     !defined(MEMORY_SANITIZER)
+#define BORINGSSL_USE_INT128_CODE
+#endif
+
+const struct built_in_curve OPENSSL_built_in_curves[] = {
+    {
+        NID_secp224r1, &P224,
+#if defined(BORINGSSL_USE_INT128_CODE)
+        EC_GFp_nistp224_method,
+#else
+        0,
+#endif
+    },
+    {
+        NID_X9_62_prime256v1, &P256,
+#if defined(BORINGSSL_USE_INT128_CODE)
         EC_GFp_nistp256_method,
 #else
         0,

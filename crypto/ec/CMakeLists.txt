@@ -10,6 +10,7 @@ add_library(
   ec_key.c
   ec_montgomery.c
   oct.c
+  p224-64.c
   p256-64.c
   util-64.c
   simple.c
