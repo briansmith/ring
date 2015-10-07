@@ -1576,7 +1576,10 @@ OPENSSL_EXPORT void (*SSL_CTX_sess_get_remove_cb(SSL_CTX *ctx))(
  * |SSL_ERROR_PENDING_SESSION|.
  *
  * If the internal session cache is enabled, the callback is only consulted if
- * the internal cache does not return a match. */
+ * the internal cache does not return a match.
+ *
+ * The callback's |id| parameter is not const for historical reasons, but the
+ * contents may not be modified. */
 OPENSSL_EXPORT void SSL_CTX_sess_set_get_cb(
     SSL_CTX *ctx,
     SSL_SESSION *(*get_session_cb)(SSL *ssl, uint8_t *id, int id_len,
