@@ -168,10 +168,6 @@ OPENSSL_EXPORT int DH_check(const DH *dh, int *out_flags);
 OPENSSL_EXPORT int DH_check_pub_key(const DH *dh, const BIGNUM *pub_key,
                                     int *out_flags);
 
-/* DHparams_dup allocates a fresh |DH| and copies the parameters from |dh| into
- * it. It returns the new |DH| or NULL on error. */
-OPENSSL_EXPORT DH *DHparams_dup(const DH *dh);
-
 
 /* ASN.1 functions. */
 

@@ -59,7 +59,6 @@
 #include <string.h>
 
 #include <openssl/bn.h>
-#include <openssl/buf.h>
 #include <openssl/err.h>
 #include <openssl/mem.h>
 #include <openssl/thread.h>
@@ -121,66 +120,4 @@ unsigned DH_num_bits(const DH *dh) { return BN_num_bits(dh->p); }
 int DH_up_ref(DH *dh) {
   CRYPTO_refcount_inc(&dh->references);
   return 1;
-}
-
-static int int_dh_bn_cpy(BIGNUM **dst, const BIGNUM *src) {
-  BIGNUM *a = NULL;
-
-  if (src) {
-    a = BN_dup(src);
-    if (!a) {
-      return 0;
-    }
-  }
-
-  BN_free(*dst);
-  *dst = a;
-  return 1;
-}
-
-static int int_dh_param_copy(DH *to, const DH *from, int is_x942) {
-  if (is_x942 == -1) {
-    is_x942 = !!from->q;
-  }
-  if (!int_dh_bn_cpy(&to->p, from->p) ||
-      !int_dh_bn_cpy(&to->g, from->g)) {
-    return 0;
-  }
-
-  if (!is_x942) {
-    return 1;
-  }
-
-  if (!int_dh_bn_cpy(&to->q, from->q) ||
-      !int_dh_bn_cpy(&to->j, from->j)) {
-    return 0;
-  }
-
-  OPENSSL_free(to->seed);
-  to->seed = NULL;
-  to->seedlen = 0;
-
-  if (from->seed) {
-    to->seed = BUF_memdup(from->seed, from->seedlen);
-    if (!to->seed) {
-      return 0;
-    }
-    to->seedlen = from->seedlen;
-  }
-
-  return 1;
-}
-
-DH *DHparams_dup(const DH *dh) {
-  DH *ret = DH_new();
-  if (!ret) {
-    return NULL;
-  }
-
-  if (!int_dh_param_copy(ret, dh, -1)) {
-    DH_free(ret);
-    return NULL;
-  }
-
-  return ret;
 }
