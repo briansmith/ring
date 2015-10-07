@@ -83,7 +83,6 @@ const EC_METHOD *EC_GFp_mont_method(void) {
                                 ec_GFp_mont_group_set_curve,
                                 ec_GFp_simple_group_get_curve,
                                 ec_GFp_simple_group_get_degree,
-                                ec_GFp_simple_group_check_discriminant,
                                 ec_GFp_simple_point_init,
                                 ec_GFp_simple_point_finish,
                                 ec_GFp_simple_point_clear_finish,
