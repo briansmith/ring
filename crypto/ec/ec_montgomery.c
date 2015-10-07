@@ -99,7 +99,6 @@ const EC_METHOD *EC_GFp_mont_method(void) {
                                 ec_GFp_simple_is_at_infinity,
                                 ec_GFp_simple_is_on_curve,
                                 ec_GFp_simple_cmp,
-                                ec_GFp_simple_make_affine,
                                 ec_GFp_simple_points_make_affine,
                                 0 /* mul */,
                                 0 /* precompute_mult */,

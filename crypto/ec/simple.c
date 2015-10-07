@@ -101,7 +101,6 @@ const EC_METHOD *EC_GFp_simple_method(void) {
                                 ec_GFp_simple_is_at_infinity,
                                 ec_GFp_simple_is_on_curve,
                                 ec_GFp_simple_cmp,
-                                ec_GFp_simple_make_affine,
                                 ec_GFp_simple_points_make_affine,
                                 0 /* mul */,
                                 0 /* precompute_mult */,
@@ -1032,47 +1031,6 @@ int ec_GFp_simple_cmp(const EC_GROUP *group, const EC_POINT *a,
   ret = 0;
 
 end:
-  BN_CTX_end(ctx);
-  BN_CTX_free(new_ctx);
-  return ret;
-}
-
-int ec_GFp_simple_make_affine(const EC_GROUP *group, EC_POINT *point,
-                              BN_CTX *ctx) {
-  BN_CTX *new_ctx = NULL;
-  BIGNUM *x, *y;
-  int ret = 0;
-
-  if (point->Z_is_one || EC_POINT_is_at_infinity(group, point)) {
-    return 1;
-  }
-
-  if (ctx == NULL) {
-    ctx = new_ctx = BN_CTX_new();
-    if (ctx == NULL) {
-      return 0;
-    }
-  }
-
-  BN_CTX_start(ctx);
-  x = BN_CTX_get(ctx);
-  y = BN_CTX_get(ctx);
-  if (y == NULL) {
-    goto err;
-  }
-
-  if (!EC_POINT_get_affine_coordinates_GFp(group, point, x, y, ctx) ||
-      !EC_POINT_set_affine_coordinates_GFp(group, point, x, y, ctx)) {
-    goto err;
-  }
-  if (!point->Z_is_one) {
-    OPENSSL_PUT_ERROR(EC, ERR_R_INTERNAL_ERROR);
-    goto err;
-  }
-
-  ret = 1;
-
-err:
   BN_CTX_end(ctx);
   BN_CTX_free(new_ctx);
   return ret;

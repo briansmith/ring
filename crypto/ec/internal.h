@@ -142,8 +142,7 @@ typedef struct ec_method_st {
   int (*point_cmp)(const EC_GROUP *, const EC_POINT *a, const EC_POINT *b,
                    BN_CTX *);
 
-  /* used by EC_POINT_make_affine, EC_POINTs_make_affine: */
-  int (*make_affine)(const EC_GROUP *, EC_POINT *, BN_CTX *);
+  /* used by EC_POINTs_make_affine: */
   int (*points_make_affine)(const EC_GROUP *, size_t num, EC_POINT * [],
                             BN_CTX *);
 

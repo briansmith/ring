@@ -1918,7 +1918,7 @@ const EC_METHOD *EC_GFp_nistp256_method(void) {
       0 /* point2oct */,
       0 /* oct2point */, ec_GFp_simple_add, ec_GFp_simple_dbl,
       ec_GFp_simple_invert, ec_GFp_simple_is_at_infinity,
-      ec_GFp_simple_is_on_curve, ec_GFp_simple_cmp, ec_GFp_simple_make_affine,
+      ec_GFp_simple_is_on_curve, ec_GFp_simple_cmp,
       ec_GFp_simple_points_make_affine, ec_GFp_nistp256_points_mul,
       0 /* precompute_mult */, 0 /* have_precompute_mult */,
       ec_GFp_simple_field_mul, ec_GFp_simple_field_sqr, 0 /* field_div */,

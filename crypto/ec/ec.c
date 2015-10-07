@@ -670,18 +670,6 @@ int EC_POINT_cmp(const EC_GROUP *group, const EC_POINT *a, const EC_POINT *b,
   return group->meth->point_cmp(group, a, b, ctx);
 }
 
-int EC_POINT_make_affine(const EC_GROUP *group, EC_POINT *point, BN_CTX *ctx) {
-  if (group->meth->make_affine == 0) {
-    OPENSSL_PUT_ERROR(EC, ERR_R_SHOULD_NOT_HAVE_BEEN_CALLED);
-    return 0;
-  }
-  if (group->meth != point->meth) {
-    OPENSSL_PUT_ERROR(EC, EC_R_INCOMPATIBLE_OBJECTS);
-    return 0;
-  }
-  return group->meth->make_affine(group, point, ctx);
-}
-
 int EC_POINTs_make_affine(const EC_GROUP *group, size_t num, EC_POINT *points[],
                           BN_CTX *ctx) {
   size_t i;
