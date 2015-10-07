@@ -190,7 +190,7 @@ class Bazel(object):
     out.write(']\n')
 
   def WriteFiles(self, files, asm_outputs):
-    with open('BUILD.generated', 'w+') as out:
+    with open('BUILD.generated.bzl', 'w+') as out:
       out.write(self.header)
 
       self.PrintVariableSection(out, 'ssl_headers', files['ssl_headers'])
@@ -209,7 +209,7 @@ class Bazel(object):
         self.PrintVariableSection(
             out, 'crypto_sources_%s' % arch, asm_files)
 
-    with open('BUILD.generated_tests', 'w+') as out:
+    with open('BUILD.generated_tests.bzl', 'w+') as out:
       out.write(self.header)
 
       out.write('test_support_sources = [\n')
@@ -217,8 +217,12 @@ class Bazel(object):
         if os.path.basename(filename) == 'malloc.cc':
           continue
         out.write('    "%s",\n' % filename)
-      out.write('] + glob(["src/crypto/test/*.h"])\n\n')
 
+      out.write(']\n\n')
+
+      out.write('def create_tests(copts):\n')
+      out.write('  test_support_sources_complete = test_support_sources + \\\n')
+      out.write('      native.glob(["src/crypto/test/*.h"])\n')
       name_counts = {}
       for test in files['tests']:
         name = os.path.basename(test[0])
@@ -245,39 +249,39 @@ class Bazel(object):
         else:
           raise ValueError("Can't find source for %s" % test[0])
 
-        out.write('cc_test(\n')
-        out.write('    name = "%s",\n' % name)
-        out.write('    size = "small",\n')
-        out.write('    srcs = ["%s"] + test_support_sources,\n' % src)
+        out.write('  native.cc_test(\n')
+        out.write('      name = "%s",\n' % name)
+        out.write('      size = "small",\n')
+        out.write('      srcs = ["%s"] + test_support_sources_complete,\n' % src)
 
         data_files = []
         if len(test) > 1:
 
-          out.write('    args = [\n')
+          out.write('      args = [\n')
           for arg in test[1:]:
             if '/' in arg:
-              out.write('        "$(location src/%s)",\n' % arg)
+              out.write('          "$(location src/%s)",\n' % arg)
               data_files.append('src/%s' % arg)
             else:
-              out.write('        "%s",\n' % arg)
-          out.write('    ],\n')
+              out.write('          "%s",\n' % arg)
+          out.write('      ],\n')
 
-        out.write('    copts = boringssl_copts,\n')
+        out.write('      copts = copts,\n')
 
         if len(data_files) > 0:
-          out.write('    data = [\n')
+          out.write('      data = [\n')
           for filename in data_files:
-            out.write('        "%s",\n' % filename)
-          out.write('    ],\n')
+            out.write('          "%s",\n' % filename)
+          out.write('      ],\n')
 
         if 'ssl/' in test[0]:
-          out.write('    deps = [\n')
-          out.write('        ":crypto",\n')
-          out.write('        ":ssl",\n')
-          out.write('    ],\n')
+          out.write('      deps = [\n')
+          out.write('          ":crypto",\n')
+          out.write('          ":ssl",\n')
+          out.write('      ],\n')
         else:
-          out.write('    deps = [":crypto"],\n')
-        out.write(')\n')
+          out.write('      deps = [":crypto"],\n')
+        out.write('  )\n')
 
 
 def FindCMakeFiles(directory):
