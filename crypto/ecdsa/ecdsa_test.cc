@@ -157,13 +157,13 @@ static bool TestBuiltin(FILE *out) {
   }
 
   static const struct {
-    int nid;
+    EC_GROUP_new_fn ec_group_new;
     const char *name;
   } kCurves[] = {
-      { NID_secp224r1, "secp224r1" },
-      { NID_X9_62_prime256v1, "secp256r1" },
-      { NID_secp384r1, "secp384r1" },
-      { NID_secp521r1, "secp521r1" },
+      { EC_GROUP_new_p224, "secp224r1" },
+      { EC_GROUP_new_p256, "secp256r1" },
+      { EC_GROUP_new_p384, "secp384r1" },
+      { EC_GROUP_new_p521, "secp521r1" },
       { NID_undef, NULL }
   };
 
@@ -171,36 +171,32 @@ static bool TestBuiltin(FILE *out) {
   fputs("\ntesting ECDSA_sign(), ECDSA_verify(), ECDSA_do_sign(), and "
         "ECDSA_do_verify() with some internal curves:\n", out);
 
-  for (size_t n = 0; kCurves[n].nid != NID_undef; n++) {
+  for (size_t n = 0; kCurves[n].ec_group_new != NULL; n++) {
     fprintf(out, "%s: ", kCurves[n].name);
 
-    int nid = kCurves[n].nid;
-    ScopedEC_GROUP group(EC_GROUP_new_by_curve_name(nid));
-    if (!group) {
-      fprintf(out, " failed\n");
-      return false;
-    }
-    ScopedBIGNUM order(BN_new());
-    if (!order || !EC_GROUP_get_order(group.get(), order.get(), NULL)) {
-      fprintf(out, " failed\n");
-      return false;
-    }
-    if (BN_num_bits(order.get()) < 160) {
-      // Too small to test.
-      fprintf(out, " skipped\n");
-      continue;
-    }
-
     // Create a new ECDSA key.
-    ScopedEC_KEY eckey(EC_KEY_new());
-    if (!eckey || !EC_KEY_set_group(eckey.get(), group.get()) ||
+    ScopedEC_KEY eckey(EC_KEY_new_ex(kCurves[n].ec_group_new));
+    if (!eckey ||
         !EC_KEY_generate_key(eckey.get())) {
       fprintf(out, " failed\n");
       return false;
     }
+
+    const EC_GROUP *group = EC_KEY_get0_group(eckey.get());
+    if (!group) {
+      fprintf(out, " failed\n");
+      return false;
+    }
+
+    ScopedBIGNUM order(BN_new());
+    if (!order || !EC_GROUP_get_order(group, order.get(), NULL)) {
+      fprintf(out, " failed\n");
+      return false;
+    }
+
     // Create a second key.
-    ScopedEC_KEY wrong_eckey(EC_KEY_new());
-    if (!wrong_eckey || !EC_KEY_set_group(wrong_eckey.get(), group.get()) ||
+    ScopedEC_KEY wrong_eckey(EC_KEY_new_ex(kCurves[n].ec_group_new));
+    if (!wrong_eckey ||
         !EC_KEY_generate_key(wrong_eckey.get())) {
       fprintf(out, " failed\n");
       return false;

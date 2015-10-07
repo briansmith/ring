@@ -377,18 +377,6 @@ EC_GROUP *EC_GROUP_new_p256(void) { return ec_group_new_from_data(&P256); }
 EC_GROUP *EC_GROUP_new_p384(void) { return ec_group_new_from_data(&P384); }
 EC_GROUP *EC_GROUP_new_p521(void) { return ec_group_new_from_data(&P521); }
 
-EC_GROUP *EC_GROUP_new_by_curve_name(int nid) {
-  switch (nid) {
-    case NID_secp224r1: return EC_GROUP_new_p224();
-    case NID_X9_62_prime256v1: return EC_GROUP_new_p256();
-    case NID_secp384r1: return EC_GROUP_new_p384();
-    case NID_secp521r1: return EC_GROUP_new_p521();
-    default:
-      OPENSSL_PUT_ERROR(EC, EC_R_UNKNOWN_GROUP);
-      return NULL;
-  }
-}
-
 void EC_GROUP_free(EC_GROUP *group) {
   if (!group) {
     return;
@@ -404,76 +392,6 @@ void EC_GROUP_free(EC_GROUP *group) {
   BN_free(&group->order);
 
   OPENSSL_free(group);
-}
-
-int ec_group_copy(EC_GROUP *dest, const EC_GROUP *src) {
-  if (dest->meth->group_copy == 0) {
-    OPENSSL_PUT_ERROR(EC, ERR_R_SHOULD_NOT_HAVE_BEEN_CALLED);
-    return 0;
-  }
-  if (dest->meth != src->meth) {
-    OPENSSL_PUT_ERROR(EC, EC_R_INCOMPATIBLE_OBJECTS);
-    return 0;
-  }
-  if (dest == src) {
-    return 1;
-  }
-
-  ec_pre_comp_free(dest->pre_comp);
-  dest->pre_comp = ec_pre_comp_dup(src->pre_comp);
-
-  if (src->generator != NULL) {
-    if (dest->generator == NULL) {
-      dest->generator = EC_POINT_new(dest);
-      if (dest->generator == NULL) {
-        return 0;
-      }
-    }
-    if (!EC_POINT_copy(dest->generator, src->generator)) {
-      return 0;
-    }
-  } else {
-    /* src->generator == NULL */
-    if (dest->generator != NULL) {
-      EC_POINT_clear_free(dest->generator);
-      dest->generator = NULL;
-    }
-  }
-
-  if (!BN_copy(&dest->order, &src->order)) {
-    return 0;
-  }
-
-  dest->curve_name = src->curve_name;
-
-  return dest->meth->group_copy(dest, src);
-}
-
-EC_GROUP *EC_GROUP_dup(const EC_GROUP *a) {
-  EC_GROUP *t = NULL;
-  int ok = 0;
-
-  if (a == NULL) {
-    return NULL;
-  }
-
-  t = ec_group_new(a->meth);
-  if (t == NULL) {
-    return NULL;
-  }
-  if (!ec_group_copy(t, a)) {
-    goto err;
-  }
-
-  ok = 1;
-
-err:
-  if (!ok) {
-    EC_GROUP_free(t);
-    return NULL;
-  } else {
-    return t;
-  }
 }
 
 int EC_GROUP_cmp(const EC_GROUP *a, const EC_GROUP *b, BN_CTX *ignored) {

@@ -92,7 +92,6 @@ typedef struct ec_pre_comp_st {
   EC_POINT **points; /* array with pre-calculated multiples of generator:
                       * 'num' pointers to EC_POINT objects followed by a NULL */
   size_t num; /* numblocks * 2^(w-1) */
-  CRYPTO_refcount_t references;
 } EC_PRE_COMP;
 
 static EC_PRE_COMP *ec_pre_comp_new(void) {
@@ -108,22 +107,11 @@ static EC_PRE_COMP *ec_pre_comp_new(void) {
   ret->w = 4; /* default */
   ret->points = NULL;
   ret->num = 0;
-  ret->references = 1;
   return ret;
 }
 
-void *ec_pre_comp_dup(EC_PRE_COMP *pre_comp) {
-  if (pre_comp == NULL) {
-    return NULL;
-  }
-
-  CRYPTO_refcount_inc(&pre_comp->references);
-  return pre_comp;
-}
-
 void ec_pre_comp_free(EC_PRE_COMP *pre_comp) {
-  if (pre_comp == NULL ||
-      !CRYPTO_refcount_dec_and_test_zero(&pre_comp->references)) {
+  if (pre_comp == NULL) {
     return;
   }
 

@@ -106,25 +106,8 @@ EC_GROUP *EC_GROUP_new_p384(void);
 /* EC_group_new_p521 returns a fresh EC_GROUP object for the NIST P-521 curve. */
 EC_GROUP *EC_GROUP_new_p521(void);
 
-/* EC_GROUP_new_by_curve_name returns a fresh EC_GROUP object for the elliptic
- * curve specified by |nid|, or NULL on error.
- *
- * The supported NIDs are:
- *   NID_secp224r1,
- *   NID_X9_62_prime256v1,
- *   NID_secp384r1,
- *   NID_secp521r1.
- *
- * Using this function will force the linker to include the implementations for
- * all of the aforementioned curves. */
-OPENSSL_EXPORT EC_GROUP *EC_GROUP_new_by_curve_name(int nid);
-
 /* EC_GROUP_free frees |group| and the data that it points to. */
 OPENSSL_EXPORT void EC_GROUP_free(EC_GROUP *group);
-
-/* EC_GROUP_dup returns a fresh |EC_GROUP| which is equal to |a| or NULL on
- * error. */
-OPENSSL_EXPORT EC_GROUP *EC_GROUP_dup(const EC_GROUP *a);
 
 /* EC_GROUP_cmp returns zero if |a| and |b| are the same group and non-zero
  * otherwise. */

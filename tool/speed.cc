@@ -309,7 +309,8 @@ static bool SpeedRandom(const std::string &selected) {
          SpeedRandomChunk("RNG (8192 bytes)", 8192);
 }
 
-static bool SpeedECDHCurve(const std::string &name, int nid,
+static bool SpeedECDHCurve(const std::string &name,
+                           EC_GROUP_new_fn ec_group_new,
                            const std::string &selected) {
   if (!selected.empty() && name.find(selected) == std::string::npos) {
     return true;
@@ -317,7 +318,7 @@ static bool SpeedECDHCurve(const std::string &name, int nid,
 
   TimeResults results;
   if (!TimeFunction(&results, [nid]() -> bool {
-        ScopedEC_KEY key(EC_KEY_new_by_curve_name(nid));
+        ScopedEC_KEY key(EC_KEY_new_ex(ec_group_new));
         if (!key ||
             !EC_KEY_generate_key(key.get())) {
           return false;
@@ -347,13 +348,14 @@ static bool SpeedECDHCurve(const std::string &name, int nid,
   return true;
 }
 
-static bool SpeedECDSACurve(const std::string &name, int nid,
+static bool SpeedECDSACurve(const std::string &name,
+                            EC_GROUP_new_fn ec_group_new,
                             const std::string &selected) {
   if (!selected.empty() && name.find(selected) == std::string::npos) {
     return true;
   }
 
-  ScopedEC_KEY key(EC_KEY_new_by_curve_name(nid));
+  ScopedEC_KEY key(EC_KEY_new_ex(ec_group_new));
   if (!key ||
       !EC_KEY_generate_key(key.get())) {
     return false;
@@ -397,10 +399,10 @@ static bool SpeedECDH(const std::string &selected) {
 }
 
 static bool SpeedECDSA(const std::string &selected) {
-  return SpeedECDSACurve("ECDSA P-224", NID_secp224r1, selected) &&
-         SpeedECDSACurve("ECDSA P-256", NID_X9_62_prime256v1, selected) &&
-         SpeedECDSACurve("ECDSA P-384", NID_secp384r1, selected) &&
-         SpeedECDSACurve("ECDSA P-521", NID_secp521r1, selected);
+  return SpeedECDSACurve("ECDSA P-224", EC_GROUP_new_p224, selected) &&
+         SpeedECDSACurve("ECDSA P-256", EC_GROUP_new_p256, selected) &&
+         SpeedECDSACurve("ECDSA P-384", EC_GROUP_new_p384, selected) &&
+         SpeedECDSACurve("ECDSA P-521", EC_GROUP_new_p521, selected);
 }
 
 bool Speed(const std::vector<std::string> &args) {

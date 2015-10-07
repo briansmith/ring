@@ -67,20 +67,19 @@ int ECDSA_verify_signed_digest(int hash_nid, const uint8_t *digest,
                                size_t digest_len, const uint8_t *sig,
                                size_t sig_len, EC_GROUP_new_fn ec_group_new,
                                const uint8_t *ec_key, const size_t ec_key_len) {
-  EC_GROUP *group = ec_group_new();
-  if (!group) {
-    return 0;
-  }
-
   EC_POINT *point = NULL;
   EC_KEY *key = NULL;
   int ret = 0;
 
+  key = EC_KEY_new_ex(ec_group_new);
+  if (!key) {
+    goto err;
+  }
+
+  const EC_GROUP *group = EC_KEY_get0_group(key);
+
   point = EC_POINT_new(group);
-  key = EC_KEY_new();
   if (!point ||
-      !key ||
-      !EC_KEY_set_group(key, group) ||
       !EC_POINT_oct2point(group, point, ec_key, ec_key_len, NULL) ||
       !EC_KEY_set_public_key(key, point)) {
     goto err;
@@ -91,7 +90,6 @@ int ECDSA_verify_signed_digest(int hash_nid, const uint8_t *digest,
 err:
   EC_KEY_free(key);
   EC_POINT_free(point);
-  EC_GROUP_free(group);
 
   return ret;
 }

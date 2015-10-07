@@ -78,14 +78,7 @@
 #include "../internal.h"
 
 
-EC_KEY *EC_KEY_new(void) { return EC_KEY_new_method(NULL); }
-
-EC_KEY *EC_KEY_new_method(const ENGINE *engine) {
-  if (engine != NULL) {
-    OPENSSL_PUT_ERROR(EC, ERR_R_MALLOC_FAILURE); /* TODO: error code */
-    return NULL;
-  }
-
+EC_KEY *EC_KEY_new_ex(EC_GROUP_new_fn ec_group_new) {
   EC_KEY *ret = (EC_KEY *)OPENSSL_malloc(sizeof(EC_KEY));
   if (ret == NULL) {
     OPENSSL_PUT_ERROR(EC, ERR_R_MALLOC_FAILURE);
@@ -94,38 +87,16 @@ EC_KEY *EC_KEY_new_method(const ENGINE *engine) {
 
   memset(ret, 0, sizeof(EC_KEY));
 
+  ret->group = ec_group_new();
+  if (ret->group == NULL) {
+    OPENSSL_free(ret);
+    return NULL;
+  }
+
   ret->version = 1;
   ret->conv_form = POINT_CONVERSION_UNCOMPRESSED;
   ret->references = 1;
 
-  return ret;
-}
-
-EC_KEY *EC_KEY_new_ex(EC_GROUP_new_fn ec_group_new) {
-  EC_KEY *ret = EC_KEY_new();
-  if (ret == NULL) {
-    OPENSSL_PUT_ERROR(EC, ERR_R_MALLOC_FAILURE);
-    return NULL;
-  }
-  ret->group = ec_group_new();
-  if (ret->group == NULL) {
-    EC_KEY_free(ret);
-    return NULL;
-  }
-  return ret;
-}
-
-EC_KEY *EC_KEY_new_by_curve_name(int nid) {
-  EC_KEY *ret = EC_KEY_new();
-  if (ret == NULL) {
-    OPENSSL_PUT_ERROR(EC, ERR_R_MALLOC_FAILURE);
-    return NULL;
-  }
-  ret->group = EC_GROUP_new_by_curve_name(nid);
-  if (ret->group == NULL) {
-    EC_KEY_free(ret);
-    return NULL;
-  }
   return ret;
 }
 
@@ -146,78 +117,12 @@ void EC_KEY_free(EC_KEY *r) {
   OPENSSL_free(r);
 }
 
-EC_KEY *EC_KEY_copy(EC_KEY *dest, const EC_KEY *src) {
-  if (dest == NULL || src == NULL) {
-    OPENSSL_PUT_ERROR(EC, ERR_R_PASSED_NULL_PARAMETER);
-    return NULL;
-  }
-  /* Copy the parameters. */
-  if (src->group) {
-    /* TODO(fork): duplicating the group seems wasteful. */
-    EC_GROUP_free(dest->group);
-    dest->group = EC_GROUP_dup(src->group);
-    if (dest->group == NULL) {
-      return NULL;
-    }
-  }
-
-  /* Copy the public key. */
-  if (src->pub_key && src->group) {
-    EC_POINT_free(dest->pub_key);
-    dest->pub_key = EC_POINT_dup(src->pub_key, src->group);
-    if (dest->pub_key == NULL) {
-      return NULL;
-    }
-  }
-
-  /* copy the private key */
-  if (src->priv_key) {
-    if (dest->priv_key == NULL) {
-      dest->priv_key = BN_new();
-      if (dest->priv_key == NULL) {
-        return NULL;
-      }
-    }
-    if (!BN_copy(dest->priv_key, src->priv_key)) {
-      return NULL;
-    }
-  }
-
-  /* copy the rest */
-  dest->enc_flag = src->enc_flag;
-  dest->conv_form = src->conv_form;
-  dest->version = src->version;
-  dest->flags = src->flags;
-
-  return dest;
-}
-
-EC_KEY *EC_KEY_dup(const EC_KEY *ec_key) {
-  EC_KEY *ret = EC_KEY_new();
-  if (ret == NULL) {
-    return NULL;
-  }
-  if (EC_KEY_copy(ret, ec_key) == NULL) {
-    EC_KEY_free(ret);
-    return NULL;
-  }
-  return ret;
-}
-
 int EC_KEY_up_ref(EC_KEY *r) {
   CRYPTO_refcount_inc(&r->references);
   return 1;
 }
 
 const EC_GROUP *EC_KEY_get0_group(const EC_KEY *key) { return key->group; }
-
-int EC_KEY_set_group(EC_KEY *key, const EC_GROUP *group) {
-  EC_GROUP_free(key->group);
-  /* TODO(fork): duplicating the group seems wasteful but see
-   * |EC_KEY_set_conv_form|. */
-  key->group = EC_GROUP_dup(group);
-  return (key->group == NULL) ? 0 : 1;
-}
 
 const BIGNUM *EC_KEY_get0_private_key(const EC_KEY *key) {
   return key->priv_key;

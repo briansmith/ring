@@ -178,7 +178,6 @@ const EC_METHOD* EC_GFp_mont_method(void);
 
 struct ec_pre_comp_st;
 void ec_pre_comp_free(struct ec_pre_comp_st *pre_comp);
-void *ec_pre_comp_dup(struct ec_pre_comp_st *pre_comp);
 
 struct ec_group_st {
   const EC_METHOD *meth;
@@ -217,7 +216,6 @@ struct ec_point_st {
 } /* EC_POINT */;
 
 EC_GROUP *ec_group_new(const EC_METHOD *meth);
-int ec_group_copy(EC_GROUP *dest, const EC_GROUP *src);
 
 int ec_wNAF_mul(const EC_GROUP *group, EC_POINT *r, const BIGNUM *scalar,
                 size_t num, const EC_POINT *points[], const BIGNUM *scalars[],

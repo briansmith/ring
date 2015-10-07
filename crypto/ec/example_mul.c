@@ -81,7 +81,7 @@ int example_EC_POINT_mul(void) {
   int ret = 0;
   const EC_POINT *generator;
 
-  group = EC_GROUP_new_by_curve_name(NID_X9_62_prime256v1);
+  group = EC_GROUP_new_p256();
   p = EC_POINT_new(group);
   result = EC_POINT_new(group);
   n = BN_new();
