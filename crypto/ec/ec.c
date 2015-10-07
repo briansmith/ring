@@ -80,6 +80,9 @@
 #pragma GCC diagnostic ignored "-Wgnu-flexible-array-initializer"
 #endif
 
+static EC_GROUP *ec_group_new_curve_GFp(const BIGNUM *p, const BIGNUM *a,
+                                        const BIGNUM *b, BN_CTX *ctx);
+
 /* MSAN appears to have a bug that causes this P-256 code to be miscompiled
  * in opt mode. While that is being looked at, don't run the uint128_t
  * P-256 code under MSAN for now. */
@@ -99,12 +102,12 @@ static EC_GROUP *EC_GROUP_new_curve_p256_impl(const BIGNUM *p, const BIGNUM *a,
   return group;
 }
 #else
-#define EC_GROUP_new_curve_p256 EC_GROUP_new_curve_GFp
+#define EC_GROUP_new_curve_p256 ec_group_new_curve_GFp
 #endif
 
 static const struct curve_data P224 = {
     NID_secp224r1,
-    EC_GROUP_new_curve_GFp,
+    ec_group_new_curve_GFp,
     "NIST P-224",
     28,
     1,
@@ -167,7 +170,7 @@ static const struct curve_data P256 = {
 
 static const struct curve_data P384 = {
     NID_secp384r1,
-    EC_GROUP_new_curve_GFp,
+    ec_group_new_curve_GFp,
     "NIST P-384",
     48,
     1,
@@ -204,7 +207,7 @@ static const struct curve_data P384 = {
 
 static const struct curve_data P521 = {
     NID_secp521r1,
-    EC_GROUP_new_curve_GFp,
+    ec_group_new_curve_GFp,
     "NIST P-521",
     66,
     1,
@@ -283,8 +286,8 @@ EC_GROUP *ec_group_new(const EC_METHOD *meth) {
   return ret;
 }
 
-EC_GROUP *EC_GROUP_new_curve_GFp(const BIGNUM *p, const BIGNUM *a,
-                                 const BIGNUM *b, BN_CTX *ctx) {
+static EC_GROUP *ec_group_new_curve_GFp(const BIGNUM *p, const BIGNUM *a,
+                                        const BIGNUM *b, BN_CTX *ctx) {
   const EC_METHOD *meth = EC_GFp_mont_method();
   EC_GROUP *ret;
 
@@ -302,44 +305,6 @@ EC_GROUP *EC_GROUP_new_curve_GFp(const BIGNUM *p, const BIGNUM *a,
     return NULL;
   }
   return ret;
-}
-
-int EC_GROUP_set_generator(EC_GROUP *group, const EC_POINT *generator,
-                           const BIGNUM *order, const BIGNUM *cofactor) {
-  if (group->curve_name != NID_undef) {
-    /* |EC_GROUP_set_generator| should only be used with |EC_GROUP|s returned
-     * by |EC_GROUP_new_curve_GFp|. */
-    return 0;
-  }
-
-  if (group->generator == NULL) {
-    group->generator = EC_POINT_new(group);
-    if (group->generator == NULL) {
-      return 0;
-    }
-  }
-
-  if (!EC_POINT_copy(group->generator, generator)) {
-    return 0;
-  }
-
-  if (order != NULL) {
-    if (!BN_copy(&group->order, order)) {
-      return 0;
-    }
-  } else {
-    BN_zero(&group->order);
-  }
-
-  if (cofactor != NULL) {
-    if (!BN_copy(&group->cofactor, cofactor)) {
-      return 0;
-    }
-  } else {
-    BN_zero(&group->cofactor);
-  }
-
-  return 1;
 }
 
 static EC_GROUP *ec_group_new_from_data(const struct curve_data *data) {
@@ -867,17 +832,4 @@ int ec_point_set_Jprojective_coordinates_GFp(const EC_GROUP *group, EC_POINT *po
   }
   return group->meth->point_set_Jprojective_coordinates_GFp(group, point, x, y,
                                                             z, ctx);
-}
-
-void EC_GROUP_set_asn1_flag(EC_GROUP *group, int flag) {}
-
-const EC_METHOD *EC_GROUP_method_of(const EC_GROUP *group) {
-  return NULL;
-}
-
-void EC_GROUP_set_point_conversion_form(EC_GROUP *group,
-                                        point_conversion_form_t form) {
-  if (form != POINT_CONVERSION_UNCOMPRESSED) {
-    abort();
-  }
 }

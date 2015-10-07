@@ -292,43 +292,6 @@ OPENSSL_EXPORT int EC_POINTs_mul(const EC_GROUP *group, EC_POINT *r,
                                  BN_CTX *ctx);
 
 
-/* Deprecated functions. */
-
-/* EC_GROUP_new_curve_GFp creates a new, arbitrary elliptic curve group based
- * on the equation y² = x³ + a·x + b. It returns the new group or NULL on
- * error.
- *
- * |EC_GROUP|s returned by this function will always compare as unequal via
- * |EC_GROUP_cmp| (even to themselves). |EC_GROUP_get_curve_name| will always
- * return |NID_undef|. */
-OPENSSL_EXPORT EC_GROUP *EC_GROUP_new_curve_GFp(const BIGNUM *p,
-                                                const BIGNUM *a,
-                                                const BIGNUM *b, BN_CTX *ctx);
-
-/* EC_GROUP_set_generator sets the generator for |group| to |generator|, which
- * must have the given order and cofactor. This should only be used with
- * |EC_GROUP| objects returned by |EC_GROUP_new_curve_GFp|. */
-OPENSSL_EXPORT int EC_GROUP_set_generator(EC_GROUP *group,
-                                          const EC_POINT *generator,
-                                          const BIGNUM *order,
-                                          const BIGNUM *cofactor);
-
-/* EC_GROUP_set_asn1_flag does nothing. */
-OPENSSL_EXPORT void EC_GROUP_set_asn1_flag(EC_GROUP *group, int flag);
-
-#define OPENSSL_EC_NAMED_CURVE 0
-
-typedef struct ec_method_st EC_METHOD;
-
-/* EC_GROUP_method_of returns NULL. */
-OPENSSL_EXPORT const EC_METHOD *EC_GROUP_method_of(const EC_GROUP *group);
-
-/* EC_GROUP_set_point_conversion_form aborts the process if |form| is not
- * |POINT_CONVERSION_UNCOMPRESSED| and otherwise does nothing. */
-OPENSSL_EXPORT void EC_GROUP_set_point_conversion_form(
-    EC_GROUP *group, point_conversion_form_t form);
-
-
 /* Old code expects to get EC_KEY from ec.h. */
 #if !defined(OPENSSL_HEADER_EC_KEY_H)
 #include <openssl/ec_key.h>

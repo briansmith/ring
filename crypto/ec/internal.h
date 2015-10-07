@@ -81,7 +81,7 @@ extern "C" {
 /* Use default functions for poin2oct, oct2point and compressed coordinates */
 #define EC_FLAGS_DEFAULT_OCT 0x1
 
-struct ec_method_st {
+typedef struct ec_method_st {
   /* Various method flags */
   int flags;
 
@@ -179,7 +179,7 @@ struct ec_method_st {
   int (*field_decode)(const EC_GROUP *, BIGNUM *r, const BIGNUM *a,
                       BN_CTX *); /* e.g. from Montgomery */
   int (*field_set_to_one)(const EC_GROUP *, BIGNUM *r, BN_CTX *);
-} /* EC_METHOD */;
+} EC_METHOD;
 
 const EC_METHOD* EC_GFp_mont_method(void);
 
