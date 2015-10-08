@@ -131,12 +131,6 @@ const EC_POINT *EC_KEY_get0_public_key(const EC_KEY *key) {
   return key->pub_key;
 }
 
-int EC_KEY_set_public_key(EC_KEY *key, const EC_POINT *pub_key) {
-  EC_POINT_free(key->pub_key);
-  key->pub_key = EC_POINT_dup(pub_key, key->group);
-  return (key->pub_key == NULL) ? 0 : 1;
-}
-
 int EC_KEY_check_key(const EC_KEY *eckey) {
   int ok = 0;
   BN_CTX *ctx = NULL;
