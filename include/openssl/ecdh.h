@@ -79,17 +79,6 @@ extern "C" {
 /* Elliptic curve Diffie-Hellman. */
 
 
-/* ECDH_compute_key calculates the shared key between |pub_key| and |priv_key|.
- * If |KDF| is not NULL, then it is called with the bytes of the shared key and
- * the parameter |out|. When |KDF| returns, the value of |*outlen| becomes the
- * return value. Otherwise, as many bytes of the shared key as will fit are
- * copied directly to, at most, |outlen| bytes at |out|. It returns the number
- * of bytes written to |out|, or -1 on error. */
-OPENSSL_EXPORT int ECDH_compute_key(void *out, size_t outlen,
-                                    const EC_POINT *pub_key, EC_KEY *priv_key,
-                                    void *(*KDF)(const void *in, size_t inlen,
-                                                 void *out, size_t *outlen));
-
 /* ECDH_compute_key_ex calculates the shared key between |priv_key| and
  * and the given peer encoded public key. ECDH_compute_key_ex verifies that
  * the peer public point curve, identified by |peer_pub_point_curve_nid| is the

@@ -72,30 +72,50 @@
 #include <openssl/digest.h>
 #include <openssl/err.h>
 #include <openssl/mem.h>
+#include <openssl/type_check.h>
 
-/* TODO: zeroization? */
+int ECDH_compute_key_ex(uint8_t *out, size_t *out_len, size_t max_out_len,
+                        EC_KEY *priv_key, int peer_curve_nid,
+                        const uint8_t *peer_pub_point_bytes,
+                        size_t peer_pub_point_bytes_len) {
+  const EC_GROUP *group = EC_KEY_get0_group(priv_key);
+  if (peer_curve_nid != EC_GROUP_get_curve_name(group)) {
+    OPENSSL_PUT_ERROR(EC, EC_R_INCOMPATIBLE_OBJECTS);
+    return 0;
+  }
 
-int ECDH_compute_key(void *out, size_t outlen, const EC_POINT *pub_key,
-                     EC_KEY *priv_key, void *(*KDF)(const void *in, size_t inlen,
-                                                void *out, size_t *outlen)) {
+  OPENSSL_COMPILE_ASSERT(sizeof(*out_len) >= sizeof(unsigned),
+                         SIZE_T_IS_SMALLER_THAN_UNSIGNED);
+  *out_len = (EC_GROUP_get_degree(group) + 7) / 8;
+  if (*out_len > max_out_len) {
+    OPENSSL_PUT_ERROR(EC, EC_R_BUFFER_TOO_SMALL);
+    return 0;
+  }
+
   const BIGNUM *priv = EC_KEY_get0_private_key(priv_key);
   if (priv == NULL) {
     OPENSSL_PUT_ERROR(ECDH, ECDH_R_NO_PRIVATE_VALUE);
-    return -1;
+    return 0;
   }
 
   BN_CTX *ctx = BN_CTX_new();
   if (ctx == NULL) {
-    return -1;
+    return 0;
   }
+
   BN_CTX_start(ctx);
 
-  int ret = -1;
+  int ret = 0;
   EC_POINT *tmp = NULL;
-  size_t buflen = 0;
-  uint8_t *buf = NULL;
 
-  const EC_GROUP *group = EC_KEY_get0_group(priv_key);
+  EC_POINT *pub_key = EC_POINT_new(group);
+  if (!pub_key ||
+      !EC_POINT_oct2point(group, pub_key, peer_pub_point_bytes,
+                          peer_pub_point_bytes_len, ctx)) {
+    goto err;
+  }
+
+  group = EC_KEY_get0_group(priv_key);
 
   tmp = EC_POINT_new(group);
   if (tmp == NULL) {
@@ -119,89 +139,17 @@ int ECDH_compute_key(void *out, size_t outlen, const EC_POINT *pub_key,
     goto err;
   }
 
-  buflen = (EC_GROUP_get_degree(group) + 7) / 8;
-  buf = OPENSSL_malloc(buflen);
-  if (buf == NULL) {
-    OPENSSL_PUT_ERROR(ECDH, ERR_R_MALLOC_FAILURE);
-    goto err;
-  }
-
-  if (!BN_bn2bin_padded(buf, buflen, x)) {
+  if (!BN_bn2bin_padded(out, *out_len, x)) {
     OPENSSL_PUT_ERROR(ECDH, ERR_R_INTERNAL_ERROR);
     goto err;
   }
-
-  if (KDF != 0) {
-    if (KDF(buf, buflen, out, &outlen) == NULL) {
-      OPENSSL_PUT_ERROR(ECDH, ECDH_R_KDF_FAILED);
-      goto err;
-    }
-    ret = outlen;
-  } else {
-    /* no KDF, just copy as much as we can */
-    if (outlen > buflen) {
-      outlen = buflen;
-    }
-    memcpy(out, buf, outlen);
-    ret = outlen;
-  }
-
-err:
-  if (buf) {
-    OPENSSL_cleanse(buf, buflen);
-  }
-  OPENSSL_free(buf);
-  EC_POINT_free(tmp);
-  BN_CTX_end(ctx);
-  BN_CTX_free(ctx);
-  return ret;
-}
-
-/* TODO: check that we're validating the keys as fully as we should be. */
-int ECDH_compute_key_ex(uint8_t *out, size_t *out_len, size_t max_out_len,
-                        EC_KEY *priv_key, int peer_curve_nid,
-                        const uint8_t *peer_pub_point_bytes,
-                        size_t peer_pub_point_bytes_len) {
-  const EC_GROUP *group = EC_KEY_get0_group(priv_key);
-  if (peer_curve_nid != EC_GROUP_get_curve_name(group)) {
-    OPENSSL_PUT_ERROR(EC, EC_R_INCOMPATIBLE_OBJECTS);
-    return 0;
-  }
-
-  /* Avoid the case where |ECDH_compute_key| truncates the output. */
-  int degree = EC_GROUP_get_degree(group);
-  if (degree <= 0) {
-    OPENSSL_PUT_ERROR(EC, ERR_R_INTERNAL_ERROR);
-    return 0;
-  }
-  if (max_out_len < (((size_t)degree + 7) / 8)) {
-    OPENSSL_PUT_ERROR(EC, EC_R_BUFFER_TOO_SMALL);
-    return 0;
-  }
-
-  int ret = 0;
-
-  EC_POINT *peer_pub_point = EC_POINT_new(group);
-  if (!peer_pub_point ||
-      !EC_POINT_oct2point(group, peer_pub_point, peer_pub_point_bytes,
-                          peer_pub_point_bytes_len, NULL)) {
-    goto err;
-  }
-
-  int len = ECDH_compute_key(out, max_out_len, peer_pub_point, priv_key, NULL);
-  if (len < 0) {
-    goto err;
-  }
-  if (len == 0) {
-    OPENSSL_PUT_ERROR(ECDH, ERR_R_INTERNAL_ERROR);
-    goto err;
-  }
-  *out_len = (size_t)len;
 
   ret = 1;
 
 err:
-  EC_POINT_free(peer_pub_point);
-
+  EC_POINT_free(tmp);
+  BN_CTX_end(ctx);
+  BN_CTX_free(ctx);
+  EC_POINT_free(pub_key);
   return ret;
 }
