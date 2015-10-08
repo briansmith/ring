@@ -136,13 +136,6 @@ int EC_KEY_set_public_key(EC_KEY *key, const EC_POINT *pub_key) {
   return (key->pub_key == NULL) ? 0 : 1;
 }
 
-int EC_KEY_precompute_mult(EC_KEY *key, BN_CTX *ctx) {
-  if (key->group == NULL) {
-    return 0;
-  }
-  return EC_GROUP_precompute_mult(key->group, ctx);
-}
-
 int EC_KEY_check_key(const EC_KEY *eckey) {
   int ok = 0;
   BN_CTX *ctx = NULL;

@@ -109,12 +109,6 @@ OPENSSL_EXPORT const EC_POINT *EC_KEY_get0_public_key(const EC_KEY *key);
  * It returns one on success and zero otherwise. */
 OPENSSL_EXPORT int EC_KEY_set_public_key(EC_KEY *key, const EC_POINT *pub);
 
-/* EC_KEY_precompute_mult precomputes multiplies of the generator of the
- * underlying group in order to speed up operations that calculate generator
- * multiples. If |ctx| is not NULL, it may be used. It returns one on success
- * and zero otherwise. */
-OPENSSL_EXPORT int EC_KEY_precompute_mult(EC_KEY *key, BN_CTX *ctx);
-
 /* EC_KEY_check_key performs several checks on |key| (possibly including an
  * expensive check that the public key is in the primary subgroup). It returns
  * one if all checks pass and zero otherwise. If it returns zero then detail
