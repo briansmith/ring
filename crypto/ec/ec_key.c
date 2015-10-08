@@ -67,6 +67,7 @@
 
 #include <openssl/ec_key.h>
 
+#include <assert.h>
 #include <string.h>
 
 #include <openssl/ec.h>
@@ -206,84 +207,40 @@ err:
   return ok;
 }
 
-int EC_KEY_generate_key(EC_KEY *eckey) {
-  int ok = 0;
-  BN_CTX *ctx = NULL;
-  BIGNUM *priv_key = NULL, *order = NULL;
-  EC_POINT *pub_key = NULL;
-
-  if (!eckey || !eckey->group) {
-    OPENSSL_PUT_ERROR(EC, ERR_R_PASSED_NULL_PARAMETER);
-    return 0;
+EC_KEY *EC_KEY_generate_key_ex(EC_GROUP_new_fn ec_group_new) {
+  EC_KEY *eckey = EC_KEY_new_ex(ec_group_new);
+  if (!eckey) {
+    return NULL;
   }
 
-  order = BN_new();
-  ctx = BN_CTX_new();
-
-  if (order == NULL ||
-      ctx == NULL) {
-    goto err;
-  }
-
+  assert(eckey->priv_key == NULL);
+  eckey->priv_key = BN_new();
   if (eckey->priv_key == NULL) {
-    priv_key = BN_new();
-    if (priv_key == NULL) {
-      goto err;
-    }
-  } else {
-    priv_key = eckey->priv_key;
-  }
-
-  if (!EC_GROUP_get_order(eckey->group, order, ctx)) {
     goto err;
   }
 
   do {
-    if (!BN_rand_range(priv_key, order)) {
+    if (!BN_rand_range(eckey->priv_key, &eckey->group->order)) {
       goto err;
     }
-  } while (BN_is_zero(priv_key));
+  } while (BN_is_zero(eckey->priv_key));
 
+  assert(eckey->pub_key == NULL);
+  eckey->pub_key = EC_POINT_new(eckey->group);
   if (eckey->pub_key == NULL) {
-    pub_key = EC_POINT_new(eckey->group);
-    if (pub_key == NULL) {
-      goto err;
-    }
-  } else {
-    pub_key = eckey->pub_key;
-  }
-
-  if (!EC_POINT_mul(eckey->group, pub_key, priv_key, NULL, NULL, ctx)) {
     goto err;
   }
 
-  eckey->priv_key = priv_key;
-  eckey->pub_key = pub_key;
+  if (!EC_POINT_mul(eckey->group, eckey->pub_key, eckey->priv_key, NULL, NULL,
+                    NULL)) {
+    goto err;
+  }
 
-  ok = 1;
+  return eckey;
 
 err:
-  BN_free(order);
-  if (eckey->pub_key == NULL) {
-    EC_POINT_free(pub_key);
-  }
-  if (eckey->priv_key == NULL) {
-    BN_free(priv_key);
-  }
-  BN_CTX_free(ctx);
-  return ok;
-}
-
-EC_KEY *EC_KEY_generate_key_ex(EC_GROUP_new_fn ec_group_new) {
-  EC_KEY *key = EC_KEY_new_ex(ec_group_new);
-  if (!key) {
-    return NULL;
-  }
-  if (!EC_KEY_generate_key(key)) {
-    EC_KEY_free(key);
-    return NULL;
-  }
-  return key;
+  EC_KEY_free(eckey);
+  return NULL;
 }
 
 size_t EC_KEY_public_key_to_oct(const EC_KEY *key, uint8_t *out, size_t out_len) {

@@ -125,11 +125,6 @@ OPENSSL_EXPORT size_t EC_KEY_public_key_to_oct(const EC_KEY *key, uint8_t *out,
 
 /* Key generation. */
 
-/* EC_KEY_generate_key generates a random, private key, calculates the
- * corresponding public key and stores both in |key|. It returns one on success
- * or zero otherwise. */
-OPENSSL_EXPORT int EC_KEY_generate_key(EC_KEY *key);
-
 /* EC_KEY_generate_key_ex generates a random private key and calculates the
  * corresponding public key. It returns the generated key pair on success or
  * NULL on failure. */
