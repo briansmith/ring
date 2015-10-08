@@ -149,14 +149,6 @@ OPENSSL_EXPORT EC_POINT *EC_POINT_new(const EC_GROUP *group);
 /* EC_POINT_free frees |point| and the data that it points to. */
 OPENSSL_EXPORT void EC_POINT_free(EC_POINT *point);
 
-/* EC_POINT_clear_free clears the data that |point| points to, frees it and
- * then frees |point| itself. */
-OPENSSL_EXPORT void EC_POINT_clear_free(EC_POINT *point);
-
-/* EC_POINT_copy sets |*dest| equal to |*src|. It returns one on success and
- * zero otherwise. */
-OPENSSL_EXPORT int EC_POINT_copy(EC_POINT *dest, const EC_POINT *src);
-
 /* EC_POINT_dup returns a fresh |EC_POINT| that contains the same values as
  * |src|, or NULL on error. */
 OPENSSL_EXPORT EC_POINT *EC_POINT_dup(const EC_POINT *src,
@@ -181,12 +173,6 @@ OPENSSL_EXPORT int EC_POINT_is_on_curve(const EC_GROUP *group,
  * non-equal and -1 on error. If |ctx| is not NULL, it may be used. */
 OPENSSL_EXPORT int EC_POINT_cmp(const EC_GROUP *group, const EC_POINT *a,
                                 const EC_POINT *b, BN_CTX *ctx);
-
-/* EC_POINTs_make_affine converts |num| points from |points| to affine form,
- * internally. It returns one on success and zero otherwise. If |ctx| is not
- * NULL, it may be used. */
-OPENSSL_EXPORT int EC_POINTs_make_affine(const EC_GROUP *group, size_t num,
-                                         EC_POINT *points[], BN_CTX *ctx);
 
 
 /* Point conversion. */

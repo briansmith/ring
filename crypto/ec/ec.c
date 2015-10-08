@@ -467,28 +467,6 @@ void EC_POINT_free(EC_POINT *point) {
   OPENSSL_free(point);
 }
 
-void EC_POINT_clear_free(EC_POINT *point) {
-  if (!point) {
-    return;
-  }
-
-  ec_GFp_simple_point_clear_finish(point);
-
-  OPENSSL_cleanse(point, sizeof *point);
-  OPENSSL_free(point);
-}
-
-int EC_POINT_copy(EC_POINT *dest, const EC_POINT *src) {
-  if (dest->meth != src->meth) {
-    OPENSSL_PUT_ERROR(EC, EC_R_INCOMPATIBLE_OBJECTS);
-    return 0;
-  }
-  if (dest == src) {
-    return 1;
-  }
-  return ec_GFp_simple_point_copy(dest, src);
-}
-
 EC_POINT *EC_POINT_dup(const EC_POINT *a, const EC_GROUP *group) {
   EC_POINT *t;
   int r;
@@ -497,12 +475,17 @@ EC_POINT *EC_POINT_dup(const EC_POINT *a, const EC_GROUP *group) {
     return NULL;
   }
 
+  if (group->meth != a->meth) {
+    OPENSSL_PUT_ERROR(EC, EC_R_INCOMPATIBLE_OBJECTS);
+    return 0;
+  }
+
   t = EC_POINT_new(group);
   if (t == NULL) {
     OPENSSL_PUT_ERROR(EC, ERR_R_MALLOC_FAILURE);
     return NULL;
   }
-  r = EC_POINT_copy(t, a);
+  r = ec_GFp_simple_point_copy(t, a);
   if (!r) {
     EC_POINT_free(t);
     return NULL;
@@ -543,19 +526,6 @@ int EC_POINT_cmp(const EC_GROUP *group, const EC_POINT *a, const EC_POINT *b,
     return -1;
   }
   return ec_GFp_simple_cmp(group, a, b, ctx);
-}
-
-int EC_POINTs_make_affine(const EC_GROUP *group, size_t num, EC_POINT *points[],
-                          BN_CTX *ctx) {
-  size_t i;
-
-  for (i = 0; i < num; i++) {
-    if (group->meth != points[i]->meth) {
-      OPENSSL_PUT_ERROR(EC, EC_R_INCOMPATIBLE_OBJECTS);
-      return 0;
-    }
-  }
-  return ec_GFp_simple_points_make_affine(group, num, points, ctx);
 }
 
 int EC_POINT_get_affine_coordinates_GFp(const EC_GROUP *group,

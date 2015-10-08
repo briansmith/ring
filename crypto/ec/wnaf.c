@@ -543,10 +543,10 @@ int ec_wNAF_mul(const EC_GROUP *group, EC_POINT *r, const BIGNUM *scalar,
    */
   for (i = 0; i < num + num_scalar; i++) {
     if (i < num) {
-      if (!EC_POINT_copy(val_sub[i][0], points[i])) {
+      if (!ec_GFp_simple_point_copy(val_sub[i][0], points[i])) {
         goto err;
       }
-    } else if (!EC_POINT_copy(val_sub[i][0], generator)) {
+    } else if (!ec_GFp_simple_point_copy(val_sub[i][0], generator)) {
       goto err;
     }
 
@@ -564,7 +564,7 @@ int ec_wNAF_mul(const EC_GROUP *group, EC_POINT *r, const BIGNUM *scalar,
   }
 
 #if 1 /* optional; EC_window_bits_for_scalar_size assumes we do this step */
-  if (!EC_POINTs_make_affine(group, num_val, val, ctx)) {
+  if (!ec_GFp_simple_points_make_affine(group, num_val, val, ctx)) {
     goto err;
   }
 #endif
@@ -598,7 +598,7 @@ int ec_wNAF_mul(const EC_GROUP *group, EC_POINT *r, const BIGNUM *scalar,
           /* digit > 0 */
 
           if (r_is_at_infinity) {
-            if (!EC_POINT_copy(r, val_sub[i][digit >> 1])) {
+            if (!ec_GFp_simple_point_copy(r, val_sub[i][digit >> 1])) {
               goto err;
             }
             r_is_at_infinity = 0;
@@ -638,7 +638,9 @@ err:
   }
   if (val != NULL) {
     for (v = val; *v != NULL; v++) {
-      EC_POINT_clear_free(*v);
+      ec_GFp_simple_point_clear_finish(*v);
+      OPENSSL_cleanse(*v, sizeof **v);
+      OPENSSL_free(*v);
     }
 
     OPENSSL_free(val);
@@ -758,7 +760,7 @@ int ec_wNAF_precompute_mult(EC_GROUP *group, BN_CTX *ctx) {
     goto err;
   }
 
-  if (!EC_POINT_copy(base, generator)) {
+  if (!ec_GFp_simple_point_copy(base, generator)) {
     goto err;
   }
 
@@ -770,7 +772,7 @@ int ec_wNAF_precompute_mult(EC_GROUP *group, BN_CTX *ctx) {
       goto err;
     }
 
-    if (!EC_POINT_copy(*var++, base)) {
+    if (!ec_GFp_simple_point_copy(*var++, base)) {
       goto err;
     }
 
@@ -801,7 +803,7 @@ int ec_wNAF_precompute_mult(EC_GROUP *group, BN_CTX *ctx) {
     }
   }
 
-  if (!EC_POINTs_make_affine(group, num, points, ctx)) {
+  if (!ec_GFp_simple_points_make_affine(group, num, points, ctx)) {
     goto err;
   }
 

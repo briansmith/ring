@@ -410,10 +410,10 @@ int ec_GFp_simple_add(const EC_GROUP *group, EC_POINT *r, const EC_POINT *a,
     return ec_GFp_simple_dbl(group, r, a, ctx);
   }
   if (EC_POINT_is_at_infinity(group, a)) {
-    return EC_POINT_copy(r, b);
+    return ec_GFp_simple_point_copy(r, b);
   }
   if (EC_POINT_is_at_infinity(group, b)) {
-    return EC_POINT_copy(r, a);
+    return ec_GFp_simple_point_copy(r, a);
   }
 
   field_mul = group->meth->field_mul;
