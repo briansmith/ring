@@ -138,8 +138,6 @@ struct ec_group_st {
 
   BIGNUM a, b; /* Curve coefficients. */
 
-  int a_is_minus3; /* enable optimized point arithmetics for special case */
-
   BN_MONT_CTX *mont; /* Montgomery structure. */
   BIGNUM *one; /* The value one */
 } /* EC_GROUP */;

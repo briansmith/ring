@@ -1608,12 +1608,6 @@ typedef struct {
  * OPENSSL EC_METHOD FUNCTIONS
  */
 
-int ec_GFp_nistp256_group_init(EC_GROUP *group) {
-  int ret = ec_GFp_simple_group_init(group);
-  group->a_is_minus3 = 1;
-  return ret;
-}
-
 int ec_GFp_nistp256_group_set_curve(EC_GROUP *group, const BIGNUM *p,
                                     const BIGNUM *a, const BIGNUM *b,
                                     BN_CTX *ctx) {
@@ -1902,7 +1896,7 @@ err:
 
 const EC_METHOD *EC_GFp_nistp256_method(void) {
   static const EC_METHOD ret = {
-      ec_GFp_nistp256_group_init,
+      ec_GFp_simple_group_init,
       ec_GFp_simple_group_finish,
       ec_GFp_simple_group_clear_finish,
       ec_GFp_nistp256_group_set_curve,

@@ -67,6 +67,7 @@
 
 #include <openssl/ec.h>
 
+#include <assert.h>
 #include <string.h>
 
 #include <openssl/bn.h>
@@ -92,7 +93,6 @@ int ec_GFp_simple_group_init(EC_GROUP *group) {
   BN_init(&group->field);
   BN_init(&group->a);
   BN_init(&group->b);
-  group->a_is_minus3 = 0;
   return 1;
 }
 
@@ -161,11 +161,13 @@ int ec_GFp_simple_group_set_curve(EC_GROUP *group, const BIGNUM *p,
     goto err;
   }
 
-  /* group->a_is_minus3 */
+#if !defined(NDEBUG)
+  /* ring: assert a == -3. */
   if (!BN_add_word(tmp_a, 3)) {
     goto err;
   }
-  group->a_is_minus3 = (0 == BN_cmp(tmp_a, &group->field));
+  assert(0 == BN_cmp(tmp_a, &group->field));
+#endif
 
   ret = 1;
 
@@ -635,7 +637,8 @@ int ec_GFp_simple_dbl(const EC_GROUP *group, EC_POINT *r, const EC_POINT *a,
       goto err;
     }
     /* n1 = 3 * X_a^2 + a_curve */
-  } else if (group->a_is_minus3) {
+  } else {
+    /* ring: This assumes a == -3. */
     if (!field_sqr(group, n1, &a->Z, ctx) ||
         !BN_mod_add_quick(n0, &a->X, n1, p) ||
         !BN_mod_sub_quick(n2, &a->X, n1, p) ||
@@ -646,17 +649,6 @@ int ec_GFp_simple_dbl(const EC_GROUP *group, EC_POINT *r, const EC_POINT *a,
     }
     /* n1 = 3 * (X_a + Z_a^2) * (X_a - Z_a^2)
      *    = 3 * X_a^2 - 3 * Z_a^4 */
-  } else {
-    if (!field_sqr(group, n0, &a->X, ctx) ||
-        !BN_mod_lshift1_quick(n1, n0, p) ||
-        !BN_mod_add_quick(n0, n0, n1, p) ||
-        !field_sqr(group, n1, &a->Z, ctx) ||
-        !field_sqr(group, n1, n1, ctx) ||
-        !field_mul(group, n1, n1, &group->a, ctx) ||
-        !BN_mod_add_quick(n1, n1, n0, p)) {
-      goto err;
-    }
-    /* n1 = 3 * X_a^2 + a_curve * Z_a^4 */
   }
 
   /* Z_r */
@@ -782,19 +774,12 @@ int ec_GFp_simple_is_on_curve(const EC_GROUP *group, const EC_POINT *point,
     }
 
     /* rh := (rh + a*Z^4)*X */
-    if (group->a_is_minus3) {
-      if (!BN_mod_lshift1_quick(tmp, Z4, p) ||
-          !BN_mod_add_quick(tmp, tmp, Z4, p) ||
-          !BN_mod_sub_quick(rh, rh, tmp, p) ||
-          !field_mul(group, rh, rh, &point->X, ctx)) {
-        goto err;
-      }
-    } else {
-      if (!field_mul(group, tmp, Z4, &group->a, ctx) ||
-          !BN_mod_add_quick(rh, rh, tmp, p) ||
-          !field_mul(group, rh, rh, &point->X, ctx)) {
-        goto err;
-      }
+    /* ring: This assumes a == -3. */
+    if (!BN_mod_lshift1_quick(tmp, Z4, p) ||
+        !BN_mod_add_quick(tmp, tmp, Z4, p) ||
+        !BN_mod_sub_quick(rh, rh, tmp, p) ||
+        !field_mul(group, rh, rh, &point->X, ctx)) {
+      goto err;
     }
 
     /* rh := rh + b*Z^6 */
