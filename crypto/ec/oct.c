@@ -172,6 +172,11 @@ err:
 static int ec_GFp_simple_oct2point(const EC_GROUP *group, EC_POINT *point,
                                    const uint8_t *buf, size_t len,
                                    BN_CTX *ctx) {
+  if (group->meth != point->meth) {
+    OPENSSL_PUT_ERROR(EC, EC_R_INCOMPATIBLE_OBJECTS);
+    return 0;
+  }
+
   point_conversion_form_t form;
   int y_bit;
   BN_CTX *new_ctx = NULL;
@@ -242,7 +247,7 @@ static int ec_GFp_simple_oct2point(const EC_GROUP *group, EC_POINT *point,
     goto err;
   }
 
-  if (!EC_POINT_set_affine_coordinates_GFp(group, point, x, y, ctx)) {
+  if (!ec_GFp_simple_point_set_affine_coordinates(group, point, x, y, ctx)) {
     goto err;
   }
 

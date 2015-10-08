@@ -343,7 +343,7 @@ static EC_GROUP *ec_group_new_from_data(const struct curve_data *data) {
     goto err;
   }
 
-  if (!EC_POINT_set_affine_coordinates_GFp(group, P, x, y, ctx)) {
+  if (!ec_GFp_simple_point_set_affine_coordinates(group, P, x, y, ctx)) {
     OPENSSL_PUT_ERROR(EC, ERR_R_EC_LIB);
     goto err;
   }
@@ -570,16 +570,6 @@ int EC_POINT_get_affine_coordinates_GFp(const EC_GROUP *group,
     return 0;
   }
   return group->meth->point_get_affine_coordinates(group, point, x, y, ctx);
-}
-
-int EC_POINT_set_affine_coordinates_GFp(const EC_GROUP *group, EC_POINT *point,
-                                        const BIGNUM *x, const BIGNUM *y,
-                                        BN_CTX *ctx) {
-  if (group->meth != point->meth) {
-    OPENSSL_PUT_ERROR(EC, EC_R_INCOMPATIBLE_OBJECTS);
-    return 0;
-  }
-  return ec_GFp_simple_point_set_affine_coordinates(group, point, x, y, ctx);
 }
 
 

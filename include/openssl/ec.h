@@ -199,14 +199,6 @@ OPENSSL_EXPORT int EC_POINT_get_affine_coordinates_GFp(const EC_GROUP *group,
                                                        BIGNUM *x, BIGNUM *y,
                                                        BN_CTX *ctx);
 
-/* EC_POINT_set_affine_coordinates_GFp sets the value of |p| to be (|x|, |y|). The
- * |ctx| argument may be used if not NULL. */
-OPENSSL_EXPORT int EC_POINT_set_affine_coordinates_GFp(const EC_GROUP *group,
-                                                       EC_POINT *point,
-                                                       const BIGNUM *x,
-                                                       const BIGNUM *y,
-                                                       BN_CTX *ctx);
-
 /* EC_POINT_point2oct serialises |point| into the X9.62 form given by |form|
  * into, at most, |len| bytes at |buf|. It returns the number of bytes written
  * or zero on error if |buf| is non-NULL, else the number of bytes needed. The
