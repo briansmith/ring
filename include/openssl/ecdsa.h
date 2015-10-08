@@ -187,24 +187,6 @@ OPENSSL_EXPORT int ECDSA_SIG_to_bytes(uint8_t **out_bytes, size_t *out_len,
 OPENSSL_EXPORT size_t ECDSA_SIG_max_len(size_t order_len);
 
 
-/* Deprecated functions. */
-
-/* d2i_ECDSA_SIG parses an ASN.1, DER-encoded, signature from |len| bytes at
- * |*inp|. If |out| is not NULL then, on exit, a pointer to the result is in
- * |*out|. If |*out| is already non-NULL on entry then the result is written
- * directly into |*out|, otherwise a fresh |ECDSA_SIG| is allocated. On
- * successful exit, |*inp| is advanced past the DER structure. It returns the
- * result or NULL on error. */
-OPENSSL_EXPORT ECDSA_SIG *d2i_ECDSA_SIG(ECDSA_SIG **out, const uint8_t **inp,
-                                        long len);
-
-/* i2d_ECDSA_SIG marshals a signature from |sig| to an ASN.1, DER
- * structure. If |outp| is not NULL then the result is written to |*outp| and
- * |*outp| is advanced just past the output. It returns the number of bytes in
- * the result, whether written or not, or a negative value on error. */
-OPENSSL_EXPORT int i2d_ECDSA_SIG(const ECDSA_SIG *sig, uint8_t **outp);
-
-
 #if defined(__cplusplus)
 }  /* extern C */
 #endif
