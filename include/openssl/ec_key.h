@@ -88,11 +88,6 @@ extern "C" {
  * |EC_GROUP_new_p256|, |EC_GROUP_new_p384|, etc. */
 EC_KEY *EC_KEY_new_ex(EC_GROUP_new_fn ec_group_new);
 
-/* EC_KEY_new_method acts the same as |EC_KEY_new|, but takes an explicit
- * |ENGINE|. ring: |engine| must be NULL. It is often better to use
- * |EC_KEY_new_ex| instead. */
-OPENSSL_EXPORT EC_KEY *EC_KEY_new_method(const ENGINE *engine);
-
 /* EC_KEY_free frees all the data owned by |key| and |key| itself. */
 OPENSSL_EXPORT void EC_KEY_free(EC_KEY *key);
 
@@ -106,10 +101,6 @@ OPENSSL_EXPORT const EC_GROUP *EC_KEY_get0_group(const EC_KEY *key);
 /* EC_KEY_get0_private_key returns a pointer to the private key inside |key|. */
 OPENSSL_EXPORT const BIGNUM *EC_KEY_get0_private_key(const EC_KEY *key);
 
-/* EC_KEY_set_private_key sets the private key of |key| to |priv|. It returns
- * one on success and zero otherwise. */
-OPENSSL_EXPORT int EC_KEY_set_private_key(EC_KEY *key, const BIGNUM *prv);
-
 /* EC_KEY_get0_public_key returns a pointer to the public key point inside
  * |key|. */
 OPENSSL_EXPORT const EC_POINT *EC_KEY_get0_public_key(const EC_KEY *key);
@@ -117,25 +108,6 @@ OPENSSL_EXPORT const EC_POINT *EC_KEY_get0_public_key(const EC_KEY *key);
 /* EC_KEY_set_public_key sets the public key of |key| to |pub|, by copying it.
  * It returns one on success and zero otherwise. */
 OPENSSL_EXPORT int EC_KEY_set_public_key(EC_KEY *key, const EC_POINT *pub);
-
-#define EC_PKEY_NO_PARAMETERS 0x001
-#define EC_PKEY_NO_PUBKEY 0x002
-
-/* EC_KEY_get_enc_flags returns the encoding flags for |key|, which is a
- * bitwise-OR of |EC_PKEY_*| values. */
-OPENSSL_EXPORT unsigned EC_KEY_get_enc_flags(const EC_KEY *key);
-
-/* EC_KEY_set_enc_flags sets the encoding flags for |key|, which is a
- * bitwise-OR of |EC_PKEY_*| values. */
-OPENSSL_EXPORT void EC_KEY_set_enc_flags(EC_KEY *key, unsigned flags);
-
-/* EC_KEY_get_conv_form returns the conversation form that will be used by
- * |key|. */
-OPENSSL_EXPORT point_conversion_form_t EC_KEY_get_conv_form(const EC_KEY *key);
-
-/* EC_KEY_set_conv_form sets the conversion form to be used by |key|. */
-OPENSSL_EXPORT void EC_KEY_set_conv_form(EC_KEY *key,
-                                         point_conversion_form_t cform);
 
 /* EC_KEY_precompute_mult precomputes multiplies of the generator of the
  * underlying group in order to speed up operations that calculate generator
@@ -148,12 +120,6 @@ OPENSSL_EXPORT int EC_KEY_precompute_mult(EC_KEY *key, BN_CTX *ctx);
  * one if all checks pass and zero otherwise. If it returns zero then detail
  * about the problem can be found on the error stack. */
 OPENSSL_EXPORT int EC_KEY_check_key(const EC_KEY *key);
-
-/* EC_KEY_set_public_key_affine_coordinates sets the public key in |key| to
- * (|x|, |y|). It returns one on success and zero otherwise. */
-OPENSSL_EXPORT int EC_KEY_set_public_key_affine_coordinates(EC_KEY *key,
-                                                            BIGNUM *x,
-                                                            BIGNUM *y);
 
 /* EC_KEY_public_key_to_oct serialises the public key point of |key| into the
  * X9.62 uncompressed form at |out|, writing at most |out_len| bytes. It

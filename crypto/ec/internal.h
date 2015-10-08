@@ -235,18 +235,12 @@ void ec_GFp_nistp_recode_scalar_bits(uint8_t *sign, uint8_t *digit, uint8_t in);
 const EC_METHOD *EC_GFp_nistp256_method(void);
 
 struct ec_key_st {
-  int version;
-
   EC_GROUP *group;
 
   EC_POINT *pub_key;
   BIGNUM *priv_key;
 
-  unsigned int enc_flag;
-  point_conversion_form_t conv_form;
-
   CRYPTO_refcount_t references;
-  int flags;
 } /* EC_KEY */;
 
 /* curve_data contains data about a built-in elliptic curve. */

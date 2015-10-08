@@ -93,8 +93,6 @@ EC_KEY *EC_KEY_new_ex(EC_GROUP_new_fn ec_group_new) {
     return NULL;
   }
 
-  ret->version = 1;
-  ret->conv_form = POINT_CONVERSION_UNCOMPRESSED;
   ret->references = 1;
 
   return ret;
@@ -128,12 +126,6 @@ const BIGNUM *EC_KEY_get0_private_key(const EC_KEY *key) {
   return key->priv_key;
 }
 
-int EC_KEY_set_private_key(EC_KEY *key, const BIGNUM *priv_key) {
-  BN_clear_free(key->priv_key);
-  key->priv_key = BN_dup(priv_key);
-  return (key->priv_key == NULL) ? 0 : 1;
-}
-
 const EC_POINT *EC_KEY_get0_public_key(const EC_KEY *key) {
   return key->pub_key;
 }
@@ -142,20 +134,6 @@ int EC_KEY_set_public_key(EC_KEY *key, const EC_POINT *pub_key) {
   EC_POINT_free(key->pub_key);
   key->pub_key = EC_POINT_dup(pub_key, key->group);
   return (key->pub_key == NULL) ? 0 : 1;
-}
-
-unsigned int EC_KEY_get_enc_flags(const EC_KEY *key) { return key->enc_flag; }
-
-void EC_KEY_set_enc_flags(EC_KEY *key, unsigned int flags) {
-  key->enc_flag = flags;
-}
-
-point_conversion_form_t EC_KEY_get_conv_form(const EC_KEY *key) {
-  return key->conv_form;
-}
-
-void EC_KEY_set_conv_form(EC_KEY *key, point_conversion_form_t cform) {
-  key->conv_form = cform;
 }
 
 int EC_KEY_precompute_mult(EC_KEY *key, BN_CTX *ctx) {
@@ -227,56 +205,6 @@ int EC_KEY_check_key(const EC_KEY *eckey) {
       goto err;
     }
   }
-  ok = 1;
-
-err:
-  BN_CTX_free(ctx);
-  EC_POINT_free(point);
-  return ok;
-}
-
-int EC_KEY_set_public_key_affine_coordinates(EC_KEY *key, BIGNUM *x,
-                                             BIGNUM *y) {
-  BN_CTX *ctx = NULL;
-  BIGNUM *tx, *ty;
-  EC_POINT *point = NULL;
-  int ok = 0;
-
-  if (!key || !key->group || !x || !y) {
-    OPENSSL_PUT_ERROR(EC, ERR_R_PASSED_NULL_PARAMETER);
-    return 0;
-  }
-  ctx = BN_CTX_new();
-  point = EC_POINT_new(key->group);
-
-  if (ctx == NULL ||
-      point == NULL) {
-    goto err;
-  }
-
-  tx = BN_CTX_get(ctx);
-  ty = BN_CTX_get(ctx);
-
-  if (!EC_POINT_set_affine_coordinates_GFp(key->group, point, x, y, ctx) ||
-      !EC_POINT_get_affine_coordinates_GFp(key->group, point, tx, ty, ctx)) {
-    goto err;
-  }
-
-  /* Check if retrieved coordinates match originals: if not values
-   * are out of range. */
-  if (BN_cmp(x, tx) || BN_cmp(y, ty)) {
-    OPENSSL_PUT_ERROR(EC, EC_R_COORDINATES_OUT_OF_RANGE);
-    goto err;
-  }
-
-  if (!EC_KEY_set_public_key(key, point)) {
-    goto err;
-  }
-
-  if (EC_KEY_check_key(key) == 0) {
-    goto err;
-  }
-
   ok = 1;
 
 err:
