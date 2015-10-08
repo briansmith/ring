@@ -551,11 +551,12 @@ int ec_wNAF_mul(const EC_GROUP *group, EC_POINT *r, const BIGNUM *scalar,
     }
 
     if (wsize[i] > 1) {
-      if (!EC_POINT_dbl(group, tmp, val_sub[i][0], ctx)) {
+      if (!ec_GFp_simple_dbl(group, tmp, val_sub[i][0], ctx)) {
         goto err;
       }
       for (j = 1; j < ((size_t)1 << (wsize[i] - 1)); j++) {
-        if (!EC_POINT_add(group, val_sub[i][j], val_sub[i][j - 1], tmp, ctx)) {
+        if (!ec_GFp_simple_add(group, val_sub[i][j], val_sub[i][j - 1], tmp,
+                               ctx)) {
           goto err;
         }
       }
@@ -571,7 +572,7 @@ int ec_wNAF_mul(const EC_GROUP *group, EC_POINT *r, const BIGNUM *scalar,
   r_is_at_infinity = 1;
 
   for (k = max_len - 1; k >= 0; k--) {
-    if (!r_is_at_infinity && !EC_POINT_dbl(group, r, r, ctx)) {
+    if (!r_is_at_infinity && !ec_GFp_simple_dbl(group, r, r, ctx)) {
       goto err;
     }
 
@@ -588,7 +589,7 @@ int ec_wNAF_mul(const EC_GROUP *group, EC_POINT *r, const BIGNUM *scalar,
           }
 
           if (is_neg != r_is_inverted) {
-            if (!r_is_at_infinity && !EC_POINT_invert(group, r, ctx)) {
+            if (!r_is_at_infinity && !ec_GFp_simple_invert(group, r, ctx)) {
               goto err;
             }
             r_is_inverted = !r_is_inverted;
@@ -602,7 +603,7 @@ int ec_wNAF_mul(const EC_GROUP *group, EC_POINT *r, const BIGNUM *scalar,
             }
             r_is_at_infinity = 0;
           } else {
-            if (!EC_POINT_add(group, r, r, val_sub[i][digit >> 1], ctx)) {
+            if (!ec_GFp_simple_add(group, r, r, val_sub[i][digit >> 1], ctx)) {
               goto err;
             }
           }
@@ -615,7 +616,7 @@ int ec_wNAF_mul(const EC_GROUP *group, EC_POINT *r, const BIGNUM *scalar,
     if (!EC_POINT_set_to_infinity(group, r)) {
       goto err;
     }
-  } else if (r_is_inverted && !EC_POINT_invert(group, r, ctx)) {
+  } else if (r_is_inverted && !ec_GFp_simple_invert(group, r, ctx)) {
     goto err;
   }
 
@@ -765,7 +766,7 @@ int ec_wNAF_precompute_mult(EC_GROUP *group, BN_CTX *ctx) {
   for (i = 0; i < numblocks; i++) {
     size_t j;
 
-    if (!EC_POINT_dbl(group, tmp_point, base, ctx)) {
+    if (!ec_GFp_simple_dbl(group, tmp_point, base, ctx)) {
       goto err;
     }
 
@@ -775,7 +776,7 @@ int ec_wNAF_precompute_mult(EC_GROUP *group, BN_CTX *ctx) {
 
     for (j = 1; j < pre_points_per_block; j++, var++) {
       /* calculate odd multiples of the current base point */
-      if (!EC_POINT_add(group, *var, tmp_point, *(var - 1), ctx)) {
+      if (!ec_GFp_simple_add(group, *var, tmp_point, *(var - 1), ctx)) {
         goto err;
       }
     }
@@ -789,11 +790,11 @@ int ec_wNAF_precompute_mult(EC_GROUP *group, BN_CTX *ctx) {
         goto err;
       }
 
-      if (!EC_POINT_dbl(group, base, tmp_point, ctx)) {
+      if (!ec_GFp_simple_dbl(group, base, tmp_point, ctx)) {
         goto err;
       }
       for (k = 2; k < blocksize; k++) {
-        if (!EC_POINT_dbl(group, base, base, ctx)) {
+        if (!ec_GFp_simple_dbl(group, base, base, ctx)) {
           goto err;
         }
       }

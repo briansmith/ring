@@ -226,22 +226,6 @@ OPENSSL_EXPORT int EC_POINT_oct2point(const EC_GROUP *group, EC_POINT *point,
 
 /* Group operations. */
 
-/* EC_POINT_add sets |r| equal to |a| plus |b|. It returns one on success and
- * zero otherwise. If |ctx| is not NULL, it may be used. */
-OPENSSL_EXPORT int EC_POINT_add(const EC_GROUP *group, EC_POINT *r,
-                                const EC_POINT *a, const EC_POINT *b,
-                                BN_CTX *ctx);
-
-/* EC_POINT_dbl sets |r| equal to |a| plus |a|. It returns one on success and
- * zero otherwise. If |ctx| is not NULL, it may be used. */
-OPENSSL_EXPORT int EC_POINT_dbl(const EC_GROUP *group, EC_POINT *r,
-                                const EC_POINT *a, BN_CTX *ctx);
-
-/* EC_POINT_invert sets |a| equal to minus |a|. It returns one on success and zero
- * otherwise. If |ctx| is not NULL, it may be used. */
-OPENSSL_EXPORT int EC_POINT_invert(const EC_GROUP *group, EC_POINT *a,
-                                   BN_CTX *ctx);
-
 /* EC_POINT_mul sets r = generator*n + q*m. It returns one on success and zero
  * otherwise. If |ctx| is not NULL, it may be used. */
 OPENSSL_EXPORT int EC_POINT_mul(const EC_GROUP *group, EC_POINT *r,

@@ -407,7 +407,7 @@ int ec_GFp_simple_add(const EC_GROUP *group, EC_POINT *r, const EC_POINT *a,
   int ret = 0;
 
   if (a == b) {
-    return EC_POINT_dbl(group, r, a, ctx);
+    return ec_GFp_simple_dbl(group, r, a, ctx);
   }
   if (EC_POINT_is_at_infinity(group, a)) {
     return EC_POINT_copy(r, b);
@@ -498,7 +498,7 @@ int ec_GFp_simple_add(const EC_GROUP *group, EC_POINT *r, const EC_POINT *a,
     if (BN_is_zero(n6)) {
       /* a is the same point as b */
       BN_CTX_end(ctx);
-      ret = EC_POINT_dbl(group, r, a, ctx);
+      ret = ec_GFp_simple_dbl(group, r, a, ctx);
       ctx = NULL;
       goto end;
     } else {
