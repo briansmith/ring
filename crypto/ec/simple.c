@@ -76,46 +76,6 @@
 #include "internal.h"
 
 
-const EC_METHOD *EC_GFp_simple_method(void) {
-  static const EC_METHOD ret = {EC_FLAGS_DEFAULT_OCT,
-                                ec_GFp_simple_group_init,
-                                ec_GFp_simple_group_finish,
-                                ec_GFp_simple_group_clear_finish,
-                                ec_GFp_simple_group_copy,
-                                ec_GFp_simple_group_set_curve,
-                                ec_GFp_simple_group_get_degree,
-                                ec_GFp_simple_point_init,
-                                ec_GFp_simple_point_finish,
-                                ec_GFp_simple_point_clear_finish,
-                                ec_GFp_simple_point_copy,
-                                ec_GFp_simple_point_set_to_infinity,
-                                ec_GFp_simple_set_Jprojective_coordinates_GFp,
-                                ec_GFp_simple_get_Jprojective_coordinates_GFp,
-                                ec_GFp_simple_point_set_affine_coordinates,
-                                ec_GFp_simple_point_get_affine_coordinates,
-                                0,
-                                0,
-                                ec_GFp_simple_add,
-                                ec_GFp_simple_dbl,
-                                ec_GFp_simple_invert,
-                                ec_GFp_simple_is_at_infinity,
-                                ec_GFp_simple_is_on_curve,
-                                ec_GFp_simple_cmp,
-                                ec_GFp_simple_points_make_affine,
-                                0 /* mul */,
-                                0 /* precompute_mult */,
-                                0 /* have_precompute_mult */,
-                                ec_GFp_simple_field_mul,
-                                ec_GFp_simple_field_sqr,
-                                0 /* field_div */,
-                                0 /* field_encode */,
-                                0 /* field_decode */,
-                                0 /* field_set_to_one */};
-
-  return &ret;
-}
-
-
 /* Most method functions in this file are designed to work with non-trivial
  * representations of field elements if necessary (see ecp_mont.c): while
  * standard modular addition and subtraction are used, the field_mul and
