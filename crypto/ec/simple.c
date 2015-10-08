@@ -148,17 +148,6 @@ void ec_GFp_simple_group_clear_finish(EC_GROUP *group) {
   BN_clear_free(&group->b);
 }
 
-int ec_GFp_simple_group_copy(EC_GROUP *dest, const EC_GROUP *src) {
-  if (!BN_copy(&dest->field, &src->field) ||
-      !BN_copy(&dest->a, &src->a) ||
-      !BN_copy(&dest->b, &src->b)) {
-    return 0;
-  }
-
-  dest->a_is_minus3 = src->a_is_minus3;
-  return 1;
-}
-
 int ec_GFp_simple_group_set_curve(EC_GROUP *group, const BIGNUM *p,
                                   const BIGNUM *a, const BIGNUM *b,
                                   BN_CTX *ctx) {

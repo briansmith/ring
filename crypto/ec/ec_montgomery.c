@@ -79,7 +79,6 @@ const EC_METHOD *EC_GFp_mont_method(void) {
                                 ec_GFp_mont_group_init,
                                 ec_GFp_mont_group_finish,
                                 ec_GFp_mont_group_clear_finish,
-                                ec_GFp_mont_group_copy,
                                 ec_GFp_mont_group_set_curve,
                                 ec_GFp_simple_group_get_degree,
                                 ec_GFp_simple_point_init,
@@ -136,40 +135,6 @@ void ec_GFp_mont_group_clear_finish(EC_GROUP *group) {
   BN_clear_free(group->one);
   group->one = NULL;
   ec_GFp_simple_group_clear_finish(group);
-}
-
-int ec_GFp_mont_group_copy(EC_GROUP *dest, const EC_GROUP *src) {
-  BN_MONT_CTX_free(dest->mont);
-  dest->mont = NULL;
-  BN_clear_free(dest->one);
-  dest->one = NULL;
-
-  if (!ec_GFp_simple_group_copy(dest, src)) {
-    return 0;
-  }
-
-  if (src->mont != NULL) {
-    dest->mont = BN_MONT_CTX_new();
-    if (dest->mont == NULL) {
-      return 0;
-    }
-    if (!BN_MONT_CTX_copy(dest->mont, src->mont)) {
-      goto err;
-    }
-  }
-  if (src->one != NULL) {
-    dest->one = BN_dup(src->one);
-    if (dest->one == NULL) {
-      goto err;
-    }
-  }
-
-  return 1;
-
-err:
-  BN_MONT_CTX_free(dest->mont);
-  dest->mont = NULL;
-  return 0;
 }
 
 int ec_GFp_mont_group_set_curve(EC_GROUP *group, const BIGNUM *p,

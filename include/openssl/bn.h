@@ -679,11 +679,6 @@ OPENSSL_EXPORT void BN_MONT_CTX_init(BN_MONT_CTX *mont);
  * allocated with |BN_MONT_CTX_new|, |mont| itself. */
 OPENSSL_EXPORT void BN_MONT_CTX_free(BN_MONT_CTX *mont);
 
-/* BN_MONT_CTX_copy sets |to| equal to |from|. It returns |to| on success or
- * NULL on error. */
-OPENSSL_EXPORT BN_MONT_CTX *BN_MONT_CTX_copy(BN_MONT_CTX *to,
-                                             BN_MONT_CTX *from);
-
 /* BN_MONT_CTX_set sets up a Montgomery context given the modulus, |mod|. It
  * returns one on success and zero on error. */
 OPENSSL_EXPORT int BN_MONT_CTX_set(BN_MONT_CTX *mont, const BIGNUM *mod,

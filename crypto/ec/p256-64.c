@@ -1906,7 +1906,7 @@ const EC_METHOD *EC_GFp_nistp256_method(void) {
       ec_GFp_nistp256_group_init,
       ec_GFp_simple_group_finish,
       ec_GFp_simple_group_clear_finish,
-      ec_GFp_simple_group_copy, ec_GFp_nistp256_group_set_curve,
+      ec_GFp_nistp256_group_set_curve,
       ec_GFp_simple_group_get_degree,
       ec_GFp_simple_point_init,
       ec_GFp_simple_point_finish, ec_GFp_simple_point_clear_finish,
