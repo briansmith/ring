@@ -180,10 +180,6 @@ int ec_GFp_simple_set_Jprojective_coordinates_GFp(const EC_GROUP *, EC_POINT *,
                                                   const BIGNUM *x,
                                                   const BIGNUM *y,
                                                   const BIGNUM *z, BN_CTX *);
-int ec_GFp_simple_get_Jprojective_coordinates_GFp(const EC_GROUP *,
-                                                  const EC_POINT *, BIGNUM *x,
-                                                  BIGNUM *y, BIGNUM *z,
-                                                  BN_CTX *);
 int ec_GFp_simple_point_set_affine_coordinates(const EC_GROUP *, EC_POINT *,
                                                const BIGNUM *x, const BIGNUM *y,
                                                BN_CTX *);
@@ -199,7 +195,6 @@ int ec_GFp_simple_is_at_infinity(const EC_GROUP *, const EC_POINT *);
 int ec_GFp_simple_is_on_curve(const EC_GROUP *, const EC_POINT *, BN_CTX *);
 int ec_GFp_simple_cmp(const EC_GROUP *, const EC_POINT *a, const EC_POINT *b,
                       BN_CTX *);
-int ec_GFp_simple_make_affine(const EC_GROUP *, EC_POINT *, BN_CTX *);
 int ec_GFp_simple_points_make_affine(const EC_GROUP *, size_t num,
                                      EC_POINT * [], BN_CTX *);
 int ec_GFp_simple_field_mul(const EC_GROUP *, BIGNUM *r, const BIGNUM *a,
