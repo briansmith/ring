@@ -1328,7 +1328,6 @@ const EC_METHOD *EC_GFp_nistp224_method(void) {
                                 ec_GFp_nistp224_point_get_affine_coordinates,
                                 ec_GFp_nistp224_points_mul,
                                 0 /* precompute_mult */,
-                                0 /* have_precompute_mult */,
                                 ec_GFp_simple_field_mul,
                                 ec_GFp_simple_field_sqr,
                                 0 /* field_encode */,

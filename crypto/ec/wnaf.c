@@ -846,8 +846,3 @@ err:
   EC_POINT_free(base);
   return ret;
 }
-
-
-int ec_wNAF_have_precompute_mult(const EC_GROUP *group) {
-  return group->pre_comp != NULL;
-}
