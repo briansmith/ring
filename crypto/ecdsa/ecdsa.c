@@ -67,29 +67,31 @@ int ECDSA_verify_signed_digest(int hash_nid, const uint8_t *digest,
                                size_t digest_len, const uint8_t *sig,
                                size_t sig_len, EC_GROUP_new_fn ec_group_new,
                                const uint8_t *ec_key, const size_t ec_key_len) {
-  EC_POINT *point = NULL;
-  EC_KEY *key = NULL;
+  EC_GROUP *group = ec_group_new();
+  if (!group) {
+    return 0;
+  }
+
   int ret = 0;
+  ECDSA_SIG *s = NULL;
 
-  key = EC_KEY_new_ex(ec_group_new);
-  if (!key) {
-    goto err;
-  }
-
-  const EC_GROUP *group = EC_KEY_get0_group(key);
-
-  point = EC_POINT_new(group);
+  EC_POINT *point = EC_POINT_new(group);
   if (!point ||
-      !EC_POINT_oct2point(group, point, ec_key, ec_key_len, NULL) ||
-      !EC_KEY_set_public_key(key, point)) {
+      !EC_POINT_oct2point(group, point, ec_key, ec_key_len, NULL)) {
     goto err;
   }
 
-  ret = ECDSA_verify(0, digest, digest_len, sig, sig_len, key);
+  s = ECDSA_SIG_from_bytes(sig, sig_len);
+  if (s == NULL) {
+    goto err;
+  }
+
+  ret = ECDSA_do_verify_point(digest, digest_len, s, group, point);
 
 err:
-  EC_KEY_free(key);
+  ECDSA_SIG_free(s);
   EC_POINT_free(point);
+  EC_GROUP_free(group);
 
   return ret;
 }
@@ -98,35 +100,6 @@ int ECDSA_sign(int type, const uint8_t *digest, size_t digest_len, uint8_t *sig,
                unsigned int *sig_len, EC_KEY *eckey) {
   return ECDSA_sign_ex(type, digest, digest_len, sig, sig_len, NULL, NULL,
                        eckey);
-}
-
-int ECDSA_verify(int type, const uint8_t *digest, size_t digest_len,
-                 const uint8_t *sig, size_t sig_len, EC_KEY *eckey) {
-  ECDSA_SIG *s;
-  int ret = 0;
-  uint8_t *der = NULL;
-
-  /* Decode the ECDSA signature. */
-  s = ECDSA_SIG_from_bytes(sig, sig_len);
-  if (s == NULL) {
-    goto err;
-  }
-
-  /* Defend against potential laxness in the DER parser. */
-  size_t der_len;
-  if (!ECDSA_SIG_to_bytes(&der, &der_len, s) ||
-      der_len != sig_len || memcmp(sig, der, sig_len) != 0) {
-    /* This should never happen. crypto/bytestring is strictly DER. */
-    OPENSSL_PUT_ERROR(ECDSA, ERR_R_INTERNAL_ERROR);
-    goto err;
-  }
-
-  ret = ECDSA_do_verify(digest, digest_len, s, eckey);
-
-err:
-  OPENSSL_free(der);
-  ECDSA_SIG_free(s);
-  return ret;
 }
 
 /* digest_to_bn interprets |digest_len| bytes from |digest| as a big-endian
@@ -162,23 +135,15 @@ ECDSA_SIG *ECDSA_do_sign(const uint8_t *digest, size_t digest_len,
   return ECDSA_do_sign_ex(digest, digest_len, NULL, NULL, key);
 }
 
-int ECDSA_do_verify(const uint8_t *digest, size_t digest_len,
-                    const ECDSA_SIG *sig, EC_KEY *eckey) {
+int ECDSA_do_verify_point(const uint8_t *digest, size_t digest_len,
+                          const ECDSA_SIG *sig, const EC_GROUP *group,
+                          const EC_POINT *pub_key) {
   int ret = 0;
   BN_CTX *ctx;
   BIGNUM *order, *u1, *u2, *m, *X;
   EC_POINT *point = NULL;
-  const EC_GROUP *group;
-  const EC_POINT *pub_key;
 
   /* check input values */
-  if ((group = EC_KEY_get0_group(eckey)) == NULL ||
-      (pub_key = EC_KEY_get0_public_key(eckey)) == NULL ||
-      sig == NULL) {
-    OPENSSL_PUT_ERROR(ECDSA, ECDSA_R_MISSING_PARAMETERS);
-    return 0;
-  }
-
   ctx = BN_CTX_new();
   if (!ctx) {
     OPENSSL_PUT_ERROR(ECDSA, ERR_R_MALLOC_FAILURE);

@@ -68,6 +68,12 @@ extern "C" {
 
 /* Signing and verifing. */
 
+/* ECDSA_verify_signed_digest verifies that |sig_len| bytes from |sig|
+ * constitute a valid signature of |digest| for the public key |ec_key| for
+ * the curve represented by the |EC_GROUP| created by |ec_group_new|.
+ * |hash_nid| must be the identifier of the digest function used to calculate
+ * |digest|. It returns one on success or zero if the signature is invalid or
+ * on error. */
 OPENSSL_EXPORT int ECDSA_verify_signed_digest(int hash_nid,
                                               const uint8_t *digest,
                                               size_t digest_len,
@@ -85,14 +91,6 @@ OPENSSL_EXPORT int ECDSA_verify_signed_digest(int hash_nid,
 OPENSSL_EXPORT int ECDSA_sign(int type, const uint8_t *digest,
                               size_t digest_len, uint8_t *sig,
                               unsigned int *sig_len, EC_KEY *key);
-
-/* ECDSA_verify verifies that |sig_len| bytes from |sig| constitute a valid
- * signature by |key| of |digest|. (The |type| argument should be zero.) It
- * returns one on success or zero if the signature is invalid or an error
- * occured. */
-OPENSSL_EXPORT int ECDSA_verify(int type, const uint8_t *digest,
-                                size_t digest_len, const uint8_t *sig,
-                                size_t sig_len, EC_KEY *key);
 
 /* ECDSA_size returns the maximum size of an ECDSA signature using |key|. It
  * returns zero on error. */
@@ -120,11 +118,17 @@ OPENSSL_EXPORT void ECDSA_SIG_free(ECDSA_SIG *sig);
 OPENSSL_EXPORT ECDSA_SIG *ECDSA_do_sign(const uint8_t *digest,
                                         size_t digest_len, EC_KEY *key);
 
-/* ECDSA_verify verifies that |sig| constitutes a valid signature by |key| of
- * |digest|. It returns one on success or zero if the signature is invalid or
- * on error. */
-OPENSSL_EXPORT int ECDSA_do_verify(const uint8_t *digest, size_t digest_len,
-                                   const ECDSA_SIG *sig, EC_KEY *key);
+/* ECDSA_do_verify_point verifies that |sig| constitutes a valid signature of
+ * |digest| by the public key represented by |group| and |pub_key|. It returns
+ * one on success or zero if the signature is invalid or on error.
+ *
+ * The OpenSSL function |ECDSA_do_verify| does the same thing, but it takes the
+ * public key as an |EC_KEY *key| instead of as |group| and |pub_key|. */
+OPENSSL_EXPORT int ECDSA_do_verify_point(const uint8_t *digest,
+                                         size_t digest_len,
+                                         const ECDSA_SIG *sig,
+                                         const EC_GROUP *group,
+                                         const EC_POINT *pub_key);
 
 
 /* Signing with precomputation.

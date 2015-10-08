@@ -70,26 +70,58 @@ enum Api {
   kRawApi,
 };
 
+static bool point2oct(ScopedOpenSSLBytes *out, size_t *out_len,
+                      const EC_GROUP *group, const EC_POINT *point) {
+  size_t der_len = EC_POINT_point2oct(group, point,
+                                      POINT_CONVERSION_UNCOMPRESSED, NULL, 0,
+                                      NULL);
+  if (der_len <= 0) {
+    return false;
+  }
+  out->reset((uint8_t *)OPENSSL_malloc(der_len));
+  if (!out) {
+    return false;
+  }
+  der_len = EC_POINT_point2oct(group, point, POINT_CONVERSION_UNCOMPRESSED,
+                               out->get(), der_len, NULL);
+  if (der_len <= 0) {
+    return false;
+  }
+  *out_len = der_len;
+  return true;
+}
+
 // VerifyECDSASig returns true on success, false on failure.
-static bool VerifyECDSASig(Api api, const uint8_t *digest,
+static bool VerifyECDSASig(Api api, int digest_nid, const uint8_t *digest,
                            size_t digest_len, const ECDSA_SIG *ecdsa_sig,
-                           EC_KEY *eckey, int expected_result) {
+                           EC_GROUP_new_fn ec_group_new, const EC_GROUP *group,
+                           const EC_POINT *pub_key,
+                           int expected_result) {
   int actual_result;
 
   switch (api) {
     case kEncodedApi: {
-      uint8_t *der;
-      size_t der_len;
-      if (!ECDSA_SIG_to_bytes(&der, &der_len, ecdsa_sig)) {
+      uint8_t *sig_der;
+      size_t sig_der_len;
+      if (!ECDSA_SIG_to_bytes(&sig_der, &sig_der_len, ecdsa_sig)) {
         return false;
       }
-      ScopedOpenSSLBytes delete_der(der);
-      actual_result = ECDSA_verify(0, digest, digest_len, der, der_len, eckey);
+      ScopedOpenSSLBytes delete_sig_der(sig_der);
+      ScopedOpenSSLBytes key_der(nullptr);
+      size_t key_der_len;
+      if (!point2oct(&key_der, &key_der_len, group, pub_key)) {
+        return false;
+      }
+      actual_result = ECDSA_verify_signed_digest(digest_nid, digest, digest_len,
+                                                 sig_der, sig_der_len,
+                                                 ec_group_new, key_der.get(),
+                                                 key_der_len);
       break;
     }
 
     case kRawApi:
-      actual_result = ECDSA_do_verify(digest, digest_len, ecdsa_sig, eckey);
+      actual_result = ECDSA_do_verify_point(digest, digest_len, ecdsa_sig,
+                                            group, pub_key);
       break;
 
     default:
@@ -101,9 +133,11 @@ static bool VerifyECDSASig(Api api, const uint8_t *digest,
 // TestTamperedSig verifies that signature verification fails when a valid
 // signature is tampered with. |ecdsa_sig| must be a valid signature, which will
 // be modified. TestTamperedSig returns true on success, false on failure.
-static bool TestTamperedSig(FILE *out, Api api, const uint8_t *digest,
-                            size_t digest_len, ECDSA_SIG *ecdsa_sig,
-                            EC_KEY *eckey, const BIGNUM *order) {
+static bool TestTamperedSig(FILE *out, Api api, int digest_nid,
+                            const uint8_t *digest, size_t digest_len,
+                            ECDSA_SIG *ecdsa_sig, EC_GROUP_new_fn ec_group_new,
+                            const EC_GROUP *group, const EC_POINT *pub_key,
+                            const BIGNUM *order) {
   // Modify a single byte of the signature: to ensure we don't
   // garble the ASN1 structure, we read the raw signature and
   // modify a byte in one of the bignums directly.
@@ -132,7 +166,8 @@ static bool TestTamperedSig(FILE *out, Api api, const uint8_t *digest,
   if (BN_bin2bn(bssl::vector_data(&raw_buf), bn_len, ecdsa_sig->r) == NULL ||
       BN_bin2bn(bssl::vector_data(&raw_buf) + bn_len, bn_len,
                 ecdsa_sig->s) == NULL ||
-      !VerifyECDSASig(api, digest, digest_len, ecdsa_sig, eckey, 0)) {
+      !VerifyECDSASig(api, digest_nid, digest, digest_len, ecdsa_sig,
+                      ec_group_new, group, pub_key, 0)) {
     return false;
   }
 
@@ -141,7 +176,8 @@ static bool TestTamperedSig(FILE *out, Api api, const uint8_t *digest,
   if (BN_bin2bn(bssl::vector_data(&raw_buf), bn_len, ecdsa_sig->r) == NULL ||
       BN_bin2bn(bssl::vector_data(&raw_buf) + bn_len, bn_len,
                 ecdsa_sig->s) == NULL ||
-      !VerifyECDSASig(api, digest, digest_len, ecdsa_sig, eckey, 1)) {
+      !VerifyECDSASig(api, digest_nid, digest, digest_len, ecdsa_sig,
+                      ec_group_new, group, pub_key, 1)) {
     return false;
   }
 
@@ -211,6 +247,23 @@ static bool TestBuiltin(FILE *out) {
     fprintf(out, ".");
     fflush(out);
 
+    ScopedOpenSSLBytes eckey_der(nullptr);
+    size_t eckey_der_len;
+    if (!point2oct(&eckey_der, &eckey_der_len, group,
+                   EC_KEY_get0_public_key(eckey.get()))) {
+      fprintf(out, " failed\n");
+      return false;
+    }
+
+    ScopedOpenSSLBytes wrong_eckey_der(nullptr);
+    size_t wrong_eckey_der_len;
+    if (!point2oct(&wrong_eckey_der, &wrong_eckey_der_len, group,
+                   EC_KEY_get0_public_key(wrong_eckey.get()))) {
+      fprintf(out, " failed\n");
+      return false;
+    }
+
+
     // Test ASN.1-encoded signatures.
     // Create a signature.
     unsigned sig_len = ECDSA_size(eckey.get());
@@ -224,32 +277,41 @@ static bool TestBuiltin(FILE *out) {
     fprintf(out, ".");
     fflush(out);
     // Verify the signature.
-    if (!ECDSA_verify(0, digest, 20, bssl::vector_data(&signature),
-                      signature.size(), eckey.get())) {
+    if (!ECDSA_verify_signed_digest(NID_sha1, digest, 20,
+                                    bssl::vector_data(&signature),
+                                    signature.size(), kCurves[n].ec_group_new,
+                                    eckey_der.get(), eckey_der_len)) {
       fprintf(out, " failed\n");
       return false;
     }
     fprintf(out, ".");
     fflush(out);
     // Verify the signature with the wrong key.
-    if (ECDSA_verify(0, digest, 20, bssl::vector_data(&signature),
-                     signature.size(), wrong_eckey.get())) {
+    if (ECDSA_verify_signed_digest(NID_sha1, digest, 20,
+                                   bssl::vector_data(&signature),
+                                   signature.size(), kCurves[n].ec_group_new,
+                                   wrong_eckey_der.get(), wrong_eckey_der_len)) {
       fprintf(out, " failed\n");
       return false;
     }
     fprintf(out, ".");
     fflush(out);
     // Verify the signature using the wrong digest.
-    if (ECDSA_verify(0, wrong_digest, 20, bssl::vector_data(&signature),
-                      signature.size(), eckey.get())) {
+    if (ECDSA_verify_signed_digest(NID_sha1, wrong_digest, 20,
+                                   bssl::vector_data(&signature),
+                                   signature.size(), kCurves[n].ec_group_new,
+                                   eckey_der.get(), eckey_der_len)) {
       fprintf(out, " failed\n");
       return false;
     }
     fprintf(out, ".");
     fflush(out);
     // Verify a truncated signature.
-    if (ECDSA_verify(0, digest, 20, bssl::vector_data(&signature),
-                      signature.size() - 1, eckey.get())) {
+    if (ECDSA_verify_signed_digest(NID_sha1, digest, 20,
+                                   bssl::vector_data(&signature),
+                                   signature.size() - 1,
+                                   kCurves[n].ec_group_new, eckey_der.get(),
+                                   eckey_der_len)) {
       fprintf(out, " failed\n");
       return false;
     }
@@ -259,8 +321,9 @@ static bool TestBuiltin(FILE *out) {
     ScopedECDSA_SIG ecdsa_sig(ECDSA_SIG_from_bytes(
         bssl::vector_data(&signature), signature.size()));
     if (!ecdsa_sig ||
-        !TestTamperedSig(out, kEncodedApi, digest, 20, ecdsa_sig.get(),
-                         eckey.get(), order.get())) {
+        !TestTamperedSig(out, kEncodedApi, NID_sha1, digest, 20, ecdsa_sig.get(),
+                         kCurves[n].ec_group_new, group,
+                         EC_KEY_get0_public_key(eckey.get()), order.get())) {
       fprintf(out, " failed\n");
       return false;
     }
@@ -277,29 +340,33 @@ static bool TestBuiltin(FILE *out) {
     fprintf(out, ".");
     fflush(out);
     // Verify the signature using the correct key.
-    if (!ECDSA_do_verify(digest, 20, ecdsa_sig.get(), eckey.get())) {
+    if (!ECDSA_do_verify_point(digest, 20, ecdsa_sig.get(), group,
+                               EC_KEY_get0_public_key(eckey.get()))) {
       fprintf(out, " failed\n");
       return false;
     }
     fprintf(out, ".");
     fflush(out);
     // Verify the signature with the wrong key.
-    if (ECDSA_do_verify(digest, 20, ecdsa_sig.get(), wrong_eckey.get())) {
+    if (ECDSA_do_verify_point(digest, 20, ecdsa_sig.get(), group,
+                              EC_KEY_get0_public_key(wrong_eckey.get()))) {
       fprintf(out, " failed\n");
       return false;
     }
     fprintf(out, ".");
     fflush(out);
     // Verify the signature using the wrong digest.
-    if (ECDSA_do_verify(wrong_digest, 20, ecdsa_sig.get(), eckey.get())) {
+    if (ECDSA_do_verify_point(wrong_digest, 20, ecdsa_sig.get(),  group,
+                              EC_KEY_get0_public_key(eckey.get()))) {
       fprintf(out, " failed\n");
       return false;
     }
     fprintf(out, ".");
     fflush(out);
     // Verify a tampered signature.
-    if (!TestTamperedSig(out, kRawApi, digest, 20, ecdsa_sig.get(), eckey.get(),
-                         order.get())) {
+    if (!TestTamperedSig(out, kRawApi, NID_sha1, digest, 20, ecdsa_sig.get(),
+                         kCurves[n].ec_group_new, group,
+                         EC_KEY_get0_public_key(eckey.get()), order.get())) {
       fprintf(out, " failed\n");
       return false;
     }
