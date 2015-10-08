@@ -419,12 +419,7 @@ unsigned EC_GROUP_get_degree(const EC_GROUP *group) {
 }
 
 int EC_GROUP_precompute_mult(EC_GROUP *group, BN_CTX *ctx) {
-  if (group->meth->mul == 0) {
-    /* use default */
-    return ec_wNAF_precompute_mult(group, ctx);
-  }
-
-  if (group->meth->precompute_mult != 0) {
+  if (group->meth->precompute_mult != NULL) {
     return group->meth->precompute_mult(group, ctx);
   }
 
@@ -432,16 +427,10 @@ int EC_GROUP_precompute_mult(EC_GROUP *group, BN_CTX *ctx) {
 }
 
 int EC_GROUP_have_precompute_mult(const EC_GROUP *group) {
-  if (group->meth->mul == 0) {
-    /* use default */
-    return ec_wNAF_have_precompute_mult(group);
+  if (group->pre_comp != NULL) {
+    return 1;
   }
-
-  if (group->meth->have_precompute_mult != 0) {
-    return group->meth->have_precompute_mult(group);
-  }
-
-  return 0; /* cannot tell whether precomputation has been performed */
+  return 0;
 }
 
 EC_POINT *EC_POINT_new(const EC_GROUP *group) {
@@ -639,11 +628,8 @@ int EC_POINT_mul(const EC_GROUP *group, EC_POINT *r, const BIGNUM *g_scalar,
 int EC_POINTs_mul(const EC_GROUP *group, EC_POINT *r, const BIGNUM *scalar,
                   size_t num, const EC_POINT *points[], const BIGNUM *scalars[],
                   BN_CTX *ctx) {
-  if (group->meth->mul == 0) {
-    /* use default. Warning, not constant-time. */
-    return ec_wNAF_mul(group, r, scalar, num, points, scalars, ctx);
-  }
-
+  /* TODO: Aren't we supposed to check that the points all have the same
+   * |meth| like other functions do? */
   return group->meth->mul(group, r, scalar, num, points, scalars, ctx);
 }
 

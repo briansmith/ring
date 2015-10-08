@@ -99,8 +99,6 @@ typedef struct ec_method_st {
              size_t num, const EC_POINT *points[], const BIGNUM *scalars[],
              BN_CTX *);
   int (*precompute_mult)(EC_GROUP *group, BN_CTX *);
-  int (*have_precompute_mult)(const EC_GROUP *group);
-
 
   /* internal functions */
 
@@ -165,7 +163,6 @@ int ec_wNAF_mul(const EC_GROUP *group, EC_POINT *r, const BIGNUM *scalar,
                 size_t num, const EC_POINT *points[], const BIGNUM *scalars[],
                 BN_CTX *);
 int ec_wNAF_precompute_mult(EC_GROUP *group, BN_CTX *);
-int ec_wNAF_have_precompute_mult(const EC_GROUP *group);
 
 /* method functions in simple.c */
 int ec_GFp_simple_group_init(EC_GROUP *);
