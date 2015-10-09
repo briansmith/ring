@@ -39,16 +39,16 @@ pub enum Tag {
     ContextSpecificConstructed3 = CONTEXT_SPECIFIC | CONSTRUCTED | 3,
 }
 
-pub fn expect_tag_and_get_input<'a>(input: &mut Reader<'a>, tag: Tag)
+pub fn expect_tag_and_get_value<'a>(input: &mut Reader<'a>, tag: Tag)
                                     -> Result<Input<'a>, ()> {
-    let (actual_tag, inner) = try!(read_tag_and_get_input(input));
+    let (actual_tag, inner) = try!(read_tag_and_get_value(input));
     if (tag as usize) != (actual_tag as usize) {
         return Err(());
     }
     Ok(inner)
 }
 
-pub fn read_tag_and_get_input<'a>(input: &mut Reader<'a>)
+pub fn read_tag_and_get_value<'a>(input: &mut Reader<'a>)
                                   -> Result<(u8, Input<'a>), ()> {
     let tag = try!(input.read_byte());
     if (tag & 0x1F) == 0x1F {
@@ -91,6 +91,6 @@ pub fn nested<'a, F, R, E: Copy>(input: &mut Reader<'a>, tag: Tag, error: E,
                                  decoder: F) -> Result<R, E>
                                  where F : FnOnce(&mut Reader<'a>)
                                  -> Result<R, E> {
-    let inner = try!(expect_tag_and_get_input(input, tag).map_err(|_| error));
+    let inner = try!(expect_tag_and_get_value(input, tag).map_err(|_| error));
     read_all(inner, error, decoder)
 }
