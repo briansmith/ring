@@ -48,10 +48,6 @@ RING_SRCS = $(addprefix $(RING_PREFIX), \
   crypto/cpu-arm.c \
   crypto/cpu-intel.c \
   crypto/crypto.c \
-  crypto/dh/check.c \
-  crypto/dh/dh.c \
-  crypto/dh/dh_impl.c \
-  crypto/dh/params.c \
   crypto/digest/digest.c \
   crypto/digest/digests.c \
   crypto/ec/ec.c \
@@ -200,7 +196,6 @@ RING_TEST_MAIN_SRCS = $(addprefix $(RING_PREFIX), \
   crypto/bytestring/bytestring_test.cc \
   crypto/cipher/aead_test.cc \
   crypto/constant_time_test.c \
-  crypto/dh/dh_test.cc \
   crypto/digest/digest_test.cc \
   crypto/ec/example_mul.c \
   crypto/ecdsa/ecdsa_test.cc \

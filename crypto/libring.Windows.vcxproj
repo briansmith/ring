@@ -44,10 +44,6 @@
     <ClCompile Include="cpu-arm.c" />
     <ClCompile Include="cpu-intel.c" />
     <ClCompile Include="crypto.c" />
-    <ClCompile Include="dh\check.c" />
-    <ClCompile Include="dh\dh.c" />
-    <ClCompile Include="dh\dh_impl.c" />
-    <ClCompile Include="dh\params.c" />
     <ClCompile Include="digest\digest.c" />
     <ClCompile Include="digest\digests.c" />
     <ClCompile Include="ec\ec.c" />
@@ -90,7 +86,6 @@
     <ClInclude Include="bytestring\internal.h" />
     <ClInclude Include="cipher\internal.h" />
     <ClInclude Include="des\internal.h" />
-    <ClInclude Include="dh\internal.h" />
     <ClInclude Include="digest\internal.h" />
     <ClInclude Include="digest\md32_common.h" />
     <ClInclude Include="ec\internal.h" />
