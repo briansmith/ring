@@ -514,7 +514,7 @@ enum ssl_session_result_t ssl_get_prev_session(
   size_t ticket_len = 0;
   const int tickets_supported =
       !(SSL_get_options(ssl) & SSL_OP_NO_TICKET) &&
-      (ssl->version > SSL3_VERSION || ctx->extensions != NULL) &&
+      ssl->version > SSL3_VERSION &&
       SSL_early_callback_ctx_extension_get(ctx, TLSEXT_TYPE_session_ticket,
                                            &ticket, &ticket_len);
   if (tickets_supported) {

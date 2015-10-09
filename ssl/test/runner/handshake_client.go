@@ -833,6 +833,10 @@ func (hs *clientHandshakeState) readSessionTicket() error {
 		return nil
 	}
 
+	if c.vers == VersionSSL30 {
+		return errors.New("tls: negotiated session tickets in SSL 3.0")
+	}
+
 	msg, err := c.readHandshake()
 	if err != nil {
 		return err

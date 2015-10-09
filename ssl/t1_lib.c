@@ -1205,7 +1205,7 @@ static int ext_ticket_parse_serverhello(SSL *ssl, uint8_t *out_alert,
 
 static int ext_ticket_parse_clienthello(SSL *ssl, uint8_t *out_alert, CBS *contents) {
   /* This function isn't used because the ticket extension from the client is
-   * handled in ssl_sess.c. */
+   * handled in ssl_session.c. */
   return 1;
 }
 
@@ -2325,11 +2325,6 @@ err:
 
 uint8_t *ssl_add_serverhello_tlsext(SSL *s, uint8_t *const buf,
                                     uint8_t *const limit) {
-  /* don't add extensions for SSLv3, unless doing secure renegotiation */
-  if (s->version == SSL3_VERSION && !s->s3->send_connection_binding) {
-    return buf;
-  }
-
   CBB cbb, extensions;
   CBB_zero(&cbb);
   if (!CBB_init_fixed(&cbb, buf, limit - buf) ||
@@ -2411,6 +2406,12 @@ static int ssl_scan_clienthello_tlsext(SSL *s, CBS *cbs, int *out_alert) {
           !CBS_get_u16_length_prefixed(&extensions, &extension)) {
         *out_alert = SSL_AD_DECODE_ERROR;
         return 0;
+      }
+
+      /* RFC 5746 made the existence of extensions in SSL 3.0 somewhat
+       * ambiguous. Ignore all but the renegotiation_info extension. */
+      if (s->version == SSL3_VERSION && type != TLSEXT_TYPE_renegotiate) {
+        continue;
       }
 
       unsigned ext_index;
@@ -2605,10 +2606,6 @@ static int ssl_check_serverhello_tlsext(SSL *s) {
 
 int ssl_parse_serverhello_tlsext(SSL *s, CBS *cbs) {
   int alert = -1;
-  if (s->version < SSL3_VERSION) {
-    return 1;
-  }
-
   if (ssl_scan_serverhello_tlsext(s, cbs, &alert) <= 0) {
     ssl3_send_alert(s, SSL3_AL_FATAL, alert);
     return 0;

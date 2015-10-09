@@ -149,6 +149,9 @@ type testCase struct {
 	// expectedNextProto controls whether the connection should
 	// negotiate a next protocol via NPN or ALPN.
 	expectedNextProto string
+	// expectNoNextProto, if true, means that no next protocol should be
+	// negotiated.
+	expectNoNextProto bool
 	// expectedNextProtoType, if non-zero, is the expected next
 	// protocol negotiation mechanism.
 	expectedNextProtoType int
@@ -325,6 +328,12 @@ func doExchange(test *testCase, config *Config, conn net.Conn, isResume bool) er
 	if expected := test.expectedNextProto; expected != "" {
 		if actual := connState.NegotiatedProtocol; actual != expected {
 			return fmt.Errorf("next proto mismatch: got %s, wanted %s", actual, expected)
+		}
+	}
+
+	if test.expectNoNextProto {
+		if actual := connState.NegotiatedProtocol; actual != "" {
+			return fmt.Errorf("got unexpected next proto %s", actual)
 		}
 	}
 
@@ -3491,6 +3500,68 @@ func addExtensionTests() {
 		// ClientHello into F5's danger zone between 256 and 511 bytes
 		// long.
 		flags: []string{"-host-name", "01234567890123456789012345678901234567890123456789012345678901234567890123456789.com"},
+	})
+
+	// Extensions should not function in SSL 3.0.
+	testCases = append(testCases, testCase{
+		testType: serverTest,
+		name:     "SSLv3Extensions-NoALPN",
+		config: Config{
+			MaxVersion: VersionSSL30,
+			NextProtos: []string{"foo", "bar", "baz"},
+		},
+		flags: []string{
+			"-select-alpn", "foo",
+		},
+		expectNoNextProto: true,
+	})
+
+	// Test session tickets separately as they follow a different codepath.
+	testCases = append(testCases, testCase{
+		testType: serverTest,
+		name:     "SSLv3Extensions-NoTickets",
+		config: Config{
+			MaxVersion: VersionSSL30,
+			Bugs: ProtocolBugs{
+				// Historically, session tickets in SSL 3.0
+				// failed in different ways depending on whether
+				// the client supported renegotiation_info.
+				NoRenegotiationInfo: true,
+			},
+		},
+		resumeSession: true,
+	})
+	testCases = append(testCases, testCase{
+		testType: serverTest,
+		name:     "SSLv3Extensions-NoTickets2",
+		config: Config{
+			MaxVersion: VersionSSL30,
+		},
+		resumeSession: true,
+	})
+
+	// But SSL 3.0 does send and process renegotiation_info.
+	testCases = append(testCases, testCase{
+		testType: serverTest,
+		name:     "SSLv3Extensions-RenegotiationInfo",
+		config: Config{
+			MaxVersion: VersionSSL30,
+			Bugs: ProtocolBugs{
+				RequireRenegotiationInfo: true,
+			},
+		},
+	})
+	testCases = append(testCases, testCase{
+		testType: serverTest,
+		name:     "SSLv3Extensions-RenegotiationInfo-SCSV",
+		config: Config{
+			MaxVersion: VersionSSL30,
+			Bugs: ProtocolBugs{
+				NoRenegotiationInfo:      true,
+				SendRenegotiationSCSV:    true,
+				RequireRenegotiationInfo: true,
+			},
+		},
 	})
 }
 
