@@ -1068,7 +1068,7 @@ int bn_mul_mont(BN_ULONG *rp, const BN_ULONG *ap, const BN_ULONG *bp,
   tp[num + 1] = 0;
   goto enter;
 
-  for (i = 0; i < num; i++) {
+  for (; i < num; i++) {
     c0 = 0;
     ml = bp[i];
 #ifdef mul64
