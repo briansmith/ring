@@ -1854,7 +1854,7 @@ int ssl3_get_client_key_exchange(SSL *s) {
 
     premaster_secret_len = dh_len;
   } else if (alg_k & SSL_kECDHE) {
-    int field_size = 0, ecdh_len;
+    int ecdh_len;
     const EC_KEY *tkey;
     const EC_GROUP *group;
     const BIGNUM *priv_key;
@@ -1909,8 +1909,8 @@ int ssl3_get_client_key_exchange(SSL *s) {
     }
 
     /* Allocate a buffer for both the secret and the PSK. */
-    field_size = EC_GROUP_get_degree(group);
-    if (field_size <= 0) {
+    unsigned field_size = EC_GROUP_get_degree(group);
+    if (field_size == 0) {
       OPENSSL_PUT_ERROR(SSL, ERR_R_ECDH_LIB);
       goto err;
     }

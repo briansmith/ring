@@ -564,7 +564,7 @@ int EC_GROUP_get_curve_GFp(const EC_GROUP *group, BIGNUM *out_p, BIGNUM *out_a,
 
 int EC_GROUP_get_curve_name(const EC_GROUP *group) { return group->curve_name; }
 
-int EC_GROUP_get_degree(const EC_GROUP *group) {
+unsigned EC_GROUP_get_degree(const EC_GROUP *group) {
   return ec_GFp_simple_group_get_degree(group);
 }
 
