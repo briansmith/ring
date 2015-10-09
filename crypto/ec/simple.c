@@ -226,7 +226,7 @@ err:
   return ret;
 }
 
-int ec_GFp_simple_group_get_degree(const EC_GROUP *group) {
+unsigned ec_GFp_simple_group_get_degree(const EC_GROUP *group) {
   return BN_num_bits(&group->field);
 }
 

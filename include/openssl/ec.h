@@ -128,7 +128,7 @@ OPENSSL_EXPORT int EC_GROUP_get_curve_name(const EC_GROUP *group);
 
 /* EC_GROUP_get_degree returns the number of bits needed to represent an
  * element of the field underlying |group|. */
-OPENSSL_EXPORT int EC_GROUP_get_degree(const EC_GROUP *group);
+OPENSSL_EXPORT unsigned EC_GROUP_get_degree(const EC_GROUP *group);
 
 /* EC_GROUP_precompute_mult precomputes multiplies of the generator in order to
  * speed up operations that involve calculating generator multiples. It returns

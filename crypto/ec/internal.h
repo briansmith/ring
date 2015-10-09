@@ -96,7 +96,7 @@ typedef struct ec_method_st {
                          const BIGNUM *b, BN_CTX *);
 
   /* used by EC_GROUP_get_degree: */
-  int (*group_get_degree)(const EC_GROUP *);
+  unsigned (*group_get_degree)(const EC_GROUP *);
 
   /* used by EC_POINT_new, EC_POINT_free, EC_POINT_clear_free, EC_POINT_copy: */
   int (*point_init)(EC_POINT *);
@@ -230,7 +230,7 @@ void ec_GFp_simple_group_clear_finish(EC_GROUP *);
 int ec_GFp_simple_group_copy(EC_GROUP *, const EC_GROUP *);
 int ec_GFp_simple_group_set_curve(EC_GROUP *, const BIGNUM *p, const BIGNUM *a,
                                   const BIGNUM *b, BN_CTX *);
-int ec_GFp_simple_group_get_degree(const EC_GROUP *);
+unsigned ec_GFp_simple_group_get_degree(const EC_GROUP *);
 int ec_GFp_simple_point_init(EC_POINT *);
 void ec_GFp_simple_point_finish(EC_POINT *);
 void ec_GFp_simple_point_clear_finish(EC_POINT *);
