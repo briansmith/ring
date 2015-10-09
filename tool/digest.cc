@@ -451,10 +451,6 @@ static bool DigestSum(const EVP_MD *md,
   return ok;
 }
 
-bool MD5Sum(const std::vector<std::string> &args) {
-  return DigestSum(EVP_md5(), args);
-}
-
 bool SHA1Sum(const std::vector<std::string> &args) {
   return DigestSum(EVP_sha1(), args);
 }

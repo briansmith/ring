@@ -25,7 +25,6 @@
 #endif
 
 
-bool MD5Sum(const std::vector<std::string> &args);
 bool Rand(const std::vector<std::string> &args);
 bool SHA1Sum(const std::vector<std::string> &args);
 bool SHA224Sum(const std::vector<std::string> &args);
@@ -42,7 +41,6 @@ struct Tool {
 };
 
 static const Tool kTools[] = {
-  { "md5sum", MD5Sum },
   { "rand", Rand },
   { "sha1sum", SHA1Sum },
   { "sha224sum", SHA224Sum },

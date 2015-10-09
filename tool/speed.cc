@@ -28,6 +28,8 @@
 
 #include <openssl/aead.h>
 #include <openssl/digest.h>
+#include <openssl/ecdh.h>
+#include <openssl/ec_key.h>
 #include <openssl/err.h>
 #include <openssl/obj.h>
 #include <openssl/rand.h>
@@ -152,7 +154,6 @@ static bool SpeedRSA(const std::string &key_name, RSA *key,
                         sig.get(), &sig_len, key);
       })) {
     fprintf(stderr, "RSA_sign failed.\n");
-    ERR_print_errors_fp(stderr);
     return false;
   }
   results.Print(key_name + " signing");
@@ -163,7 +164,6 @@ static bool SpeedRSA(const std::string &key_name, RSA *key,
                           sizeof(fake_sha256_hash), sig.get(), sig_len, key);
       })) {
     fprintf(stderr, "RSA_verify failed.\n");
-    ERR_print_errors_fp(stderr);
     return false;
   }
   results.Print(key_name + " verify");
@@ -204,7 +204,6 @@ static bool SpeedAEADChunk(const EVP_AEAD *aead, const std::string &name,
                                         EVP_AEAD_DEFAULT_TAG_LENGTH,
                                         evp_aead_seal)) {
     fprintf(stderr, "Failed to create EVP_AEAD_CTX.\n");
-    ERR_print_errors_fp(stderr);
     return false;
   }
 
@@ -218,7 +217,6 @@ static bool SpeedAEADChunk(const EVP_AEAD *aead, const std::string &name,
             nonce_len, in, chunk_len, ad.get(), ad_len);
       })) {
     fprintf(stderr, "EVP_AEAD_CTX_seal failed.\n");
-    ERR_print_errors_fp(stderr);
     return false;
   }
 
@@ -259,7 +257,6 @@ static bool SpeedHashChunk(const EVP_MD *md, const std::string &name,
                EVP_DigestFinal_ex(ctx, digest, &md_len);
       })) {
     fprintf(stderr, "EVP_DigestInit_ex failed.\n");
-    ERR_print_errors_fp(stderr);
     return false;
   }
 
@@ -316,29 +313,32 @@ static bool SpeedECDHCurve(const std::string &name,
     return true;
   }
 
+  ScopedEC_KEY peer_key(EC_KEY_generate_key_ex(ec_group_new));
+  if (!peer_key) {
+    return false;
+  }
+  uint8_t peer_key_der[512];
+  size_t peer_key_der_len =
+    EC_KEY_public_key_to_oct(peer_key.get(), peer_key_der, sizeof(peer_key_der));
+  if (peer_key_der_len == 0) {
+    return false;
+  }
+  int peer_key_nid = EC_GROUP_get_curve_name(EC_KEY_get0_group(peer_key.get()));
+
   TimeResults results;
-  if (!TimeFunction(&results, [nid]() -> bool {
-        ScopedEC_KEY key(EC_KEY_new_ex(ec_group_new));
-        if (!key ||
-            !EC_KEY_generate_key(key.get())) {
+  if (!TimeFunction(&results,
+                    [ec_group_new, &peer_key_der, peer_key_der_len,
+                     peer_key_nid]() -> bool {
+        ScopedEC_KEY my_key(EC_KEY_generate_key_ex(ec_group_new));
+        if (!my_key) {
           return false;
         }
-        const EC_GROUP *const group = EC_KEY_get0_group(key.get());
-        ScopedEC_POINT point(EC_POINT_new(group));
-        ScopedBN_CTX ctx(BN_CTX_new());
-
-        ScopedBIGNUM x(BN_new());
-        ScopedBIGNUM y(BN_new());
-
-        if (!point || !ctx || !x || !y ||
-            !EC_POINT_mul(group, point.get(), NULL,
-                          EC_KEY_get0_public_key(key.get()),
-                          EC_KEY_get0_private_key(key.get()), ctx.get()) ||
-            !EC_POINT_get_affine_coordinates_GFp(group, point.get(), x.get(),
-                                                 y.get(), ctx.get())) {
+        uint8_t buf[1024];
+        size_t buf_len;
+        if (!ECDH_compute_key_ex(buf, &buf_len, sizeof(buf), my_key.get(),
+                                 peer_key_nid, peer_key_der, peer_key_der_len)) {
           return false;
         }
-
         return true;
       })) {
     return false;
@@ -355,9 +355,8 @@ static bool SpeedECDSACurve(const std::string &name,
     return true;
   }
 
-  ScopedEC_KEY key(EC_KEY_new_ex(ec_group_new));
-  if (!key ||
-      !EC_KEY_generate_key(key.get())) {
+  ScopedEC_KEY key(EC_KEY_generate_key_ex(ec_group_new));
+  if (!key) {
     return false;
   }
 
@@ -379,9 +378,18 @@ static bool SpeedECDSACurve(const std::string &name,
 
   results.Print(name + " signing");
 
-  if (!TimeFunction(&results, [&key, &signature, &digest, sig_len]() -> bool {
-        return ECDSA_verify(0, digest, sizeof(digest), signature, sig_len,
-                            key.get()) == 1;
+  uint8_t key_der[512];
+  size_t key_der_len =
+    EC_KEY_public_key_to_oct(key.get(), key_der, sizeof(key_der));
+  if (key_der_len == 0) {
+    return false;
+  }
+
+  if (!TimeFunction(&results, [ec_group_new, &key_der, key_der_len, &signature,
+                               &digest, sig_len]() -> bool {
+        return ECDSA_verify_signed_digest(NID_sha1, digest, sizeof(digest),
+                                          signature, sig_len, ec_group_new,
+                                          key_der, key_der_len) == 1;
       })) {
     return false;
   }
@@ -392,10 +400,10 @@ static bool SpeedECDSACurve(const std::string &name,
 }
 
 static bool SpeedECDH(const std::string &selected) {
-  return SpeedECDHCurve("ECDH P-224", NID_secp224r1, selected) &&
-         SpeedECDHCurve("ECDH P-256", NID_X9_62_prime256v1, selected) &&
-         SpeedECDHCurve("ECDH P-384", NID_secp384r1, selected) &&
-         SpeedECDHCurve("ECDH P-521", NID_secp521r1, selected);
+  return SpeedECDHCurve("ECDH P-224", EC_GROUP_new_p224, selected) &&
+         SpeedECDHCurve("ECDH P-256", EC_GROUP_new_p256, selected) &&
+         SpeedECDHCurve("ECDH P-384", EC_GROUP_new_p384, selected) &&
+         SpeedECDHCurve("ECDH P-521", EC_GROUP_new_p521, selected);
 }
 
 static bool SpeedECDSA(const std::string &selected) {
@@ -419,7 +427,6 @@ bool Speed(const std::vector<std::string> &args) {
                                         kDERRSAPrivate2048Len);
   if (key == NULL) {
     fprintf(stderr, "Failed to parse RSA key.\n");
-    ERR_print_errors_fp(stderr);
     return false;
   }
 
@@ -432,7 +439,6 @@ bool Speed(const std::vector<std::string> &args) {
                                    kDERRSAPrivate4096Len);
   if (key == NULL) {
     fprintf(stderr, "Failed to parse RSA key.\n");
-    ERR_print_errors_fp(stderr);
     return false;
   }
   if (!SpeedRSA("RSA 4096", key, selected)) {
@@ -444,20 +450,11 @@ bool Speed(const std::vector<std::string> &args) {
   // kTLSADLen is the number of bytes of additional data that TLS passes to
   // AEADs.
   static const size_t kTLSADLen = 13;
-  // kLegacyADLen is the number of bytes that TLS passes to the "legacy" AEADs.
-  // These are AEADs that weren't originally defined as AEADs, but which we use
-  // via the AEAD interface. In order for that to work, they have some TLS
-  // knowledge in them and construct a couple of the AD bytes internally.
-  static const size_t kLegacyADLen = kTLSADLen - 2;
 
   if (!SpeedAEAD(EVP_aead_aes_128_gcm(), "AES-128-GCM", kTLSADLen, selected) ||
       !SpeedAEAD(EVP_aead_aes_256_gcm(), "AES-256-GCM", kTLSADLen, selected) ||
       !SpeedAEAD(EVP_aead_chacha20_poly1305(), "ChaCha20-Poly1305", kTLSADLen,
                  selected) ||
-      !SpeedAEAD(EVP_aead_aes_128_cbc_sha1_tls(), "AES-128-CBC-SHA1",
-                 kLegacyADLen, selected) ||
-      !SpeedAEAD(EVP_aead_aes_256_cbc_sha1_tls(), "AES-256-CBC-SHA1",
-                 kLegacyADLen, selected) ||
       !SpeedHash(EVP_sha1(), "SHA-1", selected) ||
       !SpeedHash(EVP_sha256(), "SHA-256", selected) ||
       !SpeedHash(EVP_sha512(), "SHA-512", selected) ||
