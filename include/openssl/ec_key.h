@@ -155,6 +155,13 @@ OPENSSL_EXPORT int EC_KEY_set_public_key_affine_coordinates(EC_KEY *key,
                                                             BIGNUM *x,
                                                             BIGNUM *y);
 
+/* EC_KEY_public_key_to_oct serialises the public key point of |key| into the
+ * X9.62 uncompressed form at |out|, writing at most |out_len| bytes. It
+ * returns the number of bytes written or zero on error if |out| is non-NULL,
+ * else the number of bytes needed. */
+OPENSSL_EXPORT size_t EC_KEY_public_key_to_oct(const EC_KEY *key, uint8_t *out,
+                                               size_t out_len);
+
 
 /* Key generation. */
 
@@ -162,6 +169,11 @@ OPENSSL_EXPORT int EC_KEY_set_public_key_affine_coordinates(EC_KEY *key,
  * corresponding public key and stores both in |key|. It returns one on success
  * or zero otherwise. */
 OPENSSL_EXPORT int EC_KEY_generate_key(EC_KEY *key);
+
+/* EC_KEY_generate_key_ex generates a random private key and calculates the
+ * corresponding public key. It returns the generated key pair on success or
+ * NULL on failure. */
+OPENSSL_EXPORT EC_KEY *EC_KEY_generate_key_ex(EC_GROUP_new_fn ec_group_new);
 
 
 #if defined(__cplusplus)
