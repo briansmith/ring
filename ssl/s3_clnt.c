@@ -2098,68 +2098,57 @@ int ssl3_send_next_proto(SSL *ssl) {
   return ssl_do_write(ssl);
 }
 
-int ssl3_send_channel_id(SSL *s) {
-  uint8_t *d;
-  int ret = -1, public_key_len;
-  EVP_MD_CTX md_ctx;
-  ECDSA_SIG *sig = NULL;
-  uint8_t *public_key = NULL, *derp, *der_sig = NULL;
+static int write_32_byte_big_endian(CBB *out, const BIGNUM *in) {
+  uint8_t *ptr;
+  return CBB_add_space(out, &ptr, 32) &&
+         BN_bn2bin_padded(ptr, 32, in);
+}
 
-  if (s->state != SSL3_ST_CW_CHANNEL_ID_A) {
-    return ssl_do_write(s);
+int ssl3_send_channel_id(SSL *ssl) {
+  if (ssl->state == SSL3_ST_CW_CHANNEL_ID_B) {
+    return ssl_do_write(ssl);
   }
 
-  if (!s->tlsext_channel_id_private && s->ctx->channel_id_cb) {
+  assert(ssl->state == SSL3_ST_CW_CHANNEL_ID_A);
+
+  if (ssl->tlsext_channel_id_private == NULL &&
+      ssl->ctx->channel_id_cb != NULL) {
     EVP_PKEY *key = NULL;
-    s->ctx->channel_id_cb(s, &key);
-    if (key != NULL) {
-      s->tlsext_channel_id_private = key;
+    ssl->ctx->channel_id_cb(ssl, &key);
+    if (key != NULL &&
+        !SSL_set1_tls_channel_id(ssl, key)) {
+      EVP_PKEY_free(key);
+      return -1;
     }
+    EVP_PKEY_free(key);
   }
 
-  if (!s->tlsext_channel_id_private) {
-    s->rwstate = SSL_CHANNEL_ID_LOOKUP;
+  if (ssl->tlsext_channel_id_private == NULL) {
+    ssl->rwstate = SSL_CHANNEL_ID_LOOKUP;
     return -1;
   }
-  s->rwstate = SSL_NOTHING;
+  ssl->rwstate = SSL_NOTHING;
 
-  if (EVP_PKEY_id(s->tlsext_channel_id_private) != EVP_PKEY_EC) {
+  if (EVP_PKEY_id(ssl->tlsext_channel_id_private) != EVP_PKEY_EC) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
     return -1;
   }
-  EC_KEY *ec_key = s->tlsext_channel_id_private->pkey.ec;
 
-  d = ssl_handshake_start(s);
-  s2n(TLSEXT_TYPE_channel_id, d);
-  s2n(TLSEXT_CHANNEL_ID_SIZE, d);
-
-  EVP_MD_CTX_init(&md_ctx);
-
-  public_key_len = i2o_ECPublicKey(ec_key, NULL);
-  if (public_key_len <= 0) {
-    OPENSSL_PUT_ERROR(SSL, SSL_R_CANNOT_SERIALIZE_PUBLIC_KEY);
+  int ret = -1;
+  EC_KEY *ec_key = ssl->tlsext_channel_id_private->pkey.ec;
+  BIGNUM *x = BN_new();
+  BIGNUM *y = BN_new();
+  ECDSA_SIG *sig = NULL;
+  if (x == NULL || y == NULL ||
+      !EC_POINT_get_affine_coordinates_GFp(EC_KEY_get0_group(ec_key),
+                                           EC_KEY_get0_public_key(ec_key),
+                                           x, y, NULL)) {
     goto err;
   }
-
-  /* i2o_ECPublicKey will produce an ANSI X9.62 public key which, for a
-   * P-256 key, is 0x04 (meaning uncompressed) followed by the x and y
-   * field elements as 32-byte, big-endian numbers. */
-  if (public_key_len != 65) {
-    OPENSSL_PUT_ERROR(SSL, SSL_R_CHANNEL_ID_NOT_P256);
-    goto err;
-  }
-  public_key = OPENSSL_malloc(public_key_len);
-  if (!public_key) {
-    OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
-    goto err;
-  }
-
-  derp = public_key;
-  i2o_ECPublicKey(ec_key, &derp);
 
   uint8_t digest[EVP_MAX_MD_SIZE];
   size_t digest_len;
-  if (!tls1_channel_id_hash(s, digest, &digest_len)) {
+  if (!tls1_channel_id_hash(ssl, digest, &digest_len)) {
     goto err;
   }
 
@@ -2168,29 +2157,31 @@ int ssl3_send_channel_id(SSL *s) {
     goto err;
   }
 
-  /* The first byte of public_key will be 0x4, denoting an uncompressed key. */
-  memcpy(d, public_key + 1, 64);
-  d += 64;
-  if (!BN_bn2bin_padded(d, 32, sig->r) ||
-      !BN_bn2bin_padded(d + 32, 32, sig->s)) {
+  CBB cbb, child;
+  size_t length;
+  CBB_zero(&cbb);
+  if (!CBB_init_fixed(&cbb, ssl_handshake_start(ssl),
+                      ssl->init_buf->max - SSL_HM_HEADER_LENGTH(ssl)) ||
+      !CBB_add_u16(&cbb, TLSEXT_TYPE_channel_id) ||
+      !CBB_add_u16_length_prefixed(&cbb, &child) ||
+      !write_32_byte_big_endian(&child, x) ||
+      !write_32_byte_big_endian(&child, y) ||
+      !write_32_byte_big_endian(&child, sig->r) ||
+      !write_32_byte_big_endian(&child, sig->s) ||
+      !CBB_finish(&cbb, NULL, &length) ||
+      !ssl_set_handshake_header(ssl, SSL3_MT_ENCRYPTED_EXTENSIONS, length)) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
+    CBB_cleanup(&cbb);
     goto err;
   }
 
-  if (!ssl_set_handshake_header(s, SSL3_MT_ENCRYPTED_EXTENSIONS,
-                                2 + 2 + TLSEXT_CHANNEL_ID_SIZE)) {
-    goto err;
-  }
-  s->state = SSL3_ST_CW_CHANNEL_ID_B;
-
-  ret = ssl_do_write(s);
+  ssl->state = SSL3_ST_CW_CHANNEL_ID_B;
+  ret = ssl_do_write(ssl);
 
 err:
-  EVP_MD_CTX_cleanup(&md_ctx);
-  OPENSSL_free(public_key);
-  OPENSSL_free(der_sig);
+  BN_free(x);
+  BN_free(y);
   ECDSA_SIG_free(sig);
-
   return ret;
 }
 
