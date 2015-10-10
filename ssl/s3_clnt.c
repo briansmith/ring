@@ -2067,29 +2067,35 @@ int ssl3_send_client_certificate(SSL *s) {
   return ssl_do_write(s);
 }
 
-int ssl3_send_next_proto(SSL *s) {
-  unsigned int len, padding_len;
-  uint8_t *d, *p;
-
-  if (s->state == SSL3_ST_CW_NEXT_PROTO_A) {
-    len = s->next_proto_negotiated_len;
-    padding_len = 32 - ((len + 2) % 32);
-
-    d = p = ssl_handshake_start(s);
-    *(p++) = len;
-    memcpy(p, s->next_proto_negotiated, len);
-    p += len;
-    *(p++) = padding_len;
-    memset(p, 0, padding_len);
-    p += padding_len;
-
-    if (!ssl_set_handshake_header(s, SSL3_MT_NEXT_PROTO, p - d)) {
-      return -1;
-    }
-    s->state = SSL3_ST_CW_NEXT_PROTO_B;
+int ssl3_send_next_proto(SSL *ssl) {
+  if (ssl->state == SSL3_ST_CW_NEXT_PROTO_B) {
+    return ssl_do_write(ssl);
   }
 
-  return ssl_do_write(s);
+  assert(ssl->state == SSL3_ST_CW_NEXT_PROTO_A);
+
+  static const uint8_t kZero[32] = {0};
+  size_t padding_len = 32 - ((ssl->next_proto_negotiated_len + 2) % 32);
+
+  CBB cbb, child;
+  size_t length;
+  CBB_zero(&cbb);
+  if (!CBB_init_fixed(&cbb, ssl_handshake_start(ssl),
+                      ssl->init_buf->max - SSL_HM_HEADER_LENGTH(ssl)) ||
+      !CBB_add_u8_length_prefixed(&cbb, &child) ||
+      !CBB_add_bytes(&child, ssl->next_proto_negotiated,
+                     ssl->next_proto_negotiated_len) ||
+      !CBB_add_u8_length_prefixed(&cbb, &child) ||
+      !CBB_add_bytes(&child, kZero, padding_len) ||
+      !CBB_finish(&cbb, NULL, &length) ||
+      !ssl_set_handshake_header(ssl, SSL3_MT_NEXT_PROTO, length)) {
+    OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
+    CBB_cleanup(&cbb);
+    return -1;
+  }
+
+  ssl->state = SSL3_ST_CW_NEXT_PROTO_B;
+  return ssl_do_write(ssl);
 }
 
 int ssl3_send_channel_id(SSL *s) {
