@@ -2311,53 +2311,44 @@ err:
   return 0;
 }
 
-uint8_t *ssl_add_serverhello_tlsext(SSL *s, uint8_t *const buf,
-                                    uint8_t *const limit) {
-  CBB cbb, extensions;
-  CBB_zero(&cbb);
-  if (!CBB_init_fixed(&cbb, buf, limit - buf) ||
-      !CBB_add_u16_length_prefixed(&cbb, &extensions)) {
+int ssl_add_serverhello_tlsext(SSL *ssl, CBB *out) {
+  const size_t orig_len = CBB_len(out);
+
+  CBB extensions;
+  if (!CBB_add_u16_length_prefixed(out, &extensions)) {
     goto err;
   }
 
   unsigned i;
   for (i = 0; i < kNumExtensions; i++) {
-    if (!(s->s3->tmp.extensions.received & (1u << i))) {
+    if (!(ssl->s3->tmp.extensions.received & (1u << i))) {
       /* Don't send extensions that were not received. */
       continue;
     }
 
-    if (!kExtensions[i].add_serverhello(s, &extensions)) {
+    if (!kExtensions[i].add_serverhello(ssl, &extensions)) {
       OPENSSL_PUT_ERROR(SSL, SSL_R_ERROR_ADDING_EXTENSION);
       ERR_add_error_dataf("extension: %u", (unsigned)kExtensions[i].value);
       goto err;
     }
   }
 
-  if (!custom_ext_add_serverhello(s, &extensions)) {
+  if (!custom_ext_add_serverhello(ssl, &extensions)) {
     goto err;
   }
 
-  if (!CBB_flush(&cbb)) {
-    goto err;
-  }
-
-  uint8_t *ret = buf;
-  const size_t cbb_len = CBB_len(&cbb);
   /* If only two bytes have been written then the extensions are actually empty
    * and those two bytes are the zero length. In that case, we don't bother
    * sending the extensions length. */
-  if (cbb_len > 2) {
-    ret += cbb_len;
+  if (CBB_len(&extensions) - orig_len == 2) {
+    CBB_discard_child(out);
   }
 
-  CBB_cleanup(&cbb);
-  return ret;
+  return CBB_flush(out);
 
 err:
-  CBB_cleanup(&cbb);
   OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
-  return NULL;
+  return 0;
 }
 
 static int ssl_scan_clienthello_tlsext(SSL *s, CBS *cbs, int *out_alert) {

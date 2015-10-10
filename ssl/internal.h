@@ -1123,7 +1123,7 @@ int ssl3_verify_server_cert(SSL *s);
 int ssl3_get_initial_bytes(SSL *s);
 int ssl3_get_v2_client_hello(SSL *s);
 int ssl3_get_client_hello(SSL *s);
-int ssl3_send_server_hello(SSL *s);
+int ssl3_send_server_hello(SSL *ssl);
 int ssl3_send_server_key_exchange(SSL *s);
 int ssl3_send_certificate_request(SSL *s);
 int ssl3_send_server_done(SSL *s);
@@ -1214,8 +1214,7 @@ int tls1_shared_list(SSL *s, const uint8_t *l1, size_t l1len, const uint8_t *l2,
  * length. (It does not include the record header.) */
 int ssl_add_clienthello_tlsext(SSL *ssl, CBB *out, size_t header_len);
 
-uint8_t *ssl_add_serverhello_tlsext(SSL *s, uint8_t *const buf,
-                                    uint8_t *const limit);
+int ssl_add_serverhello_tlsext(SSL *ssl, CBB *out);
 int ssl_parse_clienthello_tlsext(SSL *s, CBS *cbs);
 int ssl_parse_serverhello_tlsext(SSL *s, CBS *cbs);
 

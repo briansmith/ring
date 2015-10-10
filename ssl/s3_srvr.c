@@ -944,8 +944,15 @@ int ssl3_get_client_hello(SSL *s) {
     session = NULL;
 
     s->verify_result = s->session->verify_result;
-  } else if (!ssl_get_new_session(s, 1)) {
-    goto err;
+  } else {
+    if (!ssl_get_new_session(s, 1)) {
+      goto err;
+    }
+
+    /* Clear the session ID if we want the session to be single-use. */
+    if (!(s->ctx->session_cache_mode & SSL_SESS_CACHE_SERVER)) {
+      s->session->session_id_length = 0;
+    }
   }
 
   if (s->ctx->dos_protection_cb != NULL && s->ctx->dos_protection_cb(&early_ctx) == 0) {
@@ -1106,90 +1113,55 @@ err:
   return ret;
 }
 
-int ssl3_send_server_hello(SSL *s) {
-  uint8_t *buf;
-  uint8_t *p, *d;
-  int sl;
-  unsigned long l;
-
-  if (s->state == SSL3_ST_SW_SRVR_HELLO_A) {
-    /* We only accept ChannelIDs on connections with ECDHE in order to avoid a
-     * known attack while we fix ChannelID itself. */
-    if (s->s3->tlsext_channel_id_valid &&
-        (s->s3->tmp.new_cipher->algorithm_mkey & SSL_kECDHE) == 0) {
-      s->s3->tlsext_channel_id_valid = 0;
-    }
-
-    /* If this is a resumption and the original handshake didn't support
-     * ChannelID then we didn't record the original handshake hashes in the
-     * session and so cannot resume with ChannelIDs. */
-    if (s->hit && s->session->original_handshake_hash_len == 0) {
-      s->s3->tlsext_channel_id_valid = 0;
-    }
-
-    buf = (uint8_t *)s->init_buf->data;
-    /* Do the message type and length last */
-    d = p = ssl_handshake_start(s);
-
-    *(p++) = s->version >> 8;
-    *(p++) = s->version & 0xff;
-
-    /* Random stuff */
-    if (!ssl_fill_hello_random(s->s3->server_random, SSL3_RANDOM_SIZE,
-                               1 /* server */)) {
-      OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
-      return -1;
-    }
-    memcpy(p, s->s3->server_random, SSL3_RANDOM_SIZE);
-    p += SSL3_RANDOM_SIZE;
-
-    /* There are several cases for the session ID to send
-     * back in the server hello:
-     * - For session reuse from the session cache, we send back the old session
-     *   ID.
-     * - If stateless session reuse (using a session ticket) is successful, we
-     *   send back the client's "session ID" (which doesn't actually identify
-     *   the session).
-     * - If it is a new session, we send back the new session ID.
-     * - However, if we want the new session to be single-use, we send back a
-     *   0-length session ID.
-     * s->hit is non-zero in either case of session reuse, so the following
-     * won't overwrite an ID that we're supposed to send back. */
-    if (!(s->ctx->session_cache_mode & SSL_SESS_CACHE_SERVER) && !s->hit) {
-      s->session->session_id_length = 0;
-    }
-
-    sl = s->session->session_id_length;
-    if (sl > (int)sizeof(s->session->session_id)) {
-      OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
-      return -1;
-    }
-    *(p++) = sl;
-    memcpy(p, s->session->session_id, sl);
-    p += sl;
-
-    /* put the cipher */
-    s2n(ssl_cipher_get_value(s->s3->tmp.new_cipher), p);
-
-    /* put the compression method */
-    *(p++) = 0;
-
-    p = ssl_add_serverhello_tlsext(s, p, buf + SSL3_RT_MAX_PLAIN_LENGTH);
-    if (p == NULL) {
-      OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
-      return -1;
-    }
-
-    /* do the header */
-    l = (p - d);
-    if (!ssl_set_handshake_header(s, SSL3_MT_SERVER_HELLO, l)) {
-      return -1;
-    }
-    s->state = SSL3_ST_SW_SRVR_HELLO_B;
+int ssl3_send_server_hello(SSL *ssl) {
+  if (ssl->state == SSL3_ST_SW_SRVR_HELLO_B) {
+    return ssl_do_write(ssl);
   }
 
-  /* SSL3_ST_SW_SRVR_HELLO_B */
-  return ssl_do_write(s);
+  assert(ssl->state == SSL3_ST_SW_SRVR_HELLO_A);
+
+  /* We only accept ChannelIDs on connections with ECDHE in order to avoid a
+   * known attack while we fix ChannelID itself. */
+  if (ssl->s3->tlsext_channel_id_valid &&
+      (ssl->s3->tmp.new_cipher->algorithm_mkey & SSL_kECDHE) == 0) {
+    ssl->s3->tlsext_channel_id_valid = 0;
+  }
+
+  /* If this is a resumption and the original handshake didn't support
+   * ChannelID then we didn't record the original handshake hashes in the
+   * session and so cannot resume with ChannelIDs. */
+  if (ssl->hit && ssl->session->original_handshake_hash_len == 0) {
+    ssl->s3->tlsext_channel_id_valid = 0;
+  }
+
+  if (!ssl_fill_hello_random(ssl->s3->server_random, SSL3_RANDOM_SIZE,
+                             1 /* server */)) {
+    OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
+    return -1;
+  }
+
+  CBB cbb, session_id;
+  size_t length;
+  CBB_zero(&cbb);
+  if (!CBB_init_fixed(&cbb, ssl_handshake_start(ssl),
+                      ssl->init_buf->max - SSL_HM_HEADER_LENGTH(ssl)) ||
+      !CBB_add_u16(&cbb, ssl->version) ||
+      !CBB_add_bytes(&cbb, ssl->s3->server_random, SSL3_RANDOM_SIZE) ||
+      !CBB_add_u8_length_prefixed(&cbb, &session_id) ||
+      !CBB_add_bytes(&session_id, ssl->session->session_id,
+                     ssl->session->session_id_length) ||
+      !CBB_add_u16(&cbb, ssl_cipher_get_value(ssl->s3->tmp.new_cipher)) ||
+      !CBB_add_u8(&cbb, 0 /* no compression */) ||
+      !ssl_add_serverhello_tlsext(ssl, &cbb) ||
+      !CBB_finish(&cbb, NULL, &length) ||
+      !ssl_set_handshake_header(ssl, SSL3_MT_SERVER_HELLO, length)) {
+    OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
+    CBB_cleanup(&cbb);
+    return -1;
+  }
+
+  ssl->state = SSL3_ST_SW_SRVR_HELLO_B;
+  return ssl_do_write(ssl);
 }
 
 int ssl3_send_certificate_status(SSL *ssl) {
