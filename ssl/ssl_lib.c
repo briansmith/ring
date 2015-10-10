@@ -1498,51 +1498,6 @@ int SSL_set_cipher_list(SSL *ssl, const char *str) {
   return 1;
 }
 
-int ssl_cipher_list_to_bytes(SSL *s, STACK_OF(SSL_CIPHER) *sk, uint8_t *p) {
-  size_t i;
-  const SSL_CIPHER *c;
-  CERT *ct = s->cert;
-  uint8_t *q;
-  /* Set disabled masks for this session */
-  ssl_set_client_disabled(s);
-
-  if (sk == NULL) {
-    return 0;
-  }
-  q = p;
-
-  for (i = 0; i < sk_SSL_CIPHER_num(sk); i++) {
-    c = sk_SSL_CIPHER_value(sk, i);
-    /* Skip disabled ciphers */
-    if (c->algorithm_ssl & ct->mask_ssl ||
-        c->algorithm_mkey & ct->mask_k ||
-        c->algorithm_auth & ct->mask_a) {
-      continue;
-    }
-    s2n(ssl_cipher_get_value(c), p);
-  }
-
-  /* If all ciphers were disabled, return the error to the caller. */
-  if (p == q) {
-    return 0;
-  }
-
-  /* For SSLv3, the SCSV is added. Otherwise the renegotiation extension is
-   * added. */
-  if (s->client_version == SSL3_VERSION &&
-      !s->s3->initial_handshake_complete) {
-    s2n(SSL3_CK_SCSV & 0xffff, p);
-    /* The renegotiation extension is required to be at index zero. */
-    s->s3->tmp.extensions.sent |= (1u << 0);
-  }
-
-  if (s->mode & SSL_MODE_SEND_FALLBACK_SCSV) {
-    s2n(SSL3_CK_FALLBACK_SCSV & 0xffff, p);
-  }
-
-  return p - q;
-}
-
 STACK_OF(SSL_CIPHER) *ssl_bytes_to_cipher_list(SSL *s, const CBS *cbs) {
   CBS cipher_suites = *cbs;
   const SSL_CIPHER *c;

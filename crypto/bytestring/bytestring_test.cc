@@ -365,6 +365,55 @@ static bool TestCBBPrefixed() {
   return buf_len == sizeof(kExpected) && memcmp(buf, kExpected, buf_len) == 0;
 }
 
+static bool TestCBBDiscardChild() {
+  ScopedCBB cbb;
+  CBB contents, inner_contents, inner_inner_contents;
+
+  if (!CBB_init(cbb.get(), 0) ||
+      !CBB_add_u8(cbb.get(), 0xaa)) {
+    return false;
+  }
+
+  // Discarding |cbb|'s children preserves the byte written.
+  CBB_discard_child(cbb.get());
+
+  if (!CBB_add_u8_length_prefixed(cbb.get(), &contents) ||
+      !CBB_add_u8_length_prefixed(cbb.get(), &contents) ||
+      !CBB_add_u8(&contents, 0xbb) ||
+      !CBB_add_u16_length_prefixed(cbb.get(), &contents) ||
+      !CBB_add_u16(&contents, 0xcccc) ||
+      !CBB_add_u24_length_prefixed(cbb.get(), &contents) ||
+      !CBB_add_u24(&contents, 0xdddddd) ||
+      !CBB_add_u8_length_prefixed(cbb.get(), &contents) ||
+      !CBB_add_u8(&contents, 0xff) ||
+      !CBB_add_u8_length_prefixed(&contents, &inner_contents) ||
+      !CBB_add_u8(&inner_contents, 0x42) ||
+      !CBB_add_u16_length_prefixed(&inner_contents, &inner_inner_contents) ||
+      !CBB_add_u8(&inner_inner_contents, 0x99)) {
+    return false;
+  }
+
+  // Discard everything from |inner_contents| down.
+  CBB_discard_child(&contents);
+
+  uint8_t *buf;
+  size_t buf_len;
+  if (!CBB_finish(cbb.get(), &buf, &buf_len)) {
+    return false;
+  }
+  ScopedOpenSSLBytes scoper(buf);
+
+  static const uint8_t kExpected[] = {
+        0xaa,
+        0,
+        1, 0xbb,
+        0, 2, 0xcc, 0xcc,
+        0, 0, 3, 0xdd, 0xdd, 0xdd,
+        1, 0xff,
+  };
+  return buf_len == sizeof(kExpected) && memcmp(buf, kExpected, buf_len) == 0;
+}
+
 static bool TestCBBMisuse() {
   CBB cbb, child, contents;
   uint8_t *buf;
@@ -670,6 +719,7 @@ int main(void) {
       !TestCBBFinishChild() ||
       !TestCBBMisuse() ||
       !TestCBBPrefixed() ||
+      !TestCBBDiscardChild() ||
       !TestCBBASN1() ||
       !TestBerConvert() ||
       !TestASN1Uint64() ||

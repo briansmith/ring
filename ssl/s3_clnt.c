@@ -589,140 +589,139 @@ end:
   return ret;
 }
 
-int ssl3_send_client_hello(SSL *s) {
-  uint8_t *buf, *p, *d;
-  int i;
-  unsigned long l;
+static int ssl3_write_client_cipher_list(SSL *ssl, CBB *out) {
+  /* Prepare disabled cipher masks. */
+  ssl_set_client_disabled(ssl);
 
-  buf = (uint8_t *)s->init_buf->data;
-  if (s->state == SSL3_ST_CW_CLNT_HELLO_A) {
-    if (!s->s3->have_version) {
-      uint16_t max_version = ssl3_get_max_client_version(s);
-      /* Disabling all versions is silly: return an error. */
-      if (max_version == 0) {
-        OPENSSL_PUT_ERROR(SSL, SSL_R_WRONG_SSL_VERSION);
-        goto err;
-      }
-      s->version = max_version;
-      s->client_version = max_version;
-    }
-
-    /* If the configured session was created at a version higher than our
-     * maximum version, drop it. */
-    if (s->session &&
-        (s->session->session_id_length == 0 || s->session->not_resumable ||
-         (!SSL_IS_DTLS(s) && s->session->ssl_version > s->version) ||
-         (SSL_IS_DTLS(s) && s->session->ssl_version < s->version))) {
-      SSL_set_session(s, NULL);
-    }
-
-    /* else use the pre-loaded session */
-    p = s->s3->client_random;
-
-    /* If resending the ClientHello in DTLS after a HelloVerifyRequest, don't
-     * renegerate the client_random. The random must be reused. */
-    if ((!SSL_IS_DTLS(s) || !s->d1->send_cookie) &&
-        !ssl_fill_hello_random(p, sizeof(s->s3->client_random),
-                               0 /* client */)) {
-      goto err;
-    }
-
-    /* Do the message type and length last. Note: the final argument to
-     * ssl_add_clienthello_tlsext below depends on the size of this prefix. */
-    d = p = ssl_handshake_start(s);
-
-    /* version indicates the negotiated version: for example from an SSLv2/v3
-     * compatible client hello). The client_version field is the maximum
-     * version we permit and it is also used in RSA encrypted premaster
-     * secrets. Some servers can choke if we initially report a higher version
-     * then renegotiate to a lower one in the premaster secret. This didn't
-     * happen with TLS 1.0 as most servers supported it but it can with TLS 1.1
-     * or later if the server only supports 1.0.
-     *
-     * Possible scenario with previous logic:
-     *   1. Client hello indicates TLS 1.2
-     *   2. Server hello says TLS 1.0
-     *   3. RSA encrypted premaster secret uses 1.2.
-     *   4. Handhaked proceeds using TLS 1.0.
-     *   5. Server sends hello request to renegotiate.
-     *   6. Client hello indicates TLS v1.0 as we now
-     *      know that is maximum server supports.
-     *   7. Server chokes on RSA encrypted premaster secret
-     *      containing version 1.0.
-     *
-     * For interoperability it should be OK to always use the maximum version
-     * we support in client hello and then rely on the checking of version to
-     * ensure the servers isn't being inconsistent: for example initially
-     * negotiating with TLS 1.0 and renegotiating with TLS 1.2. We do this by
-     * using client_version in client hello and not resetting it to the
-     * negotiated version. */
-    *(p++) = s->client_version >> 8;
-    *(p++) = s->client_version & 0xff;
-
-    /* Random stuff */
-    memcpy(p, s->s3->client_random, SSL3_RANDOM_SIZE);
-    p += SSL3_RANDOM_SIZE;
-
-    /* Session ID */
-    if (s->s3->initial_handshake_complete || s->session == NULL) {
-      /* Renegotiations do not participate in session resumption. */
-      i = 0;
-    } else {
-      i = s->session->session_id_length;
-    }
-    *(p++) = i;
-    if (i != 0) {
-      if (i > (int)sizeof(s->session->session_id)) {
-        OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
-        goto err;
-      }
-      memcpy(p, s->session->session_id, i);
-      p += i;
-    }
-
-    /* cookie stuff for DTLS */
-    if (SSL_IS_DTLS(s)) {
-      if (s->d1->cookie_len > sizeof(s->d1->cookie)) {
-        OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
-        goto err;
-      }
-      *(p++) = s->d1->cookie_len;
-      memcpy(p, s->d1->cookie, s->d1->cookie_len);
-      p += s->d1->cookie_len;
-    }
-
-    /* Ciphers supported */
-    i = ssl_cipher_list_to_bytes(s, SSL_get_ciphers(s), &p[2]);
-    if (i == 0) {
-      OPENSSL_PUT_ERROR(SSL, SSL_R_NO_CIPHERS_AVAILABLE);
-      goto err;
-    }
-    s2n(i, p);
-    p += i;
-
-    /* COMPRESSION */
-    *(p++) = 1;
-    *(p++) = 0; /* Add the NULL method */
-
-    /* TLS extensions*/
-    p = ssl_add_clienthello_tlsext(s, p, buf + SSL3_RT_MAX_PLAIN_LENGTH,
-                                   p - buf);
-    if (p == NULL) {
-      OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
-      goto err;
-    }
-
-    l = p - d;
-    if (!ssl_set_handshake_header(s, SSL3_MT_CLIENT_HELLO, l)) {
-      goto err;
-    }
-    s->state = SSL3_ST_CW_CLNT_HELLO_B;
+  CBB child;
+  if (!CBB_add_u16_length_prefixed(out, &child)) {
+    return 0;
   }
 
-  /* SSL3_ST_CW_CLNT_HELLO_B */
-  return ssl_do_write(s);
+  STACK_OF(SSL_CIPHER) *ciphers = SSL_get_ciphers(ssl);
+
+  int any_enabled = 0;
+  size_t i;
+  for (i = 0; i < sk_SSL_CIPHER_num(ciphers); i++) {
+    const SSL_CIPHER *cipher = sk_SSL_CIPHER_value(ciphers, i);
+    /* Skip disabled ciphers */
+    if (cipher->algorithm_ssl & ssl->cert->mask_ssl ||
+        cipher->algorithm_mkey & ssl->cert->mask_k ||
+        cipher->algorithm_auth & ssl->cert->mask_a) {
+      continue;
+    }
+    any_enabled = 1;
+    if (!CBB_add_u16(&child, ssl_cipher_get_value(cipher))) {
+      return 0;
+    }
+  }
+
+  /* If all ciphers were disabled, return the error to the caller. */
+  if (!any_enabled) {
+    OPENSSL_PUT_ERROR(SSL, SSL_R_NO_CIPHERS_AVAILABLE);
+    return 0;
+  }
+
+  /* For SSLv3, the SCSV is added. Otherwise the renegotiation extension is
+   * added. */
+  if (ssl->client_version == SSL3_VERSION &&
+      !ssl->s3->initial_handshake_complete) {
+    if (!CBB_add_u16(&child, SSL3_CK_SCSV & 0xffff)) {
+      return 0;
+    }
+    /* The renegotiation extension is required to be at index zero. */
+    ssl->s3->tmp.extensions.sent |= (1u << 0);
+  }
+
+  if ((ssl->mode & SSL_MODE_SEND_FALLBACK_SCSV) &&
+      !CBB_add_u16(&child, SSL3_CK_FALLBACK_SCSV & 0xffff)) {
+    return 0;
+  }
+
+  return CBB_flush(out);
+}
+
+int ssl3_send_client_hello(SSL *ssl) {
+  if (ssl->state == SSL3_ST_CW_CLNT_HELLO_B) {
+    return ssl_do_write(ssl);
+  }
+
+  CBB cbb;
+  CBB_zero(&cbb);
+
+  assert(ssl->state == SSL3_ST_CW_CLNT_HELLO_A);
+  if (!ssl->s3->have_version) {
+    uint16_t max_version = ssl3_get_max_client_version(ssl);
+    /* Disabling all versions is silly: return an error. */
+    if (max_version == 0) {
+      OPENSSL_PUT_ERROR(SSL, SSL_R_WRONG_SSL_VERSION);
+      goto err;
+    }
+
+    ssl->version = max_version;
+    /* Only set |ssl->client_version| on the initial handshake. Renegotiations,
+     * although locked to a version, reuse the value. When using the plain RSA
+     * key exchange, the ClientHello version is checked in the premaster secret.
+     * Some servers fail when this value changes. */
+    ssl->client_version = max_version;
+  }
+
+  /* If the configured session was created at a version higher than our
+   * maximum version, drop it. */
+  if (ssl->session != NULL &&
+      (ssl->session->session_id_length == 0 || ssl->session->not_resumable ||
+       (!SSL_IS_DTLS(ssl) && ssl->session->ssl_version > ssl->version) ||
+       (SSL_IS_DTLS(ssl) && ssl->session->ssl_version < ssl->version))) {
+    SSL_set_session(ssl, NULL);
+  }
+
+  /* If resending the ClientHello in DTLS after a HelloVerifyRequest, don't
+   * renegerate the client_random. The random must be reused. */
+  if ((!SSL_IS_DTLS(ssl) || !ssl->d1->send_cookie) &&
+      !ssl_fill_hello_random(ssl->s3->client_random,
+                             sizeof(ssl->s3->client_random), 0 /* client */)) {
+    goto err;
+  }
+
+  /* Renegotiations do not participate in session resumption. */
+  int has_session = ssl->session != NULL &&
+                    !ssl->s3->initial_handshake_complete;
+
+  CBB child;
+  if (!CBB_init_fixed(&cbb, ssl_handshake_start(ssl),
+                      ssl->init_buf->max - SSL_HM_HEADER_LENGTH(ssl)) ||
+      !CBB_add_u16(&cbb, ssl->client_version) ||
+      !CBB_add_bytes(&cbb, ssl->s3->client_random, SSL3_RANDOM_SIZE) ||
+      !CBB_add_u8_length_prefixed(&cbb, &child) ||
+      (has_session &&
+       !CBB_add_bytes(&child, ssl->session->session_id,
+                      ssl->session->session_id_length))) {
+    goto err;
+  }
+
+  if (SSL_IS_DTLS(ssl)) {
+    if (!CBB_add_u8_length_prefixed(&cbb, &child) ||
+        !CBB_add_bytes(&child, ssl->d1->cookie, ssl->d1->cookie_len)) {
+      goto err;
+    }
+  }
+
+  size_t length;
+  if (!ssl3_write_client_cipher_list(ssl, &cbb) ||
+      !CBB_add_u8(&cbb, 1 /* one compression method */) ||
+      !CBB_add_u8(&cbb, 0 /* null compression */) ||
+      !ssl_add_clienthello_tlsext(ssl, &cbb,
+                                  CBB_len(&cbb) + SSL_HM_HEADER_LENGTH(ssl)) ||
+      !CBB_finish(&cbb, NULL, &length) ||
+      !ssl_set_handshake_header(ssl, SSL3_MT_CLIENT_HELLO, length)) {
+    goto err;
+  }
+
+  ssl->state = SSL3_ST_CW_CLNT_HELLO_B;
+  return ssl_do_write(ssl);
 
 err:
+  CBB_cleanup(&cbb);
   return -1;
 }
 

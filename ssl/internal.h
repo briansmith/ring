@@ -976,7 +976,6 @@ enum ssl_session_result_t ssl_get_prev_session(
     const struct ssl_early_callback_ctx *ctx);
 
 STACK_OF(SSL_CIPHER) *ssl_bytes_to_cipher_list(SSL *s, const CBS *cbs);
-int ssl_cipher_list_to_bytes(SSL *s, STACK_OF(SSL_CIPHER) *sk, uint8_t *p);
 struct ssl_cipher_preference_list_st *ssl_cipher_preference_list_dup(
     struct ssl_cipher_preference_list_st *cipher_list);
 void ssl_cipher_preference_list_free(
@@ -1104,7 +1103,7 @@ unsigned int dtls1_min_mtu(void);
 void dtls1_hm_fragment_free(hm_fragment *frag);
 
 /* some client-only functions */
-int ssl3_send_client_hello(SSL *s);
+int ssl3_send_client_hello(SSL *ssl);
 int ssl3_get_server_hello(SSL *s);
 int ssl3_get_certificate_request(SSL *s);
 int ssl3_get_new_session_ticket(SSL *s);
@@ -1208,8 +1207,13 @@ int tls1_check_ec_tmp_key(SSL *s);
 
 int tls1_shared_list(SSL *s, const uint8_t *l1, size_t l1len, const uint8_t *l2,
                      size_t l2len, int nmatch);
-uint8_t *ssl_add_clienthello_tlsext(SSL *s, uint8_t *const buf,
-                                    uint8_t *const limit, size_t header_len);
+
+/* ssl_add_clienthello_tlsext writes ClientHello extensions to |out|. It
+ * returns one on success and zero on failure. The |header_len| argument is the
+ * length of the ClientHello written so far and is used to compute the padding
+ * length. (It does not include the record header.) */
+int ssl_add_clienthello_tlsext(SSL *ssl, CBB *out, size_t header_len);
+
 uint8_t *ssl_add_serverhello_tlsext(SSL *s, uint8_t *const buf,
                                     uint8_t *const limit);
 int ssl_parse_clienthello_tlsext(SSL *s, CBS *cbs);

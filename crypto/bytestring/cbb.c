@@ -360,6 +360,20 @@ int CBB_add_u24(CBB *cbb, uint32_t value) {
   return cbb_buffer_add_u(cbb->base, value, 3);
 }
 
+void CBB_discard_child(CBB *cbb) {
+  if (cbb->child == NULL) {
+    return;
+  }
+
+  cbb->base->len = cbb->offset;
+
+  cbb->child->base = NULL;
+  cbb->child = NULL;
+  cbb->pending_len_len = 0;
+  cbb->pending_is_asn1 = 0;
+  cbb->offset = 0;
+}
+
 int CBB_add_asn1_uint64(CBB *cbb, uint64_t value) {
   CBB child;
   size_t i;

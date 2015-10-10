@@ -117,6 +117,7 @@ using ScopedX509_SIG = ScopedOpenSSLType<X509_SIG, X509_SIG_free>;
 
 using ScopedX509Stack = ScopedOpenSSLStack<STACK_OF(X509), X509, X509_free>;
 
+using ScopedCBB = ScopedOpenSSLContext<CBB, void, CBB_zero, CBB_cleanup>;
 using ScopedEVP_AEAD_CTX = ScopedOpenSSLContext<EVP_AEAD_CTX, void,
                                                 EVP_AEAD_CTX_zero,
                                                 EVP_AEAD_CTX_cleanup>;

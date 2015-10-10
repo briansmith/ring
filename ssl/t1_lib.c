@@ -2228,52 +2228,48 @@ int SSL_extension_supported(unsigned extension_value) {
          tls_extension_find(&index, extension_value) != NULL;
 }
 
-/* header_len is the length of the ClientHello header written so far, used to
- * compute padding. It does not include the record header. Pass 0 if no padding
- * is to be done. */
-uint8_t *ssl_add_clienthello_tlsext(SSL *s, uint8_t *const buf,
-                                    uint8_t *const limit, size_t header_len) {
+int ssl_add_clienthello_tlsext(SSL *ssl, CBB *out, size_t header_len) {
   /* don't add extensions for SSLv3 unless doing secure renegotiation */
-  if (s->client_version == SSL3_VERSION && !s->s3->send_connection_binding) {
-    return buf;
+  if (ssl->client_version == SSL3_VERSION &&
+      !ssl->s3->send_connection_binding) {
+    return 1;
   }
 
-  CBB cbb, extensions;
-  CBB_zero(&cbb);
-  if (!CBB_init_fixed(&cbb, buf, limit - buf) ||
-      !CBB_add_u16_length_prefixed(&cbb, &extensions)) {
+  size_t orig_len = CBB_len(out);
+  CBB extensions;
+  if (!CBB_add_u16_length_prefixed(out, &extensions)) {
     goto err;
   }
 
-  s->s3->tmp.extensions.sent = 0;
-  s->s3->tmp.custom_extensions.sent = 0;
+  ssl->s3->tmp.extensions.sent = 0;
+  ssl->s3->tmp.custom_extensions.sent = 0;
 
   size_t i;
   for (i = 0; i < kNumExtensions; i++) {
     if (kExtensions[i].init != NULL) {
-      kExtensions[i].init(s);
+      kExtensions[i].init(ssl);
     }
   }
 
   for (i = 0; i < kNumExtensions; i++) {
     const size_t len_before = CBB_len(&extensions);
-    if (!kExtensions[i].add_clienthello(s, &extensions)) {
+    if (!kExtensions[i].add_clienthello(ssl, &extensions)) {
       OPENSSL_PUT_ERROR(SSL, SSL_R_ERROR_ADDING_EXTENSION);
       ERR_add_error_dataf("extension: %u", (unsigned)kExtensions[i].value);
       goto err;
     }
 
     if (CBB_len(&extensions) != len_before) {
-      s->s3->tmp.extensions.sent |= (1u << i);
+      ssl->s3->tmp.extensions.sent |= (1u << i);
     }
   }
 
-  if (!custom_ext_add_clienthello(s, &extensions)) {
+  if (!custom_ext_add_clienthello(ssl, &extensions)) {
     goto err;
   }
 
-  if (header_len > 0) {
-    header_len += CBB_len(&extensions);
+  if (!SSL_IS_DTLS(ssl)) {
+    header_len += CBB_len(&extensions) - orig_len;
     if (header_len > 0xff && header_len < 0x200) {
       /* Add padding to workaround bugs in F5 terminators. See
        * https://tools.ietf.org/html/draft-agl-tls-padding-03
@@ -2301,26 +2297,18 @@ uint8_t *ssl_add_clienthello_tlsext(SSL *s, uint8_t *const buf,
     }
   }
 
-  if (!CBB_flush(&cbb)) {
-    goto err;
-  }
-
-  uint8_t *ret = buf;
-  const size_t cbb_len = CBB_len(&cbb);
   /* If only two bytes have been written then the extensions are actually empty
    * and those two bytes are the zero length. In that case, we don't bother
    * sending the extensions length. */
-  if (cbb_len > 2) {
-    ret += cbb_len;
+  if (CBB_len(&extensions) - orig_len == 2) {
+    CBB_discard_child(out);
   }
 
-  CBB_cleanup(&cbb);
-  return ret;
+  return CBB_flush(out);
 
 err:
-  CBB_cleanup(&cbb);
   OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
-  return NULL;
+  return 0;
 }
 
 uint8_t *ssl_add_serverhello_tlsext(SSL *s, uint8_t *const buf,
