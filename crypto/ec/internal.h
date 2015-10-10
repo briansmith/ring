@@ -79,13 +79,7 @@ extern "C" {
 #endif
 
 
-/* Use default functions for poin2oct, oct2point and compressed coordinates */
-#define EC_FLAGS_DEFAULT_OCT 0x1
-
 struct ec_method_st {
-  /* Various method flags */
-  int flags;
-
   /* used by EC_GROUP_new, EC_GROUP_free, EC_GROUP_clear_free, EC_GROUP_copy: */
   int (*group_init)(EC_GROUP *);
   void (*group_finish)(EC_GROUP *);
@@ -96,66 +90,10 @@ struct ec_method_st {
   /* EC_GROUP_set_curve_GF2m, and EC_GROUP_get_curve_GF2m: */
   int (*group_set_curve)(EC_GROUP *, const BIGNUM *p, const BIGNUM *a,
                          const BIGNUM *b, BN_CTX *);
-  int (*group_get_curve)(const EC_GROUP *, BIGNUM *p, BIGNUM *a, BIGNUM *b,
-                         BN_CTX *);
 
-  /* used by EC_GROUP_get_degree: */
-  int (*group_get_degree)(const EC_GROUP *);
-
-  /* used by EC_GROUP_check: */
-  int (*group_check_discriminant)(const EC_GROUP *, BN_CTX *);
-
-  /* used by EC_POINT_new, EC_POINT_free, EC_POINT_clear_free, EC_POINT_copy: */
-  int (*point_init)(EC_POINT *);
-  void (*point_finish)(EC_POINT *);
-  void (*point_clear_finish)(EC_POINT *);
-  int (*point_copy)(EC_POINT *, const EC_POINT *);
-
-  /* used by EC_POINT_set_to_infinity,
-   * EC_POINT_set_Jprojective_coordinates_GFp,
-   * EC_POINT_get_Jprojective_coordinates_GFp,
-   * EC_POINT_set_affine_coordinates_GFp,     ..._GF2m,
-   * EC_POINT_get_affine_coordinates_GFp,     ..._GF2m,
-   * EC_POINT_set_compressed_coordinates_GFp, ..._GF2m:
-   */
-  int (*point_set_to_infinity)(const EC_GROUP *, EC_POINT *);
-  int (*point_set_Jprojective_coordinates_GFp)(const EC_GROUP *, EC_POINT *,
-                                               const BIGNUM *x, const BIGNUM *y,
-                                               const BIGNUM *z, BN_CTX *);
-  int (*point_get_Jprojective_coordinates_GFp)(const EC_GROUP *,
-                                               const EC_POINT *, BIGNUM *x,
-                                               BIGNUM *y, BIGNUM *z, BN_CTX *);
-  int (*point_set_affine_coordinates)(const EC_GROUP *, EC_POINT *,
-                                      const BIGNUM *x, const BIGNUM *y,
-                                      BN_CTX *);
+  /* used by EC_POINT_get_affine_coordinates_GFp: */
   int (*point_get_affine_coordinates)(const EC_GROUP *, const EC_POINT *,
                                       BIGNUM *x, BIGNUM *y, BN_CTX *);
-  int (*point_set_compressed_coordinates)(const EC_GROUP *, EC_POINT *,
-                                          const BIGNUM *x, int y_bit, BN_CTX *);
-
-  /* used by EC_POINT_point2oct, EC_POINT_oct2point: */
-  size_t (*point2oct)(const EC_GROUP *, const EC_POINT *,
-                      point_conversion_form_t form, unsigned char *buf,
-                      size_t len, BN_CTX *);
-  int (*oct2point)(const EC_GROUP *, EC_POINT *, const unsigned char *buf,
-                   size_t len, BN_CTX *);
-
-  /* used by EC_POINT_add, EC_POINT_dbl, ECP_POINT_invert: */
-  int (*add)(const EC_GROUP *, EC_POINT *r, const EC_POINT *a,
-             const EC_POINT *b, BN_CTX *);
-  int (*dbl)(const EC_GROUP *, EC_POINT *r, const EC_POINT *a, BN_CTX *);
-  int (*invert)(const EC_GROUP *, EC_POINT *, BN_CTX *);
-
-  /* used by EC_POINT_is_at_infinity, EC_POINT_is_on_curve, EC_POINT_cmp: */
-  int (*is_at_infinity)(const EC_GROUP *, const EC_POINT *);
-  int (*is_on_curve)(const EC_GROUP *, const EC_POINT *, BN_CTX *);
-  int (*point_cmp)(const EC_GROUP *, const EC_POINT *a, const EC_POINT *b,
-                   BN_CTX *);
-
-  /* used by EC_POINT_make_affine, EC_POINTs_make_affine: */
-  int (*make_affine)(const EC_GROUP *, EC_POINT *, BN_CTX *);
-  int (*points_make_affine)(const EC_GROUP *, size_t num, EC_POINT * [],
-                            BN_CTX *);
 
   /* used by EC_POINTs_mul, EC_POINT_mul, EC_POINT_precompute_mult,
    * EC_POINT_have_precompute_mult
@@ -169,14 +107,12 @@ struct ec_method_st {
 
   /* internal functions */
 
-  /* 'field_mul', 'field_sqr', and 'field_div' can be used by 'add' and 'dbl'
-   * so that the same implementations of point operations can be used with
-   * different optimized implementations of expensive field operations: */
+  /* 'field_mul' and 'field_sqr' can be used by 'add' and 'dbl' so that the
+   * same implementations of point operations can be used with different
+   * optimized implementations of expensive field operations: */
   int (*field_mul)(const EC_GROUP *, BIGNUM *r, const BIGNUM *a,
                    const BIGNUM *b, BN_CTX *);
   int (*field_sqr)(const EC_GROUP *, BIGNUM *r, const BIGNUM *a, BN_CTX *);
-  int (*field_div)(const EC_GROUP *, BIGNUM *r, const BIGNUM *a,
-                   const BIGNUM *b, BN_CTX *);
 
   int (*field_encode)(const EC_GROUP *, BIGNUM *r, const BIGNUM *a,
                       BN_CTX *); /* e.g. to Montgomery */
