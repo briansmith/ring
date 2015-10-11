@@ -23,7 +23,7 @@ pub mod ecc;
 mod ffi;
 pub mod hkdf;
 pub mod hmac;
-pub mod pbkdf2_hmac;
+pub mod pbkdf2;
 pub mod rand;
 pub mod rsa;
 
