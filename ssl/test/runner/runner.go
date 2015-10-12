@@ -2711,6 +2711,7 @@ func addStateMachineCoverageTests(async, splitHandshake bool, protocol protocol)
 		tests = append(tests, testCase{
 			name:        "Renegotiate-Client",
 			renegotiate: true,
+			flags:       []string{"-expect-total-renegotiations", "1"},
 		})
 		// NPN on client and server; results in post-handshake message.
 		tests = append(tests, testCase{
@@ -3715,6 +3716,7 @@ func addRenegotiationTests() {
 			},
 		},
 		renegotiate: true,
+		flags:       []string{"-expect-total-renegotiations", "1"},
 	})
 	testCases = append(testCases, testCase{
 		name:        "Renegotiate-Client-EmptyExt",
@@ -3757,6 +3759,7 @@ func addRenegotiationTests() {
 				NoRenegotiationInfo: true,
 			},
 		},
+		flags: []string{"-expect-total-renegotiations", "1"},
 	})
 	testCases = append(testCases, testCase{
 		name:        "Renegotiate-Client-SwitchCiphers",
@@ -3765,6 +3768,7 @@ func addRenegotiationTests() {
 			CipherSuites: []uint16{TLS_RSA_WITH_RC4_128_SHA},
 		},
 		renegotiateCiphers: []uint16{TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256},
+		flags:              []string{"-expect-total-renegotiations", "1"},
 	})
 	testCases = append(testCases, testCase{
 		name:        "Renegotiate-Client-SwitchCiphers2",
@@ -3773,6 +3777,7 @@ func addRenegotiationTests() {
 			CipherSuites: []uint16{TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256},
 		},
 		renegotiateCiphers: []uint16{TLS_RSA_WITH_RC4_128_SHA},
+		flags:              []string{"-expect-total-renegotiations", "1"},
 	})
 	testCases = append(testCases, testCase{
 		name:               "Renegotiate-Client-Forbidden",
@@ -3791,6 +3796,7 @@ func addRenegotiationTests() {
 				RequireSameRenegoClientVersion: true,
 			},
 		},
+		flags: []string{"-expect-total-renegotiations", "1"},
 	})
 	testCases = append(testCases, testCase{
 		name:        "Renegotiate-FalseStart",
@@ -3802,6 +3808,7 @@ func addRenegotiationTests() {
 		flags: []string{
 			"-false-start",
 			"-select-next-proto", "foo",
+			"-expect-total-renegotiations", "1",
 		},
 		shimWritesFirst: true,
 	})

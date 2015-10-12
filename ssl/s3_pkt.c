@@ -563,6 +563,7 @@ start:
     }
 
     /* Begin a new handshake. */
+    s->s3->total_renegotiations++;
     s->state = SSL_ST_CONNECT;
     i = s->handshake_func(s);
     if (i < 0) {

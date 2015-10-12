@@ -1333,6 +1333,14 @@ static bool DoExchange(ScopedSSL_SESSION *out_session, SSL_CTX *ssl_ctx,
     return false;
   }
 
+  if (SSL_total_renegotiations(ssl.get()) !=
+      config->expect_total_renegotiations) {
+    fprintf(stderr, "Expected %d renegotiations, got %d\n",
+            config->expect_total_renegotiations,
+            SSL_total_renegotiations(ssl.get()));
+    return false;
+  }
+
   return true;
 }
 
