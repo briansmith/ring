@@ -498,7 +498,7 @@ static const uint8_t kEstonianRSAKey[] = {
 static bool TestRSA(const uint8_t *der, size_t der_len,
                     const uint8_t *oaep_ciphertext,
                     size_t oaep_ciphertext_len) {
-  ScopedRSA key(d2i_RSAPrivateKey(nullptr, &der, der_len));
+  ScopedRSA key(RSA_private_key_from_bytes(der, der_len));
   if (!key) {
     return false;
   }
