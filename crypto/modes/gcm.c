@@ -917,7 +917,6 @@ int CRYPTO_gcm128_encrypt_ctr32_sk(GCM128_CONTEXT_SK *ctx, const void *key,
     char little;
   } is_endian = {1};
   unsigned int n, ctr;
-  size_t i;
   uint64_t mlen = ctx->len.u[1];
 #ifdef GCM_FUNCREF_4BIT
   void (*gcm_gmult_p)(uint64_t Xi[2], const u128 Htable[16]) = ctx->gmult;
@@ -975,7 +974,8 @@ int CRYPTO_gcm128_encrypt_ctr32_sk(GCM128_CONTEXT_SK *ctx, const void *key,
     len -= GHASH_CHUNK;
   }
 #endif
-  if ((i = (len & (size_t) - 16))) {
+  size_t i = len & (size_t)-16; /* i = len, less the remainder modulo 16. */
+  if (i != 0) {
     size_t j = i / 16;
 
     (*stream)(in, out, j, key, ctx->Yi.c);
@@ -1026,7 +1026,6 @@ int CRYPTO_gcm128_decrypt_ctr32_sk(GCM128_CONTEXT_SK *ctx, const void *key,
     char little;
   } is_endian = {1};
   unsigned int n, ctr;
-  size_t i;
   uint64_t mlen = ctx->len.u[1];
 #ifdef GCM_FUNCREF_4BIT
   void (*gcm_gmult_p)(uint64_t Xi[2], const u128 Htable[16]) = ctx->gmult;
@@ -1086,7 +1085,8 @@ int CRYPTO_gcm128_decrypt_ctr32_sk(GCM128_CONTEXT_SK *ctx, const void *key,
     len -= GHASH_CHUNK;
   }
 #endif
-  if ((i = (len & (size_t) - 16))) {
+  size_t i = len & (size_t)-16; /* i = len, less the remainder modulo 16. */
+  if (i != 0) {
     size_t j = i / 16;
 
 #if defined(GHASH)
