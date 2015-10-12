@@ -178,13 +178,6 @@ OPENSSL_EXPORT size_t EVP_MD_block_size(const EVP_MD *md);
 #define EVP_MD_FLAG_DIGALGID_ABSENT 2
 
 
-/* Deprecated functions. */
-
-/* EVP_add_digest does nothing and returns one. It exists only for
- * compatibility with OpenSSL. */
-OPENSSL_EXPORT int EVP_add_digest(const EVP_MD *digest);
-
-
 /* Digest operation accessors. */
 
 /* EVP_MD_CTX_md returns the underlying digest function, or NULL if one has not

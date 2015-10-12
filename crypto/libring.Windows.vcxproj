@@ -76,7 +76,6 @@
     <ClCompile Include="sha\sha1.c" />
     <ClCompile Include="sha\sha256.c" />
     <ClCompile Include="sha\sha512.c" />
-    <ClCompile Include="thread.c" />
     <ClCompile Include="thread_win.c" />
   </ItemGroup>
   <ItemGroup>

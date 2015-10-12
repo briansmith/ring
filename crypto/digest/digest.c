@@ -192,7 +192,3 @@ unsigned EVP_MD_CTX_block_size(const EVP_MD_CTX *ctx) {
 int EVP_MD_CTX_type(const EVP_MD_CTX *ctx) {
   return EVP_MD_type(EVP_MD_CTX_md(ctx));
 }
-
-int EVP_add_digest(const EVP_MD *digest) {
-  return 1;
-}

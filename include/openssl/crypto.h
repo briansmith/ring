@@ -36,21 +36,6 @@ extern "C" {
 OPENSSL_EXPORT void CRYPTO_library_init(void);
 
 
-/* Deprecated functions. */
-
-#define OPENSSL_VERSION_TEXT "BoringSSL"
-
-#define SSLEAY_VERSION 0
-
-/* SSLeay_version is a compatibility function that returns the string
- * "BoringSSL". */
-OPENSSL_EXPORT const char *SSLeay_version(int unused);
-
-/* SSLeay is a compatibility function that returns OPENSSL_VERSION_NUMBER from
- * base.h. */
-OPENSSL_EXPORT unsigned long SSLeay(void);
-
-
 #if defined(__cplusplus)
 }  /* extern C */
 #endif

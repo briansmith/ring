@@ -100,46 +100,6 @@ typedef union crypto_mutex_st {
 typedef uint32_t CRYPTO_refcount_t;
 
 
-/* Deprecated functions */
-
-/* These defines do nothing but are provided to make old code easier to
- * compile. */
-#define CRYPTO_LOCK 1
-#define CRYPTO_UNLOCK 2
-#define CRYPTO_READ 4
-#define CRYPTO_WRITE 8
-
-/* CRYPTO_num_locks returns one. (This is non-zero that callers who allocate
- * sizeof(lock) times this value don't get zero and then fail because malloc(0)
- * returned NULL.) */
-OPENSSL_EXPORT int CRYPTO_num_locks(void);
-
-/* CRYPTO_set_locking_callback does nothing. */
-OPENSSL_EXPORT void CRYPTO_set_locking_callback(
-    void (*func)(int mode, int lock_num, const char *file, int line));
-
-/* CRYPTO_set_add_lock_callback does nothing. */
-OPENSSL_EXPORT void CRYPTO_set_add_lock_callback(int (*func)(
-    int *num, int amount, int lock_num, const char *file, int line));
-
-/* CRYPTO_get_lock_name returns a fixed, dummy string. */
-OPENSSL_EXPORT const char *CRYPTO_get_lock_name(int lock_num);
-
-/* CRYPTO_THREADID_set_callback returns one. */
-OPENSSL_EXPORT int CRYPTO_THREADID_set_callback(
-    void (*threadid_func)(CRYPTO_THREADID *threadid));
-
-/* CRYPTO_THREADID_set_numeric does nothing. */
-OPENSSL_EXPORT void CRYPTO_THREADID_set_numeric(CRYPTO_THREADID *id,
-                                                unsigned long val);
-
-/* CRYPTO_THREADID_set_pointer does nothing. */
-OPENSSL_EXPORT void CRYPTO_THREADID_set_pointer(CRYPTO_THREADID *id, void *ptr);
-
-/* CRYPTO_THREADID_current does nothing. */
-OPENSSL_EXPORT void CRYPTO_THREADID_current(CRYPTO_THREADID *id);
-
-
 /* Private functions.
  *
  * Some old code calls these functions and so no-op implementations are
