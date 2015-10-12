@@ -518,8 +518,7 @@ void CRYPTO_gcm128_set_96_bit_iv_sk(GCM128_CONTEXT_SK *ctx, const void *key,
   }
 }
 
-int CRYPTO_gcm128_aad_sk(GCM128_CONTEXT_SK *ctx, const void *key,
-                         const uint8_t *aad, size_t len) {
+int CRYPTO_gcm128_aad_sk(GCM128_CONTEXT_SK *ctx, const uint8_t *aad, size_t len) {
   size_t i;
   unsigned int n;
   uint64_t alen = ctx->len.u[0];
@@ -1135,8 +1134,8 @@ int CRYPTO_gcm128_decrypt_ctr32_sk(GCM128_CONTEXT_SK *ctx, const void *key,
   return 1;
 }
 
-int CRYPTO_gcm128_finish_sk(GCM128_CONTEXT_SK *ctx, const void *key,
-                            const uint8_t *tag, size_t len) {
+int CRYPTO_gcm128_finish_sk(GCM128_CONTEXT_SK *ctx, const uint8_t *tag,
+                            size_t len) {
   const union {
     long one;
     char little;
@@ -1180,9 +1179,9 @@ int CRYPTO_gcm128_finish_sk(GCM128_CONTEXT_SK *ctx, const void *key,
   }
 }
 
-void CRYPTO_gcm128_tag_sk(GCM128_CONTEXT_SK *ctx, const void *key,
-                          unsigned char *tag, size_t len) {
-  CRYPTO_gcm128_finish_sk(ctx, key, NULL, 0);
+void CRYPTO_gcm128_tag_sk(GCM128_CONTEXT_SK *ctx, unsigned char *tag,
+                          size_t len) {
+  CRYPTO_gcm128_finish_sk(ctx, NULL, 0);
   memcpy(tag, ctx->Xi.c, len <= sizeof(ctx->Xi.c) ? len : sizeof(ctx->Xi.c));
 }
 

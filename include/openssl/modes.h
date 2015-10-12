@@ -119,11 +119,9 @@ OPENSSL_EXPORT void CRYPTO_gcm128_set_96_bit_iv_sk (GCM128_CONTEXT_SK *ctx,
                                                     const uint8_t *iv);
 
 /* CRYPTO_gcm128_aad_sk sets the authenticated data for an instance of GCM.
- * This must be called before and data is encrypted. |key| must be the same key
- * that was passed to |CRYPTO_gcm128_init|. It returns one on success and zero
- * otherwise. */
+ * This must be called before and data is encrypted. It returns one on success
+ * and zero otherwise. */
 OPENSSL_EXPORT int CRYPTO_gcm128_aad_sk(GCM128_CONTEXT_SK *ctx,
-                                        const void *key,
                                         const uint8_t *aad, size_t len);
 
 /* CRYPTO_gcm128_encrypt_sk encrypts |len| bytes from |in| to |out|. |key| must
@@ -162,17 +160,13 @@ OPENSSL_EXPORT int CRYPTO_gcm128_decrypt_ctr32_sk(GCM128_CONTEXT_SK *ctx,
                                                   ctr128_f stream);
 
 /* CRYPTO_gcm128_finish_sk calculates the authenticator and compares it against
- * |len| bytes of |tag|. |key| must be the same key that was passed to
- * |CRYPTO_gcm128_init|. It returns one on success and zero otherwise. */
+ * |len| bytes of |tag|. It returns one on success and zero otherwise. */
 OPENSSL_EXPORT int CRYPTO_gcm128_finish_sk(GCM128_CONTEXT_SK *ctx,
-                                           const void *key,
                                            const uint8_t *tag, size_t len);
 
 /* CRYPTO_gcm128_tag_sk calculates the authenticator and copies it into |tag|.
- * The minimum of |len| and 16 bytes are copied into |tag|. |key| must be the
- * same key that was passed to |CRYPTO_gcm128_init|. */
-OPENSSL_EXPORT void CRYPTO_gcm128_tag_sk(GCM128_CONTEXT_SK *ctx,
-                                         const void *key, uint8_t *tag,
+ * The minimum of |len| and 16 bytes are copied into |tag|. */
+OPENSSL_EXPORT void CRYPTO_gcm128_tag_sk(GCM128_CONTEXT_SK *ctx, uint8_t *tag,
                                          size_t len);
 
 /* CRYPTO_gcm128_release_sk clears and frees |ctx|. */

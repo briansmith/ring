@@ -290,12 +290,12 @@ static int run_test_case(unsigned test_num, const struct test_case *test) {
   CRYPTO_gcm128_set_96_bit_iv_sk(&ctx, &aes_key, nonce);
   memset(out, 0, plaintext_len);
   if (additional_data) {
-    CRYPTO_gcm128_aad_sk(&ctx, &aes_key, additional_data, additional_data_len);
+    CRYPTO_gcm128_aad_sk(&ctx, additional_data, additional_data_len);
   }
   if (plaintext) {
     CRYPTO_gcm128_encrypt_sk(&ctx, &aes_key, plaintext, out, plaintext_len);
   }
-  if (!CRYPTO_gcm128_finish_sk(&ctx, &aes_key, tag, tag_len) ||
+  if (!CRYPTO_gcm128_finish_sk(&ctx, tag, tag_len) ||
       (ciphertext && memcmp(out, ciphertext, plaintext_len) != 0)) {
     fprintf(stderr, "%u: encrypt failed.\n", test_num);
     hexdump(stderr, "got :", out, plaintext_len);
@@ -306,12 +306,12 @@ static int run_test_case(unsigned test_num, const struct test_case *test) {
   CRYPTO_gcm128_set_96_bit_iv_sk(&ctx, &aes_key, nonce);
   memset(out, 0, plaintext_len);
   if (additional_data) {
-    CRYPTO_gcm128_aad_sk(&ctx, &aes_key, additional_data, additional_data_len);
+    CRYPTO_gcm128_aad_sk(&ctx, additional_data, additional_data_len);
   }
   if (ciphertext) {
     CRYPTO_gcm128_decrypt_sk(&ctx, &aes_key, ciphertext, out, plaintext_len);
   }
-  if (!CRYPTO_gcm128_finish_sk(&ctx, &aes_key, tag, tag_len)) {
+  if (!CRYPTO_gcm128_finish_sk(&ctx, tag, tag_len)) {
     fprintf(stderr, "%u: decrypt failed.\n", test_num);
     goto out;
   }
