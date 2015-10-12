@@ -86,6 +86,9 @@
     }                                                                  \
   } while (0)
 
+// kSizeTWithoutLower4Bits is a mask that can be used to zero the lower four
+// bits of a |size_t|.
+static const size_t kSizeTWithoutLower4Bits = (size_t) -16;
 
 static void gcm_init_4bit(u128 Htable[16], uint64_t H[2]) {
   u128 V;
@@ -963,7 +966,6 @@ int CRYPTO_gcm128_encrypt_ctr32(GCM128_CONTEXT *ctx, const uint8_t *in,
     char little;
   } is_endian = {1};
   unsigned int n, ctr;
-  size_t i;
   uint64_t mlen = ctx->len.u[1];
   void *key = ctx->key;
 #ifdef GCM_FUNCREF_4BIT
@@ -1022,7 +1024,8 @@ int CRYPTO_gcm128_encrypt_ctr32(GCM128_CONTEXT *ctx, const uint8_t *in,
     len -= GHASH_CHUNK;
   }
 #endif
-  if ((i = (len & (size_t) - 16))) {
+  size_t i = len & kSizeTWithoutLower4Bits;
+  if (i != 0) {
     size_t j = i / 16;
 
     (*stream)(in, out, j, key, ctx->Yi.c);
@@ -1073,7 +1076,6 @@ int CRYPTO_gcm128_decrypt_ctr32(GCM128_CONTEXT *ctx, const uint8_t *in,
     char little;
   } is_endian = {1};
   unsigned int n, ctr;
-  size_t i;
   uint64_t mlen = ctx->len.u[1];
   void *key = ctx->key;
 #ifdef GCM_FUNCREF_4BIT
@@ -1134,7 +1136,8 @@ int CRYPTO_gcm128_decrypt_ctr32(GCM128_CONTEXT *ctx, const uint8_t *in,
     len -= GHASH_CHUNK;
   }
 #endif
-  if ((i = (len & (size_t) - 16))) {
+  size_t i = len & kSizeTWithoutLower4Bits;
+  if (i != 0) {
     size_t j = i / 16;
 
 #if defined(GHASH)
