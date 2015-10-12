@@ -206,9 +206,9 @@ type testCase struct {
 	// connection immediately after the handshake rather than echoing
 	// messages from the runner.
 	shimShutsDown bool
-	// renegotiate indicates the the connection should be renegotiated
-	// during the exchange.
-	renegotiate bool
+	// renegotiate indicates the number of times the connection should be
+	// renegotiated during the exchange.
+	renegotiate int
 	// renegotiateCiphers is a list of ciphersuite ids that will be
 	// switched in just before renegotiation.
 	renegotiateCiphers []uint16
@@ -403,12 +403,14 @@ func doExchange(test *testCase, config *Config, conn net.Conn, isResume bool) er
 		tlsConn.SendAlert(alertLevelWarning, alertUnexpectedMessage)
 	}
 
-	if test.renegotiate {
+	if test.renegotiate > 0 {
 		if test.renegotiateCiphers != nil {
 			config.CipherSuites = test.renegotiateCiphers
 		}
-		if err := tlsConn.Renegotiate(); err != nil {
-			return err
+		for i := 0; i < test.renegotiate; i++ {
+			if err := tlsConn.Renegotiate(); err != nil {
+				return err
+			}
 		}
 	} else if test.renegotiateCiphers != nil {
 		panic("renegotiateCiphers without renegotiate")
@@ -2710,8 +2712,11 @@ func addStateMachineCoverageTests(async, splitHandshake bool, protocol protocol)
 	if protocol == tls {
 		tests = append(tests, testCase{
 			name:        "Renegotiate-Client",
-			renegotiate: true,
-			flags:       []string{"-expect-total-renegotiations", "1"},
+			renegotiate: 1,
+			flags: []string{
+				"-renegotiate-freely",
+				"-expect-total-renegotiations", "1",
+			},
 		})
 		// NPN on client and server; results in post-handshake message.
 		tests = append(tests, testCase{
@@ -3675,8 +3680,7 @@ func addRenegotiationTests() {
 	testCases = append(testCases, testCase{
 		testType:           serverTest,
 		name:               "Renegotiate-Server-Forbidden",
-		renegotiate:        true,
-		flags:              []string{"-reject-peer-renegotiations"},
+		renegotiate:        1,
 		shouldFail:         true,
 		expectedError:      ":NO_RENEGOTIATION:",
 		expectedLocalError: "remote error: no renegotiation",
@@ -3715,28 +3719,33 @@ func addRenegotiationTests() {
 				FailIfResumeOnRenego: true,
 			},
 		},
-		renegotiate: true,
-		flags:       []string{"-expect-total-renegotiations", "1"},
+		renegotiate: 1,
+		flags: []string{
+			"-renegotiate-freely",
+			"-expect-total-renegotiations", "1",
+		},
 	})
 	testCases = append(testCases, testCase{
 		name:        "Renegotiate-Client-EmptyExt",
-		renegotiate: true,
+		renegotiate: 1,
 		config: Config{
 			Bugs: ProtocolBugs{
 				EmptyRenegotiationInfo: true,
 			},
 		},
+		flags:         []string{"-renegotiate-freely"},
 		shouldFail:    true,
 		expectedError: ":RENEGOTIATION_MISMATCH:",
 	})
 	testCases = append(testCases, testCase{
 		name:        "Renegotiate-Client-BadExt",
-		renegotiate: true,
+		renegotiate: 1,
 		config: Config{
 			Bugs: ProtocolBugs{
 				BadRenegotiationInfo: true,
 			},
 		},
+		flags:         []string{"-renegotiate-freely"},
 		shouldFail:    true,
 		expectedError: ":RENEGOTIATION_MISMATCH:",
 	})
@@ -3753,54 +3762,58 @@ func addRenegotiationTests() {
 	})
 	testCases = append(testCases, testCase{
 		name:        "Renegotiate-Client-NoExt-Allowed",
-		renegotiate: true,
+		renegotiate: 1,
 		config: Config{
 			Bugs: ProtocolBugs{
 				NoRenegotiationInfo: true,
 			},
 		},
-		flags: []string{"-expect-total-renegotiations", "1"},
+		flags: []string{
+			"-renegotiate-freely",
+			"-expect-total-renegotiations", "1",
+		},
 	})
 	testCases = append(testCases, testCase{
 		name:        "Renegotiate-Client-SwitchCiphers",
-		renegotiate: true,
+		renegotiate: 1,
 		config: Config{
 			CipherSuites: []uint16{TLS_RSA_WITH_RC4_128_SHA},
 		},
 		renegotiateCiphers: []uint16{TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256},
-		flags:              []string{"-expect-total-renegotiations", "1"},
+		flags: []string{
+			"-renegotiate-freely",
+			"-expect-total-renegotiations", "1",
+		},
 	})
 	testCases = append(testCases, testCase{
 		name:        "Renegotiate-Client-SwitchCiphers2",
-		renegotiate: true,
+		renegotiate: 1,
 		config: Config{
 			CipherSuites: []uint16{TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256},
 		},
 		renegotiateCiphers: []uint16{TLS_RSA_WITH_RC4_128_SHA},
-		flags:              []string{"-expect-total-renegotiations", "1"},
-	})
-	testCases = append(testCases, testCase{
-		name:               "Renegotiate-Client-Forbidden",
-		renegotiate:        true,
-		flags:              []string{"-reject-peer-renegotiations"},
-		shouldFail:         true,
-		expectedError:      ":NO_RENEGOTIATION:",
-		expectedLocalError: "remote error: no renegotiation",
+		flags: []string{
+			"-renegotiate-freely",
+			"-expect-total-renegotiations", "1",
+		},
 	})
 	testCases = append(testCases, testCase{
 		name:        "Renegotiate-SameClientVersion",
-		renegotiate: true,
+		renegotiate: 1,
 		config: Config{
 			MaxVersion: VersionTLS10,
 			Bugs: ProtocolBugs{
 				RequireSameRenegoClientVersion: true,
 			},
 		},
-		flags: []string{"-expect-total-renegotiations", "1"},
+		flags: []string{
+			"-renegotiate-freely",
+			"-expect-total-renegotiations", "1",
+		},
 	})
 	testCases = append(testCases, testCase{
 		name:        "Renegotiate-FalseStart",
-		renegotiate: true,
+		renegotiate: 1,
 		config: Config{
 			CipherSuites: []uint16{TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256},
 			NextProtos:   []string{"foo"},
@@ -3808,9 +3821,51 @@ func addRenegotiationTests() {
 		flags: []string{
 			"-false-start",
 			"-select-next-proto", "foo",
+			"-renegotiate-freely",
 			"-expect-total-renegotiations", "1",
 		},
 		shimWritesFirst: true,
+	})
+
+	// Client-side renegotiation controls.
+	testCases = append(testCases, testCase{
+		name:               "Renegotiate-Client-Forbidden-1",
+		renegotiate:        1,
+		shouldFail:         true,
+		expectedError:      ":NO_RENEGOTIATION:",
+		expectedLocalError: "remote error: no renegotiation",
+	})
+	testCases = append(testCases, testCase{
+		name:        "Renegotiate-Client-Once-1",
+		renegotiate: 1,
+		flags: []string{
+			"-renegotiate-once",
+			"-expect-total-renegotiations", "1",
+		},
+	})
+	testCases = append(testCases, testCase{
+		name:        "Renegotiate-Client-Freely-1",
+		renegotiate: 1,
+		flags: []string{
+			"-renegotiate-freely",
+			"-expect-total-renegotiations", "1",
+		},
+	})
+	testCases = append(testCases, testCase{
+		name:               "Renegotiate-Client-Once-2",
+		renegotiate:        2,
+		flags:              []string{"-renegotiate-once"},
+		shouldFail:         true,
+		expectedError:      ":NO_RENEGOTIATION:",
+		expectedLocalError: "remote error: no renegotiation",
+	})
+	testCases = append(testCases, testCase{
+		name:        "Renegotiate-Client-Freely-2",
+		renegotiate: 2,
+		flags: []string{
+			"-renegotiate-freely",
+			"-expect-total-renegotiations", "2",
+		},
 	})
 }
 

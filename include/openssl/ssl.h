@@ -2368,11 +2368,25 @@ OPENSSL_EXPORT void SSL_set_msg_callback_arg(SSL *ssl, void *arg);
  * https://developer.mozilla.org/en-US/docs/Mozilla/Projects/NSS/Key_Log_Format. */
 OPENSSL_EXPORT void SSL_CTX_set_keylog_bio(SSL_CTX *ctx, BIO *keylog_bio);
 
-/* SSL_set_reject_peer_renegotiations controls whether renegotiation attempts by
- * the peer are rejected. It may be set at any point in a connection's lifetime
- * to control future renegotiations programmatically. By default, renegotiations
- * are rejected. (Renegotiations requested by a client are always rejected.) */
-OPENSSL_EXPORT void SSL_set_reject_peer_renegotiations(SSL *ssl, int reject);
+enum ssl_renegotiate_mode_t {
+  ssl_renegotiate_never = 0,
+  ssl_renegotiate_once,
+  ssl_renegotiate_freely,
+};
+
+/* SSL_set_renegotiate_mode configures how |ssl|, a client, reacts to
+ * renegotiation attempts by a server. If |ssl| is a server, peer-initiated
+ * renegotiations are *always* rejected and this function does nothing.
+ *
+ * The renegotiation mode defaults to |ssl_renegotiate_never|, but may be set
+ * at any point in a connection's lifetime. Set it to |ssl_renegotiate_once| to
+ * allow one renegotiation and |ssl_renegotiate_freely| to allow all
+ * renegotiations.
+ *
+ * There is no support in BoringSSL for initiating renegotiations as a client
+ * or server. */
+OPENSSL_EXPORT void SSL_set_renegotiate_mode(SSL *ssl,
+                                             enum ssl_renegotiate_mode_t mode);
 
 
 /* Underdocumented functions.
@@ -2719,6 +2733,11 @@ OPENSSL_EXPORT void SSL_CTX_set_dos_protection_cb(
 
 
 /* Deprecated functions. */
+
+/* SSL_set_reject_peer_renegotiations calls |SSL_set_renegotiate_mode| with
+ * |ssl_never_renegotiate| if |reject| is one and |ssl_renegotiate_freely| if
+ * zero. */
+OPENSSL_EXPORT void SSL_set_reject_peer_renegotiations(SSL *ssl, int reject);
 
 /* SSL_CIPHER_description writes a description of |cipher| into |buf| and
  * returns |buf|. If |buf| is NULL, it returns a newly allocated string, to be
@@ -3567,9 +3586,8 @@ struct ssl_st {
   uint8_t *alpn_client_proto_list;
   unsigned alpn_client_proto_list_len;
 
-  /* accept_peer_renegotiations, if one, accepts renegotiation attempts from the
-   * peer. Otherwise, they will be rejected with a fatal error. */
-  char accept_peer_renegotiations;
+  /* renegotiate_mode controls how peer renegotiation attempts are handled. */
+  enum ssl_renegotiate_mode_t renegotiate_mode;
 
   /* These fields are always NULL and exist only to keep wpa_supplicant happy
    * about the change to EVP_AEAD. They are only needed for EAP-FAST, which we

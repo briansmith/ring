@@ -1114,9 +1114,11 @@ static bool DoExchange(ScopedSSL_SESSION *out_session, SSL_CTX *ssl_ctx,
   if (config->install_ddos_callback) {
     SSL_CTX_set_dos_protection_cb(ssl_ctx, DDoSCallback);
   }
-  if (!config->reject_peer_renegotiations) {
-    /* Renegotiations are disabled by default. */
-    SSL_set_reject_peer_renegotiations(ssl.get(), 0);
+  if (config->renegotiate_once) {
+    SSL_set_renegotiate_mode(ssl.get(), ssl_renegotiate_once);
+  }
+  if (config->renegotiate_freely) {
+    SSL_set_renegotiate_mode(ssl.get(), ssl_renegotiate_freely);
   }
   if (!config->check_close_notify) {
     SSL_set_quiet_shutdown(ssl.get(), 1);

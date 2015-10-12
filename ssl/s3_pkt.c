@@ -337,6 +337,20 @@ void ssl3_read_close_notify(SSL *ssl) {
   ssl3_read_bytes(ssl, 0, NULL, 0, 0);
 }
 
+static int ssl3_can_renegotiate(SSL *ssl) {
+  switch (ssl->renegotiate_mode) {
+    case ssl_renegotiate_never:
+      return 0;
+    case ssl_renegotiate_once:
+      return ssl->s3->total_renegotiations == 0;
+    case ssl_renegotiate_freely:
+      return 1;
+  }
+
+  assert(0);
+  return 0;
+}
+
 /* Return up to 'len' payload bytes received in 'type' records.
  * 'type' is one of the following:
  *
@@ -509,7 +523,7 @@ start:
   if (rr->type == SSL3_RT_HANDSHAKE) {
     /* If peer renegotiations are disabled, all out-of-order handshake records
      * are fatal. Renegotiations as a server are never supported. */
-    if (!s->accept_peer_renegotiations || s->server) {
+    if (s->server || !ssl3_can_renegotiate(s)) {
       al = SSL_AD_NO_RENEGOTIATION;
       OPENSSL_PUT_ERROR(SSL, SSL_R_NO_RENEGOTIATION);
       goto f_err;

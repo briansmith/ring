@@ -2699,8 +2699,13 @@ void SSL_CTX_set_dos_protection_cb(
   ctx->dos_protection_cb = cb;
 }
 
-void SSL_set_reject_peer_renegotiations(SSL *s, int reject) {
-  s->accept_peer_renegotiations = !reject;
+void SSL_set_renegotiate_mode(SSL *ssl, enum ssl_renegotiate_mode_t mode) {
+  ssl->renegotiate_mode = mode;
+}
+
+void SSL_set_reject_peer_renegotiations(SSL *ssl, int reject) {
+  SSL_set_renegotiate_mode(
+      ssl, reject ? ssl_renegotiate_never : ssl_renegotiate_freely);
 }
 
 int SSL_get_rc4_state(const SSL *ssl, const RC4_KEY **read_key,

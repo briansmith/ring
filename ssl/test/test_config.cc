@@ -76,7 +76,6 @@ const Flag<bool> kBoolFlags[] = {
   { "-fail-second-ddos-callback", &TestConfig::fail_second_ddos_callback },
   { "-handshake-never-done", &TestConfig::handshake_never_done },
   { "-use-export-context", &TestConfig::use_export_context },
-  { "-reject-peer-renegotiations", &TestConfig::reject_peer_renegotiations },
   { "-no-legacy-server-connect", &TestConfig::no_legacy_server_connect },
   { "-tls-unique", &TestConfig::tls_unique },
   { "-use-async-private-key", &TestConfig::use_async_private_key },
@@ -95,7 +94,9 @@ const Flag<bool> kBoolFlags[] = {
   { "-microsoft-big-sslv3-buffer", &TestConfig::microsoft_big_sslv3_buffer },
   { "-verify-fail", &TestConfig::verify_fail },
   { "-verify-peer", &TestConfig::verify_peer },
-  { "-expect-verify-result", &TestConfig::expect_verify_result }
+  { "-expect-verify-result", &TestConfig::expect_verify_result },
+  { "-renegotiate-once", &TestConfig::renegotiate_once },
+  { "-renegotiate-freely", &TestConfig::renegotiate_freely },
 };
 
 const Flag<std::string> kStringFlags[] = {
