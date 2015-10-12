@@ -710,7 +710,7 @@ loop:
   if (!BN_add_word(rnd, delta)) {
     return 0;
   }
-  if (BN_num_bits(rnd) != bits) {
+  if (BN_num_bits(rnd) != (unsigned)bits) {
     goto again;
   }
 
