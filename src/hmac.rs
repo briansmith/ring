@@ -47,7 +47,7 @@
 //! ## Using the one-shot API:
 //!
 //! ```
-//! use ring::*;
+//! use ring::{digest, hmac, rand};
 //!
 //! # fn main_with_result() -> Result<(), ()> {
 //! let msg = "hello, world";
@@ -69,7 +69,7 @@
 //!
 //! ## Using the multi-part API:
 //! ```
-//! use ring::*;
+//! use ring::{digest, hmac, rand};
 //!
 //! # fn main_with_result() -> Result<(), ()> {
 //! let parts = ["hello", ", ", "world"];
