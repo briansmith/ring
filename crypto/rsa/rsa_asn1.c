@@ -203,9 +203,17 @@ RSA *RSA_parse_private_key(CBS *cbs) {
   CBS child;
   uint64_t version;
   if (!CBS_get_asn1(cbs, &child, CBS_ASN1_SEQUENCE) ||
-      !CBS_get_asn1_uint64(&child, &version) ||
-      (version != kVersionTwoPrime && version != kVersionMulti) ||
-      !parse_integer(&child, &ret->n) ||
+      !CBS_get_asn1_uint64(&child, &version)) {
+    OPENSSL_PUT_ERROR(RSA, RSA_R_BAD_ENCODING);
+    goto err;
+  }
+
+  if (version != kVersionTwoPrime && version != kVersionMulti) {
+    OPENSSL_PUT_ERROR(RSA, RSA_R_BAD_VERSION);
+    goto err;
+  }
+
+  if (!parse_integer(&child, &ret->n) ||
       !parse_integer(&child, &ret->e) ||
       !parse_integer(&child, &ret->d) ||
       !parse_integer(&child, &ret->p) ||
@@ -213,7 +221,6 @@ RSA *RSA_parse_private_key(CBS *cbs) {
       !parse_integer(&child, &ret->dmp1) ||
       !parse_integer(&child, &ret->dmq1) ||
       !parse_integer(&child, &ret->iqmp)) {
-    OPENSSL_PUT_ERROR(RSA, RSA_R_BAD_VERSION);
     goto err;
   }
 
