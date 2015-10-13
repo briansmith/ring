@@ -23,7 +23,7 @@ not part of the NDK) and a number of other apps/programs.
 
 There are other files in this directory which might be helpful:
 
-  * [PORTING.md](PORTING.md): how to port OpenSSL-using code to BoringSSL.
-  * [BUILDING.md](BUILDING.md): how to build BoringSSL
-  * [STYLE.md](STYLE.md): rules and guidelines for coding style.
+  * [PORTING.md](/PORTING.md): how to port OpenSSL-using code to BoringSSL.
+  * [BUILDING.md](/BUILDING.md): how to build BoringSSL
+  * [STYLE.md](/STYLE.md): rules and guidelines for coding style.
   * include/openssl: public headers with API documentation in comments. Also [available online](https://commondatastorage.googleapis.com/chromium-boringssl-docs/headers.html).
