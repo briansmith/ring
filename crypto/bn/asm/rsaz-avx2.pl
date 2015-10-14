@@ -79,29 +79,13 @@ $0 =~ m/(.*[\/\\])[^\/\\]+$/; $dir=$1;
 ( $xlate="${dir}../../perlasm/x86_64-xlate.pl" and -f $xlate) or
 die "can't locate x86_64-xlate.pl";
 
-if (`$ENV{CC} -Wa,-v -c -o /dev/null -x assembler /dev/null 2>&1`
-		=~ /GNU assembler version ([2-9]\.[0-9]+)/) {
-	$avx = ($1>=2.19) + ($1>=2.22);
-	$addx = ($1>=2.23);
-}
-
-if (!$avx && $win64 && ($flavour =~ /nasm/ || $ENV{ASM} =~ /nasm/) &&
-	    `nasm -v 2>&1` =~ /NASM version ([2-9]\.[0-9]+)/) {
-	$avx = ($1>=2.09) + ($1>=2.10);
-	$addx = ($1>=2.10);
-}
-
-if (!$avx && $win64 && ($flavour =~ /masm/ || $ENV{ASM} =~ /ml64/) &&
-	    `ml64 2>&1` =~ /Version ([0-9]+)\./) {
-	$avx = ($1>=10) + ($1>=11);
-	$addx = ($1>=11);
-}
-
-if (!$avx && `$ENV{CC} -v 2>&1` =~ /(^clang version|based on LLVM) ([3-9])\.([0-9]+)/) {
-	my $ver = $2 + $3/100.0;	# 3.1->3.01, 3.10->3.10
-	$avx = ($ver>=3.0) + ($ver>=3.01);
-	$addx = ($ver>=3.03);
-}
+# In upstream, this is controlled by shelling out to the compiler to check
+# versions, but BoringSSL is intended to be used with pre-generated perlasm
+# output, so this isn't useful anyway.
+#
+# TODO(davidben): Enable these after testing. $avx goes up to 2 and $addx to 1.
+$avx = 0;
+$addx = 0;
 
 open OUT,"| \"$^X\" $xlate $flavour $output";
 *STDOUT = *OUT;

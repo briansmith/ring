@@ -79,22 +79,17 @@ my $nasmref=2.03;
 my $nasm=0;
 
 if    ($flavour eq "mingw64")	{ $gas=1; $elf=0; $win64=1;
+				  # TODO(davidben): Before supporting the
+				  # mingw64 perlasm flavour, do away with this
+				  # environment variable check.
+                                  die "mingw64 not supported";
 				  $prefix=`echo __USER_LABEL_PREFIX__ | $ENV{CC} -E -P -`;
 				  chomp($prefix);
 				}
 elsif ($flavour eq "macosx")	{ $gas=1; $elf=0; $prefix="_"; $decor="L\$"; }
 elsif ($flavour eq "masm")	{ $gas=0; $elf=0; $masm=$masmref; $win64=1; $decor="\$L\$"; }
 elsif ($flavour eq "nasm")	{ $gas=0; $elf=0; $nasm=$nasmref; $win64=1; $decor="\$L\$"; $PTR=""; }
-elsif (!$gas)
-{   if ($ENV{ASM} =~ m/nasm/ && `nasm -v` =~ m/version ([0-9]+)\.([0-9]+)/i)
-    {	$nasm = $1 + $2*0.01; $PTR="";  }
-    elsif (`ml64 2>&1` =~ m/Version ([0-9]+)\.([0-9]+)(\.([0-9]+))?/)
-    {	$masm = $1 + $2*2**-16 + $4*2**-32;   }
-    die "no assembler found on %PATH" if (!($nasm || $masm));
-    $win64=1;
-    $elf=0;
-    $decor="\$L\$";
-}
+elsif (!$gas)                   { die "unknown flavour $flavour"; }
 
 my $current_segment;
 my $current_function;
