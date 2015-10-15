@@ -128,6 +128,8 @@ if (!$avx && `$ENV{CC} -v 2>&1` =~ /(^clang version|based on LLVM) ([3-9]\.[0-9]
 	$avx = ($2>=3.0) + ($2>3.0);
 }
 
+# TODO(davidben): Consider enabling the Intel SHA Extensions code once it's
+# been tested.
 $shaext=0;	### set to zero if compiling for 1.0.1
 $avx=1		if (!$shaext && $avx);
 
