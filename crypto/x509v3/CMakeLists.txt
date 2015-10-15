@@ -52,6 +52,7 @@ add_executable(
 )
 
 target_link_libraries(v3name_test crypto)
+add_dependencies(all_tests v3name_test)
 
 add_executable(
   tab_test
@@ -62,3 +63,4 @@ add_executable(
 )
 
 target_link_libraries(tab_test crypto)
+add_dependencies(all_tests tab_test)

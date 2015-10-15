@@ -28,3 +28,4 @@ add_executable(
 )
 
 target_link_libraries(poly1305_test crypto)
+add_dependencies(all_tests poly1305_test)

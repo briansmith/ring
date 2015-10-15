@@ -19,3 +19,4 @@ add_executable(
 )
 
 target_link_libraries(ecdsa_test crypto)
+add_dependencies(all_tests ecdsa_test)

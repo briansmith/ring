@@ -137,8 +137,27 @@ if (OPENSSL_NO_ASM)
   set(ARCH "generic")
 endif()
 
+# Declare a dummy target to build all unit tests. Test targets should inject
+# themselves as dependencies next to the target definition.
+add_custom_target(all_tests)
+
 add_subdirectory(crypto)
 add_subdirectory(ssl)
 add_subdirectory(ssl/test)
 add_subdirectory(tool)
 add_subdirectory(decrepit)
+
+if (NOT ${CMAKE_VERSION} VERSION_LESS "3.2")
+  # USES_TERMINAL is only available in CMake 3.2 or later.
+  set(MAYBE_USES_TERMINAL USES_TERMINAL)
+endif()
+
+add_custom_target(
+    run_tests
+    COMMAND ${GO_EXECUTABLE} run util/all_tests.go -build-dir
+            ${CMAKE_BINARY_DIR}
+    COMMAND cd ssl/test/runner
+    COMMAND ${GO_EXECUTABLE} test -shim-path $<TARGET_FILE:bssl_shim>
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+    DEPENDS all_tests bssl_shim
+    ${MAYBE_USES_TERMINAL})

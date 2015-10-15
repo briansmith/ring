@@ -21,3 +21,4 @@ add_executable(
 )
 
 target_link_libraries(dh_test crypto)
+add_dependencies(all_tests dh_test)

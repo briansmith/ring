@@ -47,3 +47,4 @@ add_executable(
 )
 
 target_link_libraries(err_test crypto)
+add_dependencies(all_tests err_test)

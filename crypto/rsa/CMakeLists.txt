@@ -21,3 +21,4 @@ add_executable(
 )
 
 target_link_libraries(rsa_test crypto)
+add_dependencies(all_tests rsa_test)

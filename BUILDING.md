@@ -122,6 +122,9 @@ are built by Ninja and can be run from the top-level directory with `go run
 util/all_tests.go`. The latter have to be run separately by running `go test`
 from within `ssl/test/runner`.
 
+Both sets of tests may also be run with `ninja -C build run_tests`, but CMake
+3.2 or later is required to avoid Ninja's output buffering.
+
 
  [1]: http://www.cmake.org/download/
  [2]: http://strawberryperl.com/

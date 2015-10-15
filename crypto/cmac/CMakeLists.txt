@@ -17,3 +17,4 @@ add_executable(
 )
 
 target_link_libraries(cmac_test crypto)
+add_dependencies(all_tests cmac_test)

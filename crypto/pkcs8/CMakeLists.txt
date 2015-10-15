@@ -27,3 +27,4 @@ add_executable(
 
 target_link_libraries(pkcs8_test crypto)
 target_link_libraries(pkcs12_test crypto)
+add_dependencies(all_tests pkcs8_test pkcs12_test)

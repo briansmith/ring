@@ -47,3 +47,4 @@ add_executable(
 )
 
 target_link_libraries(ssl_test ssl crypto)
+add_dependencies(all_tests ssl_test)

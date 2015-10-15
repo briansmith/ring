@@ -210,6 +210,7 @@ add_executable(
 )
 
 target_link_libraries(constant_time_test crypto)
+add_dependencies(all_tests constant_time_test)
 
 add_executable(
   thread_test
@@ -220,6 +221,7 @@ add_executable(
 )
 
 target_link_libraries(thread_test crypto)
+add_dependencies(all_tests thread_test)
 
 add_executable(
   refcount_test
@@ -228,3 +230,4 @@ add_executable(
 )
 
 target_link_libraries(refcount_test crypto)
+add_dependencies(all_tests refcount_test)
