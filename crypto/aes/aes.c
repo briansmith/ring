@@ -51,6 +51,8 @@
 #include <assert.h>
 #include <stdlib.h>
 
+#include <openssl/cpu.h>
+
 #include "internal.h"
 
 
@@ -1059,10 +1061,9 @@ void AES_decrypt(const uint8_t *in, uint8_t *out, const AES_KEY *key) {
 #else
 
 #if defined(OPENSSL_ARM) || defined(OPENSSL_AARCH64)
-#include <openssl/arm_arch.h>
 
 static int hwaes_capable(void) {
-  return (OPENSSL_armcap_P & ARMV8_AES) != 0;
+  return CRYPTO_is_ARMv8_AES_capable();
 }
 
 int aes_v8_set_encrypt_key(const uint8_t *user_key, const int bits,

@@ -91,6 +91,30 @@ binaries.
     don't have steps for assembling the assembly language source files, so they
     currently cannot be used to build BoringSSL.
 
+## Embedded ARM
+
+ARM, unlike Intel, does not have an instruction that allows applications to
+discover the capabilities of the processor. Instead, the capability information
+has to be provided by the operating system somehow.
+
+BoringSSL will try to use `getauxval` to discover the capabilities and, failing
+that, will probe for NEON support by executing a NEON instruction and handling
+any illegal-instruction signal. But some environments don't support that sort
+of thing and, for them, it's possible to configure the CPU capabilities
+at compile time.
+
+If you define `OPENSSL_STATIC_ARMCAP` then you can define any of the following
+to enabling the corresponding ARM feature.
+
+  * `OPENSSL_STATIC_ARMCAP_NEON` or `__ARM_NEON__` (note that the latter is set by compilers when NEON support is enabled).
+  * `OPENSSL_STATIC_ARMCAP_AES`
+  * `OPENSSL_STATIC_ARMCAP_SHA1`
+  * `OPENSSL_STATIC_ARMCAP_SHA256`
+  * `OPENSSL_STATIC_ARMCAP_PMULL`
+
+Note that if a feature is enabled in this way, but not actually supported at
+run-time, BoringSSL will likely crash.
+
 # Running tests
 
 There are two sets of tests: the C/C++ tests and the blackbox tests. For former

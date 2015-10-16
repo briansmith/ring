@@ -102,15 +102,6 @@
  * will be included. */
 #define __ARM_MAX_ARCH__ 8
 
-#if !__ASSEMBLER__
-
-/* OPENSSL_armcap_P contains flags describing the capabilities of the CPU and
- * is easy for assembly code to acesss. For C code, see the functions in
- * |cpu.h|. */
-extern uint32_t OPENSSL_armcap_P;
-
-#endif  /* !__ASSEMBLER__ */
-
 /* ARMV7_NEON is true when a NEON unit is present in the current CPU. */
 #define ARMV7_NEON (1 << 0)
 

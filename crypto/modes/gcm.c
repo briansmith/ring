@@ -355,7 +355,7 @@ void gcm_ghash_4bit_x86(uint64_t Xi[2], const u128 Htable[16], const uint8_t *in
 #define GCM_FUNCREF_4BIT
 
 static int pmull_capable(void) {
-  return (OPENSSL_armcap_P & ARMV8_PMULL) != 0;
+  return CRYPTO_is_ARMv8_PMULL_capable();
 }
 
 void gcm_init_v8(u128 Htable[16], const uint64_t Xi[2]);
