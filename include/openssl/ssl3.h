@@ -613,7 +613,6 @@ typedef struct ssl3_state_st {
 /* read from client */
 #define SSL3_ST_SR_INITIAL_BYTES (0x240 | SSL_ST_ACCEPT)
 #define SSL3_ST_SR_V2_CLIENT_HELLO (0x241 | SSL_ST_ACCEPT)
-/* Do not change the number values, they do matter */
 #define SSL3_ST_SR_CLNT_HELLO_A (0x110 | SSL_ST_ACCEPT)
 #define SSL3_ST_SR_CLNT_HELLO_B (0x111 | SSL_ST_ACCEPT)
 #define SSL3_ST_SR_CLNT_HELLO_C (0x112 | SSL_ST_ACCEPT)
