@@ -1163,31 +1163,29 @@ err:
   return ret;
 }
 
-/* return length of latest Finished message we sent, copy to 'buf' */
-size_t SSL_get_finished(const SSL *s, void *buf, size_t count) {
+size_t SSL_get_finished(const SSL *ssl, void *buf, size_t count) {
   size_t ret = 0;
 
-  if (s->s3 != NULL) {
-    ret = s->s3->tmp.finish_md_len;
+  if (ssl->s3 != NULL) {
+    ret = ssl->s3->tmp.finish_md_len;
     if (count > ret) {
       count = ret;
     }
-    memcpy(buf, s->s3->tmp.finish_md, count);
+    memcpy(buf, ssl->s3->tmp.finish_md, count);
   }
 
   return ret;
 }
 
-/* return length of latest Finished message we expected, copy to 'buf' */
-size_t SSL_get_peer_finished(const SSL *s, void *buf, size_t count) {
+size_t SSL_get_peer_finished(const SSL *ssl, void *buf, size_t count) {
   size_t ret = 0;
 
-  if (s->s3 != NULL) {
-    ret = s->s3->tmp.peer_finish_md_len;
+  if (ssl->s3 != NULL) {
+    ret = ssl->s3->tmp.peer_finish_md_len;
     if (count > ret) {
       count = ret;
     }
-    memcpy(buf, s->s3->tmp.peer_finish_md, count);
+    memcpy(buf, ssl->s3->tmp.peer_finish_md, count);
   }
 
   return ret;

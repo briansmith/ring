@@ -2702,13 +2702,6 @@ OPENSSL_EXPORT void (*SSL_CTX_get_info_callback(SSL_CTX *ctx))(const SSL *ssl,
  * for the peer, but |SSL_read| will require the handshake to be completed. */
 OPENSSL_EXPORT int SSL_in_false_start(const SSL *s);
 
-/* Obtain latest Finished message
- *   -- that we sent (SSL_get_finished)
- *   -- that we expected from peer (SSL_get_peer_finished).
- * Returns length (0 == no Finished so far), copies up to 'count' bytes. */
-OPENSSL_EXPORT size_t SSL_get_finished(const SSL *s, void *buf, size_t count);
-OPENSSL_EXPORT size_t SSL_get_peer_finished(const SSL *s, void *buf, size_t count);
-
 #define d2i_SSL_SESSION_bio(bp, s_id) \
   ASN1_d2i_bio_of(SSL_SESSION, SSL_SESSION_new, d2i_SSL_SESSION, bp, s_id)
 #define i2d_SSL_SESSION_bio(bp, s_id) \
@@ -3119,6 +3112,21 @@ OPENSSL_EXPORT int SSL_want(const SSL *ssl);
   (SSL_want(ssl) == SSL_CERTIFICATE_SELECTION_PENDING)
 #define SSL_want_private_key_operation(ssl) \
   (SSL_want(ssl) == SSL_PRIVATE_KEY_OPERATION)
+
+ /* SSL_get_finished writes up to |count| bytes of the Finished message sent by
+  * |ssl| to |buf|. It returns the total untruncated length or zero if none has
+  * been sent yet.
+  *
+  * Use |SSL_get_tls_unique| instead. */
+OPENSSL_EXPORT size_t SSL_get_finished(const SSL *ssl, void *buf, size_t count);
+
+ /* SSL_get_peer_finished writes up to |count| bytes of the Finished message
+  * received from |ssl|'s peer to |buf|. It returns the total untruncated length
+  * or zero if none has been received yet.
+  *
+  * Use |SSL_get_tls_unique| instead. */
+OPENSSL_EXPORT size_t SSL_get_peer_finished(const SSL *ssl, void *buf,
+                                            size_t count);
 
 
 /* Private structures.
