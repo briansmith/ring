@@ -2526,6 +2526,20 @@ OPENSSL_EXPORT void SSL_CTX_set_max_send_fragment(SSL_CTX *ctx,
 OPENSSL_EXPORT void SSL_set_max_send_fragment(SSL *ssl,
                                               size_t max_send_fragment);
 
+/* OPENSSL_get_big_buffer_use_count returns the total number of invalid TLS
+ * records that were accepted because of |SSL_OP_MICROSOFT_BIG_SSLV3_BUFFER|.
+ *
+ * TODO(davidben): Remove this when (hopefully!) the quirk is demonstrated to be
+ * unnecessary. */
+OPENSSL_EXPORT uint64_t OPENSSL_get_big_buffer_use_count(void);
+
+/* OPENSSL_get_d5_bug_use_count returns the total number of invalid RSA
+ * ClientKeyExchanges that were accepted because of |SSL_OP_TLS_D5_BUG|.
+ *
+ * TODO(davidben): Remove this when (hopefully!) the quirk is demonstrated to be
+ * unnecessary. */
+OPENSSL_EXPORT uint64_t OPENSSL_get_d5_bug_use_count(void);
+
 
 /* Underdocumented functions.
  *

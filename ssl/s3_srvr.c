@@ -1575,6 +1575,16 @@ err:
   return -1;
 }
 
+static struct CRYPTO_STATIC_MUTEX g_d5_bug_lock = CRYPTO_STATIC_MUTEX_INIT;
+static uint64_t g_d5_bug_use_count = 0;
+
+uint64_t OPENSSL_get_d5_bug_use_count(void) {
+  CRYPTO_STATIC_MUTEX_lock_read(&g_d5_bug_lock);
+  uint64_t ret = g_d5_bug_use_count;
+  CRYPTO_STATIC_MUTEX_unlock(&g_d5_bug_lock);
+  return ret;
+}
+
 int ssl3_get_client_key_exchange(SSL *s) {
   int al, ok;
   long n;
@@ -1684,6 +1694,10 @@ int ssl3_get_client_key_exchange(SSL *s) {
           OPENSSL_PUT_ERROR(SSL, SSL_R_TLS_RSA_ENCRYPTED_VALUE_LENGTH_IS_WRONG);
           goto f_err;
         } else {
+          CRYPTO_STATIC_MUTEX_lock_write(&g_d5_bug_lock);
+          g_d5_bug_use_count++;
+          CRYPTO_STATIC_MUTEX_unlock(&g_d5_bug_lock);
+
           encrypted_premaster_secret = copy;
         }
       }

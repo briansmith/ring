@@ -114,6 +114,7 @@
 #include <openssl/err.h>
 
 #include "internal.h"
+#include "../crypto/internal.h"
 
 
 /* kMaxEmptyRecords is the number of consecutive, empty records that will be
@@ -121,6 +122,16 @@
  * faster rate than we can process and cause record processing to loop
  * forever. */
 static const uint8_t kMaxEmptyRecords = 32;
+
+static struct CRYPTO_STATIC_MUTEX g_big_buffer_lock = CRYPTO_STATIC_MUTEX_INIT;
+static uint64_t g_big_buffer_use_count = 0;
+
+uint64_t OPENSSL_get_big_buffer_use_count(void) {
+  CRYPTO_STATIC_MUTEX_lock_read(&g_big_buffer_lock);
+  uint64_t ret = g_big_buffer_use_count;
+  CRYPTO_STATIC_MUTEX_unlock(&g_big_buffer_lock);
+  return ret;
+}
 
 size_t ssl_record_prefix_len(const SSL *ssl) {
   if (SSL_IS_DTLS(ssl)) {
@@ -228,6 +239,14 @@ enum ssl_open_record_t tls_open_record(
     OPENSSL_PUT_ERROR(SSL, SSL_R_DATA_LENGTH_TOO_LONG);
     *out_alert = SSL_AD_RECORD_OVERFLOW;
     return ssl_open_record_error;
+  }
+
+  if (extra > 0 &&
+      (ciphertext_len > SSL3_RT_MAX_ENCRYPTED_LENGTH ||
+       plaintext_len > SSL3_RT_MAX_PLAIN_LENGTH)) {
+    CRYPTO_STATIC_MUTEX_lock_write(&g_big_buffer_lock);
+    g_big_buffer_use_count++;
+    CRYPTO_STATIC_MUTEX_unlock(&g_big_buffer_lock);
   }
 
   /* Limit the number of consecutive empty records. */
