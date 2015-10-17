@@ -149,6 +149,7 @@
 #include <openssl/hmac.h>
 #include <openssl/lhash.h>
 #include <openssl/pem.h>
+#include <openssl/ssl3.h>
 #include <openssl/thread.h>
 #include <openssl/tls1.h>
 #include <openssl/x509.h>
@@ -3789,6 +3790,258 @@ struct ssl_st {
   EVP_MD_CTX *read_hash;
 };
 
+typedef struct ssl3_record_st {
+  /* type is the record type. */
+  uint8_t type;
+  /* length is the number of unconsumed bytes of |data|. */
+  uint16_t length;
+  /* off is the number of consumed bytes of |data|. */
+  uint16_t off;
+  /* data is a non-owning pointer to the record contents. The total length of
+   * the buffer is |off| + |length|. */
+  uint8_t *data;
+} SSL3_RECORD;
+
+typedef struct ssl3_buffer_st {
+  /* buf is the memory allocated for this buffer. */
+  uint8_t *buf;
+  /* offset is the offset into |buf| which the buffer contents start at. */
+  uint16_t offset;
+  /* len is the length of the buffer contents from |buf| + |offset|. */
+  uint16_t len;
+  /* cap is how much memory beyond |buf| + |offset| is available. */
+  uint16_t cap;
+} SSL3_BUFFER;
+
+/* TODO(davidben): This flag can probably be merged into s3->change_cipher_spec
+ * to something tri-state. (Normal / Expect CCS / Between CCS and Finished). */
+#define SSL3_FLAGS_EXPECT_CCS 0x0080
+
+typedef struct ssl3_state_st {
+  long flags;
+
+  uint8_t read_sequence[8];
+  int read_mac_secret_size;
+  uint8_t read_mac_secret[EVP_MAX_MD_SIZE];
+  uint8_t write_sequence[8];
+  int write_mac_secret_size;
+  uint8_t write_mac_secret[EVP_MAX_MD_SIZE];
+
+  uint8_t server_random[SSL3_RANDOM_SIZE];
+  uint8_t client_random[SSL3_RANDOM_SIZE];
+
+  /* flags for countermeasure against known-IV weakness */
+  int need_record_splitting;
+
+  /* have_version is true if the connection's final version is known. Otherwise
+   * the version has not been negotiated yet. */
+  char have_version;
+
+  /* initial_handshake_complete is true if the initial handshake has
+   * completed. */
+  char initial_handshake_complete;
+
+  /* read_buffer holds data from the transport to be processed. */
+  SSL3_BUFFER read_buffer;
+  /* write_buffer holds data to be written to the transport. */
+  SSL3_BUFFER write_buffer;
+
+  SSL3_RECORD rrec; /* each decoded record goes in here */
+
+  /* storage for Handshake protocol data received but not yet processed by
+   * ssl3_read_bytes: */
+  uint8_t handshake_fragment[4];
+  unsigned int handshake_fragment_len;
+
+  /* partial write - check the numbers match */
+  unsigned int wnum; /* number of bytes sent so far */
+  int wpend_tot;     /* number bytes written */
+  int wpend_type;
+  int wpend_ret; /* number of bytes submitted */
+  const uint8_t *wpend_buf;
+
+  /* handshake_buffer, if non-NULL, contains the handshake transcript. */
+  BUF_MEM *handshake_buffer;
+  /* handshake_hash, if initialized with an |EVP_MD|, maintains the handshake
+   * hash. For TLS 1.1 and below, it is the SHA-1 half. */
+  EVP_MD_CTX handshake_hash;
+  /* handshake_md5, if initialized with an |EVP_MD|, maintains the MD5 half of
+   * the handshake hash for TLS 1.1 and below. */
+  EVP_MD_CTX handshake_md5;
+
+  /* this is set whenerver we see a change_cipher_spec message come in when we
+   * are not looking for one */
+  int change_cipher_spec;
+
+  int warn_alert;
+  int fatal_alert;
+  /* we allow one fatal and one warning alert to be outstanding, send close
+   * alert via the warning alert */
+  int alert_dispatch;
+  uint8_t send_alert[2];
+
+  int total_renegotiations;
+
+  /* empty_record_count is the number of consecutive empty records received. */
+  uint8_t empty_record_count;
+
+  /* warning_alert_count is the number of consecutive warning alerts
+   * received. */
+  uint8_t warning_alert_count;
+
+  /* State pertaining to the pending handshake.
+   *
+   * TODO(davidben): State is current spread all over the place. Move
+   * pending handshake state here so it can be managed separately from
+   * established connection state in case of renegotiations. */
+  struct {
+    /* actually only need to be 16+20 for SSLv3 and 12 for TLS */
+    uint8_t finish_md[EVP_MAX_MD_SIZE * 2];
+    int finish_md_len;
+    uint8_t peer_finish_md[EVP_MAX_MD_SIZE * 2];
+    int peer_finish_md_len;
+
+    unsigned long message_size;
+    int message_type;
+
+    /* used to hold the new cipher we are going to use */
+    const SSL_CIPHER *new_cipher;
+    DH *dh;
+
+    EC_KEY *ecdh; /* holds short lived ECDH key */
+
+    /* used when SSL_ST_FLUSH_DATA is entered */
+    int next_state;
+
+    int reuse_message;
+
+    union {
+      /* sent is a bitset where the bits correspond to elements of kExtensions
+       * in t1_lib.c. Each bit is set if that extension was sent in a
+       * ClientHello. It's not used by servers. */
+      uint32_t sent;
+      /* received is a bitset, like |sent|, but is used by servers to record
+       * which extensions were received from a client. */
+      uint32_t received;
+    } extensions;
+
+    union {
+      /* sent is a bitset where the bits correspond to elements of
+       * |client_custom_extensions| in the |SSL_CTX|. Each bit is set if that
+       * extension was sent in a ClientHello. It's not used by servers. */
+      uint16_t sent;
+      /* received is a bitset, like |sent|, but is used by servers to record
+       * which custom extensions were received from a client. The bits here
+       * correspond to |server_custom_extensions|. */
+      uint16_t received;
+    } custom_extensions;
+
+    /* SNI extension */
+
+    /* should_ack_sni is used by a server and indicates that the SNI extension
+     * should be echoed in the ServerHello. */
+    unsigned should_ack_sni:1;
+
+
+    /* Client-only: cert_req determines if a client certificate is to be sent.
+     * This is 0 if no client Certificate message is to be sent, 1 if there is
+     * a client certificate, and 2 to send an empty client Certificate
+     * message. */
+    int cert_req;
+
+    /* Client-only: ca_names contains the list of CAs received in a
+     * CertificateRequest message. */
+    STACK_OF(X509_NAME) *ca_names;
+
+    /* Client-only: certificate_types contains the set of certificate types
+     * received in a CertificateRequest message. */
+    uint8_t *certificate_types;
+    size_t num_certificate_types;
+
+    int key_block_length;
+    uint8_t *key_block;
+
+    const EVP_AEAD *new_aead;
+    uint8_t new_mac_secret_len;
+    uint8_t new_fixed_iv_len;
+    uint8_t new_variable_iv_len;
+
+    /* Server-only: cert_request is true if a client certificate was
+     * requested. */
+    int cert_request;
+
+    /* certificate_status_expected is true if OCSP stapling was negotiated and
+     * the server is expected to send a CertificateStatus message. (This is
+     * used on both the client and server sides.) */
+    unsigned certificate_status_expected:1;
+
+    /* ocsp_stapling_requested is true if a client requested OCSP stapling. */
+    unsigned ocsp_stapling_requested:1;
+
+    /* Server-only: peer_ellipticcurvelist contains the EC curve IDs advertised
+     * by the peer. This is only set on the server's end. The server does not
+     * advertise this extension to the client. */
+    uint16_t *peer_ellipticcurvelist;
+    size_t peer_ellipticcurvelist_length;
+
+    /* extended_master_secret indicates whether the extended master secret
+     * computation is used in this handshake. Note that this is different from
+     * whether it was used for the current session. If this is a resumption
+     * handshake then EMS might be negotiated in the client and server hello
+     * messages, but it doesn't matter if the session that's being resumed
+     * didn't use it to create the master secret initially. */
+    char extended_master_secret;
+
+    /* Client-only: peer_psk_identity_hint is the psk_identity_hint sent by the
+     * server when using a PSK key exchange. */
+    char *peer_psk_identity_hint;
+
+    /* new_mac_secret_size is unused and exists only until wpa_supplicant can
+     * be updated. It is only needed for EAP-FAST, which we don't support. */
+    uint8_t new_mac_secret_size;
+
+    /* Client-only: in_false_start is one if there is a pending handshake in
+     * False Start. The client may write data at this point. */
+    char in_false_start;
+
+    /* peer_dh_tmp, on a client, is the server's DHE public key. */
+    DH *peer_dh_tmp;
+
+    /* peer_ecdh_tmp, on a client, is the server's ECDHE public key. */
+    EC_KEY *peer_ecdh_tmp;
+  } tmp;
+
+  /* Connection binding to prevent renegotiation attacks */
+  uint8_t previous_client_finished[EVP_MAX_MD_SIZE];
+  uint8_t previous_client_finished_len;
+  uint8_t previous_server_finished[EVP_MAX_MD_SIZE];
+  uint8_t previous_server_finished_len;
+  int send_connection_binding; /* TODOEKR */
+
+  /* Set if we saw the Next Protocol Negotiation extension from our peer. */
+  int next_proto_neg_seen;
+
+  /* ALPN information
+   * (we are in the process of transitioning from NPN to ALPN.) */
+
+  /* In a server these point to the selected ALPN protocol after the
+   * ClientHello has been processed. In a client these contain the protocol
+   * that the server selected once the ServerHello has been processed. */
+  uint8_t *alpn_selected;
+  size_t alpn_selected_len;
+
+  /* In a client, this means that the server supported Channel ID and that a
+   * Channel ID was sent. In a server it means that we echoed support for
+   * Channel IDs and that tlsext_channel_id will be valid after the
+   * handshake. */
+  char tlsext_channel_id_valid;
+  /* For a server:
+   *     If |tlsext_channel_id_valid| is true, then this contains the
+   *     verified Channel ID from the client: a P256 point, (x,y), where
+   *     each are big-endian values. */
+  uint8_t tlsext_channel_id[64];
+} SSL3_STATE;
+
 
 /* Android compatibility section.
  *
@@ -3950,21 +4203,6 @@ OPENSSL_EXPORT const char *SSLeay_version(int unused);
 } /* extern C */
 #endif
 
-
-/* Library consumers assume these headers are included by ssl.h, but they depend
- * on ssl.h, so include them after all declarations.
- *
- * TODO(davidben): The separation between ssl.h and these version-specific
- * headers introduces circular dependencies and is inconsistent. The function
- * declarations should move to ssl.h. Many of the constants can probably be
- * pruned or unexported. */
-#include <openssl/ssl3.h>
-
-
-/* BEGIN ERROR CODES */
-/* The following lines are auto generated by the script make_errors.go. Any
- * changes made after this point may be overwritten when the script is next run.
- */
 #define SSL_R_APP_DATA_IN_HANDSHAKE 100
 #define SSL_R_ATTEMPT_TO_REUSE_SESSION_IN_DIFFERENT_CONTEXT 101
 #define SSL_R_BAD_ALERT 102
