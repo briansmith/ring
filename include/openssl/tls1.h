@@ -147,11 +147,10 @@
  * OTHERWISE.
  */
 
-#ifndef HEADER_TLS1_H
-#define HEADER_TLS1_H
+#ifndef OPENSSL_HEADER_TLS1_H
+#define OPENSSL_HEADER_TLS1_H
 
-#include <openssl/buf.h>
-#include <openssl/stack.h>
+#include <openssl/base.h>
 
 #ifdef  __cplusplus
 extern "C" {
@@ -237,8 +236,6 @@ extern "C" {
 /* This is not an IANA defined extension number */
 #define TLSEXT_TYPE_channel_id 30032
 
-/* NameType value from RFC 3546 */
-#define TLSEXT_NAMETYPE_host_name 0
 /* status request value from RFC 3546 */
 #define TLSEXT_STATUSTYPE_ocsp 1
 
@@ -272,42 +269,6 @@ extern "C" {
 
 
 #define TLSEXT_MAXLEN_host_name 255
-
-OPENSSL_EXPORT const char *SSL_get_servername(const SSL *s, const int type);
-OPENSSL_EXPORT int SSL_get_servername_type(const SSL *s);
-
-/* SSL_export_keying_material exports a value derived from the master secret, as
- * specified in RFC 5705. It writes |out_len| bytes to |out| given a label and
- * optional context. (Since a zero length context is allowed, the |use_context|
- * flag controls whether a context is included.)
- *
- * It returns one on success and zero otherwise. */
-OPENSSL_EXPORT int SSL_export_keying_material(
-    SSL *s, uint8_t *out, size_t out_len, const char *label, size_t label_len,
-    const uint8_t *context, size_t context_len, int use_context);
-
-/* SSL_set_tlsext_host_name, for a client, configures |ssl| to advertise |name|
- * in the server_name extension. It returns one on success and zero on error. */
-OPENSSL_EXPORT int SSL_set_tlsext_host_name(SSL *ssl, const char *name);
-
-/* SSL_CTX_set_tlsext_servername_callback configures |callback| to be called on
- * the server after ClientHello extensions have been parsed and returns one.
- * |callback| may use |SSL_get_servername| to examine the server_name extension
- * and return a |SSL_TLSEXT_ERR_*| value. If it returns |SSL_TLSEXT_ERR_NOACK|,
- * the server_name extension is not acknowledged in the ServerHello. If the
- * return value signals an alert, |callback| should set |*out_alert| to the
- * alert to send. */
-OPENSSL_EXPORT int SSL_CTX_set_tlsext_servername_callback(
-    SSL_CTX *ctx, int (*callback)(SSL *ssl, int *out_alert, void *arg));
-
-#define SSL_TLSEXT_ERR_OK 0
-#define SSL_TLSEXT_ERR_ALERT_WARNING 1
-#define SSL_TLSEXT_ERR_ALERT_FATAL 2
-#define SSL_TLSEXT_ERR_NOACK 3
-
-/* SSL_CTX_set_tlsext_servername_arg sets the argument to the servername
- * callback and returns one. See |SSL_CTX_set_tlsext_servername_callback|. */
-OPENSSL_EXPORT int SSL_CTX_set_tlsext_servername_arg(SSL_CTX *ctx, void *arg);
 
 /* PSK ciphersuites from 4279 */
 #define TLS1_CK_PSK_WITH_RC4_128_SHA                    0x0300008A
@@ -662,6 +623,7 @@ OPENSSL_EXPORT int SSL_CTX_set_tlsext_servername_arg(SSL_CTX *ctx, void *arg);
 
 
 #ifdef  __cplusplus
-}
+}  /* extern C */
 #endif
-#endif
+
+#endif  /* OPENSSL_HEADER_TLS1_H */

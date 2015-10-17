@@ -1562,21 +1562,25 @@ err:
   return NULL;
 }
 
-
-/* return a servername extension value if provided in Client Hello, or NULL. So
- * far, only host_name types are defined (RFC 3546). */
-const char *SSL_get_servername(const SSL *s, const int type) {
+const char *SSL_get_servername(const SSL *ssl, const int type) {
   if (type != TLSEXT_NAMETYPE_host_name) {
     return NULL;
   }
 
-  return s->session && !s->tlsext_hostname ? s->session->tlsext_hostname
-                                           : s->tlsext_hostname;
+  /* Historically, |SSL_get_servername| was also the configuration getter
+   * corresponding to |SSL_set_tlsext_host_name|. */
+  if (ssl->tlsext_hostname != NULL) {
+    return ssl->tlsext_hostname;
+  }
+
+  if (ssl->session == NULL) {
+    return NULL;
+  }
+  return ssl->session->tlsext_hostname;
 }
 
-int SSL_get_servername_type(const SSL *s) {
-  if (s->session &&
-      (!s->tlsext_hostname ? s->session->tlsext_hostname : s->tlsext_hostname)) {
+int SSL_get_servername_type(const SSL *ssl) {
+  if (ssl->session != NULL && ssl->session->tlsext_hostname != NULL) {
     return TLSEXT_NAMETYPE_host_name;
   }
 
@@ -1761,16 +1765,16 @@ void SSL_get0_alpn_selected(const SSL *ssl, const uint8_t **out_data,
   }
 }
 
-int SSL_export_keying_material(SSL *s, uint8_t *out, size_t out_len,
+int SSL_export_keying_material(SSL *ssl, uint8_t *out, size_t out_len,
                                const char *label, size_t label_len,
                                const uint8_t *context, size_t context_len,
                                int use_context) {
-  if (s->version < TLS1_VERSION) {
+  if (ssl->version < TLS1_VERSION) {
     return 0;
   }
 
-  return s->enc_method->export_keying_material(
-      s, out, out_len, label, label_len, context, context_len, use_context);
+  return ssl->enc_method->export_keying_material(
+      ssl, out, out_len, label, label_len, context, context_len, use_context);
 }
 
 void SSL_CTX_set_cert_verify_callback(SSL_CTX *ctx,

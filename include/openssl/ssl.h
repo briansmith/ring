@@ -150,6 +150,7 @@
 #include <openssl/lhash.h>
 #include <openssl/pem.h>
 #include <openssl/thread.h>
+#include <openssl/tls1.h>
 #include <openssl/x509.h>
 
 #if !defined(OPENSSL_WINDOWS)
@@ -1194,6 +1195,16 @@ OPENSSL_EXPORT int SSL_session_reused(const SSL *ssl);
  * renegotiation (RFC 5746) and zero otherwise. */
 OPENSSL_EXPORT int SSL_get_secure_renegotiation_support(const SSL *ssl);
 
+/* SSL_export_keying_material exports a value derived from the master secret, as
+ * specified in RFC 5705. It writes |out_len| bytes to |out| given a label and
+ * optional context. (Since a zero length context is allowed, the |use_context|
+ * flag controls whether a context is included.)
+ *
+ * It returns one on success and zero otherwise. */
+OPENSSL_EXPORT int SSL_export_keying_material(
+    SSL *ssl, uint8_t *out, size_t out_len, const char *label, size_t label_len,
+    const uint8_t *context, size_t context_len, int use_context);
+
 
 /* Custom extensions.
  *
@@ -2073,6 +2084,52 @@ OPENSSL_EXPORT int SSL_add_file_cert_subjects_to_stack(STACK_OF(X509_NAME) *out,
  * or zero on error. */
 OPENSSL_EXPORT int SSL_add_dir_cert_subjects_to_stack(STACK_OF(X509_NAME) *out,
                                                       const char *dir);
+
+
+/* Server name indication.
+ *
+ * The server_name extension (RFC 3546) allows the client to advertise the name
+ * of the server it is connecting to. This is used in virtual hosting
+ * deployments to select one of a several certificates on a single IP. Only the
+ * host_name name type is supported. */
+
+#define TLSEXT_NAMETYPE_host_name 0
+
+/* SSL_set_tlsext_host_name, for a client, configures |ssl| to advertise |name|
+ * in the server_name extension. It returns one on success and zero on error. */
+OPENSSL_EXPORT int SSL_set_tlsext_host_name(SSL *ssl, const char *name);
+
+/* SSL_get_servername, for a server, returns the hostname supplied by the
+ * client or NULL if there was none. The |type| argument must be
+ * |TLSEXT_NAMETYPE_host_name|. */
+OPENSSL_EXPORT const char *SSL_get_servername(const SSL *ssl, const int type);
+
+/* SSL_get_servername_type, for a server, returns |TLSEXT_NAMETYPE_host_name|
+ * if the client sent a hostname and -1 otherwise. */
+OPENSSL_EXPORT int SSL_get_servername_type(const SSL *ssl);
+
+/* SSL_CTX_set_tlsext_servername_callback configures |callback| to be called on
+ * the server after ClientHello extensions have been parsed and returns one.
+ * The callback may use |SSL_get_servername| to examine the server_name extension
+ * and returns a |SSL_TLSEXT_ERR_*| value. The value of |arg| may be set by
+ * calling |SSL_CTX_set_tlsext_servername_arg|.
+ *
+ * If the callback returns |SSL_TLSEXT_ERR_NOACK|, the server_name extension is
+ * not acknowledged in the ServerHello. If the return value is
+ * |SSL_TLSEXT_ERR_ALERT_FATAL| or |SSL_TLSEXT_ERR_ALERT_WARNING| then
+ * |*out_alert| must be set to the alert value to send. */
+OPENSSL_EXPORT int SSL_CTX_set_tlsext_servername_callback(
+    SSL_CTX *ctx, int (*callback)(SSL *ssl, int *out_alert, void *arg));
+
+/* SSL_CTX_set_tlsext_servername_arg sets the argument to the servername
+ * callback and returns one. See |SSL_CTX_set_tlsext_servername_callback|. */
+OPENSSL_EXPORT int SSL_CTX_set_tlsext_servername_arg(SSL_CTX *ctx, void *arg);
+
+/* SSL_TLSEXT_ERR_* are values returned by some extension-related callbacks. */
+#define SSL_TLSEXT_ERR_OK 0
+#define SSL_TLSEXT_ERR_ALERT_WARNING 1
+#define SSL_TLSEXT_ERR_ALERT_FATAL 2
+#define SSL_TLSEXT_ERR_NOACK 3
 
 
 /* Application-layer protocol negotation.
@@ -3902,7 +3959,6 @@ OPENSSL_EXPORT const char *SSLeay_version(int unused);
  * declarations should move to ssl.h. Many of the constants can probably be
  * pruned or unexported. */
 #include <openssl/ssl3.h>
-#include <openssl/tls1.h> /* This is mostly sslv3 with a few tweaks */
 
 
 /* BEGIN ERROR CODES */
