@@ -2651,6 +2651,11 @@ int SSL_cache_hit(SSL *ssl) { return SSL_session_reused(ssl); }
 
 int SSL_is_server(SSL *ssl) { return ssl->server; }
 
+void SSL_CTX_set_select_certificate_cb(
+    SSL_CTX *ctx, int (*cb)(const struct ssl_early_callback_ctx *)) {
+  ctx->select_certificate_cb = cb;
+}
+
 void SSL_CTX_set_dos_protection_cb(
     SSL_CTX *ctx, int (*cb)(const struct ssl_early_callback_ctx *)) {
   ctx->dos_protection_cb = cb;

@@ -308,7 +308,7 @@ char ssl_early_callback_init(struct ssl_early_callback_ctx *ctx) {
   return 1;
 }
 
-char SSL_early_callback_ctx_extension_get(
+int SSL_early_callback_ctx_extension_get(
     const struct ssl_early_callback_ctx *ctx, uint16_t extension_type,
     const uint8_t **out_data, size_t *out_len) {
   CBS extensions;

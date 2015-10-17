@@ -425,7 +425,7 @@ OPENSSL_EXPORT int SSL_get_error(const SSL *ssl, int ret_code);
  * retry the operation when lookup has completed. Note: when the operation is
  * retried, the early callback will not be called a second time.
  *
- * See also |select_certificate_cb| on |SSL_CTX|. */
+ * See also |SSL_CTX_set_select_certificate_cb|. */
 #define SSL_ERROR_PENDING_CERTIFICATE 12
 
 /* SSL_ERROR_WANT_PRIVATE_KEY_OPERATION indicates the operation failed because
@@ -2540,6 +2540,53 @@ OPENSSL_EXPORT uint64_t OPENSSL_get_big_buffer_use_count(void);
  * unnecessary. */
 OPENSSL_EXPORT uint64_t OPENSSL_get_d5_bug_use_count(void);
 
+/* ssl_early_callback_ctx is passed to certain callbacks that are called very
+ * early on during the server handshake. At this point, much of the SSL* hasn't
+ * been filled out and only the ClientHello can be depended on. */
+struct ssl_early_callback_ctx {
+  SSL *ssl;
+  const uint8_t *client_hello;
+  size_t client_hello_len;
+  const uint8_t *session_id;
+  size_t session_id_len;
+  const uint8_t *cipher_suites;
+  size_t cipher_suites_len;
+  const uint8_t *compression_methods;
+  size_t compression_methods_len;
+  const uint8_t *extensions;
+  size_t extensions_len;
+};
+
+/* SSL_early_callback_ctx_extension_get searches the extensions in |ctx| for an
+ * extension of the given type. If not found, it returns zero. Otherwise it
+ * sets |out_data| to point to the extension contents (not including the type
+ * and length bytes), sets |out_len| to the length of the extension contents
+ * and returns one. */
+OPENSSL_EXPORT int SSL_early_callback_ctx_extension_get(
+    const struct ssl_early_callback_ctx *ctx, uint16_t extension_type,
+    const uint8_t **out_data, size_t *out_len);
+
+/* SSL_CTX_set_select_certificate_cb sets a callback that is called before most
+ * ClientHello processing and before the decision whether to resume a session
+ * is made. The callback may inspect the ClientHello and configure the
+ * connection. It may then return one to continue the handshake or zero to
+ * pause the handshake to perform an asynchronous operation. If paused,
+ * |SSL_get_error| will return |SSL_ERROR_PENDING_CERTIFICATE|.
+ *
+ * Note: The |ssl_early_callback_ctx| is only valid for the duration of the
+ * callback and is not valid while the handshake is paused. Further, unlike with
+ * most callbacks, when the handshake loop is resumed, it will not call the
+ * callback a second time. The caller must finish reconfiguring the connection
+ * before resuming the handshake. */
+OPENSSL_EXPORT void SSL_CTX_set_select_certificate_cb(
+    SSL_CTX *ctx, int (*cb)(const struct ssl_early_callback_ctx *));
+
+/* SSL_CTX_set_dos_protection_cb sets a callback that is called once the
+ * resumption decision for a ClientHello has been made. It can return one to
+ * allow the handshake to continue or zero to cause the handshake to abort. */
+OPENSSL_EXPORT void SSL_CTX_set_dos_protection_cb(
+    SSL_CTX *ctx, int (*cb)(const struct ssl_early_callback_ctx *));
+
 
 /* Underdocumented functions.
  *
@@ -2614,32 +2661,6 @@ typedef struct ssl3_enc_method SSL3_ENC_METHOD;
 
 struct ssl_aead_ctx_st;
 typedef struct ssl_aead_ctx_st SSL_AEAD_CTX;
-
-/* ssl_early_callback_ctx is passed to certain callbacks that are called very
- * early on during the server handshake. At this point, much of the SSL* hasn't
- * been filled out and only the ClientHello can be depended on. */
-struct ssl_early_callback_ctx {
-  SSL *ssl;
-  const uint8_t *client_hello;
-  size_t client_hello_len;
-  const uint8_t *session_id;
-  size_t session_id_len;
-  const uint8_t *cipher_suites;
-  size_t cipher_suites_len;
-  const uint8_t *compression_methods;
-  size_t compression_methods_len;
-  const uint8_t *extensions;
-  size_t extensions_len;
-};
-
-/* SSL_early_callback_ctx_extension_get searches the extensions in |ctx| for an
- * extension of the given type. If not found, it returns zero. Otherwise it
- * sets |out_data| to point to the extension contents (not including the type
- * and length bytes), sets |out_len| to the length of the extension contents
- * and returns one. */
-OPENSSL_EXPORT char SSL_early_callback_ctx_extension_get(
-    const struct ssl_early_callback_ctx *ctx, uint16_t extension_type,
-    const uint8_t **out_data, size_t *out_len);
 
 OPENSSL_EXPORT void SSL_CTX_set_info_callback(SSL_CTX *ctx,
                                               void (*cb)(const SSL *ssl,
@@ -2796,12 +2817,6 @@ OPENSSL_EXPORT void SSL_set_info_callback(SSL *ssl,
 OPENSSL_EXPORT void (*SSL_get_info_callback(const SSL *ssl))(const SSL *ssl,
                                                              int type, int val);
 OPENSSL_EXPORT int SSL_state(const SSL *ssl);
-
-/* SSL_CTX_set_dos_protection_cb sets a callback that is called once the
- * resumption decision for a ClientHello has been made. It can return 1 to
- * allow the handshake to continue or zero to cause the handshake to abort. */
-OPENSSL_EXPORT void SSL_CTX_set_dos_protection_cb(
-    SSL_CTX *ctx, int (*cb)(const struct ssl_early_callback_ctx *));
 
 
 /* Deprecated functions. */

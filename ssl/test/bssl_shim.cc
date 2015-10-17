@@ -678,7 +678,7 @@ static ScopedSSL_CTX SetupCtx(const TestConfig *config) {
     SSL_CTX_set_session_cache_mode(ssl_ctx.get(), SSL_SESS_CACHE_BOTH);
   }
 
-  ssl_ctx->select_certificate_cb = SelectCertificateCallback;
+  SSL_CTX_set_select_certificate_cb(ssl_ctx.get(), SelectCertificateCallback);
 
   SSL_CTX_set_next_protos_advertised_cb(
       ssl_ctx.get(), NextProtosAdvertisedCallback, NULL);
