@@ -130,13 +130,15 @@
  *     compressionMethod       [11] OCTET STRING OPTIONAL,
  *     srpUsername             [12] OCTET STRING OPTIONAL, */
 
+static const int kVersion = 1;
+
 static const int kTimeTag =
     CBS_ASN1_CONSTRUCTED | CBS_ASN1_CONTEXT_SPECIFIC | 1;
 static const int kTimeoutTag =
     CBS_ASN1_CONSTRUCTED | CBS_ASN1_CONTEXT_SPECIFIC | 2;
 static const int kPeerTag =
     CBS_ASN1_CONSTRUCTED | CBS_ASN1_CONTEXT_SPECIFIC | 3;
- static const int kSessionIDContextTag =
+static const int kSessionIDContextTag =
     CBS_ASN1_CONSTRUCTED | CBS_ASN1_CONTEXT_SPECIFIC | 4;
 static const int kVerifyResultTag =
     CBS_ASN1_CONSTRUCTED | CBS_ASN1_CONTEXT_SPECIFIC | 5;
@@ -190,7 +192,7 @@ static int SSL_SESSION_to_bytes_full(const SSL_SESSION *in, uint8_t **out_data,
   CBB_zero(&cbb);
   if (!CBB_init(&cbb, 0) ||
       !CBB_add_asn1(&cbb, &session, CBS_ASN1_SEQUENCE) ||
-      !CBB_add_asn1_uint64(&session, SSL_SESSION_ASN1_VERSION) ||
+      !CBB_add_asn1_uint64(&session, kVersion) ||
       !CBB_add_asn1_uint64(&session, in->ssl_version) ||
       !CBB_add_asn1(&session, &child, CBS_ASN1_OCTETSTRING) ||
       !CBB_add_u16(&child, (uint16_t)(in->cipher->id & 0xffff)) ||
@@ -509,7 +511,7 @@ static SSL_SESSION *SSL_SESSION_parse(CBS *cbs) {
   uint64_t version, ssl_version;
   if (!CBS_get_asn1(cbs, &session, CBS_ASN1_SEQUENCE) ||
       !CBS_get_asn1_uint64(&session, &version) ||
-      version != SSL_SESSION_ASN1_VERSION ||
+      version != kVersion ||
       !CBS_get_asn1_uint64(&session, &ssl_version)) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_INVALID_SSL_SESSION);
     goto err;

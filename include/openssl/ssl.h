@@ -2591,11 +2591,6 @@ OPENSSL_EXPORT void SSL_CTX_set_dos_protection_cb(
  *
  * Functions below here haven't been touched up and may be underdocumented. */
 
-/* SSLeay version number for ASN.1 encoding of the session information */
-/* Version 0 - initial version
- * Version 1 - added the optional peer certificate. */
-#define SSL_SESSION_ASN1_VERSION 0x0001
-
 #define SSL_MAX_SSL_SESSION_ID_LENGTH 32
 #define SSL_MAX_SID_CTX_LENGTH 32
 #define SSL_MAX_MASTER_KEY_LENGTH 48
