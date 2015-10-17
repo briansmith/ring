@@ -2163,7 +2163,7 @@ void SSL_CTX_set_cert_store(SSL_CTX *ctx, X509_STORE *store) {
   ctx->cert_store = store;
 }
 
-int SSL_want(const SSL *s) { return s->rwstate; }
+int SSL_want(const SSL *ssl) { return ssl->rwstate; }
 
 void SSL_CTX_set_tmp_rsa_callback(SSL_CTX *ctx,
                                   RSA *(*cb)(SSL *ssl, int is_export,
