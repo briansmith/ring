@@ -2608,6 +2608,14 @@ enum ssl_renegotiate_mode_t {
 OPENSSL_EXPORT void SSL_set_renegotiate_mode(SSL *ssl,
                                              enum ssl_renegotiate_mode_t mode);
 
+/* SSL_renegotiate_pending returns one if |ssl| is in the middle of a
+ * renegotiation. */
+OPENSSL_EXPORT int SSL_renegotiate_pending(SSL *ssl);
+
+/* SSL_total_renegotiations returns the total number of renegotiation handshakes
+ * peformed by |ssl|. This includes the pending renegotiation, if any. */
+OPENSSL_EXPORT int SSL_total_renegotiations(const SSL *ssl);
+
 /* SSL_MAX_CERT_LIST_DEFAULT is the default maximum length, in bytes, of a peer
  * certificate chain. */
 #define SSL_MAX_CERT_LIST_DEFAULT 1024 * 100
@@ -2827,10 +2835,6 @@ OPENSSL_EXPORT int SSL_in_false_start(const SSL *s);
 
 DECLARE_PEM_rw(SSL_SESSION, SSL_SESSION)
 
-/* SSL_total_renegotiations returns the total number of renegotiation handshakes
- * peformed by |ssl|. This includes the pending renegotiation, if any. */
-OPENSSL_EXPORT int SSL_total_renegotiations(const SSL *ssl);
-
 OPENSSL_EXPORT int SSL_get_fd(const SSL *s);
 OPENSSL_EXPORT int SSL_get_rfd(const SSL *s);
 OPENSSL_EXPORT int SSL_get_wfd(const SSL *s);
@@ -2840,10 +2844,6 @@ OPENSSL_EXPORT int SSL_set_wfd(SSL *s, int fd);
 
 OPENSSL_EXPORT const char *SSL_state_string(const SSL *ssl);
 OPENSSL_EXPORT const char *SSL_state_string_long(const SSL *ssl);
-
-/* SSL_renegotiate_pending returns one if |ssl| is in the middle of a
- * renegotiation. */
-OPENSSL_EXPORT int SSL_renegotiate_pending(SSL *ssl);
 
 OPENSSL_EXPORT void SSL_set_shutdown(SSL *ssl, int mode);
 OPENSSL_EXPORT int SSL_get_shutdown(const SSL *ssl);
