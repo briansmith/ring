@@ -2759,8 +2759,8 @@ OPENSSL_EXPORT int SSL_set_fd(SSL *s, int fd);
 OPENSSL_EXPORT int SSL_set_rfd(SSL *s, int fd);
 OPENSSL_EXPORT int SSL_set_wfd(SSL *s, int fd);
 
-OPENSSL_EXPORT const char *SSL_state_string(const SSL *s);
-OPENSSL_EXPORT const char *SSL_state_string_long(const SSL *s);
+OPENSSL_EXPORT const char *SSL_state_string(const SSL *ssl);
+OPENSSL_EXPORT const char *SSL_state_string_long(const SSL *ssl);
 
 /* SSL_renegotiate_pending returns one if |ssl| is in the middle of a
  * renegotiation. */
