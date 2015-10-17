@@ -2388,6 +2388,66 @@ OPENSSL_EXPORT const char *SSL_get_psk_identity_hint(const SSL *ssl);
 OPENSSL_EXPORT const char *SSL_get_psk_identity(const SSL *ssl);
 
 
+/* Alerts.
+ *
+ * TLS and SSL 3.0 use alerts to signal error conditions. Alerts have a type
+ * (warning or fatal) and description. OpenSSL internally handles fatal alerts
+ * with dedicated error codes (see |SSL_AD_REASON_OFFSET|). Except for
+ * close_notify, warning alerts are silently ignored and may only be surfaced
+ * with |SSL_CTX_set_info_callback|. */
+
+/* SSL_AD_REASON_OFFSET is the offset between error reasons and |SSL_AD_*|
+ * values. Any error code under |ERR_LIB_SSL| with an error reason above this
+ * value corresponds to an alert description. Consumers may add or subtract
+ * |SSL_AD_REASON_OFFSET| to convert between them.
+ *
+ * make_errors.go reserves error codes above 1000 for manually-assigned errors.
+ * This value must be kept in sync with reservedReasonCode in make_errors.h */
+#define SSL_AD_REASON_OFFSET 1000
+
+/* SSL_AD_* are alert descriptions for SSL 3.0 and TLS. */
+#define SSL_AD_CLOSE_NOTIFY SSL3_AD_CLOSE_NOTIFY
+#define SSL_AD_UNEXPECTED_MESSAGE SSL3_AD_UNEXPECTED_MESSAGE
+#define SSL_AD_BAD_RECORD_MAC SSL3_AD_BAD_RECORD_MAC
+#define SSL_AD_DECRYPTION_FAILED TLS1_AD_DECRYPTION_FAILED
+#define SSL_AD_RECORD_OVERFLOW TLS1_AD_RECORD_OVERFLOW
+#define SSL_AD_DECOMPRESSION_FAILURE SSL3_AD_DECOMPRESSION_FAILURE
+#define SSL_AD_HANDSHAKE_FAILURE SSL3_AD_HANDSHAKE_FAILURE
+#define SSL_AD_NO_CERTIFICATE SSL3_AD_NO_CERTIFICATE /* Not used in TLS */
+#define SSL_AD_BAD_CERTIFICATE SSL3_AD_BAD_CERTIFICATE
+#define SSL_AD_UNSUPPORTED_CERTIFICATE SSL3_AD_UNSUPPORTED_CERTIFICATE
+#define SSL_AD_CERTIFICATE_REVOKED SSL3_AD_CERTIFICATE_REVOKED
+#define SSL_AD_CERTIFICATE_EXPIRED SSL3_AD_CERTIFICATE_EXPIRED
+#define SSL_AD_CERTIFICATE_UNKNOWN SSL3_AD_CERTIFICATE_UNKNOWN
+#define SSL_AD_ILLEGAL_PARAMETER SSL3_AD_ILLEGAL_PARAMETER
+#define SSL_AD_UNKNOWN_CA TLS1_AD_UNKNOWN_CA
+#define SSL_AD_ACCESS_DENIED TLS1_AD_ACCESS_DENIED
+#define SSL_AD_DECODE_ERROR TLS1_AD_DECODE_ERROR
+#define SSL_AD_DECRYPT_ERROR TLS1_AD_DECRYPT_ERROR
+#define SSL_AD_EXPORT_RESTRICTION TLS1_AD_EXPORT_RESTRICTION
+#define SSL_AD_PROTOCOL_VERSION TLS1_AD_PROTOCOL_VERSION
+#define SSL_AD_INSUFFICIENT_SECURITY TLS1_AD_INSUFFICIENT_SECURITY
+#define SSL_AD_INTERNAL_ERROR TLS1_AD_INTERNAL_ERROR
+#define SSL_AD_USER_CANCELLED TLS1_AD_USER_CANCELLED
+#define SSL_AD_NO_RENEGOTIATION TLS1_AD_NO_RENEGOTIATION
+#define SSL_AD_UNSUPPORTED_EXTENSION TLS1_AD_UNSUPPORTED_EXTENSION
+#define SSL_AD_CERTIFICATE_UNOBTAINABLE TLS1_AD_CERTIFICATE_UNOBTAINABLE
+#define SSL_AD_UNRECOGNIZED_NAME TLS1_AD_UNRECOGNIZED_NAME
+#define SSL_AD_BAD_CERTIFICATE_STATUS_RESPONSE \
+  TLS1_AD_BAD_CERTIFICATE_STATUS_RESPONSE
+#define SSL_AD_BAD_CERTIFICATE_HASH_VALUE TLS1_AD_BAD_CERTIFICATE_HASH_VALUE
+#define SSL_AD_UNKNOWN_PSK_IDENTITY TLS1_AD_UNKNOWN_PSK_IDENTITY
+#define SSL_AD_INAPPROPRIATE_FALLBACK SSL3_AD_INAPPROPRIATE_FALLBACK
+
+/* SSL_alert_type_string_long returns a string description of |value| as an
+ * alert type (warning or fatal). */
+OPENSSL_EXPORT const char *SSL_alert_type_string_long(int value);
+
+/* SSL_alert_desc_string_long returns a string description of |value| as an
+ * alert description or "unknown" if unknown. */
+OPENSSL_EXPORT const char *SSL_alert_desc_string_long(int value);
+
+
 /* ex_data functions.
  *
  * See |ex_data.h| for details. */
@@ -2709,45 +2769,6 @@ OPENSSL_EXPORT int SSL_in_false_start(const SSL *s);
 
 DECLARE_PEM_rw(SSL_SESSION, SSL_SESSION)
 
-/* make_errors.go reserves error codes above 1000 for manually-assigned errors.
- * This value must be kept in sync with reservedReasonCode in make_errors.h */
-#define SSL_AD_REASON_OFFSET \
-  1000 /* offset to get SSL_R_... value from SSL_AD_... */
-
-/* These alert types are for SSLv3 and TLSv1 */
-#define SSL_AD_CLOSE_NOTIFY SSL3_AD_CLOSE_NOTIFY
-#define SSL_AD_UNEXPECTED_MESSAGE SSL3_AD_UNEXPECTED_MESSAGE /* fatal */
-#define SSL_AD_BAD_RECORD_MAC SSL3_AD_BAD_RECORD_MAC         /* fatal */
-#define SSL_AD_DECRYPTION_FAILED TLS1_AD_DECRYPTION_FAILED
-#define SSL_AD_RECORD_OVERFLOW TLS1_AD_RECORD_OVERFLOW
-#define SSL_AD_DECOMPRESSION_FAILURE SSL3_AD_DECOMPRESSION_FAILURE /* fatal */
-#define SSL_AD_HANDSHAKE_FAILURE SSL3_AD_HANDSHAKE_FAILURE         /* fatal */
-#define SSL_AD_NO_CERTIFICATE SSL3_AD_NO_CERTIFICATE /* Not for TLS */
-#define SSL_AD_BAD_CERTIFICATE SSL3_AD_BAD_CERTIFICATE
-#define SSL_AD_UNSUPPORTED_CERTIFICATE SSL3_AD_UNSUPPORTED_CERTIFICATE
-#define SSL_AD_CERTIFICATE_REVOKED SSL3_AD_CERTIFICATE_REVOKED
-#define SSL_AD_CERTIFICATE_EXPIRED SSL3_AD_CERTIFICATE_EXPIRED
-#define SSL_AD_CERTIFICATE_UNKNOWN SSL3_AD_CERTIFICATE_UNKNOWN
-#define SSL_AD_ILLEGAL_PARAMETER SSL3_AD_ILLEGAL_PARAMETER /* fatal */
-#define SSL_AD_UNKNOWN_CA TLS1_AD_UNKNOWN_CA               /* fatal */
-#define SSL_AD_ACCESS_DENIED TLS1_AD_ACCESS_DENIED         /* fatal */
-#define SSL_AD_DECODE_ERROR TLS1_AD_DECODE_ERROR           /* fatal */
-#define SSL_AD_DECRYPT_ERROR TLS1_AD_DECRYPT_ERROR
-#define SSL_AD_EXPORT_RESTRICTION TLS1_AD_EXPORT_RESTRICTION       /* fatal */
-#define SSL_AD_PROTOCOL_VERSION TLS1_AD_PROTOCOL_VERSION           /* fatal */
-#define SSL_AD_INSUFFICIENT_SECURITY TLS1_AD_INSUFFICIENT_SECURITY /* fatal */
-#define SSL_AD_INTERNAL_ERROR TLS1_AD_INTERNAL_ERROR               /* fatal */
-#define SSL_AD_USER_CANCELLED TLS1_AD_USER_CANCELLED
-#define SSL_AD_NO_RENEGOTIATION TLS1_AD_NO_RENEGOTIATION
-#define SSL_AD_UNSUPPORTED_EXTENSION TLS1_AD_UNSUPPORTED_EXTENSION
-#define SSL_AD_CERTIFICATE_UNOBTAINABLE TLS1_AD_CERTIFICATE_UNOBTAINABLE
-#define SSL_AD_UNRECOGNIZED_NAME TLS1_AD_UNRECOGNIZED_NAME
-#define SSL_AD_BAD_CERTIFICATE_STATUS_RESPONSE \
-  TLS1_AD_BAD_CERTIFICATE_STATUS_RESPONSE
-#define SSL_AD_BAD_CERTIFICATE_HASH_VALUE TLS1_AD_BAD_CERTIFICATE_HASH_VALUE
-#define SSL_AD_UNKNOWN_PSK_IDENTITY TLS1_AD_UNKNOWN_PSK_IDENTITY     /* fatal */
-#define SSL_AD_INAPPROPRIATE_FALLBACK SSL3_AD_INAPPROPRIATE_FALLBACK /* fatal */
-
 /* SSL_total_renegotiations returns the total number of renegotiation handshakes
  * peformed by |ssl|. This includes the pending renegotiation, if any. */
 OPENSSL_EXPORT int SSL_total_renegotiations(const SSL *ssl);
@@ -2765,11 +2786,6 @@ OPENSSL_EXPORT const char *SSL_state_string_long(const SSL *ssl);
 /* SSL_renegotiate_pending returns one if |ssl| is in the middle of a
  * renegotiation. */
 OPENSSL_EXPORT int SSL_renegotiate_pending(SSL *ssl);
-
-OPENSSL_EXPORT const char *SSL_alert_type_string_long(int value);
-OPENSSL_EXPORT const char *SSL_alert_type_string(int value);
-OPENSSL_EXPORT const char *SSL_alert_desc_string_long(int value);
-OPENSSL_EXPORT const char *SSL_alert_desc_string(int value);
 
 OPENSSL_EXPORT void SSL_set_shutdown(SSL *ssl, int mode);
 OPENSSL_EXPORT int SSL_get_shutdown(const SSL *ssl);
@@ -3127,6 +3143,14 @@ OPENSSL_EXPORT size_t SSL_get_finished(const SSL *ssl, void *buf, size_t count);
   * Use |SSL_get_tls_unique| instead. */
 OPENSSL_EXPORT size_t SSL_get_peer_finished(const SSL *ssl, void *buf,
                                             size_t count);
+
+/* SSL_alert_type_string returns "!". Use |SSL_alert_type_string_long|
+ * instead. */
+OPENSSL_EXPORT const char *SSL_alert_type_string(int value);
+
+/* SSL_alert_desc_string returns "!!". Use |SSL_alert_desc_string_long|
+ * instead. */
+OPENSSL_EXPORT const char *SSL_alert_desc_string(int value);
 
 
 /* Private structures.

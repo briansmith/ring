@@ -483,111 +483,11 @@ const char *SSL_alert_type_string_long(int value) {
 }
 
 const char *SSL_alert_type_string(int value) {
-  value >>= 8;
-  if (value == SSL3_AL_WARNING) {
-    return "W";
-  } else if (value == SSL3_AL_FATAL) {
-    return "F";
-  }
-
-  return "U";
+  return "!";
 }
 
 const char *SSL_alert_desc_string(int value) {
-  switch (value & 0xff) {
-    case SSL3_AD_CLOSE_NOTIFY:
-      return "CN";
-
-    case SSL3_AD_UNEXPECTED_MESSAGE:
-      return "UM";
-
-    case SSL3_AD_BAD_RECORD_MAC:
-      return "BM";
-
-    case SSL3_AD_DECOMPRESSION_FAILURE:
-      return "DF";
-
-    case SSL3_AD_HANDSHAKE_FAILURE:
-      return "HF";
-
-    case SSL3_AD_NO_CERTIFICATE:
-      return "NC";
-
-    case SSL3_AD_BAD_CERTIFICATE:
-      return "BC";
-
-    case SSL3_AD_UNSUPPORTED_CERTIFICATE:
-      return "UC";
-
-    case SSL3_AD_CERTIFICATE_REVOKED:
-      return "CR";
-
-    case SSL3_AD_CERTIFICATE_EXPIRED:
-      return "CE";
-
-    case SSL3_AD_CERTIFICATE_UNKNOWN:
-      return "CU";
-
-    case SSL3_AD_ILLEGAL_PARAMETER:
-      return "IP";
-
-    case TLS1_AD_DECRYPTION_FAILED:
-      return "DC";
-
-    case TLS1_AD_RECORD_OVERFLOW:
-      return "RO";
-
-    case TLS1_AD_UNKNOWN_CA:
-      return "CA";
-
-    case TLS1_AD_ACCESS_DENIED:
-      return "AD";
-
-    case TLS1_AD_DECODE_ERROR:
-      return "DE";
-
-    case TLS1_AD_DECRYPT_ERROR:
-      return "CY";
-
-    case TLS1_AD_EXPORT_RESTRICTION:
-      return "ER";
-
-    case TLS1_AD_PROTOCOL_VERSION:
-      return "PV";
-
-    case TLS1_AD_INSUFFICIENT_SECURITY:
-      return "IS";
-
-    case TLS1_AD_INTERNAL_ERROR:
-      return "IE";
-
-    case TLS1_AD_USER_CANCELLED:
-      return "US";
-
-    case TLS1_AD_NO_RENEGOTIATION:
-      return "NR";
-
-    case TLS1_AD_UNSUPPORTED_EXTENSION:
-      return "UE";
-
-    case TLS1_AD_CERTIFICATE_UNOBTAINABLE:
-      return "CO";
-
-    case TLS1_AD_UNRECOGNIZED_NAME:
-      return "UN";
-
-    case TLS1_AD_BAD_CERTIFICATE_STATUS_RESPONSE:
-      return "BR";
-
-    case TLS1_AD_BAD_CERTIFICATE_HASH_VALUE:
-      return "BH";
-
-    case TLS1_AD_UNKNOWN_PSK_IDENTITY:
-      return "UP";
-
-    default:
-      return "UK";
-  }
+  return "!!";
 }
 
 const char *SSL_alert_desc_string_long(int value) {
@@ -681,6 +581,9 @@ const char *SSL_alert_desc_string_long(int value) {
 
     case TLS1_AD_UNKNOWN_PSK_IDENTITY:
       return "unknown PSK identity";
+
+    case SSL3_AD_INAPPROPRIATE_FALLBACK:
+      return "inappropriate fallback";
 
     default:
       return "unknown";
