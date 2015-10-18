@@ -502,7 +502,7 @@ typedef struct cipher_alias_st {
 
 static const CIPHER_ALIAS kCipherAliases[] = {
     /* "ALL" doesn't include eNULL (must be specifically enabled) */
-    {SSL_TXT_ALL, ~0u, ~0u, ~SSL_eNULL, ~0u, ~0u, ~0u},
+    {"ALL", ~0u, ~0u, ~SSL_eNULL, ~0u, ~0u, ~0u},
 
     /* The "COMPLEMENTOFDEFAULT" rule is omitted. It matches nothing. */
 
@@ -510,58 +510,58 @@ static const CIPHER_ALIAS kCipherAliases[] = {
      * (some of those using only a single bit here combine
      * multiple key exchange algs according to the RFCs,
      * e.g. kEDH combines DHE_DSS and DHE_RSA) */
-    {SSL_TXT_kRSA, SSL_kRSA, ~0u, ~0u, ~0u, ~0u, ~0u},
+    {"kRSA", SSL_kRSA, ~0u, ~0u, ~0u, ~0u, ~0u},
 
-    {SSL_TXT_kDHE, SSL_kDHE, ~0u, ~0u, ~0u, ~0u, ~0u},
-    {SSL_TXT_kEDH, SSL_kDHE, ~0u, ~0u, ~0u, ~0u, ~0u},
-    {SSL_TXT_DH, SSL_kDHE, ~0u, ~0u, ~0u, ~0u, ~0u},
+    {"kDHE", SSL_kDHE, ~0u, ~0u, ~0u, ~0u, ~0u},
+    {"kEDH", SSL_kDHE, ~0u, ~0u, ~0u, ~0u, ~0u},
+    {"DH", SSL_kDHE, ~0u, ~0u, ~0u, ~0u, ~0u},
 
-    {SSL_TXT_kECDHE, SSL_kECDHE, ~0u, ~0u, ~0u, ~0u, ~0u},
-    {SSL_TXT_kEECDH, SSL_kECDHE, ~0u, ~0u, ~0u, ~0u, ~0u},
-    {SSL_TXT_ECDH, SSL_kECDHE, ~0u, ~0u, ~0u, ~0u, ~0u},
+    {"kECDHE", SSL_kECDHE, ~0u, ~0u, ~0u, ~0u, ~0u},
+    {"kEECDH", SSL_kECDHE, ~0u, ~0u, ~0u, ~0u, ~0u},
+    {"ECDH", SSL_kECDHE, ~0u, ~0u, ~0u, ~0u, ~0u},
 
-    {SSL_TXT_kPSK, SSL_kPSK, ~0u, ~0u, ~0u, ~0u, ~0u},
+    {"kPSK", SSL_kPSK, ~0u, ~0u, ~0u, ~0u, ~0u},
 
     /* server authentication aliases */
-    {SSL_TXT_aRSA, ~0u, SSL_aRSA, ~SSL_eNULL, ~0u, ~0u, ~0u},
-    {SSL_TXT_aECDSA, ~0u, SSL_aECDSA, ~0u, ~0u, ~0u, ~0u},
-    {SSL_TXT_ECDSA, ~0u, SSL_aECDSA, ~0u, ~0u, ~0u, ~0u},
-    {SSL_TXT_aPSK, ~0u, SSL_aPSK, ~0u, ~0u, ~0u, ~0u},
+    {"aRSA", ~0u, SSL_aRSA, ~SSL_eNULL, ~0u, ~0u, ~0u},
+    {"aECDSA", ~0u, SSL_aECDSA, ~0u, ~0u, ~0u, ~0u},
+    {"ECDSA", ~0u, SSL_aECDSA, ~0u, ~0u, ~0u, ~0u},
+    {"aPSK", ~0u, SSL_aPSK, ~0u, ~0u, ~0u, ~0u},
 
     /* aliases combining key exchange and server authentication */
-    {SSL_TXT_DHE, SSL_kDHE, ~0u, ~0u, ~0u, ~0u, ~0u},
-    {SSL_TXT_EDH, SSL_kDHE, ~0u, ~0u, ~0u, ~0u, ~0u},
-    {SSL_TXT_ECDHE, SSL_kECDHE, ~0u, ~0u, ~0u, ~0u, ~0u},
-    {SSL_TXT_EECDH, SSL_kECDHE, ~0u, ~0u, ~0u, ~0u, ~0u},
-    {SSL_TXT_RSA, SSL_kRSA, SSL_aRSA, ~SSL_eNULL, ~0u, ~0u, ~0u},
-    {SSL_TXT_PSK, SSL_kPSK, SSL_aPSK, ~0u, ~0u, ~0u, ~0u},
+    {"DHE", SSL_kDHE, ~0u, ~0u, ~0u, ~0u, ~0u},
+    {"EDH", SSL_kDHE, ~0u, ~0u, ~0u, ~0u, ~0u},
+    {"ECDHE", SSL_kECDHE, ~0u, ~0u, ~0u, ~0u, ~0u},
+    {"EECDH", SSL_kECDHE, ~0u, ~0u, ~0u, ~0u, ~0u},
+    {"RSA", SSL_kRSA, SSL_aRSA, ~SSL_eNULL, ~0u, ~0u, ~0u},
+    {"PSK", SSL_kPSK, SSL_aPSK, ~0u, ~0u, ~0u, ~0u},
 
     /* symmetric encryption aliases */
-    {SSL_TXT_3DES, ~0u, ~0u, SSL_3DES, ~0u, ~0u, ~0u},
-    {SSL_TXT_RC4, ~0u, ~0u, SSL_RC4, ~0u, ~0u, ~0u},
-    {SSL_TXT_AES128, ~0u, ~0u, SSL_AES128 | SSL_AES128GCM, ~0u, ~0u, ~0u},
-    {SSL_TXT_AES256, ~0u, ~0u, SSL_AES256 | SSL_AES256GCM, ~0u, ~0u, ~0u},
-    {SSL_TXT_AES, ~0u, ~0u, SSL_AES, ~0u, ~0u, ~0u},
-    {SSL_TXT_AES_GCM, ~0u, ~0u, SSL_AES128GCM | SSL_AES256GCM, ~0u, ~0u, ~0u},
-    {SSL_TXT_CHACHA20, ~0u, ~0u, SSL_CHACHA20POLY1305, ~0u, ~0u, ~0u},
+    {"3DES", ~0u, ~0u, SSL_3DES, ~0u, ~0u, ~0u},
+    {"RC4", ~0u, ~0u, SSL_RC4, ~0u, ~0u, ~0u},
+    {"AES128", ~0u, ~0u, SSL_AES128 | SSL_AES128GCM, ~0u, ~0u, ~0u},
+    {"AES256", ~0u, ~0u, SSL_AES256 | SSL_AES256GCM, ~0u, ~0u, ~0u},
+    {"AES", ~0u, ~0u, SSL_AES, ~0u, ~0u, ~0u},
+    {"AESGCM", ~0u, ~0u, SSL_AES128GCM | SSL_AES256GCM, ~0u, ~0u, ~0u},
+    {"CHACHA20", ~0u, ~0u, SSL_CHACHA20POLY1305, ~0u, ~0u, ~0u},
 
     /* MAC aliases */
-    {SSL_TXT_MD5, ~0u, ~0u, ~0u, SSL_MD5, ~0u, ~0u},
-    {SSL_TXT_SHA1, ~0u, ~0u, ~SSL_eNULL, SSL_SHA1, ~0u, ~0u},
-    {SSL_TXT_SHA, ~0u, ~0u, ~SSL_eNULL, SSL_SHA1, ~0u, ~0u},
-    {SSL_TXT_SHA256, ~0u, ~0u, ~0u, SSL_SHA256, ~0u, ~0u},
-    {SSL_TXT_SHA384, ~0u, ~0u, ~0u, SSL_SHA384, ~0u, ~0u},
+    {"MD5", ~0u, ~0u, ~0u, SSL_MD5, ~0u, ~0u},
+    {"SHA1", ~0u, ~0u, ~SSL_eNULL, SSL_SHA1, ~0u, ~0u},
+    {"SHA", ~0u, ~0u, ~SSL_eNULL, SSL_SHA1, ~0u, ~0u},
+    {"SHA256", ~0u, ~0u, ~0u, SSL_SHA256, ~0u, ~0u},
+    {"SHA384", ~0u, ~0u, ~0u, SSL_SHA384, ~0u, ~0u},
 
     /* protocol version aliases */
-    {SSL_TXT_SSLV3, ~0u, ~0u, ~SSL_eNULL, ~0u, SSL_SSLV3, ~0u},
-    {SSL_TXT_TLSV1, ~0u, ~0u, ~SSL_eNULL, ~0u, SSL_TLSV1, ~0u},
-    {SSL_TXT_TLSV1_2, ~0u, ~0u, ~SSL_eNULL, ~0u, SSL_TLSV1_2, ~0u},
+    {"SSLv3", ~0u, ~0u, ~SSL_eNULL, ~0u, SSL_SSLV3, ~0u},
+    {"TLSv1", ~0u, ~0u, ~SSL_eNULL, ~0u, SSL_TLSV1, ~0u},
+    {"TLSv1.2", ~0u, ~0u, ~SSL_eNULL, ~0u, SSL_TLSV1_2, ~0u},
 
     /* strength classes */
-    {SSL_TXT_MEDIUM, ~0u, ~0u, ~0u, ~0u, ~0u, SSL_MEDIUM},
-    {SSL_TXT_HIGH, ~0u, ~0u, ~0u, ~0u, ~0u, SSL_HIGH},
+    {"MEDIUM", ~0u, ~0u, ~0u, ~0u, ~0u, SSL_MEDIUM},
+    {"HIGH", ~0u, ~0u, ~0u, ~0u, ~0u, SSL_HIGH},
     /* FIPS 140-2 approved ciphersuite */
-    {SSL_TXT_FIPS, ~0u, ~0u, ~SSL_eNULL, ~0u, ~0u, SSL_FIPS},
+    {"FIPS", ~0u, ~0u, ~SSL_eNULL, ~0u, ~0u, SSL_FIPS},
 };
 
 static const size_t kCipherAliasesLen =

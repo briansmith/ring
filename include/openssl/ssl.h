@@ -2820,56 +2820,6 @@ OPENSSL_EXPORT void (*SSL_get_info_callback(const SSL *ssl))(const SSL *ssl,
  *
  * Functions below here haven't been touched up and may be underdocumented. */
 
-/* These are used to specify which ciphers to use and not to use */
-
-#define SSL_TXT_MEDIUM "MEDIUM"
-#define SSL_TXT_HIGH "HIGH"
-#define SSL_TXT_FIPS "FIPS"
-
-#define SSL_TXT_kRSA "kRSA"
-#define SSL_TXT_kDHE "kDHE"
-#define SSL_TXT_kEDH "kEDH" /* same as "kDHE" */
-#define SSL_TXT_kECDHE "kECDHE"
-#define SSL_TXT_kEECDH "kEECDH" /* same as "kECDHE" */
-#define SSL_TXT_kPSK "kPSK"
-
-#define SSL_TXT_aRSA "aRSA"
-#define SSL_TXT_aECDSA "aECDSA"
-#define SSL_TXT_aPSK "aPSK"
-
-#define SSL_TXT_DH "DH"
-#define SSL_TXT_DHE "DHE" /* same as "kDHE" */
-#define SSL_TXT_EDH "EDH" /* same as "DHE" */
-#define SSL_TXT_RSA "RSA"
-#define SSL_TXT_ECDH "ECDH"
-#define SSL_TXT_ECDHE "ECDHE" /* same as "kECDHE" */
-#define SSL_TXT_EECDH "EECDH" /* same as "ECDHE" */
-#define SSL_TXT_ECDSA "ECDSA"
-#define SSL_TXT_PSK "PSK"
-
-#define SSL_TXT_3DES "3DES"
-#define SSL_TXT_RC4 "RC4"
-#define SSL_TXT_AES128 "AES128"
-#define SSL_TXT_AES256 "AES256"
-#define SSL_TXT_AES "AES"
-#define SSL_TXT_AES_GCM "AESGCM"
-#define SSL_TXT_CHACHA20 "CHACHA20"
-
-#define SSL_TXT_MD5 "MD5"
-#define SSL_TXT_SHA1 "SHA1"
-#define SSL_TXT_SHA "SHA" /* same as "SHA1" */
-#define SSL_TXT_SHA256 "SHA256"
-#define SSL_TXT_SHA384 "SHA384"
-
-#define SSL_TXT_SSLV3 "SSLv3"
-#define SSL_TXT_TLSV1 "TLSv1"
-#define SSL_TXT_TLSV1_1 "TLSv1.1"
-#define SSL_TXT_TLSV1_2 "TLSv1.2"
-
-#define SSL_TXT_ALL "ALL"
-
-#define SSL_TXT_CMPDEF "COMPLEMENTOFDEFAULT"
-
 /* Used in SSL_set_shutdown()/SSL_get_shutdown(); */
 #define SSL_SENT_SHUTDOWN 1
 #define SSL_RECEIVED_SHUTDOWN 2
@@ -3264,6 +3214,47 @@ OPENSSL_EXPORT const char *SSL_alert_type_string(int value);
 /* SSL_alert_desc_string returns "!!". Use |SSL_alert_desc_string_long|
  * instead. */
 OPENSSL_EXPORT const char *SSL_alert_desc_string(int value);
+
+/* SSL_TXT_* expand to strings. */
+#define SSL_TXT_MEDIUM "MEDIUM"
+#define SSL_TXT_HIGH "HIGH"
+#define SSL_TXT_FIPS "FIPS"
+#define SSL_TXT_kRSA "kRSA"
+#define SSL_TXT_kDHE "kDHE"
+#define SSL_TXT_kEDH "kEDH"
+#define SSL_TXT_kECDHE "kECDHE"
+#define SSL_TXT_kEECDH "kEECDH"
+#define SSL_TXT_kPSK "kPSK"
+#define SSL_TXT_aRSA "aRSA"
+#define SSL_TXT_aECDSA "aECDSA"
+#define SSL_TXT_aPSK "aPSK"
+#define SSL_TXT_DH "DH"
+#define SSL_TXT_DHE "DHE"
+#define SSL_TXT_EDH "EDH"
+#define SSL_TXT_RSA "RSA"
+#define SSL_TXT_ECDH "ECDH"
+#define SSL_TXT_ECDHE "ECDHE"
+#define SSL_TXT_EECDH "EECDH"
+#define SSL_TXT_ECDSA "ECDSA"
+#define SSL_TXT_PSK "PSK"
+#define SSL_TXT_3DES "3DES"
+#define SSL_TXT_RC4 "RC4"
+#define SSL_TXT_AES128 "AES128"
+#define SSL_TXT_AES256 "AES256"
+#define SSL_TXT_AES "AES"
+#define SSL_TXT_AES_GCM "AESGCM"
+#define SSL_TXT_CHACHA20 "CHACHA20"
+#define SSL_TXT_MD5 "MD5"
+#define SSL_TXT_SHA1 "SHA1"
+#define SSL_TXT_SHA "SHA"
+#define SSL_TXT_SHA256 "SHA256"
+#define SSL_TXT_SHA384 "SHA384"
+#define SSL_TXT_SSLV3 "SSLv3"
+#define SSL_TXT_TLSV1 "TLSv1"
+#define SSL_TXT_TLSV1_1 "TLSv1.1"
+#define SSL_TXT_TLSV1_2 "TLSv1.2"
+#define SSL_TXT_ALL "ALL"
+#define SSL_TXT_CMPDEF "COMPLEMENTOFDEFAULT"
 
 
 /* Private structures.
