@@ -957,7 +957,7 @@ CERT *ssl_cert_new(void);
 CERT *ssl_cert_dup(CERT *cert);
 void ssl_cert_clear_certs(CERT *c);
 void ssl_cert_free(CERT *c);
-int ssl_get_new_session(SSL *s, int session);
+int ssl_get_new_session(SSL *ssl, int is_server);
 
 enum ssl_session_result_t {
   ssl_session_success,

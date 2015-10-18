@@ -297,142 +297,63 @@ void *SSL_SESSION_get_ex_data(const SSL_SESSION *session, int idx) {
   return CRYPTO_get_ex_data(&session->ex_data, idx);
 }
 
-/* Even with SSLv2, we have 16 bytes (128 bits) of session ID space.
- * SSLv3/TLSv1 has 32 bytes (256 bits). As such, filling the ID with random
- * gunk repeatedly until we have no conflict is going to complete in one
- * iteration pretty much "most" of the time (btw: understatement). So, if it
- * takes us 10 iterations and we still can't avoid a conflict - well that's a
- * reasonable point to call it quits. Either the RAND code is broken or someone
- * is trying to open roughly very close to 2^128 (or 2^256) SSL sessions to our
- * server. How you might store that many sessions is perhaps a more interesting
- * question ... */
-static int def_generate_session_id(const SSL *ssl, uint8_t *id,
-                                   unsigned *id_len) {
-  static const unsigned kMaxAttempts = 10;
-  unsigned retry = 0;
-  do {
-    if (!RAND_bytes(id, *id_len)) {
-      return 0;
-    }
-  } while (SSL_has_matching_session_id(ssl, id, *id_len) &&
-           (++retry < kMaxAttempts));
-
-  if (retry < kMaxAttempts) {
-    return 1;
-  }
-
-  /* else - woops a session_id match */
-  /* XXX We should also check the external cache -- but the probability of a
-   * collision is negligible, and we could not prevent the concurrent creation
-   * of sessions with identical IDs since we currently don't have means to
-   * atomically check whether a session ID already exists and make a
-   * reservation for it if it does not (this problem applies to the internal
-   * cache as well). */
-  return 0;
-}
-
-int ssl_get_new_session(SSL *s, int session) {
-  /* This gets used by clients and servers. */
-
-  unsigned int tmp;
-  SSL_SESSION *ss = NULL;
-  GEN_SESSION_CB cb = def_generate_session_id;
-
-  if (s->mode & SSL_MODE_NO_SESSION_CREATION) {
+int ssl_get_new_session(SSL *ssl, int is_server) {
+  if (ssl->mode & SSL_MODE_NO_SESSION_CREATION) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_SESSION_MAY_NOT_BE_CREATED);
     return 0;
   }
 
-  ss = SSL_SESSION_new();
-  if (ss == NULL) {
+  SSL_SESSION *session = SSL_SESSION_new();
+  if (session == NULL) {
     return 0;
   }
 
   /* If the context has a default timeout, use it over the default. */
-  if (s->initial_ctx->session_timeout != 0) {
-    ss->timeout = s->initial_ctx->session_timeout;
+  if (ssl->initial_ctx->session_timeout != 0) {
+    session->timeout = ssl->initial_ctx->session_timeout;
   }
 
-  SSL_SESSION_free(s->session);
-  s->session = NULL;
+  session->ssl_version = ssl->version;
 
-  if (session) {
-    if (s->version == SSL3_VERSION || s->version == TLS1_VERSION ||
-        s->version == TLS1_1_VERSION || s->version == TLS1_2_VERSION ||
-        s->version == DTLS1_VERSION || s->version == DTLS1_2_VERSION) {
-      ss->ssl_version = s->version;
-      ss->session_id_length = SSL3_SSL_SESSION_ID_LENGTH;
+  if (is_server) {
+    if (ssl->tlsext_ticket_expected) {
+      /* Don't set session IDs for sessions resumed with tickets. This will keep
+       * them out of the session cache. */
+      session->session_id_length = 0;
     } else {
-      OPENSSL_PUT_ERROR(SSL, SSL_R_UNSUPPORTED_SSL_VERSION);
-      SSL_SESSION_free(ss);
-      return 0;
+      session->session_id_length = SSL3_SSL_SESSION_ID_LENGTH;
+      if (!RAND_bytes(session->session_id, session->session_id_length)) {
+        goto err;
+      }
     }
 
-    /* If RFC4507 ticket use empty session ID */
-    if (s->tlsext_ticket_expected) {
-      ss->session_id_length = 0;
-      goto sess_id_done;
-    }
-
-    /* Choose which callback will set the session ID */
-    if (s->generate_session_id) {
-      cb = s->generate_session_id;
-    } else if (s->initial_ctx->generate_session_id) {
-      cb = s->initial_ctx->generate_session_id;
-    }
-
-    /* Choose a session ID */
-    tmp = ss->session_id_length;
-    if (!cb(s, ss->session_id, &tmp)) {
-      /* The callback failed */
-      OPENSSL_PUT_ERROR(SSL, SSL_R_SSL_SESSION_ID_CALLBACK_FAILED);
-      SSL_SESSION_free(ss);
-      return 0;
-    }
-
-    /* Don't allow the callback to set the session length to zero. nor set it
-     * higher than it was. */
-    if (!tmp || tmp > ss->session_id_length) {
-      /* The callback set an illegal length */
-      OPENSSL_PUT_ERROR(SSL, SSL_R_SSL_SESSION_ID_HAS_BAD_LENGTH);
-      SSL_SESSION_free(ss);
-      return 0;
-    }
-
-    ss->session_id_length = tmp;
-    /* Finally, check for a conflict */
-    if (SSL_has_matching_session_id(s, ss->session_id, ss->session_id_length)) {
-      OPENSSL_PUT_ERROR(SSL, SSL_R_SSL_SESSION_ID_CONFLICT);
-      SSL_SESSION_free(ss);
-      return 0;
-    }
-
-  sess_id_done:
-    if (s->tlsext_hostname) {
-      ss->tlsext_hostname = BUF_strdup(s->tlsext_hostname);
-      if (ss->tlsext_hostname == NULL) {
-        OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
-        SSL_SESSION_free(ss);
-        return 0;
+    if (ssl->tlsext_hostname != NULL) {
+      session->tlsext_hostname = BUF_strdup(ssl->tlsext_hostname);
+      if (session->tlsext_hostname == NULL) {
+        OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
+        goto err;
       }
     }
   } else {
-    ss->session_id_length = 0;
+    session->session_id_length = 0;
   }
 
-  if (s->sid_ctx_length > sizeof(ss->sid_ctx)) {
+  if (ssl->sid_ctx_length > sizeof(session->sid_ctx)) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
-    SSL_SESSION_free(ss);
-    return 0;
+    goto err;
   }
+  memcpy(session->sid_ctx, ssl->sid_ctx, ssl->sid_ctx_length);
+  session->sid_ctx_length = ssl->sid_ctx_length;
 
-  memcpy(ss->sid_ctx, s->sid_ctx, s->sid_ctx_length);
-  ss->sid_ctx_length = s->sid_ctx_length;
-  s->session = ss;
-  ss->ssl_version = s->version;
-  ss->verify_result = X509_V_OK;
+  session->verify_result = X509_V_OK;
 
+  SSL_SESSION_free(ssl->session);
+  ssl->session = session;
   return 1;
+
+err:
+  SSL_SESSION_free(session);
+  return 0;
 }
 
 /* ssl_lookup_session looks up |session_id| in the session cache and sets

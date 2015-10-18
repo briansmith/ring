@@ -811,7 +811,7 @@ int ssl3_get_server_hello(SSL *s) {
     /* The session wasn't resumed. Create a fresh SSL_SESSION to
      * fill out. */
     s->hit = 0;
-    if (!ssl_get_new_session(s, 0)) {
+    if (!ssl_get_new_session(s, 0 /* client */)) {
       goto f_err;
     }
     /* Note: session_id could be empty. */

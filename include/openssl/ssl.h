@@ -1657,33 +1657,6 @@ OPENSSL_EXPORT SSL_SESSION *(*SSL_CTX_sess_get_get_cb(SSL_CTX *ctx))(
  * when the lookup has completed. */
 OPENSSL_EXPORT SSL_SESSION *SSL_magic_pending_session_ptr(void);
 
-/* GEN_SESSION_CB is a callback to generate session IDs for |ssl|. It returns
- * one on success and zero on error. On success, the generated ID is written to
- * |id| and |*id_len| set to the length. On entry, |*id_len| is the maximum
- * length of the ID, but the callback may shorten it if desired. It is an error
- * for the callback to set the size to zero.
- *
- * Callbacks may use |SSL_has_matching_session_id| to check that the generated
- * ID is unique. */
-typedef int (*GEN_SESSION_CB)(const SSL *ssl, uint8_t *id, unsigned *id_len);
-
-/* SSL_CTX_set_generate_session_id sets the session ID callback of |ctx| to
- * |cb| and returns one. It will be called on the server when establishing a new
- * session. */
-OPENSSL_EXPORT int SSL_CTX_set_generate_session_id(SSL_CTX *ctx,
-                                                   GEN_SESSION_CB cb);
-
-/* SSL_set_generate_session_id sets the session ID callback of |ssl| to |cb| and
- * returns one. It will be called on the server when establishing a new
- * session. */
-OPENSSL_EXPORT int SSL_set_generate_session_id(SSL *ssl, GEN_SESSION_CB cb);
-
-/* SSL_has_matching_session_id returns one if |ssl|'s session cache has a
- * session of value |id| and zero otherwise. */
-OPENSSL_EXPORT int SSL_has_matching_session_id(const SSL *ssl,
-                                               const uint8_t *id,
-                                               unsigned id_len);
-
 
 /* Session tickets.
  *
@@ -3571,9 +3544,6 @@ struct ssl_ctx_st {
   int (*default_verify_callback)(
       int ok, X509_STORE_CTX *ctx); /* called 'verify_callback' in the SSL */
 
-  /* Default generate session ID callback. */
-  GEN_SESSION_CB generate_session_id;
-
   X509_VERIFY_PARAM *param;
 
   /* select_certificate_cb is called before most ClientHello processing and
@@ -3789,9 +3759,6 @@ struct ssl_st {
 
   /* This can also be in the session once a session is established */
   SSL_SESSION *session;
-
-  /* Default generate session ID callback. */
-  GEN_SESSION_CB generate_session_id;
 
   /* Used in SSL2 and SSL3 */
   int verify_mode; /* 0 don't care about verify failure.

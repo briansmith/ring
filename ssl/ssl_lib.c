@@ -385,7 +385,6 @@ SSL *SSL_new(SSL_CTX *ctx) {
   assert(s->sid_ctx_length <= sizeof s->sid_ctx);
   memcpy(&s->sid_ctx, &ctx->sid_ctx, sizeof(s->sid_ctx));
   s->verify_callback = ctx->default_verify_callback;
-  s->generate_session_id = ctx->generate_session_id;
 
   s->param = X509_VERIFY_PARAM_new();
   if (!s->param) {
@@ -941,39 +940,6 @@ int SSL_set_session_id_context(SSL *ssl, const uint8_t *sid_ctx,
   memcpy(ssl->sid_ctx, sid_ctx, sid_ctx_len);
 
   return 1;
-}
-
-int SSL_CTX_set_generate_session_id(SSL_CTX *ctx, GEN_SESSION_CB cb) {
-  ctx->generate_session_id = cb;
-  return 1;
-}
-
-int SSL_set_generate_session_id(SSL *ssl, GEN_SESSION_CB cb) {
-  ssl->generate_session_id = cb;
-  return 1;
-}
-
-int SSL_has_matching_session_id(const SSL *ssl, const uint8_t *id,
-                                unsigned id_len) {
-  /* A quick examination of SSL_SESSION_hash and SSL_SESSION_cmp shows how we
-   * can "construct" a session to give us the desired check - ie. to find if
-   * there's a session in the hash table that would conflict with any new
-   * session built out of this id/id_len and the ssl_version in use by this
-   * SSL. */
-  SSL_SESSION r, *p;
-
-  if (id_len > sizeof r.session_id) {
-    return 0;
-  }
-
-  r.ssl_version = ssl->version;
-  r.session_id_length = id_len;
-  memcpy(r.session_id, id, id_len);
-
-  CRYPTO_MUTEX_lock_read(&ssl->ctx->lock);
-  p = lh_SSL_SESSION_retrieve(ssl->ctx->sessions, &r);
-  CRYPTO_MUTEX_unlock(&ssl->ctx->lock);
-  return p != NULL;
 }
 
 int SSL_CTX_set_purpose(SSL_CTX *ctx, int purpose) {
