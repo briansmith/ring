@@ -215,6 +215,11 @@ OPENSSL_EXPORT SSL *SSL_new(SSL_CTX *ctx);
 /* SSL_free releases memory associated with |ssl|. */
 OPENSSL_EXPORT void SSL_free(SSL *ssl);
 
+/* SSL_get_SSL_CTX returns the |SSL_CTX| associated with |ssl|. If
+ * |SSL_set_SSL_CTX| is called, it returns the new |SSL_CTX|, not the initial
+ * one. */
+OPENSSL_EXPORT SSL_CTX *SSL_get_SSL_CTX(const SSL *ssl);
+
 /* SSL_set_connect_state configures |ssl| to be a client. */
 OPENSSL_EXPORT void SSL_set_connect_state(SSL *ssl);
 
@@ -2832,23 +2837,31 @@ OPENSSL_EXPORT void (*SSL_get_info_callback(const SSL *ssl))(const SSL *ssl,
                                                              int type,
                                                              int value);
 
+/* SSL_state_string_long returns the current state of the handshake state
+ * machine as a string. This may be useful for debugging and logging. */
+OPENSSL_EXPORT const char *SSL_state_string_long(const SSL *ssl);
 
-/* Underdocumented functions.
+/* SSL_set_SSL_CTX partially changes |ssl|'s |SSL_CTX|. |ssl| will use the
+ * certificate and session_id_context from |ctx|, and |SSL_get_SSL_CTX| will
+ * report |ctx|. However most settings and the session cache itself will
+ * continue to use the initial |SSL_CTX|. It is often used as part of SNI.
  *
- * Functions below here haven't been touched up and may be underdocumented. */
+ * TODO(davidben): Make a better story here and get rid of this API. Also
+ * determine if there's anything else affected by |SSL_set_SSL_CTX| that
+ * matters. Not as many values are affected as one might initially think. The
+ * session cache explicitly selects the initial |SSL_CTX|. Most settings are
+ * copied at |SSL_new| so |ctx|'s versions don't apply. This, notably, has some
+ * consequences for any plans to make |SSL| copy-on-write most of its
+ * configuration. */
+OPENSSL_EXPORT SSL_CTX *SSL_set_SSL_CTX(SSL *ssl, SSL_CTX *ctx);
 
-/* Used in SSL_set_shutdown()/SSL_get_shutdown(); */
 #define SSL_SENT_SHUTDOWN 1
 #define SSL_RECEIVED_SHUTDOWN 2
 
-OPENSSL_EXPORT const char *SSL_state_string(const SSL *ssl);
-OPENSSL_EXPORT const char *SSL_state_string_long(const SSL *ssl);
-
-OPENSSL_EXPORT void SSL_set_shutdown(SSL *ssl, int mode);
+/* SSL_get_shutdown returns a bitmask with a subset of |SSL_SENT_SHUTDOWN| and
+ * |SSL_RECEIVED_SHUTDOWN| to query whether close_notify was sent or received,
+ * respectively. */
 OPENSSL_EXPORT int SSL_get_shutdown(const SSL *ssl);
-OPENSSL_EXPORT SSL_CTX *SSL_get_SSL_CTX(const SSL *ssl);
-OPENSSL_EXPORT SSL_CTX *SSL_set_SSL_CTX(SSL *ssl, SSL_CTX *ctx);
-OPENSSL_EXPORT int SSL_state(const SSL *ssl);
 
 
 /* Deprecated functions. */
@@ -3259,7 +3272,26 @@ OPENSSL_EXPORT const char *SSL_alert_desc_string(int value);
 
 typedef struct ssl_conf_ctx_st SSL_CONF_CTX;
 
+/* SSL_state returns the current state of the handshake state machine. */
+OPENSSL_EXPORT int SSL_state(const SSL *ssl);
+
 #define SSL_get_state(ssl) SSL_state(ssl)
+
+/* SSL_state_string returns the current state of the handshake state machine as
+ * a six-letter string. Use |SSL_state_string */
+OPENSSL_EXPORT const char *SSL_state_string(const SSL *ssl);
+
+/* SSL_set_shutdown causes |ssl| to behave as if the shutdown bitmask (see
+ * |SSL_get_shutdown|) were |mode|. This may be used to skip sending or
+ * receiving close_notify in |SSL_shutdown| by causing the implementation to
+ * believe the events already happened.
+ *
+ * It is an error to use |SSL_set_shutdown| to unset a bit that has already been
+ * set. Doing so will trigger an |assert| in debug builds and otherwise be
+ * ignored.
+ *
+ * Use |SSL_CTX_set_quiet_shutdown| instead. */
+OPENSSL_EXPORT void SSL_set_shutdown(SSL *ssl, int mode);
 
 
 /* Private structures.
