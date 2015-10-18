@@ -497,15 +497,11 @@ no_session:
 }
 
 int SSL_CTX_add_session(SSL_CTX *ctx, SSL_SESSION *session) {
-  int ret = 0;
-  SSL_SESSION *old_session;
-
-  /* Add just 1 reference count for the |SSL_CTX|'s session cache even though it
-   * has two ways of access: each session is in a doubly linked list and an
-   * lhash. */
+  /* Although |session| is inserted into two structures (a doubly-linked list
+   * and the hash table), |ctx| only takes one reference. */
   SSL_SESSION_up_ref(session);
-  /* If |session| is in already in cache, we take back the increment later. */
 
+  SSL_SESSION *old_session;
   CRYPTO_MUTEX_lock_write(&ctx->lock);
   if (!lh_SSL_SESSION_insert(ctx->sessions, &old_session, session)) {
     CRYPTO_MUTEX_unlock(&ctx->lock);
@@ -513,45 +509,33 @@ int SSL_CTX_add_session(SSL_CTX *ctx, SSL_SESSION *session) {
     return 0;
   }
 
-  /* |old_session| != NULL iff we already had a session with the given session
-   * ID. In this case, |old_session| == |session| should hold (then we did not
-   * really modify |ctx->sessions|), or we're in trouble. */
-  if (old_session != NULL && old_session != session) {
-    /* We *are* in trouble ... */
+  if (old_session != NULL) {
+    if (old_session == session) {
+      /* |session| was already in the cache. */
+      CRYPTO_MUTEX_unlock(&ctx->lock);
+      SSL_SESSION_free(old_session);
+      return 0;
+    }
+
+    /* There was a session ID collision. |old_session| must be removed from
+     * the linked list and released. */
     SSL_SESSION_list_remove(ctx, old_session);
     SSL_SESSION_free(old_session);
-    /* ... so pretend the other session did not exist in cache (we cannot
-     * handle two |SSL_SESSION| structures with identical session ID in the same
-     * cache, which could happen e.g. when two threads concurrently obtain the
-     * same session from an external cache). */
-    old_session = NULL;
   }
 
-  /* Put at the head of the queue unless it is already in the cache. */
-  if (old_session == NULL) {
-    SSL_SESSION_list_add(ctx, session);
-  }
+  SSL_SESSION_list_add(ctx, session);
 
-  if (old_session != NULL) {
-    /* Existing cache entry -- decrement previously incremented reference count
-     * because it already takes into account the cache. */
-    SSL_SESSION_free(old_session); /* |old_session| == |session| */
-    ret = 0;
-  } else {
-    /* New cache entry -- remove old ones if cache has become too large. */
-    ret = 1;
-
-    if (SSL_CTX_sess_get_cache_size(ctx) > 0) {
-      while (SSL_CTX_sess_number(ctx) > SSL_CTX_sess_get_cache_size(ctx)) {
-        if (!remove_session_lock(ctx, ctx->session_cache_tail, 0)) {
-          break;
-        }
+  /* Enforce any cache size limits. */
+  if (SSL_CTX_sess_get_cache_size(ctx) > 0) {
+    while (SSL_CTX_sess_number(ctx) > SSL_CTX_sess_get_cache_size(ctx)) {
+      if (!remove_session_lock(ctx, ctx->session_cache_tail, 0)) {
+        break;
       }
     }
   }
 
   CRYPTO_MUTEX_unlock(&ctx->lock);
-  return ret;
+  return 1;
 }
 
 int SSL_CTX_remove_session(SSL_CTX *ctx, SSL_SESSION *session) {
