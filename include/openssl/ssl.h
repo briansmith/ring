@@ -2820,10 +2820,6 @@ OPENSSL_EXPORT void (*SSL_get_info_callback(const SSL *ssl))(const SSL *ssl,
  *
  * Functions below here haven't been touched up and may be underdocumented. */
 
-#define SSL_MAX_SSL_SESSION_ID_LENGTH 32
-#define SSL_MAX_SID_CTX_LENGTH 32
-#define SSL_MAX_MASTER_KEY_LENGTH 48
-
 /* These are used to specify which ciphers to use and not to use */
 
 #define SSL_TXT_MEDIUM "MEDIUM"
@@ -3296,6 +3292,10 @@ struct ssl_cipher_st {
   /* alg_bits is the number of bits of key material used by the algorithm. */
   int alg_bits;
 };
+
+#define SSL_MAX_SSL_SESSION_ID_LENGTH 32
+#define SSL_MAX_SID_CTX_LENGTH 32
+#define SSL_MAX_MASTER_KEY_LENGTH 48
 
 struct ssl_session_st {
   int ssl_version; /* what ssl version session info is being kept in here? */
