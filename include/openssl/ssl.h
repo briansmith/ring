@@ -4132,7 +4132,7 @@ typedef struct ssl3_state_st {
 } SSL3_STATE;
 
 
-/* Android compatibility section.
+/* Android compatibility section (hidden).
  *
  * These functions are declared, temporarily, for Android because
  * wpa_supplicant will take a little time to sync with upstream. Outside of
@@ -4147,7 +4147,7 @@ OPENSSL_EXPORT int SSL_set_session_ticket_ext_cb(SSL *s, void *cb, void *arg);
 OPENSSL_EXPORT int SSL_set_ssl_method(SSL *s, const SSL_METHOD *method);
 
 
-/* Preprocessor compatibility section.
+/* Preprocessor compatibility section (hidden).
  *
  * Historically, a number of APIs were implemented in OpenSSL as macros and
  * constants to 'ctrl' functions. To avoid breaking #ifdefs in consumers, this

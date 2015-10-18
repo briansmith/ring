@@ -237,6 +237,10 @@ func sanitizeAnchor(name string) string {
 	return strings.Replace(name, " ", "-", -1)
 }
 
+func isPrivateSection(name string) bool {
+	return strings.HasPrefix(name, "Private functions") || strings.HasPrefix(name, "Private structures") || strings.Contains(name, "(hidden)")
+}
+
 func (config *Config) parseHeader(path string) (*HeaderFile, error) {
 	headerPath := filepath.Join(config.BaseDirectory, path)
 
@@ -341,7 +345,7 @@ func (config *Config) parseHeader(path string) (*HeaderFile, error) {
 				}
 
 				section.Preamble = comment
-				section.IsPrivate = len(comment) > 0 && strings.HasPrefix(comment[0], "Private functions")
+				section.IsPrivate = len(comment) > 0 && isPrivateSection(comment[0])
 				section.Anchor = anchor
 				lines = rest[1:]
 				lineNo = restLineNo + 1
