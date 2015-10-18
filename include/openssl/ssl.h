@@ -2824,13 +2824,6 @@ OPENSSL_EXPORT void (*SSL_get_info_callback(const SSL *ssl))(const SSL *ssl,
 #define SSL_SENT_SHUTDOWN 1
 #define SSL_RECEIVED_SHUTDOWN 2
 
-typedef struct ssl_protocol_method_st SSL_PROTOCOL_METHOD;
-typedef struct ssl_conf_ctx_st SSL_CONF_CTX;
-typedef struct ssl3_enc_method SSL3_ENC_METHOD;
-
-struct ssl_aead_ctx_st;
-typedef struct ssl_aead_ctx_st SSL_AEAD_CTX;
-
 /* Is the SSL_connection established? */
 #define SSL_get_state(a) SSL_state(a)
 #define SSL_is_init_finished(a) (SSL_state(a) == SSL_ST_OK)
@@ -3256,11 +3249,17 @@ OPENSSL_EXPORT const char *SSL_alert_desc_string(int value);
 #define SSL_TXT_ALL "ALL"
 #define SSL_TXT_CMPDEF "COMPLEMENTOFDEFAULT"
 
+typedef struct ssl_conf_ctx_st SSL_CONF_CTX;
+
 
 /* Private structures.
  *
  * This structures are exposed for historical reasons, but access to them is
  * deprecated. */
+
+typedef struct ssl_protocol_method_st SSL_PROTOCOL_METHOD;
+typedef struct ssl3_enc_method SSL3_ENC_METHOD;
+typedef struct ssl_aead_ctx_st SSL_AEAD_CTX;
 
 struct ssl_cipher_st {
   /* name is the OpenSSL name for the cipher. */
