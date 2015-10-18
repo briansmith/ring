@@ -14,6 +14,7 @@
 
 #include <stdio.h>
 #include <string.h>
+#include <time.h>
 
 #include <algorithm>
 #include <string>
@@ -713,6 +714,9 @@ static ScopedSSL_SESSION CreateSessionWithTicket(size_t ticket_len) {
   }
   memset(session->tlsext_tick, 'a', ticket_len);
   session->tlsext_ticklen = ticket_len;
+
+  // Fix up the timeout.
+  session->time = time(NULL);
   return session;
 }
 

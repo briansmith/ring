@@ -1456,11 +1456,8 @@ OPENSSL_EXPORT int SSL_SESSION_set1_id_context(SSL_SESSION *session,
 /* SSL_SESS_CACHE_OFF disables all session caching. */
 #define SSL_SESS_CACHE_OFF 0x0000
 
-/* SSL_SESS_CACHE_CLIENT enables session caching for a client.
- *
- * TODO(davidben): The internal cache is useless on the client. Always act as if
- * SSL_SESS_CACHE_NO_INTERNAL is set. https://crbug.com/531194. Also see TODO
- * attached to |SSL_CTX_sess_set_new_cb|. */
+/* SSL_SESS_CACHE_CLIENT enables session caching for a client. The internal
+ * cache is never used on a client, so this only enables the callbacks. */
 #define SSL_SESS_CACHE_CLIENT 0x0001
 
 /* SSL_SESS_CACHE_SERVER enables session caching for a server. */
@@ -1473,15 +1470,16 @@ OPENSSL_EXPORT int SSL_SESSION_set1_id_context(SSL_SESSION *session,
  * |SSL_CTX_flush_sessions| every 255 connections. */
 #define SSL_SESS_CACHE_NO_AUTO_CLEAR 0x0080
 
-/* SSL_SESS_CACHE_NO_INTERNAL_LOOKUP disables looking up a session from the
- * internal session cache. */
+/* SSL_SESS_CACHE_NO_INTERNAL_LOOKUP, on a server, disables looking up a session
+ * from the internal session cache. */
 #define SSL_SESS_CACHE_NO_INTERNAL_LOOKUP 0x0100
 
-/* SSL_SESS_CACHE_NO_INTERNAL_STORE disables storing sessions in the internal
- * session cache. */
+/* SSL_SESS_CACHE_NO_INTERNAL_STORE, on a server, disables storing sessions in
+ * the internal session cache. */
 #define SSL_SESS_CACHE_NO_INTERNAL_STORE 0x0200
 
-/* SSL_SESS_CACHE_NO_INTERNAL disables the internal session cache. */
+/* SSL_SESS_CACHE_NO_INTERNAL, on a server, disables the internal session
+ * cache. */
 #define SSL_SESS_CACHE_NO_INTERNAL \
     (SSL_SESS_CACHE_NO_INTERNAL_LOOKUP | SSL_SESS_CACHE_NO_INTERNAL_STORE)
 

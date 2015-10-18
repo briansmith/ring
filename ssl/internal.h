@@ -993,7 +993,7 @@ void ssl_cert_set_cert_cb(CERT *cert,
 
 int ssl_verify_cert_chain(SSL *ssl, STACK_OF(X509) *cert_chain);
 int ssl_add_cert_chain(SSL *s, unsigned long *l);
-void ssl_update_cache(SSL *s, int mode);
+void ssl_update_cache(SSL *ssl, int mode);
 
 /* ssl_get_compatible_server_ciphers determines the key exchange and
  * authentication cipher suite masks compatible with the server configuration
