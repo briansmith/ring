@@ -1565,14 +1565,12 @@ OPENSSL_EXPORT LHASH_OF(SSL_SESSION) *SSL_CTX_sessions(SSL_CTX *ctx);
 OPENSSL_EXPORT size_t SSL_CTX_sess_number(const SSL_CTX *ctx);
 
 /* SSL_CTX_add_session inserts |session| into |ctx|'s internal session cache. It
- * returns one on success and zero on error or if |ctx| already included a
- * session with that session ID. The caller retains its reference to
- * |session|. */
+ * returns one on success and zero on error or if |session| is already in the
+ * cache. The caller retains its reference to |session|. */
 OPENSSL_EXPORT int SSL_CTX_add_session(SSL_CTX *ctx, SSL_SESSION *session);
 
 /* SSL_CTX_remove_session removes |session| from |ctx|'s internal session cache.
- * It returns one on success and zero on error or if no session with a matching
- * ID was found. */
+ * It returns one on success and zero if |session| was not in the cache. */
 OPENSSL_EXPORT int SSL_CTX_remove_session(SSL_CTX *ctx, SSL_SESSION *session);
 
 /* SSL_CTX_flush_sessions removes all sessions from |ctx| which have expired as

@@ -382,6 +382,7 @@ static enum ssl_session_result_t ssl_lookup_session(
     if (session != NULL) {
       SSL_SESSION_up_ref(session);
     }
+    /* TODO(davidben): This should probably move it to the front of the list. */
     CRYPTO_MUTEX_unlock(&ssl->initial_ctx->lock);
 
     if (session != NULL) {
