@@ -607,8 +607,15 @@ OPENSSL_EXPORT uint32_t SSL_get_options(const SSL *ssl);
 #define SSL_MODE_NO_AUTO_CHAIN 0x00000008L
 
 /* SSL_MODE_ENABLE_FALSE_START allows clients to send application data before
- * receipt of CCS and Finished. This mode enables full-handshakes to 'complete'
- * in one RTT. See draft-bmoeller-tls-falsestart-01. */
+ * receipt of ChangeCipherSpec and Finished. This mode enables full-handshakes
+ * to 'complete' in one RTT. See draft-bmoeller-tls-falsestart-01.
+ *
+ * When False Start is enabled, |SSL_do_handshake| may succeed before the
+ * handshake has completely finished. |SSL_write| will function at this point,
+ * and |SSL_read| will transparently wait for the final handshake leg before
+ * returning application data. To determine if False Start occurred or when the
+ * handshake is completely finished, see |SSL_in_false_start|, |SSL_in_init|,
+ * and |SSL_CB_HANDSHAKE_DONE| from |SSL_CTX_set_info_callback|. */
 #define SSL_MODE_ENABLE_FALSE_START 0x00000080L
 
 /* SSL_MODE_CBC_RECORD_SPLITTING causes multi-byte CBC records in SSL 3.0 and
@@ -1147,6 +1154,22 @@ OPENSSL_EXPORT STACK_OF(SSL_CIPHER) *SSL_get_ciphers(const SSL *ssl);
 
 
 /* Connection information. */
+
+/* SSL_is_init_finished returns one if |ssl| has completed its initial handshake
+ * and has no pending handshake. It returns zero otherwise. */
+OPENSSL_EXPORT int SSL_is_init_finished(const SSL *ssl);
+
+/* SSL_in_init returns one if |ssl| has a pending handshake and zero
+ * otherwise. */
+OPENSSL_EXPORT int SSL_in_init(const SSL *ssl);
+
+/* SSL_in_false_start returns one if |ssl| has a pending handshake that is in
+ * False Start. |SSL_write| may be called at this point without waiting for the
+ * peer, but |SSL_read| will complete the handshake before accepting application
+ * data.
+ *
+ * See also |SSL_MODE_ENABLE_FALSE_START|. */
+OPENSSL_EXPORT int SSL_in_false_start(const SSL *ssl);
 
 /* SSL_get_peer_certificate returns the peer's leaf certificate or NULL if the
  * peer did not use certificates. The caller must call |X509_free| on the
@@ -2824,18 +2847,6 @@ OPENSSL_EXPORT void (*SSL_get_info_callback(const SSL *ssl))(const SSL *ssl,
 #define SSL_SENT_SHUTDOWN 1
 #define SSL_RECEIVED_SHUTDOWN 2
 
-/* Is the SSL_connection established? */
-#define SSL_get_state(a) SSL_state(a)
-#define SSL_is_init_finished(a) (SSL_state(a) == SSL_ST_OK)
-#define SSL_in_init(a) (SSL_state(a) & SSL_ST_INIT)
-#define SSL_in_connect_init(a) (SSL_state(a) & SSL_ST_CONNECT)
-#define SSL_in_accept_init(a) (SSL_state(a) & SSL_ST_ACCEPT)
-
-/* SSL_in_false_start returns one if |s| has a pending unfinished handshake that
- * is in False Start. |SSL_write| may be called at this point without waiting
- * for the peer, but |SSL_read| will require the handshake to be completed. */
-OPENSSL_EXPORT int SSL_in_false_start(const SSL *s);
-
 OPENSSL_EXPORT const char *SSL_state_string(const SSL *ssl);
 OPENSSL_EXPORT const char *SSL_state_string_long(const SSL *ssl);
 
@@ -3250,6 +3261,8 @@ OPENSSL_EXPORT const char *SSL_alert_desc_string(int value);
 #define SSL_TXT_CMPDEF "COMPLEMENTOFDEFAULT"
 
 typedef struct ssl_conf_ctx_st SSL_CONF_CTX;
+
+#define SSL_get_state(ssl) SSL_state(ssl)
 
 
 /* Private structures.

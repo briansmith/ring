@@ -2381,8 +2381,16 @@ int ssl_ctx_log_master_secret(SSL_CTX *ctx, const uint8_t *client_random,
   return ret;
 }
 
-int SSL_in_false_start(const SSL *s) {
-  return s->s3->tmp.in_false_start;
+int SSL_is_init_finished(const SSL *ssl) {
+  return ssl->state == SSL_ST_OK;
+}
+
+int SSL_in_init(const SSL *ssl) {
+  return (ssl->state & SSL_ST_INIT) != 0;
+}
+
+int SSL_in_false_start(const SSL *ssl) {
+  return ssl->s3->tmp.in_false_start;
 }
 
 int SSL_cutthrough_complete(const SSL *s) {
