@@ -152,8 +152,8 @@ int RAND_bytes(uint8_t *buf, size_t len) {
   if (len >= sizeof(state->partial_block)) {
     size_t remaining = len;
     while (remaining > 0) {
-      // kMaxBytesPerCall is only 2GB, while ChaCha can handle 256GB. But this
-      // is sufficient and easier on 32-bit.
+      /* kMaxBytesPerCall is only 2GB, while ChaCha can handle 256GB. But this
+       * is sufficient and easier on 32-bit. */
       static const size_t kMaxBytesPerCall = 0x80000000;
       size_t todo = remaining;
       if (todo > kMaxBytesPerCall) {
