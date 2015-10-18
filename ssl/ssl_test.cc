@@ -20,6 +20,7 @@
 
 #include <openssl/base64.h>
 #include <openssl/bio.h>
+#include <openssl/crypto.h>
 #include <openssl/err.h>
 #include <openssl/ssl.h>
 
@@ -819,7 +820,7 @@ static bool TestClientCAList() {
 }
 
 int main() {
-  SSL_library_init();
+  CRYPTO_library_init();
 
   if (!TestCipherRules() ||
       !TestSSL_SESSIONEncoding(kOpenSSLSession) ||

@@ -39,6 +39,7 @@
 #include <openssl/buf.h>
 #include <openssl/bytestring.h>
 #include <openssl/cipher.h>
+#include <openssl/crypto.h>
 #include <openssl/err.h>
 #include <openssl/hmac.h>
 #include <openssl/rand.h>
@@ -1364,9 +1365,7 @@ int main(int argc, char **argv) {
   signal(SIGPIPE, SIG_IGN);
 #endif
 
-  if (!SSL_library_init()) {
-    return 1;
-  }
+  CRYPTO_library_init();
   g_config_index = SSL_get_ex_new_index(0, NULL, NULL, NULL, NULL);
   g_state_index = SSL_get_ex_new_index(0, NULL, NULL, NULL, TestStateExFree);
   if (g_config_index < 0 || g_state_index < 0) {

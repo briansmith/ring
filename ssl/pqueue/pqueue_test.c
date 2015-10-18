@@ -15,6 +15,7 @@
 #include <stdio.h>
 #include <string.h>
 
+#include <openssl/crypto.h>
 #include <openssl/pqueue.h>
 #include <openssl/ssl.h>
 
@@ -117,7 +118,7 @@ static int fixed_random(void) {
 }
 
 int main(void) {
-  SSL_library_init();
+  CRYPTO_library_init();
 
   if (!trivial() || !fixed_random()) {
     return 1;

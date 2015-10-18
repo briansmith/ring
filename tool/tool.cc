@@ -15,6 +15,7 @@
 #include <string>
 #include <vector>
 
+#include <openssl/crypto.h>
 #include <openssl/err.h>
 #include <openssl/ssl.h>
 
@@ -109,7 +110,7 @@ int main(int argc, char **argv) {
   }
 #endif
 
-  SSL_library_init();
+  CRYPTO_library_init();
 
   int starting_arg = 1;
   tool_func_t tool = nullptr;

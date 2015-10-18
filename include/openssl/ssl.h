@@ -174,12 +174,6 @@ extern "C" {
 /* SSL implementation. */
 
 
-/* Initialization. */
-
-/* SSL_library_init initializes the crypto and SSL libraries and returns one. */
-OPENSSL_EXPORT int SSL_library_init(void);
-
-
 /* SSL contexts.
  *
  * |SSL_CTX| objects manage shared state and configuration between multiple TLS
@@ -2858,6 +2852,9 @@ OPENSSL_EXPORT int SSL_state(const SSL *ssl);
 
 
 /* Deprecated functions. */
+
+/* SSL_library_init calls |CRYPTO_library_init| and returns one. */
+OPENSSL_EXPORT int SSL_library_init(void);
 
 /* SSL_set_reject_peer_renegotiations calls |SSL_set_renegotiate_mode| with
  * |ssl_never_renegotiate| if |reject| is one and |ssl_renegotiate_freely| if
