@@ -54,8 +54,8 @@
  * copied and put under another distribution licence
  * [including the GNU Public Licence.] */
 
-#ifndef OPENSSL_HEADER_OBJECTS_H
-#define OPENSSL_HEADER_OBJECTS_H
+#ifndef OPENSSL_HEADER_OBJ_H
+#define OPENSSL_HEADER_OBJ_H
 
 #include <openssl/base.h>
 
@@ -195,4 +195,4 @@ OPENSSL_EXPORT int OBJ_find_sigid_by_algs(int *out_sign_nid, int digest_nid,
 
 #define OBJ_R_UNKNOWN_NID 100
 
-#endif  /* OPENSSL_HEADER_OBJECTS_H */
+#endif  /* OPENSSL_HEADER_OBJ_H */

@@ -73,4 +73,4 @@ OPENSSL_EXPORT int CMAC_Final(CMAC_CTX *ctx, uint8_t *out, size_t *out_len);
 }  /* extern C */
 #endif
 
-#endif  /* OPENSSL_HEADER_CBC_H */
+#endif  /* OPENSSL_HEADER_CMAC_H */

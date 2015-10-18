@@ -55,8 +55,8 @@
  * (eay@cryptsoft.com).  This product includes software written by Tim
  * Hudson (tjh@cryptsoft.com). */
 
-#ifndef OPENSSL_HEADER_TIME_H
-#define OPENSSL_HEADER_TIME_H
+#ifndef OPENSSL_HEADER_TIME_SUPPORT_H
+#define OPENSSL_HEADER_TIME_SUPPORT_H
 
 #include <openssl/base.h>
 
@@ -87,4 +87,4 @@ int OPENSSL_gmtime_diff(int *out_days, int *out_secs, const struct tm *from,
 }  /* extern C */
 #endif
 
-#endif  /* OPENSSL_HEADER_TIME_H */
+#endif  /* OPENSSL_HEADER_TIME_SUPPORT_H */

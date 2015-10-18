@@ -189,4 +189,4 @@ OPENSSL_EXPORT uint32_t lh_strhash(const char *c);
 } /* extern C */
 #endif
 
-#endif /* OPENSSL_HEADER_STACK_H */
+#endif /* OPENSSL_HEADER_LHASH_H */
