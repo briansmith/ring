@@ -2739,6 +2739,82 @@ OPENSSL_EXPORT void SSL_CTX_set_select_certificate_cb(
 OPENSSL_EXPORT void SSL_CTX_set_dos_protection_cb(
     SSL_CTX *ctx, int (*cb)(const struct ssl_early_callback_ctx *));
 
+/* SSL_ST_* are possible values for |SSL_state| and the bitmasks that make them
+ * up. */
+#define SSL_ST_CONNECT 0x1000
+#define SSL_ST_ACCEPT 0x2000
+#define SSL_ST_MASK 0x0FFF
+#define SSL_ST_INIT (SSL_ST_CONNECT | SSL_ST_ACCEPT)
+#define SSL_ST_OK 0x03
+#define SSL_ST_RENEGOTIATE (0x04 | SSL_ST_INIT)
+
+/* SSL_CB_* are possible values for the |type| parameter in the info
+ * callback and the bitmasks that make them up. */
+#define SSL_CB_LOOP 0x01
+#define SSL_CB_EXIT 0x02
+#define SSL_CB_READ 0x04
+#define SSL_CB_WRITE 0x08
+#define SSL_CB_ALERT 0x4000
+#define SSL_CB_READ_ALERT (SSL_CB_ALERT | SSL_CB_READ)
+#define SSL_CB_WRITE_ALERT (SSL_CB_ALERT | SSL_CB_WRITE)
+#define SSL_CB_ACCEPT_LOOP (SSL_ST_ACCEPT | SSL_CB_LOOP)
+#define SSL_CB_ACCEPT_EXIT (SSL_ST_ACCEPT | SSL_CB_EXIT)
+#define SSL_CB_CONNECT_LOOP (SSL_ST_CONNECT | SSL_CB_LOOP)
+#define SSL_CB_CONNECT_EXIT (SSL_ST_CONNECT | SSL_CB_EXIT)
+#define SSL_CB_HANDSHAKE_START 0x10
+#define SSL_CB_HANDSHAKE_DONE 0x20
+
+/* SSL_set_info_callback configures a callback to be run when various events
+ * occur during a connection's lifetime. The |type| argumentj determines the
+ * type of event and the meaning of the |value| argument. Callbacks must ignore
+ * unexpected |type| values.
+ *
+ * |SSL_CB_READ_ALERT| is signaled for each alert received, warning or fatal.
+ * The |value| argument is a 16-bit value where the alert level (either
+ * |SSL3_AL_WARNING| or |SSL3_AL_FATAL|) is in the most-significant eight bits and
+ * the alert type (one of |SSL_AD_*|) is in the least-significant eight.
+ *
+ * |SSL_CB_WRITE_ALERT| is signaled for each alert sent. The |value| argument
+ * is constructed as with |SSL_CB_READ_ALERT|.
+ *
+ * |SSL_CB_HANDSHAKE_START| is signaled when a handshake begins. The |value|
+ * argument is always one.
+ *
+ * |SSL_CB_HANDSHAKE_DONE| is signaled when a handshake completes successfully.
+ * The |value| argument is always one. If a handshake False Starts, this event
+ * may be used to determine when the Finished message is received.
+ *
+ * The following event types expose implementation details of the handshake
+ * state machine. Consuming them is deprecated.
+ *
+ * |SSL_CB_ACCEPT_LOOP| (respectively, |SSL_CB_CONNECT_LOOP|) is signaled when
+ * a server (respectively, client) handshake progresses. The |value| argument
+ * is always one. For the duration of the callback, |SSL_state| will return the
+ * previous state.
+ *
+ * |SSL_CB_ACCEPT_EXIT| (respectively, |SSL_CB_CONNECT_EXIT|) is signaled when
+ * a server (respectively, client) handshake completes, fails, or is paused.
+ * The |value| argument is one if the handshake succeeded and <= 0
+ * otherwise. */
+OPENSSL_EXPORT void SSL_CTX_set_info_callback(
+    SSL_CTX *ctx, void (*cb)(const SSL *ssl, int type, int value));
+
+/* SSL_CTX_get_info_callback returns the callback set by
+ * |SSL_CTX_set_info_callback|. */
+OPENSSL_EXPORT void (*SSL_CTX_get_info_callback(SSL_CTX *ctx))(const SSL *ssl,
+                                                               int type,
+                                                               int value);
+
+/* SSL_set_info_callback configures a callback to be run at various events
+ * during a connection's lifetime. See |SSL_CTX_set_info_callback|. */
+OPENSSL_EXPORT void SSL_set_info_callback(
+    SSL *ssl, void (*cb)(const SSL *ssl, int type, int value));
+
+/* SSL_get_info_callback returns the callback set by |SSL_set_info_callback|. */
+OPENSSL_EXPORT void (*SSL_get_info_callback(const SSL *ssl))(const SSL *ssl,
+                                                             int type,
+                                                             int value);
+
 
 /* Underdocumented functions.
  *
@@ -2809,40 +2885,6 @@ typedef struct ssl3_enc_method SSL3_ENC_METHOD;
 struct ssl_aead_ctx_st;
 typedef struct ssl_aead_ctx_st SSL_AEAD_CTX;
 
-OPENSSL_EXPORT void SSL_CTX_set_info_callback(SSL_CTX *ctx,
-                                              void (*cb)(const SSL *ssl,
-                                                         int type, int val));
-OPENSSL_EXPORT void (*SSL_CTX_get_info_callback(SSL_CTX *ctx))(const SSL *ssl,
-                                                               int type,
-                                                               int val);
-
-/* The following are the possible values for ssl->state are are used to
- * indicate where we are up to in the SSL connection establishment. The macros
- * that follow are about the only things you should need to use and even then,
- * only when using non-blocking IO. It can also be useful to work out where you
- * were when the connection failed */
-
-#define SSL_ST_CONNECT 0x1000
-#define SSL_ST_ACCEPT 0x2000
-#define SSL_ST_MASK 0x0FFF
-#define SSL_ST_INIT (SSL_ST_CONNECT | SSL_ST_ACCEPT)
-#define SSL_ST_OK 0x03
-#define SSL_ST_RENEGOTIATE (0x04 | SSL_ST_INIT)
-
-#define SSL_CB_LOOP 0x01
-#define SSL_CB_EXIT 0x02
-#define SSL_CB_READ 0x04
-#define SSL_CB_WRITE 0x08
-#define SSL_CB_ALERT 0x4000 /* used in callback */
-#define SSL_CB_READ_ALERT (SSL_CB_ALERT | SSL_CB_READ)
-#define SSL_CB_WRITE_ALERT (SSL_CB_ALERT | SSL_CB_WRITE)
-#define SSL_CB_ACCEPT_LOOP (SSL_ST_ACCEPT | SSL_CB_LOOP)
-#define SSL_CB_ACCEPT_EXIT (SSL_ST_ACCEPT | SSL_CB_EXIT)
-#define SSL_CB_CONNECT_LOOP (SSL_ST_CONNECT | SSL_CB_LOOP)
-#define SSL_CB_CONNECT_EXIT (SSL_ST_CONNECT | SSL_CB_EXIT)
-#define SSL_CB_HANDSHAKE_START 0x10
-#define SSL_CB_HANDSHAKE_DONE 0x20
-
 /* Is the SSL_connection established? */
 #define SSL_get_state(a) SSL_state(a)
 #define SSL_is_init_finished(a) (SSL_state(a) == SSL_ST_OK)
@@ -2862,11 +2904,6 @@ OPENSSL_EXPORT void SSL_set_shutdown(SSL *ssl, int mode);
 OPENSSL_EXPORT int SSL_get_shutdown(const SSL *ssl);
 OPENSSL_EXPORT SSL_CTX *SSL_get_SSL_CTX(const SSL *ssl);
 OPENSSL_EXPORT SSL_CTX *SSL_set_SSL_CTX(SSL *ssl, SSL_CTX *ctx);
-OPENSSL_EXPORT void SSL_set_info_callback(SSL *ssl,
-                                          void (*cb)(const SSL *ssl, int type,
-                                                     int val));
-OPENSSL_EXPORT void (*SSL_get_info_callback(const SSL *ssl))(const SSL *ssl,
-                                                             int type, int val);
 OPENSSL_EXPORT int SSL_state(const SSL *ssl);
 
 
@@ -3475,8 +3512,7 @@ struct ssl_ctx_st {
 
   /* Default values used when no per-SSL value is defined follow */
 
-  void (*info_callback)(const SSL *ssl, int type,
-                        int val); /* used if SSL's info_callback is NULL */
+  void (*info_callback)(const SSL *ssl, int type, int value);
 
   /* what we put in client cert requests */
   STACK_OF(X509_NAME) *client_CA;
@@ -3730,8 +3766,7 @@ struct ssl_st {
   int (*verify_callback)(int ok,
                          X509_STORE_CTX *ctx); /* fail if callback returns 0 */
 
-  void (*info_callback)(const SSL *ssl, int type,
-                        int val); /* optional informational callback */
+  void (*info_callback)(const SSL *ssl, int type, int value);
 
   /* Server-only: psk_identity_hint is the identity hint to send in
    * PSK-based key exchanges. */

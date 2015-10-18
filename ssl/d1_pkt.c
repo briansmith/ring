@@ -228,7 +228,7 @@ int dtls1_read_bytes(SSL *s, int type, unsigned char *buf, int len, int peek) {
   int al, i, ret;
   unsigned int n;
   SSL3_RECORD *rr;
-  void (*cb)(const SSL *ssl, int type2, int val) = NULL;
+  void (*cb)(const SSL *ssl, int type, int value) = NULL;
 
   if ((type != SSL3_RT_APPLICATION_DATA && type != SSL3_RT_HANDSHAKE) ||
       (peek && type != SSL3_RT_APPLICATION_DATA)) {
@@ -557,7 +557,7 @@ static int do_dtls1_write(SSL *s, int type, const uint8_t *buf,
 
 int dtls1_dispatch_alert(SSL *s) {
   int i, j;
-  void (*cb)(const SSL *ssl, int type, int val) = NULL;
+  void (*cb)(const SSL *ssl, int type, int value) = NULL;
   uint8_t buf[DTLS1_AL_HEADER_LENGTH];
   uint8_t *ptr = &buf[0];
 

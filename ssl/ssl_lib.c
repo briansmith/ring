@@ -2073,12 +2073,12 @@ int SSL_CTX_load_verify_locations(SSL_CTX *ctx, const char *ca_file,
 }
 
 void SSL_set_info_callback(SSL *ssl,
-                           void (*cb)(const SSL *ssl, int type, int val)) {
+                           void (*cb)(const SSL *ssl, int type, int value)) {
   ssl->info_callback = cb;
 }
 
-void (*SSL_get_info_callback(const SSL *ssl))(const SSL * /*ssl*/, int /*type*/,
-                                              int /*val*/) {
+void (*SSL_get_info_callback(const SSL *ssl))(const SSL *ssl, int type,
+                                              int value) {
   return ssl->info_callback;
 }
 
