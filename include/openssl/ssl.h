@@ -247,6 +247,32 @@ OPENSSL_EXPORT BIO *SSL_get_rbio(const SSL *ssl);
 /* SSL_get_wbio returns the |BIO| that |ssl| writes to. */
 OPENSSL_EXPORT BIO *SSL_get_wbio(const SSL *ssl);
 
+/* SSL_get_fd calls |SSL_get_rfd|. */
+OPENSSL_EXPORT int SSL_get_fd(const SSL *ssl);
+
+/* SSL_get_rfd returns the file descriptor that |ssl| is configured to read
+ * from. If |ssl|'s read |BIO| is not configured or doesn't wrap a file
+ * descriptor then it returns -1. */
+OPENSSL_EXPORT int SSL_get_rfd(const SSL *ssl);
+
+/* SSL_get_wfd returns the file descriptor that |ssl| is configured to write
+ * to. If |ssl|'s write |BIO| is not configured or doesn't wrap a file
+ * descriptor then it returns -1. */
+OPENSSL_EXPORT int SSL_get_wfd(const SSL *ssl);
+
+/* SSL_set_wfd configures |ssl| to read from and write to |fd|. It returns one
+ * on success and zero on allocation error. The caller retains ownership of
+ * |fd|. */
+OPENSSL_EXPORT int SSL_set_fd(SSL *ssl, int fd);
+
+/* SSL_set_rfd configures |ssl| to read from |fd|. It returns one on success and
+ * zero on allocation error. The caller retains ownership of |fd|. */
+OPENSSL_EXPORT int SSL_set_rfd(SSL *ssl, int fd);
+
+/* SSL_set_wfd configures |ssl| to write to |fd|. It returns one on success and
+ * zero on allocation error. The caller retains ownership of |fd|. */
+OPENSSL_EXPORT int SSL_set_wfd(SSL *ssl, int fd);
+
 /* SSL_do_handshake continues the current handshake. If there is none or the
  * handshake has completed or False Started, it returns one. Otherwise, it
  * returns <= 0. The caller should pass the value into |SSL_get_error| to
@@ -2834,13 +2860,6 @@ OPENSSL_EXPORT int SSL_in_false_start(const SSL *s);
   ASN1_i2d_bio_of(SSL_SESSION, i2d_SSL_SESSION, bp, s_id)
 
 DECLARE_PEM_rw(SSL_SESSION, SSL_SESSION)
-
-OPENSSL_EXPORT int SSL_get_fd(const SSL *s);
-OPENSSL_EXPORT int SSL_get_rfd(const SSL *s);
-OPENSSL_EXPORT int SSL_get_wfd(const SSL *s);
-OPENSSL_EXPORT int SSL_set_fd(SSL *s, int fd);
-OPENSSL_EXPORT int SSL_set_rfd(SSL *s, int fd);
-OPENSSL_EXPORT int SSL_set_wfd(SSL *s, int fd);
 
 OPENSSL_EXPORT const char *SSL_state_string(const SSL *ssl);
 OPENSSL_EXPORT const char *SSL_state_string_long(const SSL *ssl);

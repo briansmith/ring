@@ -1071,96 +1071,69 @@ X509_VERIFY_PARAM *SSL_get0_param(SSL *ssl) { return ssl->param; }
 
 void SSL_certs_clear(SSL *ssl) { ssl_cert_clear_certs(ssl->cert); }
 
-int SSL_get_fd(const SSL *s) { return SSL_get_rfd(s); }
+int SSL_get_fd(const SSL *ssl) { return SSL_get_rfd(ssl); }
 
-int SSL_get_rfd(const SSL *s) {
+int SSL_get_rfd(const SSL *ssl) {
   int ret = -1;
-  BIO *b, *r;
-
-  b = SSL_get_rbio(s);
-  r = BIO_find_type(b, BIO_TYPE_DESCRIPTOR);
-  if (r != NULL) {
-    BIO_get_fd(r, &ret);
+  BIO *b = BIO_find_type(SSL_get_rbio(ssl), BIO_TYPE_DESCRIPTOR);
+  if (b != NULL) {
+    BIO_get_fd(b, &ret);
   }
   return ret;
 }
 
-int SSL_get_wfd(const SSL *s) {
+int SSL_get_wfd(const SSL *ssl) {
   int ret = -1;
-  BIO *b, *r;
-
-  b = SSL_get_wbio(s);
-  r = BIO_find_type(b, BIO_TYPE_DESCRIPTOR);
-  if (r != NULL) {
-    BIO_get_fd(r, &ret);
+  BIO *b = BIO_find_type(SSL_get_wbio(ssl), BIO_TYPE_DESCRIPTOR);
+  if (b != NULL) {
+    BIO_get_fd(b, &ret);
   }
-
   return ret;
 }
 
-int SSL_set_fd(SSL *s, int fd) {
-  int ret = 0;
-  BIO *bio = NULL;
-
-  bio = BIO_new(BIO_s_fd());
-
+int SSL_set_fd(SSL *ssl, int fd) {
+  BIO *bio = BIO_new(BIO_s_fd());
   if (bio == NULL) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_BUF_LIB);
-    goto err;
+    return 0;
   }
   BIO_set_fd(bio, fd, BIO_NOCLOSE);
-  SSL_set_bio(s, bio, bio);
-  ret = 1;
-
-err:
-  return ret;
+  SSL_set_bio(ssl, bio, bio);
+  return 1;
 }
 
-int SSL_set_wfd(SSL *s, int fd) {
-  int ret = 0;
-  BIO *bio = NULL;
-
-  if (s->rbio == NULL || BIO_method_type(s->rbio) != BIO_TYPE_FD ||
-      BIO_get_fd(s->rbio, NULL) != fd) {
-    bio = BIO_new(BIO_s_fd());
-
+int SSL_set_wfd(SSL *ssl, int fd) {
+  if (ssl->rbio == NULL ||
+      BIO_method_type(ssl->rbio) != BIO_TYPE_FD ||
+      BIO_get_fd(ssl->rbio, NULL) != fd) {
+    BIO *bio = BIO_new(BIO_s_fd());
     if (bio == NULL) {
       OPENSSL_PUT_ERROR(SSL, ERR_R_BUF_LIB);
-      goto err;
+      return 0;
     }
     BIO_set_fd(bio, fd, BIO_NOCLOSE);
-    SSL_set_bio(s, SSL_get_rbio(s), bio);
+    SSL_set_bio(ssl, SSL_get_rbio(ssl), bio);
   } else {
-    SSL_set_bio(s, SSL_get_rbio(s), SSL_get_rbio(s));
+    SSL_set_bio(ssl, SSL_get_rbio(ssl), SSL_get_rbio(ssl));
   }
 
-  ret = 1;
-
-err:
-  return ret;
+  return 1;
 }
 
-int SSL_set_rfd(SSL *s, int fd) {
-  int ret = 0;
-  BIO *bio = NULL;
-
-  if (s->wbio == NULL || BIO_method_type(s->wbio) != BIO_TYPE_FD ||
-      BIO_get_fd(s->wbio, NULL) != fd) {
-    bio = BIO_new(BIO_s_fd());
-
+int SSL_set_rfd(SSL *ssl, int fd) {
+  if (ssl->wbio == NULL || BIO_method_type(ssl->wbio) != BIO_TYPE_FD ||
+      BIO_get_fd(ssl->wbio, NULL) != fd) {
+    BIO *bio = BIO_new(BIO_s_fd());
     if (bio == NULL) {
       OPENSSL_PUT_ERROR(SSL, ERR_R_BUF_LIB);
-      goto err;
+      return 0;
     }
     BIO_set_fd(bio, fd, BIO_NOCLOSE);
-    SSL_set_bio(s, bio, SSL_get_wbio(s));
+    SSL_set_bio(ssl, bio, SSL_get_wbio(ssl));
   } else {
-    SSL_set_bio(s, SSL_get_wbio(s), SSL_get_wbio(s));
+    SSL_set_bio(ssl, SSL_get_wbio(ssl), SSL_get_wbio(ssl));
   }
-  ret = 1;
-
-err:
-  return ret;
+  return 1;
 }
 
 size_t SSL_get_finished(const SSL *ssl, void *buf, size_t count) {
