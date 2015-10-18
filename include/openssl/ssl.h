@@ -376,7 +376,8 @@ OPENSSL_EXPORT void SSL_set_quiet_shutdown(SSL *ssl, int mode);
 OPENSSL_EXPORT int SSL_get_quiet_shutdown(const SSL *ssl);
 
 /* SSL_get_error returns a |SSL_ERROR_*| value for the most recent operation on
- * |ssl|. It should be called after an operation failed to determine. */
+ * |ssl|. It should be called after an operation failed to determine whether the
+ * error was fatal and, if not, when to retry. */
 OPENSSL_EXPORT int SSL_get_error(const SSL *ssl, int ret_code);
 
 /* SSL_ERROR_NONE indicates the operation succeeded. */
