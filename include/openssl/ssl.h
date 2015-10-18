@@ -1327,6 +1327,7 @@ OPENSSL_EXPORT int SSL_CTX_add_server_custom_ext(
  * different threads and must not be modified. */
 
 DECLARE_LHASH_OF(SSL_SESSION)
+DECLARE_PEM_rw(SSL_SESSION, SSL_SESSION)
 
 /* SSL_SESSION_new returns a newly-allocated blank |SSL_SESSION| or NULL on
  * error. This may be useful in writing tests but otherwise should not be
@@ -2854,13 +2855,6 @@ OPENSSL_EXPORT void (*SSL_CTX_get_info_callback(SSL_CTX *ctx))(const SSL *ssl,
  * for the peer, but |SSL_read| will require the handshake to be completed. */
 OPENSSL_EXPORT int SSL_in_false_start(const SSL *s);
 
-#define d2i_SSL_SESSION_bio(bp, s_id) \
-  ASN1_d2i_bio_of(SSL_SESSION, SSL_SESSION_new, d2i_SSL_SESSION, bp, s_id)
-#define i2d_SSL_SESSION_bio(bp, s_id) \
-  ASN1_i2d_bio_of(SSL_SESSION, i2d_SSL_SESSION, bp, s_id)
-
-DECLARE_PEM_rw(SSL_SESSION, SSL_SESSION)
-
 OPENSSL_EXPORT const char *SSL_state_string(const SSL *ssl);
 OPENSSL_EXPORT const char *SSL_state_string_long(const SSL *ssl);
 
@@ -3046,6 +3040,15 @@ OPENSSL_EXPORT int i2d_SSL_SESSION(SSL_SESSION *in, uint8_t **pp);
  * Use |SSL_SESSION_from_bytes| instead. */
 OPENSSL_EXPORT SSL_SESSION *d2i_SSL_SESSION(SSL_SESSION **a, const uint8_t **pp,
                                             long length);
+
+/* i2d_SSL_SESSION_bio serializes |session| and writes the result to |bio|. It
+ * returns the number of bytes written on success and <= 0 on error. */
+OPENSSL_EXPORT int i2d_SSL_SESSION_bio(BIO *bio, const SSL_SESSION *session);
+
+/* d2i_SSL_SESSION_bio reads a serialized |SSL_SESSION| from |bio| and returns a
+ * newly-allocated |SSL_SESSION| or NULL on error. If |out| is not NULL, it also
+ * frees |*out| and sets |*out| to the new |SSL_SESSION|.  */
+OPENSSL_EXPORT SSL_SESSION *d2i_SSL_SESSION_bio(BIO *bio, SSL_SESSION **out);
 
 /* ERR_load_SSL_strings does nothing. */
 OPENSSL_EXPORT void ERR_load_SSL_strings(void);
