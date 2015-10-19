@@ -152,7 +152,7 @@ OPENSSL_EXPORT int RSA_decrypt(RSA *rsa, size_t *out_len, uint8_t *out,
  *
  * WARNING: this function is dangerous because it breaks the usual return value
  * convention. Use |RSA_encrypt| instead. */
-OPENSSL_EXPORT int RSA_public_encrypt(int flen, const uint8_t *from,
+OPENSSL_EXPORT int RSA_public_encrypt(size_t flen, const uint8_t *from,
                                       uint8_t *to, RSA *rsa, int padding);
 
 /* RSA_private_decrypt decrypts |flen| bytes from |from| with the public key in
@@ -244,7 +244,7 @@ OPENSSL_EXPORT int RSA_verify_raw(RSA *rsa, size_t *out_len, uint8_t *out,
  *
  * WARNING: this function is dangerous because it breaks the usual return value
  * convention. Use |RSA_sign_raw| instead. */
-OPENSSL_EXPORT int RSA_private_encrypt(int flen, const uint8_t *from,
+OPENSSL_EXPORT int RSA_private_encrypt(size_t flen, const uint8_t *from,
                                        uint8_t *to, RSA *rsa, int padding);
 
 /* RSA_public_decrypt verifies |flen| bytes of signature from |from| using the
@@ -255,7 +255,7 @@ OPENSSL_EXPORT int RSA_private_encrypt(int flen, const uint8_t *from,
  *
  * WARNING: this function is dangerous because it breaks the usual return value
  * convention. Use |RSA_verify_raw| instead. */
-OPENSSL_EXPORT int RSA_public_decrypt(int flen, const uint8_t *from,
+OPENSSL_EXPORT int RSA_public_decrypt(size_t flen, const uint8_t *from,
                                       uint8_t *to, RSA *rsa, int padding);
 
 
