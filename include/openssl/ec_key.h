@@ -83,11 +83,6 @@ extern "C" {
 
 /* EC key objects. */
 
-/* EC_KEY_new_ex returns a fresh |EC_KEY| object for the group that is created
- * by the function |ec_group_new|. |ec_group_new| should be
- * |EC_GROUP_new_p256|, |EC_GROUP_new_p384|, etc. */
-EC_KEY *EC_KEY_new_ex(const EC_GROUP *group);
-
 /* EC_KEY_free frees all the data owned by |key| and |key| itself. */
 OPENSSL_EXPORT void EC_KEY_free(EC_KEY *key);
 

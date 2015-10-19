@@ -79,7 +79,7 @@
 #include "../internal.h"
 
 
-EC_KEY *EC_KEY_new_ex(const EC_GROUP *group) {
+EC_KEY *ec_key_new_ex(const EC_GROUP *group) {
   EC_KEY *ret = (EC_KEY *)OPENSSL_malloc(sizeof(EC_KEY));
   if (ret == NULL) {
     OPENSSL_PUT_ERROR(EC, ERR_R_MALLOC_FAILURE);
@@ -196,7 +196,7 @@ err:
 }
 
 EC_KEY *EC_KEY_generate_key_ex(const EC_GROUP *group) {
-  EC_KEY *eckey = EC_KEY_new_ex(group);
+  EC_KEY *eckey = ec_key_new_ex(group);
   if (!eckey) {
     return NULL;
   }
