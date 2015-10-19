@@ -234,7 +234,7 @@ extern {
 
 
     fn ECDH_compute_key_ex(out: *mut u8, out_len: *mut c::size_t,
-                           max_out_len: c::size_t, my_key_pair: *mut EC_KEY,
+                           max_out_len: c::size_t, my_key_pair: *const EC_KEY,
                            peer_curve_nid: c::int,
                            peer_pub_point_bytes: *const u8,
                            peer_pub_point_bytes_len: c::size_t) -> c::int;

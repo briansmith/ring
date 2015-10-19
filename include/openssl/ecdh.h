@@ -92,7 +92,8 @@ extern "C" {
  * error. (This differs from what the OpenSSL |ECDH_compute_key| function
  * returns.) */
 OPENSSL_EXPORT int ECDH_compute_key_ex(uint8_t *out, size_t *out_len,
-                                       size_t max_out_len, EC_KEY *priv_key,
+                                       size_t max_out_len,
+                                       const EC_KEY *priv_key,
                                        int peer_pub_point_curve_nid,
                                        const uint8_t *peer_pub_point_bytes,
                                        size_t peer_pub_point_bytes_len);

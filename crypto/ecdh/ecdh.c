@@ -74,7 +74,7 @@
 #include <openssl/type_check.h>
 
 int ECDH_compute_key_ex(uint8_t *out, size_t *out_len, size_t max_out_len,
-                        EC_KEY *priv_key, int peer_curve_nid,
+                        const EC_KEY *priv_key, int peer_curve_nid,
                         const uint8_t *peer_pub_point_bytes,
                         size_t peer_pub_point_bytes_len) {
   const EC_GROUP *group = EC_KEY_get0_group(priv_key);
