@@ -216,10 +216,7 @@ extern "C" {
 /* ExtensionType value from RFC7301 */
 #define TLSEXT_TYPE_application_layer_protocol_negotiation 16
 
-/* ExtensionType value for TLS padding extension.
- * http://www.iana.org/assignments/tls-extensiontype-values/tls-extensiontype-values.xhtml
- * http://tools.ietf.org/html/draft-agl-tls-padding-03
- */
+/* ExtensionType value from RFC7685 */
 #define TLSEXT_TYPE_padding 21
 
 /* https://tools.ietf.org/html/draft-ietf-tls-session-hash-01 */

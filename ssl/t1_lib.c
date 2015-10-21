@@ -2271,8 +2271,7 @@ int ssl_add_clienthello_tlsext(SSL *ssl, CBB *out, size_t header_len) {
   if (!SSL_IS_DTLS(ssl)) {
     header_len += CBB_len(&extensions) - orig_len;
     if (header_len > 0xff && header_len < 0x200) {
-      /* Add padding to workaround bugs in F5 terminators. See
-       * https://tools.ietf.org/html/draft-agl-tls-padding-03
+      /* Add padding to workaround bugs in F5 terminators. See RFC 7685.
        *
        * NB: because this code works out the length of all existing extensions
        * it MUST always appear last. */
