@@ -34,6 +34,10 @@ pub fn verify_rsa_pkcs1_signed_digest_asn1(digest: &digest::Digest, sig: &[u8],
     })
 }
 
+// XXX: As of Rust 1.4, the compiler will no longer warn about the use of
+// `usize` and `isize` in FFI declarations. Remove the `allow(improper_ctypes)`
+// when Rust 1.4 is released.
+#[allow(improper_ctypes)]
 extern {
     fn RSA_verify_pkcs1_signed_digest(hash_nid: libc::c_int, digest: *const u8,
                                       digest_len: libc::size_t, sig: *const u8,

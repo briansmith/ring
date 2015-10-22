@@ -220,6 +220,11 @@ macro_rules! impl_Digest {
         // BoringSSL they are always guaranteed to return 1 according to the
         // documentation in the header files, so we can safely ignore their
         // return values.
+        //
+        // XXX: As of Rust 1.4, the compiler will no longer warn about the use
+        // of `usize` and `isize` in FFI declarations. Remove the
+        // `allow(improper_ctypes)` when Rust 1.4 is released.
+        #[allow(improper_ctypes)]
         extern {
             fn $xxx_Init(ctx_state: *mut u64) -> libc::c_int;
             fn $xxx_Update(ctx_state: *mut u64, data: *const u8,
