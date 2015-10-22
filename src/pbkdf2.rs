@@ -105,7 +105,7 @@
 //!     assert!(db.verify_password("alice", "@74d7]404j|W}6u").is_ok());
 //! }
 
-use super::{digest, ffi, hmac};
+use super::{constant_time, digest, hmac};
 
 /// Fills `out` with the key derived using PBKDF2 with the given inputs.
 ///
@@ -202,7 +202,7 @@ pub fn verify(prf: &'static PRF, iterations: usize, salt: &[u8], secret: &[u8],
     }
     let derived = &mut derived_buf[0..previously_derived.len()];
     derive(prf, iterations, salt, secret, derived);
-    ffi::verify_slices_are_equal_ct(derived, previously_derived)
+    constant_time::verify_slices_are_equal(derived, previously_derived)
 }
 
 /// A PRF algorithm for use with `derive` and `verify`.

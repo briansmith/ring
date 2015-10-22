@@ -27,28 +27,3 @@ pub fn map_bssl_ptr_result<T>(bssl_result: *mut T) -> Result<*mut T, ()> {
     }
     Ok(bssl_result)
 }
-
-
-/// Returns `Ok(())` of `a == b` and `Err(())` otherwise. The comparison of
-/// `a` and `b` is done in constant time with respect to the contents of each,
-/// but NOT in constant time with respect to the lengths of `a` and `b`.
-pub fn verify_slices_are_equal_ct(a: &[u8], b: &[u8]) -> Result<(), ()> {
-    if a.len() != b.len() {
-        return Err(());
-    }
-    let result = unsafe {
-        CRYPTO_memcmp(a.as_ptr(), b.as_ptr(), a.len())
-    };
-    match result {
-        0 => Ok(()),
-        _ => Err(())
-    }
-}
-
-// XXX: As of Rust 1.4, the compiler will no longer warn about the use of
-// `usize` and `isize` in FFI declarations. Remove the `allow(improper_ctypes)`
-// when Rust 1.4 is released.
-#[allow(improper_ctypes)]
-extern {
-    fn CRYPTO_memcmp(a: *const u8, b: *const u8, len: c::size_t) -> c::int;
-}

@@ -97,7 +97,7 @@
 //! # fn main() { main_with_result().unwrap() }
 //! ```
 
-use super::{digest, ffi};
+use super::{constant_time, digest};
 
 /// A key to use for HMAC signing.
 pub struct SigningKey {
@@ -246,7 +246,8 @@ pub fn verify(key: &VerificationKey, data: &[u8], expected_value: &[u8])
     let mut ctx = SigningContext::with_key(&key.wrapped);
     ctx.update(data);
     let actual_value = ctx.sign();
-    ffi::verify_slices_are_equal_ct(actual_value.as_ref(), expected_value)
+    constant_time::verify_slices_are_equal(actual_value.as_ref(),
+                                           expected_value)
 }
 
 #[cfg(test)]
