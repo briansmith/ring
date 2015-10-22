@@ -15,7 +15,7 @@
 //! RSA signing and verification.
 
 use libc;
-use super::digest;
+use super::{digest, ffi};
 
 /// Verifies that the PKCS#1 1.5 RSA signature encoded in `sig` is valid for
 /// the data hashed to `digest` using the ASN.1-DER-encoded public key `key`.
@@ -25,20 +25,13 @@ use super::digest;
 ///            `d2i_RSAPublicKey` + `RSA_verify`.
 pub fn verify_rsa_pkcs1_signed_digest_asn1(digest: &digest::Digest, sig: &[u8],
                                            key: &[u8]) -> Result<(),()> {
-    let x;
-    unsafe {
-        x = RSA_verify_pkcs1_signed_digest(digest.algorithm().nid,
-                                           digest.as_ref().as_ptr(),
-                                           digest.as_ref().len() as libc::size_t,
-                                           sig.as_ptr(),
-                                           sig.len() as libc::size_t,
-                                           key.as_ptr(),
-                                           key.len() as libc::size_t);
-    }
-    match x {
-        1 => Ok(()),
-        _ => Err(())
-    }
+    ffi::map_bssl_result(unsafe {
+        RSA_verify_pkcs1_signed_digest(digest.algorithm().nid,
+                                       digest.as_ref().as_ptr(),
+                                       digest.as_ref().len() as libc::size_t,
+                                       sig.as_ptr(), sig.len() as libc::size_t,
+                                       key.as_ptr(), key.len() as libc::size_t)
+    })
 }
 
 extern {
