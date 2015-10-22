@@ -12,9 +12,9 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-use libc;
+use super::c;
 
-pub fn map_bssl_result(bssl_result: libc::c_int) -> Result<(), ()> {
+pub fn map_bssl_result(bssl_result: c::int) -> Result<(), ()> {
     match bssl_result {
         1 => Ok(()),
         _ => Err(())
@@ -37,7 +37,7 @@ pub fn verify_slices_are_equal_ct(a: &[u8], b: &[u8]) -> Result<(), ()> {
         return Err(());
     }
     let result = unsafe {
-        CRYPTO_memcmp(a.as_ptr(), b.as_ptr(), a.len() as libc::size_t)
+        CRYPTO_memcmp(a.as_ptr(), b.as_ptr(), a.len())
     };
     match result {
         0 => Ok(()),
@@ -50,6 +50,5 @@ pub fn verify_slices_are_equal_ct(a: &[u8], b: &[u8]) -> Result<(), ()> {
 // when Rust 1.4 is released.
 #[allow(improper_ctypes)]
 extern {
-    fn CRYPTO_memcmp(a: *const libc::uint8_t, b: *const libc::uint8_t,
-                     len: libc::size_t) -> libc::c_int;
+    fn CRYPTO_memcmp(a: *const u8, b: *const u8, len: c::size_t) -> c::int;
 }

@@ -23,9 +23,8 @@
 //!
 //! Go analog: [`crypto.cipher.AEAD`](https://golang.org/pkg/crypto/cipher/#AEAD)
 
-use libc;
 use std;
-use super::ffi;
+use super::{c, ffi};
 
 /// A key for authenticating and decrypting (&ldquo;opening&rdquo;)
 /// AEAD-protected data.
@@ -207,11 +206,10 @@ impl Key {
         }
 
         ffi::map_bssl_result(unsafe {
-            (self.algorithm.init)(self.ctx_buf.as_mut_ptr(),
-                                  std::mem::size_of::<[u64; KEY_CTX_BUF_ELEMS]>()
-                                    as libc::size_t,
-                                  key_bytes.as_ptr(),
-                                  key_bytes.len() as libc::size_t)
+            (self.algorithm.init)(
+                    self.ctx_buf.as_mut_ptr(),
+                    std::mem::size_of::<[u64; KEY_CTX_BUF_ELEMS]>(),
+                    key_bytes.as_ptr(), key_bytes.len())
         })
     }
 
@@ -227,12 +225,11 @@ impl Key {
         if nonce.len() != (self.algorithm.nonce_len as usize) {
             return Err(()) // CIPHER_R_INVALID_NONCE_SIZE
         }
-        let mut out_len: libc::size_t = 0;
+        let mut out_len: c::size_t = 0;
         match (open_or_seal_fn)(self.ctx_buf.as_ptr(), out.as_mut_ptr(),
-                                &mut out_len, out.len() as libc::size_t,
-                                nonce.as_ptr(), in_ptr, in_len as libc::size_t,
-                                ad.as_ptr(), ad.len() as libc::size_t) {
-            1 => Ok(out_len as usize),
+                                &mut out_len, out.len(), nonce.as_ptr(), in_ptr,
+                                in_len, ad.as_ptr(), ad.len()) {
+            1 => Ok(out_len),
             _ => {
                 // Follow BoringSSL's lead in zeroizing the output buffer on
                 // error just in case an application accidentally and wrongly
@@ -258,14 +255,14 @@ pub struct Algorithm {
   /// The length of the key.
   ///
   /// C analog: `EVP_AEAD_key_length`
-  pub key_len: libc::uint8_t,
+  pub key_len: u8,
 
   /// The length of the nonces.
   ///
   /// C analog: `EVP_AEAD_nonce_length`
   ///
   /// Go analog: [`crypto.cipher.AEAD.NonceSize`](https://golang.org/pkg/crypto/cipher/#AEAD)
-  pub nonce_len: libc::uint8_t,
+  pub nonce_len: u8,
 
   /// The maximum number of bytes that sealing operations may add to plaintexts.
   /// See also `MAX_OVERHEAD_LEN`.
@@ -273,7 +270,7 @@ pub struct Algorithm {
   /// C analog: `EVP_AEAD_max_overhead`
   ///
   /// Go analog: [`crypto.cipher.AEAD.Overhead`](https://golang.org/pkg/crypto/cipher/#AEAD)
-  pub max_overhead_len: libc::uint8_t,
+  pub max_overhead_len: u8,
 
   /// The length of the authentication tags or MACs.
   ///
@@ -281,23 +278,22 @@ pub struct Algorithm {
   /// sealing operations.
   ///
   /// C analog: `EVP_AEAD_tag_len`
-  pub tag_len: libc::uint8_t,
+  pub tag_len: u8,
 
-  init: unsafe extern fn(ctx_buf: *mut u64, ctx_buf_len: libc::size_t,
-                         key: *const libc::uint8_t, key_len: libc::size_t)
-                         -> libc::c_int,
+  init: unsafe extern fn(ctx_buf: *mut u64, ctx_buf_len: c::size_t,
+                         key: *const u8, key_len: c::size_t) -> c::int,
 
   seal: OpenOrSealFn,
   open: OpenOrSealFn,
 }
 
-const AES_128_KEY_LEN: libc::uint8_t = 128 / 8;
-const AES_256_KEY_LEN: libc::uint8_t = (256 as usize / 8) as libc::uint8_t;
-const AES_GCM_NONCE_LEN: libc::uint8_t = 96 / 8;
-const AES_GCM_TAG_LEN: libc::uint8_t = 128 / 8;
+const AES_128_KEY_LEN: u8 = 128 / 8;
+const AES_256_KEY_LEN: u8 = (256 as usize / 8) as u8;
+const AES_GCM_NONCE_LEN: u8 = 96 / 8;
+const AES_GCM_TAG_LEN: u8 = 128 / 8;
 
-const CHACHA20_KEY_LEN: libc::uint8_t = (256 as usize / 8) as libc::uint8_t;
-const POLY1305_TAG_LEN: libc::uint8_t = 128 / 8;
+const CHACHA20_KEY_LEN: u8 = (256 as usize / 8) as u8;
+const POLY1305_TAG_LEN: u8 = 128 / 8;
 /// The maximum value of `Algorithm.max_overhead_len` for the algorithms in
 /// this module.
 pub const MAX_OVERHEAD_LEN: usize = AES_GCM_TAG_LEN as usize;
@@ -363,87 +359,70 @@ pub static CHACHA20_POLY1305_DEPRECATED: Algorithm = Algorithm {
 };
 
 type OpenOrSealFn =
-    unsafe extern fn(ctx: *const u64, out: *mut libc::uint8_t,
-                     out_len: &mut libc::size_t, max_out_len: libc::size_t,
-                     nonce: *const libc::uint8_t,
-                     in_: *const libc::uint8_t, in_len: libc::size_t,
-                     ad: *const libc::uint8_t, ad_len: libc::size_t)
-                     -> libc::c_int;
+    unsafe extern fn(ctx: *const u64, out: *mut u8,
+                     out_len: &mut c::size_t, max_out_len: c::size_t,
+                     nonce: *const u8, in_: *const u8, in_len: c::size_t,
+                     ad: *const u8, ad_len: c::size_t) -> c::int;
 
 // XXX: As of Rust 1.4, the compiler will no longer warn about the use of
 // `usize` and `isize` in FFI declarations. Remove the `allow(improper_ctypes)`
 // when Rust 1.4 is released.
 #[allow(improper_ctypes)]
 extern {
-    fn evp_aead_aes_gcm_init(ctx_buf: *mut u64, ctx_buf_len: libc::size_t,
-                             key: *const libc::uint8_t, key_len: libc::size_t)
-                             -> libc::c_int;
+    fn evp_aead_aes_gcm_init(ctx_buf: *mut u64, ctx_buf_len: c::size_t,
+                             key: *const u8, key_len: c::size_t) -> c::int;
 
-    fn evp_aead_aes_gcm_seal(ctx_buf: *const u64, out: *mut libc::uint8_t,
-                             out_len: &mut libc::size_t,
-                             max_out_len: libc::size_t,
-                             nonce: *const libc::uint8_t,
-                             in_: *const libc::uint8_t, in_len: libc::size_t,
-                             ad: *const libc::uint8_t, ad_len: libc::size_t)
-                             -> libc::c_int;
+    fn evp_aead_aes_gcm_seal(ctx_buf: *const u64, out: *mut u8,
+                             out_len: &mut c::size_t, max_out_len: c::size_t,
+                             nonce: *const u8, in_: *const u8,
+                             in_len: c::size_t, ad: *const u8,
+                             ad_len: c::size_t) -> c::int;
 
-    fn evp_aead_aes_gcm_open(ctx_buf: *const u64, out: *mut libc::uint8_t,
-                             out_len: &mut libc::size_t,
-                             max_out_len: libc::size_t,
-                             nonce: *const libc::uint8_t,
-                             in_: *const libc::uint8_t, in_len: libc::size_t,
-                             ad: *const libc::uint8_t, ad_len: libc::size_t)
-                             -> libc::c_int;
+    fn evp_aead_aes_gcm_open(ctx_buf: *const u64, out: *mut u8,
+                             out_len: &mut c::size_t, max_out_len: c::size_t,
+                             nonce: *const u8, in_: *const u8,
+                             in_len: c::size_t, ad: *const u8,
+                             ad_len: c::size_t) -> c::int;
 
     fn evp_aead_chacha20_poly1305_init(ctx_buf: *mut u64,
-                                       ctx_buf_len: libc::size_t,
-                                       key: *const libc::uint8_t,
-                                       key_len: libc::size_t)
-                                       -> libc::c_int;
+                                       ctx_buf_len: c::size_t, key: *const u8,
+                                       key_len: c::size_t) -> c::int;
 
     fn evp_aead_chacha20_poly1305_rfc7539_seal(ctx_buf: *const u64,
-                                               out: *mut libc::uint8_t,
-                                               out_len: &mut libc::size_t,
-                                               max_out_len: libc::size_t,
-                                               nonce: *const libc::uint8_t,
-                                               in_: *const libc::uint8_t,
-                                               in_len: libc::size_t,
-                                               ad: *const libc::uint8_t,
-                                               ad_len: libc::size_t)
-                                               -> libc::c_int;
+                                               out: *mut u8,
+                                               out_len: &mut c::size_t,
+                                               max_out_len: c::size_t,
+                                               nonce: *const u8, in_: *const u8,
+                                               in_len: c::size_t, ad: *const u8,
+                                               ad_len: c::size_t) -> c::int;
 
     fn evp_aead_chacha20_poly1305_rfc7539_open(ctx_buf: *const u64,
-                                               out: *mut libc::uint8_t,
-                                               out_len: &mut libc::size_t,
-                                               max_out_len: libc::size_t,
-                                               nonce: *const libc::uint8_t,
-                                               in_: *const libc::uint8_t,
-                                               in_len: libc::size_t,
-                                               ad: *const libc::uint8_t,
-                                               ad_len: libc::size_t)
-                                               -> libc::c_int;
+                                               out: *mut u8,
+                                               out_len: &mut c::size_t,
+                                               max_out_len: c::size_t,
+                                               nonce: *const u8, in_: *const u8,
+                                               in_len: c::size_t, ad: *const u8,
+                                               ad_len: c::size_t) -> c::int;
 
     fn evp_aead_chacha20_poly1305_deprecated_seal(ctx_buf: *const u64,
-                                                  out: *mut libc::uint8_t,
-                                                  out_len: &mut libc::size_t,
-                                                  max_out_len: libc::size_t,
-                                                  nonce: *const libc::uint8_t,
-                                                  in_: *const libc::uint8_t,
-                                                  in_len: libc::size_t,
-                                                  ad: *const libc::uint8_t,
-                                                  ad_len: libc::size_t)
-                                                  -> libc::c_int;
+                                                  out: *mut u8,
+                                                  out_len: &mut c::size_t,
+                                                  max_out_len: c::size_t,
+                                                  nonce: *const u8,
+                                                  in_: *const u8,
+                                                  in_len: c::size_t,
+                                                  ad: *const u8,
+                                                  ad_len: c::size_t) -> c::int;
 
     fn evp_aead_chacha20_poly1305_deprecated_open(ctx_buf: *const u64,
-                                                  out: *mut libc::uint8_t,
-                                                  out_len: &mut libc::size_t,
-                                                  max_out_len: libc::size_t,
-                                                  nonce: *const libc::uint8_t,
-                                                  in_: *const libc::uint8_t,
-                                                  in_len: libc::size_t,
-                                                  ad: *const libc::uint8_t,
-                                                  ad_len: libc::size_t)
-                                                  -> libc::c_int;
+                                                  out: *mut u8,
+                                                  out_len: &mut c::size_t,
+                                                  max_out_len: c::size_t,
+                                                  nonce: *const u8,
+                                                  in_: *const u8,
+                                                  in_len: c::size_t,
+                                                  ad: *const u8,
+                                                  ad_len: c::size_t) -> c::int;
 }
 
 #[cfg(test)]

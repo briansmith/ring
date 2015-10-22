@@ -14,6 +14,8 @@
 
 #include <openssl/crypto.h>
 
+#include <stdint.h>
+
 #include "internal.h"
 
 
@@ -102,3 +104,26 @@ void CRYPTO_library_init(void) {
   do_library_init();
 #endif
 }
+
+/* These functions allow tests in other languages to verify that their
+ * understanding of the C types matches the C compiler's understanding. */
+
+#define DEFINE_METRICS_FUNCTIONS(ty) \
+  OPENSSL_EXPORT ty ring_##ty##_align(void) { return alignof(ty); } \
+  OPENSSL_EXPORT ty ring_##ty##_size(void) { return sizeof(ty); }
+
+DEFINE_METRICS_FUNCTIONS(int8_t)
+DEFINE_METRICS_FUNCTIONS(uint8_t)
+
+DEFINE_METRICS_FUNCTIONS(int16_t)
+DEFINE_METRICS_FUNCTIONS(uint16_t)
+
+DEFINE_METRICS_FUNCTIONS(int32_t)
+DEFINE_METRICS_FUNCTIONS(uint32_t)
+
+DEFINE_METRICS_FUNCTIONS(int64_t)
+DEFINE_METRICS_FUNCTIONS(uint64_t)
+
+DEFINE_METRICS_FUNCTIONS(int)
+
+DEFINE_METRICS_FUNCTIONS(size_t)

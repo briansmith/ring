@@ -14,8 +14,7 @@
 
 //! Elliptic curve cryptography.
 
-use libc;
-use super::{digest, ffi};
+use super::{c, digest, ffi};
 
 /// An elliptic curve.
 ///
@@ -23,7 +22,7 @@ use super::{digest, ffi};
 pub struct EllipticCurve {
     ec_group_new: ECGroupNewFn,
     encoded_public_key_len: usize,
-    nid: libc::c_int,
+    nid: c::int,
 }
 
 /// An ephemeral ECDH key pair for use (only) with `ecdh_ephemeral`. The
@@ -60,10 +59,9 @@ impl ECDHEphemeralKeyPair {
     pub fn fill_with_encoded_public_point(&self, out: &mut [u8])
                                           -> Result<(), ()> {
         match unsafe {
-            EC_KEY_public_key_to_oct(self.key, out.as_mut_ptr(),
-                                     out.len() as libc::size_t)
+            EC_KEY_public_key_to_oct(self.key, out.as_mut_ptr(), out.len())
         } {
-            n if (n as usize) == self.public_point_len() => Ok(()),
+            n if n == self.public_point_len() => Ok(()),
             _ => Err(())
         }
     }
@@ -118,12 +116,11 @@ pub fn ecdh_ephemeral<F, R, E>(my_key_pair: ECDHEphemeralKeyPair,
     let mut shared_key_len = 0;
     match unsafe {
         ECDH_compute_key_ex(shared_key.as_mut_ptr(), &mut shared_key_len,
-                            shared_key.len() as libc::size_t, my_key_pair.key,
-                            peer_curve.nid,
+                            shared_key.len(), my_key_pair.key, peer_curve.nid,
                             peer_encoded_public_point.as_ptr(),
-                            peer_encoded_public_point.len() as libc::size_t)
+                            peer_encoded_public_point.len())
     } {
-        1 => kdf(&shared_key[0..(shared_key_len as usize)]),
+        1 => kdf(&shared_key[0..shared_key_len]),
         _ => Err(error_value)
     }
 }
@@ -144,10 +141,9 @@ pub fn verify_ecdsa_signed_digest_asn1(curve: &EllipticCurve,
                                        key: &[u8]) -> Result<(),()> {
     ffi::map_bssl_result(unsafe {
         ECDSA_verify_signed_digest(0, digest.as_ref().as_ptr(),
-                                   digest.as_ref().len() as libc::size_t,
-                                   sig.as_ptr(), sig.len() as libc::size_t,
-                                   curve.ec_group_new, key.as_ptr(),
-                                   key.len() as libc::size_t)
+                                   digest.as_ref().len(), sig.as_ptr(),
+                                   sig.len(), curve.ec_group_new, key.as_ptr(),
+                                   key.len())
     })
 }
 
@@ -196,20 +192,20 @@ enum EC_KEY { }
 extern {
     fn EC_KEY_generate_key_ex(ec_group_new: ECGroupNewFn) -> *mut EC_KEY;
     fn EC_KEY_public_key_to_oct(key: *const EC_KEY, out: *mut u8,
-                                out_len: libc::size_t) -> libc::size_t;
+                                out_len: c::size_t) -> c::size_t;
     fn EC_KEY_free(key: *mut EC_KEY);
 
 
-    fn ECDH_compute_key_ex(out: *mut u8, out_len: *mut libc::size_t,
-                           max_out_len: libc::size_t, my_key_pair: *mut EC_KEY,
-                           peer_curve_nid: libc::c_int,
+    fn ECDH_compute_key_ex(out: *mut u8, out_len: *mut c::size_t,
+                           max_out_len: c::size_t, my_key_pair: *mut EC_KEY,
+                           peer_curve_nid: c::int,
                            peer_pub_point_bytes: *const u8,
-                           peer_pub_point_bytes_len: libc::size_t) -> libc::c_int;
+                           peer_pub_point_bytes_len: c::size_t) -> c::int;
 
-    fn ECDSA_verify_signed_digest(hash_nid: libc::c_int, digest: *const u8,
-                                  digest_len: libc::size_t, sig_der: *const u8,
-                                  sig_der_len: libc::size_t,
+    fn ECDSA_verify_signed_digest(hash_nid: c::int, digest: *const u8,
+                                  digest_len: c::size_t, sig_der: *const u8,
+                                  sig_der_len: c::size_t,
                                   ec_group_new: ECGroupNewFn,
                                   key_octets: *const u8,
-                                  key_octets_len: libc::size_t) -> libc::c_int;
+                                  key_octets_len: c::size_t) -> c::int;
 }

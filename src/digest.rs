@@ -24,8 +24,8 @@
 // The goal for this implementation is to drive the overhead as close to zero
 // as possible.
 
-use libc;
 use std::mem;
+use super::c;
 
 /// A context for multi-step (Init-Update-Finish) digest calculations.
 ///
@@ -77,7 +77,7 @@ impl Context {
     pub fn update(&mut self, data: &[u8]) {
         let _ = unsafe {
             (self.algorithm.update)(self.state.as_mut_ptr(), data.as_ptr(),
-                                    data.len() as libc::size_t)
+                                    data.len())
         };
     }
 
@@ -159,17 +159,17 @@ pub struct Algorithm {
     /// C analog: `EVP_MD_block_size`
     pub block_len: usize,
 
-    init: unsafe extern fn(ctx_state: *mut u64) -> libc::c_int,
+    init: unsafe extern fn(ctx_state: *mut u64) -> c::int,
     update: unsafe extern fn(ctx_state: *mut u64, data: *const u8,
-                             len: libc::size_t) -> libc::c_int,
-    final_: unsafe extern fn(out: *mut u8, ctx_state: *mut u64) -> libc::c_int,
+                             len: c::size_t) -> c::int,
+    final_: unsafe extern fn(out: *mut u8, ctx_state: *mut u64) -> c::int,
 
     // XXX: This is required because the signature verification functions
     // require a NID. But, really they don't need a NID, but just the OID of
     // the digest function, perhaps with an `EVP_MD` if it wants to validate
     // the properties of the digest like the length. XXX: This has to be public
     // because it is accessed from the signature modules.
-    pub nid: libc::c_int,
+    pub nid: c::int,
 }
 
 #[cfg(test)]
@@ -226,10 +226,10 @@ macro_rules! impl_Digest {
         // `allow(improper_ctypes)` when Rust 1.4 is released.
         #[allow(improper_ctypes)]
         extern {
-            fn $xxx_Init(ctx_state: *mut u64) -> libc::c_int;
-            fn $xxx_Update(ctx_state: *mut u64, data: *const u8,
-                           len: libc::size_t) -> libc::c_int;
-            fn $xxx_Final(out: *mut u8, ctx_state: *mut u64) -> libc::c_int;
+            fn $xxx_Init(ctx_state: *mut u64) -> c::int;
+            fn $xxx_Update(ctx_state: *mut u64, data: *const u8, len: c::size_t)
+                           -> c::int;
+            fn $xxx_Final(out: *mut u8, ctx_state: *mut u64) -> c::int;
         }
     }
 }

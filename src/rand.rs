@@ -14,13 +14,12 @@
 
 //! Cryptographic psuedo-random number generation.
 
-use libc;
-use super::ffi;
+use super::{c, ffi};
 
 /// Fills the given slice with random bytes generated from a PRNG.
 pub fn fill_secure_random(out: &mut [u8]) -> Result<(), ()> {
     ffi::map_bssl_result(unsafe {
-        RAND_bytes(out.as_mut_ptr(), out.len() as libc::size_t)
+        RAND_bytes(out.as_mut_ptr(), out.len())
     })
 }
 
@@ -29,5 +28,5 @@ pub fn fill_secure_random(out: &mut [u8]) -> Result<(), ()> {
 // when Rust 1.4 is released.
 #[allow(improper_ctypes)]
 extern {
-    fn RAND_bytes(buf: *mut libc::uint8_t, len: libc::size_t) -> libc::c_int;
+    fn RAND_bytes(buf: *mut u8, len: c::size_t) -> c::int;
 }

@@ -97,8 +97,7 @@
 //! # fn main() { main_with_result().unwrap() }
 //! ```
 
-use super::digest;
-use super::ffi;
+use super::{digest, ffi};
 
 /// A key to use for HMAC signing.
 pub struct SigningKey {

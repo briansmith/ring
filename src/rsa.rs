@@ -14,8 +14,7 @@
 
 //! RSA signing and verification.
 
-use libc;
-use super::{digest, ffi};
+use super::{c, digest, ffi};
 
 /// Verifies that the PKCS#1 1.5 RSA signature encoded in `sig` is valid for
 /// the data hashed to `digest` using the ASN.1-DER-encoded public key `key`.
@@ -28,9 +27,8 @@ pub fn verify_rsa_pkcs1_signed_digest_asn1(digest: &digest::Digest, sig: &[u8],
     ffi::map_bssl_result(unsafe {
         RSA_verify_pkcs1_signed_digest(digest.algorithm().nid,
                                        digest.as_ref().as_ptr(),
-                                       digest.as_ref().len() as libc::size_t,
-                                       sig.as_ptr(), sig.len() as libc::size_t,
-                                       key.as_ptr(), key.len() as libc::size_t)
+                                       digest.as_ref().len(), sig.as_ptr(),
+                                       sig.len(), key.as_ptr(), key.len())
     })
 }
 
@@ -39,8 +37,8 @@ pub fn verify_rsa_pkcs1_signed_digest_asn1(digest: &digest::Digest, sig: &[u8],
 // when Rust 1.4 is released.
 #[allow(improper_ctypes)]
 extern {
-    fn RSA_verify_pkcs1_signed_digest(hash_nid: libc::c_int, digest: *const u8,
-                                      digest_len: libc::size_t, sig: *const u8,
-                                      sig_len: libc::size_t, key_der: *const u8,
-                                      key_der_len: libc::size_t) -> libc::c_int;
+    fn RSA_verify_pkcs1_signed_digest(hash_nid: c::int, digest: *const u8,
+                                      digest_len: c::size_t, sig: *const u8,
+                                      sig_len: c::size_t, key_der: *const u8,
+                                      key_der_len: c::size_t) -> c::int;
 }
