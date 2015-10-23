@@ -1427,15 +1427,30 @@ err:
 
 int ssl3_get_new_session_ticket(SSL *s) {
   int ok, al;
-  long n;
-  CBS new_session_ticket, ticket;
-
-  n = s->method->ssl_get_message(
+  long n = s->method->ssl_get_message(
       s, SSL3_ST_CR_SESSION_TICKET_A, SSL3_ST_CR_SESSION_TICKET_B,
       SSL3_MT_NEWSESSION_TICKET, 16384, ssl_hash_message, &ok);
 
   if (!ok) {
     return n;
+  }
+
+  CBS new_session_ticket, ticket;
+  uint32_t ticket_lifetime_hint;
+  CBS_init(&new_session_ticket, s->init_msg, n);
+  if (!CBS_get_u32(&new_session_ticket, &ticket_lifetime_hint) ||
+      !CBS_get_u16_length_prefixed(&new_session_ticket, &ticket) ||
+      CBS_len(&new_session_ticket) != 0) {
+    al = SSL_AD_DECODE_ERROR;
+    OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
+    goto f_err;
+  }
+
+  if (CBS_len(&ticket) == 0) {
+    /* RFC 5077 allows a server to change its mind and send no ticket after
+     * negotiating the extension. Behave as if no ticket was sent. */
+    s->tlsext_ticket_expected = 0;
+    return 1;
   }
 
   if (s->hit) {
@@ -1459,22 +1474,12 @@ int ssl3_get_new_session_ticket(SSL *s) {
     s->session = new_session;
   }
 
-  CBS_init(&new_session_ticket, s->init_msg, n);
-
-  if (!CBS_get_u32(&new_session_ticket,
-                   &s->session->tlsext_tick_lifetime_hint) ||
-      !CBS_get_u16_length_prefixed(&new_session_ticket, &ticket) ||
-      CBS_len(&new_session_ticket) != 0) {
-    al = SSL_AD_DECODE_ERROR;
-    OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
-    goto f_err;
-  }
-
   if (!CBS_stow(&ticket, &s->session->tlsext_tick,
                 &s->session->tlsext_ticklen)) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
     goto err;
   }
+  s->session->tlsext_tick_lifetime_hint = ticket_lifetime_hint;
 
   /* Generate a session ID for this session based on the session ticket. We use
    * the session ID mechanism for detecting ticket resumption. This also fits in

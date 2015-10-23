@@ -1971,6 +1971,18 @@ func addBasicTests() {
 			// does not fail.
 			expectMessageDropped: true,
 		},
+		{
+			name: "SendEmptySessionTicket",
+			config: Config{
+				Bugs: ProtocolBugs{
+					SendEmptySessionTicket: true,
+					FailIfSessionOffered:   true,
+				},
+			},
+			flags:                []string{"-expect-no-session"},
+			resumeSession:        true,
+			expectResumeRejected: true,
+		},
 	}
 	testCases = append(testCases, basicTests...)
 }

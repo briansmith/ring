@@ -358,6 +358,10 @@ Curves:
 		return false, errors.New("tls: offered resumption on renegotiation")
 	}
 
+	if c.config.Bugs.FailIfSessionOffered && (len(hs.clientHello.sessionTicket) > 0 || len(hs.clientHello.sessionId) > 0) {
+		return false, errors.New("tls: client offered a session ticket or ID")
+	}
+
 	if hs.checkForResumption() {
 		return true, nil
 	}
@@ -866,10 +870,12 @@ func (hs *serverHandshakeState) sendSessionTicket() error {
 
 	m := new(newSessionTicketMsg)
 
-	var err error
-	m.ticket, err = c.encryptTicket(&state)
-	if err != nil {
-		return err
+	if !c.config.Bugs.SendEmptySessionTicket {
+		var err error
+		m.ticket, err = c.encryptTicket(&state)
+		if err != nil {
+			return err
+		}
 	}
 
 	hs.writeServerHash(m.marshal())

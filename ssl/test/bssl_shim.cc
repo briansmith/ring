@@ -863,7 +863,7 @@ static bool CheckHandshakeProperties(SSL *ssl, bool is_resume) {
         (!SSL_session_reused(ssl) || config->expect_ticket_renewal);
     if (expect_new_session != GetTestState(ssl)->got_new_session) {
       fprintf(stderr,
-              "new session was%s established, but we expected the opposite\n",
+              "new session was%s cached, but we expected the opposite\n",
               GetTestState(ssl)->got_new_session ? "" : " not");
       return false;
     }
