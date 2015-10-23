@@ -91,7 +91,7 @@ pub fn open_in_place(key: &OpeningKey, nonce: &[u8], in_prefix_len: usize,
     // of plaintext_len that is needed. For AEADs where
     // `max_overhead_len > tag_len`, this check isn't precise enough and the
     // AEAD's `open` function will have to do an additional check.
-    if ciphertext_len < (key.key.algorithm.tag_len as usize) {
+    if ciphertext_len < key.key.algorithm.tag_len {
         return Err(());
     }
     unsafe {
@@ -160,7 +160,7 @@ pub fn seal_in_place(key: &SealingKey, nonce: &[u8], in_out: &mut [u8],
                      out_suffix_capacity: usize, ad: &[u8])
                      -> Result<usize, ()> {
     if in_out.len() < out_suffix_capacity ||
-       out_suffix_capacity < (key.key.algorithm.max_overhead_len as usize) {
+       out_suffix_capacity < key.key.algorithm.max_overhead_len {
         return Err(());
     }
     unsafe {
@@ -201,7 +201,7 @@ impl Key {
     ///
     /// C analogs: `EVP_AEAD_CTX_init`, `EVP_AEAD_CTX_init_with_direction`
     fn init(&mut self, key_bytes: &[u8]) -> Result<(), ()> {
-        if key_bytes.len() != (self.algorithm.key_len as usize) {
+        if key_bytes.len() != self.algorithm.key_len {
             return Err(());
         }
 
@@ -222,7 +222,7 @@ impl Key {
                                     in_len: usize, ad: &[u8], out: &mut [u8])
                                     -> Result<usize, ()> {
         debug_assert!(self.algorithm.max_overhead_len >= self.algorithm.tag_len);
-        if nonce.len() != (self.algorithm.nonce_len as usize) {
+        if nonce.len() != self.algorithm.nonce_len {
             return Err(()) // CIPHER_R_INVALID_NONCE_SIZE
         }
         let mut out_len: c::size_t = 0;
@@ -248,21 +248,20 @@ impl Key {
 /// C analog: `EVP_AEAD`
 ///
 /// Go analog: [`crypto.cipher.AEAD`](https://golang.org/pkg/crypto/cipher/#AEAD)
-#[repr(C)]
 pub struct Algorithm {
   // Keep the layout of this in sync with the layout of `EVP_AEAD`.
 
   /// The length of the key.
   ///
   /// C analog: `EVP_AEAD_key_length`
-  pub key_len: u8,
+  pub key_len: usize,
 
   /// The length of the nonces.
   ///
   /// C analog: `EVP_AEAD_nonce_length`
   ///
   /// Go analog: [`crypto.cipher.AEAD.NonceSize`](https://golang.org/pkg/crypto/cipher/#AEAD)
-  pub nonce_len: u8,
+  pub nonce_len: usize,
 
   /// The maximum number of bytes that sealing operations may add to plaintexts.
   /// See also `MAX_OVERHEAD_LEN`.
@@ -270,7 +269,7 @@ pub struct Algorithm {
   /// C analog: `EVP_AEAD_max_overhead`
   ///
   /// Go analog: [`crypto.cipher.AEAD.Overhead`](https://golang.org/pkg/crypto/cipher/#AEAD)
-  pub max_overhead_len: u8,
+  pub max_overhead_len: usize,
 
   /// The length of the authentication tags or MACs.
   ///
@@ -278,7 +277,7 @@ pub struct Algorithm {
   /// sealing operations.
   ///
   /// C analog: `EVP_AEAD_tag_len`
-  pub tag_len: u8,
+  pub tag_len: usize,
 
   init: unsafe extern fn(ctx_buf: *mut u64, ctx_buf_len: c::size_t,
                          key: *const u8, key_len: c::size_t) -> c::int,
@@ -287,16 +286,17 @@ pub struct Algorithm {
   open: OpenOrSealFn,
 }
 
-const AES_128_KEY_LEN: u8 = 128 / 8;
-const AES_256_KEY_LEN: u8 = (256 as usize / 8) as u8;
-const AES_GCM_NONCE_LEN: u8 = 96 / 8;
-const AES_GCM_TAG_LEN: u8 = 128 / 8;
+const AES_128_KEY_LEN: usize = 128 / 8;
+const AES_256_KEY_LEN: usize = 32; // 256 / 8
+const AES_GCM_NONCE_LEN: usize = 96 / 8;
+const AES_GCM_TAG_LEN: usize = 128 / 8;
 
-const CHACHA20_KEY_LEN: u8 = (256 as usize / 8) as u8;
-const POLY1305_TAG_LEN: u8 = 128 / 8;
+const CHACHA20_KEY_LEN: usize = 32; // 256 / 8
+const POLY1305_TAG_LEN: usize = 128 / 8;
+
 /// The maximum value of `Algorithm.max_overhead_len` for the algorithms in
 /// this module.
-pub const MAX_OVERHEAD_LEN: usize = AES_GCM_TAG_LEN as usize;
+pub const MAX_OVERHEAD_LEN: usize = AES_GCM_TAG_LEN;
 
 /// AES-128 in GCM mode with 128-bit tags and 96 bit nonces.
 ///
@@ -472,7 +472,7 @@ mod tests {
 
             // TODO: test shifting.
 
-            let max_overhead_len = aead_alg.max_overhead_len as usize;
+            let max_overhead_len = aead_alg.max_overhead_len;
             let mut s_in_out = plaintext.clone();
             for _ in 0..max_overhead_len {
                 s_in_out.push(0);
@@ -507,7 +507,7 @@ mod tests {
     }
 
     fn test_aead_key_sizes(aead_alg: &'static aead::Algorithm) {
-        let key_len = aead_alg.key_len as usize;
+        let key_len = aead_alg.key_len;
         let key_data = vec![0u8; key_len * 2];
 
         // Key is the right size.
@@ -561,19 +561,19 @@ mod tests {
     // memory (when run under valgrind or similar). The AES-128-GCM tests have
     // some WRONG_NONCE_LENGTH test cases that tests this more correctly.
     fn test_aead_nonce_sizes(aead_alg: &'static aead::Algorithm) {
-        let key_len = aead_alg.key_len as usize;
+        let key_len = aead_alg.key_len;
         let key_data = vec![0u8; key_len];
         let o_key =
             aead::OpeningKey::new(aead_alg, &key_data[0..key_len]).unwrap();
         let s_key =
             aead::SealingKey::new(aead_alg, &key_data[0..key_len]).unwrap();
 
-        let nonce_len = aead_alg.nonce_len as usize;
+        let nonce_len = aead_alg.nonce_len;
 
         let nonce = vec![0u8; nonce_len * 2];
 
         let prefix_len = 0;
-        let suffix_space = aead_alg.max_overhead_len as usize;
+        let suffix_space = aead_alg.max_overhead_len;
         let ad: [u8; 0] = [];
 
         // Construct a template input for `seal_in_place`.

@@ -151,7 +151,6 @@ impl AsRef<[u8]> for Digest {
 /// A digest algorithm.
 ///
 /// C analog: `EVP_MD`
-#[repr(C)]
 pub struct Algorithm {
     /// C analog: `EVP_MD_size`
     pub digest_len: usize,
