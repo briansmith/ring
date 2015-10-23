@@ -441,7 +441,6 @@ static int x509_object_idx_cnt(STACK_OF(X509_OBJECT) *h, int type,
 	X509_CINF cinf_s;
 	X509_CRL crl_s;
 	X509_CRL_INFO crl_info_s;
-	size_t idx;
 
 	stmp.type=type;
 	switch (type)
@@ -461,8 +460,11 @@ static int x509_object_idx_cnt(STACK_OF(X509_OBJECT) *h, int type,
 		return -1;
 		}
 
-	idx = -1;
-	if (sk_X509_OBJECT_find(h, &idx, &stmp) && pnmatch)
+	size_t idx;
+	if (!sk_X509_OBJECT_find(h, &idx, &stmp))
+		return -1;
+
+	if (pnmatch != NULL)
 		{
 		int tidx;
 		const X509_OBJECT *tobj, *pstmp;
