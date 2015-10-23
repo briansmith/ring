@@ -18,7 +18,7 @@ environment:
       RUST: beta
     - TOOLCHAIN_VERSION: 14.0
       RUST: nightly
-      
+
     - TOOLCHAIN_VERSION: 12.0
       RUST: msbuild
     - TOOLCHAIN_VERSION: 12.0
@@ -27,5 +27,5 @@ environment:
       RUST: beta
     - TOOLCHAIN_VERSION: 12.0
       RUST: nightly
-      
+
 build_script: mk/appveyor.bat

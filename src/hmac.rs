@@ -148,7 +148,7 @@ impl SigningKey {
 
         key
     }
-    
+
     pub fn digest_algorithm(&self) -> &'static digest::Algorithm {
         self.ctx_prototype.inner.algorithm()
     }

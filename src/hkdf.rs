@@ -92,7 +92,7 @@ pub fn expand(prk: &hmac::SigningKey, info: &[u8], out: &mut [u8]) {
     let digest_alg = prk.digest_algorithm();
     assert!(out.len() <= 255 * digest_alg.digest_len);
     assert!(digest_alg.block_len >= digest_alg.digest_len);
-    
+
     let mut ctx = hmac::SigningContext::with_key(&prk);
 
     let mut n = 1u8;
