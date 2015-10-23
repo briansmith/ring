@@ -97,12 +97,14 @@ DH *DH_new_method(const ENGINE *engine) {
 
   dh->references = 1;
   if (!CRYPTO_new_ex_data(&g_ex_data_class, dh, &dh->ex_data)) {
+    CRYPTO_MUTEX_cleanup(&dh->method_mont_p_lock);
     OPENSSL_free(dh);
     return NULL;
   }
 
   if (dh->meth->init && !dh->meth->init(dh)) {
     CRYPTO_free_ex_data(&g_ex_data_class, dh, &dh->ex_data);
+    CRYPTO_MUTEX_cleanup(&dh->method_mont_p_lock);
     METHOD_unref(dh->meth);
     OPENSSL_free(dh);
     return NULL;

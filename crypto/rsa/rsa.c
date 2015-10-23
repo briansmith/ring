@@ -100,6 +100,7 @@ RSA *RSA_new_method(const ENGINE *engine) {
   CRYPTO_MUTEX_init(&rsa->lock);
 
   if (!CRYPTO_new_ex_data(&g_ex_data_class, rsa, &rsa->ex_data)) {
+    CRYPTO_MUTEX_cleanup(&rsa->lock);
     METHOD_unref(rsa->meth);
     OPENSSL_free(rsa);
     return NULL;
@@ -107,6 +108,7 @@ RSA *RSA_new_method(const ENGINE *engine) {
 
   if (rsa->meth->init && !rsa->meth->init(rsa)) {
     CRYPTO_free_ex_data(&g_ex_data_class, rsa, &rsa->ex_data);
+    CRYPTO_MUTEX_cleanup(&rsa->lock);
     METHOD_unref(rsa->meth);
     OPENSSL_free(rsa);
     return NULL;

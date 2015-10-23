@@ -103,6 +103,7 @@ DSA *DSA_new_method(const ENGINE *engine) {
   CRYPTO_MUTEX_init(&dsa->method_mont_p_lock);
 
   if (!CRYPTO_new_ex_data(&g_ex_data_class, dsa, &dsa->ex_data)) {
+    CRYPTO_MUTEX_cleanup(&dsa->method_mont_p_lock);
     METHOD_unref(dsa->meth);
     OPENSSL_free(dsa);
     return NULL;
@@ -110,6 +111,7 @@ DSA *DSA_new_method(const ENGINE *engine) {
 
   if (dsa->meth->init && !dsa->meth->init(dsa)) {
     CRYPTO_free_ex_data(&g_ex_data_class, dsa, &dsa->ex_data);
+    CRYPTO_MUTEX_cleanup(&dsa->method_mont_p_lock);
     METHOD_unref(dsa->meth);
     OPENSSL_free(dsa);
     return NULL;
