@@ -463,23 +463,11 @@ static int paramgen(DSA *ret, unsigned bits, const uint8_t *seed_in,
   int r = 0;
   BN_CTX *ctx = NULL;
   unsigned int h = 2;
-  unsigned qbits, qsize;
+  unsigned qsize;
   const EVP_MD *evpmd;
 
-  if (bits >= 2048) {
-    qbits = 256;
-    evpmd = EVP_sha256();
-  } else {
-    qbits = 160;
-    evpmd = EVP_sha1();
-  }
-  qsize = qbits / 8;
-
-  if (qsize != SHA_DIGEST_LENGTH && qsize != SHA224_DIGEST_LENGTH &&
-      qsize != SHA256_DIGEST_LENGTH) {
-    /* invalid q size */
-    return 0;
-  }
+  evpmd = (bits >= 2048) ? EVP_sha256() : EVP_sha1();
+  qsize = EVP_MD_size(evpmd);
 
   if (bits < 512) {
     bits = 512;
