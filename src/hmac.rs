@@ -14,35 +14,72 @@
 
 //! HMAC is specified in [RFC 2104](https://tools.ietf.org/html/rfc2104).
 //!
-//! Although HMAC keys are symmetric, a given peer in a multi-peer
-//! communication should usually only use a key for either authenticating a
-//! peer's messages or for signing its own messages, but usually not both. To
-//! better facilitate the use of separate keys for signing and verification,
-//! the API is split into groups: `SigningKey`, `SigningContext`, and `sign`;
-//! and `VerificationKey` and `verify`. When HMAC is being used for a purpose
-//! other than signing & authenticating messages, such as when implementing
-//! HMAC-based PRFs, the signing operations should be used.
-//!
-//! Usually an HMAC key is used for multiple signing operations or multiple
-//! verification operations. After a `SigningKey` or `VerificationKey` is
-//! constructed, it can be used for multiple signing or verification operations.
-//! Separating the construction of the key from the rest of the HMAC operation
-//! allows the per-key precomputation to be done only once, instead of it being
-//! done in every HMAC operation.
+//! After a `SigningKey` or `VerificationKey` is constructed, it can be used
+//! for multiple signing or verification operations. Separating the
+//! construction of the key from the rest of the HMAC operation allows the
+//! per-key precomputation to be done only once, instead of it being done in
+//! every HMAC operation.
 //!
 //! Frequently all the data to be signed in a message is available in a single
 //! contiguous piece. In that case, the module-level `sign` function can be
 //! used. Otherwise, if the input is in multiple parts, `SigningContext` should
 //! be used.
 //!
-//! The `verify` function should be used for verifying HMAC signatures.
-//! `verify` compares the computed HMAC signature to the expected HMAC
-//! signature in constant time to prevent timing attacks. There is no
-//! multi-step "`VerificationContext`" interface. Such a streaming interface
-//! would be dangerous as generally one must verify the HMAC signature of the
-//! entire input before processing any part of the input.
+//! # Use Case: Multi-party Communication
+//!
+//! Examples: TLS, SSH, and IPSEC record/packet authentication.
+//!
+//! The key that is used to sign messages to send to other parties should be a
+//! `SigningKey`; `SigningContext` or `sign` should be used for the signing.
+//! Each key that is used to authenticate messages received from peers should
+//! be a `VerificationKey`; `verify` should be used for the authentication.
+//!
+//! # Use Case: One-party Anti-tampering Protection
+//!
+//! Examples: Signed cookies, stateless CSRF protection.
+//!
+//! The key that is used to sign the data should be a `SigningKey`;
+//! `SigningContext` or `sign` should be used for the signing. Use
+//! `verify_with_own_key` to verify the signature using the signing key; this
+//! is equivalent to, but more efficient than, constructing a `VerificationKey`
+//! with the same value as the signing key and then calling `verify`. All of
+//! the keys should have distinct, independent, values.
+//!
+//! # Use Case: Key Derivation and Password Hashing
+//!
+//! Examples: HKDF, PBKDF2, the TLS PRF.
+//!
+//! All keys used during the key derivation should be `SigningKey`s;
+//! `SigningContext` should usually be used for the HMAC calculations. The
+//! [code for `ring::pbkdf2`](https://github.com/briansmith/ring/blob/master/src/pbkdf2.rs)
+//! and the
+//! [code for `ring::hkdf`](https://github.com/briansmith/ring/blob/master/src/hkdf.rs)
+//! are good examples of how to use `ring::hmac` efficiently for key derivation.
 //!
 //! # Examples:
+//!
+//! ## Signing a value and verifying it wasn't tampered with
+//!
+//! ```
+//! use ring::{digest, hmac};
+//!
+//! # fn main_with_result() -> Result<(), ()> {
+//! let key = try!(hmac::SigningKey::generate(&digest::SHA256));
+//!
+//! let msg = "hello, world";
+//!
+//! let signature = hmac::sign(&key, msg.as_bytes());
+//!
+//! // [We give access to the message to an untrusted party, and they give it
+//! // back to us. We need to verify they didn't tamper with it.]
+//!
+//! try!(hmac::verify_with_own_key(&key, msg.as_bytes(), signature.as_ref()));
+//! #
+//! # Ok(())
+//! # }
+//! #
+//! # fn main() { main_with_result().unwrap() }
+//! ```
 //!
 //! ## Using the one-shot API:
 //!
@@ -52,12 +89,17 @@
 //! # fn main_with_result() -> Result<(), ()> {
 //! let msg = "hello, world";
 //!
+//! // The sender generates a secure key value and signs the message with it.
+//! // Note that it is better to use `SigningKey::generate` to generate the key
+//! // when practical.
 //! let mut key_value = [0u8; 32];
 //! try!(rand::fill_secure_random(&mut key_value));
 //!
 //! let s_key = hmac::SigningKey::new(&digest::SHA256, key_value.as_ref());
 //! let signature = hmac::sign(&s_key, msg.as_bytes());
 //!
+//! // The receiver (somehow!) knows the key value, and uses it to verify the
+//! // integrity of the message.
 //! let v_key = hmac::VerificationKey::new(&digest::SHA256, key_value.as_ref());
 //! try!(hmac::verify(&v_key, msg.as_bytes(), signature.as_ref()));
 //! #
@@ -74,6 +116,9 @@
 //! # fn main_with_result() -> Result<(), ()> {
 //! let parts = ["hello", ", ", "world"];
 //!
+//! // The sender generates a secure key value and signs the message with it.
+//! // Note that it is better to use `SigningKey::generate` to generate the key
+//! // when practical.
 //! let mut key_value = [0u8; 48];
 //! try!(rand::fill_secure_random(&mut key_value));
 //!
@@ -84,6 +129,8 @@
 //! }
 //! let signature = s_ctx.sign();
 //!
+//! // The receiver (somehow!) knows the key value, and uses it to verify the
+//! // integrity of the message.
 //! let v_key = hmac::VerificationKey::new(&digest::SHA384, key_value.as_ref());
 //! let mut msg = Vec::<u8>::new();
 //! for part in &parts {
@@ -257,23 +304,51 @@ impl VerificationKey {
 }
 
 /// Calculates the HMAC of `data` using the key `key`, and verifies whether the
-/// resultant value equals `expected_value`, in one step.
+/// resultant value equals `signature`, in one step.
 ///
 /// The verification will be done in constant time to prevent timing attacks.
 ///
 /// C analog: `HMAC_Init` + `HMAC_Update` + `HMAC_Final` + `CRYPTO_memcmp`
-pub fn verify(key: &VerificationKey, data: &[u8], expected_value: &[u8])
+#[inline(always)]
+pub fn verify(key: &VerificationKey, data: &[u8], signature: &[u8])
               -> Result<(), ()> {
-    let mut ctx = SigningContext::with_key(&key.wrapped);
-    ctx.update(data);
-    let actual_value = ctx.sign();
-    constant_time::verify_slices_are_equal(actual_value.as_ref(),
-                                           expected_value)
+    verify_with_own_key(&key.wrapped, data, signature)
+}
+
+/// Calculates the HMAC of `data` using the signing key `key`, and verifies
+/// whether the resultant value equals `signature`, in one step.
+///
+/// This is logically equivalent to, but more efficient than, constructing a
+/// `VerificationKey` with the same value as `key` and then using `verify`.
+///
+/// The verification will be done in constant time to prevent timing attacks.
+///
+/// C analog: `HMAC_Init` + `HMAC_Update` + `HMAC_Final` + `CRYPTO_memcmp`
+pub fn verify_with_own_key(key: &SigningKey, data: &[u8], signature: &[u8])
+                           -> Result<(), ()> {
+    constant_time::verify_slices_are_equal(sign(&key, data).as_ref(), signature)
 }
 
 #[cfg(test)]
 mod tests {
     use super::super::{digest, file_test, hmac};
+
+    // Make sure that `SigningKey::generate` and `verify_with_own_key` aren't
+    // completely wacky.
+    #[test]
+    pub fn hmac_signing_key_coverage() {
+        const HELLO_WORLD_GOOD: &'static [u8] = b"hello, world";
+        const HELLO_WORLD_BAD:  &'static [u8] = b"hello, worle";
+
+        for d in &digest::test_util::ALL_ALGORITHMS {
+            let key = hmac::SigningKey::generate(d).unwrap();
+            let signature = hmac::sign(&key, HELLO_WORLD_GOOD);
+            assert!(hmac::verify_with_own_key(&key, HELLO_WORLD_GOOD,
+                                              signature.as_ref()).is_ok());
+            assert!(hmac::verify_with_own_key(&key, HELLO_WORLD_BAD,
+                                              signature.as_ref()).is_err())
+        }
+    }
 
     #[test]
     pub fn hmac_tests() {

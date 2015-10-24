@@ -180,6 +180,18 @@ pub struct Algorithm {
 }
 
 #[cfg(test)]
+pub mod test_util {
+    use super::super::digest;
+
+    pub static ALL_ALGORITHMS: [&'static digest::Algorithm; 4] = [
+        &digest::SHA1,
+        &digest::SHA256,
+        &digest::SHA384,
+        &digest::SHA512,
+    ];
+}
+
+#[cfg(test)]
 mod tests {
     use super::super::{digest, file_test};
 
