@@ -207,7 +207,7 @@ impl SigningContext {
 /// return value of `sign` to a signature. Use `verify` for verification
 /// instead.
 ///
-/// C analog: `HMAC_CTX_init` + `HMAC_Update` + HMAC_Final`.
+/// C analog: `HMAC_CTX_init` + `HMAC_Update` + `HMAC_Final`.
 pub fn sign(key: &SigningKey, data: &[u8]) -> digest::Digest {
     let mut ctx = SigningContext::with_key(key);
     ctx.update(data);
