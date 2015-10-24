@@ -97,7 +97,7 @@
 //! # fn main() { main_with_result().unwrap() }
 //! ```
 
-use super::{constant_time, digest};
+use super::{constant_time, digest, rand};
 
 /// A key to use for HMAC signing.
 pub struct SigningKey {
@@ -105,6 +105,22 @@ pub struct SigningKey {
 }
 
 impl SigningKey {
+    /// Generate an HMAC signing key for the given digest algorithm using
+    /// |ring::rand|. The key will be `digest_alg.chaining_len` bytes long. The
+    /// key size choice is based on the recommendation of
+    /// [NIST SP 800-107, Section 5.3.4: Security Effect of the HMAC Key](http://csrc.nist.gov/publications/nistpubs/800-107-rev1/sp800-107-rev1.pdf)
+    /// and is consistent with the key lengths chosen for TLS as described in
+    /// [RFC 5246, Appendix C](https://tools.ietf.org/html/rfc5246#appendix-C).
+    pub fn generate(digest_alg: &'static digest::Algorithm)
+                    -> Result<SigningKey, ()> {
+        // XXX: There should probably be a `digest::MAX_CHAINING_LEN`, but for
+        // now `digest::MAX_DIGEST_LEN` is good enough.
+        let mut key_data = [0u8; digest::MAX_DIGEST_LEN];
+        let key_data = &mut key_data[0..digest_alg.digest_len];
+        try!(rand::fill_secure_random(key_data));
+        Ok(SigningKey::new(digest_alg, key_data))
+    }
+
     /// Construct an HMAC signing key using the given digest algorithm and key
     /// value.
     ///
@@ -113,6 +129,11 @@ impl SigningKey {
     /// not the digest length returned by `digest::Algorithm::digest_len`) then
     /// it will be padded with zeros. Similarly, if it is longer than the block
     /// length then it will be compressed using the digest algorithm.
+    ///
+    /// You should not use keys larger than the `digest_alg.block_len` because
+    /// the truncation described above reduces their strength to only
+    /// `digest_alg.digest_len * 8` bits. Support for such keys is likely to be
+    /// removed in a future version of *ring*.
     pub fn new(digest_alg: &'static digest::Algorithm, key_value: &[u8])
                -> SigningKey {
         let mut key = SigningKey {

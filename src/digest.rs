@@ -155,6 +155,14 @@ pub struct Algorithm {
     /// C analog: `EVP_MD_size`
     pub digest_len: usize,
 
+    /// The size of the chaining value of the digest function, in bytes. For
+    /// non-truncated algorithms (SHA-1, SHA-256, SHA-512), this is equal to
+    /// `digest_len`. For truncated algorithms (e.g. SHA-384, SHA-512/256),
+    /// this is equal to the length before truncation. This is mostly helpful
+    /// for determining the size of an HMAC key that is appropriate for the
+    /// digest algorithm.
+    pub chaining_len: usize,
+
     /// C analog: `EVP_MD_block_size`
     pub block_len: usize,
 
@@ -201,11 +209,13 @@ mod tests {
 }
 
 macro_rules! impl_Digest {
-    ($XXX:ident, $digest_len_in_bits:expr, $block_len_in_bits:expr,
-     $xxx_Init:ident, $xxx_Update:ident, $xxx_Final:ident, $NID_xxx:expr) => {
+    ($XXX:ident, $digest_len_in_bits:expr, $chaining_len_in_bits:expr,
+     $block_len_in_bits:expr, $xxx_Init:ident, $xxx_Update:ident,
+     $xxx_Final:ident, $NID_xxx:expr) => {
 
         pub static $XXX: Algorithm = Algorithm {
             digest_len: $digest_len_in_bits / 8,
+            chaining_len: $chaining_len_in_bits / 8,
             block_len: $block_len_in_bits / 8,
 
             init: $xxx_Init,
@@ -233,13 +243,13 @@ macro_rules! impl_Digest {
     }
 }
 
-impl_Digest!(SHA1, 160, 512, SHA1_Init, SHA1_Update, SHA1_Final,
+impl_Digest!(SHA1, 160, 160, 512, SHA1_Init, SHA1_Update, SHA1_Final,
              64 /*NID_sha1*/);
-impl_Digest!(SHA256, 256, 512, SHA256_Init, SHA256_Update, SHA256_Final,
+impl_Digest!(SHA256, 256, 256, 512, SHA256_Init, SHA256_Update, SHA256_Final,
              672 /*NID_sha256*/);
-impl_Digest!(SHA384, 384, 1024, SHA384_Init, SHA384_Update, SHA384_Final,
+impl_Digest!(SHA384, 384, 512, 1024, SHA384_Init, SHA384_Update, SHA384_Final,
              673 /*NID_sha384*/);
-impl_Digest!(SHA512, 512, 1024, SHA512_Init, SHA512_Update, SHA512_Final,
+impl_Digest!(SHA512, 512, 512, 1024, SHA512_Init, SHA512_Update, SHA512_Final,
              674 /*NID_sha512*/);
 
 pub const MAX_DIGEST_LEN: usize = 512 / 8;
