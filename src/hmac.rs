@@ -32,7 +32,8 @@
 //! The key that is used to sign messages to send to other parties should be a
 //! `SigningKey`; `SigningContext` or `sign` should be used for the signing.
 //! Each key that is used to authenticate messages received from peers should
-//! be a `VerificationKey`; `verify` should be used for the authentication.
+//! be a `VerificationKey`; `verify` should be used for the authentication. All
+//! of the keys should have distinct, independent, values.
 //!
 //! # Use Case: One-party Anti-tampering Protection
 //!
@@ -42,8 +43,7 @@
 //! `SigningContext` or `sign` should be used for the signing. Use
 //! `verify_with_own_key` to verify the signature using the signing key; this
 //! is equivalent to, but more efficient than, constructing a `VerificationKey`
-//! with the same value as the signing key and then calling `verify`. All of
-//! the keys should have distinct, independent, values.
+//! with the same value as the signing key and then calling `verify`. 
 //!
 //! # Use Case: Key Derivation and Password Hashing
 //!
