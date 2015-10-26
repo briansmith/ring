@@ -731,11 +731,7 @@ OPENSSL_EXPORT int BN_kronecker(const BIGNUM *a, const BIGNUM *b, BN_CTX *ctx);
 /* BN_MONT_CTX_new returns a fresh BN_MONT_CTX or NULL on allocation failure. */
 OPENSSL_EXPORT BN_MONT_CTX *BN_MONT_CTX_new(void);
 
-/* BN_MONT_CTX_init initialises a stack allocated |BN_MONT_CTX|. */
-OPENSSL_EXPORT void BN_MONT_CTX_init(BN_MONT_CTX *mont);
-
-/* BN_MONT_CTX_free frees the contexts of |mont| and, if it was originally
- * allocated with |BN_MONT_CTX_new|, |mont| itself. */
+/* BN_MONT_CTX_free frees memory associated with |mont|. */
 OPENSSL_EXPORT void BN_MONT_CTX_free(BN_MONT_CTX *mont);
 
 /* BN_MONT_CTX_copy sets |to| equal to |from|. It returns |to| on success or
@@ -843,7 +839,6 @@ struct bn_mont_ctx_st {
               * (Ni is only stored for bignum algorithm) */
   BN_ULONG n0[2]; /* least significant word(s) of Ni;
                      (type changed with 0.9.9, was "BN_ULONG n0;" before) */
-  int flags;
   int ri;    /* number of bits in R */
 };
 

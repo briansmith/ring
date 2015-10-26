@@ -130,16 +130,12 @@ BN_MONT_CTX *BN_MONT_CTX_new(void) {
     return NULL;
   }
 
-  BN_MONT_CTX_init(ret);
-  ret->flags = BN_FLG_MALLOCED;
-  return ret;
-}
+  memset(ret, 0, sizeof(BN_MONT_CTX));
+  BN_init(&ret->RR);
+  BN_init(&ret->N);
+  BN_init(&ret->Ni);
 
-void BN_MONT_CTX_init(BN_MONT_CTX *mont) {
-  memset(mont, 0, sizeof(BN_MONT_CTX));
-  BN_init(&mont->RR);
-  BN_init(&mont->N);
-  BN_init(&mont->Ni);
+  return ret;
 }
 
 void BN_MONT_CTX_free(BN_MONT_CTX *mont) {
@@ -150,9 +146,7 @@ void BN_MONT_CTX_free(BN_MONT_CTX *mont) {
   BN_free(&mont->RR);
   BN_free(&mont->N);
   BN_free(&mont->Ni);
-  if (mont->flags & BN_FLG_MALLOCED) {
-    OPENSSL_free(mont);
-  }
+  OPENSSL_free(mont);
 }
 
 BN_MONT_CTX *BN_MONT_CTX_copy(BN_MONT_CTX *to, BN_MONT_CTX *from) {
