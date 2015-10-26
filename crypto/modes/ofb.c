@@ -46,7 +46,6 @@
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  * ==================================================================== */
 
-#include <openssl/modes.h>
 #include <openssl/type_check.h>
 
 #include <assert.h>
