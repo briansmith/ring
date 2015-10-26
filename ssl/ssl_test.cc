@@ -877,19 +877,19 @@ static ScopedSSL_SESSION CreateTestSession(uint32_t number) {
 
 // TODO(davidben): Switch this to a |std::vector<ScopedSSL_SESSION>| once we can
 // rely on a move-aware |std::vector|.
-template <class T>
-class ScopedVector {
+class ScopedSessionVector {
  public:
-  explicit ScopedVector(std::vector<T*> *v) : v_(v) {}
+  explicit ScopedSessionVector(std::vector<SSL_SESSION*> *sessions)
+      : sessions_(sessions) {}
 
-  ~ScopedVector() {
-    for (T *t : *v_) {
-      delete t;
+  ~ScopedSessionVector() {
+    for (SSL_SESSION *session : *sessions_) {
+      SSL_SESSION_free(session);
     }
   }
 
  private:
-  std::vector<T*> *const v_;
+  std::vector<SSL_SESSION*> *const sessions_;
 };
 
 // Test that the internal session cache behaves as expected.
@@ -901,7 +901,7 @@ static bool TestInternalSessionCache() {
 
   // Prepare 10 test sessions.
   std::vector<SSL_SESSION*> sessions;
-  ScopedVector<SSL_SESSION> cleanup(&sessions);
+  ScopedSessionVector cleanup(&sessions);
   for (int i = 0; i < 10; i++) {
     ScopedSSL_SESSION session = CreateTestSession(i);
     if (!session) {
