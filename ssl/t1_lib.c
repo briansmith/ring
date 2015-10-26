@@ -1374,6 +1374,7 @@ static void ext_npn_init(SSL *ssl) {
 static int ext_npn_add_clienthello(SSL *ssl, CBB *out) {
   if (ssl->s3->initial_handshake_complete ||
       ssl->ctx->next_proto_select_cb == NULL ||
+      (ssl->options & SSL_OP_DISABLE_NPN) ||
       SSL_IS_DTLS(ssl)) {
     return 1;
   }
@@ -1398,6 +1399,7 @@ static int ext_npn_parse_serverhello(SSL *ssl, uint8_t *out_alert,
   assert(!ssl->s3->initial_handshake_complete);
   assert(!SSL_IS_DTLS(ssl));
   assert(ssl->ctx->next_proto_select_cb != NULL);
+  assert(!(ssl->options & SSL_OP_DISABLE_NPN));
 
   if (ssl->s3->alpn_selected != NULL) {
     /* NPN and ALPN may not be negotiated in the same connection. */

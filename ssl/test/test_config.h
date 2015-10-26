@@ -99,6 +99,7 @@ struct TestConfig {
   int expect_total_renegotiations = 0;
   bool renegotiate_once = false;
   bool renegotiate_freely = false;
+  bool disable_npn = false;
 };
 
 bool ParseConfig(int argc, char **argv, TestConfig *out_config);

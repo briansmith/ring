@@ -558,6 +558,11 @@ OPENSSL_EXPORT int SSL_version(const SSL *ssl);
  * client's. */
 #define SSL_OP_CIPHER_SERVER_PREFERENCE 0x00400000L
 
+/* SSL_OP_DISABLE_NPN configures an individual |SSL| to not advertise NPN,
+ * despite |SSL_CTX_set_next_proto_select_cb| being configured on the
+ * |SSL_CTX|. */
+#define SSL_OP_DISABLE_NPN 0x00800000L
+
 /* SSL_CTX_set_options enables all options set in |options| (which should be one
  * or more of the |SSL_OP_*| values, ORed together) in |ctx|. It returns a
  * bitmask representing the resulting enabled options. */

@@ -97,6 +97,7 @@ const Flag<bool> kBoolFlags[] = {
   { "-expect-verify-result", &TestConfig::expect_verify_result },
   { "-renegotiate-once", &TestConfig::renegotiate_once },
   { "-renegotiate-freely", &TestConfig::renegotiate_freely },
+  { "-disable-npn", &TestConfig::disable_npn },
 };
 
 const Flag<std::string> kStringFlags[] = {
