@@ -4,6 +4,7 @@ add_executable(
   bssl
 
   args.cc
+  ciphers.cc
   client.cc
   const.cc
   digest.cc

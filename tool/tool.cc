@@ -27,6 +27,7 @@
 #endif
 
 
+bool Ciphers(const std::vector<std::string> &args);
 bool Client(const std::vector<std::string> &args);
 bool DoPKCS12(const std::vector<std::string> &args);
 bool GenerateRSAKey(const std::vector<std::string> &args);
@@ -48,6 +49,7 @@ struct Tool {
 };
 
 static const Tool kTools[] = {
+  { "ciphers", Ciphers },
   { "client", Client },
   { "genrsa", GenerateRSAKey },
   { "md5sum", MD5Sum },
