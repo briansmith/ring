@@ -145,30 +145,6 @@ OPENSSL_EXPORT int RSA_decrypt(RSA *rsa, size_t *out_len, uint8_t *out,
                                size_t max_out, const uint8_t *in, size_t in_len,
                                int padding);
 
-/* RSA_public_encrypt encrypts |flen| bytes from |from| to the public key in
- * |rsa| and writes the encrypted data to |to|. The |to| buffer must have at
- * least |RSA_size| bytes of space. It returns the number of bytes written, or
- * -1 on error. The |padding| argument must be one of the |RSA_*_PADDING|
- * values. If in doubt, |RSA_PKCS1_PADDING| is the most common but
- * |RSA_PKCS1_OAEP_PADDING| is the most secure.
- *
- * WARNING: this function is dangerous because it breaks the usual return value
- * convention. Use |RSA_encrypt| instead. */
-OPENSSL_EXPORT int RSA_public_encrypt(size_t flen, const uint8_t *from,
-                                      uint8_t *to, RSA *rsa, int padding);
-
-/* RSA_private_decrypt decrypts |flen| bytes from |from| with the public key in
- * |rsa| and writes the plaintext to |to|. The |to| buffer must have at
- * least |RSA_size| bytes of space. It returns the number of bytes written, or
- * -1 on error. The |padding| argument must be one of the |RSA_*_PADDING|
- * values. If in doubt, |RSA_PKCS1_PADDING| is the most common but
- * |RSA_PKCS1_OAEP_PADDING| is the most secure.
- *
- * WARNING: this function is dangerous because it breaks the usual return value
- * convention. Use |RSA_decrypt| instead. */
-OPENSSL_EXPORT int RSA_private_decrypt(size_t flen, const uint8_t *from,
-                                       uint8_t *to, RSA *rsa, int padding);
-
 /* RSA_message_index_PKCS1_type_2 performs the first step of a PKCS #1 padding
  * check for decryption. If the |from_len| bytes pointed to at |from| are a
  * valid PKCS #1 message, it returns one and sets |*out_index| to the start of
@@ -237,28 +213,6 @@ OPENSSL_EXPORT int RSA_verify(int hash_nid, const uint8_t *msg, size_t msg_len,
 OPENSSL_EXPORT int RSA_verify_raw(RSA *rsa, size_t *out_len, uint8_t *out,
                                   size_t max_out, const uint8_t *in,
                                   size_t in_len, int padding);
-
-/* RSA_private_encrypt encrypts |flen| bytes from |from| with the private key in
- * |rsa| and writes the encrypted data to |to|. The |to| buffer must have at
- * least |RSA_size| bytes of space. It returns the number of bytes written, or
- * -1 on error. The |padding| argument must be one of the |RSA_*_PADDING|
- * values. If in doubt, |RSA_PKCS1_PADDING| is the most common.
- *
- * WARNING: this function is dangerous because it breaks the usual return value
- * convention. Use |RSA_sign_raw| instead. */
-OPENSSL_EXPORT int RSA_private_encrypt(size_t flen, const uint8_t *from,
-                                       uint8_t *to, RSA *rsa, int padding);
-
-/* RSA_public_decrypt verifies |flen| bytes of signature from |from| using the
- * public key in |rsa| and writes the plaintext to |to|. The |to| buffer must
- * have at least |RSA_size| bytes of space. It returns the number of bytes
- * written, or -1 on error. The |padding| argument must be one of the
- * |RSA_*_PADDING| values. If in doubt, |RSA_PKCS1_PADDING| is the most common.
- *
- * WARNING: this function is dangerous because it breaks the usual return value
- * convention. Use |RSA_verify_raw| instead. */
-OPENSSL_EXPORT int RSA_public_decrypt(size_t flen, const uint8_t *from,
-                                      uint8_t *to, RSA *rsa, int padding);
 
 
 /* Utility functions. */

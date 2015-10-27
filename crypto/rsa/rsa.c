@@ -155,66 +155,6 @@ int RSA_up_ref(RSA *rsa) {
   return 1;
 }
 
-int RSA_public_encrypt(size_t flen, const uint8_t *from, uint8_t *to, RSA *rsa,
-                       int padding) {
-  size_t out_len;
-
-  if (!RSA_encrypt(rsa, &out_len, to, RSA_size(rsa), from, flen, padding)) {
-    return -1;
-  }
-
-  if (out_len > INT_MAX) {
-    OPENSSL_PUT_ERROR(RSA, ERR_R_OVERFLOW);
-    return -1;
-  }
-  return out_len;
-}
-
-int RSA_private_encrypt(size_t flen, const uint8_t *from, uint8_t *to, RSA *rsa,
-                        int padding) {
-  size_t out_len;
-
-  if (!RSA_sign_raw(rsa, &out_len, to, RSA_size(rsa), from, flen, padding)) {
-    return -1;
-  }
-
-  if (out_len > INT_MAX) {
-    OPENSSL_PUT_ERROR(RSA, ERR_R_OVERFLOW);
-    return -1;
-  }
-  return out_len;
-}
-
-int RSA_private_decrypt(size_t flen, const uint8_t *from, uint8_t *to, RSA *rsa,
-                        int padding) {
-  size_t out_len;
-
-  if (!RSA_decrypt(rsa, &out_len, to, RSA_size(rsa), from, flen, padding)) {
-    return -1;
-  }
-
-  if (out_len > INT_MAX) {
-    OPENSSL_PUT_ERROR(RSA, ERR_R_OVERFLOW);
-    return -1;
-  }
-  return out_len;
-}
-
-int RSA_public_decrypt(size_t flen, const uint8_t *from, uint8_t *to, RSA *rsa,
-                       int padding) {
-  size_t out_len;
-
-  if (!RSA_verify_raw(rsa, &out_len, to, RSA_size(rsa), from, flen, padding)) {
-    return -1;
-  }
-
-  if (out_len > INT_MAX) {
-    OPENSSL_PUT_ERROR(RSA, ERR_R_OVERFLOW);
-    return -1;
-  }
-  return out_len;
-}
-
 /* SSL_SIG_LENGTH is the size of an SSL/TLS (prior to TLS 1.2) signature: it's
  * the length of an MD5 and SHA1 hash. */
 static const unsigned SSL_SIG_LENGTH = 36;
