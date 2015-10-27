@@ -33,12 +33,7 @@ fn main() {
     let use_msbuild = host_triple.contains(&"msvc") &&
                       target_triple.contains(&"msvc");
 
-    let debug_var = env::var("DEBUG").unwrap();
-    let is_debug = match debug_var.as_ref() {
-        "true" => true,
-        "false" => false,
-        _ => panic!("$DEBUG is not 'true' or 'false': {}", debug_var)
-    };
+    let disable_opt = env::var("OPT_LEVEL").unwrap() == "0";
 
     // TODO: deal with link-time-optimization flag.
 
@@ -49,7 +44,7 @@ fn main() {
         command_name = "make";
         // Environment variables |CC|, |CXX|, etc. will be inherited from this
         // process.
-        let cmake_build_type = "RELWITHDEBINFO"; // TODO: support DEBUG mode.
+        let cmake_build_type = "RELWITHDEBINFO"; // TODO: disable_opt
         lib_path = Path::new(&out_dir).join("lib");
         args = vec![
             format!("-j{}", env::var("NUM_JOBS").unwrap()),
@@ -68,7 +63,7 @@ fn main() {
             "x86_64" => "x64",
             _ => panic!("unexpected ARCH: {}", target_triple[0])
         };
-        let configuration = if is_debug { "Debug" } else { "Release" };
+        let configuration = if disable_opt { "Debug" } else { "Release" };
         args = vec![
             format!("{}.sln", LIB_NAME),
             format!("/m:{}", env::var("NUM_JOBS").unwrap()),
