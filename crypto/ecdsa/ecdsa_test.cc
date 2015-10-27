@@ -204,54 +204,45 @@ static bool TestBuiltin(FILE *out) {
   };
 
   // Create and verify ECDSA signatures with every available curve.
-  fputs("\ntesting ECDSA_sign(), ECDSA_verify(), ECDSA_do_sign(), and "
-        "ECDSA_do_verify() with some internal curves:\n", out);
 
   for (size_t n = 0; kCurves[n].ec_group_new != NULL; n++) {
-    fprintf(out, "%s: ", kCurves[n].name);
-
     // Create a new ECDSA key.
     ScopedEC_KEY eckey(EC_KEY_generate_key_ex(kCurves[n].ec_group_new));
     if (!eckey) {
-      fprintf(out, " failed\n");
+      fprintf(out, "EC_KEY_generate_key_ex failed for %s\n", kCurves[n].name);
       return false;
     }
 
     const EC_GROUP *group = EC_KEY_get0_group(eckey.get());
     if (!group) {
-      fprintf(out, " failed\n");
+      fprintf(out, "EC_KEY_get0_group failed for %s\n", kCurves[n].name);
       return false;
     }
 
     ScopedBIGNUM order(BN_new());
     if (!order || !EC_GROUP_get_order(group, order.get(), NULL)) {
-      fprintf(out, " failed\n");
+      fprintf(out, "order check failed for %s\n", kCurves[n].name);
       return false;
     }
 
     // Create a second key.
     ScopedEC_KEY wrong_eckey(EC_KEY_generate_key_ex(kCurves[n].ec_group_new));
     if (!wrong_eckey) {
-      fprintf(out, " failed\n");
+      fprintf(out, "EC_KEY_generate_key_ex failed for %s\n", kCurves[n].name);
       return false;
     }
-
-    fprintf(out, ".");
-    fflush(out);
 
     // Check the key.
     if (!EC_KEY_check_key(eckey.get())) {
-      fprintf(out, " failed\n");
+      fprintf(out, "EC_KEY_check_key failed for %s\n", kCurves[n].name);
       return false;
     }
-    fprintf(out, ".");
-    fflush(out);
 
     ScopedOpenSSLBytes eckey_der(nullptr);
     size_t eckey_der_len;
     if (!point2oct(&eckey_der, &eckey_der_len, group,
                    EC_KEY_get0_public_key(eckey.get()))) {
-      fprintf(out, " failed\n");
+      fprintf(out, "Point-to-Oct (right key) failed for %s\n", kCurves[n].name);
       return false;
     }
 
@@ -259,7 +250,7 @@ static bool TestBuiltin(FILE *out) {
     size_t wrong_eckey_der_len;
     if (!point2oct(&wrong_eckey_der, &wrong_eckey_der_len, group,
                    EC_KEY_get0_public_key(wrong_eckey.get()))) {
-      fprintf(out, " failed\n");
+      fprintf(out, "Point-to-Oct (wrong key) failed for %s\n", kCurves[n].name);
       return false;
     }
 
@@ -270,53 +261,47 @@ static bool TestBuiltin(FILE *out) {
     std::vector<uint8_t> signature(sig_len);
     if (!ECDSA_sign(0, digest, 20, bssl::vector_data(&signature), &sig_len,
                     eckey.get())) {
-      fprintf(out, " failed\n");
+      fprintf(out, "ECDSA_sign failed for %s\n", kCurves[n].name);
       return false;
     }
     signature.resize(sig_len);
-    fprintf(out, ".");
-    fflush(out);
     // Verify the signature.
     if (!ECDSA_verify_signed_digest(NID_sha1, digest, 20,
                                     bssl::vector_data(&signature),
                                     signature.size(), kCurves[n].ec_group_new,
                                     eckey_der.get(), eckey_der_len)) {
-      fprintf(out, " failed\n");
+      fprintf(out, "ECDSA_verify_signed_digest (right key) failed for %s\n",
+              kCurves[n].name);
       return false;
     }
-    fprintf(out, ".");
-    fflush(out);
     // Verify the signature with the wrong key.
     if (ECDSA_verify_signed_digest(NID_sha1, digest, 20,
                                    bssl::vector_data(&signature),
                                    signature.size(), kCurves[n].ec_group_new,
                                    wrong_eckey_der.get(), wrong_eckey_der_len)) {
-      fprintf(out, " failed\n");
+      fprintf(out, "ECDSA_verify_signed_digest (wrong key) failed for %s\n",
+              kCurves[n].name);
       return false;
     }
-    fprintf(out, ".");
-    fflush(out);
     // Verify the signature using the wrong digest.
     if (ECDSA_verify_signed_digest(NID_sha1, wrong_digest, 20,
                                    bssl::vector_data(&signature),
                                    signature.size(), kCurves[n].ec_group_new,
                                    eckey_der.get(), eckey_der_len)) {
-      fprintf(out, " failed\n");
+      fprintf(out, "ECDSA_verify_signed_digest (wrong digest) failed for %s\n",
+              kCurves[n].name);
       return false;
     }
-    fprintf(out, ".");
-    fflush(out);
     // Verify a truncated signature.
     if (ECDSA_verify_signed_digest(NID_sha1, digest, 20,
                                    bssl::vector_data(&signature),
                                    signature.size() - 1,
                                    kCurves[n].ec_group_new, eckey_der.get(),
                                    eckey_der_len)) {
-      fprintf(out, " failed\n");
+      fprintf(out, "ECDSA_verify_signed_digest (truncated sig) failed for %s\n",
+              kCurves[n].name);
       return false;
     }
-    fprintf(out, ".");
-    fflush(out);
     // Verify a tampered signature.
     ScopedECDSA_SIG ecdsa_sig(ECDSA_SIG_from_bytes(
         bssl::vector_data(&signature), signature.size()));
@@ -324,56 +309,45 @@ static bool TestBuiltin(FILE *out) {
         !TestTamperedSig(out, kEncodedApi, NID_sha1, digest, 20, ecdsa_sig.get(),
                          kCurves[n].ec_group_new, group,
                          EC_KEY_get0_public_key(eckey.get()), order.get())) {
-      fprintf(out, " failed\n");
+      fprintf(out, "TestTamperedSig  failed for %s\n", kCurves[n].name);
       return false;
     }
-    fprintf(out, ".");
-    fflush(out);
 
     // Test ECDSA_SIG signing and verification.
     // Create a signature.
     ecdsa_sig.reset(ECDSA_do_sign(digest, 20, eckey.get()));
     if (!ecdsa_sig) {
-      fprintf(out, " failed\n");
+      fprintf(out, "ECDSA_do_sign failed for %s\n", kCurves[n].name);
       return false;
     }
-    fprintf(out, ".");
-    fflush(out);
     // Verify the signature using the correct key.
     if (!ECDSA_do_verify_point(digest, 20, ecdsa_sig.get(), group,
                                EC_KEY_get0_public_key(eckey.get()))) {
-      fprintf(out, " failed\n");
+      fprintf(out, "ECDSA_do_verify_point (right key) failed for %s\n",
+              kCurves[n].name);
       return false;
     }
-    fprintf(out, ".");
-    fflush(out);
     // Verify the signature with the wrong key.
     if (ECDSA_do_verify_point(digest, 20, ecdsa_sig.get(), group,
                               EC_KEY_get0_public_key(wrong_eckey.get()))) {
-      fprintf(out, " failed\n");
+      fprintf(out, "ECDSA_do_verify_point (wrong key) failed for %s\n",
+              kCurves[n].name);
       return false;
     }
-    fprintf(out, ".");
-    fflush(out);
     // Verify the signature using the wrong digest.
     if (ECDSA_do_verify_point(wrong_digest, 20, ecdsa_sig.get(),  group,
                               EC_KEY_get0_public_key(eckey.get()))) {
-      fprintf(out, " failed\n");
+      fprintf(out, "ECDSA_do_verify_point (wrong digest) failed for %s\n",
+              kCurves[n].name);
       return false;
     }
-    fprintf(out, ".");
-    fflush(out);
     // Verify a tampered signature.
     if (!TestTamperedSig(out, kRawApi, NID_sha1, digest, 20, ecdsa_sig.get(),
                          kCurves[n].ec_group_new, group,
                          EC_KEY_get0_public_key(eckey.get()), order.get())) {
-      fprintf(out, " failed\n");
+      fprintf(out, "TestTamperedSig failed for %s\n", kCurves[n].name);
       return false;
     }
-    fprintf(out, ".");
-    fflush(out);
-
-    fprintf(out, " ok\n");
     // Clear bogus errors.
     ERR_clear_error();
   }
@@ -423,6 +397,5 @@ int main(void) {
     return 1;
   }
 
-  printf("\nPASS\n");
   return 0;
 }
