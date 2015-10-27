@@ -1212,9 +1212,11 @@ OPENSSL_EXPORT int SSL_in_false_start(const SSL *ssl);
 OPENSSL_EXPORT X509 *SSL_get_peer_certificate(const SSL *ssl);
 
 /* SSL_get_peer_cert_chain returns the peer's certificate chain or NULL if
- * unavailable or the peer did not use certificates. For historical reasons,
- * this may not be available if resuming a serialized |SSL_SESSION|. The caller
- * does not take ownership of the result.
+ * unavailable or the peer did not use certificates. This is the unverified
+ * list of certificates as sent by the peer, not the final chain built during
+ * verification. For historical reasons, this value may not be available if
+ * resuming a serialized |SSL_SESSION|. The caller does not take ownership of
+ * the result.
  *
  * WARNING: This function behaves differently between client and server. If
  * |ssl| is a server, the returned chain does not include the leaf certificate.
