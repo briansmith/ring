@@ -345,9 +345,5 @@ int main(void) {
     }
   }
 
-  if (ret == 0) {
-    printf("PASS\n");
-  }
-
   return ret;
 }

@@ -89,6 +89,5 @@ int main() {
     return false;
   }
 
-  printf("PASS\n");
   return 0;
 }

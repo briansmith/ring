@@ -414,6 +414,5 @@ int main(void) {
     return 1;
   }
 
-  printf("PASS\n");
   return 0;
 }

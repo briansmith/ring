@@ -324,6 +324,5 @@ int FileTestMain(bool (*run_test)(FileTest *t, void *arg), void *arg,
     return 1;
   }
 
-  printf("PASS\n");
   return 0;
 }

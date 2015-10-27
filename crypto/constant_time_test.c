@@ -238,7 +238,6 @@ int main(int argc, char* argv[]) {
   int c, d;
   uint8_t e, f;
   int num_failed = 0, num_all = 0;
-  fprintf(stdout, "Testing constant time operations...\n");
 
   for (i = 0; i < sizeof(test_values) / sizeof(int); ++i) {
     a = test_values[i];
@@ -297,8 +296,6 @@ int main(int argc, char* argv[]) {
   }
 
   if (!num_failed) {
-    fprintf(stdout, "ok (ran %d tests)\n", num_all);
-    fprintf(stdout, "PASS\n");
     return EXIT_SUCCESS;
   } else {
     fprintf(stdout, "%d of %d tests failed!\n", num_failed, num_all);
