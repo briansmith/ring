@@ -15,7 +15,29 @@ name = "ring"
 rustc-serialize = "0.3.15"
 time = "0.1.32"
 
+# Fix the `bench`, `release`, and `test` profiles so they all have the
+# same configuration.
+#
+# XXX: We can't build with `debug = true` yet because that breaks the
+# Windows builds. See https://github.com/briansmith/ring/issues/44.
+
+[profile.bench]
+opt-level = 3
+debug = false
+rpath = false
+lto = true
+debug-assertions = false
+codegen-units = 1
+
 [profile.release]
+opt-level = 3
+debug = false
+rpath = false
+lto = true
+debug-assertions = false
+codegen-units = 1
+
+[profile.test]
 opt-level = 3
 debug = false
 rpath = false
