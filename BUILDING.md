@@ -71,6 +71,10 @@ Windows, where functions need to be tagged with `dllimport` when coming from a
 shared library, define `BORINGSSL_SHARED_LIBRARY` in any code which `#include`s
 the BoringSSL headers.
 
+In order to serve environments where code-size is important as well as those
+where performance is the overriding concern, `OPENSSL_SMALL` can be defined to
+remove some code that is especially large.
+
 ### Building for Android
 
 It's possible to build BoringSSL with the Android NDK using CMake. This has

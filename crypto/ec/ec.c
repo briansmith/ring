@@ -228,7 +228,7 @@ static const struct curve_data P521 = {
 const struct built_in_curve OPENSSL_built_in_curves[] = {
     {
         NID_secp224r1, &P224,
-#if defined(BORINGSSL_USE_INT128_CODE)
+#if defined(BORINGSSL_USE_INT128_CODE) && !defined(OPENSSL_SMALL)
         EC_GFp_nistp224_method,
 #else
         0,

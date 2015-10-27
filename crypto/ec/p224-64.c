@@ -19,7 +19,8 @@
 
 #include <openssl/base.h>
 
-#if defined(OPENSSL_64_BIT) && !defined(OPENSSL_WINDOWS)
+#if defined(OPENSSL_64_BIT) && !defined(OPENSSL_WINDOWS) && \
+    !defined(OPENSSL_SMALL)
 
 #include <openssl/bn.h>
 #include <openssl/ec.h>
@@ -1337,4 +1338,4 @@ const EC_METHOD *EC_GFp_nistp224_method(void) {
   return &ret;
 }
 
-#endif
+#endif  /* 64_BIT && !WINDOWS && !SMALL */
