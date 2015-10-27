@@ -53,7 +53,6 @@ fn main() {
         lib_path = Path::new(&out_dir).join("lib");
         args = vec![
             format!("-j{}", env::var("NUM_JOBS").unwrap()),
-            format!("{}/lib{}-core.a", lib_path.to_str().unwrap(), LIB_NAME),
             format!("TARGET={}", target_str),
             format!("CMAKE_BUILD_TYPE={}", cmake_build_type),
             format!("BUILD_PREFIX={}/", out_dir),
@@ -73,7 +72,6 @@ fn main() {
         args = vec![
             format!("{}.sln", LIB_NAME),
             format!("/m:{}", env::var("NUM_JOBS").unwrap()),
-            format!("/target:lib{}_Windows", LIB_NAME),
             format!("/p:Platform={}", platform),
             format!("/p:Configuration={}", configuration),
             format!("/p:OutRootDir={}/", out_dir),

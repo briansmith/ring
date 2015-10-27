@@ -28,4 +28,7 @@ pub mod rand;
 pub mod rsa;
 
 #[cfg(test)]
+mod exe_tests;
+
+#[cfg(test)]
 mod file_test;

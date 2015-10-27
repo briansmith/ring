@@ -19,8 +19,7 @@ import shutil
 
 latest_clang = "clang-3.7"
 
-languages = [
-    "cpp",
+rusts = [
     "rust-beta",
     "rust-nightly",
     "rust-stable",
@@ -70,31 +69,27 @@ oss = [
 # The second value in each tuple is the value of the NO_ASM paramter.
 targets = {
     "osx" : [
-        ("x86_64-apple-darwin", ""),
-        ("i586-apple-darwin", ""),
+        "x86_64-apple-darwin",
+        "i586-apple-darwin",
     ],
     "linux" : [
-        ("x86_64-pc-linux-gnu", ""),
-        ("i586-pc-linux-gnu", ""),
-        ("x86_64-pc-linux-gnu", "1"),
-        ("i586-pc-linux-gnu", "1"),
+        "x86_64-pc-linux-gnu",
+        "i586-pc-linux-gnu",
+        "x86_64-pc-linux-gnu",
+        "i586-pc-linux-gnu",
     ],
 }
 
 def format_entries():
-    return "\n".join([format_entry(os, target, compiler, no_asm, language, mode)
+    return "\n".join([format_entry(os, target, compiler, rust, mode)
                       for os in oss
-                      for target, no_asm in targets[os]
+                      for target in targets[os]
                       for compiler in compilers[os]
-                      for language in languages
+                      for rust in rusts
                       for mode in modes
-                      # NO_ASM is only relevant for "cpp" builds because the
-                      # Rust build ignores that option.
-                      #
                       # XXX: 32-bit GCC 4.9 does not work because Travis does
                       # not have g++-4.9-multilib whitelisted for use.
-                      if (not (language != "cpp" and  no_asm == "1")) and \
-                         (not (compiler == "gcc-4.9" and
+                      if (not (compiler == "gcc-4.9" and
                                target == "i586-pc-linux-gnu"))])
 
 # We use alternative names (the "_X" suffix) so that, in mk/travis.sh, we can
@@ -106,7 +101,7 @@ def format_entries():
 # line does not get cut off in the Travis CI UI.
 entry_template = """
     - env: TARGET_X=%(target)s CC_X=%(cc)s CXX_X=%(cxx)s MODE_X=%(mode)s
-      language: %(language)s
+      rust: %(rust)s
       os: %(os)s"""
 
 entry_packages_template = """
@@ -119,7 +114,7 @@ entry_sources_template = """
           sources:
             %(sources)s"""
 
-def format_entry(os, target, compiler, no_asm, language, mode):
+def format_entry(os, target, compiler, rust, mode):
     target_words = target.split("-")
     arch = target_words[0]
     vendor = target_words[1]
@@ -145,21 +140,16 @@ def format_entry(os, target, compiler, no_asm, language, mode):
     cc = get_cc(sys, compiler)
     cxx = replace_cc_with_cxx(sys, compiler)
 
-    if language != "cpp":
-        lang, channel = language.split("-")
-        language = "%(lang)s\n      %(lang)s: %(channel)s" % {
-            "lang": lang,
-            "channel": channel,
-        }
+    _, channel = rust.split("-")
 
     return template % {
+            "rust" : channel,
             "cc" : cc,
             "cxx" : cxx,
-            "language" : language,
             "mode" : mode,
             "packages" : "\n            ".join(prefix_all("- ", packages)),
             "sources" : "\n            ".join(prefix_all("- ", sources)),
-            "target" : target + ("" if not no_asm else (" NO_ASM_X=" + no_asm)),
+            "target" : target,
             "os" : os,
             }
 
