@@ -356,7 +356,8 @@ static int PKCS5_v2_PBKDF2_keyivgen(EVP_CIPHER_CTX *ctx,
     goto err;
   }
   long iterations = ASN1_INTEGER_get(pbkdf2param->iter);
-  if (iterations <= 0 || iterations > (long) UINT_MAX) {
+  if (iterations <= 0 ||
+      (sizeof(long) > sizeof(unsigned) && iterations > (long)UINT_MAX)) {
     OPENSSL_PUT_ERROR(PKCS8, PKCS8_R_BAD_ITERATION_COUNT);
     goto err;
   }
