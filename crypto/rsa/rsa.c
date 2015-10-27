@@ -155,7 +155,7 @@ int RSA_up_ref(RSA *rsa) {
   return 1;
 }
 
-int RSA_public_encrypt(int flen, const uint8_t *from, uint8_t *to, RSA *rsa,
+int RSA_public_encrypt(size_t flen, const uint8_t *from, uint8_t *to, RSA *rsa,
                        int padding) {
   size_t out_len;
 
@@ -163,10 +163,14 @@ int RSA_public_encrypt(int flen, const uint8_t *from, uint8_t *to, RSA *rsa,
     return -1;
   }
 
+  if (out_len > INT_MAX) {
+    OPENSSL_PUT_ERROR(RSA, ERR_R_OVERFLOW);
+    return -1;
+  }
   return out_len;
 }
 
-int RSA_private_encrypt(int flen, const uint8_t *from, uint8_t *to, RSA *rsa,
+int RSA_private_encrypt(size_t flen, const uint8_t *from, uint8_t *to, RSA *rsa,
                         int padding) {
   size_t out_len;
 
@@ -174,6 +178,10 @@ int RSA_private_encrypt(int flen, const uint8_t *from, uint8_t *to, RSA *rsa,
     return -1;
   }
 
+  if (out_len > INT_MAX) {
+    OPENSSL_PUT_ERROR(RSA, ERR_R_OVERFLOW);
+    return -1;
+  }
   return out_len;
 }
 
@@ -192,7 +200,7 @@ int RSA_private_decrypt(size_t flen, const uint8_t *from, uint8_t *to, RSA *rsa,
   return out_len;
 }
 
-int RSA_public_decrypt(int flen, const uint8_t *from, uint8_t *to, RSA *rsa,
+int RSA_public_decrypt(size_t flen, const uint8_t *from, uint8_t *to, RSA *rsa,
                        int padding) {
   size_t out_len;
 
@@ -200,6 +208,10 @@ int RSA_public_decrypt(int flen, const uint8_t *from, uint8_t *to, RSA *rsa,
     return -1;
   }
 
+  if (out_len > INT_MAX) {
+    OPENSSL_PUT_ERROR(RSA, ERR_R_OVERFLOW);
+    return -1;
+  }
   return out_len;
 }
 
