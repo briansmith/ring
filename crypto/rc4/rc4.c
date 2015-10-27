@@ -234,23 +234,22 @@ void RC4(RC4_KEY *key, size_t len, const uint8_t *in, uint8_t *out) {
 
 void RC4_set_key(RC4_KEY *rc4key, unsigned len, const uint8_t *key) {
   uint32_t tmp;
-  int id1, id2;
+  unsigned i, id1, id2;
   uint32_t *d;
-  unsigned int i;
 
   d = &rc4key->data[0];
   rc4key->x = 0;
   rc4key->y = 0;
   id1 = id2 = 0;
 
-#define SK_LOOP(d, n)                     \
-  {                                       \
-    tmp = d[(n)];                         \
+#define SK_LOOP(d, n)                    \
+  {                                      \
+    tmp = d[(n)];                        \
     id2 = (key[id1] + tmp + id2) & 0xff; \
-    if (++id1 == len)                     \
-      id1 = 0;                            \
-    d[(n)] = d[id2];                      \
-    d[id2] = tmp;                         \
+    if (++id1 == len)                    \
+      id1 = 0;                           \
+    d[(n)] = d[id2];                     \
+    d[id2] = tmp;                        \
   }
 
   for (i = 0; i < 256; i++) {
