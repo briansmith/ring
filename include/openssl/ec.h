@@ -219,9 +219,7 @@ OPENSSL_EXPORT int EC_POINTs_mul(const EC_GROUP *group, EC_POINT *r,
 
 
 /* Old code expects to get EC_KEY from ec.h. */
-#if !defined(OPENSSL_HEADER_EC_KEY_H)
 #include <openssl/ec_key.h>
-#endif
 
 
 #if defined(__cplusplus)
