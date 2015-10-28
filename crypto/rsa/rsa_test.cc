@@ -510,43 +510,48 @@ static bool TestRSA(const uint8_t *der, size_t der_len,
 
   uint8_t ciphertext[256];
 
-  int num = RSA_public_encrypt(kPlaintextLen, kPlaintext, ciphertext, key.get(),
-                               RSA_PKCS1_PADDING);
-  if (num < 0 || (size_t)num != RSA_size(key.get())) {
+  size_t ciphertext_len = 0;
+  if (!RSA_encrypt(key.get(), &ciphertext_len, ciphertext, sizeof(ciphertext),
+                   kPlaintext, kPlaintextLen, RSA_PKCS1_PADDING) ||
+      ciphertext_len != RSA_size(key.get())) {
     fprintf(stderr, "PKCS#1 v1.5 encryption failed!\n");
     return false;
   }
 
   uint8_t plaintext[256];
-  num = RSA_private_decrypt(num, ciphertext, plaintext, key.get(),
-                            RSA_PKCS1_PADDING);
-  if (num < 0 ||
-      (size_t)num != kPlaintextLen || memcmp(plaintext, kPlaintext, num) != 0) {
+  size_t plaintext_len = 0;
+  if (!RSA_decrypt(key.get(), &plaintext_len, plaintext, sizeof(plaintext),
+                   ciphertext, ciphertext_len, RSA_PKCS1_PADDING) ||
+      plaintext_len != kPlaintextLen ||
+      memcmp(plaintext, kPlaintext, plaintext_len) != 0) {
     fprintf(stderr, "PKCS#1 v1.5 decryption failed!\n");
     return false;
   }
 
-  num = RSA_public_encrypt(kPlaintextLen, kPlaintext, ciphertext, key.get(),
-                           RSA_PKCS1_OAEP_PADDING);
-  if (num < 0 || (size_t)num != RSA_size(key.get())) {
+  ciphertext_len = 0;
+  if (!RSA_encrypt(key.get(), &ciphertext_len, ciphertext, sizeof(ciphertext),
+                   kPlaintext, kPlaintextLen, RSA_PKCS1_OAEP_PADDING) ||
+      ciphertext_len != RSA_size(key.get())) {
     fprintf(stderr, "OAEP encryption failed!\n");
     return false;
   }
 
-  num = RSA_private_decrypt(num, ciphertext, plaintext, key.get(),
-                            RSA_PKCS1_OAEP_PADDING);
-  if (num < 0 ||
-      (size_t)num != kPlaintextLen || memcmp(plaintext, kPlaintext, num) != 0) {
+  plaintext_len = 0;
+  if (!RSA_decrypt(key.get(), &plaintext_len, plaintext, sizeof(plaintext),
+                   ciphertext, ciphertext_len, RSA_PKCS1_OAEP_PADDING) ||
+      plaintext_len != kPlaintextLen ||
+      memcmp(plaintext, kPlaintext, plaintext_len) != 0) {
     fprintf(stderr, "OAEP decryption (encrypted data) failed!\n");
     return false;
   }
 
   // |oaep_ciphertext| should decrypt to |kPlaintext|.
-  num = RSA_private_decrypt(oaep_ciphertext_len, oaep_ciphertext, plaintext,
-                            key.get(), RSA_PKCS1_OAEP_PADDING);
-
-  if (num < 0 ||
-      (size_t)num != kPlaintextLen || memcmp(plaintext, kPlaintext, num) != 0) {
+  plaintext_len = 0;
+  if (!RSA_decrypt(key.get(), &plaintext_len, plaintext, sizeof(plaintext),
+                   oaep_ciphertext, oaep_ciphertext_len,
+                   RSA_PKCS1_OAEP_PADDING) ||
+      plaintext_len != kPlaintextLen ||
+      memcmp(plaintext, kPlaintext, plaintext_len) != 0) {
     fprintf(stderr, "OAEP decryption (test vector data) failed!\n");
     return false;
   }
@@ -555,9 +560,8 @@ static bool TestRSA(const uint8_t *der, size_t der_len,
   memcpy(ciphertext, oaep_ciphertext, oaep_ciphertext_len);
   for (size_t i = 0; i < oaep_ciphertext_len; i++) {
     ciphertext[i] ^= 1;
-    num = RSA_private_decrypt(oaep_ciphertext_len, ciphertext, plaintext,
-                              key.get(), RSA_PKCS1_OAEP_PADDING);
-    if (num > 0) {
+    if (RSA_decrypt(key.get(), &plaintext_len, plaintext, sizeof(plaintext),
+                    ciphertext, oaep_ciphertext_len, RSA_PKCS1_OAEP_PADDING)) {
       fprintf(stderr, "Corrupt data decrypted!\n");
       return false;
     }
@@ -566,9 +570,8 @@ static bool TestRSA(const uint8_t *der, size_t der_len,
 
   // Test truncated ciphertexts.
   for (size_t len = 0; len < oaep_ciphertext_len; len++) {
-    num = RSA_private_decrypt(len, ciphertext, plaintext, key.get(),
-                              RSA_PKCS1_OAEP_PADDING);
-    if (num > 0) {
+    if (RSA_decrypt(key.get(), &plaintext_len, plaintext, sizeof(plaintext),
+                    ciphertext, len, RSA_PKCS1_OAEP_PADDING)) {
       fprintf(stderr, "Corrupt data decrypted!\n");
       return false;
     }
