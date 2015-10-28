@@ -54,10 +54,10 @@
  * copied and put under another distribution licence
  * [including the GNU Public Licence.] */
 
-#ifndef OPENSSL_HEADER_OBJECTS_H
-#define OPENSSL_HEADER_OBJECTS_H
+#ifndef OPENSSL_HEADER_OBJ_H
+#define OPENSSL_HEADER_OBJ_H
 
 #include <openssl/base.h>
 #include <openssl/obj_mac.h>
 
-#endif  /* OPENSSL_HEADER_OBJECTS_H */
+#endif  /* OPENSSL_HEADER_OBJ_H */
