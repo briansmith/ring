@@ -52,7 +52,6 @@
 #include <openssl/aes.h>
 #include <openssl/crypto.h>
 #include <openssl/mem.h>
-#include <openssl/modes.h>
 
 #include "internal.h"
 #include "../test/test_util.h"
