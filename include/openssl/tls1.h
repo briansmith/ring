@@ -430,6 +430,13 @@ extern "C" {
 #define TLS1_CK_ECDHE_RSA_CHACHA20_POLY1305_OLD 0x0300CC13
 #define TLS1_CK_ECDHE_ECDSA_CHACHA20_POLY1305_OLD 0x0300CC14
 
+/* TODO(davidben): Remove these once WebRTC is no longer using them, so they
+ * may point to the future RFC 7539 variant. */
+#define TLS1_CK_ECDHE_RSA_CHACHA20_POLY1305 \
+    TLS1_CK_ECDHE_RSA_CHACHA20_POLY1305_OLD
+#define TLS1_CK_ECDHE_ECDSA_CHACHA20_POLY1305 \
+    TLS1_CK_ECDHE_ECDSA_CHACHA20_POLY1305_OLD
+
 /* XXX
  * Inconsistency alert:
  * The OpenSSL names of ciphers with ephemeral DH here include the string
