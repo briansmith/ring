@@ -89,6 +89,10 @@ if ($xmm && !$avx && `$ENV{CC} -v 2>&1` =~ /(^clang version|based on LLVM) ([3-9
 
 $shaext=$xmm;	### set to zero if compiling for 1.0.1
 
+# TODO(davidben): Consider enabling the Intel SHA Extensions code once it's
+# been tested.
+$shaext = 0;
+
 $unroll_after = 64*4;	# If pre-evicted from L1P cache first spin of
 			# fully unrolled loop was measured to run about
 			# 3-4x slower. If slowdown coefficient is N and

@@ -136,6 +136,10 @@ $ymm=1 if ($xmm && !$ymm && `$ENV{CC} -v 2>&1` =~ /(^clang version|based on LLVM
 
 $shaext=$xmm;	### set to zero if compiling for 1.0.1
 
+# TODO(davidben): Consider enabling the Intel SHA Extensions code once it's
+# been tested.
+$shaext = 0;
+
 &external_label("OPENSSL_ia32cap_P") if ($xmm);
 
 
