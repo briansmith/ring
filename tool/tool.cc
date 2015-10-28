@@ -15,6 +15,7 @@
 #include <string>
 #include <vector>
 
+#include <openssl/crypto.h>
 #include <openssl/err.h>
 
 #if defined(OPENSSL_WINDOWS)
@@ -95,6 +96,8 @@ int main(int argc, char **argv) {
     return 1;
   }
 #endif
+
+  CRYPTO_library_init();
 
   int starting_arg = 1;
   tool_func_t tool = nullptr;
