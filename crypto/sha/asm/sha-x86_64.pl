@@ -2264,7 +2264,8 @@ $code.=<<___;
 	ret
 .size	se_handler,.-se_handler
 ___
-$code.=<<___ if ($SZ == 4 && $shaext);
+
+$code.=<<___ if ($SZ==4 && $shaext);
 .type	shaext_handler,\@abi-omnipotent
 .align	16
 shaext_handler:
@@ -2298,6 +2299,7 @@ shaext_handler:
 	jmp	.Lin_prologue
 .size	shaext_handler,.-shaext_handler
 ___
+
 $code.=<<___;
 .section	.pdata
 .align	4
@@ -2305,7 +2307,7 @@ $code.=<<___;
 	.rva	.LSEH_end_$func
 	.rva	.LSEH_info_$func
 ___
-$code.=<<___ if ($SZ==4 && $shext);
+$code.=<<___ if ($SZ==4 && $shaext);
 	.rva	.LSEH_begin_${func}_shaext
 	.rva	.LSEH_end_${func}_shaext
 	.rva	.LSEH_info_${func}_shaext
