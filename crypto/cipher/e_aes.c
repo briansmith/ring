@@ -200,14 +200,14 @@ static void aesni_ctr32_encrypt_blocks(const uint8_t *in, uint8_t *out,
 
 static char aesni_capable(void);
 
-static ctr128_f aes_ctr_set_key(AES_KEY *aes_key, GCM128_CONTEXT_SK *gcm_ctx,
+static ctr128_f aes_ctr_set_key(AES_KEY *aes_key, GCM128_CONTEXT *gcm_ctx,
                                 block128_f *out_block, const uint8_t *key,
                                 size_t key_len)
                                 OPENSSL_SUPPRESS_UNREACHABLE_CODE_WARNINGS {
   if (aesni_capable()) {
     aesni_set_encrypt_key(key, key_len * 8, aes_key);
     if (gcm_ctx != NULL) {
-      CRYPTO_gcm128_init_sk(gcm_ctx, aes_key, (block128_f)aesni_encrypt);
+      CRYPTO_gcm128_init(gcm_ctx, aes_key, (block128_f)aesni_encrypt);
     }
     if (out_block) {
       *out_block = (block128_f) aesni_encrypt;
@@ -218,7 +218,7 @@ static ctr128_f aes_ctr_set_key(AES_KEY *aes_key, GCM128_CONTEXT_SK *gcm_ctx,
   if (hwaes_capable()) {
     aes_v8_set_encrypt_key(key, key_len * 8, aes_key);
     if (gcm_ctx != NULL) {
-      CRYPTO_gcm128_init_sk(gcm_ctx, aes_key, (block128_f)aes_v8_encrypt);
+      CRYPTO_gcm128_init(gcm_ctx, aes_key, (block128_f)aes_v8_encrypt);
     }
     if (out_block) {
       *out_block = (block128_f) aes_v8_encrypt;
@@ -229,7 +229,7 @@ static ctr128_f aes_ctr_set_key(AES_KEY *aes_key, GCM128_CONTEXT_SK *gcm_ctx,
   if (bsaes_capable()) {
     AES_set_encrypt_key(key, key_len * 8, aes_key);
     if (gcm_ctx != NULL) {
-      CRYPTO_gcm128_init_sk(gcm_ctx, aes_key, (block128_f)AES_encrypt);
+      CRYPTO_gcm128_init(gcm_ctx, aes_key, (block128_f)AES_encrypt);
     }
     if (out_block) {
       *out_block = (block128_f) AES_encrypt;
@@ -243,14 +243,14 @@ static ctr128_f aes_ctr_set_key(AES_KEY *aes_key, GCM128_CONTEXT_SK *gcm_ctx,
       *out_block = (block128_f) vpaes_encrypt;
     }
     if (gcm_ctx != NULL) {
-      CRYPTO_gcm128_init_sk(gcm_ctx, aes_key, (block128_f)vpaes_encrypt);
+      CRYPTO_gcm128_init(gcm_ctx, aes_key, (block128_f)vpaes_encrypt);
     }
     return NULL;
   }
 
   AES_set_encrypt_key(key, key_len * 8, aes_key);
   if (gcm_ctx != NULL) {
-    CRYPTO_gcm128_init_sk(gcm_ctx, aes_key, (block128_f)AES_encrypt);
+    CRYPTO_gcm128_init(gcm_ctx, aes_key, (block128_f)AES_encrypt);
   }
   if (out_block) {
     *out_block = (block128_f) AES_encrypt;
@@ -268,7 +268,7 @@ struct aead_aes_gcm_ctx {
     double align;
     AES_KEY ks;
   } ks;
-  GCM128_CONTEXT_SK gcm;
+  GCM128_CONTEXT gcm;
   ctr128_f ctr;
 };
 
@@ -300,29 +300,28 @@ int evp_aead_aes_gcm_seal(const void *ctx_buf, uint8_t *out, size_t *out_len,
     return 0;
   }
 
-  GCM128_CONTEXT_SK gcm;
+  GCM128_CONTEXT gcm;
 
   const AES_KEY *key = &gcm_ctx->ks.ks;
 
   memcpy(&gcm, &gcm_ctx->gcm, sizeof(gcm));
-  CRYPTO_gcm128_set_96_bit_iv_sk(&gcm, key, nonce);
+  CRYPTO_gcm128_set_96_bit_iv(&gcm, key, nonce);
 
-  if (ad_len > 0 && !CRYPTO_gcm128_aad_sk(&gcm, ad, ad_len)) {
+  if (ad_len > 0 && !CRYPTO_gcm128_aad(&gcm, ad, ad_len)) {
     return 0;
   }
 
   if (gcm_ctx->ctr) {
-    if (!CRYPTO_gcm128_encrypt_ctr32_sk(&gcm, key, in, out, in_len,
-                                        gcm_ctx->ctr)) {
+    if (!CRYPTO_gcm128_encrypt_ctr32(&gcm, key, in, out, in_len, gcm_ctx->ctr)) {
       return 0;
     }
   } else {
-    if (!CRYPTO_gcm128_encrypt_sk(&gcm, key, in, out, in_len)) {
+    if (!CRYPTO_gcm128_encrypt(&gcm, key, in, out, in_len)) {
       return 0;
     }
   }
 
-  CRYPTO_gcm128_tag_sk(&gcm, out + in_len, EVP_AEAD_AES_GCM_TAG_LEN);
+  CRYPTO_gcm128_tag(&gcm, out + in_len, EVP_AEAD_AES_GCM_TAG_LEN);
   return 1;
 }
 
@@ -344,33 +343,33 @@ int evp_aead_aes_gcm_open(const void *ctx_buf, uint8_t *out, size_t *out_len,
 
   uint8_t tag[EVP_AEAD_AES_GCM_TAG_LEN];
   size_t plaintext_len;
-  GCM128_CONTEXT_SK gcm;
+  GCM128_CONTEXT gcm;
 
   plaintext_len = in_len - EVP_AEAD_AES_GCM_TAG_LEN;
 
   const AES_KEY *key = &gcm_ctx->ks.ks;
 
   memcpy(&gcm, &gcm_ctx->gcm, sizeof(gcm));
-  CRYPTO_gcm128_set_96_bit_iv_sk(&gcm, key, nonce);
+  CRYPTO_gcm128_set_96_bit_iv(&gcm, key, nonce);
 
-  if (!CRYPTO_gcm128_aad_sk(&gcm, ad, ad_len)) {
+  if (!CRYPTO_gcm128_aad(&gcm, ad, ad_len)) {
     return 0;
   }
 
   if (gcm_ctx->ctr) {
-    if (!CRYPTO_gcm128_decrypt_ctr32_sk(&gcm, key, in, out,
-                                        in_len - EVP_AEAD_AES_GCM_TAG_LEN,
-                                        gcm_ctx->ctr)) {
+    if (!CRYPTO_gcm128_decrypt_ctr32(&gcm, key, in, out,
+                                     in_len - EVP_AEAD_AES_GCM_TAG_LEN,
+                                     gcm_ctx->ctr)) {
       return 0;
     }
   } else {
-    if (!CRYPTO_gcm128_decrypt_sk(&gcm, key, in, out,
-                                  in_len - EVP_AEAD_AES_GCM_TAG_LEN)) {
+    if (!CRYPTO_gcm128_decrypt(&gcm, key, in, out,
+                               in_len - EVP_AEAD_AES_GCM_TAG_LEN)) {
       return 0;
     }
   }
 
-  CRYPTO_gcm128_tag_sk(&gcm, tag, EVP_AEAD_AES_GCM_TAG_LEN);
+  CRYPTO_gcm128_tag(&gcm, tag, EVP_AEAD_AES_GCM_TAG_LEN);
   if (CRYPTO_memcmp(tag, in + plaintext_len, EVP_AEAD_AES_GCM_TAG_LEN) != 0) {
     OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_BAD_DECRYPT);
     return 0;

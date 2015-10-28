@@ -152,10 +152,10 @@ __inline uint32_t _bswap4(uint32_t val) {
 /* GCM definitions */
 typedef struct { uint64_t hi,lo; } u128;
 
-/* This differs from the old |gcm128_context| in that it does not have the
+/* This differs from OpenSSL's |gcm128_context| in that it does not have the
  * |key| pointer, in order to make it |memcpy|-friendly. See openssl/modes.h
  * for more info. */
-struct gcm128_context_sk {
+struct gcm128_context {
   /* Following 6 names follow names in GCM specification */
   union {
     uint64_t u[2];
