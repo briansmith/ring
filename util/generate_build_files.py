@@ -204,10 +204,8 @@ class Bazel(object):
       self.PrintVariableSection(out, 'tool_sources', files['tool'])
 
       for ((osname, arch), asm_files) in asm_outputs:
-        if osname is not 'linux':
-          continue
         self.PrintVariableSection(
-            out, 'crypto_sources_%s' % arch, asm_files)
+            out, 'crypto_sources_%s_%s' % (osname, arch), asm_files)
 
     with open('BUILD.generated_tests.bzl', 'w+') as out:
       out.write(self.header)
