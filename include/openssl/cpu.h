@@ -94,6 +94,9 @@ extern uint32_t OPENSSL_ia32cap_P[4];
 #endif
 
 #if defined(OPENSSL_ARM) || defined(OPENSSL_AARCH64)
+
+#if !defined(OPENSSL_STATIC_ARMCAP)
+
 /* CRYPTO_is_NEON_capable returns true if the current CPU has a NEON unit. Note
  * that |OPENSSL_armcap_P| also exists and contains the same information in a
  * form that's easier for assembly to use. */
@@ -116,6 +119,46 @@ OPENSSL_EXPORT char CRYPTO_is_NEON_functional(void);
  * compiled with |-mfpu=neon| or if |CRYPTO_set_NEON_capable| has been called
  * with a non-zero argument. */
 OPENSSL_EXPORT void CRYPTO_set_NEON_functional(char neon_functional);
+
+/* CRYPTO_is_ARMv8_AES_capable returns true if the current CPU supports the
+ * ARMv8 AES instruction. */
+int CRYPTO_is_ARMv8_AES_capable(void);
+
+/* CRYPTO_is_ARMv8_PMULL_capable returns true if the current CPU supports the
+ * ARMv8 PMULL instruction. */
+int CRYPTO_is_ARMv8_PMULL_capable(void);
+
+#else
+
+static inline int CRYPTO_is_NEON_capable(void) {
+#if defined(OPENSSL_STATIC_ARMCAP_NEON) || defined(__ARM_NEON__)
+  return 1;
+#else
+  return 0;
+#endif
+}
+
+static inline int CRYPTO_is_NEON_functional(void) {
+  return CRYPTO_is_NEON_capable();
+}
+
+static inline int CRYPTO_is_ARMv8_AES_capable(void) {
+#if defined(OPENSSL_STATIC_ARMCAP_AES)
+  return 1;
+#else
+  return 0;
+#endif
+}
+
+static inline int CRYPTO_is_ARMv8_PMULL_capable(void) {
+#if defined(OPENSSL_STATIC_ARMCAP_PMULL)
+  return 1;
+#else
+  return 0;
+#endif
+}
+
+#endif  /* OPENSSL_STATIC_ARMCAP */
 #endif  /* OPENSSL_ARM */
 
 

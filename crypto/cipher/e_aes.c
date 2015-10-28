@@ -95,7 +95,7 @@ static char bsaes_capable(void) {
 
 #define HWAES
 static int hwaes_capable(void) {
-  return (OPENSSL_armcap_P & ARMV8_AES) != 0;
+  return CRYPTO_is_ARMv8_AES_capable();
 }
 
 int aes_v8_set_encrypt_key(const uint8_t *user_key, const int bits,
@@ -384,7 +384,7 @@ int EVP_has_aes_hardware(void) {
 #if defined(OPENSSL_X86) || defined(OPENSSL_X86_64)
   return aesni_capable() && crypto_gcm_clmul_enabled();
 #elif defined(OPENSSL_ARM) || defined(OPENSSL_AARCH64)
-  return hwaes_capable() && (OPENSSL_armcap_P & ARMV8_PMULL);
+  return hwaes_capable() && CRYPTO_is_ARMv8_PMULL_capable();
 #else
   return 0;
 #endif
