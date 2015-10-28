@@ -53,10 +53,20 @@ die "can't locate x86_64-xlate.pl";
 open OUT,"| \"$^X\" $xlate $flavour $output";
 *STDOUT=*OUT;
 
-# In upstream, this is controlled by shelling out to the compiler to check
-# versions, but BoringSSL is intended to be used with pre-generated perlasm
-# output, so this isn't useful anyway.
-$addx = 1;
+if (`$ENV{CC} -Wa,-v -c -o /dev/null -x assembler /dev/null 2>&1`
+		=~ /GNU assembler version ([2-9]\.[0-9]+)/) {
+	$addx = ($1>=2.23);
+}
+
+if (!$addx && $win64 && ($flavour =~ /nasm/ || $ENV{ASM} =~ /nasm/) &&
+	    `nasm -v 2>&1` =~ /NASM version ([2-9]\.[0-9]+)/) {
+	$addx = ($1>=2.10);
+}
+
+if (!$addx && $win64 && ($flavour =~ /masm/ || $ENV{ASM} =~ /ml64/) &&
+	    `ml64 2>&1` =~ /Version ([0-9]+)\./) {
+	$addx = ($1>=12);
+}
 
 # int bn_mul_mont(
 $rp="%rdi";	# BN_ULONG *rp,
