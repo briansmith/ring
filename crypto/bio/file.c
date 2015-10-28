@@ -129,7 +129,7 @@ BIO *BIO_new_file(const char *filename, const char *mode) {
 
   file = open_file(filename, mode);
   if (file == NULL) {
-    OPENSSL_PUT_SYSTEM_ERROR(fopen);
+    OPENSSL_PUT_SYSTEM_ERROR();
 
     ERR_add_error_data(5, "fopen('", filename, "','", mode, "')");
     if (errno == ENOENT) {
@@ -188,7 +188,7 @@ static int file_read(BIO *b, char *out, int outl) {
 
   size_t ret = fread(out, 1, outl, (FILE *)b->ptr);
   if (ret == 0 && ferror((FILE *)b->ptr)) {
-    OPENSSL_PUT_SYSTEM_ERROR(fread);
+    OPENSSL_PUT_SYSTEM_ERROR();
     OPENSSL_PUT_ERROR(BIO, ERR_R_SYS_LIB);
     return -1;
   }
@@ -258,7 +258,7 @@ static long file_ctrl(BIO *b, int cmd, long num, void *ptr) {
       }
       fp = open_file(ptr, p);
       if (fp == NULL) {
-        OPENSSL_PUT_SYSTEM_ERROR(fopen);
+        OPENSSL_PUT_SYSTEM_ERROR();
         ERR_add_error_data(5, "fopen('", ptr, "','", p, "')");
         OPENSSL_PUT_ERROR(BIO, ERR_R_SYS_LIB);
         ret = 0;

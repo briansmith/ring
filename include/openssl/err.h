@@ -126,7 +126,7 @@ extern "C" {
  *
  * Each error contains:
  *   1) The library (i.e. ec, pem, rsa) which created it.
- *   2) The function, file, and line number of the call that added the error.
+ *   2) The file and line number of the call that added the error.
  *   3) A pointer to some error specific data, which may be NULL.
  *
  * The library identifier and reason code are packed in a uint32_t and there
@@ -182,10 +182,6 @@ OPENSSL_EXPORT uint32_t ERR_peek_error(void);
 OPENSSL_EXPORT uint32_t ERR_peek_error_line(const char **file, int *line);
 OPENSSL_EXPORT uint32_t ERR_peek_error_line_data(const char **file, int *line,
                                                  const char **data, int *flags);
-
-/* ERR_peek_function returns the name of the function which added the least
- * recent error or NULL if the queue is empty. */
-OPENSSL_EXPORT const char *ERR_peek_function(void);
 
 /* The "peek last" functions act like the "peek" functions, above, except that
  * they return the most recent error. */
@@ -246,7 +242,7 @@ typedef int (*ERR_print_errors_callback_t)(const char *str, size_t len,
  * The string will have the following format (which differs from
  * |ERR_error_string|):
  *
- *   [thread id]:error:[error code]:[library name]:[function name]:
+ *   [thread id]:error:[error code]:[library name]:OPENSSL_internal:
  *   [reason string]:[file]:[line number]:[optional string data]
  *
  * (All in one line.)
@@ -298,29 +294,20 @@ OPENSSL_EXPORT const char *ERR_func_error_string(uint32_t packed_error);
 /* ERR_clear_system_error clears the system's error value (i.e. errno). */
 OPENSSL_EXPORT void ERR_clear_system_error(void);
 
-#if defined(OPENSSL_WINDOWS)
-/* TODO(davidben): Use |__func__| directly once the minimum MSVC version
- * supports it. */
-#define OPENSSL_CURRENT_FUNCTION __FUNCTION__
-#else
-#define OPENSSL_CURRENT_FUNCTION __func__
-#endif
-
 /* OPENSSL_PUT_ERROR is used by OpenSSL code to add an error to the error
  * queue. */
-#define OPENSSL_PUT_ERROR(library, reason)                                     \
-  ERR_put_error(ERR_LIB_##library, reason, OPENSSL_CURRENT_FUNCTION, __FILE__, \
-                __LINE__)
+#define OPENSSL_PUT_ERROR(library, reason) \
+  ERR_put_error(ERR_LIB_##library, 0, reason, __FILE__, __LINE__)
 
 /* OPENSSL_PUT_SYSTEM_ERROR is used by OpenSSL code to add an error from the
  * operating system to the error queue. */
 /* TODO(fork): include errno. */
-#define OPENSSL_PUT_SYSTEM_ERROR(func) \
-  ERR_put_error(ERR_LIB_SYS, 0, #func, __FILE__, __LINE__);
+#define OPENSSL_PUT_SYSTEM_ERROR() \
+  ERR_put_error(ERR_LIB_SYS, 0, 0, __FILE__, __LINE__);
 
 /* ERR_put_error adds an error to the error queue, dropping the least recent
  * error if neccessary for space reasons. */
-OPENSSL_EXPORT void ERR_put_error(int library, int reason, const char *function,
+OPENSSL_EXPORT void ERR_put_error(int library, int unused, int reason,
                                   const char *file, unsigned line);
 
 /* ERR_add_error_data takes a variable number (|count|) of const char*
@@ -343,15 +330,12 @@ OPENSSL_EXPORT int ERR_set_mark(void);
 OPENSSL_EXPORT int ERR_pop_to_mark(void);
 
 struct err_error_st {
-  /* function contains the name of the function where the error occured. */
-  const char *function;
   /* file contains the filename where the error occured. */
   const char *file;
   /* data contains optional data. It must be freed with |OPENSSL_free| if
    * |flags&ERR_FLAG_MALLOCED|. */
   char *data;
-  /* packed contains the error library, function and reason, as packed by
-   * ERR_PACK. */
+  /* packed contains the error library and reason, as packed by ERR_PACK. */
   uint32_t packed;
   /* line contains the line number where the error occured. */
   uint16_t line;

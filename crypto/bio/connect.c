@@ -222,7 +222,7 @@ static int conn_state(BIO *bio, BIO_CONNECT *c) {
         ret = setsockopt(bio->num, SOL_SOCKET, SO_KEEPALIVE, (char *)&i,
                          sizeof(i));
         if (ret < 0) {
-          OPENSSL_PUT_SYSTEM_ERROR(setsockopt);
+          OPENSSL_PUT_SYSTEM_ERROR();
           OPENSSL_PUT_ERROR(BIO, BIO_R_KEEPALIVE);
           ERR_add_error_data(4, "host=", c->param_hostname, ":", c->param_port);
           goto exit_loop;
@@ -236,7 +236,7 @@ static int conn_state(BIO *bio, BIO_CONNECT *c) {
             c->state = BIO_CONN_S_BLOCKED_CONNECT;
             bio->retry_reason = BIO_RR_CONNECT;
           } else {
-            OPENSSL_PUT_SYSTEM_ERROR(connect);
+            OPENSSL_PUT_SYSTEM_ERROR();
             OPENSSL_PUT_ERROR(BIO, BIO_R_CONNECT_ERROR);
             ERR_add_error_data(4, "host=", c->param_hostname, ":",
                                c->param_port);
@@ -257,7 +257,7 @@ static int conn_state(BIO *bio, BIO_CONNECT *c) {
             ret = -1;
           } else {
             BIO_clear_retry_flags(bio);
-            OPENSSL_PUT_SYSTEM_ERROR(connect);
+            OPENSSL_PUT_SYSTEM_ERROR();
             OPENSSL_PUT_ERROR(BIO, BIO_R_NBIO_CONNECT_ERROR);
             ERR_add_error_data(4, "host=", c->param_hostname, ":", c->param_port);
             ret = 0;

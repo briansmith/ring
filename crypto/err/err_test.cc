@@ -22,7 +22,7 @@
 
 static bool TestOverflow() {
   for (unsigned i = 0; i < ERR_NUM_ERRORS*2; i++) {
-    ERR_put_error(1, i+1, "function", "test", 1);
+    ERR_put_error(1, 0 /* unused */, i+1, "test", 1);
   }
 
   for (unsigned i = 0; i < ERR_NUM_ERRORS - 1; i++) {
@@ -50,7 +50,7 @@ static bool TestPutError() {
     return false;
   }
 
-  ERR_put_error(1, 2, "function", "test", 4);
+  ERR_put_error(1, 0 /* unused */, 2, "test", 4);
   ERR_add_error_data(1, "testing");
 
   int peeked_line, line, peeked_flags, flags;
@@ -58,7 +58,6 @@ static bool TestPutError() {
   uint32_t peeked_packed_error =
       ERR_peek_error_line_data(&peeked_file, &peeked_line, &peeked_data,
                                &peeked_flags);
-  const char *function = ERR_peek_function();
   uint32_t packed_error = ERR_get_error_line_data(&file, &line, &data, &flags);
 
   if (peeked_packed_error != packed_error ||
@@ -69,8 +68,7 @@ static bool TestPutError() {
     return false;
   }
 
-  if (strcmp(function, "function") != 0 ||
-      strcmp(file, "test") != 0 ||
+  if (strcmp(file, "test") != 0 ||
       line != 4 ||
       (flags & ERR_FLAG_STRING) == 0 ||
       ERR_GET_LIB(packed_error) != 1 ||
@@ -89,7 +87,7 @@ static bool TestClearError() {
     return false;
   }
 
-  ERR_put_error(1, 2, "function", "test", 4);
+  ERR_put_error(1, 0 /* unused */, 2, "test", 4);
   ERR_clear_error();
 
   if (ERR_get_error() != 0) {
@@ -101,7 +99,7 @@ static bool TestClearError() {
 }
 
 static bool TestPrint() {
-  ERR_put_error(1, 2, "function", "test", 4);
+  ERR_put_error(1, 0 /* unused */, 2, "test", 4);
   ERR_add_error_data(1, "testing");
   uint32_t packed_error = ERR_get_error();
 
@@ -114,7 +112,7 @@ static bool TestPrint() {
 }
 
 static bool TestRelease() {
-  ERR_put_error(1, 2, "function", "test", 4);
+  ERR_put_error(1, 0 /* unused */, 2, "test", 4);
   ERR_remove_thread_state(NULL);
   return true;
 }
@@ -134,11 +132,9 @@ static bool TestPutMacro() {
 
   int line;
   const char *file;
-  const char *function = ERR_peek_function();
   uint32_t error = ERR_get_error_line(&file, &line);
 
-  if (strcmp(function, "TestPutMacro") != 0 ||
-      !HasSuffix(file, "err_test.cc") ||
+  if (!HasSuffix(file, "err_test.cc") ||
       line != expected_line ||
       ERR_GET_LIB(error) != ERR_LIB_USER ||
       ERR_GET_REASON(error) != ERR_R_INTERNAL_ERROR) {

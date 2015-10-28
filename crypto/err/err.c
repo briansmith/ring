@@ -281,14 +281,6 @@ uint32_t ERR_peek_error_line_data(const char **file, int *line,
                           flags);
 }
 
-const char *ERR_peek_function(void) {
-  ERR_STATE *state = err_get_state();
-  if (state == NULL || state->bottom == state->top) {
-    return NULL;
-  }
-  return state->errors[(state->bottom + 1) % ERR_NUM_ERRORS].function;
-}
-
 uint32_t ERR_peek_last_error(void) {
   return get_error_values(0 /* peek */, 1 /* top */, NULL, NULL, NULL, NULL);
 }
@@ -346,8 +338,26 @@ void ERR_clear_system_error(void) {
   errno = 0;
 }
 
-static void err_error_string(uint32_t packed_error, const char *func_str,
-                             char *buf, size_t len) {
+char *ERR_error_string(uint32_t packed_error, char *ret) {
+  static char buf[ERR_ERROR_STRING_BUF_LEN];
+
+  if (ret == NULL) {
+    /* TODO(fork): remove this. */
+    ret = buf;
+  }
+
+#if !defined(NDEBUG)
+  /* This is aimed to help catch callers who don't provide
+   * |ERR_ERROR_STRING_BUF_LEN| bytes of space. */
+  memset(ret, 0, ERR_ERROR_STRING_BUF_LEN);
+#endif
+
+  ERR_error_string_n(packed_error, ret, ERR_ERROR_STRING_BUF_LEN);
+
+  return ret;
+}
+
+void ERR_error_string_n(uint32_t packed_error, char *buf, size_t len) {
   char lib_buf[64], reason_buf[64];
   const char *lib_str, *reason_str;
   unsigned lib, reason;
@@ -367,17 +377,13 @@ static void err_error_string(uint32_t packed_error, const char *func_str,
     lib_str = lib_buf;
   }
 
-  if (func_str == NULL) {
-    func_str = "OPENSSL_internal";
-  }
-
-  if (reason_str == NULL) {
+ if (reason_str == NULL) {
     BIO_snprintf(reason_buf, sizeof(reason_buf), "reason(%u)", reason);
     reason_str = reason_buf;
   }
 
-  BIO_snprintf(buf, len, "error:%08" PRIx32 ":%s:%s:%s",
-               packed_error, lib_str, func_str, reason_str);
+  BIO_snprintf(buf, len, "error:%08" PRIx32 ":%s:OPENSSL_internal:%s",
+               packed_error, lib_str, reason_str);
 
   if (strlen(buf) == len - 1) {
     /* output may be truncated; make sure we always have 5 colon-separated
@@ -410,29 +416,6 @@ static void err_error_string(uint32_t packed_error, const char *func_str,
   }
 }
 
-char *ERR_error_string(uint32_t packed_error, char *ret) {
-  static char buf[ERR_ERROR_STRING_BUF_LEN];
-
-  if (ret == NULL) {
-    /* TODO(fork): remove this. */
-    ret = buf;
-  }
-
-#if !defined(NDEBUG)
-  /* This is aimed to help catch callers who don't provide
-   * |ERR_ERROR_STRING_BUF_LEN| bytes of space. */
-  memset(ret, 0, ERR_ERROR_STRING_BUF_LEN);
-#endif
-
-  ERR_error_string_n(packed_error, ret, ERR_ERROR_STRING_BUF_LEN);
-
-  return ret;
-}
-
-void ERR_error_string_n(uint32_t packed_error, char *buf, size_t len) {
-  err_error_string(packed_error, NULL, buf, len);
-}
-
 // err_string_cmp is a compare function for searching error values with
 // |bsearch| in |err_string_lookup|.
 static int err_string_cmp(const void *a, const void *b) {
@@ -461,7 +444,7 @@ static const char *err_string_lookup(uint32_t lib, uint32_t key,
    *   |6 bits|  11 bits  |    15 bits    |
    *
    * The |lib| value is a library identifier: one of the |ERR_LIB_*| values.
-   * The |key| is either a function or a reason code, depending on the context.
+   * The |key| is a reason code, depending on the context.
    * The |offset| is the number of bytes from the start of |string_data| where
    * the (NUL terminated) string for this value can be found.
    *
@@ -577,13 +560,12 @@ void ERR_print_errors_cb(ERR_print_errors_callback_t callback, void *ctx) {
   const unsigned long thread_hash = (uintptr_t) err_get_state();
 
   for (;;) {
-    const char *function = ERR_peek_function();
     packed_error = ERR_get_error_line_data(&file, &line, &data, &flags);
     if (packed_error == 0) {
       break;
     }
 
-    err_error_string(packed_error, function, buf, sizeof(buf));
+    ERR_error_string_n(packed_error, buf, sizeof(buf));
     BIO_snprintf(buf2, sizeof(buf2), "%lu:%s:%s:%d:%s\n", thread_hash, buf,
                  file, line, (flags & ERR_FLAG_STRING) ? data : "");
     if (callback(buf2, strlen(buf2), ctx) <= 0) {
@@ -623,8 +605,8 @@ static void err_set_error_data(char *data, int flags) {
   error->flags = flags;
 }
 
-void ERR_put_error(int library, int reason, const char *function,
-                   const char *file, unsigned line) {
+void ERR_put_error(int library, int unused, int reason, const char *file,
+                   unsigned line) {
   ERR_STATE *const state = err_get_state();
   struct err_error_st *error;
 
@@ -647,7 +629,6 @@ void ERR_put_error(int library, int reason, const char *function,
 
   error = &state->errors[state->top];
   err_clear(error);
-  error->function = function;
   error->file = file;
   error->line = line;
   error->packed = ERR_PACK(library, reason);
