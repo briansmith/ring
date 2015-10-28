@@ -86,6 +86,9 @@
     }                                                                  \
   } while (0)
 
+// kSizeTWithoutLower4Bits is a mask that can be used to zero the lower four
+// bits of a |size_t|.
+static const size_t kSizeTWithoutLower4Bits = (size_t) -16;
 
 static void gcm_init_4bit(u128 Htable[16], uint64_t H[2]) {
   u128 V;
@@ -974,7 +977,7 @@ int CRYPTO_gcm128_encrypt_ctr32_sk(GCM128_CONTEXT_SK *ctx, const void *key,
     len -= GHASH_CHUNK;
   }
 #endif
-  size_t i = len & (size_t)-16; /* i = len, less the remainder modulo 16. */
+  size_t i = len & kSizeTWithoutLower4Bits;
   if (i != 0) {
     size_t j = i / 16;
 
@@ -1085,7 +1088,7 @@ int CRYPTO_gcm128_decrypt_ctr32_sk(GCM128_CONTEXT_SK *ctx, const void *key,
     len -= GHASH_CHUNK;
   }
 #endif
-  size_t i = len & (size_t)-16; /* i = len, less the remainder modulo 16. */
+  size_t i = len & kSizeTWithoutLower4Bits;
   if (i != 0) {
     size_t j = i / 16;
 
