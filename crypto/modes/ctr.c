@@ -46,6 +46,7 @@
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  * ==================================================================== */
 #include <openssl/modes.h>
+#include <openssl/type_check.h>
 
 #include <assert.h>
 #include <string.h>
@@ -72,6 +73,8 @@ static void ctr128_inc(uint8_t *counter) {
   } while (n);
 }
 
+OPENSSL_COMPILE_ASSERT((16 % sizeof(size_t)) == 0, bad_size_t_size);
+
 /* The input encrypted as though 128bit counter mode is being used.  The extra
  * state information to record how much of the 128bit block we have used is
  * contained in *num, and the encrypted counter is kept in ecount_buf.  Both
@@ -91,7 +94,6 @@ void CRYPTO_ctr128_encrypt(const uint8_t *in, uint8_t *out, size_t len,
   assert(key && ecount_buf && num);
   assert(len == 0 || (in && out));
   assert(*num < 16);
-  assert((16 % sizeof(size_t)) == 0);
 
   n = *num;
 
