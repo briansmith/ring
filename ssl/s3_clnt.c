@@ -1456,7 +1456,9 @@ int ssl3_get_new_session_ticket(SSL *s) {
 
   if (CBS_len(&ticket) == 0) {
     /* RFC 5077 allows a server to change its mind and send no ticket after
-     * negotiating the extension. Behave as if no ticket was sent. */
+     * negotiating the extension. The value of |tlsext_ticket_expected| is
+     * checked in |ssl_update_cache| so is cleared here to avoid an unnecessary
+     * update. */
     s->tlsext_ticket_expected = 0;
     return 1;
   }
