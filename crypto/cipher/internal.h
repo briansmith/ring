@@ -96,8 +96,8 @@ inline int aead_check_alias(const uint8_t *in, size_t in_len,
   return 0;
 }
 
-/* The underlying ChaCha implementation may not support inputs larger than
- * 256GB at a time so we disallow even more huge inputs for all AEADs.
+/* |CRYPTO_chacha_20| uses a 32-bit block counter. Therefore we disallow
+ * individual operations that work on more than 256GB at a time, for all AEADs.
  * |in_len_64| is needed because, on 32-bit platforms, size_t is only
  * 32-bits and this produces a warning because it's always false.
  * Casting to uint64_t inside the conditional is not sufficient to stop
