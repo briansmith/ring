@@ -560,8 +560,17 @@ int EC_POINT_mul(const EC_GROUP *group, EC_POINT *r, const BIGNUM *g_scalar,
 int EC_POINTs_mul(const EC_GROUP *group, EC_POINT *r, const BIGNUM *scalar,
                   size_t num, const EC_POINT *points[], const BIGNUM *scalars[],
                   BN_CTX *ctx) {
-  /* TODO: Aren't we supposed to check that the points all have the same
-   * |meth| like other functions do? */
+  size_t i;
+  for (i = 0; i < num; i++) {
+    if (points[i]->meth != r->meth) {
+      break;
+    }
+  }
+  if (i != num) {
+    OPENSSL_PUT_ERROR(EC, EC_R_INCOMPATIBLE_OBJECTS);
+    return 0;
+  }
+
   return group->meth->mul(group, r, scalar, num, points, scalars, ctx);
 }
 
