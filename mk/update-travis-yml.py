@@ -20,9 +20,9 @@ import shutil
 latest_clang = "clang-3.7"
 
 rusts = [
-    "rust-beta",
-    "rust-nightly",
-    "rust-stable",
+    "beta",
+    "nightly",
+    "stable",
 ]
 
 linux_compilers = [
@@ -66,7 +66,6 @@ oss = [
     "linux",
 ]
 
-# The second value in each tuple is the value of the NO_ASM paramter.
 targets = {
     "osx" : [
         "x86_64-apple-darwin",
@@ -140,14 +139,12 @@ def format_entry(os, target, compiler, rust, mode):
     cc = get_cc(sys, compiler)
     cxx = replace_cc_with_cxx(sys, compiler)
 
-    _, channel = rust.split("-")
-
     return template % {
-            "rust" : channel,
             "cc" : cc,
             "cxx" : cxx,
             "mode" : mode,
             "packages" : "\n            ".join(prefix_all("- ", packages)),
+            "rust" : rust,
             "sources" : "\n            ".join(prefix_all("- ", sources)),
             "target" : target,
             "os" : os,

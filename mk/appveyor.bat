@@ -5,8 +5,6 @@ REM This is the recommended way to choose the toolchain version, according to
 REM Appveyor's documentation.
 SET PATH=C:\Program Files (x86)\MSBuild\%TOOLCHAIN_VERSION%\Bin;%PATH%
 
-if [%RUST%] == [msbuild] goto msbuild
-
 set VCVARSALL="C:\Program Files (x86)\Microsoft Visual Studio %TOOLCHAIN_VERSION%\VC\vcvarsall.bat"
 
 if [%Platform%] NEQ [x64] goto win32
@@ -62,15 +60,3 @@ if %ERRORLEVEL% NEQ 0 exit 1
 
 cargo clean --verbose
 if %ERRORLEVEL% NEQ 0 exit 1
-
-goto done
-
-:msbuild
-msbuild "ring.sln" /m /verbosity:normal /logger:"C:\Program Files\AppVeyor\BuildAgent\Appveyor.MSBuildLogger.dll"
-if %ERRORLEVEL% NEQ 0 exit 1
-
-go run util/all_tests.go -build-dir=build/%Platform%-%Configuration%/test/ring
-if %ERRORLEVEL% NEQ 0 exit 1
-goto done
-
-:done

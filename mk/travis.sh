@@ -22,49 +22,19 @@ $CC_X --version
 $CXX_X --version
 make --version
 
-if [[ "${TRAVIS_LANGUAGE}" == "cpp" ]]; then
-  go version
+cargo version
+rustc --version
 
-  make -j2 CC=$CC_X CXX=$CXX_X TARGET=$TARGET_X CMAKE_BUILD_TYPE=$MODE_X \
-           NO_ASM=${NO_ASM_X-}
+if [[ "$MODE_X" == "RELWITHDEBINFO" ]]; then mode=--release; fi
 
-  make -j2 check CC=$CC_X CXX=$CXX_X TARGET=$TARGET_X \
-                 CMAKE_BUILD_TYPE=$MODE_X NO_ASM=${NO_ASM_X-}
+# TODO: Add --target $TARGET_X.
 
-  # Build the documentation to make sure we didn't break it.
-  mkdir build/doc
-  cd util
-  go run doc.go --out=../build/doc
-  cd ..
+CC=$CC_X CXX=$CXX_X cargo build -j2 ${mode-} --verbose
 
-  # Verify nothing was added to source directory during build.
-  ! git clean --dry-run | grep ".*"
-  if [[ $? != 0 ]]; then exit $?; fi
+CC=$CC_X CXX=$CXX_X cargo test -j2 ${mode-} --verbose
 
-  make -j2 clean CC=$CC_X CXX=$CXX_X TARGET=$TARGET_X \
-                 CMAKE_BUILD_TYPE=$MODE_X NO_ASM=${NO_ASM_X-}
+CC=$CC_X CXX=$CXX_X cargo doc --verbose
 
-  # Verify that |make clean| removed all files from the build directory.
-  ! find build -type f | grep ".+"
-  if [[ $? != 0 ]]; then exit $?; fi
-
-elif [[ "${TRAVIS_LANGUAGE}" == "rust" ]]; then
-  cargo version
-  rustc --version
-
-  if [[ "$MODE_X" == "RELWITHDEBINFO" ]]; then mode=--release; fi
-
-  # TODO: Add --target $TARGET_X.
-
-  CC=$CC_X CXX=$CXX_X cargo build -j2 ${mode-} --verbose
-
-  CC=$CC_X CXX=$CXX_X cargo test -j2 ${mode-} --verbose
-
-  CC=$CC_X CXX=$CXX_X cargo doc --verbose
-
-  CC=$CC_X CXX=$CXX_X cargo clean --verbose
-else
-  echo Unknown TRAVIS_LANGUAGE: ${TRAVIS_LANGUAGE}
-fi
+CC=$CC_X CXX=$CXX_X cargo clean --verbose
 
 echo end of mk/travis.sh
