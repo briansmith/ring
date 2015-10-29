@@ -2000,7 +2000,7 @@ int SSL_get_quiet_shutdown(const SSL *ssl) { return ssl->quiet_shutdown; }
 void SSL_set_shutdown(SSL *ssl, int mode) {
   /* It is an error to clear any bits that have already been set. (We can't try
    * to get a second close_notify or send two.) */
-  assert((ssl->shutdown & mode) != ssl->shutdown);
+  assert((ssl->shutdown & mode) == ssl->shutdown);
 
   ssl->shutdown |= mode;
 }
