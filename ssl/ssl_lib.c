@@ -1986,14 +1986,16 @@ void ssl_free_wbio_buffer(SSL *s) {
 }
 
 void SSL_CTX_set_quiet_shutdown(SSL_CTX *ctx, int mode) {
-  ctx->quiet_shutdown = mode;
+  ctx->quiet_shutdown = (mode != 0);
 }
 
 int SSL_CTX_get_quiet_shutdown(const SSL_CTX *ctx) {
   return ctx->quiet_shutdown;
 }
 
-void SSL_set_quiet_shutdown(SSL *ssl, int mode) { ssl->quiet_shutdown = mode; }
+void SSL_set_quiet_shutdown(SSL *ssl, int mode) {
+  ssl->quiet_shutdown = (mode != 0);
+}
 
 int SSL_get_quiet_shutdown(const SSL *ssl) { return ssl->quiet_shutdown; }
 

@@ -3337,42 +3337,8 @@ struct ssl_cipher_st {
 #define SSL_MAX_MASTER_KEY_LENGTH 48
 
 struct ssl_session_st {
-  int ssl_version; /* what ssl version session info is being kept in here? */
-
-  int master_key_length;
-  uint8_t master_key[SSL_MAX_MASTER_KEY_LENGTH];
-  /* session_id - valid? */
-  unsigned int session_id_length;
-  uint8_t session_id[SSL_MAX_SSL_SESSION_ID_LENGTH];
-  /* this is used to determine whether the session is being reused in
-   * the appropriate context. It is up to the application to set this,
-   * via SSL_new */
-  unsigned int sid_ctx_length;
-  uint8_t sid_ctx[SSL_MAX_SID_CTX_LENGTH];
-
-  char *psk_identity;
-  /* Used to indicate that session resumption is not allowed. Applications can
-   * also set this bit for a new session via not_resumable_session_cb to
-   * disable session caching and tickets. */
-  int not_resumable;
-
-  /* peer is the peer's certificate. */
-  X509 *peer;
-
-  /* cert_chain is the certificate chain sent by the peer. NOTE: for historical
-   * reasons, when a client (so the peer is a server), the chain includes
-   * |peer|, but when a server it does not. */
-  STACK_OF(X509) *cert_chain;
-
-  /* when app_verify_callback accepts a session where the peer's certificate is
-   * not ok, we must remember the error for session reuse: */
-  long verify_result; /* only for servers */
-
   CRYPTO_refcount_t references;
-  long timeout;
-  long time;
-
-  const SSL_CIPHER *cipher;
+  int ssl_version; /* what ssl version session info is being kept in here? */
 
   /* key_exchange_info contains an indication of the size of the asymmetric
    * primitive used in the handshake that created this session. In the event
@@ -3386,16 +3352,46 @@ struct ssl_session_st {
    * A zero indicates that the value is unknown. */
   uint32_t key_exchange_info;
 
+  int master_key_length;
+  uint8_t master_key[SSL_MAX_MASTER_KEY_LENGTH];
+
+  /* session_id - valid? */
+  unsigned int session_id_length;
+  uint8_t session_id[SSL_MAX_SSL_SESSION_ID_LENGTH];
+  /* this is used to determine whether the session is being reused in
+   * the appropriate context. It is up to the application to set this,
+   * via SSL_new */
+  unsigned int sid_ctx_length;
+  uint8_t sid_ctx[SSL_MAX_SID_CTX_LENGTH];
+
+  char *psk_identity;
+  /* peer is the peer's certificate. */
+  X509 *peer;
+
+  /* cert_chain is the certificate chain sent by the peer. NOTE: for historical
+   * reasons, when a client (so the peer is a server), the chain includes
+   * |peer|, but when a server it does not. */
+  STACK_OF(X509) *cert_chain;
+
+  /* when app_verify_callback accepts a session where the peer's certificate is
+   * not ok, we must remember the error for session reuse: */
+  long verify_result; /* only for servers */
+
+  long timeout;
+  long time;
+
+  const SSL_CIPHER *cipher;
+
   CRYPTO_EX_DATA ex_data; /* application specific data */
 
   /* These are used to make removal of session-ids more efficient and to
    * implement a maximum cache size. */
   SSL_SESSION *prev, *next;
   char *tlsext_hostname;
+
   /* RFC4507 info */
   uint8_t *tlsext_tick;               /* Session ticket */
   size_t tlsext_ticklen;              /* Session ticket length */
-  uint32_t tlsext_tick_lifetime_hint; /* Session lifetime hint in seconds */
 
   size_t tlsext_signed_cert_timestamp_list_length;
   uint8_t *tlsext_signed_cert_timestamp_list; /* Server's list. */
@@ -3404,20 +3400,30 @@ struct ssl_session_st {
   size_t ocsp_response_length;
   uint8_t *ocsp_response;
 
-  char peer_sha256_valid; /* Non-zero if peer_sha256 is valid */
-  uint8_t
-      peer_sha256[SHA256_DIGEST_LENGTH]; /* SHA256 of peer certificate */
+  /* peer_sha256 contains the SHA-256 hash of the peer's certificate if
+   * |peer_sha256_valid| is true. */
+  uint8_t peer_sha256[SHA256_DIGEST_LENGTH];
 
   /* original_handshake_hash contains the handshake hash (either SHA-1+MD5 or
    * SHA-2, depending on TLS version) for the original, full handshake that
    * created a session. This is used by Channel IDs during resumption. */
   uint8_t original_handshake_hash[EVP_MAX_MD_SIZE];
-  unsigned int original_handshake_hash_len;
+  unsigned original_handshake_hash_len;
+
+  uint32_t tlsext_tick_lifetime_hint; /* Session lifetime hint in seconds */
 
   /* extended_master_secret is true if the master secret in this session was
    * generated using EMS and thus isn't vulnerable to the Triple Handshake
    * attack. */
-  char extended_master_secret;
+  unsigned extended_master_secret:1;
+
+  /* peer_sha256_valid is non-zero if |peer_sha256| is valid. */
+  unsigned peer_sha256_valid:1; /* Non-zero if peer_sha256 is valid */
+
+  /* not_resumable is used to indicate that session resumption is not allowed.
+   * Applications can also set this bit for a new session via
+   * not_resumable_session_cb to disable session caching and tickets. */
+  unsigned not_resumable:1;
 };
 
 /* ssl_cipher_preference_list_st contains a list of SSL_CIPHERs with
@@ -3592,10 +3598,6 @@ struct ssl_ctx_st {
    * abort. */
   int (*dos_protection_cb) (const struct ssl_early_callback_ctx *);
 
-  /* quiet_shutdown is true if the connection should not send a close_notify on
-   * shutdown. */
-  int quiet_shutdown;
-
   /* Maximum amount of data to send in one fragment. actual record size can be
    * more than this due to padding and MAC overheads. */
   uint16_t max_send_fragment;
@@ -3669,21 +3671,12 @@ struct ssl_ctx_st {
   size_t tlsext_ellipticcurvelist_length;
   uint16_t *tlsext_ellipticcurvelist;
 
-  /* If true, a client will advertise the Channel ID extension and a server
-   * will echo it. */
-  char tlsext_channel_id_enabled;
   /* The client's Channel ID private key. */
   EVP_PKEY *tlsext_channel_id_private;
-
-  /* If true, a client will request certificate timestamps. */
-  char signed_cert_timestamps_enabled;
 
   /* Signed certificate timestamp list to be sent to the client, if requested */
   uint8_t *signed_cert_timestamp_list;
   size_t signed_cert_timestamp_list_length;
-
-  /* If true, a client will request a stapled OCSP response. */
-  char ocsp_stapling_enabled;
 
   /* OCSP response to be sent to the client, if requested. */
   uint8_t *ocsp_response;
@@ -3696,19 +3689,27 @@ struct ssl_ctx_st {
   /* current_time_cb, if not NULL, is the function to use to get the current
    * time. It sets |*out_clock| to the current time. */
   void (*current_time_cb)(const SSL *ssl, struct timeval *out_clock);
+
+  /* quiet_shutdown is true if the connection should not send a close_notify on
+   * shutdown. */
+  unsigned quiet_shutdown:1;
+
+  /* ocsp_stapling_enabled is only used by client connections and indicates
+   * whether OCSP stapling will be requested. */
+  unsigned ocsp_stapling_enabled:1;
+
+  /* If true, a client will request certificate timestamps. */
+  unsigned signed_cert_timestamps_enabled:1;
+
+  /* tlsext_channel_id_enabled is copied from the |SSL_CTX|. For a server,
+   * means that we'll accept Channel IDs from clients. For a client, means that
+   * we'll advertise support. */
+  unsigned tlsext_channel_id_enabled:1;
 };
 
 struct ssl_st {
   /* version is the protocol version. */
   int version;
-
-  /* method is the method table corresponding to the current protocol (DTLS or
-   * TLS). */
-  const SSL_PROTOCOL_METHOD *method;
-
-  /* enc_method is the method table corresponding to the current protocol
-   * version. */
-  const SSL3_ENC_METHOD *enc_method;
 
   /* max_version is the maximum acceptable protocol version. If zero, the
    * maximum supported version, currently (D)TLS 1.2, is used. */
@@ -3718,6 +3719,14 @@ struct ssl_st {
    * minimum supported version, currently SSL 3.0 and DTLS 1.0, is used */
   uint16_t min_version;
 
+  /* method is the method table corresponding to the current protocol (DTLS or
+   * TLS). */
+  const SSL_PROTOCOL_METHOD *method;
+
+  /* enc_method is the method table corresponding to the current protocol
+   * version. */
+  const SSL3_ENC_METHOD *enc_method;
+
   /* There are 2 BIO's even though they are normally both the same. This is so
    * data can be read and written to different handlers */
 
@@ -3726,13 +3735,6 @@ struct ssl_st {
   BIO *bbio; /* used during session-id reuse to concatenate
               * messages */
 
-  /* This holds a variable that indicates what we were doing when a 0 or -1 is
-   * returned.  This is needed for non-blocking IO so we know what request
-   * needs re-doing when in SSL_accept or SSL_connect */
-  int rwstate;
-
-  /* true when we are actually in SSL_accept() or SSL_connect() */
-  int in_handshake;
   int (*handshake_func)(SSL *);
 
   /* Imagine that here's a boolean member "init" that is switched as soon as
@@ -3740,15 +3742,6 @@ struct ssl_st {
    * "state" and "handshake_func" are properly initialized.  But as
    * handshake_func is == 0 until then, we use this test instead of an "init"
    * member. */
-
-  /* server is true iff the this SSL* is the server half. Note: before the SSL*
-   * is initialized by either SSL_set_accept_state or SSL_set_connect_state,
-   * the side is not determined. In this state, server is always false. */
-  int server;
-
-  /* quiet_shutdown is true if the connection should not send a close_notify on
-   * shutdown. */
-  int quiet_shutdown;
 
   int shutdown; /* we have shut things down, 0x01 sent, 0x02
                  * for received */
@@ -3768,8 +3761,6 @@ struct ssl_st {
                        const void *buf, size_t len, SSL *ssl, void *arg);
   void *msg_callback_arg;
 
-  int hit; /* reusing a previous session */
-
   X509_VERIFY_PARAM *param;
 
   /* crypto */
@@ -3785,6 +3776,11 @@ struct ssl_st {
   /* This is used to hold the server certificate used */
   struct cert_st /* CERT */ *cert;
 
+  /* This holds a variable that indicates what we were doing when a 0 or -1 is
+   * returned.  This is needed for non-blocking IO so we know what request
+   * needs re-doing when in SSL_accept or SSL_connect */
+  int rwstate;
+
   /* the session_id_context is used to ensure sessions are only reused
    * in the appropriate context */
   unsigned int sid_ctx_length;
@@ -3793,9 +3789,6 @@ struct ssl_st {
   /* This can also be in the session once a session is established */
   SSL_SESSION *session;
 
-  /* Used in SSL2 and SSL3 */
-  int verify_mode; /* 0 don't care about verify failure.
-                    * 1 fail if verify fails */
   int (*verify_callback)(int ok,
                          X509_STORE_CTX *ctx); /* fail if callback returns 0 */
 
@@ -3852,18 +3845,8 @@ struct ssl_st {
    * DTLS-SRTP. */
   const SRTP_PROTECTION_PROFILE *srtp_profile;
 
-  /* Copied from the SSL_CTX. For a server, means that we'll accept Channel IDs
-   * from clients. For a client, means that we'll advertise support. */
-  char tlsext_channel_id_enabled;
   /* The client's Channel ID private key. */
   EVP_PKEY *tlsext_channel_id_private;
-
-  /* Enable signed certificate time stamps. Currently client only. */
-  char signed_cert_timestamps_enabled;
-
-  /* ocsp_stapling_enabled is only used by client connections and indicates
-   * whether OCSP stapling will be requested. */
-  char ocsp_stapling_enabled;
 
   /* For a client, this contains the list of supported protocols in wire
    * format. */
@@ -3878,6 +3861,37 @@ struct ssl_st {
    * don't support. */
   EVP_CIPHER_CTX *enc_read_ctx;
   EVP_MD_CTX *read_hash;
+
+  /* in_handshake is non-zero when we are actually in SSL_accept() or
+   * SSL_connect() */
+  int in_handshake;
+
+  /* verify_mode is a bitmask of |SSL_VERIFY_*| values. */
+  uint8_t verify_mode;
+
+  /* hit is true if this connection is resuming a previous session. */
+  unsigned hit:1;
+
+  /* server is true iff the this SSL* is the server half. Note: before the SSL*
+   * is initialized by either SSL_set_accept_state or SSL_set_connect_state,
+   * the side is not determined. In this state, server is always false. */
+  unsigned server:1;
+
+  /* quiet_shutdown is true if the connection should not send a close_notify on
+   * shutdown. */
+  unsigned quiet_shutdown:1;
+
+  /* Enable signed certificate time stamps. Currently client only. */
+  unsigned signed_cert_timestamps_enabled:1;
+
+  /* ocsp_stapling_enabled is only used by client connections and indicates
+   * whether OCSP stapling will be requested. */
+  unsigned ocsp_stapling_enabled:1;
+
+  /* tlsext_channel_id_enabled is copied from the |SSL_CTX|. For a server,
+   * means that we'll accept Channel IDs from clients. For a client, means that
+   * we'll advertise support. */
+  unsigned tlsext_channel_id_enabled:1;
 };
 
 typedef struct ssl3_record_st {
