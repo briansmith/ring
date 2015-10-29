@@ -172,6 +172,7 @@ CPPFLAGS += \
   -Winvalid-pch \
   -Wmissing-include-dirs \
   -Wredundant-decls \
+  -Wsign-compare \
   -Wuninitialized \
   -Wwrite-strings \
   $(NULL)
