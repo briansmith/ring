@@ -73,7 +73,7 @@
   64 /* exponent limit enforced for "large" modulus only */
 
 
-static int finish(RSA *rsa) {
+int rsa_default_finish(RSA *rsa) {
   BN_MONT_CTX_free(rsa->_method_mod_n);
   BN_MONT_CTX_free(rsa->_method_mod_p);
   BN_MONT_CTX_free(rsa->_method_mod_q);
@@ -90,12 +90,12 @@ static int finish(RSA *rsa) {
   return 1;
 }
 
-static size_t size(const RSA *rsa) {
+size_t rsa_default_size(const RSA *rsa) {
   return BN_num_bytes(rsa->n);
 }
 
-static int encrypt(RSA *rsa, size_t *out_len, uint8_t *out, size_t max_out,
-                   const uint8_t *in, size_t in_len, int padding) {
+int rsa_default_encrypt(RSA *rsa, size_t *out_len, uint8_t *out, size_t max_out,
+                        const uint8_t *in, size_t in_len, int padding) {
   const unsigned rsa_size = RSA_size(rsa);
   BIGNUM *f, *result;
   uint8_t *buf = NULL;
@@ -311,8 +311,9 @@ static void rsa_blinding_release(RSA *rsa, BN_BLINDING *blinding,
 }
 
 /* signing */
-static int sign_raw(RSA *rsa, size_t *out_len, uint8_t *out, size_t max_out,
-                    const uint8_t *in, size_t in_len, int padding) {
+int rsa_default_sign_raw(RSA *rsa, size_t *out_len, uint8_t *out,
+                         size_t max_out, const uint8_t *in, size_t in_len,
+                         int padding) {
   const unsigned rsa_size = RSA_size(rsa);
   uint8_t *buf = NULL;
   int i, ret = 0;
@@ -360,8 +361,8 @@ err:
   return ret;
 }
 
-static int decrypt(RSA *rsa, size_t *out_len, uint8_t *out, size_t max_out,
-                   const uint8_t *in, size_t in_len, int padding) {
+int rsa_default_decrypt(RSA *rsa, size_t *out_len, uint8_t *out, size_t max_out,
+                        const uint8_t *in, size_t in_len, int padding) {
   const unsigned rsa_size = RSA_size(rsa);
   int r = -1;
   uint8_t *buf = NULL;
@@ -425,8 +426,9 @@ err:
   return ret;
 }
 
-static int verify_raw(RSA *rsa, size_t *out_len, uint8_t *out, size_t max_out,
-                      const uint8_t *in, size_t in_len, int padding) {
+int rsa_default_verify_raw(RSA *rsa, size_t *out_len, uint8_t *out,
+                           size_t max_out, const uint8_t *in, size_t in_len,
+                           int padding) {
   const unsigned rsa_size = RSA_size(rsa);
   BIGNUM *f, *result;
   int ret = 0;
@@ -541,8 +543,8 @@ err:
   return ret;
 }
 
-static int private_transform(RSA *rsa, uint8_t *out, const uint8_t *in,
-                             size_t len) {
+int rsa_default_private_transform(RSA *rsa, uint8_t *out, const uint8_t *in,
+                                  size_t len) {
   BIGNUM *f, *result;
   BN_CTX *ctx = NULL;
   unsigned blinding_index = 0;
@@ -830,8 +832,8 @@ err:
   return ret;
 }
 
-static int keygen_multiprime(RSA *rsa, int bits, int num_primes,
-                             BIGNUM *e_value, BN_GENCB *cb) {
+int rsa_default_multi_prime_keygen(RSA *rsa, int bits, int num_primes,
+                                   BIGNUM *e_value, BN_GENCB *cb) {
   BIGNUM *r0 = NULL, *r1 = NULL, *r2 = NULL, *r3 = NULL, *tmp;
   BIGNUM local_r0, local_d, local_p;
   BIGNUM *pr0, *d, *p;
@@ -1119,11 +1121,15 @@ err:
   return ok;
 }
 
-static int keygen(RSA *rsa, int bits, BIGNUM *e_value, BN_GENCB *cb) {
-  return keygen_multiprime(rsa, bits, 2 /* num primes */, e_value, cb);
+int rsa_default_keygen(RSA *rsa, int bits, BIGNUM *e_value, BN_GENCB *cb) {
+  return rsa_default_multi_prime_keygen(rsa, bits, 2 /* num primes */, e_value,
+                                        cb);
 }
 
-const struct rsa_meth_st RSA_default_method = {
+/* Many of these methods are NULL to more easily drop unused functions. The
+ * wrapper functions will select the appropriate |rsa_default_*| for all
+ * methods. */
+const RSA_METHOD RSA_default_method = {
   {
     0 /* references */,
     1 /* is_static */,
@@ -1131,27 +1137,27 @@ const struct rsa_meth_st RSA_default_method = {
   NULL /* app_data */,
 
   NULL /* init */,
-  finish,
+  NULL /* finish (defaults to rsa_default_finish) */,
 
-  size,
+  NULL /* size (defaults to rsa_default_size) */,
 
   NULL /* sign */,
   NULL /* verify */,
 
-  encrypt,
-  sign_raw,
-  decrypt,
-  verify_raw,
+  NULL /* encrypt (defaults to rsa_default_encrypt) */,
+  NULL /* sign_raw (defaults to rsa_default_sign_raw) */,
+  NULL /* decrypt (defaults to rsa_default_decrypt) */,
+  NULL /* verify_raw (defaults to rsa_default_verify_raw) */,
 
-  private_transform,
+  NULL /* private_transform (defaults to rsa_default_private_transform) */,
 
-  mod_exp /* mod_exp */,
+  mod_exp,
   BN_mod_exp_mont /* bn_mod_exp */,
 
   RSA_FLAG_CACHE_PUBLIC | RSA_FLAG_CACHE_PRIVATE,
 
-  keygen,
-  keygen_multiprime,
+  NULL /* keygen (defaults to rsa_default_keygen) */,
+  NULL /* multi_prime_keygen (defaults to rsa_default_multi_prime_keygen) */,
 
   NULL /* supports_digest */,
 };

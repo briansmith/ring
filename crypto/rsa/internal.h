@@ -65,6 +65,29 @@ extern "C" {
 #endif
 
 
+/* Default implementations of RSA operations. */
+
+extern const RSA_METHOD RSA_default_method;
+
+int rsa_default_finish(RSA *rsa);
+size_t rsa_default_size(const RSA *rsa);
+int rsa_default_encrypt(RSA *rsa, size_t *out_len, uint8_t *out, size_t max_out,
+                        const uint8_t *in, size_t in_len, int padding);
+int rsa_default_sign_raw(RSA *rsa, size_t *out_len, uint8_t *out,
+                         size_t max_out, const uint8_t *in, size_t in_len,
+                         int padding);
+int rsa_default_decrypt(RSA *rsa, size_t *out_len, uint8_t *out, size_t max_out,
+                        const uint8_t *in, size_t in_len, int padding);
+int rsa_default_verify_raw(RSA *rsa, size_t *out_len, uint8_t *out,
+                           size_t max_out, const uint8_t *in, size_t in_len,
+                           int padding);
+int rsa_default_private_transform(RSA *rsa, uint8_t *out, const uint8_t *in,
+                                  size_t len);
+int rsa_default_multi_prime_keygen(RSA *rsa, int bits, int num_primes,
+                                   BIGNUM *e_value, BN_GENCB *cb);
+int rsa_default_keygen(RSA *rsa, int bits, BIGNUM *e_value, BN_GENCB *cb);
+
+
 #define RSA_PKCS1_PADDING_SIZE 11
 
 

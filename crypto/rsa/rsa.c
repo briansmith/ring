@@ -71,8 +71,6 @@
 #include "../internal.h"
 
 
-extern const RSA_METHOD RSA_default_method;
-
 static CRYPTO_EX_DATA_CLASS g_ex_data_class = CRYPTO_EX_DATA_CLASS_INIT;
 
 RSA *RSA_new(void) { return RSA_new_method(NULL); }
@@ -178,7 +176,7 @@ int RSA_generate_key_ex(RSA *rsa, int bits, BIGNUM *e_value, BN_GENCB *cb) {
     return rsa->meth->keygen(rsa, bits, e_value, cb);
   }
 
-  return RSA_default_method.keygen(rsa, bits, e_value, cb);
+  return rsa_default_keygen(rsa, bits, e_value, cb);
 }
 
 int RSA_generate_multi_prime_key(RSA *rsa, int bits, int num_primes,
@@ -187,8 +185,7 @@ int RSA_generate_multi_prime_key(RSA *rsa, int bits, int num_primes,
     return rsa->meth->multi_prime_keygen(rsa, bits, num_primes, e_value, cb);
   }
 
-  return RSA_default_method.multi_prime_keygen(rsa, bits, num_primes, e_value,
-                                               cb);
+  return rsa_default_multi_prime_keygen(rsa, bits, num_primes, e_value, cb);
 }
 
 int RSA_encrypt(RSA *rsa, size_t *out_len, uint8_t *out, size_t max_out,
@@ -197,8 +194,7 @@ int RSA_encrypt(RSA *rsa, size_t *out_len, uint8_t *out, size_t max_out,
     return rsa->meth->encrypt(rsa, out_len, out, max_out, in, in_len, padding);
   }
 
-  return RSA_default_method.encrypt(rsa, out_len, out, max_out, in, in_len,
-                                    padding);
+  return rsa_default_encrypt(rsa, out_len, out, max_out, in, in_len, padding);
 }
 
 int RSA_public_encrypt(size_t flen, const uint8_t *from, uint8_t *to, RSA *rsa,
@@ -222,8 +218,7 @@ int RSA_sign_raw(RSA *rsa, size_t *out_len, uint8_t *out, size_t max_out,
     return rsa->meth->sign_raw(rsa, out_len, out, max_out, in, in_len, padding);
   }
 
-  return RSA_default_method.sign_raw(rsa, out_len, out, max_out, in, in_len,
-                                     padding);
+  return rsa_default_sign_raw(rsa, out_len, out, max_out, in, in_len, padding);
 }
 
 int RSA_private_encrypt(size_t flen, const uint8_t *from, uint8_t *to, RSA *rsa,
@@ -247,8 +242,7 @@ int RSA_decrypt(RSA *rsa, size_t *out_len, uint8_t *out, size_t max_out,
     return rsa->meth->decrypt(rsa, out_len, out, max_out, in, in_len, padding);
   }
 
-  return RSA_default_method.decrypt(rsa, out_len, out, max_out, in, in_len,
-                                    padding);
+  return rsa_default_decrypt(rsa, out_len, out, max_out, in, in_len, padding);
 }
 
 int RSA_private_decrypt(size_t flen, const uint8_t *from, uint8_t *to, RSA *rsa,
@@ -272,8 +266,8 @@ int RSA_verify_raw(RSA *rsa, size_t *out_len, uint8_t *out, size_t max_out,
     return rsa->meth->verify_raw(rsa, out_len, out, max_out, in, in_len, padding);
   }
 
-  return RSA_default_method.verify_raw(rsa, out_len, out, max_out, in, in_len,
-                                       padding);
+  return rsa_default_verify_raw(rsa, out_len, out, max_out, in, in_len,
+                                padding);
 }
 
 int RSA_public_decrypt(size_t flen, const uint8_t *from, uint8_t *to, RSA *rsa,
@@ -296,7 +290,7 @@ unsigned RSA_size(const RSA *rsa) {
     return rsa->meth->size(rsa);
   }
 
-  return RSA_default_method.size(rsa);
+  return rsa_default_size(rsa);
 }
 
 int RSA_is_opaque(const RSA *rsa) {
@@ -808,7 +802,7 @@ int RSA_private_transform(RSA *rsa, uint8_t *out, const uint8_t *in,
     return rsa->meth->private_transform(rsa, out, in, len);
   }
 
-  return RSA_default_method.private_transform(rsa, out, in, len);
+  return rsa_default_private_transform(rsa, out, in, len);
 }
 
 int RSA_blinding_on(RSA *rsa, BN_CTX *ctx) {
