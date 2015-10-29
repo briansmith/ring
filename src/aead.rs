@@ -342,12 +342,14 @@ pub static CHACHA20_POLY1305: Algorithm = Algorithm {
     open: evp_aead_chacha20_poly1305_open,
 };
 
-/// The old ChaCha20-Poly13065 AEAD construction used in the experimental TLS
-/// cipher suites with IDs `0xCC13` (ECDHE-RSA) and `0xCC14` (ECDHE-ECDSA).
+/// The old ChaCha20-Poly13065 construction used in OpenSSH's
+/// [chacha20-poly1305@openssh.com](http://cvsweb.openbsd.org/cgi-bin/cvsweb/~checkout~/src/usr.bin/ssh/PROTOCOL.chacha20poly1305)
+/// and the experimental TLS cipher suites with IDs `0xCC13` (ECDHE-RSA) and
+/// `0xCC14` (ECDHE-ECDSA). Use `CHACHA20_POLY1305` instead.
 ///
 /// The keys are 256 bits long and the nonces are 96 bits. The first four bytes
 /// of the nonce must be `[0, 0, 0, 0]` in order to interoperate with other
-/// implementations.
+/// implementations, which use 64-bit nonces.
 pub static CHACHA20_POLY1305_OLD: Algorithm = Algorithm {
     key_len: CHACHA20_KEY_LEN,
     nonce_len: 96 / 8,
