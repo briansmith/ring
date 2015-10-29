@@ -1388,7 +1388,7 @@ int SSL_CIPHER_is_AESGCM(const SSL_CIPHER *cipher) {
   return (cipher->algorithm_enc & (SSL_AES128GCM | SSL_AES256GCM)) != 0;
 }
 
-int SSL_CIPHER_is_CHACHA20POLY1305_OLD(const SSL_CIPHER *cipher) {
+int SSL_CIPHER_is_CHACHA20POLY1305(const SSL_CIPHER *cipher) {
   return (cipher->algorithm_enc & SSL_CHACHA20POLY1305_OLD) != 0;
 }
 
