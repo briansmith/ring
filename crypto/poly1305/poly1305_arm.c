@@ -132,7 +132,7 @@ static uint32_t load32(uint8_t *t) {
 
 static void fe1305x2_frombytearray(fe1305x2 *r, const uint8_t *x,
                                    unsigned long long xlen) {
-  int i;
+  unsigned i;
   uint8_t t[17];
 
   for (i = 0; (i < 16) && (i < xlen); i++) {

@@ -569,5 +569,8 @@ const EVP_PKEY_ASN1_METHOD ec_asn1_meth = {
 
   int_ec_free,
   old_ec_priv_decode,
-  old_ec_priv_encode
+  old_ec_priv_encode,
+
+  NULL /* digest_verify_init_from_algorithm */,
+  NULL /* digest_sign_algorithm */,
 };

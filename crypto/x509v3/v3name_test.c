@@ -284,7 +284,7 @@ static const struct set_name_fn name_fns[] =
 	{set_email_and_cn, "set emailAddress", 0, 1},
 	{set_altname_dns, "set dnsName", 1, 0},
 	{set_altname_email, "set rfc822Name", 0, 1},
-	{NULL, NULL, 0}
+	{NULL, NULL, 0, 0},
 	};
 
 static X509 *make_cert(void)

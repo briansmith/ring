@@ -582,4 +582,7 @@ const EVP_PKEY_ASN1_METHOD dsa_asn1_meth = {
   int_dsa_free,
   old_dsa_priv_decode,
   old_dsa_priv_encode,
+
+  NULL  /* digest_verify_init_from_algorithm */,
+  NULL  /* digest_sign_algorithm */,
 };
