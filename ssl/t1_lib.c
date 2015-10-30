@@ -697,8 +697,7 @@ int tls12_check_peer_sigalg(const EVP_MD **out_md, int *out_alert, SSL *s,
     }
   }
 
-  /* Allow fallback to SHA-1. */
-  if (i == sent_sigslen && hash != TLSEXT_hash_sha1) {
+  if (i == sent_sigslen) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_WRONG_SIGNATURE_TYPE);
     *out_alert = SSL_AD_ILLEGAL_PARAMETER;
     return 0;
