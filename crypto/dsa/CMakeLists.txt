@@ -6,7 +6,6 @@ add_library(
   OBJECT
 
   dsa.c
-  dsa_impl.c
   dsa_asn1.c
 )
 

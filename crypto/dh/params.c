@@ -264,9 +264,7 @@ BIGNUM bn_two = STATIC_BIGNUM(bn_two_data);
 
 static DH *get_standard_parameters(const struct standard_parameters *params,
                                    const ENGINE *engine) {
-  DH *dh;
-
-  dh = DH_new_method(engine);
+  DH *dh = DH_new();
   if (!dh) {
     return NULL;
   }

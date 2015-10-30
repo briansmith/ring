@@ -77,9 +77,6 @@ extern "C" {
 /* DH_new returns a new, empty DH object or NULL on error. */
 OPENSSL_EXPORT DH *DH_new(void);
 
-/* DH_new_method acts the same as |DH_new| but takes an explicit |ENGINE|. */
-OPENSSL_EXPORT DH *DH_new_method(const ENGINE *engine);
-
 /* DH_free decrements the reference count of |dh| and frees it if the reference
  * count drops to zero. */
 OPENSSL_EXPORT void DH_free(DH *dh);
@@ -90,9 +87,8 @@ OPENSSL_EXPORT int DH_up_ref(DH *dh);
 
 /* Standard parameters.
  *
- * These functions return new DH objects with standard parameters configured
- * that use the given ENGINE, which may be NULL. They return NULL on allocation
- * failure. */
+ * These functions return new DH objects with standard parameters. They return
+ * NULL on allocation failure. The |engine| parameter is ignored. */
 
 /* These parameters are taken from RFC 5114. */
 
@@ -204,35 +200,7 @@ OPENSSL_EXPORT int DH_set_ex_data(DH *d, int idx, void *arg);
 OPENSSL_EXPORT void *DH_get_ex_data(DH *d, int idx);
 
 
-/* dh_method contains function pointers to override the implementation of DH.
- * See |engine.h| for details. */
-struct dh_method {
-  struct openssl_method_common_st common;
-
-  /* app_data is an opaque pointer for the method to use. */
-  void *app_data;
-
-  /* init is called just before the return of |DH_new_method|. It returns one
-   * on success or zero on error. */
-  int (*init)(DH *dh);
-
-  /* finish is called before |dh| is destructed. */
-  void (*finish)(DH *dh);
-
-  /* generate_parameters is called by |DH_generate_parameters_ex|. */
-  int (*generate_parameters)(DH *dh, int prime_bits, int generator,
-                             BN_GENCB *cb);
-
-  /* generate_parameters is called by |DH_generate_key|. */
-  int (*generate_key)(DH *dh);
-
-  /* compute_key is called by |DH_compute_key|. */
-  int (*compute_key)(DH *dh, uint8_t *out, const BIGNUM *pub_key);
-};
-
 struct dh_st {
-  DH_METHOD *meth;
-
   BIGNUM *p;
   BIGNUM *g;
   BIGNUM *pub_key;  /* g^x mod p */
