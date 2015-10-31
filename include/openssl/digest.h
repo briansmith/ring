@@ -92,16 +92,9 @@ OPENSSL_EXPORT const EVP_MD *EVP_sha512(void);
 /* EVP_MD_CTX_init initialises an, already allocated, |EVP_MD_CTX|. */
 OPENSSL_EXPORT void EVP_MD_CTX_init(EVP_MD_CTX *ctx);
 
-/* EVP_MD_CTX_create allocates and initialises a fresh |EVP_MD_CTX| and returns
- * it, or NULL on allocation failure. */
-OPENSSL_EXPORT EVP_MD_CTX *EVP_MD_CTX_create(void);
-
 /* EVP_MD_CTX_cleanup frees any resources owned by |ctx| and resets it to a
  * freshly initialised state. It does not free |ctx| itself. It returns one. */
 OPENSSL_EXPORT int EVP_MD_CTX_cleanup(EVP_MD_CTX *ctx);
-
-/* EVP_MD_CTX_destroy calls |EVP_MD_CTX_cleanup| and then frees |ctx| itself. */
-OPENSSL_EXPORT void EVP_MD_CTX_destroy(EVP_MD_CTX *ctx);
 
 
 /* Digest operations. */

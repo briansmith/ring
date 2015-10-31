@@ -77,16 +77,6 @@ size_t EVP_MD_block_size(const EVP_MD *md) { return md->block_size; }
 
 void EVP_MD_CTX_init(EVP_MD_CTX *ctx) { memset(ctx, 0, sizeof(EVP_MD_CTX)); }
 
-EVP_MD_CTX *EVP_MD_CTX_create(void) {
-  EVP_MD_CTX *ctx = OPENSSL_malloc(sizeof(EVP_MD_CTX));
-
-  if (ctx) {
-    EVP_MD_CTX_init(ctx);
-  }
-
-  return ctx;
-}
-
 int EVP_MD_CTX_cleanup(EVP_MD_CTX *ctx) {
   if (ctx->digest && ctx->digest->ctx_size && ctx->md_data) {
     OPENSSL_cleanse(ctx->md_data, ctx->digest->ctx_size);
@@ -101,15 +91,6 @@ int EVP_MD_CTX_cleanup(EVP_MD_CTX *ctx) {
   EVP_MD_CTX_init(ctx);
 
   return 1;
-}
-
-void EVP_MD_CTX_destroy(EVP_MD_CTX *ctx) {
-  if (!ctx) {
-    return;
-  }
-
-  EVP_MD_CTX_cleanup(ctx);
-  OPENSSL_free(ctx);
 }
 
 int EVP_DigestInit_ex(EVP_MD_CTX *ctx, const EVP_MD *type, ENGINE *engine) {

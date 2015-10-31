@@ -170,45 +170,6 @@ static bool SpeedRSA(const std::string &key_name, RSA *key,
   return true;
 }
 
-static bool SpeedHashChunk(const EVP_MD *md, const std::string &name,
-                           size_t chunk_len) {
-  EVP_MD_CTX *ctx = EVP_MD_CTX_create();
-  uint8_t scratch[8192];
-
-  if (chunk_len > sizeof(scratch)) {
-    return false;
-  }
-
-  TimeResults results;
-  if (!TimeFunction(&results, [ctx, md, chunk_len, &scratch]() -> bool {
-        uint8_t digest[EVP_MAX_MD_SIZE];
-        unsigned int md_len;
-
-        return EVP_DigestInit_ex(ctx, md, NULL /* ENGINE */) &&
-               EVP_DigestUpdate(ctx, scratch, chunk_len) &&
-               EVP_DigestFinal_ex(ctx, digest, &md_len);
-      })) {
-    fprintf(stderr, "EVP_DigestInit_ex failed.\n");
-    return false;
-  }
-
-  results.PrintWithBytes(name, chunk_len);
-
-  EVP_MD_CTX_destroy(ctx);
-
-  return true;
-}
-static bool SpeedHash(const EVP_MD *md, const std::string &name,
-                      const std::string &selected) {
-  if (!selected.empty() && name.find(selected) == std::string::npos) {
-    return true;
-  }
-
-  return SpeedHashChunk(md, name + " (16 bytes)", 16) &&
-         SpeedHashChunk(md, name + " (256 bytes)", 256) &&
-         SpeedHashChunk(md, name + " (8192 bytes)", 8192);
-}
-
 static bool SpeedRandomChunk(const std::string name, size_t chunk_len) {
   uint8_t scratch[8192];
 
@@ -383,10 +344,7 @@ bool Speed(const std::vector<std::string> &args) {
   // AEADs.
   static const size_t kTLSADLen = 13;
 
-  if (!SpeedHash(EVP_sha1(), "SHA-1", selected) ||
-      !SpeedHash(EVP_sha256(), "SHA-256", selected) ||
-      !SpeedHash(EVP_sha512(), "SHA-512", selected) ||
-      !SpeedRandom(selected) ||
+  if (!SpeedRandom(selected) ||
       !SpeedECDH(selected) ||
       !SpeedECDSA(selected)) {
     return false;
