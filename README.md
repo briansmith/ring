@@ -8,8 +8,8 @@ OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 
 
-What is *ring*?
-===============
+*ring*
+======
 
 *ring* is a crypto library in Rust based on BoringSSL's crypto primitive
 implementations.
@@ -29,49 +29,19 @@ were developed for *ring* have already been integrated upstream in BoringSSL.
 
 
 
-The Rust API
-============
-The first part of the ```ring``` Rust crate is now available.
-
-Currently these features are supported through the Rust API:
-
-* AEAD (authenticated encryption) using AES-GCM (more algorithms to follow)
-* Cryptographic digests (SHA-256, SHA-384, SHA-512, SHA-1, and MD5)
-* HMAC, HKDF, and PBKDF2-HMAC
-* Ephemeral ECDH key agreement for curves P-256, P-384, and P-521
-* ECDSA signature verification for curves P-256, P-384, and P-521
-* RSA PKCS#1 signature verification
-* Random byte generation
+Documentation
+-------------
 
 See the documentation at
-https://briansmith.org/rustdoc/ring/. Also take a look at the example
-program [examples/checkdigest.rs](examples/checkdigest.rs).
+https://briansmith.org/rustdoc/ring/.
 
 See [Building the Rust Library](BUILDING.md#building-the-rust-library) for
 instructions on how to build it.
 
 
 
-The C API
-=========
-The C API is the same as BoringSSL's, except that its SSL/TLS, X.509,
-ASN.1 APIs, and error stack mechanism, have been permanently removed.
-Currently, the C API also does not expose the EVP, HMAC, HKDF, and PBKDF2
-interfaces, but only because the C wrappers around the new Rust implementations
-have not been implemented yet. The currently plan is to support a C interface
-that is the same as or similar to BoringSSL's.
-
-See
-[this](https://github.com/briansmith/ring/blob/master/BUILDING.md#building-the-c-library-on-windows)
-(for Windows) and
-[this](https://github.com/briansmith/ring/blob/master/BUILDING.md#building-the-c-library-on-linux-and-similar-platforms)
-(for other platforms) for instructions on how to build *ring* and incorporate
-it into your project.
-
-
-
 Contributing
-============
+------------
 
 Patches Welcome! Suggestions:
 
@@ -84,28 +54,30 @@ Patches Welcome! Suggestions:
 * X25519 (ECDH with Curve25519) and Ed25519.
 * Better IDE support for Windows (e.g. running the tests within the IDE) and
   Mac OS X (e.g. Xcode project files).
-* Language bindings for safer programming languages like Haskell, OCaml, and
-  Rust.
-* Support for more platforms in the continuous integration, such as Android,
-  Mac OS X, and ARM microcontrollers. (The current CI only covers Linux.)
+* Support for more platforms in the continuous integration (e.g. Android, iOS,
+  ARM microcontrollers).
 * Static analysis and fuzzing in the continuous integration.
 
 
-License
-=======
 
-See [LICENSE](LICENSE). The *ring* project happily accepts pull requests
-without any copyright license agreement. The portions of pull requests that
-modify existing files should be licensed under the same terms as the files
-being modified. New files in pull requests should be licensed under the
-ISC-style license. If your patch is useful for BoringSSL then it would be very
-nice of you to also submit it to them after agreeing to their copyright license
-agreement.
+License
+-------
+
+See [LICENSE](LICENSE).
+
+The *ring* project happily accepts pull requests without any copyright license
+agreement. The portions of pull requests that modify existing files should be
+licensed under the same terms as the files being modified. New files in pull
+requests, including in particular all Rust code, should be licensed under the
+ISC-style license.
+
+If your patch is useful for BoringSSL then it would be very nice of you to also
+submit it to them after agreeing to their CLA.
 
 
 
 Online Automated Testing
-========================
+------------------------
 
 Travis CI is used for Linux and Mac OS X. Appveyor is used for Windows.
 
@@ -129,7 +101,7 @@ Travis CI is used for Linux and Mac OS X. Appveyor is used for Windows.
 
 
 Bug Reporting
-=============
+-------------
 
 Please file bugs in the
 [issue tracker](https://github.com/briansmith/ring/issues). If you think you've
