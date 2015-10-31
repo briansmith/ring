@@ -114,11 +114,6 @@ int EVP_DigestInit_ex(EVP_MD_CTX *ctx, const EVP_MD *type, ENGINE *engine) {
   return 1;
 }
 
-int EVP_DigestInit(EVP_MD_CTX *ctx, const EVP_MD *type) {
-  EVP_MD_CTX_init(ctx);
-  return EVP_DigestInit_ex(ctx, type, NULL);
-}
-
 int EVP_DigestUpdate(EVP_MD_CTX *ctx, const void *data, size_t len) {
   ctx->digest->update(ctx, data, len);
   return 1;
@@ -131,12 +126,6 @@ int EVP_DigestFinal_ex(EVP_MD_CTX *ctx, uint8_t *md_out, unsigned int *size) {
     *size = ctx->digest->md_size;
   }
   OPENSSL_cleanse(ctx->md_data, ctx->digest->ctx_size);
-  return 1;
-}
-
-int EVP_DigestFinal(EVP_MD_CTX *ctx, uint8_t *md, unsigned int *size) {
-  (void)EVP_DigestFinal_ex(ctx, md, size);
-  EVP_MD_CTX_cleanup(ctx);
   return 1;
 }
 

@@ -59,7 +59,7 @@ pub struct Context {
 impl Context {
     /// Constructs a new context.
     ///
-    /// C analog: `EVP_DigestInit`
+    /// C analogs: `EVP_DigestInit`, `EVP_DigestInit_ex`
     pub fn new(algorithm: &'static Algorithm) -> Context {
         let mut ctx = Context {
             algorithm: algorithm,
@@ -85,7 +85,7 @@ impl Context {
     /// consumes the context so it cannot be (mis-)used after `finish` has been
     /// called.
     ///
-    /// C analog: `EVP_DigestFinal`
+    /// C analogs: `EVP_DigestFinal`, `EVP_DigestFinal_ex`
     pub fn finish(mut self) -> Digest {
         let mut digest = Digest {
             algorithm: self.algorithm,

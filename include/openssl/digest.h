@@ -105,10 +105,6 @@ OPENSSL_EXPORT int EVP_MD_CTX_cleanup(EVP_MD_CTX *ctx);
 OPENSSL_EXPORT int EVP_DigestInit_ex(EVP_MD_CTX *ctx, const EVP_MD *type,
                                      ENGINE *engine);
 
-/* EVP_DigestInit acts like |EVP_DigestInit_ex| except that |ctx| is
- * initialised before use. */
-OPENSSL_EXPORT int EVP_DigestInit(EVP_MD_CTX *ctx, const EVP_MD *type);
-
 /* EVP_DigestUpdate hashes |len| bytes from |data| into the hashing operation
  * in |ctx|. It returns one. */
 OPENSSL_EXPORT int EVP_DigestUpdate(EVP_MD_CTX *ctx, const void *data,
@@ -126,11 +122,6 @@ OPENSSL_EXPORT int EVP_DigestUpdate(EVP_MD_CTX *ctx, const void *data,
  * |EVP_DigestInit_ex| is called to start another hashing operation. */
 OPENSSL_EXPORT int EVP_DigestFinal_ex(EVP_MD_CTX *ctx, uint8_t *md_out,
                                       unsigned int *out_size);
-
-/* EVP_DigestFinal acts like |EVP_DigestFinal_ex| except that
- * |EVP_MD_CTX_cleanup| is called on |ctx| before returning. */
-OPENSSL_EXPORT int EVP_DigestFinal(EVP_MD_CTX *ctx, uint8_t *md_out,
-                                   unsigned int *out_size);
 
 /* EVP_Digest performs a complete hashing operation in one call. It hashes
  * |len| bytes from |data| and writes the digest to |md_out|. At most
