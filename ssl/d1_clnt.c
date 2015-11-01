@@ -377,8 +377,6 @@ int dtls1_connect(SSL *s) {
           ret = -1;
           goto end;
         }
-
-        dtls1_reset_seq_numbers(s, SSL3_CC_WRITE);
         break;
 
       case SSL3_ST_CW_FINISHED_A:

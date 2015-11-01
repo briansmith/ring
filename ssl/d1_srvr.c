@@ -401,8 +401,6 @@ int dtls1_accept(SSL *s) {
           ret = -1;
           goto end;
         }
-
-        dtls1_reset_seq_numbers(s, SSL3_CC_WRITE);
         break;
 
       case SSL3_ST_SW_FINISHED_A:

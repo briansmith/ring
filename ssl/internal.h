@@ -1079,7 +1079,6 @@ int dtls1_buffer_message(SSL *s);
 int dtls1_retransmit_buffered_messages(SSL *s);
 void dtls1_clear_record_buffer(SSL *s);
 void dtls1_get_message_header(uint8_t *data, struct hm_header_st *msg_hdr);
-void dtls1_reset_seq_numbers(SSL *s, int rw);
 int dtls1_check_timeout_num(SSL *s);
 int dtls1_set_handshake_header(SSL *s, int type, unsigned long len);
 int dtls1_handshake_write(SSL *s);

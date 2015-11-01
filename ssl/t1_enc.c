@@ -291,8 +291,19 @@ int tls1_change_cipher_state(SSL *s, int which) {
   const uint8_t *key_data;
 
   /* Reset sequence number to zero. */
-  if (!SSL_IS_DTLS(s)) {
-    memset(is_read ? s->s3->read_sequence : s->s3->write_sequence, 0, 8);
+  if (is_read) {
+    if (SSL_IS_DTLS(s)) {
+      s->d1->r_epoch++;
+      memset(&s->d1->bitmap, 0, sizeof(s->d1->bitmap));
+    }
+    memset(s->s3->read_sequence, 0, sizeof(s->s3->read_sequence));
+  } else {
+    if (SSL_IS_DTLS(s)) {
+      s->d1->w_epoch++;
+      memcpy(s->d1->last_write_sequence, s->s3->write_sequence,
+             sizeof(s->s3->write_sequence));
+    }
+    memset(s->s3->write_sequence, 0, sizeof(s->s3->write_sequence));
   }
 
   mac_secret_len = s->s3->tmp.new_mac_secret_len;
