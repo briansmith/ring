@@ -229,11 +229,11 @@ void EVP_tls_cbc_copy_mac(uint8_t *out, unsigned md_size,
  * typically does. */
 static void tls1_sha1_final_raw(void *ctx, uint8_t *md_out) {
   SHA_CTX *sha1 = ctx;
-  u32toBE(sha1->h0, md_out);
-  u32toBE(sha1->h1, md_out);
-  u32toBE(sha1->h2, md_out);
-  u32toBE(sha1->h3, md_out);
-  u32toBE(sha1->h4, md_out);
+  u32toBE(sha1->h[0], md_out);
+  u32toBE(sha1->h[1], md_out);
+  u32toBE(sha1->h[2], md_out);
+  u32toBE(sha1->h[3], md_out);
+  u32toBE(sha1->h[4], md_out);
 }
 #define LARGEST_DIGEST_CTX SHA_CTX
 
