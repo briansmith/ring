@@ -69,11 +69,11 @@
 
 int SHA1_Init(SHA_CTX *sha) {
   memset(sha, 0, sizeof(SHA_CTX));
-  sha->h0 = 0x67452301UL;
-  sha->h1 = 0xefcdab89UL;
-  sha->h2 = 0x98badcfeUL;
-  sha->h3 = 0x10325476UL;
-  sha->h4 = 0xc3d2e1f0UL;
+  sha->h[0] = 0x67452301UL;
+  sha->h[1] = 0xefcdab89UL;
+  sha->h[2] = 0x98badcfeUL;
+  sha->h[3] = 0x10325476UL;
+  sha->h[4] = 0xc3d2e1f0UL;
   return 1;
 }
 
@@ -96,21 +96,20 @@ uint8_t *SHA1(const uint8_t *data, size_t len, uint8_t *out) {
 
 #define DATA_ORDER_IS_BIG_ENDIAN
 
-#define HASH_LONG               uint32_t
 #define HASH_CTX                SHA_CTX
 #define HASH_CBLOCK             64
 #define HASH_MAKE_STRING(c, s) \
   do {                         \
     uint32_t ll;               \
-    ll = (c)->h0;              \
+    ll = (c)->h[0];            \
     (void) HOST_l2c(ll, (s));  \
-    ll = (c)->h1;              \
+    ll = (c)->h[1];            \
     (void) HOST_l2c(ll, (s));  \
-    ll = (c)->h2;              \
+    ll = (c)->h[2];            \
     (void) HOST_l2c(ll, (s));  \
-    ll = (c)->h3;              \
+    ll = (c)->h[3];            \
     (void) HOST_l2c(ll, (s));  \
-    ll = (c)->h4;              \
+    ll = (c)->h[4];            \
     (void) HOST_l2c(ll, (s));  \
   } while (0)
 
@@ -124,7 +123,7 @@ uint8_t *SHA1(const uint8_t *data, size_t len, uint8_t *out) {
 #ifndef SHA1_ASM
 static
 #endif
-void sha1_block_data_order(SHA_CTX *c, const void *p, size_t num);
+void sha1_block_data_order(uint32_t *state, const uint8_t *data, size_t num);
 
 #include "../digest/md32_common.h"
 
@@ -186,17 +185,17 @@ void sha1_block_data_order(SHA_CTX *c, const void *p, size_t num);
 #define X(i)	XX##i
 
 #if !defined(SHA1_ASM)
-static void HASH_BLOCK_DATA_ORDER(SHA_CTX *c, const void *p, size_t num) {
-  const uint8_t *data = p;
+static void sha1_block_data_order(uint32_t *state, const uint8_t *data,
+                                  size_t num) {
   register uint32_t A, B, C, D, E, T, l;
   uint32_t XX0, XX1, XX2, XX3, XX4, XX5, XX6, XX7, XX8, XX9, XX10,
       XX11, XX12, XX13, XX14, XX15;
 
-  A = c->h0;
-  B = c->h1;
-  C = c->h2;
-  D = c->h3;
-  E = c->h4;
+  A = state[0];
+  B = state[1];
+  C = state[2];
+  D = state[3];
+  E = state[4];
 
   for (;;) {
     const union {
@@ -204,7 +203,7 @@ static void HASH_BLOCK_DATA_ORDER(SHA_CTX *c, const void *p, size_t num) {
       char little;
     } is_endian = {1};
 
-    if (!is_endian.little && ((size_t)p % 4) == 0) {
+    if (!is_endian.little && ((uintptr_t)data % 4) == 0) {
       const uint32_t *W = (const uint32_t *)data;
 
       X(0) = W[0];
@@ -361,21 +360,21 @@ static void HASH_BLOCK_DATA_ORDER(SHA_CTX *c, const void *p, size_t num) {
     BODY_60_79(78, A, B, C, D, E, T, X(14), X(0), X(6), X(11));
     BODY_60_79(79, T, A, B, C, D, E, X(15), X(1), X(7), X(12));
 
-    c->h0 = (c->h0 + E) & 0xffffffffL;
-    c->h1 = (c->h1 + T) & 0xffffffffL;
-    c->h2 = (c->h2 + A) & 0xffffffffL;
-    c->h3 = (c->h3 + B) & 0xffffffffL;
-    c->h4 = (c->h4 + C) & 0xffffffffL;
+    state[0] = (state[0] + E) & 0xffffffffL;
+    state[1] = (state[1] + T) & 0xffffffffL;
+    state[2] = (state[2] + A) & 0xffffffffL;
+    state[3] = (state[3] + B) & 0xffffffffL;
+    state[4] = (state[4] + C) & 0xffffffffL;
 
     if (--num == 0) {
       break;
     }
 
-    A = c->h0;
-    B = c->h1;
-    C = c->h2;
-    D = c->h3;
-    E = c->h4;
+    A = state[0];
+    B = state[1];
+    C = state[2];
+    D = state[3];
+    E = state[4];
   }
 }
 #endif

@@ -135,7 +135,6 @@ int SHA224_Final(uint8_t *md, SHA256_CTX *ctx) {
 
 #define DATA_ORDER_IS_BIG_ENDIAN
 
-#define HASH_LONG uint32_t
 #define HASH_CTX SHA256_CTX
 #define HASH_CBLOCK 64
 
@@ -185,12 +184,12 @@ int SHA224_Final(uint8_t *md, SHA256_CTX *ctx) {
 #ifndef SHA256_ASM
 static
 #endif
-void sha256_block_data_order(SHA256_CTX *ctx, const void *in, size_t num);
+void sha256_block_data_order(uint32_t *state, const uint8_t *in, size_t num);
 
 #include "../digest/md32_common.h"
 
 #ifndef SHA256_ASM
-static const HASH_LONG K256[64] = {
+static const uint32_t K256[64] = {
     0x428a2f98UL, 0x71374491UL, 0xb5c0fbcfUL, 0xe9b5dba5UL, 0x3956c25bUL,
     0x59f111f1UL, 0x923f82a4UL, 0xab1c5ed5UL, 0xd807aa98UL, 0x12835b01UL,
     0x243185beUL, 0x550c7dc3UL, 0x72be5d74UL, 0x80deb1feUL, 0x9bdc06a7UL,
@@ -234,29 +233,28 @@ static const HASH_LONG K256[64] = {
     ROUND_00_15(i, a, b, c, d, e, f, g, h);            \
   } while (0)
 
-static void sha256_block_data_order(SHA256_CTX *ctx, const void *in,
+static void sha256_block_data_order(uint32_t *state, const uint8_t *data,
                                     size_t num) {
   uint32_t a, b, c, d, e, f, g, h, s0, s1, T1;
-  HASH_LONG X[16];
+  uint32_t X[16];
   int i;
-  const uint8_t *data = in;
   const union {
     long one;
     char little;
   } is_endian = {1};
 
   while (num--) {
-    a = ctx->h[0];
-    b = ctx->h[1];
-    c = ctx->h[2];
-    d = ctx->h[3];
-    e = ctx->h[4];
-    f = ctx->h[5];
-    g = ctx->h[6];
-    h = ctx->h[7];
+    a = state[0];
+    b = state[1];
+    c = state[2];
+    d = state[3];
+    e = state[4];
+    f = state[5];
+    g = state[6];
+    h = state[7];
 
-    if (!is_endian.little && sizeof(HASH_LONG) == 4 && ((size_t)in % 4) == 0) {
-      const HASH_LONG *W = (const HASH_LONG *)data;
+    if (!is_endian.little && ((uintptr_t)data % 4) == 0) {
+      const uint32_t *W = (const uint32_t *)data;
 
       T1 = X[0] = W[0];
       ROUND_00_15(0, a, b, c, d, e, f, g, h);
@@ -293,7 +291,7 @@ static void sha256_block_data_order(SHA256_CTX *ctx, const void *in,
 
       data += HASH_CBLOCK;
     } else {
-      HASH_LONG l;
+      uint32_t l;
 
       HOST_c2l(data, l);
       T1 = X[0] = l;
@@ -356,14 +354,14 @@ static void sha256_block_data_order(SHA256_CTX *ctx, const void *in,
       ROUND_16_63(i + 7, b, c, d, e, f, g, h, a, X);
     }
 
-    ctx->h[0] += a;
-    ctx->h[1] += b;
-    ctx->h[2] += c;
-    ctx->h[3] += d;
-    ctx->h[4] += e;
-    ctx->h[5] += f;
-    ctx->h[6] += g;
-    ctx->h[7] += h;
+    state[0] += a;
+    state[1] += b;
+    state[2] += c;
+    state[3] += d;
+    state[4] += e;
+    state[5] += f;
+    state[6] += g;
+    state[7] += h;
   }
 }
 
