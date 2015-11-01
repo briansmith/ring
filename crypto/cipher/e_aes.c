@@ -48,7 +48,6 @@
 
 #include <string.h>
 
-#include <openssl/aead.h>
 #include <openssl/aes.h>
 #include <openssl/cpu.h>
 #include <openssl/err.h>

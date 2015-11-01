@@ -66,7 +66,6 @@
 #include <assert.h>
 #include <stdint.h>
 
-#include <openssl/aead.h>
 #include <openssl/err.h>
 
 #include "../internal.h"
