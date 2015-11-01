@@ -67,20 +67,6 @@
 #define SHA256_ASM
 #endif
 
-int SHA224_Init(SHA256_CTX *sha) {
-  memset(sha, 0, sizeof(SHA256_CTX));
-  sha->h[0] = 0xc1059ed8UL;
-  sha->h[1] = 0x367cd507UL;
-  sha->h[2] = 0x3070dd17UL;
-  sha->h[3] = 0xf70e5939UL;
-  sha->h[4] = 0xffc00b31UL;
-  sha->h[5] = 0x68581511UL;
-  sha->h[6] = 0x64f98fa7UL;
-  sha->h[7] = 0xbefa4fa4UL;
-  sha->md_len = SHA224_DIGEST_LENGTH;
-  return 1;
-}
-
 int SHA256_Init(SHA256_CTX *sha) {
   memset(sha, 0, sizeof(SHA256_CTX));
   sha->h[0] = 0x6a09e667UL;
@@ -93,14 +79,6 @@ int SHA256_Init(SHA256_CTX *sha) {
   sha->h[7] = 0x5be0cd19UL;
   sha->md_len = SHA256_DIGEST_LENGTH;
   return 1;
-}
-
-int SHA224_Update(SHA256_CTX *ctx, const void *data, size_t len) {
-  return SHA256_Update(ctx, data, len);
-}
-
-int SHA224_Final(uint8_t *md, SHA256_CTX *ctx) {
-  return SHA256_Final(md, ctx);
 }
 
 #define DATA_ORDER_IS_BIG_ENDIAN
@@ -123,12 +101,6 @@ int SHA224_Final(uint8_t *md, SHA256_CTX *ctx) {
     uint32_t ll;                                            \
     unsigned int nn;                                        \
     switch ((c)->md_len) {                                  \
-      case SHA224_DIGEST_LENGTH:                            \
-        for (nn = 0; nn < SHA224_DIGEST_LENGTH / 4; nn++) { \
-          ll = (c)->h[nn];                                  \
-          (void) HOST_l2c(ll, (s));                         \
-        }                                                   \
-        break;                                              \
       case SHA256_DIGEST_LENGTH:                            \
         for (nn = 0; nn < SHA256_DIGEST_LENGTH / 4; nn++) { \
           ll = (c)->h[nn];                                  \

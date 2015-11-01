@@ -101,26 +101,6 @@ struct sha_state_st {
 };
 
 
-/* SHA-224. */
-
-/* SHA224_CBLOCK is the block size of SHA-224. */
-#define SHA224_CBLOCK 64
-
-/* SHA224_DIGEST_LENGTH is the length of a SHA-224 digest. */
-#define SHA224_DIGEST_LENGTH 28
-
-/* SHA224_Init initialises |sha| and returns 1. */
-OPENSSL_EXPORT int SHA224_Init(SHA256_CTX *sha);
-
-/* SHA224_Update adds |len| bytes from |data| to |sha| and returns 1. */
-OPENSSL_EXPORT int SHA224_Update(SHA256_CTX *sha, const void *data, size_t len);
-
-/* SHA224_Final adds the final padding to |sha| and writes the resulting digest
- * to |md|, which must have at least |SHA224_DIGEST_LENGTH| bytes of space. It
- * returns one on success and zero on programmer error. */
-OPENSSL_EXPORT int SHA224_Final(uint8_t *md, SHA256_CTX *sha);
-
-
 /* SHA-256. */
 
 /* SHA256_CBLOCK is the block size of SHA-256. */
