@@ -208,6 +208,8 @@ static bool TestRSA(const uint8_t *der, size_t der_len,
     return false;
   }
 
+  /* ring: OAEP padding is not implemented yet. */
+#if 0
   ciphertext_len = 0;
   if (!RSA_encrypt(key.get(), &ciphertext_len, ciphertext, sizeof(ciphertext),
                    kPlaintext, kPlaintextLen, RSA_PKCS1_OAEP_PADDING) ||
@@ -256,6 +258,7 @@ static bool TestRSA(const uint8_t *der, size_t der_len,
       return false;
     }
   }
+#endif /* if 0 */
 
   return true;
 }

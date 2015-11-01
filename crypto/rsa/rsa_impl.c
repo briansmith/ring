@@ -128,14 +128,17 @@ int RSA_encrypt(RSA *rsa, size_t *out_len, uint8_t *out, size_t max_out,
     case RSA_PKCS1_PADDING:
       i = RSA_padding_add_PKCS1_type_2(buf, rsa_size, in, in_len);
       break;
-    case RSA_PKCS1_OAEP_PADDING:
-      /* Use the default parameters: SHA-1 for both hashes and no label. */
-      i = RSA_padding_add_PKCS1_OAEP_mgf1(buf, rsa_size, in, in_len,
-                                          NULL, 0, NULL, NULL);
-      break;
     case RSA_NO_PADDING:
       i = RSA_padding_add_none(buf, rsa_size, in, in_len);
       break;
+    case RSA_PKCS1_OAEP_PADDING:
+      /* ring: BoringSSL supports |RSA_PKCS1_OAEP_PADDING| here, defaulting
+       * to SHA-1 for both digest algorithms, and no label. *ring* doesn't
+       * support this (yet) because it doesn't want have a hard-coded
+       * dependency on SHA-1. Also, *ring* it doesn't want to depend on the
+       * |EVP_MD| API, so the calculation of OAEP padding needs to be redone
+       * using |ring::digest|. */
+      /* fall through */
     default:
       OPENSSL_PUT_ERROR(RSA, RSA_R_UNKNOWN_PADDING_TYPE);
       goto err;
@@ -381,14 +384,17 @@ int RSA_decrypt(RSA *rsa, size_t *out_len, uint8_t *out, size_t max_out,
     case RSA_PKCS1_PADDING:
       r = RSA_padding_check_PKCS1_type_2(out, rsa_size, buf, rsa_size);
       break;
-    case RSA_PKCS1_OAEP_PADDING:
-      /* Use the default parameters: SHA-1 for both hashes and no label. */
-      r = RSA_padding_check_PKCS1_OAEP_mgf1(out, rsa_size, buf, rsa_size,
-                                            NULL, 0, NULL, NULL);
-      break;
     case RSA_NO_PADDING:
       r = rsa_size;
       break;
+    case RSA_PKCS1_OAEP_PADDING:
+      /* ring: BoringSSL supports |RSA_PKCS1_OAEP_PADDING| here, defaulting
+       * to SHA-1 for both digest algorithms, and no label. *ring* doesn't
+       * support this (yet) because it doesn't want have a hard-coded
+       * dependency on SHA-1. Also, *ring* it doesn't want to depend on the
+       * |EVP_MD| API, so the calculation of OAEP padding needs to be redone
+       * using |ring::digest|. */
+      /* fall through */
     default:
       OPENSSL_PUT_ERROR(RSA, RSA_R_UNKNOWN_PADDING_TYPE);
       goto err;
