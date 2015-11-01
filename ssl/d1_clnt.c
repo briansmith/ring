@@ -345,6 +345,7 @@ int dtls1_connect(SSL *s) {
 
       case SSL3_ST_CW_CERT_VRFY_A:
       case SSL3_ST_CW_CERT_VRFY_B:
+      case SSL3_ST_CW_CERT_VRFY_C:
         dtls1_start_timer(s);
         ret = ssl3_send_cert_verify(s);
         if (ret <= 0) {
