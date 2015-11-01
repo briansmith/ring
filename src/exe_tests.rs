@@ -38,7 +38,6 @@ exe_test!(aes_test, "crypto/aes/aes_test", []);
 exe_test!(bn_test, "crypto/bn/bn_test", []);
 exe_test!(bytestring_test, "crypto/bytestring/bytestring_test", []);
 exe_test!(constant_time_test, "crypto/constant_time_test", []);
-exe_test!(digest_test, "crypto/digest/digest_test", []);
 exe_test!(example_mul, "crypto/ec/example_mul", []);
 exe_test!(ecdsa_test, "crypto/ecdsa/ecdsa_test", []);
 exe_test!(gcm_test, "crypto/modes/gcm_test", []);

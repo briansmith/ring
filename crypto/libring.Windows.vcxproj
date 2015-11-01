@@ -43,8 +43,6 @@
     <ClCompile Include="cpu-arm.c" />
     <ClCompile Include="cpu-intel.c" />
     <ClCompile Include="crypto.c" />
-    <ClCompile Include="digest\digest.c" />
-    <ClCompile Include="digest\digests.c" />
     <ClCompile Include="ec\ec.c" />
     <ClCompile Include="ec\ec_key.c" />
     <ClCompile Include="ec\ec_montgomery.c" />

@@ -13,7 +13,6 @@
   <ItemGroup>
     <ClCompile Include="args.cc" />
     <ClCompile Include="const.cc" />
-    <ClCompile Include="digest.cc" />
     <ClCompile Include="rand.cc" />
     <ClCompile Include="speed.cc" />
     <ClCompile Include="tool.cc" />
