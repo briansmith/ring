@@ -26,7 +26,6 @@
 #include <stdint.h>
 #include <string.h>
 
-#include <openssl/digest.h>
 #include <openssl/ecdh.h>
 #include <openssl/ec_key.h>
 #include <openssl/err.h>

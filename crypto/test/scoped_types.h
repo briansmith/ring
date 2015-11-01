@@ -21,7 +21,6 @@
 #include <openssl/bn.h>
 #include <openssl/cmac.h>
 #include <openssl/dh.h>
-#include <openssl/digest.h>
 #include <openssl/ec.h>
 #include <openssl/ec_key.h>
 #include <openssl/ecdsa.h>
@@ -82,8 +81,6 @@ using ScopedEC_GROUP = ScopedOpenSSLType<EC_GROUP, EC_GROUP_free>;
 using ScopedEC_KEY = ScopedOpenSSLType<EC_KEY, EC_KEY_free>;
 using ScopedEC_POINT = ScopedOpenSSLType<EC_POINT, EC_POINT_free>;
 using ScopedRSA = ScopedOpenSSLType<RSA, RSA_free>;
-using ScopedEVP_MD_CTX = ScopedOpenSSLContext<EVP_MD_CTX, int, EVP_MD_CTX_init,
-                                              EVP_MD_CTX_cleanup>;
 
 using ScopedOpenSSLBytes = bssl::unique_ptr<uint8_t, OpenSSLFree<uint8_t>>;
 using ScopedOpenSSLString = bssl::unique_ptr<char, OpenSSLFree<char>>;
