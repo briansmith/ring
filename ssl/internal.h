@@ -1079,7 +1079,6 @@ int dtls1_do_write(SSL *s, int type, enum dtls1_use_epoch_t use_epoch);
 int dtls1_read_app_data(SSL *ssl, uint8_t *buf, int len, int peek);
 void dtls1_read_close_notify(SSL *ssl);
 int dtls1_read_bytes(SSL *s, int type, uint8_t *buf, int len, int peek);
-int ssl3_write_pending(SSL *s, int type, const uint8_t *buf, unsigned int len);
 void dtls1_set_message_header(SSL *s, uint8_t mt, unsigned long len,
                               unsigned short seq_num, unsigned long frag_off,
                               unsigned long frag_len);

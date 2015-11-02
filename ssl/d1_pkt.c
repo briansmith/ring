@@ -512,8 +512,9 @@ int dtls1_write_bytes(SSL *s, int type, const void *buf, int len,
 
 static int do_dtls1_write(SSL *s, int type, const uint8_t *buf,
                           unsigned int len, enum dtls1_use_epoch_t use_epoch) {
-  /* ssl3_write_pending drops the write if |BIO_write| fails in DTLS, so there
-   * is never pending data. */
+  /* There should never be a pending write buffer in DTLS. One can't write half
+   * a datagram, so the write buffer is always dropped in
+   * |ssl_write_buffer_flush|. */
   assert(!ssl_write_buffer_is_pending(s));
 
   /* If we have an alert to send, lets send it */
@@ -540,19 +541,16 @@ static int do_dtls1_write(SSL *s, int type, const uint8_t *buf,
   if (!ssl_write_buffer_init(s, &out, max_out) ||
       !dtls_seal_record(s, out, &ciphertext_len, max_out, type, buf, len,
                         use_epoch)) {
+    ssl_write_buffer_clear(s);
     return -1;
   }
   ssl_write_buffer_set_len(s, ciphertext_len);
 
-  /* memorize arguments so that ssl3_write_pending can detect bad write retries
-   * later */
-  s->s3->wpend_tot = len;
-  s->s3->wpend_buf = buf;
-  s->s3->wpend_type = type;
-  s->s3->wpend_ret = len;
-
-  /* we now just need to write the buffer */
-  return ssl3_write_pending(s, type, buf, len);
+  int ret = ssl_write_buffer_flush(s);
+  if (ret <= 0) {
+    return ret;
+  }
+  return (int)len;
 }
 
 int dtls1_dispatch_alert(SSL *s) {
