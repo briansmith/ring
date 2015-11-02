@@ -161,9 +161,9 @@ impl SigningKey {
     pub fn generate(digest_alg: &'static digest::Algorithm)
                     -> Result<SigningKey, ()> {
         // XXX: There should probably be a `digest::MAX_CHAINING_LEN`, but for
-        // now `digest::MAX_DIGEST_LEN` is good enough.
-        let mut key_data = [0u8; digest::MAX_DIGEST_LEN];
-        let key_data = &mut key_data[0..digest_alg.digest_len];
+        // now `digest::MAX_OUTPUT_LEN` is good enough.
+        let mut key_data = [0u8; digest::MAX_OUTPUT_LEN];
+        let key_data = &mut key_data[0..digest_alg.output_len];
         try!(rand::fill_secure_random(key_data));
         Ok(SigningKey::new(digest_alg, key_data))
     }
@@ -173,13 +173,13 @@ impl SigningKey {
     ///
     /// As specified in RFC 2104, if `key_value` is shorter than the digest
     /// algorithm's block length (as returned by `digest::Algorithm::block_len`,
-    /// not the digest length returned by `digest::Algorithm::digest_len`) then
+    /// not the digest length returned by `digest::Algorithm::output_len`) then
     /// it will be padded with zeros. Similarly, if it is longer than the block
     /// length then it will be compressed using the digest algorithm.
     ///
     /// You should not use keys larger than the `digest_alg.block_len` because
     /// the truncation described above reduces their strength to only
-    /// `digest_alg.digest_len * 8` bits. Support for such keys is likely to be
+    /// `digest_alg.output_len * 8` bits. Support for such keys is likely to be
     /// removed in a future version of *ring*.
     pub fn new(digest_alg: &'static digest::Algorithm, key_value: &[u8])
                -> SigningKey {
@@ -293,7 +293,7 @@ impl VerificationKey {
     ///
     /// As specified in RFC 2104, if `key_value` is shorter than the digest
     /// algorithm's block length (as returned by `digest::Algorithm::block_len`,
-    /// not the digest length returned by `digest::Algorithm::digest_len`) then
+    /// not the digest length returned by `digest::Algorithm::output_len`) then
     /// it will be padded with zeros. Similarly, if it is longer than the block
     /// length then it will be compressed using the digest algorithm.
     #[inline(always)]

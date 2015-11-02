@@ -32,7 +32,7 @@
 //! use std::collections::HashMap;
 //!
 //! static PBKDF2_PRF: &'static pbkdf2::PRF = &pbkdf2::HMAC_SHA256;
-//! const CREDENTIAL_LEN: usize = 32; // digest::SHA256.digest_len()
+//! const CREDENTIAL_LEN: usize = 32; // digest::SHA256.output_len()
 //! pub type Credential = [u8; CREDENTIAL_LEN];
 //!
 //! struct PasswordDatabase {
@@ -138,7 +138,7 @@ use super::{constant_time, digest, hmac};
 pub fn derive(prf: &'static PRF, iterations: usize, salt: &[u8], secret: &[u8],
               out: &mut [u8]) {
     assert!(iterations >= 1);
-    assert!(out.len() <= prf.digest_alg.digest_len);
+    assert!(out.len() <= prf.digest_alg.output_len);
 
     // This implementation's performance is asymptotically optimal as described
     // in https://jbp.io/2015/08/11/pbkdf2-performance-matters/. However, it
@@ -196,7 +196,7 @@ pub fn derive(prf: &'static PRF, iterations: usize, salt: &[u8], secret: &[u8],
 /// digest function used by the PRF algorithm.
 pub fn verify(prf: &'static PRF, iterations: usize, salt: &[u8], secret: &[u8],
               previously_derived: &[u8]) -> Result<(), ()> {
-    let mut derived_buf = [0u8; digest::MAX_DIGEST_LEN];
+    let mut derived_buf = [0u8; digest::MAX_OUTPUT_LEN];
     if previously_derived.len() > derived_buf.len() {
         return Err(());
     }

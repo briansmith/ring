@@ -135,7 +135,7 @@ pub fn digest(algorithm: &'static Algorithm, data: &[u8]) -> Digest {
 /// Use `as_ref` to get the value as a `&[u8]`.
 pub struct Digest {
     algorithm: &'static Algorithm,
-    value: [u8; MAX_DIGEST_LEN],
+    value: [u8; MAX_OUTPUT_LEN],
 }
 
 impl Digest {
@@ -145,7 +145,7 @@ impl Digest {
 }
 
 impl AsRef<[u8]> for Digest {
-    fn as_ref(&self) -> &[u8] { &self.value[0..self.algorithm.digest_len] }
+    fn as_ref(&self) -> &[u8] { &self.value[0..self.algorithm.output_len] }
 }
 
 /// A digest algorithm.
@@ -153,11 +153,11 @@ impl AsRef<[u8]> for Digest {
 /// C analog: `EVP_MD`
 pub struct Algorithm {
     /// C analog: `EVP_MD_size`
-    pub digest_len: usize,
+    pub output_len: usize,
 
     /// The size of the chaining value of the digest function, in bytes. For
     /// non-truncated algorithms (SHA-1, SHA-256, SHA-512), this is equal to
-    /// `digest_len`. For truncated algorithms (e.g. SHA-384, SHA-512/256),
+    /// `output_len`. For truncated algorithms (e.g. SHA-384, SHA-512/256),
     /// this is equal to the length before truncation. This is mostly helpful
     /// for determining the size of an HMAC key that is appropriate for the
     /// digest algorithm.
@@ -192,12 +192,12 @@ pub mod test_util {
 }
 
 macro_rules! impl_Digest {
-    ($XXX:ident, $digest_len_in_bits:expr, $chaining_len_in_bits:expr,
+    ($XXX:ident, $output_len_in_bits:expr, $chaining_len_in_bits:expr,
      $block_len_in_bits:expr, $xxx_Init:ident, $xxx_Update:ident,
      $xxx_Final:ident, $NID_xxx:expr) => {
 
         pub static $XXX: Algorithm = Algorithm {
-            digest_len: $digest_len_in_bits / 8,
+            output_len: $output_len_in_bits / 8,
             chaining_len: $chaining_len_in_bits / 8,
             block_len: $block_len_in_bits / 8,
 
@@ -235,8 +235,13 @@ impl_Digest!(SHA384, 384, 512, 1024, SHA384_Init, SHA384_Update, SHA384_Final,
 impl_Digest!(SHA512, 512, 512, 1024, SHA512_Init, SHA512_Update, SHA512_Final,
              674 /*NID_sha512*/);
 
+/// The maximum block length (`Algorithm::block_len`) of all the algorithms in
+/// this module.
 pub const MAX_BLOCK_LEN: usize = 1024 / 8;
-pub const MAX_DIGEST_LEN: usize = 512 / 8;
+
+/// The maximum output length (`Algorithm::output_len`) of all the algorithms
+/// in this module.
+pub const MAX_OUTPUT_LEN: usize = 512 / 8;
 
 // The number of u64-sized words needed to store the largest digest context
 // state.
