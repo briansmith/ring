@@ -42,6 +42,7 @@
 #include <openssl/crypto.h>
 #include <openssl/err.h>
 #include <openssl/hmac.h>
+#include <openssl/obj.h>
 #include <openssl/rand.h>
 #include <openssl/ssl.h>
 
@@ -1222,6 +1223,12 @@ static bool DoExchange(ScopedSSL_SESSION *out_session, SSL_CTX *ssl_ctx,
   }
   if (config->disable_npn) {
     SSL_set_options(ssl.get(), SSL_OP_DISABLE_NPN);
+  }
+  if (config->p384_only) {
+    int nid = NID_secp384r1;
+    if (!SSL_set1_curves(ssl.get(), &nid, 1)) {
+      return false;
+    }
   }
 
   int sock = Connect(config->port);

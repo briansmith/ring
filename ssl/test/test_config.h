@@ -101,6 +101,7 @@ struct TestConfig {
   bool renegotiate_ignore = false;
   bool disable_npn = false;
   int expect_server_key_exchange_hash = 0;
+  bool p384_only = false;
 };
 
 bool ParseConfig(int argc, char **argv, TestConfig *out_config);

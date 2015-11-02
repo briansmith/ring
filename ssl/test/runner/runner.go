@@ -1997,6 +1997,16 @@ func addBasicTests() {
 			resumeSession:        true,
 			expectResumeRejected: true,
 		},
+		{
+			name: "CheckLeafCurve",
+			config: Config{
+				CipherSuites: []uint16{TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256},
+				Certificates: []Certificate{getECDSACertificate()},
+			},
+			flags:         []string{"-p384-only"},
+			shouldFail:    true,
+			expectedError: ":BAD_ECC_CERT:",
+		},
 	}
 	testCases = append(testCases, basicTests...)
 }

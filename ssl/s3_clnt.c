@@ -920,11 +920,10 @@ err:
   return -1;
 }
 
-/* ssl3_check_certificate_for_cipher returns one if |leaf| is a suitable server
- * certificate type for |cipher|. Otherwise, it returns zero and pushes an error
- * on the error queue. */
-static int ssl3_check_certificate_for_cipher(X509 *leaf,
-                                             const SSL_CIPHER *cipher) {
+/* ssl3_check_leaf_certificate returns one if |leaf| is a suitable leaf server
+ * certificate for |ssl|. Otherwise, it returns zero and pushes an error on the
+ * error queue. */
+static int ssl3_check_leaf_certificate(SSL *ssl, X509 *leaf) {
   int ret = 0;
   EVP_PKEY *pkey = X509_get_pubkey(leaf);
   if (pkey == NULL) {
@@ -932,6 +931,7 @@ static int ssl3_check_certificate_for_cipher(X509 *leaf,
   }
 
   /* Check the certificate's type matches the cipher. */
+  const SSL_CIPHER *cipher = ssl->s3->tmp.new_cipher;
   int expected_type = ssl_cipher_get_key_type(cipher);
   assert(expected_type != EVP_PKEY_NONE);
   if (pkey->type != expected_type) {
@@ -939,14 +939,19 @@ static int ssl3_check_certificate_for_cipher(X509 *leaf,
     goto err;
   }
 
-  /* TODO(davidben): This behavior is preserved from upstream. Should key usages
-   * be checked in other cases as well? */
   if (cipher->algorithm_auth & SSL_aECDSA) {
+    /* TODO(davidben): This behavior is preserved from upstream. Should key
+     * usages be checked in other cases as well? */
     /* This call populates the ex_flags field correctly */
     X509_check_purpose(leaf, -1, 0);
     if ((leaf->ex_flags & EXFLAG_KUSAGE) &&
         !(leaf->ex_kusage & X509v3_KU_DIGITAL_SIGNATURE)) {
       OPENSSL_PUT_ERROR(SSL, SSL_R_ECC_CERT_NOT_FOR_SIGNING);
+      goto err;
+    }
+
+    if (!tls1_check_ec_cert(ssl, leaf)) {
+      OPENSSL_PUT_ERROR(SSL, SSL_R_BAD_ECC_CERT);
       goto err;
     }
   }
@@ -1018,7 +1023,7 @@ int ssl3_get_server_certificate(SSL *s) {
   }
 
   X509 *leaf = sk_X509_value(sk, 0);
-  if (!ssl3_check_certificate_for_cipher(leaf, s->s3->tmp.new_cipher)) {
+  if (!ssl3_check_leaf_certificate(s, leaf)) {
     al = SSL_AD_ILLEGAL_PARAMETER;
     goto f_err;
   }

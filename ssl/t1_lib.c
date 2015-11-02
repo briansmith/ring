@@ -660,23 +660,6 @@ int tls12_check_peer_sigalg(SSL *ssl, const EVP_MD **out_md, int *out_alert,
     return 0;
   }
 
-  if (pkey->type == EVP_PKEY_EC) {
-    uint16_t curve_id;
-    uint8_t comp_id;
-    /* Check compression and curve matches extensions */
-    if (!tls1_curve_params_from_ec_key(&curve_id, &comp_id, pkey->pkey.ec)) {
-      *out_alert = SSL_AD_INTERNAL_ERROR;
-      return 0;
-    }
-
-    if (ssl->server && (!tls1_check_curve_id(ssl, curve_id) ||
-                        comp_id != TLSEXT_ECPOINTFORMAT_uncompressed)) {
-      OPENSSL_PUT_ERROR(SSL, SSL_R_WRONG_CURVE);
-      *out_alert = SSL_AD_ILLEGAL_PARAMETER;
-      return 0;
-    }
-  }
-
   /* Check signature matches a type we sent */
   sent_sigslen = tls12_get_psigalgs(ssl, &sent_sigs);
   for (i = 0; i < sent_sigslen; i += 2, sent_sigs += 2) {
