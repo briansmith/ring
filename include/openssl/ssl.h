@@ -396,7 +396,7 @@ OPENSSL_EXPORT int SSL_get_error(const SSL *ssl, int ret_code);
  * |SSL_do_handshake|. */
 #define SSL_ERROR_WANT_READ 2
 
-/* SSL_ERROR_WANT_READ indicates the operation failed attempting to write to
+/* SSL_ERROR_WANT_WRITE indicates the operation failed attempting to write to
  * the transport. The caller may retry the operation when the transport is ready
  * for writing. */
 #define SSL_ERROR_WANT_WRITE 3
