@@ -292,11 +292,18 @@ static int dtls_write_buffer_flush(SSL *ssl) {
     return 1;
   }
 
+  ssl->rwstate = SSL_WRITING;
   int ret = BIO_write(ssl->wbio, buf->buf + buf->offset, buf->len);
-  /* Drop the write buffer whether or not the write succeeded synchronously.
-   * TODO(davidben): How does this interact with the retry flag? */
+  if (ret <= 0) {
+    /* If the write failed, drop the write buffer anyway. Datagram transports
+     * can't write half a packet, so the caller is expected to retry from the
+     * top. */
+    ssl_write_buffer_clear(ssl);
+    return ret;
+  }
+  ssl->rwstate = SSL_NOTHING;
   ssl_write_buffer_clear(ssl);
-  return (ret <= 0) ? ret : 1;
+  return 1;
 }
 
 int ssl_write_buffer_flush(SSL *ssl) {

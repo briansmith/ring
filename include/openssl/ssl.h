@@ -317,18 +317,24 @@ OPENSSL_EXPORT int SSL_pending(const SSL *ssl);
  * returns the number of bytes read. Otherwise, it returns <= 0. The caller
  * should pass the value into |SSL_get_error| to determine how to proceed.
  *
- * A non-blocking |SSL_write| differs from non-blocking |write| in that a failed
- * |SSL_write| still commits to the data passed in. When retrying, the caller
- * must supply the original write buffer (or a larger one containing the
+ * In TLS, a non-blocking |SSL_write| differs from non-blocking |write| in that
+ * a failed |SSL_write| still commits to the data passed in. When retrying, the
+ * caller must supply the original write buffer (or a larger one containing the
  * original as a prefix). By default, retries will fail if they also do not
  * reuse the same |buf| pointer. This may be relaxed with
  * |SSL_MODE_ACCEPT_MOVING_WRITE_BUFFER|, but the buffer contents still must be
  * unchanged.
  *
- * By default, |SSL_write| will not return success until all |num| bytes are
- * written. This may be relaxed with |SSL_MODE_ENABLE_PARTIAL_WRITE|. It allows
- * |SSL_write| to complete with a partial result when only part of the input was
- * written in a single record.
+ * By default, in TLS, |SSL_write| will not return success until all |num| bytes
+ * are written. This may be relaxed with |SSL_MODE_ENABLE_PARTIAL_WRITE|. It
+ * allows |SSL_write| to complete with a partial result when only part of the
+ * input was written in a single record.
+ *
+ * In DTLS, neither |SSL_MODE_ACCEPT_MOVING_WRITE_BUFFER| and
+ * |SSL_MODE_ENABLE_PARTIAL_WRITE| do anything. The caller may retry with a
+ * different buffer freely. A single call to |SSL_write| only ever writes a
+ * single record in a single packet, so |num| must be at most
+ * |SSL3_RT_MAX_PLAIN_LENGTH|.
  *
  * TODO(davidben): Ensure 0 is only returned on transport EOF.
  * https://crbug.com/466303. */
@@ -482,11 +488,18 @@ OPENSSL_EXPORT int DTLSv1_get_timeout(const SSL *ssl, struct timeval *out);
  * flight of handshake messages and returns 1. If too many timeouts had expired
  * without progress or an error occurs, it returns -1.
  *
- * NOTE: The caller's external timer should be compatible with the one |ssl|
- * queries within some fudge factor. Otherwise, the call will be a no-op, but
+ * The caller's external timer should be compatible with the one |ssl| queries
+ * within some fudge factor. Otherwise, the call will be a no-op, but
  * |DTLSv1_get_timeout| will return an updated timeout.
  *
- * WARNING: This function breaks the usual return value convention. */
+ * If the function returns -1, checking if |SSL_get_error| returns
+ * |SSL_ERROR_WANT_WRITE| may be used to determine if the retransmit failed due
+ * to a non-fatal error at the write |BIO|. However, the operation may not be
+ * retried until the next timeout fires.
+ *
+ * WARNING: This function breaks the usual return value convention.
+ *
+ * TODO(davidben): This |SSL_ERROR_WANT_WRITE| behavior is kind of bizarre. */
 OPENSSL_EXPORT int DTLSv1_handle_timeout(SSL *ssl);
 
 
@@ -596,14 +609,16 @@ OPENSSL_EXPORT uint32_t SSL_get_options(const SSL *ssl);
  *
  * Modes configure API behavior. */
 
-/* SSL_MODE_ENABLE_PARTIAL_WRITE allows |SSL_write| to complete with a partial
- * result when the only part of the input was written in a single record. */
+/* SSL_MODE_ENABLE_PARTIAL_WRITE, in TLS, allows |SSL_write| to complete with a
+ * partial result when the only part of the input was written in a single
+ * record. In DTLS, it does nothing. */
 #define SSL_MODE_ENABLE_PARTIAL_WRITE 0x00000001L
 
-/* SSL_MODE_ACCEPT_MOVING_WRITE_BUFFER allows retrying an incomplete |SSL_write|
- * with a different buffer. However, |SSL_write| still assumes the buffer
- * contents are unchanged. This is not the default to avoid the misconception
- * that non-blocking |SSL_write| behaves like non-blocking |write|. */
+/* SSL_MODE_ACCEPT_MOVING_WRITE_BUFFER, in TLS, allows retrying an incomplete
+ * |SSL_write| with a different buffer. However, |SSL_write| still assumes the
+ * buffer contents are unchanged. This is not the default to avoid the
+ * misconception that non-blocking |SSL_write| behaves like non-blocking
+ * |write|. In DTLS, it does nothing. */
 #define SSL_MODE_ACCEPT_MOVING_WRITE_BUFFER 0x00000002L
 
 /* SSL_MODE_NO_AUTO_CHAIN disables automatically building a certificate chain

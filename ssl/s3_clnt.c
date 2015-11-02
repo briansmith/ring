@@ -645,6 +645,13 @@ int ssl3_send_client_hello(SSL *ssl) {
     return ssl_do_write(ssl);
   }
 
+  /* In DTLS, reset the handshake buffer each time a new ClientHello is
+   * assembled. We may send multiple if we receive HelloVerifyRequest. */
+  if (SSL_IS_DTLS(ssl) && !ssl3_init_handshake_buffer(ssl)) {
+    OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
+    return -1;
+  }
+
   CBB cbb;
   CBB_zero(&cbb);
 

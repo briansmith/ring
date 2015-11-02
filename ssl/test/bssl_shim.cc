@@ -808,6 +808,7 @@ static bool RetryAsync(SSL *ssl, int ret) {
     return false;
   }
 
+  const TestConfig *config = GetConfigPtr(ssl);
   TestState *test_state = GetTestState(ssl);
   if (test_state->clock_delta.tv_usec != 0 ||
       test_state->clock_delta.tv_sec != 0) {
@@ -818,7 +819,17 @@ static bool RetryAsync(SSL *ssl, int ret) {
     test_state->clock.tv_sec += test_state->clock_delta.tv_sec;
     memset(&test_state->clock_delta, 0, sizeof(test_state->clock_delta));
 
-    if (DTLSv1_handle_timeout(ssl) < 0) {
+    // The DTLS retransmit logic silently ignores write failures. So the test
+    // may progress, allow writes through synchronously.
+    if (config->async) {
+      AsyncBioEnforceWriteQuota(test_state->async_bio, false);
+    }
+    int timeout_ret = DTLSv1_handle_timeout(ssl);
+    if (config->async) {
+      AsyncBioEnforceWriteQuota(test_state->async_bio, true);
+    }
+
+    if (timeout_ret < 0) {
       fprintf(stderr, "Error retransmitting.\n");
       return false;
     }
@@ -863,9 +874,19 @@ static bool RetryAsync(SSL *ssl, int ret) {
 // the result value of the final |SSL_read| call.
 static int DoRead(SSL *ssl, uint8_t *out, size_t max_out) {
   const TestConfig *config = GetConfigPtr(ssl);
+  TestState *test_state = GetTestState(ssl);
   int ret;
   do {
+    if (config->async) {
+      // The DTLS retransmit logic silently ignores write failures. So the test
+      // may progress, allow writes through synchronously. |SSL_read| may
+      // trigger a retransmit, so disconnect the write quota.
+      AsyncBioEnforceWriteQuota(test_state->async_bio, false);
+    }
     ret = SSL_read(ssl, out, max_out);
+    if (config->async) {
+      AsyncBioEnforceWriteQuota(test_state->async_bio, true);
+    }
   } while (config->async && RetryAsync(ssl, ret));
   return ret;
 }

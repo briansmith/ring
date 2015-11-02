@@ -26,6 +26,7 @@ extern const BIO_METHOD g_async_bio_method;
 
 struct AsyncBio {
   bool datagram;
+  bool enforce_write_quota;
   size_t read_quota;
   size_t write_quota;
 };
@@ -43,9 +44,7 @@ static int AsyncWrite(BIO *bio, const char *in, int inl) {
     return 0;
   }
 
-  if (a->datagram) {
-    // Perform writes synchronously; the DTLS implementation drops any packets
-    // that failed to send.
+  if (!a->enforce_write_quota) {
     return BIO_write(bio->next_bio, in, inl);
   }
 
@@ -111,6 +110,7 @@ static int AsyncNew(BIO *bio) {
     return 0;
   }
   memset(a, 0, sizeof(*a));
+  a->enforce_write_quota = true;
   bio->init = 1;
   bio->ptr = (char *)a;
   return 1;
@@ -177,4 +177,12 @@ void AsyncBioAllowWrite(BIO *bio, size_t count) {
     return;
   }
   a->write_quota += count;
+}
+
+void AsyncBioEnforceWriteQuota(BIO *bio, bool enforce) {
+  AsyncBio *a = GetData(bio);
+  if (a == NULL) {
+    return;
+  }
+  a->enforce_write_quota = enforce;
 }

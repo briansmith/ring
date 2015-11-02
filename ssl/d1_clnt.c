@@ -190,13 +190,6 @@ int dtls1_connect(SSL *s) {
       case SSL3_ST_CW_CLNT_HELLO_A:
       case SSL3_ST_CW_CLNT_HELLO_B:
         s->shutdown = 0;
-
-        if (!ssl3_init_handshake_buffer(s)) {
-          OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
-          ret = -1;
-          goto end;
-        }
-
         dtls1_start_timer(s);
         ret = ssl3_send_client_hello(s);
         if (ret <= 0) {

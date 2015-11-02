@@ -80,15 +80,21 @@ func (c *Conn) dtlsDoReadRecord(want recordType) (recordType, *block, error) {
 			return 0, nil, c.in.setErrorLocked(fmt.Errorf("dtls: received record with version %x when expecting version %x", vers, expect))
 		}
 	}
-	seq := b.data[3:11]
-	// For test purposes, we assume a reliable channel. Require
-	// that the explicit sequence number matches the incrementing
-	// one we maintain. A real implementation would maintain a
-	// replay window and such.
-	if !bytes.Equal(seq, c.in.seq[:]) {
+	epoch := b.data[3:5]
+	seq := b.data[5:11]
+	// For test purposes, require the sequence number be monotonically
+	// increasing, so c.in includes the minimum next sequence number. Gaps
+	// may occur if packets failed to be sent out. A real implementation
+	// would maintain a replay window and such.
+	if !bytes.Equal(epoch, c.in.seq[:2]) {
+		c.sendAlert(alertIllegalParameter)
+		return 0, nil, c.in.setErrorLocked(fmt.Errorf("dtls: bad epoch"))
+	}
+	if bytes.Compare(seq, c.in.seq[2:]) < 0 {
 		c.sendAlert(alertIllegalParameter)
 		return 0, nil, c.in.setErrorLocked(fmt.Errorf("dtls: bad sequence number"))
 	}
+	copy(c.in.seq[2:], seq)
 	n := int(b.data[11])<<8 | int(b.data[12])
 	if n > maxCiphertext || len(b.data) < recordHeaderLen+n {
 		c.sendAlert(alertRecordOverflow)

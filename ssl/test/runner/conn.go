@@ -1078,14 +1078,16 @@ func (c *Conn) skipPacket(packet []byte) error {
 		seq := packet[5:11]
 		length := uint16(packet[11])<<8 | uint16(packet[12])
 		if bytes.Equal(c.in.seq[:2], epoch) {
-			if !bytes.Equal(c.in.seq[2:], seq) {
+			if bytes.Compare(seq, c.in.seq[2:]) < 0 {
 				return errors.New("tls: sequence mismatch")
 			}
+			copy(c.in.seq[2:], seq)
 			c.in.incSeq(false)
 		} else {
-			if !bytes.Equal(c.in.nextSeq[:], seq) {
+			if bytes.Compare(seq, c.in.nextSeq[:]) < 0 {
 				return errors.New("tls: sequence mismatch")
 			}
+			copy(c.in.nextSeq[:], seq)
 			c.in.incNextSeq()
 		}
 		if len(packet) < 13+int(length) {
