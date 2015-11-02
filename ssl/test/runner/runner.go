@@ -244,22 +244,36 @@ type testCase struct {
 var testCases []testCase
 
 func doExchange(test *testCase, config *Config, conn net.Conn, isResume bool) error {
-	var connDebug *recordingConn
 	var connDamage *damageAdaptor
-	if *flagDebug {
-		connDebug = &recordingConn{Conn: conn}
-		conn = connDebug
-		defer func() {
-			connDebug.WriteTo(os.Stdout)
-		}()
-	}
 
 	if test.protocol == dtls {
 		config.Bugs.PacketAdaptor = newPacketAdaptor(conn)
 		conn = config.Bugs.PacketAdaptor
-		if test.replayWrites {
-			conn = newReplayAdaptor(conn)
+	}
+
+	if *flagDebug {
+		local, peer := "client", "server"
+		if test.testType == clientTest {
+			local, peer = peer, local
 		}
+		connDebug := &recordingConn{
+			Conn:       conn,
+			isDatagram: test.protocol == dtls,
+			local:      local,
+			peer:       peer,
+		}
+		conn = connDebug
+		defer func() {
+			connDebug.WriteTo(os.Stdout)
+		}()
+
+		if config.Bugs.PacketAdaptor != nil {
+			config.Bugs.PacketAdaptor.debug = connDebug
+		}
+	}
+
+	if test.replayWrites {
+		conn = newReplayAdaptor(conn)
 	}
 
 	if test.damageFirstWrite {

@@ -12,33 +12,49 @@ import (
 	"sync"
 )
 
+type flowType int
+
+const (
+	readFlow flowType = iota
+	writeFlow
+	specialFlow
+)
+
+type flow struct {
+	flowType flowType
+	message  string
+	data     []byte
+}
+
 // recordingConn is a net.Conn that records the traffic that passes through it.
 // WriteTo can be used to produce output that can be later be loaded with
 // ParseTestData.
 type recordingConn struct {
 	net.Conn
 	sync.Mutex
-	flows   [][]byte
-	reading bool
+	flows       []flow
+	isDatagram  bool
+	local, peer string
+}
+
+func (r *recordingConn) appendFlow(flowType flowType, message string, data []byte) {
+	r.Lock()
+	defer r.Unlock()
+
+	if l := len(r.flows); flowType == specialFlow || r.isDatagram || l == 0 || r.flows[l-1].flowType != flowType {
+		buf := make([]byte, len(data))
+		copy(buf, data)
+		r.flows = append(r.flows, flow{flowType, message, buf})
+	} else {
+		r.flows[l-1].data = append(r.flows[l-1].data, data...)
+	}
 }
 
 func (r *recordingConn) Read(b []byte) (n int, err error) {
 	if n, err = r.Conn.Read(b); n == 0 {
 		return
 	}
-	b = b[:n]
-
-	r.Lock()
-	defer r.Unlock()
-
-	if l := len(r.flows); l == 0 || !r.reading {
-		buf := make([]byte, len(b))
-		copy(buf, b)
-		r.flows = append(r.flows, buf)
-	} else {
-		r.flows[l-1] = append(r.flows[l-1], b[:n]...)
-	}
-	r.reading = true
+	r.appendFlow(readFlow, "", b[:n])
 	return
 }
 
@@ -46,37 +62,33 @@ func (r *recordingConn) Write(b []byte) (n int, err error) {
 	if n, err = r.Conn.Write(b); n == 0 {
 		return
 	}
-	b = b[:n]
-
-	r.Lock()
-	defer r.Unlock()
-
-	if l := len(r.flows); l == 0 || r.reading {
-		buf := make([]byte, len(b))
-		copy(buf, b)
-		r.flows = append(r.flows, buf)
-	} else {
-		r.flows[l-1] = append(r.flows[l-1], b[:n]...)
-	}
-	r.reading = false
+	r.appendFlow(writeFlow, "", b[:n])
 	return
+}
+
+// LogSpecial appends an entry to the record of type 'special'.
+func (r *recordingConn) LogSpecial(message string, data []byte) {
+	r.appendFlow(specialFlow, message, data)
 }
 
 // WriteTo writes hex dumps to w that contains the recorded traffic.
 func (r *recordingConn) WriteTo(w io.Writer) {
-	// TLS always starts with a client to server flow.
-	clientToServer := true
-
+	fmt.Fprintf(w, ">>> runner is %s, shim is %s\n", r.local, r.peer)
 	for i, flow := range r.flows {
-		source, dest := "client", "server"
-		if !clientToServer {
-			source, dest = dest, source
+		switch flow.flowType {
+		case readFlow:
+			fmt.Fprintf(w, ">>> Flow %d (%s to %s)\n", i+1, r.peer, r.local)
+		case writeFlow:
+			fmt.Fprintf(w, ">>> Flow %d (%s to %s)\n", i+1, r.local, r.peer)
+		case specialFlow:
+			fmt.Fprintf(w, ">>> Flow %d %q\n", i+1, flow.message)
 		}
-		fmt.Fprintf(w, ">>> Flow %d (%s to %s)\n", i+1, source, dest)
-		dumper := hex.Dumper(w)
-		dumper.Write(flow)
-		dumper.Close()
-		clientToServer = !clientToServer
+
+		if flow.data != nil {
+			dumper := hex.Dumper(w)
+			dumper.Write(flow.data)
+			dumper.Close()
+		}
 	}
 }
 
