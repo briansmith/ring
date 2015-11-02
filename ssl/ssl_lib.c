@@ -2651,6 +2651,9 @@ int SSL_get_ivs(const SSL *ssl, const uint8_t **out_read_iv,
   }
 
   return 1;
+
+uint8_t SSL_get_server_key_exchange_hash(const SSL *ssl) {
+  return ssl->s3->tmp.server_key_exchange_hash;
 }
 
 int SSL_clear(SSL *ssl) {

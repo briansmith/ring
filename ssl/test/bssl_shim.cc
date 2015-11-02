@@ -1061,6 +1061,15 @@ static bool CheckHandshakeProperties(SSL *ssl, bool is_resume) {
     }
   }
 
+  if (config->expect_server_key_exchange_hash != 0 &&
+      config->expect_server_key_exchange_hash !=
+          SSL_get_server_key_exchange_hash(ssl)) {
+    fprintf(stderr, "ServerKeyExchange hash was %d, wanted %d.\n",
+            SSL_get_server_key_exchange_hash(ssl),
+            config->expect_server_key_exchange_hash);
+    return false;
+  }
+
   if (!config->is_server) {
     /* Clients should expect a peer certificate chain iff this was not a PSK
      * cipher suite. */

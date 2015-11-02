@@ -4026,6 +4026,19 @@ func addSigningHashTests() {
 				},
 			},
 		})
+
+		testCases = append(testCases, testCase{
+			name: "SigningHash-ServerKeyExchange-Verify-" + hash.name,
+			config: Config{
+				CipherSuites: []uint16{TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256},
+				SignatureAndHashes: []signatureAndHash{
+					{signatureRSA, 42},
+					{signatureRSA, hash.id},
+					{signatureRSA, 255},
+				},
+			},
+			flags: []string{"-expect-server-key-exchange-hash", strconv.Itoa(int(hash.id))},
+		})
 	}
 
 	// Test that hash resolution takes the signature type into account.

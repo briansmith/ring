@@ -1244,9 +1244,17 @@ int ssl3_get_server_key_exchange(SSL *s) {
     }
 
     if (SSL_USE_SIGALGS(s)) {
-      if (!tls12_check_peer_sigalg(&md, &al, s, &server_key_exchange, pkey)) {
+      uint8_t hash, signature;
+      if (!CBS_get_u8(&server_key_exchange, &hash) ||
+          !CBS_get_u8(&server_key_exchange, &signature)) {
+        al = SSL_AD_DECODE_ERROR;
+        OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
         goto f_err;
       }
+      if (!tls12_check_peer_sigalg(s, &md, &al, hash, signature, pkey)) {
+        goto f_err;
+      }
+      s->s3->tmp.server_key_exchange_hash = hash;
     } else if (pkey->type == EVP_PKEY_RSA) {
       md = EVP_md5_sha1();
     } else {

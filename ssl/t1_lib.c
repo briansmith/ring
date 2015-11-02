@@ -640,28 +640,16 @@ size_t tls12_get_psigalgs(SSL *s, const uint8_t **psigs) {
   return sizeof(tls12_sigalgs);
 }
 
-/* tls12_check_peer_sigalg parses a SignatureAndHashAlgorithm out of |cbs|. It
- * checks it is consistent with |s|'s sent supported signature algorithms and,
- * if so, writes the relevant digest into |*out_md| and returns 1. Otherwise it
- * returns 0 and writes an alert into |*out_alert|. */
-int tls12_check_peer_sigalg(const EVP_MD **out_md, int *out_alert, SSL *s,
-                            CBS *cbs, EVP_PKEY *pkey) {
+int tls12_check_peer_sigalg(SSL *ssl, const EVP_MD **out_md, int *out_alert,
+                            uint8_t hash, uint8_t signature, EVP_PKEY *pkey) {
   const uint8_t *sent_sigs;
   size_t sent_sigslen, i;
   int sigalg = tls12_get_sigid(pkey->type);
-  uint8_t hash, signature;
 
   /* Should never happen */
   if (sigalg == -1) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
     *out_alert = SSL_AD_INTERNAL_ERROR;
-    return 0;
-  }
-
-  if (!CBS_get_u8(cbs, &hash) ||
-      !CBS_get_u8(cbs, &signature)) {
-    OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
-    *out_alert = SSL_AD_DECODE_ERROR;
     return 0;
   }
 
@@ -681,8 +669,8 @@ int tls12_check_peer_sigalg(const EVP_MD **out_md, int *out_alert, SSL *s,
       return 0;
     }
 
-    if (s->server && (!tls1_check_curve_id(s, curve_id) ||
-                      comp_id != TLSEXT_ECPOINTFORMAT_uncompressed)) {
+    if (ssl->server && (!tls1_check_curve_id(ssl, curve_id) ||
+                        comp_id != TLSEXT_ECPOINTFORMAT_uncompressed)) {
       OPENSSL_PUT_ERROR(SSL, SSL_R_WRONG_CURVE);
       *out_alert = SSL_AD_ILLEGAL_PARAMETER;
       return 0;
@@ -690,7 +678,7 @@ int tls12_check_peer_sigalg(const EVP_MD **out_md, int *out_alert, SSL *s,
   }
 
   /* Check signature matches a type we sent */
-  sent_sigslen = tls12_get_psigalgs(s, &sent_sigs);
+  sent_sigslen = tls12_get_psigalgs(ssl, &sent_sigs);
   for (i = 0; i < sent_sigslen; i += 2, sent_sigs += 2) {
     if (hash == sent_sigs[0] && signature == sent_sigs[1]) {
       break;

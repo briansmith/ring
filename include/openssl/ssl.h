@@ -2911,6 +2911,11 @@ OPENSSL_EXPORT SSL_CTX *SSL_set_SSL_CTX(SSL *ssl, SSL_CTX *ctx);
  * respectively. */
 OPENSSL_EXPORT int SSL_get_shutdown(const SSL *ssl);
 
+/* SSL_get_server_key_exchange_hash, on a client, returns the hash the server
+ * used to sign the ServerKeyExchange in TLS 1.2. If not applicable, it returns
+ * |TLSEXT_hash_none|. */
+OPENSSL_EXPORT uint8_t SSL_get_server_key_exchange_hash(const SSL *ssl);
+
 
 /* Deprecated functions. */
 
@@ -4156,6 +4161,11 @@ typedef struct ssl3_state_st {
     /* Client-only: in_false_start is one if there is a pending handshake in
      * False Start. The client may write data at this point. */
     char in_false_start;
+
+    /* server_key_exchange_hash, on a client, is the hash the server used to
+     * sign the ServerKeyExchange in TLS 1.2. If not applicable, it is
+     * |TLSEXT_hash_none|. */
+    uint8_t server_key_exchange_hash;
 
     /* peer_dh_tmp, on a client, is the server's DHE public key. */
     DH *peer_dh_tmp;

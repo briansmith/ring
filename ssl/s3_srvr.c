@@ -2056,9 +2056,17 @@ int ssl3_get_cert_verify(SSL *s) {
   CBS_init(&certificate_verify, s->init_msg, n);
 
   /* Determine the digest type if needbe. */
-  if (SSL_USE_SIGALGS(s) &&
-      !tls12_check_peer_sigalg(&md, &al, s, &certificate_verify, pkey)) {
-    goto f_err;
+  if (SSL_USE_SIGALGS(s)) {
+    uint8_t hash, signature_type;
+    if (!CBS_get_u8(&certificate_verify, &hash) ||
+        !CBS_get_u8(&certificate_verify, &signature_type)) {
+      al = SSL_AD_DECODE_ERROR;
+      OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
+      goto f_err;
+    }
+    if (!tls12_check_peer_sigalg(s, &md, &al, hash, signature_type, pkey)) {
+      goto f_err;
+    }
   }
 
   /* Compute the digest. */

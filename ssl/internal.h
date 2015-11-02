@@ -1294,8 +1294,13 @@ int tls1_parse_peer_sigalgs(SSL *s, const CBS *sigalgs);
 const EVP_MD *tls1_choose_signing_digest(SSL *ssl);
 
 size_t tls12_get_psigalgs(SSL *s, const uint8_t **psigs);
-int tls12_check_peer_sigalg(const EVP_MD **out_md, int *out_alert, SSL *s,
-                            CBS *cbs, EVP_PKEY *pkey);
+
+/* tls12_check_peer_sigalg checks that |hash| and |signature| are consistent
+ * with |pkey| and |ssl|'s sent, supported signature algorithms and, if so,
+ * writes the relevant digest into |*out_md| and returns 1. Otherwise it
+ * returns 0 and writes an alert into |*out_alert|. */
+int tls12_check_peer_sigalg(SSL *ssl, const EVP_MD **out_md, int *out_alert,
+                            uint8_t hash, uint8_t signature, EVP_PKEY *pkey);
 void ssl_set_client_disabled(SSL *s);
 
 #endif /* OPENSSL_HEADER_SSL_INTERNAL_H */

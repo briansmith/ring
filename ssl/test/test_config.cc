@@ -141,6 +141,8 @@ const Flag<int> kIntFlags[] = {
   { "-mtu", &TestConfig::mtu },
   { "-export-keying-material", &TestConfig::export_keying_material },
   { "-expect-total-renegotiations", &TestConfig::expect_total_renegotiations },
+  { "-expect-server-key-exchange-hash",
+    &TestConfig::expect_server_key_exchange_hash },
 };
 
 }  // namespace
