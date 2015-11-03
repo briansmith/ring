@@ -78,8 +78,12 @@
 #if !defined(OPENSSL_NO_ASM) &&                         \
     (defined(OPENSSL_X86) || defined(OPENSSL_X86_64) || \
      defined(OPENSSL_ARM) || defined(OPENSSL_AARCH64))
-#define SHA512_BLOCK_CAN_MANAGE_UNALIGNED_DATA
 #define SHA512_ASM
+#endif
+
+#if defined(OPENSSL_X86) || defined(OPENSSL_X86_64) || \
+    defined(__ARM_FEATURE_UNALIGNED)
+#define SHA512_BLOCK_CAN_MANAGE_UNALIGNED_DATA
 #endif
 
 int SHA384_Init(SHA512_CTX *sha) {
