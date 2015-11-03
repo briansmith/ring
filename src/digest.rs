@@ -24,8 +24,13 @@
 // The goal for this implementation is to drive the overhead as close to zero
 // as possible.
 
-use std::mem;
-use super::c;
+use super::{c, polyfill};
+
+// XXX: endian-specific.
+macro_rules! u32x2 {
+    ( $first:expr, $second:expr ) =>
+    ((($second as u64) << 32) | ($first as u64))
+}
 
 /// A context for multi-step (Init-Update-Finish) digest calculations.
 ///
@@ -46,14 +51,20 @@ use super::c;
 ///
 /// assert_eq!(&one_shot.as_ref(), &multi_part.as_ref());
 /// ```
-#[derive(Clone)]
 pub struct Context {
-    pub algorithm: &'static Algorithm,
-
     // We use u64 to try to ensure 64-bit alignment/padding.
-    // XXX: Test this, and also test that DIGEST_CONTEXT_U64_COUNT is enough
-    // by having the build system verify with the C part of the build system.
-    state: [u64; DIGEST_CONTEXT_STATE_U64_COUNT],
+    state: [u64; MAX_CHAINING_LEN / 8],
+
+    // Note that SHA-512 has a 128-bit block counter, but this implementation
+    // only supports up to 2^64-1 blocks, just like for SHA-1 and SHA-256, so
+    // a 64-bit counter is sufficient.
+    completed_data_blocks: u64,
+
+    // TODO: More explicitly force 64-bit alignment for |pending|.
+    pending: [u8; MAX_BLOCK_LEN],
+    num_pending: usize,
+
+    pub algorithm: &'static Algorithm,
 }
 
 impl Context {
@@ -61,12 +72,13 @@ impl Context {
     ///
     /// C analogs: `EVP_DigestInit`, `EVP_DigestInit_ex`
     pub fn new(algorithm: &'static Algorithm) -> Context {
-        let mut ctx = Context {
+        Context {
             algorithm: algorithm,
-            state: [0u64; DIGEST_CONTEXT_STATE_U64_COUNT],
-        };
-        let _ = unsafe { (algorithm.init)(ctx.state.as_mut_ptr()) };
-        ctx
+            state: algorithm.initial_state,
+            completed_data_blocks: 0,
+            pending: [0u8; MAX_BLOCK_LEN],
+            num_pending: 0,
+        }
     }
 
     /// Updates the digest with all the data in `data`. `update` may be called
@@ -75,10 +87,52 @@ impl Context {
     ///
     /// C analog: `EVP_DigestUpdate`
     pub fn update(&mut self, data: &[u8]) {
-        let _ = unsafe {
-            (self.algorithm.update)(self.state.as_mut_ptr(), data.as_ptr(),
-                                    data.len())
-        };
+        if data.len() < self.algorithm.block_len - self.num_pending {
+            polyfill::slice::fill_from_slice(
+                &mut self.pending[self.num_pending..
+                                  (self.num_pending + data.len())],
+                data);
+            self.num_pending += data.len();
+            return;
+        }
+
+        let mut remaining = data;
+        if self.num_pending > 0 {
+            let to_copy = self.algorithm.block_len - self.num_pending;
+            polyfill::slice::fill_from_slice(
+                &mut self.pending[self.num_pending..self.algorithm.block_len],
+                &data[..to_copy]);
+
+            unsafe {
+                (self.algorithm.block_data_order)(self.state.as_mut_ptr(),
+                                                  self.pending.as_ptr(), 1);
+            }
+            self.completed_data_blocks =
+                self.completed_data_blocks.checked_add(1).unwrap();
+
+            remaining = &remaining[to_copy..];
+            self.num_pending = 0;
+        }
+
+        let num_blocks = remaining.len() / self.algorithm.block_len;
+        let num_to_save_for_later = remaining.len() % self.algorithm.block_len;
+        if num_blocks > 0 {
+            unsafe {
+                (self.algorithm.block_data_order)(self.state.as_mut_ptr(),
+                                                  remaining.as_ptr(),
+                                                  num_blocks);
+            }
+            self.completed_data_blocks =
+                self.completed_data_blocks.checked_add(widen_u64(num_blocks))
+                                          .unwrap();
+        }
+        if num_to_save_for_later > 0 {
+            polyfill::slice::fill_from_slice(
+                &mut self.pending[self.num_pending..
+                                  (self.num_pending + num_to_save_for_later)],
+                &remaining[(remaining.len() - num_to_save_for_later)..]);
+            self.num_pending = num_to_save_for_later;
+        }
     }
 
     /// Finalizes the digest calculation and returns the digest value. `finish`
@@ -87,20 +141,68 @@ impl Context {
     ///
     /// C analogs: `EVP_DigestFinal`, `EVP_DigestFinal_ex`
     pub fn finish(mut self) -> Digest {
-        let mut digest = Digest {
+        // We know |num_pending < self.algorithm.block_len|, because we would
+        // have processed the block otherwise.
+
+        let mut padding_pos = self.num_pending;
+        self.pending[padding_pos] = 0x80;
+        padding_pos += 1;
+
+        if padding_pos > self.algorithm.block_len - self.algorithm.len_len {
+            polyfill::slice::fill(
+                &mut self.pending[padding_pos..self.algorithm.block_len], 0);
+            unsafe {
+                (self.algorithm.block_data_order)(self.state.as_mut_ptr(),
+                                                  self.pending.as_ptr(), 1);
+            }
+            // We don't increase |self.completed_data_blocks| because the
+            // padding isn't data, and so it isn't included in the data length.
+            padding_pos = 0;
+        }
+
+        polyfill::slice::fill(
+            &mut self.pending[padding_pos..(self.algorithm.block_len - 8)], 0);
+
+        // Output the length, in bits, in big endian order.
+        let mut completed_data_bits: u64 =
+            self.completed_data_blocks
+                .checked_mul(widen_u64(self.algorithm.block_len)).unwrap()
+                .checked_add(widen_u64(self.num_pending)).unwrap()
+                .checked_mul(8).unwrap();
+
+        for b in (&mut self.pending[(self.algorithm.block_len - 8)..
+                                    self.algorithm.block_len]).into_iter().rev() {
+            *b = completed_data_bits as u8;
+            completed_data_bits /= 0x100;
+        }
+        unsafe {
+            (self.algorithm.block_data_order)(self.state.as_mut_ptr(),
+                                              self.pending.as_ptr(), 1);
+        }
+
+        Digest {
             algorithm: self.algorithm,
-            value: unsafe { mem::uninitialized() },
-        };
-        let _ = unsafe {
-            (self.algorithm.final_)(digest.value.as_mut_ptr(),
-                                    self.state.as_mut_ptr())
-        };
-        digest
+            value: (self.algorithm.format_output)(&self.state),
+        }
     }
 
     /// The algorithm that this context is using.
     #[inline(always)]
     pub fn algorithm(&self) -> &'static Algorithm { self.algorithm }
+}
+
+// XXX: This should just be `#[derive(Clone)]` but that doesn't work because
+// `[u8; 128]` doesn't implement `Clone`.
+impl Clone for Context {
+   fn clone(&self) -> Context {
+        Context {
+            state: self.state,
+            pending: self.pending,
+            completed_data_blocks: self.completed_data_blocks,
+            num_pending: self.num_pending,
+            algorithm: self.algorithm
+        }
+   }
 }
 
 /// Returns the digest of `data` using the given digest algorithm.
@@ -134,8 +236,8 @@ pub fn digest(algorithm: &'static Algorithm, data: &[u8]) -> Digest {
 ///
 /// Use `as_ref` to get the value as a `&[u8]`.
 pub struct Digest {
+    value: [u64; MAX_OUTPUT_LEN / 8],
     algorithm: &'static Algorithm,
-    value: [u8; MAX_OUTPUT_LEN],
 }
 
 impl Digest {
@@ -145,7 +247,9 @@ impl Digest {
 }
 
 impl AsRef<[u8]> for Digest {
-    fn as_ref(&self) -> &[u8] { &self.value[0..self.algorithm.output_len] }
+    fn as_ref(&self) -> &[u8] {
+        &(polyfill::slice::u64_as_u8(&self.value))[..self.algorithm.output_len]
+    }
 }
 
 /// A digest algorithm.
@@ -166,17 +270,20 @@ pub struct Algorithm {
     /// C analog: `EVP_MD_block_size`
     pub block_len: usize,
 
-    init: unsafe extern fn(ctx_state: *mut u64) -> c::int,
-    update: unsafe extern fn(ctx_state: *mut u64, data: *const u8,
-                             len: c::size_t) -> c::int,
-    final_: unsafe extern fn(out: *mut u8, ctx_state: *mut u64) -> c::int,
+    /// The length of the length in the padding.
+    len_len: usize,
 
-    // XXX: This is required because the signature verification functions
-    // require a NID. But, really they don't need a NID, but just the OID of
-    // the digest function, perhaps with an `EVP_MD` if it wants to validate
-    // the properties of the digest like the length. XXX: This has to be public
-    // because it is accessed from the signature modules.
-    pub nid: c::int,
+    block_data_order: unsafe extern fn(state: *mut u64, data: *const u8,
+                                       num: c::size_t),
+    format_output: fn (input: &[u64; MAX_CHAINING_LEN / 8]) ->
+                       [u64; MAX_OUTPUT_LEN / 8],
+
+    initial_state: [u64; MAX_CHAINING_LEN / 8],
+
+    /// An identifier for the algorithm. For all the algorithms defined in this
+    /// module, `a.id == b.id` implies that `a` and `b` are references to the
+    /// same algorithm.
+    pub id: ID,
 }
 
 #[cfg(test)]
@@ -193,47 +300,76 @@ pub mod test_util {
 
 macro_rules! impl_Digest {
     ($XXX:ident, $output_len_in_bits:expr, $chaining_len_in_bits:expr,
-     $block_len_in_bits:expr, $xxx_Init:ident, $xxx_Update:ident,
-     $xxx_Final:ident, $NID_xxx:expr) => {
+     $block_len_in_bits:expr, $len_len_in_bits:expr,
+     $xxx_block_data_order:ident, $format_output:ident, $XXX_INITIAL:ident,
+     $initial_value:expr) => {
 
         pub static $XXX: Algorithm = Algorithm {
             output_len: $output_len_in_bits / 8,
             chaining_len: $chaining_len_in_bits / 8,
             block_len: $block_len_in_bits / 8,
-
-            init: $xxx_Init,
-            update: $xxx_Update,
-            final_: $xxx_Final,
-
-            nid: $NID_xxx,
+            len_len: $len_len_in_bits / 8,
+            block_data_order: $xxx_block_data_order,
+            format_output: $format_output,
+            initial_state: $initial_value,
+            id: ID::$XXX,
         };
-
-        // Although the called functions all specify a return value, in
-        // BoringSSL they are always guaranteed to return 1 according to the
-        // documentation in the header files, so we can safely ignore their
-        // return values.
-        //
-        // XXX: As of Rust 1.4, the compiler will no longer warn about the use
-        // of `usize` and `isize` in FFI declarations. Remove the
-        // `allow(improper_ctypes)` when Rust 1.4 is released.
-        #[allow(improper_ctypes)]
-        extern {
-            fn $xxx_Init(ctx_state: *mut u64) -> c::int;
-            fn $xxx_Update(ctx_state: *mut u64, data: *const u8, len: c::size_t)
-                           -> c::int;
-            fn $xxx_Final(out: *mut u8, ctx_state: *mut u64) -> c::int;
-        }
     }
 }
 
-impl_Digest!(SHA1, 160, 160, 512, SHA1_Init, SHA1_Update, SHA1_Final,
-             64 /*NID_sha1*/);
-impl_Digest!(SHA256, 256, 256, 512, SHA256_Init, SHA256_Update, SHA256_Final,
-             672 /*NID_sha256*/);
-impl_Digest!(SHA384, 384, 512, 1024, SHA384_Init, SHA384_Update, SHA384_Final,
-             673 /*NID_sha384*/);
-impl_Digest!(SHA512, 512, 512, 1024, SHA512_Init, SHA512_Update, SHA512_Final,
-             674 /*NID_sha512*/);
+/// The type of `Algorithm::id`.
+#[derive(Clone, Copy, PartialEq)]
+pub enum ID {
+    SHA1,
+    SHA256,
+    SHA384,
+    SHA512,
+}
+
+#[inline(always)]
+fn widen_u64(x: usize) -> u64 { x as u64 }
+
+impl_Digest!(SHA1, 160, 160, 512, 64, sha1_block_data_order,
+             sha256_format_output,
+             SHA1_INITIAL, [
+             u32x2!(0x67452301, 0xefcdab89),
+             u32x2!(0x98badcfe, 0x10325476),
+             u32x2!(0xc3d2e1f0, 0),
+             0, 0, 0, 0, 0,
+]);
+
+impl_Digest!(SHA256, 256, 256, 512, 64, sha256_block_data_order,
+             sha256_format_output, SHA256_INITIAL, [
+             u32x2!(0x6a09e667, 0xbb67ae85),
+             u32x2!(0x3c6ef372, 0xa54ff53a),
+             u32x2!(0x510e527f, 0x9b05688c),
+             u32x2!(0x1f83d9ab, 0x5be0cd19),
+             0, 0, 0, 0,
+]);
+
+impl_Digest!(SHA384, 384, 512, 1024, 128, sha512_block_data_order,
+             sha512_format_output, SHA384_INITIAL, [
+             0xcbbb9d5dc1059ed8,
+             0x629a292a367cd507,
+             0x9159015a3070dd17,
+             0x152fecd8f70e5939,
+             0x67332667ffc00b31,
+             0x8eb44a8768581511,
+             0xdb0c2e0d64f98fa7,
+             0x47b5481dbefa4fa4,
+]);
+
+impl_Digest!(SHA512, 512, 512, 1024, 128, sha512_block_data_order,
+             sha512_format_output, SHA512_INITIAL, [
+             0x6a09e667f3bcc908,
+             0xbb67ae8584caa73b,
+             0x3c6ef372fe94f82b,
+             0xa54ff53a5f1d36f1,
+             0x510e527fade682d1,
+             0x9b05688c2b3e6c1f,
+             0x1f83d9abfb41bd6b,
+             0x5be0cd19137e2179,
+]);
 
 /// The maximum block length (`Algorithm::block_len`) of all the algorithms in
 /// this module.
@@ -243,9 +379,44 @@ pub const MAX_BLOCK_LEN: usize = 1024 / 8;
 /// in this module.
 pub const MAX_OUTPUT_LEN: usize = 512 / 8;
 
-// The number of u64-sized words needed to store the largest digest context
-// state.
-const DIGEST_CONTEXT_STATE_U64_COUNT: usize = 28;
+/// The maximum chaining length ('Algorithm::chaining_len`) of all the
+/// algorithms in this module.
+pub const MAX_CHAINING_LEN: usize = MAX_OUTPUT_LEN;
+
+fn sha256_format_output(input: &[u64; MAX_CHAINING_LEN / 8])
+                        -> [u64; MAX_OUTPUT_LEN / 8] {
+    let in32 = &polyfill::slice::u64_as_u32(input)[0..8];
+    [
+        u32x2!(in32[0].to_be(), in32[1].to_be()),
+        u32x2!(in32[2].to_be(), in32[3].to_be()),
+        u32x2!(in32[4].to_be(), in32[5].to_be()),
+        u32x2!(in32[6].to_be(), in32[7].to_be()),
+        0,
+        0,
+        0,
+        0,
+    ]
+}
+
+fn sha512_format_output(input: &[u64; MAX_CHAINING_LEN / 8])
+                        -> [u64; MAX_OUTPUT_LEN / 8] {
+    [
+        input[0].to_be(),
+        input[1].to_be(),
+        input[2].to_be(),
+        input[3].to_be(),
+        input[4].to_be(),
+        input[5].to_be(),
+        input[6].to_be(),
+        input[7].to_be(),
+    ]
+}
+
+extern {
+    fn sha1_block_data_order(state: *mut u64, data: *const u8, num: c::size_t);
+    fn sha256_block_data_order(state: *mut u64, data: *const u8, num: c::size_t);
+    fn sha512_block_data_order(state: *mut u64, data: *const u8, num: c::size_t);
+}
 
 #[cfg(test)]
 mod tests {

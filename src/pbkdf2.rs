@@ -245,11 +245,11 @@ mod tests {
             let salt = test_case.consume_bytes("S");
             let dk = test_case.consume_bytes("DK");
 
-            let prf = if digest_alg.nid == digest::SHA1.nid {
+            let prf = if digest_alg.id == digest::ID::SHA1 {
                 &pbkdf2::HMAC_SHA1
-            } else if digest_alg.nid == digest::SHA256.nid {
+            } else if digest_alg.id == digest::ID::SHA256 {
                 &pbkdf2::HMAC_SHA256
-            } else if digest_alg.nid == digest::SHA512.nid {
+            } else if digest_alg.id == digest::ID::SHA512 {
                 &pbkdf2::HMAC_SHA512
             } else {
                 unimplemented!();

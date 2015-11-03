@@ -54,11 +54,7 @@
  * copied and put under another distribution licence
  * [including the GNU Public Licence.] */
 
-#include <openssl/sha.h>
-
-#include <string.h>
-
-#include <openssl/mem.h>
+#include "openssl/base.h"
 
 
 #if !defined(OPENSSL_NO_ASM) &&                         \
@@ -67,66 +63,8 @@
 #define SHA256_ASM
 #endif
 
-int SHA256_Init(SHA256_CTX *sha) {
-  memset(sha, 0, sizeof(SHA256_CTX));
-  sha->h[0] = 0x6a09e667UL;
-  sha->h[1] = 0xbb67ae85UL;
-  sha->h[2] = 0x3c6ef372UL;
-  sha->h[3] = 0xa54ff53aUL;
-  sha->h[4] = 0x510e527fUL;
-  sha->h[5] = 0x9b05688cUL;
-  sha->h[6] = 0x1f83d9abUL;
-  sha->h[7] = 0x5be0cd19UL;
-  sha->md_len = SHA256_DIGEST_LENGTH;
-  return 1;
-}
-
-#define DATA_ORDER_IS_BIG_ENDIAN
-
-#define HASH_CTX SHA256_CTX
+#define DATA_ORDER_IS_BIG_ENDIAN /* Required by md32_common.h */
 #define HASH_CBLOCK 64
-
-/* Note that FIPS180-2 discusses "Truncation of the Hash Function Output."
- * default: case below covers for it. It's not clear however if it's permitted
- * to truncate to amount of bytes not divisible by 4. I bet not, but if it is,
- * then default: case shall be extended. For reference. Idea behind separate
- * cases for pre-defined lenghts is to let the compiler decide if it's
- * appropriate to unroll small loops.
- *
- * TODO(davidben): The small |md_len| case is one of the few places a low-level
- * hash 'final' function can fail. This should never happen. */
-#define HASH_MAKE_STRING(c, s)                              \
-  do {                                                      \
-    uint32_t ll;                                            \
-    unsigned int nn;                                        \
-    switch ((c)->md_len) {                                  \
-      case SHA256_DIGEST_LENGTH:                            \
-        for (nn = 0; nn < SHA256_DIGEST_LENGTH / 4; nn++) { \
-          ll = (c)->h[nn];                                  \
-          (void) HOST_l2c(ll, (s));                         \
-        }                                                   \
-        break;                                              \
-      default:                                              \
-        if ((c)->md_len > SHA256_DIGEST_LENGTH) {           \
-          return 0;                                         \
-        }                                                   \
-        for (nn = 0; nn < (c)->md_len / 4; nn++) {          \
-          ll = (c)->h[nn];                                  \
-          (void) HOST_l2c(ll, (s));                         \
-        }                                                   \
-        break;                                              \
-    }                                                       \
-  } while (0)
-
-
-#define HASH_UPDATE SHA256_Update
-#define HASH_TRANSFORM SHA256_Transform
-#define HASH_FINAL SHA256_Final
-#define HASH_BLOCK_DATA_ORDER sha256_block_data_order
-#ifndef SHA256_ASM
-static
-#endif
-void sha256_block_data_order(uint32_t *state, const uint8_t *in, size_t num);
 
 #include "../digest/md32_common.h"
 
@@ -175,8 +113,7 @@ static const uint32_t K256[64] = {
     ROUND_00_15(i, a, b, c, d, e, f, g, h);            \
   } while (0)
 
-static void sha256_block_data_order(uint32_t *state, const uint8_t *data,
-                                    size_t num) {
+void sha256_block_data_order(uint32_t *state, const uint8_t *data, size_t num) {
   uint32_t a, b, c, d, e, f, g, h, s0, s1, T1;
   uint32_t X[16];
   int i;

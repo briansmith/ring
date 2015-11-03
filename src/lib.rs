@@ -24,6 +24,7 @@ mod ffi;
 pub mod hkdf;
 pub mod hmac;
 pub mod pbkdf2;
+mod polyfill;
 pub mod rand;
 pub mod rsa;
 

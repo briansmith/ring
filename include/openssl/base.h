@@ -159,12 +159,8 @@ typedef struct evp_cipher_st EVP_CIPHER;
 typedef struct evp_pkey_ctx_st EVP_PKEY_CTX;
 typedef struct evp_pkey_method_st EVP_PKEY_METHOD;
 typedef struct evp_pkey_st EVP_PKEY;
-typedef struct md5_state_st MD5_CTX;
 typedef struct rand_meth_st RAND_METHOD;
 typedef struct rsa_st RSA;
-typedef struct sha256_state_st SHA256_CTX;
-typedef struct sha512_state_st SHA512_CTX;
-typedef struct sha_state_st SHA_CTX;
 typedef struct st_ERR_FNS ERR_FNS;
 typedef void *OPENSSL_BLOCK;
 

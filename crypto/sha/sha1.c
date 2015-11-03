@@ -54,11 +54,7 @@
  * copied and put under another distribution licence
  * [including the GNU Public Licence.] */
 
-#include <openssl/sha.h>
-
-#include <string.h>
-
-#include <openssl/mem.h>
+#include "openssl/base.h"
 
 
 #if !defined(OPENSSL_NO_ASM) &&                         \
@@ -67,46 +63,11 @@
 #define SHA1_ASM
 #endif
 
-int SHA1_Init(SHA_CTX *sha) {
-  memset(sha, 0, sizeof(SHA_CTX));
-  sha->h[0] = 0x67452301UL;
-  sha->h[1] = 0xefcdab89UL;
-  sha->h[2] = 0x98badcfeUL;
-  sha->h[3] = 0x10325476UL;
-  sha->h[4] = 0xc3d2e1f0UL;
-  return 1;
-}
-
-#define DATA_ORDER_IS_BIG_ENDIAN
-
-#define HASH_CTX                SHA_CTX
+#define DATA_ORDER_IS_BIG_ENDIAN /* Required by md32_common.h. */
 #define HASH_CBLOCK             64
-#define HASH_MAKE_STRING(c, s) \
-  do {                         \
-    uint32_t ll;               \
-    ll = (c)->h[0];            \
-    (void) HOST_l2c(ll, (s));  \
-    ll = (c)->h[1];            \
-    (void) HOST_l2c(ll, (s));  \
-    ll = (c)->h[2];            \
-    (void) HOST_l2c(ll, (s));  \
-    ll = (c)->h[3];            \
-    (void) HOST_l2c(ll, (s));  \
-    ll = (c)->h[4];            \
-    (void) HOST_l2c(ll, (s));  \
-  } while (0)
 
-#define HASH_UPDATE SHA1_Update
-#define HASH_TRANSFORM SHA1_Transform
-#define HASH_FINAL SHA1_Final
-#define HASH_BLOCK_DATA_ORDER sha1_block_data_order
 #define Xupdate(a, ix, ia, ib, ic, id) \
   ((a) = (ia ^ ib ^ ic ^ id), ix = (a) = ROTATE((a), 1))
-
-#ifndef SHA1_ASM
-static
-#endif
-void sha1_block_data_order(uint32_t *state, const uint8_t *data, size_t num);
 
 #include "../digest/md32_common.h"
 
@@ -168,8 +129,7 @@ void sha1_block_data_order(uint32_t *state, const uint8_t *data, size_t num);
 #define X(i)	XX##i
 
 #if !defined(SHA1_ASM)
-static void sha1_block_data_order(uint32_t *state, const uint8_t *data,
-                                  size_t num) {
+void sha1_block_data_order(uint32_t *state, const uint8_t *data, size_t num) {
   register uint32_t A, B, C, D, E, T, l;
   uint32_t XX0, XX1, XX2, XX3, XX4, XX5, XX6, XX7, XX8, XX9, XX10,
       XX11, XX12, XX13, XX14, XX15;

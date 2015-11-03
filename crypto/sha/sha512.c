@@ -54,26 +54,14 @@
  * copied and put under another distribution licence
  * [including the GNU Public Licence.] */
 
-#include <openssl/sha.h>
+#include "openssl/base.h"
 
-#include <string.h>
 
-#include <openssl/mem.h>
+ /* The 32-bit hash algorithms' |*_block_data_order| functions operate on
+ * unaligned data. |sha512_block_data_order| does not. */
 
 #include "../internal.h"
 
-
-/* IMPLEMENTATION NOTES.
- *
- * The 32-bit hash algorithms share a common byte-order neutral collector and
- * padding function implementations that operate on unaligned data,
- * ../md32_common.h. This SHA-512 implementation does not. Reasons
- * [in reverse order] are:
- *
- * - It's the only 64-bit hash algorithm for the moment of this writing,
- *   there is no need for common collector/padding implementation [yet];
- * - By supporting only a transform function that operates on *aligned* data
- *   the collector/padding function is simpler and easier to optimize. */
 
 #if !defined(OPENSSL_NO_ASM) &&                         \
     (defined(OPENSSL_X86) || defined(OPENSSL_X86_64) || \
@@ -84,204 +72,9 @@
 #if defined(OPENSSL_X86) || defined(OPENSSL_X86_64) || \
     defined(__ARM_FEATURE_UNALIGNED)
 #define SHA512_BLOCK_CAN_MANAGE_UNALIGNED_DATA
+#else
+#error "ring::digest does pre-align data for sha512_block_data_order"
 #endif
-
-int SHA384_Init(SHA512_CTX *sha) {
-  sha->h[0] = OPENSSL_U64(0xcbbb9d5dc1059ed8);
-  sha->h[1] = OPENSSL_U64(0x629a292a367cd507);
-  sha->h[2] = OPENSSL_U64(0x9159015a3070dd17);
-  sha->h[3] = OPENSSL_U64(0x152fecd8f70e5939);
-  sha->h[4] = OPENSSL_U64(0x67332667ffc00b31);
-  sha->h[5] = OPENSSL_U64(0x8eb44a8768581511);
-  sha->h[6] = OPENSSL_U64(0xdb0c2e0d64f98fa7);
-  sha->h[7] = OPENSSL_U64(0x47b5481dbefa4fa4);
-
-  sha->Nl = 0;
-  sha->Nh = 0;
-  sha->num = 0;
-  sha->md_len = SHA384_DIGEST_LENGTH;
-  return 1;
-}
-
-
-int SHA512_Init(SHA512_CTX *sha) {
-  sha->h[0] = OPENSSL_U64(0x6a09e667f3bcc908);
-  sha->h[1] = OPENSSL_U64(0xbb67ae8584caa73b);
-  sha->h[2] = OPENSSL_U64(0x3c6ef372fe94f82b);
-  sha->h[3] = OPENSSL_U64(0xa54ff53a5f1d36f1);
-  sha->h[4] = OPENSSL_U64(0x510e527fade682d1);
-  sha->h[5] = OPENSSL_U64(0x9b05688c2b3e6c1f);
-  sha->h[6] = OPENSSL_U64(0x1f83d9abfb41bd6b);
-  sha->h[7] = OPENSSL_U64(0x5be0cd19137e2179);
-
-  sha->Nl = 0;
-  sha->Nh = 0;
-  sha->num = 0;
-  sha->md_len = SHA512_DIGEST_LENGTH;
-  return 1;
-}
-
-#if !defined(SHA512_ASM)
-static
-#endif
-void sha512_block_data_order(uint64_t *state, const uint64_t *W, size_t num);
-
-
-int SHA384_Final(uint8_t *md, SHA512_CTX *sha) {
-  return SHA512_Final(md, sha);
-}
-
-int SHA384_Update(SHA512_CTX *sha, const void *data, size_t len) {
-  return SHA512_Update(sha, data, len);
-}
-
-void SHA512_Transform(SHA512_CTX *c, const uint8_t *data) {
-#ifndef SHA512_BLOCK_CAN_MANAGE_UNALIGNED_DATA
-  if ((size_t)data % sizeof(c->u.d[0]) != 0) {
-    memcpy(c->u.p, data, sizeof(c->u.p));
-    data = c->u.p;
-  }
-#endif
-  sha512_block_data_order(c->h, (uint64_t *)data, 1);
-}
-
-int SHA512_Update(SHA512_CTX *c, const void *in_data, size_t len) {
-  uint64_t l;
-  uint8_t *p = c->u.p;
-  const uint8_t *data = (const uint8_t *)in_data;
-
-  if (len == 0) {
-    return 1;
-  }
-
-  l = (c->Nl + (((uint64_t)len) << 3)) & OPENSSL_U64(0xffffffffffffffff);
-  if (l < c->Nl) {
-    c->Nh++;
-  }
-  if (sizeof(len) >= 8) {
-    c->Nh += (((uint64_t)len) >> 61);
-  }
-  c->Nl = l;
-
-  if (c->num != 0) {
-    size_t n = sizeof(c->u) - c->num;
-
-    if (len < n) {
-      memcpy(p + c->num, data, len);
-      c->num += (unsigned int)len;
-      return 1;
-    } else {
-      memcpy(p + c->num, data, n), c->num = 0;
-      len -= n;
-      data += n;
-      sha512_block_data_order(c->h, (uint64_t *)p, 1);
-    }
-  }
-
-  if (len >= sizeof(c->u)) {
-#ifndef SHA512_BLOCK_CAN_MANAGE_UNALIGNED_DATA
-    if ((size_t)data % sizeof(c->u.d[0]) != 0) {
-      while (len >= sizeof(c->u)) {
-        memcpy(p, data, sizeof(c->u));
-        sha512_block_data_order(c->h, (uint64_t *)p, 1);
-        len -= sizeof(c->u);
-        data += sizeof(c->u);
-      }
-    } else
-#endif
-    {
-      sha512_block_data_order(c->h, (uint64_t *)data, len / sizeof(c->u));
-      data += len;
-      len %= sizeof(c->u);
-      data -= len;
-    }
-  }
-
-  if (len != 0) {
-    memcpy(p, data, len);
-    c->num = (int)len;
-  }
-
-  return 1;
-}
-
-int SHA512_Final(uint8_t *md, SHA512_CTX *sha) {
-  uint8_t *p = (uint8_t *)sha->u.p;
-  size_t n = sha->num;
-
-  p[n] = 0x80; /* There always is a room for one */
-  n++;
-  if (n > (sizeof(sha->u) - 16)) {
-    memset(p + n, 0, sizeof(sha->u) - n);
-    n = 0;
-    sha512_block_data_order(sha->h, (uint64_t *)p, 1);
-  }
-
-  memset(p + n, 0, sizeof(sha->u) - 16 - n);
-  p[sizeof(sha->u) - 1] = (uint8_t)(sha->Nl);
-  p[sizeof(sha->u) - 2] = (uint8_t)(sha->Nl >> 8);
-  p[sizeof(sha->u) - 3] = (uint8_t)(sha->Nl >> 16);
-  p[sizeof(sha->u) - 4] = (uint8_t)(sha->Nl >> 24);
-  p[sizeof(sha->u) - 5] = (uint8_t)(sha->Nl >> 32);
-  p[sizeof(sha->u) - 6] = (uint8_t)(sha->Nl >> 40);
-  p[sizeof(sha->u) - 7] = (uint8_t)(sha->Nl >> 48);
-  p[sizeof(sha->u) - 8] = (uint8_t)(sha->Nl >> 56);
-  p[sizeof(sha->u) - 9] = (uint8_t)(sha->Nh);
-  p[sizeof(sha->u) - 10] = (uint8_t)(sha->Nh >> 8);
-  p[sizeof(sha->u) - 11] = (uint8_t)(sha->Nh >> 16);
-  p[sizeof(sha->u) - 12] = (uint8_t)(sha->Nh >> 24);
-  p[sizeof(sha->u) - 13] = (uint8_t)(sha->Nh >> 32);
-  p[sizeof(sha->u) - 14] = (uint8_t)(sha->Nh >> 40);
-  p[sizeof(sha->u) - 15] = (uint8_t)(sha->Nh >> 48);
-  p[sizeof(sha->u) - 16] = (uint8_t)(sha->Nh >> 56);
-
-  sha512_block_data_order(sha->h, (uint64_t *)p, 1);
-
-  if (md == NULL) {
-    /* TODO(davidben): This NULL check is absent in other low-level hash 'final'
-     * functions and is one of the few places one can fail. */
-    return 0;
-  }
-
-  switch (sha->md_len) {
-    /* Let compiler decide if it's appropriate to unroll... */
-    case SHA384_DIGEST_LENGTH:
-      for (n = 0; n < SHA384_DIGEST_LENGTH / 8; n++) {
-        uint64_t t = sha->h[n];
-
-        *(md++) = (uint8_t)(t >> 56);
-        *(md++) = (uint8_t)(t >> 48);
-        *(md++) = (uint8_t)(t >> 40);
-        *(md++) = (uint8_t)(t >> 32);
-        *(md++) = (uint8_t)(t >> 24);
-        *(md++) = (uint8_t)(t >> 16);
-        *(md++) = (uint8_t)(t >> 8);
-        *(md++) = (uint8_t)(t);
-      }
-      break;
-    case SHA512_DIGEST_LENGTH:
-      for (n = 0; n < SHA512_DIGEST_LENGTH / 8; n++) {
-        uint64_t t = sha->h[n];
-
-        *(md++) = (uint8_t)(t >> 56);
-        *(md++) = (uint8_t)(t >> 48);
-        *(md++) = (uint8_t)(t >> 40);
-        *(md++) = (uint8_t)(t >> 32);
-        *(md++) = (uint8_t)(t >> 24);
-        *(md++) = (uint8_t)(t >> 16);
-        *(md++) = (uint8_t)(t >> 8);
-        *(md++) = (uint8_t)(t);
-      }
-      break;
-    /* ... as well as make sure md_len is not abused. */
-    default:
-      /* TODO(davidben): This bad |md_len| case is one of the few places a
-       * low-level hash 'final' function can fail. This should never happen. */
-      return 0;
-  }
-
-  return 1;
-}
 
 #ifndef SHA512_ASM
 static const uint64_t K512[80] = {
@@ -404,8 +197,7 @@ static uint64_t __fastcall __pull64be(const void *x) {
  * This code should give better results on 32-bit CPU with less than
  * ~24 registers, both size and performance wise...
  */
-static void sha512_block_data_order(uint64_t *state, const uint64_t *W,
-                                    size_t num) {
+void sha512_block_data_order(uint64_t *state, const uint64_t *W, size_t num) {
   uint64_t A, E, T;
   uint64_t X[9 + 80], *F;
   int i;
@@ -477,8 +269,7 @@ static void sha512_block_data_order(uint64_t *state, const uint64_t *W,
     ROUND_00_15(i + j, a, b, c, d, e, f, g, h);        \
   } while (0)
 
-static void sha512_block_data_order(uint64_t *state, const uint64_t *W,
-                                    size_t num) {
+void sha512_block_data_order(uint64_t *state, const uint64_t *W, size_t num) {
   uint64_t a, b, c, d, e, f, g, h, s0, s1, T1;
   uint64_t X[16];
   int i;

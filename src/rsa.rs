@@ -25,7 +25,7 @@ use super::{c, digest, ffi};
 pub fn verify_rsa_pkcs1_signed_digest_asn1(digest: &digest::Digest, sig: &[u8],
                                            key: &[u8]) -> Result<(),()> {
     ffi::map_bssl_result(unsafe {
-        RSA_verify_pkcs1_signed_digest(digest.algorithm().nid,
+        RSA_verify_pkcs1_signed_digest(digest.algorithm().id,
                                        digest.as_ref().as_ptr(),
                                        digest.as_ref().len(), sig.as_ptr(),
                                        sig.len(), key.as_ptr(), key.len())
@@ -37,7 +37,7 @@ pub fn verify_rsa_pkcs1_signed_digest_asn1(digest: &digest::Digest, sig: &[u8],
 // when Rust 1.4 is released.
 #[allow(improper_ctypes)]
 extern {
-    fn RSA_verify_pkcs1_signed_digest(hash_nid: c::int, digest: *const u8,
+    fn RSA_verify_pkcs1_signed_digest(digest_id: digest::ID, digest: *const u8,
                                       digest_len: c::size_t, sig: *const u8,
                                       sig_len: c::size_t, key_der: *const u8,
                                       key_der_len: c::size_t) -> c::int;
