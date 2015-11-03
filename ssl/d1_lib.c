@@ -321,7 +321,7 @@ int dtls1_set_handshake_header(SSL *s, int htype, unsigned long len) {
   s->init_off = 0;
 
   /* Buffer the message to handle re-xmits */
-  dtls1_buffer_message(s, 0);
+  dtls1_buffer_message(s);
 
   /* Add the new message to the handshake hash. Serialize the message
    * header as if it were a single fragment. */
@@ -336,5 +336,5 @@ int dtls1_set_handshake_header(SSL *s, int htype, unsigned long len) {
 }
 
 int dtls1_handshake_write(SSL *s) {
-  return dtls1_do_write(s, SSL3_RT_HANDSHAKE, dtls1_use_current_epoch);
+  return dtls1_do_handshake_write(s, dtls1_use_current_epoch);
 }

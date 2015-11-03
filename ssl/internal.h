@@ -912,7 +912,9 @@ typedef struct dtls1_state_st {
   /* records being received in the current epoch */
   DTLS1_BITMAP bitmap;
 
-  /* handshake message numbers */
+  /* handshake message numbers.
+   * TODO(davidben): It doesn't make much sense to store both of these. Only
+   * store one. */
   uint16_t handshake_write_seq;
   uint16_t next_handshake_write_seq;
 
@@ -1075,7 +1077,7 @@ int ssl3_do_change_cipher_spec(SSL *ssl);
 int ssl3_set_handshake_header(SSL *s, int htype, unsigned long len);
 int ssl3_handshake_write(SSL *s);
 
-int dtls1_do_write(SSL *s, int type, enum dtls1_use_epoch_t use_epoch);
+int dtls1_do_handshake_write(SSL *s, enum dtls1_use_epoch_t use_epoch);
 int dtls1_read_app_data(SSL *ssl, uint8_t *buf, int len, int peek);
 void dtls1_read_close_notify(SSL *ssl);
 int dtls1_read_bytes(SSL *s, int type, uint8_t *buf, int len, int peek);
@@ -1090,8 +1092,7 @@ int dtls1_write_bytes(SSL *s, int type, const void *buf, int len,
 int dtls1_send_change_cipher_spec(SSL *s, int a, int b);
 int dtls1_send_finished(SSL *s, int a, int b, const char *sender, int slen);
 int dtls1_read_failed(SSL *s, int code);
-int dtls1_buffer_message(SSL *s, int ccs);
-int dtls1_get_queue_priority(unsigned short seq, int is_ccs);
+int dtls1_buffer_message(SSL *s);
 int dtls1_retransmit_buffered_messages(SSL *s);
 void dtls1_clear_record_buffer(SSL *s);
 void dtls1_get_message_header(uint8_t *data, struct hm_header_st *msg_hdr);

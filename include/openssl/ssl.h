@@ -3750,8 +3750,15 @@ struct ssl_st {
 
   BIO *rbio; /* used by SSL_read */
   BIO *wbio; /* used by SSL_write */
-  BIO *bbio; /* used during session-id reuse to concatenate
-              * messages */
+
+  /* bbio, if non-NULL, is a buffer placed in front of |wbio| to pack handshake
+   * messages within one flight into a single |BIO_write|.
+   *
+   * TODO(davidben): This does not work right for DTLS. It assumes the MTU is
+   * smaller than the buffer size so that the buffer's internal flushing never
+   * kicks in. It also doesn't kick in for DTLS retransmission. Replace this
+   * with a better mechanism. */
+  BIO *bbio;
 
   int (*handshake_func)(SSL *);
 
