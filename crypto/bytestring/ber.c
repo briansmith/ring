@@ -119,7 +119,7 @@ static int cbs_convert_ber(CBS *in, CBB *out, char squash_header,
         char squash_child_headers = is_primitive_type(tag);
 
         /* This is a hack, but it sufficies to handle NSS's output. If we find
-         * an indefinite length, context-specific tag with a definite, primtive
+         * an indefinite length, context-specific tag with a definite, primitive
          * tag inside it, then we assume that the context-specific tag is
          * implicit and the tags within are fragments of a primitive type that
          * need to be concatenated. */

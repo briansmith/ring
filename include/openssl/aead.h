@@ -24,7 +24,7 @@ extern "C" {
 
 /* Authenticated Encryption with Additional Data.
  *
- * AEAD couples confidentiality and integrity in a single primtive. AEAD
+ * AEAD couples confidentiality and integrity in a single primitive. AEAD
  * algorithms take a key and then can seal and open individual messages. Each
  * message has a unique, per-message nonce and, optionally, additional data
  * which is authenticated but not included in the ciphertext.
