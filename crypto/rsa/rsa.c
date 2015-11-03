@@ -124,6 +124,7 @@ void RSA_additional_prime_free(RSA_additional_prime *ap) {
   BN_clear_free(ap->exp);
   BN_clear_free(ap->coeff);
   BN_clear_free(ap->r);
+  BN_MONT_CTX_free(ap->mont);
   OPENSSL_free(ap);
 }
 
@@ -138,9 +139,7 @@ void RSA_free(RSA *rsa) {
     return;
   }
 
-  if (rsa->meth == &RSA_default_method) {
-    rsa_default_finish(rsa);
-  } else if (rsa->meth->finish) {
+  if (rsa->meth->finish) {
     rsa->meth->finish(rsa);
   }
   METHOD_unref(rsa->meth);
@@ -155,6 +154,9 @@ void RSA_free(RSA *rsa) {
   BN_clear_free(rsa->dmp1);
   BN_clear_free(rsa->dmq1);
   BN_clear_free(rsa->iqmp);
+  BN_MONT_CTX_free(rsa->mont_n);
+  BN_MONT_CTX_free(rsa->mont_p);
+  BN_MONT_CTX_free(rsa->mont_q);
   for (u = 0; u < rsa->num_blindings; u++) {
     BN_BLINDING_free(rsa->blindings[u]);
   }

@@ -168,8 +168,8 @@ static const uint64_t kVersionMulti = 1;
 
 /* rsa_parse_additional_prime parses a DER-encoded OtherPrimeInfo from |cbs| and
  * advances |cbs|. It returns a newly-allocated |RSA_additional_prime| on
- * success or NULL on error. The |r| and |method_mod| fields of the result are
- * set to NULL. */
+ * success or NULL on error. The |r| and |mont| fields of the result are set to
+ * NULL. */
 static RSA_additional_prime *rsa_parse_additional_prime(CBS *cbs) {
   RSA_additional_prime *ret = OPENSSL_malloc(sizeof(RSA_additional_prime));
   if (ret == NULL) {
