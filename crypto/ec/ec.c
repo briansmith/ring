@@ -415,6 +415,7 @@ static EC_GROUP *ec_group_new_from_data(unsigned built_in_index) {
   EC_POINT *P = NULL;
   BIGNUM *p = NULL, *a = NULL, *b = NULL, *x = NULL, *y = NULL;
   const EC_METHOD *meth;
+  int ok = 0;
 
   BN_CTX *ctx = BN_CTX_new();
   if (ctx == NULL) {
@@ -426,7 +427,6 @@ static EC_GROUP *ec_group_new_from_data(unsigned built_in_index) {
   const unsigned param_len = data->param_len;
   const uint8_t *params = data->data;
 
-  int ok = 0;
   if (!(p = BN_bin2bn(params + 0 * param_len, param_len, NULL)) ||
       !(a = BN_bin2bn(params + 1 * param_len, param_len, NULL)) ||
       !(b = BN_bin2bn(params + 2 * param_len, param_len, NULL))) {
