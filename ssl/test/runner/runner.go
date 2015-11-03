@@ -2932,27 +2932,25 @@ func addStateMachineCoverageTests(async, splitHandshake bool, protocol protocol)
 		})
 	}
 
-	var suffix string
-	var flags []string
-	var maxHandshakeRecordLength int
-	if protocol == dtls {
-		suffix = "-DTLS"
-	}
-	if async {
-		suffix += "-Async"
-		flags = append(flags, "-async")
-	} else {
-		suffix += "-Sync"
-	}
-	if splitHandshake {
-		suffix += "-SplitHandshakeRecords"
-		maxHandshakeRecordLength = 1
-	}
 	for _, test := range tests {
 		test.protocol = protocol
-		test.name += suffix
-		test.config.Bugs.MaxHandshakeRecordLength = maxHandshakeRecordLength
-		test.flags = append(test.flags, flags...)
+		if protocol == dtls {
+			test.name += "-DTLS"
+		}
+		if async {
+			test.name += "-Async"
+			test.flags = append(test.flags, "-async")
+		} else {
+			test.name += "-Sync"
+		}
+		if splitHandshake {
+			test.name += "-SplitHandshakeRecords"
+			test.config.Bugs.MaxHandshakeRecordLength = 1
+			if protocol == dtls {
+				test.config.Bugs.MaxPacketLength = 256
+				test.flags = append(test.flags, "-mtu", "256")
+			}
+		}
 		testCases = append(testCases, test)
 	}
 }
