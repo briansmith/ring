@@ -64,17 +64,18 @@
 
 int MD4_Init(MD4_CTX *md4) {
   memset(md4, 0, sizeof(MD4_CTX));
-  md4->h[0] = 0x67452301UL;
-  md4->h[1] = 0xefcdab89UL;
-  md4->h[2] = 0x98badcfeUL;
-  md4->h[3] = 0x10325476UL;
+  md4->A = 0x67452301UL;
+  md4->B = 0xefcdab89UL;
+  md4->C = 0x98badcfeUL;
+  md4->D = 0x10325476UL;
   return 1;
 }
 
-void md4_block_data_order(uint32_t *state, const uint8_t *data, size_t num);
+void md4_block_data_order (MD4_CTX *md4, const void *p, size_t num);
 
 #define DATA_ORDER_IS_LITTLE_ENDIAN
 
+#define HASH_LONG uint32_t
 #define HASH_CTX MD4_CTX
 #define HASH_CBLOCK 64
 #define HASH_UPDATE MD4_Update
@@ -83,13 +84,13 @@ void md4_block_data_order(uint32_t *state, const uint8_t *data, size_t num);
 #define HASH_MAKE_STRING(c, s) \
   do {                         \
     uint32_t ll;               \
-    ll = (c)->h[0];            \
+    ll = (c)->A;               \
     (void) HOST_l2c(ll, (s));  \
-    ll = (c)->h[1];            \
+    ll = (c)->B;               \
     (void) HOST_l2c(ll, (s));  \
-    ll = (c)->h[2];            \
+    ll = (c)->C;               \
     (void) HOST_l2c(ll, (s));  \
-    ll = (c)->h[3];            \
+    ll = (c)->D;               \
     (void) HOST_l2c(ll, (s));  \
   } while (0)
 #define HASH_BLOCK_DATA_ORDER md4_block_data_order
@@ -121,14 +122,15 @@ void md4_block_data_order(uint32_t *state, const uint8_t *data, size_t num);
     a = ROTATE(a, s);                  \
   };
 
-void md4_block_data_order(uint32_t *state, const uint8_t *data, size_t num) {
+void md4_block_data_order(MD4_CTX *c, const void *data_, size_t num) {
+  const uint8_t *data = data_;
   uint32_t A, B, C, D, l;
   uint32_t X0, X1, X2, X3, X4, X5, X6, X7, X8, X9, X10, X11, X12, X13, X14, X15;
 
-  A = state[0];
-  B = state[1];
-  C = state[2];
-  D = state[3];
+  A = c->A;
+  B = c->B;
+  C = c->C;
+  D = c->D;
 
   for (; num--;) {
     HOST_c2l(data, l);
@@ -215,9 +217,9 @@ void md4_block_data_order(uint32_t *state, const uint8_t *data, size_t num) {
     R2(C, D, A, B, X7, 11, 0x6ED9EBA1L);
     R2(B, C, D, A, X15, 15, 0x6ED9EBA1L);
 
-    A = state[0] += A;
-    B = state[1] += B;
-    C = state[2] += C;
-    D = state[3] += D;
+    A = c->A += A;
+    B = c->B += B;
+    C = c->C += C;
+    D = c->D += D;
   }
 }

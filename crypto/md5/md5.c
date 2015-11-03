@@ -79,10 +79,10 @@ uint8_t *MD5(const uint8_t *data, size_t len, uint8_t *out) {
 
 int MD5_Init(MD5_CTX *md5) {
   memset(md5, 0, sizeof(MD5_CTX));
-  md5->h[0] = 0x67452301UL;
-  md5->h[1] = 0xefcdab89UL;
-  md5->h[2] = 0x98badcfeUL;
-  md5->h[3] = 0x10325476UL;
+  md5->A = 0x67452301UL;
+  md5->B = 0xefcdab89UL;
+  md5->C = 0x98badcfeUL;
+  md5->D = 0x10325476UL;
   return 1;
 }
 
@@ -93,10 +93,11 @@ int MD5_Init(MD5_CTX *md5) {
 #endif
 
 
-void md5_block_data_order(uint32_t *state, const uint8_t *data, size_t num);
+void md5_block_data_order(MD5_CTX *md5, const void *p, size_t num);
 
 #define DATA_ORDER_IS_LITTLE_ENDIAN
 
+#define HASH_LONG uint32_t
 #define HASH_CTX MD5_CTX
 #define HASH_CBLOCK 64
 #define HASH_UPDATE MD5_Update
@@ -105,13 +106,13 @@ void md5_block_data_order(uint32_t *state, const uint8_t *data, size_t num);
 #define HASH_MAKE_STRING(c, s) \
   do {                         \
     uint32_t ll;               \
-    ll = (c)->h[0];            \
+    ll = (c)->A;               \
     (void) HOST_l2c(ll, (s));  \
-    ll = (c)->h[1];            \
+    ll = (c)->B;               \
     (void) HOST_l2c(ll, (s));  \
-    ll = (c)->h[2];            \
+    ll = (c)->C;               \
     (void) HOST_l2c(ll, (s));  \
-    ll = (c)->h[3];            \
+    ll = (c)->D;               \
     (void) HOST_l2c(ll, (s));  \
   } while (0)
 #define HASH_BLOCK_DATA_ORDER md5_block_data_order
@@ -151,16 +152,17 @@ void md5_block_data_order(uint32_t *state, const uint8_t *data, size_t num);
 #ifdef X
 #undef X
 #endif
-void md5_block_data_order(uint32_t *state, const uint8_t *data, size_t num) {
+void md5_block_data_order(MD5_CTX *md5, const void *in_data, size_t num) {
+  const uint8_t *data = in_data;
   uint32_t A, B, C, D, l;
   uint32_t XX0, XX1, XX2, XX3, XX4, XX5, XX6, XX7, XX8, XX9, XX10, XX11, XX12,
       XX13, XX14, XX15;
 #define X(i) XX##i
 
-  A = state[0];
-  B = state[1];
-  C = state[2];
-  D = state[3];
+  A = md5->A;
+  B = md5->B;
+  C = md5->C;
+  D = md5->D;
 
   for (; num--;) {
     HOST_c2l(data, l);
@@ -264,10 +266,10 @@ void md5_block_data_order(uint32_t *state, const uint8_t *data, size_t num) {
     R3(C, D, A, B, X(2), 15, 0x2ad7d2bbL);
     R3(B, C, D, A, X(9), 21, 0xeb86d391L);
 
-    A = state[0] += A;
-    B = state[1] += B;
-    C = state[2] += C;
-    D = state[3] += D;
+    A = md5->A += A;
+    B = md5->B += B;
+    C = md5->C += C;
+    D = md5->D += D;
   }
 }
 #endif

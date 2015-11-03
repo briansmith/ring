@@ -98,7 +98,7 @@ OPENSSL_EXPORT uint8_t *SHA1(const uint8_t *data, size_t len, uint8_t *out);
 OPENSSL_EXPORT void SHA1_Transform(SHA_CTX *sha, const uint8_t *block);
 
 struct sha_state_st {
-  uint32_t h[5];
+  uint32_t h0, h1, h2, h3, h4;
   uint32_t Nl, Nh;
   uint32_t data[16];
   unsigned int num;
