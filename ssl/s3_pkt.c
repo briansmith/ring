@@ -346,6 +346,8 @@ static int ssl3_can_renegotiate(SSL *ssl) {
       return ssl->s3->total_renegotiations == 0;
     case ssl_renegotiate_freely:
       return 1;
+    case ssl_renegotiate_ignore:
+      return 1;
   }
 
   assert(0);
@@ -565,6 +567,10 @@ start:
       assert(0);
       OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
       goto err;
+    }
+
+    if (s->renegotiate_mode == ssl_renegotiate_ignore) {
+      goto start;
     }
 
     /* Renegotiation is only supported at quiescent points in the application

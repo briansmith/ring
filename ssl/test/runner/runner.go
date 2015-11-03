@@ -3920,6 +3920,28 @@ func addRenegotiationTests() {
 			"-expect-total-renegotiations", "2",
 		},
 	})
+	testCases = append(testCases, testCase{
+		name: "Renegotiate-Client-NoIgnore",
+		config: Config{
+			Bugs: ProtocolBugs{
+				SendHelloRequestBeforeEveryAppDataRecord: true,
+			},
+		},
+		shouldFail:    true,
+		expectedError: ":NO_RENEGOTIATION:",
+	})
+	testCases = append(testCases, testCase{
+		name: "Renegotiate-Client-Ignore",
+		config: Config{
+			Bugs: ProtocolBugs{
+				SendHelloRequestBeforeEveryAppDataRecord: true,
+			},
+		},
+		flags: []string{
+			"-renegotiate-ignore",
+			"-expect-total-renegotiations", "0",
+		},
+	})
 }
 
 func addDTLSReplayTests() {

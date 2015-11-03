@@ -782,6 +782,11 @@ type ProtocolBugs struct {
 	// connections where the client offers a non-empty session ID or session
 	// ticket.
 	FailIfSessionOffered bool
+
+	// SendHelloRequestBeforeEveryAppDataRecord, if true, causes a
+	// HelloRequest handshake message to be sent before each application
+	// data record. This only makes sense for a server.
+	SendHelloRequestBeforeEveryAppDataRecord bool
 }
 
 func (c *Config) serverInit() {

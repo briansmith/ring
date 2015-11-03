@@ -1205,6 +1205,9 @@ static bool DoExchange(ScopedSSL_SESSION *out_session, SSL_CTX *ssl_ctx,
   if (config->renegotiate_freely) {
     SSL_set_renegotiate_mode(ssl.get(), ssl_renegotiate_freely);
   }
+  if (config->renegotiate_ignore) {
+    SSL_set_renegotiate_mode(ssl.get(), ssl_renegotiate_ignore);
+  }
   if (!config->check_close_notify) {
     SSL_set_quiet_shutdown(ssl.get(), 1);
   }

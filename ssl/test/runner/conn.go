@@ -1152,6 +1152,10 @@ func (c *Conn) Write(b []byte) (int, error) {
 		c.sendAlertLocked(alertLevelError, c.config.Bugs.SendSpuriousAlert)
 	}
 
+	if c.config.Bugs.SendHelloRequestBeforeEveryAppDataRecord {
+		c.writeRecord(recordTypeHandshake, []byte{typeHelloRequest, 0, 0, 0})
+	}
+
 	// SSL 3.0 and TLS 1.0 are susceptible to a chosen-plaintext
 	// attack when using block mode ciphers due to predictable IVs.
 	// This can be prevented by splitting each Application Data

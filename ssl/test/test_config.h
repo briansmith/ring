@@ -98,6 +98,7 @@ struct TestConfig {
   int expect_total_renegotiations = 0;
   bool renegotiate_once = false;
   bool renegotiate_freely = false;
+  bool renegotiate_ignore = false;
   bool disable_npn = false;
 };
 

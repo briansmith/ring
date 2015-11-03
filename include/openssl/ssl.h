@@ -2663,6 +2663,7 @@ enum ssl_renegotiate_mode_t {
   ssl_renegotiate_never = 0,
   ssl_renegotiate_once,
   ssl_renegotiate_freely,
+  ssl_renegotiate_ignore,
 };
 
 /* SSL_set_renegotiate_mode configures how |ssl|, a client, reacts to
@@ -2671,8 +2672,10 @@ enum ssl_renegotiate_mode_t {
  *
  * The renegotiation mode defaults to |ssl_renegotiate_never|, but may be set
  * at any point in a connection's lifetime. Set it to |ssl_renegotiate_once| to
- * allow one renegotiation and |ssl_renegotiate_freely| to allow all
- * renegotiations.
+ * allow one renegotiation, |ssl_renegotiate_freely| to allow all
+ * renegotiations or |ssl_renegotiate_ignore| to ignore HelloRequest messages.
+ * Note that ignoring HelloRequest messages may cause the connection to stall
+ * if the server waits for the renegotiation to complete.
  *
  * There is no support in BoringSSL for initiating renegotiations as a client
  * or server. */
