@@ -862,10 +862,10 @@ static int copy_from_prebuf(BIGNUM *b, int top, unsigned char *buf, int idx,
  */
 int BN_mod_exp_mont_consttime(BIGNUM *rr, const BIGNUM *a, const BIGNUM *p,
                               const BIGNUM *m, BN_CTX *ctx,
-                              BN_MONT_CTX *in_mont) {
+                              const BN_MONT_CTX *mont) {
   int i, bits, ret = 0, window, wvalue;
   int top;
-  BN_MONT_CTX *mont = NULL;
+  BN_MONT_CTX *new_mont = NULL;
 
   int numPowers;
   unsigned char *powerbufFree = NULL;
@@ -888,15 +888,13 @@ int BN_mod_exp_mont_consttime(BIGNUM *rr, const BIGNUM *a, const BIGNUM *p,
 
   BN_CTX_start(ctx);
 
-  /* Allocate a montgomery context if it was not supplied by the caller.
-   * If this is not done, things will break in the montgomery part. */
-  if (in_mont != NULL) {
-    mont = in_mont;
-  } else {
-    mont = BN_MONT_CTX_new();
-    if (mont == NULL || !BN_MONT_CTX_set(mont, m, ctx)) {
+  /* Allocate a montgomery context if it was not supplied by the caller. */
+  if (mont == NULL) {
+    new_mont = BN_MONT_CTX_new();
+    if (new_mont == NULL || !BN_MONT_CTX_set(new_mont, m, ctx)) {
       goto err;
     }
+    mont = new_mont;
   }
 
 #ifdef RSAZ_ENABLED
@@ -1005,7 +1003,7 @@ int BN_mod_exp_mont_consttime(BIGNUM *rr, const BIGNUM *a, const BIGNUM *p,
   /* Dedicated window==4 case improves 512-bit RSA sign by ~15%, but as
    * 512-bit RSA is hardly relevant, we omit it to spare size... */
   if (window == 5 && top > 1) {
-    BN_ULONG *np = mont->N.d, *n0 = mont->n0, *np2;
+    const BN_ULONG *np = mont->N.d, *n0 = mont->n0, *np2;
 
     /* BN_to_montgomery can contaminate words above .top
      * [in BN_DEBUG[_DEBUG] build]... */
@@ -1019,9 +1017,11 @@ int BN_mod_exp_mont_consttime(BIGNUM *rr, const BIGNUM *a, const BIGNUM *p,
     if (top & 7) {
       np2 = np;
     } else {
-      for (np2 = am.d + top, i = 0; i < top; i++) {
-        np2[2 * i] = np[i];
+      BN_ULONG *np_double = am.d + top;
+      for (i = 0; i < top; i++) {
+        np_double[2 * i] = np[i];
       }
+      np2 = np_double;
     }
 
     bn_scatter5(tmp.d, top, powerbuf, 0);
@@ -1186,10 +1186,9 @@ int BN_mod_exp_mont_consttime(BIGNUM *rr, const BIGNUM *a, const BIGNUM *p,
     goto err;
   }
   ret = 1;
+
 err:
-  if (in_mont == NULL) {
-    BN_MONT_CTX_free(mont);
-  }
+  BN_MONT_CTX_free(new_mont);
   if (powerbuf != NULL) {
     OPENSSL_cleanse(powerbuf, powerbufLen);
     OPENSSL_free(powerbufFree);
