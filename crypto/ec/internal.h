@@ -134,6 +134,7 @@ struct ec_group_st {
   int curve_name; /* optional NID for named curve */
 
   struct ec_pre_comp_st *pre_comp;
+  const BN_MONT_CTX *mont_data; /* data for ECDSA inverse */
 
   /* The following members are handled by the method functions,
    * even if they appear generic */
@@ -163,6 +164,11 @@ struct ec_point_st {
 
 EC_GROUP *ec_group_new(const EC_METHOD *meth);
 int ec_group_copy(EC_GROUP *dest, const EC_GROUP *src);
+
+/* ec_group_get_mont_data returns a Montgomery context for operations in the
+ * scalar field of |group|. It may return NULL in the case that |group| is not
+ * a built-in group. */
+const BN_MONT_CTX *ec_group_get_mont_data(const EC_GROUP *group);
 
 int ec_wNAF_mul(const EC_GROUP *group, EC_POINT *r, const BIGNUM *scalar,
                 size_t num, const EC_POINT *points[], const BIGNUM *scalars[],
@@ -254,6 +260,10 @@ void ec_GFp_nistp_recode_scalar_bits(uint8_t *sign, uint8_t *digit, uint8_t in);
 
 const EC_METHOD *EC_GFp_nistp224_method(void);
 const EC_METHOD *EC_GFp_nistp256_method(void);
+
+/* Returns GFp methods using montgomery multiplication, with x86-64
+ * optimized P256. See http://eprint.iacr.org/2013/816. */
+const EC_METHOD *EC_GFp_nistz256_method(void);
 
 struct ec_key_st {
   int version;

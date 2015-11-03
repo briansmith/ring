@@ -67,6 +67,7 @@
 
 #include <openssl/ec.h>
 
+#include <assert.h>
 #include <string.h>
 
 #include <openssl/bn.h>
@@ -75,6 +76,7 @@
 #include <openssl/obj.h>
 
 #include "internal.h"
+#include "../internal.h"
 
 
 static const struct curve_data P224 = {
@@ -226,6 +228,21 @@ static const struct curve_data P521 = {
 #endif
 
 const struct built_in_curve OPENSSL_built_in_curves[] = {
+    {NID_secp521r1, &P521, 0},
+    {NID_secp384r1, &P384, 0},
+    {
+        NID_X9_62_prime256v1, &P256,
+#if defined(BORINGSSL_USE_INT128_CODE)
+#if !defined(OPENSSL_NO_ASM) && defined(OPENSSL_X86_64) && \
+    !defined(OPENSSL_SMALL)
+        EC_GFp_nistz256_method,
+#else
+        EC_GFp_nistp256_method,
+#endif
+#else
+        0,
+#endif
+    },
     {
         NID_secp224r1, &P224,
 #if defined(BORINGSSL_USE_INT128_CODE) && !defined(OPENSSL_SMALL)
@@ -234,18 +251,72 @@ const struct built_in_curve OPENSSL_built_in_curves[] = {
         0,
 #endif
     },
-    {
-        NID_X9_62_prime256v1, &P256,
-#if defined(BORINGSSL_USE_INT128_CODE)
-        EC_GFp_nistp256_method,
-#else
-        0,
-#endif
-    },
-    {NID_secp384r1, &P384, 0},
-    {NID_secp521r1, &P521, 0},
     {NID_undef, 0, 0},
 };
+
+/* built_in_curve_scalar_field_monts contains Montgomery contexts for
+ * performing inversions in the scalar fields of each of the built-in
+ * curves. It's protected by |built_in_curve_scalar_field_monts_once|. */
+static const BN_MONT_CTX **built_in_curve_scalar_field_monts;
+
+static CRYPTO_once_t built_in_curve_scalar_field_monts_once;
+
+static void built_in_curve_scalar_field_monts_init(void) {
+  unsigned num_built_in_curves;
+  for (num_built_in_curves = 0;; num_built_in_curves++) {
+    if (OPENSSL_built_in_curves[num_built_in_curves].nid == NID_undef) {
+      break;
+    }
+  }
+
+  assert(0 < num_built_in_curves);
+
+  built_in_curve_scalar_field_monts =
+      OPENSSL_malloc(sizeof(BN_MONT_CTX *) * num_built_in_curves);
+  if (built_in_curve_scalar_field_monts == NULL) {
+    return;
+  }
+
+  BIGNUM *order = BN_new();
+  BN_CTX *bn_ctx = BN_CTX_new();
+  BN_MONT_CTX *mont_ctx = NULL;
+
+  if (bn_ctx == NULL ||
+      order == NULL) {
+    goto err;
+  }
+
+  unsigned i;
+  for (i = 0; i < num_built_in_curves; i++) {
+    const struct curve_data *curve = OPENSSL_built_in_curves[i].data;
+    const unsigned param_len = curve->param_len;
+    const uint8_t *params = curve->data;
+
+    mont_ctx = BN_MONT_CTX_new();
+    if (mont_ctx == NULL) {
+      goto err;
+    }
+
+    if (!BN_bin2bn(params + 5 * param_len, param_len, order) ||
+        !BN_MONT_CTX_set(mont_ctx, order, bn_ctx)) {
+      goto err;
+    }
+
+    built_in_curve_scalar_field_monts[i] = mont_ctx;
+    mont_ctx = NULL;
+  }
+
+  goto out;
+
+err:
+  BN_MONT_CTX_free(mont_ctx);
+  OPENSSL_free(built_in_curve_scalar_field_monts);
+  built_in_curve_scalar_field_monts = NULL;
+
+out:
+  BN_free(order);
+  BN_CTX_free(bn_ctx);
+}
 
 EC_GROUP *ec_group_new(const EC_METHOD *meth) {
   EC_GROUP *ret;
@@ -338,26 +409,24 @@ int EC_GROUP_set_generator(EC_GROUP *group, const EC_POINT *generator,
   return 1;
 }
 
-static EC_GROUP *ec_group_new_from_data(const struct built_in_curve *curve) {
+static EC_GROUP *ec_group_new_from_data(unsigned built_in_index) {
+  const struct built_in_curve *curve = &OPENSSL_built_in_curves[built_in_index];
   EC_GROUP *group = NULL;
   EC_POINT *P = NULL;
-  BN_CTX *ctx = NULL;
   BIGNUM *p = NULL, *a = NULL, *b = NULL, *x = NULL, *y = NULL;
-  int ok = 0;
-  unsigned param_len;
   const EC_METHOD *meth;
-  const struct curve_data *data;
-  const uint8_t *params;
 
-  if ((ctx = BN_CTX_new()) == NULL) {
+  BN_CTX *ctx = BN_CTX_new();
+  if (ctx == NULL) {
     OPENSSL_PUT_ERROR(EC, ERR_R_MALLOC_FAILURE);
     goto err;
   }
 
-  data = curve->data;
-  param_len = data->param_len;
-  params = data->data;
+  const struct curve_data *data = curve->data;
+  const unsigned param_len = data->param_len;
+  const uint8_t *params = data->data;
 
+  int ok = 0;
   if (!(p = BN_bin2bn(params + 0 * param_len, param_len, NULL)) ||
       !(a = BN_bin2bn(params + 1 * param_len, param_len, NULL)) ||
       !(b = BN_bin2bn(params + 2 * param_len, param_len, NULL))) {
@@ -400,6 +469,12 @@ static EC_GROUP *ec_group_new_from_data(const struct built_in_curve *curve) {
     goto err;
   }
 
+  CRYPTO_once(&built_in_curve_scalar_field_monts_once,
+              built_in_curve_scalar_field_monts_init);
+  if (built_in_curve_scalar_field_monts != NULL) {
+    group->mont_data = built_in_curve_scalar_field_monts[built_in_index];
+  }
+
   group->generator = P;
   P = NULL;
   ok = 1;
@@ -427,7 +502,7 @@ EC_GROUP *EC_GROUP_new_by_curve_name(int nid) {
   for (i = 0; OPENSSL_built_in_curves[i].nid != NID_undef; i++) {
     curve = &OPENSSL_built_in_curves[i];
     if (curve->nid == nid) {
-      ret = ec_group_new_from_data(curve);
+      ret = ec_group_new_from_data(i);
       break;
     }
   }
@@ -474,6 +549,7 @@ int ec_group_copy(EC_GROUP *dest, const EC_GROUP *src) {
 
   ec_pre_comp_free(dest->pre_comp);
   dest->pre_comp = ec_pre_comp_dup(src->pre_comp);
+  dest->mont_data = src->mont_data;
 
   if (src->generator != NULL) {
     if (dest->generator == NULL) {
@@ -486,11 +562,8 @@ int ec_group_copy(EC_GROUP *dest, const EC_GROUP *src) {
       return 0;
     }
   } else {
-    /* src->generator == NULL */
-    if (dest->generator != NULL) {
-      EC_POINT_clear_free(dest->generator);
-      dest->generator = NULL;
-    }
+    EC_POINT_clear_free(dest->generator);
+    dest->generator = NULL;
   }
 
   if (!BN_copy(&dest->order, &src->order) ||
@@ -501,6 +574,10 @@ int ec_group_copy(EC_GROUP *dest, const EC_GROUP *src) {
   dest->curve_name = src->curve_name;
 
   return dest->meth->group_copy(dest, src);
+}
+
+const BN_MONT_CTX *ec_group_get_mont_data(const EC_GROUP *group) {
+  return group->mont_data;
 }
 
 EC_GROUP *EC_GROUP_dup(const EC_GROUP *a) {
@@ -786,6 +863,11 @@ int EC_POINT_mul(const EC_GROUP *group, EC_POINT *r, const BIGNUM *g_scalar,
 int EC_POINTs_mul(const EC_GROUP *group, EC_POINT *r, const BIGNUM *scalar,
                   size_t num, const EC_POINT *points[], const BIGNUM *scalars[],
                   BN_CTX *ctx) {
+  if (group->meth != r->meth) {
+    OPENSSL_PUT_ERROR(EC, EC_R_INCOMPATIBLE_OBJECTS);
+    return 0;
+  }
+
   size_t i;
   for (i = 0; i < num; i++) {
     if (points[i]->meth != r->meth) {

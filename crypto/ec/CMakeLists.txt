@@ -1,5 +1,13 @@
 include_directories(../../include)
 
+if (${ARCH} STREQUAL "x86_64")
+  set(
+    EC_ARCH_SOURCES
+
+    p256-x86_64-asm.${ASM_EXT}
+  )
+endif()
+
 add_library(
   ec
 
@@ -12,10 +20,15 @@ add_library(
   oct.c
   p224-64.c
   p256-64.c
-  util-64.c
+  p256-x86_64.c
   simple.c
+  util-64.c
   wnaf.c
+
+  ${EC_ARCH_SOURCES}
 )
+
+perlasm(p256-x86_64-asm.${ASM_EXT} asm/p256-x86_64-asm.pl)
 
 add_executable(
   example_mul
