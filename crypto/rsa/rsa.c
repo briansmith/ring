@@ -138,7 +138,9 @@ void RSA_free(RSA *rsa) {
     return;
   }
 
-  if (rsa->meth->finish) {
+  if (rsa->meth == &RSA_default_method) {
+    rsa_default_finish(rsa);
+  } else if (rsa->meth->finish) {
     rsa->meth->finish(rsa);
   }
   METHOD_unref(rsa->meth);
