@@ -525,7 +525,7 @@ struct rsa_meth_st {
                  BN_CTX *ctx); /* Can be null */
   int (*bn_mod_exp)(BIGNUM *r, const BIGNUM *a, const BIGNUM *p,
                     const BIGNUM *m, BN_CTX *ctx,
-                    BN_MONT_CTX *m_ctx);
+                    const BN_MONT_CTX *mont);
 
   int flags;
 

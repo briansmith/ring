@@ -737,7 +737,7 @@ OPENSSL_EXPORT void BN_MONT_CTX_free(BN_MONT_CTX *mont);
 /* BN_MONT_CTX_copy sets |to| equal to |from|. It returns |to| on success or
  * NULL on error. */
 OPENSSL_EXPORT BN_MONT_CTX *BN_MONT_CTX_copy(BN_MONT_CTX *to,
-                                             BN_MONT_CTX *from);
+                                             const BN_MONT_CTX *from);
 
 /* BN_MONT_CTX_set sets up a Montgomery context given the modulus, |mod|. It
  * returns one on success and zero on error. */
@@ -787,7 +787,7 @@ OPENSSL_EXPORT int BN_mod_exp(BIGNUM *r, const BIGNUM *a, const BIGNUM *p,
 
 OPENSSL_EXPORT int BN_mod_exp_mont(BIGNUM *r, const BIGNUM *a, const BIGNUM *p,
                                    const BIGNUM *m, BN_CTX *ctx,
-                                   BN_MONT_CTX *m_ctx);
+                                   const BN_MONT_CTX *mont);
 
 OPENSSL_EXPORT int BN_mod_exp_mont_consttime(BIGNUM *rr, const BIGNUM *a,
                                              const BIGNUM *p, const BIGNUM *m,
@@ -796,11 +796,11 @@ OPENSSL_EXPORT int BN_mod_exp_mont_consttime(BIGNUM *rr, const BIGNUM *a,
 
 OPENSSL_EXPORT int BN_mod_exp_mont_word(BIGNUM *r, BN_ULONG a, const BIGNUM *p,
                                         const BIGNUM *m, BN_CTX *ctx,
-                                        BN_MONT_CTX *m_ctx);
+                                        const BN_MONT_CTX *mont);
 OPENSSL_EXPORT int BN_mod_exp2_mont(BIGNUM *r, const BIGNUM *a1,
                                     const BIGNUM *p1, const BIGNUM *a2,
                                     const BIGNUM *p2, const BIGNUM *m,
-                                    BN_CTX *ctx, BN_MONT_CTX *m_ctx);
+                                    BN_CTX *ctx, const BN_MONT_CTX *mont);
 
 
 /* Deprecated functions */

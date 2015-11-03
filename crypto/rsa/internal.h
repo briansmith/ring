@@ -106,8 +106,8 @@ void BN_BLINDING_set_flags(BN_BLINDING *, unsigned long);
 BN_BLINDING *BN_BLINDING_create_param(
     BN_BLINDING *b, const BIGNUM *e, BIGNUM *m, BN_CTX *ctx,
     int (*bn_mod_exp)(BIGNUM *r, const BIGNUM *a, const BIGNUM *p,
-                      const BIGNUM *m, BN_CTX *ctx, BN_MONT_CTX *m_ctx),
-    BN_MONT_CTX *m_ctx);
+                      const BIGNUM *m, BN_CTX *ctx, const BN_MONT_CTX *mont),
+    const BN_MONT_CTX *mont);
 BN_BLINDING *rsa_setup_blinding(RSA *rsa, BN_CTX *in_ctx);
 
 
