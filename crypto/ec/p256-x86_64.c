@@ -138,7 +138,7 @@ static unsigned booth_recode_w7(unsigned in) {
 
 static void copy_conditional(BN_ULONG dst[P256_LIMBS],
                              const BN_ULONG src[P256_LIMBS], BN_ULONG move) {
-  BN_ULONG mask1 = -move;
+  BN_ULONG mask1 = ((BN_ULONG)0) - move;
   BN_ULONG mask2 = ~mask1;
 
   dst[0] = (src[0] & mask1) ^ (dst[0] & mask2);
