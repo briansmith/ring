@@ -437,7 +437,7 @@ static void ecp_nistz256_windowed_mul(const EC_GROUP *group, P256_POINT *r,
 err:
   OPENSSL_free(table_storage);
   OPENSSL_free(p_str);
-  OPENSSL_free(scalars);
+  OPENSSL_free((BIGNUM**) scalars);
 }
 
 /* Coordinates of G, for which we have precomputed tables */
@@ -588,14 +588,14 @@ static int ecp_nistz256_points_mul(
 
     new_points = OPENSSL_malloc((num + 1) * sizeof(EC_POINT *));
     if (new_points == NULL) {
-      OPENSSL_free(new_scalars);
+      OPENSSL_free((BIGNUM**) new_scalars);
       OPENSSL_PUT_ERROR(EC, ERR_R_MALLOC_FAILURE);
       return 0;
     }
 
-    memcpy(new_scalars, scalars, num * sizeof(BIGNUM *));
+    memcpy((BIGNUM**) new_scalars, scalars, num * sizeof(BIGNUM *));
     new_scalars[num] = scalar;
-    memcpy(new_points, points, num * sizeof(EC_POINT *));
+    memcpy((EC_POINT**) new_points, points, num * sizeof(EC_POINT *));
     new_points[num] = generator;
 
     scalars = new_scalars;
@@ -617,8 +617,8 @@ static int ecp_nistz256_points_mul(
   }
 
   if (no_precomp_for_generator) {
-    OPENSSL_free(points);
-    OPENSSL_free(scalars);
+    OPENSSL_free((BIGNUM **) scalars);
+    OPENSSL_free((EC_POINT **) points);
   }
 
   memcpy(r->X.d, p.p.X, sizeof(p.p.X));

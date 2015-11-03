@@ -310,7 +310,7 @@ static void built_in_curve_scalar_field_monts_init(void) {
 
 err:
   BN_MONT_CTX_free(mont_ctx);
-  OPENSSL_free(built_in_curve_scalar_field_monts);
+  OPENSSL_free((BN_MONT_CTX**) built_in_curve_scalar_field_monts);
   built_in_curve_scalar_field_monts = NULL;
 
 out:
