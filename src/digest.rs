@@ -197,7 +197,8 @@ mod tests {
 
     #[test]
     fn test_digests() {
-        fn test_case(test_case: &mut file_test::TestCase) {
+        file_test::run("src/digest_tests.txt", |section, test_case| {
+            assert_eq!(section, "");
             let digest_alg = test_case.consume_digest_alg("Hash").unwrap();
             let input = test_case.consume_bytes("Input");
             let repeat = test_case.consume_usize("Repeat");
@@ -214,9 +215,7 @@ mod tests {
 
             let actual_from_one_shot = digest::digest(digest_alg, &data);
             assert_eq!(&expected, &actual_from_one_shot.as_ref());
-        }
-
-        file_test::run("src/digest_tests.txt", test_case);
+        });
     }
 }
 

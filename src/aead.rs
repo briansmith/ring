@@ -453,7 +453,8 @@ mod tests {
         test_aead_key_sizes(aead_alg);
         test_aead_nonce_sizes(aead_alg);
 
-        file_test::run(file_path, |test_case| {
+        file_test::run(file_path, |section, test_case| {
+            assert_eq!(section, "");
             let key_bytes = test_case.consume_bytes("KEY");
             let nonce = test_case.consume_bytes("NONCE");
             let plaintext = test_case.consume_bytes("IN");

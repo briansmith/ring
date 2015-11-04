@@ -71,15 +71,17 @@ impl TestCase {
 }
 
 pub fn run<F>(test_data_relative_file_path: &str, f: F)
-              where F: Fn(&mut TestCase) {
+              where F: Fn(&str, &mut TestCase) {
     let path = std::path::PathBuf::from(test_data_relative_file_path);
     let file = std::fs::File::open(path).unwrap();
     let mut lines = std::io::BufReader::new(&file).lines();
 
+    let mut current_section = String::from("");
+
     loop {
-        match parse_test_case(&mut lines) {
+        match parse_test_case(&mut current_section, &mut lines) {
             Some(ref mut test_case) => {
-                f(test_case);
+                f(&current_section, test_case);
 
                 // Make sure all the attributes in the test case were consumed.
                 assert!(test_case.attributes.is_empty());
@@ -94,7 +96,8 @@ pub fn run<F>(test_data_relative_file_path: &str, f: F)
 
 type FileLines<'a> = std::io::Lines<std::io::BufReader<&'a std::fs::File>>;
 
-fn parse_test_case(lines: &mut FileLines) -> Option<TestCase> {
+fn parse_test_case(current_section: &mut String,
+                   lines: &mut FileLines) -> Option<TestCase> {
     let mut attributes = std::collections::HashMap::new();
 
     let mut is_first_line = true;
@@ -103,6 +106,10 @@ fn parse_test_case(lines: &mut FileLines) -> Option<TestCase> {
             None => None,
             Some(result) => Some(result.unwrap()),
         };
+
+        if let Some(ref text) = line {
+            println!("Line: {}", text);
+        }
 
         match line {
             // If we get to EOF when we're not in the middle of a test case,
@@ -127,10 +134,17 @@ fn parse_test_case(lines: &mut FileLines) -> Option<TestCase> {
             // Comments start with '#'; ignore them.
             Some(ref line) if line.starts_with("#") => { },
 
-            Some(line) => {
-                is_first_line = false;
+            Some(ref line) if line.starts_with("[") => {
+                assert!(is_first_line);
+                assert!(line.ends_with("]"));
+                current_section.truncate(0);
+                current_section.push_str(line);
+                current_section.pop();
+                current_section.remove(0);
+            },
 
-                println!("Line: {}", line);
+            Some(ref line) => {
+                is_first_line = false;
 
                 let parts: Vec<&str> = line.splitn(2, ':').collect();
                 let key = parts[0].trim();

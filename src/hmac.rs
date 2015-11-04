@@ -352,32 +352,31 @@ mod tests {
 
     #[test]
     pub fn hmac_tests() {
-        file_test::run("src/hmac_tests.txt", hmac_test_case);
-    }
+        file_test::run("src/hmac_tests.txt", |section, test_case| {
+            assert_eq!(section, "");
+            let digest_alg = test_case.consume_digest_alg("HMAC");
+            let key_value = test_case.consume_bytes("Key");
+            let mut input = test_case.consume_bytes("Input");
+            let output = test_case.consume_bytes("Output");
 
-    fn hmac_test_case(test_case: &mut file_test::TestCase) {
-        let digest_alg = test_case.consume_digest_alg("HMAC");
-        let key_value = test_case.consume_bytes("Key");
-        let mut input = test_case.consume_bytes("Input");
-        let output = test_case.consume_bytes("Output");
+            let digest_alg = match digest_alg {
+                Some(digest_alg) => digest_alg,
+                None => { return; } // Unsupported digest algorithm
+            };
 
-        let digest_alg = match digest_alg {
-            Some(digest_alg) => digest_alg,
-            None => { return; } // Unsupported digest algorithm
-        };
+            hmac_test_case_inner(digest_alg, &key_value[..], &input[..],
+                                 &output[..], true);
 
-        hmac_test_case_inner(digest_alg, &key_value[..], &input[..],
-                             &output[..], true);
+            // Tamper with the input and check that verification fails.
+            if input.len() == 0 {
+                input.push(0);
+            } else {
+                input[0] ^= 1;
+            }
 
-        // Tamper with the input and check that verification fails.
-        if input.len() == 0 {
-            input.push(0);
-        } else {
-            input[0] ^= 1;
-        }
-
-        hmac_test_case_inner(digest_alg, &key_value[..], &input[..],
-                             &output[..], false);
+            hmac_test_case_inner(digest_alg, &key_value[..], &input[..],
+                                 &output[..], false);
+        });
     }
 
     fn hmac_test_case_inner(digest_alg: &'static digest::Algorithm,
