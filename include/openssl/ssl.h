@@ -259,7 +259,7 @@ OPENSSL_EXPORT int SSL_get_rfd(const SSL *ssl);
  * descriptor then it returns -1. */
 OPENSSL_EXPORT int SSL_get_wfd(const SSL *ssl);
 
-/* SSL_set_wfd configures |ssl| to read from and write to |fd|. It returns one
+/* SSL_set_fd configures |ssl| to read from and write to |fd|. It returns one
  * on success and zero on allocation error. The caller retains ownership of
  * |fd|. */
 OPENSSL_EXPORT int SSL_set_fd(SSL *ssl, int fd);
@@ -1181,13 +1181,13 @@ OPENSSL_EXPORT int SSL_CIPHER_get_bits(const SSL_CIPHER *cipher,
  * |str| as a cipher string. It returns one on success and zero on failure. */
 OPENSSL_EXPORT int SSL_CTX_set_cipher_list(SSL_CTX *ctx, const char *str);
 
-/* SSL_CTX_set_cipher_list configures the TLS 1.0+ cipher list for |ctx|,
+/* SSL_CTX_set_cipher_list_tls10 configures the TLS 1.0+ cipher list for |ctx|,
  * evaluating |str| as a cipher string. It returns one on success and zero on
  * failure. If set, servers will use this cipher suite list for TLS 1.0 or
  * higher. */
 OPENSSL_EXPORT int SSL_CTX_set_cipher_list_tls10(SSL_CTX *ctx, const char *str);
 
-/* SSL_CTX_set_cipher_list configures the TLS 1.1+ cipher list for |ctx|,
+/* SSL_CTX_set_cipher_list_tls11 configures the TLS 1.1+ cipher list for |ctx|,
  * evaluating |str| as a cipher string. It returns one on success and zero on
  * failure. If set, servers will use this cipher suite list for TLS 1.1 or
  * higher. */
@@ -2821,10 +2821,10 @@ OPENSSL_EXPORT void SSL_CTX_set_dos_protection_cb(
 #define SSL_CB_HANDSHAKE_START 0x10
 #define SSL_CB_HANDSHAKE_DONE 0x20
 
-/* SSL_set_info_callback configures a callback to be run when various events
- * occur during a connection's lifetime. The |type| argumentj determines the
- * type of event and the meaning of the |value| argument. Callbacks must ignore
- * unexpected |type| values.
+/* SSL_CTX_set_info_callback configures a callback to be run when various
+ * events occur during a connection's lifetime. The |type| argumentj determines
+ * the type of event and the meaning of the |value| argument. Callbacks must
+ * ignore unexpected |type| values.
  *
  * |SSL_CB_READ_ALERT| is signaled for each alert received, warning or fatal.
  * The |value| argument is a 16-bit value where the alert level (either
@@ -2937,9 +2937,9 @@ OPENSSL_EXPORT const char *SSL_COMP_get_name(const COMP_METHOD *comp);
 /* SSLv23_method calls |TLS_method|. */
 OPENSSL_EXPORT const SSL_METHOD *SSLv23_method(void);
 
-/* Version-specific methods behave exactly like |TLS_method| and |DTLS_method|
- * except they also call |SSL_CTX_set_min_version| and |SSL_CTX_set_max_version|
- * to lock connections to that protocol version. */
+/* These version-specific methods behave exactly like |TLS_method| and
+ * |DTLS_method| except they also call |SSL_CTX_set_min_version| and
+ * |SSL_CTX_set_max_version| to lock connections to that protocol version. */
 OPENSSL_EXPORT const SSL_METHOD *SSLv3_method(void);
 OPENSSL_EXPORT const SSL_METHOD *TLSv1_method(void);
 OPENSSL_EXPORT const SSL_METHOD *TLSv1_1_method(void);
@@ -2947,7 +2947,7 @@ OPENSSL_EXPORT const SSL_METHOD *TLSv1_2_method(void);
 OPENSSL_EXPORT const SSL_METHOD *DTLSv1_method(void);
 OPENSSL_EXPORT const SSL_METHOD *DTLSv1_2_method(void);
 
-/* Client- and server-specific methods call their corresponding generic
+/* These client- and server-specific methods call their corresponding generic
  * methods. */
 OPENSSL_EXPORT const SSL_METHOD *SSLv23_server_method(void);
 OPENSSL_EXPORT const SSL_METHOD *SSLv23_client_method(void);
@@ -3313,7 +3313,8 @@ OPENSSL_EXPORT int SSL_state(const SSL *ssl);
 #define SSL_get_state(ssl) SSL_state(ssl)
 
 /* SSL_state_string returns the current state of the handshake state machine as
- * a six-letter string. Use |SSL_state_string */
+ * a six-letter string. Use |SSL_state_string_long| for a more intelligible
+ * string. */
 OPENSSL_EXPORT const char *SSL_state_string(const SSL *ssl);
 
 /* SSL_set_shutdown causes |ssl| to behave as if the shutdown bitmask (see

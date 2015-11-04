@@ -91,17 +91,6 @@ OPENSSL_EXPORT const EVP_CIPHER *EVP_aes_256_ctr(void);
 OPENSSL_EXPORT const EVP_CIPHER *EVP_aes_256_ofb(void);
 OPENSSL_EXPORT const EVP_CIPHER *EVP_aes_256_xts(void);
 
-/* Deprecated AES-GCM implementations that set |EVP_CIPH_FLAG_CUSTOM_CIPHER|.
- * Use |EVP_aead_aes_128_gcm| and |EVP_aead_aes_256_gcm| instead. */
-OPENSSL_EXPORT const EVP_CIPHER *EVP_aes_128_gcm(void);
-OPENSSL_EXPORT const EVP_CIPHER *EVP_aes_256_gcm(void);
-
-/* Deprecated 192-bit version of AES. */
-OPENSSL_EXPORT const EVP_CIPHER *EVP_aes_192_ecb(void);
-OPENSSL_EXPORT const EVP_CIPHER *EVP_aes_192_cbc(void);
-OPENSSL_EXPORT const EVP_CIPHER *EVP_aes_192_ctr(void);
-OPENSSL_EXPORT const EVP_CIPHER *EVP_aes_192_gcm(void);
-
 /* EVP_enc_null returns a 'cipher' that passes plaintext through as
  * ciphertext. */
 OPENSSL_EXPORT const EVP_CIPHER *EVP_enc_null(void);
@@ -406,6 +395,18 @@ OPENSSL_EXPORT int EVP_add_cipher_alias(const char *a, const char *b);
 /* EVP_get_cipherbyname returns an |EVP_CIPHER| given a human readable name in
  * |name|, or NULL if the name is unknown. */
 OPENSSL_EXPORT const EVP_CIPHER *EVP_get_cipherbyname(const char *name);
+
+/* These AEADs are deprecated AES-GCM implementations that set
+ * |EVP_CIPH_FLAG_CUSTOM_CIPHER|. Use |EVP_aead_aes_128_gcm| and
+ * |EVP_aead_aes_256_gcm| instead. */
+OPENSSL_EXPORT const EVP_CIPHER *EVP_aes_128_gcm(void);
+OPENSSL_EXPORT const EVP_CIPHER *EVP_aes_256_gcm(void);
+
+/* These are deprecated, 192-bit version of AES. */
+OPENSSL_EXPORT const EVP_CIPHER *EVP_aes_192_ecb(void);
+OPENSSL_EXPORT const EVP_CIPHER *EVP_aes_192_cbc(void);
+OPENSSL_EXPORT const EVP_CIPHER *EVP_aes_192_ctr(void);
+OPENSSL_EXPORT const EVP_CIPHER *EVP_aes_192_gcm(void);
 
 
 /* Private functions. */

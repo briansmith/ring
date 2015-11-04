@@ -134,7 +134,7 @@ OPENSSL_EXPORT const EVP_AEAD *EVP_aead_aes_256_key_wrap(void);
  * block counter, thus the maximum plaintext size is 64GB. */
 OPENSSL_EXPORT const EVP_AEAD *EVP_aead_aes_128_ctr_hmac_sha256(void);
 
-/* EVP_aead_aes_128_ctr_hmac_sha256 is AES-256 in CTR mode with HMAC-SHA256 for
+/* EVP_aead_aes_256_ctr_hmac_sha256 is AES-256 in CTR mode with HMAC-SHA256 for
  * authentication. See |EVP_aead_aes_128_ctr_hmac_sha256| for details. */
 OPENSSL_EXPORT const EVP_AEAD *EVP_aead_aes_256_ctr_hmac_sha256(void);
 

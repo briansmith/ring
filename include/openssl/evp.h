@@ -664,7 +664,11 @@ OPENSSL_EXPORT void EVP_cleanup(void);
 OPENSSL_EXPORT const EVP_PKEY_ASN1_METHOD *EVP_PKEY_asn1_find(ENGINE **pengine,
                                                               int nid);
 
-/* TODO(fork): move to PEM? */
+/* EVP_PKEY_asn1_find_str returns an |EVP_PKEY_ASN1_METHOD| by matching values
+ * of the |len| bytes at |name|. For example, if name equals "EC" then it will
+ * return an ECC method. The |pengine| argument is ignored.
+ *
+ * TODO(fork): move to PEM? */
 OPENSSL_EXPORT const EVP_PKEY_ASN1_METHOD *EVP_PKEY_asn1_find_str(
     ENGINE **pengine, const char *name, size_t len);
 

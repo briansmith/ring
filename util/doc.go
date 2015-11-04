@@ -388,6 +388,19 @@ func (config *Config) parseHeader(path string) (*HeaderFile, error) {
 			if last := len(section.Decls) - 1; len(name) == 0 && len(comment) == 0 && last >= 0 {
 				section.Decls[last].Decl += "\n" + decl
 			} else {
+				// As a matter of style, comments should start
+				// with the name of the thing that they are
+				// commenting on. We make an exception here for
+				// #defines (because we often have blocks of
+				// them) and collective comments, which are
+				// detected by starting with “The” or “These”.
+				if len(comment) > 0 &&
+					!strings.HasPrefix(comment[0], name) &&
+					!strings.HasPrefix(decl, "#define ") &&
+					!strings.HasPrefix(comment[0], "The ") &&
+					!strings.HasPrefix(comment[0], "These ") {
+					return nil, fmt.Errorf("Comment for %q doesn't seem to match just above %s:%d\n", name, path, lineNo)
+				}
 				anchor := sanitizeAnchor(name)
 				// TODO(davidben): Enforce uniqueness. This is
 				// skipped because #ifdefs currently result in

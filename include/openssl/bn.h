@@ -532,7 +532,7 @@ OPENSSL_EXPORT int BN_mod_sub_quick(BIGNUM *r, const BIGNUM *a, const BIGNUM *b,
 OPENSSL_EXPORT int BN_mod_mul(BIGNUM *r, const BIGNUM *a, const BIGNUM *b,
                               const BIGNUM *m, BN_CTX *ctx);
 
-/* BN_mod_mul sets |r| = |a|^2 mod |m|. It returns one on success and zero
+/* BN_mod_sqr sets |r| = |a|^2 mod |m|. It returns one on success and zero
  * on error. */
 OPENSSL_EXPORT int BN_mod_sqr(BIGNUM *r, const BIGNUM *a, const BIGNUM *m,
                               BN_CTX *ctx);
@@ -813,7 +813,7 @@ OPENSSL_EXPORT int BN_mod_exp2_mont(BIGNUM *r, const BIGNUM *a1,
  * find the needed amount of space, call the function with |out| set to NULL. */
 OPENSSL_EXPORT size_t BN_bn2mpi(const BIGNUM *in, uint8_t *out);
 
-/* BN_bin2bn parses |len| bytes from |in| and returns the resulting value. The
+/* BN_mpi2bn parses |len| bytes from |in| and returns the resulting value. The
  * bytes at |in| are expected to be in the format emitted by |BN_bn2mpi|.
  *
  * If |out| is NULL then a fresh |BIGNUM| is allocated and returned, otherwise

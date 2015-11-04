@@ -300,8 +300,8 @@ OPENSSL_EXPORT void ERR_clear_system_error(void);
   ERR_put_error(ERR_LIB_##library, 0, reason, __FILE__, __LINE__)
 
 /* OPENSSL_PUT_SYSTEM_ERROR is used by OpenSSL code to add an error from the
- * operating system to the error queue. */
-/* TODO(fork): include errno. */
+ * operating system to the error queue.
+ * TODO(fork): include errno. */
 #define OPENSSL_PUT_SYSTEM_ERROR() \
   ERR_put_error(ERR_LIB_SYS, 0, 0, __FILE__, __LINE__);
 

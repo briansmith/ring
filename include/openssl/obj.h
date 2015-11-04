@@ -125,7 +125,7 @@ OPENSSL_EXPORT const ASN1_OBJECT *OBJ_nid2obj(int nid);
 /* OBJ_nid2sn returns the short name for |nid|, or NULL if |nid| is unknown. */
 OPENSSL_EXPORT const char *OBJ_nid2sn(int nid);
 
-/* OBJ_nid2sn returns the long name for |nid|, or NULL if |nid| is unknown. */
+/* OBJ_nid2ln returns the long name for |nid|, or NULL if |nid| is unknown. */
 OPENSSL_EXPORT const char *OBJ_nid2ln(int nid);
 
 /* OBJ_nid2cbb writes |nid| as an ASN.1 OBJECT IDENTIFIER to |out|. It returns
