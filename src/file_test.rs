@@ -146,7 +146,7 @@ fn parse_test_case(current_section: &mut String,
             Some(ref line) => {
                 is_first_line = false;
 
-                let parts: Vec<&str> = line.splitn(2, ':').collect();
+                let parts: Vec<&str> = line.splitn(2, " = ").collect();
                 let key = parts[0].trim();
                 let value = parts[1].trim();
 

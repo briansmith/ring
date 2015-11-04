@@ -1,57 +1,57 @@
 # SHA-1 tests from RFC 3174.
 
-Hash: SHA1
-Input: "abc"
-Repeat: 1
-Output: a9993e364706816aba3e25717850c26c9cd0d89d
+Hash = SHA1
+Input = "abc"
+Repeat = 1
+Output = a9993e364706816aba3e25717850c26c9cd0d89d
 
-Hash: SHA1
-Input: "abcdbcdecdefdefgefghfghighijhijkijkljklmklmnlmnomnopnopq"
-Repeat: 1
-Output: 84983e441c3bd26ebaae4aa1f95129e5e54670f1
+Hash = SHA1
+Input = "abcdbcdecdefdefgefghfghighijhijkijkljklmklmnlmnomnopnopq"
+Repeat = 1
+Output = 84983e441c3bd26ebaae4aa1f95129e5e54670f1
 
-Hash: SHA1
-Input: "a"
-Repeat: 1000000
-Output: 34aa973cd4c4daa4f61eeb2bdbad27316534016f
+Hash = SHA1
+Input = "a"
+Repeat = 1000000
+Output = 34aa973cd4c4daa4f61eeb2bdbad27316534016f
 
-Hash: SHA1
-Input: "0123456701234567012345670123456701234567012345670123456701234567"
-Repeat: 10
-Output: dea356a2cddd90c7a7ecedc5ebb563934f460452
+Hash = SHA1
+Input = "0123456701234567012345670123456701234567012345670123456701234567"
+Repeat = 10
+Output = dea356a2cddd90c7a7ecedc5ebb563934f460452
 
 # SHA-256 tests from NIST.
 
-Hash: SHA256
-Input: "abc"
-Repeat: 1
-Output: ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad
+Hash = SHA256
+Input = "abc"
+Repeat = 1
+Output = ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad
 
-Hash: SHA256
-Input: "abcdbcdecdefdefgefghfghighijhijkijkljklmklmnlmnomnopnopq"
-Repeat: 1
-Output: 248d6a61d20638b8e5c026930c3e6039a33ce45964ff2167f6ecedd419db06c1
+Hash = SHA256
+Input = "abcdbcdecdefdefgefghfghighijhijkijkljklmklmnlmnomnopnopq"
+Repeat = 1
+Output = 248d6a61d20638b8e5c026930c3e6039a33ce45964ff2167f6ecedd419db06c1
 
 # SHA-384 tests from NIST.
 
-Hash: SHA384
-Input: "abc"
-Repeat: 1
-Output: cb00753f45a35e8bb5a03d699ac65007272c32ab0eded1631a8b605a43ff5bed8086072ba1e7cc2358baeca134c825a7
+Hash = SHA384
+Input = "abc"
+Repeat = 1
+Output = cb00753f45a35e8bb5a03d699ac65007272c32ab0eded1631a8b605a43ff5bed8086072ba1e7cc2358baeca134c825a7
 
-Hash: SHA384
-Input: "abcdefghbcdefghicdefghijdefghijkefghijklfghijklmghijklmnhijklmnoijklmnopjklmnopqklmnopqrlmnopqrsmnopqrstnopqrstu"
-Repeat: 1
-Output: 09330c33f71147e83d192fc782cd1b4753111b173b3b05d22fa08086e3b0f712fcc7c71a557e2db966c3e9fa91746039
+Hash = SHA384
+Input = "abcdefghbcdefghicdefghijdefghijkefghijklfghijklmghijklmnhijklmnoijklmnopjklmnopqklmnopqrlmnopqrsmnopqrstnopqrstu"
+Repeat = 1
+Output = 09330c33f71147e83d192fc782cd1b4753111b173b3b05d22fa08086e3b0f712fcc7c71a557e2db966c3e9fa91746039
 
 # SHA-512 tests from NIST
 
-Hash: SHA512
-Input: "abc"
-Repeat: 1
-Output: ddaf35a193617abacc417349ae20413112e6fa4e89a97ea20a9eeee64b55d39a2192992a274fc1a836ba3c23a3feebbd454d4423643ce80e2a9ac94fa54ca49f
+Hash = SHA512
+Input = "abc"
+Repeat = 1
+Output = ddaf35a193617abacc417349ae20413112e6fa4e89a97ea20a9eeee64b55d39a2192992a274fc1a836ba3c23a3feebbd454d4423643ce80e2a9ac94fa54ca49f
 
-Hash: SHA512
-Input: "abcdefghbcdefghicdefghijdefghijkefghijklfghijklmghijklmnhijklmnoijklmnopjklmnopqklmnopqrlmnopqrsmnopqrstnopqrstu"
-Repeat: 1
-Output: 8e959b75dae313da8cf4f72814fc143f8f7779c6eb9f7fa17299aeadb6889018501d289e4900f7e4331b99dec4b5433ac7d329eeb6dd26545e96e55b874be909
+Hash = SHA512
+Input = "abcdefghbcdefghicdefghijdefghijkefghijklfghijklmghijklmnhijklmnoijklmnopjklmnopqklmnopqrlmnopqrsmnopqrstnopqrstu"
+Repeat = 1
+Output = 8e959b75dae313da8cf4f72814fc143f8f7779c6eb9f7fa17299aeadb6889018501d289e4900f7e4331b99dec4b5433ac7d329eeb6dd26545e96e55b874be909
