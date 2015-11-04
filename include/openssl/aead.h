@@ -330,6 +330,13 @@ OPENSSL_EXPORT int EVP_AEAD_CTX_open(const EVP_AEAD_CTX *ctx, uint8_t *out,
 OPENSSL_EXPORT int EVP_AEAD_CTX_get_rc4_state(const EVP_AEAD_CTX *ctx,
                                               const RC4_KEY **out_key);
 
+/* EVP_AEAD_CTX_get_iv sets |*out_len| to the length of the IV for |ctx| and
+ * sets |*out_iv| to point to that many bytes of the current IV. This is only
+ * meaningful for AEADs with implicit IVs (i.e. CBC mode in SSLv3 and TLS 1.0).
+ *
+ * It returns one on success or zero on error. */
+OPENSSL_EXPORT int EVP_AEAD_CTX_get_iv(const EVP_AEAD_CTX *ctx,
+                                       const uint8_t **out_iv, size_t *out_len);
 
 #if defined(__cplusplus)
 }  /* extern C */

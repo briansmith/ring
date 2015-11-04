@@ -2636,6 +2636,23 @@ int SSL_get_rc4_state(const SSL *ssl, const RC4_KEY **read_key,
          EVP_AEAD_CTX_get_rc4_state(&ssl->aead_write_ctx->ctx, write_key);
 }
 
+int SSL_get_ivs(const SSL *ssl, const uint8_t **out_read_iv,
+                const uint8_t **out_write_iv, size_t *out_iv_len) {
+  if (ssl->aead_read_ctx == NULL || ssl->aead_write_ctx == NULL) {
+    return 0;
+  }
+
+  size_t write_iv_len;
+  if (!EVP_AEAD_CTX_get_iv(&ssl->aead_read_ctx->ctx, out_read_iv, out_iv_len) ||
+      !EVP_AEAD_CTX_get_iv(&ssl->aead_write_ctx->ctx, out_write_iv,
+                           &write_iv_len) ||
+      *out_iv_len != write_iv_len) {
+    return 0;
+  }
+
+  return 1;
+}
+
 int SSL_clear(SSL *ssl) {
   if (ssl->method == NULL) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_NO_METHOD_SPECIFIED);

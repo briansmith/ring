@@ -2613,6 +2613,16 @@ OPENSSL_EXPORT int SSL_CTX_get_ex_new_index(long argl, void *argp,
 OPENSSL_EXPORT int SSL_get_rc4_state(const SSL *ssl, const RC4_KEY **read_key,
                                      const RC4_KEY **write_key);
 
+/* SSL_get_ivs sets |*out_iv_len| to the length of the IVs for the ciphers
+ * underlying |ssl| and sets |*out_read_iv| and |*out_write_iv| to point to the
+ * current IVs for the read and write directions. This is only meaningful for
+ * connections with implicit IVs (i.e. CBC mode with SSLv3 or TLS 1.0).
+ *
+ * It returns one on success or zero on error. */
+OPENSSL_EXPORT int SSL_get_ivs(const SSL *ssl, const uint8_t **out_read_iv,
+                               const uint8_t **out_write_iv,
+                               size_t *out_iv_len);
+
 /* SSL_get_structure_sizes returns the sizes of the SSL, SSL_CTX and
  * SSL_SESSION structures so that a test can ensure that outside code agrees on
  * these values. */

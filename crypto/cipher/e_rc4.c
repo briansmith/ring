@@ -392,6 +392,7 @@ static const EVP_AEAD aead_rc4_md5_tls = {
     aead_rc4_md5_tls_seal,
     aead_rc4_md5_tls_open,
     aead_rc4_md5_tls_get_rc4_state,
+    NULL, /* get_iv */
 };
 
 const EVP_AEAD *EVP_aead_rc4_md5_tls(void) { return &aead_rc4_md5_tls; }

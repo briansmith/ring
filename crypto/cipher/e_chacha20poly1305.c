@@ -240,6 +240,7 @@ static const EVP_AEAD aead_chacha20_poly1305 = {
     aead_chacha20_poly1305_seal,
     aead_chacha20_poly1305_open,
     NULL,               /* get_rc4_state */
+    NULL,               /* get_iv */
 };
 
 const EVP_AEAD *EVP_aead_chacha20_poly1305_rfc7539(void) {
@@ -296,6 +297,7 @@ static const EVP_AEAD aead_chacha20_poly1305_old = {
     aead_chacha20_poly1305_old_seal,
     aead_chacha20_poly1305_old_open,
     NULL,               /* get_rc4_state */
+    NULL,               /* get_iv */
 };
 
 const EVP_AEAD *EVP_aead_chacha20_poly1305_old(void) {
