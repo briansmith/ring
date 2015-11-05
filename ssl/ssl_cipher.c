@@ -1384,8 +1384,16 @@ int SSL_CIPHER_has_MD5_HMAC(const SSL_CIPHER *cipher) {
   return (cipher->algorithm_mac & SSL_MD5) != 0;
 }
 
+int SSL_CIPHER_has_SHA1_HMAC(const SSL_CIPHER *cipher) {
+  return (cipher->algorithm_mac & SSL_SHA1) != 0;
+}
+
 int SSL_CIPHER_is_AESGCM(const SSL_CIPHER *cipher) {
   return (cipher->algorithm_enc & (SSL_AES128GCM | SSL_AES256GCM)) != 0;
+}
+
+int SSL_CIPHER_is_AES128GCM(const SSL_CIPHER *cipher) {
+  return (cipher->algorithm_enc & SSL_AES128GCM) != 0;
 }
 
 int SSL_CIPHER_is_CHACHA20POLY1305(const SSL_CIPHER *cipher) {
@@ -1404,6 +1412,17 @@ int SSL_CIPHER_is_block_cipher(const SSL_CIPHER *cipher) {
   /* Neither stream cipher nor AEAD. */
   return (cipher->algorithm_enc & (SSL_RC4 | SSL_eNULL)) == 0 &&
       cipher->algorithm_mac != SSL_AEAD;
+}
+
+int SSL_CIPHER_is_ECDSA(const SSL_CIPHER *cipher) {
+  return (cipher->algorithm_auth & SSL_aECDSA) != 0;
+}
+
+uint16_t SSL_CIPHER_get_min_version(const SSL_CIPHER *cipher) {
+  if (cipher->algorithm_ssl & SSL_TLSV1_2) {
+    return TLS1_2_VERSION;
+  }
+  return SSL3_VERSION;
 }
 
 /* return the actual cipher being used */

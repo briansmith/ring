@@ -1042,8 +1042,14 @@ OPENSSL_EXPORT int SSL_CIPHER_is_AES(const SSL_CIPHER *cipher);
 /* SSL_CIPHER_has_MD5_HMAC returns one if |cipher| uses HMAC-MD5. */
 OPENSSL_EXPORT int SSL_CIPHER_has_MD5_HMAC(const SSL_CIPHER *cipher);
 
+/* SSL_CIPHER_has_SHA1_HMAC returns one if |cipher| uses HMAC-SHA1. */
+OPENSSL_EXPORT int SSL_CIPHER_has_SHA1_HMAC(const SSL_CIPHER *cipher);
+
 /* SSL_CIPHER_is_AESGCM returns one if |cipher| uses AES-GCM. */
 OPENSSL_EXPORT int SSL_CIPHER_is_AESGCM(const SSL_CIPHER *cipher);
+
+/* SSL_CIPHER_is_AES128GCM returns one if |cipher| uses 128-bit AES-GCM. */
+OPENSSL_EXPORT int SSL_CIPHER_is_AES128GCM(const SSL_CIPHER *cipher);
 
 /* SSL_CIPHER_is_CHACHA20POLY1305 returns one if |cipher| uses
  * CHACHA20_POLY1305. */
@@ -1057,6 +1063,9 @@ OPENSSL_EXPORT int SSL_CIPHER_is_RC4(const SSL_CIPHER *cipher);
 
 /* SSL_CIPHER_is_block_cipher returns one if |cipher| is a block cipher. */
 OPENSSL_EXPORT int SSL_CIPHER_is_block_cipher(const SSL_CIPHER *cipher);
+
+/* SSL_CIPHER_is_ECDSA returns one if |cipher| uses ECDSA. */
+OPENSSL_EXPORT int SSL_CIPHER_is_ECDSA(const SSL_CIPHER *cipher);
 
 /* SSL_CIPHER_get_name returns the OpenSSL name of |cipher|. */
 OPENSSL_EXPORT const char *SSL_CIPHER_get_name(const SSL_CIPHER *cipher);
