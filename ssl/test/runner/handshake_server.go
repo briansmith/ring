@@ -203,6 +203,15 @@ func (hs *serverHandshakeState) readClientHello() (isResume bool, err error) {
 		hs.clientHello.signatureAndHashes = config.signatureAndHashesForServer()
 	}
 
+	// Check the client cipher list is consistent with the version.
+	if hs.clientHello.vers < VersionTLS12 {
+		for _, id := range hs.clientHello.cipherSuites {
+			if isTLS12Cipher(id) {
+				return false, fmt.Errorf("tls: client offered TLS 1.2 cipher before TLS 1.2")
+			}
+		}
+	}
+
 	c.vers, ok = config.mutualVersion(hs.clientHello.vers)
 	if !ok {
 		c.sendAlert(alertProtocolVersion)
@@ -1052,4 +1061,15 @@ func (c *Conn) tryCipherSuite(id uint16, supportedCipherSuites []uint16, version
 	}
 
 	return nil
+}
+
+func isTLS12Cipher(id uint16) bool {
+	for _, cipher := range cipherSuites {
+		if cipher.id != id {
+			continue
+		}
+		return cipher.flags&suiteTLS12 != 0
+	}
+	// Unknown cipher.
+	return false
 }
