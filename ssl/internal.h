@@ -695,15 +695,6 @@ void ssl_write_buffer_clear(SSL *ssl);
 /* See if we use signature algorithms extension and signature algorithm before
  * signatures. */
 #define SSL_USE_SIGALGS(s) (s->enc_method->enc_flags & SSL_ENC_FLAG_SIGALGS)
-/* Allow TLS 1.2 ciphersuites: applies to DTLS 1.2 as well as TLS 1.2: may
- * apply to others in future. */
-#define SSL_USE_TLS1_2_CIPHERS(s) \
-  (s->enc_method->enc_flags & SSL_ENC_FLAG_TLS1_2_CIPHERS)
-/* Determine if a client can use TLS 1.2 ciphersuites: can't rely on method
- * flags because it may not be set to correct version yet. */
-#define SSL_CLIENT_USE_TLS1_2_CIPHERS(s)                       \
-  ((SSL_IS_DTLS(s) && s->client_version <= DTLS1_2_VERSION) || \
-   (!SSL_IS_DTLS(s) && s->client_version >= TLS1_2_VERSION))
 
 /* SSL_kRSA <- RSA_ENC | (RSA_TMP & RSA_SIGN) |
  * 	    <- (EXPORT & (RSA_ENC | RSA_TMP) & RSA_SIGN)
@@ -739,17 +730,12 @@ typedef struct cert_st {
   const SSL_PRIVATE_KEY_METHOD *key_method;
 
   /* For clients the following masks are of *disabled* key and auth algorithms
-   * based on the current session.
+   * based on the current configuration.
    *
    * TODO(davidben): Remove these. They get checked twice: when sending the
-   * ClientHello and when processing the ServerHello. However, mask_ssl is a
-   * different value both times. mask_k and mask_a are not, but is a
-   * round-about way of checking the server's cipher was one of the advertised
-   * ones. (Currently it checks the masks and then the list of ciphers prior to
-   * applying the masks in ClientHello.) */
+   * ClientHello and when processing the ServerHello. */
   uint32_t mask_k;
   uint32_t mask_a;
-  uint32_t mask_ssl;
 
   DH *dh_tmp;
   DH *(*dh_tmp_cb)(SSL *ssl, int is_export, int keysize);
@@ -857,9 +843,6 @@ struct ssl3_enc_method {
 #define SSL_ENC_FLAG_SIGALGS 0x2
 /* Uses SHA256 default PRF */
 #define SSL_ENC_FLAG_SHA256_PRF 0x4
-/* Allow TLS 1.2 ciphersuites: applies to DTLS 1.2 as well as TLS 1.2:
- * may apply to others in future. */
-#define SSL_ENC_FLAG_TLS1_2_CIPHERS 0x8
 
 /* lengths of messages */
 #define DTLS1_COOKIE_LENGTH 256

@@ -604,9 +604,12 @@ static int ssl3_write_client_cipher_list(SSL *ssl, CBB *out) {
   for (i = 0; i < sk_SSL_CIPHER_num(ciphers); i++) {
     const SSL_CIPHER *cipher = sk_SSL_CIPHER_value(ciphers, i);
     /* Skip disabled ciphers */
-    if (cipher->algorithm_ssl & ssl->cert->mask_ssl ||
-        cipher->algorithm_mkey & ssl->cert->mask_k ||
-        cipher->algorithm_auth & ssl->cert->mask_a) {
+    if ((cipher->algorithm_mkey & ssl->cert->mask_k) ||
+        (cipher->algorithm_auth & ssl->cert->mask_a)) {
+      continue;
+    }
+    if (SSL_CIPHER_get_min_version(cipher) >
+        ssl3_version_from_wire(ssl, ssl->client_version)) {
       continue;
     }
     any_enabled = 1;
@@ -741,7 +744,6 @@ int ssl3_get_server_hello(SSL *s) {
   CBS server_hello, server_random, session_id;
   uint16_t server_version, cipher_suite;
   uint8_t compression_method;
-  uint32_t mask_ssl;
 
   n = s->method->ssl_get_message(s, SSL3_ST_CR_SRVR_HELLO_A,
                                  SSL3_ST_CR_SRVR_HELLO_B, SSL3_MT_SERVER_HELLO,
@@ -834,18 +836,11 @@ int ssl3_get_server_hello(SSL *s) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_UNKNOWN_CIPHER_RETURNED);
     goto f_err;
   }
-  /* ct->mask_ssl was computed from client capabilities. Now
-   * that the final version is known, compute a new mask_ssl. */
-  if (!SSL_USE_TLS1_2_CIPHERS(s)) {
-    mask_ssl = SSL_TLSV1_2;
-  } else {
-    mask_ssl = 0;
-  }
   /* If the cipher is disabled then we didn't sent it in the ClientHello, so if
    * the server selected it, it's an error. */
-  if ((c->algorithm_ssl & mask_ssl) ||
-      (c->algorithm_mkey & ct->mask_k) ||
-      (c->algorithm_auth & ct->mask_a)) {
+  if ((c->algorithm_mkey & ct->mask_k) ||
+      (c->algorithm_auth & ct->mask_a) ||
+      SSL_CIPHER_get_min_version(c) > ssl3_version_from_wire(s, s->version)) {
     al = SSL_AD_ILLEGAL_PARAMETER;
     OPENSSL_PUT_ERROR(SSL, SSL_R_WRONG_CIPHER_RETURNED);
     goto f_err;

@@ -169,8 +169,7 @@ const SSL3_ENC_METHOD TLSv1_2_enc_data = {
     TLS_MD_SERVER_FINISH_CONST,TLS_MD_SERVER_FINISH_CONST_SIZE,
     tls1_alert_code,
     tls1_export_keying_material,
-    SSL_ENC_FLAG_EXPLICIT_IV|SSL_ENC_FLAG_SIGALGS|SSL_ENC_FLAG_SHA256_PRF
-            |SSL_ENC_FLAG_TLS1_2_CIPHERS,
+    SSL_ENC_FLAG_EXPLICIT_IV|SSL_ENC_FLAG_SIGALGS|SSL_ENC_FLAG_SHA256_PRF,
 };
 
 static int compare_uint16_t(const void *p1, const void *p2) {
@@ -726,13 +725,6 @@ void ssl_set_client_disabled(SSL *s) {
   int have_rsa = 0, have_ecdsa = 0;
   c->mask_a = 0;
   c->mask_k = 0;
-
-  /* Don't allow TLS 1.2 only ciphers if we don't suppport them */
-  if (!SSL_CLIENT_USE_TLS1_2_CIPHERS(s)) {
-    c->mask_ssl = SSL_TLSV1_2;
-  } else {
-    c->mask_ssl = 0;
-  }
 
   /* Now go through all signature algorithms seeing if we support any for RSA,
    * DSA, ECDSA. Do this for all versions not just TLS 1.2. */

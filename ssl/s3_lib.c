@@ -503,8 +503,8 @@ const SSL_CIPHER *ssl3_choose_cipher(
 
     ok = 1;
 
-    /* Skip TLS v1.2 only ciphersuites if not supported */
-    if ((c->algorithm_ssl & SSL_TLSV1_2) && !SSL_USE_TLS1_2_CIPHERS(s)) {
+    /* Check the TLS version. */
+    if (SSL_CIPHER_get_min_version(c) > ssl3_version_from_wire(s, s->version)) {
       ok = 0;
     }
 
