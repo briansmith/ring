@@ -31,6 +31,14 @@ if (${ARCH} STREQUAL "arm")
   )
 endif()
 
+if (${ARCH} STREQUAL "aarch64")
+  set(
+    BN_ARCH_SOURCES
+
+    armv8-mont.${ASM_EXT}
+  )
+endif()
+
 add_library(
   bn
 
@@ -66,6 +74,7 @@ perlasm(bn-586.${ASM_EXT} asm/bn-586.pl)
 perlasm(co-586.${ASM_EXT} asm/co-586.pl)
 perlasm(x86-mont.${ASM_EXT} asm/x86-mont.pl)
 perlasm(armv4-mont.${ASM_EXT} asm/armv4-mont.pl)
+perlasm(armv8-mont.${ASM_EXT} asm/armv8-mont.pl)
 
 add_executable(
   bn_test
