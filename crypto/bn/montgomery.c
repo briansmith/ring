@@ -119,7 +119,7 @@
 
 
 #if !defined(OPENSSL_NO_ASM) && \
-    (defined(OPENSSL_X86) || defined(OPENSSL_X86_64))
+    (defined(OPENSSL_X86) || defined(OPENSSL_X86_64) || defined(OPENSSL_ARM))
 #define OPENSSL_BN_ASM_MONT
 #endif
 
