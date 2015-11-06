@@ -194,15 +194,6 @@
 /* SSL_AEAD is set for all AEADs. */
 #define SSL_AEAD 0x00000010L
 
-/* Bits for |algorithm_ssl| (protocol version). These denote the first protocol
- * version which introduced the cipher.
- *
- * TODO(davidben): These are extremely confusing, both in code and in
- * cipher rules. Try to remove them. */
-#define SSL_SSLV3 0x00000002L
-#define SSL_TLSV1 SSL_SSLV3
-#define SSL_TLSV1_2 0x00000004L
-
 /* Bits for |algorithm_prf| (handshake digest). */
 #define SSL_HANDSHAKE_MAC_DEFAULT 0x1
 #define SSL_HANDSHAKE_MAC_SHA256 0x2

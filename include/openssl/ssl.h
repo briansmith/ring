@@ -2943,7 +2943,7 @@ OPENSSL_EXPORT void SSL_set_reject_peer_renegotiations(SSL *ssl, int reject);
  * freed with |OPENSSL_free|, or NULL on error.
  *
  * The description includes a trailing newline and has the form:
- * AES128-SHA              SSLv3 Kx=RSA      Au=RSA  Enc=AES(128)  Mac=SHA1
+ * AES128-SHA              Kx=RSA      Au=RSA  Enc=AES(128)  Mac=SHA1
  *
  * Consider |SSL_CIPHER_get_name| or |SSL_CIPHER_get_rfc_name| instead. */
 OPENSSL_EXPORT const char *SSL_CIPHER_description(const SSL_CIPHER *cipher,
@@ -3380,7 +3380,6 @@ struct ssl_cipher_st {
   uint32_t algorithm_auth;
   uint32_t algorithm_enc;
   uint32_t algorithm_mac;
-  uint32_t algorithm_ssl;
   uint32_t algo_strength;
   uint32_t algorithm_prf;
 

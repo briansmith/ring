@@ -180,6 +180,31 @@ static const ExpectedCipher kExpected9[] = {
   { 0, 0 },
 };
 
+// SSLv3 matches everything that existed before TLS 1.2.
+static const char kRule10[] = "AES128-SHA:AES128-SHA256:!SSLv3";
+
+static const ExpectedCipher kExpected10[] = {
+  { TLS1_CK_RSA_WITH_AES_128_SHA256, 0 },
+  { 0, 0 },
+};
+
+// TLSv1.2 matches everything added in TLS 1.2.
+static const char kRule11[] = "AES128-SHA:AES128-SHA256:!TLSv1.2";
+
+static const ExpectedCipher kExpected11[] = {
+  { TLS1_CK_RSA_WITH_AES_128_SHA, 0 },
+  { 0, 0 },
+};
+
+// The two directives have no intersection.
+static const char kRule12[] = "AES128-SHA:AES128-SHA256:!TLSv1.2+SSLv3";
+
+static const ExpectedCipher kExpected12[] = {
+  { TLS1_CK_RSA_WITH_AES_128_SHA, 0 },
+  { TLS1_CK_RSA_WITH_AES_128_SHA256, 0 },
+  { 0, 0 },
+};
+
 static CipherTest kCipherTests[] = {
   { kRule1, kExpected1 },
   { kRule2, kExpected2 },
@@ -190,6 +215,9 @@ static CipherTest kCipherTests[] = {
   { kRule7, kExpected7 },
   { kRule8, kExpected8 },
   { kRule9, kExpected9 },
+  { kRule10, kExpected10 },
+  { kRule11, kExpected11 },
+  { kRule12, kExpected12 },
   { NULL, NULL },
 };
 

@@ -160,27 +160,25 @@ static const SSL_CIPHER kCiphers[] = {
     /* Cipher 02 */
     {
      SSL3_TXT_RSA_NULL_SHA, SSL3_CK_RSA_NULL_SHA, SSL_kRSA, SSL_aRSA,
-     SSL_eNULL, SSL_SHA1, SSL_SSLV3, SSL_FIPS, SSL_HANDSHAKE_MAC_DEFAULT, 0, 0,
+     SSL_eNULL, SSL_SHA1, SSL_FIPS, SSL_HANDSHAKE_MAC_DEFAULT, 0, 0,
     },
 
     /* Cipher 04 */
     {
      SSL3_TXT_RSA_RC4_128_MD5, SSL3_CK_RSA_RC4_128_MD5, SSL_kRSA, SSL_aRSA,
-     SSL_RC4, SSL_MD5, SSL_SSLV3, SSL_MEDIUM,
-     SSL_HANDSHAKE_MAC_DEFAULT, 128, 128,
+     SSL_RC4, SSL_MD5, SSL_MEDIUM, SSL_HANDSHAKE_MAC_DEFAULT, 128, 128,
     },
 
     /* Cipher 05 */
     {
      SSL3_TXT_RSA_RC4_128_SHA, SSL3_CK_RSA_RC4_128_SHA, SSL_kRSA, SSL_aRSA,
-     SSL_RC4, SSL_SHA1, SSL_SSLV3, SSL_MEDIUM,
-     SSL_HANDSHAKE_MAC_DEFAULT, 128, 128,
+     SSL_RC4, SSL_SHA1, SSL_MEDIUM, SSL_HANDSHAKE_MAC_DEFAULT, 128, 128,
     },
 
     /* Cipher 0A */
     {
      SSL3_TXT_RSA_DES_192_CBC3_SHA, SSL3_CK_RSA_DES_192_CBC3_SHA, SSL_kRSA,
-     SSL_aRSA, SSL_3DES, SSL_SHA1, SSL_SSLV3, SSL_HIGH | SSL_FIPS,
+     SSL_aRSA, SSL_3DES, SSL_SHA1, SSL_HIGH | SSL_FIPS,
      SSL_HANDSHAKE_MAC_DEFAULT, 112, 168,
     },
 
@@ -190,28 +188,28 @@ static const SSL_CIPHER kCiphers[] = {
     /* Cipher 2F */
     {
      TLS1_TXT_RSA_WITH_AES_128_SHA, TLS1_CK_RSA_WITH_AES_128_SHA, SSL_kRSA,
-     SSL_aRSA, SSL_AES128, SSL_SHA1, SSL_TLSV1, SSL_HIGH | SSL_FIPS,
+     SSL_aRSA, SSL_AES128, SSL_SHA1, SSL_HIGH | SSL_FIPS,
      SSL_HANDSHAKE_MAC_DEFAULT, 128, 128,
     },
 
     /* Cipher 33 */
     {
      TLS1_TXT_DHE_RSA_WITH_AES_128_SHA, TLS1_CK_DHE_RSA_WITH_AES_128_SHA,
-     SSL_kDHE, SSL_aRSA, SSL_AES128, SSL_SHA1, SSL_TLSV1, SSL_HIGH | SSL_FIPS,
+     SSL_kDHE, SSL_aRSA, SSL_AES128, SSL_SHA1, SSL_HIGH | SSL_FIPS,
      SSL_HANDSHAKE_MAC_DEFAULT, 128, 128,
     },
 
     /* Cipher 35 */
     {
      TLS1_TXT_RSA_WITH_AES_256_SHA, TLS1_CK_RSA_WITH_AES_256_SHA, SSL_kRSA,
-     SSL_aRSA, SSL_AES256, SSL_SHA1, SSL_TLSV1, SSL_HIGH | SSL_FIPS,
+     SSL_aRSA, SSL_AES256, SSL_SHA1, SSL_HIGH | SSL_FIPS,
      SSL_HANDSHAKE_MAC_DEFAULT, 256, 256,
     },
 
     /* Cipher 39 */
     {
      TLS1_TXT_DHE_RSA_WITH_AES_256_SHA, TLS1_CK_DHE_RSA_WITH_AES_256_SHA,
-     SSL_kDHE, SSL_aRSA, SSL_AES256, SSL_SHA1, SSL_TLSV1, SSL_HIGH | SSL_FIPS,
+     SSL_kDHE, SSL_aRSA, SSL_AES256, SSL_SHA1, SSL_HIGH | SSL_FIPS,
      SSL_HANDSHAKE_MAC_DEFAULT, 256, 256,
     },
 
@@ -221,14 +219,14 @@ static const SSL_CIPHER kCiphers[] = {
     /* Cipher 3C */
     {
      TLS1_TXT_RSA_WITH_AES_128_SHA256, TLS1_CK_RSA_WITH_AES_128_SHA256,
-     SSL_kRSA, SSL_aRSA, SSL_AES128, SSL_SHA256, SSL_TLSV1_2,
-     SSL_HIGH | SSL_FIPS, SSL_HANDSHAKE_MAC_SHA256, 128, 128,
+     SSL_kRSA, SSL_aRSA, SSL_AES128, SSL_SHA256, SSL_HIGH | SSL_FIPS,
+     SSL_HANDSHAKE_MAC_SHA256, 128, 128,
     },
 
     /* Cipher 3D */
     {
      TLS1_TXT_RSA_WITH_AES_256_SHA256, TLS1_CK_RSA_WITH_AES_256_SHA256,
-     SSL_kRSA, SSL_aRSA, SSL_AES256, SSL_SHA256, SSL_TLSV1_2,
+     SSL_kRSA, SSL_aRSA, SSL_AES256, SSL_SHA256,
      SSL_HIGH | SSL_FIPS, SSL_HANDSHAKE_MAC_SHA256, 256, 256,
     },
 
@@ -236,7 +234,7 @@ static const SSL_CIPHER kCiphers[] = {
     {
      TLS1_TXT_DHE_RSA_WITH_AES_128_SHA256,
      TLS1_CK_DHE_RSA_WITH_AES_128_SHA256, SSL_kDHE, SSL_aRSA, SSL_AES128,
-     SSL_SHA256, SSL_TLSV1_2, SSL_HIGH | SSL_FIPS,
+     SSL_SHA256, SSL_HIGH | SSL_FIPS,
      SSL_HANDSHAKE_MAC_SHA256, 128, 128,
     },
 
@@ -244,7 +242,7 @@ static const SSL_CIPHER kCiphers[] = {
     {
      TLS1_TXT_DHE_RSA_WITH_AES_256_SHA256,
      TLS1_CK_DHE_RSA_WITH_AES_256_SHA256, SSL_kDHE, SSL_aRSA, SSL_AES256,
-     SSL_SHA256, SSL_TLSV1_2, SSL_HIGH | SSL_FIPS,
+     SSL_SHA256, SSL_HIGH | SSL_FIPS,
      SSL_HANDSHAKE_MAC_SHA256, 256, 256,
     },
 
@@ -253,21 +251,21 @@ static const SSL_CIPHER kCiphers[] = {
     /* Cipher 8A */
     {
      TLS1_TXT_PSK_WITH_RC4_128_SHA, TLS1_CK_PSK_WITH_RC4_128_SHA, SSL_kPSK,
-     SSL_aPSK, SSL_RC4, SSL_SHA1, SSL_TLSV1, SSL_MEDIUM,
+     SSL_aPSK, SSL_RC4, SSL_SHA1, SSL_MEDIUM,
      SSL_HANDSHAKE_MAC_DEFAULT, 128, 128,
     },
 
     /* Cipher 8C */
     {
      TLS1_TXT_PSK_WITH_AES_128_CBC_SHA, TLS1_CK_PSK_WITH_AES_128_CBC_SHA,
-     SSL_kPSK, SSL_aPSK, SSL_AES128, SSL_SHA1, SSL_TLSV1, SSL_HIGH | SSL_FIPS,
+     SSL_kPSK, SSL_aPSK, SSL_AES128, SSL_SHA1, SSL_HIGH | SSL_FIPS,
      SSL_HANDSHAKE_MAC_DEFAULT, 128, 128,
     },
 
     /* Cipher 8D */
     {
      TLS1_TXT_PSK_WITH_AES_256_CBC_SHA, TLS1_CK_PSK_WITH_AES_256_CBC_SHA,
-     SSL_kPSK, SSL_aPSK, SSL_AES256, SSL_SHA1, SSL_TLSV1, SSL_HIGH | SSL_FIPS,
+     SSL_kPSK, SSL_aPSK, SSL_AES256, SSL_SHA1, SSL_HIGH | SSL_FIPS,
      SSL_HANDSHAKE_MAC_DEFAULT, 256, 256,
     },
 
@@ -277,7 +275,7 @@ static const SSL_CIPHER kCiphers[] = {
     {
      TLS1_TXT_RSA_WITH_AES_128_GCM_SHA256,
      TLS1_CK_RSA_WITH_AES_128_GCM_SHA256, SSL_kRSA, SSL_aRSA, SSL_AES128GCM,
-     SSL_AEAD, SSL_TLSV1_2, SSL_HIGH | SSL_FIPS,
+     SSL_AEAD, SSL_HIGH | SSL_FIPS,
      SSL_HANDSHAKE_MAC_SHA256,
      128, 128,
     },
@@ -286,7 +284,7 @@ static const SSL_CIPHER kCiphers[] = {
     {
      TLS1_TXT_RSA_WITH_AES_256_GCM_SHA384,
      TLS1_CK_RSA_WITH_AES_256_GCM_SHA384, SSL_kRSA, SSL_aRSA, SSL_AES256GCM,
-     SSL_AEAD, SSL_TLSV1_2, SSL_HIGH | SSL_FIPS,
+     SSL_AEAD, SSL_HIGH | SSL_FIPS,
      SSL_HANDSHAKE_MAC_SHA384,
      256, 256,
     },
@@ -295,7 +293,7 @@ static const SSL_CIPHER kCiphers[] = {
     {
      TLS1_TXT_DHE_RSA_WITH_AES_128_GCM_SHA256,
      TLS1_CK_DHE_RSA_WITH_AES_128_GCM_SHA256, SSL_kDHE, SSL_aRSA, SSL_AES128GCM,
-     SSL_AEAD, SSL_TLSV1_2, SSL_HIGH | SSL_FIPS,
+     SSL_AEAD, SSL_HIGH | SSL_FIPS,
      SSL_HANDSHAKE_MAC_SHA256,
      128, 128,
     },
@@ -304,7 +302,7 @@ static const SSL_CIPHER kCiphers[] = {
     {
      TLS1_TXT_DHE_RSA_WITH_AES_256_GCM_SHA384,
      TLS1_CK_DHE_RSA_WITH_AES_256_GCM_SHA384, SSL_kDHE, SSL_aRSA, SSL_AES256GCM,
-     SSL_AEAD, SSL_TLSV1_2, SSL_HIGH | SSL_FIPS,
+     SSL_AEAD, SSL_HIGH | SSL_FIPS,
      SSL_HANDSHAKE_MAC_SHA384,
      256, 256,
     },
@@ -313,7 +311,7 @@ static const SSL_CIPHER kCiphers[] = {
     {
      TLS1_TXT_ECDHE_ECDSA_WITH_RC4_128_SHA,
      TLS1_CK_ECDHE_ECDSA_WITH_RC4_128_SHA, SSL_kECDHE, SSL_aECDSA, SSL_RC4,
-     SSL_SHA1, SSL_TLSV1, SSL_MEDIUM, SSL_HANDSHAKE_MAC_DEFAULT, 128,
+     SSL_SHA1, SSL_MEDIUM, SSL_HANDSHAKE_MAC_DEFAULT, 128,
      128,
     },
 
@@ -321,7 +319,7 @@ static const SSL_CIPHER kCiphers[] = {
     {
      TLS1_TXT_ECDHE_ECDSA_WITH_AES_128_CBC_SHA,
      TLS1_CK_ECDHE_ECDSA_WITH_AES_128_CBC_SHA, SSL_kECDHE, SSL_aECDSA,
-     SSL_AES128, SSL_SHA1, SSL_TLSV1, SSL_HIGH | SSL_FIPS,
+     SSL_AES128, SSL_SHA1, SSL_HIGH | SSL_FIPS,
      SSL_HANDSHAKE_MAC_DEFAULT, 128, 128,
     },
 
@@ -329,14 +327,14 @@ static const SSL_CIPHER kCiphers[] = {
     {
      TLS1_TXT_ECDHE_ECDSA_WITH_AES_256_CBC_SHA,
      TLS1_CK_ECDHE_ECDSA_WITH_AES_256_CBC_SHA, SSL_kECDHE, SSL_aECDSA,
-     SSL_AES256, SSL_SHA1, SSL_TLSV1, SSL_HIGH | SSL_FIPS,
+     SSL_AES256, SSL_SHA1, SSL_HIGH | SSL_FIPS,
      SSL_HANDSHAKE_MAC_DEFAULT, 256, 256,
     },
 
     /* Cipher C011 */
     {
      TLS1_TXT_ECDHE_RSA_WITH_RC4_128_SHA, TLS1_CK_ECDHE_RSA_WITH_RC4_128_SHA,
-     SSL_kECDHE, SSL_aRSA, SSL_RC4, SSL_SHA1, SSL_TLSV1, SSL_MEDIUM,
+     SSL_kECDHE, SSL_aRSA, SSL_RC4, SSL_SHA1, SSL_MEDIUM,
      SSL_HANDSHAKE_MAC_DEFAULT, 128, 128,
     },
 
@@ -344,7 +342,7 @@ static const SSL_CIPHER kCiphers[] = {
     {
      TLS1_TXT_ECDHE_RSA_WITH_AES_128_CBC_SHA,
      TLS1_CK_ECDHE_RSA_WITH_AES_128_CBC_SHA, SSL_kECDHE, SSL_aRSA, SSL_AES128,
-     SSL_SHA1, SSL_TLSV1, SSL_HIGH | SSL_FIPS,
+     SSL_SHA1, SSL_HIGH | SSL_FIPS,
      SSL_HANDSHAKE_MAC_DEFAULT, 128, 128,
     },
 
@@ -352,7 +350,7 @@ static const SSL_CIPHER kCiphers[] = {
     {
      TLS1_TXT_ECDHE_RSA_WITH_AES_256_CBC_SHA,
      TLS1_CK_ECDHE_RSA_WITH_AES_256_CBC_SHA, SSL_kECDHE, SSL_aRSA, SSL_AES256,
-     SSL_SHA1, SSL_TLSV1, SSL_HIGH | SSL_FIPS,
+     SSL_SHA1, SSL_HIGH | SSL_FIPS,
      SSL_HANDSHAKE_MAC_DEFAULT, 256, 256,
     },
 
@@ -363,7 +361,7 @@ static const SSL_CIPHER kCiphers[] = {
     {
      TLS1_TXT_ECDHE_ECDSA_WITH_AES_128_SHA256,
      TLS1_CK_ECDHE_ECDSA_WITH_AES_128_SHA256, SSL_kECDHE, SSL_aECDSA,
-     SSL_AES128, SSL_SHA256, SSL_TLSV1_2, SSL_HIGH | SSL_FIPS,
+     SSL_AES128, SSL_SHA256, SSL_HIGH | SSL_FIPS,
      SSL_HANDSHAKE_MAC_SHA256, 128, 128,
     },
 
@@ -371,7 +369,7 @@ static const SSL_CIPHER kCiphers[] = {
     {
      TLS1_TXT_ECDHE_ECDSA_WITH_AES_256_SHA384,
      TLS1_CK_ECDHE_ECDSA_WITH_AES_256_SHA384, SSL_kECDHE, SSL_aECDSA,
-     SSL_AES256, SSL_SHA384, SSL_TLSV1_2, SSL_HIGH | SSL_FIPS,
+     SSL_AES256, SSL_SHA384, SSL_HIGH | SSL_FIPS,
      SSL_HANDSHAKE_MAC_SHA384, 256, 256,
     },
 
@@ -379,7 +377,7 @@ static const SSL_CIPHER kCiphers[] = {
     {
      TLS1_TXT_ECDHE_RSA_WITH_AES_128_SHA256,
      TLS1_CK_ECDHE_RSA_WITH_AES_128_SHA256, SSL_kECDHE, SSL_aRSA, SSL_AES128,
-     SSL_SHA256, SSL_TLSV1_2, SSL_HIGH | SSL_FIPS,
+     SSL_SHA256, SSL_HIGH | SSL_FIPS,
      SSL_HANDSHAKE_MAC_SHA256, 128, 128,
     },
 
@@ -387,7 +385,7 @@ static const SSL_CIPHER kCiphers[] = {
     {
      TLS1_TXT_ECDHE_RSA_WITH_AES_256_SHA384,
      TLS1_CK_ECDHE_RSA_WITH_AES_256_SHA384, SSL_kECDHE, SSL_aRSA, SSL_AES256,
-     SSL_SHA384, SSL_TLSV1_2, SSL_HIGH | SSL_FIPS,
+     SSL_SHA384, SSL_HIGH | SSL_FIPS,
      SSL_HANDSHAKE_MAC_SHA384, 256, 256,
     },
 
@@ -398,7 +396,7 @@ static const SSL_CIPHER kCiphers[] = {
     {
      TLS1_TXT_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256,
      TLS1_CK_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256, SSL_kECDHE, SSL_aECDSA,
-     SSL_AES128GCM, SSL_AEAD, SSL_TLSV1_2, SSL_HIGH | SSL_FIPS,
+     SSL_AES128GCM, SSL_AEAD, SSL_HIGH | SSL_FIPS,
      SSL_HANDSHAKE_MAC_SHA256,
      128, 128,
     },
@@ -407,7 +405,7 @@ static const SSL_CIPHER kCiphers[] = {
     {
      TLS1_TXT_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384,
      TLS1_CK_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384, SSL_kECDHE, SSL_aECDSA,
-     SSL_AES256GCM, SSL_AEAD, SSL_TLSV1_2, SSL_HIGH | SSL_FIPS,
+     SSL_AES256GCM, SSL_AEAD, SSL_HIGH | SSL_FIPS,
      SSL_HANDSHAKE_MAC_SHA384,
      256, 256,
     },
@@ -416,7 +414,7 @@ static const SSL_CIPHER kCiphers[] = {
     {
      TLS1_TXT_ECDHE_RSA_WITH_AES_128_GCM_SHA256,
      TLS1_CK_ECDHE_RSA_WITH_AES_128_GCM_SHA256, SSL_kECDHE, SSL_aRSA,
-     SSL_AES128GCM, SSL_AEAD, SSL_TLSV1_2, SSL_HIGH | SSL_FIPS,
+     SSL_AES128GCM, SSL_AEAD, SSL_HIGH | SSL_FIPS,
      SSL_HANDSHAKE_MAC_SHA256,
      128, 128,
     },
@@ -425,7 +423,7 @@ static const SSL_CIPHER kCiphers[] = {
     {
      TLS1_TXT_ECDHE_RSA_WITH_AES_256_GCM_SHA384,
      TLS1_CK_ECDHE_RSA_WITH_AES_256_GCM_SHA384, SSL_kECDHE, SSL_aRSA,
-     SSL_AES256GCM, SSL_AEAD, SSL_TLSV1_2, SSL_HIGH | SSL_FIPS,
+     SSL_AES256GCM, SSL_AEAD, SSL_HIGH | SSL_FIPS,
      SSL_HANDSHAKE_MAC_SHA384,
      256, 256,
     },
@@ -436,7 +434,7 @@ static const SSL_CIPHER kCiphers[] = {
     {
      TLS1_TXT_ECDHE_PSK_WITH_AES_128_CBC_SHA,
      TLS1_CK_ECDHE_PSK_WITH_AES_128_CBC_SHA,
-     SSL_kECDHE, SSL_aPSK, SSL_AES128, SSL_SHA1, SSL_TLSV1, SSL_HIGH | SSL_FIPS,
+     SSL_kECDHE, SSL_aPSK, SSL_AES128, SSL_SHA1, SSL_HIGH | SSL_FIPS,
      SSL_HANDSHAKE_MAC_DEFAULT, 128, 128,
     },
 
@@ -444,7 +442,7 @@ static const SSL_CIPHER kCiphers[] = {
     {
      TLS1_TXT_ECDHE_PSK_WITH_AES_256_CBC_SHA,
      TLS1_CK_ECDHE_PSK_WITH_AES_256_CBC_SHA,
-     SSL_kECDHE, SSL_aPSK, SSL_AES256, SSL_SHA1, SSL_TLSV1, SSL_HIGH | SSL_FIPS,
+     SSL_kECDHE, SSL_aPSK, SSL_AES256, SSL_SHA1, SSL_HIGH | SSL_FIPS,
      SSL_HANDSHAKE_MAC_DEFAULT, 256, 256,
     },
 
@@ -454,7 +452,7 @@ static const SSL_CIPHER kCiphers[] = {
     {
      TLS1_TXT_ECDHE_RSA_WITH_CHACHA20_POLY1305_OLD,
      TLS1_CK_ECDHE_RSA_CHACHA20_POLY1305_OLD, SSL_kECDHE, SSL_aRSA,
-     SSL_CHACHA20POLY1305_OLD, SSL_AEAD, SSL_TLSV1_2, SSL_HIGH,
+     SSL_CHACHA20POLY1305_OLD, SSL_AEAD, SSL_HIGH,
      SSL_HANDSHAKE_MAC_SHA256,
      256, 256,
     },
@@ -462,7 +460,7 @@ static const SSL_CIPHER kCiphers[] = {
     {
      TLS1_TXT_ECDHE_ECDSA_WITH_CHACHA20_POLY1305_OLD,
      TLS1_CK_ECDHE_ECDSA_CHACHA20_POLY1305_OLD, SSL_kECDHE, SSL_aECDSA,
-     SSL_CHACHA20POLY1305_OLD, SSL_AEAD, SSL_TLSV1_2, SSL_HIGH,
+     SSL_CHACHA20POLY1305_OLD, SSL_AEAD, SSL_HIGH,
      SSL_HANDSHAKE_MAC_SHA256,
      256, 256,
     },
@@ -496,13 +494,16 @@ typedef struct cipher_alias_st {
   uint32_t algorithm_auth;
   uint32_t algorithm_enc;
   uint32_t algorithm_mac;
-  uint32_t algorithm_ssl;
   uint32_t algo_strength;
+
+  /* min_version, if non-zero, matches all ciphers which were added in that
+   * particular protocol version. */
+  uint16_t min_version;
 } CIPHER_ALIAS;
 
 static const CIPHER_ALIAS kCipherAliases[] = {
     /* "ALL" doesn't include eNULL (must be specifically enabled) */
-    {"ALL", ~0u, ~0u, ~SSL_eNULL, ~0u, ~0u, ~0u},
+    {"ALL", ~0u, ~0u, ~SSL_eNULL, ~0u, ~0u, 0},
 
     /* The "COMPLEMENTOFDEFAULT" rule is omitted. It matches nothing. */
 
@@ -510,58 +511,59 @@ static const CIPHER_ALIAS kCipherAliases[] = {
      * (some of those using only a single bit here combine
      * multiple key exchange algs according to the RFCs,
      * e.g. kEDH combines DHE_DSS and DHE_RSA) */
-    {"kRSA", SSL_kRSA, ~0u, ~0u, ~0u, ~0u, ~0u},
+    {"kRSA", SSL_kRSA, ~0u, ~0u, ~0u, ~0u, 0},
 
-    {"kDHE", SSL_kDHE, ~0u, ~0u, ~0u, ~0u, ~0u},
-    {"kEDH", SSL_kDHE, ~0u, ~0u, ~0u, ~0u, ~0u},
-    {"DH", SSL_kDHE, ~0u, ~0u, ~0u, ~0u, ~0u},
+    {"kDHE", SSL_kDHE, ~0u, ~0u, ~0u, ~0u, 0},
+    {"kEDH", SSL_kDHE, ~0u, ~0u, ~0u, ~0u, 0},
+    {"DH", SSL_kDHE, ~0u, ~0u, ~0u, ~0u, 0},
 
-    {"kECDHE", SSL_kECDHE, ~0u, ~0u, ~0u, ~0u, ~0u},
-    {"kEECDH", SSL_kECDHE, ~0u, ~0u, ~0u, ~0u, ~0u},
-    {"ECDH", SSL_kECDHE, ~0u, ~0u, ~0u, ~0u, ~0u},
+    {"kECDHE", SSL_kECDHE, ~0u, ~0u, ~0u, ~0u, 0},
+    {"kEECDH", SSL_kECDHE, ~0u, ~0u, ~0u, ~0u, 0},
+    {"ECDH", SSL_kECDHE, ~0u, ~0u, ~0u, ~0u, 0},
 
-    {"kPSK", SSL_kPSK, ~0u, ~0u, ~0u, ~0u, ~0u},
+    {"kPSK", SSL_kPSK, ~0u, ~0u, ~0u, ~0u, 0},
 
     /* server authentication aliases */
-    {"aRSA", ~0u, SSL_aRSA, ~SSL_eNULL, ~0u, ~0u, ~0u},
-    {"aECDSA", ~0u, SSL_aECDSA, ~0u, ~0u, ~0u, ~0u},
-    {"ECDSA", ~0u, SSL_aECDSA, ~0u, ~0u, ~0u, ~0u},
-    {"aPSK", ~0u, SSL_aPSK, ~0u, ~0u, ~0u, ~0u},
+    {"aRSA", ~0u, SSL_aRSA, ~SSL_eNULL, ~0u, ~0u, 0},
+    {"aECDSA", ~0u, SSL_aECDSA, ~0u, ~0u, ~0u, 0},
+    {"ECDSA", ~0u, SSL_aECDSA, ~0u, ~0u, ~0u, 0},
+    {"aPSK", ~0u, SSL_aPSK, ~0u, ~0u, ~0u, 0},
 
     /* aliases combining key exchange and server authentication */
-    {"DHE", SSL_kDHE, ~0u, ~0u, ~0u, ~0u, ~0u},
-    {"EDH", SSL_kDHE, ~0u, ~0u, ~0u, ~0u, ~0u},
-    {"ECDHE", SSL_kECDHE, ~0u, ~0u, ~0u, ~0u, ~0u},
-    {"EECDH", SSL_kECDHE, ~0u, ~0u, ~0u, ~0u, ~0u},
-    {"RSA", SSL_kRSA, SSL_aRSA, ~SSL_eNULL, ~0u, ~0u, ~0u},
-    {"PSK", SSL_kPSK, SSL_aPSK, ~0u, ~0u, ~0u, ~0u},
+    {"DHE", SSL_kDHE, ~0u, ~0u, ~0u, ~0u, 0},
+    {"EDH", SSL_kDHE, ~0u, ~0u, ~0u, ~0u, 0},
+    {"ECDHE", SSL_kECDHE, ~0u, ~0u, ~0u, ~0u, 0},
+    {"EECDH", SSL_kECDHE, ~0u, ~0u, ~0u, ~0u, 0},
+    {"RSA", SSL_kRSA, SSL_aRSA, ~SSL_eNULL, ~0u, ~0u, 0},
+    {"PSK", SSL_kPSK, SSL_aPSK, ~0u, ~0u, ~0u, 0},
 
     /* symmetric encryption aliases */
-    {"3DES", ~0u, ~0u, SSL_3DES, ~0u, ~0u, ~0u},
-    {"RC4", ~0u, ~0u, SSL_RC4, ~0u, ~0u, ~0u},
-    {"AES128", ~0u, ~0u, SSL_AES128 | SSL_AES128GCM, ~0u, ~0u, ~0u},
-    {"AES256", ~0u, ~0u, SSL_AES256 | SSL_AES256GCM, ~0u, ~0u, ~0u},
-    {"AES", ~0u, ~0u, SSL_AES, ~0u, ~0u, ~0u},
-    {"AESGCM", ~0u, ~0u, SSL_AES128GCM | SSL_AES256GCM, ~0u, ~0u, ~0u},
-    {"CHACHA20", ~0u, ~0u, SSL_CHACHA20POLY1305_OLD, ~0u, ~0u, ~0u},
+    {"3DES", ~0u, ~0u, SSL_3DES, ~0u, ~0u, 0},
+    {"RC4", ~0u, ~0u, SSL_RC4, ~0u, ~0u, 0},
+    {"AES128", ~0u, ~0u, SSL_AES128 | SSL_AES128GCM, ~0u, ~0u, 0},
+    {"AES256", ~0u, ~0u, SSL_AES256 | SSL_AES256GCM, ~0u, ~0u, 0},
+    {"AES", ~0u, ~0u, SSL_AES, ~0u, ~0u, 0},
+    {"AESGCM", ~0u, ~0u, SSL_AES128GCM | SSL_AES256GCM, ~0u, ~0u, 0},
+    {"CHACHA20", ~0u, ~0u, SSL_CHACHA20POLY1305_OLD, ~0u, ~0u, 0},
 
     /* MAC aliases */
-    {"MD5", ~0u, ~0u, ~0u, SSL_MD5, ~0u, ~0u},
-    {"SHA1", ~0u, ~0u, ~SSL_eNULL, SSL_SHA1, ~0u, ~0u},
-    {"SHA", ~0u, ~0u, ~SSL_eNULL, SSL_SHA1, ~0u, ~0u},
-    {"SHA256", ~0u, ~0u, ~0u, SSL_SHA256, ~0u, ~0u},
-    {"SHA384", ~0u, ~0u, ~0u, SSL_SHA384, ~0u, ~0u},
+    {"MD5", ~0u, ~0u, ~0u, SSL_MD5, ~0u, 0},
+    {"SHA1", ~0u, ~0u, ~SSL_eNULL, SSL_SHA1, ~0u, 0},
+    {"SHA", ~0u, ~0u, ~SSL_eNULL, SSL_SHA1, ~0u, 0},
+    {"SHA256", ~0u, ~0u, ~0u, SSL_SHA256, ~0u, 0},
+    {"SHA384", ~0u, ~0u, ~0u, SSL_SHA384, ~0u, 0},
 
-    /* protocol version aliases */
-    {"SSLv3", ~0u, ~0u, ~SSL_eNULL, ~0u, SSL_SSLV3, ~0u},
-    {"TLSv1", ~0u, ~0u, ~SSL_eNULL, ~0u, SSL_TLSV1, ~0u},
-    {"TLSv1.2", ~0u, ~0u, ~SSL_eNULL, ~0u, SSL_TLSV1_2, ~0u},
+    /* Legacy protocol minimum version aliases. "TLSv1" is intentionally the
+     * same as "SSLv3". */
+    {"SSLv3", ~0u, ~0u, ~SSL_eNULL, ~0u, ~0u, SSL3_VERSION},
+    {"TLSv1", ~0u, ~0u, ~SSL_eNULL, ~0u, ~0u, SSL3_VERSION},
+    {"TLSv1.2", ~0u, ~0u, ~SSL_eNULL, ~0u, ~0u, TLS1_2_VERSION},
 
     /* strength classes */
-    {"MEDIUM", ~0u, ~0u, ~0u, ~0u, ~0u, SSL_MEDIUM},
-    {"HIGH", ~0u, ~0u, ~0u, ~0u, ~0u, SSL_HIGH},
+    {"MEDIUM", ~0u, ~0u, ~0u, ~0u, SSL_MEDIUM, 0},
+    {"HIGH", ~0u, ~0u, ~0u, ~0u, SSL_HIGH, 0},
     /* FIPS 140-2 approved ciphersuite */
-    {"FIPS", ~0u, ~0u, ~SSL_eNULL, ~0u, ~0u, SSL_FIPS},
+    {"FIPS", ~0u, ~0u, ~SSL_eNULL, ~0u, SSL_FIPS, 0},
 };
 
 static const size_t kCipherAliasesLen =
@@ -837,20 +839,20 @@ static void ssl_cipher_collect_ciphers(const SSL_PROTOCOL_METHOD *ssl_method,
  * - If |cipher_id| is non-zero, only that cipher is selected.
  * - Otherwise, if |strength_bits| is non-negative, it selects ciphers
  *   of that strength.
- * - Otherwise, it selects ciphers that match each bitmasks in |alg_*| and
- *   |algo_strength|. */
+ * - Otherwise, it selects ciphers that match each bitmasks in |alg*| and
+ *   |min_version|. */
 static void ssl_cipher_apply_rule(
     uint32_t cipher_id, uint32_t alg_mkey, uint32_t alg_auth,
-    uint32_t alg_enc, uint32_t alg_mac, uint32_t alg_ssl,
-    uint32_t algo_strength, int rule, int strength_bits, int in_group,
+    uint32_t alg_enc, uint32_t alg_mac, uint32_t algo_strength,
+    uint16_t min_version, int rule, int strength_bits, int in_group,
     CIPHER_ORDER **head_p, CIPHER_ORDER **tail_p) {
   CIPHER_ORDER *head, *tail, *curr, *next, *last;
   const SSL_CIPHER *cp;
   int reverse = 0;
 
-  if (cipher_id == 0 && strength_bits == -1 &&
+  if (cipher_id == 0 && strength_bits == -1 && min_version == 0 &&
       (alg_mkey == 0 || alg_auth == 0 || alg_enc == 0 || alg_mac == 0 ||
-       alg_ssl == 0 || algo_strength == 0)) {
+       algo_strength == 0)) {
     /* The rule matches nothing, so bail early. */
     return;
   }
@@ -899,8 +901,9 @@ static void ssl_cipher_apply_rule(
                !(alg_auth & cp->algorithm_auth) ||
                !(alg_enc & cp->algorithm_enc) ||
                !(alg_mac & cp->algorithm_mac) ||
-               !(alg_ssl & cp->algorithm_ssl) ||
-               !(algo_strength & cp->algo_strength)) {
+               !(algo_strength & cp->algo_strength) ||
+               (min_version != 0 &&
+                SSL_CIPHER_get_min_version(cp) != min_version)) {
       continue;
     }
 
@@ -1007,9 +1010,10 @@ static int ssl_cipher_process_rulestr(const SSL_PROTOCOL_METHOD *ssl_method,
                                       const char *rule_str,
                                       CIPHER_ORDER **head_p,
                                       CIPHER_ORDER **tail_p) {
-  uint32_t alg_mkey, alg_auth, alg_enc, alg_mac, alg_ssl, algo_strength;
+  uint32_t alg_mkey, alg_auth, alg_enc, alg_mac, algo_strength;
+  uint16_t min_version;
   const char *l, *buf;
-  int multi, rule, retval, ok, in_group = 0, has_group = 0;
+  int multi, skip_rule, rule, retval, ok, in_group = 0, has_group = 0;
   size_t j, buf_len;
   uint32_t cipher_id;
   char ch;
@@ -1090,8 +1094,9 @@ static int ssl_cipher_process_rulestr(const SSL_PROTOCOL_METHOD *ssl_method,
     alg_auth = ~0u;
     alg_enc = ~0u;
     alg_mac = ~0u;
-    alg_ssl = ~0u;
     algo_strength = ~0u;
+    min_version = 0;
+    skip_rule = 0;
 
     for (;;) {
       ch = *l;
@@ -1135,13 +1140,19 @@ static int ssl_cipher_process_rulestr(const SSL_PROTOCOL_METHOD *ssl_method,
             alg_auth &= kCipherAliases[j].algorithm_auth;
             alg_enc &= kCipherAliases[j].algorithm_enc;
             alg_mac &= kCipherAliases[j].algorithm_mac;
-            alg_ssl &= kCipherAliases[j].algorithm_ssl;
             algo_strength &= kCipherAliases[j].algo_strength;
+
+            if (min_version != 0 &&
+                min_version != kCipherAliases[j].min_version) {
+              skip_rule = 1;
+            } else {
+              min_version = kCipherAliases[j].min_version;
+            }
             break;
           }
         }
         if (j == kCipherAliasesLen) {
-          alg_mkey = alg_auth = alg_enc = alg_mac = alg_ssl = algo_strength = 0;
+          skip_rule = 1;
         }
       }
 
@@ -1172,10 +1183,10 @@ static int ssl_cipher_process_rulestr(const SSL_PROTOCOL_METHOD *ssl_method,
       while (*l != '\0' && !ITEM_SEP(*l)) {
         l++;
       }
-    } else {
+    } else if (!skip_rule) {
       ssl_cipher_apply_rule(cipher_id, alg_mkey, alg_auth, alg_enc, alg_mac,
-                            alg_ssl, algo_strength, rule, -1, in_group, head_p,
-                            tail_p);
+                            algo_strength, min_version, rule, -1, in_group,
+                            head_p, tail_p);
     }
   }
 
@@ -1221,55 +1232,55 @@ ssl_create_cipher_list(const SSL_PROTOCOL_METHOD *ssl_method,
 
   /* Everything else being equal, prefer ECDHE_ECDSA then ECDHE_RSA over other
    * key exchange mechanisms */
-  ssl_cipher_apply_rule(0, SSL_kECDHE, SSL_aECDSA, ~0u, ~0u, ~0u, ~0u,
-                        CIPHER_ADD, -1, 0, &head, &tail);
-  ssl_cipher_apply_rule(0, SSL_kECDHE, ~0u, ~0u, ~0u, ~0u, ~0u, CIPHER_ADD, -1,
+  ssl_cipher_apply_rule(0, SSL_kECDHE, SSL_aECDSA, ~0u, ~0u, ~0u, 0, CIPHER_ADD,
+                        -1, 0, &head, &tail);
+  ssl_cipher_apply_rule(0, SSL_kECDHE, ~0u, ~0u, ~0u, ~0u, 0, CIPHER_ADD, -1,
                         0, &head, &tail);
-  ssl_cipher_apply_rule(0, SSL_kECDHE, ~0u, ~0u, ~0u, ~0u, ~0u, CIPHER_DEL, -1,
+  ssl_cipher_apply_rule(0, SSL_kECDHE, ~0u, ~0u, ~0u, ~0u, 0, CIPHER_DEL, -1,
                         0, &head, &tail);
 
   /* Order the bulk ciphers. First the preferred AEAD ciphers. We prefer
    * CHACHA20 unless there is hardware support for fast and constant-time
    * AES_GCM. */
   if (EVP_has_aes_hardware()) {
-    ssl_cipher_apply_rule(0, ~0u, ~0u, SSL_AES256GCM, ~0u, ~0u, ~0u, CIPHER_ADD,
+    ssl_cipher_apply_rule(0, ~0u, ~0u, SSL_AES256GCM, ~0u, ~0u, 0, CIPHER_ADD,
                           -1, 0, &head, &tail);
-    ssl_cipher_apply_rule(0, ~0u, ~0u, SSL_AES128GCM, ~0u, ~0u, ~0u, CIPHER_ADD,
+    ssl_cipher_apply_rule(0, ~0u, ~0u, SSL_AES128GCM, ~0u, ~0u, 0, CIPHER_ADD,
                           -1, 0, &head, &tail);
-    ssl_cipher_apply_rule(0, ~0u, ~0u, SSL_CHACHA20POLY1305_OLD, ~0u, ~0u, ~0u,
+    ssl_cipher_apply_rule(0, ~0u, ~0u, SSL_CHACHA20POLY1305_OLD, ~0u, ~0u, 0,
                           CIPHER_ADD, -1, 0, &head, &tail);
   } else {
-    ssl_cipher_apply_rule(0, ~0u, ~0u, SSL_CHACHA20POLY1305_OLD, ~0u, ~0u, ~0u,
+    ssl_cipher_apply_rule(0, ~0u, ~0u, SSL_CHACHA20POLY1305_OLD, ~0u, ~0u, 0,
                           CIPHER_ADD, -1, 0, &head, &tail);
-    ssl_cipher_apply_rule(0, ~0u, ~0u, SSL_AES256GCM, ~0u, ~0u, ~0u, CIPHER_ADD,
+    ssl_cipher_apply_rule(0, ~0u, ~0u, SSL_AES256GCM, ~0u, ~0u, 0, CIPHER_ADD,
                           -1, 0, &head, &tail);
-    ssl_cipher_apply_rule(0, ~0u, ~0u, SSL_AES128GCM, ~0u, ~0u, ~0u, CIPHER_ADD,
+    ssl_cipher_apply_rule(0, ~0u, ~0u, SSL_AES128GCM, ~0u, ~0u, 0, CIPHER_ADD,
                           -1, 0, &head, &tail);
   }
 
   /* Then the legacy non-AEAD ciphers: AES_256_CBC, AES-128_CBC, RC4_128_SHA,
    * RC4_128_MD5, 3DES_EDE_CBC_SHA. */
-  ssl_cipher_apply_rule(0, ~0u, ~0u, SSL_AES256, ~0u, ~0u, ~0u, CIPHER_ADD, -1,
+  ssl_cipher_apply_rule(0, ~0u, ~0u, SSL_AES256, ~0u, ~0u, 0, CIPHER_ADD, -1,
                         0, &head, &tail);
-  ssl_cipher_apply_rule(0, ~0u, ~0u, SSL_AES128, ~0u, ~0u, ~0u, CIPHER_ADD, -1,
+  ssl_cipher_apply_rule(0, ~0u, ~0u, SSL_AES128, ~0u, ~0u, 0, CIPHER_ADD, -1,
                         0, &head, &tail);
-  ssl_cipher_apply_rule(0, ~0u, ~0u, SSL_RC4, ~SSL_MD5, ~0u, ~0u, CIPHER_ADD,
+  ssl_cipher_apply_rule(0, ~0u, ~0u, SSL_RC4, ~SSL_MD5, ~0u, 0, CIPHER_ADD,
                         -1, 0, &head, &tail);
-  ssl_cipher_apply_rule(0, ~0u, ~0u, SSL_RC4, SSL_MD5, ~0u, ~0u, CIPHER_ADD, -1,
+  ssl_cipher_apply_rule(0, ~0u, ~0u, SSL_RC4, SSL_MD5, ~0u, 0, CIPHER_ADD, -1,
                         0, &head, &tail);
-  ssl_cipher_apply_rule(0, ~0u, ~0u, SSL_3DES, ~0u, ~0u, ~0u, CIPHER_ADD, -1, 0,
+  ssl_cipher_apply_rule(0, ~0u, ~0u, SSL_3DES, ~0u, ~0u, 0, CIPHER_ADD, -1, 0,
                         &head, &tail);
 
   /* Temporarily enable everything else for sorting */
-  ssl_cipher_apply_rule(0, ~0u, ~0u, ~0u, ~0u, ~0u, ~0u, CIPHER_ADD, -1, 0,
+  ssl_cipher_apply_rule(0, ~0u, ~0u, ~0u, ~0u, ~0u, 0, CIPHER_ADD, -1, 0,
                         &head, &tail);
 
   /* Move ciphers without forward secrecy to the end. */
-  ssl_cipher_apply_rule(0, ~(SSL_kDHE | SSL_kECDHE), ~0u, ~0u, ~0u, ~0u, ~0u,
+  ssl_cipher_apply_rule(0, ~(SSL_kDHE | SSL_kECDHE), ~0u, ~0u, ~0u, ~0u, 0,
                         CIPHER_ORD, -1, 0, &head, &tail);
 
   /* Now disable everything (maintaining the ordering!) */
-  ssl_cipher_apply_rule(0, ~0u, ~0u, ~0u, ~0u, ~0u, ~0u, CIPHER_DEL, -1, 0,
+  ssl_cipher_apply_rule(0, ~0u, ~0u, ~0u, ~0u, ~0u, 0, CIPHER_DEL, -1, 0,
                         &head, &tail);
 
   /* If the rule_string begins with DEFAULT, apply the default rule before
@@ -1427,7 +1438,9 @@ int SSL_CIPHER_is_ECDSA(const SSL_CIPHER *cipher) {
 }
 
 uint16_t SSL_CIPHER_get_min_version(const SSL_CIPHER *cipher) {
-  if (cipher->algorithm_ssl & SSL_TLSV1_2) {
+  if (cipher->algorithm_prf != SSL_HANDSHAKE_MAC_DEFAULT) {
+    /* Cipher suites before TLS 1.2 use the default PRF, while all those added
+     * afterwards specify a particular hash. */
     return TLS1_2_VERSION;
   }
   return SSL3_VERSION;
@@ -1570,24 +1583,14 @@ int SSL_CIPHER_get_bits(const SSL_CIPHER *cipher, int *out_alg_bits) {
 
 const char *SSL_CIPHER_description(const SSL_CIPHER *cipher, char *buf,
                                    int len) {
-  const char *ver;
   const char *kx, *au, *enc, *mac;
-  uint32_t alg_mkey, alg_auth, alg_enc, alg_mac, alg_ssl;
-  static const char *format = "%-23s %s Kx=%-8s Au=%-4s Enc=%-9s Mac=%-4s\n";
+  uint32_t alg_mkey, alg_auth, alg_enc, alg_mac;
+  static const char *format = "%-23s Kx=%-8s Au=%-4s Enc=%-9s Mac=%-4s\n";
 
   alg_mkey = cipher->algorithm_mkey;
   alg_auth = cipher->algorithm_auth;
   alg_enc = cipher->algorithm_enc;
   alg_mac = cipher->algorithm_mac;
-  alg_ssl = cipher->algorithm_ssl;
-
-  if (alg_ssl & SSL_SSLV3) {
-    ver = "SSLv3";
-  } else if (alg_ssl & SSL_TLSV1_2) {
-    ver = "TLSv1.2";
-  } else {
-    ver = "unknown";
-  }
 
   switch (alg_mkey) {
     case SSL_kRSA:
@@ -1702,7 +1705,7 @@ const char *SSL_CIPHER_description(const SSL_CIPHER *cipher, char *buf,
     return "Buffer too small";
   }
 
-  BIO_snprintf(buf, len, format, cipher->name, ver, kx, au, enc, mac);
+  BIO_snprintf(buf, len, format, cipher->name, kx, au, enc, mac);
   return buf;
 }
 
