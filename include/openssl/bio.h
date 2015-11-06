@@ -797,7 +797,7 @@ struct bio_method_st {
 struct bio_st {
   const BIO_METHOD *method;
   /* bio, mode, argp, argi, argl, ret */
-  long (*callback)(struct bio_st *, int, const char *, int, long, long);
+  long (*callback)(BIO *, int, const char *, int, long, long);
   char *cb_arg; /* first argument for the callback */
 
   /* init is non-zero if this |BIO| has been initialised. */
@@ -816,7 +816,7 @@ struct bio_st {
   void *ptr;
   /* next_bio points to the next |BIO| in a chain. This |BIO| owns a reference
    * to |next_bio|. */
-  struct bio_st *next_bio; /* used by filter BIOs */
+  BIO *next_bio; /* used by filter BIOs */
   size_t num_read, num_write;
 };
 

@@ -242,7 +242,7 @@ struct cbb_st {
    * pending length-prefix. */
   size_t offset;
   /* child points to a child CBB if a length-prefix is pending. */
-  struct cbb_st *child;
+  CBB *child;
   /* pending_len_len contains the number of bytes in a pending length-prefix,
    * or zero if no length-prefix is pending. */
   uint8_t pending_len_len;
