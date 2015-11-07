@@ -128,8 +128,10 @@ bool DoPKCS12(const std::vector<std::string> &args) {
     return false;
   }
 
-  PEM_write_PrivateKey(stdout, key, NULL, NULL, 0, NULL, NULL);
-  EVP_PKEY_free(key);
+  if (key != NULL) {
+    PEM_write_PrivateKey(stdout, key, NULL, NULL, 0, NULL, NULL);
+    EVP_PKEY_free(key);
+  }
 
   for (size_t i = 0; i < sk_X509_num(certs); i++) {
     PEM_write_X509(stdout, sk_X509_value(certs, i));
