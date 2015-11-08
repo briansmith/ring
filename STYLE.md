@@ -1,7 +1,7 @@
 # BoringSSL Style Guide
 
 BoringSSL usually follows the
-[Google C++ style guide](https://google-styleguide.googlecode.com/svn/trunk/cppguide.html).
+[Google C++ style guide](https://google.github.io/styleguide/cppguide.html),
 The rest of this document describes differences and clarifications on
 top of the base guide.
 
