@@ -191,34 +191,6 @@ pub mod test_util {
     ];
 }
 
-#[cfg(test)]
-mod tests {
-    use super::super::{digest, file_test};
-
-    #[test]
-    fn test_digests() {
-        file_test::run("src/digest_tests.txt", |section, test_case| {
-            assert_eq!(section, "");
-            let digest_alg = test_case.consume_digest_alg("Hash").unwrap();
-            let input = test_case.consume_bytes("Input");
-            let repeat = test_case.consume_usize("Repeat");
-            let expected = test_case.consume_bytes("Output");
-
-            let mut ctx = digest::Context::new(digest_alg);
-            let mut data = Vec::new();
-            for _ in 0..repeat {
-                ctx.update(&input);
-                data.extend(&input);
-            }
-            let actual_from_chunks = ctx.finish();
-            assert_eq!(&expected, &actual_from_chunks.as_ref());
-
-            let actual_from_one_shot = digest::digest(digest_alg, &data);
-            assert_eq!(&expected, &actual_from_one_shot.as_ref());
-        });
-    }
-}
-
 macro_rules! impl_Digest {
     ($XXX:ident, $digest_len_in_bits:expr, $chaining_len_in_bits:expr,
      $block_len_in_bits:expr, $xxx_Init:ident, $xxx_Update:ident,
@@ -268,3 +240,31 @@ pub const MAX_DIGEST_LEN: usize = 512 / 8;
 // The number of u64-sized words needed to store the largest digest context
 // state.
 const DIGEST_CONTEXT_STATE_U64_COUNT: usize = 28;
+
+#[cfg(test)]
+mod tests {
+    use super::super::{digest, file_test};
+
+    #[test]
+    fn test_digests() {
+        file_test::run("src/digest_tests.txt", |section, test_case| {
+            assert_eq!(section, "");
+            let digest_alg = test_case.consume_digest_alg("Hash").unwrap();
+            let input = test_case.consume_bytes("Input");
+            let repeat = test_case.consume_usize("Repeat");
+            let expected = test_case.consume_bytes("Output");
+
+            let mut ctx = digest::Context::new(digest_alg);
+            let mut data = Vec::new();
+            for _ in 0..repeat {
+                ctx.update(&input);
+                data.extend(&input);
+            }
+            let actual_from_chunks = ctx.finish();
+            assert_eq!(&expected, &actual_from_chunks.as_ref());
+
+            let actual_from_one_shot = digest::digest(digest_alg, &data);
+            assert_eq!(&expected, &actual_from_one_shot.as_ref());
+        });
+    }
+}
