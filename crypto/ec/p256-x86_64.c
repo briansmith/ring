@@ -153,48 +153,6 @@ static void copy_conditional(BN_ULONG dst[P256_LIMBS],
   }
 }
 
-static BN_ULONG is_zero(BN_ULONG in) {
-  in |= (0 - in);
-  in = ~in;
-  in &= BN_MASK2;
-  in >>= BN_BITS2 - 1;
-  return in;
-}
-
-static BN_ULONG is_equal(const BN_ULONG a[P256_LIMBS],
-                         const BN_ULONG b[P256_LIMBS]) {
-  BN_ULONG res;
-
-  res = a[0] ^ b[0];
-  res |= a[1] ^ b[1];
-  res |= a[2] ^ b[2];
-  res |= a[3] ^ b[3];
-  if (P256_LIMBS == 8) {
-    res |= a[4] ^ b[4];
-    res |= a[5] ^ b[5];
-    res |= a[6] ^ b[6];
-    res |= a[7] ^ b[7];
-  }
-
-  return is_zero(res);
-}
-
-static BN_ULONG is_one(const BN_ULONG a[P256_LIMBS]) {
-  BN_ULONG res;
-
-  res = a[0] ^ ONE[0];
-  res |= a[1] ^ ONE[1];
-  res |= a[2] ^ ONE[2];
-  res |= a[3] ^ ONE[3];
-  if (P256_LIMBS == 8) {
-    res |= a[4] ^ ONE[4];
-    res |= a[5] ^ ONE[5];
-    res |= a[6] ^ ONE[6];
-  }
-
-  return is_zero(res);
-}
-
 void ecp_nistz256_point_double(P256_POINT *r, const P256_POINT *a);
 void ecp_nistz256_point_add(P256_POINT *r, const P256_POINT *a,
                             const P256_POINT *b);
@@ -440,26 +398,6 @@ err:
   OPENSSL_free((BIGNUM**) scalars);
 }
 
-/* Coordinates of G, for which we have precomputed tables */
-const static BN_ULONG def_xG[P256_LIMBS] = {
-    TOBN(0x79e730d4, 0x18a9143c), TOBN(0x75ba95fc, 0x5fedb601),
-    TOBN(0x79fb732b, 0x77622510), TOBN(0x18905f76, 0xa53755c6),
-};
-
-const static BN_ULONG def_yG[P256_LIMBS] = {
-    TOBN(0xddf25357, 0xce95560a), TOBN(0x8b4ab8e4, 0xba19e45c),
-    TOBN(0xd2e88688, 0xdd21f325), TOBN(0x8571ff18, 0x25885d85)
-};
-
-/* ecp_nistz256_is_affine_G returns one if |generator| is the standard, P-256
- * generator. */
-static int ecp_nistz256_is_affine_G(const EC_POINT *generator) {
-  return (generator->X.top == P256_LIMBS) && (generator->Y.top == P256_LIMBS) &&
-         (generator->Z.top == (P256_LIMBS - P256_LIMBS / 8)) &&
-         is_equal(generator->X.d, def_xG) && is_equal(generator->Y.d, def_yG) &&
-         is_one(generator->Z.d);
-}
-
 /* r = scalar*G + sum(scalars[i]*points[i]) */
 static int ecp_nistz256_points_mul(
     const EC_GROUP *group, EC_POINT *r, const BIGNUM *scalar, size_t num,
@@ -467,7 +405,7 @@ static int ecp_nistz256_points_mul(
   static const unsigned kWindowSize = 7;
   static const unsigned kMask = (1 << (7 /* kWindowSize */ + 1)) - 1;
 
-  int ret = 0, no_precomp_for_generator = 0, p_is_infinity = 0;
+  int ret = 0;
   ALIGN32 union {
     P256_POINT p;
     P256_POINT_AFFINE a;
@@ -485,124 +423,75 @@ static int ecp_nistz256_points_mul(
   r->Y.top = P256_LIMBS;
   r->Z.top = P256_LIMBS;
 
-  const EC_POINT *generator = NULL;
   if (scalar) {
-    generator = EC_GROUP_get0_generator(group);
-    if (generator == NULL) {
-      OPENSSL_PUT_ERROR(EC, EC_R_UNDEFINED_GENERATOR);
-      goto err;
+    if (BN_num_bits(scalar) > 256 || BN_is_negative(scalar)) {
+      BIGNUM *tmp_scalar = BN_CTX_get(ctx);
+      if (tmp_scalar == NULL) {
+        goto err;
+      }
+
+      if (!BN_nnmod(tmp_scalar, scalar, &group->order, ctx)) {
+        OPENSSL_PUT_ERROR(EC, ERR_R_BN_LIB);
+        goto err;
+      }
+      scalar = tmp_scalar;
     }
 
-    if (ecp_nistz256_is_affine_G(generator)) {
-      if (BN_num_bits(scalar) > 256 || BN_is_negative(scalar)) {
-        BIGNUM *tmp_scalar = BN_CTX_get(ctx);
-        if (tmp_scalar == NULL) {
-          goto err;
-        }
+    uint8_t p_str[33] = {0};
+    int i;
+    for (i = 0; i < scalar->top * BN_BYTES; i += BN_BYTES) {
+      BN_ULONG d = scalar->d[i / BN_BYTES];
 
-        if (!BN_nnmod(tmp_scalar, scalar, &group->order, ctx)) {
-          OPENSSL_PUT_ERROR(EC, ERR_R_BN_LIB);
-          goto err;
-        }
-        scalar = tmp_scalar;
+      p_str[i + 0] = d & 0xff;
+      p_str[i + 1] = (d >> 8) & 0xff;
+      p_str[i + 2] = (d >> 16) & 0xff;
+      p_str[i + 3] = (d >>= 24) & 0xff;
+      if (BN_BYTES == 8) {
+        d >>= 8;
+        p_str[i + 4] = d & 0xff;
+        p_str[i + 5] = (d >> 8) & 0xff;
+        p_str[i + 6] = (d >> 16) & 0xff;
+        p_str[i + 7] = (d >> 24) & 0xff;
       }
+    }
 
-      uint8_t p_str[33] = {0};
-      int i;
-      for (i = 0; i < scalar->top * BN_BYTES; i += BN_BYTES) {
-        BN_ULONG d = scalar->d[i / BN_BYTES];
+    for (; i < (int) sizeof(p_str); i++) {
+      p_str[i] = 0;
+    }
 
-        p_str[i + 0] = d & 0xff;
-        p_str[i + 1] = (d >> 8) & 0xff;
-        p_str[i + 2] = (d >> 16) & 0xff;
-        p_str[i + 3] = (d >>= 24) & 0xff;
-        if (BN_BYTES == 8) {
-          d >>= 8;
-          p_str[i + 4] = d & 0xff;
-          p_str[i + 5] = (d >> 8) & 0xff;
-          p_str[i + 6] = (d >> 16) & 0xff;
-          p_str[i + 7] = (d >> 24) & 0xff;
-        }
-      }
+    /* First window */
+    unsigned wvalue = (p_str[0] << 1) & kMask;
+    unsigned index = kWindowSize;
 
-      for (; i < (int) sizeof(p_str); i++) {
-        p_str[i] = 0;
-      }
+    wvalue = booth_recode_w7(wvalue);
 
-      /* First window */
-      unsigned wvalue = (p_str[0] << 1) & kMask;
-      unsigned index = kWindowSize;
+    const PRECOMP256_ROW *const precomputed_table =
+        (const PRECOMP256_ROW *)ecp_nistz256_precomputed;
+    ecp_nistz256_select_w7(&p.a, precomputed_table[0], wvalue >> 1);
+
+    ecp_nistz256_neg(p.p.Z, p.p.Y);
+    copy_conditional(p.p.Y, p.p.Z, wvalue & 1);
+
+    memcpy(p.p.Z, ONE, sizeof(ONE));
+
+    for (i = 1; i < 37; i++) {
+      unsigned off = (index - 1) / 8;
+      wvalue = p_str[off] | p_str[off + 1] << 8;
+      wvalue = (wvalue >> ((index - 1) % 8)) & kMask;
+      index += kWindowSize;
 
       wvalue = booth_recode_w7(wvalue);
 
-      const PRECOMP256_ROW *const precomputed_table =
-          (const PRECOMP256_ROW *)ecp_nistz256_precomputed;
-      ecp_nistz256_select_w7(&p.a, precomputed_table[0], wvalue >> 1);
+      ecp_nistz256_select_w7(&t.a, precomputed_table[i], wvalue >> 1);
 
-      ecp_nistz256_neg(p.p.Z, p.p.Y);
-      copy_conditional(p.p.Y, p.p.Z, wvalue & 1);
+      ecp_nistz256_neg(t.p.Z, t.a.Y);
+      copy_conditional(t.a.Y, t.p.Z, wvalue & 1);
 
-      memcpy(p.p.Z, ONE, sizeof(ONE));
-
-      for (i = 1; i < 37; i++) {
-        unsigned off = (index - 1) / 8;
-        wvalue = p_str[off] | p_str[off + 1] << 8;
-        wvalue = (wvalue >> ((index - 1) % 8)) & kMask;
-        index += kWindowSize;
-
-        wvalue = booth_recode_w7(wvalue);
-
-        ecp_nistz256_select_w7(&t.a, precomputed_table[i], wvalue >> 1);
-
-        ecp_nistz256_neg(t.p.Z, t.a.Y);
-        copy_conditional(t.a.Y, t.p.Z, wvalue & 1);
-
-        ecp_nistz256_point_add_affine(&p.p, &p.p, &t.a);
-      }
-    } else {
-      p_is_infinity = 1;
-      no_precomp_for_generator = 1;
+      ecp_nistz256_point_add_affine(&p.p, &p.p, &t.a);
     }
-  } else {
-    p_is_infinity = 1;
   }
 
-  if (no_precomp_for_generator) {
-    /* Without a precomputed table for the generator, it has to be handled like
-     * a normal point. */
-    const BIGNUM **new_scalars;
-    const EC_POINT **new_points;
-
-    /* Bound |num| so that all the possible overflows in the following can be
-     * excluded. */
-    if (0xffffff < num) {
-      OPENSSL_PUT_ERROR(EC, ERR_R_MALLOC_FAILURE);
-      return 0;
-    }
-
-    new_scalars = OPENSSL_malloc((num + 1) * sizeof(BIGNUM *));
-    if (new_scalars == NULL) {
-      OPENSSL_PUT_ERROR(EC, ERR_R_MALLOC_FAILURE);
-      return 0;
-    }
-
-    new_points = OPENSSL_malloc((num + 1) * sizeof(EC_POINT *));
-    if (new_points == NULL) {
-      OPENSSL_free((BIGNUM**) new_scalars);
-      OPENSSL_PUT_ERROR(EC, ERR_R_MALLOC_FAILURE);
-      return 0;
-    }
-
-    memcpy((BIGNUM**) new_scalars, scalars, num * sizeof(BIGNUM *));
-    new_scalars[num] = scalar;
-    memcpy((EC_POINT**) new_points, points, num * sizeof(EC_POINT *));
-    new_points[num] = generator;
-
-    scalars = new_scalars;
-    points = new_points;
-    num++;
-  }
-
+  const int p_is_infinity = !scalar;
   if (num) {
     P256_POINT *out = &t.p;
     if (p_is_infinity) {
@@ -614,11 +503,6 @@ static int ecp_nistz256_points_mul(
     if (!p_is_infinity) {
       ecp_nistz256_point_add(&p.p, &p.p, out);
     }
-  }
-
-  if (no_precomp_for_generator) {
-    OPENSSL_free((BIGNUM **) scalars);
-    OPENSSL_free((EC_POINT **) points);
   }
 
   memcpy(r->X.d, p.p.X, sizeof(p.p.X));
