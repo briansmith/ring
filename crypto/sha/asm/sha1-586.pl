@@ -118,21 +118,14 @@ require "x86asm.pl";
 $xmm=$ymm=0;
 for (@ARGV) { $xmm=1 if (/-DOPENSSL_IA32_SSE2/); }
 
-$ymm=1 if ($xmm &&
-		`$ENV{CC} -Wa,-v -c -o /dev/null -x assembler /dev/null 2>&1`
-			=~ /GNU assembler version ([2-9]\.[0-9]+)/ &&
-		$1>=2.19);	# first version supporting AVX
+# In upstream, this is controlled by shelling out to the compiler to check
+# versions, but BoringSSL is intended to be used with pre-generated perlasm
+# output, so this isn't useful anyway.
+#
+# TODO(davidben): Enable this after testing. $ymm goes up to 1.
+$ymm = 0;
 
-$ymm=1 if ($xmm && !$ymm && $ARGV[0] eq "win32n" && 
-		`nasm -v 2>&1` =~ /NASM version ([2-9]\.[0-9]+)/ &&
-		$1>=2.03);	# first version supporting AVX
-
-$ymm=1 if ($xmm && !$ymm && $ARGV[0] eq "win32" &&
-		`ml 2>&1` =~ /Version ([0-9]+)\./ &&
-		$1>=10);	# first version supporting AVX
-
-$ymm=1 if ($xmm && !$ymm && `$ENV{CC} -v 2>&1` =~ /(^clang version|based on LLVM) ([3-9]\.[0-9]+)/ &&
-		$2>=3.0);	# first version supporting AVX
+$ymm = 0 unless ($xmm);
 
 $shaext=$xmm;	### set to zero if compiling for 1.0.1
 
