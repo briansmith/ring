@@ -235,6 +235,7 @@ impl_Digest!(SHA384, 384, 512, 1024, SHA384_Init, SHA384_Update, SHA384_Final,
 impl_Digest!(SHA512, 512, 512, 1024, SHA512_Init, SHA512_Update, SHA512_Final,
              674 /*NID_sha512*/);
 
+pub const MAX_BLOCK_LEN: usize = 1024 / 8;
 pub const MAX_DIGEST_LEN: usize = 512 / 8;
 
 // The number of u64-sized words needed to store the largest digest context
@@ -267,4 +268,124 @@ mod tests {
             assert_eq!(&expected, &actual_from_one_shot.as_ref());
         });
     }
+
+    /// Test some ways in which `Context::update` and/or `Context::finish`
+    /// could go wrong by testing every combination of updating three inputs
+    /// that vary from zero bytes to twice the size of the block length.
+    ///
+    /// This is not run in dev (debug) builds because it is too slow.
+    macro_rules! test_i_u_f {
+        ( $test_name:ident, $alg:expr) => {
+            #[cfg(not(debug_assertions))]
+            #[test]
+            fn $test_name() {
+                let mut input = vec![0u8; $alg.block_len * 2];
+                for i in 0..input.len() {
+                    input[i] = i as u8;
+                }
+
+                for i in 0..input.len() {
+                    for j in 0..input.len() {
+                        for k in 0..input.len() {
+                            let part1 = &input[0..i];
+                            let part2 = &input[0..j];
+                            let part3 = &input[0..k];
+
+                            let mut ctx = digest::Context::new(&$alg);
+                            ctx.update(part1);
+                            ctx.update(part2);
+                            ctx.update(part3);
+                            let i_u_f = ctx.finish();
+
+                            let mut combined = Vec::<u8>::new();
+                            combined.extend(part1);
+                            combined.extend(part2);
+                            combined.extend(part3);
+                            let one_shot = digest::digest(&$alg, &combined);
+
+                            assert_eq!(i_u_f.as_ref(), one_shot.as_ref());
+                        }
+                    }
+                }
+            }
+        }
+    }
+    test_i_u_f!(test_i_u_f_sha1, digest::SHA1);
+    test_i_u_f!(test_i_u_f_sha256, digest::SHA256);
+    test_i_u_f!(test_i_u_f_sha384, digest::SHA384);
+    test_i_u_f!(test_i_u_f_sha512, digest::SHA512);
+
+    /// See https://bugzilla.mozilla.org/show_bug.cgi?id=610162. This tests the
+    /// calculation of 8GB of the byte 123.
+    ///
+    /// You can verify the expected values in many ways. One way is
+    /// `python ~/p/write_big.py`, where write_big.py is:
+    ///
+    /// ```python
+    /// chunk = bytearray([123] * (16 * 1024))
+    /// with open('tempfile', 'w') as f:
+    /// for i in xrange(0, 8 * 1024 * 1024 * 1024, len(chunk)):
+    ///     f.write(chunk)
+    /// ```
+    /// Then:
+    ///
+    /// ```sh
+    /// sha1sum -b tempfile
+    /// sha256sum -b tempfile
+    /// sha384sum -b tempfile
+    /// sha512sum -b tempfile
+    /// ```
+    ///
+    /// This is not run in dev (debug) builds because it is too slow.
+    macro_rules! test_large_digest {
+        ( $test_name:ident, $alg:expr, $len:expr, $expected:expr) => {
+            #[cfg(not(debug_assertions))]
+            #[test]
+            fn $test_name() {
+                let chunk = vec![123u8; 16 * 1024];
+                let chunk_len = chunk.len() as u64;
+                let mut ctx = digest::Context::new(&$alg);
+                let mut hashed = 0u64;
+                loop {
+                    ctx.update(&chunk);
+                    hashed += chunk_len;
+                    if hashed >= 8u64 * 1024 * 1024 * 1024 {
+                        break;
+                    }
+                }
+                let calculated = ctx.finish();
+                let expected: [u8; $len] = $expected;
+                assert_eq!(&expected[..], calculated.as_ref());
+            }
+        }
+    }
+    test_large_digest!(test_large_digest_sha1, digest::SHA1, 160 / 8, [
+        0xCA, 0xC3, 0x4C, 0x31, 0x90, 0x5B, 0xDE, 0x3B,
+        0xE4, 0x0D, 0x46, 0x6D, 0x70, 0x76, 0xAD, 0x65,
+        0x3C, 0x20, 0xE4, 0xBD
+    ]);
+    test_large_digest!(test_large_digest_sha256, digest::SHA256, 256 / 8, [
+        0x8D, 0xD1, 0x6D, 0xD8, 0xB2, 0x5A, 0x29, 0xCB,
+        0x7F, 0xB9, 0xAE, 0x86, 0x72, 0xE9, 0xCE, 0xD6,
+        0x65, 0x4C, 0xB6, 0xC3, 0x5C, 0x58, 0x21, 0xA7,
+        0x07, 0x97, 0xC5, 0xDD, 0xAE, 0x5C, 0x68, 0xBD
+    ]);
+    test_large_digest!(test_large_digest_sha384, digest::SHA384, 384 / 8, [
+        0x3D, 0xFE, 0xC1, 0xA9, 0xD0, 0x9F, 0x08, 0xD5,
+        0xBB, 0xE8, 0x7C, 0x9E, 0xE0, 0x0A, 0x87, 0x0E,
+        0xB0, 0xEA, 0x8E, 0xEA, 0xDB, 0x82, 0x36, 0xAE,
+        0x74, 0xCF, 0x9F, 0xDC, 0x86, 0x1C, 0xE3, 0xE9,
+        0xB0, 0x68, 0xCD, 0x19, 0x3E, 0x39, 0x90, 0x02,
+        0xE1, 0x58, 0x5D, 0x66, 0xC4, 0x55, 0x11, 0x9B
+    ]);
+    test_large_digest!(test_large_digest_sha512, digest::SHA512, 512 / 8, [
+        0xFC, 0x8A, 0x98, 0x20, 0xFC, 0x82, 0xD8, 0x55,
+        0xF8, 0xFF, 0x2F, 0x6E, 0xAE, 0x41, 0x60, 0x04,
+        0x08, 0xE9, 0x49, 0xD7, 0xCD, 0x1A, 0xED, 0x22,
+        0xEB, 0x55, 0xE1, 0xFD, 0x80, 0x50, 0x3B, 0x01,
+        0x2F, 0xC6, 0xF4, 0x33, 0x86, 0xFB, 0x60, 0x75,
+        0x2D, 0xA5, 0xA9, 0x93, 0xE7, 0x00, 0x45, 0xA8,
+        0x49, 0x1A, 0x6B, 0xEC, 0x9C, 0x98, 0xC8, 0x19,
+        0xA6, 0xA9, 0x88, 0x3E, 0x2F, 0x09, 0xB9, 0x9A
+    ]);
 }
