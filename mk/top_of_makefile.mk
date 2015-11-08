@@ -170,6 +170,7 @@ CPPFLAGS += \
   -Wfloat-equal \
   -Wformat=2 \
   -Winvalid-pch \
+  -Wmissing-field-initializers \
   -Wmissing-include-dirs \
   -Wredundant-decls \
   -Wsign-compare \
@@ -191,6 +192,7 @@ endif
 #   -Wold-style-definition
 CFLAGS += \
   -Wbad-function-cast \
+  -Wmissing-field-initializers \
   -Wnested-externs \
   -Wstrict-prototypes \
   $(NULL)
