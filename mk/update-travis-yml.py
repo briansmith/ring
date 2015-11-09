@@ -74,8 +74,6 @@ targets = {
     "linux" : [
         "x86_64-pc-linux-gnu",
         "i586-pc-linux-gnu",
-        "x86_64-pc-linux-gnu",
-        "i586-pc-linux-gnu",
     ],
 }
 
