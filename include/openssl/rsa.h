@@ -221,10 +221,6 @@ OPENSSL_EXPORT int RSA_verify_raw(RSA *rsa, size_t *out_len, uint8_t *out,
  * of a signature or encrypted value using |rsa|. */
 OPENSSL_EXPORT unsigned RSA_size(const RSA *rsa);
 
-/* RSA_supports_digest returns one if |rsa| supports signing digests
- * of type |md|. Otherwise it returns zero. */
-OPENSSL_EXPORT int RSA_supports_digest(const RSA *rsa, const EVP_MD *md);
-
 /* RSAPublicKey_dup allocates a fresh |RSA| and copies the public key from
  * |rsa| into it. It returns the fresh |RSA| object, or NULL on error. */
 OPENSSL_EXPORT RSA *RSAPublicKey_dup(const RSA *rsa);
@@ -237,35 +233,6 @@ OPENSSL_EXPORT RSA *RSAPrivateKey_dup(const RSA *rsa);
  * they pass and zero otherwise. Opaque keys and public keys always pass. If it
  * returns zero then a more detailed error is available on the error queue. */
 OPENSSL_EXPORT int RSA_check_key(const RSA *rsa);
-
-/* RSA_verify_PKCS1_PSS_mgf1 verifies that |EM| is a correct PSS padding of
- * |mHash|, where |mHash| is a digest produced by |Hash|. |EM| must point to
- * exactly |RSA_size(rsa)| bytes of data. The |mgf1Hash| argument specifies the
- * hash function for generating the mask. If NULL, |Hash| is used. The |sLen|
- * argument specifies the expected salt length in bytes. If |sLen| is -1 then
- * the salt length is the same as the hash length. If -2, then the salt length
- * is maximal and is taken from the size of |EM|.
- *
- * It returns one on success or zero on error. */
-OPENSSL_EXPORT int RSA_verify_PKCS1_PSS_mgf1(RSA *rsa, const uint8_t *mHash,
-                                             const EVP_MD *Hash,
-                                             const EVP_MD *mgf1Hash,
-                                             const uint8_t *EM, int sLen);
-
-/* RSA_padding_add_PKCS1_PSS_mgf1 writes a PSS padding of |mHash| to |EM|,
- * where |mHash| is a digest produced by |Hash|. |RSA_size(rsa)| bytes of
- * output will be written to |EM|. The |mgf1Hash| argument specifies the hash
- * function for generating the mask. If NULL, |Hash| is used. The |sLen|
- * argument specifies the expected salt length in bytes. If |sLen| is -1 then
- * the salt length is the same as the hash length. If -2, then the salt length
- * is maximal given the space in |EM|.
- *
- * It returns one on success or zero on error. */
-OPENSSL_EXPORT int RSA_padding_add_PKCS1_PSS_mgf1(RSA *rsa, uint8_t *EM,
-                                                  const uint8_t *mHash,
-                                                  const EVP_MD *Hash,
-                                                  const EVP_MD *mgf1Hash,
-                                                  int sLen);
 
 /* RSA_add_pkcs1_prefix builds a version of |msg| prefixed with the DigestInfo
  * header for the given hash function and sets |out_msg| to point to it. On

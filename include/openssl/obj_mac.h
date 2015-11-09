@@ -58,34 +58,11 @@
 #define NID_undef 0
 
 /* Digest algorithms */
-#define NID_md5 4
 #define NID_md5_sha1 114
 #define NID_sha1 64
 #define NID_sha256 672
 #define NID_sha384 673
 #define NID_sha512 674
-#define NID_mdc2 95 /* not supported */
-
-/* ECDSA signature algorithms */
-#define NID_ecdsa_with_SHA1 416
-#define NID_ecdsa_with_Recommended 791
-#define NID_ecdsa_with_Specified 792
-#define NID_ecdsa_with_SHA256 794
-#define NID_ecdsa_with_SHA384 795
-#define NID_ecdsa_with_SHA512 796
-
-/* RSA signature algorithms */
-#define NID_md5WithRSAEncryption 8
-#define NID_sha1WithRSAEncryption 65
-#define NID_sha256WithRSAEncryption 668
-#define NID_sha384WithRSAEncryption 669
-#define NID_sha512WithRSAEncryption 670
-
-/* Public key types */
-#define NID_dhKeyAgreement 28
-#define NID_rsa 19
-#define NID_rsaEncryption 6
-#define NID_X9_62_id_ecPublicKey 408
 
 /* ECC named curves */
 #define NID_secp224r1 713

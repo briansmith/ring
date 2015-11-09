@@ -137,32 +137,16 @@ extern "C" {
 
 #endif  /* defined(BORINGSSL_SHARED_LIBRARY) */
 
-/* CRYPTO_THREADID is a dummy value. */
-typedef int CRYPTO_THREADID;
-
 typedef struct bignum_ctx BN_CTX;
 typedef struct bignum_st BIGNUM;
 typedef struct bn_gencb_st BN_GENCB;
 typedef struct bn_mont_ctx_st BN_MONT_CTX;
-typedef struct buf_mem_st BUF_MEM;
 typedef struct cbb_st CBB;
 typedef struct cbs_st CBS;
-typedef struct cmac_ctx_st CMAC_CTX;
-typedef struct dh_st DH;
 typedef struct ec_key_st EC_KEY;
 typedef struct ecdsa_sig_st ECDSA_SIG;
 typedef struct engine_st ENGINE;
-typedef struct env_md_ctx_st EVP_MD_CTX;
-typedef struct env_md_st EVP_MD;
-typedef struct evp_cipher_ctx_st EVP_CIPHER_CTX;
-typedef struct evp_cipher_st EVP_CIPHER;
-typedef struct evp_pkey_ctx_st EVP_PKEY_CTX;
-typedef struct evp_pkey_method_st EVP_PKEY_METHOD;
-typedef struct evp_pkey_st EVP_PKEY;
-typedef struct rand_meth_st RAND_METHOD;
 typedef struct rsa_st RSA;
-typedef struct st_ERR_FNS ERR_FNS;
-typedef void *OPENSSL_BLOCK;
 
 
 #if defined(__cplusplus)
