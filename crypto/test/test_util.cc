@@ -12,10 +12,12 @@
  * OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
  * CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE. */
 
+#include "test_util.h"
+
 #include <stdint.h>
 #include <stdio.h>
 
-#include "test_util.h"
+#include "openssl/rand.h"
 
 
 void hexdump(FILE *fp, const char *msg, const void *in, size_t len) {
@@ -27,4 +29,18 @@ void hexdump(FILE *fp, const char *msg, const void *in, size_t len) {
     fprintf(fp, "%02x", data[i]);
   }
   fputs("\n", fp);
+}
+
+// XXX: In *ring*, we implement |BN_generate_dsa_nonce_digest| in Rust so that
+// we can use |ring::digest|. But, the tests don't link against any Rust code.
+// Fortunately, we don't need secure nonces in the tests, so we can do the
+// thing you're not supposed to do in this implementation. This will likely
+// throw off the ECDSA_sign performance measurements in |bssl speed| though.
+extern "C" int BN_generate_dsa_nonce_digest(uint8_t *out, size_t out_len,
+                                            const uint8_t *, size_t,
+                                            const uint8_t *, size_t,
+                                            const uint8_t *, size_t,
+                                            const uint8_t *, size_t,
+                                            const uint8_t *, size_t) {
+  return RAND_bytes(out, out_len);
 }

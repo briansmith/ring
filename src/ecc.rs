@@ -15,6 +15,7 @@
 //! Elliptic curve cryptography.
 
 use super::{c, digest, ffi};
+use std;
 
 /// An elliptic curve.
 ///
@@ -145,6 +146,36 @@ pub fn verify_ecdsa_signed_digest_asn1(curve: &EllipticCurve,
                                    sig.len(), curve.ec_group_new, key.as_ptr(),
                                    key.len())
     })
+}
+
+
+#[allow(non_snake_case)]
+#[doc(hidden)]
+#[no_mangle]
+pub extern fn BN_generate_dsa_nonce_digest(
+        out: *mut u8, out_len: c::size_t,
+        part1: *const u8, part1_len: c::size_t,
+        part2: *const u8, part2_len: c::size_t,
+        part3: *const u8, part3_len: c::size_t,
+        part4: *const u8, part4_len: c::size_t,
+        part5: *const u8, part5_len: c::size_t)
+        -> c::int {
+    let mut ctx = digest::Context::new(&digest::SHA512);
+    ctx.update(unsafe { std::slice::from_raw_parts(part1, part1_len) });
+    ctx.update(unsafe { std::slice::from_raw_parts(part2, part2_len) });
+    ctx.update(unsafe { std::slice::from_raw_parts(part3, part3_len) });
+    ctx.update(unsafe { std::slice::from_raw_parts(part4, part4_len) });
+    ctx.update(unsafe { std::slice::from_raw_parts(part5, part5_len) });
+    let digest = ctx.finish();
+    let digest = digest.as_ref();
+    let out = unsafe { std::slice::from_raw_parts_mut(out, out_len) };
+    if out.len() != digest.len() {
+        return 0;
+    }
+    for i in 0..digest.len() {
+        out[i] = digest[i];
+    }
+    return 1;
 }
 
 macro_rules! impl_nist_prime_curve {

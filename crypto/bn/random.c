@@ -113,7 +113,6 @@
 #include <openssl/err.h>
 #include <openssl/mem.h>
 #include <openssl/rand.h>
-#include <openssl/sha.h>
 
 int BN_rand(BIGNUM *rnd, int bits, int top, int bottom) {
   uint8_t *buf = NULL;
@@ -244,14 +243,20 @@ int BN_pseudo_rand_range(BIGNUM *r, const BIGNUM *range) {
   return BN_rand_range(r, range);
 }
 
+extern int BN_generate_dsa_nonce_digest(uint8_t *out, size_t out_len,
+                                        const uint8_t *part1, size_t part1_len,
+                                        const uint8_t *part2, size_t part2_len,
+                                        const uint8_t *part3, size_t part3_len,
+                                        const uint8_t *part4, size_t part4_len,
+                                        const uint8_t *part5, size_t part5_len);
+
 int BN_generate_dsa_nonce(BIGNUM *out, const BIGNUM *range, const BIGNUM *priv,
                           const uint8_t *message, size_t message_len,
                           BN_CTX *ctx) {
-  SHA512_CTX sha;
   /* We use 512 bits of random data per iteration to
    * ensure that we have at least |range| bits of randomness. */
   uint8_t random_bytes[64];
-  uint8_t digest[SHA512_DIGEST_LENGTH];
+  uint8_t digest[64];
   size_t done, todo, attempt;
   const unsigned num_k_bytes = BN_num_bytes(range);
   const unsigned bits_to_mask = (8 - (BN_num_bits(range) % 8)) % 8;
@@ -289,20 +294,20 @@ int BN_generate_dsa_nonce(BIGNUM *out, const BIGNUM *range, const BIGNUM *priv,
 
   for (attempt = 0;; attempt++) {
     for (done = 0; done < num_k_bytes;) {
-      if (!RAND_bytes(random_bytes, sizeof(random_bytes))) {
+      if (!RAND_bytes(random_bytes, sizeof(random_bytes)) ||
+          !BN_generate_dsa_nonce_digest(digest, sizeof(digest),
+                                        (const uint8_t *)attempt,
+                                        sizeof(attempt), (const uint8_t *)done,
+                                        sizeof(done), private_bytes,
+                                        sizeof(private_bytes), message,
+                                        message_len, random_bytes,
+                                        sizeof(random_bytes))) {
         goto err;
       }
-      SHA512_Init(&sha);
-      SHA512_Update(&sha, &attempt, sizeof(attempt));
-      SHA512_Update(&sha, &done, sizeof(done));
-      SHA512_Update(&sha, private_bytes, sizeof(private_bytes));
-      SHA512_Update(&sha, message, message_len);
-      SHA512_Update(&sha, random_bytes, sizeof(random_bytes));
-      SHA512_Final(digest, &sha);
 
       todo = num_k_bytes - done;
-      if (todo > SHA512_DIGEST_LENGTH) {
-        todo = SHA512_DIGEST_LENGTH;
+      if (todo > sizeof(digest)) {
+        todo = sizeof(digest);
       }
       memcpy(k_bytes + done, digest, todo);
       done += todo;
