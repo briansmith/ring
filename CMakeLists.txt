@@ -80,6 +80,16 @@ if((CMAKE_COMPILER_IS_GNUCXX AND CMAKE_C_COMPILER_VERSION VERSION_GREATER "4.8.9
  set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c11 -D_XOPEN_SOURCE=700")
 endif()
 
+if(FUZZ)
+  if(!CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+    message("You need to build with Clang for fuzzing to work")
+  endif()
+
+  set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fsanitize=address -fsanitize-coverage=edge,indirect-calls")
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsanitize=address -fsanitize-coverage=edge,indirect-calls")
+  set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_C_FLAGS} -fsanitize=address")
+endif()
+
 add_definitions(-DBORINGSSL_IMPLEMENTATION)
 
 if (BUILD_SHARED_LIBS)
@@ -146,6 +156,10 @@ add_subdirectory(ssl)
 add_subdirectory(ssl/test)
 add_subdirectory(tool)
 add_subdirectory(decrepit)
+
+if(FUZZ)
+  add_subdirectory(fuzz)
+endif()
 
 if (NOT ${CMAKE_VERSION} VERSION_LESS "3.2")
   # USES_TERMINAL is only available in CMake 3.2 or later.
