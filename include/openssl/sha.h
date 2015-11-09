@@ -93,8 +93,22 @@ OPENSSL_EXPORT int SHA1_Final(uint8_t *md, SHA_CTX *sha);
 OPENSSL_EXPORT void SHA1_Transform(SHA_CTX *sha, const uint8_t *block);
 
 struct sha_state_st {
-  /* ring: Keep this in sync with |ring::digest|. No pointers. */
-  uint32_t h0, h1, h2, h3, h4;
+#if !defined(ANDROID)
+  uint32_t h[5];
+#else
+  /* wpa_supplicant accesses |h0|..|h4| so we must support those names
+   * for compatibility with it until it can be updated. */
+  union {
+    uint32_t h[5];
+    struct {
+      uint32_t h0;
+      uint32_t h1;
+      uint32_t h2;
+      uint32_t h3;
+      uint32_t h4;
+    };
+  };
+#endif
   uint32_t Nl, Nh;
   uint32_t data[16];
   unsigned int num;
