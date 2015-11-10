@@ -55,9 +55,9 @@ pub struct Context {
     // We use u64 to try to ensure 64-bit alignment/padding.
     state: [u64; MAX_CHAINING_LEN / 8],
 
-    // Note that SHA-512 has a 128-bit block counter, but this implementation
-    // only supports up to 2^64-1 blocks, just like for SHA-1 and SHA-256, so
-    // a 64-bit counter is sufficient.
+    // Note that SHA-512 has a 128-bit input bit counter, but this
+    // implementation only supports up to 2^64-1 input bits for all algorithms,
+    // so a 64-bit counter is more than sufficient.
     completed_data_blocks: u64,
 
     // TODO: More explicitly force 64-bit alignment for |pending|.
