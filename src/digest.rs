@@ -247,6 +247,7 @@ impl Digest {
 }
 
 impl AsRef<[u8]> for Digest {
+    #[inline(always)]
     fn as_ref(&self) -> &[u8] {
         &(polyfill::slice::u64_as_u8(&self.value))[..self.algorithm.output_len]
     }
