@@ -178,33 +178,41 @@ pub extern fn BN_generate_dsa_nonce_digest(
     return 1;
 }
 
-macro_rules! impl_nist_prime_curve {
-    ($id:ident, $bits:expr, $EC_GROUP_new:ident, $nid:expr, $doc:expr) => {
-        #[doc=$doc]
-        pub static $id: EllipticCurve = EllipticCurve {
-            ec_group_new: $EC_GROUP_new,
-            encoded_public_key_len: 1 + (2 * (($bits + 7) / 8)),
-            nid: $nid,
-        };
-
-        extern {
-            fn $EC_GROUP_new() -> *mut EC_GROUP;
-        }
-    }
+// XXX: Replace with `const fn` when `const fn` is stable:
+// https://github.com/rust-lang/rust/issues/24111
+macro_rules! encoded_public_key_len {
+    ( $bits:expr ) => ( 1 + (2 * (($bits + 7) / 8)) )
 }
 
-impl_nist_prime_curve!(CURVE_P256, 256, EC_GROUP_new_p256, 415,
-                       "The NIST P-256 curve, a.k.a. secp256r1.\n\n\
-                       C analogs: `EC_GROUP_new_p256` (*ring* only),
-                       `EC_GROUP_new_by_curve_name(NID_X9_62_prime256v1)`");
-impl_nist_prime_curve!(CURVE_P384, 384, EC_GROUP_new_p384, 715,
-                       "The NIST P-384 curve, a.k.a. secp384r1.\n\n\
-                       C analogs: `EC_GROUP_new_p384` (*ring* only),
-                       `EC_GROUP_new_by_curve_name(NID_secp384r1)`");
-impl_nist_prime_curve!(CURVE_P521, 521, EC_GROUP_new_p521, 716,
-                       "The NIST P-521 curve, a.k.a. secp521r1.\n\n\
-                       C analogs: `EC_GROUP_new_p521` (*ring* only),
-                       `EC_GROUP_new_by_curve_name(NID_secp521r1)`");
+/// The NIST P-256 curve, a.k.a. secp256r1.
+///
+/// C analogs: `EC_GROUP_new_p256` (*ring* only),
+/// `EC_GROUP_new_by_curve_name(NID_X9_62_prime256v1)`")
+pub static CURVE_P256: EllipticCurve = EllipticCurve {
+    ec_group_new: EC_GROUP_new_p256,
+    encoded_public_key_len: encoded_public_key_len!(256),
+    nid: 415, // NID_X9_62_prime256v1
+};
+
+/// The NIST P-384 curve, a.k.a. secp384r1.
+///
+/// C analogs: `EC_GROUP_new_p384` (*ring* only),
+/// `EC_GROUP_new_by_curve_name(NID_secp384r1)`")
+pub static CURVE_P384: EllipticCurve = EllipticCurve {
+    ec_group_new: EC_GROUP_new_p384,
+    encoded_public_key_len: encoded_public_key_len!(384),
+    nid: 715, // NID_secp384r1
+};
+
+/// The NIST P-521 curve, a.k.a. secp521r1.
+///
+/// C analogs: `EC_GROUP_new_p521` (*ring* only),
+/// `EC_GROUP_new_by_curve_name(NID_secp521r1)`")
+pub static CURVE_P521: EllipticCurve = EllipticCurve {
+    ec_group_new: EC_GROUP_new_p521,
+    encoded_public_key_len: encoded_public_key_len!(521),
+    nid: 716, // NID_secp521r1
+};
 
 const MAX_COORDINATE_LEN: usize = (521 + 7) / 8;
 
@@ -221,6 +229,10 @@ enum EC_KEY { }
 // when Rust 1.4 is released.
 #[allow(improper_ctypes)]
 extern {
+    fn EC_GROUP_new_p256() -> *mut EC_GROUP;
+    fn EC_GROUP_new_p384() -> *mut EC_GROUP;
+    fn EC_GROUP_new_p521() -> *mut EC_GROUP;
+
     fn EC_KEY_generate_key_ex(ec_group_new: ECGroupNewFn) -> *mut EC_KEY;
     fn EC_KEY_public_key_to_oct(key: *const EC_KEY, out: *mut u8,
                                 out_len: c::size_t) -> c::size_t;
