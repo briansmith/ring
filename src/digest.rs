@@ -287,18 +287,6 @@ pub struct Algorithm {
     pub id: ID,
 }
 
-#[cfg(test)]
-pub mod test_util {
-    use super::super::digest;
-
-    pub static ALL_ALGORITHMS: [&'static digest::Algorithm; 4] = [
-        &digest::SHA1,
-        &digest::SHA256,
-        &digest::SHA384,
-        &digest::SHA512,
-    ];
-}
-
 /// The type of `Algorithm::id`.
 #[derive(Clone, Copy, PartialEq)]
 pub enum ID {
@@ -429,6 +417,18 @@ extern {
     fn sha1_block_data_order(state: *mut u64, data: *const u8, num: c::size_t);
     fn sha256_block_data_order(state: *mut u64, data: *const u8, num: c::size_t);
     fn sha512_block_data_order(state: *mut u64, data: *const u8, num: c::size_t);
+}
+
+#[cfg(test)]
+pub mod test_util {
+    use super::super::digest;
+
+    pub static ALL_ALGORITHMS: [&'static digest::Algorithm; 4] = [
+        &digest::SHA1,
+        &digest::SHA256,
+        &digest::SHA384,
+        &digest::SHA512,
+    ];
 }
 
 #[cfg(test)]
