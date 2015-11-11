@@ -129,7 +129,7 @@ int HMAC_Init_ex(HMAC_CTX *ctx, const void *key, size_t key_len,
         return 0;
       }
     } else {
-      assert(key_len >= 0 && key_len <= sizeof(key_block));
+      assert(key_len <= sizeof(key_block));
       memcpy(key_block, key, key_len);
       key_block_len = (unsigned)key_len;
     }
