@@ -256,8 +256,8 @@ int BIO_zero_copy_get_read_buf_done(BIO* bio, size_t bytes_read) {
     return 0;
   }
 
+  assert(peer_b->len >= bytes_read);
   peer_b->len -= bytes_read;
-  assert(peer_b->len >= 0);
   assert(peer_b->offset + bytes_read <= peer_b->size);
 
   /* Move read offset. If zero_copy_write_lock == 1 we must advance the
