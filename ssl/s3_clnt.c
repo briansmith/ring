@@ -1168,6 +1168,13 @@ int ssl3_get_server_key_exchange(SSL *s) {
       OPENSSL_PUT_ERROR(SSL, SSL_R_BAD_DH_P_LENGTH);
       goto err;
     }
+    if (s->session->key_exchange_info > 4096) {
+      /* Overly large DHE groups are prohibitively expensive, so enforce a limit
+       * to prevent a server from causing us to perform too expensive of a
+       * computation. */
+      OPENSSL_PUT_ERROR(SSL, SSL_R_DH_P_TOO_LONG);
+      goto err;
+    }
     DH_free(s->s3->tmp.peer_dh_tmp);
     s->s3->tmp.peer_dh_tmp = dh;
     dh = NULL;

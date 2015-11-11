@@ -239,10 +239,15 @@ int DH_generate_key(DH *dh) {
   int ok = 0;
   int generate_new_key = 0;
   unsigned l;
-  BN_CTX *ctx;
+  BN_CTX *ctx = NULL;
   BN_MONT_CTX *mont = NULL;
   BIGNUM *pub_key = NULL, *priv_key = NULL;
   BIGNUM local_priv;
+
+  if (BN_num_bits(dh->p) > OPENSSL_DH_MAX_MODULUS_BITS) {
+    OPENSSL_PUT_ERROR(DH, DH_R_MODULUS_TOO_LARGE);
+    goto err;
+  }
 
   ctx = BN_CTX_new();
   if (ctx == NULL) {
