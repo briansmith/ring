@@ -66,7 +66,6 @@
 
 #include "../test/file_test.h"
 #include "../test/scoped_types.h"
-#include "../test/stl_compat.h"
 
 
 static const EVP_MD *GetDigest(const std::string &name) {
@@ -107,33 +106,28 @@ static bool TestHMAC(FileTest *t, void *arg) {
   // Test using the one-shot API.
   uint8_t mac[EVP_MAX_MD_SIZE];
   unsigned mac_len;
-  if (nullptr == HMAC(digest, bssl::vector_data(&key), key.size(),
-                      bssl::vector_data(&input), input.size(), mac,
-                      &mac_len) ||
-      !t->ExpectBytesEqual(bssl::vector_data(&output), output.size(), mac,
-                           mac_len)) {
+  if (nullptr == HMAC(digest, key.data(), key.size(), input.data(),
+                      input.size(), mac, &mac_len) ||
+      !t->ExpectBytesEqual(output.data(), output.size(), mac, mac_len)) {
     t->PrintLine("One-shot API failed.");
     return false;
   }
 
   // Test using HMAC_CTX.
   ScopedHMAC_CTX ctx;
-  if (!HMAC_Init_ex(ctx.get(), bssl::vector_data(&key), key.size(), digest,
-                    nullptr) ||
-      !HMAC_Update(ctx.get(), bssl::vector_data(&input), input.size()) ||
+  if (!HMAC_Init_ex(ctx.get(), key.data(), key.size(), digest, nullptr) ||
+      !HMAC_Update(ctx.get(), input.data(), input.size()) ||
       !HMAC_Final(ctx.get(), mac, &mac_len) ||
-      !t->ExpectBytesEqual(bssl::vector_data(&output), output.size(), mac,
-                           mac_len)) {
+      !t->ExpectBytesEqual(output.data(), output.size(), mac, mac_len)) {
     t->PrintLine("HMAC_CTX failed.");
    return false;
   }
 
   // Test that an HMAC_CTX may be reset with the same key.
   if (!HMAC_Init_ex(ctx.get(), nullptr, 0, digest, nullptr) ||
-      !HMAC_Update(ctx.get(), bssl::vector_data(&input), input.size()) ||
+      !HMAC_Update(ctx.get(), input.data(), input.size()) ||
       !HMAC_Final(ctx.get(), mac, &mac_len) ||
-      !t->ExpectBytesEqual(bssl::vector_data(&output), output.size(), mac,
-                           mac_len)) {
+      !t->ExpectBytesEqual(output.data(), output.size(), mac, mac_len)) {
     t->PrintLine("HMAC_CTX with reset failed.");
    return false;
   }
@@ -150,8 +144,7 @@ static bool TestHMAC(FileTest *t, void *arg) {
     }
   }
   if (!HMAC_Final(ctx.get(), mac, &mac_len) ||
-      !t->ExpectBytesEqual(bssl::vector_data(&output), output.size(), mac,
-                           mac_len)) {
+      !t->ExpectBytesEqual(output.data(), output.size(), mac, mac_len)) {
     t->PrintLine("HMAC_CTX streaming failed.");
     return false;
   }

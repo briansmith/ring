@@ -23,7 +23,6 @@
 #include <openssl/mem.h>
 
 #include "../test/scoped_types.h"
-#include "../test/stl_compat.h"
 
 
 // kECKeyWithoutPublic is an ECPrivateKey with the optional publicKey field
@@ -80,7 +79,7 @@ static ScopedEC_KEY DecodeECPrivateKey(const uint8_t *in, size_t in_len) {
 static bool EncodeECPrivateKey(std::vector<uint8_t> *out, EC_KEY *key) {
   int len = i2d_ECPrivateKey(key, NULL);
   out->resize(len);
-  uint8_t *outp = bssl::vector_data(out);
+  uint8_t *outp = out->data();
   return i2d_ECPrivateKey(key, &outp) == len;
 }
 

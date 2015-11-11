@@ -376,16 +376,17 @@ static bool TestEVP_DigestSignInit(void) {
 
   std::vector<uint8_t> sig;
   sig.resize(sig_len);
-  if (!EVP_DigestSignFinal(md_ctx.get(), bssl::vector_data(&sig), &sig_len)) {
+  if (!EVP_DigestSignFinal(md_ctx.get(), sig.data(), &sig_len)) {
     return false;
   }
   sig.resize(sig_len);
 
   // Ensure that the signature round-trips.
   md_ctx.Reset();
-  if (!EVP_DigestVerifyInit(md_ctx.get(), NULL, EVP_sha256(), NULL, pkey.get()) ||
+  if (!EVP_DigestVerifyInit(md_ctx.get(), NULL, EVP_sha256(), NULL,
+                            pkey.get()) ||
       !EVP_DigestVerifyUpdate(md_ctx.get(), kMsg, sizeof(kMsg)) ||
-      !EVP_DigestVerifyFinal(md_ctx.get(), bssl::vector_data(&sig), sig_len)) {
+      !EVP_DigestVerifyFinal(md_ctx.get(), sig.data(), sig_len)) {
     return false;
   }
 
@@ -432,7 +433,7 @@ static bool TestAlgorithmRoundtrip(EVP_MD_CTX *md_ctx, EVP_PKEY *pkey) {
 
   std::vector<uint8_t> sig;
   sig.resize(sig_len);
-  if (!EVP_DigestSignFinal(md_ctx, bssl::vector_data(&sig), &sig_len)) {
+  if (!EVP_DigestSignFinal(md_ctx, sig.data(), &sig_len)) {
     return false;
   }
   sig.resize(sig_len);
@@ -442,8 +443,7 @@ static bool TestAlgorithmRoundtrip(EVP_MD_CTX *md_ctx, EVP_PKEY *pkey) {
   if (!EVP_DigestVerifyInitFromAlgorithm(md_ctx_verify.get(), algor.get(),
                                          pkey) ||
       !EVP_DigestVerifyUpdate(md_ctx_verify.get(), kMsg, sizeof(kMsg)) ||
-      !EVP_DigestVerifyFinal(md_ctx_verify.get(), bssl::vector_data(&sig),
-                             sig_len)) {
+      !EVP_DigestVerifyFinal(md_ctx_verify.get(), sig.data(), sig_len)) {
     return false;
   }
 
@@ -602,7 +602,7 @@ static bool Testd2i_PrivateKey(void) {
   // Copy the input into a |malloc|'d vector to flag memory errors.
   std::vector<uint8_t> copy(kExampleBadECKeyDER2, kExampleBadECKeyDER2 +
                                                   sizeof(kExampleBadECKeyDER2));
-  derp = bssl::vector_data(&copy);
+  derp = copy.data();
   pkey.reset(d2i_PrivateKey(EVP_PKEY_EC, nullptr, &derp, copy.size()));
   if (pkey) {
     fprintf(stderr, "Imported invalid EC key #2.\n");

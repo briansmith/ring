@@ -68,7 +68,6 @@
 
 #include "internal.h"
 #include "../test/scoped_types.h"
-#include "../test/stl_compat.h"
 
 
 static bool RunBasicTests();
@@ -167,7 +166,7 @@ static bool RunBasicTests() {
   printf("\n");
 
   std::vector<uint8_t> key1(DH_size(a.get()));
-  int ret = DH_compute_key(bssl::vector_data(&key1), b->pub_key, a.get());
+  int ret = DH_compute_key(key1.data(), b->pub_key, a.get());
   if (ret < 0) {
     return false;
   }
@@ -180,7 +179,7 @@ static bool RunBasicTests() {
   printf("\n");
 
   std::vector<uint8_t> key2(DH_size(b.get()));
-  ret = DH_compute_key(bssl::vector_data(&key2), a->pub_key, b.get());
+  ret = DH_compute_key(key2.data(), a->pub_key, b.get());
   if (ret < 0) {
     return false;
   }
@@ -458,17 +457,17 @@ static bool RunRFC5114Tests() {
     std::vector<uint8_t> Z2(DH_size(dhB.get()));
     /* Work out shared secrets using both sides and compare
      * with expected values. */
-    int ret1 = DH_compute_key(bssl::vector_data(&Z1), dhB->pub_key, dhA.get());
-    int ret2 = DH_compute_key(bssl::vector_data(&Z2), dhA->pub_key, dhB.get());
+    int ret1 = DH_compute_key(Z1.data(), dhB->pub_key, dhA.get());
+    int ret2 = DH_compute_key(Z2.data(), dhA->pub_key, dhB.get());
     if (ret1 < 0 || ret2 < 0) {
       fprintf(stderr, "DH_compute_key error RFC5114 set %u\n", i + 1);
       return false;
     }
 
     if (static_cast<size_t>(ret1) != td->Z_len ||
-        memcmp(bssl::vector_data(&Z1), td->Z, td->Z_len) != 0 ||
+        memcmp(Z1.data(), td->Z, td->Z_len) != 0 ||
         static_cast<size_t>(ret2) != td->Z_len ||
-        memcmp(bssl::vector_data(&Z2), td->Z, td->Z_len) != 0) {
+        memcmp(Z2.data(), td->Z, td->Z_len) != 0) {
       fprintf(stderr, "Test failed RFC5114 set %u\n", i + 1);
       return false;
     }

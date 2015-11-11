@@ -173,8 +173,8 @@ static ssl_private_key_result_t AsyncPrivateKeySign(
     return ssl_private_key_failure;
   }
   test_state->private_key_result.resize(len);
-  if (!EVP_PKEY_sign(ctx.get(), bssl::vector_data(
-          &test_state->private_key_result), &len, in, in_len)) {
+  if (!EVP_PKEY_sign(ctx.get(), test_state->private_key_result.data(), &len, in,
+                     in_len)) {
     return ssl_private_key_failure;
   }
   test_state->private_key_result.resize(len);
@@ -203,7 +203,7 @@ static ssl_private_key_result_t AsyncPrivateKeySignComplete(
     fprintf(stderr, "Output buffer too small.\n");
     return ssl_private_key_failure;
   }
-  memcpy(out, bssl::vector_data(&test_state->private_key_result),
+  memcpy(out, test_state->private_key_result.data(),
          test_state->private_key_result.size());
   *out_len = test_state->private_key_result.size();
 
@@ -230,8 +230,7 @@ static ssl_private_key_result_t AsyncPrivateKeyDecrypt(
   }
   RSA *rsa = pkey->pkey.rsa;
   test_state->private_key_result.resize(RSA_size(rsa));
-  if (!RSA_decrypt(rsa, out_len,
-                   bssl::vector_data(&test_state->private_key_result),
+  if (!RSA_decrypt(rsa, out_len, test_state->private_key_result.data(),
                    RSA_size(rsa), in, in_len, RSA_NO_PADDING)) {
     return ssl_private_key_failure;
   }
@@ -263,7 +262,7 @@ static ssl_private_key_result_t AsyncPrivateKeyDecryptComplete(
     fprintf(stderr, "Output buffer too small.\n");
     return ssl_private_key_failure;
   }
-  memcpy(out, bssl::vector_data(&test_state->private_key_result),
+  memcpy(out, test_state->private_key_result.data(),
          test_state->private_key_result.size());
   *out_len = test_state->private_key_result.size();
 

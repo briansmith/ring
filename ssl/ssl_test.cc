@@ -521,7 +521,7 @@ static bool DecodeBase64(std::vector<uint8_t> *out, const char *in) {
   }
 
   out->resize(len);
-  if (!EVP_DecodeBase64(bssl::vector_data(out), &len, len, (const uint8_t *)in,
+  if (!EVP_DecodeBase64(out->data(), &len, len, (const uint8_t *)in,
                         strlen(in))) {
     fprintf(stderr, "EVP_DecodeBase64 failed\n");
     return false;
@@ -541,8 +541,7 @@ static bool TestSSL_SESSIONEncoding(const char *input_b64) {
   }
 
   // Verify the SSL_SESSION decodes.
-  ScopedSSL_SESSION session(SSL_SESSION_from_bytes(bssl::vector_data(&input),
-                                                   input.size()));
+  ScopedSSL_SESSION session(SSL_SESSION_from_bytes(input.data(), input.size()));
   if (!session) {
     fprintf(stderr, "SSL_SESSION_from_bytes failed\n");
     return false;
@@ -558,7 +557,7 @@ static bool TestSSL_SESSIONEncoding(const char *input_b64) {
   }
   encoded.reset(encoded_raw);
   if (encoded_len != input.size() ||
-      memcmp(bssl::vector_data(&input), encoded.get(), input.size()) != 0) {
+      memcmp(input.data(), encoded.get(), input.size()) != 0) {
     fprintf(stderr, "SSL_SESSION_to_bytes did not round-trip\n");
     hexdump(stderr, "Before: ", input.data(), input.size());
     hexdump(stderr, "After:  ", encoded_raw, encoded_len);
@@ -566,9 +565,9 @@ static bool TestSSL_SESSIONEncoding(const char *input_b64) {
   }
 
   // Verify the SSL_SESSION also decodes with the legacy API.
-  cptr = bssl::vector_data(&input);
+  cptr = input.data();
   session.reset(d2i_SSL_SESSION(NULL, &cptr, input.size()));
-  if (!session || cptr != bssl::vector_data(&input) + input.size()) {
+  if (!session || cptr != input.data() + input.size()) {
     fprintf(stderr, "d2i_SSL_SESSION failed\n");
     return false;
   }
@@ -596,7 +595,7 @@ static bool TestSSL_SESSIONEncoding(const char *input_b64) {
     fprintf(stderr, "i2d_SSL_SESSION did not advance ptr correctly\n");
     return false;
   }
-  if (memcmp(bssl::vector_data(&input), encoded.get(), input.size()) != 0) {
+  if (memcmp(input.data(), encoded.get(), input.size()) != 0) {
     fprintf(stderr, "i2d_SSL_SESSION did not round-trip\n");
     return false;
   }
@@ -611,8 +610,7 @@ static bool TestBadSSL_SESSIONEncoding(const char *input_b64) {
   }
 
   // Verify that the SSL_SESSION fails to decode.
-  ScopedSSL_SESSION session(SSL_SESSION_from_bytes(bssl::vector_data(&input),
-                                                   input.size()));
+  ScopedSSL_SESSION session(SSL_SESSION_from_bytes(input.data(), input.size()));
   if (session) {
     fprintf(stderr, "SSL_SESSION_from_bytes unexpectedly succeeded\n");
     return false;
@@ -700,8 +698,7 @@ static ScopedSSL_SESSION CreateSessionWithTicket(size_t ticket_len) {
   if (!DecodeBase64(&der, kOpenSSLSession)) {
     return nullptr;
   }
-  ScopedSSL_SESSION session(SSL_SESSION_from_bytes(bssl::vector_data(&der),
-                                                   der.size()));
+  ScopedSSL_SESSION session(SSL_SESSION_from_bytes(der.data(), der.size()));
   if (!session) {
     return nullptr;
   }
