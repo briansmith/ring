@@ -299,25 +299,6 @@ pub mod test_util {
     ];
 }
 
-macro_rules! impl_Digest {
-    ($XXX:ident, $output_len_in_bits:expr, $chaining_len_in_bits:expr,
-     $block_len_in_bits:expr, $len_len_in_bits:expr,
-     $xxx_block_data_order:ident, $format_output:ident, $XXX_INITIAL:ident,
-     $initial_value:expr) => {
-
-        pub static $XXX: Algorithm = Algorithm {
-            output_len: $output_len_in_bits / 8,
-            chaining_len: $chaining_len_in_bits / 8,
-            block_len: $block_len_in_bits / 8,
-            len_len: $len_len_in_bits / 8,
-            block_data_order: $xxx_block_data_order,
-            format_output: $format_output,
-            initial_state: $initial_value,
-            id: ID::$XXX,
-        };
-    }
-}
-
 /// The type of `Algorithm::id`.
 #[derive(Clone, Copy, PartialEq)]
 pub enum ID {
@@ -327,50 +308,81 @@ pub enum ID {
     SHA512,
 }
 
+pub static SHA1: Algorithm = Algorithm {
+    output_len: 160 / 8,
+    chaining_len: 160 / 8,
+    block_len: 512 / 8,
+    len_len: 64 / 8,
+    block_data_order: sha1_block_data_order,
+    format_output: sha256_format_output,
+    initial_state: [
+        u32x2!(0x67452301, 0xefcdab89),
+        u32x2!(0x98badcfe, 0x10325476),
+        u32x2!(0xc3d2e1f0, 0),
+        0, 0, 0, 0, 0,
+    ],
+    id: ID::SHA1,
+};
+
+pub static SHA256: Algorithm = Algorithm {
+    output_len: 256 / 8,
+    chaining_len: 256 / 8,
+    block_len: 512 / 8,
+    len_len: 64 / 8,
+    block_data_order: sha256_block_data_order,
+    format_output: sha256_format_output,
+    initial_state: [
+        u32x2!(0x6a09e667, 0xbb67ae85),
+        u32x2!(0x3c6ef372, 0xa54ff53a),
+        u32x2!(0x510e527f, 0x9b05688c),
+        u32x2!(0x1f83d9ab, 0x5be0cd19),
+        0, 0, 0, 0,
+    ],
+    id: ID::SHA256,
+};
+
+pub static SHA384: Algorithm = Algorithm {
+    output_len: 384 / 8,
+    chaining_len: 512 / 8,
+    block_len: 1024 / 8,
+    len_len: 128 / 8,
+    block_data_order: sha512_block_data_order,
+    format_output: sha512_format_output,
+    initial_state: [
+        0xcbbb9d5dc1059ed8,
+        0x629a292a367cd507,
+        0x9159015a3070dd17,
+        0x152fecd8f70e5939,
+        0x67332667ffc00b31,
+        0x8eb44a8768581511,
+        0xdb0c2e0d64f98fa7,
+        0x47b5481dbefa4fa4,
+    ],
+    id: ID::SHA384,
+};
+
+pub static SHA512: Algorithm = Algorithm {
+    output_len: 512 / 8,
+    chaining_len: 512 / 8,
+    block_len: 1024 / 8,
+    len_len: 128 / 8,
+    block_data_order: sha512_block_data_order,
+    format_output: sha512_format_output,
+    initial_state: [
+        0x6a09e667f3bcc908,
+        0xbb67ae8584caa73b,
+        0x3c6ef372fe94f82b,
+        0xa54ff53a5f1d36f1,
+        0x510e527fade682d1,
+        0x9b05688c2b3e6c1f,
+        0x1f83d9abfb41bd6b,
+        0x5be0cd19137e2179,
+    ],
+    id: ID::SHA512,
+};
+
 #[inline(always)]
 fn widen_u64(x: usize) -> u64 { x as u64 }
-
-impl_Digest!(SHA1, 160, 160, 512, 64, sha1_block_data_order,
-             sha256_format_output,
-             SHA1_INITIAL, [
-             u32x2!(0x67452301, 0xefcdab89),
-             u32x2!(0x98badcfe, 0x10325476),
-             u32x2!(0xc3d2e1f0, 0),
-             0, 0, 0, 0, 0,
-]);
-
-impl_Digest!(SHA256, 256, 256, 512, 64, sha256_block_data_order,
-             sha256_format_output, SHA256_INITIAL, [
-             u32x2!(0x6a09e667, 0xbb67ae85),
-             u32x2!(0x3c6ef372, 0xa54ff53a),
-             u32x2!(0x510e527f, 0x9b05688c),
-             u32x2!(0x1f83d9ab, 0x5be0cd19),
-             0, 0, 0, 0,
-]);
-
-impl_Digest!(SHA384, 384, 512, 1024, 128, sha512_block_data_order,
-             sha512_format_output, SHA384_INITIAL, [
-             0xcbbb9d5dc1059ed8,
-             0x629a292a367cd507,
-             0x9159015a3070dd17,
-             0x152fecd8f70e5939,
-             0x67332667ffc00b31,
-             0x8eb44a8768581511,
-             0xdb0c2e0d64f98fa7,
-             0x47b5481dbefa4fa4,
-]);
-
-impl_Digest!(SHA512, 512, 512, 1024, 128, sha512_block_data_order,
-             sha512_format_output, SHA512_INITIAL, [
-             0x6a09e667f3bcc908,
-             0xbb67ae8584caa73b,
-             0x3c6ef372fe94f82b,
-             0xa54ff53a5f1d36f1,
-             0x510e527fade682d1,
-             0x9b05688c2b3e6c1f,
-             0x1f83d9abfb41bd6b,
-             0x5be0cd19137e2179,
-]);
 
 /// The maximum block length (`Algorithm::block_len`) of all the algorithms in
 /// this module.
