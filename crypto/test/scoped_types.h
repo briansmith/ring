@@ -73,7 +73,6 @@ using ScopedBIGNUM = ScopedOpenSSLType<BIGNUM, BN_free>;
 using ScopedBN_CTX = ScopedOpenSSLType<BN_CTX, BN_CTX_free>;
 using ScopedBN_MONT_CTX = ScopedOpenSSLType<BN_MONT_CTX, BN_MONT_CTX_free>;
 using ScopedECDSA_SIG = ScopedOpenSSLType<ECDSA_SIG, ECDSA_SIG_free>;
-using ScopedEC_GROUP = ScopedOpenSSLType<EC_GROUP, EC_GROUP_free>;
 using ScopedEC_KEY = ScopedOpenSSLType<EC_KEY, EC_KEY_free>;
 using ScopedEC_POINT = ScopedOpenSSLType<EC_POINT, EC_POINT_free>;
 using ScopedRSA = ScopedOpenSSLType<RSA, RSA_free>;

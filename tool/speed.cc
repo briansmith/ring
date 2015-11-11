@@ -198,14 +198,13 @@ static bool SpeedRandom(const std::string &selected) {
          SpeedRandomChunk("RNG (8192 bytes)", 8192);
 }
 
-static bool SpeedECDHCurve(const std::string &name,
-                           EC_GROUP_new_fn ec_group_new,
+static bool SpeedECDHCurve(const std::string &name, EC_GROUP_fn ec_group_fn,
                            const std::string &selected) {
   if (!selected.empty() && name.find(selected) == std::string::npos) {
     return true;
   }
 
-  ScopedEC_KEY peer_key(EC_KEY_generate_key_ex(ec_group_new));
+  ScopedEC_KEY peer_key(EC_KEY_generate_key_ex(ec_group_fn()));
   if (!peer_key) {
     return false;
   }
@@ -219,9 +218,9 @@ static bool SpeedECDHCurve(const std::string &name,
 
   TimeResults results;
   if (!TimeFunction(&results,
-                    [ec_group_new, &peer_key_der, peer_key_der_len,
+                    [ec_group_fn, &peer_key_der, peer_key_der_len,
                      peer_key_nid]() -> bool {
-        ScopedEC_KEY my_key(EC_KEY_generate_key_ex(ec_group_new));
+        ScopedEC_KEY my_key(EC_KEY_generate_key_ex(ec_group_fn()));
         if (!my_key) {
           return false;
         }
@@ -240,14 +239,13 @@ static bool SpeedECDHCurve(const std::string &name,
   return true;
 }
 
-static bool SpeedECDSACurve(const std::string &name,
-                            EC_GROUP_new_fn ec_group_new,
+static bool SpeedECDSACurve(const std::string &name, EC_GROUP_fn ec_group_fn,
                             const std::string &selected) {
   if (!selected.empty() && name.find(selected) == std::string::npos) {
     return true;
   }
 
-  ScopedEC_KEY key(EC_KEY_generate_key_ex(ec_group_new));
+  ScopedEC_KEY key(EC_KEY_generate_key_ex(ec_group_fn()));
   if (!key) {
     return false;
   }
@@ -277,10 +275,10 @@ static bool SpeedECDSACurve(const std::string &name,
     return false;
   }
 
-  if (!TimeFunction(&results, [ec_group_new, &key_der, key_der_len, &signature,
+  if (!TimeFunction(&results, [ec_group_fn, &key_der, key_der_len, &signature,
                                &digest, sig_len]() -> bool {
-        return ECDSA_verify_signed_digest(NID_sha1, digest, sizeof(digest),
-                                          signature, sig_len, ec_group_new,
+        return ECDSA_verify_signed_digest(ec_group_fn(), NID_sha1, digest,
+                                          sizeof(digest), signature, sig_len,
                                           key_der, key_der_len) == 1;
       })) {
     return false;
@@ -292,17 +290,17 @@ static bool SpeedECDSACurve(const std::string &name,
 }
 
 static bool SpeedECDH(const std::string &selected) {
-  return SpeedECDHCurve("ECDH P-224", EC_GROUP_new_p224, selected) &&
-         SpeedECDHCurve("ECDH P-256", EC_GROUP_new_p256, selected) &&
-         SpeedECDHCurve("ECDH P-384", EC_GROUP_new_p384, selected) &&
-         SpeedECDHCurve("ECDH P-521", EC_GROUP_new_p521, selected);
+  return SpeedECDHCurve("ECDH P-224", EC_GROUP_P224, selected) &&
+         SpeedECDHCurve("ECDH P-256", EC_GROUP_P256, selected) &&
+         SpeedECDHCurve("ECDH P-384", EC_GROUP_P384, selected) &&
+         SpeedECDHCurve("ECDH P-521", EC_GROUP_P521, selected);
 }
 
 static bool SpeedECDSA(const std::string &selected) {
-  return SpeedECDSACurve("ECDSA P-224", EC_GROUP_new_p224, selected) &&
-         SpeedECDSACurve("ECDSA P-256", EC_GROUP_new_p256, selected) &&
-         SpeedECDSACurve("ECDSA P-384", EC_GROUP_new_p384, selected) &&
-         SpeedECDSACurve("ECDSA P-521", EC_GROUP_new_p521, selected);
+  return SpeedECDSACurve("ECDSA P-224", EC_GROUP_P224, selected) &&
+         SpeedECDSACurve("ECDSA P-256", EC_GROUP_P256, selected) &&
+         SpeedECDSACurve("ECDSA P-384", EC_GROUP_P384, selected) &&
+         SpeedECDSACurve("ECDSA P-521", EC_GROUP_P521, selected);
 }
 
 bool Speed(const std::vector<std::string> &args) {

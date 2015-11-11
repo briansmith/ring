@@ -1,0 +1,117 @@
+﻿// Copyright 2015 Brian Smith.
+//
+// Permission to use, copy, modify, and/or distribute this software for any
+// purpose with or without fee is hereby granted, provided that the above
+// copyright notice and this permission notice appear in all copies.
+//
+// THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHORS DISCLAIM ALL WARRANTIES
+// WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+// MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHORS BE LIABLE FOR ANY
+// SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+// WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION
+// OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
+// CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+
+//! Data defining the supported elliptic curves.
+
+pub struct NISTCurve {
+    pub name: &'static str,
+    pub nid: &'static str,
+    pub q: &'static str,
+    pub n: &'static str,
+    pub generator: (&'static str, &'static str),
+    pub a: i8, // Must always be -3.
+    pub b: &'static str,
+    pub cofactor: i8, // Must always be 1.
+}
+
+// The curve parameters are from
+// http://nvlpubs.nist.gov/nistpubs/FIPS/NIST.FIPS.186-4.pdf.
+
+pub static SUPPORTED_CURVES: [NISTCurve; 4] = [
+    NISTCurve {
+        name: "CURVE_P224",
+
+        // 2^224 − 2^96 + 1
+        q: "FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF000000000000000000000001",
+
+        n: "FFFFFFFFFFFFFFFFFFFFFFFFFFFF16A2E0B8F03E13DD29455C5C2A3D",
+
+        generator:
+          ("B70E0CBD6BB4BF7F321390B94A03C1D356C21122343280D6115C1D21",
+           "bd376388b5f723fb4c22dfe6cd4375a05a07476444d5819985007e34"),
+
+        a: -3,
+        b: "B4050A850C04B3ABF54132565044B0B7D7BFD8BA270B39432355FFB4",
+        cofactor: 1,
+
+        nid: "NID_secp224r1",
+    },
+    NISTCurve {
+        name: "CURVE_P256",
+
+        // 2**256 - 2**224 + 2**192 + 2**96 - 1
+        q: "ffffffff00000001000000000000000000000000ffffffffffffffffffffffff",
+
+        // 2**256 - 2**224 + 2**192 - 2**128 +
+        // 0xbce6faada7179e84f3b9cac2fc632551
+        n: "ffffffff00000000ffffffffffffffffbce6faada7179e84f3b9cac2fc632551",
+
+        generator:
+          ("6b17d1f2e12c4247f8bce6e563a440f277037d812deb33a0f4a13945d898c296",
+           "4fe342e2fe1a7f9b8ee7eb4a7c0f9e162bce33576b315ececbb6406837bf51f5"),
+
+        a: -3,
+        b: "5ac635d8aa3a93e7b3ebbd55769886bc651d06b0cc53b0f63bce3c3e27d2604b",
+        cofactor: 1,
+
+        nid: "NID_X9_62_prime256v1",
+    },
+    NISTCurve {
+        name: "CURVE_P384",
+
+        // 2^384 − 2^128 − 2^96 + 2^32 − 1
+        q: "FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFE\
+            FFFFFFFF0000000000000000FFFFFFFF",
+
+        // 2^384 - 2^192 + 0xc7634d81f4372ddf581a0db248b0a77aecec196accc52973
+        n: "FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFC7634D81F4372DDF\
+            581A0DB248B0A77AECEC196ACCC52973",
+
+        generator:
+          ("AA87CA22BE8B05378EB1C71EF320AD746E1D3B628BA79B9859F741E082542A38\
+            5502F25DBF55296C3A545E3872760AB7",
+           "3617de4a96262c6f5d9e98bf9292dc29f8f41dbd289a147ce9da3113b5f0b8c0\
+            0a60b1ce1d7e819d7a431d7c90ea0e5f"),
+
+        a: -3,
+        b: "B3312FA7E23EE7E4988E056BE3F82D19181D9C6EFE8141120314088F5013875A\
+            C656398D8A2ED19D2A85C8EDD3EC2AEF",
+        cofactor: 1,
+
+        nid: "NID_secp384r1",
+    },
+    NISTCurve {
+        name: "CURVE_P521",
+
+        // 2^521 − 1
+        q: "01FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF\
+            FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF",
+
+        n: "01FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF\
+            FA51868783BF2F966B7FCC0148F709A5D03BB5C9B8899C47AEBB6FB71E91386409",
+
+        generator:
+          ("00C6858E06B70404E9CD9E3ECB662395B4429C648139053FB521F828AF606B4D3D\
+            BAA14B5E77EFE75928FE1DC127A2FFA8DE3348B3C1856A429BF97E7E31C2E5BD66",
+           "011839296a789a3bc0045c8a5fb42c7d1bd998f54449579b446817afbd17273e66\
+            2c97ee72995ef42640c550b9013fad0761353c7086a272c24088be94769fd16650"),
+
+        a: -3,
+        b: "0051953EB9618E1C9A1F929A21A0B68540EEA2DA725B99B315F3B8B489918EF109\
+            E156193951EC7E937B1652C0BD3BB1BF073573DF883D2C34F1EF451FD46B503F00",
+        cofactor: 1,
+
+        nid: "NID_secp521r1",
+    },
+];

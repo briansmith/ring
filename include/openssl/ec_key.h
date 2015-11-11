@@ -86,7 +86,7 @@ extern "C" {
 /* EC_KEY_new_ex returns a fresh |EC_KEY| object for the group that is created
  * by the function |ec_group_new|. |ec_group_new| should be
  * |EC_GROUP_new_p256|, |EC_GROUP_new_p384|, etc. */
-EC_KEY *EC_KEY_new_ex(EC_GROUP_new_fn ec_group_new);
+EC_KEY *EC_KEY_new_ex(const EC_GROUP *group);
 
 /* EC_KEY_free frees all the data owned by |key| and |key| itself. */
 OPENSSL_EXPORT void EC_KEY_free(EC_KEY *key);
@@ -124,7 +124,7 @@ OPENSSL_EXPORT size_t EC_KEY_public_key_to_oct(const EC_KEY *key, uint8_t *out,
 /* EC_KEY_generate_key_ex generates a random private key and calculates the
  * corresponding public key. It returns the generated key pair on success or
  * NULL on failure. */
-OPENSSL_EXPORT EC_KEY *EC_KEY_generate_key_ex(EC_GROUP_new_fn ec_group_new);
+OPENSSL_EXPORT EC_KEY *EC_KEY_generate_key_ex(const EC_GROUP *group);
 
 
 #if defined(__cplusplus)

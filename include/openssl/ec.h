@@ -92,22 +92,19 @@ typedef enum {
 /* Elliptic curve groups. */
 
 /* A pointer to a function that creates a new |EC_GROUP| instance. */
-typedef EC_GROUP *(*EC_GROUP_new_fn)(void);
+typedef const EC_GROUP *(*EC_GROUP_fn)(void);
 
 /* EC_group_new_p224 returns a fresh EC_GROUP object for the NIST P-224 curve. */
-EC_GROUP *EC_GROUP_new_p224(void);
+const EC_GROUP *EC_GROUP_P224(void);
 
 /* EC_group_new_p256 returns a fresh EC_GROUP object for the NIST P-256 curve. */
-EC_GROUP *EC_GROUP_new_p256(void);
+const EC_GROUP *EC_GROUP_P256(void);
 
 /* EC_group_new_p384 returns a fresh EC_GROUP object for the NIST P-384 curve. */
-EC_GROUP *EC_GROUP_new_p384(void);
+const EC_GROUP *EC_GROUP_P384(void);
 
 /* EC_group_new_p521 returns a fresh EC_GROUP object for the NIST P-521 curve. */
-EC_GROUP *EC_GROUP_new_p521(void);
-
-/* EC_GROUP_free frees |group| and the data that it points to. */
-OPENSSL_EXPORT void EC_GROUP_free(EC_GROUP *group);
+const EC_GROUP *EC_GROUP_P521(void);
 
 /* EC_GROUP_cmp returns zero if |a| and |b| are the same group and non-zero
  * otherwise. */

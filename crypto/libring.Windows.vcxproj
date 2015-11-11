@@ -44,6 +44,7 @@
     <ClCompile Include="cpu-intel.c" />
     <ClCompile Include="crypto.c" />
     <ClCompile Include="ec\ec.c" />
+    <ClCompile Include="ec\ec_curves.c" />
     <ClCompile Include="ec\ec_key.c" />
     <ClCompile Include="ec\ec_montgomery.c" />
     <ClCompile Include="ec\oct.c" />
@@ -92,7 +93,7 @@
   </ItemGroup>
   <ItemDefinitionGroup>
     <ClCompile>
-      <AdditionalIncludeDirectories>%(AdditionalIncludeDirectories);..\include</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>%(AdditionalIncludeDirectories);..\include;$(GENERATED_CODE_DIR)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>OPENSSL_NO_ASM;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
   </ItemDefinitionGroup>

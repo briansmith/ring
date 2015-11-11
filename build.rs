@@ -12,8 +12,17 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
+extern crate num;
+
+#[path="src/ecc_build.rs"]
+mod ecc_build;
+
+#[path="src/ecc_curves.rs"]
+mod ecc_curves;
+
 use std::env;
 use std::path::Path;
+
 
 const LIB_NAME: &'static str = "ring";
 
@@ -22,18 +31,26 @@ fn main() {
         println!("{}: {}", key, value);
     }
 
-    let host_str = env::var("HOST").unwrap();
+    let out_dir = env::var("OUT_DIR").unwrap();
+
+    ecc_build::generate_code(&out_dir).unwrap();
+    build_c_code(&out_dir).unwrap();
+}
+
+fn build_c_code(out_dir: &str) -> Result<(), std::env::VarError> {
+    let host_str = try!(env::var("HOST"));
     let host_triple = host_str.split('-').collect::<Vec<&str>>();
 
-    let target_str = env::var("TARGET").unwrap();
+    let target_str = try!(env::var("TARGET"));
     let target_triple = target_str.split('-').collect::<Vec<&str>>();
-
-    let out_dir = env::var("OUT_DIR").unwrap();
 
     let use_msbuild = host_triple.contains(&"msvc") &&
                       target_triple.contains(&"msvc");
 
-    let disable_opt = env::var("OPT_LEVEL").unwrap() == "0";
+    let opt_level = try!(env::var("OPT_LEVEL"));
+    let disable_opt = opt_level == "0";
+
+    let num_jobs = try!(env::var("NUM_JOBS"));
 
     // TODO: deal with link-time-optimization flag.
 
@@ -45,12 +62,13 @@ fn main() {
         // Environment variables |CC|, |CXX|, etc. will be inherited from this
         // process.
         let cmake_build_type = "RELWITHDEBINFO"; // TODO: disable_opt
-        lib_path = Path::new(&out_dir).join("lib");
+        lib_path = Path::new(out_dir).join("lib");
         args = vec![
-            format!("-j{}", env::var("NUM_JOBS").unwrap()),
+            format!("-j{}", num_jobs),
             format!("TARGET={}", target_str),
             format!("CMAKE_BUILD_TYPE={}", cmake_build_type),
             format!("BUILD_PREFIX={}/", out_dir),
+            format!("GENERATED_CODE_DIR={}", out_dir),
         ];
     } else {
         // TODO: This assumes that the package is being built under a
@@ -66,10 +84,11 @@ fn main() {
         let configuration = if disable_opt { "Debug" } else { "Release" };
         args = vec![
             format!("{}.sln", LIB_NAME),
-            format!("/m:{}", env::var("NUM_JOBS").unwrap()),
+            format!("/m:{}", num_jobs),
             format!("/p:Platform={}", platform),
             format!("/p:Configuration={}", configuration),
             format!("/p:OutRootDir={}/", out_dir),
+            format!("/p:GENERATED_CODE_DIR={}", out_dir),
         ];
         lib_path = Path::new(&out_dir).join("lib");
     }
@@ -85,4 +104,5 @@ fn main() {
 
     println!("cargo:rustc-link-search=native={}", lib_path.to_str().unwrap());
     println!("cargo:rustc-link-lib=static={}-core", LIB_NAME);
+    Ok(())
 }

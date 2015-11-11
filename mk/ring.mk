@@ -14,7 +14,7 @@
 
 RING_PREFIX ?= ring/
 
-RING_CPPFLAGS = $(RING_THREAD_FLAGS) -I$(RING_PREFIX)include -D_XOPEN_SOURCE=700
+RING_CPPFLAGS = $(RING_THREAD_FLAGS) -I$(RING_PREFIX)include -I$(GENERATED_CODE_DIR) -D_XOPEN_SOURCE=700
 
 RING_LDLIBS = $(RING_THREAD_FLAGS) -L$(dir $(RING_LIB)) -lring-core
 
@@ -48,6 +48,7 @@ RING_SRCS = $(addprefix $(RING_PREFIX), \
   crypto/cpu-intel.c \
   crypto/crypto.c \
   crypto/ec/ec.c \
+  crypto/ec/ec_curves.c \
   crypto/ec/ec_key.c \
   crypto/ec/ec_montgomery.c \
   crypto/ec/oct.c \

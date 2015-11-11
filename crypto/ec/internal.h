@@ -79,15 +79,6 @@ extern "C" {
 
 
 typedef struct ec_method_st {
-  /* used by EC_GROUP_new, EC_GROUP_free, EC_GROUP_clear_free, EC_GROUP_copy: */
-  int (*group_init)(EC_GROUP *);
-  void (*group_finish)(EC_GROUP *);
-  void (*group_clear_finish)(EC_GROUP *);
-
-  /* used by EC_GROUP_set_curve_GFp: */
-  int (*group_set_curve)(EC_GROUP *, const BIGNUM *p, const BIGNUM *a,
-                         const BIGNUM *b, BN_CTX *);
-
   /* used by EC_POINT_get_affine_coordinates_GFp: */
   int (*point_get_affine_coordinates)(const EC_GROUP *, const EC_POINT *,
                                       BIGNUM *x, BIGNUM *y, BN_CTX *);
@@ -115,13 +106,26 @@ typedef struct ec_method_st {
   int (*field_set_to_one)(const EC_GROUP *, BIGNUM *r, BN_CTX *);
 } EC_METHOD;
 
-const EC_METHOD* EC_GFp_mont_method(void);
+extern const EC_METHOD EC_GFp_mont_method;
+
+struct ec_point_st {
+  const EC_METHOD *meth;
+
+  /* All members except 'meth' are handled by the method functions,
+   * even if they appear generic. */
+
+  BIGNUM X;
+  BIGNUM Y;
+  BIGNUM Z; /* Jacobian projective coordinates:
+             * (X, Y, Z)  represents  (X/Z^2, Y/Z^3)  if  Z != 0 */
+  int Z_is_one; /* enable optimized point arithmetics for special case */
+} /* EC_POINT */;
 
 struct ec_group_st {
   const EC_METHOD *meth;
 
-  EC_POINT *generator; /* optional */
-  BIGNUM order;
+  const EC_POINT generator;
+  const BIGNUM order;
 
   int curve_name; /* optional NID for named curve */
 
@@ -132,22 +136,9 @@ struct ec_group_st {
 
   BIGNUM a, b; /* Curve coefficients. */
 
-  BN_MONT_CTX *mont; /* Montgomery structure. */
-  BIGNUM *one; /* The value one */
+  BN_MONT_CTX mont; /* Montgomery structure. */
+  BIGNUM one; /* The value one */
 } /* EC_GROUP */;
-
-struct ec_point_st {
-  const EC_METHOD *meth;
-
-  /* All members except 'meth' are handled by the method functions,
-   * even if they appear generic */
-
-  BIGNUM X;
-  BIGNUM Y;
-  BIGNUM Z; /* Jacobian projective coordinates:
-             * (X, Y, Z)  represents  (X/Z^2, Y/Z^3)  if  Z != 0 */
-  int Z_is_one; /* enable optimized point arithmetics for special case */
-} /* EC_POINT */;
 
 EC_GROUP *ec_group_new(const EC_METHOD *meth);
 
@@ -156,11 +147,6 @@ int ec_wNAF_mul(const EC_GROUP *group, EC_POINT *r, const BIGNUM *scalar,
                 BN_CTX *);
 
 /* method functions in simple.c */
-int ec_GFp_simple_group_init(EC_GROUP *);
-void ec_GFp_simple_group_finish(EC_GROUP *);
-void ec_GFp_simple_group_clear_finish(EC_GROUP *);
-int ec_GFp_simple_group_set_curve(EC_GROUP *, const BIGNUM *p, const BIGNUM *a,
-                                  const BIGNUM *b, BN_CTX *);
 unsigned ec_GFp_simple_group_get_degree(const EC_GROUP *);
 int ec_GFp_simple_point_init(EC_POINT *);
 void ec_GFp_simple_point_finish(EC_POINT *);
@@ -194,11 +180,6 @@ int ec_GFp_simple_field_sqr(const EC_GROUP *, BIGNUM *r, const BIGNUM *a,
                             BN_CTX *);
 
 /* method functions in montgomery.c */
-int ec_GFp_mont_group_init(EC_GROUP *);
-int ec_GFp_mont_group_set_curve(EC_GROUP *, const BIGNUM *p, const BIGNUM *a,
-                                const BIGNUM *b, BN_CTX *);
-void ec_GFp_mont_group_finish(EC_GROUP *);
-void ec_GFp_mont_group_clear_finish(EC_GROUP *);
 int ec_GFp_mont_field_mul(const EC_GROUP *, BIGNUM *r, const BIGNUM *a,
                           const BIGNUM *b, BN_CTX *);
 int ec_GFp_mont_field_sqr(const EC_GROUP *, BIGNUM *r, const BIGNUM *a,
@@ -225,10 +206,10 @@ void ec_GFp_nistp_points_make_affine_internal(
 
 void ec_GFp_nistp_recode_scalar_bits(uint8_t *sign, uint8_t *digit, uint8_t in);
 
-const EC_METHOD *EC_GFp_nistp256_method(void);
+extern const EC_METHOD EC_GFp_nistp256_method;
 
 struct ec_key_st {
-  EC_GROUP *group;
+  const EC_GROUP *group;
 
   EC_POINT *pub_key;
   BIGNUM *priv_key;
@@ -236,20 +217,6 @@ struct ec_key_st {
   CRYPTO_refcount_t references;
 } /* EC_KEY */;
 
-/* curve_data contains data about a built-in elliptic curve. */
-struct curve_data {
-  int nid;
-  EC_GROUP *(*ec_group_new_curve)(const BIGNUM *p, const BIGNUM *a,
-                                  const BIGNUM *b, BN_CTX *ctx);
-  /* comment is a human-readable string describing the curve. */
-  const char *comment;
-  /* param_len is the number of bytes needed to store a field element. */
-  uint8_t param_len;
-  /* data points to an array of 6*|param_len| bytes which hold the field
-   * elements of the following (in big-endian order): prime, a, b, generator x,
-   * generator y, order. */
-  const uint8_t data[];
-};
 
 #if defined(__cplusplus)
 }  /* extern C */

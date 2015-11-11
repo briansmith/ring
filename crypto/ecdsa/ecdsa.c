@@ -63,15 +63,10 @@
 #include "../ec/internal.h"
 
 
-int ECDSA_verify_signed_digest(int hash_nid, const uint8_t *digest,
-                               size_t digest_len, const uint8_t *sig,
-                               size_t sig_len, EC_GROUP_new_fn ec_group_new,
+int ECDSA_verify_signed_digest(const EC_GROUP *group, int hash_nid,
+                               const uint8_t *digest, size_t digest_len,
+                               const uint8_t *sig, size_t sig_len,
                                const uint8_t *ec_key, const size_t ec_key_len) {
-  EC_GROUP *group = ec_group_new();
-  if (!group) {
-    return 0;
-  }
-
   int ret = 0;
   ECDSA_SIG *s = NULL;
 
@@ -91,7 +86,6 @@ int ECDSA_verify_signed_digest(int hash_nid, const uint8_t *digest,
 err:
   ECDSA_SIG_free(s);
   EC_POINT_free(point);
-  EC_GROUP_free(group);
 
   return ret;
 }

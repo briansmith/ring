@@ -1,0 +1,267 @@
+﻿// Copyright 2015 Brian Smith.
+//
+// Permission to use, copy, modify, and/or distribute this software for any
+// purpose with or without fee is hereby granted, provided that the above
+// copyright notice and this permission notice appear in all copies.
+//
+// THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHORS DISCLAIM ALL WARRANTIES
+// WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+// MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHORS BE LIABLE FOR ANY
+// SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+// WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION
+// OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
+// CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+
+use num;
+use num::integer::Integer as Integral;
+use num::traits::{FromPrimitive, Num, One, Signed, ToPrimitive, Zero};
+use std;
+use super::ecc_curves::*;
+
+pub fn generate_code(out_dir: &str) -> std::io::Result<()> {
+    generate_ec_groups(out_dir)
+}
+
+// The math
+
+type Integer = num::bigint::BigInt;
+
+fn mod_inv(a: &Integer, m: &Integer)
+           -> Result<Integer, ()> {
+    fn extended_gcd(aa: &Integer, bb: &Integer) -> (Integer, Integer, Integer) {
+        let mut last_rem = aa.abs();
+        let mut rem = bb.abs();
+        let mut x = Integer::zero();
+        let mut last_x = Integer::one();
+        let mut y = Integer::one();
+        let mut last_y = Integer::zero();
+        while !rem.is_zero() {
+            let (quotient, new_rem) = last_rem.div_rem(&rem);
+            last_rem = rem;
+            rem = new_rem;
+
+            let new_x = last_x - &quotient * &x;
+            last_x = x;
+            x = new_x;
+
+            let new_y = last_y - &quotient * &y;
+            last_y = y;
+            y = new_y;
+        }
+        println!("last_rem: {}, aa: {}, bb: {}, last_x: {}, last_y: {}",
+                 last_rem, aa, bb, last_x, last_y);
+        (last_rem,
+         if aa.is_negative() { -last_x } else { last_x },
+         if bb.is_negative() { -last_y } else { last_y })
+    }
+
+    let (g, x, _) = extended_gcd(a, m);
+    if g != Integer::one() {
+        return Err(());
+    }
+    println!("x: {}, x % m: {}", &x, &x % m);
+    Ok(x % m)
+}
+
+struct ModP {
+    rr: Integer,
+    r: Integer,
+    p: Integer,
+    k: u64,
+}
+
+#[cfg(target_pointer_width = "64")]
+const LIMB_BITS: usize = 64;
+
+#[cfg(target_pointer_width = "32")]
+const LIMB_BITS: usize = 32;
+
+impl ModP {
+    fn new(p_hex_str: &str) -> Result<ModP, ()> {
+        let p = integer_from_hex_str(p_hex_str);
+        let p_bits = (p.to_biguint().unwrap().bits() + LIMB_BITS - 1) /
+                     LIMB_BITS * LIMB_BITS;
+        let neg_p = -&p;
+
+        let r = (Integer::one() << p_bits) % &p;
+        let rr = (&r * &r) % &p;
+        let tmod = Integer::one() << 64;
+        let k = try!(mod_inv(&neg_p, &tmod));
+        let mut k = k % (Integer::one() << 64);
+        if k.is_negative() {
+            k = &k + (Integer::one() << 64);
+        }
+        let k = k.to_u64().unwrap();
+        Ok(ModP {
+            p: p.clone(),
+            r: r.clone(),
+            rr: rr.clone(),
+            k: k.clone(),
+        })
+    }
+
+    fn encode(&self, n: &Integer) -> Integer {
+        (n * &self.r) % &self.p
+    }
+}
+
+fn integer_from_hex_str(hex_str: &str) -> Integer {
+    Integer::from_str_radix(hex_str, 16).unwrap()
+}
+
+// Generation of the C code for |EC_GROUP|
+pub fn generate_ec_groups(out_dir: &str) -> std::io::Result<()> {
+    use std::io::Write;
+
+    let mut fragments = SUPPORTED_CURVES.into_iter()
+                                        .map(|x| ec_group(x))
+                                        .collect::<Vec<_>>();
+    fragments.insert(0, String::from(EC_GROUPS_BOILERPLATE));
+
+    // Ensure file ends with newline to avoid undefined behavior
+    let code = fragments.join("\n") + "\n";
+
+    let dest_path = std::path::Path::new(&out_dir).join("ec_curve_data.inl");
+    let mut f = try!(std::fs::File::create(&dest_path));
+    try!(f.write_all(code.as_bytes()));
+    Ok(())
+}
+
+fn ec_group(curve: &NISTCurve) -> String {
+    assert_eq!(curve.cofactor, 1);
+
+    let q = ModP::new(&curve.q).unwrap();
+
+    let n = integer_from_hex_str(&curve.n);
+
+    let one = Integer::one();
+    assert_eq!(curve.a, -3);
+    let a = &q.p + Integer::from_i8(curve.a).unwrap();
+    let b = integer_from_hex_str(&curve.b);
+
+    let (generator_x, generator_y) =
+        (integer_from_hex_str(&curve.generator.0),
+         integer_from_hex_str(&curve.generator.1));
+
+    let one_mont = q.encode(&one);
+    let a_mont = q.encode(&a);
+    let b_mont = q.encode(&b);
+    let generator_x_mont = q.encode(&generator_x);
+    let generator_y_mont = q.encode(&generator_y);
+
+    format!("
+        const EC_GROUP *{ec_group_fn_name}(void) {{
+          static const BN_ULONG field_limbs[] = {q};
+          static const BN_ULONG field_rr_limbs[] = {q_rr};
+          static const BN_ULONG order_limbs[] = {n};
+        #if defined({name}_NO_MONT)
+          static const BN_ULONG generator_x_limbs[] = {x};
+          static const BN_ULONG generator_y_limbs[] = {y};
+          static const BN_ULONG a_limbs[] = {a};
+          static const BN_ULONG b_limbs[] = {b};
+          static const BN_ULONG one_limbs[] = {one};
+        #else
+          static const BN_ULONG generator_x_limbs[] = {x_mont};
+          static const BN_ULONG generator_y_limbs[] = {y_mont};
+          static const BN_ULONG a_limbs[] = {a_mont};
+          static const BN_ULONG b_limbs[] = {b_mont};
+          static const BN_ULONG one_limbs[] = {one_mont};
+        #endif
+          static const EC_GROUP group = {{
+            FIELD(.meth =) &{name}_EC_METHOD,
+            FIELD(.generator =) {{
+              FIELD(.meth =) &{name}_EC_METHOD,
+              FIELD(.X =) STATIC_BIGNUM(generator_x_limbs),
+              FIELD(.Y =) STATIC_BIGNUM(generator_y_limbs),
+              FIELD(.Z =) STATIC_BIGNUM(one_limbs),
+              FIELD(.Z_is_one =) 1,
+            }},
+            FIELD(.order =) STATIC_BIGNUM(order_limbs),
+            FIELD(.curve_name =) {nid},
+            FIELD(.field =) STATIC_BIGNUM(field_limbs),
+            FIELD(.a =) STATIC_BIGNUM(a_limbs),
+            FIELD(.b =) STATIC_BIGNUM(b_limbs),
+            FIELD(.mont =) {{
+              FIELD(.RR =) STATIC_BIGNUM(field_rr_limbs),
+              FIELD(.N =) STATIC_BIGNUM(field_limbs),
+              FIELD(.n0 =) {{ BN_MONT_CTX_N0(0x{q_n1:x}, 0x{q_n0:x}) }},
+            }},
+            FIELD(.one =) STATIC_BIGNUM(one_limbs),
+          }};
+          return &group;
+        }}",
+        ec_group_fn_name = curve.name.replace("CURVE", "EC_GROUP"),
+        name = curve.name,
+        nid = curve.nid,
+        q = bn_limbs(&q.p),
+        n = bn_limbs(&n),
+
+        one = bn_limbs(&one),
+        x = bn_limbs(&generator_x),
+        y = bn_limbs(&generator_y),
+        a = bn_limbs(&a),
+        b = bn_limbs(&b),
+
+        q_rr = bn_limbs(&q.rr),
+        // TODO: endian issues?
+        q_n0 = (q.k % (1u64 << 32)) as usize,
+        q_n1 = (q.k / (1u64 << 32)) as usize,
+
+        one_mont = bn_limbs(&one_mont),
+        x_mont = bn_limbs(&generator_x_mont),
+        y_mont = bn_limbs(&generator_y_mont),
+        a_mont = bn_limbs(&a_mont),
+        b_mont = bn_limbs(&b_mont))
+        .replace("\n        ", "\n")
+}
+
+fn bn_limbs(value: &Integer) -> String {
+    const INDENT: &'static str = "            ";
+
+    let limbs =
+        value
+        .to_bytes_le()
+        .1
+        .chunks(4)
+        .map(|bytes| {
+            let mut place = 0;
+            let mut value = 0;
+            for b in bytes {
+                value |= (*b as u32) << place;
+                place += 8;
+            }
+            value
+        })
+        .collect::<Vec<_>>()
+        .chunks(2)
+        .map(|limbs_32x2| {
+            match limbs_32x2.len() {
+                2 => format!("{}TOBN(0x{:08x}, 0x{:08x}),\n", INDENT,
+                             limbs_32x2[1], limbs_32x2[0]),
+                1 => format!("{}0x{:08x},\n", INDENT,
+                             limbs_32x2[0]),
+                _ => unreachable!()
+            }
+        })
+        .collect::<String>();
+
+    format!("{{\n{}          }}", limbs)
+}
+
+const EC_GROUPS_BOILERPLATE: &'static str = r##"/* Copyright 2015 Brian Smith.
+ *
+ * Permission to use, copy, modify, and/or distribute this software for any
+ * purpose with or without fee is hereby granted, provided that the above
+ * copyright notice and this permission notice appear in all copies.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHORS DISCLAIM ALL WARRANTIES
+ * WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+ * MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHORS BE LIABLE FOR ANY
+ * SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+ * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION
+ * OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
+ * CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE. */
+
+/* This entire file was generated by ecc_build.rs from
+ * https://github.com/briansmith/ring. */
+"##;

@@ -75,13 +75,12 @@
 
 int example_EC_POINT_mul(void) {
   /* This example ensures that 10×∞ + G = G, in P-256. */
-  EC_GROUP *group = NULL;
   EC_POINT *p = NULL, *result = NULL;
   BIGNUM *n = NULL;
   int ret = 0;
   const EC_POINT *generator;
 
-  group = EC_GROUP_new_p256();
+  const EC_GROUP *group = EC_GROUP_P256();
   p = EC_POINT_new(group);
   result = EC_POINT_new(group);
   n = BN_new();
@@ -115,7 +114,6 @@ err:
   BN_free(n);
   EC_POINT_free(result);
   EC_POINT_free(p);
-  EC_GROUP_free(group);
 
   return ret;
 }

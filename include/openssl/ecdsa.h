@@ -74,12 +74,12 @@ extern "C" {
  * |hash_nid| must be the identifier of the digest function used to calculate
  * |digest|. It returns one on success or zero if the signature is invalid or
  * on error. */
-OPENSSL_EXPORT int ECDSA_verify_signed_digest(int hash_nid,
+OPENSSL_EXPORT int ECDSA_verify_signed_digest(const EC_GROUP *group,
+                                              int hash_nid,
                                               const uint8_t *digest,
                                               size_t digest_len,
                                               const uint8_t *sig,
                                               size_t sig_len,
-                                              EC_GROUP_new_fn ec_group_new,
                                               const uint8_t *ec_key,
                                               const size_t ec_key_len);
 

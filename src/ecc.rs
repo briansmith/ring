@@ -21,7 +21,7 @@ use std;
 ///
 /// C analog: `EC_GROUP`
 pub struct EllipticCurve {
-    ec_group_new: ECGroupNewFn,
+    ec_group_fn: unsafe extern fn () -> *const EC_GROUP,
     encoded_public_key_len: usize,
     nid: c::int,
 }
@@ -41,7 +41,7 @@ impl ECDHEphemeralKeyPair {
     pub fn generate(curve: &'static EllipticCurve)
                     -> Result<ECDHEphemeralKeyPair, ()> {
         let key = try!(ffi::map_bssl_ptr_result(unsafe {
-            EC_KEY_generate_key_ex(curve.ec_group_new)
+            EC_KEY_generate_key_ex((curve.ec_group_fn)())
         }));
         Ok(ECDHEphemeralKeyPair { key: key, curve: curve })
     }
@@ -135,16 +135,16 @@ pub fn ecdh_ephemeral<F, R, E>(my_key_pair: ECDHEphemeralKeyPair,
 /// [SEC 1: Elliptic Curve Cryptography, Version 2.0](http://www.secg.org/sec1-v2.pdf).
 /// It must in be in uncompressed form.
 ///
-/// C analogs: `ECDSA_verify_pkcs1_signed_digest` (*ring* only),
-///            `EC_POINT_oct2point` with `ECDSA_verify`.
+/// C analogs: `ECDSA_verify_signed_digest` (*ring* only),
+///            `EC_POINT_oct2point` + `ECDSA_verify`.
 pub fn verify_ecdsa_signed_digest_asn1(curve: &EllipticCurve,
                                        digest: &digest::Digest, sig: &[u8],
                                        key: &[u8]) -> Result<(),()> {
     ffi::map_bssl_result(unsafe {
-        ECDSA_verify_signed_digest(0, digest.as_ref().as_ptr(),
+        ECDSA_verify_signed_digest((curve.ec_group_fn)(), 0,
+                                   digest.as_ref().as_ptr(),
                                    digest.as_ref().len(), sig.as_ptr(),
-                                   sig.len(), curve.ec_group_new, key.as_ptr(),
-                                   key.len())
+                                   sig.len(), key.as_ptr(), key.len())
     })
 }
 
@@ -186,20 +186,20 @@ macro_rules! encoded_public_key_len {
 
 /// The NIST P-256 curve, a.k.a. secp256r1.
 ///
-/// C analogs: `EC_GROUP_new_p256` (*ring* only),
+/// C analogs: `EC_GROUP_P256` (*ring* only),
 /// `EC_GROUP_new_by_curve_name(NID_X9_62_prime256v1)`")
 pub static CURVE_P256: EllipticCurve = EllipticCurve {
-    ec_group_new: EC_GROUP_new_p256,
+    ec_group_fn: EC_GROUP_P256,
     encoded_public_key_len: encoded_public_key_len!(256),
     nid: 415, // NID_X9_62_prime256v1
 };
 
 /// The NIST P-384 curve, a.k.a. secp384r1.
 ///
-/// C analogs: `EC_GROUP_new_p384` (*ring* only),
+/// C analogs: `EC_GROUP_P384` (*ring* only),
 /// `EC_GROUP_new_by_curve_name(NID_secp384r1)`")
 pub static CURVE_P384: EllipticCurve = EllipticCurve {
-    ec_group_new: EC_GROUP_new_p384,
+    ec_group_fn: EC_GROUP_P384,
     encoded_public_key_len: encoded_public_key_len!(384),
     nid: 715, // NID_secp384r1
 };
@@ -209,14 +209,12 @@ pub static CURVE_P384: EllipticCurve = EllipticCurve {
 /// C analogs: `EC_GROUP_new_p521` (*ring* only),
 /// `EC_GROUP_new_by_curve_name(NID_secp521r1)`")
 pub static CURVE_P521: EllipticCurve = EllipticCurve {
-    ec_group_new: EC_GROUP_new_p521,
+    ec_group_fn: EC_GROUP_P521,
     encoded_public_key_len: encoded_public_key_len!(521),
     nid: 716, // NID_secp521r1
 };
 
 const MAX_COORDINATE_LEN: usize = (521 + 7) / 8;
-
-type ECGroupNewFn = unsafe extern fn() -> *mut EC_GROUP;
 
 #[allow(non_camel_case_types)]
 enum EC_GROUP { }
@@ -229,11 +227,11 @@ enum EC_KEY { }
 // when Rust 1.4 is released.
 #[allow(improper_ctypes)]
 extern {
-    fn EC_GROUP_new_p256() -> *mut EC_GROUP;
-    fn EC_GROUP_new_p384() -> *mut EC_GROUP;
-    fn EC_GROUP_new_p521() -> *mut EC_GROUP;
+    fn EC_GROUP_P256() -> *const EC_GROUP;
+    fn EC_GROUP_P384() -> *const EC_GROUP;
+    fn EC_GROUP_P521() -> *const EC_GROUP;
 
-    fn EC_KEY_generate_key_ex(ec_group_new: ECGroupNewFn) -> *mut EC_KEY;
+    fn EC_KEY_generate_key_ex(group: *const EC_GROUP) -> *mut EC_KEY;
     fn EC_KEY_public_key_to_oct(key: *const EC_KEY, out: *mut u8,
                                 out_len: c::size_t) -> c::size_t;
     fn EC_KEY_free(key: *mut EC_KEY);
@@ -245,10 +243,9 @@ extern {
                            peer_pub_point_bytes: *const u8,
                            peer_pub_point_bytes_len: c::size_t) -> c::int;
 
-    fn ECDSA_verify_signed_digest(hash_nid: c::int, digest: *const u8,
-                                  digest_len: c::size_t, sig_der: *const u8,
-                                  sig_der_len: c::size_t,
-                                  ec_group_new: ECGroupNewFn,
+    fn ECDSA_verify_signed_digest(group: *const EC_GROUP, hash_nid: c::int,
+                                  digest: *const u8, digest_len: c::size_t,
+                                  sig_der: *const u8, sig_der_len: c::size_t,
                                   key_octets: *const u8,
                                   key_octets_len: c::size_t) -> c::int;
 }

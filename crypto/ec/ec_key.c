@@ -79,7 +79,7 @@
 #include "../internal.h"
 
 
-EC_KEY *EC_KEY_new_ex(EC_GROUP_new_fn ec_group_new) {
+EC_KEY *EC_KEY_new_ex(const EC_GROUP *group) {
   EC_KEY *ret = (EC_KEY *)OPENSSL_malloc(sizeof(EC_KEY));
   if (ret == NULL) {
     OPENSSL_PUT_ERROR(EC, ERR_R_MALLOC_FAILURE);
@@ -88,12 +88,7 @@ EC_KEY *EC_KEY_new_ex(EC_GROUP_new_fn ec_group_new) {
 
   memset(ret, 0, sizeof(EC_KEY));
 
-  ret->group = ec_group_new();
-  if (ret->group == NULL) {
-    OPENSSL_free(ret);
-    return NULL;
-  }
-
+  ret->group = group;
   ret->references = 1;
 
   return ret;
@@ -108,7 +103,6 @@ void EC_KEY_free(EC_KEY *r) {
     return;
   }
 
-  EC_GROUP_free(r->group);
   EC_POINT_free(r->pub_key);
   BN_clear_free(r->priv_key);
 
@@ -201,8 +195,8 @@ err:
   return ok;
 }
 
-EC_KEY *EC_KEY_generate_key_ex(EC_GROUP_new_fn ec_group_new) {
-  EC_KEY *eckey = EC_KEY_new_ex(ec_group_new);
+EC_KEY *EC_KEY_generate_key_ex(const EC_GROUP *group) {
+  EC_KEY *eckey = EC_KEY_new_ex(group);
   if (!eckey) {
     return NULL;
   }

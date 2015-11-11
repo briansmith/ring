@@ -11,6 +11,10 @@ version = "0.1.0"
 [lib]
 name = "ring"
 
+[build-dependencies]
+num = "0.1.27"
+rustc-serialize = "0.3.15"
+
 [dev-dependencies]
 rustc-serialize = "0.3.15"
 time = "0.1.32"
