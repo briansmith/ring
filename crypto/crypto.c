@@ -14,6 +14,8 @@
 
 #include <openssl/crypto.h>
 
+#include <openssl/cpu.h>
+
 #include "internal.h"
 
 

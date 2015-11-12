@@ -73,10 +73,6 @@
 #include "../internal.h"
 
 
-extern const EVP_PKEY_ASN1_METHOD dsa_asn1_meth;
-extern const EVP_PKEY_ASN1_METHOD ec_asn1_meth;
-extern const EVP_PKEY_ASN1_METHOD rsa_asn1_meth;
-
 EVP_PKEY *EVP_PKEY_new(void) {
   EVP_PKEY *ret;
 

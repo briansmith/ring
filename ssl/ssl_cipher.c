@@ -155,7 +155,7 @@
 
 
 /* kCiphers is an array of all supported ciphers, sorted by id. */
-const SSL_CIPHER kCiphers[] = {
+static const SSL_CIPHER kCiphers[] = {
     /* The RSA ciphers */
     /* Cipher 02 */
     {

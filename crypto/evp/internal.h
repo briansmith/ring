@@ -263,6 +263,13 @@ struct evp_pkey_method_st {
   int (*ctrl)(EVP_PKEY_CTX *ctx, int type, int p1, void *p2);
 } /* EVP_PKEY_METHOD */;
 
+extern const EVP_PKEY_ASN1_METHOD dsa_asn1_meth;
+extern const EVP_PKEY_ASN1_METHOD ec_asn1_meth;
+extern const EVP_PKEY_ASN1_METHOD rsa_asn1_meth;
+
+extern const EVP_PKEY_METHOD rsa_pkey_meth;
+extern const EVP_PKEY_METHOD ec_pkey_meth;
+
 
 #if defined(__cplusplus)
 }  /* extern C */

@@ -120,7 +120,7 @@ ASN1_ITEM_TEMPLATE_END(X509_NAME_INTERNAL)
  * to the external form.
  */
 
-const ASN1_EXTERN_FUNCS x509_name_ff = {
+static const ASN1_EXTERN_FUNCS x509_name_ff = {
 	NULL,
 	x509_name_ex_new,
 	x509_name_ex_free,
