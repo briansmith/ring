@@ -386,8 +386,6 @@ void EC_GROUP_free(EC_GROUP *group) {
     group->meth->group_finish(group);
   }
 
-  ec_pre_comp_free(group->pre_comp);
-
   EC_POINT_free(group->generator);
   BN_free(&group->order);
 
@@ -416,21 +414,6 @@ int EC_GROUP_get_curve_name(const EC_GROUP *group) { return group->curve_name; }
 
 unsigned EC_GROUP_get_degree(const EC_GROUP *group) {
   return ec_GFp_simple_group_get_degree(group);
-}
-
-int EC_GROUP_precompute_mult(EC_GROUP *group, BN_CTX *ctx) {
-  if (group->meth->precompute_mult != NULL) {
-    return group->meth->precompute_mult(group, ctx);
-  }
-
-  return 1; /* nothing to do, so report success */
-}
-
-int EC_GROUP_have_precompute_mult(const EC_GROUP *group) {
-  if (group->pre_comp != NULL) {
-    return 1;
-  }
-  return 0;
 }
 
 EC_POINT *EC_POINT_new(const EC_GROUP *group) {

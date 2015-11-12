@@ -98,7 +98,6 @@ typedef struct ec_method_st {
   int (*mul)(const EC_GROUP *group, EC_POINT *r, const BIGNUM *scalar,
              size_t num, const EC_POINT *points[], const BIGNUM *scalars[],
              BN_CTX *);
-  int (*precompute_mult)(EC_GROUP *group, BN_CTX *);
 
   /* internal functions */
 
@@ -118,9 +117,6 @@ typedef struct ec_method_st {
 
 const EC_METHOD* EC_GFp_mont_method(void);
 
-struct ec_pre_comp_st;
-void ec_pre_comp_free(struct ec_pre_comp_st *pre_comp);
-
 struct ec_group_st {
   const EC_METHOD *meth;
 
@@ -128,8 +124,6 @@ struct ec_group_st {
   BIGNUM order;
 
   int curve_name; /* optional NID for named curve */
-
-  struct ec_pre_comp_st *pre_comp;
 
   /* The following members are handled by the method functions,
    * even if they appear generic */
@@ -160,7 +154,6 @@ EC_GROUP *ec_group_new(const EC_METHOD *meth);
 int ec_wNAF_mul(const EC_GROUP *group, EC_POINT *r, const BIGNUM *scalar,
                 size_t num, const EC_POINT *points[], const BIGNUM *scalars[],
                 BN_CTX *);
-int ec_wNAF_precompute_mult(EC_GROUP *group, BN_CTX *);
 
 /* method functions in simple.c */
 int ec_GFp_simple_group_init(EC_GROUP *);
