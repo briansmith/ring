@@ -286,10 +286,6 @@ void EC_KEY_set_conv_form(EC_KEY *key, point_conversion_form_t cform) {
   key->conv_form = cform;
 }
 
-int EC_KEY_precompute_mult(EC_KEY *key, BN_CTX *ctx) {
-  return 1;
-}
-
 int EC_KEY_check_key(const EC_KEY *eckey) {
   int ok = 0;
   BN_CTX *ctx = NULL;

@@ -269,9 +269,6 @@ struct ecdsa_method_st {
 
 /* Deprecated functions. */
 
-/* EC_KEY_precompute_mult does nothing and returns 1. */
-OPENSSL_EXPORT int EC_KEY_precompute_mult(EC_KEY *key, BN_CTX *ctx);
-
 /* EC_KEY_set_asn1_flag does nothing. */
 OPENSSL_EXPORT void EC_KEY_set_asn1_flag(EC_KEY *key, int flag);
 

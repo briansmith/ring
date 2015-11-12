@@ -641,14 +641,6 @@ unsigned EC_GROUP_get_degree(const EC_GROUP *group) {
   return ec_GFp_simple_group_get_degree(group);
 }
 
-int EC_GROUP_precompute_mult(EC_GROUP *group, BN_CTX *ctx) {
-  return 1;
-}
-
-int EC_GROUP_have_precompute_mult(const EC_GROUP *group) {
-  return 1;
-}
-
 EC_POINT *EC_POINT_new(const EC_GROUP *group) {
   EC_POINT *ret;
 
