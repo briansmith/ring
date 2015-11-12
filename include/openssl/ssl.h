@@ -877,15 +877,16 @@ OPENSSL_EXPORT int SSL_use_RSAPrivateKey(SSL *ssl, RSA *rsa);
  * input DER-encoded structures. They return one on success and zero on
  * failure. */
 
-OPENSSL_EXPORT int SSL_CTX_use_certificate_ASN1(SSL_CTX *ctx, int len,
-                                                const uint8_t *d);
+OPENSSL_EXPORT int SSL_CTX_use_certificate_ASN1(SSL_CTX *ctx, size_t der_len,
+                                                const uint8_t *der);
 OPENSSL_EXPORT int SSL_use_certificate_ASN1(SSL *ssl, const uint8_t *der,
-                                            int len);
+                                            size_t der_len);
 
 OPENSSL_EXPORT int SSL_CTX_use_PrivateKey_ASN1(int pk, SSL_CTX *ctx,
-                                               const uint8_t *d, long len);
+                                               const uint8_t *der,
+                                               size_t der_len);
 OPENSSL_EXPORT int SSL_use_PrivateKey_ASN1(int type, SSL *ssl,
-                                           const uint8_t *d, long len);
+                                           const uint8_t *der, size_t der_len);
 
 OPENSSL_EXPORT int SSL_CTX_use_RSAPrivateKey_ASN1(SSL_CTX *ctx,
                                                   const uint8_t *der,
