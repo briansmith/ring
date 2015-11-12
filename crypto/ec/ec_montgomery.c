@@ -82,7 +82,6 @@ const EC_METHOD *EC_GFp_mont_method(void) {
                                 ec_GFp_mont_group_set_curve,
                                 ec_GFp_simple_point_get_affine_coordinates,
                                 ec_wNAF_mul /* XXX: Not constant time. */,
-                                ec_wNAF_precompute_mult,
                                 ec_GFp_mont_field_mul,
                                 ec_GFp_mont_field_sqr,
                                 ec_GFp_mont_field_encode,

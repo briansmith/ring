@@ -154,12 +154,6 @@ OPENSSL_EXPORT point_conversion_form_t EC_KEY_get_conv_form(const EC_KEY *key);
 OPENSSL_EXPORT void EC_KEY_set_conv_form(EC_KEY *key,
                                          point_conversion_form_t cform);
 
-/* EC_KEY_precompute_mult precomputes multiplies of the generator of the
- * underlying group in order to speed up operations that calculate generator
- * multiples. If |ctx| is not NULL, it may be used. It returns one on success
- * and zero otherwise. */
-OPENSSL_EXPORT int EC_KEY_precompute_mult(EC_KEY *key, BN_CTX *ctx);
-
 /* EC_KEY_check_key performs several checks on |key| (possibly including an
  * expensive check that the public key is in the primary subgroup). It returns
  * one if all checks pass and zero otherwise. If it returns zero then detail
@@ -274,6 +268,9 @@ struct ecdsa_method_st {
 
 
 /* Deprecated functions. */
+
+/* EC_KEY_precompute_mult does nothing and returns 1. */
+OPENSSL_EXPORT int EC_KEY_precompute_mult(EC_KEY *key, BN_CTX *ctx);
 
 /* EC_KEY_set_asn1_flag does nothing. */
 OPENSSL_EXPORT void EC_KEY_set_asn1_flag(EC_KEY *key, int flag);

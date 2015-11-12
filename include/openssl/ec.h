@@ -146,15 +146,6 @@ OPENSSL_EXPORT int EC_GROUP_get_curve_name(const EC_GROUP *group);
  * element of the field underlying |group|. */
 OPENSSL_EXPORT unsigned EC_GROUP_get_degree(const EC_GROUP *group);
 
-/* EC_GROUP_precompute_mult precomputes multiplies of the generator in order to
- * speed up operations that involve calculating generator multiples. It returns
- * one on sucess and zero otherwise. If |ctx| is not NULL, it may be used. */
-OPENSSL_EXPORT int EC_GROUP_precompute_mult(EC_GROUP *group, BN_CTX *ctx);
-
-/* EC_GROUP_have_precompute_mult returns one if |group| contains precomputed
- * generator multiples. */
-OPENSSL_EXPORT int EC_GROUP_have_precompute_mult(const EC_GROUP *group);
-
 
 /* Points on elliptic curves. */
 
@@ -298,6 +289,12 @@ OPENSSL_EXPORT int EC_POINTs_mul(const EC_GROUP *group, EC_POINT *r,
 OPENSSL_EXPORT EC_GROUP *EC_GROUP_new_curve_GFp(const BIGNUM *p,
                                                 const BIGNUM *a,
                                                 const BIGNUM *b, BN_CTX *ctx);
+
+/* EC_GROUP_precompute_mult does nothing and returns one. */
+OPENSSL_EXPORT int EC_GROUP_precompute_mult(EC_GROUP *group, BN_CTX *ctx);
+
+/* EC_GROUP_have_precompute_mult does nothing and returns one. */
+OPENSSL_EXPORT int EC_GROUP_have_precompute_mult(const EC_GROUP *group);
 
 /* EC_GROUP_set_generator sets the generator for |group| to |generator|, which
  * must have the given order and cofactor. This should only be used with

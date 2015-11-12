@@ -287,10 +287,7 @@ void EC_KEY_set_conv_form(EC_KEY *key, point_conversion_form_t cform) {
 }
 
 int EC_KEY_precompute_mult(EC_KEY *key, BN_CTX *ctx) {
-  if (key->group == NULL) {
-    return 0;
-  }
-  return EC_GROUP_precompute_mult(key->group, ctx);
+  return 1;
 }
 
 int EC_KEY_check_key(const EC_KEY *eckey) {
