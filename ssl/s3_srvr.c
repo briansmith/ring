@@ -1229,6 +1229,8 @@ int ssl3_send_server_key_exchange(SSL *s) {
     return ssl_do_write(s);
   }
 
+  EVP_MD_CTX_init(&md_ctx);
+
   if (ssl_cipher_has_server_public_key(s->s3->tmp.new_cipher)) {
     if (!ssl_has_private_key(s)) {
       al = SSL_AD_INTERNAL_ERROR;
@@ -1239,7 +1241,6 @@ int ssl3_send_server_key_exchange(SSL *s) {
     max_sig_len = 0;
   }
 
-  EVP_MD_CTX_init(&md_ctx);
   enum ssl_private_key_result_t sign_result;
   if (s->state == SSL3_ST_SW_KEY_EXCH_A) {
     alg_k = s->s3->tmp.new_cipher->algorithm_mkey;
