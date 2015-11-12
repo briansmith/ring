@@ -133,7 +133,6 @@ BN_MONT_CTX *BN_MONT_CTX_new(void) {
   memset(ret, 0, sizeof(BN_MONT_CTX));
   BN_init(&ret->RR);
   BN_init(&ret->N);
-  BN_init(&ret->Ni);
 
   return ret;
 }
@@ -145,7 +144,6 @@ void BN_MONT_CTX_free(BN_MONT_CTX *mont) {
 
   BN_free(&mont->RR);
   BN_free(&mont->N);
-  BN_free(&mont->Ni);
   OPENSSL_free(mont);
 }
 
