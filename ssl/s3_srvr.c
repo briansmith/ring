@@ -2193,8 +2193,9 @@ int ssl3_get_client_certificate(SSL *s) {
     }
     is_first_certificate = 0;
 
+    /* A u24 length cannot overflow a long. */
     data = CBS_data(&certificate);
-    x = d2i_X509(NULL, &data, CBS_len(&certificate));
+    x = d2i_X509(NULL, &data, (long)CBS_len(&certificate));
     if (x == NULL) {
       al = SSL_AD_BAD_CERTIFICATE;
       OPENSSL_PUT_ERROR(SSL, ERR_R_ASN1_LIB);

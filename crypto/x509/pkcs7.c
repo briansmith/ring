@@ -15,6 +15,7 @@
 #include <openssl/x509.h>
 
 #include <assert.h>
+#include <limits.h>
 
 #include <openssl/bytestring.h>
 #include <openssl/err.h>
@@ -114,8 +115,11 @@ int PKCS7_get_certificates(STACK_OF(X509) *out_certs, CBS *cbs) {
       goto err;
     }
 
+    if (CBS_len(&cert) > LONG_MAX) {
+      goto err;
+    }
     inp = CBS_data(&cert);
-    x509 = d2i_X509(NULL, &inp, CBS_len(&cert));
+    x509 = d2i_X509(NULL, &inp, (long)CBS_len(&cert));
     if (!x509) {
       goto err;
     }
@@ -181,8 +185,11 @@ int PKCS7_get_CRLs(STACK_OF(X509_CRL) *out_crls, CBS *cbs) {
       goto err;
     }
 
+    if (CBS_len(&crl_data) > LONG_MAX) {
+      goto err;
+    }
     inp = CBS_data(&crl_data);
-    crl = d2i_X509_CRL(NULL, &inp, CBS_len(&crl_data));
+    crl = d2i_X509_CRL(NULL, &inp, (long)CBS_len(&crl_data));
     if (!crl) {
       goto err;
     }

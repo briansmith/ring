@@ -1003,8 +1003,9 @@ int ssl3_get_server_certificate(SSL *s) {
       OPENSSL_PUT_ERROR(SSL, SSL_R_CERT_LENGTH_MISMATCH);
       goto f_err;
     }
+    /* A u24 length cannot overflow a long. */
     data = CBS_data(&certificate);
-    x = d2i_X509(NULL, &data, CBS_len(&certificate));
+    x = d2i_X509(NULL, &data, (long)CBS_len(&certificate));
     if (x == NULL) {
       al = SSL_AD_BAD_CERTIFICATE;
       OPENSSL_PUT_ERROR(SSL, ERR_R_ASN1_LIB);
@@ -1410,7 +1411,8 @@ int ssl3_get_certificate_request(SSL *s) {
 
     data = CBS_data(&distinguished_name);
 
-    xn = d2i_X509_NAME(NULL, &data, CBS_len(&distinguished_name));
+    /* A u16 length cannot overflow a long. */
+    xn = d2i_X509_NAME(NULL, &data, (long)CBS_len(&distinguished_name));
     if (xn == NULL) {
       ssl3_send_alert(s, SSL3_AL_FATAL, SSL_AD_DECODE_ERROR);
       OPENSSL_PUT_ERROR(SSL, ERR_R_ASN1_LIB);

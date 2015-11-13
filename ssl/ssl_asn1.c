@@ -492,8 +492,12 @@ static int SSL_SESSION_parse_u32(CBS *cbs, uint32_t *out, unsigned tag,
 }
 
 static X509 *parse_x509(CBS *cbs) {
+  if (CBS_len(cbs) > LONG_MAX) {
+    OPENSSL_PUT_ERROR(SSL, SSL_R_INVALID_SSL_SESSION);
+    return NULL;
+  }
   const uint8_t *ptr = CBS_data(cbs);
-  X509 *ret = d2i_X509(NULL, &ptr, CBS_len(cbs));
+  X509 *ret = d2i_X509(NULL, &ptr, (long)CBS_len(cbs));
   if (ret == NULL) {
     return NULL;
   }

@@ -773,13 +773,14 @@ static int PKCS12_handle_content_info(CBS *content_info, unsigned depth,
       goto err;
     }
 
-    if (OBJ_cbs2nid(&contents_type) != NID_pkcs7_data) {
+    if (OBJ_cbs2nid(&contents_type) != NID_pkcs7_data ||
+        CBS_len(&ai) > LONG_MAX) {
       OPENSSL_PUT_ERROR(PKCS8, PKCS8_R_BAD_PKCS12_DATA);
       goto err;
     }
 
     inp = CBS_data(&ai);
-    algor = d2i_X509_ALGOR(NULL, &inp, CBS_len(&ai));
+    algor = d2i_X509_ALGOR(NULL, &inp, (long)CBS_len(&ai));
     if (algor == NULL) {
       goto err;
     }
@@ -822,9 +823,14 @@ static int PKCS12_handle_content_info(CBS *content_info, unsigned depth,
       goto err;
     }
 
+    if (CBS_len(&wrapped_contents) > LONG_MAX) {
+      OPENSSL_PUT_ERROR(PKCS8, PKCS8_R_BAD_PKCS12_DATA);
+      goto err;
+    }
+
     /* encrypted isn't actually an X.509 signature, but it has the same
      * structure as one and so |X509_SIG| is reused to store it. */
-    encrypted = d2i_X509_SIG(NULL, &inp, CBS_len(&wrapped_contents));
+    encrypted = d2i_X509_SIG(NULL, &inp, (long)CBS_len(&wrapped_contents));
     if (encrypted == NULL) {
       OPENSSL_PUT_ERROR(PKCS8, PKCS8_R_BAD_PKCS12_DATA);
       goto err;
@@ -861,8 +867,12 @@ static int PKCS12_handle_content_info(CBS *content_info, unsigned depth,
     }
 
     if (OBJ_cbs2nid(&cert_type) == NID_x509Certificate) {
+      if (CBS_len(&cert) > LONG_MAX) {
+        OPENSSL_PUT_ERROR(PKCS8, PKCS8_R_BAD_PKCS12_DATA);
+        goto err;
+      }
       const uint8_t *inp = CBS_data(&cert);
-      X509 *x509 = d2i_X509(NULL, &inp, CBS_len(&cert));
+      X509 *x509 = d2i_X509(NULL, &inp, (long)CBS_len(&cert));
       if (!x509) {
         OPENSSL_PUT_ERROR(PKCS8, PKCS8_R_BAD_PKCS12_DATA);
         goto err;
