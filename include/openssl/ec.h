@@ -269,13 +269,6 @@ OPENSSL_EXPORT int EC_POINT_mul(const EC_GROUP *group, EC_POINT *r,
                                 const BIGNUM *n, const EC_POINT *q,
                                 const BIGNUM *m, BN_CTX *ctx);
 
-/* EC_POINTs_mul sets r = generator*n + sum(p[i]*m[i]). It returns one on
- * success and zero otherwise. If |ctx| is not NULL, it may be used. */
-OPENSSL_EXPORT int EC_POINTs_mul(const EC_GROUP *group, EC_POINT *r,
-                                 const BIGNUM *n, size_t num,
-                                 const EC_POINT *p[], const BIGNUM *m[],
-                                 BN_CTX *ctx);
-
 
 /* Deprecated functions. */
 

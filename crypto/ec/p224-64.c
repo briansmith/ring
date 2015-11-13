@@ -1121,12 +1121,16 @@ static void make_points_affine(size_t num, felem points[/*num*/][3],
       (void (*)(void *, const void *))felem_contract);
 }
 
-/* Computes scalar*generator + \sum scalars[i]*points[i], ignoring NULL values
- * Result is stored in r (r can equal one of the inputs). */
 int ec_GFp_nistp224_points_mul(const EC_GROUP *group, EC_POINT *r,
-                               const BIGNUM *scalar, size_t num,
-                               const EC_POINT *points[],
-                               const BIGNUM *scalars[], BN_CTX *ctx) {
+                               const BIGNUM *g_scalar, const EC_POINT *p_,
+                               const BIGNUM *p_scalar_, BN_CTX *ctx) {
+  /* TODO: This function used to take |points| and |scalars| as arrays of
+   * |num| elements. The code below should be simplified to work in terms of
+   * |p_| and |p_scalar_|. */
+  size_t num = p_ != NULL ? 1 : 0;
+  const EC_POINT **points = p_ != NULL ? &p_ : NULL;
+  BIGNUM const *const *scalars = p_ != NULL ? &p_scalar_ : NULL;
+
   int ret = 0;
   int j;
   unsigned i;
@@ -1186,7 +1190,7 @@ int ec_GFp_nistp224_points_mul(const EC_GROUP *group, EC_POINT *r,
       if (i == num) {
         /* the generator */
         p = EC_GROUP_get0_generator(group);
-        p_scalar = scalar;
+        p_scalar = g_scalar;
       } else {
         /* the i^th point */
         p = points[i];
@@ -1194,7 +1198,7 @@ int ec_GFp_nistp224_points_mul(const EC_GROUP *group, EC_POINT *r,
       }
 
       if (p_scalar != NULL && p != NULL) {
-        /* reduce scalar to 0 <= scalar < 2^224 */
+        /* reduce g_scalar to 0 <= g_scalar < 2^224 */
         if (BN_num_bits(p_scalar) > 224 || BN_is_negative(p_scalar)) {
           /* this is an unusual input, and we don't guarantee
            * constant-timeness */
@@ -1239,25 +1243,24 @@ int ec_GFp_nistp224_points_mul(const EC_GROUP *group, EC_POINT *r,
     }
   }
 
-  /* the scalar for the generator */
-  if (scalar != NULL) {
+  if (g_scalar != NULL) {
     memset(g_secret, 0, sizeof(g_secret));
-    /* reduce scalar to 0 <= scalar < 2^224 */
-    if (BN_num_bits(scalar) > 224 || BN_is_negative(scalar)) {
+    /* reduce g_scalar to 0 <= g_scalar < 2^224 */
+    if (BN_num_bits(g_scalar) > 224 || BN_is_negative(g_scalar)) {
       /* this is an unusual input, and we don't guarantee constant-timeness */
-      if (!BN_nnmod(tmp_scalar, scalar, &group->order, ctx)) {
+      if (!BN_nnmod(tmp_scalar, g_scalar, &group->order, ctx)) {
         OPENSSL_PUT_ERROR(EC, ERR_R_BN_LIB);
         goto err;
       }
       num_bytes = BN_bn2bin(tmp_scalar, tmp);
     } else {
-      num_bytes = BN_bn2bin(scalar, tmp);
+      num_bytes = BN_bn2bin(g_scalar, tmp);
     }
 
     flip_endian(g_secret, tmp, num_bytes);
   }
   batch_mul(x_out, y_out, z_out, (const felem_bytearray(*))secrets,
-            num_points, scalar != NULL ? g_secret : NULL, mixed,
+            num_points, g_scalar != NULL ? g_secret : NULL, mixed,
             (const felem(*)[17][3])pre_comp);
 
   /* reduce the output to its unique minimal representation */

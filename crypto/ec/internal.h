@@ -95,12 +95,13 @@ struct ec_method_st {
   int (*point_get_affine_coordinates)(const EC_GROUP *, const EC_POINT *,
                                       BIGNUM *x, BIGNUM *y, BN_CTX *);
 
-  /* used by EC_POINTs_mul, EC_POINT_mul, EC_POINT_precompute_mult,
-   * EC_POINT_have_precompute_mult
-   * (default implementations are used if the 'mul' pointer is 0): */
-  int (*mul)(const EC_GROUP *group, EC_POINT *r, const BIGNUM *scalar,
-             size_t num, const EC_POINT *points[], const BIGNUM *scalars[],
-             BN_CTX *);
+  /* Computes |r = g_scalar*generator + p_scalar*p| if |g_scalar| and |p_scalar|
+   * are both non-null. Computes |r = g_scalar*generator| if |p_scalar| is null.
+   * Computes |r = p_scalar*p| if g_scalar is null. At least one of |g_scalar|
+   * and |p_scalar| must be non-null, and |p| must be non-null if |p_scalar| is
+   * non-null. */
+  int (*mul)(const EC_GROUP *group, EC_POINT *r, const BIGNUM *g_scalar,
+             const EC_POINT *p, const BIGNUM *p_scalar, BN_CTX *ctx);
 
   /* internal functions */
 
@@ -164,9 +165,8 @@ int ec_group_copy(EC_GROUP *dest, const EC_GROUP *src);
  * a built-in group. */
 const BN_MONT_CTX *ec_group_get_mont_data(const EC_GROUP *group);
 
-int ec_wNAF_mul(const EC_GROUP *group, EC_POINT *r, const BIGNUM *scalar,
-                size_t num, const EC_POINT *points[], const BIGNUM *scalars[],
-                BN_CTX *);
+int ec_wNAF_mul(const EC_GROUP *group, EC_POINT *r, const BIGNUM *g_scalar,
+                const EC_POINT *p, const BIGNUM *p_scalar, BN_CTX *ctx);
 
 /* method functions in simple.c */
 int ec_GFp_simple_group_init(EC_GROUP *);

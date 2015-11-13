@@ -22,6 +22,7 @@
 
 #include <openssl/ec.h>
 
+#include <assert.h>
 #include <stdint.h>
 #include <string.h>
 
@@ -44,11 +45,11 @@
 #endif
 
 #if defined(__GNUC__)
-#define ALIGN32 __attribute((aligned(32)))
+#define ALIGN(x) __attribute((aligned(x)))
 #elif defined(_MSC_VER)
-#define ALIGN32 __declspec(align(32))
+#define ALIGN(x) __declspec(align(x))
 #else
-#define ALIGN32
+#define ALIGN(x)
 #endif
 
 #define ALIGNPTR(p, N) ((uint8_t *)p + N - (size_t)p % N)
@@ -254,130 +255,117 @@ static int ecp_nistz256_bignum_to_field_elem(BN_ULONG out[P256_LIMBS],
   return 1;
 }
 
-/* r = sum(scalar[i]*point[i]) */
+/* r = p * p_scalar */
 static int ecp_nistz256_windowed_mul(const EC_GROUP *group, P256_POINT *r,
-                                     const BIGNUM **scalar,
-                                     const EC_POINT **point, int num,
+                                     const EC_POINT *p, const BIGNUM *p_scalar,
                                      BN_CTX *ctx) {
+  assert(p != NULL);
+  assert(p_scalar != NULL);
+
   static const unsigned kWindowSize = 5;
   static const unsigned kMask = (1 << (5 /* kWindowSize */ + 1)) - 1;
 
-  void *table_storage = OPENSSL_malloc(num * 16 * sizeof(P256_POINT) + 64);
-  uint8_t(*p_str)[33] = OPENSSL_malloc(num * 33 * sizeof(uint8_t));
-  const BIGNUM **scalars = OPENSSL_malloc(num * sizeof(BIGNUM *));
+  /* A |P256_POINT| is (3 * 32) = 96 bytes, and the 64-byte alignment should
+   * add no more than 63 bytes of overhead. Thus, |table| should require
+   * ~1599 ((96 * 16) + 63) bytes of stack space. */
+  ALIGN(64) P256_POINT table[16];
+  uint8_t p_str[33];
+
 
   int ret = 0;
   BN_CTX *new_ctx = NULL;
   int ctx_started = 0;
 
-  if (table_storage == NULL ||
-      p_str == NULL ||
-      scalars == NULL) {
-    OPENSSL_PUT_ERROR(EC, ERR_R_MALLOC_FAILURE);
-    goto err;
-  }
-
-  P256_POINT(*table)[16] = (void *)ALIGNPTR(table_storage, 64);
-
-  int i;
-  for (i = 0; i < num; i++) {
-    P256_POINT *row = table[i];
-
-    if (BN_num_bits(scalar[i]) > 256 || BN_is_negative(scalar[i])) {
-      if (!ctx_started) {
-        if (ctx == NULL) {
-          new_ctx = BN_CTX_new();
-          if (new_ctx == NULL) {
-            OPENSSL_PUT_ERROR(EC, ERR_R_MALLOC_FAILURE);
-            goto err;
-          }
-          ctx = new_ctx;
-        }
-        BN_CTX_start(ctx);
-        ctx_started = 1;
-      }
-      BIGNUM *mod = BN_CTX_get(ctx);
-      if (mod == NULL) {
+  if (BN_num_bits(p_scalar) > 256 || BN_is_negative(p_scalar)) {
+    if (ctx == NULL) {
+      new_ctx = BN_CTX_new();
+      if (new_ctx == NULL) {
         OPENSSL_PUT_ERROR(EC, ERR_R_MALLOC_FAILURE);
         goto err;
       }
-
-      if (!BN_nnmod(mod, scalar[i], &group->order, ctx)) {
-        OPENSSL_PUT_ERROR(EC, ERR_R_BN_LIB);
-        goto err;
-      }
-      scalars[i] = mod;
-    } else {
-      scalars[i] = scalar[i];
+      ctx = new_ctx;
     }
-
-    int j;
-    for (j = 0; j < scalars[i]->top * BN_BYTES; j += BN_BYTES) {
-      BN_ULONG d = scalars[i]->d[j / BN_BYTES];
-
-      p_str[i][j + 0] = d & 0xff;
-      p_str[i][j + 1] = (d >> 8) & 0xff;
-      p_str[i][j + 2] = (d >> 16) & 0xff;
-      p_str[i][j + 3] = (d >>= 24) & 0xff;
-      if (BN_BYTES == 8) {
-        d >>= 8;
-        p_str[i][j + 4] = d & 0xff;
-        p_str[i][j + 5] = (d >> 8) & 0xff;
-        p_str[i][j + 6] = (d >> 16) & 0xff;
-        p_str[i][j + 7] = (d >> 24) & 0xff;
-      }
-    }
-
-    for (; j < 33; j++) {
-      p_str[i][j] = 0;
-    }
-
-    /* table[0] is implicitly (0,0,0) (the point at infinity), therefore it is
-     * not stored. All other values are actually stored with an offset of -1 in
-     * table. */
-
-    if (!ecp_nistz256_bignum_to_field_elem(row[1 - 1].X, &point[i]->X) ||
-        !ecp_nistz256_bignum_to_field_elem(row[1 - 1].Y, &point[i]->Y) ||
-        !ecp_nistz256_bignum_to_field_elem(row[1 - 1].Z, &point[i]->Z)) {
-      OPENSSL_PUT_ERROR(EC, EC_R_COORDINATES_OUT_OF_RANGE);
+    BN_CTX_start(ctx);
+    ctx_started = 1;
+    BIGNUM *mod = BN_CTX_get(ctx);
+    if (mod == NULL) {
+      OPENSSL_PUT_ERROR(EC, ERR_R_MALLOC_FAILURE);
       goto err;
     }
-
-    ecp_nistz256_point_double(&row[2 - 1], &row[1 - 1]);
-    ecp_nistz256_point_add(&row[3 - 1], &row[2 - 1], &row[1 - 1]);
-    ecp_nistz256_point_double(&row[4 - 1], &row[2 - 1]);
-    ecp_nistz256_point_double(&row[6 - 1], &row[3 - 1]);
-    ecp_nistz256_point_double(&row[8 - 1], &row[4 - 1]);
-    ecp_nistz256_point_double(&row[12 - 1], &row[6 - 1]);
-    ecp_nistz256_point_add(&row[5 - 1], &row[4 - 1], &row[1 - 1]);
-    ecp_nistz256_point_add(&row[7 - 1], &row[6 - 1], &row[1 - 1]);
-    ecp_nistz256_point_add(&row[9 - 1], &row[8 - 1], &row[1 - 1]);
-    ecp_nistz256_point_add(&row[13 - 1], &row[12 - 1], &row[1 - 1]);
-    ecp_nistz256_point_double(&row[14 - 1], &row[7 - 1]);
-    ecp_nistz256_point_double(&row[10 - 1], &row[5 - 1]);
-    ecp_nistz256_point_add(&row[15 - 1], &row[14 - 1], &row[1 - 1]);
-    ecp_nistz256_point_add(&row[11 - 1], &row[10 - 1], &row[1 - 1]);
-    ecp_nistz256_point_add(&row[16 - 1], &row[15 - 1], &row[1 - 1]);
+    if (!BN_nnmod(mod, p_scalar, &group->order, ctx)) {
+      OPENSSL_PUT_ERROR(EC, ERR_R_BN_LIB);
+      goto err;
+    }
+    p_scalar = mod;
   }
 
+  int j;
+  for (j = 0; j < p_scalar->top * BN_BYTES; j += BN_BYTES) {
+    BN_ULONG d = p_scalar->d[j / BN_BYTES];
+
+    p_str[j + 0] = d & 0xff;
+    p_str[j + 1] = (d >> 8) & 0xff;
+    p_str[j + 2] = (d >> 16) & 0xff;
+    p_str[j + 3] = (d >>= 24) & 0xff;
+    if (BN_BYTES == 8) {
+      d >>= 8;
+      p_str[j + 4] = d & 0xff;
+      p_str[j + 5] = (d >> 8) & 0xff;
+      p_str[j + 6] = (d >> 16) & 0xff;
+      p_str[j + 7] = (d >> 24) & 0xff;
+    }
+  }
+
+  for (; j < 33; j++) {
+    p_str[j] = 0;
+  }
+
+  /* table[0] is implicitly (0,0,0) (the point at infinity), therefore it is
+   * not stored. All other values are actually stored with an offset of -1 in
+   * table. */
+  P256_POINT *row = table;
+
+  if (!ecp_nistz256_bignum_to_field_elem(row[1 - 1].X, &p->X) ||
+      !ecp_nistz256_bignum_to_field_elem(row[1 - 1].Y, &p->Y) ||
+      !ecp_nistz256_bignum_to_field_elem(row[1 - 1].Z, &p->Z)) {
+    OPENSSL_PUT_ERROR(EC, EC_R_COORDINATES_OUT_OF_RANGE);
+    goto err;
+  }
+
+  ecp_nistz256_point_double(&row[2 - 1], &row[1 - 1]);
+  ecp_nistz256_point_add(&row[3 - 1], &row[2 - 1], &row[1 - 1]);
+  ecp_nistz256_point_double(&row[4 - 1], &row[2 - 1]);
+  ecp_nistz256_point_double(&row[6 - 1], &row[3 - 1]);
+  ecp_nistz256_point_double(&row[8 - 1], &row[4 - 1]);
+  ecp_nistz256_point_double(&row[12 - 1], &row[6 - 1]);
+  ecp_nistz256_point_add(&row[5 - 1], &row[4 - 1], &row[1 - 1]);
+  ecp_nistz256_point_add(&row[7 - 1], &row[6 - 1], &row[1 - 1]);
+  ecp_nistz256_point_add(&row[9 - 1], &row[8 - 1], &row[1 - 1]);
+  ecp_nistz256_point_add(&row[13 - 1], &row[12 - 1], &row[1 - 1]);
+  ecp_nistz256_point_double(&row[14 - 1], &row[7 - 1]);
+  ecp_nistz256_point_double(&row[10 - 1], &row[5 - 1]);
+  ecp_nistz256_point_add(&row[15 - 1], &row[14 - 1], &row[1 - 1]);
+  ecp_nistz256_point_add(&row[11 - 1], &row[10 - 1], &row[1 - 1]);
+  ecp_nistz256_point_add(&row[16 - 1], &row[15 - 1], &row[1 - 1]);
+
   BN_ULONG tmp[P256_LIMBS];
-  ALIGN32 P256_POINT h;
+  ALIGN(32) P256_POINT h;
   unsigned index = 255;
-  unsigned wvalue = p_str[0][(index - 1) / 8];
+  unsigned wvalue = p_str[(index - 1) / 8];
   wvalue = (wvalue >> ((index - 1) % 8)) & kMask;
 
-  ecp_nistz256_select_w5(r, table[0], booth_recode_w5(wvalue) >> 1);
+  ecp_nistz256_select_w5(r, table, booth_recode_w5(wvalue) >> 1);
 
   while (index >= 5) {
-    for (i = (index == 255 ? 1 : 0); i < num; i++) {
+    if (index != 255) {
       unsigned off = (index - 1) / 8;
 
-      wvalue = p_str[i][off] | p_str[i][off + 1] << 8;
+      wvalue = p_str[off] | p_str[off + 1] << 8;
       wvalue = (wvalue >> ((index - 1) % 8)) & kMask;
 
       wvalue = booth_recode_w5(wvalue);
 
-      ecp_nistz256_select_w5(&h, table[i], wvalue >> 1);
+      ecp_nistz256_select_w5(&h, table, wvalue >> 1);
 
       ecp_nistz256_neg(tmp, h.Y);
       copy_conditional(h.Y, tmp, (wvalue & 1));
@@ -395,26 +383,21 @@ static int ecp_nistz256_windowed_mul(const EC_GROUP *group, P256_POINT *r,
   }
 
   /* Final window */
-  for (i = 0; i < num; i++) {
-    wvalue = p_str[i][0];
-    wvalue = (wvalue << 1) & kMask;
+  wvalue = p_str[0];
+  wvalue = (wvalue << 1) & kMask;
 
-    wvalue = booth_recode_w5(wvalue);
+  wvalue = booth_recode_w5(wvalue);
 
-    ecp_nistz256_select_w5(&h, table[i], wvalue >> 1);
+  ecp_nistz256_select_w5(&h, table, wvalue >> 1);
 
-    ecp_nistz256_neg(tmp, h.Y);
-    copy_conditional(h.Y, tmp, wvalue & 1);
+  ecp_nistz256_neg(tmp, h.Y);
+  copy_conditional(h.Y, tmp, wvalue & 1);
 
-    ecp_nistz256_point_add(r, r, &h);
-  }
+  ecp_nistz256_point_add(r, r, &h);
 
   ret = 1;
 
 err:
-  OPENSSL_free(table_storage);
-  OPENSSL_free(p_str);
-  OPENSSL_free((BIGNUM**) scalars);
   if (ctx_started) {
     BN_CTX_end(ctx);
   }
@@ -422,14 +405,15 @@ err:
   return ret;
 }
 
-/* r = scalar*G + sum(scalars[i]*points[i]) */
 static int ecp_nistz256_points_mul(
-    const EC_GROUP *group, EC_POINT *r, const BIGNUM *scalar, size_t num,
-    const EC_POINT *points[], const BIGNUM *scalars[], BN_CTX *ctx) {
+    const EC_GROUP *group, EC_POINT *r, const BIGNUM *g_scalar,
+    const EC_POINT *p_, const BIGNUM *p_scalar, BN_CTX *ctx) {
+  assert((p_ != NULL) == (p_scalar != NULL));
+
   static const unsigned kWindowSize = 7;
   static const unsigned kMask = (1 << (7 /* kWindowSize */ + 1)) - 1;
 
-  ALIGN32 union {
+  ALIGN(32) union {
     P256_POINT p;
     P256_POINT_AFFINE a;
   } t, p;
@@ -437,10 +421,6 @@ static int ecp_nistz256_points_mul(
   int ret = 0;
   BN_CTX *new_ctx = NULL;
   int ctx_started = 0;
-
-  if (scalar == NULL && num == 0) {
-    return EC_POINT_set_to_infinity(group, r);
-  }
 
   /* Need 256 bits for space for all coordinates. */
   if (bn_wexpand(&r->X, P256_LIMBS) == NULL ||
@@ -453,36 +433,33 @@ static int ecp_nistz256_points_mul(
   r->Y.top = P256_LIMBS;
   r->Z.top = P256_LIMBS;
 
-  if (scalar) {
-    if (BN_num_bits(scalar) > 256 || BN_is_negative(scalar)) {
+  if (g_scalar != NULL) {
+    if (BN_num_bits(g_scalar) > 256 || BN_is_negative(g_scalar)) {
       if (ctx == NULL) {
         new_ctx = BN_CTX_new();
         if (new_ctx == NULL) {
-          OPENSSL_PUT_ERROR(EC, ERR_R_MALLOC_FAILURE);
           goto err;
         }
         ctx = new_ctx;
       }
       BN_CTX_start(ctx);
       ctx_started = 1;
-
       BIGNUM *tmp_scalar = BN_CTX_get(ctx);
       if (tmp_scalar == NULL) {
-        OPENSSL_PUT_ERROR(EC, ERR_R_MALLOC_FAILURE);
         goto err;
       }
 
-      if (!BN_nnmod(tmp_scalar, scalar, &group->order, ctx)) {
+      if (!BN_nnmod(tmp_scalar, g_scalar, &group->order, ctx)) {
         OPENSSL_PUT_ERROR(EC, ERR_R_BN_LIB);
         goto err;
       }
-      scalar = tmp_scalar;
+      g_scalar = tmp_scalar;
     }
 
     uint8_t p_str[33] = {0};
     int i;
-    for (i = 0; i < scalar->top * BN_BYTES; i += BN_BYTES) {
-      BN_ULONG d = scalar->d[i / BN_BYTES];
+    for (i = 0; i < g_scalar->top * BN_BYTES; i += BN_BYTES) {
+      BN_ULONG d = g_scalar->d[i / BN_BYTES];
 
       p_str[i + 0] = d & 0xff;
       p_str[i + 1] = (d >> 8) & 0xff;
@@ -533,14 +510,14 @@ static int ecp_nistz256_points_mul(
     }
   }
 
-  const int p_is_infinity = !scalar;
-  if (num) {
+  const int p_is_infinity = g_scalar == NULL;
+  if (p_scalar != NULL) {
     P256_POINT *out = &t.p;
     if (p_is_infinity) {
       out = &p.p;
     }
 
-    if (!ecp_nistz256_windowed_mul(group, out, scalars, points, num, ctx)) {
+    if (!ecp_nistz256_windowed_mul(group, out, p_, p_scalar, ctx)) {
       goto err;
     }
 

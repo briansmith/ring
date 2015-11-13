@@ -224,15 +224,8 @@ err:
                                                                          ? 2   \
                                                                          : 1))
 
-/* Compute
- *      \sum scalars[i]*points[i],
- * also including
- *      scalar*generator
- * in the addition if scalar != NULL
- */
-int ec_wNAF_mul(const EC_GROUP *group, EC_POINT *r, const BIGNUM *scalar,
-                size_t num, const EC_POINT *points[], const BIGNUM *scalars[],
-                BN_CTX *ctx) {
+int ec_wNAF_mul(const EC_GROUP *group, EC_POINT *r, const BIGNUM *g_scalar,
+                const EC_POINT *p, const BIGNUM *p_scalar, BN_CTX *ctx) {
   BN_CTX *new_ctx = NULL;
   const EC_POINT *generator = NULL;
   EC_POINT *tmp = NULL;
@@ -251,22 +244,6 @@ int ec_wNAF_mul(const EC_GROUP *group, EC_POINT *r, const BIGNUM *scalar,
   EC_POINT ***val_sub = NULL; /* pointers to sub-arrays of 'val' */
   int ret = 0;
 
-  if (group->meth != r->meth) {
-    OPENSSL_PUT_ERROR(EC, EC_R_INCOMPATIBLE_OBJECTS);
-    return 0;
-  }
-
-  if ((scalar == NULL) && (num == 0)) {
-    return EC_POINT_set_to_infinity(group, r);
-  }
-
-  for (i = 0; i < num; i++) {
-    if (group->meth != points[i]->meth) {
-      OPENSSL_PUT_ERROR(EC, EC_R_INCOMPATIBLE_OBJECTS);
-      return 0;
-    }
-  }
-
   if (ctx == NULL) {
     ctx = new_ctx = BN_CTX_new();
     if (ctx == NULL) {
@@ -274,16 +251,23 @@ int ec_wNAF_mul(const EC_GROUP *group, EC_POINT *r, const BIGNUM *scalar,
     }
   }
 
+  /* TODO: This function used to take |points| and |scalars| as arrays of
+   * |num| elements. The code below should be simplified to work in terms of |p|
+   * and |p_scalar|. */
+  size_t num = p != NULL ? 1 : 0;
+  const EC_POINT **points = p != NULL ? &p : NULL;
+  const BIGNUM **scalars = p != NULL ? &p_scalar : NULL;
+
   total_num = num;
 
-  if (scalar != NULL) {
+  if (g_scalar != NULL) {
     generator = EC_GROUP_get0_generator(group);
     if (generator == NULL) {
       OPENSSL_PUT_ERROR(EC, EC_R_UNDEFINED_GENERATOR);
       goto err;
     }
 
-    ++total_num; /* treat 'scalar' like 'num'-th element of 'scalars' */
+    ++total_num; /* treat 'g_scalar' like 'num'-th element of 'scalars' */
   }
 
 
@@ -309,12 +293,12 @@ int ec_wNAF_mul(const EC_GROUP *group, EC_POINT *r, const BIGNUM *scalar,
   for (i = 0; i < total_num; i++) {
     size_t bits;
 
-    bits = i < num ? BN_num_bits(scalars[i]) : BN_num_bits(scalar);
+    bits = i < num ? BN_num_bits(scalars[i]) : BN_num_bits(g_scalar);
     wsize[i] = EC_window_bits_for_scalar_size(bits);
     num_val += (size_t)1 << (wsize[i] - 1);
     wNAF[i + 1] = NULL; /* make sure we always have a pivot */
     wNAF[i] =
-        compute_wNAF((i < num ? scalars[i] : scalar), wsize[i], &wNAF_len[i]);
+        compute_wNAF((i < num ? scalars[i] : g_scalar), wsize[i], &wNAF_len[i]);
     if (wNAF[i] == NULL) {
       goto err;
     }
