@@ -255,16 +255,20 @@ static int ecp_nistz256_bignum_to_field_elem(BN_ULONG out[P256_LIMBS],
 }
 
 /* r = sum(scalar[i]*point[i]) */
-static void ecp_nistz256_windowed_mul(const EC_GROUP *group, P256_POINT *r,
-                                      const BIGNUM **scalar,
-                                      const EC_POINT **point, int num,
-                                      BN_CTX *ctx) {
+static int ecp_nistz256_windowed_mul(const EC_GROUP *group, P256_POINT *r,
+                                     const BIGNUM **scalar,
+                                     const EC_POINT **point, int num,
+                                     BN_CTX *ctx) {
   static const unsigned kWindowSize = 5;
   static const unsigned kMask = (1 << (5 /* kWindowSize */ + 1)) - 1;
 
   void *table_storage = OPENSSL_malloc(num * 16 * sizeof(P256_POINT) + 64);
   uint8_t(*p_str)[33] = OPENSSL_malloc(num * 33 * sizeof(uint8_t));
   const BIGNUM **scalars = OPENSSL_malloc(num * sizeof(BIGNUM *));
+
+  int ret = 0;
+  BN_CTX *new_ctx = NULL;
+  int ctx_started = 0;
 
   if (table_storage == NULL ||
       p_str == NULL ||
@@ -280,8 +284,21 @@ static void ecp_nistz256_windowed_mul(const EC_GROUP *group, P256_POINT *r,
     P256_POINT *row = table[i];
 
     if (BN_num_bits(scalar[i]) > 256 || BN_is_negative(scalar[i])) {
+      if (!ctx_started) {
+        if (ctx == NULL) {
+          new_ctx = BN_CTX_new();
+          if (new_ctx == NULL) {
+            OPENSSL_PUT_ERROR(EC, ERR_R_MALLOC_FAILURE);
+            goto err;
+          }
+          ctx = new_ctx;
+        }
+        BN_CTX_start(ctx);
+        ctx_started = 1;
+      }
       BIGNUM *mod = BN_CTX_get(ctx);
       if (mod == NULL) {
+        OPENSSL_PUT_ERROR(EC, ERR_R_MALLOC_FAILURE);
         goto err;
       }
 
@@ -392,10 +409,17 @@ static void ecp_nistz256_windowed_mul(const EC_GROUP *group, P256_POINT *r,
     ecp_nistz256_point_add(r, r, &h);
   }
 
+  ret = 1;
+
 err:
   OPENSSL_free(table_storage);
   OPENSSL_free(p_str);
   OPENSSL_free((BIGNUM**) scalars);
+  if (ctx_started) {
+    BN_CTX_end(ctx);
+  }
+  BN_CTX_free(new_ctx);
+  return ret;
 }
 
 /* r = scalar*G + sum(scalars[i]*points[i]) */
@@ -405,28 +429,46 @@ static int ecp_nistz256_points_mul(
   static const unsigned kWindowSize = 7;
   static const unsigned kMask = (1 << (7 /* kWindowSize */ + 1)) - 1;
 
-  int ret = 0;
   ALIGN32 union {
     P256_POINT p;
     P256_POINT_AFFINE a;
   } t, p;
+
+  int ret = 0;
+  BN_CTX *new_ctx = NULL;
+  int ctx_started = 0;
 
   if (scalar == NULL && num == 0) {
     return EC_POINT_set_to_infinity(group, r);
   }
 
   /* Need 256 bits for space for all coordinates. */
-  bn_wexpand(&r->X, P256_LIMBS);
-  bn_wexpand(&r->Y, P256_LIMBS);
-  bn_wexpand(&r->Z, P256_LIMBS);
+  if (bn_wexpand(&r->X, P256_LIMBS) == NULL ||
+      bn_wexpand(&r->Y, P256_LIMBS) == NULL ||
+      bn_wexpand(&r->Z, P256_LIMBS) == NULL) {
+    OPENSSL_PUT_ERROR(EC, ERR_R_MALLOC_FAILURE);
+    goto err;
+  }
   r->X.top = P256_LIMBS;
   r->Y.top = P256_LIMBS;
   r->Z.top = P256_LIMBS;
 
   if (scalar) {
     if (BN_num_bits(scalar) > 256 || BN_is_negative(scalar)) {
+      if (ctx == NULL) {
+        new_ctx = BN_CTX_new();
+        if (new_ctx == NULL) {
+          OPENSSL_PUT_ERROR(EC, ERR_R_MALLOC_FAILURE);
+          goto err;
+        }
+        ctx = new_ctx;
+      }
+      BN_CTX_start(ctx);
+      ctx_started = 1;
+
       BIGNUM *tmp_scalar = BN_CTX_get(ctx);
       if (tmp_scalar == NULL) {
+        OPENSSL_PUT_ERROR(EC, ERR_R_MALLOC_FAILURE);
         goto err;
       }
 
@@ -498,7 +540,9 @@ static int ecp_nistz256_points_mul(
       out = &p.p;
     }
 
-    ecp_nistz256_windowed_mul(group, out, scalars, points, num, ctx);
+    if (!ecp_nistz256_windowed_mul(group, out, scalars, points, num, ctx)) {
+      goto err;
+    }
 
     if (!p_is_infinity) {
       ecp_nistz256_point_add(&p.p, &p.p, out);
@@ -508,13 +552,20 @@ static int ecp_nistz256_points_mul(
   memcpy(r->X.d, p.p.X, sizeof(p.p.X));
   memcpy(r->Y.d, p.p.Y, sizeof(p.p.Y));
   memcpy(r->Z.d, p.p.Z, sizeof(p.p.Z));
+
+  /* Not constant-time, but we're only operating on the public output. */
   bn_correct_top(&r->X);
   bn_correct_top(&r->Y);
   bn_correct_top(&r->Z);
+  r->Z_is_one = BN_is_one(&r->Z);
 
   ret = 1;
 
 err:
+  if (ctx_started) {
+    BN_CTX_end(ctx);
+  }
+  BN_CTX_free(new_ctx);
   return ret;
 }
 
@@ -543,7 +594,10 @@ static int ecp_nistz256_get_affine(const EC_GROUP *group, const EC_POINT *point,
   ecp_nistz256_mul_mont(x_aff, z_inv2, point_x);
 
   if (x != NULL) {
-    bn_wexpand(x, P256_LIMBS);
+    if (bn_wexpand(x, P256_LIMBS) == NULL) {
+      OPENSSL_PUT_ERROR(EC, ERR_R_MALLOC_FAILURE);
+      return 0;
+    }
     x->top = P256_LIMBS;
     ecp_nistz256_from_mont(x->d, x_aff);
     bn_correct_top(x);
@@ -552,7 +606,10 @@ static int ecp_nistz256_get_affine(const EC_GROUP *group, const EC_POINT *point,
   if (y != NULL) {
     ecp_nistz256_mul_mont(z_inv3, z_inv3, z_inv2);
     ecp_nistz256_mul_mont(y_aff, z_inv3, point_y);
-    bn_wexpand(y, P256_LIMBS);
+    if (bn_wexpand(y, P256_LIMBS) == NULL) {
+      OPENSSL_PUT_ERROR(EC, ERR_R_MALLOC_FAILURE);
+      return 0;
+    }
     y->top = P256_LIMBS;
     ecp_nistz256_from_mont(y->d, y_aff);
     bn_correct_top(y);
