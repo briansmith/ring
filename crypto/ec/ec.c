@@ -467,33 +467,6 @@ void EC_POINT_free(EC_POINT *point) {
   OPENSSL_free(point);
 }
 
-EC_POINT *EC_POINT_dup(const EC_POINT *a, const EC_GROUP *group) {
-  EC_POINT *t;
-  int r;
-
-  if (a == NULL) {
-    return NULL;
-  }
-
-  if (group->meth != a->meth) {
-    OPENSSL_PUT_ERROR(EC, EC_R_INCOMPATIBLE_OBJECTS);
-    return 0;
-  }
-
-  t = EC_POINT_new(group);
-  if (t == NULL) {
-    OPENSSL_PUT_ERROR(EC, ERR_R_MALLOC_FAILURE);
-    return NULL;
-  }
-  r = ec_GFp_simple_point_copy(t, a);
-  if (!r) {
-    EC_POINT_free(t);
-    return NULL;
-  } else {
-    return t;
-  }
-}
-
 int EC_POINT_set_to_infinity(const EC_GROUP *group, EC_POINT *point) {
   if (group->meth != point->meth) {
     OPENSSL_PUT_ERROR(EC, EC_R_INCOMPATIBLE_OBJECTS);

@@ -149,11 +149,6 @@ OPENSSL_EXPORT EC_POINT *EC_POINT_new(const EC_GROUP *group);
 /* EC_POINT_free frees |point| and the data that it points to. */
 OPENSSL_EXPORT void EC_POINT_free(EC_POINT *point);
 
-/* EC_POINT_dup returns a fresh |EC_POINT| that contains the same values as
- * |src|, or NULL on error. */
-OPENSSL_EXPORT EC_POINT *EC_POINT_dup(const EC_POINT *src,
-                                      const EC_GROUP *group);
-
 /* EC_POINT_set_to_infinity sets |point| to be the "point at infinity" for the
  * given group. */
 OPENSSL_EXPORT int EC_POINT_set_to_infinity(const EC_GROUP *group,
