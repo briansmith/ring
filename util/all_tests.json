@@ -31,6 +31,8 @@
 	["crypto/cipher/cipher_test", "crypto/cipher/test/cipher_test.txt"],
 	["crypto/cmac/cmac_test"],
 	["crypto/constant_time_test"],
+	["crypto/curve25519/ed25519_test", "crypto/curve25519/ed25519_tests.txt"],
+	["crypto/curve25519/x25519_test"],
 	["crypto/dh/dh_test"],
 	["crypto/digest/digest_test"],
 	["crypto/dsa/dsa_test"],

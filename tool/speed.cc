@@ -21,6 +21,7 @@
 #include <string.h>
 
 #include <openssl/aead.h>
+#include <openssl/curve25519.h>
 #include <openssl/digest.h>
 #include <openssl/err.h>
 #include <openssl/obj.h>
@@ -397,6 +398,75 @@ static bool SpeedECDSA(const std::string &selected) {
          SpeedECDSACurve("ECDSA P-521", NID_secp521r1, selected);
 }
 
+static bool Speed25519(const std::string &selected) {
+  if (!selected.empty() && selected.find("25519") == std::string::npos) {
+    return true;
+  }
+
+  TimeResults results;
+
+#if !defined(OPENSSL_SMALL)
+  uint8_t public_key[32], private_key[64];
+
+  if (!TimeFunction(&results, [&public_key, &private_key]() -> bool {
+        ED25519_keypair(public_key, private_key);
+        return true;
+      })) {
+    return false;
+  }
+
+  results.Print("Ed25519 key generation");
+
+  static const uint8_t kMessage[] = {0, 1, 2, 3, 4, 5};
+  uint8_t signature[64];
+
+  if (!TimeFunction(&results, [&private_key, &signature]() -> bool {
+        return ED25519_sign(signature, kMessage, sizeof(kMessage),
+                            private_key) == 1;
+      })) {
+    return false;
+  }
+
+  results.Print("Ed25519 signing");
+
+  if (!TimeFunction(&results, [&public_key, &signature]() -> bool {
+        return ED25519_verify(kMessage, sizeof(kMessage), signature,
+                              public_key) == 1;
+      })) {
+    fprintf(stderr, "Ed25519 verify failed.\n");
+    return false;
+  }
+
+  results.Print("Ed25519 verify");
+#endif
+
+  if (!TimeFunction(&results, []() -> bool {
+        uint8_t out[32], in[32];
+        memset(in, 0, sizeof(in));
+        X25519_public_from_private(out, in);
+        return true;
+      })) {
+    fprintf(stderr, "Curve25519 base-point multiplication failed.\n");
+    return false;
+  }
+
+  results.Print("Curve25519 base-point multiplication");
+
+  if (!TimeFunction(&results, []() -> bool {
+        uint8_t out[32], in1[32], in2[32];
+        memset(in1, 0, sizeof(in1));
+        memset(in2, 0, sizeof(in2));
+        return X25519(out, in1, in2) == 1;
+      })) {
+    fprintf(stderr, "Curve25519 arbitrary point multiplication failed.\n");
+    return false;
+  }
+
+  results.Print("Curve25519 arbitrary point multiplication");
+
+  return true;
+}
+
 bool Speed(const std::vector<std::string> &args) {
   std::string selected;
   if (args.size() > 1) {
@@ -472,7 +542,8 @@ bool Speed(const std::vector<std::string> &args) {
       !SpeedHash(EVP_sha512(), "SHA-512", selected) ||
       !SpeedRandom(selected) ||
       !SpeedECDH(selected) ||
-      !SpeedECDSA(selected)) {
+      !SpeedECDSA(selected) ||
+      !Speed25519(selected)) {
     return false;
   }
 
