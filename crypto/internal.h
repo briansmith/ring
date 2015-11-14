@@ -168,18 +168,6 @@ extern "C" {
 #endif
 
 
-#if defined(_MSC_VER)
-#define OPENSSL_U64(x) x##UI64
-#else
-
-#if defined(OPENSSL_64_BIT)
-#define OPENSSL_U64(x) x##UL
-#else
-#define OPENSSL_U64(x) x##ULL
-#endif
-
-#endif  /* defined(_MSC_VER) */
-
 #if defined(OPENSSL_X86) || defined(OPENSSL_X86_64) || defined(OPENSSL_ARM) || \
     defined(OPENSSL_AARCH64)
 /* OPENSSL_cpuid_setup initializes OPENSSL_ia32cap_P. */

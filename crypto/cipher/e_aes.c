@@ -1652,7 +1652,7 @@ static int aead_aes_ctr_hmac_sha256_seal(const EVP_AEAD_CTX *ctx, uint8_t *out,
 
   if (in_len + aes_ctx->tag_len < in_len ||
       /* This input is so large it would overflow the 32-bit block counter. */
-      in_len_64 >= (OPENSSL_U64(1) << 32) * AES_BLOCK_SIZE) {
+      in_len_64 >= (UINT64_C(1) << 32) * AES_BLOCK_SIZE) {
     OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_TOO_LARGE);
     return 0;
   }

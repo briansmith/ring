@@ -55,7 +55,6 @@
 #include <openssl/cpu.h>
 
 #include "internal.h"
-#include "../internal.h"
 
 
 #if !defined(OPENSSL_NO_ASM) &&                         \
@@ -76,7 +75,7 @@
 #define REDUCE1BIT(V)                                                  \
   do {                                                                 \
     if (sizeof(size_t) == 8) {                                         \
-      uint64_t T = OPENSSL_U64(0xe100000000000000) & (0 - (V.lo & 1)); \
+      uint64_t T = UINT64_C(0xe100000000000000) & (0 - (V.lo & 1)); \
       V.lo = (V.hi << 63) | (V.lo >> 1);                               \
       V.hi = (V.hi >> 1) ^ T;                                          \
     } else {                                                           \
@@ -586,7 +585,7 @@ int CRYPTO_gcm128_aad(GCM128_CONTEXT *ctx, const uint8_t *aad, size_t len) {
   }
 
   alen += len;
-  if (alen > (OPENSSL_U64(1) << 61) || (sizeof(len) == 8 && alen < len)) {
+  if (alen > (UINT64_C(1) << 61) || (sizeof(len) == 8 && alen < len)) {
     return 0;
   }
   ctx->len.u[0] = alen;
@@ -653,7 +652,7 @@ int CRYPTO_gcm128_encrypt(GCM128_CONTEXT *ctx, const void *key,
 #endif
 
   mlen += len;
-  if (mlen > ((OPENSSL_U64(1) << 36) - 32) ||
+  if (mlen > ((UINT64_C(1) << 36) - 32) ||
       (sizeof(len) == 8 && mlen < len)) {
     return 0;
   }
@@ -813,7 +812,7 @@ int CRYPTO_gcm128_decrypt(GCM128_CONTEXT *ctx, const void *key,
 #endif
 
   mlen += len;
-  if (mlen > ((OPENSSL_U64(1) << 36) - 32) ||
+  if (mlen > ((UINT64_C(1) << 36) - 32) ||
       (sizeof(len) == 8 && mlen < len)) {
     return 0;
   }
@@ -978,7 +977,7 @@ int CRYPTO_gcm128_encrypt_ctr32(GCM128_CONTEXT *ctx, const void *key,
 #endif
 
   mlen += len;
-  if (mlen > ((OPENSSL_U64(1) << 36) - 32) ||
+  if (mlen > ((UINT64_C(1) << 36) - 32) ||
       (sizeof(len) == 8 && mlen < len)) {
     return 0;
   }
@@ -1087,7 +1086,7 @@ int CRYPTO_gcm128_decrypt_ctr32(GCM128_CONTEXT *ctx, const void *key,
 #endif
 
   mlen += len;
-  if (mlen > ((OPENSSL_U64(1) << 36) - 32) ||
+  if (mlen > ((UINT64_C(1) << 36) - 32) ||
       (sizeof(len) == 8 && mlen < len)) {
     return 0;
   }
