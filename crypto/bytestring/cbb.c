@@ -25,6 +25,7 @@ void CBB_zero(CBB *cbb) {
 }
 
 static int cbb_init(CBB *cbb, uint8_t *buf, size_t cap) {
+  /* This assumes that |cbb| has already been zeroed. */
   struct cbb_buffer_st *base;
 
   base = OPENSSL_malloc(sizeof(struct cbb_buffer_st));
@@ -37,16 +38,15 @@ static int cbb_init(CBB *cbb, uint8_t *buf, size_t cap) {
   base->cap = cap;
   base->can_resize = 1;
 
-  memset(cbb, 0, sizeof(CBB));
   cbb->base = base;
   cbb->is_top_level = 1;
   return 1;
 }
 
 int CBB_init(CBB *cbb, size_t initial_capacity) {
-  uint8_t *buf;
+  CBB_zero(cbb);
 
-  buf = OPENSSL_malloc(initial_capacity);
+  uint8_t *buf = OPENSSL_malloc(initial_capacity);
   if (initial_capacity > 0 && buf == NULL) {
     return 0;
   }
@@ -60,6 +60,8 @@ int CBB_init(CBB *cbb, size_t initial_capacity) {
 }
 
 int CBB_init_fixed(CBB *cbb, uint8_t *buf, size_t len) {
+  CBB_zero(cbb);
+
   if (!cbb_init(cbb, buf, len)) {
     return 0;
   }
