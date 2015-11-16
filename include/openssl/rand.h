@@ -68,7 +68,8 @@ OPENSSL_EXPORT void RAND_enable_fork_unsafe_buffering(int fd);
 /* RAND_pseudo_bytes is a wrapper around |RAND_bytes|. */
 OPENSSL_EXPORT int RAND_pseudo_bytes(uint8_t *buf, size_t len);
 
-/* RAND_seed does nothing. */
+/* RAND_seed reads a single byte of random data to ensure that any file
+ * descriptors etc are opened. */
 OPENSSL_EXPORT void RAND_seed(const void *buf, int num);
 
 /* RAND_load_file returns a nonnegative number. */
