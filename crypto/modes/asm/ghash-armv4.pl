@@ -140,7 +140,7 @@ $code=<<___;
 .text
 .code	32
 
-#ifdef  __APPLE__
+#ifdef  __clang__
 #define ldrplb  ldrbpl
 #define ldrneb  ldrbne
 #endif
