@@ -316,22 +316,6 @@ static bool TestCBBFixed() {
   return true;
 }
 
-static bool TestCBBAllocFailure() {
-  CBB cbb;
-  memset(&cbb, 0x42, sizeof(cbb));
-
-  if (CBB_init(&cbb, (size_t)-1)) {
-    fprintf(stderr, "Excessive allocation successful!\n");
-    CBB_cleanup(&cbb);
-    return false;
-  }
-
-  /* |CBB_init| should have cleared |cbb| before failing therefore this should
-   * not crash. */
-  CBB_cleanup(&cbb);
-  return true;
-}
-
 static bool TestCBBFinishChild() {
   CBB cbb, child;
   uint8_t *out_buf;
@@ -732,7 +716,6 @@ int main(void) {
       !TestGetASN1() ||
       !TestCBBBasic() ||
       !TestCBBFixed() ||
-      !TestCBBAllocFailure() ||
       !TestCBBFinishChild() ||
       !TestCBBMisuse() ||
       !TestCBBPrefixed() ||
