@@ -69,12 +69,6 @@
     (!defined(OPENSSL_X86_64) && !defined(OPENSSL_X86)) || \
     (defined(OPENSSL_X86_64) && defined(OPENSSL_WINDOWS))
 
-#if defined(OPENSSL_WINDOWS)
-#define alloca _alloca
-#else
-#include <alloca.h>
-#endif
-
 #ifdef BN_LLONG
 #define mul_add(r, a, w, c)             \
   {                                     \
