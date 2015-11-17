@@ -229,6 +229,24 @@ int bn_cmp_part_words(const BN_ULONG *a, const BN_ULONG *b, int cl, int dl);
 int bn_mul_mont(BN_ULONG *rp, const BN_ULONG *ap, const BN_ULONG *bp,
                 const BN_ULONG *np, const BN_ULONG *n0, int num);
 
+#if !defined(OPENSSL_NO_ASM) &&                         \
+    (defined(OPENSSL_X86) || defined(OPENSSL_X86_64) || \
+     defined(OPENSSL_ARM) || defined(OPENSSL_AARCH64))
+#define OPENSSL_BN_ASM_MONT
+#endif
+
+/* On some 32-bit platforms, Montgomery multiplication is done using 64-bit
+ * arithmetic with SIMD instructions. On such platforms, |BN_MONT_CTX::n0|
+ * needs to be two words long. Only certain 32-bit platforms actually make use
+ * of n0[1] and shorter R value would suffice for the others. However,
+ * currently only the assembly files know which is which. */
+#if defined(OPENSSL_BN_ASM_MONT) && (BN_BITS2 <= 32)
+#define BN_MONT_CTX_N0_LIMBS 2
+#else
+#define BN_MONT_CTX_N0_LIMBS 1
+#endif
+
+
 #if !defined(BN_LLONG)
 
 #define LBITS(a) ((a) & BN_MASK2l)

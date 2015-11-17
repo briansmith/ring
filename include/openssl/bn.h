@@ -749,8 +749,12 @@ struct bignum_st {
 struct bn_mont_ctx_st {
   BIGNUM RR; /* used to convert to montgomery form */
   BIGNUM N;  /* The modulus */
-  BN_ULONG n0[2]; /* least significant words of (R*Ri-1)/N */
-  int ri;    /* number of bits in R */
+
+  /* Least significant word(s) of the "magic" Montgomery constant. When
+   * |BN_MONT_CTX_N0_LIMBS == 1|, n0[1] is probably unused, however it is safer
+   * to always use two elements just in case any code from another OpenSSL
+   * variant that assumes |n0| has two elements is imported. */
+  BN_ULONG n0[2];
 };
 
 OPENSSL_EXPORT unsigned BN_num_bits_word(BN_ULONG l);
