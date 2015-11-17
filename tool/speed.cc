@@ -456,6 +456,8 @@ static bool Speed25519(const std::string &selected) {
         uint8_t out[32], in1[32], in2[32];
         memset(in1, 0, sizeof(in1));
         memset(in2, 0, sizeof(in2));
+        in1[0] = 1;
+        in2[0] = 9;
         return X25519(out, in1, in2) == 1;
       })) {
     fprintf(stderr, "Curve25519 arbitrary point multiplication failed.\n");
