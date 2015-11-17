@@ -157,7 +157,6 @@ BN_MONT_CTX *BN_MONT_CTX_copy(BN_MONT_CTX *to, const BN_MONT_CTX *from) {
       !BN_copy(&to->N, &from->N)) {
     return NULL;
   }
-  to->ri = from->ri;
   to->n0[0] = from->n0[0];
   to->n0[1] = from->n0[1];
   return to;
@@ -189,8 +188,6 @@ int BN_MONT_CTX_set(BN_MONT_CTX *mont, const BIGNUM *mod, BN_CTX *ctx) {
   tmod.d = buf;
   tmod.dmax = 2;
   tmod.neg = 0;
-
-  mont->ri = (BN_num_bits(mod) + (BN_BITS2 - 1)) / BN_BITS2 * BN_BITS2;
 
 #if defined(OPENSSL_BN_ASM_MONT) && (BN_BITS2 <= 32)
   /* Only certain BN_BITS2<=32 platforms actually make use of
@@ -275,9 +272,10 @@ int BN_MONT_CTX_set(BN_MONT_CTX *mont, const BIGNUM *mod, BN_CTX *ctx) {
   mont->n0[1] = 0;
 #endif
 
-  /* setup RR for conversions */
+  /* RR = (2^ri)^2 == 2^(ri*2) == 1 << (ri*2), which has its (ri*2)th bit set. */
+  int ri = (BN_num_bits(mod) + (BN_BITS2 - 1)) / BN_BITS2 * BN_BITS2;
   BN_zero(&(mont->RR));
-  if (!BN_set_bit(&(mont->RR), mont->ri * 2)) {
+  if (!BN_set_bit(&(mont->RR), ri * 2)) {
     goto err;
   }
   if (!BN_mod(&(mont->RR), &(mont->RR), &(mont->N), ctx)) {

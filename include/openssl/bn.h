@@ -837,7 +837,6 @@ struct bn_mont_ctx_st {
   BIGNUM RR; /* used to convert to montgomery form */
   BIGNUM N;  /* The modulus */
   BN_ULONG n0[2]; /* least significant words of (R*Ri-1)/N */
-  int ri;    /* number of bits in R */
 };
 
 OPENSSL_EXPORT unsigned BN_num_bits_word(BN_ULONG l);
