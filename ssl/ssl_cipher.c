@@ -1396,6 +1396,14 @@ int SSL_CIPHER_is_AES128GCM(const SSL_CIPHER *cipher) {
   return (cipher->algorithm_enc & SSL_AES128GCM) != 0;
 }
 
+int SSL_CIPHER_is_AES128CBC(const SSL_CIPHER *cipher) {
+  return (cipher->algorithm_enc & SSL_AES128) != 0;
+}
+
+int SSL_CIPHER_is_AES256CBC(const SSL_CIPHER *cipher) {
+  return (cipher->algorithm_enc & SSL_AES256) != 0;
+}
+
 int SSL_CIPHER_is_CHACHA20POLY1305(const SSL_CIPHER *cipher) {
   return (cipher->algorithm_enc & SSL_CHACHA20POLY1305_OLD) != 0;
 }

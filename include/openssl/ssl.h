@@ -1052,6 +1052,14 @@ OPENSSL_EXPORT int SSL_CIPHER_is_AESGCM(const SSL_CIPHER *cipher);
 /* SSL_CIPHER_is_AES128GCM returns one if |cipher| uses 128-bit AES-GCM. */
 OPENSSL_EXPORT int SSL_CIPHER_is_AES128GCM(const SSL_CIPHER *cipher);
 
+/* SSL_CIPHER_is_AES128CBC returns one if |cipher| uses 128-bit AES in CBC
+ * mode. */
+OPENSSL_EXPORT int SSL_CIPHER_is_AES128CBC(const SSL_CIPHER *cipher);
+
+/* SSL_CIPHER_is_AES256CBC returns one if |cipher| uses 256-bit AES in CBC
+ * mode. */
+OPENSSL_EXPORT int SSL_CIPHER_is_AES256CBC(const SSL_CIPHER *cipher);
+
 /* SSL_CIPHER_is_CHACHA20POLY1305 returns one if |cipher| uses
  * CHACHA20_POLY1305. */
 OPENSSL_EXPORT int SSL_CIPHER_is_CHACHA20POLY1305(const SSL_CIPHER *cipher);
