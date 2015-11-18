@@ -38,11 +38,6 @@
 #if !defined(OPENSSL_NO_ASM) && defined(OPENSSL_X86_64) && \
     !defined(OPENSSL_SMALL)
 
-#if BN_BITS2 != 64
-#define TOBN(hi, lo) lo, hi
-#else
-#define TOBN(hi, lo) ((BN_ULONG)hi << 32 | lo)
-#endif
 
 #if defined(__GNUC__)
 #define ALIGN(x) __attribute((aligned(x)))
