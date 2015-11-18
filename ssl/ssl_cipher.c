@@ -160,26 +160,26 @@ static const SSL_CIPHER kCiphers[] = {
     /* Cipher 02 */
     {
      SSL3_TXT_RSA_NULL_SHA, SSL3_CK_RSA_NULL_SHA, SSL_kRSA, SSL_aRSA,
-     SSL_eNULL, SSL_SHA1, SSL_HANDSHAKE_MAC_DEFAULT, 0, 0,
+     SSL_eNULL, SSL_SHA1, SSL_HANDSHAKE_MAC_DEFAULT,
     },
 
     /* Cipher 04 */
     {
      SSL3_TXT_RSA_RC4_128_MD5, SSL3_CK_RSA_RC4_128_MD5, SSL_kRSA, SSL_aRSA,
-     SSL_RC4, SSL_MD5, SSL_HANDSHAKE_MAC_DEFAULT, 128, 128,
+     SSL_RC4, SSL_MD5, SSL_HANDSHAKE_MAC_DEFAULT,
     },
 
     /* Cipher 05 */
     {
      SSL3_TXT_RSA_RC4_128_SHA, SSL3_CK_RSA_RC4_128_SHA, SSL_kRSA, SSL_aRSA,
-     SSL_RC4, SSL_SHA1, SSL_HANDSHAKE_MAC_DEFAULT, 128, 128,
+     SSL_RC4, SSL_SHA1, SSL_HANDSHAKE_MAC_DEFAULT,
     },
 
     /* Cipher 0A */
     {
      SSL3_TXT_RSA_DES_192_CBC3_SHA, SSL3_CK_RSA_DES_192_CBC3_SHA, SSL_kRSA,
      SSL_aRSA, SSL_3DES, SSL_SHA1,
-     SSL_HANDSHAKE_MAC_DEFAULT, 112, 168,
+     SSL_HANDSHAKE_MAC_DEFAULT,
     },
 
 
@@ -189,28 +189,28 @@ static const SSL_CIPHER kCiphers[] = {
     {
      TLS1_TXT_RSA_WITH_AES_128_SHA, TLS1_CK_RSA_WITH_AES_128_SHA, SSL_kRSA,
      SSL_aRSA, SSL_AES128, SSL_SHA1,
-     SSL_HANDSHAKE_MAC_DEFAULT, 128, 128,
+     SSL_HANDSHAKE_MAC_DEFAULT,
     },
 
     /* Cipher 33 */
     {
      TLS1_TXT_DHE_RSA_WITH_AES_128_SHA, TLS1_CK_DHE_RSA_WITH_AES_128_SHA,
      SSL_kDHE, SSL_aRSA, SSL_AES128, SSL_SHA1,
-     SSL_HANDSHAKE_MAC_DEFAULT, 128, 128,
+     SSL_HANDSHAKE_MAC_DEFAULT,
     },
 
     /* Cipher 35 */
     {
      TLS1_TXT_RSA_WITH_AES_256_SHA, TLS1_CK_RSA_WITH_AES_256_SHA, SSL_kRSA,
      SSL_aRSA, SSL_AES256, SSL_SHA1,
-     SSL_HANDSHAKE_MAC_DEFAULT, 256, 256,
+     SSL_HANDSHAKE_MAC_DEFAULT,
     },
 
     /* Cipher 39 */
     {
      TLS1_TXT_DHE_RSA_WITH_AES_256_SHA, TLS1_CK_DHE_RSA_WITH_AES_256_SHA,
      SSL_kDHE, SSL_aRSA, SSL_AES256, SSL_SHA1,
-     SSL_HANDSHAKE_MAC_DEFAULT, 256, 256,
+     SSL_HANDSHAKE_MAC_DEFAULT,
     },
 
 
@@ -220,14 +220,14 @@ static const SSL_CIPHER kCiphers[] = {
     {
      TLS1_TXT_RSA_WITH_AES_128_SHA256, TLS1_CK_RSA_WITH_AES_128_SHA256,
      SSL_kRSA, SSL_aRSA, SSL_AES128, SSL_SHA256,
-     SSL_HANDSHAKE_MAC_SHA256, 128, 128,
+     SSL_HANDSHAKE_MAC_SHA256,
     },
 
     /* Cipher 3D */
     {
      TLS1_TXT_RSA_WITH_AES_256_SHA256, TLS1_CK_RSA_WITH_AES_256_SHA256,
      SSL_kRSA, SSL_aRSA, SSL_AES256, SSL_SHA256,
-     SSL_HANDSHAKE_MAC_SHA256, 256, 256,
+     SSL_HANDSHAKE_MAC_SHA256,
     },
 
     /* Cipher 67 */
@@ -235,7 +235,7 @@ static const SSL_CIPHER kCiphers[] = {
      TLS1_TXT_DHE_RSA_WITH_AES_128_SHA256,
      TLS1_CK_DHE_RSA_WITH_AES_128_SHA256, SSL_kDHE, SSL_aRSA, SSL_AES128,
      SSL_SHA256,
-     SSL_HANDSHAKE_MAC_SHA256, 128, 128,
+     SSL_HANDSHAKE_MAC_SHA256,
     },
 
     /* Cipher 6B */
@@ -243,7 +243,7 @@ static const SSL_CIPHER kCiphers[] = {
      TLS1_TXT_DHE_RSA_WITH_AES_256_SHA256,
      TLS1_CK_DHE_RSA_WITH_AES_256_SHA256, SSL_kDHE, SSL_aRSA, SSL_AES256,
      SSL_SHA256,
-     SSL_HANDSHAKE_MAC_SHA256, 256, 256,
+     SSL_HANDSHAKE_MAC_SHA256,
     },
 
     /* PSK cipher suites. */
@@ -252,21 +252,21 @@ static const SSL_CIPHER kCiphers[] = {
     {
      TLS1_TXT_PSK_WITH_RC4_128_SHA, TLS1_CK_PSK_WITH_RC4_128_SHA, SSL_kPSK,
      SSL_aPSK, SSL_RC4, SSL_SHA1,
-     SSL_HANDSHAKE_MAC_DEFAULT, 128, 128,
+     SSL_HANDSHAKE_MAC_DEFAULT,
     },
 
     /* Cipher 8C */
     {
      TLS1_TXT_PSK_WITH_AES_128_CBC_SHA, TLS1_CK_PSK_WITH_AES_128_CBC_SHA,
      SSL_kPSK, SSL_aPSK, SSL_AES128, SSL_SHA1,
-     SSL_HANDSHAKE_MAC_DEFAULT, 128, 128,
+     SSL_HANDSHAKE_MAC_DEFAULT,
     },
 
     /* Cipher 8D */
     {
      TLS1_TXT_PSK_WITH_AES_256_CBC_SHA, TLS1_CK_PSK_WITH_AES_256_CBC_SHA,
      SSL_kPSK, SSL_aPSK, SSL_AES256, SSL_SHA1,
-     SSL_HANDSHAKE_MAC_DEFAULT, 256, 256,
+     SSL_HANDSHAKE_MAC_DEFAULT,
     },
 
     /* GCM ciphersuites from RFC5288 */
@@ -277,7 +277,6 @@ static const SSL_CIPHER kCiphers[] = {
      TLS1_CK_RSA_WITH_AES_128_GCM_SHA256, SSL_kRSA, SSL_aRSA, SSL_AES128GCM,
      SSL_AEAD,
      SSL_HANDSHAKE_MAC_SHA256,
-     128, 128,
     },
 
     /* Cipher 9D */
@@ -286,7 +285,6 @@ static const SSL_CIPHER kCiphers[] = {
      TLS1_CK_RSA_WITH_AES_256_GCM_SHA384, SSL_kRSA, SSL_aRSA, SSL_AES256GCM,
      SSL_AEAD,
      SSL_HANDSHAKE_MAC_SHA384,
-     256, 256,
     },
 
     /* Cipher 9E */
@@ -295,7 +293,6 @@ static const SSL_CIPHER kCiphers[] = {
      TLS1_CK_DHE_RSA_WITH_AES_128_GCM_SHA256, SSL_kDHE, SSL_aRSA, SSL_AES128GCM,
      SSL_AEAD,
      SSL_HANDSHAKE_MAC_SHA256,
-     128, 128,
     },
 
     /* Cipher 9F */
@@ -304,15 +301,13 @@ static const SSL_CIPHER kCiphers[] = {
      TLS1_CK_DHE_RSA_WITH_AES_256_GCM_SHA384, SSL_kDHE, SSL_aRSA, SSL_AES256GCM,
      SSL_AEAD,
      SSL_HANDSHAKE_MAC_SHA384,
-     256, 256,
     },
 
     /* Cipher C007 */
     {
      TLS1_TXT_ECDHE_ECDSA_WITH_RC4_128_SHA,
      TLS1_CK_ECDHE_ECDSA_WITH_RC4_128_SHA, SSL_kECDHE, SSL_aECDSA, SSL_RC4,
-     SSL_SHA1, SSL_HANDSHAKE_MAC_DEFAULT, 128,
-     128,
+     SSL_SHA1, SSL_HANDSHAKE_MAC_DEFAULT,
     },
 
     /* Cipher C009 */
@@ -320,7 +315,7 @@ static const SSL_CIPHER kCiphers[] = {
      TLS1_TXT_ECDHE_ECDSA_WITH_AES_128_CBC_SHA,
      TLS1_CK_ECDHE_ECDSA_WITH_AES_128_CBC_SHA, SSL_kECDHE, SSL_aECDSA,
      SSL_AES128, SSL_SHA1,
-     SSL_HANDSHAKE_MAC_DEFAULT, 128, 128,
+     SSL_HANDSHAKE_MAC_DEFAULT,
     },
 
     /* Cipher C00A */
@@ -328,14 +323,14 @@ static const SSL_CIPHER kCiphers[] = {
      TLS1_TXT_ECDHE_ECDSA_WITH_AES_256_CBC_SHA,
      TLS1_CK_ECDHE_ECDSA_WITH_AES_256_CBC_SHA, SSL_kECDHE, SSL_aECDSA,
      SSL_AES256, SSL_SHA1,
-     SSL_HANDSHAKE_MAC_DEFAULT, 256, 256,
+     SSL_HANDSHAKE_MAC_DEFAULT,
     },
 
     /* Cipher C011 */
     {
      TLS1_TXT_ECDHE_RSA_WITH_RC4_128_SHA, TLS1_CK_ECDHE_RSA_WITH_RC4_128_SHA,
      SSL_kECDHE, SSL_aRSA, SSL_RC4, SSL_SHA1,
-     SSL_HANDSHAKE_MAC_DEFAULT, 128, 128,
+     SSL_HANDSHAKE_MAC_DEFAULT,
     },
 
     /* Cipher C013 */
@@ -343,7 +338,7 @@ static const SSL_CIPHER kCiphers[] = {
      TLS1_TXT_ECDHE_RSA_WITH_AES_128_CBC_SHA,
      TLS1_CK_ECDHE_RSA_WITH_AES_128_CBC_SHA, SSL_kECDHE, SSL_aRSA, SSL_AES128,
      SSL_SHA1,
-     SSL_HANDSHAKE_MAC_DEFAULT, 128, 128,
+     SSL_HANDSHAKE_MAC_DEFAULT,
     },
 
     /* Cipher C014 */
@@ -351,7 +346,7 @@ static const SSL_CIPHER kCiphers[] = {
      TLS1_TXT_ECDHE_RSA_WITH_AES_256_CBC_SHA,
      TLS1_CK_ECDHE_RSA_WITH_AES_256_CBC_SHA, SSL_kECDHE, SSL_aRSA, SSL_AES256,
      SSL_SHA1,
-     SSL_HANDSHAKE_MAC_DEFAULT, 256, 256,
+     SSL_HANDSHAKE_MAC_DEFAULT,
     },
 
 
@@ -362,7 +357,7 @@ static const SSL_CIPHER kCiphers[] = {
      TLS1_TXT_ECDHE_ECDSA_WITH_AES_128_SHA256,
      TLS1_CK_ECDHE_ECDSA_WITH_AES_128_SHA256, SSL_kECDHE, SSL_aECDSA,
      SSL_AES128, SSL_SHA256,
-     SSL_HANDSHAKE_MAC_SHA256, 128, 128,
+     SSL_HANDSHAKE_MAC_SHA256,
     },
 
     /* Cipher C024 */
@@ -370,7 +365,7 @@ static const SSL_CIPHER kCiphers[] = {
      TLS1_TXT_ECDHE_ECDSA_WITH_AES_256_SHA384,
      TLS1_CK_ECDHE_ECDSA_WITH_AES_256_SHA384, SSL_kECDHE, SSL_aECDSA,
      SSL_AES256, SSL_SHA384,
-     SSL_HANDSHAKE_MAC_SHA384, 256, 256,
+     SSL_HANDSHAKE_MAC_SHA384,
     },
 
     /* Cipher C027 */
@@ -378,7 +373,7 @@ static const SSL_CIPHER kCiphers[] = {
      TLS1_TXT_ECDHE_RSA_WITH_AES_128_SHA256,
      TLS1_CK_ECDHE_RSA_WITH_AES_128_SHA256, SSL_kECDHE, SSL_aRSA, SSL_AES128,
      SSL_SHA256,
-     SSL_HANDSHAKE_MAC_SHA256, 128, 128,
+     SSL_HANDSHAKE_MAC_SHA256,
     },
 
     /* Cipher C028 */
@@ -386,7 +381,7 @@ static const SSL_CIPHER kCiphers[] = {
      TLS1_TXT_ECDHE_RSA_WITH_AES_256_SHA384,
      TLS1_CK_ECDHE_RSA_WITH_AES_256_SHA384, SSL_kECDHE, SSL_aRSA, SSL_AES256,
      SSL_SHA384,
-     SSL_HANDSHAKE_MAC_SHA384, 256, 256,
+     SSL_HANDSHAKE_MAC_SHA384,
     },
 
 
@@ -398,7 +393,6 @@ static const SSL_CIPHER kCiphers[] = {
      TLS1_CK_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256, SSL_kECDHE, SSL_aECDSA,
      SSL_AES128GCM, SSL_AEAD,
      SSL_HANDSHAKE_MAC_SHA256,
-     128, 128,
     },
 
     /* Cipher C02C */
@@ -407,7 +401,6 @@ static const SSL_CIPHER kCiphers[] = {
      TLS1_CK_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384, SSL_kECDHE, SSL_aECDSA,
      SSL_AES256GCM, SSL_AEAD,
      SSL_HANDSHAKE_MAC_SHA384,
-     256, 256,
     },
 
     /* Cipher C02F */
@@ -416,7 +409,6 @@ static const SSL_CIPHER kCiphers[] = {
      TLS1_CK_ECDHE_RSA_WITH_AES_128_GCM_SHA256, SSL_kECDHE, SSL_aRSA,
      SSL_AES128GCM, SSL_AEAD,
      SSL_HANDSHAKE_MAC_SHA256,
-     128, 128,
     },
 
     /* Cipher C030 */
@@ -425,7 +417,6 @@ static const SSL_CIPHER kCiphers[] = {
      TLS1_CK_ECDHE_RSA_WITH_AES_256_GCM_SHA384, SSL_kECDHE, SSL_aRSA,
      SSL_AES256GCM, SSL_AEAD,
      SSL_HANDSHAKE_MAC_SHA384,
-     256, 256,
     },
 
     /* ECDHE-PSK cipher suites. */
@@ -435,7 +426,7 @@ static const SSL_CIPHER kCiphers[] = {
      TLS1_TXT_ECDHE_PSK_WITH_AES_128_CBC_SHA,
      TLS1_CK_ECDHE_PSK_WITH_AES_128_CBC_SHA,
      SSL_kECDHE, SSL_aPSK, SSL_AES128, SSL_SHA1,
-     SSL_HANDSHAKE_MAC_DEFAULT, 128, 128,
+     SSL_HANDSHAKE_MAC_DEFAULT,
     },
 
     /* Cipher C036 */
@@ -443,7 +434,7 @@ static const SSL_CIPHER kCiphers[] = {
      TLS1_TXT_ECDHE_PSK_WITH_AES_256_CBC_SHA,
      TLS1_CK_ECDHE_PSK_WITH_AES_256_CBC_SHA,
      SSL_kECDHE, SSL_aPSK, SSL_AES256, SSL_SHA1,
-     SSL_HANDSHAKE_MAC_DEFAULT, 256, 256,
+     SSL_HANDSHAKE_MAC_DEFAULT,
     },
 
 #if !defined(BORINGSSL_ANDROID_SYSTEM)
@@ -454,7 +445,6 @@ static const SSL_CIPHER kCiphers[] = {
      TLS1_CK_ECDHE_RSA_CHACHA20_POLY1305_OLD, SSL_kECDHE, SSL_aRSA,
      SSL_CHACHA20POLY1305_OLD, SSL_AEAD,
      SSL_HANDSHAKE_MAC_SHA256,
-     256, 256,
     },
 
     {
@@ -462,7 +452,6 @@ static const SSL_CIPHER kCiphers[] = {
      TLS1_CK_ECDHE_ECDSA_CHACHA20_POLY1305_OLD, SSL_kECDHE, SSL_aECDSA,
      SSL_CHACHA20POLY1305_OLD, SSL_AEAD,
      SSL_HANDSHAKE_MAC_SHA256,
-     256, 256,
     },
 #endif
 };
@@ -891,7 +880,7 @@ static void ssl_cipher_apply_rule(
         continue;
       }
     } else if (strength_bits >= 0) {
-      if (strength_bits != cp->strength_bits) {
+      if (strength_bits != SSL_CIPHER_get_bits(cp, NULL)) {
         continue;
       }
     } else if (!(alg_mkey & cp->algorithm_mkey) ||
@@ -968,8 +957,9 @@ static int ssl_cipher_strength_sort(CIPHER_ORDER **head_p,
   max_strength_bits = 0;
   curr = *head_p;
   while (curr != NULL) {
-    if (curr->active && curr->cipher->strength_bits > max_strength_bits) {
-      max_strength_bits = curr->cipher->strength_bits;
+    if (curr->active &&
+        SSL_CIPHER_get_bits(curr->cipher, NULL) > max_strength_bits) {
+      max_strength_bits = SSL_CIPHER_get_bits(curr->cipher, NULL);
     }
     curr = curr->next;
   }
@@ -985,7 +975,7 @@ static int ssl_cipher_strength_sort(CIPHER_ORDER **head_p,
   curr = *head_p;
   while (curr != NULL) {
     if (curr->active) {
-      number_uses[curr->cipher->strength_bits]++;
+      number_uses[SSL_CIPHER_get_bits(curr->cipher, NULL)]++;
     }
     curr = curr->next;
   }
@@ -1567,10 +1557,44 @@ int SSL_CIPHER_get_bits(const SSL_CIPHER *cipher, int *out_alg_bits) {
     return 0;
   }
 
-  if (out_alg_bits != NULL) {
-    *out_alg_bits = cipher->alg_bits;
+  int alg_bits, strength_bits;
+  switch (cipher->algorithm_enc) {
+    case SSL_AES128:
+    case SSL_AES128GCM:
+    case SSL_RC4:
+      alg_bits = 128;
+      strength_bits = 128;
+      break;
+
+    case SSL_AES256:
+    case SSL_AES256GCM:
+#if !defined(BORINGSSL_ANDROID_SYSTEM)
+    case SSL_CHACHA20POLY1305_OLD:
+#endif
+      alg_bits = 256;
+      strength_bits = 256;
+      break;
+
+    case SSL_3DES:
+      alg_bits = 168;
+      strength_bits = 112;
+      break;
+
+    case SSL_eNULL:
+      alg_bits = 0;
+      strength_bits = 0;
+      break;
+
+    default:
+      assert(0);
+      alg_bits = 0;
+      strength_bits = 0;
   }
-  return cipher->strength_bits;
+
+  if (out_alg_bits != NULL) {
+    *out_alg_bits = alg_bits;
+  }
+  return strength_bits;
 }
 
 const char *SSL_CIPHER_description(const SSL_CIPHER *cipher, char *buf,

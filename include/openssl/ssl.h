@@ -3373,18 +3373,12 @@ struct ssl_cipher_st {
   /* id is the cipher suite value bitwise OR-d with 0x03000000. */
   uint32_t id;
 
-  /* The following are internal fields. See ssl/internal.h for their values. */
-
+  /* algorithm_* are internal fields. See ssl/internal.h for their values. */
   uint32_t algorithm_mkey;
   uint32_t algorithm_auth;
   uint32_t algorithm_enc;
   uint32_t algorithm_mac;
   uint32_t algorithm_prf;
-
-  /* strength_bits is the strength of the cipher in bits. */
-  int strength_bits;
-  /* alg_bits is the number of bits of key material used by the algorithm. */
-  int alg_bits;
 };
 
 #define SSL_MAX_SSL_SESSION_ID_LENGTH 32
