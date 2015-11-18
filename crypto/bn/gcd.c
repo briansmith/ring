@@ -279,7 +279,7 @@ BIGNUM *BN_mod_inverse_ex(BIGNUM *out, int *out_no_inverse, const BIGNUM *a,
    *      sign*Y*a  ==  A   (mod |n|).
    */
 
-  if (BN_is_odd(n) && (BN_num_bits(n) <= (BN_BITS <= 32 ? 450 : 2048))) {
+  if (BN_is_odd(n) && (BN_num_bits(n) <= (BN_BITS2 <= 32 ? 450 : 2048))) {
     /* Binary inversion algorithm; requires odd modulus.
      * This is faster than the general algorithm if the modulus
      * is sufficiently small (about 400 .. 500 bits on 32-bit
