@@ -144,35 +144,33 @@ BIGNUM *bn_expand(BIGNUM *bn, size_t bits);
 
 #if !defined(_MSC_VER)
 /* MSVC doesn't support two-word integers on 64-bit. */
-#define BN_LLONG	__int128_t
 #define BN_ULLONG	__uint128_t
 #endif
 
 #define BN_BITS2	64
 #define BN_BYTES	8
 #define BN_BITS4	32
-#define BN_MASK2	(0xffffffffffffffffL)
-#define BN_MASK2l	(0xffffffffL)
-#define BN_MASK2h	(0xffffffff00000000L)
-#define BN_MASK2h1	(0xffffffff80000000L)
-#define BN_TBIT		(0x8000000000000000L)
+#define BN_MASK2	(0xffffffffffffffffUL)
+#define BN_MASK2l	(0xffffffffUL)
+#define BN_MASK2h	(0xffffffff00000000UL)
+#define BN_MASK2h1	(0xffffffff80000000UL)
+#define BN_TBIT		(0x8000000000000000UL)
 #define BN_DEC_CONV	(10000000000000000000UL)
 #define BN_DEC_NUM	19
 #define TOBN(hi, lo) ((BN_ULONG)hi << 32 | lo)
 
 #elif defined(OPENSSL_32_BIT)
 
-#define BN_LLONG	int64_t
 #define BN_ULLONG	uint64_t
 #define BN_BITS2	32
 #define BN_BYTES	4
 #define BN_BITS4	16
-#define BN_MASK2	(0xffffffffL)
-#define BN_MASK2l	(0xffff)
-#define BN_MASK2h1	(0xffff8000L)
-#define BN_MASK2h	(0xffff0000L)
-#define BN_TBIT		(0x80000000L)
-#define BN_DEC_CONV	(1000000000L)
+#define BN_MASK2	(0xffffffffUL)
+#define BN_MASK2l	(0xffffUL)
+#define BN_MASK2h1	(0xffff8000UL)
+#define BN_MASK2h	(0xffff0000UL)
+#define BN_TBIT		(0x80000000UL)
+#define BN_DEC_CONV	(1000000000UL)
 #define BN_DEC_NUM	9
 #define TOBN(hi, lo) lo, hi
 
@@ -195,7 +193,7 @@ BIGNUM *bn_expand(BIGNUM *bn, size_t bits);
     sizeof(x) / sizeof(BN_ULONG), 0, BN_FLG_STATIC_DATA \
   }
 
-#if defined(BN_LLONG)
+#if defined(BN_ULLONG)
 #define Lw(t) (((BN_ULONG)(t))&BN_MASK2)
 #define Hw(t) (((BN_ULONG)((t)>>BN_BITS2))&BN_MASK2)
 #endif
@@ -225,7 +223,7 @@ int bn_cmp_part_words(const BN_ULONG *a, const BN_ULONG *b, int cl, int dl);
 int bn_mul_mont(BN_ULONG *rp, const BN_ULONG *ap, const BN_ULONG *bp,
                 const BN_ULONG *np, const BN_ULONG *n0, int num);
 
-#if !defined(BN_LLONG)
+#if !defined(BN_ULLONG)
 
 #define LBITS(a) ((a) & BN_MASK2l)
 #define HBITS(a) (((a) >> BN_BITS4) & BN_MASK2l)
@@ -257,7 +255,7 @@ int bn_mul_mont(BN_ULONG *rp, const BN_ULONG *ap, const BN_ULONG *bp,
     (h) = ht;                     \
   }
 
-#endif  /* !defined(BN_LLONG) */
+#endif  /* !defined(BN_ULLONG) */
 
 #if !defined(OPENSSL_NO_ASM) && defined(OPENSSL_X86_64)
 # if defined(__GNUC__) && __GNUC__ >= 2
