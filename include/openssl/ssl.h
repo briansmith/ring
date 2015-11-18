@@ -2683,13 +2683,15 @@ OPENSSL_EXPORT void SSL_set_msg_callback(
 /* SSL_set_msg_callback_arg sets the |arg| parameter of the message callback. */
 OPENSSL_EXPORT void SSL_set_msg_callback_arg(SSL *ssl, void *arg);
 
-/* SSL_CTX_set_keylog_bio sets configures all SSL objects attached to |ctx| to
- * log session material to |keylog_bio|. This is intended for debugging use
- * with tools like Wireshark. |ctx| takes ownership of |keylog_bio|.
+/* SSL_CTX_set_keylog_callback configures a callback to log key material. This
+ * is intended for debugging use with tools like Wireshark. The |cb| function
+ * should log |line| followed by a newline, synchronizing with any concurrent
+ * access to the log.
  *
  * The format is described in
  * https://developer.mozilla.org/en-US/docs/Mozilla/Projects/NSS/Key_Log_Format. */
-OPENSSL_EXPORT void SSL_CTX_set_keylog_bio(SSL_CTX *ctx, BIO *keylog_bio);
+OPENSSL_EXPORT void SSL_CTX_set_keylog_callback(
+    SSL_CTX *ctx, void (*cb)(const SSL *ssl, const char *line));
 
 enum ssl_renegotiate_mode_t {
   ssl_renegotiate_never = 0,
@@ -3738,9 +3740,9 @@ struct ssl_ctx_st {
   uint8_t *ocsp_response;
   size_t ocsp_response_length;
 
-  /* If not NULL, session key material will be logged to this BIO for debugging
-   * purposes. The format matches NSS's and is readable by Wireshark. */
-  BIO *keylog_bio;
+  /* keylog_callback, if not NULL, is the key logging callback. See
+   * |SSL_CTX_set_keylog_callback|. */
+  void (*keylog_callback)(const SSL *ssl, const char *line);
 
   /* current_time_cb, if not NULL, is the function to use to get the current
    * time. It sets |*out_clock| to the current time. */

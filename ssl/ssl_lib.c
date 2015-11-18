@@ -343,7 +343,6 @@ void SSL_CTX_free(SSL_CTX *ctx) {
   OPENSSL_free(ctx->ocsp_response);
   OPENSSL_free(ctx->signed_cert_timestamp_list);
   EVP_PKEY_free(ctx->tlsext_channel_id_private);
-  BIO_free(ctx->keylog_bio);
 
   OPENSSL_free(ctx);
 }
@@ -2252,9 +2251,9 @@ void SSL_set_msg_callback_arg(SSL *ssl, void *arg) {
   ssl->msg_callback_arg = arg;
 }
 
-void SSL_CTX_set_keylog_bio(SSL_CTX *ctx, BIO *keylog_bio) {
-  BIO_free(ctx->keylog_bio);
-  ctx->keylog_bio = keylog_bio;
+void SSL_CTX_set_keylog_callback(SSL_CTX *ctx,
+                                 void (*cb)(const SSL *ssl, const char *line)) {
+  ctx->keylog_callback = cb;
 }
 
 static int cbb_add_hex(CBB *cbb, const uint8_t *in, size_t in_len) {
@@ -2274,18 +2273,12 @@ static int cbb_add_hex(CBB *cbb, const uint8_t *in, size_t in_len) {
   return 1;
 }
 
-int ssl_ctx_log_rsa_client_key_exchange(SSL_CTX *ctx,
-                                        const uint8_t *encrypted_premaster,
-                                        size_t encrypted_premaster_len,
-                                        const uint8_t *premaster,
-                                        size_t premaster_len) {
-  BIO *bio = ctx->keylog_bio;
-  CBB cbb;
-  uint8_t *out;
-  size_t out_len;
-  int ret;
-
-  if (bio == NULL) {
+int ssl_log_rsa_client_key_exchange(const SSL *ssl,
+                                    const uint8_t *encrypted_premaster,
+                                    size_t encrypted_premaster_len,
+                                    const uint8_t *premaster,
+                                    size_t premaster_len) {
+  if (ssl->ctx->keylog_callback == NULL) {
     return 1;
   }
 
@@ -2294,7 +2287,9 @@ int ssl_ctx_log_rsa_client_key_exchange(SSL_CTX *ctx,
     return 0;
   }
 
-  CBB_zero(&cbb);
+  CBB cbb;
+  uint8_t *out;
+  size_t out_len;
   if (!CBB_init(&cbb, 4 + 16 + 1 + premaster_len * 2 + 1) ||
       !CBB_add_bytes(&cbb, (const uint8_t *)"RSA ", 4) ||
       /* Only the first 8 bytes of the encrypted premaster secret are
@@ -2302,30 +2297,21 @@ int ssl_ctx_log_rsa_client_key_exchange(SSL_CTX *ctx,
       !cbb_add_hex(&cbb, encrypted_premaster, 8) ||
       !CBB_add_bytes(&cbb, (const uint8_t *)" ", 1) ||
       !cbb_add_hex(&cbb, premaster, premaster_len) ||
-      !CBB_add_bytes(&cbb, (const uint8_t *)"\n", 1) ||
+      !CBB_add_u8(&cbb, 0 /* NUL */) ||
       !CBB_finish(&cbb, &out, &out_len)) {
     CBB_cleanup(&cbb);
     return 0;
   }
 
-  CRYPTO_MUTEX_lock_write(&ctx->lock);
-  ret = BIO_write(bio, out, out_len) >= 0 && BIO_flush(bio);
-  CRYPTO_MUTEX_unlock(&ctx->lock);
-
+  ssl->ctx->keylog_callback(ssl, (const char *)out);
   OPENSSL_free(out);
-  return ret;
+  return 1;
 }
 
-int ssl_ctx_log_master_secret(SSL_CTX *ctx, const uint8_t *client_random,
-                              size_t client_random_len, const uint8_t *master,
-                              size_t master_len) {
-  BIO *bio = ctx->keylog_bio;
-  CBB cbb;
-  uint8_t *out;
-  size_t out_len;
-  int ret;
-
-  if (bio == NULL) {
+int ssl_log_master_secret(const SSL *ssl, const uint8_t *client_random,
+                          size_t client_random_len, const uint8_t *master,
+                          size_t master_len) {
+  if (ssl->ctx->keylog_callback == NULL) {
     return 1;
   }
 
@@ -2334,24 +2320,23 @@ int ssl_ctx_log_master_secret(SSL_CTX *ctx, const uint8_t *client_random,
     return 0;
   }
 
-  CBB_zero(&cbb);
+  CBB cbb;
+  uint8_t *out;
+  size_t out_len;
   if (!CBB_init(&cbb, 14 + 64 + 1 + master_len * 2 + 1) ||
       !CBB_add_bytes(&cbb, (const uint8_t *)"CLIENT_RANDOM ", 14) ||
       !cbb_add_hex(&cbb, client_random, 32) ||
       !CBB_add_bytes(&cbb, (const uint8_t *)" ", 1) ||
       !cbb_add_hex(&cbb, master, master_len) ||
-      !CBB_add_bytes(&cbb, (const uint8_t *)"\n", 1) ||
+      !CBB_add_u8(&cbb, 0 /* NUL */) ||
       !CBB_finish(&cbb, &out, &out_len)) {
     CBB_cleanup(&cbb);
     return 0;
   }
 
-  CRYPTO_MUTEX_lock_write(&ctx->lock);
-  ret = BIO_write(bio, out, out_len) >= 0 && BIO_flush(bio);
-  CRYPTO_MUTEX_unlock(&ctx->lock);
-
+  ssl->ctx->keylog_callback(ssl, (const char *)out);
   OPENSSL_free(out);
-  return ret;
+  return 1;
 }
 
 int SSL_is_init_finished(const SSL *ssl) {

@@ -14,6 +14,8 @@
 
 #include <openssl/base.h>
 
+#include <stdio.h>
+
 #include <openssl/err.h>
 #include <openssl/pem.h>
 #include <openssl/ssl.h>
@@ -119,6 +121,13 @@ static int NextProtoSelectCallback(SSL* ssl, uint8_t** out, uint8_t* outlen,
   return SSL_TLSEXT_ERR_OK;
 }
 
+static FILE *g_keylog_file = nullptr;
+
+static void KeyLogCallback(const SSL *ssl, const char *line) {
+  fprintf(g_keylog_file, "%s\n", line);
+  fflush(g_keylog_file);
+}
+
 bool Client(const std::vector<std::string> &args) {
   if (!InitSocketLibrary()) {
     return false;
@@ -135,12 +144,12 @@ bool Client(const std::vector<std::string> &args) {
 
   const char *keylog_file = getenv("SSLKEYLOGFILE");
   if (keylog_file) {
-    BIO *keylog_bio = BIO_new_file(keylog_file, "a");
-    if (!keylog_bio) {
-      ERR_print_errors_cb(PrintErrorCallback, stderr);
+    g_keylog_file = fopen(keylog_file, "a");
+    if (g_keylog_file == nullptr) {
+      perror("fopen");
       return false;
     }
-    SSL_CTX_set_keylog_bio(ctx.get(), keylog_bio);
+    SSL_CTX_set_keylog_callback(ctx.get(), KeyLogCallback);
   }
 
   if (args_map.count("-cipher") != 0 &&

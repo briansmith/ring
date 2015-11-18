@@ -1709,8 +1709,7 @@ int ssl3_send_client_key_exchange(SSL *s) {
       n += enc_pms_len;
 
       /* Log the premaster secret, if logging is enabled. */
-      if (!ssl_ctx_log_rsa_client_key_exchange(s->ctx, p, enc_pms_len, pms,
-                                               pms_len)) {
+      if (!ssl_log_rsa_client_key_exchange(s, p, enc_pms_len, pms, pms_len)) {
         goto err;
       }
 

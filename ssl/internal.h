@@ -1233,21 +1233,21 @@ int tls1_channel_id_hash(SSL *ssl, uint8_t *out, size_t *out_len);
 
 int tls1_record_handshake_hashes_for_channel_id(SSL *s);
 
-/* ssl_ctx_log_rsa_client_key_exchange logs |premaster| to |ctx|, if logging is
- * enabled. It returns one on success and zero on failure. The entry is
- * identified by the first 8 bytes of |encrypted_premaster|. */
-int ssl_ctx_log_rsa_client_key_exchange(SSL_CTX *ctx,
-                                        const uint8_t *encrypted_premaster,
-                                        size_t encrypted_premaster_len,
-                                        const uint8_t *premaster,
-                                        size_t premaster_len);
+/* ssl_log_rsa_client_key_exchange logs |premaster|, if logging is enabled for
+ * |ssl|. It returns one on success and zero on failure. The entry is identified
+ * by the first 8 bytes of |encrypted_premaster|. */
+int ssl_log_rsa_client_key_exchange(const SSL *ssl,
+                                    const uint8_t *encrypted_premaster,
+                                    size_t encrypted_premaster_len,
+                                    const uint8_t *premaster,
+                                    size_t premaster_len);
 
-/* ssl_ctx_log_master_secret logs |master| to |ctx|, if logging is enabled. It
+/* ssl_log_master_secret logs |master|, if logging is enabled for |ssl|. It
  * returns one on success and zero on failure. The entry is identified by
  * |client_random|. */
-int ssl_ctx_log_master_secret(SSL_CTX *ctx, const uint8_t *client_random,
-                              size_t client_random_len, const uint8_t *master,
-                              size_t master_len);
+int ssl_log_master_secret(const SSL *ssl, const uint8_t *client_random,
+                          size_t client_random_len, const uint8_t *master,
+                          size_t master_len);
 
 /* ssl3_can_false_start returns one if |s| is allowed to False Start and zero
  * otherwise. */
