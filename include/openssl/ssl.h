@@ -1166,10 +1166,9 @@ OPENSSL_EXPORT int SSL_CIPHER_get_bits(const SSL_CIPHER *cipher,
  *   |kEDH|, |EDH|, |kEECDH|, and |EECDH| are legacy aliases for |kDHE|, |DHE|,
  *   |kECDHE|, and |ECDHE|, respectively.
  *
- *   |MEDIUM| and |HIGH| match ciphers historically labeled by OpenSSL as
- *   'medium' and 'high', respectively.
+ *   |MEDIUM| and |HIGH| match RC4-based ciphers and all others, respectively.
  *
- *   |FIPS| matches ciphers historically FIPS-approved in OpenSSL.
+ *   |FIPS| is an alias for |HIGH|.
  *
  *   |SSLv3| and |TLSv1| match ciphers available in TLS 1.1 or earlier.
  *   |TLSv1_2| matches ciphers new in TLS 1.2. This is confusing and should not
@@ -3380,7 +3379,6 @@ struct ssl_cipher_st {
   uint32_t algorithm_auth;
   uint32_t algorithm_enc;
   uint32_t algorithm_mac;
-  uint32_t algo_strength;
   uint32_t algorithm_prf;
 
   /* strength_bits is the strength of the cipher in bits. */

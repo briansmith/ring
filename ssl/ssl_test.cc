@@ -250,6 +250,8 @@ static const char *kMustNotIncludeNull[] = {
   "DEFAULT",
   "ALL:!eNULL",
   "ALL:!NULL",
+  "MEDIUM",
+  "HIGH",
   "FIPS",
   "SHA",
   "SHA1",

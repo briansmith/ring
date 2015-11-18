@@ -203,11 +203,6 @@
  * one, update the table in ssl_cipher.c. */
 #define SSL_MAX_DIGEST 4
 
-/* Bits for |algo_strength|, cipher strength information. */
-#define SSL_MEDIUM 0x00000001L
-#define SSL_HIGH 0x00000002L
-#define SSL_FIPS 0x00000004L
-
 /* ssl_cipher_get_evp_aead sets |*out_aead| to point to the correct EVP_AEAD
  * object for |cipher| protocol version |version|. It sets |*out_mac_secret_len|
  * and |*out_fixed_iv_len| to the MAC key length and fixed IV length,
