@@ -946,12 +946,8 @@ enum ssl_session_result_t ssl_get_prev_session(
     const struct ssl_early_callback_ctx *ctx);
 
 STACK_OF(SSL_CIPHER) *ssl_bytes_to_cipher_list(SSL *s, const CBS *cbs);
-struct ssl_cipher_preference_list_st *ssl_cipher_preference_list_dup(
-    struct ssl_cipher_preference_list_st *cipher_list);
 void ssl_cipher_preference_list_free(
     struct ssl_cipher_preference_list_st *cipher_list);
-struct ssl_cipher_preference_list_st *ssl_cipher_preference_list_from_ciphers(
-    STACK_OF(SSL_CIPHER) *ciphers);
 struct ssl_cipher_preference_list_st *ssl_get_cipher_preferences(SSL *s);
 
 int ssl_cert_set0_chain(CERT *cert, STACK_OF(X509) *chain);

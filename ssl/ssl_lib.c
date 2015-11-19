@@ -971,61 +971,6 @@ void ssl_cipher_preference_list_free(
   OPENSSL_free(cipher_list);
 }
 
-struct ssl_cipher_preference_list_st *ssl_cipher_preference_list_dup(
-    struct ssl_cipher_preference_list_st *cipher_list) {
-  struct ssl_cipher_preference_list_st *ret = NULL;
-  size_t n = sk_SSL_CIPHER_num(cipher_list->ciphers);
-
-  ret = OPENSSL_malloc(sizeof(struct ssl_cipher_preference_list_st));
-  if (!ret) {
-    goto err;
-  }
-
-  ret->ciphers = NULL;
-  ret->in_group_flags = NULL;
-  ret->ciphers = sk_SSL_CIPHER_dup(cipher_list->ciphers);
-  if (!ret->ciphers) {
-    goto err;
-  }
-  ret->in_group_flags = BUF_memdup(cipher_list->in_group_flags, n);
-  if (!ret->in_group_flags) {
-    goto err;
-  }
-
-  return ret;
-
-err:
-  ssl_cipher_preference_list_free(ret);
-  return NULL;
-}
-
-struct ssl_cipher_preference_list_st *ssl_cipher_preference_list_from_ciphers(
-    STACK_OF(SSL_CIPHER) *ciphers) {
-  struct ssl_cipher_preference_list_st *ret = NULL;
-  size_t n = sk_SSL_CIPHER_num(ciphers);
-
-  ret = OPENSSL_malloc(sizeof(struct ssl_cipher_preference_list_st));
-  if (!ret) {
-    goto err;
-  }
-  ret->ciphers = NULL;
-  ret->in_group_flags = NULL;
-  ret->ciphers = sk_SSL_CIPHER_dup(ciphers);
-  if (!ret->ciphers) {
-    goto err;
-  }
-  ret->in_group_flags = OPENSSL_malloc(n);
-  if (!ret->in_group_flags) {
-    goto err;
-  }
-  memset(ret->in_group_flags, 0, n);
-  return ret;
-
-err:
-  ssl_cipher_preference_list_free(ret);
-  return NULL;
-}
-
 X509_VERIFY_PARAM *SSL_CTX_get0_param(SSL_CTX *ctx) { return ctx->param; }
 
 X509_VERIFY_PARAM *SSL_get0_param(SSL *ssl) { return ssl->param; }
