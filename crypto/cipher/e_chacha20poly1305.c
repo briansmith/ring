@@ -108,10 +108,11 @@ static void aead_poly1305(aead_poly1305_update update,
   CRYPTO_poly1305_finish(&ctx, tag);
 }
 
-static int seal(aead_poly1305_update poly1305_update, const EVP_AEAD_CTX *ctx,
-                uint8_t *out, size_t *out_len, size_t max_out_len,
-                const uint8_t nonce[12], const uint8_t *in, size_t in_len,
-                const uint8_t *ad, size_t ad_len) {
+static int seal_impl(aead_poly1305_update poly1305_update,
+                     const EVP_AEAD_CTX *ctx, uint8_t *out, size_t *out_len,
+                     size_t max_out_len, const uint8_t nonce[12],
+                     const uint8_t *in, size_t in_len, const uint8_t *ad,
+                     size_t ad_len) {
   const struct aead_chacha20_poly1305_ctx *c20_ctx = ctx->aead_state;
   const uint64_t in_len_64 = in_len;
 
@@ -146,10 +147,11 @@ static int seal(aead_poly1305_update poly1305_update, const EVP_AEAD_CTX *ctx,
   return 1;
 }
 
-static int open(aead_poly1305_update poly1305_update, const EVP_AEAD_CTX *ctx,
-                uint8_t *out, size_t *out_len, size_t max_out_len,
-                const uint8_t nonce[12], const uint8_t *in, size_t in_len,
-                const uint8_t *ad, size_t ad_len) {
+static int open_impl(aead_poly1305_update poly1305_update,
+                     const EVP_AEAD_CTX *ctx, uint8_t *out, size_t *out_len,
+                     size_t max_out_len, const uint8_t nonce[12],
+                     const uint8_t *in, size_t in_len, const uint8_t *ad,
+                     size_t ad_len) {
   const struct aead_chacha20_poly1305_ctx *c20_ctx = ctx->aead_state;
   size_t plaintext_len;
   const uint64_t in_len_64 = in_len;
@@ -212,8 +214,8 @@ static int aead_chacha20_poly1305_seal(const EVP_AEAD_CTX *ctx, uint8_t *out,
     OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_UNSUPPORTED_NONCE_SIZE);
     return 0;
   }
-  return seal(poly1305_update, ctx, out, out_len, max_out_len, nonce, in,
-              in_len, ad, ad_len);
+  return seal_impl(poly1305_update, ctx, out, out_len, max_out_len, nonce, in,
+                   in_len, ad, ad_len);
 }
 
 static int aead_chacha20_poly1305_open(const EVP_AEAD_CTX *ctx, uint8_t *out,
@@ -225,8 +227,8 @@ static int aead_chacha20_poly1305_open(const EVP_AEAD_CTX *ctx, uint8_t *out,
     OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_UNSUPPORTED_NONCE_SIZE);
     return 0;
   }
-  return open(poly1305_update, ctx, out, out_len, max_out_len, nonce, in,
-              in_len, ad, ad_len);
+  return open_impl(poly1305_update, ctx, out, out_len, max_out_len, nonce, in,
+                   in_len, ad, ad_len);
 }
 
 static const EVP_AEAD aead_chacha20_poly1305 = {
@@ -267,8 +269,8 @@ static int aead_chacha20_poly1305_old_seal(
   uint8_t nonce_96[12];
   memset(nonce_96, 0, 4);
   memcpy(nonce_96 + 4, nonce, 8);
-  return seal(poly1305_update_old, ctx, out, out_len, max_out_len, nonce_96, in,
-              in_len, ad, ad_len);
+  return seal_impl(poly1305_update_old, ctx, out, out_len, max_out_len,
+                   nonce_96, in, in_len, ad, ad_len);
 }
 
 static int aead_chacha20_poly1305_old_open(
@@ -282,8 +284,8 @@ static int aead_chacha20_poly1305_old_open(
   uint8_t nonce_96[12];
   memset(nonce_96, 0, 4);
   memcpy(nonce_96 + 4, nonce, 8);
-  return open(poly1305_update_old, ctx, out, out_len, max_out_len, nonce_96, in,
-              in_len, ad, ad_len);
+  return open_impl(poly1305_update_old, ctx, out, out_len, max_out_len,
+                   nonce_96, in, in_len, ad, ad_len);
 }
 
 static const EVP_AEAD aead_chacha20_poly1305_old = {
