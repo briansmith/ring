@@ -56,12 +56,6 @@
 #include "../crypto/modes/internal.h"
 
 
-#if defined(OPENSSL_X86_64) || defined(OPENSSL_X86) || defined(OPENSSL_AARCH64)
-#define STRICT_ALIGNMENT 0
-#else
-#define STRICT_ALIGNMENT 1
-#endif
-
 typedef struct xts128_context {
   void *key1, *key2;
   block128_f block1, block2;
@@ -70,10 +64,6 @@ typedef struct xts128_context {
 static size_t CRYPTO_xts128_encrypt(const XTS128_CONTEXT *ctx,
                                     const uint8_t iv[16], const uint8_t *inp,
                                     uint8_t *out, size_t len, int enc) {
-  const union {
-    long one;
-    char little;
-  } is_endian = {1};
   union {
     uint64_t u[2];
     uint32_t d[4];
@@ -90,22 +80,22 @@ static size_t CRYPTO_xts128_encrypt(const XTS128_CONTEXT *ctx,
   if (!enc && (len % 16)) len -= 16;
 
   while (len >= 16) {
-#if defined(STRICT_ALIGNMENT)
+#if STRICT_ALIGNMENT
     memcpy(scratch.c, inp, 16);
     scratch.u[0] ^= tweak.u[0];
     scratch.u[1] ^= tweak.u[1];
 #else
-    scratch.u[0] = ((unint64_t *)inp)[0] ^ tweak.u[0];
-    scratch.u[1] = ((unint64_t *)inp)[1] ^ tweak.u[1];
+    scratch.u[0] = ((uint64_t *)inp)[0] ^ tweak.u[0];
+    scratch.u[1] = ((uint64_t *)inp)[1] ^ tweak.u[1];
 #endif
     (*ctx->block1)(scratch.c, scratch.c, ctx->key1);
-#if defined(STRICT_ALIGNMENT)
+#if STRICT_ALIGNMENT
     scratch.u[0] ^= tweak.u[0];
     scratch.u[1] ^= tweak.u[1];
     memcpy(out, scratch.c, 16);
 #else
-    ((unint64_t *)out)[0] = scratch.u[0] ^= tweak.u[0];
-    ((unint64_t *)out)[1] = scratch.u[1] ^= tweak.u[1];
+    ((uint64_t *)out)[0] = scratch.u[0] ^= tweak.u[0];
+    ((uint64_t *)out)[1] = scratch.u[1] ^= tweak.u[1];
 #endif
     inp += 16;
     out += 16;
@@ -113,26 +103,12 @@ static size_t CRYPTO_xts128_encrypt(const XTS128_CONTEXT *ctx,
 
     if (len == 0) return 1;
 
-    if (is_endian.little) {
-      unsigned int carry, res;
+    unsigned int carry, res;
 
-      res = 0x87 & (((int)tweak.d[3]) >> 31);
-      carry = (unsigned int)(tweak.u[0] >> 63);
-      tweak.u[0] = (tweak.u[0] << 1) ^ res;
-      tweak.u[1] = (tweak.u[1] << 1) | carry;
-    } else {
-      size_t c;
-
-      for (c = 0, i = 0; i < 16; ++i) {
-        /*
-         * + substitutes for |, because c is 1 bit
-         */
-        c += ((size_t)tweak.c[i]) << 1;
-        tweak.c[i] = (uint8_t)c;
-        c = c >> 8;
-      }
-      tweak.c[0] ^= (uint8_t)(0x87 & (0 - c));
-    }
+    res = 0x87 & (((int)tweak.d[3]) >> 31);
+    carry = (unsigned int)(tweak.u[0] >> 63);
+    tweak.u[0] = (tweak.u[0] << 1) ^ res;
+    tweak.u[1] = (tweak.u[1] << 1) | carry;
   }
   if (enc) {
     for (i = 0; i < len; ++i) {
@@ -152,33 +128,19 @@ static size_t CRYPTO_xts128_encrypt(const XTS128_CONTEXT *ctx,
       uint8_t c[16];
     } tweak1;
 
-    if (is_endian.little) {
-      unsigned int carry, res;
+    unsigned int carry, res;
 
-      res = 0x87 & (((int)tweak.d[3]) >> 31);
-      carry = (unsigned int)(tweak.u[0] >> 63);
-      tweak1.u[0] = (tweak.u[0] << 1) ^ res;
-      tweak1.u[1] = (tweak.u[1] << 1) | carry;
-    } else {
-      size_t c;
-
-      for (c = 0, i = 0; i < 16; ++i) {
-        /*
-         * + substitutes for |, because c is 1 bit
-         */
-        c += ((size_t)tweak.c[i]) << 1;
-        tweak1.c[i] = (uint8_t)c;
-        c = c >> 8;
-      }
-      tweak1.c[0] ^= (uint8_t)(0x87 & (0 - c));
-    }
-#if defined(STRICT_ALIGNMENT)
+    res = 0x87 & (((int)tweak.d[3]) >> 31);
+    carry = (unsigned int)(tweak.u[0] >> 63);
+    tweak1.u[0] = (tweak.u[0] << 1) ^ res;
+    tweak1.u[1] = (tweak.u[1] << 1) | carry;
+#if STRICT_ALIGNMENT
     memcpy(scratch.c, inp, 16);
     scratch.u[0] ^= tweak1.u[0];
     scratch.u[1] ^= tweak1.u[1];
 #else
-    scratch.u[0] = ((unint64_t *)inp)[0] ^ tweak1.u[0];
-    scratch.u[1] = ((unint64_t *)inp)[1] ^ tweak1.u[1];
+    scratch.u[0] = ((uint64_t *)inp)[0] ^ tweak1.u[0];
+    scratch.u[1] = ((uint64_t *)inp)[1] ^ tweak1.u[1];
 #endif
     (*ctx->block1)(scratch.c, scratch.c, ctx->key1);
     scratch.u[0] ^= tweak1.u[0];
@@ -192,13 +154,13 @@ static size_t CRYPTO_xts128_encrypt(const XTS128_CONTEXT *ctx,
     scratch.u[0] ^= tweak.u[0];
     scratch.u[1] ^= tweak.u[1];
     (*ctx->block1)(scratch.c, scratch.c, ctx->key1);
-#if defined(STRICT_ALIGNMENT)
+#if STRICT_ALIGNMENT
     scratch.u[0] ^= tweak.u[0];
     scratch.u[1] ^= tweak.u[1];
     memcpy(out, scratch.c, 16);
 #else
-    ((unint64_t *)out)[0] = scratch.u[0] ^ tweak.u[0];
-    ((unint64_t *)out)[1] = scratch.u[1] ^ tweak.u[1];
+    ((uint64_t *)out)[0] = scratch.u[0] ^ tweak.u[0];
+    ((uint64_t *)out)[1] = scratch.u[1] ^ tweak.u[1];
 #endif
   }
 
@@ -286,7 +248,7 @@ static int aes_xts_ctrl(EVP_CIPHER_CTX *c, int type, int arg, void *ptr) {
 }
 
 static const EVP_CIPHER aes_256_xts = {
-    NID_aes_256_xts,     1 /* block_size */,  32 /* key_size */,
+    NID_aes_256_xts,     1 /* block_size */,  64 /* key_size (2 AES keys) */,
     16 /* iv_len */,     sizeof(EVP_AES_XTS_CTX),
     EVP_CIPH_XTS_MODE | EVP_CIPH_CUSTOM_IV | EVP_CIPH_ALWAYS_CALL_INIT |
         EVP_CIPH_CTRL_INIT | EVP_CIPH_CUSTOM_COPY,
