@@ -176,12 +176,8 @@ static bool TestBuiltin(FILE *out) {
       fprintf(out, " failed\n");
       return false;
     }
-    ScopedBIGNUM order(BN_new());
-    if (!order || !EC_GROUP_get_order(group.get(), order.get(), NULL)) {
-      fprintf(out, " failed\n");
-      return false;
-    }
-    if (BN_num_bits(order.get()) < 160) {
+    const BIGNUM *order = EC_GROUP_get0_order(group.get());
+    if (BN_num_bits(order) < 160) {
       // Too small to test.
       fprintf(out, " skipped\n");
       continue;
@@ -261,7 +257,7 @@ static bool TestBuiltin(FILE *out) {
         signature.data(), signature.size()));
     if (!ecdsa_sig ||
         !TestTamperedSig(out, kEncodedApi, digest, 20, ecdsa_sig.get(),
-                         eckey.get(), order.get())) {
+                         eckey.get(), order)) {
       fprintf(out, " failed\n");
       return false;
     }
@@ -300,7 +296,7 @@ static bool TestBuiltin(FILE *out) {
     fflush(out);
     // Verify a tampered signature.
     if (!TestTamperedSig(out, kRawApi, digest, 20, ecdsa_sig.get(), eckey.get(),
-                         order.get())) {
+                         order)) {
       fprintf(out, " failed\n");
       return false;
     }

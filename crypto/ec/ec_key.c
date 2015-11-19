@@ -289,7 +289,6 @@ void EC_KEY_set_conv_form(EC_KEY *key, point_conversion_form_t cform) {
 int EC_KEY_check_key(const EC_KEY *eckey) {
   int ok = 0;
   BN_CTX *ctx = NULL;
-  const BIGNUM *order = NULL;
   EC_POINT *point = NULL;
 
   if (!eckey || !eckey->group || !eckey->pub_key) {
@@ -318,11 +317,7 @@ int EC_KEY_check_key(const EC_KEY *eckey) {
   /* testing whether pub_key * order is the point at infinity */
   /* TODO(fork): can this be skipped if the cofactor is one or if we're about
    * to check the private key, below? */
-  order = &eckey->group->order;
-  if (BN_is_zero(order)) {
-    OPENSSL_PUT_ERROR(EC, EC_R_INVALID_GROUP_ORDER);
-    goto err;
-  }
+  const BIGNUM *order = EC_GROUP_get0_order(eckey->group);
   if (!EC_POINT_mul(eckey->group, point, NULL, eckey->pub_key, order, ctx)) {
     OPENSSL_PUT_ERROR(EC, ERR_R_EC_LIB);
     goto err;
@@ -408,21 +403,12 @@ err:
 
 int EC_KEY_generate_key(EC_KEY *eckey) {
   int ok = 0;
-  BN_CTX *ctx = NULL;
-  BIGNUM *priv_key = NULL, *order = NULL;
+  BIGNUM *priv_key = NULL;
   EC_POINT *pub_key = NULL;
 
   if (!eckey || !eckey->group) {
     OPENSSL_PUT_ERROR(EC, ERR_R_PASSED_NULL_PARAMETER);
     return 0;
-  }
-
-  order = BN_new();
-  ctx = BN_CTX_new();
-
-  if (order == NULL ||
-      ctx == NULL) {
-    goto err;
   }
 
   if (eckey->priv_key == NULL) {
@@ -434,10 +420,7 @@ int EC_KEY_generate_key(EC_KEY *eckey) {
     priv_key = eckey->priv_key;
   }
 
-  if (!EC_GROUP_get_order(eckey->group, order, ctx)) {
-    goto err;
-  }
-
+  const BIGNUM *order = EC_GROUP_get0_order(eckey->group);
   do {
     if (!BN_rand_range(priv_key, order)) {
       goto err;
@@ -453,7 +436,7 @@ int EC_KEY_generate_key(EC_KEY *eckey) {
     pub_key = eckey->pub_key;
   }
 
-  if (!EC_POINT_mul(eckey->group, pub_key, priv_key, NULL, NULL, ctx)) {
+  if (!EC_POINT_mul(eckey->group, pub_key, priv_key, NULL, NULL, NULL)) {
     goto err;
   }
 
@@ -463,14 +446,12 @@ int EC_KEY_generate_key(EC_KEY *eckey) {
   ok = 1;
 
 err:
-  BN_free(order);
   if (eckey->pub_key == NULL) {
     EC_POINT_free(pub_key);
   }
   if (eckey->priv_key == NULL) {
     BN_free(priv_key);
   }
-  BN_CTX_free(ctx);
   return ok;
 }
 

@@ -120,10 +120,9 @@ OPENSSL_EXPORT int EC_GROUP_cmp(const EC_GROUP *a, const EC_GROUP *b,
  * in |group| that specifies the generator for the group. */
 OPENSSL_EXPORT const EC_POINT *EC_GROUP_get0_generator(const EC_GROUP *group);
 
-/* EC_GROUP_get_order sets |*order| to the order of |group|, if it's not
- * NULL. It returns one on success and zero otherwise. |ctx| is ignored. */
-OPENSSL_EXPORT int EC_GROUP_get_order(const EC_GROUP *group, BIGNUM *order,
-                                      BN_CTX *ctx);
+/* EC_GROUP_get0_order returns a pointer to the internal |BIGNUM| object in
+ * |group| that specifies the order of the group. */
+OPENSSL_EXPORT const BIGNUM *EC_GROUP_get0_order(const EC_GROUP *group);
 
 /* EC_GROUP_get_cofactor sets |*cofactor| to the cofactor of |group| using
  * |ctx|, if it's not NULL. It returns one on success and zero otherwise. */
@@ -282,6 +281,12 @@ OPENSSL_EXPORT int EC_POINT_mul(const EC_GROUP *group, EC_POINT *r,
 OPENSSL_EXPORT EC_GROUP *EC_GROUP_new_curve_GFp(const BIGNUM *p,
                                                 const BIGNUM *a,
                                                 const BIGNUM *b, BN_CTX *ctx);
+
+/* EC_GROUP_get_order sets |*order| to the order of |group|, if it's not
+ * NULL. It returns one on success and zero otherwise. |ctx| is ignored. Use
+ * |EC_GROUP_get0_order| instead. */
+OPENSSL_EXPORT int EC_GROUP_get_order(const EC_GROUP *group, BIGNUM *order,
+                                      BN_CTX *ctx);
 
 /* EC_GROUP_set_generator sets the generator for |group| to |generator|, which
  * must have the given order and cofactor. This should only be used with

@@ -613,12 +613,16 @@ const EC_POINT *EC_GROUP_get0_generator(const EC_GROUP *group) {
   return group->generator;
 }
 
+const BIGNUM *EC_GROUP_get0_order(const EC_GROUP *group) {
+  assert(!BN_is_zero(&group->order));
+  return &group->order;
+}
+
 int EC_GROUP_get_order(const EC_GROUP *group, BIGNUM *order, BN_CTX *ctx) {
-  if (!BN_copy(order, &group->order)) {
+  if (BN_copy(order, EC_GROUP_get0_order(group)) == NULL) {
     return 0;
   }
-
-  return !BN_is_zero(order);
+  return 1;
 }
 
 int EC_GROUP_get_cofactor(const EC_GROUP *group, BIGNUM *cofactor,

@@ -78,17 +78,7 @@ size_t ECDSA_size(const EC_KEY *key) {
       return 0;
     }
 
-    BIGNUM *order = BN_new();
-    if (order == NULL) {
-      return 0;
-    }
-    if (!EC_GROUP_get_order(group, order, NULL)) {
-      BN_clear_free(order);
-      return 0;
-    }
-
-    group_order_size = BN_num_bytes(order);
-    BN_clear_free(order);
+    group_order_size = BN_num_bytes(EC_GROUP_get0_order(group));
   }
 
   return ECDSA_SIG_max_len(group_order_size);
