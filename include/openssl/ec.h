@@ -271,30 +271,22 @@ OPENSSL_EXPORT int EC_POINT_mul(const EC_GROUP *group, EC_POINT *r,
 
 /* Deprecated functions. */
 
-/* EC_GROUP_new_curve_GFp creates a new, arbitrary elliptic curve group based
- * on the equation y² = x³ + a·x + b. It returns the new group or NULL on
- * error.
+/* EC_GROUP_new_arbitrary creates a new, arbitrary elliptic curve group based on
+ * the equation y² = x³ + a·x + b. The generator is set to (gx, gy) which must
+ * have the given order and cofactor. It returns the new group or NULL on error.
  *
  * |EC_GROUP|s returned by this function will always compare as unequal via
  * |EC_GROUP_cmp| (even to themselves). |EC_GROUP_get_curve_name| will always
  * return |NID_undef|. */
-OPENSSL_EXPORT EC_GROUP *EC_GROUP_new_curve_GFp(const BIGNUM *p,
-                                                const BIGNUM *a,
-                                                const BIGNUM *b, BN_CTX *ctx);
+OPENSSL_EXPORT EC_GROUP *EC_GROUP_new_arbitrary(
+    const BIGNUM *p, const BIGNUM *a, const BIGNUM *b, const BIGNUM *gx,
+    const BIGNUM *gy, const BIGNUM *order, const BIGNUM *cofactor);
 
 /* EC_GROUP_get_order sets |*order| to the order of |group|, if it's not
  * NULL. It returns one on success and zero otherwise. |ctx| is ignored. Use
  * |EC_GROUP_get0_order| instead. */
 OPENSSL_EXPORT int EC_GROUP_get_order(const EC_GROUP *group, BIGNUM *order,
                                       BN_CTX *ctx);
-
-/* EC_GROUP_set_generator sets the generator for |group| to |generator|, which
- * must have the given order and cofactor. This should only be used with
- * |EC_GROUP| objects returned by |EC_GROUP_new_curve_GFp|. */
-OPENSSL_EXPORT int EC_GROUP_set_generator(EC_GROUP *group,
-                                          const EC_POINT *generator,
-                                          const BIGNUM *order,
-                                          const BIGNUM *cofactor);
 
 /* EC_GROUP_set_asn1_flag does nothing. */
 OPENSSL_EXPORT void EC_GROUP_set_asn1_flag(EC_GROUP *group, int flag);

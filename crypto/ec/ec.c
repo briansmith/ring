@@ -350,8 +350,8 @@ EC_GROUP *ec_group_new(const EC_METHOD *meth) {
   return ret;
 }
 
-EC_GROUP *EC_GROUP_new_curve_GFp(const BIGNUM *p, const BIGNUM *a,
-                                 const BIGNUM *b, BN_CTX *ctx) {
+static EC_GROUP *ec_group_new_curve_GFp(const BIGNUM *p, const BIGNUM *a,
+                                        const BIGNUM *b, BN_CTX *ctx) {
   const EC_METHOD *meth = EC_GFp_mont_method();
   EC_GROUP *ret;
 
@@ -371,42 +371,38 @@ EC_GROUP *EC_GROUP_new_curve_GFp(const BIGNUM *p, const BIGNUM *a,
   return ret;
 }
 
-int EC_GROUP_set_generator(EC_GROUP *group, const EC_POINT *generator,
-                           const BIGNUM *order, const BIGNUM *cofactor) {
-  if (group->curve_name != NID_undef) {
-    /* |EC_GROUP_set_generator| should only be used with |EC_GROUP|s returned
-     * by |EC_GROUP_new_curve_GFp|. */
-    return 0;
+EC_GROUP *EC_GROUP_new_arbitrary(const BIGNUM *p, const BIGNUM *a,
+                                 const BIGNUM *b, const BIGNUM *gx,
+                                 const BIGNUM *gy, const BIGNUM *order,
+                                 const BIGNUM *cofactor) {
+  EC_GROUP *ret = NULL;
+  BN_CTX *ctx;
+
+  ctx = BN_CTX_new();
+  if (ctx == NULL) {
+    goto err;
   }
 
-  if (group->generator == NULL) {
-    group->generator = EC_POINT_new(group);
-    if (group->generator == NULL) {
-      return 0;
-    }
+  ret = ec_group_new_curve_GFp(p, a, b, ctx);
+  if (ret == NULL) {
+    goto err;
   }
 
-  if (!EC_POINT_copy(group->generator, generator)) {
-    return 0;
+  ret->generator = EC_POINT_new(ret);
+  if (ret->generator == NULL ||
+      !EC_POINT_set_affine_coordinates_GFp(ret, ret->generator, gx, gy, ctx) ||
+      !BN_copy(&ret->order, order) ||
+      !BN_copy(&ret->cofactor, cofactor)) {
+    goto err;
   }
 
-  if (order != NULL) {
-    if (!BN_copy(&group->order, order)) {
-      return 0;
-    }
-  } else {
-    BN_zero(&group->order);
-  }
+  BN_CTX_free(ctx);
+  return ret;
 
-  if (cofactor != NULL) {
-    if (!BN_copy(&group->cofactor, cofactor)) {
-      return 0;
-    }
-  } else {
-    BN_zero(&group->cofactor);
-  }
-
-  return 1;
+err:
+  EC_GROUP_free(ret);
+  BN_CTX_free(ctx);
+  return NULL;
 }
 
 static EC_GROUP *ec_group_new_from_data(unsigned built_in_index) {
@@ -442,7 +438,7 @@ static EC_GROUP *ec_group_new_from_data(unsigned built_in_index) {
       goto err;
     }
   } else {
-    if ((group = EC_GROUP_new_curve_GFp(p, a, b, ctx)) == NULL) {
+    if ((group = ec_group_new_curve_GFp(p, a, b, ctx)) == NULL) {
       OPENSSL_PUT_ERROR(EC, ERR_R_EC_LIB);
       goto err;
     }

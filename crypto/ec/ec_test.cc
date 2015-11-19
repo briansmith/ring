@@ -240,6 +240,92 @@ bool TestSetAffine(const int nid) {
   return true;
 }
 
+static bool TestArbitraryCurve() {
+  // Make a P-256 key and extract the affine coordinates.
+  ScopedEC_KEY key(EC_KEY_new_by_curve_name(NID_X9_62_prime256v1));
+  if (!key || !EC_KEY_generate_key(key.get())) {
+    return false;
+  }
+
+  // Make an arbitrary curve which is identical to P-256.
+  static const uint8_t kP[] = {
+      0xff, 0xff, 0xff, 0xff, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00,
+      0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xff, 0xff,
+      0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+  };
+  static const uint8_t kA[] = {
+      0xff, 0xff, 0xff, 0xff, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00,
+      0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xff, 0xff,
+      0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xfc,
+  };
+  static const uint8_t kB[] = {
+      0x5a, 0xc6, 0x35, 0xd8, 0xaa, 0x3a, 0x93, 0xe7, 0xb3, 0xeb, 0xbd,
+      0x55, 0x76, 0x98, 0x86, 0xbc, 0x65, 0x1d, 0x06, 0xb0, 0xcc, 0x53,
+      0xb0, 0xf6, 0x3b, 0xce, 0x3c, 0x3e, 0x27, 0xd2, 0x60, 0x4b,
+  };
+  static const uint8_t kX[] = {
+      0x6b, 0x17, 0xd1, 0xf2, 0xe1, 0x2c, 0x42, 0x47, 0xf8, 0xbc, 0xe6,
+      0xe5, 0x63, 0xa4, 0x40, 0xf2, 0x77, 0x03, 0x7d, 0x81, 0x2d, 0xeb,
+      0x33, 0xa0, 0xf4, 0xa1, 0x39, 0x45, 0xd8, 0x98, 0xc2, 0x96,
+  };
+  static const uint8_t kY[] = {
+      0x4f, 0xe3, 0x42, 0xe2, 0xfe, 0x1a, 0x7f, 0x9b, 0x8e, 0xe7, 0xeb,
+      0x4a, 0x7c, 0x0f, 0x9e, 0x16, 0x2b, 0xce, 0x33, 0x57, 0x6b, 0x31,
+      0x5e, 0xce, 0xcb, 0xb6, 0x40, 0x68, 0x37, 0xbf, 0x51, 0xf5,
+  };
+  static const uint8_t kOrder[] = {
+      0xff, 0xff, 0xff, 0xff, 0x00, 0x00, 0x00, 0x00, 0xff, 0xff, 0xff,
+      0xff, 0xff, 0xff, 0xff, 0xff, 0xbc, 0xe6, 0xfa, 0xad, 0xa7, 0x17,
+      0x9e, 0x84, 0xf3, 0xb9, 0xca, 0xc2, 0xfc, 0x63, 0x25, 0x51,
+  };
+  ScopedBIGNUM p(BN_bin2bn(kP, sizeof(kP), nullptr));
+  ScopedBIGNUM a(BN_bin2bn(kA, sizeof(kA), nullptr));
+  ScopedBIGNUM b(BN_bin2bn(kB, sizeof(kB), nullptr));
+  ScopedBIGNUM x(BN_bin2bn(kX, sizeof(kX), nullptr));
+  ScopedBIGNUM y(BN_bin2bn(kY, sizeof(kY), nullptr));
+  ScopedBIGNUM order(BN_bin2bn(kOrder, sizeof(kOrder), nullptr));
+  ScopedBIGNUM cofactor(BN_new());
+  if (!p || !a || !b || !x || !y || !order || !cofactor ||
+      !BN_set_word(cofactor.get(), 1)) {
+    return false;
+  }
+  ScopedEC_GROUP group(EC_GROUP_new_arbitrary(p.get(), a.get(), b.get(),
+                                              x.get(), y.get(), order.get(),
+                                              cofactor.get()));
+  if (!group) {
+    return false;
+  }
+
+  // |group| should not have a curve name.
+  if (EC_GROUP_get_curve_name(group.get()) != NID_undef) {
+    return false;
+  }
+
+  // Copy |key| to |key2| using |group|.
+  ScopedEC_KEY key2(EC_KEY_new());
+  ScopedEC_POINT point(EC_POINT_new(group.get()));
+  if (!key2 || !point ||
+      !EC_KEY_set_group(key2.get(), group.get()) ||
+      !EC_KEY_set_private_key(key2.get(), EC_KEY_get0_private_key(key.get())) ||
+      !EC_POINT_get_affine_coordinates_GFp(EC_KEY_get0_group(key.get()),
+                                           EC_KEY_get0_public_key(key.get()),
+                                           x.get(), y.get(), nullptr) ||
+      !EC_POINT_set_affine_coordinates_GFp(group.get(), point.get(), x.get(),
+                                           y.get(), nullptr) ||
+      !EC_KEY_set_public_key(key2.get(), point.get())) {
+    fprintf(stderr, "Could not copy key.\n");
+    return false;
+  }
+
+  // The key must be valid according to the new group too.
+  if (!EC_KEY_check_key(key2.get())) {
+    fprintf(stderr, "Copied key is not valid.\n");
+    return false;
+  }
+
+  return true;
+}
+
 int main(void) {
   CRYPTO_library_init();
   ERR_load_crypto_strings();
@@ -249,7 +335,8 @@ int main(void) {
       !TestSetAffine(NID_secp224r1) ||
       !TestSetAffine(NID_X9_62_prime256v1) ||
       !TestSetAffine(NID_secp384r1) ||
-      !TestSetAffine(NID_secp521r1)) {
+      !TestSetAffine(NID_secp521r1) ||
+      !TestArbitraryCurve()) {
     fprintf(stderr, "failed\n");
     return 1;
   }
