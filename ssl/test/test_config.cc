@@ -89,7 +89,6 @@ const Flag<bool> kBoolFlags[] = {
   { "-custom-extension-fail-add", &TestConfig::custom_extension_fail_add },
   { "-check-close-notify", &TestConfig::check_close_notify },
   { "-shim-shuts-down", &TestConfig::shim_shuts_down },
-  { "-microsoft-big-sslv3-buffer", &TestConfig::microsoft_big_sslv3_buffer },
   { "-verify-fail", &TestConfig::verify_fail },
   { "-verify-peer", &TestConfig::verify_peer },
   { "-expect-verify-result", &TestConfig::expect_verify_result },

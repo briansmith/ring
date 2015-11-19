@@ -1161,9 +1161,6 @@ static bool DoExchange(ScopedSSL_SESSION *out_session, SSL_CTX *ssl_ctx,
   if (config->no_ssl3) {
     SSL_set_options(ssl.get(), SSL_OP_NO_SSLv3);
   }
-  if (config->microsoft_big_sslv3_buffer) {
-    SSL_set_options(ssl.get(), SSL_OP_MICROSOFT_BIG_SSLV3_BUFFER);
-  }
   if (config->no_legacy_server_connect) {
     SSL_clear_options(ssl.get(), SSL_OP_LEGACY_SERVER_CONNECT);
   }

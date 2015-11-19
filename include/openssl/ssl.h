@@ -546,10 +546,6 @@ OPENSSL_EXPORT int SSL_version(const SSL *ssl);
  * support the renegotiation_info extension (RFC 5746). It is on by default. */
 #define SSL_OP_LEGACY_SERVER_CONNECT 0x00000004L
 
-/* SSL_OP_MICROSOFT_BIG_SSLV3_BUFFER allows for record sizes |SSL3_RT_MAX_EXTRA|
- * bytes above the maximum record size. */
-#define SSL_OP_MICROSOFT_BIG_SSLV3_BUFFER 0x00000020L
-
 /* SSL_OP_ALL enables the above bug workarounds that are enabled by many
  * consumers.
  * TODO(davidben): Determine which of the remaining may be removed now. */
@@ -2756,13 +2752,6 @@ OPENSSL_EXPORT void SSL_CTX_set_max_send_fragment(SSL_CTX *ctx,
 OPENSSL_EXPORT void SSL_set_max_send_fragment(SSL *ssl,
                                               size_t max_send_fragment);
 
-/* OPENSSL_get_big_buffer_use_count returns the total number of invalid TLS
- * records that were accepted because of |SSL_OP_MICROSOFT_BIG_SSLV3_BUFFER|.
- *
- * TODO(davidben): Remove this when (hopefully!) the quirk is demonstrated to be
- * unnecessary. */
-OPENSSL_EXPORT uint64_t OPENSSL_get_big_buffer_use_count(void);
-
 /* ssl_early_callback_ctx is passed to certain callbacks that are called very
  * early on during the server handshake. At this point, much of the SSL* hasn't
  * been filled out and only the ClientHello can be depended on. */
@@ -3181,6 +3170,7 @@ DECLARE_STACK_OF(SSL_COMP)
 #define SSL_OP_ALLOW_UNSAFE_LEGACY_RENEGOTIATION 0
 #define SSL_OP_DONT_INSERT_EMPTY_FRAGMENTS 0
 #define SSL_OP_EPHEMERAL_RSA 0
+#define SSL_OP_MICROSOFT_BIG_SSLV3_BUFFER 0
 #define SSL_OP_MICROSOFT_SESS_ID_BUG 0
 #define SSL_OP_MSIE_SSLV2_RSA_PADDING 0
 #define SSL_OP_NETSCAPE_CA_DN_BUG 0
