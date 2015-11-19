@@ -550,10 +550,6 @@ OPENSSL_EXPORT int SSL_version(const SSL *ssl);
  * bytes above the maximum record size. */
 #define SSL_OP_MICROSOFT_BIG_SSLV3_BUFFER 0x00000020L
 
-/* SSL_OP_TLS_D5_BUG accepts an RSAClientKeyExchange in TLS encoded as in SSL3
- * (i.e. without a length prefix). */
-#define SSL_OP_TLS_D5_BUG 0x00000100L
-
 /* SSL_OP_ALL enables the above bug workarounds that are enabled by many
  * consumers.
  * TODO(davidben): Determine which of the remaining may be removed now. */
@@ -2767,13 +2763,6 @@ OPENSSL_EXPORT void SSL_set_max_send_fragment(SSL *ssl,
  * unnecessary. */
 OPENSSL_EXPORT uint64_t OPENSSL_get_big_buffer_use_count(void);
 
-/* OPENSSL_get_d5_bug_use_count returns the total number of invalid RSA
- * ClientKeyExchanges that were accepted because of |SSL_OP_TLS_D5_BUG|.
- *
- * TODO(davidben): Remove this when (hopefully!) the quirk is demonstrated to be
- * unnecessary. */
-OPENSSL_EXPORT uint64_t OPENSSL_get_d5_bug_use_count(void);
-
 /* ssl_early_callback_ctx is passed to certain callbacks that are called very
  * early on during the server handshake. At this point, much of the SSL* hasn't
  * been filled out and only the ClientHello can be depended on. */
@@ -3208,6 +3197,7 @@ DECLARE_STACK_OF(SSL_COMP)
 #define SSL_OP_SSLEAY_080_CLIENT_DH_BUG 0
 #define SSL_OP_SSLREF2_REUSE_CERT_TYPE_BUG 0
 #define SSL_OP_TLS_BLOCK_PADDING_BUG 0
+#define SSL_OP_TLS_D5_BUG 0
 #define SSL_OP_TLS_ROLLBACK_BUG 0
 #define SSL_VERIFY_CLIENT_ONCE 0
 

@@ -45,7 +45,6 @@ struct TestConfig {
   std::string expected_channel_id;
   std::string send_channel_id;
   bool shim_writes_first = false;
-  bool tls_d5_bug = false;
   std::string host_name;
   std::string advertise_alpn;
   std::string expected_alpn;

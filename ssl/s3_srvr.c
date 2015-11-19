@@ -1587,16 +1587,6 @@ err:
   return -1;
 }
 
-static struct CRYPTO_STATIC_MUTEX g_d5_bug_lock = CRYPTO_STATIC_MUTEX_INIT;
-static uint64_t g_d5_bug_use_count = 0;
-
-uint64_t OPENSSL_get_d5_bug_use_count(void) {
-  CRYPTO_STATIC_MUTEX_lock_read(&g_d5_bug_lock);
-  uint64_t ret = g_d5_bug_use_count;
-  CRYPTO_STATIC_MUTEX_unlock(&g_d5_bug_lock);
-  return ret;
-}
-
 int ssl3_get_client_key_exchange(SSL *s) {
   int al;
   CBS client_key_exchange;
@@ -1702,22 +1692,13 @@ int ssl3_get_client_key_exchange(SSL *s) {
       }
       /* TLS and [incidentally] DTLS{0xFEFF} */
       if (s->version > SSL3_VERSION) {
-        CBS copy = client_key_exchange;
         if (!CBS_get_u16_length_prefixed(&client_key_exchange,
                                          &encrypted_premaster_secret) ||
             CBS_len(&client_key_exchange) != 0) {
-          if (!(s->options & SSL_OP_TLS_D5_BUG)) {
-            al = SSL_AD_DECODE_ERROR;
-            OPENSSL_PUT_ERROR(SSL,
-                              SSL_R_TLS_RSA_ENCRYPTED_VALUE_LENGTH_IS_WRONG);
-            goto f_err;
-          } else {
-            CRYPTO_STATIC_MUTEX_lock_write(&g_d5_bug_lock);
-            g_d5_bug_use_count++;
-            CRYPTO_STATIC_MUTEX_unlock(&g_d5_bug_lock);
-
-            encrypted_premaster_secret = copy;
-          }
+          al = SSL_AD_DECODE_ERROR;
+          OPENSSL_PUT_ERROR(SSL,
+                            SSL_R_TLS_RSA_ENCRYPTED_VALUE_LENGTH_IS_WRONG);
+          goto f_err;
         }
       } else {
         encrypted_premaster_secret = client_key_exchange;

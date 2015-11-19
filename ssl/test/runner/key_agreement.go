@@ -156,7 +156,7 @@ func (ka *rsaKeyAgreement) generateClientKeyExchange(config *Config, clientHello
 		return nil, nil, err
 	}
 	ckx := new(clientKeyExchangeMsg)
-	if clientHello.vers != VersionSSL30 && !config.Bugs.SSL3RSAKeyExchange {
+	if clientHello.vers != VersionSSL30 {
 		ckx.ciphertext = make([]byte, len(encrypted)+2)
 		ckx.ciphertext[0] = byte(len(encrypted) >> 8)
 		ckx.ciphertext[1] = byte(len(encrypted))

@@ -61,7 +61,6 @@ const Flag<bool> kBoolFlags[] = {
   { "-no-tls1", &TestConfig::no_tls1 },
   { "-no-ssl3", &TestConfig::no_ssl3 },
   { "-shim-writes-first", &TestConfig::shim_writes_first },
-  { "-tls-d5-bug", &TestConfig::tls_d5_bug },
   { "-expect-session-miss", &TestConfig::expect_session_miss },
   { "-expect-extended-master-secret",
     &TestConfig::expect_extended_master_secret },
