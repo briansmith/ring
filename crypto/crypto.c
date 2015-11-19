@@ -88,22 +88,22 @@ uint32_t OPENSSL_armcap_P = ARMV7_NEON_FUNCTIONAL;
 #endif
 
 
-#if defined(OPENSSL_WINDOWS)
+#if defined(OPENSSL_WINDOWS) && !defined(BORINGSSL_NO_STATIC_INITIALIZER)
 #define OPENSSL_CDECL __cdecl
 #else
 #define OPENSSL_CDECL
 #endif
 
-#if !defined(BORINGSSL_NO_STATIC_INITIALIZER)
-#if !defined(OPENSSL_WINDOWS)
-static void do_library_init(void) __attribute__ ((constructor));
-#else
+#if defined(BORINGSSL_NO_STATIC_INITIALIZER)
+static CRYPTO_once_t once = CRYPTO_ONCE_INIT;
+#elif defined(OPENSSL_WINDOWS)
 #pragma section(".CRT$XCU", read)
 static void __cdecl do_library_init(void);
 __declspec(allocate(".CRT$XCU")) void(*library_init_constructor)(void) =
     do_library_init;
+#else
+static void do_library_init(void) __attribute__ ((constructor));
 #endif
-#endif  /* !BORINGSSL_NO_STATIC_INITIALIZER */
 
 /* do_library_init is the actual initialization function. If
  * BORINGSSL_NO_STATIC_INITIALIZER isn't defined, this is set as a static
@@ -119,9 +119,9 @@ static void OPENSSL_CDECL do_library_init(void) {
 void CRYPTO_library_init(void) {
   /* TODO(davidben): It would be tidier if this build knob could be replaced
    * with an internal lazy-init mechanism that would handle things correctly
-   * in-library. */
+   * in-library. https://crbug.com/542879 */
 #if defined(BORINGSSL_NO_STATIC_INITIALIZER)
-  do_library_init();
+  CRYPTO_once(&once, do_library_init);
 #endif
 }
 
