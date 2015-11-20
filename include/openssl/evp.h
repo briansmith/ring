@@ -143,19 +143,24 @@ OPENSSL_EXPORT int EVP_PKEY_type(int nid);
  * The following functions get and set the underlying public key in an
  * |EVP_PKEY| object. The |set1| functions take an additional reference to the
  * underlying key and return one on success or zero on error. The |assign|
- * functions adopt the caller's reference. The getters return a fresh reference
- * to the underlying object. */
+ * functions adopt the caller's reference. The |get1| functions return a fresh
+ * reference to the underlying object or NULL if |pkey| is not of the correct
+ * type. The |get0| functions behave the same but return a non-owning
+ * pointer. */
 
 OPENSSL_EXPORT int EVP_PKEY_set1_RSA(EVP_PKEY *pkey, RSA *key);
 OPENSSL_EXPORT int EVP_PKEY_assign_RSA(EVP_PKEY *pkey, RSA *key);
+OPENSSL_EXPORT RSA *EVP_PKEY_get0_RSA(EVP_PKEY *pkey);
 OPENSSL_EXPORT RSA *EVP_PKEY_get1_RSA(EVP_PKEY *pkey);
 
 OPENSSL_EXPORT int EVP_PKEY_set1_DSA(EVP_PKEY *pkey, DSA *key);
 OPENSSL_EXPORT int EVP_PKEY_assign_DSA(EVP_PKEY *pkey, DSA *key);
+OPENSSL_EXPORT DSA *EVP_PKEY_get0_DSA(EVP_PKEY *pkey);
 OPENSSL_EXPORT DSA *EVP_PKEY_get1_DSA(EVP_PKEY *pkey);
 
 OPENSSL_EXPORT int EVP_PKEY_set1_EC_KEY(EVP_PKEY *pkey, EC_KEY *key);
 OPENSSL_EXPORT int EVP_PKEY_assign_EC_KEY(EVP_PKEY *pkey, EC_KEY *key);
+OPENSSL_EXPORT EC_KEY *EVP_PKEY_get0_EC_KEY(EVP_PKEY *pkey);
 OPENSSL_EXPORT EC_KEY *EVP_PKEY_get1_EC_KEY(EVP_PKEY *pkey);
 
 OPENSSL_EXPORT int EVP_PKEY_set1_DH(EVP_PKEY *pkey, DH *key);

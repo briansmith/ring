@@ -584,9 +584,12 @@ int tls1_check_ec_cert(SSL *s, X509 *x) {
   uint16_t curve_id;
   uint8_t comp_id;
 
-  if (!pkey ||
-      pkey->type != EVP_PKEY_EC ||
-      !tls1_curve_params_from_ec_key(&curve_id, &comp_id, pkey->pkey.ec) ||
+  if (!pkey) {
+    goto done;
+  }
+  EC_KEY *ec_key = EVP_PKEY_get0_EC_KEY(pkey);
+  if (ec_key == NULL ||
+      !tls1_curve_params_from_ec_key(&curve_id, &comp_id, ec_key) ||
       !tls1_check_curve_id(s, curve_id) ||
       comp_id != TLSEXT_ECPOINTFORMAT_uncompressed) {
     goto done;

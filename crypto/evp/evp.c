@@ -231,13 +231,20 @@ int EVP_PKEY_assign_RSA(EVP_PKEY *pkey, RSA *key) {
   return EVP_PKEY_assign(pkey, EVP_PKEY_RSA, key);
 }
 
-RSA *EVP_PKEY_get1_RSA(EVP_PKEY *pkey) {
+RSA *EVP_PKEY_get0_RSA(EVP_PKEY *pkey) {
   if (pkey->type != EVP_PKEY_RSA) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_EXPECTING_AN_RSA_KEY);
     return NULL;
   }
-  RSA_up_ref(pkey->pkey.rsa);
   return pkey->pkey.rsa;
+}
+
+RSA *EVP_PKEY_get1_RSA(EVP_PKEY *pkey) {
+  RSA *rsa = EVP_PKEY_get0_RSA(pkey);
+  if (rsa != NULL) {
+    RSA_up_ref(rsa);
+  }
+  return rsa;
 }
 
 int EVP_PKEY_set1_DSA(EVP_PKEY *pkey, DSA *key) {
@@ -252,13 +259,20 @@ int EVP_PKEY_assign_DSA(EVP_PKEY *pkey, DSA *key) {
   return EVP_PKEY_assign(pkey, EVP_PKEY_DSA, key);
 }
 
-DSA *EVP_PKEY_get1_DSA(EVP_PKEY *pkey) {
+DSA *EVP_PKEY_get0_DSA(EVP_PKEY *pkey) {
   if (pkey->type != EVP_PKEY_DSA) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_EXPECTING_A_DSA_KEY);
     return NULL;
   }
-  DSA_up_ref(pkey->pkey.dsa);
   return pkey->pkey.dsa;
+}
+
+DSA *EVP_PKEY_get1_DSA(EVP_PKEY *pkey) {
+  DSA *dsa = EVP_PKEY_get0_DSA(pkey);
+  if (dsa != NULL) {
+    DSA_up_ref(dsa);
+  }
+  return dsa;
 }
 
 int EVP_PKEY_set1_EC_KEY(EVP_PKEY *pkey, EC_KEY *key) {
@@ -273,13 +287,20 @@ int EVP_PKEY_assign_EC_KEY(EVP_PKEY *pkey, EC_KEY *key) {
   return EVP_PKEY_assign(pkey, EVP_PKEY_EC, key);
 }
 
-EC_KEY *EVP_PKEY_get1_EC_KEY(EVP_PKEY *pkey) {
+EC_KEY *EVP_PKEY_get0_EC_KEY(EVP_PKEY *pkey) {
   if (pkey->type != EVP_PKEY_EC) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_EXPECTING_AN_EC_KEY_KEY);
     return NULL;
   }
-  EC_KEY_up_ref(pkey->pkey.ec);
   return pkey->pkey.ec;
+}
+
+EC_KEY *EVP_PKEY_get1_EC_KEY(EVP_PKEY *pkey) {
+  EC_KEY *ec_key = EVP_PKEY_get0_EC_KEY(pkey);
+  if (ec_key != NULL) {
+    EC_KEY_up_ref(ec_key);
+  }
+  return ec_key;
 }
 
 int EVP_PKEY_set1_DH(EVP_PKEY *pkey, DH *key) {

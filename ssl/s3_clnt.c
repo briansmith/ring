@@ -1664,7 +1664,6 @@ int ssl3_send_client_key_exchange(SSL *s) {
 
     /* Depending on the key exchange method, compute |pms| and |pms_len|. */
     if (alg_k & SSL_kRSA) {
-      RSA *rsa;
       size_t enc_pms_len;
 
       pms_len = SSL_MAX_MASTER_KEY_LENGTH;
@@ -1675,16 +1674,18 @@ int ssl3_send_client_key_exchange(SSL *s) {
       }
 
       pkey = X509_get_pubkey(s->session->peer);
-      if (pkey == NULL ||
-          pkey->type != EVP_PKEY_RSA ||
-          pkey->pkey.rsa == NULL) {
+      if (pkey == NULL) {
+        goto err;
+      }
+
+      RSA *rsa = EVP_PKEY_get0_RSA(pkey);
+      if (rsa == NULL) {
         OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
         EVP_PKEY_free(pkey);
         goto err;
       }
 
       s->session->key_exchange_info = EVP_PKEY_bits(pkey);
-      rsa = pkey->pkey.rsa;
       EVP_PKEY_free(pkey);
 
       pms[0] = s->client_version >> 8;
@@ -2161,13 +2162,13 @@ int ssl3_send_channel_id(SSL *ssl) {
   }
   ssl->rwstate = SSL_NOTHING;
 
-  if (EVP_PKEY_id(ssl->tlsext_channel_id_private) != EVP_PKEY_EC) {
+  EC_KEY *ec_key = EVP_PKEY_get0_EC_KEY(ssl->tlsext_channel_id_private);
+  if (ec_key == NULL) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
     return -1;
   }
 
   int ret = -1;
-  EC_KEY *ec_key = ssl->tlsext_channel_id_private->pkey.ec;
   BIGNUM *x = BN_new();
   BIGNUM *y = BN_new();
   ECDSA_SIG *sig = NULL;

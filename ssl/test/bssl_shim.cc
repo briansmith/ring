@@ -222,13 +222,12 @@ static ssl_private_key_result_t AsyncPrivateKeyDecrypt(
     abort();
   }
 
-  EVP_PKEY *pkey = test_state->private_key.get();
-  if (pkey->type != EVP_PKEY_RSA || pkey->pkey.rsa == NULL) {
+  RSA *rsa = EVP_PKEY_get0_RSA(test_state->private_key.get());
+  if (rsa == NULL) {
     fprintf(stderr,
             "AsyncPrivateKeyDecrypt called with incorrect key type.\n");
     abort();
   }
-  RSA *rsa = pkey->pkey.rsa;
   test_state->private_key_result.resize(RSA_size(rsa));
   if (!RSA_decrypt(rsa, out_len, test_state->private_key_result.data(),
                    RSA_size(rsa), in, in_len, RSA_NO_PADDING)) {
