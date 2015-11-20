@@ -163,16 +163,10 @@ OPENSSL_EXPORT int EVP_PKEY_assign_EC_KEY(EVP_PKEY *pkey, EC_KEY *key);
 OPENSSL_EXPORT EC_KEY *EVP_PKEY_get0_EC_KEY(EVP_PKEY *pkey);
 OPENSSL_EXPORT EC_KEY *EVP_PKEY_get1_EC_KEY(EVP_PKEY *pkey);
 
-OPENSSL_EXPORT int EVP_PKEY_set1_DH(EVP_PKEY *pkey, DH *key);
-OPENSSL_EXPORT int EVP_PKEY_assign_DH(EVP_PKEY *pkey, DH *key);
-OPENSSL_EXPORT DH *EVP_PKEY_get1_DH(EVP_PKEY *pkey);
-
 #define EVP_PKEY_NONE NID_undef
 #define EVP_PKEY_RSA NID_rsaEncryption
 #define EVP_PKEY_RSA2 NID_rsa
 #define EVP_PKEY_DSA NID_dsa
-#define EVP_PKEY_DH NID_dhKeyAgreement
-#define EVP_PKEY_DHX NID_dhpublicnumber
 #define EVP_PKEY_EC NID_X9_62_id_ecPublicKey
 
 /* EVP_PKEY_assign sets the underlying key of |pkey| to |key|, which must be of
@@ -647,6 +641,10 @@ OPENSSL_EXPORT int EVP_PKEY_CTX_get0_rsa_oaep_label(EVP_PKEY_CTX *ctx,
 
 
 /* Deprecated functions. */
+
+/* EVP_PKEY_DH is defined for compatibility, but it is impossible to create an
+ * |EVP_PKEY| of that type. */
+#define EVP_PKEY_DH NID_dhKeyAgreement
 
 /* OpenSSL_add_all_algorithms does nothing. */
 OPENSSL_EXPORT void OpenSSL_add_all_algorithms(void);

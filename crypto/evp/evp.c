@@ -60,7 +60,6 @@
 #include <string.h>
 
 #include <openssl/bio.h>
-#include <openssl/dh.h>
 #include <openssl/dsa.h>
 #include <openssl/ec.h>
 #include <openssl/err.h>
@@ -301,27 +300,6 @@ EC_KEY *EVP_PKEY_get1_EC_KEY(EVP_PKEY *pkey) {
     EC_KEY_up_ref(ec_key);
   }
   return ec_key;
-}
-
-int EVP_PKEY_set1_DH(EVP_PKEY *pkey, DH *key) {
-  if (EVP_PKEY_assign_DH(pkey, key)) {
-    DH_up_ref(key);
-    return 1;
-  }
-  return 0;
-}
-
-int EVP_PKEY_assign_DH(EVP_PKEY *pkey, DH *key) {
-  return EVP_PKEY_assign(pkey, EVP_PKEY_DH, key);
-}
-
-DH *EVP_PKEY_get1_DH(EVP_PKEY *pkey) {
-  if (pkey->type != EVP_PKEY_DH) {
-    OPENSSL_PUT_ERROR(EVP, EVP_R_EXPECTING_A_DH_KEY);
-    return NULL;
-  }
-  DH_up_ref(pkey->pkey.dh);
-  return pkey->pkey.dh;
 }
 
 int EVP_PKEY_assign(EVP_PKEY *pkey, int type, void *key) {
