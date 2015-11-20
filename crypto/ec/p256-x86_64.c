@@ -65,21 +65,6 @@ typedef P256_POINT_AFFINE PRECOMP256_ROW[64];
 
 /* Functions implemented in assembly */
 
-/* Modular mul by 2: res = 2*a mod P */
-void ecp_nistz256_mul_by_2(BN_ULONG res[P256_LIMBS],
-                           const BN_ULONG a[P256_LIMBS]);
-/* Modular div by 2: res = a/2 mod P */
-void ecp_nistz256_div_by_2(BN_ULONG res[P256_LIMBS],
-                           const BN_ULONG a[P256_LIMBS]);
-/* Modular mul by 3: res = 3*a mod P */
-void ecp_nistz256_mul_by_3(BN_ULONG res[P256_LIMBS],
-                           const BN_ULONG a[P256_LIMBS]);
-/* Modular add: res = a+b mod P */
-void ecp_nistz256_add(BN_ULONG res[P256_LIMBS], const BN_ULONG a[P256_LIMBS],
-                      const BN_ULONG b[P256_LIMBS]);
-/* Modular sub: res = a-b mod P */
-void ecp_nistz256_sub(BN_ULONG res[P256_LIMBS], const BN_ULONG a[P256_LIMBS],
-                      const BN_ULONG b[P256_LIMBS]);
 /* Modular neg: res = -a mod P */
 void ecp_nistz256_neg(BN_ULONG res[P256_LIMBS], const BN_ULONG a[P256_LIMBS]);
 /* Montgomery mul: res = a*b*2^-256 mod P */
@@ -92,9 +77,6 @@ void ecp_nistz256_sqr_mont(BN_ULONG res[P256_LIMBS],
 /* Convert a number from Montgomery domain, by multiplying with 1 */
 void ecp_nistz256_from_mont(BN_ULONG res[P256_LIMBS],
                             const BN_ULONG in[P256_LIMBS]);
-/* Convert a number to Montgomery domain, by multiplying with 2^512 mod P*/
-void ecp_nistz256_to_mont(BN_ULONG res[P256_LIMBS],
-                          const BN_ULONG in[P256_LIMBS]);
 /* Functions that perform constant time access to the precomputed tables */
 void ecp_nistz256_select_w5(P256_POINT *val, const P256_POINT *in_t, int index);
 void ecp_nistz256_select_w7(P256_POINT_AFFINE *val,

@@ -67,10 +67,6 @@ $code.=<<___;
 .Lpoly:
 .quad 0xffffffffffffffff, 0x00000000ffffffff, 0x0000000000000000, 0xffffffff00000001
 
-# 2^512 mod P precomputed for NIST P256 polynomial
-.LRR:
-.quad 0x0000000000000003, 0xfffffffbffffffff, 0xfffffffffffffffe, 0x00000004fffffffd
-
 .LOne:
 .long 1,1,1,1,1,1,1,1
 .LTwo:
@@ -91,7 +87,6 @@ my ($r_ptr,$a_ptr,$b_ptr)=("%rdi","%rsi","%rdx");
 
 $code.=<<___;
 
-.globl	ecp_nistz256_mul_by_2
 .type	ecp_nistz256_mul_by_2,\@function,2
 .align	64
 ecp_nistz256_mul_by_2:
@@ -132,224 +127,6 @@ ecp_nistz256_mul_by_2:
 	pop	%r12
 	ret
 .size	ecp_nistz256_mul_by_2,.-ecp_nistz256_mul_by_2
-
-################################################################################
-# void ecp_nistz256_div_by_2(uint64_t res[4], uint64_t a[4]);
-.globl	ecp_nistz256_div_by_2
-.type	ecp_nistz256_div_by_2,\@function,2
-.align	32
-ecp_nistz256_div_by_2:
-	push	%r12
-	push	%r13
-
-	mov	8*0($a_ptr), $a0
-	mov	8*1($a_ptr), $a1
-	mov	8*2($a_ptr), $a2
-	 mov	$a0, $t0
-	mov	8*3($a_ptr), $a3
-	lea	.Lpoly(%rip), $a_ptr
-
-	 mov	$a1, $t1
-	xor	$t4, $t4
-	add	8*0($a_ptr), $a0
-	 mov	$a2, $t2
-	adc	8*1($a_ptr), $a1
-	adc	8*2($a_ptr), $a2
-	 mov	$a3, $t3
-	adc	8*3($a_ptr), $a3
-	adc	\$0, $t4
-	xor	$a_ptr, $a_ptr		# borrow $a_ptr
-	test	\$1, $t0
-
-	cmovz	$t0, $a0
-	cmovz	$t1, $a1
-	cmovz	$t2, $a2
-	cmovz	$t3, $a3
-	cmovz	$a_ptr, $t4
-
-	mov	$a1, $t0		# a0:a3>>1
-	shr	\$1, $a0
-	shl	\$63, $t0
-	mov	$a2, $t1
-	shr	\$1, $a1
-	or	$t0, $a0
-	shl	\$63, $t1
-	mov	$a3, $t2
-	shr	\$1, $a2
-	or	$t1, $a1
-	shl	\$63, $t2
-	shr	\$1, $a3
-	shl	\$63, $t4
-	or	$t2, $a2
-	or	$t4, $a3
-
-	mov	$a0, 8*0($r_ptr)
-	mov	$a1, 8*1($r_ptr)
-	mov	$a2, 8*2($r_ptr)
-	mov	$a3, 8*3($r_ptr)
-
-	pop	%r13
-	pop	%r12
-	ret
-.size	ecp_nistz256_div_by_2,.-ecp_nistz256_div_by_2
-
-################################################################################
-# void ecp_nistz256_mul_by_3(uint64_t res[4], uint64_t a[4]);
-.globl	ecp_nistz256_mul_by_3
-.type	ecp_nistz256_mul_by_3,\@function,2
-.align	32
-ecp_nistz256_mul_by_3:
-	push	%r12
-	push	%r13
-
-	mov	8*0($a_ptr), $a0
-	xor	$t4, $t4
-	mov	8*1($a_ptr), $a1
-	add	$a0, $a0		# a0:a3+a0:a3
-	mov	8*2($a_ptr), $a2
-	adc	$a1, $a1
-	mov	8*3($a_ptr), $a3
-	 mov	$a0, $t0
-	adc	$a2, $a2
-	adc	$a3, $a3
-	 mov	$a1, $t1
-	adc	\$0, $t4
-
-	sub	\$-1, $a0
-	 mov	$a2, $t2
-	sbb	.Lpoly+8*1(%rip), $a1
-	sbb	\$0, $a2
-	 mov	$a3, $t3
-	sbb	.Lpoly+8*3(%rip), $a3
-	test	$t4, $t4
-
-	cmovz	$t0, $a0
-	cmovz	$t1, $a1
-	cmovz	$t2, $a2
-	cmovz	$t3, $a3
-
-	xor	$t4, $t4
-	add	8*0($a_ptr), $a0	# a0:a3+=a_ptr[0:3]
-	adc	8*1($a_ptr), $a1
-	 mov	$a0, $t0
-	adc	8*2($a_ptr), $a2
-	adc	8*3($a_ptr), $a3
-	 mov	$a1, $t1
-	adc	\$0, $t4
-
-	sub	\$-1, $a0
-	 mov	$a2, $t2
-	sbb	.Lpoly+8*1(%rip), $a1
-	sbb	\$0, $a2
-	 mov	$a3, $t3
-	sbb	.Lpoly+8*3(%rip), $a3
-	test	$t4, $t4
-
-	cmovz	$t0, $a0
-	cmovz	$t1, $a1
-	mov	$a0, 8*0($r_ptr)
-	cmovz	$t2, $a2
-	mov	$a1, 8*1($r_ptr)
-	cmovz	$t3, $a3
-	mov	$a2, 8*2($r_ptr)
-	mov	$a3, 8*3($r_ptr)
-
-	pop %r13
-	pop %r12
-	ret
-.size	ecp_nistz256_mul_by_3,.-ecp_nistz256_mul_by_3
-
-################################################################################
-# void ecp_nistz256_add(uint64_t res[4], uint64_t a[4], uint64_t b[4]);
-.globl	ecp_nistz256_add
-.type	ecp_nistz256_add,\@function,3
-.align	32
-ecp_nistz256_add:
-	push	%r12
-	push	%r13
-
-	mov	8*0($a_ptr), $a0
-	xor	$t4, $t4
-	mov	8*1($a_ptr), $a1
-	mov	8*2($a_ptr), $a2
-	mov	8*3($a_ptr), $a3
-	lea	.Lpoly(%rip), $a_ptr
-
-	add	8*0($b_ptr), $a0
-	adc	8*1($b_ptr), $a1
-	 mov	$a0, $t0
-	adc	8*2($b_ptr), $a2
-	adc	8*3($b_ptr), $a3
-	 mov	$a1, $t1
-	adc	\$0, $t4
-
-	sub	8*0($a_ptr), $a0
-	 mov	$a2, $t2
-	sbb	8*1($a_ptr), $a1
-	sbb	8*2($a_ptr), $a2
-	 mov	$a3, $t3
-	sbb	8*3($a_ptr), $a3
-	test	$t4, $t4
-
-	cmovz	$t0, $a0
-	cmovz	$t1, $a1
-	mov	$a0, 8*0($r_ptr)
-	cmovz	$t2, $a2
-	mov	$a1, 8*1($r_ptr)
-	cmovz	$t3, $a3
-	mov	$a2, 8*2($r_ptr)
-	mov	$a3, 8*3($r_ptr)
-
-	pop %r13
-	pop %r12
-	ret
-.size	ecp_nistz256_add,.-ecp_nistz256_add
-
-################################################################################
-# void ecp_nistz256_sub(uint64_t res[4], uint64_t a[4], uint64_t b[4]);
-.globl	ecp_nistz256_sub
-.type	ecp_nistz256_sub,\@function,3
-.align	32
-ecp_nistz256_sub:
-	push	%r12
-	push	%r13
-
-	mov	8*0($a_ptr), $a0
-	xor	$t4, $t4
-	mov	8*1($a_ptr), $a1
-	mov	8*2($a_ptr), $a2
-	mov	8*3($a_ptr), $a3
-	lea	.Lpoly(%rip), $a_ptr
-
-	sub	8*0($b_ptr), $a0
-	sbb	8*1($b_ptr), $a1
-	 mov	$a0, $t0
-	sbb	8*2($b_ptr), $a2
-	sbb	8*3($b_ptr), $a3
-	 mov	$a1, $t1
-	sbb	\$0, $t4
-
-	add	8*0($a_ptr), $a0
-	 mov	$a2, $t2
-	adc	8*1($a_ptr), $a1
-	adc	8*2($a_ptr), $a2
-	 mov	$a3, $t3
-	adc	8*3($a_ptr), $a3
-	test	$t4, $t4
-
-	cmovz	$t0, $a0
-	cmovz	$t1, $a1
-	mov	$a0, 8*0($r_ptr)
-	cmovz	$t2, $a2
-	mov	$a1, 8*1($r_ptr)
-	cmovz	$t3, $a3
-	mov	$a2, 8*2($r_ptr)
-	mov	$a3, 8*3($r_ptr)
-
-	pop %r13
-	pop %r12
-	ret
-.size	ecp_nistz256_sub,.-ecp_nistz256_sub
 
 ################################################################################
 # void ecp_nistz256_neg(uint64_t res[4], uint64_t a[4]);
@@ -405,24 +182,6 @@ my ($t0,$t1,$t2,$t3,$t4)=("%rcx","%rbp","%rbx","%rdx","%rax");
 my ($poly1,$poly3)=($acc6,$acc7);
 
 $code.=<<___;
-################################################################################
-# void ecp_nistz256_to_mont(
-#   uint64_t res[4],
-#   uint64_t in[4]);
-.globl	ecp_nistz256_to_mont
-.type	ecp_nistz256_to_mont,\@function,2
-.align	32
-ecp_nistz256_to_mont:
-___
-$code.=<<___	if ($addx);
-	mov	\$0x80100, %ecx
-	and	OPENSSL_ia32cap_P+8(%rip), %ecx
-___
-$code.=<<___;
-	lea	.LRR(%rip), $b_org
-	jmp	.Lmul_mont
-.size	ecp_nistz256_to_mont,.-ecp_nistz256_to_mont
-
 ################################################################################
 # void ecp_nistz256_mul_mont(
 #   uint64_t res[4],
