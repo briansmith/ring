@@ -363,6 +363,9 @@ NextCipherSuite:
 	}
 
 	if sessionCache != nil && hs.session != nil && session != hs.session {
+		if c.config.Bugs.RequireSessionTickets && len(hs.session.sessionTicket) == 0 {
+			return errors.New("tls: new session used session IDs instead of tickets")
+		}
 		sessionCache.Put(cacheKey, hs.session)
 	}
 

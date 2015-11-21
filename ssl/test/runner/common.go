@@ -814,6 +814,10 @@ type ProtocolBugs struct {
 	// BadHelloRequest, if not nil, is what to send instead of a
 	// HelloRequest.
 	BadHelloRequest []byte
+
+	// RequireSessionTickets, if true, causes the client to require new
+	// sessions use session tickets instead of session IDs.
+	RequireSessionTickets bool
 }
 
 func (c *Config) serverInit() {

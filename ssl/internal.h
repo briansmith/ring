@@ -1219,13 +1219,13 @@ int ssl_parse_serverhello_tlsext(SSL *ssl, CBS *cbs);
 
 #define tlsext_tick_md EVP_sha256
 
-/* tls_process_ticket processes the session ticket extension. On success, it
- * sets |*out_session| to the decrypted session or NULL if the ticket was
- * rejected. It sets |*out_send_ticket| to whether a new ticket should be sent
- * at the end of the handshake. It returns one on success and zero on fatal
+/* tls_process_ticket processes a session ticket from the client. On success,
+ * it sets |*out_session| to the decrypted session or NULL if the ticket was
+ * rejected. If the ticket was valid, it sets |*out_renew_ticket| to whether
+ * the ticket should be renewed. It returns one on success and zero on fatal
  * error. */
 int tls_process_ticket(SSL *ssl, SSL_SESSION **out_session,
-                       int *out_send_ticket, const uint8_t *ticket,
+                       int *out_renew_ticket, const uint8_t *ticket,
                        size_t ticket_len, const uint8_t *session_id,
                        size_t session_id_len);
 

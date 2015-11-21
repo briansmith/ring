@@ -2484,7 +2484,7 @@ int ssl_parse_serverhello_tlsext(SSL *ssl, CBS *cbs) {
 }
 
 int tls_process_ticket(SSL *ssl, SSL_SESSION **out_session,
-                       int *out_send_ticket, const uint8_t *ticket,
+                       int *out_renew_ticket, const uint8_t *ticket,
                        size_t ticket_len, const uint8_t *session_id,
                        size_t session_id_len) {
   int ret = 1; /* Most errors are non-fatal. */
@@ -2496,16 +2496,10 @@ int tls_process_ticket(SSL *ssl, SSL_SESSION **out_session,
   EVP_CIPHER_CTX cipher_ctx;
   EVP_CIPHER_CTX_init(&cipher_ctx);
 
-  *out_send_ticket = 0;
+  *out_renew_ticket = 0;
   *out_session = NULL;
 
   if (session_id_len > SSL_MAX_SSL_SESSION_ID_LENGTH) {
-    goto done;
-  }
-
-  if (ticket_len == 0) {
-    /* The client will accept a ticket but doesn't currently have one. */
-    *out_send_ticket = 1;
     goto done;
   }
 
@@ -2530,7 +2524,7 @@ int tls_process_ticket(SSL *ssl, SSL_SESSION **out_session,
       goto done;
     }
     if (cb_ret == 2) {
-      *out_send_ticket = 1;
+      *out_renew_ticket = 1;
     }
   } else {
     /* Check the key name matches. */

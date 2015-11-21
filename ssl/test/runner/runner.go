@@ -2088,6 +2088,15 @@ func addBasicTests() {
 			shouldFail:    true,
 			expectedError: ":BAD_HELLO_REQUEST:",
 		},
+		{
+			testType: serverTest,
+			name:     "SupportTicketsWithSessionID",
+			config: Config{
+				SessionTicketsDisabled: true,
+			},
+			resumeConfig:  &Config{},
+			resumeSession: true,
+		},
 	}
 	testCases = append(testCases, basicTests...)
 }
@@ -2667,6 +2676,8 @@ func addStateMachineCoverageTests(async, splitHandshake bool, protocol protocol)
 	tests = append(tests, testCase{
 		name:          "Basic-Client",
 		resumeSession: true,
+		// Ensure session tickets are used, not session IDs.
+		noSessionCache: true,
 	})
 	tests = append(tests, testCase{
 		name: "Basic-Client-RenewTicket",
@@ -2691,8 +2702,13 @@ func addStateMachineCoverageTests(async, splitHandshake bool, protocol protocol)
 		resumeSession: true,
 	})
 	tests = append(tests, testCase{
-		testType:      serverTest,
-		name:          "Basic-Server",
+		testType: serverTest,
+		name:     "Basic-Server",
+		config: Config{
+			Bugs: ProtocolBugs{
+				RequireSessionTickets: true,
+			},
+		},
 		resumeSession: true,
 	})
 	tests = append(tests, testCase{
