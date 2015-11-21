@@ -249,7 +249,15 @@ int EC_KEY_set_group(EC_KEY *key, const EC_GROUP *group) {
   /* TODO(fork): duplicating the group seems wasteful but see
    * |EC_KEY_set_conv_form|. */
   key->group = EC_GROUP_dup(group);
-  return (key->group == NULL) ? 0 : 1;
+  if (key->group == NULL) {
+    return 0;
+  }
+  /* XXX: |BN_cmp| is not constant time. */
+  if (key->priv_key != NULL &&
+      BN_cmp(key->priv_key, EC_GROUP_get0_order(group)) >= 0) {
+    return 0;
+  }
+  return 1;
 }
 
 const BIGNUM *EC_KEY_get0_private_key(const EC_KEY *key) {
@@ -257,6 +265,12 @@ const BIGNUM *EC_KEY_get0_private_key(const EC_KEY *key) {
 }
 
 int EC_KEY_set_private_key(EC_KEY *key, const BIGNUM *priv_key) {
+  /* XXX: |BN_cmp| is not constant time. */
+  if (key->group != NULL &&
+      BN_cmp(priv_key, EC_GROUP_get0_order(key->group)) >= 0) {
+    OPENSSL_PUT_ERROR(EC, EC_R_WRONG_ORDER);
+    return 0;
+  }
   BN_clear_free(key->priv_key);
   key->priv_key = BN_dup(priv_key);
   return (key->priv_key == NULL) ? 0 : 1;
@@ -324,6 +338,7 @@ int EC_KEY_check_key(const EC_KEY *eckey) {
    * check if generator * priv_key == pub_key
    */
   if (eckey->priv_key) {
+    /* XXX: |BN_cmp| is not constant time. */
     if (BN_cmp(eckey->priv_key, EC_GROUP_get0_order(eckey->group)) >= 0) {
       OPENSSL_PUT_ERROR(EC, EC_R_WRONG_ORDER);
       goto err;
