@@ -103,6 +103,15 @@ struct ec_method_st {
   int (*mul)(const EC_GROUP *group, EC_POINT *r, const BIGNUM *g_scalar,
              const EC_POINT *p, const BIGNUM *p_scalar, BN_CTX *ctx);
 
+  /* |check_pub_key_order| checks that the public key is in the proper subgroup
+   * by checking that |pub_key*group->order| is the point at infinity. This may
+   * be NULL for |EC_METHOD|s specialized for prime-order curves (i.e. with
+   * cofactor one), as this check is not necessary for such curves (See section
+   * A.3 of the NSA's "Suite B Implementer's Guide to FIPS 186-3
+   * (ECDSA)"). */
+  int (*check_pub_key_order)(const EC_GROUP *group, const EC_POINT *pub_key,
+                             BN_CTX *ctx);
+
   /* internal functions */
 
   /* 'field_mul' and 'field_sqr' can be used by 'add' and 'dbl' so that the

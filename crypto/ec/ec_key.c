@@ -302,10 +302,8 @@ int EC_KEY_check_key(const EC_KEY *eckey) {
   }
 
   ctx = BN_CTX_new();
-  point = EC_POINT_new(eckey->group);
 
-  if (ctx == NULL ||
-      point == NULL) {
+  if (ctx == NULL) {
     goto err;
   }
 
@@ -314,15 +312,11 @@ int EC_KEY_check_key(const EC_KEY *eckey) {
     OPENSSL_PUT_ERROR(EC, EC_R_POINT_IS_NOT_ON_CURVE);
     goto err;
   }
-  /* testing whether pub_key * order is the point at infinity */
   /* TODO(fork): can this be skipped if the cofactor is one or if we're about
    * to check the private key, below? */
-  const BIGNUM *order = EC_GROUP_get0_order(eckey->group);
-  if (!EC_POINT_mul(eckey->group, point, NULL, eckey->pub_key, order, ctx)) {
-    OPENSSL_PUT_ERROR(EC, ERR_R_EC_LIB);
-    goto err;
-  }
-  if (!EC_POINT_is_at_infinity(eckey->group, point)) {
+  if (eckey->group->meth->check_pub_key_order != NULL &&
+      !eckey->group->meth->check_pub_key_order(eckey->group, eckey->pub_key,
+                                               ctx)) {
     OPENSSL_PUT_ERROR(EC, EC_R_WRONG_ORDER);
     goto err;
   }
@@ -330,11 +324,13 @@ int EC_KEY_check_key(const EC_KEY *eckey) {
    * check if generator * priv_key == pub_key
    */
   if (eckey->priv_key) {
-    if (BN_cmp(eckey->priv_key, order) >= 0) {
+    if (BN_cmp(eckey->priv_key, EC_GROUP_get0_order(eckey->group)) >= 0) {
       OPENSSL_PUT_ERROR(EC, EC_R_WRONG_ORDER);
       goto err;
     }
-    if (!EC_POINT_mul(eckey->group, point, eckey->priv_key, NULL, NULL, ctx)) {
+    point = EC_POINT_new(eckey->group);
+    if (point == NULL ||
+        !EC_POINT_mul(eckey->group, point, eckey->priv_key, NULL, NULL, ctx)) {
       OPENSSL_PUT_ERROR(EC, ERR_R_EC_LIB);
       goto err;
     }
