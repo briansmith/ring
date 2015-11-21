@@ -63,6 +63,7 @@
 
 #include <map>
 #include <string>
+#include <utility>
 #include <vector>
 
 #if defined(_MSC_VER)
@@ -103,7 +104,7 @@ static const EVP_MD *GetDigest(FileTest *t, const std::string &name) {
   return nullptr;
 }
 
-using KeyMap = std::map<std::string, EVP_PKEY*>;
+using KeyMap = std::map<std::string, ScopedEVP_PKEY>;
 
 // ImportPrivateKey evaluates a PrivateKey test in |t| and writes the resulting
 // private key to |key_map|.
@@ -123,7 +124,7 @@ static bool ImportPrivateKey(FileTest *t, KeyMap *key_map) {
     t->PrintLine("Error reading private key.");
     return false;
   }
-  (*key_map)[key_name] = pkey.release();
+  (*key_map)[key_name] = std::move(pkey);
   return true;
 }
 
@@ -156,7 +157,7 @@ static bool TestEVP(FileTest *t, void *arg) {
     t->PrintLine("Could not find key '%s'.", key_name.c_str());
     return false;
   }
-  EVP_PKEY *key = (*key_map)[key_name];
+  EVP_PKEY *key = (*key_map)[key_name].get();
 
   std::vector<uint8_t> input, output;
   if (!t->GetBytes(&input, "Input") ||
@@ -212,11 +213,5 @@ int main(int argc, char **argv) {
   }
 
   KeyMap map;
-  int ret = FileTestMain(TestEVP, &map, argv[1]);
-  // TODO(davidben): When we can rely on a move-aware std::map, make KeyMap a
-  // map of ScopedEVP_PKEY instead.
-  for (const auto &pair : map) {
-    EVP_PKEY_free(pair.second);
-  }
-  return ret;
+  return FileTestMain(TestEVP, &map, argv[1]);
 }

@@ -18,6 +18,7 @@
 
 #include <algorithm>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include <openssl/base64.h>
@@ -932,23 +933,6 @@ static ScopedSSL_SESSION CreateTestSession(uint32_t number) {
   return ret;
 }
 
-// TODO(davidben): Switch this to a |std::vector<ScopedSSL_SESSION>| once we can
-// rely on a move-aware |std::vector|.
-class ScopedSessionVector {
- public:
-  explicit ScopedSessionVector(std::vector<SSL_SESSION*> *sessions)
-      : sessions_(sessions) {}
-
-  ~ScopedSessionVector() {
-    for (SSL_SESSION *session : *sessions_) {
-      SSL_SESSION_free(session);
-    }
-  }
-
- private:
-  std::vector<SSL_SESSION*> *const sessions_;
-};
-
 // Test that the internal session cache behaves as expected.
 static bool TestInternalSessionCache() {
   ScopedSSL_CTX ctx(SSL_CTX_new(TLS_method()));
@@ -957,38 +941,38 @@ static bool TestInternalSessionCache() {
   }
 
   // Prepare 10 test sessions.
-  std::vector<SSL_SESSION*> sessions;
-  ScopedSessionVector cleanup(&sessions);
+  std::vector<ScopedSSL_SESSION> sessions;
   for (int i = 0; i < 10; i++) {
     ScopedSSL_SESSION session = CreateTestSession(i);
     if (!session) {
       return false;
     }
-    sessions.push_back(session.release());
+    sessions.push_back(std::move(session));
   }
 
   SSL_CTX_sess_set_cache_size(ctx.get(), 5);
 
   // Insert all the test sessions.
-  for (SSL_SESSION *session : sessions) {
-    if (!SSL_CTX_add_session(ctx.get(), session)) {
+  for (const auto &session : sessions) {
+    if (!SSL_CTX_add_session(ctx.get(), session.get())) {
       return false;
     }
   }
 
   // Only the last five should be in the list.
-  std::vector<SSL_SESSION*> expected;
-  expected.push_back(sessions[9]);
-  expected.push_back(sessions[8]);
-  expected.push_back(sessions[7]);
-  expected.push_back(sessions[6]);
-  expected.push_back(sessions[5]);
+  std::vector<SSL_SESSION*> expected = {
+      sessions[9].get(),
+      sessions[8].get(),
+      sessions[7].get(),
+      sessions[6].get(),
+      sessions[5].get(),
+  };
   if (!ExpectCache(ctx.get(), expected)) {
     return false;
   }
 
   // Inserting an element already in the cache should fail.
-  if (SSL_CTX_add_session(ctx.get(), sessions[7]) ||
+  if (SSL_CTX_add_session(ctx.get(), sessions[7].get()) ||
       !ExpectCache(ctx.get(), expected)) {
     return false;
   }
@@ -999,32 +983,34 @@ static bool TestInternalSessionCache() {
   if (!collision || !SSL_CTX_add_session(ctx.get(), collision.get())) {
     return false;
   }
-  expected.clear();
-  expected.push_back(collision.get());
-  expected.push_back(sessions[9]);
-  expected.push_back(sessions[8]);
-  expected.push_back(sessions[6]);
-  expected.push_back(sessions[5]);
+  expected = {
+      collision.get(),
+      sessions[9].get(),
+      sessions[8].get(),
+      sessions[6].get(),
+      sessions[5].get(),
+  };
   if (!ExpectCache(ctx.get(), expected)) {
     return false;
   }
 
   // Removing sessions behaves correctly.
-  if (!SSL_CTX_remove_session(ctx.get(), sessions[6])) {
+  if (!SSL_CTX_remove_session(ctx.get(), sessions[6].get())) {
     return false;
   }
-  expected.clear();
-  expected.push_back(collision.get());
-  expected.push_back(sessions[9]);
-  expected.push_back(sessions[8]);
-  expected.push_back(sessions[5]);
+  expected = {
+      collision.get(),
+      sessions[9].get(),
+      sessions[8].get(),
+      sessions[5].get(),
+  };
   if (!ExpectCache(ctx.get(), expected)) {
     return false;
   }
 
   // Removing sessions requires an exact match.
-  if (SSL_CTX_remove_session(ctx.get(), sessions[0]) ||
-      SSL_CTX_remove_session(ctx.get(), sessions[7]) ||
+  if (SSL_CTX_remove_session(ctx.get(), sessions[0].get()) ||
+      SSL_CTX_remove_session(ctx.get(), sessions[7].get()) ||
       !ExpectCache(ctx.get(), expected)) {
     return false;
   }
