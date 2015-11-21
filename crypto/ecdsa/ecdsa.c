@@ -179,7 +179,7 @@ int ECDSA_do_verify_point(const uint8_t *digest, size_t digest_len,
     OPENSSL_PUT_ERROR(ECDSA, ERR_R_MALLOC_FAILURE);
     goto err;
   }
-  if (!EC_POINT_mul(group, point, u1, pub_key, u2, ctx)) {
+  if (!group->meth->mul_public(group, point, u1, pub_key, u2, ctx)) {
     OPENSSL_PUT_ERROR(ECDSA, ERR_R_EC_LIB);
     goto err;
   }
@@ -241,21 +241,8 @@ static int ecdsa_sign_setup(EC_KEY *eckey, BN_CTX *ctx, BIGNUM **kinvp,
       }
     } while (BN_is_zero(k));
 
-    /* We do not want timing information to leak the length of k,
-     * so we compute G*k using an equivalent scalar of fixed
-     * bit-length. */
-
-    if (!BN_add(k, k, order)) {
-      goto err;
-    }
-    if (BN_num_bits(k) <= BN_num_bits(order)) {
-      if (!BN_add(k, k, order)) {
-        goto err;
-      }
-    }
-
     /* compute r the x-coordinate of generator * k */
-    if (!EC_POINT_mul(group, tmp_point, k, NULL, NULL, ctx)) {
+    if (!group->meth->mul_private(group, tmp_point, k, NULL, NULL, ctx)) {
       OPENSSL_PUT_ERROR(ECDSA, ERR_R_EC_LIB);
       goto err;
     }

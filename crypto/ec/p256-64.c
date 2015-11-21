@@ -29,6 +29,7 @@
 #include <openssl/mem.h>
 #include <openssl/obj.h>
 
+#include <assert.h>
 #include <string.h>
 
 #include "internal.h"
@@ -1655,7 +1656,7 @@ int ec_GFp_nistp256_points_mul(const EC_GROUP *group, EC_POINT *r,
   int j;
   int mixed = 0;
   BN_CTX *new_ctx = NULL;
-  BIGNUM *x, *y, *z, *tmp_scalar;
+  BIGNUM *x, *y, *z;
   felem_bytearray g_secret;
   felem_bytearray *secrets = NULL;
   smallfelem(*pre_comp)[17][3] = NULL;
@@ -1678,8 +1679,7 @@ int ec_GFp_nistp256_points_mul(const EC_GROUP *group, EC_POINT *r,
   BN_CTX_start(ctx);
   if ((x = BN_CTX_get(ctx)) == NULL ||
       (y = BN_CTX_get(ctx)) == NULL ||
-      (z = BN_CTX_get(ctx)) == NULL ||
-      (tmp_scalar = BN_CTX_get(ctx)) == NULL) {
+      (z = BN_CTX_get(ctx)) == NULL) {
     goto err;
   }
 
@@ -1716,19 +1716,10 @@ int ec_GFp_nistp256_points_mul(const EC_GROUP *group, EC_POINT *r,
         p_scalar = scalars[i];
       }
       if (p_scalar != NULL && p != NULL) {
-        /* reduce g_scalar to 0 <= g_scalar < 2^256 */
-        if (BN_num_bits(p_scalar) > 256 || BN_is_negative(p_scalar)) {
-          /* this is an unusual input, and we don't guarantee
-           * constant-timeness. */
-          if (!BN_nnmod(tmp_scalar, p_scalar, &group->order, ctx)) {
-            OPENSSL_PUT_ERROR(EC, ERR_R_BN_LIB);
-            goto err;
-          }
-          num_bytes = BN_bn2bin(tmp_scalar, tmp);
-        } else {
-          num_bytes = BN_bn2bin(p_scalar, tmp);
-        }
+        assert(BN_cmp(p_scalar, EC_GROUP_get0_order(group)) < 0);
+        num_bytes = BN_bn2bin(p_scalar, tmp);
         flip_endian(secrets[i], tmp, num_bytes);
+
         /* precompute multiples */
         if (!BN_to_felem(x_out, &p->X) ||
             !BN_to_felem(y_out, &p->Y) ||
@@ -1760,18 +1751,8 @@ int ec_GFp_nistp256_points_mul(const EC_GROUP *group, EC_POINT *r,
 
   if (g_scalar != NULL) {
     memset(g_secret, 0, sizeof(g_secret));
-    /* reduce g_scalar to 0 <= g_scalar < 2^256 */
-    if (BN_num_bits(g_scalar) > 256 || BN_is_negative(g_scalar)) {
-      /* this is an unusual input, and we don't guarantee
-       * constant-timeness. */
-      if (!BN_nnmod(tmp_scalar, g_scalar, &group->order, ctx)) {
-        OPENSSL_PUT_ERROR(EC, ERR_R_BN_LIB);
-        goto err;
-      }
-      num_bytes = BN_bn2bin(tmp_scalar, tmp);
-    } else {
-      num_bytes = BN_bn2bin(g_scalar, tmp);
-    }
+    assert(BN_cmp(g_scalar, EC_GROUP_get0_order(group)) < 0);
+    num_bytes = BN_bn2bin(g_scalar, tmp);
     flip_endian(g_secret, tmp, num_bytes);
   }
   batch_mul(x_out, y_out, z_out, (const felem_bytearray(*))secrets,
@@ -1801,6 +1782,7 @@ err:
 
 const EC_METHOD EC_GFp_nistp256_method = {
     ec_GFp_nistp256_point_get_affine_coordinates,
+    ec_GFp_nistp256_points_mul,
     ec_GFp_nistp256_points_mul,
     ec_GFp_simple_field_mul,
     ec_GFp_simple_field_sqr,

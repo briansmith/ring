@@ -224,8 +224,66 @@ err:
                                                                          ? 2   \
                                                                          : 1))
 
-int ec_wNAF_mul(const EC_GROUP *group, EC_POINT *r, const BIGNUM *g_scalar,
-                const EC_POINT *p, const BIGNUM *p_scalar, BN_CTX *ctx) {
+
+int ec_wNAF_mul_private(const EC_GROUP *group, EC_POINT *r,
+                        const BIGNUM *g_scalar, const EC_POINT *p,
+                        const BIGNUM *p_scalar, BN_CTX *ctx) {
+  BN_CTX *new_ctx = NULL;;
+  int ret = 0;
+
+  /* We do not want timing information to leak the length of the scalars so we
+   * use equivalent scalars of fixed bit-length. */
+
+  if (ctx == NULL) {
+    new_ctx = BN_CTX_new();
+    if (new_ctx == NULL) {
+      return 0;
+    }
+    ctx = new_ctx;
+  }
+  BN_CTX_start(ctx);
+
+  const BIGNUM *order = &group->order;
+
+  BIGNUM *g_scalar_new = NULL;
+  if (g_scalar) {
+    g_scalar_new = BN_CTX_get(ctx);
+    if (g_scalar_new == NULL ||
+        !BN_add(g_scalar_new, g_scalar, order)) {
+      goto err;
+    }
+    if (BN_num_bits(g_scalar_new) <= BN_num_bits(order)) {
+      if (!BN_add(g_scalar_new, g_scalar_new, order)) {
+        goto err;
+      }
+    }
+  }
+
+  BIGNUM *p_scalar_new = NULL;
+  if (p_scalar) {
+    p_scalar_new = BN_CTX_get(ctx);
+    if (!p_scalar_new ||
+        !BN_add(p_scalar_new, p_scalar, order)) {
+      goto err;
+    }
+    if (BN_num_bits(p_scalar_new) <= BN_num_bits(order)) {
+      if (!BN_add(p_scalar_new, p_scalar_new, order)) {
+        goto err;
+      }
+    }
+  }
+
+  ret = ec_wNAF_mul_public(group, r, g_scalar_new, p, p_scalar_new, ctx);
+
+err:
+  BN_CTX_end(ctx);
+  BN_CTX_free(new_ctx);
+  return ret;
+}
+
+int ec_wNAF_mul_public(const EC_GROUP *group, EC_POINT *r,
+                       const BIGNUM *g_scalar, const EC_POINT *p,
+                       const BIGNUM *p_scalar, BN_CTX *ctx) {
   BN_CTX *new_ctx = NULL;
   const EC_POINT *generator = NULL;
   EC_POINT *tmp = NULL;

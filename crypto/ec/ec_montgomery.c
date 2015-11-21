@@ -76,7 +76,8 @@
 
 const EC_METHOD EC_GFp_mont_method = {
   ec_GFp_simple_point_get_affine_coordinates,
-  ec_wNAF_mul /* XXX: Not constant time. */,
+  ec_wNAF_mul_private /* XXX: Not constant time. */,
+  ec_wNAF_mul_public,
   ec_GFp_mont_field_mul,
   ec_GFp_mont_field_sqr,
   ec_GFp_mont_field_encode,

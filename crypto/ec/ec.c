@@ -183,27 +183,6 @@ int EC_POINT_get_affine_coordinates_GFp(const EC_GROUP *group,
   return group->meth->point_get_affine_coordinates(group, point, x, y, ctx);
 }
 
-
-int EC_POINT_mul(const EC_GROUP *group, EC_POINT *r, const BIGNUM *g_scalar,
-                 const EC_POINT *p, const BIGNUM *p_scalar, BN_CTX *ctx) {
-  /* Previously, this function set |r| to the point at infinity if there was
-   * nothing to multiply. But, nobody should be calling this function with
-   * nothing to multiply in the first place. */
-  if ((g_scalar == NULL && p_scalar == NULL) ||
-      ((p == NULL) != (p_scalar == NULL)))  {
-    OPENSSL_PUT_ERROR(EC, ERR_R_PASSED_NULL_PARAMETER);
-    return 0;
-  }
-
-  if (group->meth != r->meth ||
-      (p != NULL && group->meth != p->meth)) {
-    OPENSSL_PUT_ERROR(EC, EC_R_INCOMPATIBLE_OBJECTS);
-    return 0;
-  }
-
-  return group->meth->mul(group, r, g_scalar, p, p_scalar, ctx);
-}
-
 int ec_point_set_Jprojective_coordinates_GFp(const EC_GROUP *group, EC_POINT *point,
                                              const BIGNUM *x, const BIGNUM *y,
                                              const BIGNUM *z, BN_CTX *ctx) {

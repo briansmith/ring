@@ -168,7 +168,8 @@ int EC_KEY_check_key(const EC_KEY *eckey) {
     }
     point = EC_POINT_new(eckey->group);
     if (point == NULL ||
-        !EC_POINT_mul(eckey->group, point, eckey->priv_key, NULL, NULL, ctx)) {
+        !eckey->group->meth->mul_private(eckey->group, point, eckey->priv_key,
+                                         NULL, NULL, ctx)) {
       OPENSSL_PUT_ERROR(EC, ERR_R_EC_LIB);
       goto err;
     }
@@ -209,8 +210,8 @@ EC_KEY *EC_KEY_generate_key_ex(const EC_GROUP *group) {
     goto err;
   }
 
-  if (!EC_POINT_mul(eckey->group, eckey->pub_key, eckey->priv_key, NULL, NULL,
-                    NULL)) {
+  if (!eckey->group->meth->mul_private(eckey->group, eckey->pub_key,
+                                       eckey->priv_key, NULL, NULL, NULL)) {
     goto err;
   }
 

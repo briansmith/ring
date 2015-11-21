@@ -73,6 +73,9 @@
 #include <openssl/mem.h>
 #include <openssl/type_check.h>
 
+#include "../ec/internal.h"
+
+
 int ECDH_compute_key_ex(uint8_t *out, size_t *out_len, size_t max_out_len,
                         const EC_KEY *priv_key, int peer_curve_nid,
                         const uint8_t *peer_pub_point_bytes,
@@ -120,7 +123,7 @@ int ECDH_compute_key_ex(uint8_t *out, size_t *out_len, size_t max_out_len,
     goto err;
   }
 
-  if (!EC_POINT_mul(group, tmp, NULL, pub_key, priv, ctx)) {
+  if (!group->meth->mul_private(group, tmp, NULL, pub_key, priv, ctx)) {
     OPENSSL_PUT_ERROR(ECDH, ECDH_R_POINT_ARITHMETIC_FAILURE);
     goto err;
   }

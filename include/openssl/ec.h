@@ -185,14 +185,6 @@ OPENSSL_EXPORT int EC_POINT_oct2point(const EC_GROUP *group, EC_POINT *point,
                                       BN_CTX *ctx);
 
 
-/* Group operations. */
-
-/* EC_POINT_mul sets r = generator*n + q*m. It returns one on success and zero
- * otherwise. If |ctx| is not NULL, it may be used. */
-OPENSSL_EXPORT int EC_POINT_mul(const EC_GROUP *group, EC_POINT *r,
-                                const BIGNUM *n, const EC_POINT *q,
-                                const BIGNUM *m, BN_CTX *ctx);
-
 
 /* Old code expects to get EC_KEY from ec.h. */
 #include <openssl/ec_key.h>
