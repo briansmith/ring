@@ -128,7 +128,6 @@ const EC_POINT *EC_KEY_get0_public_key(const EC_KEY *key) {
 int EC_KEY_check_key(const EC_KEY *eckey) {
   int ok = 0;
   BN_CTX *ctx = NULL;
-  const BIGNUM *order = NULL;
   EC_POINT *point = NULL;
 
   if (!eckey || !eckey->group || !eckey->pub_key) {
@@ -142,10 +141,8 @@ int EC_KEY_check_key(const EC_KEY *eckey) {
   }
 
   ctx = BN_CTX_new();
-  point = EC_POINT_new(eckey->group);
 
-  if (ctx == NULL ||
-      point == NULL) {
+  if (ctx == NULL) {
     goto err;
   }
 
@@ -154,31 +151,24 @@ int EC_KEY_check_key(const EC_KEY *eckey) {
     OPENSSL_PUT_ERROR(EC, EC_R_POINT_IS_NOT_ON_CURVE);
     goto err;
   }
-  /* testing whether pub_key * order is the point at infinity */
-  /* TODO(fork): can this be skipped if the cofactor is one or if we're about
-   * to check the private key, below? */
-  order = &eckey->group->order;
-  if (BN_is_zero(order)) {
-    OPENSSL_PUT_ERROR(EC, EC_R_INVALID_GROUP_ORDER);
-    goto err;
-  }
-  if (!EC_POINT_mul(eckey->group, point, NULL, eckey->pub_key, order, ctx)) {
-    OPENSSL_PUT_ERROR(EC, ERR_R_EC_LIB);
-    goto err;
-  }
-  if (!EC_POINT_is_at_infinity(eckey->group, point)) {
-    OPENSSL_PUT_ERROR(EC, EC_R_WRONG_ORDER);
-    goto err;
-  }
+
+  /* BoringSSL has a check here that pub_key * order is the point at infinity.
+   * That check isn't needed for the curves *ring* supports because all of the
+   * curves *ring* supports have cofactor 1 and prime order; see section A.3 of
+   * the NSA's "Suite B Implementer's Guide to FIPS 186-3 (ECDSA)". */
+
   /* in case the priv_key is present :
    * check if generator * priv_key == pub_key
    */
   if (eckey->priv_key) {
-    if (BN_cmp(eckey->priv_key, order) >= 0) {
+    /* XXX: |BN_cmp| is not constant time. */
+    if (BN_cmp(eckey->priv_key, &eckey->group->order) >= 0) {
       OPENSSL_PUT_ERROR(EC, EC_R_WRONG_ORDER);
       goto err;
     }
-    if (!EC_POINT_mul(eckey->group, point, eckey->priv_key, NULL, NULL, ctx)) {
+    point = EC_POINT_new(eckey->group);
+    if (point == NULL ||
+        !EC_POINT_mul(eckey->group, point, eckey->priv_key, NULL, NULL, ctx)) {
       OPENSSL_PUT_ERROR(EC, ERR_R_EC_LIB);
       goto err;
     }
