@@ -98,27 +98,3 @@ So a very simple version of this function could be coded as
 
 The above example is very very unoptimised but gives an idea of how
 things work.
-
-There is also a cbc mode function generator in cbc.pl
-
-&cbc(	$name,
-	$encrypt_function_name,
-	$decrypt_function_name,
-	$true_if_byte_swap_needed,
-	$parameter_number_for_iv,
-	$parameter_number_for_encrypt_flag,
-	$first_parameter_to_pass,
-	$second_parameter_to_pass,
-	$third_parameter_to_pass);
-
-So for example, given
-void BF_encrypt(BF_LONG *data,BF_KEY *key);
-void BF_decrypt(BF_LONG *data,BF_KEY *key);
-void BF_cbc_encrypt(unsigned char *in, unsigned char *out, long length,
-        BF_KEY *ks, unsigned char *iv, int enc);
-
-&cbc("BF_cbc_encrypt","BF_encrypt","BF_encrypt",1,4,5,3,-1,-1);
-
-&cbc("des_ncbc_encrypt","des_encrypt","des_encrypt",0,4,5,3,5,-1);
-&cbc("des_ede3_cbc_encrypt","des_encrypt3","des_decrypt3",0,6,7,3,4,5);
-

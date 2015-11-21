@@ -247,7 +247,6 @@ $(NULL): CFLAGS += -Wno-bad-function-cast \
 
 PERLASM_LIB_SRCS = $(addprefix $(RING_PREFIX), \
   crypto/perlasm/arm-xlate.pl \
-  crypto/perlasm/cbc.pl \
   crypto/perlasm/x86asm.pl \
   crypto/perlasm/x86gas.pl \
   crypto/perlasm/x86masm.pl \
