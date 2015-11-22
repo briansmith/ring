@@ -179,21 +179,6 @@ struct gcm128_context {
   block128_f block;
 };
 
-struct xts128_context {
-  void *key1, *key2;
-  block128_f block1, block2;
-};
-
-struct ccm128_context {
-  union {
-    uint64_t u[2];
-    uint8_t c[16];
-  } nonce, cmac;
-  uint64_t blocks;
-  block128_f block;
-  void *key;
-};
-
 #if defined(OPENSSL_X86) || defined(OPENSSL_X86_64)
 /* crypto_gcm_clmul_enabled returns one if the CLMUL implementation of GCM is
  * used. */
@@ -326,47 +311,6 @@ void CRYPTO_cbc128_encrypt(const uint8_t *in, uint8_t *out, size_t len,
  * is always read from |in|. The IV will be updated on return. */
 void CRYPTO_cbc128_decrypt(const uint8_t *in, uint8_t *out, size_t len,
                            const void *key, uint8_t ivec[16], block128_f block);
-
-
-/* OFB. */
-
-/* CRYPTO_ofb128_encrypt encrypts (or decrypts, it's the same with OFB mode)
- * |len| bytes from |in| to |out| using |block| in OFB mode. There's no
- * requirement that |len| be a multiple of any value and any partial blocks are
- * stored in |ivec| and |*num|, the latter must be zero before the initial
- * call. */
-void CRYPTO_ofb128_encrypt(const uint8_t *in, uint8_t *out,
-                           size_t len, const void *key, uint8_t ivec[16],
-                           int *num, block128_f block);
-
-
-/* CFB. */
-
-/* CRYPTO_cfb128_encrypt encrypts (or decrypts, if |enc| is zero) |len| bytes
- * from |in| to |out| using |block| in CFB mode. There's no requirement that
- * |len| be a multiple of any value and any partial blocks are stored in |ivec|
- * and |*num|, the latter must be zero before the initial call. */
-void CRYPTO_cfb128_encrypt(const uint8_t *in, uint8_t *out, size_t len,
-                           const void *key, uint8_t ivec[16], int *num, int enc,
-                           block128_f block);
-
-/* CRYPTO_cfb128_8_encrypt encrypts (or decrypts, if |enc| is zero) |len| bytes
- * from |in| to |out| using |block| in CFB-8 mode. Prior to the first call
- * |num| should be set to zero. */
-void CRYPTO_cfb128_8_encrypt(const uint8_t *in, uint8_t *out, size_t len,
-                             const void *key, uint8_t ivec[16], int *num,
-                             int enc, block128_f block);
-
-/* CRYPTO_cfb128_1_encrypt encrypts (or decrypts, if |enc| is zero) |len| bytes
- * from |in| to |out| using |block| in CFB-1 mode. Prior to the first call
- * |num| should be set to zero. */
-void CRYPTO_cfb128_1_encrypt(const uint8_t *in, uint8_t *out, size_t bits,
-                             const void *key, uint8_t ivec[16], int *num,
-                             int enc, block128_f block);
-
-size_t CRYPTO_cts128_encrypt_block(const uint8_t *in, uint8_t *out, size_t len,
-                                   const void *key, uint8_t ivec[16],
-                                   block128_f block);
 
 
 #if defined(__cplusplus)
