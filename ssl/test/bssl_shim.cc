@@ -121,9 +121,10 @@ static const TestConfig *GetConfigPtr(const SSL *ssl) {
   return (const TestConfig *)SSL_get_ex_data(ssl, g_config_index);
 }
 
-static bool SetTestState(SSL *ssl, std::unique_ptr<TestState> async) {
-  if (SSL_set_ex_data(ssl, g_state_index, (void *)async.get()) == 1) {
-    async.release();
+static bool SetTestState(SSL *ssl, std::unique_ptr<TestState> state) {
+  // |SSL_set_ex_data| takes ownership of |state| only on success.
+  if (SSL_set_ex_data(ssl, g_state_index, state.get()) == 1) {
+    state.release();
     return true;
   }
   return false;
