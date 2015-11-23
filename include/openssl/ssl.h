@@ -542,15 +542,6 @@ OPENSSL_EXPORT int SSL_version(const SSL *ssl);
  *
  * Options configure protocol behavior. */
 
-/* SSL_OP_LEGACY_SERVER_CONNECT allows initial connections to servers that don't
- * support the renegotiation_info extension (RFC 5746). It is on by default. */
-#define SSL_OP_LEGACY_SERVER_CONNECT 0x00000004L
-
-/* SSL_OP_ALL enables the above bug workarounds that are enabled by many
- * consumers.
- * TODO(davidben): Determine which of the remaining may be removed now. */
-#define SSL_OP_ALL 0x00000BFFL
-
 /* SSL_OP_NO_QUERY_MTU, in DTLS, disables querying the MTU from the underlying
  * |BIO|. Instead, the MTU is configured with |SSL_set_mtu|. */
 #define SSL_OP_NO_QUERY_MTU 0x00001000L
@@ -3167,9 +3158,11 @@ DECLARE_STACK_OF(SSL_COMP)
 #define SSL_MODE_RELEASE_BUFFERS 0
 #define SSL_MODE_SEND_CLIENTHELLO_TIME 0
 #define SSL_MODE_SEND_SERVERHELLO_TIME 0
+#define SSL_OP_ALL 0
 #define SSL_OP_ALLOW_UNSAFE_LEGACY_RENEGOTIATION 0
 #define SSL_OP_DONT_INSERT_EMPTY_FRAGMENTS 0
 #define SSL_OP_EPHEMERAL_RSA 0
+#define SSL_OP_LEGACY_SERVER_CONNECT 0
 #define SSL_OP_MICROSOFT_BIG_SSLV3_BUFFER 0
 #define SSL_OP_MICROSOFT_SESS_ID_BUG 0
 #define SSL_OP_MSIE_SSLV2_RSA_PADDING 0

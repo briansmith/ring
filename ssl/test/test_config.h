@@ -76,7 +76,6 @@ struct TestConfig {
   std::string export_label;
   std::string export_context;
   bool use_export_context = false;
-  bool no_legacy_server_connect = false;
   bool tls_unique = false;
   bool expect_ticket_renewal = false;
   bool expect_no_session = false;
