@@ -150,8 +150,8 @@ class Android(object):
     with open('sources.mk', 'w+') as makefile:
       makefile.write(self.header)
 
-      files['crypto'].extend(self.ExtraFiles())
-      self.PrintVariableSection(makefile, 'crypto_sources', files['crypto'])
+      crypto_files = files['crypto'] + self.ExtraFiles()
+      self.PrintVariableSection(makefile, 'crypto_sources', crypto_files)
       self.PrintVariableSection(makefile, 'ssl_sources', files['ssl'])
       self.PrintVariableSection(makefile, 'tool_sources', files['tool'])
 
