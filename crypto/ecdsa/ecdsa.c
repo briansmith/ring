@@ -63,10 +63,6 @@
 #include "../ec/internal.h"
 
 
-static int ecdsa_sign_setup(EC_KEY *eckey, BN_CTX *ctx_in, BIGNUM **kinvp,
-                            BIGNUM **rp, const uint8_t *digest,
-                            size_t digest_len);
-
 static int digest_to_bn(BIGNUM *out, const uint8_t *digest, size_t digest_len,
                         const BIGNUM *order);
 
@@ -88,14 +84,22 @@ int ECDSA_sign(int type, const uint8_t *digest, size_t digest_len, uint8_t *sig,
   BN_CTX_start(ctx);
 
   int ret = 0;
-
-  BIGNUM *k_inv = NULL;
-  BIGNUM *r = NULL;
+  EC_POINT *tmp_point = tmp_point = EC_POINT_new(group);
+  if (tmp_point == NULL) {
+    OPENSSL_PUT_ERROR(ECDSA, ERR_R_EC_LIB);
+    goto err;
+  }
 
   BIGNUM *m = BN_CTX_get(ctx);
+  BIGNUM *k = BN_CTX_get(ctx);
+  BIGNUM *r = BN_CTX_get(ctx);
+  BIGNUM *X = BN_CTX_get(ctx);
   BIGNUM *s = BN_CTX_get(ctx);
   BIGNUM *tmp = BN_CTX_get(ctx);
   if (m == NULL ||
+      k == NULL ||
+      r == NULL ||
+      X == NULL ||
       s == NULL ||
       tmp == NULL) {
     OPENSSL_PUT_ERROR(ECDSA, ERR_R_MALLOC_FAILURE);
@@ -107,13 +111,44 @@ int ECDSA_sign(int type, const uint8_t *digest, size_t digest_len, uint8_t *sig,
   }
 
   do {
-    if (!ecdsa_sign_setup(eckey, ctx, &k_inv, &r, digest, digest_len)) {
-      OPENSSL_PUT_ERROR(ECDSA, ERR_R_ECDSA_LIB);
+    do {
+      do {
+        if (!BN_generate_dsa_nonce(k, &group->order,
+                                   EC_KEY_get0_private_key(eckey), digest,
+                                   digest_len, ctx)) {
+          OPENSSL_PUT_ERROR(ECDSA, ECDSA_R_RANDOM_NUMBER_GENERATION_FAILED);
+          goto err;
+        }
+      } while (BN_is_zero(k));
+
+      /* Compute |r|, the X coordinate of |generator * k|. */
+      if (!group->meth->mul_private(group, tmp_point, k, NULL, NULL, ctx) ||
+          !EC_POINT_get_affine_coordinates_GFp(group, tmp_point, X, NULL, ctx)) {
+        OPENSSL_PUT_ERROR(ECDSA, ERR_R_EC_LIB);
+        goto err;
+      }
+
+      if (!BN_nnmod(r, X, &group->order, ctx)) {
+        OPENSSL_PUT_ERROR(ECDSA, ERR_R_BN_LIB);
+        goto err;
+      }
+    } while (BN_is_zero(r));
+
+    /* Compute the inverse of k. We want inverse in constant time, therefore we
+     * use Fermat's Little Theorem, which works because the subgroup order is
+     * prime.
+     *
+     * XXX: This isn't perfectly constant-time because the implementation of
+     * BN_mod_exp_mont_consttime isn't perfectly constant time. */
+    if (!BN_mod_exp_mont_consttime(k, k, &group->order_minus_2, &group->order,
+                                   ctx, &group->order_mont)) {
+      OPENSSL_PUT_ERROR(ECDSA, ERR_R_BN_LIB);
       goto err;
     }
+
     if (!BN_mod_mul(tmp, priv_key, r, &group->order, ctx) ||
         !BN_mod_add_quick(s, tmp, m, &group->order) ||
-        !BN_mod_mul(s, s, k_inv, &group->order, ctx)) {
+        !BN_mod_mul(s, s, k, &group->order, ctx)) {
       OPENSSL_PUT_ERROR(ECDSA, ERR_R_BN_LIB);
       goto err;
     }
@@ -142,8 +177,7 @@ err:
   if (!ret) {
     *sig_len = 0;
   }
-  BN_free(k_inv);
-  BN_free(r);
+  EC_POINT_free(tmp_point);
   BN_CTX_end(ctx);
   BN_CTX_free(ctx);
   return ret;
