@@ -113,23 +113,6 @@ OPENSSL_EXPORT ECDSA_SIG *ECDSA_SIG_new(void);
 /* ECDSA_SIG_free frees |sig| its member |BIGNUM|s. */
 OPENSSL_EXPORT void ECDSA_SIG_free(ECDSA_SIG *sig);
 
-/* ECDSA_do_sign signs |digest_len| bytes from |digest| with |key| and returns
- * the resulting signature structure, or NULL on error. */
-OPENSSL_EXPORT ECDSA_SIG *ECDSA_do_sign(const uint8_t *digest,
-                                        size_t digest_len, EC_KEY *key);
-
-/* ECDSA_do_verify_point verifies that |sig| constitutes a valid signature of
- * |digest| by the public key represented by |group| and |pub_key|. It returns
- * one on success or zero if the signature is invalid or on error.
- *
- * The OpenSSL function |ECDSA_do_verify| does the same thing, but it takes the
- * public key as an |EC_KEY *key| instead of as |group| and |pub_key|. */
-OPENSSL_EXPORT int ECDSA_do_verify_point(const uint8_t *digest,
-                                         size_t digest_len,
-                                         const ECDSA_SIG *sig,
-                                         const EC_GROUP *group,
-                                         const EC_POINT *pub_key);
-
 
 /* ASN.1 functions. */
 

@@ -65,6 +65,9 @@
 
 static int digest_to_bn(BIGNUM *out, const uint8_t *digest, size_t digest_len,
                         const BIGNUM *order);
+static int ecdsa_do_verify_point(const uint8_t *digest, size_t digest_len,
+                                 const ECDSA_SIG *sig, const EC_GROUP *group,
+                                 const EC_POINT *pub_key);
 
 
 int ECDSA_sign(int type, const uint8_t *digest, size_t digest_len, uint8_t *sig,
@@ -201,7 +204,7 @@ int ECDSA_verify_signed_digest(const EC_GROUP *group, int hash_nid,
     goto err;
   }
 
-  ret = ECDSA_do_verify_point(digest, digest_len, s, group, point);
+  ret = ecdsa_do_verify_point(digest, digest_len, s, group, point);
 
 err:
   ECDSA_SIG_free(s);
@@ -238,9 +241,15 @@ static int digest_to_bn(BIGNUM *out, const uint8_t *digest, size_t digest_len,
   return 1;
 }
 
-int ECDSA_do_verify_point(const uint8_t *digest, size_t digest_len,
-                          const ECDSA_SIG *sig, const EC_GROUP *group,
-                          const EC_POINT *pub_key) {
+/* ecdsa_do_verify_point verifies that |sig| constitutes a valid signature of
+ * |digest| by the public key represented by |group| and |pub_key|. It returns
+ * one on success or zero if the signature is invalid or on error.
+ *
+ * The OpenSSL function |ECDSA_do_verify| does the same thing, but it takes the
+ * public key as an |EC_KEY *key| instead of as |group| and |pub_key|. */
+static int ecdsa_do_verify_point(const uint8_t *digest, size_t digest_len,
+                                 const ECDSA_SIG *sig, const EC_GROUP *group,
+                                 const EC_POINT *pub_key) {
   int ret = 0;
   BN_CTX *ctx;
   BIGNUM *u1, *u2, *m, *X;
@@ -312,161 +321,5 @@ err:
   BN_CTX_end(ctx);
   BN_CTX_free(ctx);
   EC_POINT_free(point);
-  return ret;
-}
-
-static int ecdsa_sign_setup(EC_KEY *eckey, BN_CTX *ctx, BIGNUM **kinvp,
-                            BIGNUM **rp, const uint8_t *digest,
-                            size_t digest_len) {
-  BIGNUM *k = NULL, *r = NULL, *X = NULL;
-  EC_POINT *tmp_point = NULL;
-  const EC_GROUP *group;
-  int ret = 0;
-
-  if (eckey == NULL || (group = EC_KEY_get0_group(eckey)) == NULL) {
-    OPENSSL_PUT_ERROR(ECDSA, ERR_R_PASSED_NULL_PARAMETER);
-    return 0;
-  }
-
-  k = BN_new(); /* this value is later returned in *kinvp */
-  r = BN_new(); /* this value is later returned in *rp    */
-  X = BN_new();
-  if (k == NULL || r == NULL || X == NULL) {
-    OPENSSL_PUT_ERROR(ECDSA, ERR_R_MALLOC_FAILURE);
-    goto err;
-  }
-  tmp_point = EC_POINT_new(group);
-  if (tmp_point == NULL) {
-    OPENSSL_PUT_ERROR(ECDSA, ERR_R_EC_LIB);
-    goto err;
-  }
-
-  do {
-    do {
-      if (!BN_generate_dsa_nonce(k, &group->order,
-                                 EC_KEY_get0_private_key(eckey), digest,
-                                 digest_len, ctx)) {
-        OPENSSL_PUT_ERROR(ECDSA, ECDSA_R_RANDOM_NUMBER_GENERATION_FAILED);
-        goto err;
-      }
-    } while (BN_is_zero(k));
-
-    /* compute r the x-coordinate of generator * k */
-    if (!group->meth->mul_private(group, tmp_point, k, NULL, NULL, ctx)) {
-      OPENSSL_PUT_ERROR(ECDSA, ERR_R_EC_LIB);
-      goto err;
-    }
-    if (!EC_POINT_get_affine_coordinates_GFp(group, tmp_point, X, NULL, ctx)) {
-      OPENSSL_PUT_ERROR(ECDSA, ERR_R_EC_LIB);
-      goto err;
-    }
-
-    if (!BN_nnmod(r, X, &group->order, ctx)) {
-      OPENSSL_PUT_ERROR(ECDSA, ERR_R_BN_LIB);
-      goto err;
-    }
-  } while (BN_is_zero(r));
-
-  /* Compute the inverse of k. We want inverse in constant time, therefore we
-   * use Fermat's Little Theorem, which works because the subgroup order is
-   * prime.
-   *
-   * XXX: This isn't perfectly constant-time because the implementation of
-   * BN_mod_exp_mont_consttime isn't perfectly constant time. */
-  if (!BN_mod_exp_mont_consttime(k, k, &group->order_minus_2, &group->order,
-                                 ctx, &group->order_mont)) {
-    OPENSSL_PUT_ERROR(ECDSA, ERR_R_BN_LIB);
-    goto err;
-  }
-
-  /* clear old values if necessary */
-  BN_clear_free(*rp);
-  BN_clear_free(*kinvp);
-
-  /* save the pre-computed values  */
-  *rp = r;
-  *kinvp = k;
-  ret = 1;
-
-err:
-  if (!ret) {
-    BN_clear_free(k);
-    BN_clear_free(r);
-  }
-  EC_POINT_free(tmp_point);
-  BN_clear_free(X);
-  return ret;
-}
-
-ECDSA_SIG *ECDSA_do_sign(const uint8_t *digest, size_t digest_len,
-                         EC_KEY *eckey) {
-  int ok = 0;
-  BIGNUM *kinv = NULL, *s, *m = NULL, *tmp = NULL;
-  const BIGNUM *ckinv;
-  BN_CTX *ctx = NULL;
-  const EC_GROUP *group;
-  ECDSA_SIG *ret;
-  const BIGNUM *priv_key;
-
-  group = EC_KEY_get0_group(eckey);
-  priv_key = EC_KEY_get0_private_key(eckey);
-
-  if (group == NULL || priv_key == NULL) {
-    OPENSSL_PUT_ERROR(ECDSA, ERR_R_PASSED_NULL_PARAMETER);
-    return NULL;
-  }
-
-  ret = ECDSA_SIG_new();
-  if (!ret) {
-    OPENSSL_PUT_ERROR(ECDSA, ERR_R_MALLOC_FAILURE);
-    return NULL;
-  }
-  s = ret->s;
-
-  if ((ctx = BN_CTX_new()) == NULL ||
-      (tmp = BN_new()) == NULL || (m = BN_new()) == NULL) {
-    OPENSSL_PUT_ERROR(ECDSA, ERR_R_MALLOC_FAILURE);
-    goto err;
-  }
-
-  if (!digest_to_bn(m, digest, digest_len, &group->order)) {
-    goto err;
-  }
-  for (;;) {
-    if (!ecdsa_sign_setup(eckey, ctx, &kinv, &ret->r, digest, digest_len)) {
-      OPENSSL_PUT_ERROR(ECDSA, ERR_R_ECDSA_LIB);
-      goto err;
-    }
-    ckinv = kinv;
-
-    if (!BN_mod_mul(tmp, priv_key, ret->r, &group->order, ctx)) {
-      OPENSSL_PUT_ERROR(ECDSA, ERR_R_BN_LIB);
-      goto err;
-    }
-    if (!BN_mod_add_quick(s, tmp, m, &group->order)) {
-      OPENSSL_PUT_ERROR(ECDSA, ERR_R_BN_LIB);
-      goto err;
-    }
-    if (!BN_mod_mul(s, s, ckinv, &group->order, ctx)) {
-      OPENSSL_PUT_ERROR(ECDSA, ERR_R_BN_LIB);
-      goto err;
-    }
-    if (!BN_is_zero(s)) {
-      /* s != 0 => we have a valid signature */
-      break;
-    }
-  }
-
-  ok = 1;
-
-err:
-  if (!ok) {
-    ECDSA_SIG_free(ret);
-    ret = NULL;
-  }
-  BN_CTX_free(ctx);
-  BN_clear_free(m);
-  BN_clear_free(tmp);
-  BN_clear_free(kinv);
   return ret;
 }

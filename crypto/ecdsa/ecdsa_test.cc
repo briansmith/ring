@@ -64,11 +64,6 @@
 
 #include "../test/scoped_types.h"
 
-enum Api {
-  kEncodedApi,
-  kRawApi,
-};
-
 static bool point2oct(ScopedOpenSSLBytes *out, size_t *out_len,
                       const EC_GROUP *group, const EC_POINT *point) {
   size_t der_len = EC_POINT_point2oct(group, point,
@@ -91,50 +86,36 @@ static bool point2oct(ScopedOpenSSLBytes *out, size_t *out_len,
 }
 
 // VerifyECDSASig returns true on success, false on failure.
-static bool VerifyECDSASig(Api api, int digest_nid, const uint8_t *digest,
+static bool VerifyECDSASig(int digest_nid, const uint8_t *digest,
                            size_t digest_len, const ECDSA_SIG *ecdsa_sig,
                            const EC_GROUP *group, const EC_POINT *pub_key,
                            int expected_result) {
   int actual_result;
 
-  switch (api) {
-    case kEncodedApi: {
-      uint8_t *sig_der;
-      size_t sig_der_len;
-      if (!ECDSA_SIG_to_bytes(&sig_der, &sig_der_len, ecdsa_sig)) {
-        return false;
-      }
-      ScopedOpenSSLBytes delete_sig_der(sig_der);
-      ScopedOpenSSLBytes key_der(nullptr);
-      size_t key_der_len;
-      if (!point2oct(&key_der, &key_der_len, group, pub_key)) {
-        return false;
-      }
-      actual_result = ECDSA_verify_signed_digest(group, digest_nid, digest,
-                                                 digest_len, sig_der,
-                                                 sig_der_len, key_der.get(),
-                                                 key_der_len);
-      break;
-    }
-
-    case kRawApi:
-      actual_result = ECDSA_do_verify_point(digest, digest_len, ecdsa_sig,
-                                            group, pub_key);
-      break;
-
-    default:
-      return false;
+  uint8_t *sig_der;
+  size_t sig_der_len;
+  if (!ECDSA_SIG_to_bytes(&sig_der, &sig_der_len, ecdsa_sig)) {
+    return false;
   }
+  ScopedOpenSSLBytes delete_sig_der(sig_der);
+  ScopedOpenSSLBytes key_der(nullptr);
+  size_t key_der_len;
+  if (!point2oct(&key_der, &key_der_len, group, pub_key)) {
+    return false;
+  }
+  actual_result = ECDSA_verify_signed_digest(group, digest_nid, digest,
+                                             digest_len, sig_der, sig_der_len,
+                                             key_der.get(), key_der_len);
   return expected_result == actual_result;
 }
 
 // TestTamperedSig verifies that signature verification fails when a valid
 // signature is tampered with. |ecdsa_sig| must be a valid signature, which will
 // be modified. TestTamperedSig returns true on success, false on failure.
-static bool TestTamperedSig(FILE *out, Api api, int digest_nid,
-                            const uint8_t *digest, size_t digest_len,
-                            ECDSA_SIG *ecdsa_sig, const EC_GROUP *group,
-                            const EC_POINT *pub_key, const BIGNUM *order) {
+static bool TestTamperedSig(FILE *out, int digest_nid, const uint8_t *digest,
+                            size_t digest_len, ECDSA_SIG *ecdsa_sig,
+                            const EC_GROUP *group, const EC_POINT *pub_key,
+                            const BIGNUM *order) {
   // Modify a single byte of the signature: to ensure we don't
   // garble the ASN1 structure, we read the raw signature and
   // modify a byte in one of the bignums directly.
@@ -161,7 +142,7 @@ static bool TestTamperedSig(FILE *out, Api api, int digest_nid,
   // Now read the BIGNUMs back in from raw_buf.
   if (BN_bin2bn(raw_buf.data(), bn_len, ecdsa_sig->r) == NULL ||
       BN_bin2bn(raw_buf.data() + bn_len, bn_len, ecdsa_sig->s) == NULL ||
-      !VerifyECDSASig(api, digest_nid, digest, digest_len, ecdsa_sig, group,
+      !VerifyECDSASig(digest_nid, digest, digest_len, ecdsa_sig, group,
                       pub_key, 0)) {
     return false;
   }
@@ -170,7 +151,7 @@ static bool TestTamperedSig(FILE *out, Api api, int digest_nid,
   raw_buf[offset] ^= dirt;
   if (BN_bin2bn(raw_buf.data(), bn_len, ecdsa_sig->r) == NULL ||
       BN_bin2bn(raw_buf.data() + bn_len, bn_len, ecdsa_sig->s) == NULL ||
-      !VerifyECDSASig(api, digest_nid, digest, digest_len, ecdsa_sig, group,
+      !VerifyECDSASig(digest_nid, digest, digest_len, ecdsa_sig, group,
                       pub_key, 1)) {
     return false;
   }
@@ -290,48 +271,11 @@ static bool TestBuiltin(FILE *out) {
     ScopedECDSA_SIG ecdsa_sig(ECDSA_SIG_from_bytes(signature.data(),
                                                    signature.size()));
     if (!ecdsa_sig ||
-        !TestTamperedSig(out, kEncodedApi, NID_sha1, digest, 20, ecdsa_sig.get(),
-                         group, EC_KEY_get0_public_key(eckey.get()), order)) {
+        !TestTamperedSig(out, NID_sha1, digest, 20, ecdsa_sig.get(), group,
+                         EC_KEY_get0_public_key(eckey.get()), order)) {
       fprintf(out, "TestTamperedSig  failed for %s\n", kCurves[n].name);
       return false;
     }
-
-    // Test ECDSA_SIG signing and verification.
-    // Create a signature.
-    ecdsa_sig.reset(ECDSA_do_sign(digest, 20, eckey.get()));
-    if (!ecdsa_sig) {
-      fprintf(out, "ECDSA_do_sign failed for %s\n", kCurves[n].name);
-      return false;
-    }
-    // Verify the signature using the correct key.
-    if (!ECDSA_do_verify_point(digest, 20, ecdsa_sig.get(), group,
-                               EC_KEY_get0_public_key(eckey.get()))) {
-      fprintf(out, "ECDSA_do_verify_point (right key) failed for %s\n",
-              kCurves[n].name);
-      return false;
-    }
-    // Verify the signature with the wrong key.
-    if (ECDSA_do_verify_point(digest, 20, ecdsa_sig.get(), group,
-                              EC_KEY_get0_public_key(wrong_eckey.get()))) {
-      fprintf(out, "ECDSA_do_verify_point (wrong key) failed for %s\n",
-              kCurves[n].name);
-      return false;
-    }
-    // Verify the signature using the wrong digest.
-    if (ECDSA_do_verify_point(wrong_digest, 20, ecdsa_sig.get(),  group,
-                              EC_KEY_get0_public_key(eckey.get()))) {
-      fprintf(out, "ECDSA_do_verify_point (wrong digest) failed for %s\n",
-              kCurves[n].name);
-      return false;
-    }
-    // Verify a tampered signature.
-    if (!TestTamperedSig(out, kRawApi, NID_sha1, digest, 20, ecdsa_sig.get(),
-                         group, EC_KEY_get0_public_key(eckey.get()), order)) {
-      fprintf(out, "TestTamperedSig failed for %s\n", kCurves[n].name);
-      return false;
-    }
-    // Clear bogus errors.
-    ERR_clear_error();
   }
 
   return true;
