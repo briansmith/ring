@@ -3949,10 +3949,9 @@ typedef struct ssl3_state_st {
 
   SSL3_RECORD rrec; /* each decoded record goes in here */
 
-  /* storage for Handshake protocol data received but not yet processed by
-   * ssl3_read_bytes: */
-  uint8_t handshake_fragment[4];
-  unsigned int handshake_fragment_len;
+  /* hello_request_len is the number of bytes of HelloRequest received, possibly
+   * split over multiple records. */
+  uint8_t hello_request_len;
 
   /* partial write - check the numbers match */
   unsigned int wnum; /* number of bytes sent so far */

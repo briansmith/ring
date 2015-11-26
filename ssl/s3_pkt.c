@@ -317,11 +317,10 @@ static int do_ssl3_write(SSL *s, int type, const uint8_t *buf, unsigned len) {
 
 /* ssl3_expect_change_cipher_spec informs the record layer that a
  * ChangeCipherSpec record is required at this point. If a Handshake record is
- * received before ChangeCipherSpec, the connection will fail. Moreover, if
- * there are unprocessed handshake bytes, the handshake will also fail and the
- * function returns zero. Otherwise, the function returns one. */
+ * received before ChangeCipherSpec, the connection will fail. If there is an
+ * unprocessed handshake message, it returns zero. Otherwise, it returns one. */
 int ssl3_expect_change_cipher_spec(SSL *s) {
-  if (s->s3->handshake_fragment_len > 0 || s->s3->tmp.reuse_message) {
+  if (s->s3->tmp.reuse_message) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_UNPROCESSED_HANDSHAKE_DATA);
     return 0;
   }
@@ -392,29 +391,6 @@ int ssl3_read_bytes(SSL *s, int type, uint8_t *buf, int len, int peek) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
     return -1;
   }
-
-  if (type == SSL3_RT_HANDSHAKE && s->s3->handshake_fragment_len > 0) {
-    /* (partially) satisfy request from storage */
-    uint8_t *src = s->s3->handshake_fragment;
-    uint8_t *dst = buf;
-    unsigned int k;
-
-    /* peek == 0 */
-    n = 0;
-    while (len > 0 && s->s3->handshake_fragment_len > 0) {
-      *dst++ = *src++;
-      len--;
-      s->s3->handshake_fragment_len--;
-      n++;
-    }
-    /* move any remaining fragment bytes: */
-    for (k = 0; k < s->s3->handshake_fragment_len; k++) {
-      s->s3->handshake_fragment[k] = *src++;
-    }
-    return n;
-  }
-
-  /* Now s->s3->handshake_fragment_len == 0 if type == SSL3_RT_HANDSHAKE. */
 
   /* This may require multiple iterations. False Start will cause
    * |s->handshake_func| to signal success one step early, but the handshake
@@ -532,33 +508,28 @@ start:
       goto f_err;
     }
 
-    /* HelloRequests may be fragmented across multiple records. */
-    const size_t size = sizeof(s->s3->handshake_fragment);
-    const size_t avail = size - s->s3->handshake_fragment_len;
-    const size_t todo = (rr->length < avail) ? rr->length : avail;
-    memcpy(s->s3->handshake_fragment + s->s3->handshake_fragment_len,
-           &rr->data[rr->off], todo);
-    rr->off += todo;
-    rr->length -= todo;
-    s->s3->handshake_fragment_len += todo;
-    if (s->s3->handshake_fragment_len < size) {
-      goto start; /* fragment was too small */
+    /* This must be a HelloRequest, possibly fragmented over multiple records.
+     * Consume data from the handshake protocol until it is complete. */
+    static const uint8_t kHelloRequest[] = {SSL3_MT_HELLO_REQUEST, 0, 0, 0};
+    while (s->s3->hello_request_len < sizeof(kHelloRequest)) {
+      if (rr->length == 0) {
+        /* Get a new record. */
+        goto start;
+      }
+      if (rr->data[rr->off] != kHelloRequest[s->s3->hello_request_len]) {
+        al = SSL_AD_DECODE_ERROR;
+        OPENSSL_PUT_ERROR(SSL, SSL_R_BAD_HELLO_REQUEST);
+        goto f_err;
+      }
+      rr->off++;
+      rr->length--;
+      s->s3->hello_request_len++;
     }
-
-    /* Parse out and consume a HelloRequest. */
-    if (s->s3->handshake_fragment[0] != SSL3_MT_HELLO_REQUEST ||
-        s->s3->handshake_fragment[1] != 0 ||
-        s->s3->handshake_fragment[2] != 0 ||
-        s->s3->handshake_fragment[3] != 0) {
-      al = SSL_AD_DECODE_ERROR;
-      OPENSSL_PUT_ERROR(SSL, SSL_R_BAD_HELLO_REQUEST);
-      goto f_err;
-    }
-    s->s3->handshake_fragment_len = 0;
+    s->s3->hello_request_len = 0;
 
     if (s->msg_callback) {
-      s->msg_callback(0, s->version, SSL3_RT_HANDSHAKE,
-                      s->s3->handshake_fragment, 4, s, s->msg_callback_arg);
+      s->msg_callback(0, s->version, SSL3_RT_HANDSHAKE, kHelloRequest,
+                      sizeof(kHelloRequest), s, s->msg_callback_arg);
     }
 
     if (!SSL_is_init_finished(s) || !s->s3->initial_handshake_complete) {
