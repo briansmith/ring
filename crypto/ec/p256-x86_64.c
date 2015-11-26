@@ -441,7 +441,6 @@ static int ecp_nistz256_points_mul(
       !bn_set_words(&r->Z, p.p.Z, P256_LIMBS)) {
     return 0;
   }
-  r->Z_is_one = BN_is_one(&r->Z);
 
   return 1;
 }

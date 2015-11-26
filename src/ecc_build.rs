@@ -177,7 +177,6 @@ fn ec_group(curve: &NISTCurve) -> String {
               FIELD(.X =) STATIC_BIGNUM(generator_x_limbs),
               FIELD(.Y =) STATIC_BIGNUM(generator_y_limbs),
               FIELD(.Z =) STATIC_BIGNUM(one_limbs),
-              FIELD(.Z_is_one =) 1,
             }},
             FIELD(.order =) STATIC_BIGNUM(order_limbs),
             FIELD(.order_mont =) {{

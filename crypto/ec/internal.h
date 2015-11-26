@@ -131,7 +131,6 @@ struct ec_point_st {
   BIGNUM Y;
   BIGNUM Z; /* Jacobian projective coordinates:
              * (X, Y, Z)  represents  (X/Z^2, Y/Z^3)  if  Z != 0 */
-  int Z_is_one; /* enable optimized point arithmetics for special case */
 } /* EC_POINT */;
 
 struct ec_group_st {
