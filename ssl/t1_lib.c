@@ -929,6 +929,15 @@ static int ext_ri_add_clienthello(SSL *ssl, CBB *out) {
 
 static int ext_ri_parse_serverhello(SSL *ssl, uint8_t *out_alert,
                                     CBS *contents) {
+  /* Servers may not switch between omitting the extension and supporting it.
+   * See RFC 5746, sections 3.5 and 4.2. */
+  if (ssl->s3->initial_handshake_complete &&
+      (contents != NULL) != ssl->s3->send_connection_binding) {
+    *out_alert = SSL_AD_HANDSHAKE_FAILURE;
+    OPENSSL_PUT_ERROR(SSL, SSL_R_RENEGOTIATION_MISMATCH);
+    return 0;
+  }
+
   if (contents == NULL) {
     /* No renegotiation extension received.
      *

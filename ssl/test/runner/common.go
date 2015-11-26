@@ -579,9 +579,17 @@ type ProtocolBugs struct {
 	// renegotiation handshake to be incorrect.
 	BadRenegotiationInfo bool
 
-	// NoRenegotiationInfo causes the client to behave as if it
-	// didn't support the renegotiation info extension.
+	// NoRenegotiationInfo disables renegotiation info support in all
+	// handshakes.
 	NoRenegotiationInfo bool
+
+	// NoRenegotiationInfoInInitial disables renegotiation info support in
+	// the initial handshake.
+	NoRenegotiationInfoInInitial bool
+
+	// NoRenegotiationInfoAfterInitial disables renegotiation info support
+	// in renegotiation handshakes.
+	NoRenegotiationInfoAfterInitial bool
 
 	// RequireRenegotiationInfo, if true, causes the client to return an
 	// error if the server doesn't reply with the renegotiation extension.

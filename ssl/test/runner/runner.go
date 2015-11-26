@@ -3804,6 +3804,30 @@ func addRenegotiationTests() {
 		flags:         []string{"-no-legacy-server-connect"},
 	})
 	testCases = append(testCases, testCase{
+		name:        "Renegotiate-Client-Downgrade",
+		renegotiate: 1,
+		config: Config{
+			Bugs: ProtocolBugs{
+				NoRenegotiationInfoAfterInitial: true,
+			},
+		},
+		flags:         []string{"-renegotiate-freely"},
+		shouldFail:    true,
+		expectedError: ":RENEGOTIATION_MISMATCH:",
+	})
+	testCases = append(testCases, testCase{
+		name:        "Renegotiate-Client-Upgrade",
+		renegotiate: 1,
+		config: Config{
+			Bugs: ProtocolBugs{
+				NoRenegotiationInfoInInitial: true,
+			},
+		},
+		flags:         []string{"-renegotiate-freely"},
+		shouldFail:    true,
+		expectedError: ":RENEGOTIATION_MISMATCH:",
+	})
+	testCases = append(testCases, testCase{
 		name:        "Renegotiate-Client-NoExt-Allowed",
 		renegotiate: 1,
 		config: Config{
