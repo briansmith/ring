@@ -924,7 +924,11 @@ func (hs *clientHandshakeState) sendFinished(out []byte, isResume bool) error {
 
 	if !c.config.Bugs.SkipChangeCipherSpec &&
 		c.config.Bugs.EarlyChangeCipherSpec == 0 {
-		c.writeRecord(recordTypeChangeCipherSpec, []byte{1})
+		ccs := []byte{1}
+		if c.config.Bugs.BadChangeCipherSpec != nil {
+			ccs = c.config.Bugs.BadChangeCipherSpec
+		}
+		c.writeRecord(recordTypeChangeCipherSpec, ccs)
 	}
 
 	if c.config.Bugs.AppDataAfterChangeCipherSpec != nil {

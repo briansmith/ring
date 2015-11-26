@@ -805,6 +805,10 @@ type ProtocolBugs struct {
 	// bytes) of the server's Diffie-Hellman public value is not equal to
 	// this.
 	RequireDHPublicValueLen int
+
+	// BadChangeCipherSpec, if not nil, is the body to be sent in
+	// ChangeCipherSpec records instead of {1}.
+	BadChangeCipherSpec []byte
 }
 
 func (c *Config) serverInit() {

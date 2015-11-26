@@ -96,7 +96,7 @@ func (p *packetAdaptor) Write(b []byte) (int, error) {
 // for acknowledgement of the timeout, buffering any packets received since
 // then. The packets are then returned.
 func (p *packetAdaptor) SendReadTimeout(d time.Duration) ([][]byte, error) {
-	p.log("Simulating read timeout: " + d.String(), nil)
+	p.log("Simulating read timeout: "+d.String(), nil)
 
 	payload := make([]byte, 1+8)
 	payload[0] = opcodeTimeout

@@ -1995,6 +1995,48 @@ func addBasicTests() {
 			shouldFail:    true,
 			expectedError: ":BAD_ECC_CERT:",
 		},
+		{
+			name: "BadChangeCipherSpec-1",
+			config: Config{
+				Bugs: ProtocolBugs{
+					BadChangeCipherSpec: []byte{2},
+				},
+			},
+			shouldFail:    true,
+			expectedError: ":BAD_CHANGE_CIPHER_SPEC:",
+		},
+		{
+			name: "BadChangeCipherSpec-2",
+			config: Config{
+				Bugs: ProtocolBugs{
+					BadChangeCipherSpec: []byte{1, 1},
+				},
+			},
+			shouldFail:    true,
+			expectedError: ":BAD_CHANGE_CIPHER_SPEC:",
+		},
+		{
+			protocol: dtls,
+			name:     "BadChangeCipherSpec-DTLS-1",
+			config: Config{
+				Bugs: ProtocolBugs{
+					BadChangeCipherSpec: []byte{2},
+				},
+			},
+			shouldFail:    true,
+			expectedError: ":BAD_CHANGE_CIPHER_SPEC:",
+		},
+		{
+			protocol: dtls,
+			name:     "BadChangeCipherSpec-DTLS-2",
+			config: Config{
+				Bugs: ProtocolBugs{
+					BadChangeCipherSpec: []byte{1, 1},
+				},
+			},
+			shouldFail:    true,
+			expectedError: ":BAD_CHANGE_CIPHER_SPEC:",
+		},
 	}
 	testCases = append(testCases, basicTests...)
 }
