@@ -502,7 +502,6 @@ static int ecp_nistz256_points_mul(
   bn_correct_top(&r->X);
   bn_correct_top(&r->Y);
   bn_correct_top(&r->Z);
-  r->Z_is_one = BN_is_one(&r->Z);
 
   ret = 1;
 
@@ -576,7 +575,6 @@ const EC_METHOD *EC_GFp_nistz256_method(void) {
       ec_GFp_mont_field_sqr,
       ec_GFp_mont_field_encode,
       ec_GFp_mont_field_decode,
-      ec_GFp_mont_field_set_to_one,
   };
 
   return &ret;
