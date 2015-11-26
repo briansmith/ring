@@ -3914,13 +3914,7 @@ typedef struct ssl3_buffer_st {
   uint16_t cap;
 } SSL3_BUFFER;
 
-/* TODO(davidben): This flag can probably be merged into s3->change_cipher_spec
- * to something tri-state. (Normal / Expect CCS / Between CCS and Finished). */
-#define SSL3_FLAGS_EXPECT_CCS 0x0080
-
 typedef struct ssl3_state_st {
-  long flags;
-
   uint8_t read_sequence[8];
   int read_mac_secret_size;
   uint8_t read_mac_secret[EVP_MAX_MD_SIZE];
@@ -3968,10 +3962,6 @@ typedef struct ssl3_state_st {
   /* handshake_md5, if initialized with an |EVP_MD|, maintains the MD5 half of
    * the handshake hash for TLS 1.1 and below. */
   EVP_MD_CTX handshake_md5;
-
-  /* this is set whenerver we see a change_cipher_spec message come in when we
-   * are not looking for one */
-  int change_cipher_spec;
 
   int warn_alert;
   int fatal_alert;

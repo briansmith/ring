@@ -67,6 +67,7 @@ static const SSL_PROTOCOL_METHOD TLS_protocol_method = {
     ssl3_connect,
     ssl3_get_message,
     ssl3_read_app_data,
+    ssl3_read_change_cipher_spec,
     ssl3_read_close_notify,
     ssl3_write_app_data,
     ssl3_dispatch_alert,

@@ -763,26 +763,27 @@ struct ssl_method_st {
 struct ssl_protocol_method_st {
   /* is_dtls is one if the protocol is DTLS and zero otherwise. */
   char is_dtls;
-  int (*ssl_new)(SSL *s);
-  void (*ssl_free)(SSL *s);
-  int (*ssl_accept)(SSL *s);
-  int (*ssl_connect)(SSL *s);
-  long (*ssl_get_message)(SSL *s, int header_state, int body_state,
+  int (*ssl_new)(SSL *ssl);
+  void (*ssl_free)(SSL *ssl);
+  int (*ssl_accept)(SSL *ssl);
+  int (*ssl_connect)(SSL *ssl);
+  long (*ssl_get_message)(SSL *ssl, int header_state, int body_state,
                           int msg_type, long max,
                           enum ssl_hash_message_t hash_message, int *ok);
-  int (*ssl_read_app_data)(SSL *s, uint8_t *buf, int len, int peek);
-  void (*ssl_read_close_notify)(SSL *s);
-  int (*ssl_write_app_data)(SSL *s, const void *buf_, int len);
-  int (*ssl_dispatch_alert)(SSL *s);
+  int (*ssl_read_app_data)(SSL *ssl, uint8_t *buf, int len, int peek);
+  int (*ssl_read_change_cipher_spec)(SSL *ssl);
+  void (*ssl_read_close_notify)(SSL *ssl);
+  int (*ssl_write_app_data)(SSL *ssl, const void *buf_, int len);
+  int (*ssl_dispatch_alert)(SSL *ssl);
   /* supports_cipher returns one if |cipher| is supported by this protocol and
    * zero otherwise. */
   int (*supports_cipher)(const SSL_CIPHER *cipher);
   /* Handshake header length */
   unsigned int hhlen;
   /* Set the handshake header */
-  int (*set_handshake_header)(SSL *s, int type, unsigned long len);
+  int (*set_handshake_header)(SSL *ssl, int type, unsigned long len);
   /* Write out handshake message */
-  int (*do_write)(SSL *s);
+  int (*do_write)(SSL *ssl);
 };
 
 /* This is for the SSLv3/TLSv1.0 differences in crypto/hash stuff It is a bit
@@ -911,8 +912,6 @@ typedef struct dtls1_state_st {
 
   /* Timeout duration */
   unsigned short timeout_duration;
-
-  unsigned int change_cipher_spec_ok;
 } DTLS1_STATE;
 
 extern const SSL3_ENC_METHOD TLSv1_enc_data;
@@ -1007,8 +1006,8 @@ int ssl3_cert_verify_hash(SSL *s, uint8_t *out, size_t *out_len,
 int ssl3_send_finished(SSL *s, int a, int b, const char *sender, int slen);
 int ssl3_supports_cipher(const SSL_CIPHER *cipher);
 int ssl3_dispatch_alert(SSL *s);
-int ssl3_expect_change_cipher_spec(SSL *s);
 int ssl3_read_app_data(SSL *ssl, uint8_t *buf, int len, int peek);
+int ssl3_read_change_cipher_spec(SSL *ssl);
 void ssl3_read_close_notify(SSL *ssl);
 int ssl3_read_bytes(SSL *s, int type, uint8_t *buf, int len, int peek);
 int ssl3_write_app_data(SSL *ssl, const void *buf, int len);
@@ -1036,6 +1035,7 @@ int ssl3_handshake_write(SSL *s);
 
 int dtls1_do_handshake_write(SSL *s, enum dtls1_use_epoch_t use_epoch);
 int dtls1_read_app_data(SSL *ssl, uint8_t *buf, int len, int peek);
+int dtls1_read_change_cipher_spec(SSL *ssl);
 void dtls1_read_close_notify(SSL *ssl);
 int dtls1_read_bytes(SSL *s, int type, uint8_t *buf, int len, int peek);
 void dtls1_set_message_header(SSL *s, uint8_t mt, unsigned long len,

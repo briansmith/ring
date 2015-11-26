@@ -345,13 +345,26 @@ int dtls1_accept(SSL *s) {
         if (ret <= 0) {
           goto end;
         }
-        s->state = SSL3_ST_SR_FINISHED_A;
+        s->state = SSL3_ST_SR_CHANGE;
         s->init_num = 0;
+        break;
+
+      case SSL3_ST_SR_CHANGE:
+        ret = s->method->ssl_read_change_cipher_spec(s);
+        if (ret <= 0) {
+          goto end;
+        }
+
+        if (!ssl3_do_change_cipher_spec(s)) {
+          ret = -1;
+          goto end;
+        }
+
+        s->state = SSL3_ST_SR_FINISHED_A;
         break;
 
       case SSL3_ST_SR_FINISHED_A:
       case SSL3_ST_SR_FINISHED_B:
-        s->d1->change_cipher_spec_ok = 1;
         ret =
             ssl3_get_finished(s, SSL3_ST_SR_FINISHED_A, SSL3_ST_SR_FINISHED_B);
         if (ret <= 0) {
@@ -414,7 +427,7 @@ int dtls1_accept(SSL *s) {
         }
         s->state = SSL3_ST_SW_FLUSH;
         if (s->hit) {
-          s->s3->tmp.next_state = SSL3_ST_SR_FINISHED_A;
+          s->s3->tmp.next_state = SSL3_ST_SR_CHANGE;
         } else {
           s->s3->tmp.next_state = SSL_ST_OK;
         }

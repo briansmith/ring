@@ -240,15 +240,6 @@ int ssl3_get_finished(SSL *s, int a, int b) {
     goto err;
   }
 
-  /* If this occurs, we have missed a message.
-   * TODO(davidben): Is this check now redundant with SSL3_FLAGS_EXPECT_CCS? */
-  if (!s->s3->change_cipher_spec) {
-    al = SSL_AD_UNEXPECTED_MESSAGE;
-    OPENSSL_PUT_ERROR(SSL, SSL_R_GOT_A_FIN_BEFORE_A_CCS);
-    goto f_err;
-  }
-  s->s3->change_cipher_spec = 0;
-
   p = s->init_msg;
   finished_len = s->s3->tmp.peer_finish_md_len;
 

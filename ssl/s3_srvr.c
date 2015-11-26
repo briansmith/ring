@@ -419,27 +419,25 @@ int ssl3_accept(SSL *s) {
         s->init_num = 0;
         break;
 
-      case SSL3_ST_SR_CHANGE: {
-        char next_proto_neg = 0;
-        char channel_id = 0;
-        next_proto_neg = s->s3->next_proto_neg_seen;
-        channel_id = s->s3->tlsext_channel_id_valid;
+      case SSL3_ST_SR_CHANGE:
+        ret = s->method->ssl_read_change_cipher_spec(s);
+        if (ret <= 0) {
+          goto end;
+        }
 
-        /* At this point, the next message must be entirely behind a
-         * ChangeCipherSpec. */
-        if (!ssl3_expect_change_cipher_spec(s)) {
+        if (!ssl3_do_change_cipher_spec(s)) {
           ret = -1;
           goto end;
         }
-        if (next_proto_neg) {
+
+        if (s->s3->next_proto_neg_seen) {
           s->state = SSL3_ST_SR_NEXT_PROTO_A;
-        } else if (channel_id) {
+        } else if (s->s3->tlsext_channel_id_valid) {
           s->state = SSL3_ST_SR_CHANNEL_ID_A;
         } else {
           s->state = SSL3_ST_SR_FINISHED_A;
         }
         break;
-      }
 
       case SSL3_ST_SR_NEXT_PROTO_A:
       case SSL3_ST_SR_NEXT_PROTO_B:
@@ -2406,17 +2404,6 @@ int ssl3_get_next_proto(SSL *s) {
     return n;
   }
 
-  /* s->state doesn't reflect whether ChangeCipherSpec has been received in
-   * this handshake, but s->s3->change_cipher_spec does (will be reset by
-   * ssl3_get_finished).
-   *
-   * TODO(davidben): Is this check now redundant with
-   * SSL3_FLAGS_EXPECT_CCS? */
-  if (!s->s3->change_cipher_spec) {
-    OPENSSL_PUT_ERROR(SSL, SSL_R_GOT_NEXT_PROTO_BEFORE_A_CCS);
-    return -1;
-  }
-
   CBS_init(&next_protocol, s->init_msg, n);
 
   /* The payload looks like:
@@ -2467,16 +2454,6 @@ int ssl3_get_channel_id(SSL *s) {
   assert(channel_id_hash_len == SHA256_DIGEST_LENGTH);
 
   if (!ssl3_hash_current_message(s)) {
-    return -1;
-  }
-
-  /* s->state doesn't reflect whether ChangeCipherSpec has been received in
-   * this handshake, but s->s3->change_cipher_spec does (will be reset by
-   * ssl3_get_finished).
-   *
-   * TODO(davidben): Is this check now redundant with SSL3_FLAGS_EXPECT_CCS? */
-  if (!s->s3->change_cipher_spec) {
-    OPENSSL_PUT_ERROR(SSL, SSL_R_GOT_CHANNEL_ID_BEFORE_A_CCS);
     return -1;
   }
 

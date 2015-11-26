@@ -235,7 +235,7 @@ int dtls1_connect(SSL *s) {
         }
 
         if (s->hit) {
-          s->state = SSL3_ST_CR_FINISHED_A;
+          s->state = SSL3_ST_CR_CHANGE;
           if (s->tlsext_ticket_expected) {
             /* receive renewed session ticket */
             s->state = SSL3_ST_CR_SESSION_TICKET_A;
@@ -337,7 +337,6 @@ int dtls1_connect(SSL *s) {
           s->state = SSL3_ST_CW_CERT_VRFY_A;
         } else {
           s->state = SSL3_ST_CW_CHANGE_A;
-          s->s3->change_cipher_spec = 0;
         }
 
         s->init_num = 0;
@@ -353,7 +352,6 @@ int dtls1_connect(SSL *s) {
         }
         s->state = SSL3_ST_CW_CHANGE_A;
         s->init_num = 0;
-        s->s3->change_cipher_spec = 0;
         break;
 
       case SSL3_ST_CW_CHANGE_A:
@@ -401,7 +399,7 @@ int dtls1_connect(SSL *s) {
           if (s->tlsext_ticket_expected) {
             s->s3->tmp.next_state = SSL3_ST_CR_SESSION_TICKET_A;
           } else {
-            s->s3->tmp.next_state = SSL3_ST_CR_FINISHED_A;
+            s->s3->tmp.next_state = SSL3_ST_CR_CHANGE;
           }
         }
         s->init_num = 0;
@@ -413,7 +411,7 @@ int dtls1_connect(SSL *s) {
         if (ret <= 0) {
           goto end;
         }
-        s->state = SSL3_ST_CR_FINISHED_A;
+        s->state = SSL3_ST_CR_CHANGE;
         s->init_num = 0;
         break;
 
@@ -427,9 +425,21 @@ int dtls1_connect(SSL *s) {
         s->init_num = 0;
         break;
 
+      case SSL3_ST_CR_CHANGE:
+        ret = s->method->ssl_read_change_cipher_spec(s);
+        if (ret <= 0) {
+          goto end;
+        }
+
+        if (!ssl3_do_change_cipher_spec(s)) {
+          ret = -1;
+          goto end;
+        }
+        s->state = SSL3_ST_CR_FINISHED_A;
+        break;
+
       case SSL3_ST_CR_FINISHED_A:
       case SSL3_ST_CR_FINISHED_B:
-        s->d1->change_cipher_spec_ok = 1;
         ret =
             ssl3_get_finished(s, SSL3_ST_CR_FINISHED_A, SSL3_ST_CR_FINISHED_B);
         if (ret <= 0) {

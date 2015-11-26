@@ -355,7 +355,6 @@ int ssl3_connect(SSL *s) {
           s->state = SSL3_ST_CW_CERT_VRFY_A;
         } else {
           s->state = SSL3_ST_CW_CHANGE_A;
-          s->s3->change_cipher_spec = 0;
         }
 
         s->init_num = 0;
@@ -370,7 +369,6 @@ int ssl3_connect(SSL *s) {
         }
         s->state = SSL3_ST_CW_CHANGE_A;
         s->init_num = 0;
-        s->s3->change_cipher_spec = 0;
         break;
 
       case SSL3_ST_CW_CHANGE_A:
@@ -484,9 +482,12 @@ int ssl3_connect(SSL *s) {
         break;
 
       case SSL3_ST_CR_CHANGE:
-        /* At this point, the next message must be entirely behind a
-         * ChangeCipherSpec. */
-        if (!ssl3_expect_change_cipher_spec(s)) {
+        ret = s->method->ssl_read_change_cipher_spec(s);
+        if (ret <= 0) {
+          goto end;
+        }
+
+        if (!ssl3_do_change_cipher_spec(s)) {
           ret = -1;
           goto end;
         }

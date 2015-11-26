@@ -994,7 +994,7 @@ func addBasicTests() {
 				},
 			},
 			shouldFail:    true,
-			expectedError: ":HANDSHAKE_RECORD_BEFORE_CCS:",
+			expectedError: ":UNEXPECTED_RECORD:",
 		},
 		{
 			testType: serverTest,
@@ -1005,7 +1005,7 @@ func addBasicTests() {
 				},
 			},
 			shouldFail:    true,
-			expectedError: ":HANDSHAKE_RECORD_BEFORE_CCS:",
+			expectedError: ":UNEXPECTED_RECORD:",
 		},
 		{
 			testType: serverTest,
@@ -1020,7 +1020,7 @@ func addBasicTests() {
 				"-advertise-npn", "\x03foo\x03bar\x03baz",
 			},
 			shouldFail:    true,
-			expectedError: ":HANDSHAKE_RECORD_BEFORE_CCS:",
+			expectedError: ":UNEXPECTED_RECORD:",
 		},
 		{
 			name: "FragmentAcrossChangeCipherSpec-Client",
@@ -1030,7 +1030,7 @@ func addBasicTests() {
 				},
 			},
 			shouldFail:    true,
-			expectedError: ":HANDSHAKE_RECORD_BEFORE_CCS:",
+			expectedError: ":UNEXPECTED_RECORD:",
 		},
 		{
 			testType: serverTest,
@@ -1041,7 +1041,7 @@ func addBasicTests() {
 				},
 			},
 			shouldFail:    true,
-			expectedError: ":HANDSHAKE_RECORD_BEFORE_CCS:",
+			expectedError: ":UNEXPECTED_RECORD:",
 		},
 		{
 			testType: serverTest,
@@ -1056,7 +1056,7 @@ func addBasicTests() {
 				"-advertise-npn", "\x03foo\x03bar\x03baz",
 			},
 			shouldFail:    true,
-			expectedError: ":HANDSHAKE_RECORD_BEFORE_CCS:",
+			expectedError: ":UNEXPECTED_RECORD:",
 		},
 		{
 			testType: serverTest,
@@ -1115,7 +1115,7 @@ func addBasicTests() {
 				},
 			},
 			shouldFail:    true,
-			expectedError: ":CCS_RECEIVED_EARLY:",
+			expectedError: ":UNEXPECTED_RECORD:",
 		},
 		{
 			testType: serverTest,
@@ -1126,7 +1126,7 @@ func addBasicTests() {
 				},
 			},
 			shouldFail:    true,
-			expectedError: ":CCS_RECEIVED_EARLY:",
+			expectedError: ":UNEXPECTED_RECORD:",
 		},
 		{
 			name: "SkipNewSessionTicket",
@@ -1136,7 +1136,7 @@ func addBasicTests() {
 				},
 			},
 			shouldFail:    true,
-			expectedError: ":CCS_RECEIVED_EARLY:",
+			expectedError: ":UNEXPECTED_RECORD:",
 		},
 		{
 			testType: serverTest,
@@ -1413,7 +1413,7 @@ func addBasicTests() {
 				},
 			},
 			shouldFail:    true,
-			expectedError: ":DATA_BETWEEN_CCS_AND_FINISHED:",
+			expectedError: ":UNEXPECTED_RECORD:",
 		},
 		{
 			name: "AppDataAfterChangeCipherSpec-Empty",
@@ -1423,7 +1423,7 @@ func addBasicTests() {
 				},
 			},
 			shouldFail:    true,
-			expectedError: ":DATA_BETWEEN_CCS_AND_FINISHED:",
+			expectedError: ":UNEXPECTED_RECORD:",
 		},
 		{
 			protocol: dtls,
