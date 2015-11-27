@@ -99,6 +99,7 @@ const Flag<bool> kBoolFlags[] = {
   { "-renegotiate-ignore", &TestConfig::renegotiate_ignore },
   { "-disable-npn", &TestConfig::disable_npn },
   { "-p384-only", &TestConfig::p384_only },
+  { "-use-sparse-dh-prime", &TestConfig::use_sparse_dh_prime },
 };
 
 const Flag<std::string> kStringFlags[] = {

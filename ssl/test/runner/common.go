@@ -787,6 +787,11 @@ type ProtocolBugs struct {
 	// HelloRequest handshake message to be sent before each application
 	// data record. This only makes sense for a server.
 	SendHelloRequestBeforeEveryAppDataRecord bool
+
+	// RequireDHPublicValueLen causes a fatal error if the length (in
+	// bytes) of the server's Diffie-Hellman public value is not equal to
+	// this.
+	RequireDHPublicValueLen int
 }
 
 func (c *Config) serverInit() {

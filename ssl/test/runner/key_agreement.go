@@ -15,6 +15,7 @@ import (
 	"crypto/x509"
 	"encoding/asn1"
 	"errors"
+	"fmt"
 	"io"
 	"math/big"
 )
@@ -650,6 +651,10 @@ func (ka *dheKeyAgreement) processServerKeyExchange(config *Config, clientHello 
 	k = k[yLen:]
 	if ka.yTheirs.Sign() <= 0 || ka.yTheirs.Cmp(ka.p) >= 0 {
 		return errServerKeyExchange
+	}
+
+	if l := config.Bugs.RequireDHPublicValueLen; l != 0 && l != yLen {
+		return fmt.Errorf("RequireDHPublicValueLen set to %d, but server's public value was %d bytes on the wire and %d bytes if minimal", l, yLen, (ka.yTheirs.BitLen()+7)/8)
 	}
 
 	sig := k

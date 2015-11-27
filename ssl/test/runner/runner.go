@@ -2185,6 +2185,20 @@ func addCipherSuiteTests() {
 		expectedError: ":DH_P_TOO_LONG:",
 	})
 
+	// This test ensures that Diffie-Hellman public values are padded with
+	// zeros so that they're the same length as the prime. This is to avoid
+	// hitting a bug in yaSSL.
+	testCases = append(testCases, testCase{
+		testType: serverTest,
+		name:     "DHPublicValuePadded",
+		config: Config{
+			CipherSuites: []uint16{TLS_DHE_RSA_WITH_AES_128_GCM_SHA256},
+			Bugs: ProtocolBugs{
+				RequireDHPublicValueLen: (1025 + 7) / 8,
+			},
+		},
+		flags: []string{"-use-sparse-dh-prime"},
+	})
 
 	// versionSpecificCiphersTest specifies a test for the TLS 1.0 and TLS
 	// 1.1 specific cipher suite settings. A server is setup with the given
