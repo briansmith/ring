@@ -205,6 +205,10 @@ BIGNUM *bn_expand(BIGNUM *bn, size_t bits);
 #define Hw(t) (((BN_ULONG)((t)>>BN_BITS2))&BN_MASK2)
 #endif
 
+/* bn_set_words sets |bn| to the value encoded in the |num| words in |words|,
+ * least significant word first. */
+int bn_set_words(BIGNUM *bn, const BN_ULONG *words, size_t num);
+
 BN_ULONG bn_mul_add_words(BN_ULONG *rp, const BN_ULONG *ap, int num, BN_ULONG w);
 BN_ULONG bn_mul_words(BN_ULONG *rp, const BN_ULONG *ap, int num, BN_ULONG w);
 void     bn_sqr_words(BN_ULONG *rp, const BN_ULONG *ap, int num);

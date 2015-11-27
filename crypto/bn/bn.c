@@ -266,6 +266,17 @@ int BN_set_word(BIGNUM *bn, BN_ULONG value) {
   return 1;
 }
 
+int bn_set_words(BIGNUM *bn, const BN_ULONG *words, size_t num) {
+  if (bn_wexpand(bn, num) == NULL) {
+    return 0;
+  }
+  memmove(bn->d, words, num * sizeof(BN_ULONG));
+  /* |bn_wexpand| verified that |num| isn't too large. */
+  bn->top = (int) num;
+  bn_correct_top(bn);
+  return 1;
+}
+
 int BN_is_negative(const BIGNUM *bn) {
   return bn->neg != 0;
 }
