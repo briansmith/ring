@@ -13,9 +13,9 @@
 // OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 use rustc_serialize::hex::FromHex;
-use super::*;
 use std;
 use std::io::BufRead;
+use super::digest;
 
 pub struct TestCase {
     attributes: std::collections::HashMap<String, String>,
