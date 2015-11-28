@@ -114,8 +114,6 @@ int ECDH_compute_key_ex(uint8_t *out, size_t *out_len, size_t max_out_len,
     goto err;
   }
 
-  group = EC_KEY_get0_group(priv_key);
-
   tmp = EC_POINT_new(group);
   if (tmp == NULL) {
     OPENSSL_PUT_ERROR(ECDH, ERR_R_MALLOC_FAILURE);
