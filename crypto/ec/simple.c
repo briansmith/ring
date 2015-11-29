@@ -201,8 +201,17 @@ int ec_GFp_simple_point_set_affine_coordinates(const EC_GROUP *group,
     return 0;
   }
 
-  return ec_point_set_Jprojective_coordinates_GFp(group, point, x, y,
-                                                  BN_value_one(), ctx);
+  if (!ec_point_set_Jprojective_coordinates_GFp(group, point, x, y,
+                                                BN_value_one(), ctx)) {
+    return 0;
+  }
+
+  if (!ec_GFp_simple_is_on_curve(group, point, ctx)) {
+    OPENSSL_PUT_ERROR(EC, EC_R_POINT_IS_NOT_ON_CURVE);
+    return 0;
+  }
+
+  return 1;
 }
 
 int ec_GFp_simple_point_get_affine_coordinates(const EC_GROUP *group,
