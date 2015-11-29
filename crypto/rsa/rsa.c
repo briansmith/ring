@@ -123,16 +123,6 @@ void RSA_free(RSA *rsa) {
     return;
   }
 
-  if (rsa->_method_mod_n != NULL) {
-    BN_MONT_CTX_free(rsa->_method_mod_n);
-  }
-  if (rsa->_method_mod_p != NULL) {
-    BN_MONT_CTX_free(rsa->_method_mod_p);
-  }
-  if (rsa->_method_mod_q != NULL) {
-    BN_MONT_CTX_free(rsa->_method_mod_q);
-  }
-
   BN_clear_free(rsa->n);
   BN_clear_free(rsa->e);
   BN_clear_free(rsa->d);
@@ -141,6 +131,9 @@ void RSA_free(RSA *rsa) {
   BN_clear_free(rsa->dmp1);
   BN_clear_free(rsa->dmq1);
   BN_clear_free(rsa->iqmp);
+  BN_MONT_CTX_free(rsa->mont_n);
+  BN_MONT_CTX_free(rsa->mont_p);
+  BN_MONT_CTX_free(rsa->mont_q);
   for (u = 0; u < rsa->num_blindings; u++) {
     BN_BLINDING_free(rsa->blindings[u]);
   }
