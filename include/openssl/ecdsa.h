@@ -113,8 +113,8 @@ OPENSSL_EXPORT ECDSA_SIG *ECDSA_SIG_new(void);
 /* ECDSA_SIG_free frees |sig| its member |BIGNUM|s. */
 OPENSSL_EXPORT void ECDSA_SIG_free(ECDSA_SIG *sig);
 
-/* ECDSA_sign signs |digest_len| bytes from |digest| with |key| and returns the
- * resulting signature structure, or NULL on error. */
+/* ECDSA_do_sign signs |digest_len| bytes from |digest| with |key| and returns
+ * the resulting signature structure, or NULL on error. */
 OPENSSL_EXPORT ECDSA_SIG *ECDSA_do_sign(const uint8_t *digest,
                                         size_t digest_len, EC_KEY *key);
 
