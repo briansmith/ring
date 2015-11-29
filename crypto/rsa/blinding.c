@@ -127,9 +127,11 @@ struct bn_blinding_st {
   BIGNUM *mod; /* just a reference */
   int counter;
   unsigned long flags;
-  BN_MONT_CTX *m_ctx;
+  /* mont is the Montgomery context used for this |BN_BLINDING|. It is not
+   * owned and must outlive this structure. */
+  const BN_MONT_CTX *mont;
   int (*bn_mod_exp)(BIGNUM *r, const BIGNUM *a, const BIGNUM *p,
-                    const BIGNUM *m, BN_CTX *ctx, BN_MONT_CTX *m_ctx);
+                    const BIGNUM *m, BN_CTX *ctx, const BN_MONT_CTX *mont);
 };
 
 BN_BLINDING *BN_BLINDING_new(const BIGNUM *A, const BIGNUM *Ai, BIGNUM *mod) {
@@ -284,8 +286,8 @@ void BN_BLINDING_set_flags(BN_BLINDING *b, unsigned long flags) {
 BN_BLINDING *BN_BLINDING_create_param(
     BN_BLINDING *b, const BIGNUM *e, BIGNUM *m, BN_CTX *ctx,
     int (*bn_mod_exp)(BIGNUM *r, const BIGNUM *a, const BIGNUM *p,
-                      const BIGNUM *m, BN_CTX *ctx, BN_MONT_CTX *m_ctx),
-    BN_MONT_CTX *m_ctx) {
+                      const BIGNUM *m, BN_CTX *ctx, const BN_MONT_CTX *mont),
+    const BN_MONT_CTX *mont) {
   int retry_counter = 32;
   BN_BLINDING *ret = NULL;
 
@@ -317,8 +319,8 @@ BN_BLINDING *BN_BLINDING_create_param(
   if (bn_mod_exp != NULL) {
     ret->bn_mod_exp = bn_mod_exp;
   }
-  if (m_ctx != NULL) {
-    ret->m_ctx = m_ctx;
+  if (mont != NULL) {
+    ret->mont = mont;
   }
 
   do {
@@ -343,8 +345,8 @@ BN_BLINDING *BN_BLINDING_create_param(
     }
   } while (1);
 
-  if (ret->bn_mod_exp != NULL && ret->m_ctx != NULL) {
-    if (!ret->bn_mod_exp(ret->A, ret->A, ret->e, ret->mod, ctx, ret->m_ctx)) {
+  if (ret->bn_mod_exp != NULL && ret->mont != NULL) {
+    if (!ret->bn_mod_exp(ret->A, ret->A, ret->e, ret->mod, ctx, ret->mont)) {
       goto err;
     }
   } else {

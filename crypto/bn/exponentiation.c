@@ -124,18 +124,16 @@
 
 #include "rsaz_exp.h"
 
-void bn_mul_mont_gather5(BN_ULONG * rp, const BN_ULONG * ap,
-                         const void * table, const BN_ULONG * np,
-                         const BN_ULONG * n0, int num, int power);
-void bn_scatter5(const BN_ULONG * inp, size_t num, void * table,
-                 size_t power);
-void bn_gather5(BN_ULONG * out, size_t num, void * table, size_t power);
-void bn_power5(BN_ULONG * rp, const BN_ULONG * ap, const void * table,
-               const BN_ULONG * np, const BN_ULONG * n0, int num,
-               int power);
-int bn_from_montgomery(BN_ULONG * rp, const BN_ULONG * ap,
-                       const BN_ULONG * not_used, const BN_ULONG * np,
-                       const BN_ULONG * n0, int num);
+void bn_mul_mont_gather5(BN_ULONG *rp, const BN_ULONG *ap, const void *table,
+                         const BN_ULONG *np, const BN_ULONG *n0, int num,
+                         int power);
+void bn_scatter5(const BN_ULONG *inp, size_t num, void *table, size_t power);
+void bn_gather5(BN_ULONG *out, size_t num, void *table, size_t power);
+void bn_power5(BN_ULONG *rp, const BN_ULONG *ap, const void *table,
+               const BN_ULONG *np, const BN_ULONG *n0, int num, int power);
+int bn_from_montgomery(BN_ULONG *rp, const BN_ULONG *ap,
+                       const BN_ULONG *not_used, const BN_ULONG *np,
+                       const BN_ULONG *n0, int num);
 #endif
 
 int BN_exp(BIGNUM *r, const BIGNUM *a, const BIGNUM *p, BN_CTX *ctx) {
@@ -615,17 +613,17 @@ int BN_mod_exp(BIGNUM *r, const BIGNUM *a, const BIGNUM *p, const BIGNUM *m,
 }
 
 int BN_mod_exp_mont(BIGNUM *rr, const BIGNUM *a, const BIGNUM *p,
-                    const BIGNUM *m, BN_CTX *ctx, BN_MONT_CTX *in_mont) {
+                    const BIGNUM *m, BN_CTX *ctx, const BN_MONT_CTX *mont) {
   int i, j, bits, ret = 0, wstart, window;
   int start = 1;
   BIGNUM *d, *r;
   const BIGNUM *aa;
   /* Table of variables obtained from 'ctx' */
   BIGNUM *val[TABLE_SIZE];
-  BN_MONT_CTX *mont = NULL;
+  BN_MONT_CTX *new_mont = NULL;
 
   if (BN_get_flags(p, BN_FLG_CONSTTIME) != 0) {
-    return BN_mod_exp_mont_consttime(rr, a, p, m, ctx, in_mont);
+    return BN_mod_exp_mont_consttime(rr, a, p, m, ctx, mont);
   }
 
   if (!BN_is_odd(m)) {
@@ -646,18 +644,13 @@ int BN_mod_exp_mont(BIGNUM *rr, const BIGNUM *a, const BIGNUM *p,
     goto err;
   }
 
-  /* If this is not done, things will break in the montgomery part */
-
-  if (in_mont != NULL) {
-    mont = in_mont;
-  } else {
-    mont = BN_MONT_CTX_new();
-    if (mont == NULL) {
+  /* Allocate a montgomery context if it was not supplied by the caller. */
+  if (mont == NULL) {
+    new_mont = BN_MONT_CTX_new();
+    if (new_mont == NULL || !BN_MONT_CTX_set(new_mont, m, ctx)) {
       goto err;
     }
-    if (!BN_MONT_CTX_set(mont, m, ctx)) {
-      goto err;
-    }
+    mont = new_mont;
   }
 
   if (a->neg || BN_ucmp(a, m) >= 0) {
@@ -776,9 +769,7 @@ int BN_mod_exp_mont(BIGNUM *rr, const BIGNUM *a, const BIGNUM *p,
   ret = 1;
 
 err:
-  if (in_mont == NULL) {
-    BN_MONT_CTX_free(mont);
-  }
+  BN_MONT_CTX_free(new_mont);
   BN_CTX_end(ctx);
   return ret;
 }
@@ -1190,8 +1181,9 @@ err:
 }
 
 int BN_mod_exp_mont_word(BIGNUM *rr, BN_ULONG a, const BIGNUM *p,
-                         const BIGNUM *m, BN_CTX *ctx, BN_MONT_CTX *in_mont) {
-  BN_MONT_CTX *mont = NULL;
+                         const BIGNUM *m, BN_CTX *ctx,
+                         const BN_MONT_CTX *mont) {
+  BN_MONT_CTX *new_mont = NULL;
   int b, bits, ret = 0;
   int r_is_one;
   BN_ULONG w, next_w;
@@ -1249,13 +1241,13 @@ int BN_mod_exp_mont_word(BIGNUM *rr, BN_ULONG a, const BIGNUM *p,
     goto err;
   }
 
-  if (in_mont != NULL) {
-    mont = in_mont;
-  } else {
-    mont = BN_MONT_CTX_new();
-    if (mont == NULL || !BN_MONT_CTX_set(mont, m, ctx)) {
+  /* Allocate a montgomery context if it was not supplied by the caller. */
+  if (mont == NULL) {
+    new_mont = BN_MONT_CTX_new();
+    if (new_mont == NULL || !BN_MONT_CTX_set(new_mont, m, ctx)) {
       goto err;
     }
+    mont = new_mont;
   }
 
   r_is_one = 1; /* except for Montgomery factor */
@@ -1337,9 +1329,7 @@ int BN_mod_exp_mont_word(BIGNUM *rr, BN_ULONG a, const BIGNUM *p,
   ret = 1;
 
 err:
-  if (in_mont == NULL) {
-    BN_MONT_CTX_free(mont);
-  }
+  BN_MONT_CTX_free(new_mont);
   BN_CTX_end(ctx);
   return ret;
 }

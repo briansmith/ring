@@ -510,7 +510,7 @@ OPENSSL_EXPORT int BN_mod_sub_quick(BIGNUM *r, const BIGNUM *a, const BIGNUM *b,
 OPENSSL_EXPORT int BN_mod_mul(BIGNUM *r, const BIGNUM *a, const BIGNUM *b,
                               const BIGNUM *m, BN_CTX *ctx);
 
-/* BN_mod_mul sets |r| = |a|^2 mod |m|. It returns one on success and zero
+/* BN_mod_sqr sets |r| = |a|^2 mod |m|. It returns one on success and zero
  * on error. */
 OPENSSL_EXPORT int BN_mod_sqr(BIGNUM *r, const BIGNUM *a, const BIGNUM *m,
                               BN_CTX *ctx);
@@ -723,7 +723,7 @@ OPENSSL_EXPORT int BN_mod_exp(BIGNUM *r, const BIGNUM *a, const BIGNUM *p,
 
 OPENSSL_EXPORT int BN_mod_exp_mont(BIGNUM *r, const BIGNUM *a, const BIGNUM *p,
                                    const BIGNUM *m, BN_CTX *ctx,
-                                   BN_MONT_CTX *m_ctx);
+                                   const BN_MONT_CTX *mont);
 
 OPENSSL_EXPORT int BN_mod_exp_mont_consttime(BIGNUM *rr, const BIGNUM *a,
                                              const BIGNUM *p, const BIGNUM *m,
@@ -732,7 +732,7 @@ OPENSSL_EXPORT int BN_mod_exp_mont_consttime(BIGNUM *rr, const BIGNUM *a,
 
 OPENSSL_EXPORT int BN_mod_exp_mont_word(BIGNUM *r, BN_ULONG a, const BIGNUM *p,
                                         const BIGNUM *m, BN_CTX *ctx,
-                                        BN_MONT_CTX *m_ctx);
+                                        const BN_MONT_CTX *mont);
 
 
 /* Private functions */
