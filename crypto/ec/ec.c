@@ -201,6 +201,11 @@ int EC_POINT_mul(const EC_GROUP *group, EC_POINT *r, const BIGNUM *g_scalar,
 int EC_POINTs_mul(const EC_GROUP *group, EC_POINT *r, const BIGNUM *scalar,
                   size_t num, const EC_POINT *points[], const BIGNUM *scalars[],
                   BN_CTX *ctx) {
+  if (group->meth != r->meth) {
+    OPENSSL_PUT_ERROR(EC, EC_R_INCOMPATIBLE_OBJECTS);
+    return 0;
+  }
+
   size_t i;
   for (i = 0; i < num; i++) {
     if (points[i]->meth != r->meth) {
