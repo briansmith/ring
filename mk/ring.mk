@@ -137,6 +137,7 @@ RING_arm_SRCS += $(addprefix $(RING_PREFIX), \
   $(NULL))
 
 RING_aarch64_SRCS = $(addprefix $(RING_PREFIX), \
+  crypto/bn/asm/armv8-mont.pl \
   crypto/modes/asm/ghashv8-armx.pl \
   crypto/sha/asm/sha1-armv8.pl \
   crypto/sha/asm/sha256-armv8.pl \
