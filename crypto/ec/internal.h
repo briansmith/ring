@@ -126,6 +126,8 @@ struct ec_group_st {
 
   const EC_POINT generator;
   const BIGNUM order;
+  const BN_MONT_CTX order_mont;
+  const BIGNUM order_minus_2;
 
   int curve_name; /* optional NID for named curve */
 

@@ -270,11 +270,18 @@ static int ecdsa_sign_setup(EC_KEY *eckey, BN_CTX *ctx, BIGNUM **kinvp,
     }
   } while (BN_is_zero(r));
 
-  /* compute the inverse of k */
-  if (!BN_mod_inverse(k, k, order, ctx)) {
+  /* Compute the inverse of k. We want inverse in constant time, therefore we
+   * use Fermat's Little Theorem, which works because the subgroup order is
+   * prime.
+   *
+   * XXX: This isn't perfectly constant-time because the implementation of
+   * BN_mod_exp_mont_consttime isn't perfectly constant time. */
+  if (!BN_mod_exp_mont_consttime(k, k, &group->order_minus_2, order, ctx,
+                                 &group->order_mont)) {
     OPENSSL_PUT_ERROR(ECDSA, ERR_R_BN_LIB);
     goto err;
   }
+
   /* clear old values if necessary */
   BN_clear_free(*rp);
   BN_clear_free(*kinvp);

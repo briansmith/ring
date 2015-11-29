@@ -132,7 +132,8 @@ fn ec_group(curve: &NISTCurve) -> String {
 
     let q = ModP::new(&curve.q).unwrap();
 
-    let n = integer_from_hex_str(&curve.n);
+    let n = ModP::new(&curve.n).unwrap();
+    let n_minus_2 = &n.p - Integer::from_i8(2).unwrap();
 
     let one = Integer::one();
     assert_eq!(curve.a, -3);
@@ -154,6 +155,8 @@ fn ec_group(curve: &NISTCurve) -> String {
           static const BN_ULONG field_limbs[] = {q};
           static const BN_ULONG field_rr_limbs[] = {q_rr};
           static const BN_ULONG order_limbs[] = {n};
+          static const BN_ULONG order_rr_limbs[] = {n_rr};
+          static const BN_ULONG order_minus_2_limbs[] = {n_minus_2};
         #if defined({name}_NO_MONT)
           static const BN_ULONG generator_x_limbs[] = {x};
           static const BN_ULONG generator_y_limbs[] = {y};
@@ -177,6 +180,12 @@ fn ec_group(curve: &NISTCurve) -> String {
               FIELD(.Z_is_one =) 1,
             }},
             FIELD(.order =) STATIC_BIGNUM(order_limbs),
+            FIELD(.order_mont =) {{
+              FIELD(.RR =) STATIC_BIGNUM(order_rr_limbs),
+              FIELD(.N =) STATIC_BIGNUM(order_limbs),
+              FIELD(.n0 =) {{ BN_MONT_CTX_N0(0x{n_n1:x}, 0x{n_n0:x}) }},
+            }},
+            FIELD(.order_minus_2 =) STATIC_BIGNUM(order_minus_2_limbs),
             FIELD(.curve_name =) {nid},
             FIELD(.field =) STATIC_BIGNUM(field_limbs),
             FIELD(.a =) STATIC_BIGNUM(a_limbs),
@@ -193,19 +202,23 @@ fn ec_group(curve: &NISTCurve) -> String {
         ec_group_fn_name = curve.name.replace("CURVE", "EC_GROUP"),
         name = curve.name,
         nid = curve.nid,
+
         q = bn_limbs(&q.p),
-        n = bn_limbs(&n),
+        q_rr = bn_limbs(&q.rr),
+        q_n0 = (q.k % (1u64 << 32)) as usize,
+        q_n1 = (q.k / (1u64 << 32)) as usize,
+
+        n = bn_limbs(&n.p),
+        n_minus_2 = bn_limbs(&n_minus_2),
+        n_rr = bn_limbs(&n.rr),
+        n_n0 = (n.k % (1u64 << 32)) as usize,
+        n_n1 = (n.k / (1u64 << 32)) as usize,
 
         one = bn_limbs(&one),
         x = bn_limbs(&generator_x),
         y = bn_limbs(&generator_y),
         a = bn_limbs(&a),
         b = bn_limbs(&b),
-
-        q_rr = bn_limbs(&q.rr),
-        // TODO: endian issues?
-        q_n0 = (q.k % (1u64 << 32)) as usize,
-        q_n1 = (q.k / (1u64 << 32)) as usize,
 
         one_mont = bn_limbs(&one_mont),
         x_mont = bn_limbs(&generator_x_mont),

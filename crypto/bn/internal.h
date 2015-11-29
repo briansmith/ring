@@ -199,6 +199,7 @@ BIGNUM *bn_expand(BIGNUM *bn, size_t bits);
     sizeof(x) / sizeof(BN_ULONG), 0, BN_FLG_STATIC_DATA \
   }
 
+
 #if defined(BN_LLONG)
 #define Lw(t) (((BN_ULONG)(t))&BN_MASK2)
 #define Hw(t) (((BN_ULONG)((t)>>BN_BITS2))&BN_MASK2)
