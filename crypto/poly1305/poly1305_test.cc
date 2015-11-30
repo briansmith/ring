@@ -21,7 +21,6 @@
 #include <openssl/poly1305.h>
 
 #include "../test/file_test.h"
-#include "../test/stl_compat.h"
 
 
 // |CRYPTO_poly1305_finish| requires a 16-byte-aligned output.
@@ -46,22 +45,22 @@ static bool TestPoly1305(FileTest *t, void *arg) {
 
   // Test single-shot operation.
   poly1305_state state;
-  CRYPTO_poly1305_init(&state, bssl::vector_data(&key));
-  CRYPTO_poly1305_update(&state, bssl::vector_data(&in), in.size());
+  CRYPTO_poly1305_init(&state, key.data());
+  CRYPTO_poly1305_update(&state, in.data(), in.size());
   ALIGNED uint8_t out[16];
   CRYPTO_poly1305_finish(&state, out);
-  if (!t->ExpectBytesEqual(out, 16, bssl::vector_data(&mac), mac.size())) {
+  if (!t->ExpectBytesEqual(out, 16, mac.data(), mac.size())) {
     t->PrintLine("Single-shot Poly1305 failed.");
     return false;
   }
 
   // Test streaming byte-by-byte.
-  CRYPTO_poly1305_init(&state, bssl::vector_data(&key));
+  CRYPTO_poly1305_init(&state, key.data());
   for (size_t i = 0; i < in.size(); i++) {
     CRYPTO_poly1305_update(&state, &in[i], 1);
   }
   CRYPTO_poly1305_finish(&state, out);
-  if (!t->ExpectBytesEqual(out, 16, bssl::vector_data(&mac), mac.size())) {
+  if (!t->ExpectBytesEqual(out, 16, mac.data(), mac.size())) {
     t->PrintLine("Streaming Poly1305 failed.");
     return false;
   }

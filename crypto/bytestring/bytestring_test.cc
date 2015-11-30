@@ -257,7 +257,7 @@ static bool TestCBBASN1() {
     return false;
   }
   if (!CBB_add_asn1(&cbb, &contents, 0x30) ||
-      !CBB_add_bytes(&contents, bssl::vector_data(&test_data), 130) ||
+      !CBB_add_bytes(&contents, test_data.data(), 130) ||
       !CBB_finish(&cbb, &buf, &buf_len)) {
     CBB_cleanup(&cbb);
     return false;
@@ -266,7 +266,7 @@ static bool TestCBBASN1() {
 
   if (buf_len != 3 + 130 ||
       memcmp(buf, "\x30\x81\x82", 3) != 0 ||
-      memcmp(buf + 3, bssl::vector_data(&test_data), 130) != 0) {
+      memcmp(buf + 3, test_data.data(), 130) != 0) {
     return false;
   }
 
@@ -274,7 +274,7 @@ static bool TestCBBASN1() {
     return false;
   }
   if (!CBB_add_asn1(&cbb, &contents, 0x30) ||
-      !CBB_add_bytes(&contents, bssl::vector_data(&test_data), 1000) ||
+      !CBB_add_bytes(&contents, test_data.data(), 1000) ||
       !CBB_finish(&cbb, &buf, &buf_len)) {
     CBB_cleanup(&cbb);
     return false;
@@ -283,7 +283,7 @@ static bool TestCBBASN1() {
 
   if (buf_len != 4 + 1000 ||
       memcmp(buf, "\x30\x82\x03\xe8", 4) != 0 ||
-      memcmp(buf + 4, bssl::vector_data(&test_data), 1000)) {
+      memcmp(buf + 4, test_data.data(), 1000)) {
     return false;
   }
 
@@ -292,7 +292,7 @@ static bool TestCBBASN1() {
   }
   if (!CBB_add_asn1(&cbb, &contents, 0x30) ||
       !CBB_add_asn1(&contents, &inner_contents, 0x30) ||
-      !CBB_add_bytes(&inner_contents, bssl::vector_data(&test_data), 100000) ||
+      !CBB_add_bytes(&inner_contents, test_data.data(), 100000) ||
       !CBB_finish(&cbb, &buf, &buf_len)) {
     CBB_cleanup(&cbb);
     return false;
@@ -301,7 +301,7 @@ static bool TestCBBASN1() {
 
   if (buf_len != 5 + 5 + 100000 ||
       memcmp(buf, "\x30\x83\x01\x86\xa5\x30\x83\x01\x86\xa0", 10) != 0 ||
-      memcmp(buf + 10, bssl::vector_data(&test_data), 100000)) {
+      memcmp(buf + 10, test_data.data(), 100000)) {
     return false;
   }
 

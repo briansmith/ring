@@ -18,14 +18,14 @@
 #include <stdint.h>
 #include <stdio.h>
 
+#include <memory>
+
 #include <openssl/bn.h>
 #include <openssl/ec.h>
 #include <openssl/ec_key.h>
 #include <openssl/ecdsa.h>
 #include <openssl/mem.h>
 #include <openssl/rsa.h>
-
-#include "stl_compat.h"
 
 
 template<typename T, void (*func)(T*)>
@@ -49,7 +49,7 @@ struct FileCloser {
 };
 
 template<typename T, void (*func)(T*)>
-using ScopedOpenSSLType = bssl::unique_ptr<T, OpenSSLDeleter<T, func>>;
+using ScopedOpenSSLType = std::unique_ptr<T, OpenSSLDeleter<T, func>>;
 
 template<typename T, typename CleanupRet, void (*init_func)(T*),
          CleanupRet (*cleanup_func)(T*)>
@@ -77,9 +77,9 @@ using ScopedEC_KEY = ScopedOpenSSLType<EC_KEY, EC_KEY_free>;
 using ScopedEC_POINT = ScopedOpenSSLType<EC_POINT, EC_POINT_free>;
 using ScopedRSA = ScopedOpenSSLType<RSA, RSA_free>;
 
-using ScopedOpenSSLBytes = bssl::unique_ptr<uint8_t, OpenSSLFree<uint8_t>>;
-using ScopedOpenSSLString = bssl::unique_ptr<char, OpenSSLFree<char>>;
+using ScopedOpenSSLBytes = std::unique_ptr<uint8_t, OpenSSLFree<uint8_t>>;
+using ScopedOpenSSLString = std::unique_ptr<char, OpenSSLFree<char>>;
 
-using ScopedFILE = bssl::unique_ptr<FILE, FileCloser>;
+using ScopedFILE = std::unique_ptr<FILE, FileCloser>;
 
 #endif  // OPENSSL_HEADER_CRYPTO_TEST_SCOPED_TYPES_H

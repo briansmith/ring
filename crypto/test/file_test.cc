@@ -22,8 +22,6 @@
 
 #include <openssl/err.h>
 
-#include "stl_compat.h"
-
 
 FileTest::FileTest(const char *path) {
   file_ = fopen(path, "r");

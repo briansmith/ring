@@ -63,7 +63,6 @@
 #include <openssl/rand.h>
 
 #include "../test/scoped_types.h"
-#include "../test/stl_compat.h"
 
 enum Api {
   kEncodedApi,
@@ -150,9 +149,8 @@ static bool TestTamperedSig(FILE *out, Api api, int digest_nid,
   size_t buf_len = 2 * bn_len;
   std::vector<uint8_t> raw_buf(buf_len);
   // Pad the bignums with leading zeroes.
-  if (!BN_bn2bin_padded(bssl::vector_data(&raw_buf), bn_len, ecdsa_sig->r) ||
-      !BN_bn2bin_padded(bssl::vector_data(&raw_buf) + bn_len, bn_len,
-                        ecdsa_sig->s)) {
+  if (!BN_bn2bin_padded(raw_buf.data(), bn_len, ecdsa_sig->r) ||
+      !BN_bn2bin_padded(raw_buf.data() + bn_len, bn_len, ecdsa_sig->s)) {
     return false;
   }
 
@@ -161,9 +159,8 @@ static bool TestTamperedSig(FILE *out, Api api, int digest_nid,
   uint8_t dirt = raw_buf[11] ? raw_buf[11] : 1;
   raw_buf[offset] ^= dirt;
   // Now read the BIGNUMs back in from raw_buf.
-  if (BN_bin2bn(bssl::vector_data(&raw_buf), bn_len, ecdsa_sig->r) == NULL ||
-      BN_bin2bn(bssl::vector_data(&raw_buf) + bn_len, bn_len,
-                ecdsa_sig->s) == NULL ||
+  if (BN_bin2bn(raw_buf.data(), bn_len, ecdsa_sig->r) == NULL ||
+      BN_bin2bn(raw_buf.data() + bn_len, bn_len, ecdsa_sig->s) == NULL ||
       !VerifyECDSASig(api, digest_nid, digest, digest_len, ecdsa_sig, group,
                       pub_key, 0)) {
     return false;
@@ -171,9 +168,8 @@ static bool TestTamperedSig(FILE *out, Api api, int digest_nid,
 
   // Sanity check: Undo the modification and verify signature.
   raw_buf[offset] ^= dirt;
-  if (BN_bin2bn(bssl::vector_data(&raw_buf), bn_len, ecdsa_sig->r) == NULL ||
-      BN_bin2bn(bssl::vector_data(&raw_buf) + bn_len, bn_len,
-                ecdsa_sig->s) == NULL ||
+  if (BN_bin2bn(raw_buf.data(), bn_len, ecdsa_sig->r) == NULL ||
+      BN_bin2bn(raw_buf.data() + bn_len, bn_len, ecdsa_sig->s) == NULL ||
       !VerifyECDSASig(api, digest_nid, digest, digest_len, ecdsa_sig, group,
                       pub_key, 1)) {
     return false;
@@ -258,51 +254,46 @@ static bool TestBuiltin(FILE *out) {
     // Create a signature.
     unsigned sig_len = ECDSA_size(eckey.get());
     std::vector<uint8_t> signature(sig_len);
-    if (!ECDSA_sign(0, digest, 20, bssl::vector_data(&signature), &sig_len,
-                    eckey.get())) {
+    if (!ECDSA_sign(0, digest, 20, signature.data(), &sig_len, eckey.get())) {
       fprintf(out, "ECDSA_sign failed for %s\n", kCurves[n].name);
       return false;
     }
     signature.resize(sig_len);
     // Verify the signature.
     if (!ECDSA_verify_signed_digest(group, NID_sha1, digest, 20,
-                                    bssl::vector_data(&signature),
-                                    signature.size(), eckey_der.get(),
-                                    eckey_der_len)) {
+                                    signature.data(), signature.size(),
+                                    eckey_der.get(), eckey_der_len)) {
       fprintf(out, "ECDSA_verify_signed_digest (right key) failed for %s\n",
               kCurves[n].name);
       return false;
     }
     // Verify the signature with the wrong key.
     if (ECDSA_verify_signed_digest(group, NID_sha1, digest, 20,
-                                   bssl::vector_data(&signature),
-                                   signature.size(), wrong_eckey_der.get(),
-                                   wrong_eckey_der_len)) {
+                                   signature.data(), signature.size(),
+                                   wrong_eckey_der.get(), wrong_eckey_der_len)) {
       fprintf(out, "ECDSA_verify_signed_digest (wrong key) failed for %s\n",
               kCurves[n].name);
       return false;
     }
     // Verify the signature using the wrong digest.
     if (ECDSA_verify_signed_digest(group, NID_sha1, wrong_digest, 20,
-                                   bssl::vector_data(&signature),
-                                   signature.size(), eckey_der.get(),
-                                   eckey_der_len)) {
+                                   signature.data(), signature.size(),
+                                   eckey_der.get(), eckey_der_len)) {
       fprintf(out, "ECDSA_verify_signed_digest (wrong digest) failed for %s\n",
               kCurves[n].name);
       return false;
     }
     // Verify a truncated signature.
     if (ECDSA_verify_signed_digest(group, NID_sha1, digest, 20,
-                                   bssl::vector_data(&signature),
-                                   signature.size() - 1, eckey_der.get(),
-                                   eckey_der_len)) {
+                                   signature.data(), signature.size() - 1,
+                                   eckey_der.get(), eckey_der_len)) {
       fprintf(out, "ECDSA_verify_signed_digest (truncated sig) failed for %s\n",
               kCurves[n].name);
       return false;
     }
     // Verify a tampered signature.
-    ScopedECDSA_SIG ecdsa_sig(ECDSA_SIG_from_bytes(
-        bssl::vector_data(&signature), signature.size()));
+    ScopedECDSA_SIG ecdsa_sig(ECDSA_SIG_from_bytes(signature.data(),
+                                                   signature.size()));
     if (!ecdsa_sig ||
         !TestTamperedSig(out, kEncodedApi, NID_sha1, digest, 20, ecdsa_sig.get(),
                          group, EC_KEY_get0_public_key(eckey.get()),
@@ -360,8 +351,8 @@ static bool TestECDSA_SIG_max_len(size_t order_len) {
     return false;
   }
   std::vector<uint8_t> bytes(order_len, 0xff);
-  if (!BN_bin2bn(bssl::vector_data(&bytes), bytes.size(), sig->r) ||
-      !BN_bin2bn(bssl::vector_data(&bytes), bytes.size(), sig->s)) {
+  if (!BN_bin2bn(bytes.data(), bytes.size(), sig->r) ||
+      !BN_bin2bn(bytes.data(), bytes.size(), sig->s)) {
     return false;
   }
   /* Serialize it. */

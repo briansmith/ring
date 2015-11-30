@@ -76,6 +76,8 @@
 #include <stdio.h>
 #include <string.h>
 
+#include <utility>
+
 #include <openssl/bn.h>
 #include <openssl/bytestring.h>
 #include <openssl/crypto.h>
@@ -208,7 +210,7 @@ int main(int argc, char *argv[]) {
   if (!sample) {
     return 1;
   }
-  if (!test_lshift(bc_file.get(), ctx.get(), bssl::move(sample))) {
+  if (!test_lshift(bc_file.get(), ctx.get(), std::move(sample))) {
     return 1;
   }
   flush_fp(bc_file.get());
