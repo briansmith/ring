@@ -251,12 +251,6 @@ static int ec_GFp_simple_oct2point(const EC_GROUP *group, EC_POINT *point,
     goto err;
   }
 
-  /* test required by X9.62 */
-  if (!EC_POINT_is_on_curve(group, point, ctx)) {
-    OPENSSL_PUT_ERROR(EC, EC_R_POINT_IS_NOT_ON_CURVE);
-    goto err;
-  }
-
   ret = 1;
 
 err:
