@@ -16,6 +16,8 @@
 
 #include <stdint.h>
 
+#include <openssl/cpu.h>
+
 #include "internal.h"
 
 
