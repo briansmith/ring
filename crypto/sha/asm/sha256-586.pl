@@ -72,8 +72,8 @@ for (@ARGV) { $xmm=1 if (/-DOPENSSL_IA32_SSE2/); }
 # versions, but BoringSSL is intended to be used with pre-generated perlasm
 # output, so this isn't useful anyway.
 #
-# TODO(davidben): Enable this after testing. $avx goes up to 2.
-$avx = 0;
+# TODO(davidben): Enable AVX2 code after testing by setting $avx to 2.
+$avx = 1;
 
 $avx = 0 unless ($xmm);
 
