@@ -1099,9 +1099,7 @@ int ssl3_get_client_hello(SSL *s) {
    * s->hit             - session reuse flag
    * s->tmp.new_cipher  - the new cipher to use. */
 
-  if (ret < 0) {
-    ret = -ret;
-  }
+  ret = 1;
 
   if (0) {
   f_err:
