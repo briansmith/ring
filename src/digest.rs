@@ -437,8 +437,9 @@ pub mod test_util {
 mod tests {
     use super::super::{digest, file_test};
 
+    /// Test vectors from BoringSSL.
     #[test]
-    fn test_digests() {
+    fn test_bssl() {
         file_test::run("src/digest_tests.txt", |section, test_case| {
             assert_eq!(section, "");
             let digest_alg = test_case.consume_digest_alg("Hash").unwrap();
@@ -458,6 +459,117 @@ mod tests {
             let actual_from_one_shot = digest::digest(digest_alg, &data);
             assert_eq!(&expected, &actual_from_one_shot.as_ref());
         });
+    }
+
+    mod shavs {
+        use super::super::super::{digest, file_test};
+        use rustc_serialize::hex::ToHex;
+
+        macro_rules! shavs_tests {
+            ( $algorithm_name:ident ) => {
+                #[allow(non_snake_case)]
+                mod $algorithm_name {
+                    use super::{run_known_answer_test, run_monte_carlo_test};
+                    use super::super::super::super::{digest};
+
+                    #[test]
+                    fn short_msg_known_answer_test() {
+                        run_known_answer_test(
+                            &digest::$algorithm_name,
+                            &format!("third-party/NIST/SHAVS/{}ShortMsg.rsp",
+                                     stringify!($algorithm_name)));
+                    }
+
+                    #[test]
+                    fn long_msg_known_answer_test() {
+                        run_known_answer_test(
+                            &digest::$algorithm_name,
+                            &format!("third-party/NIST/SHAVS/{}LongMsg.rsp",
+                                     stringify!($algorithm_name)));
+                    }
+
+                    #[test]
+                    fn monte_carlo_test() {
+                        run_monte_carlo_test(
+                            &digest::$algorithm_name,
+                            &format!("third-party/NIST/SHAVS/{}Monte.rsp",
+                                     stringify!($algorithm_name)));
+                    }
+                }
+            }
+        }
+
+        fn run_known_answer_test(digest_alg: &'static digest::Algorithm,
+                                 file_name: &str, ) {
+            let section_name = &format!("L = {}", digest_alg.output_len);
+            file_test::run(file_name, |section, test_case| {
+                assert_eq!(section_name, section);
+                let len_bits = test_case.consume_usize("Len");
+
+                let mut msg = test_case.consume_bytes("Msg");
+                // The "msg" field contains the dummy value "00" when the
+                // length is zero.
+                if len_bits == 0 {
+                    assert_eq!(msg, &[0u8]);
+                    msg.truncate(0);
+                }
+
+                assert_eq!(msg.len() * 8, len_bits);
+                let expected = test_case.consume_bytes("MD");
+                let actual = digest::digest(digest_alg, &msg);
+                assert_eq!(&expected, &actual.as_ref());
+            });
+        }
+
+        fn run_monte_carlo_test(digest_alg: &'static digest::Algorithm,
+                                file_name: &str) {
+            let section_name = &format!("L = {}", digest_alg.output_len);
+
+            let mut expected_count: isize = -1;
+            let mut seed = Vec::with_capacity(digest_alg.output_len);
+
+            file_test::run_mut(file_name, &mut |section, test_case| {
+                assert_eq!(section_name, section);
+
+                if expected_count == -1 {
+                    seed.extend(test_case.consume_bytes("Seed"));
+                    expected_count = 0;
+                    return;
+                }
+
+                assert!(expected_count >= 0);
+                let actual_count = test_case.consume_usize("COUNT");
+                assert_eq!(expected_count as usize, actual_count);
+                expected_count += 1;
+
+                let expected_md = test_case.consume_bytes("MD");
+
+                let mut mds = Vec::with_capacity(1000);
+                mds.push(seed.clone());
+                mds.push(seed.clone());
+                mds.push(seed.clone());
+                for i in 3..1003 {
+                    let mut ctx = digest::Context::new(digest_alg);
+                    ctx.update(&mds[i - 3]);
+                    ctx.update(&mds[i - 2]);
+                    ctx.update(&mds[i - 1]);
+                    let md_i = ctx.finish();
+                    mds.push(Vec::from(md_i.as_ref()));
+                }
+                assert_eq!(1003, mds.len());
+                let md_j = mds.last().unwrap();
+                println!("{}\n{}", expected_md.to_hex(), md_j.to_hex());
+                assert_eq!(&expected_md, md_j);
+                seed = md_j.clone();
+            });
+
+            assert_eq!(expected_count, 100);
+        }
+
+        shavs_tests!(SHA1);
+        shavs_tests!(SHA256);
+        shavs_tests!(SHA384);
+        shavs_tests!(SHA512);
     }
 
     /// Test some ways in which `Context::update` and/or `Context::finish`

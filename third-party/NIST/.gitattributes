@@ -1,0 +1,3 @@
+# Preserve the line endings on the NIST test vectors so that we can use
+# sha256sum and friends to verify that they haven't been tampered with.
+*.rsp eol=crlf

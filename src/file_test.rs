@@ -94,6 +94,30 @@ pub fn run<F>(test_data_relative_file_path: &str, f: F)
     }
 }
 
+pub fn run_mut<F>(test_data_relative_file_path: &str, f: &mut F)
+                  where F: FnMut(&str, &mut TestCase) {
+    let path = std::path::PathBuf::from(test_data_relative_file_path);
+    let file = std::fs::File::open(path).unwrap();
+    let mut lines = std::io::BufReader::new(&file).lines();
+
+    let mut current_section = String::from("");
+
+    loop {
+        match parse_test_case(&mut current_section, &mut lines) {
+            Some(ref mut test_case) => {
+                f(&current_section, test_case);
+
+                // Make sure all the attributes in the test case were consumed.
+                assert!(test_case.attributes.is_empty());
+            },
+
+            None => {
+                break;
+            }
+        }
+    }
+}
+
 type FileLines<'a> = std::io::Lines<std::io::BufReader<&'a std::fs::File>>;
 
 fn parse_test_case(current_section: &mut String,
