@@ -907,18 +907,6 @@ func addBasicTests() {
 			expectedError: ":WRONG_CURVE:",
 		},
 		{
-			testType: serverTest,
-			name:     "BadRSAVersion",
-			config: Config{
-				CipherSuites: []uint16{TLS_RSA_WITH_RC4_128_SHA},
-				Bugs: ProtocolBugs{
-					RsaClientKeyExchangeVersion: VersionTLS11,
-				},
-			},
-			shouldFail:    true,
-			expectedError: ":DECRYPTION_FAILED_OR_BAD_RECORD_MAC:",
-		},
-		{
 			name: "NoFallbackSCSV",
 			config: Config{
 				Bugs: ProtocolBugs{
@@ -4523,6 +4511,27 @@ func addCustomExtensionTests() {
 	})
 }
 
+func addRSAClientKeyExchangeTests() {
+	for bad := RSABadValue(1); bad < NumRSABadValues; bad++ {
+		testCases = append(testCases, testCase{
+			testType: serverTest,
+			name:     fmt.Sprintf("BadRSAClientKeyExchange-%d", bad),
+			config: Config{
+				// Ensure the ClientHello version and final
+				// version are different, to detect if the
+				// server uses the wrong one.
+				MaxVersion:   VersionTLS11,
+				CipherSuites: []uint16{TLS_RSA_WITH_RC4_128_SHA},
+				Bugs: ProtocolBugs{
+					BadRSAClientKeyExchange: bad,
+				},
+			},
+			shouldFail:    true,
+			expectedError: ":DECRYPTION_FAILED_OR_BAD_RECORD_MAC:",
+		})
+	}
+}
+
 func worker(statusChan chan statusMsg, c chan *testCase, shimPath string, wg *sync.WaitGroup) {
 	defer wg.Done()
 
@@ -4619,6 +4628,7 @@ func main() {
 	addExportKeyingMaterialTests()
 	addTLSUniqueTests()
 	addCustomExtensionTests()
+	addRSAClientKeyExchangeTests()
 	for _, async := range []bool{false, true} {
 		for _, splitHandshake := range []bool{false, true} {
 			for _, protocol := range []protocol{tls, dtls} {

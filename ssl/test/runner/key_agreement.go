@@ -138,10 +138,11 @@ func (ka *rsaKeyAgreement) processServerKeyExchange(config *Config, clientHello 
 }
 
 func (ka *rsaKeyAgreement) generateClientKeyExchange(config *Config, clientHello *clientHelloMsg, cert *x509.Certificate) ([]byte, *clientKeyExchangeMsg, error) {
+	bad := config.Bugs.BadRSAClientKeyExchange
 	preMasterSecret := make([]byte, 48)
 	vers := clientHello.vers
-	if config.Bugs.RsaClientKeyExchangeVersion != 0 {
-		vers = config.Bugs.RsaClientKeyExchangeVersion
+	if bad == RSABadValueWrongVersion {
+		vers ^= 1
 	}
 	vers = versionToWire(vers, clientHello.isDTLS)
 	preMasterSecret[0] = byte(vers >> 8)
@@ -151,9 +152,20 @@ func (ka *rsaKeyAgreement) generateClientKeyExchange(config *Config, clientHello
 		return nil, nil, err
 	}
 
-	encrypted, err := rsa.EncryptPKCS1v15(config.rand(), cert.PublicKey.(*rsa.PublicKey), preMasterSecret)
+	sentPreMasterSecret := preMasterSecret
+	if bad == RSABadValueTooLong {
+		sentPreMasterSecret = make([]byte, len(sentPreMasterSecret)+1)
+		copy(sentPreMasterSecret, preMasterSecret)
+	} else if bad == RSABadValueTooShort {
+		sentPreMasterSecret = sentPreMasterSecret[:len(sentPreMasterSecret)-1]
+	}
+
+	encrypted, err := rsa.EncryptPKCS1v15(config.rand(), cert.PublicKey.(*rsa.PublicKey), sentPreMasterSecret)
 	if err != nil {
 		return nil, nil, err
+	}
+	if bad == RSABadValueCorrupt {
+		encrypted[0] ^= 1
 	}
 	ckx := new(clientKeyExchangeMsg)
 	if clientHello.vers != VersionSSL30 {

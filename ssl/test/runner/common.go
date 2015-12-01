@@ -399,6 +399,17 @@ const (
 	NumBadValues
 )
 
+type RSABadValue int
+
+const (
+	RSABadValueNone RSABadValue = iota
+	RSABadValueCorrupt
+	RSABadValueTooLong
+	RSABadValueTooShort
+	RSABadValueWrongVersion
+	NumRSABadValues
+)
+
 type ProtocolBugs struct {
 	// InvalidSKXSignature specifies that the signature in a
 	// ServerKeyExchange message should be invalid.
@@ -509,10 +520,9 @@ type ProtocolBugs struct {
 	// alert to be sent.
 	SendSpuriousAlert alert
 
-	// RsaClientKeyExchangeVersion, if non-zero, causes the client to send a
-	// ClientKeyExchange with the specified version rather than the
-	// client_version when performing the RSA key exchange.
-	RsaClientKeyExchangeVersion uint16
+	// BadRSAClientKeyExchange causes the client to send a corrupted RSA
+	// ClientKeyExchange which would not pass padding checks.
+	BadRSAClientKeyExchange RSABadValue
 
 	// RenewTicketOnResume causes the server to renew the session ticket and
 	// send a NewSessionTicket message during an abbreviated handshake.
