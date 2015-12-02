@@ -222,10 +222,6 @@ enum EC_GROUP { }
 #[allow(non_camel_case_types)]
 enum EC_KEY { }
 
-// XXX: As of Rust 1.4, the compiler will no longer warn about the use of
-// `usize` and `isize` in FFI declarations. Remove the `allow(improper_ctypes)`
-// when Rust 1.4 is released.
-#[allow(improper_ctypes)]
 extern {
     fn EC_GROUP_P256() -> *const EC_GROUP;
     fn EC_GROUP_P384() -> *const EC_GROUP;

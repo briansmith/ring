@@ -366,10 +366,6 @@ type OpenOrSealFn =
                      nonce: *const u8, in_: *const u8, in_len: c::size_t,
                      ad: *const u8, ad_len: c::size_t) -> c::int;
 
-// XXX: As of Rust 1.4, the compiler will no longer warn about the use of
-// `usize` and `isize` in FFI declarations. Remove the `allow(improper_ctypes)`
-// when Rust 1.4 is released.
-#[allow(improper_ctypes)]
 extern {
     fn evp_aead_aes_gcm_init(ctx_buf: *mut u64, ctx_buf_len: c::size_t,
                              key: *const u8, key_len: c::size_t) -> c::int;

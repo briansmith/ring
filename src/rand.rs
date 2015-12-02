@@ -23,10 +23,6 @@ pub fn fill_secure_random(out: &mut [u8]) -> Result<(), ()> {
     })
 }
 
-// XXX: As of Rust 1.4, the compiler will no longer warn about the use of
-// `usize` and `isize` in FFI declarations. Remove the `allow(improper_ctypes)`
-// when Rust 1.4 is released.
-#[allow(improper_ctypes)]
 extern {
     fn RAND_bytes(buf: *mut u8, len: c::size_t) -> c::int;
 }
