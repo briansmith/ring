@@ -322,17 +322,16 @@ $code.=<<___;
 
 	sbb	\$0,%rax		# handle upmost overflow bit
 	xor	$i,$i
-	and	%rax,$ap
-	not	%rax
-	mov	$rp,$np
-	and	%rax,$np
 	mov	$num,$j			# j=num
-	or	$np,$ap			# ap=borrow?tp:rp
 .align	16
 .Lcopy:					# copy or in-place refresh
-	mov	($ap,$i,8),%rax
+	mov	(%rsp,$i,8),$ap
+	mov	($rp,$i,8),$np
+	xor	$np,$ap			# conditional select:
+	and	%rax,$ap		# ((ap ^ np) & %rax) ^ np
+	xor	$np,$ap			# ap = borrow?tp:rp
 	mov	$i,(%rsp,$i,8)		# zap temporary vector
-	mov	%rax,($rp,$i,8)		# rp[i]=tp[i]
+	mov	$ap,($rp,$i,8)		# rp[i]=tp[i]
 	lea	1($i),$i
 	sub	\$1,$j
 	jnz	.Lcopy
