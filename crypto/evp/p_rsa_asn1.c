@@ -303,7 +303,7 @@ static X509_ALGOR *rsa_mgf1_decode(X509_ALGOR *alg) {
   const uint8_t *p;
   int plen;
 
-  if (alg == NULL ||
+  if (alg == NULL || alg->parameter == NULL ||
       OBJ_obj2nid(alg->algorithm) != NID_mgf1 ||
       alg->parameter->type != V_ASN1_SEQUENCE) {
     return NULL;
