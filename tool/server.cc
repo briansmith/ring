@@ -103,11 +103,11 @@ bool Server(const std::vector<std::string> &args) {
   if (args_map.count("-key") != 0) {
     key_file = args_map["-key"];
   }
-  if (SSL_CTX_use_PrivateKey_file(ctx, key_file.c_str(), SSL_FILETYPE_PEM) <= 0) {
+  if (!SSL_CTX_use_PrivateKey_file(ctx, key_file.c_str(), SSL_FILETYPE_PEM)) {
     fprintf(stderr, "Failed to load private key: %s\n", key_file.c_str());
     return false;
   }
-  if (SSL_CTX_use_certificate_chain_file(ctx, key_file.c_str()) != 1) {
+  if (!SSL_CTX_use_certificate_chain_file(ctx, key_file.c_str())) {
     fprintf(stderr, "Failed to load cert chain: %s\n", key_file.c_str());
     return false;
   }

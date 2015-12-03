@@ -82,6 +82,10 @@ static const struct argument kArguments[] = {
       "A file to write the negotiated session to.",
     },
     {
+      "-key", kOptionalArgument,
+      "Private-key file to use (default is no client certificate)",
+    },
+    {
      "", kOptionalArgument, "",
     },
 };
@@ -234,6 +238,18 @@ bool Client(const std::vector<std::string> &args) {
 
   if (args_map.count("-false-start") != 0) {
     SSL_CTX_set_mode(ctx.get(), SSL_MODE_ENABLE_FALSE_START);
+  }
+
+  if (args_map.count("-key") != 0) {
+    const std::string &key = args_map["-key"];
+    if (!SSL_CTX_use_PrivateKey_file(ctx.get(), key.c_str(), SSL_FILETYPE_PEM)) {
+      fprintf(stderr, "Failed to load private key: %s\n", key.c_str());
+      return false;
+    }
+    if (!SSL_CTX_use_certificate_chain_file(ctx.get(), key.c_str())) {
+      fprintf(stderr, "Failed to load cert chain: %s\n", key.c_str());
+      return false;
+    }
   }
 
   int sock = -1;
