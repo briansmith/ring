@@ -342,6 +342,22 @@ static const uint8_t kExampleBadECKeyDER2[] = {
     0x07,
 };
 
+// kInvalidPrivateKey is an invalid private key. See
+// https://rt.openssl.org/Ticket/Display.html?id=4131.
+static const uint8_t kInvalidPrivateKey[] = {
+    0x30, 0x39, 0x02, 0x01, 0x02, 0x30, 0x09, 0x06, 0x01, 0x38, 0x08,
+    0x04, 0x69, 0x30, 0x30, 0x80, 0x30, 0x19, 0x01, 0x02, 0x9f, 0xf8,
+    0x8b, 0x29, 0x80, 0x30, 0xb0, 0x1b, 0x06, 0x09, 0x22, 0xbe, 0x08,
+    0x04, 0xe9, 0x30, 0x86, 0x48, 0x86, 0xf7, 0x0d, 0x3a, 0x01, 0x80,
+    0x09, 0x30, 0x80, 0x06, 0x01, 0x02, 0x30, 0x80, 0x30, 0x01, 0x3b,
+    0x02, 0x00, 0x00, 0x04, 0x20, 0x30, 0x82, 0x04, 0xe9, 0x30, 0xc3,
+    0xe8, 0x30, 0x01, 0x05, 0x30, 0x80, 0x30, 0x01, 0x3b, 0x01, 0x04,
+    0x02, 0x02, 0xff, 0x00, 0x30, 0x29, 0x02, 0x11, 0x03, 0x29, 0x29,
+    0x02, 0x00, 0x99, 0x30, 0x80, 0x06, 0x21, 0x02, 0x24, 0x04, 0xe8,
+    0x30, 0x01, 0x01, 0x04, 0x30, 0x80, 0x1b, 0x06, 0x09, 0x2a, 0x86,
+    0x48, 0x30, 0x01, 0xaa, 0x02, 0x86, 0xc0, 0x30, 0xdf, 0xe9, 0x80,
+};
+
 static ScopedEVP_PKEY LoadExampleRSAKey() {
   ScopedRSA rsa(RSA_private_key_from_bytes(kExampleRSAKeyDER,
                                            sizeof(kExampleRSAKeyDER)));
@@ -519,8 +535,8 @@ static bool TestEVP_DigestVerifyInitFromAlgorithm(void) {
   return true;
 }
 
-static bool Testd2i_AutoPrivateKey(const uint8_t *input, size_t input_len,
-                                   int expected_id) {
+static bool TestValidPrivateKey(const uint8_t *input, size_t input_len,
+                                int expected_id) {
   const uint8_t *p = input;
   ScopedEVP_PKEY pkey(d2i_AutoPrivateKey(NULL, &p, input_len));
   if (!pkey || p != input + input_len) {
@@ -532,6 +548,42 @@ static bool Testd2i_AutoPrivateKey(const uint8_t *input, size_t input_len,
     fprintf(stderr, "Did not decode expected type\n");
     return false;
   }
+
+  return true;
+}
+
+static bool Testd2i_AutoPrivateKey() {
+  if (!TestValidPrivateKey(kExampleRSAKeyDER, sizeof(kExampleRSAKeyDER),
+                           EVP_PKEY_RSA)) {
+    fprintf(stderr, "d2i_AutoPrivateKey(kExampleRSAKeyDER) failed\n");
+    return false;
+  }
+
+  if (!TestValidPrivateKey(kExampleRSAKeyPKCS8, sizeof(kExampleRSAKeyPKCS8),
+                           EVP_PKEY_RSA)) {
+    fprintf(stderr, "d2i_AutoPrivateKey(kExampleRSAKeyPKCS8) failed\n");
+    return false;
+  }
+
+  if (!TestValidPrivateKey(kExampleECKeyDER, sizeof(kExampleECKeyDER),
+                           EVP_PKEY_EC)) {
+    fprintf(stderr, "d2i_AutoPrivateKey(kExampleECKeyDER) failed\n");
+    return false;
+  }
+
+  if (!TestValidPrivateKey(kExampleDSAKeyDER, sizeof(kExampleDSAKeyDER),
+                           EVP_PKEY_DSA)) {
+    fprintf(stderr, "d2i_AutoPrivateKey(kExampleDSAKeyDER) failed\n");
+    return false;
+  }
+
+  const uint8_t *p = kInvalidPrivateKey;
+  ScopedEVP_PKEY pkey(d2i_AutoPrivateKey(NULL, &p, sizeof(kInvalidPrivateKey)));
+  if (pkey) {
+    fprintf(stderr, "Parsed invalid private key\n");
+    return false;
+  }
+  ERR_clear_error();
 
   return true;
 }
@@ -641,30 +693,8 @@ int main(void) {
     return 1;
   }
 
-  if (!Testd2i_AutoPrivateKey(kExampleRSAKeyDER, sizeof(kExampleRSAKeyDER),
-                              EVP_PKEY_RSA)) {
-    fprintf(stderr, "d2i_AutoPrivateKey(kExampleRSAKeyDER) failed\n");
-    ERR_print_errors_fp(stderr);
-    return 1;
-  }
-
-  if (!Testd2i_AutoPrivateKey(kExampleRSAKeyPKCS8, sizeof(kExampleRSAKeyPKCS8),
-                              EVP_PKEY_RSA)) {
-    fprintf(stderr, "d2i_AutoPrivateKey(kExampleRSAKeyPKCS8) failed\n");
-    ERR_print_errors_fp(stderr);
-    return 1;
-  }
-
-  if (!Testd2i_AutoPrivateKey(kExampleECKeyDER, sizeof(kExampleECKeyDER),
-                              EVP_PKEY_EC)) {
-    fprintf(stderr, "d2i_AutoPrivateKey(kExampleECKeyDER) failed\n");
-    ERR_print_errors_fp(stderr);
-    return 1;
-  }
-
-  if (!Testd2i_AutoPrivateKey(kExampleDSAKeyDER, sizeof(kExampleDSAKeyDER),
-                              EVP_PKEY_DSA)) {
-    fprintf(stderr, "d2i_AutoPrivateKey(kExampleDSAKeyDER) failed\n");
+  if (!Testd2i_AutoPrivateKey()) {
+    fprintf(stderr, "Testd2i_AutoPrivateKey failed\n");
     ERR_print_errors_fp(stderr);
     return 1;
   }
