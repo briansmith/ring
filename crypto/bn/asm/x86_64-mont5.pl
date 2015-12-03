@@ -322,16 +322,17 @@ $code.=<<___;
 
 	sbb	\$0,%rax		# handle upmost overflow bit
 	xor	$i,$i
+	and	%rax,$ap
+	not	%rax
+	mov	$rp,$np
+	and	%rax,$np
 	mov	$num,$j			# j=num
+	or	$np,$ap			# ap=borrow?tp:rp
 .align	16
 .Lcopy:					# copy or in-place refresh
-	mov	(%rsp,$i,8),$ap
-	mov	($rp,$i,8),$np
-	xor	$np,$ap			# conditional select:
-	and	%rax,$ap		# ((ap ^ np) & %rax) ^ np
-	xor	$np,$ap			# ap = borrow?tp:rp
+	mov	($ap,$i,8),%rax
 	mov	$i,(%rsp,$i,8)		# zap temporary vector
-	mov	$ap,($rp,$i,8)		# rp[i]=tp[i]
+	mov	%rax,($rp,$i,8)		# rp[i]=tp[i]
 	lea	1($i),$i
 	sub	\$1,$j
 	jnz	.Lcopy
@@ -1770,6 +1771,15 @@ sqr8x_reduction:
 .align	32
 .L8x_tail_done:
 	add	(%rdx),%r8		# can this overflow?
+	adc	\$0,%r9
+	adc	\$0,%r10
+	adc	\$0,%r11
+	adc	\$0,%r12
+	adc	\$0,%r13
+	adc	\$0,%r14
+	adc	\$0,%r15		# can't overflow, because we
+					# started with "overhung" part
+					# of multiplication
 	xor	%rax,%rax
 
 	neg	$carry
@@ -3116,6 +3126,15 @@ sqrx8x_reduction:
 .align	32
 .Lsqrx8x_tail_done:
 	add	24+8(%rsp),%r8		# can this overflow?
+	adc	\$0,%r9
+	adc	\$0,%r10
+	adc	\$0,%r11
+	adc	\$0,%r12
+	adc	\$0,%r13
+	adc	\$0,%r14
+	adc	\$0,%r15		# can't overflow, because we
+					# started with "overhung" part
+					# of multiplication
 	mov	$carry,%rax		# xor	%rax,%rax
 
 	sub	16+8(%rsp),$carry	# mov 16(%rsp),%cf
@@ -3159,13 +3178,11 @@ my ($rptr,$nptr)=("%rdx","%rbp");
 my @ri=map("%r$_",(10..13));
 my @ni=map("%r$_",(14..15));
 $code.=<<___;
-	xor	%rbx,%rbx
+	xor	%ebx,%ebx
 	sub	%r15,%rsi		# compare top-most words
 	adc	%rbx,%rbx
 	mov	%rcx,%r10		# -$num
-	.byte	0x67
 	or	%rbx,%rax
-	.byte	0x67
 	mov	%rcx,%r9		# -$num
 	xor	\$1,%rax
 	sar	\$3+2,%rcx		# cf=0

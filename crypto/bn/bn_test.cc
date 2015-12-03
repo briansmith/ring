@@ -330,6 +330,13 @@ int main(int argc, char *argv[]) {
   return 0;
 }
 
+static int HexToBIGNUM(ScopedBIGNUM *out, const char *in) {
+  BIGNUM *raw = NULL;
+  int ret = BN_hex2bn(&raw, in);
+  out->reset(raw);
+  return ret;
+}
+
 static bool test_add(FILE *fp) {
   ScopedBIGNUM a(BN_new());
   ScopedBIGNUM b(BN_new());
@@ -1107,6 +1114,27 @@ static bool test_mod_exp(FILE *fp, BN_CTX *ctx) {
       return false;
     }
   }
+
+   // Regression test for carry propagation bug in sqr8x_reduction.
+  if (!HexToBIGNUM(&a, "050505050505") ||
+      !HexToBIGNUM(&b, "02") ||
+      !HexToBIGNUM(
+          &c,
+          "4141414141414141414141274141414141414141414141414141414141414141"
+          "4141414141414141414141414141414141414141414141414141414141414141"
+          "4141414141414141414141800000000000000000000000000000000000000000"
+          "0000000000000000000000000000000000000000000000000000000000000000"
+          "0000000000000000000000000000000000000000000000000000000000000000"
+          "0000000000000000000000000000000000000000000000000000000001") ||
+      !BN_mod_exp(d.get(), a.get(), b.get(), c.get(), ctx) ||
+      !BN_mul(e.get(), a.get(), a.get(), ctx)) {
+    return false;
+  }
+  if (BN_cmp(d.get(), e.get()) != 0) {
+    fprintf(stderr, "BN_mod_exp and BN_mul produce different results!\n");
+    return false;
+  }
+
   return true;
 }
 
@@ -1543,13 +1571,6 @@ static bool test_dec2bn(BN_CTX *ctx) {
   }
 
   return true;
-}
-
-static int HexToBIGNUM(ScopedBIGNUM *out, const char *in) {
-  BIGNUM *raw = NULL;
-  int ret = BN_hex2bn(&raw, in);
-  out->reset(raw);
-  return ret;
 }
 
 static bool test_hex2bn(BN_CTX *ctx) {
