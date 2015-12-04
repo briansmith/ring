@@ -20,7 +20,7 @@ import tempfile
 import urllib
 
 # CLANG_REVISION and CLANG_SUB_REVISION determine the build of clang
-# to use. These should be synced with tools/clang/scripts/update.sh in
+# to use. These should be synced with tools/clang/scripts/update.py in
 # Chromium.
 CLANG_REVISION = "233105"
 CLANG_SUB_REVISION = "1"
