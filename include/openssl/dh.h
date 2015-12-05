@@ -193,7 +193,7 @@ OPENSSL_EXPORT int i2d_DHparams(const DH *in, unsigned char **outp);
  * See |ex_data.h| for details. */
 
 OPENSSL_EXPORT int DH_get_ex_new_index(long argl, void *argp,
-                                       CRYPTO_EX_new *new_func,
+                                       CRYPTO_EX_unused *unused,
                                        CRYPTO_EX_dup *dup_func,
                                        CRYPTO_EX_free *free_func);
 OPENSSL_EXPORT int DH_set_ex_data(DH *d, int idx, void *arg);

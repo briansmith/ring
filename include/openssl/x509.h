@@ -787,7 +787,7 @@ DECLARE_ASN1_FUNCTIONS(X509_CERT_PAIR)
  * |x|. */
 OPENSSL_EXPORT X509 *X509_up_ref(X509 *x);
 
-OPENSSL_EXPORT int X509_get_ex_new_index(long argl, void *argp, CRYPTO_EX_new *new_func,
+OPENSSL_EXPORT int X509_get_ex_new_index(long argl, void *argp, CRYPTO_EX_unused *unused,
 	     CRYPTO_EX_dup *dup_func, CRYPTO_EX_free *free_func);
 OPENSSL_EXPORT int X509_set_ex_data(X509 *r, int idx, void *arg);
 OPENSSL_EXPORT void *X509_get_ex_data(X509 *r, int idx);

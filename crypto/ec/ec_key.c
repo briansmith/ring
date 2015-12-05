@@ -104,24 +104,18 @@ EC_KEY *EC_KEY_new_method(const ENGINE *engine) {
   ret->conv_form = POINT_CONVERSION_UNCOMPRESSED;
   ret->references = 1;
 
-  if (!CRYPTO_new_ex_data(&g_ex_data_class, ret, &ret->ex_data)) {
-    goto err1;
-  }
+  CRYPTO_new_ex_data(&ret->ex_data);
 
   if (ret->ecdsa_meth && ret->ecdsa_meth->init && !ret->ecdsa_meth->init(ret)) {
-    goto err2;
+    CRYPTO_free_ex_data(&g_ex_data_class, ret, &ret->ex_data);
+    if (ret->ecdsa_meth) {
+      METHOD_unref(ret->ecdsa_meth);
+    }
+    OPENSSL_free(ret);
+    return NULL;
   }
 
   return ret;
-
-err2:
-  CRYPTO_free_ex_data(&g_ex_data_class, ret, &ret->ex_data);
-err1:
-  if (ret->ecdsa_meth) {
-    METHOD_unref(ret->ecdsa_meth);
-  }
-  OPENSSL_free(ret);
-  return NULL;
 }
 
 EC_KEY *EC_KEY_new_by_curve_name(int nid) {
@@ -466,12 +460,12 @@ err:
   return ok;
 }
 
-int EC_KEY_get_ex_new_index(long argl, void *argp, CRYPTO_EX_new *new_func,
+int EC_KEY_get_ex_new_index(long argl, void *argp, CRYPTO_EX_unused *unused,
                             CRYPTO_EX_dup *dup_func,
                             CRYPTO_EX_free *free_func) {
   int index;
-  if (!CRYPTO_get_ex_new_index(&g_ex_data_class, &index, argl, argp, new_func,
-                               dup_func, free_func)) {
+  if (!CRYPTO_get_ex_new_index(&g_ex_data_class, &index, argl, argp, dup_func,
+                               free_func)) {
     return -1;
   }
   return index;

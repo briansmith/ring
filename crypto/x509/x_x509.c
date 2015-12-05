@@ -104,7 +104,7 @@ static int x509_cb(int operation, ASN1_VALUE **pval, const ASN1_ITEM *it,
 		ret->akid = NULL;
 		ret->aux = NULL;
 		ret->crldp = NULL;
-		CRYPTO_new_ex_data(&g_ex_data_class, ret, &ret->ex_data);
+		CRYPTO_new_ex_data(&ret->ex_data);
 		break;
 
 		case ASN1_OP_D2I_POST:
@@ -146,12 +146,12 @@ X509 *X509_up_ref(X509 *x)
 	return x;
 	}
 
-int X509_get_ex_new_index(long argl, void *argp, CRYPTO_EX_new *new_func,
+int X509_get_ex_new_index(long argl, void *argp, CRYPTO_EX_unused *unused,
 	     CRYPTO_EX_dup *dup_func, CRYPTO_EX_free *free_func)
         {
 	int index;
 	if (!CRYPTO_get_ex_new_index(&g_ex_data_class, &index, argl, argp,
-			new_func, dup_func, free_func))
+			dup_func, free_func))
 		{
 		return -1;
 		}

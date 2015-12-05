@@ -85,11 +85,7 @@ DH *DH_new(void) {
   CRYPTO_MUTEX_init(&dh->method_mont_p_lock);
 
   dh->references = 1;
-  if (!CRYPTO_new_ex_data(&g_ex_data_class, dh, &dh->ex_data)) {
-    CRYPTO_MUTEX_cleanup(&dh->method_mont_p_lock);
-    OPENSSL_free(dh);
-    return NULL;
-  }
+  CRYPTO_new_ex_data(&dh->ex_data);
 
   return dh;
 }
@@ -448,11 +444,11 @@ DH *DHparams_dup(const DH *dh) {
   return ret;
 }
 
-int DH_get_ex_new_index(long argl, void *argp, CRYPTO_EX_new *new_func,
+int DH_get_ex_new_index(long argl, void *argp, CRYPTO_EX_unused *unused,
                         CRYPTO_EX_dup *dup_func, CRYPTO_EX_free *free_func) {
   int index;
-  if (!CRYPTO_get_ex_new_index(&g_ex_data_class, &index, argl, argp, new_func,
-                               dup_func, free_func)) {
+  if (!CRYPTO_get_ex_new_index(&g_ex_data_class, &index, argl, argp, dup_func,
+                               free_func)) {
     return -1;
   }
   return index;

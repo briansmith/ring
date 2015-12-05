@@ -274,7 +274,7 @@ SSL_CTX *SSL_CTX_new(const SSL_METHOD *method) {
     goto err;
   }
 
-  CRYPTO_new_ex_data(&g_ex_data_class_ssl_ctx, ret, &ret->ex_data);
+  CRYPTO_new_ex_data(&ret->ex_data);
 
   ret->max_send_fragment = SSL3_RT_MAX_PLAIN_LENGTH;
 
@@ -424,7 +424,7 @@ SSL *SSL_new(SSL_CTX *ctx) {
 
   s->rwstate = SSL_NOTHING;
 
-  CRYPTO_new_ex_data(&g_ex_data_class_ssl, s, &s->ex_data);
+  CRYPTO_new_ex_data(&s->ex_data);
 
   s->psk_identity_hint = NULL;
   if (ctx->psk_identity_hint) {
@@ -2060,11 +2060,11 @@ void SSL_set_verify_result(SSL *ssl, long result) {
 
 long SSL_get_verify_result(const SSL *ssl) { return ssl->verify_result; }
 
-int SSL_get_ex_new_index(long argl, void *argp, CRYPTO_EX_new *new_func,
+int SSL_get_ex_new_index(long argl, void *argp, CRYPTO_EX_unused *unused,
                          CRYPTO_EX_dup *dup_func, CRYPTO_EX_free *free_func) {
   int index;
   if (!CRYPTO_get_ex_new_index(&g_ex_data_class_ssl, &index, argl, argp,
-                               new_func, dup_func, free_func)) {
+                               dup_func, free_func)) {
     return -1;
   }
   return index;
@@ -2078,12 +2078,12 @@ void *SSL_get_ex_data(const SSL *ssl, int idx) {
   return CRYPTO_get_ex_data(&ssl->ex_data, idx);
 }
 
-int SSL_CTX_get_ex_new_index(long argl, void *argp, CRYPTO_EX_new *new_func,
+int SSL_CTX_get_ex_new_index(long argl, void *argp, CRYPTO_EX_unused *unused,
                              CRYPTO_EX_dup *dup_func,
                              CRYPTO_EX_free *free_func) {
   int index;
   if (!CRYPTO_get_ex_new_index(&g_ex_data_class_ssl_ctx, &index, argl, argp,
-                               new_func, dup_func, free_func)) {
+                               dup_func, free_func)) {
     return -1;
   }
   return index;

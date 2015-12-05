@@ -98,12 +98,7 @@ DSA *DSA_new(void) {
   dsa->references = 1;
 
   CRYPTO_MUTEX_init(&dsa->method_mont_p_lock);
-
-  if (!CRYPTO_new_ex_data(&g_ex_data_class, dsa, &dsa->ex_data)) {
-    CRYPTO_MUTEX_cleanup(&dsa->method_mont_p_lock);
-    OPENSSL_free(dsa);
-    return NULL;
-  }
+  CRYPTO_new_ex_data(&dsa->ex_data);
 
   return dsa;
 }
@@ -864,11 +859,11 @@ err:
   return ret;
 }
 
-int DSA_get_ex_new_index(long argl, void *argp, CRYPTO_EX_new *new_func,
+int DSA_get_ex_new_index(long argl, void *argp, CRYPTO_EX_unused *unused,
                          CRYPTO_EX_dup *dup_func, CRYPTO_EX_free *free_func) {
   int index;
-  if (!CRYPTO_get_ex_new_index(&g_ex_data_class, &index, argl, argp, new_func,
-                               dup_func, free_func)) {
+  if (!CRYPTO_get_ex_new_index(&g_ex_data_class, &index, argl, argp, dup_func,
+                               free_func)) {
     return -1;
   }
   return index;

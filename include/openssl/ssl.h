@@ -2548,7 +2548,7 @@ OPENSSL_EXPORT const char *SSL_alert_desc_string_long(int value);
 OPENSSL_EXPORT int SSL_set_ex_data(SSL *ssl, int idx, void *data);
 OPENSSL_EXPORT void *SSL_get_ex_data(const SSL *ssl, int idx);
 OPENSSL_EXPORT int SSL_get_ex_new_index(long argl, void *argp,
-                                        CRYPTO_EX_new *new_func,
+                                        CRYPTO_EX_unused *unused,
                                         CRYPTO_EX_dup *dup_func,
                                         CRYPTO_EX_free *free_func);
 
@@ -2557,14 +2557,14 @@ OPENSSL_EXPORT int SSL_SESSION_set_ex_data(SSL_SESSION *session, int idx,
 OPENSSL_EXPORT void *SSL_SESSION_get_ex_data(const SSL_SESSION *session,
                                              int idx);
 OPENSSL_EXPORT int SSL_SESSION_get_ex_new_index(long argl, void *argp,
-                                                CRYPTO_EX_new *new_func,
+                                                CRYPTO_EX_unused *unused,
                                                 CRYPTO_EX_dup *dup_func,
                                                 CRYPTO_EX_free *free_func);
 
 OPENSSL_EXPORT int SSL_CTX_set_ex_data(SSL_CTX *ctx, int idx, void *data);
 OPENSSL_EXPORT void *SSL_CTX_get_ex_data(const SSL_CTX *ctx, int idx);
 OPENSSL_EXPORT int SSL_CTX_get_ex_new_index(long argl, void *argp,
-                                            CRYPTO_EX_new *new_func,
+                                            CRYPTO_EX_unused *unused,
                                             CRYPTO_EX_dup *dup_func,
                                             CRYPTO_EX_free *free_func);
 

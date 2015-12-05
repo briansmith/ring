@@ -96,13 +96,7 @@ RSA *RSA_new_method(const ENGINE *engine) {
   rsa->references = 1;
   rsa->flags = rsa->meth->flags;
   CRYPTO_MUTEX_init(&rsa->lock);
-
-  if (!CRYPTO_new_ex_data(&g_ex_data_class, rsa, &rsa->ex_data)) {
-    CRYPTO_MUTEX_cleanup(&rsa->lock);
-    METHOD_unref(rsa->meth);
-    OPENSSL_free(rsa);
-    return NULL;
-  }
+  CRYPTO_new_ex_data(&rsa->ex_data);
 
   if (rsa->meth->init && !rsa->meth->init(rsa)) {
     CRYPTO_free_ex_data(&g_ex_data_class, rsa, &rsa->ex_data);
@@ -308,11 +302,11 @@ int RSA_supports_digest(const RSA *rsa, const EVP_MD *md) {
   return 1;
 }
 
-int RSA_get_ex_new_index(long argl, void *argp, CRYPTO_EX_new *new_func,
+int RSA_get_ex_new_index(long argl, void *argp, CRYPTO_EX_unused *unused,
                          CRYPTO_EX_dup *dup_func, CRYPTO_EX_free *free_func) {
   int index;
-  if (!CRYPTO_get_ex_new_index(&g_ex_data_class, &index, argl, argp, new_func,
-                               dup_func, free_func)) {
+  if (!CRYPTO_get_ex_new_index(&g_ex_data_class, &index, argl, argp, dup_func,
+                               free_func)) {
     return -1;
   }
   return index;

@@ -302,7 +302,7 @@ OPENSSL_EXPORT DH *DSA_dup_DH(const DSA *dsa);
  * See |ex_data.h| for details. */
 
 OPENSSL_EXPORT int DSA_get_ex_new_index(long argl, void *argp,
-                                        CRYPTO_EX_new *new_func,
+                                        CRYPTO_EX_unused *unused,
                                         CRYPTO_EX_dup *dup_func,
                                         CRYPTO_EX_free *free_func);
 OPENSSL_EXPORT int DSA_set_ex_data(DSA *d, int idx, void *arg);
