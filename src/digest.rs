@@ -283,21 +283,13 @@ pub struct Algorithm {
 
     initial_state: [u64; MAX_CHAINING_LEN / 8],
 
-    /// An identifier for the algorithm. For all the algorithms defined in this
-    /// module, `a.id == b.id` implies that `a` and `b` are references to the
-    /// same algorithm.
-    pub id: ID,
+    /// The OpenSSL/BoringSSL NID for the algorithm. For all the algorithms
+    /// defined in this module, `a.nid == b.nid` implies that `a` and `b` are
+    /// references to the same algorithm.
+    pub nid: c::int,
 }
 
 /// The type of `Algorithm::id`.
-#[derive(Clone, Copy, PartialEq)]
-pub enum ID {
-    SHA1,
-    SHA256,
-    SHA384,
-    SHA512,
-}
-
 pub static SHA1: Algorithm = Algorithm {
     output_len: 160 / 8,
     chaining_len: 160 / 8,
@@ -311,7 +303,7 @@ pub static SHA1: Algorithm = Algorithm {
         u32x2!(0xc3d2e1f0, 0),
         0, 0, 0, 0, 0,
     ],
-    id: ID::SHA1,
+    nid: 64, // NID_sha1    
 };
 
 pub static SHA256: Algorithm = Algorithm {
@@ -328,7 +320,8 @@ pub static SHA256: Algorithm = Algorithm {
         u32x2!(0x1f83d9ab, 0x5be0cd19),
         0, 0, 0, 0,
     ],
-    id: ID::SHA256,
+    nid: 672, // NID_sha256
+
 };
 
 pub static SHA384: Algorithm = Algorithm {
@@ -348,7 +341,7 @@ pub static SHA384: Algorithm = Algorithm {
         0xdb0c2e0d64f98fa7,
         0x47b5481dbefa4fa4,
     ],
-    id: ID::SHA384,
+    nid: 673, // NID_sha384 
 };
 
 pub static SHA512: Algorithm = Algorithm {
@@ -368,7 +361,7 @@ pub static SHA512: Algorithm = Algorithm {
         0x1f83d9abfb41bd6b,
         0x5be0cd19137e2179,
     ],
-    id: ID::SHA512,
+    nid: 674, // NID_sha512 
 };
 
 #[inline(always)]
