@@ -31,8 +31,6 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "rsa_test.Windows", "crypto\
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "example_mul.Windows", "crypto\ec\example_mul.Windows.vcxproj", "{6216DD4F-2055-4D4E-9672-AF9154AC7B7B}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "tool.Windows", "tool\tool.Windows.vcxproj", "{54439BCA-6E2D-4BB5-89BC-215BC2BA4047}"
-EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Win32 = Debug|Win32
@@ -145,14 +143,6 @@ Global
 		{6216DD4F-2055-4D4E-9672-AF9154AC7B7B}.Release|Win32.Build.0 = Release|Win32
 		{6216DD4F-2055-4D4E-9672-AF9154AC7B7B}.Release|x64.ActiveCfg = Release|x64
 		{6216DD4F-2055-4D4E-9672-AF9154AC7B7B}.Release|x64.Build.0 = Release|x64
-		{54439BCA-6E2D-4BB5-89BC-215BC2BA4047}.Debug|Win32.ActiveCfg = Debug|Win32
-		{54439BCA-6E2D-4BB5-89BC-215BC2BA4047}.Debug|Win32.Build.0 = Debug|Win32
-		{54439BCA-6E2D-4BB5-89BC-215BC2BA4047}.Debug|x64.ActiveCfg = Debug|x64
-		{54439BCA-6E2D-4BB5-89BC-215BC2BA4047}.Debug|x64.Build.0 = Debug|x64
-		{54439BCA-6E2D-4BB5-89BC-215BC2BA4047}.Release|Win32.ActiveCfg = Release|Win32
-		{54439BCA-6E2D-4BB5-89BC-215BC2BA4047}.Release|Win32.Build.0 = Release|Win32
-		{54439BCA-6E2D-4BB5-89BC-215BC2BA4047}.Release|x64.ActiveCfg = Release|x64
-		{54439BCA-6E2D-4BB5-89BC-215BC2BA4047}.Release|x64.Build.0 = Release|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
