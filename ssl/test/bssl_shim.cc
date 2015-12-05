@@ -20,7 +20,7 @@
 #include <netinet/tcp.h>
 #include <signal.h>
 #include <sys/socket.h>
-#include <sys/types.h>
+#include <sys/time.h>
 #include <unistd.h>
 #else
 #include <io.h>
@@ -33,7 +33,6 @@
 #endif
 
 #include <string.h>
-#include <sys/types.h>
 
 #include <openssl/bio.h>
 #include <openssl/buf.h>
