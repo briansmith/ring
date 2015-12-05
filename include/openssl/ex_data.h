@@ -161,17 +161,18 @@ OPENSSL_EXPORT void *TYPE_get_ex_data(const TYPE *t, int index);
 /* Callback types. */
 
 /* CRYPTO_EX_free is a callback function that is called when an object of the
- * class is being destroyed. For example, if this callback has been passed to
- * |SSL_get_ex_new_index| then it'll be called each time an |SSL*| is destroyed.
+ * class with extra data pointers is being destroyed. For example, if this
+ * callback has been passed to |SSL_get_ex_new_index| then it may be called each
+ * time an |SSL*| is destroyed.
  *
  * The callback is passed the new object (i.e. the |SSL*|) in |parent|. The
  * arguments |argl| and |argp| contain opaque values that were given to
  * |CRYPTO_get_ex_new_index|. The callback should return one on success, but
  * the value is ignored.
  *
- * If |CRYPTO_get_ex_new_index| was called after the creation of objects of the
- * class that this applies to then, when those those objects are destroyed,
- * this callback will be called with a NULL value for |ptr|. */
+ * This callback may be called with a NULL value for |ptr| if |parent| has no
+ * value set for this index. However, the callbacks may also be skipped entirely
+ * if no extra data pointers are set on |parent| at all. */
 typedef void CRYPTO_EX_free(void *parent, void *ptr, CRYPTO_EX_DATA *ad,
                             int index, long argl, void *argp);
 
@@ -181,9 +182,9 @@ typedef void CRYPTO_EX_free(void *parent, void *ptr, CRYPTO_EX_DATA *ad,
  * original object. When the callback returns, |*from_d| will be set as the
  * data for this index in |to|.
  *
- * If |CRYPTO_get_ex_new_index| was called after the creation of objects of the
- * class that this applies to then, when those those objects are copies, this
- * callback will be called with a NULL value for |*from_d|. */
+ * This callback may be called with a NULL value for |*from_d| if |from| has no
+ * value set for this index. However, the callbacks may also be skipped entirely
+ * if no extra data pointers are set on |from| at all. */
 typedef int CRYPTO_EX_dup(CRYPTO_EX_DATA *to, const CRYPTO_EX_DATA *from,
                           void **from_d, int index, long argl, void *argp);
 

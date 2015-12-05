@@ -233,19 +233,18 @@ void CRYPTO_new_ex_data(CRYPTO_EX_DATA *ad) {
 
 int CRYPTO_dup_ex_data(CRYPTO_EX_DATA_CLASS *ex_data_class, CRYPTO_EX_DATA *to,
                        const CRYPTO_EX_DATA *from) {
-  STACK_OF(CRYPTO_EX_DATA_FUNCS) *func_pointers;
-  size_t i;
-
-  if (!from->sk) {
+  if (from->sk == NULL) {
     /* In this case, |from| is blank, which is also the initial state of |to|,
      * so there's nothing to do. */
     return 1;
   }
 
+  STACK_OF(CRYPTO_EX_DATA_FUNCS) *func_pointers;
   if (!get_func_pointers(&func_pointers, ex_data_class)) {
     return 0;
   }
 
+  size_t i;
   for (i = 0; i < sk_CRYPTO_EX_DATA_FUNCS_num(func_pointers); i++) {
     CRYPTO_EX_DATA_FUNCS *func_pointer =
         sk_CRYPTO_EX_DATA_FUNCS_value(func_pointers, i);
@@ -264,13 +263,18 @@ int CRYPTO_dup_ex_data(CRYPTO_EX_DATA_CLASS *ex_data_class, CRYPTO_EX_DATA *to,
 
 void CRYPTO_free_ex_data(CRYPTO_EX_DATA_CLASS *ex_data_class, void *obj,
                          CRYPTO_EX_DATA *ad) {
-  STACK_OF(CRYPTO_EX_DATA_FUNCS) *func_pointers;
-  size_t i;
-
-  if (!get_func_pointers(&func_pointers, ex_data_class)) {
+  if (ad->sk == NULL) {
+    /* Nothing to do. */
     return;
   }
 
+  STACK_OF(CRYPTO_EX_DATA_FUNCS) *func_pointers;
+  if (!get_func_pointers(&func_pointers, ex_data_class)) {
+    /* TODO(davidben): This leaks memory on malloc error. */
+    return;
+  }
+
+  size_t i;
   for (i = 0; i < sk_CRYPTO_EX_DATA_FUNCS_num(func_pointers); i++) {
     CRYPTO_EX_DATA_FUNCS *func_pointer =
         sk_CRYPTO_EX_DATA_FUNCS_value(func_pointers, i);
