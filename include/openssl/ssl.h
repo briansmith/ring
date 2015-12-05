@@ -1791,20 +1791,6 @@ OPENSSL_EXPORT int SSL_CTX_set1_curves(SSL_CTX *ctx, const int *curves,
 OPENSSL_EXPORT int SSL_set1_curves(SSL *ssl, const int *curves,
                                    size_t curves_len);
 
-/* SSL_CTX_set_tmp_ecdh configures |ctx| to use the curve from |ecdh| as the
- * curve for ephemeral ECDH keys. For historical reasons, this API expects an
- * |EC_KEY|, but only the curve is used. It returns one on success and zero on
- * error. If unset, an appropriate curve will be chosen based on curve
- * preferences. (This is recommended.) */
-OPENSSL_EXPORT int SSL_CTX_set_tmp_ecdh(SSL_CTX *ctx, const EC_KEY *ec_key);
-
-/* SSL_set_tmp_ecdh configures |ssl| to use the curve from |ecdh| as the curve
- * for ephemeral ECDH keys. For historical reasons, this API expects an
- * |EC_KEY|, but only the curve is used. It returns one on success and zero on
- * error. If unset, an appropriate curve will be chosen based on curve
- * preferences. (This is recommended.) */
-OPENSSL_EXPORT int SSL_set_tmp_ecdh(SSL *ssl, const EC_KEY *ec_key);
-
 /* SSL_get_curve_name returns a human-readable name for the elliptic curve
  * specified by the given TLS curve id, or NULL if the curve if unknown. */
 OPENSSL_EXPORT const char *SSL_get_curve_name(uint16_t curve_id);
@@ -3303,6 +3289,14 @@ OPENSSL_EXPORT const char *SSL_state_string(const SSL *ssl);
  *
  * Use |SSL_CTX_set_quiet_shutdown| instead. */
 OPENSSL_EXPORT void SSL_set_shutdown(SSL *ssl, int mode);
+
+/* SSL_CTX_set_tmp_ecdh calls |SSL_CTX_set1_curves| with a one-element list
+ * containing |ec_key|'s curve. */
+OPENSSL_EXPORT int SSL_CTX_set_tmp_ecdh(SSL_CTX *ctx, const EC_KEY *ec_key);
+
+/* SSL_set_tmp_ecdh calls |SSL_set1_curves| with a one-element list containing
+ * |ec_key|'s curve. */
+OPENSSL_EXPORT int SSL_set_tmp_ecdh(SSL *ssl, const EC_KEY *ec_key);
 
 
 /* Private structures.

@@ -726,10 +726,6 @@ typedef struct cert_st {
   DH *dh_tmp;
   DH *(*dh_tmp_cb)(SSL *ssl, int is_export, int keysize);
 
-  /* ecdh_nid, if not |NID_undef|, is the NID of the curve to use for ephemeral
-   * ECDH keys. */
-  int ecdh_nid;
-
   /* peer_sigalgs are the algorithm/hash pairs that the peer supports. These
    * are taken from the contents of signature algorithms extension for a server
    * or from the CertificateRequest for a client. */
@@ -1171,10 +1167,6 @@ int tls1_set_curves(uint16_t **out_curve_ids, size_t *out_curve_ids_len,
  * point format compatible with the client's preferences. Otherwise it returns
  * zero. */
 int tls1_check_ec_cert(SSL *s, X509 *x);
-
-/* tls1_check_ec_tmp_key returns one if the EC temporary key is compatible with
- * client extensions and zero otherwise. */
-int tls1_check_ec_tmp_key(SSL *s);
 
 int tls1_shared_list(SSL *s, const uint8_t *l1, size_t l1len, const uint8_t *l2,
                      size_t l2len, int nmatch);

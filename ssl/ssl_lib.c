@@ -1785,8 +1785,8 @@ void ssl_get_compatible_server_ciphers(SSL *s, uint32_t *out_mask_k,
   }
 
   /* If we are considering an ECC cipher suite that uses an ephemeral EC
-   * key, check it. */
-  if (tls1_check_ec_tmp_key(s)) {
+   * key, check for a shared curve. */
+  if (tls1_get_shared_curve(s) != NID_undef) {
     mask_k |= SSL_kECDHE;
   }
 

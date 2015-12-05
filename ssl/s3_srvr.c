@@ -1299,12 +1299,7 @@ int ssl3_send_server_key_exchange(SSL *s) {
       r_pad_bytes[2] = BN_num_bytes(dh->p) - BN_num_bytes(dh->pub_key);
     } else if (alg_k & SSL_kECDHE) {
       /* Determine the curve to use. */
-      int nid = NID_undef;
-      if (cert->ecdh_nid != NID_undef) {
-        nid = cert->ecdh_nid;
-      } else {
-        nid = tls1_get_shared_curve(s);
-      }
+      int nid = tls1_get_shared_curve(s);
       if (nid == NID_undef) {
         al = SSL_AD_HANDSHAKE_FAILURE;
         OPENSSL_PUT_ERROR(SSL, SSL_R_MISSING_TMP_ECDH_KEY);
