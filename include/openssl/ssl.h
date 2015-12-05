@@ -1805,34 +1805,6 @@ OPENSSL_EXPORT int SSL_CTX_set_tmp_ecdh(SSL_CTX *ctx, const EC_KEY *ec_key);
  * preferences. (This is recommended.) */
 OPENSSL_EXPORT int SSL_set_tmp_ecdh(SSL *ssl, const EC_KEY *ec_key);
 
-/* SSL_CTX_set_tmp_ecdh_callback configures |ctx| to use |callback| to determine
- * the curve for ephemeral ECDH keys. |callback| should ignore |is_export| and
- * |keylength| and return an |EC_KEY| of the selected curve or NULL on
- * error. Only the curve is used, so the |EC_KEY| needn't have a generated
- * keypair.
- *
- * If the callback is unset, an appropriate curve will be chosen based on curve
- * preferences. (This is recommended.)
- *
- * WARNING: The caller does not take ownership of the resulting |EC_KEY|, so
- * |callback| must save and release the object elsewhere. */
-OPENSSL_EXPORT void SSL_CTX_set_tmp_ecdh_callback(
-    SSL_CTX *ctx, EC_KEY *(*callback)(SSL *ssl, int is_export, int keylength));
-
-/* SSL_set_tmp_ecdh_callback configures |ssl| to use |callback| to determine the
- * curve for ephemeral ECDH keys. |callback| should ignore |is_export| and
- * |keylength| and return an |EC_KEY| of the selected curve or NULL on
- * error. Only the curve is used, so the |EC_KEY| needn't have a generated
- * keypair.
- *
- * If the callback is unset, an appropriate curve will be chosen based on curve
- * preferences. (This is recommended.)
- *
- * WARNING: The caller does not take ownership of the resulting |EC_KEY|, so
- * |callback| must save and release the object elsewhere. */
-OPENSSL_EXPORT void SSL_set_tmp_ecdh_callback(
-    SSL *ssl, EC_KEY *(*callback)(SSL *ssl, int is_export, int keylength));
-
 /* SSL_get_curve_name returns a human-readable name for the elliptic curve
  * specified by the given TLS curve id, or NULL if the curve if unknown. */
 OPENSSL_EXPORT const char *SSL_get_curve_name(uint16_t curve_id);

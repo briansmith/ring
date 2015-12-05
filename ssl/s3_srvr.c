@@ -1302,13 +1302,6 @@ int ssl3_send_server_key_exchange(SSL *s) {
       int nid = NID_undef;
       if (cert->ecdh_nid != NID_undef) {
         nid = cert->ecdh_nid;
-      } else if (cert->ecdh_tmp_cb != NULL) {
-        /* Note: |ecdh_tmp_cb| does NOT pass ownership of the result
-         * to the caller. */
-        EC_KEY *template = s->cert->ecdh_tmp_cb(s, 0, 1024);
-        if (template != NULL && EC_KEY_get0_group(template) != NULL) {
-          nid = EC_GROUP_get_curve_name(EC_KEY_get0_group(template));
-        }
       } else {
         nid = tls1_get_shared_curve(s);
       }

@@ -2128,18 +2128,6 @@ void SSL_set_tmp_dh_callback(SSL *ssl, DH *(*callback)(SSL *ssl, int is_export,
   ssl->cert->dh_tmp_cb = callback;
 }
 
-void SSL_CTX_set_tmp_ecdh_callback(SSL_CTX *ctx,
-                                   EC_KEY *(*callback)(SSL *ssl, int is_export,
-                                                       int keylength)) {
-  ctx->cert->ecdh_tmp_cb = callback;
-}
-
-void SSL_set_tmp_ecdh_callback(SSL *ssl,
-                               EC_KEY *(*callback)(SSL *ssl, int is_export,
-                                                   int keylength)) {
-  ssl->cert->ecdh_tmp_cb = callback;
-}
-
 int SSL_CTX_use_psk_identity_hint(SSL_CTX *ctx, const char *identity_hint) {
   if (identity_hint != NULL && strlen(identity_hint) > PSK_MAX_IDENTITY_LEN) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_DATA_LENGTH_TOO_LONG);

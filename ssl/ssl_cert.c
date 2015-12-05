@@ -186,7 +186,6 @@ CERT *ssl_cert_dup(CERT *cert) {
   ret->dh_tmp_cb = cert->dh_tmp_cb;
 
   ret->ecdh_nid = cert->ecdh_nid;
-  ret->ecdh_tmp_cb = cert->ecdh_tmp_cb;
 
   if (cert->x509 != NULL) {
     ret->x509 = X509_up_ref(cert->x509);

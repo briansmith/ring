@@ -611,11 +611,6 @@ int tls1_check_ec_tmp_key(SSL *s) {
            tls1_check_curve_id(s, curve_id);
   }
 
-  if (s->cert->ecdh_tmp_cb != NULL) {
-    /* Assume the callback will provide an acceptable curve. */
-    return 1;
-  }
-
   /* Otherwise, the curve gets selected automatically. ECDH is acceptable iff
    * there is a shared curve. */
   return tls1_get_shared_curve(s) != NID_undef;
