@@ -23,8 +23,8 @@
 #include <openssl/curve25519.h>
 
 #include <string.h>
-#include <stdio.h>
 
+#include <openssl/cpu.h>
 #include <openssl/mem.h>
 #include <openssl/rand.h>
 #include <openssl/sha.h>
@@ -4770,8 +4770,9 @@ int ED25519_verify(const uint8_t *message, size_t message_len,
 
 #endif
 
-static void x25519_scalar_mult(uint8_t out[32], const uint8_t scalar[32],
-                               const uint8_t point[32]) {
+static void x25519_scalar_mult_generic(uint8_t out[32],
+                                       const uint8_t scalar[32],
+                                       const uint8_t point[32]) {
   fe x1, x2, z2, x3, z3, tmp0, tmp1;
 
   uint8_t e[32];
@@ -4820,6 +4821,24 @@ static void x25519_scalar_mult(uint8_t out[32], const uint8_t scalar[32],
   fe_tobytes(out, x2);
 }
 
+#if defined(OPENSSL_ARM)
+/* x25519_NEON is defined in asm/x25519-arm.S. */
+void x25519_NEON(uint8_t out[32], const uint8_t scalar[32],
+                 const uint8_t point[32]);
+#endif
+
+static void x25519_scalar_mult(uint8_t out[32], const uint8_t scalar[32],
+                               const uint8_t point[32]) {
+#if defined(OPENSSL_ARM)
+  if (CRYPTO_is_NEON_capable()) {
+    x25519_NEON(out, scalar, point);
+    return;
+  }
+#endif
+
+  x25519_scalar_mult_generic(out, scalar, point);
+}
+
 void X25519_keypair(uint8_t out_public_value[32], uint8_t out_private_key[32]) {
   RAND_bytes(out_private_key, 32);
   X25519_public_from_private(out_public_value, out_private_key);
@@ -4837,10 +4856,10 @@ int X25519(uint8_t out_shared_key[32], const uint8_t private_key[32],
 
 /* When |OPENSSL_SMALL| is set, base point multiplication is done with the
  * Montgomery ladder because the Ed25519 code isn't included. */
-static const uint8_t kMongomeryBasePoint[32] = {9};
 
 void X25519_public_from_private(uint8_t out_public_value[32],
                                 const uint8_t private_key[32]) {
+  static const uint8_t kMongomeryBasePoint[32] = {9};
   x25519_scalar_mult(out_public_value, private_key, kMongomeryBasePoint);
 }
 
@@ -4848,6 +4867,14 @@ void X25519_public_from_private(uint8_t out_public_value[32],
 
 void X25519_public_from_private(uint8_t out_public_value[32],
                                 const uint8_t private_key[32]) {
+#if defined(OPENSSL_ARM)
+  if (CRYPTO_is_NEON_capable()) {
+    static const uint8_t kMongomeryBasePoint[32] = {9};
+    x25519_NEON(out_public_value, private_key, kMongomeryBasePoint);
+    return;
+  }
+#endif
+
   uint8_t e[32];
   memcpy(e, private_key, 32);
   e[0] &= 248;
