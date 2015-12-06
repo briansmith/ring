@@ -148,11 +148,9 @@ BIGNUM *bn_expand(BIGNUM *bn, size_t bits);
 #define BN_ULLONG	__uint128_t
 #endif
 
-#define BN_BITS		128
 #define BN_BITS2	64
 #define BN_BYTES	8
 #define BN_BITS4	32
-#define BN_MASK		(0xffffffffffffffffffffffffffffffffLL)
 #define BN_MASK2	(0xffffffffffffffffL)
 #define BN_MASK2l	(0xffffffffL)
 #define BN_MASK2h	(0xffffffff00000000L)
@@ -166,8 +164,6 @@ BIGNUM *bn_expand(BIGNUM *bn, size_t bits);
 
 #define BN_LLONG	int64_t
 #define BN_ULLONG	uint64_t
-#define BN_MASK		(0xffffffffffffffffLL)
-#define BN_BITS		64
 #define BN_BITS2	32
 #define BN_BYTES	4
 #define BN_BITS4	16
