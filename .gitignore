@@ -15,6 +15,7 @@ doc/doc.css
 *.suo
 *.user
 *.userosscache
+*.VC.opendb
 *.vsp
 *.vspx
 

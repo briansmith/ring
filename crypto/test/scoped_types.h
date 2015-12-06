@@ -18,7 +18,18 @@
 #include <stdint.h>
 #include <stdio.h>
 
+// Avoid "C4548: expression before comma has no effect; expected expression
+// with side-effect." in malloc.h in Visual Studio 2015 Update 1 in debug mode.
+#if defined(_MSC_VER) && defined(_DEBUG) && _MSC_VER >= 1900
+#pragma warning(push)
+#pragma warning(disable: 4548)
+#endif
+
 #include <memory>
+
+#if defined(_MSC_VER) && defined(_DEBUG) && _MSC_VER >= 1900
+#pragma warning(pop)
+#endif
 
 #include <openssl/bn.h>
 #include <openssl/ec.h>
@@ -26,7 +37,6 @@
 #include <openssl/ecdsa.h>
 #include <openssl/mem.h>
 #include <openssl/rsa.h>
-
 
 template<typename T, void (*func)(T*)>
 struct OpenSSLDeleter {
