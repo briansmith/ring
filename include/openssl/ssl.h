@@ -3913,11 +3913,7 @@ typedef struct ssl3_buffer_st {
 
 typedef struct ssl3_state_st {
   uint8_t read_sequence[8];
-  int read_mac_secret_size;
-  uint8_t read_mac_secret[EVP_MAX_MD_SIZE];
   uint8_t write_sequence[8];
-  int write_mac_secret_size;
-  uint8_t write_mac_secret[EVP_MAX_MD_SIZE];
 
   uint8_t server_random[SSL3_RANDOM_SIZE];
   uint8_t client_random[SSL3_RANDOM_SIZE];
