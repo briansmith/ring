@@ -231,7 +231,7 @@ static void fe_1(fe h) {
  *
  * Preconditions: b in {0,1}. */
 static void fe_cswap(fe f, fe g, unsigned int b) {
-  b = -b;
+  b = 0-b;
   unsigned i;
   for (i = 0; i < 10; i++) {
     int32_t x = f[i] ^ g[i];
@@ -807,7 +807,7 @@ static void fe_neg(fe h, const fe f) {
  *
  * Preconditions: b in {0,1}. */
 static void fe_cmov(fe f, const fe g, unsigned b) {
-  b = -b;
+  b = 0-b;
   unsigned i;
   for (i = 0; i < 10; i++) {
     int32_t x = f[i] ^ g[i];
