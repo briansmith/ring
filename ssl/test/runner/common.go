@@ -809,6 +809,10 @@ type ProtocolBugs struct {
 	// BadChangeCipherSpec, if not nil, is the body to be sent in
 	// ChangeCipherSpec records instead of {1}.
 	BadChangeCipherSpec []byte
+
+	// BadHelloRequest, if not nil, is what to send instead of a
+	// HelloRequest.
+	BadHelloRequest []byte
 }
 
 func (c *Config) serverInit() {

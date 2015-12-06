@@ -1201,8 +1201,11 @@ func (c *Conn) handleRenegotiation() error {
 
 func (c *Conn) Renegotiate() error {
 	if !c.isClient {
-		helloReq := new(helloRequestMsg)
-		c.writeRecord(recordTypeHandshake, helloReq.marshal())
+		helloReq := new(helloRequestMsg).marshal()
+		if c.config.Bugs.BadHelloRequest != nil {
+			helloReq = c.config.Bugs.BadHelloRequest
+		}
+		c.writeRecord(recordTypeHandshake, helloReq)
 	}
 
 	c.handshakeComplete = false

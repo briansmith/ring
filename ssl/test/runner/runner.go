@@ -2037,6 +2037,36 @@ func addBasicTests() {
 			shouldFail:    true,
 			expectedError: ":BAD_CHANGE_CIPHER_SPEC:",
 		},
+		{
+			name:        "BadHelloRequest-1",
+			renegotiate: 1,
+			config: Config{
+				Bugs: ProtocolBugs{
+					BadHelloRequest: []byte{typeHelloRequest, 0, 0, 1, 1},
+				},
+			},
+			flags: []string{
+				"-renegotiate-freely",
+				"-expect-total-renegotiations", "1",
+			},
+			shouldFail:    true,
+			expectedError: ":BAD_HELLO_REQUEST:",
+		},
+		{
+			name:        "BadHelloRequest-2",
+			renegotiate: 1,
+			config: Config{
+				Bugs: ProtocolBugs{
+					BadHelloRequest: []byte{typeServerKeyExchange, 0, 0, 0},
+				},
+			},
+			flags: []string{
+				"-renegotiate-freely",
+				"-expect-total-renegotiations", "1",
+			},
+			shouldFail:    true,
+			expectedError: ":BAD_HELLO_REQUEST:",
+		},
 	}
 	testCases = append(testCases, basicTests...)
 }
