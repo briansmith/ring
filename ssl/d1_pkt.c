@@ -164,7 +164,6 @@ again:
       SSL3_RECORD *rr = &ssl->s3->rrec;
       rr->type = type;
       rr->length = (uint16_t)len;
-      rr->off = 0;
       rr->data = out;
       return 1;
 
@@ -324,12 +323,11 @@ start:
       n = (unsigned int)len;
     }
 
-    memcpy(buf, &(rr->data[rr->off]), n);
+    memcpy(buf, rr->data, n);
     if (!peek) {
       rr->length -= n;
-      rr->off += n;
+      rr->data += n;
       if (rr->length == 0) {
-        rr->off = 0;
         /* The record has been consumed, so we may now clear the buffer. */
         ssl_read_buffer_discard(s);
       }
@@ -351,12 +349,13 @@ start:
     }
 
     if (s->msg_callback) {
-      s->msg_callback(0, s->version, SSL3_RT_ALERT, &rr->data[rr->off], 2, s,
+      s->msg_callback(0, s->version, SSL3_RT_ALERT, rr->data, 2, s,
                       s->msg_callback_arg);
     }
-    const uint8_t alert_level = rr->data[rr->off++];
-    const uint8_t alert_descr = rr->data[rr->off++];
+    const uint8_t alert_level = rr->data[0];
+    const uint8_t alert_descr = rr->data[1];
     rr->length -= 2;
+    rr->data += 2;
 
     if (s->info_callback != NULL) {
       cb = s->info_callback;
@@ -428,7 +427,7 @@ start:
       goto f_err;
     }
     struct hm_header_st msg_hdr;
-    dtls1_get_message_header(&rr->data[rr->off], &msg_hdr);
+    dtls1_get_message_header(rr->data, &msg_hdr);
 
     if (msg_hdr.type == SSL3_MT_FINISHED) {
       if (msg_hdr.frag_off == 0) {

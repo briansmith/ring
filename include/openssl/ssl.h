@@ -3894,12 +3894,9 @@ struct ssl_st {
 typedef struct ssl3_record_st {
   /* type is the record type. */
   uint8_t type;
-  /* length is the number of unconsumed bytes of |data|. */
+  /* length is the number of unconsumed bytes in the record. */
   uint16_t length;
-  /* off is the number of consumed bytes of |data|. */
-  uint16_t off;
-  /* data is a non-owning pointer to the record contents. The total length of
-   * the buffer is |off| + |length|. */
+  /* data is a non-owning pointer to the first unconsumed byte of the record. */
   uint8_t *data;
 } SSL3_RECORD;
 
