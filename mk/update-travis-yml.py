@@ -17,32 +17,26 @@
 import re
 import shutil
 
-latest_clang = "clang-3.7"
+latest_clang = "clang-3.8"
 
 rusts = [
-    "beta",
-    "nightly",
     "stable",
+    "nightly",
+    "beta",
 ]
 
 linux_compilers = [
-    # Since Travis CI limits the number of concurrent builds, we put the
-    # highest-signal (most likely to break) builds first, to reduce latency
-    # in discovering broken builds.
-    #
-    # XXX TODO: clang-3.7 was available and working using this setup, but for
-    # some reason it isn't working any more as of 2015-07-24, so it has been
-    # removed from the matrix for now.
-    "clang-3.6", # Newest clang first.
-    "gcc-4.8",   # Oldest GCC next.
+    # Newest clang and GCC.
+    "clang-3.7",
+    "gcc-5",
 
     # All other clang versions, newest to oldest.
-    "clang-3.5",
+    "clang-3.6",
     "clang-3.4",
 
     # All other GCC versions, newest to oldest.
-    "gcc-5",
     "gcc-4.9",
+    "gcc-4.8",
 ]
 
 osx_compilers = [
@@ -79,10 +73,10 @@ targets = {
 
 def format_entries():
     return "\n".join([format_entry(os, target, compiler, rust, mode)
-                      for os in oss
-                      for target in targets[os]
-                      for compiler in compilers[os]
                       for rust in rusts
+                      for os in oss
+                      for compiler in compilers[os]
+                      for target in targets[os]
                       for mode in modes
                       # XXX: 32-bit GCC 4.9 does not work because Travis does
                       # not have g++-4.9-multilib whitelisted for use.

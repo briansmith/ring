@@ -10,12 +10,302 @@ matrix:
     # BEGIN GENERATED
 
     - env: TARGET_X=x86_64-apple-darwin CC_X=clang CXX_X=clang++ MODE_X=DEBUG
-      rust: beta
+      rust: stable
       os: osx
 
     - env: TARGET_X=x86_64-apple-darwin CC_X=clang CXX_X=clang++ MODE_X=RELWITHDEBINFO
-      rust: beta
+      rust: stable
       os: osx
+
+    - env: TARGET_X=i586-apple-darwin CC_X=clang CXX_X=clang++ MODE_X=DEBUG
+      rust: stable
+      os: osx
+
+    - env: TARGET_X=i586-apple-darwin CC_X=clang CXX_X=clang++ MODE_X=RELWITHDEBINFO
+      rust: stable
+      os: osx
+
+    - env: TARGET_X=x86_64-pc-linux-gnu CC_X=clang-3.7 CXX_X=clang++-3.7 MODE_X=DEBUG
+      rust: stable
+      os: linux
+      addons:
+        apt:
+          packages:
+            - clang-3.7
+            - yasm
+          sources:
+            - llvm-toolchain-precise-3.7
+            - ubuntu-toolchain-r-test
+
+    - env: TARGET_X=x86_64-pc-linux-gnu CC_X=clang-3.7 CXX_X=clang++-3.7 MODE_X=RELWITHDEBINFO
+      rust: stable
+      os: linux
+      addons:
+        apt:
+          packages:
+            - clang-3.7
+            - yasm
+          sources:
+            - llvm-toolchain-precise-3.7
+            - ubuntu-toolchain-r-test
+
+    - env: TARGET_X=i586-pc-linux-gnu CC_X=clang-3.7 CXX_X=clang++-3.7 MODE_X=DEBUG
+      rust: stable
+      os: linux
+      addons:
+        apt:
+          packages:
+            - clang-3.7
+            - g++-multilib
+            - gcc-multilib
+            - libc6-dev-i386
+            - yasm
+          sources:
+            - llvm-toolchain-precise-3.7
+            - ubuntu-toolchain-r-test
+
+    - env: TARGET_X=i586-pc-linux-gnu CC_X=clang-3.7 CXX_X=clang++-3.7 MODE_X=RELWITHDEBINFO
+      rust: stable
+      os: linux
+      addons:
+        apt:
+          packages:
+            - clang-3.7
+            - g++-multilib
+            - gcc-multilib
+            - libc6-dev-i386
+            - yasm
+          sources:
+            - llvm-toolchain-precise-3.7
+            - ubuntu-toolchain-r-test
+
+    - env: TARGET_X=x86_64-pc-linux-gnu CC_X=gcc-5 CXX_X=g++-5 MODE_X=DEBUG
+      rust: stable
+      os: linux
+      addons:
+        apt:
+          packages:
+            - g++-5
+            - gcc-5
+            - yasm
+          sources:
+            - ubuntu-toolchain-r-test
+
+    - env: TARGET_X=x86_64-pc-linux-gnu CC_X=gcc-5 CXX_X=g++-5 MODE_X=RELWITHDEBINFO
+      rust: stable
+      os: linux
+      addons:
+        apt:
+          packages:
+            - g++-5
+            - gcc-5
+            - yasm
+          sources:
+            - ubuntu-toolchain-r-test
+
+    - env: TARGET_X=i586-pc-linux-gnu CC_X=gcc-5 CXX_X=g++-5 MODE_X=DEBUG
+      rust: stable
+      os: linux
+      addons:
+        apt:
+          packages:
+            - g++-5
+            - g++-5-multilib
+            - gcc-5
+            - gcc-5-multilib
+            - linux-libc-dev:i386
+            - yasm
+          sources:
+            - ubuntu-toolchain-r-test
+
+    - env: TARGET_X=i586-pc-linux-gnu CC_X=gcc-5 CXX_X=g++-5 MODE_X=RELWITHDEBINFO
+      rust: stable
+      os: linux
+      addons:
+        apt:
+          packages:
+            - g++-5
+            - g++-5-multilib
+            - gcc-5
+            - gcc-5-multilib
+            - linux-libc-dev:i386
+            - yasm
+          sources:
+            - ubuntu-toolchain-r-test
+
+    - env: TARGET_X=x86_64-pc-linux-gnu CC_X=clang-3.6 CXX_X=clang++-3.6 MODE_X=DEBUG
+      rust: stable
+      os: linux
+      addons:
+        apt:
+          packages:
+            - clang-3.6
+            - yasm
+          sources:
+            - llvm-toolchain-precise-3.6
+            - ubuntu-toolchain-r-test
+
+    - env: TARGET_X=x86_64-pc-linux-gnu CC_X=clang-3.6 CXX_X=clang++-3.6 MODE_X=RELWITHDEBINFO
+      rust: stable
+      os: linux
+      addons:
+        apt:
+          packages:
+            - clang-3.6
+            - yasm
+          sources:
+            - llvm-toolchain-precise-3.6
+            - ubuntu-toolchain-r-test
+
+    - env: TARGET_X=i586-pc-linux-gnu CC_X=clang-3.6 CXX_X=clang++-3.6 MODE_X=DEBUG
+      rust: stable
+      os: linux
+      addons:
+        apt:
+          packages:
+            - clang-3.6
+            - g++-multilib
+            - gcc-multilib
+            - libc6-dev-i386
+            - yasm
+          sources:
+            - llvm-toolchain-precise-3.6
+            - ubuntu-toolchain-r-test
+
+    - env: TARGET_X=i586-pc-linux-gnu CC_X=clang-3.6 CXX_X=clang++-3.6 MODE_X=RELWITHDEBINFO
+      rust: stable
+      os: linux
+      addons:
+        apt:
+          packages:
+            - clang-3.6
+            - g++-multilib
+            - gcc-multilib
+            - libc6-dev-i386
+            - yasm
+          sources:
+            - llvm-toolchain-precise-3.6
+            - ubuntu-toolchain-r-test
+
+    - env: TARGET_X=x86_64-pc-linux-gnu CC_X=clang CXX_X=clang++ MODE_X=DEBUG
+      rust: stable
+      os: linux
+      addons:
+        apt:
+          packages:
+            - yasm
+
+    - env: TARGET_X=x86_64-pc-linux-gnu CC_X=clang CXX_X=clang++ MODE_X=RELWITHDEBINFO
+      rust: stable
+      os: linux
+      addons:
+        apt:
+          packages:
+            - yasm
+
+    - env: TARGET_X=i586-pc-linux-gnu CC_X=clang CXX_X=clang++ MODE_X=DEBUG
+      rust: stable
+      os: linux
+      addons:
+        apt:
+          packages:
+            - g++-multilib
+            - gcc-multilib
+            - libc6-dev-i386
+            - yasm
+          sources:
+            - ubuntu-toolchain-r-test
+
+    - env: TARGET_X=i586-pc-linux-gnu CC_X=clang CXX_X=clang++ MODE_X=RELWITHDEBINFO
+      rust: stable
+      os: linux
+      addons:
+        apt:
+          packages:
+            - g++-multilib
+            - gcc-multilib
+            - libc6-dev-i386
+            - yasm
+          sources:
+            - ubuntu-toolchain-r-test
+
+    - env: TARGET_X=x86_64-pc-linux-gnu CC_X=gcc-4.9 CXX_X=g++-4.9 MODE_X=DEBUG
+      rust: stable
+      os: linux
+      addons:
+        apt:
+          packages:
+            - g++-4.9
+            - gcc-4.9
+            - yasm
+          sources:
+            - ubuntu-toolchain-r-test
+
+    - env: TARGET_X=x86_64-pc-linux-gnu CC_X=gcc-4.9 CXX_X=g++-4.9 MODE_X=RELWITHDEBINFO
+      rust: stable
+      os: linux
+      addons:
+        apt:
+          packages:
+            - g++-4.9
+            - gcc-4.9
+            - yasm
+          sources:
+            - ubuntu-toolchain-r-test
+
+    - env: TARGET_X=x86_64-pc-linux-gnu CC_X=gcc-4.8 CXX_X=g++-4.8 MODE_X=DEBUG
+      rust: stable
+      os: linux
+      addons:
+        apt:
+          packages:
+            - g++-4.8
+            - gcc-4.8
+            - yasm
+          sources:
+            - ubuntu-toolchain-r-test
+
+    - env: TARGET_X=x86_64-pc-linux-gnu CC_X=gcc-4.8 CXX_X=g++-4.8 MODE_X=RELWITHDEBINFO
+      rust: stable
+      os: linux
+      addons:
+        apt:
+          packages:
+            - g++-4.8
+            - gcc-4.8
+            - yasm
+          sources:
+            - ubuntu-toolchain-r-test
+
+    - env: TARGET_X=i586-pc-linux-gnu CC_X=gcc-4.8 CXX_X=g++-4.8 MODE_X=DEBUG
+      rust: stable
+      os: linux
+      addons:
+        apt:
+          packages:
+            - g++-4.8
+            - g++-4.8-multilib
+            - gcc-4.8
+            - gcc-4.8-multilib
+            - linux-libc-dev:i386
+            - yasm
+          sources:
+            - ubuntu-toolchain-r-test
+
+    - env: TARGET_X=i586-pc-linux-gnu CC_X=gcc-4.8 CXX_X=g++-4.8 MODE_X=RELWITHDEBINFO
+      rust: stable
+      os: linux
+      addons:
+        apt:
+          packages:
+            - g++-4.8
+            - g++-4.8-multilib
+            - gcc-4.8
+            - gcc-4.8-multilib
+            - linux-libc-dev:i386
+            - yasm
+          sources:
+            - ubuntu-toolchain-r-test
 
     - env: TARGET_X=x86_64-apple-darwin CC_X=clang CXX_X=clang++ MODE_X=DEBUG
       rust: nightly
@@ -25,12 +315,302 @@ matrix:
       rust: nightly
       os: osx
 
+    - env: TARGET_X=i586-apple-darwin CC_X=clang CXX_X=clang++ MODE_X=DEBUG
+      rust: nightly
+      os: osx
+
+    - env: TARGET_X=i586-apple-darwin CC_X=clang CXX_X=clang++ MODE_X=RELWITHDEBINFO
+      rust: nightly
+      os: osx
+
+    - env: TARGET_X=x86_64-pc-linux-gnu CC_X=clang-3.7 CXX_X=clang++-3.7 MODE_X=DEBUG
+      rust: nightly
+      os: linux
+      addons:
+        apt:
+          packages:
+            - clang-3.7
+            - yasm
+          sources:
+            - llvm-toolchain-precise-3.7
+            - ubuntu-toolchain-r-test
+
+    - env: TARGET_X=x86_64-pc-linux-gnu CC_X=clang-3.7 CXX_X=clang++-3.7 MODE_X=RELWITHDEBINFO
+      rust: nightly
+      os: linux
+      addons:
+        apt:
+          packages:
+            - clang-3.7
+            - yasm
+          sources:
+            - llvm-toolchain-precise-3.7
+            - ubuntu-toolchain-r-test
+
+    - env: TARGET_X=i586-pc-linux-gnu CC_X=clang-3.7 CXX_X=clang++-3.7 MODE_X=DEBUG
+      rust: nightly
+      os: linux
+      addons:
+        apt:
+          packages:
+            - clang-3.7
+            - g++-multilib
+            - gcc-multilib
+            - libc6-dev-i386
+            - yasm
+          sources:
+            - llvm-toolchain-precise-3.7
+            - ubuntu-toolchain-r-test
+
+    - env: TARGET_X=i586-pc-linux-gnu CC_X=clang-3.7 CXX_X=clang++-3.7 MODE_X=RELWITHDEBINFO
+      rust: nightly
+      os: linux
+      addons:
+        apt:
+          packages:
+            - clang-3.7
+            - g++-multilib
+            - gcc-multilib
+            - libc6-dev-i386
+            - yasm
+          sources:
+            - llvm-toolchain-precise-3.7
+            - ubuntu-toolchain-r-test
+
+    - env: TARGET_X=x86_64-pc-linux-gnu CC_X=gcc-5 CXX_X=g++-5 MODE_X=DEBUG
+      rust: nightly
+      os: linux
+      addons:
+        apt:
+          packages:
+            - g++-5
+            - gcc-5
+            - yasm
+          sources:
+            - ubuntu-toolchain-r-test
+
+    - env: TARGET_X=x86_64-pc-linux-gnu CC_X=gcc-5 CXX_X=g++-5 MODE_X=RELWITHDEBINFO
+      rust: nightly
+      os: linux
+      addons:
+        apt:
+          packages:
+            - g++-5
+            - gcc-5
+            - yasm
+          sources:
+            - ubuntu-toolchain-r-test
+
+    - env: TARGET_X=i586-pc-linux-gnu CC_X=gcc-5 CXX_X=g++-5 MODE_X=DEBUG
+      rust: nightly
+      os: linux
+      addons:
+        apt:
+          packages:
+            - g++-5
+            - g++-5-multilib
+            - gcc-5
+            - gcc-5-multilib
+            - linux-libc-dev:i386
+            - yasm
+          sources:
+            - ubuntu-toolchain-r-test
+
+    - env: TARGET_X=i586-pc-linux-gnu CC_X=gcc-5 CXX_X=g++-5 MODE_X=RELWITHDEBINFO
+      rust: nightly
+      os: linux
+      addons:
+        apt:
+          packages:
+            - g++-5
+            - g++-5-multilib
+            - gcc-5
+            - gcc-5-multilib
+            - linux-libc-dev:i386
+            - yasm
+          sources:
+            - ubuntu-toolchain-r-test
+
+    - env: TARGET_X=x86_64-pc-linux-gnu CC_X=clang-3.6 CXX_X=clang++-3.6 MODE_X=DEBUG
+      rust: nightly
+      os: linux
+      addons:
+        apt:
+          packages:
+            - clang-3.6
+            - yasm
+          sources:
+            - llvm-toolchain-precise-3.6
+            - ubuntu-toolchain-r-test
+
+    - env: TARGET_X=x86_64-pc-linux-gnu CC_X=clang-3.6 CXX_X=clang++-3.6 MODE_X=RELWITHDEBINFO
+      rust: nightly
+      os: linux
+      addons:
+        apt:
+          packages:
+            - clang-3.6
+            - yasm
+          sources:
+            - llvm-toolchain-precise-3.6
+            - ubuntu-toolchain-r-test
+
+    - env: TARGET_X=i586-pc-linux-gnu CC_X=clang-3.6 CXX_X=clang++-3.6 MODE_X=DEBUG
+      rust: nightly
+      os: linux
+      addons:
+        apt:
+          packages:
+            - clang-3.6
+            - g++-multilib
+            - gcc-multilib
+            - libc6-dev-i386
+            - yasm
+          sources:
+            - llvm-toolchain-precise-3.6
+            - ubuntu-toolchain-r-test
+
+    - env: TARGET_X=i586-pc-linux-gnu CC_X=clang-3.6 CXX_X=clang++-3.6 MODE_X=RELWITHDEBINFO
+      rust: nightly
+      os: linux
+      addons:
+        apt:
+          packages:
+            - clang-3.6
+            - g++-multilib
+            - gcc-multilib
+            - libc6-dev-i386
+            - yasm
+          sources:
+            - llvm-toolchain-precise-3.6
+            - ubuntu-toolchain-r-test
+
+    - env: TARGET_X=x86_64-pc-linux-gnu CC_X=clang CXX_X=clang++ MODE_X=DEBUG
+      rust: nightly
+      os: linux
+      addons:
+        apt:
+          packages:
+            - yasm
+
+    - env: TARGET_X=x86_64-pc-linux-gnu CC_X=clang CXX_X=clang++ MODE_X=RELWITHDEBINFO
+      rust: nightly
+      os: linux
+      addons:
+        apt:
+          packages:
+            - yasm
+
+    - env: TARGET_X=i586-pc-linux-gnu CC_X=clang CXX_X=clang++ MODE_X=DEBUG
+      rust: nightly
+      os: linux
+      addons:
+        apt:
+          packages:
+            - g++-multilib
+            - gcc-multilib
+            - libc6-dev-i386
+            - yasm
+          sources:
+            - ubuntu-toolchain-r-test
+
+    - env: TARGET_X=i586-pc-linux-gnu CC_X=clang CXX_X=clang++ MODE_X=RELWITHDEBINFO
+      rust: nightly
+      os: linux
+      addons:
+        apt:
+          packages:
+            - g++-multilib
+            - gcc-multilib
+            - libc6-dev-i386
+            - yasm
+          sources:
+            - ubuntu-toolchain-r-test
+
+    - env: TARGET_X=x86_64-pc-linux-gnu CC_X=gcc-4.9 CXX_X=g++-4.9 MODE_X=DEBUG
+      rust: nightly
+      os: linux
+      addons:
+        apt:
+          packages:
+            - g++-4.9
+            - gcc-4.9
+            - yasm
+          sources:
+            - ubuntu-toolchain-r-test
+
+    - env: TARGET_X=x86_64-pc-linux-gnu CC_X=gcc-4.9 CXX_X=g++-4.9 MODE_X=RELWITHDEBINFO
+      rust: nightly
+      os: linux
+      addons:
+        apt:
+          packages:
+            - g++-4.9
+            - gcc-4.9
+            - yasm
+          sources:
+            - ubuntu-toolchain-r-test
+
+    - env: TARGET_X=x86_64-pc-linux-gnu CC_X=gcc-4.8 CXX_X=g++-4.8 MODE_X=DEBUG
+      rust: nightly
+      os: linux
+      addons:
+        apt:
+          packages:
+            - g++-4.8
+            - gcc-4.8
+            - yasm
+          sources:
+            - ubuntu-toolchain-r-test
+
+    - env: TARGET_X=x86_64-pc-linux-gnu CC_X=gcc-4.8 CXX_X=g++-4.8 MODE_X=RELWITHDEBINFO
+      rust: nightly
+      os: linux
+      addons:
+        apt:
+          packages:
+            - g++-4.8
+            - gcc-4.8
+            - yasm
+          sources:
+            - ubuntu-toolchain-r-test
+
+    - env: TARGET_X=i586-pc-linux-gnu CC_X=gcc-4.8 CXX_X=g++-4.8 MODE_X=DEBUG
+      rust: nightly
+      os: linux
+      addons:
+        apt:
+          packages:
+            - g++-4.8
+            - g++-4.8-multilib
+            - gcc-4.8
+            - gcc-4.8-multilib
+            - linux-libc-dev:i386
+            - yasm
+          sources:
+            - ubuntu-toolchain-r-test
+
+    - env: TARGET_X=i586-pc-linux-gnu CC_X=gcc-4.8 CXX_X=g++-4.8 MODE_X=RELWITHDEBINFO
+      rust: nightly
+      os: linux
+      addons:
+        apt:
+          packages:
+            - g++-4.8
+            - g++-4.8-multilib
+            - gcc-4.8
+            - gcc-4.8-multilib
+            - linux-libc-dev:i386
+            - yasm
+          sources:
+            - ubuntu-toolchain-r-test
+
     - env: TARGET_X=x86_64-apple-darwin CC_X=clang CXX_X=clang++ MODE_X=DEBUG
-      rust: stable
+      rust: beta
       os: osx
 
     - env: TARGET_X=x86_64-apple-darwin CC_X=clang CXX_X=clang++ MODE_X=RELWITHDEBINFO
-      rust: stable
+      rust: beta
       os: osx
 
     - env: TARGET_X=i586-apple-darwin CC_X=clang CXX_X=clang++ MODE_X=DEBUG
@@ -41,285 +621,59 @@ matrix:
       rust: beta
       os: osx
 
-    - env: TARGET_X=i586-apple-darwin CC_X=clang CXX_X=clang++ MODE_X=DEBUG
-      rust: nightly
-      os: osx
-
-    - env: TARGET_X=i586-apple-darwin CC_X=clang CXX_X=clang++ MODE_X=RELWITHDEBINFO
-      rust: nightly
-      os: osx
-
-    - env: TARGET_X=i586-apple-darwin CC_X=clang CXX_X=clang++ MODE_X=DEBUG
-      rust: stable
-      os: osx
-
-    - env: TARGET_X=i586-apple-darwin CC_X=clang CXX_X=clang++ MODE_X=RELWITHDEBINFO
-      rust: stable
-      os: osx
-
-    - env: TARGET_X=x86_64-pc-linux-gnu CC_X=clang-3.6 CXX_X=clang++-3.6 MODE_X=DEBUG
+    - env: TARGET_X=x86_64-pc-linux-gnu CC_X=clang-3.7 CXX_X=clang++-3.7 MODE_X=DEBUG
       rust: beta
       os: linux
       addons:
         apt:
           packages:
-            - clang-3.6
+            - clang-3.7
             - yasm
           sources:
-            - llvm-toolchain-precise-3.6
+            - llvm-toolchain-precise-3.7
             - ubuntu-toolchain-r-test
 
-    - env: TARGET_X=x86_64-pc-linux-gnu CC_X=clang-3.6 CXX_X=clang++-3.6 MODE_X=RELWITHDEBINFO
+    - env: TARGET_X=x86_64-pc-linux-gnu CC_X=clang-3.7 CXX_X=clang++-3.7 MODE_X=RELWITHDEBINFO
       rust: beta
       os: linux
       addons:
         apt:
           packages:
-            - clang-3.6
+            - clang-3.7
             - yasm
           sources:
-            - llvm-toolchain-precise-3.6
+            - llvm-toolchain-precise-3.7
             - ubuntu-toolchain-r-test
 
-    - env: TARGET_X=x86_64-pc-linux-gnu CC_X=clang-3.6 CXX_X=clang++-3.6 MODE_X=DEBUG
-      rust: nightly
-      os: linux
-      addons:
-        apt:
-          packages:
-            - clang-3.6
-            - yasm
-          sources:
-            - llvm-toolchain-precise-3.6
-            - ubuntu-toolchain-r-test
-
-    - env: TARGET_X=x86_64-pc-linux-gnu CC_X=clang-3.6 CXX_X=clang++-3.6 MODE_X=RELWITHDEBINFO
-      rust: nightly
-      os: linux
-      addons:
-        apt:
-          packages:
-            - clang-3.6
-            - yasm
-          sources:
-            - llvm-toolchain-precise-3.6
-            - ubuntu-toolchain-r-test
-
-    - env: TARGET_X=x86_64-pc-linux-gnu CC_X=clang-3.6 CXX_X=clang++-3.6 MODE_X=DEBUG
-      rust: stable
-      os: linux
-      addons:
-        apt:
-          packages:
-            - clang-3.6
-            - yasm
-          sources:
-            - llvm-toolchain-precise-3.6
-            - ubuntu-toolchain-r-test
-
-    - env: TARGET_X=x86_64-pc-linux-gnu CC_X=clang-3.6 CXX_X=clang++-3.6 MODE_X=RELWITHDEBINFO
-      rust: stable
-      os: linux
-      addons:
-        apt:
-          packages:
-            - clang-3.6
-            - yasm
-          sources:
-            - llvm-toolchain-precise-3.6
-            - ubuntu-toolchain-r-test
-
-    - env: TARGET_X=x86_64-pc-linux-gnu CC_X=gcc-4.8 CXX_X=g++-4.8 MODE_X=DEBUG
+    - env: TARGET_X=i586-pc-linux-gnu CC_X=clang-3.7 CXX_X=clang++-3.7 MODE_X=DEBUG
       rust: beta
       os: linux
       addons:
         apt:
           packages:
-            - g++-4.8
-            - gcc-4.8
+            - clang-3.7
+            - g++-multilib
+            - gcc-multilib
+            - libc6-dev-i386
             - yasm
           sources:
+            - llvm-toolchain-precise-3.7
             - ubuntu-toolchain-r-test
 
-    - env: TARGET_X=x86_64-pc-linux-gnu CC_X=gcc-4.8 CXX_X=g++-4.8 MODE_X=RELWITHDEBINFO
+    - env: TARGET_X=i586-pc-linux-gnu CC_X=clang-3.7 CXX_X=clang++-3.7 MODE_X=RELWITHDEBINFO
       rust: beta
       os: linux
       addons:
         apt:
           packages:
-            - g++-4.8
-            - gcc-4.8
+            - clang-3.7
+            - g++-multilib
+            - gcc-multilib
+            - libc6-dev-i386
             - yasm
           sources:
+            - llvm-toolchain-precise-3.7
             - ubuntu-toolchain-r-test
-
-    - env: TARGET_X=x86_64-pc-linux-gnu CC_X=gcc-4.8 CXX_X=g++-4.8 MODE_X=DEBUG
-      rust: nightly
-      os: linux
-      addons:
-        apt:
-          packages:
-            - g++-4.8
-            - gcc-4.8
-            - yasm
-          sources:
-            - ubuntu-toolchain-r-test
-
-    - env: TARGET_X=x86_64-pc-linux-gnu CC_X=gcc-4.8 CXX_X=g++-4.8 MODE_X=RELWITHDEBINFO
-      rust: nightly
-      os: linux
-      addons:
-        apt:
-          packages:
-            - g++-4.8
-            - gcc-4.8
-            - yasm
-          sources:
-            - ubuntu-toolchain-r-test
-
-    - env: TARGET_X=x86_64-pc-linux-gnu CC_X=gcc-4.8 CXX_X=g++-4.8 MODE_X=DEBUG
-      rust: stable
-      os: linux
-      addons:
-        apt:
-          packages:
-            - g++-4.8
-            - gcc-4.8
-            - yasm
-          sources:
-            - ubuntu-toolchain-r-test
-
-    - env: TARGET_X=x86_64-pc-linux-gnu CC_X=gcc-4.8 CXX_X=g++-4.8 MODE_X=RELWITHDEBINFO
-      rust: stable
-      os: linux
-      addons:
-        apt:
-          packages:
-            - g++-4.8
-            - gcc-4.8
-            - yasm
-          sources:
-            - ubuntu-toolchain-r-test
-
-    - env: TARGET_X=x86_64-pc-linux-gnu CC_X=clang-3.5 CXX_X=clang++-3.5 MODE_X=DEBUG
-      rust: beta
-      os: linux
-      addons:
-        apt:
-          packages:
-            - clang-3.5
-            - yasm
-          sources:
-            - llvm-toolchain-precise-3.5
-            - ubuntu-toolchain-r-test
-
-    - env: TARGET_X=x86_64-pc-linux-gnu CC_X=clang-3.5 CXX_X=clang++-3.5 MODE_X=RELWITHDEBINFO
-      rust: beta
-      os: linux
-      addons:
-        apt:
-          packages:
-            - clang-3.5
-            - yasm
-          sources:
-            - llvm-toolchain-precise-3.5
-            - ubuntu-toolchain-r-test
-
-    - env: TARGET_X=x86_64-pc-linux-gnu CC_X=clang-3.5 CXX_X=clang++-3.5 MODE_X=DEBUG
-      rust: nightly
-      os: linux
-      addons:
-        apt:
-          packages:
-            - clang-3.5
-            - yasm
-          sources:
-            - llvm-toolchain-precise-3.5
-            - ubuntu-toolchain-r-test
-
-    - env: TARGET_X=x86_64-pc-linux-gnu CC_X=clang-3.5 CXX_X=clang++-3.5 MODE_X=RELWITHDEBINFO
-      rust: nightly
-      os: linux
-      addons:
-        apt:
-          packages:
-            - clang-3.5
-            - yasm
-          sources:
-            - llvm-toolchain-precise-3.5
-            - ubuntu-toolchain-r-test
-
-    - env: TARGET_X=x86_64-pc-linux-gnu CC_X=clang-3.5 CXX_X=clang++-3.5 MODE_X=DEBUG
-      rust: stable
-      os: linux
-      addons:
-        apt:
-          packages:
-            - clang-3.5
-            - yasm
-          sources:
-            - llvm-toolchain-precise-3.5
-            - ubuntu-toolchain-r-test
-
-    - env: TARGET_X=x86_64-pc-linux-gnu CC_X=clang-3.5 CXX_X=clang++-3.5 MODE_X=RELWITHDEBINFO
-      rust: stable
-      os: linux
-      addons:
-        apt:
-          packages:
-            - clang-3.5
-            - yasm
-          sources:
-            - llvm-toolchain-precise-3.5
-            - ubuntu-toolchain-r-test
-
-    - env: TARGET_X=x86_64-pc-linux-gnu CC_X=clang CXX_X=clang++ MODE_X=DEBUG
-      rust: beta
-      os: linux
-      addons:
-        apt:
-          packages:
-            - yasm
-
-    - env: TARGET_X=x86_64-pc-linux-gnu CC_X=clang CXX_X=clang++ MODE_X=RELWITHDEBINFO
-      rust: beta
-      os: linux
-      addons:
-        apt:
-          packages:
-            - yasm
-
-    - env: TARGET_X=x86_64-pc-linux-gnu CC_X=clang CXX_X=clang++ MODE_X=DEBUG
-      rust: nightly
-      os: linux
-      addons:
-        apt:
-          packages:
-            - yasm
-
-    - env: TARGET_X=x86_64-pc-linux-gnu CC_X=clang CXX_X=clang++ MODE_X=RELWITHDEBINFO
-      rust: nightly
-      os: linux
-      addons:
-        apt:
-          packages:
-            - yasm
-
-    - env: TARGET_X=x86_64-pc-linux-gnu CC_X=clang CXX_X=clang++ MODE_X=DEBUG
-      rust: stable
-      os: linux
-      addons:
-        apt:
-          packages:
-            - yasm
-
-    - env: TARGET_X=x86_64-pc-linux-gnu CC_X=clang CXX_X=clang++ MODE_X=RELWITHDEBINFO
-      rust: stable
-      os: linux
-      addons:
-        apt:
-          packages:
-            - yasm
 
     - env: TARGET_X=x86_64-pc-linux-gnu CC_X=gcc-5 CXX_X=g++-5 MODE_X=DEBUG
       rust: beta
@@ -341,474 +695,6 @@ matrix:
           packages:
             - g++-5
             - gcc-5
-            - yasm
-          sources:
-            - ubuntu-toolchain-r-test
-
-    - env: TARGET_X=x86_64-pc-linux-gnu CC_X=gcc-5 CXX_X=g++-5 MODE_X=DEBUG
-      rust: nightly
-      os: linux
-      addons:
-        apt:
-          packages:
-            - g++-5
-            - gcc-5
-            - yasm
-          sources:
-            - ubuntu-toolchain-r-test
-
-    - env: TARGET_X=x86_64-pc-linux-gnu CC_X=gcc-5 CXX_X=g++-5 MODE_X=RELWITHDEBINFO
-      rust: nightly
-      os: linux
-      addons:
-        apt:
-          packages:
-            - g++-5
-            - gcc-5
-            - yasm
-          sources:
-            - ubuntu-toolchain-r-test
-
-    - env: TARGET_X=x86_64-pc-linux-gnu CC_X=gcc-5 CXX_X=g++-5 MODE_X=DEBUG
-      rust: stable
-      os: linux
-      addons:
-        apt:
-          packages:
-            - g++-5
-            - gcc-5
-            - yasm
-          sources:
-            - ubuntu-toolchain-r-test
-
-    - env: TARGET_X=x86_64-pc-linux-gnu CC_X=gcc-5 CXX_X=g++-5 MODE_X=RELWITHDEBINFO
-      rust: stable
-      os: linux
-      addons:
-        apt:
-          packages:
-            - g++-5
-            - gcc-5
-            - yasm
-          sources:
-            - ubuntu-toolchain-r-test
-
-    - env: TARGET_X=x86_64-pc-linux-gnu CC_X=gcc-4.9 CXX_X=g++-4.9 MODE_X=DEBUG
-      rust: beta
-      os: linux
-      addons:
-        apt:
-          packages:
-            - g++-4.9
-            - gcc-4.9
-            - yasm
-          sources:
-            - ubuntu-toolchain-r-test
-
-    - env: TARGET_X=x86_64-pc-linux-gnu CC_X=gcc-4.9 CXX_X=g++-4.9 MODE_X=RELWITHDEBINFO
-      rust: beta
-      os: linux
-      addons:
-        apt:
-          packages:
-            - g++-4.9
-            - gcc-4.9
-            - yasm
-          sources:
-            - ubuntu-toolchain-r-test
-
-    - env: TARGET_X=x86_64-pc-linux-gnu CC_X=gcc-4.9 CXX_X=g++-4.9 MODE_X=DEBUG
-      rust: nightly
-      os: linux
-      addons:
-        apt:
-          packages:
-            - g++-4.9
-            - gcc-4.9
-            - yasm
-          sources:
-            - ubuntu-toolchain-r-test
-
-    - env: TARGET_X=x86_64-pc-linux-gnu CC_X=gcc-4.9 CXX_X=g++-4.9 MODE_X=RELWITHDEBINFO
-      rust: nightly
-      os: linux
-      addons:
-        apt:
-          packages:
-            - g++-4.9
-            - gcc-4.9
-            - yasm
-          sources:
-            - ubuntu-toolchain-r-test
-
-    - env: TARGET_X=x86_64-pc-linux-gnu CC_X=gcc-4.9 CXX_X=g++-4.9 MODE_X=DEBUG
-      rust: stable
-      os: linux
-      addons:
-        apt:
-          packages:
-            - g++-4.9
-            - gcc-4.9
-            - yasm
-          sources:
-            - ubuntu-toolchain-r-test
-
-    - env: TARGET_X=x86_64-pc-linux-gnu CC_X=gcc-4.9 CXX_X=g++-4.9 MODE_X=RELWITHDEBINFO
-      rust: stable
-      os: linux
-      addons:
-        apt:
-          packages:
-            - g++-4.9
-            - gcc-4.9
-            - yasm
-          sources:
-            - ubuntu-toolchain-r-test
-
-    - env: TARGET_X=i586-pc-linux-gnu CC_X=clang-3.6 CXX_X=clang++-3.6 MODE_X=DEBUG
-      rust: beta
-      os: linux
-      addons:
-        apt:
-          packages:
-            - clang-3.6
-            - g++-multilib
-            - gcc-multilib
-            - libc6-dev-i386
-            - yasm
-          sources:
-            - llvm-toolchain-precise-3.6
-            - ubuntu-toolchain-r-test
-
-    - env: TARGET_X=i586-pc-linux-gnu CC_X=clang-3.6 CXX_X=clang++-3.6 MODE_X=RELWITHDEBINFO
-      rust: beta
-      os: linux
-      addons:
-        apt:
-          packages:
-            - clang-3.6
-            - g++-multilib
-            - gcc-multilib
-            - libc6-dev-i386
-            - yasm
-          sources:
-            - llvm-toolchain-precise-3.6
-            - ubuntu-toolchain-r-test
-
-    - env: TARGET_X=i586-pc-linux-gnu CC_X=clang-3.6 CXX_X=clang++-3.6 MODE_X=DEBUG
-      rust: nightly
-      os: linux
-      addons:
-        apt:
-          packages:
-            - clang-3.6
-            - g++-multilib
-            - gcc-multilib
-            - libc6-dev-i386
-            - yasm
-          sources:
-            - llvm-toolchain-precise-3.6
-            - ubuntu-toolchain-r-test
-
-    - env: TARGET_X=i586-pc-linux-gnu CC_X=clang-3.6 CXX_X=clang++-3.6 MODE_X=RELWITHDEBINFO
-      rust: nightly
-      os: linux
-      addons:
-        apt:
-          packages:
-            - clang-3.6
-            - g++-multilib
-            - gcc-multilib
-            - libc6-dev-i386
-            - yasm
-          sources:
-            - llvm-toolchain-precise-3.6
-            - ubuntu-toolchain-r-test
-
-    - env: TARGET_X=i586-pc-linux-gnu CC_X=clang-3.6 CXX_X=clang++-3.6 MODE_X=DEBUG
-      rust: stable
-      os: linux
-      addons:
-        apt:
-          packages:
-            - clang-3.6
-            - g++-multilib
-            - gcc-multilib
-            - libc6-dev-i386
-            - yasm
-          sources:
-            - llvm-toolchain-precise-3.6
-            - ubuntu-toolchain-r-test
-
-    - env: TARGET_X=i586-pc-linux-gnu CC_X=clang-3.6 CXX_X=clang++-3.6 MODE_X=RELWITHDEBINFO
-      rust: stable
-      os: linux
-      addons:
-        apt:
-          packages:
-            - clang-3.6
-            - g++-multilib
-            - gcc-multilib
-            - libc6-dev-i386
-            - yasm
-          sources:
-            - llvm-toolchain-precise-3.6
-            - ubuntu-toolchain-r-test
-
-    - env: TARGET_X=i586-pc-linux-gnu CC_X=gcc-4.8 CXX_X=g++-4.8 MODE_X=DEBUG
-      rust: beta
-      os: linux
-      addons:
-        apt:
-          packages:
-            - g++-4.8
-            - g++-4.8-multilib
-            - gcc-4.8
-            - gcc-4.8-multilib
-            - linux-libc-dev:i386
-            - yasm
-          sources:
-            - ubuntu-toolchain-r-test
-
-    - env: TARGET_X=i586-pc-linux-gnu CC_X=gcc-4.8 CXX_X=g++-4.8 MODE_X=RELWITHDEBINFO
-      rust: beta
-      os: linux
-      addons:
-        apt:
-          packages:
-            - g++-4.8
-            - g++-4.8-multilib
-            - gcc-4.8
-            - gcc-4.8-multilib
-            - linux-libc-dev:i386
-            - yasm
-          sources:
-            - ubuntu-toolchain-r-test
-
-    - env: TARGET_X=i586-pc-linux-gnu CC_X=gcc-4.8 CXX_X=g++-4.8 MODE_X=DEBUG
-      rust: nightly
-      os: linux
-      addons:
-        apt:
-          packages:
-            - g++-4.8
-            - g++-4.8-multilib
-            - gcc-4.8
-            - gcc-4.8-multilib
-            - linux-libc-dev:i386
-            - yasm
-          sources:
-            - ubuntu-toolchain-r-test
-
-    - env: TARGET_X=i586-pc-linux-gnu CC_X=gcc-4.8 CXX_X=g++-4.8 MODE_X=RELWITHDEBINFO
-      rust: nightly
-      os: linux
-      addons:
-        apt:
-          packages:
-            - g++-4.8
-            - g++-4.8-multilib
-            - gcc-4.8
-            - gcc-4.8-multilib
-            - linux-libc-dev:i386
-            - yasm
-          sources:
-            - ubuntu-toolchain-r-test
-
-    - env: TARGET_X=i586-pc-linux-gnu CC_X=gcc-4.8 CXX_X=g++-4.8 MODE_X=DEBUG
-      rust: stable
-      os: linux
-      addons:
-        apt:
-          packages:
-            - g++-4.8
-            - g++-4.8-multilib
-            - gcc-4.8
-            - gcc-4.8-multilib
-            - linux-libc-dev:i386
-            - yasm
-          sources:
-            - ubuntu-toolchain-r-test
-
-    - env: TARGET_X=i586-pc-linux-gnu CC_X=gcc-4.8 CXX_X=g++-4.8 MODE_X=RELWITHDEBINFO
-      rust: stable
-      os: linux
-      addons:
-        apt:
-          packages:
-            - g++-4.8
-            - g++-4.8-multilib
-            - gcc-4.8
-            - gcc-4.8-multilib
-            - linux-libc-dev:i386
-            - yasm
-          sources:
-            - ubuntu-toolchain-r-test
-
-    - env: TARGET_X=i586-pc-linux-gnu CC_X=clang-3.5 CXX_X=clang++-3.5 MODE_X=DEBUG
-      rust: beta
-      os: linux
-      addons:
-        apt:
-          packages:
-            - clang-3.5
-            - g++-multilib
-            - gcc-multilib
-            - libc6-dev-i386
-            - yasm
-          sources:
-            - llvm-toolchain-precise-3.5
-            - ubuntu-toolchain-r-test
-
-    - env: TARGET_X=i586-pc-linux-gnu CC_X=clang-3.5 CXX_X=clang++-3.5 MODE_X=RELWITHDEBINFO
-      rust: beta
-      os: linux
-      addons:
-        apt:
-          packages:
-            - clang-3.5
-            - g++-multilib
-            - gcc-multilib
-            - libc6-dev-i386
-            - yasm
-          sources:
-            - llvm-toolchain-precise-3.5
-            - ubuntu-toolchain-r-test
-
-    - env: TARGET_X=i586-pc-linux-gnu CC_X=clang-3.5 CXX_X=clang++-3.5 MODE_X=DEBUG
-      rust: nightly
-      os: linux
-      addons:
-        apt:
-          packages:
-            - clang-3.5
-            - g++-multilib
-            - gcc-multilib
-            - libc6-dev-i386
-            - yasm
-          sources:
-            - llvm-toolchain-precise-3.5
-            - ubuntu-toolchain-r-test
-
-    - env: TARGET_X=i586-pc-linux-gnu CC_X=clang-3.5 CXX_X=clang++-3.5 MODE_X=RELWITHDEBINFO
-      rust: nightly
-      os: linux
-      addons:
-        apt:
-          packages:
-            - clang-3.5
-            - g++-multilib
-            - gcc-multilib
-            - libc6-dev-i386
-            - yasm
-          sources:
-            - llvm-toolchain-precise-3.5
-            - ubuntu-toolchain-r-test
-
-    - env: TARGET_X=i586-pc-linux-gnu CC_X=clang-3.5 CXX_X=clang++-3.5 MODE_X=DEBUG
-      rust: stable
-      os: linux
-      addons:
-        apt:
-          packages:
-            - clang-3.5
-            - g++-multilib
-            - gcc-multilib
-            - libc6-dev-i386
-            - yasm
-          sources:
-            - llvm-toolchain-precise-3.5
-            - ubuntu-toolchain-r-test
-
-    - env: TARGET_X=i586-pc-linux-gnu CC_X=clang-3.5 CXX_X=clang++-3.5 MODE_X=RELWITHDEBINFO
-      rust: stable
-      os: linux
-      addons:
-        apt:
-          packages:
-            - clang-3.5
-            - g++-multilib
-            - gcc-multilib
-            - libc6-dev-i386
-            - yasm
-          sources:
-            - llvm-toolchain-precise-3.5
-            - ubuntu-toolchain-r-test
-
-    - env: TARGET_X=i586-pc-linux-gnu CC_X=clang CXX_X=clang++ MODE_X=DEBUG
-      rust: beta
-      os: linux
-      addons:
-        apt:
-          packages:
-            - g++-multilib
-            - gcc-multilib
-            - libc6-dev-i386
-            - yasm
-          sources:
-            - ubuntu-toolchain-r-test
-
-    - env: TARGET_X=i586-pc-linux-gnu CC_X=clang CXX_X=clang++ MODE_X=RELWITHDEBINFO
-      rust: beta
-      os: linux
-      addons:
-        apt:
-          packages:
-            - g++-multilib
-            - gcc-multilib
-            - libc6-dev-i386
-            - yasm
-          sources:
-            - ubuntu-toolchain-r-test
-
-    - env: TARGET_X=i586-pc-linux-gnu CC_X=clang CXX_X=clang++ MODE_X=DEBUG
-      rust: nightly
-      os: linux
-      addons:
-        apt:
-          packages:
-            - g++-multilib
-            - gcc-multilib
-            - libc6-dev-i386
-            - yasm
-          sources:
-            - ubuntu-toolchain-r-test
-
-    - env: TARGET_X=i586-pc-linux-gnu CC_X=clang CXX_X=clang++ MODE_X=RELWITHDEBINFO
-      rust: nightly
-      os: linux
-      addons:
-        apt:
-          packages:
-            - g++-multilib
-            - gcc-multilib
-            - libc6-dev-i386
-            - yasm
-          sources:
-            - ubuntu-toolchain-r-test
-
-    - env: TARGET_X=i586-pc-linux-gnu CC_X=clang CXX_X=clang++ MODE_X=DEBUG
-      rust: stable
-      os: linux
-      addons:
-        apt:
-          packages:
-            - g++-multilib
-            - gcc-multilib
-            - libc6-dev-i386
-            - yasm
-          sources:
-            - ubuntu-toolchain-r-test
-
-    - env: TARGET_X=i586-pc-linux-gnu CC_X=clang CXX_X=clang++ MODE_X=RELWITHDEBINFO
-      rust: stable
-      os: linux
-      addons:
-        apt:
-          packages:
-            - g++-multilib
-            - gcc-multilib
-            - libc6-dev-i386
             - yasm
           sources:
             - ubuntu-toolchain-r-test
@@ -843,61 +729,175 @@ matrix:
           sources:
             - ubuntu-toolchain-r-test
 
-    - env: TARGET_X=i586-pc-linux-gnu CC_X=gcc-5 CXX_X=g++-5 MODE_X=DEBUG
-      rust: nightly
+    - env: TARGET_X=x86_64-pc-linux-gnu CC_X=clang-3.6 CXX_X=clang++-3.6 MODE_X=DEBUG
+      rust: beta
       os: linux
       addons:
         apt:
           packages:
-            - g++-5
-            - g++-5-multilib
-            - gcc-5
-            - gcc-5-multilib
+            - clang-3.6
+            - yasm
+          sources:
+            - llvm-toolchain-precise-3.6
+            - ubuntu-toolchain-r-test
+
+    - env: TARGET_X=x86_64-pc-linux-gnu CC_X=clang-3.6 CXX_X=clang++-3.6 MODE_X=RELWITHDEBINFO
+      rust: beta
+      os: linux
+      addons:
+        apt:
+          packages:
+            - clang-3.6
+            - yasm
+          sources:
+            - llvm-toolchain-precise-3.6
+            - ubuntu-toolchain-r-test
+
+    - env: TARGET_X=i586-pc-linux-gnu CC_X=clang-3.6 CXX_X=clang++-3.6 MODE_X=DEBUG
+      rust: beta
+      os: linux
+      addons:
+        apt:
+          packages:
+            - clang-3.6
+            - g++-multilib
+            - gcc-multilib
+            - libc6-dev-i386
+            - yasm
+          sources:
+            - llvm-toolchain-precise-3.6
+            - ubuntu-toolchain-r-test
+
+    - env: TARGET_X=i586-pc-linux-gnu CC_X=clang-3.6 CXX_X=clang++-3.6 MODE_X=RELWITHDEBINFO
+      rust: beta
+      os: linux
+      addons:
+        apt:
+          packages:
+            - clang-3.6
+            - g++-multilib
+            - gcc-multilib
+            - libc6-dev-i386
+            - yasm
+          sources:
+            - llvm-toolchain-precise-3.6
+            - ubuntu-toolchain-r-test
+
+    - env: TARGET_X=x86_64-pc-linux-gnu CC_X=clang CXX_X=clang++ MODE_X=DEBUG
+      rust: beta
+      os: linux
+      addons:
+        apt:
+          packages:
+            - yasm
+
+    - env: TARGET_X=x86_64-pc-linux-gnu CC_X=clang CXX_X=clang++ MODE_X=RELWITHDEBINFO
+      rust: beta
+      os: linux
+      addons:
+        apt:
+          packages:
+            - yasm
+
+    - env: TARGET_X=i586-pc-linux-gnu CC_X=clang CXX_X=clang++ MODE_X=DEBUG
+      rust: beta
+      os: linux
+      addons:
+        apt:
+          packages:
+            - g++-multilib
+            - gcc-multilib
+            - libc6-dev-i386
+            - yasm
+          sources:
+            - ubuntu-toolchain-r-test
+
+    - env: TARGET_X=i586-pc-linux-gnu CC_X=clang CXX_X=clang++ MODE_X=RELWITHDEBINFO
+      rust: beta
+      os: linux
+      addons:
+        apt:
+          packages:
+            - g++-multilib
+            - gcc-multilib
+            - libc6-dev-i386
+            - yasm
+          sources:
+            - ubuntu-toolchain-r-test
+
+    - env: TARGET_X=x86_64-pc-linux-gnu CC_X=gcc-4.9 CXX_X=g++-4.9 MODE_X=DEBUG
+      rust: beta
+      os: linux
+      addons:
+        apt:
+          packages:
+            - g++-4.9
+            - gcc-4.9
+            - yasm
+          sources:
+            - ubuntu-toolchain-r-test
+
+    - env: TARGET_X=x86_64-pc-linux-gnu CC_X=gcc-4.9 CXX_X=g++-4.9 MODE_X=RELWITHDEBINFO
+      rust: beta
+      os: linux
+      addons:
+        apt:
+          packages:
+            - g++-4.9
+            - gcc-4.9
+            - yasm
+          sources:
+            - ubuntu-toolchain-r-test
+
+    - env: TARGET_X=x86_64-pc-linux-gnu CC_X=gcc-4.8 CXX_X=g++-4.8 MODE_X=DEBUG
+      rust: beta
+      os: linux
+      addons:
+        apt:
+          packages:
+            - g++-4.8
+            - gcc-4.8
+            - yasm
+          sources:
+            - ubuntu-toolchain-r-test
+
+    - env: TARGET_X=x86_64-pc-linux-gnu CC_X=gcc-4.8 CXX_X=g++-4.8 MODE_X=RELWITHDEBINFO
+      rust: beta
+      os: linux
+      addons:
+        apt:
+          packages:
+            - g++-4.8
+            - gcc-4.8
+            - yasm
+          sources:
+            - ubuntu-toolchain-r-test
+
+    - env: TARGET_X=i586-pc-linux-gnu CC_X=gcc-4.8 CXX_X=g++-4.8 MODE_X=DEBUG
+      rust: beta
+      os: linux
+      addons:
+        apt:
+          packages:
+            - g++-4.8
+            - g++-4.8-multilib
+            - gcc-4.8
+            - gcc-4.8-multilib
             - linux-libc-dev:i386
             - yasm
           sources:
             - ubuntu-toolchain-r-test
 
-    - env: TARGET_X=i586-pc-linux-gnu CC_X=gcc-5 CXX_X=g++-5 MODE_X=RELWITHDEBINFO
-      rust: nightly
+    - env: TARGET_X=i586-pc-linux-gnu CC_X=gcc-4.8 CXX_X=g++-4.8 MODE_X=RELWITHDEBINFO
+      rust: beta
       os: linux
       addons:
         apt:
           packages:
-            - g++-5
-            - g++-5-multilib
-            - gcc-5
-            - gcc-5-multilib
-            - linux-libc-dev:i386
-            - yasm
-          sources:
-            - ubuntu-toolchain-r-test
-
-    - env: TARGET_X=i586-pc-linux-gnu CC_X=gcc-5 CXX_X=g++-5 MODE_X=DEBUG
-      rust: stable
-      os: linux
-      addons:
-        apt:
-          packages:
-            - g++-5
-            - g++-5-multilib
-            - gcc-5
-            - gcc-5-multilib
-            - linux-libc-dev:i386
-            - yasm
-          sources:
-            - ubuntu-toolchain-r-test
-
-    - env: TARGET_X=i586-pc-linux-gnu CC_X=gcc-5 CXX_X=g++-5 MODE_X=RELWITHDEBINFO
-      rust: stable
-      os: linux
-      addons:
-        apt:
-          packages:
-            - g++-5
-            - g++-5-multilib
-            - gcc-5
-            - gcc-5-multilib
+            - g++-4.8
+            - g++-4.8-multilib
+            - gcc-4.8
+            - gcc-4.8-multilib
             - linux-libc-dev:i386
             - yasm
           sources:
