@@ -369,19 +369,7 @@ int tls1_change_cipher_state(SSL *s, int which) {
       evp_aead_seal, ssl3_version_from_wire(s, s->version),
       s->s3->tmp.new_cipher, key, key_len, mac_secret, mac_secret_len, iv,
       iv_len);
-  if (s->aead_write_ctx == NULL) {
-    return 0;
-  }
-
-  s->s3->need_record_splitting = 0;
-  if (!SSL_USE_EXPLICIT_IV(s) &&
-      (s->mode & SSL_MODE_CBC_RECORD_SPLITTING) != 0 &&
-      SSL_CIPHER_is_block_cipher(s->s3->tmp.new_cipher)) {
-    /* Enable 1/n-1 record-splitting to randomize the IV. See
-     * https://www.openssl.org/~bodo/tls-cbc.txt and the BEAST attack. */
-    s->s3->need_record_splitting = 1;
-  }
-  return 1;
+  return s->aead_write_ctx != NULL;
 }
 
 int tls1_setup_key_block(SSL *s) {

@@ -3918,9 +3918,6 @@ typedef struct ssl3_state_st {
   uint8_t server_random[SSL3_RANDOM_SIZE];
   uint8_t client_random[SSL3_RANDOM_SIZE];
 
-  /* flags for countermeasure against known-IV weakness */
-  int need_record_splitting;
-
   /* have_version is true if the connection's final version is known. Otherwise
    * the version has not been negotiated yet. */
   char have_version;

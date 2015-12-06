@@ -122,6 +122,14 @@
  * forever. */
 static const uint8_t kMaxEmptyRecords = 32;
 
+/* ssl_needs_record_splitting returns one if |ssl|'s current outgoing cipher
+ * state needs record-splitting and zero otherwise. */
+static int ssl_needs_record_splitting(const SSL *ssl) {
+  return !SSL_USE_EXPLICIT_IV(ssl) && ssl->aead_write_ctx != NULL &&
+         (ssl->mode & SSL_MODE_CBC_RECORD_SPLITTING) != 0 &&
+         SSL_CIPHER_is_block_cipher(ssl->aead_write_ctx->cipher);
+}
+
 size_t ssl_record_prefix_len(const SSL *ssl) {
   if (SSL_IS_DTLS(ssl)) {
     return DTLS1_RT_HEADER_LENGTH +
@@ -139,7 +147,7 @@ size_t ssl_seal_prefix_len(const SSL *ssl) {
   } else {
     size_t ret = SSL3_RT_HEADER_LENGTH +
                  SSL_AEAD_CTX_explicit_nonce_len(ssl->aead_write_ctx);
-    if (ssl->s3->need_record_splitting) {
+    if (ssl_needs_record_splitting(ssl)) {
       ret += SSL3_RT_HEADER_LENGTH;
       ret += ssl_cipher_get_record_split_len(ssl->aead_write_ctx->cipher);
     }
@@ -154,7 +162,7 @@ size_t ssl_max_seal_overhead(const SSL *ssl) {
   } else {
     size_t ret = SSL3_RT_HEADER_LENGTH +
                  SSL_AEAD_CTX_max_overhead(ssl->aead_write_ctx);
-    if (ssl->s3->need_record_splitting) {
+    if (ssl_needs_record_splitting(ssl)) {
       ret *= 2;
     }
     return ret;
@@ -300,8 +308,8 @@ static int do_seal_record(SSL *ssl, uint8_t *out, size_t *out_len,
 int tls_seal_record(SSL *ssl, uint8_t *out, size_t *out_len, size_t max_out,
                     uint8_t type, const uint8_t *in, size_t in_len) {
   size_t frag_len = 0;
-  if (ssl->s3->need_record_splitting && type == SSL3_RT_APPLICATION_DATA &&
-      in_len > 1) {
+  if (type == SSL3_RT_APPLICATION_DATA && in_len > 1 &&
+      ssl_needs_record_splitting(ssl)) {
     /* |do_seal_record| will notice if it clobbers |in[0]|, but not if it
      * aliases the rest of |in|. */
     if (in + 1 <= out && out < in + in_len) {
