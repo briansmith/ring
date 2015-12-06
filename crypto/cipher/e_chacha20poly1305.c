@@ -81,10 +81,11 @@ static void aead_poly1305(aead_poly1305_update update,
   CRYPTO_poly1305_finish(&ctx, tag);
 }
 
-static int seal(aead_poly1305_update poly1305_update, const void *ctx_buf,
-                uint8_t *out, size_t *out_len, size_t max_out_len,
-                const uint8_t nonce[12], const uint8_t *in, size_t in_len,
-                const uint8_t *ad, size_t ad_len) {
+static int seal_impl(aead_poly1305_update poly1305_update,
+                     const void *ctx_buf, uint8_t *out, size_t *out_len,
+                     size_t max_out_len, const uint8_t nonce[12],
+                     const uint8_t *in, size_t in_len, const uint8_t *ad,
+                     size_t ad_len) {
   aead_assert_open_seal_preconditions(alignof(struct aead_chacha20_poly1305_ctx),
                                       ctx_buf, out, out_len, nonce, in, in_len,
                                       ad, ad_len);
@@ -109,10 +110,11 @@ static int seal(aead_poly1305_update poly1305_update, const void *ctx_buf,
   return 1;
 }
 
-static int open(aead_poly1305_update poly1305_update, const void *ctx_buf,
-                uint8_t *out, size_t *out_len, size_t max_out_len,
-                const uint8_t nonce[12], const uint8_t *in, size_t in_len,
-                const uint8_t *ad, size_t ad_len) {
+static int open_impl(aead_poly1305_update poly1305_update,
+                     const void *ctx_buf, uint8_t *out, size_t *out_len,
+                     size_t max_out_len, const uint8_t nonce[12],
+                     const uint8_t *in, size_t in_len, const uint8_t *ad,
+                     size_t ad_len) {
   aead_assert_open_seal_preconditions(alignof(struct aead_chacha20_poly1305_ctx),
                                       ctx_buf, out, out_len, nonce, in, in_len,
                                       ad, ad_len);
@@ -166,8 +168,8 @@ int evp_aead_chacha20_poly1305_seal(const void *ctx_buf, uint8_t *out,
                                     const uint8_t *nonce, const uint8_t *in,
                                     size_t in_len, const uint8_t *ad,
                                     size_t ad_len) {
-  return seal(poly1305_update, ctx_buf, out, out_len, max_out_len, nonce, in,
-              in_len, ad, ad_len);
+  return seal_impl(poly1305_update, ctx_buf, out, out_len, max_out_len, nonce, in,
+                   in_len, ad, ad_len);
 }
 
 int evp_aead_chacha20_poly1305_open(const void *ctx_buf,
@@ -176,8 +178,8 @@ int evp_aead_chacha20_poly1305_open(const void *ctx_buf,
                                     const uint8_t *nonce,
                                     const uint8_t *in, size_t in_len,
                                     const uint8_t *ad, size_t ad_len) {
-  return open(poly1305_update, ctx_buf, out, out_len, max_out_len, nonce, in,
-              in_len, ad, ad_len);
+  return open_impl(poly1305_update, ctx_buf, out, out_len, max_out_len, nonce, in,
+                   in_len, ad, ad_len);
 }
 
 static void poly1305_update_old(poly1305_state *ctx, const uint8_t *ad,
@@ -193,14 +195,14 @@ int evp_aead_chacha20_poly1305_old_seal(
     const void *ctx_buf, uint8_t *out, size_t *out_len, size_t max_out_len,
     const uint8_t *nonce, const uint8_t *in, size_t in_len,  uint8_t *ad,
     size_t ad_len) {
-  return seal(poly1305_update_old, ctx_buf, out, out_len, max_out_len, nonce,
-              in, in_len, ad, ad_len);
+  return seal_impl(poly1305_update_old, ctx_buf, out, out_len, max_out_len,
+                   nonce, in, in_len, ad, ad_len);
 }
 
 int evp_aead_chacha20_poly1305_old_open(
     const void *ctx_buf, uint8_t *out, size_t *out_len, size_t max_out_len,
     const uint8_t *nonce, const uint8_t *in, size_t in_len,  uint8_t *ad,
     size_t ad_len) {
-  return open(poly1305_update_old, ctx_buf, out, out_len, max_out_len, nonce,
-              in, in_len, ad, ad_len);
+  return open_impl(poly1305_update_old, ctx_buf, out, out_len, max_out_len,
+                   nonce, in, in_len, ad, ad_len);
 }
