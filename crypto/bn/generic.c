@@ -69,7 +69,7 @@
     (!defined(OPENSSL_X86_64) && !defined(OPENSSL_X86)) || \
     (defined(OPENSSL_X86_64) && defined(OPENSSL_WINDOWS))
 
-#ifdef BN_LLONG
+#ifdef BN_ULLONG
 #define mul_add(r, a, w, c)             \
   {                                     \
     BN_ULLONG t;                        \
@@ -216,9 +216,9 @@
     (c) = h & BN_MASK2;       \
     (r) = l & BN_MASK2;       \
   }
-#endif /* !BN_LLONG */
+#endif /* !BN_ULLONG */
 
-#if defined(BN_LLONG) || defined(BN_UMULT_HIGH)
+#if defined(BN_ULLONG) || defined(BN_UMULT_HIGH)
 
 BN_ULONG bn_mul_add_words(BN_ULONG *rp, const BN_ULONG *ap, int num,
                           BN_ULONG w) {
@@ -298,7 +298,7 @@ void bn_sqr_words(BN_ULONG *r, const BN_ULONG *a, int n) {
   }
 }
 
-#else /* !(defined(BN_LLONG) || defined(BN_UMULT_HIGH)) */
+#else /* !(defined(BN_ULLONG) || defined(BN_UMULT_HIGH)) */
 
 BN_ULONG bn_mul_add_words(BN_ULONG *rp, const BN_ULONG *ap, int num,
                           BN_ULONG w) {
@@ -384,9 +384,9 @@ void bn_sqr_words(BN_ULONG *r, const BN_ULONG *a, int n) {
   }
 }
 
-#endif /* !(defined(BN_LLONG) || defined(BN_UMULT_HIGH)) */
+#endif /* !(defined(BN_ULLONG) || defined(BN_UMULT_HIGH)) */
 
-#if defined(BN_LLONG)
+#if defined(BN_ULLONG)
 
 BN_ULONG bn_div_words(BN_ULONG h, BN_ULONG l, BN_ULONG d) {
   return (BN_ULONG)(((((BN_ULLONG)h) << BN_BITS2) | l) / (BN_ULLONG)d);
@@ -464,9 +464,9 @@ BN_ULONG bn_div_words(BN_ULONG h, BN_ULONG l, BN_ULONG d) {
   return ret;
 }
 
-#endif /* !defined(BN_LLONG) */
+#endif /* !defined(BN_ULLONG) */
 
-#ifdef BN_LLONG
+#ifdef BN_ULLONG
 BN_ULONG bn_add_words(BN_ULONG *r, const BN_ULONG *a, const BN_ULONG *b,
                       int n) {
   BN_ULLONG ll = 0;
@@ -506,7 +506,7 @@ BN_ULONG bn_add_words(BN_ULONG *r, const BN_ULONG *a, const BN_ULONG *b,
   return (BN_ULONG)ll;
 }
 
-#else /* !BN_LLONG */
+#else /* !BN_ULLONG */
 
 BN_ULONG bn_add_words(BN_ULONG *r, const BN_ULONG *a, const BN_ULONG *b,
                       int n) {
@@ -563,7 +563,7 @@ BN_ULONG bn_add_words(BN_ULONG *r, const BN_ULONG *a, const BN_ULONG *b,
   return (BN_ULONG)c;
 }
 
-#endif /* !BN_LLONG */
+#endif /* !BN_ULLONG */
 
 BN_ULONG bn_sub_words(BN_ULONG *r, const BN_ULONG *a, const BN_ULONG *b,
                       int n) {
@@ -625,7 +625,7 @@ BN_ULONG bn_sub_words(BN_ULONG *r, const BN_ULONG *a, const BN_ULONG *b,
 /* sqr_add_c(a,i,c0,c1,c2)  -- c+=a[i]^2 for three word number c=(c2,c1,c0) */
 /* sqr_add_c2(a,i,c0,c1,c2) -- c+=2*a[i]*a[j] for three word number c=(c2,c1,c0) */
 
-#ifdef BN_LLONG
+#ifdef BN_ULLONG
 
 /* Keep in mind that additions to multiplication result can not overflow,
  * because its high half cannot be all-ones. */
@@ -716,7 +716,7 @@ BN_ULONG bn_sub_words(BN_ULONG *r, const BN_ULONG *a, const BN_ULONG *b,
 
 #define sqr_add_c2(a, i, j, c0, c1, c2) mul_add_c2((a)[i], (a)[j], c0, c1, c2)
 
-#else /* !BN_LLONG */
+#else /* !BN_ULLONG */
 
 /* Keep in mind that additions to hi can not overflow, because
  * the high word of a multiplication result cannot be all-ones. */
@@ -768,7 +768,7 @@ BN_ULONG bn_sub_words(BN_ULONG *r, const BN_ULONG *a, const BN_ULONG *b,
   } while (0)
 
 #define sqr_add_c2(a, i, j, c0, c1, c2) mul_add_c2((a)[i], (a)[j], c0, c1, c2)
-#endif /* !BN_LLONG */
+#endif /* !BN_ULLONG */
 
 void bn_mul_comba8(BN_ULONG *r, BN_ULONG *a, BN_ULONG *b) {
   BN_ULONG c1, c2, c3;
