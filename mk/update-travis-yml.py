@@ -26,6 +26,9 @@ rusts = [
 ]
 
 linux_compilers = [
+    # Pre-release of clang.
+    "clang-3.8",
+
     # Newest clang and GCC.
     "clang-3.7",
     "gcc-5",
