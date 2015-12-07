@@ -140,27 +140,6 @@ extern "C" {
 #error "HASH_MAKE_STRING must be defined!"
 #endif
 
-#undef ROTATE
-#if defined(_MSC_VER)
-#define ROTATE(a, n) _lrotl(a, n)
-#elif defined(__ICC)
-#define ROTATE(a, n) _rotl(a, n)
-#elif defined(__GNUC__) && __GNUC__ >= 2 && !defined(OPENSSL_NO_ASM)
-#if defined(OPENSSL_X86) || defined(OPENSSL_X86_64)
-/* Note this macro requires |n| be a constant. */
-#define ROTATE(a, n)                                                    \
-  ({                                                                    \
-    register uint32_t ret;                                              \
-    asm("roll %1, %0" : "=r"(ret) : "I"(n), "0"((uint32_t)(a)) : "cc"); \
-    ret;                                                                \
-  })
-#endif /* OPENSSL_X86 || OPENSSL_X86_64 */
-#endif /* COMPILER */
-
-#ifndef ROTATE
-#define ROTATE(a, n) (((a) << (n)) | (((a)&0xffffffff) >> (32 - (n))))
-#endif
-
 #if defined(DATA_ORDER_IS_BIG_ENDIAN)
 
 #if !defined(PEDANTIC) && defined(__GNUC__) && __GNUC__ >= 2 && \

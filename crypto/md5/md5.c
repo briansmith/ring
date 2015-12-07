@@ -127,6 +127,8 @@ void md5_block_data_order(uint32_t *state, const uint8_t *data, size_t num);
 #define	H(b,c,d)	((b) ^ (c) ^ (d))
 #define	I(b,c,d)	(((~(d)) | (b)) ^ (c))
 
+#define ROTATE(a, n) (((a) << (n)) | ((a) >> (32 - (n))))
+
 #define R0(a,b,c,d,k,s,t) { \
 	a+=((k)+(t)+F((b),(c),(d))); \
 	a=ROTATE(a,s); \

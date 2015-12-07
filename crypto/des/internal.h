@@ -202,24 +202,7 @@ how to use xors :-) I got it to its final state.
 #define ITERATIONS 16
 #define HALF_ITERATIONS 8
 
-#if defined(_MSC_VER)
-#define ROTATE(a, n) (_lrotr(a, n))
-#elif defined(__ICC)
-#define ROTATE(a, n) (_rotr(a, n))
-#elif defined(__GNUC__) && __GNUC__ >= 2 && !defined(OPENSSL_NO_ASM) && \
-      !defined(__STRICT_ANSI__) && \
-      (defined(OPENSSL_X86) || defined(OPENSSL_X86_64))
-#define ROTATE(a, n)                                       \
-  ({                                                       \
-    unsigned int ret;                                      \
-    asm("rorl %1,%0" : "=r"(ret) : "I"(n), "0"(a) : "cc"); \
-    ret;                                                   \
-  })
-#endif
-
-#ifndef ROTATE
 #define ROTATE(a, n) (((a) >> (n)) + ((a) << (32 - (n))))
-#endif
 
 
 #if defined(__cplusplus)

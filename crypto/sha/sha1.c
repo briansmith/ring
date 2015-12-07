@@ -117,6 +117,7 @@ uint8_t *SHA1(const uint8_t *data, size_t len, uint8_t *out) {
 #define HASH_TRANSFORM SHA1_Transform
 #define HASH_FINAL SHA1_Final
 #define HASH_BLOCK_DATA_ORDER sha1_block_data_order
+#define ROTATE(a, n) (((a) << (n)) | ((a) >> (32 - (n))))
 #define Xupdate(a, ix, ia, ib, ic, id) \
   ((a) = (ia ^ ib ^ ic ^ id), ix = (a) = ROTATE((a), 1))
 

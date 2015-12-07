@@ -103,6 +103,8 @@ void md4_block_data_order(uint32_t *state, const uint8_t *data, size_t num);
 #define G(b, c, d) (((b) & (c)) | ((b) & (d)) | ((c) & (d)))
 #define H(b, c, d) ((b) ^ (c) ^ (d))
 
+#define ROTATE(a, n) (((a) << (n)) | ((a) >> (32 - (n))))
+
 #define R0(a, b, c, d, k, s, t)        \
   {                                    \
     a += ((k) + (t)+F((b), (c), (d))); \
