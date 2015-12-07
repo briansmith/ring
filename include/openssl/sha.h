@@ -116,7 +116,7 @@ struct sha_state_st {
 #endif
   uint32_t Nl, Nh;
   uint32_t data[16];
-  unsigned int num;
+  unsigned num;
 };
 
 
@@ -177,7 +177,7 @@ struct sha256_state_st {
   uint32_t h[8];
   uint32_t Nl, Nh;
   uint32_t data[16];
-  unsigned int num, md_len;
+  unsigned num, md_len;
 };
 
 
@@ -245,7 +245,7 @@ struct sha512_state_st {
     uint64_t d[16];
     uint8_t p[128];
   } u;
-  unsigned int num, md_len;
+  unsigned num, md_len;
 };
 
 

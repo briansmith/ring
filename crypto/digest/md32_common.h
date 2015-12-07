@@ -51,10 +51,12 @@
 
 #include <openssl/base.h>
 
+#include <assert.h>
 
 #if defined(__cplusplus)
 extern "C" {
 #endif
+
 
 #define asm __asm__
 
@@ -74,9 +76,9 @@ extern "C" {
  *
  *     typedef struct <name>_state_st {
  *       uint32_t h[<chaining length> / sizeof(uint32_t)];
- *       uint32_t Nl,Nh;
+ *       uint32_t Nl, Nh;
  *       uint32_t data[HASH_CBLOCK / sizeof(uint32_t)];
- *       unsigned int num
+ *       unsigned num;
  *       ...
  *     } <NAME>_CTX;
  *
@@ -134,27 +136,23 @@ extern "C" {
 #error "HASH_BLOCK_DATA_ORDER must be defined!"
 #endif
 
-/*
- * Engage compiler specific rotate intrinsic function if available.
- */
+#ifndef HASH_MAKE_STRING
+#error "HASH_MAKE_STRING must be defined!"
+#endif
+
 #undef ROTATE
 #if defined(_MSC_VER)
 #define ROTATE(a, n) _lrotl(a, n)
 #elif defined(__ICC)
 #define ROTATE(a, n) _rotl(a, n)
 #elif defined(__GNUC__) && __GNUC__ >= 2 && !defined(OPENSSL_NO_ASM)
-/*
- * Some GNU C inline assembler templates. Note that these are
- * rotates by *constant* number of bits! But that's exactly
- * what we need here...
- * 					<appro@fy.chalmers.se>
- */
 #if defined(OPENSSL_X86) || defined(OPENSSL_X86_64)
-#define ROTATE(a, n)                                                   \
-  ({                                                                   \
-    register uint32_t ret;                                             \
-    asm("roll %1,%0" : "=r"(ret) : "I"(n), "0"((uint32_t)(a)) : "cc"); \
-    ret;                                                               \
+/* Note this macro requires |n| be a constant. */
+#define ROTATE(a, n)                                                    \
+  ({                                                                    \
+    register uint32_t ret;                                              \
+    asm("roll %1, %0" : "=r"(ret) : "I"(n), "0"((uint32_t)(a)) : "cc"); \
+    ret;                                                                \
   })
 #endif /* OPENSSL_X86 || OPENSSL_X86_64 */
 #endif /* COMPILER */
@@ -165,15 +163,12 @@ extern "C" {
 
 #if defined(DATA_ORDER_IS_BIG_ENDIAN)
 
-#ifndef PEDANTIC
-#if defined(__GNUC__) && __GNUC__ >= 2 && !defined(OPENSSL_NO_ASM)
+#if !defined(PEDANTIC) && defined(__GNUC__) && __GNUC__ >= 2 && \
+    !defined(OPENSSL_NO_ASM)
 #if defined(OPENSSL_X86) || defined(OPENSSL_X86_64)
-/*
- * This gives ~30-40% performance improvement in SHA-256 compiled
- * with gcc [on P4]. Well, first macro to be frank. We can pull
- * this trick on x86* platforms only, because these CPUs can fetch
- * unaligned data without raising an exception.
- */
+/* The first macro gives a ~30-40% performance improvement in SHA-256 compiled
+ * with gcc on P4. This can only be done on x86, where unaligned data fetches
+ * are possible. */
 #define HOST_c2l(c, l)                     \
   ({                                       \
     uint32_t r = *((const uint32_t *)(c)); \
@@ -189,33 +184,30 @@ extern "C" {
     (c) += 4;                            \
     r;                                   \
   })
-#elif defined(__aarch64__)
-#if defined(__BYTE_ORDER__)
+#elif defined(__aarch64__) && defined(__BYTE_ORDER__)
 #if defined(__ORDER_LITTLE_ENDIAN__) && \
     __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
-#define HOST_c2l(c, l)                                               \
-  ({                                                                 \
-    uint32_t r;                                                      \
-    asm("rev	%w0,%w1" : "=r"(r) : "r"(*((const uint32_t *)(c)))); \
-    (c) += 4;                                                        \
-    (l) = r;                                                         \
+#define HOST_c2l(c, l)                                             \
+  ({                                                               \
+    uint32_t r;                                                    \
+    asm("rev %w0, %w1" : "=r"(r) : "r"(*((const uint32_t *)(c)))); \
+    (c) += 4;                                                      \
+    (l) = r;                                                       \
   })
-#define HOST_l2c(l, c)                                    \
-  ({                                                      \
-    uint32_t r;                                           \
-    asm("rev	%w0,%w1" : "=r"(r) : "r"((uint32_t)(l))); \
-    *((uint32_t *)(c)) = r;                               \
-    (c) += 4;                                             \
-    r;                                                    \
+#define HOST_l2c(l, c)                                  \
+  ({                                                    \
+    uint32_t r;                                         \
+    asm("rev %w0, %w1" : "=r"(r) : "r"((uint32_t)(l))); \
+    *((uint32_t *)(c)) = r;                             \
+    (c) += 4;                                           \
+    r;                                                  \
   })
 #elif defined(__ORDER_BIG_ENDIAN__) && __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
 #define HOST_c2l(c, l) (void)((l) = *((const uint32_t *)(c)), (c) += 4)
 #define HOST_l2c(l, c) (*((uint32_t *)(c)) = (l), (c) += 4, (l))
-#endif
-#endif
-#endif
-#endif
-#endif
+#endif /* __aarch64__ && __BYTE_ORDER__ */
+#endif /* ARCH */
+#endif /* !PEDANTIC && GNUC && !NO_ASM */
 
 #ifndef HOST_c2l
 #define HOST_c2l(c, l)                        \
@@ -223,6 +215,7 @@ extern "C" {
          l |= (((uint32_t)(*((c)++))) << 16), \
          l |= (((uint32_t)(*((c)++))) << 8), l |= (((uint32_t)(*((c)++)))))
 #endif
+
 #ifndef HOST_l2c
 #define HOST_l2c(l, c)                       \
   (*((c)++) = (uint8_t)(((l) >> 24) & 0xff), \
@@ -237,7 +230,7 @@ extern "C" {
 /* See comment in DATA_ORDER_IS_BIG_ENDIAN section. */
 #define HOST_c2l(c, l) (void)((l) = *((const uint32_t *)(c)), (c) += 4)
 #define HOST_l2c(l, c) (*((uint32_t *)(c)) = (l), (c) += 4, l)
-#endif
+#endif /* OPENSSL_X86 || OPENSSL_X86_64 */
 
 #ifndef HOST_c2l
 #define HOST_c2l(c, l)                                                     \
@@ -245,6 +238,7 @@ extern "C" {
          l |= (((uint32_t)(*((c)++))) << 16),                              \
          l |= (((uint32_t)(*((c)++))) << 24))
 #endif
+
 #ifndef HOST_l2c
 #define HOST_l2c(l, c)                       \
   (*((c)++) = (uint8_t)(((l)) & 0xff),       \
@@ -253,28 +247,26 @@ extern "C" {
    *((c)++) = (uint8_t)(((l) >> 24) & 0xff), l)
 #endif
 
-#endif
+#endif /* DATA_ORDER */
 
 int HASH_UPDATE(HASH_CTX *c, const void *data_, size_t len) {
   const uint8_t *data = data_;
-  uint8_t *p;
-  uint32_t l;
-  size_t n;
 
-  if (len == 0)
+  if (len == 0) {
     return 1;
+  }
 
-  l = (c->Nl + (((uint32_t)len) << 3)) & 0xffffffffUL;
-  /* 95-05-24 eay Fixed a bug with the overflow handling, thanks to
-   * Wei Dai <weidai@eskimo.com> for pointing it out. */
-  if (l < c->Nl) /* overflow */
+  uint32_t l = c->Nl + (((uint32_t)len) << 3);
+  if (l < c->Nl) {
+    /* Handle carries. */
     c->Nh++;
-  c->Nh += (uint32_t)(len >> 29); /* might cause compiler warning on 16-bit */
+  }
+  c->Nh += (uint32_t)(len >> 29);
   c->Nl = l;
 
-  n = c->num;
+  size_t n = c->num;
   if (n != 0) {
-    p = (uint8_t *)c->data;
+    uint8_t *p = (uint8_t *)c->data;
 
     if (len >= HASH_CBLOCK || len + n >= HASH_CBLOCK) {
       memcpy(p + n, data, HASH_CBLOCK - n);
@@ -283,10 +275,11 @@ int HASH_UPDATE(HASH_CTX *c, const void *data_, size_t len) {
       data += n;
       len -= n;
       c->num = 0;
-      memset(p, 0, HASH_CBLOCK); /* keep it zeroed */
+      /* Keep |c->data| zeroed when unused. */
+      memset(p, 0, HASH_CBLOCK);
     } else {
       memcpy(p + n, data, len);
-      c->num += (unsigned int)len;
+      c->num += (unsigned)len;
       return 1;
     }
   }
@@ -300,8 +293,8 @@ int HASH_UPDATE(HASH_CTX *c, const void *data_, size_t len) {
   }
 
   if (len != 0) {
-    p = (uint8_t *)c->data;
-    c->num = (unsigned int)len;
+    uint8_t *p = (uint8_t *)c->data;
+    c->num = (unsigned)len;
     memcpy(p, data, len);
   }
   return 1;
@@ -317,7 +310,10 @@ int HASH_FINAL(uint8_t *md, HASH_CTX *c) {
   uint8_t *p = (uint8_t *)c->data;
   size_t n = c->num;
 
-  p[n] = 0x80; /* there is always room for one */
+  /* |c->data| always has room for at least one byte. A full block would have
+   * been consumed. */
+  assert(n < HASH_CBLOCK);
+  p[n] = 0x80;
   n++;
 
   if (n > (HASH_CBLOCK - 8)) {
@@ -340,12 +336,7 @@ int HASH_FINAL(uint8_t *md, HASH_CTX *c) {
   c->num = 0;
   memset(p, 0, HASH_CBLOCK);
 
-#ifndef HASH_MAKE_STRING
-#error "HASH_MAKE_STRING must be defined!"
-#else
   HASH_MAKE_STRING(c, md);
-#endif
-
   return 1;
 }
 

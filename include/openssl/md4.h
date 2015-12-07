@@ -91,7 +91,7 @@ struct md4_state_st {
   uint32_t h[4];
   uint32_t Nl, Nh;
   uint32_t data[16];
-  unsigned int num;
+  unsigned num;
 };
 
 
