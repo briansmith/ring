@@ -36,7 +36,7 @@
 //! larger messages will be added later. Similarly, the signing interface is
 //! not available yet.
 
-use super::{c, digest, ffi};
+use super::{c, digest, ecc, ffi};
 use super::input::Input;
 
 /// An algorithm for verifying signatures, to be passed to the `verify`
@@ -84,6 +84,78 @@ pub struct VerificationAlgorithm {
 pub fn verify(alg: &VerificationAlgorithm, public_key: Input, msg: Input,
               signature: Input) -> Result<(), ()> {
     (alg.verify)(public_key, msg, signature)
+}
+
+
+macro_rules! ecdsa {
+    ( $VERIFY_ALGORITHM:ident, $verify_fn:ident, $curve_name:expr,
+      $ec_group_fn:expr, $digest_alg_name:expr, $digest_alg:expr ) => {
+        #[doc="Verification of ECDSA signatures using the "]
+        #[doc=$curve_name]
+        #[doc=" curve and the "]
+        #[doc=$digest_alg_name]
+        #[doc=" digest algorithm."]
+        ///
+        /// The public key will be decoded using the
+        /// `Octet-String-to-Elliptic-Curve-Point` algorithm in [SEC 1: Elliptic
+        /// Curve Cryptography, Version 2.0](http://www.secg.org/sec1-v2.pdf);
+        /// it must in be in uncompressed form. The signature will be parsed as a
+        /// DER-encoded `Ecdsa-Sig-Value` as described in [RFC 3279 Section
+        /// 2.2.3](https://tools.ietf.org/html/rfc3279#section-2.2.3).
+        pub const $VERIFY_ALGORITHM: VerificationAlgorithm =
+                VerificationAlgorithm {
+            verify: $verify_fn,
+        };
+
+        fn $verify_fn(public_key: Input, msg: Input, signature: Input)
+                      -> Result<(), ()> {
+            ecdsa_verify($ec_group_fn, $digest_alg, public_key, msg,
+                         signature)
+        }
+    }
+}
+
+ecdsa!(ECDSA_P256_SHA1_VERIFY, ecdsa_p256_sha1_verify, "P-256 (secp256r1)",
+       ecc::EC_GROUP_P256, "SHA-1", &digest::SHA1);
+ecdsa!(ECDSA_P256_SHA256_VERIFY, ecdsa_p256_sha256_verify, "P-256 (secp256r1)",
+       ecc::EC_GROUP_P256, "SHA-256", &digest::SHA256);
+ecdsa!(ECDSA_P256_SHA384_VERIFY, ecdsa_p256_sha384_verify, "P-256 (secp256r1)",
+       ecc::EC_GROUP_P256, "SHA-384", &digest::SHA384);
+ecdsa!(ECDSA_P256_SHA512_VERIFY, ecdsa_p256_sha512_verify, "P-256 (secp256r1)",
+       ecc::EC_GROUP_P256, "SHA-512", &digest::SHA512);
+
+ecdsa!(ECDSA_P384_SHA1_VERIFY, ecdsa_p384_sha1_verify, "P-384 (secp384r1)",
+       ecc::EC_GROUP_P384, "SHA-1", &digest::SHA1);
+ecdsa!(ECDSA_P384_SHA256_VERIFY, ecdsa_p384_sha256_verify, "P-384 (secp384r1)",
+       ecc::EC_GROUP_P384, "SHA-256", &digest::SHA256);
+ecdsa!(ECDSA_P384_SHA384_VERIFY, ecdsa_p384_sha384_verify, "P-384 (secp384r1)",
+       ecc::EC_GROUP_P384, "SHA-384", &digest::SHA384);
+ecdsa!(ECDSA_P384_SHA512_VERIFY, ecdsa_p384_sha512_verify, "P-384 (secp384r1)",
+       ecc::EC_GROUP_P384, "SHA-512", &digest::SHA512);
+
+ecdsa!(ECDSA_P521_SHA1_VERIFY, ecdsa_p521_sha1_verify, "P-521 (secp521r1)",
+       ecc::EC_GROUP_P521, "SHA-1", &digest::SHA1);
+ecdsa!(ECDSA_P521_SHA256_VERIFY, ecdsa_p521_sha521_verify, "P-521 (secp521r1)",
+       ecc::EC_GROUP_P521, "SHA-256", &digest::SHA256);
+ecdsa!(ECDSA_P521_SHA384_VERIFY, ecdsa_p521_sha384_verify, "P-521 (secp521r1)",
+       ecc::EC_GROUP_P521, "SHA-384", &digest::SHA384);
+ecdsa!(ECDSA_P521_SHA512_VERIFY, ecdsa_p521_sha512_verify, "P-521 (secp521r1)",
+       ecc::EC_GROUP_P521, "SHA-512", &digest::SHA512);
+
+
+fn ecdsa_verify(ec_group_fn: unsafe extern fn() -> *const ecc::EC_GROUP,
+                digest_alg: &'static digest::Algorithm, public_key: Input,
+                msg: Input, signature: Input) -> Result<(), ()> {
+    let digest = digest::digest(digest_alg, msg.as_slice_less_safe());
+    let signature = signature.as_slice_less_safe();
+    let public_key = public_key.as_slice_less_safe();
+    ffi::map_bssl_result(unsafe {
+        ECDSA_verify_signed_digest(ec_group_fn(), digest_alg.nid,
+                                   digest.as_ref().as_ptr(),
+                                   digest.as_ref().len(), signature.as_ptr(),
+                                   signature.len(), public_key.as_ptr(),
+                                   public_key.len())
+    })
 }
 
 
@@ -168,6 +240,12 @@ fn rsa_pkcs1_verify(min_bits: usize, max_bits: usize,
 
 
 extern {
+    fn ECDSA_verify_signed_digest(group: *const ecc::EC_GROUP, hash_nid: c::int,
+                                  digest: *const u8, digest_len: c::size_t,
+                                  sig_der: *const u8, sig_der_len: c::size_t,
+                                  key_octets: *const u8,
+                                  key_octets_len: c::size_t) -> c::int;
+
     #[cfg(test)]
     fn ED25519_sign(out_sig: *mut u8/*[64]*/, message: *const u8,
                     message_len: c::size_t, private_key: *const u8/*[64]*/)

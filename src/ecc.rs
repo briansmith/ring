@@ -126,29 +126,6 @@ pub fn ecdh_ephemeral<F, R, E>(my_key_pair: ECDHEphemeralKeyPair,
     }
 }
 
-/// Verifies that the ASN.1-DER-encoded ECDSA signature encoded in `sig` is
-/// valid for the data hashed to `digest` using the encoded public key
-/// `key`.
-///
-/// `key` will be decoded using the Octet-String-to-Elliptic-Curve-Point
-/// algorithm in
-/// [SEC 1: Elliptic Curve Cryptography, Version 2.0](http://www.secg.org/sec1-v2.pdf).
-/// It must in be in uncompressed form.
-///
-/// C analogs: `ECDSA_verify_signed_digest` (*ring* only),
-///            `EC_POINT_oct2point` + `ECDSA_verify`.
-pub fn verify_ecdsa_signed_digest_asn1(curve: &EllipticCurve,
-                                       digest: &digest::Digest, sig: &[u8],
-                                       key: &[u8]) -> Result<(),()> {
-    ffi::map_bssl_result(unsafe {
-        ECDSA_verify_signed_digest((curve.ec_group_fn)(), 0,
-                                   digest.as_ref().as_ptr(),
-                                   digest.as_ref().len(), sig.as_ptr(),
-                                   sig.len(), key.as_ptr(), key.len())
-    })
-}
-
-
 // TODO: After ecdsa_test.cc is removed, this function should be removed and
 // the caller should be changed to call `SHA512_5` directly. Also, the
 // alternative implementation of this in crypto/test should be removed at
@@ -244,15 +221,23 @@ pub static CURVE_P521: EllipticCurve = EllipticCurve {
 const MAX_COORDINATE_LEN: usize = (521 + 7) / 8;
 
 #[allow(non_camel_case_types)]
-enum EC_GROUP { }
+#[doc(hidden)]
+pub enum EC_GROUP { }
+
 
 #[allow(non_camel_case_types)]
-enum EC_KEY { }
+#[doc(hidden)]
+pub enum EC_KEY { }
 
 extern {
-    fn EC_GROUP_P256() -> *const EC_GROUP;
-    fn EC_GROUP_P384() -> *const EC_GROUP;
-    fn EC_GROUP_P521() -> *const EC_GROUP;
+    #[doc(hidden)]
+    pub fn EC_GROUP_P256() -> *const EC_GROUP;
+
+    #[doc(hidden)]
+    pub fn EC_GROUP_P384() -> *const EC_GROUP;
+
+    #[doc(hidden)]
+    pub fn EC_GROUP_P521() -> *const EC_GROUP;
 
     fn EC_KEY_generate_key_ex(group: *const EC_GROUP) -> *mut EC_KEY;
     fn EC_KEY_public_key_to_oct(key: *const EC_KEY, out: *mut u8,
@@ -265,10 +250,4 @@ extern {
                            peer_curve_nid: c::int,
                            peer_pub_point_bytes: *const u8,
                            peer_pub_point_bytes_len: c::size_t) -> c::int;
-
-    fn ECDSA_verify_signed_digest(group: *const EC_GROUP, hash_nid: c::int,
-                                  digest: *const u8, digest_len: c::size_t,
-                                  sig_der: *const u8, sig_der_len: c::size_t,
-                                  key_octets: *const u8,
-                                  key_octets_len: c::size_t) -> c::int;
 }
