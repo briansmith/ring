@@ -69,10 +69,57 @@ pub struct VerificationAlgorithm {
 ///                      public_key, msg, sig)
 /// }
 /// ```
+///
+/// ## Verify an Ed25519 signature
+///
+/// ```
+/// use ring::input::Input;
+/// use ring::signature;
+///
+/// fn verify_ed25519(public_key: Input, msg: Input, sig: Input)
+///                   -> Result<(), ()> {
+///    signature::verify(&signature::ED25519_VERIFY, public_key, msg, sig)
+/// }
+/// ```
 pub fn verify(alg: &VerificationAlgorithm, public_key: Input, msg: Input,
               signature: Input) -> Result<(), ()> {
     (alg.verify)(public_key, msg, signature)
 }
+
+
+#[cfg(test)]
+fn ed25519_sign(private_key: &[u8], msg: &[u8], signature: &mut [u8])
+                -> Result<(), ()> {
+    if private_key.len() != 64 || signature.len() != 64 {
+        return Err(());
+    }
+    ffi::map_bssl_result(unsafe {
+        ED25519_sign(signature.as_mut_ptr(), msg.as_ptr(), msg.len(),
+                     private_key.as_ptr())
+    })
+}
+
+/// Verification of [Ed25519](http://ed25519.cr.yp.to/) signatures.
+///
+/// Ed25519 uses SHA-512 as the digest algorithm.
+pub const ED25519_VERIFY: VerificationAlgorithm = VerificationAlgorithm {
+    verify: ed25519_verify,
+};
+
+fn ed25519_verify(public_key: Input, msg: Input, signature: Input)
+                  -> Result<(), ()> {
+    let public_key = public_key.as_slice_less_safe();
+    if public_key.len() != 32 || signature.len() != 64 {
+        return Err(())
+    }
+    let msg = msg.as_slice_less_safe();
+    let signature = signature.as_slice_less_safe();
+    ffi::map_bssl_result(unsafe {
+        ED25519_verify(msg.as_ptr(), msg.len(), signature.as_ptr(),
+                       public_key.as_ptr())
+    })
+}
+
 
 macro_rules! rsa_pkcs1 {
     ( $VERIFY_ALGORITHM:ident, $verify_fn:ident, $digest_alg_name:expr,
@@ -121,9 +168,50 @@ fn rsa_pkcs1_verify(min_bits: usize, max_bits: usize,
 
 
 extern {
+    #[cfg(test)]
+    fn ED25519_sign(out_sig: *mut u8/*[64]*/, message: *const u8,
+                    message_len: c::size_t, private_key: *const u8/*[64]*/)
+                    -> c::int;
+
+    fn ED25519_verify(message: *const u8, message_len: c::size_t,
+                      signature: *const u8/*[64]*/,
+                      public_key: *const u8/*[32]*/) -> c::int;
+
     fn RSA_verify_pkcs1_signed_digest(min_bits: usize, max_bits: usize,
                                       digest_nid: c::int, digest: *const u8,
                                       digest_len: c::size_t, sig: *const u8,
                                       sig_len: c::size_t, key_der: *const u8,
                                       key_der_len: c::size_t) -> c::int;
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{ed25519_sign, ED25519_VERIFY, verify};
+    use super::super::file_test;
+    use super::super::input::Input;
+
+    /// Test vectors from BoringSSL.
+    #[test]
+    fn test_ed25519() {
+        file_test::run("src/ed25519_tests.txt", |section, test_case| {
+            assert_eq!(section, "");
+            let private_key = test_case.consume_bytes("PRIV");
+            assert_eq!(64, private_key.len());
+            let public_key = test_case.consume_bytes("PUB");
+            assert_eq!(32, public_key.len());
+            let msg = test_case.consume_bytes("MESSAGE");
+            let expected_sig = test_case.consume_bytes("SIG");
+
+            let mut actual_sig = [0u8; 64];
+            assert!(ed25519_sign(&private_key, &msg, &mut actual_sig).is_ok());
+            assert_eq!(&expected_sig[..], &actual_sig[..]);
+
+            let public_key = Input::new(&public_key).unwrap();
+            let msg = Input::new(&msg).unwrap();
+            let expected_sig = Input::new(&expected_sig).unwrap();
+
+            assert!(verify(&ED25519_VERIFY, public_key, msg, expected_sig)
+                        .is_ok());
+        });
+    }
 }

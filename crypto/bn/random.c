@@ -114,6 +114,9 @@
 #include <openssl/mem.h>
 #include <openssl/rand.h>
 
+#include "../internal.h"
+
+
 int BN_rand(BIGNUM *rnd, int bits, int top, int bottom) {
   uint8_t *buf = NULL;
   int ret = 0, bit, bytes, mask;
@@ -256,7 +259,7 @@ int BN_generate_dsa_nonce(BIGNUM *out, const BIGNUM *range, const BIGNUM *priv,
   /* We use 512 bits of random data per iteration to
    * ensure that we have at least |range| bits of randomness. */
   uint8_t random_bytes[64];
-  uint8_t digest[64];
+  uint8_t digest[SHA512_DIGEST_LENGTH];
   size_t done, todo, attempt;
   const unsigned num_k_bytes = BN_num_bytes(range);
   const unsigned bits_to_mask = (8 - (BN_num_bits(range) % 8)) % 8;

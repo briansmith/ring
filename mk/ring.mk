@@ -47,6 +47,7 @@ RING_SRCS = $(addprefix $(RING_PREFIX), \
   crypto/cpu-arm.c \
   crypto/cpu-intel.c \
   crypto/crypto.c \
+  crypto/curve25519/curve25519.c \
   crypto/ec/ec.c \
   crypto/ec/ec_curves.c \
   crypto/ec/ec_key.c \

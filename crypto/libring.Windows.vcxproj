@@ -43,6 +43,7 @@
     <ClCompile Include="cpu-arm.c" />
     <ClCompile Include="cpu-intel.c" />
     <ClCompile Include="crypto.c" />
+    <ClCompile Include="curve25519\curve25519.c" />
     <ClCompile Include="ec\ec.c" />
     <ClCompile Include="ec\ec_curves.c" />
     <ClCompile Include="ec\ec_key.c" />
