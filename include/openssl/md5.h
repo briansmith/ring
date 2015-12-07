@@ -95,7 +95,7 @@ OPENSSL_EXPORT void MD5_Transform(MD5_CTX *md5, const uint8_t *block);
 struct md5_state_st {
   uint32_t h[4];
   uint32_t Nl, Nh;
-  uint32_t data[16];
+  uint8_t data[MD5_CBLOCK];
   unsigned num;
 };
 

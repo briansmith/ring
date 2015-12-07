@@ -115,7 +115,7 @@ struct sha_state_st {
   };
 #endif
   uint32_t Nl, Nh;
-  uint32_t data[16];
+  uint8_t data[SHA_CBLOCK];
   unsigned num;
 };
 
@@ -176,7 +176,7 @@ OPENSSL_EXPORT void SHA256_Transform(SHA256_CTX *sha, const uint8_t *data);
 struct sha256_state_st {
   uint32_t h[8];
   uint32_t Nl, Nh;
-  uint32_t data[16];
+  uint8_t data[SHA256_CBLOCK];
   unsigned num, md_len;
 };
 

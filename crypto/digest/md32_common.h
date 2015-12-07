@@ -77,7 +77,7 @@ extern "C" {
  *     typedef struct <name>_state_st {
  *       uint32_t h[<chaining length> / sizeof(uint32_t)];
  *       uint32_t Nl, Nh;
- *       uint32_t data[HASH_CBLOCK / sizeof(uint32_t)];
+ *       uint8_t data[HASH_CBLOCK];
  *       unsigned num;
  *       ...
  *     } <NAME>_CTX;
@@ -245,19 +245,17 @@ int HASH_UPDATE(HASH_CTX *c, const void *data_, size_t len) {
 
   size_t n = c->num;
   if (n != 0) {
-    uint8_t *p = (uint8_t *)c->data;
-
     if (len >= HASH_CBLOCK || len + n >= HASH_CBLOCK) {
-      memcpy(p + n, data, HASH_CBLOCK - n);
-      HASH_BLOCK_DATA_ORDER(c->h, p, 1);
+      memcpy(c->data + n, data, HASH_CBLOCK - n);
+      HASH_BLOCK_DATA_ORDER(c->h, c->data, 1);
       n = HASH_CBLOCK - n;
       data += n;
       len -= n;
       c->num = 0;
       /* Keep |c->data| zeroed when unused. */
-      memset(p, 0, HASH_CBLOCK);
+      memset(c->data, 0, HASH_CBLOCK);
     } else {
-      memcpy(p + n, data, len);
+      memcpy(c->data + n, data, len);
       c->num += (unsigned)len;
       return 1;
     }
@@ -272,9 +270,8 @@ int HASH_UPDATE(HASH_CTX *c, const void *data_, size_t len) {
   }
 
   if (len != 0) {
-    uint8_t *p = (uint8_t *)c->data;
     c->num = (unsigned)len;
-    memcpy(p, data, len);
+    memcpy(c->data, data, len);
   }
   return 1;
 }
@@ -286,23 +283,23 @@ void HASH_TRANSFORM(HASH_CTX *c, const uint8_t *data) {
 
 
 int HASH_FINAL(uint8_t *md, HASH_CTX *c) {
-  uint8_t *p = (uint8_t *)c->data;
-  size_t n = c->num;
-
   /* |c->data| always has room for at least one byte. A full block would have
    * been consumed. */
+  size_t n = c->num;
   assert(n < HASH_CBLOCK);
-  p[n] = 0x80;
+  c->data[n] = 0x80;
   n++;
 
+  /* Fill the block with zeros if there isn't room for a 64-bit length. */
   if (n > (HASH_CBLOCK - 8)) {
-    memset(p + n, 0, HASH_CBLOCK - n);
+    memset(c->data + n, 0, HASH_CBLOCK - n);
     n = 0;
-    HASH_BLOCK_DATA_ORDER(c->h, p, 1);
+    HASH_BLOCK_DATA_ORDER(c->h, c->data, 1);
   }
-  memset(p + n, 0, HASH_CBLOCK - 8 - n);
+  memset(c->data + n, 0, HASH_CBLOCK - 8 - n);
 
-  p += HASH_CBLOCK - 8;
+  /* Append a 64-bit length to the block and process it. */
+  uint8_t *p = c->data + HASH_CBLOCK - 8;
 #if defined(DATA_ORDER_IS_BIG_ENDIAN)
   (void)HOST_l2c(c->Nh, p);
   (void)HOST_l2c(c->Nl, p);
@@ -310,10 +307,10 @@ int HASH_FINAL(uint8_t *md, HASH_CTX *c) {
   (void)HOST_l2c(c->Nl, p);
   (void)HOST_l2c(c->Nh, p);
 #endif
-  p -= HASH_CBLOCK;
-  HASH_BLOCK_DATA_ORDER(c->h, p, 1);
+  assert(p == c->data + HASH_CBLOCK);
+  HASH_BLOCK_DATA_ORDER(c->h, c->data, 1);
   c->num = 0;
-  memset(p, 0, HASH_CBLOCK);
+  memset(c->data, 0, HASH_CBLOCK);
 
   HASH_MAKE_STRING(c, md);
   return 1;
