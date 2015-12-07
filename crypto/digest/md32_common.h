@@ -58,8 +58,6 @@ extern "C" {
 #endif
 
 
-#define asm __asm__
-
 /* This is a generic 32-bit "collector" for message digest algorithms. It
  * collects input character stream into chunks of 32-bit values and invokes the
  * block function that performs the actual hash calculations. To make use of

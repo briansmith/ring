@@ -358,47 +358,47 @@ static const uint64_t K512[80] = {
 
 #if defined(__GNUC__) && __GNUC__ >= 2 && !defined(OPENSSL_NO_ASM)
 #if defined(__x86_64) || defined(__x86_64__)
-#define ROTR(a, n)                                         \
-  ({                                                       \
-    uint64_t ret;                                          \
-    asm("rorq %1,%0" : "=r"(ret) : "J"(n), "0"(a) : "cc"); \
-    ret;                                                   \
+#define ROTR(a, n)                                              \
+  ({                                                            \
+    uint64_t ret;                                               \
+    __asm__("rorq %1, %0" : "=r"(ret) : "J"(n), "0"(a) : "cc"); \
+    ret;                                                        \
   })
-#define PULL64(x)                               \
-  ({                                            \
-    uint64_t ret = *((const uint64_t *)(&(x))); \
-    asm("bswapq	%0" : "=r"(ret) : "0"(ret));    \
-    ret;                                        \
+#define PULL64(x)                                \
+  ({                                             \
+    uint64_t ret = *((const uint64_t *)(&(x)));  \
+    __asm__("bswapq %0" : "=r"(ret) : "0"(ret)); \
+    ret;                                         \
   })
 #elif(defined(__i386) || defined(__i386__))
-#define PULL64(x)                                                         \
-  ({                                                                      \
-    const unsigned int *p = (const unsigned int *)(&(x));                 \
-    unsigned int hi = p[0], lo = p[1];                                    \
-    asm("bswapl %0; bswapl %1;" : "=r"(lo), "=r"(hi) : "0"(lo), "1"(hi)); \
-    ((uint64_t)hi) << 32 | lo;                                            \
+#define PULL64(x)                                                             \
+  ({                                                                          \
+    const unsigned int *p = (const unsigned int *)(&(x));                     \
+    unsigned int hi = p[0], lo = p[1];                                        \
+    __asm__("bswapl %0; bswapl %1;" : "=r"(lo), "=r"(hi) : "0"(lo), "1"(hi)); \
+    ((uint64_t)hi) << 32 | lo;                                                \
   })
 #elif(defined(_ARCH_PPC) && defined(__64BIT__)) || defined(_ARCH_PPC64)
-#define ROTR(a, n)                                       \
-  ({                                                     \
-    uint64_t ret;                                        \
-    asm("rotrdi %0,%1,%2" : "=r"(ret) : "r"(a), "K"(n)); \
-    ret;                                                 \
+#define ROTR(a, n)                                             \
+  ({                                                           \
+    uint64_t ret;                                              \
+    __asm__("rotrdi %0, %1, %2" : "=r"(ret) : "r"(a), "K"(n)); \
+    ret;                                                       \
   })
 #elif defined(__aarch64__)
-#define ROTR(a, n)                                    \
-  ({                                                  \
-    uint64_t ret;                                     \
-    asm("ror %0,%1,%2" : "=r"(ret) : "r"(a), "I"(n)); \
-    ret;                                              \
+#define ROTR(a, n)                                          \
+  ({                                                        \
+    uint64_t ret;                                           \
+    __asm__("ror %0, %1, %2" : "=r"(ret) : "r"(a), "I"(n)); \
+    ret;                                                    \
   })
 #if defined(__BYTE_ORDER__) && defined(__ORDER_LITTLE_ENDIAN__) && \
     __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
-#define PULL64(x)                                                       \
-  ({                                                                    \
-    uint64_t ret;                                                       \
-    asm("rev	%0,%1" : "=r"(ret) : "r"(*((const uint64_t *)(&(x))))); \
-    ret;                                                                \
+#define PULL64(x)                                                         \
+  ({                                                                      \
+    uint64_t ret;                                                         \
+    __asm__("rev %0, %1" : "=r"(ret) : "r"(*((const uint64_t *)(&(x))))); \
+    ret;                                                                  \
   })
 #endif
 #endif
