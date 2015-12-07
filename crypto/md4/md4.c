@@ -84,13 +84,13 @@ void md4_block_data_order(uint32_t *state, const uint8_t *data, size_t num);
   do {                         \
     uint32_t ll;               \
     ll = (c)->h[0];            \
-    (void) HOST_l2c(ll, (s));  \
+    HOST_l2c(ll, (s));         \
     ll = (c)->h[1];            \
-    (void) HOST_l2c(ll, (s));  \
+    HOST_l2c(ll, (s));         \
     ll = (c)->h[2];            \
-    (void) HOST_l2c(ll, (s));  \
+    HOST_l2c(ll, (s));         \
     ll = (c)->h[3];            \
-    (void) HOST_l2c(ll, (s));  \
+    HOST_l2c(ll, (s));         \
   } while (0)
 #define HASH_BLOCK_DATA_ORDER md4_block_data_order
 

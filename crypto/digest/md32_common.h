@@ -196,11 +196,11 @@ extern "C" {
 #endif
 
 #ifndef HOST_l2c
-#define HOST_l2c(l, c)                       \
-  (*((c)++) = (uint8_t)(((l) >> 24) & 0xff), \
-   *((c)++) = (uint8_t)(((l) >> 16) & 0xff), \
-   *((c)++) = (uint8_t)(((l) >> 8) & 0xff),  \
-   *((c)++) = (uint8_t)(((l)) & 0xff), l)
+#define HOST_l2c(l, c)                             \
+  (void)(*((c)++) = (uint8_t)(((l) >> 24) & 0xff), \
+         *((c)++) = (uint8_t)(((l) >> 16) & 0xff), \
+         *((c)++) = (uint8_t)(((l) >> 8) & 0xff),  \
+         *((c)++) = (uint8_t)(((l)) & 0xff))
 #endif
 
 #elif defined(DATA_ORDER_IS_LITTLE_ENDIAN)
@@ -219,11 +219,11 @@ extern "C" {
 #endif
 
 #ifndef HOST_l2c
-#define HOST_l2c(l, c)                       \
-  (*((c)++) = (uint8_t)(((l)) & 0xff),       \
-   *((c)++) = (uint8_t)(((l) >> 8) & 0xff),  \
-   *((c)++) = (uint8_t)(((l) >> 16) & 0xff), \
-   *((c)++) = (uint8_t)(((l) >> 24) & 0xff), l)
+#define HOST_l2c(l, c)                             \
+  (void)(*((c)++) = (uint8_t)(((l)) & 0xff),       \
+         *((c)++) = (uint8_t)(((l) >> 8) & 0xff),  \
+         *((c)++) = (uint8_t)(((l) >> 16) & 0xff), \
+         *((c)++) = (uint8_t)(((l) >> 24) & 0xff))
 #endif
 
 #endif /* DATA_ORDER */
@@ -301,11 +301,11 @@ int HASH_FINAL(uint8_t *md, HASH_CTX *c) {
   /* Append a 64-bit length to the block and process it. */
   uint8_t *p = c->data + HASH_CBLOCK - 8;
 #if defined(DATA_ORDER_IS_BIG_ENDIAN)
-  (void)HOST_l2c(c->Nh, p);
-  (void)HOST_l2c(c->Nl, p);
+  HOST_l2c(c->Nh, p);
+  HOST_l2c(c->Nl, p);
 #elif defined(DATA_ORDER_IS_LITTLE_ENDIAN)
-  (void)HOST_l2c(c->Nl, p);
-  (void)HOST_l2c(c->Nh, p);
+  HOST_l2c(c->Nl, p);
+  HOST_l2c(c->Nh, p);
 #endif
   assert(p == c->data + HASH_CBLOCK);
   HASH_BLOCK_DATA_ORDER(c->h, c->data, 1);
