@@ -159,40 +159,36 @@ static int tls1_P_hash(uint8_t *out, size_t out_len, const EVP_MD *md,
                        const uint8_t *seed1, size_t seed1_len,
                        const uint8_t *seed2, size_t seed2_len,
                        const uint8_t *seed3, size_t seed3_len) {
-  size_t chunk;
   HMAC_CTX ctx, ctx_tmp, ctx_init;
   uint8_t A1[EVP_MAX_MD_SIZE];
   unsigned A1_len;
   int ret = 0;
 
-  chunk = EVP_MD_size(md);
+  size_t chunk = EVP_MD_size(md);
 
   HMAC_CTX_init(&ctx);
   HMAC_CTX_init(&ctx_tmp);
   HMAC_CTX_init(&ctx_init);
   if (!HMAC_Init_ex(&ctx_init, secret, secret_len, md, NULL) ||
       !HMAC_CTX_copy_ex(&ctx, &ctx_init) ||
-      (seed1_len && !HMAC_Update(&ctx, seed1, seed1_len)) ||
-      (seed2_len && !HMAC_Update(&ctx, seed2, seed2_len)) ||
-      (seed3_len && !HMAC_Update(&ctx, seed3, seed3_len)) ||
+      !HMAC_Update(&ctx, seed1, seed1_len) ||
+      !HMAC_Update(&ctx, seed2, seed2_len) ||
+      !HMAC_Update(&ctx, seed3, seed3_len) ||
       !HMAC_Final(&ctx, A1, &A1_len)) {
     goto err;
   }
 
   for (;;) {
-    /* Reinit mac contexts. */
-    if (!HMAC_CTX_copy_ex(&ctx, &ctx_init) ||
-        !HMAC_Update(&ctx, A1, A1_len) ||
-        (out_len > chunk && !HMAC_CTX_copy_ex(&ctx_tmp, &ctx)) ||
-        (seed1_len && !HMAC_Update(&ctx, seed1, seed1_len)) ||
-        (seed2_len && !HMAC_Update(&ctx, seed2, seed2_len)) ||
-        (seed3_len && !HMAC_Update(&ctx, seed3, seed3_len))) {
-      goto err;
-    }
-
     unsigned len;
     uint8_t hmac[EVP_MAX_MD_SIZE];
-    if (!HMAC_Final(&ctx, hmac, &len)) {
+    if (!HMAC_CTX_copy_ex(&ctx, &ctx_init) ||
+        !HMAC_Update(&ctx, A1, A1_len) ||
+        /* Save a copy of |ctx| to compute the next A1 value below. */
+        (out_len > chunk && !HMAC_CTX_copy_ex(&ctx_tmp, &ctx)) ||
+        !HMAC_Update(&ctx, seed1, seed1_len) ||
+        !HMAC_Update(&ctx, seed2, seed2_len) ||
+        !HMAC_Update(&ctx, seed3, seed3_len) ||
+        !HMAC_Final(&ctx, hmac, &len)) {
       goto err;
     }
     assert(len == chunk);
