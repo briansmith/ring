@@ -31,7 +31,7 @@ pub mod input;
 pub mod pbkdf2;
 mod polyfill;
 pub mod rand;
-pub mod rsa;
+pub mod signature;
 
 #[cfg(test)]
 mod exe_tests;

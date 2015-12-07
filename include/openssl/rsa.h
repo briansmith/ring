@@ -72,7 +72,8 @@ extern "C" {
 /* Simplified interface. */
 
 /* Verify an encoded PKCS#1 signature. */
-OPENSSL_EXPORT int RSA_verify_pkcs1_signed_digest(int hash_nid,
+OPENSSL_EXPORT int RSA_verify_pkcs1_signed_digest(size_t min_bits,
+                                                  size_t max_bits, int hash_nid,
                                                   const uint8_t *digest,
                                                   size_t digest_len,
                                                   const uint8_t *sig,

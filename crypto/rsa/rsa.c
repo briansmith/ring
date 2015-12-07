@@ -69,7 +69,8 @@
 #include "../internal.h"
 
 
-int RSA_verify_pkcs1_signed_digest(int hash_nid, const uint8_t *digest,
+int RSA_verify_pkcs1_signed_digest(size_t min_bits, size_t max_bits,
+                                   int hash_nid, const uint8_t *digest,
                                    size_t digest_len, const uint8_t *sig,
                                    size_t sig_len, const uint8_t *rsa_key,
                                    const size_t rsa_key_len) {
@@ -80,12 +81,22 @@ int RSA_verify_pkcs1_signed_digest(int hash_nid, const uint8_t *digest,
   if (key == NULL) {
     return 0;
   }
+
+  int ret = 0;
+
+  size_t len = RSA_size(key);
+  if (len > SIZE_MAX / 8 || len * 8 < min_bits || len * 8 > max_bits) {
+    OPENSSL_PUT_ERROR(RSA, RSA_R_KEY_SIZE_TOO_SMALL); /* XXX: Or too big. */
+    goto err;
+  }
+
   /* Don't cache the intermediate values since we're not reusing the key. */
   key->flags &= ~RSA_FLAG_CACHE_PUBLIC;
 
-  int ret = RSA_verify(hash_nid, digest, digest_len, sig, sig_len, key);
-  RSA_free(key);
+  ret = RSA_verify(hash_nid, digest, digest_len, sig, sig_len, key);
 
+err:
+  RSA_free(key);
   return ret;
 }
 
