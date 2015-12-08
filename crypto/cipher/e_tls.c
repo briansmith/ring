@@ -20,6 +20,7 @@
 #include <openssl/cipher.h>
 #include <openssl/err.h>
 #include <openssl/hmac.h>
+#include <openssl/md5.h>
 #include <openssl/mem.h>
 #include <openssl/sha.h>
 #include <openssl/type_check.h>
@@ -111,7 +112,6 @@ static int aead_tls_seal(const EVP_AEAD_CTX *ctx, uint8_t *out,
     /* Unlike a normal AEAD, a TLS AEAD may only be used in one direction. */
     OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_INVALID_OPERATION);
     return 0;
-
   }
 
   if (in_len + EVP_AEAD_max_overhead(ctx->aead) < in_len ||
@@ -212,7 +212,6 @@ static int aead_tls_open(const EVP_AEAD_CTX *ctx, uint8_t *out,
     /* Unlike a normal AEAD, a TLS AEAD may only be used in one direction. */
     OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_INVALID_OPERATION);
     return 0;
-
   }
 
   if (in_len < HMAC_size(&tls_ctx->hmac_ctx)) {
@@ -351,6 +350,13 @@ static int aead_tls_open(const EVP_AEAD_CTX *ctx, uint8_t *out,
   return 1;
 }
 
+static int aead_rc4_md5_tls_init(EVP_AEAD_CTX *ctx, const uint8_t *key,
+                                 size_t key_len, size_t tag_len,
+                                 enum evp_aead_direction_t dir) {
+  return aead_tls_init(ctx, key, key_len, tag_len, dir, EVP_rc4(), EVP_md5(),
+                       0);
+}
+
 static int aead_rc4_sha1_tls_init(EVP_AEAD_CTX *ctx, const uint8_t *key,
                                   size_t key_len, size_t tag_len,
                                   enum evp_aead_direction_t dir) {
@@ -425,8 +431,8 @@ static int aead_des_ede3_cbc_sha1_tls_implicit_iv_init(
                        EVP_sha1(), 1);
 }
 
-static int aead_rc4_sha1_tls_get_rc4_state(const EVP_AEAD_CTX *ctx,
-                                           const RC4_KEY **out_key) {
+static int aead_rc4_tls_get_rc4_state(const EVP_AEAD_CTX *ctx,
+                                      const RC4_KEY **out_key) {
   const AEAD_TLS_CTX *tls_ctx = (AEAD_TLS_CTX*) ctx->aead_state;
   if (EVP_CIPHER_CTX_cipher(&tls_ctx->cipher_ctx) != EVP_rc4()) {
     return 0;
@@ -456,18 +462,32 @@ static int aead_null_sha1_tls_init(EVP_AEAD_CTX *ctx, const uint8_t *key,
                        EVP_sha1(), 1 /* implicit iv */);
 }
 
+static const EVP_AEAD aead_rc4_md5_tls = {
+    MD5_DIGEST_LENGTH + 16, /* key len (MD5 + RC4) */
+    0,                      /* nonce len */
+    MD5_DIGEST_LENGTH,      /* overhead */
+    MD5_DIGEST_LENGTH,      /* max tag length */
+    NULL,                   /* init */
+    aead_rc4_md5_tls_init,
+    aead_tls_cleanup,
+    aead_tls_seal,
+    aead_tls_open,
+    aead_rc4_tls_get_rc4_state, /* get_rc4_state */
+    NULL,                       /* get_iv */
+};
+
 static const EVP_AEAD aead_rc4_sha1_tls = {
     SHA_DIGEST_LENGTH + 16, /* key len (SHA1 + RC4) */
     0,                      /* nonce len */
     SHA_DIGEST_LENGTH,      /* overhead */
     SHA_DIGEST_LENGTH,      /* max tag length */
-    NULL, /* init */
+    NULL,                   /* init */
     aead_rc4_sha1_tls_init,
     aead_tls_cleanup,
     aead_tls_seal,
     aead_tls_open,
-    aead_rc4_sha1_tls_get_rc4_state, /* get_rc4_state */
-    NULL,                            /* get_iv */
+    aead_rc4_tls_get_rc4_state, /* get_rc4_state */
+    NULL,                       /* get_iv */
 };
 
 static const EVP_AEAD aead_aes_128_cbc_sha1_tls = {
@@ -609,6 +629,8 @@ static const EVP_AEAD aead_null_sha1_tls = {
     NULL,                       /* get_rc4_state */
     NULL,                       /* get_iv */
 };
+
+const EVP_AEAD *EVP_aead_rc4_md5_tls(void) { return &aead_rc4_md5_tls; }
 
 const EVP_AEAD *EVP_aead_rc4_sha1_tls(void) { return &aead_rc4_sha1_tls; }
 
