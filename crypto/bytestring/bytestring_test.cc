@@ -344,12 +344,14 @@ static bool TestCBBPrefixed() {
   size_t buf_len;
   CBB cbb, contents, inner_contents, inner_inner_contents;
 
-  if (!CBB_init(&cbb, 0)) {
-    return false;
-  }
-  if (!CBB_add_u8_length_prefixed(&cbb, &contents) ||
+  if (!CBB_init(&cbb, 0) ||
+      CBB_len(&cbb) != 0 ||
+      !CBB_add_u8_length_prefixed(&cbb, &contents) ||
       !CBB_add_u8_length_prefixed(&cbb, &contents) ||
       !CBB_add_u8(&contents, 1) ||
+      CBB_len(&contents) != 1 ||
+      !CBB_flush(&cbb) ||
+      CBB_len(&cbb) != 3 ||
       !CBB_add_u16_length_prefixed(&cbb, &contents) ||
       !CBB_add_u16(&contents, 0x203) ||
       !CBB_add_u24_length_prefixed(&cbb, &contents) ||

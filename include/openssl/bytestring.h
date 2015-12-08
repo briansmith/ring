@@ -238,13 +238,13 @@ struct cbb_buffer_st {
 
 struct cbb_st {
   struct cbb_buffer_st *base;
-  /* offset is the offset from the start of |base->buf| to the position of any
-   * pending length-prefix. */
-  size_t offset;
   /* child points to a child CBB if a length-prefix is pending. */
   CBB *child;
-  /* pending_len_len contains the number of bytes in a pending length-prefix,
-   * or zero if no length-prefix is pending. */
+  /* offset is the number of bytes from the start of |base->buf| to this |CBB|'s
+   * pending length prefix. */
+  size_t offset;
+  /* pending_len_len contains the number of bytes in this |CBB|'s pending
+   * length-prefix, or zero if no length-prefix is pending. */
   uint8_t pending_len_len;
   char pending_is_asn1;
   /* is_top_level is true iff this is a top-level |CBB| (as opposed to a child
@@ -292,12 +292,11 @@ OPENSSL_EXPORT int CBB_finish(CBB *cbb, uint8_t **out_data, size_t *out_len);
  * on error. */
 OPENSSL_EXPORT int CBB_flush(CBB *cbb);
 
-/* CBB_len returns the number of bytes written to |cbb|'s top-level |CBB|. It
- * may be compared before and after an operation to determine how many bytes
- * were written.
+/* CBB_len returns the number of bytes written to |cbb|. It does not flush
+ * |cbb|.
  *
- * It is a fatal error to call this on a CBB with any active children. This does
- * not flush |cbb|. */
+ * To avoid unfinalized length prefixes, it is a fatal error to call this on a
+ * CBB with any active children. */
 OPENSSL_EXPORT size_t CBB_len(const CBB *cbb);
 
 /* CBB_add_u8_length_prefixed sets |*out_contents| to a new child of |cbb|. The
