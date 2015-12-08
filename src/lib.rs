@@ -18,7 +18,10 @@ extern crate rustc_serialize;
 pub mod aead;
 mod c;
 pub mod constant_time;
+
+#[doc(hidden)]
 pub mod der;
+
 pub mod digest;
 pub mod ecc;
 mod ffi;

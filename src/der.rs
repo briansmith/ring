@@ -14,7 +14,7 @@
 
 //! Building blocks for parsing DER-encoded ASN.1 structures.
 //!
-//! TODO: More documentation, especially design documentation.
+//! This module contains the foundational parts of an ASN.1 DER parser.
 
 use super::input::*;
 
