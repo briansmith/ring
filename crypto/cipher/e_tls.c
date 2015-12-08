@@ -146,17 +146,13 @@ static int aead_tls_seal(const EVP_AEAD_CTX *ctx, uint8_t *out,
    * in-place. */
   uint8_t mac[EVP_MAX_MD_SIZE];
   unsigned mac_len;
-  HMAC_CTX hmac_ctx;
-  HMAC_CTX_init(&hmac_ctx);
-  if (!HMAC_CTX_copy_ex(&hmac_ctx, &tls_ctx->hmac_ctx) ||
-      !HMAC_Update(&hmac_ctx, ad, ad_len) ||
-      !HMAC_Update(&hmac_ctx, ad_extra, sizeof(ad_extra)) ||
-      !HMAC_Update(&hmac_ctx, in, in_len) ||
-      !HMAC_Final(&hmac_ctx, mac, &mac_len)) {
-    HMAC_CTX_cleanup(&hmac_ctx);
+  if (!HMAC_Init_ex(&tls_ctx->hmac_ctx, NULL, 0, NULL, NULL) ||
+      !HMAC_Update(&tls_ctx->hmac_ctx, ad, ad_len) ||
+      !HMAC_Update(&tls_ctx->hmac_ctx, ad_extra, sizeof(ad_extra)) ||
+      !HMAC_Update(&tls_ctx->hmac_ctx, in, in_len) ||
+      !HMAC_Final(&tls_ctx->hmac_ctx, mac, &mac_len)) {
     return 0;
   }
-  HMAC_CTX_cleanup(&hmac_ctx);
 
   /* Configure the explicit IV. */
   if (EVP_CIPHER_CTX_mode(&tls_ctx->cipher_ctx) == EVP_CIPH_CBC_MODE &&
@@ -324,18 +320,14 @@ static int aead_tls_open(const EVP_AEAD_CTX *ctx, uint8_t *out,
      * implemented. */
     assert(EVP_CIPHER_CTX_mode(&tls_ctx->cipher_ctx) != EVP_CIPH_CBC_MODE);
 
-    HMAC_CTX hmac_ctx;
-    HMAC_CTX_init(&hmac_ctx);
     unsigned mac_len_u;
-    if (!HMAC_CTX_copy_ex(&hmac_ctx, &tls_ctx->hmac_ctx) ||
-        !HMAC_Update(&hmac_ctx, ad_fixed, ad_len) ||
-        !HMAC_Update(&hmac_ctx, out, data_len) ||
-        !HMAC_Final(&hmac_ctx, mac, &mac_len_u)) {
-      HMAC_CTX_cleanup(&hmac_ctx);
+    if (!HMAC_Init_ex(&tls_ctx->hmac_ctx, NULL, 0, NULL, NULL) ||
+        !HMAC_Update(&tls_ctx->hmac_ctx, ad_fixed, ad_len) ||
+        !HMAC_Update(&tls_ctx->hmac_ctx, out, data_len) ||
+        !HMAC_Final(&tls_ctx->hmac_ctx, mac, &mac_len_u)) {
       return 0;
     }
     mac_len = mac_len_u;
-    HMAC_CTX_cleanup(&hmac_ctx);
 
     assert(mac_len == HMAC_size(&tls_ctx->hmac_ctx));
     record_mac = &out[data_len];
