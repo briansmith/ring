@@ -74,17 +74,20 @@ SSL_AEAD_CTX *SSL_AEAD_CTX_new(enum evp_aead_direction_t direction,
   assert(EVP_AEAD_nonce_length(aead) <= EVP_AEAD_MAX_NONCE_LENGTH);
   aead_ctx->variable_nonce_len = (uint8_t)EVP_AEAD_nonce_length(aead);
   if (mac_key_len == 0) {
-    /* For a real AEAD, the IV is the fixed part of the nonce. */
-    if (fixed_iv_len > sizeof(aead_ctx->fixed_nonce) ||
-        fixed_iv_len > aead_ctx->variable_nonce_len) {
-      SSL_AEAD_CTX_free(aead_ctx);
-      OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
-      return 0;
-    }
-    aead_ctx->variable_nonce_len -= fixed_iv_len;
-
+    assert(fixed_iv_len <= sizeof(aead_ctx->fixed_nonce));
     memcpy(aead_ctx->fixed_nonce, fixed_iv, fixed_iv_len);
     aead_ctx->fixed_nonce_len = fixed_iv_len;
+
+    if (cipher->algorithm_enc & SSL_CHACHA20POLY1305) {
+      /* The fixed nonce into the actual nonce (the sequence number). */
+      aead_ctx->xor_fixed_nonce = 1;
+      aead_ctx->variable_nonce_len = 8;
+    } else {
+      /* The fixed IV is prepended to the nonce. */
+      assert(fixed_iv_len <= aead_ctx->variable_nonce_len);
+      aead_ctx->variable_nonce_len -= fixed_iv_len;
+    }
+
     /* AES-GCM uses an explicit nonce. */
     if (cipher->algorithm_enc & (SSL_AES128GCM | SSL_AES256GCM)) {
       aead_ctx->variable_nonce_included_in_record = 1;
@@ -176,8 +179,17 @@ int SSL_AEAD_CTX_open(SSL_AEAD_CTX *aead, uint8_t *out, size_t *out_len,
   /* Assemble the nonce. */
   uint8_t nonce[EVP_AEAD_MAX_NONCE_LENGTH];
   size_t nonce_len = 0;
-  memcpy(nonce, aead->fixed_nonce, aead->fixed_nonce_len);
-  nonce_len += aead->fixed_nonce_len;
+
+  /* Prepend the fixed nonce, or left-pad with zeros if XORing. */
+  if (aead->xor_fixed_nonce) {
+    nonce_len = aead->fixed_nonce_len - aead->variable_nonce_len;
+    memset(nonce, 0, nonce_len);
+  } else {
+    memcpy(nonce, aead->fixed_nonce, aead->fixed_nonce_len);
+    nonce_len += aead->fixed_nonce_len;
+  }
+
+  /* Add the variable nonce. */
   if (aead->variable_nonce_included_in_record) {
     if (in_len < aead->variable_nonce_len) {
       /* Publicly invalid. */
@@ -192,6 +204,15 @@ int SSL_AEAD_CTX_open(SSL_AEAD_CTX *aead, uint8_t *out, size_t *out_len,
     memcpy(nonce + nonce_len, seqnum, aead->variable_nonce_len);
   }
   nonce_len += aead->variable_nonce_len;
+
+  /* XOR the fixed nonce, if necessary. */
+  if (aead->xor_fixed_nonce) {
+    assert(nonce_len == aead->fixed_nonce_len);
+    size_t i;
+    for (i = 0; i < aead->fixed_nonce_len; i++) {
+      nonce[i] ^= aead->fixed_nonce[i];
+    }
+  }
 
   return EVP_AEAD_CTX_open(&aead->ctx, out, out_len, max_out, nonce, nonce_len,
                            in, in_len, ad, ad_len);
@@ -219,8 +240,17 @@ int SSL_AEAD_CTX_seal(SSL_AEAD_CTX *aead, uint8_t *out, size_t *out_len,
   /* Assemble the nonce. */
   uint8_t nonce[EVP_AEAD_MAX_NONCE_LENGTH];
   size_t nonce_len = 0;
-  memcpy(nonce, aead->fixed_nonce, aead->fixed_nonce_len);
-  nonce_len += aead->fixed_nonce_len;
+
+  /* Prepend the fixed nonce, or left-pad with zeros if XORing. */
+  if (aead->xor_fixed_nonce) {
+    nonce_len = aead->fixed_nonce_len - aead->variable_nonce_len;
+    memset(nonce, 0, nonce_len);
+  } else {
+    memcpy(nonce, aead->fixed_nonce, aead->fixed_nonce_len);
+    nonce_len += aead->fixed_nonce_len;
+  }
+
+  /* Select the variable nonce. */
   if (aead->random_variable_nonce) {
     assert(aead->variable_nonce_included_in_record);
     if (!RAND_bytes(nonce + nonce_len, aead->variable_nonce_len)) {
@@ -230,13 +260,14 @@ int SSL_AEAD_CTX_seal(SSL_AEAD_CTX *aead, uint8_t *out, size_t *out_len,
     /* When sending we use the sequence number as the variable part of the
      * nonce. */
     assert(aead->variable_nonce_len == 8);
-    memcpy(nonce + nonce_len, ad, aead->variable_nonce_len);
+    memcpy(nonce + nonce_len, seqnum, aead->variable_nonce_len);
   }
   nonce_len += aead->variable_nonce_len;
 
   /* Emit the variable nonce if included in the record. */
   size_t extra_len = 0;
   if (aead->variable_nonce_included_in_record) {
+    assert(!aead->xor_fixed_nonce);
     if (max_out < aead->variable_nonce_len) {
       OPENSSL_PUT_ERROR(SSL, SSL_R_BUFFER_TOO_SMALL);
       return 0;
@@ -249,6 +280,15 @@ int SSL_AEAD_CTX_seal(SSL_AEAD_CTX *aead, uint8_t *out, size_t *out_len,
     extra_len = aead->variable_nonce_len;
     out += aead->variable_nonce_len;
     max_out -= aead->variable_nonce_len;
+  }
+
+  /* XOR the fixed nonce, if necessary. */
+  if (aead->xor_fixed_nonce) {
+    assert(nonce_len == aead->fixed_nonce_len);
+    size_t i;
+    for (i = 0; i < aead->fixed_nonce_len; i++) {
+      nonce[i] ^= aead->fixed_nonce[i];
+    }
   }
 
   if (!EVP_AEAD_CTX_seal(&aead->ctx, out, out_len, max_out, nonce, nonce_len,

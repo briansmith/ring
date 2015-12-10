@@ -183,6 +183,7 @@
 #define SSL_AES256GCM 0x00000020L
 #define SSL_CHACHA20POLY1305_OLD 0x00000040L
 #define SSL_eNULL 0x00000080L
+#define SSL_CHACHA20POLY1305 0x00000100L
 
 #define SSL_AES (SSL_AES128 | SSL_AES256 | SSL_AES128GCM | SSL_AES256GCM)
 
@@ -266,7 +267,7 @@ struct ssl_aead_ctx_st {
   EVP_AEAD_CTX ctx;
   /* fixed_nonce contains any bytes of the nonce that are fixed for all
    * records. */
-  uint8_t fixed_nonce[8];
+  uint8_t fixed_nonce[12];
   uint8_t fixed_nonce_len, variable_nonce_len;
   /* variable_nonce_included_in_record is non-zero if the variable nonce
    * for a record is included as a prefix before the ciphertext. */
@@ -281,6 +282,9 @@ struct ssl_aead_ctx_st {
   /* omit_version_in_ad is non-zero if the version should be omitted
    * in the AEAD's ad parameter. */
   char omit_version_in_ad;
+  /* xor_fixed_nonce is non-zero if the fixed nonce should be XOR'd into the
+   * variable nonce rather than prepended. */
+  char xor_fixed_nonce;
 } /* SSL_AEAD_CTX */;
 
 /* SSL_AEAD_CTX_new creates a newly-allocated |SSL_AEAD_CTX| using the supplied

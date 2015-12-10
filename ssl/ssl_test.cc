@@ -50,7 +50,9 @@ static const char kRule1[] =
     "ECDHE-RSA-AES128-GCM-SHA256";
 
 static const ExpectedCipher kExpected1[] = {
+  { TLS1_CK_ECDHE_ECDSA_WITH_CHACHA20_POLY1305_SHA256, 0 },
   { TLS1_CK_ECDHE_ECDSA_CHACHA20_POLY1305_OLD, 0 },
+  { TLS1_CK_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256, 0 },
   { TLS1_CK_ECDHE_RSA_CHACHA20_POLY1305_OLD, 0 },
   { TLS1_CK_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256, 0 },
   { TLS1_CK_ECDHE_RSA_WITH_AES_128_GCM_SHA256, 0 },
@@ -67,8 +69,10 @@ static const char kRule2[] =
     "+aRSA";
 
 static const ExpectedCipher kExpected2[] = {
+  { TLS1_CK_ECDHE_ECDSA_WITH_CHACHA20_POLY1305_SHA256, 0 },
   { TLS1_CK_ECDHE_ECDSA_CHACHA20_POLY1305_OLD, 0 },
   { TLS1_CK_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256, 0 },
+  { TLS1_CK_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256, 0 },
   { TLS1_CK_ECDHE_RSA_CHACHA20_POLY1305_OLD, 0 },
   { TLS1_CK_ECDHE_RSA_WITH_AES_128_GCM_SHA256, 0 },
   { 0, 0 },
@@ -83,6 +87,7 @@ static const char kRule3[] =
     "ECDHE-RSA-AES128-GCM-SHA256";
 
 static const ExpectedCipher kExpected3[] = {
+  { TLS1_CK_ECDHE_ECDSA_WITH_CHACHA20_POLY1305_SHA256, 0 },
   { TLS1_CK_ECDHE_ECDSA_CHACHA20_POLY1305_OLD, 0 },
   { TLS1_CK_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256, 0 },
   { 0, 0 },
@@ -119,7 +124,9 @@ static const char kRule6[] =
     "BOGUS1:-BOGUS2:+BOGUS3:!BOGUS4";
 
 static const ExpectedCipher kExpected6[] = {
+  { TLS1_CK_ECDHE_ECDSA_WITH_CHACHA20_POLY1305_SHA256, 0 },
   { TLS1_CK_ECDHE_ECDSA_CHACHA20_POLY1305_OLD, 0 },
+  { TLS1_CK_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256, 0 },
   { TLS1_CK_ECDHE_RSA_CHACHA20_POLY1305_OLD, 0 },
   { TLS1_CK_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256, 0 },
   { TLS1_CK_ECDHE_RSA_WITH_AES_128_GCM_SHA256, 0 },
@@ -133,8 +140,10 @@ static const char kRule7[] =
     "ECDHE-RSA-AES128-GCM-SHA256";
 
 static const ExpectedCipher kExpected7[] = {
+  { TLS1_CK_ECDHE_ECDSA_WITH_CHACHA20_POLY1305_SHA256, 1 },
   { TLS1_CK_ECDHE_ECDSA_CHACHA20_POLY1305_OLD, 1 },
   { TLS1_CK_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256, 0 },
+  { TLS1_CK_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256, 1 },
   { TLS1_CK_ECDHE_RSA_CHACHA20_POLY1305_OLD, 0 },
   { TLS1_CK_ECDHE_RSA_WITH_AES_128_GCM_SHA256, 0 },
   { 0, 0 },
@@ -157,6 +166,7 @@ static const char kRule8[] =
 
 static const ExpectedCipher kExpected8[] = {
   { TLS1_CK_ECDHE_RSA_WITH_AES_256_CBC_SHA, 0 },
+  { TLS1_CK_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256, 0 },
   { TLS1_CK_ECDHE_RSA_CHACHA20_POLY1305_OLD, 0 },
   { TLS1_CK_ECDHE_RSA_WITH_RC4_128_SHA, 0 },
   { TLS1_CK_ECDHE_RSA_WITH_AES_128_CBC_SHA, 0 },
@@ -169,14 +179,14 @@ static const ExpectedCipher kExpected8[] = {
 // Exact ciphers may not be used in multi-part rules; they are treated
 // as unknown aliases.
 static const char kRule9[] =
-    "ECDHE-ECDSA-CHACHA20-POLY1305:"
-    "ECDHE-RSA-CHACHA20-POLY1305:"
-    "!ECDHE-RSA-CHACHA20-POLY1305+RSA:"
-    "!ECDSA+ECDHE-ECDSA-CHACHA20-POLY1305";
+    "ECDHE-ECDSA-AES128-GCM-SHA256:"
+    "ECDHE-RSA-AES128-GCM-SHA256:"
+    "!ECDHE-RSA-AES128-GCM-SHA256+RSA:"
+    "!ECDSA+ECDHE-ECDSA-AES128-GCM-SHA256";
 
 static const ExpectedCipher kExpected9[] = {
-  { TLS1_CK_ECDHE_ECDSA_CHACHA20_POLY1305_OLD, 0 },
-  { TLS1_CK_ECDHE_RSA_CHACHA20_POLY1305_OLD, 0 },
+  { TLS1_CK_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256, 0 },
+  { TLS1_CK_ECDHE_RSA_WITH_AES_128_GCM_SHA256, 0 },
   { 0, 0 },
 };
 
@@ -205,6 +215,23 @@ static const ExpectedCipher kExpected12[] = {
   { 0, 0 },
 };
 
+// The shared name of the CHACHA20_POLY1305 variants behaves like a cipher name
+// and not an alias. It may not be used in a multipart rule. (That the shared
+// name works is covered by the standard tests.)
+static const char kRule13[] =
+    "ECDHE-ECDSA-CHACHA20-POLY1305:"
+    "ECDHE-RSA-CHACHA20-POLY1305:"
+    "!ECDHE-RSA-CHACHA20-POLY1305+RSA:"
+    "!ECDSA+ECDHE-ECDSA-CHACHA20-POLY1305";
+
+static const ExpectedCipher kExpected13[] = {
+  { TLS1_CK_ECDHE_ECDSA_WITH_CHACHA20_POLY1305_SHA256, 0 },
+  { TLS1_CK_ECDHE_ECDSA_CHACHA20_POLY1305_OLD, 0 },
+  { TLS1_CK_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256, 0 },
+  { TLS1_CK_ECDHE_RSA_CHACHA20_POLY1305_OLD, 0 },
+  { 0, 0 },
+};
+
 static CipherTest kCipherTests[] = {
   { kRule1, kExpected1 },
   { kRule2, kExpected2 },
@@ -218,6 +245,7 @@ static CipherTest kCipherTests[] = {
   { kRule10, kExpected10 },
   { kRule11, kExpected11 },
   { kRule12, kExpected12 },
+  { kRule13, kExpected13 },
   { NULL, NULL },
 };
 
@@ -696,6 +724,8 @@ static const CIPHER_RFC_NAME_TEST kCipherRFCNameTests[] = {
   { TLS1_CK_PSK_WITH_RC4_128_SHA, "TLS_PSK_WITH_RC4_SHA" },
   { TLS1_CK_ECDHE_PSK_WITH_AES_128_CBC_SHA,
     "TLS_ECDHE_PSK_WITH_AES_128_CBC_SHA" },
+  { TLS1_CK_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256,
+    "TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256" },
   // These names are non-standard:
   { TLS1_CK_ECDHE_RSA_CHACHA20_POLY1305_OLD,
     "TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256" },

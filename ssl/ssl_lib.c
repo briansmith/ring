@@ -2300,9 +2300,7 @@ int ssl3_can_false_start(const SSL *s) {
       (s->s3->alpn_selected || s->s3->next_proto_neg_seen) &&
       cipher != NULL &&
       cipher->algorithm_mkey == SSL_kECDHE &&
-      (cipher->algorithm_enc == SSL_AES128GCM ||
-       cipher->algorithm_enc == SSL_AES256GCM ||
-       cipher->algorithm_enc == SSL_CHACHA20POLY1305_OLD);
+      cipher->algorithm_mac == SSL_AEAD;
 }
 
 const SSL3_ENC_METHOD *ssl3_get_enc_method(uint16_t version) {
