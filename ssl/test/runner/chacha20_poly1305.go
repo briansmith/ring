@@ -7,9 +7,7 @@ import (
 	"errors"
 )
 
-// See draft-agl-tls-chacha20poly1305-04 and
-// draft-irtf-cfrg-chacha20-poly1305-10. Where the two differ, the
-// draft-agl-tls-chacha20poly1305-04 variant is implemented.
+// See RFC 7539.
 
 func leftRotate(a uint32, n uint) uint32 {
 	return (a << n) | (a >> (32 - n))
@@ -62,37 +60,30 @@ func sliceForAppend(in []byte, n int) (head, tail []byte) {
 	return
 }
 
-type chaCha20Poly1305Old struct {
-	key [32]byte
-}
-
-func newChaCha20Poly1305Old(key []byte) (cipher.AEAD, error) {
-	if len(key) != 32 {
-		return nil, errors.New("bad key length")
-	}
-	aead := new(chaCha20Poly1305Old)
-	copy(aead.key[:], key)
-	return aead, nil
-}
-
-func (c *chaCha20Poly1305Old) NonceSize() int { return 8 }
-func (c *chaCha20Poly1305Old) Overhead() int  { return 16 }
-
-func (c *chaCha20Poly1305Old) chaCha20(out, in, nonce []byte, counter uint64) {
+func chaCha20(out, in, key, nonce []byte, counter uint64) {
 	var state [16]uint32
 	state[0] = 0x61707865
 	state[1] = 0x3320646e
 	state[2] = 0x79622d32
 	state[3] = 0x6b206574
 	for i := 0; i < 8; i++ {
-		state[4+i] = binary.LittleEndian.Uint32(c.key[i*4 : i*4+4])
+		state[4+i] = binary.LittleEndian.Uint32(key[i*4 : i*4+4])
 	}
-	state[14] = binary.LittleEndian.Uint32(nonce[0:4])
-	state[15] = binary.LittleEndian.Uint32(nonce[4:8])
+
+	switch len(nonce) {
+	case 8:
+		state[14] = binary.LittleEndian.Uint32(nonce[0:4])
+		state[15] = binary.LittleEndian.Uint32(nonce[4:8])
+	case 12:
+		state[13] = binary.LittleEndian.Uint32(nonce[0:4])
+		state[14] = binary.LittleEndian.Uint32(nonce[4:8])
+		state[15] = binary.LittleEndian.Uint32(nonce[8:12])
+	default:
+		panic("bad nonce length")
+	}
 
 	for i := 0; i < len(in); i += 64 {
-		state[12] = uint32(counter & 0xffffffff)
-		state[13] = uint32(counter >> 32)
+		state[12] = uint32(counter)
 
 		var tmp [64]byte
 		chaCha20Block(&state, tmp[:])
@@ -108,7 +99,68 @@ func (c *chaCha20Poly1305Old) chaCha20(out, in, nonce []byte, counter uint64) {
 	}
 }
 
-func (c *chaCha20Poly1305Old) poly1305(tag *[16]byte, nonce, ciphertext, additionalData []byte) {
+// chaCha20Poly1305 implements the AEAD from
+// RFC 7539 and draft-agl-tls-chacha20poly1305-04.
+type chaCha20Poly1305 struct {
+	key [32]byte
+	// oldMode, if true, indicates that the draft spec should be
+	// implemented rather than the final, RFC version.
+	oldMode bool
+}
+
+func newChaCha20Poly1305(key []byte) (cipher.AEAD, error) {
+	if len(key) != 32 {
+		return nil, errors.New("bad key length")
+	}
+	aead := new(chaCha20Poly1305)
+	copy(aead.key[:], key)
+	return aead, nil
+}
+
+func newChaCha20Poly1305Old(key []byte) (cipher.AEAD, error) {
+	if len(key) != 32 {
+		return nil, errors.New("bad key length")
+	}
+	aead := &chaCha20Poly1305{
+		oldMode: true,
+	}
+	copy(aead.key[:], key)
+	return aead, nil
+}
+
+func (c *chaCha20Poly1305) NonceSize() int {
+	if c.oldMode {
+		return 8
+	} else {
+		return 12
+	}
+}
+
+func (c *chaCha20Poly1305) Overhead() int { return 16 }
+
+func (c *chaCha20Poly1305) poly1305(tag *[16]byte, nonce, ciphertext, additionalData []byte) {
+	input := make([]byte, 0, len(additionalData)+15+len(ciphertext)+15+8+8)
+	input = append(input, additionalData...)
+	var zeros [15]byte
+	if pad := len(input) % 16; pad != 0 {
+		input = append(input, zeros[:16-pad]...)
+	}
+	input = append(input, ciphertext...)
+	if pad := len(input) % 16; pad != 0 {
+		input = append(input, zeros[:16-pad]...)
+	}
+	input, out := sliceForAppend(input, 8)
+	binary.LittleEndian.PutUint64(out, uint64(len(additionalData)))
+	input, out = sliceForAppend(input, 8)
+	binary.LittleEndian.PutUint64(out, uint64(len(ciphertext)))
+
+	var poly1305Key [32]byte
+	chaCha20(poly1305Key[:], poly1305Key[:], c.key[:], nonce, 0)
+
+	poly1305Sum(tag, input, &poly1305Key)
+}
+
+func (c *chaCha20Poly1305) poly1305Old(tag *[16]byte, nonce, ciphertext, additionalData []byte) {
 	input := make([]byte, 0, len(additionalData)+8+len(ciphertext)+8)
 	input = append(input, additionalData...)
 	input, out := sliceForAppend(input, 8)
@@ -118,28 +170,32 @@ func (c *chaCha20Poly1305Old) poly1305(tag *[16]byte, nonce, ciphertext, additio
 	binary.LittleEndian.PutUint64(out, uint64(len(ciphertext)))
 
 	var poly1305Key [32]byte
-	c.chaCha20(poly1305Key[:], poly1305Key[:], nonce, 0)
+	chaCha20(poly1305Key[:], poly1305Key[:], c.key[:], nonce, 0)
 
 	poly1305Sum(tag, input, &poly1305Key)
 }
 
-func (c *chaCha20Poly1305Old) Seal(dst, nonce, plaintext, additionalData []byte) []byte {
-	if len(nonce) != 8 {
+func (c *chaCha20Poly1305) Seal(dst, nonce, plaintext, additionalData []byte) []byte {
+	if len(nonce) != c.NonceSize() {
 		panic("Bad nonce length")
 	}
 
 	ret, out := sliceForAppend(dst, len(plaintext)+16)
-	c.chaCha20(out[:len(plaintext)], plaintext, nonce, 1)
+	chaCha20(out[:len(plaintext)], plaintext, c.key[:], nonce, 1)
 
 	var tag [16]byte
-	c.poly1305(&tag, nonce, out[:len(plaintext)], additionalData)
+	if c.oldMode {
+		c.poly1305Old(&tag, nonce, out[:len(plaintext)], additionalData)
+	} else {
+		c.poly1305(&tag, nonce, out[:len(plaintext)], additionalData)
+	}
 	copy(out[len(plaintext):], tag[:])
 
 	return ret
 }
 
-func (c *chaCha20Poly1305Old) Open(dst, nonce, ciphertext, additionalData []byte) ([]byte, error) {
-	if len(nonce) != 8 {
+func (c *chaCha20Poly1305) Open(dst, nonce, ciphertext, additionalData []byte) ([]byte, error) {
+	if len(nonce) != c.NonceSize() {
 		panic("Bad nonce length")
 	}
 	if len(ciphertext) < 16 {
@@ -148,12 +204,16 @@ func (c *chaCha20Poly1305Old) Open(dst, nonce, ciphertext, additionalData []byte
 	plaintextLen := len(ciphertext) - 16
 
 	var tag [16]byte
-	c.poly1305(&tag, nonce, ciphertext[:plaintextLen], additionalData)
+	if c.oldMode {
+		c.poly1305Old(&tag, nonce, ciphertext[:plaintextLen], additionalData)
+	} else {
+		c.poly1305(&tag, nonce, ciphertext[:plaintextLen], additionalData)
+	}
 	if subtle.ConstantTimeCompare(tag[:], ciphertext[plaintextLen:]) != 1 {
 		return nil, errors.New("chacha20: message authentication failed")
 	}
 
 	ret, out := sliceForAppend(dst, plaintextLen)
-	c.chaCha20(out, ciphertext[:plaintextLen], nonce, 1)
+	chaCha20(out, ciphertext[:plaintextLen], c.key[:], nonce, 1)
 	return ret, nil
 }
