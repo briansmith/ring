@@ -2429,6 +2429,8 @@ DECLARE_STACK_OF(SRTP_PROTECTION_PROFILE)
 #define SRTP_AES128_F8_SHA1_32 0x0004
 #define SRTP_NULL_SHA1_80      0x0005
 #define SRTP_NULL_SHA1_32      0x0006
+#define SRTP_AEAD_AES_128_GCM  0x0007
+#define SRTP_AEAD_AES_256_GCM  0x0008
 
 /* SSL_CTX_set_srtp_profiles enables SRTP for all SSL objects created from
  * |ctx|. |profile| contains a colon-separated list of profile names. It returns
