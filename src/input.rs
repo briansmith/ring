@@ -134,14 +134,14 @@ pub struct Input<'a> {
 
 impl<'a> Input<'a> {
     /// Construct a new `Input` for the given input `bytes`.
-    pub fn new(bytes: &'a [u8]) -> Option<Input<'a>> {
+    pub fn new(bytes: &'a [u8]) -> Result<Input<'a>, ()> {
         // This limit is important for avoiding integer overflow. In particular,
         // `Reader` assumes that an `i + 1 > i` if `input.value.get(i)` does
         // not return `None`.
         if bytes.len() > std::usize::MAX - 1 {
-            return None
+            return Err(())
         }
-        Some(Input { value: no_panic::NoPanicSlice::new(bytes) })
+        Ok(Input { value: no_panic::NoPanicSlice::new(bytes) })
     }
 
     /// Returns `true` if the input is empty and false otherwise.
