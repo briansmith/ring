@@ -62,23 +62,23 @@ func sliceForAppend(in []byte, n int) (head, tail []byte) {
 	return
 }
 
-type chaCha20Poly1305 struct {
+type chaCha20Poly1305Old struct {
 	key [32]byte
 }
 
-func newChaCha20Poly1305(key []byte) (cipher.AEAD, error) {
+func newChaCha20Poly1305Old(key []byte) (cipher.AEAD, error) {
 	if len(key) != 32 {
 		return nil, errors.New("bad key length")
 	}
-	aead := new(chaCha20Poly1305)
+	aead := new(chaCha20Poly1305Old)
 	copy(aead.key[:], key)
 	return aead, nil
 }
 
-func (c *chaCha20Poly1305) NonceSize() int { return 8 }
-func (c *chaCha20Poly1305) Overhead() int  { return 16 }
+func (c *chaCha20Poly1305Old) NonceSize() int { return 8 }
+func (c *chaCha20Poly1305Old) Overhead() int  { return 16 }
 
-func (c *chaCha20Poly1305) chaCha20(out, in, nonce []byte, counter uint64) {
+func (c *chaCha20Poly1305Old) chaCha20(out, in, nonce []byte, counter uint64) {
 	var state [16]uint32
 	state[0] = 0x61707865
 	state[1] = 0x3320646e
@@ -108,7 +108,7 @@ func (c *chaCha20Poly1305) chaCha20(out, in, nonce []byte, counter uint64) {
 	}
 }
 
-func (c *chaCha20Poly1305) poly1305(tag *[16]byte, nonce, ciphertext, additionalData []byte) {
+func (c *chaCha20Poly1305Old) poly1305(tag *[16]byte, nonce, ciphertext, additionalData []byte) {
 	input := make([]byte, 0, len(additionalData)+8+len(ciphertext)+8)
 	input = append(input, additionalData...)
 	input, out := sliceForAppend(input, 8)
@@ -123,7 +123,7 @@ func (c *chaCha20Poly1305) poly1305(tag *[16]byte, nonce, ciphertext, additional
 	poly1305Sum(tag, input, &poly1305Key)
 }
 
-func (c *chaCha20Poly1305) Seal(dst, nonce, plaintext, additionalData []byte) []byte {
+func (c *chaCha20Poly1305Old) Seal(dst, nonce, plaintext, additionalData []byte) []byte {
 	if len(nonce) != 8 {
 		panic("Bad nonce length")
 	}
@@ -138,7 +138,7 @@ func (c *chaCha20Poly1305) Seal(dst, nonce, plaintext, additionalData []byte) []
 	return ret
 }
 
-func (c *chaCha20Poly1305) Open(dst, nonce, ciphertext, additionalData []byte) ([]byte, error) {
+func (c *chaCha20Poly1305Old) Open(dst, nonce, ciphertext, additionalData []byte) ([]byte, error) {
 	if len(nonce) != 8 {
 		panic("Bad nonce length")
 	}

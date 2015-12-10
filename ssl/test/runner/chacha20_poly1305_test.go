@@ -67,14 +67,14 @@ func TestChaCha20Block(t *testing.T) {
 }
 
 // See draft-agl-tls-chacha20poly1305-04, section 7.
-func TestChaCha20Poly1305(t *testing.T) {
+func TestChaCha20Poly1305Old(t *testing.T) {
 	key, _ := hex.DecodeString("4290bcb154173531f314af57f3be3b5006da371ece272afa1b5dbdd1100a1007")
 	input, _ := hex.DecodeString("86d09974840bded2a5ca")
 	nonce, _ := hex.DecodeString("cd7cf67be39c794a")
 	ad, _ := hex.DecodeString("87e229d4500845a079c0")
 	output, _ := hex.DecodeString("e3e446f7ede9a19b62a4677dabf4e3d24b876bb284753896e1d6")
 
-	aead, err := newChaCha20Poly1305(key)
+	aead, err := newChaCha20Poly1305Old(key)
 	if err != nil {
 		t.Fatal(err)
 	}
