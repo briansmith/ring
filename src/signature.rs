@@ -23,7 +23,7 @@
 //! Also, this API treats each combination of parameters as a separate
 //! algorithm. For example, instead of having a single "RSA" algorithm with a
 //! verification function that takes a bunch of parameters, there are
-//! `RSA_PKCS1_2048_8192_SHA256_VERIFY`, `RSA_PKCS1_2048_8192_SHA512_VERIFY`,
+//! `RSA_PKCS1_2048_8192_SHA256`, `RSA_PKCS1_2048_8192_SHA512`,
 //! etc. which encode sets of parameter choices into objects. This design is
 //! designed to reduce the risks of algorithm agility. It is also designed to
 //! be optimized for Ed25519, which has a fixed signature format, a fixed curve,
@@ -39,11 +39,10 @@
 use super::{c, digest, ecc, ffi};
 use super::input::Input;
 
-/// An algorithm for verifying signatures, to be passed to the `verify`
-/// function.
-pub struct VerificationAlgorithm {
-    verify: fn(public_key: Input, msg: Input, signature: Input)
-               -> Result<(), ()>,
+/// A signature verification algorithm.
+pub trait VerificationAlgorithm {
+    fn verify(&self, public_key: Input, msg: Input, signature: Input)
+              -> Result<(), ()>;
 }
 
 /// Verify the signature `signature` of message `msg` with the public key
@@ -65,8 +64,8 @@ pub struct VerificationAlgorithm {
 ///    let public_key = try!(Input::new(public_key));
 ///    let msg = try!(Input::new(msg));
 ///    let sig = try!(Input::new(sig));
-///    signature::verify(&signature::RSA_PKCS1_2048_8192_SHA256_VERIFY,
-///                      public_key, msg, sig)
+///    signature::verify(&signature::RSA_PKCS1_2048_8192_SHA256, public_key,
+///                      msg, sig)
 /// }
 /// ```
 ///
@@ -78,86 +77,102 @@ pub struct VerificationAlgorithm {
 ///
 /// fn verify_ed25519(public_key: Input, msg: Input, sig: Input)
 ///                   -> Result<(), ()> {
-///    signature::verify(&signature::ED25519_VERIFY, public_key, msg, sig)
+///    signature::verify(&signature::ED25519, public_key, msg, sig)
 /// }
 /// ```
 pub fn verify(alg: &VerificationAlgorithm, public_key: Input, msg: Input,
               signature: Input) -> Result<(), ()> {
-    (alg.verify)(public_key, msg, signature)
+    alg.verify(public_key, msg, signature)
 }
 
 
+/// ECDSA Signatures (ASN.1 DER encoded) with public keys in uncompressed form.
+///
+/// The public key will be decoded using the
+/// `Octet-String-to-Elliptic-Curve-Point` algorithm in [SEC 1: Elliptic
+/// Curve Cryptography, Version 2.0](http://www.secg.org/sec1-v2.pdf); it must
+/// in be in uncompressed form. The signature will be parsed as a DER-encoded
+/// `Ecdsa-Sig-Value` as described in [RFC 3279 Section
+/// 2.2.3](https://tools.ietf.org/html/rfc3279#section-2.2.3).
+pub struct ECDSA {
+    digest_alg: &'static digest::Algorithm,
+    ec_group_fn: unsafe extern fn() -> *const ecc::EC_GROUP,
+}
+
+impl VerificationAlgorithm for ECDSA {
+    fn verify(&self, public_key: Input, msg: Input, signature: Input)
+              -> Result<(), ()> {
+        let digest = digest::digest(self.digest_alg, msg.as_slice_less_safe());
+        let signature = signature.as_slice_less_safe();
+        let public_key = public_key.as_slice_less_safe();
+        ffi::map_bssl_result(unsafe {
+            ECDSA_verify_signed_digest((self.ec_group_fn)(),
+                                       digest.algorithm().nid,
+                                       digest.as_ref().as_ptr(),
+                                       digest.as_ref().len(), signature.as_ptr(),
+                                       signature.len(), public_key.as_ptr(),
+                                       public_key.len())
+        })
+    }
+}
+
 macro_rules! ecdsa {
-    ( $VERIFY_ALGORITHM:ident, $verify_fn:ident, $curve_name:expr,
-      $ec_group_fn:expr, $digest_alg_name:expr, $digest_alg:expr ) => {
-        #[doc="Verification of ECDSA signatures using the "]
+    ( $VERIFY_ALGORITHM:ident, $curve_name:expr, $ec_group_fn:expr,
+      $digest_alg_name:expr, $digest_alg:expr ) => {
+        #[doc="ECDSA signatures using the "]
         #[doc=$curve_name]
         #[doc=" curve and the "]
         #[doc=$digest_alg_name]
         #[doc=" digest algorithm."]
         ///
-        /// The public key will be decoded using the
-        /// `Octet-String-to-Elliptic-Curve-Point` algorithm in [SEC 1: Elliptic
-        /// Curve Cryptography, Version 2.0](http://www.secg.org/sec1-v2.pdf);
-        /// it must in be in uncompressed form. The signature will be parsed as a
-        /// DER-encoded `Ecdsa-Sig-Value` as described in [RFC 3279 Section
-        /// 2.2.3](https://tools.ietf.org/html/rfc3279#section-2.2.3).
-        pub const $VERIFY_ALGORITHM: VerificationAlgorithm =
-                VerificationAlgorithm {
-            verify: $verify_fn,
+        /// See the documentation for `ECDSA` for details of how the public key
+        /// and signature are encoded.
+        pub static $VERIFY_ALGORITHM: ECDSA = ECDSA {
+            digest_alg: $digest_alg,
+            ec_group_fn: $ec_group_fn,
         };
-
-        fn $verify_fn(public_key: Input, msg: Input, signature: Input)
-                      -> Result<(), ()> {
-            ecdsa_verify($ec_group_fn, $digest_alg, public_key, msg,
-                         signature)
-        }
     }
 }
 
-ecdsa!(ECDSA_P256_SHA1_VERIFY, ecdsa_p256_sha1_verify, "P-256 (secp256r1)",
-       ecc::EC_GROUP_P256, "SHA-1", &digest::SHA1);
-ecdsa!(ECDSA_P256_SHA256_VERIFY, ecdsa_p256_sha256_verify, "P-256 (secp256r1)",
-       ecc::EC_GROUP_P256, "SHA-256", &digest::SHA256);
-ecdsa!(ECDSA_P256_SHA384_VERIFY, ecdsa_p256_sha384_verify, "P-256 (secp256r1)",
-       ecc::EC_GROUP_P256, "SHA-384", &digest::SHA384);
-ecdsa!(ECDSA_P256_SHA512_VERIFY, ecdsa_p256_sha512_verify, "P-256 (secp256r1)",
-       ecc::EC_GROUP_P256, "SHA-512", &digest::SHA512);
+ecdsa!(ECDSA_P256_SHA1, "P-256 (secp256r1)", ecc::EC_GROUP_P256, "SHA-1",
+       &digest::SHA1);
+ecdsa!(ECDSA_P256_SHA256, "P-256 (secp256r1)", ecc::EC_GROUP_P256, "SHA-256",
+       &digest::SHA256);
+ecdsa!(ECDSA_P256_SHA384, "P-256 (secp256r1)", ecc::EC_GROUP_P256, "SHA-384",
+       &digest::SHA384);
+ecdsa!(ECDSA_P256_SHA512, "P-256 (secp256r1)", ecc::EC_GROUP_P256, "SHA-512",
+       &digest::SHA512);
 
-ecdsa!(ECDSA_P384_SHA1_VERIFY, ecdsa_p384_sha1_verify, "P-384 (secp384r1)",
-       ecc::EC_GROUP_P384, "SHA-1", &digest::SHA1);
-ecdsa!(ECDSA_P384_SHA256_VERIFY, ecdsa_p384_sha256_verify, "P-384 (secp384r1)",
-       ecc::EC_GROUP_P384, "SHA-256", &digest::SHA256);
-ecdsa!(ECDSA_P384_SHA384_VERIFY, ecdsa_p384_sha384_verify, "P-384 (secp384r1)",
-       ecc::EC_GROUP_P384, "SHA-384", &digest::SHA384);
-ecdsa!(ECDSA_P384_SHA512_VERIFY, ecdsa_p384_sha512_verify, "P-384 (secp384r1)",
-       ecc::EC_GROUP_P384, "SHA-512", &digest::SHA512);
+ecdsa!(ECDSA_P384_SHA1, "P-384 (secp384r1)", ecc::EC_GROUP_P384, "SHA-1",
+       &digest::SHA1);
+ecdsa!(ECDSA_P384_SHA256, "P-384 (secp384r1)", ecc::EC_GROUP_P384, "SHA-256",
+       &digest::SHA256);
+ecdsa!(ECDSA_P384_SHA384, "P-384 (secp384r1)", ecc::EC_GROUP_P384, "SHA-384",
+       &digest::SHA384);
+ecdsa!(ECDSA_P384_SHA512, "P-384 (secp384r1)", ecc::EC_GROUP_P384, "SHA-512",
+       &digest::SHA512);
 
-ecdsa!(ECDSA_P521_SHA1_VERIFY, ecdsa_p521_sha1_verify, "P-521 (secp521r1)",
-       ecc::EC_GROUP_P521, "SHA-1", &digest::SHA1);
-ecdsa!(ECDSA_P521_SHA256_VERIFY, ecdsa_p521_sha521_verify, "P-521 (secp521r1)",
-       ecc::EC_GROUP_P521, "SHA-256", &digest::SHA256);
-ecdsa!(ECDSA_P521_SHA384_VERIFY, ecdsa_p521_sha384_verify, "P-521 (secp521r1)",
-       ecc::EC_GROUP_P521, "SHA-384", &digest::SHA384);
-ecdsa!(ECDSA_P521_SHA512_VERIFY, ecdsa_p521_sha512_verify, "P-521 (secp521r1)",
-       ecc::EC_GROUP_P521, "SHA-512", &digest::SHA512);
+ecdsa!(ECDSA_P521_SHA1, "P-521 (secp521r1)", ecc::EC_GROUP_P521, "SHA-1",
+       &digest::SHA1);
+ecdsa!(ECDSA_P521_SHA256, "P-521 (secp521r1)", ecc::EC_GROUP_P521, "SHA-256",
+       &digest::SHA256);
+ecdsa!(ECDSA_P521_SHA384, "P-521 (secp521r1)", ecc::EC_GROUP_P521, "SHA-384",
+       &digest::SHA384);
+ecdsa!(ECDSA_P521_SHA512, "P-521 (secp521r1)", ecc::EC_GROUP_P521, "SHA-512",
+       &digest::SHA512);
 
 
-fn ecdsa_verify(ec_group_fn: unsafe extern fn() -> *const ecc::EC_GROUP,
-                digest_alg: &'static digest::Algorithm, public_key: Input,
-                msg: Input, signature: Input) -> Result<(), ()> {
-    let digest = digest::digest(digest_alg, msg.as_slice_less_safe());
-    let signature = signature.as_slice_less_safe();
-    let public_key = public_key.as_slice_less_safe();
-    ffi::map_bssl_result(unsafe {
-        ECDSA_verify_signed_digest(ec_group_fn(), digest_alg.nid,
-                                   digest.as_ref().as_ptr(),
-                                   digest.as_ref().len(), signature.as_ptr(),
-                                   signature.len(), public_key.as_ptr(),
-                                   public_key.len())
-    })
+/// EdDSA signatures.
+pub struct EdDSA {
+    _unused: u8, // XXX: Stable Rust doesn't allow empty structs.
 }
 
+/// [Ed25519](http://ed25519.cr.yp.to/) signatures.
+///
+/// Ed25519 uses SHA-512 as the digest algorithm.
+pub static ED25519: EdDSA = EdDSA {
+    _unused: 1,
+};
 
 #[cfg(test)]
 fn ed25519_sign(private_key: &[u8], msg: &[u8], signature: &mut [u8])
@@ -171,72 +186,66 @@ fn ed25519_sign(private_key: &[u8], msg: &[u8], signature: &mut [u8])
     })
 }
 
-/// Verification of [Ed25519](http://ed25519.cr.yp.to/) signatures.
-///
-/// Ed25519 uses SHA-512 as the digest algorithm.
-pub const ED25519_VERIFY: VerificationAlgorithm = VerificationAlgorithm {
-    verify: ed25519_verify,
-};
-
-fn ed25519_verify(public_key: Input, msg: Input, signature: Input)
-                  -> Result<(), ()> {
-    let public_key = public_key.as_slice_less_safe();
-    if public_key.len() != 32 || signature.len() != 64 {
-        return Err(())
+impl VerificationAlgorithm for EdDSA {
+    fn verify(&self, public_key: Input, msg: Input, signature: Input)
+              -> Result<(), ()> {
+        let public_key = public_key.as_slice_less_safe();
+        if public_key.len() != 32 || signature.len() != 64 {
+            return Err(())
+        }
+        let msg = msg.as_slice_less_safe();
+        let signature = signature.as_slice_less_safe();
+        ffi::map_bssl_result(unsafe {
+            ED25519_verify(msg.as_ptr(), msg.len(), signature.as_ptr(),
+                           public_key.as_ptr())
+        })
     }
-    let msg = msg.as_slice_less_safe();
-    let signature = signature.as_slice_less_safe();
-    ffi::map_bssl_result(unsafe {
-        ED25519_verify(msg.as_ptr(), msg.len(), signature.as_ptr(),
-                       public_key.as_ptr())
-    })
 }
 
+
+/// RSA PKCS#1 1.5 signatures.
+#[allow(non_camel_case_types)]
+pub struct RSA_PKCS1 {
+    digest_alg: &'static digest::Algorithm,
+}
+
+impl VerificationAlgorithm for RSA_PKCS1 {
+    fn verify(&self, public_key: Input, msg: Input, signature: Input)
+              -> Result<(), ()> {
+        let digest = digest::digest(self.digest_alg, msg.as_slice_less_safe());
+        let signature = signature.as_slice_less_safe();
+        let public_key = public_key.as_slice_less_safe();
+        ffi::map_bssl_result(unsafe {
+            RSA_verify_pkcs1_signed_digest(2048, 8192, digest.algorithm().nid,
+                                           digest.as_ref().as_ptr(),
+                                           digest.as_ref().len(),
+                                           signature.as_ptr(), signature.len(),
+                                           public_key.as_ptr(), public_key.len())
+        })
+    }
+}
 
 macro_rules! rsa_pkcs1 {
     ( $VERIFY_ALGORITHM:ident, $verify_fn:ident, $digest_alg_name:expr,
       $digest_alg:expr ) => {
-        #[doc="Verification of RSA PKCS#1 1.5 signatures from 2048-8192 bits "]
+        #[doc="RSA PKCS#1 1.5 signatures from 2048-8192 bits "]
         #[doc="using the "]
         #[doc=$digest_alg_name]
         #[doc=" digest algorithm."]
-        pub const $VERIFY_ALGORITHM: VerificationAlgorithm =
-                VerificationAlgorithm {
-            verify: $verify_fn,
+        pub static $VERIFY_ALGORITHM: RSA_PKCS1 = RSA_PKCS1 {
+            digest_alg: $digest_alg,
         };
-
-        fn $verify_fn(public_key: Input, msg: Input, signature: Input)
-                      -> Result<(), ()> {
-            rsa_pkcs1_verify(2048, 8192, $digest_alg, public_key, msg,
-                             signature)
-        }
     }
 }
 
-rsa_pkcs1!(RSA_PKCS1_2048_8192_SHA1_VERIFY, rsa_pkcs1_2048_8192_sha1_verify,
+rsa_pkcs1!(RSA_PKCS1_2048_8192_SHA1, rsa_pkcs1_2048_8192_sha1_verify,
            "SHA-1", &digest::SHA1);
-rsa_pkcs1!(RSA_PKCS1_2048_8192_SHA256_VERIFY, rsa_pkcs1_2048_8192_sha256_verify,
+rsa_pkcs1!(RSA_PKCS1_2048_8192_SHA256, rsa_pkcs1_2048_8192_sha256_verify,
            "SHA-256", &digest::SHA256);
-rsa_pkcs1!(RSA_PKCS1_2048_8192_SHA384_VERIFY, rsa_pkcs1_2048_8192_sha384_verify,
+rsa_pkcs1!(RSA_PKCS1_2048_8192_SHA384, rsa_pkcs1_2048_8192_sha384_verify,
            "SHA-384", &digest::SHA384);
-rsa_pkcs1!(RSA_PKCS1_2048_8192_SHA512_VERIFY, rsa_pkcs1_2048_8192_sha512_verify,
+rsa_pkcs1!(RSA_PKCS1_2048_8192_SHA512, rsa_pkcs1_2048_8192_sha512_verify,
            "SHA-512", &digest::SHA512);
-
-fn rsa_pkcs1_verify(min_bits: usize, max_bits: usize,
-                    digest_alg: &'static digest::Algorithm, public_key: Input,
-                    msg: Input, signature: Input) -> Result<(),()> {
-    let digest = digest::digest(digest_alg, msg.as_slice_less_safe());
-    let signature = signature.as_slice_less_safe();
-    let public_key = public_key.as_slice_less_safe();
-    ffi::map_bssl_result(unsafe {
-        RSA_verify_pkcs1_signed_digest(min_bits, max_bits,
-                                       digest.algorithm().nid,
-                                       digest.as_ref().as_ptr(),
-                                       digest.as_ref().len(), signature.as_ptr(),
-                                       signature.len(), public_key.as_ptr(),
-                                       public_key.len())
-    })
-}
 
 
 extern {
@@ -264,7 +273,7 @@ extern {
 
 #[cfg(test)]
 mod tests {
-    use super::{ed25519_sign, ED25519_VERIFY, verify};
+    use super::{ed25519_sign, ED25519, verify};
     use super::super::file_test;
     use super::super::input::Input;
 
@@ -288,8 +297,7 @@ mod tests {
             let msg = Input::new(&msg).unwrap();
             let expected_sig = Input::new(&expected_sig).unwrap();
 
-            assert!(verify(&ED25519_VERIFY, public_key, msg, expected_sig)
-                        .is_ok());
+            assert!(verify(&ED25519, public_key, msg, expected_sig).is_ok());
         });
     }
 }
