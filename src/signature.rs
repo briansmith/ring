@@ -41,6 +41,7 @@ use super::input::Input;
 
 /// A signature verification algorithm.
 pub trait VerificationAlgorithm {
+    #[doc(hidden)]
     fn verify(&self, public_key: Input, msg: Input, signature: Input)
               -> Result<(), ()>;
 }
@@ -95,7 +96,10 @@ pub fn verify(alg: &VerificationAlgorithm, public_key: Input, msg: Input,
 /// `Ecdsa-Sig-Value` as described in [RFC 3279 Section
 /// 2.2.3](https://tools.ietf.org/html/rfc3279#section-2.2.3).
 pub struct ECDSA {
+    #[doc(hidden)]
     digest_alg: &'static digest::Algorithm,
+
+    #[doc(hidden)]
     ec_group_fn: unsafe extern fn() -> *const ecc::EC_GROUP,
 }
 
@@ -164,6 +168,7 @@ ecdsa!(ECDSA_P521_SHA512, "P-521 (secp521r1)", ecc::EC_GROUP_P521, "SHA-512",
 
 /// EdDSA signatures.
 pub struct EdDSA {
+    #[doc(hidden)]
     _unused: u8, // XXX: Stable Rust doesn't allow empty structs.
 }
 
@@ -206,6 +211,7 @@ impl VerificationAlgorithm for EdDSA {
 /// RSA PKCS#1 1.5 signatures.
 #[allow(non_camel_case_types)]
 pub struct RSA_PKCS1 {
+    #[doc(hidden)]
     digest_alg: &'static digest::Algorithm,
 }
 
@@ -228,7 +234,7 @@ impl VerificationAlgorithm for RSA_PKCS1 {
 macro_rules! rsa_pkcs1 {
     ( $VERIFY_ALGORITHM:ident, $verify_fn:ident, $digest_alg_name:expr,
       $digest_alg:expr ) => {
-        #[doc="RSA PKCS#1 1.5 signatures from 2048-8192 bits "]
+        #[doc="RSA PKCS#1 1.5 signatures of 2048-8192 bits "]
         #[doc="using the "]
         #[doc=$digest_alg_name]
         #[doc=" digest algorithm."]
