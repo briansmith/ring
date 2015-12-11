@@ -1171,7 +1171,7 @@ int ec_GFp_nistp224_points_mul(const EC_GROUP *group, EC_POINT *r,
       mixed = 1;
     }
     secrets = OPENSSL_malloc(num_points * sizeof(felem_bytearray));
-    pre_comp = OPENSSL_malloc(num_points * 17 * 3 * sizeof(felem));
+    pre_comp = OPENSSL_malloc(num_points * sizeof(felem[17][3]));
     if (mixed) {
       tmp_felems = OPENSSL_malloc((num_points * 17 + 1) * sizeof(felem));
     }
