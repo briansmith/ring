@@ -213,6 +213,9 @@ impl VerificationAlgorithm for EdDSA {
 pub struct RSA_PKCS1 {
     #[doc(hidden)]
     digest_alg: &'static digest::Algorithm,
+
+    #[doc(hidden)]
+    min_bits: usize,
 }
 
 impl VerificationAlgorithm for RSA_PKCS1 {
@@ -222,7 +225,8 @@ impl VerificationAlgorithm for RSA_PKCS1 {
         let signature = signature.as_slice_less_safe();
         let public_key = public_key.as_slice_less_safe();
         ffi::map_bssl_result(unsafe {
-            RSA_verify_pkcs1_signed_digest(2048, 8192, digest.algorithm().nid,
+            RSA_verify_pkcs1_signed_digest(self.min_bits, 8192,
+                                           digest.algorithm().nid,
                                            digest.as_ref().as_ptr(),
                                            digest.as_ref().len(),
                                            signature.as_ptr(), signature.len(),
@@ -232,26 +236,27 @@ impl VerificationAlgorithm for RSA_PKCS1 {
 }
 
 macro_rules! rsa_pkcs1 {
-    ( $VERIFY_ALGORITHM:ident, $verify_fn:ident, $digest_alg_name:expr,
-      $digest_alg:expr ) => {
-        #[doc="RSA PKCS#1 1.5 signatures of 2048-8192 bits "]
+    ( $VERIFY_ALGORITHM:ident, $min_bits:expr, $min_bits_str:expr,
+      $digest_alg_name:expr, $digest_alg:expr ) => {
+        #[doc="RSA PKCS#1 1.5 signatures of "]
+        #[doc=$min_bits_str]
+        #[doc="-8192 bits "]
         #[doc="using the "]
         #[doc=$digest_alg_name]
         #[doc=" digest algorithm."]
         pub static $VERIFY_ALGORITHM: RSA_PKCS1 = RSA_PKCS1 {
             digest_alg: $digest_alg,
+            min_bits: $min_bits
         };
     }
 }
 
-rsa_pkcs1!(RSA_PKCS1_2048_8192_SHA1, rsa_pkcs1_2048_8192_sha1_verify,
-           "SHA-1", &digest::SHA1);
-rsa_pkcs1!(RSA_PKCS1_2048_8192_SHA256, rsa_pkcs1_2048_8192_sha256_verify,
-           "SHA-256", &digest::SHA256);
-rsa_pkcs1!(RSA_PKCS1_2048_8192_SHA384, rsa_pkcs1_2048_8192_sha384_verify,
-           "SHA-384", &digest::SHA384);
-rsa_pkcs1!(RSA_PKCS1_2048_8192_SHA512, rsa_pkcs1_2048_8192_sha512_verify,
-           "SHA-512", &digest::SHA512);
+rsa_pkcs1!(RSA_PKCS1_2048_8192_SHA1,   2048, "2048", "SHA-1", &digest::SHA1);
+rsa_pkcs1!(RSA_PKCS1_2048_8192_SHA256, 2048, "2048", "SHA-256", &digest::SHA256);
+rsa_pkcs1!(RSA_PKCS1_2048_8192_SHA384, 2048, "2048", "SHA-384", &digest::SHA384);
+rsa_pkcs1!(RSA_PKCS1_2048_8192_SHA512, 2048, "2048", "SHA-512", &digest::SHA512);
+
+rsa_pkcs1!(RSA_PKCS1_3072_8192_SHA384, 3072, "3072", "SHA-384", &digest::SHA384);
 
 
 extern {
