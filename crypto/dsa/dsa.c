@@ -536,10 +536,6 @@ redo:
     goto err;
   }
 
-  ret = DSA_SIG_new();
-  if (ret == NULL) {
-    goto err;
-  }
   /* Redo if r or s is zero as required by FIPS 186-3: this is
    * very unlikely. */
   if (BN_is_zero(r) || BN_is_zero(s)) {
@@ -549,11 +545,15 @@ redo:
     }
     goto redo;
   }
+  ret = DSA_SIG_new();
+  if (ret == NULL) {
+    goto err;
+  }
   ret->r = r;
   ret->s = s;
 
 err:
-  if (!ret) {
+  if (ret == NULL) {
     OPENSSL_PUT_ERROR(DSA, reason);
     BN_free(r);
     BN_free(s);
