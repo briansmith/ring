@@ -115,10 +115,9 @@ OPENSSL_EXPORT int EC_GROUP_cmp(const EC_GROUP *a, const EC_GROUP *b,
  * in |group| that specifies the generator for the group. */
 OPENSSL_EXPORT const EC_POINT *EC_GROUP_get0_generator(const EC_GROUP *group);
 
-/* EC_GROUP_get_order sets |*order| to the order of |group|, if it's not
- * NULL. It returns one on success and zero otherwise. |ctx| is ignored. */
-OPENSSL_EXPORT int EC_GROUP_get_order(const EC_GROUP *group, BIGNUM *order,
-                                      BN_CTX *ctx);
+/* EC_GROUP_get0_order returns a pointer to the internal |BIGNUM| object in
+ * |group| that specifies the order of the group. */
+OPENSSL_EXPORT const BIGNUM *EC_GROUP_get0_order(const EC_GROUP *group);
 
 /* EC_GROUP_get_curve_name returns a NID that identifies |group|. */
 OPENSSL_EXPORT int EC_GROUP_get_curve_name(const EC_GROUP *group);

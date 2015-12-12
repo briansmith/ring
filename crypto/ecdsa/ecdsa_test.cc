@@ -201,6 +201,7 @@ static bool TestBuiltin(FILE *out) {
 
   for (size_t n = 0; kCurves[n].ec_group_fn != NULL; n++) {
     const EC_GROUP *group = kCurves[n].ec_group_fn();
+    const BIGNUM *order = EC_GROUP_get0_order(group);
 
     // Create a new ECDSA key.
     ScopedEC_KEY eckey(EC_KEY_generate_key_ex(group));
@@ -211,12 +212,6 @@ static bool TestBuiltin(FILE *out) {
 
     if (EC_KEY_get0_group(eckey.get()) != group) {
       fprintf(out, "EC_KEY_get0_group failed for %s\n", kCurves[n].name);
-      return false;
-    }
-
-    ScopedBIGNUM order(BN_new());
-    if (!order || !EC_GROUP_get_order(group, order.get(), NULL)) {
-      fprintf(out, "order check failed for %s\n", kCurves[n].name);
       return false;
     }
 
@@ -296,8 +291,7 @@ static bool TestBuiltin(FILE *out) {
                                                    signature.size()));
     if (!ecdsa_sig ||
         !TestTamperedSig(out, kEncodedApi, NID_sha1, digest, 20, ecdsa_sig.get(),
-                         group, EC_KEY_get0_public_key(eckey.get()),
-                         order.get())) {
+                         group, EC_KEY_get0_public_key(eckey.get()), order)) {
       fprintf(out, "TestTamperedSig  failed for %s\n", kCurves[n].name);
       return false;
     }
@@ -332,8 +326,7 @@ static bool TestBuiltin(FILE *out) {
     }
     // Verify a tampered signature.
     if (!TestTamperedSig(out, kRawApi, NID_sha1, digest, 20, ecdsa_sig.get(),
-                         group, EC_KEY_get0_public_key(eckey.get()),
-                         order.get())) {
+                         group, EC_KEY_get0_public_key(eckey.get()), order)) {
       fprintf(out, "TestTamperedSig failed for %s\n", kCurves[n].name);
       return false;
     }

@@ -123,7 +123,7 @@ int ECDSA_do_verify_point(const uint8_t *digest, size_t digest_len,
                           const EC_POINT *pub_key) {
   int ret = 0;
   BN_CTX *ctx;
-  BIGNUM *order, *u1, *u2, *m, *X;
+  BIGNUM *u1, *u2, *m, *X;
   EC_POINT *point = NULL;
 
   /* check input values */
@@ -133,43 +133,37 @@ int ECDSA_do_verify_point(const uint8_t *digest, size_t digest_len,
     return 0;
   }
   BN_CTX_start(ctx);
-  order = BN_CTX_get(ctx);
   u1 = BN_CTX_get(ctx);
   u2 = BN_CTX_get(ctx);
   m = BN_CTX_get(ctx);
   X = BN_CTX_get(ctx);
-  if (order == NULL || u1 == NULL || u2 == NULL || m == NULL || X == NULL) {
+  if (u1 == NULL || u2 == NULL || m == NULL || X == NULL) {
     OPENSSL_PUT_ERROR(ECDSA, ERR_R_BN_LIB);
     goto err;
   }
 
-  if (!EC_GROUP_get_order(group, order, ctx)) {
-    OPENSSL_PUT_ERROR(ECDSA, ERR_R_EC_LIB);
-    goto err;
-  }
-
   if (BN_is_zero(sig->r) || BN_is_negative(sig->r) ||
-      BN_ucmp(sig->r, order) >= 0 || BN_is_zero(sig->s) ||
-      BN_is_negative(sig->s) || BN_ucmp(sig->s, order) >= 0) {
+      BN_ucmp(sig->r, &group->order) >= 0 || BN_is_zero(sig->s) ||
+      BN_is_negative(sig->s) || BN_ucmp(sig->s, &group->order) >= 0) {
     OPENSSL_PUT_ERROR(ECDSA, ECDSA_R_BAD_SIGNATURE);
     ret = 0; /* signature is invalid */
     goto err;
   }
   /* calculate tmp1 = inv(S) mod order */
-  if (!BN_mod_inverse(u2, sig->s, order, ctx)) {
+  if (!BN_mod_inverse(u2, sig->s, &group->order, ctx)) {
     OPENSSL_PUT_ERROR(ECDSA, ERR_R_BN_LIB);
     goto err;
   }
-  if (!digest_to_bn(m, digest, digest_len, order)) {
+  if (!digest_to_bn(m, digest, digest_len, &group->order)) {
     goto err;
   }
   /* u1 = m * tmp mod order */
-  if (!BN_mod_mul(u1, m, u2, order, ctx)) {
+  if (!BN_mod_mul(u1, m, u2, &group->order, ctx)) {
     OPENSSL_PUT_ERROR(ECDSA, ERR_R_BN_LIB);
     goto err;
   }
   /* u2 = r * w mod q */
-  if (!BN_mod_mul(u2, sig->r, u2, order, ctx)) {
+  if (!BN_mod_mul(u2, sig->r, u2, &group->order, ctx)) {
     OPENSSL_PUT_ERROR(ECDSA, ERR_R_BN_LIB);
     goto err;
   }
@@ -187,7 +181,7 @@ int ECDSA_do_verify_point(const uint8_t *digest, size_t digest_len,
     OPENSSL_PUT_ERROR(ECDSA, ERR_R_EC_LIB);
     goto err;
   }
-  if (!BN_nnmod(u1, X, order, ctx)) {
+  if (!BN_nnmod(u1, X, &group->order, ctx)) {
     OPENSSL_PUT_ERROR(ECDSA, ERR_R_BN_LIB);
     goto err;
   }
@@ -204,7 +198,7 @@ err:
 static int ecdsa_sign_setup(EC_KEY *eckey, BN_CTX *ctx, BIGNUM **kinvp,
                             BIGNUM **rp, const uint8_t *digest,
                             size_t digest_len) {
-  BIGNUM *k = NULL, *r = NULL, *order = NULL, *X = NULL;
+  BIGNUM *k = NULL, *r = NULL, *X = NULL;
   EC_POINT *tmp_point = NULL;
   const EC_GROUP *group;
   int ret = 0;
@@ -216,9 +210,8 @@ static int ecdsa_sign_setup(EC_KEY *eckey, BN_CTX *ctx, BIGNUM **kinvp,
 
   k = BN_new(); /* this value is later returned in *kinvp */
   r = BN_new(); /* this value is later returned in *rp    */
-  order = BN_new();
   X = BN_new();
-  if (!k || !r || !order || !X) {
+  if (k == NULL || r == NULL || X == NULL) {
     OPENSSL_PUT_ERROR(ECDSA, ERR_R_MALLOC_FAILURE);
     goto err;
   }
@@ -227,15 +220,12 @@ static int ecdsa_sign_setup(EC_KEY *eckey, BN_CTX *ctx, BIGNUM **kinvp,
     OPENSSL_PUT_ERROR(ECDSA, ERR_R_EC_LIB);
     goto err;
   }
-  if (!EC_GROUP_get_order(group, order, ctx)) {
-    OPENSSL_PUT_ERROR(ECDSA, ERR_R_EC_LIB);
-    goto err;
-  }
 
   do {
     do {
-      if (!BN_generate_dsa_nonce(k, order, EC_KEY_get0_private_key(eckey),
-                                 digest, digest_len, ctx)) {
+      if (!BN_generate_dsa_nonce(k, &group->order,
+                                 EC_KEY_get0_private_key(eckey), digest,
+                                 digest_len, ctx)) {
         OPENSSL_PUT_ERROR(ECDSA, ECDSA_R_RANDOM_NUMBER_GENERATION_FAILED);
         goto err;
       }
@@ -251,7 +241,7 @@ static int ecdsa_sign_setup(EC_KEY *eckey, BN_CTX *ctx, BIGNUM **kinvp,
       goto err;
     }
 
-    if (!BN_nnmod(r, X, order, ctx)) {
+    if (!BN_nnmod(r, X, &group->order, ctx)) {
       OPENSSL_PUT_ERROR(ECDSA, ERR_R_BN_LIB);
       goto err;
     }
@@ -263,8 +253,8 @@ static int ecdsa_sign_setup(EC_KEY *eckey, BN_CTX *ctx, BIGNUM **kinvp,
    *
    * XXX: This isn't perfectly constant-time because the implementation of
    * BN_mod_exp_mont_consttime isn't perfectly constant time. */
-  if (!BN_mod_exp_mont_consttime(k, k, &group->order_minus_2, order, ctx,
-                                 &group->order_mont)) {
+  if (!BN_mod_exp_mont_consttime(k, k, &group->order_minus_2, &group->order,
+                                 ctx, &group->order_mont)) {
     OPENSSL_PUT_ERROR(ECDSA, ERR_R_BN_LIB);
     goto err;
   }
@@ -283,7 +273,6 @@ err:
     BN_clear_free(k);
     BN_clear_free(r);
   }
-  BN_free(order);
   EC_POINT_free(tmp_point);
   BN_clear_free(X);
   return ret;
@@ -292,7 +281,7 @@ err:
 ECDSA_SIG *ECDSA_do_sign(const uint8_t *digest, size_t digest_len,
                          EC_KEY *eckey) {
   int ok = 0;
-  BIGNUM *kinv = NULL, *s, *m = NULL, *tmp = NULL, *order = NULL;
+  BIGNUM *kinv = NULL, *s, *m = NULL, *tmp = NULL;
   const BIGNUM *ckinv;
   BN_CTX *ctx = NULL;
   const EC_GROUP *group;
@@ -314,17 +303,13 @@ ECDSA_SIG *ECDSA_do_sign(const uint8_t *digest, size_t digest_len,
   }
   s = ret->s;
 
-  if ((ctx = BN_CTX_new()) == NULL || (order = BN_new()) == NULL ||
+  if ((ctx = BN_CTX_new()) == NULL ||
       (tmp = BN_new()) == NULL || (m = BN_new()) == NULL) {
     OPENSSL_PUT_ERROR(ECDSA, ERR_R_MALLOC_FAILURE);
     goto err;
   }
 
-  if (!EC_GROUP_get_order(group, order, ctx)) {
-    OPENSSL_PUT_ERROR(ECDSA, ERR_R_EC_LIB);
-    goto err;
-  }
-  if (!digest_to_bn(m, digest, digest_len, order)) {
+  if (!digest_to_bn(m, digest, digest_len, &group->order)) {
     goto err;
   }
   for (;;) {
@@ -334,15 +319,15 @@ ECDSA_SIG *ECDSA_do_sign(const uint8_t *digest, size_t digest_len,
     }
     ckinv = kinv;
 
-    if (!BN_mod_mul(tmp, priv_key, ret->r, order, ctx)) {
+    if (!BN_mod_mul(tmp, priv_key, ret->r, &group->order, ctx)) {
       OPENSSL_PUT_ERROR(ECDSA, ERR_R_BN_LIB);
       goto err;
     }
-    if (!BN_mod_add_quick(s, tmp, m, order)) {
+    if (!BN_mod_add_quick(s, tmp, m, &group->order)) {
       OPENSSL_PUT_ERROR(ECDSA, ERR_R_BN_LIB);
       goto err;
     }
-    if (!BN_mod_mul(s, s, ckinv, order, ctx)) {
+    if (!BN_mod_mul(s, s, ckinv, &group->order, ctx)) {
       OPENSSL_PUT_ERROR(ECDSA, ERR_R_BN_LIB);
       goto err;
     }
@@ -362,7 +347,6 @@ err:
   BN_CTX_free(ctx);
   BN_clear_free(m);
   BN_clear_free(tmp);
-  BN_free(order);
   BN_clear_free(kinv);
   return ret;
 }

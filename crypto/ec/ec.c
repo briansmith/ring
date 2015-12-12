@@ -67,6 +67,7 @@
 
 #include <openssl/ec.h>
 
+#include <assert.h>
 #include <string.h>
 
 #include <openssl/bn.h>
@@ -87,12 +88,9 @@ const EC_POINT *EC_GROUP_get0_generator(const EC_GROUP *group) {
   return &group->generator;
 }
 
-int EC_GROUP_get_order(const EC_GROUP *group, BIGNUM *order, BN_CTX *ctx) {
-  if (!BN_copy(order, &group->order)) {
-    return 0;
-  }
-
-  return !BN_is_zero(order);
+const BIGNUM *EC_GROUP_get0_order(const EC_GROUP *group) {
+  assert(!BN_is_zero(&group->order));
+  return &group->order;
 }
 
 int EC_GROUP_get_curve_name(const EC_GROUP *group) { return group->curve_name; }

@@ -243,17 +243,15 @@ int ec_wNAF_mul_private(const EC_GROUP *group, EC_POINT *r,
   }
   BN_CTX_start(ctx);
 
-  const BIGNUM *order = &group->order;
-
   BIGNUM *g_scalar_new = NULL;
   if (g_scalar) {
     g_scalar_new = BN_CTX_get(ctx);
     if (g_scalar_new == NULL ||
-        !BN_add(g_scalar_new, g_scalar, order)) {
+        !BN_add(g_scalar_new, g_scalar, &group->order)) {
       goto err;
     }
-    if (BN_num_bits(g_scalar_new) <= BN_num_bits(order)) {
-      if (!BN_add(g_scalar_new, g_scalar_new, order)) {
+    if (BN_num_bits(g_scalar_new) <= BN_num_bits(&group->order)) {
+      if (!BN_add(g_scalar_new, g_scalar_new, &group->order)) {
         goto err;
       }
     }
@@ -263,11 +261,11 @@ int ec_wNAF_mul_private(const EC_GROUP *group, EC_POINT *r,
   if (p_scalar) {
     p_scalar_new = BN_CTX_get(ctx);
     if (!p_scalar_new ||
-        !BN_add(p_scalar_new, p_scalar, order)) {
+        !BN_add(p_scalar_new, p_scalar, &group->order)) {
       goto err;
     }
-    if (BN_num_bits(p_scalar_new) <= BN_num_bits(order)) {
-      if (!BN_add(p_scalar_new, p_scalar_new, order)) {
+    if (BN_num_bits(p_scalar_new) <= BN_num_bits(&group->order)) {
+      if (!BN_add(p_scalar_new, p_scalar_new, &group->order)) {
         goto err;
       }
     }
