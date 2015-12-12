@@ -456,8 +456,6 @@ static int pkey_rsa_ctrl(EVP_PKEY_CTX *ctx, int type, int p1, void *p2) {
       }
       OPENSSL_free(rctx->oaep_label);
       if (p2 && p1 > 0) {
-        /* TODO(fork): this seems wrong. Shouldn't it take a copy of the
-         * buffer? */
         rctx->oaep_label = p2;
         rctx->oaep_labellen = p1;
       } else {

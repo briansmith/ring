@@ -280,11 +280,7 @@ DH *PEM_read_bio_DHparams(BIO *bp, DH **x, pem_password_cb *cb, void *u)
 		return NULL;
 	p = data;
 
-        /* TODO(fork): remove? */
-	/*if (!strcmp(nm, PEM_STRING_DHXPARAMS))
-		ret = d2i_DHxparams(x, &p, len);
-	else */
-		ret = d2i_DHparams(x, &p, len);
+	ret = d2i_DHparams(x, &p, len);
 
 	if (ret == NULL)
 		OPENSSL_PUT_ERROR(PEM, ERR_R_ASN1_LIB);

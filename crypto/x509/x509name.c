@@ -291,19 +291,13 @@ X509_NAME_ENTRY *X509_NAME_ENTRY_create_by_txt(X509_NAME_ENTRY **ne,
 X509_NAME_ENTRY *X509_NAME_ENTRY_create_by_NID(X509_NAME_ENTRY **ne, int nid,
 	     int type, unsigned char *bytes, int len)
 	{
-	const ASN1_OBJECT *obj;
-	X509_NAME_ENTRY *nentry;
-
-	obj=OBJ_nid2obj(nid);
+	const ASN1_OBJECT *obj = OBJ_nid2obj(nid);
 	if (obj == NULL)
 		{
 		OPENSSL_PUT_ERROR(X509, X509_R_UNKNOWN_NID);
-		return(NULL);
+		return NULL;
 		}
-	nentry = X509_NAME_ENTRY_create_by_OBJ(ne,obj,type,bytes,len);
-	/* TODO(fork): remove this? */
-	/* ASN1_OBJECT_free(obj); */
-	return nentry;
+	return X509_NAME_ENTRY_create_by_OBJ(ne,obj,type,bytes,len);
 	}
 
 X509_NAME_ENTRY *X509_NAME_ENTRY_create_by_OBJ(X509_NAME_ENTRY **ne,

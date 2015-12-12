@@ -93,14 +93,6 @@ int X509_sign_ctx(X509 *x, EVP_MD_CTX *ctx)
 		x->sig_alg, x->signature, x->cert_info, ctx);
 	}
 
-/* TODO(fork)
-int X509_http_nbio(OCSP_REQ_CTX *rctx, X509 **pcert)
-	{
-	return OCSP_REQ_CTX_nbio_d2i(rctx,
-				(ASN1_VALUE **)pcert, ASN1_ITEM_rptr(X509));
-	}
-*/
-
 int X509_REQ_sign(X509_REQ *x, EVP_PKEY *pkey, const EVP_MD *md)
 	{
 	return(ASN1_item_sign(ASN1_ITEM_rptr(X509_REQ_INFO),x->sig_alg, NULL,
@@ -126,14 +118,6 @@ int X509_CRL_sign_ctx(X509_CRL *x, EVP_MD_CTX *ctx)
 	return ASN1_item_sign_ctx(ASN1_ITEM_rptr(X509_CRL_INFO),
 		x->crl->sig_alg, x->sig_alg, x->signature, x->crl, ctx);
 	}
-
-/* TODO(fork)
-int X509_CRL_http_nbio(OCSP_REQ_CTX *rctx, X509_CRL **pcrl)
-	{
-	return OCSP_REQ_CTX_nbio_d2i(rctx,
-				(ASN1_VALUE **)pcrl, ASN1_ITEM_rptr(X509_CRL));
-	}
-*/
 
 int NETSCAPE_SPKI_sign(NETSCAPE_SPKI *x, EVP_PKEY *pkey, const EVP_MD *md)
 	{
@@ -190,31 +174,6 @@ int i2d_X509_CRL_bio(BIO *bp, X509_CRL *crl)
 	{
 	return ASN1_item_i2d_bio(ASN1_ITEM_rptr(X509_CRL), bp, crl);
 	}
-
-/* TODO(fork) */
-#if 0
-#ifndef OPENSSL_NO_FP_API
-PKCS7 *d2i_PKCS7_fp(FILE *fp, PKCS7 **p7)
-	{
-	return ASN1_item_d2i_fp(ASN1_ITEM_rptr(PKCS7), fp, p7);
-	}
-
-int i2d_PKCS7_fp(FILE *fp, PKCS7 *p7)
-	{
-	return ASN1_item_i2d_fp(ASN1_ITEM_rptr(PKCS7), fp, p7);
-	}
-#endif
-
-PKCS7 *d2i_PKCS7_bio(BIO *bp, PKCS7 **p7)
-	{
-	return ASN1_item_d2i_bio(ASN1_ITEM_rptr(PKCS7), bp, p7);
-	}
-
-int i2d_PKCS7_bio(BIO *bp, PKCS7 *p7)
-	{
-	return ASN1_item_i2d_bio(ASN1_ITEM_rptr(PKCS7), bp, p7);
-	}
-#endif
 
 #ifndef OPENSSL_NO_FP_API
 X509_REQ *d2i_X509_REQ_fp(FILE *fp, X509_REQ **req)
@@ -424,15 +383,6 @@ int X509_NAME_digest(const X509_NAME *data, const EVP_MD *type, unsigned char *m
 	{
 	return(ASN1_item_digest(ASN1_ITEM_rptr(X509_NAME),type,(char *)data,md,len));
 	}
-
-#if 0 /* TODO(fork): remove */
-int PKCS7_ISSUER_AND_SERIAL_digest(PKCS7_ISSUER_AND_SERIAL *data, const EVP_MD *type,
-	     unsigned char *md, unsigned int *len)
-	{
-	return(ASN1_item_digest(ASN1_ITEM_rptr(PKCS7_ISSUER_AND_SERIAL),type,
-		(char *)data,md,len));
-	}
-#endif
 
 #ifndef OPENSSL_NO_FP_API
 X509_SIG *d2i_PKCS8_fp(FILE *fp, X509_SIG **p8)
