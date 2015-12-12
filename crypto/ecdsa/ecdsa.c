@@ -65,9 +65,6 @@
 
 static int digest_to_bn(BIGNUM *out, const uint8_t *digest, size_t digest_len,
                         const BIGNUM *order);
-static int ecdsa_do_verify_point(const uint8_t *digest, size_t digest_len,
-                                 const ECDSA_SIG *sig, const EC_GROUP *group,
-                                 const EC_POINT *pub_key);
 
 
 int ECDSA_sign(int type, const uint8_t *digest, size_t digest_len, uint8_t *sig,
@@ -188,84 +185,36 @@ err:
 
 int ECDSA_verify_signed_digest(const EC_GROUP *group, int hash_nid,
                                const uint8_t *digest, size_t digest_len,
-                               const uint8_t *sig, size_t sig_len,
+                               const uint8_t *sig_, size_t sig_len,
                                const uint8_t *ec_key, const size_t ec_key_len) {
-  int ret = 0;
-  ECDSA_SIG *s = NULL;
-
-  EC_POINT *point = EC_POINT_new(group);
-  if (!point ||
-      !EC_POINT_oct2point(group, point, ec_key, ec_key_len, NULL)) {
-    goto err;
-  }
-
-  s = ECDSA_SIG_from_bytes(sig, sig_len);
-  if (s == NULL) {
-    goto err;
-  }
-
-  ret = ecdsa_do_verify_point(digest, digest_len, s, group, point);
-
-err:
-  ECDSA_SIG_free(s);
-  EC_POINT_free(point);
-
-  return ret;
-}
-
-/* digest_to_bn interprets |digest_len| bytes from |digest| as a big-endian
- * number and sets |out| to that value. It then truncates |out| so that it's,
- * at most, as long as |order|. It returns one on success and zero otherwise. */
-static int digest_to_bn(BIGNUM *out, const uint8_t *digest, size_t digest_len,
-                        const BIGNUM *order) {
-  size_t num_bits;
-
-  num_bits = BN_num_bits(order);
-  /* Need to truncate digest if it is too long: first truncate whole
-   * bytes. */
-  if (8 * digest_len > num_bits) {
-    digest_len = (num_bits + 7) / 8;
-  }
-  if (!BN_bin2bn(digest, digest_len, out)) {
-    OPENSSL_PUT_ERROR(ECDSA, ERR_R_BN_LIB);
-    return 0;
-  }
-
-  /* If still too long truncate remaining bits with a shift */
-  if ((8 * digest_len > num_bits) &&
-      !BN_rshift(out, out, 8 - (num_bits & 0x7))) {
-    OPENSSL_PUT_ERROR(ECDSA, ERR_R_BN_LIB);
-    return 0;
-  }
-
-  return 1;
-}
-
-/* ecdsa_do_verify_point verifies that |sig| constitutes a valid signature of
- * |digest| by the public key represented by |group| and |pub_key|. It returns
- * one on success or zero if the signature is invalid or on error.
- *
- * The OpenSSL function |ECDSA_do_verify| does the same thing, but it takes the
- * public key as an |EC_KEY *key| instead of as |group| and |pub_key|. */
-static int ecdsa_do_verify_point(const uint8_t *digest, size_t digest_len,
-                                 const ECDSA_SIG *sig, const EC_GROUP *group,
-                                 const EC_POINT *pub_key) {
-  int ret = 0;
-  BN_CTX *ctx;
-  BIGNUM *u1, *u2, *m, *X;
-  EC_POINT *point = NULL;
-
-  /* check input values */
-  ctx = BN_CTX_new();
-  if (!ctx) {
+  BN_CTX *ctx = BN_CTX_new();
+  if (ctx == NULL) {
     OPENSSL_PUT_ERROR(ECDSA, ERR_R_MALLOC_FAILURE);
     return 0;
   }
+
   BN_CTX_start(ctx);
-  u1 = BN_CTX_get(ctx);
-  u2 = BN_CTX_get(ctx);
-  m = BN_CTX_get(ctx);
-  X = BN_CTX_get(ctx);
+
+  int ret = 0;
+  ECDSA_SIG *sig = NULL;
+  EC_POINT *point = NULL;
+
+  EC_POINT *pub_key = EC_POINT_new(group);
+  if (!pub_key ||
+      !EC_POINT_oct2point(group, pub_key, ec_key, ec_key_len, NULL)) {
+    goto err;
+  }
+
+  sig = ECDSA_SIG_from_bytes(sig_, sig_len);
+  if (sig == NULL) {
+    goto err;
+  }
+
+  /* check input values */
+  BIGNUM *u1 = BN_CTX_get(ctx);
+  BIGNUM *u2 = BN_CTX_get(ctx);
+  BIGNUM *m = BN_CTX_get(ctx);
+  BIGNUM *X = BN_CTX_get(ctx);
   if (u1 == NULL || u2 == NULL || m == NULL || X == NULL) {
     OPENSSL_PUT_ERROR(ECDSA, ERR_R_BN_LIB);
     goto err;
@@ -320,6 +269,36 @@ static int ecdsa_do_verify_point(const uint8_t *digest, size_t digest_len,
 err:
   BN_CTX_end(ctx);
   BN_CTX_free(ctx);
+  EC_POINT_free(pub_key);
+  ECDSA_SIG_free(sig);
   EC_POINT_free(point);
   return ret;
+}
+
+/* digest_to_bn interprets |digest_len| bytes from |digest| as a big-endian
+ * number and sets |out| to that value. It then truncates |out| so that it's,
+ * at most, as long as |order|. It returns one on success and zero otherwise. */
+static int digest_to_bn(BIGNUM *out, const uint8_t *digest, size_t digest_len,
+                        const BIGNUM *order) {
+  size_t num_bits;
+
+  num_bits = BN_num_bits(order);
+  /* Need to truncate digest if it is too long: first truncate whole
+   * bytes. */
+  if (8 * digest_len > num_bits) {
+    digest_len = (num_bits + 7) / 8;
+  }
+  if (!BN_bin2bn(digest, digest_len, out)) {
+    OPENSSL_PUT_ERROR(ECDSA, ERR_R_BN_LIB);
+    return 0;
+  }
+
+  /* If still too long truncate remaining bits with a shift */
+  if ((8 * digest_len > num_bits) &&
+      !BN_rshift(out, out, 8 - (num_bits & 0x7))) {
+    OPENSSL_PUT_ERROR(ECDSA, ERR_R_BN_LIB);
+    return 0;
+  }
+
+  return 1;
 }
