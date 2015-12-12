@@ -64,10 +64,6 @@
 #include <openssl/mem.h>
 
 
-/* Used in asn1_mac.h.
- * TODO(davidben): Remove this once asn1_mac.h is gone or trimmed. */
-OPENSSL_DECLARE_ERROR_REASON(ASN1, MALLOC_FAILURE);
-
 /* Cross-module errors from crypto/x509/i2d_pr.c */
 OPENSSL_DECLARE_ERROR_REASON(ASN1, UNSUPPORTED_PUBLIC_KEY_TYPE);
 
