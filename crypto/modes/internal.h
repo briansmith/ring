@@ -292,27 +292,6 @@ OPENSSL_EXPORT void CRYPTO_gcm128_tag(GCM128_CONTEXT *ctx, uint8_t *tag,
 OPENSSL_EXPORT void CRYPTO_gcm128_release(GCM128_CONTEXT *ctx);
 
 
-/* CBC. */
-
-/* cbc128_f is the type of a function that performs CBC-mode encryption. */
-typedef void (*cbc128_f)(const uint8_t *in, uint8_t *out, size_t len,
-                         const void *key, uint8_t ivec[16], int enc);
-
-/* CRYPTO_cbc128_encrypt encrypts |len| bytes from |in| to |out| using the
- * given IV and block cipher in CBC mode. The input need not be a multiple of
- * 128 bits long, but the output will round up to the nearest 128 bit multiple,
- * zero padding the input if needed. The IV will be updated on return. */
-void CRYPTO_cbc128_encrypt(const uint8_t *in, uint8_t *out, size_t len,
-                           const void *key, uint8_t ivec[16], block128_f block);
-
-/* CRYPTO_cbc128_decrypt decrypts |len| bytes from |in| to |out| using the
- * given IV and block cipher in CBC mode. If |len| is not a multiple of 128
- * bits then only that many bytes will be written, but a multiple of 128 bits
- * is always read from |in|. The IV will be updated on return. */
-void CRYPTO_cbc128_decrypt(const uint8_t *in, uint8_t *out, size_t len,
-                           const void *key, uint8_t ivec[16], block128_f block);
-
-
 #if defined(__cplusplus)
 } /* extern C */
 #endif

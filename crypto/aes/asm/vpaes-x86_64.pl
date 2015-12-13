@@ -856,89 +856,6 @@ $code.=<<___;
 	ret
 .size	${PREFIX}_decrypt,.-${PREFIX}_decrypt
 ___
-{
-my ($inp,$out,$len,$key,$ivp,$enc)=("%rdi","%rsi","%rdx","%rcx","%r8","%r9");
-# void AES_cbc_encrypt (const void char *inp, unsigned char *out,
-#                       size_t length, const AES_KEY *key,
-#                       unsigned char *ivp,const int enc);
-$code.=<<___;
-.globl	${PREFIX}_cbc_encrypt
-.type	${PREFIX}_cbc_encrypt,\@function,6
-.align	16
-${PREFIX}_cbc_encrypt:
-	xchg	$key,$len
-___
-($len,$key)=($key,$len);
-$code.=<<___;
-	sub	\$16,$len
-	jc	.Lcbc_abort
-___
-$code.=<<___ if ($win64);
-	lea	-0xb8(%rsp),%rsp
-	movaps	%xmm6,0x10(%rsp)
-	movaps	%xmm7,0x20(%rsp)
-	movaps	%xmm8,0x30(%rsp)
-	movaps	%xmm9,0x40(%rsp)
-	movaps	%xmm10,0x50(%rsp)
-	movaps	%xmm11,0x60(%rsp)
-	movaps	%xmm12,0x70(%rsp)
-	movaps	%xmm13,0x80(%rsp)
-	movaps	%xmm14,0x90(%rsp)
-	movaps	%xmm15,0xa0(%rsp)
-.Lcbc_body:
-___
-$code.=<<___;
-	movdqu	($ivp),%xmm6		# load IV
-	sub	$inp,$out
-	call	_vpaes_preheat
-	cmp	\$0,${enc}d
-	je	.Lcbc_dec_loop
-	jmp	.Lcbc_enc_loop
-.align	16
-.Lcbc_enc_loop:
-	movdqu	($inp),%xmm0
-	pxor	%xmm6,%xmm0
-	call	_vpaes_encrypt_core
-	movdqa	%xmm0,%xmm6
-	movdqu	%xmm0,($out,$inp)
-	lea	16($inp),$inp
-	sub	\$16,$len
-	jnc	.Lcbc_enc_loop
-	jmp	.Lcbc_done
-.align	16
-.Lcbc_dec_loop:
-	movdqu	($inp),%xmm0
-	movdqa	%xmm0,%xmm7
-	call	_vpaes_decrypt_core
-	pxor	%xmm6,%xmm0
-	movdqa	%xmm7,%xmm6
-	movdqu	%xmm0,($out,$inp)
-	lea	16($inp),$inp
-	sub	\$16,$len
-	jnc	.Lcbc_dec_loop
-.Lcbc_done:
-	movdqu	%xmm6,($ivp)		# save IV
-___
-$code.=<<___ if ($win64);
-	movaps	0x10(%rsp),%xmm6
-	movaps	0x20(%rsp),%xmm7
-	movaps	0x30(%rsp),%xmm8
-	movaps	0x40(%rsp),%xmm9
-	movaps	0x50(%rsp),%xmm10
-	movaps	0x60(%rsp),%xmm11
-	movaps	0x70(%rsp),%xmm12
-	movaps	0x80(%rsp),%xmm13
-	movaps	0x90(%rsp),%xmm14
-	movaps	0xa0(%rsp),%xmm15
-	lea	0xb8(%rsp),%rsp
-.Lcbc_epilogue:
-___
-$code.=<<___;
-.Lcbc_abort:
-	ret
-.size	${PREFIX}_cbc_encrypt,.-${PREFIX}_cbc_encrypt
-___
-}
 $code.=<<___;
 ##
 ##  _aes_preheat
@@ -1171,10 +1088,6 @@ se_handler:
 	.rva	.LSEH_end_${PREFIX}_decrypt
 	.rva	.LSEH_info_${PREFIX}_decrypt
 
-	.rva	.LSEH_begin_${PREFIX}_cbc_encrypt
-	.rva	.LSEH_end_${PREFIX}_cbc_encrypt
-	.rva	.LSEH_info_${PREFIX}_cbc_encrypt
-
 .section	.xdata
 .align	8
 .LSEH_info_${PREFIX}_set_encrypt_key:
@@ -1193,10 +1106,6 @@ se_handler:
 	.byte	9,0,0,0
 	.rva	se_handler
 	.rva	.Ldec_body,.Ldec_epilogue		# HandlerData[]
-.LSEH_info_${PREFIX}_cbc_encrypt:
-	.byte	9,0,0,0
-	.rva	se_handler
-	.rva	.Lcbc_body,.Lcbc_epilogue		# HandlerData[]
 ___
 }
 
