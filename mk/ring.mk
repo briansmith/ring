@@ -90,7 +90,6 @@ RING_x86_SRCS = $(addprefix $(RING_PREFIX), \
   crypto/bn/asm/co-586.pl \
   crypto/bn/asm/x86-mont.pl \
   crypto/modes/asm/ghash-x86.pl \
-  crypto/sha/asm/sha1-586.pl \
   crypto/sha/asm/sha256-586.pl \
   crypto/sha/asm/sha512-586.pl \
   $(NULL))
@@ -107,7 +106,6 @@ RING_x86_64_SRCS = $(addprefix $(RING_PREFIX), \
   crypto/modes/asm/aesni-gcm-x86_64.pl \
   crypto/modes/asm/ghash-x86_64.pl \
   crypto/rand/asm/rdrand-x86_64.pl \
-  crypto/sha/asm/sha1-x86_64.pl \
   crypto/sha/asm/sha256-x86_64.pl \
   crypto/sha/asm/sha512-x86_64.pl \
   $(NULL))
@@ -122,7 +120,6 @@ RING_arm_SRCS = $(addprefix $(RING_PREFIX), \
   crypto/aes/asm/bsaes-armv7.pl \
   crypto/bn/asm/armv4-mont.pl \
   crypto/modes/asm/ghash-armv4.pl \
-  crypto/sha/asm/sha1-armv4-large.pl \
   crypto/sha/asm/sha256-armv4.pl \
   crypto/sha/asm/sha512-armv4.pl \
   $(RING_ARM_SHARED_SRCS) \
@@ -139,7 +136,6 @@ RING_arm_SRCS += $(addprefix $(RING_PREFIX), \
 RING_aarch64_SRCS = $(addprefix $(RING_PREFIX), \
   crypto/bn/asm/armv8-mont.pl \
   crypto/modes/asm/ghashv8-armx.pl \
-  crypto/sha/asm/sha1-armv8.pl \
   crypto/sha/asm/sha256-armv8.pl \
   crypto/sha/asm/sha512-armv8.pl \
   $(RING_ARM_SHARED_SRCS) \

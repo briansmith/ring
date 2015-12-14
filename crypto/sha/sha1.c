@@ -57,12 +57,6 @@
 #include "openssl/base.h"
 
 
-#if !defined(OPENSSL_NO_ASM) &&                         \
-    (defined(OPENSSL_X86) || defined(OPENSSL_X86_64) || \
-     defined(OPENSSL_ARM) || defined(OPENSSL_AARCH64))
-#define SHA1_ASM
-#endif
-
 #define DATA_ORDER_IS_BIG_ENDIAN /* Required by md32_common.h. */
 #define HASH_CBLOCK             64
 
@@ -128,7 +122,6 @@
 *					<appro@fy.chalmers.se> */
 #define X(i)	XX##i
 
-#if !defined(SHA1_ASM)
 void sha1_block_data_order(uint32_t *state, const uint8_t *data, size_t num) {
   register uint32_t A, B, C, D, E, T, l;
   uint32_t XX0, XX1, XX2, XX3, XX4, XX5, XX6, XX7, XX8, XX9, XX10,
@@ -276,4 +269,3 @@ void sha1_block_data_order(uint32_t *state, const uint8_t *data, size_t num) {
     E = state[4];
   }
 }
-#endif
