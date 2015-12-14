@@ -83,11 +83,15 @@ static void init_once(void) {
 
   int flags = fcntl(fd, F_GETFD);
   if (flags == -1) {
-    abort();
-  }
-  flags |= FD_CLOEXEC;
-  if (fcntl(fd, F_SETFD, flags) == -1) {
-    abort();
+    /* Native Client doesn't implement |fcntl|. */
+    if (errno != ENOSYS) {
+      abort();
+    }
+  } else {
+    flags |= FD_CLOEXEC;
+    if (fcntl(fd, F_SETFD, flags) == -1) {
+      abort();
+    }
   }
   urandom_fd = fd;
 }
