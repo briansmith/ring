@@ -27,7 +27,7 @@
 #include <openssl/ec.h>
 #include <openssl/err.h>
 #include <openssl/mem.h>
-#include <openssl/obj.h>
+#include <openssl/obj_mac.h>
 
 #include <assert.h>
 #include <string.h>
