@@ -402,7 +402,7 @@ int RSA_padding_check_PKCS1_OAEP_mgf1(uint8_t *to, unsigned tlen,
                                       const uint8_t *from, unsigned flen,
                                       const uint8_t *param, unsigned plen,
                                       const EVP_MD *md, const EVP_MD *mgf1md) {
-  unsigned i, dblen, mlen = -1, mdlen, bad, looking_for_one_byte, one_index;
+  unsigned i, dblen, mlen = -1, mdlen, bad, looking_for_one_byte, one_index = 0;
   const uint8_t *maskeddb, *maskedseed;
   uint8_t *db = NULL, seed[EVP_MAX_MD_SIZE], phash[EVP_MAX_MD_SIZE];
 
