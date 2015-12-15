@@ -165,7 +165,9 @@ func (ka *rsaKeyAgreement) generateClientKeyExchange(config *Config, clientHello
 		return nil, nil, err
 	}
 	if bad == RSABadValueCorrupt {
-		encrypted[0] ^= 1
+		encrypted[len(encrypted)-1] ^= 1
+		// Clear the high byte to ensure |encrypted| is still below the RSA modulus.
+		encrypted[0] = 0
 	}
 	ckx := new(clientKeyExchangeMsg)
 	if clientHello.vers != VersionSSL30 {
