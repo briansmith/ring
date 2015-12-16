@@ -147,14 +147,14 @@ extern "C" {
  * with gcc on P4. This can only be done on x86, where unaligned data fetches
  * are possible. */
 #define HOST_c2l(c, l)                     \
-  ({                                       \
+  (void)({                                 \
     uint32_t r = *((const uint32_t *)(c)); \
     asm("bswapl %0" : "=r"(r) : "0"(r));   \
     (c) += 4;                              \
     (l) = r;                               \
   })
 #define HOST_l2c(l, c)                   \
-  ({                                     \
+  (void)({                               \
     uint32_t r = (l);                    \
     asm("bswapl %0" : "=r"(r) : "0"(r)); \
     *((uint32_t *)(c)) = r;              \
@@ -165,14 +165,14 @@ extern "C" {
 #if defined(__ORDER_LITTLE_ENDIAN__) && \
     __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
 #define HOST_c2l(c, l)                                             \
-  ({                                                               \
+  (void)({                                                         \
     uint32_t r;                                                    \
     asm("rev %w0, %w1" : "=r"(r) : "r"(*((const uint32_t *)(c)))); \
     (c) += 4;                                                      \
     (l) = r;                                                       \
   })
 #define HOST_l2c(l, c)                                  \
-  ({                                                    \
+  (void)({                                              \
     uint32_t r;                                         \
     asm("rev %w0, %w1" : "=r"(r) : "r"((uint32_t)(l))); \
     *((uint32_t *)(c)) = r;                             \
@@ -206,7 +206,7 @@ extern "C" {
 #if defined(OPENSSL_X86) || defined(OPENSSL_X86_64)
 /* See comment in DATA_ORDER_IS_BIG_ENDIAN section. */
 #define HOST_c2l(c, l) (void)((l) = *((const uint32_t *)(c)), (c) += 4)
-#define HOST_l2c(l, c) (*((uint32_t *)(c)) = (l), (c) += 4, l)
+#define HOST_l2c(l, c) (void)(*((uint32_t *)(c)) = (l), (c) += 4, l)
 #endif /* OPENSSL_X86 || OPENSSL_X86_64 */
 
 #ifndef HOST_c2l
