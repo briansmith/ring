@@ -1061,10 +1061,8 @@ int ssl3_get_server_key_exchange(SSL *s) {
   long n, alg_k, alg_a;
   EVP_PKEY *pkey = NULL;
   const EVP_MD *md = NULL;
-  RSA *rsa = NULL;
   DH *dh = NULL;
   EC_KEY *ecdh = NULL;
-  BN_CTX *bn_ctx = NULL;
   EC_POINT *srvr_ecpoint = NULL;
   CBS server_key_exchange, server_key_exchange_orig, parameter;
 
@@ -1157,10 +1155,10 @@ int ssl3_get_server_key_exchange(SSL *s) {
       goto err;
     }
 
-    if ((dh->p = BN_bin2bn(CBS_data(&dh_p), CBS_len(&dh_p), NULL)) == NULL ||
-        (dh->g = BN_bin2bn(CBS_data(&dh_g), CBS_len(&dh_g), NULL)) == NULL ||
-        (dh->pub_key = BN_bin2bn(CBS_data(&dh_Ys), CBS_len(&dh_Ys), NULL)) ==
-            NULL) {
+    dh->p = BN_bin2bn(CBS_data(&dh_p), CBS_len(&dh_p), NULL);
+    dh->g = BN_bin2bn(CBS_data(&dh_g), CBS_len(&dh_g), NULL);
+    dh->pub_key = BN_bin2bn(CBS_data(&dh_Ys), CBS_len(&dh_Ys), NULL);
+    if (dh->p == NULL || dh->g == NULL || dh->pub_key == NULL) {
       OPENSSL_PUT_ERROR(SSL, ERR_R_BN_LIB);
       goto err;
     }
@@ -1181,51 +1179,47 @@ int ssl3_get_server_key_exchange(SSL *s) {
     s->s3->tmp.peer_dh_tmp = dh;
     dh = NULL;
   } else if (alg_k & SSL_kECDHE) {
-    uint16_t curve_id;
-    int curve_nid = 0;
-    const EC_GROUP *group;
-    CBS point;
-
     /* Extract elliptic curve parameters and the server's ephemeral ECDH public
      * key.  Check curve is one of our preferences, if not server has sent an
      * invalid curve. */
+    uint16_t curve_id;
     if (!tls1_check_curve(s, &server_key_exchange, &curve_id)) {
       al = SSL_AD_DECODE_ERROR;
       OPENSSL_PUT_ERROR(SSL, SSL_R_WRONG_CURVE);
       goto f_err;
     }
+    s->session->key_exchange_info = curve_id;
 
-    curve_nid = tls1_ec_curve_id2nid(curve_id);
-    if (curve_nid == 0) {
+    int curve_nid = tls1_ec_curve_id2nid(curve_id);
+    if (curve_nid == NID_undef) {
       al = SSL_AD_INTERNAL_ERROR;
       OPENSSL_PUT_ERROR(SSL, SSL_R_UNABLE_TO_FIND_ECDH_PARAMETERS);
       goto f_err;
     }
 
     ecdh = EC_KEY_new_by_curve_name(curve_nid);
-    s->session->key_exchange_info = curve_id;
     if (ecdh == NULL) {
       OPENSSL_PUT_ERROR(SSL, ERR_R_EC_LIB);
       goto err;
     }
 
-    group = EC_KEY_get0_group(ecdh);
+    const EC_GROUP *group = EC_KEY_get0_group(ecdh);
 
     /* Next, get the encoded ECPoint */
+    CBS point;
     if (!CBS_get_u8_length_prefixed(&server_key_exchange, &point)) {
       al = SSL_AD_DECODE_ERROR;
       OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
       goto f_err;
     }
 
-    if (((srvr_ecpoint = EC_POINT_new(group)) == NULL) ||
-        ((bn_ctx = BN_CTX_new()) == NULL)) {
-      OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
+    srvr_ecpoint = EC_POINT_new(group);
+    if (srvr_ecpoint == NULL) {
       goto err;
     }
 
     if (!EC_POINT_oct2point(group, srvr_ecpoint, CBS_data(&point),
-                            CBS_len(&point), bn_ctx)) {
+                            CBS_len(&point), NULL)) {
       al = SSL_AD_DECODE_ERROR;
       OPENSSL_PUT_ERROR(SSL, SSL_R_BAD_ECPOINT);
       goto f_err;
@@ -1236,8 +1230,6 @@ int ssl3_get_server_key_exchange(SSL *s) {
     EC_KEY_free(s->s3->tmp.peer_ecdh_tmp);
     s->s3->tmp.peer_ecdh_tmp = ecdh;
     ecdh = NULL;
-    BN_CTX_free(bn_ctx);
-    bn_ctx = NULL;
     EC_POINT_free(srvr_ecpoint);
     srvr_ecpoint = NULL;
   } else if (!(alg_k & SSL_kPSK)) {
@@ -1318,9 +1310,7 @@ f_err:
   ssl3_send_alert(s, SSL3_AL_FATAL, al);
 err:
   EVP_PKEY_free(pkey);
-  RSA_free(rsa);
   DH_free(dh);
-  BN_CTX_free(bn_ctx);
   EC_POINT_free(srvr_ecpoint);
   EC_KEY_free(ecdh);
   EVP_MD_CTX_cleanup(&md_ctx);
