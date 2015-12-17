@@ -253,6 +253,9 @@ OPENSSL_EXPORT size_t BN_bn2bin(const BIGNUM *in, uint8_t *out);
  * returns 0. Otherwise, it returns 1. */
 OPENSSL_EXPORT int BN_bn2bin_padded(uint8_t *out, size_t len, const BIGNUM *in);
 
+/* BN_bn2cbb_padded behaves like |BN_bn2bin_padded| but writes to a |CBB|. */
+OPENSSL_EXPORT int BN_bn2cbb_padded(CBB *out, size_t len, const BIGNUM *in);
+
 /* BN_bn2hex returns an allocated string that contains a NUL-terminated, hex
  * representation of |bn|. If |bn| is negative, the first char in the resulting
  * string will be '-'. Returns NULL on allocation failure. */

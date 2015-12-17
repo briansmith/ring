@@ -1079,7 +1079,7 @@ int ssl3_get_server_done(SSL *s);
 int ssl3_send_cert_verify(SSL *s);
 int ssl3_send_client_certificate(SSL *s);
 int ssl_do_client_cert_cb(SSL *s, X509 **px509, EVP_PKEY **ppkey);
-int ssl3_send_client_key_exchange(SSL *s);
+int ssl3_send_client_key_exchange(SSL *ssl);
 int ssl3_get_server_key_exchange(SSL *s);
 int ssl3_get_server_certificate(SSL *s);
 int ssl3_send_next_proto(SSL *ssl);

@@ -63,6 +63,7 @@
 #include <string.h>
 
 #include <openssl/bio.h>
+#include <openssl/bytestring.h>
 #include <openssl/err.h>
 #include <openssl/mem.h>
 
@@ -193,6 +194,11 @@ int BN_bn2bin_padded(uint8_t *out, size_t len, const BIGNUM *in) {
     *(out++) = (uint8_t)(l >> (8 * (i % BN_BYTES))) & 0xff;
   }
   return 1;
+}
+
+int BN_bn2cbb_padded(CBB *out, size_t len, const BIGNUM *in) {
+  uint8_t *ptr;
+  return CBB_add_space(out, &ptr, len) && BN_bn2bin_padded(ptr, len, in);
 }
 
 static const char hextable[] = "0123456789abcdef";
