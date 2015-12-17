@@ -204,22 +204,26 @@ int X509_verify_cert(X509_STORE_CTX *ctx)
 		OPENSSL_PUT_ERROR(X509, X509_R_NO_CERT_SET_FOR_US_TO_VERIFY);
 		return -1;
 		}
+	if (ctx->chain != NULL)
+		{
+		/* This X509_STORE_CTX has already been used to verify a
+		 * cert. We cannot do another one. */
+		OPENSSL_PUT_ERROR(X509, ERR_R_SHOULD_NOT_HAVE_BEEN_CALLED);
+		return -1;
+		}
 
 	cb=ctx->verify_cb;
 
 	/* first we make sure the chain we are going to build is
 	 * present and that the first entry is in place */
-	if (ctx->chain == NULL)
+	ctx->chain = sk_X509_new_null();
+	if (ctx->chain == NULL || !sk_X509_push(ctx->chain, ctx->cert))
 		{
-		if (	((ctx->chain=sk_X509_new_null()) == NULL) ||
-			(!sk_X509_push(ctx->chain,ctx->cert)))
-			{
-			OPENSSL_PUT_ERROR(X509, ERR_R_MALLOC_FAILURE);
-			goto end;
-			}
-		X509_up_ref(ctx->cert);
-		ctx->last_untrusted=1;
+		OPENSSL_PUT_ERROR(X509, ERR_R_MALLOC_FAILURE);
+		goto end;
 		}
+	X509_up_ref(ctx->cert);
+	ctx->last_untrusted = 1;
 
 	/* We use a temporary STACK so we can chop and hack at it */
 	if (ctx->untrusted != NULL
