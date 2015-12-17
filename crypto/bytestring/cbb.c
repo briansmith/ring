@@ -84,8 +84,8 @@ void CBB_cleanup(CBB *cbb) {
   cbb->base = NULL;
 }
 
-static int cbb_buffer_add(struct cbb_buffer_st *base, uint8_t **out,
-                          size_t len) {
+static int cbb_buffer_reserve(struct cbb_buffer_st *base, uint8_t **out,
+                              size_t len) {
   size_t newlen;
 
   if (base == NULL) {
@@ -121,7 +121,17 @@ static int cbb_buffer_add(struct cbb_buffer_st *base, uint8_t **out,
   if (out) {
     *out = base->buf + base->len;
   }
-  base->len = newlen;
+
+  return 1;
+}
+
+static int cbb_buffer_add(struct cbb_buffer_st *base, uint8_t **out,
+                          size_t len) {
+  if (!cbb_buffer_reserve(base, out, len)) {
+    return 0;
+  }
+  /* This will not overflow or |cbb_buffer_reserve| would have failed. */
+  base->len += len;
   return 1;
 }
 
@@ -336,6 +346,25 @@ int CBB_add_space(CBB *cbb, uint8_t **out_data, size_t len) {
       !cbb_buffer_add(cbb->base, out_data, len)) {
     return 0;
   }
+  return 1;
+}
+
+int CBB_reserve(CBB *cbb, uint8_t **out_data, size_t len) {
+  if (!CBB_flush(cbb) ||
+      !cbb_buffer_reserve(cbb->base, out_data, len)) {
+    return 0;
+  }
+  return 1;
+}
+
+int CBB_did_write(CBB *cbb, size_t len) {
+  size_t newlen = cbb->base->len + len;
+  if (cbb->child != NULL ||
+      newlen < cbb->base->len ||
+      newlen > cbb->base->cap) {
+    return 0;
+  }
+  cbb->base->len = newlen;
   return 1;
 }
 

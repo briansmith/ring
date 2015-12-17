@@ -703,12 +703,32 @@ static bool TestASN1Uint64() {
   return true;
 }
 
-static int TestZero() {
+static bool TestZero() {
   CBB cbb;
   CBB_zero(&cbb);
   // Calling |CBB_cleanup| on a zero-state |CBB| must not crash.
   CBB_cleanup(&cbb);
-  return 1;
+  return true;
+}
+
+static bool TestCBBReserve() {
+  uint8_t buf[10];
+  uint8_t *ptr;
+  size_t len;
+  ScopedCBB cbb;
+  if (!CBB_init_fixed(cbb.get(), buf, sizeof(buf)) ||
+      // Too large.
+      CBB_reserve(cbb.get(), &ptr, 11) ||
+      // Successfully reserve the entire space.
+      !CBB_reserve(cbb.get(), &ptr, 10) ||
+      ptr != buf ||
+      // Advancing under the maximum bytes is legal.
+      !CBB_did_write(cbb.get(), 5) ||
+      !CBB_finish(cbb.get(), NULL, &len) ||
+      len != 5) {
+    return false;
+  }
+  return true;
 }
 
 int main(void) {
@@ -729,7 +749,8 @@ int main(void) {
       !TestBerConvert() ||
       !TestASN1Uint64() ||
       !TestGetOptionalASN1Bool() ||
-      !TestZero()) {
+      !TestZero() ||
+      !TestCBBReserve()) {
     return 1;
   }
 

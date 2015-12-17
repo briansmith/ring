@@ -331,6 +331,17 @@ OPENSSL_EXPORT int CBB_add_bytes(CBB *cbb, const uint8_t *data, size_t len);
  * otherwise. */
 OPENSSL_EXPORT int CBB_add_space(CBB *cbb, uint8_t **out_data, size_t len);
 
+/* CBB_reserve ensures |cbb| has room for |len| additional bytes and sets
+ * |*out_data| to point to the beginning of that space. It returns one on
+ * success and zero otherwise. The caller may write up to |len| bytes to
+ * |*out_data| and call |CBB_did_write| to complete the write. |*out_data| is
+ * valid until the next operation on |cbb| or an ancestor |CBB|. */
+OPENSSL_EXPORT int CBB_reserve(CBB *cbb, uint8_t **out_data, size_t len);
+
+/* CBB_did_write advances |cbb| by |len| bytes, assuming the space has been
+ * written to by the caller. It returns one on success and zero on error. */
+OPENSSL_EXPORT int CBB_did_write(CBB *cbb, size_t len);
+
 /* CBB_add_u8 appends an 8-bit number from |value| to |cbb|. It returns one on
  * success and zero otherwise. */
 OPENSSL_EXPORT int CBB_add_u8(CBB *cbb, uint8_t value);
