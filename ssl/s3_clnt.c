@@ -1230,7 +1230,9 @@ int ssl3_get_server_key_exchange(SSL *s) {
       OPENSSL_PUT_ERROR(SSL, SSL_R_BAD_ECPOINT);
       goto f_err;
     }
-    EC_KEY_set_public_key(ecdh, srvr_ecpoint);
+    if (!EC_KEY_set_public_key(ecdh, srvr_ecpoint)) {
+      goto err;
+    }
     EC_KEY_free(s->s3->tmp.peer_ecdh_tmp);
     s->s3->tmp.peer_ecdh_tmp = ecdh;
     ecdh = NULL;
