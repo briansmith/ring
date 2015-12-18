@@ -1205,7 +1205,6 @@ int ssl3_send_server_key_exchange(SSL *s) {
   uint8_t *encodedPoint = NULL;
   int encodedlen = 0;
   uint16_t curve_id = 0;
-  BN_CTX *bn_ctx = NULL;
   const char *psk_identity_hint = NULL;
   size_t psk_identity_hint_len = 0;
   size_t sig_len;
@@ -1333,23 +1332,19 @@ int ssl3_send_server_key_exchange(SSL *s) {
                              POINT_CONVERSION_UNCOMPRESSED, NULL, 0, NULL);
 
       encodedPoint = (uint8_t *)OPENSSL_malloc(encodedlen * sizeof(uint8_t));
-      bn_ctx = BN_CTX_new();
-      if (encodedPoint == NULL || bn_ctx == NULL) {
+      if (encodedPoint == NULL) {
         OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
         goto err;
       }
 
       encodedlen = EC_POINT_point2oct(group, EC_KEY_get0_public_key(ecdh),
                                       POINT_CONVERSION_UNCOMPRESSED,
-                                      encodedPoint, encodedlen, bn_ctx);
+                                      encodedPoint, encodedlen, NULL);
 
       if (encodedlen == 0) {
         OPENSSL_PUT_ERROR(SSL, ERR_R_ECDH_LIB);
         goto err;
       }
-
-      BN_CTX_free(bn_ctx);
-      bn_ctx = NULL;
 
       /* We only support named (not generic) curves in ECDH ephemeral key
        * exchanges. In this situation, we need four additional bytes to encode
@@ -1498,7 +1493,6 @@ f_err:
   ssl3_send_alert(s, SSL3_AL_FATAL, al);
 err:
   OPENSSL_free(encodedPoint);
-  BN_CTX_free(bn_ctx);
   EVP_MD_CTX_cleanup(&md_ctx);
   return -1;
 }
@@ -1585,7 +1579,6 @@ int ssl3_get_client_key_exchange(SSL *s) {
   EC_KEY *srvr_ecdh = NULL;
   EVP_PKEY *clnt_pub_pkey = NULL;
   EC_POINT *clnt_ecpoint = NULL;
-  BN_CTX *bn_ctx = NULL;
   unsigned int psk_len = 0;
   uint8_t psk[PSK_MAX_PSK_LEN];
 
@@ -1846,14 +1839,8 @@ int ssl3_get_client_key_exchange(SSL *s) {
       goto f_err;
     }
 
-    bn_ctx = BN_CTX_new();
-    if (bn_ctx == NULL) {
-      OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
-      goto err;
-    }
-
     if (!EC_POINT_oct2point(group, clnt_ecpoint, CBS_data(&ecdh_Yc),
-                            CBS_len(&ecdh_Yc), bn_ctx)) {
+                            CBS_len(&ecdh_Yc), NULL)) {
       OPENSSL_PUT_ERROR(SSL, ERR_R_EC_LIB);
       goto err;
     }
@@ -1886,8 +1873,6 @@ int ssl3_get_client_key_exchange(SSL *s) {
     clnt_ecpoint = NULL;
     EC_KEY_free(srvr_ecdh);
     srvr_ecdh = NULL;
-    BN_CTX_free(bn_ctx);
-    bn_ctx = NULL;
     EC_KEY_free(s->s3->tmp.ecdh);
     s->s3->tmp.ecdh = NULL;
 
@@ -1958,7 +1943,6 @@ err:
   EVP_PKEY_free(clnt_pub_pkey);
   EC_POINT_free(clnt_ecpoint);
   EC_KEY_free(srvr_ecdh);
-  BN_CTX_free(bn_ctx);
 
   return -1;
 }
