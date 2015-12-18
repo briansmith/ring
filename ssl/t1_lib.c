@@ -2693,27 +2693,15 @@ int tls12_get_sigid(int pkey_type) {
                        sizeof(tls12_sig) / sizeof(tls12_lookup));
 }
 
-int tls12_get_sigandhash(SSL *ssl, uint8_t *p, const EVP_MD *md) {
-  int sig_id, md_id;
+int tls12_add_sigandhash(SSL *ssl, CBB *out, const EVP_MD *md) {
+  int md_id = tls12_find_id(EVP_MD_type(md), tls12_md,
+                            sizeof(tls12_md) / sizeof(tls12_lookup));
+  int sig_id = tls12_get_sigid(ssl_private_key_type(ssl));
 
-  if (!md) {
-    return 0;
-  }
-
-  md_id = tls12_find_id(EVP_MD_type(md), tls12_md,
-                        sizeof(tls12_md) / sizeof(tls12_lookup));
-  if (md_id == -1) {
-    return 0;
-  }
-
-  sig_id = tls12_get_sigid(ssl_private_key_type(ssl));
-  if (sig_id == -1) {
-    return 0;
-  }
-
-  p[0] = (uint8_t)md_id;
-  p[1] = (uint8_t)sig_id;
-  return 1;
+  return md_id != -1 &&
+         sig_id != -1 &&
+         CBB_add_u8(out, (uint8_t)md_id) &&
+         CBB_add_u8(out, (uint8_t)sig_id);
 }
 
 const EVP_MD *tls12_get_hash(uint8_t hash_alg) {

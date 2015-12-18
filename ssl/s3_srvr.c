@@ -1327,11 +1327,9 @@ int ssl3_send_server_key_exchange(SSL *ssl) {
 
       /* Determine signature algorithm. */
       const EVP_MD *md;
-      uint8_t *ptr;
       if (SSL_USE_SIGALGS(ssl)) {
         md = tls1_choose_signing_digest(ssl);
-        if (!CBB_add_space(&cbb, &ptr, 2) ||
-            !tls12_get_sigandhash(ssl, ptr, md)) {
+        if (!tls12_add_sigandhash(ssl, &cbb, md)) {
           OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
           ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_INTERNAL_ERROR);
           goto err;
@@ -1354,6 +1352,7 @@ int ssl3_send_server_key_exchange(SSL *ssl) {
           EVP_DigestUpdate(&md_ctx, CBB_data(&cbb), params_len) &&
           EVP_DigestFinal_ex(&md_ctx, digest, &digest_len);
       EVP_MD_CTX_cleanup(&md_ctx);
+      uint8_t *ptr;
       if (!digest_ret ||
           !CBB_add_u16_length_prefixed(&cbb, &child) ||
           !CBB_reserve(&child, &ptr, max_sig_len)) {

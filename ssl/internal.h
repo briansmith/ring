@@ -1076,7 +1076,7 @@ int ssl3_get_certificate_request(SSL *s);
 int ssl3_get_new_session_ticket(SSL *s);
 int ssl3_get_cert_status(SSL *s);
 int ssl3_get_server_done(SSL *s);
-int ssl3_send_cert_verify(SSL *s);
+int ssl3_send_cert_verify(SSL *ssl);
 int ssl3_send_client_certificate(SSL *s);
 int ssl_do_client_cert_cb(SSL *s, X509 **px509, EVP_PKEY **ppkey);
 int ssl3_send_client_key_exchange(SSL *ssl);
@@ -1190,10 +1190,11 @@ int tls_process_ticket(SSL *ssl, SSL_SESSION **out_session,
                        size_t ticket_len, const uint8_t *session_id,
                        size_t session_id_len);
 
-/* tls12_get_sigandhash assembles the SignatureAndHashAlgorithm corresponding to
- * |ssl|'s private key and |md|. The two-byte value is written to |p|. It
+/* tls12_add_sigandhash assembles the SignatureAndHashAlgorithm corresponding to
+ * |ssl|'s private key and |md|. The two-byte value is written to |out|. It
  * returns one on success and zero on failure. */
-int tls12_get_sigandhash(SSL *ssl, uint8_t *p, const EVP_MD *md);
+int tls12_add_sigandhash(SSL *ssl, CBB *out, const EVP_MD *md);
+
 int tls12_get_sigid(int pkey_type);
 const EVP_MD *tls12_get_hash(uint8_t hash_alg);
 

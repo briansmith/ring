@@ -1852,82 +1852,94 @@ err:
   return -1;
 }
 
-int ssl3_send_cert_verify(SSL *s) {
-  if (s->state == SSL3_ST_CW_CERT_VRFY_A ||
-      s->state == SSL3_ST_CW_CERT_VRFY_B) {
-    enum ssl_private_key_result_t sign_result;
-    uint8_t *p = ssl_handshake_start(s);
-    size_t signature_length = 0;
-    unsigned long n = 0;
-    assert(ssl_has_private_key(s));
-
-    if (s->state == SSL3_ST_CW_CERT_VRFY_A) {
-      uint8_t *buf = (uint8_t *)s->init_buf->data;
-      const EVP_MD *md = NULL;
-      uint8_t digest[EVP_MAX_MD_SIZE];
-      size_t digest_length;
-
-      /* Write out the digest type if need be. */
-      if (SSL_USE_SIGALGS(s)) {
-        md = tls1_choose_signing_digest(s);
-        if (!tls12_get_sigandhash(s, p, md)) {
-          OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
-          return -1;
-        }
-        p += 2;
-        n += 2;
-      }
-
-      /* Compute the digest. */
-      const int pkey_type = ssl_private_key_type(s);
-      if (!ssl3_cert_verify_hash(s, digest, &digest_length, &md, pkey_type)) {
-        return -1;
-      }
-
-      /* The handshake buffer is no longer necessary. */
-      ssl3_free_handshake_buffer(s);
-
-      /* Sign the digest. */
-      signature_length = ssl_private_key_max_signature_len(s);
-      if (p + 2 + signature_length > buf + SSL3_RT_MAX_PLAIN_LENGTH) {
-        OPENSSL_PUT_ERROR(SSL, SSL_R_DATA_LENGTH_TOO_LONG);
-        return -1;
-      }
-
-      s->rwstate = SSL_PRIVATE_KEY_OPERATION;
-      sign_result = ssl_private_key_sign(s, &p[2], &signature_length,
-                                         signature_length, md, digest,
-                                         digest_length);
-    } else {
-      if (SSL_USE_SIGALGS(s)) {
-        /* The digest has already been selected and written. */
-        p += 2;
-        n += 2;
-      }
-      signature_length = ssl_private_key_max_signature_len(s);
-      s->rwstate = SSL_PRIVATE_KEY_OPERATION;
-      sign_result = ssl_private_key_sign_complete(s, &p[2], &signature_length,
-                                                  signature_length);
-    }
-
-    if (sign_result == ssl_private_key_retry) {
-      s->state = SSL3_ST_CW_CERT_VRFY_B;
-      return -1;
-    }
-    s->rwstate = SSL_NOTHING;
-    if (sign_result != ssl_private_key_success) {
-      return -1;
-    }
-
-    s2n(signature_length, p);
-    n += signature_length + 2;
-    if (!ssl_set_handshake_header(s, SSL3_MT_CERTIFICATE_VERIFY, n)) {
-      return -1;
-    }
-    s->state = SSL3_ST_CW_CERT_VRFY_C;
+int ssl3_send_cert_verify(SSL *ssl) {
+  if (ssl->state == SSL3_ST_CW_CERT_VRFY_C) {
+    return ssl_do_write(ssl);
   }
 
-  return ssl_do_write(s);
+  CBB cbb, child;
+  if (!CBB_init_fixed(&cbb, ssl_handshake_start(ssl),
+                      ssl->init_buf->max - SSL_HM_HEADER_LENGTH(ssl))) {
+    goto err;
+  }
+
+  assert(ssl_has_private_key(ssl));
+
+  const size_t max_sig_len = ssl_private_key_max_signature_len(ssl);
+  size_t sig_len;
+  enum ssl_private_key_result_t sign_result;
+  if (ssl->state == SSL3_ST_CW_CERT_VRFY_A) {
+    /* Select and write out the digest type in TLS 1.2. */
+    const EVP_MD *md = NULL;
+    if (SSL_USE_SIGALGS(ssl)) {
+      md = tls1_choose_signing_digest(ssl);
+      if (!tls12_add_sigandhash(ssl, &cbb, md)) {
+        OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
+        goto err;
+      }
+    }
+
+    /* Compute the digest. In TLS 1.1 and below, the digest type is also
+     * selected here. */
+    uint8_t digest[EVP_MAX_MD_SIZE];
+    size_t digest_len;
+    if (!ssl3_cert_verify_hash(ssl, digest, &digest_len, &md,
+                               ssl_private_key_type(ssl))) {
+      goto err;
+    }
+
+    /* The handshake buffer is no longer necessary. */
+    ssl3_free_handshake_buffer(ssl);
+
+    /* Sign the digest. */
+    uint8_t *ptr;
+    if (!CBB_add_u16_length_prefixed(&cbb, &child) ||
+        !CBB_reserve(&child, &ptr, max_sig_len)) {
+      goto err;
+    }
+    sign_result = ssl_private_key_sign(ssl, ptr, &sig_len, max_sig_len, md,
+                                       digest, digest_len);
+  } else {
+    assert(ssl->state == SSL3_ST_CW_CERT_VRFY_B);
+
+    /* Skip over the already written signature algorithm and retry the
+     * signature. */
+    uint8_t *ptr;
+    if ((SSL_USE_SIGALGS(ssl) && !CBB_did_write(&cbb, 2)) ||
+        !CBB_add_u16_length_prefixed(&cbb, &child) ||
+        !CBB_reserve(&child, &ptr, max_sig_len)) {
+      goto err;
+    }
+    sign_result =
+        ssl_private_key_sign_complete(ssl, ptr, &sig_len, max_sig_len);
+  }
+
+  switch (sign_result) {
+    case ssl_private_key_success:
+      ssl->rwstate = SSL_NOTHING;
+      break;
+    case ssl_private_key_failure:
+      ssl->rwstate = SSL_NOTHING;
+      goto err;
+    case ssl_private_key_retry:
+      ssl->rwstate = SSL_PRIVATE_KEY_OPERATION;
+      ssl->state = SSL3_ST_CW_CERT_VRFY_B;
+      goto err;
+  }
+
+  size_t length;
+  if (!CBB_did_write(&child, sig_len) ||
+      !CBB_finish(&cbb, NULL, &length) ||
+      !ssl_set_handshake_header(ssl, SSL3_MT_CERTIFICATE_VERIFY, length)) {
+    goto err;
+  }
+
+  ssl->state = SSL3_ST_CW_CERT_VRFY_C;
+  return ssl_do_write(ssl);
+
+err:
+  CBB_cleanup(&cbb);
+  return -1;
 }
 
 /* ssl3_has_client_certificate returns true if a client certificate is
