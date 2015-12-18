@@ -20,15 +20,6 @@
 #include "../test/file_test.h"
 
 
-#if defined(OPENSSL_SMALL)
-
-int main(int argc, char **argv) {
-  printf("PASS\n");
-  return 0;
-}
-
-#else
-
 static bool TestSignature(FileTest *t, void *arg) {
   std::vector<uint8_t> private_key, public_key, message, expected_signature;
   if (!t->GetBytes(&private_key, "PRIV") ||
@@ -70,5 +61,3 @@ int main(int argc, char **argv) {
 
   return FileTestMain(TestSignature, nullptr, argv[1]);
 }
-
-#endif  /* OPENSSL_SMALL */

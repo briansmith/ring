@@ -405,7 +405,6 @@ static bool Speed25519(const std::string &selected) {
 
   TimeResults results;
 
-#if !defined(OPENSSL_SMALL)
   uint8_t public_key[32], private_key[64];
 
   if (!TimeFunction(&results, [&public_key, &private_key]() -> bool {
@@ -438,7 +437,6 @@ static bool Speed25519(const std::string &selected) {
   }
 
   results.Print("Ed25519 verify");
-#endif
 
   if (!TimeFunction(&results, []() -> bool {
         uint8_t out[32], in[32];

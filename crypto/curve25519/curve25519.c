@@ -17,8 +17,7 @@
  * public domain but this file has the ISC license just to keep licencing
  * simple.
  *
- * The field functions are shared by Ed25519 and X25519, although Ed25519 is
- * disabled when |OPENSSL_SMALL| is defined. */
+ * The field functions are shared by Ed25519 and X25519 where possible. */
 
 #include <openssl/curve25519.h>
 
@@ -785,9 +784,6 @@ static void fe_mul121666(fe h, fe f) {
   h[9] = h9;
 }
 
-/* Ed25519 support is disabled when built with |OPENSSL_SMALL|. */
-#if !defined(OPENSSL_SMALL)
-
 /* h = -f
  *
  * Preconditions:
@@ -1329,13 +1325,10 @@ static void cmov(ge_precomp *t, ge_precomp *u, uint8_t b) {
   fe_cmov(t->xy2d, u->xy2d, b);
 }
 
-#if 0
+#if defined(OPENSSL_SMALL)
 
-/* At the moment, building with |OPENSSL_SMALL| causes Ed25519 to be disabled.
- * In the future we might enable it but, in that case, we'll still probably
- * want to keep the size down. This block of code replaces the standard
- * base-point table with a much smaller one. The standard table is 30,720 bytes
- * while this one is just 960.
+/* This block of code replaces the standard base-point table with a much smaller
+ * one. The standard table is 30,720 bytes while this one is just 960.
  *
  * This table contains 15 pairs of group elements, (x, y), where each field
  * element is serialised with |fe_tobytes|. If |i| is the index of the group
@@ -4768,8 +4761,6 @@ int ED25519_verify(const uint8_t *message, size_t message_len,
   return CRYPTO_memcmp(rcheck, rcopy, sizeof(rcheck)) == 0;
 }
 
-#endif
-
 static void x25519_scalar_mult_generic(uint8_t out[32],
                                        const uint8_t scalar[32],
                                        const uint8_t point[32]) {
@@ -4852,19 +4843,6 @@ int X25519(uint8_t out_shared_key[32], const uint8_t private_key[32],
   return CRYPTO_memcmp(kZeros, out_shared_key, 32) != 0;
 }
 
-#if defined(OPENSSL_SMALL)
-
-/* When |OPENSSL_SMALL| is set, base point multiplication is done with the
- * Montgomery ladder because the Ed25519 code isn't included. */
-
-void X25519_public_from_private(uint8_t out_public_value[32],
-                                const uint8_t private_key[32]) {
-  static const uint8_t kMongomeryBasePoint[32] = {9};
-  x25519_scalar_mult(out_public_value, private_key, kMongomeryBasePoint);
-}
-
-#else
-
 void X25519_public_from_private(uint8_t out_public_value[32],
                                 const uint8_t private_key[32]) {
 #if defined(OPENSSL_ARM)
@@ -4893,5 +4871,3 @@ void X25519_public_from_private(uint8_t out_public_value[32],
   fe_mul(zplusy, zplusy, zminusy_inv);
   fe_tobytes(out_public_value, zplusy);
 }
-
-#endif
