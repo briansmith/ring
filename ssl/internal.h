@@ -1091,7 +1091,7 @@ int ssl3_get_initial_bytes(SSL *s);
 int ssl3_get_v2_client_hello(SSL *s);
 int ssl3_get_client_hello(SSL *s);
 int ssl3_send_server_hello(SSL *ssl);
-int ssl3_send_server_key_exchange(SSL *s);
+int ssl3_send_server_key_exchange(SSL *ssl);
 int ssl3_send_certificate_request(SSL *s);
 int ssl3_send_server_done(SSL *s);
 int ssl3_get_client_certificate(SSL *s);

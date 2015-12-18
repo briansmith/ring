@@ -261,6 +261,11 @@ int CBB_flush(CBB *cbb) {
   return 1;
 }
 
+const uint8_t *CBB_data(const CBB *cbb) {
+  assert(cbb->child == NULL);
+  return cbb->base->buf + cbb->offset + cbb->pending_len_len;
+}
+
 size_t CBB_len(const CBB *cbb) {
   assert(cbb->child == NULL);
   assert(cbb->offset + cbb->pending_len_len <= cbb->base->len);

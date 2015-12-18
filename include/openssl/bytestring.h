@@ -292,6 +292,13 @@ OPENSSL_EXPORT int CBB_finish(CBB *cbb, uint8_t **out_data, size_t *out_len);
  * on error. */
 OPENSSL_EXPORT int CBB_flush(CBB *cbb);
 
+/* CBB_data returns a pointer to the bytes written to |cbb|. It does not flush
+ * |cbb|. The pointer is valid until the next operation to |cbb|.
+ *
+ * To avoid unfinalized length prefixes, it is a fatal error to call this on a
+ * CBB with any active children. */
+OPENSSL_EXPORT const uint8_t *CBB_data(const CBB *cbb);
+
 /* CBB_len returns the number of bytes written to |cbb|. It does not flush
  * |cbb|.
  *
