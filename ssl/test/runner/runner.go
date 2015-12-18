@@ -27,6 +27,7 @@ import (
 var (
 	useValgrind     = flag.Bool("valgrind", false, "If true, run code under valgrind")
 	useGDB          = flag.Bool("gdb", false, "If true, run BoringSSL code under gdb")
+	useLLDB         = flag.Bool("lldb", false, "If true, run BoringSSL code under lldb")
 	flagDebug       = flag.Bool("debug", false, "Hexdump the contents of the connection")
 	mallocTest      = flag.Int64("malloc-test", -1, "If non-negative, run each test with each malloc in turn failing from the given number onwards.")
 	mallocTestDebug = flag.Bool("malloc-test-debug", false, "If true, ask bssl_shim to abort rather than fail a malloc. This can be used with a specific value for --malloc-test to identity the malloc failing that is causing problems.")
@@ -521,6 +522,14 @@ func gdbOf(path string, args ...string) *exec.Cmd {
 	return exec.Command("xterm", xtermArgs...)
 }
 
+func lldbOf(path string, args ...string) *exec.Cmd {
+	xtermArgs := []string{"-e", "lldb", "--"}
+	xtermArgs = append(xtermArgs, path)
+	xtermArgs = append(xtermArgs, args...)
+
+	return exec.Command("xterm", xtermArgs...)
+}
+
 type moreMallocsError struct{}
 
 func (moreMallocsError) Error() string {
@@ -637,6 +646,8 @@ func runTest(test *testCase, shimPath string, mallocNumToFail int64) error {
 		shim = valgrindOf(false, shimPath, flags...)
 	} else if *useGDB {
 		shim = gdbOf(shimPath, flags...)
+	} else if *useLLDB {
+		shim = lldbOf(shimPath, flags...)
 	} else {
 		shim = exec.Command(shimPath, flags...)
 	}
