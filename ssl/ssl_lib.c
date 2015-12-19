@@ -1731,7 +1731,8 @@ void ssl_get_compatible_server_ciphers(SSL *s, uint32_t *out_mask_k,
 
   /* If we are considering an ECC cipher suite that uses an ephemeral EC
    * key, check for a shared curve. */
-  if (tls1_get_shared_curve(s) != NID_undef) {
+  uint16_t unused;
+  if (tls1_get_shared_curve(s, &unused)) {
     mask_k |= SSL_kECDHE;
   }
 
@@ -1820,10 +1821,6 @@ const char *SSL_get_version(const SSL *ssl) {
 
 const char *SSL_SESSION_get_version(const SSL_SESSION *session) {
   return ssl_get_version(session->ssl_version);
-}
-
-const char* SSL_get_curve_name(uint16_t curve_id) {
-  return tls1_ec_curve_id2name(curve_id);
 }
 
 void ssl_clear_cipher_ctx(SSL *s) {

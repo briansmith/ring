@@ -229,14 +229,14 @@ void ssl3_free(SSL *s) {
   ssl_read_buffer_clear(s);
   ssl_write_buffer_clear(s);
   DH_free(s->s3->tmp.dh);
-  EC_KEY_free(s->s3->tmp.ecdh);
+  SSL_ECDH_CTX_cleanup(&s->s3->tmp.ecdh_ctx);
+  OPENSSL_free(s->s3->tmp.peer_key);
 
   sk_X509_NAME_pop_free(s->s3->tmp.ca_names, X509_NAME_free);
   OPENSSL_free(s->s3->tmp.certificate_types);
   OPENSSL_free(s->s3->tmp.peer_ellipticcurvelist);
   OPENSSL_free(s->s3->tmp.peer_psk_identity_hint);
   DH_free(s->s3->tmp.peer_dh_tmp);
-  EC_KEY_free(s->s3->tmp.peer_ecdh_tmp);
   ssl3_free_handshake_buffer(s);
   ssl3_free_handshake_hash(s);
   OPENSSL_free(s->s3->alpn_selected);

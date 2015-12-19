@@ -514,6 +514,58 @@ void ssl3_free_handshake_hash(SSL *s);
 int ssl3_update_handshake_hash(SSL *ssl, const uint8_t *in, size_t in_len);
 
 
+/* ECDH curves. */
+
+#define SSL_CURVE_SECP256R1 23
+#define SSL_CURVE_SECP384R1 24
+#define SSL_CURVE_SECP521R1 25
+#define SSL_CURVE_ECDH_X25519 29
+
+/* An SSL_ECDH_METHOD is an implementation of ECDH-like key exchanges for
+ * TLS. */
+struct ssl_ecdh_method_st {
+  int nid;
+  uint16_t curve_id;
+  const char name[8];
+
+  /* cleanup releases state in |ctx|. */
+  void (*cleanup)(SSL_ECDH_CTX *ctx);
+
+  /* generate_keypair generates a keypair and writes the public value to
+   * |out_public_key|. It returns one on success and zero on error. */
+  int (*generate_keypair)(SSL_ECDH_CTX *ctx, CBB *out_public_key);
+
+  /* compute_secret performs a key exchange against |peer_key| and, on
+   * success, returns one and sets |*out_secret| and |*out_secret_len| to
+   * a newly-allocated buffer containing the shared secret. The caller must
+   * release this buffer with |OPENSSL_free|. Otherwise, it returns zero and
+   * sets |*out_alert| to an alert to send to the peer. */
+  int (*compute_secret)(SSL_ECDH_CTX *ctx, uint8_t **out_secret,
+                        size_t *out_secret_len, uint8_t *out_alert,
+                        const uint8_t *peer_key, size_t peer_key_len);
+} /* SSL_ECDH_METHOD */;
+
+/* ssl_nid_to_curve_id looks up the curve corresponding to |nid|. On success, it
+ * sets |*out_curve_id| to the curve ID and returns one. Otherwise, it returns
+ * zero. */
+int ssl_nid_to_curve_id(uint16_t *out_curve_id, int nid);
+
+/* SSL_ECDH_CTX_init sets up |ctx| for use with curve |curve_id|. It returns one
+ * on success and zero on error. */
+int SSL_ECDH_CTX_init(SSL_ECDH_CTX *ctx, uint16_t curve_id);
+
+/* SSL_ECDH_CTX_cleanup releases memory associated with |ctx|. It is legal to
+ * call it in the zero state. */
+void SSL_ECDH_CTX_cleanup(SSL_ECDH_CTX *ctx);
+
+/* The following functions call the corresponding method of
+ * |SSL_ECDH_METHOD|. */
+int SSL_ECDH_CTX_generate_keypair(SSL_ECDH_CTX *ctx, CBB *out_public_key);
+int SSL_ECDH_CTX_compute_secret(SSL_ECDH_CTX *ctx, uint8_t **out_secret,
+                                size_t *out_secret_len, uint8_t *out_alert,
+                                const uint8_t *peer_key, size_t peer_key_len);
+
+
 /* Transport buffers. */
 
 /* ssl_read_buffer returns a pointer to contents of the read buffer. */
@@ -1128,24 +1180,16 @@ int tls1_alert_code(int code);
 int ssl3_alert_code(int code);
 
 char ssl_early_callback_init(struct ssl_early_callback_ctx *ctx);
-int tls1_ec_curve_id2nid(uint16_t curve_id);
-int tls1_ec_nid2curve_id(uint16_t *out_curve_id, int nid);
 
-/* tls1_ec_curve_id2name returns a human-readable name for the
- * curve specified by the TLS curve id in |curve_id|. If the
- * curve is unknown, it returns NULL. */
-const char* tls1_ec_curve_id2name(uint16_t curve_id);
+/* tls1_check_curve_id returns one if |curve_id| is consistent with both our
+ * and the peer's curve preferences. Note: if called as the client, only our
+ * preferences are checked; the peer (the server) does not send preferences. */
+int tls1_check_curve_id(SSL *ssl, uint16_t curve_id);
 
-/* tls1_check_curve parses ECParameters out of |cbs|, modifying it. It
- * checks the curve is one of our preferences and writes the
- * NamedCurve value to |*out_curve_id|. It returns one on success and
- * zero on error. */
-int tls1_check_curve(SSL *s, CBS *cbs, uint16_t *out_curve_id);
-
-/* tls1_get_shared_curve returns the NID of the first preferred shared curve
- * between client and server preferences. If none can be found, it returns
- * NID_undef. */
-int tls1_get_shared_curve(SSL *s);
+/* tls1_get_shared_curve sets |*out_curve_id| to the first preferred shared
+ * curve between client and server preferences and returns one. If none may be
+ * found, it returns zero. */
+int tls1_get_shared_curve(SSL *ssl, uint16_t *out_curve_id);
 
 /* tls1_set_curves converts the array of |ncurves| NIDs pointed to by |curves|
  * into a newly allocated array of TLS curve IDs. On success, the function

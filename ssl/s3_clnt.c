@@ -1179,59 +1179,36 @@ int ssl3_get_server_key_exchange(SSL *s) {
     s->s3->tmp.peer_dh_tmp = dh;
     dh = NULL;
   } else if (alg_k & SSL_kECDHE) {
-    /* Extract elliptic curve parameters and the server's ephemeral ECDH public
-     * key.  Check curve is one of our preferences, if not server has sent an
-     * invalid curve. */
+    /* Parse the server parameters. */
+    uint8_t curve_type;
     uint16_t curve_id;
-    if (!tls1_check_curve(s, &server_key_exchange, &curve_id)) {
-      al = SSL_AD_DECODE_ERROR;
-      OPENSSL_PUT_ERROR(SSL, SSL_R_WRONG_CURVE);
-      goto f_err;
-    }
-    s->session->key_exchange_info = curve_id;
-
-    int curve_nid = tls1_ec_curve_id2nid(curve_id);
-    if (curve_nid == NID_undef) {
-      al = SSL_AD_INTERNAL_ERROR;
-      OPENSSL_PUT_ERROR(SSL, SSL_R_UNABLE_TO_FIND_ECDH_PARAMETERS);
-      goto f_err;
-    }
-
-    ecdh = EC_KEY_new_by_curve_name(curve_nid);
-    if (ecdh == NULL) {
-      OPENSSL_PUT_ERROR(SSL, ERR_R_EC_LIB);
-      goto err;
-    }
-
-    const EC_GROUP *group = EC_KEY_get0_group(ecdh);
-
-    /* Next, get the encoded ECPoint */
     CBS point;
-    if (!CBS_get_u8_length_prefixed(&server_key_exchange, &point)) {
+    if (!CBS_get_u8(&server_key_exchange, &curve_type) ||
+        curve_type != NAMED_CURVE_TYPE ||
+        !CBS_get_u16(&server_key_exchange, &curve_id) ||
+        !CBS_get_u8_length_prefixed(&server_key_exchange, &point)) {
       al = SSL_AD_DECODE_ERROR;
       OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
       goto f_err;
     }
+    s->session->key_exchange_info = curve_id;
 
-    srvr_ecpoint = EC_POINT_new(group);
-    if (srvr_ecpoint == NULL) {
-      goto err;
-    }
-
-    if (!EC_POINT_oct2point(group, srvr_ecpoint, CBS_data(&point),
-                            CBS_len(&point), NULL)) {
-      al = SSL_AD_DECODE_ERROR;
-      OPENSSL_PUT_ERROR(SSL, SSL_R_BAD_ECPOINT);
+    /* Ensure the curve is consistent with preferences. */
+    if (!tls1_check_curve_id(s, curve_id)) {
+      al = SSL_AD_ILLEGAL_PARAMETER;
+      OPENSSL_PUT_ERROR(SSL, SSL_R_WRONG_CURVE);
       goto f_err;
     }
-    if (!EC_KEY_set_public_key(ecdh, srvr_ecpoint)) {
+
+    /* Initialize ECDH and save the peer public key for later. */
+    size_t peer_key_len;
+    if (!SSL_ECDH_CTX_init(&s->s3->tmp.ecdh_ctx, curve_id) ||
+        !CBS_stow(&point, &s->s3->tmp.peer_key, &peer_key_len)) {
       goto err;
     }
-    EC_KEY_free(s->s3->tmp.peer_ecdh_tmp);
-    s->s3->tmp.peer_ecdh_tmp = ecdh;
-    ecdh = NULL;
-    EC_POINT_free(srvr_ecpoint);
-    srvr_ecpoint = NULL;
+    /* |point| has a u8 length prefix, so this fits in a |uint8_t|. */
+    assert(peer_key_len <= 0xff);
+    s->s3->tmp.peer_key_len = (uint8_t)peer_key_len;
   } else if (!(alg_k & SSL_kPSK)) {
     al = SSL_AD_UNEXPECTED_MESSAGE;
     OPENSSL_PUT_ERROR(SSL, SSL_R_UNEXPECTED_MESSAGE);
@@ -1596,7 +1573,6 @@ int ssl3_send_client_key_exchange(SSL *ssl) {
 
   uint8_t *pms = NULL;
   size_t pms_len = 0;
-  EC_KEY *eckey = NULL;
   CBB cbb;
   if (!CBB_init_fixed(&cbb, ssl_handshake_start(ssl),
                       ssl->init_buf->max - SSL_HM_HEADER_LENGTH(ssl))) {
@@ -1736,52 +1712,27 @@ int ssl3_send_client_key_exchange(SSL *ssl) {
 
     DH_free(dh);
   } else if (alg_k & SSL_kECDHE) {
-    if (ssl->s3->tmp.peer_ecdh_tmp == NULL) {
-      OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
-      goto err;
-    }
-    EC_KEY *peer_eckey = ssl->s3->tmp.peer_ecdh_tmp;
-
-    const EC_GROUP *group = EC_KEY_get0_group(peer_eckey);
-    eckey = EC_KEY_new();
-    if (eckey == NULL ||
-        !EC_KEY_set_group(eckey, group) ||
-        !EC_KEY_generate_key(eckey)) {
-      goto err;
-    }
-
-    pms_len = (EC_GROUP_get_degree(group) + 7) / 8;
-    pms = OPENSSL_malloc(pms_len);
-    if (pms == NULL) {
-      OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
-      goto err;
-    }
-
-    int ecdh_len = ECDH_compute_key(
-        pms, pms_len, EC_KEY_get0_public_key(peer_eckey), eckey, NULL);
-    if (ecdh_len <= 0) {
-      OPENSSL_PUT_ERROR(SSL, ERR_R_ECDH_LIB);
-      goto err;
-    }
-    pms_len = ecdh_len;
-
-    size_t encoded_len =
-        EC_POINT_point2oct(group, EC_KEY_get0_public_key(eckey),
-                           POINT_CONVERSION_UNCOMPRESSED, NULL, 0, NULL);
-    uint8_t *ptr;
+    /* Generate a keypair and serialize the public half. */
     CBB child;
-    if (encoded_len == 0 ||
-        !CBB_add_u8_length_prefixed(&cbb, &child) ||
-        !CBB_add_space(&child, &ptr, encoded_len) ||
-        EC_POINT_point2oct(group, EC_KEY_get0_public_key(eckey),
-                           POINT_CONVERSION_UNCOMPRESSED, ptr, encoded_len,
-                           NULL) != encoded_len ||
+    if (!CBB_add_u8_length_prefixed(&cbb, &child) ||
+        !SSL_ECDH_CTX_generate_keypair(&ssl->s3->tmp.ecdh_ctx, &child) ||
         !CBB_flush(&cbb)) {
       goto err;
     }
 
-    EC_KEY_free(eckey);
-    eckey = NULL;
+    /* Compute the premaster. */
+    uint8_t alert;
+    if (!SSL_ECDH_CTX_compute_secret(&ssl->s3->tmp.ecdh_ctx, &pms, &pms_len,
+                                     &alert, ssl->s3->tmp.peer_key,
+                                     ssl->s3->tmp.peer_key_len)) {
+      ssl3_send_alert(ssl, SSL3_AL_FATAL, alert);
+      goto err;
+    }
+
+    /* The key exchange state may now be discarded. */
+    SSL_ECDH_CTX_cleanup(&ssl->s3->tmp.ecdh_ctx);
+    OPENSSL_free(ssl->s3->tmp.peer_key);
+    ssl->s3->tmp.peer_key = NULL;
   } else if (alg_k & SSL_kPSK) {
     /* For plain PSK, other_secret is a block of 0s with the same length as
      * the pre-shared key. */
@@ -1844,7 +1795,6 @@ int ssl3_send_client_key_exchange(SSL *ssl) {
   return ssl_do_write(ssl);
 
 err:
-  EC_KEY_free(eckey);
   if (pms != NULL) {
     OPENSSL_cleanse(pms, pms_len);
     OPENSSL_free(pms);

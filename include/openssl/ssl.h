@@ -3324,6 +3324,12 @@ struct ssl_cipher_st {
   uint32_t algorithm_prf;
 };
 
+typedef struct ssl_ecdh_method_st SSL_ECDH_METHOD;
+typedef struct ssl_ecdh_ctx_st {
+  const SSL_ECDH_METHOD *method;
+  void *data;
+} SSL_ECDH_CTX;
+
 #define SSL_MAX_SSL_SESSION_ID_LENGTH 32
 #define SSL_MAX_SID_CTX_LENGTH 32
 #define SSL_MAX_MASTER_KEY_LENGTH 48
@@ -3990,8 +3996,6 @@ typedef struct ssl3_state_st {
     const SSL_CIPHER *new_cipher;
     DH *dh;
 
-    EC_KEY *ecdh; /* holds short lived ECDH key */
-
     /* used when SSL_ST_FLUSH_DATA is entered */
     int next_state;
 
@@ -4094,8 +4098,12 @@ typedef struct ssl3_state_st {
     /* peer_dh_tmp, on a client, is the server's DHE public key. */
     DH *peer_dh_tmp;
 
-    /* peer_ecdh_tmp, on a client, is the server's ECDHE public key. */
-    EC_KEY *peer_ecdh_tmp;
+    /* ecdh_ctx is the current ECDH instance. */
+    SSL_ECDH_CTX ecdh_ctx;
+
+    /* peer_key is the peer's ECDH key. */
+    uint8_t *peer_key;
+    uint8_t peer_key_len;
   } tmp;
 
   /* Connection binding to prevent renegotiation attacks */

@@ -335,57 +335,13 @@ int SSL_early_callback_ctx_extension_get(
   return 0;
 }
 
-struct tls_curve {
-  uint16_t curve_id;
-  int nid;
-  const char curve_name[8];
-};
-
-/* ECC curves from RFC4492. */
-static const struct tls_curve tls_curves[] = {
-    {23, NID_X9_62_prime256v1, "P-256"},
-    {24, NID_secp384r1, "P-384"},
-    {25, NID_secp521r1, "P-521"},
-};
-
 static const uint16_t eccurves_default[] = {
-    23, /* X9_62_prime256v1 */
-    24, /* secp384r1 */
+    SSL_CURVE_SECP256R1,
+    SSL_CURVE_SECP384R1,
 #if defined(BORINGSSL_ANDROID_SYSTEM)
-    25, /* secp521r1 */
+    SSL_CURVE_SECP521R1,
 #endif
 };
-
-int tls1_ec_curve_id2nid(uint16_t curve_id) {
-  size_t i;
-  for (i = 0; i < sizeof(tls_curves) / sizeof(tls_curves[0]); i++) {
-    if (curve_id == tls_curves[i].curve_id) {
-      return tls_curves[i].nid;
-    }
-  }
-  return NID_undef;
-}
-
-int tls1_ec_nid2curve_id(uint16_t *out_curve_id, int nid) {
-  size_t i;
-  for (i = 0; i < sizeof(tls_curves) / sizeof(tls_curves[0]); i++) {
-    if (nid == tls_curves[i].nid) {
-      *out_curve_id = tls_curves[i].curve_id;
-      return 1;
-    }
-  }
-  return 0;
-}
-
-const char* tls1_ec_curve_id2name(uint16_t curve_id) {
-  size_t i;
-  for (i = 0; i < sizeof(tls_curves) / sizeof(tls_curves[0]); i++) {
-    if (curve_id == tls_curves[i].curve_id) {
-      return tls_curves[i].curve_name;
-    }
-  }
-  return NULL;
-}
 
 /* tls1_get_curvelist sets |*out_curve_ids| and |*out_curve_ids_len| to the
  * list of allowed curve IDs. If |get_peer_curves| is non-zero, return the
@@ -410,50 +366,30 @@ static void tls1_get_curvelist(SSL *s, int get_peer_curves,
   }
 }
 
-int tls1_check_curve(SSL *s, CBS *cbs, uint16_t *out_curve_id) {
-  uint8_t curve_type;
-  uint16_t curve_id;
-  const uint16_t *curves;
-  size_t curves_len, i;
-
-  /* Only support named curves. */
-  if (!CBS_get_u8(cbs, &curve_type) ||
-      curve_type != NAMED_CURVE_TYPE ||
-      !CBS_get_u16(cbs, &curve_id)) {
-    return 0;
-  }
-
-  tls1_get_curvelist(s, 0, &curves, &curves_len);
-  for (i = 0; i < curves_len; i++) {
-    if (curve_id == curves[i]) {
-      *out_curve_id = curve_id;
-      return 1;
-    }
-  }
-
-  return 0;
-}
-
-int tls1_get_shared_curve(SSL *s) {
+int tls1_get_shared_curve(SSL *ssl, uint16_t *out_curve_id) {
   const uint16_t *curves, *peer_curves, *pref, *supp;
   size_t curves_len, peer_curves_len, pref_len, supp_len, i, j;
 
   /* Can't do anything on client side */
-  if (s->server == 0) {
-    return NID_undef;
+  if (ssl->server == 0) {
+    return 0;
   }
 
-  tls1_get_curvelist(s, 0 /* local curves */, &curves, &curves_len);
-  tls1_get_curvelist(s, 1 /* peer curves */, &peer_curves, &peer_curves_len);
+  tls1_get_curvelist(ssl, 0 /* local curves */, &curves, &curves_len);
+  tls1_get_curvelist(ssl, 1 /* peer curves */, &peer_curves, &peer_curves_len);
 
   if (peer_curves_len == 0) {
     /* Clients are not required to send a supported_curves extension. In this
      * case, the server is free to pick any curve it likes. See RFC 4492,
-     * section 4, paragraph 3. */
-    return (curves_len == 0) ? NID_undef : tls1_ec_curve_id2nid(curves[0]);
+     * section 4, paragraph 3.
+     *
+     * However, in the interests of compatibility, we will skip ECDH if the
+     * client didn't send an extension because we can't be sure that they'll
+     * support our favoured curve. */
+    return 0;
   }
 
-  if (s->options & SSL_OP_CIPHER_SERVER_PREFERENCE) {
+  if (ssl->options & SSL_OP_CIPHER_SERVER_PREFERENCE) {
     pref = curves;
     pref_len = curves_len;
     supp = peer_curves;
@@ -468,12 +404,13 @@ int tls1_get_shared_curve(SSL *s) {
   for (i = 0; i < pref_len; i++) {
     for (j = 0; j < supp_len; j++) {
       if (pref[i] == supp[j]) {
-        return tls1_ec_curve_id2nid(pref[i]);
+        *out_curve_id = pref[i];
+        return 1;
       }
     }
   }
 
-  return NID_undef;
+  return 0;
 }
 
 int tls1_set_curves(uint16_t **out_curve_ids, size_t *out_curve_ids_len,
@@ -487,7 +424,7 @@ int tls1_set_curves(uint16_t **out_curve_ids, size_t *out_curve_ids_len,
   }
 
   for (i = 0; i < ncurves; i++) {
-    if (!tls1_ec_nid2curve_id(&curve_ids[i], curves[i])) {
+    if (!ssl_nid_to_curve_id(&curve_ids[i], curves[i])) {
       OPENSSL_free(curve_ids);
       return 0;
     }
@@ -520,7 +457,7 @@ static int tls1_curve_params_from_ec_key(uint16_t *out_curve_id,
 
   /* Determine curve ID */
   nid = EC_GROUP_get_curve_name(grp);
-  if (!tls1_ec_nid2curve_id(&id, nid)) {
+  if (!ssl_nid_to_curve_id(&id, nid)) {
     return 0;
   }
 
@@ -544,19 +481,19 @@ static int tls1_curve_params_from_ec_key(uint16_t *out_curve_id,
 /* tls1_check_curve_id returns one if |curve_id| is consistent with both our
  * and the peer's curve preferences. Note: if called as the client, only our
  * preferences are checked; the peer (the server) does not send preferences. */
-static int tls1_check_curve_id(SSL *s, uint16_t curve_id) {
+int tls1_check_curve_id(SSL *ssl, uint16_t curve_id) {
   const uint16_t *curves;
   size_t curves_len, i, get_peer_curves;
 
   /* Check against our list, then the peer's list. */
   for (get_peer_curves = 0; get_peer_curves <= 1; get_peer_curves++) {
-    if (get_peer_curves && !s->server) {
+    if (get_peer_curves && !ssl->server) {
       /* Servers do not present a preference list so, if we are a client, only
        * check our list. */
       continue;
     }
 
-    tls1_get_curvelist(s, get_peer_curves, &curves, &curves_len);
+    tls1_get_curvelist(ssl, get_peer_curves, &curves, &curves_len);
     if (get_peer_curves && curves_len == 0) {
       /* Clients are not required to send a supported_curves extension. In this
        * case, the server is free to pick any curve it likes. See RFC 4492,
@@ -671,8 +608,8 @@ int tls12_check_peer_sigalg(SSL *ssl, const EVP_MD **out_md, int *out_alert,
  * supported or doesn't appear in supported signature algorithms. Unlike
  * ssl_cipher_get_disabled this applies to a specific session and not global
  * settings. */
-void ssl_set_client_disabled(SSL *s) {
-  CERT *c = s->cert;
+void ssl_set_client_disabled(SSL *ssl) {
+  CERT *c = ssl->cert;
   const uint8_t *sigalgs;
   size_t i, sigalgslen;
   int have_rsa = 0, have_ecdsa = 0;
@@ -681,7 +618,7 @@ void ssl_set_client_disabled(SSL *s) {
 
   /* Now go through all signature algorithms seeing if we support any for RSA,
    * DSA, ECDSA. Do this for all versions not just TLS 1.2. */
-  sigalgslen = tls12_get_psigalgs(s, &sigalgs);
+  sigalgslen = tls12_get_psigalgs(ssl, &sigalgs);
   for (i = 0; i < sigalgslen; i += 2, sigalgs += 2) {
     switch (sigalgs[1]) {
       case TLSEXT_signature_rsa:
@@ -703,7 +640,7 @@ void ssl_set_client_disabled(SSL *s) {
   }
 
   /* with PSK there must be client callback set */
-  if (!s->psk_client_callback) {
+  if (!ssl->psk_client_callback) {
     c->mask_a |= SSL_aPSK;
     c->mask_k |= SSL_kPSK;
   }

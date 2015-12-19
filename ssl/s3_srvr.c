@@ -1237,6 +1237,7 @@ int ssl3_send_server_key_exchange(SSL *ssl) {
         ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_HANDSHAKE_FAILURE);
         goto err;
       }
+      ssl->session->key_exchange_info = DH_num_bits(params);
 
       /* Generate and save a keypair. */
       DH *dh = DHparams_dup(params);
@@ -1260,40 +1261,20 @@ int ssl3_send_server_key_exchange(SSL *ssl) {
       }
     } else if (alg_k & SSL_kECDHE) {
       /* Determine the curve to use. */
-      int nid = tls1_get_shared_curve(ssl);
-      if (nid == NID_undef) {
+      uint16_t curve_id;
+      if (!tls1_get_shared_curve(ssl, &curve_id)) {
         OPENSSL_PUT_ERROR(SSL, SSL_R_MISSING_TMP_ECDH_KEY);
         ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_HANDSHAKE_FAILURE);
         goto err;
       }
-      /* We only support ephemeral ECDH keys over named (not generic) curves. */
-      uint16_t curve_id;
-      if (!tls1_ec_nid2curve_id(&curve_id, nid)) {
-        OPENSSL_PUT_ERROR(SSL, SSL_R_UNSUPPORTED_ELLIPTIC_CURVE);
-        goto err;
-      }
+      ssl->session->key_exchange_info = curve_id;
 
-      /* Generate and save a keypair. */
-      EC_KEY *ecdh = EC_KEY_new_by_curve_name(nid);
-      if (ecdh == NULL || !EC_KEY_generate_key(ecdh)) {
-        EC_KEY_free(ecdh);
-        goto err;
-      }
-      EC_KEY_free(ssl->s3->tmp.ecdh);
-      ssl->s3->tmp.ecdh = ecdh;
-
-      const EC_GROUP *group = EC_KEY_get0_group(ecdh);
-      const EC_POINT *public_key = EC_KEY_get0_public_key(ecdh);
-      size_t point_len = EC_POINT_point2oct(
-          group, public_key, POINT_CONVERSION_UNCOMPRESSED, NULL, 0, NULL);
-      uint8_t *ptr;
-      if (point_len == 0 ||
+      /* Set up ECDH, generate a key, and emit the public half. */
+      if (!SSL_ECDH_CTX_init(&ssl->s3->tmp.ecdh_ctx, curve_id) ||
           !CBB_add_u8(&cbb, NAMED_CURVE_TYPE) ||
           !CBB_add_u16(&cbb, curve_id) ||
           !CBB_add_u8_length_prefixed(&cbb, &child) ||
-          !CBB_add_space(&child, &ptr, point_len) ||
-          EC_POINT_point2oct(group, public_key, POINT_CONVERSION_UNCOMPRESSED,
-                             ptr, point_len, NULL) != point_len) {
+          !SSL_ECDH_CTX_generate_keypair(&ssl->s3->tmp.ecdh_ctx, &child)) {
         goto err;
       }
     } else {
@@ -1486,10 +1467,7 @@ int ssl3_get_client_key_exchange(SSL *s) {
   BIGNUM *pub = NULL;
   DH *dh_srvr;
 
-  EC_KEY *srvr_ecdh = NULL;
-  EVP_PKEY *clnt_pub_pkey = NULL;
-  EC_POINT *clnt_ecpoint = NULL;
-  unsigned int psk_len = 0;
+  unsigned psk_len = 0;
   uint8_t psk[PSK_MAX_PSK_LEN];
 
   if (s->state == SSL3_ST_SR_KEY_EXCH_A ||
@@ -1707,41 +1685,8 @@ int ssl3_get_client_key_exchange(SSL *s) {
 
     premaster_secret_len = dh_len;
   } else if (alg_k & SSL_kECDHE) {
-    int ecdh_len;
-    const EC_KEY *tkey;
-    const EC_GROUP *group;
-    const BIGNUM *priv_key;
+    /* Parse the ClientKeyExchange. */
     CBS ecdh_Yc;
-
-    /* initialize structures for server's ECDH key pair */
-    srvr_ecdh = EC_KEY_new();
-    if (srvr_ecdh == NULL) {
-      OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
-      goto err;
-    }
-
-    /* Use the ephermeral values we saved when generating the ServerKeyExchange
-     * msg. */
-    tkey = s->s3->tmp.ecdh;
-
-    group = EC_KEY_get0_group(tkey);
-    priv_key = EC_KEY_get0_private_key(tkey);
-
-    if (!EC_KEY_set_group(srvr_ecdh, group) ||
-        !EC_KEY_set_private_key(srvr_ecdh, priv_key)) {
-      OPENSSL_PUT_ERROR(SSL, ERR_R_EC_LIB);
-      goto err;
-    }
-
-    /* Let's get client's public key */
-    clnt_ecpoint = EC_POINT_new(group);
-    if (clnt_ecpoint == NULL) {
-      OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
-      goto err;
-    }
-
-    /* Get client's public key from encoded point in the ClientKeyExchange
-     * message. */
     if (!CBS_get_u8_length_prefixed(&client_key_exchange, &ecdh_Yc) ||
         CBS_len(&client_key_exchange) != 0) {
       al = SSL_AD_DECODE_ERROR;
@@ -1749,44 +1694,17 @@ int ssl3_get_client_key_exchange(SSL *s) {
       goto f_err;
     }
 
-    if (!EC_POINT_oct2point(group, clnt_ecpoint, CBS_data(&ecdh_Yc),
-                            CBS_len(&ecdh_Yc), NULL)) {
-      OPENSSL_PUT_ERROR(SSL, ERR_R_EC_LIB);
-      goto err;
+    /* Compute the premaster. */
+    uint8_t alert;
+    if (!SSL_ECDH_CTX_compute_secret(&s->s3->tmp.ecdh_ctx, &premaster_secret,
+                                     &premaster_secret_len, &alert,
+                                     CBS_data(&ecdh_Yc), CBS_len(&ecdh_Yc))) {
+      al = alert;
+      goto f_err;
     }
 
-    /* Allocate a buffer for both the secret and the PSK. */
-    unsigned field_size = EC_GROUP_get_degree(group);
-    if (field_size == 0) {
-      OPENSSL_PUT_ERROR(SSL, ERR_R_ECDH_LIB);
-      goto err;
-    }
-
-    ecdh_len = (field_size + 7) / 8;
-    premaster_secret = OPENSSL_malloc(ecdh_len);
-    if (premaster_secret == NULL) {
-      OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
-      goto err;
-    }
-
-    /* Compute the shared pre-master secret */
-    ecdh_len = ECDH_compute_key(premaster_secret, ecdh_len, clnt_ecpoint,
-                                srvr_ecdh, NULL);
-    if (ecdh_len <= 0) {
-      OPENSSL_PUT_ERROR(SSL, ERR_R_ECDH_LIB);
-      goto err;
-    }
-
-    EVP_PKEY_free(clnt_pub_pkey);
-    clnt_pub_pkey = NULL;
-    EC_POINT_free(clnt_ecpoint);
-    clnt_ecpoint = NULL;
-    EC_KEY_free(srvr_ecdh);
-    srvr_ecdh = NULL;
-    EC_KEY_free(s->s3->tmp.ecdh);
-    s->s3->tmp.ecdh = NULL;
-
-    premaster_secret_len = ecdh_len;
+    /* The key exchange state may now be discarded. */
+    SSL_ECDH_CTX_cleanup(&s->s3->tmp.ecdh_ctx);
   } else if (alg_k & SSL_kPSK) {
     /* For plain PSK, other_secret is a block of 0s with the same length as the
      * pre-shared key. */
@@ -1843,16 +1761,11 @@ int ssl3_get_client_key_exchange(SSL *s) {
 f_err:
   ssl3_send_alert(s, SSL3_AL_FATAL, al);
 err:
-  if (premaster_secret) {
-    if (premaster_secret_len) {
-      OPENSSL_cleanse(premaster_secret, premaster_secret_len);
-    }
+  if (premaster_secret != NULL) {
+    OPENSSL_cleanse(premaster_secret, premaster_secret_len);
     OPENSSL_free(premaster_secret);
   }
   OPENSSL_free(decrypt_buf);
-  EVP_PKEY_free(clnt_pub_pkey);
-  EC_POINT_free(clnt_ecpoint);
-  EC_KEY_free(srvr_ecdh);
 
   return -1;
 }
