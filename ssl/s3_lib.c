@@ -181,21 +181,23 @@ int ssl3_supports_cipher(const SSL_CIPHER *cipher) {
   return 1;
 }
 
-int ssl3_set_handshake_header(SSL *s, int htype, unsigned long len) {
-  uint8_t *p = (uint8_t *)s->init_buf->data;
+int ssl3_set_handshake_header(SSL *ssl, int htype, unsigned long len) {
+  uint8_t *p = (uint8_t *)ssl->init_buf->data;
   *(p++) = htype;
   l2n3(len, p);
-  s->init_num = (int)len + SSL3_HM_HEADER_LENGTH;
-  s->init_off = 0;
+  ssl->init_num = (int)len + SSL3_HM_HEADER_LENGTH;
+  ssl->init_off = 0;
 
   /* Add the message to the handshake hash. */
-  return ssl3_update_handshake_hash(s, (uint8_t *)s->init_buf->data,
-                                    s->init_num);
+  return ssl3_update_handshake_hash(ssl, (uint8_t *)ssl->init_buf->data,
+                                    ssl->init_num);
 }
 
-int ssl3_handshake_write(SSL *s) { return ssl3_do_write(s, SSL3_RT_HANDSHAKE); }
+int ssl3_handshake_write(SSL *ssl) {
+  return ssl3_do_write(ssl, SSL3_RT_HANDSHAKE);
+}
 
-int ssl3_new(SSL *s) {
+int ssl3_new(SSL *ssl) {
   SSL3_STATE *s3;
 
   s3 = OPENSSL_malloc(sizeof *s3);
@@ -207,41 +209,41 @@ int ssl3_new(SSL *s) {
   EVP_MD_CTX_init(&s3->handshake_hash);
   EVP_MD_CTX_init(&s3->handshake_md5);
 
-  s->s3 = s3;
+  ssl->s3 = s3;
 
   /* Set the version to the highest supported version for TLS. This controls the
-   * initial state of |s->enc_method| and what the API reports as the version
+   * initial state of |ssl->enc_method| and what the API reports as the version
    * prior to negotiation.
    *
    * TODO(davidben): This is fragile and confusing. */
-  s->version = TLS1_2_VERSION;
+  ssl->version = TLS1_2_VERSION;
   return 1;
 err:
   return 0;
 }
 
-void ssl3_free(SSL *s) {
-  if (s == NULL || s->s3 == NULL) {
+void ssl3_free(SSL *ssl) {
+  if (ssl == NULL || ssl->s3 == NULL) {
     return;
   }
 
-  ssl3_cleanup_key_block(s);
-  ssl_read_buffer_clear(s);
-  ssl_write_buffer_clear(s);
-  SSL_ECDH_CTX_cleanup(&s->s3->tmp.ecdh_ctx);
-  OPENSSL_free(s->s3->tmp.peer_key);
+  ssl3_cleanup_key_block(ssl);
+  ssl_read_buffer_clear(ssl);
+  ssl_write_buffer_clear(ssl);
+  SSL_ECDH_CTX_cleanup(&ssl->s3->tmp.ecdh_ctx);
+  OPENSSL_free(ssl->s3->tmp.peer_key);
 
-  sk_X509_NAME_pop_free(s->s3->tmp.ca_names, X509_NAME_free);
-  OPENSSL_free(s->s3->tmp.certificate_types);
-  OPENSSL_free(s->s3->tmp.peer_ellipticcurvelist);
-  OPENSSL_free(s->s3->tmp.peer_psk_identity_hint);
-  ssl3_free_handshake_buffer(s);
-  ssl3_free_handshake_hash(s);
-  OPENSSL_free(s->s3->alpn_selected);
+  sk_X509_NAME_pop_free(ssl->s3->tmp.ca_names, X509_NAME_free);
+  OPENSSL_free(ssl->s3->tmp.certificate_types);
+  OPENSSL_free(ssl->s3->tmp.peer_ellipticcurvelist);
+  OPENSSL_free(ssl->s3->tmp.peer_psk_identity_hint);
+  ssl3_free_handshake_buffer(ssl);
+  ssl3_free_handshake_hash(ssl);
+  OPENSSL_free(ssl->s3->alpn_selected);
 
-  OPENSSL_cleanse(s->s3, sizeof *s->s3);
-  OPENSSL_free(s->s3);
-  s->s3 = NULL;
+  OPENSSL_cleanse(ssl->s3, sizeof *ssl->s3);
+  OPENSSL_free(ssl->s3);
+  ssl->s3 = NULL;
 }
 
 int SSL_session_reused(const SSL *ssl) {
@@ -445,30 +447,30 @@ int SSL_CTX_set_tlsext_ticket_key_cb(
   return 1;
 }
 
-struct ssl_cipher_preference_list_st *ssl_get_cipher_preferences(SSL *s) {
-  if (s->cipher_list != NULL) {
-    return s->cipher_list;
+struct ssl_cipher_preference_list_st *ssl_get_cipher_preferences(SSL *ssl) {
+  if (ssl->cipher_list != NULL) {
+    return ssl->cipher_list;
   }
 
-  if (s->version >= TLS1_1_VERSION && s->ctx != NULL &&
-      s->ctx->cipher_list_tls11 != NULL) {
-    return s->ctx->cipher_list_tls11;
+  if (ssl->version >= TLS1_1_VERSION && ssl->ctx != NULL &&
+      ssl->ctx->cipher_list_tls11 != NULL) {
+    return ssl->ctx->cipher_list_tls11;
   }
 
-  if (s->version >= TLS1_VERSION && s->ctx != NULL &&
-      s->ctx->cipher_list_tls10 != NULL) {
-    return s->ctx->cipher_list_tls10;
+  if (ssl->version >= TLS1_VERSION && ssl->ctx != NULL &&
+      ssl->ctx->cipher_list_tls10 != NULL) {
+    return ssl->ctx->cipher_list_tls10;
   }
 
-  if (s->ctx != NULL && s->ctx->cipher_list != NULL) {
-    return s->ctx->cipher_list;
+  if (ssl->ctx != NULL && ssl->ctx->cipher_list != NULL) {
+    return ssl->ctx->cipher_list;
   }
 
   return NULL;
 }
 
 const SSL_CIPHER *ssl3_choose_cipher(
-    SSL *s, STACK_OF(SSL_CIPHER) *clnt,
+    SSL *ssl, STACK_OF(SSL_CIPHER) *clnt,
     struct ssl_cipher_preference_list_st *server_pref) {
   const SSL_CIPHER *c, *ret = NULL;
   STACK_OF(SSL_CIPHER) *srvr = server_pref->ciphers, *prio, *allow;
@@ -485,7 +487,7 @@ const SSL_CIPHER *ssl3_choose_cipher(
    * such value exists yet. */
   int group_min = -1;
 
-  if (s->options & SSL_OP_CIPHER_SERVER_PREFERENCE) {
+  if (ssl->options & SSL_OP_CIPHER_SERVER_PREFERENCE) {
     prio = srvr;
     in_group_flags = server_pref->in_group_flags;
     allow = clnt;
@@ -495,7 +497,7 @@ const SSL_CIPHER *ssl3_choose_cipher(
     allow = srvr;
   }
 
-  ssl_get_compatible_server_ciphers(s, &mask_k, &mask_a);
+  ssl_get_compatible_server_ciphers(ssl, &mask_k, &mask_a);
 
   for (i = 0; i < sk_SSL_CIPHER_num(prio); i++) {
     c = sk_SSL_CIPHER_value(prio, i);
@@ -503,7 +505,8 @@ const SSL_CIPHER *ssl3_choose_cipher(
     ok = 1;
 
     /* Check the TLS version. */
-    if (SSL_CIPHER_get_min_version(c) > ssl3_version_from_wire(s, s->version)) {
+    if (SSL_CIPHER_get_min_version(c) >
+        ssl3_version_from_wire(ssl, ssl->version)) {
       ok = 0;
     }
 
@@ -539,7 +542,7 @@ const SSL_CIPHER *ssl3_choose_cipher(
   return ret;
 }
 
-int ssl3_get_req_cert_type(SSL *s, uint8_t *p) {
+int ssl3_get_req_cert_type(SSL *ssl, uint8_t *p) {
   int ret = 0;
   const uint8_t *sig;
   size_t i, siglen;
@@ -547,7 +550,7 @@ int ssl3_get_req_cert_type(SSL *s, uint8_t *p) {
   int have_ecdsa_sign = 0;
 
   /* get configured sigalgs */
-  siglen = tls12_get_psigalgs(s, &sig);
+  siglen = tls12_get_psigalgs(ssl, &sig);
   for (i = 0; i < siglen; i += 2, sig += 2) {
     switch (sig[1]) {
       case TLSEXT_signature_rsa:
@@ -566,7 +569,7 @@ int ssl3_get_req_cert_type(SSL *s, uint8_t *p) {
 
   /* ECDSA certs can be used with RSA cipher suites as well so we don't need to
    * check for SSL_kECDH or SSL_kECDHE. */
-  if (s->version >= TLS1_VERSION && have_ecdsa_sign) {
+  if (ssl->version >= TLS1_VERSION && have_ecdsa_sign) {
       p[ret++] = TLS_CT_ECDSA_SIGN;
   }
 
@@ -575,9 +578,9 @@ int ssl3_get_req_cert_type(SSL *s, uint8_t *p) {
 
 /* If we are using default SHA1+MD5 algorithms switch to new SHA256 PRF and
  * handshake macs if required. */
-uint32_t ssl_get_algorithm_prf(SSL *s) {
-  uint32_t algorithm_prf = s->s3->tmp.new_cipher->algorithm_prf;
-  if (s->enc_method->enc_flags & SSL_ENC_FLAG_SHA256_PRF &&
+uint32_t ssl_get_algorithm_prf(SSL *ssl) {
+  uint32_t algorithm_prf = ssl->s3->tmp.new_cipher->algorithm_prf;
+  if (ssl->enc_method->enc_flags & SSL_ENC_FLAG_SHA256_PRF &&
       algorithm_prf == SSL_HANDSHAKE_MAC_DEFAULT) {
     return SSL_HANDSHAKE_MAC_SHA256;
   }

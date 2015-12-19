@@ -645,10 +645,10 @@ void SSL_CTX_flush_sessions(SSL_CTX *ctx, long time) {
   CRYPTO_MUTEX_unlock(&ctx->lock);
 }
 
-int ssl_clear_bad_session(SSL *s) {
-  if (s->session != NULL && !(s->shutdown & SSL_SENT_SHUTDOWN) &&
-      !SSL_in_init(s)) {
-    SSL_CTX_remove_session(s->ctx, s->session);
+int ssl_clear_bad_session(SSL *ssl) {
+  if (ssl->session != NULL && !(ssl->shutdown & SSL_SENT_SHUTDOWN) &&
+      !SSL_in_init(ssl)) {
+    SSL_CTX_remove_session(ssl->ctx, ssl->session);
     return 1;
   }
 

@@ -84,15 +84,15 @@
 
 static void get_current_time(const SSL *ssl, struct timeval *out_clock);
 
-int dtls1_new(SSL *s) {
+int dtls1_new(SSL *ssl) {
   DTLS1_STATE *d1;
 
-  if (!ssl3_new(s)) {
+  if (!ssl3_new(ssl)) {
     return 0;
   }
   d1 = OPENSSL_malloc(sizeof *d1);
   if (d1 == NULL) {
-    ssl3_free(s);
+    ssl3_free(ssl);
     return 0;
   }
   memset(d1, 0, sizeof *d1);
@@ -104,52 +104,52 @@ int dtls1_new(SSL *s) {
     pqueue_free(d1->buffered_messages);
     pqueue_free(d1->sent_messages);
     OPENSSL_free(d1);
-    ssl3_free(s);
+    ssl3_free(ssl);
     return 0;
   }
 
-  s->d1 = d1;
+  ssl->d1 = d1;
 
   /* Set the version to the highest version for DTLS. This controls the initial
-   * state of |s->enc_method| and what the API reports as the version prior to
+   * state of |ssl->enc_method| and what the API reports as the version prior to
    * negotiation.
    *
    * TODO(davidben): This is fragile and confusing. */
-  s->version = DTLS1_2_VERSION;
+  ssl->version = DTLS1_2_VERSION;
   return 1;
 }
 
-static void dtls1_clear_queues(SSL *s) {
+static void dtls1_clear_queues(SSL *ssl) {
   pitem *item = NULL;
   hm_fragment *frag = NULL;
 
-  while ((item = pqueue_pop(s->d1->buffered_messages)) != NULL) {
+  while ((item = pqueue_pop(ssl->d1->buffered_messages)) != NULL) {
     frag = (hm_fragment *)item->data;
     dtls1_hm_fragment_free(frag);
     pitem_free(item);
   }
 
-  while ((item = pqueue_pop(s->d1->sent_messages)) != NULL) {
+  while ((item = pqueue_pop(ssl->d1->sent_messages)) != NULL) {
     frag = (hm_fragment *)item->data;
     dtls1_hm_fragment_free(frag);
     pitem_free(item);
   }
 }
 
-void dtls1_free(SSL *s) {
-  ssl3_free(s);
+void dtls1_free(SSL *ssl) {
+  ssl3_free(ssl);
 
-  if (s == NULL || s->d1 == NULL) {
+  if (ssl == NULL || ssl->d1 == NULL) {
     return;
   }
 
-  dtls1_clear_queues(s);
+  dtls1_clear_queues(ssl);
 
-  pqueue_free(s->d1->buffered_messages);
-  pqueue_free(s->d1->sent_messages);
+  pqueue_free(ssl->d1->buffered_messages);
+  pqueue_free(ssl->d1->sent_messages);
 
-  OPENSSL_free(s->d1);
-  s->d1 = NULL;
+  OPENSSL_free(ssl->d1);
+  ssl->d1 = NULL;
 }
 
 int dtls1_supports_cipher(const SSL_CIPHER *cipher) {
@@ -158,19 +158,19 @@ int dtls1_supports_cipher(const SSL_CIPHER *cipher) {
   return cipher->algorithm_enc != SSL_RC4 && cipher->algorithm_enc != SSL_eNULL;
 }
 
-void dtls1_start_timer(SSL *s) {
+void dtls1_start_timer(SSL *ssl) {
   /* If timer is not set, initialize duration with 1 second */
-  if (s->d1->next_timeout.tv_sec == 0 && s->d1->next_timeout.tv_usec == 0) {
-    s->d1->timeout_duration = 1;
+  if (ssl->d1->next_timeout.tv_sec == 0 && ssl->d1->next_timeout.tv_usec == 0) {
+    ssl->d1->timeout_duration = 1;
   }
 
   /* Set timeout to current time */
-  get_current_time(s, &s->d1->next_timeout);
+  get_current_time(ssl, &ssl->d1->next_timeout);
 
   /* Add duration to current time */
-  s->d1->next_timeout.tv_sec += s->d1->timeout_duration;
-  BIO_ctrl(SSL_get_rbio(s), BIO_CTRL_DGRAM_SET_NEXT_TIMEOUT, 0,
-           &s->d1->next_timeout);
+  ssl->d1->next_timeout.tv_sec += ssl->d1->timeout_duration;
+  BIO_ctrl(SSL_get_rbio(ssl), BIO_CTRL_DGRAM_SET_NEXT_TIMEOUT, 0,
+           &ssl->d1->next_timeout);
 }
 
 int DTLSv1_get_timeout(const SSL *ssl, struct timeval *out) {
@@ -213,11 +213,11 @@ int DTLSv1_get_timeout(const SSL *ssl, struct timeval *out) {
   return 1;
 }
 
-int dtls1_is_timer_expired(SSL *s) {
+int dtls1_is_timer_expired(SSL *ssl) {
   struct timeval timeleft;
 
   /* Get time left until timeout, return false if no timer running */
-  if (!DTLSv1_get_timeout(s, &timeleft)) {
+  if (!DTLSv1_get_timeout(ssl, &timeleft)) {
     return 0;
   }
 
@@ -230,39 +230,39 @@ int dtls1_is_timer_expired(SSL *s) {
   return 1;
 }
 
-void dtls1_double_timeout(SSL *s) {
-  s->d1->timeout_duration *= 2;
-  if (s->d1->timeout_duration > 60) {
-    s->d1->timeout_duration = 60;
+void dtls1_double_timeout(SSL *ssl) {
+  ssl->d1->timeout_duration *= 2;
+  if (ssl->d1->timeout_duration > 60) {
+    ssl->d1->timeout_duration = 60;
   }
-  dtls1_start_timer(s);
+  dtls1_start_timer(ssl);
 }
 
-void dtls1_stop_timer(SSL *s) {
+void dtls1_stop_timer(SSL *ssl) {
   /* Reset everything */
-  s->d1->num_timeouts = 0;
-  memset(&s->d1->next_timeout, 0, sizeof(struct timeval));
-  s->d1->timeout_duration = 1;
-  BIO_ctrl(SSL_get_rbio(s), BIO_CTRL_DGRAM_SET_NEXT_TIMEOUT, 0,
-           &s->d1->next_timeout);
+  ssl->d1->num_timeouts = 0;
+  memset(&ssl->d1->next_timeout, 0, sizeof(struct timeval));
+  ssl->d1->timeout_duration = 1;
+  BIO_ctrl(SSL_get_rbio(ssl), BIO_CTRL_DGRAM_SET_NEXT_TIMEOUT, 0,
+           &ssl->d1->next_timeout);
   /* Clear retransmission buffer */
-  dtls1_clear_record_buffer(s);
+  dtls1_clear_record_buffer(ssl);
 }
 
-int dtls1_check_timeout_num(SSL *s) {
-  s->d1->num_timeouts++;
+int dtls1_check_timeout_num(SSL *ssl) {
+  ssl->d1->num_timeouts++;
 
   /* Reduce MTU after 2 unsuccessful retransmissions */
-  if (s->d1->num_timeouts > DTLS1_MTU_TIMEOUTS &&
-      !(SSL_get_options(s) & SSL_OP_NO_QUERY_MTU)) {
-    long mtu = BIO_ctrl(SSL_get_wbio(s), BIO_CTRL_DGRAM_GET_FALLBACK_MTU, 0,
+  if (ssl->d1->num_timeouts > DTLS1_MTU_TIMEOUTS &&
+      !(SSL_get_options(ssl) & SSL_OP_NO_QUERY_MTU)) {
+    long mtu = BIO_ctrl(SSL_get_wbio(ssl), BIO_CTRL_DGRAM_GET_FALLBACK_MTU, 0,
                         NULL);
     if (mtu >= 0 && mtu <= (1 << 30) && (unsigned)mtu >= dtls1_min_mtu()) {
-      s->d1->mtu = (unsigned)mtu;
+      ssl->d1->mtu = (unsigned)mtu;
     }
   }
 
-  if (s->d1->num_timeouts > DTLS1_MAX_TIMEOUTS) {
+  if (ssl->d1->num_timeouts > DTLS1_MAX_TIMEOUTS) {
     /* fail the connection, enough alerts have been sent */
     OPENSSL_PUT_ERROR(SSL, SSL_R_READ_TIMEOUT_EXPIRED);
     return -1;
@@ -307,21 +307,22 @@ static void get_current_time(const SSL *ssl, struct timeval *out_clock) {
 #endif
 }
 
-int dtls1_set_handshake_header(SSL *s, int htype, unsigned long len) {
-  uint8_t *message = (uint8_t *)s->init_buf->data;
-  const struct hm_header_st *msg_hdr = &s->d1->w_msg_hdr;
+int dtls1_set_handshake_header(SSL *ssl, int htype, unsigned long len) {
+  uint8_t *message = (uint8_t *)ssl->init_buf->data;
+  const struct hm_header_st *msg_hdr = &ssl->d1->w_msg_hdr;
   uint8_t serialised_header[DTLS1_HM_HEADER_LENGTH];
   uint8_t *p = serialised_header;
 
-  s->d1->handshake_write_seq = s->d1->next_handshake_write_seq;
-  s->d1->next_handshake_write_seq++;
+  ssl->d1->handshake_write_seq = ssl->d1->next_handshake_write_seq;
+  ssl->d1->next_handshake_write_seq++;
 
-  dtls1_set_message_header(s, htype, len, s->d1->handshake_write_seq, 0, len);
-  s->init_num = (int)len + DTLS1_HM_HEADER_LENGTH;
-  s->init_off = 0;
+  dtls1_set_message_header(ssl, htype, len, ssl->d1->handshake_write_seq, 0,
+                           len);
+  ssl->init_num = (int)len + DTLS1_HM_HEADER_LENGTH;
+  ssl->init_off = 0;
 
   /* Buffer the message to handle re-xmits */
-  dtls1_buffer_message(s);
+  dtls1_buffer_message(ssl);
 
   /* Add the new message to the handshake hash. Serialize the message
    * header as if it were a single fragment. */
@@ -330,11 +331,11 @@ int dtls1_set_handshake_header(SSL *s, int htype, unsigned long len) {
   s2n(msg_hdr->seq, p);
   l2n3(0, p);
   l2n3(msg_hdr->msg_len, p);
-  return ssl3_update_handshake_hash(s, serialised_header,
+  return ssl3_update_handshake_hash(ssl, serialised_header,
                                     sizeof(serialised_header)) &&
-         ssl3_update_handshake_hash(s, message + DTLS1_HM_HEADER_LENGTH, len);
+         ssl3_update_handshake_hash(ssl, message + DTLS1_HM_HEADER_LENGTH, len);
 }
 
-int dtls1_handshake_write(SSL *s) {
-  return dtls1_do_handshake_write(s, dtls1_use_current_epoch);
+int dtls1_handshake_write(SSL *ssl) {
+  return dtls1_do_handshake_write(ssl, dtls1_use_current_epoch);
 }

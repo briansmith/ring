@@ -130,118 +130,119 @@
 #include "internal.h"
 
 
-/* ssl3_do_write sends |s->init_buf| in records of type 'type'
+/* ssl3_do_write sends |ssl->init_buf| in records of type 'type'
  * (SSL3_RT_HANDSHAKE or SSL3_RT_CHANGE_CIPHER_SPEC). It returns -1 on error, 1
  * on success or zero if the transmission is still incomplete. */
-int ssl3_do_write(SSL *s, int type) {
+int ssl3_do_write(SSL *ssl, int type) {
   int n;
 
-  n = ssl3_write_bytes(s, type, &s->init_buf->data[s->init_off], s->init_num);
+  n = ssl3_write_bytes(ssl, type, &ssl->init_buf->data[ssl->init_off],
+                       ssl->init_num);
   if (n < 0) {
     return -1;
   }
 
-  if (n == s->init_num) {
-    if (s->msg_callback) {
-      s->msg_callback(1, s->version, type, s->init_buf->data,
-                      (size_t)(s->init_off + s->init_num), s,
-                      s->msg_callback_arg);
+  if (n == ssl->init_num) {
+    if (ssl->msg_callback) {
+      ssl->msg_callback(1, ssl->version, type, ssl->init_buf->data,
+                      (size_t)(ssl->init_off + ssl->init_num), ssl,
+                      ssl->msg_callback_arg);
     }
     return 1;
   }
 
-  s->init_off += n;
-  s->init_num -= n;
+  ssl->init_off += n;
+  ssl->init_num -= n;
   return 0;
 }
 
-int ssl3_send_finished(SSL *s, int a, int b, const char *sender, int slen) {
+int ssl3_send_finished(SSL *ssl, int a, int b, const char *sender, int slen) {
   uint8_t *p;
   int n;
 
-  if (s->state == a) {
-    p = ssl_handshake_start(s);
+  if (ssl->state == a) {
+    p = ssl_handshake_start(ssl);
 
-    n = s->enc_method->final_finish_mac(s, sender, slen, s->s3->tmp.finish_md);
+    n = ssl->enc_method->final_finish_mac(ssl, sender, slen,
+                                          ssl->s3->tmp.finish_md);
     if (n == 0) {
       return 0;
     }
-    s->s3->tmp.finish_md_len = n;
-    memcpy(p, s->s3->tmp.finish_md, n);
+    ssl->s3->tmp.finish_md_len = n;
+    memcpy(p, ssl->s3->tmp.finish_md, n);
 
     /* Log the master secret, if logging is enabled. */
-    if (!ssl_log_master_secret(s, s->s3->client_random, SSL3_RANDOM_SIZE,
-                               s->session->master_key,
-                               s->session->master_key_length)) {
+    if (!ssl_log_master_secret(ssl, ssl->s3->client_random, SSL3_RANDOM_SIZE,
+                               ssl->session->master_key,
+                               ssl->session->master_key_length)) {
       return 0;
     }
 
     /* Copy the finished so we can use it for renegotiation checks */
-    if (s->server) {
+    if (ssl->server) {
       assert(n <= EVP_MAX_MD_SIZE);
-      memcpy(s->s3->previous_server_finished, s->s3->tmp.finish_md, n);
-      s->s3->previous_server_finished_len = n;
+      memcpy(ssl->s3->previous_server_finished, ssl->s3->tmp.finish_md, n);
+      ssl->s3->previous_server_finished_len = n;
     } else {
       assert(n <= EVP_MAX_MD_SIZE);
-      memcpy(s->s3->previous_client_finished, s->s3->tmp.finish_md, n);
-      s->s3->previous_client_finished_len = n;
+      memcpy(ssl->s3->previous_client_finished, ssl->s3->tmp.finish_md, n);
+      ssl->s3->previous_client_finished_len = n;
     }
 
-    if (!ssl_set_handshake_header(s, SSL3_MT_FINISHED, n)) {
+    if (!ssl_set_handshake_header(ssl, SSL3_MT_FINISHED, n)) {
       return 0;
     }
-    s->state = b;
+    ssl->state = b;
   }
 
   /* SSL3_ST_SEND_xxxxxx_HELLO_B */
-  return ssl_do_write(s);
+  return ssl_do_write(ssl);
 }
 
 /* ssl3_take_mac calculates the Finished MAC for the handshakes messages seen
  * so far. */
-static void ssl3_take_mac(SSL *s) {
+static void ssl3_take_mac(SSL *ssl) {
   const char *sender;
   int slen;
 
   /* If no new cipher setup then return immediately: other functions will set
    * the appropriate error. */
-  if (s->s3->tmp.new_cipher == NULL) {
+  if (ssl->s3->tmp.new_cipher == NULL) {
     return;
   }
 
-  if (s->state & SSL_ST_CONNECT) {
-    sender = s->enc_method->server_finished_label;
-    slen = s->enc_method->server_finished_label_len;
+  if (ssl->state & SSL_ST_CONNECT) {
+    sender = ssl->enc_method->server_finished_label;
+    slen = ssl->enc_method->server_finished_label_len;
   } else {
-    sender = s->enc_method->client_finished_label;
-    slen = s->enc_method->client_finished_label_len;
+    sender = ssl->enc_method->client_finished_label;
+    slen = ssl->enc_method->client_finished_label_len;
   }
 
-  s->s3->tmp.peer_finish_md_len = s->enc_method->final_finish_mac(
-      s, sender, slen, s->s3->tmp.peer_finish_md);
+  ssl->s3->tmp.peer_finish_md_len = ssl->enc_method->final_finish_mac(
+      ssl, sender, slen, ssl->s3->tmp.peer_finish_md);
 }
 
-int ssl3_get_finished(SSL *s, int a, int b) {
+int ssl3_get_finished(SSL *ssl, int a, int b) {
   int al, finished_len, ok;
   long message_len;
   uint8_t *p;
 
-  message_len =
-      s->method->ssl_get_message(s, a, b, SSL3_MT_FINISHED, EVP_MAX_MD_SIZE,
-                                 ssl_dont_hash_message, &ok);
+  message_len = ssl->method->ssl_get_message(
+      ssl, a, b, SSL3_MT_FINISHED, EVP_MAX_MD_SIZE, ssl_dont_hash_message, &ok);
 
   if (!ok) {
     return message_len;
   }
 
   /* Snapshot the finished hash before incorporating the new message. */
-  ssl3_take_mac(s);
-  if (!ssl3_hash_current_message(s)) {
+  ssl3_take_mac(ssl);
+  if (!ssl3_hash_current_message(ssl)) {
     goto err;
   }
 
-  p = s->init_msg;
-  finished_len = s->s3->tmp.peer_finish_md_len;
+  p = ssl->init_msg;
+  finished_len = ssl->s3->tmp.peer_finish_md_len;
 
   if (finished_len != message_len) {
     al = SSL_AD_DECODE_ERROR;
@@ -249,134 +250,137 @@ int ssl3_get_finished(SSL *s, int a, int b) {
     goto f_err;
   }
 
-  if (CRYPTO_memcmp(p, s->s3->tmp.peer_finish_md, finished_len) != 0) {
+  if (CRYPTO_memcmp(p, ssl->s3->tmp.peer_finish_md, finished_len) != 0) {
     al = SSL_AD_DECRYPT_ERROR;
     OPENSSL_PUT_ERROR(SSL, SSL_R_DIGEST_CHECK_FAILED);
     goto f_err;
   }
 
   /* Copy the finished so we can use it for renegotiation checks */
-  if (s->server) {
+  if (ssl->server) {
     assert(finished_len <= EVP_MAX_MD_SIZE);
-    memcpy(s->s3->previous_client_finished, s->s3->tmp.peer_finish_md, finished_len);
-    s->s3->previous_client_finished_len = finished_len;
+    memcpy(ssl->s3->previous_client_finished, ssl->s3->tmp.peer_finish_md,
+           finished_len);
+    ssl->s3->previous_client_finished_len = finished_len;
   } else {
     assert(finished_len <= EVP_MAX_MD_SIZE);
-    memcpy(s->s3->previous_server_finished, s->s3->tmp.peer_finish_md, finished_len);
-    s->s3->previous_server_finished_len = finished_len;
+    memcpy(ssl->s3->previous_server_finished, ssl->s3->tmp.peer_finish_md,
+           finished_len);
+    ssl->s3->previous_server_finished_len = finished_len;
   }
 
   return 1;
 
 f_err:
-  ssl3_send_alert(s, SSL3_AL_FATAL, al);
+  ssl3_send_alert(ssl, SSL3_AL_FATAL, al);
 err:
   return 0;
 }
 
 /* for these 2 messages, we need to
- * ssl->enc_read_ctx			re-init
- * ssl->s3->read_sequence		zero
- * ssl->s3->read_mac_secret		re-init
- * ssl->session->read_sym_enc		assign
- * ssl->session->read_compression	assign
- * ssl->session->read_hash		assign */
-int ssl3_send_change_cipher_spec(SSL *s, int a, int b) {
-  if (s->state == a) {
-    *((uint8_t *)s->init_buf->data) = SSL3_MT_CCS;
-    s->init_num = 1;
-    s->init_off = 0;
+ * ssl->enc_read_ctx      re-init
+ * ssl->s3->read_sequence   zero
+ * ssl->s3->read_mac_secret   re-init
+ * ssl->session->read_sym_enc   assign
+ * ssl->session->read_compression assign
+ * ssl->session->read_hash    assign */
+int ssl3_send_change_cipher_spec(SSL *ssl, int a, int b) {
+  if (ssl->state == a) {
+    *((uint8_t *)ssl->init_buf->data) = SSL3_MT_CCS;
+    ssl->init_num = 1;
+    ssl->init_off = 0;
 
-    s->state = b;
+    ssl->state = b;
   }
 
   /* SSL3_ST_CW_CHANGE_B */
-  return ssl3_do_write(s, SSL3_RT_CHANGE_CIPHER_SPEC);
+  return ssl3_do_write(ssl, SSL3_RT_CHANGE_CIPHER_SPEC);
 }
 
-int ssl3_output_cert_chain(SSL *s) {
+int ssl3_output_cert_chain(SSL *ssl) {
   uint8_t *p;
-  unsigned long l = 3 + SSL_HM_HEADER_LENGTH(s);
+  unsigned long l = 3 + SSL_HM_HEADER_LENGTH(ssl);
 
-  if (!ssl_add_cert_chain(s, &l)) {
+  if (!ssl_add_cert_chain(ssl, &l)) {
     return 0;
   }
 
-  l -= 3 + SSL_HM_HEADER_LENGTH(s);
-  p = ssl_handshake_start(s);
+  l -= 3 + SSL_HM_HEADER_LENGTH(ssl);
+  p = ssl_handshake_start(ssl);
   l2n3(l, p);
   l += 3;
-  return ssl_set_handshake_header(s, SSL3_MT_CERTIFICATE, l);
+  return ssl_set_handshake_header(ssl, SSL3_MT_CERTIFICATE, l);
 }
 
 /* Obtain handshake message of message type |msg_type| (any if |msg_type| == -1),
  * maximum acceptable body length |max|. The first four bytes (msg_type and
- * length) are read in state |header_state|, the body is read in state |body_state|. */
-long ssl3_get_message(SSL *s, int header_state, int body_state, int msg_type,
+ * length) are read in state |header_state|, the body is read in state
+ * |body_state|. */
+long ssl3_get_message(SSL *ssl, int header_state, int body_state, int msg_type,
                       long max, enum ssl_hash_message_t hash_message, int *ok) {
   uint8_t *p;
   unsigned long l;
   long n;
   int al;
 
-  if (s->s3->tmp.reuse_message) {
+  if (ssl->s3->tmp.reuse_message) {
     /* A ssl_dont_hash_message call cannot be combined with reuse_message; the
      * ssl_dont_hash_message would have to have been applied to the previous
      * call. */
     assert(hash_message == ssl_hash_message);
-    s->s3->tmp.reuse_message = 0;
-    if (msg_type >= 0 && s->s3->tmp.message_type != msg_type) {
+    ssl->s3->tmp.reuse_message = 0;
+    if (msg_type >= 0 && ssl->s3->tmp.message_type != msg_type) {
       al = SSL_AD_UNEXPECTED_MESSAGE;
       OPENSSL_PUT_ERROR(SSL, SSL_R_UNEXPECTED_MESSAGE);
       goto f_err;
     }
     *ok = 1;
-    s->state = body_state;
-    s->init_msg = (uint8_t *)s->init_buf->data + 4;
-    s->init_num = (int)s->s3->tmp.message_size;
-    return s->init_num;
+    ssl->state = body_state;
+    ssl->init_msg = (uint8_t *)ssl->init_buf->data + 4;
+    ssl->init_num = (int)ssl->s3->tmp.message_size;
+    return ssl->init_num;
   }
 
-  p = (uint8_t *)s->init_buf->data;
+  p = (uint8_t *)ssl->init_buf->data;
 
-  if (s->state == header_state) {
-    assert(s->init_num < 4);
+  if (ssl->state == header_state) {
+    assert(ssl->init_num < 4);
 
     for (;;) {
-      while (s->init_num < 4) {
-        int bytes_read = ssl3_read_bytes(s, SSL3_RT_HANDSHAKE, &p[s->init_num],
-                                         4 - s->init_num, 0);
+      while (ssl->init_num < 4) {
+        int bytes_read = ssl3_read_bytes(
+            ssl, SSL3_RT_HANDSHAKE, &p[ssl->init_num], 4 - ssl->init_num, 0);
         if (bytes_read <= 0) {
           *ok = 0;
           return bytes_read;
         }
-        s->init_num += bytes_read;
+        ssl->init_num += bytes_read;
       }
 
       static const uint8_t kHelloRequest[4] = {SSL3_MT_HELLO_REQUEST, 0, 0, 0};
-      if (s->server || memcmp(p, kHelloRequest, sizeof(kHelloRequest)) != 0) {
+      if (ssl->server || memcmp(p, kHelloRequest, sizeof(kHelloRequest)) != 0) {
         break;
       }
 
       /* The server may always send 'Hello Request' messages -- we are doing
        * a handshake anyway now, so ignore them if their format is correct.
        * Does not count for 'Finished' MAC. */
-      s->init_num = 0;
+      ssl->init_num = 0;
 
-      if (s->msg_callback) {
-        s->msg_callback(0, s->version, SSL3_RT_HANDSHAKE, p, 4, s,
-                        s->msg_callback_arg);
+      if (ssl->msg_callback) {
+        ssl->msg_callback(0, ssl->version, SSL3_RT_HANDSHAKE, p, 4, ssl,
+                        ssl->msg_callback_arg);
       }
     }
 
-    /* s->init_num == 4 */
+    /* ssl->init_num == 4 */
 
     if (msg_type >= 0 && *p != msg_type) {
       al = SSL_AD_UNEXPECTED_MESSAGE;
       OPENSSL_PUT_ERROR(SSL, SSL_R_UNEXPECTED_MESSAGE);
       goto f_err;
     }
-    s->s3->tmp.message_type = *(p++);
+    ssl->s3->tmp.message_type = *(p++);
 
     n2l3(p, l);
     if (l > (unsigned long)max) {
@@ -385,57 +389,57 @@ long ssl3_get_message(SSL *s, int header_state, int body_state, int msg_type,
       goto f_err;
     }
 
-    if (l && !BUF_MEM_grow_clean(s->init_buf, l + 4)) {
+    if (l && !BUF_MEM_grow_clean(ssl->init_buf, l + 4)) {
       OPENSSL_PUT_ERROR(SSL, ERR_R_BUF_LIB);
       goto err;
     }
-    s->s3->tmp.message_size = l;
-    s->state = body_state;
+    ssl->s3->tmp.message_size = l;
+    ssl->state = body_state;
 
-    s->init_msg = (uint8_t *)s->init_buf->data + 4;
-    s->init_num = 0;
+    ssl->init_msg = (uint8_t *)ssl->init_buf->data + 4;
+    ssl->init_num = 0;
   }
 
   /* next state (body_state) */
-  p = s->init_msg;
-  n = s->s3->tmp.message_size - s->init_num;
+  p = ssl->init_msg;
+  n = ssl->s3->tmp.message_size - ssl->init_num;
   while (n > 0) {
-    int bytes_read = ssl3_read_bytes(s, SSL3_RT_HANDSHAKE, &p[s->init_num], n,
-                                     0);
+    int bytes_read =
+        ssl3_read_bytes(ssl, SSL3_RT_HANDSHAKE, &p[ssl->init_num], n, 0);
     if (bytes_read <= 0) {
-      s->rwstate = SSL_READING;
+      ssl->rwstate = SSL_READING;
       *ok = 0;
       return bytes_read;
     }
-    s->init_num += bytes_read;
+    ssl->init_num += bytes_read;
     n -= bytes_read;
   }
 
   /* Feed this message into MAC computation. */
-  if (hash_message == ssl_hash_message && !ssl3_hash_current_message(s)) {
+  if (hash_message == ssl_hash_message && !ssl3_hash_current_message(ssl)) {
     goto err;
   }
-  if (s->msg_callback) {
-    s->msg_callback(0, s->version, SSL3_RT_HANDSHAKE, s->init_buf->data,
-                    (size_t)s->init_num + 4, s, s->msg_callback_arg);
+  if (ssl->msg_callback) {
+    ssl->msg_callback(0, ssl->version, SSL3_RT_HANDSHAKE, ssl->init_buf->data,
+                    (size_t)ssl->init_num + 4, ssl, ssl->msg_callback_arg);
   }
   *ok = 1;
-  return s->init_num;
+  return ssl->init_num;
 
 f_err:
-  ssl3_send_alert(s, SSL3_AL_FATAL, al);
+  ssl3_send_alert(ssl, SSL3_AL_FATAL, al);
 
 err:
   *ok = 0;
   return -1;
 }
 
-int ssl3_hash_current_message(SSL *s) {
+int ssl3_hash_current_message(SSL *ssl) {
   /* The handshake header (different size between DTLS and TLS) is included in
    * the hash. */
-  size_t header_len = s->init_msg - (uint8_t *)s->init_buf->data;
-  return ssl3_update_handshake_hash(s, (uint8_t *)s->init_buf->data,
-                                    s->init_num + header_len);
+  size_t header_len = ssl->init_msg - (uint8_t *)ssl->init_buf->data;
+  return ssl3_update_handshake_hash(ssl, (uint8_t *)ssl->init_buf->data,
+                                    ssl->init_num + header_len);
 }
 
 /* ssl3_cert_verify_hash is documented as needing EVP_MAX_MD_SIZE because that
@@ -443,19 +447,19 @@ int ssl3_hash_current_message(SSL *s) {
 OPENSSL_COMPILE_ASSERT(EVP_MAX_MD_SIZE > MD5_DIGEST_LENGTH + SHA_DIGEST_LENGTH,
                        combined_tls_hash_fits_in_max);
 
-int ssl3_cert_verify_hash(SSL *s, uint8_t *out, size_t *out_len,
+int ssl3_cert_verify_hash(SSL *ssl, uint8_t *out, size_t *out_len,
                           const EVP_MD **out_md, int pkey_type) {
   /* For TLS v1.2 send signature algorithm and signature using
    * agreed digest and cached handshake records. Otherwise, use
    * SHA1 or MD5 + SHA1 depending on key type.  */
-  if (SSL_USE_SIGALGS(s)) {
+  if (SSL_USE_SIGALGS(ssl)) {
     EVP_MD_CTX mctx;
     unsigned len;
 
     EVP_MD_CTX_init(&mctx);
     if (!EVP_DigestInit_ex(&mctx, *out_md, NULL) ||
-        !EVP_DigestUpdate(&mctx, s->s3->handshake_buffer->data,
-                          s->s3->handshake_buffer->length) ||
+        !EVP_DigestUpdate(&mctx, ssl->s3->handshake_buffer->data,
+                          ssl->s3->handshake_buffer->length) ||
         !EVP_DigestFinal(&mctx, out, &len)) {
       OPENSSL_PUT_ERROR(SSL, ERR_R_EVP_LIB);
       EVP_MD_CTX_cleanup(&mctx);
@@ -463,15 +467,15 @@ int ssl3_cert_verify_hash(SSL *s, uint8_t *out, size_t *out_len,
     }
     *out_len = len;
   } else if (pkey_type == EVP_PKEY_RSA) {
-    if (s->enc_method->cert_verify_mac(s, NID_md5, out) == 0 ||
-        s->enc_method->cert_verify_mac(s, NID_sha1, out + MD5_DIGEST_LENGTH) ==
-            0) {
+    if (ssl->enc_method->cert_verify_mac(ssl, NID_md5, out) == 0 ||
+        ssl->enc_method->cert_verify_mac(ssl, NID_sha1,
+                                         out + MD5_DIGEST_LENGTH) == 0) {
       return 0;
     }
     *out_len = MD5_DIGEST_LENGTH + SHA_DIGEST_LENGTH;
     *out_md = EVP_md5_sha1();
   } else if (pkey_type == EVP_PKEY_EC) {
-    if (s->enc_method->cert_verify_mac(s, NID_sha1, out) == 0) {
+    if (ssl->enc_method->cert_verify_mac(ssl, NID_sha1, out) == 0) {
       return 0;
     }
     *out_len = SHA_DIGEST_LENGTH;

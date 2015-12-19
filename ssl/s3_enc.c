@@ -162,10 +162,10 @@ static const uint8_t ssl3_pad_2[48] = {
     0x5c, 0x5c, 0x5c, 0x5c, 0x5c, 0x5c, 0x5c, 0x5c, 0x5c, 0x5c, 0x5c, 0x5c,
 };
 
-static int ssl3_handshake_mac(SSL *s, int md_nid, const char *sender, int len,
+static int ssl3_handshake_mac(SSL *ssl, int md_nid, const char *sender, int len,
                               uint8_t *p);
 
-int ssl3_prf(SSL *s, uint8_t *out, size_t out_len, const uint8_t *secret,
+int ssl3_prf(SSL *ssl, uint8_t *out, size_t out_len, const uint8_t *secret,
              size_t secret_len, const char *label, size_t label_len,
              const uint8_t *seed1, size_t seed1_len,
              const uint8_t *seed2, size_t seed2_len) {
@@ -228,13 +228,13 @@ int ssl3_prf(SSL *s, uint8_t *out, size_t out_len, const uint8_t *secret,
   return 1;
 }
 
-void ssl3_cleanup_key_block(SSL *s) {
-  if (s->s3->tmp.key_block != NULL) {
-    OPENSSL_cleanse(s->s3->tmp.key_block, s->s3->tmp.key_block_length);
-    OPENSSL_free(s->s3->tmp.key_block);
-    s->s3->tmp.key_block = NULL;
+void ssl3_cleanup_key_block(SSL *ssl) {
+  if (ssl->s3->tmp.key_block != NULL) {
+    OPENSSL_cleanse(ssl->s3->tmp.key_block, ssl->s3->tmp.key_block_length);
+    OPENSSL_free(ssl->s3->tmp.key_block);
+    ssl->s3->tmp.key_block = NULL;
   }
-  s->s3->tmp.key_block_length = 0;
+  ssl->s3->tmp.key_block_length = 0;
 }
 
 int ssl3_init_handshake_buffer(SSL *ssl) {
@@ -309,20 +309,20 @@ int ssl3_update_handshake_hash(SSL *ssl, const uint8_t *in, size_t in_len) {
   return 1;
 }
 
-int ssl3_cert_verify_mac(SSL *s, int md_nid, uint8_t *p) {
-  return ssl3_handshake_mac(s, md_nid, NULL, 0, p);
+int ssl3_cert_verify_mac(SSL *ssl, int md_nid, uint8_t *p) {
+  return ssl3_handshake_mac(ssl, md_nid, NULL, 0, p);
 }
 
-int ssl3_final_finish_mac(SSL *s, const char *sender, int len, uint8_t *p) {
+int ssl3_final_finish_mac(SSL *ssl, const char *sender, int len, uint8_t *p) {
   int ret, sha1len;
-  ret = ssl3_handshake_mac(s, NID_md5, sender, len, p);
+  ret = ssl3_handshake_mac(ssl, NID_md5, sender, len, p);
   if (ret == 0) {
     return 0;
   }
 
   p += ret;
 
-  sha1len = ssl3_handshake_mac(s, NID_sha1, sender, len, p);
+  sha1len = ssl3_handshake_mac(ssl, NID_sha1, sender, len, p);
   if (sha1len == 0) {
     return 0;
   }
@@ -331,7 +331,7 @@ int ssl3_final_finish_mac(SSL *s, const char *sender, int len, uint8_t *p) {
   return ret;
 }
 
-static int ssl3_handshake_mac(SSL *s, int md_nid, const char *sender, int len,
+static int ssl3_handshake_mac(SSL *ssl, int md_nid, const char *sender, int len,
                               uint8_t *p) {
   unsigned int ret;
   size_t npad, n;
@@ -341,9 +341,9 @@ static int ssl3_handshake_mac(SSL *s, int md_nid, const char *sender, int len,
   const EVP_MD_CTX *ctx_template;
 
   if (md_nid == NID_md5) {
-    ctx_template = &s->s3->handshake_md5;
-  } else if (md_nid == EVP_MD_CTX_type(&s->s3->handshake_hash)) {
-    ctx_template = &s->s3->handshake_hash;
+    ctx_template = &ssl->s3->handshake_md5;
+  } else if (md_nid == EVP_MD_CTX_type(&ssl->s3->handshake_hash)) {
+    ctx_template = &ssl->s3->handshake_hash;
   } else {
     OPENSSL_PUT_ERROR(SSL, SSL_R_NO_REQUIRED_DIGEST);
     return 0;
@@ -362,7 +362,8 @@ static int ssl3_handshake_mac(SSL *s, int md_nid, const char *sender, int len,
   if (sender != NULL) {
     EVP_DigestUpdate(&ctx, sender, len);
   }
-  EVP_DigestUpdate(&ctx, s->session->master_key, s->session->master_key_length);
+  EVP_DigestUpdate(&ctx, ssl->session->master_key,
+                   ssl->session->master_key_length);
   EVP_DigestUpdate(&ctx, ssl3_pad_1, npad);
   EVP_DigestFinal_ex(&ctx, md_buf, &i);
 
@@ -371,7 +372,8 @@ static int ssl3_handshake_mac(SSL *s, int md_nid, const char *sender, int len,
     OPENSSL_PUT_ERROR(SSL, ERR_LIB_EVP);
     return 0;
   }
-  EVP_DigestUpdate(&ctx, s->session->master_key, s->session->master_key_length);
+  EVP_DigestUpdate(&ctx, ssl->session->master_key,
+                   ssl->session->master_key_length);
   EVP_DigestUpdate(&ctx, ssl3_pad_2, npad);
   EVP_DigestUpdate(&ctx, md_buf, i);
   EVP_DigestFinal_ex(&ctx, p, &ret);

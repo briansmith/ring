@@ -130,131 +130,131 @@
 #include "internal.h"
 
 
-int dtls1_accept(SSL *s) {
+int dtls1_accept(SSL *ssl) {
   BUF_MEM *buf = NULL;
   void (*cb)(const SSL *ssl, int type, int value) = NULL;
   uint32_t alg_a;
   int ret = -1;
   int new_state, state, skip = 0;
 
-  assert(s->handshake_func == dtls1_accept);
-  assert(s->server);
-  assert(SSL_IS_DTLS(s));
+  assert(ssl->handshake_func == dtls1_accept);
+  assert(ssl->server);
+  assert(SSL_IS_DTLS(ssl));
 
   ERR_clear_error();
   ERR_clear_system_error();
 
-  if (s->info_callback != NULL) {
-    cb = s->info_callback;
-  } else if (s->ctx->info_callback != NULL) {
-    cb = s->ctx->info_callback;
+  if (ssl->info_callback != NULL) {
+    cb = ssl->info_callback;
+  } else if (ssl->ctx->info_callback != NULL) {
+    cb = ssl->ctx->info_callback;
   }
 
-  s->in_handshake++;
+  ssl->in_handshake++;
 
   for (;;) {
-    state = s->state;
+    state = ssl->state;
 
-    switch (s->state) {
+    switch (ssl->state) {
       case SSL_ST_ACCEPT:
         if (cb != NULL) {
-          cb(s, SSL_CB_HANDSHAKE_START, 1);
+          cb(ssl, SSL_CB_HANDSHAKE_START, 1);
         }
 
-        if (s->init_buf == NULL) {
+        if (ssl->init_buf == NULL) {
           buf = BUF_MEM_new();
           if (buf == NULL || !BUF_MEM_grow(buf, SSL3_RT_MAX_PLAIN_LENGTH)) {
             ret = -1;
             goto end;
           }
-          s->init_buf = buf;
+          ssl->init_buf = buf;
           buf = NULL;
         }
 
-        s->init_num = 0;
+        ssl->init_num = 0;
 
-        if (!ssl_init_wbio_buffer(s, 1)) {
+        if (!ssl_init_wbio_buffer(ssl, 1)) {
           ret = -1;
           goto end;
         }
 
-        if (!ssl3_init_handshake_buffer(s)) {
+        if (!ssl3_init_handshake_buffer(ssl)) {
           OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
           ret = -1;
           goto end;
         }
 
-        s->state = SSL3_ST_SR_CLNT_HELLO_A;
+        ssl->state = SSL3_ST_SR_CLNT_HELLO_A;
         break;
 
       case SSL3_ST_SR_CLNT_HELLO_A:
       case SSL3_ST_SR_CLNT_HELLO_B:
       case SSL3_ST_SR_CLNT_HELLO_C:
       case SSL3_ST_SR_CLNT_HELLO_D:
-        s->shutdown = 0;
-        ret = ssl3_get_client_hello(s);
+        ssl->shutdown = 0;
+        ret = ssl3_get_client_hello(ssl);
         if (ret <= 0) {
           goto end;
         }
-        dtls1_stop_timer(s);
-        s->state = SSL3_ST_SW_SRVR_HELLO_A;
-        s->init_num = 0;
+        dtls1_stop_timer(ssl);
+        ssl->state = SSL3_ST_SW_SRVR_HELLO_A;
+        ssl->init_num = 0;
         break;
 
       case SSL3_ST_SW_SRVR_HELLO_A:
       case SSL3_ST_SW_SRVR_HELLO_B:
-        dtls1_start_timer(s);
-        ret = ssl3_send_server_hello(s);
+        dtls1_start_timer(ssl);
+        ret = ssl3_send_server_hello(ssl);
         if (ret <= 0) {
           goto end;
         }
 
-        if (s->hit) {
-          if (s->tlsext_ticket_expected) {
-            s->state = SSL3_ST_SW_SESSION_TICKET_A;
+        if (ssl->hit) {
+          if (ssl->tlsext_ticket_expected) {
+            ssl->state = SSL3_ST_SW_SESSION_TICKET_A;
           } else {
-            s->state = SSL3_ST_SW_CHANGE_A;
+            ssl->state = SSL3_ST_SW_CHANGE_A;
           }
         } else {
-          s->state = SSL3_ST_SW_CERT_A;
+          ssl->state = SSL3_ST_SW_CERT_A;
         }
-        s->init_num = 0;
+        ssl->init_num = 0;
         break;
 
       case SSL3_ST_SW_CERT_A:
       case SSL3_ST_SW_CERT_B:
-        if (ssl_cipher_has_server_public_key(s->s3->tmp.new_cipher)) {
-          dtls1_start_timer(s);
-          ret = ssl3_send_server_certificate(s);
+        if (ssl_cipher_has_server_public_key(ssl->s3->tmp.new_cipher)) {
+          dtls1_start_timer(ssl);
+          ret = ssl3_send_server_certificate(ssl);
           if (ret <= 0) {
             goto end;
           }
-          if (s->s3->tmp.certificate_status_expected) {
-            s->state = SSL3_ST_SW_CERT_STATUS_A;
+          if (ssl->s3->tmp.certificate_status_expected) {
+            ssl->state = SSL3_ST_SW_CERT_STATUS_A;
           } else {
-            s->state = SSL3_ST_SW_KEY_EXCH_A;
+            ssl->state = SSL3_ST_SW_KEY_EXCH_A;
           }
         } else {
           skip = 1;
-          s->state = SSL3_ST_SW_KEY_EXCH_A;
+          ssl->state = SSL3_ST_SW_KEY_EXCH_A;
         }
-        s->init_num = 0;
+        ssl->init_num = 0;
         break;
 
       case SSL3_ST_SW_CERT_STATUS_A:
       case SSL3_ST_SW_CERT_STATUS_B:
-        ret = ssl3_send_certificate_status(s);
+        ret = ssl3_send_certificate_status(ssl);
         if (ret <= 0) {
           goto end;
         }
-        s->state = SSL3_ST_SW_KEY_EXCH_A;
-        s->init_num = 0;
+        ssl->state = SSL3_ST_SW_KEY_EXCH_A;
+        ssl->init_num = 0;
         break;
 
       case SSL3_ST_SW_KEY_EXCH_A:
       case SSL3_ST_SW_KEY_EXCH_B:
       case SSL3_ST_SW_KEY_EXCH_C:
-        alg_a = s->s3->tmp.new_cipher->algorithm_auth;
+        alg_a = ssl->s3->tmp.new_cipher->algorithm_auth;
 
         /* Send a ServerKeyExchange message if:
          * - The key exchange is ephemeral or anonymous
@@ -264,10 +264,10 @@ int dtls1_accept(SSL *s) {
          * TODO(davidben): This logic is currently duplicated
          * in s3_srvr.c. Fix this. In the meantime, keep them
          * in sync. */
-        if (ssl_cipher_requires_server_key_exchange(s->s3->tmp.new_cipher) ||
-            ((alg_a & SSL_aPSK) && s->psk_identity_hint)) {
-          dtls1_start_timer(s);
-          ret = ssl3_send_server_key_exchange(s);
+        if (ssl_cipher_requires_server_key_exchange(ssl->s3->tmp.new_cipher) ||
+            ((alg_a & SSL_aPSK) && ssl->psk_identity_hint)) {
+          dtls1_start_timer(ssl);
+          ret = ssl3_send_server_key_exchange(ssl);
           if (ret <= 0) {
             goto end;
           }
@@ -275,142 +275,142 @@ int dtls1_accept(SSL *s) {
           skip = 1;
         }
 
-        s->state = SSL3_ST_SW_CERT_REQ_A;
-        s->init_num = 0;
+        ssl->state = SSL3_ST_SW_CERT_REQ_A;
+        ssl->init_num = 0;
         break;
 
       case SSL3_ST_SW_CERT_REQ_A:
       case SSL3_ST_SW_CERT_REQ_B:
-        if (s->s3->tmp.cert_request) {
-          dtls1_start_timer(s);
-          ret = ssl3_send_certificate_request(s);
+        if (ssl->s3->tmp.cert_request) {
+          dtls1_start_timer(ssl);
+          ret = ssl3_send_certificate_request(ssl);
           if (ret <= 0) {
             goto end;
           }
         } else {
           skip = 1;
         }
-        s->state = SSL3_ST_SW_SRVR_DONE_A;
-        s->init_num = 0;
+        ssl->state = SSL3_ST_SW_SRVR_DONE_A;
+        ssl->init_num = 0;
         break;
 
       case SSL3_ST_SW_SRVR_DONE_A:
       case SSL3_ST_SW_SRVR_DONE_B:
-        dtls1_start_timer(s);
-        ret = ssl3_send_server_done(s);
+        dtls1_start_timer(ssl);
+        ret = ssl3_send_server_done(ssl);
         if (ret <= 0) {
           goto end;
         }
-        s->s3->tmp.next_state = SSL3_ST_SR_CERT_A;
-        s->state = SSL3_ST_SW_FLUSH;
-        s->init_num = 0;
+        ssl->s3->tmp.next_state = SSL3_ST_SR_CERT_A;
+        ssl->state = SSL3_ST_SW_FLUSH;
+        ssl->init_num = 0;
         break;
 
       case SSL3_ST_SW_FLUSH:
-        s->rwstate = SSL_WRITING;
-        if (BIO_flush(s->wbio) <= 0) {
+        ssl->rwstate = SSL_WRITING;
+        if (BIO_flush(ssl->wbio) <= 0) {
           ret = -1;
           goto end;
         }
-        s->rwstate = SSL_NOTHING;
-        s->state = s->s3->tmp.next_state;
+        ssl->rwstate = SSL_NOTHING;
+        ssl->state = ssl->s3->tmp.next_state;
         break;
 
       case SSL3_ST_SR_CERT_A:
       case SSL3_ST_SR_CERT_B:
-        if (s->s3->tmp.cert_request) {
-          ret = ssl3_get_client_certificate(s);
+        if (ssl->s3->tmp.cert_request) {
+          ret = ssl3_get_client_certificate(ssl);
           if (ret <= 0) {
             goto end;
           }
         }
-        s->init_num = 0;
-        s->state = SSL3_ST_SR_KEY_EXCH_A;
+        ssl->init_num = 0;
+        ssl->state = SSL3_ST_SR_KEY_EXCH_A;
         break;
 
       case SSL3_ST_SR_KEY_EXCH_A:
       case SSL3_ST_SR_KEY_EXCH_B:
       case SSL3_ST_SR_KEY_EXCH_C:
-        ret = ssl3_get_client_key_exchange(s);
+        ret = ssl3_get_client_key_exchange(ssl);
         if (ret <= 0) {
           goto end;
         }
-        s->state = SSL3_ST_SR_CERT_VRFY_A;
-        s->init_num = 0;
+        ssl->state = SSL3_ST_SR_CERT_VRFY_A;
+        ssl->init_num = 0;
         break;
 
       case SSL3_ST_SR_CERT_VRFY_A:
       case SSL3_ST_SR_CERT_VRFY_B:
-        ret = ssl3_get_cert_verify(s);
+        ret = ssl3_get_cert_verify(ssl);
         if (ret <= 0) {
           goto end;
         }
-        s->state = SSL3_ST_SR_CHANGE;
-        s->init_num = 0;
+        ssl->state = SSL3_ST_SR_CHANGE;
+        ssl->init_num = 0;
         break;
 
       case SSL3_ST_SR_CHANGE:
-        ret = s->method->ssl_read_change_cipher_spec(s);
+        ret = ssl->method->ssl_read_change_cipher_spec(ssl);
         if (ret <= 0) {
           goto end;
         }
 
-        if (!ssl3_do_change_cipher_spec(s)) {
+        if (!ssl3_do_change_cipher_spec(ssl)) {
           ret = -1;
           goto end;
         }
 
-        s->state = SSL3_ST_SR_FINISHED_A;
+        ssl->state = SSL3_ST_SR_FINISHED_A;
         break;
 
       case SSL3_ST_SR_FINISHED_A:
       case SSL3_ST_SR_FINISHED_B:
-        ret =
-            ssl3_get_finished(s, SSL3_ST_SR_FINISHED_A, SSL3_ST_SR_FINISHED_B);
+        ret = ssl3_get_finished(ssl, SSL3_ST_SR_FINISHED_A,
+                                SSL3_ST_SR_FINISHED_B);
         if (ret <= 0) {
           goto end;
         }
-        dtls1_stop_timer(s);
-        if (s->hit) {
-          s->state = SSL_ST_OK;
-        } else if (s->tlsext_ticket_expected) {
-          s->state = SSL3_ST_SW_SESSION_TICKET_A;
+        dtls1_stop_timer(ssl);
+        if (ssl->hit) {
+          ssl->state = SSL_ST_OK;
+        } else if (ssl->tlsext_ticket_expected) {
+          ssl->state = SSL3_ST_SW_SESSION_TICKET_A;
         } else {
-          s->state = SSL3_ST_SW_CHANGE_A;
+          ssl->state = SSL3_ST_SW_CHANGE_A;
         }
-        s->init_num = 0;
+        ssl->init_num = 0;
         break;
 
       case SSL3_ST_SW_SESSION_TICKET_A:
       case SSL3_ST_SW_SESSION_TICKET_B:
-        ret = ssl3_send_new_session_ticket(s);
+        ret = ssl3_send_new_session_ticket(ssl);
         if (ret <= 0) {
           goto end;
         }
-        s->state = SSL3_ST_SW_CHANGE_A;
-        s->init_num = 0;
+        ssl->state = SSL3_ST_SW_CHANGE_A;
+        ssl->init_num = 0;
         break;
 
       case SSL3_ST_SW_CHANGE_A:
       case SSL3_ST_SW_CHANGE_B:
-        s->session->cipher = s->s3->tmp.new_cipher;
-        if (!s->enc_method->setup_key_block(s)) {
+        ssl->session->cipher = ssl->s3->tmp.new_cipher;
+        if (!ssl->enc_method->setup_key_block(ssl)) {
           ret = -1;
           goto end;
         }
 
-        ret = dtls1_send_change_cipher_spec(s, SSL3_ST_SW_CHANGE_A,
+        ret = dtls1_send_change_cipher_spec(ssl, SSL3_ST_SW_CHANGE_A,
                                             SSL3_ST_SW_CHANGE_B);
 
         if (ret <= 0) {
           goto end;
         }
 
-        s->state = SSL3_ST_SW_FINISHED_A;
-        s->init_num = 0;
+        ssl->state = SSL3_ST_SW_FINISHED_A;
+        ssl->init_num = 0;
 
-        if (!s->enc_method->change_cipher_state(
-                s, SSL3_CHANGE_CIPHER_SERVER_WRITE)) {
+        if (!ssl->enc_method->change_cipher_state(
+                ssl, SSL3_CHANGE_CIPHER_SERVER_WRITE)) {
           ret = -1;
           goto end;
         }
@@ -418,44 +418,44 @@ int dtls1_accept(SSL *s) {
 
       case SSL3_ST_SW_FINISHED_A:
       case SSL3_ST_SW_FINISHED_B:
-        ret =
-            ssl3_send_finished(s, SSL3_ST_SW_FINISHED_A, SSL3_ST_SW_FINISHED_B,
-                               s->enc_method->server_finished_label,
-                               s->enc_method->server_finished_label_len);
+        ret = ssl3_send_finished(ssl, SSL3_ST_SW_FINISHED_A,
+                                 SSL3_ST_SW_FINISHED_B,
+                                 ssl->enc_method->server_finished_label,
+                                 ssl->enc_method->server_finished_label_len);
         if (ret <= 0) {
           goto end;
         }
-        s->state = SSL3_ST_SW_FLUSH;
-        if (s->hit) {
-          s->s3->tmp.next_state = SSL3_ST_SR_CHANGE;
+        ssl->state = SSL3_ST_SW_FLUSH;
+        if (ssl->hit) {
+          ssl->s3->tmp.next_state = SSL3_ST_SR_CHANGE;
         } else {
-          s->s3->tmp.next_state = SSL_ST_OK;
+          ssl->s3->tmp.next_state = SSL_ST_OK;
         }
-        s->init_num = 0;
+        ssl->init_num = 0;
         break;
 
       case SSL_ST_OK:
-        ssl3_cleanup_key_block(s);
+        ssl3_cleanup_key_block(ssl);
 
         /* remove buffering on output */
-        ssl_free_wbio_buffer(s);
+        ssl_free_wbio_buffer(ssl);
 
-        s->init_num = 0;
-        s->s3->initial_handshake_complete = 1;
+        ssl->init_num = 0;
+        ssl->s3->initial_handshake_complete = 1;
 
-        ssl_update_cache(s, SSL_SESS_CACHE_SERVER);
+        ssl_update_cache(ssl, SSL_SESS_CACHE_SERVER);
 
         if (cb != NULL) {
-          cb(s, SSL_CB_HANDSHAKE_DONE, 1);
+          cb(ssl, SSL_CB_HANDSHAKE_DONE, 1);
         }
 
         ret = 1;
 
         /* done handshaking, next message is client hello */
-        s->d1->handshake_read_seq = 0;
+        ssl->d1->handshake_read_seq = 0;
         /* next message is server hello */
-        s->d1->handshake_write_seq = 0;
-        s->d1->next_handshake_write_seq = 0;
+        ssl->d1->handshake_write_seq = 0;
+        ssl->d1->next_handshake_write_seq = 0;
         goto end;
 
       default:
@@ -464,22 +464,22 @@ int dtls1_accept(SSL *s) {
         goto end;
     }
 
-    if (!s->s3->tmp.reuse_message && !skip) {
-      if (cb != NULL && s->state != state) {
-        new_state = s->state;
-        s->state = state;
-        cb(s, SSL_CB_ACCEPT_LOOP, 1);
-        s->state = new_state;
+    if (!ssl->s3->tmp.reuse_message && !skip) {
+      if (cb != NULL && ssl->state != state) {
+        new_state = ssl->state;
+        ssl->state = state;
+        cb(ssl, SSL_CB_ACCEPT_LOOP, 1);
+        ssl->state = new_state;
       }
     }
     skip = 0;
   }
 
 end:
-  s->in_handshake--;
+  ssl->in_handshake--;
   BUF_MEM_free(buf);
   if (cb != NULL) {
-    cb(s, SSL_CB_ACCEPT_EXIT, ret);
+    cb(ssl, SSL_CB_ACCEPT_EXIT, ret);
   }
   return ret;
 }
