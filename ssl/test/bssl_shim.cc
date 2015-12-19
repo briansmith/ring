@@ -12,6 +12,10 @@
  * OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
  * CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE. */
 
+#if !defined(__STDC_FORMAT_MACROS)
+#define __STDC_FORMAT_MACROS
+#endif
+
 #include <openssl/base.h>
 
 #if !defined(OPENSSL_WINDOWS)
@@ -32,6 +36,7 @@
 #pragma comment(lib, "Ws2_32.lib")
 #endif
 
+#include <inttypes.h>
 #include <string.h>
 
 #include <openssl/bio.h>
@@ -1085,6 +1090,15 @@ static bool CheckHandshakeProperties(SSL *ssl, bool is_resume) {
             SSL_get_server_key_exchange_hash(ssl),
             config->expect_server_key_exchange_hash);
     return false;
+  }
+
+  if (config->expect_key_exchange_info != 0) {
+    uint32_t info = SSL_SESSION_get_key_exchange_info(SSL_get_session(ssl));
+    if (static_cast<uint32_t>(config->expect_key_exchange_info) != info) {
+      fprintf(stderr, "key_exchange_info was %" PRIu32 ", wanted %" PRIu32 "\n",
+              info, static_cast<uint32_t>(config->expect_key_exchange_info));
+      return false;
+    }
   }
 
   if (!config->is_server) {

@@ -101,6 +101,7 @@ struct TestConfig {
   bool p384_only = false;
   bool enable_all_curves = false;
   bool use_sparse_dh_prime = false;
+  int expect_key_exchange_info = 0;
 };
 
 bool ParseConfig(int argc, char **argv, TestConfig *out_config);

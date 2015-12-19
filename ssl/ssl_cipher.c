@@ -1616,6 +1616,10 @@ int SSL_CIPHER_is_ECDSA(const SSL_CIPHER *cipher) {
   return (cipher->algorithm_auth & SSL_aECDSA) != 0;
 }
 
+int SSL_CIPHER_is_ECDHE(const SSL_CIPHER *cipher) {
+  return (cipher->algorithm_mkey & SSL_kECDHE) != 0;
+}
+
 uint16_t SSL_CIPHER_get_min_version(const SSL_CIPHER *cipher) {
   if (cipher->algorithm_prf != SSL_HANDSHAKE_MAC_DEFAULT) {
     /* Cipher suites before TLS 1.2 use the default PRF, while all those added

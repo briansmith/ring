@@ -143,6 +143,8 @@ const Flag<int> kIntFlags[] = {
   { "-expect-total-renegotiations", &TestConfig::expect_total_renegotiations },
   { "-expect-server-key-exchange-hash",
     &TestConfig::expect_server_key_exchange_hash },
+  { "-expect-key-exchange-info",
+    &TestConfig::expect_key_exchange_info },
 };
 
 }  // namespace
