@@ -4618,6 +4618,38 @@ func addRSAClientKeyExchangeTests() {
 	}
 }
 
+var testCurves = []struct {
+	name string
+	id   CurveID
+}{
+	{"P-224", CurveP224},
+	{"P-256", CurveP256},
+	{"P-384", CurveP384},
+	{"P-521", CurveP521},
+}
+
+func addCurveTests() {
+	for _, curve := range testCurves {
+		testCases = append(testCases, testCase{
+			name: "CurveTest-Client-" + curve.name,
+			config: Config{
+				CipherSuites:     []uint16{TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256},
+				CurvePreferences: []CurveID{curve.id},
+			},
+			flags: []string{"-enable-all-curves"},
+		})
+		testCases = append(testCases, testCase{
+			testType: serverTest,
+			name:     "CurveTest-Server-" + curve.name,
+			config: Config{
+				CipherSuites:     []uint16{TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256},
+				CurvePreferences: []CurveID{curve.id},
+			},
+			flags: []string{"-enable-all-curves"},
+		})
+	}
+}
+
 func worker(statusChan chan statusMsg, c chan *testCase, shimPath string, wg *sync.WaitGroup) {
 	defer wg.Done()
 
@@ -4715,6 +4747,7 @@ func main() {
 	addTLSUniqueTests()
 	addCustomExtensionTests()
 	addRSAClientKeyExchangeTests()
+	addCurveTests()
 	for _, async := range []bool{false, true} {
 		for _, splitHandshake := range []bool{false, true} {
 			for _, protocol := range []protocol{tls, dtls} {
