@@ -686,16 +686,7 @@ void ssl_write_buffer_clear(SSL *ssl);
  * signatures. */
 #define SSL_USE_SIGALGS(s) (s->enc_method->enc_flags & SSL_ENC_FLAG_SIGALGS)
 
-/* SSL_kRSA <- RSA_ENC | (RSA_TMP & RSA_SIGN) |
- * 	    <- (EXPORT & (RSA_ENC | RSA_TMP) & RSA_SIGN)
- * SSL_kDH  <- DH_ENC & (RSA_ENC | RSA_SIGN | DSA_SIGN)
- * SSL_kDHE <- RSA_ENC | RSA_SIGN | DSA_SIGN
- * SSL_aRSA <- RSA_ENC | RSA_SIGN
- * SSL_aDSS <- DSA_SIGN */
-
 /* From RFC4492, used in encoding the curve type in ECParameters */
-#define EXPLICIT_PRIME_CURVE_TYPE 1
-#define EXPLICIT_CHAR2_CURVE_TYPE 2
 #define NAMED_CURVE_TYPE 3
 
 enum ssl_hash_message_t {
