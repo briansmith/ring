@@ -58,9 +58,9 @@
  * copied and put under another distribution licence
  * [including the GNU Public Licence.] */
 
-#define NUM_NID 948
-#define NUM_SN 940
-#define NUM_LN 940
+#define NUM_NID 949
+#define NUM_SN 941
+#define NUM_LN 941
 #define NUM_OBJ 882
 
 static const unsigned char lvalues[6176]={
@@ -2482,6 +2482,7 @@ static const ASN1_OBJECT kObjects[NUM_NID]={
 	NID_dhSinglePass_cofactorDH_sha512kdf_scheme,6,&(lvalues[6169]),0},
 {"dh-std-kdf","dh-std-kdf",NID_dh_std_kdf,0,NULL,0},
 {"dh-cofactor-kdf","dh-cofactor-kdf",NID_dh_cofactor_kdf,0,NULL,0},
+{"X25519","x25519",NID_x25519,0,NULL,0},
 };
 
 static const unsigned int kNIDsInShortNameOrder[NUM_SN]={
@@ -2668,6 +2669,7 @@ static const unsigned int kNIDsInShortNameOrder[NUM_SN]={
 143,	/* "SXNetID" */
 458,	/* "UID" */
  0,	/* "UNDEF" */
+948,	/* "X25519" */
 11,	/* "X500" */
 378,	/* "X500algorithms" */
 12,	/* "X509" */
@@ -4364,6 +4366,7 @@ static const unsigned int kNIDsInLongNameOrder[NUM_LN]={
 742,	/* "wap-wsg-idm-ecid-wtls9" */
 804,	/* "whirlpool" */
 868,	/* "x121Address" */
+948,	/* "x25519" */
 503,	/* "x500UniqueIdentifier" */
 158,	/* "x509Certificate" */
 160,	/* "x509Crl" */

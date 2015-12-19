@@ -1330,3 +1330,6 @@ secg-scheme 14 3 : dhSinglePass-cofactorDH-sha512kdf-scheme
 # NIDs for use with lookup tables.
                  : dh-std-kdf
                  : dh-cofactor-kdf
+
+# NID for X25519 (no corresponding OID).
+ : X25519 : x25519
