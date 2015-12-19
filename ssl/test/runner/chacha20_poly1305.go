@@ -5,6 +5,8 @@ import (
 	"crypto/subtle"
 	"encoding/binary"
 	"errors"
+
+	"./poly1305"
 )
 
 // See RFC 7539.
@@ -157,7 +159,7 @@ func (c *chaCha20Poly1305) poly1305(tag *[16]byte, nonce, ciphertext, additional
 	var poly1305Key [32]byte
 	chaCha20(poly1305Key[:], poly1305Key[:], c.key[:], nonce, 0)
 
-	poly1305Sum(tag, input, &poly1305Key)
+	poly1305.Sum(tag, input, &poly1305Key)
 }
 
 func (c *chaCha20Poly1305) poly1305Old(tag *[16]byte, nonce, ciphertext, additionalData []byte) {
@@ -172,7 +174,7 @@ func (c *chaCha20Poly1305) poly1305Old(tag *[16]byte, nonce, ciphertext, additio
 	var poly1305Key [32]byte
 	chaCha20(poly1305Key[:], poly1305Key[:], c.key[:], nonce, 0)
 
-	poly1305Sum(tag, input, &poly1305Key)
+	poly1305.Sum(tag, input, &poly1305Key)
 }
 
 func (c *chaCha20Poly1305) Seal(dst, nonce, plaintext, additionalData []byte) []byte {

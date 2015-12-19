@@ -2,15 +2,14 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-package runner
+// +build !amd64,!arm gccgo appengine
+
+package poly1305
 
 // Based on original, public domain implementation from NaCl by D. J.
 // Bernstein.
 
-import (
-	"crypto/subtle"
-	"math"
-)
+import "math"
 
 const (
 	alpham80 = 0.00000000558793544769287109375
@@ -32,18 +31,10 @@ const (
 	offset3  = 535219245894202480694386063513315216128475136.0
 )
 
-// poly1305Verify returns true if mac is a valid authenticator for m with the
-// given key.
-func poly1305Verify(mac *[16]byte, m []byte, key *[32]byte) bool {
-	var tmp [16]byte
-	poly1305Sum(&tmp, m, key)
-	return subtle.ConstantTimeCompare(tmp[:], mac[:]) == 1
-}
-
-// poly1305Sum generates an authenticator for m using a one-time key and puts
-// the 16-byte result into out. Authenticating two different messages with the
-// same key allows an attacker to forge messages at will.
-func poly1305Sum(out *[16]byte, m []byte, key *[32]byte) {
+// Sum generates an authenticator for m using a one-time key and puts the
+// 16-byte result into out. Authenticating two different messages with the same
+// key allows an attacker to forge messages at will.
+func Sum(out *[16]byte, m []byte, key *[32]byte) {
 	r := key
 	s := key[16:]
 	var (
