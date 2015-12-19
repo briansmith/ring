@@ -1239,7 +1239,7 @@ static bool DoExchange(ScopedSSL_SESSION *out_session, SSL_CTX *ssl_ctx,
   }
   if (config->enable_all_curves) {
     static const int kAllCurves[] = {
-        NID_secp224r1, NID_X9_62_prime256v1, NID_secp384r1, NID_secp521r1,
+        NID_X9_62_prime256v1, NID_secp384r1, NID_secp521r1,
     };
     if (!SSL_set1_curves(ssl.get(), kAllCurves,
                          sizeof(kAllCurves) / sizeof(kAllCurves[0]))) {

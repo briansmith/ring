@@ -343,7 +343,6 @@ struct tls_curve {
 
 /* ECC curves from RFC4492. */
 static const struct tls_curve tls_curves[] = {
-    {21, NID_secp224r1, "P-224"},
     {23, NID_X9_62_prime256v1, "P-256"},
     {24, NID_secp384r1, "P-384"},
     {25, NID_secp521r1, "P-521"},

@@ -1691,14 +1691,13 @@ func addBasicTests() {
 		{
 			name: "UnsupportedCurve",
 			config: Config{
-				CipherSuites: []uint16{TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256},
-				// BoringSSL implements P-224 but doesn't enable it by
-				// default.
-				CurvePreferences: []CurveID{CurveP224},
+				CipherSuites:     []uint16{TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256},
+				CurvePreferences: []CurveID{CurveP256},
 				Bugs: ProtocolBugs{
 					IgnorePeerCurvePreferences: true,
 				},
 			},
+			flags:         []string{"-p384-only"},
 			shouldFail:    true,
 			expectedError: ":WRONG_CURVE:",
 		},
@@ -4622,7 +4621,6 @@ var testCurves = []struct {
 	name string
 	id   CurveID
 }{
-	{"P-224", CurveP224},
 	{"P-256", CurveP256},
 	{"P-384", CurveP384},
 	{"P-521", CurveP521},
