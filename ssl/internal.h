@@ -554,6 +554,10 @@ int ssl_nid_to_curve_id(uint16_t *out_curve_id, int nid);
  * on success and zero on error. */
 int SSL_ECDH_CTX_init(SSL_ECDH_CTX *ctx, uint16_t curve_id);
 
+/* SSL_ECDH_CTX_init_for_dhe sets up |ctx| for use with legacy DHE-based ciphers
+ * where the server specifies a group. It takes ownership of |params|. */
+void SSL_ECDH_CTX_init_for_dhe(SSL_ECDH_CTX *ctx, DH *params);
+
 /* SSL_ECDH_CTX_cleanup releases memory associated with |ctx|. It is legal to
  * call it in the zero state. */
 void SSL_ECDH_CTX_cleanup(SSL_ECDH_CTX *ctx);

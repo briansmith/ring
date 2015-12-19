@@ -1137,7 +1137,6 @@ int ssl3_get_server_key_exchange(SSL *s) {
 
   if (alg_k & SSL_kDHE) {
     CBS dh_p, dh_g, dh_Ys;
-
     if (!CBS_get_u16_length_prefixed(&server_key_exchange, &dh_p) ||
         CBS_len(&dh_p) == 0 ||
         !CBS_get_u16_length_prefixed(&server_key_exchange, &dh_g) ||
@@ -1151,15 +1150,12 @@ int ssl3_get_server_key_exchange(SSL *s) {
 
     dh = DH_new();
     if (dh == NULL) {
-      OPENSSL_PUT_ERROR(SSL, ERR_R_DH_LIB);
       goto err;
     }
 
     dh->p = BN_bin2bn(CBS_data(&dh_p), CBS_len(&dh_p), NULL);
     dh->g = BN_bin2bn(CBS_data(&dh_g), CBS_len(&dh_g), NULL);
-    dh->pub_key = BN_bin2bn(CBS_data(&dh_Ys), CBS_len(&dh_Ys), NULL);
-    if (dh->p == NULL || dh->g == NULL || dh->pub_key == NULL) {
-      OPENSSL_PUT_ERROR(SSL, ERR_R_BN_LIB);
+    if (dh->p == NULL || dh->g == NULL) {
       goto err;
     }
 
@@ -1167,17 +1163,25 @@ int ssl3_get_server_key_exchange(SSL *s) {
     if (s->session->key_exchange_info < 1024) {
       OPENSSL_PUT_ERROR(SSL, SSL_R_BAD_DH_P_LENGTH);
       goto err;
-    }
-    if (s->session->key_exchange_info > 4096) {
+    } else if (s->session->key_exchange_info > 4096) {
       /* Overly large DHE groups are prohibitively expensive, so enforce a limit
        * to prevent a server from causing us to perform too expensive of a
        * computation. */
       OPENSSL_PUT_ERROR(SSL, SSL_R_DH_P_TOO_LONG);
       goto err;
     }
-    DH_free(s->s3->tmp.peer_dh_tmp);
-    s->s3->tmp.peer_dh_tmp = dh;
+
+    SSL_ECDH_CTX_init_for_dhe(&s->s3->tmp.ecdh_ctx, dh);
     dh = NULL;
+
+    /* Save the peer public key for later. */
+    size_t peer_key_len;
+    if (!CBS_stow(&dh_Ys, &s->s3->tmp.peer_key, &peer_key_len)) {
+      goto err;
+    }
+    /* |dh_Ys| has a u16 length prefix, so this fits in a |uint16_t|. */
+    assert(sizeof(s->s3->tmp.peer_key_len) == 2 && peer_key_len <= 0xffff);
+    s->s3->tmp.peer_key_len = (uint16_t)peer_key_len;
   } else if (alg_k & SSL_kECDHE) {
     /* Parse the server parameters. */
     uint8_t curve_type;
@@ -1206,9 +1210,9 @@ int ssl3_get_server_key_exchange(SSL *s) {
         !CBS_stow(&point, &s->s3->tmp.peer_key, &peer_key_len)) {
       goto err;
     }
-    /* |point| has a u8 length prefix, so this fits in a |uint8_t|. */
-    assert(peer_key_len <= 0xff);
-    s->s3->tmp.peer_key_len = (uint8_t)peer_key_len;
+    /* |point| has a u8 length prefix, so this fits in a |uint16_t|. */
+    assert(sizeof(s->s3->tmp.peer_key_len) == 2 && peer_key_len <= 0xffff);
+    s->s3->tmp.peer_key_len = (uint16_t)peer_key_len;
   } else if (!(alg_k & SSL_kPSK)) {
     al = SSL_AD_UNEXPECTED_MESSAGE;
     OPENSSL_PUT_ERROR(SSL, SSL_R_UNEXPECTED_MESSAGE);
@@ -1670,51 +1674,18 @@ int ssl3_send_client_key_exchange(SSL *ssl) {
         !CBB_flush(&cbb)) {
       goto err;
     }
-  } else if (alg_k & SSL_kDHE) {
-    if (ssl->s3->tmp.peer_dh_tmp == NULL) {
-      OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
-      goto err;
-    }
-    DH *peer_dh = ssl->s3->tmp.peer_dh_tmp;
-
-    /* Generate a keypair. */
-    DH *dh = DHparams_dup(peer_dh);
-    if (dh == NULL || !DH_generate_key(dh)) {
-      OPENSSL_PUT_ERROR(SSL, ERR_R_DH_LIB);
-      DH_free(dh);
-      goto err;
-    }
-
-    pms_len = DH_size(dh);
-    pms = OPENSSL_malloc(pms_len);
-    if (pms == NULL) {
-      OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
-      DH_free(dh);
-      goto err;
-    }
-
-    int dh_len = DH_compute_key(pms, peer_dh->pub_key, dh);
-    if (dh_len <= 0) {
-      OPENSSL_PUT_ERROR(SSL, ERR_R_DH_LIB);
-      DH_free(dh);
-      goto err;
-    }
-    pms_len = dh_len;
-
-    /* Write the public key. */
+  } else if (alg_k & (SSL_kECDHE|SSL_kDHE)) {
+    /* Generate a keypair and serialize the public half. ECDHE uses a u8 length
+     * prefix while DHE uses u16. */
     CBB child;
-    if (!CBB_add_u16_length_prefixed(&cbb, &child) ||
-        !BN_bn2cbb_padded(&child, BN_num_bytes(dh->pub_key), dh->pub_key) ||
-        !CBB_flush(&cbb)) {
-      DH_free(dh);
-      goto err;
+    int child_ok;
+    if (alg_k & SSL_kECDHE) {
+      child_ok = CBB_add_u8_length_prefixed(&cbb, &child);
+    } else {
+      child_ok = CBB_add_u16_length_prefixed(&cbb, &child);
     }
 
-    DH_free(dh);
-  } else if (alg_k & SSL_kECDHE) {
-    /* Generate a keypair and serialize the public half. */
-    CBB child;
-    if (!CBB_add_u8_length_prefixed(&cbb, &child) ||
+    if (!child_ok ||
         !SSL_ECDH_CTX_generate_keypair(&ssl->s3->tmp.ecdh_ctx, &child) ||
         !CBB_flush(&cbb)) {
       goto err;

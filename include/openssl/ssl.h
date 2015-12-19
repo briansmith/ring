@@ -3997,7 +3997,6 @@ typedef struct ssl3_state_st {
 
     /* used to hold the new cipher we are going to use */
     const SSL_CIPHER *new_cipher;
-    DH *dh;
 
     /* used when SSL_ST_FLUSH_DATA is entered */
     int next_state;
@@ -4098,15 +4097,12 @@ typedef struct ssl3_state_st {
      * |TLSEXT_hash_none|. */
     uint8_t server_key_exchange_hash;
 
-    /* peer_dh_tmp, on a client, is the server's DHE public key. */
-    DH *peer_dh_tmp;
-
     /* ecdh_ctx is the current ECDH instance. */
     SSL_ECDH_CTX ecdh_ctx;
 
     /* peer_key is the peer's ECDH key. */
     uint8_t *peer_key;
-    uint8_t peer_key_len;
+    uint16_t peer_key_len;
   } tmp;
 
   /* Connection binding to prevent renegotiation attacks */

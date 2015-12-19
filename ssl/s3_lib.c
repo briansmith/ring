@@ -228,7 +228,6 @@ void ssl3_free(SSL *s) {
   ssl3_cleanup_key_block(s);
   ssl_read_buffer_clear(s);
   ssl_write_buffer_clear(s);
-  DH_free(s->s3->tmp.dh);
   SSL_ECDH_CTX_cleanup(&s->s3->tmp.ecdh_ctx);
   OPENSSL_free(s->s3->tmp.peer_key);
 
@@ -236,7 +235,6 @@ void ssl3_free(SSL *s) {
   OPENSSL_free(s->s3->tmp.certificate_types);
   OPENSSL_free(s->s3->tmp.peer_ellipticcurvelist);
   OPENSSL_free(s->s3->tmp.peer_psk_identity_hint);
-  DH_free(s->s3->tmp.peer_dh_tmp);
   ssl3_free_handshake_buffer(s);
   ssl3_free_handshake_hash(s);
   OPENSSL_free(s->s3->alpn_selected);

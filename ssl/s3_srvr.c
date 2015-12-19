@@ -1239,24 +1239,19 @@ int ssl3_send_server_key_exchange(SSL *ssl) {
       }
       ssl->session->key_exchange_info = DH_num_bits(params);
 
-      /* Generate and save a keypair. */
+      /* Set up DH, generate a key, and emit the public half. */
       DH *dh = DHparams_dup(params);
-      if (dh == NULL || !DH_generate_key(dh)) {
-        DH_free(dh);
-        OPENSSL_PUT_ERROR(SSL, ERR_R_DH_LIB);
+      if (dh == NULL) {
         goto err;
       }
-      DH_free(ssl->s3->tmp.dh);
-      ssl->s3->tmp.dh = dh;
 
+      SSL_ECDH_CTX_init_for_dhe(&ssl->s3->tmp.ecdh_ctx, dh);
       if (!CBB_add_u16_length_prefixed(&cbb, &child) ||
-          !BN_bn2cbb_padded(&child, BN_num_bytes(dh->p), dh->p) ||
+          !BN_bn2cbb_padded(&child, BN_num_bytes(params->p), params->p) ||
           !CBB_add_u16_length_prefixed(&cbb, &child) ||
-          !BN_bn2cbb_padded(&child, BN_num_bytes(dh->g), dh->g) ||
+          !BN_bn2cbb_padded(&child, BN_num_bytes(params->g), params->g) ||
           !CBB_add_u16_length_prefixed(&cbb, &child) ||
-          /* Due to a bug in yaSSL, the public key must be zero padded to the
-           * size of the prime. */
-          !BN_bn2cbb_padded(&child, BN_num_bytes(dh->p), dh->pub_key)) {
+          !SSL_ECDH_CTX_generate_keypair(&ssl->s3->tmp.ecdh_ctx, &child)) {
         goto err;
       }
     } else if (alg_k & SSL_kECDHE) {
@@ -1464,8 +1459,6 @@ int ssl3_get_client_key_exchange(SSL *s) {
   uint8_t *premaster_secret = NULL;
   size_t premaster_secret_len = 0;
   uint8_t *decrypt_buf = NULL;
-  BIGNUM *pub = NULL;
-  DH *dh_srvr;
 
   unsigned psk_len = 0;
   uint8_t psk[PSK_MAX_PSK_LEN];
@@ -1639,56 +1632,19 @@ int ssl3_get_client_key_exchange(SSL *s) {
 
     OPENSSL_free(decrypt_buf);
     decrypt_buf = NULL;
-  } else if (alg_k & SSL_kDHE) {
-    CBS dh_Yc;
-    int dh_len;
-
-    if (!CBS_get_u16_length_prefixed(&client_key_exchange, &dh_Yc) ||
-        CBS_len(&dh_Yc) == 0 || CBS_len(&client_key_exchange) != 0) {
-      OPENSSL_PUT_ERROR(SSL, SSL_R_DH_PUBLIC_VALUE_LENGTH_IS_WRONG);
-      al = SSL_R_DECODE_ERROR;
-      goto f_err;
+  } else if (alg_k & (SSL_kECDHE|SSL_kDHE)) {
+    /* Parse the ClientKeyExchange. ECDHE uses a u8 length prefix while DHE uses
+     * u16. */
+    CBS peer_key;
+    int peer_key_ok;
+    if (alg_k & SSL_kECDHE) {
+      peer_key_ok = CBS_get_u8_length_prefixed(&client_key_exchange, &peer_key);
+    } else {
+      peer_key_ok =
+          CBS_get_u16_length_prefixed(&client_key_exchange, &peer_key);
     }
 
-    if (s->s3->tmp.dh == NULL) {
-      al = SSL_AD_HANDSHAKE_FAILURE;
-      OPENSSL_PUT_ERROR(SSL, SSL_R_MISSING_TMP_DH_KEY);
-      goto f_err;
-    }
-    dh_srvr = s->s3->tmp.dh;
-
-    pub = BN_bin2bn(CBS_data(&dh_Yc), CBS_len(&dh_Yc), NULL);
-    if (pub == NULL) {
-      OPENSSL_PUT_ERROR(SSL, SSL_R_BN_LIB);
-      goto err;
-    }
-
-    /* Allocate a buffer for the premaster secret. */
-    premaster_secret = OPENSSL_malloc(DH_size(dh_srvr));
-    if (premaster_secret == NULL) {
-      OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
-      BN_clear_free(pub);
-      goto err;
-    }
-
-    dh_len = DH_compute_key(premaster_secret, pub, dh_srvr);
-    if (dh_len <= 0) {
-      OPENSSL_PUT_ERROR(SSL, ERR_R_DH_LIB);
-      BN_clear_free(pub);
-      goto err;
-    }
-
-    DH_free(s->s3->tmp.dh);
-    s->s3->tmp.dh = NULL;
-    BN_clear_free(pub);
-    pub = NULL;
-
-    premaster_secret_len = dh_len;
-  } else if (alg_k & SSL_kECDHE) {
-    /* Parse the ClientKeyExchange. */
-    CBS ecdh_Yc;
-    if (!CBS_get_u8_length_prefixed(&client_key_exchange, &ecdh_Yc) ||
-        CBS_len(&client_key_exchange) != 0) {
+    if (!peer_key_ok || CBS_len(&client_key_exchange) != 0) {
       al = SSL_AD_DECODE_ERROR;
       OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
       goto f_err;
@@ -1698,7 +1654,7 @@ int ssl3_get_client_key_exchange(SSL *s) {
     uint8_t alert;
     if (!SSL_ECDH_CTX_compute_secret(&s->s3->tmp.ecdh_ctx, &premaster_secret,
                                      &premaster_secret_len, &alert,
-                                     CBS_data(&ecdh_Yc), CBS_len(&ecdh_Yc))) {
+                                     CBS_data(&peer_key), CBS_len(&peer_key))) {
       al = alert;
       goto f_err;
     }
