@@ -12,12 +12,15 @@ import (
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/sha1"
+	"crypto/subtle"
 	"crypto/x509"
 	"encoding/asn1"
 	"errors"
 	"fmt"
 	"io"
 	"math/big"
+
+	"./curve25519"
 )
 
 var errClientKeyExchange = errors.New("tls: invalid ClientKeyExchange message")
@@ -247,16 +250,90 @@ func pickTLS12HashForSignature(sigType uint8, clientList, serverList []signature
 	return 0, errors.New("tls: client doesn't support any common hash functions")
 }
 
-func curveForCurveID(id CurveID) (elliptic.Curve, bool) {
+// A ecdhCurve is an instance of ECDH-style key agreement for TLS.
+type ecdhCurve interface {
+	// generateKeypair generates a keypair using rand. It returns the
+	// encoded public key.
+	generateKeypair(rand io.Reader) (publicKey []byte, err error)
+
+	// computeSecret performs a key exchange against peerKey and returns
+	// the resulting shared secret.
+	computeSecret(peerKey []byte) (preMasterSecret []byte, err error)
+}
+
+// ellipticECDHCurve implements ecdhCurve with an elliptic.Curve.
+type ellipticECDHCurve struct {
+	curve      elliptic.Curve
+	privateKey []byte
+}
+
+func (e *ellipticECDHCurve) generateKeypair(rand io.Reader) (publicKey []byte, err error) {
+	var x, y *big.Int
+	e.privateKey, x, y, err = elliptic.GenerateKey(e.curve, rand)
+	if err != nil {
+		return nil, err
+	}
+	return elliptic.Marshal(e.curve, x, y), nil
+}
+
+func (e *ellipticECDHCurve) computeSecret(peerKey []byte) (preMasterSecret []byte, err error) {
+	x, y := elliptic.Unmarshal(e.curve, peerKey)
+	if x == nil {
+		return nil, errors.New("tls: invalid peer key")
+	}
+	x, _ = e.curve.ScalarMult(x, y, e.privateKey)
+	preMasterSecret = make([]byte, (e.curve.Params().BitSize+7)>>3)
+	xBytes := x.Bytes()
+	copy(preMasterSecret[len(preMasterSecret)-len(xBytes):], xBytes)
+
+	return preMasterSecret, nil
+}
+
+// x25519ECDHCurve implements ecdhCurve with X25519.
+type x25519ECDHCurve struct {
+	privateKey [32]byte
+}
+
+func (e *x25519ECDHCurve) generateKeypair(rand io.Reader) (publicKey []byte, err error) {
+	_, err = io.ReadFull(rand, e.privateKey[:])
+	if err != nil {
+		return
+	}
+	var out [32]byte
+	curve25519.ScalarBaseMult(&out, &e.privateKey)
+	return out[:], nil
+}
+
+func (e *x25519ECDHCurve) computeSecret(peerKey []byte) (preMasterSecret []byte, err error) {
+	if len(peerKey) != 32 {
+		return nil, errors.New("tls: invalid peer key")
+	}
+	var out, peerKeyCopy [32]byte
+	copy(peerKeyCopy[:], peerKey)
+	curve25519.ScalarMult(&out, &e.privateKey, &peerKeyCopy)
+
+	// Per draft-irtf-cfrg-curves-11, reject the all-zero value in constant
+	// time.
+	var zeros [32]byte
+	if subtle.ConstantTimeCompare(zeros[:], out[:]) == 1 {
+		return nil, errors.New("tls: X25519 value with wrong order")
+	}
+
+	return out[:], nil
+}
+
+func curveForCurveID(id CurveID) (ecdhCurve, bool) {
 	switch id {
 	case CurveP224:
-		return elliptic.P224(), true
+		return &ellipticECDHCurve{curve: elliptic.P224()}, true
 	case CurveP256:
-		return elliptic.P256(), true
+		return &ellipticECDHCurve{curve: elliptic.P256()}, true
 	case CurveP384:
-		return elliptic.P384(), true
+		return &ellipticECDHCurve{curve: elliptic.P384()}, true
 	case CurveP521:
-		return elliptic.P521(), true
+		return &ellipticECDHCurve{curve: elliptic.P521()}, true
+	case CurveX25519:
+		return &x25519ECDHCurve{}, true
 	default:
 		return nil, false
 	}
@@ -282,6 +359,24 @@ func (ka *nilKeyAgreementAuthentication) signParameters(config *Config, cert *Ce
 
 func (ka *nilKeyAgreementAuthentication) verifyParameters(config *Config, clientHello *clientHelloMsg, serverHello *serverHelloMsg, cert *x509.Certificate, params []byte, sig []byte) error {
 	return nil
+}
+
+func maybeCorruptECDSAValue(n *big.Int, typeOfCorruption BadValue, limit *big.Int) *big.Int {
+	switch typeOfCorruption {
+	case BadValueNone:
+		return n
+	case BadValueNegative:
+		return new(big.Int).Neg(n)
+	case BadValueZero:
+		return big.NewInt(0)
+	case BadValueLimit:
+		return limit
+	case BadValueLarge:
+		bad := new(big.Int).Set(limit)
+		return bad.Lsh(bad, 20)
+	default:
+		panic("unknown BadValue type")
+	}
 }
 
 // signedKeyAgreement signs the ServerKeyExchange parameters with the
@@ -429,28 +524,9 @@ func (ka *signedKeyAgreement) verifyParameters(config *Config, clientHello *clie
 // pre-master secret is then calculated using ECDH. The signature may
 // either be ECDSA or RSA.
 type ecdheKeyAgreement struct {
-	auth       keyAgreementAuthentication
-	privateKey []byte
-	curve      elliptic.Curve
-	x, y       *big.Int
-}
-
-func maybeCorruptECDSAValue(n *big.Int, typeOfCorruption BadValue, limit *big.Int) *big.Int {
-	switch typeOfCorruption {
-	case BadValueNone:
-		return n
-	case BadValueNegative:
-		return new(big.Int).Neg(n)
-	case BadValueZero:
-		return big.NewInt(0)
-	case BadValueLimit:
-		return limit
-	case BadValueLarge:
-		bad := new(big.Int).Set(limit)
-		return bad.Lsh(bad, 20)
-	default:
-		panic("unknown BadValue type")
-	}
+	auth    keyAgreementAuthentication
+	curve   ecdhCurve
+	peerKey []byte
 }
 
 func (ka *ecdheKeyAgreement) generateServerKeyExchange(config *Config, cert *Certificate, clientHello *clientHelloMsg, hello *serverHelloMsg) (*serverKeyExchangeMsg, error) {
@@ -476,24 +552,21 @@ NextCandidate:
 		return nil, errors.New("tls: preferredCurves includes unsupported curve")
 	}
 
-	var x, y *big.Int
-	var err error
-	ka.privateKey, x, y, err = elliptic.GenerateKey(ka.curve, config.rand())
+	publicKey, err := ka.curve.generateKeypair(config.rand())
 	if err != nil {
 		return nil, err
 	}
-	ecdhePublic := elliptic.Marshal(ka.curve, x, y)
 
 	// http://tools.ietf.org/html/rfc4492#section-5.4
-	serverECDHParams := make([]byte, 1+2+1+len(ecdhePublic))
+	serverECDHParams := make([]byte, 1+2+1+len(publicKey))
 	serverECDHParams[0] = 3 // named curve
 	serverECDHParams[1] = byte(curveid >> 8)
 	serverECDHParams[2] = byte(curveid)
 	if config.Bugs.InvalidSKXCurve {
 		serverECDHParams[2] ^= 0xff
 	}
-	serverECDHParams[3] = byte(len(ecdhePublic))
-	copy(serverECDHParams[4:], ecdhePublic)
+	serverECDHParams[3] = byte(len(publicKey))
+	copy(serverECDHParams[4:], publicKey)
 
 	return ka.auth.signParameters(config, cert, clientHello, hello, serverECDHParams)
 }
@@ -502,16 +575,7 @@ func (ka *ecdheKeyAgreement) processClientKeyExchange(config *Config, cert *Cert
 	if len(ckx.ciphertext) == 0 || int(ckx.ciphertext[0]) != len(ckx.ciphertext)-1 {
 		return nil, errClientKeyExchange
 	}
-	x, y := elliptic.Unmarshal(ka.curve, ckx.ciphertext[1:])
-	if x == nil {
-		return nil, errClientKeyExchange
-	}
-	x, _ = ka.curve.ScalarMult(x, y, ka.privateKey)
-	preMasterSecret := make([]byte, (ka.curve.Params().BitSize+7)>>3)
-	xBytes := x.Bytes()
-	copy(preMasterSecret[len(preMasterSecret)-len(xBytes):], xBytes)
-
-	return preMasterSecret, nil
+	return ka.curve.computeSecret(ckx.ciphertext[1:])
 }
 
 func (ka *ecdheKeyAgreement) processServerKeyExchange(config *Config, clientHello *clientHelloMsg, serverHello *serverHelloMsg, cert *x509.Certificate, skx *serverKeyExchangeMsg) error {
@@ -532,13 +596,12 @@ func (ka *ecdheKeyAgreement) processServerKeyExchange(config *Config, clientHell
 	if publicLen+4 > len(skx.key) {
 		return errServerKeyExchange
 	}
-	ka.x, ka.y = elliptic.Unmarshal(ka.curve, skx.key[4:4+publicLen])
-	if ka.x == nil {
-		return errServerKeyExchange
-	}
+	// Save the peer key for later.
+	ka.peerKey = skx.key[4 : 4+publicLen]
+
+	// Check the signature.
 	serverECDHParams := skx.key[:4+publicLen]
 	sig := skx.key[4+publicLen:]
-
 	return ka.auth.verifyParameters(config, clientHello, serverHello, cert, serverECDHParams, sig)
 }
 
@@ -546,21 +609,20 @@ func (ka *ecdheKeyAgreement) generateClientKeyExchange(config *Config, clientHel
 	if ka.curve == nil {
 		return nil, nil, errors.New("missing ServerKeyExchange message")
 	}
-	priv, mx, my, err := elliptic.GenerateKey(ka.curve, config.rand())
+
+	publicKey, err := ka.curve.generateKeypair(config.rand())
 	if err != nil {
 		return nil, nil, err
 	}
-	x, _ := ka.curve.ScalarMult(ka.x, ka.y, priv)
-	preMasterSecret := make([]byte, (ka.curve.Params().BitSize+7)>>3)
-	xBytes := x.Bytes()
-	copy(preMasterSecret[len(preMasterSecret)-len(xBytes):], xBytes)
-
-	serialized := elliptic.Marshal(ka.curve, mx, my)
+	preMasterSecret, err := ka.curve.computeSecret(ka.peerKey)
+	if err != nil {
+		return nil, nil, err
+	}
 
 	ckx := new(clientKeyExchangeMsg)
-	ckx.ciphertext = make([]byte, 1+len(serialized))
-	ckx.ciphertext[0] = byte(len(serialized))
-	copy(ckx.ciphertext[1:], serialized)
+	ckx.ciphertext = make([]byte, 1+len(publicKey))
+	ckx.ciphertext[0] = byte(len(publicKey))
+	copy(ckx.ciphertext[1:], publicKey)
 
 	return preMasterSecret, ckx, nil
 }
