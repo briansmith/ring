@@ -3986,10 +3986,9 @@ typedef struct ssl3_state_st {
    * pending handshake state here so it can be managed separately from
    * established connection state in case of renegotiations. */
   struct {
-    /* actually only need to be 16+20 for SSLv3 and 12 for TLS */
-    uint8_t finish_md[EVP_MAX_MD_SIZE * 2];
+    uint8_t finish_md[EVP_MAX_MD_SIZE];
     int finish_md_len;
-    uint8_t peer_finish_md[EVP_MAX_MD_SIZE * 2];
+    uint8_t peer_finish_md[EVP_MAX_MD_SIZE];
     int peer_finish_md_len;
 
     unsigned long message_size;
