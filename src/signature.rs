@@ -87,14 +87,7 @@ pub fn verify(alg: &VerificationAlgorithm, public_key: Input, msg: Input,
 }
 
 
-/// ECDSA Signatures (ASN.1 DER encoded) with public keys in uncompressed form.
-///
-/// The public key will be decoded using the
-/// `Octet-String-to-Elliptic-Curve-Point` algorithm in [SEC 1: Elliptic
-/// Curve Cryptography, Version 2.0](http://www.secg.org/sec1-v2.pdf); it must
-/// in be in uncompressed form. The signature will be parsed as a DER-encoded
-/// `Ecdsa-Sig-Value` as described in [RFC 3279 Section
-/// 2.2.3](https://tools.ietf.org/html/rfc3279#section-2.2.3).
+/// ECDSA Signatures.
 pub struct ECDSA {
     #[doc(hidden)]
     digest_alg: &'static digest::Algorithm,
@@ -129,8 +122,28 @@ macro_rules! ecdsa {
         #[doc=$digest_alg_name]
         #[doc=" digest algorithm."]
         ///
-        /// See the documentation for `ECDSA` for details of how the public key
-        /// and signature are encoded.
+        /// Public keys are encoding in uncompressed form using the
+        /// Octet-String-to-Elliptic-Curve-Point algorithm in [SEC 1: Elliptic
+        /// Curve Cryptography, Version 2.0](http://www.secg.org/sec1-v2.pdf).
+        /// Public keys are validated during key agreement according as
+        /// described in [NIST Special Publication 800-56A, revision
+        /// 2](http://csrc.nist.gov/groups/ST/toolkit/documents/SP800-56Arev1_3-8-07.pdf)
+        /// Section 5.6.2.5 and the [Suite B Implementer's Guide to NIST SP
+        /// 800-56A](https://www.nsa.gov/ia/_files/suiteb_implementer_g-113808.pdf)
+        /// Appendix B.3. Note that, as explained in the NSA guide, "partial"
+        /// validation is equivalent to "full" validation for prime-order
+        /// curves like this one.
+        ///
+        /// TODO: Each of the encoded coordinates are verified to be the
+        /// correct length, but values of the allowed length that haven't been
+        /// reduced modulo *q* are currently reduced mod *q* during
+        /// verification. Soon, coordinates larger than *q* - 1 will be
+        /// rejected.
+        ///
+        /// The signature will be parsed as a DER-encoded `Ecdsa-Sig-Value` as
+        /// described in [RFC 3279 Section
+        /// 2.2.3](https://tools.ietf.org/html/rfc3279#section-2.2.3). Both *r*
+        /// and *s* are verified to be in the range [1, *n* - 1].
         pub static $VERIFY_ALGORITHM: ECDSA = ECDSA {
             digest_alg: $digest_alg,
             ec_group_fn: $ec_group_fn,

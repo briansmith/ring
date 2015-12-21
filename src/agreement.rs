@@ -1,4 +1,4 @@
-﻿// Copyright 2015 Brian Smith.
+// Copyright 2015 Brian Smith.
 //
 // Permission to use, copy, modify, and/or distribute this software for any
 // purpose with or without fee is hereby granted, provided that the above
@@ -113,31 +113,6 @@ enum KeyPairImpl {
 ///
 /// C analogs: `ECDH_compute_key_ex` (*ring* only), `EC_POINT_oct2point` +
 /// `ECDH_compute_key`, `X25519`.
-//
-// As noted above, `agree_ephemeral` validates that key points are valid.
-// However, if the key is ephemeral and authenticated then, depending on other
-// details of the protocol and the specific algorithm, it may not be necessary
-// to validate that a peer's public point is on the curve. A malicious
-// authenticated peer could just as easily give us a bad public point that is
-// on the curve. Also, given that our key pair is ephemeral, we're not risking
-// the leakage of a long-term key via invalid point attacks. Note that DJB's
-// Curve25519 documentation has a FAQ that includes ["Q: How do I validate
-// Curve25519 public keys? A: Don't. [...]"](http://cr.yp.to/ecdh.html#validate).
-//
-// On the other hand, some users may feel that it is worthwhile to do point
-// validity check even if it seems to be not strictly necessary. And, it is
-// often not obvious that it is necessary. For example, point validation is
-// sometimes even in the case of authenticated key exchange to prevent key
-// dictation attacks, e.g. for TLS because of Triple Handshake; see
-// [Why not validate Curve25519 public keys could be
-// harmful](https://vnhacker.blogspot.com/2015/09/why-not-validating-curve25519-public.html)
-// by Thai Duong. Point validation is fast relative to other public key
-// operations, and it seems like point validation is never *bad* to do.
-//
-// So, it might be worthwhile to add another interface that is like
-// `agree_ephemeral` but which doesn't do the public key point validation, but
-// there are some doubts that its utility would justify the complexity and the
-// risks of its misuse.
 pub fn agree_ephemeral<F, R, E>(my_key_pair: EphemeralKeyPair,
                                 peer_public_key_alg: &Algorithm,
                                 peer_public_key: Input,
@@ -223,18 +198,20 @@ macro_rules! nist_ecdh {
         /// Public keys are encoding in uncompressed form using the
         /// Octet-String-to-Elliptic-Curve-Point algorithm in [SEC 1: Elliptic
         /// Curve Cryptography, Version 2.0](http://www.secg.org/sec1-v2.pdf).
-        /// A valid public key is a point that is on the curve and not at
-        /// infinity. TODO: Each of the encoded coordinates are verified to be
-        /// the correct length, but values of the allowed length that haven't
-        /// been reduced modulo *q* are currently reduced mod *q* during
-        /// verification; soon, coordinates larger than *q* - 1 will be
-        /// rejected.
-        ///
-        /// See NISTS's [SP 800-56Ar2: Recommendation for Pair-Wise Key
-        /// Establishment Schemes Using Discrete Logarithm
-        /// Cryptography](http://nvlpubs.nist.gov/nistpubs/SpecialPublications/NIST.SP.800-56Ar2.pdf),
-        /// and the NSA's [Suite B Implementerâ€™s Guide to NIST SP
+        /// Public keys are validated during key agreement according as
+        /// described in [NIST Special Publication 800-56A, revision
+        /// 2](http://csrc.nist.gov/groups/ST/toolkit/documents/SP800-56Arev1_3-8-07.pdf)
+        /// Section 5.6.2.5 and the [Suite B Implementer's Guide to NIST SP
         /// 800-56A](https://www.nsa.gov/ia/_files/suiteb_implementer_g-113808.pdf)
+        /// Appendix B.3. Note that, as explained in the NSA guide, "partial"
+        /// validation is equivalent to "full" validation for prime-order
+        /// curves like this one.
+        ///
+        /// TODO: Each of the encoded coordinates are verified to be the
+        /// correct length, but values of the allowed length that haven't been
+        /// reduced modulo *q* are currently reduced mod *q* during
+        /// verification. Soon, coordinates larger than *q* - 1 will be
+        /// rejected.
         pub static $NAME: Algorithm = Algorithm {
             ec_group_fn: $ec_group_fn,
             encoded_public_key_len: 1 + (2 * (($bits + 7) / 8)),
