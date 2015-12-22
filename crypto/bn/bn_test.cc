@@ -1823,7 +1823,7 @@ static bool test_asn1() {
     }
     CBS cbs;
     CBS_init(&cbs, reinterpret_cast<const uint8_t*>(test.der), test.der_len);
-    if (!BN_cbs2unsigned(&cbs, bn2.get()) || CBS_len(&cbs) != 0) {
+    if (!BN_parse_asn1_unsigned(&cbs, bn2.get()) || CBS_len(&cbs) != 0) {
       fprintf(stderr, "Parsing ASN.1 INTEGER failed.\n");
       return false;
     }
@@ -1838,7 +1838,7 @@ static bool test_asn1() {
     size_t der_len;
     CBB_zero(&cbb);
     if (!CBB_init(&cbb, 0) ||
-        !BN_bn2cbb(&cbb, bn.get()) ||
+        !BN_marshal_asn1(&cbb, bn.get()) ||
         !CBB_finish(&cbb, &der, &der_len)) {
       CBB_cleanup(&cbb);
       return false;
@@ -1852,7 +1852,7 @@ static bool test_asn1() {
 
     // |BN_cbs2unsigned_buggy| parses all valid input.
     CBS_init(&cbs, reinterpret_cast<const uint8_t*>(test.der), test.der_len);
-    if (!BN_cbs2unsigned_buggy(&cbs, bn2.get()) || CBS_len(&cbs) != 0) {
+    if (!BN_parse_asn1_unsigned_buggy(&cbs, bn2.get()) || CBS_len(&cbs) != 0) {
       fprintf(stderr, "Parsing ASN.1 INTEGER failed.\n");
       return false;
     }
@@ -1869,7 +1869,7 @@ static bool test_asn1() {
     }
     CBS cbs;
     CBS_init(&cbs, reinterpret_cast<const uint8_t*>(test.der), test.der_len);
-    if (BN_cbs2unsigned(&cbs, bn.get())) {
+    if (BN_parse_asn1_unsigned(&cbs, bn.get())) {
       fprintf(stderr, "Parsed invalid input.\n");
       return false;
     }
@@ -1878,7 +1878,7 @@ static bool test_asn1() {
     // All tests in kASN1InvalidTests are also rejected by
     // |BN_cbs2unsigned_buggy|.
     CBS_init(&cbs, reinterpret_cast<const uint8_t*>(test.der), test.der_len);
-    if (BN_cbs2unsigned_buggy(&cbs, bn.get())) {
+    if (BN_parse_asn1_unsigned_buggy(&cbs, bn.get())) {
       fprintf(stderr, "Parsed invalid input.\n");
       return false;
     }
@@ -1894,7 +1894,7 @@ static bool test_asn1() {
 
     CBS cbs;
     CBS_init(&cbs, reinterpret_cast<const uint8_t*>(test.der), test.der_len);
-    if (BN_cbs2unsigned(&cbs, bn.get())) {
+    if (BN_parse_asn1_unsigned(&cbs, bn.get())) {
       fprintf(stderr, "Parsed invalid input.\n");
       return false;
     }
@@ -1907,7 +1907,7 @@ static bool test_asn1() {
     }
 
     CBS_init(&cbs, reinterpret_cast<const uint8_t*>(test.der), test.der_len);
-    if (!BN_cbs2unsigned_buggy(&cbs, bn.get()) || CBS_len(&cbs) != 0) {
+    if (!BN_parse_asn1_unsigned_buggy(&cbs, bn.get()) || CBS_len(&cbs) != 0) {
       fprintf(stderr, "Parsing (invalid) ASN.1 INTEGER failed.\n");
       return false;
     }
@@ -1926,7 +1926,7 @@ static bool test_asn1() {
   CBB cbb;
   CBB_zero(&cbb);
   if (!CBB_init(&cbb, 0) ||
-      BN_bn2cbb(&cbb, bn.get())) {
+      BN_marshal_asn1(&cbb, bn.get())) {
     fprintf(stderr, "Serialized negative number.\n");
     CBB_cleanup(&cbb);
     return false;

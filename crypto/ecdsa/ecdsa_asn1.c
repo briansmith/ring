@@ -115,8 +115,8 @@ ECDSA_SIG *ECDSA_SIG_parse(CBS *cbs) {
   }
   CBS child;
   if (!CBS_get_asn1(cbs, &child, CBS_ASN1_SEQUENCE) ||
-      !BN_cbs2unsigned(&child, ret->r) ||
-      !BN_cbs2unsigned(&child, ret->s) ||
+      !BN_parse_asn1_unsigned(&child, ret->r) ||
+      !BN_parse_asn1_unsigned(&child, ret->s) ||
       CBS_len(&child) != 0) {
     OPENSSL_PUT_ERROR(ECDSA, ECDSA_R_BAD_SIGNATURE);
     ECDSA_SIG_free(ret);
@@ -140,8 +140,8 @@ ECDSA_SIG *ECDSA_SIG_from_bytes(const uint8_t *in, size_t in_len) {
 int ECDSA_SIG_marshal(CBB *cbb, const ECDSA_SIG *sig) {
   CBB child;
   if (!CBB_add_asn1(cbb, &child, CBS_ASN1_SEQUENCE) ||
-      !BN_bn2cbb(&child, sig->r) ||
-      !BN_bn2cbb(&child, sig->s) ||
+      !BN_marshal_asn1(&child, sig->r) ||
+      !BN_marshal_asn1(&child, sig->s) ||
       !CBB_flush(cbb)) {
     OPENSSL_PUT_ERROR(ECDSA, ECDSA_R_ENCODE_ERROR);
     return 0;

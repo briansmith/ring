@@ -76,9 +76,9 @@ static int parse_integer_buggy(CBS *cbs, BIGNUM **out, int buggy) {
     return 0;
   }
   if (buggy) {
-    return BN_cbs2unsigned_buggy(cbs, *out);
+    return BN_parse_asn1_unsigned_buggy(cbs, *out);
   }
-  return BN_cbs2unsigned(cbs, *out);
+  return BN_parse_asn1_unsigned(cbs, *out);
 }
 
 static int parse_integer(CBS *cbs, BIGNUM **out) {
@@ -91,7 +91,7 @@ static int marshal_integer(CBB *cbb, BIGNUM *bn) {
     OPENSSL_PUT_ERROR(RSA, RSA_R_VALUE_MISSING);
     return 0;
   }
-  return BN_bn2cbb(cbb, bn);
+  return BN_marshal_asn1(cbb, bn);
 }
 
 static RSA *parse_public_key(CBS *cbs, int buggy) {

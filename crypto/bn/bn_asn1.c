@@ -18,7 +18,7 @@
 #include <openssl/err.h>
 
 
-int BN_cbs2unsigned(CBS *cbs, BIGNUM *ret) {
+int BN_parse_asn1_unsigned(CBS *cbs, BIGNUM *ret) {
   CBS child;
   if (!CBS_get_asn1(cbs, &child, CBS_ASN1_INTEGER) ||
       CBS_len(&child) == 0) {
@@ -42,7 +42,7 @@ int BN_cbs2unsigned(CBS *cbs, BIGNUM *ret) {
   return BN_bin2bn(CBS_data(&child), CBS_len(&child), ret) != NULL;
 }
 
-int BN_cbs2unsigned_buggy(CBS *cbs, BIGNUM *ret) {
+int BN_parse_asn1_unsigned_buggy(CBS *cbs, BIGNUM *ret) {
   CBS child;
   if (!CBS_get_asn1(cbs, &child, CBS_ASN1_INTEGER) ||
       CBS_len(&child) == 0) {
@@ -58,7 +58,7 @@ int BN_cbs2unsigned_buggy(CBS *cbs, BIGNUM *ret) {
   return BN_bin2bn(CBS_data(&child), CBS_len(&child), ret) != NULL;
 }
 
-int BN_bn2cbb(CBB *cbb, const BIGNUM *bn) {
+int BN_marshal_asn1(CBB *cbb, const BIGNUM *bn) {
   /* Negative numbers are unsupported. */
   if (BN_is_negative(bn)) {
     OPENSSL_PUT_ERROR(BN, BN_R_NEGATIVE_NUMBER);
@@ -66,28 +66,15 @@ int BN_bn2cbb(CBB *cbb, const BIGNUM *bn) {
   }
 
   CBB child;
-  if (!CBB_add_asn1(cbb, &child, CBS_ASN1_INTEGER)) {
+  if (!CBB_add_asn1(cbb, &child, CBS_ASN1_INTEGER) ||
+      /* The number must be padded with a leading zero if the high bit would
+       * otherwise be set or if |bn| is zero. */
+      (BN_num_bits(bn) % 8 == 0 && !CBB_add_u8(&child, 0x00)) ||
+      !BN_bn2cbb_padded(&child, BN_num_bytes(bn), bn) ||
+      !CBB_flush(cbb)) {
     OPENSSL_PUT_ERROR(BN, BN_R_ENCODE_ERROR);
     return 0;
   }
 
-  /* The number must be padded with a leading zero if the high bit would
-   * otherwise be set (or |bn| is zero). */
-  if (BN_num_bits(bn) % 8 == 0 &&
-      !CBB_add_u8(&child, 0x00)) {
-    OPENSSL_PUT_ERROR(BN, BN_R_ENCODE_ERROR);
-    return 0;
-  }
-
-  uint8_t *out;
-  if (!CBB_add_space(&child, &out, BN_num_bytes(bn))) {
-    OPENSSL_PUT_ERROR(BN, BN_R_ENCODE_ERROR);
-    return 0;
-  }
-  BN_bn2bin(bn, out);
-  if (!CBB_flush(cbb)) {
-    OPENSSL_PUT_ERROR(BN, BN_R_ENCODE_ERROR);
-    return 0;
-  }
   return 1;
 }
