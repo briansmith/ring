@@ -445,8 +445,12 @@ static int mod_exp_recp(BIGNUM *r, const BIGNUM *a, const BIGNUM *p,
   bits = BN_num_bits(p);
 
   if (bits == 0) {
-    ret = BN_one(r);
-    return ret;
+    /* x**0 mod 1 is still zero. */
+    if (BN_is_one(m)) {
+      BN_zero(r);
+      return 1;
+    }
+    return BN_one(r);
   }
 
   BN_CTX_start(ctx);
@@ -632,8 +636,12 @@ int BN_mod_exp_mont(BIGNUM *rr, const BIGNUM *a, const BIGNUM *p,
   }
   bits = BN_num_bits(p);
   if (bits == 0) {
-    ret = BN_one(rr);
-    return ret;
+    /* x**0 mod 1 is still zero. */
+    if (BN_is_one(m)) {
+      BN_zero(rr);
+      return 1;
+    }
+    return BN_one(rr);
   }
 
   BN_CTX_start(ctx);
@@ -875,8 +883,12 @@ int BN_mod_exp_mont_consttime(BIGNUM *rr, const BIGNUM *a, const BIGNUM *p,
 
   bits = BN_num_bits(p);
   if (bits == 0) {
-    ret = BN_one(rr);
-    return ret;
+    /* x**0 mod 1 is still zero. */
+    if (BN_is_one(m)) {
+      BN_zero(rr);
+      return 1;
+    }
+    return BN_one(rr);
   }
 
   BN_CTX_start(ctx);
@@ -1230,17 +1242,14 @@ int BN_mod_exp_mont_word(BIGNUM *rr, BN_ULONG a, const BIGNUM *p,
   if (bits == 0) {
     /* x**0 mod 1 is still zero. */
     if (BN_is_one(m)) {
-      ret = 1;
       BN_zero(rr);
-    } else {
-      ret = BN_one(rr);
+      return 1;
     }
-    return ret;
+    return BN_one(rr);
   }
   if (a == 0) {
     BN_zero(rr);
-    ret = 1;
-    return ret;
+    return 1;
   }
 
   BN_CTX_start(ctx);

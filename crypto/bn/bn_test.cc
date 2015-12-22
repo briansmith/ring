@@ -1316,23 +1316,23 @@ static bool test_exp(FILE *fp, BN_CTX *ctx) {
 
 // test_exp_mod_zero tests that 1**0 mod 1 == 0.
 static bool test_exp_mod_zero(void) {
-  ScopedBIGNUM zero(BN_new());
-  if (!zero) {
+  ScopedBIGNUM zero(BN_new()), a(BN_new()), r(BN_new());
+  if (!zero || !a || !r || !BN_rand(a.get(), 1024, 0, 0)) {
     return false;
   }
   BN_zero(zero.get());
 
-  ScopedBN_CTX ctx(BN_CTX_new());
-  ScopedBIGNUM r(BN_new());
-  if (!ctx || !r ||
-      !BN_mod_exp(r.get(), BN_value_one(), zero.get(), BN_value_one(), ctx.get())) {
-    return false;
-  }
-
-  if (!BN_is_zero(r.get())) {
-    fprintf(stderr, "1**0 mod 1 = ");
-    BN_print_fp(stderr, r.get());
-    fprintf(stderr, ", should be 0\n");
+  if (!BN_mod_exp(r.get(), a.get(), zero.get(), BN_value_one(), nullptr) ||
+      !BN_is_zero(r.get()) ||
+      !BN_mod_exp_mont(r.get(), a.get(), zero.get(), BN_value_one(), nullptr,
+                       nullptr) ||
+      !BN_is_zero(r.get()) ||
+      !BN_mod_exp_mont_consttime(r.get(), a.get(), zero.get(), BN_value_one(),
+                                 nullptr, nullptr) ||
+      !BN_is_zero(r.get()) ||
+      !BN_mod_exp_mont_word(r.get(), 42, zero.get(), BN_value_one(), nullptr,
+                            nullptr) ||
+      !BN_is_zero(r.get())) {
     return false;
   }
 
