@@ -92,6 +92,7 @@ if(FUZZ)
 endif()
 
 add_definitions(-DBORINGSSL_IMPLEMENTATION)
+add_definitions(-DOPENSSL_NO_ASM)
 
 if (BUILD_SHARED_LIBS)
   add_definitions(-DBORINGSSL_SHARED_LIBRARY)

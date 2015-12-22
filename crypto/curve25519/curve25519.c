@@ -4826,7 +4826,7 @@ static void x25519_scalar_mult_generic(uint8_t out[32],
 
 static void x25519_scalar_mult(uint8_t out[32], const uint8_t scalar[32],
                                const uint8_t point[32]) {
-#if defined(OPENSSL_ARM)
+#if defined(BORINGSSL_X25519_NEON)
   if (CRYPTO_is_NEON_capable()) {
     x25519_NEON(out, scalar, point);
     return;
@@ -4868,7 +4868,7 @@ void X25519_public_from_private(uint8_t out_public_value[32],
 
 void X25519_public_from_private(uint8_t out_public_value[32],
                                 const uint8_t private_key[32]) {
-#if defined(OPENSSL_ARM)
+#if defined(BORINGSSL_X25519_NEON)
   if (CRYPTO_is_NEON_capable()) {
     static const uint8_t kMongomeryBasePoint[32] = {9};
     x25519_NEON(out_public_value, private_key, kMongomeryBasePoint);
