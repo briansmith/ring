@@ -1344,7 +1344,7 @@ int ssl3_send_server_key_exchange(SSL *ssl) {
 
       /* Compute the digest and sign it. */
       uint8_t digest[EVP_MAX_MD_SIZE];
-      unsigned digest_len;
+      unsigned digest_len = 0;
       EVP_MD_CTX md_ctx;
       EVP_MD_CTX_init(&md_ctx);
       int digest_ret =
