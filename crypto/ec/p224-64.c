@@ -1288,7 +1288,6 @@ err:
 const EC_METHOD *EC_GFp_nistp224_method(void) {
   static const EC_METHOD ret = {ec_GFp_nistp224_group_init,
                                 ec_GFp_simple_group_finish,
-                                ec_GFp_simple_group_clear_finish,
                                 ec_GFp_simple_group_copy,
                                 ec_GFp_nistp224_group_set_curve,
                                 ec_GFp_nistp224_point_get_affine_coordinates,

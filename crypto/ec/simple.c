@@ -102,12 +102,6 @@ void ec_GFp_simple_group_finish(EC_GROUP *group) {
   BN_free(&group->b);
 }
 
-void ec_GFp_simple_group_clear_finish(EC_GROUP *group) {
-  BN_clear_free(&group->field);
-  BN_clear_free(&group->a);
-  BN_clear_free(&group->b);
-}
-
 int ec_GFp_simple_group_copy(EC_GROUP *dest, const EC_GROUP *src) {
   if (!BN_copy(&dest->field, &src->field) ||
       !BN_copy(&dest->a, &src->a) ||

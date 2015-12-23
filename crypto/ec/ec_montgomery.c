@@ -91,14 +91,6 @@ void ec_GFp_mont_group_finish(EC_GROUP *group) {
   ec_GFp_simple_group_finish(group);
 }
 
-void ec_GFp_mont_group_clear_finish(EC_GROUP *group) {
-  BN_MONT_CTX_free(group->mont);
-  group->mont = NULL;
-  BN_clear_free(group->one);
-  group->one = NULL;
-  ec_GFp_simple_group_clear_finish(group);
-}
-
 int ec_GFp_mont_group_copy(EC_GROUP *dest, const EC_GROUP *src) {
   BN_MONT_CTX_free(dest->mont);
   dest->mont = NULL;
@@ -263,7 +255,6 @@ const EC_METHOD *EC_GFp_mont_method(void) {
   static const EC_METHOD ret = {
     ec_GFp_mont_group_init,
     ec_GFp_mont_group_finish,
-    ec_GFp_mont_group_clear_finish,
     ec_GFp_mont_group_copy,
     ec_GFp_mont_group_set_curve,
     ec_GFp_simple_point_get_affine_coordinates,

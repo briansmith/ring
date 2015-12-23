@@ -80,10 +80,9 @@ extern "C" {
 
 
 struct ec_method_st {
-  /* used by EC_GROUP_new, EC_GROUP_free, EC_GROUP_clear_free, EC_GROUP_copy: */
+  /* used by EC_GROUP_new, EC_GROUP_free, EC_GROUP_copy: */
   int (*group_init)(EC_GROUP *);
   void (*group_finish)(EC_GROUP *);
-  void (*group_clear_finish)(EC_GROUP *);
   int (*group_copy)(EC_GROUP *, const EC_GROUP *);
 
   /* used by EC_GROUP_set_curve_GFp, EC_GROUP_get_curve_GFp, */
@@ -180,7 +179,6 @@ int ec_wNAF_mul(const EC_GROUP *group, EC_POINT *r, const BIGNUM *g_scalar,
 /* method functions in simple.c */
 int ec_GFp_simple_group_init(EC_GROUP *);
 void ec_GFp_simple_group_finish(EC_GROUP *);
-void ec_GFp_simple_group_clear_finish(EC_GROUP *);
 int ec_GFp_simple_group_copy(EC_GROUP *, const EC_GROUP *);
 int ec_GFp_simple_group_set_curve(EC_GROUP *, const BIGNUM *p, const BIGNUM *a,
                                   const BIGNUM *b, BN_CTX *);
@@ -232,7 +230,6 @@ int ec_GFp_mont_group_init(EC_GROUP *);
 int ec_GFp_mont_group_set_curve(EC_GROUP *, const BIGNUM *p, const BIGNUM *a,
                                 const BIGNUM *b, BN_CTX *);
 void ec_GFp_mont_group_finish(EC_GROUP *);
-void ec_GFp_mont_group_clear_finish(EC_GROUP *);
 int ec_GFp_mont_group_copy(EC_GROUP *, const EC_GROUP *);
 int ec_GFp_mont_field_mul(const EC_GROUP *, BIGNUM *r, const BIGNUM *a,
                           const BIGNUM *b, BN_CTX *);
