@@ -144,10 +144,7 @@ struct evp_pkey_asn1_method_st {
 } /* EVP_PKEY_ASN1_METHOD */;
 
 
-typedef int EVP_PKEY_gen_cb(EVP_PKEY_CTX *ctx);
-
 #define EVP_PKEY_OP_UNDEFINED 0
-#define EVP_PKEY_OP_PARAMGEN (1 << 1)
 #define EVP_PKEY_OP_KEYGEN (1 << 2)
 #define EVP_PKEY_OP_SIGN (1 << 3)
 #define EVP_PKEY_OP_VERIFY (1 << 4)
@@ -156,7 +153,7 @@ typedef int EVP_PKEY_gen_cb(EVP_PKEY_CTX *ctx);
 #define EVP_PKEY_OP_DECRYPT (1 << 7)
 #define EVP_PKEY_OP_DERIVE (1 << 8)
 
-#define EVP_PKEY_OP_TYPE_SIG                                           \
+#define EVP_PKEY_OP_TYPE_SIG \
   (EVP_PKEY_OP_SIGN | EVP_PKEY_OP_VERIFY | EVP_PKEY_OP_VERIFYRECOVER)
 
 #define EVP_PKEY_OP_TYPE_CRYPT (EVP_PKEY_OP_ENCRYPT | EVP_PKEY_OP_DECRYPT)
@@ -164,7 +161,7 @@ typedef int EVP_PKEY_gen_cb(EVP_PKEY_CTX *ctx);
 #define EVP_PKEY_OP_TYPE_NOGEN \
   (EVP_PKEY_OP_SIG | EVP_PKEY_OP_CRYPT | EVP_PKEY_OP_DERIVE)
 
-#define EVP_PKEY_OP_TYPE_GEN (EVP_PKEY_OP_PARAMGEN | EVP_PKEY_OP_KEYGEN)
+#define EVP_PKEY_OP_TYPE_GEN EVP_PKEY_OP_KEYGEN
 
 /* EVP_PKEY_CTX_ctrl performs |cmd| on |ctx|. The |keytype| and |optype|
  * arguments can be -1 to specify that any type and operation are acceptable,
@@ -229,39 +226,28 @@ struct evp_pkey_ctx_st {
 
 struct evp_pkey_method_st {
   int pkey_id;
-  int flags;
 
   int (*init)(EVP_PKEY_CTX *ctx);
   int (*copy)(EVP_PKEY_CTX *dst, EVP_PKEY_CTX *src);
   void (*cleanup)(EVP_PKEY_CTX *ctx);
 
-  int (*paramgen_init)(EVP_PKEY_CTX *ctx);
-  int (*paramgen)(EVP_PKEY_CTX *ctx, EVP_PKEY *pkey);
-
-  int (*keygen_init)(EVP_PKEY_CTX *ctx);
   int (*keygen)(EVP_PKEY_CTX *ctx, EVP_PKEY *pkey);
 
-  int (*sign_init)(EVP_PKEY_CTX *ctx);
   int (*sign)(EVP_PKEY_CTX *ctx, uint8_t *sig, size_t *siglen,
               const uint8_t *tbs, size_t tbslen);
 
-  int (*verify_init)(EVP_PKEY_CTX *ctx);
   int (*verify)(EVP_PKEY_CTX *ctx, const uint8_t *sig, size_t siglen,
                 const uint8_t *tbs, size_t tbslen);
 
-  int (*verify_recover_init)(EVP_PKEY_CTX *ctx);
   int (*verify_recover)(EVP_PKEY_CTX *ctx, uint8_t *out, size_t *out_len,
                         const uint8_t *sig, size_t sig_len);
 
-  int (*encrypt_init)(EVP_PKEY_CTX *ctx);
   int (*encrypt)(EVP_PKEY_CTX *ctx, uint8_t *out, size_t *outlen,
                  const uint8_t *in, size_t inlen);
 
-  int (*decrypt_init)(EVP_PKEY_CTX *ctx);
   int (*decrypt)(EVP_PKEY_CTX *ctx, uint8_t *out, size_t *outlen,
                  const uint8_t *in, size_t inlen);
 
-  int (*derive_init)(EVP_PKEY_CTX *ctx);
   int (*derive)(EVP_PKEY_CTX *ctx, uint8_t *key, size_t *keylen);
 
   int (*ctrl)(EVP_PKEY_CTX *ctx, int type, int p1, void *p2);
