@@ -637,34 +637,6 @@ err:
   return -1;
 }
 
-int ssl3_do_change_cipher_spec(SSL *ssl) {
-  int i;
-
-  if (ssl->state & SSL_ST_ACCEPT) {
-    i = SSL3_CHANGE_CIPHER_SERVER_READ;
-  } else {
-    i = SSL3_CHANGE_CIPHER_CLIENT_READ;
-  }
-
-  if (ssl->s3->tmp.key_block == NULL) {
-    if (ssl->session == NULL || ssl->session->master_key_length == 0) {
-      /* might happen if dtls1_read_bytes() calls this */
-      OPENSSL_PUT_ERROR(SSL, SSL_R_CCS_RECEIVED_EARLY);
-      return 0;
-    }
-
-    if (!ssl->enc_method->setup_key_block(ssl)) {
-      return 0;
-    }
-  }
-
-  if (!ssl->enc_method->change_cipher_state(ssl, i)) {
-    return 0;
-  }
-
-  return 1;
-}
-
 int ssl3_send_alert(SSL *ssl, int level, int desc) {
   /* Map tls/ssl alert value to correct one */
   desc = ssl->enc_method->alert_value(desc);

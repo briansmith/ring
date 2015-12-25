@@ -165,9 +165,7 @@
 
 const SSL3_ENC_METHOD SSLv3_enc_data = {
     ssl3_prf,
-    tls1_setup_key_block,
     tls1_generate_master_secret,
-    tls1_change_cipher_state,
     ssl3_final_finish_mac,
     ssl3_cert_verify_mac,
     SSL3_MD_CLIENT_FINISHED_CONST, 4,

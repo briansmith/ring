@@ -368,9 +368,7 @@ int dtls1_connect(SSL *ssl) {
         ssl->state = SSL3_ST_CW_FINISHED_A;
         ssl->init_num = 0;
 
-        if (!ssl->enc_method->setup_key_block(ssl) ||
-            !ssl->enc_method->change_cipher_state(
-                ssl, SSL3_CHANGE_CIPHER_CLIENT_WRITE)) {
+        if (!tls1_change_cipher_state(ssl, SSL3_CHANGE_CIPHER_CLIENT_WRITE)) {
           ret = -1;
           goto end;
         }
@@ -430,7 +428,7 @@ int dtls1_connect(SSL *ssl) {
           goto end;
         }
 
-        if (!ssl3_do_change_cipher_spec(ssl)) {
+        if (!tls1_change_cipher_state(ssl, SSL3_CHANGE_CIPHER_CLIENT_READ)) {
           ret = -1;
           goto end;
         }

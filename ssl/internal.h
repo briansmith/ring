@@ -854,9 +854,7 @@ struct ssl_protocol_method_st {
 struct ssl3_enc_method {
   int (*prf)(SSL *, uint8_t *, size_t, const uint8_t *, size_t, const char *,
              size_t, const uint8_t *, size_t, const uint8_t *, size_t);
-  int (*setup_key_block)(SSL *);
   int (*generate_master_secret)(SSL *, uint8_t *, const uint8_t *, size_t);
-  int (*change_cipher_state)(SSL *, int);
   int (*final_finish_mac)(SSL *, const char *, int, uint8_t *);
   int (*cert_verify_mac)(SSL *, int, uint8_t *);
   const char *client_finished_label;
@@ -1086,8 +1084,6 @@ int ssl3_new(SSL *ssl);
 void ssl3_free(SSL *ssl);
 int ssl3_accept(SSL *ssl);
 int ssl3_connect(SSL *ssl);
-
-int ssl3_do_change_cipher_spec(SSL *ssl);
 
 int ssl3_set_handshake_header(SSL *ssl, int htype, unsigned long len);
 int ssl3_handshake_write(SSL *ssl);

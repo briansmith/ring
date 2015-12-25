@@ -269,6 +269,11 @@ static int tls1_generate_key_block(SSL *ssl, uint8_t *out, size_t out_len) {
 }
 
 int tls1_change_cipher_state(SSL *ssl, int which) {
+  /* Ensure the key block is set up. */
+  if (!tls1_setup_key_block(ssl)) {
+    return 0;
+  }
+
   /* is_read is true if we have just read a ChangeCipherSpec message - i.e. we
    * need to update the read cipherspec. Otherwise we have just written one. */
   const char is_read = (which & SSL3_CC_READ) != 0;

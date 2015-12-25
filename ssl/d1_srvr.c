@@ -355,7 +355,7 @@ int dtls1_accept(SSL *ssl) {
           goto end;
         }
 
-        if (!ssl3_do_change_cipher_spec(ssl)) {
+        if (!tls1_change_cipher_state(ssl, SSL3_CHANGE_CIPHER_SERVER_READ)) {
           ret = -1;
           goto end;
         }
@@ -393,11 +393,6 @@ int dtls1_accept(SSL *ssl) {
 
       case SSL3_ST_SW_CHANGE_A:
       case SSL3_ST_SW_CHANGE_B:
-        if (!ssl->enc_method->setup_key_block(ssl)) {
-          ret = -1;
-          goto end;
-        }
-
         ret = dtls1_send_change_cipher_spec(ssl, SSL3_ST_SW_CHANGE_A,
                                             SSL3_ST_SW_CHANGE_B);
 
@@ -408,8 +403,7 @@ int dtls1_accept(SSL *ssl) {
         ssl->state = SSL3_ST_SW_FINISHED_A;
         ssl->init_num = 0;
 
-        if (!ssl->enc_method->change_cipher_state(
-                ssl, SSL3_CHANGE_CIPHER_SERVER_WRITE)) {
+        if (!tls1_change_cipher_state(ssl, SSL3_CHANGE_CIPHER_SERVER_WRITE)) {
           ret = -1;
           goto end;
         }
