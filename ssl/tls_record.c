@@ -130,6 +130,18 @@ static int ssl_needs_record_splitting(const SSL *ssl) {
          SSL_CIPHER_is_block_cipher(ssl->aead_write_ctx->cipher);
 }
 
+int ssl_record_sequence_update(uint8_t *seq, size_t seq_len) {
+  size_t i;
+  for (i = seq_len - 1; i < seq_len; i--) {
+    ++seq[i];
+    if (seq[i] != 0) {
+      return 1;
+    }
+  }
+  OPENSSL_PUT_ERROR(SSL, ERR_R_OVERFLOW);
+  return 0;
+}
+
 size_t ssl_record_prefix_len(const SSL *ssl) {
   if (SSL_IS_DTLS(ssl)) {
     return DTLS1_RT_HEADER_LENGTH +
@@ -222,7 +234,7 @@ enum ssl_open_record_t tls_open_record(
     *out_alert = SSL_AD_BAD_RECORD_MAC;
     return ssl_open_record_error;
   }
-  if (!ssl3_record_sequence_update(ssl->s3->read_sequence, 8)) {
+  if (!ssl_record_sequence_update(ssl->s3->read_sequence, 8)) {
     *out_alert = SSL_AD_INTERNAL_ERROR;
     return ssl_open_record_error;
   }
@@ -284,7 +296,7 @@ static int do_seal_record(SSL *ssl, uint8_t *out, size_t *out_len,
                          &ciphertext_len, max_out - SSL3_RT_HEADER_LENGTH,
                          type, wire_version, ssl->s3->write_sequence, in,
                          in_len) ||
-      !ssl3_record_sequence_update(ssl->s3->write_sequence, 8)) {
+      !ssl_record_sequence_update(ssl->s3->write_sequence, 8)) {
     return 0;
   }
 

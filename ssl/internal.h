@@ -346,6 +346,10 @@ typedef struct dtls1_bitmap_st {
 
 /* Record layer. */
 
+/* ssl_record_sequence_update increments the sequence number in |seq|. It
+ * returns one on success and zero on wraparound. */
+int ssl_record_sequence_update(uint8_t *seq, size_t seq_len);
+
 /* ssl_record_prefix_len returns the length of the prefix before the ciphertext
  * of a record for |ssl|.
  *
@@ -1074,10 +1078,6 @@ int ssl3_new(SSL *ssl);
 void ssl3_free(SSL *ssl);
 int ssl3_accept(SSL *ssl);
 int ssl3_connect(SSL *ssl);
-
-/* ssl3_record_sequence_update increments the sequence number in |seq|. It
- * returns one on success and zero on wraparound. */
-int ssl3_record_sequence_update(uint8_t *seq, size_t seq_len);
 
 int ssl3_do_change_cipher_spec(SSL *ssl);
 

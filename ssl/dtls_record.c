@@ -286,7 +286,7 @@ int dtls_seal_record(SSL *ssl, uint8_t *out, size_t *out_len, size_t max_out,
   if (!SSL_AEAD_CTX_seal(aead, out + DTLS1_RT_HEADER_LENGTH, &ciphertext_len,
                          max_out - DTLS1_RT_HEADER_LENGTH, type, wire_version,
                          &out[3] /* seq */, in, in_len) ||
-      !ssl3_record_sequence_update(&seq[2], 6)) {
+      !ssl_record_sequence_update(&seq[2], 6)) {
     return 0;
   }
 
