@@ -393,7 +393,6 @@ int dtls1_accept(SSL *ssl) {
 
       case SSL3_ST_SW_CHANGE_A:
       case SSL3_ST_SW_CHANGE_B:
-        ssl->session->cipher = ssl->s3->tmp.new_cipher;
         if (!ssl->enc_method->setup_key_block(ssl)) {
           ret = -1;
           goto end;

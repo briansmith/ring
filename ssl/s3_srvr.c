@@ -502,7 +502,6 @@ int ssl3_accept(SSL *ssl) {
 
       case SSL3_ST_SW_CHANGE_A:
       case SSL3_ST_SW_CHANGE_B:
-        ssl->session->cipher = ssl->s3->tmp.new_cipher;
         if (!ssl->enc_method->setup_key_block(ssl)) {
           ret = -1;
           goto end;
@@ -1059,6 +1058,7 @@ int ssl3_get_client_hello(SSL *ssl) {
       OPENSSL_PUT_ERROR(SSL, SSL_R_NO_SHARED_CIPHER);
       goto f_err;
     }
+    ssl->session->cipher = c;
     ssl->s3->tmp.new_cipher = c;
 
     /* Determine whether to request a client certificate. */

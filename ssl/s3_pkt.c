@@ -653,7 +653,6 @@ int ssl3_do_change_cipher_spec(SSL *ssl) {
       return 0;
     }
 
-    ssl->session->cipher = ssl->s3->tmp.new_cipher;
     if (!ssl->enc_method->setup_key_block(ssl)) {
       return 0;
     }

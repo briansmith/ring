@@ -368,7 +368,6 @@ int dtls1_connect(SSL *ssl) {
         ssl->state = SSL3_ST_CW_FINISHED_A;
         ssl->init_num = 0;
 
-        ssl->session->cipher = ssl->s3->tmp.new_cipher;
         if (!ssl->enc_method->setup_key_block(ssl) ||
             !ssl->enc_method->change_cipher_state(
                 ssl, SSL3_CHANGE_CIPHER_CLIENT_WRITE)) {

@@ -388,7 +388,6 @@ int ssl3_connect(SSL *ssl) {
         }
         ssl->init_num = 0;
 
-        ssl->session->cipher = ssl->s3->tmp.new_cipher;
         if (!ssl->enc_method->setup_key_block(ssl) ||
             !ssl->enc_method->change_cipher_state(
                 ssl, SSL3_CHANGE_CIPHER_CLIENT_WRITE)) {
@@ -867,6 +866,8 @@ int ssl3_get_server_hello(SSL *ssl) {
       OPENSSL_PUT_ERROR(SSL, SSL_R_OLD_SESSION_VERSION_NOT_RETURNED);
       goto f_err;
     }
+  } else {
+    ssl->session->cipher = c;
   }
   ssl->s3->tmp.new_cipher = c;
 
