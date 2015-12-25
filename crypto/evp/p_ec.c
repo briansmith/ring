@@ -74,8 +74,6 @@
 
 
 typedef struct {
-  /* Key and paramgen group */
-  EC_GROUP *gen_group;
   /* message digest */
   const EVP_MD *md;
 } EC_PKEY_CTX;
@@ -102,12 +100,6 @@ static int pkey_ec_copy(EVP_PKEY_CTX *dst, EVP_PKEY_CTX *src) {
   sctx = src->data;
   dctx = dst->data;
 
-  if (sctx->gen_group) {
-    dctx->gen_group = EC_GROUP_dup(sctx->gen_group);
-    if (!dctx->gen_group) {
-      return 0;
-    }
-  }
   dctx->md = sctx->md;
 
   return 1;
@@ -119,7 +111,6 @@ static void pkey_ec_cleanup(EVP_PKEY_CTX *ctx) {
     return;
   }
 
-  EC_GROUP_free(dctx->gen_group);
   OPENSSL_free(dctx);
 }
 
@@ -185,19 +176,8 @@ static int pkey_ec_derive(EVP_PKEY_CTX *ctx, uint8_t *key,
 
 static int pkey_ec_ctrl(EVP_PKEY_CTX *ctx, int type, int p1, void *p2) {
   EC_PKEY_CTX *dctx = ctx->data;
-  EC_GROUP *group;
 
   switch (type) {
-    case EVP_PKEY_CTRL_EC_PARAMGEN_CURVE_NID:
-      group = EC_GROUP_new_by_curve_name(p1);
-      if (group == NULL) {
-        OPENSSL_PUT_ERROR(EVP, EVP_R_INVALID_CURVE);
-        return 0;
-      }
-      EC_GROUP_free(dctx->gen_group);
-      dctx->gen_group = group;
-      return 1;
-
     case EVP_PKEY_CTRL_MD:
       if (EVP_MD_type((const EVP_MD *)p2) != NID_sha1 &&
           EVP_MD_type((const EVP_MD *)p2) != NID_ecdsa_with_SHA1 &&
@@ -226,28 +206,18 @@ static int pkey_ec_ctrl(EVP_PKEY_CTX *ctx, int type, int p1, void *p2) {
 }
 
 static int pkey_ec_keygen(EVP_PKEY_CTX *ctx, EVP_PKEY *pkey) {
-  EC_KEY *ec = NULL;
-  EC_PKEY_CTX *dctx = ctx->data;
-  if (ctx->pkey == NULL && dctx->gen_group == NULL) {
+  if (ctx->pkey == NULL) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_NO_PARAMETERS_SET);
     return 0;
   }
-  ec = EC_KEY_new();
+  EC_KEY *ec = EC_KEY_new();
   if (!ec) {
     return 0;
   }
   EVP_PKEY_assign_EC_KEY(pkey, ec);
-  if (ctx->pkey) {
-    /* Note: if error return, pkey is freed by parent routine */
-    if (!EVP_PKEY_copy_parameters(pkey, ctx->pkey)) {
-      return 0;
-    }
-  } else {
-    if (!EC_KEY_set_group(ec, dctx->gen_group)) {
-      return 0;
-    }
-  }
-  return EC_KEY_generate_key(pkey->pkey.ec);
+  /* Note: if error return, pkey is freed by parent routine */
+  return EVP_PKEY_copy_parameters(pkey, ctx->pkey) &&
+         EC_KEY_generate_key(pkey->pkey.ec);
 }
 
 const EVP_PKEY_METHOD ec_pkey_meth = {
