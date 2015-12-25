@@ -126,9 +126,9 @@ static const uint8_t kMaxEmptyRecords = 32;
 /* ssl_needs_record_splitting returns one if |ssl|'s current outgoing cipher
  * state needs record-splitting and zero otherwise. */
 static int ssl_needs_record_splitting(const SSL *ssl) {
-  return !SSL_USE_EXPLICIT_IV(ssl) && ssl->aead_write_ctx != NULL &&
+  return !SSL_USE_EXPLICIT_IV(ssl) && ssl->s3->aead_write_ctx != NULL &&
          (ssl->mode & SSL_MODE_CBC_RECORD_SPLITTING) != 0 &&
-         SSL_CIPHER_is_block_cipher(ssl->aead_write_ctx->cipher);
+         SSL_CIPHER_is_block_cipher(ssl->s3->aead_write_ctx->cipher);
 }
 
 int ssl_record_sequence_update(uint8_t *seq, size_t seq_len) {
@@ -146,23 +146,23 @@ int ssl_record_sequence_update(uint8_t *seq, size_t seq_len) {
 size_t ssl_record_prefix_len(const SSL *ssl) {
   if (SSL_IS_DTLS(ssl)) {
     return DTLS1_RT_HEADER_LENGTH +
-           SSL_AEAD_CTX_explicit_nonce_len(ssl->aead_read_ctx);
+           SSL_AEAD_CTX_explicit_nonce_len(ssl->s3->aead_read_ctx);
   } else {
     return SSL3_RT_HEADER_LENGTH +
-           SSL_AEAD_CTX_explicit_nonce_len(ssl->aead_read_ctx);
+           SSL_AEAD_CTX_explicit_nonce_len(ssl->s3->aead_read_ctx);
   }
 }
 
 size_t ssl_seal_prefix_len(const SSL *ssl) {
   if (SSL_IS_DTLS(ssl)) {
     return DTLS1_RT_HEADER_LENGTH +
-           SSL_AEAD_CTX_explicit_nonce_len(ssl->aead_write_ctx);
+           SSL_AEAD_CTX_explicit_nonce_len(ssl->s3->aead_write_ctx);
   } else {
     size_t ret = SSL3_RT_HEADER_LENGTH +
-                 SSL_AEAD_CTX_explicit_nonce_len(ssl->aead_write_ctx);
+                 SSL_AEAD_CTX_explicit_nonce_len(ssl->s3->aead_write_ctx);
     if (ssl_needs_record_splitting(ssl)) {
       ret += SSL3_RT_HEADER_LENGTH;
-      ret += ssl_cipher_get_record_split_len(ssl->aead_write_ctx->cipher);
+      ret += ssl_cipher_get_record_split_len(ssl->s3->aead_write_ctx->cipher);
     }
     return ret;
   }
@@ -171,10 +171,10 @@ size_t ssl_seal_prefix_len(const SSL *ssl) {
 size_t ssl_max_seal_overhead(const SSL *ssl) {
   if (SSL_IS_DTLS(ssl)) {
     return DTLS1_RT_HEADER_LENGTH +
-           SSL_AEAD_CTX_max_overhead(ssl->aead_write_ctx);
+           SSL_AEAD_CTX_max_overhead(ssl->s3->aead_write_ctx);
   } else {
     size_t ret = SSL3_RT_HEADER_LENGTH +
-                 SSL_AEAD_CTX_max_overhead(ssl->aead_write_ctx);
+                 SSL_AEAD_CTX_max_overhead(ssl->s3->aead_write_ctx);
     if (ssl_needs_record_splitting(ssl)) {
       ret *= 2;
     }
@@ -228,7 +228,7 @@ enum ssl_open_record_t tls_open_record(
 
   /* Decrypt the body. */
   size_t plaintext_len;
-  if (!SSL_AEAD_CTX_open(ssl->aead_read_ctx, out, &plaintext_len, max_out,
+  if (!SSL_AEAD_CTX_open(ssl->s3->aead_read_ctx, out, &plaintext_len, max_out,
                          type, version, ssl->s3->read_sequence, CBS_data(&body),
                          CBS_len(&body))) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_DECRYPTION_FAILED_OR_BAD_RECORD_MAC);
@@ -293,7 +293,7 @@ static int do_seal_record(SSL *ssl, uint8_t *out, size_t *out_len,
   out[2] = wire_version & 0xff;
 
   size_t ciphertext_len;
-  if (!SSL_AEAD_CTX_seal(ssl->aead_write_ctx, out + SSL3_RT_HEADER_LENGTH,
+  if (!SSL_AEAD_CTX_seal(ssl->s3->aead_write_ctx, out + SSL3_RT_HEADER_LENGTH,
                          &ciphertext_len, max_out - SSL3_RT_HEADER_LENGTH,
                          type, wire_version, ssl->s3->write_sequence, in,
                          in_len) ||
@@ -342,8 +342,8 @@ int tls_seal_record(SSL *ssl, uint8_t *out, size_t *out_len, size_t max_out,
     out += frag_len;
     max_out -= frag_len;
 
-    assert(SSL3_RT_HEADER_LENGTH +
-               ssl_cipher_get_record_split_len(ssl->aead_write_ctx->cipher) ==
+    assert(SSL3_RT_HEADER_LENGTH + ssl_cipher_get_record_split_len(
+                                       ssl->s3->aead_write_ctx->cipher) ==
            frag_len);
   }
 
@@ -361,8 +361,8 @@ void ssl_set_read_state(SSL *ssl, SSL_AEAD_CTX *aead_ctx) {
   }
   memset(ssl->s3->read_sequence, 0, sizeof(ssl->s3->read_sequence));
 
-  SSL_AEAD_CTX_free(ssl->aead_read_ctx);
-  ssl->aead_read_ctx = aead_ctx;
+  SSL_AEAD_CTX_free(ssl->s3->aead_read_ctx);
+  ssl->s3->aead_read_ctx = aead_ctx;
 }
 
 void ssl_set_write_state(SSL *ssl, SSL_AEAD_CTX *aead_ctx) {
@@ -373,6 +373,6 @@ void ssl_set_write_state(SSL *ssl, SSL_AEAD_CTX *aead_ctx) {
   }
   memset(ssl->s3->write_sequence, 0, sizeof(ssl->s3->write_sequence));
 
-  SSL_AEAD_CTX_free(ssl->aead_write_ctx);
-  ssl->aead_write_ctx = aead_ctx;
+  SSL_AEAD_CTX_free(ssl->s3->aead_write_ctx);
+  ssl->s3->aead_write_ctx = aead_ctx;
 }

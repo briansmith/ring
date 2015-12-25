@@ -2150,8 +2150,8 @@ int ssl3_get_next_proto(SSL *ssl) {
   if (!CBS_get_u8_length_prefixed(&next_protocol, &selected_protocol) ||
       !CBS_get_u8_length_prefixed(&next_protocol, &padding) ||
       CBS_len(&next_protocol) != 0 ||
-      !CBS_stow(&selected_protocol, &ssl->next_proto_negotiated,
-                &ssl->next_proto_negotiated_len)) {
+      !CBS_stow(&selected_protocol, &ssl->s3->next_proto_negotiated,
+                &ssl->s3->next_proto_negotiated_len)) {
     return 0;
   }
 

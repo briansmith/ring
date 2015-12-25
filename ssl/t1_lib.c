@@ -1311,14 +1311,14 @@ static int ext_npn_parse_serverhello(SSL *ssl, uint8_t *out_alert,
     return 0;
   }
 
-  OPENSSL_free(ssl->next_proto_negotiated);
-  ssl->next_proto_negotiated = BUF_memdup(selected, selected_len);
-  if (ssl->next_proto_negotiated == NULL) {
+  OPENSSL_free(ssl->s3->next_proto_negotiated);
+  ssl->s3->next_proto_negotiated = BUF_memdup(selected, selected_len);
+  if (ssl->s3->next_proto_negotiated == NULL) {
     *out_alert = SSL_AD_INTERNAL_ERROR;
     return 0;
   }
 
-  ssl->next_proto_negotiated_len = selected_len;
+  ssl->s3->next_proto_negotiated_len = selected_len;
   ssl->s3->next_proto_neg_seen = 1;
 
   return 1;

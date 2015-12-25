@@ -213,7 +213,7 @@ enum ssl_open_record_t dtls_open_record(
 
   /* Decrypt the body. */
   size_t plaintext_len;
-  if (!SSL_AEAD_CTX_open(ssl->aead_read_ctx, out, &plaintext_len, max_out,
+  if (!SSL_AEAD_CTX_open(ssl->s3->aead_read_ctx, out, &plaintext_len, max_out,
                          type, version, sequence, CBS_data(&body),
                          CBS_len(&body))) {
     /* Bad packets are silently dropped in DTLS. See section 4.2.1 of RFC 6347.
@@ -250,7 +250,7 @@ int dtls_seal_record(SSL *ssl, uint8_t *out, size_t *out_len, size_t max_out,
                      enum dtls1_use_epoch_t use_epoch) {
   /* Determine the parameters for the current epoch. */
   uint16_t epoch = ssl->d1->w_epoch;
-  SSL_AEAD_CTX *aead = ssl->aead_write_ctx;
+  SSL_AEAD_CTX *aead = ssl->s3->aead_write_ctx;
   uint8_t *seq = ssl->s3->write_sequence;
   if (use_epoch == dtls1_use_previous_epoch) {
     /* DTLS renegotiation is unsupported, so only epochs 0 (NULL cipher) and 1

@@ -1966,7 +1966,7 @@ int ssl3_send_next_proto(SSL *ssl) {
   assert(ssl->state == SSL3_ST_CW_NEXT_PROTO_A);
 
   static const uint8_t kZero[32] = {0};
-  size_t padding_len = 32 - ((ssl->next_proto_negotiated_len + 2) % 32);
+  size_t padding_len = 32 - ((ssl->s3->next_proto_negotiated_len + 2) % 32);
 
   CBB cbb, child;
   size_t length;
@@ -1974,8 +1974,8 @@ int ssl3_send_next_proto(SSL *ssl) {
   if (!CBB_init_fixed(&cbb, ssl_handshake_start(ssl),
                       ssl->init_buf->max - SSL_HM_HEADER_LENGTH(ssl)) ||
       !CBB_add_u8_length_prefixed(&cbb, &child) ||
-      !CBB_add_bytes(&child, ssl->next_proto_negotiated,
-                     ssl->next_proto_negotiated_len) ||
+      !CBB_add_bytes(&child, ssl->s3->next_proto_negotiated,
+                     ssl->s3->next_proto_negotiated_len) ||
       !CBB_add_u8_length_prefixed(&cbb, &child) ||
       !CBB_add_bytes(&child, kZero, padding_len) ||
       !CBB_finish(&cbb, NULL, &length) ||

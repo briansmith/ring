@@ -237,7 +237,10 @@ void ssl3_free(SSL *ssl) {
   OPENSSL_free(ssl->s3->tmp.peer_psk_identity_hint);
   ssl3_free_handshake_buffer(ssl);
   ssl3_free_handshake_hash(ssl);
+  OPENSSL_free(ssl->s3->next_proto_negotiated);
   OPENSSL_free(ssl->s3->alpn_selected);
+  SSL_AEAD_CTX_free(ssl->s3->aead_read_ctx);
+  SSL_AEAD_CTX_free(ssl->s3->aead_write_ctx);
 
   OPENSSL_cleanse(ssl->s3, sizeof *ssl->s3);
   OPENSSL_free(ssl->s3);

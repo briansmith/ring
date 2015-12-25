@@ -486,8 +486,6 @@ void SSL_free(SSL *ssl) {
   ssl_clear_bad_session(ssl);
   SSL_SESSION_free(ssl->session);
 
-  ssl_clear_cipher_ctx(ssl);
-
   ssl_cert_free(ssl->cert);
 
   OPENSSL_free(ssl->tlsext_hostname);
@@ -497,7 +495,6 @@ void SSL_free(SSL *ssl) {
   EVP_PKEY_free(ssl->tlsext_channel_id_private);
   OPENSSL_free(ssl->psk_identity_hint);
   sk_X509_NAME_pop_free(ssl->client_CA, X509_NAME_free);
-  OPENSSL_free(ssl->next_proto_negotiated);
   sk_SRTP_PROTECTION_PROFILE_free(ssl->srtp_profiles);
 
   if (ssl->method != NULL) {
@@ -513,8 +510,6 @@ void SSL_set_connect_state(SSL *ssl) {
   ssl->shutdown = 0;
   ssl->state = SSL_ST_CONNECT;
   ssl->handshake_func = ssl->method->ssl_connect;
-  /* clear the current cipher */
-  ssl_clear_cipher_ctx(ssl);
 }
 
 void SSL_set_accept_state(SSL *ssl) {
@@ -522,8 +517,6 @@ void SSL_set_accept_state(SSL *ssl) {
   ssl->shutdown = 0;
   ssl->state = SSL_ST_ACCEPT;
   ssl->handshake_func = ssl->method->ssl_accept;
-  /* clear the current cipher */
-  ssl_clear_cipher_ctx(ssl);
 }
 
 void SSL_set_bio(SSL *ssl, BIO *rbio, BIO *wbio) {
@@ -1574,11 +1567,11 @@ found:
 
 void SSL_get0_next_proto_negotiated(const SSL *ssl, const uint8_t **out_data,
                                     unsigned *out_len) {
-  *out_data = ssl->next_proto_negotiated;
+  *out_data = ssl->s3->next_proto_negotiated;
   if (*out_data == NULL) {
     *out_len = 0;
   } else {
-    *out_len = ssl->next_proto_negotiated_len;
+    *out_len = ssl->s3->next_proto_negotiated_len;
   }
 }
 
@@ -1822,13 +1815,6 @@ const char *SSL_SESSION_get_version(const SSL_SESSION *session) {
   return ssl_get_version(session->ssl_version);
 }
 
-void ssl_clear_cipher_ctx(SSL *ssl) {
-  SSL_AEAD_CTX_free(ssl->aead_read_ctx);
-  ssl->aead_read_ctx = NULL;
-  SSL_AEAD_CTX_free(ssl->aead_write_ctx);
-  ssl->aead_write_ctx = NULL;
-}
-
 X509 *SSL_get_certificate(const SSL *ssl) {
   if (ssl->cert != NULL) {
     return ssl->cert->x509;
@@ -1862,10 +1848,10 @@ EVP_PKEY *SSL_CTX_get0_privatekey(const SSL_CTX *ctx) {
 }
 
 const SSL_CIPHER *SSL_get_current_cipher(const SSL *ssl) {
-  if (ssl->aead_write_ctx == NULL) {
+  if (ssl->s3->aead_write_ctx == NULL) {
     return NULL;
   }
-  return ssl->aead_write_ctx->cipher;
+  return ssl->s3->aead_write_ctx->cipher;
 }
 
 const COMP_METHOD *SSL_get_current_compression(SSL *ssl) { return NULL; }
@@ -2541,23 +2527,24 @@ void SSL_set_reject_peer_renegotiations(SSL *ssl, int reject) {
 
 int SSL_get_rc4_state(const SSL *ssl, const RC4_KEY **read_key,
                       const RC4_KEY **write_key) {
-  if (ssl->aead_read_ctx == NULL || ssl->aead_write_ctx == NULL) {
+  if (ssl->s3->aead_read_ctx == NULL || ssl->s3->aead_write_ctx == NULL) {
     return 0;
   }
 
-  return EVP_AEAD_CTX_get_rc4_state(&ssl->aead_read_ctx->ctx, read_key) &&
-         EVP_AEAD_CTX_get_rc4_state(&ssl->aead_write_ctx->ctx, write_key);
+  return EVP_AEAD_CTX_get_rc4_state(&ssl->s3->aead_read_ctx->ctx, read_key) &&
+         EVP_AEAD_CTX_get_rc4_state(&ssl->s3->aead_write_ctx->ctx, write_key);
 }
 
 int SSL_get_ivs(const SSL *ssl, const uint8_t **out_read_iv,
                 const uint8_t **out_write_iv, size_t *out_iv_len) {
-  if (ssl->aead_read_ctx == NULL || ssl->aead_write_ctx == NULL) {
+  if (ssl->s3->aead_read_ctx == NULL || ssl->s3->aead_write_ctx == NULL) {
     return 0;
   }
 
   size_t write_iv_len;
-  if (!EVP_AEAD_CTX_get_iv(&ssl->aead_read_ctx->ctx, out_read_iv, out_iv_len) ||
-      !EVP_AEAD_CTX_get_iv(&ssl->aead_write_ctx->ctx, out_write_iv,
+  if (!EVP_AEAD_CTX_get_iv(&ssl->s3->aead_read_ctx->ctx, out_read_iv,
+                           out_iv_len) ||
+      !EVP_AEAD_CTX_get_iv(&ssl->s3->aead_write_ctx->ctx, out_write_iv,
                            &write_iv_len) ||
       *out_iv_len != write_iv_len) {
     return 0;
@@ -2629,12 +2616,6 @@ int SSL_clear(SSL *ssl) {
 
   BUF_MEM_free(ssl->init_buf);
   ssl->init_buf = NULL;
-
-  ssl_clear_cipher_ctx(ssl);
-
-  OPENSSL_free(ssl->next_proto_negotiated);
-  ssl->next_proto_negotiated = NULL;
-  ssl->next_proto_negotiated_len = 0;
 
   /* The ssl->d1->mtu is simultaneously configuration (preserved across
    * clear) and connection-specific state (gets reset).

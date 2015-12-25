@@ -3787,9 +3787,6 @@ struct ssl_st {
   struct ssl_cipher_preference_list_st *cipher_list;
   STACK_OF(SSL_CIPHER) *cipher_list_by_id;
 
-  SSL_AEAD_CTX *aead_read_ctx;
-  SSL_AEAD_CTX *aead_write_ctx;
-
   /* session info */
 
   /* client cert? */
@@ -3847,15 +3844,6 @@ struct ssl_st {
   uint16_t *tlsext_ellipticcurvelist; /* our list */
 
   SSL_CTX *initial_ctx; /* initial ctx, used to store sessions */
-
-  /* Next protocol negotiation. For the client, this is the protocol that we
-   * sent in NextProtocol and is set when handling ServerHello extensions.
-   *
-   * For a server, this is the client's selected_protocol from NextProtocol and
-   * is set when handling the NextProtocol message, before the Finished
-   * message. */
-  uint8_t *next_proto_negotiated;
-  size_t next_proto_negotiated_len;
 
   /* srtp_profiles is the list of configured SRTP protection profiles for
    * DTLS-SRTP. */
@@ -3992,6 +3980,12 @@ typedef struct ssl3_state_st {
    * received. */
   uint8_t warning_alert_count;
 
+  /* aead_read_ctx is the current read cipher state. */
+  SSL_AEAD_CTX *aead_read_ctx;
+
+  /* aead_write_ctx is the current write cipher state. */
+  SSL_AEAD_CTX *aead_write_ctx;
+
   /* State pertaining to the pending handshake.
    *
    * TODO(davidben): State is current spread all over the place. Move
@@ -4124,6 +4118,15 @@ typedef struct ssl3_state_st {
 
   /* Set if we saw the Next Protocol Negotiation extension from our peer. */
   int next_proto_neg_seen;
+
+  /* Next protocol negotiation. For the client, this is the protocol that we
+   * sent in NextProtocol and is set when handling ServerHello extensions.
+   *
+   * For a server, this is the client's selected_protocol from NextProtocol and
+   * is set when handling the NextProtocol message, before the Finished
+   * message. */
+  uint8_t *next_proto_negotiated;
+  size_t next_proto_negotiated_len;
 
   /* ALPN information
    * (we are in the process of transitioning from NPN to ALPN.) */

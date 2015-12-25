@@ -300,7 +300,7 @@ start:
     /* Make sure that we are not getting application data when we
      * are doing a handshake for the first time. */
     if (SSL_in_init(ssl) && (type == SSL3_RT_APPLICATION_DATA) &&
-        (ssl->aead_read_ctx == NULL)) {
+        (ssl->s3->aead_read_ctx == NULL)) {
       /* TODO(davidben): Is this check redundant with the handshake_func
        * check? */
       al = SSL_AD_UNEXPECTED_MESSAGE;
@@ -403,8 +403,10 @@ start:
    * Application data must come in the encrypted epoch, and ChangeCipherSpec in
    * the unencrypted epoch (we never renegotiate). Other cases fall through and
    * fail with a fatal error. */
-  if ((rr->type == SSL3_RT_APPLICATION_DATA && ssl->aead_read_ctx != NULL) ||
-      (rr->type == SSL3_RT_CHANGE_CIPHER_SPEC && ssl->aead_read_ctx == NULL)) {
+  if ((rr->type == SSL3_RT_APPLICATION_DATA &&
+       ssl->s3->aead_read_ctx != NULL) ||
+      (rr->type == SSL3_RT_CHANGE_CIPHER_SPEC &&
+       ssl->s3->aead_read_ctx == NULL)) {
     rr->length = 0;
     goto start;
   }
