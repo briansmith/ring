@@ -428,14 +428,6 @@ OPENSSL_EXPORT EVP_PKEY_CTX *EVP_PKEY_CTX_dup(EVP_PKEY_CTX *ctx);
 /* EVP_PKEY_CTX_get0_pkey returns the |EVP_PKEY| associated with |ctx|. */
 OPENSSL_EXPORT EVP_PKEY *EVP_PKEY_CTX_get0_pkey(EVP_PKEY_CTX *ctx);
 
-/* EVP_PKEY_CTX_set_app_data sets an opaque pointer on |ctx|. */
-OPENSSL_EXPORT void EVP_PKEY_CTX_set_app_data(EVP_PKEY_CTX *ctx, void *data);
-
-/* EVP_PKEY_CTX_get_app_data returns the opaque pointer from |ctx| that was
- * previously set with |EVP_PKEY_CTX_set_app_data|, or NULL if none has been
- * set. */
-OPENSSL_EXPORT void *EVP_PKEY_CTX_get_app_data(EVP_PKEY_CTX *ctx);
-
 /* EVP_PKEY_sign_init initialises an |EVP_PKEY_CTX| for a signing operation. It
  * should be called before |EVP_PKEY_sign|.
  *

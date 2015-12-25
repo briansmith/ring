@@ -218,8 +218,6 @@ struct evp_pkey_ctx_st {
   int operation;
   /* Algorithm specific data */
   void *data;
-  /* Application specific data */
-  void *app_data;
 } /* EVP_PKEY_CTX */;
 
 struct evp_pkey_method_st {

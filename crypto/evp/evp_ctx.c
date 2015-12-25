@@ -193,12 +193,6 @@ err:
 
 EVP_PKEY *EVP_PKEY_CTX_get0_pkey(EVP_PKEY_CTX *ctx) { return ctx->pkey; }
 
-void EVP_PKEY_CTX_set_app_data(EVP_PKEY_CTX *ctx, void *data) {
-  ctx->app_data = data;
-}
-
-void *EVP_PKEY_CTX_get_app_data(EVP_PKEY_CTX *ctx) { return ctx->app_data; }
-
 int EVP_PKEY_CTX_ctrl(EVP_PKEY_CTX *ctx, int keytype, int optype, int cmd,
                       int p1, void *p2) {
   if (!ctx || !ctx->pmeth || !ctx->pmeth->ctrl) {
