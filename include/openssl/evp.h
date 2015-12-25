@@ -649,7 +649,7 @@ OPENSSL_EXPORT int EVP_PKEY_CTX_get_rsa_mgf1_md(EVP_PKEY_CTX *ctx,
  *
  * Returns one on success or zero on error. */
 OPENSSL_EXPORT int EVP_PKEY_CTX_set0_rsa_oaep_label(EVP_PKEY_CTX *ctx,
-                                                    const uint8_t *label,
+                                                    uint8_t *label,
                                                     size_t label_len);
 
 /* EVP_PKEY_CTX_get0_rsa_oaep_label sets |*out_label| to point to the internal
