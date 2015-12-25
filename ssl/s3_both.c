@@ -277,13 +277,6 @@ err:
   return 0;
 }
 
-/* for these 2 messages, we need to
- * ssl->enc_read_ctx      re-init
- * ssl->s3->read_sequence   zero
- * ssl->s3->read_mac_secret   re-init
- * ssl->session->read_sym_enc   assign
- * ssl->session->read_compression assign
- * ssl->session->read_hash    assign */
 int ssl3_send_change_cipher_spec(SSL *ssl, int a, int b) {
   if (ssl->state == a) {
     *((uint8_t *)ssl->init_buf->data) = SSL3_MT_CCS;

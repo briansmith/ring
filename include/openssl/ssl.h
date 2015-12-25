@@ -4057,13 +4057,12 @@ typedef struct ssl3_state_st {
     uint8_t *certificate_types;
     size_t num_certificate_types;
 
-    int key_block_length;
     uint8_t *key_block;
+    uint8_t key_block_length;
 
-    const EVP_AEAD *new_aead;
     uint8_t new_mac_secret_len;
+    uint8_t new_key_len;
     uint8_t new_fixed_iv_len;
-    uint8_t new_variable_iv_len;
 
     /* Server-only: cert_request is true if a client certificate was
      * requested. */

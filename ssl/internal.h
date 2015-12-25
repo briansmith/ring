@@ -436,6 +436,14 @@ int dtls_seal_record(SSL *ssl, uint8_t *out, size_t *out_len, size_t max_out,
                      uint8_t type, const uint8_t *in, size_t in_len,
                      enum dtls1_use_epoch_t use_epoch);
 
+/* ssl_set_read_state sets |ssl|'s read cipher state to |aead_ctx|. It takes
+ * ownership of |aead_ctx|. */
+void ssl_set_read_state(SSL *ssl, SSL_AEAD_CTX *aead_ctx);
+
+/* ssl_set_write_state sets |ssl|'s write cipher state to |aead_ctx|. It takes
+ * ownership of |aead_ctx|. */
+void ssl_set_write_state(SSL *ssl, SSL_AEAD_CTX *aead_ctx);
+
 
 /* Private key operations. */
 

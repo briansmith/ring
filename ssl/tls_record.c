@@ -109,6 +109,7 @@
 #include <openssl/ssl.h>
 
 #include <assert.h>
+#include <string.h>
 
 #include <openssl/bytestring.h>
 #include <openssl/err.h>
@@ -351,4 +352,27 @@ int tls_seal_record(SSL *ssl, uint8_t *out, size_t *out_len, size_t max_out,
   }
   *out_len += frag_len;
   return 1;
+}
+
+void ssl_set_read_state(SSL *ssl, SSL_AEAD_CTX *aead_ctx) {
+  if (SSL_IS_DTLS(ssl)) {
+    ssl->d1->r_epoch++;
+    memset(&ssl->d1->bitmap, 0, sizeof(ssl->d1->bitmap));
+  }
+  memset(ssl->s3->read_sequence, 0, sizeof(ssl->s3->read_sequence));
+
+  SSL_AEAD_CTX_free(ssl->aead_read_ctx);
+  ssl->aead_read_ctx = aead_ctx;
+}
+
+void ssl_set_write_state(SSL *ssl, SSL_AEAD_CTX *aead_ctx) {
+  if (SSL_IS_DTLS(ssl)) {
+    ssl->d1->w_epoch++;
+    memcpy(ssl->d1->last_write_sequence, ssl->s3->write_sequence,
+           sizeof(ssl->s3->write_sequence));
+  }
+  memset(ssl->s3->write_sequence, 0, sizeof(ssl->s3->write_sequence));
+
+  SSL_AEAD_CTX_free(ssl->aead_write_ctx);
+  ssl->aead_write_ctx = aead_ctx;
 }
