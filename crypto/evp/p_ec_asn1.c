@@ -127,6 +127,59 @@ err:
   return 0;
 }
 
+static int eckey_pub_decode(EVP_PKEY *pkey, X509_PUBKEY *pubkey) {
+  const uint8_t *p = NULL;
+  void *pval;
+  int ptype, pklen;
+  EC_KEY *eckey = NULL;
+  X509_ALGOR *palg;
+
+  if (!X509_PUBKEY_get0_param(NULL, &p, &pklen, &palg, pubkey)) {
+    return 0;
+  }
+  X509_ALGOR_get0(NULL, &ptype, &pval, palg);
+
+  if (ptype != V_ASN1_OBJECT) {
+    OPENSSL_PUT_ERROR(EVP, EVP_R_DECODE_ERROR);
+    return 0;
+  }
+  eckey = EC_KEY_new_by_curve_name(OBJ_obj2nid((ASN1_OBJECT *)pval));
+  if (eckey == NULL) {
+    OPENSSL_PUT_ERROR(EVP, ERR_R_EC_LIB);
+    return 0;
+  }
+
+  /* We have parameters now set public key */
+  if (!o2i_ECPublicKey(&eckey, &p, pklen)) {
+    OPENSSL_PUT_ERROR(EVP, EVP_R_DECODE_ERROR);
+    goto err;
+  }
+
+  EVP_PKEY_assign_EC_KEY(pkey, eckey);
+  return 1;
+
+err:
+  if (eckey) {
+    EC_KEY_free(eckey);
+  }
+  return 0;
+}
+
+static int eckey_pub_cmp(const EVP_PKEY *a, const EVP_PKEY *b) {
+  int r;
+  const EC_GROUP *group = EC_KEY_get0_group(b->pkey.ec);
+  const EC_POINT *pa = EC_KEY_get0_public_key(a->pkey.ec),
+                 *pb = EC_KEY_get0_public_key(b->pkey.ec);
+  r = EC_POINT_cmp(group, pa, pb, NULL);
+  if (r == 0) {
+    return 1;
+  } else if (r == 1) {
+    return 0;
+  } else {
+    return -2;
+  }
+}
+
 static EC_KEY *eckey_type2param(int ptype, void *pval) {
   EC_KEY *eckey = NULL;
 
@@ -161,55 +214,6 @@ err:
     EC_KEY_free(eckey);
   }
   return NULL;
-}
-
-static int eckey_pub_decode(EVP_PKEY *pkey, X509_PUBKEY *pubkey) {
-  const uint8_t *p = NULL;
-  void *pval;
-  int ptype, pklen;
-  EC_KEY *eckey = NULL;
-  X509_ALGOR *palg;
-
-  if (!X509_PUBKEY_get0_param(NULL, &p, &pklen, &palg, pubkey)) {
-    return 0;
-  }
-  X509_ALGOR_get0(NULL, &ptype, &pval, palg);
-
-  eckey = eckey_type2param(ptype, pval);
-  if (!eckey) {
-    OPENSSL_PUT_ERROR(EVP, ERR_R_EC_LIB);
-    return 0;
-  }
-
-  /* We have parameters now set public key */
-  if (!o2i_ECPublicKey(&eckey, &p, pklen)) {
-    OPENSSL_PUT_ERROR(EVP, EVP_R_DECODE_ERROR);
-    goto err;
-  }
-
-  EVP_PKEY_assign_EC_KEY(pkey, eckey);
-  return 1;
-
-err:
-  if (eckey) {
-    EC_KEY_free(eckey);
-  }
-  return 0;
-}
-
-static int eckey_pub_cmp(const EVP_PKEY *a, const EVP_PKEY *b) {
-  int r;
-  const EC_GROUP *group = EC_KEY_get0_group(b->pkey.ec);
-  const EC_POINT *pa = EC_KEY_get0_public_key(a->pkey.ec),
-                 *pb = EC_KEY_get0_public_key(b->pkey.ec);
-  r = EC_POINT_cmp(group, pa, pb, NULL);
-  if (r == 0) {
-    return 1;
-  } else if (r == 1) {
-    return 0;
-  } else {
-    return -2;
-  }
 }
 
 static int eckey_priv_decode(EVP_PKEY *pkey, PKCS8_PRIV_KEY_INFO *p8) {
