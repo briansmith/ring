@@ -2570,6 +2570,28 @@ uint8_t SSL_get_server_key_exchange_hash(const SSL *ssl) {
   return ssl->s3->tmp.server_key_exchange_hash;
 }
 
+size_t SSL_get_client_random(const SSL *ssl, uint8_t *out, size_t max_out) {
+  if (max_out == 0) {
+    return sizeof(ssl->s3->client_random);
+  }
+  if (max_out > sizeof(ssl->s3->client_random)) {
+    max_out = sizeof(ssl->s3->client_random);
+  }
+  memcpy(out, ssl->s3->client_random, max_out);
+  return max_out;
+}
+
+size_t SSL_get_server_random(const SSL *ssl, uint8_t *out, size_t max_out) {
+  if (max_out == 0) {
+    return sizeof(ssl->s3->server_random);
+  }
+  if (max_out > sizeof(ssl->s3->server_random)) {
+    max_out = sizeof(ssl->s3->server_random);
+  }
+  memcpy(out, ssl->s3->server_random, max_out);
+  return max_out;
+}
+
 int SSL_clear(SSL *ssl) {
   if (ssl->method == NULL) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_NO_METHOD_SPECIFIED);

@@ -2860,6 +2860,18 @@ OPENSSL_EXPORT int SSL_get_shutdown(const SSL *ssl);
  * |TLSEXT_hash_none|. */
 OPENSSL_EXPORT uint8_t SSL_get_server_key_exchange_hash(const SSL *ssl);
 
+/* SSL_get_client_random writes up to |max_out| bytes of the most recent
+ * handshake's client_random to |out| and returns the number of bytes written.
+ * If |max_out| is zero, it returns the size of the client_random. */
+OPENSSL_EXPORT size_t SSL_get_client_random(const SSL *ssl, uint8_t *out,
+                                            size_t max_out);
+
+/* SSL_get_server_random writes up to |max_out| bytes of the most recent
+ * handshake's server_random to |out| and returns the number of bytes written.
+ * If |max_out| is zero, it returns the size of the server_random. */
+OPENSSL_EXPORT size_t SSL_get_server_random(const SSL *ssl, uint8_t *out,
+                                            size_t max_out);
+
 
 /* Deprecated functions. */
 
