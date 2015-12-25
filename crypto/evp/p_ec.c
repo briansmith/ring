@@ -211,13 +211,14 @@ static int pkey_ec_keygen(EVP_PKEY_CTX *ctx, EVP_PKEY *pkey) {
     return 0;
   }
   EC_KEY *ec = EC_KEY_new();
-  if (!ec) {
+  if (ec == NULL ||
+      !EC_KEY_set_group(ec, EC_KEY_get0_group(ctx->pkey->pkey.ec)) ||
+      !EC_KEY_generate_key(ec)) {
+    EC_KEY_free(ec);
     return 0;
   }
   EVP_PKEY_assign_EC_KEY(pkey, ec);
-  /* Note: if error return, pkey is freed by parent routine */
-  return EVP_PKEY_copy_parameters(pkey, ctx->pkey) &&
-         EC_KEY_generate_key(pkey->pkey.ec);
+  return 1;
 }
 
 const EVP_PKEY_METHOD ec_pkey_meth = {
