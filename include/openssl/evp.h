@@ -133,8 +133,8 @@ OPENSSL_EXPORT int EVP_PKEY_bits(EVP_PKEY *pkey);
  * values. */
 OPENSSL_EXPORT int EVP_PKEY_id(const EVP_PKEY *pkey);
 
-/* EVP_PKEY_type returns a canonicalised form of |NID|. For example,
- * |EVP_PKEY_RSA2| will be turned into |EVP_PKEY_RSA|. */
+/* EVP_PKEY_type returns |nid| if |nid| is a known key type and |NID_undef|
+ * otherwise. */
 OPENSSL_EXPORT int EVP_PKEY_type(int nid);
 
 
@@ -165,7 +165,6 @@ OPENSSL_EXPORT EC_KEY *EVP_PKEY_get1_EC_KEY(EVP_PKEY *pkey);
 
 #define EVP_PKEY_NONE NID_undef
 #define EVP_PKEY_RSA NID_rsaEncryption
-#define EVP_PKEY_RSA2 NID_rsa
 #define EVP_PKEY_DSA NID_dsa
 #define EVP_PKEY_EC NID_X9_62_id_ecPublicKey
 
@@ -666,6 +665,10 @@ OPENSSL_EXPORT int EVP_PKEY_CTX_get0_rsa_oaep_label(EVP_PKEY_CTX *ctx,
 /* EVP_PKEY_DH is defined for compatibility, but it is impossible to create an
  * |EVP_PKEY| of that type. */
 #define EVP_PKEY_DH NID_dhKeyAgreement
+
+/* EVP_PKEY_RSA2 was historically an alternate form for RSA public keys (OID
+ * 2.5.8.1.1), but is no longer accepted. */
+#define EVP_PKEY_RSA2 NID_rsa
 
 /* OpenSSL_add_all_algorithms does nothing. */
 OPENSSL_EXPORT void OpenSSL_add_all_algorithms(void);

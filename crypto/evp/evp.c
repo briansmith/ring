@@ -199,7 +199,6 @@ int EVP_PKEY_id(const EVP_PKEY *pkey) {
 const EVP_PKEY_ASN1_METHOD *EVP_PKEY_asn1_find(ENGINE **pengine, int nid) {
   switch (nid) {
     case EVP_PKEY_RSA:
-    case EVP_PKEY_RSA2:
       return &rsa_asn1_meth;
     case EVP_PKEY_EC:
       return &ec_asn1_meth;
