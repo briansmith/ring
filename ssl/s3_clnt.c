@@ -1059,19 +1059,16 @@ err:
 int ssl3_get_server_key_exchange(SSL *ssl) {
   EVP_MD_CTX md_ctx;
   int al, ok;
-  long n, alg_k, alg_a;
   EVP_PKEY *pkey = NULL;
-  const EVP_MD *md = NULL;
   DH *dh = NULL;
   EC_KEY *ecdh = NULL;
   EC_POINT *srvr_ecpoint = NULL;
-  CBS server_key_exchange, server_key_exchange_orig, parameter;
 
   /* use same message size as in ssl3_get_certificate_request() as
    * ServerKeyExchange message may be skipped */
-  n = ssl->method->ssl_get_message(ssl, SSL3_ST_CR_KEY_EXCH_A,
-                                 SSL3_ST_CR_KEY_EXCH_B, -1, ssl->max_cert_list,
-                                 ssl_hash_message, &ok);
+  long n = ssl->method->ssl_get_message(
+      ssl, SSL3_ST_CR_KEY_EXCH_A, SSL3_ST_CR_KEY_EXCH_B, -1, ssl->max_cert_list,
+      ssl_hash_message, &ok);
   if (!ok) {
     return n;
   }
@@ -1096,11 +1093,12 @@ int ssl3_get_server_key_exchange(SSL *ssl) {
   }
 
   /* Retain a copy of the original CBS to compute the signature over. */
+  CBS server_key_exchange;
   CBS_init(&server_key_exchange, ssl->init_msg, n);
-  server_key_exchange_orig = server_key_exchange;
+  CBS server_key_exchange_orig = server_key_exchange;
 
-  alg_k = ssl->s3->tmp.new_cipher->algorithm_mkey;
-  alg_a = ssl->s3->tmp.new_cipher->algorithm_auth;
+  uint32_t alg_k = ssl->s3->tmp.new_cipher->algorithm_mkey;
+  uint32_t alg_a = ssl->s3->tmp.new_cipher->algorithm_auth;
   EVP_MD_CTX_init(&md_ctx);
 
   if (alg_a & SSL_aPSK) {
@@ -1223,6 +1221,7 @@ int ssl3_get_server_key_exchange(SSL *ssl) {
   /* At this point, |server_key_exchange| contains the signature, if any, while
    * |server_key_exchange_orig| contains the entire message. From that, derive
    * a CBS containing just the parameter. */
+  CBS parameter;
   CBS_init(&parameter, CBS_data(&server_key_exchange_orig),
            CBS_len(&server_key_exchange_orig) - CBS_len(&server_key_exchange));
 
@@ -1233,6 +1232,7 @@ int ssl3_get_server_key_exchange(SSL *ssl) {
       goto err;
     }
 
+    const EVP_MD *md = NULL;
     if (SSL_USE_SIGALGS(ssl)) {
       uint8_t hash, signature;
       if (!CBS_get_u8(&server_key_exchange, &hash) ||
