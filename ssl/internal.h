@@ -854,7 +854,6 @@ struct ssl_protocol_method_st {
 struct ssl3_enc_method {
   int (*prf)(SSL *, uint8_t *, size_t, const uint8_t *, size_t, const char *,
              size_t, const uint8_t *, size_t, const uint8_t *, size_t);
-  int (*generate_master_secret)(SSL *, uint8_t *, const uint8_t *, size_t);
   int (*final_finish_mac)(SSL *, const char *, int, uint8_t *);
   int (*cert_verify_mac)(SSL *, int, uint8_t *);
   const char *client_finished_label;
@@ -862,8 +861,6 @@ struct ssl3_enc_method {
   const char *server_finished_label;
   int server_finished_label_len;
   int (*alert_value)(int);
-  int (*export_keying_material)(SSL *, uint8_t *, size_t, const char *, size_t,
-                                const uint8_t *, size_t, int use_context);
   /* Various flags indicating protocol version requirements */
   unsigned int enc_flags;
 };
@@ -1179,10 +1176,6 @@ int tls1_final_finish_mac(SSL *ssl, const char *str, int slen, uint8_t *p);
 int tls1_cert_verify_mac(SSL *ssl, int md_nid, uint8_t *p);
 int tls1_generate_master_secret(SSL *ssl, uint8_t *out, const uint8_t *premaster,
                                 size_t premaster_len);
-int tls1_export_keying_material(SSL *ssl, uint8_t *out, size_t out_len,
-                                const char *label, size_t label_len,
-                                const uint8_t *context, size_t context_len,
-                                int use_context);
 int tls1_alert_code(int code);
 int ssl3_alert_code(int code);
 

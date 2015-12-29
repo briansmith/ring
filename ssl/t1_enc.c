@@ -513,12 +513,11 @@ int tls1_generate_master_secret(SSL *ssl, uint8_t *out,
   return SSL3_MASTER_SECRET_SIZE;
 }
 
-int tls1_export_keying_material(SSL *ssl, uint8_t *out, size_t out_len,
-                                const char *label, size_t label_len,
-                                const uint8_t *context, size_t context_len,
-                                int use_context) {
+int SSL_export_keying_material(SSL *ssl, uint8_t *out, size_t out_len,
+                               const char *label, size_t label_len,
+                               const uint8_t *context, size_t context_len,
+                               int use_context) {
   if (!ssl->s3->have_version || ssl->version == SSL3_VERSION) {
-    OPENSSL_PUT_ERROR(SSL, ERR_R_SHOULD_NOT_HAVE_BEEN_CALLED);
     return 0;
   }
 

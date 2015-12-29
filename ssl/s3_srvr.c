@@ -1700,7 +1700,7 @@ int ssl3_get_client_key_exchange(SSL *ssl) {
   }
 
   /* Compute the master secret */
-  ssl->session->master_key_length = ssl->enc_method->generate_master_secret(
+  ssl->session->master_key_length = tls1_generate_master_secret(
       ssl, ssl->session->master_key, premaster_secret, premaster_secret_len);
   if (ssl->session->master_key_length == 0) {
     goto err;

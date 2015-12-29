@@ -1636,18 +1636,6 @@ void SSL_get0_alpn_selected(const SSL *ssl, const uint8_t **out_data,
   }
 }
 
-int SSL_export_keying_material(SSL *ssl, uint8_t *out, size_t out_len,
-                               const char *label, size_t label_len,
-                               const uint8_t *context, size_t context_len,
-                               int use_context) {
-  if (ssl->version < TLS1_VERSION) {
-    return 0;
-  }
-
-  return ssl->enc_method->export_keying_material(
-      ssl, out, out_len, label, label_len, context, context_len, use_context);
-}
-
 void SSL_CTX_set_cert_verify_callback(SSL_CTX *ctx,
                                       int (*cb)(X509_STORE_CTX *store_ctx,
                                                 void *arg),

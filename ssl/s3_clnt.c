@@ -1754,8 +1754,8 @@ int ssl3_send_client_key_exchange(SSL *ssl) {
   }
   ssl->state = SSL3_ST_CW_KEY_EXCH_B;
 
-  ssl->session->master_key_length = ssl->enc_method->generate_master_secret(
-      ssl, ssl->session->master_key, pms, pms_len);
+  ssl->session->master_key_length =
+      tls1_generate_master_secret(ssl, ssl->session->master_key, pms, pms_len);
   if (ssl->session->master_key_length == 0) {
     goto err;
   }
