@@ -224,11 +224,10 @@ err:
   return ret;
 }
 
-int tls1_prf(SSL *ssl, uint8_t *out, size_t out_len, const uint8_t *secret,
-             size_t secret_len, const char *label, size_t label_len,
-             const uint8_t *seed1, size_t seed1_len,
+int tls1_prf(const SSL *ssl, uint8_t *out, size_t out_len,
+             const uint8_t *secret, size_t secret_len, const char *label,
+             size_t label_len, const uint8_t *seed1, size_t seed1_len,
              const uint8_t *seed2, size_t seed2_len) {
-
   if (out_len == 0) {
     return 1;
   }
@@ -258,14 +257,6 @@ int tls1_prf(SSL *ssl, uint8_t *out, size_t out_len, const uint8_t *secret,
   }
 
   return 1;
-}
-
-static int tls1_generate_key_block(SSL *ssl, uint8_t *out, size_t out_len) {
-  return ssl->enc_method->prf(
-      ssl, out, out_len, ssl->session->master_key,
-      ssl->session->master_key_length, TLS_MD_KEY_EXPANSION_CONST,
-      TLS_MD_KEY_EXPANSION_CONST_SIZE, ssl->s3->server_random, SSL3_RANDOM_SIZE,
-      ssl->s3->client_random, SSL3_RANDOM_SIZE);
 }
 
 int tls1_change_cipher_state(SSL *ssl, int which) {
@@ -330,6 +321,20 @@ int tls1_change_cipher_state(SSL *ssl, int which) {
   return 1;
 }
 
+size_t SSL_get_key_block_len(const SSL *ssl) {
+  return 2 * ((size_t)ssl->s3->tmp.new_mac_secret_len +
+              (size_t)ssl->s3->tmp.new_key_len +
+              (size_t)ssl->s3->tmp.new_fixed_iv_len);
+}
+
+int SSL_generate_key_block(const SSL *ssl, uint8_t *out, size_t out_len) {
+  return ssl->enc_method->prf(
+      ssl, out, out_len, ssl->session->master_key,
+      ssl->session->master_key_length, TLS_MD_KEY_EXPANSION_CONST,
+      TLS_MD_KEY_EXPANSION_CONST_SIZE, ssl->s3->server_random, SSL3_RANDOM_SIZE,
+      ssl->s3->client_random, SSL3_RANDOM_SIZE);
+}
+
 int tls1_setup_key_block(SSL *ssl) {
   if (ssl->s3->tmp.key_block_length != 0) {
     return 1;
@@ -364,8 +369,7 @@ int tls1_setup_key_block(SSL *ssl) {
   ssl->s3->tmp.new_key_len = (uint8_t)key_len;
   ssl->s3->tmp.new_fixed_iv_len = (uint8_t)fixed_iv_len;
 
-  size_t key_block_len = mac_secret_len + key_len + fixed_iv_len;
-  key_block_len *= 2;
+  size_t key_block_len = SSL_get_key_block_len(ssl);
 
   ssl3_cleanup_key_block(ssl);
 
@@ -375,7 +379,7 @@ int tls1_setup_key_block(SSL *ssl) {
     return 0;
   }
 
-  if (!tls1_generate_key_block(ssl, keyblock, key_block_len)) {
+  if (!SSL_generate_key_block(ssl, keyblock, key_block_len)) {
     OPENSSL_free(keyblock);
     return 0;
   }

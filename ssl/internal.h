@@ -852,8 +852,14 @@ struct ssl_protocol_method_st {
 /* This is for the SSLv3/TLSv1.0 differences in crypto/hash stuff It is a bit
  * of a mess of functions, but hell, think of it as an opaque structure. */
 struct ssl3_enc_method {
-  int (*prf)(SSL *, uint8_t *, size_t, const uint8_t *, size_t, const char *,
-             size_t, const uint8_t *, size_t, const uint8_t *, size_t);
+  /* prf computes the PRF function for |ssl|. It writes |out_len| bytes to
+   * |out|, using |secret| as the secret and |label| as the label. |seed1| and
+   * |seed2| are concatenated to form the seed parameter. It returns one on
+   * success and zero on failure. */
+  int (*prf)(const SSL *ssl, uint8_t *out, size_t out_len,
+             const uint8_t *secret, size_t secret_len, const char *label,
+             size_t label_len, const uint8_t *seed1, size_t seed1_len,
+             const uint8_t *seed2, size_t seed2_len);
   int (*final_finish_mac)(SSL *ssl, int from_server, uint8_t *out);
   int (*cert_verify_mac)(SSL *, int, uint8_t *);
   int (*alert_value)(int);
@@ -1032,9 +1038,9 @@ int ssl3_send_new_session_ticket(SSL *ssl);
 int ssl3_send_certificate_status(SSL *ssl);
 int ssl3_get_finished(SSL *ssl, int state_a, int state_b);
 int ssl3_send_change_cipher_spec(SSL *ssl, int state_a, int state_b);
-int ssl3_prf(SSL *ssl, uint8_t *out, size_t out_len, const uint8_t *secret,
-             size_t secret_len, const char *label, size_t label_len,
-             const uint8_t *seed1, size_t seed1_len,
+int ssl3_prf(const SSL *ssl, uint8_t *out, size_t out_len,
+             const uint8_t *secret, size_t secret_len, const char *label,
+             size_t label_len, const uint8_t *seed1, size_t seed1_len,
              const uint8_t *seed2, size_t seed2_len);
 void ssl3_cleanup_key_block(SSL *ssl);
 int ssl3_do_write(SSL *ssl, int type);
@@ -1155,14 +1161,9 @@ int dtls1_dispatch_alert(SSL *ssl);
 int ssl_init_wbio_buffer(SSL *ssl, int push);
 void ssl_free_wbio_buffer(SSL *ssl);
 
-/* tls1_prf computes the TLS PRF function for |ssl| as described in RFC 5246,
- * section 5 and RFC 2246 section 5. It writes |out_len| bytes to |out|, using
- * |secret| as the secret and |label| as the label. |seed1| and |seed2| are
- * concatenated to form the seed parameter. It returns one on success and zero
- * on failure. */
-int tls1_prf(SSL *ssl, uint8_t *out, size_t out_len, const uint8_t *secret,
-             size_t secret_len, const char *label, size_t label_len,
-             const uint8_t *seed1, size_t seed1_len,
+int tls1_prf(const SSL *ssl, uint8_t *out, size_t out_len,
+             const uint8_t *secret, size_t secret_len, const char *label,
+             size_t label_len, const uint8_t *seed1, size_t seed1_len,
              const uint8_t *seed2, size_t seed2_len);
 
 int tls1_change_cipher_state(SSL *ssl, int which);
@@ -1288,7 +1289,7 @@ int ssl3_is_version_enabled(SSL *ssl, uint16_t version);
  * the wire version except at API boundaries. */
 uint16_t ssl3_version_from_wire(SSL *ssl, uint16_t wire_version);
 
-uint32_t ssl_get_algorithm_prf(SSL *ssl);
+uint32_t ssl_get_algorithm_prf(const SSL *ssl);
 int tls1_parse_peer_sigalgs(SSL *ssl, const CBS *sigalgs);
 
 /* tls1_choose_signing_digest returns a digest for use with |ssl|'s private key

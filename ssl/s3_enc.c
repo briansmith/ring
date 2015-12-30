@@ -165,9 +165,9 @@ static const uint8_t ssl3_pad_2[48] = {
 static int ssl3_handshake_mac(SSL *ssl, int md_nid, const char *sender,
                               size_t sender_len, uint8_t *p);
 
-int ssl3_prf(SSL *ssl, uint8_t *out, size_t out_len, const uint8_t *secret,
-             size_t secret_len, const char *label, size_t label_len,
-             const uint8_t *seed1, size_t seed1_len,
+int ssl3_prf(const SSL *ssl, uint8_t *out, size_t out_len,
+             const uint8_t *secret, size_t secret_len, const char *label,
+             size_t label_len, const uint8_t *seed1, size_t seed1_len,
              const uint8_t *seed2, size_t seed2_len) {
   EVP_MD_CTX md5;
   EVP_MD_CTX sha1;
