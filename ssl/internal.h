@@ -856,7 +856,6 @@ struct ssl3_enc_method {
              const uint8_t *seed2, size_t seed2_len);
   int (*final_finish_mac)(SSL *ssl, int from_server, uint8_t *out);
   int (*cert_verify_mac)(SSL *, int, uint8_t *);
-  int (*alert_value)(int);
 };
 
 #define SSL_HM_HEADER_LENGTH(ssl) ssl->method->hhlen

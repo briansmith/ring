@@ -3249,11 +3249,7 @@ func addMinimumVersionTests() {
 				} else {
 					shouldFail = true
 					expectedError = ":UNSUPPORTED_PROTOCOL:"
-					if runnerVers.version > VersionSSL30 {
-						expectedLocalError = "remote error: protocol version not supported"
-					} else {
-						expectedLocalError = "remote error: handshake failure"
-					}
+					expectedLocalError = "remote error: protocol version not supported"
 				}
 
 				testCases = append(testCases, testCase{

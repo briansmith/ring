@@ -638,16 +638,6 @@ err:
 }
 
 int ssl3_send_alert(SSL *ssl, int level, int desc) {
-  /* Map tls/ssl alert value to correct one */
-  desc = ssl->enc_method->alert_value(desc);
-  if (ssl->version == SSL3_VERSION && desc == SSL_AD_PROTOCOL_VERSION) {
-    /* SSL 3.0 does not have protocol_version alerts */
-    desc = SSL_AD_HANDSHAKE_FAILURE;
-  }
-  if (desc < 0) {
-    return -1;
-  }
-
   /* If a fatal one, remove from cache */
   if (level == 2 && ssl->session != NULL) {
     SSL_CTX_remove_session(ssl->ctx, ssl->session);
