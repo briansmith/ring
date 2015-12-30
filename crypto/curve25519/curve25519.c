@@ -1258,7 +1258,7 @@ static void cmov(ge_precomp *t, ge_precomp *u, uint8_t b) {
  * element then consider i+1 as a four-bit number: (i₀, i₁, i₂, i₃) (where i₀
  * is the most significant bit). The value of the group element is then:
  * (i₀×2^192 + i₁×2^128 + i₂×2^64 + i₃)G, where G is the generator. */
-static const uint8_t kSmallPrecomp[15 * 2 * 32] = {
+static const uint8_t k25519SmallPrecomp[15 * 2 * 32] = {
     0x1a, 0xd5, 0x25, 0x8f, 0x60, 0x2d, 0x56, 0xc9, 0xb2, 0xa7, 0x25, 0x95,
     0x60, 0xc7, 0x2c, 0x69, 0x5c, 0xdc, 0xd6, 0xfd, 0x31, 0xe2, 0xa4, 0xc0,
     0xfe, 0x53, 0x6e, 0xcd, 0xd3, 0x36, 0x69, 0x21, 0x58, 0x66, 0x66, 0x66,
@@ -1342,12 +1342,13 @@ static const uint8_t kSmallPrecomp[15 * 2 * 32] = {
 };
 
 static void ge_scalarmult_base(ge_p3 *h, const uint8_t a[32]) {
-  /* kSmallPrecomp is first expanded into matching |ge_precomp| elements. */
+  /* k25519SmallPrecomp is first expanded into matching |ge_precomp|
+   * elements. */
   ge_precomp multiples[15];
 
   unsigned i;
   for (i = 0; i < 15; i++) {
-    const uint8_t *bytes = &kSmallPrecomp[i*(2 * 32)];
+    const uint8_t *bytes = &k25519SmallPrecomp[i*(2 * 32)];
     fe x, y;
     fe_frombytes(x, bytes);
     fe_frombytes(y, bytes + 32);
@@ -1359,7 +1360,7 @@ static void ge_scalarmult_base(ge_p3 *h, const uint8_t a[32]) {
     fe_mul(out->xy2d, out->xy2d, d2);
   }
 
-  /* See the comment above |kSmallPrecomp| about the structure of the
+  /* See the comment above |k25519SmallPrecomp| about the structure of the
    * precomputed elements. This loop does 64 additions and 64 doublings to
    * calculate the result. */
   ge_p3_0(h);
@@ -1393,8 +1394,8 @@ static void ge_scalarmult_base(ge_p3 *h, const uint8_t a[32]) {
 
 #else
 
-/* base[i][j] = (j+1)*256^i*B */
-static ge_precomp base[32][8] = {
+/* k25519Precomp[i][j] = (j+1)*256^i*B */
+static ge_precomp k25519Precomp[32][8] = {
     {
         {
             {25967493, -14356035, 29566456, 3660896, -12694345, 4014787,
@@ -3521,14 +3522,14 @@ static void table_select(ge_precomp *t, int pos, signed char b) {
   uint8_t babs = b - (((-bnegative) & b) << 1);
 
   ge_precomp_0(t);
-  cmov(t, &base[pos][0], equal(babs, 1));
-  cmov(t, &base[pos][1], equal(babs, 2));
-  cmov(t, &base[pos][2], equal(babs, 3));
-  cmov(t, &base[pos][3], equal(babs, 4));
-  cmov(t, &base[pos][4], equal(babs, 5));
-  cmov(t, &base[pos][5], equal(babs, 6));
-  cmov(t, &base[pos][6], equal(babs, 7));
-  cmov(t, &base[pos][7], equal(babs, 8));
+  cmov(t, &k25519Precomp[pos][0], equal(babs, 1));
+  cmov(t, &k25519Precomp[pos][1], equal(babs, 2));
+  cmov(t, &k25519Precomp[pos][2], equal(babs, 3));
+  cmov(t, &k25519Precomp[pos][3], equal(babs, 4));
+  cmov(t, &k25519Precomp[pos][4], equal(babs, 5));
+  cmov(t, &k25519Precomp[pos][5], equal(babs, 6));
+  cmov(t, &k25519Precomp[pos][6], equal(babs, 7));
+  cmov(t, &k25519Precomp[pos][7], equal(babs, 8));
   fe_copy(minust.yplusx, t->yminusx);
   fe_copy(minust.yminusx, t->yplusx);
   fe_neg(minust.xy2d, t->xy2d);
