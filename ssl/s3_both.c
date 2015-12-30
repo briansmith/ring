@@ -156,14 +156,14 @@ int ssl3_do_write(SSL *ssl, int type) {
   return 0;
 }
 
-int ssl3_send_finished(SSL *ssl, int a, int b, const char *sender, int slen) {
+int ssl3_send_finished(SSL *ssl, int a, int b) {
   uint8_t *p;
   int n;
 
   if (ssl->state == a) {
     p = ssl_handshake_start(ssl);
 
-    n = ssl->enc_method->final_finish_mac(ssl, sender, slen,
+    n = ssl->enc_method->final_finish_mac(ssl, ssl->server,
                                           ssl->s3->tmp.finish_md);
     if (n == 0) {
       return 0;
@@ -202,25 +202,14 @@ int ssl3_send_finished(SSL *ssl, int a, int b, const char *sender, int slen) {
 /* ssl3_take_mac calculates the Finished MAC for the handshakes messages seen
  * so far. */
 static void ssl3_take_mac(SSL *ssl) {
-  const char *sender;
-  int slen;
-
   /* If no new cipher setup then return immediately: other functions will set
    * the appropriate error. */
   if (ssl->s3->tmp.new_cipher == NULL) {
     return;
   }
 
-  if (ssl->state & SSL_ST_CONNECT) {
-    sender = ssl->enc_method->server_finished_label;
-    slen = ssl->enc_method->server_finished_label_len;
-  } else {
-    sender = ssl->enc_method->client_finished_label;
-    slen = ssl->enc_method->client_finished_label_len;
-  }
-
   ssl->s3->tmp.peer_finish_md_len = ssl->enc_method->final_finish_mac(
-      ssl, sender, slen, ssl->s3->tmp.peer_finish_md);
+      ssl, !ssl->server, ssl->s3->tmp.peer_finish_md);
 }
 
 int ssl3_get_finished(SSL *ssl, int a, int b) {

@@ -455,39 +455,39 @@ int tls1_handshake_digest(SSL *ssl, uint8_t *out, size_t out_len) {
   return (int)(md5_len + len);
 }
 
-int tls1_final_finish_mac(SSL *ssl, const char *str, int slen, uint8_t *out) {
-  uint8_t buf[2 * EVP_MAX_MD_SIZE];
-  int err = 0;
-  int digests_len;
-
+int tls1_final_finish_mac(SSL *ssl, int from_server, uint8_t *out) {
   /* At this point, the handshake should have released the handshake buffer on
    * its own. */
   assert(ssl->s3->handshake_buffer == NULL);
 
-  digests_len = tls1_handshake_digest(ssl, buf, sizeof(buf));
+  const char *label = TLS_MD_CLIENT_FINISH_CONST;
+  size_t label_len = TLS_MD_SERVER_FINISH_CONST_SIZE;
+  if (from_server) {
+    label = TLS_MD_SERVER_FINISH_CONST;
+    label_len = TLS_MD_SERVER_FINISH_CONST_SIZE;
+  }
+
+  uint8_t buf[EVP_MAX_MD_SIZE];
+  int digests_len = tls1_handshake_digest(ssl, buf, sizeof(buf));
   if (digests_len < 0) {
-    err = 1;
-    digests_len = 0;
-  }
-
-  if (!ssl->enc_method->prf(ssl, out, 12, ssl->session->master_key,
-                            ssl->session->master_key_length, str, slen, buf,
-                            digests_len, NULL, 0)) {
-    err = 1;
-  }
-
-  if (err) {
     return 0;
-  } else {
-    return 12;
   }
+
+  static const size_t kFinishedLen = 12;
+  if (!ssl->enc_method->prf(ssl, out, kFinishedLen, ssl->session->master_key,
+                            ssl->session->master_key_length, label, label_len,
+                            buf, digests_len, NULL, 0)) {
+    return 0;
+  }
+
+  return (int)kFinishedLen;
 }
 
 int tls1_generate_master_secret(SSL *ssl, uint8_t *out,
                                 const uint8_t *premaster,
                                 size_t premaster_len) {
   if (ssl->s3->tmp.extended_master_secret) {
-    uint8_t digests[2 * EVP_MAX_MD_SIZE];
+    uint8_t digests[EVP_MAX_MD_SIZE];
     int digests_len = tls1_handshake_digest(ssl, digests, sizeof(digests));
     if (digests_len == -1) {
       return 0;

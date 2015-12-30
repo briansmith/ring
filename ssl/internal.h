@@ -854,12 +854,8 @@ struct ssl_protocol_method_st {
 struct ssl3_enc_method {
   int (*prf)(SSL *, uint8_t *, size_t, const uint8_t *, size_t, const char *,
              size_t, const uint8_t *, size_t, const uint8_t *, size_t);
-  int (*final_finish_mac)(SSL *, const char *, int, uint8_t *);
+  int (*final_finish_mac)(SSL *ssl, int from_server, uint8_t *out);
   int (*cert_verify_mac)(SSL *, int, uint8_t *);
-  const char *client_finished_label;
-  int client_finished_label_len;
-  const char *server_finished_label;
-  int server_finished_label_len;
   int (*alert_value)(int);
   /* Various flags indicating protocol version requirements */
   unsigned int enc_flags;
@@ -1060,7 +1056,7 @@ int ssl3_hash_current_message(SSL *ssl);
 int ssl3_cert_verify_hash(SSL *ssl, uint8_t *out, size_t *out_len,
                           const EVP_MD **out_md, int pkey_type);
 
-int ssl3_send_finished(SSL *ssl, int a, int b, const char *sender, int slen);
+int ssl3_send_finished(SSL *ssl, int a, int b);
 int ssl3_supports_cipher(const SSL_CIPHER *cipher);
 int ssl3_dispatch_alert(SSL *ssl);
 int ssl3_read_app_data(SSL *ssl, uint8_t *buf, int len, int peek);
@@ -1069,7 +1065,7 @@ void ssl3_read_close_notify(SSL *ssl);
 int ssl3_read_bytes(SSL *ssl, int type, uint8_t *buf, int len, int peek);
 int ssl3_write_app_data(SSL *ssl, const void *buf, int len);
 int ssl3_write_bytes(SSL *ssl, int type, const void *buf, int len);
-int ssl3_final_finish_mac(SSL *ssl, const char *sender, int slen, uint8_t *p);
+int ssl3_final_finish_mac(SSL *ssl, int from_server, uint8_t *out);
 int ssl3_cert_verify_mac(SSL *ssl, int md_nid, uint8_t *p);
 int ssl3_output_cert_chain(SSL *ssl);
 const SSL_CIPHER *ssl3_choose_cipher(
@@ -1172,7 +1168,7 @@ int tls1_prf(SSL *ssl, uint8_t *out, size_t out_len, const uint8_t *secret,
 int tls1_change_cipher_state(SSL *ssl, int which);
 int tls1_setup_key_block(SSL *ssl);
 int tls1_handshake_digest(SSL *ssl, uint8_t *out, size_t out_len);
-int tls1_final_finish_mac(SSL *ssl, const char *str, int slen, uint8_t *p);
+int tls1_final_finish_mac(SSL *ssl, int from_server, uint8_t *out);
 int tls1_cert_verify_mac(SSL *ssl, int md_nid, uint8_t *p);
 int tls1_generate_master_secret(SSL *ssl, uint8_t *out, const uint8_t *premaster,
                                 size_t premaster_len);

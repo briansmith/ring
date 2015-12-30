@@ -421,9 +421,7 @@ int ssl3_connect(SSL *ssl) {
       case SSL3_ST_CW_FINISHED_A:
       case SSL3_ST_CW_FINISHED_B:
         ret = ssl3_send_finished(ssl, SSL3_ST_CW_FINISHED_A,
-                                 SSL3_ST_CW_FINISHED_B,
-                                 ssl->enc_method->client_finished_label,
-                                 ssl->enc_method->client_finished_label_len);
+                                 SSL3_ST_CW_FINISHED_B);
         if (ret <= 0) {
           goto end;
         }

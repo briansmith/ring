@@ -134,8 +134,6 @@ const SSL3_ENC_METHOD TLSv1_enc_data = {
     tls1_prf,
     tls1_final_finish_mac,
     tls1_cert_verify_mac,
-    TLS_MD_CLIENT_FINISH_CONST,TLS_MD_CLIENT_FINISH_CONST_SIZE,
-    TLS_MD_SERVER_FINISH_CONST,TLS_MD_SERVER_FINISH_CONST_SIZE,
     tls1_alert_code,
     0,
 };
@@ -144,8 +142,6 @@ const SSL3_ENC_METHOD TLSv1_1_enc_data = {
     tls1_prf,
     tls1_final_finish_mac,
     tls1_cert_verify_mac,
-    TLS_MD_CLIENT_FINISH_CONST,TLS_MD_CLIENT_FINISH_CONST_SIZE,
-    TLS_MD_SERVER_FINISH_CONST,TLS_MD_SERVER_FINISH_CONST_SIZE,
     tls1_alert_code,
     SSL_ENC_FLAG_EXPLICIT_IV,
 };
@@ -154,8 +150,6 @@ const SSL3_ENC_METHOD TLSv1_2_enc_data = {
     tls1_prf,
     tls1_final_finish_mac,
     tls1_cert_verify_mac,
-    TLS_MD_CLIENT_FINISH_CONST,TLS_MD_CLIENT_FINISH_CONST_SIZE,
-    TLS_MD_SERVER_FINISH_CONST,TLS_MD_SERVER_FINISH_CONST_SIZE,
     tls1_alert_code,
     SSL_ENC_FLAG_EXPLICIT_IV|SSL_ENC_FLAG_SIGALGS|SSL_ENC_FLAG_SHA256_PRF,
 };

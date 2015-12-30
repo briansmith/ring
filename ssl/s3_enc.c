@@ -162,8 +162,8 @@ static const uint8_t ssl3_pad_2[48] = {
     0x5c, 0x5c, 0x5c, 0x5c, 0x5c, 0x5c, 0x5c, 0x5c, 0x5c, 0x5c, 0x5c, 0x5c,
 };
 
-static int ssl3_handshake_mac(SSL *ssl, int md_nid, const char *sender, int len,
-                              uint8_t *p);
+static int ssl3_handshake_mac(SSL *ssl, int md_nid, const char *sender,
+                              size_t sender_len, uint8_t *p);
 
 int ssl3_prf(SSL *ssl, uint8_t *out, size_t out_len, const uint8_t *secret,
              size_t secret_len, const char *label, size_t label_len,
@@ -313,16 +313,19 @@ int ssl3_cert_verify_mac(SSL *ssl, int md_nid, uint8_t *p) {
   return ssl3_handshake_mac(ssl, md_nid, NULL, 0, p);
 }
 
-int ssl3_final_finish_mac(SSL *ssl, const char *sender, int len, uint8_t *p) {
+int ssl3_final_finish_mac(SSL *ssl, int from_server, uint8_t *out) {
+  const char *sender = from_server ? SSL3_MD_SERVER_FINISHED_CONST
+                                   : SSL3_MD_CLIENT_FINISHED_CONST;
+  const size_t sender_len = 4;
   int ret, sha1len;
-  ret = ssl3_handshake_mac(ssl, NID_md5, sender, len, p);
+  ret = ssl3_handshake_mac(ssl, NID_md5, sender, sender_len, out);
   if (ret == 0) {
     return 0;
   }
 
-  p += ret;
+  out += ret;
 
-  sha1len = ssl3_handshake_mac(ssl, NID_sha1, sender, len, p);
+  sha1len = ssl3_handshake_mac(ssl, NID_sha1, sender, sender_len, out);
   if (sha1len == 0) {
     return 0;
   }
@@ -331,8 +334,8 @@ int ssl3_final_finish_mac(SSL *ssl, const char *sender, int len, uint8_t *p) {
   return ret;
 }
 
-static int ssl3_handshake_mac(SSL *ssl, int md_nid, const char *sender, int len,
-                              uint8_t *p) {
+static int ssl3_handshake_mac(SSL *ssl, int md_nid, const char *sender,
+                              size_t sender_len, uint8_t *p) {
   unsigned int ret;
   size_t npad, n;
   unsigned int i;
@@ -360,7 +363,7 @@ static int ssl3_handshake_mac(SSL *ssl, int md_nid, const char *sender, int len,
 
   npad = (48 / n) * n;
   if (sender != NULL) {
-    EVP_DigestUpdate(&ctx, sender, len);
+    EVP_DigestUpdate(&ctx, sender, sender_len);
   }
   EVP_DigestUpdate(&ctx, ssl->session->master_key,
                    ssl->session->master_key_length);

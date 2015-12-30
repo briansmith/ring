@@ -167,8 +167,6 @@ const SSL3_ENC_METHOD SSLv3_enc_data = {
     ssl3_prf,
     ssl3_final_finish_mac,
     ssl3_cert_verify_mac,
-    SSL3_MD_CLIENT_FINISHED_CONST, 4,
-    SSL3_MD_SERVER_FINISHED_CONST, 4,
     ssl3_alert_code,
     0,
 };
