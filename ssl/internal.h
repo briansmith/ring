@@ -1272,7 +1272,11 @@ int ssl3_is_version_enabled(SSL *ssl, uint16_t version);
  *
  * TODO(davidben): To normalize some DTLS-specific code, move away from using
  * the wire version except at API boundaries. */
-uint16_t ssl3_version_from_wire(SSL *ssl, uint16_t wire_version);
+uint16_t ssl3_version_from_wire(const SSL *ssl, uint16_t wire_version);
+
+/* ssl3_protocol_version returns |ssl|'s protocol version. It is an error to
+ * call this function before the version is determined. */
+uint16_t ssl3_protocol_version(const SSL *ssl);
 
 uint32_t ssl_get_algorithm_prf(const SSL *ssl);
 int tls1_parse_peer_sigalgs(SSL *ssl, const CBS *sigalgs);

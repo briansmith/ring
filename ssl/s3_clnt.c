@@ -836,8 +836,7 @@ int ssl3_get_server_hello(SSL *ssl) {
   /* If the cipher is disabled then we didn't sent it in the ClientHello, so if
    * the server selected it, it's an error. */
   if ((c->algorithm_mkey & ct->mask_k) || (c->algorithm_auth & ct->mask_a) ||
-      SSL_CIPHER_get_min_version(c) >
-          ssl3_version_from_wire(ssl, ssl->version)) {
+      SSL_CIPHER_get_min_version(c) > ssl3_protocol_version(ssl)) {
     al = SSL_AD_ILLEGAL_PARAMETER;
     OPENSSL_PUT_ERROR(SSL, SSL_R_WRONG_CIPHER_RETURNED);
     goto f_err;

@@ -305,10 +305,10 @@ int tls1_change_cipher_state(SSL *ssl, int which) {
     iv = server_write_iv;
   }
 
-  SSL_AEAD_CTX *aead_ctx = SSL_AEAD_CTX_new(
-      is_read ? evp_aead_open : evp_aead_seal,
-      ssl3_version_from_wire(ssl, ssl->version), ssl->s3->tmp.new_cipher, key,
-      key_len, mac_secret, mac_secret_len, iv, iv_len);
+  SSL_AEAD_CTX *aead_ctx =
+      SSL_AEAD_CTX_new(is_read ? evp_aead_open : evp_aead_seal,
+                       ssl3_protocol_version(ssl), ssl->s3->tmp.new_cipher, key,
+                       key_len, mac_secret, mac_secret_len, iv, iv_len);
   if (aead_ctx == NULL) {
     return 0;
   }
@@ -345,7 +345,7 @@ int tls1_setup_key_block(SSL *ssl) {
   if (ssl->session->cipher == NULL ||
       !ssl_cipher_get_evp_aead(&aead, &mac_secret_len, &fixed_iv_len,
                                ssl->session->cipher,
-                               ssl3_version_from_wire(ssl, ssl->version))) {
+                               ssl3_protocol_version(ssl))) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_CIPHER_OR_HASH_UNAVAILABLE);
     return 0;
   }
