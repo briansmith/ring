@@ -1077,7 +1077,8 @@ int ssl3_get_client_hello(SSL *ssl) {
 
   /* In TLS 1.2, client authentication requires hashing the handshake transcript
    * under a different hash. Otherwise, release the handshake buffer. */
-  if (!SSL_USE_SIGALGS(ssl) || !ssl->s3->tmp.cert_request) {
+  if (!ssl->s3->tmp.cert_request ||
+      ssl3_protocol_version(ssl) < TLS1_2_VERSION) {
     ssl3_free_handshake_buffer(ssl);
   }
 
@@ -1297,7 +1298,7 @@ int ssl3_send_server_key_exchange(SSL *ssl) {
 
       /* Determine signature algorithm. */
       const EVP_MD *md;
-      if (SSL_USE_SIGALGS(ssl)) {
+      if (ssl3_protocol_version(ssl) >= TLS1_2_VERSION) {
         md = tls1_choose_signing_digest(ssl);
         if (!tls12_add_sigandhash(ssl, &cbb, md)) {
           OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
@@ -1397,7 +1398,7 @@ int ssl3_send_certificate_request(SSL *ssl) {
     p += n;
     n++;
 
-    if (SSL_USE_SIGALGS(ssl)) {
+    if (ssl3_protocol_version(ssl) >= TLS1_2_VERSION) {
       const uint8_t *psigs;
       nl = tls12_get_psigalgs(ssl, &psigs);
       s2n(nl, p);
@@ -1764,7 +1765,7 @@ int ssl3_get_cert_verify(SSL *ssl) {
   CBS_init(&certificate_verify, ssl->init_msg, n);
 
   /* Determine the digest type if needbe. */
-  if (SSL_USE_SIGALGS(ssl)) {
+  if (ssl3_protocol_version(ssl) >= TLS1_2_VERSION) {
     uint8_t hash, signature_type;
     if (!CBS_get_u8(&certificate_verify, &hash) ||
         !CBS_get_u8(&certificate_verify, &signature_type)) {

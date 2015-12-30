@@ -568,8 +568,8 @@ int ssl3_get_req_cert_type(SSL *ssl, uint8_t *p) {
  * handshake macs if required. */
 uint32_t ssl_get_algorithm_prf(const SSL *ssl) {
   uint32_t algorithm_prf = ssl->s3->tmp.new_cipher->algorithm_prf;
-  if (ssl->enc_method->enc_flags & SSL_ENC_FLAG_SHA256_PRF &&
-      algorithm_prf == SSL_HANDSHAKE_MAC_DEFAULT) {
+  if (algorithm_prf == SSL_HANDSHAKE_MAC_DEFAULT &&
+      ssl3_protocol_version(ssl) >= TLS1_2_VERSION) {
     return SSL_HANDSHAKE_MAC_SHA256;
   }
   return algorithm_prf;

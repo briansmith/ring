@@ -491,5 +491,4 @@ const SSL3_ENC_METHOD SSLv3_enc_data = {
     ssl3_final_finish_mac,
     ssl3_cert_verify_mac,
     ssl3_alert_code,
-    0,
 };

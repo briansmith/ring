@@ -747,12 +747,6 @@ void ssl_write_buffer_clear(SSL *ssl);
 
 /* Check if an SSL structure is using DTLS */
 #define SSL_IS_DTLS(ssl) (ssl->method->is_dtls)
-/* See if we need explicit IV */
-#define SSL_USE_EXPLICIT_IV(ssl) \
-  (ssl->enc_method->enc_flags & SSL_ENC_FLAG_EXPLICIT_IV)
-/* See if we use signature algorithms extension and signature algorithm before
- * signatures. */
-#define SSL_USE_SIGALGS(ssl) (ssl->enc_method->enc_flags & SSL_ENC_FLAG_SIGALGS)
 
 /* From RFC4492, used in encoding the curve type in ECParameters */
 #define NAMED_CURVE_TYPE 3
@@ -863,8 +857,6 @@ struct ssl3_enc_method {
   int (*final_finish_mac)(SSL *ssl, int from_server, uint8_t *out);
   int (*cert_verify_mac)(SSL *, int, uint8_t *);
   int (*alert_value)(int);
-  /* Various flags indicating protocol version requirements */
-  unsigned int enc_flags;
 };
 
 #define SSL_HM_HEADER_LENGTH(ssl) ssl->method->hhlen
@@ -873,15 +865,6 @@ struct ssl3_enc_method {
 #define ssl_set_handshake_header(ssl, htype, len) \
   ssl->method->set_handshake_header(ssl, htype, len)
 #define ssl_do_write(ssl) ssl->method->do_write(ssl)
-
-/* Values for enc_flags */
-
-/* Uses explicit IV for CBC mode */
-#define SSL_ENC_FLAG_EXPLICIT_IV 0x1
-/* Uses signature algorithms extension */
-#define SSL_ENC_FLAG_SIGALGS 0x2
-/* Uses SHA256 default PRF */
-#define SSL_ENC_FLAG_SHA256_PRF 0x4
 
 /* lengths of messages */
 #define DTLS1_COOKIE_LENGTH 256
@@ -975,8 +958,6 @@ typedef struct dtls1_state_st {
 } DTLS1_STATE;
 
 extern const SSL3_ENC_METHOD TLSv1_enc_data;
-extern const SSL3_ENC_METHOD TLSv1_1_enc_data;
-extern const SSL3_ENC_METHOD TLSv1_2_enc_data;
 extern const SSL3_ENC_METHOD SSLv3_enc_data;
 extern const SRTP_PROTECTION_PROFILE kSRTPProfiles[];
 

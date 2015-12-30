@@ -2646,7 +2646,7 @@ OPENSSL_COMPILE_ASSERT(sizeof(TLS_SIGALGS) == 2,
 
 int tls1_parse_peer_sigalgs(SSL *ssl, const CBS *in_sigalgs) {
   /* Extension ignored for inappropriate versions */
-  if (!SSL_USE_SIGALGS(ssl)) {
+  if (ssl3_protocol_version(ssl) < TLS1_2_VERSION) {
     return 1;
   }
 

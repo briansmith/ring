@@ -126,7 +126,8 @@ static const uint8_t kMaxEmptyRecords = 32;
 /* ssl_needs_record_splitting returns one if |ssl|'s current outgoing cipher
  * state needs record-splitting and zero otherwise. */
 static int ssl_needs_record_splitting(const SSL *ssl) {
-  return !SSL_USE_EXPLICIT_IV(ssl) && ssl->s3->aead_write_ctx != NULL &&
+  return ssl->s3->aead_write_ctx != NULL &&
+         ssl3_protocol_version(ssl) < TLS1_1_VERSION &&
          (ssl->mode & SSL_MODE_CBC_RECORD_SPLITTING) != 0 &&
          SSL_CIPHER_is_block_cipher(ssl->s3->aead_write_ctx->cipher);
 }

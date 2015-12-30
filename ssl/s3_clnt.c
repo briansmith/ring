@@ -874,7 +874,7 @@ int ssl3_get_server_hello(SSL *ssl) {
   /* If doing a full handshake with TLS 1.2, the server may request a client
    * certificate which requires hashing the handshake transcript under a
    * different hash. Otherwise, the handshake buffer may be released. */
-  if (!SSL_USE_SIGALGS(ssl) || ssl->hit) {
+  if (ssl->hit || ssl3_protocol_version(ssl) < TLS1_2_VERSION) {
     ssl3_free_handshake_buffer(ssl);
   }
 
@@ -1230,7 +1230,7 @@ int ssl3_get_server_key_exchange(SSL *ssl) {
     }
 
     const EVP_MD *md = NULL;
-    if (SSL_USE_SIGALGS(ssl)) {
+    if (ssl3_protocol_version(ssl) >= TLS1_2_VERSION) {
       uint8_t hash, signature;
       if (!CBS_get_u8(&server_key_exchange, &hash) ||
           !CBS_get_u8(&server_key_exchange, &signature)) {
@@ -1355,7 +1355,7 @@ int ssl3_get_certificate_request(SSL *ssl) {
     goto err;
   }
 
-  if (SSL_USE_SIGALGS(ssl)) {
+  if (ssl3_protocol_version(ssl) >= TLS1_2_VERSION) {
     CBS supported_signature_algorithms;
     if (!CBS_get_u16_length_prefixed(&cbs, &supported_signature_algorithms) ||
         !tls1_parse_peer_sigalgs(ssl, &supported_signature_algorithms)) {
@@ -1790,7 +1790,7 @@ int ssl3_send_cert_verify(SSL *ssl) {
   if (ssl->state == SSL3_ST_CW_CERT_VRFY_A) {
     /* Select and write out the digest type in TLS 1.2. */
     const EVP_MD *md = NULL;
-    if (SSL_USE_SIGALGS(ssl)) {
+    if (ssl3_protocol_version(ssl) >= TLS1_2_VERSION) {
       md = tls1_choose_signing_digest(ssl);
       if (!tls12_add_sigandhash(ssl, &cbb, md)) {
         OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
@@ -1824,7 +1824,8 @@ int ssl3_send_cert_verify(SSL *ssl) {
     /* Skip over the already written signature algorithm and retry the
      * signature. */
     uint8_t *ptr;
-    if ((SSL_USE_SIGALGS(ssl) && !CBB_did_write(&cbb, 2)) ||
+    if ((ssl3_protocol_version(ssl) >= TLS1_2_VERSION &&
+         !CBB_did_write(&cbb, 2)) ||
         !CBB_add_u16_length_prefixed(&cbb, &child) ||
         !CBB_reserve(&child, &ptr, max_sig_len)) {
       goto err;

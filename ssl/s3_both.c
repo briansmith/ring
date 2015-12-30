@@ -434,7 +434,7 @@ int ssl3_cert_verify_hash(SSL *ssl, uint8_t *out, size_t *out_len,
   /* For TLS v1.2 send signature algorithm and signature using
    * agreed digest and cached handshake records. Otherwise, use
    * SHA1 or MD5 + SHA1 depending on key type.  */
-  if (SSL_USE_SIGALGS(ssl)) {
+  if (ssl3_protocol_version(ssl) >= TLS1_2_VERSION) {
     EVP_MD_CTX mctx;
     unsigned len;
 
