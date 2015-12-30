@@ -148,27 +148,13 @@
 #include "internal.h"
 
 
-static const uint8_t ssl3_pad_1[48] = {
-    0x36, 0x36, 0x36, 0x36, 0x36, 0x36, 0x36, 0x36, 0x36, 0x36, 0x36, 0x36,
-    0x36, 0x36, 0x36, 0x36, 0x36, 0x36, 0x36, 0x36, 0x36, 0x36, 0x36, 0x36,
-    0x36, 0x36, 0x36, 0x36, 0x36, 0x36, 0x36, 0x36, 0x36, 0x36, 0x36, 0x36,
-    0x36, 0x36, 0x36, 0x36, 0x36, 0x36, 0x36, 0x36, 0x36, 0x36, 0x36, 0x36,
-};
-
-static const uint8_t ssl3_pad_2[48] = {
-    0x5c, 0x5c, 0x5c, 0x5c, 0x5c, 0x5c, 0x5c, 0x5c, 0x5c, 0x5c, 0x5c, 0x5c,
-    0x5c, 0x5c, 0x5c, 0x5c, 0x5c, 0x5c, 0x5c, 0x5c, 0x5c, 0x5c, 0x5c, 0x5c,
-    0x5c, 0x5c, 0x5c, 0x5c, 0x5c, 0x5c, 0x5c, 0x5c, 0x5c, 0x5c, 0x5c, 0x5c,
-    0x5c, 0x5c, 0x5c, 0x5c, 0x5c, 0x5c, 0x5c, 0x5c, 0x5c, 0x5c, 0x5c, 0x5c,
-};
-
 static int ssl3_handshake_mac(SSL *ssl, int md_nid, const char *sender,
                               size_t sender_len, uint8_t *p);
 
-int ssl3_prf(const SSL *ssl, uint8_t *out, size_t out_len,
-             const uint8_t *secret, size_t secret_len, const char *label,
-             size_t label_len, const uint8_t *seed1, size_t seed1_len,
-             const uint8_t *seed2, size_t seed2_len) {
+static int ssl3_prf(const SSL *ssl, uint8_t *out, size_t out_len,
+                    const uint8_t *secret, size_t secret_len, const char *label,
+                    size_t label_len, const uint8_t *seed1, size_t seed1_len,
+                    const uint8_t *seed2, size_t seed2_len) {
   EVP_MD_CTX md5;
   EVP_MD_CTX sha1;
   uint8_t buf[16], smd[SHA_DIGEST_LENGTH];
@@ -309,11 +295,11 @@ int ssl3_update_handshake_hash(SSL *ssl, const uint8_t *in, size_t in_len) {
   return 1;
 }
 
-int ssl3_cert_verify_mac(SSL *ssl, int md_nid, uint8_t *p) {
+static int ssl3_cert_verify_mac(SSL *ssl, int md_nid, uint8_t *p) {
   return ssl3_handshake_mac(ssl, md_nid, NULL, 0, p);
 }
 
-int ssl3_final_finish_mac(SSL *ssl, int from_server, uint8_t *out) {
+static int ssl3_final_finish_mac(SSL *ssl, int from_server, uint8_t *out) {
   const char *sender = from_server ? SSL3_MD_SERVER_FINISHED_CONST
                                    : SSL3_MD_CLIENT_FINISHED_CONST;
   const size_t sender_len = 4;
@@ -359,6 +345,20 @@ static int ssl3_handshake_mac(SSL *ssl, int md_nid, const char *sender,
     return 0;
   }
 
+  static const uint8_t kPad1[48] = {
+      0x36, 0x36, 0x36, 0x36, 0x36, 0x36, 0x36, 0x36, 0x36, 0x36, 0x36, 0x36,
+      0x36, 0x36, 0x36, 0x36, 0x36, 0x36, 0x36, 0x36, 0x36, 0x36, 0x36, 0x36,
+      0x36, 0x36, 0x36, 0x36, 0x36, 0x36, 0x36, 0x36, 0x36, 0x36, 0x36, 0x36,
+      0x36, 0x36, 0x36, 0x36, 0x36, 0x36, 0x36, 0x36, 0x36, 0x36, 0x36, 0x36,
+  };
+
+  static const uint8_t kPad2[48] = {
+      0x5c, 0x5c, 0x5c, 0x5c, 0x5c, 0x5c, 0x5c, 0x5c, 0x5c, 0x5c, 0x5c, 0x5c,
+      0x5c, 0x5c, 0x5c, 0x5c, 0x5c, 0x5c, 0x5c, 0x5c, 0x5c, 0x5c, 0x5c, 0x5c,
+      0x5c, 0x5c, 0x5c, 0x5c, 0x5c, 0x5c, 0x5c, 0x5c, 0x5c, 0x5c, 0x5c, 0x5c,
+      0x5c, 0x5c, 0x5c, 0x5c, 0x5c, 0x5c, 0x5c, 0x5c, 0x5c, 0x5c, 0x5c, 0x5c,
+  };
+
   n = EVP_MD_CTX_size(&ctx);
 
   npad = (48 / n) * n;
@@ -367,7 +367,7 @@ static int ssl3_handshake_mac(SSL *ssl, int md_nid, const char *sender,
   }
   EVP_DigestUpdate(&ctx, ssl->session->master_key,
                    ssl->session->master_key_length);
-  EVP_DigestUpdate(&ctx, ssl3_pad_1, npad);
+  EVP_DigestUpdate(&ctx, kPad1, npad);
   EVP_DigestFinal_ex(&ctx, md_buf, &i);
 
   if (!EVP_DigestInit_ex(&ctx, EVP_MD_CTX_md(&ctx), NULL)) {
@@ -377,7 +377,7 @@ static int ssl3_handshake_mac(SSL *ssl, int md_nid, const char *sender,
   }
   EVP_DigestUpdate(&ctx, ssl->session->master_key,
                    ssl->session->master_key_length);
-  EVP_DigestUpdate(&ctx, ssl3_pad_2, npad);
+  EVP_DigestUpdate(&ctx, kPad2, npad);
   EVP_DigestUpdate(&ctx, md_buf, i);
   EVP_DigestFinal_ex(&ctx, p, &ret);
 
@@ -386,7 +386,7 @@ static int ssl3_handshake_mac(SSL *ssl, int md_nid, const char *sender,
   return ret;
 }
 
-int ssl3_alert_code(int code) {
+static int ssl3_alert_code(int code) {
   switch (code) {
     case SSL_AD_CLOSE_NOTIFY:
       return SSL3_AD_CLOSE_NOTIFY;
@@ -485,3 +485,11 @@ int ssl3_alert_code(int code) {
       return -1;
   }
 }
+
+const SSL3_ENC_METHOD SSLv3_enc_data = {
+    ssl3_prf,
+    ssl3_final_finish_mac,
+    ssl3_cert_verify_mac,
+    ssl3_alert_code,
+    0,
+};

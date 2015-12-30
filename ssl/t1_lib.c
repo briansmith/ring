@@ -130,30 +130,6 @@
 static int ssl_check_clienthello_tlsext(SSL *ssl);
 static int ssl_check_serverhello_tlsext(SSL *ssl);
 
-const SSL3_ENC_METHOD TLSv1_enc_data = {
-    tls1_prf,
-    tls1_final_finish_mac,
-    tls1_cert_verify_mac,
-    tls1_alert_code,
-    0,
-};
-
-const SSL3_ENC_METHOD TLSv1_1_enc_data = {
-    tls1_prf,
-    tls1_final_finish_mac,
-    tls1_cert_verify_mac,
-    tls1_alert_code,
-    SSL_ENC_FLAG_EXPLICIT_IV,
-};
-
-const SSL3_ENC_METHOD TLSv1_2_enc_data = {
-    tls1_prf,
-    tls1_final_finish_mac,
-    tls1_cert_verify_mac,
-    tls1_alert_code,
-    SSL_ENC_FLAG_EXPLICIT_IV|SSL_ENC_FLAG_SIGALGS|SSL_ENC_FLAG_SHA256_PRF,
-};
-
 static int compare_uint16_t(const void *p1, const void *p2) {
   uint16_t u1 = *((const uint16_t *)p1);
   uint16_t u2 = *((const uint16_t *)p2);

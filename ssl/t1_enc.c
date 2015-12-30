@@ -224,10 +224,10 @@ err:
   return ret;
 }
 
-int tls1_prf(const SSL *ssl, uint8_t *out, size_t out_len,
-             const uint8_t *secret, size_t secret_len, const char *label,
-             size_t label_len, const uint8_t *seed1, size_t seed1_len,
-             const uint8_t *seed2, size_t seed2_len) {
+static int tls1_prf(const SSL *ssl, uint8_t *out, size_t out_len,
+                    const uint8_t *secret, size_t secret_len, const char *label,
+                    size_t label_len, const uint8_t *seed1, size_t seed1_len,
+                    const uint8_t *seed2, size_t seed2_len) {
   if (out_len == 0) {
     return 1;
   }
@@ -390,7 +390,7 @@ int tls1_setup_key_block(SSL *ssl) {
   return 1;
 }
 
-int tls1_cert_verify_mac(SSL *ssl, int md_nid, uint8_t *out) {
+static int tls1_cert_verify_mac(SSL *ssl, int md_nid, uint8_t *out) {
   const EVP_MD_CTX *ctx_template;
   if (md_nid == NID_md5) {
     ctx_template = &ssl->s3->handshake_md5;
@@ -459,7 +459,7 @@ int tls1_handshake_digest(SSL *ssl, uint8_t *out, size_t out_len) {
   return (int)(md5_len + len);
 }
 
-int tls1_final_finish_mac(SSL *ssl, int from_server, uint8_t *out) {
+static int tls1_final_finish_mac(SSL *ssl, int from_server, uint8_t *out) {
   /* At this point, the handshake should have released the handshake buffer on
    * its own. */
   assert(ssl->s3->handshake_buffer == NULL);
@@ -554,7 +554,7 @@ int SSL_export_keying_material(SSL *ssl, uint8_t *out, size_t out_len,
   return ret;
 }
 
-int tls1_alert_code(int code) {
+static int tls1_alert_code(int code) {
   switch (code) {
     case SSL_AD_CLOSE_NOTIFY:
       return SSL3_AD_CLOSE_NOTIFY;
@@ -652,3 +652,27 @@ int tls1_alert_code(int code) {
       return -1;
   }
 }
+
+const SSL3_ENC_METHOD TLSv1_enc_data = {
+    tls1_prf,
+    tls1_final_finish_mac,
+    tls1_cert_verify_mac,
+    tls1_alert_code,
+    0,
+};
+
+const SSL3_ENC_METHOD TLSv1_1_enc_data = {
+    tls1_prf,
+    tls1_final_finish_mac,
+    tls1_cert_verify_mac,
+    tls1_alert_code,
+    SSL_ENC_FLAG_EXPLICIT_IV,
+};
+
+const SSL3_ENC_METHOD TLSv1_2_enc_data = {
+    tls1_prf,
+    tls1_final_finish_mac,
+    tls1_cert_verify_mac,
+    tls1_alert_code,
+    SSL_ENC_FLAG_EXPLICIT_IV|SSL_ENC_FLAG_SIGALGS|SSL_ENC_FLAG_SHA256_PRF,
+};

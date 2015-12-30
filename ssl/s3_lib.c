@@ -163,14 +163,6 @@
 #include "internal.h"
 
 
-const SSL3_ENC_METHOD SSLv3_enc_data = {
-    ssl3_prf,
-    ssl3_final_finish_mac,
-    ssl3_cert_verify_mac,
-    ssl3_alert_code,
-    0,
-};
-
 int ssl3_supports_cipher(const SSL_CIPHER *cipher) {
   return 1;
 }

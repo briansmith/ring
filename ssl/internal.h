@@ -1038,10 +1038,6 @@ int ssl3_send_new_session_ticket(SSL *ssl);
 int ssl3_send_certificate_status(SSL *ssl);
 int ssl3_get_finished(SSL *ssl, int state_a, int state_b);
 int ssl3_send_change_cipher_spec(SSL *ssl, int state_a, int state_b);
-int ssl3_prf(const SSL *ssl, uint8_t *out, size_t out_len,
-             const uint8_t *secret, size_t secret_len, const char *label,
-             size_t label_len, const uint8_t *seed1, size_t seed1_len,
-             const uint8_t *seed2, size_t seed2_len);
 void ssl3_cleanup_key_block(SSL *ssl);
 int ssl3_do_write(SSL *ssl, int type);
 int ssl3_send_alert(SSL *ssl, int level, int desc);
@@ -1071,8 +1067,6 @@ void ssl3_read_close_notify(SSL *ssl);
 int ssl3_read_bytes(SSL *ssl, int type, uint8_t *buf, int len, int peek);
 int ssl3_write_app_data(SSL *ssl, const void *buf, int len);
 int ssl3_write_bytes(SSL *ssl, int type, const void *buf, int len);
-int ssl3_final_finish_mac(SSL *ssl, int from_server, uint8_t *out);
-int ssl3_cert_verify_mac(SSL *ssl, int md_nid, uint8_t *p);
 int ssl3_output_cert_chain(SSL *ssl);
 const SSL_CIPHER *ssl3_choose_cipher(
     SSL *ssl, STACK_OF(SSL_CIPHER) *clnt,
@@ -1161,20 +1155,11 @@ int dtls1_dispatch_alert(SSL *ssl);
 int ssl_init_wbio_buffer(SSL *ssl, int push);
 void ssl_free_wbio_buffer(SSL *ssl);
 
-int tls1_prf(const SSL *ssl, uint8_t *out, size_t out_len,
-             const uint8_t *secret, size_t secret_len, const char *label,
-             size_t label_len, const uint8_t *seed1, size_t seed1_len,
-             const uint8_t *seed2, size_t seed2_len);
-
 int tls1_change_cipher_state(SSL *ssl, int which);
 int tls1_setup_key_block(SSL *ssl);
 int tls1_handshake_digest(SSL *ssl, uint8_t *out, size_t out_len);
-int tls1_final_finish_mac(SSL *ssl, int from_server, uint8_t *out);
-int tls1_cert_verify_mac(SSL *ssl, int md_nid, uint8_t *p);
 int tls1_generate_master_secret(SSL *ssl, uint8_t *out, const uint8_t *premaster,
                                 size_t premaster_len);
-int tls1_alert_code(int code);
-int ssl3_alert_code(int code);
 
 char ssl_early_callback_init(struct ssl_early_callback_ctx *ctx);
 
