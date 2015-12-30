@@ -417,8 +417,6 @@ SSL *SSL_new(SSL_CTX *ctx) {
   if (!ssl->method->ssl_new(ssl)) {
     goto err;
   }
-  ssl->enc_method = ssl3_get_enc_method(ssl->version);
-  assert(ssl->enc_method != NULL);
 
   ssl->rwstate = SSL_NOTHING;
 
@@ -2630,8 +2628,6 @@ int SSL_clear(SSL *ssl) {
   if (!ssl->method->ssl_new(ssl)) {
     return 0;
   }
-  ssl->enc_method = ssl3_get_enc_method(ssl->version);
-  assert(ssl->enc_method != NULL);
 
   if (SSL_IS_DTLS(ssl) && (SSL_get_options(ssl) & SSL_OP_NO_QUERY_MTU)) {
     ssl->d1->mtu = mtu;

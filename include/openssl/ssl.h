@@ -3757,10 +3757,6 @@ struct ssl_st {
    * TLS). */
   const SSL_PROTOCOL_METHOD *method;
 
-  /* enc_method is the method table corresponding to the current protocol
-   * version. */
-  const SSL3_ENC_METHOD *enc_method;
-
   /* There are 2 BIO's even though they are normally both the same. This is so
    * data can be read and written to different handlers */
 
@@ -4009,6 +4005,10 @@ typedef struct ssl3_state_st {
 
   /* aead_write_ctx is the current write cipher state. */
   SSL_AEAD_CTX *aead_write_ctx;
+
+  /* enc_method is the method table corresponding to the current protocol
+   * version. */
+  const SSL3_ENC_METHOD *enc_method;
 
   /* State pertaining to the pending handshake.
    *

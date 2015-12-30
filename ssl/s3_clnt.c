@@ -786,8 +786,8 @@ int ssl3_get_server_hello(SSL *ssl) {
       goto f_err;
     }
     ssl->version = server_version;
-    ssl->enc_method = ssl3_get_enc_method(server_version);
-    assert(ssl->enc_method != NULL);
+    ssl->s3->enc_method = ssl3_get_enc_method(server_version);
+    assert(ssl->s3->enc_method != NULL);
     /* At this point, the connection's version is known and ssl->version is
      * fixed. Begin enforcing the record-layer version. */
     ssl->s3->have_version = 1;

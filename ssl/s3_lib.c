@@ -197,11 +197,11 @@ int ssl3_new(SSL *ssl) {
 
   ssl->s3 = s3;
 
-  /* Set the version to the highest supported version for TLS. This controls the
-   * initial state of |ssl->enc_method| and what the API reports as the version
-   * prior to negotiation.
+  /* Set the version to the highest supported version.
    *
-   * TODO(davidben): This is fragile and confusing. */
+   * TODO(davidben): Move this field into |s3|, have it store the normalized
+   * protocol version, and implement this pre-negotiation quirk in |SSL_version|
+   * at the API boundary rather than in internal state. */
   ssl->version = TLS1_2_VERSION;
   return 1;
 err:

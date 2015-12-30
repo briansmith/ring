@@ -328,7 +328,7 @@ size_t SSL_get_key_block_len(const SSL *ssl) {
 }
 
 int SSL_generate_key_block(const SSL *ssl, uint8_t *out, size_t out_len) {
-  return ssl->enc_method->prf(
+  return ssl->s3->enc_method->prf(
       ssl, out, out_len, ssl->session->master_key,
       ssl->session->master_key_length, TLS_MD_KEY_EXPANSION_CONST,
       TLS_MD_KEY_EXPANSION_CONST_SIZE, ssl->s3->server_random, SSL3_RANDOM_SIZE,
@@ -478,9 +478,10 @@ static int tls1_final_finish_mac(SSL *ssl, int from_server, uint8_t *out) {
   }
 
   static const size_t kFinishedLen = 12;
-  if (!ssl->enc_method->prf(ssl, out, kFinishedLen, ssl->session->master_key,
-                            ssl->session->master_key_length, label, label_len,
-                            buf, digests_len, NULL, 0)) {
+  if (!ssl->s3->enc_method->prf(ssl, out, kFinishedLen,
+                                ssl->session->master_key,
+                                ssl->session->master_key_length, label,
+                                label_len, buf, digests_len, NULL, 0)) {
     return 0;
   }
 
@@ -497,19 +498,19 @@ int tls1_generate_master_secret(SSL *ssl, uint8_t *out,
       return 0;
     }
 
-    if (!ssl->enc_method->prf(ssl, out, SSL3_MASTER_SECRET_SIZE, premaster,
-                              premaster_len,
-                              TLS_MD_EXTENDED_MASTER_SECRET_CONST,
-                              TLS_MD_EXTENDED_MASTER_SECRET_CONST_SIZE, digests,
-                              digests_len, NULL, 0)) {
+    if (!ssl->s3->enc_method->prf(ssl, out, SSL3_MASTER_SECRET_SIZE, premaster,
+                                  premaster_len,
+                                  TLS_MD_EXTENDED_MASTER_SECRET_CONST,
+                                  TLS_MD_EXTENDED_MASTER_SECRET_CONST_SIZE,
+                                  digests, digests_len, NULL, 0)) {
       return 0;
     }
   } else {
-    if (!ssl->enc_method->prf(ssl, out, SSL3_MASTER_SECRET_SIZE, premaster,
-                              premaster_len, TLS_MD_MASTER_SECRET_CONST,
-                              TLS_MD_MASTER_SECRET_CONST_SIZE,
-                              ssl->s3->client_random, SSL3_RANDOM_SIZE,
-                              ssl->s3->server_random, SSL3_RANDOM_SIZE)) {
+    if (!ssl->s3->enc_method->prf(ssl, out, SSL3_MASTER_SECRET_SIZE, premaster,
+                                  premaster_len, TLS_MD_MASTER_SECRET_CONST,
+                                  TLS_MD_MASTER_SECRET_CONST_SIZE,
+                                  ssl->s3->client_random, SSL3_RANDOM_SIZE,
+                                  ssl->s3->server_random, SSL3_RANDOM_SIZE)) {
       return 0;
     }
   }
@@ -547,9 +548,10 @@ int SSL_export_keying_material(SSL *ssl, uint8_t *out, size_t out_len,
     memcpy(seed + 2 * SSL3_RANDOM_SIZE + 2, context, context_len);
   }
 
-  int ret = ssl->enc_method->prf(ssl, out, out_len, ssl->session->master_key,
-                                 ssl->session->master_key_length, label,
-                                 label_len, seed, seed_len, NULL, 0);
+  int ret =
+      ssl->s3->enc_method->prf(ssl, out, out_len, ssl->session->master_key,
+                               ssl->session->master_key_length, label,
+                               label_len, seed, seed_len, NULL, 0);
   OPENSSL_free(seed);
   return ret;
 }
