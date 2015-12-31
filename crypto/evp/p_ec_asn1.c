@@ -57,6 +57,7 @@
 
 #include <openssl/asn1t.h>
 #include <openssl/bn.h>
+#include <openssl/bytestring.h>
 #include <openssl/ec.h>
 #include <openssl/err.h>
 #include <openssl/mem.h>
@@ -86,82 +87,65 @@ static int eckey_param2type(int *pptype, void **ppval, EC_KEY *ec_key) {
   return 1;
 }
 
-static int eckey_pub_encode(X509_PUBKEY *pk, const EVP_PKEY *pkey) {
-  EC_KEY *ec_key = pkey->pkey.ec;
-  void *pval = NULL;
-  int ptype;
-  uint8_t *penc = NULL, *p;
-  int penclen;
-
-  if (!eckey_param2type(&ptype, &pval, ec_key)) {
-    OPENSSL_PUT_ERROR(EVP, ERR_R_EC_LIB);
+static int eckey_pub_encode(CBB *out, const EVP_PKEY *key) {
+  const EC_KEY *ec_key = key->pkey.ec;
+  const EC_GROUP *group = EC_KEY_get0_group(ec_key);
+  int curve_nid = EC_GROUP_get_curve_name(group);
+  if (curve_nid == NID_undef) {
+    OPENSSL_PUT_ERROR(EVP, EVP_R_NO_NID_FOR_CURVE);
     return 0;
   }
-  penclen = i2o_ECPublicKey(ec_key, NULL);
-  if (penclen <= 0) {
-    goto err;
-  }
-  penc = OPENSSL_malloc(penclen);
-  if (!penc) {
-    goto err;
-  }
-  p = penc;
-  penclen = i2o_ECPublicKey(ec_key, &p);
-  if (penclen <= 0) {
-    goto err;
-  }
-  if (X509_PUBKEY_set0_param(pk, OBJ_nid2obj(EVP_PKEY_EC), ptype, pval, penc,
-                             penclen)) {
-    return 1;
+  const EC_POINT *public_key = EC_KEY_get0_public_key(ec_key);
+
+  /* See RFC 5480, section 2. */
+  CBB spki, algorithm, key_bitstring;
+  if (!CBB_add_asn1(out, &spki, CBS_ASN1_SEQUENCE) ||
+      !CBB_add_asn1(&spki, &algorithm, CBS_ASN1_SEQUENCE) ||
+      !OBJ_nid2cbb(&algorithm, NID_X9_62_id_ecPublicKey) ||
+      !OBJ_nid2cbb(&algorithm, curve_nid) ||
+      !CBB_add_asn1(&spki, &key_bitstring, CBS_ASN1_BITSTRING) ||
+      !CBB_add_u8(&key_bitstring, 0 /* padding */) ||
+      !EC_POINT_point2cbb(&key_bitstring, group, public_key,
+                          POINT_CONVERSION_UNCOMPRESSED, NULL) ||
+      !CBB_flush(out)) {
+    OPENSSL_PUT_ERROR(EVP, EVP_R_ENCODE_ERROR);
+    return 0;
   }
 
-err:
-  if (ptype == V_ASN1_OBJECT) {
-    ASN1_OBJECT_free(pval);
-  } else {
-    ASN1_STRING_free(pval);
-  }
-  if (penc) {
-    OPENSSL_free(penc);
-  }
-  return 0;
+  return 1;
 }
 
-static int eckey_pub_decode(EVP_PKEY *pkey, X509_PUBKEY *pubkey) {
-  const uint8_t *p = NULL;
-  void *pval;
-  int ptype, pklen;
-  EC_KEY *eckey = NULL;
-  X509_ALGOR *palg;
+static int eckey_pub_decode(EVP_PKEY *out, CBS *params, CBS *key) {
+  /* See RFC 5480, section 2. */
 
-  if (!X509_PUBKEY_get0_param(NULL, &p, &pklen, &palg, pubkey)) {
-    return 0;
-  }
-  X509_ALGOR_get0(NULL, &ptype, &pval, palg);
-
-  if (ptype != V_ASN1_OBJECT) {
+  /* The parameters are a named curve. */
+  CBS named_curve;
+  if (!CBS_get_asn1(params, &named_curve, CBS_ASN1_OBJECT) ||
+      CBS_len(params) != 0) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_DECODE_ERROR);
     return 0;
   }
-  eckey = EC_KEY_new_by_curve_name(OBJ_obj2nid((ASN1_OBJECT *)pval));
+
+  EC_KEY *eckey = EC_KEY_new_by_curve_name(OBJ_cbs2nid(&named_curve));
   if (eckey == NULL) {
-    OPENSSL_PUT_ERROR(EVP, ERR_R_EC_LIB);
     return 0;
   }
 
-  /* We have parameters now set public key */
-  if (!o2i_ECPublicKey(&eckey, &p, pklen)) {
-    OPENSSL_PUT_ERROR(EVP, EVP_R_DECODE_ERROR);
+  EC_POINT *point = EC_POINT_new(EC_KEY_get0_group(eckey));
+  if (point == NULL ||
+      !EC_POINT_oct2point(EC_KEY_get0_group(eckey), point, CBS_data(key),
+                          CBS_len(key), NULL) ||
+      !EC_KEY_set_public_key(eckey, point)) {
     goto err;
   }
 
-  EVP_PKEY_assign_EC_KEY(pkey, eckey);
+  EC_POINT_free(point);
+  EVP_PKEY_assign_EC_KEY(out, eckey);
   return 1;
 
 err:
-  if (eckey) {
-    EC_KEY_free(eckey);
-  }
+  EC_POINT_free(point);
+  EC_KEY_free(eckey);
   return 0;
 }
 

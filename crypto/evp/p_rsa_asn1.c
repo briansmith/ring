@@ -69,26 +69,33 @@
 #include "internal.h"
 
 
-static int rsa_pub_encode(X509_PUBKEY *pk, const EVP_PKEY *pkey) {
-  uint8_t *encoded;
-  size_t encoded_len;
-  if (!RSA_public_key_to_bytes(&encoded, &encoded_len, pkey->pkey.rsa)) {
-    return 0;
-  }
-
-  if (!X509_PUBKEY_set0_param(pk, OBJ_nid2obj(EVP_PKEY_RSA), V_ASN1_NULL, NULL,
-                              encoded, encoded_len)) {
-    OPENSSL_free(encoded);
+static int rsa_pub_encode(CBB *out, const EVP_PKEY *key) {
+  /* See RFC 3279, section 2.3.1. */
+  CBB spki, algorithm, null, key_bitstring;
+  if (!CBB_add_asn1(out, &spki, CBS_ASN1_SEQUENCE) ||
+      !CBB_add_asn1(&spki, &algorithm, CBS_ASN1_SEQUENCE) ||
+      !OBJ_nid2cbb(&algorithm, NID_rsaEncryption) ||
+      !CBB_add_asn1(&algorithm, &null, CBS_ASN1_NULL) ||
+      !CBB_add_asn1(&spki, &key_bitstring, CBS_ASN1_BITSTRING) ||
+      !CBB_add_u8(&key_bitstring, 0 /* padding */) ||
+      !RSA_marshal_public_key(&key_bitstring, key->pkey.rsa) ||
+      !CBB_flush(out)) {
+    OPENSSL_PUT_ERROR(EVP, EVP_R_ENCODE_ERROR);
     return 0;
   }
 
   return 1;
 }
 
-static int rsa_pub_decode(EVP_PKEY *pkey, X509_PUBKEY *pubkey) {
-  const uint8_t *p;
-  int pklen;
-  if (!X509_PUBKEY_get0_param(NULL, &p, &pklen, NULL, pubkey)) {
+static int rsa_pub_decode(EVP_PKEY *out, CBS *params, CBS *key) {
+  /* See RFC 3279, section 2.3.1. */
+
+  /* The parameters must be NULL. */
+  CBS null;
+  if (!CBS_get_asn1(params, &null, CBS_ASN1_NULL) ||
+      CBS_len(&null) != 0 ||
+      CBS_len(params) != 0) {
+    OPENSSL_PUT_ERROR(EVP, EVP_R_DECODE_ERROR);
     return 0;
   }
 
@@ -98,16 +105,14 @@ static int rsa_pub_decode(EVP_PKEY *pkey, X509_PUBKEY *pubkey) {
    * TODO(davidben): Switch this to the strict version in March 2016 or when
    * Chromium can force client certificates down a different codepath, whichever
    * comes first. */
-  CBS cbs;
-  CBS_init(&cbs, p, pklen);
-  RSA *rsa = RSA_parse_public_key_buggy(&cbs);
-  if (rsa == NULL || CBS_len(&cbs) != 0) {
+  RSA *rsa = RSA_parse_public_key_buggy(key);
+  if (rsa == NULL || CBS_len(key) != 0) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_DECODE_ERROR);
     RSA_free(rsa);
     return 0;
   }
 
-  EVP_PKEY_assign_RSA(pkey, rsa);
+  EVP_PKEY_assign_RSA(out, rsa);
   return 1;
 }
 

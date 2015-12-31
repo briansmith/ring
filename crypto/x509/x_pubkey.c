@@ -54,8 +54,11 @@
  * copied and put under another distribution licence
  * [including the GNU Public Licence.] */
 
+#include <limits.h>
+
 #include <openssl/asn1.h>
 #include <openssl/asn1t.h>
+#include <openssl/bytestring.h>
 #include <openssl/err.h>
 #include <openssl/evp.h>
 #include <openssl/mem.h>
@@ -63,7 +66,6 @@
 #include <openssl/thread.h>
 #include <openssl/x509.h>
 
-#include "../evp/internal.h"
 #include "../internal.h"
 
 /* Minor tweak to operation: free up EVP_PKEY */
@@ -87,51 +89,50 @@ IMPLEMENT_ASN1_FUNCTIONS(X509_PUBKEY)
 int X509_PUBKEY_set(X509_PUBKEY **x, EVP_PKEY *pkey)
 {
     X509_PUBKEY *pk = NULL;
+    uint8_t *spki = NULL;
+    size_t spki_len;
 
     if (x == NULL)
         return (0);
 
-    if ((pk = X509_PUBKEY_new()) == NULL)
-        goto error;
-
-    if (pkey->ameth) {
-        if (pkey->ameth->pub_encode) {
-            if (!pkey->ameth->pub_encode(pk, pkey)) {
-                OPENSSL_PUT_ERROR(X509, X509_R_PUBLIC_KEY_ENCODE_ERROR);
-                goto error;
-            }
-        } else {
-            OPENSSL_PUT_ERROR(X509, X509_R_METHOD_NOT_SUPPORTED);
-            goto error;
-        }
-    } else {
-        OPENSSL_PUT_ERROR(X509, X509_R_UNSUPPORTED_ALGORITHM);
+    CBB cbb;
+    if (!CBB_init(&cbb, 0) ||
+        !EVP_marshal_public_key(&cbb, pkey) ||
+        !CBB_finish(&cbb, &spki, &spki_len) ||
+        spki_len > LONG_MAX) {
+        CBB_cleanup(&cbb);
+        OPENSSL_PUT_ERROR(X509, X509_R_PUBLIC_KEY_ENCODE_ERROR);
         goto error;
     }
 
-    if (*x != NULL)
-        X509_PUBKEY_free(*x);
+    const uint8_t *p = spki;
+    pk = d2i_X509_PUBKEY(NULL, &p, (long)spki_len);
+    if (pk == NULL || p != spki + spki_len) {
+        OPENSSL_PUT_ERROR(X509, X509_R_PUBLIC_KEY_DECODE_ERROR);
+        goto error;
+    }
 
+    OPENSSL_free(spki);
+    X509_PUBKEY_free(*x);
     *x = pk;
 
     return 1;
  error:
-    if (pk != NULL)
-        X509_PUBKEY_free(pk);
+    X509_PUBKEY_free(pk);
+    OPENSSL_free(spki);
     return 0;
 }
 
-/*
- * g_pubkey_lock is used to protect the initialisation of the |pkey| member
- * of |X509_PUBKEY| objects. Really |X509_PUBKEY| should have a
- * |CRYPTO_once_t| inside it for this, but |CRYPTO_once_t| is private and
- * |X509_PUBKEY| is not.
- */
+/* g_pubkey_lock is used to protect the initialisation of the |pkey| member of
+ * |X509_PUBKEY| objects. Really |X509_PUBKEY| should have a |CRYPTO_once_t|
+ * inside it for this, but |CRYPTO_once_t| is private and |X509_PUBKEY| is
+ * not. */
 static struct CRYPTO_STATIC_MUTEX g_pubkey_lock = CRYPTO_STATIC_MUTEX_INIT;
 
 EVP_PKEY *X509_PUBKEY_get(X509_PUBKEY *key)
 {
     EVP_PKEY *ret = NULL;
+    uint8_t *spki = NULL;
 
     if (key == NULL)
         goto error;
@@ -143,26 +144,16 @@ EVP_PKEY *X509_PUBKEY_get(X509_PUBKEY *key)
     }
     CRYPTO_STATIC_MUTEX_unlock(&g_pubkey_lock);
 
-    if (key->public_key == NULL)
-        goto error;
-
-    if ((ret = EVP_PKEY_new()) == NULL) {
-        OPENSSL_PUT_ERROR(X509, ERR_R_MALLOC_FAILURE);
+    /* Re-encode the |X509_PUBKEY| to DER and parse it. */
+    int spki_len = i2d_X509_PUBKEY(key, &spki);
+    if (spki_len < 0) {
         goto error;
     }
-
-    if (!EVP_PKEY_set_type(ret, OBJ_obj2nid(key->algor->algorithm))) {
-        OPENSSL_PUT_ERROR(X509, X509_R_UNSUPPORTED_ALGORITHM);
-        goto error;
-    }
-
-    if (ret->ameth->pub_decode) {
-        if (!ret->ameth->pub_decode(ret, key)) {
-            OPENSSL_PUT_ERROR(X509, X509_R_PUBLIC_KEY_DECODE_ERROR);
-            goto error;
-        }
-    } else {
-        OPENSSL_PUT_ERROR(X509, X509_R_METHOD_NOT_SUPPORTED);
+    CBS cbs;
+    CBS_init(&cbs, spki, (size_t)spki_len);
+    ret = EVP_parse_public_key(&cbs);
+    if (ret == NULL || CBS_len(&cbs) != 0) {
+        OPENSSL_PUT_ERROR(X509, X509_R_PUBLIC_KEY_DECODE_ERROR);
         goto error;
     }
 
@@ -177,12 +168,13 @@ EVP_PKEY *X509_PUBKEY_get(X509_PUBKEY *key)
         CRYPTO_STATIC_MUTEX_unlock(&g_pubkey_lock);
     }
 
+    OPENSSL_free(spki);
     return EVP_PKEY_up_ref(ret);
 
  error:
-    if (ret != NULL)
-        EVP_PKEY_free(ret);
-    return (NULL);
+    OPENSSL_free(spki);
+    EVP_PKEY_free(ret);
+    return NULL;
 }
 
 /*

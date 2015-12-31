@@ -71,6 +71,7 @@
 #endif
 
 #include <openssl/bio.h>
+#include <openssl/bytestring.h>
 #include <openssl/crypto.h>
 #include <openssl/digest.h>
 #include <openssl/err.h>
@@ -104,6 +105,20 @@ static const EVP_MD *GetDigest(FileTest *t, const std::string &name) {
   return nullptr;
 }
 
+static int GetKeyType(FileTest *t, const std::string &name) {
+  if (name == "RSA") {
+    return EVP_PKEY_RSA;
+  }
+  if (name == "EC") {
+    return EVP_PKEY_EC;
+  }
+  if (name == "DSA") {
+    return EVP_PKEY_DSA;
+  }
+  t->PrintLine("Unknown key type: '%s'", name.c_str());
+  return EVP_PKEY_NONE;
+}
+
 using KeyMap = std::map<std::string, ScopedEVP_PKEY>;
 
 // ImportPrivateKey evaluates a PrivateKey test in |t| and writes the resulting
@@ -128,10 +143,61 @@ static bool ImportPrivateKey(FileTest *t, KeyMap *key_map) {
   return true;
 }
 
+static bool ImportPublicKey(FileTest *t, KeyMap *key_map) {
+  std::vector<uint8_t> input;
+  if (!t->GetBytes(&input, "Input")) {
+    return false;
+  }
+
+  CBS cbs;
+  CBS_init(&cbs, input.data(), input.size());
+  ScopedEVP_PKEY pkey(EVP_parse_public_key(&cbs));
+  if (!pkey) {
+    return false;
+  }
+
+  std::string key_type;
+  if (!t->GetAttribute(&key_type, "Type")) {
+    return false;
+  }
+  if (EVP_PKEY_id(pkey.get()) != GetKeyType(t, key_type)) {
+    t->PrintLine("Bad key type.");
+    return false;
+  }
+
+  // The encoding must round-trip.
+  ScopedCBB cbb;
+  uint8_t *spki;
+  size_t spki_len;
+  if (!CBB_init(cbb.get(), 0) ||
+      !EVP_marshal_public_key(cbb.get(), pkey.get()) ||
+      !CBB_finish(cbb.get(), &spki, &spki_len)) {
+    return false;
+  }
+  ScopedOpenSSLBytes free_spki(spki);
+  if (!t->ExpectBytesEqual(input.data(), input.size(), spki, spki_len)) {
+    t->PrintLine("Re-encoding the SPKI did not match.");
+    return false;
+  }
+
+  // Save the key for future tests.
+  const std::string &key_name = t->GetParameter();
+  if (key_map->count(key_name) > 0) {
+    t->PrintLine("Duplicate key '%s'.", key_name.c_str());
+    return false;
+  }
+  (*key_map)[key_name] = std::move(pkey);
+  return true;
+}
+
 static bool TestEVP(FileTest *t, void *arg) {
   KeyMap *key_map = reinterpret_cast<KeyMap*>(arg);
   if (t->GetType() == "PrivateKey") {
     return ImportPrivateKey(t, key_map);
+  }
+
+  if (t->GetType() == "PublicKey") {
+    return ImportPublicKey(t, key_map);
   }
 
   int (*key_op_init)(EVP_PKEY_CTX *ctx);

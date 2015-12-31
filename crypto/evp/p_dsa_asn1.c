@@ -55,6 +55,8 @@
 
 #include <openssl/evp.h>
 
+#include <limits.h>
+
 #include <openssl/asn1.h>
 #include <openssl/asn1t.h>
 #include <openssl/digest.h>
@@ -67,113 +69,63 @@
 #include "internal.h"
 
 
-static int dsa_pub_decode(EVP_PKEY *pkey, X509_PUBKEY *pubkey) {
-  const uint8_t *p, *pm;
-  int pklen, pmlen;
-  int ptype;
-  void *pval;
-  ASN1_STRING *pstr;
-  X509_ALGOR *palg;
-  ASN1_INTEGER *public_key = NULL;
+static int dsa_pub_decode(EVP_PKEY *out, CBS *params, CBS *key) {
+  /* See RFC 3279, section 2.3.2. */
 
-  DSA *dsa = NULL;
-
-  if (!X509_PUBKEY_get0_param(NULL, &p, &pklen, &palg, pubkey)) {
-    return 0;
-  }
-  X509_ALGOR_get0(NULL, &ptype, &pval, palg);
-
-  if (ptype == V_ASN1_SEQUENCE) {
-    pstr = pval;
-    pm = pstr->data;
-    pmlen = pstr->length;
-
-    dsa = d2i_DSAparams(NULL, &pm, pmlen);
+  /* Parameters may or may not be present. */
+  DSA *dsa;
+  if (CBS_len(params) == 0) {
+    dsa = DSA_new();
     if (dsa == NULL) {
+      return 0;
+    }
+  } else {
+    dsa = DSA_parse_parameters(params);
+    if (dsa == NULL || CBS_len(params) != 0) {
       OPENSSL_PUT_ERROR(EVP, EVP_R_DECODE_ERROR);
       goto err;
     }
-  } else if (ptype == V_ASN1_NULL || ptype == V_ASN1_UNDEF) {
-    dsa = DSA_new();
-    if (dsa == NULL) {
-      OPENSSL_PUT_ERROR(EVP, ERR_R_MALLOC_FAILURE);
-      goto err;
-    }
-  } else {
-    OPENSSL_PUT_ERROR(EVP, EVP_R_PARAMETER_ENCODING_ERROR);
+  }
+
+  dsa->pub_key = BN_new();
+  if (dsa->pub_key == NULL) {
     goto err;
   }
 
-  public_key = d2i_ASN1_INTEGER(NULL, &p, pklen);
-  if (public_key == NULL) {
+  if (!BN_parse_asn1_unsigned(key, dsa->pub_key) ||
+      CBS_len(key) != 0) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_DECODE_ERROR);
     goto err;
   }
 
-  dsa->pub_key = ASN1_INTEGER_to_BN(public_key, NULL);
-  if (dsa->pub_key == NULL) {
-    OPENSSL_PUT_ERROR(EVP, EVP_R_BN_DECODE_ERROR);
-    goto err;
-  }
-
-  ASN1_INTEGER_free(public_key);
-  EVP_PKEY_assign_DSA(pkey, dsa);
+  EVP_PKEY_assign_DSA(out, dsa);
   return 1;
 
 err:
-  ASN1_INTEGER_free(public_key);
   DSA_free(dsa);
   return 0;
 }
 
-static int dsa_pub_encode(X509_PUBKEY *pk, const EVP_PKEY *pkey) {
-  DSA *dsa;
-  ASN1_STRING *pval = NULL;
-  uint8_t *penc = NULL;
-  int penclen;
+static int dsa_pub_encode(CBB *out, const EVP_PKEY *key) {
+  const DSA *dsa = key->pkey.dsa;
+  const int has_params = dsa->p != NULL && dsa->q != NULL && dsa->g != NULL;
 
-  dsa = pkey->pkey.dsa;
-
-  int ptype;
-  if (dsa->p && dsa->q && dsa->g) {
-    pval = ASN1_STRING_new();
-    if (!pval) {
-      OPENSSL_PUT_ERROR(EVP, ERR_R_MALLOC_FAILURE);
-      goto err;
-    }
-    pval->length = i2d_DSAparams(dsa, &pval->data);
-    if (pval->length <= 0) {
-      OPENSSL_PUT_ERROR(EVP, ERR_R_MALLOC_FAILURE);
-      goto err;
-    }
-    ptype = V_ASN1_SEQUENCE;
-  } else {
-    ptype = V_ASN1_UNDEF;
+  /* See RFC 5480, section 2. */
+  CBB spki, algorithm, key_bitstring;
+  if (!CBB_add_asn1(out, &spki, CBS_ASN1_SEQUENCE) ||
+      !CBB_add_asn1(&spki, &algorithm, CBS_ASN1_SEQUENCE) ||
+      !OBJ_nid2cbb(&algorithm, NID_dsa) ||
+      (has_params &&
+       !DSA_marshal_parameters(&algorithm, dsa)) ||
+      !CBB_add_asn1(&spki, &key_bitstring, CBS_ASN1_BITSTRING) ||
+      !CBB_add_u8(&key_bitstring, 0 /* padding */) ||
+      !BN_marshal_asn1(&key_bitstring, dsa->pub_key) ||
+      !CBB_flush(out)) {
+    OPENSSL_PUT_ERROR(EVP, EVP_R_ENCODE_ERROR);
+    return 0;
   }
 
-  ASN1_INTEGER *pubint = BN_to_ASN1_INTEGER(dsa->pub_key, NULL);
-  if (pubint == NULL) {
-    goto err;
-  }
-
-  penclen = i2d_ASN1_INTEGER(pubint, &penc);
-  ASN1_INTEGER_free(pubint);
-
-  if (penclen <= 0) {
-    OPENSSL_PUT_ERROR(EVP, ERR_R_MALLOC_FAILURE);
-    goto err;
-  }
-
-  if (X509_PUBKEY_set0_param(pk, OBJ_nid2obj(EVP_PKEY_DSA), ptype, pval,
-                             penc, penclen)) {
-    return 1;
-  }
-
-err:
-  OPENSSL_free(penc);
-  ASN1_STRING_free(pval);
-
-  return 0;
+  return 1;
 }
 
 static int dsa_priv_decode(EVP_PKEY *pkey, PKCS8_PRIV_KEY_INFO *p8) {

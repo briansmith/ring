@@ -188,6 +188,20 @@ OPENSSL_EXPORT int EVP_PKEY_cmp_parameters(const EVP_PKEY *a,
 
 /* ASN.1 functions */
 
+/* EVP_parse_public_key decodes a DER-encoded SubjectPublicKeyInfo structure
+ * (RFC 5280) from |cbs| and advances |cbs|. It returns a newly-allocated
+ * |EVP_PKEY| or NULL on error.
+ *
+ * The caller must check the type of the parsed public key to ensure it is
+ * suitable and validate other desired key properties such as RSA modulus size
+ * or EC curve. */
+OPENSSL_EXPORT EVP_PKEY *EVP_parse_public_key(CBS *cbs);
+
+/* EVP_marshal_public_key marshals |key| as a DER-encoded SubjectPublicKeyInfo
+ * structure (RFC 5280) and appends the result to |cbb|. It returns one on
+ * success and zero on error. */
+OPENSSL_EXPORT int EVP_marshal_public_key(CBB *cbb, const EVP_PKEY *key);
+
 /* d2i_PrivateKey parses an ASN.1, DER-encoded, private key from |len| bytes at
  * |*inp|. If |out| is not NULL then, on exit, a pointer to the result is in
  * |*out|. If |*out| is already non-NULL on entry then the result is written
@@ -780,5 +794,6 @@ struct evp_pkey_st {
 #define EVP_R_PARAMETER_ENCODING_ERROR 152
 #define EVP_R_UNSUPPORTED_PUBLIC_KEY_TYPE 153
 #define EVP_R_UNSUPPORTED_SIGNATURE_TYPE 154
+#define EVP_R_ENCODE_ERROR 155
 
 #endif  /* OPENSSL_HEADER_EVP_H */

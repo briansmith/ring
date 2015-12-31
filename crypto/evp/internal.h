@@ -90,8 +90,19 @@ struct evp_pkey_asn1_method_st {
 
   const char *pem_str;
 
-  int (*pub_decode)(EVP_PKEY *pk, X509_PUBKEY *pub);
-  int (*pub_encode)(X509_PUBKEY *pub, const EVP_PKEY *pk);
+  /* pub_decode decodes |params| and |key| as a SubjectPublicKeyInfo
+   * and writes the result into |out|. It returns one on success and zero on
+   * error. |params| is the AlgorithmIdentifier after the OBJECT IDENTIFIER
+   * type field, and |key| is the contents of the subjectPublicKey with the
+   * leading padding byte checked and removed. Although X.509 uses BIT STRINGs
+   * to represent SubjectPublicKeyInfo, every key type defined encodes the key
+   * as a byte string with the same conversion to BIT STRING. */
+  int (*pub_decode)(EVP_PKEY *out, CBS *params, CBS *key);
+
+  /* pub_encode encodes |key| as a SubjectPublicKeyInfo and appends the result
+   * to |out|. It returns one on success and zero on error. */
+  int (*pub_encode)(CBB *out, const EVP_PKEY *key);
+
   int (*pub_cmp)(const EVP_PKEY *a, const EVP_PKEY *b);
   int (*pub_print)(BIO *out, const EVP_PKEY *pkey, int indent, ASN1_PCTX *pctx);
 

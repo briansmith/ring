@@ -111,7 +111,7 @@ class FileTest {
   bool GetAttribute(std::string *out_value, const std::string &key);
 
   // GetAttributeOrDie looks up the attribute with key |key| and aborts if it is
-  // missing. It only be used after a |HasAttribute| call.
+  // missing. It should only be used after a |HasAttribute| call.
   const std::string &GetAttributeOrDie(const std::string &key);
 
   // GetBytes looks up the attribute with key |key| and decodes it as a byte
