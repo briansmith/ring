@@ -530,7 +530,6 @@ static int old_ec_priv_encode(const EVP_PKEY *pkey, uint8_t **pder) {
 
 const EVP_PKEY_ASN1_METHOD ec_asn1_meth = {
   EVP_PKEY_EC,
-  EVP_PKEY_EC,
   0,
   "EC",
 

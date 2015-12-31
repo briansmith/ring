@@ -551,7 +551,6 @@ err:
 
 const EVP_PKEY_ASN1_METHOD dsa_asn1_meth = {
   EVP_PKEY_DSA,
-  EVP_PKEY_DSA,
   0,
 
   "DSA",

@@ -704,7 +704,6 @@ static evp_digest_sign_algorithm_result_t rsa_digest_sign_algorithm(
 
 const EVP_PKEY_ASN1_METHOD rsa_asn1_meth = {
   EVP_PKEY_RSA,
-  EVP_PKEY_RSA,
   ASN1_PKEY_SIGPARAM_NULL,
 
   "RSA",
