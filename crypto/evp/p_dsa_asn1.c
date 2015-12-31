@@ -420,21 +420,6 @@ err:
   return ret;
 }
 
-static int dsa_param_decode(EVP_PKEY *pkey, const uint8_t **pder, int derlen) {
-  DSA *dsa;
-  dsa = d2i_DSAparams(NULL, pder, derlen);
-  if (dsa == NULL) {
-    OPENSSL_PUT_ERROR(EVP, ERR_R_DSA_LIB);
-    return 0;
-  }
-  EVP_PKEY_assign_DSA(pkey, dsa);
-  return 1;
-}
-
-static int dsa_param_encode(const EVP_PKEY *pkey, uint8_t **pder) {
-  return i2d_DSAparams(pkey->pkey.dsa, pder);
-}
-
 static int dsa_param_print(BIO *bp, const EVP_PKEY *pkey, int indent,
                            ASN1_PCTX *ctx) {
   return do_dsa_print(bp, pkey->pkey.dsa, indent, 0);
@@ -527,8 +512,6 @@ const EVP_PKEY_ASN1_METHOD dsa_asn1_meth = {
   int_dsa_size,
   dsa_bits,
 
-  dsa_param_decode,
-  dsa_param_encode,
   dsa_missing_parameters,
   dsa_copy_parameters,
   dsa_cmp_parameters,

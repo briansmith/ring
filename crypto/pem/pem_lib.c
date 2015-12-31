@@ -163,24 +163,6 @@ static int check_pem(const char *nm, const char *name)
         return 0;
     }
 
-    if (!strcmp(name, PEM_STRING_PARAMETERS)) {
-        int slen;
-        const EVP_PKEY_ASN1_METHOD *ameth;
-        slen = pem_check_suffix(nm, "PARAMETERS");
-        if (slen > 0) {
-            ENGINE *e;
-            ameth = EVP_PKEY_asn1_find_str(&e, nm, slen);
-            if (ameth) {
-                int r;
-                if (ameth->param_decode)
-                    r = 1;
-                else
-                    r = 0;
-                return r;
-            }
-        }
-        return 0;
-    }
     /* Permit older strings */
 
     if (!strcmp(nm, PEM_STRING_X509_OLD) && !strcmp(name, PEM_STRING_X509))

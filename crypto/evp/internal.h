@@ -124,8 +124,6 @@ struct evp_pkey_asn1_method_st {
   int (*pkey_size)(const EVP_PKEY *pk);
   int (*pkey_bits)(const EVP_PKEY *pk);
 
-  int (*param_decode)(EVP_PKEY *pkey, const uint8_t **pder, int derlen);
-  int (*param_encode)(const EVP_PKEY *pkey, uint8_t **pder);
   int (*param_missing)(const EVP_PKEY *pk);
   int (*param_copy)(EVP_PKEY *to, const EVP_PKEY *from);
   int (*param_cmp)(const EVP_PKEY *a, const EVP_PKEY *b);
