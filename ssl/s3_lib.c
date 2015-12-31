@@ -311,23 +311,28 @@ int SSL_enable_tls_channel_id(SSL *ssl) {
   return 1;
 }
 
+static int is_p256_key(EVP_PKEY *private_key) {
+  const EC_KEY *ec_key = EVP_PKEY_get0_EC_KEY(private_key);
+  return ec_key != NULL &&
+         EC_GROUP_get_curve_name(EC_KEY_get0_group(ec_key)) ==
+             NID_X9_62_prime256v1;
+}
+
 int SSL_CTX_set1_tls_channel_id(SSL_CTX *ctx, EVP_PKEY *private_key) {
-  ctx->tlsext_channel_id_enabled = 1;
-  if (EVP_PKEY_id(private_key) != EVP_PKEY_EC ||
-      EVP_PKEY_bits(private_key) != 256) {
+  if (!is_p256_key(private_key)) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_CHANNEL_ID_NOT_P256);
     return 0;
   }
+
   EVP_PKEY_free(ctx->tlsext_channel_id_private);
   ctx->tlsext_channel_id_private = EVP_PKEY_up_ref(private_key);
+  ctx->tlsext_channel_id_enabled = 1;
+
   return 1;
 }
 
 int SSL_set1_tls_channel_id(SSL *ssl, EVP_PKEY *private_key) {
-  EC_KEY *ec_key = EVP_PKEY_get0_EC_KEY(private_key);
-  if (ec_key == NULL ||
-      EC_GROUP_get_curve_name(EC_KEY_get0_group(ec_key)) !=
-          NID_X9_62_prime256v1) {
+  if (!is_p256_key(private_key)) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_CHANNEL_ID_NOT_P256);
     return 0;
   }
