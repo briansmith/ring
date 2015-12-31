@@ -65,21 +65,12 @@ static int ssl_ec_point_generate_keypair(SSL_ECDH_CTX *ctx, CBB *out) {
     }
   } while (BN_is_zero(private_key));
 
-  /* Compute the corresponding public key. */
+  /* Compute the corresponding public key and serialize it. */
   public_key = EC_POINT_new(group);
   if (public_key == NULL ||
-      !EC_POINT_mul(group, public_key, private_key, NULL, NULL, bn_ctx)) {
-    goto err;
-  }
-
-  /* Serialize the public key. */
-  size_t len = EC_POINT_point2oct(
-      group, public_key, POINT_CONVERSION_UNCOMPRESSED, NULL, 0, bn_ctx);
-  uint8_t *ptr;
-  if (len == 0 ||
-      !CBB_add_space(out, &ptr, len) ||
-      EC_POINT_point2oct(group, public_key, POINT_CONVERSION_UNCOMPRESSED, ptr,
-                         len, bn_ctx) != len) {
+      !EC_POINT_mul(group, public_key, private_key, NULL, NULL, bn_ctx) ||
+      !EC_POINT_point2cbb(out, group, public_key, POINT_CONVERSION_UNCOMPRESSED,
+                          bn_ctx)) {
     goto err;
   }
 

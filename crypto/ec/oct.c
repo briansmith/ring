@@ -68,6 +68,7 @@
 #include <openssl/ec.h>
 
 #include <openssl/bn.h>
+#include <openssl/bytestring.h>
 #include <openssl/err.h>
 
 #include "internal.h"
@@ -266,6 +267,17 @@ size_t EC_POINT_point2oct(const EC_GROUP *group, const EC_POINT *point,
     return 0;
   }
   return ec_GFp_simple_point2oct(group, point, form, buf, len, ctx);
+}
+
+int EC_POINT_point2cbb(CBB *out, const EC_GROUP *group, const EC_POINT *point,
+                       point_conversion_form_t form, BN_CTX *ctx) {
+  size_t len = EC_POINT_point2oct(group, point, form, NULL, 0, ctx);
+  if (len == 0) {
+    return 0;
+  }
+  uint8_t *p;
+  return CBB_add_space(out, &p, len) &&
+         EC_POINT_point2oct(group, point, form, p, len, ctx) == len;
 }
 
 int ec_GFp_simple_set_compressed_coordinates(const EC_GROUP *group,

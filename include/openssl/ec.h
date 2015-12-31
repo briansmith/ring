@@ -239,6 +239,13 @@ OPENSSL_EXPORT size_t EC_POINT_point2oct(const EC_GROUP *group,
                                          point_conversion_form_t form,
                                          uint8_t *buf, size_t len, BN_CTX *ctx);
 
+/* EC_POINT_point2cbb behaves like |EC_POINT_point2oct| but appends the
+ * serialised point to |cbb|. It returns one on success and zero on error. */
+OPENSSL_EXPORT int EC_POINT_point2cbb(CBB *out, const EC_GROUP *group,
+                                      const EC_POINT *point,
+                                      point_conversion_form_t form,
+                                      BN_CTX *ctx);
+
 /* EC_POINT_oct2point sets |point| from |len| bytes of X9.62 format
  * serialisation in |buf|. It returns one on success and zero otherwise. The
  * |ctx| argument may be used if not NULL. */
