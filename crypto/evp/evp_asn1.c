@@ -56,10 +56,12 @@
 
 #include <openssl/evp.h>
 
-#include <openssl/asn1.h>
 #include <openssl/bytestring.h>
+#include <openssl/dsa.h>
+#include <openssl/ec_key.h>
 #include <openssl/err.h>
 #include <openssl/obj.h>
+#include <openssl/rsa.h>
 #include <openssl/x509.h>
 
 #include "internal.h"
@@ -219,50 +221,61 @@ err:
   return NULL;
 }
 
-EVP_PKEY *d2i_AutoPrivateKey(EVP_PKEY **out, const uint8_t **inp, long len) {
-  STACK_OF(ASN1_TYPE) *inkey;
-  const uint8_t *p;
-  int keytype;
-  p = *inp;
+/* num_elements parses one SEQUENCE from |in| and returns the number of elements
+ * in it. On parse error, it returns zero. */
+static size_t num_elements(const uint8_t *in, size_t in_len) {
+  CBS cbs, sequence;
+  CBS_init(&cbs, in, (size_t)in_len);
 
-  /* Dirty trick: read in the ASN1 data into out STACK_OF(ASN1_TYPE):
-   * by analyzing it we can determine the passed structure: this
-   * assumes the input is surrounded by an ASN1 SEQUENCE. */
-  inkey = d2i_ASN1_SEQUENCE_ANY(NULL, &p, len);
-  /* Since we only need to discern "traditional format" RSA and DSA
-   * keys we can just count the elements. */
-  if (sk_ASN1_TYPE_num(inkey) == 6) {
-    keytype = EVP_PKEY_DSA;
-  } else if (sk_ASN1_TYPE_num(inkey) == 4) {
-    keytype = EVP_PKEY_EC;
-  } else if (sk_ASN1_TYPE_num(inkey) == 3) {
-    /* This seems to be PKCS8, not traditional format */
-    p = *inp;
-    PKCS8_PRIV_KEY_INFO *p8 = d2i_PKCS8_PRIV_KEY_INFO(NULL, &p, len);
-    EVP_PKEY *ret;
-
-    sk_ASN1_TYPE_pop_free(inkey, ASN1_TYPE_free);
-    if (!p8) {
-      OPENSSL_PUT_ERROR(EVP, EVP_R_UNSUPPORTED_PUBLIC_KEY_TYPE);
-      return NULL;
-    }
-    ret = EVP_PKCS82PKEY(p8);
-    PKCS8_PRIV_KEY_INFO_free(p8);
-    if (ret == NULL) {
-      return NULL;
-    }
-
-    *inp = p;
-    if (out) {
-      *out = ret;
-    }
-    return ret;
-  } else {
-    keytype = EVP_PKEY_RSA;
+  if (!CBS_get_asn1(&cbs, &sequence, CBS_ASN1_SEQUENCE)) {
+    return 0;
   }
 
-  sk_ASN1_TYPE_pop_free(inkey, ASN1_TYPE_free);
-  return d2i_PrivateKey(keytype, out, inp, len);
+  size_t count = 0;
+  while (CBS_len(&sequence) > 0) {
+    if (!CBS_get_any_asn1_element(&sequence, NULL, NULL, NULL)) {
+      return 0;
+    }
+
+    count++;
+  }
+
+  return count;
+}
+
+EVP_PKEY *d2i_AutoPrivateKey(EVP_PKEY **out, const uint8_t **inp, long len) {
+  if (len < 0) {
+    OPENSSL_PUT_ERROR(EVP, EVP_R_DECODE_ERROR);
+    return NULL;
+  }
+
+  /* Count the elements to determine the format. */
+  switch (num_elements(*inp, (size_t)len)) {
+    case 3: {
+      /* Parse the input as a PKCS#8 PrivateKeyInfo. */
+      CBS cbs;
+      CBS_init(&cbs, *inp, (size_t)len);
+      EVP_PKEY *ret = EVP_parse_private_key(&cbs);
+      if (ret == NULL) {
+        return NULL;
+      }
+      if (out != NULL) {
+        EVP_PKEY_free(*out);
+        *out = ret;
+      }
+      *inp = CBS_data(&cbs);
+      return ret;
+    }
+
+    case 4:
+      return d2i_PrivateKey(EVP_PKEY_EC, out, inp, len);
+
+    case 6:
+      return d2i_PrivateKey(EVP_PKEY_DSA, out, inp, len);
+
+    default:
+      return d2i_PrivateKey(EVP_PKEY_RSA, out, inp, len);
+  }
 }
 
 int i2d_PublicKey(EVP_PKEY *key, uint8_t **outp) {
