@@ -121,39 +121,41 @@ static int rsa_pub_cmp(const EVP_PKEY *a, const EVP_PKEY *b) {
          BN_cmp(b->pkey.rsa->e, a->pkey.rsa->e) == 0;
 }
 
-static int rsa_priv_encode(PKCS8_PRIV_KEY_INFO *p8, const EVP_PKEY *pkey) {
-  uint8_t *encoded;
-  size_t encoded_len;
-  if (!RSA_private_key_to_bytes(&encoded, &encoded_len, pkey->pkey.rsa)) {
-    return 0;
-  }
-
-  /* TODO(fork): const correctness in next line. */
-  if (!PKCS8_pkey_set0(p8, (ASN1_OBJECT *)OBJ_nid2obj(NID_rsaEncryption), 0,
-                       V_ASN1_NULL, NULL, encoded, encoded_len)) {
-    OPENSSL_free(encoded);
-    OPENSSL_PUT_ERROR(EVP, ERR_R_MALLOC_FAILURE);
+static int rsa_priv_encode(CBB *out, const EVP_PKEY *key) {
+  CBB pkcs8, algorithm, null, private_key;
+  if (!CBB_add_asn1(out, &pkcs8, CBS_ASN1_SEQUENCE) ||
+      !CBB_add_asn1_uint64(&pkcs8, 0 /* version */) ||
+      !CBB_add_asn1(&pkcs8, &algorithm, CBS_ASN1_SEQUENCE) ||
+      !OBJ_nid2cbb(&algorithm, NID_rsaEncryption) ||
+      !CBB_add_asn1(&algorithm, &null, CBS_ASN1_NULL) ||
+      !CBB_add_asn1(&pkcs8, &private_key, CBS_ASN1_OCTETSTRING) ||
+      !RSA_marshal_private_key(&private_key, key->pkey.rsa) ||
+      !CBB_flush(out)) {
+    OPENSSL_PUT_ERROR(EVP, EVP_R_ENCODE_ERROR);
     return 0;
   }
 
   return 1;
 }
 
-static int rsa_priv_decode(EVP_PKEY *pkey, PKCS8_PRIV_KEY_INFO *p8) {
-  const uint8_t *p;
-  int pklen;
-  if (!PKCS8_pkey_get0(NULL, &p, &pklen, NULL, p8)) {
-    OPENSSL_PUT_ERROR(EVP, ERR_R_MALLOC_FAILURE);
+static int rsa_priv_decode(EVP_PKEY *out, CBS *params, CBS *key) {
+  /* Per RFC 3447, A.1, the parameters have type NULL. */
+  CBS null;
+  if (!CBS_get_asn1(params, &null, CBS_ASN1_NULL) ||
+      CBS_len(&null) != 0 ||
+      CBS_len(params) != 0) {
+    OPENSSL_PUT_ERROR(EVP, EVP_R_DECODE_ERROR);
     return 0;
   }
 
-  RSA *rsa = RSA_private_key_from_bytes(p, pklen);
-  if (rsa == NULL) {
-    OPENSSL_PUT_ERROR(EVP, ERR_R_RSA_LIB);
+  RSA *rsa = RSA_parse_private_key(key);
+  if (rsa == NULL || CBS_len(key) != 0) {
+    OPENSSL_PUT_ERROR(EVP, EVP_R_DECODE_ERROR);
+    RSA_free(rsa);
     return 0;
   }
 
-  EVP_PKEY_assign_RSA(pkey, rsa);
+  EVP_PKEY_assign_RSA(out, rsa);
   return 1;
 }
 

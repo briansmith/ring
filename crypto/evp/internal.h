@@ -106,8 +106,16 @@ struct evp_pkey_asn1_method_st {
   int (*pub_cmp)(const EVP_PKEY *a, const EVP_PKEY *b);
   int (*pub_print)(BIO *out, const EVP_PKEY *pkey, int indent, ASN1_PCTX *pctx);
 
-  int (*priv_decode)(EVP_PKEY *pk, PKCS8_PRIV_KEY_INFO *p8inf);
-  int (*priv_encode)(PKCS8_PRIV_KEY_INFO *p8, const EVP_PKEY *pk);
+  /* priv_decode decodes |params| and |key| as a PrivateKeyInfo and writes the
+   * result into |out|. It returns one on success and zero on error. |params| is
+   * the AlgorithmIdentifier after the OBJECT IDENTIFIER type field, and |key|
+   * is the contents of the OCTET STRING privateKey field. */
+  int (*priv_decode)(EVP_PKEY *out, CBS *params, CBS *key);
+
+  /* priv_encode encodes |key| as a PrivateKeyInfo and appends the result to
+   * |out|. It returns one on success and zero on error. */
+  int (*priv_encode)(CBB *out, const EVP_PKEY *key);
+
   int (*priv_print)(BIO *out, const EVP_PKEY *pkey, int indent,
                     ASN1_PCTX *pctx);
 

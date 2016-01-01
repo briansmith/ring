@@ -202,20 +202,23 @@ OPENSSL_EXPORT EVP_PKEY *EVP_parse_public_key(CBS *cbs);
  * success and zero on error. */
 OPENSSL_EXPORT int EVP_marshal_public_key(CBB *cbb, const EVP_PKEY *key);
 
-/* d2i_PrivateKey parses an ASN.1, DER-encoded, private key from |len| bytes at
- * |*inp|. If |out| is not NULL then, on exit, a pointer to the result is in
- * |*out|. If |*out| is already non-NULL on entry then the result is written
- * directly into |*out|, otherwise a fresh |EVP_PKEY| is allocated. However,
- * one should not depend on writing into |*out| because this behaviour is
- * likely to change in the future. On successful exit, |*inp| is advanced past
- * the DER structure. It returns the result or NULL on error. */
-OPENSSL_EXPORT EVP_PKEY *d2i_PrivateKey(int type, EVP_PKEY **out,
-                                        const uint8_t **inp, long len);
+/* EVP_parse_private_key decodes a DER-encoded PrivateKeyInfo structure (RFC
+ * 5208) from |cbs| and advances |cbs|. It returns a newly-allocated |EVP_PKEY|
+ * or NULL on error.
+ *
+ * The caller must check the type of the parsed private key to ensure it is
+ * suitable and validate other desired key properties such as RSA modulus size
+ * or EC curve.
+ *
+ * A PrivateKeyInfo ends with an optional set of attributes. These are not
+ * processed and so this function will silently ignore any trailing data in the
+ * structure. */
+OPENSSL_EXPORT EVP_PKEY *EVP_parse_private_key(CBS *cbs);
 
-/* d2i_AutoPrivateKey acts the same as |d2i_PrivateKey|, but detects the type
- * of the private key. */
-OPENSSL_EXPORT EVP_PKEY *d2i_AutoPrivateKey(EVP_PKEY **out, const uint8_t **inp,
-                                            long len);
+/* EVP_marshal_private_key marshals |key| as a DER-encoded PrivateKeyInfo
+ * structure (RFC 5208) and appends the result to |cbb|. It returns one on
+ * success and zero on error. */
+OPENSSL_EXPORT int EVP_marshal_private_key(CBB *cbb, const EVP_PKEY *key);
 
 
 /* Signing */
@@ -713,6 +716,29 @@ OPENSSL_EXPORT int i2d_PrivateKey(const EVP_PKEY *key, uint8_t **outp);
  *
  * Use |RSA_marshal_public_key| or |EC_POINT_point2cbb| instead. */
 OPENSSL_EXPORT int i2d_PublicKey(EVP_PKEY *key, uint8_t **outp);
+
+/* d2i_PrivateKey parses an ASN.1, DER-encoded, private key from |len| bytes at
+ * |*inp|. If |out| is not NULL then, on exit, a pointer to the result is in
+ * |*out|. If |*out| is already non-NULL on entry then the result is written
+ * directly into |*out|, otherwise a fresh |EVP_PKEY| is allocated. However,
+ * one should not depend on writing into |*out| because this behaviour is
+ * likely to change in the future. On successful exit, |*inp| is advanced past
+ * the DER structure. It returns the result or NULL on error.
+ *
+ * This function tries to detect one of several formats. Instead, use
+ * |EVP_parse_private_key| for a PrivateKeyInfo, |RSA_parse_private_key| for an
+ * RSAPrivateKey, and |EC_parse_private_key| for an ECPrivateKey. */
+OPENSSL_EXPORT EVP_PKEY *d2i_PrivateKey(int type, EVP_PKEY **out,
+                                        const uint8_t **inp, long len);
+
+/* d2i_AutoPrivateKey acts the same as |d2i_PrivateKey|, but detects the type
+ * of the private key.
+ *
+ * This function tries to detect one of several formats. Instead, use
+ * |EVP_parse_private_key| for a PrivateKeyInfo, |RSA_parse_private_key| for an
+ * RSAPrivateKey, and |EC_parse_private_key| for an ECPrivateKey. */
+OPENSSL_EXPORT EVP_PKEY *d2i_AutoPrivateKey(EVP_PKEY **out, const uint8_t **inp,
+                                            long len);
 
 
 /* Private functions */

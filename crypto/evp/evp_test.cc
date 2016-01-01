@@ -70,13 +70,11 @@
 #pragma warning(pop)
 #endif
 
-#include <openssl/bio.h>
 #include <openssl/bytestring.h>
 #include <openssl/crypto.h>
 #include <openssl/digest.h>
 #include <openssl/err.h>
 #include <openssl/evp.h>
-#include <openssl/pem.h>
 
 #include "../test/file_test.h"
 #include "../test/scoped_types.h"
@@ -121,29 +119,9 @@ static int GetKeyType(FileTest *t, const std::string &name) {
 
 using KeyMap = std::map<std::string, ScopedEVP_PKEY>;
 
-// ImportPrivateKey evaluates a PrivateKey test in |t| and writes the resulting
-// private key to |key_map|.
-static bool ImportPrivateKey(FileTest *t, KeyMap *key_map) {
-  const std::string &key_name = t->GetParameter();
-  if (key_map->count(key_name) > 0) {
-    t->PrintLine("Duplicate key '%s'.", key_name.c_str());
-    return false;
-  }
-  const std::string &block = t->GetBlock();
-  ScopedBIO bio(BIO_new_mem_buf(const_cast<char*>(block.data()), block.size()));
-  if (!bio) {
-    return false;
-  }
-  ScopedEVP_PKEY pkey(PEM_read_bio_PrivateKey(bio.get(), nullptr, 0, nullptr));
-  if (!pkey) {
-    t->PrintLine("Error reading private key.");
-    return false;
-  }
-  (*key_map)[key_name] = std::move(pkey);
-  return true;
-}
-
-static bool ImportPublicKey(FileTest *t, KeyMap *key_map) {
+static bool ImportKey(FileTest *t, KeyMap *key_map,
+                      EVP_PKEY *(*parse_func)(CBS *cbs),
+                      int (*marshal_func)(CBB *cbb, const EVP_PKEY *key)) {
   std::vector<uint8_t> input;
   if (!t->GetBytes(&input, "Input")) {
     return false;
@@ -151,7 +129,7 @@ static bool ImportPublicKey(FileTest *t, KeyMap *key_map) {
 
   CBS cbs;
   CBS_init(&cbs, input.data(), input.size());
-  ScopedEVP_PKEY pkey(EVP_parse_public_key(&cbs));
+  ScopedEVP_PKEY pkey(parse_func(&cbs));
   if (!pkey) {
     return false;
   }
@@ -165,18 +143,24 @@ static bool ImportPublicKey(FileTest *t, KeyMap *key_map) {
     return false;
   }
 
-  // The encoding must round-trip.
+  // The key must re-encode correctly.
   ScopedCBB cbb;
-  uint8_t *spki;
-  size_t spki_len;
+  uint8_t *der;
+  size_t der_len;
   if (!CBB_init(cbb.get(), 0) ||
-      !EVP_marshal_public_key(cbb.get(), pkey.get()) ||
-      !CBB_finish(cbb.get(), &spki, &spki_len)) {
+      !marshal_func(cbb.get(), pkey.get()) ||
+      !CBB_finish(cbb.get(), &der, &der_len)) {
     return false;
   }
-  ScopedOpenSSLBytes free_spki(spki);
-  if (!t->ExpectBytesEqual(input.data(), input.size(), spki, spki_len)) {
-    t->PrintLine("Re-encoding the SPKI did not match.");
+  ScopedOpenSSLBytes free_der(der);
+
+  std::vector<uint8_t> output = input;
+  if (t->HasAttribute("Output") &&
+      !t->GetBytes(&output, "Output")) {
+    return false;
+  }
+  if (!t->ExpectBytesEqual(output.data(), output.size(), der, der_len)) {
+    t->PrintLine("Re-encoding the key did not match.");
     return false;
   }
 
@@ -193,11 +177,12 @@ static bool ImportPublicKey(FileTest *t, KeyMap *key_map) {
 static bool TestEVP(FileTest *t, void *arg) {
   KeyMap *key_map = reinterpret_cast<KeyMap*>(arg);
   if (t->GetType() == "PrivateKey") {
-    return ImportPrivateKey(t, key_map);
+    return ImportKey(t, key_map, EVP_parse_private_key,
+                     EVP_marshal_private_key);
   }
 
   if (t->GetType() == "PublicKey") {
-    return ImportPublicKey(t, key_map);
+    return ImportKey(t, key_map, EVP_parse_public_key, EVP_marshal_public_key);
   }
 
   int (*key_op_init)(EVP_PKEY_CTX *ctx);

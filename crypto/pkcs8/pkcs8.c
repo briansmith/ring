@@ -62,6 +62,7 @@
 #include <openssl/asn1.h>
 #include <openssl/bn.h>
 #include <openssl/buf.h>
+#include <openssl/bytestring.h>
 #include <openssl/cipher.h>
 #include <openssl/digest.h>
 #include <openssl/err.h>
@@ -71,7 +72,6 @@
 
 #include "internal.h"
 #include "../bytestring/internal.h"
-#include "../evp/internal.h"
 
 
 #define PKCS12_KEY_ID 1
@@ -591,72 +591,52 @@ err:
 }
 
 EVP_PKEY *EVP_PKCS82PKEY(PKCS8_PRIV_KEY_INFO *p8) {
-  EVP_PKEY *pkey = NULL;
-  ASN1_OBJECT *algoid;
-  char obj_tmp[80];
-
-  if (!PKCS8_pkey_get0(&algoid, NULL, NULL, NULL, p8)) {
+  uint8_t *der = NULL;
+  int der_len = i2d_PKCS8_PRIV_KEY_INFO(p8, &der);
+  if (der_len < 0) {
     return NULL;
   }
 
-  pkey = EVP_PKEY_new();
-  if (pkey == NULL) {
-    OPENSSL_PUT_ERROR(PKCS8, ERR_R_MALLOC_FAILURE);
+  CBS cbs;
+  CBS_init(&cbs, der, (size_t)der_len);
+  EVP_PKEY *ret = EVP_parse_private_key(&cbs);
+  if (ret == NULL || CBS_len(&cbs) != 0) {
+    OPENSSL_PUT_ERROR(PKCS8, PKCS8_R_DECODE_ERROR);
+    EVP_PKEY_free(ret);
+    OPENSSL_free(der);
     return NULL;
   }
 
-  if (!EVP_PKEY_set_type(pkey, OBJ_obj2nid(algoid))) {
-    OPENSSL_PUT_ERROR(PKCS8, PKCS8_R_UNSUPPORTED_PRIVATE_KEY_ALGORITHM);
-    i2t_ASN1_OBJECT(obj_tmp, 80, algoid);
-    ERR_add_error_data(2, "TYPE=", obj_tmp);
-    goto error;
-  }
-
-  if (pkey->ameth->priv_decode) {
-    if (!pkey->ameth->priv_decode(pkey, p8)) {
-      OPENSSL_PUT_ERROR(PKCS8, PKCS8_R_PRIVATE_KEY_DECODE_ERROR);
-      goto error;
-    }
-  } else {
-    OPENSSL_PUT_ERROR(PKCS8, PKCS8_R_METHOD_NOT_SUPPORTED);
-    goto error;
-  }
-
-  return pkey;
-
-error:
-  EVP_PKEY_free(pkey);
-  return NULL;
+  OPENSSL_free(der);
+  return ret;
 }
 
 PKCS8_PRIV_KEY_INFO *EVP_PKEY2PKCS8(EVP_PKEY *pkey) {
-  PKCS8_PRIV_KEY_INFO *p8;
-
-  p8 = PKCS8_PRIV_KEY_INFO_new();
-  if (p8 == NULL) {
-    OPENSSL_PUT_ERROR(PKCS8, ERR_R_MALLOC_FAILURE);
-    return NULL;
+  CBB cbb;
+  uint8_t *der = NULL;
+  size_t der_len;
+  if (!CBB_init(&cbb, 0) ||
+      !EVP_marshal_private_key(&cbb, pkey) ||
+      !CBB_finish(&cbb, &der, &der_len) ||
+      der_len > LONG_MAX) {
+    CBB_cleanup(&cbb);
+    OPENSSL_PUT_ERROR(PKCS8, PKCS8_R_ENCODE_ERROR);
+    goto err;
   }
-  p8->broken = PKCS8_OK;
 
-  if (pkey->ameth) {
-    if (pkey->ameth->priv_encode) {
-      if (!pkey->ameth->priv_encode(p8, pkey)) {
-        OPENSSL_PUT_ERROR(PKCS8, PKCS8_R_PRIVATE_KEY_ENCODE_ERROR);
-        goto error;
-      }
-    } else {
-      OPENSSL_PUT_ERROR(PKCS8, PKCS8_R_METHOD_NOT_SUPPORTED);
-      goto error;
-    }
-  } else {
-    OPENSSL_PUT_ERROR(PKCS8, PKCS8_R_UNSUPPORTED_PRIVATE_KEY_ALGORITHM);
-    goto error;
+  const uint8_t *p = der;
+  PKCS8_PRIV_KEY_INFO *p8 = d2i_PKCS8_PRIV_KEY_INFO(NULL, &p, (long)der_len);
+  if (p8 == NULL || p != der + der_len) {
+    PKCS8_PRIV_KEY_INFO_free(p8);
+    OPENSSL_PUT_ERROR(PKCS8, PKCS8_R_DECODE_ERROR);
+    goto err;
   }
+
+  OPENSSL_free(der);
   return p8;
 
-error:
-  PKCS8_PRIV_KEY_INFO_free(p8);
+err:
+  OPENSSL_free(der);
   return NULL;
 }
 

@@ -114,6 +114,54 @@ int EVP_marshal_public_key(CBB *cbb, const EVP_PKEY *key) {
   return key->ameth->pub_encode(cbb, key);
 }
 
+EVP_PKEY *EVP_parse_private_key(CBS *cbs) {
+  /* Parse the PrivateKeyInfo. */
+  CBS pkcs8, algorithm, oid, key;
+  uint64_t version;
+  if (!CBS_get_asn1(cbs, &pkcs8, CBS_ASN1_SEQUENCE) ||
+      !CBS_get_asn1_uint64(&pkcs8, &version) ||
+      version != 0 ||
+      !CBS_get_asn1(&pkcs8, &algorithm, CBS_ASN1_SEQUENCE) ||
+      !CBS_get_asn1(&algorithm, &oid, CBS_ASN1_OBJECT) ||
+      !CBS_get_asn1(&pkcs8, &key, CBS_ASN1_OCTETSTRING)) {
+    OPENSSL_PUT_ERROR(EVP, EVP_R_DECODE_ERROR);
+    return NULL;
+  }
+
+  /* A PrivateKeyInfo ends with a SET of Attributes which we ignore. */
+
+  /* Set up an |EVP_PKEY| of the appropriate type. */
+  EVP_PKEY *ret = EVP_PKEY_new();
+  if (ret == NULL ||
+      !EVP_PKEY_set_type(ret, OBJ_cbs2nid(&oid))) {
+    goto err;
+  }
+
+  /* Call into the type-specific PrivateKeyInfo decoding function. */
+  if (ret->ameth->priv_decode == NULL) {
+    OPENSSL_PUT_ERROR(EVP, EVP_R_UNSUPPORTED_ALGORITHM);
+    goto err;
+  }
+  if (!ret->ameth->priv_decode(ret, &algorithm, &key)) {
+    goto err;
+  }
+
+  return ret;
+
+err:
+  EVP_PKEY_free(ret);
+  return NULL;
+}
+
+int EVP_marshal_private_key(CBB *cbb, const EVP_PKEY *key) {
+  if (key->ameth->priv_encode == NULL) {
+    OPENSSL_PUT_ERROR(EVP, EVP_R_UNSUPPORTED_ALGORITHM);
+    return 0;
+  }
+
+  return key->ameth->priv_encode(cbb, key);
+}
+
 EVP_PKEY *d2i_PrivateKey(int type, EVP_PKEY **out, const uint8_t **inp,
                          long len) {
   EVP_PKEY *ret;

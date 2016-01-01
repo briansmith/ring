@@ -55,11 +55,11 @@
 
 #include <openssl/evp.h>
 
-#include <limits.h>
-
 #include <openssl/asn1.h>
 #include <openssl/asn1t.h>
 #include <openssl/digest.h>
+#include <openssl/bn.h>
+#include <openssl/bytestring.h>
 #include <openssl/dsa.h>
 #include <openssl/err.h>
 #include <openssl/mem.h>
@@ -128,128 +128,69 @@ static int dsa_pub_encode(CBB *out, const EVP_PKEY *key) {
   return 1;
 }
 
-static int dsa_priv_decode(EVP_PKEY *pkey, PKCS8_PRIV_KEY_INFO *p8) {
-  const uint8_t *p, *pm;
-  int pklen, pmlen;
-  int ptype;
-  void *pval;
-  ASN1_STRING *pstr;
-  X509_ALGOR *palg;
-  ASN1_INTEGER *privkey = NULL;
+static int dsa_priv_decode(EVP_PKEY *out, CBS *params, CBS *key) {
+  /* See PKCS#11, v2.40, section 2.5. */
+
+  /* Decode parameters. */
   BN_CTX *ctx = NULL;
-
-  /* In PKCS#8 DSA: you just get a private key integer and parameters in the
-   * AlgorithmIdentifier the pubkey must be recalculated. */
-
-  DSA *dsa = NULL;
-
-  if (!PKCS8_pkey_get0(NULL, &p, &pklen, &palg, p8)) {
-    return 0;
-  }
-  privkey = d2i_ASN1_INTEGER(NULL, &p, pklen);
-  if (privkey == NULL || privkey->type == V_ASN1_NEG_INTEGER) {
-    goto decerr;
+  DSA *dsa = DSA_parse_parameters(params);
+  if (dsa == NULL || CBS_len(params) != 0) {
+    OPENSSL_PUT_ERROR(EVP, EVP_R_DECODE_ERROR);
+    goto err;
   }
 
-  X509_ALGOR_get0(NULL, &ptype, &pval, palg);
-  if (ptype != V_ASN1_SEQUENCE) {
-    goto decerr;
-  }
-  pstr = pval;
-  pm = pstr->data;
-  pmlen = pstr->length;
-  dsa = d2i_DSAparams(NULL, &pm, pmlen);
-  if (dsa == NULL) {
-    goto decerr;
-  }
-  /* We have parameters. Now set private key */
-  dsa->priv_key = ASN1_INTEGER_to_BN(privkey, NULL);
-  if (dsa->priv_key == NULL) {
-    OPENSSL_PUT_ERROR(EVP, ERR_LIB_BN);
-    goto dsaerr;
-  }
-  /* Calculate public key. */
+  dsa->priv_key = BN_new();
   dsa->pub_key = BN_new();
-  if (dsa->pub_key == NULL) {
-    OPENSSL_PUT_ERROR(EVP, ERR_R_MALLOC_FAILURE);
-    goto dsaerr;
+  if (dsa->priv_key == NULL || dsa->pub_key == NULL) {
+    goto err;
   }
+
+  /* Decode the key. */
+  if (!BN_parse_asn1_unsigned(key, dsa->priv_key) ||
+      CBS_len(key) != 0) {
+    OPENSSL_PUT_ERROR(EVP, EVP_R_DECODE_ERROR);
+    goto err;
+  }
+
+  /* Calculate the public key. */
   ctx = BN_CTX_new();
-  if (ctx == NULL) {
-    OPENSSL_PUT_ERROR(EVP, ERR_R_MALLOC_FAILURE);
-    goto dsaerr;
+  if (ctx == NULL ||
+      !BN_mod_exp(dsa->pub_key, dsa->g, dsa->priv_key, dsa->p, ctx)) {
+    goto err;
   }
 
-  if (!BN_mod_exp(dsa->pub_key, dsa->g, dsa->priv_key, dsa->p, ctx)) {
-    OPENSSL_PUT_ERROR(EVP, ERR_LIB_BN);
-    goto dsaerr;
-  }
-
-  EVP_PKEY_assign_DSA(pkey, dsa);
   BN_CTX_free(ctx);
-  ASN1_INTEGER_free(privkey);
-
+  EVP_PKEY_assign_DSA(out, dsa);
   return 1;
 
-decerr:
-  OPENSSL_PUT_ERROR(EVP, EVP_R_DECODE_ERROR);
-
-dsaerr:
+err:
   BN_CTX_free(ctx);
-  ASN1_INTEGER_free(privkey);
   DSA_free(dsa);
   return 0;
 }
 
-static int dsa_priv_encode(PKCS8_PRIV_KEY_INFO *p8, const EVP_PKEY *pkey) {
-  ASN1_STRING *params = NULL;
-  ASN1_INTEGER *prkey = NULL;
-  uint8_t *dp = NULL;
-  int dplen;
-
-  if (!pkey->pkey.dsa || !pkey->pkey.dsa->priv_key) {
+static int dsa_priv_encode(CBB *out, const EVP_PKEY *key) {
+  const DSA *dsa = key->pkey.dsa;
+  if (dsa == NULL || dsa->priv_key == NULL) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_MISSING_PARAMETERS);
-    goto err;
+    return 0;
   }
 
-  params = ASN1_STRING_new();
-  if (!params) {
-    OPENSSL_PUT_ERROR(EVP, ERR_R_MALLOC_FAILURE);
-    goto err;
-  }
-
-  params->length = i2d_DSAparams(pkey->pkey.dsa, &params->data);
-  if (params->length <= 0) {
-    OPENSSL_PUT_ERROR(EVP, ERR_R_MALLOC_FAILURE);
-    goto err;
-  }
-  params->type = V_ASN1_SEQUENCE;
-
-  /* Get private key into integer. */
-  prkey = BN_to_ASN1_INTEGER(pkey->pkey.dsa->priv_key, NULL);
-
-  if (!prkey) {
-    OPENSSL_PUT_ERROR(EVP, ERR_LIB_BN);
-    goto err;
-  }
-
-  dplen = i2d_ASN1_INTEGER(prkey, &dp);
-
-  ASN1_INTEGER_free(prkey);
-  prkey = NULL;
-
-  if (!PKCS8_pkey_set0(p8, (ASN1_OBJECT *)OBJ_nid2obj(NID_dsa), 0,
-                       V_ASN1_SEQUENCE, params, dp, dplen)) {
-    goto err;
+  /* See PKCS#11, v2.40, section 2.5. */
+  CBB pkcs8, algorithm, private_key;
+  if (!CBB_add_asn1(out, &pkcs8, CBS_ASN1_SEQUENCE) ||
+      !CBB_add_asn1_uint64(&pkcs8, 0 /* version */) ||
+      !CBB_add_asn1(&pkcs8, &algorithm, CBS_ASN1_SEQUENCE) ||
+      !OBJ_nid2cbb(&algorithm, NID_dsa) ||
+      !DSA_marshal_parameters(&algorithm, dsa) ||
+      !CBB_add_asn1(&pkcs8, &private_key, CBS_ASN1_OCTETSTRING) ||
+      !BN_marshal_asn1(&private_key, dsa->priv_key) ||
+      !CBB_flush(out)) {
+    OPENSSL_PUT_ERROR(EVP, EVP_R_ENCODE_ERROR);
+    return 0;
   }
 
   return 1;
-
-err:
-  OPENSSL_free(dp);
-  ASN1_STRING_free(params);
-  ASN1_INTEGER_free(prkey);
-  return 0;
 }
 
 static int int_dsa_size(const EVP_PKEY *pkey) {

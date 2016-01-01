@@ -224,6 +224,7 @@ bool FileTest::GetBytes(std::vector<uint8_t> *out, const std::string &key) {
     PrintLine("Error decoding value: %s", value.c_str());
     return false;
   }
+  out->clear();
   out->reserve(value.size() / 2);
   for (size_t i = 0; i < value.size(); i += 2) {
     uint8_t hi, lo;
@@ -304,6 +305,7 @@ int FileTestMain(bool (*run_test)(FileTest *t, void *arg), void *arg,
                      t.GetAttributeOrDie("Error").c_str(),
                      ERR_reason_error_string(err));
         failed = true;
+        ERR_clear_error();
         continue;
       }
       ERR_clear_error();
