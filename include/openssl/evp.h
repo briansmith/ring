@@ -217,21 +217,6 @@ OPENSSL_EXPORT EVP_PKEY *d2i_PrivateKey(int type, EVP_PKEY **out,
 OPENSSL_EXPORT EVP_PKEY *d2i_AutoPrivateKey(EVP_PKEY **out, const uint8_t **inp,
                                             long len);
 
-/* i2d_PrivateKey marshals a private key from |key| to an ASN.1, DER
- * structure. If |outp| is not NULL then the result is written to |*outp| and
- * |*outp| is advanced just past the output. It returns the number of bytes in
- * the result, whether written or not, or a negative value on error. */
-OPENSSL_EXPORT int i2d_PrivateKey(const EVP_PKEY *key, uint8_t **outp);
-
-/* i2d_PublicKey marshals a public key from |key| to a type-specific format.
- * If |outp| is not NULL then the result is written to |*outp| and
- * |*outp| is advanced just past the output. It returns the number of bytes in
- * the result, whether written or not, or a negative value on error.
- *
- * RSA keys are serialized as a DER-encoded RSAPublicKey (RFC 3447) structure.
- * EC keys are serialized as an EC point per SEC 1. */
-OPENSSL_EXPORT int i2d_PublicKey(EVP_PKEY *key, uint8_t **outp);
-
 
 /* Signing */
 
@@ -706,6 +691,29 @@ OPENSSL_EXPORT void EVP_MD_do_all_sorted(void (*callback)(const EVP_MD *cipher,
                                                           const char *unused,
                                                           void *arg),
                                          void *arg);
+
+/* i2d_PrivateKey marshals a private key from |key| to an ASN.1, DER
+ * structure. If |outp| is not NULL then the result is written to |*outp| and
+ * |*outp| is advanced just past the output. It returns the number of bytes in
+ * the result, whether written or not, or a negative value on error.
+ *
+ * RSA keys are serialized as a DER-encoded RSAPublicKey (RFC 3447) structure.
+ * EC keys are serialized as a DER-encoded ECPrivateKey (RFC 5915) structure.
+ *
+ * Use |RSA_marshal_private_key| or |EC_marshal_private_key| instead. */
+OPENSSL_EXPORT int i2d_PrivateKey(const EVP_PKEY *key, uint8_t **outp);
+
+/* i2d_PublicKey marshals a public key from |key| to a type-specific format.
+ * If |outp| is not NULL then the result is written to |*outp| and
+ * |*outp| is advanced just past the output. It returns the number of bytes in
+ * the result, whether written or not, or a negative value on error.
+ *
+ * RSA keys are serialized as a DER-encoded RSAPublicKey (RFC 3447) structure.
+ * EC keys are serialized as an EC point per SEC 1.
+ *
+ * Use |RSA_marshal_public_key| or |EC_POINT_point2cbb| instead. */
+OPENSSL_EXPORT int i2d_PublicKey(EVP_PKEY *key, uint8_t **outp);
+
 
 /* Private functions */
 

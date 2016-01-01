@@ -461,10 +461,6 @@ static int old_ec_priv_decode(EVP_PKEY *pkey, const uint8_t **pder,
   return 1;
 }
 
-static int old_ec_priv_encode(const EVP_PKEY *pkey, uint8_t **pder) {
-  return i2d_ECPrivateKey(pkey->pkey.ec, pder);
-}
-
 const EVP_PKEY_ASN1_METHOD ec_asn1_meth = {
   EVP_PKEY_EC,
   0,
@@ -493,7 +489,6 @@ const EVP_PKEY_ASN1_METHOD ec_asn1_meth = {
 
   int_ec_free,
   old_ec_priv_decode,
-  old_ec_priv_encode,
 
   NULL /* digest_verify_init_from_algorithm */,
   NULL /* digest_sign_algorithm */,

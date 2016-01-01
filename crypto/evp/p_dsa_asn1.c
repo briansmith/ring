@@ -447,10 +447,6 @@ static int old_dsa_priv_decode(EVP_PKEY *pkey, const uint8_t **pder,
   return 1;
 }
 
-static int old_dsa_priv_encode(const EVP_PKEY *pkey, uint8_t **pder) {
-  return i2d_DSAPrivateKey(pkey->pkey.dsa, pder);
-}
-
 static int dsa_sig_print(BIO *bp, const X509_ALGOR *sigalg,
                          const ASN1_STRING *sig, int indent, ASN1_PCTX *pctx) {
   DSA_SIG *dsa_sig;
@@ -520,7 +516,6 @@ const EVP_PKEY_ASN1_METHOD dsa_asn1_meth = {
 
   int_dsa_free,
   old_dsa_priv_decode,
-  old_dsa_priv_encode,
 
   NULL  /* digest_verify_init_from_algorithm */,
   NULL  /* digest_sign_algorithm */,

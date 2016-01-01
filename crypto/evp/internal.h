@@ -139,7 +139,6 @@ struct evp_pkey_asn1_method_st {
 
   int (*old_priv_decode)(EVP_PKEY *pkey, const uint8_t **pder,
                          int derlen);
-  int (*old_priv_encode)(const EVP_PKEY *pkey, uint8_t **pder);
 
   /* Converting parameters to/from AlgorithmIdentifier (X509_ALGOR). */
   int (*digest_verify_init_from_algorithm)(EVP_MD_CTX *ctx,

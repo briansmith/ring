@@ -461,10 +461,6 @@ static int old_rsa_priv_decode(EVP_PKEY *pkey, const uint8_t **pder,
   return 1;
 }
 
-static int old_rsa_priv_encode(const EVP_PKEY *pkey, uint8_t **pder) {
-  return i2d_RSAPrivateKey(pkey->pkey.rsa, pder);
-}
-
 /* allocate and set algorithm ID from EVP_MD, default SHA1 */
 static int rsa_md_to_algor(X509_ALGOR **palg, const EVP_MD *md) {
   if (EVP_MD_type(md) == NID_sha1) {
@@ -734,7 +730,6 @@ const EVP_PKEY_ASN1_METHOD rsa_asn1_meth = {
   int_rsa_free,
 
   old_rsa_priv_decode,
-  old_rsa_priv_encode,
 
   rsa_digest_verify_init_from_algorithm,
   rsa_digest_sign_algorithm,
