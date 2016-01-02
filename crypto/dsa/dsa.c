@@ -72,7 +72,6 @@
 #include <openssl/sha.h>
 #include <openssl/thread.h>
 
-#include "internal.h"
 #include "../internal.h"
 
 

@@ -65,8 +65,6 @@
 #include <openssl/crypto.h>
 #include <openssl/err.h>
 
-#include "internal.h"
-
 
 static int dsa_cb(int p, int n, BN_GENCB *arg);
 

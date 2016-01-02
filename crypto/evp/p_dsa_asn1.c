@@ -64,7 +64,6 @@
 #include <openssl/obj.h>
 #include <openssl/x509.h>
 
-#include "../dsa/internal.h"
 #include "internal.h"
 
 
