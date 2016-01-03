@@ -61,6 +61,7 @@
 #include <openssl/ec_key.h>
 #include <openssl/mem.h>
 
+#include "../bytestring/internal.h"
 #include "../ec/internal.h"
 
 
@@ -211,30 +212,15 @@ ECDSA_SIG *d2i_ECDSA_SIG(ECDSA_SIG **out, const uint8_t **inp, long len) {
     ECDSA_SIG_free(*out);
     *out = ret;
   }
-  *inp += (size_t)len - CBS_len(&cbs);
+  *inp = CBS_data(&cbs);
   return ret;
 }
 
 int i2d_ECDSA_SIG(const ECDSA_SIG *sig, uint8_t **outp) {
-  uint8_t *der;
-  size_t der_len;
-  if (!ECDSA_SIG_to_bytes(&der, &der_len, sig)) {
+  CBB cbb;
+  if (!CBB_init(&cbb, 0) ||
+      !ECDSA_SIG_marshal(&cbb, sig)) {
     return -1;
   }
-  if (der_len > INT_MAX) {
-    OPENSSL_PUT_ERROR(ECDSA, ERR_R_OVERFLOW);
-    OPENSSL_free(der);
-    return -1;
-  }
-  if (outp != NULL) {
-    if (*outp == NULL) {
-      *outp = der;
-      der = NULL;
-    } else {
-      memcpy(*outp, der, der_len);
-      *outp += der_len;
-    }
-  }
-  OPENSSL_free(der);
-  return (int)der_len;
+  return CBB_finish_i2d(&cbb, outp);
 }

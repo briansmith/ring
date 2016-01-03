@@ -67,6 +67,7 @@
 #include <openssl/mem.h>
 
 #include "internal.h"
+#include "../bytestring/internal.h"
 
 
 static int parse_integer_buggy(CBS *cbs, BIGNUM **out, int buggy) {
@@ -379,32 +380,17 @@ RSA *d2i_RSAPublicKey(RSA **out, const uint8_t **inp, long len) {
     RSA_free(*out);
     *out = ret;
   }
-  *inp += (size_t)len - CBS_len(&cbs);
+  *inp = CBS_data(&cbs);
   return ret;
 }
 
 int i2d_RSAPublicKey(const RSA *in, uint8_t **outp) {
-  uint8_t *der;
-  size_t der_len;
-  if (!RSA_public_key_to_bytes(&der, &der_len, in)) {
+  CBB cbb;
+  if (!CBB_init(&cbb, 0) ||
+      !RSA_marshal_public_key(&cbb, in)) {
     return -1;
   }
-  if (der_len > INT_MAX) {
-    OPENSSL_PUT_ERROR(RSA, ERR_R_OVERFLOW);
-    OPENSSL_free(der);
-    return -1;
-  }
-  if (outp != NULL) {
-    if (*outp == NULL) {
-      *outp = der;
-      der = NULL;
-    } else {
-      memcpy(*outp, der, der_len);
-      *outp += der_len;
-    }
-  }
-  OPENSSL_free(der);
-  return (int)der_len;
+  return CBB_finish_i2d(&cbb, outp);
 }
 
 RSA *d2i_RSAPrivateKey(RSA **out, const uint8_t **inp, long len) {
@@ -421,32 +407,17 @@ RSA *d2i_RSAPrivateKey(RSA **out, const uint8_t **inp, long len) {
     RSA_free(*out);
     *out = ret;
   }
-  *inp += (size_t)len - CBS_len(&cbs);
+  *inp = CBS_data(&cbs);
   return ret;
 }
 
 int i2d_RSAPrivateKey(const RSA *in, uint8_t **outp) {
-  uint8_t *der;
-  size_t der_len;
-  if (!RSA_private_key_to_bytes(&der, &der_len, in)) {
+  CBB cbb;
+  if (!CBB_init(&cbb, 0) ||
+      !RSA_marshal_private_key(&cbb, in)) {
     return -1;
   }
-  if (der_len > INT_MAX) {
-    OPENSSL_PUT_ERROR(RSA, ERR_R_OVERFLOW);
-    OPENSSL_free(der);
-    return -1;
-  }
-  if (outp != NULL) {
-    if (*outp == NULL) {
-      *outp = der;
-      der = NULL;
-    } else {
-      memcpy(*outp, der, der_len);
-      *outp += der_len;
-    }
-  }
-  OPENSSL_free(der);
-  return (int)der_len;
+  return CBB_finish_i2d(&cbb, outp);
 }
 
 ASN1_SEQUENCE(RSA_PSS_PARAMS) = {

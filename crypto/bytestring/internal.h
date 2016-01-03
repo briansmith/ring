@@ -58,6 +58,15 @@ OPENSSL_EXPORT int CBS_get_asn1_implicit_string(CBS *in, CBS *out,
                                                 unsigned outer_tag,
                                                 unsigned inner_tag);
 
+/* CBB_finish_i2d calls |CBB_finish| on |cbb| which must have been initialized
+ * with |CBB_init|. If |outp| is not NULL then the result is written to |*outp|
+ * and |*outp| is advanced just past the output. It returns the number of bytes
+ * in the result, whether written or not, or a negative value on error. On
+ * error, it calls |CBB_cleanup| on |cbb|.
+ *
+ * This function may be used to help implement legacy i2d ASN.1 functions. */
+int CBB_finish_i2d(CBB *cbb, uint8_t **outp);
+
 
 #if defined(__cplusplus)
 }  /* extern C */
