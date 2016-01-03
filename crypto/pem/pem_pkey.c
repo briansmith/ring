@@ -150,14 +150,7 @@ int PEM_write_bio_PrivateKey(BIO *bp, EVP_PKEY *x, const EVP_CIPHER *enc,
                              unsigned char *kstr, int klen,
                              pem_password_cb *cb, void *u)
 {
-    char pem_str[80];
-    if (!x->ameth || x->ameth->priv_encode)
-        return PEM_write_bio_PKCS8PrivateKey(bp, x, enc,
-                                             (char *)kstr, klen, cb, u);
-
-    BIO_snprintf(pem_str, 80, "%s PRIVATE KEY", x->ameth->pem_str);
-    return PEM_ASN1_write_bio((i2d_of_void *)i2d_PrivateKey,
-                              pem_str, bp, x, enc, kstr, klen, cb, u);
+    return PEM_write_bio_PKCS8PrivateKey(bp, x, enc, (char *)kstr, klen, cb, u);
 }
 
 #ifndef OPENSSL_NO_FP_API

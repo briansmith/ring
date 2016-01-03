@@ -251,7 +251,6 @@ static int old_ec_priv_decode(EVP_PKEY *pkey, const uint8_t **pder,
 
 const EVP_PKEY_ASN1_METHOD ec_asn1_meth = {
   EVP_PKEY_EC,
-  "EC",
 
   eckey_pub_decode,
   eckey_pub_encode,

@@ -255,7 +255,6 @@ static int old_dsa_priv_decode(EVP_PKEY *pkey, const uint8_t **pder,
 
 const EVP_PKEY_ASN1_METHOD dsa_asn1_meth = {
   EVP_PKEY_DSA,
-  "DSA",
 
   dsa_pub_decode,
   dsa_pub_encode,

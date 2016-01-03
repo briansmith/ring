@@ -188,7 +188,6 @@ static int old_rsa_priv_decode(EVP_PKEY *pkey, const uint8_t **pder,
 
 const EVP_PKEY_ASN1_METHOD rsa_asn1_meth = {
   EVP_PKEY_RSA,
-  "RSA",
 
   rsa_pub_decode,
   rsa_pub_encode,
