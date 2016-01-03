@@ -63,30 +63,21 @@ static std::string StripSpace(const char *str, size_t len) {
 }
 
 FileTest::ReadResult FileTest::ReadNext() {
-  // If the previous test had unused attributes or block, it is an error.
+  // If the previous test had unused attributes, it is an error.
   if (!unused_attributes_.empty()) {
     for (const std::string &key : unused_attributes_) {
       PrintLine("Unused attribute: %s", key.c_str());
     }
     return kReadError;
   }
-  if (!block_.empty() && !used_block_) {
-    PrintLine("Unused block");
-    return kReadError;
-  }
 
   ClearTest();
 
-  bool in_block = false;
   while (true) {
     // Read the next line.
     char buf[4096];
     if (fgets(buf, sizeof(buf), file_) == nullptr) {
       if (feof(file_)) {
-        if (in_block) {
-          fprintf(stderr, "Unterminated block.\n");
-          return kReadError;
-        }
         // EOF is a valid terminator for a test.
         return start_line_ > 0 ? kReadSuccess : kReadEOF;
       }
@@ -102,21 +93,7 @@ FileTest::ReadResult FileTest::ReadNext() {
       return kReadError;
     }
 
-    bool is_delimiter = strncmp(buf, "---", 3) == 0;
-    if (in_block) {
-      block_ += buf;
-      if (is_delimiter) {
-        // Ending the block completes the test.
-        return kReadSuccess;
-      }
-    } else if (is_delimiter) {
-      if (start_line_ == 0) {
-        fprintf(stderr, "Line %u: Unexpected block.\n", line_);
-        return kReadError;
-      }
-      in_block = true;
-      block_ += buf;
-    } else if (buf[0] == '\n' || buf[0] == '\0') {
+    if (buf[0] == '\n' || buf[0] == '\0') {
       // Empty lines delimit tests.
       if (start_line_ > 0) {
         return kReadSuccess;
@@ -163,11 +140,6 @@ const std::string &FileTest::GetType() {
 const std::string &FileTest::GetParameter() {
   OnKeyUsed(type_);
   return parameter_;
-}
-
-const std::string &FileTest::GetBlock() {
-  used_block_ = true;
-  return block_;
 }
 
 bool FileTest::HasAttribute(const std::string &key) {
@@ -267,9 +239,7 @@ void FileTest::ClearTest() {
   type_.clear();
   parameter_.clear();
   attributes_.clear();
-  block_.clear();
   unused_attributes_.clear();
-  used_block_ = false;
 }
 
 void FileTest::OnKeyUsed(const std::string &key) {

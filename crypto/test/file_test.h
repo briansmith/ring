@@ -38,7 +38,7 @@
 //
 // This module provides a file-based test framework. The file format is based on
 // that of OpenSSL upstream's evp_test and BoringSSL's aead_test. Each input
-// file is a sequence of attributes, blocks, and blank lines.
+// file is a sequence of attributes and blank lines.
 //
 // Each attribute has the form:
 //
@@ -47,15 +47,11 @@
 // Either '=' or ':' may be used to delimit the name from the value. Both the
 // name and value have leading and trailing spaces stripped.
 //
-// Blocks are delimited by lines beginning with three hyphens, "---". One such
-// line begins a block and another ends it. Blocks are intended as a convenient
-// way to embed PEM data and include their delimiters.
+// Lines beginning with # are ignored.
 //
-// Outside a block, lines beginning with # are ignored.
-//
-// A test is a sequence of one or more attributes followed by a block or blank
-// line. Blank lines are otherwise ignored. For tests that process multiple
-// kinds of test cases, the first attribute is parsed out as the test's type and
+// A test is a sequence of one or more attributes followed by a blank line.
+// Blank lines are otherwise ignored. For tests that process multiple kinds of
+// test cases, the first attribute is parsed out as the test's type and
 // parameter. Otherwise, attributes are unordered. The first attribute is also
 // included in the set of attributes, so tests which do not dispatch may ignore
 // this mechanism.
@@ -98,9 +94,6 @@ class FileTest {
   const std::string &GetType();
   // GetParameter returns the value of the first attribute of the current test.
   const std::string &GetParameter();
-  // GetBlock returns the optional block of the current test, or the empty
-  // if there was no block.
-  const std::string &GetBlock();
 
   // HasAttribute returns true if the current test has an attribute named |key|.
   bool HasAttribute(const std::string &key);
@@ -142,13 +135,9 @@ class FileTest {
   std::string parameter_;
   // attributes_ contains all attributes in the test, including the first.
   std::map<std::string, std::string> attributes_;
-  // block_, if non-empty, is the test's optional trailing block.
-  std::string block_;
 
   // unused_attributes_ is the set of attributes that have been queried.
   std::set<std::string> unused_attributes_;
-  // used_block_ is true if the block has been queried.
-  bool used_block_ = false;
 
   FileTest(const FileTest&) = delete;
   FileTest &operator=(const FileTest&) = delete;
