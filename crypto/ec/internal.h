@@ -253,8 +253,6 @@ const EC_METHOD *EC_GFp_nistp256_method(void);
 const EC_METHOD *EC_GFp_nistz256_method(void);
 
 struct ec_key_st {
-  int version;
-
   EC_GROUP *group;
 
   EC_POINT *pub_key;

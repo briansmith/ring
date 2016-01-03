@@ -17,6 +17,7 @@
 
 #include <vector>
 
+#include <openssl/bytestring.h>
 #include <openssl/crypto.h>
 #include <openssl/ec_key.h>
 #include <openssl/err.h>
@@ -96,9 +97,10 @@ static const uint8_t kECKeyWithZeros[] = {
 // DecodeECPrivateKey decodes |in| as an ECPrivateKey structure and returns the
 // result or nullptr on error.
 static ScopedEC_KEY DecodeECPrivateKey(const uint8_t *in, size_t in_len) {
-  const uint8_t *inp = in;
-  ScopedEC_KEY ret(d2i_ECPrivateKey(NULL, &inp, in_len));
-  if (!ret || inp != in + in_len) {
+  CBS cbs;
+  CBS_init(&cbs, in, in_len);
+  ScopedEC_KEY ret(EC_KEY_parse_private_key(&cbs, NULL));
+  if (!ret || CBS_len(&cbs) != 0) {
     return nullptr;
   }
   return ret;
@@ -106,11 +108,18 @@ static ScopedEC_KEY DecodeECPrivateKey(const uint8_t *in, size_t in_len) {
 
 // EncodeECPrivateKey encodes |key| as an ECPrivateKey structure into |*out|. It
 // returns true on success or false on error.
-static bool EncodeECPrivateKey(std::vector<uint8_t> *out, EC_KEY *key) {
-  int len = i2d_ECPrivateKey(key, NULL);
-  out->resize(len);
-  uint8_t *outp = out->data();
-  return i2d_ECPrivateKey(key, &outp) == len;
+static bool EncodeECPrivateKey(std::vector<uint8_t> *out, const EC_KEY *key) {
+  ScopedCBB cbb;
+  uint8_t *der;
+  size_t der_len;
+  if (!CBB_init(cbb.get(), 0) ||
+      !EC_KEY_marshal_private_key(cbb.get(), key, EC_KEY_get_enc_flags(key)) ||
+      !CBB_finish(cbb.get(), &der, &der_len)) {
+    return false;
+  }
+  out->assign(der, der + der_len);
+  OPENSSL_free(der);
+  return true;
 }
 
 bool Testd2i_ECPrivateKey() {

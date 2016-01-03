@@ -100,7 +100,6 @@ EC_KEY *EC_KEY_new_method(const ENGINE *engine) {
     METHOD_ref(ret->ecdsa_meth);
   }
 
-  ret->version = 1;
   ret->conv_form = POINT_CONVERSION_UNCOMPRESSED;
   ret->references = 1;
 
@@ -209,7 +208,6 @@ EC_KEY *EC_KEY_copy(EC_KEY *dest, const EC_KEY *src) {
   /* copy the rest */
   dest->enc_flag = src->enc_flag;
   dest->conv_form = src->conv_form;
-  dest->version = src->version;
   dest->flags = src->flags;
 
   return dest;
