@@ -69,10 +69,6 @@
 #include <openssl/rand.h>
 #include <openssl/x509.h>
 
-#include "../evp/internal.h"
-
-int pem_check_suffix(const char *pem_str, const char *suffix);
-
 EVP_PKEY *PEM_read_bio_PrivateKey(BIO *bp, EVP_PKEY **x, pem_password_cb *cb,
                                   void *u)
 {
@@ -80,7 +76,6 @@ EVP_PKEY *PEM_read_bio_PrivateKey(BIO *bp, EVP_PKEY **x, pem_password_cb *cb,
     const unsigned char *p = NULL;
     unsigned char *data = NULL;
     long len;
-    int slen;
     EVP_PKEY *ret = NULL;
 
     if (!PEM_bytes_read_bio(&data, &len, &nm, PEM_STRING_EVP_PKEY, bp, cb, u))
@@ -128,12 +123,15 @@ EVP_PKEY *PEM_read_bio_PrivateKey(BIO *bp, EVP_PKEY **x, pem_password_cb *cb,
             *x = ret;
         }
         PKCS8_PRIV_KEY_INFO_free(p8inf);
-    } else if ((slen = pem_check_suffix(nm, "PRIVATE KEY")) > 0) {
-        const EVP_PKEY_ASN1_METHOD *ameth;
-        ameth = EVP_PKEY_asn1_find_str(NULL, nm, slen);
-        if (!ameth || !ameth->old_priv_decode)
-            goto p8err;
-        ret = d2i_PrivateKey(ameth->pkey_id, x, &p, len);
+    } else if (strcmp(nm, PEM_STRING_RSA) == 0) {
+        /* TODO(davidben): d2i_PrivateKey parses PKCS#8 along with the
+         * standalone format. This and the cases below probably should not
+         * accept PKCS#8. */
+        ret = d2i_PrivateKey(EVP_PKEY_RSA, x, &p, len);
+    } else if (strcmp(nm, PEM_STRING_EC) == 0) {
+        ret = d2i_PrivateKey(EVP_PKEY_EC, x, &p, len);
+    } else if (strcmp(nm, PEM_STRING_DSA) == 0) {
+        ret = d2i_PrivateKey(EVP_PKEY_DSA, x, &p, len);
     }
  p8err:
     if (ret == NULL)

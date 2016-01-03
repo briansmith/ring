@@ -720,21 +720,7 @@ OPENSSL_EXPORT EVP_PKEY *d2i_AutoPrivateKey(EVP_PKEY **out, const uint8_t **inp,
                                             long len);
 
 
-/* Private functions */
-
-/* EVP_PKEY_asn1_find returns the ASN.1 method table for the given |nid|, which
- * should be one of the |EVP_PKEY_*| values. It returns NULL if |nid| is
- * unknown. */
-OPENSSL_EXPORT const EVP_PKEY_ASN1_METHOD *EVP_PKEY_asn1_find(ENGINE **pengine,
-                                                              int nid);
-
-/* EVP_PKEY_asn1_find_str returns an |EVP_PKEY_ASN1_METHOD| by matching values
- * of the |len| bytes at |name|. For example, if name equals "EC" then it will
- * return an ECC method. The |pengine| argument is ignored.
- *
- * TODO(fork): move to PEM? */
-OPENSSL_EXPORT const EVP_PKEY_ASN1_METHOD *EVP_PKEY_asn1_find_str(
-    ENGINE **pengine, const char *name, size_t len);
+/* Private structures. */
 
 struct evp_pkey_st {
   CRYPTO_refcount_t references;
