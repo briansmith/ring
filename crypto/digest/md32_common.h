@@ -78,7 +78,7 @@ extern "C" {
  * with gcc on P4. This can only be done on x86, where unaligned data fetches
  * are possible. */
 #define HOST_c2l(c, l)                       \
-  ({                                         \
+  (void)({                                   \
     uint32_t r = *((const uint32_t *)(c));   \
     __asm__("bswapl %0" : "=r"(r) : "0"(r)); \
     (c) += 4;                                \
@@ -88,7 +88,7 @@ extern "C" {
 #if defined(__ORDER_LITTLE_ENDIAN__) && \
     __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
 #define HOST_c2l(c, l)                                                 \
-  ({                                                                   \
+  (void)({                                                             \
     uint32_t r;                                                        \
     __asm__("rev %w0, %w1" : "=r"(r) : "r"(*((const uint32_t *)(c)))); \
     (c) += 4;                                                          \
