@@ -86,14 +86,6 @@ extern "C" {
     (c) += 4;                              \
     (l) = r;                               \
   })
-#define HOST_l2c(l, c)                   \
-  ({                                     \
-    uint32_t r = (l);                    \
-    asm("bswapl %0" : "=r"(r) : "0"(r)); \
-    *((uint32_t *)(c)) = r;              \
-    (c) += 4;                            \
-    r;                                   \
-  })
 #elif defined(__aarch64__) && defined(__BYTE_ORDER__)
 #if defined(__ORDER_LITTLE_ENDIAN__) && \
     __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
@@ -104,17 +96,8 @@ extern "C" {
     (c) += 4;                                                      \
     (l) = r;                                                       \
   })
-#define HOST_l2c(l, c)                                  \
-  ({                                                    \
-    uint32_t r;                                         \
-    asm("rev %w0, %w1" : "=r"(r) : "r"((uint32_t)(l))); \
-    *((uint32_t *)(c)) = r;                             \
-    (c) += 4;                                           \
-    r;                                                  \
-  })
 #elif defined(__ORDER_BIG_ENDIAN__) && __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
 #define HOST_c2l(c, l) (void)((l) = *((const uint32_t *)(c)), (c) += 4)
-#define HOST_l2c(l, c) (*((uint32_t *)(c)) = (l), (c) += 4, (l))
 #endif /* __aarch64__ && __BYTE_ORDER__ */
 #endif /* ARCH */
 #endif /* !PEDANTIC && GNUC && !NO_ASM */
@@ -126,20 +109,11 @@ extern "C" {
          l |= (((uint32_t)(*((c)++))) << 8), l |= (((uint32_t)(*((c)++)))))
 #endif
 
-#ifndef HOST_l2c
-#define HOST_l2c(l, c)                       \
-  (*((c)++) = (uint8_t)(((l) >> 24) & 0xff), \
-   *((c)++) = (uint8_t)(((l) >> 16) & 0xff), \
-   *((c)++) = (uint8_t)(((l) >> 8) & 0xff),  \
-   *((c)++) = (uint8_t)(((l)) & 0xff), l)
-#endif
-
 #elif defined(DATA_ORDER_IS_LITTLE_ENDIAN)
 
 #if defined(OPENSSL_X86) || defined(OPENSSL_X86_64)
 /* See comment in DATA_ORDER_IS_BIG_ENDIAN section. */
 #define HOST_c2l(c, l) (void)((l) = *((const uint32_t *)(c)), (c) += 4)
-#define HOST_l2c(l, c) (*((uint32_t *)(c)) = (l), (c) += 4, l)
 #endif /* OPENSSL_X86 || OPENSSL_X86_64 */
 
 #ifndef HOST_c2l
@@ -147,14 +121,6 @@ extern "C" {
   (void)(l = (((uint32_t)(*((c)++)))), l |= (((uint32_t)(*((c)++))) << 8), \
          l |= (((uint32_t)(*((c)++))) << 16),                              \
          l |= (((uint32_t)(*((c)++))) << 24))
-#endif
-
-#ifndef HOST_l2c
-#define HOST_l2c(l, c)                       \
-  (*((c)++) = (uint8_t)(((l)) & 0xff),       \
-   *((c)++) = (uint8_t)(((l) >> 8) & 0xff),  \
-   *((c)++) = (uint8_t)(((l) >> 16) & 0xff), \
-   *((c)++) = (uint8_t)(((l) >> 24) & 0xff), l)
 #endif
 
 #endif /* DATA_ORDER */
