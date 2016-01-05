@@ -56,6 +56,7 @@
 extern "C" {
 #endif
 
+
 #define asm __asm__
 
 /* One of |DATA_ORDER_IS_BIG_ENDIAN| or |DATA_ORDER_IS_LITTLE_ENDIAN| must be
@@ -63,6 +64,10 @@ extern "C" {
 
 #if !defined(DATA_ORDER_IS_BIG_ENDIAN) && !defined(DATA_ORDER_IS_LITTLE_ENDIAN)
 #error "DATA_ORDER must be defined!"
+#endif
+
+#ifndef HASH_CBLOCK
+#error "HASH_CBLOCK must be defined!"
 #endif
 
 /*
@@ -74,18 +79,13 @@ extern "C" {
 #elif defined(__ICC)
 #define ROTATE(a, n) _rotl(a, n)
 #elif defined(__GNUC__) && __GNUC__ >= 2 && !defined(OPENSSL_NO_ASM)
-/*
- * Some GNU C inline assembler templates. Note that these are
- * rotates by *constant* number of bits! But that's exactly
- * what we need here...
- * 					<appro@fy.chalmers.se>
- */
 #if defined(OPENSSL_X86) || defined(OPENSSL_X86_64)
-#define ROTATE(a, n)                                                   \
-  ({                                                                   \
-    register uint32_t ret;                                             \
-    asm("roll %1,%0" : "=r"(ret) : "I"(n), "0"((uint32_t)(a)) : "cc"); \
-    ret;                                                               \
+/* Note this macro requires |n| be a constant. */
+#define ROTATE(a, n)                                                    \
+  ({                                                                    \
+    register uint32_t ret;                                              \
+    asm("roll %1, %0" : "=r"(ret) : "I"(n), "0"((uint32_t)(a)) : "cc"); \
+    ret;                                                                \
   })
 #endif /* OPENSSL_X86 || OPENSSL_X86_64 */
 #endif /* COMPILER */
@@ -96,15 +96,12 @@ extern "C" {
 
 #if defined(DATA_ORDER_IS_BIG_ENDIAN)
 
-#ifndef PEDANTIC
-#if defined(__GNUC__) && __GNUC__ >= 2 && !defined(OPENSSL_NO_ASM)
+#if !defined(PEDANTIC) && defined(__GNUC__) && __GNUC__ >= 2 && \
+    !defined(OPENSSL_NO_ASM)
 #if defined(OPENSSL_X86) || defined(OPENSSL_X86_64)
-/*
- * This gives ~30-40% performance improvement in SHA-256 compiled
- * with gcc [on P4]. Well, first macro to be frank. We can pull
- * this trick on x86* platforms only, because these CPUs can fetch
- * unaligned data without raising an exception.
- */
+/* The first macro gives a ~30-40% performance improvement in SHA-256 compiled
+ * with gcc on P4. This can only be done on x86, where unaligned data fetches
+ * are possible. */
 #define HOST_c2l(c, l)                     \
   ({                                       \
     uint32_t r = *((const uint32_t *)(c)); \
@@ -120,33 +117,30 @@ extern "C" {
     (c) += 4;                            \
     r;                                   \
   })
-#elif defined(__aarch64__)
-#if defined(__BYTE_ORDER__)
+#elif defined(__aarch64__) && defined(__BYTE_ORDER__)
 #if defined(__ORDER_LITTLE_ENDIAN__) && \
     __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
-#define HOST_c2l(c, l)                                               \
-  ({                                                                 \
-    uint32_t r;                                                      \
-    asm("rev	%w0,%w1" : "=r"(r) : "r"(*((const uint32_t *)(c)))); \
-    (c) += 4;                                                        \
-    (l) = r;                                                         \
+#define HOST_c2l(c, l)                                             \
+  ({                                                               \
+    uint32_t r;                                                    \
+    asm("rev %w0, %w1" : "=r"(r) : "r"(*((const uint32_t *)(c)))); \
+    (c) += 4;                                                      \
+    (l) = r;                                                       \
   })
-#define HOST_l2c(l, c)                                    \
-  ({                                                      \
-    uint32_t r;                                           \
-    asm("rev	%w0,%w1" : "=r"(r) : "r"((uint32_t)(l))); \
-    *((uint32_t *)(c)) = r;                               \
-    (c) += 4;                                             \
-    r;                                                    \
+#define HOST_l2c(l, c)                                  \
+  ({                                                    \
+    uint32_t r;                                         \
+    asm("rev %w0, %w1" : "=r"(r) : "r"((uint32_t)(l))); \
+    *((uint32_t *)(c)) = r;                             \
+    (c) += 4;                                           \
+    r;                                                  \
   })
 #elif defined(__ORDER_BIG_ENDIAN__) && __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
 #define HOST_c2l(c, l) (void)((l) = *((const uint32_t *)(c)), (c) += 4)
 #define HOST_l2c(l, c) (*((uint32_t *)(c)) = (l), (c) += 4, (l))
-#endif
-#endif
-#endif
-#endif
-#endif
+#endif /* __aarch64__ && __BYTE_ORDER__ */
+#endif /* ARCH */
+#endif /* !PEDANTIC && GNUC && !NO_ASM */
 
 #ifndef HOST_c2l
 #define HOST_c2l(c, l)                        \
@@ -154,6 +148,7 @@ extern "C" {
          l |= (((uint32_t)(*((c)++))) << 16), \
          l |= (((uint32_t)(*((c)++))) << 8), l |= (((uint32_t)(*((c)++)))))
 #endif
+
 #ifndef HOST_l2c
 #define HOST_l2c(l, c)                       \
   (*((c)++) = (uint8_t)(((l) >> 24) & 0xff), \
@@ -168,7 +163,7 @@ extern "C" {
 /* See comment in DATA_ORDER_IS_BIG_ENDIAN section. */
 #define HOST_c2l(c, l) (void)((l) = *((const uint32_t *)(c)), (c) += 4)
 #define HOST_l2c(l, c) (*((uint32_t *)(c)) = (l), (c) += 4, l)
-#endif
+#endif /* OPENSSL_X86 || OPENSSL_X86_64 */
 
 #ifndef HOST_c2l
 #define HOST_c2l(c, l)                                                     \
@@ -176,6 +171,7 @@ extern "C" {
          l |= (((uint32_t)(*((c)++))) << 16),                              \
          l |= (((uint32_t)(*((c)++))) << 24))
 #endif
+
 #ifndef HOST_l2c
 #define HOST_l2c(l, c)                       \
   (*((c)++) = (uint8_t)(((l)) & 0xff),       \
@@ -184,7 +180,7 @@ extern "C" {
    *((c)++) = (uint8_t)(((l) >> 24) & 0xff), l)
 #endif
 
-#endif
+#endif /* DATA_ORDER */
 
 
 #if defined(__cplusplus)
