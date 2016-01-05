@@ -61,6 +61,10 @@ OPENSSL_EXPORT void X25519_public_from_private(uint8_t out_public_value[32],
  * Ed25519 is a signature scheme using a twisted-Edwards curve that is
  * birationally equivalent to curve25519. */
 
+#define ED25519_PRIVATE_KEY_LEN 64
+#define ED25519_PUBLIC_KEY_LEN 32
+#define ED25519_SIGNATURE_LEN 64
+
 /* ED25519_keypair sets |out_public_key| and |out_private_key| to a freshly
  * generated, public–private key pair. */
 OPENSSL_EXPORT void ED25519_keypair(uint8_t out_public_key[32],
