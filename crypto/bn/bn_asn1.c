@@ -25,10 +25,12 @@ int BN_cbs2unsigned(CBS *cbs, BIGNUM *ret) {
     OPENSSL_PUT_ERROR(BN, BN_R_BAD_ENCODING);
     return 0;
   }
+
   if (CBS_data(&child)[0] & 0x80) {
     OPENSSL_PUT_ERROR(BN, BN_R_NEGATIVE_NUMBER);
     return 0;
   }
+
   /* INTEGERs must be minimal. */
   if (CBS_data(&child)[0] == 0x00 &&
       CBS_len(&child) > 1 &&
@@ -36,6 +38,7 @@ int BN_cbs2unsigned(CBS *cbs, BIGNUM *ret) {
     OPENSSL_PUT_ERROR(BN, BN_R_BAD_ENCODING);
     return 0;
   }
+
   return BN_bin2bn(CBS_data(&child), CBS_len(&child), ret) != NULL;
 }
 
