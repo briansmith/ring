@@ -57,8 +57,6 @@ extern "C" {
 #endif
 
 
-#define asm __asm__
-
 /* One of |DATA_ORDER_IS_BIG_ENDIAN| or |DATA_ORDER_IS_LITTLE_ENDIAN| must be
  * defined to specify the byte order of the input stream. */
 
@@ -79,22 +77,22 @@ extern "C" {
 /* The first macro gives a ~30-40% performance improvement in SHA-256 compiled
  * with gcc on P4. This can only be done on x86, where unaligned data fetches
  * are possible. */
-#define HOST_c2l(c, l)                     \
-  ({                                       \
-    uint32_t r = *((const uint32_t *)(c)); \
-    asm("bswapl %0" : "=r"(r) : "0"(r));   \
-    (c) += 4;                              \
-    (l) = r;                               \
+#define HOST_c2l(c, l)                       \
+  ({                                         \
+    uint32_t r = *((const uint32_t *)(c));   \
+    __asm__("bswapl %0" : "=r"(r) : "0"(r)); \
+    (c) += 4;                                \
+    (l) = r;                                 \
   })
 #elif defined(__aarch64__) && defined(__BYTE_ORDER__)
 #if defined(__ORDER_LITTLE_ENDIAN__) && \
     __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
-#define HOST_c2l(c, l)                                             \
-  ({                                                               \
-    uint32_t r;                                                    \
-    asm("rev %w0, %w1" : "=r"(r) : "r"(*((const uint32_t *)(c)))); \
-    (c) += 4;                                                      \
-    (l) = r;                                                       \
+#define HOST_c2l(c, l)                                                 \
+  ({                                                                   \
+    uint32_t r;                                                        \
+    __asm__("rev %w0, %w1" : "=r"(r) : "r"(*((const uint32_t *)(c)))); \
+    (c) += 4;                                                          \
+    (l) = r;                                                           \
   })
 #elif defined(__ORDER_BIG_ENDIAN__) && __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
 #define HOST_c2l(c, l) (void)((l) = *((const uint32_t *)(c)), (c) += 4)
