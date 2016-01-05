@@ -60,6 +60,7 @@
 #define DATA_ORDER_IS_BIG_ENDIAN /* Required by md32_common.h. */
 #define HASH_CBLOCK             64
 
+#define ROTATE(a, n) (((a) << (n)) | ((a) >> (32 - (n))))
 #define Xupdate(a, ix, ia, ib, ic, id) \
   ((a) = (ia ^ ib ^ ic ^ id), ix = (a) = ROTATE((a), 1))
 
