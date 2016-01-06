@@ -40,8 +40,25 @@ use super::{c, digest, ecc, ffi};
 use super::input::Input;
 
 /// A signature verification algorithm.
-pub trait VerificationAlgorithm {
-    #[doc(hidden)]
+//
+// The `VerificationAlgorithm` struct is just a wrapper around a
+// `VerificationAlgorithmImpl`. This is done to be consistent with the rest of
+// *ring*, which avoids exposing traits in its API, and to save users from
+// encountering errors such as:
+//
+// ```output
+// the trait `core::marker::Sync` is not implemented for the type
+// `signature::VerificationAlgorithm + 'static` [E0277]
+// note: shared static variables must have a type that implements `Sync`
+// ```
+//
+// Although users could resolve such errors by adding `+ Sync` as we do here,
+// it's confusing and hard to debug for newcomers.
+pub struct VerificationAlgorithm {
+    implementation: &'static (VerificationAlgorithmImpl + Sync),
+}
+
+trait VerificationAlgorithmImpl {
     fn verify(&self, public_key: Input, msg: Input, signature: Input)
               -> Result<(), ()>;
 }
@@ -83,12 +100,12 @@ pub trait VerificationAlgorithm {
 /// ```
 pub fn verify(alg: &VerificationAlgorithm, public_key: Input, msg: Input,
               signature: Input) -> Result<(), ()> {
-    alg.verify(public_key, msg, signature)
+    alg.implementation.verify(public_key, msg, signature)
 }
 
 
 /// ECDSA Signatures.
-pub struct ECDSA {
+struct ECDSA {
     #[doc(hidden)]
     digest_alg: &'static digest::Algorithm,
 
@@ -96,7 +113,7 @@ pub struct ECDSA {
     ec_group_fn: unsafe extern fn() -> *const ecc::EC_GROUP,
 }
 
-impl VerificationAlgorithm for ECDSA {
+impl VerificationAlgorithmImpl for ECDSA {
     fn verify(&self, public_key: Input, msg: Input, signature: Input)
               -> Result<(), ()> {
         let digest = digest::digest(self.digest_alg, msg.as_slice_less_safe());
@@ -144,9 +161,12 @@ macro_rules! ecdsa {
         /// described in [RFC 3279 Section
         /// 2.2.3](https://tools.ietf.org/html/rfc3279#section-2.2.3). Both *r*
         /// and *s* are verified to be in the range [1, *n* - 1].
-        pub static $VERIFY_ALGORITHM: ECDSA = ECDSA {
-            digest_alg: $digest_alg,
-            ec_group_fn: $ec_group_fn,
+        pub static $VERIFY_ALGORITHM: VerificationAlgorithm =
+                VerificationAlgorithm {
+            implementation: &ECDSA {
+                digest_alg: $digest_alg,
+                ec_group_fn: $ec_group_fn,
+            }
         };
     }
 }
@@ -180,7 +200,7 @@ ecdsa!(ECDSA_P521_SHA512, "P-521 (secp521r1)", ecc::EC_GROUP_P521, "SHA-512",
 
 
 /// EdDSA signatures.
-pub struct EdDSA {
+struct EdDSA {
     #[doc(hidden)]
     _unused: u8, // XXX: Stable Rust doesn't allow empty structs.
 }
@@ -188,8 +208,10 @@ pub struct EdDSA {
 /// [Ed25519](http://ed25519.cr.yp.to/) signatures.
 ///
 /// Ed25519 uses SHA-512 as the digest algorithm.
-pub static ED25519: EdDSA = EdDSA {
-    _unused: 1,
+pub static ED25519: VerificationAlgorithm = VerificationAlgorithm {
+    implementation: &EdDSA {
+        _unused: 1,
+    }
 };
 
 #[cfg(test)]
@@ -204,7 +226,7 @@ fn ed25519_sign(private_key: &[u8], msg: &[u8], signature: &mut [u8])
     })
 }
 
-impl VerificationAlgorithm for EdDSA {
+impl VerificationAlgorithmImpl for EdDSA {
     fn verify(&self, public_key: Input, msg: Input, signature: Input)
               -> Result<(), ()> {
         let public_key = public_key.as_slice_less_safe();
@@ -223,7 +245,7 @@ impl VerificationAlgorithm for EdDSA {
 
 /// RSA PKCS#1 1.5 signatures.
 #[allow(non_camel_case_types)]
-pub struct RSA_PKCS1 {
+struct RSA_PKCS1 {
     #[doc(hidden)]
     digest_alg: &'static digest::Algorithm,
 
@@ -231,7 +253,7 @@ pub struct RSA_PKCS1 {
     min_bits: usize,
 }
 
-impl VerificationAlgorithm for RSA_PKCS1 {
+impl VerificationAlgorithmImpl for RSA_PKCS1 {
     fn verify(&self, public_key: Input, msg: Input, signature: Input)
               -> Result<(), ()> {
         let digest = digest::digest(self.digest_alg, msg.as_slice_less_safe());
@@ -257,9 +279,12 @@ macro_rules! rsa_pkcs1 {
         #[doc="using the "]
         #[doc=$digest_alg_name]
         #[doc=" digest algorithm."]
-        pub static $VERIFY_ALGORITHM: RSA_PKCS1 = RSA_PKCS1 {
-            digest_alg: $digest_alg,
-            min_bits: $min_bits
+        pub static $VERIFY_ALGORITHM: VerificationAlgorithm =
+                VerificationAlgorithm {
+            implementation: &RSA_PKCS1 {
+                digest_alg: $digest_alg,
+                min_bits: $min_bits
+            }
         };
     }
 }
