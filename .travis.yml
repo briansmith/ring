@@ -1,5 +1,7 @@
 language: rust
 matrix:
+  allow_failures:
+    - rust: nightly
   fast_finish: true
   include:
     # The lines from "# BEGIN GENERATED" through "# END GENERATED" are
