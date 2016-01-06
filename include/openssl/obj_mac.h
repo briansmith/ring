@@ -69,3 +69,5 @@
 #define NID_X9_62_prime256v1 415
 #define NID_secp384r1 715
 #define NID_secp521r1 716
+#define NID_x25519 948
+
