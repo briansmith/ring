@@ -43,7 +43,7 @@
 //! `SigningContext` or `sign` should be used for the signing. Use
 //! `verify_with_own_key` to verify the signature using the signing key; this
 //! is equivalent to, but more efficient than, constructing a `VerificationKey`
-//! with the same value as the signing key and then calling `verify`. 
+//! with the same value as the signing key and then calling `verify`.
 //!
 //! # Use Case: Key Derivation and Password Hashing
 //!
@@ -51,9 +51,10 @@
 //!
 //! All keys used during the key derivation should be `SigningKey`s;
 //! `SigningContext` should usually be used for the HMAC calculations. The
-//! [code for `ring::pbkdf2`](https://github.com/briansmith/ring/blob/master/src/pbkdf2.rs)
-//! and the
-//! [code for `ring::hkdf`](https://github.com/briansmith/ring/blob/master/src/hkdf.rs)
+//! [code for
+//! `ring::pbkdf2`](https://github.com/briansmith/ring/blob/master/src/pbkdf2.rs)
+//! and the [code for
+//! `ring::hkdf`](https://github.com/briansmith/ring/blob/master/src/hkdf.rs)
 //! are good examples of how to use `ring::hmac` efficiently for key derivation.
 //!
 //! # Examples:
@@ -155,7 +156,8 @@ impl SigningKey {
     /// Generate an HMAC signing key for the given digest algorithm using
     /// |ring::rand|. The key will be `digest_alg.chaining_len` bytes long. The
     /// key size choice is based on the recommendation of
-    /// [NIST SP 800-107, Section 5.3.4: Security Effect of the HMAC Key](http://csrc.nist.gov/publications/nistpubs/800-107-rev1/sp800-107-rev1.pdf)
+    /// [NIST SP 800-107, Section 5.3.4: Security Effect of the HMAC
+    /// Key](http://csrc.nist.gov/publications/nistpubs/800-107-rev1/sp800-107-rev1.pdf)
     /// and is consistent with the key lengths chosen for TLS as described in
     /// [RFC 5246, Appendix C](https://tools.ietf.org/html/rfc5246#appendix-C).
     pub fn generate(digest_alg: &'static digest::Algorithm)
