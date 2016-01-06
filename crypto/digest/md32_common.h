@@ -57,19 +57,14 @@ extern "C" {
 #endif
 
 
-/* One of |DATA_ORDER_IS_BIG_ENDIAN| or |DATA_ORDER_IS_LITTLE_ENDIAN| must be
- * defined to specify the byte order of the input stream. */
-
-#if !defined(DATA_ORDER_IS_BIG_ENDIAN) && !defined(DATA_ORDER_IS_LITTLE_ENDIAN)
-#error "DATA_ORDER must be defined!"
+#if !defined(DATA_ORDER_IS_BIG_ENDIAN)
+#error "DATA_ORDER must be defined, and only big endian is supported.!"
 #endif
 
 #ifndef HASH_CBLOCK
 #error "HASH_CBLOCK must be defined!"
 #endif
 
-
-#if defined(DATA_ORDER_IS_BIG_ENDIAN)
 
 #if !defined(PEDANTIC) && defined(__GNUC__) && __GNUC__ >= 2 && \
     !defined(OPENSSL_NO_ASM)
@@ -106,22 +101,6 @@ extern "C" {
          l |= (((uint32_t)(*((c)++))) << 16), \
          l |= (((uint32_t)(*((c)++))) << 8), l |= (((uint32_t)(*((c)++)))))
 #endif
-
-#elif defined(DATA_ORDER_IS_LITTLE_ENDIAN)
-
-#if defined(OPENSSL_X86) || defined(OPENSSL_X86_64)
-/* See comment in DATA_ORDER_IS_BIG_ENDIAN section. */
-#define HOST_c2l(c, l) (void)((l) = *((const uint32_t *)(c)), (c) += 4)
-#endif /* OPENSSL_X86 || OPENSSL_X86_64 */
-
-#ifndef HOST_c2l
-#define HOST_c2l(c, l)                                                     \
-  (void)(l = (((uint32_t)(*((c)++)))), l |= (((uint32_t)(*((c)++))) << 8), \
-         l |= (((uint32_t)(*((c)++))) << 16),                              \
-         l |= (((uint32_t)(*((c)++))) << 24))
-#endif
-
-#endif /* DATA_ORDER */
 
 
 #if defined(__cplusplus)
