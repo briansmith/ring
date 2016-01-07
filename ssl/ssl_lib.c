@@ -2577,6 +2577,10 @@ const SSL_CIPHER *SSL_get_pending_cipher(const SSL *ssl) {
   return ssl->s3->tmp.new_cipher;
 }
 
+void SSL_CTX_set_retain_only_sha256_of_client_certs(SSL_CTX *ctx, int enabled) {
+  ctx->retain_only_sha256_of_client_certs = !!enabled;
+}
+
 int SSL_clear(SSL *ssl) {
   if (ssl->method == NULL) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_NO_METHOD_SPECIFIED);
