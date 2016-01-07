@@ -2572,6 +2572,13 @@ size_t SSL_get_server_random(const SSL *ssl, uint8_t *out, size_t max_out) {
   return max_out;
 }
 
+const SSL_CIPHER *SSL_get_pending_cipher(const SSL *ssl) {
+  if (!SSL_in_init(ssl)) {
+    return NULL;
+  }
+  return ssl->s3->tmp.new_cipher;
+}
+
 int SSL_clear(SSL *ssl) {
   if (ssl->method == NULL) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_NO_METHOD_SPECIFIED);

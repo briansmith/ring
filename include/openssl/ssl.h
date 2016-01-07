@@ -2880,6 +2880,10 @@ OPENSSL_EXPORT size_t SSL_get_client_random(const SSL *ssl, uint8_t *out,
 OPENSSL_EXPORT size_t SSL_get_server_random(const SSL *ssl, uint8_t *out,
                                             size_t max_out);
 
+/* SSL_get_pending_cipher returns the cipher suite for the current handshake or
+ * NULL if one has not been negotiated yet or there is no pending handshake. */
+OPENSSL_EXPORT const SSL_CIPHER *SSL_get_pending_cipher(const SSL *ssl);
+
 
 /* Deprecated functions. */
 
