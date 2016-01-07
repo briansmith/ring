@@ -71,7 +71,7 @@
 //! parser is a good example of a real-world use of the Input/Reader framework
 //! to parse complex data.
 
-use std;
+use core;
 
 /// Calls `read` with the given input as a `Reader`, ensuring that `read`
 /// consumed the entire input. If `read` does not consume the entire input,
@@ -138,7 +138,7 @@ impl<'a> Input<'a> {
         // This limit is important for avoiding integer overflow. In particular,
         // `Reader` assumes that an `i + 1 > i` if `input.value.get(i)` does
         // not return `None`.
-        if bytes.len() > std::usize::MAX - 1 {
+        if bytes.len() > core::usize::MAX - 1 {
             return Err(())
         }
         Ok(Input { value: no_panic::NoPanicSlice::new(bytes) })

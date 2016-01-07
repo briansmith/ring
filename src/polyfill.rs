@@ -16,6 +16,8 @@
 //! standard library soon.
 
 pub mod slice {
+    use core;
+
     // https://github.com/rust-lang/rust/issues/27750
     // https://internals.rust-lang.org/t/stabilizing-basic-functions-on-arrays-and-slices/2868
     #[inline(always)]
@@ -29,29 +31,26 @@ pub mod slice {
     // https://internals.rust-lang.org/t/stabilizing-basic-functions-on-arrays-and-slices/2868
     #[inline(always)]
     pub fn fill_from_slice(dest: &mut [u8], src: &[u8]) {
-        use std;
         assert_eq!(dest.len(), src.len());
         unsafe {
-            std::ptr::copy_nonoverlapping(src.as_ptr(), dest.as_mut_ptr(),
-                                          src.len())
+            core::ptr::copy_nonoverlapping(src.as_ptr(), dest.as_mut_ptr(),
+                                           src.len())
         }
     }
 
     // https://internals.rust-lang.org/t/safe-trasnsmute-for-slices-e-g-u64-u32-particularly-simd-types/2871
     #[inline(always)]
     pub fn u64_as_u8<'a>(src: &'a [u64]) -> &'a [u8] {
-        use std;
         unsafe {
-            std::slice::from_raw_parts(src.as_ptr() as *const u8, src.len() * 8)
+            core::slice::from_raw_parts(src.as_ptr() as *const u8, src.len() * 8)
         }
     }
 
     // https://internals.rust-lang.org/t/safe-trasnsmute-for-slices-e-g-u64-u32-particularly-simd-types/2871
     #[inline(always)]
     pub fn u64_as_u32<'a>(src: &'a [u64]) -> &'a [u32] {
-        use std;
         unsafe {
-            std::slice::from_raw_parts(src.as_ptr() as *const u32, src.len() * 2)
+            core::slice::from_raw_parts(src.as_ptr() as *const u32, src.len() * 2)
         }
     }
 }

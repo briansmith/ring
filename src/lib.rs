@@ -27,9 +27,14 @@
 //!         functionality still uses the heap.
 //! </table>
 
+#![no_std]
 
 #[cfg(test)]
 extern crate rustc_serialize;
+
+#[cfg(test)]
+#[macro_use(format, print, println, vec)]
+extern crate std;
 
 pub mod aead;
 pub mod agreement;

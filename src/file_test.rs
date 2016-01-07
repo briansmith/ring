@@ -14,6 +14,8 @@
 
 use rustc_serialize::hex::FromHex;
 use std;
+use std::string::String;
+use std::vec::Vec;
 use std::io::BufRead;
 use super::digest;
 
