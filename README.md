@@ -51,7 +51,6 @@ Patches Welcome! Suggestions:
   |rust::digest| API and the C/asm optimized modular exponentiation.
 * Optimizing the PBKDF2-HMAC implementation based on the ideas from
   [fastpbkdf2](https://github.com/ctz/fastpbkdf2).
-* X25519 (ECDH with Curve25519) and Ed25519.
 * Better IDE support for Windows (e.g. running the tests within the IDE) and
   Mac OS X (e.g. Xcode project files).
 * Support for more platforms in the continuous integration (e.g. Android, iOS,
@@ -79,7 +78,10 @@ submit it to them after agreeing to their CLA.
 Online Automated Testing
 ------------------------
 
-Travis CI is used for Linux and Mac OS X. Appveyor is used for Windows.
+Travis CI is used for Linux and Mac OS X. Appveyor is used for Windows. The
+tests are run in debug and release configurations, for the current release of
+each Rust channel (Stable, Beta, Nightly), for each configuration listed
+in the table below.
 
 <table>
 <tr><th>OS</th><th>Arch.</th><th>Compilers</th><th>Status</th>
