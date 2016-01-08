@@ -472,7 +472,6 @@ mod tests {
             let s_result = aead::seal_in_place(&s_key, &nonce,
                                                &mut s_in_out[..],
                                                max_overhead_len, &ad);
-            println!("ACTUAL: {}", s_in_out.to_hex());
 
             let mut o_in_out = ct.clone();
             let o_key = aead::OpeningKey::new(aead_alg, &key_bytes).unwrap();

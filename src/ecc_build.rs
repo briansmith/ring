@@ -48,8 +48,6 @@ fn mod_inv(a: &Integer, m: &Integer)
             last_y = y;
             y = new_y;
         }
-        println!("last_rem: {}, aa: {}, bb: {}, last_x: {}, last_y: {}",
-                 last_rem, aa, bb, last_x, last_y);
         (last_rem,
          if aa.is_negative() { -last_x } else { last_x },
          if bb.is_negative() { -last_y } else { last_y })
@@ -59,7 +57,6 @@ fn mod_inv(a: &Integer, m: &Integer)
     if g != Integer::one() {
         return Err(());
     }
-    println!("x: {}, x % m: {}", &x, &x % m);
     Ok(x % m)
 }
 

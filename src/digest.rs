@@ -554,7 +554,6 @@ mod tests {
                 }
                 assert_eq!(1003, mds.len());
                 let md_j = mds.last().unwrap();
-                println!("{}\n{}", expected_md.to_hex(), md_j.to_hex());
                 assert_eq!(&expected_md, md_j);
                 seed = md_j.clone();
             });
