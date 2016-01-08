@@ -36,7 +36,8 @@
 //! larger messages will be added later. Similarly, the signing interface is
 //! not available yet.
 
-use super::{c, digest, ecc, ffi};
+use super::{c, ffi};
+#[cfg(not(feature = "no_heap"))] use super::{digest, ecc};
 use super::input::Input;
 
 /// A signature verification algorithm.
@@ -70,13 +71,17 @@ trait VerificationAlgorithmImpl {
 ///
 /// ## Verify a RSA PKCS#1 signature that uses the SHA-256 digest
 ///
-/// ```
+/// ```ignore
+/// # // XXX: Re-enable when https://github.com/rust-lang/rust/pull/30372
+/// # // reaches stable.
+/// #
 /// use ring::input::Input;
 /// use ring::signature;
 ///
 /// // Ideally this function should take its inputs as `Input`s instead of
 /// // slices. It takes its input as slices to illustrate how to convert slices
 /// // to `Input`s.
+/// # #[cfg(not(feature = "no_heap"))]
 /// fn verify_rsa_pkcs1_sha256(public_key: &[u8], msg: &[u8], sig: &[u8])
 ///                            -> Result<(), ()> {
 ///    let public_key = try!(Input::new(public_key));
@@ -105,11 +110,13 @@ pub fn verify(alg: &VerificationAlgorithm, public_key: Input, msg: Input,
 
 
 /// ECDSA Signatures.
+#[cfg(not(feature = "no_heap"))]
 struct ECDSA {
     digest_alg: &'static digest::Algorithm,
     ec_group_fn: unsafe extern fn() -> *const ecc::EC_GROUP,
 }
 
+#[cfg(not(feature = "no_heap"))]
 impl VerificationAlgorithmImpl for ECDSA {
     fn verify(&self, public_key: Input, msg: Input, signature: Input)
               -> Result<(), ()> {
@@ -130,6 +137,7 @@ impl VerificationAlgorithmImpl for ECDSA {
 macro_rules! ecdsa {
     ( $VERIFY_ALGORITHM:ident, $curve_name:expr, $ec_group_fn:expr,
       $digest_alg_name:expr, $digest_alg:expr ) => {
+        #[cfg(not(feature = "no_heap"))]
         #[doc="ECDSA signatures using the "]
         #[doc=$curve_name]
         #[doc=" curve and the "]
@@ -158,6 +166,8 @@ macro_rules! ecdsa {
         /// described in [RFC 3279 Section
         /// 2.2.3](https://tools.ietf.org/html/rfc3279#section-2.2.3). Both *r*
         /// and *s* are verified to be in the range [1, *n* - 1].
+        ///
+        /// Not available in `no_heap` mode.
         pub static $VERIFY_ALGORITHM: VerificationAlgorithm =
                 VerificationAlgorithm {
             implementation: &ECDSA {
@@ -241,11 +251,13 @@ impl VerificationAlgorithmImpl for EdDSA {
 
 /// RSA PKCS#1 1.5 signatures.
 #[allow(non_camel_case_types)]
+#[cfg(not(feature = "no_heap"))]
 struct RSA_PKCS1 {
     digest_alg: &'static digest::Algorithm,
     min_bits: usize,
 }
 
+#[cfg(not(feature = "no_heap"))]
 impl VerificationAlgorithmImpl for RSA_PKCS1 {
     fn verify(&self, public_key: Input, msg: Input, signature: Input)
               -> Result<(), ()> {
@@ -266,12 +278,15 @@ impl VerificationAlgorithmImpl for RSA_PKCS1 {
 macro_rules! rsa_pkcs1 {
     ( $VERIFY_ALGORITHM:ident, $min_bits:expr, $min_bits_str:expr,
       $digest_alg_name:expr, $digest_alg:expr ) => {
+        #[cfg(not(feature = "no_heap"))]
         #[doc="RSA PKCS#1 1.5 signatures of "]
         #[doc=$min_bits_str]
         #[doc="-8192 bits "]
         #[doc="using the "]
         #[doc=$digest_alg_name]
         #[doc=" digest algorithm."]
+        ///
+        /// Not available in `no_heap` mode.
         pub static $VERIFY_ALGORITHM: VerificationAlgorithm =
                 VerificationAlgorithm {
             implementation: &RSA_PKCS1 {
@@ -291,6 +306,7 @@ rsa_pkcs1!(RSA_PKCS1_3072_8192_SHA384, 3072, "3072", "SHA-384", &digest::SHA384)
 
 
 extern {
+    #[cfg(not(feature = "no_heap"))]
     fn ECDSA_verify_signed_digest(group: *const ecc::EC_GROUP, hash_nid: c::int,
                                   digest: *const u8, digest_len: c::size_t,
                                   sig_der: *const u8, sig_der_len: c::size_t,
@@ -306,6 +322,7 @@ extern {
                       signature: *const u8/*[64]*/,
                       public_key: *const u8/*[32]*/) -> c::int;
 
+    #[cfg(not(feature = "no_heap"))]
     fn RSA_verify_pkcs1_signed_digest(min_bits: usize, max_bits: usize,
                                       digest_nid: c::int, digest: *const u8,
                                       digest_len: c::size_t, sig: *const u8,

@@ -12,6 +12,22 @@
 // ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
 // OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
+//! Safe, fast, small crypto using Rust with BoringSSL's cryptography primitives.
+//!
+//! # Feature Flags
+//!
+//! <table>
+//! <tr><th>Feature
+//!     <th>Description
+//! <tr><td><code>no_heap</code>
+//!     <td>Disable all functionality that uses the heap. This is useful for
+//!         code running in kernel space and some embedded applications. The
+//!         goal is to enable as much functionality as is practical in
+//!         <code>no_heap</code> mode, but for now some RSA, ECDH, and ECDSA
+//!         functionality still uses the heap.
+//! </table>
+
+
 #[cfg(test)]
 extern crate rustc_serialize;
 

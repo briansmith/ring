@@ -15,6 +15,7 @@
 #[allow(non_camel_case_types)]
 pub enum EC_GROUP { }
 
+#[cfg(not(feature = "no_heap"))]
 extern {
     pub fn EC_GROUP_P256() -> *const EC_GROUP;
     pub fn EC_GROUP_P384() -> *const EC_GROUP;

@@ -14,21 +14,30 @@
 
 //! Key agreement: ECDH.
 
-use super::{c, digest, ecc, ffi};
-use super::input::Input;
 use std;
+use super::{c, digest, ecc};
+#[cfg(not(feature = "no_heap"))] use super::ffi;
+use super::input::Input;
 
 /// A key agreement algorithm.
 pub struct Algorithm {
+    #[cfg_attr(feature = "no_heap", allow(dead_code))]
     ec_group_fn: unsafe extern fn () -> *const ecc::EC_GROUP,
+
     encoded_public_key_len: usize,
+
+    #[cfg_attr(feature = "no_heap", allow(dead_code))]
     nid: c::int,
+
     generate_key_pair: fn(alg: &'static Algorithm) -> Result<KeyPairImpl, ()>,
+
     fill_with_public_key: fn(algorithm: &Algorithm, key_pair_impl: &KeyPairImpl,
                              out: &mut [u8]) -> Result<(), ()>,
+
     agree: fn(key_pair: &KeyPairImpl, peer_public_key_pair_alg: &Algorithm,
               peer_public_key: &[u8], shared_key: &mut [u8])
               -> Result<usize, ()>,
+
     drop_key_pair: fn(key_pair_impl: &mut KeyPairImpl),
 }
 
@@ -83,6 +92,7 @@ impl Drop for EphemeralKeyPair {
 }
 
 enum KeyPairImpl {
+    #[cfg(not(feature = "no_heap"))]
     NIST {
         key: *mut EC_KEY,
     },
@@ -191,6 +201,7 @@ pub extern fn SHA512_5(out: *mut u8, out_len: c::size_t,
 
 macro_rules! nist_ecdh {
     ( $NAME:ident, $bits:expr, $name_str:expr, $ec_group_fn:expr, $nid:expr ) => {
+        #[cfg(not(feature = "no_heap"))]
         #[doc="ECDH using the NIST"]
         #[doc=$name_str]
         #[doc="curve."]
@@ -212,6 +223,8 @@ macro_rules! nist_ecdh {
         /// reduced modulo *q* are currently reduced mod *q* during
         /// verification. Soon, coordinates larger than *q* - 1 will be
         /// rejected.
+        ///
+        /// Not available in `no_heap` mode.
         pub static $NAME: Algorithm = Algorithm {
             ec_group_fn: $ec_group_fn,
             encoded_public_key_len: 1 + (2 * (($bits + 7) / 8)),
@@ -231,6 +244,7 @@ nist_ecdh!(ECDH_P384, 384, "P-384 (secp256r1)", ecc::EC_GROUP_P384,
 nist_ecdh!(ECDH_P521, 521, "P-521 (secp256r1)", ecc::EC_GROUP_P521,
            716 /*NID_secp521r1*/);
 
+#[cfg(not(feature = "no_heap"))]
 fn nist_ecdh_generate_key_pair(algorithm: &Algorithm) -> Result<KeyPairImpl, ()> {
     let key = try!(ffi::map_bssl_ptr_result(unsafe {
         EC_KEY_generate_key_ex((algorithm.ec_group_fn)())
@@ -238,6 +252,7 @@ fn nist_ecdh_generate_key_pair(algorithm: &Algorithm) -> Result<KeyPairImpl, ()>
     Ok(KeyPairImpl::NIST { key: key })
 }
 
+#[cfg(not(feature = "no_heap"))]
 fn nist_ecdh_fill_with_public_key(algorithm: &Algorithm,
                                   key_pair_impl: &KeyPairImpl, out: &mut [u8])
                                   -> Result<(), ()> {
@@ -253,6 +268,7 @@ fn nist_ecdh_fill_with_public_key(algorithm: &Algorithm,
     }
 }
 
+#[cfg(not(feature = "no_heap"))]
 fn nist_ecdh_agree(key_pair_impl: &KeyPairImpl, peer_public_key_alg: &Algorithm,
                    peer_public_key: &[u8], shared_key: &mut [u8])
                    -> Result<usize, ()> {
@@ -270,6 +286,7 @@ fn nist_ecdh_agree(key_pair_impl: &KeyPairImpl, peer_public_key_alg: &Algorithm,
     }
 }
 
+#[cfg(not(feature = "no_heap"))]
 fn nist_ecdh_drop_key_pair(key_pair_impl: &mut KeyPairImpl) {
     match key_pair_impl {
         &mut KeyPairImpl::NIST { key } => {
@@ -280,15 +297,22 @@ fn nist_ecdh_drop_key_pair(key_pair_impl: &mut KeyPairImpl) {
     }
 }
 
+#[cfg(not(feature = "no_heap"))]
 #[allow(non_camel_case_types)]
 enum EC_KEY { }
 
 extern {
+    #[cfg(not(feature = "no_heap"))]
     fn EC_KEY_generate_key_ex(group: *const ecc::EC_GROUP) -> *mut EC_KEY;
+
+    #[cfg(not(feature = "no_heap"))]
     fn EC_KEY_public_key_to_oct(key: *const EC_KEY, out: *mut u8,
                                 out_len: c::size_t) -> c::size_t;
+
+    #[cfg(not(feature = "no_heap"))]
     fn EC_KEY_free(key: *mut EC_KEY);
 
+    #[cfg(not(feature = "no_heap"))]
     fn ECDH_compute_key_ex(out: *mut u8, out_len: *mut c::size_t,
                            max_out_len: c::size_t, my_key_pair: *const EC_KEY,
                            peer_curve_nid: c::int,

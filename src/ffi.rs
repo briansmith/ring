@@ -21,6 +21,7 @@ pub fn map_bssl_result(bssl_result: c::int) -> Result<(), ()> {
     }
 }
 
+#[cfg(not(feature = "no_heap"))]
 pub fn map_bssl_ptr_result<T>(bssl_result: *mut T) -> Result<*mut T, ()> {
     if bssl_result.is_null() {
         return Err(());
