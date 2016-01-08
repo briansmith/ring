@@ -13,16 +13,10 @@
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 #[allow(non_camel_case_types)]
-#[doc(hidden)]
 pub enum EC_GROUP { }
 
 extern {
-    #[doc(hidden)]
     pub fn EC_GROUP_P256() -> *const EC_GROUP;
-
-    #[doc(hidden)]
     pub fn EC_GROUP_P384() -> *const EC_GROUP;
-
-    #[doc(hidden)]
     pub fn EC_GROUP_P521() -> *const EC_GROUP;
 }

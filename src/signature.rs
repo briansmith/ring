@@ -106,10 +106,7 @@ pub fn verify(alg: &VerificationAlgorithm, public_key: Input, msg: Input,
 
 /// ECDSA Signatures.
 struct ECDSA {
-    #[doc(hidden)]
     digest_alg: &'static digest::Algorithm,
-
-    #[doc(hidden)]
     ec_group_fn: unsafe extern fn() -> *const ecc::EC_GROUP,
 }
 
@@ -201,7 +198,6 @@ ecdsa!(ECDSA_P521_SHA512, "P-521 (secp521r1)", ecc::EC_GROUP_P521, "SHA-512",
 
 /// EdDSA signatures.
 struct EdDSA {
-    #[doc(hidden)]
     _unused: u8, // XXX: Stable Rust doesn't allow empty structs.
 }
 
@@ -246,10 +242,7 @@ impl VerificationAlgorithmImpl for EdDSA {
 /// RSA PKCS#1 1.5 signatures.
 #[allow(non_camel_case_types)]
 struct RSA_PKCS1 {
-    #[doc(hidden)]
     digest_alg: &'static digest::Algorithm,
-
-    #[doc(hidden)]
     min_bits: usize,
 }
 
