@@ -24,8 +24,4 @@ environment:
     - TOOLCHAIN_VERSION: 12.0
       RUST: nightly
 
-matrix:
-  allow_failures:
-    - RUST: nightly
-
 build_script: mk/appveyor.bat
