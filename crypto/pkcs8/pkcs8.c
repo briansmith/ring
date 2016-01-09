@@ -737,6 +737,7 @@ static int PKCS12_handle_content_info(CBS *content_info, unsigned depth,
                                       struct pkcs12_context *ctx) {
   CBS content_type, wrapped_contents, contents, content_infos;
   int nid, ret = 0;
+  uint8_t *storage = NULL;
 
   if (!CBS_get_asn1(content_info, &content_type, CBS_ASN1_OBJECT) ||
       !CBS_get_asn1(content_info, &wrapped_contents,
@@ -767,8 +768,9 @@ static int PKCS12_handle_content_info(CBS *content_info, unsigned depth,
         /* AlgorithmIdentifier, see
          * https://tools.ietf.org/html/rfc5280#section-4.1.1.2 */
         !CBS_get_asn1_element(&eci, &ai, CBS_ASN1_SEQUENCE) ||
-        !CBS_get_asn1(&eci, &encrypted_contents,
-                      CBS_ASN1_CONTEXT_SPECIFIC | 0)) {
+        !CBS_get_asn1_implicit_string(
+            &eci, &encrypted_contents, &storage,
+            CBS_ASN1_CONTEXT_SPECIFIC | 0, CBS_ASN1_OCTETSTRING)) {
       OPENSSL_PUT_ERROR(PKCS8, PKCS8_R_BAD_PKCS12_DATA);
       goto err;
     }
@@ -895,6 +897,7 @@ static int PKCS12_handle_content_info(CBS *content_info, unsigned depth,
   }
 
 err:
+  OPENSSL_free(storage);
   return ret;
 }
 
