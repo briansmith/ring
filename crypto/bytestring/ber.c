@@ -209,13 +209,12 @@ int CBS_asn1_ber_to_der(CBS *in, uint8_t **out, size_t *out_len) {
     return 1;
   }
 
-  if (!CBB_init(&cbb, CBS_len(in))) {
-    return 0;
-  }
-  if (!cbs_convert_ber(in, &cbb, 0, 0, 0)) {
+  if (!CBB_init(&cbb, CBS_len(in)) ||
+      !cbs_convert_ber(in, &cbb, 0, 0, 0) ||
+      !CBB_finish(&cbb, out, out_len)) {
     CBB_cleanup(&cbb);
     return 0;
   }
 
-  return CBB_finish(&cbb, out, out_len);
+  return 1;
 }
