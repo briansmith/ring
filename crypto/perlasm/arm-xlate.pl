@@ -165,6 +165,6 @@ while($line=<>) {
     print "\n";
 }
 
-print "#endif" if ($flavour eq "linux32" || $flavour eq "linux64");
+print "#endif\n" if ($flavour eq "linux32" || $flavour eq "linux64");
 
 close STDOUT;
