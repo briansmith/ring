@@ -62,8 +62,6 @@
 #include "internal.h"
 
 
-#define asm __asm__
-
 #if !defined(OPENSSL_NO_ASM)
 # if defined(__GNUC__) && __GNUC__>=2
 #  if defined(OPENSSL_X86)
@@ -79,7 +77,7 @@
     */
 #undef div_asm
 #  define div_asm(n0,n1,d0)		\
-	({  asm volatile (			\
+	({  __asm__ volatile (			\
 		"divl	%4"			\
 		: "=a"(q), "=d"(rem)		\
 		: "a"(n1), "d"(n0), "g"(d0)	\
@@ -94,7 +92,7 @@
     */
 #  undef div_asm
 #  define div_asm(n0,n1,d0)		\
-	({  asm volatile (			\
+	({  __asm__ volatile (			\
 		"divq	%4"			\
 		: "=a"(q), "=d"(rem)		\
 		: "a"(n1), "d"(n0), "g"(d0)	\
