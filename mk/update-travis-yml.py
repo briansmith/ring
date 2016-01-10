@@ -172,15 +172,9 @@ def get_linux_packages_to_install(compiler, arch):
     else:
         raise ValueError("unexpected arch: %s" % arch)
 
-    packages.append("yasm")
-
     return packages
 
 def get_sources_for_package(package):
-    # Packages in the default repo.
-    if package in ["yasm"]:
-        return []
-
     ubuntu_toolchain = "ubuntu-toolchain-r-test"
     if package.startswith("clang-"):
         if package == latest_clang:
