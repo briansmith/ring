@@ -637,7 +637,7 @@ int CRYPTO_gcm128_encrypt(GCM128_CONTEXT *ctx, const void *key,
       return 1;
     }
   }
-  if (STRICT_ALIGNMENT && ((size_t)in | (size_t)out) % sizeof(size_t) != 0) {
+  if (STRICT_ALIGNMENT && ((uintptr_t)in | (uintptr_t)out) % sizeof(size_t) != 0) {
     for (i = 0; i < len; ++i) {
       if (n == 0) {
         (*block)(ctx->Yi.c, ctx->EKi.c, key);
@@ -800,7 +800,7 @@ int CRYPTO_gcm128_decrypt(GCM128_CONTEXT *ctx, const void *key,
       return 1;
     }
   }
-  if (STRICT_ALIGNMENT && ((size_t)in | (size_t)out) % sizeof(size_t) != 0) {
+  if (STRICT_ALIGNMENT && ((uintptr_t)in | (uintptr_t)out) % sizeof(size_t) != 0) {
     for (i = 0; i < len; ++i) {
       uint8_t c;
       if (n == 0) {

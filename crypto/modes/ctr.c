@@ -104,7 +104,7 @@ void CRYPTO_ctr128_encrypt(const uint8_t *in, uint8_t *out, size_t len,
   }
 
 #if STRICT_ALIGNMENT
-  if (((size_t)in | (size_t)out | (size_t)ivec) % sizeof(size_t) != 0) {
+  if ((uintptr_t)in | (uintptr_t)out | (uintptr_t)ivec) % sizeof(size_t) != 0) {
     size_t l = 0;
     while (l < len) {
       if (n == 0) {
