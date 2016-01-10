@@ -417,9 +417,7 @@ extern {
 
 #[cfg(test)]
 mod tests {
-
     use super::super::{aead, file_test};
-    use rustc_serialize::hex::ToHex;
 
     #[test]
     pub fn test_aes_gcm_128() {

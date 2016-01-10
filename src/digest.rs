@@ -459,7 +459,6 @@ mod tests {
 
     mod shavs {
         use super::super::super::{digest, file_test};
-        use rustc_serialize::hex::ToHex;
 
         macro_rules! shavs_tests {
             ( $algorithm_name:ident ) => {
