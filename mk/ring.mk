@@ -223,6 +223,7 @@ $(RING_TEST_LIB_OBJS) \
 $(RING_TEST_MAIN_OBJS) \
 $(NULL): CPPFLAGS += $(RING_CPPFLAGS) \
                      -DBORINGSSL_IMPLEMENTATION \
+                     -fvisibility=hidden \
                      -Wno-cast-qual \
                      -Wno-pedantic \
                      -Wno-sign-compare \

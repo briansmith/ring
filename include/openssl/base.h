@@ -111,31 +111,10 @@ extern "C" {
 #define OPENSSL_IS_RING
 #define OPENSSL_VERSION_NUMBER 0x10002000
 
-#if defined(BORINGSSL_SHARED_LIBRARY)
-
-#if defined(OPENSSL_WINDOWS)
-
-#if defined(BORINGSSL_IMPLEMENTATION)
-#define OPENSSL_EXPORT __declspec(dllexport)
-#else
-#define OPENSSL_EXPORT __declspec(dllimport)
-#endif
-
-#else  /* defined(OPENSSL_WINDOWS) */
-
-#if defined(BORINGSSL_IMPLEMENTATION)
-#define OPENSSL_EXPORT __attribute__((visibility("default")))
-#else
+/* *ring* doesn't support the `BORINGSSL_SHARED_LIBRARY` configuration, so
+ * the default (usually "hidden") visibility is always used, even for exported
+ * items. */
 #define OPENSSL_EXPORT
-#endif
-
-#endif  /* defined(OPENSSL_WINDOWS) */
-
-#else  /* defined(BORINGSSL_SHARED_LIBRARY) */
-
-#define OPENSSL_EXPORT
-
-#endif  /* defined(BORINGSSL_SHARED_LIBRARY) */
 
 typedef struct bignum_ctx BN_CTX;
 typedef struct bignum_st BIGNUM;
