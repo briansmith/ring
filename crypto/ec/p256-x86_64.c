@@ -48,7 +48,7 @@
 #define ALIGN(x)
 #endif
 
-#define ALIGNPTR(p, N) ((uint8_t *)p + N - (size_t)p % N)
+#define ALIGNPTR(p, N) ((uint8_t *)p + N - (uintptr_t)p % N)
 #define P256_LIMBS (256 / BN_BITS2)
 
 typedef struct {
