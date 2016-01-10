@@ -130,8 +130,6 @@ struct bn_blinding_st {
   /* mont is the Montgomery context used for this |BN_BLINDING|. It is not
    * owned and must outlive this structure. */
   const BN_MONT_CTX *mont;
-  int (*bn_mod_exp)(BIGNUM *r, const BIGNUM *a, const BIGNUM *p,
-                    const BIGNUM *m, BN_CTX *ctx, const BN_MONT_CTX *mont);
 };
 
 BN_BLINDING *BN_BLINDING_new(const BIGNUM *A, const BIGNUM *Ai, BIGNUM *mod) {
@@ -203,7 +201,7 @@ int BN_BLINDING_update(BN_BLINDING *b, BN_CTX *ctx) {
   if (++b->counter == BN_BLINDING_COUNTER && b->e != NULL &&
       !(b->flags & BN_BLINDING_NO_RECREATE)) {
     /* re-create blinding parameters */
-    if (!BN_BLINDING_create_param(b, NULL, NULL, ctx, NULL, NULL)) {
+    if (!BN_BLINDING_create_param(b, NULL, NULL, ctx, NULL)) {
       goto err;
     }
   } else if (!(b->flags & BN_BLINDING_NO_UPDATE)) {
@@ -285,8 +283,6 @@ void BN_BLINDING_set_flags(BN_BLINDING *b, unsigned long flags) {
 
 BN_BLINDING *BN_BLINDING_create_param(
     BN_BLINDING *b, const BIGNUM *e, BIGNUM *m, BN_CTX *ctx,
-    int (*bn_mod_exp)(BIGNUM *r, const BIGNUM *a, const BIGNUM *p,
-                      const BIGNUM *m, BN_CTX *ctx, const BN_MONT_CTX *mont),
     const BN_MONT_CTX *mont) {
   int retry_counter = 32;
   BN_BLINDING *ret = NULL;
@@ -316,9 +312,6 @@ BN_BLINDING *BN_BLINDING_create_param(
     goto err;
   }
 
-  if (bn_mod_exp != NULL) {
-    ret->bn_mod_exp = bn_mod_exp;
-  }
   if (mont != NULL) {
     ret->mont = mont;
   }
@@ -345,14 +338,8 @@ BN_BLINDING *BN_BLINDING_create_param(
     }
   } while (1);
 
-  if (ret->bn_mod_exp != NULL && ret->mont != NULL) {
-    if (!ret->bn_mod_exp(ret->A, ret->A, ret->e, ret->mod, ctx, ret->mont)) {
-      goto err;
-    }
-  } else {
-    if (!BN_mod_exp(ret->A, ret->A, ret->e, ret->mod, ctx)) {
-      goto err;
-    }
+  if (!BN_mod_exp_mont(ret->A, ret->A, ret->e, ret->mod, ctx, ret->mont)) {
+    goto err;
   }
 
   return ret;
@@ -442,8 +429,7 @@ BN_BLINDING *rsa_setup_blinding(RSA *rsa, BN_CTX *in_ctx) {
     }
   }
 
-  ret = BN_BLINDING_create_param(NULL, e, n, ctx, BN_mod_exp_mont,
-                                 mont_ctx);
+  ret = BN_BLINDING_create_param(NULL, e, n, ctx, mont_ctx);
   if (ret == NULL) {
     OPENSSL_PUT_ERROR(RSA, ERR_R_BN_LIB);
     goto err;
