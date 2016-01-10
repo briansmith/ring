@@ -136,63 +136,7 @@ int bn_from_montgomery(BN_ULONG *rp, const BN_ULONG *ap,
                        const BN_ULONG *n0, int num);
 #endif
 
-int BN_exp(BIGNUM *r, const BIGNUM *a, const BIGNUM *p, BN_CTX *ctx) {
-  int i, bits, ret = 0;
-  BIGNUM *v, *rr;
-
-  if ((p->flags & BN_FLG_CONSTTIME) != 0) {
-    /* BN_FLG_CONSTTIME only supported by BN_mod_exp_mont() */
-    OPENSSL_PUT_ERROR(BN, ERR_R_SHOULD_NOT_HAVE_BEEN_CALLED);
-    return 0;
-  }
-
-  BN_CTX_start(ctx);
-  if (r == a || r == p) {
-    rr = BN_CTX_get(ctx);
-  } else {
-    rr = r;
-  }
-
-  v = BN_CTX_get(ctx);
-  if (rr == NULL || v == NULL) {
-    goto err;
-  }
-
-  if (BN_copy(v, a) == NULL) {
-    goto err;
-  }
-  bits = BN_num_bits(p);
-
-  if (BN_is_odd(p)) {
-    if (BN_copy(rr, a) == NULL) {
-      goto err;
-    }
-  } else {
-    if (!BN_one(rr)) {
-      goto err;
-    }
-  }
-
-  for (i = 1; i < bits; i++) {
-    if (!BN_sqr(v, v, ctx)) {
-      goto err;
-    }
-    if (BN_is_bit_set(p, i)) {
-      if (!BN_mul(rr, rr, v, ctx)) {
-        goto err;
-      }
-    }
-  }
-
-  if (r != rr && !BN_copy(r, rr)) {
-    goto err;
-  }
-  ret = 1;
-
-err:
-  BN_CTX_end(ctx);
-  return ret;
-}
+/* BN_exp was moved to bn_test_lib.c. */
 
 /* maximum precomputation table size for *variable* sliding windows */
 #define TABLE_SIZE 32

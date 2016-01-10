@@ -708,12 +708,6 @@ OPENSSL_EXPORT int BN_mod_mul_montgomery(BIGNUM *r, const BIGNUM *a,
 
 /* Exponentiation. */
 
-/* BN_exp sets |r| equal to |a|^{|p|}. It does so with a square-and-multiply
- * algorithm that leaks side-channel information. It returns one on success or
- * zero otherwise. */
-OPENSSL_EXPORT int BN_exp(BIGNUM *r, const BIGNUM *a, const BIGNUM *p,
-                          BN_CTX *ctx);
-
 /* BN_mod_exp sets |r| equal to |a|^{|p|} mod |m|. It does so with the best
  * algorithm for the values provided and can run in constant time if
  * |BN_FLG_CONSTTIME| is set for |p|. It returns one on success or zero
