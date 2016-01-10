@@ -853,7 +853,7 @@ static int copy_from_prebuf(BIGNUM *b, int top, unsigned char *buf, int idx,
 #define MOD_EXP_CTIME_ALIGN(x_)          \
   ((unsigned char *)(x_) +               \
    (MOD_EXP_CTIME_MIN_CACHE_LINE_WIDTH - \
-    (((size_t)(x_)) & (MOD_EXP_CTIME_MIN_CACHE_LINE_MASK))))
+    (((uintptr_t)(x_)) & (MOD_EXP_CTIME_MIN_CACHE_LINE_MASK))))
 
 /* This variant of BN_mod_exp_mont() uses fixed windows and the special
  * precomputation memory layout to limit data-dependency to a minimum

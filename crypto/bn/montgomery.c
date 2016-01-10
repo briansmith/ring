@@ -331,13 +331,13 @@ static int BN_from_montgomery_word(BIGNUM *ret, BIGNUM *r,
 
   {
     BN_ULONG *nrp;
-    size_t m;
+    uintptr_t m;
 
     v = bn_sub_words(rp, ap, np, nl) - carry;
     /* if subtraction result is real, then trick unconditional memcpy below to
      * perform in-place "refresh" instead of actual copy. */
-    m = (0 - (size_t)v);
-    nrp = (BN_ULONG *)(((intptr_t)rp & ~m) | ((intptr_t)ap & m));
+    m = (0 - (uintptr_t)v);
+    nrp = (BN_ULONG *)(((uintptr_t)rp & ~m) | ((uintptr_t)ap & m));
 
     for (i = 0, nl -= 4; i < nl; i += 4) {
       BN_ULONG t1, t2, t3, t4;
@@ -367,8 +367,6 @@ static int BN_from_montgomery_word(BIGNUM *ret, BIGNUM *r,
   return 1;
 }
 #endif
-
-#define PTR_SIZE_INT size_t
 
 static int BN_from_montgomery_word(BIGNUM *ret, BIGNUM *r, const BN_MONT_CTX *mont)
 	{
@@ -416,19 +414,19 @@ static int BN_from_montgomery_word(BIGNUM *ret, BIGNUM *r, const BN_MONT_CTX *mo
 
 	{
 	BN_ULONG *nrp;
-	size_t m;
+	uintptr_t m;
 
 	v=bn_sub_words(rp,ap,np,nl)-carry;
 	/* if subtraction result is real, then
 	 * trick unconditional memcpy below to perform in-place
 	 * "refresh" instead of actual copy. */
-	m=(0-(size_t)v);
-	nrp=(BN_ULONG *)(((PTR_SIZE_INT)rp&~m)|((PTR_SIZE_INT)ap&m));
+	m = (0-(uintptr_t)v);
+	nrp = (BN_ULONG *)(((uintptr_t)rp & ~m) | ((uintptr_t)ap & m));
 
 	for (i=0,nl-=4; i<nl; i+=4)
 		{
 		BN_ULONG t1,t2,t3,t4;
-		
+
 		t1=nrp[i+0];
 		t2=nrp[i+1];
 		t3=nrp[i+2];	ap[i+0]=0;

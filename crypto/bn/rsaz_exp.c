@@ -79,14 +79,14 @@ void RSAZ_1024_mod_exp_avx2(BN_ULONG result_norm[16],
 	const BN_ULONG m_norm[16], const BN_ULONG RR[16], BN_ULONG k0)
 {
 	unsigned char	 storage[320*3+32*9*16+64];	/* 5.5KB */
-	unsigned char	*p_str = storage + (64-((size_t)storage%64));
+	unsigned char	*p_str = storage + (64 - ((uintptr_t)storage % 64));
 	unsigned char	*a_inv, *m, *result,
 			*table_s = p_str+320*3,
 			*R2      = table_s;	/* borrow */
 	int index;
 	int wvalue;
 
-	if ((((size_t)p_str&4095)+320)>>12) {
+	if (((((uintptr_t)p_str & 4095) + 320) >> 12) != 0) {
 		result = p_str;
 		a_inv = p_str + 320;
 		m = p_str + 320*2;	/* should not cross page */
