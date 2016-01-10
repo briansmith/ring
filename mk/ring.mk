@@ -224,14 +224,11 @@ $(RING_TEST_MAIN_OBJS) \
 $(NULL): CPPFLAGS += $(RING_CPPFLAGS) \
                      -DBORINGSSL_IMPLEMENTATION \
                      -fvisibility=hidden \
-                     -Wno-cast-qual \
-                     -Wno-pedantic \
-                     -Wno-sign-compare \
-                     -Wno-unused-parameter \
                      -Wno-cast-align \
+                     -Wno-cast-qual \
                      -Wno-format \
-                     -Wno-format-nonliteral \
-                     -Wno-type-limits \
+                     -Wno-pedantic \
+                     -Wno-unused-parameter \
                      $(NULL)
 $(RING_OBJS) \
 $(RING_TEST_LIB_OBJS) \
