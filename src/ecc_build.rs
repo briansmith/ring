@@ -167,6 +167,8 @@ fn ec_group(curve: &NISTCurve) -> String {
           static const BN_ULONG b_limbs[] = {b_mont};
           static const BN_ULONG one_limbs[] = {one_mont};
         #endif
+          STATIC_BIGNUM_DIAGNOSTIC_PUSH
+
           static const EC_GROUP group = {{
             FIELD(.meth =) &{name}_EC_METHOD,
             FIELD(.generator =) {{
@@ -193,6 +195,9 @@ fn ec_group(curve: &NISTCurve) -> String {
             }},
             FIELD(.one =) STATIC_BIGNUM(one_limbs),
           }};
+
+          STATIC_BIGNUM_DIAGNOSTIC_POP
+
           return &group;
         }}",
         ec_group_fn_name = curve.name.replace("CURVE", "EC_GROUP"),

@@ -187,6 +187,16 @@ BIGNUM *bn_expand(BIGNUM *bn, size_t bits);
 #define BN_MUL_LOW_RECURSIVE_SIZE_NORMAL (32) /* 32 */
 #define BN_MONT_CTX_SET_SIZE_WORD (64)        /* 32 */
 
+#if defined(__GNUC__)
+#define STATIC_BIGNUM_DIAGNOSTIC_PUSH \
+  _Pragma("GCC diagnostic push") \
+  _Pragma("GCC diagnostic ignored \"-Wcast-qual\"")
+#define STATIC_BIGNUM_DIAGNOSTIC_POP _Pragma("GCC diagnostic pop")
+#else
+#define STATIC_BIGNUM_DIAGNOSTIC_PUSH
+#define STATIC_BIGNUM_DIAGNOSTIC_POP
+#endif
+
 #define STATIC_BIGNUM(x)                                \
   {                                                     \
     (BN_ULONG *)x, sizeof(x) / sizeof(BN_ULONG),        \

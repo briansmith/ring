@@ -215,7 +215,17 @@ int RSA_add_pkcs1_prefix(uint8_t **out_msg, size_t *out_msg_len,
       return 0;
     }
 
+#if defined __GNUC__
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wcast-qual"
+#endif
+
     *out_msg = (uint8_t*) msg;
+
+#if defined __GNUC__
+#pragma GCC diagnostic pop
+#endif
+
     *out_msg_len = SSL_SIG_LENGTH;
     *is_alloced = 0;
     return 1;

@@ -167,7 +167,9 @@ void BN_clear(BIGNUM *bn) {
 
 const BIGNUM *BN_value_one(void) {
   static const BN_ULONG kOneLimbs[1] = { 1 };
+  STATIC_BIGNUM_DIAGNOSTIC_PUSH
   static const BIGNUM kOne = STATIC_BIGNUM(kOneLimbs);
+  STATIC_BIGNUM_DIAGNOSTIC_POP
 
   return &kOne;
 }

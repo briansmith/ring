@@ -210,7 +210,9 @@ int BN_MONT_CTX_set(BN_MONT_CTX *mont, const BIGNUM *mod, BN_CTX *ctx) {
       BN_MASK2
 #endif
     };
+    STATIC_BIGNUM_DIAGNOSTIC_PUSH
     static const BIGNUM kMinusOne = STATIC_BIGNUM(kMinusOneLimbs);
+    STATIC_BIGNUM_DIAGNOSTIC_POP
     Ri_dividend = &kMinusOne;
   }
 
