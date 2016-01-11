@@ -211,10 +211,6 @@ OPENSSL_EXPORT int RSA_verify_raw(RSA *rsa, size_t *out_len, uint8_t *out,
  * of a signature or encrypted value using |rsa|. */
 OPENSSL_EXPORT unsigned RSA_size(const RSA *rsa);
 
-/* RSAPublicKey_dup allocates a fresh |RSA| and copies the public key from
- * |rsa| into it. It returns the fresh |RSA| object, or NULL on error. */
-OPENSSL_EXPORT RSA *RSAPublicKey_dup(const RSA *rsa);
-
 /* RSAPrivateKey_dup allocates a fresh |RSA| and copies the private key from
  * |rsa| into it. It returns the fresh |RSA| object, or NULL on error. */
 OPENSSL_EXPORT RSA *RSAPrivateKey_dup(const RSA *rsa);

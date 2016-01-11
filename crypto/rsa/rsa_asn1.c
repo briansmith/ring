@@ -246,17 +246,6 @@ int RSA_private_key_to_bytes(uint8_t **out_bytes, size_t *out_len,
   return 1;
 }
 
-RSA *RSAPublicKey_dup(const RSA *rsa) {
-  uint8_t *der;
-  size_t der_len;
-  if (!RSA_public_key_to_bytes(&der, &der_len, rsa)) {
-    return NULL;
-  }
-  RSA *ret = RSA_public_key_from_bytes(der, der_len);
-  OPENSSL_free(der);
-  return ret;
-}
-
 RSA *RSAPrivateKey_dup(const RSA *rsa) {
   uint8_t *der;
   size_t der_len;
