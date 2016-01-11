@@ -454,6 +454,11 @@ int RSA_verify_raw(RSA *rsa, size_t *out_len, uint8_t *out, size_t max_out,
   BN_CTX_start(ctx);
   f = BN_CTX_get(ctx);
   result = BN_CTX_get(ctx);
+  if (f == NULL || result == NULL) {
+    OPENSSL_PUT_ERROR(RSA, ERR_R_MALLOC_FAILURE);
+    goto err;
+  }
+
   if (padding == RSA_NO_PADDING) {
     buf = out;
   } else {
@@ -463,10 +468,6 @@ int RSA_verify_raw(RSA *rsa, size_t *out_len, uint8_t *out, size_t max_out,
       OPENSSL_PUT_ERROR(RSA, ERR_R_MALLOC_FAILURE);
       goto err;
     }
-  }
-  if (!f || !result) {
-    OPENSSL_PUT_ERROR(RSA, ERR_R_MALLOC_FAILURE);
-    goto err;
   }
 
   if (in_len != rsa_size) {
