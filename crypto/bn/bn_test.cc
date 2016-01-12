@@ -113,7 +113,7 @@ static bool test_div_word(FILE *fp);
 static bool test_mont(FILE *fp, BN_CTX *ctx);
 static bool test_mod(FILE *fp, BN_CTX *ctx);
 static bool test_mod_mul(FILE *fp, BN_CTX *ctx);
-static bool test_mod_exp(FILE *fp, BN_CTX *ctx);
+static bool test_mod_exp_mont(FILE *fp, BN_CTX *ctx);
 static bool test_mod_exp_mont_consttime(FILE *fp, BN_CTX *ctx);
 static bool test_exp(FILE *fp, BN_CTX *ctx);
 static bool test_exp_mod_zero(void);
@@ -276,8 +276,8 @@ int main(int argc, char *argv[]) {
   }
   flush_fp(bc_file.get());
 
-  message(bc_file.get(), "BN_mod_exp");
-  if (!test_mod_exp(bc_file.get(), ctx.get())) {
+  message(bc_file.get(), "BN_mod_exp_mont");
+  if (!test_mod_exp_mont(bc_file.get(), ctx.get())) {
     return 1;
   }
   flush_fp(bc_file.get());
@@ -1046,7 +1046,7 @@ static bool test_mod_mul(FILE *fp, BN_CTX *ctx) {
   return true;
 }
 
-static bool test_mod_exp(FILE *fp, BN_CTX *ctx) {
+static bool test_mod_exp_mont(FILE *fp, BN_CTX *ctx) {
   ScopedBIGNUM a(BN_new());
   ScopedBIGNUM b(BN_new());
   ScopedBIGNUM c(BN_new());
@@ -1060,8 +1060,8 @@ static bool test_mod_exp(FILE *fp, BN_CTX *ctx) {
     return false;
   }
   BN_zero(c.get());
-  if (BN_mod_exp(d.get(), a.get(), b.get(), c.get(), ctx)) {
-    fprintf(stderr, "BN_mod_exp with zero modulus succeeded!\n");
+  if (BN_mod_exp_mont(d.get(), a.get(), b.get(), c.get(), ctx, nullptr)) {
+    fprintf(stderr, "BN_mod_exp_mont with zero modulus succeeded!\n");
     return 0;
   }
   ERR_clear_error();
@@ -1072,7 +1072,7 @@ static bool test_mod_exp(FILE *fp, BN_CTX *ctx) {
   for (int i = 0; i < num2; i++) {
     if (!BN_rand(a.get(), 20 + i * 5, 0, 0) ||
         !BN_rand(b.get(), 2 + i, 0, 0) ||
-        !BN_mod_exp(d.get(), a.get(), b.get(), c.get(), ctx)) {
+        !BN_mod_exp_mont(d.get(), a.get(), b.get(), c.get(), ctx, nullptr)) {
       return false;
     }
 
@@ -1108,12 +1108,12 @@ static bool test_mod_exp(FILE *fp, BN_CTX *ctx) {
           "0000000000000000000000000000000000000000000000000000000000000000"
           "0000000000000000000000000000000000000000000000000000000000000000"
           "0000000000000000000000000000000000000000000000000000000001") ||
-      !BN_mod_exp(d.get(), a.get(), b.get(), c.get(), ctx) ||
+      !BN_mod_exp_mont(d.get(), a.get(), b.get(), c.get(), ctx, nullptr) ||
       !BN_mul(e.get(), a.get(), a.get(), ctx)) {
     return false;
   }
   if (BN_cmp(d.get(), e.get()) != 0) {
-    fprintf(stderr, "BN_mod_exp and BN_mul produce different results!\n");
+    fprintf(stderr, "BN_mod_exp_mont and BN_mul produce different results!\n");
     return false;
   }
 
@@ -1229,8 +1229,8 @@ static bool test_mod_exp_mont5(FILE *fp, BN_CTX *ctx) {
       !BN_MONT_CTX_set(mont.get(), m.get(), ctx) ||
       !BN_from_montgomery(e.get(), a.get(), mont.get(), ctx) ||
       !BN_mod_exp_mont_consttime(d.get(), e.get(), p.get(), m.get(), ctx,
-                                 NULL) ||
-      !BN_mod_exp(a.get(), e.get(), p.get(), m.get(), ctx)) {
+                                 nullptr) ||
+      !BN_mod_exp_mont(a.get(), e.get(), p.get(), m.get(), ctx, nullptr)) {
     return false;
   }
   if (BN_cmp(a.get(), d.get()) != 0) {
@@ -1240,8 +1240,8 @@ static bool test_mod_exp_mont5(FILE *fp, BN_CTX *ctx) {
   // Finally, some regular test vectors.
   if (!BN_rand(e.get(), 1024, 0, 0) ||
       !BN_mod_exp_mont_consttime(d.get(), e.get(), p.get(), m.get(), ctx,
-                                 NULL) ||
-      !BN_mod_exp(a.get(), e.get(), p.get(), m.get(), ctx)) {
+                                 nullptr) ||
+      !BN_mod_exp_mont(a.get(), e.get(), p.get(), m.get(), ctx, nullptr)) {
     return false;
   }
   if (BN_cmp(a.get(), d.get()) != 0) {
@@ -1304,9 +1304,7 @@ static bool test_exp_mod_zero(void) {
   }
   BN_zero(zero.get());
 
-  if (!BN_mod_exp(r.get(), a.get(), zero.get(), BN_value_one(), nullptr) ||
-      !BN_is_zero(r.get()) ||
-      !BN_mod_exp_mont(r.get(), a.get(), zero.get(), BN_value_one(), nullptr,
+  if (!BN_mod_exp_mont(r.get(), a.get(), zero.get(), BN_value_one(), nullptr,
                        nullptr) ||
       !BN_is_zero(r.get()) ||
       !BN_mod_exp_mont_consttime(r.get(), a.get(), zero.get(), BN_value_one(),
