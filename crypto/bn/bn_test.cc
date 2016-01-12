@@ -1309,9 +1309,6 @@ static bool test_exp_mod_zero(void) {
       !BN_is_zero(r.get()) ||
       !BN_mod_exp_mont_consttime(r.get(), a.get(), zero.get(), BN_value_one(),
                                  nullptr, nullptr) ||
-      !BN_is_zero(r.get()) ||
-      !BN_mod_exp_mont_word(r.get(), 42, zero.get(), BN_value_one(), nullptr,
-                            nullptr) ||
       !BN_is_zero(r.get())) {
     return false;
   }

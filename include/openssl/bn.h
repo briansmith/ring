@@ -717,10 +717,6 @@ OPENSSL_EXPORT int BN_mod_exp_mont_consttime(BIGNUM *rr, const BIGNUM *a,
                                              BN_CTX *ctx,
                                              const BN_MONT_CTX *mont);
 
-OPENSSL_EXPORT int BN_mod_exp_mont_word(BIGNUM *r, BN_ULONG a, const BIGNUM *p,
-                                        const BIGNUM *m, BN_CTX *ctx,
-                                        const BN_MONT_CTX *mont);
-
 
 /* Private functions */
 
