@@ -67,11 +67,26 @@
 #include "../internal.h"
 
 
-#define OPENSSL_RSA_MAX_MODULUS_BITS 16384
-#define OPENSSL_RSA_SMALL_MODULUS_BITS 3072
-#define OPENSSL_RSA_MAX_PUBEXP_BITS \
-  64 /* exponent limit enforced for "large" modulus only */
+static int check_modulus_and_exponent_sizes(const RSA *rsa) {
+  unsigned rsa_bits = BN_num_bits(rsa->n);
+  if (rsa_bits > 16 * 1024) {
+    OPENSSL_PUT_ERROR(RSA, RSA_R_MODULUS_TOO_LARGE);
+    return 0;
+  }
 
+  if (BN_ucmp(rsa->n, rsa->e) <= 0) {
+    OPENSSL_PUT_ERROR(RSA, RSA_R_BAD_E_VALUE);
+    return 0;
+  }
+
+  /* For large moduli only, enforce exponent limit. */
+  if (rsa_bits > 3072 && BN_num_bits(rsa->e) > 64) {
+    OPENSSL_PUT_ERROR(RSA, RSA_R_BAD_E_VALUE);
+    return 0;
+  }
+
+  return 1;
+}
 
 size_t rsa_default_size(const RSA *rsa) {
   return BN_num_bytes(rsa->n);
@@ -85,25 +100,12 @@ int rsa_default_encrypt(RSA *rsa, size_t *out_len, uint8_t *out, size_t max_out,
   BN_CTX *ctx = NULL;
   int i, ret = 0;
 
-  if (rsa_size > OPENSSL_RSA_MAX_MODULUS_BITS) {
-    OPENSSL_PUT_ERROR(RSA, RSA_R_MODULUS_TOO_LARGE);
-    return 0;
-  }
-
   if (max_out < rsa_size) {
     OPENSSL_PUT_ERROR(RSA, RSA_R_OUTPUT_BUFFER_TOO_SMALL);
     return 0;
   }
 
-  if (BN_ucmp(rsa->n, rsa->e) <= 0) {
-    OPENSSL_PUT_ERROR(RSA, RSA_R_BAD_E_VALUE);
-    return 0;
-  }
-
-  /* for large moduli, enforce exponent limit */
-  if (BN_num_bits(rsa->n) > OPENSSL_RSA_SMALL_MODULUS_BITS &&
-      BN_num_bits(rsa->e) > OPENSSL_RSA_MAX_PUBEXP_BITS) {
-    OPENSSL_PUT_ERROR(RSA, RSA_R_BAD_E_VALUE);
+  if (!check_modulus_and_exponent_sizes(rsa)) {
     return 0;
   }
 
@@ -417,25 +419,12 @@ int rsa_default_verify_raw(RSA *rsa, size_t *out_len, uint8_t *out,
   uint8_t *buf = NULL;
   BN_CTX *ctx = NULL;
 
-  if (BN_num_bits(rsa->n) > OPENSSL_RSA_MAX_MODULUS_BITS) {
-    OPENSSL_PUT_ERROR(RSA, RSA_R_MODULUS_TOO_LARGE);
-    return 0;
-  }
-
-  if (BN_ucmp(rsa->n, rsa->e) <= 0) {
-    OPENSSL_PUT_ERROR(RSA, RSA_R_BAD_E_VALUE);
-    return 0;
-  }
-
   if (max_out < rsa_size) {
     OPENSSL_PUT_ERROR(RSA, RSA_R_OUTPUT_BUFFER_TOO_SMALL);
     return 0;
   }
 
-  /* for large moduli, enforce exponent limit */
-  if (BN_num_bits(rsa->n) > OPENSSL_RSA_SMALL_MODULUS_BITS &&
-      BN_num_bits(rsa->e) > OPENSSL_RSA_MAX_PUBEXP_BITS) {
-    OPENSSL_PUT_ERROR(RSA, RSA_R_BAD_E_VALUE);
+  if (!check_modulus_and_exponent_sizes(rsa)) {
     return 0;
   }
 
