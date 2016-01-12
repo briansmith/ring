@@ -289,7 +289,8 @@ pub struct Algorithm {
     pub nid: c::int,
 }
 
-/// SHA-256 as specified in [FIPS 180-4](http://nvlpubs.nist.gov/nistpubs/FIPS/NIST.FIPS.180-4.pdf).
+/// SHA-1 as specified in [FIPS
+/// 180-4](http://nvlpubs.nist.gov/nistpubs/FIPS/NIST.FIPS.180-4.pdf).
 pub static SHA1: Algorithm = Algorithm {
     output_len: 160 / 8,
     chaining_len: 160 / 8,
@@ -306,7 +307,8 @@ pub static SHA1: Algorithm = Algorithm {
     nid: 64, // NID_sha1
 };
 
-/// SHA-256 as specified in [FIPS 180-4](http://nvlpubs.nist.gov/nistpubs/FIPS/NIST.FIPS.180-4.pdf).
+/// SHA-256 as specified in [FIPS
+/// 180-4](http://nvlpubs.nist.gov/nistpubs/FIPS/NIST.FIPS.180-4.pdf).
 pub static SHA256: Algorithm = Algorithm {
     output_len: 256 / 8,
     chaining_len: 256 / 8,
@@ -325,7 +327,8 @@ pub static SHA256: Algorithm = Algorithm {
 
 };
 
-/// SHA-384 as specified in [FIPS 180-4](http://nvlpubs.nist.gov/nistpubs/FIPS/NIST.FIPS.180-4.pdf).
+/// SHA-384 as specified in [FIPS
+/// 180-4](http://nvlpubs.nist.gov/nistpubs/FIPS/NIST.FIPS.180-4.pdf).
 pub static SHA384: Algorithm = Algorithm {
     output_len: 384 / 8,
     chaining_len: 512 / 8,
@@ -346,7 +349,8 @@ pub static SHA384: Algorithm = Algorithm {
     nid: 673, // NID_sha384
 };
 
-/// SHA-512 as specified in [FIPS 180-4](http://nvlpubs.nist.gov/nistpubs/FIPS/NIST.FIPS.180-4.pdf).
+/// SHA-512 as specified in [FIPS
+/// 180-4](http://nvlpubs.nist.gov/nistpubs/FIPS/NIST.FIPS.180-4.pdf).
 pub static SHA512: Algorithm = Algorithm {
     output_len: 512 / 8,
     chaining_len: 512 / 8,
