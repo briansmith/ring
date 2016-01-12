@@ -54,19 +54,12 @@
  * copied and put under another distribution licence
  * [including the GNU Public Licence.] */
 
-#if !defined(__STDC_FORMAT_MACROS)
-#define __STDC_FORMAT_MACROS
-#endif
-
 #include <openssl/cpu.h>
 
 
 #if !defined(OPENSSL_NO_ASM) && (defined(OPENSSL_X86) || defined(OPENSSL_X86_64))
 
 #include <inttypes.h>
-#include <stdlib.h>
-#include <stdio.h>
-#include <string.h>
 
 #if defined(OPENSSL_WINDOWS)
 #pragma warning(push, 3)
@@ -119,25 +112,6 @@ static uint64_t OPENSSL_xgetbv(uint32_t xcr) {
   __asm__ volatile ("xgetbv" : "=a"(eax), "=d"(edx) : "c"(xcr));
   return (((uint64_t)edx) << 32) | eax;
 #endif
-}
-
-/* handle_cpu_env applies the value from |in| to the CPUID values in |out[0]|
- * and |out[1]|. See the comment in |OPENSSL_cpuid_setup| about this. */
-static void handle_cpu_env(uint32_t *out, const char *in) {
-  const int invert = in[0] == '~';
-  uint64_t v;
-
-  if (!sscanf(in + invert, "%" PRIi64, &v)) {
-    return;
-  }
-
-  if (invert) {
-    out[0] &= ~v;
-    out[1] &= ~(v >> 32);
-  } else {
-    out[0] = v;
-    out[1] = v >> 32;
-  }
 }
 
 void OPENSSL_cpuid_setup(void) {
@@ -234,28 +208,6 @@ void OPENSSL_cpuid_setup(void) {
   OPENSSL_ia32cap_P[1] = ecx;
   OPENSSL_ia32cap_P[2] = extended_features;
   OPENSSL_ia32cap_P[3] = 0;
-
-  const char *env1, *env2;
-  env1 = getenv("OPENSSL_ia32cap");
-  if (env1 == NULL) {
-    return;
-  }
-
-  /* OPENSSL_ia32cap can contain zero, one or two values, separated with a ':'.
-   * Each value is a 64-bit, unsigned value which may start with "0x" to
-   * indicate a hex value. Prior to the 64-bit value, a '~' may be given.
-   *
-   * If '~' isn't present, then the value is taken as the result of the CPUID.
-   * Otherwise the value is inverted and ANDed with the probed CPUID result.
-   *
-   * The first value determines OPENSSL_ia32cap_P[0] and [1]. The second [2]
-   * and [3]. */
-
-  handle_cpu_env(&OPENSSL_ia32cap_P[0], env1);
-  env2 = strchr(env1, ':');
-  if (env2 != NULL) {
-    handle_cpu_env(&OPENSSL_ia32cap_P[2], env2 + 1);
-  }
 }
 
 #endif  /* !OPENSSL_NO_ASM && (OPENSSL_X86 || OPENSSL_X86_64) */
