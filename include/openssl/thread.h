@@ -100,32 +100,6 @@ typedef union crypto_mutex_st {
 typedef uint32_t CRYPTO_refcount_t;
 
 
-/* Private functions.
- *
- * Some old code calls these functions and so no-op implementations are
- * provided.
- *
- * TODO(fork): cleanup callers and remove. */
-
-OPENSSL_EXPORT void CRYPTO_set_id_callback(unsigned long (*func)(void));
-
-typedef struct {
-  int references;
-  struct CRYPTO_dynlock_value *data;
-} CRYPTO_dynlock;
-
-OPENSSL_EXPORT void CRYPTO_set_dynlock_create_callback(
-    struct CRYPTO_dynlock_value *(*dyn_create_function)(const char *file,
-                                                        int line));
-
-OPENSSL_EXPORT void CRYPTO_set_dynlock_lock_callback(void (*dyn_lock_function)(
-    int mode, struct CRYPTO_dynlock_value *l, const char *file, int line));
-
-OPENSSL_EXPORT void CRYPTO_set_dynlock_destroy_callback(
-    void (*dyn_destroy_function)(struct CRYPTO_dynlock_value *l,
-                                 const char *file, int line));
-
-
 #if defined(__cplusplus)
 }  /* extern C */
 #endif
