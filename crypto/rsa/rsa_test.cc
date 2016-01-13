@@ -376,9 +376,19 @@ static bool TestOnlyDGiven() {
     return false;
   }
 
-  if (!RSA_verify(NID_sha256, kDummyHash, sizeof(kDummyHash), buf, buf_len,
-                  key.get())) {
-    fprintf(stderr, "RSA_verify failed with only d given.\n");
+  uint8_t *public_key_der;
+  size_t public_key_der_len;
+  if (!RSA_public_key_to_bytes(&public_key_der, &public_key_der_len,
+                               key.get())) {
+    fprintf(stderr, "RSA_public_key_to_bytes failed with only d given.\n");
+    return false;
+  }
+  ScopedOpenSSLBytes delete_public_key_der(public_key_der);
+
+  if (!RSA_verify_pkcs1_signed_digest(512, 8192, NID_sha256, kDummyHash,
+                                      sizeof(kDummyHash), buf, buf_len,
+                                      public_key_der, public_key_der_len)) {
+    fprintf(stderr, "RSA_verify_pkcs1_signed_digest failed with only d given.\n");
     return false;
   }
 

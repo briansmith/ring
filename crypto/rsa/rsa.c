@@ -69,6 +69,10 @@
 #include "../internal.h"
 
 
+static int rsa_verify(int hash_nid, const uint8_t *msg, size_t msg_len,
+                      const uint8_t *sig, size_t sig_len, RSA *rsa);
+
+
 int RSA_verify_pkcs1_signed_digest(size_t min_bits, size_t max_bits,
                                    int hash_nid, const uint8_t *digest,
                                    size_t digest_len, const uint8_t *sig,
@@ -93,7 +97,7 @@ int RSA_verify_pkcs1_signed_digest(size_t min_bits, size_t max_bits,
   /* Don't cache the intermediate values since we're not reusing the key. */
   key->flags &= ~RSA_FLAG_CACHE_PUBLIC;
 
-  ret = RSA_verify(hash_nid, digest, digest_len, sig, sig_len, key);
+  ret = rsa_verify(hash_nid, digest, digest_len, sig, sig_len, key);
 
 err:
   RSA_free(key);
@@ -294,8 +298,19 @@ finish:
   return ret;
 }
 
-int RSA_verify(int hash_nid, const uint8_t *msg, size_t msg_len,
-               const uint8_t *sig, size_t sig_len, RSA *rsa) {
+/* rsa_verify verifies that |sig_len| bytes from |sig| are a valid,
+ * RSASSA-PKCS1-v1_5 signature of |msg_len| bytes at |msg| by |rsa|.
+ *
+ * The |hash_nid| argument identifies the hash function used to calculate |in|
+ * and is embedded in the resulting signature in order to prevent hash
+ * confusion attacks. For example, it might be |NID_sha256|.
+ *
+ * It returns one if the signature is valid and zero otherwise.
+ *
+ * WARNING: this differs from the original, OpenSSL RSA_verify function
+ * which additionally returned -1 on error. */
+static int rsa_verify(int hash_nid, const uint8_t *msg, size_t msg_len,
+                      const uint8_t *sig, size_t sig_len, RSA *rsa) {
   const size_t rsa_size = RSA_size(rsa);
   uint8_t *buf = NULL;
   int ret = 0;
@@ -319,7 +334,7 @@ int RSA_verify(int hash_nid, const uint8_t *msg, size_t msg_len,
     return 0;
   }
 
-  if (!RSA_verify_raw(rsa, &len, buf, rsa_size, sig, sig_len,
+  if (!rsa_verify_raw(rsa, &len, buf, rsa_size, sig, sig_len,
                       RSA_PKCS1_PADDING)) {
     goto out;
   }

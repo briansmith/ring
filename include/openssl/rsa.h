@@ -178,32 +178,6 @@ OPENSSL_EXPORT int RSA_sign_raw(RSA *rsa, size_t *out_len, uint8_t *out,
                                 size_t max_out, const uint8_t *in,
                                 size_t in_len, int padding);
 
-/* RSA_verify verifies that |sig_len| bytes from |sig| are a valid,
- * RSASSA-PKCS1-v1_5 signature of |msg_len| bytes at |msg| by |rsa|.
- *
- * The |hash_nid| argument identifies the hash function used to calculate |in|
- * and is embedded in the resulting signature in order to prevent hash
- * confusion attacks. For example, it might be |NID_sha256|.
- *
- * It returns one if the signature is valid and zero otherwise.
- *
- * WARNING: this differs from the original, OpenSSL function which additionally
- * returned -1 on error. */
-OPENSSL_EXPORT int RSA_verify(int hash_nid, const uint8_t *msg, size_t msg_len,
-                              const uint8_t *sig, size_t sig_len, RSA *rsa);
-
-/* RSA_verify_raw verifies |in_len| bytes of signature from |in| using the
- * public key from |rsa| and writes, at most, |max_out| bytes of plaintext to
- * |out|. The |max_out| argument must be, at least, |RSA_size| in order to
- * ensure success.
- *
- * It returns 1 on success or zero on error.
- *
- * The |padding| argument must be one of the |RSA_*_PADDING| values. */
-OPENSSL_EXPORT int RSA_verify_raw(RSA *rsa, size_t *out_len, uint8_t *out,
-                                  size_t max_out, const uint8_t *in,
-                                  size_t in_len, int padding);
-
 
 /* Utility functions. */
 
