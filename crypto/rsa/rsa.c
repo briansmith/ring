@@ -104,14 +104,7 @@ err:
   return ret;
 }
 
-RSA *RSA_new(void) { return RSA_new_method(NULL); }
-
-RSA *RSA_new_method(const ENGINE *engine) {
-  if (engine != NULL) {
-    OPENSSL_PUT_ERROR(RSA, ERR_R_MALLOC_FAILURE); /* TODO: error code */
-    return NULL;
-  }
-
+RSA *RSA_new(void) {
   RSA *rsa = (RSA *)OPENSSL_malloc(sizeof(RSA));
   if (rsa == NULL) {
     OPENSSL_PUT_ERROR(RSA, ERR_R_MALLOC_FAILURE);

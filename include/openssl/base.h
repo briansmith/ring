@@ -124,7 +124,6 @@ typedef struct cbb_st CBB;
 typedef struct cbs_st CBS;
 typedef struct ec_key_st EC_KEY;
 typedef struct ecdsa_sig_st ECDSA_SIG;
-typedef struct engine_st ENGINE;
 typedef struct rsa_st RSA;
 
 
