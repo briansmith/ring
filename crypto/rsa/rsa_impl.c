@@ -56,6 +56,7 @@
 
 #include <openssl/rsa.h>
 
+#include <assert.h>
 #include <string.h>
 
 #include <openssl/bn.h>
@@ -69,21 +70,37 @@
 
 static int check_modulus_and_exponent_sizes(const RSA *rsa) {
   unsigned rsa_bits = BN_num_bits(rsa->n);
+
   if (rsa_bits > 16 * 1024) {
     OPENSSL_PUT_ERROR(RSA, RSA_R_MODULUS_TOO_LARGE);
     return 0;
   }
 
-  if (BN_ucmp(rsa->n, rsa->e) <= 0) {
+  /* Mitigate DoS attacks by limiting the exponent size. 33 bits was chosen as
+   * the limit based on the recommendations in [1] and [2]. Windows CryptoAPI
+   * doesn't support values larger than 32 bits [3], so it is unlikely that
+   * exponents larger than 32 bits are being used for anything Windows commonly
+   * does.
+   *
+   * [1] https://www.imperialviolet.org/2012/03/16/rsae.html
+   * [2] https://www.imperialviolet.org/2012/03/17/rsados.html
+   * [3] https://msdn.microsoft.com/en-us/library/aa387685(VS.85).aspx */
+  static const unsigned kMaxExponentBits = 33;
+
+  if (BN_num_bits(rsa->e) > kMaxExponentBits) {
     OPENSSL_PUT_ERROR(RSA, RSA_R_BAD_E_VALUE);
     return 0;
   }
 
-  /* For large moduli only, enforce exponent limit. */
-  if (rsa_bits > 3072 && BN_num_bits(rsa->e) > 64) {
-    OPENSSL_PUT_ERROR(RSA, RSA_R_BAD_E_VALUE);
+  /* Verify |n > e|. Comparing |rsa_bits| to |kMaxExponentBits| is a small
+   * shortcut to comparing |n| and |e| directly. In reality, |kMaxExponentBits|
+   * is much smaller than the minimum RSA key size that any application should
+   * accept. */
+  if (rsa_bits <= kMaxExponentBits) {
+    OPENSSL_PUT_ERROR(RSA, RSA_R_KEY_SIZE_TOO_SMALL);
     return 0;
   }
+  assert(BN_ucmp(rsa->n, rsa->e) > 0);
 
   return 1;
 }
