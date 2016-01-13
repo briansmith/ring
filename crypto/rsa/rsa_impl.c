@@ -789,7 +789,13 @@ err:
   return ret;
 }
 
-int RSA_generate_key_ex(RSA *rsa, int bits, BIGNUM *e_value, BN_GENCB *cb) {
+RSA *RSA_generate(int bits, uint32_t e, BN_GENCB *cb) {
+  RSA *rsa = RSA_new();
+  if (rsa == NULL) {
+    OPENSSL_PUT_ERROR(RSA, ERR_R_MALLOC_FAILURE)
+    return NULL;
+  }
+
   BIGNUM *r0 = NULL, *r1 = NULL, *r2 = NULL, *r3 = NULL, *tmp;
   BIGNUM local_r0, local_d, local_p;
   BIGNUM *pr0, *d, *p;
@@ -838,7 +844,7 @@ int RSA_generate_key_ex(RSA *rsa, int bits, BIGNUM *e_value, BN_GENCB *cb) {
     goto err;
   }
 
-  if (!BN_copy(rsa->e, e_value)) {
+  if (!BN_set_word(rsa->e, e)) {
     goto err;
   }
 
@@ -948,6 +954,10 @@ err:
     BN_CTX_end(ctx);
     BN_CTX_free(ctx);
   }
+  if (!ok) {
+    RSA_free(rsa);
+    return NULL;
+  }
 
-  return ok;
+  return rsa;
 }

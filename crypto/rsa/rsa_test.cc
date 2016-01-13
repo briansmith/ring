@@ -319,15 +319,9 @@ static bool TestRSA(const uint8_t *der, size_t der_len,
 }
 
 static bool TestBadKey() {
-  ScopedRSA key(RSA_new());
-  ScopedBIGNUM e(BN_new());
-
-  if (!key || !e || !BN_set_word(e.get(), RSA_F4)) {
-    return false;
-  }
-
-  if (!RSA_generate_key_ex(key.get(), 512, e.get(), nullptr)) {
-    fprintf(stderr, "RSA_generate_key_ex failed.\n");
+  ScopedRSA key(RSA_generate(512, RSA_F4, nullptr));
+  if (!key) {
+    fprintf(stderr, "RSA_generate failed.\n");
     return false;
   }
 
@@ -396,18 +390,12 @@ static bool TestOnlyDGiven() {
 }
 
 static bool TestRecoverCRTParams() {
-  ScopedBIGNUM e(BN_new());
-  if (!e || !BN_set_word(e.get(), RSA_F4)) {
-    return false;
-  }
-
   ERR_clear_error();
 
   for (unsigned i = 0; i < 1; i++) {
-    ScopedRSA key1(RSA_new());
-    if (!key1 ||
-        !RSA_generate_key_ex(key1.get(), 512, e.get(), nullptr)) {
-      fprintf(stderr, "RSA_generate_key_ex failed.\n");
+    ScopedRSA key1(RSA_generate(512, RSA_F4, nullptr));
+    if (!key1) {
+      fprintf(stderr, "RSA_generate failed.\n");
       return false;
     }
 
