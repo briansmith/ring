@@ -227,7 +227,6 @@ $(NULL): CPPFLAGS += $(RING_CPPFLAGS) \
                      -fvisibility=hidden \
                      -Wno-cast-align \
                      -Wno-cast-qual \
-                     -Wno-format \
                      -Wno-pedantic \
                      -Wno-unused-parameter \
                      $(NULL)
