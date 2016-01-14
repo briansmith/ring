@@ -54,6 +54,7 @@
 	["crypto/rsa/rsa_test"],
 	["crypto/thread_test"],
 	["crypto/x509/pkcs7_test"],
+	["crypto/x509/x509_test"],
 	["crypto/x509v3/tab_test"],
 	["crypto/x509v3/v3name_test"],
 	["ssl/pqueue/pqueue_test"],
