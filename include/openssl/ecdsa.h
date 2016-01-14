@@ -178,10 +178,10 @@ OPENSSL_EXPORT size_t ECDSA_SIG_max_len(size_t order_len);
 
 /* d2i_ECDSA_SIG parses an ASN.1, DER-encoded, signature from |len| bytes at
  * |*inp|. If |out| is not NULL then, on exit, a pointer to the result is in
- * |*out|. If |*out| is already non-NULL on entry then the result is written
- * directly into |*out|, otherwise a fresh |ECDSA_SIG| is allocated. On
- * successful exit, |*inp| is advanced past the DER structure. It returns the
- * result or NULL on error. */
+ * |*out|. Note that, even if |*out| is already non-NULL on entry, it will not
+ * be written to. Rather, a fresh |ECDSA_SIG| is allocated and the previous one
+ * is freed. On successful exit, |*inp| is advanced past the DER structure. It
+ * returns the result or NULL on error. */
 OPENSSL_EXPORT ECDSA_SIG *d2i_ECDSA_SIG(ECDSA_SIG **out, const uint8_t **inp,
                                         long len);
 

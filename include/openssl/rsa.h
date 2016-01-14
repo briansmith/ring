@@ -441,10 +441,10 @@ OPENSSL_EXPORT RSA *RSA_generate_key(int bits, unsigned long e, void *callback,
 
 /* d2i_RSAPublicKey parses an ASN.1, DER-encoded, RSA public key from |len|
  * bytes at |*inp|. If |out| is not NULL then, on exit, a pointer to the result
- * is in |*out|. If |*out| is already non-NULL on entry then the result is
- * written directly into |*out|, otherwise a fresh |RSA| is allocated. On
- * successful exit, |*inp| is advanced past the DER structure. It returns the
- * result or NULL on error. */
+ * is in |*out|. Note that, even if |*out| is already non-NULL on entry, it
+ * will not be written to. Rather, a fresh |RSA| is allocated and the previous
+ * one is freed. On successful exit, |*inp| is advanced past the DER structure.
+ * It returns the result or NULL on error. */
 OPENSSL_EXPORT RSA *d2i_RSAPublicKey(RSA **out, const uint8_t **inp, long len);
 
 /* i2d_RSAPublicKey marshals |in| to an ASN.1, DER structure. If |outp| is not
@@ -455,10 +455,10 @@ OPENSSL_EXPORT int i2d_RSAPublicKey(const RSA *in, uint8_t **outp);
 
 /* d2i_RSAPrivateKey parses an ASN.1, DER-encoded, RSA private key from |len|
  * bytes at |*inp|. If |out| is not NULL then, on exit, a pointer to the result
- * is in |*out|. If |*out| is already non-NULL on entry then the result is
- * written directly into |*out|, otherwise a fresh |RSA| is allocated. On
- * successful exit, |*inp| is advanced past the DER structure. It returns the
- * result or NULL on error. */
+ * is in |*out|. Note that, even if |*out| is already non-NULL on entry, it
+ * will not be written to. Rather, a fresh |RSA| is allocated and the previous
+ * one is freed. On successful exit, |*inp| is advanced past the DER structure.
+ * It returns the result or NULL on error. */
 OPENSSL_EXPORT RSA *d2i_RSAPrivateKey(RSA **out, const uint8_t **inp, long len);
 
 /* i2d_RSAPrivateKey marshals |in| to an ASN.1, DER structure. If |outp| is not

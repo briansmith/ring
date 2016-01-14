@@ -222,8 +222,9 @@ OPENSSL_EXPORT int DSA_size(const DSA *dsa);
  * |*inp|. If |out_sig| is not NULL then, on exit, a pointer to the result is
  * in |*out_sig|. If |*out_sig| is already non-NULL on entry then the result is
  * written directly into |*out_sig|, otherwise a fresh |DSA_SIG| is allocated.
- * On successful exit, |*inp| is advanced past the DER structure. It returns
- * the result or NULL on error. */
+ * However, one should not depend on writing into |*out_sig| because this
+ * behaviour is likely to change in the future. On successful exit, |*inp| is
+ * advanced past the DER structure. It returns the result or NULL on error. */
 OPENSSL_EXPORT DSA_SIG *d2i_DSA_SIG(DSA_SIG **out_sig, const uint8_t **inp,
                                     long len);
 
@@ -236,9 +237,10 @@ OPENSSL_EXPORT int i2d_DSA_SIG(const DSA_SIG *in, uint8_t **outp);
 /* d2i_DSAPublicKey parses an ASN.1, DER-encoded, DSA public key from |len|
  * bytes at |*inp|. If |out| is not NULL then, on exit, a pointer to the result
  * is in |*out|. If |*out| is already non-NULL on entry then the result is
- * written directly into |*out|, otherwise a fresh |DSA| is allocated. On
- * successful exit, |*inp| is advanced past the DER structure. It returns the
- * result or NULL on error. */
+ * written directly into |*out|, otherwise a fresh |DSA| is allocated.
+ * However, one should not depend on writing into |*out| because this behaviour
+ * is likely to change in the future. On successful exit, |*inp| is advanced
+ * past the DER structure. It returns the result or NULL on error. */
 OPENSSL_EXPORT DSA *d2i_DSAPublicKey(DSA **out, const uint8_t **inp, long len);
 
 /* i2d_DSAPublicKey marshals a public key from |in| to an ASN.1, DER structure.
@@ -250,9 +252,10 @@ OPENSSL_EXPORT int i2d_DSAPublicKey(const DSA *in, unsigned char **outp);
 /* d2i_DSAPrivateKey parses an ASN.1, DER-encoded, DSA private key from |len|
  * bytes at |*inp|. If |out| is not NULL then, on exit, a pointer to the result
  * is in |*out|. If |*out| is already non-NULL on entry then the result is
- * written directly into |*out|, otherwise a fresh |DSA| is allocated. On
- * successful exit, |*inp| is advanced past the DER structure. It returns the
- * result or NULL on error. */
+ * written directly into |*out|, otherwise a fresh |DSA| is allocated. However,
+ * one should not depend on writing into |*out| because this behaviour is
+ * likely to change in the future. On successful exit, |*inp| is advanced past
+ * the DER structure. It returns the result or NULL on error. */
 OPENSSL_EXPORT DSA *d2i_DSAPrivateKey(DSA **out, const uint8_t **inp, long len);
 
 /* i2d_DSAPrivateKey marshals a private key from |in| to an ASN.1, DER structure.
@@ -264,9 +267,10 @@ OPENSSL_EXPORT int i2d_DSAPrivateKey(const DSA *in, unsigned char **outp);
 /* d2i_DSAparams parses ASN.1, DER-encoded, DSA parameters from |len| bytes at
  * |*inp|. If |out| is not NULL then, on exit, a pointer to the result is in
  * |*out|. If |*out| is already non-NULL on entry then the result is written
- * directly into |*out|, otherwise a fresh |DSA| is allocated. On successful
- * exit, |*inp| is advanced past the DER structure. It returns the result or
- * NULL on error. */
+ * directly into |*out|, otherwise a fresh |DSA| is allocated. However, one
+ * should not depend on writing into |*out| because this behaviour is likely to
+ * change in the future. On successful exit, |*inp| is advanced past the DER
+ * structure. It returns the result or NULL on error. */
 OPENSSL_EXPORT DSA *d2i_DSAparams(DSA **out, const uint8_t **inp, long len);
 
 /* i2d_DSAparams marshals DSA parameters from |in| to an ASN.1, DER structure.

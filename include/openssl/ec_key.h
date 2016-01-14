@@ -181,8 +181,10 @@ OPENSSL_EXPORT int EC_KEY_generate_key(EC_KEY *key);
  * at |*inp|. If |out_key| is not NULL then, on exit, a pointer to the result
  * is in |*out_key|. If |*out_key| is already non-NULL on entry then the result
  * is written directly into |*out_key|, otherwise a fresh |EC_KEY| is
- * allocated. On successful exit, |*inp| is advanced past the DER structure. It
- * returns the result or NULL on error. */
+ * allocated. However, one should not depend on writing into |*out_key| because
+ * this behaviour is likely to change in the future. On successful exit, |*inp|
+ * is advanced past the DER structure. It returns the result or NULL on
+ * error. */
 OPENSSL_EXPORT EC_KEY *d2i_ECPrivateKey(EC_KEY **out_key, const uint8_t **inp,
                                         long len);
 
@@ -196,8 +198,10 @@ OPENSSL_EXPORT int i2d_ECPrivateKey(const EC_KEY *key, uint8_t **outp);
  * |len| bytes at |*inp|. If |out_key| is not NULL then, on exit, a pointer to
  * the result is in |*out_key|. If |*out_key| is already non-NULL on entry then
  * the result is written directly into |*out_key|, otherwise a fresh |EC_KEY|
- * is allocated. On successful exit, |*inp| is advanced past the DER structure.
- * It returns the result or NULL on error. */
+ * is allocated. However, one should not depend on writing into |*out_key|
+ * because this behaviour is likely to change in the future. On successful
+ * exit, |*inp| is advanced past the DER structure. It returns the result or
+ * NULL on error. */
 OPENSSL_EXPORT EC_KEY *d2i_ECParameters(EC_KEY **out_key, const uint8_t **inp,
                                         long len);
 

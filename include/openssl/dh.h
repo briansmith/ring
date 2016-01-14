@@ -177,7 +177,10 @@ OPENSSL_EXPORT DH *DHparams_dup(const DH *dh);
  * structure from |len| bytes at |*inp|. If |ret| is not NULL then, on exit, a
  * pointer to the result is in |*ret|. If |*ret| is already non-NULL on entry
  * then the result is written directly into |*ret|, otherwise a fresh |DH| is
- * allocated. On successful exit, |*inp| is advanced past the DER structure. It
+ * allocated. However, one should not depend on writing into |*ret| because
+ * this behaviour is likely to change in the future.
+ *
+ * On successful exit, |*inp| is advanced past the DER structure. It
  * returns the result or NULL on error. */
 OPENSSL_EXPORT DH *d2i_DHparams(DH **ret, const unsigned char **inp, long len);
 

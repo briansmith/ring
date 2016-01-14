@@ -192,9 +192,10 @@ OPENSSL_EXPORT int EVP_PKEY_cmp_parameters(const EVP_PKEY *a,
 /* d2i_PrivateKey parses an ASN.1, DER-encoded, private key from |len| bytes at
  * |*inp|. If |out| is not NULL then, on exit, a pointer to the result is in
  * |*out|. If |*out| is already non-NULL on entry then the result is written
- * directly into |*out|, otherwise a fresh |EVP_PKEY| is allocated. On
- * successful exit, |*inp| is advanced past the DER structure. It returns the
- * result or NULL on error. */
+ * directly into |*out|, otherwise a fresh |EVP_PKEY| is allocated. However,
+ * one should not depend on writing into |*out| because this behaviour is
+ * likely to change in the future. On successful exit, |*inp| is advanced past
+ * the DER structure. It returns the result or NULL on error. */
 OPENSSL_EXPORT EVP_PKEY *d2i_PrivateKey(int type, EVP_PKEY **out,
                                         const uint8_t **inp, long len);
 

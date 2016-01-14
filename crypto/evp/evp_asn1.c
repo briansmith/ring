@@ -84,6 +84,9 @@ EVP_PKEY *d2i_PrivateKey(int type, EVP_PKEY **out, const uint8_t **inp,
   }
 
   const uint8_t *in = *inp;
+  /* If trying to remove |old_priv_decode|, note that some code depends on this
+   * function writing into |*out| and the |priv_decode| path doesn't support
+   * that. */
   if (!ret->ameth->old_priv_decode ||
       !ret->ameth->old_priv_decode(ret, &in, len)) {
     if (ret->ameth->priv_decode) {
