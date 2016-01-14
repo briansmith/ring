@@ -67,20 +67,19 @@
 
 #include "../internal.h"
 
-
 static CRYPTO_EX_DATA_CLASS g_ex_data_class = CRYPTO_EX_DATA_CLASS_INIT;
 
 ASN1_SEQUENCE_enc(X509_CINF, enc, 0) = {
-	ASN1_EXP_OPT(X509_CINF, version, ASN1_INTEGER, 0),
-	ASN1_SIMPLE(X509_CINF, serialNumber, ASN1_INTEGER),
-	ASN1_SIMPLE(X509_CINF, signature, X509_ALGOR),
-	ASN1_SIMPLE(X509_CINF, issuer, X509_NAME),
-	ASN1_SIMPLE(X509_CINF, validity, X509_VAL),
-	ASN1_SIMPLE(X509_CINF, subject, X509_NAME),
-	ASN1_SIMPLE(X509_CINF, key, X509_PUBKEY),
-	ASN1_IMP_OPT(X509_CINF, issuerUID, ASN1_BIT_STRING, 1),
-	ASN1_IMP_OPT(X509_CINF, subjectUID, ASN1_BIT_STRING, 2),
-	ASN1_EXP_SEQUENCE_OF_OPT(X509_CINF, extensions, X509_EXTENSION, 3)
+        ASN1_EXP_OPT(X509_CINF, version, ASN1_INTEGER, 0),
+        ASN1_SIMPLE(X509_CINF, serialNumber, ASN1_INTEGER),
+        ASN1_SIMPLE(X509_CINF, signature, X509_ALGOR),
+        ASN1_SIMPLE(X509_CINF, issuer, X509_NAME),
+        ASN1_SIMPLE(X509_CINF, validity, X509_VAL),
+        ASN1_SIMPLE(X509_CINF, subject, X509_NAME),
+        ASN1_SIMPLE(X509_CINF, key, X509_PUBKEY),
+        ASN1_IMP_OPT(X509_CINF, issuerUID, ASN1_BIT_STRING, 1),
+        ASN1_IMP_OPT(X509_CINF, subjectUID, ASN1_BIT_STRING, 2),
+        ASN1_EXP_SEQUENCE_OF_OPT(X509_CINF, extensions, X509_EXTENSION, 3)
 } ASN1_SEQUENCE_END_enc(X509_CINF, X509_CINF)
 
 IMPLEMENT_ASN1_FUNCTIONS(X509_CINF)
@@ -89,139 +88,141 @@ IMPLEMENT_ASN1_FUNCTIONS(X509_CINF)
 extern void policy_cache_free(X509_POLICY_CACHE *cache);
 
 static int x509_cb(int operation, ASN1_VALUE **pval, const ASN1_ITEM *it,
-								void *exarg)
+                   void *exarg)
 {
-	X509 *ret = (X509 *)*pval;
+    X509 *ret = (X509 *)*pval;
 
-	switch(operation) {
+    switch (operation) {
 
-		case ASN1_OP_NEW_POST:
-		ret->valid=0;
-		ret->name = NULL;
-		ret->ex_flags = 0;
-		ret->ex_pathlen = -1;
-		ret->skid = NULL;
-		ret->akid = NULL;
-		ret->aux = NULL;
-		ret->crldp = NULL;
-		CRYPTO_new_ex_data(&ret->ex_data);
-		break;
+    case ASN1_OP_NEW_POST:
+        ret->valid = 0;
+        ret->name = NULL;
+        ret->ex_flags = 0;
+        ret->ex_pathlen = -1;
+        ret->skid = NULL;
+        ret->akid = NULL;
+        ret->aux = NULL;
+        ret->crldp = NULL;
+        CRYPTO_new_ex_data(&ret->ex_data);
+        break;
 
-		case ASN1_OP_D2I_POST:
-		if (ret->name != NULL) OPENSSL_free(ret->name);
-		ret->name=X509_NAME_oneline(ret->cert_info->subject,NULL,0);
-		break;
+    case ASN1_OP_D2I_POST:
+        if (ret->name != NULL)
+            OPENSSL_free(ret->name);
+        ret->name = X509_NAME_oneline(ret->cert_info->subject, NULL, 0);
+        break;
 
-		case ASN1_OP_FREE_POST:
-		CRYPTO_free_ex_data(&g_ex_data_class, ret, &ret->ex_data);
-		X509_CERT_AUX_free(ret->aux);
-		ASN1_OCTET_STRING_free(ret->skid);
-		AUTHORITY_KEYID_free(ret->akid);
-		CRL_DIST_POINTS_free(ret->crldp);
-		policy_cache_free(ret->policy_cache);
-		GENERAL_NAMES_free(ret->altname);
-		NAME_CONSTRAINTS_free(ret->nc);
+    case ASN1_OP_FREE_POST:
+        CRYPTO_free_ex_data(&g_ex_data_class, ret, &ret->ex_data);
+        X509_CERT_AUX_free(ret->aux);
+        ASN1_OCTET_STRING_free(ret->skid);
+        AUTHORITY_KEYID_free(ret->akid);
+        CRL_DIST_POINTS_free(ret->crldp);
+        policy_cache_free(ret->policy_cache);
+        GENERAL_NAMES_free(ret->altname);
+        NAME_CONSTRAINTS_free(ret->nc);
 
-		if (ret->name != NULL) OPENSSL_free(ret->name);
-		break;
+        if (ret->name != NULL)
+            OPENSSL_free(ret->name);
+        break;
 
-	}
+    }
 
-	return 1;
+    return 1;
 
 }
 
 ASN1_SEQUENCE_ref(X509, x509_cb) = {
-	ASN1_SIMPLE(X509, cert_info, X509_CINF),
-	ASN1_SIMPLE(X509, sig_alg, X509_ALGOR),
-	ASN1_SIMPLE(X509, signature, ASN1_BIT_STRING)
+        ASN1_SIMPLE(X509, cert_info, X509_CINF),
+        ASN1_SIMPLE(X509, sig_alg, X509_ALGOR),
+        ASN1_SIMPLE(X509, signature, ASN1_BIT_STRING)
 } ASN1_SEQUENCE_END_ref(X509, X509)
 
 IMPLEMENT_ASN1_FUNCTIONS(X509)
+
 IMPLEMENT_ASN1_DUP_FUNCTION(X509)
 
 X509 *X509_up_ref(X509 *x)
-	{
-	CRYPTO_refcount_inc(&x->references);
-	return x;
-	}
+{
+    CRYPTO_refcount_inc(&x->references);
+    return x;
+}
 
-int X509_get_ex_new_index(long argl, void *argp, CRYPTO_EX_unused *unused,
-	     CRYPTO_EX_dup *dup_func, CRYPTO_EX_free *free_func)
-        {
-	int index;
-	if (!CRYPTO_get_ex_new_index(&g_ex_data_class, &index, argl, argp,
-			dup_func, free_func))
-		{
-		return -1;
-		}
-	return index;
-        }
+int X509_get_ex_new_index(long argl, void *argp, CRYPTO_EX_unused * unused,
+                          CRYPTO_EX_dup *dup_func, CRYPTO_EX_free *free_func)
+{
+    int index;
+    if (!CRYPTO_get_ex_new_index(&g_ex_data_class, &index, argl, argp,
+                                 dup_func, free_func)) {
+        return -1;
+    }
+    return index;
+}
 
 int X509_set_ex_data(X509 *r, int idx, void *arg)
-	{
-	return(CRYPTO_set_ex_data(&r->ex_data,idx,arg));
-	}
+{
+    return (CRYPTO_set_ex_data(&r->ex_data, idx, arg));
+}
 
 void *X509_get_ex_data(X509 *r, int idx)
-	{
-	return(CRYPTO_get_ex_data(&r->ex_data,idx));
-	}
+{
+    return (CRYPTO_get_ex_data(&r->ex_data, idx));
+}
 
-/* X509_AUX ASN1 routines. X509_AUX is the name given to
- * a certificate with extra info tagged on the end. Since these
- * functions set how a certificate is trusted they should only
- * be used when the certificate comes from a reliable source
- * such as local storage.
- *
+/*
+ * X509_AUX ASN1 routines. X509_AUX is the name given to a certificate with
+ * extra info tagged on the end. Since these functions set how a certificate
+ * is trusted they should only be used when the certificate comes from a
+ * reliable source such as local storage.
  */
 
 X509 *d2i_X509_AUX(X509 **a, const unsigned char **pp, long length)
 {
-	const unsigned char *q = *pp;
-	X509 *ret;
-	int freeret = 0;
+    const unsigned char *q = *pp;
+    X509 *ret;
+    int freeret = 0;
 
-	if (!a || *a == NULL)
-		freeret = 1;
-	ret = d2i_X509(a, &q, length);
-	/* If certificate unreadable then forget it */
-	if(!ret) return NULL;
-	/* update length */
-	length -= q - *pp;
-	/* Parse auxiliary information if there is any. */
-	if (length > 0 && !d2i_X509_CERT_AUX(&ret->aux, &q, length))
-		goto err;
-	*pp = q;
-	return ret;
-	err:
-	if (freeret)
-		{
-		X509_free(ret);
-		if (a)
-			*a = NULL;
-		}
-	return NULL;
+    if (!a || *a == NULL)
+        freeret = 1;
+    ret = d2i_X509(a, &q, length);
+    /* If certificate unreadable then forget it */
+    if (!ret)
+        return NULL;
+    /* update length */
+    length -= q - *pp;
+    /* Parse auxiliary information if there is any. */
+    if (length > 0 && !d2i_X509_CERT_AUX(&ret->aux, &q, length))
+        goto err;
+    *pp = q;
+    return ret;
+ err:
+    if (freeret) {
+        X509_free(ret);
+        if (a)
+            *a = NULL;
+    }
+    return NULL;
 }
 
 int i2d_X509_AUX(X509 *a, unsigned char **pp)
 {
-	int length;
-	length = i2d_X509(a, pp);
-	if(a) length += i2d_X509_CERT_AUX(a->aux, pp);
-	return length;
+    int length;
+    length = i2d_X509(a, pp);
+    if (a)
+        length += i2d_X509_CERT_AUX(a->aux, pp);
+    return length;
 }
 
 void X509_get0_signature(ASN1_BIT_STRING **psig, X509_ALGOR **palg,
-				const X509 *x)
-	{
-	if (psig)
-		*psig = x->signature;
-	if (palg)
-		*palg = x->sig_alg;
-	}
+                         const X509 *x)
+{
+    if (psig)
+        *psig = x->signature;
+    if (palg)
+        *palg = x->sig_alg;
+}
 
 int X509_get_signature_nid(const X509 *x)
-	{
-	return OBJ_obj2nid(x->sig_alg->algorithm);
-	}
+{
+    return OBJ_obj2nid(x->sig_alg->algorithm);
+}

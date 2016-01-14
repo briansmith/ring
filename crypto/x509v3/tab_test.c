@@ -1,6 +1,7 @@
 /* tabtest.c */
-/* Written by Dr Stephen N Henson (steve@openssl.org) for the OpenSSL
- * project 1999.
+/*
+ * Written by Dr Stephen N Henson (steve@openssl.org) for the OpenSSL project
+ * 1999.
  */
 /* ====================================================================
  * Copyright (c) 1999 The OpenSSL Project.  All rights reserved.
@@ -10,7 +11,7 @@
  * are met:
  *
  * 1. Redistributions of source code must retain the above copyright
- *    notice, this list of conditions and the following disclaimer. 
+ *    notice, this list of conditions and the following disclaimer.
  *
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in
@@ -56,8 +57,9 @@
  *
  */
 
-/* Simple program to check the ext_dat.h is correct and print out
- * problems if it is not.
+/*
+ * Simple program to check the ext_dat.h is correct and print out problems if
+ * it is not.
  */
 
 #include <stdio.h>
@@ -67,38 +69,39 @@
 #include <openssl/x509v3.h>
 
 #if !defined(BORINGSSL_SHARED_LIBRARY)
-#include "ext_dat.h"
+# include "ext_dat.h"
 #endif
 
 int main(void)
 {
 #if !defined(BORINGSSL_SHARED_LIBRARY)
-	unsigned i;
-	int prev = -1, bad = 0;
-	const X509V3_EXT_METHOD *const *tmp;
-        CRYPTO_library_init();
-	i = sizeof(standard_exts) / sizeof(X509V3_EXT_METHOD *);
-	if(i != STANDARD_EXTENSION_COUNT)
-		fprintf(stderr, "Extension number invalid expecting %d\n", i);
-	tmp = standard_exts;
-	for(i = 0; i < STANDARD_EXTENSION_COUNT; i++, tmp++) {
-		if((*tmp)->ext_nid < prev) bad = 1;
-		prev = (*tmp)->ext_nid;
-		
-	}
-	if(bad) {
-		tmp = standard_exts;
-		fprintf(stderr, "Extensions out of order!\n");
-		for(i = 0; i < STANDARD_EXTENSION_COUNT; i++, tmp++)
-			printf("%d : %s\n", (*tmp)->ext_nid, OBJ_nid2sn((*tmp)->ext_nid));
-		return 1;
-	} else {
-		printf("PASS\n");
-		return 0;
-	}
+    unsigned i;
+    int prev = -1, bad = 0;
+    const X509V3_EXT_METHOD *const *tmp;
+    CRYPTO_library_init();
+    i = sizeof(standard_exts) / sizeof(X509V3_EXT_METHOD *);
+    if (i != STANDARD_EXTENSION_COUNT)
+        fprintf(stderr, "Extension number invalid expecting %d\n", i);
+    tmp = standard_exts;
+    for (i = 0; i < STANDARD_EXTENSION_COUNT; i++, tmp++) {
+        if ((*tmp)->ext_nid < prev)
+            bad = 1;
+        prev = (*tmp)->ext_nid;
+
+    }
+    if (bad) {
+        tmp = standard_exts;
+        fprintf(stderr, "Extensions out of order!\n");
+        for (i = 0; i < STANDARD_EXTENSION_COUNT; i++, tmp++)
+            printf("%d : %s\n", (*tmp)->ext_nid, OBJ_nid2sn((*tmp)->ext_nid));
+        return 1;
+    } else {
+        printf("PASS\n");
+        return 0;
+    }
 #else
-	/* TODO(davidben): Fix this test in the shared library build. */
-	printf("PASS\n");
-	return 0;
+    /* TODO(davidben): Fix this test in the shared library build. */
+    printf("PASS\n");
+    return 0;
 #endif
 }

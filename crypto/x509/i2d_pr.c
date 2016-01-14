@@ -63,22 +63,21 @@
 
 #include "../evp/internal.h"
 
-
 int i2d_PrivateKey(const EVP_PKEY *a, unsigned char **pp)
-	{
-	if (a->ameth && a->ameth->old_priv_encode)
-		{
-		return a->ameth->old_priv_encode(a, pp);
-		}
-	if (a->ameth && a->ameth->priv_encode) {
-		PKCS8_PRIV_KEY_INFO *p8 = EVP_PKEY2PKCS8((EVP_PKEY*)a);
-		int ret = i2d_PKCS8_PRIV_KEY_INFO(p8,pp);
-		PKCS8_PRIV_KEY_INFO_free(p8);
-		return ret;
-	}
-	/* Although this file is in crypto/x509 for layering reasons, it emits
-	 * an error code from ASN1 for OpenSSL compatibility. */
-	OPENSSL_PUT_ERROR(ASN1, ASN1_R_UNSUPPORTED_PUBLIC_KEY_TYPE);
-	return -1;
-	}
-
+{
+    if (a->ameth && a->ameth->old_priv_encode) {
+        return a->ameth->old_priv_encode(a, pp);
+    }
+    if (a->ameth && a->ameth->priv_encode) {
+        PKCS8_PRIV_KEY_INFO *p8 = EVP_PKEY2PKCS8((EVP_PKEY *)a);
+        int ret = i2d_PKCS8_PRIV_KEY_INFO(p8, pp);
+        PKCS8_PRIV_KEY_INFO_free(p8);
+        return ret;
+    }
+    /*
+     * Although this file is in crypto/x509 for layering reasons, it emits an
+     * error code from ASN1 for OpenSSL compatibility.
+     */
+    OPENSSL_PUT_ERROR(ASN1, ASN1_R_UNSUPPORTED_PUBLIC_KEY_TYPE);
+    return -1;
+}

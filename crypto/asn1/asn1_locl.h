@@ -1,6 +1,7 @@
 /* asn1t.h */
-/* Written by Dr Stephen N Henson (steve@openssl.org) for the OpenSSL
- * project 2006.
+/*
+ * Written by Dr Stephen N Henson (steve@openssl.org) for the OpenSSL project
+ * 2006.
  */
 /* ====================================================================
  * Copyright (c) 2006 The OpenSSL Project.  All rights reserved.
@@ -10,7 +11,7 @@
  * are met:
  *
  * 1. Redistributions of source code must retain the above copyright
- *    notice, this list of conditions and the following disclaimer. 
+ *    notice, this list of conditions and the following disclaimer.
  *
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in
@@ -63,11 +64,10 @@ int asn1_generalizedtime_to_tm(struct tm *tm, const ASN1_GENERALIZEDTIME *d);
 
 /* ASN1 print context structure */
 
-struct asn1_pctx_st
-	{
-	unsigned long flags;
-	unsigned long nm_flags;
-	unsigned long cert_flags;
-	unsigned long oid_flags;
-	unsigned long str_flags;
-	} /* ASN1_PCTX */;
+struct asn1_pctx_st {
+    unsigned long flags;
+    unsigned long nm_flags;
+    unsigned long cert_flags;
+    unsigned long oid_flags;
+    unsigned long str_flags;
+} /* ASN1_PCTX */ ;
