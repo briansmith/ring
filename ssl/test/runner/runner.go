@@ -2289,6 +2289,16 @@ func addCipherSuiteTests() {
 		flags: []string{"-use-sparse-dh-prime"},
 	})
 
+	// The server must be tolerant to bogus ciphers.
+	const bogusCipher = 0x1234
+	testCases = append(testCases, testCase{
+		testType: serverTest,
+		name:     "UnknownCipher",
+		config: Config{
+			CipherSuites: []uint16{bogusCipher, TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256},
+		},
+	})
+
 	// versionSpecificCiphersTest specifies a test for the TLS 1.0 and TLS
 	// 1.1 specific cipher suite settings. A server is setup with the given
 	// cipher lists and then a connection is made for each member of
@@ -4684,6 +4694,17 @@ func addCurveTests() {
 			flags: []string{"-enable-all-curves"},
 		})
 	}
+
+	// The server must be tolerant to bogus curves.
+	const bogusCurve = 0x1234
+	testCases = append(testCases, testCase{
+		testType: serverTest,
+		name:     "UnknownCurve",
+		config: Config{
+			CipherSuites:     []uint16{TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256},
+			CurvePreferences: []CurveID{bogusCurve, CurveP256},
+		},
+	})
 }
 
 func addKeyExchangeInfoTests() {
