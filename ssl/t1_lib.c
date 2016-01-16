@@ -294,6 +294,7 @@ int SSL_early_callback_ctx_extension_get(
 }
 
 static const uint16_t eccurves_default[] = {
+    SSL_CURVE_ECDH_X25519,
     SSL_CURVE_SECP256R1,
     SSL_CURVE_SECP384R1,
 #if defined(BORINGSSL_ANDROID_SYSTEM)
