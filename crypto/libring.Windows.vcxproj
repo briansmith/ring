@@ -84,7 +84,6 @@
     <ClInclude Include="cipher\internal.h" />
     <ClInclude Include="des\internal.h" />
     <ClInclude Include="digest\internal.h" />
-    <ClInclude Include="digest\md32_common.h" />
     <ClInclude Include="ec\internal.h" />
     <ClInclude Include="evp\internal.h" />
     <ClInclude Include="modes\internal.h" />
