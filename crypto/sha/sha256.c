@@ -55,6 +55,7 @@
  * [including the GNU Public Licence.] */
 
 #include "openssl/base.h"
+#include "../internal.h"
 
 
 #if !defined(OPENSSL_NO_ASM) &&                         \
@@ -62,8 +63,6 @@
      defined(OPENSSL_ARM) || defined(OPENSSL_AARCH64))
 #define SHA256_ASM
 #endif
-
-#include "../digest/md32_common.h"
 
 #ifndef SHA256_ASM
 static const uint32_t K256[64] = {
@@ -127,55 +126,53 @@ void sha256_block_data_order(uint32_t *state, const uint8_t *data, size_t num) {
     g = state[6];
     h = state[7];
 
-    uint32_t l;
-
-    HOST_c2l(data, l);
-    T1 = X[0] = l;
+    T1 = X[0] = to_be_u32(data);
+    data += 4;
     ROUND_00_15(0, a, b, c, d, e, f, g, h);
-    HOST_c2l(data, l);
-    T1 = X[1] = l;
+    T1 = X[1] = to_be_u32(data);
+    data += 4;
     ROUND_00_15(1, h, a, b, c, d, e, f, g);
-    HOST_c2l(data, l);
-    T1 = X[2] = l;
+    T1 = X[2] = to_be_u32(data);
+    data += 4;
     ROUND_00_15(2, g, h, a, b, c, d, e, f);
-    HOST_c2l(data, l);
-    T1 = X[3] = l;
+    T1 = X[3] = to_be_u32(data);
+    data += 4;
     ROUND_00_15(3, f, g, h, a, b, c, d, e);
-    HOST_c2l(data, l);
-    T1 = X[4] = l;
+    T1 = X[4] = to_be_u32(data);
+    data += 4;
     ROUND_00_15(4, e, f, g, h, a, b, c, d);
-    HOST_c2l(data, l);
-    T1 = X[5] = l;
+    T1 = X[5] = to_be_u32(data);
+    data += 4;
     ROUND_00_15(5, d, e, f, g, h, a, b, c);
-    HOST_c2l(data, l);
-    T1 = X[6] = l;
+    T1 = X[6] = to_be_u32(data);
+    data += 4;
     ROUND_00_15(6, c, d, e, f, g, h, a, b);
-    HOST_c2l(data, l);
-    T1 = X[7] = l;
+    T1 = X[7] = to_be_u32(data);
+    data += 4;
     ROUND_00_15(7, b, c, d, e, f, g, h, a);
-    HOST_c2l(data, l);
-    T1 = X[8] = l;
+    T1 = X[8] = to_be_u32(data);
+    data += 4;
     ROUND_00_15(8, a, b, c, d, e, f, g, h);
-    HOST_c2l(data, l);
-    T1 = X[9] = l;
+    T1 = X[9] = to_be_u32(data);
+    data += 4;
     ROUND_00_15(9, h, a, b, c, d, e, f, g);
-    HOST_c2l(data, l);
-    T1 = X[10] = l;
+    T1 = X[10] = to_be_u32(data);
+    data += 4;
     ROUND_00_15(10, g, h, a, b, c, d, e, f);
-    HOST_c2l(data, l);
-    T1 = X[11] = l;
+    T1 = X[11] = to_be_u32(data);
+    data += 4;
     ROUND_00_15(11, f, g, h, a, b, c, d, e);
-    HOST_c2l(data, l);
-    T1 = X[12] = l;
+    T1 = X[12] = to_be_u32(data);
+    data += 4;
     ROUND_00_15(12, e, f, g, h, a, b, c, d);
-    HOST_c2l(data, l);
-    T1 = X[13] = l;
+    T1 = X[13] = to_be_u32(data);
+    data += 4;
     ROUND_00_15(13, d, e, f, g, h, a, b, c);
-    HOST_c2l(data, l);
-    T1 = X[14] = l;
+    T1 = X[14] = to_be_u32(data);
+    data += 4;
     ROUND_00_15(14, c, d, e, f, g, h, a, b);
-    HOST_c2l(data, l);
-    T1 = X[15] = l;
+    T1 = X[15] = to_be_u32(data);
+    data += 4;
     ROUND_00_15(15, b, c, d, e, f, g, h, a);
 
     for (i = 16; i < 64; i += 8) {
