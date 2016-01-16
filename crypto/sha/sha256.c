@@ -63,9 +63,6 @@
 #define SHA256_ASM
 #endif
 
-#define DATA_ORDER_IS_BIG_ENDIAN /* Required by md32_common.h */
-#define HASH_CBLOCK 64
-
 #include "../digest/md32_common.h"
 
 #ifndef SHA256_ASM

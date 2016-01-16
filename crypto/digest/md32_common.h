@@ -57,15 +57,6 @@ extern "C" {
 #endif
 
 
-#if !defined(DATA_ORDER_IS_BIG_ENDIAN)
-#error "DATA_ORDER must be defined, and only big endian is supported.!"
-#endif
-
-#ifndef HASH_CBLOCK
-#error "HASH_CBLOCK must be defined!"
-#endif
-
-
 #if !defined(PEDANTIC) && defined(__GNUC__) && __GNUC__ >= 2 && \
     !defined(OPENSSL_NO_ASM)
 #if defined(OPENSSL_X86) || defined(OPENSSL_X86_64)
