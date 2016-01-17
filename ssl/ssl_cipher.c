@@ -1804,7 +1804,6 @@ const char *SSL_CIPHER_description(const SSL_CIPHER *cipher, char *buf,
                                    int len) {
   const char *kx, *au, *enc, *mac;
   uint32_t alg_mkey, alg_auth, alg_enc, alg_mac;
-  static const char *format = "%-23s Kx=%-8s Au=%-4s Enc=%-9s Mac=%-4s\n";
 
   alg_mkey = cipher->algorithm_mkey;
   alg_auth = cipher->algorithm_auth;
@@ -1928,7 +1927,8 @@ const char *SSL_CIPHER_description(const SSL_CIPHER *cipher, char *buf,
     return "Buffer too small";
   }
 
-  BIO_snprintf(buf, len, format, cipher->name, kx, au, enc, mac);
+  BIO_snprintf(buf, len, "%-23s Kx=%-8s Au=%-4s Enc=%-9s Mac=%-4s\n",
+               cipher->name, kx, au, enc, mac);
   return buf;
 }
 
