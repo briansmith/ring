@@ -317,7 +317,8 @@ OPENSSL_EXPORT void ERR_add_error_data(unsigned count, ...);
 
 /* ERR_add_error_dataf takes a printf-style format and arguments, and sets the
  * result as the data on the most recent error. */
-OPENSSL_EXPORT void ERR_add_error_dataf(const char *format, ...);
+OPENSSL_EXPORT void ERR_add_error_dataf(const char *format, ...)
+    OPENSSL_PRINTF_FORMAT_FUNC(1, 2);
 
 /* ERR_set_mark "marks" the most recent error for use with |ERR_pop_to_mark|.
  * It returns one if an error was marked and zero if there are no errors. */
