@@ -15,6 +15,8 @@
 #ifndef OPENSSL_HEADER_CRYPTO_TEST_FILE_TEST_H
 #define OPENSSL_HEADER_CRYPTO_TEST_FILE_TEST_H
 
+#include <openssl/base.h>
+
 #include <stdint.h>
 #include <stdio.h>
 
@@ -88,11 +90,7 @@ class FileTest {
 
   // PrintLine is a variant of printf which prepends the line number and appends
   // a trailing newline.
-  void PrintLine(const char *format, ...)
-#ifdef __GNUC__
-      __attribute__((__format__(__printf__, 2, 3)))
-#endif
-  ;
+  void PrintLine(const char *format, ...) OPENSSL_PRINTF_FORMAT_FUNC(2, 3);
 
   unsigned start_line() const { return start_line_; }
 

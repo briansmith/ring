@@ -312,14 +312,8 @@ OPENSSL_EXPORT void BIO_copy_next_retry(BIO *bio);
  *
  * These functions are versions of printf functions that output to a BIO rather
  * than a FILE. */
-#ifdef __GNUC__
-#define __bio_h__attr__ __attribute__
-#else
-#define __bio_h__attr__(x)
-#endif
 OPENSSL_EXPORT int BIO_printf(BIO *bio, const char *format, ...)
-    __bio_h__attr__((__format__(__printf__, 2, 3)));
-#undef __bio_h__attr__
+    OPENSSL_PRINTF_FORMAT_FUNC(2, 3);
 
 
 /* Utility functions. */

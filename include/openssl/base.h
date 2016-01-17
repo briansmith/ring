@@ -138,6 +138,15 @@ extern "C" {
 
 #endif  /* defined(BORINGSSL_SHARED_LIBRARY) */
 
+
+#if defined(__GNUC__)
+#define OPENSSL_PRINTF_FORMAT_FUNC(string_index, first_to_check) \
+        __attribute__((format(printf, string_index, first_to_check)))
+#else
+#define OPENSSL_PRINTF_FORMAT_FUNC(string_index, first_to_check)
+#endif
+
+
 /* CRYPTO_THREADID is a dummy value. */
 typedef int CRYPTO_THREADID;
 

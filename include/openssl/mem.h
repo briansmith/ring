@@ -119,18 +119,12 @@ OPENSSL_EXPORT int OPENSSL_strncasecmp(const char *a, const char *b, size_t n);
  * These functions are either OpenSSL wrappers for standard functions (i.e.
  * |BIO_snprintf| and |BIO_vsnprintf|) which don't exist in C89, or are
  * versions of printf functions that output to a BIO rather than a FILE. */
-#ifdef __GNUC__
-#define __bio_h__attr__ __attribute__
-#else
-#define __bio_h__attr__(x)
-#endif
 OPENSSL_EXPORT int BIO_snprintf(char *buf, size_t n, const char *format, ...)
-    __bio_h__attr__((__format__(__printf__, 3, 4)));
+    OPENSSL_PRINTF_FORMAT_FUNC(3, 4);
 
 OPENSSL_EXPORT int BIO_vsnprintf(char *buf, size_t n, const char *format,
                                  va_list args)
-    __bio_h__attr__((__format__(__printf__, 3, 0)));
-#undef __bio_h__attr__
+    OPENSSL_PRINTF_FORMAT_FUNC(3, 0);
 
 
 #if defined(__cplusplus)
