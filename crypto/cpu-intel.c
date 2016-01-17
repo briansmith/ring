@@ -127,7 +127,7 @@ static void handle_cpu_env(uint32_t *out, const char *in) {
   const int invert = in[0] == '~';
   uint64_t v;
 
-  if (!sscanf(in + invert, "%" PRIi64, &v)) {
+  if (!sscanf(in + invert, "%" PRIu64, &v)) {
     return;
   }
 
