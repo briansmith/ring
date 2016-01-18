@@ -706,7 +706,6 @@ static int asn1_d2i_ex_primitive(ASN1_VALUE **pval,
                                  const unsigned char **in, long inlen,
                                  const ASN1_ITEM *it,
                                  int tag, int aclass, char opt, ASN1_TLC *ctx)
-    OPENSSL_SUPPRESS_POTENTIALLY_UNINITIALIZED_WARNINGS
 {
     int ret = 0, utype;
     long plen;

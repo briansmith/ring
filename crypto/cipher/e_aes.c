@@ -67,6 +67,10 @@
 #endif
 
 
+#if defined(_MSC_VER)
+#pragma warning(disable: 4702) /* Unreachable code. */
+#endif
+
 typedef struct {
   union {
     double align;
@@ -272,8 +276,7 @@ static void aesni_ctr32_encrypt_blocks(const uint8_t *in, uint8_t *out,
 #endif
 
 static int aes_init_key(EVP_CIPHER_CTX *ctx, const uint8_t *key,
-                        const uint8_t *iv, int enc)
-                        OPENSSL_SUPPRESS_UNREACHABLE_CODE_WARNINGS {
+                        const uint8_t *iv, int enc) {
   int ret, mode;
   EVP_AES_KEY *dat = (EVP_AES_KEY *)ctx->cipher_data;
 
@@ -394,8 +397,7 @@ static char aesni_capable(void);
 
 static ctr128_f aes_ctr_set_key(AES_KEY *aes_key, GCM128_CONTEXT *gcm_ctx,
                                 block128_f *out_block, const uint8_t *key,
-                                size_t key_len)
-                                OPENSSL_SUPPRESS_UNREACHABLE_CODE_WARNINGS {
+                                size_t key_len) {
   if (aesni_capable()) {
     aesni_set_encrypt_key(key, key_len * 8, aes_key);
     if (gcm_ctx != NULL) {

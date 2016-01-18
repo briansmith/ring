@@ -263,10 +263,9 @@ static int v3_check_generic(char **value)
 static X509_EXTENSION *v3_generic_extension(const char *ext, char *value,
                                             int crit, int gen_type,
                                             X509V3_CTX *ctx)
-    OPENSSL_SUPPRESS_POTENTIALLY_UNINITIALIZED_WARNINGS
 {
     unsigned char *ext_der = NULL;
-    long ext_len;
+    long ext_len = 0;
     ASN1_OBJECT *obj = NULL;
     ASN1_OCTET_STRING *oct = NULL;
     X509_EXTENSION *extension = NULL;

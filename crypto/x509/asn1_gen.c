@@ -142,7 +142,6 @@ ASN1_TYPE *ASN1_generate_nconf(char *str, CONF *nconf)
 }
 
 ASN1_TYPE *ASN1_generate_v3(char *str, X509V3_CTX *cnf)
-    OPENSSL_SUPPRESS_POTENTIALLY_UNINITIALIZED_WARNINGS
 {
     ASN1_TYPE *ret;
     tag_exp_arg asn1_tags;
@@ -155,7 +154,7 @@ ASN1_TYPE *ASN1_generate_v3(char *str, X509V3_CTX *cnf)
     unsigned char *p;
     const unsigned char *cp;
     int cpy_len;
-    long hdr_len;
+    long hdr_len = 0;
     int hdr_constructed = 0, hdr_tag, hdr_class;
     int r;
 

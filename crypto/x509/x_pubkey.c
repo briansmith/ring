@@ -54,6 +54,8 @@
  * copied and put under another distribution licence
  * [including the GNU Public Licence.] */
 
+#include <openssl/x509.h>
+
 #include <limits.h>
 
 #include <openssl/asn1.h>
@@ -64,7 +66,6 @@
 #include <openssl/mem.h>
 #include <openssl/obj.h>
 #include <openssl/thread.h>
-#include <openssl/x509.h>
 
 #include "../internal.h"
 

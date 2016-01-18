@@ -71,10 +71,25 @@ elseif(MSVC)
       "C4996" # 'read': The POSIX name for this item is deprecated. Instead,
               # use the ISO C++ conformant name: _read.
      )
+  if(NOT(CMAKE_C_COMPILER_VERSION VERSION_LESS "19.0.23506"))
+    # MSVC 2015 Update 1.
+    set(MSVC_DISABLED_WARNINGS_LIST
+        ${MSVC_DISABLED_WARNINGS_LIST}
+        "C4464" # relative include path contains '..'
+        "C4623" # default constructor was implicitly defined as deleted
+        "C5027" # move assignment operator was implicitly defined as deleted
+       )
+    set(MSVC_LEVEL4_WARNINGS_LIST
+        # See https://connect.microsoft.com/VisualStudio/feedback/details/1217660/warning-c4265-when-using-functional-header
+        "C4265" # class has virtual functions, but destructor is not virtual
+        )
+    string(REPLACE "C" " -w4" MSVC_LEVEL4_WARNINGS_STR
+                              ${MSVC_LEVEL4_WARNINGS_LIST})
+  endif()
   string(REPLACE "C" " -wd" MSVC_DISABLED_WARNINGS_STR
                             ${MSVC_DISABLED_WARNINGS_LIST})
-  set(CMAKE_C_FLAGS   "-Wall -WX ${MSVC_DISABLED_WARNINGS_STR}")
-  set(CMAKE_CXX_FLAGS "-Wall -WX ${MSVC_DISABLED_WARNINGS_STR}")
+  set(CMAKE_C_FLAGS   "-Wall -WX ${MSVC_DISABLED_WARNINGS_STR} ${MSVC_LEVEL4_WARNINGS_STR}")
+  set(CMAKE_CXX_FLAGS "-Wall -WX ${MSVC_DISABLED_WARNINGS_STR} ${MSVC_LEVEL4_WARNINGS_STR}")
   add_definitions(-D_HAS_EXCEPTIONS=0)
   add_definitions(-DWIN32_LEAN_AND_MEAN)
   add_definitions(-DNOMINMAX)

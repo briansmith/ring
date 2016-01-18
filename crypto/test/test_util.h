@@ -28,6 +28,14 @@ extern "C" {
 void hexdump(FILE *fp, const char *msg, const void *in, size_t len);
 
 
+#if defined(_MSC_VER) && _MSC_VER < 1900
+/* https://msdn.microsoft.com/en-us/library/tcxf1dw6(v=vs.120).aspx */
+#define OPENSSL_PR_SIZE_T "Iu"
+#else
+#define OPENSSL_PR_SIZE_T "zu"
+#endif
+
+
 #if defined(__cplusplus)
 }
 #endif
