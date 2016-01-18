@@ -52,12 +52,6 @@ static void poly1305_update_length(poly1305_state *poly1305, size_t data_len) {
   CRYPTO_poly1305_update(poly1305, length_bytes, sizeof(length_bytes));
 }
 
-#if defined(__arm__)
-#define ALIGNED __attribute__((aligned(16)))
-#else
-#define ALIGNED
-#endif
-
 typedef void (*aead_poly1305_update)(poly1305_state *ctx, const uint8_t *ad,
                                      size_t ad_len, const uint8_t *ciphertext,
                                      size_t ciphertext_len);
@@ -71,7 +65,7 @@ static void aead_poly1305(aead_poly1305_update update,
                           const uint8_t nonce[CHACHA20_NONCE_LEN],
                           const uint8_t *ad, size_t ad_len,
                           const uint8_t *ciphertext, size_t ciphertext_len) {
-  uint8_t poly1305_key[32] ALIGNED;
+  alignas(16) uint8_t poly1305_key[32];
   memset(poly1305_key, 0, sizeof(poly1305_key));
   CRYPTO_chacha_20(poly1305_key, poly1305_key, sizeof(poly1305_key),
                    c20_ctx->key, nonce, 0);
@@ -100,7 +94,7 @@ static int seal_impl(aead_poly1305_update poly1305_update,
 
   CRYPTO_chacha_20(out, in, in_len, c20_ctx->key, nonce, 1);
 
-  uint8_t tag[POLY1305_TAG_LEN] ALIGNED;
+  alignas(16) uint8_t tag[POLY1305_TAG_LEN];
   aead_poly1305(poly1305_update, tag, c20_ctx, nonce, ad, ad_len, out, in_len);
 
   /* TODO: Does |tag| really need to be |ALIGNED|? If not, we can avoid this
@@ -131,7 +125,7 @@ static int open_impl(aead_poly1305_update poly1305_update,
   size_t plaintext_len;
 
   plaintext_len = in_len - POLY1305_TAG_LEN;
-  uint8_t tag[POLY1305_TAG_LEN] ALIGNED;
+  alignas(16) uint8_t tag[POLY1305_TAG_LEN];
   aead_poly1305(poly1305_update, tag, c20_ctx, nonce, ad, ad_len, in,
                 plaintext_len);
   if (CRYPTO_memcmp(tag, in + plaintext_len, POLY1305_TAG_LEN) != 0) {

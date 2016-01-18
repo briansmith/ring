@@ -20,16 +20,9 @@
 #include <openssl/crypto.h>
 #include <openssl/poly1305.h>
 
+#include "../internal.h"
 #include "../test/file_test.h"
 
-
-// |CRYPTO_poly1305_finish| requires a 16-byte-aligned output.
-#if defined(OPENSSL_WINDOWS)
-// MSVC doesn't support C++11 |alignas|.
-#define ALIGNED __declspec(align(16))
-#else
-#define ALIGNED alignas(16)
-#endif
 
 static bool TestPoly1305(FileTest *t, void *arg) {
   std::vector<uint8_t> key, in, mac;
@@ -47,7 +40,8 @@ static bool TestPoly1305(FileTest *t, void *arg) {
   poly1305_state state;
   CRYPTO_poly1305_init(&state, key.data());
   CRYPTO_poly1305_update(&state, in.data(), in.size());
-  ALIGNED uint8_t out[16];
+  // |CRYPTO_poly1305_finish| requires a 16-byte-aligned output.
+  alignas(16) uint8_t out[16];
   CRYPTO_poly1305_finish(&state, out);
   if (!t->ExpectBytesEqual(out, 16, mac.data(), mac.size())) {
     t->PrintLine("Single-shot Poly1305 failed.");

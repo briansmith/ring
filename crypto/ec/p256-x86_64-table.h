@@ -24,12 +24,7 @@
  * in order to increase the chances of using a large page but that appears to
  * lead to invalid ELF files being produced. */
 
-#if defined(__GNUC__)
-__attribute((aligned(4096)))
-#elif defined(_MSC_VER)
-__declspec(align(4096))
-#endif
-static const BN_ULONG
+static const alignas(4096) BN_ULONG
     ecp_nistz256_precomputed[37][64 * sizeof(P256_POINT_AFFINE) /
                                  sizeof(BN_ULONG)] = {
         {TOBN(0x79e730d4, 0x18a9143c), TOBN(0x75ba95fc, 0x5fedb601),

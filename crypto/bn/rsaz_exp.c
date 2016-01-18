@@ -48,6 +48,9 @@
 
 #include <openssl/mem.h>
 
+#include "../internal.h"
+
+
 /*
  * See crypto/bn/asm/rsaz-avx2.pl for further details.
  */
@@ -58,42 +61,30 @@ void rsaz_1024_scatter5_avx2(void *tbl,const void *val,int i);
 void rsaz_1024_gather5_avx2(void *val,const void *tbl,int i);
 void rsaz_1024_red2norm_avx2(void *norm,const void *red);
 
-#if defined(__GNUC__)
-# define ALIGN64	__attribute__((aligned(64)))
-#elif defined(_MSC_VER)
-# define ALIGN64	__declspec(align(64))
-#elif defined(__SUNPRO_C)
-# define ALIGN64
-# pragma align 64(one,two80)
-#else
-# define ALIGN64	/* not fatal, might hurt performance a little */
-#endif
-
-ALIGN64 static const BN_ULONG one[40] =
+alignas(64) static const BN_ULONG one[40] =
 	{1,0,0,    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
-ALIGN64 static const BN_ULONG two80[40] =
+alignas(64) static const BN_ULONG two80[40] =
 	{0,0,1<<22,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
 
 void RSAZ_1024_mod_exp_avx2(BN_ULONG result_norm[16],
 	const BN_ULONG base_norm[16], const BN_ULONG exponent[16],
 	const BN_ULONG m_norm[16], const BN_ULONG RR[16], BN_ULONG k0)
 {
-	unsigned char	 storage[320*3+32*9*16+64];	/* 5.5KB */
-	unsigned char	*p_str = storage + (64 - ((uintptr_t)storage % 64));
+	alignas(64) uint8_t storage[(320 * 3) + (32 * 9 * 16)]; /* 5.5KB */
 	unsigned char	*a_inv, *m, *result,
-			*table_s = p_str+320*3,
+			*table_s = storage + (320 * 3),
 			*R2      = table_s;	/* borrow */
 	int index;
 	int wvalue;
 
-	if (((((uintptr_t)p_str & 4095) + 320) >> 12) != 0) {
-		result = p_str;
-		a_inv = p_str + 320;
-		m = p_str + 320*2;	/* should not cross page */
+	if (((((uintptr_t)storage & 4095) + 320) >> 12) != 0) {
+		result = storage;
+		a_inv = storage + 320;
+		m = storage + (320 * 2); /* should not cross page */
 	} else {
-		m = p_str;		/* should not cross page */
-		result = p_str + 320;
-		a_inv = p_str + 320*2;
+		m = storage;		/* should not cross page */
+		result = storage + 320;
+		a_inv = storage + (320 * 2);
 	}
 
 	rsaz_1024_norm2red_avx2(m, m_norm);
@@ -225,7 +216,7 @@ void RSAZ_1024_mod_exp_avx2(BN_ULONG result_norm[16],
 #endif
 
 	/* load first window */
-	p_str = (unsigned char*)exponent;
+	const uint8_t *p_str = (const uint8_t *)exponent;
 	wvalue = p_str[127] >> 3;
 	rsaz_1024_gather5_avx2(result,table_s,wvalue);
 
@@ -235,7 +226,7 @@ void RSAZ_1024_mod_exp_avx2(BN_ULONG result_norm[16],
 
 		rsaz_1024_sqr_avx2(result, result, m, k0, 5);
 
-		wvalue = *((unsigned short*)&p_str[index/8]);
+		wvalue = *((const unsigned short*)&p_str[index / 8]);
 		wvalue = (wvalue>> (index%8)) & 31;
 		index-=5;
 

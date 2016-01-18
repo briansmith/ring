@@ -20,12 +20,13 @@
 
 #include <openssl/poly1305.h>
 
+#include "../internal.h"
+
 
 #if !defined(OPENSSL_WINDOWS) && defined(OPENSSL_X86_64)
 
 #include <emmintrin.h>
 
-#define ALIGN(x) __attribute__((aligned(x)))
 /* inline is not a keyword in C89. */
 #define INLINE 
 #define U8TO64_LE(m) (*(const uint64_t *)(m))
@@ -35,11 +36,11 @@
 typedef __m128i xmmi;
 typedef unsigned __int128 uint128_t;
 
-static const uint32_t ALIGN(16) poly1305_x64_sse2_message_mask[4] = {
+static const alignas(16) uint32_t poly1305_x64_sse2_message_mask[4] = {
     (1 << 26) - 1, 0, (1 << 26) - 1, 0};
-static const uint32_t ALIGN(16) poly1305_x64_sse2_5[4] = {5, 0, 5, 0};
-static const uint32_t ALIGN(16) poly1305_x64_sse2_1shl128[4] = {(1 << 24), 0,
-                                                                (1 << 24), 0};
+static const alignas(16) uint32_t poly1305_x64_sse2_5[4] = {5, 0, 5, 0};
+static const alignas(16) uint32_t poly1305_x64_sse2_1shl128[4] = {
+    (1 << 24), 0, (1 << 24), 0};
 
 static uint128_t INLINE add128(uint128_t a, uint128_t b) { return a + b; }
 

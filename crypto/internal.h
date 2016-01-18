@@ -113,7 +113,10 @@
 #include <openssl/thread.h>
 
 #if defined(_MSC_VER)
+#if !defined(__cplusplus) || _MSC_VER < 1900
+#define alignas(x) __declspec(align(x))
 #define alignof __alignof
+#endif
 #else
 #include <stdalign.h>
 #endif
@@ -125,6 +128,7 @@
 #pragma warning(pop)
 #else
 #include <pthread.h>
+#include <stdalign.h>
 #endif
 
 #if defined(__cplusplus)
