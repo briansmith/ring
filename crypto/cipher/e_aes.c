@@ -200,8 +200,7 @@ static char aesni_capable(void);
 
 static ctr128_f aes_ctr_set_key(AES_KEY *aes_key, GCM128_CONTEXT *gcm_ctx,
                                 block128_f *out_block, const uint8_t *key,
-                                size_t key_len)
-                                OPENSSL_SUPPRESS_UNREACHABLE_CODE_WARNINGS {
+                                size_t key_len) {
 #if !defined(OPENSSL_NO_ASM)
   if (aesni_capable()) {
     aesni_set_encrypt_key(key, key_len * 8, aes_key);
