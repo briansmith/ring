@@ -111,7 +111,6 @@
 
 #include <openssl/base.h>
 #include <openssl/thread.h>
-#include "modes/internal.h"
 
 #if defined(_MSC_VER)
 #define alignof __alignof
@@ -489,13 +488,10 @@ extern void SHA512_5(uint8_t *out, size_t out_len,
 #define SHA512_DIGEST_LENGTH 64
 
 
-/* Transforms the 32 bit data (passed as a pointer) from little-endian to
- * big-endian. This function is a no-op on big-endian systems */
-static inline uint32_t to_be_u32(const uint8_t *data) {
-  #if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
-  uint32_t r = *((const uint32_t *)(data));
-  return BSWAP4(r);
-  #endif
+/* Given a pointer to 32-bit big-endian data, return (by value) the data with
+ * the same byte order as the host CPU */
+static inline uint32_t from_be_u32(const uint8_t *data) {
+  return (data[3] << 0) | (data[2] << 8) | (data[1] << 16) | (data[0] << 24);
 }
 
 
