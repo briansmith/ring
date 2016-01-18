@@ -80,8 +80,8 @@ typedef unsigned vec __attribute__((vector_size(16)));
 #define VBPI 3
 #endif
 #define ONE (vec) _mm_set_epi32(0, 0, 0, 1)
-#define LOAD(m) (vec) _mm_loadu_si128((__m128i *)(m))
-#define LOAD_ALIGNED(m) (vec) _mm_load_si128((__m128i *)(m))
+#define LOAD(m) (vec) _mm_loadu_si128((const __m128i *)(m))
+#define LOAD_ALIGNED(m) (vec) _mm_load_si128((const __m128i *)(m))
 #define STORE(m, r) _mm_storeu_si128((__m128i *)(m), (__m128i)(r))
 #define ROTV1(x) (vec) _mm_shuffle_epi32((__m128i)x, _MM_SHUFFLE(0, 3, 2, 1))
 #define ROTV2(x) (vec) _mm_shuffle_epi32((__m128i)x, _MM_SHUFFLE(1, 0, 3, 2))
@@ -157,7 +157,10 @@ void CRYPTO_chacha_20(
 	const uint8_t nonce[12],
 	uint32_t counter)
 	{
-	unsigned iters, i, *op=(unsigned *)out, *ip=(unsigned *)in, *kp;
+	unsigned iters, i;
+	unsigned *op = (unsigned *)out;
+	const unsigned *ip = (const unsigned *)in;
+	const unsigned *kp = (const unsigned *)key;
 #if defined(__ARM_NEON__)
 	uint32_t np[3];
 	uint8_t alignment_buffer[16] __attribute__((aligned(16)));
@@ -165,18 +168,17 @@ void CRYPTO_chacha_20(
 	vec s0, s1, s2, s3;
 	__attribute__ ((aligned (16))) unsigned chacha_const[] =
 		{0x61707865,0x3320646E,0x79622D32,0x6B206574};
-	kp = (unsigned *)key;
 #if defined(__ARM_NEON__)
 	memcpy(np, nonce, 12);
 #endif
 	s0 = LOAD_ALIGNED(chacha_const);
-	s1 = LOAD(&((vec*)kp)[0]);
-	s2 = LOAD(&((vec*)kp)[1]);
+	s1 = LOAD(&((const vec*)kp)[0]);
+	s2 = LOAD(&((const vec*)kp)[1]);
 	s3 = (vec){
 		counter,
-		((uint32_t*)nonce)[0],
-		((uint32_t*)nonce)[1],
-		((uint32_t*)nonce)[2]
+		((const uint32_t*)nonce)[0],
+		((const uint32_t*)nonce)[1],
+		((const uint32_t*)nonce)[2]
 	};
 
 	for (iters = 0; iters < inlen/(BPI*64); iters++)
@@ -316,7 +318,7 @@ void CRYPTO_chacha_20(
 			buf[0] = REVV_BE(v0 + s0);
 
 		for (i=inlen & ~15; i<inlen; i++)
-			((char *)op)[i] = ((char *)ip)[i] ^ ((char *)buf)[i];
+			((char *)op)[i] = ((const char *)ip)[i] ^ ((const char *)buf)[i];
 		}
 	}
 

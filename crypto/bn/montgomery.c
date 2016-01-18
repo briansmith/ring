@@ -417,11 +417,10 @@ static int BN_from_montgomery_word(BIGNUM *ret, BIGNUM *r,
 
 static int BN_from_montgomery_word(BIGNUM *ret, BIGNUM *r, const BN_MONT_CTX *mont)
 	{
-	BIGNUM *n;
 	BN_ULONG *ap,*np,*rp,n0,v,carry;
 	int nl,max,i;
 
-	n= (BIGNUM*) &(mont->N);
+	const BIGNUM *n = &mont->N;
 	nl=n->top;
 	if (nl == 0) { ret->top=0; return(1); }
 
