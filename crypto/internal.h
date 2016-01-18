@@ -490,7 +490,7 @@ extern void SHA512_5(uint8_t *out, size_t out_len,
 
 /* from_be_u32 returns the 32-bit big-endian-encoded value at |data|. */
 static inline uint32_t from_be_u32(const uint8_t *data) {
-  return (data[3] << 0) | (data[2] << 8) | (data[1] << 16) | (data[0] << 24);
+  return (data[0] << 24) | (data[1] << 16) | (data[2] << 8) | data[3];
 }
 
 
