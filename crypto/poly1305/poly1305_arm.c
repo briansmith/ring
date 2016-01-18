@@ -21,6 +21,8 @@
 
 #include <string.h>
 
+#include "../internal.h"
+
 
 typedef struct {
   uint32_t v[12]; /* for alignment; only using 10 */
@@ -170,7 +172,7 @@ static void fe1305x2_frombytearray(fe1305x2 *r, const uint8_t *x,
   }
 }
 
-static const fe1305x2 zero __attribute__((aligned(16)));
+static const alignas(16) fe1305x2 zero;
 
 struct poly1305_state_st {
   uint8_t data[sizeof(fe1305x2[5]) + 128];

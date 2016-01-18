@@ -25,6 +25,9 @@
 
 #include <openssl/chacha.h>
 
+#include "../internal.h"
+
+
 #if defined(ASM_GEN) ||          \
     !defined(OPENSSL_WINDOWS) && \
         (defined(OPENSSL_X86_64) || defined(OPENSSL_X86)) && defined(__SSE2__)
@@ -163,10 +166,10 @@ void CRYPTO_chacha_20(
 	const unsigned *kp = (const unsigned *)key;
 #if defined(__ARM_NEON__)
 	uint32_t np[3];
-	uint8_t alignment_buffer[16] __attribute__((aligned(16)));
+	alignas(16) uint8_t alignment_buffer[16];
 #endif
 	vec s0, s1, s2, s3;
-	__attribute__ ((aligned (16))) unsigned chacha_const[] =
+	alignas(16) unsigned chacha_const[] =
 		{0x61707865,0x3320646E,0x79622D32,0x6B206574};
 #if defined(__ARM_NEON__)
 	memcpy(np, nonce, 12);

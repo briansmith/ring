@@ -39,15 +39,6 @@
     !defined(OPENSSL_SMALL)
 
 
-#if defined(__GNUC__)
-#define ALIGN(x) __attribute((aligned(x)))
-#elif defined(_MSC_VER)
-#define ALIGN(x) __declspec(align(x))
-#else
-#define ALIGN(x)
-#endif
-
-#define ALIGNPTR(p, N) ((uint8_t *)p + N - (size_t)p % N)
 #define P256_LIMBS (256 / BN_BITS2)
 
 typedef struct {
@@ -245,7 +236,7 @@ static int ecp_nistz256_windowed_mul(const EC_GROUP *group, P256_POINT *r,
   /* A |P256_POINT| is (3 * 32) = 96 bytes, and the 64-byte alignment should
    * add no more than 63 bytes of overhead. Thus, |table| should require
    * ~1599 ((96 * 16) + 63) bytes of stack space. */
-  ALIGN(64) P256_POINT table[16];
+  alignas(64) P256_POINT table[16];
   uint8_t p_str[33];
 
 
@@ -326,7 +317,7 @@ static int ecp_nistz256_windowed_mul(const EC_GROUP *group, P256_POINT *r,
   ecp_nistz256_point_add(&row[16 - 1], &row[15 - 1], &row[1 - 1]);
 
   BN_ULONG tmp[P256_LIMBS];
-  ALIGN(32) P256_POINT h;
+  alignas(32) P256_POINT h;
   unsigned index = 255;
   unsigned wvalue = p_str[(index - 1) / 8];
   wvalue = (wvalue >> ((index - 1) % 8)) & kMask;
@@ -390,7 +381,7 @@ static int ecp_nistz256_points_mul(
   static const unsigned kWindowSize = 7;
   static const unsigned kMask = (1 << (7 /* kWindowSize */ + 1)) - 1;
 
-  ALIGN(32) union {
+  alignas(32) union {
     P256_POINT p;
     P256_POINT_AFFINE a;
   } t, p;
