@@ -51,18 +51,14 @@
 
 #include <openssl/base.h>
 
+#include "../internal.h"
+
 #if defined(__cplusplus)
 extern "C" {
 #endif
 
 
 #define asm __asm__
-
-#define STRICT_ALIGNMENT 1
-#if defined(OPENSSL_X86_64) || defined(OPENSSL_X86) || defined(OPENSSL_AARCH64)
-#undef STRICT_ALIGNMENT
-#define STRICT_ALIGNMENT 0
-#endif
 
 #if !defined(PEDANTIC) && !defined(OPENSSL_NO_ASM)
 #if defined(__GNUC__) && __GNUC__ >= 2
@@ -105,7 +101,7 @@ extern "C" {
     asm("rev %w0,%w1" : "=r"(ret) : "r"(x)); \
     ret;                                     \
   })
-#elif defined(OPENSSL_ARM) && !defined(STRICT_ALIGNMENT)
+#elif defined(OPENSSL_ARM) && STRICT_ALIGNMENT == 0
 #define BSWAP8(x)                                     \
   ({                                                  \
     uint32_t lo = (uint64_t)(x) >> 32, hi = (x);      \
@@ -137,7 +133,7 @@ __inline uint32_t _bswap4(uint32_t val) {
 #endif
 #endif
 
-#if defined(BSWAP4) && !defined(STRICT_ALIGNMENT)
+#if defined(BSWAP4) && STRICT_ALIGNMENT == 0
 #define GETU32(p) BSWAP4(*(const uint32_t *)(p))
 #define PUTU32(p, v) *(uint32_t *)(p) = BSWAP4(v)
 #else
