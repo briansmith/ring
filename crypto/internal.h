@@ -113,6 +113,9 @@
 #include <openssl/thread.h>
 
 #if defined(_MSC_VER)
+#pragma warning(push, 3)
+#include <intrin.h>
+#pragma warning(pop)
 #if !defined(__cplusplus) || _MSC_VER < 1900
 #define alignas(x) __declspec(align(x))
 #define alignof __alignof
@@ -146,12 +149,36 @@ void OPENSSL_cpuid_setup(void);
 #define inline __inline
 #endif
 
+#define OPENSSL_LITTLE_ENDIAN 1
+#define OPENSSL_BIG_ENDIAN 2
+
+#if defined(OPENSSL_X86_64) || defined(OPENSSL_X86) || \
+    (defined(__BYTE_ORDER__) && defined(__ORDER_LITTLE_ENDIAN__) && \
+     __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__)
+#define OPENSSL_ENDIAN OPENSSL_LITTLE_ENDIAN
+#elif defined(__BYTE_ORDER__) && defined(__ORDER_BIG_ENDIAN__) && \
+      __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
+#define OPENSSL_ENDIAN OPENSSL_BIG_ENDIAN
+#else
+#error "Cannot determine endianness"
+#endif
+
+
 /* STRICT_ALIGNMENT is 1 if unaligned memory access is known to work, otherwise
  * it is 0. */
 #if defined(OPENSSL_X86_64) || defined(OPENSSL_X86) || defined(OPENSSL_AARCH64)
 #define STRICT_ALIGNMENT 0
 #else
 #define STRICT_ALIGNMENT 1
+#endif
+
+#if defined(__GNUC__)
+#define bswap_u32(x) __builtin_bswap32(x)
+#define bswap_u64(x) __builtin_bswap64(x)
+#elif defined(_MSC_VER)
+#pragma intrinsic(_byteswap_ulong, _byteswap_uint64)
+#define bswap_u32(x) _byteswap_ulong(x)
+#define bswap_u64(x) _byteswap_uint64(x)
 #endif
 
 
