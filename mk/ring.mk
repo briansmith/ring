@@ -226,7 +226,6 @@ $(NULL): CPPFLAGS += $(RING_CPPFLAGS) \
                      -DBORINGSSL_IMPLEMENTATION \
                      -fvisibility=hidden \
                      -Wno-cast-align \
-                     -Wno-cast-qual \
                      -Wno-pedantic \
                      -Wno-unused-parameter \
                      $(NULL)
