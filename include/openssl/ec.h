@@ -106,11 +106,6 @@ const EC_GROUP *EC_GROUP_P384(void);
 /* EC_group_new_p521 returns a fresh EC_GROUP object for the NIST P-521 curve. */
 const EC_GROUP *EC_GROUP_P521(void);
 
-/* EC_GROUP_cmp returns zero if |a| and |b| are the same group and non-zero
- * otherwise. */
-OPENSSL_EXPORT int EC_GROUP_cmp(const EC_GROUP *a, const EC_GROUP *b,
-                                BN_CTX *ignored);
-
 /* EC_GROUP_get0_generator returns a pointer to the internal |EC_POINT| object
  * in |group| that specifies the generator for the group. */
 OPENSSL_EXPORT const EC_POINT *EC_GROUP_get0_generator(const EC_GROUP *group);
