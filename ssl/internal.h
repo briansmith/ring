@@ -531,7 +531,7 @@ int ssl3_update_handshake_hash(SSL *ssl, const uint8_t *in, size_t in_len);
 #define SSL_CURVE_SECP256R1 23
 #define SSL_CURVE_SECP384R1 24
 #define SSL_CURVE_SECP521R1 25
-#define SSL_CURVE_ECDH_X25519 29
+#define SSL_CURVE_X25519 29
 
 /* An SSL_ECDH_METHOD is an implementation of ECDH-like key exchanges for
  * TLS. */
