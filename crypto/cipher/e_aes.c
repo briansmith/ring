@@ -69,6 +69,7 @@
 
 #if !defined(OPENSSL_NO_ASM) && \
     (defined(OPENSSL_X86_64) || defined(OPENSSL_X86))
+
 #define VPAES
 static char vpaes_capable(void) {
   return (OPENSSL_ia32cap_P[1] & (1 << (41 - 32))) != 0;
@@ -109,91 +110,22 @@ void aes_v8_ctr32_encrypt_blocks(const uint8_t *in, uint8_t *out, size_t len,
  * provided by asm. */
 void bsaes_ctr32_encrypt_blocks(const uint8_t *in, uint8_t *out, size_t len,
                                 const AES_KEY *key, const uint8_t ivec[16]);
-#else
-static char bsaes_capable(void) {
-  return 0;
-}
-
-/* On other platforms, bsaes_capable() will always return false and so the
- * following will never be called. */
-void bsaes_ctr32_encrypt_blocks(const uint8_t *in, uint8_t *out, size_t len,
-                                const AES_KEY *key, const uint8_t ivec[16]) {
-  abort();
-}
 #endif
 
 #if defined(VPAES)
 /* On platforms where VPAES gets defined (just above), then these functions are
  * provided by asm. */
 int vpaes_set_encrypt_key(const uint8_t *userKey, int bits, AES_KEY *key);
-
 void vpaes_encrypt(const uint8_t *in, uint8_t *out, const AES_KEY *key);
-#else
-static char vpaes_capable(void) {
-  return 0;
-}
-
-/* On other platforms, vpaes_capable() will always return false and so the
- * following will never be called. */
-static int vpaes_set_encrypt_key(const uint8_t *userKey, int bits,
-                                 AES_KEY *key) {
-  abort();
-}
-static void vpaes_encrypt(const uint8_t *in, uint8_t *out, const AES_KEY *key) {
-  abort();
-}
-#endif
-
-#if !defined(HWAES)
-/* If HWAES isn't defined then we provide dummy functions for each of the hwaes
- * functions. */
-static int hwaes_capable(void) {
-  return 0;
-}
-
-static int aes_v8_set_encrypt_key(const uint8_t *user_key, int bits,
-                                  AES_KEY *key) {
-  abort();
-}
-
-static void aes_v8_encrypt(const uint8_t *in, uint8_t *out,
-                           const AES_KEY *key) {
-  abort();
-}
-
-static void aes_v8_ctr32_encrypt_blocks(const uint8_t *in, uint8_t *out,
-                                        size_t len, const AES_KEY *key,
-                                        const uint8_t ivec[16]) {
-  abort();
-}
 #endif
 
 #if !defined(OPENSSL_NO_ASM) && \
     (defined(OPENSSL_X86_64) || defined(OPENSSL_X86))
+#define AESNI
 int aesni_set_encrypt_key(const uint8_t *userKey, int bits, AES_KEY *key);
-
 void aesni_encrypt(const uint8_t *in, uint8_t *out, const AES_KEY *key);
-
 void aesni_ctr32_encrypt_blocks(const uint8_t *in, uint8_t *out, size_t blocks,
                                 const void *key, const uint8_t *ivec);
-
-#else
-
-/* On other platforms, aesni_capable() will always return false and so the
- * following will never be called. */
-static void aesni_encrypt(const uint8_t *in, uint8_t *out, const AES_KEY *key) {
-  abort();
-}
-static int aesni_set_encrypt_key(const uint8_t *userKey, int bits,
-                                 AES_KEY *key) {
-  abort();
-}
-static void aesni_ctr32_encrypt_blocks(const uint8_t *in, uint8_t *out,
-                                       size_t blocks, const void *key,
-                                       const uint8_t *ivec) {
-  abort();
-}
-
 #endif
 
 static char aesni_capable(void);
@@ -201,7 +133,7 @@ static char aesni_capable(void);
 static ctr128_f aes_ctr_set_key(AES_KEY *aes_key, GCM128_CONTEXT *gcm_ctx,
                                 block128_f *out_block, const uint8_t *key,
                                 size_t key_len) {
-#if !defined(OPENSSL_NO_ASM)
+#if defined(AESNI)
   if (aesni_capable()) {
     aesni_set_encrypt_key(key, key_len * 8, aes_key);
     if (gcm_ctx != NULL) {
@@ -212,7 +144,9 @@ static ctr128_f aes_ctr_set_key(AES_KEY *aes_key, GCM128_CONTEXT *gcm_ctx,
     }
     return (ctr128_f)aesni_ctr32_encrypt_blocks;
   }
+#endif
 
+#if defined(HWAES)
   if (hwaes_capable()) {
     aes_v8_set_encrypt_key(key, key_len * 8, aes_key);
     if (gcm_ctx != NULL) {
@@ -223,7 +157,9 @@ static ctr128_f aes_ctr_set_key(AES_KEY *aes_key, GCM128_CONTEXT *gcm_ctx,
     }
     return (ctr128_f)aes_v8_ctr32_encrypt_blocks;
   }
+#endif
 
+#if defined(BSAES)
   if (bsaes_capable()) {
     AES_set_encrypt_key(key, key_len * 8, aes_key);
     if (gcm_ctx != NULL) {
@@ -234,7 +170,9 @@ static ctr128_f aes_ctr_set_key(AES_KEY *aes_key, GCM128_CONTEXT *gcm_ctx,
     }
     return (ctr128_f)bsaes_ctr32_encrypt_blocks;
   }
+#endif
 
+#if defined(VPAES)
   if (vpaes_capable()) {
     vpaes_set_encrypt_key(key, key_len * 8, aes_key);
     if (out_block) {
