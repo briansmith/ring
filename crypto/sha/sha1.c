@@ -55,13 +55,12 @@
  * [including the GNU Public Licence.] */
 
 #include "openssl/base.h"
+#include "../internal.h"
 
 
 #define ROTATE(a, n) (((a) << (n)) | ((a) >> (32 - (n))))
 #define Xupdate(a, ix, ia, ib, ic, id) \
   ((a) = (ia ^ ib ^ ic ^ id), ix = (a) = ROTATE((a), 1))
-
-#include "../digest/md32_common.h"
 
 #define K_00_19 0x5a827999UL
 #define K_20_39 0x6ed9eba1UL
@@ -121,7 +120,7 @@
 #define X(i)	XX##i
 
 void sha1_block_data_order(uint32_t *state, const uint8_t *data, size_t num) {
-  register uint32_t A, B, C, D, E, T, l;
+  register uint32_t A, B, C, D, E, T;
   uint32_t XX0, XX1, XX2, XX3, XX4, XX5, XX6, XX7, XX8, XX9, XX10,
       XX11, XX12, XX13, XX14, XX15;
 
@@ -132,52 +131,52 @@ void sha1_block_data_order(uint32_t *state, const uint8_t *data, size_t num) {
   E = state[4];
 
   for (;;) {
-    (void)HOST_c2l(data, l);
-    X(0) = l;
-    HOST_c2l(data, l);
-    X(1) = l;
+    X(0) = from_be_u32(data);
+    data += 4;
+    X(1) = from_be_u32(data);
+    data += 4;
     BODY_00_15(0, A, B, C, D, E, T, X(0));
-    HOST_c2l(data, l);
-    X(2) = l;
+    X(2) = from_be_u32(data);
+    data += 4;
     BODY_00_15(1, T, A, B, C, D, E, X(1));
-    HOST_c2l(data, l);
-    X(3) = l;
+    X(3) = from_be_u32(data);
+    data += 4;
     BODY_00_15(2, E, T, A, B, C, D, X(2));
-    HOST_c2l(data, l);
-    X(4) = l;
+    X(4) = from_be_u32(data);
+    data += 4;
     BODY_00_15(3, D, E, T, A, B, C, X(3));
-    HOST_c2l(data, l);
-    X(5) = l;
+    X(5) = from_be_u32(data);
+    data += 4;
     BODY_00_15(4, C, D, E, T, A, B, X(4));
-    HOST_c2l(data, l);
-    X(6) = l;
+    X(6) = from_be_u32(data);
+    data += 4;
     BODY_00_15(5, B, C, D, E, T, A, X(5));
-    HOST_c2l(data, l);
-    X(7) = l;
+    X(7) = from_be_u32(data);
+    data += 4;
     BODY_00_15(6, A, B, C, D, E, T, X(6));
-    HOST_c2l(data, l);
-    X(8) = l;
+    X(8) = from_be_u32(data);
+    data += 4;
     BODY_00_15(7, T, A, B, C, D, E, X(7));
-    HOST_c2l(data, l);
-    X(9) = l;
+    X(9) = from_be_u32(data);
+    data += 4;
     BODY_00_15(8, E, T, A, B, C, D, X(8));
-    HOST_c2l(data, l);
-    X(10) = l;
+    X(10) = from_be_u32(data);
+    data += 4;
     BODY_00_15(9, D, E, T, A, B, C, X(9));
-    HOST_c2l(data, l);
-    X(11) = l;
+    X(11) = from_be_u32(data);
+    data += 4;
     BODY_00_15(10, C, D, E, T, A, B, X(10));
-    HOST_c2l(data, l);
-    X(12) = l;
+    X(12) = from_be_u32(data);
+    data += 4;
     BODY_00_15(11, B, C, D, E, T, A, X(11));
-    HOST_c2l(data, l);
-    X(13) = l;
+    X(13) = from_be_u32(data);
+    data += 4;
     BODY_00_15(12, A, B, C, D, E, T, X(12));
-    HOST_c2l(data, l);
-    X(14) = l;
+    X(14) = from_be_u32(data);
+    data += 4;
     BODY_00_15(13, T, A, B, C, D, E, X(13));
-    HOST_c2l(data, l);
-    X(15) = l;
+    X(15) = from_be_u32(data);
+    data += 4;
     BODY_00_15(14, E, T, A, B, C, D, X(14));
     BODY_00_15(15, D, E, T, A, B, C, X(15));
 
