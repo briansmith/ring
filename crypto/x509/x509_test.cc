@@ -239,12 +239,13 @@ int main(int argc, char **argv) {
     return 1;
   }
 
-  if (Verify(leaf.get(), {}, {})) {
+  std::vector<X509*> empty;
+  if (Verify(leaf.get(), empty, empty)) {
     fprintf(stderr, "Leaf verified with no roots!\n");
     return 1;
   }
 
-  if (Verify(leaf.get(), {}, {intermediate.get()})) {
+  if (Verify(leaf.get(), empty, {intermediate.get()})) {
     fprintf(stderr, "Leaf verified with no roots!\n");
     return 1;
   }
