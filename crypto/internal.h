@@ -484,7 +484,7 @@ extern void SHA512_5(uint8_t *out, size_t out_len,
 #define SHA512_DIGEST_LENGTH 64
 
 
-/* from_be_u32 returns the 32-bit big-endian-encoded value at |data|. */
+/* from_be_u32_ptr returns the 32-bit big-endian-encoded value at |data|. */
 static inline uint32_t from_be_u32_ptr(const uint8_t *data) {
 #if STRICT_ALIGNMENT == 0 && OPENSSL_ENDIAN == OPENSSL_LITTLE_ENDIAN && \
     defined(bswap_u32)
