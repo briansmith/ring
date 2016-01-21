@@ -308,10 +308,10 @@ OPENSSL_EXPORT BIO *BIO_find_type(BIO *bio, int type);
 OPENSSL_EXPORT void BIO_copy_next_retry(BIO *bio);
 
 
-/* Printf functions.
- *
- * These functions are versions of printf functions that output to a BIO rather
- * than a FILE. */
+/* Printf functions. */
+
+/* BIO_printf behaves like |printf| but outputs to |bio| rather than a |FILE|.
+ * It returns the number of bytes written or a negative number on error. */
 OPENSSL_EXPORT int BIO_printf(BIO *bio, const char *format, ...)
     OPENSSL_PRINTF_FORMAT_FUNC(2, 3);
 
