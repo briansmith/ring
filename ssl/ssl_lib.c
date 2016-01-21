@@ -2544,6 +2544,22 @@ int SSL_get_ivs(const SSL *ssl, const uint8_t **out_read_iv,
   return 1;
 }
 
+static uint64_t be_to_u64(const uint8_t in[8]) {
+  return (((uint64_t)in[7]) << 56) | (((uint64_t)in[6]) << 48) |
+         (((uint64_t)in[5]) << 40) | (((uint64_t)in[4]) << 32) |
+         (((uint64_t)in[3]) << 24) | (((uint64_t)in[2]) << 16) |
+         (((uint64_t)in[1]) << 8) | ((uint64_t)in[0]);
+}
+
+uint64_t SSL_get_read_sequence(const SSL *ssl) {
+  /* TODO(davidben): Internally represent sequence numbers as uint64_t. */
+  return be_to_u64(ssl->s3->read_sequence);
+}
+
+uint64_t SSL_get_write_sequence(const SSL *ssl) {
+  return be_to_u64(ssl->s3->write_sequence);
+}
+
 uint8_t SSL_get_server_key_exchange_hash(const SSL *ssl) {
   return ssl->s3->tmp.server_key_exchange_hash;
 }
