@@ -131,7 +131,6 @@
 #pragma warning(pop)
 #else
 #include <pthread.h>
-#include <stdalign.h>
 #endif
 
 #if defined(__cplusplus)
