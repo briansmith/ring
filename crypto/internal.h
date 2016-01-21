@@ -499,6 +499,25 @@ static inline uint32_t from_be_u32_ptr(const uint8_t *data) {
 #endif
 }
 
+/* from_be_u64 returns the native representation of the 64-bit
+ * big-endian-encoded value |data|. */
+static inline uint64_t from_be_u64(const uint64_t data) {
+#if OPENSSL_ENDIAN == OPENSSL_LITTLE_ENDIAN && defined(bswap_u64)
+  return bswap_u64(data);
+#elif OPENSSL_ENDIAN == OPENSSL_BIG_ENDIAN
+  return data;
+#else
+  return ((uint64_t)data[0] << 56) |
+         ((uint64_t)data[1] << 48) |
+         ((uint64_t)data[2] << 40) |
+         ((uint64_t)data[3] << 32) |
+         ((uint64_t)data[4] << 24) |
+         ((uint64_t)data[5] << 16) |
+         ((uint64_t)data[6] << 8) |
+         ((uint64_t)data[7]);
+#endif
+}
+
 
 #if defined(__cplusplus)
 }  /* extern C */
