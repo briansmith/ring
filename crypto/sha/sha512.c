@@ -148,9 +148,6 @@ static const uint64_t K512[80] = {
 #pragma intrinsic(_rotr64)
 #define ROTR(a, n) _rotr64((a), n)
 #endif
-#if defined(_M_IX86) && !defined(OPENSSL_NO_ASM) && _MSC_VER <= 1200
-#pragma inline_depth(0)
-#endif
 #endif
 
 #ifndef ROTR
