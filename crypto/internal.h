@@ -507,14 +507,14 @@ static inline uint64_t from_be_u64(const uint64_t data) {
 #elif OPENSSL_ENDIAN == OPENSSL_BIG_ENDIAN
   return data;
 #else
-  return (data[0] << 56) |
-         (data[1] << 48) |
-         (data[2] << 40) |
-         (data[3] << 32) |
-         (data[4] << 24) |
-         (data[5] << 16) |
-         (data[6] << 8) |
-         (data[7]);
+  return ((uint64_t)data[0] << 56) |
+         ((uint64_t)data[1] << 48) |
+         ((uint64_t)data[2] << 40) |
+         ((uint64_t)data[3] << 32) |
+         ((uint64_t)data[4] << 24) |
+         ((uint64_t)data[5] << 16) |
+         ((uint64_t)data[6] << 8) |
+         ((uint64_t)data[7]);
 #endif
 }
 
