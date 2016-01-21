@@ -499,7 +499,8 @@ static inline uint32_t from_be_u32_ptr(const uint8_t *data) {
 #endif
 }
 
-/* from_be_u64 returns the 64-bit big-endian-encoded value |data|. */
+/* from_be_u64 returns the native representation of the 64-bit
+ * big-endian-encoded value |data|. */
 static inline uint64_t from_be_u64(const uint64_t data) {
 #if STRICT_ALIGNMENT == 0 && OPENSSL_ENDIAN == OPENSSL_LITTLE_ENDIAN && \
     defined(bswap_u64)
