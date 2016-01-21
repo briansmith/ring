@@ -128,20 +128,6 @@ static const uint64_t K512[80] = {
     __asm__("rorq %1, %0" : "=r"(ret) : "J"(n), "0"(a) : "cc"); \
     ret;                                                        \
   })
-#define PULL64(x)                                \
-  ({                                             \
-    uint64_t ret = *((const uint64_t *)(&(x)));  \
-    __asm__("bswapq %0" : "=r"(ret) : "0"(ret)); \
-    ret;                                         \
-  })
-#elif(defined(__i386) || defined(__i386__))
-#define PULL64(x)                                                             \
-  ({                                                                          \
-    const unsigned int *p = (const unsigned int *)(&(x));                     \
-    unsigned int hi = p[0], lo = p[1];                                        \
-    __asm__("bswapl %0; bswapl %1;" : "=r"(lo), "=r"(hi) : "0"(lo), "1"(hi)); \
-    ((uint64_t)hi) << 32 | lo;                                                \
-  })
 #elif(defined(_ARCH_PPC) && defined(__64BIT__)) || defined(_ARCH_PPC64)
 #define ROTR(a, n)                                             \
   ({                                                           \
@@ -156,41 +142,15 @@ static const uint64_t K512[80] = {
     __asm__("ror %0, %1, %2" : "=r"(ret) : "r"(a), "I"(n)); \
     ret;                                                    \
   })
-#if defined(__BYTE_ORDER__) && defined(__ORDER_LITTLE_ENDIAN__) && \
-    __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
-#define PULL64(x)                                                         \
-  ({                                                                      \
-    uint64_t ret;                                                         \
-    __asm__("rev %0, %1" : "=r"(ret) : "r"(*((const uint64_t *)(&(x))))); \
-    ret;                                                                  \
-  })
-#endif
 #endif
 #elif defined(_MSC_VER)
 #if defined(_WIN64) /* applies to both IA-64 and AMD64 */
 #pragma intrinsic(_rotr64)
 #define ROTR(a, n) _rotr64((a), n)
 #endif
-#if defined(_M_IX86) && !defined(OPENSSL_NO_ASM)
-static uint64_t __fastcall __pull64be(const void *x) {
-  _asm mov edx, [ecx + 0]
-  _asm mov eax, [ecx + 4]
-  _asm bswap edx
-  _asm bswap eax
-}
-#define PULL64(x) __pull64be(&(x))
-#if _MSC_VER <= 1200
+#if defined(_M_IX86) && !defined(OPENSSL_NO_ASM) && _MSC_VER <= 1200
 #pragma inline_depth(0)
 #endif
-#endif
-#endif
-
-#ifndef PULL64
-#define B(x, j) \
-  (((uint64_t)(*(((const uint8_t *)(&x)) + j))) << ((7 - j) * 8))
-#define PULL64(x)                                                        \
-  (B(x, 0) | B(x, 1) | B(x, 2) | B(x, 3) | B(x, 4) | B(x, 5) | B(x, 6) | \
-   B(x, 7))
 #endif
 
 #ifndef ROTR
@@ -228,7 +188,7 @@ void sha512_block_data_order(uint64_t *state, const uint64_t *W, size_t num) {
     F[7] = state[7];
 
     for (i = 0; i < 16; i++, F--) {
-      T = PULL64(W[i]);
+      T = from_be_u64(W[i]);
       F[0] = A;
       F[4] = E;
       F[8] = T;
@@ -299,37 +259,37 @@ void sha512_block_data_order(uint64_t *state, const uint64_t *W, size_t num) {
     g = state[6];
     h = state[7];
 
-    T1 = X[0] = PULL64(W[0]);
+    T1 = X[0] = from_be_u64(W[0]);
     ROUND_00_15(0, a, b, c, d, e, f, g, h);
-    T1 = X[1] = PULL64(W[1]);
+    T1 = X[1] = from_be_u64(W[1]);
     ROUND_00_15(1, h, a, b, c, d, e, f, g);
-    T1 = X[2] = PULL64(W[2]);
+    T1 = X[2] = from_be_u64(W[2]);
     ROUND_00_15(2, g, h, a, b, c, d, e, f);
-    T1 = X[3] = PULL64(W[3]);
+    T1 = X[3] = from_be_u64(W[3]);
     ROUND_00_15(3, f, g, h, a, b, c, d, e);
-    T1 = X[4] = PULL64(W[4]);
+    T1 = X[4] = from_be_u64(W[4]);
     ROUND_00_15(4, e, f, g, h, a, b, c, d);
-    T1 = X[5] = PULL64(W[5]);
+    T1 = X[5] = from_be_u64(W[5]);
     ROUND_00_15(5, d, e, f, g, h, a, b, c);
-    T1 = X[6] = PULL64(W[6]);
+    T1 = X[6] = from_be_u64(W[6]);
     ROUND_00_15(6, c, d, e, f, g, h, a, b);
-    T1 = X[7] = PULL64(W[7]);
+    T1 = X[7] = from_be_u64(W[7]);
     ROUND_00_15(7, b, c, d, e, f, g, h, a);
-    T1 = X[8] = PULL64(W[8]);
+    T1 = X[8] = from_be_u64(W[8]);
     ROUND_00_15(8, a, b, c, d, e, f, g, h);
-    T1 = X[9] = PULL64(W[9]);
+    T1 = X[9] = from_be_u64(W[9]);
     ROUND_00_15(9, h, a, b, c, d, e, f, g);
-    T1 = X[10] = PULL64(W[10]);
+    T1 = X[10] = from_be_u64(W[10]);
     ROUND_00_15(10, g, h, a, b, c, d, e, f);
-    T1 = X[11] = PULL64(W[11]);
+    T1 = X[11] = from_be_u64(W[11]);
     ROUND_00_15(11, f, g, h, a, b, c, d, e);
-    T1 = X[12] = PULL64(W[12]);
+    T1 = X[12] = from_be_u64(W[12]);
     ROUND_00_15(12, e, f, g, h, a, b, c, d);
-    T1 = X[13] = PULL64(W[13]);
+    T1 = X[13] = from_be_u64(W[13]);
     ROUND_00_15(13, d, e, f, g, h, a, b, c);
-    T1 = X[14] = PULL64(W[14]);
+    T1 = X[14] = from_be_u64(W[14]);
     ROUND_00_15(14, c, d, e, f, g, h, a, b);
-    T1 = X[15] = PULL64(W[15]);
+    T1 = X[15] = from_be_u64(W[15]);
     ROUND_00_15(15, b, c, d, e, f, g, h, a);
 
     for (i = 16; i < 80; i += 16) {
