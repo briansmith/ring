@@ -61,9 +61,15 @@
 
 #include "internal.h"
 
-
 #if !defined(OPENSSL_NO_ASM)
 # if defined(__GNUC__) && __GNUC__>=2
+
+#define DIV_ASM_DIAGNOSTIC_PUSH \
+  _Pragma("GCC diagnostic push") \
+  _Pragma("GCC diagnostic ignored \"-Wpedantic\"")
+
+#define DIV_ASM_DIAGNOSTIC_POP _Pragma("GCC diagnostic pop")
+
 #  if defined(OPENSSL_X86)
    /*
     * There were two reasons for implementing this template:
@@ -101,6 +107,7 @@
 	})
 #  define REMAINDER_IS_ALREADY_CALCULATED
 #  endif /* __<cpu> */
+#pragma GCC diagnostic pop
 # endif /* __GNUC__ */
 #endif /* OPENSSL_NO_ASM */
 
@@ -264,7 +271,9 @@ int BN_div(BIGNUM *dv, BIGNUM *rm, const BIGNUM *num, const BIGNUM *divisor,
 #if defined(BN_ULLONG) && !defined(div_asm)
       q = (BN_ULONG)(((((BN_ULLONG)n0) << BN_BITS2) | n1) / d0);
 #else
+      DIV_ASM_DIAGNOSTIC_PUSH
       q = div_asm(n0, n1, d0);
+      DIV_ASM_DIAGNOSTIC_POP
 #endif
 
 #ifndef REMAINDER_IS_ALREADY_CALCULATED
@@ -290,7 +299,9 @@ int BN_div(BIGNUM *dv, BIGNUM *rm, const BIGNUM *num, const BIGNUM *divisor,
       BN_ULONG t2l, t2h;
 
 #if defined(div_asm)
+      DIV_ASM_DIAGNOSTIC_PUSH
       q = div_asm(n0, n1, d0);
+      DIV_ASM_DIAGNOSTIC_POP
 #else
       q = bn_div_words(n0, n1, d0);
 #endif
