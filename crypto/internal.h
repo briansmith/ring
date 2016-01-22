@@ -518,7 +518,6 @@ static inline uint64_t from_be_u64(const uint64_t data) {
 #endif
 }
 
-
 /* rotate_right_u64 returns the |data| with its bits rotated |n| bits to the
    right */
 static inline uint64_t rotate_right_u64(const uint64_t data, int n) {
