@@ -109,7 +109,6 @@ static bool test_mul(FILE *fp);
 static bool test_div(FILE *fp, BN_CTX *ctx);
 static int rand_neg();
 
-static bool test_div_word(FILE *fp);
 static bool test_mont(FILE *fp, BN_CTX *ctx);
 static bool test_mod(FILE *fp, BN_CTX *ctx);
 static bool test_mod_mul(FILE *fp, BN_CTX *ctx);
@@ -248,12 +247,6 @@ int main(int argc, char *argv[]) {
 
   message(bc_file.get(), "BN_div");
   if (!test_div(bc_file.get(), ctx.get())) {
-    return 1;
-  }
-  flush_fp(bc_file.get());
-
-  message(bc_file.get(), "BN_div_word");
-  if (!test_div_word(bc_file.get())) {
     return 1;
   }
   flush_fp(bc_file.get());
@@ -809,62 +802,6 @@ static int rand_neg() {
   static const int sign[8] = {0, 0, 0, 1, 1, 0, 1, 1};
 
   return sign[(neg++) % 8];
-}
-
-static void print_word(FILE *fp, BN_ULONG w) {
-  fprintf(fp, BN_HEX_FMT1, w);
-}
-
-static bool test_div_word(FILE *fp) {
-  ScopedBIGNUM a(BN_new());
-  ScopedBIGNUM b(BN_new());
-  if (!a || !b) {
-    return false;
-  }
-
-  for (int i = 0; i < num0; i++) {
-    do {
-      if (!BN_rand(a.get(), 512, -1, 0) ||
-          !BN_rand(b.get(), BN_BITS2, -1, 0)) {
-        return false;
-      }
-    } while (BN_is_zero(b.get()));
-
-    if (!BN_copy(b.get(), a.get())) {
-      return false;
-    }
-    BN_ULONG s = b->d[0];
-    BN_ULONG r = BN_div_word(b.get(), s);
-    if (r == (BN_ULONG)-1) {
-      return false;
-    }
-
-    if (fp != NULL) {
-      BN_print_fp(fp, a.get());
-      puts_fp(fp, " / ");
-      print_word(fp, s);
-      puts_fp(fp, " - ");
-      BN_print_fp(fp, b.get());
-      puts_fp(fp, "\n");
-
-      BN_print_fp(fp, a.get());
-      puts_fp(fp, " % ");
-      print_word(fp, s);
-      puts_fp(fp, " - ");
-      print_word(fp, r);
-      puts_fp(fp, "\n");
-    }
-    if (!BN_mul_word(b.get(), s) ||
-        !BN_add_word(b.get(), r) ||
-        !BN_sub(b.get(), a.get(), b.get())) {
-      return false;
-    }
-    if (!BN_is_zero(b.get())) {
-      fprintf(stderr, "Division (word) test failed!\n");
-      return false;
-    }
-  }
-  return true;
 }
 
 static bool test_mont(FILE *fp, BN_CTX *ctx) {

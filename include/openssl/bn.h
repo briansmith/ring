@@ -253,11 +253,6 @@ OPENSSL_EXPORT size_t BN_bn2bin(const BIGNUM *in, uint8_t *out);
  * returns 0. Otherwise, it returns 1. */
 OPENSSL_EXPORT int BN_bn2bin_padded(uint8_t *out, size_t len, const BIGNUM *in);
 
-/* BN_bn2hex returns an allocated string that contains a NUL-terminated, hex
- * representation of |bn|. If |bn| is negative, the first char in the resulting
- * string will be '-'. Returns NULL on allocation failure. */
-OPENSSL_EXPORT char *BN_bn2hex(const BIGNUM *bn);
-
 /* BN_hex2bn parses the leading hex number from |in|, which may be proceeded by
  * a '-' to indicate a negative number and may contain trailing, non-hex data.
  * If |outp| is not NULL, it constructs a BIGNUM equal to the hex number and
@@ -404,10 +399,6 @@ OPENSSL_EXPORT int BN_div(BIGNUM *quotient, BIGNUM *rem,
                           const BIGNUM *numerator, const BIGNUM *divisor,
                           BN_CTX *ctx);
 
-/* BN_div_word sets |numerator| = |numerator|/|divisor| and returns the
- * remainder or (BN_ULONG)-1 on error. */
-OPENSSL_EXPORT BN_ULONG BN_div_word(BIGNUM *numerator, BN_ULONG divisor);
-
 
 /* Comparison functions */
 
@@ -460,11 +451,6 @@ OPENSSL_EXPORT int BN_rshift1(BIGNUM *r, const BIGNUM *a);
  * on allocation failure. */
 OPENSSL_EXPORT int BN_set_bit(BIGNUM *a, int n);
 
-/* BN_clear_bit clears the |n|th, least-significant bit in |a|. For example, if
- * |a| is 3, clearing bit zero will make it two. It returns one on success or
- * zero on allocation failure. */
-OPENSSL_EXPORT int BN_clear_bit(BIGNUM *a, int n);
-
 /* BN_is_bit_set returns the value of the |n|th, least-significant bit in |a|,
  * or zero if the bit doesn't exist. */
 OPENSSL_EXPORT int BN_is_bit_set(const BIGNUM *a, int n);
@@ -485,20 +471,11 @@ OPENSSL_EXPORT BN_ULONG BN_mod_word(const BIGNUM *a, BN_ULONG w);
 OPENSSL_EXPORT int BN_nnmod(BIGNUM *rem, const BIGNUM *numerator,
                             const BIGNUM *divisor, BN_CTX *ctx);
 
-/* BN_mod_add sets |r| = |a| + |b| mod |m|. It returns one on success and zero
- * on error. */
-OPENSSL_EXPORT int BN_mod_add(BIGNUM *r, const BIGNUM *a, const BIGNUM *b,
-                              const BIGNUM *m, BN_CTX *ctx);
-
-/* BN_mod_add_quick acts like |BN_mod_add| but requires that |a| and |b| be
- * non-negative and less than |m|. */
+/* BN_mod_add_quick sets |r| = |a| + |b| mod |m|. It requires that |a| and |b|
+ * be non-negative and less than |m|. It returns one on success and zero on
+ * error. */
 OPENSSL_EXPORT int BN_mod_add_quick(BIGNUM *r, const BIGNUM *a, const BIGNUM *b,
                                     const BIGNUM *m);
-
-/* BN_mod_sub sets |r| = |a| - |b| mod |m|. It returns one on success and zero
- * on error. */
-OPENSSL_EXPORT int BN_mod_sub(BIGNUM *r, const BIGNUM *a, const BIGNUM *b,
-                              const BIGNUM *m, BN_CTX *ctx);
 
 /* BN_mod_sub_quick acts like |BN_mod_sub| but requires that |a| and |b| be
  * non-negative and less than |m|. */
@@ -538,9 +515,6 @@ OPENSSL_EXPORT int BN_mod_lshift1_quick(BIGNUM *r, const BIGNUM *a,
  * If |bottom| is non-zero, the least-significant bit, if any, will be set. The
  * function returns one on success or zero otherwise. */
 OPENSSL_EXPORT int BN_rand(BIGNUM *rnd, int bits, int top, int bottom);
-
-/* BN_pseudo_rand is an alias for |BN_rand|. */
-OPENSSL_EXPORT int BN_pseudo_rand(BIGNUM *rnd, int bits, int top, int bottom);
 
 /* BN_rand_range sets |rnd| to a random value [0..range). It returns one on
  * success and zero otherwise. */
@@ -632,13 +606,6 @@ OPENSSL_EXPORT int BN_generate_prime_ex(BIGNUM *ret, int bits, int safe,
 OPENSSL_EXPORT int BN_is_prime_fasttest_ex(const BIGNUM *candidate, int checks,
                                            BN_CTX *ctx, int do_trial_division,
                                            BN_GENCB *cb);
-
-/* BN_is_prime_ex acts the same as |BN_is_prime_fasttest_ex| with
- * |do_trial_division| set to zero.
- *
- * WARNING: deprecated: Use |BN_primality_test|. */
-OPENSSL_EXPORT int BN_is_prime_ex(const BIGNUM *candidate, int checks,
-                                  BN_CTX *ctx, BN_GENCB *cb);
 
 
 /* Number theory functions */

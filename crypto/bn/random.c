@@ -179,10 +179,6 @@ err:
   return (ret);
 }
 
-int BN_pseudo_rand(BIGNUM *rnd, int bits, int top, int bottom) {
-  return BN_rand(rnd, bits, top, bottom);
-}
-
 int BN_rand_range(BIGNUM *r, const BIGNUM *range) {
   unsigned n;
   unsigned count = 100;

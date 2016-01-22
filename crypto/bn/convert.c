@@ -196,42 +196,6 @@ int BN_bn2bin_padded(uint8_t *out, size_t len, const BIGNUM *in) {
 
 static const char hextable[] = "0123456789abcdef";
 
-char *BN_bn2hex(const BIGNUM *bn) {
-  int i, j, v, z = 0;
-  char *buf;
-  char *p;
-
-  buf = (char *)OPENSSL_malloc(bn->top * BN_BYTES * 2 + 2);
-  if (buf == NULL) {
-    OPENSSL_PUT_ERROR(BN, ERR_R_MALLOC_FAILURE);
-    return NULL;
-  }
-
-  p = buf;
-  if (bn->neg) {
-    *(p++) = '-';
-  }
-
-  if (BN_is_zero(bn)) {
-    *(p++) = '0';
-  }
-
-  for (i = bn->top - 1; i >= 0; i--) {
-    for (j = BN_BITS2 - 8; j >= 0; j -= 8) {
-      /* strip leading zeros */
-      v = ((int)(bn->d[i] >> (long)j)) & 0xff;
-      if (z || v != 0) {
-        *(p++) = hextable[v >> 4];
-        *(p++) = hextable[v & 0x0f];
-        z = 1;
-      }
-    }
-  }
-  *p = '\0';
-
-  return buf;
-}
-
 /* decode_hex decodes |in_len| bytes of hex data from |in| and updates |bn|. */
 static int decode_hex(BIGNUM *bn, const char *in, int in_len) {
   if (in_len > INT_MAX/4) {

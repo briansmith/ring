@@ -400,14 +400,6 @@ int BN_nnmod(BIGNUM *r, const BIGNUM *m, const BIGNUM *d, BN_CTX *ctx) {
   return (d->neg ? BN_sub : BN_add)(r, r, d);
 }
 
-int BN_mod_add(BIGNUM *r, const BIGNUM *a, const BIGNUM *b, const BIGNUM *m,
-               BN_CTX *ctx) {
-  if (!BN_add(r, a, b)) {
-    return 0;
-  }
-  return BN_nnmod(r, r, m, ctx);
-}
-
 int BN_mod_add_quick(BIGNUM *r, const BIGNUM *a, const BIGNUM *b,
                      const BIGNUM *m) {
   if (!BN_uadd(r, a, b)) {
@@ -419,16 +411,6 @@ int BN_mod_add_quick(BIGNUM *r, const BIGNUM *a, const BIGNUM *b,
   return 1;
 }
 
-int BN_mod_sub(BIGNUM *r, const BIGNUM *a, const BIGNUM *b, const BIGNUM *m,
-               BN_CTX *ctx) {
-  if (!BN_sub(r, a, b)) {
-    return 0;
-  }
-  return BN_nnmod(r, r, m, ctx);
-}
-
-/* BN_mod_sub variant that may be used if both  a  and  b  are non-negative
- * and less than  m */
 int BN_mod_sub_quick(BIGNUM *r, const BIGNUM *a, const BIGNUM *b,
                      const BIGNUM *m) {
   if (!BN_sub(r, a, b)) {
@@ -536,45 +518,6 @@ int BN_mod_lshift1_quick(BIGNUM *r, const BIGNUM *a, const BIGNUM *m) {
   }
 
   return 1;
-}
-
-BN_ULONG BN_div_word(BIGNUM *a, BN_ULONG w) {
-  BN_ULONG ret = 0;
-  int i, j;
-
-  w &= BN_MASK2;
-
-  if (!w) {
-    /* actually this an error (division by zero) */
-    return (BN_ULONG) - 1;
-  }
-
-  if (a->top == 0) {
-    return 0;
-  }
-
-  /* normalize input (so bn_div_words doesn't complain) */
-  j = BN_BITS2 - BN_num_bits_word(w);
-  w <<= j;
-  if (!BN_lshift(a, a, j)) {
-    return (BN_ULONG) - 1;
-  }
-
-  for (i = a->top - 1; i >= 0; i--) {
-    BN_ULONG l, d;
-
-    l = a->d[i];
-    d = bn_div_words(ret, l, w);
-    ret = (l - ((d * w) & BN_MASK2)) & BN_MASK2;
-    a->d[i] = d;
-  }
-
-  if ((a->top > 0) && (a->d[a->top - 1] == 0)) {
-    a->top--;
-  }
-
-  ret >>= j;
-  return ret;
 }
 
 BN_ULONG BN_mod_word(const BIGNUM *a, BN_ULONG w) {
