@@ -89,10 +89,6 @@ OPENSSL_EXPORT void OPENSSL_cleanse(void *ptr, size_t len);
  * non-zero. */
 OPENSSL_EXPORT int CRYPTO_memcmp(const void *a, const void *b, size_t len);
 
-/* DECIMAL_SIZE returns an upper bound for the length of the decimal
- * representation of the given type. */
-#define DECIMAL_SIZE(type)	((sizeof(type)*8+2)/3+1)
-
 
 #if defined(__cplusplus)
 }  /* extern C */
