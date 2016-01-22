@@ -64,52 +64,63 @@ extern "C" {
 #define BSWAP8(x)                 \
   ({                              \
     uint64_t ret = (x);           \
-    __asm__("bswapq %0" : "+r"(ret)); \
+    __asm__("bswapq %0"           \
+            : "+r"(ret));         \
     ret;                          \
   })
 #define BSWAP4(x)                 \
   ({                              \
     uint32_t ret = (x);           \
-    __asm__("bswapl %0" : "+r"(ret)); \
+    __asm__("bswapl %0"           \
+            : "+r"(ret));         \
     ret;                          \
   })
 #elif defined(OPENSSL_X86)
 #define BSWAP8(x)                                     \
   ({                                                  \
     uint32_t lo = (uint64_t)(x) >> 32, hi = (x);      \
-    __asm__("bswapl %0; bswapl %1" : "+r"(hi), "+r"(lo)); \
+    __asm__("bswapl %0; bswapl %1"                    \
+            : "+r"(hi), "+r"(lo));                    \
     (uint64_t) hi << 32 | lo;                         \
   })
 #define BSWAP4(x)                 \
   ({                              \
     uint32_t ret = (x);           \
-    __asm__("bswapl %0" : "+r"(ret)); \
+    __asm__("bswapl %0"           \
+            : "+r"(ret));         \
     ret;                          \
   })
 #elif defined(OPENSSL_AARCH64)
 #define BSWAP8(x)                          \
   ({                                       \
     uint64_t ret;                          \
-    __asm__("rev %0,%1" : "=r"(ret) : "r"(x)); \
+    __asm__("rev %0,%1"                    \
+            : "=r"(ret)                    \
+            : "r"(x));                     \
     ret;                                   \
   })
 #define BSWAP4(x)                            \
   ({                                         \
     uint32_t ret;                            \
-    __asm__("rev %w0,%w1" : "=r"(ret) : "r"(x)); \
+    __asm__("rev %w0,%w1"                    \
+            : "=r"(ret)                      \
+            : "r"(x));                       \
     ret;                                     \
   })
 #elif defined(OPENSSL_ARM) && STRICT_ALIGNMENT == 0
 #define BSWAP8(x)                                     \
   ({                                                  \
     uint32_t lo = (uint64_t)(x) >> 32, hi = (x);      \
-    __asm__("rev %0,%0; rev %1,%1" : "+r"(hi), "+r"(lo)); \
+    __asm__("rev %0,%0; rev %1,%1"                    \
+            : "+r"(hi), "+r"(lo));                    \
     (uint64_t) hi << 32 | lo;                         \
   })
 #define BSWAP4(x)                                      \
   ({                                                   \
     uint32_t ret;                                      \
-    __asm__("rev %0,%1" : "=r"(ret) : "r"((uint32_t)(x))); \
+    __asm__("rev %0,%1"                                \
+            : "=r"(ret)                                \
+            : "r"((uint32_t)(x)));                     \
     ret;                                               \
   })
 #endif
