@@ -566,8 +566,7 @@ mod tests {
         let ad: [u8; 0] = [];
 
         // Construct a template input for `seal_in_place`.
-        let plaintext = "hello, world".as_bytes();
-        let mut to_seal = Vec::from(plaintext);
+        let mut to_seal = b"hello, world".to_vec();
         // Reserve space for tag.
         for _ in 0..suffix_space {
             to_seal.push(0);

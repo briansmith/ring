@@ -43,12 +43,12 @@ macro_rules! u32x2 {
 /// ```
 /// use ring::digest;
 ///
-/// let one_shot = digest::digest(&digest::SHA384, "hello, world".as_bytes());
+/// let one_shot = digest::digest(&digest::SHA384, b"hello, world");
 ///
 /// let mut ctx = digest::Context::new(&digest::SHA384);
-/// ctx.update("hello".as_bytes());
-/// ctx.update(", ".as_bytes());
-/// ctx.update("world".as_bytes());
+/// ctx.update(b"hello");
+/// ctx.update(b", ");
+/// ctx.update(b"world");
 /// let multi_part = ctx.finish();
 ///
 /// assert_eq!(&one_shot.as_ref(), &multi_part.as_ref());
@@ -223,7 +223,7 @@ impl Clone for Context {
 ///
 /// let expected_hex = "09ca7e4eaa6e8ae9c7d261167129184883644d07dfba7cbfbc4c8a2e08360d5b";
 /// let expected: Vec<u8> = expected_hex.from_hex().unwrap();
-/// let actual = digest::digest(&digest::SHA256, "hello, world".as_bytes());
+/// let actual = digest::digest(&digest::SHA256, b"hello, world");
 ///
 /// assert_eq!(&expected, &actual.as_ref());
 /// # }
