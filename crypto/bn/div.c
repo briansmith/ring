@@ -107,7 +107,6 @@
 	})
 #  define REMAINDER_IS_ALREADY_CALCULATED
 #  endif /* __<cpu> */
-#pragma GCC diagnostic pop
 # endif /* __GNUC__ */
 #endif /* OPENSSL_NO_ASM */
 
