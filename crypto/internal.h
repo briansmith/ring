@@ -109,6 +109,8 @@
 #ifndef OPENSSL_HEADER_CRYPTO_INTERNAL_H
 #define OPENSSL_HEADER_CRYPTO_INTERNAL_H
 
+#include <assert.h>
+
 #include <openssl/base.h>
 #include <openssl/thread.h>
 
@@ -516,6 +518,13 @@ static inline uint64_t from_be_u64(const uint64_t data) {
          ((uint64_t)data[6] << 8) |
          ((uint64_t)data[7]);
 #endif
+}
+
+/* rotate_right_u64 returns |x| with its bits rotated |n| bits to the right. */
+static inline uint64_t rotate_right_u64(uint64_t x, int n) {
+  assert(n > 0);
+  assert(n < 64);
+  return (x >> n) | (x << (64 - n));
 }
 
 
