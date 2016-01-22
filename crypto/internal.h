@@ -501,6 +501,23 @@ static inline uint32_t from_be_u32_ptr(const uint8_t *data) {
 #endif
 }
 
+
+/* to_be_u32_ptr writes the value |x| to the location |out| in big-endian
+   order. */
+static inline void to_be_u32_ptr(uint8_t *out, uint32_t x) {
+#if STRICT_ALIGNMENT == 0 && OPENSSL_ENDIAN == OPENSSL_LITTLE_ENDIAN && \
+    defined(bswap_u32)
+  *(uint32_t *)out = bswap_u32(x);
+#elif STRICT_ALIGNMENT == 0 && OPENSSL_ENDIAN == OPENSSL_BIG_ENDIAN
+  *(uint32_t *)out = x;
+#else
+  out[0] = (uint8_t)(x >> 24);
+  out[1] = (uint8_t)(x >> 16);
+  out[2] = (uint8_t)(x >> 8);
+  out[3] = (uint8_t)x;
+#endif
+}
+
 /* from_be_u64 returns the native representation of the 64-bit
  * big-endian-encoded value |x|. */
 static inline uint64_t from_be_u64(const uint64_t x) {
