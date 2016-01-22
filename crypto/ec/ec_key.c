@@ -110,11 +110,6 @@ void EC_KEY_free(EC_KEY *r) {
   OPENSSL_free(r);
 }
 
-int EC_KEY_up_ref(EC_KEY *r) {
-  CRYPTO_refcount_inc(&r->references);
-  return 1;
-}
-
 const EC_GROUP *EC_KEY_get0_group(const EC_KEY *key) { return key->group; }
 
 const BIGNUM *EC_KEY_get0_private_key(const EC_KEY *key) {
@@ -224,5 +219,5 @@ err:
 
 size_t EC_KEY_public_key_to_oct(const EC_KEY *key, uint8_t *out, size_t out_len) {
   return EC_POINT_point2oct(EC_KEY_get0_group(key), EC_KEY_get0_public_key(key),
-                            POINT_CONVERSION_UNCOMPRESSED, out, out_len, NULL);
+                            out, out_len, NULL);
 }

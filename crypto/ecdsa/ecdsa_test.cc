@@ -66,9 +66,7 @@
 
 static bool point2oct(ScopedOpenSSLBytes *out, size_t *out_len,
                       const EC_GROUP *group, const EC_POINT *point) {
-  size_t der_len = EC_POINT_point2oct(group, point,
-                                      POINT_CONVERSION_UNCOMPRESSED, NULL, 0,
-                                      NULL);
+  size_t der_len = EC_POINT_point2oct(group, point, NULL, 0, NULL);
   if (der_len <= 0) {
     return false;
   }
@@ -76,8 +74,7 @@ static bool point2oct(ScopedOpenSSLBytes *out, size_t *out_len,
   if (!out) {
     return false;
   }
-  der_len = EC_POINT_point2oct(group, point, POINT_CONVERSION_UNCOMPRESSED,
-                               out->get(), der_len, NULL);
+  der_len = EC_POINT_point2oct(group, point, out->get(), der_len, NULL);
   if (der_len <= 0) {
     return false;
   }

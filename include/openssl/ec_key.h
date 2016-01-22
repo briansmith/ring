@@ -86,10 +86,6 @@ extern "C" {
 /* EC_KEY_free frees all the data owned by |key| and |key| itself. */
 OPENSSL_EXPORT void EC_KEY_free(EC_KEY *key);
 
-/* EC_KEY_up_ref increases the reference count of |key|. It returns one on
- * success and zero otherwise. */
-OPENSSL_EXPORT int EC_KEY_up_ref(EC_KEY *key);
-
 /* EC_KEY_get0_group returns a pointer to the |EC_GROUP| object inside |key|. */
 OPENSSL_EXPORT const EC_GROUP *EC_KEY_get0_group(const EC_KEY *key);
 

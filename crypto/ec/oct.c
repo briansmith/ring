@@ -74,19 +74,13 @@
 
 
 static size_t ec_GFp_simple_point2oct(const EC_GROUP *group,
-                                      const EC_POINT *point,
-                                      point_conversion_form_t form,
-                                      uint8_t *buf, size_t len, BN_CTX *ctx) {
+                                      const EC_POINT *point, uint8_t *buf,
+                                      size_t len, BN_CTX *ctx) {
   size_t ret;
   BN_CTX *new_ctx = NULL;
   int used_ctx = 0;
   BIGNUM *x, *y;
   size_t field_len, i;
-
-  if (form != POINT_CONVERSION_UNCOMPRESSED) {
-    OPENSSL_PUT_ERROR(EC, EC_R_INVALID_FORM);
-    goto err;
-  }
 
   if (EC_POINT_is_at_infinity(group, point)) {
     OPENSSL_PUT_ERROR(EC, EC_R_POINT_AT_INFINITY);
@@ -123,7 +117,7 @@ static size_t ec_GFp_simple_point2oct(const EC_GROUP *group,
       goto err;
     }
 
-    buf[0] = form;
+    buf[0] = 4; /* Uncompressed. */
     i = 1;
 
     if (!BN_bn2bin_padded(buf + i, field_len, x)) {
@@ -132,13 +126,11 @@ static size_t ec_GFp_simple_point2oct(const EC_GROUP *group,
     }
     i += field_len;
 
-    if (form == POINT_CONVERSION_UNCOMPRESSED) {
-      if (!BN_bn2bin_padded(buf + i, field_len, y)) {
-        OPENSSL_PUT_ERROR(EC, ERR_R_INTERNAL_ERROR);
-        goto err;
-      }
-      i += field_len;
+    if (!BN_bn2bin_padded(buf + i, field_len, y)) {
+      OPENSSL_PUT_ERROR(EC, ERR_R_INTERNAL_ERROR);
+      goto err;
     }
+    i += field_len;
 
     if (i != ret) {
       OPENSSL_PUT_ERROR(EC, ERR_R_INTERNAL_ERROR);
@@ -178,7 +170,7 @@ static int ec_GFp_simple_oct2point(const EC_GROUP *group, EC_POINT *point,
     OPENSSL_PUT_ERROR(EC, EC_R_BUFFER_TOO_SMALL);
     return 0;
   }
-  if (buf[0] != POINT_CONVERSION_UNCOMPRESSED) {
+  if (buf[0] != 4) { /* Uncompressed. */
     OPENSSL_PUT_ERROR(EC, EC_R_INVALID_ENCODING);
     return 0;
   }
@@ -243,11 +235,10 @@ int EC_POINT_oct2point(const EC_GROUP *group, EC_POINT *point,
 }
 
 size_t EC_POINT_point2oct(const EC_GROUP *group, const EC_POINT *point,
-                          point_conversion_form_t form, uint8_t *buf,
-                          size_t len, BN_CTX *ctx) {
+                          uint8_t *buf, size_t len, BN_CTX *ctx) {
   if (group->meth != point->meth) {
     OPENSSL_PUT_ERROR(EC, EC_R_INCOMPATIBLE_OBJECTS);
     return 0;
   }
-  return ec_GFp_simple_point2oct(group, point, form, buf, len, ctx);
+  return ec_GFp_simple_point2oct(group, point, buf, len, ctx);
 }

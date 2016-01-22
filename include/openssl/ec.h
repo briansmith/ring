@@ -81,13 +81,6 @@ extern "C" {
 typedef struct ec_group_st EC_GROUP;
 typedef struct ec_point_st EC_POINT;
 
-/** Enum for the point conversion form as defined in X9.62 (ECDSA)
- *  for the encoding of a elliptic curve point (x,y) */
-typedef enum {
-	/** the point is encoded as z||x||y, where z is the octet 0x04  */
-	POINT_CONVERSION_UNCOMPRESSED = 4
-} point_conversion_form_t;
-
 
 /* Elliptic curve groups. */
 
@@ -168,7 +161,6 @@ OPENSSL_EXPORT int EC_POINT_get_affine_coordinates_GFp(const EC_GROUP *group,
  * |ctx| argument may be used if not NULL. */
 OPENSSL_EXPORT size_t EC_POINT_point2oct(const EC_GROUP *group,
                                          const EC_POINT *point,
-                                         point_conversion_form_t form,
                                          uint8_t *buf, size_t len, BN_CTX *ctx);
 
 /* EC_POINT_oct2point sets |point| from |len| bytes of X9.62 format
