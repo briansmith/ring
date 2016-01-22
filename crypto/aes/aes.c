@@ -52,7 +52,7 @@
 
 #include <openssl/cpu.h>
 
-#include "internal.h"
+#include "../internal.h"
 
 
 #if defined(OPENSSL_NO_ASM) || \
@@ -558,10 +558,10 @@ int AES_set_encrypt_key(const uint8_t *key, unsigned bits, AES_KEY *aeskey) {
 
   rk = aeskey->rd_key;
 
-  rk[0] = GETU32(key);
-  rk[1] = GETU32(key + 4);
-  rk[2] = GETU32(key + 8);
-  rk[3] = GETU32(key + 12);
+  rk[0] = from_be_u32_ptr(key);
+  rk[1] = from_be_u32_ptr(key + 4);
+  rk[2] = from_be_u32_ptr(key + 8);
+  rk[3] = from_be_u32_ptr(key + 12);
   if (bits == 128) {
     while (1) {
       temp = rk[3];
@@ -578,8 +578,8 @@ int AES_set_encrypt_key(const uint8_t *key, unsigned bits, AES_KEY *aeskey) {
       rk += 4;
     }
   }
-  rk[4] = GETU32(key + 16);
-  rk[5] = GETU32(key + 20);
+  rk[4] = from_be_u32_ptr(key + 16);
+  rk[5] = from_be_u32_ptr(key + 20);
   if (bits == 192) {
     while (1) {
       temp = rk[5];
@@ -598,8 +598,8 @@ int AES_set_encrypt_key(const uint8_t *key, unsigned bits, AES_KEY *aeskey) {
       rk += 6;
     }
   }
-  rk[6] = GETU32(key + 24);
-  rk[7] = GETU32(key + 28);
+  rk[6] = from_be_u32_ptr(key + 24);
+  rk[7] = from_be_u32_ptr(key + 28);
   if (bits == 256) {
     while (1) {
       temp = rk[7];
@@ -688,10 +688,10 @@ void AES_encrypt(const uint8_t *in, uint8_t *out, const AES_KEY *key) {
 
   /* map byte array block to cipher state
    * and add initial round key: */
-  s0 = GETU32(in) ^ rk[0];
-  s1 = GETU32(in + 4) ^ rk[1];
-  s2 = GETU32(in + 8) ^ rk[2];
-  s3 = GETU32(in + 12) ^ rk[3];
+  s0 = from_be_u32_ptr(in) ^ rk[0];
+  s1 = from_be_u32_ptr(in + 4) ^ rk[1];
+  s2 = from_be_u32_ptr(in + 8) ^ rk[2];
+  s3 = from_be_u32_ptr(in + 12) ^ rk[3];
 #ifdef FULL_UNROLL
   /* round 1: */
   t0 = Te0[s0 >> 24] ^ Te1[(s1 >> 16) & 0xff] ^ Te2[(s2 >> 8) & 0xff] ^
@@ -849,19 +849,19 @@ void AES_encrypt(const uint8_t *in, uint8_t *out, const AES_KEY *key) {
   s0 = (Te2[(t0 >> 24)] & 0xff000000) ^ (Te3[(t1 >> 16) & 0xff] & 0x00ff0000) ^
        (Te0[(t2 >> 8) & 0xff] & 0x0000ff00) ^ (Te1[(t3) & 0xff] & 0x000000ff) ^
        rk[0];
-  PUTU32(out, s0);
+  to_be_u32_ptr(out, s0);
   s1 = (Te2[(t1 >> 24)] & 0xff000000) ^ (Te3[(t2 >> 16) & 0xff] & 0x00ff0000) ^
        (Te0[(t3 >> 8) & 0xff] & 0x0000ff00) ^ (Te1[(t0) & 0xff] & 0x000000ff) ^
        rk[1];
-  PUTU32(out + 4, s1);
+  to_be_u32_ptr(out + 4, s1);
   s2 = (Te2[(t2 >> 24)] & 0xff000000) ^ (Te3[(t3 >> 16) & 0xff] & 0x00ff0000) ^
        (Te0[(t0 >> 8) & 0xff] & 0x0000ff00) ^ (Te1[(t1) & 0xff] & 0x000000ff) ^
        rk[2];
-  PUTU32(out + 8, s2);
+  to_be_u32_ptr(out + 8, s2);
   s3 = (Te2[(t3 >> 24)] & 0xff000000) ^ (Te3[(t0 >> 16) & 0xff] & 0x00ff0000) ^
        (Te0[(t1 >> 8) & 0xff] & 0x0000ff00) ^ (Te1[(t2) & 0xff] & 0x000000ff) ^
        rk[3];
-  PUTU32(out + 12, s3);
+  to_be_u32_ptr(out + 12, s3);
 }
 
 void AES_decrypt(const uint8_t *in, uint8_t *out, const AES_KEY *key) {
@@ -876,10 +876,10 @@ void AES_decrypt(const uint8_t *in, uint8_t *out, const AES_KEY *key) {
 
   /* map byte array block to cipher state
    * and add initial round key: */
-  s0 = GETU32(in) ^ rk[0];
-  s1 = GETU32(in + 4) ^ rk[1];
-  s2 = GETU32(in + 8) ^ rk[2];
-  s3 = GETU32(in + 12) ^ rk[3];
+  s0 = from_be_u32_ptr(in) ^ rk[0];
+  s1 = from_be_u32_ptr(in + 4) ^ rk[1];
+  s2 = from_be_u32_ptr(in + 8) ^ rk[2];
+  s3 = from_be_u32_ptr(in + 12) ^ rk[3];
 #ifdef FULL_UNROLL
   /* round 1: */
   t0 = Td0[s0 >> 24] ^ Td1[(s3 >> 16) & 0xff] ^ Td2[(s2 >> 8) & 0xff] ^
@@ -1039,22 +1039,22 @@ void AES_decrypt(const uint8_t *in, uint8_t *out, const AES_KEY *key) {
        ((uint32_t)Td4[(t3 >> 16) & 0xff] << 16) ^
        ((uint32_t)Td4[(t2 >> 8) & 0xff] << 8) ^
        ((uint32_t)Td4[(t1) & 0xff]) ^ rk[0];
-  PUTU32(out, s0);
+  to_be_u32_ptr(out, s0);
   s1 = ((uint32_t)Td4[(t1 >> 24)] << 24) ^
        ((uint32_t)Td4[(t0 >> 16) & 0xff] << 16) ^
        ((uint32_t)Td4[(t3 >> 8) & 0xff] << 8) ^
        ((uint32_t)Td4[(t2) & 0xff]) ^ rk[1];
-  PUTU32(out + 4, s1);
+  to_be_u32_ptr(out + 4, s1);
   s2 = ((uint32_t)Td4[(t2 >> 24)] << 24) ^
        ((uint32_t)Td4[(t1 >> 16) & 0xff] << 16) ^
        ((uint32_t)Td4[(t0 >> 8) & 0xff] << 8) ^
        ((uint32_t)Td4[(t3) & 0xff]) ^ rk[2];
-  PUTU32(out + 8, s2);
+  to_be_u32_ptr(out + 8, s2);
   s3 = ((uint32_t)Td4[(t3 >> 24)] << 24) ^
        ((uint32_t)Td4[(t2 >> 16) & 0xff] << 16) ^
        ((uint32_t)Td4[(t1 >> 8) & 0xff] << 8) ^
        ((uint32_t)Td4[(t0) & 0xff]) ^ rk[3];
-  PUTU32(out + 12, s3);
+  to_be_u32_ptr(out + 12, s3);
 }
 
 #else
