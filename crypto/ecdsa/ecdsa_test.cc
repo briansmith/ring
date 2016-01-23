@@ -342,7 +342,6 @@ static bool TestECDSA_SIG_max_len(size_t order_len) {
 
 int main(void) {
   CRYPTO_library_init();
-  ERR_load_crypto_strings();
 
   if (!TestBuiltin(stdout) ||
       !TestECDSA_SIG_max_len(224/8) ||

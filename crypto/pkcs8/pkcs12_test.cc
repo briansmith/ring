@@ -757,7 +757,6 @@ static bool TestCompat(const uint8_t *der, size_t der_len) {
 
 int main(int argc, char **argv) {
   CRYPTO_library_init();
-  ERR_load_crypto_strings();
 
   if (!Test("OpenSSL", kOpenSSL, sizeof(kOpenSSL)) ||
       !Test("NSS", kNSS, sizeof(kNSS)) ||

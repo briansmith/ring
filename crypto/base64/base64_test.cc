@@ -116,7 +116,6 @@ static bool TestDecode() {
 
 int main(void) {
   CRYPTO_library_init();
-  ERR_load_crypto_strings();
 
   if (!TestEncode() ||
       !TestDecode()) {

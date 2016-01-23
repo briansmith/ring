@@ -216,7 +216,6 @@ int main(void) {
   size_t i;
 
   CRYPTO_library_init();
-  ERR_load_crypto_strings();
 
   for (i = 0; i < sizeof(kTests) / sizeof(kTests[0]); i++) {
     const hkdf_test_vector_t *test = &kTests[i];

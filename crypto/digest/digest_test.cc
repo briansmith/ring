@@ -245,7 +245,6 @@ static int TestGetters() {
 
 int main(void) {
   CRYPTO_library_init();
-  ERR_load_crypto_strings();
 
   for (size_t i = 0; i < sizeof(kTestVectors) / sizeof(kTestVectors[0]); i++) {
     if (!TestDigest(&kTestVectors[i])) {

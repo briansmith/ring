@@ -189,7 +189,6 @@ static bool TestZeroIterations() {
 
 int main(void) {
   CRYPTO_library_init();
-  ERR_load_crypto_strings();
 
   if (!TestEmptyPassword()) {
     fprintf(stderr, "TestEmptyPassword failed\n");

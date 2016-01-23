@@ -412,7 +412,6 @@ static bool TestASN1() {
 
 int main(void) {
   CRYPTO_library_init();
-  ERR_load_crypto_strings();
 
 #if defined(OPENSSL_WINDOWS)
   // Initialize Winsock.

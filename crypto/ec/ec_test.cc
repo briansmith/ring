@@ -328,7 +328,6 @@ static bool TestArbitraryCurve() {
 
 int main(void) {
   CRYPTO_library_init();
-  ERR_load_crypto_strings();
 
   if (!Testd2i_ECPrivateKey() ||
       !TestZeroPadding() ||

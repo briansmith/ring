@@ -810,7 +810,6 @@ static bool Testd2i_PrivateKey(void) {
 
 int main(void) {
   CRYPTO_library_init();
-  ERR_load_crypto_strings();
 
   if (!TestEVP_DigestSignInit()) {
     fprintf(stderr, "EVP_DigestSignInit failed\n");
