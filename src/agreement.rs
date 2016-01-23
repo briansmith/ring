@@ -16,7 +16,7 @@
 
 use core;
 use super::{c, digest, ecc};
-#[cfg(not(feature = "no_heap"))] use super::ffi;
+#[cfg(not(feature = "no_heap"))] use super::bssl;
 use super::input::Input;
 
 /// A key agreement algorithm.
@@ -246,7 +246,7 @@ nist_ecdh!(ECDH_P521, 521, "P-521 (secp256r1)", ecc::EC_GROUP_P521,
 
 #[cfg(not(feature = "no_heap"))]
 fn nist_ecdh_generate_key_pair(algorithm: &Algorithm) -> Result<KeyPairImpl, ()> {
-    let key = try!(ffi::map_bssl_ptr_result(unsafe {
+    let key = try!(bssl::map_ptr_result(unsafe {
         EC_KEY_generate_key_ex((algorithm.ec_group_fn)())
     }));
     Ok(KeyPairImpl::NIST { key: key })
@@ -275,7 +275,7 @@ fn nist_ecdh_agree(key_pair_impl: &KeyPairImpl, peer_public_key_alg: &Algorithm,
     match key_pair_impl {
         &KeyPairImpl::NIST { key } => {
             let mut shared_key_len = 0;
-            ffi::map_bssl_result(unsafe {
+            bssl::map_result(unsafe {
                 ECDH_compute_key_ex(shared_key.as_mut_ptr(),
                                     &mut shared_key_len, shared_key.len(),
                                     key, peer_public_key_alg.nid,

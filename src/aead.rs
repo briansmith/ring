@@ -24,7 +24,7 @@
 //! Go analog: [`crypto.cipher.AEAD`](https://golang.org/pkg/crypto/cipher/#AEAD)
 
 use core;
-use super::{c, ffi};
+use super::{c, bssl};
 
 /// A key for authenticating and decrypting (&ldquo;opening&rdquo;)
 /// AEAD-protected data.
@@ -205,7 +205,7 @@ impl Key {
             return Err(());
         }
 
-        ffi::map_bssl_result(unsafe {
+        bssl::map_result(unsafe {
             (self.algorithm.init)(
                     self.ctx_buf.as_mut_ptr(),
                     core::mem::size_of::<[u64; KEY_CTX_BUF_ELEMS]>(),

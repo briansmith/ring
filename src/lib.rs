@@ -38,6 +38,7 @@ extern crate std;
 
 pub mod aead;
 pub mod agreement;
+mod bssl;
 mod c;
 pub mod constant_time;
 
@@ -46,7 +47,6 @@ pub mod der;
 
 pub mod digest;
 mod ecc;
-mod ffi;
 pub mod hkdf;
 pub mod hmac;
 pub mod input;

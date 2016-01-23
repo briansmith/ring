@@ -36,7 +36,7 @@
 //! larger messages will be added later. Similarly, the signing interface is
 //! not available yet.
 
-use super::{c, ffi};
+use super::{c, bssl};
 #[cfg(not(feature = "no_heap"))] use super::{digest, ecc};
 use super::input::Input;
 
@@ -123,7 +123,7 @@ impl VerificationAlgorithmImpl for ECDSA {
         let digest = digest::digest(self.digest_alg, msg.as_slice_less_safe());
         let signature = signature.as_slice_less_safe();
         let public_key = public_key.as_slice_less_safe();
-        ffi::map_bssl_result(unsafe {
+        bssl::map_result(unsafe {
             ECDSA_verify_signed_digest((self.ec_group_fn)(),
                                        digest.algorithm().nid,
                                        digest.as_ref().as_ptr(),
@@ -226,7 +226,7 @@ fn ed25519_sign(private_key: &[u8], msg: &[u8], signature: &mut [u8])
     if private_key.len() != 64 || signature.len() != 64 {
         return Err(());
     }
-    ffi::map_bssl_result(unsafe {
+    bssl::map_result(unsafe {
         ED25519_sign(signature.as_mut_ptr(), msg.as_ptr(), msg.len(),
                      private_key.as_ptr())
     })
@@ -241,7 +241,7 @@ impl VerificationAlgorithmImpl for EdDSA {
         }
         let msg = msg.as_slice_less_safe();
         let signature = signature.as_slice_less_safe();
-        ffi::map_bssl_result(unsafe {
+        bssl::map_result(unsafe {
             ED25519_verify(msg.as_ptr(), msg.len(), signature.as_ptr(),
                            public_key.as_ptr())
         })
@@ -264,7 +264,7 @@ impl VerificationAlgorithmImpl for RSA_PKCS1 {
         let digest = digest::digest(self.digest_alg, msg.as_slice_less_safe());
         let signature = signature.as_slice_less_safe();
         let public_key = public_key.as_slice_less_safe();
-        ffi::map_bssl_result(unsafe {
+        bssl::map_result(unsafe {
             RSA_verify_pkcs1_signed_digest(self.min_bits, 8192,
                                            digest.algorithm().nid,
                                            digest.as_ref().as_ptr(),

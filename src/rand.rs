@@ -14,11 +14,11 @@
 
 //! Cryptographic psuedo-random number generation.
 
-use super::{c, ffi};
+use super::{c, bssl};
 
 /// Fills the given slice with random bytes generated from a PRNG.
 pub fn fill_secure_random(out: &mut [u8]) -> Result<(), ()> {
-    ffi::map_bssl_result(unsafe {
+    bssl::map_result(unsafe {
         RAND_bytes(out.as_mut_ptr(), out.len())
     })
 }
