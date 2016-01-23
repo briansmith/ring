@@ -415,13 +415,6 @@ BN_BLINDING *rsa_setup_blinding(RSA *rsa, BN_CTX *in_ctx) {
     ctx = in_ctx;
   }
 
-  BN_CTX_start(ctx);
-  e = BN_CTX_get(ctx);
-  if (e == NULL) {
-    OPENSSL_PUT_ERROR(RSA, ERR_R_MALLOC_FAILURE);
-    goto err;
-  }
-
   if (rsa->e == NULL) {
     e = rsa_get_public_exp(rsa->d, rsa->p, rsa->q, ctx);
     if (e == NULL) {
@@ -450,7 +443,6 @@ BN_BLINDING *rsa_setup_blinding(RSA *rsa, BN_CTX *in_ctx) {
   }
 
 err:
-  BN_CTX_end(ctx);
   if (in_ctx == NULL) {
     BN_CTX_free(ctx);
   }
