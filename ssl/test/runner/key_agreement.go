@@ -312,8 +312,7 @@ func (e *x25519ECDHCurve) computeSecret(peerKey []byte) (preMasterSecret []byte,
 	copy(peerKeyCopy[:], peerKey)
 	curve25519.ScalarMult(&out, &e.privateKey, &peerKeyCopy)
 
-	// Per draft-irtf-cfrg-curves-11, reject the all-zero value in constant
-	// time.
+	// Per RFC 7748, reject the all-zero value in constant time.
 	var zeros [32]byte
 	if subtle.ConstantTimeCompare(zeros[:], out[:]) == 1 {
 		return nil, errors.New("tls: X25519 value with wrong order")

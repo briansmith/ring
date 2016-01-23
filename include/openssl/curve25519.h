@@ -24,8 +24,7 @@ extern "C" {
 
 /* Curve25519.
  *
- * Curve25519 is an elliptic curve. See
- * https://tools.ietf.org/html/draft-irtf-cfrg-curves-11. */
+ * Curve25519 is an elliptic curve. See https://tools.ietf.org/html/rfc7748. */
 
 
 /* X25519.
@@ -33,7 +32,7 @@ extern "C" {
  * Curve25519 is an elliptic curve. The same name is also sometimes used for
  * the Diffie-Hellman primitive built from it but “X25519” is a more precise
  * name for that, which is the one used here. See http://cr.yp.to/ecdh.html and
- * https://tools.ietf.org/html/draft-irtf-cfrg-curves-11. */
+ * https://tools.ietf.org/html/rfc7748. */
 
 /* X25519_keypair sets |out_public_value| and |out_private_key| to a freshly
  * generated, public–private key pair. */
