@@ -130,6 +130,23 @@ BoringSSL's `BN_bn2hex` function uses lowercase hexadecimal digits instead of
 uppercase. Some code may require changes to avoid being sensitive to this
 difference.
 
+### Legacy ASN.1 functions
+
+OpenSSL's ASN.1 stack uses `d2i` functions for parsing. They have the form:
+
+    RSA *d2i_RSAPrivateKey(RSA **out, const uint8_t **inp, long len);
+
+In addition to returning the result, OpenSSL places it in `*out` if `out` is
+not `NULL`. On input, if `*out` is not `NULL`, OpenSSL will usually (but not
+always) reuse that object rather than allocating a new one. In BoringSSL, these
+functions are compatibility wrappers over a newer ASN.1 stack. Even if `*out`
+is not `NULL`, these wrappers will always allocate a new object and free the
+previous one.
+
+Ensure that callers do not rely on this object reuse behavior. It is
+recommended to avoid the `out` parameter completely and always pass in `NULL`.
+Note that less error-prone APIs are available for BoringSSL-specific code (see
+below).
 
 ## Optional BoringSSL-specific simplifications
 
@@ -162,3 +179,9 @@ locks. Without initializing these, the library is not thread-safe. Configuring
 these does nothing in BoringSSL. Instead, BoringSSL calls pthreads and the
 corresponding Windows APIs internally and is always thread-safe where the API
 guarantees it.
+
+### ASN.1
+
+BoringSSL is in the process of deprecating OpenSSL's `d2i` and `i2d` in favor of
+new functions using the much less error-prone `CBS` and `CBB` types.
+BoringSSL-only code should use those functions where available.
