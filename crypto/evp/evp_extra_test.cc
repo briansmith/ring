@@ -15,6 +15,7 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include <utility>
 #include <vector>
@@ -658,6 +659,84 @@ static bool TestEVP_DigestVerifyInitFromAlgorithm(void) {
   return true;
 }
 
+static bool TestVerifyRecover() {
+  ScopedEVP_PKEY pkey = LoadExampleRSAKey();
+  if (!pkey) {
+    return false;
+  }
+
+  ScopedRSA rsa(EVP_PKEY_get1_RSA(pkey.get()));
+  if (!rsa) {
+    return false;
+  }
+
+  const uint8_t kDummyHash[32] = {0};
+  uint8_t sig[2048/8];
+  unsigned sig_len = sizeof(sig);
+
+  if (!RSA_sign(NID_sha256, kDummyHash, sizeof(kDummyHash), sig, &sig_len,
+                rsa.get())) {
+    fprintf(stderr, "RSA_sign failed.\n");
+    ERR_print_errors_fp(stderr);
+    return false;
+  }
+
+  size_t out_len;
+  ScopedEVP_PKEY_CTX ctx(EVP_PKEY_CTX_new(pkey.get(), nullptr));
+  if (!EVP_PKEY_verify_recover_init(ctx.get()) ||
+      !EVP_PKEY_CTX_set_rsa_padding(ctx.get(), RSA_PKCS1_PADDING) ||
+      !EVP_PKEY_CTX_set_signature_md(ctx.get(), EVP_sha256()) ||
+      !EVP_PKEY_verify_recover(ctx.get(), nullptr, &out_len, sig, sig_len)) {
+    fprintf(stderr, "verify_recover failed will nullptr buffer.\n");
+    ERR_print_errors_fp(stderr);
+    return false;
+  }
+
+  std::vector<uint8_t> recovered;
+  recovered.resize(out_len);
+
+  if (!EVP_PKEY_verify_recover(ctx.get(), recovered.data(), &out_len, sig,
+                               sig_len)) {
+    fprintf(stderr, "verify_recover failed.\n");
+    ERR_print_errors_fp(stderr);
+    return false;
+  }
+
+  if (out_len != sizeof(kDummyHash)) {
+    fprintf(stderr, "verify_recover length is %u, expected %u.\n",
+            static_cast<unsigned>(out_len),
+            static_cast<unsigned>(sizeof(kDummyHash)));
+    return false;
+  }
+
+  if (memcmp(recovered.data(), kDummyHash, sizeof(kDummyHash)) != 0) {
+    fprintf(stderr, "verify_recover got wrong value.\n");
+    ERR_print_errors_fp(stderr);
+    return false;
+  }
+
+  out_len = recovered.size();
+  if (!EVP_PKEY_CTX_set_signature_md(ctx.get(), nullptr) ||
+      !EVP_PKEY_verify_recover(ctx.get(), recovered.data(), &out_len, sig,
+                               sig_len)) {
+    fprintf(stderr, "verify_recover failed with NULL MD.\n");
+    ERR_print_errors_fp(stderr);
+    return false;
+  }
+
+  /* The size of a SHA-256 hash plus PKCS#1 v1.5 ASN.1 stuff happens to be 51
+   * bytes. */
+  static const size_t kExpectedASN1Size = 51;
+  if (out_len != kExpectedASN1Size) {
+    fprintf(stderr, "verify_recover length without MD is %u, expected %u.\n",
+            static_cast<unsigned>(out_len),
+            static_cast<unsigned>(kExpectedASN1Size));
+    return false;
+  }
+
+  return true;
+}
+
 static bool TestBadPSSParameters(void) {
   CBS in, tbs_cert, signature;
   ScopedEVP_PKEY pkey;
@@ -831,6 +910,12 @@ int main(void) {
 
   if (!TestEVP_DigestVerifyInitFromAlgorithm()) {
     fprintf(stderr, "EVP_DigestVerifyInitFromAlgorithm failed\n");
+    ERR_print_errors_fp(stderr);
+    return 1;
+  }
+
+  if (!TestVerifyRecover()) {
+    fprintf(stderr, "EVP_PKEY_verify_recover failed\n");
     ERR_print_errors_fp(stderr);
     return 1;
   }

@@ -2704,15 +2704,17 @@ OPENSSL_EXPORT void SSL_set_max_cert_list(SSL *ssl, size_t max_cert_list);
 
 /* SSL_CTX_set_max_send_fragment sets the maximum length, in bytes, of records
  * sent by |ctx|. Beyond this length, handshake messages and application data
- * will be split into multiple records. */
-OPENSSL_EXPORT void SSL_CTX_set_max_send_fragment(SSL_CTX *ctx,
-                                                  size_t max_send_fragment);
+ * will be split into multiple records. It returns one on success or zero on
+ * error. */
+OPENSSL_EXPORT int SSL_CTX_set_max_send_fragment(SSL_CTX *ctx,
+                                                 size_t max_send_fragment);
 
-/* SSL_set_max_send_fragment sets the maximum length, in bytes, of records
- * sent by |ssl|. Beyond this length, handshake messages and application data
- * will be split into multiple records. */
-OPENSSL_EXPORT void SSL_set_max_send_fragment(SSL *ssl,
-                                              size_t max_send_fragment);
+/* SSL_set_max_send_fragment sets the maximum length, in bytes, of records sent
+ * by |ssl|. Beyond this length, handshake messages and application data will
+ * be split into multiple records. It returns one on success or zero on
+ * error. */
+OPENSSL_EXPORT int SSL_set_max_send_fragment(SSL *ssl,
+                                             size_t max_send_fragment);
 
 /* ssl_early_callback_ctx is passed to certain callbacks that are called very
  * early on during the server handshake. At this point, much of the SSL* hasn't
@@ -3732,6 +3734,11 @@ struct ssl_ctx_st {
    * means that we'll accept Channel IDs from clients. For a client, means that
    * we'll advertise support. */
   unsigned tlsext_channel_id_enabled:1;
+
+  /* extra_certs is a dummy value included for compatibility.
+   * TODO(agl): remove once node.js no longer references this. */
+  STACK_OF(X509)* extra_certs;
+  int freelist_max_len;
 };
 
 struct ssl_st {
@@ -3914,6 +3921,9 @@ struct ssl_st {
    * means that we'll accept Channel IDs from clients. For a client, means that
    * we'll advertise support. */
   unsigned tlsext_channel_id_enabled:1;
+
+  /* TODO(agl): remove once node.js not longer references this. */
+  int tlsext_status_type;
 };
 
 typedef struct ssl3_record_st {
@@ -4177,6 +4187,14 @@ OPENSSL_EXPORT int SSL_set_session_ticket_ext(SSL *s, void *ext_data,
 OPENSSL_EXPORT int SSL_set_session_secret_cb(SSL *s, void *cb, void *arg);
 OPENSSL_EXPORT int SSL_set_session_ticket_ext_cb(SSL *s, void *cb, void *arg);
 OPENSSL_EXPORT int SSL_set_ssl_method(SSL *s, const SSL_METHOD *method);
+
+
+/* Nodejs compatibility section (hidden).
+ *
+ * These defines exist for node.js, with the hope that we can eliminate the
+ * need for them over time. */
+#define SSLerr(function, reason) \
+  ERR_put_error(ERR_LIB_SSL, 0, reason, __FILE__, __LINE__)
 
 
 /* Preprocessor compatibility section (hidden).

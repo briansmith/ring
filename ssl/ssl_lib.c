@@ -1180,7 +1180,7 @@ void SSL_set_max_cert_list(SSL *ssl, size_t max_cert_list) {
   ssl->max_cert_list = (uint32_t)max_cert_list;
 }
 
-void SSL_CTX_set_max_send_fragment(SSL_CTX *ctx, size_t max_send_fragment) {
+int SSL_CTX_set_max_send_fragment(SSL_CTX *ctx, size_t max_send_fragment) {
   if (max_send_fragment < 512) {
     max_send_fragment = 512;
   }
@@ -1188,9 +1188,11 @@ void SSL_CTX_set_max_send_fragment(SSL_CTX *ctx, size_t max_send_fragment) {
     max_send_fragment = SSL3_RT_MAX_PLAIN_LENGTH;
   }
   ctx->max_send_fragment = (uint16_t)max_send_fragment;
+
+  return 1;
 }
 
-void SSL_set_max_send_fragment(SSL *ssl, size_t max_send_fragment) {
+int SSL_set_max_send_fragment(SSL *ssl, size_t max_send_fragment) {
   if (max_send_fragment < 512) {
     max_send_fragment = 512;
   }
@@ -1198,6 +1200,8 @@ void SSL_set_max_send_fragment(SSL *ssl, size_t max_send_fragment) {
     max_send_fragment = SSL3_RT_MAX_PLAIN_LENGTH;
   }
   ssl->max_send_fragment = (uint16_t)max_send_fragment;
+
+  return 1;
 }
 
 int SSL_set_mtu(SSL *ssl, unsigned mtu) {

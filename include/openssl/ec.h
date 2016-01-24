@@ -81,14 +81,24 @@ extern "C" {
 typedef struct ec_group_st EC_GROUP;
 typedef struct ec_point_st EC_POINT;
 
-/** Enum for the point conversion form as defined in X9.62 (ECDSA)
- *  for the encoding of a elliptic curve point (x,y) */
+/* point_conversion_form_t enumerates forms, as defined in X9.62 (ECDSA), for
+ * the encoding of a elliptic curve point (x,y) */
 typedef enum {
-	/** the point is encoded as z||x, where the octet z specifies 
-	 *  which solution of the quadratic equation y is  */
-	POINT_CONVERSION_COMPRESSED = 2,
-	/** the point is encoded as z||x||y, where z is the octet 0x04  */
-	POINT_CONVERSION_UNCOMPRESSED = 4
+  /* POINT_CONVERSION_COMPRESSED indicates that the point is encoded as z||x,
+   * where the octet z specifies which solution of the quadratic equation y
+   * is. */
+  POINT_CONVERSION_COMPRESSED = 2,
+
+  /* POINT_CONVERSION_COMPRESSED indicates that the point is encoded as
+   * z||x||y, where z is the octet 0x04. */
+  POINT_CONVERSION_UNCOMPRESSED = 4,
+
+  /* POINT_CONVERSION_HYBRID indicates that the point is encoded as z||x||y,
+   * where z specifies which solution of the quadratic equation y is. This is
+   * not supported by the code and has never been observed in use.
+   *
+   * TODO(agl): remove once node.js no longer references this. */
+  POINT_CONVERSION_HYBRID = 6,
 } point_conversion_form_t;
 
 
@@ -306,6 +316,19 @@ OPENSSL_EXPORT int EC_METHOD_get_field_type(const EC_METHOD *meth);
 OPENSSL_EXPORT void EC_GROUP_set_point_conversion_form(
     EC_GROUP *group, point_conversion_form_t form);
 
+/* EC_builtin_curve describes a supported elliptic curve. */
+typedef struct {
+  int nid;
+  const char *comment;
+} EC_builtin_curve;
+
+/* EC_get_builtin_curves writes at most |max_num_curves| elements to
+ * |out_curves| and returns the total number that it would have written, had
+ * |max_num_curves| been large enough.
+ *
+ * The |EC_builtin_curve| items describe the supported elliptic curves. */
+OPENSSL_EXPORT size_t EC_get_builtin_curves(EC_builtin_curve *out_curves,
+                                            size_t max_num_curves);
 
 /* Old code expects to get EC_KEY from ec.h. */
 #include <openssl/ec_key.h>

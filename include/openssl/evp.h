@@ -511,6 +511,34 @@ OPENSSL_EXPORT int EVP_PKEY_decrypt(EVP_PKEY_CTX *ctx, uint8_t *out,
                                     size_t *out_len, const uint8_t *in,
                                     size_t in_len);
 
+/* EVP_PKEY_verify_recover_init initialises an |EVP_PKEY_CTX| for a public-key
+ * decryption operation. It should be called before |EVP_PKEY_verify_recover|.
+ *
+ * Public-key decryption is a very obscure operation that is only implemented
+ * by RSA keys. It is effectively a signature verification operation that
+ * returns the signed message directly. It is almost certainly not what you
+ * want.
+ *
+ * It returns one on success or zero on error. */
+OPENSSL_EXPORT int EVP_PKEY_verify_recover_init(EVP_PKEY_CTX *ctx);
+
+/* EVP_PKEY_verify_recover decrypts |sig_len| bytes from |sig|. If |out| is
+ * NULL, the maximum size of the plaintext is written to |out_len|. Otherwise,
+ * |*out_len| must contain the number of bytes of space available at |out|. If
+ * sufficient, the ciphertext will be written to |out| and |*out_len| updated
+ * with the true length.
+ *
+ * WARNING: Setting |out| to NULL only gives the maximum size of the
+ * plaintext. The actual plaintext may be smaller.
+ *
+ * See the warning about this operation in |EVP_PKEY_verify_recover_init|. It
+ * is probably not what you want.
+ *
+ * It returns one on success or zero on error. */
+OPENSSL_EXPORT int EVP_PKEY_verify_recover(EVP_PKEY_CTX *ctx, uint8_t *out,
+                                           size_t *out_len, const uint8_t *sig,
+                                           size_t siglen);
+
 /* EVP_PKEY_derive_init initialises an |EVP_PKEY_CTX| for a key derivation
  * operation. It should be called before |EVP_PKEY_derive_set_peer| and
  * |EVP_PKEY_derive|.
@@ -659,6 +687,16 @@ OPENSSL_EXPORT void OpenSSL_add_all_digests(void);
 /* EVP_cleanup does nothing. */
 OPENSSL_EXPORT void EVP_cleanup(void);
 
+OPENSSL_EXPORT void EVP_CIPHER_do_all_sorted(
+    void (*callback)(const EVP_CIPHER *cipher, const char *name,
+                     const char *unused, void *arg),
+    void *arg);
+
+OPENSSL_EXPORT void EVP_MD_do_all_sorted(void (*callback)(const EVP_MD *cipher,
+                                                          const char *name,
+                                                          const char *unused,
+                                                          void *arg),
+                                         void *arg);
 
 /* Private functions */
 

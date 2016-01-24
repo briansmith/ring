@@ -342,6 +342,35 @@ int EVP_PKEY_decrypt(EVP_PKEY_CTX *ctx, uint8_t *out, size_t *outlen,
   return ctx->pmeth->decrypt(ctx, out, outlen, in, inlen);
 }
 
+int EVP_PKEY_verify_recover_init(EVP_PKEY_CTX *ctx) {
+  if (!ctx || !ctx->pmeth || !ctx->pmeth->verify_recover) {
+    OPENSSL_PUT_ERROR(EVP, EVP_R_OPERATION_NOT_SUPPORTED_FOR_THIS_KEYTYPE);
+    return 0;
+  }
+  ctx->operation = EVP_PKEY_OP_VERIFYRECOVER;
+  if (!ctx->pmeth->verify_recover_init) {
+    return 1;
+  }
+  if (!ctx->pmeth->verify_recover_init(ctx)) {
+    ctx->operation = EVP_PKEY_OP_UNDEFINED;
+    return 0;
+  }
+  return 1;
+}
+
+int EVP_PKEY_verify_recover(EVP_PKEY_CTX *ctx, uint8_t *out, size_t *out_len,
+                            const uint8_t *sig, size_t sig_len) {
+  if (!ctx || !ctx->pmeth || !ctx->pmeth->verify_recover) {
+    OPENSSL_PUT_ERROR(EVP, EVP_R_OPERATION_NOT_SUPPORTED_FOR_THIS_KEYTYPE);
+    return 0;
+  }
+  if (ctx->operation != EVP_PKEY_OP_VERIFYRECOVER) {
+    OPENSSL_PUT_ERROR(EVP, EVP_R_OPERATON_NOT_INITIALIZED);
+    return 0;
+  }
+  return ctx->pmeth->verify_recover(ctx, out, out_len, sig, sig_len);
+}
+
 int EVP_PKEY_derive_init(EVP_PKEY_CTX *ctx) {
   if (!ctx || !ctx->pmeth || !ctx->pmeth->derive) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_OPERATION_NOT_SUPPORTED_FOR_THIS_KEYTYPE);

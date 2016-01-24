@@ -1144,6 +1144,7 @@ static int ext_sigalgs_add_serverhello(SSL *ssl, CBB *out) {
 
 static void ext_ocsp_init(SSL *ssl) {
   ssl->s3->tmp.certificate_status_expected = 0;
+  ssl->tlsext_status_type = -1;
 }
 
 static int ext_ocsp_add_clienthello(SSL *ssl, CBB *out) {
@@ -1161,6 +1162,7 @@ static int ext_ocsp_add_clienthello(SSL *ssl, CBB *out) {
     return 0;
   }
 
+  ssl->tlsext_status_type = TLSEXT_STATUSTYPE_ocsp;
   return 1;
 }
 

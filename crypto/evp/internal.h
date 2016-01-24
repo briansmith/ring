@@ -249,6 +249,10 @@ struct evp_pkey_method_st {
   int (*verify)(EVP_PKEY_CTX *ctx, const uint8_t *sig, size_t siglen,
                 const uint8_t *tbs, size_t tbslen);
 
+  int (*verify_recover_init)(EVP_PKEY_CTX *ctx);
+  int (*verify_recover)(EVP_PKEY_CTX *ctx, uint8_t *out, size_t *out_len,
+                        const uint8_t *sig, size_t sig_len);
+
   int (*encrypt_init)(EVP_PKEY_CTX *ctx);
   int (*encrypt)(EVP_PKEY_CTX *ctx, uint8_t *out, size_t *outlen,
                  const uint8_t *in, size_t inlen);
