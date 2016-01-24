@@ -75,10 +75,6 @@ extern "C" {
   }
 #endif
 
-#define MAXKC (256 / 32)
-#define MAXKB (256 / 8)
-#define MAXNR 14
-
 
 #if defined(__cplusplus)
 } /* extern C */
