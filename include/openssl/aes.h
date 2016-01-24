@@ -102,18 +102,6 @@ OPENSSL_EXPORT void AES_decrypt(const uint8_t *in, uint8_t *out,
                                 const AES_KEY *key);
 
 
-/* Block cipher modes. */
-
-/* AES_ctr128_encrypt encrypts (or decrypts, it's the same in CTR mode) |len|
- * bytes from |in| to |out|. The |num| parameter must be set to zero on the
- * first call and |ivec| will be incremented. */
-OPENSSL_EXPORT void AES_ctr128_encrypt(const uint8_t *in, uint8_t *out,
-                                       size_t len, const AES_KEY *key,
-                                       uint8_t ivec[AES_BLOCK_SIZE],
-                                       uint8_t ecount_buf[AES_BLOCK_SIZE],
-                                       unsigned int *num);
-
-
 #if defined(__cplusplus)
 }  /* extern C */
 #endif

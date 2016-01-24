@@ -180,18 +180,6 @@ int crypto_gcm_clmul_enabled(void);
 typedef void (*ctr128_f)(const uint8_t *in, uint8_t *out, size_t blocks,
                          const void *key, const uint8_t ivec[16]);
 
-/* CRYPTO_ctr128_encrypt encrypts (or decrypts, it's the same in CTR mode)
- * |len| bytes from |in| to |out| using |block| in counter mode. There's no
- * requirement that |len| be a multiple of any value and any partial blocks are
- * stored in |ecount_buf| and |*num|, which must be zeroed before the initial
- * call. The counter is a 128-bit, big-endian value in |ivec| and is
- * incremented by this function. */
-void CRYPTO_ctr128_encrypt(const uint8_t *in, uint8_t *out, size_t len,
-                           const void *key, uint8_t ivec[16],
-                           uint8_t ecount_buf[16], unsigned int *num,
-                           block128_f block);
-
-
 /* GCM.
  *
  * This API differs from the OpenSSL API slightly. The |GCM128_CONTEXT| does

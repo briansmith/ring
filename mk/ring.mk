@@ -20,7 +20,6 @@ RING_LDLIBS = $(RING_THREAD_FLAGS) -L$(dir $(RING_LIB)) -lring-core
 
 RING_SRCS = $(addprefix $(RING_PREFIX), \
   crypto/aes/aes.c \
-  crypto/aes/mode_wrappers.c \
   crypto/bn/add.c \
   crypto/bn/asm/x86_64-gcc.c \
   crypto/bn/bn.c \
@@ -62,7 +61,6 @@ RING_SRCS = $(addprefix $(RING_PREFIX), \
   crypto/ecdsa/ecdsa.c \
   crypto/ecdsa/ecdsa_asn1.c \
   crypto/mem.c \
-  crypto/modes/ctr.c \
   crypto/modes/gcm.c \
   crypto/poly1305/poly1305.c \
   crypto/poly1305/poly1305_arm.c \
