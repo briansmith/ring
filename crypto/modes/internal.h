@@ -191,15 +191,6 @@ void CRYPTO_ctr128_encrypt(const uint8_t *in, uint8_t *out, size_t len,
                            uint8_t ecount_buf[16], unsigned int *num,
                            block128_f block);
 
-/* CRYPTO_ctr128_encrypt_ctr32 acts like |CRYPTO_ctr128_encrypt| but takes
- * |ctr|, a function that performs CTR mode but only deals with the lower 32
- * bits of the counter. This is useful when |ctr| can be an optimised
- * function. */
-void CRYPTO_ctr128_encrypt_ctr32(const uint8_t *in, uint8_t *out, size_t len,
-                                 const void *key, uint8_t ivec[16],
-                                 uint8_t ecount_buf[16], unsigned int *num,
-                                 ctr128_f ctr);
-
 
 /* GCM.
  *
