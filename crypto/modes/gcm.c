@@ -148,10 +148,6 @@ static void gcm_gmult_4bit(uint64_t Xi[2], const u128 Htable[16]) {
   u128 Z;
   int cnt = 15;
   size_t rem, nlo, nhi;
-  const union {
-    long one;
-    char little;
-  } is_endian = {1};
 
   nlo = ((const uint8_t *)Xi)[15];
   nhi = nlo >> 4;
@@ -208,10 +204,6 @@ static void gcm_ghash_4bit(uint64_t Xi[2], const u128 Htable[16], const uint8_t 
   u128 Z;
   int cnt;
   size_t rem, nlo, nhi;
-  const union {
-    long one;
-    char little;
-  } is_endian = {1};
 
   do {
     cnt = 15;
