@@ -113,7 +113,6 @@
 #include <openssl/bn.h>
 #include <openssl/mem.h>
 #include <openssl/err.h>
-#include <openssl/thread.h>
 
 #include "internal.h"
 
@@ -126,7 +125,6 @@ struct bn_blinding_st {
   BIGNUM *e;
   BIGNUM *mod; /* just a reference */
   int counter;
-  unsigned long flags;
   /* mont is the Montgomery context used for this |BN_BLINDING|. It is not
    * owned and must outlive this structure. */
   const BN_MONT_CTX *mont;
@@ -200,13 +198,12 @@ int BN_BLINDING_update(BN_BLINDING *b, BN_CTX *ctx) {
     b->counter = 0;
   }
 
-  if (++b->counter == BN_BLINDING_COUNTER && b->e != NULL &&
-      !(b->flags & BN_BLINDING_NO_RECREATE)) {
+  if (++b->counter == BN_BLINDING_COUNTER && b->e != NULL) {
     /* re-create blinding parameters */
     if (!BN_BLINDING_create_param(b, NULL, NULL, ctx, NULL, NULL)) {
       goto err;
     }
-  } else if (!(b->flags & BN_BLINDING_NO_UPDATE)) {
+  } else {
     if (!BN_mod_mul(b->A, b->A, b->A, b->mod, ctx)) {
       goto err;
     }
@@ -225,10 +222,6 @@ err:
 }
 
 int BN_BLINDING_convert(BIGNUM *n, BN_BLINDING *b, BN_CTX *ctx) {
-  return BN_BLINDING_convert_ex(n, NULL, b, ctx);
-}
-
-int BN_BLINDING_convert_ex(BIGNUM *n, BIGNUM *r, BN_BLINDING *b, BN_CTX *ctx) {
   int ret = 1;
 
   if (b->A == NULL || b->Ai == NULL) {
@@ -243,12 +236,6 @@ int BN_BLINDING_convert_ex(BIGNUM *n, BIGNUM *r, BN_BLINDING *b, BN_CTX *ctx) {
     return 0;
   }
 
-  if (r != NULL) {
-    if (!BN_copy(r, b->Ai)) {
-      ret = 0;
-    }
-  }
-
   if (!BN_mod_mul(n, n, b->A, b->mod, ctx)) {
     ret = 0;
   }
@@ -256,31 +243,12 @@ int BN_BLINDING_convert_ex(BIGNUM *n, BIGNUM *r, BN_BLINDING *b, BN_CTX *ctx) {
   return ret;
 }
 
-int BN_BLINDING_invert(BIGNUM *n, BN_BLINDING *b, BN_CTX *ctx) {
-  return BN_BLINDING_invert_ex(n, NULL, b, ctx);
-}
-
-int BN_BLINDING_invert_ex(BIGNUM *n, const BIGNUM *r, BN_BLINDING *b,
-                          BN_CTX *ctx) {
-  int ret;
-
-  if (r != NULL) {
-    ret = BN_mod_mul(n, n, r, b->mod, ctx);
-  } else {
-    if (b->Ai == NULL) {
-      OPENSSL_PUT_ERROR(RSA, RSA_R_BN_NOT_INITIALIZED);
-      return 0;
-    }
-    ret = BN_mod_mul(n, n, b->Ai, b->mod, ctx);
+int BN_BLINDING_invert(BIGNUM *n, const BN_BLINDING *b, BN_CTX *ctx) {
+  if (b->Ai == NULL) {
+    OPENSSL_PUT_ERROR(RSA, RSA_R_BN_NOT_INITIALIZED);
+    return 0;
   }
-
-  return ret;
-}
-
-unsigned long BN_BLINDING_get_flags(const BN_BLINDING *b) { return b->flags; }
-
-void BN_BLINDING_set_flags(BN_BLINDING *b, unsigned long flags) {
-  b->flags = flags;
+  return BN_mod_mul(n, n, b->Ai, b->mod, ctx);
 }
 
 BN_BLINDING *BN_BLINDING_create_param(
