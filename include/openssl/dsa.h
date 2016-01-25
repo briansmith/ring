@@ -128,7 +128,7 @@ OPENSSL_EXPORT int DSA_generate_key(DSA *dsa);
 
 /* Signatures. */
 
-/* DSA_SIG contains a DSA signature as a pair of integers. */
+/* DSA_SIG_st (aka |DSA_SIG|) contains a DSA signature as a pair of integers. */
 typedef struct DSA_SIG_st {
   BIGNUM *r, *s;
 } DSA_SIG;

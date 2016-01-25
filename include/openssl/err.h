@@ -368,7 +368,7 @@ struct err_error_st {
 /* ERR_NUM_ERRORS is the limit of the number of errors in the queue. */
 #define ERR_NUM_ERRORS 16
 
-/* ERR_STATE contains the per-thread, error queue. */
+/* err_state_st (aka |ERR_STATE|) contains the per-thread, error queue. */
 typedef struct err_state_st {
   /* errors contains the ERR_NUM_ERRORS most recent errors, organised as a ring
    * buffer. */

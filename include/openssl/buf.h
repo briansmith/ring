@@ -67,7 +67,7 @@ extern "C" {
 /* Memory and string functions, see also mem.h. */
 
 
-/* BUF_MEM is a generic buffer object used by OpenSSL. */
+/* buf_mem_st (aka |BUF_MEM|) is a generic buffer object used by OpenSSL. */
 struct buf_mem_st {
   size_t length; /* current number of bytes */
   char *data;

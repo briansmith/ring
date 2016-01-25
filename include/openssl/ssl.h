@@ -2359,8 +2359,8 @@ OPENSSL_EXPORT void (*SSL_CTX_get_channel_id_cb(SSL_CTX *ctx))(
  *
  * See RFC 5764. */
 
-/* An SRTP_PROTECTION_PROFILE is an SRTP profile for use with the use_srtp
- * extension. */
+/* srtp_protection_profile_st (aka |SRTP_PROTECTION_PROFILE|) is an SRTP
+ * profile for use with the use_srtp extension. */
 struct srtp_protection_profile_st {
   const char *name;
   unsigned long id;
@@ -3487,6 +3487,8 @@ struct ssl_cipher_preference_list_st {
   uint8_t *in_group_flags;
 };
 
+/* ssl_ctx_st (aka |SSL_CTX|) contains configuration common to several SSL
+ * connections. */
 struct ssl_ctx_st {
   const SSL_PROTOCOL_METHOD *method;
 
