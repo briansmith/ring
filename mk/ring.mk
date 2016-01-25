@@ -47,6 +47,7 @@ RING_SRCS = $(addprefix $(RING_PREFIX), \
   crypto/cpu-intel.c \
   crypto/crypto.c \
   crypto/curve25519/curve25519.c \
+  crypto/curve25519/x25519-x86_64.c \
   crypto/ec/ec.c \
   crypto/ec/ec_curves.c \
   crypto/ec/ec_key.c \
@@ -100,6 +101,7 @@ RING_x86_64_SRCS = $(addprefix $(RING_PREFIX), \
   crypto/bn/asm/rsaz-avx2.pl \
   crypto/bn/asm/x86_64-mont.pl \
   crypto/bn/asm/x86_64-mont5.pl \
+  crypto/curve25519/asm/x25519-asm-x86_64.S \
   crypto/ec/asm/p256-x86_64-asm.pl \
   crypto/modes/asm/aesni-gcm-x86_64.pl \
   crypto/modes/asm/ghash-x86_64.pl \
@@ -111,6 +113,7 @@ RING_x86_64_SRCS = $(addprefix $(RING_PREFIX), \
 RING_ARM_SHARED_SRCS = \
   crypto/aes/asm/aesv8-armx.pl \
   crypto/cpu-arm-asm.S \
+  crypto/curve25519/asm/x25519-arm.S \
   $(NULL)
 
 RING_arm_SRCS = $(addprefix $(RING_PREFIX), \
