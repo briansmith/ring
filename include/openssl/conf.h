@@ -152,6 +152,9 @@ OPENSSL_EXPORT int CONF_modules_load_file(CONF_MUST_BE_NULL *filename,
 /* CONF_modules_free does nothing. */
 OPENSSL_EXPORT void CONF_modules_free(void);
 
+/* OPENSSL_config does nothing. */
+OPENSSL_EXPORT void OPENSSL_config(CONF_MUST_BE_NULL *config_name);
+
 
 #if defined(__cplusplus)
 }  /* extern C */
