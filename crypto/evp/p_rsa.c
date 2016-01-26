@@ -278,8 +278,8 @@ static int pkey_rsa_verify_recover(EVP_PKEY_CTX *ctx, uint8_t *out,
   }
 
   if (rctx->md == NULL) {
-    const size_t ret = RSA_public_decrypt(sig_len, sig, rctx->tbuf,
-                                          ctx->pkey->pkey.rsa, rctx->pad_mode);
+    const int ret = RSA_public_decrypt(sig_len, sig, rctx->tbuf,
+                                       ctx->pkey->pkey.rsa, rctx->pad_mode);
     if (ret < 0) {
       return 0;
     }
