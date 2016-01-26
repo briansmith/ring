@@ -60,6 +60,9 @@ OPENSSL_EXPORT int CRYPTO_malloc_init(void);
 /* ENGINE_load_builtin_engines does nothing. */
 OPENSSL_EXPORT void ENGINE_load_builtin_engines(void);
 
+/* OPENSSL_load_builtin_modules does nothing. */
+OPENSSL_EXPORT void OPENSSL_load_builtin_modules(void);
+
 
 #if defined(__cplusplus)
 }  /* extern C */

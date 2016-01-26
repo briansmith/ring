@@ -209,6 +209,8 @@ int RAND_load_file(const char *path, long num) {
   }
 }
 
+const char *RAND_file_name(char *buf, size_t num) { return NULL; }
+
 void RAND_add(const void *buf, int num, double entropy) {}
 
 int RAND_egd(const char *path) {
