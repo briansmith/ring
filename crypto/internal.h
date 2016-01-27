@@ -488,8 +488,7 @@ extern void SHA512_5(uint8_t *out, size_t out_len,
 
 /* from_be_u32_ptr returns the 32-bit big-endian-encoded value at |data|. */
 static inline uint32_t from_be_u32_ptr(const uint8_t *data) {
-#if STRICT_ALIGNMENT == 0 && OPENSSL_ENDIAN == OPENSSL_LITTLE_ENDIAN && \
-    defined(bswap_u32)
+#if STRICT_ALIGNMENT == 0 && OPENSSL_ENDIAN == OPENSSL_LITTLE_ENDIAN
   return bswap_u32(*(const uint32_t *)data);
 #elif STRICT_ALIGNMENT == 0 && OPENSSL_ENDIAN == OPENSSL_BIG_ENDIAN
   return *(const uint32_t *)data;
@@ -505,8 +504,7 @@ static inline uint32_t from_be_u32_ptr(const uint8_t *data) {
 /* to_be_u32_ptr writes the value |x| to the location |out| in big-endian
    order. */
 static inline void to_be_u32_ptr(uint8_t *out, uint32_t x) {
-#if STRICT_ALIGNMENT == 0 && OPENSSL_ENDIAN == OPENSSL_LITTLE_ENDIAN && \
-    defined(bswap_u32)
+#if STRICT_ALIGNMENT == 0 && OPENSSL_ENDIAN == OPENSSL_LITTLE_ENDIAN
   *(uint32_t *)out = bswap_u32(x);
 #elif STRICT_ALIGNMENT == 0 && OPENSSL_ENDIAN == OPENSSL_BIG_ENDIAN
   *(uint32_t *)out = x;
@@ -521,19 +519,10 @@ static inline void to_be_u32_ptr(uint8_t *out, uint32_t x) {
 /* from_be_u64 returns the native representation of the 64-bit
  * big-endian-encoded value |x|. */
 static inline uint64_t from_be_u64(const uint64_t x) {
-#if OPENSSL_ENDIAN == OPENSSL_LITTLE_ENDIAN && defined(bswap_u64)
+#if OPENSSL_ENDIAN == OPENSSL_LITTLE_ENDIAN
   return bswap_u64(x);
 #elif OPENSSL_ENDIAN == OPENSSL_BIG_ENDIAN
   return x;
-#else
-  return ((uint64_t)x[0] << 56) |
-         ((uint64_t)x[1] << 48) |
-         ((uint64_t)x[2] << 40) |
-         ((uint64_t)x[3] << 32) |
-         ((uint64_t)x[4] << 24) |
-         ((uint64_t)x[5] << 16) |
-         ((uint64_t)x[6] << 8) |
-         ((uint64_t)x[7]);
 #endif
 }
 
