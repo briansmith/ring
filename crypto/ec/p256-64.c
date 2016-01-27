@@ -32,13 +32,12 @@
 #include <string.h>
 
 #include "internal.h"
+#include "../internal.h"
 
 
 typedef uint8_t u8;
 typedef uint64_t u64;
 typedef int64_t s64;
-typedef __uint128_t uint128_t;
-typedef __int128_t int128_t;
 
 /* The underlying field. P256 operates over GF(2^256-2^224+2^192+2^96-1). We
  * can serialise an element of this field into 32 bytes. We call this an

@@ -34,7 +34,6 @@
 #define U64TO8_LE(m, v) (*(uint64_t *)(m)) = v
 
 typedef __m128i xmmi;
-typedef unsigned __int128 uint128_t;
 
 static const alignas(16) uint32_t poly1305_x64_sse2_message_mask[4] = {
     (1 << 26) - 1, 0, (1 << 26) - 1, 0};

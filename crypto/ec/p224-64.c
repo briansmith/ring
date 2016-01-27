@@ -31,6 +31,7 @@
 #include <string.h>
 
 #include "internal.h"
+#include "../internal.h"
 
 
 typedef uint8_t u8;
@@ -50,7 +51,7 @@ typedef int64_t s64;
  * to the unique minimal representation at the end of the computation. */
 
 typedef uint64_t limb;
-typedef __uint128_t widelimb;
+typedef uint128_t widelimb;
 
 typedef limb felem[4];
 typedef widelimb widefelem[7];

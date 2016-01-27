@@ -188,6 +188,12 @@ void OPENSSL_cpuid_setup(void);
 #endif
 
 
+#if !defined(_MSC_VER)
+typedef __int128_t int128_t;
+typedef __uint128_t uint128_t;
+#endif
+
+
 /* Constant-time utility functions.
  *
  * The following methods return a bitmask of all ones (0xff...f) for true and 0
