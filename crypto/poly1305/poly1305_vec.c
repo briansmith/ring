@@ -27,8 +27,6 @@
 
 #include <emmintrin.h>
 
-/* inline is not a keyword in C89. */
-#define INLINE 
 #define U8TO64_LE(m) (*(const uint64_t *)(m))
 #define U8TO32_LE(m) (*(const uint32_t *)(m))
 #define U64TO8_LE(m, v) (*(uint64_t *)(m)) = v
@@ -41,21 +39,21 @@ static const alignas(16) uint32_t poly1305_x64_sse2_5[4] = {5, 0, 5, 0};
 static const alignas(16) uint32_t poly1305_x64_sse2_1shl128[4] = {
     (1 << 24), 0, (1 << 24), 0};
 
-static uint128_t INLINE add128(uint128_t a, uint128_t b) { return a + b; }
+static uint128_t inline add128(uint128_t a, uint128_t b) { return a + b; }
 
-static uint128_t INLINE add128_64(uint128_t a, uint64_t b) { return a + b; }
+static uint128_t inline add128_64(uint128_t a, uint64_t b) { return a + b; }
 
-static uint128_t INLINE mul64x64_128(uint64_t a, uint64_t b) {
+static uint128_t inline mul64x64_128(uint64_t a, uint64_t b) {
   return (uint128_t)a * b;
 }
 
-static uint64_t INLINE lo128(uint128_t a) { return (uint64_t)a; }
+static uint64_t inline lo128(uint128_t a) { return (uint64_t)a; }
 
-static uint64_t INLINE shr128(uint128_t v, const int shift) {
+static uint64_t inline shr128(uint128_t v, const int shift) {
   return (uint64_t)(v >> shift);
 }
 
-static uint64_t INLINE shr128_pair(uint64_t hi, uint64_t lo, const int shift) {
+static uint64_t inline shr128_pair(uint64_t hi, uint64_t lo, const int shift) {
   return (uint64_t)((((uint128_t)hi << 64) | lo) >> shift);
 }
 
@@ -82,13 +80,13 @@ typedef struct poly1305_state_internal_t {
 } poly1305_state_internal; /* 448 bytes total + 63 bytes for
                               alignment = 511 bytes raw */
 
-static poly1305_state_internal INLINE *poly1305_aligned_state(
+static poly1305_state_internal inline *poly1305_aligned_state(
     poly1305_state *state) {
   return (poly1305_state_internal *)(((uint64_t)state + 63) & ~63);
 }
 
 /* copy 0-63 bytes */
-static void INLINE
+static void inline
 poly1305_block_copy(uint8_t *dst, const uint8_t *src, size_t bytes) {
   size_t offset = src - dst;
   if (bytes & 32) {
@@ -120,7 +118,7 @@ poly1305_block_copy(uint8_t *dst, const uint8_t *src, size_t bytes) {
 }
 
 /* zero 0-15 bytes */
-static void INLINE poly1305_block_zero(uint8_t *dst, size_t bytes) {
+static void inline poly1305_block_zero(uint8_t *dst, size_t bytes) {
   if (bytes & 8) {
     *(uint64_t *)dst = 0;
     dst += 8;
@@ -138,7 +136,7 @@ static void INLINE poly1305_block_zero(uint8_t *dst, size_t bytes) {
   }
 }
 
-static size_t INLINE poly1305_min(size_t a, size_t b) {
+static size_t inline poly1305_min(size_t a, size_t b) {
   return (a < b) ? a : b;
 }
 
