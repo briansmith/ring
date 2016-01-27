@@ -334,7 +334,7 @@ static inline int constant_time_select_int(unsigned int mask, int a, int b) {
 typedef uint32_t CRYPTO_once_t;
 #define CRYPTO_ONCE_INIT 0
 #elif defined(OPENSSL_WINDOWS)
-typedef LONG CRYPTO_once_t;
+typedef volatile LONG CRYPTO_once_t;
 #define CRYPTO_ONCE_INIT 0
 #else
 typedef pthread_once_t CRYPTO_once_t;
