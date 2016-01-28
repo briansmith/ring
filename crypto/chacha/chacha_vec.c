@@ -291,7 +291,7 @@ void CRYPTO_chacha_20(
 	inlen = inlen % 64;
 	if (inlen)
 		{
-		__attribute__ ((aligned (16))) vec buf[4];
+		alignas(16) vec buf[4];
 		vec v0,v1,v2,v3;
 		v0 = s0; v1 = s1; v2 = s2; v3 = s3;
 		for (i = CHACHA_RNDS/2; i; i--)
