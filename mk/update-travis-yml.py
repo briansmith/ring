@@ -66,11 +66,11 @@ oss = [
 targets = {
     "osx" : [
         "x86_64-apple-darwin",
-        "i586-apple-darwin",
+        "i686-apple-darwin",
     ],
     "linux" : [
-        "x86_64-pc-linux-gnu",
-        "i586-pc-linux-gnu",
+        "x86_64-unknown-linux-gnu",
+        "i686-unknown-linux-gnu",
     ],
 }
 
@@ -84,7 +84,7 @@ def format_entries():
                       # XXX: 32-bit GCC 4.9 does not work because Travis does
                       # not have g++-4.9-multilib whitelisted for use.
                       if (not (compiler == "gcc-4.9" and
-                               target == "i586-pc-linux-gnu"))])
+                               target == "i686-unknown-linux-gnu"))])
 
 # We use alternative names (the "_X" suffix) so that, in mk/travis.sh, we can
 # enure that we set the specific variables we want and that no relevant
@@ -156,7 +156,7 @@ def get_linux_packages_to_install(compiler, arch):
     else:
         raise ValueError("unexpected compiler: %s" % compiler)
 
-    if arch == "i586":
+    if arch == "i686":
         if compiler.startswith("clang-"):
             packages += ["libc6-dev-i386",
                          "gcc-multilib",

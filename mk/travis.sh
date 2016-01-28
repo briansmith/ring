@@ -27,11 +27,9 @@ rustc --version
 
 if [[ "$MODE_X" == "RELWITHDEBINFO" ]]; then mode=--release; fi
 
-# TODO: Add --target $TARGET_X.
+CC=$CC_X CXX=$CXX_X cargo build -j2 ${mode-} --verbose --target=$TARGET_X
 
-CC=$CC_X CXX=$CXX_X cargo build -j2 ${mode-} --verbose
-
-CC=$CC_X CXX=$CXX_X cargo test -j2 ${mode-} --verbose
+CC=$CC_X CXX=$CXX_X cargo test -j2 ${mode-} --verbose --target=$TARGET_X
 
 CC=$CC_X CXX=$CXX_X cargo doc --verbose
 
