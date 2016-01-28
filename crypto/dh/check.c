@@ -62,30 +62,52 @@
 
 
 int DH_check_pub_key(const DH *dh, const BIGNUM *pub_key, int *ret) {
-  int ok = 0;
-  BIGNUM q;
-
   *ret = 0;
-  BN_init(&q);
-  if (!BN_set_word(&q, 1)) {
+
+  BN_CTX *ctx = BN_CTX_new();
+  if (ctx == NULL) {
+    return 0;
+  }
+  BN_CTX_start(ctx);
+
+  int ok = 0;
+
+  /* Check |pub_key| is greater than 1. */
+  BIGNUM *tmp = BN_CTX_get(ctx);
+  if (tmp == NULL ||
+      !BN_set_word(tmp, 1)) {
     goto err;
   }
-
-  if (BN_cmp(pub_key, &q) <= 0) {
+  if (BN_cmp(pub_key, tmp) <= 0) {
     *ret |= DH_CHECK_PUBKEY_TOO_SMALL;
   }
-  if (!BN_copy(&q, dh->p) ||
-      !BN_sub_word(&q, 1)) {
+
+  /* Check |pub_key| is less than |dh->p| - 1. */
+  if (!BN_copy(tmp, dh->p) ||
+      !BN_sub_word(tmp, 1)) {
     goto err;
   }
-  if (BN_cmp(pub_key, &q) >= 0) {
+  if (BN_cmp(pub_key, tmp) >= 0) {
     *ret |= DH_CHECK_PUBKEY_TOO_LARGE;
+  }
+
+  if (dh->q != NULL) {
+    /* Check |pub_key|^|dh->q| is 1 mod |dh->p|. This is necessary for RFC 5114
+     * groups which are not safe primes but pick a generator on a prime-order
+     * subgroup of size |dh->q|. */
+    if (!BN_mod_exp(tmp, pub_key, dh->q, dh->p, ctx)) {
+      goto err;
+    }
+    if (!BN_is_one(tmp)) {
+      *ret |= DH_CHECK_PUBKEY_INVALID;
+    }
   }
 
   ok = 1;
 
 err:
-  BN_free(&q);
+  BN_CTX_end(ctx);
+  BN_CTX_free(ctx);
   return ok;
 }
 

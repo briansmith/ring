@@ -156,8 +156,9 @@ OPENSSL_EXPORT unsigned DH_num_bits(const DH *dh);
  * Note: these checks may be quite computationally expensive. */
 OPENSSL_EXPORT int DH_check(const DH *dh, int *out_flags);
 
-#define DH_CHECK_PUBKEY_TOO_SMALL 1
-#define DH_CHECK_PUBKEY_TOO_LARGE 2
+#define DH_CHECK_PUBKEY_TOO_SMALL 0x1
+#define DH_CHECK_PUBKEY_TOO_LARGE 0x2
+#define DH_CHECK_PUBKEY_INVALID 0x4
 
 /* DH_check_pub_key checks the suitability of |pub_key| as a public key for the
  * DH group in |dh| and sets |DH_CHECK_PUBKEY_*| flags in |*out_flags| if it
