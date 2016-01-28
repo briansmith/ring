@@ -874,6 +874,7 @@ if ($PREFIX eq "aesni") {
 	&pxor	("xmm7","xmm7");
 	&mov	("esp",&DWP(80,"esp"));
 &function_end("aesni_ctr32_encrypt_blocks");
+}
 
 ######################################################################
 # Mechanical port from aesni-x86_64.pl.
