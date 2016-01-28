@@ -315,7 +315,6 @@ OPENSSL_EXPORT void *DSA_get_ex_data(const DSA *d, int idx);
 
 struct dsa_st {
   long version;
-  int write_params;
   BIGNUM *p;
   BIGNUM *q; /* == 20 */
   BIGNUM *g;

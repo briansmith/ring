@@ -134,7 +134,6 @@ static int dsa_pub_encode(X509_PUBKEY *pk, const EVP_PKEY *pkey) {
   int penclen;
 
   dsa = pkey->pkey.dsa;
-  dsa->write_params = 0;
 
   int ptype;
   if (dsa->p && dsa->q && dsa->g) {
@@ -153,7 +152,14 @@ static int dsa_pub_encode(X509_PUBKEY *pk, const EVP_PKEY *pkey) {
     ptype = V_ASN1_UNDEF;
   }
 
-  penclen = i2d_DSAPublicKey(dsa, &penc);
+  ASN1_INTEGER *pubint = BN_to_ASN1_INTEGER(dsa->pub_key, NULL);
+  if (pubint == NULL) {
+    goto err;
+  }
+
+  penclen = i2d_ASN1_INTEGER(pubint, &penc);
+  ASN1_INTEGER_free(pubint);
+
   if (penclen <= 0) {
     OPENSSL_PUT_ERROR(EVP, ERR_R_MALLOC_FAILURE);
     goto err;

@@ -94,7 +94,6 @@ DSA *DSA_new(void) {
 
   memset(dsa, 0, sizeof(DSA));
 
-  dsa->write_params = 1;
   dsa->references = 1;
 
   CRYPTO_MUTEX_init(&dsa->method_mont_p_lock);
