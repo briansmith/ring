@@ -215,8 +215,9 @@ void RSAZ_1024_mod_exp_avx2(BN_ULONG result_norm[16],
 	rsaz_1024_scatter5_avx2(table_s,result,31);
 #endif
 
-	/* load first window */
 	const uint8_t *p_str = (const uint8_t *)exponent;
+
+	/* load first window */
 	wvalue = p_str[127] >> 3;
 	rsaz_1024_gather5_avx2(result,table_s,wvalue);
 
