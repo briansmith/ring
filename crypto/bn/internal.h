@@ -132,6 +132,8 @@
 #pragma intrinsic(__umulh, _umul128)
 #endif
 
+#include "../internal.h"
+
 #if defined(__cplusplus)
 extern "C" {
 #endif
@@ -144,7 +146,7 @@ BIGNUM *bn_expand(BIGNUM *bn, size_t bits);
 
 #if !defined(_MSC_VER)
 /* MSVC doesn't support two-word integers on 64-bit. */
-#define BN_ULLONG	__uint128_t
+#define BN_ULLONG	uint128_t
 #endif
 
 #define BN_BITS2	64
