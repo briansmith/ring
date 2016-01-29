@@ -510,7 +510,6 @@ static const uint8_t tls12_sigalgs[] = {
     tlsext_sigalg(TLSEXT_hash_sha512)
     tlsext_sigalg(TLSEXT_hash_sha384)
     tlsext_sigalg(TLSEXT_hash_sha256)
-    tlsext_sigalg(TLSEXT_hash_sha224)
     tlsext_sigalg(TLSEXT_hash_sha1)
 };
 
@@ -2564,12 +2563,12 @@ typedef struct {
   int id;
 } tls12_lookup;
 
-static const tls12_lookup tls12_md[] = {{NID_md5, TLSEXT_hash_md5},
-                                        {NID_sha1, TLSEXT_hash_sha1},
-                                        {NID_sha224, TLSEXT_hash_sha224},
-                                        {NID_sha256, TLSEXT_hash_sha256},
-                                        {NID_sha384, TLSEXT_hash_sha384},
-                                        {NID_sha512, TLSEXT_hash_sha512}};
+static const tls12_lookup tls12_md[] = {
+    {NID_sha1, TLSEXT_hash_sha1},
+    {NID_sha256, TLSEXT_hash_sha256},
+    {NID_sha384, TLSEXT_hash_sha384},
+    {NID_sha512, TLSEXT_hash_sha512},
+};
 
 static const tls12_lookup tls12_sig[] = {{EVP_PKEY_RSA, TLSEXT_signature_rsa},
                                          {EVP_PKEY_EC, TLSEXT_signature_ecdsa}};
@@ -2603,14 +2602,8 @@ int tls12_add_sigandhash(SSL *ssl, CBB *out, const EVP_MD *md) {
 
 const EVP_MD *tls12_get_hash(uint8_t hash_alg) {
   switch (hash_alg) {
-    case TLSEXT_hash_md5:
-      return EVP_md5();
-
     case TLSEXT_hash_sha1:
       return EVP_sha1();
-
-    case TLSEXT_hash_sha224:
-      return EVP_sha224();
 
     case TLSEXT_hash_sha256:
       return EVP_sha256();
@@ -2697,7 +2690,7 @@ const EVP_MD *tls1_choose_signing_digest(SSL *ssl) {
   size_t i, j;
 
   static const int kDefaultDigestList[] = {NID_sha256, NID_sha384, NID_sha512,
-                                           NID_sha224, NID_sha1};
+                                           NID_sha1};
 
   const int *digest_nids = kDefaultDigestList;
   size_t num_digest_nids =

@@ -4109,7 +4109,6 @@ var testHashes = []struct {
 	id   uint8
 }{
 	{"SHA1", hashSHA1},
-	{"SHA224", hashSHA224},
 	{"SHA256", hashSHA256},
 	{"SHA384", hashSHA384},
 	{"SHA512", hashSHA512},
