@@ -131,8 +131,8 @@ void CRYPTO_library_init(void) {
  * understanding of the C types matches the C compiler's understanding. */
 
 #define DEFINE_METRICS_FUNCTIONS(ty) \
-  OPENSSL_EXPORT ty ring_##ty##_align(void) { return alignof(ty); } \
-  OPENSSL_EXPORT ty ring_##ty##_size(void) { return sizeof(ty); }
+  OPENSSL_EXPORT uint16_t ring_##ty##_align(void) { return alignof(ty); } \
+  OPENSSL_EXPORT uint16_t ring_##ty##_size(void) { return sizeof(ty); }
 
 DEFINE_METRICS_FUNCTIONS(int8_t)
 DEFINE_METRICS_FUNCTIONS(uint8_t)
