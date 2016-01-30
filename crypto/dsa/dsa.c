@@ -392,6 +392,21 @@ err:
   return ok;
 }
 
+DSA *DSAparams_dup(const DSA *dsa) {
+  DSA *ret = DSA_new();
+  if (ret == NULL) {
+    return NULL;
+  }
+  ret->p = BN_dup(dsa->p);
+  ret->q = BN_dup(dsa->q);
+  ret->g = BN_dup(dsa->g);
+  if (ret->p == NULL || ret->q == NULL || ret->g == NULL) {
+    DSA_free(ret);
+    return NULL;
+  }
+  return ret;
+}
+
 int DSA_generate_key(DSA *dsa) {
   int ok = 0;
   BN_CTX *ctx = NULL;
