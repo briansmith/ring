@@ -342,46 +342,6 @@ static int old_dsa_priv_decode(EVP_PKEY *pkey, const uint8_t **pder,
   return 1;
 }
 
-static int dsa_sig_print(BIO *bp, const X509_ALGOR *sigalg,
-                         const ASN1_STRING *sig, int indent, ASN1_PCTX *pctx) {
-  DSA_SIG *dsa_sig;
-  const uint8_t *p;
-
-  if (!sig) {
-    return BIO_puts(bp, "\n") > 0;
-  }
-
-  p = sig->data;
-  dsa_sig = d2i_DSA_SIG(NULL, &p, sig->length);
-  if (dsa_sig == NULL) {
-    return X509_signature_dump(bp, sig, indent);
-  }
-
-  int rv = 0;
-  size_t buf_len = 0;
-  uint8_t *m = NULL;
-
-  update_buflen(dsa_sig->r, &buf_len);
-  update_buflen(dsa_sig->s, &buf_len);
-  m = OPENSSL_malloc(buf_len + 10);
-  if (m == NULL) {
-    OPENSSL_PUT_ERROR(EVP, ERR_R_MALLOC_FAILURE);
-    goto err;
-  }
-
-  if (BIO_write(bp, "\n", 1) != 1 ||
-      !ASN1_bn_print(bp, "r:   ", dsa_sig->r, m, indent) ||
-      !ASN1_bn_print(bp, "s:   ", dsa_sig->s, m, indent)) {
-    goto err;
-  }
-  rv = 1;
-
-err:
-  OPENSSL_free(m);
-  DSA_SIG_free(dsa_sig);
-  return rv;
-}
-
 const EVP_PKEY_ASN1_METHOD dsa_asn1_meth = {
   EVP_PKEY_DSA,
   0,
@@ -407,7 +367,7 @@ const EVP_PKEY_ASN1_METHOD dsa_asn1_meth = {
   dsa_copy_parameters,
   dsa_cmp_parameters,
   dsa_param_print,
-  dsa_sig_print,
+  NULL,
 
   int_dsa_free,
   old_dsa_priv_decode,
