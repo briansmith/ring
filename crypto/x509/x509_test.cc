@@ -17,8 +17,12 @@
 #include <assert.h>
 #include <string.h>
 
+#include <openssl/crypto.h>
+#include <openssl/digest.h>
 #include <openssl/err.h>
+#include <openssl/evp.h>
 #include <openssl/pem.h>
+#include <openssl/x509.h>
 
 #include "../test/scoped_types.h"
 
@@ -159,12 +163,80 @@ static const char kForgeryPEM[] =
 "4UZAXPttuJXpn74IY1tuouaM06B3vXKZR+/ityKmfJvSwxacmFcK+2ziAg==\n"
 "-----END CERTIFICATE-----\n";
 
+// kExamplePSSCert is an example RSA-PSS self-signed certificate, signed with
+// the default hash functions.
+static const char kExamplePSSCert[] =
+"-----BEGIN CERTIFICATE-----\n"
+"MIICYjCCAcagAwIBAgIJAI3qUyT6SIfzMBIGCSqGSIb3DQEBCjAFogMCAWowRTEL\n"
+"MAkGA1UEBhMCQVUxEzARBgNVBAgMClNvbWUtU3RhdGUxITAfBgNVBAoMGEludGVy\n"
+"bmV0IFdpZGdpdHMgUHR5IEx0ZDAeFw0xNDEwMDkxOTA5NTVaFw0xNTEwMDkxOTA5\n"
+"NTVaMEUxCzAJBgNVBAYTAkFVMRMwEQYDVQQIDApTb21lLVN0YXRlMSEwHwYDVQQK\n"
+"DBhJbnRlcm5ldCBXaWRnaXRzIFB0eSBMdGQwgZ8wDQYJKoZIhvcNAQEBBQADgY0A\n"
+"MIGJAoGBAPi4bIO0vNmoV8CltFl2jFQdeesiUgR+0zfrQf2D+fCmhRU0dXFahKg8\n"
+"0u9aTtPel4rd/7vPCqqGkr64UOTNb4AzMHYTj8p73OxaymPHAyXvqIqDWHYg+hZ3\n"
+"13mSYwFIGth7Z/FSVUlO1m5KXNd6NzYM3t2PROjCpywrta9kS2EHAgMBAAGjUDBO\n"
+"MB0GA1UdDgQWBBTQQfuJQR6nrVrsNF1JEflVgXgfEzAfBgNVHSMEGDAWgBTQQfuJ\n"
+"QR6nrVrsNF1JEflVgXgfEzAMBgNVHRMEBTADAQH/MBIGCSqGSIb3DQEBCjAFogMC\n"
+"AWoDgYEASUy2RZcgNbNQZA0/7F+V1YTLEXwD16bm+iSVnzGwtexmQVEYIZG74K/w\n"
+"xbdZQdTbpNJkp1QPjPfh0zsatw6dmt5QoZ8K8No0DjR9dgf+Wvv5WJvJUIQBoAVN\n"
+"Z0IL+OQFz6+LcTHxD27JJCebrATXZA0wThGTQDm7crL+a+SujBY=\n"
+"-----END CERTIFICATE-----\n";
 
-// CertFromPEM parses the given, NUL-terminated PEM block and returns an
+// kBadPSSCertPEM is a self-signed RSA-PSS certificate with bad parameters.
+static const char kBadPSSCertPEM[] =
+"-----BEGIN CERTIFICATE-----\n"
+"MIIDdjCCAjqgAwIBAgIJANcwZLyfEv7DMD4GCSqGSIb3DQEBCjAxoA0wCwYJYIZI\n"
+"AWUDBAIBoRowGAYJKoZIhvcNAQEIMAsGCWCGSAFlAwQCAaIEAgIA3jAnMSUwIwYD\n"
+"VQQDDBxUZXN0IEludmFsaWQgUFNTIGNlcnRpZmljYXRlMB4XDTE1MTEwNDE2MDIz\n"
+"NVoXDTE1MTIwNDE2MDIzNVowJzElMCMGA1UEAwwcVGVzdCBJbnZhbGlkIFBTUyBj\n"
+"ZXJ0aWZpY2F0ZTCCASIwDQYJKoZIhvcNAQEBBQADggEPADCCAQoCggEBAMTaM7WH\n"
+"qVCAGAIA+zL1KWvvASTrhlq+1ePdO7wsrWX2KiYoTYrJYTnxhLnn0wrHqApt79nL\n"
+"IBG7cfShyZqFHOY/IzlYPMVt+gPo293gw96Fds5JBsjhjkyGnOyr9OUntFqvxDbT\n"
+"IIFU7o9IdxD4edaqjRv+fegVE+B79pDk4s0ujsk6dULtCg9Rst0ucGFo19mr+b7k\n"
+"dbfn8pZ72ZNDJPueVdrUAWw9oll61UcYfk75XdrLk6JlL41GrYHc8KlfXf43gGQq\n"
+"QfrpHkg4Ih2cI6Wt2nhFGAzrlcorzLliQIUJRIhM8h4IgDfpBpaPdVQLqS2pFbXa\n"
+"5eQjqiyJwak2vJ8CAwEAAaNQME4wHQYDVR0OBBYEFCt180N4oGUt5LbzBwQ4Ia+2\n"
+"4V97MB8GA1UdIwQYMBaAFCt180N4oGUt5LbzBwQ4Ia+24V97MAwGA1UdEwQFMAMB\n"
+"Af8wMQYJKoZIhvcNAQEKMCSgDTALBglghkgBZQMEAgGhDTALBgkqhkiG9w0BAQii\n"
+"BAICAN4DggEBAAjBtm90lGxgddjc4Xu/nbXXFHVs2zVcHv/mqOZoQkGB9r/BVgLb\n"
+"xhHrFZ2pHGElbUYPfifdS9ztB73e1d4J+P29o0yBqfd4/wGAc/JA8qgn6AAEO/Xn\n"
+"plhFeTRJQtLZVl75CkHXgUGUd3h+ADvKtcBuW9dSUncaUrgNKR8u/h/2sMG38RWY\n"
+"DzBddC/66YTa3r7KkVUfW7yqRQfELiGKdcm+bjlTEMsvS+EhHup9CzbpoCx2Fx9p\n"
+"NPtFY3yEObQhmL1JyoCRWqBE75GzFPbRaiux5UpEkns+i3trkGssZzsOuVqHNTNZ\n"
+"lC9+9hPHIoc9UMmAQNo1vGIW3NWVoeGbaJ8=\n"
+"-----END CERTIFICATE-----\n";
+
+static const char kRSAKey[] =
+"-----BEGIN RSA PRIVATE KEY-----\n"
+"MIICXgIBAAKBgQDYK8imMuRi/03z0K1Zi0WnvfFHvwlYeyK9Na6XJYaUoIDAtB92\n"
+"kWdGMdAQhLciHnAjkXLI6W15OoV3gA/ElRZ1xUpxTMhjP6PyY5wqT5r6y8FxbiiF\n"
+"KKAnHmUcrgfVW28tQ+0rkLGMryRtrukXOgXBv7gcrmU7G1jC2a7WqmeI8QIDAQAB\n"
+"AoGBAIBy09Fd4DOq/Ijp8HeKuCMKTHqTW1xGHshLQ6jwVV2vWZIn9aIgmDsvkjCe\n"
+"i6ssZvnbjVcwzSoByhjN8ZCf/i15HECWDFFh6gt0P5z0MnChwzZmvatV/FXCT0j+\n"
+"WmGNB/gkehKjGXLLcjTb6dRYVJSCZhVuOLLcbWIV10gggJQBAkEA8S8sGe4ezyyZ\n"
+"m4e9r95g6s43kPqtj5rewTsUxt+2n4eVodD+ZUlCULWVNAFLkYRTBCASlSrm9Xhj\n"
+"QpmWAHJUkQJBAOVzQdFUaewLtdOJoPCtpYoY1zd22eae8TQEmpGOR11L6kbxLQsk\n"
+"aMly/DOnOaa82tqAGTdqDEZgSNmCeKKknmECQAvpnY8GUOVAubGR6c+W90iBuQLj\n"
+"LtFp/9ihd2w/PoDwrHZaoUYVcT4VSfJQog/k7kjE4MYXYWL8eEKg3WTWQNECQQDk\n"
+"104Wi91Umd1PzF0ijd2jXOERJU1wEKe6XLkYYNHWQAe5l4J4MWj9OdxFXAxIuuR/\n"
+"tfDwbqkta4xcux67//khAkEAvvRXLHTaa6VFzTaiiO8SaFsHV3lQyXOtMrBpB5jd\n"
+"moZWgjHvB2W9Ckn7sDqsPB+U2tyX0joDdQEyuiMECDY8oQ==\n"
+"-----END RSA PRIVATE KEY-----\n";
+
+
+// CertFromPEM parses the given, NUL-terminated pem block and returns an
 // |X509*|.
-static X509* CertFromPEM(const char *pem) {
+static ScopedX509 CertFromPEM(const char *pem) {
   ScopedBIO bio(BIO_new_mem_buf(pem, strlen(pem)));
-  return PEM_read_bio_X509(bio.get(), nullptr, nullptr, nullptr);
+  return ScopedX509(PEM_read_bio_X509(bio.get(), nullptr, nullptr, nullptr));
+}
+
+// PrivateKeyFromPEM parses the given, NUL-terminated pem block and returns an
+// |EVP_PKEY*|.
+static ScopedEVP_PKEY PrivateKeyFromPEM(const char *pem) {
+  ScopedBIO bio(BIO_new_mem_buf(const_cast<char *>(pem), strlen(pem)));
+  return ScopedEVP_PKEY(
+      PEM_read_bio_PrivateKey(bio.get(), nullptr, nullptr, nullptr));
 }
 
 // CertsToStack converts a vector of |X509*| to an OpenSSL STACK_OF(X509*),
@@ -217,7 +289,7 @@ static bool Verify(X509 *leaf, const std::vector<X509 *> &roots,
   return X509_verify_cert(ctx.get()) == 1;
 }
 
-int main(int argc, char **argv) {
+static bool TestVerify() {
   ScopedX509 cross_signing_root(CertFromPEM(kCrossSigningRootPEM));
   ScopedX509 root(CertFromPEM(kRootCAPEM));
   ScopedX509 root_cross_signed(CertFromPEM(kRootCrossSignedPEM));
@@ -236,38 +308,38 @@ int main(int argc, char **argv) {
       !leaf_no_key_usage ||
       !forgery) {
     fprintf(stderr, "Failed to parse certificates\n");
-    return 1;
+    return false;
   }
 
   std::vector<X509*> empty;
   if (Verify(leaf.get(), empty, empty)) {
     fprintf(stderr, "Leaf verified with no roots!\n");
-    return 1;
+    return false;
   }
 
   if (Verify(leaf.get(), empty, {intermediate.get()})) {
     fprintf(stderr, "Leaf verified with no roots!\n");
-    return 1;
+    return false;
   }
 
   if (!Verify(leaf.get(), {root.get()}, {intermediate.get()})) {
     ERR_print_errors_fp(stderr);
     fprintf(stderr, "Basic chain didn't verify.\n");
-    return 1;
+    return false;
   }
 
   if (!Verify(leaf.get(), {cross_signing_root.get()},
               {intermediate.get(), root_cross_signed.get()})) {
     ERR_print_errors_fp(stderr);
     fprintf(stderr, "Cross-signed chain didn't verify.\n");
-    return 1;
+    return false;
   }
 
   if (!Verify(leaf.get(), {cross_signing_root.get(), root.get()},
               {intermediate.get(), root_cross_signed.get()})) {
     ERR_print_errors_fp(stderr);
     fprintf(stderr, "Cross-signed chain with root didn't verify.\n");
-    return 1;
+    return false;
   }
 
   /* This is the “altchains” test – we remove the cross-signing CA but include
@@ -276,20 +348,20 @@ int main(int argc, char **argv) {
               {intermediate.get(), root_cross_signed.get()})) {
     ERR_print_errors_fp(stderr);
     fprintf(stderr, "Chain with cross-sign didn't backtrack to find root.\n");
-    return 1;
+    return false;
   }
 
   if (Verify(leaf.get(), {root.get()},
              {intermediate.get(), root_cross_signed.get()},
              X509_V_FLAG_NO_ALT_CHAINS)) {
     fprintf(stderr, "Altchains test still passed when disabled.\n");
-    return 1;
+    return false;
   }
 
   if (Verify(forgery.get(), {intermediate_self_signed.get()},
              {leaf_no_key_usage.get()})) {
     fprintf(stderr, "Basic constraints weren't checked.\n");
-    return 1;
+    return false;
   }
 
   /* Test that one cannot skip Basic Constraints checking with a contorted set
@@ -298,6 +370,97 @@ int main(int argc, char **argv) {
              {intermediate_self_signed.get(), root_cross_signed.get()},
              {leaf_no_key_usage.get(), intermediate.get()})) {
     fprintf(stderr, "Basic constraints weren't checked.\n");
+    return false;
+  }
+
+  return true;
+}
+
+static bool TestPSS() {
+  ScopedX509 cert(CertFromPEM(kExamplePSSCert));
+  if (!cert) {
+    return false;
+  }
+
+  ScopedEVP_PKEY pkey(X509_get_pubkey(cert.get()));
+  if (!pkey) {
+    return false;
+  }
+
+  if (!X509_verify(cert.get(), pkey.get())) {
+    fprintf(stderr, "Could not verify certificate.\n");
+    return false;
+  }
+  return true;
+}
+
+static bool TestBadPSSParameters() {
+  ScopedX509 cert(CertFromPEM(kBadPSSCertPEM));
+  if (!cert) {
+    return false;
+  }
+
+  ScopedEVP_PKEY pkey(X509_get_pubkey(cert.get()));
+  if (!pkey) {
+    return false;
+  }
+
+  if (X509_verify(cert.get(), pkey.get())) {
+    fprintf(stderr, "Unexpectedly verified bad certificate.\n");
+    return false;
+  }
+  ERR_clear_error();
+  return true;
+}
+
+static bool SignatureRoundTrips(EVP_MD_CTX *md_ctx, EVP_PKEY *pkey) {
+  // Make a certificate like signed with |md_ctx|'s settings.'
+  ScopedX509 cert(CertFromPEM(kLeafPEM));
+  if (!cert || !X509_sign_ctx(cert.get(), md_ctx)) {
+    return false;
+  }
+
+  // Ensure that |pkey| may still be used to verify the resulting signature. All
+  // settings in |md_ctx| must have been serialized appropriately.
+  return !!X509_verify(cert.get(), pkey);
+}
+
+static bool TestSignCtx() {
+  ScopedEVP_PKEY pkey(PrivateKeyFromPEM(kRSAKey));
+  if (!pkey) {
+    return false;
+  }
+
+  // Test PKCS#1 v1.5.
+  ScopedEVP_MD_CTX md_ctx;
+  if (!EVP_DigestSignInit(md_ctx.get(), NULL, EVP_sha256(), NULL, pkey.get()) ||
+      !SignatureRoundTrips(md_ctx.get(), pkey.get())) {
+    fprintf(stderr, "RSA PKCS#1 with SHA-256 failed\n");
+    return false;
+  }
+
+  // Test RSA-PSS with custom parameters.
+  md_ctx.Reset();
+  EVP_PKEY_CTX *pkey_ctx;
+  if (!EVP_DigestSignInit(md_ctx.get(), &pkey_ctx, EVP_sha256(), NULL,
+                          pkey.get()) ||
+      !EVP_PKEY_CTX_set_rsa_padding(pkey_ctx, RSA_PKCS1_PSS_PADDING) ||
+      !EVP_PKEY_CTX_set_rsa_mgf1_md(pkey_ctx, EVP_sha512()) ||
+      !SignatureRoundTrips(md_ctx.get(), pkey.get())) {
+    fprintf(stderr, "RSA-PSS failed\n");
+    return false;
+  }
+
+  return true;
+}
+
+int main(int argc, char **argv) {
+  CRYPTO_library_init();
+
+  if (!TestVerify() ||
+      !TestPSS() ||
+      !TestBadPSSParameters() ||
+      !TestSignCtx()) {
     return 1;
   }
 
