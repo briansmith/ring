@@ -62,7 +62,7 @@
 #include <openssl/obj.h>
 #include <openssl/x509.h>
 
-#include "../evp/internal.h"
+#include "internal.h"
 
 int ASN1_item_sign(const ASN1_ITEM *it, X509_ALGOR *algor1,
                    X509_ALGOR *algor2, ASN1_BIT_STRING *signature, void *asn,
@@ -88,10 +88,10 @@ int ASN1_item_sign_ctx(const ASN1_ITEM *it,
     pkey = EVP_PKEY_CTX_get0_pkey(ctx->pctx);
 
     /* Write out the requested copies of the AlgorithmIdentifier. */
-    if (algor1 && !EVP_DigestSignAlgorithm(ctx, algor1)) {
+    if (algor1 && !x509_digest_sign_algorithm(ctx, algor1)) {
         goto err;
     }
-    if (algor2 && !EVP_DigestSignAlgorithm(ctx, algor2)) {
+    if (algor2 && !x509_digest_sign_algorithm(ctx, algor2)) {
         goto err;
     }
 

@@ -68,7 +68,7 @@
 #include <openssl/mem.h>
 #include <openssl/obj.h>
 
-#include "../evp/internal.h"
+#include "internal.h"
 
 int ASN1_item_verify(const ASN1_ITEM *it, X509_ALGOR *a,
                      ASN1_BIT_STRING *signature, void *asn, EVP_PKEY *pkey)
@@ -89,7 +89,7 @@ int ASN1_item_verify(const ASN1_ITEM *it, X509_ALGOR *a,
 
     EVP_MD_CTX_init(&ctx);
 
-    if (!EVP_DigestVerifyInitFromAlgorithm(&ctx, a, pkey)) {
+    if (!x509_digest_verify_init(&ctx, a, pkey)) {
         goto err;
     }
 

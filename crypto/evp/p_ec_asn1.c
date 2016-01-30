@@ -64,7 +64,6 @@
 #include <openssl/err.h>
 #include <openssl/mem.h>
 #include <openssl/obj.h>
-#include <openssl/x509.h>
 
 #include "internal.h"
 
@@ -373,7 +372,6 @@ static int old_ec_priv_decode(EVP_PKEY *pkey, const uint8_t **pder,
 
 const EVP_PKEY_ASN1_METHOD ec_asn1_meth = {
   EVP_PKEY_EC,
-  0,
   "EC",
 
   eckey_pub_decode,
@@ -395,11 +393,7 @@ const EVP_PKEY_ASN1_METHOD ec_asn1_meth = {
   ec_copy_parameters,
   ec_cmp_parameters,
   eckey_param_print,
-  0,
 
   int_ec_free,
   old_ec_priv_decode,
-
-  NULL /* digest_verify_init_from_algorithm */,
-  NULL /* digest_sign_algorithm */,
 };

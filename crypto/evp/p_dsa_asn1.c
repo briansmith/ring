@@ -64,7 +64,6 @@
 #include <openssl/err.h>
 #include <openssl/mem.h>
 #include <openssl/obj.h>
-#include <openssl/x509.h>
 
 #include "internal.h"
 
@@ -344,8 +343,6 @@ static int old_dsa_priv_decode(EVP_PKEY *pkey, const uint8_t **pder,
 
 const EVP_PKEY_ASN1_METHOD dsa_asn1_meth = {
   EVP_PKEY_DSA,
-  0,
-
   "DSA",
 
   dsa_pub_decode,
@@ -367,11 +364,7 @@ const EVP_PKEY_ASN1_METHOD dsa_asn1_meth = {
   dsa_copy_parameters,
   dsa_cmp_parameters,
   dsa_param_print,
-  NULL,
 
   int_dsa_free,
   old_dsa_priv_decode,
-
-  NULL  /* digest_verify_init_from_algorithm */,
-  NULL  /* digest_sign_algorithm */,
 };

@@ -64,7 +64,8 @@
 #include <openssl/x509.h>
 #include <openssl/x509v3.h>
 
-#include "../evp/internal.h"
+#include "internal.h"
+
 
 #ifndef OPENSSL_NO_FP_API
 int X509_print_ex_fp(FILE *fp, X509 *x, unsigned long nmflag,
@@ -298,22 +299,18 @@ int X509_ocspid_print(BIO *bp, X509 *x)
 
 int X509_signature_print(BIO *bp, X509_ALGOR *sigalg, ASN1_STRING *sig)
 {
-    int sig_nid;
     if (BIO_puts(bp, "    Signature Algorithm: ") <= 0)
         return 0;
     if (i2a_ASN1_OBJECT(bp, sigalg->algorithm) <= 0)
         return 0;
 
-    sig_nid = OBJ_obj2nid(sigalg->algorithm);
-    if (sig_nid != NID_undef) {
-        int pkey_nid, dig_nid;
-        const EVP_PKEY_ASN1_METHOD *ameth;
-        if (OBJ_find_sigid_algs(sig_nid, &dig_nid, &pkey_nid)) {
-            ameth = EVP_PKEY_asn1_find(NULL, pkey_nid);
-            if (ameth && ameth->sig_print)
-                return ameth->sig_print(bp, sigalg, sig, 9, 0);
-        }
+    /* RSA-PSS signatures have parameters to print. */
+    int sig_nid = OBJ_obj2nid(sigalg->algorithm);
+    if (sig_nid == NID_rsassaPss &&
+        !x509_print_rsa_pss_params(bp, sigalg, 9, 0)) {
+        return 0;
     }
+
     if (sig)
         return X509_signature_dump(bp, sig, 9);
     else if (BIO_puts(bp, "\n") <= 0)

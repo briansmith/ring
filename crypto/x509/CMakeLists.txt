@@ -9,11 +9,13 @@ add_library(
   a_sign.c
   a_strex.c
   a_verify.c
+  algorithm.c
   asn1_gen.c
   by_dir.c
   by_file.c
   i2d_pr.c
   pkcs7.c
+  rsa_pss.c
   t_crl.c
   t_req.c
   t_x509.c

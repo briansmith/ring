@@ -1153,6 +1153,17 @@ OPENSSL_EXPORT int X509_TRUST_get_flags(X509_TRUST *xp);
 OPENSSL_EXPORT char *X509_TRUST_get0_name(X509_TRUST *xp);
 OPENSSL_EXPORT int X509_TRUST_get_trust(X509_TRUST *xp);
 
+
+typedef struct rsa_pss_params_st {
+  X509_ALGOR *hashAlgorithm;
+  X509_ALGOR *maskGenAlgorithm;
+  ASN1_INTEGER *saltLength;
+  ASN1_INTEGER *trailerField;
+} RSA_PSS_PARAMS;
+
+DECLARE_ASN1_FUNCTIONS(RSA_PSS_PARAMS)
+
+
 /* PKCS7_get_certificates parses a PKCS#7, SignedData structure from |cbs| and
  * appends the included certificates to |out_certs|. It returns one on success
  * and zero on error. */
@@ -1252,5 +1263,10 @@ OPENSSL_EXPORT int PKCS7_get_PEM_CRLs(STACK_OF(X509_CRL) *out_crls,
 #define X509_R_WRONG_LOOKUP_TYPE 134
 #define X509_R_WRONG_TYPE 135
 #define X509_R_NO_CRLS_INCLUDED 136
+#define X509_R_CONTEXT_NOT_INITIALISED 137
+#define X509_R_INVALID_PSS_PARAMETERS 138
+#define X509_R_INVALID_SALT_LENGTH 139
+#define X509_R_INVALID_TRAILER 140
+#define X509_R_WRONG_PUBLIC_KEY_TYPE 141
 
 #endif

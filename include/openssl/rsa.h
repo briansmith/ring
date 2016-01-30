@@ -59,7 +59,6 @@
 
 #include <openssl/base.h>
 
-#include <openssl/asn1.h>
 #include <openssl/engine.h>
 #include <openssl/ex_data.h>
 #include <openssl/thread.h>
@@ -466,15 +465,6 @@ OPENSSL_EXPORT RSA *d2i_RSAPrivateKey(RSA **out, const uint8_t **inp, long len);
  * the output. It returns the number of bytes in the result, whether written or
  * not, or a negative value on error. */
 OPENSSL_EXPORT int i2d_RSAPrivateKey(const RSA *in, uint8_t **outp);
-
-typedef struct rsa_pss_params_st {
-  X509_ALGOR *hashAlgorithm;
-  X509_ALGOR *maskGenAlgorithm;
-  ASN1_INTEGER *saltLength;
-  ASN1_INTEGER *trailerField;
-} RSA_PSS_PARAMS;
-
-DECLARE_ASN1_FUNCTIONS(RSA_PSS_PARAMS)
 
 
 struct rsa_meth_st {

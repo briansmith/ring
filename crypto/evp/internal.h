@@ -64,29 +64,8 @@ extern "C" {
 #endif
 
 
-/* These values are flags for EVP_PKEY_ASN1_METHOD.flags. */
-
-/* ASN1_PKEY_SIGPARAM_NULL controls whether the default behavior of
- * EVP_DigestSignAlgorithm writes an explicit NULL parameter in the
- * AlgorithmIdentifier. */
-#define ASN1_PKEY_SIGPARAM_NULL 0x1
-
-/* evp_digest_sign_algorithm_result_t is the return value of the
- * digest_sign_algorithm function in EVP_PKEY_ASN1_METHOD. */
-typedef enum {
-  /* EVP_DIGEST_SIGN_ALGORITHM_ERROR signals an error. */
-  EVP_DIGEST_SIGN_ALGORITHM_ERROR = 0,
-  /* EVP_DIGEST_SIGN_ALGORITHM_SUCCESS signals that the parameters were
-   * serialized in the AlgorithmIdentifier. */
-  EVP_DIGEST_SIGN_ALGORITHM_SUCCESS = 1,
-  /* EVP_DIGEST_SIGN_ALGORITHM_DEFAULT signals that the parameters are
-   * serialized using the default behavior. */
-  EVP_DIGEST_SIGN_ALGORITHM_DEFAULT = 2,
-} evp_digest_sign_algorithm_result_t;
-
 struct evp_pkey_asn1_method_st {
   int pkey_id;
-  unsigned long pkey_flags;
 
   const char *pem_str;
 
@@ -137,9 +116,6 @@ struct evp_pkey_asn1_method_st {
   int (*param_cmp)(const EVP_PKEY *a, const EVP_PKEY *b);
   int (*param_print)(BIO *out, const EVP_PKEY *pkey, int indent,
                      ASN1_PCTX *pctx);
-  int (*sig_print)(BIO *out, const X509_ALGOR *sigalg, const ASN1_STRING *sig,
-                   int indent, ASN1_PCTX *pctx);
-
 
   void (*pkey_free)(EVP_PKEY *pkey);
 
@@ -147,14 +123,6 @@ struct evp_pkey_asn1_method_st {
 
   int (*old_priv_decode)(EVP_PKEY *pkey, const uint8_t **pder,
                          int derlen);
-
-  /* Converting parameters to/from AlgorithmIdentifier (X509_ALGOR). */
-  int (*digest_verify_init_from_algorithm)(EVP_MD_CTX *ctx,
-                                           X509_ALGOR *algor,
-                                           EVP_PKEY *pkey);
-  evp_digest_sign_algorithm_result_t (*digest_sign_algorithm)(
-      EVP_MD_CTX *ctx,
-      X509_ALGOR *algor);
 
 } /* EVP_PKEY_ASN1_METHOD */;
 

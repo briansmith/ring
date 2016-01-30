@@ -5,7 +5,6 @@ add_library(
 
   OBJECT
 
-  algorithm.c
   digestsign.c
   evp.c
   evp_asn1.c

@@ -250,15 +250,6 @@ OPENSSL_EXPORT int EVP_DigestSignUpdate(EVP_MD_CTX *ctx, const void *data,
 OPENSSL_EXPORT int EVP_DigestSignFinal(EVP_MD_CTX *ctx, uint8_t *out_sig,
                                        size_t *out_sig_len);
 
-/* EVP_DigestSignAlgorithm encodes the signing parameters of |ctx| as an
- * AlgorithmIdentifer and saves the result in |algor|.
- *
- * It returns one on success, or zero on error.
- *
- * TODO(davidben): This API should eventually lose the dependency on
- * crypto/asn1/. */
-OPENSSL_EXPORT int EVP_DigestSignAlgorithm(EVP_MD_CTX *ctx, X509_ALGOR *algor);
-
 
 /* Verifying */
 
@@ -272,18 +263,6 @@ OPENSSL_EXPORT int EVP_DigestSignAlgorithm(EVP_MD_CTX *ctx, X509_ALGOR *algor);
 OPENSSL_EXPORT int EVP_DigestVerifyInit(EVP_MD_CTX *ctx, EVP_PKEY_CTX **pctx,
                                         const EVP_MD *type, ENGINE *e,
                                         EVP_PKEY *pkey);
-
-/* EVP_DigestVerifyInitFromAlgorithm sets up |ctx| for a signature verification
- * operation with public key |pkey| and parameters from |algor|. The |ctx|
- * argument must have been initialised with |EVP_MD_CTX_init|.
- *
- * It returns one on success, or zero on error.
- *
- * TODO(davidben): This API should eventually lose the dependency on
- * crypto/asn1/. */
-OPENSSL_EXPORT int EVP_DigestVerifyInitFromAlgorithm(EVP_MD_CTX *ctx,
-                                                     X509_ALGOR *algor,
-                                                     EVP_PKEY *pkey);
 
 /* EVP_DigestVerifyUpdate appends |len| bytes from |data| to the data which
  * will be verified by |EVP_DigestVerifyFinal|. It returns one. */

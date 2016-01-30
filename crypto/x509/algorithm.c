@@ -54,100 +54,84 @@
  * copied and put under another distribution licence
  * [including the GNU Public Licence.] */
 
-#include <openssl/evp.h>
-
-#include <assert.h>
+#include <openssl/x509.h>
 
 #include <openssl/asn1.h>
+#include <openssl/digest.h>
 #include <openssl/err.h>
+#include <openssl/evp.h>
 #include <openssl/obj.h>
-#include <openssl/x509.h>
 
 #include "internal.h"
 
 
-int EVP_DigestSignAlgorithm(EVP_MD_CTX *ctx, X509_ALGOR *algor) {
-  const EVP_MD *digest;
-  EVP_PKEY *pkey;
-  int sign_nid, paramtype;
-
-  digest = EVP_MD_CTX_md(ctx);
-  pkey = EVP_PKEY_CTX_get0_pkey(ctx->pctx);
-  if (!digest || !pkey) {
-    OPENSSL_PUT_ERROR(EVP, EVP_R_CONTEXT_NOT_INITIALISED);
+int x509_digest_sign_algorithm(EVP_MD_CTX *ctx, X509_ALGOR *algor) {
+  const EVP_MD *digest = EVP_MD_CTX_md(ctx);
+  EVP_PKEY *pkey = EVP_PKEY_CTX_get0_pkey(ctx->pctx);
+  if (digest == NULL || pkey == NULL) {
+    OPENSSL_PUT_ERROR(X509, X509_R_CONTEXT_NOT_INITIALISED);
     return 0;
   }
 
-  if (pkey->ameth->digest_sign_algorithm) {
-    switch (pkey->ameth->digest_sign_algorithm(ctx, algor)) {
-      case EVP_DIGEST_SIGN_ALGORITHM_ERROR:
-        return 0;
-      case EVP_DIGEST_SIGN_ALGORITHM_SUCCESS:
-        return 1;
-      case EVP_DIGEST_SIGN_ALGORITHM_DEFAULT:
-        /* Use default behavior. */
-        break;
-      default:
-        assert(0);
+  if (EVP_PKEY_id(pkey) == EVP_PKEY_RSA) {
+    int pad_mode;
+    if (!EVP_PKEY_CTX_get_rsa_padding(ctx->pctx, &pad_mode)) {
+      return 0;
+    }
+    /* RSA-PSS has special signature algorithm logic. */
+    if (pad_mode == RSA_PKCS1_PSS_PADDING) {
+      return x509_rsa_ctx_to_pss(ctx, algor);
     }
   }
 
   /* Default behavior: look up the OID for the algorithm/hash pair and encode
    * that. */
+  int sign_nid;
   if (!OBJ_find_sigid_by_algs(&sign_nid, EVP_MD_type(digest),
-                              pkey->ameth->pkey_id)) {
-    OPENSSL_PUT_ERROR(EVP, EVP_R_DIGEST_AND_KEY_TYPE_NOT_SUPPORTED);
+                              EVP_PKEY_id(pkey))) {
+    OPENSSL_PUT_ERROR(X509, X509_R_UNSUPPORTED_ALGORITHM);
     return 0;
   }
 
-  if (pkey->ameth->pkey_flags & ASN1_PKEY_SIGPARAM_NULL) {
-    paramtype = V_ASN1_NULL;
-  } else {
-    paramtype = V_ASN1_UNDEF;
-  }
-
+  /* RSA signature algorithms include an explicit NULL parameter. Others omit
+   * it. */
+  int paramtype =
+      (EVP_PKEY_id(pkey) == EVP_PKEY_RSA) ? V_ASN1_NULL : V_ASN1_UNDEF;
   X509_ALGOR_set0(algor, OBJ_nid2obj(sign_nid), paramtype, NULL);
   return 1;
 }
 
-int EVP_DigestVerifyInitFromAlgorithm(EVP_MD_CTX *ctx,
-                                      X509_ALGOR *algor,
-                                      EVP_PKEY *pkey) {
+int x509_digest_verify_init(EVP_MD_CTX *ctx, X509_ALGOR *sigalg,
+                            EVP_PKEY *pkey) {
+  /* Convert the signature OID into digest and public key OIDs. */
+  int sigalg_nid = OBJ_obj2nid(sigalg->algorithm);
   int digest_nid, pkey_nid;
-  const EVP_PKEY_ASN1_METHOD *ameth;
-  const EVP_MD *digest;
-
-  /* Convert signature OID into digest and public key OIDs */
-  if (!OBJ_find_sigid_algs(OBJ_obj2nid(algor->algorithm), &digest_nid,
-                           &pkey_nid)) {
-    OPENSSL_PUT_ERROR(EVP, EVP_R_UNKNOWN_SIGNATURE_ALGORITHM);
+  if (!OBJ_find_sigid_algs(sigalg_nid, &digest_nid, &pkey_nid)) {
+    OPENSSL_PUT_ERROR(X509, X509_R_UNSUPPORTED_ALGORITHM);
     return 0;
   }
 
-  /* Check public key OID matches public key type */
-  ameth = EVP_PKEY_asn1_find(NULL, pkey_nid);
-  if (ameth == NULL || ameth->pkey_id != pkey->ameth->pkey_id) {
-    OPENSSL_PUT_ERROR(EVP, EVP_R_WRONG_PUBLIC_KEY_TYPE);
+  /* Check the public key OID matches the public key type. */
+  if (pkey_nid != EVP_PKEY_id(pkey)) {
+    OPENSSL_PUT_ERROR(X509, X509_R_WRONG_PUBLIC_KEY_TYPE);
     return 0;
   }
 
   /* NID_undef signals that there are custom parameters to set. */
   if (digest_nid == NID_undef) {
-    if (!pkey->ameth || !pkey->ameth->digest_verify_init_from_algorithm) {
-      OPENSSL_PUT_ERROR(EVP, EVP_R_UNKNOWN_SIGNATURE_ALGORITHM);
+    if (sigalg_nid != NID_rsassaPss) {
+      OPENSSL_PUT_ERROR(X509, X509_R_UNSUPPORTED_ALGORITHM);
       return 0;
     }
-
-    return pkey->ameth->digest_verify_init_from_algorithm(ctx, algor, pkey);
+    return x509_rsa_pss_to_ctx(ctx, sigalg, pkey);
   }
 
   /* Otherwise, initialize with the digest from the OID. */
-  digest = EVP_get_digestbynid(digest_nid);
+  const EVP_MD *digest = EVP_get_digestbynid(digest_nid);
   if (digest == NULL) {
-    OPENSSL_PUT_ERROR(EVP, EVP_R_UNKNOWN_MESSAGE_DIGEST_ALGORITHM);
+    OPENSSL_PUT_ERROR(X509, X509_R_UNKNOWN_NID);
     return 0;
   }
 
   return EVP_DigestVerifyInit(ctx, NULL, digest, NULL, pkey);
 }
-
