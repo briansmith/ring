@@ -196,15 +196,6 @@ ecdsa!(ECDSA_P384_SHA384, "P-384 (secp384r1)", ecc::EC_GROUP_P384, "SHA-384",
 ecdsa!(ECDSA_P384_SHA512, "P-384 (secp384r1)", ecc::EC_GROUP_P384, "SHA-512",
        &digest::SHA512);
 
-ecdsa!(ECDSA_P521_SHA1, "P-521 (secp521r1)", ecc::EC_GROUP_P521, "SHA-1",
-       &digest::SHA1);
-ecdsa!(ECDSA_P521_SHA256, "P-521 (secp521r1)", ecc::EC_GROUP_P521, "SHA-256",
-       &digest::SHA256);
-ecdsa!(ECDSA_P521_SHA384, "P-521 (secp521r1)", ecc::EC_GROUP_P521, "SHA-384",
-       &digest::SHA384);
-ecdsa!(ECDSA_P521_SHA512, "P-521 (secp521r1)", ecc::EC_GROUP_P521, "SHA-512",
-       &digest::SHA512);
-
 
 /// EdDSA signatures.
 struct EdDSA {

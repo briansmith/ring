@@ -19,5 +19,4 @@ pub enum EC_GROUP { }
 extern {
     pub fn EC_GROUP_P256() -> *const EC_GROUP;
     pub fn EC_GROUP_P384() -> *const EC_GROUP;
-    pub fn EC_GROUP_P521() -> *const EC_GROUP;
 }

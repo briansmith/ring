@@ -168,10 +168,8 @@ static bool TestBuiltin(FILE *out) {
     EC_GROUP_fn ec_group_fn;
     const char *name;
   } kCurves[] = {
-      { EC_GROUP_P224, "secp224r1" },
       { EC_GROUP_P256, "secp256r1" },
       { EC_GROUP_P384, "secp384r1" },
-      { EC_GROUP_P521, "secp521r1" },
       { NID_undef, NULL }
   };
 
@@ -311,11 +309,8 @@ int main(void) {
   CRYPTO_library_init();
 
   if (!TestBuiltin(stdout) ||
-      !TestECDSA_SIG_max_len(224/8) ||
       !TestECDSA_SIG_max_len(256/8) ||
-      !TestECDSA_SIG_max_len(384/8) ||
-      !TestECDSA_SIG_max_len(512/8) ||
-      !TestECDSA_SIG_max_len(10000)) {
+      !TestECDSA_SIG_max_len(384/8)) {
     printf("\nECDSA test failed\n");
     return 1;
   }

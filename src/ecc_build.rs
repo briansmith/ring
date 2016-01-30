@@ -67,14 +67,15 @@ struct ModP {
     k: u64,
 }
 
-#[cfg(target_pointer_width = "64")]
-const LIMB_BITS: usize = 64;
-
-#[cfg(target_pointer_width = "32")]
-const LIMB_BITS: usize = 32;
 
 impl ModP {
     fn new(p_hex_str: &str) -> Result<ModP, ()> {
+        // XXX: This works for 32-bit and 64-bit targets for P-256 and P-384
+        // only. It might work for more curves, but it hasn't been tested for
+        // them. It definitely does not work for P-224, probably because 224 is
+        // not a multiple of 64, but maybe for other reasons.
+        const LIMB_BITS: usize = 64;
+
         let p = integer_from_hex_str(p_hex_str);
         let p_bits = (p.to_biguint().unwrap().bits() + LIMB_BITS - 1) /
                      LIMB_BITS * LIMB_BITS;

@@ -140,7 +140,7 @@ pub fn agree_ephemeral<F, R, E>(my_key_pair: EphemeralKeyPair,
 
 
 // XXX: This should be computed from ecc_build.rs.
-const MAX_COORDINATE_LEN: usize = (521 + 7) / 8;
+const MAX_COORDINATE_LEN: usize = (384 + 7) / 8;
 
 // TODO: After ecdsa_test.cc is removed, this function should be removed and
 // the caller should be changed to call `SHA512_5` directly. Also, the
@@ -241,8 +241,6 @@ nist_ecdh!(ECDH_P256, 256, "P-256 (secp256r1)", ecc::EC_GROUP_P256,
            415 /*NID_X9_62_prime256v1*/);
 nist_ecdh!(ECDH_P384, 384, "P-384 (secp256r1)", ecc::EC_GROUP_P384,
            715 /*NID_secp384r1*/);
-nist_ecdh!(ECDH_P521, 521, "P-521 (secp256r1)", ecc::EC_GROUP_P521,
-           716 /*NID_secp521r1*/);
 
 #[cfg(not(feature = "no_heap"))]
 fn nist_ecdh_generate_key_pair(algorithm: &Algorithm) -> Result<KeyPairImpl, ()> {

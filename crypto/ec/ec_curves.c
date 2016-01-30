@@ -20,8 +20,6 @@
 #include "../bn/internal.h"
 
 
-#define CURVE_P224_EC_METHOD EC_GFp_mont_method
-
 /* MSAN appears to have a bug that causes this P-256 code to be miscompiled
  * in opt mode. While that is being looked at, don't run the uint128_t
  * P-256 code under MSAN for now. */
@@ -35,9 +33,7 @@
 #define CURVE_P256_EC_METHOD EC_GFp_mont_method
 #endif
 
-#define CURVE_P224_EC_METHOD EC_GFp_mont_method
 #define CURVE_P384_EC_METHOD EC_GFp_mont_method
-#define CURVE_P521_EC_METHOD EC_GFp_mont_method
 
 /* Use C99 designated initializers + the -Wuninitialized warning to help keep
  * the initializations in sync with the definitions of |BN_MONT_CTX|,
