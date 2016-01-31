@@ -32,6 +32,13 @@ macro_rules! define_metrics_tests {
     ( $name:ident, $test_c_metrics:ident, $get_c_align_fn:ident,
       $get_c_size_fn:ident ) =>
     {
+        define_metrics_tests!($name, $test_c_metrics, $get_c_align_fn,
+                              $get_c_size_fn, 1);
+    };
+
+    ( $name:ident, $test_c_metrics:ident, $get_c_align_fn:ident,
+      $get_c_size_fn:ident, $expected_align_factor:expr ) =>
+    {
         #[cfg(test)]
         extern {
             // We can't use `size_t` because we need to test that our
@@ -55,8 +62,9 @@ macro_rules! define_metrics_tests {
             // supports implicit coercion of `u16` to `usize`.
             assert!(mem::size_of_val(&c_align) <= mem::size_of::<usize>());
             assert!(mem::size_of_val(&c_size) <= mem::size_of::<usize>());
-            assert_eq!((mem::align_of::<$name>(), mem::size_of::<$name>()),
-                        (c_align as usize, c_size as usize));
+            assert_eq!((mem::align_of::<$name>() * $expected_align_factor,
+                       mem::size_of::<$name>()),
+                       (c_align as usize, c_size as usize));
         }
     }
 }
@@ -123,7 +131,27 @@ define_metrics_tests!(i32, test_i32_metrics, ring_int32_t_align,
 define_metrics_tests!(u32, test_u32_metrics, ring_uint32_t_align,
                       ring_uint32_t_size);
 
+#[cfg(all(test,
+          not(all(target_arch = "x86",
+                  any(target_os = "linux",
+                      target_os = "macos",
+                      target_os = "freebsd",
+                      target_os = "dragonfly",
+                      target_os = "netbsd",
+                      target_os = "openbsd")))))]
+const SIXTY_FOUR_BIT_ALIGNMENT_FACTOR: usize = 1;
+
+#[cfg(all(test,
+          target_arch = "x86",
+          any(target_os = "linux",
+              target_os = "macos",
+              target_os = "freebsd",
+              target_os = "dragonfly",
+              target_os = "netbsd",
+              target_os = "openbsd")))]
+const SIXTY_FOUR_BIT_ALIGNMENT_FACTOR: usize = 2;
+
 define_metrics_tests!(i64, test_i64_metrics, ring_int64_t_align,
-                      ring_int64_t_size);
+                      ring_int64_t_size, SIXTY_FOUR_BIT_ALIGNMENT_FACTOR);
 define_metrics_tests!(u64, test_u64_metrics, ring_uint64_t_align,
-                      ring_uint64_t_size);
+                      ring_uint64_t_size, SIXTY_FOUR_BIT_ALIGNMENT_FACTOR);
