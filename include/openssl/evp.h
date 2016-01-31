@@ -698,11 +698,10 @@ OPENSSL_EXPORT int i2d_PublicKey(EVP_PKEY *key, uint8_t **outp);
 
 /* d2i_PrivateKey parses an ASN.1, DER-encoded, private key from |len| bytes at
  * |*inp|. If |out| is not NULL then, on exit, a pointer to the result is in
- * |*out|. If |*out| is already non-NULL on entry then the result is written
- * directly into |*out|, otherwise a fresh |EVP_PKEY| is allocated. However,
- * one should not depend on writing into |*out| because this behaviour is
- * likely to change in the future. On successful exit, |*inp| is advanced past
- * the DER structure. It returns the result or NULL on error.
+ * |*out|. Note that, even if |*out| is already non-NULL on entry, it will not
+ * be written to. Rather, a fresh |EVP_PKEY| is allocated and the previous one
+ * is freed. On successful exit, |*inp| is advanced past the DER structure. It
+ * returns the result or NULL on error.
  *
  * This function tries to detect one of several formats. Instead, use
  * |EVP_parse_private_key| for a PrivateKeyInfo, |RSA_parse_private_key| for an

@@ -175,17 +175,6 @@ static int rsa_bits(const EVP_PKEY *pkey) {
 
 static void int_rsa_free(EVP_PKEY *pkey) { RSA_free(pkey->pkey.rsa); }
 
-static int old_rsa_priv_decode(EVP_PKEY *pkey, const uint8_t **pder,
-                               int derlen) {
-  RSA *rsa = d2i_RSAPrivateKey(NULL, pder, derlen);
-  if (rsa == NULL) {
-    OPENSSL_PUT_ERROR(EVP, ERR_R_RSA_LIB);
-    return 0;
-  }
-  EVP_PKEY_assign_RSA(pkey, rsa);
-  return 1;
-}
-
 const EVP_PKEY_ASN1_METHOD rsa_asn1_meth = {
   EVP_PKEY_RSA,
 
@@ -205,6 +194,4 @@ const EVP_PKEY_ASN1_METHOD rsa_asn1_meth = {
   0,0,0,
 
   int_rsa_free,
-
-  old_rsa_priv_decode,
 };

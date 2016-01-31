@@ -62,7 +62,6 @@
 #include <openssl/err.h>
 #include <openssl/obj.h>
 #include <openssl/rsa.h>
-#include <openssl/x509.h>
 
 #include "internal.h"
 
@@ -164,61 +163,74 @@ int EVP_marshal_private_key(CBB *cbb, const EVP_PKEY *key) {
   return key->ameth->priv_encode(cbb, key);
 }
 
+static EVP_PKEY *old_priv_decode(CBS *cbs, int type) {
+  EVP_PKEY *ret = EVP_PKEY_new();
+  if (ret == NULL) {
+    return NULL;
+  }
+
+  switch (type) {
+    case EVP_PKEY_EC: {
+      EC_KEY *ec_key = EC_KEY_parse_private_key(cbs, NULL);
+      if (ec_key == NULL || !EVP_PKEY_assign_EC_KEY(ret, ec_key)) {
+        EC_KEY_free(ec_key);
+        goto err;
+      }
+      return ret;
+    }
+    case EVP_PKEY_DSA: {
+      DSA *dsa = DSA_parse_private_key(cbs);
+      if (dsa == NULL || !EVP_PKEY_assign_DSA(ret, dsa)) {
+        DSA_free(dsa);
+        goto err;
+      }
+      return ret;
+    }
+    case EVP_PKEY_RSA: {
+      RSA *rsa = RSA_parse_private_key(cbs);
+      if (rsa == NULL || !EVP_PKEY_assign_RSA(ret, rsa)) {
+        RSA_free(rsa);
+        goto err;
+      }
+      return ret;
+    }
+    default:
+      OPENSSL_PUT_ERROR(EVP, EVP_R_UNKNOWN_PUBLIC_KEY_TYPE);
+      goto err;
+  }
+
+err:
+  EVP_PKEY_free(ret);
+  return NULL;
+}
+
 EVP_PKEY *d2i_PrivateKey(int type, EVP_PKEY **out, const uint8_t **inp,
                          long len) {
-  EVP_PKEY *ret;
+  if (len < 0) {
+    OPENSSL_PUT_ERROR(EVP, EVP_R_DECODE_ERROR);
+    return NULL;
+  }
 
-  if (out == NULL || *out == NULL) {
-    ret = EVP_PKEY_new();
+  /* Parse with the legacy format. */
+  CBS cbs;
+  CBS_init(&cbs, *inp, (size_t)len);
+  EVP_PKEY *ret = old_priv_decode(&cbs, type);
+  if (ret == NULL) {
+    /* Try again with PKCS#8. */
+    ERR_clear_error();
+    CBS_init(&cbs, *inp, (size_t)len);
+    ret = EVP_parse_private_key(&cbs);
     if (ret == NULL) {
-      OPENSSL_PUT_ERROR(EVP, ERR_R_EVP_LIB);
       return NULL;
-    }
-  } else {
-    ret = *out;
-  }
-
-  if (!EVP_PKEY_set_type(ret, type)) {
-    OPENSSL_PUT_ERROR(EVP, EVP_R_UNKNOWN_PUBLIC_KEY_TYPE);
-    goto err;
-  }
-
-  const uint8_t *in = *inp;
-  /* If trying to remove |old_priv_decode|, note that some code depends on this
-   * function writing into |*out| and the |priv_decode| path doesn't support
-   * that. */
-  if (!ret->ameth->old_priv_decode ||
-      !ret->ameth->old_priv_decode(ret, &in, len)) {
-    if (ret->ameth->priv_decode) {
-      /* Reset |in| in case |old_priv_decode| advanced it on error. */
-      in = *inp;
-      PKCS8_PRIV_KEY_INFO *p8 = d2i_PKCS8_PRIV_KEY_INFO(NULL, &in, len);
-      if (!p8) {
-        goto err;
-      }
-      EVP_PKEY_free(ret);
-      ret = EVP_PKCS82PKEY(p8);
-      PKCS8_PRIV_KEY_INFO_free(p8);
-      if (ret == NULL) {
-        goto err;
-      }
-    } else {
-      OPENSSL_PUT_ERROR(EVP, ERR_R_ASN1_LIB);
-      goto err;
     }
   }
 
   if (out != NULL) {
+    EVP_PKEY_free(*out);
     *out = ret;
   }
-  *inp = in;
+  *inp = CBS_data(&cbs);
   return ret;
-
-err:
-  if (out == NULL || *out != ret) {
-    EVP_PKEY_free(ret);
-  }
-  return NULL;
 }
 
 /* num_elements parses one SEQUENCE from |in| and returns the number of elements

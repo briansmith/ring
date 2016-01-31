@@ -241,18 +241,6 @@ static int dsa_pub_cmp(const EVP_PKEY *a, const EVP_PKEY *b) {
 
 static void int_dsa_free(EVP_PKEY *pkey) { DSA_free(pkey->pkey.dsa); }
 
-static int old_dsa_priv_decode(EVP_PKEY *pkey, const uint8_t **pder,
-                               int derlen) {
-  DSA *dsa;
-  dsa = d2i_DSAPrivateKey(NULL, pder, derlen);
-  if (dsa == NULL) {
-    OPENSSL_PUT_ERROR(EVP, ERR_R_DSA_LIB);
-    return 0;
-  }
-  EVP_PKEY_assign_DSA(pkey, dsa);
-  return 1;
-}
-
 const EVP_PKEY_ASN1_METHOD dsa_asn1_meth = {
   EVP_PKEY_DSA,
 
@@ -274,5 +262,4 @@ const EVP_PKEY_ASN1_METHOD dsa_asn1_meth = {
   dsa_cmp_parameters,
 
   int_dsa_free,
-  old_dsa_priv_decode,
 };

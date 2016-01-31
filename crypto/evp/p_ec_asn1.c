@@ -238,17 +238,6 @@ static int eckey_opaque(const EVP_PKEY *pkey) {
   return EC_KEY_is_opaque(pkey->pkey.ec);
 }
 
-static int old_ec_priv_decode(EVP_PKEY *pkey, const uint8_t **pder,
-                              int derlen) {
-  EC_KEY *ec;
-  if (!(ec = d2i_ECPrivateKey(NULL, pder, derlen))) {
-    OPENSSL_PUT_ERROR(EVP, EVP_R_DECODE_ERROR);
-    return 0;
-  }
-  EVP_PKEY_assign_EC_KEY(pkey, ec);
-  return 1;
-}
-
 const EVP_PKEY_ASN1_METHOD ec_asn1_meth = {
   EVP_PKEY_EC,
 
@@ -270,5 +259,4 @@ const EVP_PKEY_ASN1_METHOD ec_asn1_meth = {
   ec_cmp_parameters,
 
   int_ec_free,
-  old_ec_priv_decode,
 };
