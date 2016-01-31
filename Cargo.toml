@@ -11,6 +11,12 @@ version = "0.1.0"
 [lib]
 name = "ring"
 
+# XXX: When cross-compiling (e.g. i686 on x86_64), `cargo test` tries to run
+# the doctests but that doesn't work. Disable the doctests for all platforms
+# until we have a better workaround for this. See
+# https://github.com/rust-lang/cargo/issues/1789
+doctest=false
+
 [build-dependencies]
 rustc-serialize = "0.3.15"
 
