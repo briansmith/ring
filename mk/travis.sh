@@ -25,7 +25,13 @@ make --version
 cargo version
 rustc --version
 
-if [[ ! "$TARGET_X" =~ "x86_64-" ]]; then ./mk/travis-install-rust-x86.sh; fi
+if [[ ! "$TARGET_X" =~ "x86_64-" ]]; then
+  ./mk/travis-install-rust-x86.sh
+  mkdir .cargo
+  echo "[target.$TARGET_X]" > .cargo/config
+  echo "linker= \"$CC_X\"" >> .cargo/config
+  cat .cargo/config
+fi
 
 if [[ "$MODE_X" == "RELWITHDEBINFO" ]]; then mode=--release; fi
 
