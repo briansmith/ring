@@ -975,7 +975,7 @@ int PKCS12_get_key_and_certs(EVP_PKEY **out_key, STACK_OF(X509) *out_certs,
 
   ctx.out_key = out_key;
   ctx.out_certs = out_certs;
-  if (!ascii_to_ucs2(password, strlen(password), &ctx.password,
+  if (!ascii_to_ucs2(password, password ? strlen(password) : 0, &ctx.password,
                      &ctx.password_len)) {
     OPENSSL_PUT_ERROR(PKCS8, PKCS8_R_DECODE_ERROR);
     goto err;
@@ -1066,9 +1066,6 @@ struct pkcs12_st {
 PKCS12* d2i_PKCS12(PKCS12 **out_p12, const uint8_t **ber_bytes, size_t ber_len) {
   PKCS12 *p12;
 
-  /* out_p12 must be NULL because we don't export the PKCS12 structure. */
-  assert(out_p12 == NULL);
-
   p12 = OPENSSL_malloc(sizeof(PKCS12));
   if (!p12) {
     return NULL;
@@ -1083,6 +1080,12 @@ PKCS12* d2i_PKCS12(PKCS12 **out_p12, const uint8_t **ber_bytes, size_t ber_len) 
   memcpy(p12->ber_bytes, *ber_bytes, ber_len);
   p12->ber_len = ber_len;
   *ber_bytes += ber_len;
+
+  if (out_p12) {
+    PKCS12_free(*out_p12);
+
+    *out_p12 = p12;
+  }
 
   return p12;
 }
@@ -1105,7 +1108,12 @@ PKCS12* d2i_PKCS12_bio(BIO *bio, PKCS12 **out_p12) {
   for (;;) {
     int n = BIO_read(bio, &buf->data[used], buf->length - used);
     if (n < 0) {
-      goto out;
+      if (used == 0) {
+        goto out;
+      }
+      /* Workaround a bug in node.js. It uses a memory BIO for this in the wrong
+       * mode. */
+      n = 0;
     }
 
     if (n == 0) {
@@ -1212,6 +1220,9 @@ int PKCS12_verify_mac(const PKCS12 *p12, const char *password,
 }
 
 void PKCS12_free(PKCS12 *p12) {
+  if (p12 == NULL) {
+    return;
+  }
   OPENSSL_free(p12->ber_bytes);
   OPENSSL_free(p12);
 }
