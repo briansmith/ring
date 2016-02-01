@@ -118,7 +118,10 @@ static int should_fail_allocation() {
 
 extern "C" {
 
-void *malloc(size_t size) {
+// GCC's -Wpedantic is triggered if the `throw()` specification is missing for
+// these functions.
+
+void *malloc(size_t size) throw() {
   if (should_fail_allocation()) {
     errno = ENOMEM;
     return NULL;
@@ -127,7 +130,7 @@ void *malloc(size_t size) {
   return __libc_malloc(size);
 }
 
-void *calloc(size_t num_elems, size_t size) {
+void *calloc(size_t num_elems, size_t size) throw() {
   if (should_fail_allocation()) {
     errno = ENOMEM;
     return NULL;
@@ -136,7 +139,7 @@ void *calloc(size_t num_elems, size_t size) {
   return __libc_calloc(num_elems, size);
 }
 
-void *realloc(void *ptr, size_t size) {
+void *realloc(void *ptr, size_t size) throw() {
   if (should_fail_allocation()) {
     errno = ENOMEM;
     return NULL;
