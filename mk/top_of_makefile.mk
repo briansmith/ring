@@ -104,8 +104,9 @@ EXE_PREFIX ?= $(BUILD_PREFIX)test/ring/
 OBJ_PREFIX ?= $(BUILD_PREFIX)obj/
 LIB_PREFIX ?= $(BUILD_PREFIX)lib/
 
-CFLAGS_STD ?= -std=c11
-CXXFLAGS_STD ?= -std=c++11
+# GCC 4.6 requires "c1x" and "c++0x" instead of "c11" and "c++11".
+CFLAGS_STD ?= -std=c1x
+CXXFLAGS_STD ?= -std=c++0x
 
 CFLAGS += $(CFLAGS_STD)
 CXXFLAGS += $(CXXFLAGS_STD)
