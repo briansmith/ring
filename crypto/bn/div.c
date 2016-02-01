@@ -64,12 +64,6 @@
 #if !defined(OPENSSL_NO_ASM)
 # if defined(__GNUC__) && __GNUC__>=2
 
-#define DIV_ASM_DIAGNOSTIC_PUSH \
-  _Pragma("GCC diagnostic push") \
-  _Pragma("GCC diagnostic ignored \"-Wpedantic\"")
-
-#define DIV_ASM_DIAGNOSTIC_POP _Pragma("GCC diagnostic pop")
-
 #  if defined(OPENSSL_X86)
    /*
     * There were two reasons for implementing this template:
@@ -83,6 +77,7 @@
     */
 #undef div_asm
 #  define div_asm(n0,n1,d0)		\
+    __extension__ \
 	({  __asm__ volatile (			\
 		"divl	%4"			\
 		: "=a"(q), "=d"(rem)		\
@@ -98,6 +93,7 @@
     */
 #  undef div_asm
 #  define div_asm(n0,n1,d0)		\
+    __extension__ \
 	({  __asm__ volatile (			\
 		"divq	%4"			\
 		: "=a"(q), "=d"(rem)		\
@@ -270,9 +266,7 @@ int BN_div(BIGNUM *dv, BIGNUM *rm, const BIGNUM *num, const BIGNUM *divisor,
 #if defined(BN_ULLONG) && !defined(div_asm)
       q = (BN_ULONG)(((((BN_ULLONG)n0) << BN_BITS2) | n1) / d0);
 #else
-      DIV_ASM_DIAGNOSTIC_PUSH
       q = div_asm(n0, n1, d0);
-      DIV_ASM_DIAGNOSTIC_POP
 #endif
 
 #ifndef REMAINDER_IS_ALREADY_CALCULATED
