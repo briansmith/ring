@@ -23,7 +23,12 @@
 #include <openssl/err.h>
 
 
-FileTest::FileTest(const char *path) {
+FileTest::FileTest(const char *path)
+  : file_(nullptr),
+    line_(0),
+    start_line_(0),
+    used_block_(false)
+{
   file_ = fopen(path, "r");
   if (file_ == nullptr) {
     fprintf(stderr, "Could not open file %s: %s.\n", path, strerror(errno));

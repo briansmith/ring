@@ -58,9 +58,6 @@ struct FileCloser {
   }
 };
 
-template<typename T, void (*func)(T*)>
-using ScopedOpenSSLType = std::unique_ptr<T, OpenSSLDeleter<T, func>>;
-
 template<typename T, typename CleanupRet, void (*init_func)(T*),
          CleanupRet (*cleanup_func)(T*)>
 class ScopedOpenSSLContext {
@@ -79,17 +76,24 @@ class ScopedOpenSSLContext {
   T ctx_;
 };
 
-using ScopedBIGNUM = ScopedOpenSSLType<BIGNUM, BN_free>;
-using ScopedBN_CTX = ScopedOpenSSLType<BN_CTX, BN_CTX_free>;
-using ScopedBN_MONT_CTX = ScopedOpenSSLType<BN_MONT_CTX, BN_MONT_CTX_free>;
-using ScopedECDSA_SIG = ScopedOpenSSLType<ECDSA_SIG, ECDSA_SIG_free>;
-using ScopedEC_KEY = ScopedOpenSSLType<EC_KEY, EC_KEY_free>;
-using ScopedEC_POINT = ScopedOpenSSLType<EC_POINT, EC_POINT_free>;
-using ScopedRSA = ScopedOpenSSLType<RSA, RSA_free>;
+// XXX: GCC 4.6 doesn't support this use of `using` yet:
+//     template<typename T, void (*func)(T*)>
+//     using ScopedOpenSSLType = std::unique_ptr<T, OpenSSLDeleter<T, func>>;
+// TODO: When we drop GCC 4.6 support, revert back to what BoringSSL is doing.
+#define SCOPED_OPENSSL_TYPE(Name, T, func) \
+        typedef std::unique_ptr<T, OpenSSLDeleter<T, func>> Name
 
-using ScopedOpenSSLBytes = std::unique_ptr<uint8_t, OpenSSLFree<uint8_t>>;
-using ScopedOpenSSLString = std::unique_ptr<char, OpenSSLFree<char>>;
+SCOPED_OPENSSL_TYPE(ScopedBIGNUM, BIGNUM, BN_free);
+SCOPED_OPENSSL_TYPE(ScopedBN_CTX, BN_CTX, BN_CTX_free);
+SCOPED_OPENSSL_TYPE(ScopedBN_MONT_CTX, BN_MONT_CTX, BN_MONT_CTX_free);
+SCOPED_OPENSSL_TYPE(ScopedECDSA_SIG, ECDSA_SIG, ECDSA_SIG_free);
+SCOPED_OPENSSL_TYPE(ScopedEC_KEY, EC_KEY, EC_KEY_free);
+SCOPED_OPENSSL_TYPE(ScopedEC_POINT, EC_POINT, EC_POINT_free);
+SCOPED_OPENSSL_TYPE(ScopedRSA, RSA, RSA_free);
 
-using ScopedFILE = std::unique_ptr<FILE, FileCloser>;
+typedef std::unique_ptr<uint8_t, OpenSSLFree<uint8_t>> ScopedOpenSSLBytes;
+typedef std::unique_ptr<char, OpenSSLFree<char>> ScopedOpenSSLString;
+
+typedef std::unique_ptr<FILE, FileCloser> ScopedFILE;
 
 #endif  // OPENSSL_HEADER_CRYPTO_TEST_SCOPED_TYPES_H

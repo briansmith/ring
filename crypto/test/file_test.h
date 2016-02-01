@@ -77,7 +77,7 @@ class FileTest {
   enum ReadResult {
     kReadSuccess,
     kReadEOF,
-    kReadError,
+    kReadError
   };
 
   // ReadNext reads the next test from the file. It returns |kReadSuccess| if
@@ -139,12 +139,12 @@ class FileTest {
   void ClearTest();
   void OnKeyUsed(const std::string &key);
 
-  FILE *file_ = nullptr;
+  FILE *file_;
   // line_ is the number of lines read.
-  unsigned line_ = 0;
+  unsigned line_;
 
   // start_line_ is the line number of the first attribute of the test.
-  unsigned start_line_ = 0;
+  unsigned start_line_;
   // type_ is the name of the first attribute of the test.
   std::string type_;
   // parameter_ is the value of the first attribute.
@@ -157,7 +157,7 @@ class FileTest {
   // unused_attributes_ is the set of attributes that have been queried.
   std::set<std::string> unused_attributes_;
   // used_block_ is true if the block has been queried.
-  bool used_block_ = false;
+  bool used_block_;
 
   FileTest(const FileTest&) = delete;
   FileTest &operator=(const FileTest&) = delete;

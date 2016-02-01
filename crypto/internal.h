@@ -456,7 +456,7 @@ typedef enum {
   OPENSSL_THREAD_LOCAL_RAND,
   OPENSSL_THREAD_LOCAL_URANDOM_BUF,
   OPENSSL_THREAD_LOCAL_TEST,
-  NUM_OPENSSL_THREAD_LOCALS,
+  NUM_OPENSSL_THREAD_LOCALS
 } thread_local_data_t;
 
 /* thread_local_destructor_t is the type of a destructor function that will be
