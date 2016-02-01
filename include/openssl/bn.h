@@ -253,6 +253,9 @@ OPENSSL_EXPORT size_t BN_bn2bin(const BIGNUM *in, uint8_t *out);
  * returns 0. Otherwise, it returns 1. */
 OPENSSL_EXPORT int BN_bn2bin_padded(uint8_t *out, size_t len, const BIGNUM *in);
 
+/* BN_bn2cbb_padded behaves like |BN_bn2bin_padded| but writes to a |CBB|. */
+OPENSSL_EXPORT int BN_bn2cbb_padded(CBB *out, size_t len, const BIGNUM *in);
+
 /* BN_hex2bn parses the leading hex number from |in|, which may be proceeded by
  * a '-' to indicate a negative number and may contain trailing, non-hex data.
  * If |outp| is not NULL, it constructs a BIGNUM equal to the hex number and
@@ -287,13 +290,13 @@ OPENSSL_EXPORT BN_ULONG BN_get_word(const BIGNUM *bn);
 
 /* ASN.1 functions. */
 
-/* BN_cbs2unsigned parses a non-negative DER INTEGER from |cbs| writes the
- * result to |ret|. It returns one on success and zero on failure. */
-OPENSSL_EXPORT int BN_cbs2unsigned(CBS *cbs, BIGNUM *ret);
+/* BN_parse_asn1_unsigned parses a non-negative DER INTEGER from |cbs| writes
+ * the result to |ret|. It returns one on success and zero on failure. */
+OPENSSL_EXPORT int BN_parse_asn1_unsigned(CBS *cbs, BIGNUM *ret);
 
-/* BN_bn2cbb marshals |bn| as a non-negative DER INTEGER and appends the result
- * to |cbb|. It returns one on success and zero on failure. */
-OPENSSL_EXPORT int BN_bn2cbb(CBB *cbb, const BIGNUM *bn);
+/* BN_marshal_asn1 marshals |bn| as a non-negative DER INTEGER and appends the
+ * result to |cbb|. It returns one on success and zero on failure. */
+OPENSSL_EXPORT int BN_marshal_asn1(CBB *cbb, const BIGNUM *bn);
 
 
 /* Internal functions.
