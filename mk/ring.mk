@@ -228,7 +228,6 @@ $(NULL): CPPFLAGS += $(RING_CPPFLAGS) \
                      -fno-strict-aliasing \
                      -fvisibility=hidden \
                      -Wno-cast-align \
-                     -Wno-pedantic \
                      -Wno-unused-parameter \
                      $(NULL)
 $(RING_OBJS) \
