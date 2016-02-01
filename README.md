@@ -86,7 +86,7 @@ in the table below.
 <table>
 <tr><th>OS</th><th>Arch.</th><th>Compilers</th><th>Status</th>
 <tr><td>Linux</td>
-    <td>x86, x64<td>GCC 4.8, 4.9, 5; Clang 3.4, 3.6, 3.7, 3.8 (trunk)</td>
+    <td>x86, x64<td>GCC 4.6, 4.8, 4.9, 5; Clang 3.4, 3.6, 3.7, 3.8 (trunk)</td>
     <td rowspan=2><a title="Build Status" href=https://travis-ci.org/briansmith/ring><img src=https://travis-ci.org/briansmith/ring.svg?branch=master></a>
 </tr>
 <tr><td>Mac OS X</td>

@@ -26,6 +26,12 @@ rusts = [
 ]
 
 linux_compilers = [
+    # GCC 4.6 is supported almost exclusively because it is the default
+    # compiler for Ubuntu 12.04 LTS, and in particular Travis CI. This is run
+    # first because it is the one most likely to break, especially since it is
+    # not supported by BoringSSL.
+    "gcc-4.6",
+
     # Pre-release of clang.
     "clang-3.8",
 
@@ -41,6 +47,10 @@ linux_compilers = [
     "gcc-4.9",
     "gcc-4.8",
 ]
+
+# Clang 3.4 and GCC 4.6 are already installed by default.
+linux_default_clang = "clang-3.4"
+linux_default_gcc = "gcc-4.6"
 
 osx_compilers = [
      "clang",
@@ -145,8 +155,7 @@ def format_entry(os, target, compiler, rust, mode):
             }
 
 def get_linux_packages_to_install(compiler, arch):
-    # clang 3.4 is already installed
-    if compiler == "clang-3.4":
+    if compiler in [linux_default_clang, linux_default_gcc]:
         packages = []
     elif compiler.startswith("clang-"):
         packages = [compiler]
@@ -156,7 +165,7 @@ def get_linux_packages_to_install(compiler, arch):
         raise ValueError("unexpected compiler: %s" % compiler)
 
     if arch == "i686":
-        if compiler.startswith("clang-"):
+        if compiler.startswith("clang-") or compiler == linux_default_gcc:
             packages += ["libc6-dev-i386",
                          "gcc-multilib",
                          "g++-multilib"]
@@ -189,7 +198,7 @@ def get_sources_for_package(package):
         return [ubuntu_toolchain]
 
 def get_cc(sys, compiler):
-    if sys == "linux" and compiler == "clang-3.4":
+    if sys == "linux" and compiler == linux_default_clang:
         return "clang"
 
     return compiler
