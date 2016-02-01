@@ -89,8 +89,8 @@ in the table below.
     <td>x86, x64<td>GCC 4.8, 4.9, 5; Clang 3.4, 3.6, 3.7, 3.8 (trunk)</td>
     <td rowspan=2><a title="Build Status" href=https://travis-ci.org/briansmith/ring><img src=https://travis-ci.org/briansmith/ring.svg?branch=master></a>
 </tr>
-<tr><td>Mac OS X x64</td>
-    <td>x86, x64</td>
+<tr><td>Mac OS X</td>
+    <td>x64</td>
     <td>Apple Clang 6.0 (based on Clang 3.5)</td>
 </tr>
 <tr><td>Windows</td>

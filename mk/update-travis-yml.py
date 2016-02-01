@@ -66,7 +66,6 @@ oss = [
 targets = {
     "osx" : [
         "x86_64-apple-darwin",
-        "i686-apple-darwin",
     ],
     "linux" : [
         "x86_64-unknown-linux-gnu",

@@ -63,9 +63,8 @@ macro_rules! define_metrics_tests {
             assert!(mem::size_of_val(&c_align) <= mem::size_of::<usize>());
             assert!(mem::size_of_val(&c_size) <= mem::size_of::<usize>());
 
-            // Rust uses 4 for the alignment of `i64` and `u64`. On Mac OS X,
-            // Apple Clang uses 8. On Linux, GCC 5 uses 8 but earlier versions
-            // use 4 and so does Clang.
+            // Rust uses 4 for the alignment of `i64` and `u64`. On Linux x86,
+            // GCC 5 uses 8 but earlier versions use 4 and so does Clang.
             let rust_align =
                 if $expected_align_factor != 1 &&
                    mem::align_of::<$name>() != c_align as usize {
@@ -143,15 +142,10 @@ define_metrics_tests!(u32, test_u32_metrics, ring_uint32_t_align,
                       ring_uint32_t_size);
 
 #[cfg(all(test,
-          not(all(target_arch = "x86",
-                  any(target_os = "linux",
-                      target_os = "macos")))))]
+          not(all(target_arch = "x86", target_os = "linux"))))]
 const SIXTY_FOUR_BIT_ALIGNMENT_FACTOR: usize = 1;
 
-#[cfg(all(test,
-          target_arch = "x86",
-          any(target_os = "linux",
-              target_os = "macos")))]
+#[cfg(all(test, target_arch = "x86", target_os = "linux"))]
 const SIXTY_FOUR_BIT_ALIGNMENT_FACTOR: usize = 2;
 
 define_metrics_tests!(i64, test_i64_metrics, ring_int64_t_align,
