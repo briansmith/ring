@@ -933,7 +933,7 @@ static int ext_ri_add_serverhello(SSL *ssl, CBB *out) {
 
 /* Extended Master Secret.
  *
- * https://tools.ietf.org/html/draft-ietf-tls-session-hash-05 */
+ * https://tools.ietf.org/html/rfc7627 */
 
 static void ext_ems_init(SSL *ssl) {
   ssl->s3->tmp.extended_master_secret = 0;

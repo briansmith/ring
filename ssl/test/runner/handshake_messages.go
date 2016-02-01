@@ -349,7 +349,7 @@ func (m *clientHelloMsg) marshal() []byte {
 		z = z[4:]
 	}
 	if m.extendedMasterSecret {
-		// https://tools.ietf.org/html/draft-ietf-tls-session-hash-01
+		// https://tools.ietf.org/html/rfc7627
 		z[0] = byte(extensionExtendedMasterSecret >> 8)
 		z[1] = byte(extensionExtendedMasterSecret & 0xff)
 		z = z[4:]

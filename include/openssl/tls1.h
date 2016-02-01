@@ -218,7 +218,7 @@ extern "C" {
 /* ExtensionType value from RFC7685 */
 #define TLSEXT_TYPE_padding 21
 
-/* https://tools.ietf.org/html/draft-ietf-tls-session-hash-01 */
+/* ExtensionType value from RFC7627 */
 #define TLSEXT_TYPE_extended_master_secret 23
 
 /* ExtensionType value from RFC4507 */
