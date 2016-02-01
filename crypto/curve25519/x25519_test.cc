@@ -20,8 +20,7 @@
 
 
 static bool TestX25519() {
-  /* Taken from
-   * https://tools.ietf.org/html/draft-irtf-cfrg-curves-11#section-5.2 */
+  /* Taken from https://tools.ietf.org/html/rfc7748#section-5.2 */
   static const uint8_t kScalar1[32] = {
       0xa5, 0x46, 0xe3, 0x6b, 0xf0, 0x52, 0x7c, 0x9d, 0x3b, 0x16, 0x15,
       0x4b, 0x82, 0x46, 0x5e, 0xdd, 0x62, 0x14, 0x4c, 0x0a, 0xc1, 0xfc,
@@ -91,8 +90,7 @@ static bool TestX25519SmallOrder() {
 }
 
 static bool TestX25519Iterated() {
-  /* Taken from
-   * https://tools.ietf.org/html/draft-irtf-cfrg-curves-11#section-5.2 */
+  /* Taken from https://tools.ietf.org/html/rfc7748#section-5.2 */
   uint8_t scalar[32] = {9}, point[32] = {9}, out[32];
 
   unsigned i;
