@@ -122,6 +122,10 @@
 #define alignas(x) __declspec(align(x))
 #define alignof __alignof
 #endif
+#elif !defined(__clang__) && defined(__GNUC__) && __GNUC__ == 4 && \
+      __GNUC_MINOR__ == 6
+#define alignas(x) __attribute__ ((aligned (x)))
+#define alignof __alignof__
 #else
 #include <stdalign.h>
 #endif
