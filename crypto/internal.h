@@ -154,7 +154,7 @@ extern "C" {
 void OPENSSL_cpuid_setup(void);
 #endif
 
-#if !defined(inline)
+#if defined(_MSC_VER)
 #define inline __inline
 #endif
 
