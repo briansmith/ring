@@ -1799,8 +1799,8 @@ static const ASN1InvalidTest kASN1InvalidTests[] = {
     {"\x02\x00", 2},
 };
 
-// kASN1BuggyTests are incorrect encodings and how |BN_cbs2unsigned_buggy|
-// should interpret them.
+// kASN1BuggyTests contains incorrect encodings and the corresponding, expected
+// results of |BN_parse_asn1_unsigned_buggy| given that input.
 static const ASN1Test kASN1BuggyTests[] = {
     // Negative numbers.
     {"128", "\x02\x01\x80", 3},
@@ -1850,7 +1850,7 @@ static bool test_asn1() {
       return false;
     }
 
-    // |BN_cbs2unsigned_buggy| parses all valid input.
+    // |BN_parse_asn1_unsigned_buggy| parses all valid input.
     CBS_init(&cbs, reinterpret_cast<const uint8_t*>(test.der), test.der_len);
     if (!BN_parse_asn1_unsigned_buggy(&cbs, bn2.get()) || CBS_len(&cbs) != 0) {
       fprintf(stderr, "Parsing ASN.1 INTEGER failed.\n");
@@ -1876,7 +1876,7 @@ static bool test_asn1() {
     ERR_clear_error();
 
     // All tests in kASN1InvalidTests are also rejected by
-    // |BN_cbs2unsigned_buggy|.
+    // |BN_parse_asn1_unsigned_buggy|.
     CBS_init(&cbs, reinterpret_cast<const uint8_t*>(test.der), test.der_len);
     if (BN_parse_asn1_unsigned_buggy(&cbs, bn.get())) {
       fprintf(stderr, "Parsed invalid input.\n");
@@ -1886,7 +1886,7 @@ static bool test_asn1() {
   }
 
   for (const ASN1Test &test : kASN1BuggyTests) {
-    // These broken encodings are rejected by |BN_cbs2unsigned|.
+    // These broken encodings are rejected by |BN_parse_asn1_unsigned|.
     ScopedBIGNUM bn(BN_new());
     if (!bn) {
       return false;
@@ -1900,7 +1900,7 @@ static bool test_asn1() {
     }
     ERR_clear_error();
 
-    // However |BN_cbs2unsigned_buggy| accepts them.
+    // However |BN_parse_asn1_unsigned_buggy| accepts them.
     ScopedBIGNUM bn2 = ASCIIToBIGNUM(test.value_ascii);
     if (!bn2) {
       return false;
