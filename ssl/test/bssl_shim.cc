@@ -747,6 +747,8 @@ static ScopedSSL_CTX SetupCtx(const TestConfig *config) {
         !BN_set_word(dh->g, 2)) {
       return nullptr;
     }
+    BN_free(dh->q);
+    dh->q = NULL;
     dh->priv_length = 0;
   }
 
