@@ -17,6 +17,9 @@
  * domain licensed but the standard ISC license is included above to keep
  * licensing simple. */
 
+#if !defined(OPENSSL_NO_ASM)
+#if defined(__x86_64__)
+
 .data
 .p2align 4
 
@@ -1929,3 +1932,6 @@ add %r11,%rsp
 mov %rdi,%rax
 mov %rsi,%rdx
 ret
+
+#endif  /* __x86_64__ */
+#endif  /* !OPENSSL_NO_ASM */
