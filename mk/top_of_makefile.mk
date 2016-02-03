@@ -63,7 +63,9 @@ else ifeq ($(TARGET_ARCH_NORMAL),x86_64)
 MARCH = x86-64
 MINSTR = 64
 else
-MARCH = $(subst _,-,$(TARGET_ARCH_BASE))
+# TODO: Pass -march and related options. For now, use the default of the
+# toolchain's C compiler.
+# MARCH = $(subst _,-,$(TARGET_ARCH_BASE))
 endif
 
 ifeq ($(TARGET_ABI),eabi)

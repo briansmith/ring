@@ -11,4 +11,4 @@ push @ARGV, 'sha256';
 $0 =~ m/(.*[\/\\])[^\/\\]+$/; $dir=$1;
 push(@INC,"${dir}");
 
-do "sha-x86_64.pl" or die "failed to run sha-armv8.pl: $@";
+do "sha-armv8.pl" or die "failed to run sha-armv8.pl: $@";

@@ -113,13 +113,13 @@ RING_x86_64_SRCS = $(addprefix $(RING_PREFIX), \
 RING_ARM_SHARED_SRCS = \
   crypto/aes/asm/aesv8-armx.pl \
   crypto/cpu-arm-asm.S \
-  crypto/curve25519/asm/x25519-arm.S \
   $(NULL)
 
 RING_arm_SRCS = $(addprefix $(RING_PREFIX), \
   crypto/aes/asm/aes-armv4.pl \
   crypto/aes/asm/bsaes-armv7.pl \
   crypto/bn/asm/armv4-mont.pl \
+  crypto/curve25519/asm/x25519-asm-arm.S \
   crypto/modes/asm/ghash-armv4.pl \
   crypto/sha/asm/sha256-armv4.pl \
   crypto/sha/asm/sha512-armv4.pl \
@@ -252,13 +252,16 @@ PERL_EXECUTABLE ?= perl
 # The British spelling "flavour" is used for consistency with perlasm's code.
 ifeq ($(findstring darwin,$(TARGET_SYS)),darwin)
 PERLASM_FLAVOUR ?= macosx
+else ifeq ($(TARGET_ARCH_NORMAL),aarch64)
+PERLASM_FLAVOUR ?= linux64
+else ifeq ($(TARGET_ARCH_NORMAL),arm)
+PERLASM_FLAVOUR ?= linux32
 else
 PERLASM_FLAVOUR ?= elf
 endif
 
-PERLASM_x86_ARGS = $(PERLASM_FLAVOUR) -fPIC -DOPENSSL_IA32_SSE2
-PERLASM_x86_64_ARGS = $(PERLASM_FLAVOUR)
-PERLASM_ARGS = $(PERLASM_$(TARGET_ARCH_NORMAL)_ARGS)
+PERLASM_x86_ARGS = -fPIC -DOPENSSL_IA32_SSE2
+PERLASM_ARGS = $(PERLASM_FLAVOUR) $(PERLASM_$(TARGET_ARCH_NORMAL)_ARGS)
 
 $(OBJ_PREFIX)%.S: %.pl $(PERLASM_LIB_SRCS)
 	${PERL_EXECUTABLE} $< $(PERLASM_ARGS) > $@
