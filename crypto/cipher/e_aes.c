@@ -126,9 +126,8 @@ int aesni_set_encrypt_key(const uint8_t *userKey, int bits, AES_KEY *key);
 void aesni_encrypt(const uint8_t *in, uint8_t *out, const AES_KEY *key);
 void aesni_ctr32_encrypt_blocks(const uint8_t *in, uint8_t *out, size_t blocks,
                                 const void *key, const uint8_t *ivec);
-#endif
-
 static char aesni_capable(void);
+#endif
 
 static ctr128_f aes_ctr_set_key(AES_KEY *aes_key, GCM128_CONTEXT *gcm_ctx,
                                 block128_f *out_block, const uint8_t *key,
@@ -195,10 +194,11 @@ static ctr128_f aes_ctr_set_key(AES_KEY *aes_key, GCM128_CONTEXT *gcm_ctx,
   return NULL;
 }
 
+#if defined(AESNI)
 static char aesni_capable(void) {
   return (OPENSSL_ia32cap_P[1] & (1 << (57 - 32))) != 0;
 }
-
+#endif
 
 struct aead_aes_gcm_ctx {
   union {
@@ -317,9 +317,9 @@ int evp_aead_aes_gcm_open(const void *ctx_buf, uint8_t *out, size_t *out_len,
 
 
 int EVP_has_aes_hardware(void) {
-#if defined(OPENSSL_X86) || defined(OPENSSL_X86_64)
+#if defined(AESNI)
   return aesni_capable() && crypto_gcm_clmul_enabled();
-#elif defined(OPENSSL_ARM) || defined(OPENSSL_AARCH64)
+#elif defined(HWAES)
   return hwaes_capable() && CRYPTO_is_ARMv8_PMULL_capable();
 #else
   return 0;
