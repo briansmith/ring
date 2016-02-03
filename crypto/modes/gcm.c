@@ -57,6 +57,14 @@
 #include "internal.h"
 
 
+/* STRICT_ALIGNMENT is 1 if unaligned memory access is known to work, otherwise
+ * it is 0. */
+#if defined(OPENSSL_X86_64) || defined(OPENSSL_X86) || defined(OPENSSL_AARCH64)
+#define STRICT_ALIGNMENT 0
+#else
+#define STRICT_ALIGNMENT 1
+#endif
+
 #if !defined(OPENSSL_NO_ASM) &&                         \
     (defined(OPENSSL_X86) || defined(OPENSSL_X86_64) || \
      defined(OPENSSL_ARM) || defined(OPENSSL_AARCH64))
