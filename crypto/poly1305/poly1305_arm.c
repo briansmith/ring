@@ -189,11 +189,11 @@ void CRYPTO_poly1305_init_neon(poly1305_state *state, const uint8_t key[32]) {
   fe1305x2 *const precomp = c + 1;
   unsigned int j;
 
-  r->v[1] = r->v[0] = 0x3ffffff & *(uint32_t *)key;
-  r->v[3] = r->v[2] = 0x3ffff03 & ((*(uint32_t *)(key + 3)) >> 2);
-  r->v[5] = r->v[4] = 0x3ffc0ff & ((*(uint32_t *)(key + 6)) >> 4);
-  r->v[7] = r->v[6] = 0x3f03fff & ((*(uint32_t *)(key + 9)) >> 6);
-  r->v[9] = r->v[8] = 0x00fffff & ((*(uint32_t *)(key + 12)) >> 8);
+  r->v[1] = r->v[0] = 0x3ffffff & *(const uint32_t *)key;
+  r->v[3] = r->v[2] = 0x3ffff03 & ((*(const uint32_t *)(key + 3)) >> 2);
+  r->v[5] = r->v[4] = 0x3ffc0ff & ((*(const uint32_t *)(key + 6)) >> 4);
+  r->v[7] = r->v[6] = 0x3f03fff & ((*(const uint32_t *)(key + 9)) >> 6);
+  r->v[9] = r->v[8] = 0x00fffff & ((*(const uint32_t *)(key + 12)) >> 8);
 
   for (j = 0; j < 10; j++) {
     h->v[j] = 0; /* XXX: should fast-forward a bit */
