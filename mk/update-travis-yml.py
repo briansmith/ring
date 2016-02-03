@@ -78,8 +78,8 @@ targets = {
         "x86_64-apple-darwin",
     ],
     "linux" : [
-        "x86_64-unknown-linux-gnu",
         "i686-unknown-linux-gnu",
+        "x86_64-unknown-linux-gnu",
     ],
 }
 
