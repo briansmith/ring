@@ -218,8 +218,11 @@ int bn_mul_mont(BN_ULONG *rp, const BN_ULONG *ap, const BN_ULONG *bp,
                 const BN_ULONG *np, const BN_ULONG *n0, int num);
 
 #if defined(OPENSSL_X86_64) && defined(_MSC_VER)
-#  define BN_UMULT_HIGH(a, b) __umulh((a), (b))
-#  define BN_UMULT_LOHI(low, high, a, b) ((low) = _umul128((a), (b), &(high)))
+#define BN_UMULT_LOHI(low, high, a, b) ((low) = _umul128((a), (b), &(high)))
+#endif
+
+#if !defined(BN_ULLONG) && !defined(BN_UMULT_LOHI)
+#error "Either BN_ULLONG or BN_UMULT_LOHI must be defined on every platform."
 #endif
 
 

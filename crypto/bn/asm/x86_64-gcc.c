@@ -1,9 +1,3 @@
-#include <openssl/bn.h>
-
-#if !defined(OPENSSL_NO_ASM) && defined(OPENSSL_X86_64) && !defined(OPENSSL_WINDOWS)
-
-#include "../internal.h"
-
 /* x86_64 BIGNUM accelerator version 0.1, December 2002.
  *
  * Implemented by Andy Polyakov <appro@fy.chalmers.se> for the OpenSSL
@@ -56,7 +50,13 @@
  *    machine.
  */
 
- /* TODO(davidben): Get this file working on Windows x64. */
+#include <openssl/bn.h>
+
+/* TODO(davidben): Get this file working on Windows x64. */
+#if !defined(OPENSSL_NO_ASM) && defined(OPENSSL_X86_64) && defined(__GNUC__)
+
+#include "../internal.h"
+
 
 #undef mul
 #undef mul_add
@@ -536,4 +536,4 @@ void bn_sqr_comba4(BN_ULONG *r, const BN_ULONG *a) {
   r[7] = c2;
 }
 
-#endif  /* !NO_ASM && X86_64 && !WINDOWS */
+#endif  /* !NO_ASM && X86_64 && __GNUC__ */
