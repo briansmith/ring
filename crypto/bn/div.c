@@ -292,9 +292,7 @@ int BN_div(BIGNUM *dv, BIGNUM *rm, const BIGNUM *num, const BIGNUM *divisor,
       BN_ULONG t2l, t2h;
 
 #if defined(div_asm)
-      DIV_ASM_DIAGNOSTIC_PUSH
       q = div_asm(n0, n1, d0);
-      DIV_ASM_DIAGNOSTIC_POP
 #else
       q = bn_div_words(n0, n1, d0);
 #endif
