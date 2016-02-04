@@ -244,7 +244,7 @@ static void BN_POOL_finish(BN_POOL *p) {
     BIGNUM *bn = p->head->vals;
     while (loop++ < BN_CTX_POOL_SIZE) {
       if (bn->d) {
-        BN_clear_free(bn);
+        BN_free(bn);
       }
       bn++;
     }

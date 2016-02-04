@@ -54,35 +54,7 @@
  * copied and put under another distribution licence
  * [including the GNU Public Licence.] */
 
-#if !defined(_POSIX_C_SOURCE)
-#define _POSIX_C_SOURCE 201410L  /* needed for strdup, snprintf, vprintf etc */
-#endif
-
 #include <openssl/mem.h>
-
-#if defined(OPENSSL_WINDOWS)
-#pragma warning(push, 3)
-#include <windows.h>
-#pragma warning(pop)
-#else
-#include <string.h>
-#endif
-
-
-void OPENSSL_cleanse(void *ptr, size_t len) {
-#if defined(OPENSSL_WINDOWS)
-  SecureZeroMemory(ptr, len);
-#else
-  memset(ptr, 0, len);
-
-#if !defined(OPENSSL_NO_ASM)
-  /* As best as we can tell, this is sufficient to break any optimisations that
-     might try to eliminate "superfluous" memsets. If there's an easy way to
-     detect memset_s, it would be better to use that. */
-  __asm__ __volatile__("" : : "r"(ptr) : "memory");
-#endif
-#endif  /* !OPENSSL_NO_ASM */
-}
 
 int CRYPTO_memcmp(const void *in_a, const void *in_b, size_t len) {
   size_t i;

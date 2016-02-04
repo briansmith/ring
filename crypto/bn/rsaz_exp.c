@@ -247,8 +247,6 @@ void RSAZ_1024_mod_exp_avx2(BN_ULONG result_norm[16],
 	rsaz_1024_mul_avx2(result, result, one, m, k0);
 
 	rsaz_1024_red2norm_avx2(result_norm, result);
-
-	OPENSSL_cleanse(storage,sizeof(storage));
 }
 
 #endif  /* OPENSSL_X86_64 */

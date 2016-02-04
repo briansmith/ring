@@ -172,10 +172,7 @@ int BN_rand(BIGNUM *rnd, int bits, int top, int bottom) {
   ret = 1;
 
 err:
-  if (buf != NULL) {
-    OPENSSL_cleanse(buf, bytes);
-    OPENSSL_free(buf);
-  }
+  OPENSSL_free(buf);
   return (ret);
 }
 

@@ -64,11 +64,6 @@ static const uint64_t kMaxBytesPerRefresh = 1024 * 1024;
 /* rand_thread_state_free frees a |rand_thread_state|. This is called when a
  * thread exits. */
 static void rand_thread_state_free(void *state) {
-  if (state == NULL) {
-    return;
-  }
-
-  OPENSSL_cleanse(state, sizeof(struct rand_thread_state));
   OPENSSL_free(state);
 }
 

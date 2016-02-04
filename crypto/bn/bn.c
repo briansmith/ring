@@ -99,27 +99,6 @@ void BN_free(BIGNUM *bn) {
   }
 }
 
-void BN_clear_free(BIGNUM *bn) {
-  char should_free;
-
-  if (bn == NULL) {
-    return;
-  }
-
-  if (bn->d != NULL) {
-    OPENSSL_cleanse(bn->d, bn->dmax * sizeof(bn->d[0]));
-    if ((bn->flags & BN_FLG_STATIC_DATA) == 0) {
-      OPENSSL_free(bn->d);
-    }
-  }
-
-  should_free = (bn->flags & BN_FLG_MALLOCED) != 0;
-  OPENSSL_cleanse(bn, sizeof(BIGNUM));
-  if (should_free) {
-    OPENSSL_free(bn);
-  }
-}
-
 BIGNUM *BN_dup(const BIGNUM *src) {
   BIGNUM *copy;
 
@@ -154,15 +133,6 @@ BIGNUM *BN_copy(BIGNUM *dest, const BIGNUM *src) {
   dest->top = src->top;
   dest->neg = src->neg;
   return dest;
-}
-
-void BN_clear(BIGNUM *bn) {
-  if (bn->d != NULL) {
-    memset(bn->d, 0, bn->dmax * sizeof(bn->d[0]));
-  }
-
-  bn->top = 0;
-  bn->neg = 0;
 }
 
 const BIGNUM *BN_value_one(void) {

@@ -131,14 +131,14 @@ void RSA_free(RSA *rsa) {
     return;
   }
 
-  BN_clear_free(rsa->n);
-  BN_clear_free(rsa->e);
-  BN_clear_free(rsa->d);
-  BN_clear_free(rsa->p);
-  BN_clear_free(rsa->q);
-  BN_clear_free(rsa->dmp1);
-  BN_clear_free(rsa->dmq1);
-  BN_clear_free(rsa->iqmp);
+  BN_free(rsa->n);
+  BN_free(rsa->e);
+  BN_free(rsa->d);
+  BN_free(rsa->p);
+  BN_free(rsa->q);
+  BN_free(rsa->dmp1);
+  BN_free(rsa->dmq1);
+  BN_free(rsa->iqmp);
   BN_MONT_CTX_free(rsa->mont_n);
   BN_MONT_CTX_free(rsa->mont_p);
   BN_MONT_CTX_free(rsa->mont_q);

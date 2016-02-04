@@ -496,8 +496,7 @@ err:
   }
   if (val != NULL) {
     for (v = val; *v != NULL; v++) {
-      ec_GFp_simple_point_clear_finish(*v);
-      OPENSSL_cleanse(*v, sizeof **v);
+      ec_GFp_simple_point_finish(*v);
       OPENSSL_free(*v);
     }
 

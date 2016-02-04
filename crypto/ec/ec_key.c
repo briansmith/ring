@@ -104,9 +104,8 @@ void EC_KEY_free(EC_KEY *r) {
   }
 
   EC_POINT_free(r->pub_key);
-  BN_clear_free(r->priv_key);
+  BN_free(r->priv_key);
 
-  OPENSSL_cleanse((void *)r, sizeof(EC_KEY));
   OPENSSL_free(r);
 }
 
