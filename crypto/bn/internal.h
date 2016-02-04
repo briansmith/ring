@@ -125,7 +125,7 @@
 
 #include <openssl/base.h>
 
-#if defined(OPENSSL_X86_64) && defined(_MSC_VER) && _MSC_VER >= 1400
+#if defined(OPENSSL_X86_64) && defined(_MSC_VER)
 #pragma warning(push, 3)
 #include <intrin.h>
 #pragma warning(pop)
@@ -259,8 +259,11 @@ int bn_mul_mont(BN_ULONG *rp, const BN_ULONG *ap, const BN_ULONG *bp,
 
 #endif  /* !defined(BN_ULLONG) */
 
-#if !defined(OPENSSL_NO_ASM) && defined(OPENSSL_X86_64)
-# if defined(__GNUC__) && __GNUC__ >= 2
+#if defined(OPENSSL_X86_64)
+# if defined(_MSC_VER)
+#  define BN_UMULT_HIGH(a, b) __umulh((a), (b))
+#  define BN_UMULT_LOHI(low, high, a, b) ((low) = _umul128((a), (b), &(high)))
+# elif !defined(OPENSSL_NO_ASM) && defined(__GNUC__)
 #  define BN_UMULT_HIGH(a,b)	({	\
 	register BN_ULONG ret,discard;	\
 	__asm__ ("mulq	%3"		\
@@ -273,12 +276,11 @@ int bn_mul_mont(BN_ULONG *rp, const BN_ULONG *ap, const BN_ULONG *bp,
 		: "=a"(low),"=d"(high)	\
 		: "a"(a),"g"(b)		\
 		: "cc");
-# elif defined(_MSC_VER) && _MSC_VER >= 1400
-#  define BN_UMULT_HIGH(a, b) __umulh((a), (b))
-#  define BN_UMULT_LOHI(low, high, a, b) ((low) = _umul128((a), (b), &(high)))
 # endif
-#elif !defined(OPENSSL_NO_ASM) && defined(OPENSSL_AARCH64)
-# if defined(__GNUC__) && __GNUC__>=2
+#endif
+
+#if defined(OPENSSL_AARCH64)
+# if !defined(OPENSSL_NO_ASM) && defined(__GNUC__)
 #  define BN_UMULT_HIGH(a,b)	({	\
 	register BN_ULONG ret;		\
 	__asm__ ("umulh	%0,%1,%2"	\
