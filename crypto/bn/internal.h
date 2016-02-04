@@ -225,69 +225,9 @@ int bn_cmp_part_words(const BN_ULONG *a, const BN_ULONG *b, int cl, int dl);
 int bn_mul_mont(BN_ULONG *rp, const BN_ULONG *ap, const BN_ULONG *bp,
                 const BN_ULONG *np, const BN_ULONG *n0, int num);
 
-#if !defined(BN_ULLONG)
-
-#define LBITS(a) ((a) & BN_MASK2l)
-#define HBITS(a) (((a) >> BN_BITS4) & BN_MASK2l)
-#define L2HBITS(a) (((a) << BN_BITS4) & BN_MASK2)
-
-#define LLBITS(a) ((a) & BN_MASKl)
-#define LHBITS(a) (((a) >> BN_BITS2) & BN_MASKl)
-#define LL2HBITS(a) ((BN_ULLONG)((a) & BN_MASKl) << BN_BITS2)
-
-#define mul64(l, h, bl, bh)       \
-  {                               \
-    BN_ULONG m, m1, lt, ht;       \
-                                  \
-    lt = l;                       \
-    ht = h;                       \
-    m = (bh) * (lt);              \
-    lt = (bl) * (lt);             \
-    m1 = (bl) * (ht);             \
-    ht = (bh) * (ht);             \
-    m = (m + m1) & BN_MASK2;      \
-    if (m < m1)                   \
-      ht += L2HBITS((BN_ULONG)1); \
-    ht += HBITS(m);               \
-    m1 = L2HBITS(m);              \
-    lt = (lt + m1) & BN_MASK2;    \
-    if (lt < m1)                  \
-      ht++;                       \
-    (l) = lt;                     \
-    (h) = ht;                     \
-  }
-
-#endif  /* !defined(BN_ULLONG) */
-
-#if defined(OPENSSL_X86_64)
-# if defined(_MSC_VER)
+#if defined(OPENSSL_X86_64) && defined(_MSC_VER)
 #  define BN_UMULT_HIGH(a, b) __umulh((a), (b))
 #  define BN_UMULT_LOHI(low, high, a, b) ((low) = _umul128((a), (b), &(high)))
-# elif !defined(OPENSSL_NO_ASM) && defined(__GNUC__)
-#  define BN_UMULT_HIGH(a,b)	({	\
-	register BN_ULONG ret,discard;	\
-	__asm__ ("mulq	%3"		\
-	     : "=a"(discard),"=d"(ret)	\
-	     : "a"(a), "g"(b)		\
-	     : "cc");			\
-	ret;			})
-#  define BN_UMULT_LOHI(low,high,a,b)	\
-	__asm__ ("mulq	%3"		\
-		: "=a"(low),"=d"(high)	\
-		: "a"(a),"g"(b)		\
-		: "cc");
-# endif
-#endif
-
-#if defined(OPENSSL_AARCH64)
-# if !defined(OPENSSL_NO_ASM) && defined(__GNUC__)
-#  define BN_UMULT_HIGH(a,b)	({	\
-	register BN_ULONG ret;		\
-	__asm__ ("umulh	%0,%1,%2"	\
-	     : "=r"(ret)		\
-	     : "r"(a), "r"(b));		\
-	ret;			})
-# endif
 #endif
 
 

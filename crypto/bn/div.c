@@ -291,31 +291,15 @@ int BN_div(BIGNUM *dv, BIGNUM *rm, const BIGNUM *num, const BIGNUM *divisor,
 #else /* !BN_ULLONG */
       BN_ULONG t2l, t2h;
 
-#if defined(div_asm)
-      q = div_asm(n0, n1, d0);
-#else
+#if !defined(_MSC_VER) || !defined(OPENSSL_X86_64)
+#error "Unreachable code. BN_ULLONG is defined everywhere except 64-bit MSVC."
+#endif
+
       q = bn_div_words(n0, n1, d0);
-#endif
 
-#ifndef REMAINDER_IS_ALREADY_CALCULATED
       rem = (n1 - q * d0) & BN_MASK2;
-#endif
 
-#if defined(BN_UMULT_LOHI)
       BN_UMULT_LOHI(t2l, t2h, d1, q);
-#elif defined(BN_UMULT_HIGH)
-      t2l = d1 * q;
-      t2h = BN_UMULT_HIGH(d1, q);
-#else
-      {
-        BN_ULONG ql, qh;
-        t2l = LBITS(d1);
-        t2h = HBITS(d1);
-        ql = LBITS(q);
-        qh = HBITS(q);
-        mul64(t2l, t2h, ql, qh); /* t2=(BN_ULLONG)d1*q; */
-      }
-#endif
 
       for (;;) {
         if ((t2h < rem) || ((t2h == rem) && (t2l <= wnump[-2]))) {
