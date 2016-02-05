@@ -1,4 +1,4 @@
-// Copyright 2015 Brian Smith.
+// Copyright 2015-2016 Brian Smith.
 //
 // Permission to use, copy, modify, and/or distribute this software for any
 // purpose with or without fee is hereby granted, provided that the above
@@ -22,6 +22,8 @@
 //! C analog: `openssl/aead.h`
 //!
 //! Go analog: [`crypto.cipher.AEAD`](https://golang.org/pkg/crypto/cipher/#AEAD)
+
+#![allow(unsafe_code)]
 
 use core;
 use super::{c, bssl};

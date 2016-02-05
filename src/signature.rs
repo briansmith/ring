@@ -1,4 +1,4 @@
-// Copyright 2015 Brian Smith.
+// Copyright 2015-2016 Brian Smith.
 //
 // Permission to use, copy, modify, and/or distribute this software for any
 // purpose with or without fee is hereby granted, provided that the above
@@ -35,6 +35,8 @@
 //! requiring signing large messages. An interface for efficiently supporting
 //! larger messages will be added later. Similarly, the signing interface is
 //! not available yet.
+
+#![allow(unsafe_code)]
 
 use super::{c, bssl};
 #[cfg(not(feature = "no_heap"))] use super::{digest, ecc};

@@ -31,7 +31,6 @@
     missing_copy_implementations,
     missing_debug_implementations,
     missing_docs, // TODO
-    unsafe_code, // TODO
     unused_import_braces, // TODO
     unused_qualifications, // TODO
     unused_results, // TODO
@@ -63,6 +62,7 @@
     unknown_crate_types,
     unknown_lints,
     unreachable_code,
+    unsafe_code,
     unstable_features,
     unused_allocation,
     unused_assignments,

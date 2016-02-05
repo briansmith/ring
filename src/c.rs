@@ -1,4 +1,4 @@
-// Copyright 2015 Brian Smith.
+// Copyright 2015-2016 Brian Smith.
 //
 // Permission to use, copy, modify, and/or distribute this software for any
 // purpose with or without fee is hereby granted, provided that the above
@@ -52,6 +52,7 @@ macro_rules! define_metrics_tests {
 
         #[cfg(test)]
         #[test]
+        #[allow(unsafe_code)]
         fn $test_c_metrics() {
             use std::mem;
 
