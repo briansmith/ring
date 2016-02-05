@@ -186,8 +186,6 @@ BIGNUM *bn_expand(BIGNUM *bn, size_t bits);
 #define BN_MULL_SIZE_NORMAL (16)              /* 32 */
 #define BN_MUL_RECURSIVE_SIZE_NORMAL (16)     /* 32 less than */
 #define BN_SQR_RECURSIVE_SIZE_NORMAL (16)     /* 32 */
-#define BN_MUL_LOW_RECURSIVE_SIZE_NORMAL (32) /* 32 */
-#define BN_MONT_CTX_SET_SIZE_WORD (64)        /* 32 */
 
 #define STATIC_BIGNUM(x)                                \
   {                                                     \
