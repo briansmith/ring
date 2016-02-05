@@ -33,7 +33,6 @@
     missing_docs, // TODO
     unused_import_braces, // TODO
     unused_qualifications, // TODO
-    unused_results, // TODO
 )]
 #![deny(
     const_err,
@@ -74,6 +73,7 @@
     unused_must_use,
     unused_mut,
     unused_parens,
+    unused_results,
     unused_unsafe,
     unused_variables,
     variant_size_differences,

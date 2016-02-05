@@ -1,4 +1,4 @@
-// Copyright 2015 Brian Smith.
+// Copyright 2015-2016 Brian Smith.
 //
 // Permission to use, copy, modify, and/or distribute this software for any
 // purpose with or without fee is hereby granted, provided that the above
@@ -45,8 +45,8 @@ impl TestCase {
             if !s.ends_with("\"") {
                 panic!("expected quoted string, found {}", s);
             }
-            s.pop();
-            s.remove(0);
+            let _ = s.pop();
+            let _ = s.remove(0);
             Vec::from(s.as_bytes())
         } else {
             // The value is hex encoded.
@@ -165,8 +165,8 @@ fn parse_test_case(current_section: &mut String,
                 assert!(line.ends_with("]"));
                 current_section.truncate(0);
                 current_section.push_str(line);
-                current_section.pop();
-                current_section.remove(0);
+                let _ = current_section.pop();
+                let _ = current_section.remove(0);
             },
 
             Some(ref line) => {
