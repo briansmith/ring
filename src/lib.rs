@@ -1,4 +1,4 @@
-// Copyright 2015 Brian Smith.
+// Copyright 2015-2016 Brian Smith.
 //
 // Permission to use, copy, modify, and/or distribute this software for any
 // purpose with or without fee is hereby granted, provided that the above
@@ -26,6 +26,60 @@
 //!         <code>no_heap</code> mode, but for now some RSA, ECDH, and ECDSA
 //!         functionality still uses the heap.
 //! </table>
+
+#![allow(
+    missing_copy_implementations,
+    missing_debug_implementations,
+    missing_docs, // TODO
+    trivial_numeric_casts, // TODO
+    unsafe_code, // TODO
+    unused_import_braces, // TODO
+    unused_qualifications, // TODO
+    unused_results, // TODO
+)]
+#![deny(
+    const_err,
+    dead_code,
+    deprecated,
+    drop_with_repr_extern,
+    exceeding_bitshifts,
+    fat_ptr_transmutes,
+    improper_ctypes,
+    match_of_unit_variant_via_paren_dotdot,
+    mutable_transmutes,
+    no_mangle_const_items,
+    non_camel_case_types,
+    non_shorthand_field_patterns,
+    non_snake_case,
+    non_upper_case_globals,
+    overflowing_literals,
+    path_statements,
+    plugin_as_library,
+    private_no_mangle_fns,
+    private_no_mangle_statics,
+    stable_features,
+    trivial_casts,
+    unconditional_recursion,
+    unknown_crate_types,
+    unknown_lints,
+    unreachable_code,
+    unstable_features,
+    unused_allocation,
+    unused_assignments,
+    unused_attributes,
+    unused_comparisons,
+    unused_extern_crates,
+    unused_features,
+    unused_imports,
+    unused_must_use,
+    unused_mut,
+    unused_parens,
+    unused_unsafe,
+    unused_variables,
+    variant_size_differences,
+    warnings,
+    while_true,
+)]
 
 #![no_std]
 
