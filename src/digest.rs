@@ -68,6 +68,7 @@ pub struct Context {
     pending: [u8; MAX_BLOCK_LEN],
     num_pending: usize,
 
+    /// The context's algorithm.
     pub algorithm: &'static Algorithm,
 }
 
