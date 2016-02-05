@@ -31,7 +31,6 @@
     missing_copy_implementations,
     missing_debug_implementations,
     missing_docs, // TODO
-    unused_import_braces, // TODO
     unused_qualifications, // TODO
 )]
 #![deny(
@@ -70,6 +69,7 @@
     unused_extern_crates,
     unused_features,
     unused_imports,
+    unused_import_braces,
     unused_must_use,
     unused_mut,
     unused_parens,

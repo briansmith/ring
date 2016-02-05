@@ -473,7 +473,7 @@ mod tests {
                 #[allow(non_snake_case)]
                 mod $algorithm_name {
                     use super::{run_known_answer_test, run_monte_carlo_test};
-                    use super::super::super::super::{digest};
+                    use super::super::super::super::digest;
 
                     #[test]
                     fn short_msg_known_answer_test() {
