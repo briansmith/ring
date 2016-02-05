@@ -31,7 +31,6 @@
     missing_copy_implementations,
     missing_debug_implementations,
     missing_docs, // TODO
-    unused_qualifications, // TODO
 )]
 #![deny(
     const_err,
@@ -73,6 +72,7 @@
     unused_must_use,
     unused_mut,
     unused_parens,
+    unused_qualifications,
     unused_results,
     unused_unsafe,
     unused_variables,

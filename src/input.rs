@@ -1,4 +1,4 @@
-// Copyright 2015 Brian Smith.
+// Copyright 2015-2016 Brian Smith.
 //
 // Permission to use, copy, modify, and/or distribute this software for any
 // purpose with or without fee is hereby granted, provided that the above
@@ -113,14 +113,14 @@ pub fn read_all_optional<'a, F, R, E>(input: Option<Input<'a>>,
     match input {
         Some(input) => {
             let mut input = Reader::new(input);
-            let result = try!(read(Option::Some(&mut input)));
+            let result = try!(read(Some(&mut input)));
             if input.at_end() {
                 Ok(result)
             } else {
                 Err(incomplete_read)
             }
         },
-        None => read(Option::None)
+        None => read(None)
     }
 }
 
