@@ -181,12 +181,6 @@ BIGNUM *bn_expand(BIGNUM *bn, size_t bits);
 #endif
 
 
-/* Pentium pro 16,16,16,32,64 */
-/* Alpha       16,16,16,16.64 */
-#define BN_MULL_SIZE_NORMAL (16)              /* 32 */
-#define BN_MUL_RECURSIVE_SIZE_NORMAL (16)     /* 32 less than */
-#define BN_SQR_RECURSIVE_SIZE_NORMAL (16)     /* 32 */
-
 #define STATIC_BIGNUM(x)                                \
   {                                                     \
     (BN_ULONG *)x, sizeof(x) / sizeof(BN_ULONG),        \
