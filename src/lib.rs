@@ -31,7 +31,6 @@
     missing_copy_implementations,
     missing_debug_implementations,
     missing_docs, // TODO
-    trivial_numeric_casts, // TODO
     unsafe_code, // TODO
     unused_import_braces, // TODO
     unused_qualifications, // TODO
@@ -59,6 +58,7 @@
     private_no_mangle_statics,
     stable_features,
     trivial_casts,
+    trivial_numeric_casts,
     unconditional_recursion,
     unknown_crate_types,
     unknown_lints,

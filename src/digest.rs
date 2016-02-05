@@ -1,4 +1,4 @@
-// Copyright 2015 Brian Smith.
+// Copyright 2015-2016 Brian Smith.
 //
 // Permission to use, copy, modify, and/or distribute this software for any
 // purpose with or without fee is hereby granted, provided that the above
@@ -31,7 +31,7 @@ use super::{c, polyfill};
 // https://github.com/rust-lang/rust/issues/24111
 macro_rules! u32x2 {
     ( $first:expr, $second:expr ) =>
-    ((($second as u64) << 32) | ($first as u64))
+    ( ((($second as u64) << 32) | ($first as u64)) )
 }
 
 /// A context for multi-step (Init-Update-Finish) digest calculations.
@@ -299,9 +299,9 @@ pub static SHA1: Algorithm = Algorithm {
     block_data_order: sha1_block_data_order,
     format_output: sha256_format_output,
     initial_state: [
-        u32x2!(0x67452301, 0xefcdab89),
-        u32x2!(0x98badcfe, 0x10325476),
-        u32x2!(0xc3d2e1f0, 0),
+        u32x2!(0x67452301u32, 0xefcdab89u32),
+        u32x2!(0x98badcfeu32, 0x10325476u32),
+        u32x2!(0xc3d2e1f0u32, 0u32),
         0, 0, 0, 0, 0,
     ],
     nid: 64, // NID_sha1
@@ -317,10 +317,10 @@ pub static SHA256: Algorithm = Algorithm {
     block_data_order: sha256_block_data_order,
     format_output: sha256_format_output,
     initial_state: [
-        u32x2!(0x6a09e667, 0xbb67ae85),
-        u32x2!(0x3c6ef372, 0xa54ff53a),
-        u32x2!(0x510e527f, 0x9b05688c),
-        u32x2!(0x1f83d9ab, 0x5be0cd19),
+        u32x2!(0x6a09e667u32, 0xbb67ae85u32),
+        u32x2!(0x3c6ef372u32, 0xa54ff53au32),
+        u32x2!(0x510e527fu32, 0x9b05688cu32),
+        u32x2!(0x1f83d9abu32, 0x5be0cd19u32),
         0, 0, 0, 0,
     ],
     nid: 672, // NID_sha256
