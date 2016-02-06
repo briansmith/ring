@@ -61,23 +61,6 @@ typedef widelimb widefelem[7];
  * scalars for point multiplication. */
 typedef u8 felem_bytearray[28];
 
-static const felem_bytearray nistp224_curve_params[5] = {
-    {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, /* p */
-     0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-     0x00, 0x00, 0x00, 0x00, 0x00, 0x01},
-    {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, /* a */
-     0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFE, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
-     0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFE},
-    {0xB4, 0x05, 0x0A, 0x85, 0x0C, 0x04, 0xB3, 0xAB, 0xF5, 0x41, /* b */
-     0x32, 0x56, 0x50, 0x44, 0xB0, 0xB7, 0xD7, 0xBF, 0xD8, 0xBA, 0x27, 0x0B,
-     0x39, 0x43, 0x23, 0x55, 0xFF, 0xB4},
-    {0xB7, 0x0E, 0x0C, 0xBD, 0x6B, 0xB4, 0xBF, 0x7F, 0x32, 0x13, /* x */
-     0x90, 0xB9, 0x4A, 0x03, 0xC1, 0xD3, 0x56, 0xC2, 0x11, 0x22, 0x34, 0x32,
-     0x80, 0xD6, 0x11, 0x5C, 0x1D, 0x21},
-    {0xbd, 0x37, 0x63, 0x88, 0xb5, 0xf7, 0x23, 0xfb, 0x4c, 0x22, /* y */
-     0xdf, 0xe6, 0xcd, 0x43, 0x75, 0xa0, 0x5a, 0x07, 0x47, 0x64, 0x44, 0xd5,
-     0x81, 0x99, 0x85, 0x00, 0x7e, 0x34}};
-
 /* Precomputed multiples of the standard generator
  * Points are given in coordinates (X, Y, Z) where Z normally is 1
  * (0 for the point at infinity).
@@ -1020,50 +1003,6 @@ static void batch_mul(felem x_out, felem y_out, felem z_out,
   felem_assign(z_out, nq[2]);
 }
 
-int ec_GFp_nistp224_group_init(EC_GROUP *group) {
-  int ret;
-  ret = ec_GFp_simple_group_init(group);
-  group->a_is_minus3 = 1;
-  return ret;
-}
-
-int ec_GFp_nistp224_group_set_curve(EC_GROUP *group, const BIGNUM *p,
-                                    const BIGNUM *a, const BIGNUM *b,
-                                    BN_CTX *ctx) {
-  int ret = 0;
-  BN_CTX *new_ctx = NULL;
-  BIGNUM *curve_p, *curve_a, *curve_b;
-
-  if (ctx == NULL) {
-    ctx = BN_CTX_new();
-    new_ctx = ctx;
-    if (ctx == NULL) {
-      return 0;
-    }
-  }
-  BN_CTX_start(ctx);
-  if (((curve_p = BN_CTX_get(ctx)) == NULL) ||
-      ((curve_a = BN_CTX_get(ctx)) == NULL) ||
-      ((curve_b = BN_CTX_get(ctx)) == NULL)) {
-    goto err;
-  }
-  BN_bin2bn(nistp224_curve_params[0], sizeof(felem_bytearray), curve_p);
-  BN_bin2bn(nistp224_curve_params[1], sizeof(felem_bytearray), curve_a);
-  BN_bin2bn(nistp224_curve_params[2], sizeof(felem_bytearray), curve_b);
-  if (BN_cmp(curve_p, p) ||
-      BN_cmp(curve_a, a) ||
-      BN_cmp(curve_b, b)) {
-    OPENSSL_PUT_ERROR(EC, EC_R_WRONG_CURVE_PARAMETERS);
-    goto err;
-  }
-  ret = ec_GFp_simple_group_set_curve(group, p, a, b, ctx);
-
-err:
-  BN_CTX_end(ctx);
-  BN_CTX_free(new_ctx);
-  return ret;
-}
-
 /* Takes the Jacobian coordinates (X, Y, Z) of a point and returns
  * (X', Y') = (X/Z^2, Y/Z^3) */
 int ec_GFp_nistp224_point_get_affine_coordinates(const EC_GROUP *group,
@@ -1286,10 +1225,10 @@ err:
 }
 
 const EC_METHOD *EC_GFp_nistp224_method(void) {
-  static const EC_METHOD ret = {ec_GFp_nistp224_group_init,
+  static const EC_METHOD ret = {ec_GFp_simple_group_init,
                                 ec_GFp_simple_group_finish,
                                 ec_GFp_simple_group_copy,
-                                ec_GFp_nistp224_group_set_curve,
+                                ec_GFp_simple_group_set_curve,
                                 ec_GFp_nistp224_point_get_affine_coordinates,
                                 ec_GFp_nistp224_points_mul,
                                 0 /* check_pub_key_order */,
