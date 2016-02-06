@@ -80,17 +80,11 @@ extern "C" {
 
 
 struct ec_method_st {
-  /* used by EC_GROUP_new, EC_GROUP_free, EC_GROUP_copy: */
   int (*group_init)(EC_GROUP *);
   void (*group_finish)(EC_GROUP *);
   int (*group_copy)(EC_GROUP *, const EC_GROUP *);
-
-  /* used by EC_GROUP_set_curve_GFp, EC_GROUP_get_curve_GFp, */
-  /* EC_GROUP_set_curve_GF2m, and EC_GROUP_get_curve_GF2m: */
   int (*group_set_curve)(EC_GROUP *, const BIGNUM *p, const BIGNUM *a,
                          const BIGNUM *b, BN_CTX *);
-
-  /* used by EC_POINT_get_affine_coordinates_GFp: */
   int (*point_get_affine_coordinates)(const EC_GROUP *, const EC_POINT *,
                                       BIGNUM *x, BIGNUM *y, BN_CTX *);
 
@@ -111,8 +105,6 @@ struct ec_method_st {
   int (*check_pub_key_order)(const EC_GROUP *group, const EC_POINT *pub_key,
                              BN_CTX *ctx);
 
-  /* internal functions */
-
   /* 'field_mul' and 'field_sqr' can be used by 'add' and 'dbl' so that the
    * same implementations of point operations can be used with different
    * optimized implementations of expensive field operations: */
@@ -132,7 +124,7 @@ const EC_METHOD* EC_GFp_mont_method(void);
 struct ec_group_st {
   const EC_METHOD *meth;
 
-  EC_POINT *generator; /* optional */
+  EC_POINT *generator;
   BIGNUM order, cofactor;
 
   int curve_name; /* optional NID for named curve */
@@ -154,9 +146,6 @@ struct ec_group_st {
 
 struct ec_point_st {
   const EC_METHOD *meth;
-
-  /* All members except 'meth' are handled by the method functions,
-   * even if they appear generic */
 
   BIGNUM X;
   BIGNUM Y;
