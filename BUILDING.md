@@ -2,14 +2,14 @@
 
 ## Build Prerequisites
 
-  * [CMake](http://www.cmake.org/download/) 2.8.8 or later is required.
+  * [CMake](https://cmake.org/download/) 2.8.8 or later is required.
 
   * Perl 5.6.1 or later is required. On Windows,
     [Strawberry Perl](http://strawberryperl.com/) and MSYS Perl have both been
     reported to work. If not found by CMake, it may be configured explicitly by
     setting `PERL_EXECUTABLE`.
 
-  * On Windows you currently must use [Ninja](https://martine.github.io/ninja/)
+  * On Windows you currently must use [Ninja](https://ninja-build.org/)
     to build; on other platforms, it is not required, but recommended, because
     it makes builds faster.
 
