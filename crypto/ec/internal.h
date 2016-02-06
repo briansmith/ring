@@ -232,15 +232,6 @@ int ec_point_set_Jprojective_coordinates_GFp(const EC_GROUP *group,
                                              const BIGNUM *y, const BIGNUM *z,
                                              BN_CTX *ctx);
 
-void ec_GFp_nistp_points_make_affine_internal(
-    size_t num, void *point_array, size_t felem_size, void *tmp_felems,
-    void (*felem_one)(void *out), int (*felem_is_zero)(const void *in),
-    void (*felem_assign)(void *out, const void *in),
-    void (*felem_square)(void *out, const void *in),
-    void (*felem_mul)(void *out, const void *in1, const void *in2),
-    void (*felem_inv)(void *out, const void *in),
-    void (*felem_contract)(void *out, const void *in));
-
 void ec_GFp_nistp_recode_scalar_bits(uint8_t *sign, uint8_t *digit, uint8_t in);
 
 const EC_METHOD *EC_GFp_nistp224_method(void);
