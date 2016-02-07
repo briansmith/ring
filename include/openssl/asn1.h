@@ -966,7 +966,6 @@ OPENSSL_EXPORT int ASN1_GENERALIZEDTIME_print(BIO *fp, const ASN1_GENERALIZEDTIM
 OPENSSL_EXPORT int ASN1_TIME_print(BIO *fp, const ASN1_TIME *a);
 OPENSSL_EXPORT int ASN1_STRING_print(BIO *bp, const ASN1_STRING *v);
 OPENSSL_EXPORT int ASN1_STRING_print_ex(BIO *out, ASN1_STRING *str, unsigned long flags);
-OPENSSL_EXPORT int ASN1_bn_print(BIO *bp, const char *number, const BIGNUM *num, unsigned char *buf, int off);
 OPENSSL_EXPORT int ASN1_parse(BIO *bp,const unsigned char *pp,long len,int indent);
 OPENSSL_EXPORT int ASN1_parse_dump(BIO *bp,const unsigned char *pp,long len,int indent,int dump);
 OPENSSL_EXPORT const char *ASN1_tag2str(int tag);

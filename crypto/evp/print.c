@@ -52,7 +52,6 @@
 
 #include <openssl/evp.h>
 
-#include <openssl/asn1.h>
 #include <openssl/bio.h>
 #include <openssl/bn.h>
 #include <openssl/dsa.h>
@@ -63,6 +62,62 @@
 
 #include "../rsa/internal.h"
 
+
+static int bn_print(BIO *bp, const char *number, const BIGNUM *num,
+                    uint8_t *buf, int off) {
+  if (num == NULL) {
+    return 1;
+  }
+
+  if (!BIO_indent(bp, off, 128)) {
+    return 0;
+  }
+  if (BN_is_zero(num)) {
+    if (BIO_printf(bp, "%s 0\n", number) <= 0) {
+      return 0;
+    }
+    return 1;
+  }
+
+  if (BN_num_bytes(num) <= sizeof(long)) {
+    const char *neg = BN_is_negative(num) ? "-" : "";
+    if (BIO_printf(bp, "%s %s%lu (%s0x%lx)\n", number, neg,
+                   (unsigned long)num->d[0], neg,
+                   (unsigned long)num->d[0]) <= 0) {
+      return 0;
+    }
+  } else {
+    buf[0] = 0;
+    if (BIO_printf(bp, "%s%s", number,
+                   (BN_is_negative(num)) ? " (Negative)" : "") <= 0) {
+      return 0;
+    }
+    int n = BN_bn2bin(num, &buf[1]);
+
+    if (buf[1] & 0x80) {
+      n++;
+    } else {
+      buf++;
+    }
+
+    int i;
+    for (i = 0; i < n; i++) {
+      if ((i % 15) == 0) {
+        if (BIO_puts(bp, "\n") <= 0 ||
+            !BIO_indent(bp, off + 4, 128)) {
+          return 0;
+        }
+      }
+      if (BIO_printf(bp, "%02x%s", buf[i], ((i + 1) == n) ? "" : ":") <= 0) {
+        return 0;
+      }
+    }
+    if (BIO_write(bp, "\n", 1) <= 0) {
+      return 0;
+    }
+  }
+  return 1;
+}
 
 static void update_buflen(const BIGNUM *b, size_t *pbuflen) {
   size_t i;
@@ -139,18 +194,18 @@ static int do_rsa_print(BIO *out, const RSA *rsa, int off,
     str = "Modulus:";
     s = "Exponent:";
   }
-  if (!ASN1_bn_print(out, str, rsa->n, m, off) ||
-      !ASN1_bn_print(out, s, rsa->e, m, off)) {
+  if (!bn_print(out, str, rsa->n, m, off) ||
+      !bn_print(out, s, rsa->e, m, off)) {
     goto err;
   }
 
   if (include_private) {
-    if (!ASN1_bn_print(out, "privateExponent:", rsa->d, m, off) ||
-        !ASN1_bn_print(out, "prime1:", rsa->p, m, off) ||
-        !ASN1_bn_print(out, "prime2:", rsa->q, m, off) ||
-        !ASN1_bn_print(out, "exponent1:", rsa->dmp1, m, off) ||
-        !ASN1_bn_print(out, "exponent2:", rsa->dmq1, m, off) ||
-        !ASN1_bn_print(out, "coefficient:", rsa->iqmp, m, off)) {
+    if (!bn_print(out, "privateExponent:", rsa->d, m, off) ||
+        !bn_print(out, "prime1:", rsa->p, m, off) ||
+        !bn_print(out, "prime2:", rsa->q, m, off) ||
+        !bn_print(out, "exponent1:", rsa->dmp1, m, off) ||
+        !bn_print(out, "exponent2:", rsa->dmq1, m, off) ||
+        !bn_print(out, "coefficient:", rsa->iqmp, m, off)) {
       goto err;
     }
 
@@ -168,9 +223,9 @@ static int do_rsa_print(BIO *out, const RSA *rsa, int off,
 
         if (BIO_printf(out, "otherPrimeInfo (prime %u):\n",
                        (unsigned)(i + 3)) <= 0 ||
-            !ASN1_bn_print(out, "prime:", ap->prime, m, off) ||
-            !ASN1_bn_print(out, "exponent:", ap->exp, m, off) ||
-            !ASN1_bn_print(out, "coeff:", ap->coeff, m, off)) {
+            !bn_print(out, "prime:", ap->prime, m, off) ||
+            !bn_print(out, "exponent:", ap->exp, m, off) ||
+            !bn_print(out, "coeff:", ap->coeff, m, off)) {
           goto err;
         }
       }
@@ -240,11 +295,11 @@ static int do_dsa_print(BIO *bp, const DSA *x, int off, int ptype) {
     }
   }
 
-  if (!ASN1_bn_print(bp, "priv:", priv_key, m, off) ||
-      !ASN1_bn_print(bp, "pub: ", pub_key, m, off) ||
-      !ASN1_bn_print(bp, "P:   ", x->p, m, off) ||
-      !ASN1_bn_print(bp, "Q:   ", x->q, m, off) ||
-      !ASN1_bn_print(bp, "G:   ", x->g, m, off)) {
+  if (!bn_print(bp, "priv:", priv_key, m, off) ||
+      !bn_print(bp, "pub: ", pub_key, m, off) ||
+      !bn_print(bp, "P:   ", x->p, m, off) ||
+      !bn_print(bp, "Q:   ", x->q, m, off) ||
+      !bn_print(bp, "G:   ", x->g, m, off)) {
     goto err;
   }
   ret = 1;
@@ -355,7 +410,7 @@ static int do_EC_KEY_print(BIO *bp, const EC_KEY *x, int off, int ktype) {
   }
 
   if ((priv_key != NULL) &&
-      !ASN1_bn_print(bp, "priv:", priv_key, buffer, off)) {
+      !bn_print(bp, "priv:", priv_key, buffer, off)) {
     goto err;
   }
   if (pub_key_bytes != NULL) {

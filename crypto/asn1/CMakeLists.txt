@@ -32,7 +32,6 @@ add_library(
   f_int.c
   f_string.c
   t_bitst.c
-  t_pkey.c
   tasn_dec.c
   tasn_enc.c
   tasn_fre.c
