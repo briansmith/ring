@@ -123,12 +123,7 @@ define_type!(
     should have explicit casts using `num::cast` or other methods that avoid
     unintended truncation. Such code will then work on all platforms.");
 
-// XXX: MSVC's `alignof` returns strange values for `int8_t`.
-#[cfg(not(windows))]
 define_metrics_tests!(i8, test_i8_metrics, ring_int8_t_align, ring_int8_t_size);
-
-// XXX: MSVC's `alignof` returns strange values for `uint8_t`.
-#[cfg(not(windows))]
 define_metrics_tests!(u8, test_u8_metrics, ring_uint8_t_align,
                       ring_uint8_t_size);
 
