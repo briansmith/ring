@@ -141,64 +141,20 @@ static int dsa_priv_decode(EVP_PKEY *pkey, PKCS8_PRIV_KEY_INFO *p8) {
   /* In PKCS#8 DSA: you just get a private key integer and parameters in the
    * AlgorithmIdentifier the pubkey must be recalculated. */
 
-  STACK_OF(ASN1_TYPE) *ndsa = NULL;
   DSA *dsa = NULL;
 
   if (!PKCS8_pkey_get0(NULL, &p, &pklen, &palg, p8)) {
     return 0;
   }
-  X509_ALGOR_get0(NULL, &ptype, &pval, palg);
-
-  /* Check for broken DSA PKCS#8, UGH! */
-  if (*p == (V_ASN1_SEQUENCE | V_ASN1_CONSTRUCTED)) {
-    ASN1_TYPE *t1, *t2;
-    ndsa = d2i_ASN1_SEQUENCE_ANY(NULL, &p, pklen);
-    if (ndsa == NULL) {
-      goto decerr;
-    }
-    if (sk_ASN1_TYPE_num(ndsa) != 2) {
-      goto decerr;
-    }
-
-    /* Handle Two broken types:
-     * SEQUENCE {parameters, priv_key}
-     * SEQUENCE {pub_key, priv_key}. */
-
-    t1 = sk_ASN1_TYPE_value(ndsa, 0);
-    t2 = sk_ASN1_TYPE_value(ndsa, 1);
-    if (t1->type == V_ASN1_SEQUENCE) {
-      p8->broken = PKCS8_EMBEDDED_PARAM;
-      pval = t1->value.ptr;
-    } else if (ptype == V_ASN1_SEQUENCE) {
-      p8->broken = PKCS8_NS_DB;
-    } else {
-      goto decerr;
-    }
-
-    if (t2->type != V_ASN1_INTEGER) {
-      goto decerr;
-    }
-
-    privkey = t2->value.integer;
-  } else {
-    const uint8_t *q = p;
-    privkey = d2i_ASN1_INTEGER(NULL, &p, pklen);
-    if (privkey == NULL) {
-      goto decerr;
-    }
-    if (privkey->type == V_ASN1_NEG_INTEGER) {
-      p8->broken = PKCS8_NEG_PRIVKEY;
-      ASN1_INTEGER_free(privkey);
-      privkey = d2i_ASN1_UINTEGER(NULL, &q, pklen);
-      if (privkey == NULL) {
-        goto decerr;
-      }
-    }
-    if (ptype != V_ASN1_SEQUENCE) {
-      goto decerr;
-    }
+  privkey = d2i_ASN1_INTEGER(NULL, &p, pklen);
+  if (privkey == NULL || privkey->type == V_ASN1_NEG_INTEGER) {
+    goto decerr;
   }
 
+  X509_ALGOR_get0(NULL, &ptype, &pval, palg);
+  if (ptype != V_ASN1_SEQUENCE) {
+    goto decerr;
+  }
   pstr = pval;
   pm = pstr->data;
   pmlen = pstr->length;
@@ -231,7 +187,6 @@ static int dsa_priv_decode(EVP_PKEY *pkey, PKCS8_PRIV_KEY_INFO *p8) {
 
   EVP_PKEY_assign_DSA(pkey, dsa);
   BN_CTX_free(ctx);
-  sk_ASN1_TYPE_pop_free(ndsa, ASN1_TYPE_free);
   ASN1_INTEGER_free(privkey);
 
   return 1;
@@ -242,7 +197,6 @@ decerr:
 dsaerr:
   BN_CTX_free(ctx);
   ASN1_INTEGER_free(privkey);
-  sk_ASN1_TYPE_pop_free(ndsa, ASN1_TYPE_free);
   DSA_free(dsa);
   return 0;
 }
