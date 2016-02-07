@@ -606,7 +606,8 @@ int CRYPTO_gcm128_aad(GCM128_CONTEXT *ctx, const uint8_t *aad, size_t len) {
   }
 
 #ifdef GHASH
-  if ((i = (len & (size_t) - 16))) {
+  i = len & kSizeTWithoutLower4Bits;
+  if (i != 0) {
     GHASH(ctx, aad, i);
     aad += i;
     len -= i;
@@ -895,7 +896,8 @@ int CRYPTO_gcm128_decrypt(GCM128_CONTEXT *ctx, const void *key,
     }
     len -= GHASH_CHUNK;
   }
-  if ((i = (len & (size_t) - 16))) {
+  i = len & kSizeTWithoutLower4Bits;
+  if (i != 0) {
     GHASH(ctx, in, i);
     while (len >= 16) {
       size_t *out_t = (size_t *)out;
