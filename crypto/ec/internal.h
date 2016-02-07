@@ -262,7 +262,6 @@ struct ec_key_st {
   point_conversion_form_t conv_form;
 
   CRYPTO_refcount_t references;
-  int flags;
 
   ECDSA_METHOD *ecdsa_meth;
 

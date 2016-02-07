@@ -208,7 +208,6 @@ EC_KEY *EC_KEY_copy(EC_KEY *dest, const EC_KEY *src) {
   /* copy the rest */
   dest->enc_flag = src->enc_flag;
   dest->conv_form = src->conv_form;
-  dest->flags = src->flags;
 
   return dest;
 }
