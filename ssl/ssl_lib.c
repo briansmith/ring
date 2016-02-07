@@ -221,7 +221,7 @@ SSL_CTX *SSL_CTX_new(const SSL_METHOD *method) {
     goto err;
   }
 
-  ret = (SSL_CTX *)OPENSSL_malloc(sizeof(SSL_CTX));
+  ret = OPENSSL_malloc(sizeof(SSL_CTX));
   if (ret == NULL) {
     goto err;
   }
@@ -353,7 +353,7 @@ SSL *SSL_new(SSL_CTX *ctx) {
     return NULL;
   }
 
-  SSL *ssl = (SSL *)OPENSSL_malloc(sizeof(SSL));
+  SSL *ssl = OPENSSL_malloc(sizeof(SSL));
   if (ssl == NULL) {
     goto err;
   }

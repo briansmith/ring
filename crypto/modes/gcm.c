@@ -408,7 +408,7 @@ void gcm_ghash_neon(uint64_t Xi[2], const u128 Htable[16], const uint8_t *inp,
 GCM128_CONTEXT *CRYPTO_gcm128_new(const void *key, block128_f block) {
   GCM128_CONTEXT *ret;
 
-  ret = (GCM128_CONTEXT *)OPENSSL_malloc(sizeof(GCM128_CONTEXT));
+  ret = OPENSSL_malloc(sizeof(GCM128_CONTEXT));
   if (ret != NULL) {
     CRYPTO_gcm128_init(ret, key, block);
   }

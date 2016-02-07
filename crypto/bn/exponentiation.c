@@ -954,7 +954,7 @@ int BN_mod_exp_mont_consttime(BIGNUM *rr, const BIGNUM *a, const BIGNUM *p,
   } else
 #endif
   {
-    if ((powerbufFree = (unsigned char *)OPENSSL_malloc(
+    if ((powerbufFree = OPENSSL_malloc(
             powerbufLen + MOD_EXP_CTIME_MIN_CACHE_LINE_WIDTH)) == NULL) {
       goto err;
     }

@@ -100,7 +100,7 @@ static int buffer_new(BIO *bio) {
   if (ctx->ibuf == NULL) {
     goto err1;
   }
-  ctx->obuf = (char *)OPENSSL_malloc(DEFAULT_BUFFER_SIZE);
+  ctx->obuf = OPENSSL_malloc(DEFAULT_BUFFER_SIZE);
   if (ctx->obuf == NULL) {
     goto err2;
   }
@@ -340,13 +340,13 @@ static long buffer_ctrl(BIO *b, int cmd, long num, void *ptr) {
       p1 = ctx->ibuf;
       p2 = ctx->obuf;
       if (ibs > DEFAULT_BUFFER_SIZE && ibs != ctx->ibuf_size) {
-        p1 = (char *)OPENSSL_malloc(ibs);
+        p1 = OPENSSL_malloc(ibs);
         if (p1 == NULL) {
           goto malloc_error;
         }
       }
       if (obs > DEFAULT_BUFFER_SIZE && obs != ctx->obuf_size) {
-        p2 = (char *)OPENSSL_malloc(obs);
+        p2 = OPENSSL_malloc(obs);
         if (p2 == NULL) {
           if (p1 != ctx->ibuf) {
             OPENSSL_free(p1);

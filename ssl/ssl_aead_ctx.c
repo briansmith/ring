@@ -56,7 +56,7 @@ SSL_AEAD_CTX *SSL_AEAD_CTX_new(enum evp_aead_direction_t direction,
     enc_key_len += fixed_iv_len;
   }
 
-  SSL_AEAD_CTX *aead_ctx = (SSL_AEAD_CTX *)OPENSSL_malloc(sizeof(SSL_AEAD_CTX));
+  SSL_AEAD_CTX *aead_ctx = OPENSSL_malloc(sizeof(SSL_AEAD_CTX));
   if (aead_ctx == NULL) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
     return NULL;

@@ -161,7 +161,7 @@ static void SSL_SESSION_list_add(SSL_CTX *ctx, SSL_SESSION *session);
 static int remove_session_lock(SSL_CTX *ctx, SSL_SESSION *session, int lock);
 
 SSL_SESSION *SSL_SESSION_new(void) {
-  SSL_SESSION *session = (SSL_SESSION *)OPENSSL_malloc(sizeof(SSL_SESSION));
+  SSL_SESSION *session = OPENSSL_malloc(sizeof(SSL_SESSION));
   if (session == NULL) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
     return 0;

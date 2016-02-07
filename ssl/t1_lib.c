@@ -169,8 +169,7 @@ static int tls1_check_duplicate_extensions(const CBS *cbs) {
     return 1;
   }
 
-  extension_types =
-      (uint16_t *)OPENSSL_malloc(sizeof(uint16_t) * num_extensions);
+  extension_types = OPENSSL_malloc(sizeof(uint16_t) * num_extensions);
   if (extension_types == NULL) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
     goto done;
@@ -377,7 +376,7 @@ int tls1_set_curves(uint16_t **out_curve_ids, size_t *out_curve_ids_len,
   uint16_t *curve_ids;
   size_t i;
 
-  curve_ids = (uint16_t *)OPENSSL_malloc(ncurves * sizeof(uint16_t));
+  curve_ids = OPENSSL_malloc(ncurves * sizeof(uint16_t));
   if (curve_ids == NULL) {
     return 0;
   }
@@ -1905,9 +1904,7 @@ static int ext_ec_curves_parse_clienthello(SSL *ssl, uint8_t *out_alert,
     return 0;
   }
 
-  ssl->s3->tmp.peer_ellipticcurvelist =
-      (uint16_t *)OPENSSL_malloc(CBS_len(&elliptic_curve_list));
-
+  ssl->s3->tmp.peer_ellipticcurvelist = OPENSSL_malloc(CBS_len(&elliptic_curve_list));
   if (ssl->s3->tmp.peer_ellipticcurvelist == NULL) {
     *out_alert = SSL_AD_INTERNAL_ERROR;
     return 0;

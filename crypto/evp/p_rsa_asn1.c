@@ -216,7 +216,7 @@ static int do_rsa_print(BIO *out, const RSA *rsa, int off,
     }
   }
 
-  m = (uint8_t *)OPENSSL_malloc(buf_len + 10);
+  m = OPENSSL_malloc(buf_len + 10);
   if (m == NULL) {
     OPENSSL_PUT_ERROR(EVP, ERR_R_MALLOC_FAILURE);
     goto err;

@@ -139,7 +139,7 @@ int SSL_get_ex_data_X509_STORE_CTX_idx(void) {
 }
 
 CERT *ssl_cert_new(void) {
-  CERT *ret = (CERT *)OPENSSL_malloc(sizeof(CERT));
+  CERT *ret = OPENSSL_malloc(sizeof(CERT));
   if (ret == NULL) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
     return NULL;
@@ -150,7 +150,7 @@ CERT *ssl_cert_new(void) {
 }
 
 CERT *ssl_cert_dup(CERT *cert) {
-  CERT *ret = (CERT *)OPENSSL_malloc(sizeof(CERT));
+  CERT *ret = OPENSSL_malloc(sizeof(CERT));
   if (ret == NULL) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
     return NULL;

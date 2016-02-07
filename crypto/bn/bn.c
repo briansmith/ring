@@ -295,7 +295,7 @@ BIGNUM *bn_wexpand(BIGNUM *bn, size_t words) {
     return NULL;
   }
 
-  a = (BN_ULONG *)OPENSSL_malloc(sizeof(BN_ULONG) * words);
+  a = OPENSSL_malloc(sizeof(BN_ULONG) * words);
   if (a == NULL) {
     OPENSSL_PUT_ERROR(BN, ERR_R_MALLOC_FAILURE);
     return NULL;

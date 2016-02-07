@@ -1392,7 +1392,7 @@ ssl_create_cipher_list(const SSL_PROTOCOL_METHOD *ssl_method,
   /* Now we have to collect the available ciphers from the compiled in ciphers.
    * We cannot get more than the number compiled in, so it is used for
    * allocation. */
-  co_list = (CIPHER_ORDER *)OPENSSL_malloc(sizeof(CIPHER_ORDER) * kCiphersLen);
+  co_list = OPENSSL_malloc(sizeof(CIPHER_ORDER) * kCiphersLen);
   if (co_list == NULL) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
     return NULL;

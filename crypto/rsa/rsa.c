@@ -76,7 +76,7 @@ static CRYPTO_EX_DATA_CLASS g_ex_data_class = CRYPTO_EX_DATA_CLASS_INIT;
 RSA *RSA_new(void) { return RSA_new_method(NULL); }
 
 RSA *RSA_new_method(const ENGINE *engine) {
-  RSA *rsa = (RSA *)OPENSSL_malloc(sizeof(RSA));
+  RSA *rsa = OPENSSL_malloc(sizeof(RSA));
   if (rsa == NULL) {
     OPENSSL_PUT_ERROR(RSA, ERR_R_MALLOC_FAILURE);
     return NULL;

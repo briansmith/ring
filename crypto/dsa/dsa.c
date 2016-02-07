@@ -86,7 +86,7 @@
 static CRYPTO_EX_DATA_CLASS g_ex_data_class = CRYPTO_EX_DATA_CLASS_INIT;
 
 DSA *DSA_new(void) {
-  DSA *dsa = (DSA *)OPENSSL_malloc(sizeof(DSA));
+  DSA *dsa = OPENSSL_malloc(sizeof(DSA));
   if (dsa == NULL) {
     OPENSSL_PUT_ERROR(DSA, ERR_R_MALLOC_FAILURE);
     return NULL;

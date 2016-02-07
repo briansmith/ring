@@ -74,7 +74,7 @@
 static CRYPTO_EX_DATA_CLASS g_ex_data_class = CRYPTO_EX_DATA_CLASS_INIT;
 
 DH *DH_new(void) {
-  DH *dh = (DH *)OPENSSL_malloc(sizeof(DH));
+  DH *dh = OPENSSL_malloc(sizeof(DH));
   if (dh == NULL) {
     OPENSSL_PUT_ERROR(DH, ERR_R_MALLOC_FAILURE);
     return NULL;

@@ -436,7 +436,7 @@ static int do_dsa_print(BIO *bp, const DSA *x, int off, int ptype) {
   update_buflen(priv_key, &buf_len);
   update_buflen(pub_key, &buf_len);
 
-  m = (uint8_t *)OPENSSL_malloc(buf_len + 10);
+  m = OPENSSL_malloc(buf_len + 10);
   if (m == NULL) {
     OPENSSL_PUT_ERROR(EVP, ERR_R_MALLOC_FAILURE);
     goto err;

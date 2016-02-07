@@ -373,7 +373,7 @@ int tls1_setup_key_block(SSL *ssl) {
 
   ssl3_cleanup_key_block(ssl);
 
-  uint8_t *keyblock = (uint8_t *)OPENSSL_malloc(key_block_len);
+  uint8_t *keyblock = OPENSSL_malloc(key_block_len);
   if (keyblock == NULL) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
     return 0;
