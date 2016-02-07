@@ -105,7 +105,7 @@ err:
 }
 
 RSA *RSA_new(void) {
-  RSA *rsa = (RSA *)OPENSSL_malloc(sizeof(RSA));
+  RSA *rsa = OPENSSL_malloc(sizeof(RSA));
   if (rsa == NULL) {
     OPENSSL_PUT_ERROR(RSA, ERR_R_MALLOC_FAILURE);
     return NULL;

@@ -80,7 +80,7 @@
 
 
 EC_KEY *ec_key_new_ex(const EC_GROUP *group) {
-  EC_KEY *ret = (EC_KEY *)OPENSSL_malloc(sizeof(EC_KEY));
+  EC_KEY *ret = OPENSSL_malloc(sizeof(EC_KEY));
   if (ret == NULL) {
     OPENSSL_PUT_ERROR(EC, ERR_R_MALLOC_FAILURE);
     return NULL;
