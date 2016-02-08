@@ -138,7 +138,7 @@ static bool TestOperation(FileTest *t,
                                iv.size(), 0)) {
         return false;
       }
-    } else if (iv.size() != (size_t)EVP_CIPHER_CTX_iv_length(ctx.get())) {
+    } else if (iv.size() != EVP_CIPHER_CTX_iv_length(ctx.get())) {
       t->PrintLine("Bad IV length.");
       return false;
     }

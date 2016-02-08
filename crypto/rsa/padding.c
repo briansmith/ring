@@ -95,7 +95,7 @@ int RSA_padding_add_PKCS1_type_1(uint8_t *to, unsigned to_len,
   memset(p, 0xff, j);
   p += j;
   *(p++) = 0;
-  memcpy(p, from, (unsigned int)from_len);
+  memcpy(p, from, from_len);
   return 1;
 }
 
@@ -189,7 +189,7 @@ int RSA_padding_add_PKCS1_type_2(uint8_t *to, unsigned to_len,
 
   *(p++) = 0;
 
-  memcpy(p, from, (unsigned int)from_len);
+  memcpy(p, from, from_len);
   return 1;
 }
 
@@ -271,7 +271,7 @@ int RSA_padding_add_none(uint8_t *to, unsigned to_len, const uint8_t *from,
     return 0;
   }
 
-  memcpy(to, from, (unsigned int)from_len);
+  memcpy(to, from, from_len);
   return 1;
 }
 
