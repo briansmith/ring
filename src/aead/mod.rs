@@ -25,8 +25,15 @@
 
 #![allow(unsafe_code)]
 
+mod chacha20_poly1305;
+mod gcm;
+
+pub use self::chacha20_poly1305::{CHACHA20_POLY1305, CHACHA20_POLY1305_OLD};
+pub use self::gcm::{AES_128_GCM, AES_256_GCM};
+
 use core;
 use super::{c, bssl};
+use self::gcm::AES_GCM_TAG_LEN;
 
 /// A key for authenticating and decrypting (&ldquo;opening&rdquo;)
 /// AEAD-protected data.
@@ -288,134 +295,15 @@ pub struct Algorithm {
   open: OpenOrSealFn,
 }
 
-const AES_128_KEY_LEN: usize = 128 / 8;
-const AES_256_KEY_LEN: usize = 32; // 256 / 8
-const AES_GCM_NONCE_LEN: usize = 96 / 8;
-const AES_GCM_TAG_LEN: usize = 128 / 8;
-
-const CHACHA20_KEY_LEN: usize = 32; // 256 / 8
-const POLY1305_TAG_LEN: usize = 128 / 8;
-
 /// The maximum value of `Algorithm.max_overhead_len` for the algorithms in
 /// this module.
 pub const MAX_OVERHEAD_LEN: usize = AES_GCM_TAG_LEN;
-
-/// AES-128 in GCM mode with 128-bit tags and 96 bit nonces.
-///
-/// C analog: `EVP_aead_aes_128_gcm`
-///
-/// Go analog: [`crypto.aes`](https://golang.org/pkg/crypto/aes/)
-pub static AES_128_GCM: Algorithm = Algorithm {
-    key_len: AES_128_KEY_LEN,
-    nonce_len: AES_GCM_NONCE_LEN,
-    max_overhead_len: AES_GCM_TAG_LEN,
-    tag_len: AES_GCM_TAG_LEN,
-    init: evp_aead_aes_gcm_init,
-    seal: evp_aead_aes_gcm_seal,
-    open: evp_aead_aes_gcm_open,
-};
-
-/// AES-256 in GCM mode with 128-bit tags and 96 bit nonces.
-///
-/// C analog: `EVP_aead_aes_256_gcm`
-///
-/// Go analog: [`crypto.aes`](https://golang.org/pkg/crypto/aes/)
-pub static AES_256_GCM: Algorithm = Algorithm {
-    key_len: AES_256_KEY_LEN,
-    nonce_len: AES_GCM_NONCE_LEN,
-    max_overhead_len: AES_GCM_TAG_LEN,
-    tag_len: AES_GCM_TAG_LEN,
-    init: evp_aead_aes_gcm_init,
-    seal: evp_aead_aes_gcm_seal,
-    open: evp_aead_aes_gcm_open,
-};
-
-/// ChaCha20-Poly1305 as described in
-/// [RFC 7539](https://tools.ietf.org/html/rfc7539).
-///
-/// The keys are 256 bits long and the nonces are 96 bits long.
-pub static CHACHA20_POLY1305: Algorithm = Algorithm {
-    key_len: CHACHA20_KEY_LEN,
-    nonce_len: 96 / 8,
-    max_overhead_len: POLY1305_TAG_LEN,
-    tag_len: POLY1305_TAG_LEN,
-    init: evp_aead_chacha20_poly1305_init,
-    seal: evp_aead_chacha20_poly1305_seal,
-    open: evp_aead_chacha20_poly1305_open,
-};
-
-/// The old ChaCha20-Poly13065 construction used in OpenSSH's
-/// [chacha20-poly1305@openssh.com](http://cvsweb.openbsd.org/cgi-bin/cvsweb/~checkout~/src/usr.bin/ssh/PROTOCOL.chacha20poly1305)
-/// and the experimental TLS cipher suites with IDs `0xCC13` (ECDHE-RSA) and
-/// `0xCC14` (ECDHE-ECDSA). Use `CHACHA20_POLY1305` instead.
-///
-/// The keys are 256 bits long and the nonces are 96 bits. The first four bytes
-/// of the nonce must be `[0, 0, 0, 0]` in order to interoperate with other
-/// implementations, which use 64-bit nonces.
-pub static CHACHA20_POLY1305_OLD: Algorithm = Algorithm {
-    key_len: CHACHA20_KEY_LEN,
-    nonce_len: 96 / 8,
-    max_overhead_len: POLY1305_TAG_LEN,
-    tag_len: POLY1305_TAG_LEN,
-    init: evp_aead_chacha20_poly1305_init,
-    seal: evp_aead_chacha20_poly1305_old_seal,
-    open: evp_aead_chacha20_poly1305_old_open,
-};
 
 type OpenOrSealFn =
     unsafe extern fn(ctx: *const u64, out: *mut u8,
                      out_len: &mut c::size_t, max_out_len: c::size_t,
                      nonce: *const u8, in_: *const u8, in_len: c::size_t,
                      ad: *const u8, ad_len: c::size_t) -> c::int;
-
-extern {
-    fn evp_aead_aes_gcm_init(ctx_buf: *mut u64, ctx_buf_len: c::size_t,
-                             key: *const u8, key_len: c::size_t) -> c::int;
-
-    fn evp_aead_aes_gcm_seal(ctx_buf: *const u64, out: *mut u8,
-                             out_len: &mut c::size_t, max_out_len: c::size_t,
-                             nonce: *const u8, in_: *const u8,
-                             in_len: c::size_t, ad: *const u8,
-                             ad_len: c::size_t) -> c::int;
-
-    fn evp_aead_aes_gcm_open(ctx_buf: *const u64, out: *mut u8,
-                             out_len: &mut c::size_t, max_out_len: c::size_t,
-                             nonce: *const u8, in_: *const u8,
-                             in_len: c::size_t, ad: *const u8,
-                             ad_len: c::size_t) -> c::int;
-
-    fn evp_aead_chacha20_poly1305_init(ctx_buf: *mut u64,
-                                       ctx_buf_len: c::size_t, key: *const u8,
-                                       key_len: c::size_t) -> c::int;
-
-    fn evp_aead_chacha20_poly1305_seal(ctx_buf: *const u64, out: *mut u8,
-                                       out_len: &mut c::size_t,
-                                       max_out_len: c::size_t,
-                                       nonce: *const u8, in_: *const u8,
-                                       in_len: c::size_t, ad: *const u8,
-                                       ad_len: c::size_t) -> c::int;
-
-    fn evp_aead_chacha20_poly1305_open(ctx_buf: *const u64, out: *mut u8,
-                                       out_len: &mut c::size_t,
-                                       max_out_len: c::size_t,
-                                       nonce: *const u8, in_: *const u8,
-                                       in_len: c::size_t, ad: *const u8,
-                                       ad_len: c::size_t) -> c::int;
-
-    fn evp_aead_chacha20_poly1305_old_seal(ctx_buf: *const u64, out: *mut u8,
-                                           out_len: &mut c::size_t,
-                                           max_out_len: c::size_t,
-                                           nonce: *const u8, in_: *const u8,
-                                           in_len: c::size_t, ad: *const u8,
-                                           ad_len: c::size_t) -> c::int;
-
-    fn evp_aead_chacha20_poly1305_old_open(ctx_buf: *const u64, out: *mut u8,
-                                           out_len: &mut c::size_t,
-                                           max_out_len: c::size_t,
-                                           nonce: *const u8, in_: *const u8,
-                                           in_len: c::size_t, ad: *const u8,
-                                           ad_len: c::size_t) -> c::int;
-}
 
 #[cfg(test)]
 mod tests {
