@@ -90,7 +90,9 @@ extern crate rustc_serialize;
 #[macro_use(format, print, println, vec)]
 extern crate std;
 
+#[path = "aead/aead.rs"]
 pub mod aead;
+
 pub mod agreement;
 mod bssl;
 mod c;
