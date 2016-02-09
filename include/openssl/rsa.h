@@ -525,6 +525,8 @@ struct rsa_meth_st {
 
   int (*mod_exp)(BIGNUM *r0, const BIGNUM *I, RSA *rsa,
                  BN_CTX *ctx); /* Can be null */
+
+  /* bn_mod_exp is deprecated and ignored. Set it to NULL. */
   int (*bn_mod_exp)(BIGNUM *r, const BIGNUM *a, const BIGNUM *p,
                     const BIGNUM *m, BN_CTX *ctx,
                     const BN_MONT_CTX *mont);
