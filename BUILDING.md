@@ -5,9 +5,13 @@
   * [CMake](https://cmake.org/download/) 2.8.8 or later is required.
 
   * Perl 5.6.1 or later is required. On Windows,
-    [Strawberry Perl](http://strawberryperl.com/) and MSYS Perl have both been
-    reported to work. If not found by CMake, it may be configured explicitly by
-    setting `PERL_EXECUTABLE`.
+    [Active State Perl](http://www.activestate.com/activeperl/) has been
+    reported to work, as has MSYS Perl.
+    [Strawberry Perl](http://strawberryperl.com/) also works but it adds GCC
+    to `PATH`, which can confuse some build tools when identifying the compiler
+    (removing `C:\Strawberry\c\bin` from `PATH` should resolve any problems).
+    If Perl is not found by CMake, it may be configured explicitly by setting
+    `PERL_EXECUTABLE`.
 
   * On Windows you currently must use [Ninja](https://ninja-build.org/)
     to build; on other platforms, it is not required, but recommended, because
@@ -21,8 +25,8 @@
     `CMAKE_ASM_NASM_COMPILER`.
 
   * A C compiler is required. On Windows, MSVC 12 (Visual Studio 2013) or later
-    with Platform SDK 8.1 or later are supported. Recent versions of GCC and
-    Clang should work on non-Windows platforms, and maybe on Windows too.
+    with Platform SDK 8.1 or later are supported. Recent versions of GCC (4.8+)
+    and Clang should work on non-Windows platforms, and maybe on Windows too.
 
   * [Go](https://golang.org/dl/) is required. If not found by CMake, the go
     executable may be configured explicitly by setting `GO_EXECUTABLE`.
@@ -58,7 +62,8 @@ files because the build scripts will detect changes to them and rebuild
 themselves automatically.
 
 Note that the default build flags in the top-level `CMakeLists.txt` are for
-debugging—optimisation isn't enabled.
+debugging—optimisation isn't enabled. Pass `-DCMAKE_BUILD_TYPE=Release` to
+`cmake` to configure a release build.
 
 If you want to cross-compile then there is an example toolchain file for 32-bit
 Intel in `util/`. Wipe out the build directory, recreate it and run `cmake` like
@@ -74,6 +79,9 @@ the BoringSSL headers.
 In order to serve environments where code-size is important as well as those
 where performance is the overriding concern, `OPENSSL_SMALL` can be defined to
 remove some code that is especially large.
+
+See [CMake's documentation](https://cmake.org/cmake/help/v3.4/manual/cmake-variables.7.html)
+for other variables which may be used to configure the build.
 
 ### Building for Android
 
