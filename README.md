@@ -28,3 +28,4 @@ There are other files in this directory which might be helpful:
   * [STYLE.md](/STYLE.md): rules and guidelines for coding style.
   * include/openssl: public headers with API documentation in comments. Also [available online](https://commondatastorage.googleapis.com/chromium-boringssl-docs/headers.html).
   * [FUZZING.md](/FUZZING.md): information about fuzzing BoringSSL.
+  * [CONTRIBUTING.md](/CONTRIBUTING.md): how to contribute to BoringSSL.
