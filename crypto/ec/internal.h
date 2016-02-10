@@ -79,7 +79,6 @@ extern "C" {
 
 
 typedef struct ec_method_st {
-  /* used by EC_POINT_get_affine_coordinates_GFp: */
   int (*point_get_affine_coordinates)(const EC_GROUP *, const EC_POINT *,
                                       BIGNUM *x, BIGNUM *y, BN_CTX *);
 
@@ -103,8 +102,6 @@ typedef struct ec_method_st {
   int (*mul_public)(const EC_GROUP *group, EC_POINT *r, const BIGNUM *g_scalar,
                     const EC_POINT *p, const BIGNUM *p_scalar, BN_CTX *ctx);
 
-  /* internal functions */
-
   /* 'field_mul' and 'field_sqr' can be used by 'add' and 'dbl' so that the
    * same implementations of point operations can be used with different
    * optimized implementations of expensive field operations: */
@@ -123,9 +120,6 @@ extern const EC_METHOD EC_GFp_mont_method;
 
 struct ec_point_st {
   const EC_METHOD *meth;
-
-  /* All members except 'meth' are handled by the method functions,
-   * even if they appear generic. */
 
   BIGNUM X;
   BIGNUM Y;
