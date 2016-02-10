@@ -107,31 +107,6 @@ void bn_mul_normal(BN_ULONG *r, BN_ULONG *a, int na, BN_ULONG *b, int nb) {
   }
 }
 
-void bn_mul_low_normal(BN_ULONG *r, BN_ULONG *a, BN_ULONG *b, int n) {
-  bn_mul_words(r, a, n, b[0]);
-
-  for (;;) {
-    if (--n <= 0) {
-      return;
-    }
-    bn_mul_add_words(&(r[1]), a, n, b[1]);
-    if (--n <= 0) {
-      return;
-    }
-    bn_mul_add_words(&(r[2]), a, n, b[2]);
-    if (--n <= 0) {
-      return;
-    }
-    bn_mul_add_words(&(r[3]), a, n, b[3]);
-    if (--n <= 0) {
-      return;
-    }
-    bn_mul_add_words(&(r[4]), a, n, b[4]);
-    r += 4;
-    b += 4;
-  }
-}
-
 #if !defined(OPENSSL_X86) || defined(OPENSSL_NO_ASM)
 /* Here follows specialised variants of bn_add_words() and bn_sub_words(). They
  * have the property performing operations on arrays of different sizes. The
