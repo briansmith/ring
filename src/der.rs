@@ -94,3 +94,25 @@ pub fn nested<'a, F, R, E: Copy>(input: &mut Reader<'a>, tag: Tag, error: E,
     let inner = try!(expect_tag_and_get_value(input, tag).map_err(|_| error));
     read_all(inner, error, decoder)
 }
+
+pub fn positive_integer<'a>(input: &mut Reader<'a>) -> Result<Input<'a>, ()> {
+    let value = try!(expect_tag_and_get_value(input, Tag::Integer));
+    let bytes = value.as_slice_less_safe();
+
+    // Empty encodings are not allowed.
+    if bytes.len() == 0 {
+        return Err(());
+    }
+
+    // Negative values are not allowed.
+    if bytes[0] & 0x80 != 0 {
+        return Err(());
+    }
+
+    // Over-long encodings are not allowed.
+    if bytes.len() > 1 && bytes[0] == 0 && (bytes[1] & 0x80 == 0) {
+        return Err(());
+    }
+
+    Ok(value)
+}
