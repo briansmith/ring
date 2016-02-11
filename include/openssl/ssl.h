@@ -2600,12 +2600,15 @@ OPENSSL_EXPORT size_t SSL_get_key_block_len(const SSL *ssl);
 OPENSSL_EXPORT int SSL_generate_key_block(const SSL *ssl, uint8_t *out,
                                           size_t out_len);
 
-/* SSL_get_read_sequence returns the expected sequence number of the next
- * incoming record in the current epoch. It always returns zero in DTLS. */
+/* SSL_get_read_sequence returns, in TLS, the expected sequence number of the
+ * next incoming record in the current epoch. In DTLS, it returns the maximum
+ * sequence number received in the current epoch and includes the epoch number
+ * in the two most significant bytes. */
 OPENSSL_EXPORT uint64_t SSL_get_read_sequence(const SSL *ssl);
 
 /* SSL_get_write_sequence returns the sequence number of the next outgoing
- * record in the current epoch. */
+ * record in the current epoch. In DTLS, it includes the epoch number in the
+ * two most significant bytes. */
 OPENSSL_EXPORT uint64_t SSL_get_write_sequence(const SSL *ssl);
 
 
