@@ -186,14 +186,6 @@ void bn_sqr_words(BN_ULONG *r, const BN_ULONG *a, int n) {
   }
 }
 
-BN_ULONG bn_div_words(BN_ULONG h, BN_ULONG l, BN_ULONG d) {
-  BN_ULONG ret, waste;
-
-  asm("divq	%4" : "=a"(ret), "=d"(waste) : "a"(l), "d"(h), "g"(d) : "cc");
-
-  return ret;
-}
-
 BN_ULONG bn_add_words(BN_ULONG *rp, const BN_ULONG *ap, const BN_ULONG *bp,
                       int n) {
   BN_ULONG ret;

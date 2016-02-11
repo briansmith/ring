@@ -62,49 +62,46 @@
 #include "internal.h"
 
 
-#define asm __asm__
-
-#if !defined(OPENSSL_NO_ASM)
-# if defined(__GNUC__) && __GNUC__>=2
-#  if defined(OPENSSL_X86)
-   /*
-    * There were two reasons for implementing this template:
-    * - GNU C generates a call to a function (__udivdi3 to be exact)
-    *   in reply to ((((BN_ULLONG)n0)<<BN_BITS2)|n1)/d0 (I fail to
-    *   understand why...);
-    * - divl doesn't only calculate quotient, but also leaves
-    *   remainder in %edx which we can definitely use here:-)
-    *
-    *					<appro@fy.chalmers.se>
-    */
-#undef div_asm
-#  define div_asm(n0,n1,d0)		\
-	({  asm volatile (			\
-		"divl	%4"			\
-		: "=a"(q), "=d"(rem)		\
-		: "a"(n1), "d"(n0), "g"(d0)	\
-		: "cc");			\
-	    q;					\
-	})
-#  define REMAINDER_IS_ALREADY_CALCULATED
-#  elif defined(OPENSSL_X86_64)
-   /*
-    * Same story here, but it's 128-bit by 64-bit division. Wow!
-    *					<appro@fy.chalmers.se>
-    */
-#  undef div_asm
-#  define div_asm(n0,n1,d0)		\
-	({  asm volatile (			\
-		"divq	%4"			\
-		: "=a"(q), "=d"(rem)		\
-		: "a"(n1), "d"(n0), "g"(d0)	\
-		: "cc");			\
-	    q;					\
-	})
-#  define REMAINDER_IS_ALREADY_CALCULATED
-#  endif /* __<cpu> */
-# endif /* __GNUC__ */
-#endif /* OPENSSL_NO_ASM */
+static inline void bn_div_rem_words(BN_ULONG *quotient_out, BN_ULONG *rem_out,
+                                    BN_ULONG n0, BN_ULONG n1, BN_ULONG d0) {
+  /* GCC and Clang generate function calls to |__udivdi3| and |__umoddi3| when
+   * the |BN_ULLONG|-based C code is used.
+   *
+   * GCC bugs:
+   *   * https://gcc.gnu.org/bugzilla/show_bug.cgi?id=14224
+   *   * https://gcc.gnu.org/bugzilla/show_bug.cgi?id=43721
+   *   * https://gcc.gnu.org/bugzilla/show_bug.cgi?id=54183
+   *   * https://gcc.gnu.org/bugzilla/show_bug.cgi?id=58897
+   *   * https://gcc.gnu.org/bugzilla/show_bug.cgi?id=65668
+   *
+   * Clang bugs:
+   *   * https://llvm.org/bugs/show_bug.cgi?id=6397
+   *   * https://llvm.org/bugs/show_bug.cgi?id=12418
+   *
+   * These issues aren't specific to x86 and x86_64, so it might be worthwhile
+   * to add more assembly language implementations. */
+#if !defined(OPENSSL_NO_ASM) && defined(OPENSSL_X86) && defined(__GNUC__)
+  __asm__ volatile (
+    "divl %4"
+    : "=a"(*quotient_out), "=d"(*rem_out)
+    : "a"(n1), "d"(n0), "g"(d0)
+    : "cc" );
+#elif !defined(OPENSSL_NO_ASM) && defined(OPENSSL_X86_64) && defined(__GNUC__)
+  __asm__ volatile (
+    "divq %4"
+    : "=a"(*quotient_out), "=d"(*rem_out)
+    : "a"(n1), "d"(n0), "g"(d0)
+    : "cc" );
+#else
+#if defined(BN_ULLONG)
+  BN_ULLONG n = (((BN_ULLONG)n0) << BN_BITS2) | n1;
+  *quotient_out = (BN_ULONG)(n / d0);
+#else
+  *quotient_out = bn_div_words(n0, n1, d0);
+#endif
+  *rem_out = n1 - (*quotient_out * d0);
+#endif
+}
 
 /* BN_div computes  dv := num / divisor,  rounding towards
  * zero, and sets up rm  such that  dv*divisor + rm = num  holds.
@@ -260,23 +257,10 @@ int BN_div(BIGNUM *dv, BIGNUM *rm, const BIGNUM *num, const BIGNUM *divisor,
       q = BN_MASK2;
     } else {
       /* n0 < d0 */
+      bn_div_rem_words(&q, &rem, n0, n1, d0);
+
 #ifdef BN_ULLONG
-      BN_ULLONG t2;
-
-#if defined(BN_ULLONG) && !defined(div_asm)
-      q = (BN_ULONG)(((((BN_ULLONG)n0) << BN_BITS2) | n1) / d0);
-#else
-      q = div_asm(n0, n1, d0);
-#endif
-
-#ifndef REMAINDER_IS_ALREADY_CALCULATED
-      /* rem doesn't have to be BN_ULLONG. The least we know it's less that d0,
-       * isn't it? */
-      rem = (n1 - q * d0) & BN_MASK2;
-#endif
-
-      t2 = (BN_ULLONG)d1 * q;
-
+      BN_ULLONG t2 = (BN_ULLONG)d1 * q;
       for (;;) {
         if (t2 <= ((((BN_ULLONG)rem) << BN_BITS2) | wnump[-2])) {
           break;
@@ -290,13 +274,7 @@ int BN_div(BIGNUM *dv, BIGNUM *rm, const BIGNUM *num, const BIGNUM *divisor,
       }
 #else /* !BN_ULLONG */
       BN_ULONG t2l, t2h;
-
-      q = bn_div_words(n0, n1, d0);
-
-      rem = (n1 - q * d0) & BN_MASK2;
-
       BN_UMULT_LOHI(t2l, t2h, d1, q);
-
       for (;;) {
         if ((t2h < rem) || ((t2h == rem) && (t2l <= wnump[-2]))) {
           break;
@@ -556,7 +534,7 @@ BN_ULONG BN_div_word(BIGNUM *a, BN_ULONG w) {
     return 0;
   }
 
-  /* normalize input (so bn_div_words doesn't complain) */
+  /* normalize input for |bn_div_rem_words|. */
   j = BN_BITS2 - BN_num_bits_word(w);
   w <<= j;
   if (!BN_lshift(a, a, j)) {
@@ -564,10 +542,10 @@ BN_ULONG BN_div_word(BIGNUM *a, BN_ULONG w) {
   }
 
   for (i = a->top - 1; i >= 0; i--) {
-    BN_ULONG l, d;
-
-    l = a->d[i];
-    d = bn_div_words(ret, l, w);
+    BN_ULONG l = a->d[i];
+    BN_ULONG d;
+    BN_ULONG unused_rem;
+    bn_div_rem_words(&d, &unused_rem, ret, l, w);
     ret = (l - ((d * w) & BN_MASK2)) & BN_MASK2;
     a->d[i] = d;
   }

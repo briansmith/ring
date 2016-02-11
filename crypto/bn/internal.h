@@ -195,7 +195,6 @@ BIGNUM *bn_expand(BIGNUM *bn, size_t bits);
 BN_ULONG bn_mul_add_words(BN_ULONG *rp, const BN_ULONG *ap, int num, BN_ULONG w);
 BN_ULONG bn_mul_words(BN_ULONG *rp, const BN_ULONG *ap, int num, BN_ULONG w);
 void     bn_sqr_words(BN_ULONG *rp, const BN_ULONG *ap, int num);
-BN_ULONG bn_div_words(BN_ULONG h, BN_ULONG l, BN_ULONG d);
 BN_ULONG bn_add_words(BN_ULONG *rp, const BN_ULONG *ap, const BN_ULONG *bp,int num);
 BN_ULONG bn_sub_words(BN_ULONG *rp, const BN_ULONG *ap, const BN_ULONG *bp,int num);
 
@@ -223,6 +222,10 @@ int bn_mul_mont(BN_ULONG *rp, const BN_ULONG *ap, const BN_ULONG *bp,
 
 #if !defined(BN_ULLONG) && !defined(BN_UMULT_LOHI)
 #error "Either BN_ULLONG or BN_UMULT_LOHI must be defined on every platform."
+#endif
+
+#if !defined(BN_ULLONG)
+BN_ULONG bn_div_words(BN_ULONG h, BN_ULONG l, BN_ULONG d);
 #endif
 
 
