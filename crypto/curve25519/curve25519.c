@@ -1049,7 +1049,7 @@ static const fe d = {-10913610, 13857413, -15372611, 6949391,   114729,
 static const fe sqrtm1 = {-32595792, -7943725,  9377950,  3500415, 12389472,
                           -272473,   -25146209, -2005654, 326686,  11406482};
 
-static int ge_frombytes_negate_vartime(ge_p3 *h, const uint8_t *s) {
+static int ge_frombytes_vartime(ge_p3 *h, const uint8_t *s) {
   fe u;
   fe v;
   fe v3;
@@ -1084,7 +1084,7 @@ static int ge_frombytes_negate_vartime(ge_p3 *h, const uint8_t *s) {
     fe_mul(h->X, h->X, sqrtm1);
   }
 
-  if (fe_isnegative(h->X) == (s[31] >> 7)) {
+  if (fe_isnegative(h->X) != (s[31] >> 7)) {
     fe_neg(h->X, h->X);
   }
 
@@ -4655,9 +4655,12 @@ int ED25519_verify(const uint8_t *message, size_t message_len,
                    const uint8_t signature[64], const uint8_t public_key[32]) {
   ge_p3 A;
   if ((signature[63] & 224) != 0 ||
-      ge_frombytes_negate_vartime(&A, public_key) != 0) {
+      ge_frombytes_vartime(&A, public_key) != 0) {
     return 0;
   }
+
+  fe_neg(A.X, A.X);
+  fe_neg(A.T, A.T);
 
   uint8_t pkcopy[32];
   memcpy(pkcopy, public_key, 32);
