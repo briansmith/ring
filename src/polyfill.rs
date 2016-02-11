@@ -17,6 +17,11 @@
 
 #![allow(unsafe_code)]
 
+#[inline(always)]
+pub fn u64_from_usize(x: usize) -> u64 {
+    x as u64
+}
+
 pub mod slice {
     use core;
 
@@ -45,6 +50,14 @@ pub mod slice {
     pub fn u64_as_u8<'a>(src: &'a [u64]) -> &'a [u8] {
         unsafe {
             core::slice::from_raw_parts(src.as_ptr() as *const u8, src.len() * 8)
+        }
+    }
+
+    // https://internals.rust-lang.org/t/safe-trasnsmute-for-slices-e-g-u64-u32-particularly-simd-types/2871
+    #[inline(always)]
+    pub fn u64_as_u8_mut<'a>(src: &'a mut [u64]) -> &'a mut [u8] {
+        unsafe {
+            core::slice::from_raw_parts_mut(src.as_mut_ptr() as *mut u8, src.len() * 8)
         }
     }
 
