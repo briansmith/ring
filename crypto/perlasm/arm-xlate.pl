@@ -55,7 +55,9 @@ my $globl = sub {
 			      };
     }
 
-    $ret = ".globl	$name" if (!$ret);
+    $ret = ".globl	$name\n";
+    # All symbols in assembly files are hidden.
+    $ret .= &$hidden($name);
     $$global = $name;
     $ret;
 };
