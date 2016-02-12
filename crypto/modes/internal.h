@@ -179,16 +179,6 @@ struct gcm128_context {
   block128_f block;
 };
 
-struct ccm128_context {
-  union {
-    uint64_t u[2];
-    uint8_t c[16];
-  } nonce, cmac;
-  uint64_t blocks;
-  block128_f block;
-  void *key;
-};
-
 #if defined(OPENSSL_X86) || defined(OPENSSL_X86_64)
 /* crypto_gcm_clmul_enabled returns one if the CLMUL implementation of GCM is
  * used. */
