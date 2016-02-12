@@ -49,7 +49,7 @@
 #ifndef OPENSSL_HEADER_MODES_INTERNAL_H
 #define OPENSSL_HEADER_MODES_INTERNAL_H
 
-#include <openssl/base.h>
+#include <openssl/aes.h>
 
 #include "../internal.h"
 
@@ -58,9 +58,10 @@ extern "C" {
 #endif
 
 
-/* block128_f is the type of a 128-bit, block cipher. */
-typedef void (*block128_f)(const uint8_t in[16], uint8_t out[16],
-                           const void *key);
+/* aes_block_f is a pointer to |AES_Encrypt| or a variant thereof. */
+typedef void (*aes_block_f)(const uint8_t in[16], uint8_t out[16],
+                            const AES_KEY *key);
+
 
 /* GCM definitions */
 typedef struct { uint64_t hi,lo; } u128;
@@ -85,7 +86,7 @@ struct gcm128_context {
                 size_t len);
 
   unsigned int mres, ares;
-  block128_f block;
+  aes_block_f block;
 };
 
 #if defined(OPENSSL_X86) || defined(OPENSSL_X86_64)
@@ -97,9 +98,10 @@ int crypto_gcm_clmul_enabled(void);
 
 /* CTR. */
 
-/* ctr128_f is the type of a function that performs CTR-mode encryption. */
-typedef void (*ctr128_f)(const uint8_t *in, uint8_t *out, size_t blocks,
-                         const void *key, const uint8_t ivec[16]);
+/* aes_ctr_f is the type of a function that performs CTR-mode encryption with
+ * AES. */
+typedef void (*aes_ctr_f)(const uint8_t *in, uint8_t *out, size_t blocks,
+                          const AES_KEY *key, const uint8_t ivec[16]);
 
 /* GCM.
  *
@@ -113,12 +115,12 @@ typedef struct gcm128_context GCM128_CONTEXT;
 /* CRYPTO_gcm128_new allocates a fresh |GCM128_CONTEXT| and calls
  * |CRYPTO_gcm128_init|. It returns the new context, or NULL on error. */
 OPENSSL_EXPORT GCM128_CONTEXT *CRYPTO_gcm128_new(const void *key,
-                                                 block128_f block);
+                                                 aes_block_f block);
 
 /* CRYPTO_gcm128_init initialises |ctx| to use |block| (typically AES) with
  * the given key. */
 OPENSSL_EXPORT void CRYPTO_gcm128_init(GCM128_CONTEXT *ctx, const void *key,
-                                       block128_f block);
+                                       aes_block_f block);
 
 /* CRYPTO_gcm128_set_96_bit_iv sets the IV (nonce) for |ctx|. The |key| must be
  * the same key that was passed to |CRYPTO_gcm128_init|. */
@@ -154,7 +156,7 @@ OPENSSL_EXPORT int CRYPTO_gcm128_decrypt(GCM128_CONTEXT *ctx, const void *key,
 OPENSSL_EXPORT int CRYPTO_gcm128_encrypt_ctr32(GCM128_CONTEXT *ctx,
                                                const void *key,
                                                const uint8_t *in, uint8_t *out,
-                                               size_t len, ctr128_f stream);
+                                               size_t len, aes_ctr_f stream);
 
 /* CRYPTO_gcm128_decrypt_ctr32 decrypts |len| bytes from |in| to |out| using
  * a CTR function that only handles the bottom 32 bits of the nonce, like
@@ -164,7 +166,7 @@ OPENSSL_EXPORT int CRYPTO_gcm128_encrypt_ctr32(GCM128_CONTEXT *ctx,
 OPENSSL_EXPORT int CRYPTO_gcm128_decrypt_ctr32(GCM128_CONTEXT *ctx,
                                                const void *key,
                                                const uint8_t *in, uint8_t *out,
-                                               size_t len, ctr128_f stream);
+                                               size_t len, aes_ctr_f stream);
 
 /* CRYPTO_gcm128_finish calculates the authenticator and compares it against
  * |len| bytes of |tag|. It returns one on success and zero otherwise. */

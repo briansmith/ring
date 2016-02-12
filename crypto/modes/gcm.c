@@ -362,7 +362,7 @@ void gcm_ghash_neon(uint64_t Xi[2], const u128 Htable[16], const uint8_t *inp,
 #endif
 #endif
 
-GCM128_CONTEXT *CRYPTO_gcm128_new(const void *key, block128_f block) {
+GCM128_CONTEXT *CRYPTO_gcm128_new(const void *key, aes_block_f block) {
   GCM128_CONTEXT *ret;
 
   ret = OPENSSL_malloc(sizeof(GCM128_CONTEXT));
@@ -374,7 +374,7 @@ GCM128_CONTEXT *CRYPTO_gcm128_new(const void *key, block128_f block) {
 }
 
 void CRYPTO_gcm128_init(GCM128_CONTEXT *ctx, const void *key,
-                           block128_f block) {
+                           aes_block_f block) {
   memset(ctx, 0, sizeof(*ctx));
   ctx->block = block;
 
@@ -536,7 +536,7 @@ int CRYPTO_gcm128_encrypt(GCM128_CONTEXT *ctx, const void *key,
   unsigned int n, ctr;
   size_t i;
   uint64_t mlen = ctx->len.u[1];
-  block128_f block = ctx->block;
+  aes_block_f block = ctx->block;
 #ifdef GCM_FUNCREF_4BIT
   void (*gcm_gmult_p)(uint64_t Xi[2], const u128 Htable[16]) = ctx->gmult;
 #ifdef GHASH
@@ -697,7 +697,7 @@ int CRYPTO_gcm128_decrypt(GCM128_CONTEXT *ctx, const void *key,
   unsigned int n, ctr;
   size_t i;
   uint64_t mlen = ctx->len.u[1];
-  block128_f block = ctx->block;
+  aes_block_f block = ctx->block;
 #ifdef GCM_FUNCREF_4BIT
   void (*gcm_gmult_p)(uint64_t Xi[2], const u128 Htable[16]) = ctx->gmult;
 #ifdef GHASH
@@ -857,7 +857,7 @@ int CRYPTO_gcm128_decrypt(GCM128_CONTEXT *ctx, const void *key,
 
 int CRYPTO_gcm128_encrypt_ctr32(GCM128_CONTEXT *ctx, const void *key,
                                 const uint8_t *in, uint8_t *out, size_t len,
-                                ctr128_f stream) {
+                                aes_ctr_f stream) {
   const union {
     long one;
     char little;
@@ -966,7 +966,7 @@ int CRYPTO_gcm128_encrypt_ctr32(GCM128_CONTEXT *ctx, const void *key,
 
 int CRYPTO_gcm128_decrypt_ctr32(GCM128_CONTEXT *ctx, const void *key,
                                 const uint8_t *in, uint8_t *out, size_t len,
-                                ctr128_f stream) {
+                                aes_ctr_f stream) {
   const union {
     long one;
     char little;
