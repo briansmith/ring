@@ -321,42 +321,9 @@ err:
   return ret;
 }
 
-static BIGNUM *rsa_get_public_exp(const BIGNUM *d, const BIGNUM *p,
-                                  const BIGNUM *q, BN_CTX *ctx) {
-  BIGNUM *ret = NULL, *r0, *r1, *r2;
-
-  if (d == NULL || p == NULL || q == NULL) {
-    return NULL;
-  }
-
-  BN_CTX_start(ctx);
-  r0 = BN_CTX_get(ctx);
-  r1 = BN_CTX_get(ctx);
-  r2 = BN_CTX_get(ctx);
-  if (r2 == NULL) {
-    goto err;
-  }
-
-  if (!BN_sub(r1, p, BN_value_one())) {
-    goto err;
-  }
-  if (!BN_sub(r2, q, BN_value_one())) {
-    goto err;
-  }
-  if (!BN_mul(r0, r1, r2, ctx)) {
-    goto err;
-  }
-
-  ret = BN_mod_inverse(NULL, d, r0, ctx);
-
-err:
-  BN_CTX_end(ctx);
-  return ret;
-}
-
 BN_BLINDING *rsa_setup_blinding(RSA *rsa, BN_CTX *in_ctx) {
   BIGNUM local_n;
-  BIGNUM *e, *n;
+  BIGNUM *n;
   BN_CTX *ctx;
   BN_BLINDING *ret = NULL;
   BN_MONT_CTX *mont_ctx = NULL;
@@ -371,13 +338,8 @@ BN_BLINDING *rsa_setup_blinding(RSA *rsa, BN_CTX *in_ctx) {
   }
 
   if (rsa->e == NULL) {
-    e = rsa_get_public_exp(rsa->d, rsa->p, rsa->q, ctx);
-    if (e == NULL) {
-      OPENSSL_PUT_ERROR(RSA, RSA_R_NO_PUBLIC_EXPONENT);
-      goto err;
-    }
-  } else {
-    e = rsa->e;
+    OPENSSL_PUT_ERROR(RSA, RSA_R_NO_PUBLIC_EXPONENT);
+    goto err;
   }
 
   n = &local_n;
@@ -390,7 +352,7 @@ BN_BLINDING *rsa_setup_blinding(RSA *rsa, BN_CTX *in_ctx) {
     }
   }
 
-  ret = BN_BLINDING_create_param(NULL, e, n, ctx, mont_ctx);
+  ret = BN_BLINDING_create_param(NULL, rsa->e, n, ctx, mont_ctx);
   if (ret == NULL) {
     OPENSSL_PUT_ERROR(RSA, ERR_R_BN_LIB);
     goto err;
@@ -399,9 +361,6 @@ BN_BLINDING *rsa_setup_blinding(RSA *rsa, BN_CTX *in_ctx) {
 err:
   if (in_ctx == NULL) {
     BN_CTX_free(ctx);
-  }
-  if (rsa->e == NULL) {
-    BN_free(e);
   }
 
   return ret;
