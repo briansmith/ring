@@ -26,7 +26,7 @@
 #![allow(unsafe_code)]
 
 use core;
-use super::{c, bssl};
+use super::{c, bssl, polyfill};
 
 /// A key for authenticating and decrypting (&ldquo;opening&rdquo;)
 /// AEAD-protected data.
@@ -236,9 +236,7 @@ impl Key {
                 // Follow BoringSSL's lead in zeroizing the output buffer on
                 // error just in case an application accidentally and wrongly
                 // fails to check whether an open or seal operation failed.
-                for b in out {
-                    *b = 0;
-                }
+                polyfill::slice::fill(out, 0);
                 Err(())
             }
         }
