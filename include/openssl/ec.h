@@ -189,7 +189,8 @@ OPENSSL_EXPORT int EC_POINT_is_at_infinity(const EC_GROUP *group,
                                            const EC_POINT *point);
 
 /* EC_POINT_is_on_curve returns one if |point| is an element of |group| and
- * zero otheriwse. If |ctx| is non-NULL, it may be used. */
+ * and zero otherwise or when an error occurs. This is different from OpenSSL,
+ * which returns -1 on error. If |ctx| is non-NULL, it may be used. */
 OPENSSL_EXPORT int EC_POINT_is_on_curve(const EC_GROUP *group,
                                         const EC_POINT *point, BN_CTX *ctx);
 
