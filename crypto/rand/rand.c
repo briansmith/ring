@@ -104,6 +104,9 @@ static int hwrand(uint8_t *buf, size_t len) {
 #else
 
 static int hwrand(uint8_t *buf, size_t len) {
+  (void)buf;
+  (void)len;
+
   return 0;
 }
 

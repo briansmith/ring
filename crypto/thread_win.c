@@ -152,6 +152,9 @@ static void thread_local_init(void) {
 
 static void NTAPI thread_local_destructor(PVOID module,
                                           DWORD reason, PVOID reserved) {
+  (void)module;
+  (void)reserved;
+
   if (DLL_THREAD_DETACH != reason && DLL_PROCESS_DETACH != reason) {
     return;
   }
