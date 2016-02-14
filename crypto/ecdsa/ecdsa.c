@@ -115,7 +115,7 @@ int ECDSA_sign(int type, const uint8_t *digest, size_t digest_len, uint8_t *sig,
       do {
         if (!BN_generate_dsa_nonce(k, &group->order,
                                    EC_KEY_get0_private_key(eckey), digest,
-                                   digest_len, ctx)) {
+                                   digest_len)) {
           OPENSSL_PUT_ERROR(ECDSA, ECDSA_R_RANDOM_NUMBER_GENERATION_FAILED);
           goto err;
         }

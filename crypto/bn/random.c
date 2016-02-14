@@ -247,8 +247,7 @@ extern int BN_generate_dsa_nonce_digest(uint8_t *out, size_t out_len,
                                         const uint8_t *part5, size_t part5_len);
 
 int BN_generate_dsa_nonce(BIGNUM *out, const BIGNUM *range, const BIGNUM *priv,
-                          const uint8_t *message, size_t message_len,
-                          BN_CTX *ctx) {
+                          const uint8_t *message, size_t message_len) {
   /* We use 512 bits of random data per iteration to
    * ensure that we have at least |range| bits of randomness. */
   uint8_t random_bytes[64];

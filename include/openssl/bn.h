@@ -528,7 +528,7 @@ OPENSSL_EXPORT int BN_pseudo_rand_range(BIGNUM *rnd, const BIGNUM *range);
 OPENSSL_EXPORT int BN_generate_dsa_nonce(BIGNUM *out, const BIGNUM *range,
                                          const BIGNUM *priv,
                                          const uint8_t *message,
-                                         size_t message_len, BN_CTX *ctx);
+                                         size_t message_len);
 
 /* BN_GENCB holds a callback function that is used by generation functions that
  * can take a very long time to complete. Use |BN_GENCB_set| to initialise a
