@@ -256,16 +256,12 @@ impl<'a> Reader<'a> {
     /// `num_bytes` of input remaining, and `Err(())` otherwise.
     pub fn skip_and_get_input(&mut self, num_bytes: usize)
                               -> Result<Input<'a>, ()> {
-        match self.i.checked_add(num_bytes) {
-            Some(new_i) => {
-                let ret = self.input.subslice(self.i, new_i)
-                                    .map(|subslice| Input { value: subslice })
-                                    .ok_or(());
-                self.i = new_i;
-                ret
-            },
-            _ => Err(())
-        }
+        let new_i = try!(self.i.checked_add(num_bytes).ok_or(()));
+        let ret = self.input.subslice(self.i, new_i)
+                            .map(|subslice| Input { value: subslice })
+                            .ok_or(());
+        self.i = new_i;
+        ret
     }
 
     /// Skips the reader to the end of the input, returning the skipped input
