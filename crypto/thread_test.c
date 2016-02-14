@@ -188,7 +188,7 @@ static int test_thread_local(void) {
   return 1;
 }
 
-int main(int argc, char **argv) {
+int main(void) {
   if (!test_once() ||
       !test_thread_local()) {
     return 1;
@@ -199,7 +199,7 @@ int main(int argc, char **argv) {
 
 #else  /* OPENSSL_NO_THREADS */
 
-int main(int argc, char **argv) {
+int main(void) {
   return 0;
 }
 

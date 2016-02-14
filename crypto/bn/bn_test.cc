@@ -116,12 +116,12 @@ static bool test_mod_exp_mont(FILE *fp, BN_CTX *ctx);
 static bool test_mod_exp_mont_consttime(FILE *fp, BN_CTX *ctx);
 static bool test_exp(FILE *fp, BN_CTX *ctx);
 static bool test_exp_mod_zero(void);
-static bool test_small_prime(FILE *fp, BN_CTX *ctx);
-static bool test_mod_exp_mont5(FILE *fp, BN_CTX *ctx);
-static bool test_bn2bin_padded(BN_CTX *ctx);
-static bool test_dec2bn(BN_CTX *ctx);
-static bool test_hex2bn(BN_CTX *ctx);
-static bool test_asc2bn(BN_CTX *ctx);
+static bool test_small_prime(FILE *fp);
+static bool test_mod_exp_mont5(BN_CTX *ctx);
+static bool test_bn2bin_padded();
+static bool test_dec2bn();
+static bool test_hex2bn();
+static bool test_asc2bn();
 static bool test_rand();
 static bool test_asn1();
 
@@ -277,7 +277,7 @@ int main(int argc, char *argv[]) {
 
   message(bc_file.get(), "BN_mod_exp_mont_consttime");
   if (!test_mod_exp_mont_consttime(bc_file.get(), ctx.get()) ||
-      !test_mod_exp_mont5(bc_file.get(), ctx.get())) {
+      !test_mod_exp_mont5(ctx.get())) {
     return 1;
   }
   flush_fp(bc_file.get());
@@ -290,15 +290,15 @@ int main(int argc, char *argv[]) {
   flush_fp(bc_file.get());
 
   message(bc_file.get(), "Small prime generation");
-  if (!test_small_prime(bc_file.get(), ctx.get())) {
+  if (!test_small_prime(bc_file.get())) {
     return 1;
   }
   flush_fp(bc_file.get());
 
-  if (!test_bn2bin_padded(ctx.get()) ||
-      !test_dec2bn(ctx.get()) ||
-      !test_hex2bn(ctx.get()) ||
-      !test_asc2bn(ctx.get()) ||
+  if (!test_bn2bin_padded() ||
+      !test_dec2bn() ||
+      !test_hex2bn() ||
+      !test_asc2bn() ||
       !test_rand() ||
       !test_asn1()) {
     return 1;
@@ -1124,7 +1124,7 @@ static bool test_mod_exp_mont_consttime(FILE *fp, BN_CTX *ctx) {
 
 // Test constant-time modular exponentiation with 1024-bit inputs,
 // which on x86_64 cause a different code branch to be taken.
-static bool test_mod_exp_mont5(FILE *fp, BN_CTX *ctx) {
+static bool test_mod_exp_mont5(BN_CTX *ctx) {
   ScopedBIGNUM a(BN_new());
   ScopedBIGNUM p(BN_new());
   ScopedBIGNUM m(BN_new());
@@ -1253,7 +1253,7 @@ static bool test_exp_mod_zero(void) {
   return true;
 }
 
-static bool test_small_prime(FILE *fp, BN_CTX *ctx) {
+static bool test_small_prime(FILE *fp) {
   static const unsigned kBits = 10;
 
   ScopedBIGNUM r(BN_new());
@@ -1270,7 +1270,7 @@ static bool test_small_prime(FILE *fp, BN_CTX *ctx) {
   return true;
 }
 
-static bool test_bn2bin_padded(BN_CTX *ctx) {
+static bool test_bn2bin_padded() {
   uint8_t zeros[256], out[256], reference[128];
 
   memset(zeros, 0, sizeof(zeros));
@@ -1346,7 +1346,7 @@ static int DecimalToBIGNUM(ScopedBIGNUM *out, const char *in) {
   return ret;
 }
 
-static bool test_dec2bn(BN_CTX *ctx) {
+static bool test_dec2bn() {
   ScopedBIGNUM bn;
   int ret = DecimalToBIGNUM(&bn, "0");
   if (ret != 1 || !BN_is_zero(bn.get()) || BN_is_negative(bn.get())) {
@@ -1381,7 +1381,7 @@ static bool test_dec2bn(BN_CTX *ctx) {
   return true;
 }
 
-static bool test_hex2bn(BN_CTX *ctx) {
+static bool test_hex2bn() {
   ScopedBIGNUM bn;
   int ret = HexToBIGNUM(&bn, "0");
   if (ret != 1 || !BN_is_zero(bn.get()) || BN_is_negative(bn.get())) {
@@ -1424,7 +1424,7 @@ static ScopedBIGNUM ASCIIToBIGNUM(const char *in) {
   return ScopedBIGNUM(raw);
 }
 
-static bool test_asc2bn(BN_CTX *ctx) {
+static bool test_asc2bn() {
   ScopedBIGNUM bn = ASCIIToBIGNUM("0");
   if (!bn || !BN_is_zero(bn.get()) || BN_is_negative(bn.get())) {
     fprintf(stderr, "BN_asc2bn gave a bad result.\n");

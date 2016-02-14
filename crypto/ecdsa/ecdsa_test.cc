@@ -109,7 +109,7 @@ static bool VerifyECDSASig(int digest_nid, const uint8_t *digest,
 // TestTamperedSig verifies that signature verification fails when a valid
 // signature is tampered with. |ecdsa_sig| must be a valid signature, which will
 // be modified. TestTamperedSig returns true on success, false on failure.
-static bool TestTamperedSig(FILE *out, int digest_nid, const uint8_t *digest,
+static bool TestTamperedSig(int digest_nid, const uint8_t *digest,
                             size_t digest_len, ECDSA_SIG *ecdsa_sig,
                             const EC_GROUP *group, const EC_POINT *pub_key,
                             const BIGNUM *order) {
@@ -266,7 +266,7 @@ static bool TestBuiltin(FILE *out) {
     ScopedECDSA_SIG ecdsa_sig(ECDSA_SIG_from_bytes(signature.data(),
                                                    signature.size()));
     if (!ecdsa_sig ||
-        !TestTamperedSig(out, NID_sha1, digest, 20, ecdsa_sig.get(), group,
+        !TestTamperedSig(NID_sha1, digest, 20, ecdsa_sig.get(), group,
                          EC_KEY_get0_public_key(eckey.get()), order)) {
       fprintf(out, "TestTamperedSig  failed for %s\n", kCurves[n].name);
       return false;

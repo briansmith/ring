@@ -24,7 +24,7 @@
 #include "../test/file_test.h"
 
 
-static bool TestPoly1305(FileTest *t, void *arg) {
+static bool TestPoly1305(FileTest *t, void * /*arg*/) {
   std::vector<uint8_t> key, in, mac;
   if (!t->GetBytes(&key, "Key") ||
       !t->GetBytes(&in, "Input") ||

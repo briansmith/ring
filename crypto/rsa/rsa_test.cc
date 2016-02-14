@@ -264,6 +264,8 @@ static bool TestRSA(const uint8_t *der, size_t der_len,
   }
 
   /* ring: OAEP padding is not implemented yet. */
+  (void)oaep_ciphertext;
+  (void)oaep_ciphertext_len;
 #if 0
   ciphertext_len = 0;
   if (!RSA_encrypt(key.get(), &ciphertext_len, ciphertext, sizeof(ciphertext),
@@ -491,7 +493,7 @@ static bool TestBadExponent() {
   return true;
 }
 
-int main(int argc, char *argv[]) {
+int main(void) {
   CRYPTO_library_init();
 
   if (!TestRSA(kKey1, sizeof(kKey1) - 1, kOAEPCiphertext1,

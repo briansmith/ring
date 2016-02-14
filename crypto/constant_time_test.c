@@ -233,7 +233,7 @@ static int signed_test_values[] = {
     0,     1,      -1,      1024,    -1024,       12345,      -12345,
     32000, -32000, INT_MAX, INT_MIN, INT_MAX - 1, INT_MIN + 1};
 
-int main(int argc, char* argv[]) {
+int main(void) {
   unsigned int a, b, i, j;
   int c, d;
   uint8_t e, f;
