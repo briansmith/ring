@@ -129,31 +129,30 @@ endif
 # Warnings
 
 # TODO:
+#   -fsanitize=undefined \
+#   -fsized-deallocation \
 #   -Wconversion \
 #   -Weverything -Wpessimizing-move, etc. \
-#   -Wsuggest-attribute \
-#   -Wstack-usage=n \
-#   -Wformat-signedness \
-#   -fsanitize=undefined \
 #   -Wnormalized \
-#   -fsized-deallocation \
 #   -Wmisleading-indentation \
 #   -Wmissing-declarations \
+#   -Wsign-conversion\
 #   -Wsized-deallocation \
+#   -Wstack-usage=n \
 #   -Wsuggest-attribute \
 #   -Wsuggest-final-types \
 #   -Wsuggest-final-methods \
 #   -Wsuggest-override \
-#   -Wzero-as-null-pointer-constant \
-#   -Wsign-conversion\
 #   -Wstrict-overflow=5 \
+#   -Wzero-as-null-pointer-constant \
 
 # TODO: clang-specific warnings
 
 # TODO (not in clang):
+#   -Wlogical-op \
 #   -Wmaybe-uninitialized \
 #   -Wtrampolines \
-#   -Wlogical-op \
+#   -Wunsafe-loop-optimizations \
 
 # TODO (GCC 4.9+):
 #   -Wconditionally-supported
@@ -178,7 +177,6 @@ CPPFLAGS += \
   -Wsign-compare \
   -Wundef \
   -Wuninitialized \
-  -Wunsafe-loop-optimizations \
   -Wwrite-strings \
   $(NULL)
 

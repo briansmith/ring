@@ -230,12 +230,6 @@ $(NULL): CPPFLAGS += $(RING_CPPFLAGS) \
                      -Wno-cast-align \
                      -Wno-unused-parameter \
                      $(NULL)
-$(RING_OBJS) \
-$(RING_TEST_LIB_OBJS) \
-$(RING_TEST_MAIN_OBJS) \
-$(NULL): CFLAGS += -Wno-bad-function-cast \
-                   $(NULL)
-
 
 PERLASM_LIB_SRCS = $(addprefix $(RING_PREFIX), \
   crypto/perlasm/arm-xlate.pl \
