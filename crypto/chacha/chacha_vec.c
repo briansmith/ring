@@ -1,4 +1,4 @@
-/* Copyright (c) 2014, Google Inc.
+#/* Copyright (c) 2014, Google Inc.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -42,7 +42,7 @@ typedef unsigned vec __attribute__((vector_size(16)));
  * each architecture, using intrinsics.
  * This implementation supports parallel processing of multiple blocks,
  * including potentially using general-purpose registers. */
-#if __ARM_NEON__
+#if defined(__ARM_NEON__)
 #include <string.h>
 #include <arm_neon.h>
 #define GPR_TOO 1
@@ -61,7 +61,7 @@ typedef unsigned vec __attribute__((vector_size(16)));
 #define ROTV2(x) (vec) vextq_u32((uint32x4_t)x, (uint32x4_t)x, 2)
 #define ROTV3(x) (vec) vextq_u32((uint32x4_t)x, (uint32x4_t)x, 3)
 #define ROTW16(x) (vec) vrev32q_u16((uint16x8_t)x)
-#if __clang__
+#if defined(__clang__)
 #define ROTW7(x) (x << ((vec) {7, 7, 7, 7})) ^ (x >> ((vec) {25, 25, 25, 25}))
 #define ROTW8(x) (x << ((vec) {8, 8, 8, 8})) ^ (x >> ((vec) {24, 24, 24, 24}))
 #define ROTW12(x) \
@@ -74,10 +74,10 @@ typedef unsigned vec __attribute__((vector_size(16)));
 #define ROTW12(x) \
   (vec) vsriq_n_u32(vshlq_n_u32((uint32x4_t)x, 12), (uint32x4_t)x, 20)
 #endif
-#elif __SSE2__
+#elif defined(__SSE2__)
 #include <emmintrin.h>
 #define GPR_TOO 0
-#if __clang__
+#if defined(__clang__)
 #define VBPI 4
 #else
 #define VBPI 3
@@ -93,7 +93,7 @@ typedef unsigned vec __attribute__((vector_size(16)));
   (vec)(_mm_slli_epi32((__m128i)x, 7) ^ _mm_srli_epi32((__m128i)x, 25))
 #define ROTW12(x) \
   (vec)(_mm_slli_epi32((__m128i)x, 12) ^ _mm_srli_epi32((__m128i)x, 20))
-#if __SSSE3__
+#if defined(__SSSE3__)
 #include <tmmintrin.h>
 #define ROTW8(x)                                                            \
   (vec) _mm_shuffle_epi8((__m128i)x, _mm_set_epi8(14, 13, 12, 15, 10, 9, 8, \
@@ -145,7 +145,7 @@ typedef unsigned vec __attribute__((vector_size(16)));
 	STORE(op + d + 8, LOAD(in + d + 8) ^ REVV_BE(v2));      \
 	STORE(op + d +12, LOAD(in + d +12) ^ REVV_BE(v3));
 
-#if __ARM_NEON__
+#if defined(__ARM_NEON__)
 /* For ARM, we can't depend on NEON support, so this function is compiled with
  * a different name, along with the generic code, and can be enabled at
  * run-time. */
