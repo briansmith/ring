@@ -4,7 +4,7 @@
     <_PropertySheetDisplayName>Common</_PropertySheetDisplayName>
 
     <!-- TODO: Re-enable these warnings. -->
-    <WarningsToDisable>4100;4242;4244;4267;4365;4575;4706;4996</WarningsToDisable>
+    <WarningsToDisable>4242;4244;4267;4365;4575;4706;4996</WarningsToDisable>
     <WarningsToDisable Condition="$(VisualStudioVersion)=='14.0'">$(WarningsToDisable);4464</WarningsToDisable>
 
     <!-- These warnings are not indications of wrongness. -->

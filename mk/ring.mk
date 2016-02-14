@@ -228,7 +228,6 @@ $(NULL): CPPFLAGS += $(RING_CPPFLAGS) \
                      -fno-strict-aliasing \
                      -fvisibility=hidden \
                      -Wno-cast-align \
-                     -Wno-unused-parameter \
                      $(NULL)
 
 PERLASM_LIB_SRCS = $(addprefix $(RING_PREFIX), \
