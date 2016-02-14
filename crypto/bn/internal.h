@@ -224,10 +224,6 @@ int bn_mul_mont(BN_ULONG *rp, const BN_ULONG *ap, const BN_ULONG *bp,
 #error "Either BN_ULLONG or BN_UMULT_LOHI must be defined on every platform."
 #endif
 
-#if !defined(BN_ULLONG)
-BN_ULONG bn_div_words(BN_ULONG h, BN_ULONG l, BN_ULONG d);
-#endif
-
 
 #if defined(__cplusplus)
 }  /* extern C */
