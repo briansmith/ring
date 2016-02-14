@@ -447,7 +447,7 @@ int ec_wNAF_mul_public(const EC_GROUP *group, EC_POINT *r,
           }
 
           if (is_neg != r_is_inverted) {
-            if (!r_is_at_infinity && !ec_GFp_simple_invert(group, r, ctx)) {
+            if (!r_is_at_infinity && !ec_GFp_simple_invert(group, r)) {
               goto err;
             }
             r_is_inverted = !r_is_inverted;
@@ -474,7 +474,7 @@ int ec_wNAF_mul_public(const EC_GROUP *group, EC_POINT *r,
     if (!EC_POINT_set_to_infinity(group, r)) {
       goto err;
     }
-  } else if (r_is_inverted && !ec_GFp_simple_invert(group, r, ctx)) {
+  } else if (r_is_inverted && !ec_GFp_simple_invert(group, r)) {
     goto err;
   }
 

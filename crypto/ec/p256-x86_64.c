@@ -225,9 +225,8 @@ static int ecp_nistz256_bignum_to_field_elem(BN_ULONG out[P256_LIMBS],
 }
 
 /* r = p * p_scalar */
-static int ecp_nistz256_windowed_mul(const EC_GROUP *group, P256_POINT *r,
-                                     const EC_POINT *p, const BIGNUM *p_scalar,
-                                     BN_CTX *ctx) {
+static int ecp_nistz256_windowed_mul(P256_POINT *r, const EC_POINT *p,
+                                     const BIGNUM *p_scalar) {
   assert(p != NULL);
   assert(p_scalar != NULL);
   assert(BN_cmp(p_scalar, EC_GROUP_get0_order(group)) < 0);
@@ -343,6 +342,8 @@ static int ecp_nistz256_windowed_mul(const EC_GROUP *group, P256_POINT *r,
 static int ecp_nistz256_points_mul(
     const EC_GROUP *group, EC_POINT *r, const BIGNUM *g_scalar,
     const EC_POINT *p_, const BIGNUM *p_scalar, BN_CTX *ctx) {
+  (void)ctx;
+
   assert((p_ != NULL) == (p_scalar != NULL));
 
   static const unsigned kWindowSize = 7;
@@ -355,6 +356,9 @@ static int ecp_nistz256_points_mul(
 
 
   if (g_scalar != NULL) {
+#if defined(NDEBUG)
+    (void)group;
+#endif
     assert(BN_cmp(g_scalar, EC_GROUP_get0_order(group)) < 0);
     uint8_t p_str[33] = {0};
     int i;
@@ -417,7 +421,7 @@ static int ecp_nistz256_points_mul(
       out = &p.p;
     }
 
-    if (!ecp_nistz256_windowed_mul(group, out, p_, p_scalar, ctx)) {
+    if (!ecp_nistz256_windowed_mul(out, p_, p_scalar)) {
       return 0;
     }
 
@@ -438,6 +442,8 @@ static int ecp_nistz256_points_mul(
 
 static int ecp_nistz256_get_affine(const EC_GROUP *group, const EC_POINT *point,
                                    BIGNUM *x, BIGNUM *y, BN_CTX *ctx) {
+  (void)ctx;
+
   BN_ULONG z_inv2[P256_LIMBS];
   BN_ULONG z_inv3[P256_LIMBS];
   BN_ULONG x_aff[P256_LIMBS];

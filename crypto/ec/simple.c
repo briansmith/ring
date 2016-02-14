@@ -117,8 +117,7 @@ int ec_GFp_simple_point_copy(EC_POINT *dest, const EC_POINT *src) {
   return 1;
 }
 
-int ec_GFp_simple_point_set_to_infinity(const EC_GROUP *group,
-                                        EC_POINT *point) {
+int ec_GFp_simple_point_set_to_infinity(EC_POINT *point) {
   BN_zero(&point->Z);
   return 1;
 }
@@ -163,7 +162,7 @@ int ec_GFp_simple_set_Jprojective_coordinates_GFp(
     int Z_is_one = BN_is_one(&point->Z);
     if (group->meth->field_encode) {
       if (Z_is_one && (group->meth->field_set_to_one != 0)) {
-        if (!group->meth->field_set_to_one(group, &point->Z, ctx)) {
+        if (!group->meth->field_set_to_one(group, &point->Z)) {
           goto err;
         }
       } else if (!group->meth->field_encode(group, &point->Z, &point->Z, ctx)) {
@@ -612,7 +611,7 @@ err:
   return ret;
 }
 
-int ec_GFp_simple_invert(const EC_GROUP *group, EC_POINT *point, BN_CTX *ctx) {
+int ec_GFp_simple_invert(const EC_GROUP *group, EC_POINT *point) {
   if (EC_POINT_is_at_infinity(group, point) || BN_is_zero(&point->Y)) {
     /* point is its own inverse */
     return 1;
@@ -621,7 +620,7 @@ int ec_GFp_simple_invert(const EC_GROUP *group, EC_POINT *point, BN_CTX *ctx) {
   return BN_usub(&point->Y, &group->field, &point->Y);
 }
 
-int ec_GFp_simple_is_at_infinity(const EC_GROUP *group, const EC_POINT *point) {
+int ec_GFp_simple_is_at_infinity(const EC_POINT *point) {
   return BN_is_zero(&point->Z);
 }
 
@@ -883,7 +882,7 @@ int ec_GFp_simple_points_make_affine(const EC_GROUP *group, size_t num,
     }
   } else {
     if (group->meth->field_set_to_one != 0) {
-      if (!group->meth->field_set_to_one(group, prod_Z[0], ctx)) {
+      if (!group->meth->field_set_to_one(group, prod_Z[0])) {
         goto err;
       }
     } else {
@@ -961,7 +960,7 @@ int ec_GFp_simple_points_make_affine(const EC_GROUP *group, size_t num,
       }
 
       if (group->meth->field_set_to_one != NULL) {
-        if (!group->meth->field_set_to_one(group, &p->Z, ctx)) {
+        if (!group->meth->field_set_to_one(group, &p->Z)) {
           goto err;
         }
       } else {

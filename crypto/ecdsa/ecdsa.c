@@ -69,6 +69,8 @@ static int digest_to_bn(BIGNUM *out, const uint8_t *digest, size_t digest_len,
 
 int ECDSA_sign(int type, const uint8_t *digest, size_t digest_len, uint8_t *sig,
                unsigned int *sig_len, EC_KEY *eckey) {
+  (void)type;
+
   const EC_GROUP *group = EC_KEY_get0_group(eckey);
   const BIGNUM *priv_key = EC_KEY_get0_private_key(eckey);
   if (group == NULL || priv_key == NULL) {
@@ -187,6 +189,8 @@ int ECDSA_verify_signed_digest(const EC_GROUP *group, int hash_nid,
                                const uint8_t *digest, size_t digest_len,
                                const uint8_t *sig_, size_t sig_len,
                                const uint8_t *ec_key, const size_t ec_key_len) {
+  (void)hash_nid; /* TODO: Verify |digest_len| is right for |hash_nid|. */
+
   BN_CTX *ctx = BN_CTX_new();
   if (ctx == NULL) {
     OPENSSL_PUT_ERROR(ECDSA, ERR_R_MALLOC_FAILURE);

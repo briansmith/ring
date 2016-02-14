@@ -105,8 +105,7 @@ int ec_GFp_mont_field_decode(const EC_GROUP *group, BIGNUM *r, const BIGNUM *a,
   return BN_from_montgomery(r, a, &group->mont, ctx);
 }
 
-int ec_GFp_mont_field_set_to_one(const EC_GROUP *group, BIGNUM *r,
-                                 BN_CTX *ctx) {
+int ec_GFp_mont_field_set_to_one(const EC_GROUP *group, BIGNUM *r) {
   if (BN_copy(r, &group->one) == NULL) {
     return 0;
   }

@@ -113,7 +113,7 @@ typedef struct ec_method_st {
                       BN_CTX *); /* e.g. to Montgomery */
   int (*field_decode)(const EC_GROUP *, BIGNUM *r, const BIGNUM *a,
                       BN_CTX *); /* e.g. from Montgomery */
-  int (*field_set_to_one)(const EC_GROUP *, BIGNUM *r, BN_CTX *);
+  int (*field_set_to_one)(const EC_GROUP *, BIGNUM *r);
 } EC_METHOD;
 
 extern const EC_METHOD EC_GFp_mont_method;
@@ -162,7 +162,7 @@ unsigned ec_GFp_simple_group_get_degree(const EC_GROUP *);
 int ec_GFp_simple_point_init(EC_POINT *);
 void ec_GFp_simple_point_finish(EC_POINT *);
 int ec_GFp_simple_point_copy(EC_POINT *, const EC_POINT *);
-int ec_GFp_simple_point_set_to_infinity(const EC_GROUP *, EC_POINT *);
+int ec_GFp_simple_point_set_to_infinity(EC_POINT *);
 int ec_GFp_simple_set_Jprojective_coordinates_GFp(const EC_GROUP *, EC_POINT *,
                                                   const BIGNUM *x,
                                                   const BIGNUM *y,
@@ -177,8 +177,8 @@ int ec_GFp_simple_add(const EC_GROUP *, EC_POINT *r, const EC_POINT *a,
                       const EC_POINT *b, BN_CTX *);
 int ec_GFp_simple_dbl(const EC_GROUP *, EC_POINT *r, const EC_POINT *a,
                       BN_CTX *);
-int ec_GFp_simple_invert(const EC_GROUP *, EC_POINT *, BN_CTX *);
-int ec_GFp_simple_is_at_infinity(const EC_GROUP *, const EC_POINT *);
+int ec_GFp_simple_invert(const EC_GROUP *, EC_POINT *);
+int ec_GFp_simple_is_at_infinity(const EC_POINT *);
 int ec_GFp_simple_is_on_curve(const EC_GROUP *, const EC_POINT *, BN_CTX *);
 int ec_GFp_simple_cmp(const EC_GROUP *, const EC_POINT *a, const EC_POINT *b,
                       BN_CTX *);
@@ -198,7 +198,7 @@ int ec_GFp_mont_field_encode(const EC_GROUP *, BIGNUM *r, const BIGNUM *a,
                              BN_CTX *);
 int ec_GFp_mont_field_decode(const EC_GROUP *, BIGNUM *r, const BIGNUM *a,
                              BN_CTX *);
-int ec_GFp_mont_field_set_to_one(const EC_GROUP *, BIGNUM *r, BN_CTX *);
+int ec_GFp_mont_field_set_to_one(const EC_GROUP *, BIGNUM *r);
 
 int ec_point_set_Jprojective_coordinates_GFp(const EC_GROUP *group,
                                              EC_POINT *point, const BIGNUM *x,

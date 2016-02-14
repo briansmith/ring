@@ -1589,6 +1589,8 @@ int ec_GFp_nistp256_point_get_affine_coordinates(const EC_GROUP *group,
                                                  const EC_POINT *point,
                                                  BIGNUM *x, BIGNUM *y,
                                                  BN_CTX *ctx) {
+  (void)ctx;
+
   felem z1, z2, x_in, y_in;
   smallfelem x_out, y_out;
   longfelem tmp;

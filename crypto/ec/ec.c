@@ -132,7 +132,7 @@ int EC_POINT_set_to_infinity(const EC_GROUP *group, EC_POINT *point) {
     OPENSSL_PUT_ERROR(EC, EC_R_INCOMPATIBLE_OBJECTS);
     return 0;
   }
-  return ec_GFp_simple_point_set_to_infinity(group, point);
+  return ec_GFp_simple_point_set_to_infinity(point);
 }
 
 int EC_POINT_is_at_infinity(const EC_GROUP *group, const EC_POINT *point) {
@@ -140,7 +140,7 @@ int EC_POINT_is_at_infinity(const EC_GROUP *group, const EC_POINT *point) {
     OPENSSL_PUT_ERROR(EC, EC_R_INCOMPATIBLE_OBJECTS);
     return 0;
   }
-  return ec_GFp_simple_is_at_infinity(group, point);
+  return ec_GFp_simple_is_at_infinity(point);
 }
 
 int EC_POINT_is_on_curve(const EC_GROUP *group, const EC_POINT *point,
