@@ -234,7 +234,6 @@ $(RING_OBJS) \
 $(RING_TEST_LIB_OBJS) \
 $(RING_TEST_MAIN_OBJS) \
 $(NULL): CFLAGS += -Wno-bad-function-cast \
-                   -Wno-nested-externs \
                    $(NULL)
 
 

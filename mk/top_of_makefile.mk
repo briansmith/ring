@@ -139,16 +139,14 @@ endif
 #   -fsized-deallocation \
 #   -Wmisleading-indentation \
 #   -Wmissing-declarations \
-#   -Wshadow \
 #   -Wsized-deallocation \
+#   -Wsuggest-attribute \
 #   -Wsuggest-final-types \
 #   -Wsuggest-final-methods \
 #   -Wsuggest-override \
 #   -Wzero-as-null-pointer-constant \
-#   -Wunsafe-loop-optimizations \
 #   -Wsign-conversion\
 #   -Wstrict-overflow=5 \
-#   -Wundef \
 
 # TODO: clang-specific warnings
 
@@ -176,8 +174,11 @@ CPPFLAGS += \
   -Wmissing-field-initializers \
   -Wmissing-include-dirs \
   -Wredundant-decls \
+  -Wshadow \
   -Wsign-compare \
+  -Wundef \
   -Wuninitialized \
+  -Wunsafe-loop-optimizations \
   -Wwrite-strings \
   $(NULL)
 
