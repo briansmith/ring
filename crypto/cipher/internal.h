@@ -141,6 +141,13 @@ static inline void aead_assert_init_preconditions(size_t ctx_struct_alignment,
                                                   const void *ctx_buf,
                                                   size_t ctx_buf_len,
                                                   const uint8_t *key) {
+#if defined(NDEBUG)
+  (void)ctx_struct_alignment;
+  (void)ctx_struct_size;
+  (void)ctx_buf;
+  (void)ctx_buf_len;
+  (void)key;
+#endif
   assert(ctx_buf != NULL);
   assert(((uintptr_t)ctx_buf) % ctx_struct_alignment == 0);
   assert(ctx_buf_len >= ctx_struct_size);
@@ -155,6 +162,17 @@ inline void aead_assert_open_seal_preconditions(size_t ctx_struct_alignment,
                                                 size_t in_len,
                                                 const uint8_t *ad,
                                                 size_t ad_len) {
+#if defined(NDEBUG)
+  (void)ctx_struct_alignment;
+  (void)ctx_buf;
+  (void)out;
+  (void)out_len;
+  (void)nonce;
+  (void)in;
+  (void)in_len;
+  (void)ad;
+  (void)ad_len;
+#endif
   assert(ctx_buf != NULL);
   assert(((uintptr_t)ctx_buf) % ctx_struct_alignment == 0);
   assert(out != NULL);
