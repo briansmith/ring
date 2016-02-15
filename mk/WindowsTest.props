@@ -2,10 +2,14 @@
 <Project ToolsVersion="14.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <PropertyGroup Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
+    <WarningsToDisable>4710</WarningsToDisable>
   </PropertyGroup>
   <ImportGroup Label="PropertySheets">
     <Import Project="Windows.props" />
   </ImportGroup>
+  <PropertyGroup>
+    <WarningsToDisable>$(WarningsToDisable);4710</WarningsToDisable>
+  </PropertyGroup>
   <ItemDefinitionGroup>
     <ClCompile>
       <PreprocessorDefinitions>_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>

@@ -19,6 +19,7 @@
 #include <stdio.h>
 
 #if defined(_MSC_VER)
+#pragma warning(disable: 4710) // 'function' : function not inlined
 #pragma warning(push)
 #pragma warning(disable: 4702)
 #endif

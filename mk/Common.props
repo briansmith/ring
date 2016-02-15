@@ -21,10 +21,8 @@
 
      C4996: The compiler encountered a deprecated declaration.
             https://msdn.microsoft.com/en-us/library/ttcz0bys.aspx
-
-     C4710: 'function' : function not inlined
     -->
-    <WarningsToDisable>4242;4244;4267;4365;4706;4710;4996</WarningsToDisable>
+    <WarningsToDisable>4242;4244;4267;4365;4706;4996</WarningsToDisable>
 
     <!--
      C4464: relative include path contains '..'.

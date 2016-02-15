@@ -13,6 +13,8 @@
   </ImportGroup>
   <PropertyGroup Label="Configuration">
     <OutDir>$(IntRootDir)</OutDir>
+    <!-- C4710: 'function' : function not inlined -->
+    <WarningsToDisable>$(WarningsToDisable);4710</WarningsToDisable>
   </PropertyGroup>
   <ItemGroup>
     <ClCompile Include="file_test.cc" />
