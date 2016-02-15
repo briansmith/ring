@@ -68,8 +68,6 @@ RING_SRCS = $(addprefix $(RING_PREFIX), \
   crypto/poly1305/poly1305_vec.c \
   crypto/rand/rand.c \
   crypto/rand/urandom.c \
-  crypto/refcount_c11.c \
-  crypto/refcount_lock.c \
   crypto/rsa/blinding.c \
   crypto/rsa/padding.c \
   crypto/rsa/rsa.c \
@@ -195,7 +193,6 @@ RING_TEST_MAIN_SRCS = $(addprefix $(RING_PREFIX), \
   crypto/constant_time_test.c \
   crypto/ecdsa/ecdsa_test.cc \
   crypto/poly1305/poly1305_test.cc \
-  crypto/refcount_test.c \
   crypto/rsa/rsa_test.cc \
   crypto/thread_test.c \
   $(NULL))

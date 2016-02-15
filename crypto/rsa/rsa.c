@@ -113,7 +113,6 @@ RSA *RSA_new(void) {
 
   memset(rsa, 0, sizeof(RSA));
 
-  rsa->references = 1;
   rsa->flags = RSA_FLAG_CACHE_PUBLIC | RSA_FLAG_CACHE_PRIVATE;
   CRYPTO_MUTEX_init(&rsa->lock);
 
@@ -124,10 +123,6 @@ void RSA_free(RSA *rsa) {
   unsigned u;
 
   if (rsa == NULL) {
-    return;
-  }
-
-  if (!CRYPTO_refcount_dec_and_test_zero(&rsa->references)) {
     return;
   }
 
@@ -149,11 +144,6 @@ void RSA_free(RSA *rsa) {
   OPENSSL_free(rsa->blindings_inuse);
   CRYPTO_MUTEX_cleanup(&rsa->lock);
   OPENSSL_free(rsa);
-}
-
-int RSA_up_ref(RSA *rsa) {
-  CRYPTO_refcount_inc(&rsa->references);
-  return 1;
 }
 
 /* SSL_SIG_LENGTH is the size of an SSL/TLS (prior to TLS 1.2) signature: it's

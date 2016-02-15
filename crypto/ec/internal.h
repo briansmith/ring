@@ -224,8 +224,6 @@ struct ec_key_st {
 
   EC_POINT *pub_key;
   BIGNUM *priv_key;
-
-  CRYPTO_refcount_t references;
 } /* EC_KEY */;
 
 

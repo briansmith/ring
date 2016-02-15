@@ -51,8 +51,6 @@ exe_test!(ecdsa_test, "crypto/ecdsa/ecdsa_test", []);
 exe_test!(poly1305_test, "crypto/poly1305/poly1305_test",
           ["crypto/poly1305/poly1305_test.txt"]);
 
-exe_test!(refcount_test, "crypto/refcount_test", []);
-
 #[cfg(not(feature = "no_heap"))]
 exe_test!(rsa_test, "crypto/rsa/rsa_test", []);
 

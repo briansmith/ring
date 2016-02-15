@@ -90,9 +90,6 @@ OPENSSL_EXPORT RSA *RSA_new(void);
  * reference count drops to zero. */
 OPENSSL_EXPORT void RSA_free(RSA *rsa);
 
-/* RSA_up_ref increments the reference count of |rsa|. */
-OPENSSL_EXPORT int RSA_up_ref(RSA *rsa);
-
 
 /* Key generation. */
 
@@ -283,7 +280,6 @@ struct rsa_st {
   BIGNUM *dmq1;
   BIGNUM *iqmp;
 
-  CRYPTO_refcount_t references;
   int flags;
 
   CRYPTO_MUTEX lock;

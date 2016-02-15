@@ -348,28 +348,6 @@ typedef pthread_once_t CRYPTO_once_t;
 OPENSSL_EXPORT void CRYPTO_once(CRYPTO_once_t *once, void (*init)(void));
 
 
-/* Reference counting. */
-
-/* CRYPTO_REFCOUNT_MAX is the value at which the reference count saturates. */
-#define CRYPTO_REFCOUNT_MAX 0xffffffff
-
-/* CRYPTO_refcount_inc atomically increments the value at |*count| unless the
- * value would overflow. It's safe for multiple threads to concurrently call
- * this or |CRYPTO_refcount_dec_and_test_zero| on the same
- * |CRYPTO_refcount_t|. */
-OPENSSL_EXPORT void CRYPTO_refcount_inc(CRYPTO_refcount_t *count);
-
-/* CRYPTO_refcount_dec_and_test_zero tests the value at |*count|:
- *   if it's zero, it crashes the address space.
- *   if it's the maximum value, it returns zero.
- *   otherwise, it atomically decrements it and returns one iff the resulting
- *       value is zero.
- *
- * It's safe for multiple threads to concurrently call this or
- * |CRYPTO_refcount_inc| on the same |CRYPTO_refcount_t|. */
-OPENSSL_EXPORT int CRYPTO_refcount_dec_and_test_zero(CRYPTO_refcount_t *count);
-
-
 /* Locks.
  *
  * Two types of locks are defined: |CRYPTO_MUTEX|, which can be used in

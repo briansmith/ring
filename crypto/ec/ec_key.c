@@ -89,17 +89,12 @@ EC_KEY *ec_key_new_ex(const EC_GROUP *group) {
   memset(ret, 0, sizeof(EC_KEY));
 
   ret->group = group;
-  ret->references = 1;
 
   return ret;
 }
 
 void EC_KEY_free(EC_KEY *r) {
   if (r == NULL) {
-    return;
-  }
-
-  if (!CRYPTO_refcount_dec_and_test_zero(&r->references)) {
     return;
   }
 
