@@ -105,7 +105,7 @@
 //!     assert!(db.verify_password("alice", "@74d7]404j|W}6u").is_ok());
 //! }
 
-use super::{constant_time, digest, hmac};
+use super::{constant_time, digest, hmac, polyfill};
 
 /// Fills `out` with the key derived using PBKDF2 with the given inputs.
 ///
@@ -148,9 +148,7 @@ pub fn derive(prf: &'static PRF, iterations: usize, salt: &[u8], secret: &[u8],
     let secret = hmac::SigningKey::new(prf.digest_alg, secret);
 
     // Clear |out|.
-    for i in 0..out.len() {
-        out[i] = 0;
-    }
+    polyfill::slice::fill(out, 0);
 
     let mut ctx = hmac::SigningContext::with_key(&secret);
     ctx.update(salt);
