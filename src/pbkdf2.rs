@@ -152,7 +152,8 @@ pub fn derive(prf: &'static PRF, iterations: usize, salt: &[u8], secret: &[u8],
 
     let mut ctx = hmac::SigningContext::with_key(&secret);
     ctx.update(salt);
-    ctx.update(&[0, 0, 0, 1]);
+    static COUNTBUF: [u8; 4] = [0, 0, 0, 1];
+    ctx.update(&COUNTBUF);
     let mut u = ctx.sign();
 
     let mut remaining = iterations;
