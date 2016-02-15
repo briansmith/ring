@@ -194,7 +194,6 @@ RING_TEST_MAIN_SRCS = $(addprefix $(RING_PREFIX), \
   crypto/bytestring/bytestring_test.cc \
   crypto/constant_time_test.c \
   crypto/ecdsa/ecdsa_test.cc \
-  crypto/modes/gcm_test.c \
   crypto/poly1305/poly1305_test.cc \
   crypto/refcount_test.c \
   crypto/rsa/rsa_test.cc \

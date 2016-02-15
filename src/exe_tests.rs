@@ -47,8 +47,6 @@ exe_test!(constant_time_test, "crypto/constant_time_test", []);
 #[cfg(not(feature = "no_heap"))]
 exe_test!(ecdsa_test, "crypto/ecdsa/ecdsa_test", []);
 
-exe_test!(gcm_test, "crypto/modes/gcm_test", []);
-
 #[cfg(not(feature = "no_heap"))] // XXX: Rewrite to avoid OPENSSL_malloc
 exe_test!(poly1305_test, "crypto/poly1305/poly1305_test",
           ["crypto/poly1305/poly1305_test.txt"]);
