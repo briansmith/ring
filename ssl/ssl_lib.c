@@ -181,12 +181,21 @@ int SSL_library_init(void) {
   return 1;
 }
 
-static uint32_t ssl_session_hash(const SSL_SESSION *a) {
+static uint32_t ssl_session_hash(const SSL_SESSION *sess) {
+  const uint8_t *session_id = sess->session_id;
+
+  uint8_t tmp_storage[sizeof(uint32_t)];
+  if (sess->session_id_length < sizeof(tmp_storage)) {
+    memset(tmp_storage, 0, sizeof(tmp_storage));
+    memcpy(tmp_storage, sess->session_id, sess->session_id_length);
+    session_id = tmp_storage;
+  }
+
   uint32_t hash =
-      ((uint32_t)a->session_id[0]) |
-      ((uint32_t)a->session_id[1] << 8) |
-      ((uint32_t)a->session_id[2] << 16) |
-      ((uint32_t)a->session_id[3] << 24);
+      ((uint32_t)session_id[0]) |
+      ((uint32_t)session_id[1] << 8) |
+      ((uint32_t)session_id[2] << 16) |
+      ((uint32_t)session_id[3] << 24);
 
   return hash;
 }
