@@ -1069,8 +1069,7 @@ int CRYPTO_gcm128_decrypt_ctr32(GCM128_CONTEXT *ctx, const void *key,
   return 1;
 }
 
-int CRYPTO_gcm128_finish(GCM128_CONTEXT *ctx, const uint8_t *tag,
-                         size_t len) {
+void CRYPTO_gcm128_tag(GCM128_CONTEXT *ctx, uint8_t *tag, size_t len) {
   uint64_t alen = ctx->len.u[0] << 3;
   uint64_t clen = ctx->len.u[1] << 3;
 #ifdef GCM_FUNCREF_4BIT
@@ -1091,16 +1090,6 @@ int CRYPTO_gcm128_finish(GCM128_CONTEXT *ctx, const uint8_t *tag,
   ctx->Xi.u[0] ^= ctx->EK0.u[0];
   ctx->Xi.u[1] ^= ctx->EK0.u[1];
 
-  if (tag && len <= sizeof(ctx->Xi)) {
-    return CRYPTO_memcmp(ctx->Xi.c, tag, len) == 0;
-  } else {
-    return 0;
-  }
-}
-
-void CRYPTO_gcm128_tag(GCM128_CONTEXT *ctx, unsigned char *tag,
-                       size_t len) {
-  CRYPTO_gcm128_finish(ctx, NULL, 0);
   memcpy(tag, ctx->Xi.c, len <= sizeof(ctx->Xi.c) ? len : sizeof(ctx->Xi.c));
 }
 
