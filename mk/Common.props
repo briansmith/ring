@@ -3,12 +3,44 @@
   <PropertyGroup>
     <_PropertySheetDisplayName>Common</_PropertySheetDisplayName>
 
-    <!-- TODO: Re-enable these warnings. -->
-    <WarningsToDisable>4242;4244;4267;4365;4575;4706;4996</WarningsToDisable>
+    <!-- TODO: Re-enable these warnings:
+     C4242: 'identifier' : conversion from 'type1' to 'type2', possible loss of data
+            https://msdn.microsoft.com/en-us/library/3hca13eh.aspx
+
+     C4244: 'conversion' conversion from 'type1' to 'type2', possible loss of data
+            https://msdn.microsoft.com/en-us/library/2d7604yb.aspx
+
+     C4267: 'var' : conversion from 'size_t' to 'type', possible loss of data
+            https://msdn.microsoft.com/en-us/library/6kck0s93.aspx
+
+     C4365: 'action' : conversion from 'type_1' to 'type_2', signed/unsigned mismatch
+            https://msdn.microsoft.com/en-us/library/ms173683.aspx
+
+     C4706: assignment within conditional expression
+            https://msdn.microsoft.com/en-us/library/7hw7c1he.aspx
+
+     C4996: The compiler encountered a deprecated declaration.
+            https://msdn.microsoft.com/en-us/library/ttcz0bys.aspx
+
+     C4710: 'function' : function not inlined
+    -->
+    <WarningsToDisable>4242;4244;4267;4365;4706;4710;4996</WarningsToDisable>
+
+    <!--
+     C4464: relative include path contains '..'.
+            This is normally a good idea to enable, but the code inherited from
+            BoringSSL frequently uses `#include "../internal.h"` and similar.
+    -->
     <WarningsToDisable Condition="$(VisualStudioVersion)=='14.0'">$(WarningsToDisable);4464</WarningsToDisable>
 
-    <!-- These warnings are not indications of wrongness. -->
-    <WarningsToDisable>$(WarningsToDisable);4127;4350;4514;4710;4711;4820</WarningsToDisable>
+    <!-- These warnings are not indications of wrongness.
+     C4127: conditional expression is constant
+     C4350: behavior change: 'member1' called instead of 'member2'
+     C4514: 'function' : unreferenced inline function has been removed
+     C4711: function 'function' selected for inline expansion
+     C4820: 'bytes' bytes padding added after construct 'member_name'
+    -->
+    <WarningsToDisable>$(WarningsToDisable);4127;4350;4514;4711;4820</WarningsToDisable>
 
     <OutRootDir>$(SolutionDir)build\$(Platform)-$(Configuration)\</OutRootDir>
     <IntRootDir>$(OutRootDir)obj\</IntRootDir>
