@@ -112,11 +112,6 @@ typedef void (*aes_ctr_f)(const uint8_t *in, uint8_t *out, size_t blocks,
 
 typedef struct gcm128_context GCM128_CONTEXT;
 
-/* CRYPTO_gcm128_new allocates a fresh |GCM128_CONTEXT| and calls
- * |CRYPTO_gcm128_init|. It returns the new context, or NULL on error. */
-OPENSSL_EXPORT GCM128_CONTEXT *CRYPTO_gcm128_new(const void *key,
-                                                 aes_block_f block);
-
 /* CRYPTO_gcm128_init initialises |ctx| to use |block| (typically AES) with
  * the given key. */
 OPENSSL_EXPORT void CRYPTO_gcm128_init(GCM128_CONTEXT *ctx, const void *key,
@@ -177,9 +172,6 @@ OPENSSL_EXPORT int CRYPTO_gcm128_finish(GCM128_CONTEXT *ctx, const uint8_t *tag,
  * The minimum of |len| and 16 bytes are copied into |tag|. */
 OPENSSL_EXPORT void CRYPTO_gcm128_tag(GCM128_CONTEXT *ctx, uint8_t *tag,
                                       size_t len);
-
-/* CRYPTO_gcm128_release clears and frees |ctx|. */
-OPENSSL_EXPORT void CRYPTO_gcm128_release(GCM128_CONTEXT *ctx);
 
 
 #if defined(__cplusplus)

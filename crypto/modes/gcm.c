@@ -362,17 +362,6 @@ void gcm_ghash_neon(uint64_t Xi[2], const u128 Htable[16], const uint8_t *inp,
 #endif
 #endif
 
-GCM128_CONTEXT *CRYPTO_gcm128_new(const void *key, aes_block_f block) {
-  GCM128_CONTEXT *ret;
-
-  ret = OPENSSL_malloc(sizeof(GCM128_CONTEXT));
-  if (ret != NULL) {
-    CRYPTO_gcm128_init(ret, key, block);
-  }
-
-  return ret;
-}
-
 void CRYPTO_gcm128_init(GCM128_CONTEXT *ctx, const void *key,
                            aes_block_f block) {
   memset(ctx, 0, sizeof(*ctx));
@@ -1113,10 +1102,6 @@ void CRYPTO_gcm128_tag(GCM128_CONTEXT *ctx, unsigned char *tag,
                        size_t len) {
   CRYPTO_gcm128_finish(ctx, NULL, 0);
   memcpy(tag, ctx->Xi.c, len <= sizeof(ctx->Xi.c) ? len : sizeof(ctx->Xi.c));
-}
-
-void CRYPTO_gcm128_release(GCM128_CONTEXT *ctx) {
-  OPENSSL_free(ctx);
 }
 
 #if defined(OPENSSL_X86) || defined(OPENSSL_X86_64)
