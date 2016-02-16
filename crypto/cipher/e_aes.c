@@ -267,8 +267,7 @@ int evp_aead_aes_gcm_open(const void *ctx_buf, uint8_t *out, size_t *out_len,
   }
 
   if (gcm_ctx->ctr) {
-    if (!CRYPTO_gcm128_decrypt_ctr32(&gcm, key, in, out,
-                                     in_len - EVP_AEAD_AES_GCM_TAG_LEN,
+    if (!CRYPTO_gcm128_decrypt_ctr32(&gcm, key, in, out, plaintext_len,
                                      gcm_ctx->ctr)) {
       return 0;
     }
