@@ -68,9 +68,7 @@
 
 #include <string.h>
 
-#include <openssl/bn.h>
 #include <openssl/err.h>
-#include <openssl/mem.h>
 #include <openssl/type_check.h>
 
 #include "../ec/internal.h"
