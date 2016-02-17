@@ -236,7 +236,7 @@ RSA *RSA_parse_private_key(CBS *cbs) {
   if (version == kVersionMulti) {
     /* Although otherPrimeInfos is written as OPTIONAL in RFC 3447, it later
      * says "[otherPrimeInfos] shall be omitted if version is 0 and shall
-     * contain at least one instance of OtherPrimeInfo if version is 1. The
+     * contain at least one instance of OtherPrimeInfo if version is 1." The
      * OPTIONAL is just so both versions share a single definition. */
     CBS other_prime_infos;
     if (!CBS_get_asn1(&child, &other_prime_infos, CBS_ASN1_SEQUENCE) ||
