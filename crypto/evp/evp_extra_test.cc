@@ -640,6 +640,15 @@ static bool Testd2i_PrivateKey(void) {
   }
   ERR_clear_error();
 
+  derp = kExampleRSAKeyPKCS8;
+  pkey.reset(d2i_PrivateKey(EVP_PKEY_EC, nullptr, &derp,
+             sizeof(kExampleRSAKeyPKCS8)));
+  if (pkey) {
+    fprintf(stderr, "Imported RSA key as EC key.\n");
+    return false;
+  }
+  ERR_clear_error();
+
   return true;
 }
 

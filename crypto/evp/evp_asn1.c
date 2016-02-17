@@ -223,6 +223,11 @@ EVP_PKEY *d2i_PrivateKey(int type, EVP_PKEY **out, const uint8_t **inp,
     if (ret == NULL) {
       return NULL;
     }
+    if (ret->type != type) {
+      OPENSSL_PUT_ERROR(EVP, EVP_R_DIFFERENT_KEY_TYPES);
+      EVP_PKEY_free(ret);
+      return NULL;
+    }
   }
 
   if (out != NULL) {
@@ -261,24 +266,22 @@ EVP_PKEY *d2i_AutoPrivateKey(EVP_PKEY **out, const uint8_t **inp, long len) {
     return NULL;
   }
 
-  /* Count the elements to determine the format. */
-  switch (num_elements(*inp, (size_t)len)) {
-    case 3: {
-      /* Parse the input as a PKCS#8 PrivateKeyInfo. */
-      CBS cbs;
-      CBS_init(&cbs, *inp, (size_t)len);
-      EVP_PKEY *ret = EVP_parse_private_key(&cbs);
-      if (ret == NULL) {
-        return NULL;
-      }
-      if (out != NULL) {
-        EVP_PKEY_free(*out);
-        *out = ret;
-      }
-      *inp = CBS_data(&cbs);
-      return ret;
+  /* Parse the input as a PKCS#8 PrivateKeyInfo. */
+  CBS cbs;
+  CBS_init(&cbs, *inp, (size_t)len);
+  EVP_PKEY *ret = EVP_parse_private_key(&cbs);
+  if (ret != NULL) {
+    if (out != NULL) {
+      EVP_PKEY_free(*out);
+      *out = ret;
     }
+    *inp = CBS_data(&cbs);
+    return ret;
+  }
+  ERR_clear_error();
 
+  /* Count the elements to determine the legacy key format. */
+  switch (num_elements(*inp, (size_t)len)) {
     case 4:
       return d2i_PrivateKey(EVP_PKEY_EC, out, inp, len);
 
