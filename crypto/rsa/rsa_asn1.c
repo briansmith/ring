@@ -233,9 +233,11 @@ RSA *RSA_parse_private_key(CBS *cbs) {
     goto err;
   }
 
-  /* Multi-prime RSA requires a newer version. */
-  if (version == kVersionMulti &&
-      CBS_peek_asn1_tag(&child, CBS_ASN1_SEQUENCE)) {
+  if (version == kVersionMulti) {
+    /* Although otherPrimeInfos is written as OPTIONAL in RFC 3447, it later
+     * says "[otherPrimeInfos] shall be omitted if version is 0 and shall
+     * contain at least one instance of OtherPrimeInfo if version is 1. The
+     * OPTIONAL is just so both versions share a single definition. */
     CBS other_prime_infos;
     if (!CBS_get_asn1(&child, &other_prime_infos, CBS_ASN1_SEQUENCE) ||
         CBS_len(&other_prime_infos) == 0) {
