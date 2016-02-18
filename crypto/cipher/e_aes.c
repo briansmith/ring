@@ -124,8 +124,6 @@ void vpaes_encrypt(const uint8_t *in, uint8_t *out, const AES_KEY *key);
 #define AESNI
 int aesni_set_encrypt_key(const uint8_t *userKey, int bits, AES_KEY *key);
 void aesni_encrypt(const uint8_t *in, uint8_t *out, const AES_KEY *key);
-void aesni_ctr32_encrypt_blocks(const uint8_t *in, uint8_t *out, size_t blocks,
-                                const AES_KEY *key, const uint8_t *ivec);
 static char aesni_capable(void);
 #endif
 
