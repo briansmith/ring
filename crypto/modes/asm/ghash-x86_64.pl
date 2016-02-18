@@ -90,11 +90,12 @@ $0 =~ m/(.*[\/\\])[^\/\\]+$/; $dir=$1;
 ( $xlate="${dir}../../perlasm/x86_64-xlate.pl" and -f $xlate) or
 die "can't locate x86_64-xlate.pl";
 
+# This must be kept in sync with |$avx| in aesni-gcm-x86_64.pl; otherwise tags
+# will be computed incorrectly.
+#
 # In upstream, this is controlled by shelling out to the compiler to check
 # versions, but BoringSSL is intended to be used with pre-generated perlasm
 # output, so this isn't useful anyway.
-#
-# TODO(davidben): Enable this after testing. $avx goes up to 2.
 $avx = 0;
 
 open OUT,"| \"$^X\" $xlate $flavour $output";

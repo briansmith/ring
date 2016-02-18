@@ -252,22 +252,6 @@ void aesni_ecb_encrypt(const uint8_t *in, uint8_t *out, size_t length,
 void aesni_cbc_encrypt(const uint8_t *in, uint8_t *out, size_t length,
                        const AES_KEY *key, uint8_t *ivec, int enc);
 
-void aesni_ctr32_encrypt_blocks(const uint8_t *in, uint8_t *out, size_t blocks,
-                                const void *key, const uint8_t *ivec);
-
-#if defined(OPENSSL_X86_64)
-size_t aesni_gcm_encrypt(const uint8_t *in, uint8_t *out, size_t len,
-                         const void *key, uint8_t ivec[16], uint64_t *Xi);
-#define AES_gcm_encrypt aesni_gcm_encrypt
-size_t aesni_gcm_decrypt(const uint8_t *in, uint8_t *out, size_t len,
-                         const void *key, uint8_t ivec[16], uint64_t *Xi);
-#define AES_gcm_decrypt aesni_gcm_decrypt
-void gcm_ghash_avx(uint64_t Xi[2], const u128 Htable[16], const uint8_t *in,
-                   size_t len);
-#define AES_GCM_ASM(gctx) \
-  (gctx->ctr == aesni_ctr32_encrypt_blocks && gctx->gcm.ghash == gcm_ghash_avx)
-#endif  /* OPENSSL_X86_64 */
-
 #else
 
 /* On other platforms, aesni_capable() will always return false and so the
@@ -651,57 +635,23 @@ static int aes_gcm_cipher(EVP_CIPHER_CTX *ctx, uint8_t *out, const uint8_t *in,
       }
     } else if (ctx->encrypt) {
       if (gctx->ctr) {
-        size_t bulk = 0;
-#if defined(AES_GCM_ASM)
-        if (len >= 32 && AES_GCM_ASM(gctx)) {
-          size_t res = (16 - gctx->gcm.mres) % 16;
-
-          if (!CRYPTO_gcm128_encrypt(&gctx->gcm, &gctx->ks.ks, in, out, res)) {
-            return -1;
-          }
-
-          bulk = AES_gcm_encrypt(in + res, out + res, len - res, &gctx->ks.ks,
-                                 gctx->gcm.Yi.c, gctx->gcm.Xi.u);
-          gctx->gcm.len.u[1] += bulk;
-          bulk += res;
-        }
-#endif
-        if (!CRYPTO_gcm128_encrypt_ctr32(&gctx->gcm, &gctx->ks.ks, in + bulk,
-                                         out + bulk, len - bulk, gctx->ctr)) {
+        if (!CRYPTO_gcm128_encrypt_ctr32(&gctx->gcm, &gctx->ks.ks, in, out, len,
+                                         gctx->ctr)) {
           return -1;
         }
       } else {
-        size_t bulk = 0;
-        if (!CRYPTO_gcm128_encrypt(&gctx->gcm, &gctx->ks.ks, in + bulk,
-                                   out + bulk, len - bulk)) {
+        if (!CRYPTO_gcm128_encrypt(&gctx->gcm, &gctx->ks.ks, in, out, len)) {
           return -1;
         }
       }
     } else {
       if (gctx->ctr) {
-        size_t bulk = 0;
-#if defined(AES_GCM_ASM)
-        if (len >= 16 && AES_GCM_ASM(gctx)) {
-          size_t res = (16 - gctx->gcm.mres) % 16;
-
-          if (!CRYPTO_gcm128_decrypt(&gctx->gcm, &gctx->ks.ks, in, out, res)) {
-            return -1;
-          }
-
-          bulk = AES_gcm_decrypt(in + res, out + res, len - res, &gctx->ks.ks,
-                                 gctx->gcm.Yi.c, gctx->gcm.Xi.u);
-          gctx->gcm.len.u[1] += bulk;
-          bulk += res;
-        }
-#endif
-        if (!CRYPTO_gcm128_decrypt_ctr32(&gctx->gcm, &gctx->ks.ks, in + bulk,
-                                         out + bulk, len - bulk, gctx->ctr)) {
+        if (!CRYPTO_gcm128_decrypt_ctr32(&gctx->gcm, &gctx->ks.ks, in, out, len,
+                                         gctx->ctr)) {
           return -1;
         }
       } else {
-        size_t bulk = 0;
-        if (!CRYPTO_gcm128_decrypt(&gctx->gcm, &gctx->ks.ks, in + bulk,
-                                   out + bulk, len - bulk)) {
+        if (!CRYPTO_gcm128_decrypt(&gctx->gcm, &gctx->ks.ks, in, out, len)) {
           return -1;
         }
       }

@@ -363,6 +363,12 @@ size_t CRYPTO_cts128_encrypt_block(const uint8_t *in, uint8_t *out, size_t len,
                                    block128_f block);
 
 
+#if !defined(OPENSSL_NO_ASM) && \
+    (defined(OPENSSL_X86) || defined(OPENSSL_X86_64))
+void aesni_ctr32_encrypt_blocks(const uint8_t *in, uint8_t *out, size_t blocks,
+                                const void *key, const uint8_t *ivec);
+#endif
+
 #if defined(__cplusplus)
 } /* extern C */
 #endif
