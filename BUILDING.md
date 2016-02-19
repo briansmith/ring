@@ -31,16 +31,6 @@
   * [Go](https://golang.org/dl/) is required. If not found by CMake, the go
     executable may be configured explicitly by setting `GO_EXECUTABLE`.
 
-  * If you change crypto/chacha/chacha\_vec.c, you will need the
-    arm-linux-gnueabihf-gcc compiler:
-
-    ```
-    wget https://releases.linaro.org/14.11/components/toolchain/binaries/arm-linux-gnueabihf/gcc-linaro-4.9-2014.11-x86_64_arm-linux-gnueabihf.tar.xz && \
-    echo bc4ca2ced084d2dc12424815a4442e19cb1422db87068830305d90075feb1a3b  gcc-linaro-4.9-2014.11-x86_64_arm-linux-gnueabihf.tar.xz | sha256sum -c && \
-    tar xf gcc-linaro-4.9-2014.11-x86_64_arm-linux-gnueabihf.tar.xz && \
-    sudo mv gcc-linaro-4.9-2014.11-x86_64_arm-linux-gnueabihf /opt/
-    ```
-
 ## Building
 
 Using Ninja (note the 'N' is capitalized in the cmake invocation):
