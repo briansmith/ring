@@ -385,7 +385,7 @@ pub const MAX_BLOCK_LEN: usize = 1024 / 8;
 /// in this module.
 pub const MAX_OUTPUT_LEN: usize = 512 / 8;
 
-/// The maximum chaining length ('Algorithm::chaining_len`) of all the
+/// The maximum chaining length (`Algorithm::chaining_len`) of all the
 /// algorithms in this module.
 pub const MAX_CHAINING_LEN: usize = MAX_OUTPUT_LEN;
 
