@@ -64,11 +64,15 @@ License
 
 See [LICENSE](LICENSE).
 
-The *ring* project happily accepts pull requests without any copyright license
-agreement. The portions of pull requests that modify existing files should be
-licensed under the same terms as the files being modified. New files in pull
-requests, including in particular all Rust code, should be licensed under the
-ISC-style license.
+The *ring* project happily accepts pull requests without you needing to sign
+any formal license agreement. The portions of pull requests that modify
+existing files must be licensed under the same terms as the files being
+modified. New files in pull requests, including in particular all Rust code,
+must be licensed under the ISC-style license. Please state that you agree to
+license your contributions in the commit messages of commits in pull requests,
+e.g. by putting “I agree to license my contributions to each file under the
+terms given at the top of each file I changed.” at the end of each commit
+message.
 
 If your patch is useful for BoringSSL then it would be very nice of you to also
 submit it to them after agreeing to their CLA.
