@@ -41,8 +41,8 @@ The C code generally uses the C `int` type as a return value, where 1 indicates
 success and 0 indicates failure. Sometimes the C code has functions that return
 pointers, and a NULL pointer indicates failure. The module
 [ring::bssl](src/bssl.rs) contains some utilities for mapping these return
-values to `Result<(), ()>` and Result<*mut T, ()>, respectively. They should be
-used as in the following example (note the placement of `unsafe`):
+values to `Result<(), ()>` and `Result<*mut T, ()>`, respectively. They should
+be used as in the following example (note the placement of `unsafe`):
 ```rust
 fn foo() -> Result<(), ()> {
     try!(bssl::map_result(unsafe {
@@ -78,10 +78,10 @@ fn good_example(a: u64, b: u64) -> Result<u64, ()> {
 }
 
 fn bad_example(a: u64, b: u64) -> Result<u64, ()> {
-    if (usize::max_value() - a > b) {
-        return Err(())
+    if usize::max_value() - a > b {
+        return Err(());
     }
-    a + b
+    Ok(a + b)
 }
 ```
 
@@ -123,24 +123,24 @@ fn good_example() {
    unsafe { unsafe_fn(); }
 }
 
-fn bad_example {
+fn bad_example() {
     unsafe {
         unsafe_fn();
         safe_fn(); // No safe statements allowed in an unsafe block.
-        unsafe();
+        unsafe_fn();
     }
 }
 ```
 
 But, don't go overboard:
 ```rust
-fn ok_example(x: &[u8]) {
+fn ok_example(x: &[u8], n: usize) {
     unsafe {
         unsafe_fn1(x[n]); // `x[n]` is a safe expression
     }
 }
 
-fn bad_example(x: &[u8]) {
+fn bad_example(x: &[u8], n: usize) {
     let x_n = x[n]; // This is going overboard.
     unsafe {
         unsafe_fn1(x_n);
