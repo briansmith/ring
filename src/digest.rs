@@ -133,8 +133,7 @@ impl Context {
         }
         if num_to_save_for_later > 0 {
             polyfill::slice::fill_from_slice(
-                &mut self.pending[self.num_pending..
-                                  (self.num_pending + num_to_save_for_later)],
+                &mut self.pending[..num_to_save_for_later],
                 &remaining[(remaining.len() - num_to_save_for_later)..]);
             self.num_pending = num_to_save_for_later;
         }
