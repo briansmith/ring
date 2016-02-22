@@ -22,11 +22,14 @@ Use the early-return-on-failure pattern by wrapping calls to functions that may
 fail with `try!()`. Do not use `Result::or_else`, `Result::and`, etc. to chain
 together strings of potentially-failing operations.
 
-## Arrays
+## Arrays and Slices
 
 When creating a slice from the start of a indexable value, use `x[..n]`, not
 `x[0..n]`. Similarly, use `x[n..]`, not `x[n..x.len()]` for creating a slice
 from a specific point to the end of the value.
+
+When copying and filling arrays and slices, use the functions in
+[ring::polyfill](src/polyfill.rs) when possible.
 
 ## Casting (`as`) and Conversions
 
