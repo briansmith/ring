@@ -7,6 +7,21 @@ style guidelines for that code are in the second section of this document.
 *ring* usually follows the [Rust Guidelines](https://aturon.github.io/), but
 there are some differences and *ring* adds additional guidelines.
 
+## Error checking.
+
+Use `Result<T, ()>` as the return type for functions that may fail. In general,
+functions do not report error codes for a variety of reasons; when they fail,
+they only report that they fail. If a function only needs to return a boolean
+indicator that it succeeded or failed, use `Result<(), ()>` as the return type.
+Never use `Option<T>` or `bool` or other types as return values to indicate
+failure. If an external function (e.g. part of the Rust standard library)
+returns `Option<T>` to indicate failure, use `ok_or(())` to map it to
+`Result<T, ()>`.
+
+Use the early-return-on-failure pattern by wrapping calls to functions that may
+fail with `try!()`. Do not use `Result::or_else`, `Result::and`, etc. to chain
+together strings of potentially-failing operations.
+
 ## Arrays
 
 When creating a slice from the start of a indexable value, use `x[..n]`, not
