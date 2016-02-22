@@ -13,6 +13,60 @@ When creating a slice from the start of a indexable value, use `x[..n]`, not
 `x[0..n]`. Similarly, use `x[n..]`, not `x[n..x.len()]` for creating a slice
 from a specific point to the end of the value.
 
+## Casting (`as`) and Conversions.
+
+Avoid using the `as` operator. When using `as` seems necessary, see if there is
+already a safer function for doing the conversion in
+[ring::polyfill](src/polyfill.rs). If not, add one to `ring::polyfill`.
+
+The C code generally uses the C `int` type as a return value, where 1 indicates
+success and 0 indicates failure. Sometimes the C code has functions that return
+pointers, and a NULL pointer indicates failure. The module
+[ring::bssl](src/bssl.rs) contains some utilities for mapping these return
+values to `Result<(), ()>` and Result<*mut T, ()>, respectively. They should be
+used as in the following example (note the placement of `unsafe`):
+```rust
+fn foo() -> Result<(), ()> {
+    try!(bssl::map_result(unsafe {
+        unsafe_fn2(when, the, entire, thing, does, not, fit, on, a, single,
+                   line)
+    }));
+
+    try!(bssl::map_result(unsafe {
+        unsafe_fn1() // Use the same style even when the call fits on one line.
+    }));
+
+    let ptr = try!(bssl::map_ptr_result(unsafe {
+        unsafe_fn_returning_pointer()
+    }));
+
+    // The return value of `foo` will be the mapped result of calling
+    // `unsafe_fn3`.
+    bssl::map_result(unsafe {
+        unsafe_fn3()
+    })
+}
+```
+
+## Arithmetic and Overflows
+
+In general, prefer using unsigned types over signed types, and prefer using
+checked arithmetic (e.g. `x.checked_add(y)`, `x.checked_mul(y)`, etc.) over
+unchecked arithmetic. Prefer using checked arithmetic over explicit bounds
+checks. Example:
+```rust
+fn good_example(a: u64, b: u64) -> Result<u64, ()> {
+    let n = a.checked_add(b).ok_or(());
+}
+
+fn bad_example(a: u64, b: u64) -> Result<u64, ()> {
+    if (usize::max_value() - a > b) {
+        return Err(())
+    }
+    a + b
+}
+```
+
 ## Unsafe
 
 In general, avoid using `unsafe` whenever it is practical to do so. The *ring*
