@@ -137,7 +137,7 @@ pub fn agree_ephemeral<F, R, E>(my_key_pair: EphemeralKeyPair,
                                            peer_public_key_alg, peer_public_key,
                                            &mut shared_key)
                 .map_err(|_| error_value));
-    kdf(&shared_key[0..shared_key_len])
+    kdf(&shared_key[..shared_key_len])
 }
 
 

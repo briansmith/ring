@@ -390,7 +390,7 @@ pub const MAX_CHAINING_LEN: usize = MAX_OUTPUT_LEN;
 
 fn sha256_format_output(input: &[u64; MAX_CHAINING_LEN / 8])
                         -> [u64; MAX_OUTPUT_LEN / 8] {
-    let in32 = &polyfill::slice::u64_as_u32(input)[0..8];
+    let in32 = &polyfill::slice::u64_as_u32(input)[..8];
     [
         u32x2!(in32[0].to_be(), in32[1].to_be()),
         u32x2!(in32[2].to_be(), in32[3].to_be()),
@@ -592,9 +592,9 @@ mod tests {
                 for i in 0..input.len() {
                     for j in 0..input.len() {
                         for k in 0..input.len() {
-                            let part1 = &input[0..i];
-                            let part2 = &input[0..j];
-                            let part3 = &input[0..k];
+                            let part1 = &input[..i];
+                            let part2 = &input[..j];
+                            let part3 = &input[..k];
 
                             let mut ctx = digest::Context::new(&$alg);
                             ctx.update(part1);

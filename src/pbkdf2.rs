@@ -198,7 +198,7 @@ pub fn verify(prf: &'static PRF, iterations: usize, salt: &[u8], secret: &[u8],
     if previously_derived.len() > derived_buf.len() {
         return Err(());
     }
-    let derived = &mut derived_buf[0..previously_derived.len()];
+    let derived = &mut derived_buf[..previously_derived.len()];
     derive(prf, iterations, salt, secret, derived);
     constant_time::verify_slices_are_equal(derived, previously_derived)
 }

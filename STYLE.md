@@ -1,8 +1,25 @@
-# BoringSSL Style Guide
+*ring* inherited C, C++, and assembly language code from BoringSSL, and the
+style guidelines for that code are in the second section of this document.
+
+
+# *ring* Style Guide (for code not in [crypto/](crypto))
+
+*ring* usually follows the [Rust Guidelines](https://aturon.github.io/), but
+there are some differences and *ring* adds additional guidelines.
+
+## Arrays
+
+When creating a slice from the start of a indexable value, use `x[..n]`, not
+`x[0..n]`. Similarly, use `x[n..]`, not `x[n..x.len()]` for creating a slice
+from a specific point to the end of the value.
+
+
+
+# BoringSSL Style Guide (for code in [crypto/](crypto))
 
 BoringSSL usually follows the
 [Google C++ style guide](https://google.github.io/styleguide/cppguide.html),
-The rest of this document describes differences and clarifications on
+The rest of this section describes differences and clarifications on
 top of the base guide.
 
 
