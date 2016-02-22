@@ -14,6 +14,13 @@ for the actual license texts. Actually both licenses are BSD-style Open Source
 licenses. In case of any license issues related to OpenSSL please contact
 openssl-core@openssl.org.
 
+The following are Google-internal bug numbers where explicit permission from
+some authors is recorded for use of their work. (This is purely for our own
+record keeping.)
+  27287199
+  27287880
+  27287883
+
   OpenSSL License
   ---------------
 
