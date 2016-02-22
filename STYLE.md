@@ -7,7 +7,7 @@ style guidelines for that code are in the second section of this document.
 *ring* usually follows the [Rust Guidelines](https://aturon.github.io/), but
 there are some differences and *ring* adds additional guidelines.
 
-## Error checking.
+## Error checking
 
 Use `Result<T, ()>` as the return type for functions that may fail. In general,
 functions do not report error codes for a variety of reasons; when they fail,
@@ -28,7 +28,7 @@ When creating a slice from the start of a indexable value, use `x[..n]`, not
 `x[0..n]`. Similarly, use `x[n..]`, not `x[n..x.len()]` for creating a slice
 from a specific point to the end of the value.
 
-## Casting (`as`) and Conversions.
+## Casting (`as`) and Conversions
 
 Avoid using the `as` operator. When using `as` seems necessary, see if there is
 already a safer function for doing the conversion in
