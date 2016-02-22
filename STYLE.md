@@ -13,6 +13,69 @@ When creating a slice from the start of a indexable value, use `x[..n]`, not
 `x[0..n]`. Similarly, use `x[n..]`, not `x[n..x.len()]` for creating a slice
 from a specific point to the end of the value.
 
+## Unsafe
+
+In general, avoid using `unsafe` whenever it is practical to do so. The *ring*
+developers chose to use Rust because of the goodness of the safe subset; stuff
+that requires `unsafe` is generally better off being written in C or assembly
+language code. Generally, this means that `unsafe` is only used to call
+functions written in C or assembly language. Even if your goal is to replace C
+and/or assembly language code with Rust code, don't be afraid to leave, or even
+add, C code to avoid adding a load of `unsafe` Rust code.
+
+In particular, prefer references and indexing (which is checked at runtime) to
+pointers and pointer arithmetic. Example:
+```rust
+fn good_example(x: &[u8], n: usize) {
+    unsafe {
+        unsafe_fn(x[n..].as_ptr()) // The compiler inserts bounds checks for us.
+    }
+}
+
+fn bad_example(x: &[u8], n: usize) {
+    unsafe {
+        // If we do things this way, the compiler won't do bounds checking for
+        // us. Also, since `offset` takes an `isize`, we have to do a cast from
+        // `usize` to `isize` which is potentially unsafe because an `isize`
+        // cannot hold every positive value of `usize`.
+        unsafe_fn(x.as_ptr().offset(n as isize))
+    }
+}
+```
+
+When you must use `unsafe`, minimize the scope of `unsafe`. Example:
+```rust
+fn good_example() {
+   unsafe { unsafe_fn(); }
+   safe_fn();
+   unsafe { unsafe_fn(); }
+}
+
+fn bad_example {
+    unsafe {
+        unsafe_fn();
+        safe_fn(); // No safe statements allowed in an unsafe block.
+        unsafe();
+    }
+}
+```
+
+But, don't go overboard:
+```rust
+fn ok_example(x: &[u8]) {
+    unsafe {
+        unsafe_fn1(x[n]); // `x[n]` is a safe expression
+    }
+}
+
+fn bad_example(x: &[u8]) {
+    let x_n = x[n]; // This is going overboard.
+    unsafe {
+        unsafe_fn1(x_n);
+    }
+}
+```
+
 
 
 # BoringSSL Style Guide (for code in [crypto/](crypto))
