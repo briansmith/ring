@@ -460,38 +460,63 @@ mod tests {
 
             ct.extend(tag);
 
-            // TODO: test shifting.
+            // TLS record headers are 5 bytes long.
+            // TLS explicit nonces for AES-GCM are 8 bytes long.
+            static IN_PREFIXES: [&'static [u8]; 3] = [
+                // No input prefix to overwrite; i.e. the opening is exactly
+                // "in place."
+                &[],
 
-            let max_overhead_len = aead_alg.max_overhead_len;
-            let mut s_in_out = plaintext.clone();
-            for _ in 0..max_overhead_len {
-                s_in_out.push(0);
-            }
-            let s_key = aead::SealingKey::new(aead_alg, &key_bytes).unwrap();
-            let s_result = aead::seal_in_place(&s_key, &nonce,
-                                               &mut s_in_out[..],
-                                               max_overhead_len, &ad);
+                // Probably the most common use of a non-zero `in_prefix_len`
+                // would be to write a decrypted TLS record over the top of the
+                // TLS header and nonce.
+                &[23, // TLS handshake record
+                  0x03,0x03, // TLS version 1.2
+                  0x12,0x34, // Length (dummy value)
+                  1,2,3,4,5,6,7,8], // Nonce (dummy value)
 
-            let mut o_in_out = ct.clone();
-            let o_key = aead::OpeningKey::new(aead_alg, &key_bytes).unwrap();
-            let o_result = aead::open_in_place(&o_key, &nonce, 0,
-                                               &mut o_in_out[..], &ad);
+                // More than 2 blocks (for AES and ChaCha20, at least). One
+                // could imagine the case where `in_prefix_len` is less than a
+                // the block length might work but a larger `in_prefix_len`
+                // might be broken, if the cipher code reads and writes a block
+                // at a time.
+                &[0; 96],
+            ];
 
-            match error {
-                None => {
-                    assert_eq!(Ok(ct.len()), s_result);
-                    assert_eq!(&ct[..], &s_in_out[0..ct.len()]);
-                    assert_eq!(Ok(plaintext.len()), o_result);
-                    assert_eq!(&plaintext[..], &o_in_out[0..plaintext.len()]);
-                },
-                Some(ref error) if error == "WRONG_NONCE_LENGTH" => {
-                    assert_eq!(Err(()), s_result);
-                    assert_eq!(Err(()), o_result);
-                },
-                Some(error) => {
-                    unreachable!("Unexpected error test case: {}", error);
+            for in_prefix in IN_PREFIXES.iter() {
+                let max_overhead_len = aead_alg.max_overhead_len;
+                let mut s_in_out = plaintext.clone();
+                for _ in 0..max_overhead_len {
+                    s_in_out.push(0);
                 }
-            };
+                let s_key = aead::SealingKey::new(aead_alg, &key_bytes).unwrap();
+                let s_result = aead::seal_in_place(&s_key, &nonce,
+                                                   &mut s_in_out[..],
+                                                   max_overhead_len, &ad);
+
+                let mut o_in_out = Vec::from(*in_prefix);
+                o_in_out.extend_from_slice(&ct[..]);
+                let o_key = aead::OpeningKey::new(aead_alg, &key_bytes).unwrap();
+                let o_result = aead::open_in_place(&o_key, &nonce,
+                                                   in_prefix.len(),
+                                                   &mut o_in_out[..], &ad);
+
+                match error {
+                    None => {
+                        assert_eq!(Ok(ct.len()), s_result);
+                        assert_eq!(&ct[..], &s_in_out[0..ct.len()]);
+                        assert_eq!(Ok(plaintext.len()), o_result);
+                        assert_eq!(&plaintext[..], &o_in_out[0..plaintext.len()]);
+                    },
+                    Some(ref error) if error == "WRONG_NONCE_LENGTH" => {
+                        assert_eq!(Err(()), s_result);
+                        assert_eq!(Err(()), o_result);
+                    },
+                    Some(error) => {
+                        unreachable!("Unexpected error test case: {}", error);
+                    }
+                };
+            }
         });
     }
 
