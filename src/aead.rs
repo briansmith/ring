@@ -462,7 +462,7 @@ mod tests {
 
             // TLS record headers are 5 bytes long.
             // TLS explicit nonces for AES-GCM are 8 bytes long.
-            static IN_PREFIXES: [&'static [u8]; 3] = [
+            static IN_PREFIXES: [&'static [u8]; 11] = [
                 // No input prefix to overwrite; i.e. the opening is exactly
                 // "in place."
                 &[],
@@ -475,12 +475,17 @@ mod tests {
                   0x12,0x34, // Length (dummy value)
                   1,2,3,4,5,6,7,8], // Nonce (dummy value)
 
-                // More than 2 blocks (for AES and ChaCha20, at least). One
-                // could imagine the case where `in_prefix_len` is less than a
-                // the block length might work but a larger `in_prefix_len`
-                // might be broken, if the cipher code reads and writes a block
-                // at a time.
-                &[0; 96],
+                // Note that the stitched AES-GCM x86-64 code works on 6-block
+                // (96 byte) units.
+                &[123; 16], // One AES block.
+                &[123; 32], // Two AES blocks, one ChaCha20 block.
+                &[123; 48], // Three AES blocks.
+                &[123; 64], // Four AES blocks, two ChaCha20 blocks.
+                &[123; 80], // Five AES blocks.
+                &[123; 96], // Six AES blocks, three ChaCha20 blocks.
+                &[123; 112], // Seven AES blocks.
+                &[123; 128], // Eight AES blocks, four ChaCha20 blocks.
+                &[123; 144], // Nine AES blocks.
             ];
 
             for in_prefix in IN_PREFIXES.iter() {
