@@ -105,12 +105,6 @@
 /* ARMV7_NEON is true when a NEON unit is present in the current CPU. */
 #define ARMV7_NEON (1 << 0)
 
-/* ARMV7_NEON_FUNCTIONAL is true when the NEON unit doesn't contain subtle bugs.
- * The Poly1305 NEON code is known to trigger bugs in the NEON units of some
- * phones. If this bit isn't set then the Poly1305 NEON code won't be used.
- * See https://code.google.com/p/chromium/issues/detail?id=341598. */
-#define ARMV7_NEON_FUNCTIONAL (1 << 10)
-
 /* ARMV8_AES indicates support for hardware AES instructions. */
 #define ARMV8_AES (1 << 2)
 
