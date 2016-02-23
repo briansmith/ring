@@ -279,7 +279,6 @@ void GFp_gcm_ghash_clmul(uint8_t Xi[16], const u128 Htable[16],
 #if defined(OPENSSL_X86_64)
 #define GHASH_ASM_X86_64
 void GFp_gcm_init_avx(u128 Htable[16], const uint64_t Xi[2]);
-void GFp_gcm_gmult_avx(uint8_t Xi[16], const u128 Htable[16]);
 void GFp_gcm_ghash_avx(uint8_t Xi[16], const u128 Htable[16], const uint8_t *in,
                        size_t len);
 #define AESNI_GCM
@@ -407,7 +406,7 @@ static void gcm128_init_gmult_ghash(GCM128_CONTEXT *ctx) {
   if (GFp_gcm_clmul_enabled()) {
 #if defined(GHASH_ASM_X86_64)
     if (((GFp_ia32cap_P[1] >> 22) & 0x41) == 0x41) { // AVX+MOVBE
-      ctx->gmult = GFp_gcm_gmult_avx;
+      ctx->gmult = GFp_gcm_gmult_clmul;
       ctx->ghash = GFp_gcm_ghash_avx;
       ctx->use_aesni_gcm_crypt = hwaes_capable() ? 1 : 0;
       return;

@@ -570,7 +570,6 @@ $code.=<<___;
 .type	GFp_gcm_gmult_clmul,\@abi-omnipotent
 .align	16
 GFp_gcm_gmult_clmul:
-.L_gmult_clmul:
 	movdqu		($Xip),$Xi
 	movdqa		.Lbswap_mask(%rip),$T3
 	movdqu		($Htbl),$Hkey
@@ -1111,15 +1110,6 @@ $code.=<<___;
 .size	GFp_gcm_init_avx,.-GFp_gcm_init_avx
 ___
 }
-
-$code.=<<___;
-.globl	GFp_gcm_gmult_avx
-.type	GFp_gcm_gmult_avx,\@abi-omnipotent
-.align	32
-GFp_gcm_gmult_avx:
-	jmp	.L_gmult_clmul
-.size	GFp_gcm_gmult_avx,.-GFp_gcm_gmult_avx
-___
 
 $code.=<<___;
 .globl	GFp_gcm_ghash_avx
