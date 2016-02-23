@@ -75,7 +75,6 @@ struct gcm128_context {
     uint64_t u[2];
     uint32_t d[4];
     uint8_t c[16];
-    size_t t[16 / sizeof(size_t)];
   } Yi, EKi, EK0, len, Xi, H;
 
   /* Relative position of Xi, H and pre-computed Htable is used in some
