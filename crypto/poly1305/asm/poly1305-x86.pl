@@ -49,19 +49,9 @@ if ($sse2) {
 	&static_label("enter_emit");
 	&external_label("OPENSSL_ia32cap_P");
 
-	if (`$ENV{CC} -Wa,-v -c -o /dev/null -x assembler /dev/null 2>&1`
-			=~ /GNU assembler version ([2-9]\.[0-9]+)/) {
-		$avx = ($1>=2.19) + ($1>=2.22);
-	}
-
-	if (!$avx && $ARGV[0] eq "win32n" &&
-	   `nasm -v 2>&1` =~ /NASM version ([2-9]\.[0-9]+)/) {
-	$avx = ($1>=2.09) + ($1>=2.10);
-	}
-
-	if (!$avx && `$ENV{CC} -v 2>&1` =~ /(^clang version|based on LLVM) ([3-9]\.[0-9]+)/) {
-		$avx = ($2>=3.0) + ($2>3.0);
-	}
+	# This may be set to 2, but the AVX2 code doesn't work.
+	# https://rt.openssl.org/Ticket/Display.html?id=4346
+	$avx = 0;
 }
 
 ########################################################################

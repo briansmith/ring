@@ -4,7 +4,31 @@ if (${ARCH} STREQUAL "arm")
   set(
     POLY1305_ARCH_SOURCES
 
-    poly1305_arm_asm.S
+    poly1305-armv4.${ASM_EXT}
+  )
+endif()
+
+if (${ARCH} STREQUAL "aarch64")
+  set(
+    POLY1305_ARCH_SOURCES
+
+    poly1305-armv8.${ASM_EXT}
+  )
+endif()
+
+if (${ARCH} STREQUAL "x86")
+  set(
+    POLY1305_ARCH_SOURCES
+
+    poly1305-x86.${ASM_EXT}
+  )
+endif()
+
+if (${ARCH} STREQUAL "x86_64")
+  set(
+    POLY1305_ARCH_SOURCES
+
+    poly1305-x86_64.${ASM_EXT}
   )
 endif()
 
@@ -14,8 +38,6 @@ add_library(
   OBJECT
 
   poly1305.c
-  poly1305_arm.c
-  poly1305_vec.c
 
   ${POLY1305_ARCH_SOURCES}
 )
@@ -29,3 +51,8 @@ add_executable(
 
 target_link_libraries(poly1305_test crypto)
 add_dependencies(all_tests poly1305_test)
+
+perlasm(poly1305-armv4.${ASM_EXT} asm/poly1305-armv4.pl)
+perlasm(poly1305-armv8.${ASM_EXT} asm/poly1305-armv8.pl)
+perlasm(poly1305-x86.${ASM_EXT} asm/poly1305-x86.pl)
+perlasm(poly1305-x86_64.${ASM_EXT} asm/poly1305-x86_64.pl)
