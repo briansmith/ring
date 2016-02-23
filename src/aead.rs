@@ -471,9 +471,9 @@ mod tests {
                 // would be to write a decrypted TLS record over the top of the
                 // TLS header and nonce.
                 &[23, // TLS handshake record
-                  0x03,0x03, // TLS version 1.2
-                  0x12,0x34, // Length (dummy value)
-                  1,2,3,4,5,6,7,8], // Nonce (dummy value)
+                  0x03, 0x03, // TLS version 1.2
+                  0x12, 0x34, // Length (dummy value)
+                  1, 2, 3, 4, 5, 6, 7, 8], // Nonce (dummy value)
 
                 // Note that the stitched AES-GCM x86-64 code works on 6-block
                 // (96 byte) units.
