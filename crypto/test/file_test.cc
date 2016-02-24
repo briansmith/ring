@@ -14,6 +14,8 @@
 
 #include "file_test.h"
 
+#include <memory>
+
 #include <ctype.h>
 #include <errno.h>
 #include <stdarg.h>
@@ -73,10 +75,12 @@ FileTest::ReadResult FileTest::ReadNext() {
 
   ClearTest();
 
+  static const size_t kBufLen = 64 + 8192*2;
+  std::unique_ptr<char[]> buf(new char[kBufLen]);
+
   while (true) {
     // Read the next line.
-    char buf[4096];
-    if (fgets(buf, sizeof(buf), file_) == nullptr) {
+    if (fgets(buf.get(), kBufLen, file_) == nullptr) {
       if (feof(file_)) {
         // EOF is a valid terminator for a test.
         return start_line_ > 0 ? kReadSuccess : kReadEOF;
@@ -86,7 +90,7 @@ FileTest::ReadResult FileTest::ReadNext() {
     }
 
     line_++;
-    size_t len = strlen(buf);
+    size_t len = strlen(buf.get());
     // Check for truncation.
     if (len > 0 && buf[len - 1] != '\n' && !feof(file_)) {
       fprintf(stderr, "Line %u too long.\n", line_);
@@ -100,14 +104,14 @@ FileTest::ReadResult FileTest::ReadNext() {
       }
     } else if (buf[0] != '#') {  // Comment lines are ignored.
       // Parse the line as an attribute.
-      const char *delimiter = FindDelimiter(buf);
+      const char *delimiter = FindDelimiter(buf.get());
       if (delimiter == nullptr) {
         fprintf(stderr, "Line %u: Could not parse attribute.\n", line_);
         return kReadError;
       }
-      std::string key = StripSpace(buf, delimiter - buf);
+      std::string key = StripSpace(buf.get(), delimiter - buf.get());
       std::string value = StripSpace(delimiter + 1,
-                                     buf + len - delimiter - 1);
+                                     buf.get() + len - delimiter - 1);
 
       unused_attributes_.insert(key);
       attributes_[key] = value;
