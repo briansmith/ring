@@ -58,14 +58,6 @@
 #include "../internal.h"
 
 
-/* STRICT_ALIGNMENT is 1 if unaligned memory access is known to work, otherwise
- * it is 0. */
-#if defined(OPENSSL_X86_64) || defined(OPENSSL_X86) || defined(OPENSSL_AARCH64)
-#define STRICT_ALIGNMENT 0
-#else
-#define STRICT_ALIGNMENT 1
-#endif
-
 #if !defined(OPENSSL_NO_ASM) &&                         \
     (defined(OPENSSL_X86) || defined(OPENSSL_X86_64) || \
      defined(OPENSSL_ARM) || defined(OPENSSL_AARCH64))
@@ -565,35 +557,11 @@ int CRYPTO_gcm128_encrypt(GCM128_CONTEXT *ctx, const AES_KEY *key,
       return 1;
     }
   }
-  if (STRICT_ALIGNMENT && ((uintptr_t)in | (uintptr_t)out) % sizeof(size_t) != 0) {
-    for (i = 0; i < len; ++i) {
-      if (n == 0) {
-        (*block)(ctx->Yi.c, ctx->EKi.c, key);
-        ++ctr;
-        if (is_endian.little) {
-          to_be_u32_ptr(ctx->Yi.c + 12, ctr);
-        } else {
-          ctx->Yi.d[3] = ctr;
-        }
-      }
-      ctx->Xi.c[n] ^= out[i] = in[i] ^ ctx->EKi.c[n];
-      n = (n + 1) % 16;
-      if (n == 0) {
-        GCM_MUL(ctx, Xi);
-      }
-    }
-
-    ctx->mres = n;
-    return 1;
-  }
 #if defined(GHASH) && defined(GHASH_CHUNK)
   while (len >= GHASH_CHUNK) {
     size_t j = GHASH_CHUNK;
 
     while (j) {
-      size_t *out_t = (size_t *)out;
-      const size_t *in_t = (const size_t *)in;
-
       (*block)(ctx->Yi.c, ctx->EKi.c, key);
       ++ctr;
       if (is_endian.little) {
@@ -601,8 +569,8 @@ int CRYPTO_gcm128_encrypt(GCM128_CONTEXT *ctx, const AES_KEY *key,
       } else {
         ctx->Yi.d[3] = ctr;
       }
-      for (i = 0; i < 16 / sizeof(size_t); ++i) {
-        out_t[i] = in_t[i] ^ ctx->EKi.t[i];
+      for (i = 0; i < 16; ++i) {
+        out[i] = in[i] ^ ctx->EKi.c[i];
       }
       out += 16;
       in += 16;
@@ -616,9 +584,6 @@ int CRYPTO_gcm128_encrypt(GCM128_CONTEXT *ctx, const AES_KEY *key,
     size_t j = i;
 
     while (len >= 16) {
-      size_t *out_t = (size_t *)out;
-      const size_t *in_t = (const size_t *)in;
-
       (*block)(ctx->Yi.c, ctx->EKi.c, key);
       ++ctr;
       if (is_endian.little) {
@@ -626,8 +591,8 @@ int CRYPTO_gcm128_encrypt(GCM128_CONTEXT *ctx, const AES_KEY *key,
       } else {
         ctx->Yi.d[3] = ctr;
       }
-      for (i = 0; i < 16 / sizeof(size_t); ++i) {
-        out_t[i] = in_t[i] ^ ctx->EKi.t[i];
+      for (i = 0; i < 16; ++i) {
+        out[i] = in[i] ^ ctx->EKi.c[i];
       }
       out += 16;
       in += 16;
@@ -637,9 +602,6 @@ int CRYPTO_gcm128_encrypt(GCM128_CONTEXT *ctx, const AES_KEY *key,
   }
 #else
   while (len >= 16) {
-    size_t *out_t = (size_t *)out;
-    const size_t *in_t = (const size_t *)in;
-
     (*block)(ctx->Yi.c, ctx->EKi.c, key);
     ++ctr;
     if (is_endian.little) {
@@ -647,8 +609,8 @@ int CRYPTO_gcm128_encrypt(GCM128_CONTEXT *ctx, const AES_KEY *key,
     } else {
       ctx->Yi.d[3] = ctr;
     }
-    for (i = 0; i < 16 / sizeof(size_t); ++i) {
-      ctx->Xi.t[i] ^= out_t[i] = in_t[i] ^ ctx->EKi.t[i];
+    for (i = 0; i < 16; ++i) {
+      ctx->Xi.c[i] ^= out[i] = in[i] ^ ctx->EKi.c[i];
     }
     GCM_MUL(ctx, Xi);
     out += 16;
@@ -728,39 +690,12 @@ int CRYPTO_gcm128_decrypt(GCM128_CONTEXT *ctx, const AES_KEY *key,
       return 1;
     }
   }
-  if (STRICT_ALIGNMENT && ((uintptr_t)in | (uintptr_t)out) % sizeof(size_t) != 0) {
-    for (i = 0; i < len; ++i) {
-      uint8_t c;
-      if (n == 0) {
-        (*block)(ctx->Yi.c, ctx->EKi.c, key);
-        ++ctr;
-        if (is_endian.little) {
-          to_be_u32_ptr(ctx->Yi.c + 12, ctr);
-        } else {
-          ctx->Yi.d[3] = ctr;
-        }
-      }
-      c = in[i];
-      out[i] = c ^ ctx->EKi.c[n];
-      ctx->Xi.c[n] ^= c;
-      n = (n + 1) % 16;
-      if (n == 0) {
-        GCM_MUL(ctx, Xi);
-      }
-    }
-
-    ctx->mres = n;
-    return 1;
-  }
 #if defined(GHASH) && defined(GHASH_CHUNK)
   while (len >= GHASH_CHUNK) {
     size_t j = GHASH_CHUNK;
 
     GHASH(ctx, in, GHASH_CHUNK);
     while (j) {
-      size_t *out_t = (size_t *)out;
-      const size_t *in_t = (const size_t *)in;
-
       (*block)(ctx->Yi.c, ctx->EKi.c, key);
       ++ctr;
       if (is_endian.little) {
@@ -768,8 +703,8 @@ int CRYPTO_gcm128_decrypt(GCM128_CONTEXT *ctx, const AES_KEY *key,
       } else {
         ctx->Yi.d[3] = ctr;
       }
-      for (i = 0; i < 16 / sizeof(size_t); ++i) {
-        out_t[i] = in_t[i] ^ ctx->EKi.t[i];
+      for (i = 0; i < 16; ++i) {
+        out[i] = in[i] ^ ctx->EKi.c[i];
       }
       out += 16;
       in += 16;
@@ -781,9 +716,6 @@ int CRYPTO_gcm128_decrypt(GCM128_CONTEXT *ctx, const AES_KEY *key,
   if (i != 0) {
     GHASH(ctx, in, i);
     while (len >= 16) {
-      size_t *out_t = (size_t *)out;
-      const size_t *in_t = (const size_t *)in;
-
       (*block)(ctx->Yi.c, ctx->EKi.c, key);
       ++ctr;
       if (is_endian.little) {
@@ -791,8 +723,8 @@ int CRYPTO_gcm128_decrypt(GCM128_CONTEXT *ctx, const AES_KEY *key,
       } else {
         ctx->Yi.d[3] = ctr;
       }
-      for (i = 0; i < 16 / sizeof(size_t); ++i) {
-        out_t[i] = in_t[i] ^ ctx->EKi.t[i];
+      for (i = 0; i < 16; ++i) {
+        out[i] = in[i] ^ ctx->EKi.c[i];
       }
       out += 16;
       in += 16;
@@ -801,9 +733,6 @@ int CRYPTO_gcm128_decrypt(GCM128_CONTEXT *ctx, const AES_KEY *key,
   }
 #else
   while (len >= 16) {
-    size_t *out_t = (size_t *)out;
-    const size_t *in_t = (const size_t *)in;
-
     (*block)(ctx->Yi.c, ctx->EKi.c, key);
     ++ctr;
     if (is_endian.little) {
@@ -811,10 +740,10 @@ int CRYPTO_gcm128_decrypt(GCM128_CONTEXT *ctx, const AES_KEY *key,
     } else {
       ctx->Yi.d[3] = ctr;
     }
-    for (i = 0; i < 16 / sizeof(size_t); ++i) {
-      size_t c = in_t[i];
-      out_t[i] = c ^ ctx->EKi.t[i];
-      ctx->Xi.t[i] ^= c;
+    for (i = 0; i < 16; ++i) {
+      size_t c = in[i];
+      out[i] = c ^ ctx->EKi.c[i];
+      ctx->Xi.c[i] ^= c;
     }
     GCM_MUL(ctx, Xi);
     out += 16;
