@@ -55,7 +55,6 @@
 #include <openssl/cpu.h>
 
 #include "internal.h"
-#include "../internal.h"
 
 
 /* STRICT_ALIGNMENT is 1 if unaligned memory access is known to work, otherwise
@@ -295,17 +294,7 @@ void gcm_ghash_clmul(uint64_t Xi[2], const u128 Htable[16], const uint8_t *inp,
 #else
 void gcm_init_avx(u128 Htable[16], const uint64_t Xi[2]);
 void gcm_gmult_avx(uint64_t Xi[2], const u128 Htable[16]);
-void gcm_ghash_avx(uint64_t Xi[2], const u128 Htable[16], const uint8_t *in,
-                   size_t len);
-#define AESNI_GCM
-static inline int aesni_gcm_enabled(GCM128_CONTEXT *ctx, aes_ctr_f stream) {
-  return stream == aesni_ctr32_encrypt_blocks &&
-         ctx->ghash == gcm_ghash_avx;
-}
-size_t aesni_gcm_encrypt(const uint8_t *in, uint8_t *out, size_t len,
-                         const AES_KEY *key, uint8_t ivec[16], uint64_t *Xi);
-size_t aesni_gcm_decrypt(const uint8_t *in, uint8_t *out, size_t len,
-                         const AES_KEY *key, uint8_t ivec[16], uint64_t *Xi);
+void gcm_ghash_avx(uint64_t Xi[2], const u128 Htable[16], const uint8_t *inp, size_t len);
 #endif
 
 #if defined(OPENSSL_X86)
@@ -905,18 +894,6 @@ int CRYPTO_gcm128_encrypt_ctr32(GCM128_CONTEXT *ctx, const AES_KEY *key,
       return 1;
     }
   }
-
-#if defined(AESNI_GCM)
-  if (aesni_gcm_enabled(ctx, stream)) {
-    /* |aesni_gcm_encrypt| may not process all the input given to it. It may
-     * not process *any* of its input if it is deemed too small. */
-    size_t bulk = aesni_gcm_encrypt(in, out, len, key, ctx->Yi.c, ctx->Xi.u);
-    in += bulk;
-    out += bulk;
-    len -= bulk;
-  }
-#endif
-
 #if defined(GHASH)
   while (len >= GHASH_CHUNK) {
     (*stream)(in, out, GHASH_CHUNK / 16, key, ctx->Yi.c);
@@ -1006,6 +983,12 @@ int CRYPTO_gcm128_decrypt_ctr32(GCM128_CONTEXT *ctx, const AES_KEY *key,
     ctx->ares = 0;
   }
 
+  if (is_endian.little) {
+    ctr = from_be_u32_ptr(ctx->Yi.c + 12);
+  } else {
+    ctr = ctx->Yi.d[3];
+  }
+
   n = ctx->mres;
   if (n) {
     while (n && len) {
@@ -1022,24 +1005,6 @@ int CRYPTO_gcm128_decrypt_ctr32(GCM128_CONTEXT *ctx, const AES_KEY *key,
       return 1;
     }
   }
-
-#if defined(AESNI_GCM)
-  if (aesni_gcm_enabled(ctx, stream)) {
-    /* |aesni_gcm_decrypt| may not process all the input given to it. It may
-     * not process *any* of its input if it is deemed too small. */
-    size_t bulk = aesni_gcm_decrypt(in, out, len, key, ctx->Yi.c, ctx->Xi.u);
-    in += bulk;
-    out += bulk;
-    len -= bulk;
-  }
-#endif
-
-  if (is_endian.little) {
-    ctr = from_be_u32_ptr(ctx->Yi.c + 12);
-  } else {
-    ctr = ctx->Yi.d[3];
-  }
-
 #if defined(GHASH)
   while (len >= GHASH_CHUNK) {
     GHASH(ctx, in, GHASH_CHUNK);
