@@ -331,7 +331,7 @@ static bool TestPrintf() {
 
 static bool ReadASN1(bool should_succeed, const uint8_t *data, size_t data_len,
                      size_t expected_len, size_t max_len) {
-  ScopedBIO bio(BIO_new_mem_buf(const_cast<uint8_t*>(data), data_len));
+  ScopedBIO bio(BIO_new_mem_buf(data, data_len));
 
   uint8_t *out;
   size_t out_len;

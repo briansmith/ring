@@ -368,12 +368,12 @@ OPENSSL_EXPORT int BIO_read_asn1(BIO *bio, uint8_t **out, size_t *out_len,
 /* BIO_s_mem returns a |BIO_METHOD| that uses a in-memory buffer. */
 OPENSSL_EXPORT const BIO_METHOD *BIO_s_mem(void);
 
-/* BIO_new_mem_buf creates BIO that reads and writes from |len| bytes at |buf|.
+/* BIO_new_mem_buf creates read-only BIO that reads from |len| bytes at |buf|.
  * It does not take ownership of |buf|. It returns the BIO or NULL on error.
  *
  * If |len| is negative, then |buf| is treated as a NUL-terminated string, but
  * don't depend on this in new code. */
-OPENSSL_EXPORT BIO *BIO_new_mem_buf(void *buf, int len);
+OPENSSL_EXPORT BIO *BIO_new_mem_buf(const void *buf, int len);
 
 /* BIO_mem_contents sets |*out_contents| to point to the current contents of
  * |bio| and |*out_len| to contain the length of that data. It returns one on

@@ -1001,8 +1001,7 @@ static ScopedX509 GetTestCertificate() {
       "T5oQpHL9z/cCDLAKCKRa4uV0fhEdOWBqyR9p8y5jJtye72t6CuFUV5iqcpF4BH4f\n"
       "j2VNHwsSrJwkD4QUGlUtH7vwnQmyCFxZMmWAJg==\n"
       "-----END CERTIFICATE-----\n";
-  ScopedBIO bio(
-      BIO_new_mem_buf(const_cast<char *>(kCertPEM), strlen(kCertPEM)));
+  ScopedBIO bio(BIO_new_mem_buf(kCertPEM, strlen(kCertPEM)));
   return ScopedX509(PEM_read_bio_X509(bio.get(), nullptr, nullptr, nullptr));
 }
 
@@ -1023,7 +1022,7 @@ static ScopedEVP_PKEY GetTestKey() {
       "tfDwbqkta4xcux67//khAkEAvvRXLHTaa6VFzTaiiO8SaFsHV3lQyXOtMrBpB5jd\n"
       "moZWgjHvB2W9Ckn7sDqsPB+U2tyX0joDdQEyuiMECDY8oQ==\n"
       "-----END RSA PRIVATE KEY-----\n";
-  ScopedBIO bio(BIO_new_mem_buf(const_cast<char *>(kKeyPEM), strlen(kKeyPEM)));
+  ScopedBIO bio(BIO_new_mem_buf(kKeyPEM, strlen(kKeyPEM)));
   return ScopedEVP_PKEY(
       PEM_read_bio_PrivateKey(bio.get(), nullptr, nullptr, nullptr));
 }

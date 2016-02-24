@@ -163,7 +163,7 @@ static const char kForgeryPEM[] =
 // CertFromPEM parses the given, NUL-terminated PEM block and returns an
 // |X509*|.
 static X509* CertFromPEM(const char *pem) {
-  ScopedBIO bio(BIO_new_mem_buf(const_cast<char*>(pem), strlen(pem)));
+  ScopedBIO bio(BIO_new_mem_buf(pem, strlen(pem)));
   return PEM_read_bio_X509(bio.get(), nullptr, nullptr, nullptr);
 }
 

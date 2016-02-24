@@ -596,7 +596,7 @@ static int test_crl_reparse(const uint8_t *der_bytes, size_t der_len) {
 }
 
 static int test_pem_certs(const char *pem) {
-  BIO *bio = BIO_new_mem_buf((char *) pem, strlen(pem));
+  BIO *bio = BIO_new_mem_buf(pem, strlen(pem));
   STACK_OF(X509) *certs = sk_X509_new_null();
 
   if (!PKCS7_get_PEM_certificates(certs, bio)) {
@@ -618,7 +618,7 @@ static int test_pem_certs(const char *pem) {
 }
 
 static int test_pem_crls(const char *pem) {
-  BIO *bio = BIO_new_mem_buf((char *) pem, strlen(pem));
+  BIO *bio = BIO_new_mem_buf(pem, strlen(pem));
   STACK_OF(X509_CRL) *crls = sk_X509_CRL_new_null();
 
   if (!PKCS7_get_PEM_CRLs(crls, bio)) {
@@ -653,4 +653,3 @@ int main(void) {
   printf("PASS\n");
   return 0;
 }
-

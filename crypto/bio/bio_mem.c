@@ -64,7 +64,7 @@
 #include <openssl/mem.h>
 
 
-BIO *BIO_new_mem_buf(void *buf, int len) {
+BIO *BIO_new_mem_buf(const void *buf, int len) {
   BIO *ret;
   BUF_MEM *b;
   const size_t size = len < 0 ? strlen((char *)buf) : (size_t)len;
@@ -80,7 +80,8 @@ BIO *BIO_new_mem_buf(void *buf, int len) {
   }
 
   b = (BUF_MEM *)ret->ptr;
-  b->data = buf;
+  /* BIO_FLAGS_MEM_RDONLY ensures |b->data| is not written to. */
+  b->data = (void *)buf;
   b->length = size;
   b->max = size;
 
