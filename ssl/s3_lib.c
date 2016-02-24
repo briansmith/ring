@@ -359,7 +359,9 @@ int SSL_set_tlsext_host_name(SSL *ssl, const char *name) {
   if (name == NULL) {
     return 1;
   }
-  if (strlen(name) > TLSEXT_MAXLEN_host_name) {
+
+  size_t len = strlen(name);
+  if (len == 0 || len > TLSEXT_MAXLEN_host_name) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_SSL3_EXT_INVALID_SERVERNAME);
     return 0;
   }
