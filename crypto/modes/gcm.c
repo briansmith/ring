@@ -1003,12 +1003,6 @@ int CRYPTO_gcm128_encrypt_ctr32(GCM128_CONTEXT *ctx, const void *key,
     ctx->ares = 0;
   }
 
-  if (is_endian.little) {
-    ctr = GETU32(ctx->Yi.c + 12);
-  } else {
-    ctr = ctx->Yi.d[3];
-  }
-
   n = ctx->mres;
   if (n) {
     while (n && len) {
@@ -1034,6 +1028,12 @@ int CRYPTO_gcm128_encrypt_ctr32(GCM128_CONTEXT *ctx, const void *key,
     len -= bulk;
   }
 #endif
+
+  if (is_endian.little) {
+    ctr = GETU32(ctx->Yi.c + 12);
+  } else {
+    ctr = ctx->Yi.d[3];
+  }
 
 #if defined(GHASH)
   while (len >= GHASH_CHUNK) {
