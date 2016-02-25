@@ -15,8 +15,8 @@
 /* This header is provided in order to make compiling against code that expects
    OpenSSL easier. */
 
-#ifndef OPENSSL_HEADER_OPENSSLFEATURES_H
-#define OPENSSL_HEADER_OPENSSLFEATURES_H
+#ifndef OPENSSL_HEADER_OPENSSLCONF_H
+#define OPENSSL_HEADER_OPENSSLCONF_H
 
 
 #define OPENSSL_NO_BF
@@ -57,4 +57,4 @@
 #define OPENSSL_NO_WHIRLPOOL
 
 
-#endif  /* OPENSSL_HEADER_OPENSSLFEATURES_H */
+#endif  /* OPENSSL_HEADER_OPENSSLCONF_H */
