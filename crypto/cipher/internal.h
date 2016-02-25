@@ -85,8 +85,8 @@ extern "C" {
  * stomp input that hasn't been read yet.
  *
  * This function checks for that case. */
-inline int aead_check_alias(const uint8_t *in, size_t in_len,
-                            const uint8_t *out) {
+static inline int aead_check_alias(const uint8_t *in, size_t in_len,
+                                   const uint8_t *out) {
   if (out <= in) {
     return 1;
   } else if (in + in_len <= out) {
@@ -101,13 +101,15 @@ inline int aead_check_alias(const uint8_t *in, size_t in_len,
  * 32-bits and this produces a warning because it's always false.
  * Casting to uint64_t inside the conditional is not sufficient to stop
  * the warning. */
-inline int aead_check_in_len(size_t in_len) {
+static inline int aead_check_in_len(size_t in_len) {
   const uint64_t in_len_64 = in_len;
   return in_len_64 < (1ull << 32) * 64 - 64;
 }
 
-inline int aead_seal_out_max_out_in_tag_len(size_t *out_len, size_t max_out_len,
-                                            size_t in_len, size_t tag_len) {
+static inline int aead_seal_out_max_out_in_tag_len(size_t *out_len,
+                                                   size_t max_out_len,
+                                                   size_t in_len,
+                                                   size_t tag_len) {
   if (SIZE_MAX - tag_len < in_len) {
     OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_TOO_LARGE);
     return 0;
@@ -121,8 +123,10 @@ inline int aead_seal_out_max_out_in_tag_len(size_t *out_len, size_t max_out_len,
   return 1;
 }
 
-inline int aead_open_out_max_out_in_tag_len(size_t *out_len, size_t max_out_len,
-                                            size_t in_len, size_t tag_len) {
+static inline int aead_open_out_max_out_in_tag_len(size_t *out_len,
+                                                   size_t max_out_len,
+                                                   size_t in_len,
+                                                   size_t tag_len) {
   if (in_len < tag_len) {
     OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_BAD_DECRYPT);
     return 0;
@@ -154,14 +158,10 @@ static inline void aead_assert_init_preconditions(size_t ctx_struct_alignment,
   assert(key != NULL);
 }
 
-inline void aead_assert_open_seal_preconditions(size_t ctx_struct_alignment,
-                                                const void *ctx_buf,
-                                                uint8_t *out, size_t *out_len,
-                                                const uint8_t *nonce,
-                                                const uint8_t *in,
-                                                size_t in_len,
-                                                const uint8_t *ad,
-                                                size_t ad_len) {
+static inline void aead_assert_open_seal_preconditions(
+    size_t ctx_struct_alignment, const void *ctx_buf, uint8_t *out,
+    size_t *out_len, const uint8_t *nonce, const uint8_t *in, size_t in_len,
+    const uint8_t *ad, size_t ad_len) {
 #if defined(NDEBUG)
   (void)ctx_struct_alignment;
   (void)ctx_buf;
