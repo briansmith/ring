@@ -329,7 +329,7 @@ err:
 void sk_sort(_STACK *sk) {
   int (*comp_func)(const void *,const void *);
 
-  if (sk == NULL || sk->sorted) {
+  if (sk == NULL || sk->comp == NULL || sk->sorted) {
     return;
   }
 
