@@ -115,7 +115,11 @@ fn build_c_code(out_dir: &str) -> Result<(), std::env::VarError> {
         command_name = "make";
         // Environment variables |CC|, |CXX|, etc. will be inherited from this
         // process.
-        let cmake_build_type = "RELWITHDEBINFO"; // TODO: disable_opt
+        let cmake_build_type = if disable_opt {
+            "DEBUG"
+        } else {
+            "RELWITHDEBINFO"
+        };
         lib_path = Path::new(out_dir).join("lib");
         args = vec![
             format!("-j{}", num_jobs),
