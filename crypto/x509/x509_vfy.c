@@ -193,7 +193,7 @@ int X509_verify_cert(X509_STORE_CTX *ctx)
     int bad_chain = 0;
     X509_VERIFY_PARAM *param = ctx->param;
     int depth, i, ok = 0;
-    int num, j, retry;
+    int num, j, retry, trust;
     int (*cb) (int xok, X509_STORE_CTX *xctx);
     STACK_OF(X509) *sktmp = NULL;
     if (ctx->cert == NULL) {
@@ -268,6 +268,7 @@ int X509_verify_cert(X509_STORE_CTX *ctx)
             if (xtmp != NULL) {
                 if (!sk_X509_push(ctx->chain, xtmp)) {
                     OPENSSL_PUT_ERROR(X509, ERR_R_MALLOC_FAILURE);
+                    ok = 0;
                     goto end;
                 }
                 X509_up_ref(xtmp);
@@ -363,11 +364,13 @@ int X509_verify_cert(X509_STORE_CTX *ctx)
         }
 
         /* we now have our chain, lets check it... */
-        i = check_trust(ctx);
+        trust = check_trust(ctx);
 
         /* If explicitly rejected error */
-        if (i == X509_TRUST_REJECTED)
+        if (trust == X509_TRUST_REJECTED) {
+            ok = 0;
             goto end;
+        }
         /*
          * If it's not explicitly trusted then check if there is an alternative
          * chain that could be used. We only do this if we haven't already
@@ -375,7 +378,7 @@ int X509_verify_cert(X509_STORE_CTX *ctx)
          * chain checking
          */
         retry = 0;
-        if (i != X509_TRUST_TRUSTED
+        if (trust != X509_TRUST_TRUSTED
             && !(ctx->param->flags & X509_V_FLAG_TRUSTED_FIRST)
             && !(ctx->param->flags & X509_V_FLAG_NO_ALT_CHAINS)) {
             while (j-- > 1) {
@@ -412,7 +415,7 @@ int X509_verify_cert(X509_STORE_CTX *ctx)
      * self signed certificate in which case we've indicated an error already
      * and set bad_chain == 1
      */
-    if (i != X509_TRUST_TRUSTED && !bad_chain) {
+    if (trust != X509_TRUST_TRUSTED && !bad_chain) {
         if ((chain_ss == NULL) || !ctx->check_issued(ctx, x, chain_ss)) {
             if (ctx->last_untrusted >= num)
                 ctx->error = X509_V_ERR_UNABLE_TO_GET_ISSUER_CERT_LOCALLY;
@@ -463,10 +466,10 @@ int X509_verify_cert(X509_STORE_CTX *ctx)
     if (!ok)
         goto end;
 
-    i = X509_chain_check_suiteb(&ctx->error_depth, NULL, ctx->chain,
-                                ctx->param->flags);
-    if (i != X509_V_OK) {
-        ctx->error = i;
+    int err = X509_chain_check_suiteb(&ctx->error_depth, NULL, ctx->chain,
+                                      ctx->param->flags);
+    if (err != X509_V_OK) {
+        ctx->error = err;
         ctx->current_cert = sk_X509_value(ctx->chain, ctx->error_depth);
         ok = cb(0, ctx);
         if (!ok)
