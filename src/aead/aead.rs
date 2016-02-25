@@ -23,10 +23,13 @@
 //!
 //! Go analog: [`crypto.cipher.AEAD`](https://golang.org/pkg/crypto/cipher/#AEAD)
 
-#![allow(unsafe_code)]
+mod chacha20_poly1305;
+mod aes_gcm;
 
-use core;
-use super::{c, bssl, polyfill};
+use super::polyfill;
+
+pub use self::chacha20_poly1305::{CHACHA20_POLY1305, CHACHA20_POLY1305_OLD};
+pub use self::aes_gcm::{AES_128_GCM, AES_256_GCM};
 
 /// A key for authenticating and decrypting (&ldquo;opening&rdquo;)
 /// AEAD-protected data.
@@ -96,11 +99,8 @@ pub fn open_in_place(key: &OpeningKey, nonce: &[u8], in_prefix_len: usize,
     if ciphertext_len < key.key.algorithm.tag_len {
         return Err(());
     }
-    unsafe {
-        key.key.open_or_seal_in_place(key.key.algorithm.open, nonce,
-                                      in_out[in_prefix_len..].as_ptr(),
-                                      in_out.len() - in_prefix_len, ad, in_out)
-    }
+    key.key.open_or_seal_in_place(key.key.algorithm.open, nonce, in_out,
+                                  in_prefix_len, 0, ad)
 }
 
 /// A key for encrypting and signing (&ldquo;sealing&rdquo;) data.
@@ -165,12 +165,8 @@ pub fn seal_in_place(key: &SealingKey, nonce: &[u8], in_out: &mut [u8],
        out_suffix_capacity < key.key.algorithm.max_overhead_len {
         return Err(());
     }
-    unsafe {
-        key.key.open_or_seal_in_place(key.key.algorithm.seal, nonce,
-                                      in_out.as_ptr(),
-                                      in_out.len() - out_suffix_capacity, ad,
-                                      in_out)
-    }
+    key.key.open_or_seal_in_place(key.key.algorithm.seal, nonce, in_out, 0,
+                                  out_suffix_capacity, ad)
 }
 
 /// `OpeningKey` and `SealingKey` are type-safety wrappers around `Key`, which
@@ -207,36 +203,31 @@ impl Key {
             return Err(());
         }
 
-        bssl::map_result(unsafe {
-            (self.algorithm.init)(
-                    self.ctx_buf.as_mut_ptr(),
-                    core::mem::size_of::<[u64; KEY_CTX_BUF_ELEMS]>(),
-                    key_bytes.as_ptr(), key_bytes.len())
-        })
+        let ctx_buf_bytes = polyfill::slice::u64_as_u8_mut(&mut self.ctx_buf);
+        (self.algorithm.init)(ctx_buf_bytes, key_bytes)
     }
 
     /// The key's AEAD algorithm.
     #[inline(always)]
     fn algorithm(&self) -> &'static Algorithm { self.algorithm }
 
-    unsafe fn open_or_seal_in_place(&self, open_or_seal_fn: OpenOrSealFn,
-                                    nonce: &[u8], in_ptr: *const u8,
-                                    in_len: usize, ad: &[u8], out: &mut [u8])
-                                    -> Result<usize, ()> {
+    fn open_or_seal_in_place(&self, open_or_seal_fn: OpenOrSealFn,
+                             nonce: &[u8], in_out: &mut [u8],
+                             in_prefix_len: usize, in_suffix_len: usize,
+                             ad: &[u8]) -> Result<usize, ()> {
         debug_assert!(self.algorithm.max_overhead_len >= self.algorithm.tag_len);
         if nonce.len() != self.algorithm.nonce_len {
-            return Err(()) // CIPHER_R_INVALID_NONCE_SIZE
+            return Err(())
         }
-        let mut out_len: c::size_t = 0;
-        match (open_or_seal_fn)(self.ctx_buf.as_ptr(), out.as_mut_ptr(),
-                                &mut out_len, out.len(), nonce.as_ptr(), in_ptr,
-                                in_len, ad.as_ptr(), ad.len()) {
-            1 => Ok(out_len),
+        let mut ctx_buf_bytes = polyfill::slice::u64_as_u8(&self.ctx_buf);
+        match (open_or_seal_fn)(&mut ctx_buf_bytes, nonce, in_out,
+                                in_prefix_len, in_suffix_len, ad) {
+            Ok(out_len) => Ok(out_len),
             _ => {
                 // Follow BoringSSL's lead in zeroizing the output buffer on
                 // error just in case an application accidentally and wrongly
                 // fails to check whether an open or seal operation failed.
-                polyfill::slice::fill(out, 0);
+                polyfill::slice::fill(in_out, 0);
                 Err(())
             }
         }
@@ -279,141 +270,49 @@ pub struct Algorithm {
   /// C analog: `EVP_AEAD_tag_len`
   pub tag_len: usize,
 
-  init: unsafe extern fn(ctx_buf: *mut u64, ctx_buf_len: c::size_t,
-                         key: *const u8, key_len: c::size_t) -> c::int,
+  init: fn(ctx_buf: &mut [u8], key: &[u8]) -> Result<(), ()>,
 
   seal: OpenOrSealFn,
   open: OpenOrSealFn,
 }
 
-const AES_128_KEY_LEN: usize = 128 / 8;
-const AES_256_KEY_LEN: usize = 32; // 256 / 8
-const AES_GCM_NONCE_LEN: usize = 96 / 8;
-const AES_GCM_TAG_LEN: usize = 128 / 8;
-
-const CHACHA20_KEY_LEN: usize = 32; // 256 / 8
-const POLY1305_TAG_LEN: usize = 128 / 8;
-
 /// The maximum value of `Algorithm.max_overhead_len` for the algorithms in
 /// this module.
-pub const MAX_OVERHEAD_LEN: usize = AES_GCM_TAG_LEN;
-
-/// AES-128 in GCM mode with 128-bit tags and 96 bit nonces.
-///
-/// C analog: `EVP_aead_aes_128_gcm`
-///
-/// Go analog: [`crypto.aes`](https://golang.org/pkg/crypto/aes/)
-pub static AES_128_GCM: Algorithm = Algorithm {
-    key_len: AES_128_KEY_LEN,
-    nonce_len: AES_GCM_NONCE_LEN,
-    max_overhead_len: AES_GCM_TAG_LEN,
-    tag_len: AES_GCM_TAG_LEN,
-    init: evp_aead_aes_gcm_init,
-    seal: evp_aead_aes_gcm_seal,
-    open: evp_aead_aes_gcm_open,
-};
-
-/// AES-256 in GCM mode with 128-bit tags and 96 bit nonces.
-///
-/// C analog: `EVP_aead_aes_256_gcm`
-///
-/// Go analog: [`crypto.aes`](https://golang.org/pkg/crypto/aes/)
-pub static AES_256_GCM: Algorithm = Algorithm {
-    key_len: AES_256_KEY_LEN,
-    nonce_len: AES_GCM_NONCE_LEN,
-    max_overhead_len: AES_GCM_TAG_LEN,
-    tag_len: AES_GCM_TAG_LEN,
-    init: evp_aead_aes_gcm_init,
-    seal: evp_aead_aes_gcm_seal,
-    open: evp_aead_aes_gcm_open,
-};
-
-/// ChaCha20-Poly1305 as described in
-/// [RFC 7539](https://tools.ietf.org/html/rfc7539).
-///
-/// The keys are 256 bits long and the nonces are 96 bits long.
-pub static CHACHA20_POLY1305: Algorithm = Algorithm {
-    key_len: CHACHA20_KEY_LEN,
-    nonce_len: 96 / 8,
-    max_overhead_len: POLY1305_TAG_LEN,
-    tag_len: POLY1305_TAG_LEN,
-    init: evp_aead_chacha20_poly1305_init,
-    seal: evp_aead_chacha20_poly1305_seal,
-    open: evp_aead_chacha20_poly1305_open,
-};
-
-/// The old ChaCha20-Poly13065 construction used in OpenSSH's
-/// [chacha20-poly1305@openssh.com](http://cvsweb.openbsd.org/cgi-bin/cvsweb/~checkout~/src/usr.bin/ssh/PROTOCOL.chacha20poly1305)
-/// and the experimental TLS cipher suites with IDs `0xCC13` (ECDHE-RSA) and
-/// `0xCC14` (ECDHE-ECDSA). Use `CHACHA20_POLY1305` instead.
-///
-/// The keys are 256 bits long and the nonces are 96 bits. The first four bytes
-/// of the nonce must be `[0, 0, 0, 0]` in order to interoperate with other
-/// implementations, which use 64-bit nonces.
-pub static CHACHA20_POLY1305_OLD: Algorithm = Algorithm {
-    key_len: CHACHA20_KEY_LEN,
-    nonce_len: 96 / 8,
-    max_overhead_len: POLY1305_TAG_LEN,
-    tag_len: POLY1305_TAG_LEN,
-    init: evp_aead_chacha20_poly1305_init,
-    seal: evp_aead_chacha20_poly1305_old_seal,
-    open: evp_aead_chacha20_poly1305_old_open,
-};
+pub const MAX_OVERHEAD_LEN: usize = aes_gcm::AES_GCM_TAG_LEN;
 
 type OpenOrSealFn =
-    unsafe extern fn(ctx: *const u64, out: *mut u8,
-                     out_len: &mut c::size_t, max_out_len: c::size_t,
-                     nonce: *const u8, in_: *const u8, in_len: c::size_t,
-                     ad: *const u8, ad_len: c::size_t) -> c::int;
+    fn(ctx: &[u8], nonce: &[u8], in_out: &mut [u8], in_prefix_len: usize,
+       in_suffix_len: usize, ad: &[u8]) -> Result<usize, ()>;
 
-extern {
-    fn evp_aead_aes_gcm_init(ctx_buf: *mut u64, ctx_buf_len: c::size_t,
-                             key: *const u8, key_len: c::size_t) -> c::int;
-
-    fn evp_aead_aes_gcm_seal(ctx_buf: *const u64, out: *mut u8,
-                             out_len: &mut c::size_t, max_out_len: c::size_t,
-                             nonce: *const u8, in_: *const u8,
-                             in_len: c::size_t, ad: *const u8,
-                             ad_len: c::size_t) -> c::int;
-
-    fn evp_aead_aes_gcm_open(ctx_buf: *const u64, out: *mut u8,
-                             out_len: &mut c::size_t, max_out_len: c::size_t,
-                             nonce: *const u8, in_: *const u8,
-                             in_len: c::size_t, ad: *const u8,
-                             ad_len: c::size_t) -> c::int;
-
-    fn evp_aead_chacha20_poly1305_init(ctx_buf: *mut u64,
-                                       ctx_buf_len: c::size_t, key: *const u8,
-                                       key_len: c::size_t) -> c::int;
-
-    fn evp_aead_chacha20_poly1305_seal(ctx_buf: *const u64, out: *mut u8,
-                                       out_len: &mut c::size_t,
-                                       max_out_len: c::size_t,
-                                       nonce: *const u8, in_: *const u8,
-                                       in_len: c::size_t, ad: *const u8,
-                                       ad_len: c::size_t) -> c::int;
-
-    fn evp_aead_chacha20_poly1305_open(ctx_buf: *const u64, out: *mut u8,
-                                       out_len: &mut c::size_t,
-                                       max_out_len: c::size_t,
-                                       nonce: *const u8, in_: *const u8,
-                                       in_len: c::size_t, ad: *const u8,
-                                       ad_len: c::size_t) -> c::int;
-
-    fn evp_aead_chacha20_poly1305_old_seal(ctx_buf: *const u64, out: *mut u8,
-                                           out_len: &mut c::size_t,
-                                           max_out_len: c::size_t,
-                                           nonce: *const u8, in_: *const u8,
-                                           in_len: c::size_t, ad: *const u8,
-                                           ad_len: c::size_t) -> c::int;
-
-    fn evp_aead_chacha20_poly1305_old_open(ctx_buf: *const u64, out: *mut u8,
-                                           out_len: &mut c::size_t,
-                                           max_out_len: c::size_t,
-                                           nonce: *const u8, in_: *const u8,
-                                           in_len: c::size_t, ad: *const u8,
-                                           ad_len: c::size_t) -> c::int;
+/// Determine length of ciphertext that will be sealed
+fn seal_out_len(in_len: usize, tag_len: usize) -> Result<usize, ()> {
+    in_len.checked_add(tag_len).ok_or(())
 }
+
+/// Determine length of plaintext that will be opened
+fn open_out_len(max_out_len: usize, in_len: usize,
+                tag_len: usize) -> Result<usize, ()> {
+    let plaintext_len = try!(in_len.checked_sub(tag_len).ok_or(()));
+    if max_out_len < plaintext_len {
+       return Err(());
+    }
+    Ok(plaintext_len)
+}
+
+/// Determine and check the length of the input supplied to AEAD.
+/// |CRYPTO_chacha_20| uses a 32-bit block counter. Therefore we disallow
+/// individual operations that work on more than 256GB at a time, for all
+/// AEADs.
+fn in_len(total_in_len: usize, in_prefix_len: usize,
+          in_suffix_len: usize) -> Result<usize, ()> {
+    let overhead = try!(in_prefix_len.checked_add(in_suffix_len).ok_or(()));
+    let in_len = try!(total_in_len.checked_sub(overhead).ok_or(()));
+    if polyfill::u64_from_usize(in_len) >= (1u64 << 32) * 64 - 64 {
+        return Err(())
+    }
+    Ok(in_len)
+}
+
 
 #[cfg(test)]
 mod tests {
