@@ -16,6 +16,35 @@ be made for things that are very annoying to qualify; for example, we usually
 `use super::input::*` or `use super::input::Input` because writing things like
 `input::Input` is highly annoying.
 
+## Submodules and file naming.
+
+In general, avoid nesting modules and avoid exporting any non-module items from
+the main `ring` crate. Instead, prefer a flat module structure that is one
+level deep. Thus, for example, we have `ring::digest::SHA256` but not
+`ring::SHA256` or `ring::digest::sha256::SHA256` or `ring::digest::sha2::SHA256`.
+
+Sometimes it is useful to break up a module's source code into multiple files.
+In this case, it is useful to make use of the Rust visibility rule where a
+submodule can use non-public items defined in the enclosing module. In that
+case, it is OK to use nested submodules. The nested submodules must be
+non-public (`mod x`, not `pub mod x`) and the enclosing module must re-export,
+using `pub use submodule::x`, the items that are intended to be public. This
+way, the implementation details that drove the choice to use nested submodules
+do not affect the public API.
+
+Generally the Rust Guidelines for submodules are followed in *ring*. However,
+the Rust Guidelines (and rustc/cargo) require (by default) that when a module
+*x* has submodules, the module must be in a *x*/mod.rs. This would result in
+many files named mod.rs, which would make navigating through the source code
+more difficult and confusing. Instead, use `#[path = "x/x.rs"] pub mod x;` (all
+on one line, which is an exception to the rule that attributes should each be
+on their own line) so that every module's filename is unique. Example:
+```
+#[path = "good_example/good_example.rs"] pub mod good_example;
+```
+
+Note that this is only necessary when the module has submodules.
+
 ## Error checking
 
 Use `Result<T, ()>` as the return type for functions that may fail. Never use
