@@ -561,6 +561,10 @@ OPENSSL_EXPORT int BIO_set_conn_port(BIO *bio, const char *port_str);
  * returns one on success and zero otherwise. */
 OPENSSL_EXPORT int BIO_set_nbio(BIO *bio, int on);
 
+/* BIO_do_connect connects |bio| if it has not been connected yet. It returns
+ * one on success and <= 0 otherwise. */
+OPENSSL_EXPORT int BIO_do_connect(BIO *bio);
+
 
 /* Datagram BIOs.
  *
