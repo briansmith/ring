@@ -229,7 +229,6 @@ static int ecp_nistz256_windowed_mul(P256_POINT *r, const EC_POINT *p,
                                      const BIGNUM *p_scalar) {
   assert(p != NULL);
   assert(p_scalar != NULL);
-  assert(BN_cmp(p_scalar, EC_GROUP_get0_order(group)) < 0);
 
   static const unsigned kWindowSize = 5;
   static const unsigned kMask = (1 << (5 /* kWindowSize */ + 1)) - 1;
@@ -345,6 +344,7 @@ static int ecp_nistz256_points_mul(
   (void)ctx;
 
   assert((p_ != NULL) == (p_scalar != NULL));
+  assert(p_scalar == NULL || BN_cmp(p_scalar, EC_GROUP_get0_order(group)) < 0);
 
   static const unsigned kWindowSize = 7;
   static const unsigned kMask = (1 << (7 /* kWindowSize */ + 1)) - 1;
