@@ -268,7 +268,6 @@ int X509_verify_cert(X509_STORE_CTX *ctx)
             if (xtmp != NULL) {
                 if (!sk_X509_push(ctx->chain, xtmp)) {
                     OPENSSL_PUT_ERROR(X509, ERR_R_MALLOC_FAILURE);
-                    ok = 0;
                     goto end;
                 }
                 X509_up_ref(xtmp);
@@ -364,13 +363,11 @@ int X509_verify_cert(X509_STORE_CTX *ctx)
         }
 
         /* we now have our chain, lets check it... */
-        int trust = check_trust(ctx);
+        i = check_trust(ctx);
 
         /* If explicitly rejected error */
-        if (trust == X509_TRUST_REJECTED) {
-            ok = 0;
+        if (i == X509_TRUST_REJECTED)
             goto end;
-        }
         /*
          * If it's not explicitly trusted then check if there is an alternative
          * chain that could be used. We only do this if we haven't already
@@ -466,10 +463,10 @@ int X509_verify_cert(X509_STORE_CTX *ctx)
     if (!ok)
         goto end;
 
-    int err = X509_chain_check_suiteb(&ctx->error_depth, NULL, ctx->chain,
-                                      ctx->param->flags);
-    if (err != X509_V_OK) {
-        ctx->error = err;
+    i = X509_chain_check_suiteb(&ctx->error_depth, NULL, ctx->chain,
+                                ctx->param->flags);
+    if (i != X509_V_OK) {
+        ctx->error = i;
         ctx->current_cert = sk_X509_value(ctx->chain, ctx->error_depth);
         ok = cb(0, ctx);
         if (!ok)
