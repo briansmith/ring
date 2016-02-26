@@ -173,7 +173,7 @@ fn aead_poly1305(update: UpdateFn, tag: &mut [u8], chacha20_key: &[u8],
     let mut ctx = [0; POLY1305_STATE_LEN];
     poly1305_init(&mut ctx, &poly1305_key);
     update(&mut ctx, ad, ciphertext);
-    poly1305_finish(&mut ctx, &tag);
+    poly1305_finish(&mut ctx, tag);
 }
 
 /// Updates the Poly1305 context |ctx| with the 64-bit little-endian encoded
@@ -198,9 +198,9 @@ fn poly1305_init(state: &mut [u8; POLY1305_STATE_LEN],
 }
 
 /// Safe wrapper around |CRYPTO_poly1305_finish|.
-fn poly1305_finish(state: &mut [u8; POLY1305_STATE_LEN], mac: &[u8]) {
+fn poly1305_finish(state: &mut [u8; POLY1305_STATE_LEN], mac: &mut [u8]) {
     unsafe {
-        CRYPTO_poly1305_finish(state.as_mut_ptr(), mac.as_ptr())
+        CRYPTO_poly1305_finish(state.as_mut_ptr(), mac.as_mut_ptr())
     }
 }
 
@@ -215,7 +215,7 @@ extern {
     fn CRYPTO_chacha_20(out: *mut u8, in_: *const u8, in_len: c::size_t,
                         key: *const u8, nonce: *const u8, counter: u32);
     fn CRYPTO_poly1305_init(state: *mut u8, key: *const u8);
-    fn CRYPTO_poly1305_finish(state: *mut u8, mac: *const u8);
+    fn CRYPTO_poly1305_finish(state: *mut u8, mac: *mut u8);
     fn CRYPTO_poly1305_update(state: *mut u8, in_: *const u8,
                               in_len: c::size_t);
 }
