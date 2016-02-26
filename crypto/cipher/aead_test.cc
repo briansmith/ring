@@ -192,37 +192,158 @@ static int TestCleanupAfterInitFailure(const EVP_AEAD *aead) {
   return 1;
 }
 
-struct AEADName {
+static bool TestWithAliasedBuffers(const EVP_AEAD *aead) {
+  const size_t key_len = EVP_AEAD_key_length(aead);
+  const size_t nonce_len = EVP_AEAD_nonce_length(aead);
+  const size_t max_overhead = EVP_AEAD_max_overhead(aead);
+
+  std::vector<uint8_t> key(key_len, 'a');
+  ScopedEVP_AEAD_CTX ctx;
+  if (!EVP_AEAD_CTX_init(ctx.get(), aead, key.data(), key_len,
+                         EVP_AEAD_DEFAULT_TAG_LENGTH, nullptr)) {
+    return false;
+  }
+
+  static const uint8_t kPlaintext[260] =
+      "testing123456testing123456testing123456testing123456testing123456testing"
+      "123456testing123456testing123456testing123456testing123456testing123456t"
+      "esting123456testing123456testing123456testing123456testing123456testing1"
+      "23456testing123456testing123456testing12345";
+  const std::vector<size_t> offsets = {
+      0,  1,  2,  8,  15, 16,  17,  31,  32,  33,  63,
+      64, 65, 95, 96, 97, 127, 128, 129, 255, 256, 257,
+  };
+
+  std::vector<uint8_t> nonce(nonce_len, 'b');
+  std::vector<uint8_t> valid_encryption(sizeof(kPlaintext) + max_overhead);
+  size_t valid_encryption_len;
+  if (!EVP_AEAD_CTX_seal(
+          ctx.get(), valid_encryption.data(), &valid_encryption_len,
+          sizeof(kPlaintext) + max_overhead, nonce.data(), nonce_len,
+          kPlaintext, sizeof(kPlaintext), nullptr, 0)) {
+    fprintf(stderr, "EVP_AEAD_CTX_seal failed with disjoint buffers.\n");
+    return false;
+  }
+
+  // First test with out > in, which we expect to fail.
+  for (auto offset : offsets) {
+    if (offset == 0) {
+      // Will be tested in the next loop.
+      continue;
+    }
+
+    std::vector<uint8_t> buffer(offset + valid_encryption_len);
+    memcpy(buffer.data(), kPlaintext, sizeof(kPlaintext));
+    uint8_t *out = buffer.data() + offset;
+
+    size_t out_len;
+    if (!EVP_AEAD_CTX_seal(ctx.get(), out, &out_len,
+                           sizeof(kPlaintext) + max_overhead, nonce.data(),
+                           nonce_len, buffer.data(), sizeof(kPlaintext),
+                           nullptr, 0)) {
+      // We expect offsets where the output is greater than the input to fail.
+      ERR_clear_error();
+    } else {
+      fprintf(stderr,
+              "EVP_AEAD_CTX_seal unexpectedly succeeded for offset %u.\n",
+              static_cast<unsigned>(offset));
+      return false;
+    }
+
+    memcpy(buffer.data(), valid_encryption.data(), valid_encryption_len);
+    if (!EVP_AEAD_CTX_open(ctx.get(), out, &out_len, valid_encryption_len,
+                           nonce.data(), nonce_len, buffer.data(),
+                           valid_encryption_len, nullptr, 0)) {
+      // We expect offsets where the output is greater than the input to fail.
+      ERR_clear_error();
+    } else {
+      fprintf(stderr,
+              "EVP_AEAD_CTX_open unexpectedly succeeded for offset %u.\n",
+              static_cast<unsigned>(offset));
+      ERR_print_errors_fp(stderr);
+      return false;
+    }
+  }
+
+  // Test with out <= in, which we expect to work.
+  for (auto offset : offsets) {
+    std::vector<uint8_t> buffer(offset + valid_encryption_len);
+    uint8_t *const out = buffer.data();
+    uint8_t *const in = buffer.data() + offset;
+    memcpy(in, kPlaintext, sizeof(kPlaintext));
+
+    size_t out_len;
+    if (!EVP_AEAD_CTX_seal(ctx.get(), out, &out_len,
+                           sizeof(kPlaintext) + max_overhead, nonce.data(),
+                           nonce_len, in, sizeof(kPlaintext), nullptr, 0)) {
+      fprintf(stderr, "EVP_AEAD_CTX_seal failed for offset -%u.\n",
+              static_cast<unsigned>(offset));
+      return false;
+    }
+
+    if (out_len != valid_encryption_len ||
+        memcmp(out, valid_encryption.data(), out_len) != 0) {
+      fprintf(stderr, "EVP_AEAD_CTX_seal produced bad output for offset -%u.\n",
+              static_cast<unsigned>(offset));
+      return false;
+    }
+
+    memcpy(in, valid_encryption.data(), valid_encryption_len);
+    if (!EVP_AEAD_CTX_open(ctx.get(), out, &out_len,
+                           offset + valid_encryption_len, nonce.data(),
+                           nonce_len, in, valid_encryption_len, nullptr, 0)) {
+      fprintf(stderr, "EVP_AEAD_CTX_open failed for offset -%u.\n",
+              static_cast<unsigned>(offset));
+      return false;
+    }
+
+    if (out_len != sizeof(kPlaintext) ||
+        memcmp(out, kPlaintext, out_len) != 0) {
+      fprintf(stderr, "EVP_AEAD_CTX_open produced bad output for offset -%u.\n",
+              static_cast<unsigned>(offset));
+      return false;
+    }
+  }
+
+  return true;
+}
+
+struct KnownAEAD {
   const char name[40];
   const EVP_AEAD *(*func)(void);
+  // limited_implementation indicates that tests that assume a generic AEAD
+  // interface should not be performed. For example, the key-wrap AEADs only
+  // handle inputs that are a multiple of eight bytes in length and the
+  // SSLv3/TLS AEADs have the concept of “direction”.
+  bool limited_implementation;
 };
 
-static const struct AEADName kAEADs[] = {
-  { "aes-128-gcm", EVP_aead_aes_128_gcm },
-  { "aes-256-gcm", EVP_aead_aes_256_gcm },
-  { "chacha20-poly1305", EVP_aead_chacha20_poly1305 },
-  { "chacha20-poly1305-old", EVP_aead_chacha20_poly1305_old },
-  { "rc4-md5-tls", EVP_aead_rc4_md5_tls },
-  { "rc4-sha1-tls", EVP_aead_rc4_sha1_tls },
-  { "aes-128-cbc-sha1-tls", EVP_aead_aes_128_cbc_sha1_tls },
-  { "aes-128-cbc-sha1-tls-implicit-iv", EVP_aead_aes_128_cbc_sha1_tls_implicit_iv },
-  { "aes-128-cbc-sha256-tls", EVP_aead_aes_128_cbc_sha256_tls },
-  { "aes-256-cbc-sha1-tls", EVP_aead_aes_256_cbc_sha1_tls },
-  { "aes-256-cbc-sha1-tls-implicit-iv", EVP_aead_aes_256_cbc_sha1_tls_implicit_iv },
-  { "aes-256-cbc-sha256-tls", EVP_aead_aes_256_cbc_sha256_tls },
-  { "aes-256-cbc-sha384-tls", EVP_aead_aes_256_cbc_sha384_tls },
-  { "des-ede3-cbc-sha1-tls", EVP_aead_des_ede3_cbc_sha1_tls },
-  { "des-ede3-cbc-sha1-tls-implicit-iv", EVP_aead_des_ede3_cbc_sha1_tls_implicit_iv },
-  { "rc4-md5-ssl3", EVP_aead_rc4_md5_ssl3 },
-  { "rc4-sha1-ssl3", EVP_aead_rc4_sha1_ssl3 },
-  { "aes-128-cbc-sha1-ssl3", EVP_aead_aes_128_cbc_sha1_ssl3 },
-  { "aes-256-cbc-sha1-ssl3", EVP_aead_aes_256_cbc_sha1_ssl3 },
-  { "des-ede3-cbc-sha1-ssl3", EVP_aead_des_ede3_cbc_sha1_ssl3 },
-  { "aes-128-key-wrap", EVP_aead_aes_128_key_wrap },
-  { "aes-256-key-wrap", EVP_aead_aes_256_key_wrap },
-  { "aes-128-ctr-hmac-sha256", EVP_aead_aes_128_ctr_hmac_sha256 },
-  { "aes-256-ctr-hmac-sha256", EVP_aead_aes_256_ctr_hmac_sha256 },
-  { "", NULL },
+static const struct KnownAEAD kAEADs[] = {
+  { "aes-128-gcm", EVP_aead_aes_128_gcm, false },
+  { "aes-256-gcm", EVP_aead_aes_256_gcm, false },
+  { "chacha20-poly1305", EVP_aead_chacha20_poly1305, false },
+  { "chacha20-poly1305-old", EVP_aead_chacha20_poly1305_old, false },
+  { "rc4-md5-tls", EVP_aead_rc4_md5_tls, true },
+  { "rc4-sha1-tls", EVP_aead_rc4_sha1_tls, true },
+  { "aes-128-cbc-sha1-tls", EVP_aead_aes_128_cbc_sha1_tls, true },
+  { "aes-128-cbc-sha1-tls-implicit-iv", EVP_aead_aes_128_cbc_sha1_tls_implicit_iv, true },
+  { "aes-128-cbc-sha256-tls", EVP_aead_aes_128_cbc_sha256_tls, true },
+  { "aes-256-cbc-sha1-tls", EVP_aead_aes_256_cbc_sha1_tls, true },
+  { "aes-256-cbc-sha1-tls-implicit-iv", EVP_aead_aes_256_cbc_sha1_tls_implicit_iv, true },
+  { "aes-256-cbc-sha256-tls", EVP_aead_aes_256_cbc_sha256_tls, true },
+  { "aes-256-cbc-sha384-tls", EVP_aead_aes_256_cbc_sha384_tls, true },
+  { "des-ede3-cbc-sha1-tls", EVP_aead_des_ede3_cbc_sha1_tls, true },
+  { "des-ede3-cbc-sha1-tls-implicit-iv", EVP_aead_des_ede3_cbc_sha1_tls_implicit_iv, true },
+  { "rc4-md5-ssl3", EVP_aead_rc4_md5_ssl3, true },
+  { "rc4-sha1-ssl3", EVP_aead_rc4_sha1_ssl3, true },
+  { "aes-128-cbc-sha1-ssl3", EVP_aead_aes_128_cbc_sha1_ssl3, true },
+  { "aes-256-cbc-sha1-ssl3", EVP_aead_aes_256_cbc_sha1_ssl3, true },
+  { "des-ede3-cbc-sha1-ssl3", EVP_aead_des_ede3_cbc_sha1_ssl3, true },
+  { "aes-128-key-wrap", EVP_aead_aes_128_key_wrap, true },
+  { "aes-256-key-wrap", EVP_aead_aes_256_key_wrap, true },
+  { "aes-128-ctr-hmac-sha256", EVP_aead_aes_128_ctr_hmac_sha256, false },
+  { "aes-256-ctr-hmac-sha256", EVP_aead_aes_256_ctr_hmac_sha256, false },
+  { "", NULL, false },
 };
 
 int main(int argc, char **argv) {
@@ -233,20 +354,26 @@ int main(int argc, char **argv) {
     return 1;
   }
 
-  const EVP_AEAD *aead;
+  const struct KnownAEAD *known_aead;
   for (unsigned i = 0;; i++) {
-    const struct AEADName &aead_name = kAEADs[i];
-    if (aead_name.func == NULL) {
+    known_aead = &kAEADs[i];
+    if (known_aead->func == NULL) {
       fprintf(stderr, "Unknown AEAD: %s\n", argv[1]);
       return 2;
     }
-    if (strcmp(aead_name.name, argv[1]) == 0) {
-      aead = aead_name.func();
+    if (strcmp(known_aead->name, argv[1]) == 0) {
       break;
     }
   }
 
+  const EVP_AEAD *const aead = known_aead->func();
+
   if (!TestCleanupAfterInitFailure(aead)) {
+    return 1;
+  }
+
+  if (!known_aead->limited_implementation && !TestWithAliasedBuffers(aead)) {
+    fprintf(stderr, "Aliased buffers test failed for %s.\n", known_aead->name);
     return 1;
   }
 
