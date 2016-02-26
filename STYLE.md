@@ -213,7 +213,7 @@ fn bad_example(x: &[u8], n: usize) {
 
 
 
-# BoringSSL Style Guide (for code in [crypto/](crypto))
+# BoringSSL Style Guide (for code in [crypto/](crypto) and [include/](include))
 
 BoringSSL usually follows the
 [Google C++ style guide](https://google.github.io/styleguide/cppguide.html),
