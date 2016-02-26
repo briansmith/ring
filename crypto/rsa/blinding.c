@@ -123,7 +123,7 @@ struct bn_blinding_st {
   BIGNUM *A;
   BIGNUM *Ai;
   BIGNUM *e;
-  BIGNUM *mod; /* just a reference */
+  BIGNUM *mod;
   int counter;
   /* mont is the Montgomery context used for this |BN_BLINDING|. It is not
    * owned and must outlive this structure. */
