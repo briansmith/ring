@@ -191,7 +191,6 @@ AES_Te:
 @ void asm_AES_encrypt(const unsigned char *in, unsigned char *out,
 @ 		       const AES_KEY *key) {
 .global asm_AES_encrypt
-.hidden asm_AES_encrypt
 .type   asm_AES_encrypt,%function
 .align	5
 asm_AES_encrypt:
@@ -441,7 +440,6 @@ _armv4_AES_encrypt:
 .size	_armv4_AES_encrypt,.-_armv4_AES_encrypt
 
 .global asm_AES_set_encrypt_key
-.hidden asm_AES_set_encrypt_key
 .type   asm_AES_set_encrypt_key,%function
 .align	5
 asm_AES_set_encrypt_key:
@@ -748,7 +746,6 @@ _armv4_AES_set_encrypt_key:
 .size	asm_AES_set_encrypt_key,.-asm_AES_set_encrypt_key
 
 .global asm_AES_set_decrypt_key
-.hidden asm_AES_set_decrypt_key
 .type   asm_AES_set_decrypt_key,%function
 .align	5
 asm_AES_set_decrypt_key:
@@ -765,7 +762,6 @@ asm_AES_set_decrypt_key:
 
 @ void AES_set_enc2dec_key(const AES_KEY *inp,AES_KEY *out)
 .global	AES_set_enc2dec_key
-.hidden	AES_set_enc2dec_key
 .type	AES_set_enc2dec_key,%function
 .align	5
 AES_set_enc2dec_key:
@@ -971,7 +967,6 @@ AES_Td:
 @ void asm_AES_decrypt(const unsigned char *in, unsigned char *out,
 @ 		       const AES_KEY *key) {
 .global asm_AES_decrypt
-.hidden asm_AES_decrypt
 .type   asm_AES_decrypt,%function
 .align	5
 asm_AES_decrypt:

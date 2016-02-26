@@ -1006,7 +1006,6 @@ if (0) {		# following four functions are unsupported interface
 			# used for benchmarking...
 $code.=<<___;
 .globl	bsaes_enc_key_convert
-.hidden	bsaes_enc_key_convert
 .type	bsaes_enc_key_convert,%function
 .align	4
 bsaes_enc_key_convert:
@@ -1025,7 +1024,6 @@ bsaes_enc_key_convert:
 .size	bsaes_enc_key_convert,.-bsaes_enc_key_convert
 
 .globl	bsaes_encrypt_128
-.hidden	bsaes_encrypt_128
 .type	bsaes_encrypt_128,%function
 .align	4
 bsaes_encrypt_128:
@@ -1056,7 +1054,6 @@ bsaes_encrypt_128:
 .size	bsaes_encrypt_128,.-bsaes_encrypt_128
 
 .globl	bsaes_dec_key_convert
-.hidden	bsaes_dec_key_convert
 .type	bsaes_dec_key_convert,%function
 .align	4
 bsaes_dec_key_convert:
@@ -1077,7 +1074,6 @@ bsaes_dec_key_convert:
 .size	bsaes_dec_key_convert,.-bsaes_dec_key_convert
 
 .globl	bsaes_decrypt_128
-.hidden	bsaes_decrypt_128
 .type	bsaes_decrypt_128,%function
 .align	4
 bsaes_decrypt_128:
@@ -1116,7 +1112,6 @@ my $keysched = "sp";
 $code.=<<___;
 .extern	AES_encrypt
 .global	bsaes_ctr32_encrypt_blocks
-.hidden	bsaes_ctr32_encrypt_blocks
 .type	bsaes_ctr32_encrypt_blocks,%function
 .align	5
 bsaes_ctr32_encrypt_blocks:
