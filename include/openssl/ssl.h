@@ -3064,6 +3064,10 @@ OPENSSL_EXPORT int SSL_renegotiate(SSL *ssl);
 /* SSL_set_state does nothing. */
 OPENSSL_EXPORT void SSL_set_state(SSL *ssl, int state);
 
+/* SSL_get_shared_ciphers writes an empty string to |buf| and returns a
+ * pointer to |buf|, or NULL if |len| is less than or equal to zero. */
+OPENSSL_EXPORT char *SSL_get_shared_ciphers(const SSL *ssl, char *buf, int len);
+
 /* SSL_MODE_HANDSHAKE_CUTTHROUGH is the same as SSL_MODE_ENABLE_FALSE_START. */
 #define SSL_MODE_HANDSHAKE_CUTTHROUGH SSL_MODE_ENABLE_FALSE_START
 

@@ -1981,6 +1981,14 @@ int SSL_state(const SSL *ssl) { return ssl->state; }
 
 void SSL_set_state(SSL *ssl, int state) { }
 
+char *SSL_get_shared_ciphers(const SSL *ssl, char *buf, int len) {
+  if (len <= 0) {
+    return NULL;
+  }
+  buf[0] = '\0';
+  return buf;
+}
+
 void SSL_set_verify_result(SSL *ssl, long result) {
   ssl->verify_result = result;
 }
