@@ -26,7 +26,7 @@
 mod chacha20_poly1305;
 mod aes_gcm;
 
-use super::polyfill;
+use super::{constant_time, polyfill};
 
 pub use self::chacha20_poly1305::{CHACHA20_POLY1305, CHACHA20_POLY1305_OLD};
 pub use self::aes_gcm::{AES_128_GCM, AES_256_GCM};
@@ -88,20 +88,20 @@ impl OpeningKey {
 /// Go analog: [`AEAD.Open`](https://golang.org/pkg/crypto/cipher/#AEAD)
 pub fn open_in_place(key: &OpeningKey, nonce: &[u8], in_prefix_len: usize,
                      in_out: &mut [u8], ad: &[u8]) -> Result<usize, ()> {
-    if in_out.len() < in_prefix_len {
-        return Err(());
-    }
-    let ciphertext_len = in_out.len() - in_prefix_len;
-    // For AEADs where `max_overhead_len` == `tag_len`, this is the only check
-    // of plaintext_len that is needed. For AEADs where
-    // `max_overhead_len > tag_len`, this check isn't precise enough and the
-    // AEAD's `open` function will have to do an additional check.
-    if ciphertext_len < TAG_LEN {
-        return Err(());
-    }
     let ctx_buf_bytes = polyfill::slice::u64_as_u8(&key.key.ctx_buf);
     let nonce = try!(slice_as_array_ref!(nonce, NONCE_LEN));
-    (key.key.algorithm.open)(&ctx_buf_bytes, nonce, in_out, in_prefix_len, ad)
+    let ciphertext_and_tag_len =
+        try!(in_out.len().checked_sub(in_prefix_len).ok_or(()));
+    let ciphertext_len =
+        try!(ciphertext_and_tag_len.checked_sub(TAG_LEN).ok_or(()));
+    try!(check_per_nonce_max_bytes(ciphertext_len));
+    let (in_out, received_tag) =
+        in_out.split_at_mut(in_prefix_len + ciphertext_len);
+    let mut calculated_tag = [0u8; TAG_LEN];
+    try!((key.key.algorithm.open)(&ctx_buf_bytes, nonce, in_out, in_prefix_len,
+                                  &mut calculated_tag, ad));
+    try!(constant_time::verify_slices_are_equal(&calculated_tag, received_tag));
+    Ok(ciphertext_len) // `ciphertext_len` is also the plaintext length.
 }
 
 /// A key for encrypting and signing (&ldquo;sealing&rdquo;) data.
@@ -231,7 +231,8 @@ pub struct Algorithm {
     seal: fn(ctx: &[u8], nonce: &[u8; NONCE_LEN], in_out: &mut [u8],
              tag_out: &mut [u8; TAG_LEN], ad: &[u8]) -> Result<(), ()>,
     open: fn(ctx: &[u8], nonce: &[u8; NONCE_LEN], in_out: &mut [u8],
-             in_prefix_len: usize, ad: &[u8]) -> Result<usize, ()>,
+             in_prefix_len: usize, tag_out: &mut [u8; TAG_LEN], ad: &[u8])
+             -> Result<(), ()>,
 
     key_len: usize,
 }
@@ -273,25 +274,6 @@ const TAG_LEN: usize = 128 / 8;
 // All the AEADs we support use 96-bit nonces.
 const NONCE_LEN: usize = 96 / 8;
 
-
-/// Returns the length of the output (plaintext) of an open operation.
-fn open_out_len(max_out_len: usize, in_len: usize) -> Result<usize, ()> {
-    let plaintext_len = try!(in_len.checked_sub(TAG_LEN).ok_or(()));
-    if max_out_len < plaintext_len {
-       return Err(());
-    }
-    Ok(plaintext_len)
-}
-
-/// Returns the length of the input plaintext (for sealing) or ciphertext
-/// (for opening).
-fn in_len(total_in_len: usize, in_prefix_len: usize, in_suffix_len: usize)
-          -> Result<usize, ()> {
-    let overhead = try!(in_prefix_len.checked_add(in_suffix_len).ok_or(()));
-    let in_len = try!(total_in_len.checked_sub(overhead).ok_or(()));
-    try!(check_per_nonce_max_bytes(in_len));
-    Ok(in_len)
-}
 
 /// |CRYPTO_chacha_20| uses a 32-bit block counter, so we disallow individual
 /// operations that work on more than 256GB at a time, for all AEADs.

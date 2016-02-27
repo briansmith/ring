@@ -14,7 +14,7 @@
 
 #![allow(unsafe_code)]
 
-use {aead, c, constant_time, core, polyfill};
+use {aead, c, core, polyfill};
 
 const CHACHA20_KEY_LEN: usize = 256 / 8;
 const POLY1305_STATE_LEN: usize = 512;
@@ -39,9 +39,11 @@ fn chacha20_poly1305_seal(ctx: &[u8], nonce: &[u8; aead::NONCE_LEN],
 }
 
 fn chacha20_poly1305_open(ctx: &[u8], nonce: &[u8; aead::NONCE_LEN],
-                          in_out: &mut [u8], in_prefix_len: usize, ad: &[u8])
-                          -> Result<usize, ()> {
-    open(chacha20_poly1305_update, ctx, nonce, in_out, in_prefix_len, ad)
+                          in_out: &mut [u8], in_prefix_len: usize,
+                          tag_out: &mut [u8; aead::TAG_LEN], ad: &[u8])
+                          -> Result<(), ()> {
+    open(chacha20_poly1305_update, ctx, nonce, in_out, in_prefix_len, tag_out,
+         ad)
 }
 
 fn chacha20_poly1305_update(state: &mut [u8; POLY1305_STATE_LEN],
@@ -85,8 +87,10 @@ fn chacha20_poly1305_old_seal(ctx: &[u8], nonce: &[u8; aead::NONCE_LEN],
 
 fn chacha20_poly1305_old_open(ctx: &[u8], nonce: &[u8; aead::NONCE_LEN],
                               in_out: &mut [u8], in_prefix_len: usize,
-                              ad: &[u8]) -> Result<usize, ()> {
-    open(chacha20_poly1305_update_old, ctx, nonce, in_out, in_prefix_len, ad)
+                              tag_out: &mut [u8; aead::TAG_LEN], ad: &[u8])
+                              -> Result<(), ()> {
+    open(chacha20_poly1305_update_old, ctx, nonce, in_out, in_prefix_len,
+         tag_out, ad)
 }
 
 fn chacha20_poly1305_update_old(state: &mut [u8; POLY1305_STATE_LEN],
@@ -118,28 +122,21 @@ fn seal(update: UpdateFn, ctx: &[u8], nonce: &[u8; aead::NONCE_LEN],
 }
 
 fn open(update: UpdateFn, ctx: &[u8], nonce: &[u8; aead::NONCE_LEN],
-        in_out: &mut [u8], in_prefix_len: usize, ad: &[u8])
-        -> Result<usize, ()> {
+        in_out: &mut [u8], in_prefix_len: usize,
+        tag_out: &mut [u8; aead::TAG_LEN], ad: &[u8]) -> Result<(), ()> {
     let chacha20_key =
         try!(slice_as_array_ref!(&ctx[..CHACHA20_KEY_LEN], CHACHA20_KEY_LEN));
-    let in_len = try!(aead::in_len(in_out.len(), in_prefix_len, 0));
-    let out_len = try!(aead::open_out_len(in_out.len(), in_len));
     {
-        let plaintext = &in_out[in_prefix_len..in_prefix_len + out_len];
-        let mut calculated_tag = [0u8; aead::TAG_LEN];
-        aead_poly1305(update, &mut calculated_tag, chacha20_key, nonce, ad,
-                      &plaintext);
-        let tag_index = in_prefix_len + plaintext.len();
-        let received_tag = &in_out[tag_index..tag_index + aead::TAG_LEN];
-        try!(constant_time::verify_slices_are_equal(&calculated_tag,
-                                                    &received_tag));
+        let ciphertext = &in_out[in_prefix_len..];
+        aead_poly1305(update, tag_out, chacha20_key, nonce, ad, &ciphertext);
     }
     unsafe {
         CRYPTO_chacha_20(in_out.as_mut_ptr(),
                          in_out[in_prefix_len..].as_ptr(),
-                         out_len, ctx.as_ptr(), nonce.as_ptr(), 1);
+                         in_out.len() - in_prefix_len, ctx.as_ptr(),
+                         nonce.as_ptr(), 1);
     }
-    Ok(out_len)
+    Ok(())
 }
 
 type UpdateFn = fn(state: &mut [u8; POLY1305_STATE_LEN], ad: &[u8],
