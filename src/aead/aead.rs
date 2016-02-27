@@ -221,17 +221,8 @@ impl Key {
             return Err(())
         }
         let mut ctx_buf_bytes = polyfill::slice::u64_as_u8(&self.ctx_buf);
-        match (open_or_seal_fn)(&mut ctx_buf_bytes, nonce, in_out,
-                                in_prefix_len, in_suffix_len, ad) {
-            Ok(out_len) => Ok(out_len),
-            _ => {
-                // Follow BoringSSL's lead in zeroizing the output buffer on
-                // error just in case an application accidentally and wrongly
-                // fails to check whether an open or seal operation failed.
-                polyfill::slice::fill(in_out, 0);
-                Err(())
-            }
-        }
+        (open_or_seal_fn)(&mut ctx_buf_bytes, nonce, in_out, in_prefix_len,
+                          in_suffix_len, ad)
     }
 }
 
