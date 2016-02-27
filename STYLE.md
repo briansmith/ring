@@ -11,7 +11,7 @@ there are some differences and *ring* adds additional guidelines.
 
 In general, import modules, not non-module items, e.g. `use core`, not
 `use core::mem::size_of_val`. This means that the uses of such functions must
-be qualified: `core::mem::size_of_val(x)`, not `size_fo_val(x)`. Exceptions may
+be qualified: `core::mem::size_of_val(x)`, not `size_of_val(x)`. Exceptions may
 be made for things that are very annoying to qualify; for example, we usually
 `use super::input::*` or `use super::input::Input` because writing things like
 `input::Input` is highly annoying.
