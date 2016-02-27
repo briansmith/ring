@@ -203,17 +203,13 @@ ecdsa!(ECDSA_P384_SHA512_VERIFY, "P-384 (secp384r1)", ecc::EC_GROUP_P384,
 
 
 /// EdDSA signatures.
-struct EdDSA {
-    _unused: u8, // XXX: Stable Rust doesn't allow empty structs.
-}
+struct EdDSA;
 
 /// [Ed25519](http://ed25519.cr.yp.to/) signature verification.
 ///
 /// Ed25519 uses SHA-512 as the digest algorithm.
 pub static ED25519_VERIFY: VerificationAlgorithm = VerificationAlgorithm {
-    implementation: &EdDSA {
-        _unused: 1,
-    }
+    implementation: &EdDSA,
 };
 
 #[cfg(test)]
