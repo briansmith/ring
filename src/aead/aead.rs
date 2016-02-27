@@ -78,10 +78,10 @@ impl OpeningKey {
 /// output is `in_out[..out_len]`; i.e. the output has been written over the
 /// top of the prefix and the input. To put it a different way, the output
 /// overwrites the input, shifted by `in_prefix_len` bytes. To have the output
-/// overwrite the input without shifting, pass 0 as `in_prefix_len`. (The input
-/// and output buffers are expressed this way because Rust's type system does
+/// overwrite the input without shifting, pass 0 as `in_prefix_len`. (The
+/// input/output buffer is expressed this way because Rust's type system does
 /// not allow us to have two slices, one mutable and one immutable, that
-/// reference overlapping memory.)
+/// reference overlapping memory at the same time.)
 ///
 /// C analog: `EVP_AEAD_CTX_open`
 ///
@@ -146,9 +146,10 @@ impl SealingKey {
 /// input is the part of `in_out` that precedes the suffix. When `seal` returns
 /// `Ok(out_len)`, the encrypted and signed output is `in_out[..out_len]`; i.e.
 /// the output has been written over input and at least part of the data
-/// reserved for the suffix. (This way the input and output buffers are
-/// expressed this way because Rust's type system does not allow us to have two
-/// slices, one mutable and one immutable, that reference overlapping memory.)
+/// reserved for the suffix. (The input/output buffer is expressed this way
+/// because Rust's type system does not allow us to have two slices, one
+/// mutable and one immutable, that reference overlapping memory at the same
+/// time.)
 ///
 /// `out_suffix_capacity` must be at least `key.algorithm.max_overhead_len`.
 /// See also `MAX_OVERHEAD_LEN`.
