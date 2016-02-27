@@ -56,7 +56,7 @@ will not let callers silently ignore the return value of functions that return
 *ring* functions generally do not report error codes for a variety of reasons;
 when they fail, they only report that they fail. If a function only needs to
 return a boolean indicator that it succeeded or failed, use `Result<(), ()>` as
-the return type. 
+the return type.
 
 If an external function (e.g. part of the Rust standard library) returns
 `Option<T>` to indicate failure, use `ok_or(())` to map it to `Result<T, ()>`.
