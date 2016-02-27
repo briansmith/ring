@@ -194,21 +194,20 @@ int evp_aead_aes_gcm_init(void *ctx_buf, size_t ctx_buf_len, const uint8_t *key,
   return 1;
 }
 
-int evp_aead_aes_gcm_seal(const void *ctx_buf, uint8_t *out, size_t *out_len,
-                          size_t max_out_len, const uint8_t *nonce,
-                          const uint8_t *in, size_t in_len, const uint8_t *ad,
-                          size_t ad_len) {
-  aead_assert_open_seal_preconditions(alignof(struct aead_aes_gcm_ctx), ctx_buf,
-                                      out, out_len, nonce, in, in_len, ad,
-                                      ad_len);
+int evp_aead_aes_gcm_seal(const void *ctx_buf, uint8_t *in_out,
+                          size_t in_out_len,
+                          uint8_t tag_out[EVP_AEAD_AES_GCM_TAG_LEN],
+                          const uint8_t nonce[EVP_AEAD_AES_GCM_NONCE_LEN],
+                          const uint8_t *ad, size_t ad_len) {
+  assert(ctx_buf != NULL);
+  assert(((uintptr_t)ctx_buf) % alignof(struct aead_aes_gcm_ctx) == 0);
+  assert(in_out != NULL || in_out_len == 0);
+  assert(aead_check_in_len(in_out_len));
+  assert(tag_out != NULL);
+  assert(nonce != NULL);
+  assert(ad != NULL || ad_len == 0);
 
   const struct aead_aes_gcm_ctx *gcm_ctx = ctx_buf;
-
-  if (!aead_seal_out_max_out_in_tag_len(out_len, max_out_len, in_len,
-                                        EVP_AEAD_AES_GCM_TAG_LEN)) {
-    /* |aead_seal_out_max_out_in_tag_len| already called |OPENSSL_PUT_ERROR|. */
-    return 0;
-  }
 
   GCM128_CONTEXT gcm;
 
@@ -220,18 +219,19 @@ int evp_aead_aes_gcm_seal(const void *ctx_buf, uint8_t *out, size_t *out_len,
   if (ad_len > 0 && !CRYPTO_gcm128_aad(&gcm, ad, ad_len)) {
     return 0;
   }
-
-  if (gcm_ctx->ctr) {
-    if (!CRYPTO_gcm128_encrypt_ctr32(&gcm, key, in, out, in_len, gcm_ctx->ctr)) {
-      return 0;
-    }
-  } else {
-    if (!CRYPTO_gcm128_encrypt(&gcm, key, in, out, in_len)) {
-      return 0;
+  if (in_out_len > 0) {
+    if (gcm_ctx->ctr) {
+      if (!CRYPTO_gcm128_encrypt_ctr32(&gcm, key, in_out, in_out, in_out_len,
+                                       gcm_ctx->ctr)) {
+        return 0;
+      }
+    } else {
+      if (!CRYPTO_gcm128_encrypt(&gcm, key, in_out, in_out, in_out_len)) {
+        return 0;
+      }
     }
   }
-
-  CRYPTO_gcm128_tag(&gcm, out + in_len, EVP_AEAD_AES_GCM_TAG_LEN);
+  CRYPTO_gcm128_tag(&gcm, tag_out, EVP_AEAD_AES_GCM_TAG_LEN);
   return 1;
 }
 

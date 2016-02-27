@@ -165,14 +165,18 @@ impl SealingKey {
 pub fn seal_in_place(key: &SealingKey, nonce: &[u8], in_out: &mut [u8],
                      out_suffix_capacity: usize, ad: &[u8])
                      -> Result<usize, ()> {
-    if in_out.len() < out_suffix_capacity ||
-       out_suffix_capacity < key.key.algorithm.max_overhead_len() {
+    if out_suffix_capacity < key.key.algorithm.max_overhead_len() {
         return Err(());
     }
     let ctx_buf_bytes = polyfill::slice::u64_as_u8(&key.key.ctx_buf);
     let nonce = try!(slice_as_array_ref!(nonce, NONCE_LEN));
-    (key.key.algorithm.seal)(ctx_buf_bytes, nonce, in_out, out_suffix_capacity,
-                             ad)
+    let in_out_len =
+        try!(in_out.len().checked_sub(out_suffix_capacity).ok_or(()));
+    try!(check_per_nonce_max_bytes(in_out_len));
+    let (in_out, tag_out) = in_out.split_at_mut(in_out_len);
+    let tag_out = try!(slice_as_array_ref_mut!(tag_out, TAG_LEN));
+    try!((key.key.algorithm.seal)(ctx_buf_bytes, nonce, in_out, tag_out, ad));
+    Ok(in_out_len + TAG_LEN)
 }
 
 /// `OpeningKey` and `SealingKey` are type-safety wrappers around `Key`, which
@@ -227,7 +231,7 @@ pub struct Algorithm {
     init: fn(ctx_buf: &mut [u8], key: &[u8]) -> Result<(), ()>,
 
     seal: fn(ctx: &[u8], nonce: &[u8; NONCE_LEN], in_out: &mut [u8],
-             in_suffix_capacity: usize, ad: &[u8]) -> Result<usize, ()>,
+             tag_out: &mut [u8; TAG_LEN], ad: &[u8]) -> Result<(), ()>,
     open: fn(ctx: &[u8], nonce: &[u8; NONCE_LEN], in_out: &mut [u8],
              in_prefix_len: usize, ad: &[u8]) -> Result<usize, ()>,
 
@@ -272,11 +276,6 @@ const TAG_LEN: usize = 128 / 8;
 const NONCE_LEN: usize = 96 / 8;
 
 
-/// Returns the length of the output (ciphertext + tag) of a seal operation.
-fn seal_out_len(in_len: usize) -> Result<usize, ()> {
-    in_len.checked_add(TAG_LEN).ok_or(())
-}
-
 /// Returns the length of the output (plaintext) of an open operation.
 fn open_out_len(max_out_len: usize, in_len: usize) -> Result<usize, ()> {
     let plaintext_len = try!(in_len.checked_sub(TAG_LEN).ok_or(()));
@@ -294,10 +293,19 @@ fn in_len(total_in_len: usize, in_prefix_len: usize, in_suffix_len: usize)
           -> Result<usize, ()> {
     let overhead = try!(in_prefix_len.checked_add(in_suffix_len).ok_or(()));
     let in_len = try!(total_in_len.checked_sub(overhead).ok_or(()));
-    if polyfill::u64_from_usize(in_len) >= (1u64 << 32) * 64 - 64 {
+    try!(check_per_nonce_max_bytes(in_len));
+    Ok(in_len)
+}
+
+/// Returns the length of the input plaintext (for sealing) or ciphertext
+/// (for opening). |CRYPTO_chacha_20| uses a 32-bit block counter, so we
+/// disallow individual operations that work on more than 256GB at a time, for
+/// all AEADs.
+fn check_per_nonce_max_bytes(in_out_len: usize) -> Result<(), ()> {
+    if polyfill::u64_from_usize(in_out_len) >= (1u64 << 32) * 64 - 64 {
         return Err(())
     }
-    Ok(in_len)
+    Ok(())
 }
 
 

@@ -51,16 +51,12 @@ fn aes_gcm_init(ctx_buf: &mut [u8], key: &[u8]) -> Result<(), ()> {
 }
 
 fn aes_gcm_seal(ctx: &[u8], nonce: &[u8; aead::NONCE_LEN], in_out: &mut [u8],
-                out_suffix_capacity: usize, ad: &[u8]) -> Result<usize, ()> {
-    let mut out_len: c::size_t = 0;
-    try!(bssl::map_result(unsafe {
-        evp_aead_aes_gcm_seal(ctx.as_ptr(), in_out.as_mut_ptr(),
-                              &mut out_len, in_out.len(), nonce.as_ptr(),
-                              in_out.as_ptr(),
-                              in_out.len() - out_suffix_capacity, ad.as_ptr(),
+                tag: &mut [u8; aead::TAG_LEN], ad: &[u8]) -> Result<(), ()> {
+    bssl::map_result(unsafe {
+        evp_aead_aes_gcm_seal(ctx.as_ptr(), in_out.as_mut_ptr(), in_out.len(),
+                              tag.as_mut_ptr(), nonce.as_ptr(), ad.as_ptr(),
                               ad.len())
-    }));
-    Ok(out_len)
+    })
 }
 
 fn aes_gcm_open(ctx: &[u8], nonce: &[u8; aead::NONCE_LEN], in_out: &mut [u8],
@@ -80,10 +76,10 @@ extern {
     fn evp_aead_aes_gcm_init(ctx_buf: *mut u8, ctx_buf_len: c::size_t,
                              key: *const u8, key_len: c::size_t) -> c::int;
 
-    fn evp_aead_aes_gcm_seal(ctx_buf: *const u8, out: *mut u8,
-                             out_len: &mut c::size_t, max_out_len: c::size_t,
-                             nonce: *const u8, in_: *const u8,
-                             in_len: c::size_t, ad: *const u8,
+    fn evp_aead_aes_gcm_seal(ctx_buf: *const u8, in_out: *mut u8,
+                             in_out_len: c::size_t,
+                             tag_out: *mut u8/*[TAG_LEN]*/,
+                             nonce: *const u8/*[TAG_LEN]*/, ad: *const u8,
                              ad_len: c::size_t) -> c::int;
 
     fn evp_aead_aes_gcm_open(ctx_buf: *const u8, out: *mut u8,
