@@ -99,8 +99,9 @@ pub fn open_in_place(key: &OpeningKey, nonce: &[u8], in_prefix_len: usize,
     if ciphertext_len < TAG_LEN {
         return Err(());
     }
-    key.key.open_or_seal_in_place(key.key.algorithm.open, nonce, in_out,
-                                  in_prefix_len, 0, ad)
+    let ctx_buf_bytes = polyfill::slice::u64_as_u8(&key.key.ctx_buf);
+    let nonce = try!(slice_as_array_ref!(nonce, NONCE_LEN));
+    (key.key.algorithm.open)(&ctx_buf_bytes, nonce, in_out, in_prefix_len, ad)
 }
 
 /// A key for encrypting and signing (&ldquo;sealing&rdquo;) data.
@@ -166,8 +167,10 @@ pub fn seal_in_place(key: &SealingKey, nonce: &[u8], in_out: &mut [u8],
        out_suffix_capacity < key.key.algorithm.max_overhead_len() {
         return Err(());
     }
-    key.key.open_or_seal_in_place(key.key.algorithm.seal, nonce, in_out, 0,
-                                  out_suffix_capacity, ad)
+    let ctx_buf_bytes = polyfill::slice::u64_as_u8(&key.key.ctx_buf);
+    let nonce = try!(slice_as_array_ref!(nonce, NONCE_LEN));
+    (key.key.algorithm.seal)(ctx_buf_bytes, nonce, in_out, out_suffix_capacity,
+                             ad)
 }
 
 /// `OpeningKey` and `SealingKey` are type-safety wrappers around `Key`, which
@@ -211,16 +214,6 @@ impl Key {
     /// The key's AEAD algorithm.
     #[inline(always)]
     fn algorithm(&self) -> &'static Algorithm { self.algorithm }
-
-    fn open_or_seal_in_place(&self, open_or_seal_fn: OpenOrSealFn,
-                             nonce: &[u8], in_out: &mut [u8],
-                             in_prefix_len: usize, in_suffix_len: usize,
-                             ad: &[u8]) -> Result<usize, ()> {
-        let nonce = try!(slice_as_array_ref!(nonce, NONCE_LEN));
-        let mut ctx_buf_bytes = polyfill::slice::u64_as_u8(&self.ctx_buf);
-        (open_or_seal_fn)(&mut ctx_buf_bytes, nonce, in_out, in_prefix_len,
-                          in_suffix_len, ad)
-    }
 }
 
 /// An AEAD Algorithm.
@@ -231,8 +224,10 @@ impl Key {
 pub struct Algorithm {
     init: fn(ctx_buf: &mut [u8], key: &[u8]) -> Result<(), ()>,
 
-    seal: OpenOrSealFn,
-    open: OpenOrSealFn,
+    seal: fn(ctx: &[u8], nonce: &[u8; NONCE_LEN], in_out: &mut [u8],
+             in_suffix_capacity: usize, ad: &[u8]) -> Result<usize, ()>,
+    open: fn(ctx: &[u8], nonce: &[u8; NONCE_LEN], in_out: &mut [u8],
+             in_prefix_len: usize, ad: &[u8]) -> Result<usize, ()>,
 
     key_len: usize,
 }
@@ -274,11 +269,6 @@ const TAG_LEN: usize = 128 / 8;
 // All the AEADs we support use 96-bit nonces.
 const NONCE_LEN: usize = 96 / 8;
 
-
-type OpenOrSealFn =
-    fn(ctx: &[u8], nonce: &[u8; NONCE_LEN], in_out: &mut [u8],
-       in_prefix_len: usize, in_suffix_len: usize, ad: &[u8])
-       -> Result<usize, ()>;
 
 /// Returns the length of the output (ciphertext + tag) of a seal operation.
 fn seal_out_len(in_len: usize) -> Result<usize, ()> {
