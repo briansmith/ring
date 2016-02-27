@@ -51,29 +51,27 @@ fn aes_gcm_init(ctx_buf: &mut [u8], key: &[u8]) -> Result<(), ()> {
 }
 
 fn aes_gcm_seal(ctx: &[u8], nonce: &[u8; aead::NONCE_LEN], in_out: &mut [u8],
-                in_prefix_len: usize, in_suffix_len: usize,
-                ad: &[u8]) -> Result<usize, ()> {
+                out_suffix_capacity: usize, ad: &[u8]) -> Result<usize, ()> {
     let mut out_len: c::size_t = 0;
     try!(bssl::map_result(unsafe {
         evp_aead_aes_gcm_seal(ctx.as_ptr(), in_out.as_mut_ptr(),
                               &mut out_len, in_out.len(), nonce.as_ptr(),
-                              in_out[in_prefix_len..].as_ptr(),
-                              in_out.len() - in_prefix_len - in_suffix_len,
-                              ad.as_ptr(), ad.len())
+                              in_out.as_ptr(),
+                              in_out.len() - out_suffix_capacity, ad.as_ptr(),
+                              ad.len())
     }));
     Ok(out_len)
 }
 
 fn aes_gcm_open(ctx: &[u8], nonce: &[u8; aead::NONCE_LEN], in_out: &mut [u8],
-                in_prefix_len: usize, in_suffix_len: usize,
-                ad: &[u8]) -> Result<usize, ()> {
+                in_prefix_len: usize, ad: &[u8]) -> Result<usize, ()> {
     let mut out_len: c::size_t = 0;
     try!(bssl::map_result(unsafe {
         evp_aead_aes_gcm_open(ctx.as_ptr(), in_out.as_mut_ptr(), &mut out_len,
                               in_out.len(), nonce.as_ptr(),
                               in_out[in_prefix_len..].as_ptr(),
-                              in_out.len() - in_prefix_len - in_suffix_len,
-                              ad.as_ptr(), ad.len())
+                              in_out.len() - in_prefix_len, ad.as_ptr(),
+                              ad.len())
     }));
     Ok(out_len)
 }
