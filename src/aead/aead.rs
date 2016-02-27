@@ -96,7 +96,7 @@ pub fn open_in_place(key: &OpeningKey, nonce: &[u8], in_prefix_len: usize,
     // of plaintext_len that is needed. For AEADs where
     // `max_overhead_len > tag_len`, this check isn't precise enough and the
     // AEAD's `open` function will have to do an additional check.
-    if ciphertext_len < key.key.algorithm.tag_len {
+    if ciphertext_len < TAG_LEN {
         return Err(());
     }
     key.key.open_or_seal_in_place(key.key.algorithm.open, nonce, in_out,
@@ -151,7 +151,7 @@ impl SealingKey {
 /// mutable and one immutable, that reference overlapping memory at the same
 /// time.)
 ///
-/// `out_suffix_capacity` must be at least `key.algorithm.max_overhead_len`.
+/// `out_suffix_capacity` must be at least `key.algorithm.max_overhead_len()`.
 /// See also `MAX_OVERHEAD_LEN`.
 ///
 /// `ad` is the additional authenticated data, if any.
@@ -163,7 +163,7 @@ pub fn seal_in_place(key: &SealingKey, nonce: &[u8], in_out: &mut [u8],
                      out_suffix_capacity: usize, ad: &[u8])
                      -> Result<usize, ()> {
     if in_out.len() < out_suffix_capacity ||
-       out_suffix_capacity < key.key.algorithm.max_overhead_len {
+       out_suffix_capacity < key.key.algorithm.max_overhead_len() {
         return Err(());
     }
     key.key.open_or_seal_in_place(key.key.algorithm.seal, nonce, in_out, 0,
@@ -200,7 +200,7 @@ impl Key {
     ///
     /// C analogs: `EVP_AEAD_CTX_init`, `EVP_AEAD_CTX_init_with_direction`
     fn init(&mut self, key_bytes: &[u8]) -> Result<(), ()> {
-        if key_bytes.len() != self.algorithm.key_len {
+        if key_bytes.len() != self.algorithm.key_len() {
             return Err(());
         }
 
@@ -216,10 +216,7 @@ impl Key {
                              nonce: &[u8], in_out: &mut [u8],
                              in_prefix_len: usize, in_suffix_len: usize,
                              ad: &[u8]) -> Result<usize, ()> {
-        debug_assert!(self.algorithm.max_overhead_len >= self.algorithm.tag_len);
-        if nonce.len() != self.algorithm.nonce_len {
-            return Err(())
-        }
+        let nonce = try!(slice_as_array_ref!(nonce, NONCE_LEN));
         let mut ctx_buf_bytes = polyfill::slice::u64_as_u8(&self.ctx_buf);
         (open_or_seal_fn)(&mut ctx_buf_bytes, nonce, in_out, in_prefix_len,
                           in_suffix_len, ad)
@@ -232,59 +229,65 @@ impl Key {
 ///
 /// Go analog: [`crypto.cipher.AEAD`](https://golang.org/pkg/crypto/cipher/#AEAD)
 pub struct Algorithm {
-  // Keep the layout of this in sync with the layout of `EVP_AEAD`.
+    init: fn(ctx_buf: &mut [u8], key: &[u8]) -> Result<(), ()>,
 
-  /// The length of the key.
-  ///
-  /// C analog: `EVP_AEAD_key_length`
-  pub key_len: usize,
+    seal: OpenOrSealFn,
+    open: OpenOrSealFn,
 
-  /// The length of the nonces.
-  ///
-  /// C analog: `EVP_AEAD_nonce_length`
-  ///
-  /// Go analog: [`crypto.cipher.AEAD.NonceSize`](https://golang.org/pkg/crypto/cipher/#AEAD)
-  pub nonce_len: usize,
-
-  /// The maximum number of bytes that sealing operations may add to plaintexts.
-  /// See also `MAX_OVERHEAD_LEN`.
-  ///
-  /// C analog: `EVP_AEAD_max_overhead`
-  ///
-  /// Go analog: [`crypto.cipher.AEAD.Overhead`](https://golang.org/pkg/crypto/cipher/#AEAD)
-  pub max_overhead_len: usize,
-
-  /// The length of the authentication tags or MACs.
-  ///
-  /// Use `max_overhead_len` or `MAX_OVERHEAD_LEN` when sizing buffers for
-  /// sealing operations.
-  ///
-  /// C analog: `EVP_AEAD_tag_len`
-  pub tag_len: usize,
-
-  init: fn(ctx_buf: &mut [u8], key: &[u8]) -> Result<(), ()>,
-
-  seal: OpenOrSealFn,
-  open: OpenOrSealFn,
+    key_len: usize,
 }
 
-/// The maximum value of `Algorithm.max_overhead_len` for the algorithms in
-/// this module.
-pub const MAX_OVERHEAD_LEN: usize = aes_gcm::AES_GCM_TAG_LEN;
+impl Algorithm {
+    /// The length of the key.
+    ///
+    /// C analog: `EVP_AEAD_key_length`
+    #[inline(always)]
+    pub fn key_len(&self) -> usize { self.key_len }
+
+    /// The maximum number of bytes that sealing operations may add to plaintexts.
+    /// See also `MAX_OVERHEAD_LEN`.
+    ///
+    /// C analog: `EVP_AEAD_max_overhead`
+    ///
+    /// Go analog:
+    /// [`crypto.cipher.AEAD.Overhead`](https://golang.org/pkg/crypto/cipher/#AEAD)
+    #[inline(always)]
+    pub fn max_overhead_len(&self) -> usize { TAG_LEN }
+
+    /// The length of the nonces.
+    ///
+    /// C analog: `EVP_AEAD_nonce_length`
+    ///
+    /// Go analog:
+    /// [`crypto.cipher.AEAD.NonceSize`](https://golang.org/pkg/crypto/cipher/#AEAD)
+    #[inline(always)]
+    pub fn nonce_len(&self) -> usize { NONCE_LEN }
+}
+
+
+/// The maximum amount of overhead for the algorithms in this module.
+pub const MAX_OVERHEAD_LEN: usize = TAG_LEN;
+
+// All the AEADs we support use 128-bit tags.
+const TAG_LEN: usize = 128 / 8;
+
+// All the AEADs we support use 96-bit nonces.
+const NONCE_LEN: usize = 96 / 8;
+
 
 type OpenOrSealFn =
-    fn(ctx: &[u8], nonce: &[u8], in_out: &mut [u8], in_prefix_len: usize,
-       in_suffix_len: usize, ad: &[u8]) -> Result<usize, ()>;
+    fn(ctx: &[u8], nonce: &[u8; NONCE_LEN], in_out: &mut [u8],
+       in_prefix_len: usize, in_suffix_len: usize, ad: &[u8])
+       -> Result<usize, ()>;
 
 /// Returns the length of the output (ciphertext + tag) of a seal operation.
-fn seal_out_len(in_len: usize, tag_len: usize) -> Result<usize, ()> {
-    in_len.checked_add(tag_len).ok_or(())
+fn seal_out_len(in_len: usize) -> Result<usize, ()> {
+    in_len.checked_add(TAG_LEN).ok_or(())
 }
 
 /// Returns the length of the output (plaintext) of an open operation.
-fn open_out_len(max_out_len: usize, in_len: usize,
-                tag_len: usize) -> Result<usize, ()> {
-    let plaintext_len = try!(in_len.checked_sub(tag_len).ok_or(()));
+fn open_out_len(max_out_len: usize, in_len: usize) -> Result<usize, ()> {
+    let plaintext_len = try!(in_len.checked_sub(TAG_LEN).ok_or(()));
     if max_out_len < plaintext_len {
        return Err(());
     }
@@ -380,7 +383,7 @@ mod tests {
             ];
 
             for in_prefix in IN_PREFIXES.iter() {
-                let max_overhead_len = aead_alg.max_overhead_len;
+                let max_overhead_len = aead_alg.max_overhead_len();
                 let mut s_in_out = plaintext.clone();
                 for _ in 0..max_overhead_len {
                     s_in_out.push(0);
@@ -417,7 +420,7 @@ mod tests {
     }
 
     fn test_aead_key_sizes(aead_alg: &'static aead::Algorithm) {
-        let key_len = aead_alg.key_len;
+        let key_len = aead_alg.key_len();
         let key_data = vec![0u8; key_len * 2];
 
         // Key is the right size.
@@ -478,12 +481,12 @@ mod tests {
         let s_key =
             aead::SealingKey::new(aead_alg, &key_data[..key_len]).unwrap();
 
-        let nonce_len = aead_alg.nonce_len;
+        let nonce_len = aead_alg.nonce_len();
 
         let nonce = vec![0u8; nonce_len * 2];
 
         let prefix_len = 0;
-        let suffix_space = aead_alg.max_overhead_len;
+        let suffix_space = aead_alg.max_overhead_len();
         let ad: [u8; 0] = [];
 
         // Construct a template input for `seal_in_place`.
