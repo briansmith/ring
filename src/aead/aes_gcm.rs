@@ -18,8 +18,6 @@ use {aead, bssl, c};
 
 const AES_128_KEY_LEN: usize = 128 / 8;
 const AES_256_KEY_LEN: usize = 32; // 256 / 8
-const AES_GCM_NONCE_LEN: usize = 96 / 8;
-pub const AES_GCM_TAG_LEN: usize = 128 / 8;
 
 /// AES-128 in GCM mode with 128-bit tags and 96 bit nonces.
 ///
@@ -28,9 +26,6 @@ pub const AES_GCM_TAG_LEN: usize = 128 / 8;
 /// Go analog: [`crypto.aes`](https://golang.org/pkg/crypto/aes/)
 pub static AES_128_GCM: aead::Algorithm = aead::Algorithm {
     key_len: AES_128_KEY_LEN,
-    nonce_len: AES_GCM_NONCE_LEN,
-    max_overhead_len: AES_GCM_TAG_LEN,
-    tag_len: AES_GCM_TAG_LEN,
     init: aes_gcm_init,
     seal: aes_gcm_seal,
     open: aes_gcm_open,
@@ -43,9 +38,6 @@ pub static AES_128_GCM: aead::Algorithm = aead::Algorithm {
 /// Go analog: [`crypto.aes`](https://golang.org/pkg/crypto/aes/)
 pub static AES_256_GCM: aead::Algorithm = aead::Algorithm {
     key_len: AES_256_KEY_LEN,
-    nonce_len: AES_GCM_NONCE_LEN,
-    max_overhead_len: AES_GCM_TAG_LEN,
-    tag_len: AES_GCM_TAG_LEN,
     init: aes_gcm_init,
     seal: aes_gcm_seal,
     open: aes_gcm_open,
@@ -58,7 +50,7 @@ fn aes_gcm_init(ctx_buf: &mut [u8], key: &[u8]) -> Result<(), ()> {
     })
 }
 
-fn aes_gcm_seal(ctx: &[u8], nonce: &[u8], in_out: &mut [u8],
+fn aes_gcm_seal(ctx: &[u8], nonce: &[u8; aead::NONCE_LEN], in_out: &mut [u8],
                 in_prefix_len: usize, in_suffix_len: usize,
                 ad: &[u8]) -> Result<usize, ()> {
     let mut out_len: c::size_t = 0;
@@ -72,7 +64,7 @@ fn aes_gcm_seal(ctx: &[u8], nonce: &[u8], in_out: &mut [u8],
     Ok(out_len)
 }
 
-fn aes_gcm_open(ctx: &[u8], nonce: &[u8], in_out: &mut [u8],
+fn aes_gcm_open(ctx: &[u8], nonce: &[u8; aead::NONCE_LEN], in_out: &mut [u8],
                 in_prefix_len: usize, in_suffix_len: usize,
                 ad: &[u8]) -> Result<usize, ()> {
     let mut out_len: c::size_t = 0;

@@ -69,3 +69,43 @@ pub mod slice {
         }
     }
 }
+
+/// Returns a reference to the elements of `$slice` as an array, verifying that
+/// the slice is of length `$len`.
+macro_rules! slice_as_array_ref {
+    ($slice:expr, $len:expr) => {
+        {
+            #[allow(unsafe_code)]
+            fn slice_as_array_ref<'a, T>(slice: &'a [T])
+                                         -> Result<&'a [T; $len], ()> {
+                if slice.len() != $len {
+                    return Err(());
+                }
+                Ok(unsafe {
+                    &*(slice.as_ptr() as *const [T; $len])
+                })
+            }
+            slice_as_array_ref($slice)
+        }
+    }
+}
+
+/// Returns a reference to elements of `$slice` as a mutable array, verifying
+/// that the slice is of length `$len`.
+macro_rules! slice_as_array_ref_mut {
+    ($slice:expr, $len:expr) => {
+        {
+            #[allow(unsafe_code)]
+            fn slice_as_array_ref<'a, T>(slice: &'a mut [T])
+                                         -> Result<&'a mut [T; $len], ()> {
+                if slice.len() != $len {
+                    return Err(());
+                }
+                Ok(unsafe {
+                    &mut *(slice.as_mut_ptr() as *mut [T; $len])
+                })
+            }
+            slice_as_array_ref($slice)
+        }
+    }
+}
