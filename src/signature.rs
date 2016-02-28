@@ -143,7 +143,7 @@ macro_rules! ecdsa {
     ( $VERIFY_ALGORITHM:ident, $curve_name:expr, $ec_group_fn:expr,
       $digest_alg_name:expr, $digest_alg:expr ) => {
         #[cfg(not(feature = "no_heap"))]
-        #[doc="ECDSA signature verification using the "]
+        #[doc="Verification of ECDSA signatures using the "]
         #[doc=$curve_name]
         #[doc=" curve and the "]
         #[doc=$digest_alg_name]
@@ -205,7 +205,7 @@ ecdsa!(ECDSA_P384_SHA512_VERIFY, "P-384 (secp384r1)", ecc::EC_GROUP_P384,
 /// EdDSA signatures.
 struct EdDSA;
 
-/// [Ed25519](http://ed25519.cr.yp.to/) signature verification.
+/// Verification of [Ed25519](http://ed25519.cr.yp.to/) signatures.
 ///
 /// Ed25519 uses SHA-512 as the digest algorithm.
 pub static ED25519_VERIFY: VerificationAlgorithm = VerificationAlgorithm {
@@ -271,7 +271,7 @@ macro_rules! rsa_pkcs1 {
     ( $VERIFY_ALGORITHM:ident, $min_bits:expr, $min_bits_str:expr,
       $digest_alg_name:expr, $digest_alg:expr ) => {
         #[cfg(not(feature = "no_heap"))]
-        #[doc="RSA PKCS#1 1.5 signatures of "]
+        #[doc="Verification of RSA PKCS#1 1.5 signatures of "]
         #[doc=$min_bits_str]
         #[doc="-8192 bits "]
         #[doc="using the "]
