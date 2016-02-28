@@ -90,6 +90,8 @@ extern crate rustc_serialize;
 #[macro_use(format, print, println, vec)]
 extern crate std;
 
+#[macro_use] mod polyfill;
+
 #[path = "aead/aead.rs"] pub mod aead;
 pub mod agreement;
 mod bssl;
@@ -105,7 +107,7 @@ pub mod hkdf;
 pub mod hmac;
 pub mod input;
 pub mod pbkdf2;
-mod polyfill;
+
 pub mod rand;
 pub mod signature;
 

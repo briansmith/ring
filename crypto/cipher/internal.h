@@ -106,40 +106,6 @@ static inline int aead_check_in_len(size_t in_len) {
   return in_len_64 < (1ull << 32) * 64 - 64;
 }
 
-static inline int aead_seal_out_max_out_in_tag_len(size_t *out_len,
-                                                   size_t max_out_len,
-                                                   size_t in_len,
-                                                   size_t tag_len) {
-  if (SIZE_MAX - tag_len < in_len) {
-    OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_TOO_LARGE);
-    return 0;
-  }
-  size_t ciphertext_len = in_len + tag_len;
-  if (max_out_len < ciphertext_len) {
-    OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_BUFFER_TOO_SMALL);
-    return 0;
-  }
-  *out_len = ciphertext_len;
-  return 1;
-}
-
-static inline int aead_open_out_max_out_in_tag_len(size_t *out_len,
-                                                   size_t max_out_len,
-                                                   size_t in_len,
-                                                   size_t tag_len) {
-  if (in_len < tag_len) {
-    OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_BAD_DECRYPT);
-    return 0;
-  }
-  size_t plaintext_len = in_len - tag_len;
-  if (max_out_len < plaintext_len) {
-    OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_BUFFER_TOO_SMALL);
-    return 0;
-  }
-  *out_len = plaintext_len;
-  return 1;
-}
-
 static inline void aead_assert_init_preconditions(size_t ctx_struct_alignment,
                                                   size_t ctx_struct_size,
                                                   const void *ctx_buf,
