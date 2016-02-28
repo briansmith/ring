@@ -19,22 +19,25 @@
 //! for `verify` for examples.
 //!
 //! The design of this module is unusual compared to other public key signature
-//! APIs. Algorithms like split into "signing" and "verification" algorithms.
+//! APIs. Algorithms are split into "signing" (suffixed `_SIGN`) and
+//! "verification" (suffixed `_VERIFY`) algorithms in order to make it easier
+//! for the linker to discard unused code in the case where only signing is
+//! done or only verification is done with a given algorithm. (Currently, only
+//! the verification algorithms are )
+//!
 //! Also, this API treats each combination of parameters as a separate
 //! algorithm. For example, instead of having a single "RSA" algorithm with a
 //! verification function that takes a bunch of parameters, there are
-//! `RSA_PKCS1_2048_8192_SHA256`, `RSA_PKCS1_2048_8192_SHA512`,
-//! etc. which encode sets of parameter choices into objects. This design is
-//! designed to reduce the risks of algorithm agility. It is also designed to
-//! be optimized for Ed25519, which has a fixed signature format, a fixed curve,
-//! a fixed key size, and a fixed digest algorithm.
+//! `RSA_PKCS1_2048_8192_SHA256_VERIFY`, `RSA_PKCS1_2048_8192_SHA256_VERIFY`,
+//! etc. which encode sets of parameter choices into objects. This is designed
+//! to reduce the risks of algorithm agility and to provide consistency with
+//! ECDSA and EdDSA.
 //!
 //! Currently this module does not support digesting the message to be signed
 //! separately from the public key operation, as it is currently being
 //! optimized for Ed25519 and for the implementation of protocols that do not
 //! requiring signing large messages. An interface for efficiently supporting
-//! larger messages will be added later. Similarly, the signing interface is
-//! not available yet.
+//! larger messages may be added later.
 
 #![allow(unsafe_code)]
 
@@ -89,8 +92,8 @@ trait VerificationAlgorithmImpl {
 ///    let public_key = try!(Input::new(public_key));
 ///    let msg = try!(Input::new(msg));
 ///    let sig = try!(Input::new(sig));
-///    signature::verify(&signature::RSA_PKCS1_2048_8192_SHA256, public_key,
-///                      msg, sig)
+///    signature::verify(&signature::RSA_PKCS1_2048_8192_SHA256_VERIFY,
+///                      public_key, msg, sig)
 /// }
 /// ```
 ///
@@ -102,7 +105,7 @@ trait VerificationAlgorithmImpl {
 ///
 /// fn verify_ed25519(public_key: Input, msg: Input, sig: Input)
 ///                   -> Result<(), ()> {
-///    signature::verify(&signature::ED25519, public_key, msg, sig)
+///    signature::verify(&signature::ED25519_VERIFY, public_key, msg, sig)
 /// }
 /// ```
 pub fn verify(alg: &VerificationAlgorithm, public_key: Input, msg: Input,
@@ -140,7 +143,7 @@ macro_rules! ecdsa {
     ( $VERIFY_ALGORITHM:ident, $curve_name:expr, $ec_group_fn:expr,
       $digest_alg_name:expr, $digest_alg:expr ) => {
         #[cfg(not(feature = "no_heap"))]
-        #[doc="ECDSA signatures using the "]
+        #[doc="ECDSA signature verification using the "]
         #[doc=$curve_name]
         #[doc=" curve and the "]
         #[doc=$digest_alg_name]
@@ -180,23 +183,23 @@ macro_rules! ecdsa {
     }
 }
 
-ecdsa!(ECDSA_P256_SHA1, "P-256 (secp256r1)", ecc::EC_GROUP_P256, "SHA-1",
+ecdsa!(ECDSA_P256_SHA1_VERIFY, "P-256 (secp256r1)", ecc::EC_GROUP_P256, "SHA-1",
        &digest::SHA1);
-ecdsa!(ECDSA_P256_SHA256, "P-256 (secp256r1)", ecc::EC_GROUP_P256, "SHA-256",
-       &digest::SHA256);
-ecdsa!(ECDSA_P256_SHA384, "P-256 (secp256r1)", ecc::EC_GROUP_P256, "SHA-384",
-       &digest::SHA384);
-ecdsa!(ECDSA_P256_SHA512, "P-256 (secp256r1)", ecc::EC_GROUP_P256, "SHA-512",
-       &digest::SHA512);
+ecdsa!(ECDSA_P256_SHA256_VERIFY, "P-256 (secp256r1)", ecc::EC_GROUP_P256,
+       "SHA-256", &digest::SHA256);
+ecdsa!(ECDSA_P256_SHA384_VERIFY, "P-256 (secp256r1)", ecc::EC_GROUP_P256,
+       "SHA-384", &digest::SHA384);
+ecdsa!(ECDSA_P256_SHA512_VERIFY, "P-256 (secp256r1)", ecc::EC_GROUP_P256,
+       "SHA-512", &digest::SHA512);
 
-ecdsa!(ECDSA_P384_SHA1, "P-384 (secp384r1)", ecc::EC_GROUP_P384, "SHA-1",
+ecdsa!(ECDSA_P384_SHA1_VERIFY, "P-384 (secp384r1)", ecc::EC_GROUP_P384, "SHA-1",
        &digest::SHA1);
-ecdsa!(ECDSA_P384_SHA256, "P-384 (secp384r1)", ecc::EC_GROUP_P384, "SHA-256",
-       &digest::SHA256);
-ecdsa!(ECDSA_P384_SHA384, "P-384 (secp384r1)", ecc::EC_GROUP_P384, "SHA-384",
-       &digest::SHA384);
-ecdsa!(ECDSA_P384_SHA512, "P-384 (secp384r1)", ecc::EC_GROUP_P384, "SHA-512",
-       &digest::SHA512);
+ecdsa!(ECDSA_P384_SHA256_VERIFY, "P-384 (secp384r1)", ecc::EC_GROUP_P384,
+       "SHA-256", &digest::SHA256);
+ecdsa!(ECDSA_P384_SHA384_VERIFY, "P-384 (secp384r1)", ecc::EC_GROUP_P384,
+       "SHA-384", &digest::SHA384);
+ecdsa!(ECDSA_P384_SHA512_VERIFY, "P-384 (secp384r1)", ecc::EC_GROUP_P384,
+       "SHA-512", &digest::SHA512);
 
 
 /// EdDSA signatures.
@@ -204,10 +207,10 @@ struct EdDSA {
     _unused: u8, // XXX: Stable Rust doesn't allow empty structs.
 }
 
-/// [Ed25519](http://ed25519.cr.yp.to/) signatures.
+/// [Ed25519](http://ed25519.cr.yp.to/) signature verification.
 ///
 /// Ed25519 uses SHA-512 as the digest algorithm.
-pub static ED25519: VerificationAlgorithm = VerificationAlgorithm {
+pub static ED25519_VERIFY: VerificationAlgorithm = VerificationAlgorithm {
     implementation: &EdDSA {
         _unused: 1,
     }
@@ -290,12 +293,17 @@ macro_rules! rsa_pkcs1 {
     }
 }
 
-rsa_pkcs1!(RSA_PKCS1_2048_8192_SHA1,   2048, "2048", "SHA-1", &digest::SHA1);
-rsa_pkcs1!(RSA_PKCS1_2048_8192_SHA256, 2048, "2048", "SHA-256", &digest::SHA256);
-rsa_pkcs1!(RSA_PKCS1_2048_8192_SHA384, 2048, "2048", "SHA-384", &digest::SHA384);
-rsa_pkcs1!(RSA_PKCS1_2048_8192_SHA512, 2048, "2048", "SHA-512", &digest::SHA512);
+rsa_pkcs1!(RSA_PKCS1_2048_8192_SHA1_VERIFY, 2048, "2048", "SHA-1",
+           &digest::SHA1);
+rsa_pkcs1!(RSA_PKCS1_2048_8192_SHA256_VERIFY, 2048, "2048", "SHA-256",
+           &digest::SHA256);
+rsa_pkcs1!(RSA_PKCS1_2048_8192_SHA384_VERIFY, 2048, "2048", "SHA-384",
+           &digest::SHA384);
+rsa_pkcs1!(RSA_PKCS1_2048_8192_SHA512_VERIFY, 2048, "2048", "SHA-512",
+           &digest::SHA512);
 
-rsa_pkcs1!(RSA_PKCS1_3072_8192_SHA384, 3072, "3072", "SHA-384", &digest::SHA384);
+rsa_pkcs1!(RSA_PKCS1_3072_8192_SHA384_VERIFY, 3072, "3072", "SHA-384",
+           &digest::SHA384);
 
 
 extern {
@@ -325,8 +333,7 @@ extern {
 
 #[cfg(test)]
 mod tests {
-    use super::{ed25519_sign, ED25519, verify};
-    use super::super::file_test;
+    use super::super::{file_test, signature};
     use super::super::input::Input;
 
     /// Test vectors from BoringSSL.
@@ -342,14 +349,16 @@ mod tests {
             let expected_sig = test_case.consume_bytes("SIG");
 
             let mut actual_sig = [0u8; 64];
-            assert!(ed25519_sign(&private_key, &msg, &mut actual_sig).is_ok());
+            assert!(signature::ed25519_sign(&private_key, &msg,
+                                            &mut actual_sig).is_ok());
             assert_eq!(&expected_sig[..], &actual_sig[..]);
 
             let public_key = Input::new(&public_key).unwrap();
             let msg = Input::new(&msg).unwrap();
             let expected_sig = Input::new(&expected_sig).unwrap();
 
-            assert!(verify(&ED25519, public_key, msg, expected_sig).is_ok());
+            assert!(signature::verify(&signature::ED25519_VERIFY, public_key,
+                                      msg, expected_sig).is_ok());
         });
     }
 }
