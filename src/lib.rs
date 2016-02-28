@@ -107,7 +107,7 @@ pub mod input;
 pub mod pbkdf2;
 mod polyfill;
 pub mod rand;
-pub mod signature;
+#[path = "signature/signature.rs"] pub mod signature;
 
 #[cfg(test)]
 mod exe_tests;
