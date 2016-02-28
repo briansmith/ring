@@ -271,7 +271,7 @@ impl SigningContext {
 
 /// Calculates the HMAC of `data` using the key `key` in one step.
 ///
-/// Use `SignignContext` to calculate HMACs where the input is in multiple
+/// Use `SigningContext` to calculate HMACs where the input is in multiple
 /// parts.
 ///
 /// It is generally not safe to implement HMAC verification by comparing the
