@@ -279,7 +279,9 @@ void gcm_ghash_4bit(uint64_t Xi[2], const u128 Htable[16], const uint8_t *inp,
 
 
 #if defined(GHASH_ASM)
+
 #if defined(OPENSSL_X86) || defined(OPENSSL_X86_64)
+
 #define GHASH_ASM_X86_OR_64
 #define GCM_FUNCREF_4BIT
 void gcm_init_clmul(u128 Htable[16], const uint64_t Xi[2]);
@@ -307,51 +309,32 @@ void gcm_gmult_4bit_x86(uint64_t Xi[2], const u128 Htable[16]);
 void gcm_ghash_4bit_x86(uint64_t Xi[2], const u128 Htable[16], const uint8_t *inp,
                         size_t len);
 #endif
+
 #elif defined(OPENSSL_ARM) || defined(OPENSSL_AARCH64)
+
 #include <openssl/arm_arch.h>
+
 #if __ARM_MAX_ARCH__ >= 8
-#define GHASH_ASM_ARM
+#define ARM_PMULL_ASM
 #define GCM_FUNCREF_4BIT
-
-static int pmull_capable(void) {
-  return CRYPTO_is_ARMv8_PMULL_capable();
-}
-
 void gcm_init_v8(u128 Htable[16], const uint64_t Xi[2]);
 void gcm_gmult_v8(uint64_t Xi[2], const u128 Htable[16]);
 void gcm_ghash_v8(uint64_t Xi[2], const u128 Htable[16], const uint8_t *inp,
                   size_t len);
+#endif
 
-#if defined(OPENSSL_ARM)
+#if defined(OPENSSL_ARM) && __ARM_MAX_ARCH__ >= 7
+#define GCM_FUNCREF_4BIT
 /* 32-bit ARM also has support for doing GCM with NEON instructions. */
-static int neon_capable(void) {
-  return CRYPTO_is_NEON_capable();
-}
-
 void gcm_init_neon(u128 Htable[16], const uint64_t Xi[2]);
 void gcm_gmult_neon(uint64_t Xi[2], const u128 Htable[16]);
 void gcm_ghash_neon(uint64_t Xi[2], const u128 Htable[16], const uint8_t *inp,
                     size_t len);
-#else
-/* AArch64 only has the ARMv8 versions of functions. */
-static int neon_capable(void) {
-  return 0;
-}
-void gcm_init_neon(u128 Htable[16], const uint64_t Xi[2]) {
-  abort();
-}
-void gcm_gmult_neon(uint64_t Xi[2], const u128 Htable[16]) {
-  abort();
-}
-void gcm_ghash_neon(uint64_t Xi[2], const u128 Htable[16], const uint8_t *inp,
-                    size_t len) {
-  abort();
-}
 #endif
 
-#endif
-#endif
-#endif
+#endif /* Platform */
+
+#endif /* GHASH_ASM */
 
 #ifdef GCM_FUNCREF_4BIT
 #undef GCM_MUL
@@ -386,34 +369,37 @@ void CRYPTO_gcm128_init(GCM128_CONTEXT *ctx, const AES_KEY *key,
     }
     return;
   }
+#endif
+#if defined(GHASH_ASM_X86)
   gcm_init_4bit(ctx->Htable, ctx->H.u);
-#if defined(GHASH_ASM_X86) /* x86 only */
   if (OPENSSL_ia32cap_P[0] & (1 << 25)) { /* check SSE bit */
     ctx->gmult = gcm_gmult_4bit_mmx;
     ctx->ghash = gcm_ghash_4bit_mmx;
+    return;
   } else {
     ctx->gmult = gcm_gmult_4bit_x86;
     ctx->ghash = gcm_ghash_4bit_x86;
+    return;
   }
-#else
-  ctx->gmult = gcm_gmult_4bit;
-  ctx->ghash = gcm_ghash_4bit;
 #endif
-#elif defined(GHASH_ASM_ARM)
-  if (pmull_capable()) {
+#if defined(ARM_PMULL_ASM)
+  if (CRYPTO_is_ARMv8_PMULL_capable()) {
     gcm_init_v8(ctx->Htable, ctx->H.u);
     ctx->gmult = gcm_gmult_v8;
     ctx->ghash = gcm_ghash_v8;
-  } else if (neon_capable()) {
+    return;
+  }
+#endif
+#if defined(OPENSSL_ARM)
+  if (CRYPTO_is_NEON_capable()) {
     gcm_init_neon(ctx->Htable,ctx->H.u);
     ctx->gmult = gcm_gmult_neon;
     ctx->ghash = gcm_ghash_neon;
-  } else {
-    gcm_init_4bit(ctx->Htable, ctx->H.u);
-    ctx->gmult = gcm_gmult_4bit;
-    ctx->ghash = gcm_ghash_4bit;
+    return;
   }
-#else
+#endif
+
+#if !defined(GHASH_ASM_X86)
   gcm_init_4bit(ctx->Htable, ctx->H.u);
   ctx->gmult = gcm_gmult_4bit;
   ctx->ghash = gcm_ghash_4bit;
