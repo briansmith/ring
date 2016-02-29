@@ -124,6 +124,8 @@ int i2c_ASN1_INTEGER(ASN1_INTEGER *a, unsigned char **pp)
     else {
         ret = a->length;
         i = a->data[0];
+        if (ret == 1 && i == 0)
+            neg = 0;
         if (!neg && (i > 127)) {
             pad = 1;
             pb = 0;
@@ -162,7 +164,7 @@ int i2c_ASN1_INTEGER(ASN1_INTEGER *a, unsigned char **pp)
         p += a->length - 1;
         i = a->length;
         /* Copy zeros to destination as long as source is zero */
-        while (!*n) {
+        while (!*n && i > 1) {
             *(p--) = 0;
             n--;
             i--;
