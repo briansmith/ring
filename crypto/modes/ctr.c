@@ -59,17 +59,13 @@
 
 /* increment counter (128-bit int) by 1 */
 static void ctr128_inc(uint8_t *counter) {
-  uint32_t n = 16;
-  uint8_t c;
+  uint32_t n = 16, c = 1;
 
   do {
     --n;
-    c = counter[n];
-    ++c;
-    counter[n] = c;
-    if (c) {
-      return;
-    }
+    c += counter[n];
+    counter[n] = (uint8_t) c;
+    c >>= 8;
   } while (n);
 }
 
@@ -104,7 +100,7 @@ void CRYPTO_ctr128_encrypt(const uint8_t *in, uint8_t *out, size_t len,
   }
 
 #if STRICT_ALIGNMENT
-  if (((size_t)in | (size_t)out | (size_t)ivec) % sizeof(size_t) != 0) {
+  if (((size_t)in | (size_t)out | (size_t)ecount_buf) % sizeof(size_t) != 0) {
     size_t l = 0;
     while (l < len) {
       if (n == 0) {
@@ -124,7 +120,7 @@ void CRYPTO_ctr128_encrypt(const uint8_t *in, uint8_t *out, size_t len,
   while (len >= 16) {
     (*block)(ivec, ecount_buf, key);
     ctr128_inc(ivec);
-    for (; n < 16; n += sizeof(size_t)) {
+    for (n = 0; n < 16; n += sizeof(size_t)) {
       *(size_t *)(out + n) = *(const size_t *)(in + n) ^
                              *(const size_t *)(ecount_buf + n);
     }
@@ -146,17 +142,14 @@ void CRYPTO_ctr128_encrypt(const uint8_t *in, uint8_t *out, size_t len,
 
 /* increment upper 96 bits of 128-bit counter by 1 */
 static void ctr96_inc(uint8_t *counter) {
-  uint32_t n = 12;
+  uint32_t n = 12, c = 1;
   uint8_t c;
 
   do {
     --n;
-    c = counter[n];
-    ++c;
-    counter[n] = c;
-    if (c) {
-      return;
-    }
+    c += counter[n];
+    counter[n] = (uint8_t) c;
+    c >>= 8;
   } while (n);
 }
 
