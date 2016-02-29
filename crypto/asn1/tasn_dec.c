@@ -712,7 +712,7 @@ static int asn1_d2i_ex_primitive(ASN1_VALUE **pval,
     long plen;
     char cst, inf, free_cont = 0;
     const unsigned char *p;
-    BUF_MEM buf;
+    BUF_MEM buf = {0, NULL, 0 };
     const unsigned char *cont = NULL;
     long len;
     if (!pval) {
@@ -786,7 +786,6 @@ static int asn1_d2i_ex_primitive(ASN1_VALUE **pval,
         } else {
             len = p - cont + plen;
             p += plen;
-            buf.data = NULL;
         }
     } else if (cst) {
         if (utype == V_ASN1_NULL || utype == V_ASN1_BOOLEAN
@@ -797,9 +796,8 @@ static int asn1_d2i_ex_primitive(ASN1_VALUE **pval,
             return 0;
         }
 
-        buf.length = 0;
-        buf.max = 0;
-        buf.data = NULL;
+        /* Free any returned 'buf' content */
+        free_cont = 1;
         /*
          * Should really check the internal tags are correct but some things
          * may get this wrong. The relevant specs say that constructed string
@@ -807,18 +805,16 @@ static int asn1_d2i_ex_primitive(ASN1_VALUE **pval,
          * So instead just check for UNIVERSAL class and ignore the tag.
          */
         if (!asn1_collect(&buf, &p, plen, inf, -1, V_ASN1_UNIVERSAL, 0)) {
-            free_cont = 1;
             goto err;
         }
         len = buf.length;
         /* Append a final null to string */
         if (!BUF_MEM_grow_clean(&buf, len + 1)) {
             OPENSSL_PUT_ERROR(ASN1, ERR_R_MALLOC_FAILURE);
-            return 0;
+            goto err;
         }
         buf.data[len] = 0;
         cont = (const unsigned char *)buf.data;
-        free_cont = 1;
     } else {
         cont = p;
         len = plen;
@@ -826,6 +822,7 @@ static int asn1_d2i_ex_primitive(ASN1_VALUE **pval,
     }
 
     /* We now have content length and type: translate into a structure */
+    /* asn1_ex_c2i may reuse allocated buffer, and so sets free_cont to 0 */
     if (!asn1_ex_c2i(pval, cont, len, utype, &free_cont, it))
         goto err;
 
