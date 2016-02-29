@@ -25,9 +25,11 @@
   (((uint32_t)((p)[0])) | ((uint32_t)((p)[1]) << 8) | \
    ((uint32_t)((p)[2]) << 16) | ((uint32_t)((p)[3]) << 24))
 
+/* TODO(davidben): Re-enable the ChaCha20 assembly for OPENSSL_X86 once they
+ * pass the in-place tests. */
 #if !defined(OPENSSL_NO_ASM) &&                         \
-    (defined(OPENSSL_X86) || defined(OPENSSL_X86_64) || \
-     defined(OPENSSL_ARM) || defined(OPENSSL_AARCH64))
+    (defined(OPENSSL_X86_64) || defined(OPENSSL_ARM) || \
+     defined(OPENSSL_AARCH64))
 
 /* ChaCha20_ctr32 is defined in asm/chacha-*.pl. */
 void ChaCha20_ctr32(uint8_t *out, const uint8_t *in, size_t in_len,
