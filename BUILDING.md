@@ -24,17 +24,3 @@ you are cross-compiling an x86 build on a 64-bit version of Linux, then you
 need to have the proper gcc-multilibs and g++-multilibs packages or equivalent
 installed.
 
-
-
-Prerequisites for Regenerating `crypto/chacha/chacha_vec_arm.S`
-===============================================================
-
-If you change `crypto/chacha/chacha_vec.c`, you will need the
-arm-linux-gnueabihf-gcc compiler:
-
-```
-wget https://releases.linaro.org/14.11/components/toolchain/binaries/arm-linux-gnueabihf/gcc-linaro-4.9-2014.11-x86_64_arm-linux-gnueabihf.tar.xz && \
-echo bc4ca2ced084d2dc12424815a4442e19cb1422db87068830305d90075feb1a3b  gcc-linaro-4.9-2014.11-x86_64_arm-linux-gnueabihf.tar.xz | sha256sum -c && \
-tar xf gcc-linaro-4.9-2014.11-x86_64_arm-linux-gnueabihf.tar.xz && \
-sudo mv gcc-linaro-4.9-2014.11-x86_64_arm-linux-gnueabihf /opt/
-```

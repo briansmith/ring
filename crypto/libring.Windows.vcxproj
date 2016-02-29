@@ -35,8 +35,7 @@
     <ClCompile Include="bn\shift.c" />
     <ClCompile Include="bytestring\cbb.c" />
     <ClCompile Include="bytestring\cbs.c" />
-    <ClCompile Include="chacha\chacha_generic.c" />
-    <ClCompile Include="chacha\chacha_vec.c" />
+    <ClCompile Include="chacha\chacha.c" />
     <ClCompile Include="cipher\e_aes.c" />
     <ClCompile Include="cpu-arm.c" />
     <ClCompile Include="cpu-intel.c" />
