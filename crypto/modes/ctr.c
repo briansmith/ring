@@ -143,7 +143,6 @@ void CRYPTO_ctr128_encrypt(const uint8_t *in, uint8_t *out, size_t len,
 /* increment upper 96 bits of 128-bit counter by 1 */
 static void ctr96_inc(uint8_t *counter) {
   uint32_t n = 12, c = 1;
-  uint8_t c;
 
   do {
     --n;
