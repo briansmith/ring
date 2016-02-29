@@ -646,6 +646,12 @@ int SSL_shutdown(SSL *ssl) {
     return -1;
   }
 
+  /* We can't shutdown properly if we are in the middle of a handshake. */
+  if (SSL_in_init(ssl)) {
+    OPENSSL_PUT_ERROR(SSL, SSL_R_SHUTDOWN_WHILE_IN_INIT);
+    return -1;
+  }
+
   /* Do nothing if configured not to send a close_notify. */
   if (ssl->quiet_shutdown) {
     ssl->shutdown = SSL_SENT_SHUTDOWN | SSL_RECEIVED_SHUTDOWN;
@@ -671,11 +677,6 @@ int SSL_shutdown(SSL *ssl) {
       return ret;
     }
   } else if (!(ssl->shutdown & SSL_RECEIVED_SHUTDOWN)) {
-    if (SSL_in_init(ssl)) {
-      /* We can't shutdown properly if we are in the middle of a handshake. */
-      OPENSSL_PUT_ERROR(SSL, SSL_R_SHUTDOWN_WHILE_IN_INIT);
-      return -1;
-    }
     /* If we are waiting for a close from our peer, we are closed */
     ssl->method->ssl_read_close_notify(ssl);
     if (!(ssl->shutdown & SSL_RECEIVED_SHUTDOWN)) {
