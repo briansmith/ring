@@ -124,9 +124,6 @@ RING_arm_SRCS = $(addprefix $(RING_PREFIX), \
   $(RING_ARM_SHARED_SRCS) \
   $(NULL))
 
-# TODO
-RING_CPPFLAGS += -D__ARM_MAX_ARCH__=7
-
 RING_arm_SRCS += $(addprefix $(RING_PREFIX), \
   crypto/chacha/asm/chacha-armv4.pl \
   crypto/poly1305/poly1305_arm_asm.S \
