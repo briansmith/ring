@@ -85,6 +85,9 @@ extern "C" {
 #define V_ASN1_ANY			-4	/* used in ASN1 template code */
 
 #define V_ASN1_NEG			0x100	/* negative flag */
+/* No supported universal tags may exceed this value, to avoid ambiguity with
+ * V_ASN1_NEG. */
+#define V_ASN1_MAX_UNIVERSAL		0xff
 
 #define V_ASN1_UNDEF			-1
 #define V_ASN1_EOC			0

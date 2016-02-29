@@ -21,6 +21,7 @@
 #include <memory>
 
 #include <openssl/aead.h>
+#include <openssl/asn1.h>
 #include <openssl/bio.h>
 #include <openssl/bn.h>
 #include <openssl/cmac.h>
@@ -95,6 +96,7 @@ class ScopedOpenSSLContext {
   T ctx_;
 };
 
+using ScopedASN1_TYPE = ScopedOpenSSLType<ASN1_TYPE, ASN1_TYPE_free>;
 using ScopedBIO = ScopedOpenSSLType<BIO, BIO_vfree>;
 using ScopedBIGNUM = ScopedOpenSSLType<BIGNUM, BN_free>;
 using ScopedBN_CTX = ScopedOpenSSLType<BN_CTX, BN_CTX_free>;

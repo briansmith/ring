@@ -160,6 +160,11 @@ int ASN1_get_object(const unsigned char **pp, long *plength, int *ptag,
         if (--max == 0)
             goto err;
     }
+
+    /* To avoid ambiguity with V_ASN1_NEG, impose a limit on universal tags. */
+    if (xclass == V_ASN1_UNIVERSAL && tag > V_ASN1_MAX_UNIVERSAL)
+        goto err;
+
     *ptag = tag;
     *pclass = xclass;
     if (!asn1_get_length(&p, &inf, plength, (int)max))
