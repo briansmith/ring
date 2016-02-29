@@ -33,6 +33,7 @@ import (
 
 var (
 	useValgrind     = flag.Bool("valgrind", false, "If true, run code under valgrind")
+	useCallgrind    = flag.Bool("callgrind", false, "If true, run code under valgrind to generate callgrind traces.")
 	useGDB          = flag.Bool("gdb", false, "If true, run BoringSSL code under gdb")
 	buildDir        = flag.String("build-dir", "build", "The build directory to run the tests from.")
 	numWorkers      = flag.Int("num-workers", 1, "Runs the given number of workers when testing.")
@@ -113,6 +114,14 @@ func valgrindOf(dbAttach bool, path string, args ...string) *exec.Cmd {
 	return exec.Command("valgrind", valgrindArgs...)
 }
 
+func callgrindOf(path string, args ...string) *exec.Cmd {
+	valgrindArgs := []string{"-q", "--tool=callgrind", "--dump-instr=yes", "--collect-jumps=yes", "--callgrind-out-file=" + *buildDir + "/callgrind/callgrind.out.%p"}
+	valgrindArgs = append(valgrindArgs, path)
+	valgrindArgs = append(valgrindArgs, args...)
+
+	return exec.Command("valgrind", valgrindArgs...)
+}
+
 func gdbOf(path string, args ...string) *exec.Cmd {
 	xtermArgs := []string{"-e", "gdb", "--args"}
 	xtermArgs = append(xtermArgs, path)
@@ -135,6 +144,8 @@ func runTestOnce(test test, mallocNumToFail int64) (passed bool, err error) {
 	var cmd *exec.Cmd
 	if *useValgrind {
 		cmd = valgrindOf(false, prog, args...)
+	} else if *useCallgrind {
+		cmd = callgrindOf(prog, args...)
 	} else if *useGDB {
 		cmd = gdbOf(prog, args...)
 	} else {
