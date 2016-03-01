@@ -124,6 +124,8 @@ CPPFLAGS += -g3
 LDFLAGS += -Wl,--gc-sections
 endif
 
+ASFLAGS += -Wa,--noexecstack
+
 # TODO: link-time optimization.
 
 # Warnings
