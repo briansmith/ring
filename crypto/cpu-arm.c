@@ -50,19 +50,6 @@ void CRYPTO_set_NEON_capable(char neon_capable) {
   }
 }
 
-char CRYPTO_is_NEON_functional(void) {
-  static const uint32_t kWantFlags = ARMV7_NEON | ARMV7_NEON_FUNCTIONAL;
-  return (OPENSSL_armcap_P & kWantFlags) == kWantFlags;
-}
-
-void CRYPTO_set_NEON_functional(char neon_functional) {
-  if (neon_functional) {
-    OPENSSL_armcap_P |= ARMV7_NEON_FUNCTIONAL;
-  } else {
-    OPENSSL_armcap_P &= ~ARMV7_NEON_FUNCTIONAL;
-  }
-}
-
 int CRYPTO_is_ARMv8_AES_capable(void) {
   return (OPENSSL_armcap_P & ARMV8_AES) != 0;
 }
