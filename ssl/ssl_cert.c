@@ -188,6 +188,11 @@ CERT *ssl_cert_dup(CERT *cert) {
   ret->cert_cb = cert->cert_cb;
   ret->cert_cb_arg = cert->cert_cb_arg;
 
+  if (cert->verify_store != NULL) {
+    X509_STORE_up_ref(cert->verify_store);
+    ret->verify_store = cert->verify_store;
+  }
+
   return ret;
 
 err:
@@ -220,6 +225,7 @@ void ssl_cert_free(CERT *c) {
   ssl_cert_clear_certs(c);
   OPENSSL_free(c->peer_sigalgs);
   OPENSSL_free(c->digest_nids);
+  X509_STORE_free(c->verify_store);
 
   OPENSSL_free(c);
 }
@@ -279,10 +285,15 @@ int ssl_verify_cert_chain(SSL *ssl, STACK_OF(X509) *cert_chain) {
     return 0;
   }
 
+  X509_STORE *verify_store = ssl->ctx->cert_store;
+  if (ssl->cert->verify_store != NULL) {
+    verify_store = ssl->cert->verify_store;
+  }
+
   X509 *leaf = sk_X509_value(cert_chain, 0);
   int ret = 0;
   X509_STORE_CTX ctx;
-  if (!X509_STORE_CTX_init(&ctx, ssl->ctx->cert_store, leaf, cert_chain)) {
+  if (!X509_STORE_CTX_init(&ctx, verify_store, leaf, cert_chain)) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_X509_LIB);
     return 0;
   }
@@ -473,6 +484,33 @@ int ssl_add_cert_chain(SSL *ssl, unsigned long *l) {
   }
 
   return 1;
+}
+
+static int set_cert_store(X509_STORE **store_ptr, X509_STORE *new_store, int take_ref) {
+  X509_STORE_free(*store_ptr);
+  *store_ptr = new_store;
+
+  if (new_store != NULL && take_ref) {
+    X509_STORE_up_ref(new_store);
+  }
+
+  return 1;
+}
+
+int SSL_CTX_set0_verify_cert_store(SSL_CTX *ctx, X509_STORE *store) {
+  return set_cert_store(&ctx->cert->verify_store, store, 0);
+}
+
+int SSL_CTX_set1_verify_cert_store(SSL_CTX *ctx, X509_STORE *store) {
+  return set_cert_store(&ctx->cert->verify_store, store, 1);
+}
+
+int SSL_set0_verify_cert_store(SSL *ssl, X509_STORE *store) {
+  return set_cert_store(&ssl->cert->verify_store, store, 0);
+}
+
+int SSL_set1_verify_cert_store(SSL *ssl, X509_STORE *store) {
+  return set_cert_store(&ssl->cert->verify_store, store, 1);
 }
 
 int SSL_CTX_set0_chain(SSL_CTX *ctx, STACK_OF(X509) *chain) {

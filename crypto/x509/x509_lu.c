@@ -217,6 +217,11 @@ X509_STORE *X509_STORE_new(void)
     return NULL;
 }
 
+void X509_STORE_up_ref(X509_STORE *store)
+{
+    CRYPTO_refcount_inc(&store->references);
+}
+
 static void cleanup(X509_OBJECT *a)
 {
     if (a == NULL) {

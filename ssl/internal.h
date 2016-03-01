@@ -803,6 +803,10 @@ typedef struct cert_st {
    * supported signature algorithms or curves. */
   int (*cert_cb)(SSL *ssl, void *arg);
   void *cert_cb_arg;
+
+  /* Optional X509_STORE for certificate validation. If NULL the parent SSL_CTX
+   * store is used instead. */
+  X509_STORE *verify_store;
 } CERT;
 
 /* SSL_METHOD is a compatibility structure to support the legacy version-locked

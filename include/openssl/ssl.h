@@ -2065,6 +2065,28 @@ OPENSSL_EXPORT int SSL_enable_ocsp_stapling(SSL *ssl);
  * handshake. */
 OPENSSL_EXPORT void SSL_CTX_enable_ocsp_stapling(SSL_CTX *ctx);
 
+/* SSL_CTX_set0_verify_cert_store sets an |X509_STORE| that will be used
+ * exclusively for certificate verification and returns one. Ownership of
+ * |store| is transferred to the |SSL_CTX|. */
+OPENSSL_EXPORT int SSL_CTX_set0_verify_cert_store(SSL_CTX *ctx,
+                                                  X509_STORE *store);
+
+/* SSL_CTX_set1_verify_cert_store sets an |X509_STORE| that will be used
+ * exclusively for certificate verification and returns one. An additional
+ * reference to |store| will be taken. */
+OPENSSL_EXPORT int SSL_CTX_set1_verify_cert_store(SSL_CTX *ctx,
+                                                  X509_STORE *store);
+
+/* SSL_set0_verify_cert_store sets an |X509_STORE| that will be used
+ * exclusively for certificate verification and returns one. Ownership of
+ * |store| is transferred to the |SSL|. */
+OPENSSL_EXPORT int SSL_set0_verify_cert_store(SSL *ssl, X509_STORE *store);
+
+/* SSL_set1_verify_cert_store sets an |X509_STORE| that will be used
+ * exclusively for certificate verification and returns one. An additional
+ * reference to |store| will be taken. */
+OPENSSL_EXPORT int SSL_set1_verify_cert_store(SSL *ssl, X509_STORE *store);
+
 
 /* Client certificate CA list.
  *
