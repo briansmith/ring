@@ -39,7 +39,6 @@ OS_ARCH_COMBOS = [
 # perlasm system.
 NON_PERL_FILES = {
     ('linux', 'arm'): [
-        'src/crypto/cpu-arm-asm.S',
         'src/crypto/curve25519/asm/x25519-asm-arm.S',
     ],
     ('linux', 'x86_64'): [

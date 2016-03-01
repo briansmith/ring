@@ -117,14 +117,6 @@ static inline int CRYPTO_is_NEON_capable(void) {
 #endif
 }
 
-/* CRYPTO_set_NEON_capable sets the return value of |CRYPTO_is_NEON_capable|.
- * If this function is called before |CRYPTO_library_init| in
- * |BORINGSSL_NO_STATIC_INITIALIZER| builds, the logic to probe for NEON support
- * will not run.
- *
- * TODO(davidben): Remove this function. https://crbug.com/589200. */
-OPENSSL_EXPORT void CRYPTO_set_NEON_capable(char neon_capable);
-
 /* CRYPTO_is_ARMv8_AES_capable returns true if the current CPU supports the
  * ARMv8 AES instruction. */
 int CRYPTO_is_ARMv8_AES_capable(void);
