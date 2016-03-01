@@ -172,7 +172,7 @@ OPENSSL_EXPORT void CRYPTO_gcm128_tag(GCM128_CONTEXT *ctx, uint8_t *tag,
 #if !defined(OPENSSL_NO_ASM) && \
     (defined(OPENSSL_X86) || defined(OPENSSL_X86_64))
 void aesni_ctr32_encrypt_blocks(const uint8_t *in, uint8_t *out, size_t blocks,
-                                const void *key, const uint8_t *ivec);
+                                const AES_KEY *key, const uint8_t *ivec);
 #endif
 
 #if defined(__cplusplus)

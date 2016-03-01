@@ -300,7 +300,7 @@ void gcm_gmult_avx(uint64_t Xi[2], const u128 Htable[16]);
 void gcm_ghash_avx(uint64_t Xi[2], const u128 Htable[16], const uint8_t *in,
                    size_t len);
 #define AESNI_GCM
-static int aesni_gcm_enabled(GCM128_CONTEXT *ctx, ctr128_f stream) {
+static int aesni_gcm_enabled(GCM128_CONTEXT *ctx, aes_ctr_f stream) {
   return stream == aesni_ctr32_encrypt_blocks &&
          ctx->ghash == gcm_ghash_avx;
 }
