@@ -397,16 +397,78 @@ static bool TestArbitraryCurve() {
   return true;
 }
 
+bool TestAddingEqualPoints(int nid) {
+  ScopedEC_KEY key(EC_KEY_new_by_curve_name(nid));
+  if (!key) {
+    return false;
+  }
+
+  const EC_GROUP *const group = EC_KEY_get0_group(key.get());
+
+  if (!EC_KEY_generate_key(key.get())) {
+    fprintf(stderr, "EC_KEY_generate_key failed with nid %d\n", nid);
+    ERR_print_errors_fp(stderr);
+    return false;
+  }
+
+  ScopedEC_POINT p1(EC_POINT_new(group));
+  ScopedEC_POINT p2(EC_POINT_new(group));
+  ScopedEC_POINT double_p1(EC_POINT_new(group));
+  ScopedEC_POINT p1_plus_p2(EC_POINT_new(group));
+  if (!p1 || !p2 || !double_p1 || !p1_plus_p2) {
+    return false;
+  }
+
+  if (!EC_POINT_copy(p1.get(), EC_KEY_get0_public_key(key.get())) ||
+      !EC_POINT_copy(p2.get(), EC_KEY_get0_public_key(key.get()))) {
+    fprintf(stderr, "EC_POINT_COPY failed with nid %d\n", nid);
+    ERR_print_errors_fp(stderr);
+    return false;
+  }
+
+  ScopedBN_CTX ctx(BN_CTX_new());
+  if (!ctx) {
+    return false;
+  }
+
+  if (!EC_POINT_dbl(group, double_p1.get(), p1.get(), ctx.get()) ||
+      !EC_POINT_add(group, p1_plus_p2.get(), p1.get(), p2.get(), ctx.get())) {
+    fprintf(stderr, "Point operation failed with nid %d\n", nid);
+    ERR_print_errors_fp(stderr);
+    return false;
+  }
+
+  if (EC_POINT_cmp(group, double_p1.get(), p1_plus_p2.get(), ctx.get()) != 0) {
+    fprintf(stderr, "A+A != 2A for nid %d", nid);
+    return false;
+  }
+
+  return true;
+}
+
+static bool ForEachCurve(bool (*test_func)(int nid)) {
+  const size_t num_curves = EC_get_builtin_curves(nullptr, 0);
+  std::vector<EC_builtin_curve> curves(num_curves);
+  EC_get_builtin_curves(curves.data(), num_curves);
+
+  for (const auto& curve : curves) {
+    if (!test_func(curve.nid)) {
+      fprintf(stderr, "Test failed for %s\n", curve.comment);
+      return false;
+    }
+  }
+
+  return true;
+}
+
 int main(void) {
   CRYPTO_library_init();
 
   if (!Testd2i_ECPrivateKey() ||
       !TestZeroPadding() ||
       !TestSpecifiedCurve() ||
-      !TestSetAffine(NID_secp224r1) ||
-      !TestSetAffine(NID_X9_62_prime256v1) ||
-      !TestSetAffine(NID_secp384r1) ||
-      !TestSetAffine(NID_secp521r1) ||
+      !ForEachCurve(TestSetAffine) ||
+      !ForEachCurve(TestAddingEqualPoints) ||
       !TestArbitraryCurve()) {
     fprintf(stderr, "failed\n");
     return 1;
