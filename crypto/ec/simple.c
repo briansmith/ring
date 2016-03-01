@@ -632,7 +632,7 @@ int ec_GFp_simple_is_on_curve(const EC_GROUP *group, const EC_POINT *point,
   const BIGNUM *p;
   BN_CTX *new_ctx = NULL;
   BIGNUM *rh, *tmp, *Z4, *Z6;
-  int ret = -1;
+  int ret = 0;
 
   if (EC_POINT_is_at_infinity(group, point)) {
     return 1;
@@ -645,7 +645,7 @@ int ec_GFp_simple_is_on_curve(const EC_GROUP *group, const EC_POINT *point,
   if (ctx == NULL) {
     ctx = new_ctx = BN_CTX_new();
     if (ctx == NULL) {
-      return -1;
+      return 0;
     }
   }
 
