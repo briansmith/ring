@@ -86,6 +86,7 @@
 
 #include "../test/bn_test_lib.h"
 #include "../crypto/test/scoped_types.h"
+#include "../test/bn_test_util.h"
 
 
 // This program tests the BIGNUM implementation. It takes an optional -bc

@@ -249,32 +249,6 @@ OPENSSL_EXPORT int BN_bn2bin_padded(uint8_t *out, size_t len, const BIGNUM *in);
 /* BN_bn2cbb_padded behaves like |BN_bn2bin_padded| but writes to a |CBB|. */
 OPENSSL_EXPORT int BN_bn2cbb_padded(CBB *out, size_t len, const BIGNUM *in);
 
-/* BN_hex2bn parses the leading hex number from |in|, which may be proceeded by
- * a '-' to indicate a negative number and may contain trailing, non-hex data.
- * If |outp| is not NULL, it constructs a BIGNUM equal to the hex number and
- * stores it in |*outp|. If |*outp| is NULL then it allocates a new BIGNUM and
- * updates |*outp|. It returns the number of bytes of |in| processed or zero on
- * error. */
-OPENSSL_EXPORT int BN_hex2bn(BIGNUM **outp, const char *in);
-
-/* BN_dec2bn parses the leading decimal number from |in|, which may be
- * proceeded by a '-' to indicate a negative number and may contain trailing,
- * non-decimal data. If |outp| is not NULL, it constructs a BIGNUM equal to the
- * decimal number and stores it in |*outp|. If |*outp| is NULL then it
- * allocates a new BIGNUM and updates |*outp|. It returns the number of bytes
- * of |in| processed or zero on error. */
-OPENSSL_EXPORT int BN_dec2bn(BIGNUM **outp, const char *in);
-
-/* BN_asc2bn acts like |BN_dec2bn| or |BN_hex2bn| depending on whether |in|
- * begins with "0X" or "0x" (indicating hex) or not (indicating decimal). A
- * leading '-' is still permitted and comes before the optional 0X/0x. It
- * returns one on success or zero on error. */
-OPENSSL_EXPORT int BN_asc2bn(BIGNUM **outp, const char *in);
-
-/* BN_print_fp writes a hex encoding of |a| to |fp|. It returns one on success
- * and zero on error. */
-OPENSSL_EXPORT int BN_print_fp(FILE *fp, const BIGNUM *a);
-
 /* BN_get_word returns the absolute value of |bn| as a single word. If |bn| is
  * too large to be represented as a single word, the maximum possible value
  * will be returned. */

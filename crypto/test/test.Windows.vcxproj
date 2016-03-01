@@ -17,6 +17,7 @@
     <WarningsToDisable>$(WarningsToDisable);4710</WarningsToDisable>
   </PropertyGroup>
   <ItemGroup>
+    <ClCompile Include="bn_test_convert.c" />
     <ClCompile Include="bn_test_lib.c" />
     <ClCompile Include="file_test.cc" />
     <ClCompile Include="malloc.cc" />

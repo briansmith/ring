@@ -64,6 +64,7 @@
 #include <openssl/err.h>
 #include <openssl/obj_mac.h>
 
+#include "../test/bn_test_util.h"
 #include "../test/scoped_types.h"
 
 
