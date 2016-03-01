@@ -490,7 +490,7 @@ static bool SpeedSPAKE2(const std::string &selected) {
     return false;
   }
 
-  if (!TimeFunction(&results, [alice_msg, alice_msg_len]() -> bool {
+  if (!TimeFunction(&results, [&alice_msg, alice_msg_len]() -> bool {
         ScopedSPAKE2_CTX bob(SPAKE2_CTX_new(spake2_role_bob, kBobName,
                                             sizeof(kBobName), kAliceName,
                                             sizeof(kAliceName)));
