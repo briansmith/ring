@@ -365,10 +365,15 @@ int EC_KEY_set_public_key_affine_coordinates(EC_KEY *key, BIGNUM *x,
     return 0;
   }
   ctx = BN_CTX_new();
+
+  if (ctx == NULL) {
+    return 0;
+  }
+
+  BN_CTX_start(ctx);
   point = EC_POINT_new(key->group);
 
-  if (ctx == NULL ||
-      point == NULL) {
+  if (point == NULL) {
     goto err;
   }
 
@@ -402,6 +407,7 @@ int EC_KEY_set_public_key_affine_coordinates(EC_KEY *key, BIGNUM *x,
   ok = 1;
 
 err:
+  BN_CTX_end(ctx);
   BN_CTX_free(ctx);
   EC_POINT_free(point);
   return ok;
