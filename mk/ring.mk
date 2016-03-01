@@ -171,7 +171,7 @@ $(RING_LIB): $(RING_OBJS) $(RING_PREFIX)mk/ring.mk
 	$(AR) $(ARFLAGS) $@ $(filter-out $(RING_PREFIX)mk/ring.mk, $^)
 
 RING_TEST_LIB_SRCS = \
-  crypto/bn/bn_test_lib.c \
+  crypto/test/bn_test_lib.c \
   crypto/test/file_test.cc \
   crypto/test/malloc.cc \
   crypto/test/test_util.cc \

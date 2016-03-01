@@ -110,7 +110,7 @@
 #include <openssl/err.h>
 
 #include "bn_test_lib.h"
-#include "internal.h"
+#include "../bn/internal.h"
 
 
 int BN_exp(BIGNUM *r, const BIGNUM *a, const BIGNUM *p, BN_CTX *ctx) {

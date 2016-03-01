@@ -12,7 +12,6 @@
   </PropertyGroup>
   <ItemGroup>
     <ClCompile Include="bn_test.cc" />
-    <ClCompile Include="bn_test_lib.c" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\libring.Windows.vcxproj">
