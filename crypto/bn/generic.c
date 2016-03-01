@@ -202,13 +202,7 @@ void bn_sqr_words(BN_ULONG *r, const BN_ULONG *a, int n) {
   }
 }
 
-#if defined(BN_ULLONG)
-
-BN_ULONG bn_div_words(BN_ULONG h, BN_ULONG l, BN_ULONG d) {
-  return (BN_ULONG)(((((BN_ULLONG)h) << BN_BITS2) | l) / (BN_ULLONG)d);
-}
-
-#else
+#if !defined(BN_ULLONG)
 
 /* Divide h,l by d and return the result. */
 BN_ULONG bn_div_words(BN_ULONG h, BN_ULONG l, BN_ULONG d) {
