@@ -205,7 +205,7 @@ int ECDSA_verify_signed_digest(const EC_GROUP *group, int hash_nid,
 
   EC_POINT *pub_key = EC_POINT_new(group);
   if (!pub_key ||
-      !EC_POINT_oct2point(group, pub_key, ec_key, ec_key_len, NULL)) {
+      !EC_POINT_oct2point(group, pub_key, ec_key, ec_key_len, ctx)) {
     goto err;
   }
 
