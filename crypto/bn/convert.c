@@ -195,14 +195,3 @@ int BN_bn2cbb_padded(CBB *out, size_t len, const BIGNUM *in) {
   uint8_t *ptr;
   return CBB_add_space(out, &ptr, len) && BN_bn2bin_padded(ptr, len, in);
 }
-
-BN_ULONG BN_get_word(const BIGNUM *bn) {
-  switch (bn->top) {
-    case 0:
-      return 0;
-    case 1:
-      return bn->d[0];
-    default:
-      return BN_MASK2;
-  }
-}

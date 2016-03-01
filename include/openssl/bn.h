@@ -249,11 +249,6 @@ OPENSSL_EXPORT int BN_bn2bin_padded(uint8_t *out, size_t len, const BIGNUM *in);
 /* BN_bn2cbb_padded behaves like |BN_bn2bin_padded| but writes to a |CBB|. */
 OPENSSL_EXPORT int BN_bn2cbb_padded(CBB *out, size_t len, const BIGNUM *in);
 
-/* BN_get_word returns the absolute value of |bn| as a single word. If |bn| is
- * too large to be represented as a single word, the maximum possible value
- * will be returned. */
-OPENSSL_EXPORT BN_ULONG BN_get_word(const BIGNUM *bn);
-
 
 /* ASN.1 functions. */
 
