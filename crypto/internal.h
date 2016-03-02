@@ -208,6 +208,41 @@ OPENSSL_COMPILE_ASSERT(alignof(uint64_alt) == alignof(uint64_t),
                        wrong_alignment_of_uint64_alt);
 
 
+/* Native-sized integer types.
+ *
+ * ISO C doesn't define types for the native word size. On some 64-bit
+ * platforms, e.g. x32, the native word size is 64 bits but |size_t|,
+ * |unsigned int|, and even types like |uint32_fast_t| etc. all may only be
+ * 32 bits.
+ *
+ * TODO: When such platforms are supported, the use of |OPENSSL_32_BIT| and
+ * |OPENSSL_64_BIT| throughout the project, including the uses here, will need
+ * to be reviewed and fixed. */
+#if defined(OPENSSL_32_BIT)
+#define NATIVE_WORD_SIZE 4
+typedef int32_t native_int;
+typedef int32_t native_int_alt;
+typedef uint32_t native_uint;
+typedef uint32_t native_uint_alt;
+#endif
+#if defined(OPENSSL_64_BIT)
+#define NATIVE_WORD_SIZE 8
+typedef int64_t native_int;
+typedef int64_alt native_int_alt;
+typedef uint64_t native_uint;
+typedef uint64_alt native_uint_alt;
+#endif
+
+OPENSSL_COMPILE_ASSERT(sizeof(native_int) >= sizeof(size_t),
+                       wrong_size_of_native_int);
+OPENSSL_COMPILE_ASSERT(sizeof(native_int_alt) >= sizeof(size_t),
+                       wrong_size_of_native_int_alt);
+OPENSSL_COMPILE_ASSERT(sizeof(native_uint) >= sizeof(size_t),
+                       wrong_size_of_native_int);
+OPENSSL_COMPILE_ASSERT(sizeof(native_uint_alt) >= sizeof(size_t),
+                       wrong_size_of_native_int_alt);
+
+
 #if !defined(_MSC_VER) && defined(OPENSSL_64_BIT)
 typedef __int128_t int128_t;
 typedef __uint128_t uint128_t;
