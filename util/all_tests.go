@@ -24,6 +24,7 @@ import (
 	"path"
 	"strconv"
 	"strings"
+	"sync"
 	"syscall"
 	"time"
 )
@@ -34,12 +35,19 @@ var (
 	useValgrind     = flag.Bool("valgrind", false, "If true, run code under valgrind")
 	useGDB          = flag.Bool("gdb", false, "If true, run BoringSSL code under gdb")
 	buildDir        = flag.String("build-dir", "build", "The build directory to run the tests from.")
+	numWorkers      = flag.Int("num-workers", 1, "Runs the given number of workers when testing.")
 	jsonOutput      = flag.String("json-output", "", "The file to output JSON results to.")
 	mallocTest      = flag.Int64("malloc-test", -1, "If non-negative, run each test with each malloc in turn failing from the given number onwards.")
 	mallocTestDebug = flag.Bool("malloc-test-debug", false, "If true, ask each test to abort rather than fail a malloc. This can be used with a specific value for --malloc-test to identity the malloc failing that is causing problems.")
 )
 
 type test []string
+
+type result struct {
+	Test   test
+	Passed bool
+	Error  error
+}
 
 // testOutput is a representation of Chromium's JSON test result format. See
 // https://www.chromium.org/developers/the-json-test-results-format
@@ -225,28 +233,54 @@ func parseTestConfig(filename string) ([]test, error) {
 	return result, nil
 }
 
+func worker(tests <-chan test, results chan<- result, done *sync.WaitGroup) {
+	defer done.Done()
+	for test := range tests {
+		passed, err := runTest(test)
+		results <- result{test, passed, err}
+	}
+}
+
 func main() {
 	flag.Parse()
 	setWorkingDirectory()
 
-	tests, err := parseTestConfig("util/all_tests.json")
+	testCases, err := parseTestConfig("util/all_tests.json")
 	if err != nil {
 		fmt.Printf("Failed to parse input: %s\n", err)
 		os.Exit(1)
 	}
 
+	var wg sync.WaitGroup
+	tests := make(chan test, *numWorkers)
+	results := make(chan result, len(testCases))
+
+	for i := 0; i < *numWorkers; i++ {
+		go worker(tests, results, &wg)
+	}
+
+	for _, test := range testCases {
+		tests <- test
+	}
+	close(tests)
+
+	go func() {
+		wg.Wait()
+		close(results)
+	}()
+
 	testOutput := newTestOutput()
 	var failed []test
-	for _, test := range tests {
-		fmt.Printf("%s\n", strings.Join([]string(test), " "))
+	for testResult := range results {
+		test := testResult.Test
 
+		fmt.Printf("%s\n", strings.Join([]string(test), " "))
 		name := shortTestName(test)
-		passed, err := runTest(test)
-		if err != nil {
-			fmt.Printf("%s failed to complete: %s\n", test[0], err)
+		if testResult.Error != nil {
+			fmt.Printf("%s failed to complete: %s\n", test[0], testResult.Error)
 			failed = append(failed, test)
 			testOutput.addResult(name, "CRASHED")
-		} else if !passed {
+		} else if !testResult.Passed {
 			fmt.Printf("%s failed to print PASS on the last line.\n", test[0])
 			failed = append(failed, test)
 			testOutput.addResult(name, "FAIL")
