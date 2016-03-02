@@ -1764,6 +1764,7 @@ int ssl3_send_client_key_exchange(SSL *ssl) {
   return ssl_do_write(ssl);
 
 err:
+  CBB_cleanup(&cbb);
   if (pms != NULL) {
     OPENSSL_cleanse(pms, pms_len);
     OPENSSL_free(pms);

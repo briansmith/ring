@@ -424,6 +424,10 @@ type ProtocolBugs struct {
 	// to be wrong.
 	InvalidSKXCurve bool
 
+	// InvalidECDHPoint, if true, causes the ECC points in
+	// ServerKeyExchange or ClientKeyExchange messages to be invalid.
+	InvalidECDHPoint bool
+
 	// BadECDSAR controls ways in which the 'r' value of an ECDSA signature
 	// can be invalid.
 	BadECDSAR BadValue

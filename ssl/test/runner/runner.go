@@ -2106,6 +2106,31 @@ func addBasicTests() {
 			resumeConfig:  &Config{},
 			resumeSession: true,
 		},
+		{
+			name: "InvalidECDHPoint-Client",
+			config: Config{
+				CipherSuites:     []uint16{TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256},
+				CurvePreferences: []CurveID{CurveP256},
+				Bugs: ProtocolBugs{
+					InvalidECDHPoint: true,
+				},
+			},
+			shouldFail:    true,
+			expectedError: ":INVALID_ENCODING:",
+		},
+		{
+			testType: serverTest,
+			name:     "InvalidECDHPoint-Server",
+			config: Config{
+				CipherSuites:     []uint16{TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256},
+				CurvePreferences: []CurveID{CurveP256},
+				Bugs: ProtocolBugs{
+					InvalidECDHPoint: true,
+				},
+			},
+			shouldFail:    true,
+			expectedError: ":INVALID_ENCODING:",
+		},
 	}
 	testCases = append(testCases, basicTests...)
 }
