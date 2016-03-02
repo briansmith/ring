@@ -37,6 +37,7 @@ var (
 	numWorkers      = flag.Int("num-workers", runtime.NumCPU(), "The number of workers to run in parallel.")
 	shimPath        = flag.String("shim-path", "../../../build/ssl/test/bssl_shim", "The location of the shim binary.")
 	resourceDir     = flag.String("resource-dir", ".", "The directory in which to find certificate and key files.")
+	fuzzer          = flag.Bool("fuzzer", false, "If true, tests against a BoringSSL built in fuzzer mode.")
 )
 
 const (
@@ -686,6 +687,9 @@ func runTest(test *testCase, shimPath string, mallocNumToFail int64) error {
 			config.ServerName = "test"
 		}
 	}
+	if *fuzzer {
+		config.Bugs.NullAllCiphers = true
+	}
 
 	conn, err := acceptOrWait(listener, waitChan)
 	if err == nil {
@@ -712,6 +716,9 @@ func runTest(test *testCase, shimPath string, mallocNumToFail int64) error {
 				resumeConfig.SessionTicketKey = config.SessionTicketKey
 				resumeConfig.ClientSessionCache = config.ClientSessionCache
 				resumeConfig.ServerSessionCache = config.ServerSessionCache
+			}
+			if *fuzzer {
+				resumeConfig.Bugs.NullAllCiphers = true
 			}
 		} else {
 			resumeConfig = config

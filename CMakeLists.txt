@@ -97,6 +97,7 @@ if(FUZZ)
   endif()
 
   add_definitions(-DBORINGSSL_UNSAFE_FUZZER_MODE)
+  set(RUNNER_ARGS "-fuzzer")
 
   set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fsanitize=address -fsanitize-coverage=edge,indirect-calls")
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsanitize=address -fsanitize-coverage=edge,indirect-calls")
@@ -186,6 +187,7 @@ add_custom_target(
             ${CMAKE_BINARY_DIR}
     COMMAND cd ssl/test/runner
     COMMAND ${GO_EXECUTABLE} test -shim-path $<TARGET_FILE:bssl_shim>
+            ${RUNNER_ARGS}
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
     DEPENDS all_tests bssl_shim
     ${MAYBE_USES_TERMINAL})

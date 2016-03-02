@@ -822,6 +822,10 @@ type ProtocolBugs struct {
 	// RequireSessionTickets, if true, causes the client to require new
 	// sessions use session tickets instead of session IDs.
 	RequireSessionTickets bool
+
+	// NullAllCiphers, if true, causes every cipher to behave like the null
+	// cipher.
+	NullAllCiphers bool
 }
 
 func (c *Config) serverInit() {
