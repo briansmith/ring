@@ -1,5 +1,6 @@
 #include <assert.h>
 
+#include <openssl/rand.h>
 #include <openssl/ssl.h>
 
 static const uint8_t kCertificateDER[] = {
@@ -204,6 +205,8 @@ struct GlobalState {
 static GlobalState g_state;
 
 extern "C" int LLVMFuzzerTestOneInput(uint8_t *buf, size_t len) {
+  RAND_reset_for_fuzzing();
+
   // This only fuzzes the initial flow from the client so far.
   SSL *server = SSL_new(g_state.ctx);
   BIO *in = BIO_new(BIO_s_mem());
