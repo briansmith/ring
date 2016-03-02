@@ -24,9 +24,18 @@ extern "C" int LLVMFuzzerTestOneInput(uint8_t *buf, size_t len) {
   BIO *out = BIO_new(BIO_s_mem());
   SSL_set_bio(client, in, out);
   SSL_set_connect_state(client);
+  SSL_set_renegotiate_mode(client, ssl_renegotiate_freely);
 
   BIO_write(in, buf, len);
-  SSL_do_handshake(client);
+  if (SSL_do_handshake(client) == 1) {
+    // Keep reading application data until error or EOF.
+    uint8_t tmp[1024];
+    for (;;) {
+      if (SSL_read(client, tmp, sizeof(tmp)) <= 0) {
+        break;
+      }
+    }
+  }
   SSL_free(client);
 
   return 0;

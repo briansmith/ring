@@ -215,7 +215,15 @@ extern "C" int LLVMFuzzerTestOneInput(uint8_t *buf, size_t len) {
   SSL_set_accept_state(server);
 
   BIO_write(in, buf, len);
-  SSL_do_handshake(server);
+  if (SSL_do_handshake(server) == 1) {
+    // Keep reading application data until error or EOF.
+    uint8_t tmp[1024];
+    for (;;) {
+      if (SSL_read(server, tmp, sizeof(tmp)) <= 0) {
+        break;
+      }
+    }
+  }
   SSL_free(server);
 
   return 0;
