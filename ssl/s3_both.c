@@ -239,7 +239,12 @@ int ssl3_get_finished(SSL *ssl, int a, int b) {
     goto f_err;
   }
 
-  if (CRYPTO_memcmp(p, ssl->s3->tmp.peer_finish_md, finished_len) != 0) {
+  int finished_ret =
+      CRYPTO_memcmp(p, ssl->s3->tmp.peer_finish_md, finished_len);
+#if defined(BORINGSSL_UNSAFE_FUZZER_MODE)
+  finished_ret = 0;
+#endif
+  if (finished_ret != 0) {
     al = SSL_AD_DECRYPT_ERROR;
     OPENSSL_PUT_ERROR(SSL, SSL_R_DIGEST_CHECK_FAILED);
     goto f_err;

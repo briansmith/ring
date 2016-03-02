@@ -1257,15 +1257,20 @@ int ssl3_get_server_key_exchange(SSL *ssl) {
       goto f_err;
     }
 
-    if (!EVP_DigestVerifyInit(&md_ctx, NULL, md, NULL, pkey) ||
-        !EVP_DigestVerifyUpdate(&md_ctx, ssl->s3->client_random,
-                                SSL3_RANDOM_SIZE) ||
-        !EVP_DigestVerifyUpdate(&md_ctx, ssl->s3->server_random,
-                                SSL3_RANDOM_SIZE) ||
-        !EVP_DigestVerifyUpdate(&md_ctx, CBS_data(&parameter),
-                                CBS_len(&parameter)) ||
-        !EVP_DigestVerifyFinal(&md_ctx, CBS_data(&signature),
-                               CBS_len(&signature))) {
+    int sig_ok = EVP_DigestVerifyInit(&md_ctx, NULL, md, NULL, pkey) &&
+                 EVP_DigestVerifyUpdate(&md_ctx, ssl->s3->client_random,
+                                        SSL3_RANDOM_SIZE) &&
+                 EVP_DigestVerifyUpdate(&md_ctx, ssl->s3->server_random,
+                                        SSL3_RANDOM_SIZE) &&
+                 EVP_DigestVerifyUpdate(&md_ctx, CBS_data(&parameter),
+                                        CBS_len(&parameter)) &&
+                 EVP_DigestVerifyFinal(&md_ctx, CBS_data(&signature),
+                                       CBS_len(&signature));
+#if defined(BORINGSSL_UNSAFE_FUZZER_MODE)
+    sig_ok = 1;
+    ERR_clear_error();
+#endif
+    if (!sig_ok) {
       /* bad signature */
       al = SSL_AD_DECRYPT_ERROR;
       OPENSSL_PUT_ERROR(SSL, SSL_R_BAD_SIGNATURE);

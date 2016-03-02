@@ -1718,7 +1718,18 @@ func addBasicTests() {
 			expectedError: ":WRONG_CURVE:",
 		},
 		{
-			name: "BadFinished",
+			name: "BadFinished-Client",
+			config: Config{
+				Bugs: ProtocolBugs{
+					BadFinished: true,
+				},
+			},
+			shouldFail:    true,
+			expectedError: ":DIGEST_CHECK_FAILED:",
+		},
+		{
+			testType: serverTest,
+			name:     "BadFinished-Server",
 			config: Config{
 				Bugs: ProtocolBugs{
 					BadFinished: true,

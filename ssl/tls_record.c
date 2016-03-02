@@ -343,9 +343,11 @@ int tls_seal_record(SSL *ssl, uint8_t *out, size_t *out_len, size_t max_out,
     out += frag_len;
     max_out -= frag_len;
 
+#if !defined(BORINGSSL_UNSAFE_FUZZER_MODE)
     assert(SSL3_RT_HEADER_LENGTH + ssl_cipher_get_record_split_len(
                                        ssl->s3->aead_write_ctx->cipher) ==
            frag_len);
+#endif
   }
 
   if (!do_seal_record(ssl, out, out_len, max_out, type, in, in_len)) {

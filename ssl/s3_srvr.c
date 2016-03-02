@@ -1802,10 +1802,15 @@ int ssl3_get_cert_verify(SSL *ssl) {
   if (pctx == NULL) {
     goto err;
   }
-  if (!EVP_PKEY_verify_init(pctx) ||
-      !EVP_PKEY_CTX_set_signature_md(pctx, md) ||
-      !EVP_PKEY_verify(pctx, CBS_data(&signature), CBS_len(&signature), digest,
-                       digest_length)) {
+  int sig_ok = EVP_PKEY_verify_init(pctx) &&
+               EVP_PKEY_CTX_set_signature_md(pctx, md) &&
+               EVP_PKEY_verify(pctx, CBS_data(&signature), CBS_len(&signature),
+                               digest, digest_length);
+#if defined(BORINGSSL_UNSAFE_FUZZER_MODE)
+  sig_ok = 1;
+  ERR_clear_error();
+#endif
+  if (!sig_ok) {
     al = SSL_AD_DECRYPT_ERROR;
     OPENSSL_PUT_ERROR(SSL, SSL_R_BAD_SIGNATURE);
     goto f_err;

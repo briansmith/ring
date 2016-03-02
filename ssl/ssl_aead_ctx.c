@@ -111,6 +111,10 @@ void SSL_AEAD_CTX_free(SSL_AEAD_CTX *aead) {
 }
 
 size_t SSL_AEAD_CTX_explicit_nonce_len(SSL_AEAD_CTX *aead) {
+#if defined(BORINGSSL_UNSAFE_FUZZER_MODE)
+  aead = NULL;
+#endif
+
   if (aead != NULL && aead->variable_nonce_included_in_record) {
     return aead->variable_nonce_len;
   }
@@ -118,11 +122,15 @@ size_t SSL_AEAD_CTX_explicit_nonce_len(SSL_AEAD_CTX *aead) {
 }
 
 size_t SSL_AEAD_CTX_max_overhead(SSL_AEAD_CTX *aead) {
+#if defined(BORINGSSL_UNSAFE_FUZZER_MODE)
+  aead = NULL;
+#endif
+
   if (aead == NULL) {
     return 0;
   }
   return EVP_AEAD_max_overhead(aead->ctx.aead) +
-      SSL_AEAD_CTX_explicit_nonce_len(aead);
+         SSL_AEAD_CTX_explicit_nonce_len(aead);
 }
 
 /* ssl_aead_ctx_get_ad writes the additional data for |aead| into |out| and
@@ -149,6 +157,10 @@ int SSL_AEAD_CTX_open(SSL_AEAD_CTX *aead, uint8_t *out, size_t *out_len,
                       size_t max_out, uint8_t type, uint16_t wire_version,
                       const uint8_t seqnum[8], const uint8_t *in,
                       size_t in_len) {
+#if defined(BORINGSSL_UNSAFE_FUZZER_MODE)
+  aead = NULL;
+#endif
+
   if (aead == NULL) {
     /* Handle the initial NULL cipher. */
     if (in_len > max_out) {
@@ -222,6 +234,10 @@ int SSL_AEAD_CTX_seal(SSL_AEAD_CTX *aead, uint8_t *out, size_t *out_len,
                       size_t max_out, uint8_t type, uint16_t wire_version,
                       const uint8_t seqnum[8], const uint8_t *in,
                       size_t in_len) {
+#if defined(BORINGSSL_UNSAFE_FUZZER_MODE)
+  aead = NULL;
+#endif
+
   if (aead == NULL) {
     /* Handle the initial NULL cipher. */
     if (in_len > max_out) {
