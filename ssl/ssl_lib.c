@@ -1859,6 +1859,8 @@ const COMP_METHOD *SSL_get_current_compression(SSL *ssl) { return NULL; }
 
 const COMP_METHOD *SSL_get_current_expansion(SSL *ssl) { return NULL; }
 
+int *SSL_get_server_tmp_key(SSL *ssl, EVP_PKEY **out_key) { return 0; }
+
 int ssl_init_wbio_buffer(SSL *ssl, int push) {
   BIO *bbio;
 

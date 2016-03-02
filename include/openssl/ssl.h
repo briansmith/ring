@@ -3148,6 +3148,9 @@ OPENSSL_EXPORT const COMP_METHOD *SSL_get_current_compression(SSL *s);
 /* SSL_get_current_expansion returns NULL. */
 OPENSSL_EXPORT const COMP_METHOD *SSL_get_current_expansion(SSL *s);
 
+/* SSL_get_server_tmp_key returns zero. */
+OPENSSL_EXPORT int *SSL_get_server_tmp_key(SSL *ssl, EVP_PKEY **out_key);
+
 #define SSL_set_app_data(s, arg) (SSL_set_ex_data(s, 0, (char *)arg))
 #define SSL_get_app_data(s) (SSL_get_ex_data(s, 0))
 #define SSL_SESSION_set_app_data(s, a) \
