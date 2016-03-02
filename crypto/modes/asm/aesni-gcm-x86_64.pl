@@ -41,17 +41,24 @@ $0 =~ m/(.*[\/\\])[^\/\\]+$/; $dir=$1;
 ( $xlate="${dir}../../perlasm/x86_64-xlate.pl" and -f $xlate) or
 die "can't locate x86_64-xlate.pl";
 
-# This must be kept in sync with |$avx| in ghash-x86_64.pl; otherwise tags will
+# |$avx| in ghash-x86_64.pl must be set to at least 1; otherwise tags will
 # be computed incorrectly.
 #
 # In upstream, this is controlled by shelling out to the compiler to check
 # versions, but BoringSSL is intended to be used with pre-generated perlasm
 # output, so this isn't useful anyway.
-$avx = 0;
+#
+# The upstream code uses the condition |$avx>1| even though no AVX2
+# instructions are used, because it assumes MOVBE is supported by the assembler
+# if and only if AVX2 is also supported by the assembler; see
+# https://marc.info/?l=openssl-dev&m=146567589526984&w=2.
+$avx = 2;
 
 open OUT,"| \"$^X\" \"$xlate\" $flavour \"$output\"";
 *STDOUT=*OUT;
 
+# See the comment above regarding why the condition is ($avx>1) when there are
+# no AVX2 instructions being used.
 if ($avx>1) {{{
 
 ($inp,$out,$len,$key,$ivp,$Xip)=("%rdi","%rsi","%rdx","%rcx","%r8","%r9");
