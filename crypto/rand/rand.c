@@ -18,6 +18,16 @@
 #include <limits.h>
 #include <string.h>
 
+#if defined(OPENSSL_X86) || defined(OPENSSL_X86_64)
+#if defined(_MSC_VER)
+#pragma warning(push,3)
+#endif
+#include <immintrin.h>
+#if defined(_MSC_VER)
+#pragma warning(pop)
+#endif
+#endif
+
 #include <openssl/chacha.h>
 #include <openssl/cpu.h>
 #include <openssl/mem.h>
@@ -67,45 +77,56 @@ static void rand_thread_state_free(void *state) {
   OPENSSL_free(state);
 }
 
-#if defined(OPENSSL_X86_64) && !defined(OPENSSL_NO_ASM) && \
+#if (defined(OPENSSL_X86) || defined(OPENSSL_X86_64)) && \
     !defined(BORINGSSL_UNSAFE_FUZZER_MODE)
-
-/* These functions are defined in asm/rdrand-x86_64.pl */
-
-/* CRYPTO_rdrand writes 8 random bytes to |out|. */
-extern int CRYPTO_rdrand(void *out);
-
-/* CRYPTO_rdrand_multiple8_buf writes |len| random bytes to |buf|. */
-extern int CRYPTO_rdrand_multiple8_buf(void *buf, size_t len);
-
 
 static int have_rdrand(void) {
   return (OPENSSL_ia32cap_P[1] & (1u << 30)) != 0;
 }
 
+/* These intrinsics require |-mrdrnd| to be added to the command line of some
+ * compilers. GCC supports |#pragma GCC target("rdrnd")| and
+ * |__attribute__(target("rdrnd"))| in the code instead, but Clang doesn't. */
+#if NATIVE_WORD_SIZE == 8
+#define RDRAND_STEP _rdrand64_step
+#if defined(_MSC_VER)
+#pragma intrinsic(_rdrand64_step)
+#endif
+#elif NATIVE_WORD_SIZE == 4
+#define RDRAND_STEP _rdrand32_step
+#if defined(_MSC_VER)
+#pragma intrinsic(_rdrand32_step)
+#endif
+#else
+#error "unsupported NATIVE_UINT_SIZE"
+#endif
+
 static int hwrand(void *buf, size_t len) {
+  assert(buf != NULL);
+  assert(len >= 1);
+
   if (!have_rdrand()) {
     return 0;
   }
 
-  const size_t len_multiple8 = len & ~7;
-  if (!CRYPTO_rdrand_multiple8_buf(buf, len_multiple8)) {
-    return 0;
-  }
-  len -= len_multiple8;
-
-  if (len != 0) {
-    assert(len < 8);
-
-    uint8_t rand_buf[8];
-    if (!CRYPTO_rdrand(rand_buf)) {
+  for (;;) {
+    native_uint_alt tmp;
+    if (!RDRAND_STEP(&tmp)) {
       return 0;
     }
-    memcpy((uint8_t *)buf + len_multiple8, rand_buf, len);
+    if (len <= NATIVE_WORD_SIZE) {
+      memcpy(buf, &tmp, len);
+      break;
+    }
+    memcpy(buf, &tmp, NATIVE_WORD_SIZE);
+    buf = (uint8_t *)buf + NATIVE_WORD_SIZE;
+    len -= NATIVE_WORD_SIZE;
   }
 
   return 1;
 }
+
+#undef RDRAND_STEP
 
 #else
 

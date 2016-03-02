@@ -85,6 +85,7 @@ TARGET_ARCH += $(if $(MCPU),-mcpu=$(MCPU)) \
                $(if $(MARCH),-march=$(MARCH)) \
                $(if $(MABI),-mabi=$(MABI)) \
                $(if $(MINSTR),-m$(MINSTR)) \
+               $(TARGET_ARCH_$(TARGET_ARCH_NORMAL)) \
                $(NULL)
 
 ifeq ($(CC),)
