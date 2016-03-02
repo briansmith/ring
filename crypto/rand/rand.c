@@ -71,14 +71,19 @@ static void rand_thread_state_free(void *state) {
     !defined(BORINGSSL_UNSAFE_FUZZER_MODE)
 
 /* These functions are defined in asm/rdrand-x86_64.pl */
-extern int CRYPTO_rdrand(uint8_t out[8]);
-extern int CRYPTO_rdrand_multiple8_buf(uint8_t *buf, size_t len);
+
+/* CRYPTO_rdrand writes 8 random bytes to |out|. */
+extern int CRYPTO_rdrand(void *out);
+
+/* CRYPTO_rdrand_multiple8_buf writes |len| random bytes to |buf|. */
+extern int CRYPTO_rdrand_multiple8_buf(void *buf, size_t len);
+
 
 static int have_rdrand(void) {
   return (OPENSSL_ia32cap_P[1] & (1u << 30)) != 0;
 }
 
-static int hwrand(uint8_t *buf, size_t len) {
+static int hwrand(void *buf, size_t len) {
   if (!have_rdrand()) {
     return 0;
   }
@@ -96,7 +101,7 @@ static int hwrand(uint8_t *buf, size_t len) {
     if (!CRYPTO_rdrand(rand_buf)) {
       return 0;
     }
-    memcpy(buf + len_multiple8, rand_buf, len);
+    memcpy((uint8_t *)buf + len_multiple8, rand_buf, len);
   }
 
   return 1;
@@ -104,7 +109,7 @@ static int hwrand(uint8_t *buf, size_t len) {
 
 #else
 
-static int hwrand(uint8_t *buf, size_t len) {
+static int hwrand(void *buf, size_t len) {
   (void)buf;
   (void)len;
 
@@ -162,7 +167,7 @@ int RAND_bytes(uint8_t *buf, size_t len) {
       memset(nonce, 0, 4);
       memcpy(nonce + 4, &state->calls_used, sizeof(state->calls_used));
       CRYPTO_chacha_20(buf, buf, todo, state->key, nonce, 0);
-      buf += todo;
+      buf = (uint8_t *)buf + todo;
       remaining -= todo;
       state->calls_used++;
     }
@@ -176,7 +181,7 @@ int RAND_bytes(uint8_t *buf, size_t len) {
       state->partial_block_used = 0;
     }
 
-    unsigned i;
+    size_t i;
     for (i = 0; i < len; i++) {
       buf[i] ^= state->partial_block[state->partial_block_used++];
     }

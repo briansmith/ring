@@ -158,7 +158,7 @@ static struct rand_buffer *get_thread_local_buffer(void) {
 
 /* read_full reads exactly |len| bytes from |fd| into |out| and returns 1. In
  * the case of an error it returns 0. */
-static char read_full(int fd, uint8_t *out, size_t len) {
+static char read_full(int fd, void *out, size_t len) {
   ssize_t r;
 
   while (len > 0) {
@@ -169,7 +169,7 @@ static char read_full(int fd, uint8_t *out, size_t len) {
     if (r <= 0) {
       return 0;
     }
-    out += r;
+    out = (uint8_t *)out + r;
     len -= r;
   }
 
@@ -179,13 +179,13 @@ static char read_full(int fd, uint8_t *out, size_t len) {
 /* read_from_buffer reads |requested| random bytes from the buffer into |out|,
  * refilling it if necessary to satisfy the request. */
 static void read_from_buffer(struct rand_buffer *buf,
-                             uint8_t *out, size_t requested) {
+                             void *out, size_t requested) {
   size_t remaining = BUF_SIZE - buf->used;
 
   while (requested > remaining) {
     memcpy(out, &buf->rand[buf->used], remaining);
     buf->used += remaining;
-    out += remaining;
+    out = (uint8_t *)out + remaining;
     requested -= remaining;
 
     if (!read_full(urandom_fd, buf->rand, BUF_SIZE)) {
@@ -201,7 +201,7 @@ static void read_from_buffer(struct rand_buffer *buf,
 }
 
 /* CRYPTO_sysrand puts |requested| random bytes into |out|. */
-void CRYPTO_sysrand(uint8_t *out, size_t requested) {
+void CRYPTO_sysrand(void *out, size_t requested) {
   if (requested == 0) {
     return;
   }

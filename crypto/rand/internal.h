@@ -22,7 +22,7 @@ extern "C" {
 
 /* CRYPTO_sysrand fills |len| bytes at |buf| with entropy from the operating
  * system. */
-void CRYPTO_sysrand(uint8_t *buf, size_t len);
+void CRYPTO_sysrand(void *buf, size_t len);
 
 
 #if defined(__cplusplus)
