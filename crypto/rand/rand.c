@@ -44,7 +44,7 @@
 /* rand_thread_state contains the per-thread state for the RNG. This is only
  * used if the system has support for a hardware RNG. */
 struct rand_thread_state {
-  uint8_t key[32];
+  uint32_t key[8];
   uint64_t calls_used;
   size_t bytes_used;
   uint8_t partial_block[64];
@@ -163,21 +163,26 @@ int RAND_bytes(uint8_t *buf, size_t len) {
       if (todo > kMaxBytesPerCall) {
         todo = kMaxBytesPerCall;
       }
-      uint8_t nonce[12];
-      memset(nonce, 0, 4);
-      memcpy(nonce + 4, &state->calls_used, sizeof(state->calls_used));
-      CRYPTO_chacha_20(buf, buf, todo, state->key, nonce, 0);
+      uint32_t counter_and_nonce[4];
+      counter_and_nonce[0] = 0;
+      counter_and_nonce[1] = 0;
+      counter_and_nonce[2] = (uint32_t)state->calls_used;
+      counter_and_nonce[3] = (uint32_t)(state->calls_used >> 32);
+      ChaCha20_ctr32(buf, buf, todo, state->key, counter_and_nonce);
       buf = (uint8_t *)buf + todo;
       remaining -= todo;
       state->calls_used++;
     }
   } else {
     if (sizeof(state->partial_block) - state->partial_block_used < len) {
-      uint8_t nonce[12];
-      memset(nonce, 0, 4);
-      memcpy(nonce + 4, &state->calls_used, sizeof(state->calls_used));
-      CRYPTO_chacha_20(state->partial_block, state->partial_block,
-                       sizeof(state->partial_block), state->key, nonce, 0);
+      uint32_t counter_and_nonce[4];
+      counter_and_nonce[0] = 0;
+      counter_and_nonce[1] = 0;
+      counter_and_nonce[2] = (uint32_t)state->calls_used;
+      counter_and_nonce[3] = (uint32_t)(state->calls_used >> 32);
+      ChaCha20_ctr32(state->partial_block, state->partial_block,
+                     sizeof(state->partial_block), state->key,
+                     counter_and_nonce);
       state->partial_block_used = 0;
     }
 

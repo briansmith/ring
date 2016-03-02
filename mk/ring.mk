@@ -82,7 +82,6 @@ RING_x86_SRCS = $(addprefix $(RING_PREFIX), \
   crypto/bn/asm/bn-586.pl \
   crypto/bn/asm/co-586.pl \
   crypto/bn/asm/x86-mont.pl \
-  crypto/chacha/asm/chacha-x86.pl \
   crypto/modes/asm/ghash-x86.pl \
   crypto/poly1305/asm/poly1305-x86.pl \
   crypto/sha/asm/sha256-586.pl \

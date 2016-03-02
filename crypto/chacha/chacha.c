@@ -32,38 +32,6 @@
      defined(OPENSSL_AARCH64))
 
 /* ChaCha20_ctr32 is defined in asm/chacha-*.pl. */
-void ChaCha20_ctr32(uint8_t *out, const uint8_t *in, size_t in_len,
-                    const uint32_t key[8], const uint32_t counter[4]);
-
-void CRYPTO_chacha_20(uint8_t *out, const uint8_t *in, size_t in_len,
-                      const uint8_t key[32], const uint8_t nonce[12],
-                      uint32_t counter) {
-  uint32_t counter_nonce[4];
-  counter_nonce[0] = counter;
-  counter_nonce[1] = U8TO32_LITTLE(nonce + 0);
-  counter_nonce[2] = U8TO32_LITTLE(nonce + 4);
-  counter_nonce[3] = U8TO32_LITTLE(nonce + 8);
-
-  const uint32_t *key_ptr = (const uint32_t *)key;
-#if !defined(OPENSSL_X86) && !defined(OPENSSL_X86_64)
-  /* The assembly expects the key to be four-byte aligned. */
-  uint32_t key_u32[8];
-  if ((((uintptr_t)key) & 3) != 0) {
-    key_u32[0] = U8TO32_LITTLE(key + 0);
-    key_u32[1] = U8TO32_LITTLE(key + 4);
-    key_u32[2] = U8TO32_LITTLE(key + 8);
-    key_u32[3] = U8TO32_LITTLE(key + 12);
-    key_u32[4] = U8TO32_LITTLE(key + 16);
-    key_u32[5] = U8TO32_LITTLE(key + 20);
-    key_u32[6] = U8TO32_LITTLE(key + 24);
-    key_u32[7] = U8TO32_LITTLE(key + 28);
-
-    key_ptr = key_u32;
-  }
-#endif
-
-  ChaCha20_ctr32(out, in, in_len, key_ptr, counter_nonce);
-}
 
 #else
 
@@ -117,9 +85,8 @@ static void chacha_core(uint8_t output[64], const uint32_t input[16]) {
   }
 }
 
-void CRYPTO_chacha_20(uint8_t *out, const uint8_t *in, size_t in_len,
-                      const uint8_t key[32], const uint8_t nonce[12],
-                      uint32_t counter) {
+void ChaCha20_ctr32(uint8_t *out, const uint8_t *in, size_t in_len,
+                    const uint32_t key[8], const uint32_t counter[4]) {
   uint32_t input[16];
   uint8_t buf[64];
   size_t todo, i;
@@ -129,20 +96,20 @@ void CRYPTO_chacha_20(uint8_t *out, const uint8_t *in, size_t in_len,
   input[2] = U8TO32_LITTLE(sigma + 8);
   input[3] = U8TO32_LITTLE(sigma + 12);
 
-  input[4] = U8TO32_LITTLE(key + 0);
-  input[5] = U8TO32_LITTLE(key + 4);
-  input[6] = U8TO32_LITTLE(key + 8);
-  input[7] = U8TO32_LITTLE(key + 12);
+  input[4] = key[0];
+  input[5] = key[1];
+  input[6] = key[2];
+  input[7] = key[3];
 
-  input[8] = U8TO32_LITTLE(key + 16);
-  input[9] = U8TO32_LITTLE(key + 20);
-  input[10] = U8TO32_LITTLE(key + 24);
-  input[11] = U8TO32_LITTLE(key + 28);
+  input[8] = key[4];
+  input[9] = key[5];
+  input[10] = key[6];
+  input[11] = key[7];
 
-  input[12] = counter;
-  input[13] = U8TO32_LITTLE(nonce + 0);
-  input[14] = U8TO32_LITTLE(nonce + 4);
-  input[15] = U8TO32_LITTLE(nonce + 8);
+  input[12] = counter[0];
+  input[13] = counter[1];
+  input[14] = counter[2];
+  input[15] = counter[3];
 
   while (in_len > 0) {
     todo = sizeof(buf);

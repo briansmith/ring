@@ -14,7 +14,8 @@
 
 #![allow(unsafe_code)]
 
-use {aead, c, core, polyfill};
+use core;
+use super::super::{aead, c, polyfill};
 
 const CHACHA20_KEY_LEN: usize = 256 / 8;
 const POLY1305_STATE_LEN: usize = 512;
@@ -32,14 +33,16 @@ pub static CHACHA20_POLY1305: aead::Algorithm = aead::Algorithm {
     open: chacha20_poly1305_open,
 };
 
-fn chacha20_poly1305_seal(ctx: &[u8], nonce: &[u8; aead::NONCE_LEN],
-                          in_out: &mut [u8], tag_out: &mut [u8; aead::TAG_LEN],
-                          ad: &[u8]) -> Result<(), ()> {
+fn chacha20_poly1305_seal(ctx: &[u64; aead::KEY_CTX_BUF_ELEMS],
+                          nonce: &[u8; aead::NONCE_LEN], in_out: &mut [u8],
+                          tag_out: &mut [u8; aead::TAG_LEN], ad: &[u8])
+                          -> Result<(), ()> {
     seal(chacha20_poly1305_update, ctx, nonce, in_out, tag_out, ad)
 }
 
-fn chacha20_poly1305_open(ctx: &[u8], nonce: &[u8; aead::NONCE_LEN],
-                          in_out: &mut [u8], in_prefix_len: usize,
+fn chacha20_poly1305_open(ctx: &[u64; aead::KEY_CTX_BUF_ELEMS],
+                          nonce: &[u8; aead::NONCE_LEN], in_out: &mut [u8],
+                          in_prefix_len: usize,
                           tag_out: &mut [u8; aead::TAG_LEN], ad: &[u8])
                           -> Result<(), ()> {
     open(chacha20_poly1305_update, ctx, nonce, in_out, in_prefix_len, tag_out,
@@ -78,15 +81,16 @@ pub static CHACHA20_POLY1305_OLD: aead::Algorithm = aead::Algorithm {
     open: chacha20_poly1305_old_open,
 };
 
-fn chacha20_poly1305_old_seal(ctx: &[u8], nonce: &[u8; aead::NONCE_LEN],
-                              in_out: &mut [u8],
+fn chacha20_poly1305_old_seal(ctx: &[u64; aead::KEY_CTX_BUF_ELEMS],
+                              nonce: &[u8; aead::NONCE_LEN], in_out: &mut [u8],
                               tag_out: &mut [u8; aead::TAG_LEN], ad: &[u8])
                               -> Result<(), ()> {
     seal(chacha20_poly1305_update_old, ctx, nonce, in_out, tag_out, ad)
 }
 
-fn chacha20_poly1305_old_open(ctx: &[u8], nonce: &[u8; aead::NONCE_LEN],
-                              in_out: &mut [u8], in_prefix_len: usize,
+fn chacha20_poly1305_old_open(ctx: &[u64; aead::KEY_CTX_BUF_ELEMS],
+                              nonce: &[u8; aead::NONCE_LEN], in_out: &mut [u8],
+                              in_prefix_len: usize,
                               tag_out: &mut [u8; aead::TAG_LEN], ad: &[u8])
                               -> Result<(), ()> {
     open(chacha20_poly1305_update_old, ctx, nonce, in_out, in_prefix_len,
@@ -108,50 +112,77 @@ pub fn init(ctx_buf: &mut [u8], key: &[u8]) -> Result<(), ()> {
     Ok(())
 }
 
-fn seal(update: UpdateFn, ctx: &[u8], nonce: &[u8; aead::NONCE_LEN],
-        in_out: &mut [u8], tag_out: &mut [u8; aead::TAG_LEN], ad: &[u8])
-        -> Result<(), ()> {
-    let chacha20_key =
-        try!(slice_as_array_ref!(&ctx[..CHACHA20_KEY_LEN], CHACHA20_KEY_LEN));
+fn seal(update: UpdateFn, ctx: &[u64; aead::KEY_CTX_BUF_ELEMS],
+        nonce: &[u8; aead::NONCE_LEN], in_out: &mut [u8],
+        tag_out: &mut [u8; aead::TAG_LEN], ad: &[u8]) -> Result<(), ()> {
+    let chacha20_key = try!(ctx_as_key(ctx));
+    let mut counter = make_counter(1, nonce);
+    debug_assert!(core::mem::align_of_val(chacha20_key) >= 4);
+    debug_assert!(core::mem::align_of_val(&counter) >= 4);
     unsafe {
-        CRYPTO_chacha_20(in_out.as_mut_ptr(), in_out.as_ptr(), in_out.len(),
-                         chacha20_key.as_ptr(), nonce.as_ptr(), 1);
+        ChaCha20_ctr32(in_out.as_mut_ptr(), in_out.as_ptr(), in_out.len(),
+                       chacha20_key, &counter);
     }
-    aead_poly1305(update, tag_out, chacha20_key, nonce, ad, in_out);
+    counter[0] = 0;
+    aead_poly1305(update, tag_out, chacha20_key, &counter, ad, in_out);
     Ok(())
 }
 
-fn open(update: UpdateFn, ctx: &[u8], nonce: &[u8; aead::NONCE_LEN],
-        in_out: &mut [u8], in_prefix_len: usize,
+fn open(update: UpdateFn, ctx: &[u64; aead::KEY_CTX_BUF_ELEMS],
+        nonce: &[u8; aead::NONCE_LEN], in_out: &mut [u8], in_prefix_len: usize,
         tag_out: &mut [u8; aead::TAG_LEN], ad: &[u8]) -> Result<(), ()> {
-    let chacha20_key =
-        try!(slice_as_array_ref!(&ctx[..CHACHA20_KEY_LEN], CHACHA20_KEY_LEN));
+    let chacha20_key = try!(ctx_as_key(ctx));
+    let mut counter = make_counter(0, nonce);
     {
         let ciphertext = &in_out[in_prefix_len..];
-        aead_poly1305(update, tag_out, chacha20_key, nonce, ad, &ciphertext);
+        aead_poly1305(update, tag_out, chacha20_key, &counter, ad, &ciphertext);
     }
+    counter[0] = 1;
+    debug_assert!(core::mem::align_of_val(chacha20_key) >= 4);
+    debug_assert!(core::mem::align_of_val(&counter) >= 4);
     unsafe {
-        CRYPTO_chacha_20(in_out.as_mut_ptr(),
-                         in_out[in_prefix_len..].as_ptr(),
-                         in_out.len() - in_prefix_len, ctx.as_ptr(),
-                         nonce.as_ptr(), 1);
+        ChaCha20_ctr32(in_out.as_mut_ptr(), in_out[in_prefix_len..].as_ptr(),
+                       in_out.len() - in_prefix_len, chacha20_key, &counter);
     }
     Ok(())
+}
+
+fn ctx_as_key(ctx: &[u64; aead::KEY_CTX_BUF_ELEMS])
+              -> Result<&[u32; CHACHA20_KEY_LEN / 4], ()> {
+    slice_as_array_ref!(
+        &polyfill::slice::u64_as_u32(ctx)[..(CHACHA20_KEY_LEN / 4)],
+        CHACHA20_KEY_LEN / 4)
+}
+
+#[inline]
+fn make_counter(counter: u32, nonce: &[u8; aead::NONCE_LEN]) -> [u32; 4] {
+    fn from_le_bytes(bytes: &[u8]) -> u32 {
+        u32::from(bytes[0]) |
+            (u32::from(bytes[1]) << 8) |
+            (u32::from(bytes[2]) << 16) |
+            (u32::from(bytes[3]) << 24)
+    }
+    [counter.to_le(),
+     from_le_bytes(&nonce[0..4]),
+     from_le_bytes(&nonce[4..8]),
+     from_le_bytes(&nonce[8..12])]
 }
 
 type UpdateFn = fn(state: &mut [u8; POLY1305_STATE_LEN], ad: &[u8],
                    ciphertext: &[u8]);
 
 fn aead_poly1305(update: UpdateFn, tag_out: &mut [u8; aead::TAG_LEN],
-                 chacha20_key: &[u8; CHACHA20_KEY_LEN],
-                 nonce: &[u8; aead::NONCE_LEN], ad: &[u8], ciphertext: &[u8]) {
-    let mut poly1305_key = [0; POLY1305_KEY_LEN];
+                 chacha20_key: &[u32; CHACHA20_KEY_LEN / 4],
+                 counter: &[u32; 4], ad: &[u8], ciphertext: &[u8]) {
+    debug_assert_eq!(counter[0], 0);
+    let mut poly1305_key = [0u8; POLY1305_KEY_LEN];
+    debug_assert!(core::mem::align_of_val(chacha20_key) >= 4);
+    debug_assert!(core::mem::align_of_val(&counter) >= 4);
     unsafe {
-        CRYPTO_chacha_20(poly1305_key.as_mut_ptr(), poly1305_key.as_ptr(),
-                         core::mem::size_of_val(&poly1305_key),
-                         chacha20_key.as_ptr(), nonce.as_ptr(), 0)
+        ChaCha20_ctr32(poly1305_key.as_mut_ptr(), poly1305_key.as_ptr(),
+                       POLY1305_KEY_LEN, chacha20_key, &counter);
     }
-    let mut ctx = [0; POLY1305_STATE_LEN];
+    let mut ctx = [0u8; POLY1305_STATE_LEN];
     poly1305_init(&mut ctx, &poly1305_key);
     update(&mut ctx, ad, ciphertext);
     poly1305_finish(&mut ctx, tag_out);
@@ -194,8 +225,8 @@ fn poly1305_update(state: &mut [u8; POLY1305_STATE_LEN], in_: &[u8]) {
 }
 
 extern {
-    fn CRYPTO_chacha_20(out: *mut u8, in_: *const u8, in_len: c::size_t,
-                        key: *const u8, nonce: *const u8, counter: u32);
+    fn ChaCha20_ctr32(out: *mut u8, in_: *const u8, in_len: c::size_t,
+                      key: &[u32; CHACHA20_KEY_LEN / 4], counter: &[u32; 4]);
     fn CRYPTO_poly1305_init(state: *mut u8, key: *const u8);
     fn CRYPTO_poly1305_finish(state: *mut u8, mac: *mut u8);
     fn CRYPTO_poly1305_update(state: *mut u8, in_: *const u8,

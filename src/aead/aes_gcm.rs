@@ -14,7 +14,7 @@
 
 #![allow(unsafe_code)]
 
-use {aead, bssl, c};
+use super::super::{aead, bssl, c, polyfill};
 
 const AES_128_KEY_LEN: usize = 128 / 8;
 const AES_256_KEY_LEN: usize = 32; // 256 / 8
@@ -50,8 +50,10 @@ fn aes_gcm_init(ctx_buf: &mut [u8], key: &[u8]) -> Result<(), ()> {
     })
 }
 
-fn aes_gcm_seal(ctx: &[u8], nonce: &[u8; aead::NONCE_LEN], in_out: &mut [u8],
+fn aes_gcm_seal(ctx: &[u64; aead::KEY_CTX_BUF_ELEMS],
+                nonce: &[u8; aead::NONCE_LEN], in_out: &mut [u8],
                 tag: &mut [u8; aead::TAG_LEN], ad: &[u8]) -> Result<(), ()> {
+    let ctx = polyfill::slice::u64_as_u8(ctx);
     bssl::map_result(unsafe {
         evp_aead_aes_gcm_seal(ctx.as_ptr(), in_out.as_mut_ptr(), in_out.len(),
                               tag.as_mut_ptr(), nonce.as_ptr(), ad.as_ptr(),
@@ -59,9 +61,11 @@ fn aes_gcm_seal(ctx: &[u8], nonce: &[u8; aead::NONCE_LEN], in_out: &mut [u8],
     })
 }
 
-fn aes_gcm_open(ctx: &[u8], nonce: &[u8; aead::NONCE_LEN], in_out: &mut [u8],
+fn aes_gcm_open(ctx: &[u64; aead::KEY_CTX_BUF_ELEMS],
+                nonce: &[u8; aead::NONCE_LEN], in_out: &mut [u8],
                 in_prefix_len: usize, tag_out: &mut [u8; aead::TAG_LEN],
                 ad: &[u8]) -> Result<(), ()> {
+    let ctx = polyfill::slice::u64_as_u8(ctx);
     bssl::map_result(unsafe {
         evp_aead_aes_gcm_open(ctx.as_ptr(), in_out.as_mut_ptr(),
                               in_out.len() - in_prefix_len,

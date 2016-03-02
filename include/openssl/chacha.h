@@ -22,12 +22,11 @@ extern "C" {
 #endif
 
 
-/* CRYPTO_chacha_20 encrypts |in_len| bytes from |in| with the given key and
- * nonce and writes the result to |out|, which may be equal to |in|. The
- * initial block counter is specified by |counter|. */
-OPENSSL_EXPORT void CRYPTO_chacha_20(uint8_t *out, const uint8_t *in,
-                                     size_t in_len, const uint8_t key[32],
-                                     const uint8_t nonce[12], uint32_t counter);
+/* ChaCha20_ctr32 encrypts |in_len| bytes from |in| with the given key and
+ * writes the result to |out|, which may/must point at or before |in|.
+ * The initial block counter (and nonce) is specified by |counter|. */
+void ChaCha20_ctr32(uint8_t *out, const uint8_t *in, size_t in_len,
+                    const uint32_t key[8], const uint32_t counter[4]);
 
 
 #if defined(__cplusplus)

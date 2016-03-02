@@ -88,7 +88,6 @@ impl OpeningKey {
 /// Go analog: [`AEAD.Open`](https://golang.org/pkg/crypto/cipher/#AEAD)
 pub fn open_in_place(key: &OpeningKey, nonce: &[u8], in_prefix_len: usize,
                      in_out: &mut [u8], ad: &[u8]) -> Result<usize, ()> {
-    let ctx_buf_bytes = polyfill::slice::u64_as_u8(&key.key.ctx_buf);
     let nonce = try!(slice_as_array_ref!(nonce, NONCE_LEN));
     let ciphertext_and_tag_len =
         try!(in_out.len().checked_sub(in_prefix_len).ok_or(()));
@@ -98,8 +97,8 @@ pub fn open_in_place(key: &OpeningKey, nonce: &[u8], in_prefix_len: usize,
     let (in_out, received_tag) =
         in_out.split_at_mut(in_prefix_len + ciphertext_len);
     let mut calculated_tag = [0u8; TAG_LEN];
-    try!((key.key.algorithm.open)(&ctx_buf_bytes, nonce, in_out, in_prefix_len,
-                                  &mut calculated_tag, ad));
+    try!((key.key.algorithm.open)(&key.key.ctx_buf, nonce, in_out,
+                                  in_prefix_len, &mut calculated_tag, ad));
     try!(constant_time::verify_slices_are_equal(&calculated_tag, received_tag));
     Ok(ciphertext_len) // `ciphertext_len` is also the plaintext length.
 }
@@ -166,14 +165,13 @@ pub fn seal_in_place(key: &SealingKey, nonce: &[u8], in_out: &mut [u8],
     if out_suffix_capacity < key.key.algorithm.max_overhead_len() {
         return Err(());
     }
-    let ctx_buf_bytes = polyfill::slice::u64_as_u8(&key.key.ctx_buf);
     let nonce = try!(slice_as_array_ref!(nonce, NONCE_LEN));
     let in_out_len =
         try!(in_out.len().checked_sub(out_suffix_capacity).ok_or(()));
     try!(check_per_nonce_max_bytes(in_out_len));
     let (in_out, tag_out) = in_out.split_at_mut(in_out_len);
     let tag_out = try!(slice_as_array_ref_mut!(tag_out, TAG_LEN));
-    try!((key.key.algorithm.seal)(ctx_buf_bytes, nonce, in_out, tag_out, ad));
+    try!((key.key.algorithm.seal)(&key.key.ctx_buf, nonce, in_out, tag_out, ad));
     Ok(in_out_len + TAG_LEN)
 }
 
@@ -228,11 +226,12 @@ impl Key {
 pub struct Algorithm {
     init: fn(ctx_buf: &mut [u8], key: &[u8]) -> Result<(), ()>,
 
-    seal: fn(ctx: &[u8], nonce: &[u8; NONCE_LEN], in_out: &mut [u8],
+    seal: fn(ctx: &[u64; KEY_CTX_BUF_ELEMS], nonce: &[u8; NONCE_LEN],
+              in_out: &mut [u8], tag_out: &mut [u8; TAG_LEN], ad: &[u8])
+              -> Result<(), ()>,
+    open: fn(ctx: &[u64; KEY_CTX_BUF_ELEMS], nonce: &[u8; NONCE_LEN],
+             in_out: &mut [u8], in_prefix_len: usize,
              tag_out: &mut [u8; TAG_LEN], ad: &[u8]) -> Result<(), ()>,
-    open: fn(ctx: &[u8], nonce: &[u8; NONCE_LEN], in_out: &mut [u8],
-             in_prefix_len: usize, tag_out: &mut [u8; TAG_LEN], ad: &[u8])
-             -> Result<(), ()>,
 
     key_len: usize,
 }
