@@ -736,8 +736,9 @@ func runTest(test *testCase, shimPath string, mallocNumToFail int64) error {
 		}
 	}
 
-	stdout := string(stdoutBuf.Bytes())
-	stderr := string(stderrBuf.Bytes())
+	// Account for Windows line endings.
+	stdout := strings.Replace(string(stdoutBuf.Bytes()), "\r\n", "\n", -1)
+	stderr := strings.Replace(string(stderrBuf.Bytes()), "\r\n", "\n", -1)
 
 	// Separate the errors from the shim and those from tools like
 	// AddressSanitizer.
