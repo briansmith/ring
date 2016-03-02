@@ -38,6 +38,7 @@ var (
 	shimPath        = flag.String("shim-path", "../../../build/ssl/test/bssl_shim", "The location of the shim binary.")
 	resourceDir     = flag.String("resource-dir", ".", "The directory in which to find certificate and key files.")
 	fuzzer          = flag.Bool("fuzzer", false, "If true, tests against a BoringSSL built in fuzzer mode.")
+	transcriptDir   = flag.String("transcript-dir", "", "The directory in which to write transcripts.")
 )
 
 const (
@@ -245,6 +246,39 @@ type testCase struct {
 
 var testCases []testCase
 
+func writeTranscript(test *testCase, isResume bool, data []byte) {
+	if len(data) == 0 {
+		return
+	}
+
+	protocol := "tls"
+	if test.protocol == dtls {
+		protocol = "dtls"
+	}
+
+	side := "client"
+	if test.testType == serverTest {
+		side = "server"
+	}
+
+	dir := path.Join(*transcriptDir, protocol, side)
+	if err := os.MkdirAll(dir, 0755); err != nil {
+		fmt.Fprintf(os.Stderr, "Error making %s: %s\n", dir, err)
+		return
+	}
+
+	name := test.name
+	if isResume {
+		name += "-Resume"
+	} else {
+		name += "-Normal"
+	}
+
+	if err := ioutil.WriteFile(path.Join(dir, name), data, 0644); err != nil {
+		fmt.Fprintf(os.Stderr, "Error writing %s: %s\n", name, err)
+	}
+}
+
 func doExchange(test *testCase, config *Config, conn net.Conn, isResume bool) error {
 	var connDamage *damageAdaptor
 
@@ -253,7 +287,7 @@ func doExchange(test *testCase, config *Config, conn net.Conn, isResume bool) er
 		conn = config.Bugs.PacketAdaptor
 	}
 
-	if *flagDebug {
+	if *flagDebug || len(*transcriptDir) != 0 {
 		local, peer := "client", "server"
 		if test.testType == clientTest {
 			local, peer = peer, local
@@ -265,9 +299,14 @@ func doExchange(test *testCase, config *Config, conn net.Conn, isResume bool) er
 			peer:       peer,
 		}
 		conn = connDebug
-		defer func() {
-			connDebug.WriteTo(os.Stdout)
-		}()
+		if *flagDebug {
+			defer connDebug.WriteTo(os.Stdout)
+		}
+		if len(*transcriptDir) != 0 {
+			defer func() {
+				writeTranscript(test, isResume, connDebug.Transcript())
+			}()
+		}
 
 		if config.Bugs.PacketAdaptor != nil {
 			config.Bugs.PacketAdaptor.debug = connDebug

@@ -92,6 +92,17 @@ func (r *recordingConn) WriteTo(w io.Writer) {
 	}
 }
 
+func (r *recordingConn) Transcript() []byte {
+	var ret []byte
+	for _, flow := range r.flows {
+		if flow.flowType != writeFlow {
+			continue
+		}
+		ret = append(ret, flow.data...)
+	}
+	return ret
+}
+
 func parseTestData(r io.Reader) (flows [][]byte, err error) {
 	var currentFlow []byte
 
