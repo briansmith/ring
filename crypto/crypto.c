@@ -140,3 +140,5 @@ int CRYPTO_malloc_init(void) {
 void ENGINE_load_builtin_engines(void) {}
 
 void OPENSSL_load_builtin_modules(void) {}
+
+int FIPS_mode(void) { return 0; }

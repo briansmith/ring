@@ -65,6 +65,9 @@ OPENSSL_EXPORT void ENGINE_load_builtin_engines(void);
 /* OPENSSL_load_builtin_modules does nothing. */
 OPENSSL_EXPORT void OPENSSL_load_builtin_modules(void);
 
+/* FIPS_mode returns zero. */
+OPENSSL_EXPORT int FIPS_mode(void);
+
 
 #if defined(__cplusplus)
 }  /* extern C */
