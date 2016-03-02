@@ -253,18 +253,19 @@ func main() {
 
 	var wg sync.WaitGroup
 	tests := make(chan test, *numWorkers)
-	results := make(chan result, len(testCases))
+	results := make(chan result, *numWorkers)
 
 	for i := 0; i < *numWorkers; i++ {
+		wg.Add(1)
 		go worker(tests, results, &wg)
 	}
 
-	for _, test := range testCases {
-		tests <- test
-	}
-	close(tests)
-
 	go func() {
+		for _, test := range testCases {
+			tests <- test
+		}
+		close(tests)
+
 		wg.Wait()
 		close(results)
 	}()
@@ -296,7 +297,7 @@ func main() {
 	}
 
 	if len(failed) > 0 {
-		fmt.Printf("\n%d of %d tests failed:\n", len(failed), len(tests))
+		fmt.Printf("\n%d of %d tests failed:\n", len(failed), len(testCases))
 		for _, test := range failed {
 			fmt.Printf("\t%s\n", strings.Join([]string(test), " "))
 		}
