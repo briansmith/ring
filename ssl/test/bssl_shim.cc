@@ -1485,7 +1485,16 @@ static bool DoExchange(ScopedSSL_SESSION *out_session, SSL_CTX *ssl_ctx,
   return true;
 }
 
+class StderrDelimiter {
+ public:
+  ~StderrDelimiter() { fprintf(stderr, "--- DONE ---\n"); }
+};
+
 int main(int argc, char **argv) {
+  // To distinguish ASan's output from ours, add a trailing message to stderr.
+  // Anything following this line will be considered an error.
+  StderrDelimiter delimiter;
+
 #if defined(OPENSSL_WINDOWS)
   /* Initialize Winsock. */
   WORD wsa_version = MAKEWORD(2, 2);

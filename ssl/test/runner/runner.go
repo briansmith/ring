@@ -738,6 +738,15 @@ func runTest(test *testCase, shimPath string, mallocNumToFail int64) error {
 
 	stdout := string(stdoutBuf.Bytes())
 	stderr := string(stderrBuf.Bytes())
+
+	// Separate the errors from the shim and those from tools like
+	// AddressSanitizer.
+	var extraStderr string
+	if stderrParts := strings.SplitN(stderr, "--- DONE ---\n", 2); len(stderrParts) == 2 {
+		stderr = stderrParts[0]
+		extraStderr = stderrParts[1]
+	}
+
 	failed := err != nil || childErr != nil
 	correctFailure := len(test.expectedError) == 0 || strings.Contains(stderr, test.expectedError)
 	localError := "none"
@@ -769,8 +778,8 @@ func runTest(test *testCase, shimPath string, mallocNumToFail int64) error {
 		return fmt.Errorf("%s: local error '%s', child error '%s', stdout:\n%s\nstderr:\n%s", msg, localError, childError, stdout, stderr)
 	}
 
-	if !*useValgrind && !failed && len(stderr) > 0 {
-		println(stderr)
+	if !*useValgrind && (len(extraStderr) > 0 || (!failed && len(stderr) > 0)) {
+		return fmt.Errorf("unexpected error output:\n%s\n%s", stderr, extraStderr)
 	}
 
 	return nil
