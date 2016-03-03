@@ -38,3 +38,9 @@ Here are the recommended values of `max_len` for each test.
 | `cert`    | 3072            |
 | `server`  | 1024            |
 | `client`  | 4096            |
+
+## Minimising the corpuses
+
+When a large number of new seeds are available, it's a good idea to minimise the corpus so that different seeds that trigger the same code paths can be deduplicated.
+
+In order to minimise all the corpuses, build for fuzzing and run `./fuzz/minimise_corpuses.sh`. Note that minimisation is, oddly, often not idempotent for unknown reasons.
