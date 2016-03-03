@@ -125,6 +125,7 @@ typedef struct cbs_st CBS;
 typedef struct ec_key_st EC_KEY;
 typedef struct ecdsa_sig_st ECDSA_SIG;
 typedef struct rsa_st RSA;
+typedef struct spake2_ctx_st SPAKE2_CTX;
 
 
 #if defined(__cplusplus)

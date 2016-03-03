@@ -32,6 +32,7 @@
 #endif
 
 #include <openssl/bn.h>
+#include <openssl/curve25519.h>
 #include <openssl/ec.h>
 #include <openssl/ec_key.h>
 #include <openssl/ecdsa.h>
@@ -90,6 +91,7 @@ SCOPED_OPENSSL_TYPE(ScopedECDSA_SIG, ECDSA_SIG, ECDSA_SIG_free);
 SCOPED_OPENSSL_TYPE(ScopedEC_KEY, EC_KEY, EC_KEY_free);
 SCOPED_OPENSSL_TYPE(ScopedEC_POINT, EC_POINT, EC_POINT_free);
 SCOPED_OPENSSL_TYPE(ScopedRSA, RSA, RSA_free);
+SCOPED_OPENSSL_TYPE(ScopedSPAKE2_CTX, SPAKE2_CTX, SPAKE2_CTX_free);
 
 typedef std::unique_ptr<uint8_t, OpenSSLFree<uint8_t>> ScopedOpenSSLBytes;
 typedef std::unique_ptr<char, OpenSSLFree<char>> ScopedOpenSSLString;
