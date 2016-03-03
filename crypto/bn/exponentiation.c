@@ -515,9 +515,8 @@ int BN_mod_exp_mont_consttime(BIGNUM *rr, const BIGNUM *a, const BIGNUM *p,
 #if defined(OPENSSL_BN_ASM_MONT5)
   if (window >= 5) {
     window = 5; /* ~5% improvement for RSA2048 sign, and even for RSA4096 */
-    if ((top & 7) == 0) {
-      powerbufLen += 2 * top * sizeof(m->d[0]);
-    }
+    /* reserve space for mont->N.d[] copy */
+    powerbufLen += top * sizeof(mont->N.d[0]);
   }
 #endif
 
@@ -588,7 +587,8 @@ int BN_mod_exp_mont_consttime(BIGNUM *rr, const BIGNUM *a, const BIGNUM *p,
   /* Dedicated window==4 case improves 512-bit RSA sign by ~15%, but as
    * 512-bit RSA is hardly relevant, we omit it to spare size... */
   if (window == 5 && top > 1) {
-    const BN_ULONG *np = mont->N.d, *n0 = mont->n0, *np2;
+    const BN_ULONG *n0 = mont->n0;
+    BN_ULONG *np;
 
     /* BN_to_montgomery can contaminate words above .top
      * [in BN_DEBUG[_DEBUG] build]... */
@@ -599,14 +599,9 @@ int BN_mod_exp_mont_consttime(BIGNUM *rr, const BIGNUM *a, const BIGNUM *p,
       tmp.d[i] = 0;
     }
 
-    if (top & 7) {
-      np2 = np;
-    } else {
-      BN_ULONG *np_double = am.d + top;
-      for (i = 0; i < top; i++) {
-        np_double[2 * i] = np[i];
-      }
-      np2 = np_double;
+    /* copy mont->N.d[] to improve cache locality */
+    for (np = am.d + top, i = 0; i < top; i++) {
+      np[i] = mont->N.d[i];
     }
 
     bn_scatter5(tmp.d, top, powerbuf, 0);
@@ -621,7 +616,7 @@ int BN_mod_exp_mont_consttime(BIGNUM *rr, const BIGNUM *a, const BIGNUM *p,
     }
     for (i = 3; i < 8; i += 2) {
       int j;
-      bn_mul_mont_gather5(tmp.d, am.d, powerbuf, np2, n0, top, i - 1);
+      bn_mul_mont_gather5(tmp.d, am.d, powerbuf, np, n0, top, i - 1);
       bn_scatter5(tmp.d, top, powerbuf, i);
       for (j = 2 * i; j < 32; j *= 2) {
         bn_mul_mont(tmp.d, tmp.d, tmp.d, np, n0, top);
@@ -629,13 +624,13 @@ int BN_mod_exp_mont_consttime(BIGNUM *rr, const BIGNUM *a, const BIGNUM *p,
       }
     }
     for (; i < 16; i += 2) {
-      bn_mul_mont_gather5(tmp.d, am.d, powerbuf, np2, n0, top, i - 1);
+      bn_mul_mont_gather5(tmp.d, am.d, powerbuf, np, n0, top, i - 1);
       bn_scatter5(tmp.d, top, powerbuf, i);
       bn_mul_mont(tmp.d, tmp.d, tmp.d, np, n0, top);
       bn_scatter5(tmp.d, top, powerbuf, 2 * i);
     }
     for (; i < 32; i += 2) {
-      bn_mul_mont_gather5(tmp.d, am.d, powerbuf, np2, n0, top, i - 1);
+      bn_mul_mont_gather5(tmp.d, am.d, powerbuf, np, n0, top, i - 1);
       bn_scatter5(tmp.d, top, powerbuf, i);
     }
 
@@ -683,7 +678,7 @@ int BN_mod_exp_mont_consttime(BIGNUM *rr, const BIGNUM *a, const BIGNUM *p,
         wvalue >>= (bits - 4) & 7;
         wvalue &= 0x1f;
         bits -= 5;
-        bn_power5(tmp.d, tmp.d, powerbuf, np2, n0, top, wvalue);
+        bn_power5(tmp.d, tmp.d, powerbuf, np, n0, top, wvalue);
       }
       while (bits >= 0) {
         /* Read five bits from |bits-4| through |bits|, inclusive. */
@@ -692,11 +687,11 @@ int BN_mod_exp_mont_consttime(BIGNUM *rr, const BIGNUM *a, const BIGNUM *p,
         wvalue >>= first_bit & 7;
         wvalue &= 0x1f;
         bits -= 5;
-        bn_power5(tmp.d, tmp.d, powerbuf, np2, n0, top, wvalue);
+        bn_power5(tmp.d, tmp.d, powerbuf, np, n0, top, wvalue);
       }
     }
 
-    ret = bn_from_montgomery(tmp.d, tmp.d, NULL, np2, n0, top);
+    ret = bn_from_montgomery(tmp.d, tmp.d, NULL, np, n0, top);
     tmp.top = top;
     bn_correct_top(&tmp);
     if (ret) {
