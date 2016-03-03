@@ -1417,9 +1417,9 @@ ssl_create_cipher_list(const SSL_PROTOCOL_METHOD *ssl_method,
    * AES_GCM. Of the two CHACHA20 variants, the new one is preferred over the
    * old one. */
   if (EVP_has_aes_hardware()) {
-    ssl_cipher_apply_rule(0, ~0u, ~0u, SSL_AES256GCM, ~0u, 0, CIPHER_ADD, -1, 0,
-                          &head, &tail);
     ssl_cipher_apply_rule(0, ~0u, ~0u, SSL_AES128GCM, ~0u, 0, CIPHER_ADD, -1, 0,
+                          &head, &tail);
+    ssl_cipher_apply_rule(0, ~0u, ~0u, SSL_AES256GCM, ~0u, 0, CIPHER_ADD, -1, 0,
                           &head, &tail);
     ssl_cipher_apply_rule(0, ~0u, ~0u, SSL_CHACHA20POLY1305, ~0u, 0, CIPHER_ADD,
                           -1, 0, &head, &tail);
@@ -1430,24 +1430,24 @@ ssl_create_cipher_list(const SSL_PROTOCOL_METHOD *ssl_method,
                           -1, 0, &head, &tail);
     ssl_cipher_apply_rule(0, ~0u, ~0u, SSL_CHACHA20POLY1305_OLD, ~0u, 0,
                           CIPHER_ADD, -1, 0, &head, &tail);
-    ssl_cipher_apply_rule(0, ~0u, ~0u, SSL_AES256GCM, ~0u, 0, CIPHER_ADD, -1, 0,
-                          &head, &tail);
     ssl_cipher_apply_rule(0, ~0u, ~0u, SSL_AES128GCM, ~0u, 0, CIPHER_ADD, -1, 0,
+                          &head, &tail);
+    ssl_cipher_apply_rule(0, ~0u, ~0u, SSL_AES256GCM, ~0u, 0, CIPHER_ADD, -1, 0,
                           &head, &tail);
   }
 
-  /* Then the legacy non-AEAD ciphers: AES_256_CBC, AES-128_CBC, RC4_128_SHA,
-   * RC4_128_MD5, 3DES_EDE_CBC_SHA. */
-  ssl_cipher_apply_rule(0, ~0u, ~0u, SSL_AES256, ~0u, 0, CIPHER_ADD, -1, 0,
-                        &head, &tail);
+  /* Then the legacy non-AEAD ciphers: AES_128_CBC, AES_256_CBC,
+   * 3DES_EDE_CBC_SHA, RC4_128_SHA, RC4_128_MD5. */
   ssl_cipher_apply_rule(0, ~0u, ~0u, SSL_AES128, ~0u, 0, CIPHER_ADD, -1, 0,
                         &head, &tail);
+  ssl_cipher_apply_rule(0, ~0u, ~0u, SSL_AES256, ~0u, 0, CIPHER_ADD, -1, 0,
+                        &head, &tail);
+  ssl_cipher_apply_rule(0, ~0u, ~0u, SSL_3DES, ~0u, 0, CIPHER_ADD, -1, 0, &head,
+                        &tail);
   ssl_cipher_apply_rule(0, ~0u, ~0u, SSL_RC4, ~SSL_MD5, 0, CIPHER_ADD, -1, 0,
                         &head, &tail);
   ssl_cipher_apply_rule(0, ~0u, ~0u, SSL_RC4, SSL_MD5, 0, CIPHER_ADD, -1, 0,
                         &head, &tail);
-  ssl_cipher_apply_rule(0, ~0u, ~0u, SSL_3DES, ~0u, 0, CIPHER_ADD, -1, 0, &head,
-                        &tail);
 
   /* Temporarily enable everything else for sorting */
   ssl_cipher_apply_rule(0, ~0u, ~0u, ~0u, ~0u, 0, CIPHER_ADD, -1, 0, &head,
