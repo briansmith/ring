@@ -99,7 +99,7 @@ in the table below.
 </tr>
 <tr><td>Mac OS X</td>
     <td>x64</td>
-    <td>Apple Clang 6.0 (based on Clang 3.5)</td>
+    <td>Apple Clang 7.0.2 (clang-700.1.81)</td>
 </tr>
 <tr><td>Windows</td>
     <td>x86, x64</td>
