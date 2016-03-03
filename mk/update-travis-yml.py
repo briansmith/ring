@@ -107,6 +107,8 @@ entry_template = """
       rust: %(rust)s
       os: %(os)s"""
 
+entry_indent = "      "
+
 entry_packages_template = """
       addons:
         apt:
@@ -142,6 +144,9 @@ def format_entry(os, target, compiler, rust, mode):
 
     cc = get_cc(sys, compiler)
     cxx = replace_cc_with_cxx(sys, compiler)
+
+    if os == "osx":
+        os += "\n" + entry_indent + "osx_image: xcode7.2"
 
     return template % {
             "cc" : cc,
