@@ -1205,7 +1205,7 @@ static uint8_t equal(signed char b, signed char c) {
   return y;
 }
 
-static void cmov(ge_precomp *t, ge_precomp *u, uint8_t b) {
+static void cmov(ge_precomp *t, const ge_precomp *u, uint8_t b) {
   fe_cmov(t->yplusx, u->yplusx, b);
   fe_cmov(t->yminusx, u->yminusx, b);
   fe_cmov(t->xy2d, u->xy2d, b);
@@ -1363,7 +1363,7 @@ void x25519_ge_scalarmult_base(ge_p3 *h, const uint8_t a[32]) {
 #else
 
 /* k25519Precomp[i][j] = (j+1)*256^i*B */
-static ge_precomp k25519Precomp[32][8] = {
+static const ge_precomp k25519Precomp[32][8] = {
     {
         {
             {25967493, -14356035, 29566456, 3660896, -12694345, 4014787,
@@ -3654,7 +3654,7 @@ static void slide(signed char *r, const uint8_t *a) {
   }
 }
 
-static ge_precomp Bi[8] = {
+static const ge_precomp Bi[8] = {
     {
         {25967493, -14356035, 29566456, 3660896, -12694345, 4014787, 27544626,
          -11754271, -6079156, 2047605},
