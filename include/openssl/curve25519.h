@@ -98,7 +98,7 @@ OPENSSL_EXPORT int ED25519_verify(const uint8_t *message, size_t message_len,
  * must be “Alice” and the other be “Bob”. */
 enum spake2_role_t {
   spake2_role_alice,
-  spake2_role_bob,
+  spake2_role_bob
 };
 
 /* SPAKE2_CTX_new creates a new |SPAKE2_CTX| (which can only be used for a
