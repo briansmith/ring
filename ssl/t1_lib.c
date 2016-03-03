@@ -2368,9 +2368,6 @@ static int ssl_check_clienthello_tlsext(SSL *ssl) {
   int ret = SSL_TLSEXT_ERR_NOACK;
   int al = SSL_AD_UNRECOGNIZED_NAME;
 
-  /* The handling of the ECPointFormats extension is done elsewhere, namely in
-   * ssl3_choose_cipher in s3_lib.c. */
-
   if (ssl->ctx != NULL && ssl->ctx->tlsext_servername_callback != 0) {
     ret = ssl->ctx->tlsext_servername_callback(ssl, &al,
                                              ssl->ctx->tlsext_servername_arg);
