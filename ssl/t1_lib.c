@@ -687,82 +687,44 @@ static int ext_sni_parse_clienthello(SSL *ssl, uint8_t *out_alert,
     return 1;
   }
 
-  /* The servername extension is treated as follows:
-   *
-   * - Only the hostname type is supported with a maximum length of 255.
-   * - The servername is rejected if too long or if it contains zeros, in
-   *   which case an fatal alert is generated.
-   * - The servername field is maintained together with the session cache.
-   * - When a session is resumed, the servername callback is invoked in order
-   *   to allow the application to position itself to the right context.
-   * - The servername is acknowledged if it is new for a session or when
-   *   it is identical to a previously used for the same session.
-   *   Applications can control the behaviour.  They can at any time
-   *   set a 'desirable' servername for a new SSL object. This can be the
-   *   case for example with HTTPS when a Host: header field is received and
-   *   a renegotiation is requested. In this case, a possible servername
-   *   presented in the new client hello is only acknowledged if it matches
-   *   the value of the Host: field.
-   * - Applications must  use SSL_OP_NO_SESSION_RESUMPTION_ON_RENEGOTIATION
-   *   if they provide for changing an explicit servername context for the
-   *   session,
-   *   i.e. when the session has been established with a servername extension.
-   */
-
-  CBS server_name_list;
-  char have_seen_host_name = 0;
-
+  CBS server_name_list, host_name;
+  uint8_t name_type;
   if (!CBS_get_u16_length_prefixed(contents, &server_name_list) ||
-      CBS_len(&server_name_list) == 0 ||
+      !CBS_get_u8(&server_name_list, &name_type) ||
+      /* Although the server_name extension was intended to be extensible to
+       * new name types and multiple names, OpenSSL 1.0.x had a bug which meant
+       * different name types will cause an error. Further, RFC 4366 originally
+       * defined syntax inextensibly. RFC 6066 corrected this mistake, but
+       * adding new name types is no longer feasible.
+       *
+       * Act as if the extensibility does not exist to simplify parsing. */
+      !CBS_get_u16_length_prefixed(&server_name_list, &host_name) ||
+      CBS_len(&server_name_list) != 0 ||
       CBS_len(contents) != 0) {
     return 0;
   }
 
-  /* Decode each ServerName in the extension. */
-  while (CBS_len(&server_name_list) > 0) {
-    uint8_t name_type;
-    CBS host_name;
+  if (name_type != TLSEXT_NAMETYPE_host_name ||
+      CBS_len(&host_name) == 0 ||
+      CBS_len(&host_name) > TLSEXT_MAXLEN_host_name ||
+      CBS_contains_zero_byte(&host_name)) {
+    *out_alert = SSL_AD_UNRECOGNIZED_NAME;
+    return 0;
+  }
 
-    if (!CBS_get_u8(&server_name_list, &name_type) ||
-        !CBS_get_u16_length_prefixed(&server_name_list, &host_name)) {
+  /* TODO(davidben): SNI should be resolved before resumption. We have the
+   * early callback as a replacement, but we should fix the current callback
+   * and avoid the need for |SSL_CTX_set_session_id_context|. */
+  if (!ssl->hit) {
+    assert(ssl->session->tlsext_hostname == NULL);
+
+    /* Copy the hostname as a string. */
+    if (!CBS_strdup(&host_name, &ssl->session->tlsext_hostname)) {
+      *out_alert = SSL_AD_INTERNAL_ERROR;
       return 0;
     }
 
-    /* Only host_name is supported. */
-    if (name_type != TLSEXT_NAMETYPE_host_name) {
-      continue;
-    }
-
-    if (have_seen_host_name) {
-      /* The ServerNameList MUST NOT contain more than one name of the same
-       * name_type. */
-      return 0;
-    }
-
-    have_seen_host_name = 1;
-
-    if (CBS_len(&host_name) == 0 ||
-        CBS_len(&host_name) > TLSEXT_MAXLEN_host_name ||
-        CBS_contains_zero_byte(&host_name)) {
-      *out_alert = SSL_AD_UNRECOGNIZED_NAME;
-      return 0;
-    }
-
-    if (!ssl->hit) {
-      assert(ssl->session->tlsext_hostname == NULL);
-      if (ssl->session->tlsext_hostname) {
-        /* This should be impossible. */
-        return 0;
-      }
-
-      /* Copy the hostname as a string. */
-      if (!CBS_strdup(&host_name, &ssl->session->tlsext_hostname)) {
-        *out_alert = SSL_AD_INTERNAL_ERROR;
-        return 0;
-      }
-
-      ssl->s3->tmp.should_ack_sni = 1;
-    }
+    ssl->s3->tmp.should_ack_sni = 1;
   }
 
   return 1;
