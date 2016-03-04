@@ -248,7 +248,7 @@ struct ecdsa_method_st {
   int (*sign)(const uint8_t *digest, size_t digest_len, uint8_t *sig,
               unsigned int *sig_len, EC_KEY *eckey);
 
-  /* verify matches the arguments and behaviour of |ECDSA_verify|. */
+  /* Ignored. Set this to NULL. */
   int (*verify)(const uint8_t *digest, size_t digest_len, const uint8_t *sig,
                 size_t sig_len, EC_KEY *eckey);
 

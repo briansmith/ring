@@ -509,6 +509,7 @@ struct rsa_meth_st {
   int (*sign)(int type, const uint8_t *m, unsigned int m_length,
               uint8_t *sigret, unsigned int *siglen, const RSA *rsa);
 
+  /* Ignored. Set this to NULL. */
   int (*verify)(int dtype, const uint8_t *m, unsigned int m_length,
                 const uint8_t *sigbuf, unsigned int siglen, const RSA *rsa);
 
@@ -521,6 +522,7 @@ struct rsa_meth_st {
 
   int (*decrypt)(RSA *rsa, size_t *out_len, uint8_t *out, size_t max_out,
                  const uint8_t *in, size_t in_len, int padding);
+  /* Ignored. Set this to NULL. */
   int (*verify_raw)(RSA *rsa, size_t *out_len, uint8_t *out, size_t max_out,
                     const uint8_t *in, size_t in_len, int padding);
 

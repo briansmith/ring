@@ -79,10 +79,6 @@ int ECDSA_verify(int type, const uint8_t *digest, size_t digest_len,
   int ret = 0;
   uint8_t *der = NULL;
 
-  if (eckey->ecdsa_meth && eckey->ecdsa_meth->verify) {
-    return eckey->ecdsa_meth->verify(digest, digest_len, sig, sig_len, eckey);
-  }
-
   /* Decode the ECDSA signature. */
   s = ECDSA_SIG_from_bytes(sig, sig_len);
   if (s == NULL) {
@@ -147,11 +143,6 @@ int ECDSA_do_verify(const uint8_t *digest, size_t digest_len,
   EC_POINT *point = NULL;
   const EC_GROUP *group;
   const EC_POINT *pub_key;
-
-  if (eckey->ecdsa_meth && eckey->ecdsa_meth->verify) {
-    OPENSSL_PUT_ERROR(ECDSA, ECDSA_R_NOT_IMPLEMENTED);
-    return 0;
-  }
 
   /* check input values */
   if ((group = EC_KEY_get0_group(eckey)) == NULL ||

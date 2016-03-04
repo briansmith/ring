@@ -426,9 +426,13 @@ err:
 
 static int mod_exp(BIGNUM *r0, const BIGNUM *I, RSA *rsa, BN_CTX *ctx);
 
-int rsa_default_verify_raw(RSA *rsa, size_t *out_len, uint8_t *out,
-                           size_t max_out, const uint8_t *in, size_t in_len,
-                           int padding) {
+int RSA_verify_raw(RSA *rsa, size_t *out_len, uint8_t *out, size_t max_out,
+                   const uint8_t *in, size_t in_len, int padding) {
+  if (rsa->n == NULL || rsa->e == NULL) {
+    OPENSSL_PUT_ERROR(RSA, RSA_R_VALUE_MISSING);
+    return 0;
+  }
+
   const unsigned rsa_size = RSA_size(rsa);
   BIGNUM *f, *result;
   int ret = 0;
