@@ -435,10 +435,7 @@ int RSA_verify_raw(RSA *rsa, size_t *out_len, uint8_t *out, size_t max_out,
 
   const unsigned rsa_size = RSA_size(rsa);
   BIGNUM *f, *result;
-  int ret = 0;
   int r = -1;
-  uint8_t *buf = NULL;
-  BN_CTX *ctx = NULL;
 
   if (max_out < rsa_size) {
     OPENSSL_PUT_ERROR(RSA, RSA_R_OUTPUT_BUFFER_TOO_SMALL);
@@ -454,14 +451,22 @@ int RSA_verify_raw(RSA *rsa, size_t *out_len, uint8_t *out, size_t max_out,
     return 0;
   }
 
-  ctx = BN_CTX_new();
+  BN_CTX *ctx = BN_CTX_new();
   if (ctx == NULL) {
-    goto err;
+    return 0;
   }
+
+  int ret = 0;
+  uint8_t *buf = NULL;
 
   BN_CTX_start(ctx);
   f = BN_CTX_get(ctx);
   result = BN_CTX_get(ctx);
+  if (f == NULL || result == NULL) {
+    OPENSSL_PUT_ERROR(RSA, ERR_R_MALLOC_FAILURE);
+    goto err;
+  }
+
   if (padding == RSA_NO_PADDING) {
     buf = out;
   } else {
@@ -471,10 +476,6 @@ int RSA_verify_raw(RSA *rsa, size_t *out_len, uint8_t *out, size_t max_out,
       OPENSSL_PUT_ERROR(RSA, ERR_R_MALLOC_FAILURE);
       goto err;
     }
-  }
-  if (!f || !result) {
-    OPENSSL_PUT_ERROR(RSA, ERR_R_MALLOC_FAILURE);
-    goto err;
   }
 
   if (BN_bin2bn(in, in_len, f) == NULL) {
@@ -516,12 +517,9 @@ int RSA_verify_raw(RSA *rsa, size_t *out_len, uint8_t *out, size_t max_out,
   }
 
 err:
-  if (ctx != NULL) {
-    BN_CTX_end(ctx);
-    BN_CTX_free(ctx);
-  }
-  if (padding != RSA_NO_PADDING && buf != NULL) {
-    OPENSSL_cleanse(buf, rsa_size);
+  BN_CTX_end(ctx);
+  BN_CTX_free(ctx);
+  if (buf != out) {
     OPENSSL_free(buf);
   }
   return ret;
