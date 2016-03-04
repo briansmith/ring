@@ -106,6 +106,7 @@ static int hwrand(void *buf, size_t len) {
   assert(len >= 1);
 
   if (!have_rdrand()) {
+    __debugbreak();
     return 0;
   }
 
