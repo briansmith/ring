@@ -445,6 +445,11 @@ int RSA_verify_raw(RSA *rsa, size_t *out_len, uint8_t *out, size_t max_out,
     return 0;
   }
 
+  if (in_len != rsa_size) {
+    OPENSSL_PUT_ERROR(RSA, RSA_R_DATA_LEN_NOT_EQUAL_TO_MOD_LEN);
+    return 0;
+  }
+
   if (!check_modulus_and_exponent_sizes(rsa)) {
     return 0;
   }
@@ -469,11 +474,6 @@ int RSA_verify_raw(RSA *rsa, size_t *out_len, uint8_t *out, size_t max_out,
   }
   if (!f || !result) {
     OPENSSL_PUT_ERROR(RSA, ERR_R_MALLOC_FAILURE);
-    goto err;
-  }
-
-  if (in_len != rsa_size) {
-    OPENSSL_PUT_ERROR(RSA, RSA_R_DATA_LEN_NOT_EQUAL_TO_MOD_LEN);
     goto err;
   }
 

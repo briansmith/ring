@@ -475,11 +475,6 @@ int RSA_verify(int hash_nid, const uint8_t *msg, size_t msg_len,
   size_t signed_msg_len, len;
   int signed_msg_is_alloced = 0;
 
-  if (sig_len != rsa_size) {
-    OPENSSL_PUT_ERROR(RSA, RSA_R_WRONG_SIGNATURE_LENGTH);
-    return 0;
-  }
-
   if (hash_nid == NID_md5_sha1 && msg_len != SSL_SIG_LENGTH) {
     OPENSSL_PUT_ERROR(RSA, RSA_R_INVALID_MESSAGE_LENGTH);
     return 0;
