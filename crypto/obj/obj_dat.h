@@ -2482,7 +2482,7 @@ static const ASN1_OBJECT kObjects[NUM_NID]={
 	NID_dhSinglePass_cofactorDH_sha512kdf_scheme,6,&(lvalues[6169]),0},
 {"dh-std-kdf","dh-std-kdf",NID_dh_std_kdf,0,NULL,0},
 {"dh-cofactor-kdf","dh-cofactor-kdf",NID_dh_cofactor_kdf,0,NULL,0},
-{"X25519","x25519",NID_x25519,0,NULL,0},
+{"X25519","X25519",NID_X25519,0,NULL,0},
 };
 
 static const unsigned int kNIDsInShortNameOrder[NUM_SN]={
@@ -3538,6 +3538,7 @@ static const unsigned int kNIDsInLongNameOrder[NUM_LN]={
 129,	/* "TLS Web Server Authentication" */
 133,	/* "Time Stamping" */
 375,	/* "Trust Root" */
+948,	/* "X25519" */
 12,	/* "X509" */
 402,	/* "X509v3 AC Targeting" */
 746,	/* "X509v3 Any Policy" */
@@ -4366,7 +4367,6 @@ static const unsigned int kNIDsInLongNameOrder[NUM_LN]={
 742,	/* "wap-wsg-idm-ecid-wtls9" */
 804,	/* "whirlpool" */
 868,	/* "x121Address" */
-948,	/* "x25519" */
 503,	/* "x500UniqueIdentifier" */
 158,	/* "x509Certificate" */
 160,	/* "x509Crl" */

@@ -288,7 +288,7 @@ static const SSL_ECDH_METHOD kMethods[] = {
         ssl_ec_point_compute_secret,
     },
     {
-        NID_x25519,
+        NID_X25519,
         SSL_CURVE_X25519,
         "X25519",
         ssl_x25519_cleanup,

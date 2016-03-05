@@ -945,4 +945,4 @@ dhSinglePass_cofactorDH_sha384kdf_scheme		944
 dhSinglePass_cofactorDH_sha512kdf_scheme		945
 dh_std_kdf		946
 dh_cofactor_kdf		947
-x25519		948
+X25519		948
