@@ -283,20 +283,20 @@ BIGNUM *BN_mod_inverse_ex(BIGNUM *out, int *out_no_inverse, const BIGNUM *a,
    */
 
   /* Binary inversion algorithm; requires odd modulus.
-    * This is faster than the general algorithm if the modulus
-    * is sufficiently small (about 400 .. 500 bits on 32-bit
-    * sytems, but much more on 64-bit systems) */
+   * This is faster than the general algorithm if the modulus
+   * is sufficiently small (about 400 .. 500 bits on 32-bit
+   * sytems, but much more on 64-bit systems) */
   int shift;
 
   while (!BN_is_zero(B)) {
     /*      0 < B < |n|,
-      *      0 < A <= |n|,
-      * (1) -sign*X*a  ==  B   (mod |n|),
-      * (2)  sign*Y*a  ==  A   (mod |n|) */
+     *      0 < A <= |n|,
+     * (1) -sign*X*a  ==  B   (mod |n|),
+     * (2)  sign*Y*a  ==  A   (mod |n|) */
 
     /* Now divide  B  by the maximum possible power of two in the integers,
-      * and divide  X  by the same value mod |n|.
-      * When we're done, (1) still holds. */
+     * and divide  X  by the same value mod |n|.
+     * When we're done, (1) still holds. */
     shift = 0;
     while (!BN_is_bit_set(B, shift)) {
       /* note that 0 < B */
@@ -341,22 +341,22 @@ BIGNUM *BN_mod_inverse_ex(BIGNUM *out, int *out_no_inverse, const BIGNUM *a,
     }
 
     /* We still have (1) and (2).
-      * Both  A  and  B  are odd.
-      * The following computations ensure that
-      *
-      *     0 <= B < |n|,
-      *      0 < A < |n|,
-      * (1) -sign*X*a  ==  B   (mod |n|),
-      * (2)  sign*Y*a  ==  A   (mod |n|),
-      *
-      * and that either  A  or  B  is even in the next iteration. */
+     * Both  A  and  B  are odd.
+     * The following computations ensure that
+     *
+     *     0 <= B < |n|,
+     *      0 < A < |n|,
+     * (1) -sign*X*a  ==  B   (mod |n|),
+     * (2)  sign*Y*a  ==  A   (mod |n|),
+     *
+     * and that either  A  or  B  is even in the next iteration. */
     if (BN_ucmp(B, A) >= 0) {
       /* -sign*(X + Y)*a == B - A  (mod |n|) */
       if (!BN_uadd(X, X, Y)) {
         goto err;
       }
       /* NB: we could use BN_mod_add_quick(X, X, Y, n), but that
-        * actually makes the algorithm slower */
+       * actually makes the algorithm slower */
       if (!BN_usub(B, B, A)) {
         goto err;
       }
