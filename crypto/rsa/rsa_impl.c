@@ -550,14 +550,9 @@ static int rsa_private_transform(RSA *rsa, uint8_t *out, const uint8_t *in,
       goto err;
     }
   } else {
-    BIGNUM local_d;
-    BIGNUM *d = NULL;
+    assert(BN_get_flags(rsa->d, BN_FLG_CONSTTIME));
 
-    BN_init(&local_d);
-    d = &local_d;
-    BN_with_flags(d, rsa->d, BN_FLG_CONSTTIME);
-
-    if (!BN_mod_exp_mont_consttime(result, f, d, rsa->n, ctx, rsa->mont_n)) {
+    if (!BN_mod_exp_mont_consttime(result, f, rsa->d, rsa->n, ctx, rsa->mont_n)) {
       goto err;
     }
   }
@@ -589,8 +584,6 @@ err:
 
 static int mod_exp(BIGNUM *r0, const BIGNUM *I, RSA *rsa, BN_CTX *ctx) {
   BIGNUM *r1, *m1, *vrfy;
-  BIGNUM local_dmp1, local_dmq1, local_c, local_r1;
-  BIGNUM *dmp1, *dmq1, *c, *pr1;
   int ret = 0;
 
   BN_CTX_start(ctx);
@@ -604,30 +597,26 @@ static int mod_exp(BIGNUM *r0, const BIGNUM *I, RSA *rsa, BN_CTX *ctx) {
   }
 
   /* compute I mod q */
-  c = &local_c;
-  BN_with_flags(c, I, BN_FLG_CONSTTIME);
-  if (!BN_mod(r1, c, rsa->q, ctx)) {
+  assert(BN_get_flags(rsa->q, BN_FLG_CONSTTIME));
+  if (!BN_mod(r1, I, rsa->q, ctx)) {
     goto err;
   }
 
   /* compute r1^dmq1 mod q */
-  dmq1 = &local_dmq1;
-  BN_with_flags(dmq1, rsa->dmq1, BN_FLG_CONSTTIME);
-  if (!BN_mod_exp_mont_consttime(m1, r1, dmq1, rsa->q, ctx, rsa->mont_q)) {
+  assert(BN_get_flags(rsa->dmq1, BN_FLG_CONSTTIME));
+  if (!BN_mod_exp_mont_consttime(m1, r1, rsa->dmq1, rsa->q, ctx, rsa->mont_q)) {
     goto err;
   }
 
   /* compute I mod p */
-  c = &local_c;
-  BN_with_flags(c, I, BN_FLG_CONSTTIME);
-  if (!BN_mod(r1, c, rsa->p, ctx)) {
+  assert(BN_get_flags(rsa->p, BN_FLG_CONSTTIME));
+  if (!BN_mod(r1, I, rsa->p, ctx)) {
     goto err;
   }
 
   /* compute r1^dmp1 mod p */
-  dmp1 = &local_dmp1;
-  BN_with_flags(dmp1, rsa->dmp1, BN_FLG_CONSTTIME);
-  if (!BN_mod_exp_mont_consttime(r0, r1, dmp1, rsa->p, ctx, rsa->mont_p)) {
+  assert(BN_get_flags(rsa->dmp1, BN_FLG_CONSTTIME));
+  if (!BN_mod_exp_mont_consttime(r0, r1, rsa->dmp1, rsa->p, ctx, rsa->mont_p)) {
     goto err;
   }
 
@@ -646,11 +635,9 @@ static int mod_exp(BIGNUM *r0, const BIGNUM *I, RSA *rsa, BN_CTX *ctx) {
     goto err;
   }
 
-  /* Turn BN_FLG_CONSTTIME flag on before division operation */
-  pr1 = &local_r1;
-  BN_with_flags(pr1, r1, BN_FLG_CONSTTIME);
+  assert(BN_get_flags(r1, BN_FLG_CONSTTIME));
 
-  if (!BN_mod(r0, pr1, rsa->p, ctx)) {
+  if (!BN_mod(r0, r1, rsa->p, ctx)) {
     goto err;
   }
 
@@ -696,12 +683,8 @@ static int mod_exp(BIGNUM *r0, const BIGNUM *I, RSA *rsa, BN_CTX *ctx) {
        * miscalculated CRT output, just do a raw (slower)
        * mod_exp and return that instead. */
 
-      BIGNUM local_d;
-      BIGNUM *d = NULL;
-
-      d = &local_d;
-      BN_with_flags(d, rsa->d, BN_FLG_CONSTTIME);
-      if (!BN_mod_exp_mont_consttime(r0, I, d, rsa->n, ctx, rsa->mont_n)) {
+      assert(BN_get_flags(rsa->d, BN_FLG_CONSTTIME));
+      if (!BN_mod_exp_mont_consttime(r0, I, rsa->d, rsa->n, ctx, rsa->mont_n)) {
         goto err;
       }
     }
@@ -721,8 +704,6 @@ RSA *RSA_generate(int bits, uint32_t e, BN_GENCB *cb) {
   }
 
   BIGNUM *r0 = NULL, *r1 = NULL, *r2 = NULL, *r3 = NULL, *tmp;
-  BIGNUM local_r0, local_d, local_p;
-  BIGNUM *pr0, *d, *p;
   int bitsp, bitsq, ok = -1, n = 0;
   BN_CTX *ctx = NULL;
 
@@ -738,6 +719,8 @@ RSA *RSA_generate(int bits, uint32_t e, BN_GENCB *cb) {
   if (r0 == NULL || r1 == NULL || r2 == NULL || r3 == NULL) {
     goto err;
   }
+
+  BN_set_flags(r0, BN_FLG_CONSTTIME);
 
   bitsp = (bits + 1) / 2;
   bitsq = bits - bitsp;
@@ -767,6 +750,13 @@ RSA *RSA_generate(int bits, uint32_t e, BN_GENCB *cb) {
   if (!rsa->iqmp && ((rsa->iqmp = BN_new()) == NULL)) {
     goto err;
   }
+
+  BN_set_flags(rsa->d, BN_FLG_CONSTTIME);
+  BN_set_flags(rsa->p, BN_FLG_CONSTTIME);
+  BN_set_flags(rsa->q, BN_FLG_CONSTTIME);
+  BN_set_flags(rsa->dmp1, BN_FLG_CONSTTIME);
+  BN_set_flags(rsa->dmq1, BN_FLG_CONSTTIME);
+  BN_set_flags(rsa->iqmp, BN_FLG_CONSTTIME);
 
   if (!BN_set_word(rsa->e, e)) {
     goto err;
@@ -839,31 +829,25 @@ RSA *RSA_generate(int bits, uint32_t e, BN_GENCB *cb) {
   if (!BN_mul(r0, r1, r2, ctx)) {
     goto err; /* (p-1)(q-1) */
   }
-  pr0 = &local_r0;
-  BN_with_flags(pr0, r0, BN_FLG_CONSTTIME);
-  if (!BN_mod_inverse(rsa->d, rsa->e, pr0, ctx)) {
+  if (!BN_mod_inverse(rsa->d, rsa->e, r0, ctx)) {
     goto err; /* d */
   }
 
-  /* set up d for correct BN_FLG_CONSTTIME flag */
-  d = &local_d;
-  BN_with_flags(d, rsa->d, BN_FLG_CONSTTIME);
+  assert(BN_get_flags(rsa->d, BN_FLG_CONSTTIME));
 
   /* calculate d mod (p-1) */
-  if (!BN_mod(rsa->dmp1, d, r1, ctx)) {
+  if (!BN_mod(rsa->dmp1, rsa->d, r1, ctx)) {
     goto err;
   }
 
   /* calculate d mod (q-1) */
-  if (!BN_mod(rsa->dmq1, d, r2, ctx)) {
+  if (!BN_mod(rsa->dmq1, rsa->d, r2, ctx)) {
     goto err;
   }
 
   /* calculate inverse of q mod p */
-  p = &local_p;
-  BN_with_flags(p, rsa->p, BN_FLG_CONSTTIME);
-
-  if (!BN_mod_inverse(rsa->iqmp, rsa->q, p, ctx)) {
+  assert(BN_get_flags(rsa->p, BN_FLG_CONSTTIME));
+  if (!BN_mod_inverse(rsa->iqmp, rsa->q, rsa->p, ctx)) {
     goto err;
   }
 
