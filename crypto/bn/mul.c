@@ -766,30 +766,6 @@ static void bn_sqr_recursive(BN_ULONG *r, const BN_ULONG *a, int n2, BN_ULONG *t
   }
 }
 
-int BN_mul_word(BIGNUM *bn, BN_ULONG w) {
-  BN_ULONG ll;
-
-  w &= BN_MASK2;
-  if (!bn->top) {
-    return 1;
-  }
-
-  if (w == 0) {
-    BN_zero(bn);
-    return 1;
-  }
-
-  ll = bn_mul_words(bn->d, bn->d, bn->top, w);
-  if (ll) {
-    if (bn_wexpand(bn, bn->top + 1) == NULL) {
-      return 0;
-    }
-    bn->d[bn->top++] = ll;
-  }
-
-  return 1;
-}
-
 int BN_sqr(BIGNUM *r, const BIGNUM *a, BN_CTX *ctx) {
   int max, al;
   int ret = 0;

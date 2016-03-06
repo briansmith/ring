@@ -346,10 +346,6 @@ OPENSSL_EXPORT int BN_sub_word(BIGNUM *a, BN_ULONG w);
 OPENSSL_EXPORT int BN_mul(BIGNUM *r, const BIGNUM *a, const BIGNUM *b,
                           BN_CTX *ctx);
 
-/* BN_mul_word sets |bn| = |bn| * |w|. It returns one on success or zero on
- * allocation failure. */
-OPENSSL_EXPORT int BN_mul_word(BIGNUM *bn, BN_ULONG w);
-
 /* BN_sqr sets |r| = |a|^2 (i.e. squares), where |r| may be the same pointer as
  * |a|. Returns one on success and zero otherwise. This is more efficient than
  * BN_mul(r, a, a, ctx). */
