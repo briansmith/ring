@@ -129,7 +129,7 @@
 #pragma warning(push, 3)
 #include <intrin.h>
 #pragma warning(pop)
-#pragma intrinsic(__umulh, _umul128)
+#pragma intrinsic(_umul128)
 #endif
 
 #include "../internal.h"
@@ -197,10 +197,6 @@ BIGNUM *bn_expand(BIGNUM *bn, size_t bits);
     sizeof(x) / sizeof(BN_ULONG), 0, BN_FLG_STATIC_DATA \
   }
 
-#if defined(BN_ULLONG)
-#define Lw(t) (((BN_ULONG)(t))&BN_MASK2)
-#define Hw(t) (((BN_ULONG)((t)>>BN_BITS2))&BN_MASK2)
-#endif
 
 /* bn_set_words sets |bn| to the value encoded in the |num| words in |words|,
  * least significant word first. */
@@ -248,13 +244,16 @@ int bn_mul_mont(BN_ULONG *rp, const BN_ULONG *ap, const BN_ULONG *bp,
 #endif
 
 
+static inline void bn_umult_lohi(BN_ULONG *low_out, BN_ULONG *high_out,
+                                 BN_ULONG a, BN_ULONG b) {
 #if defined(OPENSSL_X86_64) && defined(_MSC_VER)
-#define BN_UMULT_LOHI(low, high, a, b) ((low) = _umul128((a), (b), &(high)))
+  *low_out = _umul128(a, b, high_out);
+#else
+  BN_ULLONG result = (BN_ULLONG)a * b;
+  *low_out = (BN_ULONG)result;
+  *high_out = (BN_ULONG)(result >> BN_BITS2);
 #endif
-
-#if !defined(BN_ULLONG) && !defined(BN_UMULT_LOHI)
-#error "Either BN_ULLONG or BN_UMULT_LOHI must be defined on every platform."
-#endif
+}
 
 
 #if defined(__cplusplus)

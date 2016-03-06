@@ -348,7 +348,7 @@ int BN_div(BIGNUM *dv, BIGNUM *rm, const BIGNUM *num, const BIGNUM *divisor,
       }
 #else /* !BN_ULLONG */
       BN_ULONG t2l, t2h;
-      BN_UMULT_LOHI(t2l, t2h, d1, q);
+      bn_umult_lohi(&t2l, &t2h, d1, q);
       for (;;) {
         if ((t2h < rem) || ((t2h == rem) && (t2l <= wnump[-2]))) {
           break;
