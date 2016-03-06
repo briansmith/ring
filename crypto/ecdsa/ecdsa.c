@@ -147,9 +147,16 @@ int ECDSA_sign(int type, const uint8_t *digest, size_t digest_len, uint8_t *sig,
       goto err;
     }
 
-    if (!BN_mod_mul(tmp, priv_key, r, &group->order, ctx) ||
+    BIGNUM *r_mont = BN_CTX_get(ctx);
+    if (!r_mont) {
+      goto err;
+    }
+
+    if (!BN_to_montgomery(r_mont, r, &group->order_mont, ctx) ||
+        !BN_mod_mul_montgomery(tmp, priv_key, r_mont, &group->order_mont, ctx) ||
         !BN_mod_add_quick(s, tmp, m, &group->order) ||
-        !BN_mod_mul(s, s, k, &group->order, ctx)) {
+        !BN_to_montgomery(s, s, &group->order_mont, ctx) ||
+        !BN_mod_mul_montgomery(s, s, k, &group->order_mont, ctx)) {
       OPENSSL_PUT_ERROR(ECDSA, ERR_R_BN_LIB);
       goto err;
     }
