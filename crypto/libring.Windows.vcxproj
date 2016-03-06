@@ -17,7 +17,6 @@
   <ItemGroup>
     <ClCompile Include="aes\aes.c" />
     <ClCompile Include="bn\add.c" />
-    <ClCompile Include="bn\asm\x86_64-gcc.c" />
     <ClCompile Include="bn\bn.c" />
     <ClCompile Include="bn\bn_asn1.c" />
     <ClCompile Include="bn\cmp.c" />

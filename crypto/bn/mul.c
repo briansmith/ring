@@ -111,7 +111,6 @@ void bn_mul_normal(BN_ULONG *r, BN_ULONG *a, int na, BN_ULONG *b, int nb) {
   }
 }
 
-#if !defined(OPENSSL_X86) || defined(OPENSSL_NO_ASM)
 /* Here follows specialised variants of bn_add_words() and bn_sub_words(). They
  * have the property performing operations on arrays of different sizes. The
  * sizes of those arrays is expressed through cl, which is the common length (
@@ -272,11 +271,6 @@ static BN_ULONG bn_sub_part_words(BN_ULONG *r, const BN_ULONG *a,
 
   return c;
 }
-#else
-/* On other platforms the function is defined in asm. */
-BN_ULONG bn_sub_part_words(BN_ULONG *r, const BN_ULONG *a, const BN_ULONG *b,
-                           int cl, int dl);
-#endif
 
 /* Karatsuba recursive multiplication algorithm
  * (cf. Knuth, The Art of Computer Programming, Vol. 2) */
