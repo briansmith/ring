@@ -326,6 +326,11 @@ void SSL_set_private_key_method(SSL *ssl,
   ssl->cert->key_method = key_method;
 }
 
+void SSL_CTX_set_private_key_method(SSL_CTX *ctx,
+                                    const SSL_PRIVATE_KEY_METHOD *key_method) {
+  ctx->cert->key_method = key_method;
+}
+
 int SSL_set_private_key_digest_prefs(SSL *ssl, const int *digest_nids,
                                      size_t num_digests) {
   OPENSSL_free(ssl->cert->digest_nids);

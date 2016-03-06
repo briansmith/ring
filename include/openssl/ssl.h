@@ -465,7 +465,8 @@ OPENSSL_EXPORT int SSL_get_error(const SSL *ssl, int ret_code);
  * a private key operation was unfinished. The caller may retry the operation
  * when the private key operation is complete.
  *
- * See also |SSL_set_private_key_method|. */
+ * See also |SSL_set_private_key_method| and
+ * |SSL_CTX_set_private_key_method|. */
 #define SSL_ERROR_WANT_PRIVATE_KEY_OPERATION 13
 
 /* SSL_set_mtu sets the |ssl|'s MTU in DTLS to |mtu|. It returns one on success
@@ -1002,6 +1003,11 @@ typedef struct ssl_private_key_method_st {
  * |key_method| must remain valid for the lifetime of |ssl|. */
 OPENSSL_EXPORT void SSL_set_private_key_method(
     SSL *ssl, const SSL_PRIVATE_KEY_METHOD *key_method);
+
+/* SSL_CTX_set_private_key_method configures a custom private key on |ctx|.
+ * |key_method| must remain valid for the lifetime of |ctx|. */
+OPENSSL_EXPORT void SSL_CTX_set_private_key_method(
+    SSL_CTX *ctx, const SSL_PRIVATE_KEY_METHOD *key_method);
 
 
 /* Cipher suites.
