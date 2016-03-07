@@ -87,9 +87,6 @@ int RSA_verify_pkcs1_signed_digest(size_t min_bits, size_t max_bits,
     return 0;
   }
 
-  /* Don't cache the intermediate values since we're not reusing the key. */
-  key->flags &= ~RSA_FLAG_CACHE_PUBLIC;
-
   int ret = rsa_verify(min_bits, max_bits, hash_nid, digest, digest_len, sig,
                        sig_len, key);
 

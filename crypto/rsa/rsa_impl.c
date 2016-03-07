@@ -488,13 +488,7 @@ int rsa_verify_raw(RSA *rsa, size_t *out_len, uint8_t *out, size_t max_out,
     goto err;
   }
 
-  if (rsa->flags & RSA_FLAG_CACHE_PUBLIC) {
-    if (BN_MONT_CTX_set_locked(&rsa->mont_n, &rsa->lock, rsa->n, ctx) == NULL) {
-      goto err;
-    }
-  }
-
-  if (!BN_mod_exp_mont(result, f, rsa->e, rsa->n, ctx, rsa->mont_n)) {
+  if (!BN_mod_exp_mont(result, f, rsa->e, rsa->n, ctx, NULL)) {
     goto err;
   }
 
