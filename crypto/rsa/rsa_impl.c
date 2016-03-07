@@ -443,11 +443,14 @@ int rsa_verify_raw(RSA *rsa, size_t *out_len, uint8_t *out, size_t max_out,
   uint8_t *buf = NULL;
   BN_CTX *ctx = NULL;
 
-  if (max_out < rsa_size) {
+  if (max_out != rsa_size) {
     OPENSSL_PUT_ERROR(RSA, RSA_R_OUTPUT_BUFFER_TOO_SMALL);
     return 0;
   }
-
+  if (in_len != rsa_size) {
+    OPENSSL_PUT_ERROR(RSA, RSA_R_DATA_LEN_NOT_EQUAL_TO_MOD_LEN);
+    return 0;
+  }
   if (!check_modulus_and_exponent_sizes(rsa, min_bits, max_bits)) {
     return 0;
   }
@@ -474,11 +477,6 @@ int rsa_verify_raw(RSA *rsa, size_t *out_len, uint8_t *out, size_t max_out,
       OPENSSL_PUT_ERROR(RSA, ERR_R_MALLOC_FAILURE);
       goto err;
     }
-  }
-
-  if (in_len != rsa_size) {
-    OPENSSL_PUT_ERROR(RSA, RSA_R_DATA_LEN_NOT_EQUAL_TO_MOD_LEN);
-    goto err;
   }
 
   if (BN_bin2bn(in, in_len, f) == NULL) {

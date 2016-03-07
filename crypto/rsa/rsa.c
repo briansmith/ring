@@ -287,31 +287,25 @@ finish:
 static int rsa_verify(size_t min_bits, size_t max_bits, int hash_nid,
                       const uint8_t *msg, size_t msg_len, const uint8_t *sig,
                       size_t sig_len, RSA *rsa) {
-  const size_t rsa_size = RSA_size(rsa);
   uint8_t *buf = NULL;
   int ret = 0;
   uint8_t *signed_msg = NULL;
   size_t signed_msg_len, len;
   int signed_msg_is_alloced = 0;
 
-  if (sig_len != rsa_size) {
-    OPENSSL_PUT_ERROR(RSA, RSA_R_WRONG_SIGNATURE_LENGTH);
-    return 0;
-  }
-
   if (hash_nid == NID_md5_sha1 && msg_len != SSL_SIG_LENGTH) {
     OPENSSL_PUT_ERROR(RSA, RSA_R_INVALID_MESSAGE_LENGTH);
     return 0;
   }
 
-  buf = OPENSSL_malloc(rsa_size);
+  buf = OPENSSL_malloc(sig_len);
   if (!buf) {
     OPENSSL_PUT_ERROR(RSA, ERR_R_MALLOC_FAILURE);
     return 0;
   }
 
-  if (!rsa_verify_raw(rsa, &len, buf, rsa_size, sig, sig_len,
-                      RSA_PKCS1_PADDING, min_bits, max_bits)) {
+  if (!rsa_verify_raw(rsa, &len, buf, sig_len, sig, sig_len, RSA_PKCS1_PADDING,
+                      min_bits, max_bits)) {
     goto out;
   }
 
