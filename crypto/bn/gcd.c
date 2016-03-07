@@ -249,8 +249,6 @@ BIGNUM *BN_mod_inverse_ex(BIGNUM *out, int *out_no_inverse, const BIGNUM *a,
   A = BN_CTX_get(ctx);
   B = BN_CTX_get(ctx);
   X = BN_CTX_get(ctx);
-  D = BN_CTX_get(ctx);
-  M = BN_CTX_get(ctx);
   Y = BN_CTX_get(ctx);
   T = BN_CTX_get(ctx);
   if (T == NULL) {
