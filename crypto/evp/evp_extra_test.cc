@@ -586,6 +586,25 @@ static bool TestEVP_PKCS82PKEY(void) {
   return true;
 }
 
+// TestEVPMarshalEmptyPublicKey tests |EVP_marshal_public_key| on an empty key.
+static bool TestEVPMarshalEmptyPublicKey(void) {
+  ScopedEVP_PKEY empty(EVP_PKEY_new());
+  if (!empty) {
+    return false;
+  }
+  ScopedCBB cbb;
+  if (EVP_marshal_public_key(cbb.get(), empty.get())) {
+    fprintf(stderr, "Marshalled empty public key.\n");
+    return false;
+  }
+  if (ERR_GET_REASON(ERR_peek_last_error()) != EVP_R_UNSUPPORTED_ALGORITHM) {
+    fprintf(stderr, "Marshalling an empty public key gave wrong error.\n");
+    return false;
+  }
+  ERR_clear_error();
+  return true;
+}
+
 // Testd2i_PrivateKey tests |d2i_PrivateKey|.
 static bool Testd2i_PrivateKey(void) {
   const uint8_t *derp = kExampleRSAKeyDER;
@@ -681,6 +700,12 @@ int main(void) {
 
   if (!TestEVP_PKCS82PKEY()) {
     fprintf(stderr, "TestEVP_PKCS82PKEY failed\n");
+    ERR_print_errors_fp(stderr);
+    return 1;
+  }
+
+  if (!TestEVPMarshalEmptyPublicKey()) {
+    fprintf(stderr, "TestEVPMarshalEmptyPublicKey failed\n");
     ERR_print_errors_fp(stderr);
     return 1;
   }
