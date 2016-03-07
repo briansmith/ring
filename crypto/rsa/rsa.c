@@ -69,10 +69,18 @@
 #include "../internal.h"
 
 
-static int rsa_verify(size_t min_bits, size_t max_bits, int hash_nid,
-                      const uint8_t *msg, size_t msg_len, const uint8_t *sig,
-                      size_t sig_len, const uint8_t *key_bytes,
-                      size_t key_bytes_len);
+typedef int (*rsa_verify_raw_f)(int hash_nid, const uint8_t *raw_sig,
+                                size_t raw_sig_len, const uint8_t *msg,
+                                size_t msg_len);
+
+static int rsa_verify_raw_pkcs1(int hash_nid, const uint8_t *raw_sig,
+                                size_t raw_sig_len, const uint8_t *msg,
+                                size_t msg_len);
+
+static int rsa_verify(rsa_verify_raw_f verify_raw_sig, size_t min_bits,
+                      size_t max_bits, int hash_nid, const uint8_t *msg,
+                      size_t msg_len, const uint8_t *sig, size_t sig_len,
+                      const uint8_t *key_bytes, size_t key_bytes_len);
 
 
 int RSA_verify_pkcs1_signed_digest(size_t min_bits, size_t max_bits,
@@ -80,8 +88,8 @@ int RSA_verify_pkcs1_signed_digest(size_t min_bits, size_t max_bits,
                                    size_t digest_len, const uint8_t *sig,
                                    size_t sig_len, const uint8_t *key,
                                    size_t key_len) {
-  return rsa_verify(min_bits, max_bits, hash_nid, digest, digest_len, sig,
-                    sig_len, key, key_len);
+  return rsa_verify(rsa_verify_raw_pkcs1, min_bits, max_bits, hash_nid, digest,
+                    digest_len, sig, sig_len, key, key_len);
 }
 
 RSA *RSA_new(void) {
@@ -239,8 +247,9 @@ finish:
   return ret;
 }
 
-static size_t rsa_padding_check_PKCS1_type_1_with_digestinfo(
-    int hash_nid, const uint8_t *raw_sig, size_t raw_sig_len) {
+static int rsa_verify_raw_pkcs1(int hash_nid, const uint8_t *raw_sig,
+                                size_t raw_sig_len, const uint8_t *msg,
+                                size_t msg_len) {
   size_t pkcs1_prefix_len = RSA_padding_check_PKCS1_type_1(raw_sig, raw_sig_len);
   if (pkcs1_prefix_len == 0 || pkcs1_prefix_len >= raw_sig_len) {
     return 0;
@@ -254,22 +263,44 @@ static size_t rsa_padding_check_PKCS1_type_1_with_digestinfo(
       continue;
     }
 
-    if (sig_prefix->len >= remaining ||
+    if (remaining - sig_prefix->len != msg_len ||
         memcmp(raw_sig + pkcs1_prefix_len, sig_prefix->bytes, sig_prefix->len)
           != 0) {
+      OPENSSL_PUT_ERROR(RSA, RSA_R_PADDING_CHECK_FAILED);
       return 0;
     }
 
-    return pkcs1_prefix_len + sig_prefix->len;
+    if (memcmp(raw_sig + pkcs1_prefix_len + sig_prefix->len, msg, msg_len) != 0) {
+      OPENSSL_PUT_ERROR(RSA, RSA_R_BAD_SIGNATURE);
+      return 0;
+    }
+
+    return 1;
   }
 
+  OPENSSL_PUT_ERROR(RSA, RSA_R_UNKNOWN_ALGORITHM_TYPE);
   return 0;
 }
 
-static int rsa_verify(size_t min_bits, size_t max_bits, int hash_nid,
-                      const uint8_t *msg, size_t msg_len, const uint8_t *sig,
-                      size_t sig_len, const uint8_t *key_bytes,
-                      size_t key_bytes_len) {
+/* rsa_verify verifies that |sig| is a valid signature of |msg| using the
+ * public key in ASN.1 DER-encoded key in |key_bytes|, using the padding
+ * checker |verify_raw_sig|.
+ *
+ * The |hash_nid| argument identifies the hash function used to calculate |in|
+ * and is embedded in the resulting signature in order to prevent hash
+ * confusion attacks. For example, it might be |NID_sha256|.
+ *
+ * |min_bits| and |max_bits| are the minimum and maximum allowed bitlengths for
+ * the public key's modulus.
+ *
+ * It returns one if the signature is valid and zero otherwise.
+ *
+ * WARNING: this differs from the original, OpenSSL RSA_verify function
+ * which additionally returned -1 on error. */
+static int rsa_verify(rsa_verify_raw_f verify_raw_sig, size_t min_bits,
+                      size_t max_bits, int hash_nid, const uint8_t *msg,
+                      size_t msg_len, const uint8_t *sig, size_t sig_len,
+                      const uint8_t *key_bytes, size_t key_bytes_len) {
   uint8_t *buf = NULL;
   int ret = 0;
 
@@ -285,23 +316,11 @@ static int rsa_verify(size_t min_bits, size_t max_bits, int hash_nid,
   if (rsa == NULL) {
     goto out;
   }
-  if (!rsa_verify_raw(rsa, buf, sig_len, sig, sig_len, min_bits, max_bits)) {
+  if (!rsa_public_decrypt(rsa, buf, sig_len, sig, sig_len, min_bits, max_bits)) {
     goto out;
   }
 
-  size_t prefix_len =
-    rsa_padding_check_PKCS1_type_1_with_digestinfo(hash_nid, buf, sig_len);
-  if (prefix_len == 0) {
-    OPENSSL_PUT_ERROR(RSA, RSA_R_PADDING_CHECK_FAILED);
-    goto out;
-  }
-  if (sig_len - prefix_len != msg_len ||
-      memcmp(buf + prefix_len, msg, msg_len) != 0) {
-    OPENSSL_PUT_ERROR(RSA, RSA_R_BAD_SIGNATURE);
-    goto out;
-  }
-
-  ret = 1;
+  ret = verify_raw_sig(hash_nid, buf, sig_len, msg, msg_len);
 
 out:
   OPENSSL_free(buf);

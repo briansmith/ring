@@ -433,8 +433,17 @@ err:
   return ret;
 }
 
-int rsa_verify_raw(RSA *rsa, uint8_t *out, size_t out_len, const uint8_t *in,
-                   size_t in_len, size_t min_bits, size_t max_bits) {
+/* rsa_public_decrypt decrypts the RSA signature |in| using the public key |rsa|,
+ * leaving the decrypted signature in |out|. |out_len| and |in_len| must both
+ * be equal to |RSA_size(rsa)|. |min_bits| and |max_bits| are the minimum and
+ * maximum allowed public key modulus sizes, in bits. It returns 1 on success
+ * and zero on failure.
+ *
+ * When |rsa_public_decrypt| succeeds, the caller must then check the
+ * signature value (and padding) left in |out|. */
+int rsa_public_decrypt(RSA *rsa, uint8_t *out, size_t out_len,
+                       const uint8_t *in, size_t in_len, size_t min_bits,
+                       size_t max_bits) {
   const unsigned rsa_size = RSA_size(rsa);
   BIGNUM *f, *result;
   int ret = 0;
