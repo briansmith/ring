@@ -239,14 +239,39 @@ finish:
   return ret;
 }
 
+static size_t rsa_padding_check_PKCS1_type_1_with_digestinfo(
+    int hash_nid, const uint8_t *raw_sig, size_t raw_sig_len) {
+  size_t pkcs1_prefix_len = RSA_padding_check_PKCS1_type_1(raw_sig, raw_sig_len);
+  if (pkcs1_prefix_len == 0 || pkcs1_prefix_len >= raw_sig_len) {
+    return 0;
+  }
+  size_t remaining = raw_sig_len - pkcs1_prefix_len;
+
+  size_t i;
+  for (i = 0; kPKCS1SigPrefixes[i].nid != NID_undef; i++) {
+    const struct pkcs1_sig_prefix *sig_prefix = &kPKCS1SigPrefixes[i];
+    if (sig_prefix->nid != hash_nid) {
+      continue;
+    }
+
+    if (sig_prefix->len >= remaining ||
+        memcmp(raw_sig + pkcs1_prefix_len, sig_prefix->bytes, sig_prefix->len)
+          != 0) {
+      return 0;
+    }
+
+    return pkcs1_prefix_len + sig_prefix->len;
+  }
+
+  return 0;
+}
+
 static int rsa_verify(size_t min_bits, size_t max_bits, int hash_nid,
                       const uint8_t *msg, size_t msg_len, const uint8_t *sig,
                       size_t sig_len, const uint8_t *key_bytes,
                       size_t key_bytes_len) {
   uint8_t *buf = NULL;
   int ret = 0;
-  uint8_t *signed_msg = NULL;
-  size_t signed_msg_len, len;
 
   buf = OPENSSL_malloc(sig_len);
   if (!buf) {
@@ -260,18 +285,18 @@ static int rsa_verify(size_t min_bits, size_t max_bits, int hash_nid,
   if (rsa == NULL) {
     goto out;
   }
-
-  if (!rsa_verify_raw(rsa, &len, buf, sig_len, sig, sig_len, RSA_PKCS1_PADDING,
-                      min_bits, max_bits)) {
+  if (!rsa_verify_raw(rsa, buf, sig_len, sig, sig_len, min_bits, max_bits)) {
     goto out;
   }
 
-  if (!RSA_add_pkcs1_prefix(&signed_msg, &signed_msg_len, hash_nid, msg,
-                            msg_len)) {
+  size_t prefix_len =
+    rsa_padding_check_PKCS1_type_1_with_digestinfo(hash_nid, buf, sig_len);
+  if (prefix_len == 0) {
+    OPENSSL_PUT_ERROR(RSA, RSA_R_PADDING_CHECK_FAILED);
     goto out;
   }
-
-  if (len != signed_msg_len || CRYPTO_memcmp(buf, signed_msg, len) != 0) {
+  if (sig_len - prefix_len != msg_len ||
+      memcmp(buf + prefix_len, msg, msg_len) != 0) {
     OPENSSL_PUT_ERROR(RSA, RSA_R_BAD_SIGNATURE);
     goto out;
   }
@@ -281,7 +306,6 @@ static int rsa_verify(size_t min_bits, size_t max_bits, int hash_nid,
 out:
   OPENSSL_free(buf);
   RSA_free(rsa);
-  OPENSSL_free(signed_msg);
   return ret;
 }
 

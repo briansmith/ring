@@ -79,15 +79,13 @@ BN_BLINDING *BN_BLINDING_create_param(
 BN_BLINDING *rsa_setup_blinding(RSA *rsa, BN_CTX *in_ctx);
 
 
-int rsa_verify_raw(RSA *rsa, size_t *out_len, uint8_t *out, size_t max_out,
-                   const uint8_t *in, size_t in_len, int padding,
-                   size_t min_bits, size_t max_bits);
+int rsa_verify_raw(RSA *rsa, uint8_t *out, size_t out_len, const uint8_t *in,
+                   size_t in_len, size_t min_bits, size_t max_bits);
 
 
 int RSA_padding_add_PKCS1_type_1(uint8_t *to, unsigned to_len,
                                  const uint8_t *from, unsigned from_len);
-int RSA_padding_check_PKCS1_type_1(uint8_t *to, unsigned to_len,
-                                   const uint8_t *from, unsigned from_len);
+size_t RSA_padding_check_PKCS1_type_1(const uint8_t *from, unsigned from_len);
 int RSA_padding_add_PKCS1_type_2(uint8_t *to, unsigned to_len,
                                  const uint8_t *from, unsigned from_len);
 int RSA_padding_check_PKCS1_type_2(uint8_t *to, unsigned to_len,

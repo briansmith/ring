@@ -433,17 +433,14 @@ err:
   return ret;
 }
 
-int rsa_verify_raw(RSA *rsa, size_t *out_len, uint8_t *out, size_t max_out,
-                   const uint8_t *in, size_t in_len, int padding,
-                   size_t min_bits, size_t max_bits) {
+int rsa_verify_raw(RSA *rsa, uint8_t *out, size_t out_len, const uint8_t *in,
+                   size_t in_len, size_t min_bits, size_t max_bits) {
   const unsigned rsa_size = RSA_size(rsa);
   BIGNUM *f, *result;
   int ret = 0;
-  int r = -1;
-  uint8_t *buf = NULL;
   BN_CTX *ctx = NULL;
 
-  if (max_out != rsa_size) {
+  if (out_len != rsa_size) {
     OPENSSL_PUT_ERROR(RSA, RSA_R_OUTPUT_BUFFER_TOO_SMALL);
     return 0;
   }
@@ -468,17 +465,6 @@ int rsa_verify_raw(RSA *rsa, size_t *out_len, uint8_t *out, size_t max_out,
     goto err;
   }
 
-  if (padding == RSA_NO_PADDING) {
-    buf = out;
-  } else {
-    /* Allocate a temporary buffer to hold the padded plaintext. */
-    buf = OPENSSL_malloc(rsa_size);
-    if (buf == NULL) {
-      OPENSSL_PUT_ERROR(RSA, ERR_R_MALLOC_FAILURE);
-      goto err;
-    }
-  }
-
   if (BN_bin2bn(in, in_len, f) == NULL) {
     goto err;
   }
@@ -492,37 +478,17 @@ int rsa_verify_raw(RSA *rsa, size_t *out_len, uint8_t *out, size_t max_out,
     goto err;
   }
 
-  if (!BN_bn2bin_padded(buf, rsa_size, result)) {
+  if (!BN_bn2bin_padded(out, out_len, result)) {
     OPENSSL_PUT_ERROR(RSA, ERR_R_INTERNAL_ERROR);
     goto err;
   }
 
-  switch (padding) {
-    case RSA_PKCS1_PADDING:
-      r = RSA_padding_check_PKCS1_type_1(out, rsa_size, buf, rsa_size);
-      break;
-    case RSA_NO_PADDING:
-      r = rsa_size;
-      break;
-    default:
-      OPENSSL_PUT_ERROR(RSA, RSA_R_UNKNOWN_PADDING_TYPE);
-      goto err;
-  }
-
-  if (r < 0) {
-    OPENSSL_PUT_ERROR(RSA, RSA_R_PADDING_CHECK_FAILED);
-  } else {
-    *out_len = r;
-    ret = 1;
-  }
+  ret = 1;
 
 err:
   if (ctx != NULL) {
     BN_CTX_end(ctx);
     BN_CTX_free(ctx);
-  }
-  if (padding != RSA_NO_PADDING) {
-    OPENSSL_free(buf);
   }
   return ret;
 }
