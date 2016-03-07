@@ -93,10 +93,8 @@ impl Context {
     /// C analog: `EVP_DigestUpdate`
     pub fn update(&mut self, data: &[u8]) {
         if data.len() < self.algorithm.block_len - self.num_pending {
-            polyfill::slice::fill_from_slice(
-                &mut self.pending[self.num_pending..
-                                  (self.num_pending + data.len())],
-                data);
+            self.pending[self.num_pending..
+                (self.num_pending + data.len())].clone_from_slice(data);
             self.num_pending += data.len();
             return;
         }
@@ -104,9 +102,8 @@ impl Context {
         let mut remaining = data;
         if self.num_pending > 0 {
             let to_copy = self.algorithm.block_len - self.num_pending;
-            polyfill::slice::fill_from_slice(
-                &mut self.pending[self.num_pending..self.algorithm.block_len],
-                &data[..to_copy]);
+            self.pending[self.num_pending..self.algorithm.block_len]
+                .clone_from_slice(&data[..to_copy]);
 
             unsafe {
                 (self.algorithm.block_data_order)(self.state.as_mut_ptr(),
@@ -132,8 +129,7 @@ impl Context {
                                           .unwrap();
         }
         if num_to_save_for_later > 0 {
-            polyfill::slice::fill_from_slice(
-                &mut self.pending[..num_to_save_for_later],
+            self.pending[..num_to_save_for_later].clone_from_slice(
                 &remaining[(remaining.len() - num_to_save_for_later)..]);
             self.num_pending = num_to_save_for_later;
         }
