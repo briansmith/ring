@@ -435,12 +435,18 @@ OPENSSL_EXPORT BIO *BIO_new_fd(int fd, int close_flag);
 
 /* BIO_set_fd sets the file descriptor of |bio| to |fd|. If |close_flag| is
  * non-zero then |fd| will be closed when |bio| is. It returns one on success
- * or zero on error. */
+ * or zero on error.
+ *
+ * This function may also be used with socket BIOs (see |BIO_s_socket| and
+ * |BIO_new_socket|). */
 OPENSSL_EXPORT int BIO_set_fd(BIO *bio, int fd, int close_flag);
 
 /* BIO_get_fd returns the file descriptor currently in use by |bio| or -1 if
  * |bio| does not wrap a file descriptor. If there is a file descriptor and
- * |out_fd| is not NULL, it also sets |*out_fd| to the file descriptor. */
+ * |out_fd| is not NULL, it also sets |*out_fd| to the file descriptor.
+ *
+ * This function may also be used with socket BIOs (see |BIO_s_socket| and
+ * |BIO_new_socket|). */
 OPENSSL_EXPORT int BIO_get_fd(BIO *bio, int *out_fd);
 
 
@@ -520,7 +526,17 @@ OPENSSL_EXPORT int BIO_set_read_buffer_size(BIO *bio, int buffer_size);
 OPENSSL_EXPORT int BIO_set_write_buffer_size(BIO *bio, int buffer_size);
 
 
-/* Socket BIOs. */
+/* Socket BIOs.
+ *
+ * Socket BIOs behave like file descriptor BIOs but wrap the system's |recv|
+ * and |send| functions. This is relevant for Windows systems where file
+ * descriptors, provided by C runtime for use with |read| and |write|, are not
+ * interchangeable with sockets.
+ *
+ * Socket BIOs may be used with |BIO_set_fd| and |BIO_get_fd|.
+ *
+ * TODO(davidben): Add separate APIs and fix the internals to use |SOCKET|s
+ * around rather than rely on int casts. */
 
 OPENSSL_EXPORT const BIO_METHOD *BIO_s_socket(void);
 

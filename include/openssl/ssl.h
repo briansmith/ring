@@ -251,25 +251,39 @@ OPENSSL_EXPORT int SSL_get_fd(const SSL *ssl);
 
 /* SSL_get_rfd returns the file descriptor that |ssl| is configured to read
  * from. If |ssl|'s read |BIO| is not configured or doesn't wrap a file
- * descriptor then it returns -1. */
+ * descriptor then it returns -1.
+ *
+ * Note: On Windows, this may return either a file descriptor or a socket (cast
+ * to int), depending on whether |ssl| was configured with a file descriptor or
+ * socket |BIO|. */
 OPENSSL_EXPORT int SSL_get_rfd(const SSL *ssl);
 
 /* SSL_get_wfd returns the file descriptor that |ssl| is configured to write
  * to. If |ssl|'s write |BIO| is not configured or doesn't wrap a file
- * descriptor then it returns -1. */
+ * descriptor then it returns -1.
+ *
+ * Note: On Windows, this may return either a file descriptor or a socket (cast
+ * to int), depending on whether |ssl| was configured with a file descriptor or
+ * socket |BIO|. */
 OPENSSL_EXPORT int SSL_get_wfd(const SSL *ssl);
 
 /* SSL_set_fd configures |ssl| to read from and write to |fd|. It returns one
  * on success and zero on allocation error. The caller retains ownership of
- * |fd|. */
+ * |fd|.
+ *
+ * On Windows, |fd| is cast to a |SOCKET| and used with Winsock APIs. */
 OPENSSL_EXPORT int SSL_set_fd(SSL *ssl, int fd);
 
 /* SSL_set_rfd configures |ssl| to read from |fd|. It returns one on success and
- * zero on allocation error. The caller retains ownership of |fd|. */
+ * zero on allocation error. The caller retains ownership of |fd|.
+ *
+ * On Windows, |fd| is cast to a |SOCKET| and used with Winsock APIs. */
 OPENSSL_EXPORT int SSL_set_rfd(SSL *ssl, int fd);
 
 /* SSL_set_wfd configures |ssl| to write to |fd|. It returns one on success and
- * zero on allocation error. The caller retains ownership of |fd|. */
+ * zero on allocation error. The caller retains ownership of |fd|.
+ *
+ * On Windows, |fd| is cast to a |SOCKET| and used with Winsock APIs. */
 OPENSSL_EXPORT int SSL_set_wfd(SSL *ssl, int fd);
 
 /* SSL_do_handshake continues the current handshake. If there is none or the
