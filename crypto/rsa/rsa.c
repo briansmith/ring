@@ -139,10 +139,6 @@ void RSA_free(RSA *rsa) {
   OPENSSL_free(rsa);
 }
 
-/* SSL_SIG_LENGTH is the size of an SSL/TLS (prior to TLS 1.2) signature: it's
- * the length of an MD5 and SHA1 hash. */
-static const unsigned SSL_SIG_LENGTH = 36;
-
 /* pkcs1_sig_prefix contains the ASN.1, DER encoded prefix for a hash that is
  * to be signed with PKCS#1. */
 struct pkcs1_sig_prefix {
@@ -186,33 +182,9 @@ static const struct pkcs1_sig_prefix kPKCS1SigPrefixes[] = {
     },
 };
 
-int RSA_add_pkcs1_prefix(uint8_t **out_msg, size_t *out_msg_len,
-                         int *is_alloced, int hash_nid, const uint8_t *msg,
-                         size_t msg_len) {
+int RSA_add_pkcs1_prefix(uint8_t **out_msg, size_t *out_msg_len, int hash_nid,
+                         const uint8_t *msg, size_t msg_len) {
   unsigned i;
-
-  if (hash_nid == NID_md5_sha1) {
-    /* Special case: SSL signature, just check the length. */
-    if (msg_len != SSL_SIG_LENGTH) {
-      OPENSSL_PUT_ERROR(RSA, RSA_R_INVALID_MESSAGE_LENGTH);
-      return 0;
-    }
-
-#if defined __GNUC__
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wcast-qual"
-#endif
-
-    *out_msg = (uint8_t*) msg;
-
-#if defined __GNUC__
-#pragma GCC diagnostic pop
-#endif
-
-    *out_msg_len = SSL_SIG_LENGTH;
-    *is_alloced = 0;
-    return 1;
-  }
 
   for (i = 0; kPKCS1SigPrefixes[i].nid != NID_undef; i++) {
     const struct pkcs1_sig_prefix *sig_prefix = &kPKCS1SigPrefixes[i];
@@ -242,7 +214,6 @@ int RSA_add_pkcs1_prefix(uint8_t **out_msg, size_t *out_msg_len,
 
     *out_msg = signed_msg;
     *out_msg_len = signed_msg_len;
-    *is_alloced = 1;
 
     return 1;
   }
@@ -257,11 +228,10 @@ int RSA_sign(int hash_nid, const uint8_t *in, unsigned in_len, uint8_t *out,
   int ret = 0;
   uint8_t *signed_msg;
   size_t signed_msg_len;
-  int signed_msg_is_alloced = 0;
   size_t size_t_out_len;
 
-  if (!RSA_add_pkcs1_prefix(&signed_msg, &signed_msg_len,
-                            &signed_msg_is_alloced, hash_nid, in, in_len)) {
+  if (!RSA_add_pkcs1_prefix(&signed_msg, &signed_msg_len, hash_nid, in,
+                            in_len)) {
     return 0;
   }
 
@@ -278,9 +248,7 @@ int RSA_sign(int hash_nid, const uint8_t *in, unsigned in_len, uint8_t *out,
   }
 
 finish:
-  if (signed_msg_is_alloced) {
-    OPENSSL_free(signed_msg);
-  }
+  OPENSSL_free(signed_msg);
   return ret;
 }
 
@@ -291,12 +259,6 @@ static int rsa_verify(size_t min_bits, size_t max_bits, int hash_nid,
   int ret = 0;
   uint8_t *signed_msg = NULL;
   size_t signed_msg_len, len;
-  int signed_msg_is_alloced = 0;
-
-  if (hash_nid == NID_md5_sha1 && msg_len != SSL_SIG_LENGTH) {
-    OPENSSL_PUT_ERROR(RSA, RSA_R_INVALID_MESSAGE_LENGTH);
-    return 0;
-  }
 
   buf = OPENSSL_malloc(sig_len);
   if (!buf) {
@@ -309,8 +271,8 @@ static int rsa_verify(size_t min_bits, size_t max_bits, int hash_nid,
     goto out;
   }
 
-  if (!RSA_add_pkcs1_prefix(&signed_msg, &signed_msg_len,
-                            &signed_msg_is_alloced, hash_nid, msg, msg_len)) {
+  if (!RSA_add_pkcs1_prefix(&signed_msg, &signed_msg_len, hash_nid, msg,
+                            msg_len)) {
     goto out;
   }
 
@@ -323,9 +285,7 @@ static int rsa_verify(size_t min_bits, size_t max_bits, int hash_nid,
 
 out:
   OPENSSL_free(buf);
-  if (signed_msg_is_alloced) {
-    OPENSSL_free(signed_msg);
-  }
+  OPENSSL_free(signed_msg);
   return ret;
 }
 
