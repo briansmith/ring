@@ -79,7 +79,7 @@ OPENSSL_EXPORT int RSA_verify_pkcs1_signed_digest(size_t min_bits,
                                                   const uint8_t *sig,
                                                   size_t sig_len,
                                                   const uint8_t *rsa_key,
-                                                  const size_t rsa_key_len);
+                                                  size_t rsa_key_len);
 
 /* Allocation and destruction. */
 

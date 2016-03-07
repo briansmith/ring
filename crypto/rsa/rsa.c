@@ -71,27 +71,17 @@
 
 static int rsa_verify(size_t min_bits, size_t max_bits, int hash_nid,
                       const uint8_t *msg, size_t msg_len, const uint8_t *sig,
-                      size_t sig_len, RSA *rsa);
+                      size_t sig_len, const uint8_t *key_bytes,
+                      size_t key_bytes_len);
 
 
 int RSA_verify_pkcs1_signed_digest(size_t min_bits, size_t max_bits,
                                    int hash_nid, const uint8_t *digest,
                                    size_t digest_len, const uint8_t *sig,
-                                   size_t sig_len, const uint8_t *rsa_key,
-                                   const size_t rsa_key_len) {
-  /* TODO(perf): Avoid all the overhead of allocating an |RSA| on the heap and
-   * dealing with the mutex and whatnot. */
-
-  RSA *key = RSA_public_key_from_bytes(rsa_key, rsa_key_len);
-  if (key == NULL) {
-    return 0;
-  }
-
-  int ret = rsa_verify(min_bits, max_bits, hash_nid, digest, digest_len, sig,
-                       sig_len, key);
-
-  RSA_free(key);
-  return ret;
+                                   size_t sig_len, const uint8_t *key,
+                                   size_t key_len) {
+  return rsa_verify(min_bits, max_bits, hash_nid, digest, digest_len, sig,
+                    sig_len, key, key_len);
 }
 
 RSA *RSA_new(void) {
@@ -251,7 +241,8 @@ finish:
 
 static int rsa_verify(size_t min_bits, size_t max_bits, int hash_nid,
                       const uint8_t *msg, size_t msg_len, const uint8_t *sig,
-                      size_t sig_len, RSA *rsa) {
+                      size_t sig_len, const uint8_t *key_bytes,
+                      size_t key_bytes_len) {
   uint8_t *buf = NULL;
   int ret = 0;
   uint8_t *signed_msg = NULL;
@@ -261,6 +252,13 @@ static int rsa_verify(size_t min_bits, size_t max_bits, int hash_nid,
   if (!buf) {
     OPENSSL_PUT_ERROR(RSA, ERR_R_MALLOC_FAILURE);
     return 0;
+  }
+
+  /* TODO(perf): Avoid all the overhead of allocating an |RSA| on the heap and
+   * dealing with the mutex and whatnot. */
+  RSA *rsa = RSA_public_key_from_bytes(key_bytes, key_bytes_len);
+  if (rsa == NULL) {
+    goto out;
   }
 
   if (!rsa_verify_raw(rsa, &len, buf, sig_len, sig, sig_len, RSA_PKCS1_PADDING,
@@ -282,6 +280,7 @@ static int rsa_verify(size_t min_bits, size_t max_bits, int hash_nid,
 
 out:
   OPENSSL_free(buf);
+  RSA_free(rsa);
   OPENSSL_free(signed_msg);
   return ret;
 }
