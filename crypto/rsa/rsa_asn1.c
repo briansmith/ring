@@ -388,6 +388,7 @@ int i2d_RSAPublicKey(const RSA *in, uint8_t **outp) {
   CBB cbb;
   if (!CBB_init(&cbb, 0) ||
       !RSA_marshal_public_key(&cbb, in)) {
+    CBB_cleanup(&cbb);
     return -1;
   }
   return CBB_finish_i2d(&cbb, outp);
@@ -415,6 +416,7 @@ int i2d_RSAPrivateKey(const RSA *in, uint8_t **outp) {
   CBB cbb;
   if (!CBB_init(&cbb, 0) ||
       !RSA_marshal_private_key(&cbb, in)) {
+    CBB_cleanup(&cbb);
     return -1;
   }
   return CBB_finish_i2d(&cbb, outp);
