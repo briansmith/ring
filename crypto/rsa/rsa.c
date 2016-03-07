@@ -310,13 +310,15 @@ static int rsa_verify(rsa_verify_raw_f verify_raw_sig, size_t min_bits,
     return 0;
   }
 
-  /* TODO(perf): Avoid all the overhead of allocating an |RSA| on the heap and
-   * dealing with the mutex and whatnot. */
-  RSA *rsa = RSA_public_key_from_bytes(key_bytes, key_bytes_len);
-  if (rsa == NULL) {
-    goto out;
-  }
-  if (!rsa_public_decrypt(rsa, buf, sig_len, sig, sig_len, min_bits, max_bits)) {
+  BIGNUM n;
+  BN_init(&n);
+
+  BIGNUM e;
+  BN_init(&e);
+
+  if (!RSA_public_key_from_bytes(&n, &e, key_bytes, key_bytes_len) ||
+      !rsa_public_decrypt(&n, &e, buf, sig_len, sig, sig_len, min_bits,
+                          max_bits)) {
     goto out;
   }
 
@@ -324,7 +326,8 @@ static int rsa_verify(rsa_verify_raw_f verify_raw_sig, size_t min_bits,
 
 out:
   OPENSSL_free(buf);
-  RSA_free(rsa);
+  BN_free(&n);
+  BN_free(&e);
   return ret;
 }
 

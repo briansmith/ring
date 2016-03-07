@@ -85,41 +85,37 @@ static int marshal_integer(CBB *cbb, BIGNUM *bn) {
   return BN_marshal_asn1(cbb, bn);
 }
 
-RSA *RSA_parse_public_key(CBS *cbs) {
-  RSA *ret = RSA_new();
-  if (ret == NULL) {
-    return NULL;
-  }
+int RSA_parse_public_key(CBS *cbs, BIGNUM *n_out, BIGNUM *e_out) {
   CBS child;
   if (!CBS_get_asn1(cbs, &child, CBS_ASN1_SEQUENCE) ||
-      !parse_integer(&child, &ret->n) ||
-      !parse_integer(&child, &ret->e) ||
+      !BN_parse_asn1_unsigned(&child, n_out) ||
+      !BN_parse_asn1_unsigned(&child, e_out) ||
       CBS_len(&child) != 0) {
     OPENSSL_PUT_ERROR(RSA, RSA_R_BAD_ENCODING);
-    RSA_free(ret);
-    return NULL;
+    return 0;
   }
 
-  if (!BN_is_odd(ret->e) ||
-      BN_num_bits(ret->e) < 2) {
+  if (!BN_is_odd(e_out) ||
+      BN_num_bits(e_out) < 2) {
     OPENSSL_PUT_ERROR(RSA, RSA_R_BAD_RSA_PARAMETERS);
-    RSA_free(ret);
-    return NULL;
+    return 0;
   }
 
-  return ret;
+  return 1;
 }
 
-RSA *RSA_public_key_from_bytes(const uint8_t *in, size_t in_len) {
+int RSA_public_key_from_bytes(BIGNUM *n_out, BIGNUM *e_out, const uint8_t *in,
+                              size_t in_len) {
   CBS cbs;
   CBS_init(&cbs, in, in_len);
-  RSA *ret = RSA_parse_public_key(&cbs);
-  if (ret == NULL || CBS_len(&cbs) != 0) {
-    OPENSSL_PUT_ERROR(RSA, RSA_R_BAD_ENCODING);
-    RSA_free(ret);
-    return NULL;
+  if (!RSA_parse_public_key(&cbs, n_out, e_out)) {
+    return 0;
   }
-  return ret;
+  if (CBS_len(&cbs) != 0) {
+    OPENSSL_PUT_ERROR(RSA, RSA_R_BAD_ENCODING);
+    return 0;
+  }
+  return 1;
 }
 
 int RSA_marshal_public_key(CBB *cbb, const RSA *rsa) {

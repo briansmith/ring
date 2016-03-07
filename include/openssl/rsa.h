@@ -203,13 +203,16 @@ OPENSSL_EXPORT int RSA_add_pkcs1_prefix(uint8_t **out_msg, size_t *out_msg_len,
 /* ASN.1 functions. */
 
 /* RSA_parse_public_key parses a DER-encoded RSAPublicKey structure (RFC 3447)
- * from |cbs| and advances |cbs|. It returns a newly-allocated |RSA| or NULL on
- * error. */
-OPENSSL_EXPORT RSA *RSA_parse_public_key(CBS *cbs);
+ * from |cbs| and advances |cbs|. It leaves the public key modulus in |n_out|
+ * and the public key exponent in |e_out|. It returns one on success and zero
+ * on failure. */
+OPENSSL_EXPORT int RSA_parse_public_key(CBS *cbs, BIGNUM *n_out, BIGNUM *e_out);
 
 /* RSA_public_key_from_bytes parses |in| as a DER-encoded RSAPublicKey structure
- * (RFC 3447). It returns a newly-allocated |RSA| or NULL on error. */
-OPENSSL_EXPORT RSA *RSA_public_key_from_bytes(const uint8_t *in, size_t in_len);
+ * (RFC 3447). It leaves the public key modulus in |n_out| and the public key
+ * exponent in |e_out|. It returns one on success and zero on failure. */
+OPENSSL_EXPORT int RSA_public_key_from_bytes(BIGNUM *n_out, BIGNUM *e_out,
+                                             const uint8_t *in, size_t in_len);
 
 /* RSA_marshal_public_key marshals |rsa| as a DER-encoded RSAPublicKey structure
  * (RFC 3447) and appends the result to |cbb|. It returns one on success and

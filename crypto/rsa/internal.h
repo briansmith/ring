@@ -79,9 +79,9 @@ BN_BLINDING *BN_BLINDING_create_param(
 BN_BLINDING *rsa_setup_blinding(RSA *rsa, BN_CTX *in_ctx);
 
 
-int rsa_public_decrypt(RSA *rsa, uint8_t *out, size_t out_len,
-                       const uint8_t *in, size_t in_len, size_t min_bits,
-                       size_t max_bits);
+int rsa_public_decrypt(const BIGNUM *n, const BIGNUM *e, uint8_t *out,
+                       size_t out_len, const uint8_t *in, size_t in_len,
+                       size_t min_bits, size_t max_bits);
 
 
 int RSA_padding_add_PKCS1_type_1(uint8_t *to, unsigned to_len,

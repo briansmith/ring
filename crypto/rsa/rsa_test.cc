@@ -447,8 +447,15 @@ static bool TestASN1() {
   delete_der.reset(der);
 
   // Public keys may be parsed back out.
-  rsa.reset(RSA_public_key_from_bytes(der, der_len));
-  if (!rsa || rsa->p != NULL || rsa->q != NULL) {
+  ScopedBIGNUM n(BN_new());
+  if (!n) {
+    return false;
+  }
+  ScopedBIGNUM e(BN_new());
+  if (!e) {
+    return false;
+  }
+  if (!RSA_public_key_from_bytes(n.get(), e.get(), der, der_len)) {
     return false;
   }
 
@@ -463,17 +470,17 @@ static bool TestASN1() {
     return false;
   }
 
-  // Public keys cannot be serialized as private keys.
-  if (RSA_private_key_to_bytes(&der, &der_len, rsa.get())) {
-    OPENSSL_free(der);
+  // Malformed public key fails to parse.
+  n.reset(BN_new());
+  if (!n) {
     return false;
   }
-  ERR_clear_error();
-
-  // Public keys with negative moduli are invalid.
-  rsa.reset(RSA_public_key_from_bytes(kEstonianRSAKey,
-                                      sizeof(kEstonianRSAKey)));
-  if (rsa) {
+  e.reset(BN_new());
+  if (!e) {
+    return false;
+  }
+  if (RSA_public_key_from_bytes(n.get(), e.get(), kEstonianRSAKey,
+                                sizeof(kEstonianRSAKey))) {
     return false;
   }
   ERR_clear_error();
@@ -482,10 +489,16 @@ static bool TestASN1() {
 }
 
 static bool TestBadExponent() {
-  ScopedRSA rsa(RSA_public_key_from_bytes(kExponent1RSAKey,
-                                          sizeof(kExponent1RSAKey)));
-
-  if (rsa) {
+  ScopedBIGNUM n(BN_new());
+  if (!n) {
+    return false;
+  }
+  ScopedBIGNUM e(BN_new());
+  if (!n) {
+    return false;
+  }
+  if (RSA_public_key_from_bytes(n.get(), e.get(), kExponent1RSAKey,
+                                sizeof(kExponent1RSAKey))) {
     fprintf(stderr, "kExponent1RSAKey parsed but should have failed.\n");
     return false;
   }

@@ -72,9 +72,9 @@ static int mod_exp(BIGNUM *r0, const BIGNUM *I, RSA *rsa, BN_CTX *ctx);
 static int rsa_private_transform(RSA *rsa, uint8_t *out, const uint8_t *in,
                                  size_t len);
 
-static int check_modulus_and_exponent_sizes(const RSA *rsa, size_t min_bits,
-                                            size_t max_bits) {
-  unsigned rsa_bits = BN_num_bits(rsa->n);
+static int check_modulus_and_exponent_sizes(const BIGNUM *n, const BIGNUM *e,
+                                            size_t min_bits, size_t max_bits) {
+  unsigned rsa_bits = BN_num_bits(n);
 
   if (rsa_bits < min_bits) {
     OPENSSL_PUT_ERROR(RSA, RSA_R_KEY_SIZE_TOO_SMALL);
@@ -96,7 +96,7 @@ static int check_modulus_and_exponent_sizes(const RSA *rsa, size_t min_bits,
    * [3] https://msdn.microsoft.com/en-us/library/aa387685(VS.85).aspx */
   static const unsigned kMaxExponentBits = 33;
 
-  if (BN_num_bits(rsa->e) > kMaxExponentBits) {
+  if (BN_num_bits(e) > kMaxExponentBits) {
     OPENSSL_PUT_ERROR(RSA, RSA_R_BAD_E_VALUE);
     return 0;
   }
@@ -109,7 +109,7 @@ static int check_modulus_and_exponent_sizes(const RSA *rsa, size_t min_bits,
     OPENSSL_PUT_ERROR(RSA, RSA_R_KEY_SIZE_TOO_SMALL);
     return 0;
   }
-  assert(BN_ucmp(rsa->n, rsa->e) > 0);
+  assert(BN_ucmp(n, e) > 0);
 
   return 1;
 }
@@ -133,7 +133,7 @@ int RSA_encrypt(RSA *rsa, size_t *out_len, uint8_t *out, size_t max_out,
 
   /* XXX: |min_bits| should be much higer than 256, but this is what is needed
    * to get the rsa_test.cc tests to pass. */
-  if (!check_modulus_and_exponent_sizes(rsa, 256, 16 * 1024)) {
+  if (!check_modulus_and_exponent_sizes(rsa->n, rsa->e, 256, 16 * 1024)) {
     return 0;
   }
 
@@ -433,18 +433,18 @@ err:
   return ret;
 }
 
-/* rsa_public_decrypt decrypts the RSA signature |in| using the public key |rsa|,
- * leaving the decrypted signature in |out|. |out_len| and |in_len| must both
- * be equal to |RSA_size(rsa)|. |min_bits| and |max_bits| are the minimum and
- * maximum allowed public key modulus sizes, in bits. It returns 1 on success
- * and zero on failure.
+/* rsa_public_decrypt decrypts the RSA signature |in| using the public key with
+ * modulus |n| and exponent |e|, leaving the decrypted signature in |out|.
+ * |out_len| and |in_len| must both be equal to |RSA_size(rsa)|. |min_bits| and
+ * |max_bits| are the minimum and maximum allowed public key modulus sizes, in
+ * bits. It returns one on success and zero on failure.
  *
  * When |rsa_public_decrypt| succeeds, the caller must then check the
  * signature value (and padding) left in |out|. */
-int rsa_public_decrypt(RSA *rsa, uint8_t *out, size_t out_len,
-                       const uint8_t *in, size_t in_len, size_t min_bits,
-                       size_t max_bits) {
-  const unsigned rsa_size = RSA_size(rsa);
+int rsa_public_decrypt(const BIGNUM *n, const BIGNUM *e, uint8_t *out,
+                       size_t out_len, const uint8_t *in, size_t in_len,
+                       size_t min_bits, size_t max_bits) {
+  unsigned rsa_size = BN_num_bytes(n); /* RSA_size((n, e)); */
   BIGNUM *f, *result;
   int ret = 0;
   BN_CTX *ctx = NULL;
@@ -457,7 +457,7 @@ int rsa_public_decrypt(RSA *rsa, uint8_t *out, size_t out_len,
     OPENSSL_PUT_ERROR(RSA, RSA_R_DATA_LEN_NOT_EQUAL_TO_MOD_LEN);
     return 0;
   }
-  if (!check_modulus_and_exponent_sizes(rsa, min_bits, max_bits)) {
+  if (!check_modulus_and_exponent_sizes(n, e, min_bits, max_bits)) {
     return 0;
   }
 
@@ -478,12 +478,12 @@ int rsa_public_decrypt(RSA *rsa, uint8_t *out, size_t out_len,
     goto err;
   }
 
-  if (BN_ucmp(f, rsa->n) >= 0) {
+  if (BN_ucmp(f, n) >= 0) {
     OPENSSL_PUT_ERROR(RSA, RSA_R_DATA_TOO_LARGE_FOR_MODULUS);
     goto err;
   }
 
-  if (!BN_mod_exp_mont(result, f, rsa->e, rsa->n, ctx, NULL)) {
+  if (!BN_mod_exp_mont(result, f, e, n, ctx, NULL)) {
     goto err;
   }
 
