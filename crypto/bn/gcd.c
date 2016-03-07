@@ -229,7 +229,7 @@ static BIGNUM *BN_mod_inverse_no_branch(BIGNUM *out, int *out_no_inverse,
 
 BIGNUM *BN_mod_inverse_ex(BIGNUM *out, int *out_no_inverse, const BIGNUM *a,
                           const BIGNUM *n, BN_CTX *ctx) {
-  BIGNUM *A, *B, *X, *Y, *M, *D, *T, *R = NULL;
+  BIGNUM *A, *B, *X, *Y, *T, *R = NULL;
   BIGNUM *ret = NULL;
   int sign;
 
