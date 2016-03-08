@@ -82,8 +82,12 @@ DSA *DSA_generate_parameters(int bits, uint8_t *seed_in, int seed_len,
   BN_GENCB gencb_storage;
   BN_GENCB *cb = NULL;
 
-  struct wrapped_callback wrapped = {callback, cb_arg};
+  struct wrapped_callback wrapped;
+
   if (callback != NULL) {
+    wrapped.callback = callback;
+    wrapped.arg = cb_arg;
+
     cb = &gencb_storage;
     BN_GENCB_set(cb, callback_wrapper, &wrapped);
   }
