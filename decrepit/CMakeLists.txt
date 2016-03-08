@@ -4,6 +4,7 @@ add_subdirectory(cast)
 add_subdirectory(des)
 add_subdirectory(dsa)
 add_subdirectory(evp)
+add_subdirectory(rc4)
 add_subdirectory(rsa)
 add_subdirectory(x509)
 add_subdirectory(xts)
@@ -17,6 +18,7 @@ add_library(
   $<TARGET_OBJECTS:des_decrepit>
   $<TARGET_OBJECTS:dsa_decrepit>
   $<TARGET_OBJECTS:evp_decrepit>
+  $<TARGET_OBJECTS:rc4_decrepit>
   $<TARGET_OBJECTS:rsa_decrepit>
   $<TARGET_OBJECTS:x509>
   $<TARGET_OBJECTS:xts>
