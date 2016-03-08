@@ -61,6 +61,14 @@
 
 #include <openssl/base.h>
 
+#if defined(OPENSSL_WINDOWS)
+#pragma warning(push, 3)
+#include <windows.h>
+#pragma warning(pop)
+#elif !defined(OPENSSL_NO_THREADS)
+#include <pthread.h>
+#endif
+
 #if defined(__cplusplus)
 extern "C" {
 #endif
@@ -69,25 +77,9 @@ extern "C" {
 #if defined(OPENSSL_NO_THREADS)
 typedef struct crypto_mutex_st {} CRYPTO_MUTEX;
 #elif defined(OPENSSL_WINDOWS)
-/* CRYPTO_MUTEX can appear in public header files so we really don't want to
- * pull in windows.h. It's statically asserted that this structure is large
- * enough to contain a Windows CRITICAL_SECTION by thread_win.c. */
-typedef union crypto_mutex_st {
-  double alignment;
-  uint8_t padding[4*sizeof(void*) + 2*sizeof(int)];
-} CRYPTO_MUTEX;
-#elif defined(__MACH__) && defined(__APPLE__)
-typedef pthread_rwlock_t CRYPTO_MUTEX;
+typedef CRITICAL_SECTION CRYPTO_MUTEX;
 #else
-/* It is reasonable to include pthread.h on non-Windows systems, however the
- * |pthread_rwlock_t| that we need is hidden under feature flags, and we can't
- * ensure that we'll be able to get it. It's statically asserted that this
- * structure is large enough to contain a |pthread_rwlock_t| by
- * thread_pthread.c. */
-typedef union crypto_mutex_st {
-  double alignment;
-  uint8_t padding[3*sizeof(int) + 5*sizeof(unsigned) + 16 + 8];
-} CRYPTO_MUTEX;
+typedef pthread_rwlock_t CRYPTO_MUTEX;
 #endif
 
 

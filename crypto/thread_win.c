@@ -16,10 +16,6 @@
 
 #if defined(OPENSSL_WINDOWS) && !defined(OPENSSL_NO_THREADS)
 
-#pragma warning(push, 3)
-#include <windows.h>
-#pragma warning(pop)
-
 #include <assert.h>
 #include <stdlib.h>
 #include <string.h>
@@ -27,9 +23,6 @@
 #include <openssl/mem.h>
 #include <openssl/type_check.h>
 
-
-OPENSSL_COMPILE_ASSERT(sizeof(CRYPTO_MUTEX) >= sizeof(CRITICAL_SECTION),
-                       CRYPTO_MUTEX_too_small);
 
 union run_once_arg_t {
   void (*func)(void);
@@ -89,26 +82,26 @@ void CRYPTO_once(CRYPTO_once_t *in_once, void (*init)(void)) {
 }
 
 void CRYPTO_MUTEX_init(CRYPTO_MUTEX *lock) {
-  if (!InitializeCriticalSectionAndSpinCount((CRITICAL_SECTION *) lock, 0x400)) {
+  if (!InitializeCriticalSectionAndSpinCount(lock, 0x400)) {
     abort();
   }
 }
 
 void CRYPTO_MUTEX_lock_read(CRYPTO_MUTEX *lock) {
   /* Since we have to support Windows XP, read locks are actually exclusive. */
-  EnterCriticalSection((CRITICAL_SECTION *) lock);
+  EnterCriticalSection(lock);
 }
 
 void CRYPTO_MUTEX_lock_write(CRYPTO_MUTEX *lock) {
-  EnterCriticalSection((CRITICAL_SECTION *) lock);
+  EnterCriticalSection(lock);
 }
 
 void CRYPTO_MUTEX_unlock(CRYPTO_MUTEX *lock) {
-  LeaveCriticalSection((CRITICAL_SECTION *) lock);
+  LeaveCriticalSection(lock);
 }
 
 void CRYPTO_MUTEX_cleanup(CRYPTO_MUTEX *lock) {
-  DeleteCriticalSection((CRITICAL_SECTION *) lock);
+  DeleteCriticalSection(lock);
 }
 
 static void static_lock_init(union run_once_arg_t arg) {
