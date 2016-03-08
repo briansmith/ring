@@ -466,6 +466,18 @@ OPENSSL_EXPORT RSA *d2i_RSAPrivateKey(RSA **out, const uint8_t **inp, long len);
  * not, or a negative value on error. */
 OPENSSL_EXPORT int i2d_RSAPrivateKey(const RSA *in, uint8_t **outp);
 
+/* RSA_padding_add_PKCS1_PSS acts like |RSA_padding_add_PKCS1_PSS_mgf1| but the
+ * |mgf1Hash| parameter of the latter is implicitly set to |Hash|. */
+OPENSSL_EXPORT int RSA_padding_add_PKCS1_PSS(RSA *rsa, uint8_t *EM,
+                                             const uint8_t *mHash,
+                                             const EVP_MD *Hash, int sLen);
+
+/* RSA_verify_PKCS1_PSS acts like |RSA_verify_PKCS1_PSS_mgf1| but the
+ * |mgf1Hash| parameter of the latter is implicitly set to |Hash|. */
+OPENSSL_EXPORT int RSA_verify_PKCS1_PSS(RSA *rsa, const uint8_t *mHash,
+                                        const EVP_MD *Hash, const uint8_t *EM,
+                                        int sLen);
+
 
 struct rsa_meth_st {
   struct openssl_method_common_st common;
