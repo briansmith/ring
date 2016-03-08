@@ -60,6 +60,15 @@
 #include <string.h>
 
 
+uint8_t *MD4(const uint8_t *data, size_t len, uint8_t *out) {
+  MD4_CTX ctx;
+  MD4_Init(&ctx);
+  MD4_Update(&ctx, data, len);
+  MD4_Final(out, &ctx);
+
+  return out;
+}
+
 /* Implemented from RFC1186 The MD4 Message-Digest Algorithm. */
 
 int MD4_Init(MD4_CTX *md4) {
