@@ -443,10 +443,7 @@ pub extern fn SHA512_5(out: *mut u8, out_len: c::size_t,
     let digest = ctx.finish();
     let digest = digest.as_ref();
     let out = unsafe { core::slice::from_raw_parts_mut(out, out_len) };
-    assert_eq!(out.len(), digest.len());
-    for i in 0..digest.len() {
-        out[i] = digest[i];
-    }
+    out.clone_from_slice(digest);
 }
 
 extern {
