@@ -220,6 +220,7 @@ int i2d_ECDSA_SIG(const ECDSA_SIG *sig, uint8_t **outp) {
   CBB cbb;
   if (!CBB_init(&cbb, 0) ||
       !ECDSA_SIG_marshal(&cbb, sig)) {
+    CBB_cleanup(&cbb);
     return -1;
   }
   return CBB_finish_i2d(&cbb, outp);

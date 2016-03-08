@@ -401,6 +401,7 @@ int i2d_ECPrivateKey(const EC_KEY *key, uint8_t **outp) {
   CBB cbb;
   if (!CBB_init(&cbb, 0) ||
       !EC_KEY_marshal_private_key(&cbb, key, EC_KEY_get_enc_flags(key))) {
+    CBB_cleanup(&cbb);
     return -1;
   }
   return CBB_finish_i2d(&cbb, outp);
@@ -449,6 +450,7 @@ int i2d_ECParameters(const EC_KEY *key, uint8_t **outp) {
   CBB cbb;
   if (!CBB_init(&cbb, 0) ||
       !OBJ_nid2cbb(&cbb, curve_nid)) {
+    CBB_cleanup(&cbb);
     return -1;
   }
   return CBB_finish_i2d(&cbb, outp);
