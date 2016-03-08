@@ -39,6 +39,7 @@ var (
 	resourceDir     = flag.String("resource-dir", ".", "The directory in which to find certificate and key files.")
 	fuzzer          = flag.Bool("fuzzer", false, "If true, tests against a BoringSSL built in fuzzer mode.")
 	transcriptDir   = flag.String("transcript-dir", "", "The directory in which to write transcripts.")
+	timeout         = flag.Int("timeout", 15, "The number of seconds to wait for a read or write to bssl_shim.")
 )
 
 const (
@@ -279,8 +280,28 @@ func writeTranscript(test *testCase, isResume bool, data []byte) {
 	}
 }
 
+// A timeoutConn implements an idle timeout on each Read and Write operation.
+type timeoutConn struct {
+	net.Conn
+	timeout time.Duration
+}
+
+func (t *timeoutConn) Read(b []byte) (int, error) {
+	if err := t.SetReadDeadline(time.Now().Add(t.timeout)); err != nil {
+		return 0, err
+	}
+	return t.Conn.Read(b)
+}
+
+func (t *timeoutConn) Write(b []byte) (int, error) {
+	if err := t.SetWriteDeadline(time.Now().Add(t.timeout)); err != nil {
+		return 0, err
+	}
+	return t.Conn.Write(b)
+}
+
 func doExchange(test *testCase, config *Config, conn net.Conn, isResume bool) error {
-	var connDamage *damageAdaptor
+	conn = &timeoutConn{conn, time.Duration(*timeout) * time.Second}
 
 	if test.protocol == dtls {
 		config.Bugs.PacketAdaptor = newPacketAdaptor(conn)
@@ -317,6 +338,7 @@ func doExchange(test *testCase, config *Config, conn net.Conn, isResume bool) er
 		conn = newReplayAdaptor(conn)
 	}
 
+	var connDamage *damageAdaptor
 	if test.damageFirstWrite {
 		connDamage = newDamageAdaptor(conn)
 		conn = connDamage
