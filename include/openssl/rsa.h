@@ -117,16 +117,17 @@ OPENSSL_EXPORT RSA *RSA_generate(int bits, uint32_t e, BN_GENCB *cb);
 /* RSA_PKCS1_PSS_PADDING can only be used via the EVP interface. */
 #define RSA_PKCS1_PSS_PADDING 6
 
-/* RSA_encrypt encrypts |in_len| bytes from |in| to the public key from |rsa|
- * and writes, at most, |max_out| bytes of encrypted data to |out|. The
- * |max_out| argument must be, at least, |RSA_size| in order to ensure success.
+/* RSA_encrypt encrypts |in_len| bytes from |in| to the public key with modulus
+ * |n| and exponent |e| and writes, at most, |max_out| bytes of encrypted data
+ * to |out|. The |max_out| argument must be, at least, |RSA_size| in order to
+ * ensure success.
  *
  * It returns 1 on success or zero on error.
  *
  * The |padding| argument must be one of the |RSA_*_PADDING| values. */
-OPENSSL_EXPORT int RSA_encrypt(RSA *rsa, size_t *out_len, uint8_t *out,
-                               size_t max_out, const uint8_t *in, size_t in_len,
-                               int padding);
+OPENSSL_EXPORT int RSA_encrypt(const BIGNUM *n, const BIGNUM *e,
+                               size_t *out_len, uint8_t *out, size_t max_out,
+                               const uint8_t *in, size_t in_len, int padding);
 
 /* RSA_decrypt decrypts |in_len| bytes from |in| with the private key from
  * |rsa| and writes, at most, |max_out| bytes of plaintext to |out|. The

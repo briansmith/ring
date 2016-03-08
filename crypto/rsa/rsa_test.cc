@@ -247,8 +247,9 @@ static bool TestRSA(const uint8_t *der, size_t der_len,
   uint8_t ciphertext[256];
 
   size_t ciphertext_len = 0;
-  if (!RSA_encrypt(key.get(), &ciphertext_len, ciphertext, sizeof(ciphertext),
-                   kPlaintext, kPlaintextLen, RSA_PKCS1_PADDING) ||
+  if (!RSA_encrypt(key->n, key->e, &ciphertext_len, ciphertext,
+                   sizeof(ciphertext), kPlaintext, kPlaintextLen,
+                   RSA_PKCS1_PADDING) ||
       ciphertext_len != RSA_size(key.get())) {
     fprintf(stderr, "PKCS#1 v1.5 encryption failed!\n");
     return false;

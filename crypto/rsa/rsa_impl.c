@@ -118,9 +118,9 @@ unsigned RSA_size(const RSA *rsa) {
   return BN_num_bytes(rsa->n);
 }
 
-int RSA_encrypt(RSA *rsa, size_t *out_len, uint8_t *out, size_t max_out,
-                const uint8_t *in, size_t in_len, int padding) {
-  const unsigned rsa_size = RSA_size(rsa);
+int RSA_encrypt(const BIGNUM *n, const BIGNUM *e, size_t *out_len, uint8_t *out,
+                size_t max_out, const uint8_t *in, size_t in_len, int padding) {
+  const unsigned rsa_size = BN_num_bytes(n); /* RSA_size((n, e)) */
   BIGNUM *f, *result;
   uint8_t *buf = NULL;
   BN_CTX *ctx = NULL;
@@ -133,13 +133,13 @@ int RSA_encrypt(RSA *rsa, size_t *out_len, uint8_t *out, size_t max_out,
 
   /* XXX: |min_bits| should be much higer than 256, but this is what is needed
    * to get the rsa_test.cc tests to pass. */
-  if (!check_modulus_and_exponent_sizes(rsa->n, rsa->e, 256, 16 * 1024)) {
+  if (!check_modulus_and_exponent_sizes(n, e, 256, 16 * 1024)) {
     return 0;
   }
 
   ctx = BN_CTX_new();
   if (ctx == NULL) {
-    goto err;
+    return 0;
   }
 
   BN_CTX_start(ctx);
@@ -179,19 +179,14 @@ int RSA_encrypt(RSA *rsa, size_t *out_len, uint8_t *out, size_t max_out,
     goto err;
   }
 
-  if (BN_ucmp(f, rsa->n) >= 0) {
+  if (BN_ucmp(f, n) >= 0) {
     /* usually the padding functions would catch this */
     OPENSSL_PUT_ERROR(RSA, RSA_R_DATA_TOO_LARGE_FOR_MODULUS);
     goto err;
   }
 
-  if (rsa->flags & RSA_FLAG_CACHE_PUBLIC) {
-    if (BN_MONT_CTX_set_locked(&rsa->mont_n, &rsa->lock, rsa->n, ctx) == NULL) {
-      goto err;
-    }
-  }
-
-  if (!BN_mod_exp_mont(result, f, rsa->e, rsa->n, ctx, rsa->mont_n)) {
+  /* TODO: This should be a constant-time operation, no? */
+  if (!BN_mod_exp_mont(result, f, e, n, ctx, NULL)) {
     goto err;
   }
 
@@ -206,10 +201,8 @@ int RSA_encrypt(RSA *rsa, size_t *out_len, uint8_t *out, size_t max_out,
   ret = 1;
 
 err:
-  if (ctx != NULL) {
-    BN_CTX_end(ctx);
-    BN_CTX_free(ctx);
-  }
+  BN_CTX_end(ctx);
+  BN_CTX_free(ctx);
   OPENSSL_free(buf);
   return ret;
 }
