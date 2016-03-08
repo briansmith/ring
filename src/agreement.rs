@@ -16,8 +16,7 @@
 
 #![allow(unsafe_code)]
 
-use core;
-use super::{c, digest, ecc};
+use super::{c, ecc};
 #[cfg(not(feature = "no_heap"))] use super::bssl;
 use super::input::Input;
 
@@ -143,62 +142,6 @@ pub fn agree_ephemeral<F, R, E>(my_key_pair: EphemeralKeyPair,
 
 // XXX: This should be computed from ecc_build.rs.
 const MAX_COORDINATE_LEN: usize = (384 + 7) / 8;
-
-// TODO: After ecdsa_test.cc is removed, this function should be removed and
-// the caller should be changed to call `SHA512_5` directly. Also, the
-// alternative implementation of this in crypto/test should be removed at
-// that time.
-#[allow(non_snake_case)]
-#[doc(hidden)]
-#[no_mangle]
-pub extern fn BN_generate_dsa_nonce_digest(
-        out: *mut u8, out_len: c::size_t,
-        part1: *const u8, part1_len: c::size_t,
-        part2: *const u8, part2_len: c::size_t,
-        part3: *const u8, part3_len: c::size_t,
-        part4: *const u8, part4_len: c::size_t,
-        part5: *const u8, part5_len: c::size_t)
-        -> c::int {
-    SHA512_5(out, out_len, part1, part1_len, part2, part2_len, part3,
-             part3_len, part4, part4_len, part5, part5_len);
-    1
-}
-
-/// SHA512_5 calculates the SHA-512 digest of the concatenation of |part1|
-/// through |part5|. Any part<N> may be null if and only if the corresponding
-/// part<N>_len is zero. This ugliness exists in order to allow some of the
-/// C ECC code to calculate SHA-512 digests.
-#[allow(non_snake_case)]
-#[doc(hidden)]
-#[no_mangle]
-pub extern fn SHA512_5(out: *mut u8, out_len: c::size_t,
-                       part1: *const u8, part1_len: c::size_t,
-                       part2: *const u8, part2_len: c::size_t,
-                       part3: *const u8, part3_len: c::size_t,
-                       part4: *const u8, part4_len: c::size_t,
-                       part5: *const u8, part5_len: c::size_t) {
-    fn maybe_update(ctx: &mut digest::Context, part: *const u8,
-                    part_len: c::size_t) {
-        if part_len != 0 {
-            assert!(!part.is_null());
-            ctx.update(unsafe { core::slice::from_raw_parts(part, part_len) });
-        }
-    }
-
-    let mut ctx = digest::Context::new(&digest::SHA512);
-    maybe_update(&mut ctx, part1, part1_len);
-    maybe_update(&mut ctx, part2, part2_len);
-    maybe_update(&mut ctx, part3, part3_len);
-    maybe_update(&mut ctx, part4, part4_len);
-    maybe_update(&mut ctx, part5, part5_len);
-    let digest = ctx.finish();
-    let digest = digest.as_ref();
-    let out = unsafe { core::slice::from_raw_parts_mut(out, out_len) };
-    assert_eq!(out.len(), digest.len());
-    for i in 0..digest.len() {
-        out[i] = digest[i];
-    }
-}
 
 
 macro_rules! nist_ecdh {
