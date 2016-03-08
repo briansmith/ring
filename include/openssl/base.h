@@ -182,6 +182,7 @@ typedef struct Netscape_spki_st NETSCAPE_SPKI;
 typedef struct PBE2PARAM_st PBE2PARAM;
 typedef struct PBEPARAM_st PBEPARAM;
 typedef struct PBKDF2PARAM_st PBKDF2PARAM;
+typedef struct RIPEMD160state_st RIPEMD160_CTX;
 typedef struct X509_POLICY_CACHE_st X509_POLICY_CACHE;
 typedef struct X509_POLICY_LEVEL_st X509_POLICY_LEVEL;
 typedef struct X509_POLICY_NODE_st X509_POLICY_NODE;
