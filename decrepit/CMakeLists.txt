@@ -2,6 +2,7 @@ add_subdirectory(bio)
 add_subdirectory(blowfish)
 add_subdirectory(cast)
 add_subdirectory(des)
+add_subdirectory(dsa)
 add_subdirectory(evp)
 add_subdirectory(rsa)
 add_subdirectory(xts)
@@ -13,6 +14,7 @@ add_library(
   $<TARGET_OBJECTS:blowfish>
   $<TARGET_OBJECTS:cast>
   $<TARGET_OBJECTS:des_decrepit>
+  $<TARGET_OBJECTS:dsa_decrepit>
   $<TARGET_OBJECTS:evp_decrepit>
   $<TARGET_OBJECTS:rsa_decrepit>
   $<TARGET_OBJECTS:xts>

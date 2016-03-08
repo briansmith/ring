@@ -363,6 +363,15 @@ OPENSSL_EXPORT DSA *d2i_DSAparams(DSA **out, const uint8_t **inp, long len);
  * Use |DSA_marshal_parameters| instead. */
 OPENSSL_EXPORT int i2d_DSAparams(const DSA *in, uint8_t **outp);
 
+/* DSA_generate_parameters is a deprecated version of
+ * |DSA_generate_parameters_ex| that creates and returns a |DSA*|. Don't use
+ * it. */
+OPENSSL_EXPORT DSA *DSA_generate_parameters(int bits, unsigned char *seed,
+                                            int seed_len, int *counter_ret,
+                                            unsigned long *h_ret,
+                                            void (*callback)(int, int, void *),
+                                            void *cb_arg);
+
 
 struct dsa_st {
   long version;
