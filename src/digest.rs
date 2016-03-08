@@ -447,7 +447,7 @@ pub extern fn SHA512_5(out: *mut u8, out_len: c::size_t,
     let digest = ctx.finish();
     let digest = digest.as_ref();
     let out = unsafe { core::slice::from_raw_parts_mut(out, out_len) };
-    out.clone_from_slice(digest);
+    polyfill::slice::fill_from_slice(out, digest);
 }
 
 extern {
