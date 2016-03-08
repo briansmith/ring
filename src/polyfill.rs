@@ -34,6 +34,17 @@ pub mod slice {
         }
     }
 
+    // https://github.com/rust-lang/rust/issues/27750
+    // https://internals.rust-lang.org/t/stabilizing-basic-functions-on-arrays-and-slices/2868
+    #[inline(always)]
+    pub fn fill_from_slice(dest: &mut [u8], src: &[u8]) {
+        assert_eq!(dest.len(), src.len());
+        unsafe {
+            core::ptr::copy_nonoverlapping(src.as_ptr(), dest.as_mut_ptr(),
+                                           src.len())
+        }
+    }
+
     // https://internals.rust-lang.org/t/safe-trasnsmute-for-slices-e-g-u64-u32-particularly-simd-types/2871
     #[inline(always)]
     pub fn u64_as_u8<'a>(src: &'a [u64]) -> &'a [u8] {

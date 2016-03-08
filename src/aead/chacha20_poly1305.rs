@@ -108,7 +108,7 @@ fn chacha20_poly1305_update_old(state: &mut [u8; POLY1305_STATE_LEN],
 
 /// Copies |key| into |ctx_buf|.
 pub fn init(ctx_buf: &mut [u8], key: &[u8]) -> Result<(), ()> {
-    ctx_buf[..key.len()].clone_from_slice(key);
+    polyfill::slice::fill_from_slice(&mut ctx_buf[..key.len()], key);
     Ok(())
 }
 
