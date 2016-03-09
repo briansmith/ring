@@ -390,17 +390,6 @@ static int ecp_nistz256_points_mul(
   BN_CTX *new_ctx = NULL;
   int ctx_started = 0;
 
-  /* Need 256 bits for space for all coordinates. */
-  if (bn_wexpand(&r->X, P256_LIMBS) == NULL ||
-      bn_wexpand(&r->Y, P256_LIMBS) == NULL ||
-      bn_wexpand(&r->Z, P256_LIMBS) == NULL) {
-    OPENSSL_PUT_ERROR(EC, ERR_R_MALLOC_FAILURE);
-    goto err;
-  }
-  r->X.top = P256_LIMBS;
-  r->Y.top = P256_LIMBS;
-  r->Z.top = P256_LIMBS;
-
   if (g_scalar != NULL) {
     if (BN_num_bits(g_scalar) > 256 || BN_is_negative(g_scalar)) {
       if (ctx == NULL) {
@@ -494,14 +483,12 @@ static int ecp_nistz256_points_mul(
     }
   }
 
-  memcpy(r->X.d, p.p.X, sizeof(p.p.X));
-  memcpy(r->Y.d, p.p.Y, sizeof(p.p.Y));
-  memcpy(r->Z.d, p.p.Z, sizeof(p.p.Z));
-
   /* Not constant-time, but we're only operating on the public output. */
-  bn_correct_top(&r->X);
-  bn_correct_top(&r->Y);
-  bn_correct_top(&r->Z);
+  if (!bn_set_words(&r->X, p.p.X, P256_LIMBS) ||
+      !bn_set_words(&r->Y, p.p.Y, P256_LIMBS) ||
+      !bn_set_words(&r->Z, p.p.Z, P256_LIMBS)) {
+    return 0;
+  }
 
   ret = 1;
 
