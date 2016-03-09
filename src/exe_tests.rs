@@ -42,6 +42,8 @@ exe_test!(bn_test, "crypto/bn/bn_test", []);
 #[cfg(not(feature = "no_heap"))]
 exe_test!(bytestring_test, "crypto/bytestring/bytestring_test", []);
 
+exe_test!(chacha_test, "crypto/chacha/chacha_test", []);
+
 exe_test!(constant_time_test, "crypto/constant_time_test", []);
 
 #[cfg(not(feature = "no_heap"))]
