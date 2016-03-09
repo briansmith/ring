@@ -244,7 +244,7 @@ int bn_set_words(BIGNUM *bn, const BN_ULONG *words, size_t num) {
   }
   memmove(bn->d, words, num * sizeof(BN_ULONG));
   /* |bn_wexpand| verified that |num| isn't too large. */
-  bn->top = (int) num;
+  bn->top = (int)num;
   bn_correct_top(bn);
   return 1;
 }
