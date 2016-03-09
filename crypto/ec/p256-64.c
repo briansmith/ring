@@ -45,7 +45,6 @@ typedef int64_t s64;
  * felem_bytearray. */
 typedef u8 felem_bytearray[32];
 
-
 /* The representation of field elements.
  * ------------------------------------
  *
@@ -1789,7 +1788,6 @@ const EC_METHOD EC_GFp_nistp256_method = {
     ec_GFp_simple_field_sqr,
     NULL /* field_encode */,
     NULL /* field_decode */,
-    NULL /* field_set_to_one */,
 };
 
 #endif  /* 64_BIT && !WINDOWS */

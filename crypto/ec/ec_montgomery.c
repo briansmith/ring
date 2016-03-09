@@ -74,17 +74,6 @@
 #include "internal.h"
 
 
-const EC_METHOD EC_GFp_mont_method = {
-  ec_GFp_simple_point_get_affine_coordinates,
-  ec_wNAF_mul_private /* XXX: Not constant time. */,
-  ec_wNAF_mul_public,
-  ec_GFp_mont_field_mul,
-  ec_GFp_mont_field_sqr,
-  ec_GFp_mont_field_encode,
-  ec_GFp_mont_field_decode,
-  ec_GFp_mont_field_set_to_one
-};
-
 int ec_GFp_mont_field_mul(const EC_GROUP *group, BIGNUM *r, const BIGNUM *a,
                           const BIGNUM *b, BN_CTX *ctx) {
   return BN_mod_mul_montgomery(r, a, b, &group->mont, ctx);
@@ -105,9 +94,12 @@ int ec_GFp_mont_field_decode(const EC_GROUP *group, BIGNUM *r, const BIGNUM *a,
   return BN_from_montgomery(r, a, &group->mont, ctx);
 }
 
-int ec_GFp_mont_field_set_to_one(const EC_GROUP *group, BIGNUM *r) {
-  if (BN_copy(r, &group->one) == NULL) {
-    return 0;
-  }
-  return 1;
-}
+const EC_METHOD EC_GFp_mont_method = {
+  ec_GFp_simple_point_get_affine_coordinates,
+  ec_wNAF_mul_private /* XXX: Not constant time. */,
+  ec_wNAF_mul_public,
+  ec_GFp_mont_field_mul,
+  ec_GFp_mont_field_sqr,
+  ec_GFp_mont_field_encode,
+  ec_GFp_mont_field_decode,
+};

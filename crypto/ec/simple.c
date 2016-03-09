@@ -161,8 +161,8 @@ int ec_GFp_simple_set_Jprojective_coordinates_GFp(
     }
     int Z_is_one = BN_is_one(&point->Z);
     if (group->meth->field_encode) {
-      if (Z_is_one && (group->meth->field_set_to_one != 0)) {
-        if (!group->meth->field_set_to_one(group, &point->Z)) {
+      if (Z_is_one) {
+        if (BN_copy(&point->Z, &group->one) == NULL) {
           goto err;
         }
       } else if (!group->meth->field_encode(group, &point->Z, &point->Z, ctx)) {
@@ -881,14 +881,8 @@ int ec_GFp_simple_points_make_affine(const EC_GROUP *group, size_t num,
       goto err;
     }
   } else {
-    if (group->meth->field_set_to_one != 0) {
-      if (!group->meth->field_set_to_one(group, prod_Z[0])) {
-        goto err;
-      }
-    } else {
-      if (!BN_one(prod_Z[0])) {
-        goto err;
-      }
+    if (BN_copy(prod_Z[0], &group->one) == NULL) {
+      goto err;
     }
   }
 
@@ -959,14 +953,8 @@ int ec_GFp_simple_points_make_affine(const EC_GROUP *group, size_t num,
         goto err;
       }
 
-      if (group->meth->field_set_to_one != NULL) {
-        if (!group->meth->field_set_to_one(group, &p->Z)) {
-          goto err;
-        }
-      } else {
-        if (!BN_one(&p->Z)) {
-          goto err;
-        }
+      if (BN_copy(&p->Z, &group->one) == NULL) {
+        goto err;
       }
     }
   }

@@ -113,7 +113,6 @@ typedef struct ec_method_st {
                       BN_CTX *); /* e.g. to Montgomery */
   int (*field_decode)(const EC_GROUP *, BIGNUM *r, const BIGNUM *a,
                       BN_CTX *); /* e.g. from Montgomery */
-  int (*field_set_to_one)(const EC_GROUP *, BIGNUM *r);
 } EC_METHOD;
 
 extern const EC_METHOD EC_GFp_mont_method;
@@ -198,7 +197,6 @@ int ec_GFp_mont_field_encode(const EC_GROUP *, BIGNUM *r, const BIGNUM *a,
                              BN_CTX *);
 int ec_GFp_mont_field_decode(const EC_GROUP *, BIGNUM *r, const BIGNUM *a,
                              BN_CTX *);
-int ec_GFp_mont_field_set_to_one(const EC_GROUP *, BIGNUM *r);
 
 int ec_point_set_Jprojective_coordinates_GFp(const EC_GROUP *group,
                                              EC_POINT *point, const BIGNUM *x,
