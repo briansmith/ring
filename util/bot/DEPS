@@ -18,7 +18,7 @@ vars = {
 
 deps = {
   'boringssl/util/bot/gyp':
-    Var('chromium_git') + '/external/gyp.git' + '@' + '4a9b712d5cb4a5ba7a9950128a7219569caf7263',
+    Var('chromium_git') + '/external/gyp.git' + '@' + '61259d585ce99d9de8b35188cd0025bdbcb58411',
 }
 
 hooks = [

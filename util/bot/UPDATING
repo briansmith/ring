@@ -1,0 +1,20 @@
+This directory consumes tools from other repositories for use on the
+bots. To update to newer revisions, follow these instructions:
+
+DEPS: Set the external/gyp.git revision to the revision used in Chromium, found at
+    https://chromium.googlesource.com/chromium/src/+/master/DEPS
+    (Search for 'gyp.git'.)
+
+go/bootstrap.py: Set TOOLSET_VERSION to the latest release of Go, found at
+    https://golang.org/dl/.
+
+update_clang.py: Set CLANG_REVISION and CLANG_SUB_REVISION to the values used in
+    Chromium, found at
+    https://chromium.googlesource.com/chromium/src/+/master/tools/clang/scripts/update.py
+
+vs_toolchain.py: Set the hash in _GetDesiredVsToolchainHashes to the toolchain
+    used in Chromium, found at
+    https://chromium.googlesource.com/chromium/src/+/master/build/vs_toolchain.py
+    This may require taking other updates to that file.
+
+TODO(davidben): Update the .sha1 files and record instructions here.

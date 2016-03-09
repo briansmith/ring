@@ -65,7 +65,7 @@ def _GetDesiredVsToolchainHashes():
   """Load a list of SHA1s corresponding to the toolchains that we want installed
   to build with."""
   # Use Chromium's VS2013.
-  return ['ee7d718ec60c2dc5d255bbe325909c2021a7efef']
+  return ['4087e065abebdca6dbd0caca2910c6718d2ec67f']
 
 
 def FindDepotTools():
