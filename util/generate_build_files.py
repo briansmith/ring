@@ -490,6 +490,8 @@ def main(platforms):
 
   with open('src/util/all_tests.json', 'r') as f:
     tests = json.load(f)
+  # Skip tests for libdecrepit. Consumers import that manually.
+  tests = [test for test in tests if not test[0].startswith("decrepit/")]
   test_binaries = set([test[0] for test in tests])
   test_sources = set([
       test.replace('.cc', '').replace('.c', '').replace(
