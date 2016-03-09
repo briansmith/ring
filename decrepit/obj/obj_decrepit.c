@@ -67,5 +67,5 @@ void OBJ_NAME_do_all_sorted(int type,
 
 void OBJ_NAME_do_all(int type, void (*callback)(const OBJ_NAME *, void *arg),
                      void *arg) {
-  return OBJ_NAME_do_all_sorted(type, callback, arg);
+  OBJ_NAME_do_all_sorted(type, callback, arg);
 }
