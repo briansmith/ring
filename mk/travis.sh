@@ -64,14 +64,16 @@ rustc --version
 
 if [[ "$MODE_X" == "RELWITHDEBINFO" ]]; then mode=--release; fi
 
-CC=$CC_X CXX=$CXX_X cargo build -j2 ${mode-} --verbose --target=$TARGET_X
+CARGO_FLAGS = -j2 ${mode-} --verbose --target=$TARGET_X
+
+CC=$CC_X CXX=$CXX_X cargo build ${CARGO_FLAGS}
 
 case $TARGET_X in
 arm-unknown-linux-gnueabi|aarch64-unknown-linux-gnu)
   ;;
 *)
-  CC=$CC_X CXX=$CXX_X cargo test -j2 ${mode-} --verbose --target=$TARGET_X
-  CC=$CC_X CXX=$CXX_X cargo doc --verbose
+  CC=$CC_X CXX=$CXX_X cargo test ${CARGO_FLAGS}
+  CC=$CC_X CXX=$CXX_X cargo doc ${CARGO_FLAGS}
   ;;
 esac
 
