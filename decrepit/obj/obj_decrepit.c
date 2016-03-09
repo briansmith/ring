@@ -30,7 +30,7 @@ static void cipher_callback(const EVP_CIPHER *cipher, const char *name,
   const struct wrapped_callback *wrapped = (struct wrapped_callback *)arg;
   OBJ_NAME obj_name;
 
-  memset(&name, 0, sizeof(name));
+  memset(&obj_name, 0, sizeof(obj_name));
   obj_name.type = OBJ_NAME_TYPE_CIPHER_METH;
   obj_name.name = name;
 
@@ -42,7 +42,7 @@ static void md_callback(const EVP_MD *md, const char *name, const char *unused,
   const struct wrapped_callback *wrapped = (struct wrapped_callback*) arg;
   OBJ_NAME obj_name;
 
-  memset(&name, 0, sizeof(name));
+  memset(&obj_name, 0, sizeof(obj_name));
   obj_name.type = OBJ_NAME_TYPE_MD_METH;
   obj_name.name = name;
 
