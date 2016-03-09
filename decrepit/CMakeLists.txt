@@ -24,7 +24,7 @@ add_library(
   $<TARGET_OBJECTS:rc4_decrepit>
   $<TARGET_OBJECTS:ripemd_decrepit>
   $<TARGET_OBJECTS:rsa_decrepit>
-  $<TARGET_OBJECTS:x509>
+  $<TARGET_OBJECTS:x509_decrepit>
   $<TARGET_OBJECTS:xts>
 )
 

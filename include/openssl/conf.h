@@ -92,10 +92,10 @@ struct conf_st {
 
 /* NCONF_new returns a fresh, empty |CONF|, or NULL on error. The |method|
  * argument must be NULL. */
-CONF *NCONF_new(void *method);
+OPENSSL_EXPORT CONF *NCONF_new(void *method);
 
 /* NCONF_free frees all the data owned by |conf| and then |conf| itself. */
-void NCONF_free(CONF *conf);
+OPENSSL_EXPORT void NCONF_free(CONF *conf);
 
 /* NCONF_load parses the file named |filename| and adds the values found to
  * |conf|. It returns one on success and zero on error. In the event of an
