@@ -125,10 +125,11 @@ struct bn_blinding_st {
   BIGNUM *e;
   BIGNUM *mod;
   int counter;
-  /* mont is the Montgomery context used for this |BN_BLINDING|. It is not
-   * owned and must outlive this structure. */
-  const BN_MONT_CTX *mont;
 };
+
+static BN_BLINDING *bn_blinding_create_param(BN_BLINDING *b, const BIGNUM *e,
+                                             BIGNUM *m, BN_CTX *ctx,
+                                             const BN_MONT_CTX *mont_ctx);
 
 BN_BLINDING *BN_BLINDING_new(const BIGNUM *A, const BIGNUM *Ai, BIGNUM *mod) {
   BN_BLINDING *ret = NULL;
@@ -157,9 +158,7 @@ BN_BLINDING *BN_BLINDING_new(const BIGNUM *A, const BIGNUM *Ai, BIGNUM *mod) {
   if (ret->mod == NULL) {
     goto err;
   }
-  if (BN_get_flags(mod, BN_FLG_CONSTTIME) != 0) {
-    BN_set_flags(ret->mod, BN_FLG_CONSTTIME);
-  }
+  BN_set_flags(ret->mod, BN_FLG_CONSTTIME);
 
   /* Set the counter to the special value -1
    * to indicate that this is never-used fresh blinding
@@ -184,7 +183,8 @@ void BN_BLINDING_free(BN_BLINDING *r) {
   OPENSSL_free(r);
 }
 
-int BN_BLINDING_update(BN_BLINDING *b, BN_CTX *ctx) {
+static int bn_blinding_update(BN_BLINDING *b, BN_CTX *ctx,
+                              const BN_MONT_CTX *mont_ctx) {
   int ret = 0;
 
   if (b->A == NULL || b->Ai == NULL) {
@@ -198,7 +198,7 @@ int BN_BLINDING_update(BN_BLINDING *b, BN_CTX *ctx) {
 
   if (++b->counter == BN_BLINDING_COUNTER && b->e != NULL) {
     /* re-create blinding parameters */
-    if (!BN_BLINDING_create_param(b, NULL, NULL, ctx, NULL)) {
+    if (!bn_blinding_create_param(b, NULL, NULL, ctx, mont_ctx)) {
       goto err;
     }
   } else {
@@ -219,7 +219,8 @@ err:
   return ret;
 }
 
-int BN_BLINDING_convert(BIGNUM *n, BN_BLINDING *b, BN_CTX *ctx) {
+int BN_BLINDING_convert(BIGNUM *n, BN_BLINDING *b, BN_CTX *ctx,
+                        const BN_MONT_CTX *mont_ctx) {
   int ret = 1;
 
   if (b->A == NULL || b->Ai == NULL) {
@@ -230,7 +231,7 @@ int BN_BLINDING_convert(BIGNUM *n, BN_BLINDING *b, BN_CTX *ctx) {
   if (b->counter == -1) {
     /* Fresh blinding, doesn't need updating. */
     b->counter = 0;
-  } else if (!BN_BLINDING_update(b, ctx)) {
+  } else if (!bn_blinding_update(b, ctx, mont_ctx)) {
     return 0;
   }
 
@@ -249,9 +250,9 @@ int BN_BLINDING_invert(BIGNUM *n, const BN_BLINDING *b, BN_CTX *ctx) {
   return BN_mod_mul(n, n, b->Ai, b->mod, ctx);
 }
 
-BN_BLINDING *BN_BLINDING_create_param(
+static BN_BLINDING *bn_blinding_create_param(
     BN_BLINDING *b, const BIGNUM *e, BIGNUM *m, BN_CTX *ctx,
-    const BN_MONT_CTX *mont) {
+    const BN_MONT_CTX *mont_ctx) {
   int retry_counter = 32;
   BN_BLINDING *ret = NULL;
 
@@ -280,10 +281,6 @@ BN_BLINDING *BN_BLINDING_create_param(
     goto err;
   }
 
-  if (mont != NULL) {
-    ret->mont = mont;
-  }
-
   do {
     if (!BN_rand_range(ret->A, ret->mod)) {
       goto err;
@@ -306,7 +303,7 @@ BN_BLINDING *BN_BLINDING_create_param(
     }
   } while (1);
 
-  if (!BN_mod_exp_mont(ret->A, ret->A, ret->e, ret->mod, ctx, ret->mont)) {
+  if (!BN_mod_exp_mont(ret->A, ret->A, ret->e, ret->mod, ctx, mont_ctx)) {
     goto err;
   }
 
@@ -352,7 +349,7 @@ BN_BLINDING *rsa_setup_blinding(RSA *rsa, BN_CTX *in_ctx) {
     }
   }
 
-  ret = BN_BLINDING_create_param(NULL, rsa->e, n, ctx, mont_ctx);
+  ret = bn_blinding_create_param(NULL, rsa->e, n, ctx, mont_ctx);
   if (ret == NULL) {
     OPENSSL_PUT_ERROR(RSA, ERR_R_BN_LIB);
     goto err;
