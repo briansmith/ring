@@ -17,4 +17,23 @@ vs_toolchain.py: Set the hash in _GetDesiredVsToolchainHashes to the toolchain
     https://chromium.googlesource.com/chromium/src/+/master/build/vs_toolchain.py
     This may require taking other updates to that file.
 
-TODO(davidben): Update the .sha1 files and record instructions here.
+The .sha1 files correspond to files downloaded from Google Cloud Storage. To
+update, place the updated files in their intended location and run:
+
+    upload_to_google_storage.py -b chromium-tools FILE
+
+cmake-win32.zip: Update to the latest prebuilt release of CMake, found at
+    https://cmake.org/download/. Use the file labeled "Windows ZIP". The
+    download will be named cmake-VERSION-win32-x86.zip.
+
+perl-win32.zip: Update to the latest 32-bit prebuilt "PortableZip" edition of
+    Strawberry Perl, found at http://strawberryperl.com/releases.html. The
+    download will be named strawberry-perl-VERSION-32bit-portable.zip.
+
+yasm-win32.exe: Update to the appropriate release of Yasm. Use the same version
+    as Chromium, found at
+    https://chromium.googlesource.com/chromium/src/+/master/third_party/yasm/README.chromium
+    Use the release at http://yasm.tortall.net/Download.html labeled
+    "Win32 .exe". The download will be named yasm-VERSION-win32.exe.
+
+TODO(davidben): Update the other .sha1 files and record instructions here.
