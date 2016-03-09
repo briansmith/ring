@@ -22,6 +22,15 @@ update, place the updated files in their intended location and run:
 
     upload_to_google_storage.py -b chromium-tools FILE
 
+cmake-linux64.tar.gz: Download the latest CMake source tarball, found at
+    https://cmake.org/download/. Build it with:
+
+        ./bootstrap --prefix=$PWD/cmake-linux64 && make && make install
+        tar -czf cmake-linux64.tar.gz cmake-linux64/
+
+cmake-mac.tar.gz: Follow the same instructions as above on a Mac, but replace
+    cmake-linux64 with cmake-mac.
+
 cmake-win32.zip: Update to the latest prebuilt release of CMake, found at
     https://cmake.org/download/. Use the file labeled "Windows ZIP". The
     download will be named cmake-VERSION-win32-x86.zip.
@@ -35,5 +44,3 @@ yasm-win32.exe: Update to the appropriate release of Yasm. Use the same version
     https://chromium.googlesource.com/chromium/src/+/master/third_party/yasm/README.chromium
     Use the release at http://yasm.tortall.net/Download.html labeled
     "Win32 .exe". The download will be named yasm-VERSION-win32.exe.
-
-TODO(davidben): Update the other .sha1 files and record instructions here.
