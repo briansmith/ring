@@ -564,15 +564,20 @@ func (hs *clientHandshakeState) doFullHandshake() error {
 	hs.writeServerHash(shd.marshal())
 
 	// If the server requested a certificate then we have to send a
-	// Certificate message, even if it's empty because we don't have a
-	// certificate to send.
+	// Certificate message in TLS, even if it's empty because we don't have
+	// a certificate to send. In SSL 3.0, skip the message and send a
+	// no_certificate warning alert.
 	if certRequested {
-		certMsg := new(certificateMsg)
-		if chainToSend != nil {
-			certMsg.certificates = chainToSend.Certificate
+		if c.vers == VersionSSL30 && chainToSend == nil {
+			c.sendAlert(alertNoCertficate)
+		} else if !c.config.Bugs.SkipClientCertificate {
+			certMsg := new(certificateMsg)
+			if chainToSend != nil {
+				certMsg.certificates = chainToSend.Certificate
+			}
+			hs.writeClientHash(certMsg.marshal())
+			c.writeRecord(recordTypeHandshake, certMsg.marshal())
 		}
-		hs.writeClientHash(certMsg.marshal())
-		c.writeRecord(recordTypeHandshake, certMsg.marshal())
 	}
 
 	preMasterSecret, ckx, err := keyAgreement.generateClientKeyExchange(c.config, hs.hello, leaf)

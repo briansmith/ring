@@ -2656,6 +2656,28 @@ func addClientAuthTests() {
 			})
 		}
 	}
+
+	testCases = append(testCases, testCase{
+		testType:      serverTest,
+		name:          "RequireAnyClientCertificate",
+		flags:         []string{"-require-any-client-certificate"},
+		shouldFail:    true,
+		expectedError: ":PEER_DID_NOT_RETURN_A_CERTIFICATE:",
+	})
+
+	testCases = append(testCases, testCase{
+		testType: serverTest,
+		name:     "SkipClientCertificate",
+		config: Config{
+			Bugs: ProtocolBugs{
+				SkipClientCertificate: true,
+			},
+		},
+		// Setting SSL_VERIFY_PEER allows anonymous clients.
+		flags:         []string{"-verify-peer"},
+		shouldFail:    true,
+		expectedError: ":TLS_PEER_DID_NOT_RESPOND_WITH_CERTIFICATE_LIST:",
+	})
 }
 
 func addExtendedMasterSecretTests() {
@@ -2859,11 +2881,36 @@ func addStateMachineCoverageTests(async, splitHandshake bool, protocol protocol)
 	// TLS client auth.
 	tests = append(tests, testCase{
 		testType: clientTest,
-		name:     "ClientAuth-NoCertificate",
+		name:     "ClientAuth-NoCertificate-Client",
 		config: Config{
 			ClientAuth: RequestClientCert,
 		},
 	})
+	tests = append(tests, testCase{
+		testType: serverTest,
+		name:     "ClientAuth-NoCertificate-Server",
+		// Setting SSL_VERIFY_PEER allows anonymous clients.
+		flags: []string{"-verify-peer"},
+	})
+	if protocol == tls {
+		tests = append(tests, testCase{
+			testType: clientTest,
+			name:     "ClientAuth-NoCertificate-Client-SSL3",
+			config: Config{
+				MaxVersion: VersionSSL30,
+				ClientAuth: RequestClientCert,
+			},
+		})
+		tests = append(tests, testCase{
+			testType: serverTest,
+			name:     "ClientAuth-NoCertificate-Server-SSL3",
+			config: Config{
+				MaxVersion: VersionSSL30,
+			},
+			// Setting SSL_VERIFY_PEER allows anonymous clients.
+			flags: []string{"-verify-peer"},
+		})
+	}
 	tests = append(tests, testCase{
 		testType: clientTest,
 		name:     "ClientAuth-NoCertificate-OldCallback",

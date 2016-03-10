@@ -626,13 +626,22 @@ func (hs *serverHandshakeState) doFullHandshake() error {
 	// certificate message, even if it's empty.
 	if config.ClientAuth >= RequestClientCert {
 		var certMsg *certificateMsg
-		if certMsg, ok = msg.(*certificateMsg); !ok {
+		var certificates [][]byte
+		if certMsg, ok = msg.(*certificateMsg); ok {
+			if c.vers == VersionSSL30 && len(certMsg.certificates) == 0 {
+				return errors.New("tls: empty certificate message in SSL 3.0")
+			}
+
+			hs.writeClientHash(certMsg.marshal())
+			certificates = certMsg.certificates
+		} else if c.vers != VersionSSL30 {
+			// In TLS, the Certificate message is required. In SSL
+			// 3.0, the peer skips it when sending no certificates.
 			c.sendAlert(alertUnexpectedMessage)
 			return unexpectedMessageError(certMsg, msg)
 		}
-		hs.writeClientHash(certMsg.marshal())
 
-		if len(certMsg.certificates) == 0 {
+		if len(certificates) == 0 {
 			// The client didn't actually send a certificate
 			switch config.ClientAuth {
 			case RequireAnyClientCert, RequireAndVerifyClientCert:
@@ -641,14 +650,16 @@ func (hs *serverHandshakeState) doFullHandshake() error {
 			}
 		}
 
-		pub, err = hs.processCertsFromClient(certMsg.certificates)
+		pub, err = hs.processCertsFromClient(certificates)
 		if err != nil {
 			return err
 		}
 
-		msg, err = c.readHandshake()
-		if err != nil {
-			return err
+		if ok {
+			msg, err = c.readHandshake()
+			if err != nil {
+				return err
+			}
 		}
 	}
 

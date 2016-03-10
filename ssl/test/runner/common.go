@@ -473,6 +473,10 @@ type ProtocolBugs struct {
 	// NewSessionTicket message despite promising to in ServerHello.
 	SkipNewSessionTicket bool
 
+	// SkipClientCertificate causes the client to skip the Certificate
+	// message.
+	SkipClientCertificate bool
+
 	// SkipChangeCipherSpec causes the implementation to skip
 	// sending the ChangeCipherSpec message (and adjusting cipher
 	// state accordingly for the Finished message).
