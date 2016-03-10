@@ -185,6 +185,7 @@ again:
 }
 
 int dtls1_read_app_data(SSL *ssl, uint8_t *buf, int len, int peek) {
+  assert(!SSL_in_init(ssl));
   return dtls1_read_bytes(ssl, SSL3_RT_APPLICATION_DATA, buf, len, peek);
 }
 
@@ -232,7 +233,7 @@ void dtls1_read_close_notify(SSL *ssl) {
  * This function must handle any surprises the peer may have for us, such as
  * Alert records (e.g. close_notify) and out of records. */
 int dtls1_read_bytes(SSL *ssl, int type, unsigned char *buf, int len, int peek) {
-  int al, i, ret;
+  int al, ret;
   unsigned int n;
   SSL3_RECORD *rr;
   void (*cb)(const SSL *ssl, int type, int value) = NULL;
@@ -242,18 +243,6 @@ int dtls1_read_bytes(SSL *ssl, int type, unsigned char *buf, int len, int peek) 
       (peek && type != SSL3_RT_APPLICATION_DATA)) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
     return -1;
-  }
-
-  if (!ssl->in_handshake && SSL_in_init(ssl)) {
-    /* type == SSL3_RT_APPLICATION_DATA */
-    i = ssl->handshake_func(ssl);
-    if (i < 0) {
-      return i;
-    }
-    if (i == 0) {
-      OPENSSL_PUT_ERROR(SSL, SSL_R_SSL_HANDSHAKE_FAILURE);
-      return -1;
-    }
   }
 
 start:

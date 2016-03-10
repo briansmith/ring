@@ -589,6 +589,7 @@ int SSL_accept(SSL *ssl) {
 static int ssl_read_impl(SSL *ssl, void *buf, int num, int peek) {
   /* Functions which use SSL_get_error must clear the error queue on entry. */
   ERR_clear_error();
+  ERR_clear_system_error();
 
   if (ssl->handshake_func == NULL) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_UNINITIALIZED);
@@ -600,7 +601,20 @@ static int ssl_read_impl(SSL *ssl, void *buf, int num, int peek) {
     return 0;
   }
 
-  ERR_clear_system_error();
+  /* This may require multiple iterations. False Start will cause
+   * |ssl->handshake_func| to signal success one step early, but the handshake
+   * must be completely finished before other modes are accepted. */
+  while (SSL_in_init(ssl)) {
+    int ret = SSL_do_handshake(ssl);
+    if (ret < 0) {
+      return ret;
+    }
+    if (ret == 0) {
+      OPENSSL_PUT_ERROR(SSL, SSL_R_SSL_HANDSHAKE_FAILURE);
+      return -1;
+    }
+  }
+
   return ssl->method->ssl_read_app_data(ssl, buf, num, peek);
 }
 
@@ -615,6 +629,7 @@ int SSL_peek(SSL *ssl, void *buf, int num) {
 int SSL_write(SSL *ssl, const void *buf, int num) {
   /* Functions which use SSL_get_error must clear the error queue on entry. */
   ERR_clear_error();
+  ERR_clear_system_error();
 
   if (ssl->handshake_func == NULL) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_UNINITIALIZED);
@@ -626,8 +641,6 @@ int SSL_write(SSL *ssl, const void *buf, int num) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_PROTOCOL_IS_SHUTDOWN);
     return -1;
   }
-
-  ERR_clear_system_error();
 
   /* If necessary, complete the handshake implicitly. */
   if (SSL_in_init(ssl) && !SSL_in_false_start(ssl)) {

@@ -304,6 +304,7 @@ static int do_ssl3_write(SSL *ssl, int type, const uint8_t *buf, unsigned len) {
 }
 
 int ssl3_read_app_data(SSL *ssl, uint8_t *buf, int len, int peek) {
+  assert(!SSL_in_init(ssl));
   return ssl3_read_bytes(ssl, SSL3_RT_APPLICATION_DATA, buf, len, peek);
 }
 
@@ -374,23 +375,6 @@ int ssl3_read_bytes(SSL *ssl, int type, uint8_t *buf, int len, int peek) {
       (peek && type != SSL3_RT_APPLICATION_DATA)) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
     return -1;
-  }
-
-  /* This may require multiple iterations. False Start will cause
-   * |ssl->handshake_func| to signal success one step early, but the handshake
-   * must be completely finished before other modes are accepted.
-   *
-   * TODO(davidben): Move this check up to a higher level. */
-  while (!ssl->in_handshake && SSL_in_init(ssl)) {
-    assert(type == SSL3_RT_APPLICATION_DATA);
-    i = ssl->handshake_func(ssl);
-    if (i < 0) {
-      return i;
-    }
-    if (i == 0) {
-      OPENSSL_PUT_ERROR(SSL, SSL_R_SSL_HANDSHAKE_FAILURE);
-      return -1;
-    }
   }
 
 start:
