@@ -192,8 +192,6 @@ int ssl3_accept(SSL *ssl) {
     cb = ssl->ctx->info_callback;
   }
 
-  ssl->in_handshake++;
-
   if (ssl->cert == NULL) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_NO_CERTIFICATE_SET);
     return -1;
@@ -579,7 +577,6 @@ int ssl3_accept(SSL *ssl) {
   }
 
 end:
-  ssl->in_handshake--;
   BUF_MEM_free(buf);
   if (cb != NULL) {
     cb(ssl, SSL_CB_ACCEPT_EXIT, ret);

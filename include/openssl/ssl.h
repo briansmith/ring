@@ -3961,10 +3961,6 @@ struct ssl_st {
   EVP_CIPHER_CTX *enc_read_ctx;
   EVP_MD_CTX *read_hash;
 
-  /* in_handshake is non-zero when we are actually in SSL_accept() or
-   * SSL_connect() */
-  int in_handshake;
-
   /* verify_mode is a bitmask of |SSL_VERIFY_*| values. */
   uint8_t verify_mode;
 
