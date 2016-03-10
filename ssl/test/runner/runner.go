@@ -2667,6 +2667,17 @@ func addClientAuthTests() {
 
 	testCases = append(testCases, testCase{
 		testType: serverTest,
+		name:     "RequireAnyClientCertificate-SSL3",
+		config: Config{
+			MaxVersion: VersionSSL30,
+		},
+		flags:         []string{"-require-any-client-certificate"},
+		shouldFail:    true,
+		expectedError: ":PEER_DID_NOT_RETURN_A_CERTIFICATE:",
+	})
+
+	testCases = append(testCases, testCase{
+		testType: serverTest,
 		name:     "SkipClientCertificate",
 		config: Config{
 			Bugs: ProtocolBugs{
@@ -2676,7 +2687,7 @@ func addClientAuthTests() {
 		// Setting SSL_VERIFY_PEER allows anonymous clients.
 		flags:         []string{"-verify-peer"},
 		shouldFail:    true,
-		expectedError: ":TLS_PEER_DID_NOT_RESPOND_WITH_CERTIFICATE_LIST:",
+		expectedError: ":UNEXPECTED_MESSAGE:",
 	})
 }
 

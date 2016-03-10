@@ -1316,8 +1316,8 @@ int ssl3_get_certificate_request(SSL *ssl) {
   const uint8_t *data;
 
   n = ssl->method->ssl_get_message(ssl, SSL3_ST_CR_CERT_REQ_A,
-                                 SSL3_ST_CR_CERT_REQ_B, -1, ssl->max_cert_list,
-                                 ssl_hash_message, &ok);
+                                   SSL3_ST_CR_CERT_REQ_B, -1,
+                                   ssl->max_cert_list, ssl_hash_message, &ok);
 
   if (!ok) {
     return n;
@@ -1335,7 +1335,7 @@ int ssl3_get_certificate_request(SSL *ssl) {
 
   if (ssl->s3->tmp.message_type != SSL3_MT_CERTIFICATE_REQUEST) {
     ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_UNEXPECTED_MESSAGE);
-    OPENSSL_PUT_ERROR(SSL, SSL_R_WRONG_MESSAGE_TYPE);
+    OPENSSL_PUT_ERROR(SSL, SSL_R_UNEXPECTED_MESSAGE);
     goto err;
   }
 
