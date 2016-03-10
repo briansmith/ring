@@ -447,17 +447,15 @@ struct ssl_cipher_preference_list_st *ssl_get_cipher_preferences(SSL *ssl) {
     return ssl->cipher_list;
   }
 
-  if (ssl->version >= TLS1_1_VERSION && ssl->ctx != NULL &&
-      ssl->ctx->cipher_list_tls11 != NULL) {
+  if (ssl->version >= TLS1_1_VERSION && ssl->ctx->cipher_list_tls11 != NULL) {
     return ssl->ctx->cipher_list_tls11;
   }
 
-  if (ssl->version >= TLS1_VERSION && ssl->ctx != NULL &&
-      ssl->ctx->cipher_list_tls10 != NULL) {
+  if (ssl->version >= TLS1_VERSION && ssl->ctx->cipher_list_tls10 != NULL) {
     return ssl->ctx->cipher_list_tls10;
   }
 
-  if (ssl->ctx != NULL && ssl->ctx->cipher_list != NULL) {
+  if (ssl->ctx->cipher_list != NULL) {
     return ssl->ctx->cipher_list;
   }
 

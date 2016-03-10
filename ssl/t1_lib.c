@@ -2367,11 +2367,10 @@ static int ssl_check_clienthello_tlsext(SSL *ssl) {
   int ret = SSL_TLSEXT_ERR_NOACK;
   int al = SSL_AD_UNRECOGNIZED_NAME;
 
-  if (ssl->ctx != NULL && ssl->ctx->tlsext_servername_callback != 0) {
+  if (ssl->ctx->tlsext_servername_callback != 0) {
     ret = ssl->ctx->tlsext_servername_callback(ssl, &al,
-                                             ssl->ctx->tlsext_servername_arg);
-  } else if (ssl->initial_ctx != NULL &&
-             ssl->initial_ctx->tlsext_servername_callback != 0) {
+                                               ssl->ctx->tlsext_servername_arg);
+  } else if (ssl->initial_ctx->tlsext_servername_callback != 0) {
     ret = ssl->initial_ctx->tlsext_servername_callback(
         ssl, &al, ssl->initial_ctx->tlsext_servername_arg);
   }
@@ -2398,11 +2397,10 @@ static int ssl_check_serverhello_tlsext(SSL *ssl) {
   int ret = SSL_TLSEXT_ERR_OK;
   int al = SSL_AD_UNRECOGNIZED_NAME;
 
-  if (ssl->ctx != NULL && ssl->ctx->tlsext_servername_callback != 0) {
+  if (ssl->ctx->tlsext_servername_callback != 0) {
     ret = ssl->ctx->tlsext_servername_callback(ssl, &al,
-                                             ssl->ctx->tlsext_servername_arg);
-  } else if (ssl->initial_ctx != NULL &&
-             ssl->initial_ctx->tlsext_servername_callback != 0) {
+                                               ssl->ctx->tlsext_servername_arg);
+  } else if (ssl->initial_ctx->tlsext_servername_callback != 0) {
     ret = ssl->initial_ctx->tlsext_servername_callback(
         ssl, &al, ssl->initial_ctx->tlsext_servername_arg);
   }

@@ -1259,17 +1259,15 @@ STACK_OF(SSL_CIPHER) *SSL_get_ciphers(const SSL *ssl) {
     return ssl->cipher_list->ciphers;
   }
 
-  if (ssl->version >= TLS1_1_VERSION && ssl->ctx != NULL &&
-      ssl->ctx->cipher_list_tls11 != NULL) {
+  if (ssl->version >= TLS1_1_VERSION && ssl->ctx->cipher_list_tls11 != NULL) {
     return ssl->ctx->cipher_list_tls11->ciphers;
   }
 
-  if (ssl->version >= TLS1_VERSION && ssl->ctx != NULL &&
-      ssl->ctx->cipher_list_tls10 != NULL) {
+  if (ssl->version >= TLS1_VERSION && ssl->ctx->cipher_list_tls10 != NULL) {
     return ssl->ctx->cipher_list_tls10->ciphers;
   }
 
-  if (ssl->ctx != NULL && ssl->ctx->cipher_list != NULL) {
+  if (ssl->ctx->cipher_list != NULL) {
     return ssl->ctx->cipher_list->ciphers;
   }
 
@@ -1287,7 +1285,7 @@ STACK_OF(SSL_CIPHER) *ssl_get_ciphers_by_id(SSL *ssl) {
     return ssl->cipher_list_by_id;
   }
 
-  if (ssl->ctx != NULL && ssl->ctx->cipher_list_by_id != NULL) {
+  if (ssl->ctx->cipher_list_by_id != NULL) {
     return ssl->ctx->cipher_list_by_id;
   }
 
