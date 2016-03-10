@@ -1875,21 +1875,17 @@ static int ssl3_has_client_certificate(SSL *ssl) {
 }
 
 int ssl3_send_client_certificate(SSL *ssl) {
-  X509 *x509 = NULL;
-  EVP_PKEY *pkey = NULL;
-  int i;
-
   if (ssl->state == SSL3_ST_CW_CERT_A) {
-    /* Let cert callback update client certificates if required */
+    /* Call cert_cb to update the certificate. */
     if (ssl->cert->cert_cb) {
-      i = ssl->cert->cert_cb(ssl, ssl->cert->cert_cb_arg);
-      if (i < 0) {
+      int ret = ssl->cert->cert_cb(ssl, ssl->cert->cert_cb_arg);
+      if (ret < 0) {
         ssl->rwstate = SSL_X509_LOOKUP;
         return -1;
       }
-      if (i == 0) {
+      if (ret == 0) {
         ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_INTERNAL_ERROR);
-        return 0;
+        return -1;
       }
       ssl->rwstate = SSL_NOTHING;
     }
@@ -1901,52 +1897,43 @@ int ssl3_send_client_certificate(SSL *ssl) {
     }
   }
 
-  /* We need to get a client cert */
   if (ssl->state == SSL3_ST_CW_CERT_B) {
-    /* If we get an error, we need to:
-     *   ssl->rwstate=SSL_X509_LOOKUP; return(-1);
-     * We then get retried later */
-    i = ssl_do_client_cert_cb(ssl, &x509, &pkey);
-    if (i < 0) {
+    /* Call client_cert_cb to update the certificate. */
+    X509 *x509 = NULL;
+    EVP_PKEY *pkey = NULL;
+    int ret = ssl_do_client_cert_cb(ssl, &x509, &pkey);
+    if (ret < 0) {
       ssl->rwstate = SSL_X509_LOOKUP;
       return -1;
     }
     ssl->rwstate = SSL_NOTHING;
-    if (i == 1 && pkey != NULL && x509 != NULL) {
-      ssl->state = SSL3_ST_CW_CERT_B;
-      if (!SSL_use_certificate(ssl, x509) || !SSL_use_PrivateKey(ssl, pkey)) {
-        i = 0;
-      }
-    } else if (i == 1) {
-      i = 0;
-      OPENSSL_PUT_ERROR(SSL, SSL_R_BAD_DATA_RETURNED_BY_CALLBACK);
-    }
 
+    int setup_error = ret == 1 && (!SSL_use_certificate(ssl, x509) ||
+                                   !SSL_use_PrivateKey(ssl, pkey));
     X509_free(x509);
     EVP_PKEY_free(pkey);
-    if (i && !ssl3_has_client_certificate(ssl)) {
-      i = 0;
-    }
-    if (i == 0) {
-      if (ssl->version == SSL3_VERSION) {
-        ssl->s3->tmp.cert_req = 0;
-        ssl3_send_alert(ssl, SSL3_AL_WARNING, SSL_AD_NO_CERTIFICATE);
-        return 1;
-      } else {
-        ssl->s3->tmp.cert_req = 2;
-        /* There is no client certificate, so the handshake buffer may be
-         * released. */
-        ssl3_free_handshake_buffer(ssl);
-      }
+    if (setup_error) {
+      ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_INTERNAL_ERROR);
+      return -1;
     }
 
-    /* Ok, we have a cert */
     ssl->state = SSL3_ST_CW_CERT_C;
   }
 
   if (ssl->state == SSL3_ST_CW_CERT_C) {
-    if (ssl->s3->tmp.cert_req == 2) {
-      /* Send an empty Certificate message. */
+    if (!ssl3_has_client_certificate(ssl)) {
+      /* Without a client certificate, the handshake buffer may be released. */
+      ssl3_free_handshake_buffer(ssl);
+
+      if (ssl->version == SSL3_VERSION) {
+        /* In SSL 3.0, send no certificate by skipping both messages. */
+        ssl->s3->tmp.cert_req = 0;
+        ssl3_send_alert(ssl, SSL3_AL_WARNING, SSL_AD_NO_CERTIFICATE);
+        return 1;
+      }
+
+      /* In TLS, send an empty Certificate message. */
+      ssl->s3->tmp.cert_req = 2;
       uint8_t *p = ssl_handshake_start(ssl);
       l2n3(0, p);
       if (!ssl_set_handshake_header(ssl, SSL3_MT_CERTIFICATE, 3)) {
@@ -1958,7 +1945,7 @@ int ssl3_send_client_certificate(SSL *ssl) {
     ssl->state = SSL3_ST_CW_CERT_D;
   }
 
-  /* SSL3_ST_CW_CERT_D */
+  assert(ssl->state == SSL3_ST_CW_CERT_D);
   return ssl_do_write(ssl);
 }
 
@@ -2078,7 +2065,15 @@ int ssl_do_client_cert_cb(SSL *ssl, X509 **out_x509, EVP_PKEY **out_pkey) {
   if (ssl->ctx->client_cert_cb == NULL) {
     return 0;
   }
-  return ssl->ctx->client_cert_cb(ssl, out_x509, out_pkey);
+
+  int ret = ssl->ctx->client_cert_cb(ssl, out_x509, out_pkey);
+  if (ret <= 0) {
+    return ret;
+  }
+
+  assert(*out_x509 != NULL);
+  assert(*out_pkey != NULL);
+  return 1;
 }
 
 int ssl3_verify_server_cert(SSL *ssl) {
