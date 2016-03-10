@@ -138,13 +138,20 @@ static TestState *GetTestState(const SSL *ssl) {
   return (TestState *)SSL_get_ex_data(ssl, g_state_index);
 }
 
+static ScopedX509 LoadCertificate(const std::string &file) {
+  ScopedBIO bio(BIO_new(BIO_s_file()));
+  if (!bio || !BIO_read_filename(bio.get(), file.c_str())) {
+    return nullptr;
+  }
+  return ScopedX509(PEM_read_bio_X509(bio.get(), NULL, NULL, NULL));
+}
+
 static ScopedEVP_PKEY LoadPrivateKey(const std::string &file) {
   ScopedBIO bio(BIO_new(BIO_s_file()));
   if (!bio || !BIO_read_filename(bio.get(), file.c_str())) {
     return nullptr;
   }
-  ScopedEVP_PKEY pkey(PEM_read_bio_PrivateKey(bio.get(), NULL, NULL, NULL));
-  return pkey;
+  return ScopedEVP_PKEY(PEM_read_bio_PrivateKey(bio.get(), NULL, NULL, NULL));
 }
 
 static int AsyncPrivateKeyType(SSL *ssl) {
@@ -291,9 +298,9 @@ struct Free {
   }
 };
 
-static bool InstallCertificate(SSL *ssl) {
+static bool GetCertificate(SSL *ssl, ScopedX509 *out_x509,
+                           ScopedEVP_PKEY *out_pkey) {
   const TestConfig *config = GetConfigPtr(ssl);
-  TestState *test_state = GetTestState(ssl);
 
   if (!config->digest_prefs.empty()) {
     std::unique_ptr<char, Free<char>> digest_prefs(
@@ -317,21 +324,16 @@ static bool InstallCertificate(SSL *ssl) {
   }
 
   if (!config->key_file.empty()) {
-    if (config->async) {
-      test_state->private_key = LoadPrivateKey(config->key_file.c_str());
-      if (!test_state->private_key) {
-        return false;
-      }
-      SSL_set_private_key_method(ssl, &g_async_private_key_method);
-    } else if (!SSL_use_PrivateKey_file(ssl, config->key_file.c_str(),
-                                        SSL_FILETYPE_PEM)) {
+    *out_pkey = LoadPrivateKey(config->key_file.c_str());
+    if (!*out_pkey) {
       return false;
     }
   }
-  if (!config->cert_file.empty() &&
-      !SSL_use_certificate_file(ssl, config->cert_file.c_str(),
-                                SSL_FILETYPE_PEM)) {
-    return false;
+  if (!config->cert_file.empty()) {
+    *out_x509 = LoadCertificate(config->cert_file.c_str());
+    if (!*out_x509) {
+      return false;
+    }
   }
   if (!config->ocsp_response.empty() &&
       !SSL_CTX_set_ocsp_response(ssl->ctx,
@@ -339,6 +341,31 @@ static bool InstallCertificate(SSL *ssl) {
                                  config->ocsp_response.size())) {
     return false;
   }
+  return true;
+}
+
+static bool InstallCertificate(SSL *ssl) {
+  ScopedX509 x509;
+  ScopedEVP_PKEY pkey;
+  if (!GetCertificate(ssl, &x509, &pkey)) {
+    return false;
+  }
+
+  if (pkey) {
+    TestState *test_state = GetTestState(ssl);
+    const TestConfig *config = GetConfigPtr(ssl);
+    if (config->async) {
+      test_state->private_key = std::move(pkey);
+      SSL_set_private_key_method(ssl, &g_async_private_key_method);
+    } else if (!SSL_use_PrivateKey(ssl, pkey.get())) {
+      return false;
+    }
+  }
+
+  if (x509 && !SSL_use_certificate(ssl, x509.get())) {
+    return false;
+  }
+
   return true;
 }
 
@@ -391,6 +418,28 @@ static int SelectCertificateCallback(const struct ssl_early_callback_ctx *ctx) {
       return -1;
     }
   }
+  return 1;
+}
+
+static int ClientCertCallback(SSL *ssl, X509 **out_x509, EVP_PKEY **out_pkey) {
+  if (GetConfigPtr(ssl)->async && !GetTestState(ssl)->cert_ready) {
+    return -1;
+  }
+
+  ScopedX509 x509;
+  ScopedEVP_PKEY pkey;
+  if (!GetCertificate(ssl, &x509, &pkey)) {
+    return -1;
+  }
+
+  // Return zero for no certificate.
+  if (!x509) {
+    return 0;
+  }
+
+  // Asynchronous private keys are not supported with client_cert_cb.
+  *out_x509 = x509.release();
+  *out_pkey = pkey.release();
   return 1;
 }
 
@@ -768,6 +817,10 @@ static ScopedSSL_CTX SetupCtx(const TestConfig *config) {
 
   SSL_CTX_set_select_certificate_cb(ssl_ctx.get(), SelectCertificateCallback);
 
+  if (config->use_old_client_cert_callback) {
+    SSL_CTX_set_client_cert_cb(ssl_ctx.get(), ClientCertCallback);
+  }
+
   SSL_CTX_set_next_protos_advertised_cb(
       ssl_ctx.get(), NextProtosAdvertisedCallback, NULL);
   if (!config->select_next_proto.empty()) {
@@ -1140,9 +1193,8 @@ static bool DoExchange(ScopedSSL_SESSION *out_session, SSL_CTX *ssl_ctx,
       !SSL_set_mode(ssl.get(), SSL_MODE_SEND_FALLBACK_SCSV)) {
     return false;
   }
-  if (!config->use_early_callback) {
+  if (!config->use_early_callback && !config->use_old_client_cert_callback) {
     if (config->async) {
-      // TODO(davidben): Also test |s->ctx->client_cert_cb| on the client.
       SSL_set_cert_cb(ssl.get(), CertCallback, NULL);
     } else if (!InstallCertificate(ssl.get())) {
       return false;

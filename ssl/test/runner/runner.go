@@ -2859,6 +2859,21 @@ func addStateMachineCoverageTests(async, splitHandshake bool, protocol protocol)
 	// TLS client auth.
 	tests = append(tests, testCase{
 		testType: clientTest,
+		name:     "ClientAuth-NoCertificate",
+		config: Config{
+			ClientAuth: RequestClientCert,
+		},
+	})
+	tests = append(tests, testCase{
+		testType: clientTest,
+		name:     "ClientAuth-NoCertificate-OldCallback",
+		config: Config{
+			ClientAuth: RequestClientCert,
+		},
+		flags: []string{"-use-old-client-cert-callback"},
+	})
+	tests = append(tests, testCase{
+		testType: clientTest,
 		name:     "ClientAuth-RSA-Client",
 		config: Config{
 			ClientAuth: RequireAnyClientCert,
@@ -2879,6 +2894,19 @@ func addStateMachineCoverageTests(async, splitHandshake bool, protocol protocol)
 			"-key-file", path.Join(*resourceDir, ecdsaKeyFile),
 		},
 	})
+	tests = append(tests, testCase{
+		testType: clientTest,
+		name:     "ClientAuth-OldCallback",
+		config: Config{
+			ClientAuth: RequireAnyClientCert,
+		},
+		flags: []string{
+			"-cert-file", path.Join(*resourceDir, rsaCertificateFile),
+			"-key-file", path.Join(*resourceDir, rsaKeyFile),
+			"-use-old-client-cert-callback",
+		},
+	})
+
 	if async {
 		// Test async keys against each key exchange.
 		tests = append(tests, testCase{
