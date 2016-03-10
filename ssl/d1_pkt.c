@@ -539,42 +539,35 @@ static int do_dtls1_write(SSL *ssl, int type, const uint8_t *buf,
 }
 
 int dtls1_dispatch_alert(SSL *ssl) {
-  int i, j;
-  void (*cb)(const SSL *ssl, int type, int value) = NULL;
-  uint8_t buf[DTLS1_AL_HEADER_LENGTH];
-  uint8_t *ptr = &buf[0];
-
   ssl->s3->alert_dispatch = 0;
-
-  memset(buf, 0x00, sizeof(buf));
-  *ptr++ = ssl->s3->send_alert[0];
-  *ptr++ = ssl->s3->send_alert[1];
-
-  i = do_dtls1_write(ssl, SSL3_RT_ALERT, &buf[0], sizeof(buf),
-                     dtls1_use_current_epoch);
-  if (i <= 0) {
+  int ret = do_dtls1_write(ssl, SSL3_RT_ALERT, &ssl->s3->send_alert[0], 2,
+                           dtls1_use_current_epoch);
+  if (ret <= 0) {
     ssl->s3->alert_dispatch = 1;
-  } else {
-    if (ssl->s3->send_alert[0] == SSL3_AL_FATAL) {
-      (void)BIO_flush(ssl->wbio);
-    }
-
-    if (ssl->msg_callback) {
-      ssl->msg_callback(1, ssl->version, SSL3_RT_ALERT, ssl->s3->send_alert, 2,
-                        ssl, ssl->msg_callback_arg);
-    }
-
-    if (ssl->info_callback != NULL) {
-      cb = ssl->info_callback;
-    } else if (ssl->ctx->info_callback != NULL) {
-      cb = ssl->ctx->info_callback;
-    }
-
-    if (cb != NULL) {
-      j = (ssl->s3->send_alert[0] << 8) | ssl->s3->send_alert[1];
-      cb(ssl, SSL_CB_WRITE_ALERT, j);
-    }
+    return ret;
   }
 
-  return i;
+  /* If the alert is fatal, flush the BIO now. */
+  if (ssl->s3->send_alert[0] == SSL3_AL_FATAL) {
+    BIO_flush(ssl->wbio);
+  }
+
+  if (ssl->msg_callback != NULL) {
+    ssl->msg_callback(1 /* write */, ssl->version, SSL3_RT_ALERT,
+                      ssl->s3->send_alert, 2, ssl, ssl->msg_callback_arg);
+  }
+
+  void (*cb)(const SSL *ssl, int type, int value) = NULL;
+  if (ssl->info_callback != NULL) {
+    cb = ssl->info_callback;
+  } else if (ssl->ctx->info_callback != NULL) {
+    cb = ssl->ctx->info_callback;
+  }
+
+  if (cb != NULL) {
+    int alert = (ssl->s3->send_alert[0] << 8) | ssl->s3->send_alert[1];
+    cb(ssl, SSL_CB_WRITE_ALERT, alert);
+  }
+
+  return 1;
 }

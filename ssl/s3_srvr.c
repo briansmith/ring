@@ -1831,7 +1831,7 @@ err:
 }
 
 int ssl3_get_client_certificate(SSL *ssl) {
-  int i, ok, al, ret = -1;
+  int ok, al, ret = -1;
   X509 *x = NULL;
   unsigned long n;
   STACK_OF(X509) *sk = NULL;
@@ -1945,8 +1945,7 @@ int ssl3_get_client_certificate(SSL *ssl) {
       goto f_err;
     }
   } else {
-    i = ssl_verify_cert_chain(ssl, sk);
-    if (i <= 0) {
+    if (ssl_verify_cert_chain(ssl, sk) <= 0) {
       al = ssl_verify_alarm_type(ssl->verify_result);
       OPENSSL_PUT_ERROR(SSL, SSL_R_CERTIFICATE_VERIFY_FAILED);
       goto f_err;
