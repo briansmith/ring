@@ -368,8 +368,8 @@ start:
     }
 
     if (alert_level == SSL3_AL_WARNING) {
-      ssl->s3->warn_alert = alert_descr;
       if (alert_descr == SSL_AD_CLOSE_NOTIFY) {
+        ssl->s3->clean_shutdown = 1;
         ssl->shutdown |= SSL_RECEIVED_SHUTDOWN;
         return 0;
       }
@@ -377,7 +377,6 @@ start:
       char tmp[16];
 
       ssl->rwstate = SSL_NOTHING;
-      ssl->s3->fatal_alert = alert_descr;
       OPENSSL_PUT_ERROR(SSL, SSL_AD_REASON_OFFSET + alert_descr);
       BIO_snprintf(tmp, sizeof tmp, "%d", alert_descr);
       ERR_add_error_data(2, "SSL alert number ", tmp);

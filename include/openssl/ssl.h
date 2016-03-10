@@ -4058,8 +4058,10 @@ typedef struct ssl3_state_st {
    * the handshake hash for TLS 1.1 and below. */
   EVP_MD_CTX handshake_md5;
 
-  int warn_alert;
-  int fatal_alert;
+  /* clean_shutdown is one if the connection was cleanly shutdown with a
+   * close_notify and zero otherwise. */
+  char clean_shutdown;
+
   /* we allow one fatal and one warning alert to be outstanding, send close
    * alert via the warning alert */
   int alert_dispatch;

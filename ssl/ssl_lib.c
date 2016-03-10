@@ -711,8 +711,7 @@ int SSL_get_error(const SSL *ssl, int ret_code) {
   }
 
   if (ret_code == 0) {
-    if ((ssl->shutdown & SSL_RECEIVED_SHUTDOWN) &&
-        (ssl->s3->warn_alert == SSL_AD_CLOSE_NOTIFY)) {
+    if ((ssl->shutdown & SSL_RECEIVED_SHUTDOWN) && ssl->s3->clean_shutdown) {
       /* The socket was cleanly shut down with a close_notify. */
       return SSL_ERROR_ZERO_RETURN;
     }
