@@ -133,6 +133,14 @@ static const uint8_t kMaxWarningAlerts = 4;
 static int ssl3_get_record(SSL *ssl) {
   int ret;
 again:
+  if (ssl->shutdown & SSL_RECEIVED_SHUTDOWN) {
+    if (ssl->s3->clean_shutdown) {
+      return 0;
+    }
+    OPENSSL_PUT_ERROR(SSL, SSL_R_PROTOCOL_IS_SHUTDOWN);
+    return -1;
+  }
+
   /* Ensure the buffer is large enough to decrypt in-place. */
   ret = ssl_read_buffer_extend_to(ssl, ssl_record_prefix_len(ssl));
   if (ret <= 0) {
@@ -392,13 +400,6 @@ start:
   }
 
   /* we now have a packet which can be read and processed */
-
-  /* If the other end has shut down, throw anything we read away (even in
-   * 'peek' mode) */
-  if (ssl->shutdown & SSL_RECEIVED_SHUTDOWN) {
-    rr->length = 0;
-    return 0;
-  }
 
   if (type != 0 && type == rr->type) {
     ssl->s3->warning_alert_count = 0;

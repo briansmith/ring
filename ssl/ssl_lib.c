@@ -601,10 +601,6 @@ static int ssl_read_impl(SSL *ssl, void *buf, int num, int peek) {
     return -1;
   }
 
-  if (ssl->shutdown & SSL_RECEIVED_SHUTDOWN) {
-    return 0;
-  }
-
   /* This may require multiple iterations. False Start will cause
    * |ssl->handshake_func| to signal success one step early, but the handshake
    * must be completely finished before other modes are accepted. */

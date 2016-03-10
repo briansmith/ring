@@ -131,6 +131,14 @@ static int do_dtls1_write(SSL *ssl, int type, const uint8_t *buf,
  * more data is needed. */
 static int dtls1_get_record(SSL *ssl) {
 again:
+  if (ssl->shutdown & SSL_RECEIVED_SHUTDOWN) {
+    if (ssl->s3->clean_shutdown) {
+      return 0;
+    }
+    OPENSSL_PUT_ERROR(SSL, SSL_R_PROTOCOL_IS_SHUTDOWN);
+    return -1;
+  }
+
   /* Read a new packet if there is no unconsumed one. */
   if (ssl_read_buffer_len(ssl) == 0) {
     int ret = ssl_read_buffer_extend_to(ssl, 0 /* unused */);
@@ -272,14 +280,6 @@ start:
   }
 
   /* we now have a packet which can be read and processed */
-
-  /* If the other end has shut down, throw anything we read away (even in
-   * 'peek' mode) */
-  if (ssl->shutdown & SSL_RECEIVED_SHUTDOWN) {
-    rr->length = 0;
-    return 0;
-  }
-
 
   if (type == rr->type) {
     /* Make sure that we are not getting application data when we
