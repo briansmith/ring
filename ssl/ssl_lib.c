@@ -565,7 +565,7 @@ int SSL_do_handshake(SSL *ssl) {
 }
 
 int SSL_connect(SSL *ssl) {
-  if (ssl->handshake_func == 0) {
+  if (ssl->handshake_func == NULL) {
     /* Not properly initialized yet */
     SSL_set_connect_state(ssl);
   }
@@ -576,7 +576,7 @@ int SSL_connect(SSL *ssl) {
 }
 
 int SSL_accept(SSL *ssl) {
-  if (ssl->handshake_func == 0) {
+  if (ssl->handshake_func == NULL) {
     /* Not properly initialized yet */
     SSL_set_accept_state(ssl);
   }
@@ -590,7 +590,7 @@ static int ssl_read_impl(SSL *ssl, void *buf, int num, int peek) {
   /* Functions which use SSL_get_error must clear the error queue on entry. */
   ERR_clear_error();
 
-  if (ssl->handshake_func == 0) {
+  if (ssl->handshake_func == NULL) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_UNINITIALIZED);
     return -1;
   }
@@ -616,7 +616,7 @@ int SSL_write(SSL *ssl, const void *buf, int num) {
   /* Functions which use SSL_get_error must clear the error queue on entry. */
   ERR_clear_error();
 
-  if (ssl->handshake_func == 0) {
+  if (ssl->handshake_func == NULL) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_UNINITIALIZED);
     return -1;
   }
@@ -653,7 +653,7 @@ int SSL_shutdown(SSL *ssl) {
    * once is usually not enough, even if blocking I/O is used (see
    * ssl3_shutdown). */
 
-  if (ssl->handshake_func == 0) {
+  if (ssl->handshake_func == NULL) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_UNINITIALIZED);
     return -1;
   }
