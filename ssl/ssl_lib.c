@@ -628,6 +628,19 @@ int SSL_write(SSL *ssl, const void *buf, int num) {
   }
 
   ERR_clear_system_error();
+
+  /* If necessary, complete the handshake implicitly. */
+  if (SSL_in_init(ssl) && !SSL_in_false_start(ssl)) {
+    int ret = SSL_do_handshake(ssl);
+    if (ret < 0) {
+      return ret;
+    }
+    if (ret == 0) {
+      OPENSSL_PUT_ERROR(SSL, SSL_R_SSL_HANDSHAKE_FAILURE);
+      return -1;
+    }
+  }
+
   return ssl->method->ssl_write_app_data(ssl, buf, num);
 }
 

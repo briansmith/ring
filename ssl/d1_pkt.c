@@ -458,39 +458,24 @@ f_err:
 }
 
 int dtls1_write_app_data(SSL *ssl, const void *buf_, int len) {
-  int i;
-
-  if (SSL_in_init(ssl) && !ssl->in_handshake) {
-    i = ssl->handshake_func(ssl);
-    if (i < 0) {
-      return i;
-    }
-    if (i == 0) {
-      OPENSSL_PUT_ERROR(SSL, SSL_R_SSL_HANDSHAKE_FAILURE);
-      return -1;
-    }
-  }
+  assert(!SSL_in_init(ssl));
 
   if (len > SSL3_RT_MAX_PLAIN_LENGTH) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_DTLS_MESSAGE_TOO_BIG);
     return -1;
   }
 
-  i = dtls1_write_bytes(ssl, SSL3_RT_APPLICATION_DATA, buf_, len,
-                        dtls1_use_current_epoch);
-  return i;
+  return dtls1_write_bytes(ssl, SSL3_RT_APPLICATION_DATA, buf_, len,
+                           dtls1_use_current_epoch);
 }
 
 /* Call this to write data in records of type 'type' It will return <= 0 if not
  * all data has been sent or non-blocking IO. */
 int dtls1_write_bytes(SSL *ssl, int type, const void *buf, int len,
                       enum dtls1_use_epoch_t use_epoch) {
-  int i;
-
   assert(len <= SSL3_RT_MAX_PLAIN_LENGTH);
   ssl->rwstate = SSL_NOTHING;
-  i = do_dtls1_write(ssl, type, buf, len, use_epoch);
-  return i;
+  return do_dtls1_write(ssl, type, buf, len, use_epoch);
 }
 
 static int do_dtls1_write(SSL *ssl, int type, const uint8_t *buf,
