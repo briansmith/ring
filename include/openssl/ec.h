@@ -289,13 +289,37 @@ OPENSSL_EXPORT int EC_POINT_mul(const EC_GROUP *group, EC_POINT *r,
 
 /* Deprecated functions. */
 
-/* EC_GROUP_new_arbitrary creates a new, arbitrary elliptic curve group based on
- * the equation y² = x³ + a·x + b. The generator is set to (gx, gy) which must
- * have the given order and cofactor. It returns the new group or NULL on error.
+/* EC_GROUP_new_curve_GFp creates a new, arbitrary elliptic curve group based
+ * on the equation y² = x³ + a·x + b. It returns the new group or NULL on
+ * error.
+ *
+ * This new group has no generator. It is an error to use a generator-less group
+ * with any functions except for |EC_GROUP_free|, |EC_POINT_new|,
+ * |EC_POINT_set_affine_coordinates_GFp|, and |EC_GROUP_set_generator|.
  *
  * |EC_GROUP|s returned by this function will always compare as unequal via
  * |EC_GROUP_cmp| (even to themselves). |EC_GROUP_get_curve_name| will always
- * return |NID_undef|. */
+ * return |NID_undef|.
+ *
+ * Avoid using arbitrary curves and use |EC_GROUP_new_by_curve_name| instead. */
+OPENSSL_EXPORT EC_GROUP *EC_GROUP_new_curve_GFp(const BIGNUM *p,
+                                                const BIGNUM *a,
+                                                const BIGNUM *b, BN_CTX *ctx);
+
+/* EC_GROUP_set_generator sets the generator for |group| to |generator|, which
+ * must have the given order and cofactor. It may only be used with |EC_GROUP|
+ * objects returned by |EC_GROUP_new_curve_GFp| and may only be used once on
+ * each group. */
+OPENSSL_EXPORT int EC_GROUP_set_generator(EC_GROUP *group,
+                                          const EC_POINT *generator,
+                                          const BIGNUM *order,
+                                          const BIGNUM *cofactor);
+
+/* EC_GROUP_new_arbitrary calls |EC_GROUP_new_curve_GFp| and
+ * |EC_GROUP_set_generator|.
+ *
+ * TODO(davidben): Remove this once
+ * https://android-review.googlesource.com/#/c/207990/ has cycled in. */
 OPENSSL_EXPORT EC_GROUP *EC_GROUP_new_arbitrary(
     const BIGNUM *p, const BIGNUM *a, const BIGNUM *b, const BIGNUM *gx,
     const BIGNUM *gy, const BIGNUM *order, const BIGNUM *cofactor);
