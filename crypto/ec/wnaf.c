@@ -420,12 +420,6 @@ int ec_wNAF_mul_public(const EC_GROUP *group, EC_POINT *r,
     }
   }
 
-#if 1 /* optional; EC_window_bits_for_scalar_size assumes we do this step */
-  if (!ec_GFp_simple_points_make_affine(group, num_val, val, ctx)) {
-    goto err;
-  }
-#endif
-
   r_is_at_infinity = 1;
 
   for (k = max_len - 1; k >= 0; k--) {
