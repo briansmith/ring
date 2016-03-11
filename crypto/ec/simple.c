@@ -122,6 +122,22 @@ int ec_GFp_simple_point_set_to_infinity(EC_POINT *point) {
   return 1;
 }
 
+static int set_Jprojective_coordinate_GFp(const EC_GROUP *group, BIGNUM *out,
+                                          const BIGNUM *in, BN_CTX *ctx) {
+  if (in == NULL) {
+    return 1;
+  }
+  if (BN_is_negative(in) ||
+      BN_cmp(in, &group->field) >= 0) {
+    OPENSSL_PUT_ERROR(EC, EC_R_COORDINATES_OUT_OF_RANGE);
+    return 0;
+  }
+  if (group->meth->field_encode) {
+    return group->meth->field_encode(group, out, in, ctx);
+  }
+  return BN_copy(out, in) != NULL;
+}
+
 int ec_GFp_simple_set_Jprojective_coordinates_GFp(
     const EC_GROUP *group, EC_POINT *point, const BIGNUM *x, const BIGNUM *y,
     const BIGNUM *z, BN_CTX *ctx) {
@@ -135,40 +151,10 @@ int ec_GFp_simple_set_Jprojective_coordinates_GFp(
     }
   }
 
-  if (x != NULL) {
-    if (!BN_nnmod(&point->X, x, &group->field, ctx)) {
-      goto err;
-    }
-    if (group->meth->field_encode &&
-        !group->meth->field_encode(group, &point->X, &point->X, ctx)) {
-      goto err;
-    }
-  }
-
-  if (y != NULL) {
-    if (!BN_nnmod(&point->Y, y, &group->field, ctx)) {
-      goto err;
-    }
-    if (group->meth->field_encode &&
-        !group->meth->field_encode(group, &point->Y, &point->Y, ctx)) {
-      goto err;
-    }
-  }
-
-  if (z != NULL) {
-    if (!BN_nnmod(&point->Z, z, &group->field, ctx)) {
-      goto err;
-    }
-    int Z_is_one = BN_is_one(&point->Z);
-    if (group->meth->field_encode) {
-      if (Z_is_one) {
-        if (BN_copy(&point->Z, &group->one) == NULL) {
-          goto err;
-        }
-      } else if (!group->meth->field_encode(group, &point->Z, &point->Z, ctx)) {
-        goto err;
-      }
-    }
+  if (!set_Jprojective_coordinate_GFp(group, &point->X, x, ctx) ||
+      !set_Jprojective_coordinate_GFp(group, &point->Y, y, ctx) ||
+      !set_Jprojective_coordinate_GFp(group, &point->Z, z, ctx)) {
+    goto err;
   }
 
   ret = 1;
