@@ -531,21 +531,12 @@ OPENSSL_EXPORT void BN_GENCB_set(BN_GENCB *callback,
  * the callback, or 1 if |callback| is NULL. */
 OPENSSL_EXPORT int BN_GENCB_call(BN_GENCB *callback, int event, int n);
 
-/* BN_generate_prime_ex sets |ret| to a prime number of |bits| length. If safe
- * is non-zero then the prime will be such that (ret-1)/2 is also a prime.
- * (This is needed for Diffie-Hellman groups to ensure that the only subgroups
- * are of size 2 and (p-1)/2.).
- *
- * If |add| is not NULL, the prime will fulfill the condition |ret| % |add| ==
- * |rem| in order to suit a given generator. (If |rem| is NULL then |ret| %
- * |add| == 1.)
+/* BN_generate_prime_ex sets |ret| to a prime number of |bits| length.
  *
  * If |cb| is not NULL, it will be called during processing to give an
  * indication of progress. See the comments for |BN_GENCB|. It returns one on
  * success and zero otherwise. */
-OPENSSL_EXPORT int BN_generate_prime_ex(BIGNUM *ret, int bits, int safe,
-                                        const BIGNUM *add, const BIGNUM *rem,
-                                        BN_GENCB *cb);
+OPENSSL_EXPORT int BN_generate_prime_ex(BIGNUM *ret, int bits, BN_GENCB *cb);
 
 /* BN_prime_checks is magic value that can be used as the |checks| argument to
  * the primality testing functions in order to automatically select a number of

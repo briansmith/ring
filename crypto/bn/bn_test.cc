@@ -1260,8 +1260,7 @@ static bool test_small_prime(FILE *fp) {
   static const unsigned kBits = 10;
 
   ScopedBIGNUM r(BN_new());
-  if (!r || !BN_generate_prime_ex(r.get(), static_cast<int>(kBits), 0, NULL,
-                                  NULL, NULL)) {
+  if (!r || !BN_generate_prime_ex(r.get(), static_cast<int>(kBits), NULL)) {
     return false;
   }
   if (BN_num_bits(r.get()) != kBits) {

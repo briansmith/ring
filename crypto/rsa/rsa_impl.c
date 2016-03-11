@@ -772,7 +772,7 @@ RSA *RSA_generate(int bits, uint32_t e, BN_GENCB *cb) {
 
   /* generate p and q */
   for (;;) {
-    if (!BN_generate_prime_ex(rsa->p, bitsp, 0, NULL, NULL, cb) ||
+    if (!BN_generate_prime_ex(rsa->p, bitsp, cb) ||
         !BN_sub(r2, rsa->p, BN_value_one()) ||
         !BN_gcd(r1, r2, rsa->e, ctx)) {
       goto err;
@@ -793,7 +793,7 @@ RSA *RSA_generate(int bits, uint32_t e, BN_GENCB *cb) {
      * this and bail if it happens 3 times. */
     unsigned int degenerate = 0;
     do {
-      if (!BN_generate_prime_ex(rsa->q, bitsq, 0, NULL, NULL, cb)) {
+      if (!BN_generate_prime_ex(rsa->q, bitsq, cb)) {
         goto err;
       }
     } while ((BN_cmp(rsa->p, rsa->q) == 0) && (++degenerate < 3));
