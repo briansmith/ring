@@ -274,6 +274,7 @@ int bn_set_words(BIGNUM *bn, const BN_ULONG *words, size_t num) {
   /* |bn_wexpand| verified that |num| isn't too large. */
   bn->top = (int)num;
   bn_correct_top(bn);
+  bn->neg = 0;
   return 1;
 }
 
