@@ -221,7 +221,6 @@ static int ec_GFp_mont_point_get_affine_coordinates(const EC_GROUP *group,
                                                     BN_CTX *ctx) {
   BN_CTX *new_ctx = NULL;
   BIGNUM *Z, *Z_1, *Z_2, *Z_3;
-  const BIGNUM *Z_;
   int ret = 0;
 
   if (EC_POINT_is_at_infinity(group, point)) {
@@ -247,43 +246,24 @@ static int ec_GFp_mont_point_get_affine_coordinates(const EC_GROUP *group,
 
   /* transform  (X, Y, Z)  into  (x, y) := (X/Z^2, Y/Z^3) */
 
-  if (group->meth->field_decode) {
-    if (!group->meth->field_decode(group, Z, &point->Z, ctx)) {
-      goto err;
-    }
-    Z_ = Z;
-  } else {
-    Z_ = &point->Z;
+  if (!group->meth->field_decode(group, Z, &point->Z, ctx)) {
+    goto err;
   }
 
-  if (BN_is_one(Z_)) {
-    if (group->meth->field_decode) {
-      if (x != NULL && !group->meth->field_decode(group, x, &point->X, ctx)) {
-        goto err;
-      }
-      if (y != NULL && !group->meth->field_decode(group, y, &point->Y, ctx)) {
-        goto err;
-      }
-    } else {
-      if (x != NULL && !BN_copy(x, &point->X)) {
-        goto err;
-      }
-      if (y != NULL && !BN_copy(y, &point->Y)) {
-        goto err;
-      }
+  if (BN_is_one(Z)) {
+    if (x != NULL && !group->meth->field_decode(group, x, &point->X, ctx)) {
+      goto err;
+    }
+    if (y != NULL && !group->meth->field_decode(group, y, &point->Y, ctx)) {
+      goto err;
     }
   } else {
-    if (!BN_mod_inverse(Z_1, Z_, &group->field, ctx)) {
+    if (!BN_mod_inverse(Z_1, Z, &group->field, ctx)) {
       OPENSSL_PUT_ERROR(EC, ERR_R_BN_LIB);
       goto err;
     }
 
-    if (group->meth->field_encode == 0) {
-      /* field_sqr works on standard representation */
-      if (!group->meth->field_sqr(group, Z_2, Z_1, ctx)) {
-        goto err;
-      }
-    } else if (!BN_mod_sqr(Z_2, Z_1, &group->field, ctx)) {
+    if (!BN_mod_sqr(Z_2, Z_1, &group->field, ctx)) {
       goto err;
     }
 
@@ -294,12 +274,7 @@ static int ec_GFp_mont_point_get_affine_coordinates(const EC_GROUP *group,
     }
 
     if (y != NULL) {
-      if (group->meth->field_encode == 0) {
-        /* field_mul works on standard representation */
-        if (!group->meth->field_mul(group, Z_3, Z_2, Z_1, ctx)) {
-          goto err;
-        }
-      } else if (!BN_mod_mul(Z_3, Z_2, Z_1, &group->field, ctx)) {
+      if (!BN_mod_mul(Z_3, Z_2, Z_1, &group->field, ctx)) {
         goto err;
       }
 
