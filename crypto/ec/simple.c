@@ -82,11 +82,10 @@
  * field_sqr methods will be used for multiplication, and field_encode and
  * field_decode (if defined) will be used for converting between
  * representations.
-
- * Functions ec_GFp_simple_points_make_affine() and
- * ec_GFp_simple_point_get_affine_coordinates() specifically assume that if a
- * non-trivial representation is used, it is a Montgomery representation (i.e.
- * 'encoding' means multiplying by some factor R). */
+ *
+ * Functions here specifically assume that if a non-trivial representation is
+ * used, it is a Montgomery representation (i.e. 'encoding' means multiplying
+ * by some factor R). */
 
 int ec_GFp_simple_group_init(EC_GROUP *group) {
   BN_init(&group->field);
@@ -367,109 +366,6 @@ int ec_GFp_simple_point_set_affine_coordinates(const EC_GROUP *group,
 
   return ec_point_set_Jprojective_coordinates_GFp(group, point, x, y,
                                                   BN_value_one(), ctx);
-}
-
-int ec_GFp_simple_point_get_affine_coordinates(const EC_GROUP *group,
-                                               const EC_POINT *point, BIGNUM *x,
-                                               BIGNUM *y, BN_CTX *ctx) {
-  BN_CTX *new_ctx = NULL;
-  BIGNUM *Z, *Z_1, *Z_2, *Z_3;
-  const BIGNUM *Z_;
-  int ret = 0;
-
-  if (EC_POINT_is_at_infinity(group, point)) {
-    OPENSSL_PUT_ERROR(EC, EC_R_POINT_AT_INFINITY);
-    return 0;
-  }
-
-  if (ctx == NULL) {
-    ctx = new_ctx = BN_CTX_new();
-    if (ctx == NULL) {
-      return 0;
-    }
-  }
-
-  BN_CTX_start(ctx);
-  Z = BN_CTX_get(ctx);
-  Z_1 = BN_CTX_get(ctx);
-  Z_2 = BN_CTX_get(ctx);
-  Z_3 = BN_CTX_get(ctx);
-  if (Z == NULL || Z_1 == NULL || Z_2 == NULL || Z_3 == NULL) {
-    goto err;
-  }
-
-  /* transform  (X, Y, Z)  into  (x, y) := (X/Z^2, Y/Z^3) */
-
-  if (group->meth->field_decode) {
-    if (!group->meth->field_decode(group, Z, &point->Z, ctx)) {
-      goto err;
-    }
-    Z_ = Z;
-  } else {
-    Z_ = &point->Z;
-  }
-
-  if (BN_is_one(Z_)) {
-    if (group->meth->field_decode) {
-      if (x != NULL && !group->meth->field_decode(group, x, &point->X, ctx)) {
-        goto err;
-      }
-      if (y != NULL && !group->meth->field_decode(group, y, &point->Y, ctx)) {
-        goto err;
-      }
-    } else {
-      if (x != NULL && !BN_copy(x, &point->X)) {
-        goto err;
-      }
-      if (y != NULL && !BN_copy(y, &point->Y)) {
-        goto err;
-      }
-    }
-  } else {
-    if (!BN_mod_inverse(Z_1, Z_, &group->field, ctx)) {
-      OPENSSL_PUT_ERROR(EC, ERR_R_BN_LIB);
-      goto err;
-    }
-
-    if (group->meth->field_encode == 0) {
-      /* field_sqr works on standard representation */
-      if (!group->meth->field_sqr(group, Z_2, Z_1, ctx)) {
-        goto err;
-      }
-    } else if (!BN_mod_sqr(Z_2, Z_1, &group->field, ctx)) {
-      goto err;
-    }
-
-    /* in the Montgomery case, field_mul will cancel out Montgomery factor in
-     * X: */
-    if (x != NULL && !group->meth->field_mul(group, x, &point->X, Z_2, ctx)) {
-      goto err;
-    }
-
-    if (y != NULL) {
-      if (group->meth->field_encode == 0) {
-        /* field_mul works on standard representation */
-        if (!group->meth->field_mul(group, Z_3, Z_2, Z_1, ctx)) {
-          goto err;
-        }
-      } else if (!BN_mod_mul(Z_3, Z_2, Z_1, &group->field, ctx)) {
-        goto err;
-      }
-
-      /* in the Montgomery case, field_mul will cancel out Montgomery factor in
-       * Y: */
-      if (!group->meth->field_mul(group, y, &point->Y, Z_3, ctx)) {
-        goto err;
-      }
-    }
-  }
-
-  ret = 1;
-
-err:
-  BN_CTX_end(ctx);
-  BN_CTX_free(new_ctx);
-  return ret;
 }
 
 int ec_GFp_simple_add(const EC_GROUP *group, EC_POINT *r, const EC_POINT *a,

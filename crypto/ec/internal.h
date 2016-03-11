@@ -189,9 +189,6 @@ int ec_GFp_simple_get_Jprojective_coordinates_GFp(const EC_GROUP *,
 int ec_GFp_simple_point_set_affine_coordinates(const EC_GROUP *, EC_POINT *,
                                                const BIGNUM *x, const BIGNUM *y,
                                                BN_CTX *);
-int ec_GFp_simple_point_get_affine_coordinates(const EC_GROUP *,
-                                               const EC_POINT *, BIGNUM *x,
-                                               BIGNUM *y, BN_CTX *);
 int ec_GFp_simple_set_compressed_coordinates(const EC_GROUP *, EC_POINT *,
                                              const BIGNUM *x, int y_bit,
                                              BN_CTX *);
