@@ -281,10 +281,15 @@ int EC_POINT_point2cbb(CBB *out, const EC_GROUP *group, const EC_POINT *point,
 }
 
 int ec_GFp_simple_set_compressed_coordinates(const EC_GROUP *group,
-                                             EC_POINT *point, const BIGNUM *x_,
+                                             EC_POINT *point, const BIGNUM *x,
                                              int y_bit, BN_CTX *ctx) {
+  if (BN_is_negative(x) || BN_cmp(x, &group->field) >= 0) {
+    OPENSSL_PUT_ERROR(EC, EC_R_INVALID_COMPRESSION_BIT);
+    return 0;
+  }
+
   BN_CTX *new_ctx = NULL;
-  BIGNUM *tmp1, *tmp2, *x, *y;
+  BIGNUM *tmp1, *tmp2, *y;
   int ret = 0;
 
   ERR_clear_error();
@@ -301,7 +306,6 @@ int ec_GFp_simple_set_compressed_coordinates(const EC_GROUP *group,
   BN_CTX_start(ctx);
   tmp1 = BN_CTX_get(ctx);
   tmp2 = BN_CTX_get(ctx);
-  x = BN_CTX_get(ctx);
   y = BN_CTX_get(ctx);
   if (y == NULL) {
     goto err;
@@ -312,19 +316,15 @@ int ec_GFp_simple_set_compressed_coordinates(const EC_GROUP *group,
    * so  y  is one of the square roots of  x^3 + a*x + b. */
 
   /* tmp1 := x^3 */
-  if (!BN_nnmod(x, x_, &group->field, ctx)) {
-    goto err;
-  }
-
   if (group->meth->field_decode == 0) {
     /* field_{sqr,mul} work on standard representation */
-    if (!group->meth->field_sqr(group, tmp2, x_, ctx) ||
-        !group->meth->field_mul(group, tmp1, tmp2, x_, ctx)) {
+    if (!group->meth->field_sqr(group, tmp2, x, ctx) ||
+        !group->meth->field_mul(group, tmp1, tmp2, x, ctx)) {
       goto err;
     }
   } else {
-    if (!BN_mod_sqr(tmp2, x_, &group->field, ctx) ||
-        !BN_mod_mul(tmp1, tmp2, x_, &group->field, ctx)) {
+    if (!BN_mod_sqr(tmp2, x, &group->field, ctx) ||
+        !BN_mod_mul(tmp1, tmp2, x, &group->field, ctx)) {
       goto err;
     }
   }
