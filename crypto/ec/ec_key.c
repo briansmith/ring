@@ -161,7 +161,19 @@ int EC_KEY_check_key(const EC_KEY *eckey) {
       OPENSSL_PUT_ERROR(EC, ERR_R_EC_LIB);
       goto err;
     }
-    if (EC_POINT_cmp(eckey->group, point, eckey->pub_key, ctx) != 0) {
+    BIGNUM *point_x = BN_CTX_get(ctx);
+    BIGNUM *point_y = BN_CTX_get(ctx);
+    BIGNUM *pub_key_x = BN_CTX_get(ctx);
+    BIGNUM *pub_key_y = BN_CTX_get(ctx);
+    if (point_x == NULL ||
+        point_y == NULL ||
+        pub_key_x == NULL ||
+        pub_key_y == NULL) {
+      OPENSSL_PUT_ERROR(EC, ERR_R_BN_LIB);
+      goto err;
+    }
+    if (BN_cmp(point_x, pub_key_x) != 0 ||
+        BN_cmp(point_y, pub_key_y) != 0) {
       OPENSSL_PUT_ERROR(EC, EC_R_INVALID_PRIVATE_KEY);
       goto err;
     }

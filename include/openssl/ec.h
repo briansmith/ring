@@ -134,12 +134,6 @@ OPENSSL_EXPORT int EC_POINT_is_at_infinity(const EC_GROUP *group,
 OPENSSL_EXPORT int EC_POINT_is_on_curve(const EC_GROUP *group,
                                         const EC_POINT *point, BN_CTX *ctx);
 
-/* EC_POINT_cmp returns zero if |a| is equal to |b|, greater than zero is
- * non-equal and -1 on error. If |ctx| is not NULL, it may be used. */
-OPENSSL_EXPORT int EC_POINT_cmp(const EC_GROUP *group, const EC_POINT *a,
-                                const EC_POINT *b, BN_CTX *ctx);
-
-
 /* Point conversion. */
 
 /* EC_POINT_get_affine_coordinates_GFp sets |x| and |y| to the affine value of

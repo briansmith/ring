@@ -152,15 +152,6 @@ int EC_POINT_is_on_curve(const EC_GROUP *group, const EC_POINT *point,
   return ec_GFp_simple_is_on_curve(group, point, ctx);
 }
 
-int EC_POINT_cmp(const EC_GROUP *group, const EC_POINT *a, const EC_POINT *b,
-                 BN_CTX *ctx) {
-  if ((group->meth != a->meth) || (a->meth != b->meth)) {
-    OPENSSL_PUT_ERROR(EC, EC_R_INCOMPATIBLE_OBJECTS);
-    return -1;
-  }
-  return ec_GFp_simple_cmp(group, a, b, ctx);
-}
-
 int EC_POINT_get_affine_coordinates_GFp(const EC_GROUP *group,
                                         const EC_POINT *point, BIGNUM *x,
                                         BIGNUM *y, BN_CTX *ctx) {
