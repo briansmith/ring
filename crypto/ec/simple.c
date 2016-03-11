@@ -600,13 +600,3 @@ err:
   BN_CTX_free(new_ctx);
   return ret;
 }
-
-int ec_GFp_simple_field_mul(const EC_GROUP *group, BIGNUM *r, const BIGNUM *a,
-                            const BIGNUM *b, BN_CTX *ctx) {
-  return BN_mod_mul(r, a, b, &group->field, ctx);
-}
-
-int ec_GFp_simple_field_sqr(const EC_GROUP *group, BIGNUM *r, const BIGNUM *a,
-                            BN_CTX *ctx) {
-  return BN_mod_sqr(r, a, &group->field, ctx);
-}

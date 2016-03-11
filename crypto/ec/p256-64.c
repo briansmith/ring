@@ -1639,12 +1639,57 @@ err:
   return ret;
 }
 
+static int ec_GFp_nistp256_field_mul(const EC_GROUP *group, BIGNUM *r,
+                                     const BIGNUM *a, const BIGNUM *b,
+                                     BN_CTX *ctx) {
+  (void)group;
+  (void)ctx;
+
+  felem a_felem;
+  felem b_felem;
+  if (!BN_to_felem(a_felem, a) ||
+      !BN_to_felem(b_felem, b)) {
+    return 0;
+  }
+
+  longfelem r_longfelem;
+  felem r_felem;
+  smallfelem r_smallfelem;
+
+  felem_mul(r_longfelem, a_felem, b_felem);
+  felem_reduce(r_felem, r_longfelem);
+  felem_contract(r_smallfelem, r_felem);
+
+  return smallfelem_to_BN(r, r_smallfelem);
+}
+
+static int ec_GFp_nistp256_field_sqr(const EC_GROUP *group, BIGNUM *r,
+                                     const BIGNUM *a, BN_CTX *ctx) {
+  (void)group;
+  (void)ctx;
+
+  felem a_felem;
+  if (!BN_to_felem(a_felem, a)) {
+    return 0;
+  }
+
+  longfelem r_longfelem;
+  felem r_felem;
+  smallfelem r_smallfelem;
+
+  felem_square(r_longfelem, a_felem);
+  felem_reduce(r_felem, r_longfelem);
+  felem_contract(r_smallfelem, r_felem);
+
+  return smallfelem_to_BN(r, r_smallfelem);
+}
+
 const EC_METHOD EC_GFp_nistp256_method = {
     ec_GFp_nistp256_point_get_affine_coordinates,
     ec_GFp_nistp256_points_mul,
     ec_GFp_nistp256_points_mul,
-    ec_GFp_simple_field_mul,
-    ec_GFp_simple_field_sqr,
+    ec_GFp_nistp256_field_mul,
+    ec_GFp_nistp256_field_sqr,
     NULL /* field_encode */,
     NULL /* field_decode */,
 };

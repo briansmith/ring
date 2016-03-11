@@ -175,10 +175,6 @@ int ec_GFp_simple_dbl(const EC_GROUP *, EC_POINT *r, const EC_POINT *a,
 int ec_GFp_simple_invert(const EC_GROUP *, EC_POINT *);
 int ec_GFp_simple_is_at_infinity(const EC_POINT *);
 int ec_GFp_simple_is_on_curve(const EC_GROUP *, const EC_POINT *, BN_CTX *);
-int ec_GFp_simple_field_mul(const EC_GROUP *, BIGNUM *r, const BIGNUM *a,
-                            const BIGNUM *b, BN_CTX *);
-int ec_GFp_simple_field_sqr(const EC_GROUP *, BIGNUM *r, const BIGNUM *a,
-                            BN_CTX *);
 
 /* method functions in montgomery.c */
 int ec_GFp_mont_field_mul(const EC_GROUP *, BIGNUM *r, const BIGNUM *a,
