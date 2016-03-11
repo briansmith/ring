@@ -3607,6 +3607,7 @@ void x25519_ge_scalarmult(ge_p2 *r, const uint8_t *scalar, const ge_p3 *A) {
 
     unsigned j;
     ge_cached selected;
+    ge_cached_0(&selected);
     for (j = 0; j < 16; j++) {
       cmov_cached(&selected, &Ai[j], equal(j, index));
     }
