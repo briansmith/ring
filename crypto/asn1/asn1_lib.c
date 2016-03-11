@@ -63,8 +63,15 @@
 #include <openssl/err.h>
 #include <openssl/mem.h>
 
-/* Cross-module errors from crypto/x509/i2d_pr.c */
+/* Cross-module errors from crypto/x509/i2d_pr.c. */
 OPENSSL_DECLARE_ERROR_REASON(ASN1, UNSUPPORTED_PUBLIC_KEY_TYPE);
+
+/* Cross-module errors from crypto/x509/algorithm.c. */
+OPENSSL_DECLARE_ERROR_REASON(ASN1, CONTEXT_NOT_INITIALISED);
+OPENSSL_DECLARE_ERROR_REASON(ASN1, UNKNOWN_MESSAGE_DIGEST_ALGORITHM);
+OPENSSL_DECLARE_ERROR_REASON(ASN1, UNKNOWN_SIGNATURE_ALGORITHM);
+OPENSSL_DECLARE_ERROR_REASON(ASN1, UNSUPPORTED_ALGORITHM);
+OPENSSL_DECLARE_ERROR_REASON(ASN1, WRONG_PUBLIC_KEY_TYPE);
 
 /*
  * Cross-module errors from crypto/x509/asn1_gen.c. TODO(davidben): Remove

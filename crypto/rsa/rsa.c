@@ -71,6 +71,11 @@
 #include "../internal.h"
 
 
+/* Cross-module errors from crypto/x509/rsa_pss.c. */
+OPENSSL_DECLARE_ERROR_REASON(RSA, INVALID_PSS_PARAMETERS);
+OPENSSL_DECLARE_ERROR_REASON(RSA, INVALID_SALT_LENGTH);
+OPENSSL_DECLARE_ERROR_REASON(RSA, INVALID_TRAILER);
+
 static CRYPTO_EX_DATA_CLASS g_ex_data_class = CRYPTO_EX_DATA_CLASS_INIT;
 
 RSA *RSA_new(void) { return RSA_new_method(NULL); }

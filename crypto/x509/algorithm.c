@@ -69,7 +69,7 @@ int x509_digest_sign_algorithm(EVP_MD_CTX *ctx, X509_ALGOR *algor) {
   const EVP_MD *digest = EVP_MD_CTX_md(ctx);
   EVP_PKEY *pkey = EVP_PKEY_CTX_get0_pkey(ctx->pctx);
   if (digest == NULL || pkey == NULL) {
-    OPENSSL_PUT_ERROR(X509, X509_R_CONTEXT_NOT_INITIALISED);
+    OPENSSL_PUT_ERROR(ASN1, ASN1_R_CONTEXT_NOT_INITIALISED);
     return 0;
   }
 
@@ -89,7 +89,7 @@ int x509_digest_sign_algorithm(EVP_MD_CTX *ctx, X509_ALGOR *algor) {
   int sign_nid;
   if (!OBJ_find_sigid_by_algs(&sign_nid, EVP_MD_type(digest),
                               EVP_PKEY_id(pkey))) {
-    OPENSSL_PUT_ERROR(X509, X509_R_UNSUPPORTED_ALGORITHM);
+    OPENSSL_PUT_ERROR(ASN1, ASN1_R_UNSUPPORTED_ALGORITHM);
     return 0;
   }
 
@@ -107,20 +107,20 @@ int x509_digest_verify_init(EVP_MD_CTX *ctx, X509_ALGOR *sigalg,
   int sigalg_nid = OBJ_obj2nid(sigalg->algorithm);
   int digest_nid, pkey_nid;
   if (!OBJ_find_sigid_algs(sigalg_nid, &digest_nid, &pkey_nid)) {
-    OPENSSL_PUT_ERROR(X509, X509_R_UNSUPPORTED_ALGORITHM);
+    OPENSSL_PUT_ERROR(ASN1, ASN1_R_UNSUPPORTED_ALGORITHM);
     return 0;
   }
 
   /* Check the public key OID matches the public key type. */
   if (pkey_nid != EVP_PKEY_id(pkey)) {
-    OPENSSL_PUT_ERROR(X509, X509_R_WRONG_PUBLIC_KEY_TYPE);
+    OPENSSL_PUT_ERROR(ASN1, ASN1_R_WRONG_PUBLIC_KEY_TYPE);
     return 0;
   }
 
   /* NID_undef signals that there are custom parameters to set. */
   if (digest_nid == NID_undef) {
     if (sigalg_nid != NID_rsassaPss) {
-      OPENSSL_PUT_ERROR(X509, X509_R_UNSUPPORTED_ALGORITHM);
+      OPENSSL_PUT_ERROR(ASN1, ASN1_R_UNSUPPORTED_ALGORITHM);
       return 0;
     }
     return x509_rsa_pss_to_ctx(ctx, sigalg, pkey);
