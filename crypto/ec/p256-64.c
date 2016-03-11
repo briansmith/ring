@@ -28,6 +28,7 @@
 #include <openssl/err.h>
 #include <openssl/mem.h>
 #include <openssl/obj_mac.h>
+#include <openssl/type_check.h>
 
 #include <assert.h>
 #include <string.h>
@@ -1411,17 +1412,22 @@ static char get_bit(const scalar_bytearray in, int i) {
   return (in[i >> 3] >> (i & 7)) & 1;
 }
 
+struct p_pre_comp_st {
+  smallfelem values[17][3];
+};
+
 /* Interleaved point multiplication using precomputed point multiples: The
  * small point multiples 0*P, 1*P, ..., 17*P are in pre_comp[], the scalars
  * in scalars[]. If g_scalar is non-NULL, we also add this multiple of the
  * generator, using certain (large) precomputed multiples in g_pre_comp.
  * Output point (X, Y, Z) is stored in x_out, y_out, z_out. */
 static void batch_mul(felem x_out, felem y_out, felem z_out,
-                      const scalar_bytearray scalars[],
-                      const unsigned num_points, const u8 *g_scalar,
-                      const smallfelem pre_comp[][17][3]) {
+                      const scalar_bytearray g_scalar,
+                      const scalar_bytearray p_scalar,
+                      const struct p_pre_comp_st *p_pre_comp) {
+  assert((p_scalar == NULL) == (p_pre_comp == NULL));
+
   int i, skip;
-  unsigned num, gen_mul = (g_scalar != NULL);
   felem nq[3], ftmp;
   smallfelem tmp[3];
   u64 bits;
@@ -1430,20 +1436,20 @@ static void batch_mul(felem x_out, felem y_out, felem z_out,
   /* set nq to the point at infinity */
   memset(nq, 0, 3 * sizeof(felem));
 
-  /* Loop over all scalars msb-to-lsb, interleaving additions of multiples
-   * of the generator (two in each of the last 32 rounds) and additions of
-   * other points multiples (every 5th round). */
+  /* Interleave additions of multiples of the generator (two in each of the
+   * last 32 rounds) and additions of the other point's multiples (every 5th
+   * round). */
 
   skip = 1; /* save two point operations in the first
              * round */
-  for (i = (num_points ? 255 : 31); i >= 0; --i) {
+  for (i = (p_scalar != NULL ? 255 : 31); i >= 0; --i) {
     /* double */
     if (!skip) {
       point_double(nq[0], nq[1], nq[2], nq[0], nq[1], nq[2]);
     }
 
     /* add multiples of the generator */
-    if (gen_mul && i <= 31) {
+    if (g_scalar != NULL && i <= 31) {
       /* first, look 32 bits upwards */
       bits = get_bit(g_scalar, i + 224) << 3;
       bits |= get_bit(g_scalar, i + 160) << 2;
@@ -1474,33 +1480,30 @@ static void batch_mul(felem x_out, felem y_out, felem z_out,
     }
 
     /* do other additions every 5 doublings */
-    if (num_points && (i % 5 == 0)) {
-      /* loop over all scalars */
-      for (num = 0; num < num_points; ++num) {
-        bits = get_bit(scalars[num], i + 4) << 5;
-        bits |= get_bit(scalars[num], i + 3) << 4;
-        bits |= get_bit(scalars[num], i + 2) << 3;
-        bits |= get_bit(scalars[num], i + 1) << 2;
-        bits |= get_bit(scalars[num], i) << 1;
-        bits |= get_bit(scalars[num], i - 1);
-        ec_GFp_nistp_recode_scalar_bits(&sign, &digit, bits);
+    if (p_scalar != NULL && (i % 5 == 0)) {
+      bits = get_bit(p_scalar, i + 4) << 5;
+      bits |= get_bit(p_scalar, i + 3) << 4;
+      bits |= get_bit(p_scalar, i + 2) << 3;
+      bits |= get_bit(p_scalar, i + 1) << 2;
+      bits |= get_bit(p_scalar, i) << 1;
+      bits |= get_bit(p_scalar, i - 1);
+      ec_GFp_nistp_recode_scalar_bits(&sign, &digit, bits);
 
-        /* select the point to add or subtract, in constant time. */
-        select_point(digit, 17, pre_comp[num], tmp);
-        smallfelem_neg(ftmp, tmp[1]); /* (X, -Y, Z) is the negative
-                                       * point */
-        copy_small_conditional(ftmp, tmp[1], (((limb)sign) - 1));
-        felem_contract(tmp[1], ftmp);
+      /* select the point to add or subtract, in constant time. */
+      select_point(digit, 17, p_pre_comp->values, tmp);
+      smallfelem_neg(ftmp, tmp[1]); /* (X, -Y, Z) is the negative
+                                      * point */
+      copy_small_conditional(ftmp, tmp[1], (((limb)sign) - 1));
+      felem_contract(tmp[1], ftmp);
 
-        if (!skip) {
-          point_add(nq[0], nq[1], nq[2], nq[0], nq[1], nq[2], 0 /* mixed */,
-                    tmp[0], tmp[1], tmp[2]);
-        } else {
-          smallfelem_expand(nq[0], tmp[0]);
-          smallfelem_expand(nq[1], tmp[1]);
-          smallfelem_expand(nq[2], tmp[2]);
-          skip = 0;
-        }
+      if (!skip) {
+        point_add(nq[0], nq[1], nq[2], nq[0], nq[1], nq[2], 0 /* mixed */,
+                  tmp[0], tmp[1], tmp[2]);
+      } else {
+        smallfelem_expand(nq[0], tmp[0]);
+        smallfelem_expand(nq[1], tmp[1]);
+        smallfelem_expand(nq[2], tmp[2]);
+        skip = 0;
       }
     }
   }
@@ -1558,31 +1561,21 @@ int ec_GFp_nistp256_point_get_affine_coordinates(const EC_GROUP *group,
 }
 
 int ec_GFp_nistp256_points_mul(const EC_GROUP *group, EC_POINT *r,
-                               const BIGNUM *g_scalar, const EC_POINT *p_,
-                               const BIGNUM *p_scalar_, BN_CTX *ctx) {
+                               const BIGNUM *g_scalar, const EC_POINT *p,
+                               const BIGNUM *p_scalar, BN_CTX *ctx) {
+  assert((p == NULL) == (p_scalar == NULL));
   assert(g_scalar == NULL || BN_cmp(g_scalar, EC_GROUP_get0_order(group)) < 0);
-  assert(p_scalar_ == NULL || BN_cmp(p_scalar_, EC_GROUP_get0_order(group)) < 0);
-
-  /* TODO: This function used to take |points| and |scalars| as arrays of
-   * |num| elements. The code below should be simplified to work in terms of |p|
-   * and |p_scalar|. */
-  size_t num = p_ != NULL ? 1 : 0;
-  const EC_POINT **points = p_ != NULL ? &p_ : NULL;
-  BIGNUM const *const *scalars = p_ != NULL ? &p_scalar_ : NULL;
+  assert(p_scalar == NULL || BN_cmp(p_scalar, EC_GROUP_get0_order(group)) < 0);
 
   int ret = 0;
   int j;
   BN_CTX *new_ctx = NULL;
   BIGNUM *x, *y, *z;
   scalar_bytearray g_secret;
-  scalar_bytearray *secrets = NULL;
-  smallfelem(*pre_comp)[17][3] = NULL;
-  unsigned i;
-  size_t num_points = num;
+  scalar_bytearray p_secret;
+  struct p_pre_comp_st p_pre_comp;
   smallfelem x_in, y_in, z_in;
   felem x_out, y_out, z_out;
-  const EC_POINT *p = NULL;
-  const BIGNUM *p_scalar = NULL;
 
   if (ctx == NULL) {
     ctx = new_ctx = BN_CTX_new();
@@ -1598,52 +1591,31 @@ int ec_GFp_nistp256_points_mul(const EC_GROUP *group, EC_POINT *r,
     goto err;
   }
 
-  if (num_points > 0) {
-    secrets = OPENSSL_malloc(num_points * sizeof(scalar_bytearray));
-    pre_comp = OPENSSL_malloc(num_points * sizeof(smallfelem[17][3]));
-    if (secrets == NULL || pre_comp == NULL) {
-      OPENSSL_PUT_ERROR(EC, ERR_R_MALLOC_FAILURE);
+  if (p_scalar != NULL) {
+    /* precompute multiples */
+    if (!BN_to_scalar_bytearray(group, p_secret, p_scalar) ||
+        !BN_to_felem(x_out, &p->X) ||
+        !BN_to_felem(y_out, &p->Y) ||
+        !BN_to_felem(z_out, &p->Z)) {
       goto err;
     }
 
-    /* we treat NULL scalars as 0, and NULL points as points at infinity,
-     * i.e., they contribute nothing to the linear combination. */
-    memset(secrets, 0, num_points * sizeof(scalar_bytearray));
-    memset(pre_comp, 0, num_points * 17 * 3 * sizeof(smallfelem));
-    for (i = 0; i < num_points; ++i) {
-      if (i == num) {
-        /* we didn't have a valid precomputation, so we pick the generator. */
-        p = EC_GROUP_get0_generator(group);
-        p_scalar = g_scalar;
+    memset(&p_pre_comp, 0, sizeof(p_pre_comp));
+    felem_shrink(p_pre_comp.values[1][0], x_out);
+    felem_shrink(p_pre_comp.values[1][1], y_out);
+    felem_shrink(p_pre_comp.values[1][2], z_out);
+    for (j = 2; j <= 16; ++j) {
+      if (j & 1) {
+        point_add_small(p_pre_comp.values[j][0], p_pre_comp.values[j][1],
+                        p_pre_comp.values[j][2], p_pre_comp.values[1][0],
+                        p_pre_comp.values[1][1], p_pre_comp.values[1][2],
+                        p_pre_comp.values[j - 1][0], p_pre_comp.values[j - 1][1],
+                        p_pre_comp.values[j - 1][2]);
       } else {
-        /* the i^th point */
-        p = points[i];
-        p_scalar = scalars[i];
-      }
-      if (p_scalar != NULL && p != NULL) {
-        /* precompute multiples */
-        if (!BN_to_scalar_bytearray(group, secrets[i], p_scalar) ||
-            !BN_to_felem(x_out, &p->X) ||
-            !BN_to_felem(y_out, &p->Y) ||
-            !BN_to_felem(z_out, &p->Z)) {
-          goto err;
-        }
-        felem_shrink(pre_comp[i][1][0], x_out);
-        felem_shrink(pre_comp[i][1][1], y_out);
-        felem_shrink(pre_comp[i][1][2], z_out);
-        for (j = 2; j <= 16; ++j) {
-          if (j & 1) {
-            point_add_small(pre_comp[i][j][0], pre_comp[i][j][1],
-                            pre_comp[i][j][2], pre_comp[i][1][0],
-                            pre_comp[i][1][1], pre_comp[i][1][2],
-                            pre_comp[i][j - 1][0], pre_comp[i][j - 1][1],
-                            pre_comp[i][j - 1][2]);
-          } else {
-            point_double_small(pre_comp[i][j][0], pre_comp[i][j][1],
-                               pre_comp[i][j][2], pre_comp[i][j / 2][0],
-                               pre_comp[i][j / 2][1], pre_comp[i][j / 2][2]);
-          }
-        }
+        point_double_small(p_pre_comp.values[j][0], p_pre_comp.values[j][1],
+                           p_pre_comp.values[j][2], p_pre_comp.values[j / 2][0],
+                           p_pre_comp.values[j / 2][1],
+                           p_pre_comp.values[j / 2][2]);
       }
     }
   }
@@ -1653,9 +1625,9 @@ int ec_GFp_nistp256_points_mul(const EC_GROUP *group, EC_POINT *r,
       goto err;
     }
   }
-  batch_mul(x_out, y_out, z_out, (const scalar_bytearray(*))secrets,
-            num_points, g_scalar != NULL ? g_secret : NULL,
-            (const smallfelem(*)[17][3])pre_comp);
+  batch_mul(x_out, y_out, z_out, g_scalar != NULL ? g_secret : NULL,
+            p_scalar != NULL ? p_secret : NULL,
+            p_scalar != NULL ? &p_pre_comp : NULL);
 
   /* reduce the output to its unique minimal representation */
   felem_contract(x_in, x_out);
@@ -1672,8 +1644,6 @@ int ec_GFp_nistp256_points_mul(const EC_GROUP *group, EC_POINT *r,
 err:
   BN_CTX_end(ctx);
   BN_CTX_free(new_ctx);
-  OPENSSL_free(secrets);
-  OPENSSL_free(pre_comp);
   return ret;
 }
 
