@@ -1563,33 +1563,24 @@ int ec_GFp_nistp256_point_get_affine_coordinates(const EC_GROUP *group,
 int ec_GFp_nistp256_points_mul(const EC_GROUP *group, EC_POINT *r,
                                const BIGNUM *g_scalar, const EC_POINT *p,
                                const BIGNUM *p_scalar, BN_CTX *ctx) {
+  (void)ctx;
+
   assert((p == NULL) == (p_scalar == NULL));
   assert(g_scalar == NULL || BN_cmp(g_scalar, EC_GROUP_get0_order(group)) < 0);
   assert(p_scalar == NULL || BN_cmp(p_scalar, EC_GROUP_get0_order(group)) < 0);
 
   int ret = 0;
   int j;
-  BN_CTX *new_ctx = NULL;
-  BIGNUM *x, *y, *z;
   scalar_bytearray g_secret;
   scalar_bytearray p_secret;
   struct p_pre_comp_st p_pre_comp;
   smallfelem x_in, y_in, z_in;
   felem x_out, y_out, z_out;
 
-  if (ctx == NULL) {
-    ctx = new_ctx = BN_CTX_new();
-    if (ctx == NULL) {
-      return 0;
-    }
-  }
-
-  BN_CTX_start(ctx);
-  if ((x = BN_CTX_get(ctx)) == NULL ||
-      (y = BN_CTX_get(ctx)) == NULL ||
-      (z = BN_CTX_get(ctx)) == NULL) {
-    goto err;
-  }
+  BIGNUM x, y, z;
+  BN_init(&x);
+  BN_init(&y);
+  BN_init(&z);
 
   if (p_scalar != NULL) {
     /* precompute multiples */
@@ -1633,17 +1624,18 @@ int ec_GFp_nistp256_points_mul(const EC_GROUP *group, EC_POINT *r,
   felem_contract(x_in, x_out);
   felem_contract(y_in, y_out);
   felem_contract(z_in, z_out);
-  if (!smallfelem_to_BN(x, x_in) ||
-      !smallfelem_to_BN(y, y_in) ||
-      !smallfelem_to_BN(z, z_in)) {
+  if (!smallfelem_to_BN(&x, x_in) ||
+      !smallfelem_to_BN(&y, y_in) ||
+      !smallfelem_to_BN(&z, z_in)) {
     OPENSSL_PUT_ERROR(EC, ERR_R_BN_LIB);
     goto err;
   }
-  ret = ec_point_set_Jprojective_coordinates_GFp(group, r, x, y, z, ctx);
+  ret = ec_point_set_Jprojective_coordinates_GFp(group, r, &x, &y, &z, ctx);
 
 err:
-  BN_CTX_end(ctx);
-  BN_CTX_free(new_ctx);
+  BN_free(&x);
+  BN_free(&y);
+  BN_free(&z);
   return ret;
 }
 
