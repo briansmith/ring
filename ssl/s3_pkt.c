@@ -555,19 +555,6 @@ start:
         return 0;
       }
 
-      /* This is a warning but we receive it if we requested renegotiation and
-       * the peer denied it. Terminate with a fatal alert because if
-       * application tried to renegotiatie it presumably had a good reason and
-       * expects it to succeed.
-       *
-       * In future we might have a renegotiation where we don't care if the
-       * peer refused it where we carry on. */
-      else if (alert_descr == SSL_AD_NO_RENEGOTIATION) {
-        al = SSL_AD_HANDSHAKE_FAILURE;
-        OPENSSL_PUT_ERROR(SSL, SSL_R_NO_RENEGOTIATION);
-        goto f_err;
-      }
-
       ssl->s3->warning_alert_count++;
       if (ssl->s3->warning_alert_count > kMaxWarningAlerts) {
         al = SSL_AD_UNEXPECTED_MESSAGE;
