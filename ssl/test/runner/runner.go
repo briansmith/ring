@@ -1206,6 +1206,31 @@ func addBasicTests() {
 		},
 		{
 			testType: serverTest,
+			name:     "DoubleAlert",
+			config: Config{
+				Bugs: ProtocolBugs{
+					DoubleAlert:       true,
+					SendSpuriousAlert: alertRecordOverflow,
+				},
+			},
+			shouldFail:    true,
+			expectedError: ":BAD_ALERT:",
+		},
+		{
+			protocol: dtls,
+			testType: serverTest,
+			name:     "DoubleAlert-DTLS",
+			config: Config{
+				Bugs: ProtocolBugs{
+					DoubleAlert:       true,
+					SendSpuriousAlert: alertRecordOverflow,
+				},
+			},
+			shouldFail:    true,
+			expectedError: ":BAD_ALERT:",
+		},
+		{
+			testType: serverTest,
 			name:     "EarlyChangeCipherSpec-server-1",
 			config: Config{
 				Bugs: ProtocolBugs{

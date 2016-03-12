@@ -525,6 +525,10 @@ type ProtocolBugs struct {
 	// two records.
 	FragmentAlert bool
 
+	// DoubleAlert will cause all alerts to be sent as two copies packed
+	// within one record.
+	DoubleAlert bool
+
 	// SendSpuriousAlert, if non-zero, will cause an spurious, unwanted
 	// alert to be sent.
 	SendSpuriousAlert alert

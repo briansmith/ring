@@ -842,6 +842,9 @@ func (c *Conn) sendAlertLocked(level byte, err alert) error {
 	if c.config.Bugs.FragmentAlert {
 		c.writeRecord(recordTypeAlert, c.tmp[0:1])
 		c.writeRecord(recordTypeAlert, c.tmp[1:2])
+	} else if c.config.Bugs.DoubleAlert {
+		copy(c.tmp[2:4], c.tmp[0:2])
+		c.writeRecord(recordTypeAlert, c.tmp[0:4])
 	} else {
 		c.writeRecord(recordTypeAlert, c.tmp[0:2])
 	}
