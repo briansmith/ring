@@ -478,15 +478,6 @@ err:
   return ret;
 }
 
-int BN_mod_sqr(BIGNUM *r, const BIGNUM *a, const BIGNUM *m, BN_CTX *ctx) {
-  if (!BN_sqr(r, a, ctx)) {
-    return 0;
-  }
-
-  /* r->neg == 0,  thus we don't need BN_nnmod */
-  return BN_mod(r, r, m, ctx);
-}
-
 int BN_mod_lshift_quick(BIGNUM *r, const BIGNUM *a, int n, const BIGNUM *m) {
   if (r != a) {
     if (BN_copy(r, a) == NULL) {
