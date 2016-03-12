@@ -1411,6 +1411,7 @@ int ssl3_get_certificate_request(SSL *ssl) {
       OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
       goto err;
     }
+    xn = NULL;
   }
 
   /* we should setup a certificate to return.... */
@@ -1422,6 +1423,7 @@ int ssl3_get_certificate_request(SSL *ssl) {
   ret = 1;
 
 err:
+  X509_NAME_free(xn);
   sk_X509_NAME_pop_free(ca_sk, X509_NAME_free);
   return ret;
 }
