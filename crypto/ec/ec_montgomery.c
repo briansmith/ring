@@ -98,15 +98,12 @@ static int ec_GFp_mont_point_get_affine_coordinates(const EC_GROUP *group,
                                                     const EC_POINT *point,
                                                     BIGNUM *x, BIGNUM *y,
                                                     BN_CTX *ctx) {
-  BN_CTX *new_ctx = NULL;
-  BIGNUM *Z, *Z_1, *Z_2, *Z_3;
-  int ret = 0;
-
   if (EC_POINT_is_at_infinity(group, point)) {
     OPENSSL_PUT_ERROR(EC, EC_R_POINT_AT_INFINITY);
     return 0;
   }
 
+  BN_CTX *new_ctx = NULL;
   if (ctx == NULL) {
     ctx = new_ctx = BN_CTX_new();
     if (ctx == NULL) {
@@ -114,22 +111,12 @@ static int ec_GFp_mont_point_get_affine_coordinates(const EC_GROUP *group,
     }
   }
 
+  int ret = 0;
+
   BN_CTX_start(ctx);
-  Z = BN_CTX_get(ctx);
-  Z_1 = BN_CTX_get(ctx);
-  Z_2 = BN_CTX_get(ctx);
-  Z_3 = BN_CTX_get(ctx);
-  if (Z == NULL || Z_1 == NULL || Z_2 == NULL || Z_3 == NULL) {
-    goto err;
-  }
 
-  /* transform  (X, Y, Z)  into  (x, y) := (X/Z^2, Y/Z^3) */
-
-  if (!group->meth->field_decode(group, Z, &point->Z, ctx)) {
-    goto err;
-  }
-
-  if (BN_is_one(Z)) {
+  if (BN_cmp(&point->Z, &group->one) == 0) {
+    /* |point| is already affine. */
     if (x != NULL && !group->meth->field_decode(group, x, &point->X, ctx)) {
       goto err;
     }
@@ -137,29 +124,44 @@ static int ec_GFp_mont_point_get_affine_coordinates(const EC_GROUP *group,
       goto err;
     }
   } else {
-    if (!BN_mod_inverse(Z_1, Z, &group->field, ctx)) {
+    /* transform  (X, Y, Z)  into  (x, y) := (X/Z^2, Y/Z^3) */
+
+    BIGNUM *Z = BN_CTX_get(ctx);
+    BIGNUM *Z_1 = BN_CTX_get(ctx);
+    BIGNUM *Z_2 = BN_CTX_get(ctx);
+    BIGNUM *Z_3 = BN_CTX_get(ctx);
+    if (Z == NULL ||
+        Z_1 == NULL ||
+        Z_2 == NULL ||
+        Z_3 == NULL) {
+      goto err;
+    }
+
+    /* This formulation only uses |field_decode|, never |field_encode| since it
+     * should |field_decode| should be as or more efficient as |field_encode|,
+     * at least in theory. */
+
+    if (!group->meth->field_decode(group, Z, &point->Z, ctx) ||
+        !group->meth->field_decode(group, Z, Z, ctx) ||
+        !BN_mod_inverse(Z_1, Z, &group->field, ctx)) {
       OPENSSL_PUT_ERROR(EC, ERR_R_BN_LIB);
       goto err;
     }
 
-    if (!BN_mod_sqr(Z_2, Z_1, &group->field, ctx)) {
+    if (!group->meth->field_sqr(group, Z_2, Z_1, ctx) ||
+        !group->meth->field_decode(group, Z_2, Z_2, ctx)) {
       goto err;
     }
 
-    /* in the Montgomery case, field_mul will cancel out Montgomery factor in
-     * X: */
-    if (x != NULL && !group->meth->field_mul(group, x, &point->X, Z_2, ctx)) {
-      goto err;
+    if (x != NULL) {
+      if (!group->meth->field_mul(group, x, &point->X, Z_2, ctx)) {
+        goto err;
+      }
     }
 
     if (y != NULL) {
-      if (!BN_mod_mul(Z_3, Z_2, Z_1, &group->field, ctx)) {
-        goto err;
-      }
-
-      /* in the Montgomery case, field_mul will cancel out Montgomery factor in
-       * Y: */
-      if (!group->meth->field_mul(group, y, &point->Y, Z_3, ctx)) {
+      if (!group->meth->field_mul(group, Z_3, Z_2, Z_1, ctx) ||
+          !group->meth->field_mul(group, y, &point->Y, Z_3, ctx)) {
         goto err;
       }
     }
