@@ -113,12 +113,11 @@ static int dtls_read_buffer_next_packet(SSL *ssl) {
   }
 
   /* Read a single packet from |ssl->rbio|. |buf->cap| must fit in an int. */
-  ssl->rwstate = SSL_READING;
   int ret = BIO_read(ssl->rbio, buf->buf + buf->offset, (int)buf->cap);
   if (ret <= 0) {
+    ssl->rwstate = SSL_READING;
     return ret;
   }
-  ssl->rwstate = SSL_NOTHING;
   /* |BIO_read| was bound by |buf->cap|, so this cannot overflow. */
   buf->len = (uint16_t)ret;
   return 1;
@@ -136,13 +135,12 @@ static int tls_read_buffer_extend_to(SSL *ssl, size_t len) {
   while (buf->len < len) {
     /* The amount of data to read is bounded by |buf->cap|, which must fit in an
      * int. */
-    ssl->rwstate = SSL_READING;
     int ret = BIO_read(ssl->rbio, buf->buf + buf->offset + buf->len,
                        (int)(len - buf->len));
     if (ret <= 0) {
+      ssl->rwstate = SSL_READING;
       return ret;
     }
-    ssl->rwstate = SSL_NOTHING;
     /* |BIO_read| was bound by |buf->cap - buf->len|, so this cannot
      * overflow. */
     buf->len += (uint16_t)ret;
@@ -268,12 +266,11 @@ static int tls_write_buffer_flush(SSL *ssl) {
   SSL3_BUFFER *buf = &ssl->s3->write_buffer;
 
   while (buf->len > 0) {
-    ssl->rwstate = SSL_WRITING;
     int ret = BIO_write(ssl->wbio, buf->buf + buf->offset, buf->len);
     if (ret <= 0) {
+      ssl->rwstate = SSL_WRITING;
       return ret;
     }
-    ssl->rwstate = SSL_NOTHING;
     consume_buffer(buf, (size_t)ret);
   }
   ssl_write_buffer_clear(ssl);
@@ -286,16 +283,15 @@ static int dtls_write_buffer_flush(SSL *ssl) {
     return 1;
   }
 
-  ssl->rwstate = SSL_WRITING;
   int ret = BIO_write(ssl->wbio, buf->buf + buf->offset, buf->len);
   if (ret <= 0) {
+    ssl->rwstate = SSL_WRITING;
     /* If the write failed, drop the write buffer anyway. Datagram transports
      * can't write half a packet, so the caller is expected to retry from the
      * top. */
     ssl_write_buffer_clear(ssl);
     return ret;
   }
-  ssl->rwstate = SSL_NOTHING;
   ssl_write_buffer_clear(ssl);
   return 1;
 }

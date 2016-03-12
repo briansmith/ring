@@ -447,12 +447,11 @@ int dtls1_connect(SSL *ssl) {
         break;
 
       case SSL3_ST_CW_FLUSH:
-        ssl->rwstate = SSL_WRITING;
         if (BIO_flush(ssl->wbio) <= 0) {
+          ssl->rwstate = SSL_WRITING;
           ret = -1;
           goto end;
         }
-        ssl->rwstate = SSL_NOTHING;
         ssl->state = ssl->s3->tmp.next_state;
         break;
 

@@ -393,7 +393,6 @@ long ssl3_get_message(SSL *ssl, int header_state, int body_state, int msg_type,
     int bytes_read =
         ssl3_read_bytes(ssl, SSL3_RT_HANDSHAKE, &p[ssl->init_num], n, 0);
     if (bytes_read <= 0) {
-      ssl->rwstate = SSL_READING;
       *ok = 0;
       return bytes_read;
     }

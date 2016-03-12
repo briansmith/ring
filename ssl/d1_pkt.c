@@ -246,8 +246,6 @@ int dtls1_read_bytes(SSL *ssl, int type, unsigned char *buf, int len, int peek) 
   }
 
 start:
-  ssl->rwstate = SSL_NOTHING;
-
   /* ssl->s3->rrec.type     - is the type of record
    * ssl->s3->rrec.data     - data
    * ssl->s3->rrec.off      - offset into 'data' for next read
@@ -279,7 +277,6 @@ start:
    * 'peek' mode) */
   if (ssl->shutdown & SSL_RECEIVED_SHUTDOWN) {
     rr->length = 0;
-    ssl->rwstate = SSL_NOTHING;
     return 0;
   }
 
@@ -364,7 +361,6 @@ start:
     } else if (alert_level == SSL3_AL_FATAL) {
       char tmp[16];
 
-      ssl->rwstate = SSL_NOTHING;
       OPENSSL_PUT_ERROR(SSL, SSL_AD_REASON_OFFSET + alert_descr);
       BIO_snprintf(tmp, sizeof tmp, "%d", alert_descr);
       ERR_add_error_data(2, "SSL alert number ", tmp);
@@ -462,7 +458,6 @@ int dtls1_write_app_data(SSL *ssl, const void *buf_, int len) {
 int dtls1_write_bytes(SSL *ssl, int type, const void *buf, int len,
                       enum dtls1_use_epoch_t use_epoch) {
   assert(len <= SSL3_RT_MAX_PLAIN_LENGTH);
-  ssl->rwstate = SSL_NOTHING;
   return do_dtls1_write(ssl, type, buf, len, use_epoch);
 }
 

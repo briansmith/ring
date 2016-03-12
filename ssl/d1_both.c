@@ -290,12 +290,11 @@ static int dtls1_write_change_cipher_spec(SSL *ssl,
   /* During the handshake, wbio is buffered to pack messages together. Flush the
    * buffer if the ChangeCipherSpec would not fit in a packet. */
   if (dtls1_max_record_size(ssl) == 0) {
-    ssl->rwstate = SSL_WRITING;
     int ret = BIO_flush(SSL_get_wbio(ssl));
     if (ret <= 0) {
+      ssl->rwstate = SSL_WRITING;
       return ret;
     }
-    ssl->rwstate = SSL_NOTHING;
   }
 
   static const uint8_t kChangeCipherSpec[1] = {SSL3_MT_CCS};
@@ -340,13 +339,12 @@ int dtls1_do_handshake_write(SSL *ssl, enum dtls1_use_epoch_t use_epoch) {
     /* During the handshake, wbio is buffered to pack messages together. Flush
      * the buffer if there isn't enough room to make progress. */
     if (dtls1_max_record_size(ssl) < DTLS1_HM_HEADER_LENGTH + 1) {
-      ssl->rwstate = SSL_WRITING;
       int flush_ret = BIO_flush(SSL_get_wbio(ssl));
       if (flush_ret <= 0) {
+        ssl->rwstate = SSL_WRITING;
         ret = flush_ret;
         goto err;
       }
-      ssl->rwstate = SSL_NOTHING;
       assert(BIO_wpending(SSL_get_wbio(ssl)) == 0);
     }
 

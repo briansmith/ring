@@ -501,12 +501,11 @@ int ssl3_connect(SSL *ssl) {
         break;
 
       case SSL3_ST_CW_FLUSH:
-        ssl->rwstate = SSL_WRITING;
         if (BIO_flush(ssl->wbio) <= 0) {
+          ssl->rwstate = SSL_WRITING;
           ret = -1;
           goto end;
         }
-        ssl->rwstate = SSL_NOTHING;
         ssl->state = ssl->s3->tmp.next_state;
         break;
 
@@ -1823,10 +1822,8 @@ int ssl3_send_cert_verify(SSL *ssl) {
 
   switch (sign_result) {
     case ssl_private_key_success:
-      ssl->rwstate = SSL_NOTHING;
       break;
     case ssl_private_key_failure:
-      ssl->rwstate = SSL_NOTHING;
       goto err;
     case ssl_private_key_retry:
       ssl->rwstate = SSL_PRIVATE_KEY_OPERATION;
@@ -1868,7 +1865,6 @@ int ssl3_send_client_certificate(SSL *ssl) {
         ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_INTERNAL_ERROR);
         return -1;
       }
-      ssl->rwstate = SSL_NOTHING;
     }
 
     if (ssl3_has_client_certificate(ssl)) {
@@ -1887,7 +1883,6 @@ int ssl3_send_client_certificate(SSL *ssl) {
       ssl->rwstate = SSL_X509_LOOKUP;
       return -1;
     }
-    ssl->rwstate = SSL_NOTHING;
 
     int setup_error = ret == 1 && (!SSL_use_certificate(ssl, x509) ||
                                    !SSL_use_PrivateKey(ssl, pkey));
@@ -1984,7 +1979,6 @@ int ssl3_send_channel_id(SSL *ssl) {
     ssl->rwstate = SSL_CHANNEL_ID_LOOKUP;
     return -1;
   }
-  ssl->rwstate = SSL_NOTHING;
 
   EC_KEY *ec_key = EVP_PKEY_get0_EC_KEY(ssl->tlsext_channel_id_private);
   if (ec_key == NULL) {
