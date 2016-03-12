@@ -1306,17 +1306,12 @@ static int ca_dn_cmp(const X509_NAME **a, const X509_NAME **b) {
 
 int ssl3_get_certificate_request(SSL *ssl) {
   int ok, ret = 0;
-  unsigned long n;
   X509_NAME *xn = NULL;
   STACK_OF(X509_NAME) *ca_sk = NULL;
-  CBS cbs;
-  CBS certificate_types;
-  CBS certificate_authorities;
-  const uint8_t *data;
 
-  n = ssl->method->ssl_get_message(ssl, SSL3_ST_CR_CERT_REQ_A,
-                                   SSL3_ST_CR_CERT_REQ_B, -1,
-                                   ssl->max_cert_list, ssl_hash_message, &ok);
+  long n = ssl->method->ssl_get_message(
+      ssl, SSL3_ST_CR_CERT_REQ_A, SSL3_ST_CR_CERT_REQ_B, -1, ssl->max_cert_list,
+      ssl_hash_message, &ok);
 
   if (!ok) {
     return n;
@@ -1338,6 +1333,7 @@ int ssl3_get_certificate_request(SSL *ssl) {
     goto err;
   }
 
+  CBS cbs;
   CBS_init(&cbs, ssl->init_msg, n);
 
   ca_sk = sk_X509_NAME_new(ca_dn_cmp);
@@ -1347,6 +1343,7 @@ int ssl3_get_certificate_request(SSL *ssl) {
   }
 
   /* get the certificate types */
+  CBS certificate_types;
   if (!CBS_get_u8_length_prefixed(&cbs, &certificate_types)) {
     ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_DECODE_ERROR);
     OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
@@ -1370,6 +1367,7 @@ int ssl3_get_certificate_request(SSL *ssl) {
   }
 
   /* get the CA RDNs */
+  CBS certificate_authorities;
   if (!CBS_get_u16_length_prefixed(&cbs, &certificate_authorities)) {
     ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_DECODE_ERROR);
     OPENSSL_PUT_ERROR(SSL, SSL_R_LENGTH_MISMATCH);
@@ -1385,25 +1383,13 @@ int ssl3_get_certificate_request(SSL *ssl) {
       goto err;
     }
 
-    data = CBS_data(&distinguished_name);
-
+    const uint8_t *data = CBS_data(&distinguished_name);
     /* A u16 length cannot overflow a long. */
     xn = d2i_X509_NAME(NULL, &data, (long)CBS_len(&distinguished_name));
-    if (xn == NULL) {
+    if (xn == NULL ||
+        data != CBS_data(&distinguished_name) + CBS_len(&distinguished_name)) {
       ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_DECODE_ERROR);
-      OPENSSL_PUT_ERROR(SSL, ERR_R_ASN1_LIB);
-      goto err;
-    }
-
-    if (!CBS_skip(&distinguished_name, data - CBS_data(&distinguished_name))) {
-      ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_DECODE_ERROR);
-      OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
-      goto err;
-    }
-
-    if (CBS_len(&distinguished_name) != 0) {
-      ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_DECODE_ERROR);
-      OPENSSL_PUT_ERROR(SSL, SSL_R_CA_DN_LENGTH_MISMATCH);
+      OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
       goto err;
     }
 
