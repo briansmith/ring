@@ -39,8 +39,6 @@ void hexdump(FILE *fp, const char *msg, const void *in, size_t len) {
 extern "C" int BN_generate_dsa_nonce_digest(uint8_t *out, size_t out_len,
                                             const uint8_t *, size_t,
                                             const uint8_t *, size_t,
-                                            const uint8_t *, size_t,
-                                            const uint8_t *, size_t,
                                             const uint8_t *, size_t) {
   return RAND_bytes(out, out_len);
 }

@@ -4628,7 +4628,7 @@ void ED25519_keypair(uint8_t out_public_key[32], uint8_t out_private_key[64]) {
   RAND_bytes(seed, 32);
 
   uint8_t az[SHA512_DIGEST_LENGTH];
-  SHA512_5(az, sizeof(az), seed, 32, NULL, 0, NULL, 0, NULL, 0, NULL, 0);
+  SHA512_4(az, sizeof(az), seed, 32, NULL, 0, NULL, 0, NULL, 0);
 
   az[0] &= 248;
   az[31] &= 63;
@@ -4645,15 +4645,15 @@ void ED25519_keypair(uint8_t out_public_key[32], uint8_t out_private_key[64]) {
 int ED25519_sign(uint8_t *out_sig, const uint8_t *message, size_t message_len,
                  const uint8_t private_key[64]) {
   uint8_t az[SHA512_DIGEST_LENGTH];
-  SHA512_5(az, sizeof(az), private_key, 32, NULL, 0, NULL, 0, NULL, 0, NULL, 0);
+  SHA512_4(az, sizeof(az), private_key, 32, NULL, 0, NULL, 0, NULL, 0);
 
   az[0] &= 248;
   az[31] &= 63;
   az[31] |= 64;
 
   uint8_t nonce[SHA512_DIGEST_LENGTH];
-  SHA512_5(nonce, sizeof(nonce), az + 32, 32, message, message_len, NULL, 0,
-           NULL, 0, NULL, 0);
+  SHA512_4(nonce, sizeof(nonce), az + 32, 32, message, message_len, NULL, 0,
+           NULL, 0);
 
   x25519_sc_reduce(nonce);
   ge_p3 R;
@@ -4661,8 +4661,8 @@ int ED25519_sign(uint8_t *out_sig, const uint8_t *message, size_t message_len,
   ge_p3_tobytes(out_sig, &R);
 
   uint8_t hram[SHA512_DIGEST_LENGTH];
-  SHA512_5(hram, sizeof(hram), out_sig, 32, private_key + 32, 32, message,
-           message_len, NULL, 0, NULL, 0);
+  SHA512_4(hram, sizeof(hram), out_sig, 32, private_key + 32, 32, message,
+           message_len, NULL, 0);
 
   x25519_sc_reduce(hram);
   sc_muladd(out_sig + 32, hram, az, nonce);
@@ -4689,8 +4689,8 @@ int ED25519_verify(const uint8_t *message, size_t message_len,
   memcpy(scopy, signature + 32, 32);
 
   uint8_t h[SHA512_DIGEST_LENGTH];
-  SHA512_5(h, sizeof(h), signature, 32, public_key, 32, message, message_len,
-           NULL, 0, NULL, 0);
+  SHA512_4(h, sizeof(h), signature, 32, public_key, 32, message, message_len,
+           NULL, 0);
 
   x25519_sc_reduce(h);
 

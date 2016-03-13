@@ -460,12 +460,11 @@ OPENSSL_EXPORT int CRYPTO_set_thread_local(
     thread_local_destructor_t destructor);
 
 
-extern void SHA512_5(uint8_t *out, size_t out_len,
+extern void SHA512_4(uint8_t *out, size_t out_len,
                      const uint8_t *part1, size_t part1_len,
                      const uint8_t *part2, size_t part2_len,
                      const uint8_t *part3, size_t part3_len,
-                     const uint8_t *part4, size_t part4_len,
-                     const uint8_t *part5, size_t part5_len);
+                     const uint8_t *part4, size_t part4_len);
 
 #define SHA512_DIGEST_LENGTH 64
 

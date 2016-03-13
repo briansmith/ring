@@ -140,7 +140,7 @@ impl VerificationAlgorithmImpl for ECDSA {
 }
 
 // TODO: After ecdsa_test.cc is removed, this function should be removed and
-// the caller should be changed to call `SHA512_5` directly. Also, the
+// the caller should be changed to call `SHA512_4` directly. Also, the
 // alternative implementation of this in crypto/test should be removed at
 // that time.
 #[allow(non_snake_case)]
@@ -151,11 +151,10 @@ pub extern fn BN_generate_dsa_nonce_digest(
         part1: *const u8, part1_len: c::size_t,
         part2: *const u8, part2_len: c::size_t,
         part3: *const u8, part3_len: c::size_t,
-        part4: *const u8, part4_len: c::size_t,
-        part5: *const u8, part5_len: c::size_t)
+        part4: *const u8, part4_len: c::size_t)
         -> c::int {
-    digest::SHA512_5(out, out_len, part1, part1_len, part2, part2_len, part3,
-                     part3_len, part4, part4_len, part5, part5_len);
+    digest::SHA512_4(out, out_len, part1, part1_len, part2, part2_len, part3,
+                     part3_len, part4, part4_len);
     1
 }
 

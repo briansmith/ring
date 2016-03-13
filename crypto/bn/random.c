@@ -113,6 +113,7 @@
 #include <openssl/err.h>
 #include <openssl/mem.h>
 #include <openssl/rand.h>
+#include <openssl/type_check.h>
 
 #include "../internal.h"
 
@@ -243,8 +244,7 @@ extern int BN_generate_dsa_nonce_digest(uint8_t *out, size_t out_len,
                                         const uint8_t *part1, size_t part1_len,
                                         const uint8_t *part2, size_t part2_len,
                                         const uint8_t *part3, size_t part3_len,
-                                        const uint8_t *part4, size_t part4_len,
-                                        const uint8_t *part5, size_t part5_len);
+                                        const uint8_t *part4, size_t part4_len);
 
 int BN_generate_dsa_nonce(BIGNUM *out, const BIGNUM *range, const BIGNUM *priv,
                           const uint8_t *message, size_t message_len) {
@@ -252,10 +252,9 @@ int BN_generate_dsa_nonce(BIGNUM *out, const BIGNUM *range, const BIGNUM *priv,
    * ensure that we have at least |range| bits of randomness. */
   uint8_t random_bytes[64];
   uint8_t digest[SHA512_DIGEST_LENGTH];
-  size_t done, todo, attempt;
   const unsigned num_k_bytes = BN_num_bytes(range);
   const unsigned bits_to_mask = (8 - (BN_num_bits(range) % 8)) % 8;
-  uint8_t private_bytes[96];
+  uint8_t private_bytes[SHA512_DIGEST_LENGTH];
   uint8_t *k_bytes = NULL;
   int ret = 0;
 
@@ -276,37 +275,34 @@ int BN_generate_dsa_nonce(BIGNUM *out, const BIGNUM *range, const BIGNUM *priv,
 
   /* We copy |priv| into a local buffer to avoid furthur exposing its
    * length. */
-  todo = sizeof(priv->d[0]) * priv->top;
+  size_t todo = sizeof(priv->d[0]) * priv->top;
   if (todo > sizeof(private_bytes)) {
-    /* No reasonable DSA or ECDSA key should have a private key
-     * this large and we don't handle this case in order to avoid
-     * leaking the length of the private key. */
+    /* No ECDSA key for a curve we support has a private key this large and we
+     * don't handle this case in order to avoid leaking the length of the
+     * private key and so we can generate the nonce with just one call to
+     * |BN_generate_dsa_nonce_digest|. */
     OPENSSL_PUT_ERROR(BN, BN_R_PRIVATE_KEY_TOO_LARGE);
     goto err;
   }
   memcpy(private_bytes, priv->d, todo);
   memset(private_bytes + todo, 0, sizeof(private_bytes) - todo);
 
-  for (attempt = 0;; attempt++) {
-    for (done = 0; done < num_k_bytes;) {
-      if (!RAND_bytes(random_bytes, sizeof(random_bytes)) ||
-          !BN_generate_dsa_nonce_digest(digest, sizeof(digest),
-                                        (const uint8_t *)attempt,
-                                        sizeof(attempt), (const uint8_t *)done,
-                                        sizeof(done), private_bytes,
-                                        sizeof(private_bytes), message,
-                                        message_len, random_bytes,
-                                        sizeof(random_bytes))) {
-        goto err;
-      }
+  OPENSSL_COMPILE_ASSERT(sizeof(digest) == sizeof(private_bytes),
+                         BN_generate_dsa_nonce_digest_may_not_generate_enough);
 
-      todo = num_k_bytes - done;
-      if (todo > sizeof(digest)) {
-        todo = sizeof(digest);
-      }
-      memcpy(k_bytes + done, digest, todo);
-      done += todo;
+  for (uint32_t attempt = 0;; attempt++) {
+    uint8_t attempt_be[4];
+    to_be_u32_ptr(attempt_be, attempt);
+    if (!RAND_bytes(random_bytes, sizeof(random_bytes)) ||
+        !BN_generate_dsa_nonce_digest(digest, sizeof(digest), attempt_be,
+                                      sizeof(attempt_be), private_bytes,
+                                      sizeof(private_bytes), message,
+                                      message_len, random_bytes,
+                                      sizeof(random_bytes))) {
+      goto err;
     }
+
+    memcpy(k_bytes, digest, num_k_bytes);
 
     k_bytes[0] &= 0xff >> bits_to_mask;
 
@@ -315,6 +311,15 @@ int BN_generate_dsa_nonce(BIGNUM *out, const BIGNUM *range, const BIGNUM *priv,
     }
     if (BN_cmp(out, range) < 0) {
       break;
+    }
+
+    if (attempt == 255) {
+      /* This should never happen in practice. If it were to happen then it is
+       * very likely that the something is very wrong. Note that 255 is
+       * arbitrary; the limit should be |UINT32_MAX| or less in order for
+       * |attempt| to avoid wrapping around; */
+      OPENSSL_PUT_ERROR(BN, BN_R_TOO_MANY_ITERATIONS);
+      goto err;
     }
   }
 
