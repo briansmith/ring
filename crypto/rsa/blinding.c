@@ -134,7 +134,7 @@ static BN_BLINDING *bn_blinding_create_param(BN_BLINDING *b, const BIGNUM *e,
 BN_BLINDING *BN_BLINDING_new(const BIGNUM *A, const BIGNUM *Ai, BIGNUM *mod) {
   BN_BLINDING *ret = NULL;
 
-  ret = (BN_BLINDING*) OPENSSL_malloc(sizeof(BN_BLINDING));
+  ret = OPENSSL_malloc(sizeof(BN_BLINDING));
   if (ret == NULL) {
     OPENSSL_PUT_ERROR(RSA, ERR_R_MALLOC_FAILURE);
     return NULL;

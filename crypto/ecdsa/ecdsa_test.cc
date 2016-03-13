@@ -70,7 +70,7 @@ static bool point2oct(ScopedOpenSSLBytes *out, size_t *out_len,
   if (der_len <= 0) {
     return false;
   }
-  out->reset((uint8_t *)OPENSSL_malloc(der_len));
+  out->reset(static_cast<uint8_t *>(OPENSSL_malloc(der_len)));
   if (!out) {
     return false;
   }
