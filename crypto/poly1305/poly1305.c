@@ -105,7 +105,7 @@ static uint64_t mul32x32_64(uint32_t a, uint32_t b) { return (uint64_t)a * b; }
 static int poly1305_init(void *ctx, const uint8_t key[16], void *out_func) {
   (void)out_func;
 
-  struct poly1305_block_state_st *state = (struct poly1305_block_state_st *)ctx;
+  struct poly1305_block_state_st *state = ctx;
   uint32_t t0, t1, t2, t3;
 
   t0 = U8TO32_LE(key + 0);
@@ -144,7 +144,7 @@ static int poly1305_init(void *ctx, const uint8_t key[16], void *out_func) {
 
 static void poly1305_blocks(void *ctx, const uint8_t *in, size_t len,
                             uint32_t padbit) {
-  struct poly1305_block_state_st *state = (struct poly1305_block_state_st *)ctx;
+  struct poly1305_block_state_st *state = ctx;
   uint32_t t0, t1, t2, t3;
   uint64_t t[5];
   uint32_t b;
@@ -208,7 +208,7 @@ static void poly1305_blocks(void *ctx, const uint8_t *in, size_t len,
 }
 
 static void poly1305_emit(void *ctx, uint8_t mac[16], const uint32_t nonce[4]) {
-  struct poly1305_block_state_st *state = (struct poly1305_block_state_st *)ctx;
+  struct poly1305_block_state_st *state = ctx;
   uint64_t f0, f1, f2, f3;
   uint32_t g0, g1, g2, g3, g4;
   uint32_t b, nb;
