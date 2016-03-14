@@ -268,61 +268,68 @@ static void poly1305_emit(void *ctx, uint8_t mac[16], const uint32_t nonce[4]) {
 #endif /* !POLY1305_ASM */
 
 void CRYPTO_poly1305_init(poly1305_state *statep, const uint8_t key[32]) {
-  struct poly1305_state_st *state = (struct poly1305_state_st *)statep;
+  struct poly1305_state_st state;
 
-  if (!poly1305_init(state->opaque, key, &state->func)) {
-    state->func.blocks = poly1305_blocks;
-    state->func.emit = poly1305_emit;
+  if (!poly1305_init(state.opaque, key, &state.func)) {
+    state.func.blocks = poly1305_blocks;
+    state.func.emit = poly1305_emit;
   }
 
-  state->buf_used = 0;
-  state->nonce[0] = U8TO32_LE(key + 16);
-  state->nonce[1] = U8TO32_LE(key + 20);
-  state->nonce[2] = U8TO32_LE(key + 24);
-  state->nonce[3] = U8TO32_LE(key + 28);
+  state.buf_used = 0;
+  state.nonce[0] = U8TO32_LE(key + 16);
+  state.nonce[1] = U8TO32_LE(key + 20);
+  state.nonce[2] = U8TO32_LE(key + 24);
+  state.nonce[3] = U8TO32_LE(key + 28);
+
+  memset(statep, 0, sizeof(*statep));
+  memcpy(statep, &state, sizeof(state));
 }
 
 void CRYPTO_poly1305_update(poly1305_state *statep, const uint8_t *in,
                             size_t in_len) {
-  struct poly1305_state_st *state = (struct poly1305_state_st *)statep;
+  struct poly1305_state_st state;
+  memcpy(&state, statep, sizeof(state));
 
-  if (state->buf_used != 0) {
-    unsigned todo = 16 - state->buf_used;
+  if (state.buf_used != 0) {
+    unsigned todo = 16 - state.buf_used;
     if (todo > in_len) {
       todo = in_len;
     }
-    memcpy(state->buf + state->buf_used, in, todo);
-    state->buf_used += todo;
+    memcpy(state.buf + state.buf_used, in, todo);
+    state.buf_used += todo;
     in_len -= todo;
     in += todo;
 
-    if (state->buf_used == 16) {
-      state->func.blocks(state->opaque, state->buf, 16, 1 /* pad */);
-      state->buf_used = 0;
+    if (state.buf_used == 16) {
+      state.func.blocks(state.opaque, state.buf, 16, 1 /* pad */);
+      state.buf_used = 0;
     }
   }
 
   if (in_len >= 16) {
     size_t todo = in_len & ~0xf;
-    state->func.blocks(state->opaque, in, todo, 1 /* pad */);
+    state.func.blocks(state.opaque, in, todo, 1 /* pad */);
     in += todo;
     in_len &= 0xf;
   }
 
   if (in_len != 0) {
-    memcpy(state->buf, in, in_len);
-    state->buf_used = in_len;
+    memcpy(state.buf, in, in_len);
+    state.buf_used = in_len;
   }
+
+  memcpy(statep, &state, sizeof(state));
 }
 
 void CRYPTO_poly1305_finish(poly1305_state *statep, uint8_t mac[16]) {
-  struct poly1305_state_st *state = (struct poly1305_state_st *)statep;
+  struct poly1305_state_st state;
+  memcpy(&state, statep, sizeof(state));
 
-  if (state->buf_used != 0) {
-    state->buf[state->buf_used] = 1;
-    memset(state->buf + state->buf_used + 1, 0, 16 - state->buf_used - 1);
-    state->func.blocks(state->opaque, state->buf, 16, 0 /* already padded */);
+  if (state.buf_used != 0) {
+    state.buf[state.buf_used] = 1;
+    memset(state.buf + state.buf_used + 1, 0, 16 - state.buf_used - 1);
+    state.func.blocks(state.opaque, state.buf, 16, 0 /* already padded */);
   }
 
-  state->func.emit(state->opaque, mac, state->nonce);
+  state.func.emit(state.opaque, mac, state.nonce);
 }
