@@ -16,7 +16,16 @@ RING_PREFIX ?= ring/
 
 RING_CPPFLAGS = $(RING_THREAD_FLAGS) -I$(RING_PREFIX)include -I$(GENERATED_CODE_DIR) -D_XOPEN_SOURCE=700
 
+ifeq ($(TARGET_ARCH_NORMAL),x86)
+RING_CPPFLAGS += -mrdrnd
+else ifeq ($(TARGET_ARCH_NORMAL),x86_64)
+RING_CPPFLAGS += -mrdrnd
+endif
+
 RING_LDLIBS = $(RING_THREAD_FLAGS) -L$(dir $(RING_LIB)) -lring-core
+
+TARGET_ARCH_x86 += -mrdrnd
+TARGET_ARCH_x86_64 += -mrdrnd
 
 RING_SRCS = $(addprefix $(RING_PREFIX), \
   crypto/aes/aes.c \
@@ -99,7 +108,6 @@ RING_x86_64_SRCS = $(addprefix $(RING_PREFIX), \
   crypto/modes/asm/aesni-gcm-x86_64.pl \
   crypto/modes/asm/ghash-x86_64.pl \
   crypto/poly1305/asm/poly1305-x86_64.pl \
-  crypto/rand/asm/rdrand-x86_64.pl \
   crypto/sha/asm/sha256-x86_64.pl \
   crypto/sha/asm/sha512-x86_64.pl \
   $(NULL))

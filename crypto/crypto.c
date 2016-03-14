@@ -21,11 +21,17 @@
 #include "internal.h"
 
 
-#if !defined(OPENSSL_NO_ASM) && !defined(OPENSSL_STATIC_ARMCAP) && \
+#if (!defined(OPENSSL_NO_ASM) || defined(OPENSSL_WINDOWS)) && \
+    !defined(OPENSSL_STATIC_ARMCAP) && \
     (defined(OPENSSL_X86) || defined(OPENSSL_X86_64) || \
      defined(OPENSSL_ARM) || defined(OPENSSL_AARCH64))
 /* x86, x86_64 and the ARMs need to record the result of a cpuid call for the
- * asm to work correctly, unless compiled without asm code. */
+ * asm to work correctly, unless compiled without asm code.
+ *
+ * Additionally, x86 and x86_64 need the result of the cpuid call for
+ * RDRAND-based random number generation even when |OPENSSL_NO_ASM| is set.
+ * XXX: Currently, there is no detection of RDRAND when |OPENSSL_NO_ASM| is
+ * defined on non-Windows OS's. */
 #define NEED_CPUID
 
 #else

@@ -117,6 +117,7 @@
 
 #include <openssl/base.h>
 #include <openssl/thread.h>
+#include <openssl/type_check.h>
 
 #if defined(_MSC_VER)
 #pragma warning(push, 3)
@@ -181,6 +182,69 @@ void OPENSSL_cpuid_setup(void);
 #define bswap_u32(x) _byteswap_ulong(x)
 #define bswap_u64(x) _byteswap_uint64(x)
 #endif
+
+/* When |long| and |long long| are both 64 bits, pointers to each of those
+ * types can't be used 100% interchangeably. Thus, for example, we cannot pass
+ * a |int64_t *| where a |long long *| is expected if |int64_t| is defined as
+ * |long|, even if there would be absolutely no difference semantically. Such
+ * situations arise when compiling with GCC for 64-bit targets. |int64_alt| and
+ * |uint64_alt| can be used the situations where some external code used
+ * |long long| or |unsigned long long| to denote a 64-bit integer instead of
+ * using an |uint64_t|-compatibile type.
+ *
+ * https://stackoverflow.com/questions/32198368/unsigned-long-long-conflict-with-uint64-t
+ */
+#if defined(__GNUC__) && defined(OPENSSL_64_BIT)
+typedef long long int64_alt;
+typedef unsigned long long uint64_alt;
+#else
+typedef int64_t int64_alt;
+typedef uint64_t uint64_alt;
+#endif
+
+OPENSSL_COMPILE_ASSERT(sizeof(int64_alt) == sizeof(int64_t),
+                       wrong_size_of_int64_alt);
+OPENSSL_COMPILE_ASSERT(alignof(int64_alt) == alignof(int64_t),
+                       wrong_alignment_of_int64_alt);
+OPENSSL_COMPILE_ASSERT(sizeof(uint64_alt) == sizeof(uint64_t),
+                       wrong_size_of_uint64_alt);
+OPENSSL_COMPILE_ASSERT(alignof(uint64_alt) == alignof(uint64_t),
+                       wrong_alignment_of_uint64_alt);
+
+
+/* Native-sized integer types.
+ *
+ * ISO C doesn't define types for the native word size. On some 64-bit
+ * platforms, e.g. x32, the native word size is 64 bits but |size_t|,
+ * |unsigned int|, and even types like |uint32_fast_t| etc. all may only be
+ * 32 bits.
+ *
+ * TODO: When such platforms are supported, the use of |OPENSSL_32_BIT| and
+ * |OPENSSL_64_BIT| throughout the project, including the uses here, will need
+ * to be reviewed and fixed. */
+#if defined(OPENSSL_32_BIT)
+#define NATIVE_WORD_SIZE 4
+typedef int32_t native_int;
+typedef int32_t native_int_alt;
+typedef uint32_t native_uint;
+typedef uint32_t native_uint_alt;
+#endif
+#if defined(OPENSSL_64_BIT)
+#define NATIVE_WORD_SIZE 8
+typedef int64_t native_int;
+typedef int64_alt native_int_alt;
+typedef uint64_t native_uint;
+typedef uint64_alt native_uint_alt;
+#endif
+
+OPENSSL_COMPILE_ASSERT(sizeof(native_int) >= sizeof(size_t),
+                       wrong_size_of_native_int);
+OPENSSL_COMPILE_ASSERT(sizeof(native_int_alt) >= sizeof(size_t),
+                       wrong_size_of_native_int_alt);
+OPENSSL_COMPILE_ASSERT(sizeof(native_uint) >= sizeof(size_t),
+                       wrong_size_of_native_int);
+OPENSSL_COMPILE_ASSERT(sizeof(native_uint_alt) >= sizeof(size_t),
+                       wrong_size_of_native_int_alt);
 
 
 #if !defined(_MSC_VER) && defined(OPENSSL_64_BIT)
