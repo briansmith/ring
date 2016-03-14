@@ -523,6 +523,20 @@ static inline uint64_t from_be_u64(uint64_t x) {
   return x;
 }
 
+/* to_le_u64_ptr stores the little-endian-encoded representation of |value| in
+ * the 8 bytes at |out|. */
+static inline void to_le_u64_ptr(uint8_t out[8], uint64_t value) {
+  out[0] = (uint8_t)value;
+  out[1] = (uint8_t)(value >> 8);
+  out[2] = (uint8_t)(value >> 16);
+  out[3] = (uint8_t)(value >> 24);
+  out[4] = (uint8_t)(value >> 32);
+  out[5] = (uint8_t)(value >> 40);
+  out[6] = (uint8_t)(value >> 48);
+  out[7] = (uint8_t)(value >> 56);
+}
+
+
 /* rotate_right_u64 returns |x| with its bits rotated |n| bits to the right. */
 static inline uint64_t rotate_right_u64(uint64_t x, int n) {
   assert(n > 0);

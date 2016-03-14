@@ -34,16 +34,15 @@
 
 #include "internal.h"
 #include "../internal.h"
+#include "../bn/internal.h"
 
 
 typedef uint8_t u8;
 typedef uint64_t u64;
 typedef int64_t s64;
 
-/* The underlying field. P256 operates over GF(2^256-2^224+2^192+2^96-1). We
- * can serialise an element of this field into 32 bytes. We call this an
- * felem_bytearray. */
-typedef u8 felem_bytearray[32];
+/* The little-endian representation of a scalar. */
+typedef u8 scalar_bytearray[32];
 
 /* The representation of field elements.
  * ------------------------------------
@@ -76,61 +75,41 @@ static const u64 kPrime[4] = {0xfffffffffffffffful, 0xffffffff, 0,
                               0xffffffff00000001ul};
 static const u64 bottom63bits = 0x7ffffffffffffffful;
 
-/* bin32_to_felem takes a little-endian byte array and converts it into felem
- * form. This assumes that the CPU is little-endian. */
-static void bin32_to_felem(felem out, const u8 in[32]) {
-  out[0] = *((const u64 *)&in[0]);
-  out[1] = *((const u64 *)&in[8]);
-  out[2] = *((const u64 *)&in[16]);
-  out[3] = *((const u64 *)&in[24]);
-}
-
-/* smallfelem_to_bin32 takes a smallfelem and serialises into a little endian,
- * 32 byte array. This assumes that the CPU is little-endian. */
-static void smallfelem_to_bin32(u8 out[32], const smallfelem in) {
-  *((u64 *)&out[0]) = in[0];
-  *((u64 *)&out[8]) = in[1];
-  *((u64 *)&out[16]) = in[2];
-  *((u64 *)&out[24]) = in[3];
-}
-
-/* To preserve endianness when using BN_bn2bin and BN_bin2bn. */
-static void flip_endian(u8 *out, const u8 *in, unsigned len) {
-  unsigned i;
-  for (i = 0; i < len; ++i) {
-    out[i] = in[len - 1 - i];
-  }
-}
-
 /* BN_to_felem converts an OpenSSL BIGNUM into an felem. */
 static int BN_to_felem(felem out, const BIGNUM *bn) {
-  if (BN_is_negative(bn)) {
+  if (BN_is_negative(bn) || bn->top > 8) {
     OPENSSL_PUT_ERROR(EC, EC_R_BIGNUM_OUT_OF_RANGE);
     return 0;
   }
 
-  felem_bytearray b_out;
-  /* BN_bn2bin eats leading zeroes */
-  memset(b_out, 0, sizeof(b_out));
-  unsigned num_bytes = BN_num_bytes(bn);
-  if (num_bytes > sizeof(b_out)) {
-    OPENSSL_PUT_ERROR(EC, EC_R_BIGNUM_OUT_OF_RANGE);
+  for (int i = 0; i < NLIMBS; ++i) {
+    out[i] = bn->top > i ? bn->d[i] : 0;
+  }
+
+  return 1;
+}
+
+static int BN_to_scalar_bytearray(const EC_GROUP *group, scalar_bytearray out,
+                                  const BIGNUM *bn) {
+#if defined(NDEBUG)
+  (void)group;
+#endif
+  assert(BN_cmp(bn, EC_GROUP_get0_order(group)) < 0);
+  if (BN_is_negative(bn) || bn->top > 8) {
+    OPENSSL_PUT_ERROR(EC, EC_R_BIGNUM_OUT_OF_RANGE)
     return 0;
   }
 
-  felem_bytearray b_in;
-  num_bytes = BN_bn2bin(bn, b_in);
-  flip_endian(b_out, b_in, num_bytes);
-  bin32_to_felem(out, b_out);
+  for (int i = 0; i < NLIMBS; ++i) {
+    to_le_u64_ptr(&out[i * 8], bn->top > i ? bn->d[i] : 0);
+  }
+
   return 1;
 }
 
 /* felem_to_BN converts an felem into an OpenSSL BIGNUM. */
-static BIGNUM *smallfelem_to_BN(BIGNUM *out, const smallfelem in) {
-  felem_bytearray b_in, b_out;
-  smallfelem_to_bin32(b_in, in);
-  flip_endian(b_out, b_in, sizeof(b_out));
-  return BN_bin2bn(b_out, sizeof(b_out), out);
+static inline int smallfelem_to_BN(BIGNUM *out, const smallfelem in) {
+  return bn_set_words(out, in, NLIMBS);
 }
 
 /* Field operations. */
@@ -1411,7 +1390,7 @@ static void select_point(const u64 idx, unsigned int size,
   memset(outlimbs, 0, 3 * sizeof(smallfelem));
 
   for (i = 0; i < size; i++) {
-    const u64 *inlimbs = (const u64 *)&pre_comp[i][0][0];
+    const u64 *inlimbs = &pre_comp[i][0][0];
     u64 mask = i ^ idx;
     mask |= mask >> 4;
     mask |= mask >> 2;
@@ -1425,7 +1404,7 @@ static void select_point(const u64 idx, unsigned int size,
 }
 
 /* get_bit returns the |i|th bit in |in| */
-static char get_bit(const felem_bytearray in, int i) {
+static char get_bit(const scalar_bytearray in, int i) {
   if (i < 0 || i >= 256) {
     return 0;
   }
@@ -1438,7 +1417,7 @@ static char get_bit(const felem_bytearray in, int i) {
  * generator, using certain (large) precomputed multiples in g_pre_comp.
  * Output point (X, Y, Z) is stored in x_out, y_out, z_out. */
 static void batch_mul(felem x_out, felem y_out, felem z_out,
-                      const felem_bytearray scalars[],
+                      const scalar_bytearray scalars[],
                       const unsigned num_points, const u8 *g_scalar,
                       const smallfelem pre_comp[][17][3]) {
   int i, skip;
@@ -1581,6 +1560,9 @@ int ec_GFp_nistp256_point_get_affine_coordinates(const EC_GROUP *group,
 int ec_GFp_nistp256_points_mul(const EC_GROUP *group, EC_POINT *r,
                                const BIGNUM *g_scalar, const EC_POINT *p_,
                                const BIGNUM *p_scalar_, BN_CTX *ctx) {
+  assert(g_scalar == NULL || BN_cmp(g_scalar, EC_GROUP_get0_order(group)) < 0);
+  assert(p_scalar_ == NULL || BN_cmp(p_scalar_, EC_GROUP_get0_order(group)) < 0);
+
   /* TODO: This function used to take |points| and |scalars| as arrays of
    * |num| elements. The code below should be simplified to work in terms of |p|
    * and |p_scalar|. */
@@ -1592,11 +1574,10 @@ int ec_GFp_nistp256_points_mul(const EC_GROUP *group, EC_POINT *r,
   int j;
   BN_CTX *new_ctx = NULL;
   BIGNUM *x, *y, *z;
-  felem_bytearray g_secret;
-  felem_bytearray *secrets = NULL;
+  scalar_bytearray g_secret;
+  scalar_bytearray *secrets = NULL;
   smallfelem(*pre_comp)[17][3] = NULL;
-  felem_bytearray tmp;
-  unsigned i, num_bytes;
+  unsigned i;
   size_t num_points = num;
   smallfelem x_in, y_in, z_in;
   felem x_out, y_out, z_out;
@@ -1618,7 +1599,7 @@ int ec_GFp_nistp256_points_mul(const EC_GROUP *group, EC_POINT *r,
   }
 
   if (num_points > 0) {
-    secrets = OPENSSL_malloc(num_points * sizeof(felem_bytearray));
+    secrets = OPENSSL_malloc(num_points * sizeof(scalar_bytearray));
     pre_comp = OPENSSL_malloc(num_points * sizeof(smallfelem[17][3]));
     if (secrets == NULL || pre_comp == NULL) {
       OPENSSL_PUT_ERROR(EC, ERR_R_MALLOC_FAILURE);
@@ -1627,7 +1608,7 @@ int ec_GFp_nistp256_points_mul(const EC_GROUP *group, EC_POINT *r,
 
     /* we treat NULL scalars as 0, and NULL points as points at infinity,
      * i.e., they contribute nothing to the linear combination. */
-    memset(secrets, 0, num_points * sizeof(felem_bytearray));
+    memset(secrets, 0, num_points * sizeof(scalar_bytearray));
     memset(pre_comp, 0, num_points * 17 * 3 * sizeof(smallfelem));
     for (i = 0; i < num_points; ++i) {
       if (i == num) {
@@ -1640,12 +1621,9 @@ int ec_GFp_nistp256_points_mul(const EC_GROUP *group, EC_POINT *r,
         p_scalar = scalars[i];
       }
       if (p_scalar != NULL && p != NULL) {
-        assert(BN_cmp(p_scalar, EC_GROUP_get0_order(group)) < 0);
-        num_bytes = BN_bn2bin(p_scalar, tmp);
-        flip_endian(secrets[i], tmp, num_bytes);
-
         /* precompute multiples */
-        if (!BN_to_felem(x_out, &p->X) ||
+        if (!BN_to_scalar_bytearray(group, secrets[i], p_scalar) ||
+            !BN_to_felem(x_out, &p->X) ||
             !BN_to_felem(y_out, &p->Y) ||
             !BN_to_felem(z_out, &p->Z)) {
           goto err;
@@ -1671,12 +1649,11 @@ int ec_GFp_nistp256_points_mul(const EC_GROUP *group, EC_POINT *r,
   }
 
   if (g_scalar != NULL) {
-    memset(g_secret, 0, sizeof(g_secret));
-    assert(BN_cmp(g_scalar, EC_GROUP_get0_order(group)) < 0);
-    num_bytes = BN_bn2bin(g_scalar, tmp);
-    flip_endian(g_secret, tmp, num_bytes);
+    if (!BN_to_scalar_bytearray(group, g_secret, g_scalar)) {
+      goto err;
+    }
   }
-  batch_mul(x_out, y_out, z_out, (const felem_bytearray(*))secrets,
+  batch_mul(x_out, y_out, z_out, (const scalar_bytearray(*))secrets,
             num_points, g_scalar != NULL ? g_secret : NULL,
             (const smallfelem(*)[17][3])pre_comp);
 
