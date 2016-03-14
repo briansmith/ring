@@ -83,7 +83,7 @@ int RSA_padding_add_PKCS1_type_1(uint8_t *to, unsigned to_len,
     return 0;
   }
 
-  p = (uint8_t *)to;
+  p = to;
 
   *(p++) = 0;
   *(p++) = 1; /* Private Key BT (Block Type) */
@@ -160,7 +160,7 @@ int RSA_padding_add_PKCS1_type_2(uint8_t *to, unsigned to_len,
     return 0;
   }
 
-  p = (unsigned char *)to;
+  p = to;
 
   *(p++) = 0;
   *(p++) = 2; /* Public Key BT (Block Type) */
