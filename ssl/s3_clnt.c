@@ -182,7 +182,6 @@ int ssl3_connect(SSL *ssl) {
   assert(!ssl->server);
   assert(!SSL_IS_DTLS(ssl));
 
-  ERR_clear_error();
   ERR_clear_system_error();
 
   if (ssl->info_callback != NULL) {

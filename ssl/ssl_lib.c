@@ -550,6 +550,9 @@ BIO *SSL_get_rbio(const SSL *ssl) { return ssl->rbio; }
 BIO *SSL_get_wbio(const SSL *ssl) { return ssl->wbio; }
 
 int SSL_do_handshake(SSL *ssl) {
+  /* Functions which use SSL_get_error must clear the error queue on entry. */
+  ERR_clear_error();
+
   if (ssl->handshake_func == NULL) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_CONNECTION_TYPE_NOT_SET);
     return -1;
@@ -568,12 +571,9 @@ int SSL_connect(SSL *ssl) {
     SSL_set_connect_state(ssl);
   }
 
-  if (ssl->handshake_func != ssl->method->ssl_connect) {
-    OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
-    return -1;
-  }
+  assert(ssl->handshake_func == ssl->method->ssl_connect);
 
-  return ssl->handshake_func(ssl);
+  return SSL_do_handshake(ssl);
 }
 
 int SSL_accept(SSL *ssl) {
@@ -582,15 +582,15 @@ int SSL_accept(SSL *ssl) {
     SSL_set_accept_state(ssl);
   }
 
-  if (ssl->handshake_func != ssl->method->ssl_accept) {
-    OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
-    return -1;
-  }
+  assert(ssl->handshake_func == ssl->method->ssl_accept);
 
-  return ssl->handshake_func(ssl);
+  return SSL_do_handshake(ssl);
 }
 
-int SSL_read(SSL *ssl, void *buf, int num) {
+static int ssl_read_impl(SSL *ssl, void *buf, int num, int peek) {
+  /* Functions which use SSL_get_error must clear the error queue on entry. */
+  ERR_clear_error();
+
   if (ssl->handshake_func == 0) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_UNINITIALIZED);
     return -1;
@@ -602,24 +602,21 @@ int SSL_read(SSL *ssl, void *buf, int num) {
   }
 
   ERR_clear_system_error();
-  return ssl->method->ssl_read_app_data(ssl, buf, num, 0);
+  return ssl->method->ssl_read_app_data(ssl, buf, num, peek);
+}
+
+int SSL_read(SSL *ssl, void *buf, int num) {
+  return ssl_read_impl(ssl, buf, num, 0 /* consume bytes */);
 }
 
 int SSL_peek(SSL *ssl, void *buf, int num) {
-  if (ssl->handshake_func == 0) {
-    OPENSSL_PUT_ERROR(SSL, SSL_R_UNINITIALIZED);
-    return -1;
-  }
-
-  if (ssl->shutdown & SSL_RECEIVED_SHUTDOWN) {
-    return 0;
-  }
-
-  ERR_clear_system_error();
-  return ssl->method->ssl_read_app_data(ssl, buf, num, 1);
+  return ssl_read_impl(ssl, buf, num, 1 /* peek */);
 }
 
 int SSL_write(SSL *ssl, const void *buf, int num) {
+  /* Functions which use SSL_get_error must clear the error queue on entry. */
+  ERR_clear_error();
+
   if (ssl->handshake_func == 0) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_UNINITIALIZED);
     return -1;
@@ -636,6 +633,9 @@ int SSL_write(SSL *ssl, const void *buf, int num) {
 }
 
 int SSL_shutdown(SSL *ssl) {
+  /* Functions which use SSL_get_error must clear the error queue on entry. */
+  ERR_clear_error();
+
   /* Note that this function behaves differently from what one might expect.
    * Return values are 0 for no success (yet), 1 for success; but calling it
    * once is usually not enough, even if blocking I/O is used (see
