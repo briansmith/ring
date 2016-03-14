@@ -161,7 +161,7 @@ static const EVP_MD *rsa_algor_to_md(X509_ALGOR *alg) {
   }
   md = EVP_get_digestbyobj(alg->algorithm);
   if (md == NULL) {
-    OPENSSL_PUT_ERROR(ASN1, ASN1_R_UNSUPPORTED_ALGORITHM);
+    OPENSSL_PUT_ERROR(X509, X509_R_INVALID_PSS_PARAMETERS);
   }
   return md;
 }
@@ -173,17 +173,14 @@ static const EVP_MD *rsa_mgf1_to_md(X509_ALGOR *alg, X509_ALGOR *maskHash) {
     return EVP_sha1();
   }
   /* Check mask and lookup mask hash algorithm */
-  if (OBJ_obj2nid(alg->algorithm) != NID_mgf1) {
-    OPENSSL_PUT_ERROR(ASN1, ASN1_R_UNSUPPORTED_ALGORITHM);
-    return NULL;
-  }
-  if (!maskHash) {
-    OPENSSL_PUT_ERROR(ASN1, ASN1_R_UNSUPPORTED_ALGORITHM);
+  if (OBJ_obj2nid(alg->algorithm) != NID_mgf1 ||
+      maskHash == NULL) {
+    OPENSSL_PUT_ERROR(X509, X509_R_INVALID_PSS_PARAMETERS);
     return NULL;
   }
   md = EVP_get_digestbyobj(maskHash->algorithm);
   if (md == NULL) {
-    OPENSSL_PUT_ERROR(ASN1, ASN1_R_UNSUPPORTED_ALGORITHM);
+    OPENSSL_PUT_ERROR(X509, X509_R_INVALID_PSS_PARAMETERS);
     return NULL;
   }
   return md;
@@ -253,7 +250,7 @@ int x509_rsa_pss_to_ctx(EVP_MD_CTX *ctx, X509_ALGOR *sigalg, EVP_PKEY *pkey) {
   X509_ALGOR *maskHash;
   RSA_PSS_PARAMS *pss = rsa_pss_decode(sigalg, &maskHash);
   if (pss == NULL) {
-    OPENSSL_PUT_ERROR(RSA, RSA_R_INVALID_PSS_PARAMETERS);
+    OPENSSL_PUT_ERROR(X509, X509_R_INVALID_PSS_PARAMETERS);
     goto err;
   }
 
@@ -270,7 +267,7 @@ int x509_rsa_pss_to_ctx(EVP_MD_CTX *ctx, X509_ALGOR *sigalg, EVP_PKEY *pkey) {
     /* Could perform more salt length sanity checks but the main
      * RSA routines will trap other invalid values anyway. */
     if (saltlen < 0) {
-      OPENSSL_PUT_ERROR(RSA, RSA_R_INVALID_SALT_LENGTH);
+      OPENSSL_PUT_ERROR(X509, X509_R_INVALID_PSS_PARAMETERS);
       goto err;
     }
   }
@@ -278,7 +275,7 @@ int x509_rsa_pss_to_ctx(EVP_MD_CTX *ctx, X509_ALGOR *sigalg, EVP_PKEY *pkey) {
   /* low-level routines support only trailer field 0xbc (value 1)
    * and PKCS#1 says we should reject any other value anyway. */
   if (pss->trailerField != NULL && ASN1_INTEGER_get(pss->trailerField) != 1) {
-    OPENSSL_PUT_ERROR(RSA, RSA_R_INVALID_TRAILER);
+    OPENSSL_PUT_ERROR(X509, X509_R_INVALID_PSS_PARAMETERS);
     goto err;
   }
 

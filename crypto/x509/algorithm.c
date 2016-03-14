@@ -89,7 +89,7 @@ int x509_digest_sign_algorithm(EVP_MD_CTX *ctx, X509_ALGOR *algor) {
   int sign_nid;
   if (!OBJ_find_sigid_by_algs(&sign_nid, EVP_MD_type(digest),
                               EVP_PKEY_id(pkey))) {
-    OPENSSL_PUT_ERROR(ASN1, ASN1_R_UNSUPPORTED_ALGORITHM);
+    OPENSSL_PUT_ERROR(ASN1, ASN1_R_DIGEST_AND_KEY_TYPE_NOT_SUPPORTED);
     return 0;
   }
 
@@ -107,7 +107,7 @@ int x509_digest_verify_init(EVP_MD_CTX *ctx, X509_ALGOR *sigalg,
   int sigalg_nid = OBJ_obj2nid(sigalg->algorithm);
   int digest_nid, pkey_nid;
   if (!OBJ_find_sigid_algs(sigalg_nid, &digest_nid, &pkey_nid)) {
-    OPENSSL_PUT_ERROR(ASN1, ASN1_R_UNSUPPORTED_ALGORITHM);
+    OPENSSL_PUT_ERROR(ASN1, ASN1_R_UNKNOWN_SIGNATURE_ALGORITHM);
     return 0;
   }
 
@@ -120,7 +120,7 @@ int x509_digest_verify_init(EVP_MD_CTX *ctx, X509_ALGOR *sigalg,
   /* NID_undef signals that there are custom parameters to set. */
   if (digest_nid == NID_undef) {
     if (sigalg_nid != NID_rsassaPss) {
-      OPENSSL_PUT_ERROR(ASN1, ASN1_R_UNSUPPORTED_ALGORITHM);
+      OPENSSL_PUT_ERROR(ASN1, ASN1_R_UNKNOWN_SIGNATURE_ALGORITHM);
       return 0;
     }
     return x509_rsa_pss_to_ctx(ctx, sigalg, pkey);
@@ -129,7 +129,7 @@ int x509_digest_verify_init(EVP_MD_CTX *ctx, X509_ALGOR *sigalg,
   /* Otherwise, initialize with the digest from the OID. */
   const EVP_MD *digest = EVP_get_digestbynid(digest_nid);
   if (digest == NULL) {
-    OPENSSL_PUT_ERROR(X509, X509_R_UNKNOWN_NID);
+    OPENSSL_PUT_ERROR(ASN1, ASN1_R_UNKNOWN_MESSAGE_DIGEST_ALGORITHM);
     return 0;
   }
 
