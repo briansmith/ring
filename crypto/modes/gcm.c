@@ -261,9 +261,9 @@ void gcm_ghash_4bit(uint8_t Xi[16], const u128 Htable[16], const uint8_t *inp,
                     size_t len);
 #endif
 
-#define GCM_MUL(ctx, Xi) gcm_gmult_4bit(ctx->Xi.c, ctx->Htable)
+#define GCM_MUL(ctx, Xi) gcm_gmult_4bit(ctx->Xi, ctx->Htable)
 #if defined(GHASH_ASM)
-#define GHASH(ctx, in, len) gcm_ghash_4bit((ctx)->Xi.c, (ctx)->Htable, in, len)
+#define GHASH(ctx, in, len) gcm_ghash_4bit((ctx)->Xi, (ctx)->Htable, in, len)
 /* GHASH_CHUNK is "stride parameter" missioned to mitigate cache
  * trashing effect. In other words idea is to hash data while it's
  * still in L1 cache after encryption pass... */
@@ -342,10 +342,10 @@ void gcm_ghash_neon(uint8_t Xi[16], const u128 Htable[16], const uint8_t *inp,
 
 #ifdef GCM_FUNCREF_4BIT
 #undef GCM_MUL
-#define GCM_MUL(ctx, Xi) (*gcm_gmult_p)(ctx->Xi.c, ctx->Htable)
+#define GCM_MUL(ctx, Xi) (*gcm_gmult_p)(ctx->Xi, ctx->Htable)
 #ifdef GHASH
 #undef GHASH
-#define GHASH(ctx, in, len) (*gcm_ghash_p)(ctx->Xi.c, ctx->Htable, in, len)
+#define GHASH(ctx, in, len) (*gcm_ghash_p)(ctx->Xi, ctx->Htable, in, len)
 #endif
 #endif
 
@@ -354,11 +354,13 @@ void CRYPTO_gcm128_init(GCM128_CONTEXT *ctx, const AES_KEY *key,
   memset(ctx, 0, sizeof(*ctx));
   ctx->block = block;
 
-  (*block)(ctx->H.c, ctx->H.c, key);
+  static const alignas(16) uint8_t ZEROS[16] = { 0 };
+  uint8_t H_be[16];
+  (*block)(ZEROS, H_be, key);
 
-/* H is stored in host byte order */
-  ctx->H.u[0] = from_be_u64(ctx->H.u[0]);
-  ctx->H.u[1] = from_be_u64(ctx->H.u[1]);
+  /* H is stored in host byte order */
+  ctx->H.u[0] = from_be_u64_ptr(H_be);
+  ctx->H.u[1] = from_be_u64_ptr(H_be + 8);
 
 #if defined(GHASH_ASM_X86_OR_64)
   if (crypto_gcm_clmul_enabled()) {
@@ -420,12 +422,12 @@ void CRYPTO_gcm128_set_96_bit_iv(GCM128_CONTEXT *ctx, const AES_KEY *key,
   ctx->ares = 0;
   ctx->mres = 0;
 
-  memcpy(ctx->Yi.c, iv, 12);
-  to_be_u32_ptr(ctx->Yi.c + 12, ctr);
+  memcpy(ctx->Yi, iv, 12);
+  to_be_u32_ptr(ctx->Yi + 12, ctr);
 
-  (*ctx->block)(ctx->Yi.c, ctx->EK0.c, key);
+  (*ctx->block)(ctx->Yi, ctx->EK0, key);
   ++ctr;
-  to_be_u32_ptr(ctx->Yi.c + 12, ctr);
+  to_be_u32_ptr(ctx->Yi + 12, ctr);
 }
 
 int CRYPTO_gcm128_aad(GCM128_CONTEXT *ctx, const uint8_t *aad, size_t len) {
@@ -452,7 +454,7 @@ int CRYPTO_gcm128_aad(GCM128_CONTEXT *ctx, const uint8_t *aad, size_t len) {
   n = ctx->ares;
   if (n) {
     while (n && len) {
-      ctx->Xi.c[n] ^= *(aad++);
+      ctx->Xi[n] ^= *(aad++);
       --len;
       n = (n + 1) % 16;
     }
@@ -474,7 +476,7 @@ int CRYPTO_gcm128_aad(GCM128_CONTEXT *ctx, const uint8_t *aad, size_t len) {
 #else
   while (len >= 16) {
     for (i = 0; i < 16; ++i) {
-      ctx->Xi.c[i] ^= aad[i];
+      ctx->Xi[i] ^= aad[i];
     }
     GCM_MUL(ctx, Xi);
     aad += 16;
@@ -484,7 +486,7 @@ int CRYPTO_gcm128_aad(GCM128_CONTEXT *ctx, const uint8_t *aad, size_t len) {
   if (len) {
     n = (unsigned int)len;
     for (i = 0; i < len; ++i) {
-      ctx->Xi.c[i] ^= aad[i];
+      ctx->Xi[i] ^= aad[i];
     }
   }
 
@@ -519,12 +521,12 @@ int CRYPTO_gcm128_encrypt(GCM128_CONTEXT *ctx, const AES_KEY *key,
     ctx->ares = 0;
   }
 
-  ctr = from_be_u32_ptr(ctx->Yi.c + 12);
+  ctr = from_be_u32_ptr(ctx->Yi + 12);
 
   n = ctx->mres;
   if (n) {
     while (n && len) {
-      ctx->Xi.c[n] ^= *(out++) = *(in++) ^ ctx->EKi.c[n];
+      ctx->Xi[n] ^= *(out++) = *(in++) ^ ctx->EKi[n];
       --len;
       n = (n + 1) % 16;
     }
@@ -540,11 +542,11 @@ int CRYPTO_gcm128_encrypt(GCM128_CONTEXT *ctx, const AES_KEY *key,
     size_t j = GHASH_CHUNK;
 
     while (j) {
-      (*block)(ctx->Yi.c, ctx->EKi.c, key);
+      (*block)(ctx->Yi, ctx->EKi, key);
       ++ctr;
-      to_be_u32_ptr(ctx->Yi.c + 12, ctr);
+      to_be_u32_ptr(ctx->Yi + 12, ctr);
       for (i = 0; i < 16; ++i) {
-        out[i] = in[i] ^ ctx->EKi.c[i];
+        out[i] = in[i] ^ ctx->EKi[i];
       }
       out += 16;
       in += 16;
@@ -558,11 +560,11 @@ int CRYPTO_gcm128_encrypt(GCM128_CONTEXT *ctx, const AES_KEY *key,
     size_t j = i;
 
     while (len >= 16) {
-      (*block)(ctx->Yi.c, ctx->EKi.c, key);
+      (*block)(ctx->Yi, ctx->EKi, key);
       ++ctr;
-      to_be_u32_ptr(ctx->Yi.c + 12, ctr);
+      to_be_u32_ptr(ctx->Yi + 12, ctr);
       for (i = 0; i < 16; ++i) {
-        out[i] = in[i] ^ ctx->EKi.c[i];
+        out[i] = in[i] ^ ctx->EKi[i];
       }
       out += 16;
       in += 16;
@@ -572,11 +574,11 @@ int CRYPTO_gcm128_encrypt(GCM128_CONTEXT *ctx, const AES_KEY *key,
   }
 #else
   while (len >= 16) {
-    (*block)(ctx->Yi.c, ctx->EKi.c, key);
+    (*block)(ctx->Yi, ctx->EKi, key);
     ++ctr;
-    to_be_u32_ptr(ctx->Yi.c + 12, ctr);
+    to_be_u32_ptr(ctx->Yi + 12, ctr);
     for (i = 0; i < 16; ++i) {
-      ctx->Xi.c[i] ^= out[i] = in[i] ^ ctx->EKi.c[i];
+      ctx->Xi[i] ^= out[i] = in[i] ^ ctx->EKi[i];
     }
     GCM_MUL(ctx, Xi);
     out += 16;
@@ -585,11 +587,11 @@ int CRYPTO_gcm128_encrypt(GCM128_CONTEXT *ctx, const AES_KEY *key,
   }
 #endif
   if (len) {
-    (*block)(ctx->Yi.c, ctx->EKi.c, key);
+    (*block)(ctx->Yi, ctx->EKi, key);
     ++ctr;
-    to_be_u32_ptr(ctx->Yi.c + 12, ctr);
+    to_be_u32_ptr(ctx->Yi + 12, ctr);
     while (len--) {
-      ctx->Xi.c[n] ^= out[n] = in[n] ^ ctx->EKi.c[n];
+      ctx->Xi[n] ^= out[n] = in[n] ^ ctx->EKi[n];
       ++n;
     }
   }
@@ -625,14 +627,14 @@ int CRYPTO_gcm128_decrypt(GCM128_CONTEXT *ctx, const AES_KEY *key,
     ctx->ares = 0;
   }
 
-  ctr = from_be_u32_ptr(ctx->Yi.c + 12);
+  ctr = from_be_u32_ptr(ctx->Yi + 12);
 
   n = ctx->mres;
   if (n) {
     while (n && len) {
       uint8_t c = *(in++);
-      *(out++) = c ^ ctx->EKi.c[n];
-      ctx->Xi.c[n] ^= c;
+      *(out++) = c ^ ctx->EKi[n];
+      ctx->Xi[n] ^= c;
       --len;
       n = (n + 1) % 16;
     }
@@ -649,11 +651,11 @@ int CRYPTO_gcm128_decrypt(GCM128_CONTEXT *ctx, const AES_KEY *key,
 
     GHASH(ctx, in, GHASH_CHUNK);
     while (j) {
-      (*block)(ctx->Yi.c, ctx->EKi.c, key);
+      (*block)(ctx->Yi, ctx->EKi, key);
       ++ctr;
-      to_be_u32_ptr(ctx->Yi.c + 12, ctr);
+      to_be_u32_ptr(ctx->Yi + 12, ctr);
       for (i = 0; i < 16; ++i) {
-        out[i] = in[i] ^ ctx->EKi.c[i];
+        out[i] = in[i] ^ ctx->EKi[i];
       }
       out += 16;
       in += 16;
@@ -665,11 +667,11 @@ int CRYPTO_gcm128_decrypt(GCM128_CONTEXT *ctx, const AES_KEY *key,
   if (i != 0) {
     GHASH(ctx, in, i);
     while (len >= 16) {
-      (*block)(ctx->Yi.c, ctx->EKi.c, key);
+      (*block)(ctx->Yi, ctx->EKi, key);
       ++ctr;
-      to_be_u32_ptr(ctx->Yi.c + 12, ctr);
+      to_be_u32_ptr(ctx->Yi + 12, ctr);
       for (i = 0; i < 16; ++i) {
-        out[i] = in[i] ^ ctx->EKi.c[i];
+        out[i] = in[i] ^ ctx->EKi[i];
       }
       out += 16;
       in += 16;
@@ -678,13 +680,13 @@ int CRYPTO_gcm128_decrypt(GCM128_CONTEXT *ctx, const AES_KEY *key,
   }
 #else
   while (len >= 16) {
-    (*block)(ctx->Yi.c, ctx->EKi.c, key);
+    (*block)(ctx->Yi, ctx->EKi, key);
     ++ctr;
-    to_be_u32_ptr(ctx->Yi.c + 12, ctr);
+    to_be_u32_ptr(ctx->Yi + 12, ctr);
     for (i = 0; i < 16; ++i) {
       size_t c = in[i];
-      out[i] = c ^ ctx->EKi.c[i];
-      ctx->Xi.c[i] ^= c;
+      out[i] = c ^ ctx->EKi[i];
+      ctx->Xi[i] ^= c;
     }
     GCM_MUL(ctx, Xi);
     out += 16;
@@ -693,13 +695,13 @@ int CRYPTO_gcm128_decrypt(GCM128_CONTEXT *ctx, const AES_KEY *key,
   }
 #endif
   if (len) {
-    (*block)(ctx->Yi.c, ctx->EKi.c, key);
+    (*block)(ctx->Yi, ctx->EKi, key);
     ++ctr;
-    to_be_u32_ptr(ctx->Yi.c + 12, ctr);
+    to_be_u32_ptr(ctx->Yi + 12, ctr);
     while (len--) {
       uint8_t c = in[n];
-      ctx->Xi.c[n] ^= c;
-      out[n] = c ^ ctx->EKi.c[n];
+      ctx->Xi[n] ^= c;
+      out[n] = c ^ ctx->EKi[n];
       ++n;
     }
   }
@@ -736,7 +738,7 @@ int CRYPTO_gcm128_encrypt_ctr32(GCM128_CONTEXT *ctx, const AES_KEY *key,
   n = ctx->mres;
   if (n) {
     while (n && len) {
-      ctx->Xi.c[n] ^= *(out++) = *(in++) ^ ctx->EKi.c[n];
+      ctx->Xi[n] ^= *(out++) = *(in++) ^ ctx->EKi[n];
       --len;
       n = (n + 1) % 16;
     }
@@ -752,20 +754,20 @@ int CRYPTO_gcm128_encrypt_ctr32(GCM128_CONTEXT *ctx, const AES_KEY *key,
   if (aesni_gcm_enabled(ctx, stream)) {
     /* |aesni_gcm_encrypt| may not process all the input given to it. It may
      * not process *any* of its input if it is deemed too small. */
-    size_t bulk = aesni_gcm_encrypt(in, out, len, key, ctx->Yi.c, ctx->Xi.c);
+    size_t bulk = aesni_gcm_encrypt(in, out, len, key, ctx->Yi, ctx->Xi);
     in += bulk;
     out += bulk;
     len -= bulk;
   }
 #endif
 
-  ctr = from_be_u32_ptr(ctx->Yi.c + 12);
+  ctr = from_be_u32_ptr(ctx->Yi + 12);
 
 #if defined(GHASH)
   while (len >= GHASH_CHUNK) {
-    (*stream)(in, out, GHASH_CHUNK / 16, key, ctx->Yi.c);
+    (*stream)(in, out, GHASH_CHUNK / 16, key, ctx->Yi);
     ctr += GHASH_CHUNK / 16;
-    to_be_u32_ptr(ctx->Yi.c + 12, ctr);
+    to_be_u32_ptr(ctx->Yi + 12, ctr);
     GHASH(ctx, out, GHASH_CHUNK);
     out += GHASH_CHUNK;
     in += GHASH_CHUNK;
@@ -776,9 +778,9 @@ int CRYPTO_gcm128_encrypt_ctr32(GCM128_CONTEXT *ctx, const AES_KEY *key,
   if (i != 0) {
     size_t j = i / 16;
 
-    (*stream)(in, out, j, key, ctx->Yi.c);
+    (*stream)(in, out, j, key, ctx->Yi);
     ctr += (unsigned int)j;
-    to_be_u32_ptr(ctx->Yi.c + 12, ctr);
+    to_be_u32_ptr(ctx->Yi + 12, ctr);
     in += i;
     len -= i;
 #if defined(GHASH)
@@ -787,7 +789,7 @@ int CRYPTO_gcm128_encrypt_ctr32(GCM128_CONTEXT *ctx, const AES_KEY *key,
 #else
     while (j--) {
       for (i = 0; i < 16; ++i) {
-        ctx->Xi.c[i] ^= out[i];
+        ctx->Xi[i] ^= out[i];
       }
       GCM_MUL(ctx, Xi);
       out += 16;
@@ -795,11 +797,11 @@ int CRYPTO_gcm128_encrypt_ctr32(GCM128_CONTEXT *ctx, const AES_KEY *key,
 #endif
   }
   if (len) {
-    (*ctx->block)(ctx->Yi.c, ctx->EKi.c, key);
+    (*ctx->block)(ctx->Yi, ctx->EKi, key);
     ++ctr;
-    to_be_u32_ptr(ctx->Yi.c + 12, ctr);
+    to_be_u32_ptr(ctx->Yi + 12, ctr);
     while (len--) {
-      ctx->Xi.c[n] ^= out[n] = in[n] ^ ctx->EKi.c[n];
+      ctx->Xi[n] ^= out[n] = in[n] ^ ctx->EKi[n];
       ++n;
     }
   }
@@ -837,8 +839,8 @@ int CRYPTO_gcm128_decrypt_ctr32(GCM128_CONTEXT *ctx, const AES_KEY *key,
   if (n) {
     while (n && len) {
       uint8_t c = *(in++);
-      *(out++) = c ^ ctx->EKi.c[n];
-      ctx->Xi.c[n] ^= c;
+      *(out++) = c ^ ctx->EKi[n];
+      ctx->Xi[n] ^= c;
       --len;
       n = (n + 1) % 16;
     }
@@ -854,21 +856,21 @@ int CRYPTO_gcm128_decrypt_ctr32(GCM128_CONTEXT *ctx, const AES_KEY *key,
   if (aesni_gcm_enabled(ctx, stream)) {
     /* |aesni_gcm_decrypt| may not process all the input given to it. It may
      * not process *any* of its input if it is deemed too small. */
-    size_t bulk = aesni_gcm_decrypt(in, out, len, key, ctx->Yi.c, ctx->Xi.c);
+    size_t bulk = aesni_gcm_decrypt(in, out, len, key, ctx->Yi, ctx->Xi);
     in += bulk;
     out += bulk;
     len -= bulk;
   }
 #endif
 
-  ctr = from_be_u32_ptr(ctx->Yi.c + 12);
+  ctr = from_be_u32_ptr(ctx->Yi + 12);
 
 #if defined(GHASH)
   while (len >= GHASH_CHUNK) {
     GHASH(ctx, in, GHASH_CHUNK);
-    (*stream)(in, out, GHASH_CHUNK / 16, key, ctx->Yi.c);
+    (*stream)(in, out, GHASH_CHUNK / 16, key, ctx->Yi);
     ctr += GHASH_CHUNK / 16;
-    to_be_u32_ptr(ctx->Yi.c + 12, ctr);
+    to_be_u32_ptr(ctx->Yi + 12, ctr);
     out += GHASH_CHUNK;
     in += GHASH_CHUNK;
     len -= GHASH_CHUNK;
@@ -884,7 +886,7 @@ int CRYPTO_gcm128_decrypt_ctr32(GCM128_CONTEXT *ctx, const AES_KEY *key,
     while (j--) {
       size_t k;
       for (k = 0; k < 16; ++k) {
-        ctx->Xi.c[k] ^= in[k];
+        ctx->Xi[k] ^= in[k];
       }
       GCM_MUL(ctx, Xi);
       in += 16;
@@ -892,21 +894,21 @@ int CRYPTO_gcm128_decrypt_ctr32(GCM128_CONTEXT *ctx, const AES_KEY *key,
     j = i / 16;
     in -= i;
 #endif
-    (*stream)(in, out, j, key, ctx->Yi.c);
+    (*stream)(in, out, j, key, ctx->Yi);
     ctr += (unsigned int)j;
-    to_be_u32_ptr(ctx->Yi.c + 12, ctr);
+    to_be_u32_ptr(ctx->Yi + 12, ctr);
     out += i;
     in += i;
     len -= i;
   }
   if (len) {
-    (*ctx->block)(ctx->Yi.c, ctx->EKi.c, key);
+    (*ctx->block)(ctx->Yi, ctx->EKi, key);
     ++ctr;
-    to_be_u32_ptr(ctx->Yi.c + 12, ctr);
+    to_be_u32_ptr(ctx->Yi + 12, ctr);
     while (len--) {
       uint8_t c = in[n];
-      ctx->Xi.c[n] ^= c;
-      out[n] = c ^ ctx->EKi.c[n];
+      ctx->Xi[n] ^= c;
+      out[n] = c ^ ctx->EKi[n];
       ++n;
     }
   }
@@ -926,17 +928,19 @@ void CRYPTO_gcm128_tag(GCM128_CONTEXT *ctx, uint8_t *tag, size_t len) {
     GCM_MUL(ctx, Xi);
   }
 
-  alen = from_be_u64(alen);
-  clen = from_be_u64(clen);
-
-  ctx->Xi.u[0] ^= alen;
-  ctx->Xi.u[1] ^= clen;
+  uint8_t a_c_len[16];
+  to_be_u64_ptr(a_c_len, alen);
+  to_be_u64_ptr(a_c_len + 8, clen);
+  for (size_t i = 0; i < 16; ++i) {
+    ctx->Xi[i] ^= a_c_len[i];
+  }
   GCM_MUL(ctx, Xi);
 
-  ctx->Xi.u[0] ^= ctx->EK0.u[0];
-  ctx->Xi.u[1] ^= ctx->EK0.u[1];
+  for (size_t i = 0; i < 16; ++i) {
+    ctx->Xi[i] ^= ctx->EK0[i];
+  }
 
-  memcpy(tag, ctx->Xi.c, len <= sizeof(ctx->Xi.c) ? len : sizeof(ctx->Xi.c));
+  memcpy(tag, ctx->Xi, len <= sizeof(ctx->Xi) ? len : sizeof(ctx->Xi));
 }
 
 #if defined(OPENSSL_X86) || defined(OPENSSL_X86_64)

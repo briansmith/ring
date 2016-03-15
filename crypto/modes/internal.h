@@ -75,11 +75,16 @@ typedef void (*gcm128_ghash_f)(uint8_t Xi[16], const u128 Htable[16],
  * for more info. */
 struct gcm128_context {
   /* Following 6 names follow names in GCM specification */
-  union {
+  alignas(16) uint8_t Yi[16];
+  alignas(16) uint8_t EKi[16];
+  alignas(16) uint8_t EK0[16];
+  alignas(16) struct {
     uint64_t u[2];
-    uint32_t d[4];
-    uint8_t c[16];
-  } Yi, EKi, EK0, len, Xi, H;
+  } len;
+  alignas(16) uint8_t Xi[16];
+  alignas(16) struct {
+    uint64_t u[2];
+  } H;
 
   /* Relative position of Xi, H and pre-computed Htable is used in some
    * assembler modules, i.e. don't change the order! */
