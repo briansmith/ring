@@ -917,7 +917,7 @@ int CRYPTO_gcm128_decrypt_ctr32(GCM128_CONTEXT *ctx, const AES_KEY *key,
   return 1;
 }
 
-void CRYPTO_gcm128_tag(GCM128_CONTEXT *ctx, uint8_t *tag, size_t len) {
+void CRYPTO_gcm128_tag(GCM128_CONTEXT *ctx, uint8_t tag[16]) {
   uint64_t alen = ctx->len.u[0] << 3;
   uint64_t clen = ctx->len.u[1] << 3;
 #ifdef GCM_FUNCREF_4BIT
@@ -937,10 +937,8 @@ void CRYPTO_gcm128_tag(GCM128_CONTEXT *ctx, uint8_t *tag, size_t len) {
   GCM_MUL(ctx, Xi);
 
   for (size_t i = 0; i < 16; ++i) {
-    ctx->Xi[i] ^= ctx->EK0[i];
+    tag[i] = ctx->Xi[i] ^ ctx->EK0[i];
   }
-
-  memcpy(tag, ctx->Xi, len <= sizeof(ctx->Xi) ? len : sizeof(ctx->Xi));
 }
 
 #if defined(OPENSSL_X86) || defined(OPENSSL_X86_64)

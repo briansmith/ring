@@ -225,7 +225,7 @@ int evp_aead_aes_gcm_seal(const void *ctx_buf, uint8_t *in_out,
       }
     }
   }
-  CRYPTO_gcm128_tag(&gcm, tag_out, EVP_AEAD_AES_GCM_TAG_LEN);
+  CRYPTO_gcm128_tag(&gcm, tag_out);
   return 1;
 }
 
@@ -265,7 +265,7 @@ int evp_aead_aes_gcm_open(const void *ctx_buf, uint8_t *out,
       }
     }
   }
-  CRYPTO_gcm128_tag(&gcm, tag_out, EVP_AEAD_AES_GCM_TAG_LEN);
+  CRYPTO_gcm128_tag(&gcm, tag_out);
   return 1;
 }
 
