@@ -116,23 +116,18 @@ static void gcm_init_4bit(u128 Htable[16], uint64_t H[2]) {
   /* ARM assembler expects specific dword order in Htable. */
   {
     int j;
-    const union {
-      long one;
-      char little;
-    } is_endian = {1};
 
-    if (is_endian.little) {
-      for (j = 0; j < 16; ++j) {
-        V = Htable[j];
-        Htable[j].hi = V.lo;
-        Htable[j].lo = V.hi;
-      }
-    } else {
-      for (j = 0; j < 16; ++j) {
-        V = Htable[j];
-        Htable[j].hi = V.lo << 32 | V.lo >> 32;
-        Htable[j].lo = V.hi << 32 | V.hi >> 32;
-      }
+    for (j = 0; j < 16; ++j) {
+      V = Htable[j];
+#if OPENSSL_ENDIAN == OPENSSL_LITTLE_ENDIAN
+      Htable[j].hi = V.lo;
+      Htable[j].lo = V.hi;
+#elif OPENSSL_ENDIAN == OPENSSL_BIG_ENDIAN
+      Htable[j].hi = V.lo << 32 | V.lo >> 32;
+      Htable[j].lo = V.hi << 32 | V.hi >> 32;
+#else
+#error "OPENSSL_ENDIAN not set."
+#endif
     }
   }
 #endif
