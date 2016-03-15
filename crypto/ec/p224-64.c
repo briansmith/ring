@@ -193,7 +193,7 @@ static void bin28_to_felem(felem out, const u8 in[28]) {
 }
 
 static void felem_to_bin28(u8 out[28], const felem in) {
-  unsigned i;
+  size_t i;
   for (i = 0; i < 7; ++i) {
     out[i] = in[0] >> (8 * i);
     out[i + 7] = in[1] >> (8 * i);
@@ -203,8 +203,8 @@ static void felem_to_bin28(u8 out[28], const felem in) {
 }
 
 /* To preserve endianness when using BN_bn2bin and BN_bin2bn */
-static void flip_endian(u8 *out, const u8 *in, unsigned len) {
-  unsigned i;
+static void flip_endian(u8 *out, const u8 *in, size_t len) {
+  size_t i;
   for (i = 0; i < len; ++i) {
     out[i] = in[len - 1 - i];
   }
@@ -215,7 +215,7 @@ static int BN_to_felem(felem out, const BIGNUM *bn) {
   /* BN_bn2bin eats leading zeroes */
   felem_bytearray b_out;
   memset(b_out, 0, sizeof(b_out));
-  unsigned num_bytes = BN_num_bytes(bn);
+  size_t num_bytes = BN_num_bytes(bn);
   if (num_bytes > sizeof(b_out) ||
       BN_is_negative(bn)) {
     OPENSSL_PUT_ERROR(EC, EC_R_BIGNUM_OUT_OF_RANGE);
@@ -525,7 +525,7 @@ static limb felem_is_zero(const felem in) {
 static void felem_inv(felem out, const felem in) {
   felem ftmp, ftmp2, ftmp3, ftmp4;
   widefelem tmp;
-  unsigned i;
+  size_t i;
 
   felem_square(tmp, in);
   felem_reduce(ftmp, tmp); /* 2 */
@@ -605,7 +605,7 @@ static void felem_inv(felem out, const felem in) {
  * if icopy == 1, copy in to out,
  * if icopy == 0, copy out to itself. */
 static void copy_conditional(felem out, const felem in, limb icopy) {
-  unsigned i;
+  size_t i;
   /* icopy is a (64-bit) 0 or 1, so copy is either all-zero or all-one */
   const limb copy = -icopy;
   for (i = 0; i < 4; ++i) {
@@ -862,12 +862,12 @@ static void point_add(felem x3, felem y3, felem z3, const felem x1,
 
 /* select_point selects the |idx|th point from a precomputation table and
  * copies it to out. */
-static void select_point(const u64 idx, unsigned int size,
+static void select_point(const u64 idx, size_t size,
                          const felem pre_comp[/*size*/][3], felem out[3]) {
-  unsigned i, j;
   limb *outlimbs = &out[0][0];
   memset(outlimbs, 0, 3 * sizeof(felem));
 
+  size_t i;
   for (i = 0; i < size; i++) {
     const limb *inlimbs = &pre_comp[i][0][0];
     u64 mask = i ^ idx;
@@ -876,6 +876,7 @@ static void select_point(const u64 idx, unsigned int size,
     mask |= mask >> 1;
     mask &= 1;
     mask--;
+    size_t j;
     for (j = 0; j < 4 * 3; j++) {
       outlimbs[j] |= inlimbs[j] & mask;
     }
@@ -883,7 +884,7 @@ static void select_point(const u64 idx, unsigned int size,
 }
 
 /* get_bit returns the |i|th bit in |in| */
-static char get_bit(const felem_bytearray in, unsigned i) {
+static char get_bit(const felem_bytearray in, size_t i) {
   if (i >= 224) {
     return 0;
   }
@@ -897,11 +898,8 @@ static char get_bit(const felem_bytearray in, unsigned i) {
  * Output point (X, Y, Z) is stored in x_out, y_out, z_out */
 static void batch_mul(felem x_out, felem y_out, felem z_out,
                       const felem_bytearray scalars[],
-                      const unsigned num_points, const u8 *g_scalar,
+                      const size_t num_points, const u8 *g_scalar,
                       const felem pre_comp[][17][3]) {
-  int i, skip;
-  unsigned num;
-  unsigned gen_mul = (g_scalar != NULL);
   felem nq[3], tmp[4];
   u64 bits;
   u8 sign, digit;
@@ -912,15 +910,16 @@ static void batch_mul(felem x_out, felem y_out, felem z_out,
   /* Loop over all scalars msb-to-lsb, interleaving additions
    * of multiples of the generator (two in each of the last 28 rounds)
    * and additions of other points multiples (every 5th round). */
-  skip = 1; /* save two point operations in the first round */
-  for (i = (num_points ? 220 : 27); i >= 0; --i) {
+  int skip = 1; /* save two point operations in the first round */
+  size_t i = num_points != 0 ? 220 : 27;
+  for (;;) {
     /* double */
     if (!skip) {
       point_double(nq[0], nq[1], nq[2], nq[0], nq[1], nq[2]);
     }
 
     /* add multiples of the generator */
-    if (gen_mul && (i <= 27)) {
+    if (g_scalar != NULL && i <= 27) {
       /* first, look 28 bits upwards */
       bits = get_bit(g_scalar, i + 196) << 3;
       bits |= get_bit(g_scalar, i + 140) << 2;
@@ -949,8 +948,9 @@ static void batch_mul(felem x_out, felem y_out, felem z_out,
     }
 
     /* do other additions every 5 doublings */
-    if (num_points && (i % 5 == 0)) {
+    if (num_points != 0 && i % 5 == 0) {
       /* loop over all scalars */
+      size_t num;
       for (num = 0; num < num_points; ++num) {
         bits = get_bit(scalars[num], i + 4) << 5;
         bits |= get_bit(scalars[num], i + 3) << 4;
@@ -974,6 +974,11 @@ static void batch_mul(felem x_out, felem y_out, felem z_out,
         }
       }
     }
+
+    if (i == 0) {
+      break;
+    }
+    --i;
   }
   felem_assign(x_out, nq[0]);
   felem_assign(y_out, nq[1]);
@@ -1038,15 +1043,12 @@ static int ec_GFp_nistp224_points_mul(const EC_GROUP *group,
   BIGNUM const *const *scalars = p_ != NULL ? &p_scalar_ : NULL;
 
   int ret = 0;
-  int j;
-  unsigned i;
   BN_CTX *new_ctx = NULL;
   BIGNUM *x, *y, *z, *tmp_scalar;
   felem_bytearray g_secret;
   felem_bytearray *secrets = NULL;
   felem(*pre_comp)[17][3] = NULL;
   felem_bytearray tmp;
-  unsigned num_bytes;
   size_t num_points = num;
   felem x_in, y_in, z_in, x_out, y_out, z_out;
   const EC_POINT *p = NULL;
@@ -1081,6 +1083,7 @@ static int ec_GFp_nistp224_points_mul(const EC_GROUP *group,
      * i.e., they contribute nothing to the linear combination */
     memset(secrets, 0, num_points * sizeof(felem_bytearray));
     memset(pre_comp, 0, num_points * 17 * 3 * sizeof(felem));
+    size_t i;
     for (i = 0; i < num_points; ++i) {
       if (i == num) {
         /* the generator */
@@ -1093,6 +1096,7 @@ static int ec_GFp_nistp224_points_mul(const EC_GROUP *group,
       }
 
       if (p_scalar != NULL && p != NULL) {
+        size_t num_bytes;
         /* reduce g_scalar to 0 <= g_scalar < 2^224 */
         if (BN_num_bits(p_scalar) > 224 || BN_is_negative(p_scalar)) {
           /* this is an unusual input, and we don't guarantee
@@ -1118,6 +1122,7 @@ static int ec_GFp_nistp224_points_mul(const EC_GROUP *group,
         felem_assign(pre_comp[i][1][1], y_out);
         felem_assign(pre_comp[i][1][2], z_out);
 
+        size_t j;
         for (j = 2; j <= 16; ++j) {
           if (j & 1) {
             point_add(pre_comp[i][j][0], pre_comp[i][j][1], pre_comp[i][j][2],
@@ -1136,6 +1141,7 @@ static int ec_GFp_nistp224_points_mul(const EC_GROUP *group,
 
   if (g_scalar != NULL) {
     memset(g_secret, 0, sizeof(g_secret));
+    size_t num_bytes;
     /* reduce g_scalar to 0 <= g_scalar < 2^224 */
     if (BN_num_bits(g_scalar) > 224 || BN_is_negative(g_scalar)) {
       /* this is an unusual input, and we don't guarantee constant-timeness */
