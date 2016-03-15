@@ -104,29 +104,6 @@ void CRYPTO_MUTEX_cleanup(CRYPTO_MUTEX *lock) {
   DeleteCriticalSection(lock);
 }
 
-static void static_lock_init(union run_once_arg_t arg) {
-  struct CRYPTO_STATIC_MUTEX *lock = arg.data;
-  if (!InitializeCriticalSectionAndSpinCount(&lock->lock, 0x400)) {
-    abort();
-  }
-}
-
-void CRYPTO_STATIC_MUTEX_lock_read(struct CRYPTO_STATIC_MUTEX *lock) {
-  union run_once_arg_t arg;
-  arg.data = lock;
-  /* Since we have to support Windows XP, read locks are actually exclusive. */
-  run_once(&lock->once, static_lock_init, arg);
-  EnterCriticalSection(&lock->lock);
-}
-
-void CRYPTO_STATIC_MUTEX_lock_write(struct CRYPTO_STATIC_MUTEX *lock) {
-  CRYPTO_STATIC_MUTEX_lock_read(lock);
-}
-
-void CRYPTO_STATIC_MUTEX_unlock(struct CRYPTO_STATIC_MUTEX *lock) {
-  LeaveCriticalSection(&lock->lock);
-}
-
 static CRITICAL_SECTION g_destructors_lock;
 static thread_local_destructor_t g_destructors[NUM_OPENSSL_THREAD_LOCALS];
 

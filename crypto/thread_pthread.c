@@ -52,24 +52,6 @@ void CRYPTO_MUTEX_cleanup(CRYPTO_MUTEX *lock) {
   pthread_rwlock_destroy(lock);
 }
 
-void CRYPTO_STATIC_MUTEX_lock_read(struct CRYPTO_STATIC_MUTEX *lock) {
-  if (pthread_rwlock_rdlock(&lock->lock) != 0) {
-    abort();
-  }
-}
-
-void CRYPTO_STATIC_MUTEX_lock_write(struct CRYPTO_STATIC_MUTEX *lock) {
-  if (pthread_rwlock_wrlock(&lock->lock) != 0) {
-    abort();
-  }
-}
-
-void CRYPTO_STATIC_MUTEX_unlock(struct CRYPTO_STATIC_MUTEX *lock) {
-  if (pthread_rwlock_unlock(&lock->lock) != 0) {
-    abort();
-  }
-}
-
 void CRYPTO_once(CRYPTO_once_t *once, void (*init)(void)) {
   if (pthread_once(once, init) != 0) {
     abort();
