@@ -173,22 +173,20 @@ static char aesni_capable(void) {
 #endif
 
 struct aead_aes_gcm_ctx {
-  union {
-    double align;
-    AES_KEY ks;
-  } ks;
+  alignas(16) AES_KEY ks;
   GCM128_CONTEXT gcm;
   aes_ctr_f ctr;
 };
 
 int evp_aead_aes_gcm_init(void *ctx_buf, size_t ctx_buf_len, const uint8_t *key,
                           size_t key_len) {
-  aead_assert_init_preconditions(alignof(struct aead_aes_gcm_ctx),
-                                 sizeof(struct aead_aes_gcm_ctx), ctx_buf,
-                                 ctx_buf_len, key);
-
-  struct aead_aes_gcm_ctx *gcm_ctx = ctx_buf;
-  gcm_ctx->ctr = aes_ctr_set_key(&gcm_ctx->ks.ks, &gcm_ctx->gcm, key, key_len);
+  struct aead_aes_gcm_ctx gcm_ctx;
+  gcm_ctx.ctr = aes_ctr_set_key(&gcm_ctx.ks, &gcm_ctx.gcm, key, key_len);
+  assert(sizeof(gcm_ctx) <= ctx_buf_len);
+  if (sizeof(gcm_ctx) > ctx_buf_len) {
+    return 0;
+  }
+  memcpy(ctx_buf, &gcm_ctx, sizeof(gcm_ctx));
   return 1;
 }
 
@@ -198,33 +196,31 @@ int evp_aead_aes_gcm_seal(const void *ctx_buf, uint8_t *in_out,
                           const uint8_t nonce[EVP_AEAD_AES_GCM_NONCE_LEN],
                           const uint8_t *ad, size_t ad_len) {
   assert(ctx_buf != NULL);
-  assert(((uintptr_t)ctx_buf) % alignof(struct aead_aes_gcm_ctx) == 0);
   assert(in_out != NULL || in_out_len == 0);
   assert(aead_check_in_len(in_out_len));
   assert(tag_out != NULL);
   assert(nonce != NULL);
   assert(ad != NULL || ad_len == 0);
 
-  const struct aead_aes_gcm_ctx *gcm_ctx = ctx_buf;
+  struct aead_aes_gcm_ctx gcm_ctx;
+  memcpy(&gcm_ctx, ctx_buf, sizeof(gcm_ctx));
 
   GCM128_CONTEXT gcm;
 
-  const AES_KEY *key = &gcm_ctx->ks.ks;
-
-  memcpy(&gcm, &gcm_ctx->gcm, sizeof(gcm));
-  CRYPTO_gcm128_set_96_bit_iv(&gcm, key, nonce);
+  memcpy(&gcm, &gcm_ctx.gcm, sizeof(gcm));
+  CRYPTO_gcm128_set_96_bit_iv(&gcm, &gcm_ctx.ks, nonce);
 
   if (ad_len > 0 && !CRYPTO_gcm128_aad(&gcm, ad, ad_len)) {
     return 0;
   }
   if (in_out_len > 0) {
-    if (gcm_ctx->ctr) {
-      if (!CRYPTO_gcm128_encrypt_ctr32(&gcm, key, in_out, in_out, in_out_len,
-                                       gcm_ctx->ctr)) {
+    if (gcm_ctx.ctr) {
+      if (!CRYPTO_gcm128_encrypt_ctr32(&gcm, &gcm_ctx.ks, in_out, in_out,
+                                       in_out_len, gcm_ctx.ctr)) {
         return 0;
       }
     } else {
-      if (!CRYPTO_gcm128_encrypt(&gcm, key, in_out, in_out, in_out_len)) {
+      if (!CRYPTO_gcm128_encrypt(&gcm, &gcm_ctx.ks, in_out, in_out, in_out_len)) {
         return 0;
       }
     }
@@ -239,7 +235,6 @@ int evp_aead_aes_gcm_open(const void *ctx_buf, uint8_t *out,
                           const uint8_t nonce[EVP_AEAD_AES_GCM_NONCE_LEN],
                           const uint8_t *in,  const uint8_t *ad, size_t ad_len) {
   assert(ctx_buf != NULL);
-  assert(((uintptr_t)ctx_buf) % alignof(struct aead_aes_gcm_ctx) == 0);
   assert(out != NULL || in_out_len == 0);
   assert(aead_check_in_len(in_out_len));
   assert(aead_check_alias(in, in_out_len, out));
@@ -248,26 +243,24 @@ int evp_aead_aes_gcm_open(const void *ctx_buf, uint8_t *out,
   assert(in != NULL || in_out_len == 0);
   assert(ad != NULL || ad_len == 0);
 
-  const struct aead_aes_gcm_ctx *gcm_ctx = ctx_buf;
+  struct aead_aes_gcm_ctx gcm_ctx;
+  memcpy(&gcm_ctx, ctx_buf, sizeof(gcm_ctx));
 
   GCM128_CONTEXT gcm;
-
-  const AES_KEY *key = &gcm_ctx->ks.ks;
-
-  memcpy(&gcm, &gcm_ctx->gcm, sizeof(gcm));
-  CRYPTO_gcm128_set_96_bit_iv(&gcm, key, nonce);
+  memcpy(&gcm, &gcm_ctx.gcm, sizeof(gcm));
+  CRYPTO_gcm128_set_96_bit_iv(&gcm, &gcm_ctx.ks, nonce);
 
   if (!CRYPTO_gcm128_aad(&gcm, ad, ad_len)) {
     return 0;
   }
   if (in_out_len > 0) {
-    if (gcm_ctx->ctr) {
-      if (!CRYPTO_gcm128_decrypt_ctr32(&gcm, key, in, out, in_out_len,
-                                       gcm_ctx->ctr)) {
+    if (gcm_ctx.ctr) {
+      if (!CRYPTO_gcm128_decrypt_ctr32(&gcm, &gcm_ctx.ks, in, out, in_out_len,
+                                       gcm_ctx.ctr)) {
         return 0;
       }
     } else {
-      if (!CRYPTO_gcm128_decrypt(&gcm, key, in, out, in_out_len)) {
+      if (!CRYPTO_gcm128_decrypt(&gcm, &gcm_ctx.ks, in, out, in_out_len)) {
         return 0;
       }
     }
