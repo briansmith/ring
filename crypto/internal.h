@@ -492,7 +492,7 @@ static inline uint32_t from_be_u32_ptr(const uint8_t *data) {
 #endif
 }
 
-/* to_be_u32_ptr writes the value |x| to the location |out| in big-endian
+/* to_be_u32_ptr writes the value |value| to the location |out| in big-endian
    order. */
 static inline void to_be_u32_ptr(uint8_t *out, uint32_t value) {
 #if defined(__clang__) || defined(_MSC_VER)
@@ -511,6 +511,32 @@ static inline void to_be_u32_ptr(uint8_t *out, uint32_t value) {
   out[1] = (uint8_t)(value >> 16);
   out[2] = (uint8_t)(value >> 8);
   out[3] = (uint8_t)value;
+#endif
+}
+
+/* to_be_u64_ptr writes the value |value| to the location |out| in big-endian
+   order. */
+static inline void to_be_u64_ptr(uint8_t *out, uint64_t value) {
+#if defined(__clang__) || defined(_MSC_VER)
+  /* XXX: Unlike GCC, Clang doesn't optimize compliant access to unaligned data
+   * well. See https://llvm.org/bugs/show_bug.cgi?id=20605,
+   * https://llvm.org/bugs/show_bug.cgi?id=17603,
+   * http://blog.regehr.org/archives/702, and
+   * http://blog.regehr.org/archives/1055. MSVC seems to have similar problems.
+   */
+#if  OPENSSL_ENDIAN != OPENSSL_BIG_ENDIAN
+  value = bswap_u64(value);
+#endif
+  memcpy(out, &value, sizeof(value));
+#else
+  out[0] = (uint8_t)(value >> 56);
+  out[1] = (uint8_t)(value >> 48);
+  out[2] = (uint8_t)(value >> 40);
+  out[3] = (uint8_t)(value >> 32);
+  out[4] = (uint8_t)(value >> 24);
+  out[5] = (uint8_t)(value >> 16);
+  out[6] = (uint8_t)(value >> 8);
+  out[7] = (uint8_t)value;
 #endif
 }
 

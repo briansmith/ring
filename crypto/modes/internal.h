@@ -66,6 +66,10 @@ typedef void (*aes_block_f)(const uint8_t in[16], uint8_t out[16],
 /* GCM definitions */
 typedef struct { uint64_t hi,lo; } u128;
 
+typedef void (*gcm128_gmult_f)(uint8_t Xi[16], const u128 Htable[16]);
+typedef void (*gcm128_ghash_f)(uint8_t Xi[16], const u128 Htable[16],
+                               const uint8_t *inp, size_t len);
+
 /* This differs from OpenSSL's |gcm128_context| in that it does not have the
  * |key| pointer, in order to make it |memcpy|-friendly. See openssl/modes.h
  * for more info. */
@@ -80,9 +84,9 @@ struct gcm128_context {
   /* Relative position of Xi, H and pre-computed Htable is used in some
    * assembler modules, i.e. don't change the order! */
   u128 Htable[16];
-  void (*gmult)(uint64_t Xi[2], const u128 Htable[16]);
-  void (*ghash)(uint64_t Xi[2], const u128 Htable[16], const uint8_t *inp,
-                size_t len);
+
+  gcm128_gmult_f gmult;
+  gcm128_ghash_f ghash;
 
   unsigned int mres, ares;
   aes_block_f block;

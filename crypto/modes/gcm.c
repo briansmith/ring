@@ -145,12 +145,12 @@ static const size_t rem_4bit[16] = {
     PACK(0xE100), PACK(0xFD20), PACK(0xD940), PACK(0xC560),
     PACK(0x9180), PACK(0x8DA0), PACK(0xA9C0), PACK(0xB5E0)};
 
-static void gcm_gmult_4bit(uint64_t Xi[2], const u128 Htable[16]) {
+static void gcm_gmult_4bit(uint8_t Xi[16], const u128 Htable[16]) {
   u128 Z;
   int cnt = 15;
   size_t rem, nlo, nhi;
 
-  nlo = ((const uint8_t *)Xi)[15];
+  nlo = Xi[15];
   nhi = nlo >> 4;
   nlo &= 0xf;
 
@@ -174,7 +174,7 @@ static void gcm_gmult_4bit(uint64_t Xi[2], const u128 Htable[16]) {
       break;
     }
 
-    nlo = ((const uint8_t *)Xi)[cnt];
+    nlo = Xi[cnt];
     nhi = nlo >> 4;
     nlo &= 0xf;
 
@@ -191,8 +191,8 @@ static void gcm_gmult_4bit(uint64_t Xi[2], const u128 Htable[16]) {
     Z.lo ^= Htable[nlo].lo;
   }
 
-  Xi[0] = from_be_u64(Z.hi);
-  Xi[1] = from_be_u64(Z.lo);
+  to_be_u64_ptr(Xi, Z.hi);
+  to_be_u64_ptr(Xi + 8, Z.lo);
 }
 
 /* Streamed gcm_mult_4bit, see CRYPTO_gcm128_[en|de]crypt for
@@ -200,15 +200,15 @@ static void gcm_gmult_4bit(uint64_t Xi[2], const u128 Htable[16]) {
  * performance improvement, at least not on x86[_64]. It's here
  * mostly as reference and a placeholder for possible future
  * non-trivial optimization[s]... */
-static void gcm_ghash_4bit(uint64_t Xi[2], const u128 Htable[16], const uint8_t *inp,
-                           size_t len) {
+static void gcm_ghash_4bit(uint8_t Xi[16], const u128 Htable[16],
+                           const uint8_t *inp, size_t len) {
   u128 Z;
   int cnt;
   size_t rem, nlo, nhi;
 
   do {
     cnt = 15;
-    nlo = ((const uint8_t *)Xi)[15];
+    nlo = Xi[15];
     nlo ^= inp[15];
     nhi = nlo >> 4;
     nlo &= 0xf;
@@ -233,7 +233,7 @@ static void gcm_ghash_4bit(uint64_t Xi[2], const u128 Htable[16], const uint8_t 
         break;
       }
 
-      nlo = ((const uint8_t *)Xi)[cnt];
+      nlo = Xi[cnt];
       nlo ^= inp[cnt];
       nhi = nlo >> 4;
       nlo &= 0xf;
@@ -256,14 +256,14 @@ static void gcm_ghash_4bit(uint64_t Xi[2], const u128 Htable[16], const uint8_t 
   } while (inp += 16, len -= 16);
 }
 #else /* GHASH_ASM */
-void gcm_gmult_4bit(uint64_t Xi[2], const u128 Htable[16]);
-void gcm_ghash_4bit(uint64_t Xi[2], const u128 Htable[16], const uint8_t *inp,
+void gcm_gmult_4bit(uint8_t Xi[16], const u128 Htable[16]);
+void gcm_ghash_4bit(uint8_t Xi[16], const u128 Htable[16], const uint8_t *inp,
                     size_t len);
 #endif
 
-#define GCM_MUL(ctx, Xi) gcm_gmult_4bit(ctx->Xi.u, ctx->Htable)
+#define GCM_MUL(ctx, Xi) gcm_gmult_4bit(ctx->Xi.c, ctx->Htable)
 #if defined(GHASH_ASM)
-#define GHASH(ctx, in, len) gcm_ghash_4bit((ctx)->Xi.u, (ctx)->Htable, in, len)
+#define GHASH(ctx, in, len) gcm_ghash_4bit((ctx)->Xi.c, (ctx)->Htable, in, len)
 /* GHASH_CHUNK is "stride parameter" missioned to mitigate cache
  * trashing effect. In other words idea is to hash data while it's
  * still in L1 cache after encryption pass... */
@@ -278,8 +278,8 @@ void gcm_ghash_4bit(uint64_t Xi[2], const u128 Htable[16], const uint8_t *inp,
 #define GHASH_ASM_X86_OR_64
 #define GCM_FUNCREF_4BIT
 void gcm_init_clmul(u128 Htable[16], const uint64_t Xi[2]);
-void gcm_gmult_clmul(uint64_t Xi[2], const u128 Htable[16]);
-void gcm_ghash_clmul(uint64_t Xi[2], const u128 Htable[16], const uint8_t *inp,
+void gcm_gmult_clmul(uint8_t Xi[16], const u128 Htable[16]);
+void gcm_ghash_clmul(uint8_t Xi[16], const u128 Htable[16], const uint8_t *inp,
                      size_t len);
 
 #if defined(OPENSSL_X86)
@@ -288,8 +288,8 @@ void gcm_ghash_clmul(uint64_t Xi[2], const u128 Htable[16], const uint8_t *inp,
 #define gcm_ghash_avx gcm_ghash_clmul
 #else
 void gcm_init_avx(u128 Htable[16], const uint64_t Xi[2]);
-void gcm_gmult_avx(uint64_t Xi[2], const u128 Htable[16]);
-void gcm_ghash_avx(uint64_t Xi[2], const u128 Htable[16], const uint8_t *in,
+void gcm_gmult_avx(uint8_t Xi[16], const u128 Htable[16]);
+void gcm_ghash_avx(uint8_t Xi[16], const u128 Htable[16], const uint8_t *in,
                    size_t len);
 #define AESNI_GCM
 static int aesni_gcm_enabled(GCM128_CONTEXT *ctx, aes_ctr_f stream) {
@@ -298,19 +298,19 @@ static int aesni_gcm_enabled(GCM128_CONTEXT *ctx, aes_ctr_f stream) {
 }
 
 size_t aesni_gcm_encrypt(const uint8_t *in, uint8_t *out, size_t len,
-                         const void *key, uint8_t ivec[16], uint64_t *Xi);
+                         const void *key, uint8_t ivec[16], uint8_t Xi[16]);
 size_t aesni_gcm_decrypt(const uint8_t *in, uint8_t *out, size_t len,
-                         const void *key, uint8_t ivec[16], uint64_t *Xi);
+                         const void *key, uint8_t ivec[16], uint8_t Xi[16]);
 #endif
 
 #if defined(OPENSSL_X86)
 #define GHASH_ASM_X86
-void gcm_gmult_4bit_mmx(uint64_t Xi[2], const u128 Htable[16]);
-void gcm_ghash_4bit_mmx(uint64_t Xi[2], const u128 Htable[16], const uint8_t *inp,
+void gcm_gmult_4bit_mmx(uint8_t Xi[16], const u128 Htable[16]);
+void gcm_ghash_4bit_mmx(uint8_t Xi[16], const u128 Htable[16], const uint8_t *inp,
                         size_t len);
 
-void gcm_gmult_4bit_x86(uint64_t Xi[2], const u128 Htable[16]);
-void gcm_ghash_4bit_x86(uint64_t Xi[2], const u128 Htable[16], const uint8_t *inp,
+void gcm_gmult_4bit_x86(uint8_t Xi[16], const u128 Htable[16]);
+void gcm_ghash_4bit_x86(uint8_t Xi[16], const u128 Htable[16], const uint8_t *inp,
                         size_t len);
 #endif
 
@@ -322,8 +322,8 @@ void gcm_ghash_4bit_x86(uint64_t Xi[2], const u128 Htable[16], const uint8_t *in
 #define ARM_PMULL_ASM
 #define GCM_FUNCREF_4BIT
 void gcm_init_v8(u128 Htable[16], const uint64_t Xi[2]);
-void gcm_gmult_v8(uint64_t Xi[2], const u128 Htable[16]);
-void gcm_ghash_v8(uint64_t Xi[2], const u128 Htable[16], const uint8_t *inp,
+void gcm_gmult_v8(uint8_t Xi[16], const u128 Htable[16]);
+void gcm_ghash_v8(uint8_t Xi[16], const u128 Htable[16], const uint8_t *inp,
                   size_t len);
 #endif
 
@@ -331,8 +331,8 @@ void gcm_ghash_v8(uint64_t Xi[2], const u128 Htable[16], const uint8_t *inp,
 #define GCM_FUNCREF_4BIT
 /* 32-bit ARM also has support for doing GCM with NEON instructions. */
 void gcm_init_neon(u128 Htable[16], const uint64_t Xi[2]);
-void gcm_gmult_neon(uint64_t Xi[2], const u128 Htable[16]);
-void gcm_ghash_neon(uint64_t Xi[2], const u128 Htable[16], const uint8_t *inp,
+void gcm_gmult_neon(uint8_t Xi[16], const u128 Htable[16]);
+void gcm_ghash_neon(uint8_t Xi[16], const u128 Htable[16], const uint8_t *inp,
                     size_t len);
 #endif
 
@@ -342,10 +342,10 @@ void gcm_ghash_neon(uint64_t Xi[2], const u128 Htable[16], const uint8_t *inp,
 
 #ifdef GCM_FUNCREF_4BIT
 #undef GCM_MUL
-#define GCM_MUL(ctx, Xi) (*gcm_gmult_p)(ctx->Xi.u, ctx->Htable)
+#define GCM_MUL(ctx, Xi) (*gcm_gmult_p)(ctx->Xi.c, ctx->Htable)
 #ifdef GHASH
 #undef GHASH
-#define GHASH(ctx, in, len) (*gcm_ghash_p)(ctx->Xi.u, ctx->Htable, in, len)
+#define GHASH(ctx, in, len) (*gcm_ghash_p)(ctx->Xi.c, ctx->Htable, in, len)
 #endif
 #endif
 
@@ -412,20 +412,16 @@ void CRYPTO_gcm128_init(GCM128_CONTEXT *ctx, const AES_KEY *key,
 
 void CRYPTO_gcm128_set_96_bit_iv(GCM128_CONTEXT *ctx, const AES_KEY *key,
                                  const uint8_t *iv) {
-  unsigned int ctr;
+  uint32_t ctr = 1;
 
-  ctx->Yi.u[0] = 0;
-  ctx->Yi.u[1] = 0;
-  ctx->Xi.u[0] = 0;
-  ctx->Xi.u[1] = 0;
+  memset(&ctx->Xi, 0, sizeof(ctx->Xi));
   ctx->len.u[0] = 0; /* AAD length */
   ctx->len.u[1] = 0; /* message length */
   ctx->ares = 0;
   ctx->mres = 0;
 
   memcpy(ctx->Yi.c, iv, 12);
-  ctx->Yi.c[15] = 1;
-  ctr = 1;
+  to_be_u32_ptr(ctx->Yi.c + 12, ctr);
 
   (*ctx->block)(ctx->Yi.c, ctx->EK0.c, key);
   ++ctr;
@@ -437,10 +433,9 @@ int CRYPTO_gcm128_aad(GCM128_CONTEXT *ctx, const uint8_t *aad, size_t len) {
   unsigned int n;
   uint64_t alen = ctx->len.u[0];
 #ifdef GCM_FUNCREF_4BIT
-  void (*gcm_gmult_p)(uint64_t Xi[2], const u128 Htable[16]) = ctx->gmult;
+  gcm128_gmult_f gcm_gmult_p = ctx->gmult;
 #ifdef GHASH
-  void (*gcm_ghash_p)(uint64_t Xi[2], const u128 Htable[16], const uint8_t *inp,
-                      size_t len) = ctx->ghash;
+  gcm128_ghash_f gcm_ghash_p = ctx->ghash;
 #endif
 #endif
 
@@ -505,10 +500,9 @@ int CRYPTO_gcm128_encrypt(GCM128_CONTEXT *ctx, const AES_KEY *key,
   uint64_t mlen = ctx->len.u[1];
   aes_block_f block = ctx->block;
 #ifdef GCM_FUNCREF_4BIT
-  void (*gcm_gmult_p)(uint64_t Xi[2], const u128 Htable[16]) = ctx->gmult;
+  gcm128_gmult_f gcm_gmult_p = ctx->gmult;
 #ifdef GHASH
-  void (*gcm_ghash_p)(uint64_t Xi[2], const u128 Htable[16], const uint8_t *inp,
-                      size_t len) = ctx->ghash;
+  gcm128_ghash_f gcm_ghash_p = ctx->ghash;
 #endif
 #endif
 
@@ -612,10 +606,9 @@ int CRYPTO_gcm128_decrypt(GCM128_CONTEXT *ctx, const AES_KEY *key,
   uint64_t mlen = ctx->len.u[1];
   aes_block_f block = ctx->block;
 #ifdef GCM_FUNCREF_4BIT
-  void (*gcm_gmult_p)(uint64_t Xi[2], const u128 Htable[16]) = ctx->gmult;
+  gcm128_gmult_f gcm_gmult_p = ctx->gmult;
 #ifdef GHASH
-  void (*gcm_ghash_p)(uint64_t Xi[2], const u128 Htable[16], const uint8_t *inp,
-                      size_t len) = ctx->ghash;
+  gcm128_ghash_f gcm_ghash_p = ctx->ghash;
 #endif
 #endif
 
@@ -721,10 +714,9 @@ int CRYPTO_gcm128_encrypt_ctr32(GCM128_CONTEXT *ctx, const AES_KEY *key,
   unsigned int n, ctr;
   uint64_t mlen = ctx->len.u[1];
 #ifdef GCM_FUNCREF_4BIT
-  void (*gcm_gmult_p)(uint64_t Xi[2], const u128 Htable[16]) = ctx->gmult;
+  gcm128_gmult_f gcm_gmult_p = ctx->gmult;
 #ifdef GHASH
-  void (*gcm_ghash_p)(uint64_t Xi[2], const u128 Htable[16], const uint8_t *inp,
-                      size_t len) = ctx->ghash;
+  gcm128_ghash_f gcm_ghash_p = ctx->ghash;
 #endif
 #endif
 
@@ -760,7 +752,7 @@ int CRYPTO_gcm128_encrypt_ctr32(GCM128_CONTEXT *ctx, const AES_KEY *key,
   if (aesni_gcm_enabled(ctx, stream)) {
     /* |aesni_gcm_encrypt| may not process all the input given to it. It may
      * not process *any* of its input if it is deemed too small. */
-    size_t bulk = aesni_gcm_encrypt(in, out, len, key, ctx->Yi.c, ctx->Xi.u);
+    size_t bulk = aesni_gcm_encrypt(in, out, len, key, ctx->Yi.c, ctx->Xi.c);
     in += bulk;
     out += bulk;
     len -= bulk;
@@ -822,10 +814,9 @@ int CRYPTO_gcm128_decrypt_ctr32(GCM128_CONTEXT *ctx, const AES_KEY *key,
   unsigned int n, ctr;
   uint64_t mlen = ctx->len.u[1];
 #ifdef GCM_FUNCREF_4BIT
-  void (*gcm_gmult_p)(uint64_t Xi[2], const u128 Htable[16]) = ctx->gmult;
+  gcm128_gmult_f gcm_gmult_p = ctx->gmult;
 #ifdef GHASH
-  void (*gcm_ghash_p)(uint64_t Xi[2], const u128 Htable[16], const uint8_t *inp,
-                      size_t len) = ctx->ghash;
+  gcm128_ghash_f gcm_ghash_p = ctx->ghash;
 #endif
 #endif
 
@@ -863,7 +854,7 @@ int CRYPTO_gcm128_decrypt_ctr32(GCM128_CONTEXT *ctx, const AES_KEY *key,
   if (aesni_gcm_enabled(ctx, stream)) {
     /* |aesni_gcm_decrypt| may not process all the input given to it. It may
      * not process *any* of its input if it is deemed too small. */
-    size_t bulk = aesni_gcm_decrypt(in, out, len, key, ctx->Yi.c, ctx->Xi.u);
+    size_t bulk = aesni_gcm_decrypt(in, out, len, key, ctx->Yi.c, ctx->Xi.c);
     in += bulk;
     out += bulk;
     len -= bulk;
@@ -928,7 +919,7 @@ void CRYPTO_gcm128_tag(GCM128_CONTEXT *ctx, uint8_t *tag, size_t len) {
   uint64_t alen = ctx->len.u[0] << 3;
   uint64_t clen = ctx->len.u[1] << 3;
 #ifdef GCM_FUNCREF_4BIT
-  void (*gcm_gmult_p)(uint64_t Xi[2], const u128 Htable[16]) = ctx->gmult;
+  gcm128_gmult_f gcm_gmult_p = ctx->gmult;
 #endif
 
   if (ctx->mres || ctx->ares) {
