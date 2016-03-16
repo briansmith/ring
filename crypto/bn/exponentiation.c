@@ -928,8 +928,6 @@ int BN_mod_exp_mont_consttime(BIGNUM *rr, const BIGNUM *a, const BIGNUM *p,
     return BN_one(rr);
   }
 
-  BN_CTX_start(ctx);
-
   /* Allocate a montgomery context if it was not supplied by the caller. */
   if (mont == NULL) {
     new_mont = BN_MONT_CTX_new();
@@ -1230,7 +1228,6 @@ err:
     OPENSSL_cleanse(powerbuf, powerbufLen);
     OPENSSL_free(powerbufFree);
   }
-  BN_CTX_end(ctx);
   return (ret);
 }
 
