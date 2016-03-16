@@ -116,7 +116,6 @@
 
 #include <openssl/ssl.h>
 
-#include <stdio.h>
 #include <string.h>
 
 #include <openssl/bytestring.h>

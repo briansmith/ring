@@ -115,7 +115,6 @@
 #include <openssl/ssl.h>
 
 #include <assert.h>
-#include <stdio.h>
 
 #include <openssl/bn.h>
 #include <openssl/buf.h>
