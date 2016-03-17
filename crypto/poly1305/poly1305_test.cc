@@ -64,7 +64,7 @@ static bool TestSIMD(FileTest *t, unsigned excess,
   // |CRYPTO_poly1305_finish| requires a 16-byte-aligned output.
   alignas(16) uint8_t out[16];
   CRYPTO_poly1305_finish(&state, out);
-  if (!t->ExpectBytesEqual(out, 16, mac.data(), mac.size())) {
+  if (!t->ExpectBytesEqual(mac.data(), mac.size(), out, 16)) {
     t->PrintLine("SIMD pattern %u failed.", excess);
     return false;
   }
@@ -102,7 +102,7 @@ static bool TestPoly1305(FileTest *t, void *arg) {
     CRYPTO_poly1305_update(&state, &in[i], 1);
   }
   CRYPTO_poly1305_finish(&state, out);
-  if (!t->ExpectBytesEqual(out, 16, mac.data(), mac.size())) {
+  if (!t->ExpectBytesEqual(mac.data(), mac.size(), out, 16)) {
     t->PrintLine("Streaming Poly1305 failed.");
     return false;
   }
