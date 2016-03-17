@@ -149,9 +149,13 @@ int RSA_public_key_to_bytes(uint8_t **out_bytes, size_t *out_len,
 static const uint64_t kVersionTwoPrime = 0;
 
 RSA *RSA_parse_private_key(CBS *cbs) {
-  BN_CTX *ctx = NULL;
-  RSA *ret = RSA_new();
+  RSA *ret = rsa_new_begin();
   if (ret == NULL) {
+    return NULL;
+  }
+
+  BN_CTX *ctx = BN_CTX_new();
+  if (ctx == NULL) {
     return NULL;
   }
 
@@ -181,6 +185,10 @@ RSA *RSA_parse_private_key(CBS *cbs) {
 
   if (CBS_len(&child) != 0) {
     OPENSSL_PUT_ERROR(RSA, RSA_R_BAD_ENCODING);
+    goto err;
+  }
+
+  if (!rsa_new_end(ret, ctx)) {
     goto err;
   }
 

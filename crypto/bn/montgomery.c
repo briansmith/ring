@@ -112,7 +112,6 @@
 
 #include <openssl/err.h>
 #include <openssl/mem.h>
-#include <openssl/thread.h>
 #include <openssl/type_check.h>
 
 #include "internal.h"
@@ -244,38 +243,6 @@ int BN_MONT_CTX_set(BN_MONT_CTX *mont, const BIGNUM *mod, BN_CTX *ctx) {
 err:
   BN_CTX_end(ctx);
   return ret;
-}
-
-BN_MONT_CTX *BN_MONT_CTX_set_locked(BN_MONT_CTX **pmont, CRYPTO_MUTEX *lock,
-                                    const BIGNUM *mod, BN_CTX *bn_ctx) {
-  CRYPTO_MUTEX_lock_read(lock);
-  BN_MONT_CTX *ctx = *pmont;
-  CRYPTO_MUTEX_unlock(lock);
-
-  if (ctx) {
-    return ctx;
-  }
-
-  CRYPTO_MUTEX_lock_write(lock);
-  ctx = *pmont;
-  if (ctx) {
-    goto out;
-  }
-
-  ctx = BN_MONT_CTX_new();
-  if (ctx == NULL) {
-    goto out;
-  }
-  if (!BN_MONT_CTX_set(ctx, mod, bn_ctx)) {
-    BN_MONT_CTX_free(ctx);
-    ctx = NULL;
-    goto out;
-  }
-  *pmont = ctx;
-
-out:
-  CRYPTO_MUTEX_unlock(lock);
-  return ctx;
 }
 
 int BN_to_montgomery(BIGNUM *ret, const BIGNUM *a, const BN_MONT_CTX *mont,

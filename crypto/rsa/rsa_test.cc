@@ -64,6 +64,7 @@
 #include <openssl/err.h>
 #include <openssl/obj_mac.h>
 
+#include "internal.h"
 #include "../test/bn_test_util.h"
 #include "../test/scoped_types.h"
 
@@ -346,8 +347,10 @@ static bool TestBadKey() {
 static bool TestOnlyDGiven() {
   uint8_t buf[64];
   unsigned buf_len = sizeof(buf);
-  ScopedRSA key(RSA_new());
+  ScopedRSA key(rsa_new_begin());
+  ScopedBN_CTX ctx(BN_CTX_new());
   if (!key ||
+      !ctx ||
       !BN_hex2bn(&key->n,
                  "00e77bbf3889d4ef36a9a25d4d69f3f632eb4362214c74517da6d6aeaa9bd"
                  "09ac42b26621cd88f3a6eb013772fc3bf9f83914b6467231c630202c35b3e"
@@ -357,6 +360,7 @@ static bool TestOnlyDGiven() {
                  "0365db9eb6d73b53b015c40cd8db4de7dd7035c68b5ac1bf786d7a4ee2cea"
                  "316eaeca21a73ac365e58713195f2ae9849348525ca855386b6d028e437a9"
                  "495a01") ||
+      !rsa_new_end(key.get(), ctx.get()) ||
       RSA_size(key.get()) > sizeof(buf)) {
     return false;
   }
@@ -408,7 +412,12 @@ static bool TestRecoverCRTParams() {
       return false;
     }
 
-    ScopedRSA key2(RSA_new());
+    ScopedBN_CTX ctx(BN_CTX_new());
+    if (!ctx) {
+      return false;
+    }
+
+    ScopedRSA key2(rsa_new_begin());
     if (!key2) {
       return false;
     }
@@ -416,6 +425,9 @@ static bool TestRecoverCRTParams() {
     key2->e = BN_dup(key1->e);
     key2->d = BN_dup(key1->d);
     if (key2->n == nullptr || key2->e == nullptr || key2->d == nullptr) {
+      return false;
+    }
+    if (!rsa_new_end(key2.get(), ctx.get())) {
       return false;
     }
   }

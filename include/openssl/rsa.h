@@ -83,9 +83,6 @@ OPENSSL_EXPORT int RSA_verify_pkcs1_signed_digest(size_t min_bits,
 
 /* Allocation and destruction. */
 
-/* RSA_new returns a new, empty RSA object or NULL on error. */
-OPENSSL_EXPORT RSA *RSA_new(void);
-
 /* RSA_free decrements the reference count of |rsa| and frees it if the
  * reference count drops to zero. */
 OPENSSL_EXPORT void RSA_free(RSA *rsa);

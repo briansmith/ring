@@ -124,7 +124,6 @@
 #define OPENSSL_HEADER_BN_H
 
 #include <openssl/base.h>
-#include <openssl/thread.h>
 
 #include <inttypes.h>  /* for PRIu64 and friends */
 #include <stdio.h>  /* for FILE* */
@@ -607,14 +606,6 @@ OPENSSL_EXPORT void BN_MONT_CTX_free(BN_MONT_CTX *mont);
  * returns one on success and zero on error. */
 OPENSSL_EXPORT int BN_MONT_CTX_set(BN_MONT_CTX *mont, const BIGNUM *mod,
                                    BN_CTX *ctx);
-
-/* BN_MONT_CTX_set_locked takes |lock| and checks whether |*pmont| is NULL. If
- * so, it creates a new |BN_MONT_CTX| and sets the modulus for it to |mod|. It
- * then stores it as |*pmont| and returns it, or NULL on error.
- *
- * If |*pmont| is already non-NULL then the existing value is returned. */
-BN_MONT_CTX *BN_MONT_CTX_set_locked(BN_MONT_CTX **pmont, CRYPTO_MUTEX *lock,
-                                    const BIGNUM *mod, BN_CTX *bn_ctx);
 
 /* BN_to_montgomery sets |ret| equal to |a| in the Montgomery domain. It
  * returns one on success and zero on error. */

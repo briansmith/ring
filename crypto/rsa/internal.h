@@ -67,6 +67,12 @@ extern "C" {
 
 #define RSA_PKCS1_PADDING_SIZE 11
 
+/* rsa_new_begin returns a new, empty RSA object or NULL on error. After
+ * filling in the key's values, |rsa_new_end| must be called. In particular,
+ * |rsa_new_end| must be called before any RSA operation is performed.
+ * |rsa_new_end|'s |ctx| parameter must be non-NULL. */
+RSA *rsa_new_begin(void);
+int rsa_new_end(RSA *rsa, BN_CTX *ctx);
 
 BN_BLINDING *BN_BLINDING_new(const BIGNUM *A, const BIGNUM *Ai, BIGNUM *mod);
 void BN_BLINDING_free(BN_BLINDING *b);

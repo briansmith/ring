@@ -92,7 +92,7 @@ int RSA_verify_pkcs1_signed_digest(size_t min_bits, size_t max_bits,
                     digest_len, sig, sig_len, key, key_len);
 }
 
-RSA *RSA_new(void) {
+RSA *rsa_new_begin(void) {
   RSA *rsa = OPENSSL_malloc(sizeof(RSA));
   if (rsa == NULL) {
     OPENSSL_PUT_ERROR(RSA, ERR_R_MALLOC_FAILURE);
@@ -105,6 +105,45 @@ RSA *RSA_new(void) {
   CRYPTO_MUTEX_init(&rsa->lock);
 
   return rsa;
+}
+
+int rsa_new_end(RSA *rsa, BN_CTX *ctx) {
+  assert(ctx != NULL);
+
+  rsa->mont_n = BN_MONT_CTX_new();
+  if (rsa->mont_n == NULL) {
+    return 0;
+  }
+  if (!BN_MONT_CTX_set(rsa->mont_n, rsa->n, ctx)) {
+    return 0;
+  }
+
+  /* Make sure BN_mod_inverse in Montgomery intialization uses the
+   * BN_FLG_CONSTTIME flag. */
+
+  if (rsa->p) {
+    BIGNUM local_p;
+    BN_init(&local_p);
+    BN_with_flags(&local_p, rsa->p, BN_FLG_CONSTTIME);
+    rsa->mont_p = BN_MONT_CTX_new();
+    if (rsa->mont_p == NULL ||
+        !BN_MONT_CTX_set(rsa->mont_p, &local_p, ctx)) {
+      return 0;
+    }
+  }
+
+  if (rsa->q) {
+    BIGNUM local_q;
+    BN_init(&local_q);
+    BN_with_flags(&local_q, rsa->q, BN_FLG_CONSTTIME);
+    rsa->mont_q = BN_MONT_CTX_new();
+    if (rsa->mont_q == NULL ||
+        !BN_MONT_CTX_set(rsa->mont_q, &local_q, ctx)) {
+      return 0;
+    }
+  }
+
+  return 1;
 }
 
 void RSA_free(RSA *rsa) {
@@ -347,8 +386,7 @@ int RSA_check_key(const RSA *key) {
   }
 
   if (!key->d || !key->p) {
-    /* For a public key, or without p and q, there's nothing that can be
-     * checked. */
+    /* For key without p and q, there's nothing that can be checked. */
     return 1;
   }
 

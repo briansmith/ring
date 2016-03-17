@@ -221,6 +221,8 @@ err:
  * |*index_used| and must be passed to |rsa_blinding_release| when finished. */
 static BN_BLINDING *rsa_blinding_get(RSA *rsa, unsigned *index_used,
                                      BN_CTX *ctx) {
+  assert(ctx != NULL);
+
   BN_BLINDING *ret = NULL;
   BN_BLINDING **new_blindings;
   uint8_t *new_blindings_inuse;
@@ -559,12 +561,6 @@ static int rsa_private_transform(RSA *rsa, uint8_t *out, const uint8_t *in,
     d = &local_d;
     BN_with_flags(d, rsa->d, BN_FLG_CONSTTIME);
 
-    if (rsa->flags & RSA_FLAG_CACHE_PUBLIC) {
-      if (BN_MONT_CTX_set_locked(&rsa->mont_n, &rsa->lock, rsa->n, ctx) == NULL) {
-        goto err;
-      }
-    }
-
     if (!BN_mod_exp_mont_consttime(result, f, d, rsa->n, ctx, rsa->mont_n)) {
       goto err;
     }
@@ -605,36 +601,6 @@ static int mod_exp(BIGNUM *r0, const BIGNUM *I, RSA *rsa, BN_CTX *ctx) {
   r1 = BN_CTX_get(ctx);
   m1 = BN_CTX_get(ctx);
   vrfy = BN_CTX_get(ctx);
-
-  {
-    BIGNUM local_p, local_q;
-    BIGNUM *p = NULL, *q = NULL;
-
-    /* Make sure BN_mod_inverse in Montgomery intialization uses the
-     * BN_FLG_CONSTTIME flag. */
-    BN_init(&local_p);
-    p = &local_p;
-    BN_with_flags(p, rsa->p, BN_FLG_CONSTTIME);
-
-    BN_init(&local_q);
-    q = &local_q;
-    BN_with_flags(q, rsa->q, BN_FLG_CONSTTIME);
-
-    if (rsa->flags & RSA_FLAG_CACHE_PRIVATE) {
-      if (BN_MONT_CTX_set_locked(&rsa->mont_p, &rsa->lock, p, ctx) == NULL) {
-        goto err;
-      }
-      if (BN_MONT_CTX_set_locked(&rsa->mont_q, &rsa->lock, q, ctx) == NULL) {
-        goto err;
-      }
-    }
-  }
-
-  if (rsa->flags & RSA_FLAG_CACHE_PUBLIC) {
-    if (BN_MONT_CTX_set_locked(&rsa->mont_n, &rsa->lock, rsa->n, ctx) == NULL) {
-      goto err;
-    }
-  }
 
   /* compute I mod q */
   c = &local_c;
@@ -747,7 +713,7 @@ err:
 }
 
 RSA *RSA_generate(int bits, uint32_t e, BN_GENCB *cb) {
-  RSA *rsa = RSA_new();
+  RSA *rsa = rsa_new_begin();
   if (rsa == NULL) {
     OPENSSL_PUT_ERROR(RSA, ERR_R_MALLOC_FAILURE)
     return NULL;
@@ -897,6 +863,10 @@ RSA *RSA_generate(int bits, uint32_t e, BN_GENCB *cb) {
   BN_with_flags(p, rsa->p, BN_FLG_CONSTTIME);
 
   if (!BN_mod_inverse(rsa->iqmp, rsa->q, p, ctx)) {
+    goto err;
+  }
+
+  if (!rsa_new_end(rsa, ctx)) {
     goto err;
   }
 
