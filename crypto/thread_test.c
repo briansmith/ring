@@ -51,8 +51,6 @@ static int wait_for_thread(thread_t thread) {
 
 #else
 
-#include <pthread.h>
-
 typedef pthread_t thread_t;
 
 static void *thread_run(void *arg) {
