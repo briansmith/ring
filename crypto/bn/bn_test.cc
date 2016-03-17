@@ -1008,11 +1008,13 @@ static bool test_mod_exp_mont(FILE *fp, BN_CTX *ctx) {
     return false;
   }
   for (int i = 0; i < num2; i++) {
-    if (!BN_rand(a.get(), 20 + i * 5, 0, 0) ||
+    if (!BN_rand_range(a.get(), c.get()) ||
         !BN_rand(b.get(), 2 + i, 0, 0) ||
         !BN_mod_exp_mont(d.get(), a.get(), b.get(), c.get(), ctx, nullptr)) {
       return false;
     }
+
+    /* TODO: add a test for the case where |a| == |m| and where |a| > |m|. */
 
     if (fp != NULL) {
       BN_print_fp(fp, a.get());
@@ -1093,7 +1095,7 @@ static bool test_mod_exp_mont_consttime(FILE *fp, BN_CTX *ctx) {
     return false;
   }
   for (int i = 0; i < num2; i++) {
-    if (!BN_rand(a.get(), 20 + i * 5, 0, 0) ||
+    if (!BN_rand_range(a.get(), c.get()) ||
         !BN_rand(b.get(), 2 + i, 0, 0) ||
         !BN_mod_exp_mont_consttime(d.get(), a.get(), b.get(), c.get(), ctx,
                                    NULL)) {
@@ -1133,7 +1135,7 @@ static bool test_mod_exp_mont5(BN_CTX *ctx) {
   ScopedBIGNUM e(BN_new());
   if (!a || !p || !m || !d || !e ||
       !BN_rand(m.get(), 1024, 0, 1) ||  // must be odd for montgomery
-      !BN_rand(a.get(), 1024, 0, 0)) {
+      !BN_rand_range(a.get(), m.get())) {
     return false;
   }
   // Zero exponent.
@@ -1176,7 +1178,7 @@ static bool test_mod_exp_mont5(BN_CTX *ctx) {
     return false;
   }
   // Finally, some regular test vectors.
-  if (!BN_rand(e.get(), 1024, 0, 0) ||
+  if (!BN_rand_range(e.get(), m.get()) ||
       !BN_mod_exp_mont_consttime(d.get(), e.get(), p.get(), m.get(), ctx,
                                  nullptr) ||
       !BN_mod_exp_mont(a.get(), e.get(), p.get(), m.get(), ctx, nullptr)) {
@@ -1237,7 +1239,7 @@ static bool test_exp(FILE *fp, BN_CTX *ctx) {
 // test_exp_mod_zero tests that 1**0 mod 1 == 0.
 static bool test_exp_mod_zero(void) {
   ScopedBIGNUM zero(BN_new()), a(BN_new()), r(BN_new());
-  if (!zero || !a || !r || !BN_rand(a.get(), 1024, 0, 0)) {
+  if (!zero || !a || !r || !BN_one(a.get())) {
     return false;
   }
   BN_zero(zero.get());

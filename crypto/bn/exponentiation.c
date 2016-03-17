@@ -175,7 +175,6 @@ int BN_mod_exp_mont(BIGNUM *rr, const BIGNUM *a, const BIGNUM *p,
   int i, j, bits, ret = 0, wstart, window;
   int start = 1;
   BIGNUM *d, *r;
-  const BIGNUM *aa;
   /* Table of variables obtained from 'ctx' */
   BIGNUM *val[TABLE_SIZE];
   BN_MONT_CTX *new_mont = NULL;
@@ -188,6 +187,11 @@ int BN_mod_exp_mont(BIGNUM *rr, const BIGNUM *a, const BIGNUM *p,
     OPENSSL_PUT_ERROR(BN, BN_R_CALLED_WITH_EVEN_MODULUS);
     return 0;
   }
+
+  /* XXX: This should be after the |BN_R_INPUT_NOT_REDUCED| check, but it isn't
+   * in order to allow the |test_exp_mod_zero| test to keep working. Hopefully
+   * we can simplify the users of this code so that it is clear that what
+   * |test_exp_mod_zero| tests doesn't need to be supported. */
   bits = BN_num_bits(p);
   if (bits == 0) {
     /* x**0 mod 1 is still zero. */
@@ -196,6 +200,11 @@ int BN_mod_exp_mont(BIGNUM *rr, const BIGNUM *a, const BIGNUM *p,
       return 1;
     }
     return BN_one(rr);
+  }
+
+  if (a->neg || BN_ucmp(a, m) >= 0) {
+    OPENSSL_PUT_ERROR(BN, BN_R_INPUT_NOT_REDUCED);
+    return 0;
   }
 
   BN_CTX_start(ctx);
@@ -215,21 +224,12 @@ int BN_mod_exp_mont(BIGNUM *rr, const BIGNUM *a, const BIGNUM *p,
     mont = new_mont;
   }
 
-  if (a->neg || BN_ucmp(a, m) >= 0) {
-    if (!BN_nnmod(val[0], a, m, ctx)) {
-      goto err;
-    }
-    aa = val[0];
-  } else {
-    aa = a;
-  }
-
-  if (BN_is_zero(aa)) {
+  if (BN_is_zero(a)) {
     BN_zero(rr);
     ret = 1;
     goto err;
   }
-  if (!BN_to_montgomery(val[0], aa, mont, ctx)) {
+  if (!BN_to_montgomery(val[0], a, mont, ctx)) {
     goto err; /* 1 */
   }
 
