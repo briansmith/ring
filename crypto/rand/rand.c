@@ -83,7 +83,7 @@ static int have_rdrand(void) {
   return (OPENSSL_ia32cap_P[1] & (1u << 30)) != 0;
 }
 
-static int hwrand(void *buf, size_t len) {
+static int hwrand(uint8_t *buf, size_t len) {
   if (!have_rdrand()) {
     return 0;
   }
@@ -101,7 +101,7 @@ static int hwrand(void *buf, size_t len) {
     if (!CRYPTO_rdrand(rand_buf)) {
       return 0;
     }
-    memcpy((uint8_t *)buf + len_multiple8, rand_buf, len);
+    memcpy(buf + len_multiple8, rand_buf, len);
   }
 
   return 1;
@@ -109,7 +109,7 @@ static int hwrand(void *buf, size_t len) {
 
 #else
 
-static int hwrand(void *buf, size_t len) {
+static int hwrand(uint8_t *buf, size_t len) {
   (void)buf;
   (void)len;
 
@@ -169,7 +169,7 @@ int RAND_bytes(uint8_t *buf, size_t len) {
       counter_and_nonce[2] = (uint32_t)state->calls_used;
       counter_and_nonce[3] = (uint32_t)(state->calls_used >> 32);
       ChaCha20_ctr32(buf, buf, todo, state->key, counter_and_nonce);
-      buf = (uint8_t *)buf + todo;
+      buf += todo;
       remaining -= todo;
       state->calls_used++;
     }
