@@ -52,8 +52,6 @@
 
 static const unsigned int CONSTTIME_TRUE = (unsigned)(~0);
 static const unsigned int CONSTTIME_FALSE = 0;
-static const uint8_t CONSTTIME_TRUE_8 = 0xff;
-static const uint8_t CONSTTIME_FALSE_8 = 0;
 
 static int test_binary_op(unsigned int (*op)(unsigned int a, unsigned int b),
                           const char* op_name, unsigned int a, unsigned int b,
