@@ -5087,10 +5087,16 @@ func main() {
 		go worker(statusChan, testChan, *shimPath, &wg)
 	}
 
+	var foundTest bool
 	for i := range testCases {
 		if len(*testToRun) == 0 || *testToRun == testCases[i].name {
+			foundTest = true
 			testChan <- &testCases[i]
 		}
+	}
+	if !foundTest {
+		fmt.Fprintf(os.Stderr, "No test named '%s'\n", *testToRun)
+		os.Exit(1)
 	}
 
 	close(testChan)
