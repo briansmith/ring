@@ -30,12 +30,6 @@ void CRYPTO_MUTEX_init(CRYPTO_MUTEX *lock) {
   }
 }
 
-void CRYPTO_MUTEX_lock_read(CRYPTO_MUTEX *lock) {
-  if (pthread_rwlock_rdlock(lock) != 0) {
-    abort();
-  }
-}
-
 void CRYPTO_MUTEX_lock_write(CRYPTO_MUTEX *lock) {
   if (pthread_rwlock_wrlock(lock) != 0) {
     abort();

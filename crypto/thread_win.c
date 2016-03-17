@@ -87,11 +87,6 @@ void CRYPTO_MUTEX_init(CRYPTO_MUTEX *lock) {
   }
 }
 
-void CRYPTO_MUTEX_lock_read(CRYPTO_MUTEX *lock) {
-  /* Since we have to support Windows XP, read locks are actually exclusive. */
-  EnterCriticalSection(lock);
-}
-
 void CRYPTO_MUTEX_lock_write(CRYPTO_MUTEX *lock) {
   EnterCriticalSection(lock);
 }

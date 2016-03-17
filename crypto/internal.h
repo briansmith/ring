@@ -321,11 +321,6 @@ OPENSSL_EXPORT void CRYPTO_once(CRYPTO_once_t *once, void (*init)(void));
 /* CRYPTO_MUTEX_init initialises |lock|. Do not use for static variables. */
 OPENSSL_EXPORT void CRYPTO_MUTEX_init(CRYPTO_MUTEX *lock);
 
-/* CRYPTO_MUTEX_lock_read locks |lock| such that other threads may also have a
- * read lock, but none may have a write lock. (On Windows, read locks are
- * actually fully exclusive.) */
-OPENSSL_EXPORT void CRYPTO_MUTEX_lock_read(CRYPTO_MUTEX *lock);
-
 /* CRYPTO_MUTEX_lock_write locks |lock| such that no other thread has any type
  * of lock on it. */
 OPENSSL_EXPORT void CRYPTO_MUTEX_lock_write(CRYPTO_MUTEX *lock);
