@@ -62,6 +62,7 @@ const Flag<bool> kBoolFlags[] = {
   { "-no-ssl3", &TestConfig::no_ssl3 },
   { "-shim-writes-first", &TestConfig::shim_writes_first },
   { "-expect-session-miss", &TestConfig::expect_session_miss },
+  { "-decline-alpn", &TestConfig::decline_alpn },
   { "-expect-extended-master-secret",
     &TestConfig::expect_extended_master_secret },
   { "-enable-ocsp-stapling", &TestConfig::enable_ocsp_stapling },

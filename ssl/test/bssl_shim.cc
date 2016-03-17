@@ -493,7 +493,7 @@ static int NextProtoSelectCallback(SSL* ssl, uint8_t** out, uint8_t* outlen,
 static int AlpnSelectCallback(SSL* ssl, const uint8_t** out, uint8_t* outlen,
                               const uint8_t* in, unsigned inlen, void* arg) {
   const TestConfig *config = GetConfigPtr(ssl);
-  if (config->select_alpn.empty()) {
+  if (config->decline_alpn) {
     return SSL_TLSEXT_ERR_NOACK;
   }
 
@@ -828,7 +828,7 @@ static ScopedSSL_CTX SetupCtx(const TestConfig *config) {
                                      NULL);
   }
 
-  if (!config->select_alpn.empty()) {
+  if (!config->select_alpn.empty() || config->decline_alpn) {
     SSL_CTX_set_alpn_select_cb(ssl_ctx.get(), AlpnSelectCallback, NULL);
   }
 

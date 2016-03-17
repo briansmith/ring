@@ -50,6 +50,7 @@ struct TestConfig {
   std::string expected_alpn;
   std::string expected_advertised_alpn;
   std::string select_alpn;
+  bool decline_alpn = false;
   bool expect_session_miss = false;
   bool expect_extended_master_secret = false;
   std::string psk;

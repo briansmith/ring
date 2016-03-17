@@ -3603,6 +3603,16 @@ func addExtensionTests() {
 		expectedNextProtoType: alpn,
 		resumeSession:         true,
 	})
+	testCases = append(testCases, testCase{
+		testType: serverTest,
+		name:     "ALPNServer-Decline",
+		config: Config{
+			NextProtos: []string{"foo", "bar", "baz"},
+		},
+		flags:             []string{"-decline-alpn"},
+		expectNoNextProto: true,
+		resumeSession:     true,
+	})
 	// Test that the server prefers ALPN over NPN.
 	testCases = append(testCases, testCase{
 		testType: serverTest,
