@@ -73,24 +73,6 @@ static int test_binary_op(unsigned int (*op)(unsigned int a, unsigned int b),
   return 0;
 }
 
-static int test_binary_op_8(uint8_t (*op)(unsigned int a, unsigned int b),
-                            const char* op_name, unsigned int a, unsigned int b,
-                            int is_true) {
-  uint8_t c = op(a, b);
-  if (is_true && c != CONSTTIME_TRUE_8) {
-    fprintf(stderr,
-            "Test failed for %s(%du, %du): expected %u (TRUE), got %u\n",
-            op_name, a, b, CONSTTIME_TRUE_8, c);
-    return 1;
-  } else if (!is_true && c != CONSTTIME_FALSE_8) {
-    fprintf(stderr,
-            "Test failed for  %s(%du, %du): expected %u (FALSE), got %u\n",
-            op_name, a, b, CONSTTIME_FALSE_8, c);
-    return 1;
-  }
-  return 0;
-}
-
 static int test_is_zero(unsigned int a) {
   unsigned int c = constant_time_is_zero(a);
   if (a == 0 && c != CONSTTIME_TRUE) {
@@ -150,8 +132,6 @@ static int test_eq_int(int a, int b) {
 static unsigned int test_values[] = {0, 1, 1024, 12345, 32000, UINT_MAX / 2 - 1,
                                      UINT_MAX / 2, UINT_MAX / 2 + 1,
                                      UINT_MAX - 1, UINT_MAX};
-
-static uint8_t test_values_8[] = {0, 1, 2, 20, 32, 127, 128, 129, 255};
 
 static int signed_test_values[] = {
     0,     1,      -1,      1024,    -1024,       12345,      -12345,
