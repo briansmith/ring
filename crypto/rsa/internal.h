@@ -92,9 +92,10 @@ int rsa_default_keygen(RSA *rsa, int bits, BIGNUM *e_value, BN_GENCB *cb);
 
 BN_BLINDING *BN_BLINDING_new(const RSA *rsa, BN_CTX *ctx);
 void BN_BLINDING_free(BN_BLINDING *b);
-int BN_BLINDING_convert(BIGNUM *n, BN_BLINDING *b, BN_CTX *ctx,
-                        const BN_MONT_CTX *mont_ctx);
-int BN_BLINDING_invert(BIGNUM *n, const BN_BLINDING *b, BN_CTX *ctx);
+int BN_BLINDING_convert(BIGNUM *n, BN_BLINDING *b, const BN_MONT_CTX *mont_ctx,
+                        BN_CTX *ctx);
+int BN_BLINDING_invert(BIGNUM *n, const BN_BLINDING *b, BN_MONT_CTX *mont_ctx,
+                       BN_CTX *ctx);
 
 
 int RSA_padding_add_PKCS1_type_1(uint8_t *to, unsigned to_len,

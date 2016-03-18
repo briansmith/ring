@@ -213,6 +213,7 @@ err:
  * |*index_used| and must be passed to |rsa_blinding_release| when finished. */
 static BN_BLINDING *rsa_blinding_get(RSA *rsa, unsigned *index_used,
                                      BN_CTX *ctx) {
+  assert(ctx != NULL);
   assert(rsa->mont_n != NULL);
 
   BN_BLINDING *ret = NULL;
@@ -562,7 +563,7 @@ int rsa_default_private_transform(RSA *rsa, uint8_t *out, const uint8_t *in,
       OPENSSL_PUT_ERROR(RSA, ERR_R_INTERNAL_ERROR);
       goto err;
     }
-    if (!BN_BLINDING_convert(f, blinding, ctx, rsa->mont_n)) {
+    if (!BN_BLINDING_convert(f, blinding, rsa->mont_n, ctx)) {
       goto err;
     }
   }
@@ -588,7 +589,7 @@ int rsa_default_private_transform(RSA *rsa, uint8_t *out, const uint8_t *in,
   }
 
   if (blinding) {
-    if (!BN_BLINDING_invert(result, blinding, ctx)) {
+    if (!BN_BLINDING_invert(result, blinding, rsa->mont_n, ctx)) {
       goto err;
     }
   }
