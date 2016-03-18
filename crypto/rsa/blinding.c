@@ -132,7 +132,8 @@ static BN_BLINDING *bn_blinding_create_param(BN_BLINDING *b, const BIGNUM *e,
                                              BIGNUM *m, BN_CTX *ctx,
                                              const BN_MONT_CTX *mont_ctx);
 
-BN_BLINDING *BN_BLINDING_new(const BIGNUM *A, const BIGNUM *Ai, BIGNUM *mod) {
+static BN_BLINDING *bn_blinding_new(const BIGNUM *A, const BIGNUM *Ai,
+                                    BIGNUM *mod) {
   BN_BLINDING *ret = NULL;
 
   ret = OPENSSL_malloc(sizeof(BN_BLINDING));
@@ -258,7 +259,7 @@ static BN_BLINDING *bn_blinding_create_param(
   BN_BLINDING *ret = NULL;
 
   if (b == NULL) {
-    ret = BN_BLINDING_new(NULL, NULL, m);
+    ret = bn_blinding_new(NULL, NULL, m);
   } else {
     ret = b;
   }

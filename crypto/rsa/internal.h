@@ -74,7 +74,6 @@ extern "C" {
 RSA *rsa_new_begin(void);
 int rsa_new_end(RSA *rsa, BN_CTX *ctx);
 
-BN_BLINDING *BN_BLINDING_new(const BIGNUM *A, const BIGNUM *Ai, BIGNUM *mod);
 void BN_BLINDING_free(BN_BLINDING *b);
 int BN_BLINDING_convert(BIGNUM *n, BN_BLINDING *b, BN_CTX *ctx,
                         const BN_MONT_CTX *mont_ctx);
