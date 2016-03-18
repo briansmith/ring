@@ -566,7 +566,7 @@ static int rsa_private_transform(RSA *rsa, uint8_t *out, const uint8_t *in,
   }
 
   if (blinding) {
-    if (!BN_BLINDING_invert(result, blinding, ctx)) {
+    if (!BN_BLINDING_invert(result, blinding, rsa->mont_n, ctx)) {
       goto err;
     }
   }
