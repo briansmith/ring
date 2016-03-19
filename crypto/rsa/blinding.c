@@ -129,11 +129,10 @@ struct bn_blinding_st {
 };
 
 static BN_BLINDING *bn_blinding_create_param(BN_BLINDING *b, const BIGNUM *e,
-                                             BIGNUM *m, BN_CTX *ctx,
-                                             const BN_MONT_CTX *mont_ctx);
+                                             BIGNUM *m, const BN_MONT_CTX *mont,
+                                             BN_CTX *ctx);
 
-static BN_BLINDING *bn_blinding_new(const BIGNUM *A, const BIGNUM *Ai,
-                                    BIGNUM *mod) {
+BN_BLINDING *bn_blinding_new(const BIGNUM *A, const BIGNUM *Ai, BIGNUM *mod) {
   BN_BLINDING *ret = NULL;
 
   ret = OPENSSL_malloc(sizeof(BN_BLINDING));
@@ -185,8 +184,8 @@ void BN_BLINDING_free(BN_BLINDING *r) {
   OPENSSL_free(r);
 }
 
-static int bn_blinding_update(BN_BLINDING *b, BN_CTX *ctx,
-                              const BN_MONT_CTX *mont_ctx) {
+static int bn_blinding_update(BN_BLINDING *b, const BN_MONT_CTX *mont,
+                              BN_CTX *ctx) {
   int ret = 0;
 
   if (b->A == NULL || b->Ai == NULL) {
@@ -200,7 +199,7 @@ static int bn_blinding_update(BN_BLINDING *b, BN_CTX *ctx,
 
   if (++b->counter == BN_BLINDING_COUNTER && b->e != NULL) {
     /* re-create blinding parameters */
-    if (!bn_blinding_create_param(b, NULL, NULL, ctx, mont_ctx)) {
+    if (!bn_blinding_create_param(b, NULL, NULL, mont, ctx)) {
       goto err;
     }
   } else {
@@ -221,8 +220,8 @@ err:
   return ret;
 }
 
-int BN_BLINDING_convert(BIGNUM *n, BN_BLINDING *b, BN_CTX *ctx,
-                        const BN_MONT_CTX *mont_ctx) {
+int BN_BLINDING_convert(BIGNUM *n, BN_BLINDING *b, const BN_MONT_CTX *mont,
+                        BN_CTX *ctx) {
   int ret = 1;
 
   if (b->A == NULL || b->Ai == NULL) {
@@ -233,7 +232,7 @@ int BN_BLINDING_convert(BIGNUM *n, BN_BLINDING *b, BN_CTX *ctx,
   if (b->counter == -1) {
     /* Fresh blinding, doesn't need updating. */
     b->counter = 0;
-  } else if (!bn_blinding_update(b, ctx, mont_ctx)) {
+  } else if (!bn_blinding_update(b, mont, ctx)) {
     return 0;
   }
 
@@ -252,9 +251,9 @@ int BN_BLINDING_invert(BIGNUM *n, const BN_BLINDING *b, BN_CTX *ctx) {
   return BN_mod_mul(n, n, b->Ai, b->mod, ctx);
 }
 
-static BN_BLINDING *bn_blinding_create_param(
-    BN_BLINDING *b, const BIGNUM *e, BIGNUM *m, BN_CTX *ctx,
-    const BN_MONT_CTX *mont_ctx) {
+static BN_BLINDING *bn_blinding_create_param(BN_BLINDING *b, const BIGNUM *e,
+                                             BIGNUM *m, const BN_MONT_CTX *mont,
+                                             BN_CTX *ctx) {
   int retry_counter = 32;
   BN_BLINDING *ret = NULL;
 
@@ -305,7 +304,7 @@ static BN_BLINDING *bn_blinding_create_param(
     }
   } while (1);
 
-  if (!BN_mod_exp_mont(ret->A, ret->A, ret->e, ret->mod, ctx, mont_ctx)) {
+  if (!BN_mod_exp_mont(ret->A, ret->A, ret->e, ret->mod, ctx, mont)) {
     goto err;
   }
 
@@ -335,5 +334,5 @@ BN_BLINDING *rsa_setup_blinding(RSA *rsa, BN_CTX *ctx) {
   n = &local_n;
   BN_with_flags(n, rsa->n, BN_FLG_CONSTTIME);
 
-  return bn_blinding_create_param(NULL, rsa->e, n, ctx, rsa->mont_n);
+  return bn_blinding_create_param(NULL, rsa->e, n, rsa->mont_n, ctx);
 }

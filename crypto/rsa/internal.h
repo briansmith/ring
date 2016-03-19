@@ -75,8 +75,8 @@ RSA *rsa_new_begin(void);
 int rsa_new_end(RSA *rsa, BN_CTX *ctx);
 
 void BN_BLINDING_free(BN_BLINDING *b);
-int BN_BLINDING_convert(BIGNUM *n, BN_BLINDING *b, BN_CTX *ctx,
-                        const BN_MONT_CTX *mont_ctx);
+int BN_BLINDING_convert(BIGNUM *n, BN_BLINDING *b, const BN_MONT_CTX *mont,
+                        BN_CTX *ctx);
 int BN_BLINDING_invert(BIGNUM *n, const BN_BLINDING *b, BN_CTX *ctx);
 BN_BLINDING *rsa_setup_blinding(RSA *rsa, BN_CTX *in_ctx);
 
