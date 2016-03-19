@@ -204,6 +204,16 @@ OPENSSL_EXPORT int DH_set_ex_data(DH *d, int idx, void *arg);
 OPENSSL_EXPORT void *DH_get_ex_data(DH *d, int idx);
 
 
+/* Deprecated functions. */
+
+/* DH_generate_parameters behaves like |DH_generate_parameters_ex|, which is
+ * what you should use instead. It returns NULL on error, or a newly-allocated
+ * |DH| on success. This function is provided for compatibility only. */
+OPENSSL_EXPORT DH *DH_generate_parameters(int prime_len, int generator,
+                                          void (*callback)(int, int, void *),
+                                          void *cb_arg);
+
+
 struct dh_st {
   BIGNUM *p;
   BIGNUM *g;

@@ -647,6 +647,7 @@ OPENSSL_EXPORT int X509V3_add_standard_extensions(void);
 OPENSSL_EXPORT STACK_OF(CONF_VALUE) *X509V3_parse_list(const char *line);
 OPENSSL_EXPORT void *X509V3_EXT_d2i(X509_EXTENSION *ext);
 OPENSSL_EXPORT void *X509V3_get_d2i(STACK_OF(X509_EXTENSION) *x, int nid, int *crit, int *idx);
+OPENSSL_EXPORT int X509V3_EXT_free(int nid, void *ext_data);
 
 
 OPENSSL_EXPORT X509_EXTENSION *X509V3_EXT_i2d(int ext_nid, int crit, void *ext_struc);
