@@ -65,6 +65,7 @@
 #include <openssl/mem.h>
 
 #include "conf_def.h"
+#include "internal.h"
 
 
 static uint32_t conf_value_hash(const CONF_VALUE *v) {

@@ -46,6 +46,7 @@ typedef int ssize_t;
 #include <openssl/ssl.h>
 
 #include "internal.h"
+#include "transport_common.h"
 
 
 #if !defined(OPENSSL_WINDOWS)

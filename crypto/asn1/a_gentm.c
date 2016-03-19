@@ -63,6 +63,8 @@
 #include <openssl/mem.h>
 #include <openssl/time_support.h>
 
+#include "asn1_locl.h"
+
 int asn1_generalizedtime_to_tm(struct tm *tm, const ASN1_GENERALIZEDTIME *d)
 {
     static const int min[9] = { 0, 0, 1, 1, 0, 0, 0, 0, 0 };

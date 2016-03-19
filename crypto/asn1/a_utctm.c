@@ -63,6 +63,8 @@
 #include <openssl/mem.h>
 #include <openssl/time_support.h>
 
+#include "asn1_locl.h"
+
 #if 0
 int i2d_ASN1_UTCTIME(ASN1_UTCTIME *a, unsigned char **pp)
 {
