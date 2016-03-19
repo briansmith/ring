@@ -123,12 +123,10 @@
 struct bn_blinding_st {
   BIGNUM *A;
   BIGNUM *Ai;
-  BIGNUM *e;
   int counter;
 };
 
-static BN_BLINDING *bn_blinding_create_param(BN_BLINDING *b, const BIGNUM *e,
-                                             const BN_MONT_CTX *mont,
+static BN_BLINDING *bn_blinding_create_param(BN_BLINDING *b, const RSA *rsa,
                                              BN_CTX *ctx);
 
 static BN_BLINDING *bn_blinding_new(const BIGNUM *A, const BIGNUM *Ai) {
@@ -171,12 +169,10 @@ void BN_BLINDING_free(BN_BLINDING *r) {
 
   BN_free(r->A);
   BN_free(r->Ai);
-  BN_free(r->e);
   OPENSSL_free(r);
 }
 
-static int bn_blinding_update(BN_BLINDING *b, const BN_MONT_CTX *mont,
-                              BN_CTX *ctx) {
+static int bn_blinding_update(BN_BLINDING *b, const RSA *rsa, BN_CTX *ctx) {
   int ret = 0;
 
   if (b->A == NULL || b->Ai == NULL) {
@@ -188,18 +184,18 @@ static int bn_blinding_update(BN_BLINDING *b, const BN_MONT_CTX *mont,
     b->counter = 0;
   }
 
-  if (++b->counter == BN_BLINDING_COUNTER && b->e != NULL) {
+  if (++b->counter == BN_BLINDING_COUNTER) {
     /* re-create blinding parameters */
-    if (!bn_blinding_create_param(b, NULL, mont, ctx)) {
+    if (!bn_blinding_create_param(b, rsa, ctx)) {
       goto err;
     }
   } else {
-    if (!BN_mod_mul_montgomery(b->A, b->A, b->A, mont, ctx) ||
-        !BN_to_montgomery(b->A, b->A, mont, ctx)) {
+    if (!BN_mod_mul_montgomery(b->A, b->A, b->A, rsa->mont_n, ctx) ||
+        !BN_to_montgomery(b->A, b->A, rsa->mont_n, ctx)) {
       goto err;
     }
-    if (!BN_mod_mul_montgomery(b->Ai, b->Ai, b->Ai, mont, ctx) ||
-        !BN_to_montgomery(b->Ai, b->Ai, mont, ctx)) {
+    if (!BN_mod_mul_montgomery(b->Ai, b->Ai, b->Ai, rsa->mont_n, ctx) ||
+        !BN_to_montgomery(b->Ai, b->Ai, rsa->mont_n, ctx)) {
       goto err;
     }
   }
@@ -213,8 +209,7 @@ err:
   return ret;
 }
 
-int BN_BLINDING_convert(BIGNUM *n, BN_BLINDING *b, const BN_MONT_CTX *mont,
-                        BN_CTX *ctx) {
+int BN_BLINDING_convert(BIGNUM *n, BN_BLINDING *b, const RSA *rsa, BN_CTX *ctx) {
   int ret = 1;
 
   if (b->A == NULL || b->Ai == NULL) {
@@ -225,12 +220,12 @@ int BN_BLINDING_convert(BIGNUM *n, BN_BLINDING *b, const BN_MONT_CTX *mont,
   if (b->counter == -1) {
     /* Fresh blinding, doesn't need updating. */
     b->counter = 0;
-  } else if (!bn_blinding_update(b, mont, ctx)) {
+  } else if (!bn_blinding_update(b, rsa, ctx)) {
     return 0;
   }
 
-  if (!BN_mod_mul_montgomery(n, n, b->A, mont, ctx) ||
-      !BN_to_montgomery(n, n, mont, ctx)) {
+  if (!BN_mod_mul_montgomery(n, n, b->A, rsa->mont_n, ctx) ||
+      !BN_to_montgomery(n, n, rsa->mont_n, ctx)) {
     ret = 0;
   }
 
@@ -239,6 +234,8 @@ int BN_BLINDING_convert(BIGNUM *n, BN_BLINDING *b, const BN_MONT_CTX *mont,
 
 int BN_BLINDING_invert(BIGNUM *n, const BN_BLINDING *b, BN_MONT_CTX *mont,
                        BN_CTX *ctx) {
+  assert(ctx != NULL);
+
   if (b->Ai == NULL) {
     OPENSSL_PUT_ERROR(RSA, RSA_R_BN_NOT_INITIALIZED);
     return 0;
@@ -250,9 +247,10 @@ int BN_BLINDING_invert(BIGNUM *n, const BN_BLINDING *b, BN_MONT_CTX *mont,
   return 1;
 }
 
-static BN_BLINDING *bn_blinding_create_param(BN_BLINDING *b, const BIGNUM *e,
-                                             const BN_MONT_CTX *mont,
+static BN_BLINDING *bn_blinding_create_param(BN_BLINDING *b, const RSA *rsa,
                                              BN_CTX *ctx) {
+  assert(ctx != NULL);
+
   int retry_counter = 32;
   BN_BLINDING *ret = NULL;
 
@@ -273,24 +271,16 @@ static BN_BLINDING *bn_blinding_create_param(BN_BLINDING *b, const BIGNUM *e,
     goto err;
   }
 
-  if (e != NULL) {
-    BN_free(ret->e);
-    ret->e = BN_dup(e);
-  }
-  if (ret->e == NULL) {
-    goto err;
-  }
-
-  BIGNUM mont_N_consttime;
-  BN_with_flags(&mont_N_consttime, &mont->N, BN_FLG_CONSTTIME);
+  BIGNUM mont_n_consttime;
+  BN_with_flags(&mont_n_consttime, rsa->n, BN_FLG_CONSTTIME);
 
   do {
-    if (!BN_rand_range(ret->A, &mont->N)) {
+    if (!BN_rand_range(ret->A, rsa->n)) {
       goto err;
     }
 
     int no_inverse;
-    if (BN_mod_inverse_ex(ret->Ai, &no_inverse, ret->A, &mont_N_consttime,
+    if (BN_mod_inverse_ex(ret->Ai, &no_inverse, ret->A, &mont_n_consttime,
                           ctx) == NULL) {
       /* this should almost never happen for good RSA keys */
       if (no_inverse) {
@@ -307,8 +297,8 @@ static BN_BLINDING *bn_blinding_create_param(BN_BLINDING *b, const BIGNUM *e,
     }
   } while (1);
 
-  if (!BN_mod_exp_mont_consttime(ret->A, ret->A, ret->e, &mont_N_consttime,
-                                 ctx, mont)) {
+  if (!BN_mod_exp_mont_consttime(ret->A, ret->A, rsa->e, &mont_n_consttime,
+                                 ctx, rsa->mont_n)) {
     goto err;
   }
 
@@ -323,7 +313,7 @@ err:
   return ret;
 }
 
-BN_BLINDING *rsa_setup_blinding(RSA *rsa, BN_CTX *ctx) {
+BN_BLINDING *rsa_setup_blinding(const RSA *rsa, BN_CTX *ctx) {
   assert(ctx != NULL);
   assert(rsa->mont_n != NULL);
 
@@ -338,5 +328,5 @@ BN_BLINDING *rsa_setup_blinding(RSA *rsa, BN_CTX *ctx) {
   n = &local_n;
   BN_with_flags(n, rsa->n, BN_FLG_CONSTTIME);
 
-  return bn_blinding_create_param(NULL, rsa->e, rsa->mont_n, ctx);
+  return bn_blinding_create_param(NULL, rsa, ctx);
 }
