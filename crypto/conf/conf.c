@@ -152,7 +152,7 @@ void NCONF_free(CONF *conf) {
   OPENSSL_free(conf);
 }
 
-CONF_VALUE *NCONF_new_section(const CONF *conf, const char *section) {
+static CONF_VALUE *NCONF_new_section(const CONF *conf, const char *section) {
   STACK_OF(CONF_VALUE) *sk = NULL;
   int ok = 0;
   CONF_VALUE *v = NULL, *old_value;

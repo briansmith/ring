@@ -122,7 +122,7 @@ static bool EncodeECPrivateKey(std::vector<uint8_t> *out, const EC_KEY *key) {
   return true;
 }
 
-bool Testd2i_ECPrivateKey() {
+static bool Testd2i_ECPrivateKey() {
   ScopedEC_KEY key = DecodeECPrivateKey(kECKeyWithoutPublic,
                                         sizeof(kECKeyWithoutPublic));
   if (!key) {
@@ -438,7 +438,7 @@ static bool TestArbitraryCurve() {
   return true;
 }
 
-bool TestAddingEqualPoints(int nid) {
+static bool TestAddingEqualPoints(int nid) {
   ScopedEC_KEY key(EC_KEY_new_by_curve_name(nid));
   if (!key) {
     return false;

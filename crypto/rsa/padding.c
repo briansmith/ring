@@ -274,8 +274,8 @@ int RSA_padding_add_none(uint8_t *to, unsigned to_len, const uint8_t *from,
   return 1;
 }
 
-int PKCS1_MGF1(uint8_t *mask, unsigned len, const uint8_t *seed,
-               unsigned seedlen, const EVP_MD *dgst) {
+static int PKCS1_MGF1(uint8_t *mask, unsigned len, const uint8_t *seed,
+                      unsigned seedlen, const EVP_MD *dgst) {
   unsigned outlen = 0;
   uint32_t i;
   uint8_t cnt[4];

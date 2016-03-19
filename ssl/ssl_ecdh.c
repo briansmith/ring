@@ -84,9 +84,12 @@ err:
   return ret;
 }
 
-int ssl_ec_point_compute_secret(SSL_ECDH_CTX *ctx, uint8_t **out_secret,
-                                size_t *out_secret_len, uint8_t *out_alert,
-                                const uint8_t *peer_key, size_t peer_key_len) {
+static int ssl_ec_point_compute_secret(SSL_ECDH_CTX *ctx,
+                                       uint8_t **out_secret,
+                                       size_t *out_secret_len,
+                                       uint8_t *out_alert,
+                                       const uint8_t *peer_key,
+                                       size_t peer_key_len) {
   BIGNUM *private_key = (BIGNUM *)ctx->data;
   assert(private_key != NULL);
   *out_alert = SSL_AD_INTERNAL_ERROR;

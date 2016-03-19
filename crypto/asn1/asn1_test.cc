@@ -40,7 +40,7 @@ static const uint8_t kTagOverflow[] = {
     0x1f, 0xff, 0xff, 0xff, 0xff, 0x7f, 0x01, 0x00,
 };
 
-bool TestLargeTags() {
+static bool TestLargeTags() {
   const uint8_t *p = kTag258;
   ScopedASN1_TYPE obj(d2i_ASN1_TYPE(NULL, &p, sizeof(kTag258)));
   if (obj) {

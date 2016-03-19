@@ -83,7 +83,7 @@ static void usage(const char *name) {
   }
 }
 
-tool_func_t FindTool(const std::string &name) {
+static tool_func_t FindTool(const std::string &name) {
   for (size_t i = 0;; i++) {
     const Tool &tool = kTools[i];
     if (tool.func == nullptr || name == tool.name) {

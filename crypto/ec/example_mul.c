@@ -73,7 +73,7 @@
 #include <openssl/obj.h>
 
 
-int example_EC_POINT_mul(void) {
+static int example_EC_POINT_mul(void) {
   /* This example ensures that 10×∞ + G = G, in P-256. */
   EC_GROUP *group = NULL;
   EC_POINT *p = NULL, *result = NULL;

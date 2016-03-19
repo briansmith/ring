@@ -742,7 +742,7 @@ static const BIO_METHOD methods_biop = {
     bio_free,     NULL /* no bio_callback_ctrl */
 };
 
-const BIO_METHOD *bio_s_bio(void) { return &methods_biop; }
+static const BIO_METHOD *bio_s_bio(void) { return &methods_biop; }
 
 int BIO_new_bio_pair(BIO** bio1_p, size_t writebuf1,
                      BIO** bio2_p, size_t writebuf2) {

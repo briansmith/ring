@@ -1536,10 +1536,10 @@ static void batch_mul(felem x_out, felem y_out, felem z_out,
 
 /* Takes the Jacobian coordinates (X, Y, Z) of a point and returns (X', Y') =
  * (X/Z^2, Y/Z^3). */
-int ec_GFp_nistp256_point_get_affine_coordinates(const EC_GROUP *group,
-                                                 const EC_POINT *point,
-                                                 BIGNUM *x, BIGNUM *y,
-                                                 BN_CTX *ctx) {
+static int ec_GFp_nistp256_point_get_affine_coordinates(const EC_GROUP *group,
+                                                        const EC_POINT *point,
+                                                        BIGNUM *x, BIGNUM *y,
+                                                        BN_CTX *ctx) {
   felem z1, z2, x_in, y_in;
   smallfelem x_out, y_out;
   longfelem tmp;
@@ -1575,9 +1575,12 @@ int ec_GFp_nistp256_point_get_affine_coordinates(const EC_GROUP *group,
   return 1;
 }
 
-int ec_GFp_nistp256_points_mul(const EC_GROUP *group, EC_POINT *r,
-                               const BIGNUM *g_scalar, const EC_POINT *p_,
-                               const BIGNUM *p_scalar_, BN_CTX *ctx) {
+static int ec_GFp_nistp256_points_mul(const EC_GROUP *group,
+                                      EC_POINT *r,
+                                      const BIGNUM *g_scalar,
+                                      const EC_POINT *p_,
+                                      const BIGNUM *p_scalar_,
+                                      BN_CTX *ctx) {
   /* TODO: This function used to take |points| and |scalars| as arrays of
    * |num| elements. The code below should be simplified to work in terms of |p|
    * and |p_scalar|. */
