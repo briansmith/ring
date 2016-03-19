@@ -250,7 +250,7 @@ int SSL_CTX_need_tmp_RSA(const SSL_CTX *ctx) {
   return 0;
 }
 
-int SSL_need_rsa(const SSL *ssl) {
+int SSL_need_tmp_RSA(const SSL *ssl) {
   return 0;
 }
 
