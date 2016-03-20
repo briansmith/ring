@@ -67,6 +67,9 @@ typedef unsigned short u_short;
 #include <sys/types.h>
 #include <sys/socket.h>
 #else
+#pragma warning(push, 3)
+#include <winsock2.h>
+#pragma warning(pop)
 typedef int socklen_t;
 #endif
 
