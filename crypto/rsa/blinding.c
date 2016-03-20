@@ -185,9 +185,7 @@ void BN_BLINDING_free(BN_BLINDING *r) {
 
 static int bn_blinding_update(BN_BLINDING *b, BN_CTX *ctx,
                               const BN_MONT_CTX *mont_ctx) {
-  int ret = 0;
-
-  if (b->A == NULL || b->Ai == NULL) {
+  if (b->A == NULL || b->Ai == NULL || b->e == NULL) {
     OPENSSL_PUT_ERROR(RSA, RSA_R_BN_NOT_INITIALIZED);
     goto err;
   }
@@ -196,11 +194,12 @@ static int bn_blinding_update(BN_BLINDING *b, BN_CTX *ctx,
     b->counter = 0;
   }
 
-  if (++b->counter == BN_BLINDING_COUNTER && b->e != NULL) {
+  if (++b->counter == BN_BLINDING_COUNTER) {
     /* re-create blinding parameters */
     if (!bn_blinding_create_param(b, NULL, NULL, ctx, mont_ctx)) {
       goto err;
     }
+    b->counter = 0;
   } else {
     if (!BN_mod_mul(b->A, b->A, b->A, b->mod, ctx)) {
       goto err;
@@ -210,13 +209,16 @@ static int bn_blinding_update(BN_BLINDING *b, BN_CTX *ctx,
     }
   }
 
-  ret = 1;
+  return 1;
 
 err:
-  if (b->counter == BN_BLINDING_COUNTER) {
-    b->counter = 0;
-  }
-  return ret;
+  /* |A| and |Ai| may be in an inconsistent state so they both need to be
+   * replaced the next time this blinding is used. Note that this is only
+   * sufficient because support for |BN_BLINDING_NO_UPDATE| and
+   * |BN_BLINDING_NO_RECREATE| was previously dropped. */
+  b->counter = BN_BLINDING_COUNTER - 1;
+
+  return 0;
 }
 
 int BN_BLINDING_convert(BIGNUM *n, BN_BLINDING *b, BN_CTX *ctx,
