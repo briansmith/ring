@@ -392,14 +392,14 @@ void gcm_ghash_neon(uint64_t Xi[2], const u128 Htable[16], const uint8_t *inp,
 static int neon_capable(void) {
   return 0;
 }
-void gcm_init_neon(u128 Htable[16], const uint64_t Xi[2]) {
+static void gcm_init_neon(u128 Htable[16], const uint64_t Xi[2]) {
   abort();
 }
-void gcm_gmult_neon(uint64_t Xi[2], const u128 Htable[16]) {
+static void gcm_gmult_neon(uint64_t Xi[2], const u128 Htable[16]) {
   abort();
 }
-void gcm_ghash_neon(uint64_t Xi[2], const u128 Htable[16], const uint8_t *inp,
-                    size_t len) {
+static void gcm_ghash_neon(uint64_t Xi[2], const u128 Htable[16],
+                           const uint8_t *inp, size_t len) {
   abort();
 }
 #endif
