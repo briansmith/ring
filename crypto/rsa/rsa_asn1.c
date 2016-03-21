@@ -280,6 +280,11 @@ RSA *RSA_parse_private_key(CBS *cbs) {
     goto err;
   }
 
+  if (!RSA_check_key(ret)) {
+    OPENSSL_PUT_ERROR(RSA, RSA_R_BAD_RSA_PARAMETERS);
+    goto err;
+  }
+
   BN_CTX_free(ctx);
   BN_free(product_of_primes_so_far);
   return ret;

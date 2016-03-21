@@ -688,6 +688,19 @@ static bool TestBadKey() {
     return false;
   }
 
+  uint8_t *der;
+  size_t der_len;
+  if (!RSA_private_key_to_bytes(&der, &der_len, key.get())) {
+    fprintf(stderr, "RSA_private_key_to_bytes failed to serialize bad key\n.");
+    return false;
+  }
+  bssl::UniquePtr<uint8_t> delete_der(der);
+
+  key.reset(RSA_private_key_from_bytes(der, der_len));
+  if (key) {
+    fprintf(stderr, "RSA_private_key_from_bytes accepted bad key\n.");
+  }
+
   ERR_clear_error();
   return true;
 }
