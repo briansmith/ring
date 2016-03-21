@@ -25,7 +25,6 @@ for testSource in $(ls -1 *.cc); do
   test=$(echo $testSource | sed -e 's/\.cc$//')
   mv ${test}_corpus ${test}_corpus_old
   mkdir ${test}_corpus
-  $buildDir/fuzz/$test -max_len=50000 -runs=0 -save_minimized_corpus=1 \
-    ${test}_corpus ${test}_corpus_old
+  $buildDir/fuzz/$test -max_len=50000 -merge=1 ${test}_corpus ${test}_corpus_old
   rm -Rf ${test}_corpus_old
 done

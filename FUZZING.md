@@ -13,9 +13,9 @@ CC=clang CXX=clang++ cmake -GNinja -DFUZZ=1 ..
 In order for the fuzz tests to link, the linker needs to find libFuzzer. This is not commonly provided and you may need to download the [Clang source code](http://llvm.org/releases/download.html) and do the following:
 
 ```
-cd llvm-3.7.0.src/lib
-clang -c -g -O2 -std=c++11 Fuzzer/*.cpp -IFuzzer
-ar q libFuzzer.a *.o
+svn co http://llvm.org/svn/llvm-project/llvm/trunk/lib/Fuzzer
+clang++ -c -g -O2 -std=c++11 Fuzzer/*.cpp -IFuzzer
+ar ruv libFuzzer.a Fuzzer*.o
 ```
 
 Then copy `libFuzzer.a` to the top-level of your BoringSSL source directory.
@@ -44,3 +44,15 @@ Here are the recommended values of `max_len` for each test.
 When a large number of new seeds are available, it's a good idea to minimise the corpus so that different seeds that trigger the same code paths can be deduplicated.
 
 In order to minimise all the corpuses, build for fuzzing and run `./fuzz/minimise_corpuses.sh`. Note that minimisation is, oddly, often not idempotent for unknown reasons.
+
+## Fuzzer mode
+
+When `-DFUZZ=1` is passed into CMake, BoringSSL builds with `BORINGSSL_UNSAFE_FUZZER_MODE` defined. This modifies the library, particularly the TLS stack, to be more friendly to fuzzers. It will:
+
+* Replace `RAND_bytes` with a deterministic PRNG. Call `RAND_reset_for_fuzzing()` at the start of fuzzers which use `RAND_bytes` to reset the PRNG state.
+
+* Modify the TLS stack to perform all signature checks (CertificateVerify and ServerKeyExchange) and the Finished check, but always act as if the check succeeded.
+
+* Treat every cipher as the NULL cipher.
+
+This is to prevent the fuzzer from getting stuck at a cryptographic invariant in the protocol.
