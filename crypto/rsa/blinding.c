@@ -317,16 +317,10 @@ BN_BLINDING *rsa_setup_blinding(const RSA *rsa, BN_CTX *ctx) {
   assert(ctx != NULL);
   assert(rsa->mont_n != NULL);
 
-  BIGNUM local_n;
-  BIGNUM *n;
-
   if (rsa->e == NULL) {
     OPENSSL_PUT_ERROR(RSA, RSA_R_NO_PUBLIC_EXPONENT);
     return NULL;
   }
-
-  n = &local_n;
-  BN_with_flags(n, rsa->n, BN_FLG_CONSTTIME);
 
   return bn_blinding_create_param(NULL, rsa, ctx);
 }
