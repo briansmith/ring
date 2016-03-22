@@ -1519,10 +1519,10 @@ static void batch_mul(felem x_out, felem y_out, felem z_out,
 
 /* Takes the Jacobian coordinates (X, Y, Z) of a point and returns (X', Y') =
  * (X/Z^2, Y/Z^3). */
-int ec_GFp_nistp256_point_get_affine_coordinates(const EC_GROUP *group,
-                                                 const EC_POINT *point,
-                                                 BIGNUM *x, BIGNUM *y,
-                                                 BN_CTX *ctx) {
+static int ec_GFp_nistp256_point_get_affine_coordinates(const EC_GROUP *group,
+                                                        const EC_POINT *point,
+                                                        BIGNUM *x, BIGNUM *y,
+                                                        BN_CTX *ctx) {
   (void)ctx;
 
   felem z1, z2, x_in, y_in;
@@ -1560,9 +1560,12 @@ int ec_GFp_nistp256_point_get_affine_coordinates(const EC_GROUP *group,
   return 1;
 }
 
-int ec_GFp_nistp256_points_mul(const EC_GROUP *group, EC_POINT *r,
-                               const BIGNUM *g_scalar, const EC_POINT *p,
-                               const BIGNUM *p_scalar, BN_CTX *ctx) {
+static int ec_GFp_nistp256_points_mul(const EC_GROUP *group,
+                                      EC_POINT *r,
+                                      const BIGNUM *g_scalar,
+                                      const EC_POINT *p,
+                                      const BIGNUM *p_scalar,
+                                      BN_CTX *ctx) {
   (void)ctx;
 
   assert((p == NULL) == (p_scalar == NULL));
