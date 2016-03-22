@@ -68,6 +68,8 @@
 #pragma warning(pop)
 #endif
 
+#include "internal.h"
+
 
 /* OPENSSL_cpuid runs the cpuid instruction. |leaf| is passed in as EAX and ECX
  * is set to zero. It writes EAX, EBX, ECX, and EDX to |*out_eax| through

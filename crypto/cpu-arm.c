@@ -25,6 +25,8 @@
 
 #include <openssl/arm_arch.h>
 
+#include "internal.h"
+
 
 /* We can't include <sys/auxv.h> because the Android SDK version against which
  * Chromium builds is too old to have it. Instead we define all the constants
