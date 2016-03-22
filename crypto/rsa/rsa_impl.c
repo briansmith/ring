@@ -600,6 +600,11 @@ static int mod_exp(BIGNUM *r0, const BIGNUM *I, RSA *rsa, BN_CTX *ctx) {
   r1 = BN_CTX_get(ctx);
   m1 = BN_CTX_get(ctx);
   vrfy = BN_CTX_get(ctx);
+  if (r1 == NULL ||
+      m1 == NULL ||
+      vrfy == NULL) {
+    goto err;
+  }
 
   /* compute I mod q */
   c = &local_c;
