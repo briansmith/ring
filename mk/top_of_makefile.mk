@@ -137,7 +137,6 @@ ASFLAGS += -Wa,--noexecstack
 #   -Weverything -Wpessimizing-move, etc. \
 #   -Wnormalized \
 #   -Wmisleading-indentation \
-#   -Wmissing-declarations \
 #   -Wsign-conversion\
 #   -Wsized-deallocation \
 #   -Wstack-usage=n \
@@ -173,8 +172,10 @@ CPPFLAGS += \
   -Wformat=2 \
   -Winline \
   -Winvalid-pch \
+  -Wmissing-declarations \
   -Wmissing-field-initializers \
   -Wmissing-include-dirs \
+  -Wmissing-prototypes \
   -Wredundant-decls \
   -Wshadow \
   -Wsign-compare \
