@@ -1385,7 +1385,8 @@ static const smallfelem g_pre_comp[2][16][3] = {
 /* select_point selects the |idx|th point from a precomputation table and
  * copies it to out. */
 static void select_point(const u64 idx, unsigned int size,
-                         const smallfelem pre_comp[16][3], smallfelem out[3]) {
+                         const smallfelem pre_comp[/*size*/][3],
+                         smallfelem out[3]) {
   unsigned i, j;
   u64 *outlimbs = &out[0][0];
   memset(outlimbs, 0, 3 * sizeof(smallfelem));
