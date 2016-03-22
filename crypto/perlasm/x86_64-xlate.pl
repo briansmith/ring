@@ -190,6 +190,7 @@ my %globals;
     sub out {
     	my $self = shift;
 
+	$self->{value} =~ s/\b(0b[0-1]+)/oct($1)/eig;
 	if ($gas) {
 	    # Solaris /usr/ccs/bin/as can't handle multiplications
 	    # in $self->{value}
@@ -200,7 +201,6 @@ my %globals;
 	    }
 	    sprintf "\$%s",$self->{value};
 	} else {
-	    $self->{value} =~ s/(0b[0-1]+)/oct($1)/eig;
 	    $self->{value} =~ s/0x([0-9a-f]+)/0$1h/ig if ($masm);
 	    sprintf "%s",$self->{value};
 	}
