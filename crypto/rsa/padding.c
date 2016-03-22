@@ -71,7 +71,6 @@
 int RSA_padding_add_PKCS1_type_1(uint8_t *to, unsigned to_len,
                                  const uint8_t *from, unsigned from_len) {
   unsigned j;
-  uint8_t *p;
 
   if (to_len < RSA_PKCS1_PADDING_SIZE) {
     OPENSSL_PUT_ERROR(RSA, RSA_R_KEY_SIZE_TOO_SMALL);
@@ -83,7 +82,7 @@ int RSA_padding_add_PKCS1_type_1(uint8_t *to, unsigned to_len,
     return 0;
   }
 
-  p = to;
+  uint8_t *p = to;
 
   *(p++) = 0;
   *(p++) = 1; /* Private Key BT (Block Type) */
@@ -148,7 +147,6 @@ size_t RSA_padding_check_PKCS1_type_1(const uint8_t *from, unsigned from_len) {
 int RSA_padding_add_PKCS1_type_2(uint8_t *to, unsigned to_len,
                                  const uint8_t *from, unsigned from_len) {
   unsigned i, j;
-  uint8_t *p;
 
   if (to_len < RSA_PKCS1_PADDING_SIZE) {
     OPENSSL_PUT_ERROR(RSA, RSA_R_KEY_SIZE_TOO_SMALL);
@@ -160,7 +158,7 @@ int RSA_padding_add_PKCS1_type_2(uint8_t *to, unsigned to_len,
     return 0;
   }
 
-  p = to;
+  uint8_t *p = to;
 
   *(p++) = 0;
   *(p++) = 2; /* Public Key BT (Block Type) */
