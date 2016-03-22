@@ -103,7 +103,7 @@ static inline int aead_check_alias(const uint8_t *in, size_t in_len,
  * the warning. */
 static inline int aead_check_in_len(size_t in_len) {
   const uint64_t in_len_64 = in_len;
-  return in_len_64 < (1ull << 32) * 64 - 64;
+  return in_len_64 < (UINT64_C(1) << 32) * 64 - 64;
 }
 
 static inline void aead_assert_init_preconditions(size_t ctx_struct_alignment,
