@@ -34,6 +34,7 @@ static int is_string_type(unsigned tag) {
   switch (tag & 0x1f) {
     case CBS_ASN1_BITSTRING:
     case CBS_ASN1_OCTETSTRING:
+    case CBS_ASN1_UTF8STRING:
     case CBS_ASN1_NUMERICSTRING:
     case CBS_ASN1_PRINTABLESTRING:
     case CBS_ASN1_T16STRING:
