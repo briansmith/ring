@@ -725,44 +725,19 @@ RSA *RSA_generate(int bits, uint32_t e, BN_GENCB *cb) {
   bitsp = (bits + 1) / 2;
   bitsq = bits - bitsp;
 
-  /* We need the RSA components non-NULL */
-  if (!rsa->n && ((rsa->n = BN_new()) == NULL)) {
-    goto err;
-  }
-  if (!rsa->d && ((rsa->d = BN_new()) == NULL)) {
-    goto err;
-  }
-  if (!rsa->e && ((rsa->e = BN_new()) == NULL)) {
-    goto err;
-  }
-  if (!rsa->p && ((rsa->p = BN_new()) == NULL)) {
-    goto err;
-  }
-  if (!rsa->q && ((rsa->q = BN_new()) == NULL)) {
-    goto err;
-  }
-  if (!rsa->dmp1 && ((rsa->dmp1 = BN_new()) == NULL)) {
-    goto err;
-  }
-  if (!rsa->dmq1 && ((rsa->dmq1 = BN_new()) == NULL)) {
-    goto err;
-  }
-  if (!rsa->iqmp && ((rsa->iqmp = BN_new()) == NULL)) {
-    goto err;
-  }
-
-  BN_set_flags(rsa->d, BN_FLG_CONSTTIME);
-  BN_set_flags(rsa->p, BN_FLG_CONSTTIME);
-  BN_set_flags(rsa->q, BN_FLG_CONSTTIME);
-  BN_set_flags(rsa->dmp1, BN_FLG_CONSTTIME);
-  BN_set_flags(rsa->dmq1, BN_FLG_CONSTTIME);
-  BN_set_flags(rsa->iqmp, BN_FLG_CONSTTIME);
-
-  if (!BN_set_word(rsa->e, e)) {
+  rsa->e = BN_new();
+  if (rsa->e == NULL ||
+      !BN_set_word(rsa->e, e)) {
     goto err;
   }
 
   /* generate p and q */
+  rsa->p = BN_new();
+  rsa->q = BN_new();
+  if (rsa->p == NULL ||
+      rsa->q == NULL) {
+    goto err;
+  }
   for (;;) {
     if (!BN_generate_prime_ex(rsa->p, bitsp, cb) ||
         !BN_sub(r2, rsa->p, BN_value_one()) ||
@@ -813,8 +788,14 @@ RSA *RSA_generate(int bits, uint32_t e, BN_GENCB *cb) {
     rsa->p = rsa->q;
     rsa->q = tmp;
   }
+  BN_set_flags(rsa->p, BN_FLG_CONSTTIME);
+  BN_set_flags(rsa->q, BN_FLG_CONSTTIME);
 
   /* calculate n */
+  rsa->n = BN_new();
+  if (rsa->n == NULL) {
+    goto err;
+  }
   if (!BN_mul(rsa->n, rsa->p, rsa->q, ctx)) {
     goto err;
   }
@@ -829,28 +810,45 @@ RSA *RSA_generate(int bits, uint32_t e, BN_GENCB *cb) {
   if (!BN_mul(r0, r1, r2, ctx)) {
     goto err; /* (p-1)(q-1) */
   }
+  rsa->d = BN_new();
+  if (rsa->d == NULL) {
+    goto err;
+  }
   BN_set_flags(r0, BN_FLG_CONSTTIME);
   if (!BN_mod_inverse(rsa->d, rsa->e, r0, ctx)) {
     goto err; /* d */
   }
-
-  assert(BN_get_flags(rsa->d, BN_FLG_CONSTTIME));
+  BN_set_flags(rsa->d, BN_FLG_CONSTTIME);
 
   /* calculate d mod (p-1) */
+  rsa->dmp1 = BN_new();
+  if (rsa->dmp1 == NULL) {
+    goto err;
+  }
   if (!BN_mod(rsa->dmp1, rsa->d, r1, ctx)) {
     goto err;
   }
+  BN_set_flags(rsa->dmp1, BN_FLG_CONSTTIME);
 
   /* calculate d mod (q-1) */
+  rsa->dmq1 = BN_new();
+  if (rsa->dmq1 == NULL) {
+    goto err;
+  }
   if (!BN_mod(rsa->dmq1, rsa->d, r2, ctx)) {
     goto err;
   }
+  BN_set_flags(rsa->dmq1, BN_FLG_CONSTTIME);
 
   /* calculate inverse of q mod p */
-  assert(BN_get_flags(rsa->p, BN_FLG_CONSTTIME));
+  rsa->iqmp = BN_new();
+  if (rsa->iqmp == NULL) {
+    goto err;
+  }
   if (!BN_mod_inverse(rsa->iqmp, rsa->q, rsa->p, ctx)) {
     goto err;
   }
+  BN_set_flags(rsa->iqmp, BN_FLG_CONSTTIME);
 
   if (!rsa_new_end(rsa, ctx)) {
     goto err;
