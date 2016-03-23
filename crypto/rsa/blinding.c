@@ -140,11 +140,13 @@ BN_BLINDING *BN_BLINDING_new(void) {
   if (ret->A == NULL) {
     goto err;
   }
+  BN_set_flags(ret->A, BN_FLG_CONSTTIME);
 
   ret->Ai = BN_new();
   if (ret->Ai == NULL) {
     goto err;
   }
+  BN_set_flags(ret->Ai, BN_FLG_CONSTTIME);
 
   /* The blinding values need to be created before this blinding can be used. */
   ret->counter = BN_BLINDING_COUNTER - 1;
@@ -219,18 +221,15 @@ int BN_BLINDING_invert(BIGNUM *n, const BN_BLINDING *b, BN_MONT_CTX *mont,
 static int bn_blinding_create_param(BN_BLINDING *b, const RSA *rsa, BN_CTX *ctx) {
   int retry_counter = 32;
 
-  BIGNUM mont_n_consttime;
-  BN_with_flags(&mont_n_consttime, rsa->n, BN_FLG_CONSTTIME);
-
   do {
     if (!BN_rand_range(b->A, rsa->n)) {
       OPENSSL_PUT_ERROR(RSA, ERR_R_INTERNAL_ERROR);
       return 0;
     }
 
+    assert(BN_get_flags(b->A, BN_FLG_CONSTTIME));
     int no_inverse;
-    if (BN_mod_inverse_ex(b->Ai, &no_inverse, b->A, &mont_n_consttime,
-                          ctx) == NULL) {
+    if (BN_mod_inverse_no_branch(b->Ai, &no_inverse, b->A, rsa->n, ctx) == NULL) {
       /* this should almost never happen for good RSA keys */
       if (no_inverse) {
         if (retry_counter-- == 0) {
@@ -247,8 +246,7 @@ static int bn_blinding_create_param(BN_BLINDING *b, const RSA *rsa, BN_CTX *ctx)
     }
   } while (1);
 
-  if (!BN_mod_exp_mont_consttime(b->A, b->A, rsa->e, &mont_n_consttime,
-                                 ctx, rsa->mont_n)) {
+  if (!BN_mod_exp_mont(b->A, b->A, rsa->e, rsa->n, ctx, rsa->mont_n)) {
     OPENSSL_PUT_ERROR(RSA, ERR_R_INTERNAL_ERROR);
     return 0;
   }

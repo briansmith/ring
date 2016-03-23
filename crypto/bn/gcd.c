@@ -222,11 +222,6 @@ err:
   return ret;
 }
 
-/* solves ax == 1 (mod n) */
-static BIGNUM *BN_mod_inverse_no_branch(BIGNUM *out, int *out_no_inverse,
-                                        const BIGNUM *a, const BIGNUM *n,
-                                        BN_CTX *ctx);
-
 BIGNUM *BN_mod_inverse_ex(BIGNUM *out, int *out_no_inverse, const BIGNUM *a,
                           const BIGNUM *n, BN_CTX *ctx) {
   BIGNUM *A, *B, *X, *Y, *T, *R = NULL;
@@ -419,9 +414,8 @@ BIGNUM *BN_mod_inverse(BIGNUM *out, const BIGNUM *a, const BIGNUM *n,
 
 /* BN_mod_inverse_no_branch is a special version of BN_mod_inverse.
  * It does not contain branches that may leak sensitive information. */
-static BIGNUM *BN_mod_inverse_no_branch(BIGNUM *out, int *out_no_inverse,
-                                        const BIGNUM *a, const BIGNUM *n,
-                                        BN_CTX *ctx) {
+BIGNUM *BN_mod_inverse_no_branch(BIGNUM *out, int *out_no_inverse,
+                                 const BIGNUM *a, const BIGNUM *n, BN_CTX *ctx) {
   BIGNUM *A, *B, *X, *Y, *M, *D, *T, *R = NULL;
   BIGNUM local_A, local_B;
   BIGNUM *pA, *pB;

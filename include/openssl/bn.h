@@ -576,6 +576,13 @@ OPENSSL_EXPORT BIGNUM *BN_mod_inverse_ex(BIGNUM *out, int *out_no_inverse,
                                          const BIGNUM *a, const BIGNUM *n,
                                          BN_CTX *ctx);
 
+/* BN_mod_inverse_no_branch acts like |BN_mod_inverse_ex| except that it aims
+ * to have better protection from side channel attacks. */
+OPENSSL_EXPORT BIGNUM *BN_mod_inverse_no_branch(BIGNUM *out,
+                                                int *out_no_inverse,
+                                                const BIGNUM *a,
+                                                const BIGNUM *n, BN_CTX *ctx);
+
 
 /* Montgomery arithmetic. */
 
