@@ -247,8 +247,15 @@ static int bn_blinding_create_param(BN_BLINDING *b, const BN_MONT_CTX *mont,
       return 0;
     }
 
+    /* |BN_from_montgomery| + |BN_mod_inverse_no_branch| is equivalent to, but
+     * more efficient than, |BN_mod_inverse_no_branch| + |BN_to_montgomery|. */
+    if (!BN_from_montgomery(b->Ai, b->A, mont, ctx)) {
+      OPENSSL_PUT_ERROR(RSA, ERR_R_INTERNAL_ERROR);
+      return 0;
+    }
+
     int no_inverse;
-    if (BN_mod_inverse_ex(b->Ai, &no_inverse, b->A, &mont_N_consttime, ctx) ==
+    if (BN_mod_inverse_ex(b->Ai, &no_inverse, b->Ai, &mont_N_consttime, ctx) ==
         NULL) {
       /* this should almost never happen for good RSA keys */
       if (no_inverse) {
@@ -271,8 +278,7 @@ static int bn_blinding_create_param(BN_BLINDING *b, const BN_MONT_CTX *mont,
     return 0;
   }
 
-  if (!BN_to_montgomery(b->A, b->A, mont, ctx) ||
-      !BN_to_montgomery(b->Ai, b->Ai, mont, ctx)) {
+  if (!BN_to_montgomery(b->A, b->A, mont, ctx)) {
     OPENSSL_PUT_ERROR(RSA, ERR_R_INTERNAL_ERROR);
     return 0;
   }
