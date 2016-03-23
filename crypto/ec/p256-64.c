@@ -702,7 +702,7 @@ static void felem_contract(smallfelem out, const felem in) {
    * each u64, from most-significant to least significant. For each one, if
    * all words so far have been equal (m is all ones) then a non-equal
    * result is the answer. Otherwise we continue. */
-  unsigned i;
+  size_t i;
   for (i = 3; i < 4; i--) {
     u64 equal;
     uint128_t a = ((uint128_t)kPrime[i]) - out[i];
@@ -793,7 +793,7 @@ static void felem_inv(felem out, const felem in) {
   /* each e_I will hold |in|^{2^I - 1} */
   felem e2, e4, e8, e16, e32, e64;
   longfelem tmp;
-  unsigned i;
+  size_t i;
 
   felem_square(tmp, in);
   felem_reduce(ftmp, tmp); /* 2^1 */
@@ -991,7 +991,7 @@ static void point_double_small(smallfelem x_out, smallfelem y_out,
 
 /* copy_conditional copies in to out iff mask is all ones. */
 static void copy_conditional(felem out, const felem in, limb mask) {
-  unsigned i;
+  size_t i;
   for (i = 0; i < NLIMBS; ++i) {
     const limb tmp = mask & (in[i] ^ out[i]);
     out[i] ^= tmp;
@@ -1000,7 +1000,7 @@ static void copy_conditional(felem out, const felem in, limb mask) {
 
 /* copy_small_conditional copies in to out iff mask is all ones. */
 static void copy_small_conditional(felem out, const smallfelem in, limb mask) {
-  unsigned i;
+  size_t i;
   const u64 mask64 = mask;
   for (i = 0; i < NLIMBS; ++i) {
     out[i] = ((limb)(in[i] & mask64)) | (out[i] & ~mask);
@@ -1384,13 +1384,13 @@ static const smallfelem g_pre_comp[2][16][3] = {
 
 /* select_point selects the |idx|th point from a precomputation table and
  * copies it to out. */
-static void select_point(const u64 idx, unsigned int size,
+static void select_point(const u64 idx, size_t size,
                          const smallfelem pre_comp[/*size*/][3],
                          smallfelem out[3]) {
-  unsigned i, j;
   u64 *outlimbs = &out[0][0];
   memset(outlimbs, 0, 3 * sizeof(smallfelem));
 
+  size_t i;
   for (i = 0; i < size; i++) {
     const u64 *inlimbs = &pre_comp[i][0][0];
     u64 mask = i ^ idx;
@@ -1399,6 +1399,7 @@ static void select_point(const u64 idx, unsigned int size,
     mask |= mask >> 1;
     mask &= 1;
     mask--;
+    size_t j;
     for (j = 0; j < NLIMBS * 3; j++) {
       outlimbs[j] |= inlimbs[j] & mask;
     }
@@ -1428,7 +1429,6 @@ static void batch_mul(felem x_out, felem y_out, felem z_out,
                       const struct p_pre_comp_st *p_pre_comp) {
   assert((p_scalar == NULL) == (p_pre_comp == NULL));
 
-  int i, skip;
   felem nq[3], ftmp;
   smallfelem tmp[3];
   u64 bits;
@@ -1441,9 +1441,9 @@ static void batch_mul(felem x_out, felem y_out, felem z_out,
    * last 32 rounds) and additions of the other point's multiples (every 5th
    * round). */
 
-  skip = 1; /* save two point operations in the first
-             * round */
-  for (i = (p_scalar != NULL ? 255 : 31); i >= 0; --i) {
+  int skip = 1; /* save two point operations in the first round */
+  size_t i = (p_scalar != NULL ? 255 : 31);
+  for (;;) {
     /* double */
     if (!skip) {
       point_double(nq[0], nq[1], nq[2], nq[0], nq[1], nq[2]);
@@ -1507,6 +1507,11 @@ static void batch_mul(felem x_out, felem y_out, felem z_out,
         skip = 0;
       }
     }
+
+    if (i == 0) {
+      break;
+    }
+    --i;
   }
   felem_assign(x_out, nq[0]);
   felem_assign(y_out, nq[1]);
@@ -1574,7 +1579,6 @@ static int ec_GFp_nistp256_points_mul(const EC_GROUP *group,
   assert(p_scalar == NULL || BN_cmp(p_scalar, EC_GROUP_get0_order(group)) < 0);
 
   int ret = 0;
-  int j;
   scalar_bytearray g_secret;
   scalar_bytearray p_secret;
   struct p_pre_comp_st p_pre_comp;
@@ -1599,6 +1603,7 @@ static int ec_GFp_nistp256_points_mul(const EC_GROUP *group,
     felem_shrink(p_pre_comp.values[1][0], x_out);
     felem_shrink(p_pre_comp.values[1][1], y_out);
     felem_shrink(p_pre_comp.values[1][2], z_out);
+    size_t j;
     for (j = 2; j <= 16; ++j) {
       if (j & 1) {
         point_add_small(p_pre_comp.values[j][0], p_pre_comp.values[j][1],
