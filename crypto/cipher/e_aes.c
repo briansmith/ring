@@ -67,6 +67,23 @@
 #define EVP_AEAD_AES_GCM_NONCE_LEN 12
 #define EVP_AEAD_AES_GCM_TAG_LEN 16
 
+ /* Declarations for extern functions only called by Rust code, to avoid
+ * -Wmissing-prototypes warnings. */
+int evp_aead_aes_gcm_init(void *ctx_buf, size_t ctx_buf_len, const uint8_t *key,
+                          size_t key_len);
+int evp_aead_aes_gcm_open(const void *ctx_buf, uint8_t *out,
+                          size_t in_out_len,
+                          uint8_t tag_out[EVP_AEAD_AES_GCM_TAG_LEN],
+                          const uint8_t nonce[EVP_AEAD_AES_GCM_NONCE_LEN],
+                          const uint8_t *in, const uint8_t *ad, size_t ad_len);
+int evp_aead_aes_gcm_seal(const void *ctx_buf, uint8_t *in_out,
+                          size_t in_out_len,
+                          uint8_t tag_out[EVP_AEAD_AES_GCM_TAG_LEN],
+                          const uint8_t nonce[EVP_AEAD_AES_GCM_NONCE_LEN],
+                          const uint8_t *ad, size_t ad_len);
+int EVP_has_aes_hardware(void);
+
+
 #if !defined(OPENSSL_NO_ASM) && \
     (defined(OPENSSL_X86_64) || defined(OPENSSL_X86))
 

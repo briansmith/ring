@@ -78,6 +78,10 @@
 #include "../internal.h"
 
 
+/* Prototypes for code only called from Rust, to avoid -Wmissing-prototypes
+ * warnings. */
+EC_KEY *ec_key_new_ex(const EC_GROUP *group);
+
 EC_KEY *ec_key_new_ex(const EC_GROUP *group) {
   EC_KEY *ret = OPENSSL_malloc(sizeof(EC_KEY));
   if (ret == NULL) {

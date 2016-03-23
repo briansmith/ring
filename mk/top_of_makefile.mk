@@ -175,7 +175,6 @@ CPPFLAGS += \
   -Wmissing-declarations \
   -Wmissing-field-initializers \
   -Wmissing-include-dirs \
-  -Wmissing-prototypes \
   -Wredundant-decls \
   -Wshadow \
   -Wsign-compare \
@@ -199,6 +198,7 @@ endif
 CFLAGS += \
   -Wbad-function-cast \
   -Wmissing-field-initializers \
+  -Wmissing-prototypes \
   -Wnested-externs \
   -Wstrict-prototypes \
   $(NULL)

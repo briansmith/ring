@@ -57,7 +57,11 @@
 #include "openssl/base.h"
 
 
- /* The 32-bit hash algorithms' |*_block_data_order| functions operate on
+/* Prototypes for code only called from Rust, to avoid -Wmissing-prototypes
+ * warnings. */
+void sha512_block_data_order(uint64_t *state, const uint64_t *W, size_t num);
+
+/* The 32-bit hash algorithms' |*_block_data_order| functions operate on
  * unaligned data. |sha512_block_data_order| does not. */
 
 #include "../internal.h"

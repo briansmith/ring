@@ -58,6 +58,11 @@
 #include "../internal.h"
 
 
+/* Prototypes for code only called from Rust, to avoid -Wmissing-prototypes
+ * warnings. */
+void sha256_block_data_order(uint32_t *state, const uint8_t *data, size_t num);
+
+
 #if !defined(OPENSSL_NO_ASM) &&                         \
     (defined(OPENSSL_X86) || defined(OPENSSL_X86_64) || \
      defined(OPENSSL_ARM) || defined(OPENSSL_AARCH64))

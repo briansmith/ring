@@ -58,6 +58,11 @@
 #include "../internal.h"
 
 
+/* Prototypes for code only called from Rust, to avoid -Wmissing-prototypes
+ * warnings. */
+void sha1_block_data_order(uint32_t *state, const uint8_t *data, size_t num);
+
+
 #define ROTATE(a, n) (((a) << (n)) | ((a) >> (32 - (n))))
 #define Xupdate(a, ix, ia, ib, ic, id) \
   ((a) = (ia ^ ib ^ ic ^ id), ix = (a) = ROTATE((a), 1))
