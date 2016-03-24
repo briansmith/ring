@@ -1,46 +1,5 @@
 # The|dkLen| parameter is given implicitly as the length of |DK|.
 
-# RFC 6070 Section 2. PBKDF2 HMAC-SHA1 Test Vectors
-
-Hash = SHA1
-P = "password"
-S = "salt"
-c = 1
-DK = 0c60c80f961f0e71f3a9b524af6012062fe037a6
-
-Hash = SHA1
-P = "password"
-S = "salt"
-c = 2
-DK = ea6c014dc72d6f8ccd1ed92ace1d41f0d8de8957
-
-Hash = SHA1
-P = "password"
-S = "salt"
-c = 4096
-DK = 4b007901b765489abead49d926f721d065a429c1
-
-Hash = SHA1
-P = "password"
-S = "salt"
-c = 16777216
-DK = eefe3d61cd4da4e4e9945b3d6ba2158c2634e984
-
-# Skipped because we panic if the output length requested is larger than the
-# digest block size.
-# Hash = SHA1
-# P = "passwordPASSWORDpassword"
-# S = "saltSALTsaltSALTsaltSALTsaltSALTsalt"
-# c = 4096
-# DK = 3d2eec4fe41c849b80c8d83662c0e44a8b291a964cf2f07038
-
-# P is "pass\0word" S is "sa\0lt"
-Hash = SHA1
-P = 7061737300776f7264
-S = 7361006c74
-c = 4096
-DK = 56fa6aa75548099dcc37d7f03425e0c3
-
 # PBKDF2 HMAC-SHA256 Test Vectors from
 # https://stackoverflow.com/questions/5130513/pbkdf2-hmac-sha2-test-vectors
 

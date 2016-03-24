@@ -218,17 +218,6 @@ pub static HMAC_SHA512: PRF  = PRF {
     digest_alg: &digest::SHA512,
 };
 
-/// HMAC-SHA1. *Deprecated*.
-///
-/// SHA-1 is deprecated in *ring* and its implementation in *ring* will be more
-/// optimized more for size than for speed on some platforms. Since PBKDF2
-/// requires an implementation highly optimized for speed, the size-for-speed
-/// trade-off does not work well for PBKDF2.
-///
-pub static HMAC_SHA1: PRF = PRF {
-    digest_alg: &digest::SHA1,
-};
-
 #[cfg(test)]
 mod tests {
     use super::super::{digest, file_test, pbkdf2};
@@ -243,9 +232,7 @@ mod tests {
             let salt = test_case.consume_bytes("S");
             let dk = test_case.consume_bytes("DK");
 
-            let prf = if digest_alg.nid == digest::SHA1.nid {
-                &pbkdf2::HMAC_SHA1
-            } else if digest_alg.nid ==  digest::SHA256.nid {
+            let prf = if digest_alg.nid ==  digest::SHA256.nid {
                 &pbkdf2::HMAC_SHA256
             } else if digest_alg.nid == digest::SHA512.nid {
                 &pbkdf2::HMAC_SHA512
