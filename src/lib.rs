@@ -101,7 +101,7 @@ pub mod constant_time;
 #[doc(hidden)]
 pub mod der;
 
-pub mod digest;
+#[path = "digest/digest.rs"] pub mod digest;
 mod ecc;
 pub mod hkdf;
 pub mod hmac;
