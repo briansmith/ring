@@ -70,7 +70,6 @@ RING_SRCS = $(addprefix $(RING_PREFIX), \
   crypto/rsa/rsa.c \
   crypto/rsa/rsa_asn1.c \
   crypto/rsa/rsa_impl.c \
-  crypto/sha/sha1.c \
   crypto/sha/sha256.c \
   crypto/sha/sha512.c \
   $(NULL))

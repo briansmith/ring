@@ -29,6 +29,8 @@
 use core;
 use super::{c, polyfill};
 
+pub use self::sha1::SHA1;
+
 // XXX: endian-specific.
 // XXX: Replace with `const fn` when `const fn` is stable:
 // https://github.com/rust-lang/rust/issues/24111
@@ -36,6 +38,8 @@ macro_rules! u32x2 {
     ( $first:expr, $second:expr ) =>
     ( ((($second as u64) << 32) | ($first as u64)) )
 }
+
+mod sha1;
 
 /// A context for multi-step (Init-Update-Finish) digest calculations.
 ///
@@ -292,24 +296,6 @@ pub struct Algorithm {
     pub nid: c::int,
 }
 
-/// SHA-1 as specified in [FIPS
-/// 180-4](http://nvlpubs.nist.gov/nistpubs/FIPS/NIST.FIPS.180-4.pdf).
-pub static SHA1: Algorithm = Algorithm {
-    output_len: 160 / 8,
-    chaining_len: 160 / 8,
-    block_len: 512 / 8,
-    len_len: 64 / 8,
-    block_data_order: sha1_block_data_order,
-    format_output: sha256_format_output,
-    initial_state: [
-        u32x2!(0x67452301u32, 0xefcdab89u32),
-        u32x2!(0x98badcfeu32, 0x10325476u32),
-        u32x2!(0xc3d2e1f0u32, 0u32),
-        0, 0, 0, 0, 0,
-    ],
-    nid: 64, // NID_sha1
-};
-
 /// SHA-256 as specified in [FIPS
 /// 180-4](http://nvlpubs.nist.gov/nistpubs/FIPS/NIST.FIPS.180-4.pdf).
 pub static SHA256: Algorithm = Algorithm {
@@ -449,7 +435,6 @@ pub extern fn SHA512_4(out: *mut u8, out_len: c::size_t,
 }
 
 extern {
-    fn sha1_block_data_order(state: *mut u64, data: *const u8, num: c::size_t);
     fn sha256_block_data_order(state: *mut u64, data: *const u8, num: c::size_t);
     fn sha512_block_data_order(state: *mut u64, data: *const u8, num: c::size_t);
 }
