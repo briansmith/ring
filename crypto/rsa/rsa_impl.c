@@ -171,13 +171,8 @@ int rsa_default_encrypt(RSA *rsa, size_t *out_len, uint8_t *out, size_t max_out,
     goto err;
   }
 
-  if (rsa->flags & RSA_FLAG_CACHE_PUBLIC) {
-    if (BN_MONT_CTX_set_locked(&rsa->mont_n, &rsa->lock, rsa->n, ctx) == NULL) {
-      goto err;
-    }
-  }
-
-  if (!BN_mod_exp_mont(result, f, rsa->e, rsa->n, ctx, rsa->mont_n)) {
+  if (BN_MONT_CTX_set_locked(&rsa->mont_n, &rsa->lock, rsa->n, ctx) == NULL ||
+      !BN_mod_exp_mont(result, f, rsa->e, rsa->n, ctx, rsa->mont_n)) {
     goto err;
   }
 
@@ -482,13 +477,8 @@ int rsa_default_verify_raw(RSA *rsa, size_t *out_len, uint8_t *out,
     goto err;
   }
 
-  if (rsa->flags & RSA_FLAG_CACHE_PUBLIC) {
-    if (BN_MONT_CTX_set_locked(&rsa->mont_n, &rsa->lock, rsa->n, ctx) == NULL) {
-      goto err;
-    }
-  }
-
-  if (!BN_mod_exp_mont(result, f, rsa->e, rsa->n, ctx, rsa->mont_n)) {
+  if (BN_MONT_CTX_set_locked(&rsa->mont_n, &rsa->lock, rsa->n, ctx) == NULL ||
+      !BN_mod_exp_mont(result, f, rsa->e, rsa->n, ctx, rsa->mont_n)) {
     goto err;
   }
 
@@ -584,14 +574,8 @@ int rsa_default_private_transform(RSA *rsa, uint8_t *out, const uint8_t *in,
     d = &local_d;
     BN_with_flags(d, rsa->d, BN_FLG_CONSTTIME);
 
-    if (rsa->flags & RSA_FLAG_CACHE_PUBLIC) {
-      if (BN_MONT_CTX_set_locked(&rsa->mont_n, &rsa->lock, rsa->n, ctx) ==
-          NULL) {
-        goto err;
-      }
-    }
-
-    if (!BN_mod_exp_mont_consttime(result, f, d, rsa->n, ctx, rsa->mont_n)) {
+    if (BN_MONT_CTX_set_locked(&rsa->mont_n, &rsa->lock, rsa->n, ctx) == NULL ||
+        !BN_mod_exp_mont_consttime(result, f, d, rsa->n, ctx, rsa->mont_n)) {
       goto err;
     }
   }
@@ -656,20 +640,14 @@ static int mod_exp(BIGNUM *r0, const BIGNUM *I, RSA *rsa, BN_CTX *ctx) {
     q = &local_q;
     BN_with_flags(q, rsa->q, BN_FLG_CONSTTIME);
 
-    if (rsa->flags & RSA_FLAG_CACHE_PRIVATE) {
-      if (BN_MONT_CTX_set_locked(&rsa->mont_p, &rsa->lock, p, ctx) == NULL) {
-        goto err;
-      }
-      if (BN_MONT_CTX_set_locked(&rsa->mont_q, &rsa->lock, q, ctx) == NULL) {
-        goto err;
-      }
+    if (BN_MONT_CTX_set_locked(&rsa->mont_p, &rsa->lock, p, ctx) == NULL ||
+        BN_MONT_CTX_set_locked(&rsa->mont_q, &rsa->lock, q, ctx) == NULL) {
+      goto err;
     }
   }
 
-  if (rsa->flags & RSA_FLAG_CACHE_PUBLIC) {
-    if (BN_MONT_CTX_set_locked(&rsa->mont_n, &rsa->lock, rsa->n, ctx) == NULL) {
-      goto err;
-    }
+  if (BN_MONT_CTX_set_locked(&rsa->mont_n, &rsa->lock, rsa->n, ctx) == NULL) {
+    goto err;
   }
 
   /* compute I mod q */
@@ -756,12 +734,8 @@ static int mod_exp(BIGNUM *r0, const BIGNUM *I, RSA *rsa, BN_CTX *ctx) {
       goto err;
     }
 
-    if ((rsa->flags & RSA_FLAG_CACHE_PRIVATE) &&
-        !BN_MONT_CTX_set_locked(&ap->mont, &rsa->lock, prime, ctx)) {
-      goto err;
-    }
-
-    if (!BN_mod_exp_mont_consttime(m1, r1, exp, prime, ctx, ap->mont)) {
+    if (BN_MONT_CTX_set_locked(&ap->mont, &rsa->lock, prime, ctx) == NULL ||
+        !BN_mod_exp_mont_consttime(m1, r1, exp, prime, ctx, ap->mont)) {
       goto err;
     }
 

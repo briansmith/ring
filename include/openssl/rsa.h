@@ -399,12 +399,10 @@ OPENSSL_EXPORT void *RSA_get_ex_data(const RSA *r, int idx);
  * API, like a platform key store. */
 #define RSA_FLAG_OPAQUE 1
 
-/* RSA_FLAG_CACHE_PUBLIC causes a precomputed Montgomery context to be created,
- * on demand, for the public key operations. */
+/* Deprecated and ignored. */
 #define RSA_FLAG_CACHE_PUBLIC 2
 
-/* RSA_FLAG_CACHE_PRIVATE causes a precomputed Montgomery context to be
- * created, on demand, for the private key operations. */
+/* Deprecated and ignored. */
 #define RSA_FLAG_CACHE_PRIVATE 4
 
 /* RSA_FLAG_NO_BLINDING disables blinding of private operations. */
