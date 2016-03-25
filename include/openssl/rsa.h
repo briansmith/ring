@@ -408,9 +408,7 @@ OPENSSL_EXPORT void *RSA_get_ex_data(const RSA *r, int idx);
 /* RSA_FLAG_NO_BLINDING disables blinding of private operations. */
 #define RSA_FLAG_NO_BLINDING 8
 
-/* RSA_FLAG_EXT_PKEY means that private key operations will be handled by
- * |mod_exp| and that they do not depend on the private key components being
- * present: for example a key stored in external hardware. */
+/* RSA_FLAG_EXT_PKEY is deprecated and ignored. */
 #define RSA_FLAG_EXT_PKEY 0x20
 
 /* RSA_FLAG_SIGN_VER causes the |sign| and |verify| functions of |rsa_meth_st|
@@ -521,8 +519,8 @@ struct rsa_meth_st {
   int (*private_transform)(RSA *rsa, uint8_t *out, const uint8_t *in,
                            size_t len);
 
-  int (*mod_exp)(BIGNUM *r0, const BIGNUM *I, RSA *rsa,
-                 BN_CTX *ctx); /* Can be null */
+  /* mod_exp is deprecated and ignored. Set it to NULL. */
+  int (*mod_exp)(BIGNUM *r0, const BIGNUM *I, RSA *rsa, BN_CTX *ctx);
 
   /* bn_mod_exp is deprecated and ignored. Set it to NULL. */
   int (*bn_mod_exp)(BIGNUM *r, const BIGNUM *a, const BIGNUM *p,
