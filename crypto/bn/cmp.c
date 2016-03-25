@@ -56,6 +56,8 @@
 
 #include <openssl/bn.h>
 
+#include <openssl/mem.h>
+
 #include "internal.h"
 
 
@@ -197,4 +199,16 @@ int BN_is_word(const BIGNUM *bn, BN_ULONG w) {
 
 int BN_is_odd(const BIGNUM *bn) {
   return bn->top > 0 && (bn->d[0] & 1) == 1;
+}
+
+int BN_equal_consttime(const BIGNUM *a, const BIGNUM *b) {
+  if (a->top != b->top) {
+    return 0;
+  }
+
+  int limbs_are_equal =
+    CRYPTO_memcmp(a->d, b->d, (size_t)a->top * sizeof(a->d[0])) == 0;
+
+  return constant_time_select_int(constant_time_eq_int(a->neg, b->neg),
+                                  limbs_are_equal, 0);
 }

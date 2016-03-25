@@ -441,6 +441,11 @@ OPENSSL_EXPORT int BN_cmp(const BIGNUM *a, const BIGNUM *b);
  * value of |b|, respectively. */
 OPENSSL_EXPORT int BN_ucmp(const BIGNUM *a, const BIGNUM *b);
 
+/* BN_equal_consttime returns one if |a| is equal to |b|, and zero otherwise.
+ * It takes an amount of time dependent on the sizes of |a| and |b|, but
+ * independent of the contents (including the signs) of |a| and |b|. */
+OPENSSL_EXPORT int BN_equal_consttime(const BIGNUM *a, const BIGNUM *b);
+
 /* BN_abs_is_word returns one if the absolute value of |bn| equals |w| and zero
  * otherwise. */
 OPENSSL_EXPORT int BN_abs_is_word(const BIGNUM *bn, BN_ULONG w);

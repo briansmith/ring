@@ -556,16 +556,16 @@ int rsa_default_private_transform(RSA *rsa, uint8_t *out, const uint8_t *in,
     goto err;
   }
 
+  if (!BN_MONT_CTX_set_locked(&rsa->mont_n, &rsa->lock, rsa->n, ctx)) {
+    OPENSSL_PUT_ERROR(RSA, ERR_R_INTERNAL_ERROR);
+    goto err;
+  }
+
   if (!(rsa->flags & RSA_FLAG_NO_BLINDING)) {
     /* Keys without public exponents must have blinding explicitly disabled to
      * be used. */
     if (rsa->e == NULL) {
       OPENSSL_PUT_ERROR(RSA, RSA_R_NO_PUBLIC_EXPONENT);
-      goto err;
-    }
-
-    if (!BN_MONT_CTX_set_locked(&rsa->mont_n, &rsa->lock, rsa->n, ctx)) {
-      OPENSSL_PUT_ERROR(RSA, ERR_R_INTERNAL_ERROR);
       goto err;
     }
 
@@ -592,8 +592,28 @@ int rsa_default_private_transform(RSA *rsa, uint8_t *out, const uint8_t *in,
     d = &local_d;
     BN_with_flags(d, rsa->d, BN_FLG_CONSTTIME);
 
-    if (!BN_MONT_CTX_set_locked(&rsa->mont_n, &rsa->lock, rsa->n, ctx) ||
-        !BN_mod_exp_mont_consttime(result, f, d, rsa->n, ctx, rsa->mont_n)) {
+    if (!BN_mod_exp_mont_consttime(result, f, d, rsa->n, ctx, rsa->mont_n)) {
+      goto err;
+    }
+  }
+
+  /* Verify the result to protect against fault attacks as described in the
+   * 1997 paper "On the Importance of Checking Cryptographic Protocols for
+   * Faults" by Dan Boneh, Richard A. DeMillo, and Richard J. Lipton. Some
+   * implementations do this only when the CRT is used, but we do it in all
+   * cases. Section 6 of the aforementioned paper describes an attack that
+   * works when the CRT isn't used. That attack is much less likely to succeed
+   * than the CRT attack, but there have likely been improvements since 1997.
+   *
+   * This check is very cheap assuming |e| is small; it almost always is.
+   *
+   * XXX: It's unfortunate that we don't do this check when |rsa->e == NULL|. */
+  if (rsa->e != NULL) {
+    BIGNUM *vrfy = BN_CTX_get(ctx);
+    if (vrfy == NULL ||
+        !BN_mod_exp_mont(vrfy, result, rsa->e, rsa->n, ctx, rsa->mont_n) ||
+        !BN_equal_consttime(vrfy, f)) {
+      OPENSSL_PUT_ERROR(RSA, ERR_R_INTERNAL_ERROR);
       goto err;
     }
   }
@@ -780,37 +800,6 @@ static int mod_exp(BIGNUM *r0, const BIGNUM *I, RSA *rsa, BN_CTX *ctx) {
     }
   }
 
-  if (!BN_mod_exp_mont(vrfy, r0, rsa->e, rsa->n, ctx, rsa->mont_n)) {
-    goto err;
-  }
-  /* If 'I' was greater than (or equal to) rsa->n, the operation will be
-   * equivalent to using 'I mod n'. However, the result of the verify will
-   * *always* be less than 'n' so we don't check for absolute equality, just
-   * congruency. */
-  if (!BN_sub(vrfy, vrfy, I)) {
-    goto err;
-  }
-  if (!BN_mod(vrfy, vrfy, rsa->n, ctx)) {
-    goto err;
-  }
-  if (BN_is_negative(vrfy)) {
-    if (!BN_add(vrfy, vrfy, rsa->n)) {
-      goto err;
-    }
-  }
-  if (!BN_is_zero(vrfy)) {
-    /* 'I' and 'vrfy' aren't congruent mod n. Don't leak miscalculated CRT
-     * output, just do a raw (slower) mod_exp and return that instead. */
-
-    BIGNUM local_d;
-    BIGNUM *d = NULL;
-
-    d = &local_d;
-    BN_with_flags(d, rsa->d, BN_FLG_CONSTTIME);
-    if (!BN_mod_exp_mont_consttime(r0, I, d, rsa->n, ctx, rsa->mont_n)) {
-      goto err;
-    }
-  }
   ret = 1;
 
 err:
