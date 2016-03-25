@@ -593,6 +593,7 @@ static bool TestRSA(const uint8_t *der, size_t der_len,
       fprintf(stderr, "Corrupt data decrypted!\n");
       return false;
     }
+    ERR_clear_error();
     ciphertext[i] ^= 1;
   }
 
@@ -603,6 +604,7 @@ static bool TestRSA(const uint8_t *der, size_t der_len,
       fprintf(stderr, "Corrupt data decrypted!\n");
       return false;
     }
+    ERR_clear_error();
   }
 
   return true;
@@ -693,25 +695,27 @@ static bool TestBadKey() {
 }
 
 static bool TestOnlyDGiven() {
+  static const char kN[] =
+      "00e77bbf3889d4ef36a9a25d4d69f3f632eb4362214c74517da6d6aeaa9bd09ac42b2662"
+      "1cd88f3a6eb013772fc3bf9f83914b6467231c630202c35b3e5808c659";
+  static const char kE[] = "010001";
+  static const char kD[] =
+      "0365db9eb6d73b53b015c40cd8db4de7dd7035c68b5ac1bf786d7a4ee2cea316eaeca21a"
+      "73ac365e58713195f2ae9849348525ca855386b6d028e437a9495a01";
+
   uint8_t buf[64];
   unsigned buf_len = sizeof(buf);
   ScopedRSA key(RSA_new());
   if (!key ||
-      !BN_hex2bn(&key->n,
-                 "00e77bbf3889d4ef36a9a25d4d69f3f632eb4362214c74517da6d6aeaa9bd"
-                 "09ac42b26621cd88f3a6eb013772fc3bf9f83914b6467231c630202c35b3e"
-                 "5808c659") ||
-      !BN_hex2bn(&key->e, "010001") ||
-      !BN_hex2bn(&key->d,
-                 "0365db9eb6d73b53b015c40cd8db4de7dd7035c68b5ac1bf786d7a4ee2cea"
-                 "316eaeca21a73ac365e58713195f2ae9849348525ca855386b6d028e437a9"
-                 "495a01") ||
+      !BN_hex2bn(&key->n, kN) ||
+      !BN_hex2bn(&key->e, kE) ||
+      !BN_hex2bn(&key->d, kD) ||
       RSA_size(key.get()) > sizeof(buf)) {
     return false;
   }
 
   if (!RSA_check_key(key.get())) {
-    fprintf(stderr, "RSA_check_key failed with only d given.\n");
+    fprintf(stderr, "RSA_check_key failed with only n, d, and e given.\n");
     ERR_print_errors_fp(stderr);
     return false;
   }
@@ -720,14 +724,46 @@ static bool TestOnlyDGiven() {
 
   if (!RSA_sign(NID_sha256, kDummyHash, sizeof(kDummyHash), buf, &buf_len,
                 key.get())) {
-    fprintf(stderr, "RSA_sign failed with only d given.\n");
+    fprintf(stderr, "RSA_sign failed with only n, d, and e given.\n");
     ERR_print_errors_fp(stderr);
     return false;
   }
 
   if (!RSA_verify(NID_sha256, kDummyHash, sizeof(kDummyHash), buf, buf_len,
                   key.get())) {
-    fprintf(stderr, "RSA_verify failed with only d given.\n");
+    fprintf(stderr, "RSA_verify failed with only n, d, and e given.\n");
+    ERR_print_errors_fp(stderr);
+    return false;
+  }
+
+  // Keys without the private exponent must continue to work when blinding is
+  // disabled to support Java's RSAPrivateKeySpec API. See
+  // https://bugs.chromium.org/p/boringssl/issues/detail?id=12.
+  ScopedRSA key2(RSA_new());
+  if (!key2 ||
+      !BN_hex2bn(&key2->n, kN) ||
+      !BN_hex2bn(&key2->d, kD)) {
+    return false;
+  }
+  key2->flags |= RSA_FLAG_NO_BLINDING;
+
+  if (RSA_size(key2.get()) > sizeof(buf)) {
+    return false;
+  }
+
+  if (!RSA_sign(NID_sha256, kDummyHash, sizeof(kDummyHash), buf, &buf_len,
+                key2.get())) {
+    fprintf(stderr, "RSA_sign failed with only n and d given.\n");
+    ERR_print_errors_fp(stderr);
+    return false;
+  }
+
+  // Verify the signature with |key|. |key2| has no public exponent.
+  if (!RSA_verify(NID_sha256, kDummyHash, sizeof(kDummyHash), buf, buf_len,
+                  key.get())) {
+    fprintf(stderr,
+            "Could not verify signature produced from key with only n and d "
+            "given.\n");
     ERR_print_errors_fp(stderr);
     return false;
   }
