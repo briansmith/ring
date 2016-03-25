@@ -2,7 +2,7 @@
 
 if (scalar @ARGV != 3)
 	{
-	print "Usage: perl objects.pl objects.txt obj_mac.num ../../include/openssl/obj_mac.h\n";
+	print "Usage: perl objects.pl objects.txt obj_mac.num ../../include/openssl/nid.h\n";
 	exit 1;
 	}
 
@@ -127,7 +127,7 @@ open (OUT,">$ARGV[2]") || die "Can't open output file $ARGV[2]";
 print OUT <<'EOF';
 /* THIS FILE IS GENERATED FROM objects.txt by objects.pl via the
  * following command:
- * perl objects.pl objects.txt obj_mac.num ../../include/openssl/obj_mac.h */
+ * perl objects.pl objects.txt obj_mac.num ../../include/openssl/nid.h */
 
 /* Copyright (C) 1995-1997 Eric Young (eay@cryptsoft.com)
  * All rights reserved.
@@ -186,22 +186,42 @@ print OUT <<'EOF';
  * [including the GNU Public Licence.]
  */
 
-#define SN_undef			"UNDEF"
-#define LN_undef			"undefined"
-#define NID_undef			0
-#define OBJ_undef			0L
+#ifndef OPENSSL_HEADER_NID_H
+#define OPENSSL_HEADER_NID_H
+
+
+/* The nid library provides numbered values for ASN.1 object identifiers and
+ * other symbols. These values are used by other libraries to identify
+ * cryptographic primitives.
+ *
+ * A separate objects library, obj.h, provides functions for converting between
+ * nids and object identifiers. However it depends on large internal tables with
+ * the encodings of every nid defind. Consumers concerned with binary size
+ * should instead embed the encodings of the few consumed OIDs and compare
+ * against those.
+ *
+ * These values should not be used outside of a single process; they are not
+ * stable identifiers. */
+
+
+#define SN_undef "UNDEF"
+#define LN_undef "undefined"
+#define NID_undef 0
+#define OBJ_undef 0L
 
 EOF
 
 foreach (sort { $a <=> $b } keys %ordern)
 	{
 	$Cname=$ordern{$_};
-	print OUT "#define SN_",$Cname,"\t\t\"",$sn{$Cname},"\"\n" if $sn{$Cname} ne "";
-	print OUT "#define LN_",$Cname,"\t\t\"",$ln{$Cname},"\"\n" if $ln{$Cname} ne "";
-	print OUT "#define NID_",$Cname,"\t\t",$nid{$Cname},"\n" if $nid{$Cname} ne "";
-	print OUT "#define OBJ_",$Cname,"\t\t",$obj{$Cname},"\n" if $obj{$Cname} ne "";
+	print OUT "#define SN_",$Cname," \"",$sn{$Cname},"\"\n" if $sn{$Cname} ne "";
+	print OUT "#define LN_",$Cname," \"",$ln{$Cname},"\"\n" if $ln{$Cname} ne "";
+	print OUT "#define NID_",$Cname," ",$nid{$Cname},"\n" if $nid{$Cname} ne "";
+	print OUT "#define OBJ_",$Cname," ",$obj{$Cname},"\n" if $obj{$Cname} ne "";
 	print OUT "\n";
 	}
+
+print OUT "\n#endif  /* OPENSSL_HEADER_NID_H */\n";
 
 close OUT;
 

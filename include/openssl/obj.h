@@ -60,7 +60,7 @@
 #include <openssl/base.h>
 
 #include <openssl/bytestring.h>
-#include <openssl/obj_mac.h>
+#include <openssl/nid.h>
 
 #if defined(__cplusplus)
 extern "C" {

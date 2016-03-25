@@ -6,7 +6,7 @@ use integer;
 
 if (scalar @ARGV != 2)
 	{
-	print "Usage: perl obj_dat.pl ../../include/openssl/obj_mac.h obj_dat.h\n";
+	print "Usage: perl obj_dat.pl ../../include/openssl/nid.h obj_dat.h\n";
 	exit 1;
 	}
 
@@ -176,7 +176,7 @@ foreach (sort obj_cmp @a)
 print OUT <<'EOF';
 /* THIS FILE IS GENERATED FROM objects.h by obj_dat.pl via the
  * following command:
- * perl obj_dat.pl ../../include/openssl/obj_mac.h obj_dat.h */
+ * perl obj_dat.pl ../../include/openssl/nid.h obj_dat.h */
 
 /* Copyright (C) 1995-1997 Eric Young (eay@cryptsoft.com)
  * All rights reserved.
