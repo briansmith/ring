@@ -591,7 +591,6 @@ int DSA_do_check_signature(int *out_valid, const uint8_t *digest,
                            size_t digest_len, DSA_SIG *sig, const DSA *dsa) {
   BN_CTX *ctx;
   BIGNUM u1, u2, t1;
-  BN_MONT_CTX *mont = NULL;
   int ret = 0;
   unsigned i;
 
@@ -662,15 +661,14 @@ int DSA_do_check_signature(int *out_valid, const uint8_t *digest,
     goto err;
   }
 
-  mont = BN_MONT_CTX_set_locked((BN_MONT_CTX **)&dsa->method_mont_p,
-                                (CRYPTO_MUTEX *)&dsa->method_mont_p_lock,
-                                dsa->p, ctx);
-  if (!mont) {
+  if (!BN_MONT_CTX_set_locked((BN_MONT_CTX **)&dsa->method_mont_p,
+                              (CRYPTO_MUTEX *)&dsa->method_mont_p_lock, dsa->p,
+                              ctx)) {
     goto err;
   }
 
   if (!BN_mod_exp2_mont(&t1, dsa->g, &u1, dsa->pub_key, &u2, dsa->p, ctx,
-                        mont)) {
+                        dsa->method_mont_p)) {
     goto err;
   }
 
@@ -823,9 +821,9 @@ int DSA_sign_setup(const DSA *dsa, BN_CTX *ctx_in, BIGNUM **out_kinv,
 
   BN_set_flags(&k, BN_FLG_CONSTTIME);
 
-  if (BN_MONT_CTX_set_locked((BN_MONT_CTX **)&dsa->method_mont_p,
-                             (CRYPTO_MUTEX *)&dsa->method_mont_p_lock, dsa->p,
-                             ctx) == NULL) {
+  if (!BN_MONT_CTX_set_locked((BN_MONT_CTX **)&dsa->method_mont_p,
+                              (CRYPTO_MUTEX *)&dsa->method_mont_p_lock, dsa->p,
+                              ctx)) {
     goto err;
   }
 

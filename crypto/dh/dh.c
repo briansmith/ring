@@ -236,7 +236,6 @@ int DH_generate_key(DH *dh) {
   int generate_new_key = 0;
   unsigned l;
   BN_CTX *ctx = NULL;
-  BN_MONT_CTX *mont = NULL;
   BIGNUM *pub_key = NULL, *priv_key = NULL;
   BIGNUM local_priv;
 
@@ -269,9 +268,8 @@ int DH_generate_key(DH *dh) {
     pub_key = dh->pub_key;
   }
 
-  mont = BN_MONT_CTX_set_locked(&dh->method_mont_p, &dh->method_mont_p_lock,
-                                dh->p, ctx);
-  if (!mont) {
+  if (!BN_MONT_CTX_set_locked(&dh->method_mont_p, &dh->method_mont_p_lock,
+                              dh->p, ctx)) {
     goto err;
   }
 
@@ -293,7 +291,8 @@ int DH_generate_key(DH *dh) {
   }
 
   BN_with_flags(&local_priv, priv_key, BN_FLG_CONSTTIME);
-  if (!BN_mod_exp_mont(pub_key, dh->g, &local_priv, dh->p, ctx, mont)) {
+  if (!BN_mod_exp_mont(pub_key, dh->g, &local_priv, dh->p, ctx,
+                       dh->method_mont_p)) {
     goto err;
   }
 
@@ -318,7 +317,6 @@ err:
 
 int DH_compute_key(unsigned char *out, const BIGNUM *peers_key, DH *dh) {
   BN_CTX *ctx = NULL;
-  BN_MONT_CTX *mont = NULL;
   BIGNUM *shared_key;
   int ret = -1;
   int check_result;
@@ -344,9 +342,8 @@ int DH_compute_key(unsigned char *out, const BIGNUM *peers_key, DH *dh) {
     goto err;
   }
 
-  mont = BN_MONT_CTX_set_locked(&dh->method_mont_p, &dh->method_mont_p_lock,
-                                dh->p, ctx);
-  if (!mont) {
+  if (!BN_MONT_CTX_set_locked(&dh->method_mont_p, &dh->method_mont_p_lock,
+                              dh->p, ctx)) {
     goto err;
   }
 
@@ -357,7 +354,7 @@ int DH_compute_key(unsigned char *out, const BIGNUM *peers_key, DH *dh) {
 
   BN_with_flags(&local_priv, dh->priv_key, BN_FLG_CONSTTIME);
   if (!BN_mod_exp_mont(shared_key, peers_key, &local_priv, dh->p, ctx,
-                       mont)) {
+                       dh->method_mont_p)) {
     OPENSSL_PUT_ERROR(DH, ERR_R_BN_LIB);
     goto err;
   }

@@ -289,14 +289,14 @@ err:
   return ret;
 }
 
-BN_MONT_CTX *BN_MONT_CTX_set_locked(BN_MONT_CTX **pmont, CRYPTO_MUTEX *lock,
-                                    const BIGNUM *mod, BN_CTX *bn_ctx) {
+int BN_MONT_CTX_set_locked(BN_MONT_CTX **pmont, CRYPTO_MUTEX *lock,
+                           const BIGNUM *mod, BN_CTX *bn_ctx) {
   CRYPTO_MUTEX_lock_read(lock);
   BN_MONT_CTX *ctx = *pmont;
   CRYPTO_MUTEX_unlock(lock);
 
   if (ctx) {
-    return ctx;
+    return 1;
   }
 
   CRYPTO_MUTEX_lock_write(lock);
@@ -318,7 +318,7 @@ BN_MONT_CTX *BN_MONT_CTX_set_locked(BN_MONT_CTX **pmont, CRYPTO_MUTEX *lock,
 
 out:
   CRYPTO_MUTEX_unlock(lock);
-  return ctx;
+  return ctx != NULL;
 }
 
 int BN_to_montgomery(BIGNUM *ret, const BIGNUM *a, const BN_MONT_CTX *mont,
