@@ -572,8 +572,8 @@ int rsa_default_private_transform(RSA *rsa, uint8_t *out, const uint8_t *in,
     }
   }
 
-  if (((rsa->p != NULL) && (rsa->q != NULL) && (rsa->dmp1 != NULL) &&
-       (rsa->dmq1 != NULL) && (rsa->iqmp != NULL))) {
+  if (rsa->p != NULL && rsa->q != NULL && rsa->e != NULL && rsa->dmp1 != NULL &&
+      rsa->dmq1 != NULL && rsa->iqmp != NULL) {
     if (!mod_exp(result, f, rsa, ctx)) {
       goto err;
     }
@@ -618,6 +618,15 @@ err:
 
 static int mod_exp(BIGNUM *r0, const BIGNUM *I, RSA *rsa, BN_CTX *ctx) {
   assert(ctx != NULL);
+
+  assert(rsa->n != NULL);
+  assert(rsa->e != NULL);
+  assert(rsa->d != NULL);
+  assert(rsa->p != NULL);
+  assert(rsa->q != NULL);
+  assert(rsa->dmp1 != NULL);
+  assert(rsa->dmq1 != NULL);
+  assert(rsa->iqmp != NULL);
 
   BIGNUM *r1, *m1, *vrfy;
   BIGNUM local_dmp1, local_dmq1, local_c, local_r1;
@@ -764,38 +773,35 @@ static int mod_exp(BIGNUM *r0, const BIGNUM *I, RSA *rsa, BN_CTX *ctx) {
     }
   }
 
-  if (rsa->e && rsa->n) {
-    if (!BN_mod_exp_mont(vrfy, r0, rsa->e, rsa->n, ctx, rsa->mont_n)) {
+  if (!BN_mod_exp_mont(vrfy, r0, rsa->e, rsa->n, ctx, rsa->mont_n)) {
+    goto err;
+  }
+  /* If 'I' was greater than (or equal to) rsa->n, the operation will be
+   * equivalent to using 'I mod n'. However, the result of the verify will
+   * *always* be less than 'n' so we don't check for absolute equality, just
+   * congruency. */
+  if (!BN_sub(vrfy, vrfy, I)) {
+    goto err;
+  }
+  if (!BN_mod(vrfy, vrfy, rsa->n, ctx)) {
+    goto err;
+  }
+  if (BN_is_negative(vrfy)) {
+    if (!BN_add(vrfy, vrfy, rsa->n)) {
       goto err;
     }
-    /* If 'I' was greater than (or equal to) rsa->n, the operation
-     * will be equivalent to using 'I mod n'. However, the result of
-     * the verify will *always* be less than 'n' so we don't check
-     * for absolute equality, just congruency. */
-    if (!BN_sub(vrfy, vrfy, I)) {
-      goto err;
-    }
-    if (!BN_mod(vrfy, vrfy, rsa->n, ctx)) {
-      goto err;
-    }
-    if (BN_is_negative(vrfy)) {
-      if (!BN_add(vrfy, vrfy, rsa->n)) {
-        goto err;
-      }
-    }
-    if (!BN_is_zero(vrfy)) {
-      /* 'I' and 'vrfy' aren't congruent mod n. Don't leak
-       * miscalculated CRT output, just do a raw (slower)
-       * mod_exp and return that instead. */
+  }
+  if (!BN_is_zero(vrfy)) {
+    /* 'I' and 'vrfy' aren't congruent mod n. Don't leak miscalculated CRT
+     * output, just do a raw (slower) mod_exp and return that instead. */
 
-      BIGNUM local_d;
-      BIGNUM *d = NULL;
+    BIGNUM local_d;
+    BIGNUM *d = NULL;
 
-      d = &local_d;
-      BN_with_flags(d, rsa->d, BN_FLG_CONSTTIME);
-      if (!BN_mod_exp_mont_consttime(r0, I, d, rsa->n, ctx, rsa->mont_n)) {
-        goto err;
-      }
+    d = &local_d;
+    BN_with_flags(d, rsa->d, BN_FLG_CONSTTIME);
+    if (!BN_mod_exp_mont_consttime(r0, I, d, rsa->n, ctx, rsa->mont_n)) {
+      goto err;
     }
   }
   ret = 1;
