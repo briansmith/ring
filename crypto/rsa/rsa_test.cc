@@ -63,7 +63,7 @@
 #include <openssl/bytestring.h>
 #include <openssl/crypto.h>
 #include <openssl/err.h>
-#include <openssl/obj.h>
+#include <openssl/nid.h>
 
 #include "../test/scoped_types.h"
 

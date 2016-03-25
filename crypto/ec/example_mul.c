@@ -70,7 +70,7 @@
 #include <openssl/bn.h>
 #include <openssl/crypto.h>
 #include <openssl/ec.h>
-#include <openssl/obj.h>
+#include <openssl/nid.h>
 
 
 static int example_EC_POINT_mul(void) {

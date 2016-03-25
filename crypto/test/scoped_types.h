@@ -24,6 +24,7 @@
 #include <openssl/asn1.h>
 #include <openssl/bio.h>
 #include <openssl/bn.h>
+#include <openssl/bytestring.h>
 #include <openssl/cmac.h>
 #include <openssl/curve25519.h>
 #include <openssl/dh.h>

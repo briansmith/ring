@@ -119,7 +119,7 @@
 #include <openssl/evp.h>
 #include <openssl/hmac.h>
 #include <openssl/mem.h>
-#include <openssl/obj.h>
+#include <openssl/nid.h>
 #include <openssl/rand.h>
 #include <openssl/type_check.h>
 

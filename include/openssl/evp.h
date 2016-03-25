@@ -69,7 +69,7 @@
 #include <openssl/base64.h>
 #include <openssl/cipher.h>
 #include <openssl/digest.h>
-#include <openssl/obj.h>
+#include <openssl/nid.h>
 
 #if defined(__cplusplus)
 extern "C" {

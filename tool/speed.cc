@@ -24,7 +24,7 @@
 #include <openssl/curve25519.h>
 #include <openssl/digest.h>
 #include <openssl/err.h>
-#include <openssl/obj.h>
+#include <openssl/nid.h>
 #include <openssl/rand.h>
 #include <openssl/rsa.h>
 

@@ -60,7 +60,6 @@
 #include <string.h>
 
 #include <openssl/err.h>
-#include <openssl/obj.h>
 #include <openssl/mem.h>
 
 #include "internal.h"

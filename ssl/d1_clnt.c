@@ -124,7 +124,6 @@
 #include <openssl/err.h>
 #include <openssl/md5.h>
 #include <openssl/mem.h>
-#include <openssl/obj.h>
 #include <openssl/rand.h>
 
 #include "internal.h"

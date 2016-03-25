@@ -76,6 +76,7 @@
 #include <openssl/ecdsa.h>
 #include <openssl/ec.h>
 #include <openssl/evp.h>
+#include <openssl/obj.h>
 #include <openssl/rsa.h>
 #include <openssl/sha.h>
 #include <openssl/stack.h>

@@ -66,6 +66,7 @@
 
 #include <openssl/base.h>
 #include <openssl/crypto.h>
+#include <openssl/obj.h>
 #include <openssl/x509v3.h>
 
 #if !defined(BORINGSSL_SHARED_LIBRARY)

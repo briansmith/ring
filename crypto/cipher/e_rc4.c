@@ -58,7 +58,7 @@
 #include <string.h>
 
 #include <openssl/cipher.h>
-#include <openssl/obj.h>
+#include <openssl/nid.h>
 #include <openssl/rc4.h>
 
 

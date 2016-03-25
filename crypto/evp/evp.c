@@ -63,7 +63,7 @@
 #include <openssl/ec.h>
 #include <openssl/err.h>
 #include <openssl/mem.h>
-#include <openssl/obj.h>
+#include <openssl/nid.h>
 #include <openssl/rsa.h>
 #include <openssl/thread.h>
 
@@ -320,7 +320,7 @@ int EVP_PKEY_set_type(EVP_PKEY *pkey, int type) {
   ameth = evp_pkey_asn1_find(type);
   if (ameth == NULL) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_UNSUPPORTED_ALGORITHM);
-    ERR_add_error_dataf("algorithm %d (%s)", type, OBJ_nid2sn(type));
+    ERR_add_error_dataf("algorithm %d", type);
     return 0;
   }
 

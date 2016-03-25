@@ -55,7 +55,7 @@
  * [including the GNU Public Licence.] */
 
 #include <openssl/cipher.h>
-#include <openssl/obj.h>
+#include <openssl/nid.h>
 
 #include "internal.h"
 

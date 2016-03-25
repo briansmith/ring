@@ -120,7 +120,6 @@
 
 #include <openssl/bytestring.h>
 #include <openssl/err.h>
-#include <openssl/obj.h>
 
 #include "internal.h"
 

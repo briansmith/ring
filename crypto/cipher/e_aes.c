@@ -54,7 +54,7 @@
 #include <openssl/cpu.h>
 #include <openssl/err.h>
 #include <openssl/mem.h>
-#include <openssl/obj.h>
+#include <openssl/nid.h>
 #include <openssl/rand.h>
 #include <openssl/sha.h>
 

@@ -54,7 +54,7 @@
 #include <string.h>
 
 #include <openssl/digest.h>
-#include <openssl/obj.h>
+#include <openssl/nid.h>
 #include <openssl/sha.h>
 
 #include "../internal.h"

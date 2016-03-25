@@ -495,8 +495,7 @@ static EVP_PKEY_PRINT_METHOD *find_method(int type) {
 static int print_unsupported(BIO *out, const EVP_PKEY *pkey, int indent,
                              const char *kstr) {
   BIO_indent(out, indent, 128);
-  BIO_printf(out, "%s algorithm \"%s\" unsupported\n", kstr,
-             OBJ_nid2ln(pkey->type));
+  BIO_printf(out, "%s algorithm unsupported\n", kstr);
   return 1;
 }
 

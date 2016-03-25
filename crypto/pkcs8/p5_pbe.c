@@ -57,6 +57,7 @@
 
 #include <openssl/asn1t.h>
 #include <openssl/err.h>
+#include <openssl/obj.h>
 #include <openssl/pkcs8.h>
 #include <openssl/rand.h>
 #include <openssl/x509.h>
