@@ -192,10 +192,21 @@ OPENSSL_EXPORT EC_KEY *EC_KEY_parse_private_key(CBS *cbs,
 OPENSSL_EXPORT int EC_KEY_marshal_private_key(CBB *cbb, const EC_KEY *key,
                                               unsigned enc_flags);
 
+/* EC_KEY_parse_parameters parses a DER-encoded OBJECT IDENTIFIER as a curve
+ * name from |cbs| and advances |cbs|. It returns a newly-allocated |EC_GROUP|
+ * or NULL on error. */
+OPENSSL_EXPORT EC_GROUP *EC_KEY_parse_curve_name(CBS *cbs);
+
+/* EC_KEY_marshal_curve_name marshals |group| as a DER-encoded OBJECT IDENTIFIER
+ * and appends the result to |cbb|. It returns one on success and zero on
+ * failure. */
+OPENSSL_EXPORT int EC_KEY_marshal_curve_name(CBB *cbb, const EC_GROUP *group);
+
 /* EC_KEY_parse_parameters parses a DER-encoded ECParameters structure (RFC
  * 5480) from |cbs| and advances |cbs|. It returns a newly-allocated |EC_GROUP|
  * or NULL on error. It supports the namedCurve and specifiedCurve options, but
- * use of specifiedCurve is deprecated. */
+ * use of specifiedCurve is deprecated. Use |EC_KEY_parse_curve_name|
+ * instead. */
 OPENSSL_EXPORT EC_GROUP *EC_KEY_parse_parameters(CBS *cbs);
 
 
@@ -279,7 +290,7 @@ OPENSSL_EXPORT int i2d_ECPrivateKey(const EC_KEY *key, uint8_t **outp);
  * allocated and the previous one is freed. On successful exit, |*inp| is
  * advanced past the DER structure. It returns the result or NULL on error.
  *
- * Use EC_KEY_parse_parameters instead. */
+ * Use |EC_KEY_parse_parameters| or |EC_KEY_parse_curve_name| instead. */
 OPENSSL_EXPORT EC_KEY *d2i_ECParameters(EC_KEY **out_key, const uint8_t **inp,
                                         long len);
 
@@ -288,7 +299,7 @@ OPENSSL_EXPORT EC_KEY *d2i_ECParameters(EC_KEY **out_key, const uint8_t **inp,
  * |*outp| is advanced just past the output. It returns the number of bytes in
  * the result, whether written or not, or a negative value on error.
  *
- * Use |OBJ_nid2cbb| and |EC_GROUP_get_curve_name| instead. */
+ * Use |EC_KEY_marshal_curve_name| instead. */
 OPENSSL_EXPORT int i2d_ECParameters(const EC_KEY *key, uint8_t **outp);
 
 /* o2i_ECPublicKey parses an EC point from |len| bytes at |*inp| into

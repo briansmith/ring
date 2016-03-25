@@ -228,10 +228,25 @@ static const struct curve_data P521 = {
 #endif
 
 const struct built_in_curve OPENSSL_built_in_curves[] = {
-    {NID_secp521r1, &P521, 0},
-    {NID_secp384r1, &P384, 0},
     {
-        NID_X9_62_prime256v1, &P256,
+        NID_secp521r1,
+        /* 1.3.132.0.35 */
+        {0x2b, 0x81, 0x04, 0x00, 0x23}, 5,
+        &P521,
+        NULL,
+      },
+    {
+        NID_secp384r1,
+        /* 1.3.132.0.34 */
+        {0x2b, 0x81, 0x04, 0x00, 0x22}, 5,
+        &P384,
+        NULL,
+    },
+    {
+        NID_X9_62_prime256v1,
+        /* 1.2.840.10045.3.1.7 */
+        {0x2a, 0x86, 0x48, 0xce, 0x3d, 0x03, 0x01, 0x07}, 8,
+        &P256,
 #if defined(BORINGSSL_USE_INT128_CODE)
 #if !defined(OPENSSL_NO_ASM) && defined(OPENSSL_X86_64) && \
     !defined(OPENSSL_SMALL)
@@ -240,18 +255,21 @@ const struct built_in_curve OPENSSL_built_in_curves[] = {
         EC_GFp_nistp256_method,
 #endif
 #else
-        0,
+        NULL,
 #endif
     },
     {
-        NID_secp224r1, &P224,
+        NID_secp224r1,
+        /* 1.3.132.0.33 */
+        {0x2b, 0x81, 0x04, 0x00, 0x21}, 5,
+        &P224,
 #if defined(BORINGSSL_USE_INT128_CODE) && !defined(OPENSSL_SMALL)
         EC_GFp_nistp224_method,
 #else
-        0,
+        NULL,
 #endif
     },
-    {NID_undef, 0, 0},
+    {NID_undef, {0}, 0, NULL, NULL},
 };
 
 /* built_in_curve_scalar_field_monts contains Montgomery contexts for

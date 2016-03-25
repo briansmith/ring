@@ -271,6 +271,8 @@ struct curve_data {
 
 struct built_in_curve {
   int nid;
+  uint8_t oid[8];
+  uint8_t oid_len;
   const struct curve_data *data;
   const EC_METHOD *(*method)(void);
 };

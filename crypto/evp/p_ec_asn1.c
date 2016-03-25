@@ -69,11 +69,6 @@
 static int eckey_pub_encode(CBB *out, const EVP_PKEY *key) {
   const EC_KEY *ec_key = key->pkey.ec;
   const EC_GROUP *group = EC_KEY_get0_group(ec_key);
-  int curve_nid = EC_GROUP_get_curve_name(group);
-  if (curve_nid == NID_undef) {
-    OPENSSL_PUT_ERROR(EVP, EVP_R_NO_NID_FOR_CURVE);
-    return 0;
-  }
   const EC_POINT *public_key = EC_KEY_get0_public_key(ec_key);
 
   /* See RFC 5480, section 2. */
@@ -81,7 +76,7 @@ static int eckey_pub_encode(CBB *out, const EVP_PKEY *key) {
   if (!CBB_add_asn1(out, &spki, CBS_ASN1_SEQUENCE) ||
       !CBB_add_asn1(&spki, &algorithm, CBS_ASN1_SEQUENCE) ||
       !OBJ_nid2cbb(&algorithm, NID_X9_62_id_ecPublicKey) ||
-      !OBJ_nid2cbb(&algorithm, curve_nid) ||
+      !EC_KEY_marshal_curve_name(&algorithm, group) ||
       !CBB_add_asn1(&spki, &key_bitstring, CBS_ASN1_BITSTRING) ||
       !CBB_add_u8(&key_bitstring, 0 /* padding */) ||
       !EC_POINT_point2cbb(&key_bitstring, group, public_key,
@@ -98,31 +93,32 @@ static int eckey_pub_decode(EVP_PKEY *out, CBS *params, CBS *key) {
   /* See RFC 5480, section 2. */
 
   /* The parameters are a named curve. */
-  CBS named_curve;
-  if (!CBS_get_asn1(params, &named_curve, CBS_ASN1_OBJECT) ||
-      CBS_len(params) != 0) {
+  EC_GROUP *group = EC_KEY_parse_curve_name(params);
+  if (group == NULL || CBS_len(params) != 0) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_DECODE_ERROR);
     return 0;
   }
 
-  EC_KEY *eckey = EC_KEY_new_by_curve_name(OBJ_cbs2nid(&named_curve));
-  if (eckey == NULL) {
-    return 0;
+  EC_POINT *point = NULL;
+  EC_KEY *eckey = EC_KEY_new();
+  if (eckey == NULL || !EC_KEY_set_group(eckey, group)) {
+    goto err;
   }
 
-  EC_POINT *point = EC_POINT_new(EC_KEY_get0_group(eckey));
+  point = EC_POINT_new(group);
   if (point == NULL ||
-      !EC_POINT_oct2point(EC_KEY_get0_group(eckey), point, CBS_data(key),
-                          CBS_len(key), NULL) ||
+      !EC_POINT_oct2point(group, point, CBS_data(key), CBS_len(key), NULL) ||
       !EC_KEY_set_public_key(eckey, point)) {
     goto err;
   }
 
+  EC_GROUP_free(group);
   EC_POINT_free(point);
   EVP_PKEY_assign_EC_KEY(out, eckey);
   return 1;
 
 err:
+  EC_GROUP_free(group);
   EC_POINT_free(point);
   EC_KEY_free(eckey);
   return 0;
@@ -166,11 +162,6 @@ static int eckey_priv_decode(EVP_PKEY *out, CBS *params, CBS *key) {
 
 static int eckey_priv_encode(CBB *out, const EVP_PKEY *key) {
   const EC_KEY *ec_key = key->pkey.ec;
-  int curve_nid = EC_GROUP_get_curve_name(EC_KEY_get0_group(ec_key));
-  if (curve_nid == NID_undef) {
-    OPENSSL_PUT_ERROR(EVP, EVP_R_NO_NID_FOR_CURVE);
-    return 0;
-  }
 
   /* Omit the redundant copy of the curve name. This contradicts RFC 5915 but
    * aligns with PKCS #11. SEC 1 only says they may be omitted if known by other
@@ -184,7 +175,7 @@ static int eckey_priv_encode(CBB *out, const EVP_PKEY *key) {
       !CBB_add_asn1_uint64(&pkcs8, 0 /* version */) ||
       !CBB_add_asn1(&pkcs8, &algorithm, CBS_ASN1_SEQUENCE) ||
       !OBJ_nid2cbb(&algorithm, NID_X9_62_id_ecPublicKey) ||
-      !OBJ_nid2cbb(&algorithm, curve_nid) ||
+      !EC_KEY_marshal_curve_name(&algorithm, EC_KEY_get0_group(ec_key)) ||
       !CBB_add_asn1(&pkcs8, &private_key, CBS_ASN1_OCTETSTRING) ||
       !EC_KEY_marshal_private_key(&private_key, ec_key, enc_flags) ||
       !CBB_flush(out)) {
