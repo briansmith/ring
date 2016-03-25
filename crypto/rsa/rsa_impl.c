@@ -540,8 +540,29 @@ static int rsa_private_transform(RSA *rsa, uint8_t *out, const uint8_t *in,
   blinding = rsa_blinding_get(rsa, &blinding_index);
   if (blinding == NULL ||
       !BN_BLINDING_convert(f, blinding, rsa, ctx) ||
-      !mod_exp(result, f, rsa, ctx) ||
-      !BN_BLINDING_invert(result, blinding, rsa->mont_n, ctx) ||
+      !mod_exp(result, f, rsa, ctx)) {
+  }
+
+  /* Verify the result to protect against fault attacks as described in the
+   * 1997 paper "On the Importance of Checking Cryptographic Protocols for
+   * Faults" by Dan Boneh, Richard A. DeMillo, and Richard J. Lipton. Some
+   * implementations do this only when the CRT is used, but we do it in all
+   * cases. Section 6 of the aforementioned paper describes an attack that
+   * works when the CRT isn't used. That attack is much less likely to succeed
+   * than the CRT attack, but there have likely been improvements since 1997.
+   *
+   * This check is very cheap assuming |e| is small, which it almost always is. */
+  BIGNUM *vrfy = BN_CTX_get(ctx);
+  if (vrfy == NULL ||
+    !BN_mod_exp_mont(vrfy, result, rsa->e, rsa->n, ctx, rsa->mont_n) ||
+    vrfy->top != f->top ||
+    CRYPTO_memcmp(vrfy->d, f->d,
+                  (size_t)vrfy->top * sizeof(vrfy->d[0])) != 0) {
+    OPENSSL_PUT_ERROR(RSA, ERR_R_INTERNAL_ERROR);
+    goto err;
+  }
+
+  if (!BN_BLINDING_invert(result, blinding, rsa->mont_n, ctx) ||
       !BN_bn2bin_padded(out, len, result)) {
     OPENSSL_PUT_ERROR(RSA, ERR_R_INTERNAL_ERROR);
     goto err;
@@ -635,33 +656,6 @@ static int mod_exp(BIGNUM *r0, const BIGNUM *I, RSA *rsa, BN_CTX *ctx) {
   }
   if (!BN_add(r0, r1, m1)) {
     goto err;
-  }
-
-  if (!BN_mod_exp_mont(vrfy, r0, rsa->e, rsa->n, ctx, rsa->mont_n)) {
-    goto err;
-  }
-  /* If 'I' was greater than (or equal to) rsa->n, the operation
-   * will be equivalent to using 'I mod n'. However, the result of
-   * the verify will *always* be less than 'n' so we don't check
-   * for absolute equality, just congruency. */
-  if (!BN_sub(vrfy, vrfy, I)) {
-    goto err;
-  }
-  if (!BN_mod(vrfy, vrfy, rsa->n, ctx)) {
-    goto err;
-  }
-  if (BN_is_negative(vrfy)) {
-    if (!BN_add(vrfy, vrfy, rsa->n)) {
-      goto err;
-    }
-  }
-  if (!BN_is_zero(vrfy)) {
-    /* 'I' and 'vrfy' aren't congruent mod n. Don't leak miscalculated CRT
-     * output, just do a raw (slower) mod_exp and return that instead. */
-    assert(BN_get_flags(rsa->d, BN_FLG_CONSTTIME));
-    if (!BN_mod_exp_mont_consttime(r0, I, rsa->d, rsa->n, ctx, rsa->mont_n)) {
-      goto err;
-    }
   }
 
   ret = 1;
