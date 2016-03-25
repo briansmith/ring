@@ -56,23 +56,50 @@
 
 #include <openssl/evp.h>
 
+#include <string.h>
+
 #include <openssl/bytestring.h>
 #include <openssl/dsa.h>
 #include <openssl/ec_key.h>
 #include <openssl/err.h>
-#include <openssl/obj.h>
 #include <openssl/rsa.h>
 
 #include "internal.h"
 
 
+static const EVP_PKEY_ASN1_METHOD *const kASN1Methods[] = {
+    &rsa_asn1_meth,
+    &ec_asn1_meth,
+    &dsa_asn1_meth,
+};
+
+static int parse_key_type(CBS *cbs, int *out_type) {
+  CBS oid;
+  if (!CBS_get_asn1(cbs, &oid, CBS_ASN1_OBJECT)) {
+    return 0;
+  }
+
+  unsigned i;
+  for (i = 0; i < sizeof(kASN1Methods)/sizeof(kASN1Methods[0]); i++) {
+    const EVP_PKEY_ASN1_METHOD *method = kASN1Methods[i];
+    if (CBS_len(&oid) == method->oid_len &&
+        memcmp(CBS_data(&oid), method->oid, method->oid_len) == 0) {
+      *out_type = method->pkey_id;
+      return 1;
+    }
+  }
+
+  return 0;
+}
+
 EVP_PKEY *EVP_parse_public_key(CBS *cbs) {
   /* Parse the SubjectPublicKeyInfo. */
-  CBS spki, algorithm, oid, key;
+  CBS spki, algorithm, key;
+  int type;
   uint8_t padding;
   if (!CBS_get_asn1(cbs, &spki, CBS_ASN1_SEQUENCE) ||
       !CBS_get_asn1(&spki, &algorithm, CBS_ASN1_SEQUENCE) ||
-      !CBS_get_asn1(&algorithm, &oid, CBS_ASN1_OBJECT) ||
+      !parse_key_type(&algorithm, &type) ||
       !CBS_get_asn1(&spki, &key, CBS_ASN1_BITSTRING) ||
       CBS_len(&spki) != 0 ||
       /* Every key type defined encodes the key as a byte string with the same
@@ -86,7 +113,7 @@ EVP_PKEY *EVP_parse_public_key(CBS *cbs) {
   /* Set up an |EVP_PKEY| of the appropriate type. */
   EVP_PKEY *ret = EVP_PKEY_new();
   if (ret == NULL ||
-      !EVP_PKEY_set_type(ret, OBJ_cbs2nid(&oid))) {
+      !EVP_PKEY_set_type(ret, type)) {
     goto err;
   }
 
@@ -117,13 +144,14 @@ int EVP_marshal_public_key(CBB *cbb, const EVP_PKEY *key) {
 
 EVP_PKEY *EVP_parse_private_key(CBS *cbs) {
   /* Parse the PrivateKeyInfo. */
-  CBS pkcs8, algorithm, oid, key;
+  CBS pkcs8, algorithm, key;
   uint64_t version;
+  int type;
   if (!CBS_get_asn1(cbs, &pkcs8, CBS_ASN1_SEQUENCE) ||
       !CBS_get_asn1_uint64(&pkcs8, &version) ||
       version != 0 ||
       !CBS_get_asn1(&pkcs8, &algorithm, CBS_ASN1_SEQUENCE) ||
-      !CBS_get_asn1(&algorithm, &oid, CBS_ASN1_OBJECT) ||
+      !parse_key_type(&algorithm, &type) ||
       !CBS_get_asn1(&pkcs8, &key, CBS_ASN1_OCTETSTRING)) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_DECODE_ERROR);
     return NULL;
@@ -134,7 +162,7 @@ EVP_PKEY *EVP_parse_private_key(CBS *cbs) {
   /* Set up an |EVP_PKEY| of the appropriate type. */
   EVP_PKEY *ret = EVP_PKEY_new();
   if (ret == NULL ||
-      !EVP_PKEY_set_type(ret, OBJ_cbs2nid(&oid))) {
+      !EVP_PKEY_set_type(ret, type)) {
     goto err;
   }
 

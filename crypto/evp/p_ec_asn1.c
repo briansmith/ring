@@ -61,7 +61,6 @@
 #include <openssl/ec_key.h>
 #include <openssl/ecdsa.h>
 #include <openssl/err.h>
-#include <openssl/obj.h>
 
 #include "internal.h"
 
@@ -72,10 +71,11 @@ static int eckey_pub_encode(CBB *out, const EVP_PKEY *key) {
   const EC_POINT *public_key = EC_KEY_get0_public_key(ec_key);
 
   /* See RFC 5480, section 2. */
-  CBB spki, algorithm, key_bitstring;
+  CBB spki, algorithm, oid, key_bitstring;
   if (!CBB_add_asn1(out, &spki, CBS_ASN1_SEQUENCE) ||
       !CBB_add_asn1(&spki, &algorithm, CBS_ASN1_SEQUENCE) ||
-      !OBJ_nid2cbb(&algorithm, NID_X9_62_id_ecPublicKey) ||
+      !CBB_add_asn1(&algorithm, &oid, CBS_ASN1_OBJECT) ||
+      !CBB_add_bytes(&oid, ec_asn1_meth.oid, ec_asn1_meth.oid_len) ||
       !EC_KEY_marshal_curve_name(&algorithm, group) ||
       !CBB_add_asn1(&spki, &key_bitstring, CBS_ASN1_BITSTRING) ||
       !CBB_add_u8(&key_bitstring, 0 /* padding */) ||
@@ -170,11 +170,12 @@ static int eckey_priv_encode(CBB *out, const EVP_PKEY *key) {
   unsigned enc_flags = EC_KEY_get_enc_flags(ec_key) | EC_PKEY_NO_PARAMETERS;
 
   /* See RFC 5915. */
-  CBB pkcs8, algorithm, private_key;
+  CBB pkcs8, algorithm, oid, private_key;
   if (!CBB_add_asn1(out, &pkcs8, CBS_ASN1_SEQUENCE) ||
       !CBB_add_asn1_uint64(&pkcs8, 0 /* version */) ||
       !CBB_add_asn1(&pkcs8, &algorithm, CBS_ASN1_SEQUENCE) ||
-      !OBJ_nid2cbb(&algorithm, NID_X9_62_id_ecPublicKey) ||
+      !CBB_add_asn1(&algorithm, &oid, CBS_ASN1_OBJECT) ||
+      !CBB_add_bytes(&oid, ec_asn1_meth.oid, ec_asn1_meth.oid_len) ||
       !EC_KEY_marshal_curve_name(&algorithm, EC_KEY_get0_group(ec_key)) ||
       !CBB_add_asn1(&pkcs8, &private_key, CBS_ASN1_OCTETSTRING) ||
       !EC_KEY_marshal_private_key(&private_key, ec_key, enc_flags) ||
@@ -231,6 +232,8 @@ static int eckey_opaque(const EVP_PKEY *pkey) {
 
 const EVP_PKEY_ASN1_METHOD ec_asn1_meth = {
   EVP_PKEY_EC,
+  /* 1.2.840.10045.2.1 */
+  {0x2a, 0x86, 0x48, 0xce, 0x3d, 0x02, 0x01}, 7,
 
   eckey_pub_decode,
   eckey_pub_encode,

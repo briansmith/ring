@@ -68,6 +68,8 @@ extern "C" {
 
 struct evp_pkey_asn1_method_st {
   int pkey_id;
+  uint8_t oid[9];
+  uint8_t oid_len;
 
   /* pub_decode decodes |params| and |key| as a SubjectPublicKeyInfo
    * and writes the result into |out|. It returns one on success and zero on

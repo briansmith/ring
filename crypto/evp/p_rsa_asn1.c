@@ -60,7 +60,6 @@
 #include <openssl/digest.h>
 #include <openssl/err.h>
 #include <openssl/mem.h>
-#include <openssl/obj.h>
 #include <openssl/rsa.h>
 
 #include "../rsa/internal.h"
@@ -69,10 +68,11 @@
 
 static int rsa_pub_encode(CBB *out, const EVP_PKEY *key) {
   /* See RFC 3279, section 2.3.1. */
-  CBB spki, algorithm, null, key_bitstring;
+  CBB spki, algorithm, oid, null, key_bitstring;
   if (!CBB_add_asn1(out, &spki, CBS_ASN1_SEQUENCE) ||
       !CBB_add_asn1(&spki, &algorithm, CBS_ASN1_SEQUENCE) ||
-      !OBJ_nid2cbb(&algorithm, NID_rsaEncryption) ||
+      !CBB_add_asn1(&algorithm, &oid, CBS_ASN1_OBJECT) ||
+      !CBB_add_bytes(&oid, rsa_asn1_meth.oid, rsa_asn1_meth.oid_len) ||
       !CBB_add_asn1(&algorithm, &null, CBS_ASN1_NULL) ||
       !CBB_add_asn1(&spki, &key_bitstring, CBS_ASN1_BITSTRING) ||
       !CBB_add_u8(&key_bitstring, 0 /* padding */) ||
@@ -120,11 +120,12 @@ static int rsa_pub_cmp(const EVP_PKEY *a, const EVP_PKEY *b) {
 }
 
 static int rsa_priv_encode(CBB *out, const EVP_PKEY *key) {
-  CBB pkcs8, algorithm, null, private_key;
+  CBB pkcs8, algorithm, oid, null, private_key;
   if (!CBB_add_asn1(out, &pkcs8, CBS_ASN1_SEQUENCE) ||
       !CBB_add_asn1_uint64(&pkcs8, 0 /* version */) ||
       !CBB_add_asn1(&pkcs8, &algorithm, CBS_ASN1_SEQUENCE) ||
-      !OBJ_nid2cbb(&algorithm, NID_rsaEncryption) ||
+      !CBB_add_asn1(&algorithm, &oid, CBS_ASN1_OBJECT) ||
+      !CBB_add_bytes(&oid, rsa_asn1_meth.oid, rsa_asn1_meth.oid_len) ||
       !CBB_add_asn1(&algorithm, &null, CBS_ASN1_NULL) ||
       !CBB_add_asn1(&pkcs8, &private_key, CBS_ASN1_OCTETSTRING) ||
       !RSA_marshal_private_key(&private_key, key->pkey.rsa) ||
@@ -177,6 +178,8 @@ static void int_rsa_free(EVP_PKEY *pkey) { RSA_free(pkey->pkey.rsa); }
 
 const EVP_PKEY_ASN1_METHOD rsa_asn1_meth = {
   EVP_PKEY_RSA,
+  /* 1.2.840.113549.1.1.1 */
+  {0x2a, 0x86, 0x48, 0x86, 0xf7, 0x0d, 0x01, 0x01, 0x01}, 9,
 
   rsa_pub_decode,
   rsa_pub_encode,
