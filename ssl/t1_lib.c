@@ -2037,6 +2037,9 @@ static const struct tls_extension kExtensions[] = {
     ext_ec_point_parse_clienthello,
     ext_ec_point_add_serverhello,
   },
+  /* The final extension must be non-empty. WebSphere Application Server 7.0 is
+   * intolerant to the last extension being zero-length. See
+   * https://crbug.com/363583. */
   {
     TLSEXT_TYPE_elliptic_curves,
     ext_ec_curves_init,
@@ -2123,9 +2126,10 @@ int ssl_add_clienthello_tlsext(SSL *ssl, CBB *out, size_t header_len) {
        * NB: because this code works out the length of all existing extensions
        * it MUST always appear last. */
       size_t padding_len = 0x200 - header_len;
-      /* Extensions take at least four bytes to encode. Always include least
+      /* Extensions take at least four bytes to encode. Always include at least
        * one byte of data if including the extension. WebSphere Application
-       * Server 7.0 is intolerant to the last extension being zero-length. */
+       * Server 7.0 is intolerant to the last extension being zero-length. See
+       * https://crbug.com/363583. */
       if (padding_len >= 4 + 1) {
         padding_len -= 4;
       } else {
