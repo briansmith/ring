@@ -546,9 +546,6 @@ int AES_set_encrypt_key(const uint8_t *key, unsigned bits, AES_KEY *aeskey) {
     case 128:
       aeskey->rounds = 10;
       break;
-    case 192:
-      aeskey->rounds = 12;
-      break;
     case 256:
       aeskey->rounds = 14;
       break;
@@ -580,24 +577,6 @@ int AES_set_encrypt_key(const uint8_t *key, unsigned bits, AES_KEY *aeskey) {
   }
   rk[4] = from_be_u32_ptr(key + 16);
   rk[5] = from_be_u32_ptr(key + 20);
-  if (bits == 192) {
-    while (1) {
-      temp = rk[5];
-      rk[6] = rk[0] ^ (Te2[(temp >> 16) & 0xff] & 0xff000000) ^
-              (Te3[(temp >> 8) & 0xff] & 0x00ff0000) ^
-              (Te0[(temp) & 0xff] & 0x0000ff00) ^
-              (Te1[(temp >> 24)] & 0x000000ff) ^ rcon[i];
-      rk[7] = rk[1] ^ rk[6];
-      rk[8] = rk[2] ^ rk[7];
-      rk[9] = rk[3] ^ rk[8];
-      if (++i == 8) {
-        return 0;
-      }
-      rk[10] = rk[4] ^ rk[9];
-      rk[11] = rk[5] ^ rk[10];
-      rk += 6;
-    }
-  }
   rk[6] = from_be_u32_ptr(key + 24);
   rk[7] = from_be_u32_ptr(key + 28);
   if (bits == 256) {
@@ -981,26 +960,24 @@ void AES_decrypt(const uint8_t *in, uint8_t *out, const AES_KEY *key) {
          Td3[s3 & 0xff] ^ rk[46];
     t3 = Td0[s3 >> 24] ^ Td1[(s2 >> 16) & 0xff] ^ Td2[(s1 >> 8) & 0xff] ^
          Td3[s0 & 0xff] ^ rk[47];
-    if (key->rounds > 12) {
-      /* round 12: */
-      s0 = Td0[t0 >> 24] ^ Td1[(t3 >> 16) & 0xff] ^ Td2[(t2 >> 8) & 0xff] ^
-           Td3[t1 & 0xff] ^ rk[48];
-      s1 = Td0[t1 >> 24] ^ Td1[(t0 >> 16) & 0xff] ^ Td2[(t3 >> 8) & 0xff] ^
-           Td3[t2 & 0xff] ^ rk[49];
-      s2 = Td0[t2 >> 24] ^ Td1[(t1 >> 16) & 0xff] ^ Td2[(t0 >> 8) & 0xff] ^
-           Td3[t3 & 0xff] ^ rk[50];
-      s3 = Td0[t3 >> 24] ^ Td1[(t2 >> 16) & 0xff] ^ Td2[(t1 >> 8) & 0xff] ^
-           Td3[t0 & 0xff] ^ rk[51];
-      /* round 13: */
-      t0 = Td0[s0 >> 24] ^ Td1[(s3 >> 16) & 0xff] ^ Td2[(s2 >> 8) & 0xff] ^
-           Td3[s1 & 0xff] ^ rk[52];
-      t1 = Td0[s1 >> 24] ^ Td1[(s0 >> 16) & 0xff] ^ Td2[(s3 >> 8) & 0xff] ^
-           Td3[s2 & 0xff] ^ rk[53];
-      t2 = Td0[s2 >> 24] ^ Td1[(s1 >> 16) & 0xff] ^ Td2[(s0 >> 8) & 0xff] ^
-           Td3[s3 & 0xff] ^ rk[54];
-      t3 = Td0[s3 >> 24] ^ Td1[(s2 >> 16) & 0xff] ^ Td2[(s1 >> 8) & 0xff] ^
-           Td3[s0 & 0xff] ^ rk[55];
-    }
+    /* round 12: */
+    s0 = Td0[t0 >> 24] ^ Td1[(t3 >> 16) & 0xff] ^ Td2[(t2 >> 8) & 0xff] ^
+         Td3[t1 & 0xff] ^ rk[48];
+    s1 = Td0[t1 >> 24] ^ Td1[(t0 >> 16) & 0xff] ^ Td2[(t3 >> 8) & 0xff] ^
+         Td3[t2 & 0xff] ^ rk[49];
+    s2 = Td0[t2 >> 24] ^ Td1[(t1 >> 16) & 0xff] ^ Td2[(t0 >> 8) & 0xff] ^
+         Td3[t3 & 0xff] ^ rk[50];
+    s3 = Td0[t3 >> 24] ^ Td1[(t2 >> 16) & 0xff] ^ Td2[(t1 >> 8) & 0xff] ^
+         Td3[t0 & 0xff] ^ rk[51];
+    /* round 13: */
+    t0 = Td0[s0 >> 24] ^ Td1[(s3 >> 16) & 0xff] ^ Td2[(s2 >> 8) & 0xff] ^
+         Td3[s1 & 0xff] ^ rk[52];
+    t1 = Td0[s1 >> 24] ^ Td1[(s0 >> 16) & 0xff] ^ Td2[(s3 >> 8) & 0xff] ^
+         Td3[s2 & 0xff] ^ rk[53];
+    t2 = Td0[s2 >> 24] ^ Td1[(s1 >> 16) & 0xff] ^ Td2[(s0 >> 8) & 0xff] ^
+         Td3[s3 & 0xff] ^ rk[54];
+    t3 = Td0[s3 >> 24] ^ Td1[(s2 >> 16) & 0xff] ^ Td2[(s1 >> 8) & 0xff] ^
+         Td3[s0 & 0xff] ^ rk[55];
   }
   rk += key->rounds << 2;
 #else  /* !FULL_UNROLL */

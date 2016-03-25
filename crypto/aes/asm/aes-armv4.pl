@@ -464,8 +464,6 @@ _armv4_AES_set_encrypt_key:
 
 	teq	r1,#128
 	beq	.Lok
-	teq	r1,#192
-	beq	.Lok
 	teq	r1,#256
 #if __ARM_ARCH__>=7
 	itt	ne			@ Thumb2 thing, sanity check in ARM
@@ -597,52 +595,6 @@ _armv4_AES_set_encrypt_key:
 	str	$i3,[$key,#-4]
 #endif
 
-	teq	lr,#192
-	bne	.Lnot192
-	mov	$rounds,#12
-	str	$rounds,[$key,#240-24]
-	add	$t3,$tbl,#256			@ rcon
-	mov	lr,#255
-	mov	$rounds,#8
-
-.L192_loop:
-	and	$t2,lr,$i3,lsr#24
-	and	$i1,lr,$i3,lsr#16
-	ldrb	$t2,[$tbl,$t2]
-	and	$i2,lr,$i3,lsr#8
-	ldrb	$i1,[$tbl,$i1]
-	and	$i3,lr,$i3
-	ldrb	$i2,[$tbl,$i2]
-	orr	$t2,$t2,$i1,lsl#24
-	ldrb	$i3,[$tbl,$i3]
-	orr	$t2,$t2,$i2,lsl#16
-	ldr	$t1,[$t3],#4			@ rcon[i++]
-	orr	$t2,$t2,$i3,lsl#8
-	eor	$i3,$t2,$t1
-	eor	$s0,$s0,$i3			@ rk[6]=rk[0]^...
-	eor	$s1,$s1,$s0			@ rk[7]=rk[1]^rk[6]
-	str	$s0,[$key],#24
-	eor	$s2,$s2,$s1			@ rk[8]=rk[2]^rk[7]
-	str	$s1,[$key,#-20]
-	eor	$s3,$s3,$s2			@ rk[9]=rk[3]^rk[8]
-	str	$s2,[$key,#-16]
-	subs	$rounds,$rounds,#1
-	str	$s3,[$key,#-12]
-#if __ARM_ARCH__>=7
-	itt	eq				@ Thumb2 thing, sanity check in ARM
-#endif
-	subeq	r2,$key,#216
-	beq	.Ldone
-
-	ldr	$i1,[$key,#-32]
-	ldr	$i2,[$key,#-28]
-	eor	$i1,$i1,$s3			@ rk[10]=rk[4]^rk[9]
-	eor	$i3,$i2,$i1			@ rk[11]=rk[5]^rk[10]
-	str	$i1,[$key,#-8]
-	str	$i3,[$key,#-4]
-	b	.L192_loop
-
-.Lnot192:
 #if __ARM_ARCH__<7
 	ldrb	$i2,[$rounds,#27]
 	ldrb	$t1,[$rounds,#26]

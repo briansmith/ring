@@ -884,8 +884,6 @@ sub enclast()
 	else {
 	    &cmp	($acc,10);
 	    &jle	(&label("10rounds"));
-	    &cmp	($acc,12);
-	    &jle	(&label("12rounds"));
 
 	&set_label("14rounds",4);
 	    for ($i=1;$i<3;$i++) {
@@ -904,7 +902,6 @@ sub enclast()
 	    }
 	    &add	($key,32);
 	    &mov	($__key,$key);		# advance rd_key
-	&set_label("12rounds",4);
 	    for ($i=1;$i<3;$i++) {
 		if ($vertical_spin) {
 		    &encvert($tbl,$s0,$s1,$s2,$s3);
@@ -1697,8 +1694,6 @@ sub declast()
 	else {
 	    &cmp	($acc,10);
 	    &jle	(&label("10rounds"));
-	    &cmp	($acc,12);
-	    &jle	(&label("12rounds"));
 
 	&set_label("14rounds",4);
 	    for ($i=1;$i<3;$i++) {
@@ -1713,7 +1708,6 @@ sub declast()
 	    }
 	    &add	($key,32);
 	    &mov	($__key,$key);		# advance rd_key
-	&set_label("12rounds",4);
 	    for ($i=1;$i<3;$i++) {
 		&decstep(0,$tbl,$s0,$s3,$s2,$s1);
 		&decstep(1,$tbl,$s1,$s0,$s3,$s2);
@@ -2066,8 +2060,6 @@ sub enckey()
 	&mov	("ecx",&wparam(2));		# number of bits in key
 	&cmp	("ecx",128);
 	&je	(&label("10rounds"));
-	&cmp	("ecx",192);
-	&je	(&label("12rounds"));
 	&cmp	("ecx",256);
 	&je	(&label("14rounds"));
 	&mov	("eax",-2);			# invalid number of bits
@@ -2106,55 +2098,6 @@ sub enckey()
 	&jl	(&label("10loop"));
 
 	&mov	(&DWP(80,"edi"),10);		# setup number of rounds
-	&xor	("eax","eax");
-	&jmp	(&label("exit"));
-		
-    &set_label("12rounds");
-	&mov	("eax",&DWP(0,"esi"));		# copy first 6 dwords
-	&mov	("ebx",&DWP(4,"esi"));
-	&mov	("ecx",&DWP(8,"esi"));
-	&mov	("edx",&DWP(12,"esi"));
-	&mov	(&DWP(0,"edi"),"eax");
-	&mov	(&DWP(4,"edi"),"ebx");
-	&mov	(&DWP(8,"edi"),"ecx");
-	&mov	(&DWP(12,"edi"),"edx");
-	&mov	("ecx",&DWP(16,"esi"));
-	&mov	("edx",&DWP(20,"esi"));
-	&mov	(&DWP(16,"edi"),"ecx");
-	&mov	(&DWP(20,"edi"),"edx");
-
-	&xor	("ecx","ecx");
-	&jmp	(&label("12shortcut"));
-
-	&align	(4);
-	&set_label("12loop");
-		&mov	("eax",&DWP(0,"edi"));		# rk[0]
-		&mov	("edx",&DWP(20,"edi"));		# rk[5]
-	&set_label("12shortcut");
-		&enckey	();
-
-		&mov	(&DWP(24,"edi"),"eax");		# rk[6]
-		&xor	("eax",&DWP(4,"edi"));
-		&mov	(&DWP(28,"edi"),"eax");		# rk[7]
-		&xor	("eax",&DWP(8,"edi"));
-		&mov	(&DWP(32,"edi"),"eax");		# rk[8]
-		&xor	("eax",&DWP(12,"edi"));
-		&mov	(&DWP(36,"edi"),"eax");		# rk[9]
-
-		&cmp	("ecx",7);
-		&je	(&label("12break"));
-		&inc	("ecx");
-
-		&xor	("eax",&DWP(16,"edi"));
-		&mov	(&DWP(40,"edi"),"eax");		# rk[10]
-		&xor	("eax",&DWP(20,"edi"));
-		&mov	(&DWP(44,"edi"),"eax");		# rk[11]
-
-		&add	("edi",24);
-	&jmp	(&label("12loop"));
-
-	&set_label("12break");
-	&mov	(&DWP(72,"edi"),12);		# setup number of rounds
 	&xor	("eax","eax");
 	&jmp	(&label("exit"));
 

@@ -1329,8 +1329,6 @@ _x86_64_AES_set_encrypt_key:
 
 	cmp	\$128,%ecx
 	je	.L10rounds
-	cmp	\$192,%ecx
-	je	.L12rounds
 	cmp	\$256,%ecx
 	je	.L14rounds
 	mov	\$-2,%rax			# invalid number of bits
@@ -1366,49 +1364,6 @@ $code.=<<___;
 	jl	.L10loop
 
 	movl	\$10,80(%rdi)			# setup number of rounds
-	xor	%rax,%rax
-	jmp	.Lexit
-
-.L12rounds:
-	mov	0(%rsi),%rax			# copy first 6 dwords
-	mov	8(%rsi),%rbx
-	mov	16(%rsi),%rdx
-	mov	%rax,0(%rdi)
-	mov	%rbx,8(%rdi)
-	mov	%rdx,16(%rdi)
-
-	shr	\$32,%rdx
-	xor	%ecx,%ecx
-	jmp	.L12shortcut
-.align	4
-.L12loop:
-		mov	0(%rdi),%eax			# rk[0]
-		mov	20(%rdi),%edx			# rk[5]
-.L12shortcut:
-___
-		&enckey	();
-$code.=<<___;
-		mov	%eax,24(%rdi)			# rk[6]
-		xor	4(%rdi),%eax
-		mov	%eax,28(%rdi)			# rk[7]
-		xor	8(%rdi),%eax
-		mov	%eax,32(%rdi)			# rk[8]
-		xor	12(%rdi),%eax
-		mov	%eax,36(%rdi)			# rk[9]
-
-		cmp	\$7,%ecx
-		je	.L12break
-		add	\$1,%ecx
-
-		xor	16(%rdi),%eax
-		mov	%eax,40(%rdi)			# rk[10]
-		xor	20(%rdi),%eax
-		mov	%eax,44(%rdi)			# rk[11]
-
-		lea	24(%rdi),%rdi
-	jmp	.L12loop
-.L12break:
-	movl	\$12,72(%rdi)		# setup number of rounds
 	xor	%rax,%rax
 	jmp	.Lexit
 
