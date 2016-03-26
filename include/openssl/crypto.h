@@ -36,7 +36,8 @@ extern "C" {
 
 /* CRYPTO_library_init initializes the crypto library. It must be called if the
  * library is built with BORINGSSL_NO_STATIC_INITIALIZER. Otherwise, it does
- * nothing and a static initializer is used instead.
+ * nothing and a static initializer is used instead. It is safe to call this
+ * function multiple times and concurrently from multiple threads.
  *
  * On some ARM configurations, this function may require filesystem access and
  * should be called before entering a sandbox. */
