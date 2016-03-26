@@ -519,32 +519,32 @@ static int ecp_nistz256_get_affine(const EC_GROUP *group, const EC_POINT *point,
   ecp_nistz256_mod_inverse(z_inv3, point_z);
   ecp_nistz256_sqr_mont(z_inv2, z_inv3);
 
-  if (x != NULL) {
-    BN_ULONG x_aff[P256_LIMBS];
+  /* Instead of using |ecp_nistz256_from_mont| to convert the |x| coordinate
+   * and then calling |ecp_nistz256_from_mont| again to convert the |y|
+   * coordinate below, convert the common factor |z_inv2| once now, saving one
+   * reduction. */
+  ecp_nistz256_from_mont(z_inv2, z_inv2);
 
-    ecp_nistz256_mul_mont(x_aff, z_inv2, point_x);
+  if (x != NULL) {
     if (bn_wexpand(x, P256_LIMBS) == NULL) {
       OPENSSL_PUT_ERROR(EC, ERR_R_MALLOC_FAILURE);
       return 0;
     }
     x->top = P256_LIMBS;
     x->neg = 0;
-    ecp_nistz256_from_mont(x->d, x_aff);
+    ecp_nistz256_mul_mont(x->d, z_inv2, point_x);
     bn_correct_top(x);
   }
 
   if (y != NULL) {
-    BN_ULONG y_aff[P256_LIMBS];
-
     ecp_nistz256_mul_mont(z_inv3, z_inv3, z_inv2);
-    ecp_nistz256_mul_mont(y_aff, z_inv3, point_y);
     if (bn_wexpand(y, P256_LIMBS) == NULL) {
       OPENSSL_PUT_ERROR(EC, ERR_R_MALLOC_FAILURE);
       return 0;
     }
     y->top = P256_LIMBS;
     y->neg = 0;
-    ecp_nistz256_from_mont(y->d, y_aff);
+    ecp_nistz256_mul_mont(y->d, z_inv3, point_y);
     bn_correct_top(y);
   }
 
