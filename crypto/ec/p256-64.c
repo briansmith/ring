@@ -1561,22 +1561,29 @@ static int ec_GFp_nistp256_point_get_affine_coordinates(const EC_GROUP *group,
   felem_inv(z2, z1);
   felem_square(tmp, z2);
   felem_reduce(z1, tmp);
-  felem_mul(tmp, x_in, z1);
-  felem_reduce(x_in, tmp);
-  felem_contract(x_out, x_in);
-  if (x != NULL && !smallfelem_to_BN(x, x_out)) {
-    OPENSSL_PUT_ERROR(EC, ERR_R_BN_LIB);
-    return 0;
+
+  if (x != NULL) {
+    felem_mul(tmp, x_in, z1);
+    felem_reduce(x_in, tmp);
+    felem_contract(x_out, x_in);
+    if (!smallfelem_to_BN(x, x_out)) {
+      OPENSSL_PUT_ERROR(EC, ERR_R_BN_LIB);
+      return 0;
+    }
   }
-  felem_mul(tmp, z1, z2);
-  felem_reduce(z1, tmp);
-  felem_mul(tmp, y_in, z1);
-  felem_reduce(y_in, tmp);
-  felem_contract(y_out, y_in);
-  if (y != NULL && !smallfelem_to_BN(y, y_out)) {
-    OPENSSL_PUT_ERROR(EC, ERR_R_BN_LIB);
-    return 0;
+
+  if (y != NULL) {
+    felem_mul(tmp, z1, z2);
+    felem_reduce(z1, tmp);
+    felem_mul(tmp, y_in, z1);
+    felem_reduce(y_in, tmp);
+    felem_contract(y_out, y_in);
+    if (!smallfelem_to_BN(y, y_out)) {
+      OPENSSL_PUT_ERROR(EC, ERR_R_BN_LIB);
+      return 0;
+    }
   }
+
   return 1;
 }
 
