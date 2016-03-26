@@ -528,6 +528,7 @@ static int ecp_nistz256_get_affine(const EC_GROUP *group, const EC_POINT *point,
       return 0;
     }
     x->top = P256_LIMBS;
+    x->neg = 0;
     ecp_nistz256_from_mont(x->d, x_aff);
     bn_correct_top(x);
   }
@@ -540,6 +541,7 @@ static int ecp_nistz256_get_affine(const EC_GROUP *group, const EC_POINT *point,
       return 0;
     }
     y->top = P256_LIMBS;
+    y->neg = 0;
     ecp_nistz256_from_mont(y->d, y_aff);
     bn_correct_top(y);
   }
