@@ -502,8 +502,6 @@ static int ecp_nistz256_get_affine(const EC_GROUP *group, const EC_POINT *point,
                                    BIGNUM *x, BIGNUM *y, BN_CTX *ctx) {
   BN_ULONG z_inv2[P256_LIMBS];
   BN_ULONG z_inv3[P256_LIMBS];
-  BN_ULONG x_aff[P256_LIMBS];
-  BN_ULONG y_aff[P256_LIMBS];
   BN_ULONG point_x[P256_LIMBS], point_y[P256_LIMBS], point_z[P256_LIMBS];
 
   if (EC_POINT_is_at_infinity(group, point)) {
@@ -520,9 +518,11 @@ static int ecp_nistz256_get_affine(const EC_GROUP *group, const EC_POINT *point,
 
   ecp_nistz256_mod_inverse(z_inv3, point_z);
   ecp_nistz256_sqr_mont(z_inv2, z_inv3);
-  ecp_nistz256_mul_mont(x_aff, z_inv2, point_x);
 
   if (x != NULL) {
+    BN_ULONG x_aff[P256_LIMBS];
+
+    ecp_nistz256_mul_mont(x_aff, z_inv2, point_x);
     if (bn_wexpand(x, P256_LIMBS) == NULL) {
       OPENSSL_PUT_ERROR(EC, ERR_R_MALLOC_FAILURE);
       return 0;
@@ -534,6 +534,8 @@ static int ecp_nistz256_get_affine(const EC_GROUP *group, const EC_POINT *point,
   }
 
   if (y != NULL) {
+    BN_ULONG y_aff[P256_LIMBS];
+
     ecp_nistz256_mul_mont(z_inv3, z_inv3, z_inv2);
     ecp_nistz256_mul_mont(y_aff, z_inv3, point_y);
     if (bn_wexpand(y, P256_LIMBS) == NULL) {
