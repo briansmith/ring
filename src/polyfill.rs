@@ -38,11 +38,11 @@ pub mod slice {
     use core;
 
     #[inline(always)]
-    pub fn u32_from_be_u8_at(buffer: &[u8], at: usize) -> u32 {
-        u32::from(buffer[at]) << 24 |
-        u32::from(buffer[at + 1]) << 16 |
-        u32::from(buffer[at + 2]) << 8 |
-        u32::from(buffer[at + 3])
+    pub fn u32_from_be_u8(buffer: &[u8; 4]) -> u32 {
+        u32::from(buffer[0]) << 24 |
+        u32::from(buffer[1]) << 16 |
+        u32::from(buffer[2]) << 8 |
+        u32::from(buffer[3])
     }
 
     // https://github.com/rust-lang/rust/issues/27750

@@ -29,8 +29,6 @@
 use core;
 use super::{c, polyfill};
 
-pub use self::sha1::SHA1;
-
 // XXX: endian-specific.
 // XXX: Replace with `const fn` when `const fn` is stable:
 // https://github.com/rust-lang/rust/issues/24111
@@ -114,7 +112,7 @@ impl Context {
                 &data[..to_copy]);
 
             unsafe {
-                (self.algorithm.block_data_order)(self.state.as_mut_ptr(),
+                (self.algorithm.block_data_order)(&mut self.state,
                                                   self.pending.as_ptr(), 1);
             }
             self.completed_data_blocks =
@@ -128,7 +126,7 @@ impl Context {
         let num_to_save_for_later = remaining.len() % self.algorithm.block_len;
         if num_blocks > 0 {
             unsafe {
-                (self.algorithm.block_data_order)(self.state.as_mut_ptr(),
+                (self.algorithm.block_data_order)(&mut self.state,
                                                   remaining.as_ptr(),
                                                   num_blocks);
             }
@@ -161,7 +159,7 @@ impl Context {
             polyfill::slice::fill(
                 &mut self.pending[padding_pos..self.algorithm.block_len], 0);
             unsafe {
-                (self.algorithm.block_data_order)(self.state.as_mut_ptr(),
+                (self.algorithm.block_data_order)(&mut self.state,
                                                   self.pending.as_ptr(), 1);
             }
             // We don't increase |self.completed_data_blocks| because the
@@ -185,7 +183,7 @@ impl Context {
             completed_data_bits /= 0x100;
         }
         unsafe {
-            (self.algorithm.block_data_order)(self.state.as_mut_ptr(),
+            (self.algorithm.block_data_order)(&mut self.state,
                                               self.pending.as_ptr(), 1);
         }
 
@@ -283,7 +281,7 @@ pub struct Algorithm {
     /// The length of the length in the padding.
     len_len: usize,
 
-    block_data_order: unsafe extern fn(state: *mut u64, data: *const u8,
+    block_data_order: unsafe extern fn(state: &mut [u64; MAX_CHAINING_LEN / 8], data: *const u8,
                                        num: c::size_t),
     format_output: fn (input: &[u64; MAX_CHAINING_LEN / 8]) ->
                        [u64; MAX_OUTPUT_LEN / 8],
@@ -295,6 +293,26 @@ pub struct Algorithm {
     /// references to the same algorithm.
     pub nid: c::int,
 }
+
+/// SHA-1 as specified in [FIPS
+/// 180-4](http://nvlpubs.nist.gov/nistpubs/FIPS/NIST.FIPS.180-4.pdf).
+///
+/// SHA-1 is deprecated.
+pub static SHA1: Algorithm = Algorithm {
+    output_len: 160 / 8,
+    chaining_len: sha1::CHAINING_LEN,
+    block_len: sha1::BLOCK_LEN,
+    len_len: 64 / 8,
+    block_data_order: sha1::block_data_order,
+    format_output: sha256_format_output,
+    initial_state: [
+        u32x2!(0x67452301u32, 0xefcdab89u32),
+        u32x2!(0x98badcfeu32, 0x10325476u32),
+        u32x2!(0xc3d2e1f0u32, 0u32),
+        0, 0, 0, 0, 0,
+    ],
+    nid: 64, // NID_sha1
+};
 
 /// SHA-256 as specified in [FIPS
 /// 180-4](http://nvlpubs.nist.gov/nistpubs/FIPS/NIST.FIPS.180-4.pdf).
@@ -435,8 +453,8 @@ pub extern fn SHA512_4(out: *mut u8, out_len: c::size_t,
 }
 
 extern {
-    fn sha256_block_data_order(state: *mut u64, data: *const u8, num: c::size_t);
-    fn sha512_block_data_order(state: *mut u64, data: *const u8, num: c::size_t);
+    fn sha256_block_data_order(state: &mut [u64; MAX_CHAINING_LEN / 8], data: *const u8, num: c::size_t);
+    fn sha512_block_data_order(state: &mut [u64; MAX_CHAINING_LEN / 8], data: *const u8, num: c::size_t);
 }
 
 #[cfg(test)]
