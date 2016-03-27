@@ -68,7 +68,7 @@ static int read_full(int fd, void *out, size_t len) {
     if (ret <= 0) {
       return 0;
     }
-    out += ret;
+    out = (uint8_t *)out + ret;
     len -= ret;
   }
   return 1;
