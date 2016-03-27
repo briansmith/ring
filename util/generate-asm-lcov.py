@@ -69,6 +69,7 @@ def parse(filename, data, current):
 
   # Lines are of the following formats:
   #   -- line: Indicates that analysis continues from a different place.
+  #   Ir     : Indicates the start of a file.
   #   =>     : Indicates a call/jump in the control flow.
   #   <Count> <Code>: Indicates that the line has been executed that many times.
   line = None
@@ -76,7 +77,9 @@ def parse(filename, data, current):
     l = l.strip() + ' '
     if l.startswith('-- line'):
       line = int(l.split(' ')[2]) - 1
-    elif line != None and '=>' not in l:
+    elif l.strip() == 'Ir':
+      line = 0
+    elif line != None and l.strip() and '=>' not in l and 'unidentified lines' not in l:
       count = l.split(' ')[0].replace(',', '').replace('.', '0')
       instruction = l.split(' ', 1)[1].strip()
       if count != '0' or is_asm(instruction):
