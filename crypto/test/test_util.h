@@ -18,12 +18,6 @@
 #include <stddef.h>
 #include <stdio.h>
 
-#if defined(_MSC_VER) && _MSC_VER < 1900
-#define OPENSSL_PR_SIZE_T "Iu" /* MSVC doesn't support %zu until MSVC 2015. */
-#else
-#define OPENSSL_PR_SIZE_T "zu" /* "%zu" is the C99 standard format specifier. */
-#endif
-
 #if defined(__cplusplus)
 extern "C" {
 #endif
@@ -32,6 +26,14 @@ extern "C" {
 /* hexdump writes |msg| to |fp| followed by the hex encoding of |len| bytes
  * from |in|. */
 void hexdump(FILE *fp, const char *msg, const void *in, size_t len);
+
+
+#if defined(_MSC_VER) && _MSC_VER < 1900
+/* https://msdn.microsoft.com/en-us/library/tcxf1dw6(v=vs.120).aspx */
+#define OPENSSL_PR_SIZE_T "Iu"
+#else
+#define OPENSSL_PR_SIZE_T "zu"
+#endif
 
 
 #if defined(__cplusplus)
