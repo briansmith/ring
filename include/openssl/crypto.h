@@ -32,7 +32,10 @@ extern "C" {
 
 /* CRYPTO_library_init initializes the crypto library. It must be called if the
  * library is built with BORINGSSL_NO_STATIC_INITIALIZER. Otherwise, it does
- * nothing and a static initializer is used instead. */
+ * nothing and a static initializer is used instead.
+ *
+ * On some ARM configurations, this function may require filesystem access and
+ * should be called before entering a sandbox. */
 OPENSSL_EXPORT void CRYPTO_library_init(void);
 
 
