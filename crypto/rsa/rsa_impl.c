@@ -561,7 +561,13 @@ int rsa_default_private_transform(RSA *rsa, uint8_t *out, const uint8_t *in,
     goto err;
   }
 
-  if (!(rsa->flags & RSA_FLAG_NO_BLINDING)) {
+  /* We cannot do blinding or verification without |e|, and continuing without
+   * those countermeasures is dangerous. However, the Java/Android RSA API
+   * requires support for keys where only |d| and |n| (and not |e|) are known.
+   * The callers that require that bad behavior set |RSA_FLAG_NO_BLINDING|. */
+  int disable_security = (rsa->flags & RSA_FLAG_NO_BLINDING) && rsa->e == NULL;
+
+  if (!disable_security) {
     /* Keys without public exponents must have blinding explicitly disabled to
      * be used. */
     if (rsa->e == NULL) {
@@ -605,10 +611,8 @@ int rsa_default_private_transform(RSA *rsa, uint8_t *out, const uint8_t *in,
    * works when the CRT isn't used. That attack is much less likely to succeed
    * than the CRT attack, but there have likely been improvements since 1997.
    *
-   * This check is very cheap assuming |e| is small; it almost always is.
-   *
-   * XXX: It's unfortunate that we don't do this check when |rsa->e == NULL|. */
-  if (rsa->e != NULL) {
+   * This check is cheap assuming |e| is small; it almost always is. */
+  if (!disable_security) {
     BIGNUM *vrfy = BN_CTX_get(ctx);
     if (vrfy == NULL ||
         !BN_mod_exp_mont(vrfy, result, rsa->e, rsa->n, ctx, rsa->mont_n) ||
@@ -616,9 +620,7 @@ int rsa_default_private_transform(RSA *rsa, uint8_t *out, const uint8_t *in,
       OPENSSL_PUT_ERROR(RSA, ERR_R_INTERNAL_ERROR);
       goto err;
     }
-  }
 
-  if (blinding) {
     if (!BN_BLINDING_invert(result, blinding, rsa->mont_n, ctx)) {
       goto err;
     }

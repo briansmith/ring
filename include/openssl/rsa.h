@@ -417,7 +417,8 @@ OPENSSL_EXPORT void *RSA_get_ex_data(const RSA *r, int idx);
 #define RSA_FLAG_CACHE_PRIVATE 4
 
 /* RSA_FLAG_NO_BLINDING disables blinding of private operations, which is a
- * dangerous thing to do. It is deprecated and may be ignored in the future.
+ * dangerous thing to do. It is deprecated and should not be used. It will
+ * be ignored whenever possible.
  *
  * This flag must be used if a key without the public exponent |e| is used for
  * private key operations; avoid using such keys whenever possible. */
