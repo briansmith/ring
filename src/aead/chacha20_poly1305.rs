@@ -67,7 +67,8 @@ fn chacha20_poly1305_update(state: &mut [u8; POLY1305_STATE_LEN],
 
 
 /// The old ChaCha20-Poly13065 construction used in OpenSSH's
-/// [chacha20-poly1305@openssh.com](http://cvsweb.openbsd.org/cgi-bin/cvsweb/~checkout~/src/usr.bin/ssh/PROTOCOL.chacha20poly1305)
+/// [chacha20-poly1305@openssh.com](
+/// http://cvsweb.openbsd.org/cgi-bin/cvsweb/~checkout~/src/usr.bin/ssh/PROTOCOL.chacha20poly1305)
 /// and the experimental TLS cipher suites with IDs `0xCC13` (ECDHE-RSA) and
 /// `0xCC14` (ECDHE-ECDSA). Use `CHACHA20_POLY1305` instead.
 ///
