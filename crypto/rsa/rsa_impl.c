@@ -635,8 +635,7 @@ static int mod_exp(BIGNUM *r0, const BIGNUM *I, RSA *rsa, BN_CTX *ctx) {
     goto err;
   }
 
-  assert(BN_get_flags(r1, BN_FLG_CONSTTIME));
-
+  assert(BN_get_flags(rsa->p, BN_FLG_CONSTTIME));
   if (!BN_mod(r0, r1, rsa->p, ctx)) {
     goto err;
   }
