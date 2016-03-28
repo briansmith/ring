@@ -551,7 +551,6 @@ static int rsa_private_transform(RSA *rsa, uint8_t *out, const uint8_t *in,
     }
   } else {
     assert(BN_get_flags(rsa->d, BN_FLG_CONSTTIME));
-
     if (!BN_mod_exp_mont_consttime(result, f, rsa->d, rsa->n, ctx, rsa->mont_n)) {
       goto err;
     }
