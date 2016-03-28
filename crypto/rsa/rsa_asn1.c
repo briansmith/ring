@@ -77,6 +77,10 @@ static int parse_integer_with_flags(CBS *cbs, BIGNUM **out, int flags) {
   return BN_parse_asn1_unsigned(cbs, *out);
 }
 
+static int parse_integer(CBS *cbs, BIGNUM **out) {
+  return parse_integer_with_flags(cbs, out, 0);
+}
+
 static int marshal_integer(CBB *cbb, BIGNUM *bn) {
   if (bn == NULL) {
     /* An RSA object may be missing some components. */
@@ -173,8 +177,8 @@ RSA *RSA_parse_private_key(CBS *cbs) {
     goto err;
   }
 
-  if (!parse_integer_with_flags(&child, &ret->n, BN_FLG_CONSTTIME) ||
-      !parse_integer_with_flags(&child, &ret->e, BN_FLG_CONSTTIME) ||
+  if (!parse_integer(&child, &ret->n) ||
+      !parse_integer(&child, &ret->e) ||
       !parse_integer_with_flags(&child, &ret->d, BN_FLG_CONSTTIME) ||
       !parse_integer_with_flags(&child, &ret->p, BN_FLG_CONSTTIME) ||
       !parse_integer_with_flags(&child, &ret->q, BN_FLG_CONSTTIME) ||
