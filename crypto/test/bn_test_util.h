@@ -141,7 +141,8 @@ OPENSSL_EXPORT int BN_hex2bn(BIGNUM **outp, const char *in);
 /* BN_hex2bn_with_flags acts like |BN_hex2n|, but in addition, sets |flags| on
  * the resulting BIGNUM.
  */
-OPENSSL_EXPORT int BN_hex2bn_with_flags(BIGNUM **outp, const char *in, int flags);
+OPENSSL_EXPORT int BN_hex2bn_with_flags(BIGNUM **outp, const char *in,
+                                        int flags);
 
 /* BN_dec2bn parses the leading decimal number from |in|, which may be
  * proceeded by a '-' to indicate a negative number and may contain trailing,
