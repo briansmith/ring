@@ -49,38 +49,46 @@ fn block_data_order_safe(state: &mut [u64; MAX_CHAINING_LEN / 8],
     let state = &mut state[..CHAINING_WORDS];
     let state = slice_as_array_ref_mut!(state, CHAINING_WORDS).unwrap();
 
-    let mut w: [W32; 80] = [Wrapping(0); 80];
+    let mut w: [W32; 16] = [Wrapping(0); 16];
     for block in blocks {
-        for t in 0..16 {
-            let word = slice_as_array_ref!(&block[t * 4..][..4], 4).unwrap();
-            w[t] = Wrapping(polyfill::slice::u32_from_be_u8(word))
-        }
-        for t in 16..80 {
-            let wt = w[t - 3] ^ w[t - 8] ^ w[t - 14] ^ w[t - 16];
-            w[t] = polyfill::wrapping_rotate_left_u32(wt, 1);
-        }
-
         let mut a = state[0];
         let mut b = state[1];
         let mut c = state[2];
         let mut d = state[3];
         let mut e = state[4];
 
-        for t in 0..80 {
+        macro_rules! round {
+            ($k: expr, $f: expr, $w: expr) => {
+                {
+                    let tt = polyfill::wrapping_rotate_left_u32(a, 5) + $f + e +
+                             Wrapping($k) + $w;
+                    e = d;
+                    d = c;
+                    c = polyfill::wrapping_rotate_left_u32(b, 30);
+                    b = a;
+                    a = tt;
+                }
+            }
+        }
+
+        for t in 0..16 {
+            let word = slice_as_array_ref!(&block[t * 4..][..4], 4).unwrap();
+            w[t] = Wrapping(polyfill::slice::u32_from_be_u8(word));
+            round!(0x5a827999, ch(b, c, d), w[t]);
+        }
+
+        for t in 16..80 {
+            let s = t & 0xf;
+            let wt = w[(s + 13) & 0xf] ^ w[(s + 8) & 0xf] ^ w[(s + 2) & 0xf] ^ w[s];
+            w[s] = polyfill::wrapping_rotate_left_u32(wt, 1);
             let (k, f) = match t {
-                0...19 => (0x5a827999, ch(b, c, d)),
+                16...19 => (0x5a827999, ch(b, c, d)),
                 20...39 => (0x6ed9eba1, parity(b, c, d)),
                 40...59 => (0x8f1bbcdc, maj(b, c, d)),
                 60...79 => (0xca62c1d6, parity(b, c, d)),
                 _ => unreachable!()
             };
-            let tt = polyfill::wrapping_rotate_left_u32(a, 5) + f + e +
-                     Wrapping(k) + w[t];
-            e = d;
-            d = c;
-            c = polyfill::wrapping_rotate_left_u32(b, 30);
-            b = a;
-            a = tt;
+            round!(k, f, w[s]);
         }
 
         state[0] = state[0] + a;
