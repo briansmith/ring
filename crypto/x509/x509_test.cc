@@ -243,6 +243,9 @@ static ScopedEVP_PKEY PrivateKeyFromPEM(const char *pem) {
 // bumping the reference counts for each certificate in question.
 static STACK_OF(X509)* CertsToStack(const std::vector<X509*> &certs) {
   ScopedX509Stack stack(sk_X509_new_null());
+  if (!stack) {
+    return nullptr;
+  }
   for (auto cert : certs) {
     if (!sk_X509_push(stack.get(), cert)) {
       return nullptr;

@@ -781,6 +781,9 @@ static ScopedSSL_CTX SetupCtx(const TestConfig *config) {
   }
 
   ScopedDH dh(DH_get_2048_256(NULL));
+  if (!dh) {
+    return nullptr;
+  }
 
   if (config->use_sparse_dh_prime) {
     // This prime number is 2^1024 + 643 – a value just above a power of two.
@@ -801,7 +804,7 @@ static ScopedSSL_CTX SetupCtx(const TestConfig *config) {
     dh->priv_length = 0;
   }
 
-  if (!dh || !SSL_CTX_set_tmp_dh(ssl_ctx.get(), dh.get())) {
+  if (!SSL_CTX_set_tmp_dh(ssl_ctx.get(), dh.get())) {
     return nullptr;
   }
 
@@ -1328,12 +1331,18 @@ static bool DoExchange(ScopedSSL_SESSION *out_session, SSL_CTX *ssl_ctx,
   if (config->is_dtls) {
     ScopedBIO packeted =
         PacketedBioCreate(&GetTestState(ssl.get())->clock_delta);
+    if (!packeted) {
+      return false;
+    }
     BIO_push(packeted.get(), bio.release());
     bio = std::move(packeted);
   }
   if (config->async) {
     ScopedBIO async_scoped =
         config->is_dtls ? AsyncBioCreateDatagram() : AsyncBioCreate();
+    if (!async_scoped) {
+      return false;
+    }
     BIO_push(async_scoped.get(), bio.release());
     GetTestState(ssl.get())->async_bio = async_scoped.get();
     bio = std::move(async_scoped);

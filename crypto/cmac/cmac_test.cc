@@ -44,7 +44,7 @@ static int test(const char *name, const uint8_t *key, size_t key_len,
   }
 
   ScopedCMAC_CTX ctx(CMAC_CTX_new());
-  if (!CMAC_Init(ctx.get(), key, key_len, EVP_aes_128_cbc(), NULL)) {
+  if (!ctx || !CMAC_Init(ctx.get(), key, key_len, EVP_aes_128_cbc(), NULL)) {
     fprintf(stderr, "%s: CMAC_Init failed.\n", name);
     return 0;
   }
