@@ -326,14 +326,12 @@ int BN_to_montgomery(BIGNUM *ret, const BIGNUM *a, const BN_MONT_CTX *mont,
   return BN_mod_mul_montgomery(ret, a, &mont->RR, mont, ctx);
 }
 
-#if 0
 static int BN_from_montgomery_word(BIGNUM *ret, BIGNUM *r,
                                    const BN_MONT_CTX *mont) {
-  const BIGNUM *n;
   BN_ULONG *ap, *np, *rp, n0, v, carry;
   int nl, max, i;
 
-  n = &mont->N;
+  const BIGNUM *n = &mont->N;
   nl = n->top;
   if (nl == 0) {
     ret->top = 0;
@@ -376,13 +374,13 @@ static int BN_from_montgomery_word(BIGNUM *ret, BIGNUM *r,
 
   {
     BN_ULONG *nrp;
-    size_t m;
+    uintptr_t m;
 
     v = bn_sub_words(rp, ap, np, nl) - carry;
     /* if subtraction result is real, then trick unconditional memcpy below to
      * perform in-place "refresh" instead of actual copy. */
-    m = (0 - (size_t)v);
-    nrp = (BN_ULONG *)(((intptr_t)rp & ~m) | ((intptr_t)ap & m));
+    m = (0u - (uintptr_t)v);
+    nrp = (BN_ULONG *)(((uintptr_t)rp & ~m) | ((uintptr_t)ap & m));
 
     for (i = 0, nl -= 4; i < nl; i += 4) {
       BN_ULONG t1, t2, t3, t4;
@@ -411,85 +409,6 @@ static int BN_from_montgomery_word(BIGNUM *ret, BIGNUM *r,
 
   return 1;
 }
-#endif
-
-#define PTR_SIZE_INT size_t
-
-static int BN_from_montgomery_word(BIGNUM *ret, BIGNUM *r, const BN_MONT_CTX *mont)
-	{
-	BN_ULONG *ap,*np,*rp,n0,v,carry;
-	int nl,max,i;
-
-	const BIGNUM *n = &mont->N;
-	nl=n->top;
-	if (nl == 0) { ret->top=0; return(1); }
-
-	max=(2*nl); /* carry is stored separately */
-	if (bn_wexpand(r,max) == NULL) return(0);
-
-	r->neg^=n->neg;
-	np=n->d;
-	rp=r->d;
-
-	/* clear the top words of T */
-#if 1
-	for (i=r->top; i<max; i++) /* memset? XXX */
-		rp[i]=0;
-#else
-	memset(&(rp[r->top]),0,(max-r->top)*sizeof(BN_ULONG)); 
-#endif
-
-	r->top=max;
-	n0=mont->n0[0];
-
-	for (carry=0, i=0; i<nl; i++, rp++)
-		{
-		v=bn_mul_add_words(rp,np,nl,(rp[0]*n0)&BN_MASK2);
-		v = (v+carry+rp[nl])&BN_MASK2;
-		carry |= (v != rp[nl]);
-		carry &= (v <= rp[nl]);
-		rp[nl]=v;
-		}
-
-	if (bn_wexpand(ret,nl) == NULL) return(0);
-	ret->top=nl;
-	ret->neg=r->neg;
-
-	rp=ret->d;
-	ap=&(r->d[nl]);
-
-	{
-	BN_ULONG *nrp;
-	size_t m;
-
-	v=bn_sub_words(rp,ap,np,nl)-carry;
-	/* if subtraction result is real, then
-	 * trick unconditional memcpy below to perform in-place
-	 * "refresh" instead of actual copy. */
-	m=(0-(size_t)v);
-	nrp=(BN_ULONG *)(((PTR_SIZE_INT)rp&~m)|((PTR_SIZE_INT)ap&m));
-
-	for (i=0,nl-=4; i<nl; i+=4)
-		{
-		BN_ULONG t1,t2,t3,t4;
-		
-		t1=nrp[i+0];
-		t2=nrp[i+1];
-		t3=nrp[i+2];	ap[i+0]=0;
-		t4=nrp[i+3];	ap[i+1]=0;
-		rp[i+0]=t1;	ap[i+2]=0;
-		rp[i+1]=t2;	ap[i+3]=0;
-		rp[i+2]=t3;
-		rp[i+3]=t4;
-		}
-	for (nl+=4; i<nl; i++)
-		rp[i]=nrp[i], ap[i]=0;
-	}
-	bn_correct_top(r);
-	bn_correct_top(ret);
-
-	return(1);
-	}
 
 int BN_from_montgomery(BIGNUM *ret, const BIGNUM *a, const BN_MONT_CTX *mont,
                        BN_CTX *ctx) {
