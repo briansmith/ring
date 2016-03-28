@@ -10,6 +10,7 @@ import fnmatch
 import itertools
 import os
 import re
+import sys
 
 URL_COMMENT = re.compile("^ *///? https?:\S+$")
 MAX_LINE_LENGTH = 90
@@ -148,4 +149,4 @@ def scan():
     return int(error is not None)
 
 if __name__ == '__main__':
-    scan()
+    sys.exit(scan())
