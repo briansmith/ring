@@ -89,11 +89,7 @@ def format_entries():
                       for os in oss
                       for compiler in compilers[os]
                       for target in targets[os]
-                      for mode in modes
-                      # XXX: 32-bit GCC 4.9 does not work because Travis does
-                      # not have g++-4.9-multilib whitelisted for use.
-                      if (not (compiler == "gcc-4.9" and
-                               target == "i686-unknown-linux-gnu"))])
+                      for mode in modes])
 
 # We use alternative names (the "_X" suffix) so that, in mk/travis.sh, we can
 # enure that we set the specific variables we want and that no relevant

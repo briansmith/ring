@@ -307,6 +307,34 @@ matrix:
       rust: stable
       os: linux
 
+    - env: TARGET_X=i686-unknown-linux-gnu CC_X=gcc-4.9 CXX_X=g++-4.9 MODE_X=DEBUG
+      rust: stable
+      os: linux
+      addons:
+        apt:
+          packages:
+            - g++-4.9
+            - g++-4.9-multilib
+            - gcc-4.9
+            - gcc-4.9-multilib
+            - linux-libc-dev:i386
+          sources:
+            - ubuntu-toolchain-r-test
+
+    - env: TARGET_X=i686-unknown-linux-gnu CC_X=gcc-4.9 CXX_X=g++-4.9 MODE_X=RELWITHDEBINFO
+      rust: stable
+      os: linux
+      addons:
+        apt:
+          packages:
+            - g++-4.9
+            - g++-4.9-multilib
+            - gcc-4.9
+            - gcc-4.9-multilib
+            - linux-libc-dev:i386
+          sources:
+            - ubuntu-toolchain-r-test
+
     - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=gcc-4.9 CXX_X=g++-4.9 MODE_X=DEBUG
       rust: stable
       os: linux
@@ -653,6 +681,34 @@ matrix:
       rust: nightly
       os: linux
 
+    - env: TARGET_X=i686-unknown-linux-gnu CC_X=gcc-4.9 CXX_X=g++-4.9 MODE_X=DEBUG
+      rust: nightly
+      os: linux
+      addons:
+        apt:
+          packages:
+            - g++-4.9
+            - g++-4.9-multilib
+            - gcc-4.9
+            - gcc-4.9-multilib
+            - linux-libc-dev:i386
+          sources:
+            - ubuntu-toolchain-r-test
+
+    - env: TARGET_X=i686-unknown-linux-gnu CC_X=gcc-4.9 CXX_X=g++-4.9 MODE_X=RELWITHDEBINFO
+      rust: nightly
+      os: linux
+      addons:
+        apt:
+          packages:
+            - g++-4.9
+            - g++-4.9-multilib
+            - gcc-4.9
+            - gcc-4.9-multilib
+            - linux-libc-dev:i386
+          sources:
+            - ubuntu-toolchain-r-test
+
     - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=gcc-4.9 CXX_X=g++-4.9 MODE_X=DEBUG
       rust: nightly
       os: linux
@@ -998,6 +1054,34 @@ matrix:
     - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=clang CXX_X=clang++ MODE_X=RELWITHDEBINFO
       rust: beta
       os: linux
+
+    - env: TARGET_X=i686-unknown-linux-gnu CC_X=gcc-4.9 CXX_X=g++-4.9 MODE_X=DEBUG
+      rust: beta
+      os: linux
+      addons:
+        apt:
+          packages:
+            - g++-4.9
+            - g++-4.9-multilib
+            - gcc-4.9
+            - gcc-4.9-multilib
+            - linux-libc-dev:i386
+          sources:
+            - ubuntu-toolchain-r-test
+
+    - env: TARGET_X=i686-unknown-linux-gnu CC_X=gcc-4.9 CXX_X=g++-4.9 MODE_X=RELWITHDEBINFO
+      rust: beta
+      os: linux
+      addons:
+        apt:
+          packages:
+            - g++-4.9
+            - g++-4.9-multilib
+            - gcc-4.9
+            - gcc-4.9-multilib
+            - linux-libc-dev:i386
+          sources:
+            - ubuntu-toolchain-r-test
 
     - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=gcc-4.9 CXX_X=g++-4.9 MODE_X=DEBUG
       rust: beta
