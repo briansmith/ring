@@ -64,12 +64,13 @@ static ssize_t read_eintr(int fd, void *out, size_t len) {
 /* read_full reads exactly |len| bytes from |fd| to |out|. On error or end of
  * file, it returns zero. */
 static int read_full(int fd, void *out, size_t len) {
+  char *outp = out;
   while (len > 0) {
-    ssize_t ret = read_eintr(fd, out, len);
+    ssize_t ret = read_eintr(fd, outp, len);
     if (ret <= 0) {
       return 0;
     }
-    out += ret;
+    outp += ret;
     len -= ret;
   }
   return 1;
