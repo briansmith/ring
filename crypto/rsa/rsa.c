@@ -120,24 +120,34 @@ int rsa_new_end(RSA *rsa, BN_CTX *ctx) {
   /* Make sure BN_mod_inverse in Montgomery intialization uses the
    * BN_FLG_CONSTTIME flag. */
 
+  assert(BN_get_flags(rsa->d, BN_FLG_CONSTTIME));
+
+  if (rsa->dmp1) {
+    assert(BN_get_flags(rsa->dmp1, BN_FLG_CONSTTIME));
+  }
+
+  if (rsa->dmq1) {
+    assert(BN_get_flags(rsa->dmq1, BN_FLG_CONSTTIME));
+  }
+
+  if (rsa->iqmp) {
+    assert(BN_get_flags(rsa->iqmp, BN_FLG_CONSTTIME));
+  }
+
   if (rsa->p) {
-    BIGNUM local_p;
-    BN_init(&local_p);
-    BN_with_flags(&local_p, rsa->p, BN_FLG_CONSTTIME);
+    assert(BN_get_flags(rsa->p, BN_FLG_CONSTTIME));
     rsa->mont_p = BN_MONT_CTX_new();
     if (rsa->mont_p == NULL ||
-        !BN_MONT_CTX_set(rsa->mont_p, &local_p, ctx)) {
+        !BN_MONT_CTX_set(rsa->mont_p, rsa->p, ctx)) {
       return 0;
     }
   }
 
   if (rsa->q) {
-    BIGNUM local_q;
-    BN_init(&local_q);
-    BN_with_flags(&local_q, rsa->q, BN_FLG_CONSTTIME);
+    assert(BN_get_flags(rsa->q, BN_FLG_CONSTTIME));
     rsa->mont_q = BN_MONT_CTX_new();
     if (rsa->mont_q == NULL ||
-        !BN_MONT_CTX_set(rsa->mont_q, &local_q, ctx)) {
+        !BN_MONT_CTX_set(rsa->mont_q, rsa->q, ctx)) {
       return 0;
     }
   }

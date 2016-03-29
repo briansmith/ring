@@ -223,6 +223,14 @@ int BN_hex2bn(BIGNUM **outp, const char *in) {
   return bn_x2bn(outp, in, decode_hex, isxdigit);
 }
 
+int BN_hex2bn_with_flags(BIGNUM **outp, const char *in, int flags) {
+  if (!BN_hex2bn(outp, in)) {
+    return 0;
+  }
+  BN_set_flags(*outp, flags);
+  return 1;
+}
+
 int BN_dec2bn(BIGNUM **outp, const char *in) {
   return bn_x2bn(outp, in, decode_dec, isdigit);
 }

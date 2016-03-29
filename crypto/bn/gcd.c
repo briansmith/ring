@@ -417,8 +417,6 @@ BIGNUM *BN_mod_inverse(BIGNUM *out, const BIGNUM *a, const BIGNUM *n,
 BIGNUM *BN_mod_inverse_no_branch(BIGNUM *out, int *out_no_inverse,
                                  const BIGNUM *a, const BIGNUM *n, BN_CTX *ctx) {
   BIGNUM *A, *B, *X, *Y, *M, *D, *T, *R = NULL;
-  BIGNUM local_A, local_B;
-  BIGNUM *pA, *pB;
   BIGNUM *ret = NULL;
   int sign;
 
@@ -452,12 +450,8 @@ BIGNUM *BN_mod_inverse_no_branch(BIGNUM *out, int *out_no_inverse,
   A->neg = 0;
 
   if (B->neg || (BN_ucmp(B, A) >= 0)) {
-    /* Turn BN_FLG_CONSTTIME flag on, so that when BN_div is invoked,
-     * BN_div_no_branch will be called eventually.
-     */
-    pB = &local_B;
-    BN_with_flags(pB, B, BN_FLG_CONSTTIME);
-    if (!BN_nnmod(B, pB, A, ctx)) {
+    BN_set_flags(B, BN_FLG_CONSTTIME);
+    if (!BN_nnmod(B, B, A, ctx)) {
       goto err;
     }
   }
@@ -478,14 +472,10 @@ BIGNUM *BN_mod_inverse_no_branch(BIGNUM *out, int *out_no_inverse,
      *      sign*Y*a  ==  A   (mod |n|)
      */
 
-    /* Turn BN_FLG_CONSTTIME flag on, so that when BN_div is invoked,
-     * BN_div_no_branch will be called eventually.
-     */
-    pA = &local_A;
-    BN_with_flags(pA, A, BN_FLG_CONSTTIME);
+    BN_set_flags(A, BN_FLG_CONSTTIME);
 
     /* (D, M) := (A/B, A%B) ... */
-    if (!BN_div(D, M, pA, B, ctx)) {
+    if (!BN_div(D, M, A, B, ctx)) {
       goto err;
     }
 

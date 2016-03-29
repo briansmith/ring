@@ -359,9 +359,9 @@ static bool TestOnlyDGiven() {
   ScopedBN_CTX ctx(BN_CTX_new());
   // XXX TODO: |rsa_new_end| should fail because the complete key isn't provided.
   if (!key ||
-      !BN_hex2bn(&key->n, kN) ||
-      !BN_hex2bn(&key->e, kE) ||
-      !BN_hex2bn(&key->d, kD) ||
+      !BN_hex2bn_with_flags(&key->n, kN, BN_FLG_CONSTTIME) ||
+      !BN_hex2bn_with_flags(&key->e, kE, BN_FLG_CONSTTIME) ||
+      !BN_hex2bn_with_flags(&key->d, kD, BN_FLG_CONSTTIME) ||
       !rsa_new_end(key.get(), ctx.get()) ||
       RSA_size(key.get()) > sizeof(buf)) {
     return false;
@@ -403,8 +403,8 @@ static bool TestOnlyDGiven() {
   // XXX TODO: |rsa_new_end| should fail because the complete key isn't provided.
   ScopedRSA key2(rsa_new_begin());
   if (!key2 ||
-      !BN_hex2bn(&key2->n, kN) ||
-      !BN_hex2bn(&key2->d, kD) ||
+      !BN_hex2bn_with_flags(&key2->n, kN, BN_FLG_CONSTTIME) ||
+      !BN_hex2bn_with_flags(&key2->d, kD, BN_FLG_CONSTTIME) ||
       !rsa_new_end(key2.get(), ctx.get())) {
     return false;
   }
@@ -469,6 +469,7 @@ static bool TestRecoverCRTParams() {
     if (key2->n == nullptr || key2->e == nullptr || key2->d == nullptr) {
       return false;
     }
+    BN_set_flags(key2->d, BN_FLG_CONSTTIME);
     if (!rsa_new_end(key2.get(), ctx.get())) {
       return false;
     }

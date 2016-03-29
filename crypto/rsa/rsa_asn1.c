@@ -67,13 +67,18 @@
 #include "internal.h"
 
 
-static int parse_integer(CBS *cbs, BIGNUM **out) {
+static int parse_integer_with_flags(CBS *cbs, BIGNUM **out, int flags) {
   assert(*out == NULL);
   *out = BN_new();
   if (*out == NULL) {
     return 0;
   }
+  BN_set_flags(*out, flags);
   return BN_parse_asn1_unsigned(cbs, *out);
+}
+
+static int parse_integer(CBS *cbs, BIGNUM **out) {
+  return parse_integer_with_flags(cbs, out, 0);
 }
 
 static int marshal_integer(CBB *cbb, BIGNUM *bn) {
@@ -174,12 +179,12 @@ RSA *RSA_parse_private_key(CBS *cbs) {
 
   if (!parse_integer(&child, &ret->n) ||
       !parse_integer(&child, &ret->e) ||
-      !parse_integer(&child, &ret->d) ||
-      !parse_integer(&child, &ret->p) ||
-      !parse_integer(&child, &ret->q) ||
-      !parse_integer(&child, &ret->dmp1) ||
-      !parse_integer(&child, &ret->dmq1) ||
-      !parse_integer(&child, &ret->iqmp)) {
+      !parse_integer_with_flags(&child, &ret->d, BN_FLG_CONSTTIME) ||
+      !parse_integer_with_flags(&child, &ret->p, BN_FLG_CONSTTIME) ||
+      !parse_integer_with_flags(&child, &ret->q, BN_FLG_CONSTTIME) ||
+      !parse_integer_with_flags(&child, &ret->dmp1, BN_FLG_CONSTTIME) ||
+      !parse_integer_with_flags(&child, &ret->dmq1, BN_FLG_CONSTTIME) ||
+      !parse_integer_with_flags(&child, &ret->iqmp, BN_FLG_CONSTTIME)) {
     goto err;
   }
 

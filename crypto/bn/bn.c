@@ -144,12 +144,6 @@ const BIGNUM *BN_value_one(void) {
   return &kOne;
 }
 
-void BN_with_flags(BIGNUM *out, const BIGNUM *in, int flags) {
-  memcpy(out, in, sizeof(BIGNUM));
-  out->flags &= ~BN_FLG_MALLOCED;
-  out->flags |= BN_FLG_STATIC_DATA | flags;
-}
-
 /* BN_num_bits_word returns the minimum number of bits needed to represent the
  * value in |l|. */
 unsigned BN_num_bits_word(BN_ULONG l) {
