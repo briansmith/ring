@@ -396,7 +396,7 @@ static bool TestOnlyDGiven() {
     return false;
   }
 
-  // Keys without the private exponent must continue to work when blinding is
+  // Keys without the public exponent must continue to work when blinding is
   // disabled to support Java's RSAPrivateKeySpec API. See
   // https://bugs.chromium.org/p/boringssl/issues/detail?id=12.
   //
