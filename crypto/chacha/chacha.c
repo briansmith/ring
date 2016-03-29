@@ -16,12 +16,9 @@
 
 #include <openssl/chacha.h>
 
-
-/* TODO(davidben): Re-enable the ChaCha20 assembly for OPENSSL_X86 once they
- * pass the in-place tests. */
 #if defined(OPENSSL_NO_ASM) || \
-    !(defined(OPENSSL_X86_64) || defined(OPENSSL_ARM) || \
-      defined(OPENSSL_AARCH64))
+    !(defined(OPENSSL_X86) || defined(OPENSSL_X86_64) || \
+      defined(OPENSSL_ARM) || defined(OPENSSL_AARCH64))
 
 #include <string.h>
 
