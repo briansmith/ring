@@ -286,7 +286,6 @@ fn check_per_nonce_max_bytes(in_out_len: usize) -> Result<(), ()> {
 
 #[cfg(test)]
 mod tests {
-    use std::string::String;
     use super::super::{aead, file_test};
     use std::vec::Vec;
 
@@ -355,6 +354,17 @@ mod tests {
             let mut ct = test_case.consume_bytes("CT");
             let tag = test_case.consume_bytes("TAG");
             let error = test_case.consume_optional_string("FAILS");
+
+            let max_overhead_len = aead_alg.max_overhead_len();
+            let mut s_in_out = plaintext.clone();
+            for _ in 0..max_overhead_len {
+                s_in_out.push(0);
+            }
+            let s_key = aead::SealingKey::new(aead_alg, &key_bytes[..]).unwrap();
+            let s_result = aead::seal_in_place(&s_key, &nonce[..],
+                                               &mut s_in_out[..],
+                                               max_overhead_len, &ad);
+            let o_key = aead::OpeningKey::new(aead_alg, &key_bytes[..]).unwrap();
 
             ct.extend(tag);
 
@@ -425,14 +435,33 @@ mod tests {
             ];
 
             for in_prefix in IN_PREFIXES.iter() {
-                test_aead_inner(aead_alg, &key_bytes, &nonce, &plaintext,
-                                &ad, &ct, &error, in_prefix)
+                let mut o_in_out = Vec::from(*in_prefix);
+                o_in_out.extend_from_slice(&ct[..]);
+                let o_result = aead::open_in_place(&o_key, &nonce[..],
+                                                   in_prefix.len(),
+                                                   &mut o_in_out[..], &ad);
+                match error {
+                    None => {
+                        assert_eq!(Ok(ct.len()), s_result);
+                        assert_eq!(&ct[..], &s_in_out[..ct.len()]);
+                        assert_eq!(Ok(plaintext.len()), o_result);
+                        assert_eq!(&plaintext[..], &o_in_out[..plaintext.len()]);
+                    },
+                    Some(ref error) if *error == "WRONG_NONCE_LENGTH" => {
+                        assert_eq!(Err(()), s_result);
+                        assert_eq!(Err(()), o_result);
+                    },
+                    Some(ref error) => {
+                        unreachable!("Unexpected error test case: {}", error);
+                    }
+                };
             }
         });
     }
 
     fn test_aead_slow(aead_alg: &'static aead::Algorithm, file_path: &str) {
         file_test::run(file_path, |section, test_case| {
+            const PREFIX: [u8; 4096] = [123; 4096];
             assert_eq!(section, "");
             let key_bytes = test_case.consume_bytes("KEY");
             let nonce = test_case.consume_bytes("NONCE");
@@ -442,12 +471,40 @@ mod tests {
             let tag = test_case.consume_bytes("TAG");
             let error = test_case.consume_optional_string("FAILS");
 
+            let max_overhead_len = aead_alg.max_overhead_len();
+            let mut s_in_out = plaintext.clone();
+            for _ in 0..max_overhead_len {
+                s_in_out.push(0);
+            }
+            let s_key = aead::SealingKey::new(aead_alg, &key_bytes[..]).unwrap();
+            let s_result = aead::seal_in_place(&s_key, &nonce[..],
+                                               &mut s_in_out[..],
+                                               max_overhead_len, &ad);
+            let o_key = aead::OpeningKey::new(aead_alg, &key_bytes[..]).unwrap();
             ct.extend(tag);
-
+            let mut o_in_out = Vec::with_capacity(4096 + ct.len());
             for in_prefix_len in 0..4096 {
-                let in_prefix = &vec![123; in_prefix_len][..];
-                test_aead_inner(aead_alg, &key_bytes, &nonce, &plaintext,
-                                &ad, &ct, &error, in_prefix)
+                o_in_out.truncate(0);
+                o_in_out.extend_from_slice(&PREFIX[..in_prefix_len]);
+                o_in_out.extend_from_slice(&ct[..]);
+                let o_result = aead::open_in_place(&o_key, &nonce[..],
+                                                   in_prefix_len,
+                                                   &mut o_in_out[..], &ad);
+                match error {
+                    None => {
+                        assert_eq!(Ok(ct.len()), s_result);
+                        assert_eq!(&ct[..], &s_in_out[..ct.len()]);
+                        assert_eq!(Ok(plaintext.len()), o_result);
+                        assert_eq!(&plaintext[..], &o_in_out[..plaintext.len()]);
+                    },
+                    Some(ref error) if *error == "WRONG_NONCE_LENGTH" => {
+                        assert_eq!(Err(()), s_result);
+                        assert_eq!(Err(()), o_result);
+                    },
+                    Some(ref error) => {
+                        unreachable!("Unexpected error test case: {}", error);
+                    }
+                };
             }
         });
     }
@@ -632,47 +689,5 @@ mod tests {
             assert!(aead::open_in_place(&o_key, &nonce[..16], prefix_len,
                                         &mut in_out, &ad).is_err());
         }
-    }
-
-    fn test_aead_inner(aead_alg: &'static aead::Algorithm,
-                       key_bytes: &[u8],
-                       nonce: &[u8],
-                       plaintext: &Vec<u8>,
-                       ad: &[u8],
-                       ct: &[u8],
-                       error: &Option<String>,
-                       in_prefix: &[u8]) {
-        let max_overhead_len = aead_alg.max_overhead_len();
-        let mut s_in_out = plaintext.clone();
-        for _ in 0..max_overhead_len {
-            s_in_out.push(0);
-        }
-        let s_key = aead::SealingKey::new(aead_alg, key_bytes).unwrap();
-        let s_result = aead::seal_in_place(&s_key, nonce,
-                                           &mut s_in_out[..],
-                                           max_overhead_len, &ad);
-
-        let mut o_in_out = Vec::from(in_prefix);
-        o_in_out.extend_from_slice(&ct[..]);
-        let o_key = aead::OpeningKey::new(aead_alg, key_bytes).unwrap();
-        let o_result = aead::open_in_place(&o_key, nonce,
-                                           in_prefix.len(),
-                                           &mut o_in_out[..], &ad);
-
-        match *error {
-            None => {
-                assert_eq!(Ok(ct.len()), s_result);
-                assert_eq!(&ct[..], &s_in_out[..ct.len()]);
-                assert_eq!(Ok(plaintext.len()), o_result);
-                assert_eq!(&plaintext[..], &o_in_out[..plaintext.len()]);
-            },
-            Some(ref error) if *error == "WRONG_NONCE_LENGTH" => {
-                assert_eq!(Err(()), s_result);
-                assert_eq!(Err(()), o_result);
-            },
-            Some(ref error) => {
-                unreachable!("Unexpected error test case: {}", error);
-            }
-        };
     }
 }
