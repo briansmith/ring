@@ -206,9 +206,7 @@ static void ecp_nistz256_mod_inverse(BN_ULONG r[P256_LIMBS],
 
   ecp_nistz256_sqr_mont(res, res);
   ecp_nistz256_sqr_mont(res, res);
-  ecp_nistz256_mul_mont(res, res, in);
-
-  memcpy(r, res, sizeof(res));
+  ecp_nistz256_mul_mont(r, res, in);
 }
 
 /* ecp_nistz256_bignum_to_field_elem copies the contents of |in| to |out| and
