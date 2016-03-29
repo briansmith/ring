@@ -403,6 +403,15 @@ static inline uint32_t from_be_u32_ptr(const uint8_t *data) {
 #endif
 }
 
+
+/* from_le_u32_ptr returns the 32-bit little-endian-encoded value at |data|. */
+static inline uint32_t from_le_u32_ptr(const uint8_t *data) {
+  return ((uint32_t)data[0]) |
+         ((uint32_t)data[1] << 8) |
+         ((uint32_t)data[2] << 16) |
+         ((uint32_t)data[3] << 24);
+}
+
 /* from_be_u64_ptr returns the 64-bit big-endian-encoded value at |data|. */
 static inline uint64_t from_be_u64_ptr(const uint8_t *data) {
 #if defined(__clang__) || defined(_MSC_VER)
