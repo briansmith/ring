@@ -610,25 +610,26 @@ mod tests {
 
     /// Test some ways in which `Context::update` and/or `Context::finish`
     /// could go wrong by testing every combination of updating three inputs
-    /// that vary from zero bytes to twice the size of the block length.
+    /// that vary from zero bytes to one byte larger than the block length.
     ///
-    /// This is not run in dev (debug) builds because it is too slow.
+    /// These are not run in dev (debug) builds because they are too slow.
     macro_rules! test_i_u_f {
         ( $test_name:ident, $alg:expr) => {
             #[cfg(not(debug_assertions))]
             #[test]
             fn $test_name() {
-                let mut input = vec![0u8; $alg.block_len * 2];
-                for i in 0..input.len() {
-                    input[i] = i as u8;
+                let mut input = [0; (super::MAX_BLOCK_LEN + 1) * 3];
+                let max = $alg.block_len + 1;
+                for i in 0..(max * 3) {
+                    input[i] = (i & 0xff) as u8;
                 }
 
-                for i in 0..input.len() {
-                    for j in 0..input.len() {
-                        for k in 0..input.len() {
+                for i in 0..max {
+                    for j in 0..max {
+                        for k in 0..max {
                             let part1 = &input[..i];
-                            let part2 = &input[..j];
-                            let part3 = &input[..k];
+                            let part2 = &input[i..(i+j)];
+                            let part3 = &input[(i+j)..(i+j+k)];
 
                             let mut ctx = digest::Context::new(&$alg);
                             ctx.update(part1);
@@ -636,11 +637,7 @@ mod tests {
                             ctx.update(part3);
                             let i_u_f = ctx.finish();
 
-                            let mut combined = Vec::<u8>::new();
-                            combined.extend(part1);
-                            combined.extend(part2);
-                            combined.extend(part3);
-                            let one_shot = digest::digest(&$alg, &combined);
+                            let one_shot = digest::digest(&$alg, &input[..(i + j + k)]);
 
                             assert_eq!(i_u_f.as_ref(), one_shot.as_ref());
                         }
