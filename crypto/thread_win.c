@@ -150,9 +150,14 @@ static void thread_local_init(void) {
   g_thread_local_failed = (g_thread_local_key == TLS_OUT_OF_INDEXES);
 }
 
-static void NTAPI thread_local_destructor(PVOID module,
-                                          DWORD reason, PVOID reserved) {
-  if (DLL_THREAD_DETACH != reason && DLL_PROCESS_DETACH != reason) {
+static void NTAPI thread_local_destructor(PVOID module, DWORD reason,
+                                          PVOID reserved) {
+  /* Only free memory on |DLL_THREAD_DETACH|, not |DLL_PROCESS_DETACH|. In
+   * VS2015's debug runtime, the C runtime has been unloaded by the time
+   * |DLL_PROCESS_DETACH| runs. See https://crbug.com/575795. This is consistent
+   * with |pthread_key_create| which does not call destructors on process exit,
+   * only thread exit. */
+  if (reason != DLL_THREAD_DETACH) {
     return;
   }
 
