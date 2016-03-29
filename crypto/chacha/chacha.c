@@ -22,10 +22,8 @@
 
 #include <string.h>
 
+#include "../internal.h"
 
-#define U8TO32_LITTLE(p)                              \
-  (((uint32_t)((p)[0])) | ((uint32_t)((p)[1]) << 8) | \
-   ((uint32_t)((p)[2]) << 16) | ((uint32_t)((p)[3]) << 24))
 
 /* sigma contains the ChaCha constants, which happen to be an ASCII string. */
 static const uint8_t sigma[16] = { 'e', 'x', 'p', 'a', 'n', 'd', ' ', '3',
@@ -83,10 +81,10 @@ void ChaCha20_ctr32(uint8_t *out, const uint8_t *in, size_t in_len,
   uint8_t buf[64];
   size_t todo, i;
 
-  input[0] = U8TO32_LITTLE(sigma + 0);
-  input[1] = U8TO32_LITTLE(sigma + 4);
-  input[2] = U8TO32_LITTLE(sigma + 8);
-  input[3] = U8TO32_LITTLE(sigma + 12);
+  input[0] = from_le_u32_ptr(sigma + 0);
+  input[1] = from_le_u32_ptr(sigma + 4);
+  input[2] = from_le_u32_ptr(sigma + 8);
+  input[3] = from_le_u32_ptr(sigma + 12);
 
   input[4] = key[0];
   input[5] = key[1];
