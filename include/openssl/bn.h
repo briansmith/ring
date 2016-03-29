@@ -184,13 +184,6 @@ OPENSSL_EXPORT BIGNUM *BN_copy(BIGNUM *dest, const BIGNUM *src);
 /* BN_value_one returns a static BIGNUM with value 1. */
 OPENSSL_EXPORT const BIGNUM *BN_value_one(void);
 
-/* BN_with_flags initialises a stack allocated |BIGNUM| with pointers to the
- * contents of |in| but with |flags| ORed into the flags field.
- *
- * Note: the two BIGNUMs share state and so |out| should /not/ be passed to
- * |BN_free|. */
-OPENSSL_EXPORT void BN_with_flags(BIGNUM *out, const BIGNUM *in, int flags);
-
 
 /* Basic functions. */
 
