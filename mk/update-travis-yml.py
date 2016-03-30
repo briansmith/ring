@@ -17,7 +17,7 @@
 import re
 import shutil
 
-latest_clang = "clang-3.8"
+latest_clang = "clang-3.9"
 
 rusts = [
     "stable",
@@ -33,15 +33,20 @@ linux_compilers = [
     "gcc-4.6",
 
     # Pre-release of clang.
-    "clang-3.8",
+    "clang-3.9",
 
     # Newest clang and GCC.
-    "clang-3.7",
+
+    # XXX: clang 3.8 doesn't work:
+    # https://github.com/travis-ci/apt-source-whitelist/issues/254
+
+    # XXX: GCC 6 doesn't work:
+    # https://github.com/travis-ci/apt-package-whitelist/issues/2294
     "gcc-5",
 
     # All other clang versions, newest to oldest.
-    "clang-3.6",
-    "clang-3.4",
+    "clang-3.7",
+    "clang-3.5",
 
     # All other GCC versions, newest to oldest.
     "gcc-4.9",

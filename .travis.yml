@@ -75,13 +75,13 @@ matrix:
       rust: stable
       os: linux
 
-    - env: TARGET_X=i686-unknown-linux-gnu CC_X=clang-3.8 CXX_X=clang++-3.8 MODE_X=DEBUG
+    - env: TARGET_X=i686-unknown-linux-gnu CC_X=clang-3.9 CXX_X=clang++-3.9 MODE_X=DEBUG
       rust: stable
       os: linux
       addons:
         apt:
           packages:
-            - clang-3.8
+            - clang-3.9
             - g++-multilib
             - gcc-multilib
             - libc6-dev-i386
@@ -89,13 +89,13 @@ matrix:
             - llvm-toolchain-precise
             - ubuntu-toolchain-r-test
 
-    - env: TARGET_X=i686-unknown-linux-gnu CC_X=clang-3.8 CXX_X=clang++-3.8 MODE_X=RELWITHDEBINFO
+    - env: TARGET_X=i686-unknown-linux-gnu CC_X=clang-3.9 CXX_X=clang++-3.9 MODE_X=RELWITHDEBINFO
       rust: stable
       os: linux
       addons:
         apt:
           packages:
-            - clang-3.8
+            - clang-3.9
             - g++-multilib
             - gcc-multilib
             - libc6-dev-i386
@@ -103,76 +103,26 @@ matrix:
             - llvm-toolchain-precise
             - ubuntu-toolchain-r-test
 
-    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=clang-3.8 CXX_X=clang++-3.8 MODE_X=DEBUG
+    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=clang-3.9 CXX_X=clang++-3.9 MODE_X=DEBUG
       rust: stable
       os: linux
       addons:
         apt:
           packages:
-            - clang-3.8
+            - clang-3.9
           sources:
             - llvm-toolchain-precise
             - ubuntu-toolchain-r-test
 
-    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=clang-3.8 CXX_X=clang++-3.8 MODE_X=RELWITHDEBINFO
+    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=clang-3.9 CXX_X=clang++-3.9 MODE_X=RELWITHDEBINFO
       rust: stable
       os: linux
       addons:
         apt:
           packages:
-            - clang-3.8
+            - clang-3.9
           sources:
             - llvm-toolchain-precise
-            - ubuntu-toolchain-r-test
-
-    - env: TARGET_X=i686-unknown-linux-gnu CC_X=clang-3.7 CXX_X=clang++-3.7 MODE_X=DEBUG
-      rust: stable
-      os: linux
-      addons:
-        apt:
-          packages:
-            - clang-3.7
-            - g++-multilib
-            - gcc-multilib
-            - libc6-dev-i386
-          sources:
-            - llvm-toolchain-precise-3.7
-            - ubuntu-toolchain-r-test
-
-    - env: TARGET_X=i686-unknown-linux-gnu CC_X=clang-3.7 CXX_X=clang++-3.7 MODE_X=RELWITHDEBINFO
-      rust: stable
-      os: linux
-      addons:
-        apt:
-          packages:
-            - clang-3.7
-            - g++-multilib
-            - gcc-multilib
-            - libc6-dev-i386
-          sources:
-            - llvm-toolchain-precise-3.7
-            - ubuntu-toolchain-r-test
-
-    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=clang-3.7 CXX_X=clang++-3.7 MODE_X=DEBUG
-      rust: stable
-      os: linux
-      addons:
-        apt:
-          packages:
-            - clang-3.7
-          sources:
-            - llvm-toolchain-precise-3.7
-            - ubuntu-toolchain-r-test
-
-    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=clang-3.7 CXX_X=clang++-3.7 MODE_X=RELWITHDEBINFO
-      rust: stable
-      os: linux
-      addons:
-        apt:
-          packages:
-            - clang-3.7
-          sources:
-            - llvm-toolchain-precise-3.7
             - ubuntu-toolchain-r-test
 
     - env: TARGET_X=i686-unknown-linux-gnu CC_X=gcc-5 CXX_X=g++-5 MODE_X=DEBUG
@@ -225,87 +175,105 @@ matrix:
           sources:
             - ubuntu-toolchain-r-test
 
-    - env: TARGET_X=i686-unknown-linux-gnu CC_X=clang-3.6 CXX_X=clang++-3.6 MODE_X=DEBUG
+    - env: TARGET_X=i686-unknown-linux-gnu CC_X=clang-3.7 CXX_X=clang++-3.7 MODE_X=DEBUG
       rust: stable
       os: linux
       addons:
         apt:
           packages:
-            - clang-3.6
+            - clang-3.7
             - g++-multilib
             - gcc-multilib
             - libc6-dev-i386
           sources:
-            - llvm-toolchain-precise-3.6
+            - llvm-toolchain-precise-3.7
             - ubuntu-toolchain-r-test
 
-    - env: TARGET_X=i686-unknown-linux-gnu CC_X=clang-3.6 CXX_X=clang++-3.6 MODE_X=RELWITHDEBINFO
+    - env: TARGET_X=i686-unknown-linux-gnu CC_X=clang-3.7 CXX_X=clang++-3.7 MODE_X=RELWITHDEBINFO
       rust: stable
       os: linux
       addons:
         apt:
           packages:
-            - clang-3.6
+            - clang-3.7
             - g++-multilib
             - gcc-multilib
             - libc6-dev-i386
           sources:
-            - llvm-toolchain-precise-3.6
+            - llvm-toolchain-precise-3.7
             - ubuntu-toolchain-r-test
 
-    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=clang-3.6 CXX_X=clang++-3.6 MODE_X=DEBUG
+    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=clang-3.7 CXX_X=clang++-3.7 MODE_X=DEBUG
       rust: stable
       os: linux
       addons:
         apt:
           packages:
-            - clang-3.6
+            - clang-3.7
           sources:
-            - llvm-toolchain-precise-3.6
+            - llvm-toolchain-precise-3.7
             - ubuntu-toolchain-r-test
 
-    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=clang-3.6 CXX_X=clang++-3.6 MODE_X=RELWITHDEBINFO
+    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=clang-3.7 CXX_X=clang++-3.7 MODE_X=RELWITHDEBINFO
       rust: stable
       os: linux
       addons:
         apt:
           packages:
-            - clang-3.6
+            - clang-3.7
           sources:
-            - llvm-toolchain-precise-3.6
+            - llvm-toolchain-precise-3.7
             - ubuntu-toolchain-r-test
 
-    - env: TARGET_X=i686-unknown-linux-gnu CC_X=clang CXX_X=clang++ MODE_X=DEBUG
+    - env: TARGET_X=i686-unknown-linux-gnu CC_X=clang-3.5 CXX_X=clang++-3.5 MODE_X=DEBUG
       rust: stable
       os: linux
       addons:
         apt:
           packages:
+            - clang-3.5
             - g++-multilib
             - gcc-multilib
             - libc6-dev-i386
           sources:
+            - llvm-toolchain-precise-3.5
             - ubuntu-toolchain-r-test
 
-    - env: TARGET_X=i686-unknown-linux-gnu CC_X=clang CXX_X=clang++ MODE_X=RELWITHDEBINFO
+    - env: TARGET_X=i686-unknown-linux-gnu CC_X=clang-3.5 CXX_X=clang++-3.5 MODE_X=RELWITHDEBINFO
       rust: stable
       os: linux
       addons:
         apt:
           packages:
+            - clang-3.5
             - g++-multilib
             - gcc-multilib
             - libc6-dev-i386
           sources:
+            - llvm-toolchain-precise-3.5
             - ubuntu-toolchain-r-test
 
-    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=clang CXX_X=clang++ MODE_X=DEBUG
+    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=clang-3.5 CXX_X=clang++-3.5 MODE_X=DEBUG
       rust: stable
       os: linux
+      addons:
+        apt:
+          packages:
+            - clang-3.5
+          sources:
+            - llvm-toolchain-precise-3.5
+            - ubuntu-toolchain-r-test
 
-    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=clang CXX_X=clang++ MODE_X=RELWITHDEBINFO
+    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=clang-3.5 CXX_X=clang++-3.5 MODE_X=RELWITHDEBINFO
       rust: stable
       os: linux
+      addons:
+        apt:
+          packages:
+            - clang-3.5
+          sources:
+            - llvm-toolchain-precise-3.5
+            - ubuntu-toolchain-r-test
 
     - env: TARGET_X=i686-unknown-linux-gnu CC_X=gcc-4.9 CXX_X=g++-4.9 MODE_X=DEBUG
       rust: stable
@@ -449,13 +417,13 @@ matrix:
       rust: nightly
       os: linux
 
-    - env: TARGET_X=i686-unknown-linux-gnu CC_X=clang-3.8 CXX_X=clang++-3.8 MODE_X=DEBUG
+    - env: TARGET_X=i686-unknown-linux-gnu CC_X=clang-3.9 CXX_X=clang++-3.9 MODE_X=DEBUG
       rust: nightly
       os: linux
       addons:
         apt:
           packages:
-            - clang-3.8
+            - clang-3.9
             - g++-multilib
             - gcc-multilib
             - libc6-dev-i386
@@ -463,13 +431,13 @@ matrix:
             - llvm-toolchain-precise
             - ubuntu-toolchain-r-test
 
-    - env: TARGET_X=i686-unknown-linux-gnu CC_X=clang-3.8 CXX_X=clang++-3.8 MODE_X=RELWITHDEBINFO
+    - env: TARGET_X=i686-unknown-linux-gnu CC_X=clang-3.9 CXX_X=clang++-3.9 MODE_X=RELWITHDEBINFO
       rust: nightly
       os: linux
       addons:
         apt:
           packages:
-            - clang-3.8
+            - clang-3.9
             - g++-multilib
             - gcc-multilib
             - libc6-dev-i386
@@ -477,76 +445,26 @@ matrix:
             - llvm-toolchain-precise
             - ubuntu-toolchain-r-test
 
-    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=clang-3.8 CXX_X=clang++-3.8 MODE_X=DEBUG
+    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=clang-3.9 CXX_X=clang++-3.9 MODE_X=DEBUG
       rust: nightly
       os: linux
       addons:
         apt:
           packages:
-            - clang-3.8
+            - clang-3.9
           sources:
             - llvm-toolchain-precise
             - ubuntu-toolchain-r-test
 
-    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=clang-3.8 CXX_X=clang++-3.8 MODE_X=RELWITHDEBINFO
+    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=clang-3.9 CXX_X=clang++-3.9 MODE_X=RELWITHDEBINFO
       rust: nightly
       os: linux
       addons:
         apt:
           packages:
-            - clang-3.8
+            - clang-3.9
           sources:
             - llvm-toolchain-precise
-            - ubuntu-toolchain-r-test
-
-    - env: TARGET_X=i686-unknown-linux-gnu CC_X=clang-3.7 CXX_X=clang++-3.7 MODE_X=DEBUG
-      rust: nightly
-      os: linux
-      addons:
-        apt:
-          packages:
-            - clang-3.7
-            - g++-multilib
-            - gcc-multilib
-            - libc6-dev-i386
-          sources:
-            - llvm-toolchain-precise-3.7
-            - ubuntu-toolchain-r-test
-
-    - env: TARGET_X=i686-unknown-linux-gnu CC_X=clang-3.7 CXX_X=clang++-3.7 MODE_X=RELWITHDEBINFO
-      rust: nightly
-      os: linux
-      addons:
-        apt:
-          packages:
-            - clang-3.7
-            - g++-multilib
-            - gcc-multilib
-            - libc6-dev-i386
-          sources:
-            - llvm-toolchain-precise-3.7
-            - ubuntu-toolchain-r-test
-
-    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=clang-3.7 CXX_X=clang++-3.7 MODE_X=DEBUG
-      rust: nightly
-      os: linux
-      addons:
-        apt:
-          packages:
-            - clang-3.7
-          sources:
-            - llvm-toolchain-precise-3.7
-            - ubuntu-toolchain-r-test
-
-    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=clang-3.7 CXX_X=clang++-3.7 MODE_X=RELWITHDEBINFO
-      rust: nightly
-      os: linux
-      addons:
-        apt:
-          packages:
-            - clang-3.7
-          sources:
-            - llvm-toolchain-precise-3.7
             - ubuntu-toolchain-r-test
 
     - env: TARGET_X=i686-unknown-linux-gnu CC_X=gcc-5 CXX_X=g++-5 MODE_X=DEBUG
@@ -599,87 +517,105 @@ matrix:
           sources:
             - ubuntu-toolchain-r-test
 
-    - env: TARGET_X=i686-unknown-linux-gnu CC_X=clang-3.6 CXX_X=clang++-3.6 MODE_X=DEBUG
+    - env: TARGET_X=i686-unknown-linux-gnu CC_X=clang-3.7 CXX_X=clang++-3.7 MODE_X=DEBUG
       rust: nightly
       os: linux
       addons:
         apt:
           packages:
-            - clang-3.6
+            - clang-3.7
             - g++-multilib
             - gcc-multilib
             - libc6-dev-i386
           sources:
-            - llvm-toolchain-precise-3.6
+            - llvm-toolchain-precise-3.7
             - ubuntu-toolchain-r-test
 
-    - env: TARGET_X=i686-unknown-linux-gnu CC_X=clang-3.6 CXX_X=clang++-3.6 MODE_X=RELWITHDEBINFO
+    - env: TARGET_X=i686-unknown-linux-gnu CC_X=clang-3.7 CXX_X=clang++-3.7 MODE_X=RELWITHDEBINFO
       rust: nightly
       os: linux
       addons:
         apt:
           packages:
-            - clang-3.6
+            - clang-3.7
             - g++-multilib
             - gcc-multilib
             - libc6-dev-i386
           sources:
-            - llvm-toolchain-precise-3.6
+            - llvm-toolchain-precise-3.7
             - ubuntu-toolchain-r-test
 
-    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=clang-3.6 CXX_X=clang++-3.6 MODE_X=DEBUG
+    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=clang-3.7 CXX_X=clang++-3.7 MODE_X=DEBUG
       rust: nightly
       os: linux
       addons:
         apt:
           packages:
-            - clang-3.6
+            - clang-3.7
           sources:
-            - llvm-toolchain-precise-3.6
+            - llvm-toolchain-precise-3.7
             - ubuntu-toolchain-r-test
 
-    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=clang-3.6 CXX_X=clang++-3.6 MODE_X=RELWITHDEBINFO
+    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=clang-3.7 CXX_X=clang++-3.7 MODE_X=RELWITHDEBINFO
       rust: nightly
       os: linux
       addons:
         apt:
           packages:
-            - clang-3.6
+            - clang-3.7
           sources:
-            - llvm-toolchain-precise-3.6
+            - llvm-toolchain-precise-3.7
             - ubuntu-toolchain-r-test
 
-    - env: TARGET_X=i686-unknown-linux-gnu CC_X=clang CXX_X=clang++ MODE_X=DEBUG
+    - env: TARGET_X=i686-unknown-linux-gnu CC_X=clang-3.5 CXX_X=clang++-3.5 MODE_X=DEBUG
       rust: nightly
       os: linux
       addons:
         apt:
           packages:
+            - clang-3.5
             - g++-multilib
             - gcc-multilib
             - libc6-dev-i386
           sources:
+            - llvm-toolchain-precise-3.5
             - ubuntu-toolchain-r-test
 
-    - env: TARGET_X=i686-unknown-linux-gnu CC_X=clang CXX_X=clang++ MODE_X=RELWITHDEBINFO
+    - env: TARGET_X=i686-unknown-linux-gnu CC_X=clang-3.5 CXX_X=clang++-3.5 MODE_X=RELWITHDEBINFO
       rust: nightly
       os: linux
       addons:
         apt:
           packages:
+            - clang-3.5
             - g++-multilib
             - gcc-multilib
             - libc6-dev-i386
           sources:
+            - llvm-toolchain-precise-3.5
             - ubuntu-toolchain-r-test
 
-    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=clang CXX_X=clang++ MODE_X=DEBUG
+    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=clang-3.5 CXX_X=clang++-3.5 MODE_X=DEBUG
       rust: nightly
       os: linux
+      addons:
+        apt:
+          packages:
+            - clang-3.5
+          sources:
+            - llvm-toolchain-precise-3.5
+            - ubuntu-toolchain-r-test
 
-    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=clang CXX_X=clang++ MODE_X=RELWITHDEBINFO
+    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=clang-3.5 CXX_X=clang++-3.5 MODE_X=RELWITHDEBINFO
       rust: nightly
       os: linux
+      addons:
+        apt:
+          packages:
+            - clang-3.5
+          sources:
+            - llvm-toolchain-precise-3.5
+            - ubuntu-toolchain-r-test
 
     - env: TARGET_X=i686-unknown-linux-gnu CC_X=gcc-4.9 CXX_X=g++-4.9 MODE_X=DEBUG
       rust: nightly
@@ -823,13 +759,13 @@ matrix:
       rust: beta
       os: linux
 
-    - env: TARGET_X=i686-unknown-linux-gnu CC_X=clang-3.8 CXX_X=clang++-3.8 MODE_X=DEBUG
+    - env: TARGET_X=i686-unknown-linux-gnu CC_X=clang-3.9 CXX_X=clang++-3.9 MODE_X=DEBUG
       rust: beta
       os: linux
       addons:
         apt:
           packages:
-            - clang-3.8
+            - clang-3.9
             - g++-multilib
             - gcc-multilib
             - libc6-dev-i386
@@ -837,13 +773,13 @@ matrix:
             - llvm-toolchain-precise
             - ubuntu-toolchain-r-test
 
-    - env: TARGET_X=i686-unknown-linux-gnu CC_X=clang-3.8 CXX_X=clang++-3.8 MODE_X=RELWITHDEBINFO
+    - env: TARGET_X=i686-unknown-linux-gnu CC_X=clang-3.9 CXX_X=clang++-3.9 MODE_X=RELWITHDEBINFO
       rust: beta
       os: linux
       addons:
         apt:
           packages:
-            - clang-3.8
+            - clang-3.9
             - g++-multilib
             - gcc-multilib
             - libc6-dev-i386
@@ -851,76 +787,26 @@ matrix:
             - llvm-toolchain-precise
             - ubuntu-toolchain-r-test
 
-    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=clang-3.8 CXX_X=clang++-3.8 MODE_X=DEBUG
+    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=clang-3.9 CXX_X=clang++-3.9 MODE_X=DEBUG
       rust: beta
       os: linux
       addons:
         apt:
           packages:
-            - clang-3.8
+            - clang-3.9
           sources:
             - llvm-toolchain-precise
             - ubuntu-toolchain-r-test
 
-    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=clang-3.8 CXX_X=clang++-3.8 MODE_X=RELWITHDEBINFO
+    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=clang-3.9 CXX_X=clang++-3.9 MODE_X=RELWITHDEBINFO
       rust: beta
       os: linux
       addons:
         apt:
           packages:
-            - clang-3.8
+            - clang-3.9
           sources:
             - llvm-toolchain-precise
-            - ubuntu-toolchain-r-test
-
-    - env: TARGET_X=i686-unknown-linux-gnu CC_X=clang-3.7 CXX_X=clang++-3.7 MODE_X=DEBUG
-      rust: beta
-      os: linux
-      addons:
-        apt:
-          packages:
-            - clang-3.7
-            - g++-multilib
-            - gcc-multilib
-            - libc6-dev-i386
-          sources:
-            - llvm-toolchain-precise-3.7
-            - ubuntu-toolchain-r-test
-
-    - env: TARGET_X=i686-unknown-linux-gnu CC_X=clang-3.7 CXX_X=clang++-3.7 MODE_X=RELWITHDEBINFO
-      rust: beta
-      os: linux
-      addons:
-        apt:
-          packages:
-            - clang-3.7
-            - g++-multilib
-            - gcc-multilib
-            - libc6-dev-i386
-          sources:
-            - llvm-toolchain-precise-3.7
-            - ubuntu-toolchain-r-test
-
-    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=clang-3.7 CXX_X=clang++-3.7 MODE_X=DEBUG
-      rust: beta
-      os: linux
-      addons:
-        apt:
-          packages:
-            - clang-3.7
-          sources:
-            - llvm-toolchain-precise-3.7
-            - ubuntu-toolchain-r-test
-
-    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=clang-3.7 CXX_X=clang++-3.7 MODE_X=RELWITHDEBINFO
-      rust: beta
-      os: linux
-      addons:
-        apt:
-          packages:
-            - clang-3.7
-          sources:
-            - llvm-toolchain-precise-3.7
             - ubuntu-toolchain-r-test
 
     - env: TARGET_X=i686-unknown-linux-gnu CC_X=gcc-5 CXX_X=g++-5 MODE_X=DEBUG
@@ -973,87 +859,105 @@ matrix:
           sources:
             - ubuntu-toolchain-r-test
 
-    - env: TARGET_X=i686-unknown-linux-gnu CC_X=clang-3.6 CXX_X=clang++-3.6 MODE_X=DEBUG
+    - env: TARGET_X=i686-unknown-linux-gnu CC_X=clang-3.7 CXX_X=clang++-3.7 MODE_X=DEBUG
       rust: beta
       os: linux
       addons:
         apt:
           packages:
-            - clang-3.6
+            - clang-3.7
             - g++-multilib
             - gcc-multilib
             - libc6-dev-i386
           sources:
-            - llvm-toolchain-precise-3.6
+            - llvm-toolchain-precise-3.7
             - ubuntu-toolchain-r-test
 
-    - env: TARGET_X=i686-unknown-linux-gnu CC_X=clang-3.6 CXX_X=clang++-3.6 MODE_X=RELWITHDEBINFO
+    - env: TARGET_X=i686-unknown-linux-gnu CC_X=clang-3.7 CXX_X=clang++-3.7 MODE_X=RELWITHDEBINFO
       rust: beta
       os: linux
       addons:
         apt:
           packages:
-            - clang-3.6
+            - clang-3.7
             - g++-multilib
             - gcc-multilib
             - libc6-dev-i386
           sources:
-            - llvm-toolchain-precise-3.6
+            - llvm-toolchain-precise-3.7
             - ubuntu-toolchain-r-test
 
-    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=clang-3.6 CXX_X=clang++-3.6 MODE_X=DEBUG
+    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=clang-3.7 CXX_X=clang++-3.7 MODE_X=DEBUG
       rust: beta
       os: linux
       addons:
         apt:
           packages:
-            - clang-3.6
+            - clang-3.7
           sources:
-            - llvm-toolchain-precise-3.6
+            - llvm-toolchain-precise-3.7
             - ubuntu-toolchain-r-test
 
-    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=clang-3.6 CXX_X=clang++-3.6 MODE_X=RELWITHDEBINFO
+    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=clang-3.7 CXX_X=clang++-3.7 MODE_X=RELWITHDEBINFO
       rust: beta
       os: linux
       addons:
         apt:
           packages:
-            - clang-3.6
+            - clang-3.7
           sources:
-            - llvm-toolchain-precise-3.6
+            - llvm-toolchain-precise-3.7
             - ubuntu-toolchain-r-test
 
-    - env: TARGET_X=i686-unknown-linux-gnu CC_X=clang CXX_X=clang++ MODE_X=DEBUG
+    - env: TARGET_X=i686-unknown-linux-gnu CC_X=clang-3.5 CXX_X=clang++-3.5 MODE_X=DEBUG
       rust: beta
       os: linux
       addons:
         apt:
           packages:
+            - clang-3.5
             - g++-multilib
             - gcc-multilib
             - libc6-dev-i386
           sources:
+            - llvm-toolchain-precise-3.5
             - ubuntu-toolchain-r-test
 
-    - env: TARGET_X=i686-unknown-linux-gnu CC_X=clang CXX_X=clang++ MODE_X=RELWITHDEBINFO
+    - env: TARGET_X=i686-unknown-linux-gnu CC_X=clang-3.5 CXX_X=clang++-3.5 MODE_X=RELWITHDEBINFO
       rust: beta
       os: linux
       addons:
         apt:
           packages:
+            - clang-3.5
             - g++-multilib
             - gcc-multilib
             - libc6-dev-i386
           sources:
+            - llvm-toolchain-precise-3.5
             - ubuntu-toolchain-r-test
 
-    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=clang CXX_X=clang++ MODE_X=DEBUG
+    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=clang-3.5 CXX_X=clang++-3.5 MODE_X=DEBUG
       rust: beta
       os: linux
+      addons:
+        apt:
+          packages:
+            - clang-3.5
+          sources:
+            - llvm-toolchain-precise-3.5
+            - ubuntu-toolchain-r-test
 
-    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=clang CXX_X=clang++ MODE_X=RELWITHDEBINFO
+    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=clang-3.5 CXX_X=clang++-3.5 MODE_X=RELWITHDEBINFO
       rust: beta
       os: linux
+      addons:
+        apt:
+          packages:
+            - clang-3.5
+          sources:
+            - llvm-toolchain-precise-3.5
+            - ubuntu-toolchain-r-test
 
     - env: TARGET_X=i686-unknown-linux-gnu CC_X=gcc-4.9 CXX_X=g++-4.9 MODE_X=DEBUG
       rust: beta
