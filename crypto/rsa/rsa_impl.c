@@ -537,6 +537,8 @@ static int rsa_private_transform(RSA *rsa, uint8_t *out, const uint8_t *in,
     goto err;
   }
 
+  assert(BN_cmp(rsa->p, rsa->q) > 0);
+
   blinding = rsa_blinding_get(rsa, &blinding_index);
   if (blinding == NULL ||
       !BN_BLINDING_convert(f, blinding, rsa, ctx) ||
@@ -620,16 +622,21 @@ static int mod_exp(BIGNUM *r0, const BIGNUM *I, RSA *rsa, BN_CTX *ctx) {
     goto err;
   }
 
+  assert(BN_cmp(rsa->q, rsa->p) < 0);
+  assert(!BN_is_negative(r0) && BN_cmp(r0, rsa->p) < 0);
+  assert(!BN_is_negative(r0) && BN_cmp(m1, rsa->q) < 0);
+
   if (!BN_sub(r0, r0, m1)) {
     goto err;
   }
-  /* This will help stop the size of r0 increasing, which does
-   * affect the multiply if it optimised for a power of 2 size */
   if (BN_is_negative(r0)) {
     if (!BN_add(r0, r0, rsa->p)) {
       goto err;
     }
   }
+
+  assert(!BN_is_negative(r0));
+  assert(BN_cmp(r0, rsa->p) < 0);
 
   if (!BN_mul(r1, r0, rsa->iqmp, ctx)) {
     goto err;
@@ -640,17 +647,6 @@ static int mod_exp(BIGNUM *r0, const BIGNUM *I, RSA *rsa, BN_CTX *ctx) {
     goto err;
   }
 
-  /* If p < q it is occasionally possible for the correction of
-   * adding 'p' if r0 is negative above to leave the result still
-   * negative. This can break the private key operations: the following
-   * second correction should *always* correct this rare occurrence.
-   * This will *never* happen with OpenSSL generated keys because
-   * they ensure p > q [steve] */
-  if (BN_is_negative(r0)) {
-    if (!BN_add(r0, r0, rsa->p)) {
-      goto err;
-    }
-  }
   if (!BN_mul(r1, r0, rsa->q, ctx)) {
     goto err;
   }

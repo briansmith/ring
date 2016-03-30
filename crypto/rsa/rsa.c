@@ -382,6 +382,17 @@ int RSA_check_key(const RSA *key, BN_CTX *ctx) {
   BN_init(&dmq1);
   BN_init(&iqmp);
 
+  /* Technically |p < q| may be legal, but the implementation of |mod_exp| has
+   * been optimized such that it is now required that |p > q|. |p == q| is
+   * definitely *not* OK. To support keys with |p < q| in the future, we can
+   * provide a function that swaps |p| and |q| and recalculates the CRT
+   * parameters via the currently-deleted |RSA_recover_crt_params|. Or we can
+   * just avoid using the CRT when |p < q|. */
+  if (BN_cmp(key->p, key->q) <= 0) {
+    OPENSSL_PUT_ERROR(RSA, RSA_R_BAD_RSA_PARAMETERS);
+    goto out;
+  }
+
   if (/* n = pq */
       !BN_mul(&n, key->p, key->q, ctx) ||
       /* lcm = lcm(p-1, q-1) */
