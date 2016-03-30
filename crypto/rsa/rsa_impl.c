@@ -219,7 +219,6 @@ err:
  * On success, the index of the assigned BN_BLINDING is written to
  * |*index_used| and must be passed to |rsa_blinding_release| when finished. */
 static BN_BLINDING *rsa_blinding_get(RSA *rsa, unsigned *index_used) {
-  assert(ctx != NULL);
   assert(rsa->mont_n != NULL);
 
   BN_BLINDING *ret = NULL;
@@ -585,6 +584,8 @@ err:
 }
 
 static int mod_exp(BIGNUM *r0, const BIGNUM *I, RSA *rsa, BN_CTX *ctx) {
+  assert(ctx != NULL);
+
   BIGNUM *r1, *m1, *vrfy;
   int ret = 0;
 
