@@ -610,6 +610,12 @@ OPENSSL_EXPORT int BN_mod_mul_montgomery(BIGNUM *r, const BIGNUM *a,
                                          const BIGNUM *b,
                                          const BN_MONT_CTX *mont, BN_CTX *ctx);
 
+/* BN_reduce_montgomery returns |a % n|, where |n| is |mod_mont->N|, in
+ * constant-ish time using Montgomery reduction. It must be the case that
+ * |0 < a < n**2|. It returns one on success or zero on error. */
+int BN_reduce_montgomery(BIGNUM *r, const BIGNUM *a,
+                         const BN_MONT_CTX *mod_mont, BN_CTX *ctx);
+
 
 /* Exponentiation. */
 

@@ -252,6 +252,8 @@ int BN_to_montgomery(BIGNUM *ret, const BIGNUM *a, const BN_MONT_CTX *mont,
 
 static int BN_from_montgomery_word(BIGNUM *ret, BIGNUM *r,
                                    const BN_MONT_CTX *mont) {
+  assert(ret != r);
+
   BN_ULONG *ap, *np, *rp, n0, v, carry;
   int nl, max, i;
 
@@ -400,5 +402,28 @@ int BN_mod_mul_montgomery(BIGNUM *r, const BIGNUM *a, const BIGNUM *b,
 
 err:
   BN_CTX_end(ctx);
+  return ret;
+}
+
+int BN_reduce_montgomery(BIGNUM *r, const BIGNUM *a,
+                         const BN_MONT_CTX *mod_mont, BN_CTX *ctx) {
+  BIGNUM tmp;
+  BN_init(&tmp);
+  if (!BN_copy(&tmp, a)) {
+    OPENSSL_PUT_ERROR(BN, ERR_R_INTERNAL_ERROR);
+    return 0;
+  }
+
+  int ret = 0;
+
+  if (!BN_from_montgomery_word(r, &tmp, mod_mont) ||
+      !BN_to_montgomery(r, r, mod_mont, ctx)) {
+    goto err;
+  }
+
+  ret = 1;
+
+err:
+  BN_free(&tmp);
   return ret;
 }

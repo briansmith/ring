@@ -67,7 +67,6 @@
 #include "../internal.h"
 
 
-static int mod_exp(BIGNUM *r0, const BIGNUM *I, RSA *rsa, BN_CTX *ctx);
 static int rsa_private_transform(RSA *rsa, uint8_t *out, const uint8_t *in,
                                  size_t len);
 
@@ -506,7 +505,6 @@ err:
  */
 static int rsa_private_transform(RSA *rsa, uint8_t *out, const uint8_t *in,
                                  size_t len) {
-  BIGNUM *f, *result;
   BN_CTX *ctx = NULL;
   unsigned blinding_index = 0;
   BN_BLINDING *blinding = NULL;
@@ -518,31 +516,73 @@ static int rsa_private_transform(RSA *rsa, uint8_t *out, const uint8_t *in,
 
   int ret = 0;
 
-  BN_CTX_start(ctx);
+  BIGNUM base, r, tmp, mp, mq, vrfy;
+  BN_init(&base);
+  BN_init(&r);
+  BN_init(&tmp);
+  BN_init(&mp);
+  BN_init(&mq);
+  BN_init(&vrfy);
 
-  f = BN_CTX_get(ctx);
-  result = BN_CTX_get(ctx);
-  if (f == NULL || result == NULL) {
-    OPENSSL_PUT_ERROR(RSA, ERR_R_MALLOC_FAILURE);
+  if (BN_bin2bn(in, len, &base) == NULL) {
     goto err;
   }
 
-  if (BN_bin2bn(in, len, f) == NULL) {
-    goto err;
-  }
-
-  if (BN_ucmp(f, rsa->n) >= 0) {
+  if (BN_ucmp(&base, rsa->n) >= 0) {
     /* Usually the padding functions would catch this. */
     OPENSSL_PUT_ERROR(RSA, RSA_R_DATA_TOO_LARGE_FOR_MODULUS);
     goto err;
   }
 
-  assert(BN_cmp(rsa->p, rsa->q) > 0);
-
   blinding = rsa_blinding_get(rsa, &blinding_index);
   if (blinding == NULL ||
-      !BN_BLINDING_convert(f, blinding, rsa, ctx) ||
-      !mod_exp(result, f, rsa, ctx)) {
+      !BN_BLINDING_convert(&base, blinding, rsa, ctx)) {
+  }
+
+  /* Extra reductions would be required if |p < q| and |p == q| is just plain
+   * wrong. */
+  assert(BN_cmp(rsa->q, rsa->p) < 0);
+
+  /* mp := base^dmp1 mod p.
+   *
+   * |p * q == n| and |p > q| implies |p < n < p**2|. Thus, the base is just
+   * reduced mod |p|. */
+  assert(BN_get_flags(rsa->p, BN_FLG_CONSTTIME));
+  assert(BN_get_flags(rsa->dmp1, BN_FLG_CONSTTIME));
+  if (!BN_reduce_montgomery(&tmp, &base, rsa->mont_p, ctx) ||
+      !BN_mod_exp_mont_consttime(&mp, &tmp, rsa->dmp1, rsa->p, ctx,
+                                 rsa->mont_p)) {
+    OPENSSL_PUT_ERROR(RSA, ERR_R_INTERNAL_ERROR);
+    goto err;
+  }
+
+  /* mq := base^dmq1 mod q.
+   *
+   * |p * q == n| and |p > q| implies |q < q**2 < n < q**3|. Thus, |base| is
+   * first reduced mod |q**2| and then reduced mod |q|. */
+  assert(BN_get_flags(rsa->q, BN_FLG_CONSTTIME));
+  assert(BN_get_flags(rsa->dmq1, BN_FLG_CONSTTIME));
+  if (!BN_reduce_montgomery(&tmp, &base, rsa->mont_qq, ctx) ||
+      !BN_reduce_montgomery(&tmp, &tmp, rsa->mont_q, ctx) ||
+      !BN_mod_exp_mont_consttime(&mq, &tmp, rsa->dmq1, rsa->q, ctx,
+                                 rsa->mont_q)) {
+    OPENSSL_PUT_ERROR(RSA, ERR_R_INTERNAL_ERROR);
+    goto err;
+  }
+
+  /* Combine them with Garner's algorithm.
+   *
+   * |0 <= mq < q < p| and |0 <= mp < p| implies |(-q) < (mp - mq) < p|, so
+   * |BN_mod_sub_quick| can be used.
+   *
+   * In each multiplication, the Montgomery factor cancels out because |tmp| is
+   * not Montgomery-encoded but the second input is. */
+  if (!BN_mod_sub_quick(&tmp, &mp, &mq, rsa->p) ||
+      !BN_mod_mul_montgomery(&tmp, &tmp, rsa->iqmp_mont, rsa->mont_p, ctx) ||
+      !BN_mod_mul_montgomery(&tmp, &tmp, rsa->qmn_mont, rsa->mont_n, ctx) ||
+      !BN_add(&r, &tmp, &mq)) {
+    OPENSSL_PUT_ERROR(RSA, ERR_R_INTERNAL_ERROR);
+    goto err;
   }
 
   /* Verify the result to protect against fault attacks as described in the
@@ -554,18 +594,15 @@ static int rsa_private_transform(RSA *rsa, uint8_t *out, const uint8_t *in,
    * than the CRT attack, but there have likely been improvements since 1997.
    *
    * This check is very cheap assuming |e| is small, which it almost always is. */
-  BIGNUM *vrfy = BN_CTX_get(ctx);
-  if (vrfy == NULL ||
-    !BN_mod_exp_mont(vrfy, result, rsa->e, rsa->n, ctx, rsa->mont_n) ||
-    vrfy->top != f->top ||
-    CRYPTO_memcmp(vrfy->d, f->d,
-                  (size_t)vrfy->top * sizeof(vrfy->d[0])) != 0) {
+  if (!BN_mod_exp_mont(&vrfy, &r, rsa->e, rsa->n, ctx, rsa->mont_n) ||
+      vrfy.top != base.top ||
+      CRYPTO_memcmp(vrfy.d, base.d, (size_t)vrfy.top * sizeof(vrfy.d[0])) != 0) {
     OPENSSL_PUT_ERROR(RSA, ERR_R_INTERNAL_ERROR);
     goto err;
   }
 
-  if (!BN_BLINDING_invert(result, blinding, rsa->mont_n, ctx) ||
-      !BN_bn2bin_padded(out, len, result)) {
+  if (!BN_BLINDING_invert(&r, blinding, rsa->mont_n, ctx) ||
+      !BN_bn2bin_padded(out, len, &r)) {
     OPENSSL_PUT_ERROR(RSA, ERR_R_INTERNAL_ERROR);
     goto err;
   }
@@ -573,91 +610,16 @@ static int rsa_private_transform(RSA *rsa, uint8_t *out, const uint8_t *in,
   ret = 1;
 
 err:
-  BN_CTX_end(ctx);
   BN_CTX_free(ctx);
+  BN_free(&r);
+  BN_free(&tmp);
+  BN_free(&mp);
+  BN_free(&mq);
+  BN_free(&vrfy);
   if (blinding != NULL) {
     rsa_blinding_release(rsa, blinding, blinding_index);
   }
 
-  return ret;
-}
-
-static int mod_exp(BIGNUM *r0, const BIGNUM *I, RSA *rsa, BN_CTX *ctx) {
-  assert(ctx != NULL);
-
-  BIGNUM *r1, *m1, *vrfy;
-  int ret = 0;
-
-  BN_CTX_start(ctx);
-  r1 = BN_CTX_get(ctx);
-  m1 = BN_CTX_get(ctx);
-  vrfy = BN_CTX_get(ctx);
-  if (r1 == NULL ||
-      m1 == NULL ||
-      vrfy == NULL) {
-    goto err;
-  }
-
-  /* compute I mod q */
-  assert(BN_get_flags(rsa->q, BN_FLG_CONSTTIME));
-  if (!BN_mod(r1, I, rsa->q, ctx)) {
-    goto err;
-  }
-
-  /* compute r1^dmq1 mod q */
-  assert(BN_get_flags(rsa->dmq1, BN_FLG_CONSTTIME));
-  if (!BN_mod_exp_mont_consttime(m1, r1, rsa->dmq1, rsa->q, ctx, rsa->mont_q)) {
-    goto err;
-  }
-
-  /* compute I mod p */
-  assert(BN_get_flags(rsa->p, BN_FLG_CONSTTIME));
-  if (!BN_mod(r1, I, rsa->p, ctx)) {
-    goto err;
-  }
-
-  /* compute r1^dmp1 mod p */
-  assert(BN_get_flags(rsa->dmp1, BN_FLG_CONSTTIME));
-  if (!BN_mod_exp_mont_consttime(r0, r1, rsa->dmp1, rsa->p, ctx, rsa->mont_p)) {
-    goto err;
-  }
-
-  assert(BN_cmp(rsa->q, rsa->p) < 0);
-  assert(!BN_is_negative(r0) && BN_cmp(r0, rsa->p) < 0);
-  assert(!BN_is_negative(r0) && BN_cmp(m1, rsa->q) < 0);
-
-  if (!BN_sub(r0, r0, m1)) {
-    goto err;
-  }
-  if (BN_is_negative(r0)) {
-    if (!BN_add(r0, r0, rsa->p)) {
-      goto err;
-    }
-  }
-
-  assert(!BN_is_negative(r0));
-  assert(BN_cmp(r0, rsa->p) < 0);
-
-  if (!BN_mul(r1, r0, rsa->iqmp, ctx)) {
-    goto err;
-  }
-
-  assert(BN_get_flags(rsa->p, BN_FLG_CONSTTIME));
-  if (!BN_mod(r0, r1, rsa->p, ctx)) {
-    goto err;
-  }
-
-  if (!BN_mul(r1, r0, rsa->q, ctx)) {
-    goto err;
-  }
-  if (!BN_add(r0, r1, m1)) {
-    goto err;
-  }
-
-  ret = 1;
-
-err:
-  BN_CTX_end(ctx);
   return ret;
 }
 

@@ -130,16 +130,41 @@ int rsa_new_end(RSA *rsa, BN_CTX *ctx) {
   assert(rsa->iqmp != NULL);
   assert(BN_get_flags(rsa->iqmp, BN_FLG_CONSTTIME));
 
+  int ret = 0;
+
+  BIGNUM qq;
+  BN_init(&qq);
+  BN_set_flags(&qq, BN_FLG_CONSTTIME);
+
   rsa->mont_n = BN_MONT_CTX_new();
   rsa->mont_p = BN_MONT_CTX_new();
   rsa->mont_q = BN_MONT_CTX_new();
-  if (rsa->mont_n == NULL || !BN_MONT_CTX_set(rsa->mont_n, rsa->n, ctx) ||
-      rsa->mont_p == NULL || !BN_MONT_CTX_set(rsa->mont_p, rsa->p, ctx) ||
-      rsa->mont_q == NULL || !BN_MONT_CTX_set(rsa->mont_q, rsa->q, ctx)) {
-    return 0;
+  rsa->mont_qq = BN_MONT_CTX_new();
+  rsa->qmn_mont = BN_new();
+  rsa->iqmp_mont = BN_new();
+  if (rsa->mont_n == NULL ||
+      rsa->mont_p == NULL ||
+      rsa->mont_q == NULL ||
+      rsa->mont_q == NULL ||
+      rsa->mont_qq == NULL ||
+      rsa->qmn_mont == NULL ||
+      rsa->iqmp_mont == NULL ||
+      !BN_MONT_CTX_set(rsa->mont_n, rsa->n, ctx) ||
+      !BN_MONT_CTX_set(rsa->mont_p, rsa->p, ctx) ||
+      !BN_MONT_CTX_set(rsa->mont_q, rsa->q, ctx) ||
+      !BN_mod_mul_montgomery(&qq, rsa->q, rsa->q, rsa->mont_n, ctx) ||
+      !BN_to_montgomery(&qq, &qq, rsa->mont_n, ctx) ||
+      !BN_MONT_CTX_set(rsa->mont_qq, &qq, ctx) ||
+      !BN_to_montgomery(rsa->qmn_mont, rsa->q, rsa->mont_n, ctx) ||
+      !BN_to_montgomery(rsa->iqmp_mont, rsa->iqmp, rsa->mont_p, ctx)) {
+    goto err;
   }
 
-  return RSA_check_key(rsa, ctx);
+  ret = RSA_check_key(rsa, ctx);
+
+err:
+  BN_free(&qq);
+  return ret;
 }
 
 void RSA_free(RSA *rsa) {
@@ -160,6 +185,9 @@ void RSA_free(RSA *rsa) {
   BN_MONT_CTX_free(rsa->mont_n);
   BN_MONT_CTX_free(rsa->mont_p);
   BN_MONT_CTX_free(rsa->mont_q);
+  BN_MONT_CTX_free(rsa->mont_qq);
+  BN_free(rsa->qmn_mont);
+  BN_free(rsa->iqmp_mont);
   for (u = 0; u < rsa->num_blindings; u++) {
     BN_BLINDING_free(rsa->blindings[u]);
   }

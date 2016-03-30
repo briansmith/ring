@@ -290,6 +290,10 @@ struct rsa_st {
   BN_MONT_CTX *mont_n;
   BN_MONT_CTX *mont_p;
   BN_MONT_CTX *mont_q;
+  BN_MONT_CTX *mont_qq;
+
+  BIGNUM *qmn_mont; /* |q|, Montgomery-encoded using |mont_n|. */
+  BIGNUM *iqmp_mont; /* |iqmp|, Montgomery-encoded using |mont_p|. */
 
   /* num_blindings contains the size of the |blindings| and |blindings_inuse|
    * arrays. This member and the |blindings_inuse| array are protected by
