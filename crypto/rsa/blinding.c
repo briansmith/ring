@@ -121,8 +121,8 @@
 #define BN_BLINDING_COUNTER 32
 
 struct bn_blinding_st {
-  BIGNUM *A;
-  BIGNUM *Ai;
+  BIGNUM *A; /* The base blinding factor, Montgomery-encoded. */
+  BIGNUM *Ai; /* The inverse of the blinding factor, Montgomery-encoded. */
   unsigned counter;
 };
 
@@ -195,6 +195,9 @@ err:
 }
 
 int BN_BLINDING_convert(BIGNUM *n, BN_BLINDING *b, const RSA *rsa, BN_CTX *ctx) {
+  /* |n| is not Montgomery-encoded and |b->A| is. |BN_mod_mul_montgomery|
+   * cancels one Montgomery factor, so the resulting value of |n| is unencoded.
+   */
   if (!bn_blinding_update(b, rsa, ctx) ||
       !BN_mod_mul_montgomery(n, n, b->A, rsa->mont_n, ctx)) {
     return 0;
@@ -205,11 +208,10 @@ int BN_BLINDING_convert(BIGNUM *n, BN_BLINDING *b, const RSA *rsa, BN_CTX *ctx) 
 
 int BN_BLINDING_invert(BIGNUM *n, const BN_BLINDING *b, BN_MONT_CTX *mont,
                        BN_CTX *ctx) {
-  if (!BN_mod_mul_montgomery(n, n, b->Ai, mont, ctx)) {
-    return 0;
-  }
-
-  return 1;
+  /* |n| is not Montgomery-encoded and |b->Ai| is. |BN_mod_mul_montgomery|
+   * cancels one Montgomery factor, so the resulting value of |n| is unencoded.
+   */
+  return BN_mod_mul_montgomery(n, n, b->Ai, mont, ctx);
 }
 
 static int bn_blinding_create_param(BN_BLINDING *b, const RSA *rsa, BN_CTX *ctx) {
@@ -257,5 +259,6 @@ static int bn_blinding_create_param(BN_BLINDING *b, const RSA *rsa, BN_CTX *ctx)
     OPENSSL_PUT_ERROR(RSA, ERR_R_INTERNAL_ERROR);
     return 0;
   }
+
   return 1;
 }

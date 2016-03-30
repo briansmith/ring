@@ -219,6 +219,9 @@ err:
  * On success, the index of the assigned BN_BLINDING is written to
  * |*index_used| and must be passed to |rsa_blinding_release| when finished. */
 static BN_BLINDING *rsa_blinding_get(RSA *rsa, unsigned *index_used) {
+  assert(ctx != NULL);
+  assert(rsa->mont_n != NULL);
+
   BN_BLINDING *ret = NULL;
   BN_BLINDING **new_blindings;
   uint8_t *new_blindings_inuse;
