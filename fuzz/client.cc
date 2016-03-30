@@ -18,7 +18,6 @@ static GlobalState g_state;
 extern "C" int LLVMFuzzerTestOneInput(uint8_t *buf, size_t len) {
   RAND_reset_for_fuzzing();
 
-  // This only fuzzes the initial flow from the server so far.
   SSL *client = SSL_new(g_state.ctx);
   BIO *in = BIO_new(BIO_s_mem());
   BIO *out = BIO_new(BIO_s_mem());
