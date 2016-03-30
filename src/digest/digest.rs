@@ -615,8 +615,8 @@ mod tests {
     /// This is not run in dev (debug) builds because it is too slow.
     macro_rules! test_i_u_f {
         ( $test_name:ident, $alg:expr) => {
+            #[cfg(not(debug_assertions))]
             #[test]
-            #[ignore]
             fn $test_name() {
                 let mut input = vec![0u8; $alg.block_len * 2];
                 for i in 0..input.len() {

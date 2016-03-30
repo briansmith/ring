@@ -295,9 +295,9 @@ mod tests {
                   "crypto/cipher/test/aes_128_gcm_tests.txt");
     }
 
+    #[cfg(not(debug_assertions))]
     #[test]
-    #[ignore]
-    pub fn test_aes_gcm_128_slow() {
+    pub fn test_aes_gcm_128_in_prefix_len_extra() {
         test_aead_slow(&aead::AES_128_GCM,
                   "crypto/cipher/test/aes_128_gcm_tests.txt");
     }
@@ -308,9 +308,9 @@ mod tests {
                   "crypto/cipher/test/aes_256_gcm_tests.txt");
     }
 
+    #[cfg(not(debug_assertions))]
     #[test]
-    #[ignore]
-    pub fn test_aes_gcm_256_slow() {
+    pub fn test_aes_gcm_256_in_prefix_len_extra() {
         test_aead_slow(&aead::AES_256_GCM,
                   "crypto/cipher/test/aes_256_gcm_tests.txt");
     }
@@ -321,9 +321,9 @@ mod tests {
                   "crypto/cipher/test/chacha20_poly1305_tests.txt");
     }
 
+    #[cfg(not(debug_assertions))]
     #[test]
-    #[ignore]
-    pub fn test_chacha20_poly1305_slow() {
+    pub fn test_chacha20_poly1305_in_prefix_len_extra() {
         test_aead_slow(&aead::CHACHA20_POLY1305,
                   "crypto/cipher/test/chacha20_poly1305_tests.txt");
     }
@@ -334,9 +334,9 @@ mod tests {
                   "crypto/cipher/test/chacha20_poly1305_old_tests.txt");
     }
 
+    #[cfg(not(debug_assertions))]
     #[test]
-    #[ignore]
-    pub fn test_chacha20_poly1305_old_slow() {
+    pub fn test_chacha20_poly1305_old_in_prefix_len_extra() {
         test_aead_slow(&aead::CHACHA20_POLY1305_OLD,
                   "crypto/cipher/test/chacha20_poly1305_old_tests.txt");
     }
@@ -459,6 +459,7 @@ mod tests {
         });
     }
 
+    #[cfg(not(debug_assertions))]
     fn test_aead_slow(aead_alg: &'static aead::Algorithm, file_path: &str) {
         file_test::run(file_path, |section, test_case| {
             const PREFIX: [u8; 4096] = [123; 4096];
