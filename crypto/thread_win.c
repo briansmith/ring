@@ -20,7 +20,6 @@
 #include <windows.h>
 #pragma warning(pop)
 
-#include <assert.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -31,61 +30,16 @@
 OPENSSL_COMPILE_ASSERT(sizeof(CRYPTO_MUTEX) >= sizeof(CRITICAL_SECTION),
                        CRYPTO_MUTEX_too_small);
 
-union run_once_arg_t {
-  void (*func)(void);
-  void *data;
-};
-
-static void run_once(CRYPTO_once_t *once, void (*init)(union run_once_arg_t),
-                     union run_once_arg_t arg) {
-  /* Values must be aligned. */
-  assert((((uintptr_t) once) & 3) == 0);
-
-  /* This assumes that reading *once has acquire semantics. This should be true
-   * on x86 and x86-64, where we expect Windows to run. */
-#if !defined(OPENSSL_X86) && !defined(OPENSSL_X86_64)
-#error "Windows once code may not work on other platforms." \
-       "You can use InitOnceBeginInitialize on >=Vista"
-#endif
-  if (*once == 1) {
-    return;
-  }
-
-  for (;;) {
-    switch (InterlockedCompareExchange(once, 2, 0)) {
-      case 0:
-        /* The value was zero so we are the first thread to call |CRYPTO_once|
-         * on it. */
-        init(arg);
-        /* Write one to indicate that initialisation is complete. */
-        InterlockedExchange(once, 1);
-        return;
-
-      case 1:
-        /* Another thread completed initialisation between our fast-path check
-         * and |InterlockedCompareExchange|. */
-        return;
-
-      case 2:
-        /* Another thread is running the initialisation. Switch to it then try
-         * again. */
-        SwitchToThread();
-        break;
-
-      default:
-        abort();
-    }
-  }
+static BOOL CALLBACK call_once_init(INIT_ONCE *once, void *arg, void **out) {
+  void (**init)(void) = (void (**)(void))arg;
+  (**init)();
+  return TRUE;
 }
 
-static void call_once_init(union run_once_arg_t arg) {
-  arg.func();
-}
-
-void CRYPTO_once(CRYPTO_once_t *in_once, void (*init)(void)) {
-  union run_once_arg_t arg;
-  arg.func = init;
-  run_once(in_once, call_once_init, arg);
+void CRYPTO_once(CRYPTO_once_t *once, void (*init)(void)) {
+  if (!InitOnceExecuteOnce(once, call_once_init, &init, NULL)) {
+    abort();
+  }
 }
 
 void CRYPTO_MUTEX_init(CRYPTO_MUTEX *lock) {
@@ -111,18 +65,21 @@ void CRYPTO_MUTEX_cleanup(CRYPTO_MUTEX *lock) {
   DeleteCriticalSection((CRITICAL_SECTION *) lock);
 }
 
-static void static_lock_init(union run_once_arg_t arg) {
-  struct CRYPTO_STATIC_MUTEX *lock = arg.data;
+static BOOL CALLBACK static_lock_init(INIT_ONCE *once, void *arg, void **out) {
+  struct CRYPTO_STATIC_MUTEX *lock = arg;
   if (!InitializeCriticalSectionAndSpinCount(&lock->lock, 0x400)) {
     abort();
   }
+  return TRUE;
 }
 
 void CRYPTO_STATIC_MUTEX_lock_read(struct CRYPTO_STATIC_MUTEX *lock) {
-  union run_once_arg_t arg;
-  arg.data = lock;
-  /* Since we have to support Windows XP, read locks are actually exclusive. */
-  run_once(&lock->once, static_lock_init, arg);
+  /* TODO(davidben): Consider replacing these with SRWLOCK now that we no longer
+   * need to support Windows XP. Currently, read locks are actually
+   * exclusive. */
+  if (!InitOnceExecuteOnce(&lock->once, static_lock_init, lock, NULL)) {
+    abort();
+  }
   EnterCriticalSection(&lock->lock);
 }
 
