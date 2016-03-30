@@ -142,7 +142,7 @@ extern "C" {
 
 #if defined(__GNUC__)
 #define OPENSSL_PRINTF_FORMAT_FUNC(string_index, first_to_check) \
-        __attribute__((format(printf, string_index, first_to_check)))
+        __attribute__((__format__(__printf__, string_index, first_to_check)))
 #else
 #define OPENSSL_PRINTF_FORMAT_FUNC(string_index, first_to_check)
 #endif
