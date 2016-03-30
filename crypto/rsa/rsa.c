@@ -109,50 +109,37 @@ RSA *rsa_new_begin(void) {
 int rsa_new_end(RSA *rsa, BN_CTX *ctx) {
   assert(ctx != NULL);
 
-  rsa->mont_n = BN_MONT_CTX_new();
-  if (rsa->mont_n == NULL) {
-    return 0;
-  }
-  if (!BN_MONT_CTX_set(rsa->mont_n, rsa->n, ctx)) {
-    return 0;
-  }
+  assert(rsa->n != NULL);
+  assert(rsa->e != NULL);
 
-  /* Make sure BN_mod_inverse in Montgomery intialization uses the
-   * BN_FLG_CONSTTIME flag. */
-
+  assert(rsa->d != NULL);
   assert(BN_get_flags(rsa->d, BN_FLG_CONSTTIME));
 
-  if (rsa->dmp1) {
-    assert(BN_get_flags(rsa->dmp1, BN_FLG_CONSTTIME));
+  assert(rsa->p != NULL);
+  assert(BN_get_flags(rsa->p, BN_FLG_CONSTTIME));
+
+  assert(rsa->q != NULL);
+  assert(BN_get_flags(rsa->q, BN_FLG_CONSTTIME));
+
+  assert(rsa->dmp1 != NULL);
+  assert(BN_get_flags(rsa->dmp1, BN_FLG_CONSTTIME));
+
+  assert(rsa->dmq1 != NULL);
+  assert(BN_get_flags(rsa->dmq1, BN_FLG_CONSTTIME));
+
+  assert(rsa->iqmp != NULL);
+  assert(BN_get_flags(rsa->iqmp, BN_FLG_CONSTTIME));
+
+  rsa->mont_n = BN_MONT_CTX_new();
+  rsa->mont_p = BN_MONT_CTX_new();
+  rsa->mont_q = BN_MONT_CTX_new();
+  if (rsa->mont_n == NULL || !BN_MONT_CTX_set(rsa->mont_n, rsa->n, ctx) ||
+      rsa->mont_p == NULL || !BN_MONT_CTX_set(rsa->mont_p, rsa->p, ctx) ||
+      rsa->mont_q == NULL || !BN_MONT_CTX_set(rsa->mont_q, rsa->q, ctx)) {
+    return 0;
   }
 
-  if (rsa->dmq1) {
-    assert(BN_get_flags(rsa->dmq1, BN_FLG_CONSTTIME));
-  }
-
-  if (rsa->iqmp) {
-    assert(BN_get_flags(rsa->iqmp, BN_FLG_CONSTTIME));
-  }
-
-  if (rsa->p) {
-    assert(BN_get_flags(rsa->p, BN_FLG_CONSTTIME));
-    rsa->mont_p = BN_MONT_CTX_new();
-    if (rsa->mont_p == NULL ||
-        !BN_MONT_CTX_set(rsa->mont_p, rsa->p, ctx)) {
-      return 0;
-    }
-  }
-
-  if (rsa->q) {
-    assert(BN_get_flags(rsa->q, BN_FLG_CONSTTIME));
-    rsa->mont_q = BN_MONT_CTX_new();
-    if (rsa->mont_q == NULL ||
-        !BN_MONT_CTX_set(rsa->mont_q, rsa->q, ctx)) {
-      return 0;
-    }
-  }
-
-  return 1;
+  return RSA_check_key(rsa, ctx);
 }
 
 void RSA_free(RSA *rsa) {
@@ -379,31 +366,11 @@ out:
   return ret;
 }
 
-int RSA_check_key(const RSA *key) {
+int RSA_check_key(const RSA *key, BN_CTX *ctx) {
+  assert(ctx);
+
   BIGNUM n, pm1, qm1, lcm, gcd, de, dmp1, dmq1, iqmp;
-  BN_CTX *ctx;
-  int ok = 0, has_crt_values;
-
-  if ((key->p != NULL) != (key->q != NULL)) {
-    OPENSSL_PUT_ERROR(RSA, RSA_R_ONLY_ONE_OF_P_Q_GIVEN);
-    return 0;
-  }
-
-  if (!key->n || !key->e) {
-    OPENSSL_PUT_ERROR(RSA, RSA_R_VALUE_MISSING);
-    return 0;
-  }
-
-  if (!key->d || !key->p) {
-    /* For key without p and q, there's nothing that can be checked. */
-    return 1;
-  }
-
-  ctx = BN_CTX_new();
-  if (ctx == NULL) {
-    OPENSSL_PUT_ERROR(RSA, ERR_R_MALLOC_FAILURE);
-    return 0;
-  }
+  int ok = 0;
 
   BN_init(&n);
   BN_init(&pm1);
@@ -439,30 +406,21 @@ int RSA_check_key(const RSA *key) {
     goto out;
   }
 
-  has_crt_values = key->dmp1 != NULL;
-  if (has_crt_values != (key->dmq1 != NULL) ||
-      has_crt_values != (key->iqmp != NULL)) {
-    OPENSSL_PUT_ERROR(RSA, RSA_R_INCONSISTENT_SET_OF_CRT_VALUES);
+  if (/* dmp1 = d mod (p-1) */
+      !BN_mod(&dmp1, key->d, &pm1, ctx) ||
+      /* dmq1 = d mod (q-1) */
+      !BN_mod(&dmq1, key->d, &qm1, ctx) ||
+      /* iqmp = q^-1 mod p */
+      !BN_mod_inverse(&iqmp, key->q, key->p, ctx)) {
+    OPENSSL_PUT_ERROR(RSA, ERR_LIB_BN);
     goto out;
   }
 
-  if (has_crt_values) {
-    if (/* dmp1 = d mod (p-1) */
-        !BN_mod(&dmp1, key->d, &pm1, ctx) ||
-        /* dmq1 = d mod (q-1) */
-        !BN_mod(&dmq1, key->d, &qm1, ctx) ||
-        /* iqmp = q^-1 mod p */
-        !BN_mod_inverse(&iqmp, key->q, key->p, ctx)) {
-      OPENSSL_PUT_ERROR(RSA, ERR_LIB_BN);
-      goto out;
-    }
-
-    if (BN_cmp(&dmp1, key->dmp1) != 0 ||
-        BN_cmp(&dmq1, key->dmq1) != 0 ||
-        BN_cmp(&iqmp, key->iqmp) != 0) {
-      OPENSSL_PUT_ERROR(RSA, RSA_R_CRT_VALUES_INCORRECT);
-      goto out;
-    }
+  if (BN_cmp(&dmp1, key->dmp1) != 0 ||
+      BN_cmp(&dmq1, key->dmq1) != 0 ||
+      BN_cmp(&iqmp, key->iqmp) != 0) {
+    OPENSSL_PUT_ERROR(RSA, RSA_R_CRT_VALUES_INCORRECT);
+    goto out;
   }
 
   ok = 1;
@@ -477,8 +435,6 @@ out:
   BN_free(&dmp1);
   BN_free(&dmq1);
   BN_free(&iqmp);
-  BN_CTX_free(ctx);
 
   return ok;
 }
-

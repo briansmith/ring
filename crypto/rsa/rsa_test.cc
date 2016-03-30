@@ -240,11 +240,6 @@ static bool TestRSA(const uint8_t *der, size_t der_len,
     return false;
   }
 
-  if (!RSA_check_key(key.get())) {
-    fprintf(stderr, "RSA_check_key failed\n");
-    return false;
-  }
-
   uint8_t ciphertext[256];
 
   size_t ciphertext_len = 0;
@@ -319,161 +314,6 @@ static bool TestRSA(const uint8_t *der, size_t der_len,
     }
   }
 #endif /* if 0 */
-
-  return true;
-}
-
-static bool TestBadKey() {
-  ScopedRSA key(RSA_generate(512, RSA_F4, nullptr));
-  if (!key) {
-    fprintf(stderr, "RSA_generate failed.\n");
-    return false;
-  }
-
-  if (!BN_add(key->p, key->p, BN_value_one())) {
-    fprintf(stderr, "BN error.\n");
-    return false;
-  }
-
-  if (RSA_check_key(key.get())) {
-    fprintf(stderr, "RSA_check_key passed with invalid key!\n");
-    return false;
-  }
-
-  ERR_clear_error();
-  return true;
-}
-
-static bool TestOnlyDGiven() {
-  static const char kN[] =
-      "00e77bbf3889d4ef36a9a25d4d69f3f632eb4362214c74517da6d6aeaa9bd09ac42b2662"
-      "1cd88f3a6eb013772fc3bf9f83914b6467231c630202c35b3e5808c659";
-  static const char kE[] = "010001";
-  static const char kD[] =
-      "0365db9eb6d73b53b015c40cd8db4de7dd7035c68b5ac1bf786d7a4ee2cea316eaeca21a"
-      "73ac365e58713195f2ae9849348525ca855386b6d028e437a9495a01";
-
-  uint8_t buf[64];
-  unsigned buf_len = sizeof(buf);
-  ScopedRSA key(rsa_new_begin());
-  ScopedBN_CTX ctx(BN_CTX_new());
-  // XXX TODO: |rsa_new_end| should fail because the complete key isn't provided.
-  if (!key ||
-      !BN_hex2bn(&key->n, kN) ||
-      !BN_hex2bn(&key->e, kE) ||
-      !BN_hex2bn_with_flags(&key->d, kD, BN_FLG_CONSTTIME) ||
-      !rsa_new_end(key.get(), ctx.get()) ||
-      RSA_size(key.get()) > sizeof(buf)) {
-    return false;
-  }
-
-  if (!RSA_check_key(key.get())) {
-    fprintf(stderr, "RSA_check_key failed with only n, d, and e given.\n");
-    return false;
-  }
-
-  const uint8_t kDummyHash[16] = {0};
-
-  if (!RSA_sign(NID_sha256, kDummyHash, sizeof(kDummyHash), buf, &buf_len,
-                key.get())) {
-    fprintf(stderr, "RSA_sign failed with only n, d, and e given.\n");
-    return false;
-  }
-
-  uint8_t *public_key_der;
-  size_t public_key_der_len;
-  if (!RSA_public_key_to_bytes(&public_key_der, &public_key_der_len,
-                               key.get())) {
-    fprintf(stderr, "RSA_public_key_to_bytes failed with only d given.\n");
-    return false;
-  }
-  ScopedOpenSSLBytes delete_public_key_der(public_key_der);
-
-  if (!RSA_verify_pkcs1_signed_digest(512, 8192, NID_sha256, kDummyHash,
-                                      sizeof(kDummyHash), buf, buf_len,
-                                      public_key_der, public_key_der_len)) {
-    fprintf(stderr, "RSA_verify_pkcs1_signed_digest failed with only n, d, and e given.\n");
-    return false;
-  }
-
-  // Keys without the public exponent must continue to work when blinding is
-  // disabled to support Java's RSAPrivateKeySpec API. See
-  // https://bugs.chromium.org/p/boringssl/issues/detail?id=12.
-  //
-  // XXX TODO: |rsa_new_end| should fail because the complete key isn't provided.
-  ScopedRSA key2(rsa_new_begin());
-  if (!key2 ||
-      !BN_hex2bn(&key2->n, kN) ||
-      !BN_hex2bn_with_flags(&key2->d, kD, BN_FLG_CONSTTIME) ||
-      !rsa_new_end(key2.get(), ctx.get())) {
-    return false;
-  }
-  key2->flags |= RSA_FLAG_NO_BLINDING;
-
-  if (RSA_size(key2.get()) > sizeof(buf)) {
-    return false;
-  }
-
-  if (!RSA_sign(NID_sha256, kDummyHash, sizeof(kDummyHash), buf, &buf_len,
-                key2.get())) {
-    fprintf(stderr, "RSA_sign failed with only n and d given.\n");
-    return false;
-  }
-
-  if (!RSA_public_key_to_bytes(&public_key_der, &public_key_der_len,
-                               key.get())) {
-    fprintf(stderr, "RSA_public_key_to_bytes failed with only d given.\n");
-    return false;
-  }
-  delete_public_key_der.reset(public_key_der);
-
-  if (!RSA_verify_pkcs1_signed_digest(512, 8192, NID_sha256, kDummyHash,
-                                      sizeof(kDummyHash), buf, buf_len,
-                                      public_key_der, public_key_der_len)) {
-    fprintf(stderr,
-            "Could not verify signature produced from key with only n and d "
-            "given.\n");
-    return false;
-  }
-
-  return true;
-}
-
-static bool TestRecoverCRTParams() {
-  ERR_clear_error();
-
-  for (unsigned i = 0; i < 1; i++) {
-    ScopedRSA key1(RSA_generate(512, RSA_F4, nullptr));
-    if (!key1) {
-      fprintf(stderr, "RSA_generate failed.\n");
-      return false;
-    }
-
-    if (!RSA_check_key(key1.get())) {
-      fprintf(stderr, "RSA_check_key failed with original key.\n");
-      return false;
-    }
-
-    ScopedBN_CTX ctx(BN_CTX_new());
-    if (!ctx) {
-      return false;
-    }
-
-    ScopedRSA key2(rsa_new_begin());
-    if (!key2) {
-      return false;
-    }
-    key2->n = BN_dup(key1->n);
-    key2->e = BN_dup(key1->e);
-    key2->d = BN_dup(key1->d);
-    if (key2->n == nullptr || key2->e == nullptr || key2->d == nullptr) {
-      return false;
-    }
-    BN_set_flags(key2->d, BN_FLG_CONSTTIME);
-    if (!rsa_new_end(key2.get(), ctx.get())) {
-      return false;
-    }
-  }
 
   return true;
 }
@@ -572,9 +412,6 @@ int main(void) {
                sizeof(kOAEPCiphertext2) - 1) ||
       !TestRSA(kKey3, sizeof(kKey3) - 1, kOAEPCiphertext3,
                sizeof(kOAEPCiphertext3) - 1) ||
-      !TestOnlyDGiven() ||
-      !TestRecoverCRTParams() ||
-      !TestBadKey() ||
       !TestASN1() ||
       !TestBadExponent()) {
     return 1;

@@ -510,16 +510,18 @@ static int rsa_private_transform(RSA *rsa, uint8_t *out, const uint8_t *in,
   BN_CTX *ctx = NULL;
   unsigned blinding_index = 0;
   BN_BLINDING *blinding = NULL;
-  int ret = 0;
 
   ctx = BN_CTX_new();
   if (ctx == NULL) {
-    goto err;
+    return 0;
   }
+
+  int ret = 0;
+
   BN_CTX_start(ctx);
+
   f = BN_CTX_get(ctx);
   result = BN_CTX_get(ctx);
-
   if (f == NULL || result == NULL) {
     OPENSSL_PUT_ERROR(RSA, ERR_R_MALLOC_FAILURE);
     goto err;
@@ -535,36 +537,12 @@ static int rsa_private_transform(RSA *rsa, uint8_t *out, const uint8_t *in,
     goto err;
   }
 
-  if (!(rsa->flags & RSA_FLAG_NO_BLINDING)) {
-    blinding = rsa_blinding_get(rsa, &blinding_index);
-    if (blinding == NULL) {
-      OPENSSL_PUT_ERROR(RSA, ERR_R_INTERNAL_ERROR);
-      goto err;
-    }
-    if (!BN_BLINDING_convert(f, blinding, rsa, ctx)) {
-      goto err;
-    }
-  }
-
-  if ((rsa->p != NULL) && (rsa->q != NULL) && (rsa->dmp1 != NULL) &&
-       (rsa->dmq1 != NULL) && (rsa->iqmp != NULL)) {
-    if (!mod_exp(result, f, rsa, ctx)) {
-      goto err;
-    }
-  } else {
-    assert(BN_get_flags(rsa->d, BN_FLG_CONSTTIME));
-    if (!BN_mod_exp_mont_consttime(result, f, rsa->d, rsa->n, ctx, rsa->mont_n)) {
-      goto err;
-    }
-  }
-
-  if (blinding) {
-    if (!BN_BLINDING_invert(result, blinding, rsa->mont_n, ctx)) {
-      goto err;
-    }
-  }
-
-  if (!BN_bn2bin_padded(out, len, result)) {
+  blinding = rsa_blinding_get(rsa, &blinding_index);
+  if (blinding == NULL ||
+      !BN_BLINDING_convert(f, blinding, rsa, ctx) ||
+      !mod_exp(result, f, rsa, ctx) ||
+      !BN_BLINDING_invert(result, blinding, rsa->mont_n, ctx) ||
+      !BN_bn2bin_padded(out, len, result)) {
     OPENSSL_PUT_ERROR(RSA, ERR_R_INTERNAL_ERROR);
     goto err;
   }
@@ -572,10 +550,8 @@ static int rsa_private_transform(RSA *rsa, uint8_t *out, const uint8_t *in,
   ret = 1;
 
 err:
-  if (ctx != NULL) {
-    BN_CTX_end(ctx);
-    BN_CTX_free(ctx);
-  }
+  BN_CTX_end(ctx);
+  BN_CTX_free(ctx);
   if (blinding != NULL) {
     rsa_blinding_release(rsa, blinding, blinding_index);
   }
@@ -661,36 +637,33 @@ static int mod_exp(BIGNUM *r0, const BIGNUM *I, RSA *rsa, BN_CTX *ctx) {
     goto err;
   }
 
-  if (rsa->e && rsa->n) {
-    if (!BN_mod_exp_mont(vrfy, r0, rsa->e, rsa->n, ctx, rsa->mont_n)) {
+  if (!BN_mod_exp_mont(vrfy, r0, rsa->e, rsa->n, ctx, rsa->mont_n)) {
+    goto err;
+  }
+  /* If 'I' was greater than (or equal to) rsa->n, the operation
+   * will be equivalent to using 'I mod n'. However, the result of
+   * the verify will *always* be less than 'n' so we don't check
+   * for absolute equality, just congruency. */
+  if (!BN_sub(vrfy, vrfy, I)) {
+    goto err;
+  }
+  if (!BN_mod(vrfy, vrfy, rsa->n, ctx)) {
+    goto err;
+  }
+  if (BN_is_negative(vrfy)) {
+    if (!BN_add(vrfy, vrfy, rsa->n)) {
       goto err;
-    }
-    /* If 'I' was greater than (or equal to) rsa->n, the operation
-     * will be equivalent to using 'I mod n'. However, the result of
-     * the verify will *always* be less than 'n' so we don't check
-     * for absolute equality, just congruency. */
-    if (!BN_sub(vrfy, vrfy, I)) {
-      goto err;
-    }
-    if (!BN_mod(vrfy, vrfy, rsa->n, ctx)) {
-      goto err;
-    }
-    if (BN_is_negative(vrfy)) {
-      if (!BN_add(vrfy, vrfy, rsa->n)) {
-        goto err;
-      }
-    }
-    if (!BN_is_zero(vrfy)) {
-      /* 'I' and 'vrfy' aren't congruent mod n. Don't leak
-       * miscalculated CRT output, just do a raw (slower)
-       * mod_exp and return that instead. */
-
-      assert(BN_get_flags(rsa->d, BN_FLG_CONSTTIME));
-      if (!BN_mod_exp_mont_consttime(r0, I, rsa->d, rsa->n, ctx, rsa->mont_n)) {
-        goto err;
-      }
     }
   }
+  if (!BN_is_zero(vrfy)) {
+    /* 'I' and 'vrfy' aren't congruent mod n. Don't leak miscalculated CRT
+     * output, just do a raw (slower) mod_exp and return that instead. */
+    assert(BN_get_flags(rsa->d, BN_FLG_CONSTTIME));
+    if (!BN_mod_exp_mont_consttime(r0, I, rsa->d, rsa->n, ctx, rsa->mont_n)) {
+      goto err;
+    }
+  }
+
   ret = 1;
 
 err:

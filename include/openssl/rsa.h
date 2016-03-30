@@ -187,7 +187,7 @@ OPENSSL_EXPORT RSA *RSAPrivateKey_dup(const RSA *rsa);
 /* RSA_check_key performs basic validatity tests on |rsa|. It returns one if
  * they pass and zero otherwise. Opaque keys and public keys always pass. If it
  * returns zero then a more detailed error is available on the error queue. */
-OPENSSL_EXPORT int RSA_check_key(const RSA *rsa);
+OPENSSL_EXPORT int RSA_check_key(const RSA *rsa, BN_CTX *ctx);
 
 /* RSA_add_pkcs1_prefix builds a version of |msg| prefixed with the DigestInfo
  * header for the given hash function and sets |out_msg| to point to it. On
