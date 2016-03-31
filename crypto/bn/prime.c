@@ -531,7 +531,9 @@ static int witness(BIGNUM *w, const BIGNUM *a, const BIGNUM *a1,
   }
 
   while (--k) {
-    if (!BN_mod_mul(w, w, w, a, ctx)) { /* w := w^2 mod a */
+    /* w := w^2 mod a */
+    if (!BN_mod_mul_montgomery(w, w, w, mont, ctx) ||
+        !BN_to_montgomery(w, w, mont, ctx)) {
       return -1;
     }
 

@@ -576,7 +576,12 @@ static int rsa_private_transform(RSA *rsa, uint8_t *out, const uint8_t *in,
    * |BN_mod_sub_quick| can be used.
    *
    * In each multiplication, the Montgomery factor cancels out because |tmp| is
-   * not Montgomery-encoded but the second input is. */
+   * not Montgomery-encoded but the second input is.
+   *
+   * In the last multiplication, the reduction mod |n| isn't necessary because
+   * |tmp < p| and |p * q == n| implies |tmp * q < n|. Montgomery
+   * multiplication is used purely because it is implemented more efficiently.
+   */
   if (!BN_mod_sub_quick(&tmp, &mp, &mq, rsa->p) ||
       !BN_mod_mul_montgomery(&tmp, &tmp, rsa->iqmp_mont, rsa->mont_p, ctx) ||
       !BN_mod_mul_montgomery(&tmp, &tmp, rsa->qmn_mont, rsa->mont_n, ctx) ||
