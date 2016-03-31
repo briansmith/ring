@@ -192,7 +192,7 @@ OPENSSL_EXPORT EC_KEY *EC_KEY_parse_private_key(CBS *cbs,
 OPENSSL_EXPORT int EC_KEY_marshal_private_key(CBB *cbb, const EC_KEY *key,
                                               unsigned enc_flags);
 
-/* EC_KEY_parse_parameters parses a DER-encoded OBJECT IDENTIFIER as a curve
+/* EC_KEY_parse_curve_name parses a DER-encoded OBJECT IDENTIFIER as a curve
  * name from |cbs| and advances |cbs|. It returns a newly-allocated |EC_GROUP|
  * or NULL on error. */
 OPENSSL_EXPORT EC_GROUP *EC_KEY_parse_curve_name(CBS *cbs);
