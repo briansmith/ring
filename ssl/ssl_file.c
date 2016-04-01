@@ -121,7 +121,6 @@
 #include <openssl/stack.h>
 #include <openssl/x509.h>
 
-#include "../crypto/directory.h"
 #include "internal.h"
 
 
@@ -244,53 +243,6 @@ int SSL_add_file_cert_subjects_to_stack(STACK_OF(X509_NAME) *stack,
 
   (void) sk_X509_NAME_set_cmp_func(stack, oldcmp);
 
-  return ret;
-}
-
-/* Add a directory of certs to a stack.
- *
- * \param stack the stack to append to.
- * \param dir the directory to append from. All files in this directory will be
- *     examined as potential certs. Any that are acceptable to
- *     SSL_add_dir_cert_subjects_to_stack() that are not already in the stack will
- *     be included.
- * \return 1 for success, 0 for failure. Note that in the case of failure some
- *     certs may have been added to \c stack. */
-int SSL_add_dir_cert_subjects_to_stack(STACK_OF(X509_NAME) *stack,
-                                       const char *dir) {
-  OPENSSL_DIR_CTX *d = NULL;
-  const char *filename;
-  int ret = 0;
-
-  /* Note that a side effect is that the CAs will be sorted by name */
-  while ((filename = OPENSSL_DIR_read(&d, dir))) {
-    char buf[1024];
-    int r;
-
-    if (strlen(dir) + strlen(filename) + 2 > sizeof(buf)) {
-      OPENSSL_PUT_ERROR(SSL, SSL_R_PATH_TOO_LONG);
-      goto err;
-    }
-
-    r = BIO_snprintf(buf, sizeof buf, "%s/%s", dir, filename);
-    if (r <= 0 || r >= (int)sizeof(buf) ||
-        !SSL_add_file_cert_subjects_to_stack(stack, buf)) {
-      goto err;
-    }
-  }
-
-  if (errno) {
-    OPENSSL_PUT_ERROR(SSL, ERR_R_SYS_LIB);
-    ERR_add_error_data(3, "OPENSSL_DIR_read(&ctx, '", dir, "')");
-    goto err;
-  }
-
-  ret = 1;
-
-err:
-  if (d) {
-    OPENSSL_DIR_end(&d);
-  }
   return ret;
 }
 
