@@ -116,8 +116,6 @@ add_library(
   cpu-arm-linux.c
   cpu-intel.c
   crypto.c
-  directory_posix.c
-  directory_win.c
   ex_data.c
   mem.c
   refcount_c11.c
