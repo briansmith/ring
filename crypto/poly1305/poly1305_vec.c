@@ -701,9 +701,9 @@ static size_t poly1305_combine(poly1305_state_internal *st, const uint8_t *m,
   t0 &= 0x3ffffff;
   t1 = t1 + c;
 
-  st->HH[0] = ((t0) | (t1 << 26)) & 0xfffffffffffull;
-  st->HH[1] = ((t1 >> 18) | (t2 << 8) | (t3 << 34)) & 0xfffffffffffull;
-  st->HH[2] = ((t3 >> 10) | (t4 << 16)) & 0x3ffffffffffull;
+  st->HH[0] = ((t0) | (t1 << 26)) & UINT64_C(0xfffffffffff);
+  st->HH[1] = ((t1 >> 18) | (t2 << 8) | (t3 << 34)) & UINT64_C(0xfffffffffff);
+  st->HH[2] = ((t3 >> 10) | (t4 << 16)) & UINT64_C(0x3ffffffffff);
 
   return consumed;
 }
