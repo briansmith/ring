@@ -244,10 +244,6 @@ const EVP_AEAD *EVP_aead_chacha20_poly1305(void) {
   return &aead_chacha20_poly1305;
 }
 
-const EVP_AEAD *EVP_aead_chacha20_poly1305_rfc7539(void) {
-  return EVP_aead_chacha20_poly1305();
-}
-
 static void poly1305_update_old(poly1305_state *ctx, const uint8_t *ad,
                                 size_t ad_len, const uint8_t *ciphertext,
                                 size_t ciphertext_len) {

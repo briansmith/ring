@@ -331,14 +331,6 @@ OPENSSL_EXPORT int EVP_AEAD_CTX_get_iv(const EVP_AEAD_CTX *ctx,
                                        const uint8_t **out_iv, size_t *out_len);
 
 
-/* Deprecated functions. */
-
-/* EVP_aead_chacha20_poly1305_rfc7539 calls |EVP_aead_chacha20_poly1305|.
- *
- * TODO(davidben): Remove this. */
-OPENSSL_EXPORT const EVP_AEAD *EVP_aead_chacha20_poly1305_rfc7539(void);
-
-
 #if defined(__cplusplus)
 }  /* extern C */
 #endif
