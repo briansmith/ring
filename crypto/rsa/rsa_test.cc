@@ -251,16 +251,6 @@ static bool TestRSA(const uint8_t *der, size_t der_len,
     return false;
   }
 
-  uint8_t plaintext[256];
-  size_t plaintext_len = 0;
-  if (!RSA_decrypt(key.get(), &plaintext_len, plaintext, sizeof(plaintext),
-                   ciphertext, ciphertext_len, RSA_PKCS1_PADDING) ||
-      plaintext_len != kPlaintextLen ||
-      memcmp(plaintext, kPlaintext, plaintext_len) != 0) {
-    fprintf(stderr, "PKCS#1 v1.5 decryption failed!\n");
-    return false;
-  }
-
   /* ring: OAEP padding is not implemented yet. */
   (void)oaep_ciphertext;
   (void)oaep_ciphertext_len;
@@ -273,46 +263,6 @@ static bool TestRSA(const uint8_t *der, size_t der_len,
     return false;
   }
 
-  plaintext_len = 0;
-  if (!RSA_decrypt(key.get(), &plaintext_len, plaintext, sizeof(plaintext),
-                   ciphertext, ciphertext_len, RSA_PKCS1_OAEP_PADDING) ||
-      plaintext_len != kPlaintextLen ||
-      memcmp(plaintext, kPlaintext, plaintext_len) != 0) {
-    fprintf(stderr, "OAEP decryption (encrypted data) failed!\n");
-    return false;
-  }
-
-  // |oaep_ciphertext| should decrypt to |kPlaintext|.
-  plaintext_len = 0;
-  if (!RSA_decrypt(key.get(), &plaintext_len, plaintext, sizeof(plaintext),
-                   oaep_ciphertext, oaep_ciphertext_len,
-                   RSA_PKCS1_OAEP_PADDING) ||
-      plaintext_len != kPlaintextLen ||
-      memcmp(plaintext, kPlaintext, plaintext_len) != 0) {
-    fprintf(stderr, "OAEP decryption (test vector data) failed!\n");
-    return false;
-  }
-
-  // Try decrypting corrupted ciphertexts.
-  memcpy(ciphertext, oaep_ciphertext, oaep_ciphertext_len);
-  for (size_t i = 0; i < oaep_ciphertext_len; i++) {
-    ciphertext[i] ^= 1;
-    if (RSA_decrypt(key.get(), &plaintext_len, plaintext, sizeof(plaintext),
-                    ciphertext, oaep_ciphertext_len, RSA_PKCS1_OAEP_PADDING)) {
-      fprintf(stderr, "Corrupt data decrypted!\n");
-      return false;
-    }
-    ciphertext[i] ^= 1;
-  }
-
-  // Test truncated ciphertexts.
-  for (size_t len = 0; len < oaep_ciphertext_len; len++) {
-    if (RSA_decrypt(key.get(), &plaintext_len, plaintext, sizeof(plaintext),
-                    ciphertext, len, RSA_PKCS1_OAEP_PADDING)) {
-      fprintf(stderr, "Corrupt data decrypted!\n");
-      return false;
-    }
-  }
 #endif /* if 0 */
 
   return true;

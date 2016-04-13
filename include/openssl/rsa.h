@@ -126,26 +126,6 @@ OPENSSL_EXPORT int RSA_encrypt(const BIGNUM *n, const BIGNUM *e,
                                size_t *out_len, uint8_t *out, size_t max_out,
                                const uint8_t *in, size_t in_len, int padding);
 
-/* RSA_decrypt decrypts |in_len| bytes from |in| with the private key from
- * |rsa| and writes, at most, |max_out| bytes of plaintext to |out|. The
- * |max_out| argument must be, at least, |RSA_size| in order to ensure success.
- *
- * It returns 1 on success or zero on error.
- *
- * The |padding| argument must be one of the |RSA_*_PADDING| values. If in
- * doubt, use |RSA_PKCS1_OAEP_PADDING| for new protocols.
- *
- * Passing |RSA_PKCS1_PADDING| into this function is deprecated and insecure. If
- * implementing a protocol using RSAES-PKCS1-V1_5, use |RSA_NO_PADDING| and then
- * check padding in constant-time combined with a swap to a random session key
- * or other mitigation. See "Chosen Ciphertext Attacks Against Protocols Based
- * on the RSA Encryption Standard PKCS #1", Daniel Bleichenbacher, Advances in
- * Cryptology (Crypto '98). */
-OPENSSL_EXPORT int RSA_decrypt(RSA *rsa, size_t *out_len, uint8_t *out,
-                               size_t max_out, const uint8_t *in, size_t in_len,
-                               int padding);
-
-
 /* Signing / Verification */
 
 /* RSA_sign signs |in_len| bytes of digest from |in| with |rsa| using
