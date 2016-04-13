@@ -92,8 +92,6 @@ int RSA_padding_add_PKCS1_type_1(uint8_t *to, unsigned to_len,
 size_t RSA_padding_check_PKCS1_type_1(const uint8_t *from, unsigned from_len);
 int RSA_padding_add_PKCS1_type_2(uint8_t *to, unsigned to_len,
                                  const uint8_t *from, unsigned from_len);
-int RSA_padding_check_PKCS1_type_2(uint8_t *to, unsigned to_len,
-                                   const uint8_t *from, unsigned from_len);
 int RSA_padding_add_none(uint8_t *to, unsigned to_len, const uint8_t *from,
                          unsigned from_len);
 
