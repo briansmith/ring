@@ -212,48 +212,6 @@ static inline unsigned int constant_time_msb(unsigned int a) {
   return (unsigned int)((int)(a) >> (sizeof(int) * 8 - 1));
 }
 
-/* constant_time_lt returns 0xff..f if a < b and 0 otherwise. */
-static inline unsigned int constant_time_lt(unsigned int a, unsigned int b) {
-  /* Consider the two cases of the problem:
-   *   msb(a) == msb(b): a < b iff the MSB of a - b is set.
-   *   msb(a) != msb(b): a < b iff the MSB of b is set.
-   *
-   * If msb(a) == msb(b) then the following evaluates as:
-   *   msb(a^((a^b)|((a-b)^a))) ==
-   *   msb(a^((a-b) ^ a))       ==   (because msb(a^b) == 0)
-   *   msb(a^a^(a-b))           ==   (rearranging)
-   *   msb(a-b)                      (because ∀x. x^x == 0)
-   *
-   * Else, if msb(a) != msb(b) then the following evaluates as:
-   *   msb(a^((a^b)|((a-b)^a))) ==
-   *   msb(a^(𝟙 | ((a-b)^a)))   ==   (because msb(a^b) == 1 and 𝟙
-   *                                  represents a value s.t. msb(𝟙) = 1)
-   *   msb(a^𝟙)                 ==   (because ORing with 1 results in 1)
-   *   msb(b)
-   *
-   *
-   * Here is an SMT-LIB verification of this formula:
-   *
-   * (define-fun lt ((a (_ BitVec 32)) (b (_ BitVec 32))) (_ BitVec 32)
-   *   (bvxor a (bvor (bvxor a b) (bvxor (bvsub a b) a)))
-   * )
-   *
-   * (declare-fun a () (_ BitVec 32))
-   * (declare-fun b () (_ BitVec 32))
-   *
-   * (assert (not (= (= #x00000001 (bvlshr (lt a b) #x0000001f)) (bvult a b))))
-   * (check-sat)
-   * (get-model)
-   */
-  return constant_time_msb(a^((a^b)|((a-b)^a)));
-}
-
-
-/* constant_time_gt returns 0xff..f if a >= b and 0 otherwise. */
-static inline unsigned int constant_time_ge(unsigned int a, unsigned int b) {
-  return ~constant_time_lt(a, b);
-}
-
 /* constant_time_is_zero returns 0xff..f if a == 0 and 0 otherwise. */
 static inline unsigned int constant_time_is_zero(unsigned int a) {
   /* Here is an SMT-LIB verification of this formula:
@@ -271,24 +229,10 @@ static inline unsigned int constant_time_is_zero(unsigned int a) {
   return constant_time_msb(~a & (a - 1));
 }
 
-/* constant_time_eq returns 0xff..f if a == b and 0 otherwise. */
-static inline unsigned int constant_time_eq(unsigned int a, unsigned int b) {
-  return constant_time_is_zero(a ^ b);
-}
-
-/* constant_time_eq_int acts like |constant_time_eq| but works on int values. */
+/* constant_time_eq_int returns 0xff..f if a == b and 0 otherwise. */
 static inline unsigned int constant_time_eq_int(int a, int b) {
-  return constant_time_eq((unsigned)(a), (unsigned)(b));
+  return constant_time_is_zero((unsigned)(a) ^ (unsigned)(b));
 }
-
-/* constant_time_select returns (mask & a) | (~mask & b). When |mask| is all 1s
- * or all 0s (as returned by the methods above), the select methods return
- * either |a| (if |mask| is nonzero) or |b| (if |mask| is zero). */
-static inline unsigned int constant_time_select(unsigned int mask,
-                                                unsigned int a, unsigned int b) {
-  return (mask & a) | (~mask & b);
-}
-
 
 /* Thread-safe initialisation. */
 

@@ -53,24 +53,6 @@
 static const unsigned int CONSTTIME_TRUE = (unsigned)(~0);
 static const unsigned int CONSTTIME_FALSE = 0;
 
-static int test_binary_op(unsigned int (*op)(unsigned int a, unsigned int b),
-                          const char* op_name, unsigned int a, unsigned int b,
-                          int is_true) {
-  unsigned c = op(a, b);
-  if (is_true && c != CONSTTIME_TRUE) {
-    fprintf(stderr,
-            "Test failed for %s(%du, %du): expected %du (TRUE), got %du\n",
-            op_name, a, b, CONSTTIME_TRUE, c);
-    return 1;
-  } else if (!is_true && c != CONSTTIME_FALSE) {
-    fprintf(stderr,
-            "Test failed for  %s(%du, %du): expected %du (FALSE), got %du\n",
-            op_name, a, b, CONSTTIME_FALSE, c);
-    return 1;
-  }
-  return 0;
-}
-
 static int test_is_zero(unsigned int a) {
   unsigned int c = constant_time_is_zero(a);
   if (a == 0 && c != CONSTTIME_TRUE) {
@@ -84,26 +66,6 @@ static int test_is_zero(unsigned int a) {
             "Test failed for constant_time_is_zero(%du): expected %du (FALSE), "
             "got %du\n",
             a, CONSTTIME_FALSE, c);
-    return 1;
-  }
-  return 0;
-}
-
-static int test_select(unsigned int a, unsigned int b) {
-  unsigned int selected = constant_time_select(CONSTTIME_TRUE, a, b);
-  if (selected != a) {
-    fprintf(stderr,
-            "Test failed for constant_time_select(%du, %du,"
-            "%du): expected %du(first value), got %du\n",
-            CONSTTIME_TRUE, a, b, a, selected);
-    return 1;
-  }
-  selected = constant_time_select(CONSTTIME_FALSE, a, b);
-  if (selected != b) {
-    fprintf(stderr,
-            "Test failed for constant_time_select(%du, %du,"
-            "%du): expected %du(second value), got %du\n",
-            CONSTTIME_FALSE, a, b, b, selected);
     return 1;
   }
   return 0;
@@ -136,7 +98,7 @@ static int signed_test_values[] = {
     32000, -32000, INT_MAX, INT_MIN, INT_MAX - 1, INT_MIN + 1};
 
 int main(void) {
-  unsigned int a, b, i, j;
+  unsigned int a, i, j;
   int c, d;
   int num_failed = 0, num_all = 0;
 
@@ -144,15 +106,6 @@ int main(void) {
     a = test_values[i];
     num_failed += test_is_zero(a);
     num_all += 2;
-    for (j = 0; j < sizeof(test_values) / sizeof(int); ++j) {
-      b = test_values[j];
-      num_failed +=
-          test_binary_op(&constant_time_lt, "constant_time_lt", a, b, a < b);
-      num_failed +=
-          test_binary_op(&constant_time_eq, "constant_time_eq", b, a, b == a);
-      num_failed += test_select(a, b);
-      num_all += 13;
-    }
   }
 
   for (i = 0; i < sizeof(signed_test_values) / sizeof(int); ++i) {
