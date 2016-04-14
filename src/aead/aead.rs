@@ -327,92 +327,108 @@ mod tests {
             let tag = test_case.consume_bytes("TAG");
             let error = test_case.consume_optional_string("FAILS");
 
+            let max_overhead_len = aead_alg.max_overhead_len();
+            let mut s_in_out = plaintext.clone();
+            for _ in 0..max_overhead_len {
+                s_in_out.push(0);
+            }
+            let s_key = aead::SealingKey::new(aead_alg, &key_bytes[..]).unwrap();
+            let s_result = aead::seal_in_place(&s_key, &nonce[..],
+                                               &mut s_in_out[..],
+                                               max_overhead_len, &ad);
+            let o_key = aead::OpeningKey::new(aead_alg, &key_bytes[..]).unwrap();
+
             ct.extend(tag);
+
+            // In release builds, test all prefix lengths from 0 to 4096 bytes.
+            // Debug builds are too slow for this, so for those builds, only
+            // test a smaller subset.
 
             // TLS record headers are 5 bytes long.
             // TLS explicit nonces for AES-GCM are 8 bytes long.
-            static IN_PREFIXES: [&'static [u8]; 36] = [
+            static MINIMAL_IN_PREFIX_LENS: [usize; 36] = [
                 // No input prefix to overwrite; i.e. the opening is exactly
                 // "in place."
-                &[],
-                &[123; 1],
-                &[123; 2],
+                0,
+
+                1,
+                2,
 
                 // Proposed TLS 1.3 header (no explicit nonce).
-                &[23, 0x03, 0x04, 0x12, 0x34],
+                5,
 
-                &[123, 8],
+                8,
 
                 // Probably the most common use of a non-zero `in_prefix_len`
                 // would be to write a decrypted TLS record over the top of the
                 // TLS header and nonce.
-                &[23, // TLS handshake record
-                  0x03, 0x03, // TLS version 1.2
-                  0x12, 0x34, // Length (dummy value)
-                  1, 2, 3, 4, 5, 6, 7, 8], // Nonce (dummy value)
+                5 /* record header */ + 8 /* explicit nonce */,
 
                 // The stitched AES-GCM x86-64 code works on 6-block (96 byte)
                 // units. Some of the ChaCha20 code is even weirder.
 
-                &[123; 15], // The maximum partial AES block.
-                &[123; 16], // One AES block.
-                &[123; 17], // One byte more than a full AES block.
+                15, // The maximum partial AES block.
+                16, // One AES block.
+                17, // One byte more than a full AES block.
 
-                &[123; 31], // 2 AES blocks or 1 ChaCha20 block, minus 1.
-                &[123; 32], // Two AES blocks, one ChaCha20 block.
-                &[123; 33], // 2 AES blocks or 1 ChaCha20 block, plus 1.
+                31, // 2 AES blocks or 1 ChaCha20 block, minus 1.
+                32, // Two AES blocks, one ChaCha20 block.
+                33, // 2 AES blocks or 1 ChaCha20 block, plus 1.
 
-                &[123; 47], // Three AES blocks - 1.
-                &[123; 48], // Three AES blocks.
-                &[123; 49], // Three AES blocks + 1.
+                47, // Three AES blocks - 1.
+                48, // Three AES blocks.
+                49, // Three AES blocks + 1.
 
-                &[123; 63], // Four AES blocks or two ChaCha20 blocks, minus 1.
-                &[123; 64], // Four AES blocks or two ChaCha20 blocks.
-                &[123; 65], // Four AES blocks or two ChaCha20 blocks, plus 1.
+                63, // Four AES blocks or two ChaCha20 blocks, minus 1.
+                64, // Four AES blocks or two ChaCha20 blocks.
+                65, // Four AES blocks or two ChaCha20 blocks, plus 1.
 
-                &[123; 79], // Five AES blocks, minus 1.
-                &[123; 80], // Five AES blocks.
-                &[123; 81], // Five AES blocks, plus 1.
+                79, // Five AES blocks, minus 1.
+                80, // Five AES blocks.
+                81, // Five AES blocks, plus 1.
 
-                &[123; 95], // Six AES blocks or three ChaCha20 blocks, minus 1.
-                &[123; 96], // Six AES blocks or three ChaCha20 blocks.
-                &[123; 97], // Six AES blocks or three ChaCha20 blocks, plus 1.
+                95, // Six AES blocks or three ChaCha20 blocks, minus 1.
+                96, // Six AES blocks or three ChaCha20 blocks.
+                97, // Six AES blocks or three ChaCha20 blocks, plus 1.
 
-                &[123; 111], // Seven AES blocks, minus 1.
-                &[123; 112], // Seven AES blocks.
-                &[123; 113], // Seven AES blocks, plus 1.
+                111, // Seven AES blocks, minus 1.
+                112, // Seven AES blocks.
+                113, // Seven AES blocks, plus 1.
 
-                &[123; 127], // Eight AES blocks or four ChaCha20 blocks, minus 1.
-                &[123; 128], // Eight AES blocks or four ChaCha20 blocks.
-                &[123; 129], // Eight AES blocks or four ChaCha20 blocks, plus 1.
+                127, // Eight AES blocks or four ChaCha20 blocks, minus 1.
+                128, // Eight AES blocks or four ChaCha20 blocks.
+                129, // Eight AES blocks or four ChaCha20 blocks, plus 1.
 
-                &[123; 143], // Nine AES blocks, minus 1.
-                &[123; 144], // Nine AES blocks.
-                &[123; 145], // Nine AES blocks, plus 1.
+                143, // Nine AES blocks, minus 1.
+                144, // Nine AES blocks.
+                145, // Nine AES blocks, plus 1.
 
-                &[123; 255], // 16 AES blocks or 8 ChaCha20 blocks, minus 1.
-                &[123; 256], // 16 AES blocks or 8 ChaCha20 blocks.
-                &[123; 257], // 16 AES blocks or 8 ChaCha20 blocks, plus 1.
+                255, // 16 AES blocks or 8 ChaCha20 blocks, minus 1.
+                256, // 16 AES blocks or 8 ChaCha20 blocks.
+                257, // 16 AES blocks or 8 ChaCha20 blocks, plus 1.
             ];
 
-            for in_prefix in IN_PREFIXES.iter() {
-                let max_overhead_len = aead_alg.max_overhead_len();
-                let mut s_in_out = plaintext.clone();
-                for _ in 0..max_overhead_len {
-                    s_in_out.push(0);
+            let mut more_comprehensive_in_prefix_lenghts = [0; 4096];
+            let in_prefix_lengths;
+            if cfg!(debug_assertions) {
+                in_prefix_lengths = &MINIMAL_IN_PREFIX_LENS[..];
+            } else {
+                for b in 0..more_comprehensive_in_prefix_lenghts.len() {
+                    more_comprehensive_in_prefix_lenghts[b] = b;
                 }
-                let s_key = aead::SealingKey::new(aead_alg, &key_bytes).unwrap();
-                let s_result = aead::seal_in_place(&s_key, &nonce,
-                                                   &mut s_in_out[..],
-                                                   max_overhead_len, &ad);
+                in_prefix_lengths = &more_comprehensive_in_prefix_lenghts[..];
+            }
+            let mut o_in_out = vec![123u8; 4096];
 
-                let mut o_in_out = Vec::from(*in_prefix);
+            for in_prefix_len in in_prefix_lengths.iter() {
+                o_in_out.truncate(0);
+                for _ in 0..*in_prefix_len {
+                    o_in_out.push(123);
+                }
                 o_in_out.extend_from_slice(&ct[..]);
-                let o_key = aead::OpeningKey::new(aead_alg, &key_bytes).unwrap();
-                let o_result = aead::open_in_place(&o_key, &nonce,
-                                                   in_prefix.len(),
+                let o_result = aead::open_in_place(&o_key, &nonce[..],
+                                                   *in_prefix_len,
                                                    &mut o_in_out[..], &ad);
-
                 match error {
                     None => {
                         assert_eq!(Ok(ct.len()), s_result);
