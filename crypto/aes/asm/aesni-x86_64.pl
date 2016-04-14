@@ -1679,6 +1679,7 @@ ctr_se_handler:
 	lea	8(%rax),%rax		# adjust stack pointer
 	mov	%rbp,160($context)	# restore context->Rbp
 
+.Lcommon_seh_tail:
 	mov	8(%rax),%rdi
 	mov	16(%rax),%rsi
 	mov	%rax,152($context)	# restore context->Rsp

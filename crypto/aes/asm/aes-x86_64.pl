@@ -2122,6 +2122,7 @@ key_se_handler:
 	mov	%rsi,168($context)	# restore context->Rsi
 	mov	%rdi,176($context)	# restore context->Rdi
 
+.Lcommon_seh_exit:
 	mov	40($disp),%rdi		# disp->ContextRecord
 	mov	$context,%rsi		# context
 	mov	\$`1232/8`,%ecx		# sizeof(CONTEXT)
