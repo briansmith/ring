@@ -38,9 +38,7 @@ linux_compilers = [
     # "clang-3.9",
 
     # Newest clang and GCC.
-
-    # XXX: clang 3.8 doesn't work:
-    # https://github.com/travis-ci/apt-source-whitelist/issues/254
+    "clang-3.8",
 
     # XXX: GCC 6 doesn't work:
     # https://github.com/travis-ci/apt-package-whitelist/issues/2294
