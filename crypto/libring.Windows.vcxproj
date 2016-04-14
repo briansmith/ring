@@ -15,6 +15,10 @@
     <OutDir>$(OutRootDir)lib\</OutDir>
   </PropertyGroup>
   <ItemGroup>
+    <ClCompile Include="cpu-intel.c" />
+    <ClCompile Include="crypto.c" />
+    <ClCompile Include="thread_win.c" />
+
     <ClCompile Include="aes\aes.c" />
     <ClCompile Include="bn\add.c" />
     <ClCompile Include="bn\bn.c" />
@@ -34,20 +38,14 @@
     <ClCompile Include="bn\shift.c" />
     <ClCompile Include="bytestring\cbb.c" />
     <ClCompile Include="bytestring\cbs.c" />
-    <ClCompile Include="chacha\chacha.c" />
     <ClCompile Include="cipher\e_aes.c" />
-    <ClCompile Include="cpu-arm.c" />
-    <ClCompile Include="cpu-intel.c" />
-    <ClCompile Include="crypto.c" />
     <ClCompile Include="curve25519\curve25519.c" />
     <ClCompile Include="ec\ec.c" />
     <ClCompile Include="ec\ec_curves.c" />
     <ClCompile Include="ec\ec_key.c" />
     <ClCompile Include="ec\ec_montgomery.c" />
     <ClCompile Include="ec\oct.c" />
-    <ClCompile Include="ec\p256-64.c" />
     <ClCompile Include="ec\simple.c" />
-    <ClCompile Include="ec\util-64.c" />
     <ClCompile Include="ec\wnaf.c" />
     <ClCompile Include="ecdh\ecdh.c" />
     <ClCompile Include="ecdsa\ecdsa.c" />
@@ -62,9 +60,6 @@
     <ClCompile Include="rsa\rsa.c" />
     <ClCompile Include="rsa\rsa_asn1.c" />
     <ClCompile Include="rsa\rsa_impl.c" />
-    <ClCompile Include="sha\sha256.c" />
-    <ClCompile Include="sha\sha512.c" />
-    <ClCompile Include="thread_win.c" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="aes\internal.h" />
@@ -80,11 +75,89 @@
     <ClInclude Include="rand\internal.h" />
     <ClInclude Include="rsa\internal.h" />
   </ItemGroup>
+
+  <ItemGroup Condition="'$(ProcessorArchitecture)' == 'x86'">
+    <PerlAsm Include="crypto/aes/asm/aes-586.pl" />
+    <PerlAsm Include="crypto/aes/asm/aesni-x86.pl" />
+    <PerlAsm Include="crypto/aes/asm/vpaes-x86.pl" />
+    <PerlAsm Include="crypto/bn/asm/x86-mont.pl" />
+    <PerlAsm Include="crypto/chacha/asm/chacha-x86.pl" />
+    <PerlAsm Include="crypto/modes/asm/ghash-x86.pl" />
+    <PerlAsm Include="crypto/sha/asm/sha256-586.pl" />
+    <PerlAsm Include="crypto/sha/asm/sha512-586.pl" />
+  </ItemGroup>
+  <ItemDefinitionGroup Condition="'$(ProcessorArchitecture)' == 'x86'">
+    <!-- XXX: There's almost definitely a way to defiune the PerlAsm task to
+         compute this automatically, but for now we do it manually. -->
+    <Lib>
+      <AdditionalDependencies>
+        $(IntDir)aes-586.obj;
+        $(IntDir)aesni-x86.obj;
+        $(IntDir)vpaes-x86.obj;
+        $(IntDir)x86-mont.obj;
+        $(IntDir)chacha-x86.obj;
+        $(IntDir)ghash-x86.obj;
+        $(IntDir)sha256-586.obj;
+        $(IntDir)sha512-586.obj;
+      </AdditionalDependencies>
+    </Lib>
+  </ItemDefinitionGroup>
+
+  <ItemGroup Condition="'$(ProcessorArchitecture)' == 'amd64'">
+    <PerlAsm Include="aes/asm/aes-x86_64.pl" />
+    <PerlAsm Include="aes/asm/aesni-x86_64.pl" />
+    <PerlAsm Include="aes/asm/bsaes-x86_64.pl" />
+    <PerlAsm Include="aes/asm/vpaes-x86_64.pl" />
+    <PerlAsm Include="bn/asm/rsaz-avx2.pl" />
+    <PerlAsm Include="bn/asm/x86_64-mont.pl" />
+    <PerlAsm Include="bn/asm/x86_64-mont5.pl" />
+    <PerlAsm Include="chacha/asm/chacha-x86_64.pl" />
+    <!-- XXX: curve25519/asm/x25519-asm-x86_64.S doesn't support Windows. -->
+    <ClCompile Include="curve25519\x25519-x86_64.c" />
+    <PerlAsm Include="ec/asm/p256-x86_64-asm.pl" />
+    <ClCompile Include="ec/p256-x86_64.c" />
+    <PerlAsm Include="modes/asm/aesni-gcm-x86_64.pl" />
+    <PerlAsm Include="modes/asm/ghash-x86_64.pl" />
+    <PerlAsm Include="rand/asm/rdrand-x86_64.pl" />
+    <PerlAsm Include="sha/asm/sha256-x86_64.pl">
+      <AdditionalDependencies>sha/asm/sha-x86_64.pl</AdditionalDependencies>
+    </PerlAsm>
+    <PerlAsm Include="sha/asm/sha512-x86_64.pl">
+      <AdditionalDependencies>sha/asm/sha-x86_64.pl</AdditionalDependencies>
+    </PerlAsm>
+  </ItemGroup>
+  <ItemDefinitionGroup Condition="'$(ProcessorArchitecture)' == 'amd64'">
+    <!-- XXX: There's almost definitely a way to defiune the PerlAsm task to
+         compute this automatically, but for now we do it manually. -->
+    <Lib>
+      <AdditionalDependencies>
+        $(IntDir)aes-x86_64.obj;
+        $(IntDir)aesni-x86_64.obj;
+        $(IntDir)bsaes-x86_64.obj;
+        $(IntDir)chacha-x86_64.obj;
+        $(IntDir)vpaes-x86_64.obj;
+        $(IntDir)rsaz-avx2.obj;
+        $(IntDir)x86_64-mont.obj;
+        $(IntDir)x86_64-mont5.obj;
+        $(IntDir)p256-x86_64-asm.obj;
+        $(IntDir)aesni-gcm-x86_64.obj;
+        $(IntDir)ghash-x86_64.obj;
+        $(IntDir)rdrand-x86_64.obj;
+        $(IntDir)sha256-x86_64.obj;
+        $(IntDir)sha512-x86_64.obj;
+      </AdditionalDependencies>
+    </Lib>
+  </ItemDefinitionGroup>
+
   <ItemDefinitionGroup>
     <ClCompile>
       <AdditionalIncludeDirectories>%(AdditionalIncludeDirectories);..\include;$(GENERATED_CODE_DIR)</AdditionalIncludeDirectories>
-      <PreprocessorDefinitions>OPENSSL_NO_ASM;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
   </ItemDefinitionGroup>
+
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <ImportGroup Label="ExtensionTargets">
+    <Import Project="..\mk\perlasm-msbuild.targets" />
+  </ImportGroup>
 </Project>

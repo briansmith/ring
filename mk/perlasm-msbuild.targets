@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+ <ItemGroup>
+  <PropertyPageSchema Include="$(MSBuildThisFileDirectory)$(MSBuildThisFileName).xml" />
+
+  <AvailableItemName Include="PerlAsm">
+   <Targets>GenerateAsm</Targets>
+  </AvailableItemName>
+ </ItemGroup>
+
+ <PropertyGroup>
+   <YasmFlags Condition="'$(ProcessorArchitecture)' == 'amd64'">-f win64</YasmFlags>
+ </PropertyGroup>
+
+  <Target
+    Name="GenerateAsm"
+    BeforeTargets="ClCompile"
+    Inputs="%(PerlAsm.Identity);../crypto/perlasm/*.pl"
+    Outputs="$(IntDir)%(PerlAsm.FileName).obj">
+  <Message Text="Generating code: %(PerlAsm.Identity)" />
+  <Exec Command="perl.exe %(PerlAsm.Identity) nasm > $(IntDir)%(PerlAsm.FileName).asm"/>
+  <Exec Command="yasm.exe $(YasmFlags) -o $(IntDir)%(PerlAsm.FileName).obj $(IntDir)%(PerlAsm.FileName).asm"/>
+ </Target>
+</Project>

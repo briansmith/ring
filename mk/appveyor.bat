@@ -26,19 +26,29 @@ goto download
 :download
 REM vcvarsall turns echo off
 echo on
+
+mkdir windows_build_tools
+mkdir windows_build_tools\
+echo Downloading Yasm...
+powershell -Command "(New-Object Net.WebClient).DownloadFile('http://www.tortall.net/projects/yasm/releases/yasm-1.3.0-win64.exe', 'windows_build_tools\yasm.exe')"
+if %ERRORLEVEL% NEQ 0 (
+  echo ...downloading Rust failed.
+  exit 1
+)
+
 set RUST_URL=https://static.rust-lang.org/dist/rust-%RUST%-%TARGET_ARCH%-pc-windows-msvc.msi
 echo Downloading %RUST_URL%...
 mkdir build
 powershell -Command "(New-Object Net.WebClient).DownloadFile('%RUST_URL%', 'build\rust-%RUST%-%TARGET_ARCH%-pc-windows-msvc.msi')"
 if %ERRORLEVEL% NEQ 0 (
-  echo ...downloading failed.
+  echo ...downloading Rust failed.
   exit 1
 )
 
 start /wait msiexec /i build\rust-%RUST%-%TARGET_ARCH%-pc-windows-msvc.msi INSTALLDIR="%TARGET_PROGRAM_FILES%\Rust %RUST%" /quiet /qn /norestart
 if %ERRORLEVEL% NEQ 0 exit 1
 
-set PATH="%TARGET_PROGRAM_FILES%\Rust %RUST%\bin";%PATH%
+set PATH="%TARGET_PROGRAM_FILES%\Rust %RUST%\bin";%cd%\windows_build_tools;%PATH%
 
 if [%Configuration%] == [Release] set CARGO_MODE=--release
 

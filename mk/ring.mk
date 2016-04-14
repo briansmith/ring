@@ -38,24 +38,15 @@ RING_SRCS = $(addprefix $(RING_PREFIX), \
   crypto/bn/shift.c \
   crypto/bytestring/cbb.c \
   crypto/bytestring/cbs.c \
-  crypto/chacha/chacha.c \
   crypto/cipher/e_aes.c \
-  crypto/cpu-aarch64-linux.c \
-  crypto/cpu-arm.c \
-  crypto/cpu-arm-linux.c \
-  crypto/cpu-intel.c \
   crypto/crypto.c \
   crypto/curve25519/curve25519.c \
-  crypto/curve25519/x25519-x86_64.c \
   crypto/ec/ec.c \
   crypto/ec/ec_curves.c \
   crypto/ec/ec_key.c \
   crypto/ec/ec_montgomery.c \
   crypto/ec/oct.c \
-  crypto/ec/p256-64.c \
-  crypto/ec/p256-x86_64.c \
   crypto/ec/simple.c \
-  crypto/ec/util-64.c \
   crypto/ec/wnaf.c \
   crypto/ecdh/ecdh.c \
   crypto/ecdsa/ecdsa.c \
@@ -70,8 +61,12 @@ RING_SRCS = $(addprefix $(RING_PREFIX), \
   crypto/rsa/rsa.c \
   crypto/rsa/rsa_asn1.c \
   crypto/rsa/rsa_impl.c \
-  crypto/sha/sha256.c \
-  crypto/sha/sha512.c \
+  $(NULL)) \
+  $(RING_$(TARGET_ARCH_NORMAL)_SRCS) \
+  $(NULL)
+
+RING_INTEL_SHARED_SRCS = $(addprefix $(RING_PREFIX), \
+  crypto/cpu-intel.c \
   $(NULL))
 
 # TODO: make all .a files depend on these too.
@@ -84,7 +79,9 @@ RING_x86_SRCS = $(addprefix $(RING_PREFIX), \
   crypto/modes/asm/ghash-x86.pl \
   crypto/sha/asm/sha256-586.pl \
   crypto/sha/asm/sha512-586.pl \
-  $(NULL))
+  $(NULL)) \
+  $(RING_INTEL_SHARED_SRCS) \
+  $(NULL)
 
 RING_x86_64_SRCS = $(addprefix $(RING_PREFIX), \
   crypto/aes/asm/aes-x86_64.pl \
@@ -96,17 +93,24 @@ RING_x86_64_SRCS = $(addprefix $(RING_PREFIX), \
   crypto/bn/asm/x86_64-mont5.pl \
   crypto/chacha/asm/chacha-x86_64.pl \
   crypto/curve25519/asm/x25519-asm-x86_64.S \
+  crypto/curve25519/x25519-x86_64.c \
   crypto/ec/asm/p256-x86_64-asm.pl \
+  crypto/ec/p256-x86_64.c \
   crypto/modes/asm/aesni-gcm-x86_64.pl \
   crypto/modes/asm/ghash-x86_64.pl \
   crypto/rand/asm/rdrand-x86_64.pl \
   crypto/sha/asm/sha256-x86_64.pl \
   crypto/sha/asm/sha512-x86_64.pl \
-  $(NULL))
-
-RING_ARM_SHARED_SRCS = \
-  crypto/aes/asm/aesv8-armx.pl \
+  $(NULL)) \
+  $(RING_INTEL_SHARED_SRCS) \
   $(NULL)
+
+RING_ARM_SHARED_SRCS = $(addprefix $(RING_PREFIX), \
+  crypto/cpu-arm.c \
+  crypto/cpu-arm-linux.c \
+  \
+  crypto/aes/asm/aesv8-armx.pl \
+  $(NULL))
 
 RING_arm_SRCS = $(addprefix $(RING_PREFIX), \
   crypto/aes/asm/aes-armv4.pl \
@@ -117,17 +121,22 @@ RING_arm_SRCS = $(addprefix $(RING_PREFIX), \
   crypto/modes/asm/ghash-armv4.pl \
   crypto/sha/asm/sha256-armv4.pl \
   crypto/sha/asm/sha512-armv4.pl \
+  $(NULL)) \
   $(RING_ARM_SHARED_SRCS) \
-  $(NULL))
+  $(NULL)
 
 RING_aarch64_SRCS = $(addprefix $(RING_PREFIX), \
+  crypto/cpu-aarch64-linux.c \
   crypto/bn/asm/armv8-mont.pl \
   crypto/chacha/asm/chacha-armv8.pl \
+  crypto/ec/p256-64.c \
+  crypto/ec/util-64.c \
   crypto/modes/asm/ghashv8-armx.pl \
   crypto/sha/asm/sha256-armv8.pl \
   crypto/sha/asm/sha512-armv8.pl \
+  $(NULL)) \
   $(RING_ARM_SHARED_SRCS) \
-  $(NULL))
+  $(NULL)
 
 ifeq ($(TARGET_SYS),none)
 RING_THREAD_FLAGS += -DOPENSSL_TRUSTY=1 -DOPENSSL_NO_THREADS=1
@@ -137,20 +146,13 @@ RING_THREAD_FLAGS += -pthread
 RING_SRCS += $(addprefix $(RING_PREFIX), crypto/thread_pthread.c)
 endif
 
-RING_ASM_OBJS = \
+# $(RING_ASM_OBJS): CPPFLAGS += -I$(RING_PREFIX)crypto
+
+RING_OBJS = \
   $(addprefix $(OBJ_PREFIX), \
     $(patsubst %.pl, %.o, \
-      $(patsubst %.S, %.o, $(RING_$(TARGET_ARCH_NORMAL)_SRCS))))
-
-$(RING_ASM_OBJS): CPPFLAGS += -I$(RING_PREFIX)crypto
-
-RING_OBJS = $(addprefix $(OBJ_PREFIX), $(patsubst %.c, %.o, $(RING_SRCS)))
-
-ifeq ($(NO_ASM),)
-RING_OBJS += $(RING_ASM_OBJS)
-else
-RING_CPPFLAGS += -DOPENSSL_NO_ASM=1
-endif
+      $(patsubst %.S, %.o, \
+        $(patsubst %.c, %.o, $(RING_SRCS)))))
 
 RING_LIB = $(LIB_PREFIX)libring-core.a
 
