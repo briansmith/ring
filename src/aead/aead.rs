@@ -295,9 +295,23 @@ mod tests {
                   "crypto/cipher/test/aes_128_gcm_tests.txt");
     }
 
+    #[cfg(not(debug_assertions))]
+    #[test]
+    pub fn test_aes_gcm_128_in_prefix_len_extra() {
+        test_aead_slow(&aead::AES_128_GCM,
+                  "crypto/cipher/test/aes_128_gcm_tests.txt");
+    }
+
     #[test]
     pub fn test_aes_gcm_256() {
         test_aead(&aead::AES_256_GCM,
+                  "crypto/cipher/test/aes_256_gcm_tests.txt");
+    }
+
+    #[cfg(not(debug_assertions))]
+    #[test]
+    pub fn test_aes_gcm_256_in_prefix_len_extra() {
+        test_aead_slow(&aead::AES_256_GCM,
                   "crypto/cipher/test/aes_256_gcm_tests.txt");
     }
 
@@ -307,9 +321,23 @@ mod tests {
                   "crypto/cipher/test/chacha20_poly1305_tests.txt");
     }
 
+    #[cfg(not(debug_assertions))]
+    #[test]
+    pub fn test_chacha20_poly1305_in_prefix_len_extra() {
+        test_aead_slow(&aead::CHACHA20_POLY1305,
+                  "crypto/cipher/test/chacha20_poly1305_tests.txt");
+    }
+
     #[test]
     pub fn test_chacha20_poly1305_old() {
         test_aead(&aead::CHACHA20_POLY1305_OLD,
+                  "crypto/cipher/test/chacha20_poly1305_old_tests.txt");
+    }
+
+    #[cfg(not(debug_assertions))]
+    #[test]
+    pub fn test_chacha20_poly1305_old_in_prefix_len_extra() {
+        test_aead_slow(&aead::CHACHA20_POLY1305_OLD,
                   "crypto/cipher/test/chacha20_poly1305_old_tests.txt");
     }
 
@@ -326,6 +354,17 @@ mod tests {
             let mut ct = test_case.consume_bytes("CT");
             let tag = test_case.consume_bytes("TAG");
             let error = test_case.consume_optional_string("FAILS");
+
+            let max_overhead_len = aead_alg.max_overhead_len();
+            let mut s_in_out = plaintext.clone();
+            for _ in 0..max_overhead_len {
+                s_in_out.push(0);
+            }
+            let s_key = aead::SealingKey::new(aead_alg, &key_bytes[..]).unwrap();
+            let s_result = aead::seal_in_place(&s_key, &nonce[..],
+                                               &mut s_in_out[..],
+                                               max_overhead_len, &ad);
+            let o_key = aead::OpeningKey::new(aead_alg, &key_bytes[..]).unwrap();
 
             ct.extend(tag);
 
@@ -396,23 +435,11 @@ mod tests {
             ];
 
             for in_prefix in IN_PREFIXES.iter() {
-                let max_overhead_len = aead_alg.max_overhead_len();
-                let mut s_in_out = plaintext.clone();
-                for _ in 0..max_overhead_len {
-                    s_in_out.push(0);
-                }
-                let s_key = aead::SealingKey::new(aead_alg, &key_bytes).unwrap();
-                let s_result = aead::seal_in_place(&s_key, &nonce,
-                                                   &mut s_in_out[..],
-                                                   max_overhead_len, &ad);
-
                 let mut o_in_out = Vec::from(*in_prefix);
                 o_in_out.extend_from_slice(&ct[..]);
-                let o_key = aead::OpeningKey::new(aead_alg, &key_bytes).unwrap();
-                let o_result = aead::open_in_place(&o_key, &nonce,
+                let o_result = aead::open_in_place(&o_key, &nonce[..],
                                                    in_prefix.len(),
                                                    &mut o_in_out[..], &ad);
-
                 match error {
                     None => {
                         assert_eq!(Ok(ct.len()), s_result);
@@ -420,11 +447,62 @@ mod tests {
                         assert_eq!(Ok(plaintext.len()), o_result);
                         assert_eq!(&plaintext[..], &o_in_out[..plaintext.len()]);
                     },
-                    Some(ref error) if error == "WRONG_NONCE_LENGTH" => {
+                    Some(ref error) if *error == "WRONG_NONCE_LENGTH" => {
                         assert_eq!(Err(()), s_result);
                         assert_eq!(Err(()), o_result);
                     },
-                    Some(error) => {
+                    Some(ref error) => {
+                        unreachable!("Unexpected error test case: {}", error);
+                    }
+                };
+            }
+        });
+    }
+
+    #[cfg(not(debug_assertions))]
+    fn test_aead_slow(aead_alg: &'static aead::Algorithm, file_path: &str) {
+        file_test::run(file_path, |section, test_case| {
+            const PREFIX: [u8; 4096] = [123; 4096];
+            assert_eq!(section, "");
+            let key_bytes = test_case.consume_bytes("KEY");
+            let nonce = test_case.consume_bytes("NONCE");
+            let plaintext = test_case.consume_bytes("IN");
+            let ad = test_case.consume_bytes("AD");
+            let mut ct = test_case.consume_bytes("CT");
+            let tag = test_case.consume_bytes("TAG");
+            let error = test_case.consume_optional_string("FAILS");
+
+            let max_overhead_len = aead_alg.max_overhead_len();
+            let mut s_in_out = plaintext.clone();
+            for _ in 0..max_overhead_len {
+                s_in_out.push(0);
+            }
+            let s_key = aead::SealingKey::new(aead_alg, &key_bytes[..]).unwrap();
+            let s_result = aead::seal_in_place(&s_key, &nonce[..],
+                                               &mut s_in_out[..],
+                                               max_overhead_len, &ad);
+            let o_key = aead::OpeningKey::new(aead_alg, &key_bytes[..]).unwrap();
+            ct.extend(tag);
+            let mut o_in_out = Vec::with_capacity(4096 + ct.len());
+            for in_prefix_len in 0..4096 {
+                o_in_out.truncate(0);
+                o_in_out.extend_from_slice(&PREFIX[..in_prefix_len]);
+                o_in_out.extend_from_slice(&ct[..]);
+                let o_result = aead::open_in_place(&o_key, &nonce[..],
+                                                   in_prefix_len,
+                                                   &mut o_in_out[..], &ad);
+                match error {
+                    None => {
+                        assert_eq!(Ok(ct.len()), s_result);
+                        assert_eq!(&ct[..], &s_in_out[..ct.len()]);
+                        assert_eq!(Ok(plaintext.len()), o_result);
+                        assert_eq!(&plaintext[..], &o_in_out[..plaintext.len()]);
+                    },
+                    Some(ref error) if *error == "WRONG_NONCE_LENGTH" => {
+                        assert_eq!(Err(()), s_result);
+                        assert_eq!(Err(()), o_result);
+                    },
+                    Some(ref error) => {
                         unreachable!("Unexpected error test case: {}", error);
                     }
                 };
