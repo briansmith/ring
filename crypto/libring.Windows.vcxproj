@@ -77,14 +77,14 @@
   </ItemGroup>
 
   <ItemGroup Condition="'$(ProcessorArchitecture)' == 'x86'">
-    <PerlAsm Include="crypto/aes/asm/aes-586.pl" />
-    <PerlAsm Include="crypto/aes/asm/aesni-x86.pl" />
-    <PerlAsm Include="crypto/aes/asm/vpaes-x86.pl" />
-    <PerlAsm Include="crypto/bn/asm/x86-mont.pl" />
-    <PerlAsm Include="crypto/chacha/asm/chacha-x86.pl" />
-    <PerlAsm Include="crypto/modes/asm/ghash-x86.pl" />
-    <PerlAsm Include="crypto/sha/asm/sha256-586.pl" />
-    <PerlAsm Include="crypto/sha/asm/sha512-586.pl" />
+    <PerlAsm Include="aes/asm/aes-586.pl" />
+    <PerlAsm Include="aes/asm/aesni-x86.pl" />
+    <PerlAsm Include="aes/asm/vpaes-x86.pl" />
+    <PerlAsm Include="bn/asm/x86-mont.pl" />
+    <PerlAsm Include="chacha/asm/chacha-x86.pl" />
+    <PerlAsm Include="modes/asm/ghash-x86.pl" />
+    <PerlAsm Include="sha/asm/sha256-586.pl" />
+    <PerlAsm Include="sha/asm/sha512-586.pl" />
   </ItemGroup>
   <ItemDefinitionGroup Condition="'$(ProcessorArchitecture)' == 'x86'">
     <!-- XXX: There's almost definitely a way to defiune the PerlAsm task to
