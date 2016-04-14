@@ -1575,7 +1575,11 @@ int ssl3_get_client_key_exchange(SSL *ssl) {
         goto err;
     }
 
-    assert(decrypt_len == rsa_size);
+    if (decrypt_len != rsa_size) {
+      al = SSL_AD_DECRYPT_ERROR;
+      OPENSSL_PUT_ERROR(SSL, SSL_R_DECRYPTION_FAILED);
+      goto f_err;
+    }
 
     /* Prepare a random premaster, to be used on invalid padding. See RFC 5246,
      * section 7.4.7.1. */
