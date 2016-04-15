@@ -529,9 +529,9 @@ OPENSSL_EXPORT int BIO_set_write_buffer_size(BIO *bio, int buffer_size);
 
 /* Socket BIOs.
  *
- * Socket BIOs behave like file descriptor BIOs but wrap the system's |recv|
- * and |send| functions. This is relevant for Windows systems where file
- * descriptors, provided by C runtime for use with |read| and |write|, are not
+ * Socket BIOs behave like file descriptor BIOs but, on Windows systems, wrap
+ * the system's |recv| and |send| functions instead of |read| and |write|. On
+ * Windows, file descriptors are provided by C runtime and are not
  * interchangeable with sockets.
  *
  * Socket BIOs may be used with |BIO_set_fd| and |BIO_get_fd|.
