@@ -2,7 +2,7 @@
 <ProjectSchemaDefinitions xmlns="http://schemas.microsoft.com/build/2009/properties" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:sys="clr-namespace:System;assembly=mscorlib">
   <!-- http://www.codeproject.com/Articles/881782/Creating-custom-UI-property-pages-sheets-in-Visual
        http://mmaitre314.github.io/2015/01/11/custom-content-type-in-visual-studio-projects.html
-  -->  
+  -->
   <Rule Name="PerlAsm" DisplayName="PerlAsm Rule" PageTemplate="tool" Order="500">
     <Rule.Categories>
       <Rule.Category Name="General" Display="General" />

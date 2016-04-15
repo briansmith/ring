@@ -10,7 +10,8 @@
 
  <PropertyGroup>
    <YasmFlags Condition="'$(ProcessorArchitecture)' == 'amd64'">-f win64</YasmFlags>
-   <YasmFlags Condition="'$(ProcessorArchitecture)' == 'x86'">-f win32n</YasmFlags>
+   <PerlAsmFlags Condition="'$(ProcessorArchitecture)' == 'amd64'">nasm</PerlAsmFlags>
+   <PerlAsmFlags Condition="'$(ProcessorArchitecture)' == 'x86'">win32n -fPIC -DOPENSSL_IA32_SSE2</PerlAsmFlags>
  </PropertyGroup>
 
   <Target
@@ -19,7 +20,7 @@
     Inputs="%(PerlAsm.Identity);../crypto/perlasm/*.pl"
     Outputs="$(IntDir)%(PerlAsm.FileName).obj">
   <Message Text="Generating code: %(PerlAsm.Identity)" />
-  <Exec Command="perl.exe %(PerlAsm.Identity) nasm > $(IntDir)%(PerlAsm.FileName).asm"/>
+  <Exec Command="perl.exe %(PerlAsm.Identity) $(PerlAsmFlags) > $(IntDir)%(PerlAsm.FileName).asm"/>
   <Exec Command="yasm.exe $(YasmFlags) -o $(IntDir)%(PerlAsm.FileName).obj $(IntDir)%(PerlAsm.FileName).asm"/>
  </Target>
 </Project>
