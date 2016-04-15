@@ -361,7 +361,6 @@ int BN_mod_mul_montgomery(BIGNUM *r, const BIGNUM *a, const BIGNUM *b,
   BIGNUM *tmp;
   int ret = 0;
 
-#if defined(OPENSSL_BN_ASM_MONT)
   int num = mont->N.top;
 
   if (num > 1 && a->top == num && b->top == num) {
@@ -375,7 +374,6 @@ int BN_mod_mul_montgomery(BIGNUM *r, const BIGNUM *a, const BIGNUM *b,
       return 1;
     }
   }
-#endif
 
   BN_CTX_start(ctx);
   tmp = BN_CTX_get(ctx);

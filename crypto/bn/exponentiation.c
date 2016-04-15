@@ -118,7 +118,7 @@
 #include "internal.h"
 
 
-#if !defined(OPENSSL_NO_ASM) && defined(OPENSSL_X86_64)
+#if defined(OPENSSL_X86_64)
 #define OPENSSL_BN_ASM_MONT5
 #define RSAZ_ENABLED
 
