@@ -33,7 +33,7 @@ Building *ring* on Other Platforms
 ----------------------------------
 
 For building the C code (and C++ code for some tests), GCC 4.6 and later, and
-Clang 3.4 and later are currently supported. Other compilers probably work.
+Clang 3.5 and later are currently supported. Other compilers probably work.
 Perl is required for preprocessing the assembly language code. A makefile,
 requiring GNU make, drives the build of the non-Rust code. Variables like
 `$(CC)`, `$(CXX)`, `$(AS)`, etc. are supported.
