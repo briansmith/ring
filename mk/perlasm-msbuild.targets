@@ -10,6 +10,7 @@
 
  <PropertyGroup>
    <YasmFlags Condition="'$(ProcessorArchitecture)' == 'amd64'">-f win64</YasmFlags>
+   <YasmFlags Condition="'$(ProcessorArchitecture)' == 'x86'">-f win32n</YasmFlags>
  </PropertyGroup>
 
   <Target
