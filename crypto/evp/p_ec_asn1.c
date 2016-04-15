@@ -93,14 +93,15 @@ static int eckey_pub_decode(EVP_PKEY *out, CBS *params, CBS *key) {
   /* See RFC 5480, section 2. */
 
   /* The parameters are a named curve. */
+  EC_POINT *point = NULL;
+  EC_KEY *eckey = NULL;
   EC_GROUP *group = EC_KEY_parse_curve_name(params);
   if (group == NULL || CBS_len(params) != 0) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_DECODE_ERROR);
-    return 0;
+    goto err;
   }
 
-  EC_POINT *point = NULL;
-  EC_KEY *eckey = EC_KEY_new();
+  eckey = EC_KEY_new();
   if (eckey == NULL || !EC_KEY_set_group(eckey, group)) {
     goto err;
   }
