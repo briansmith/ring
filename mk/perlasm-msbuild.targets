@@ -8,11 +8,16 @@
   </AvailableItemName>
  </ItemGroup>
 
- <PropertyGroup>
-   <YasmFlags Condition="'$(ProcessorArchitecture)' == 'amd64'">-f win64</YasmFlags>
-   <PerlAsmFlags Condition="'$(ProcessorArchitecture)' == 'amd64'">nasm</PerlAsmFlags>
-   <PerlAsmFlags Condition="'$(ProcessorArchitecture)' == 'x86'">win32n -fPIC -DOPENSSL_IA32_SSE2</PerlAsmFlags>
- </PropertyGroup>
+  <PropertyGroup Condition="'$(ProcessorArchitecture)' == 'amd64'">
+    <PerlAsmFlags>nasm</PerlAsmFlags>
+    <YasmOFormat>win64</YasmOFormat>
+    <YasmMachine>amd64</YasmMachine>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(ProcessorArchitecture)' == 'x86'">
+   <PerlAsmFlags>win32n -fPIC -DOPENSSL_IA32_SSE2</PerlAsmFlags>
+   <YasmOFormat>win32</YasmOFormat>
+   <YasmMachine>x86</YasmMachine>
+  </PropertyGroup>
 
   <Target
     Name="GenerateAsm"
@@ -21,6 +26,6 @@
     Outputs="$(IntDir)%(PerlAsm.FileName).obj">
   <Message Text="Generating code: %(PerlAsm.Identity)" />
   <Exec Command="perl.exe %(PerlAsm.Identity) $(PerlAsmFlags) > $(IntDir)%(PerlAsm.FileName).asm"/>
-  <Exec Command="yasm.exe $(YasmFlags) -o $(IntDir)%(PerlAsm.FileName).obj $(IntDir)%(PerlAsm.FileName).asm"/>
+  <Exec Command="yasm.exe -X vc --dformat=cv8 --oformat=$(YasmOFormat) --machine=$(YasmMachine) -o $(IntDir)%(PerlAsm.FileName).obj $(IntDir)%(PerlAsm.FileName).asm"/>
  </Target>
 </Project>
