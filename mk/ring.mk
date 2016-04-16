@@ -110,6 +110,7 @@ RING_ARM_SHARED_SRCS = $(addprefix $(RING_PREFIX), \
   crypto/cpu-arm-linux.c \
   \
   crypto/aes/asm/aesv8-armx.pl \
+  crypto/modes/asm/ghashv8-armx.pl \
   $(NULL))
 
 RING_arm_SRCS = $(addprefix $(RING_PREFIX), \
@@ -131,7 +132,6 @@ RING_aarch64_SRCS = $(addprefix $(RING_PREFIX), \
   crypto/chacha/asm/chacha-armv8.pl \
   crypto/ec/p256-64.c \
   crypto/ec/util-64.c \
-  crypto/modes/asm/ghashv8-armx.pl \
   crypto/sha/asm/sha256-armv8.pl \
   crypto/sha/asm/sha512-armv8.pl \
   $(NULL)) \
