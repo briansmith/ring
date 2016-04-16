@@ -581,19 +581,19 @@ mod tests {
 
                 let expected_md = test_case.consume_bytes("MD");
 
-                let mut mds = Vec::with_capacity(1000);
+                let mut mds = Vec::with_capacity(4);
                 mds.push(seed.clone());
                 mds.push(seed.clone());
                 mds.push(seed.clone());
-                for i in 3..1003 {
+                for _ in 0..1000 {
                     let mut ctx = digest::Context::new(digest_alg);
-                    ctx.update(&mds[i - 3]);
-                    ctx.update(&mds[i - 2]);
-                    ctx.update(&mds[i - 1]);
+                    ctx.update(&mds[0]);
+                    ctx.update(&mds[1]);
+                    ctx.update(&mds[2]);
                     let md_i = ctx.finish();
+                    let _ = mds.remove(0);
                     mds.push(Vec::from(md_i.as_ref()));
                 }
-                assert_eq!(1003, mds.len());
                 let md_j = mds.last().unwrap();
                 assert_eq!(&expected_md, md_j);
                 seed = md_j.clone();
