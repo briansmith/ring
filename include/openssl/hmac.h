@@ -143,8 +143,6 @@ OPENSSL_EXPORT int HMAC_CTX_copy(HMAC_CTX *dest, const HMAC_CTX *src);
 
 /* Private functions */
 
-#define HMAC_MAX_MD_CBLOCK 128 /* largest known is SHA512 */
-
 struct hmac_ctx_st {
   const EVP_MD *md;
   EVP_MD_CTX md_ctx;

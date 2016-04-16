@@ -143,6 +143,9 @@ OPENSSL_EXPORT int EVP_DigestUpdate(EVP_MD_CTX *ctx, const void *data,
  * at least this much space. */
 #define EVP_MAX_MD_SIZE 64 /* SHA-512 is the longest so far. */
 
+/* EVP_MAX_MD_BLOCK_SIZE is the largest digest block size supported, in bytes. */
+#define EVP_MAX_MD_BLOCK_SIZE 128 /* SHA-512 is the longest so far. */
+
 /* EVP_DigestFinal_ex finishes the digest in |ctx| and writes the output to
  * |md_out|. At most |EVP_MAX_MD_SIZE| bytes are written. If |out_size| is not
  * NULL then |*out_size| is set to the number of bytes written. It returns one.
