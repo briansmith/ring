@@ -25,6 +25,17 @@
 //!         goal is to enable as much functionality as is practical in
 //!         <code>no_heap</code> mode, but for now some RSA, ECDH, and ECDSA
 //!         functionality still uses the heap.
+//! <tr><td><code>test_logging</code>
+//!     <td>Print out additional logging information, in particular the
+//!          contents of the test input files, as tests execute. When a test
+//!          fails, the most recently-logged stuff indicates which test vectors
+//!          failed. This isn't enabled by default because it uses too much
+//!          memory on small targets, due to the way that Rust buffers the
+//!          output until (unless) the test fails. For small (embedded)
+//!          targets, use
+//!          `cargo test --release --no-run --features=test_logging` to build
+//!          the tests, and then run the tests on the target with
+//!          `<executable-name> --nocapture' to see the log.
 //! </table>
 
 #![allow(

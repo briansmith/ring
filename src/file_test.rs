@@ -133,8 +133,10 @@ fn parse_test_case(current_section: &mut String,
             Some(result) => Some(result.unwrap()),
         };
 
-        if let Some(ref text) = line {
-            println!("Line: {}", text);
+        if cfg!(feature = "test_logging") {
+            if let Some(ref text) = line {
+                println!("Line: {}", text);
+            }
         }
 
         match line {
