@@ -200,7 +200,7 @@ typedef void (*ctr128_f)(const uint8_t *in, uint8_t *out, size_t blocks,
  * incremented by this function. */
 void CRYPTO_ctr128_encrypt(const uint8_t *in, uint8_t *out, size_t len,
                            const void *key, uint8_t ivec[16],
-                           uint8_t ecount_buf[16], unsigned int *num,
+                           uint8_t ecount_buf[16], unsigned *num,
                            block128_f block);
 
 /* CRYPTO_ctr128_encrypt_ctr32 acts like |CRYPTO_ctr128_encrypt| but takes
@@ -209,7 +209,7 @@ void CRYPTO_ctr128_encrypt(const uint8_t *in, uint8_t *out, size_t len,
  * function. */
 void CRYPTO_ctr128_encrypt_ctr32(const uint8_t *in, uint8_t *out, size_t len,
                                  const void *key, uint8_t ivec[16],
-                                 uint8_t ecount_buf[16], unsigned int *num,
+                                 uint8_t ecount_buf[16], unsigned *num,
                                  ctr128_f ctr);
 
 
@@ -313,7 +313,7 @@ void CRYPTO_cbc128_decrypt(const uint8_t *in, uint8_t *out, size_t len,
  * call. */
 void CRYPTO_ofb128_encrypt(const uint8_t *in, uint8_t *out,
                            size_t len, const void *key, uint8_t ivec[16],
-                           int *num, block128_f block);
+                           unsigned *num, block128_f block);
 
 
 /* CFB. */
@@ -323,21 +323,21 @@ void CRYPTO_ofb128_encrypt(const uint8_t *in, uint8_t *out,
  * |len| be a multiple of any value and any partial blocks are stored in |ivec|
  * and |*num|, the latter must be zero before the initial call. */
 void CRYPTO_cfb128_encrypt(const uint8_t *in, uint8_t *out, size_t len,
-                           const void *key, uint8_t ivec[16], int *num, int enc,
-                           block128_f block);
+                           const void *key, uint8_t ivec[16], unsigned *num,
+                           int enc, block128_f block);
 
 /* CRYPTO_cfb128_8_encrypt encrypts (or decrypts, if |enc| is zero) |len| bytes
  * from |in| to |out| using |block| in CFB-8 mode. Prior to the first call
  * |num| should be set to zero. */
 void CRYPTO_cfb128_8_encrypt(const uint8_t *in, uint8_t *out, size_t len,
-                             const void *key, uint8_t ivec[16], int *num,
+                             const void *key, uint8_t ivec[16], unsigned *num,
                              int enc, block128_f block);
 
 /* CRYPTO_cfb128_1_encrypt encrypts (or decrypts, if |enc| is zero) |len| bytes
  * from |in| to |out| using |block| in CFB-1 mode. Prior to the first call
  * |num| should be set to zero. */
 void CRYPTO_cfb128_1_encrypt(const uint8_t *in, uint8_t *out, size_t bits,
-                             const void *key, uint8_t ivec[16], int *num,
+                             const void *key, uint8_t ivec[16], unsigned *num,
                              int enc, block128_f block);
 
 size_t CRYPTO_cts128_encrypt_block(const uint8_t *in, uint8_t *out, size_t len,

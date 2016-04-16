@@ -481,7 +481,7 @@ struct evp_cipher_ctx_st {
 
   /* num contains the number of bytes of |iv| which are valid for modes that
    * manage partial blocks themselves. */
-  int num;
+  unsigned num;
 
   /* final_used is non-zero if the |final| buffer contains plaintext. */
   int final_used;

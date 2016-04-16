@@ -57,14 +57,13 @@
 OPENSSL_COMPILE_ASSERT((16 % sizeof(size_t)) == 0, bad_size_t_size);
 
 void CRYPTO_cfb128_encrypt(const uint8_t *in, uint8_t *out, size_t len,
-                           const void *key, uint8_t ivec[16], int *num, int enc,
-                           block128_f block) {
-  unsigned int n;
+                           const void *key, uint8_t ivec[16], unsigned *num,
+                           int enc, block128_f block) {
   size_t l = 0;
 
   assert(in && out && key && ivec && num);
 
-  n = *num;
+  unsigned n = *num;
 
   if (enc) {
     while (n && len) {
@@ -199,7 +198,7 @@ static void cfbr_encrypt_block(const uint8_t *in, uint8_t *out, unsigned nbits,
 
 /* N.B. This expects the input to be packed, MS bit first */
 void CRYPTO_cfb128_1_encrypt(const uint8_t *in, uint8_t *out, size_t bits,
-                             const void *key, uint8_t ivec[16], int *num,
+                             const void *key, uint8_t ivec[16], unsigned *num,
                              int enc, block128_f block) {
   size_t n;
   uint8_t c[1], d[1];
@@ -217,7 +216,7 @@ void CRYPTO_cfb128_1_encrypt(const uint8_t *in, uint8_t *out, size_t bits,
 
 void CRYPTO_cfb128_8_encrypt(const unsigned char *in, unsigned char *out,
                              size_t length, const void *key,
-                             unsigned char ivec[16], int *num, int enc,
+                             unsigned char ivec[16], unsigned *num, int enc,
                              block128_f block) {
   size_t n;
 
