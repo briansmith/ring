@@ -231,11 +231,11 @@ const EVP_MD *EVP_MD_CTX_md(const EVP_MD_CTX *ctx) {
   return ctx->digest;
 }
 
-unsigned EVP_MD_CTX_size(const EVP_MD_CTX *ctx) {
+size_t EVP_MD_CTX_size(const EVP_MD_CTX *ctx) {
   return EVP_MD_size(EVP_MD_CTX_md(ctx));
 }
 
-unsigned EVP_MD_CTX_block_size(const EVP_MD_CTX *ctx) {
+size_t EVP_MD_CTX_block_size(const EVP_MD_CTX *ctx) {
   return EVP_MD_block_size(EVP_MD_CTX_md(ctx));
 }
 

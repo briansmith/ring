@@ -218,11 +218,11 @@ OPENSSL_EXPORT const EVP_MD *EVP_MD_CTX_md(const EVP_MD_CTX *ctx);
 
 /* EVP_MD_CTX_size returns the digest size of |ctx|, in bytes. It
  * will crash if a digest hasn't been set on |ctx|. */
-OPENSSL_EXPORT unsigned EVP_MD_CTX_size(const EVP_MD_CTX *ctx);
+OPENSSL_EXPORT size_t EVP_MD_CTX_size(const EVP_MD_CTX *ctx);
 
 /* EVP_MD_CTX_block_size returns the block size of the digest function used by
  * |ctx|, in bytes. It will crash if a digest hasn't been set on |ctx|. */
-OPENSSL_EXPORT unsigned EVP_MD_CTX_block_size(const EVP_MD_CTX *ctx);
+OPENSSL_EXPORT size_t EVP_MD_CTX_block_size(const EVP_MD_CTX *ctx);
 
 /* EVP_MD_CTX_type returns a NID describing the digest function used by |ctx|.
  * (For example, |NID_sha256|.) It will crash if a digest hasn't been set on
