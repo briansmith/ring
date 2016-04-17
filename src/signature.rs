@@ -351,6 +351,9 @@ mod tests {
     use super::super::{file_test, signature};
     use super::super::input::Input;
 
+    bssl_test!(test_ecdsa, bssl_ecdsa_test_main);
+    bssl_test!(test_rsa, bssl_rsa_test_main);
+
     /// Test vectors from BoringSSL.
     #[test]
     fn test_ed25519() {

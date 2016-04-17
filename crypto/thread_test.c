@@ -17,6 +17,9 @@
 #include <stdio.h>
 
 
+int bssl_thread_test_main(void);
+
+
 #if !defined(OPENSSL_NO_THREADS)
 
 struct thread_func_t {
@@ -186,7 +189,7 @@ static int test_thread_local(void) {
   return 1;
 }
 
-int main(void) {
+int bssl_thread_test_main(void) {
   if (!test_once() ||
       !test_thread_local()) {
     return 1;

@@ -19,6 +19,8 @@
 #include <openssl/crypto.h>
 
 
+extern "C" int bssl_aes_test_main();
+
 static bool TestAES(const uint8_t *key, size_t key_len,
                     const uint8_t plaintext[AES_BLOCK_SIZE],
                     const uint8_t ciphertext[AES_BLOCK_SIZE]) {
@@ -66,7 +68,7 @@ static bool TestAES(const uint8_t *key, size_t key_len,
   return true;
 }
 
-int main() {
+extern "C" int bssl_aes_test_main() {
   CRYPTO_library_init();
 
   // Test vectors from FIPS-197, Appendix C.

@@ -29,6 +29,8 @@
 #include "../test/scoped_types.h"
 
 
+extern "C" int bssl_bytestring_test_main();
+
 static bool TestGetASN1() {
   static const uint8_t kData1[] = {0x30, 2, 1, 2};
   static const uint8_t kData2[] = {0x30, 3, 1, 2};
@@ -404,7 +406,7 @@ static int TestZero() {
   return 1;
 }
 
-int main(void) {
+extern "C" int bssl_bytestring_test_main() {
   CRYPTO_library_init();
 
   if (!TestGetASN1() ||

@@ -289,31 +289,7 @@ mod tests {
     use super::super::{aead, file_test};
     use std::vec::Vec;
 
-    #[test]
-    pub fn test_aes_gcm_128() {
-        test_aead(&aead::AES_128_GCM,
-                  "crypto/cipher/test/aes_128_gcm_tests.txt");
-    }
-
-    #[test]
-    pub fn test_aes_gcm_256() {
-        test_aead(&aead::AES_256_GCM,
-                  "crypto/cipher/test/aes_256_gcm_tests.txt");
-    }
-
-    #[test]
-    pub fn test_chacha20_poly1305() {
-        test_aead(&aead::CHACHA20_POLY1305,
-                  "crypto/cipher/test/chacha20_poly1305_tests.txt");
-    }
-
-    #[test]
-    pub fn test_chacha20_poly1305_old() {
-        test_aead(&aead::CHACHA20_POLY1305_OLD,
-                  "crypto/cipher/test/chacha20_poly1305_old_tests.txt");
-    }
-
-    fn test_aead(aead_alg: &'static aead::Algorithm, file_path: &str) {
+    pub fn test_aead(aead_alg: &'static aead::Algorithm, file_path: &str) {
         test_aead_key_sizes(aead_alg);
         test_aead_nonce_sizes(aead_alg);
 

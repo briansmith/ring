@@ -28,3 +28,22 @@ pub fn map_ptr_result<T>(bssl_result: *mut T) -> Result<*mut T, ()> {
     }
     Ok(bssl_result)
 }
+
+// Adapt a BoringSSL test suite to a Rust test.
+//
+// The BoringSSL test suite is broken up into multiple files. Originally, they
+// were all executables with their own `main` functions. Those main functions
+// have been replaced with uniquely-named functions so that they can all be
+// linked into the same executable.
+macro_rules! bssl_test {
+    ( $fn_name:ident, $bssl_test_main_fn_name:ident ) => {
+        #[test]
+        #[allow(unsafe_code)]
+        fn $fn_name() {
+            extern {
+                fn $bssl_test_main_fn_name() -> $crate::c::int;
+            }
+            assert_eq!(unsafe { $bssl_test_main_fn_name() }, 0);
+        }
+    }
+}

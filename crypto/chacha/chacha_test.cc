@@ -22,6 +22,8 @@
 #include <openssl/chacha.h>
 
 
+extern "C" int bssl_chacha_test_main(void);
+
 
 static const uint32_t kKey[8] = {
     0x46f1be98, 0x9826e79b, 0xfb5ba437, 0x6a5a2ac9, 0x7c5062c7, 0xbf4364f9,
@@ -241,7 +243,7 @@ static bool TestChaCha20(size_t len) {
   return true;
 }
 
-int main(void) {
+extern "C" int bssl_chacha_test_main(void) {
   CRYPTO_library_init();
 
   // Run the test with the test vector at all lengths.

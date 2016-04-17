@@ -92,3 +92,24 @@ extern {
                              in_: *const u8, ad: *const u8, ad_len: c::size_t)
                              -> c::int;
 }
+
+
+#[cfg(test)]
+mod tests {
+    use super::super::super::aead;
+    use super::super::tests::test_aead;
+
+    bssl_test!(test_aes, bssl_aes_test_main);
+
+    #[test]
+    pub fn test_aes_gcm_128() {
+        test_aead(&aead::AES_128_GCM,
+                  "crypto/cipher/test/aes_128_gcm_tests.txt");
+    }
+
+    #[test]
+    pub fn test_aes_gcm_256() {
+        test_aead(&aead::AES_256_GCM,
+                  "crypto/cipher/test/aes_256_gcm_tests.txt");
+    }
+}

@@ -20,16 +20,10 @@ include mk/ring.mk
 
 OBJS += \
   $(RING_OBJS) \
-  $(RING_TEST_LIB_OBJS) \
-  $(RING_TEST_MAIN_OBJS) \
   $(NULL)
 
 LIBS += \
-  $(RING_LIB) \
+  $(RING_LIBS) \
   $(NULL)
-
-EXES += $(RING_TEST_EXES)
-
-check:: check-ring
 
 include mk/bottom_of_makefile.mk

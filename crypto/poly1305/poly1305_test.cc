@@ -24,6 +24,9 @@
 #include "../test/file_test.h"
 
 
+extern "C" int bssl_poly1305_test_main();
+
+
 static bool TestSIMD(FileTest *t, unsigned excess,
                      const std::vector<uint8_t> &key,
                      const std::vector<uint8_t> &in,
@@ -119,13 +122,9 @@ static bool TestPoly1305(FileTest *t, void * /*arg*/) {
   return true;
 }
 
-int main(int argc, char **argv) {
+extern "C" int bssl_poly1305_test_main() {
   CRYPTO_library_init();
 
-  if (argc != 2) {
-    fprintf(stderr, "%s <test file>\n", argv[0]);
-    return 1;
-  }
-
-  return FileTestMain(TestPoly1305, nullptr, argv[1]);
+  return FileTestMain(TestPoly1305, nullptr,
+                      "crypto/poly1305/poly1305_test.txt");
 }

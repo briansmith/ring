@@ -2,26 +2,38 @@
 <Project DefaultTargets="Build" ToolsVersion="14.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <PropertyGroup Label="Globals">
     <ProjectGuid>{1DACE503-6498-492D-B1FF-F9EE18624443}</ProjectGuid>
-    <ProjectName>libring.test.Windows</ProjectName>
+    <ProjectName>libtest.Windows</ProjectName>
     <TargetName>ring-test</TargetName>
   </PropertyGroup>
   <PropertyGroup Label="Configuration">
     <ConfigurationType>StaticLibrary</ConfigurationType>
   </PropertyGroup>
   <ImportGroup Label="PropertySheets">
-    <Import Project="..\..\mk\Windows.props" />
+    <Import Project="..\mk\Windows.props" />
   </ImportGroup>
   <PropertyGroup Label="Configuration">
-    <OutDir>$(IntRootDir)</OutDir>
-    <!-- C4710: 'function' : function not inlined -->
+    <OutDir>$(OutRootDir)lib\</OutDir>
+    
+    <!-- C4710: function not inlined -->
     <WarningsToDisable>$(WarningsToDisable);4710</WarningsToDisable>
   </PropertyGroup>
   <ItemGroup>
-    <ClCompile Include="bn_test_convert.c" />
-    <ClCompile Include="bn_test_lib.c" />
-    <ClCompile Include="file_test.cc" />
-    <ClCompile Include="malloc.cc" />
-    <ClCompile Include="test_util.cc" />
+    <ClCompile Include="constant_time_test.c" />
+    <ClCompile Include="thread_test.c" />
+
+    <ClCompile Include="aes/aes_test.cc" />
+    <ClCompile Include="bn/bn_test.cc" />
+    <ClCompile Include="bytestring/bytestring_test.cc" />
+    <ClCompile Include="chacha/chacha_test.cc" />
+    <ClCompile Include="ecdsa/ecdsa_test.cc" />
+    <ClCompile Include="poly1305/poly1305_test.cc" />
+    <ClCompile Include="rsa/rsa_test.cc" />
+
+    <ClCompile Include="test/bn_test_convert.c" />
+    <ClCompile Include="test/bn_test_lib.c" />
+    <ClCompile Include="test/file_test.cc" />
+    <ClCompile Include="test/malloc.cc" />
+    <ClCompile Include="test/test_util.cc" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="bn_test_lib.h" />

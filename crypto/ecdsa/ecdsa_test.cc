@@ -64,6 +64,10 @@
 
 #include "../test/scoped_types.h"
 
+
+extern "C" int bssl_ecdsa_test_main();
+
+
 static bool point2oct(ScopedOpenSSLBytes *out, size_t *out_len,
                       const EC_GROUP *group, const EC_POINT *point) {
   size_t der_len = EC_POINT_point2oct(group, point, NULL, 0, NULL);
@@ -309,7 +313,7 @@ static size_t BitsToBytes(size_t bits) {
   return (bits / 8) + (7 + (bits % 8)) / 8;
 }
 
-int main(void) {
+extern "C" int bssl_ecdsa_test_main() {
   CRYPTO_library_init();
 
   if (!TestBuiltin(stdout) ||

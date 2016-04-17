@@ -50,6 +50,8 @@
 #include <stdlib.h>
 
 
+int bssl_constant_time_test_main(void);
+
 static const unsigned int CONSTTIME_TRUE = (unsigned)(~0);
 static const unsigned int CONSTTIME_FALSE = 0;
 
@@ -97,7 +99,7 @@ static int signed_test_values[] = {
     0,     1,      -1,      1024,    -1024,       12345,      -12345,
     32000, -32000, INT_MAX, INT_MIN, INT_MAX - 1, INT_MIN + 1};
 
-int main(void) {
+int bssl_constant_time_test_main(void) {
   unsigned int a, i, j;
   int c, d;
   int num_failed = 0, num_all = 0;

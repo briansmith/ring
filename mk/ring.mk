@@ -16,8 +16,6 @@ RING_PREFIX ?= ring/
 
 RING_CPPFLAGS = $(RING_THREAD_FLAGS) -I$(RING_PREFIX)include -I$(GENERATED_CODE_DIR) -D_XOPEN_SOURCE=700
 
-RING_LDLIBS = $(RING_THREAD_FLAGS) -L$(dir $(RING_LIB)) -lring-core
-
 RING_SRCS = $(addprefix $(RING_PREFIX), \
   crypto/aes/aes.c \
   crypto/bn/add.c \
@@ -146,39 +144,7 @@ RING_THREAD_FLAGS += -pthread
 RING_SRCS += $(addprefix $(RING_PREFIX), crypto/thread_pthread.c)
 endif
 
-# $(RING_ASM_OBJS): CPPFLAGS += -I$(RING_PREFIX)crypto
-
-RING_OBJS = \
-  $(addprefix $(OBJ_PREFIX), \
-    $(patsubst %.pl, %.o, \
-      $(patsubst %.S, %.o, \
-        $(patsubst %.c, %.o, $(RING_SRCS)))))
-
-RING_LIB = $(LIB_PREFIX)libring-core.a
-
-# Recent versions of Linux have the D flag for deterministic builds, but Darwin
-# (at least) doesn't. Accroding to Debian's documentation, binutils is built
-# with --enable-determnistic-archives by default and we shouldn't need to
-# worry about it.
-$(RING_LIB): ARFLAGS = crs
-$(RING_LIB): $(RING_OBJS) $(RING_PREFIX)mk/ring.mk
-	$(RM) $@
-	$(AR) $(ARFLAGS) $@ $(filter-out $(RING_PREFIX)mk/ring.mk, $^)
-
-RING_TEST_LIB_SRCS = \
-  crypto/test/bn_test_convert.c \
-  crypto/test/bn_test_lib.c \
-  crypto/test/file_test.cc \
-  crypto/test/malloc.cc \
-  crypto/test/test_util.cc \
-  $(NULL)
-
-RING_TEST_LIB_OBJS = $(addprefix $(OBJ_PREFIX), \
-  $(patsubst %.c, %.o, \
-  $(patsubst %.cc, %.o, \
-  $(RING_TEST_LIB_SRCS))))
-
-RING_TEST_MAIN_SRCS = $(addprefix $(RING_PREFIX), \
+RING_TEST_SRCS = $(addprefix $(RING_PREFIX), \
   crypto/aes/aes_test.cc \
   crypto/bn/bn_test.cc \
   crypto/bytestring/bytestring_test.cc \
@@ -188,30 +154,53 @@ RING_TEST_MAIN_SRCS = $(addprefix $(RING_PREFIX), \
   crypto/poly1305/poly1305_test.cc \
   crypto/rsa/rsa_test.cc \
   crypto/thread_test.c \
+  crypto/test/bn_test_convert.c \
+  crypto/test/bn_test_lib.c \
+  crypto/test/file_test.cc \
+  crypto/test/test_util.cc \
   $(NULL))
 
-RING_TEST_MAIN_OBJS = $(addprefix $(OBJ_PREFIX), \
-  $(patsubst %.c, %.o, \
-  $(patsubst %.cc, %.o, \
-  $(RING_TEST_MAIN_SRCS))))
+RING_CORE_OBJS = \
+  $(addprefix $(OBJ_PREFIX), \
+    $(patsubst %.pl, %.o, \
+      $(patsubst %.S, %.o, \
+        $(patsubst %.c, %.o, \
+          $(RING_SRCS)))))
 
-RING_TEST_EXES = $(RING_TEST_MAIN_OBJS:$(OBJ_PREFIX)%.o=$(EXE_PREFIX)%)
+RING_TEST_OBJS = \
+  $(addprefix $(OBJ_PREFIX), \
+    $(patsubst %.c, %.o, \
+      $(patsubst %.cc, %.o, \
+        $(RING_TEST_SRCS))))
 
-ifeq ($(TARGET_SYS),none)
-$(RING_TEST_EXES): LDLIBS += --specs=rdimon.specs
-endif
-$(RING_TEST_EXES): LDLIBS += $(RING_LDLIBS)
-$(RING_TEST_EXES): $(EXE_PREFIX)% : \
-  $(OBJ_PREFIX)%.o \
-  $(RING_LIB) \
-  $(RING_TEST_LIB_OBJS) \
+RING_CORE_LIB = $(LIB_PREFIX)libring-core.a
+RING_TEST_LIB = $(LIB_PREFIX)libring-test.a
+
+RING_LIBS = \
+  $(RING_CORE_LIB) \
+  $(RING_TEST_LIB) \
   $(NULL)
-	$(CXX) $(filter-out $(RING_LIB),$^) $(LDFLAGS) $(LDLIBS) $(TARGET_ARCH) -o $@
+
+# Recent versions of Linux have the D flag for deterministic builds, but Darwin
+# (at least) doesn't. Accroding to Debian's documentation, binutils is built
+# with --enable-determnistic-archives by default and we shouldn't need to
+# worry about it.
+$(RING_CORE_LIB): ARFLAGS = crs
+$(RING_CORE_LIB): $(RING_CORE_OBJS) $(RING_PREFIX)mk/ring.mk
+	$(RM) $@
+	$(AR) $(ARFLAGS) $@ $(filter-out $(RING_PREFIX)mk/ring.mk, $^)
+$(RING_TEST_LIB): ARFLAGS = crs
+$(RING_TEST_LIB): $(RING_TEST_OBJS) $(RING_PREFIX)mk/ring.mk
+	$(RM) $@
+	$(AR) $(ARFLAGS) $@ $(filter-out $(RING_PREFIX)mk/ring.mk, $^)
+
+RING_OBJS = \
+  $(RING_CORE_OBJS) \
+  $(RING_TEST_OBJS) \
+  $(NULL)
 
 # TODO: Fix the code so -Wno- overrides are not needed.
 $(RING_OBJS) \
-$(RING_TEST_LIB_OBJS) \
-$(RING_TEST_MAIN_OBJS) \
 $(NULL): CPPFLAGS += $(RING_CPPFLAGS) \
                      -DBORINGSSL_IMPLEMENTATION \
                      -fno-strict-aliasing \

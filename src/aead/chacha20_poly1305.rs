@@ -246,3 +246,24 @@ extern {
     fn CRYPTO_poly1305_update(state: *mut u8, in_: *const u8,
                               in_len: c::size_t);
 }
+
+#[cfg(test)]
+mod tests {
+    use super::super::super::aead;
+    use super::super::tests::test_aead;
+
+    bssl_test!(test_chacha, bssl_chacha_test_main);
+    bssl_test!(test_poly1305, bssl_poly1305_test_main);
+
+    #[test]
+    pub fn test_chacha20_poly1305() {
+        test_aead(&aead::CHACHA20_POLY1305,
+                  "crypto/cipher/test/chacha20_poly1305_tests.txt");
+    }
+
+    #[test]
+    pub fn test_chacha20_poly1305_old() {
+        test_aead(&aead::CHACHA20_POLY1305_OLD,
+                  "crypto/cipher/test/chacha20_poly1305_old_tests.txt");
+    }
+}

@@ -69,6 +69,9 @@
 #include "../test/scoped_types.h"
 
 
+extern "C" int bssl_rsa_test_main(void);
+
+
 // kPlaintext is a sample plaintext.
 static const uint8_t kPlaintext[] = "\x54\x85\x9b\x34\x2c\x49\xea\x2a";
 static const size_t kPlaintextLen = sizeof(kPlaintext) - 1;
@@ -353,7 +356,7 @@ static bool TestBadExponent() {
   return true;
 }
 
-int main(void) {
+extern "C" int bssl_rsa_test_main(void) {
   CRYPTO_library_init();
 
   if (!TestRSA(kKey1, sizeof(kKey1) - 1, kOAEPCiphertext1,

@@ -107,7 +107,6 @@ fn build_c_code(out_dir: &str) -> Result<(), std::env::VarError> {
 
     let command_name;
     let args;
-    let lib_path;
     if !use_msbuild {
         command_name = "make";
         // Environment variables |CC|, |CXX|, etc. will be inherited from this
@@ -117,7 +116,6 @@ fn build_c_code(out_dir: &str) -> Result<(), std::env::VarError> {
         } else {
             "RELWITHDEBINFO"
         };
-        lib_path = Path::new(out_dir).join("lib");
         args = vec![
             format!("-j{}", num_jobs),
             format!("TARGET={}", target_str),
@@ -145,7 +143,6 @@ fn build_c_code(out_dir: &str) -> Result<(), std::env::VarError> {
             format!("/p:OutRootDir={}/", out_dir),
             format!("/p:GENERATED_CODE_DIR={}", out_dir),
         ];
-        lib_path = Path::new(&out_dir).join("lib");
     }
 
     if !std::process::Command::new(command_name)
@@ -157,7 +154,16 @@ fn build_c_code(out_dir: &str) -> Result<(), std::env::VarError> {
         panic!("{} execution failed", command_name);
     }
 
+    let lib_path = Path::new(out_dir).join("lib");
     println!("cargo:rustc-link-search=native={}", lib_path.to_str().unwrap());
     println!("cargo:rustc-link-lib=static={}-core", LIB_NAME);
+
+    // XXX: Ideally, this would only happen for `cargo test`, but we don't know
+    // how to do that yet.
+    println!("cargo:rustc-link-lib=static={}-test", LIB_NAME);
+    if !use_msbuild {
+        println!("cargo:rustc-flags=-l dylib=stdc++");
+    }
+
     Ok(())
 }
