@@ -24,6 +24,7 @@
 #include <openssl/curve25519.h>
 #include <openssl/digest.h>
 #include <openssl/err.h>
+#include <openssl/newhope.h>
 #include <openssl/nid.h>
 #include <openssl/rand.h>
 #include <openssl/rsa.h>
@@ -514,6 +515,35 @@ static bool SpeedSPAKE2(const std::string &selected) {
   return true;
 }
 
+static bool SpeedNewHope(const std::string &selected) {
+  if (!selected.empty() && selected.find("newhope") == std::string::npos) {
+    return true;
+  }
+
+  TimeResults results;
+  NEWHOPE_POLY *sk = NEWHOPE_POLY_new();
+  uint8_t clientmsg[NEWHOPE_CLIENTMSG_LENGTH];
+  RAND_bytes(clientmsg, sizeof(clientmsg));
+
+  if (!TimeFunction(&results, [sk, clientmsg]() -> bool {
+        uint8_t server_key[SHA256_DIGEST_LENGTH];
+        uint8_t servermsg[NEWHOPE_SERVERMSG_LENGTH];
+        NEWHOPE_keygen(servermsg, sk);
+        if (!NEWHOPE_server_compute_key(server_key, sk, clientmsg,
+                                        sizeof(clientmsg))) {
+          return false;
+        }
+        return true;
+      })) {
+    fprintf(stderr, "failed to exchange key.\n");
+    return false;
+  }
+
+  NEWHOPE_POLY_free(sk);
+  results.Print("newhope server key exchange");
+  return true;
+}
+
 bool Speed(const std::vector<std::string> &args) {
   std::string selected;
   if (args.size() > 1) {
@@ -594,7 +624,8 @@ bool Speed(const std::vector<std::string> &args) {
       !SpeedECDH(selected) ||
       !SpeedECDSA(selected) ||
       !Speed25519(selected) ||
-      !SpeedSPAKE2(selected)) {
+      !SpeedSPAKE2(selected) ||
+      !SpeedNewHope(selected)) {
     return false;
   }
 

@@ -2,3 +2,6 @@ BasedOnStyle: Google
 MaxEmptyLinesToKeep: 3
 AllowShortIfStatementsOnASingleLine: false
 AllowShortLoopsOnASingleLine: false
+DerivePointerAlignment: false
+PointerAlignment: Right
+
