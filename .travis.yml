@@ -486,6 +486,10 @@ matrix:
             - linux-libc-dev:i386
           sources:
             - ubuntu-toolchain-r-test
+      after_success:
+        - mk/travis-install-kcov.sh
+        - ${HOME}/kcov/bin/kcov --verify --coveralls-id=$TRAVIS_JOB_ID --exclude-path=/usr/include --include-pattern=ring/crypto,ring/src target/kcov target/$TARGET_X/debug/ring-*
+
 
     - env: TARGET_X=i686-unknown-linux-gnu CC_X=gcc-5 CXX_X=g++-5 MODE_X=RELWITHDEBINFO KCOV=0
       rust: nightly
@@ -515,6 +519,10 @@ matrix:
             - libelf-dev
           sources:
             - ubuntu-toolchain-r-test
+      after_success:
+        - mk/travis-install-kcov.sh
+        - ${HOME}/kcov/bin/kcov --verify --coveralls-id=$TRAVIS_JOB_ID --exclude-path=/usr/include --include-pattern=ring/crypto,ring/src target/kcov target/$TARGET_X/debug/ring-*
+
 
     - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=gcc-5 CXX_X=g++-5 MODE_X=RELWITHDEBINFO KCOV=0
       rust: nightly

@@ -64,17 +64,21 @@ rustc --version
 
 if [[ "$MODE_X" == "RELWITHDEBINFO" ]]; then mode=--release; fi
 
-CC=$CC_X CXX=$CXX_X cargo build -j2 ${mode-} --verbose --target=$TARGET_X
+if [[ "$KCOV" == "1" ]]; then
+  RUSTFLAGS_X="-C link-dead-code"
+fi
+
+CC=$CC_X CXX=$CXX_X RUSTFLAGS=${RUSTFLAGS_X-} cargo build -j2 ${mode-} --verbose --target=$TARGET_X
 
 case $TARGET_X in
 arm-unknown-linux-gnueabi|aarch64-unknown-linux-gnu)
   ;;
 *)
-  CC=$CC_X CXX=$CXX_X cargo test -j2 ${mode-} --verbose --target=$TARGET_X
-  CC=$CC_X CXX=$CXX_X cargo doc -j2 ${mode-} --verbose --target=$TARGET_X
+  CC=$CC_X CXX=$CXX_X RUSTFLAGS=${RUSTFLAGS_X-} cargo test -j2 ${mode-} --verbose --target=$TARGET_X
+  CC=$CC_X CXX=$CXX_X RUSTFLAGS=${RUSTFLAGS_X-} cargo doc -j2 ${mode-} --verbose --target=$TARGET_X
   ;;
 esac
 
-CC=$CC_X CXX=$CXX_X cargo clean --verbose
+CC=$CC_X CXX=$CXX_X RUSTFLAGS=${RUSTFLAGS_X-} cargo clean --verbose
 
 echo end of mk/travis.sh
