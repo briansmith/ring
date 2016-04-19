@@ -53,7 +53,8 @@ static int wait_for_thread(thread_t thread) {
 #else
 
 #include <pthread.h>
-#include <unistd.h>
+#include <string.h>
+#include <time.h>
 
 typedef pthread_t thread_t;
 
@@ -84,7 +85,10 @@ static void once_init(void) {
 #if defined(OPENSSL_WINDOWS)
   Sleep(1 /* milliseconds */);
 #else
-  usleep(1000 /* microseconds */);
+  struct timespec req;
+  memset(&req, 0, sizeof(req));
+  req.tv_nsec = 1000000;
+  nanosleep(&req, NULL);
 #endif
 }
 
