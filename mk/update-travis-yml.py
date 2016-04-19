@@ -104,7 +104,7 @@ def format_entries():
 # directive here. Also, we keep these variable names short so that the env
 # line does not get cut off in the Travis CI UI.
 entry_template = """
-    - env: TARGET_X=%(target)s CC_X=%(cc)s CXX_X=%(cxx)s MODE_X=%(mode)s
+    - env: TARGET_X=%(target)s CC_X=%(cc)s CXX_X=%(cxx)s MODE_X=%(mode)s KCOV=%(kcov)s
       rust: %(rust)s
       os: %(os)s"""
 
@@ -120,7 +120,26 @@ entry_sources_template = """
           sources:
             %(sources)s"""
 
+entry_after_success_kcov = """
+      after_success:
+        - mk/travis-install-kcov.sh
+        - ${HOME}/kcov/bin/kcov --verify --coveralls-id=$TRAVIS_JOB_ID --exclude-path=/usr/include --include-pattern=ring/crypto,ring/src target/kcov target/$TARGET_X/debug/ring-*
+"""
+
 def format_entry(os, target, compiler, rust, mode):
+    # Currently kcov only runs on Linux.
+    #
+    # GCC 5 was picked arbitrarily to restrict coverage report to one build for
+    # efficiency reasons.
+    #
+    # Cargo passes RUSTFLAGS to rustc only in Rust 1.9 and later. When Rust 1.9
+    # is released then we can change this to run (also) on the stable channel.
+    #
+    # DEBUG mode is needed because debug symbols are needed for coverage
+    # tracking.
+    kcov = (os == "linux" and compiler == "gcc-5" and rust == "nightly" and
+            mode == "DEBUG")
+
     target_words = target.split("-")
     arch = target_words[0]
     vendor = target_words[1]
@@ -132,7 +151,7 @@ def format_entry(os, target, compiler, rust, mode):
     template = entry_template
 
     if sys == "linux":
-        packages = sorted(get_linux_packages_to_install(compiler, arch))
+        packages = sorted(get_linux_packages_to_install(compiler, arch, kcov))
         sources_with_dups = sum([get_sources_for_package(p) for p in packages],[])
         sources = sorted(list(set(sources_with_dups)))
         if packages:
@@ -149,10 +168,14 @@ def format_entry(os, target, compiler, rust, mode):
     if os == "osx":
         os += "\n" + entry_indent + "osx_image: xcode7.2"
 
+    if kcov == True:
+        template += entry_after_success_kcov
+
     return template % {
             "cc" : cc,
             "cxx" : cxx,
             "mode" : mode,
+            "kcov": "1" if kcov == True else "0",
             "packages" : "\n            ".join(prefix_all("- ", packages)),
             "rust" : rust,
             "sources" : "\n            ".join(prefix_all("- ", sources)),
@@ -160,7 +183,7 @@ def format_entry(os, target, compiler, rust, mode):
             "os" : os,
             }
 
-def get_linux_packages_to_install(compiler, arch):
+def get_linux_packages_to_install(compiler, arch, kcov):
     if compiler in [linux_default_clang, linux_default_gcc]:
         packages = []
     elif compiler.startswith("clang-"):
@@ -171,6 +194,14 @@ def get_linux_packages_to_install(compiler, arch):
         raise ValueError("unexpected compiler: %s" % compiler)
 
     if arch == "i686":
+        if kcov == True:
+            packages += ["libcurl3:i386",
+                         "libcurl4-openssl-dev:i386",
+                         "libdw-dev:i386",
+                         "libelf-dev:i386",
+                         "libkrb5-dev:i386",
+                         "libssl-dev:i386"]
+
         if compiler.startswith("clang-") or compiler == linux_default_gcc:
             packages += ["libc6-dev-i386",
                          "gcc-multilib",
@@ -182,7 +213,11 @@ def get_linux_packages_to_install(compiler, arch):
         else:
             raise ValueError("unexpected compiler: %s" % compiler)
     elif arch == "x86_64":
-        pass
+        if kcov == True:
+            packages += ["libcurl4-openssl-dev",
+                         "libelf-dev",
+                         "libdw-dev",
+                         "binutils-dev"]
     else:
         raise ValueError("unexpected arch: %s" % arch)
 
