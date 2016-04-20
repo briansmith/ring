@@ -138,48 +138,9 @@ int SHA224_Final(uint8_t *md, SHA256_CTX *ctx) {
 #define HASH_CTX SHA256_CTX
 #define HASH_CBLOCK 64
 
-/* Note that FIPS180-2 discusses "Truncation of the Hash Function Output."
- * default: case below covers for it. It's not clear however if it's permitted
- * to truncate to amount of bytes not divisible by 4. I bet not, but if it is,
- * then default: case shall be extended. For reference. Idea behind separate
- * cases for pre-defined lenghts is to let the compiler decide if it's
- * appropriate to unroll small loops.
- *
- * TODO(davidben): The small |md_len| case is one of the few places a low-level
- * hash 'final' function can fail. This should never happen. */
-#define HASH_MAKE_STRING(c, s)                              \
-  do {                                                      \
-    uint32_t ll;                                            \
-    unsigned int nn;                                        \
-    switch ((c)->md_len) {                                  \
-      case SHA224_DIGEST_LENGTH:                            \
-        for (nn = 0; nn < SHA224_DIGEST_LENGTH / 4; nn++) { \
-          ll = (c)->h[nn];                                  \
-          HOST_l2c(ll, (s));                                \
-        }                                                   \
-        break;                                              \
-      case SHA256_DIGEST_LENGTH:                            \
-        for (nn = 0; nn < SHA256_DIGEST_LENGTH / 4; nn++) { \
-          ll = (c)->h[nn];                                  \
-          HOST_l2c(ll, (s));                                \
-        }                                                   \
-        break;                                              \
-      default:                                              \
-        if ((c)->md_len > SHA256_DIGEST_LENGTH) {           \
-          return 0;                                         \
-        }                                                   \
-        for (nn = 0; nn < (c)->md_len / 4; nn++) {          \
-          ll = (c)->h[nn];                                  \
-          HOST_l2c(ll, (s));                                \
-        }                                                   \
-        break;                                              \
-    }                                                       \
-  } while (0)
-
-
 #define HASH_UPDATE SHA256_Update
 #define HASH_TRANSFORM SHA256_Transform
-#define HASH_FINAL SHA256_Final
+#define HASH_FINISH sha256_finish
 #define HASH_BLOCK_DATA_ORDER sha256_block_data_order
 #ifndef SHA256_ASM
 static
@@ -187,6 +148,40 @@ static
 void sha256_block_data_order(uint32_t *state, const uint8_t *in, size_t num);
 
 #include "../digest/md32_common.h"
+
+int SHA256_Final(uint8_t *md, SHA256_CTX *sha) {
+  sha256_finish(sha);
+
+  /* TODO(davidben): Replace this with different versions of SHA256_Final
+   * and SHA224_Final. */
+  uint32_t ll;
+  unsigned int nn;
+  switch (sha->md_len) {
+    case SHA224_DIGEST_LENGTH:
+      for (nn = 0; nn < SHA224_DIGEST_LENGTH / 4; nn++) {
+        ll = sha->h[nn];
+        HOST_l2c(ll, md);
+      }
+      break;
+    case SHA256_DIGEST_LENGTH:
+      for (nn = 0; nn < SHA256_DIGEST_LENGTH / 4; nn++) {
+        ll = sha->h[nn];
+        HOST_l2c(ll, md);
+      }
+      break;
+    default:
+      if (sha->md_len > SHA256_DIGEST_LENGTH) {
+        return 0;
+      }
+      for (nn = 0; nn < sha->md_len / 4; nn++) {
+        ll = sha->h[nn];
+        HOST_l2c(ll, md);
+      }
+      break;
+  }
+
+  return 1;
+}
 
 #ifndef SHA256_ASM
 static const uint32_t K256[64] = {

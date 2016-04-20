@@ -98,24 +98,10 @@ uint8_t *SHA1(const uint8_t *data, size_t len, uint8_t *out) {
 
 #define HASH_CTX                SHA_CTX
 #define HASH_CBLOCK             64
-#define HASH_MAKE_STRING(c, s) \
-  do {                         \
-    uint32_t ll;               \
-    ll = (c)->h[0];            \
-    HOST_l2c(ll, (s));         \
-    ll = (c)->h[1];            \
-    HOST_l2c(ll, (s));         \
-    ll = (c)->h[2];            \
-    HOST_l2c(ll, (s));         \
-    ll = (c)->h[3];            \
-    HOST_l2c(ll, (s));         \
-    ll = (c)->h[4];            \
-    HOST_l2c(ll, (s));         \
-  } while (0)
 
 #define HASH_UPDATE SHA1_Update
 #define HASH_TRANSFORM SHA1_Transform
-#define HASH_FINAL SHA1_Final
+#define HASH_FINISH sha1_finish
 #define HASH_BLOCK_DATA_ORDER sha1_block_data_order
 #define ROTATE(a, n) (((a) << (n)) | ((a) >> (32 - (n))))
 #define Xupdate(a, ix, ia, ib, ic, id) \
@@ -127,6 +113,24 @@ static
 void sha1_block_data_order(uint32_t *state, const uint8_t *data, size_t num);
 
 #include "../digest/md32_common.h"
+
+int SHA1_Final(uint8_t *md, SHA_CTX *sha) {
+  sha1_finish(sha);
+
+  uint32_t ll;
+  ll = sha->h[0];
+  HOST_l2c(ll, md);
+  ll = sha->h[1];
+  HOST_l2c(ll, md);
+  ll = sha->h[2];
+  HOST_l2c(ll, md);
+  ll = sha->h[3];
+  HOST_l2c(ll, md);
+  ll = sha->h[4];
+  HOST_l2c(ll, md);
+
+  return 1;
+}
 
 #define K_00_19 0x5a827999UL
 #define K_20_39 0x6ed9eba1UL
