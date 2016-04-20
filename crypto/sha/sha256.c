@@ -77,7 +77,6 @@ int SHA224_Init(SHA256_CTX *sha) {
   sha->h[5] = 0x68581511UL;
   sha->h[6] = 0x64f98fa7UL;
   sha->h[7] = 0xbefa4fa4UL;
-  sha->md_len = SHA224_DIGEST_LENGTH;
   return 1;
 }
 
@@ -91,7 +90,6 @@ int SHA256_Init(SHA256_CTX *sha) {
   sha->h[5] = 0x9b05688cUL;
   sha->h[6] = 0x1f83d9abUL;
   sha->h[7] = 0x5be0cd19UL;
-  sha->md_len = SHA256_DIGEST_LENGTH;
   return 1;
 }
 
@@ -129,10 +127,6 @@ int SHA224_Update(SHA256_CTX *ctx, const void *data, size_t len) {
   return SHA256_Update(ctx, data, len);
 }
 
-int SHA224_Final(uint8_t *md, SHA256_CTX *ctx) {
-  return SHA256_Final(md, ctx);
-}
-
 #define DATA_ORDER_IS_BIG_ENDIAN
 
 #define HASH_CTX SHA256_CTX
@@ -149,35 +143,25 @@ void sha256_block_data_order(uint32_t *state, const uint8_t *in, size_t num);
 
 #include "../digest/md32_common.h"
 
+int SHA224_Final(uint8_t *md, SHA256_CTX *sha) {
+  sha256_finish(sha);
+
+  unsigned nn;
+  for (nn = 0; nn < SHA224_DIGEST_LENGTH / 4; nn++) {
+    uint32_t ll = sha->h[nn];
+    HOST_l2c(ll, md);
+  }
+
+  return 1;
+}
+
 int SHA256_Final(uint8_t *md, SHA256_CTX *sha) {
   sha256_finish(sha);
 
-  /* TODO(davidben): Replace this with different versions of SHA256_Final
-   * and SHA224_Final. */
-  uint32_t ll;
-  unsigned int nn;
-  switch (sha->md_len) {
-    case SHA224_DIGEST_LENGTH:
-      for (nn = 0; nn < SHA224_DIGEST_LENGTH / 4; nn++) {
-        ll = sha->h[nn];
-        HOST_l2c(ll, md);
-      }
-      break;
-    case SHA256_DIGEST_LENGTH:
-      for (nn = 0; nn < SHA256_DIGEST_LENGTH / 4; nn++) {
-        ll = sha->h[nn];
-        HOST_l2c(ll, md);
-      }
-      break;
-    default:
-      if (sha->md_len > SHA256_DIGEST_LENGTH) {
-        return 0;
-      }
-      for (nn = 0; nn < sha->md_len / 4; nn++) {
-        ll = sha->h[nn];
-        HOST_l2c(ll, md);
-      }
-      break;
+  unsigned nn;
+  for (nn = 0; nn < SHA256_DIGEST_LENGTH / 4; nn++) {
+    uint32_t ll = sha->h[nn];
+    HOST_l2c(ll, md);
   }
 
   return 1;

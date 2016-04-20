@@ -128,15 +128,15 @@ struct sha_state_st {
 /* SHA224_DIGEST_LENGTH is the length of a SHA-224 digest. */
 #define SHA224_DIGEST_LENGTH 28
 
-/* SHA224_Init initialises |sha| and returns 1. */
+/* SHA224_Init initialises |sha| and returns one. */
 OPENSSL_EXPORT int SHA224_Init(SHA256_CTX *sha);
 
-/* SHA224_Update adds |len| bytes from |data| to |sha| and returns 1. */
+/* SHA224_Update adds |len| bytes from |data| to |sha| and returns one. */
 OPENSSL_EXPORT int SHA224_Update(SHA256_CTX *sha, const void *data, size_t len);
 
 /* SHA224_Final adds the final padding to |sha| and writes the resulting digest
  * to |md|, which must have at least |SHA224_DIGEST_LENGTH| bytes of space. It
- * returns one on success and zero on programmer error. */
+ * returns one. */
 OPENSSL_EXPORT int SHA224_Final(uint8_t *md, SHA256_CTX *sha);
 
 /* SHA224 writes the digest of |len| bytes from |data| to |out| and returns
@@ -153,15 +153,15 @@ OPENSSL_EXPORT uint8_t *SHA224(const uint8_t *data, size_t len, uint8_t *out);
 /* SHA256_DIGEST_LENGTH is the length of a SHA-256 digest. */
 #define SHA256_DIGEST_LENGTH 32
 
-/* SHA256_Init initialises |sha| and returns 1. */
+/* SHA256_Init initialises |sha| and returns one. */
 OPENSSL_EXPORT int SHA256_Init(SHA256_CTX *sha);
 
-/* SHA256_Update adds |len| bytes from |data| to |sha| and returns 1. */
+/* SHA256_Update adds |len| bytes from |data| to |sha| and returns one. */
 OPENSSL_EXPORT int SHA256_Update(SHA256_CTX *sha, const void *data, size_t len);
 
 /* SHA256_Final adds the final padding to |sha| and writes the resulting digest
  * to |md|, which must have at least |SHA256_DIGEST_LENGTH| bytes of space. It
- * returns one on success and zero on programmer error. */
+ * returns one. */
 OPENSSL_EXPORT int SHA256_Final(uint8_t *md, SHA256_CTX *sha);
 
 /* SHA256 writes the digest of |len| bytes from |data| to |out| and returns
@@ -177,7 +177,7 @@ struct sha256_state_st {
   uint32_t h[8];
   uint32_t Nl, Nh;
   uint8_t data[SHA256_CBLOCK];
-  unsigned num, md_len;
+  unsigned num;
 };
 
 
