@@ -117,51 +117,55 @@ static int ec_GFp_mont_point_get_affine_coordinates(const EC_GROUP *group,
 
   if (BN_cmp(&point->Z, &group->one) == 0) {
     /* |point| is already affine. */
-    if (x != NULL && !group->meth->field_decode(group, x, &point->X, ctx)) {
+    if (x != NULL && !BN_from_montgomery(x, &point->X, &group->mont, ctx)) {
       goto err;
     }
-    if (y != NULL && !group->meth->field_decode(group, y, &point->Y, ctx)) {
+    if (y != NULL && !BN_from_montgomery(y, &point->Y, &group->mont, ctx)) {
       goto err;
     }
   } else {
     /* transform  (X, Y, Z)  into  (x, y) := (X/Z^2, Y/Z^3) */
 
-    BIGNUM *Z = BN_CTX_get(ctx);
     BIGNUM *Z_1 = BN_CTX_get(ctx);
     BIGNUM *Z_2 = BN_CTX_get(ctx);
     BIGNUM *Z_3 = BN_CTX_get(ctx);
-    if (Z == NULL ||
-        Z_1 == NULL ||
+    if (Z_1 == NULL ||
         Z_2 == NULL ||
         Z_3 == NULL) {
       goto err;
     }
 
-    /* This formulation only uses |field_decode|, never |field_encode| since it
-     * should |field_decode| should be as or more efficient as |field_encode|,
-     * at least in theory. */
-
-    if (!group->meth->field_decode(group, Z, &point->Z, ctx) ||
-        !group->meth->field_decode(group, Z, Z, ctx) ||
-        !BN_mod_inverse(Z_1, Z, &group->field, ctx)) {
-      OPENSSL_PUT_ERROR(EC, ERR_R_BN_LIB);
+    /* The straightforward way to calculate the inverse of a Montgomery-encoded
+     * value where the result is Montgomery-encoded is:
+     *
+     *    |BN_from_montgomery| + |BN_mod_inverse| + |BN_to_montgomery|.
+     *
+     * This is equivalent, but more efficient, because |BN_from_montgomery|
+     * is more efficient (at least in theory) than |BN_to_montgomery|, since it
+     * doesn't have to do the multiplication before the reduction. */
+    if (!BN_from_montgomery(Z_1, &point->Z, &group->mont, ctx) ||
+        !BN_from_montgomery(Z_1, Z_1, &group->mont, ctx) ||
+        !BN_mod_inverse(Z_1, Z_1, &group->field, ctx)) {
       goto err;
     }
 
-    if (!group->meth->field_sqr(group, Z_2, Z_1, ctx) ||
-        !group->meth->field_decode(group, Z_2, Z_2, ctx)) {
+    /* Instead of using |BN_from_montgomery| to convert the |x| coordinate
+     * and then calling |BN_from_montgomery| again to convert the |y|
+     * coordinate below, convert the common factor |Z_2| once now, saving one
+     * reduction. */
+    if (!BN_from_montgomery(Z_2, Z_2, &group->mont, ctx)) {
       goto err;
     }
 
     if (x != NULL) {
-      if (!group->meth->field_mul(group, x, &point->X, Z_2, ctx)) {
+      if (!BN_mod_mul_montgomery(x, &point->X, Z_2, &group->mont, ctx)) {
         goto err;
       }
     }
 
     if (y != NULL) {
-      if (!group->meth->field_mul(group, Z_3, Z_2, Z_1, ctx) ||
-          !group->meth->field_mul(group, y, &point->Y, Z_3, ctx)) {
+      if (!BN_mod_mul_montgomery(Z_3, Z_2, Z_1, &group->mont, ctx) ||
+          !BN_mod_mul_montgomery(y, &point->Y, Z_3, &group->mont, ctx)) {
         goto err;
       }
     }
