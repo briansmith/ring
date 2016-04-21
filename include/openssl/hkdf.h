@@ -17,14 +17,17 @@
 
 #include <openssl/base.h>
 
-#ifdef  __cplusplus
+#if defined(__cplusplus)
 extern "C" {
 #endif
 
 
-/* Computes HKDF (as specified by RFC 5869) of initial keying material |secret|
- * with |salt| and |info| using |digest|, and outputs |out_len| bytes to
- * |out_key|. It returns one on success and zero on error.
+/* HKDF. */
+
+
+/* HKDF computes HKDF (as specified by RFC 5869) of initial keying material
+ * |secret| with |salt| and |info| using |digest|, and outputs |out_len| bytes
+ * to |out_key|. It returns one on success and zero on error.
  *
  * HKDF is an Extract-and-Expand algorithm. It does not do any key stretching,
  * and as such, is not suited to be used alone to generate a key from a
