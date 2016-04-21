@@ -29,10 +29,9 @@ extern "C" {
 
 /* X25519.
  *
- * Curve25519 is an elliptic curve. The same name is also sometimes used for
- * the Diffie-Hellman primitive built from it but “X25519” is a more precise
- * name for that, which is the one used here. See http://cr.yp.to/ecdh.html and
- * https://tools.ietf.org/html/rfc7748. */
+ * X25519 is the Diffie-Hellman primitive built from curve25519. It is
+ * sometimes referred to as “curve25519”, but “X25519” is a more precise name.
+ * See http://cr.yp.to/ecdh.html and https://tools.ietf.org/html/rfc7748. */
 
 /* X25519_keypair sets |out_public_value| and |out_private_key| to a freshly
  * generated, public–private key pair. */
