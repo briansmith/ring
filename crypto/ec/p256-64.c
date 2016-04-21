@@ -27,7 +27,7 @@
 #include <openssl/ec.h>
 #include <openssl/err.h>
 #include <openssl/mem.h>
-#include <openssl/obj_mac.h>
+#include <openssl/nid.h>
 #include <openssl/type_check.h>
 
 #include <assert.h>

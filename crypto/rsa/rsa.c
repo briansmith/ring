@@ -62,7 +62,7 @@
 #include <openssl/bn.h>
 #include <openssl/err.h>
 #include <openssl/mem.h>
-#include <openssl/obj_mac.h>
+#include <openssl/nid.h>
 
 #include "internal.h"
 #include "../internal.h"

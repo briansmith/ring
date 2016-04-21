@@ -14,7 +14,7 @@
 
 #include <stdint.h>
 #include <openssl/ec.h>
-#include <openssl/obj_mac.h>
+#include <openssl/nid.h>
 
 #include "internal.h"
 #include "../bn/internal.h"
