@@ -231,6 +231,19 @@ X509 *SSL_SESSION_get0_peer(const SSL_SESSION *session) {
   return session->peer;
 }
 
+size_t SSL_SESSION_get_master_key(const SSL_SESSION *session, uint8_t *out,
+                                  size_t max_out) {
+  /* TODO(davidben): Fix master_key_length's type and remove these casts. */
+  if (max_out == 0) {
+    return (size_t)session->master_key_length;
+  }
+  if (max_out > (size_t)session->master_key_length) {
+    max_out = (size_t)session->master_key_length;
+  }
+  memcpy(out, session->master_key, max_out);
+  return max_out;
+}
+
 long SSL_SESSION_set_time(SSL_SESSION *session, long time) {
   if (session == NULL) {
     return 0;
