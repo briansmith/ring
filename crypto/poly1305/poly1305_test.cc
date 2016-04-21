@@ -12,6 +12,12 @@
  * OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
  * CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE. */
 
+// rustc always links with the non-debug runtime, but when _DEBUG is defined
+// MSVC's C++ standard library expects to be linked to the debug runtime.
+#if defined(_DEBUG)
+#undef _DEBUG
+#endif
+
 #include <stdio.h>
 #include <string.h>
 

@@ -16,6 +16,12 @@
 #define __STDC_CONSTANT_MACROS
 #endif
 
+// rustc always links with the non-debug runtime, but when _DEBUG is defined
+// MSVC's C++ standard library expects to be linked to the debug runtime.
+#if defined(_DEBUG)
+#undef _DEBUG
+#endif
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>

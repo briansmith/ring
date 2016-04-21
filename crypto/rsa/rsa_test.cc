@@ -54,6 +54,12 @@
  * copied and put under another distribution licence
  * [including the GNU Public Licence.] */
 
+// rustc always links with the non-debug runtime, but when _DEBUG is defined
+// MSVC's C++ standard library expects to be linked to the debug runtime.
+#if defined(_DEBUG)
+#undef _DEBUG
+#endif
+
 #include <openssl/rsa.h>
 
 #include <stdlib.h>

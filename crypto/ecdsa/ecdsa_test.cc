@@ -50,6 +50,12 @@
  * (eay@cryptsoft.com).  This product includes software written by Tim
  * Hudson (tjh@cryptsoft.com). */
 
+// rustc always links with the non-debug runtime, but when _DEBUG is defined
+// MSVC's C++ standard library expects to be linked to the debug runtime.
+#if defined(_DEBUG)
+#undef _DEBUG
+#endif
+
 #include <openssl/ecdsa.h>
 
 #include <vector>
