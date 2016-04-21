@@ -149,6 +149,10 @@ static int ec_GFp_mont_point_get_affine_coordinates(const EC_GROUP *group,
       goto err;
     }
 
+    if (!BN_mod_mul_montgomery(Z_2, Z_1, Z_1, &group->mont, ctx)) {
+      goto err;
+    }
+
     /* Instead of using |BN_from_montgomery| to convert the |x| coordinate
      * and then calling |BN_from_montgomery| again to convert the |y|
      * coordinate below, convert the common factor |Z_2| once now, saving one
