@@ -55,6 +55,10 @@
  * [including the GNU Public Licence.]
  */
 
+#ifndef OPENSSL_HEADER_NID_H
+#define OPENSSL_HEADER_NID_H
+
+
 #define NID_undef 0
 
 /* Digest algorithms */
@@ -68,3 +72,5 @@
 #define NID_secp384r1 715
 #define NID_X25519 948
 
+
+#endif  /* OPENSSL_HEADER_NID_H */
