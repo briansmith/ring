@@ -371,9 +371,6 @@ int rsa_public_decrypt(const BIGNUM *n, const BIGNUM *e, uint8_t *out,
                        size_t min_bits, size_t max_bits) {
   unsigned rsa_size = BN_num_bytes(n); /* RSA_size((n, e)); */
   BIGNUM *f, *result;
-  int ret = 0;
-  BN_CTX *ctx = NULL;
-
   if (out_len != rsa_size) {
     OPENSSL_PUT_ERROR(RSA, RSA_R_OUTPUT_BUFFER_TOO_SMALL);
     return 0;
@@ -388,10 +385,12 @@ int rsa_public_decrypt(const BIGNUM *n, const BIGNUM *e, uint8_t *out,
     return 0;
   }
 
-  ctx = BN_CTX_new();
+  BN_CTX *ctx = BN_CTX_new();
   if (ctx == NULL) {
-    goto err;
+    return 0;
   }
+
+  int ret = 0;
 
   BN_CTX_start(ctx);
   f = BN_CTX_get(ctx);
@@ -422,10 +421,9 @@ int rsa_public_decrypt(const BIGNUM *n, const BIGNUM *e, uint8_t *out,
   ret = 1;
 
 err:
-  if (ctx != NULL) {
-    BN_CTX_end(ctx);
-    BN_CTX_free(ctx);
-  }
+  BN_CTX_end(ctx);
+  BN_CTX_free(ctx);
+
   return ret;
 }
 
