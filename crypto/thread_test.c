@@ -54,6 +54,8 @@ static int wait_for_thread(thread_t thread) {
 
 #else
 
+#include <unistd.h>
+
 typedef pthread_t thread_t;
 
 static void *thread_run(void *arg) {
@@ -77,6 +79,14 @@ static unsigned g_once_init_called = 0;
 
 static void once_init(void) {
   g_once_init_called++;
+
+  /* Sleep briefly so one |call_once_thread| instance will call |CRYPTO_once|
+   * while the other is running this function. */
+#if defined(OPENSSL_WINDOWS)
+  Sleep(1 /* milliseconds */);
+#else
+  usleep(1000 /* microseconds */);
+#endif
 }
 
 static CRYPTO_once_t g_test_once = CRYPTO_ONCE_INIT;
@@ -91,10 +101,13 @@ static int test_once(void) {
     return 0;
   }
 
-  thread_t thread;
+  thread_t thread1, thread2;
   struct thread_func_t call_once_thread_func = { call_once_thread };
-  if (!run_thread(&thread, &call_once_thread_func) ||
-      !wait_for_thread(thread)) {
+
+  if (!run_thread(&thread1, &call_once_thread_func) ||
+      !run_thread(&thread2, &call_once_thread_func) ||
+      !wait_for_thread(thread1) ||
+      !wait_for_thread(thread2)) {
     fprintf(stderr, "thread failed.\n");
     return 0;
   }
