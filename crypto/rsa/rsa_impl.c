@@ -378,10 +378,12 @@ int rsa_public_decrypt(const BIGNUM *n, const BIGNUM *e, uint8_t *out,
     OPENSSL_PUT_ERROR(RSA, RSA_R_OUTPUT_BUFFER_TOO_SMALL);
     return 0;
   }
+
   if (in_len != rsa_size) {
     OPENSSL_PUT_ERROR(RSA, RSA_R_DATA_LEN_NOT_EQUAL_TO_MOD_LEN);
     return 0;
   }
+
   if (!check_modulus_and_exponent_sizes(n, e, min_bits, max_bits)) {
     return 0;
   }
