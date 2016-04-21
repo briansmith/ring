@@ -230,7 +230,7 @@ static int bn_blinding_create_param(BN_BLINDING *b, const RSA *rsa, BN_CTX *ctx)
       return 0;
     }
 
-    assert(BN_get_flags(b->A, BN_FLG_CONSTTIME));
+    assert(BN_get_flags(b->Ai, BN_FLG_CONSTTIME));
     int no_inverse;
     if (BN_mod_inverse_no_branch(b->Ai, &no_inverse, b->Ai, rsa->n, ctx) ==
         NULL) {
