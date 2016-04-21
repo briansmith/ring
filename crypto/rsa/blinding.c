@@ -223,10 +223,10 @@ static int bn_blinding_create_param(BN_BLINDING *b, const RSA *rsa, BN_CTX *ctx)
       return 0;
     }
 
-    /* `BN_from_montgomery` + `BN_mod_inverse_no_branch` is equivalent to, but
-     * more efficient than, `BN_mod_inverse_no_branch` + `BN_to_montgomery`. */
-
+    /* |BN_from_montgomery| + |BN_mod_inverse_no_branch| is equivalent to, but
+     * more efficient than, |BN_mod_inverse_no_branch| + |BN_to_montgomery|. */
     if (!BN_from_montgomery(b->Ai, b->A, rsa->mont_n, ctx)) {
+      OPENSSL_PUT_ERROR(RSA, ERR_R_INTERNAL_ERROR);
       return 0;
     }
 
