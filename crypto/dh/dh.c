@@ -291,8 +291,8 @@ int DH_generate_key(DH *dh) {
   }
 
   BN_with_flags(&local_priv, priv_key, BN_FLG_CONSTTIME);
-  if (!BN_mod_exp_mont(pub_key, dh->g, &local_priv, dh->p, ctx,
-                       dh->method_mont_p)) {
+  if (!BN_mod_exp_mont_consttime(pub_key, dh->g, &local_priv, dh->p, ctx,
+                                 dh->method_mont_p)) {
     goto err;
   }
 
@@ -353,8 +353,8 @@ int DH_compute_key(unsigned char *out, const BIGNUM *peers_key, DH *dh) {
   }
 
   BN_with_flags(&local_priv, dh->priv_key, BN_FLG_CONSTTIME);
-  if (!BN_mod_exp_mont(shared_key, peers_key, &local_priv, dh->p, ctx,
-                       dh->method_mont_p)) {
+  if (!BN_mod_exp_mont_consttime(shared_key, peers_key, &local_priv, dh->p, ctx,
+                                 dh->method_mont_p)) {
     OPENSSL_PUT_ERROR(DH, ERR_R_BN_LIB);
     goto err;
   }
