@@ -802,9 +802,6 @@ OPENSSL_EXPORT int BN_mod_exp_mont_consttime(BIGNUM *rr, const BIGNUM *a,
                                              BN_CTX *ctx,
                                              const BN_MONT_CTX *mont);
 
-OPENSSL_EXPORT int BN_mod_exp_mont_word(BIGNUM *r, BN_ULONG a, const BIGNUM *p,
-                                        const BIGNUM *m, BN_CTX *ctx,
-                                        const BN_MONT_CTX *mont);
 OPENSSL_EXPORT int BN_mod_exp2_mont(BIGNUM *r, const BIGNUM *a1,
                                     const BIGNUM *p1, const BIGNUM *a2,
                                     const BIGNUM *p2, const BIGNUM *m,
@@ -828,6 +825,13 @@ OPENSSL_EXPORT size_t BN_bn2mpi(const BIGNUM *in, uint8_t *out);
  * |out| is reused and returned. On error, NULL is returned and the error queue
  * is updated. */
 OPENSSL_EXPORT BIGNUM *BN_mpi2bn(const uint8_t *in, size_t len, BIGNUM *out);
+
+/* BN_mod_exp_mont_word is like |BN_mod_exp_mont| except that the base |a| is
+ * given as a |BN_ULONG| instead of a |BIGNUM *|. It returns one on success
+ * or zero otherwise. */
+OPENSSL_EXPORT int BN_mod_exp_mont_word(BIGNUM *r, BN_ULONG a, const BIGNUM *p,
+                                        const BIGNUM *m, BN_CTX *ctx,
+                                        const BN_MONT_CTX *mont);
 
 
 /* Private functions */
