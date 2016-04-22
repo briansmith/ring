@@ -802,11 +802,6 @@ OPENSSL_EXPORT int BN_mod_exp_mont_consttime(BIGNUM *rr, const BIGNUM *a,
                                              BN_CTX *ctx,
                                              const BN_MONT_CTX *mont);
 
-OPENSSL_EXPORT int BN_mod_exp2_mont(BIGNUM *r, const BIGNUM *a1,
-                                    const BIGNUM *p1, const BIGNUM *a2,
-                                    const BIGNUM *p2, const BIGNUM *m,
-                                    BN_CTX *ctx, const BN_MONT_CTX *mont);
-
 
 /* Deprecated functions */
 
@@ -832,6 +827,13 @@ OPENSSL_EXPORT BIGNUM *BN_mpi2bn(const uint8_t *in, size_t len, BIGNUM *out);
 OPENSSL_EXPORT int BN_mod_exp_mont_word(BIGNUM *r, BN_ULONG a, const BIGNUM *p,
                                         const BIGNUM *m, BN_CTX *ctx,
                                         const BN_MONT_CTX *mont);
+
+/* BN_mod_exp2_mont calculates (a1^p1) * (a2^p2) mod m. It returns 1 on success
+ * or zero otherwise. */
+OPENSSL_EXPORT int BN_mod_exp2_mont(BIGNUM *r, const BIGNUM *a1,
+                                    const BIGNUM *p1, const BIGNUM *a2,
+                                    const BIGNUM *p2, const BIGNUM *m,
+                                    BN_CTX *ctx, const BN_MONT_CTX *mont);
 
 
 /* Private functions */
