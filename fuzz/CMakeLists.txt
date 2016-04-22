@@ -19,6 +19,24 @@ target_link_libraries(cert Fuzzer)
 target_link_libraries(cert crypto)
 
 add_executable(
+  spki
+
+  spki.cc
+)
+
+target_link_libraries(spki Fuzzer)
+target_link_libraries(spki crypto)
+
+add_executable(
+  pkcs8
+
+  pkcs8.cc
+)
+
+target_link_libraries(pkcs8 Fuzzer)
+target_link_libraries(pkcs8 crypto)
+
+add_executable(
   server
 
   server.cc

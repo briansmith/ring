@@ -166,7 +166,7 @@ add_library(
   $<TARGET_OBJECTS:pem>
   $<TARGET_OBJECTS:x509>
   $<TARGET_OBJECTS:x509v3>
-  $<TARGET_OBJECTS:pkcs8>
+  $<TARGET_OBJECTS:pkcs8_lib>
 )
 
 if(NOT MSVC AND NOT ANDROID)

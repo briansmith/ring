@@ -1,7 +1,7 @@
 include_directories(../../include)
 
 add_library(
-  pkcs8
+  pkcs8_lib
 
   OBJECT
 

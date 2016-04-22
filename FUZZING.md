@@ -32,10 +32,12 @@ The recommended values of `max_len` for each test are:
 
 | Test      | `max_len` value |
 |-----------|-----------------|
-| `privkey` | 2048            |
 | `cert`    | 3072            |
-| `server`  | 4096            |
 | `client`  | 20000           |
+| `pkcs8`   | 2048            |
+| `privkey` | 2048            |
+| `server`  | 4096            |
+| `spki`    | 1024            |
 
 
 These were determined by rounding up the length of the largest case in the corpus.
