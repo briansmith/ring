@@ -281,7 +281,8 @@ pub struct Algorithm {
     /// The length of the length in the padding.
     len_len: usize,
 
-    block_data_order: unsafe extern fn(state: &mut [u64; MAX_CHAINING_LEN / 8], data: *const u8,
+    block_data_order: unsafe extern fn(state: &mut [u64; MAX_CHAINING_LEN / 8],
+                                       data: *const u8,
                                        num: c::size_t),
     format_output: fn (input: &[u64; MAX_CHAINING_LEN / 8]) ->
                        [u64; MAX_OUTPUT_LEN / 8],
@@ -453,8 +454,13 @@ pub extern fn SHA512_4(out: *mut u8, out_len: c::size_t,
 }
 
 extern {
-    fn sha256_block_data_order(state: &mut [u64; MAX_CHAINING_LEN / 8], data: *const u8, num: c::size_t);
-    fn sha512_block_data_order(state: &mut [u64; MAX_CHAINING_LEN / 8], data: *const u8, num: c::size_t);
+    fn sha256_block_data_order(state: &mut [u64; MAX_CHAINING_LEN / 8],
+                               data: *const u8,
+                               num: c::size_t);
+
+    fn sha512_block_data_order(state: &mut [u64; MAX_CHAINING_LEN / 8],
+                               data: *const u8,
+                               num: c::size_t);
 }
 
 #[cfg(test)]

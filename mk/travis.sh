@@ -17,6 +17,11 @@
 set -eux -o pipefail
 IFS=$'\n\t'
 
+if [[ -n ${TIDY-} ]]; then
+  python util/tidy.py
+  exit
+fi
+
 printenv
 
 case $TARGET_X in

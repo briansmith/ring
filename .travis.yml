@@ -2,6 +2,9 @@ language: rust
 matrix:
   fast_finish: true
   include:
+    - env: TIDY=1
+      language: python
+
     - env: TARGET_X=aarch64-unknown-linux-gnu CC_X=aarch64-linux-gnu-gcc CXX_X=aarch64-linux-gnu-g++ MODE_X=DEBUG
       rust: stable
 
