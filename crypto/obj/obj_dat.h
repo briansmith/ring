@@ -61,7 +61,7 @@
 #define NUM_NID 949
 #define NUM_SN 941
 #define NUM_LN 941
-#define NUM_OBJ 882
+#define NUM_OBJ 876
 
 static const unsigned char lvalues[6176]={
 0x2A,0x86,0x48,0x86,0xF7,0x0D,               /* [  0] OBJ_rsadsi */
@@ -4374,12 +4374,6 @@ static const unsigned int kNIDsInLongNameOrder[NUM_LN]={
 };
 
 static const unsigned int kNIDsInOIDOrder[NUM_OBJ]={
- 0,	/* OBJ_undef                        0 */
-181,	/* OBJ_iso                          1 */
-393,	/* OBJ_joint_iso_ccitt              OBJ_joint_iso_itu_t */
-404,	/* OBJ_ccitt                        OBJ_itu_t */
-645,	/* OBJ_itu_t                        0 */
-646,	/* OBJ_joint_iso_itu_t              2 */
 434,	/* OBJ_data                         0 9 */
 182,	/* OBJ_member_body                  1 2 */
 379,	/* OBJ_org                          1 3 */

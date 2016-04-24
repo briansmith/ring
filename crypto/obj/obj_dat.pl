@@ -163,7 +163,7 @@ foreach (sort { $ln{$nid{$a}} cmp $ln{$nid{$b}} } @a)
 	push(@ln,sprintf("%2d,\t/* \"$ln{$nid{$_}}\" */\n",$_));
 	}
 
-@a=grep(defined($obj{$nid{$_}}),0 .. $n);
+@a=grep(defined($obj{$nid{$_}}) && $objd{$obj{$nid{$_}}} =~ /,/,0 .. $n);
 foreach (sort obj_cmp @a)
 	{
 	$m=$obj{$nid{$_}};
