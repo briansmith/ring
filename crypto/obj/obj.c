@@ -211,7 +211,8 @@ int OBJ_obj2nid(const ASN1_OBJECT *obj) {
   }
   CRYPTO_STATIC_MUTEX_unlock_read(&global_added_lock);
 
-  nid_ptr = bsearch(obj, kNIDsInOIDOrder, NUM_OBJ, sizeof(unsigned), obj_cmp);
+  nid_ptr = bsearch(obj, kNIDsInOIDOrder, OPENSSL_ARRAY_SIZE(kNIDsInOIDOrder),
+                    sizeof(kNIDsInOIDOrder[0]), obj_cmp);
   if (nid_ptr == NULL) {
     return NID_undef;
   }
@@ -258,7 +259,9 @@ int OBJ_sn2nid(const char *short_name) {
   }
   CRYPTO_STATIC_MUTEX_unlock_read(&global_added_lock);
 
-  nid_ptr = bsearch(short_name, kNIDsInShortNameOrder, NUM_SN, sizeof(unsigned), short_name_cmp);
+  nid_ptr = bsearch(short_name, kNIDsInShortNameOrder,
+                    OPENSSL_ARRAY_SIZE(kNIDsInShortNameOrder),
+                    sizeof(kNIDsInShortNameOrder[0]), short_name_cmp);
   if (nid_ptr == NULL) {
     return NID_undef;
   }
@@ -292,7 +295,9 @@ int OBJ_ln2nid(const char *long_name) {
   }
   CRYPTO_STATIC_MUTEX_unlock_read(&global_added_lock);
 
-  nid_ptr = bsearch(long_name, kNIDsInLongNameOrder, NUM_LN, sizeof(unsigned), long_name_cmp);
+  nid_ptr = bsearch(long_name, kNIDsInLongNameOrder,
+                    OPENSSL_ARRAY_SIZE(kNIDsInLongNameOrder),
+                    sizeof(kNIDsInLongNameOrder[0]), long_name_cmp);
   if (nid_ptr == NULL) {
     return NID_undef;
   }
