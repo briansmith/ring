@@ -3,7 +3,6 @@ list of commands to run are:
 
         perl objects.pl objects.txt obj_mac.num ../../include/openssl/nid.h
         perl obj_dat.pl ../../include/openssl/nid.h obj_dat.h
-        perl obj_xref.pl obj_mac.num obj_xref.txt > obj_xref.h
 
 objects.txt contains the list of all built-in OIDs. It is processed by
 objects.pl to output obj_mac.num and nid.h. obj_mac.num is the list of NID
@@ -15,11 +14,6 @@ nid.h is read by obj_dat.pl to generate obj_dat.h. obj_dat.h contains the
 ASN1_OBJECTs corresponding to built-in OIDs themselves along with lookup tables
 for search by short name, OID, etc.
 
-obj_mac.num and obj_xref.txt are read by obj_xref.pl to generate
-obj_xref.h. obj_xref.txt links signature OIDs to corresponding public key
-algorithms and digests. obj_xref.h contains lookup tables for querying this
-information in both directions.
-
 Dependency graph:
 
                         objects.txt
@@ -28,10 +22,10 @@ Dependency graph:
                        [objects.pl] <--+
                          /      \      |
                         V        V     |
-                     nid.h     obj_mac.num  obj_xref.txt
-                      |              \      /
-                      V               V    V
-                 [obj_dat.pl]      [obj_xref.pl]
-                      |                  |
-                      V                  V
-                  obj_dat.h         obj_xref.h
+                     nid.h     obj_mac.num
+                      |
+                      V
+                 [obj_dat.pl]
+                      |
+                      V
+                  obj_dat.h
