@@ -276,44 +276,7 @@ OPENSSL_EXPORT void CRYPTO_MUTEX_unlock(CRYPTO_MUTEX *lock);
 OPENSSL_EXPORT void CRYPTO_MUTEX_cleanup(CRYPTO_MUTEX *lock);
 
 
-/* Thread local storage. */
-
-/* thread_local_data_t enumerates the types of thread-local data that can be
- * stored. */
-typedef enum {
-  OPENSSL_THREAD_LOCAL_ERR = 0,
-  OPENSSL_THREAD_LOCAL_RAND,
-  OPENSSL_THREAD_LOCAL_URANDOM_BUF,
-  OPENSSL_THREAD_LOCAL_TEST,
-  NUM_OPENSSL_THREAD_LOCALS
-} thread_local_data_t;
-
-/* thread_local_destructor_t is the type of a destructor function that will be
- * called when a thread exits and its thread-local storage needs to be freed. */
-typedef void (*thread_local_destructor_t)(void *);
-
-/* CRYPTO_get_thread_local gets the pointer value that is stored for the
- * current thread for the given index, or NULL if none has been set. */
-OPENSSL_EXPORT void *CRYPTO_get_thread_local(thread_local_data_t value);
-
-/* CRYPTO_set_thread_local sets a pointer value for the current thread at the
- * given index. This function should only be called once per thread for a given
- * |index|: rather than update the pointer value itself, update the data that
- * is pointed to.
- *
- * The destructor function will be called when a thread exits to free this
- * thread-local data. All calls to |CRYPTO_set_thread_local| with the same
- * |index| should have the same |destructor| argument. The destructor may be
- * called with a NULL argument if a thread that never set a thread-local
- * pointer for |index|, exits. The destructor may be called concurrently with
- * different arguments.
- *
- * This function returns one on success or zero on error. If it returns zero
- * then |destructor| has been called with |value| already. */
-OPENSSL_EXPORT int CRYPTO_set_thread_local(
-    thread_local_data_t index, void *value,
-    thread_local_destructor_t destructor);
-
+/* Bridge to Rust-based SHA-512 implementation. */
 
 extern void SHA512_4(uint8_t *out, size_t out_len,
                      const uint8_t *part1, size_t part1_len,

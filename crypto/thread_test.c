@@ -128,87 +128,8 @@ static int test_once(void) {
 }
 
 
-static int g_test_thread_ok = 0;
-static unsigned g_destructor_called_count = 0;
-
-static void thread_local_destructor(void *arg) {
-  if (arg == NULL) {
-    return;
-  }
-
-  unsigned *count = arg;
-  (*count)++;
-}
-
-static void thread_local_test_thread(void) {
-  void *ptr = CRYPTO_get_thread_local(OPENSSL_THREAD_LOCAL_TEST);
-  if (ptr != NULL) {
-    return;
-  }
-
-  if (!CRYPTO_set_thread_local(OPENSSL_THREAD_LOCAL_TEST,
-                               &g_destructor_called_count,
-                               thread_local_destructor)) {
-    return;
-  }
-
-  if (CRYPTO_get_thread_local(OPENSSL_THREAD_LOCAL_TEST) !=
-      &g_destructor_called_count) {
-    return;
-  }
-
-  g_test_thread_ok = 1;
-}
-
-static void thread_local_test2_thread(void) {}
-
-static int test_thread_local(void) {
-  void *ptr = CRYPTO_get_thread_local(OPENSSL_THREAD_LOCAL_TEST);
-  if (ptr != NULL) {
-    fprintf(stderr, "Thread-local data was non-NULL at start.\n");
-  }
-
-  thread_t thread;
-  struct thread_func_t thread_local_test_thread_func = {
-    thread_local_test_thread
-  };
-  if (!run_thread(&thread, &thread_local_test_thread_func) ||
-      !wait_for_thread(thread)) {
-    fprintf(stderr, "thread failed.\n");
-    return 0;
-  }
-
-  if (!g_test_thread_ok) {
-    fprintf(stderr, "Thread-local data didn't work in thread.\n");
-    return 0;
-  }
-
-  if (g_destructor_called_count != 1) {
-    fprintf(stderr,
-            "Destructor should have been called once, but actually called %u "
-            "times.\n",
-            g_destructor_called_count);
-    return 0;
-  }
-
-  /* thread_local_test2_thread doesn't do anything, but it tests that the
-   * thread destructor function works even if thread-local storage wasn't used
-   * for a thread. */
-  struct thread_func_t thread_local_test2_thread_func = {
-    thread_local_test2_thread
-  };
-  if (!run_thread(&thread, &thread_local_test2_thread_func) ||
-      !wait_for_thread(thread)) {
-    fprintf(stderr, "thread failed.\n");
-    return 0;
-  }
-
-  return 1;
-}
-
 int bssl_thread_test_main(void) {
-  if (!test_once() ||
-      !test_thread_local()) {
+  if (!test_once()) {
     return 1;
   }
 
