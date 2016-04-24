@@ -96,7 +96,6 @@ RING_x86_64_SRCS = $(addprefix $(RING_PREFIX), \
   crypto/ec/p256-x86_64.c \
   crypto/modes/asm/aesni-gcm-x86_64.pl \
   crypto/modes/asm/ghash-x86_64.pl \
-  crypto/rand/asm/rdrand-x86_64.pl \
   crypto/sha/asm/sha256-x86_64.pl \
   crypto/sha/asm/sha512-x86_64.pl \
   $(NULL)) \

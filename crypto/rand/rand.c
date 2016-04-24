@@ -14,16 +14,7 @@
 
 #include <openssl/rand.h>
 
-#include <assert.h>
-#include <limits.h>
-#include <string.h>
-
-#include <openssl/chacha.h>
-#include <openssl/cpu.h>
-#include <openssl/mem.h>
-
 #include "internal.h"
-#include "../internal.h"
 
 
 /* It's assumed that the operating system always has an unfailing source of
@@ -31,168 +22,18 @@
  * entropy source fails, it's up to |CRYPTO_sysrand| to abort the process—we
  * don't try to handle it.)
  *
+ * We assume that the OS entropy is safe from fork()ing and VM duplication.
+ * This might be a bit of a leap of faith, esp on Windows, but there's nothing
+ * that we can do about it.
+ *
  * In addition, the hardware may provide a low-latency RNG. Intel's rdrand
  * instruction is the canonical example of this. When a hardware RNG is
  * available we don't need to worry about an RNG failure arising from fork()ing
  * the process or moving a VM, so we can keep thread-local RNG state and XOR
- * the hardware entropy in.
- *
- * (We assume that the OS entropy is safe from fork()ing and VM duplication.
- * This might be a bit of a leap of faith, esp on Windows, but there's nothing
- * that we can do about it.) */
-
-/* rand_thread_state contains the per-thread state for the RNG. This is only
- * used if the system has support for a hardware RNG. */
-struct rand_thread_state {
-  uint32_t key[8];
-  uint64_t calls_used;
-  size_t bytes_used;
-  uint8_t partial_block[64];
-  unsigned partial_block_used;
-};
-
-/* kMaxCallsPerRefresh is the maximum number of |RAND_bytes| calls that we'll
- * serve before reading a new key from the operating system. This only applies
- * if we have a hardware RNG. */
-static const unsigned kMaxCallsPerRefresh = 1024;
-
-/* kMaxBytesPerRefresh is the maximum number of bytes that we'll return from
- * |RAND_bytes| before reading a new key from the operating system. This only
- * applies if we have a hardware RNG. */
-static const uint64_t kMaxBytesPerRefresh = 1024 * 1024;
-
-/* rand_thread_state_free frees a |rand_thread_state|. This is called when a
- * thread exits. */
-static void rand_thread_state_free(void *state) {
-  OPENSSL_free(state);
-}
-
-#if defined(OPENSSL_X86_64) && !defined(OPENSSL_NO_ASM) && \
-    !defined(BORINGSSL_UNSAFE_FUZZER_MODE)
-
-/* These functions are defined in asm/rdrand-x86_64.pl */
-
-/* CRYPTO_rdrand writes 8 random bytes to |out|. */
-extern int CRYPTO_rdrand(void *out);
-
-/* CRYPTO_rdrand_multiple8_buf writes |len| random bytes to |buf|. */
-extern int CRYPTO_rdrand_multiple8_buf(void *buf, size_t len);
-
-
-static int have_rdrand(void) {
-  return (OPENSSL_ia32cap_P[1] & (1u << 30)) != 0;
-}
-
-static int hwrand(uint8_t *buf, size_t len) {
-  if (!have_rdrand()) {
-    return 0;
-  }
-
-  const size_t len_multiple8 = len & ~7;
-  if (!CRYPTO_rdrand_multiple8_buf(buf, len_multiple8)) {
-    return 0;
-  }
-  len -= len_multiple8;
-
-  if (len != 0) {
-    assert(len < 8);
-
-    uint8_t rand_buf[8];
-    if (!CRYPTO_rdrand(rand_buf)) {
-      return 0;
-    }
-    memcpy(buf + len_multiple8, rand_buf, len);
-  }
-
-  return 1;
-}
-
-#else
-
-static int hwrand(uint8_t *buf, size_t len) {
-  (void)buf;
-  (void)len;
-
-  return 0;
-}
-
-#endif
+ * the hardware entropy in. (Support for this was in BoringSSL, but it was
+ * removed.) */
 
 int RAND_bytes(uint8_t *buf, size_t len) {
-  if (len == 0) {
-    return 1;
-  }
-
-  if (!hwrand(buf, len)) {
-    /* Without a hardware RNG to save us from address-space duplication, the OS
-     * entropy is used directly. */
-    CRYPTO_sysrand(buf, len);
-    return 1;
-  }
-
-  struct rand_thread_state *state =
-      CRYPTO_get_thread_local(OPENSSL_THREAD_LOCAL_RAND);
-  if (state == NULL) {
-    state = OPENSSL_malloc(sizeof(struct rand_thread_state));
-    if (state == NULL ||
-        !CRYPTO_set_thread_local(OPENSSL_THREAD_LOCAL_RAND, state,
-                                 rand_thread_state_free)) {
-      CRYPTO_sysrand(buf, len);
-      return 1;
-    }
-
-    memset(state->partial_block, 0, sizeof(state->partial_block));
-    state->calls_used = kMaxCallsPerRefresh;
-  }
-
-  if (state->calls_used >= kMaxCallsPerRefresh ||
-      state->bytes_used >= kMaxBytesPerRefresh) {
-    CRYPTO_sysrand(state->key, sizeof(state->key));
-    state->calls_used = 0;
-    state->bytes_used = 0;
-    state->partial_block_used = sizeof(state->partial_block);
-  }
-
-  if (len >= sizeof(state->partial_block)) {
-    size_t remaining = len;
-    while (remaining > 0) {
-      /* kMaxBytesPerCall is only 2GB, while ChaCha can handle 256GB. But this
-       * is sufficient and easier on 32-bit. */
-      static const size_t kMaxBytesPerCall = 0x80000000;
-      size_t todo = remaining;
-      if (todo > kMaxBytesPerCall) {
-        todo = kMaxBytesPerCall;
-      }
-      uint32_t counter_and_nonce[4];
-      counter_and_nonce[0] = 0;
-      counter_and_nonce[1] = 0;
-      counter_and_nonce[2] = (uint32_t)state->calls_used;
-      counter_and_nonce[3] = (uint32_t)(state->calls_used >> 32);
-      ChaCha20_ctr32(buf, buf, todo, state->key, counter_and_nonce);
-      buf += todo;
-      remaining -= todo;
-      state->calls_used++;
-    }
-  } else {
-    if (sizeof(state->partial_block) - state->partial_block_used < len) {
-      uint32_t counter_and_nonce[4];
-      counter_and_nonce[0] = 0;
-      counter_and_nonce[1] = 0;
-      counter_and_nonce[2] = (uint32_t)state->calls_used;
-      counter_and_nonce[3] = (uint32_t)(state->calls_used >> 32);
-      ChaCha20_ctr32(state->partial_block, state->partial_block,
-                     sizeof(state->partial_block), state->key,
-                     counter_and_nonce);
-      state->partial_block_used = 0;
-    }
-
-    size_t i;
-    for (i = 0; i < len; i++) {
-      buf[i] ^= state->partial_block[state->partial_block_used++];
-    }
-    state->calls_used++;
-  }
-  state->bytes_used += len;
-
+  CRYPTO_sysrand(buf, len);
   return 1;
 }
