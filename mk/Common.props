@@ -70,6 +70,9 @@
       <TreatWarningAsError>true</TreatWarningAsError>
       <WarningLevel>EnableAllWarnings</WarningLevel>
     </ClCompile>
+    <Lib>
+      <IgnoreAllDefaultLibraries>true</IgnoreAllDefaultLibraries>
+    </Lib>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <SubSystem>Console</SubSystem>
