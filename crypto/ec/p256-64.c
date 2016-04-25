@@ -328,8 +328,7 @@ static void felem_shrink(smallfelem out, const felem in) {
    * conditionally subtract kPrime if tmp[3] is large enough. */
   high = tmp[3] >> 64;
   /* As tmp[3] < 2^65, high is either 1 or 0 */
-  high <<= 63;
-  high >>= 63;
+  high = ~(high - 1);
   /* high is:
    *   all ones   if the high word of tmp[3] is 1
    *   all zeros  if the high word of tmp[3] if 0 */
