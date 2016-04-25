@@ -19,7 +19,7 @@
 #[cfg(unix)]
 extern crate std;
 
-use {bssl, c};
+use c;
 use core;
 
 /// A secure random number generator.
@@ -32,53 +32,91 @@ pub trait SecureRandom {
 /// from the operating system.
 ///
 /// On "unix"-ish platforms, this is currently done by reading from
-/// `/dev/urandom`. On other platforms, this is done using the platform's
-/// API for secure random number generation.
+/// `/dev/urandom`. A new file handle for `/dev/urandom/` is opened each time a
+/// `SystemRandom` is constructed and the file handle is closed each time.
+///
+/// On other platforms, this is done using the platform's API for secure random
+/// number generation.
+///
+/// For efficiency's sake, it is recommend to create a single SystemRandom and
+/// then use it for all randomness generation, especially if the
+/// /dev/urandom-based `SystemRandom` implementation may be used.
 pub struct SystemRandom {
-    _dummy: u8,
+    impl_: Impl,
 }
 
 impl SystemRandom {
     /// Constructs a new `SystemRandom`.
     #[inline(always)]
     pub fn new() -> Result<SystemRandom, ()> {
-        init_once();
-        Ok(SystemRandom { _dummy: 1 })
+        Ok(SystemRandom { impl_: try!(Impl::new()) })
     }
 }
 
 impl SecureRandom for SystemRandom {
     #[inline(always)]
     fn fill(&mut self, dest: &mut [u8]) -> Result<(), ()> {
-        bssl::map_result(unsafe {
-            CRYPTO_sysrand(dest.as_mut_ptr(), dest.len())
-        })
+        self.impl_.fill(dest)
     }
 }
 
-extern {
-    fn CRYPTO_sysrand(buf: *mut u8, len: c::size_t) -> c::int;
-}
+#[cfg(unix)]
+type Impl = self::urandom::DevURandom;
+
+#[cfg(windows)]
+type Impl = self::sysrand::Sysrand;
 
 #[cfg(unix)]
-extern {
-    fn CRYPTO_sysrand_init_once();
-}
+mod urandom {
+    extern crate std;
 
-#[cfg(not(unix))]
-fn init_once() { }
+    pub struct DevURandom {
+        file: std::fs::File,
+    }
 
-#[cfg(unix)]
-fn init_once() {
-    INIT.call_once(|| {
-        unsafe {
-            CRYPTO_sysrand_init_once();
+    impl DevURandom {
+        pub fn new() -> Result<DevURandom, ()> {
+            // std::fs::File::open opens the file with close-on-exec semantics
+            // whenever possible.
+            Ok(DevURandom {
+                file: try!(std::fs::File::open("/dev/urandom").map_err(|_| ())),
+            })
         }
-    });
+    }
+
+    impl super::SecureRandom for DevURandom {
+        fn fill(&mut self, dest: &mut [u8]) -> Result<(), ()> {
+            use self::std::io::Read;
+            self.file.read_exact(dest).map_err(|_| ())
+        }
+    }
 }
 
-#[cfg(unix)]
-static INIT: std::sync::Once = std::sync::ONCE_INIT;
+#[cfg(windows)]
+mod sysrand {
+    use {bssl, c};
+
+    pub struct Sysrand;
+
+    impl Sysrand {
+        pub fn new() -> Result<Sysrand, ()> {
+            Ok(Sysrand)
+        }
+    }
+
+    impl super::SecureRandom for Sysrand {
+        #[allow(unsafe_code)]
+        fn fill(&mut self, dest: &mut [u8]) -> Result<(), ()> {
+            bssl::map_result(unsafe {
+                CRYPTO_sysrand(dest.as_mut_ptr(), dest.len())
+            })
+        }
+    }
+
+    extern {
+        fn CRYPTO_sysrand(buf: *mut u8, len: c::size_t) -> c::int;
+    }
+}
 
 
 /// An adapter that lets the C code use `SecureRandom`.
