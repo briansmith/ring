@@ -46,10 +46,4 @@ void CRYPTO_MUTEX_cleanup(CRYPTO_MUTEX *lock) {
   pthread_rwlock_destroy(lock);
 }
 
-void CRYPTO_once(CRYPTO_once_t *once, void (*init)(void)) {
-  if (pthread_once(once, init) != 0) {
-    abort();
-  }
-}
-
 #endif  /* !OPENSSL_WINDOWS && !OPENSSL_NO_THREADS */

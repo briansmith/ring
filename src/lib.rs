@@ -130,5 +130,4 @@ mod tests {
     bssl_test_rng!(test_bn, bssl_bn_test_main);
     bssl_test!(test_bytestring, bssl_bytestring_test_main);
     bssl_test!(test_constant_time, bssl_constant_time_test_main);
-    bssl_test!(test_thread, bssl_thread_test_main);
 }

@@ -234,28 +234,6 @@ static inline unsigned int constant_time_eq_int(int a, int b) {
   return constant_time_is_zero((unsigned)(a) ^ (unsigned)(b));
 }
 
-/* Thread-safe initialisation. */
-
-#if defined(OPENSSL_NO_THREADS)
-typedef uint32_t CRYPTO_once_t;
-#define CRYPTO_ONCE_INIT 0
-#elif defined(OPENSSL_WINDOWS)
-typedef volatile LONG CRYPTO_once_t;
-#define CRYPTO_ONCE_INIT 0
-#else
-typedef pthread_once_t CRYPTO_once_t;
-#define CRYPTO_ONCE_INIT PTHREAD_ONCE_INIT
-#endif
-
-/* CRYPTO_once calls |init| exactly once per process. This is thread-safe: if
- * concurrent threads call |CRYPTO_once| with the same |CRYPTO_once_t| argument
- * then they will block until |init| completes, but |init| will have only been
- * called once.
- *
- * The |once| argument must be a |CRYPTO_once_t| that has been initialised with
- * the value |CRYPTO_ONCE_INIT|. */
-OPENSSL_EXPORT void CRYPTO_once(CRYPTO_once_t *once, void (*init)(void));
-
 
 /* Locks.
  *
