@@ -4266,8 +4266,6 @@ typedef struct ssl3_state_st {
  * wpa_supplicant will take a little time to sync with upstream. Outside of
  * Android they'll have no definition. */
 
-#define SSL_F_SSL_SET_SESSION_TICKET_EXT doesnt_exist
-
 OPENSSL_EXPORT int SSL_set_session_ticket_ext(SSL *s, void *ext_data,
                                               int ext_len);
 OPENSSL_EXPORT int SSL_set_session_secret_cb(SSL *s, void *cb, void *arg);
